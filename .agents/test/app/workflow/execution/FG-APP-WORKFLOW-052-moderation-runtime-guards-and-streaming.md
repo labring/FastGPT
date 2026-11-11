@@ -75,7 +75,7 @@ baseline: "c915077feb8edd7cfa36fe73b49c9d00550d24a1"
 | C3 | 基础（Agent 内部工具结果与文件读取替换）；开启 `hooks.modelInput: true` | 运行 `W_agent`：1) 让模型调用内置 `read_files` 同时读取 `[F_safe.txt, F_blk.txt]`；2) 让模型调用普通工具 `T_echo`，工具返回含 `BLK_WORD` 的结果字符串，观察 Agent 后续规划与完成状态。 |
 | C4 | 异常（非流式输出与交互节点拦截）；仅开启 `hooks.finalOutput: true` | 以 `stream: false` 运行 `W_chat`：分别触发 AI 对话输出、`answerNode` 回复、`userSelect` 选项、`formInput` 提示/选项、`queryExtension` 输出包含 `BLK_WORD`。 |
 | C5 | 边界（流式分块输出截断）；仅开启 `hooks.finalOutput: true, streamInterval: 20` | 以 `stream: true` 运行 `W_chat` / `W_agent`：让模型先流式输出 25 个正常字符（超过第一个 20 字符窗口），随后在第二段输出或思考链（`reasoning`）中生成 `BLK_WORD`，后续还有剩余文本。捕获完整 SSE 事件流与最终落库消息。 |
-| C6 | 异常（工具调用参数违规阻断与错误状态传播）；仅开启 `hooks.finalOutput: true` | 在 `W_agent`（覆盖普通 Agent Loop 与 PiAgent provider）中：1) 模型生成调用普通工具 `T_echo` 且参数含 `BLK_WORD`；2) 模型生成调用控制工具 `ask_user` 或 `set_plan` 且参数含 `BLK_WORD`。检查底层工具是否执行、SSE 事件及 Agent 节点最终返回的成功/错误分支。 |
+| C6 | 边界（工具调用参数违规脱敏回传与 Loop 续跑）；仅开启 `hooks.finalOutput: true` | 在 `W_agent`（覆盖普通 Agent Loop 与 PiAgent provider）中：1) 模型生成调用普通工具 `T_echo` 且参数含 `BLK_WORD`；2) 模型生成调用控制工具 `ask_user` 或 `set_plan` 且参数含 `BLK_WORD`。检查底层工具是否执行、SSE 事件、客户端是否出现报错卡片及 Agent Loop 后续运行状态。 |
 | C7 | 边界（策略切换与异常降级）；基于 `P0` 切换策略 | 1) 将 `suspectedRiskAction` 分别设为 `blockAndLog` 与 `passAndLog`，输入含 `SUS_WORD` 的请求；2) 将 `serviceExceptionAction` 分别设为 `pass` 与 `block`，触发 `ERR_WORD`（插件返回 `verdict: 'error'`）或模拟插件运行时不可用；3) 将总开关 `policy.enabled` 设为 `false`，再次发送含 `BLK_WORD` 的请求。 |
 
 ## 预期结果
@@ -89,5 +89,5 @@ baseline: "c915077feb8edd7cfa36fe73b49c9d00550d24a1"
 | C3 | API、数据库 | 1) `dispatchWorkflowReadFiles` 逐文件审查：`F_blk.txt` 的 `content` 替换为 `"该信息因内容审核不通过，无法返回"`，`F_safe.txt` 保持原文；2) 工具返回结果违规时被替换为同一脱敏提示回传给模型，不中断 Agent Loop，Agent 正常完成后续回复。 | Agent 工具响应 JSON、节点响应详情、`system_moderation_records`（`targetField: 'file.F_blk.txt' | 'toolResult'`）。 |
 | C4 | API、数据库 | 所有面向用户的非流式输出命中违规时均被阻断，不向客户端返回违规文本、`userSelect` 选项或 `formInput` 表单交互，也不生成假空问题列表。 | 各节点触发后的响应报文与 `chatitems` 落库内容。 |
 | C5 | SSE、数据库 | 第一段已通过审核的 20 字符正常推送 `answer_delta`；当累计前缀出现 `BLK_WORD` 时，流式缓冲器立即触发 `abortController.abort()` 停止生成，后续含敏感词及未展示的增量绝不通过 SSE 发送给客户端；同一流式窗口复用相同 `sessionId` 且流中 `partial: true`、收尾 `partial: false`；已发生的模型 Token 用量正常保留。 | SSE 原始事件序列、最终 `chatitems` 消息内容、`system_moderation_records`。 |
-| C6 | API、SSE、数据库 | 无论普通工具还是 `ask_user`/`set_plan`，参数违规时底层工具均不执行、不向客户端发送 `toolParams` 或 `agentAsk` 暂停状态；PiAgent 与标准 Agent Loop 均将此次运行判定为 `status: 'error'`（而非 `done` 或 `paused`），汇总出 `errorText` 并进入 Agent 节点的错误分支。 | 工具调用计数、SSE 事件流、节点响应 `error`/`errorText` 及下游错误分支执行记录。 |
+| C6 | API、SSE、数据库 | 无论普通工具还是 `ask_user`/`set_plan`，参数违规时底层工具均不执行、不向客户端流式暴露原始敏感 `toolParams` 或进入 `agentAsk` 暂停状态；当前工具调用统一以 `"该信息因内容审核不通过，无法返回"` 回填给模型，不阻断整个 Agent Loop，客户端气泡与节点运行详情均不产生节点 `error`/`errorText` 报错横幅，由 Agent Loop 自主决定继续调用或结束。 | 工具调用计数、SSE 事件流、节点响应详情（无 `error`/`errorText`）及 Agent 最终完成回复。 |
 | C7 | API、数据库 | 1) `SUS_WORD` 在 `blockAndLog` 下拦截、在 `passAndLog` 下放行，两者均写入 `verdict: 'suspected'` 审计记录；2) `ERR_WORD` 或插件异常在 `serviceExceptionAction: 'pass'` 下放行（`actionTaken: 'pass'`），在 `'block'` 下阻断并返回 `"内容审核异常，已拦截"`（区分于内容违规提示）；3) 总开关关闭后不发起任何插件审查调用、不产生新的 `system_moderation_records`。 | 各策略下的响应文案、`POST /api/core/plugin/admin/moderation/records` 返回结果及数据库记录差集。 |

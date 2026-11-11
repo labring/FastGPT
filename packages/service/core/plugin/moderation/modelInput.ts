@@ -5,6 +5,7 @@ import {
   ModerationStageEnum
 } from '@fastgpt/global/core/plugin/moderation/constants';
 import type { CheckContentByPolicyParams } from '@fastgpt/global/core/plugin/moderation/type';
+import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import { checkContentByPolicy, isModerationHookEnabled } from './checker';
 import { ensureNodeModerationRecord } from './collector';
@@ -259,4 +260,53 @@ export const checkToolResultModeration = async ({
   }
 
   return response;
+};
+
+const ModeratedToolResultWeakSet = new WeakSet<object>();
+
+/**
+ * 标记工具执行结果对象已完成内容审核检查，避免跨多层运行时包装时重复触发审查插件调用与重复审计记录。
+ */
+export const markToolResultModerated = <T extends object>(target: T): T => {
+  ModeratedToolResultWeakSet.add(target);
+  return target;
+};
+
+/**
+ * 判断工具执行结果对象是否已完成内容审核检查。
+ */
+export const isToolResultModerated = (target: unknown): boolean => {
+  if (!target || typeof target !== 'object') return false;
+  return ModeratedToolResultWeakSet.has(target);
+};
+
+/**
+ * 清洗命中内容审核的工具节点运行详情：隐藏原始敏感输出并移除错误标识，避免向用户展示原始敏感值或错误横幅。
+ */
+export const sanitizeModeratedToolNodeResponse = (
+  nodeResponse: ChatHistoryItemResType
+): ChatHistoryItemResType => {
+  const {
+    error: _error,
+    errorText: _errorText,
+    httpResult: _httpResult,
+    httpErrorResult: _httpErrorResult,
+    pluginOutput: _pluginOutput,
+    textOutput: _textOutput,
+    reasoningText: _reasoningText,
+    historyPreview: _historyPreview,
+    customOutputs: _customOutputs,
+    codeLog: _codeLog,
+    readFilesResult: _readFilesResult,
+    quoteList: _quoteList,
+    retrievalResults: _retrievalResults,
+    extractResult: _extractResult,
+    cqResult: _cqResult,
+    ...rest
+  } = nodeResponse;
+
+  return {
+    ...rest,
+    toolRes: MODERATION_BLOCKED_REPLACE_TEXT
+  };
 };

@@ -91,7 +91,7 @@ import {
   shouldTraceWorkflowStep,
   type WorkflowObservedStepResult
 } from './utils/trace';
-import { getWorkflowNodeRunParams } from './utils/runtime';
+import { getDispatchModerationContext, getWorkflowNodeRunParams } from './utils/runtime';
 import type { AgentSandboxPrepareAction } from './ai/agent/sub/sandbox';
 import { getWorkflowSource } from './utils/source';
 import { WorkflowMemoryState } from '../memory/state';
@@ -99,6 +99,15 @@ import { prepareWorkflowFileContext } from '../utils/fileContext';
 import { markProfileError, profileStage } from '../../../common/profiling';
 import { checkEntryModeration, consumeEntryModerationChecked } from '../../plugin/moderation/entry';
 import { runWithNodeModerationContext } from '../../plugin/moderation/collector';
+import {
+  checkToolResultModeration,
+  sanitizeModeratedToolNodeResponse
+} from '../../plugin/moderation/modelInput';
+import {
+  isModerationBlockErrorMessage,
+  MODERATION_BLOCKED_REPLACE_TEXT,
+  ModerationActionEnum
+} from '@fastgpt/global/core/plugin/moderation/constants';
 import type { NodeModerationRecordType } from '@fastgpt/global/core/plugin/moderation/type';
 
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.DISPATCH);
@@ -1059,6 +1068,85 @@ export class WorkflowQueue {
         }
         return {};
       })();
+
+      // 工具调用子流程内若节点命中内容审核或产出敏感工具返回值，不将其作为工作流错误上报，
+      // 而是隐藏原始敏感值并转为统一工具审核占位文本交由上层 Agent Loop 继续推理。
+      if (this.data.isToolCall) {
+        const preCheckNodeResponse = dispatchRes[DispatchNodeResponseKeyEnum.nodeResponse];
+        const nodeErrorCandidate = getErrText(
+          dispatchRes.rawError ??
+            dispatchRes.error?.[NodeOutputKeyEnum.errorText] ??
+            preCheckNodeResponse?.errorText ??
+            preCheckNodeResponse?.error,
+          ''
+        );
+        const hasUncapturedModerationBlock =
+          !node.catchError &&
+          (isModerationBlockErrorMessage(nodeErrorCandidate) ||
+            collectedModerationRecords.some(
+              (item) => item.actionTaken === ModerationActionEnum.block
+            ));
+
+        if (hasUncapturedModerationBlock) {
+          delete dispatchRes.rawError;
+          delete dispatchRes.error;
+          dispatchRes[DispatchNodeResponseKeyEnum.toolResponse] = MODERATION_BLOCKED_REPLACE_TEXT;
+          dispatchRes[DispatchNodeResponseKeyEnum.assistantResponses] = undefined;
+          dispatchRes[DispatchNodeResponseKeyEnum.answerText] = undefined;
+          dispatchRes[DispatchNodeResponseKeyEnum.reasoningText] = undefined;
+          dispatchRes[DispatchNodeResponseKeyEnum.nodeResponse] = sanitizeModeratedToolNodeResponse(
+            (preCheckNodeResponse ?? {}) as ChatHistoryItemResType
+          );
+          nodeSummary.mergeNodeSummary({
+            hasModerationBlock: true,
+            hasToolResultModerated: true
+          });
+        } else if (!dispatchRes.error && !nodeSummary.hasToolResultModerated) {
+          const rawToolOut =
+            dispatchRes[DispatchNodeResponseKeyEnum.toolResponse] ??
+            (node.flowNodeType === FlowNodeTypeEnum.pluginOutput
+              ? preCheckNodeResponse?.pluginOutput
+              : undefined);
+          const hasNonEmptyToolOut =
+            rawToolOut !== undefined &&
+            rawToolOut !== null &&
+            rawToolOut !== '' &&
+            (!Array.isArray(rawToolOut) || rawToolOut.length > 0) &&
+            (typeof rawToolOut !== 'object' ||
+              Array.isArray(rawToolOut) ||
+              Object.keys(rawToolOut).length > 0);
+
+          if (hasNonEmptyToolOut) {
+            const candidateText =
+              typeof rawToolOut === 'string' ? rawToolOut : JSON.stringify(rawToolOut);
+            const moderatedText = await runWithNodeModerationContext(
+              collectedModerationRecords,
+              () =>
+                checkToolResultModeration({
+                  response: candidateText,
+                  context: getDispatchModerationContext(dispatchData)
+                })
+            );
+            nodeSummary.mergeNodeSummary({
+              hasToolResultModerated: true
+            });
+            if (moderatedText !== candidateText) {
+              dispatchRes[DispatchNodeResponseKeyEnum.toolResponse] =
+                MODERATION_BLOCKED_REPLACE_TEXT;
+              dispatchRes[DispatchNodeResponseKeyEnum.assistantResponses] = undefined;
+              dispatchRes[DispatchNodeResponseKeyEnum.answerText] = undefined;
+              dispatchRes[DispatchNodeResponseKeyEnum.reasoningText] = undefined;
+              dispatchRes[DispatchNodeResponseKeyEnum.nodeResponse] =
+                sanitizeModeratedToolNodeResponse(
+                  (preCheckNodeResponse ?? {}) as ChatHistoryItemResType
+                );
+              nodeSummary.mergeNodeSummary({
+                hasModerationBlock: true
+              });
+            }
+          }
+        }
+      }
 
       const rawNodeResponse = dispatchRes[DispatchNodeResponseKeyEnum.nodeResponse];
       const nodeResponse =

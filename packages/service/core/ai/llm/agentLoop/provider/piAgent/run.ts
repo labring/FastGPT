@@ -9,7 +9,18 @@ import { isTeamModel } from '@fastgpt/global/core/ai/model/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import type { AgentAskPayload } from '@fastgpt/global/core/ai/agent/type';
 import { getErrText, UserError } from '@fastgpt/global/common/error/utils';
-import { MODERATION_BLOCKED_ERROR_MESSAGE } from '@fastgpt/global/core/plugin/moderation/constants';
+import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
+import {
+  isModerationBlockErrorMessage,
+  MODERATION_BLOCKED_ERROR_MESSAGE,
+  MODERATION_BLOCKED_REPLACE_TEXT
+} from '@fastgpt/global/core/plugin/moderation/constants';
+import {
+  checkToolResultModeration,
+  isToolResultModerated,
+  markToolResultModerated,
+  sanitizeModeratedToolNodeResponse
+} from '../../../../../plugin/moderation/modelInput';
 import {
   createStreamModerationBuffer,
   checkToolParamsModeration
@@ -217,7 +228,34 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
   // 只有新 User 输入才拆出最后一条消息交给 prompt，避免重复发送原始需求或丢失工具结果。
   const shouldContinueFromMessages =
     requestMessages.at(-1)?.role === ChatCompletionRequestMessageRoleEnum.Tool;
-  const rejectedToolCallIds = new Set<string>();
+  const moderatedParamToolCallIds = new Set<string>();
+  const toolParamPassCache = new Map<string, Promise<boolean>>();
+  const isToolCallParamsAllowed = (call: ChatCompletionMessageToolCall): Promise<boolean> => {
+    const cached = toolParamPassCache.get(call.id);
+    if (cached) return cached;
+    const checkPromise = checkToolParamsModeration({
+      toolCalls: [call],
+      context: { teamId: runtime.teamId }
+    }).then((res) => {
+      if (!res.isPass) {
+        moderatedParamToolCallIds.add(call.id);
+        const maskToolCallArgs = (messages: ChatCompletionMessageParam[]) => {
+          messages.forEach((msg) => {
+            if (msg.role === ChatCompletionRequestMessageRoleEnum.Assistant && msg.tool_calls) {
+              msg.tool_calls = msg.tool_calls.map((tc) =>
+                tc.id === call.id ? { ...tc, function: { ...tc.function, arguments: '{}' } } : tc
+              );
+            }
+          });
+        };
+        maskToolCallArgs(completeMessages);
+        maskToolCallArgs(assistantMessages);
+      }
+      return res.isPass;
+    });
+    toolParamPassCache.set(call.id, checkPromise);
+    return checkPromise;
+  };
   let isRunBlocked = false;
   const lastUserMessageIndex = requestMessages.findLastIndex(
     (message) => message.role === ChatCompletionRequestMessageRoleEnum.User
@@ -325,7 +363,16 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
           messages: input.messages
         });
       } catch (error) {
-        const errorMessage = `Tool error: ${getErrText(error)}`;
+        const errText = getErrText(error);
+        if (isModerationBlockErrorMessage(errText)) {
+          return {
+            response: MODERATION_BLOCKED_REPLACE_TEXT,
+            assistantMessages: [],
+            usages: [],
+            stop: false
+          };
+        }
+        const errorMessage = `Tool error: ${errText}`;
         return {
           response: errorMessage,
           assistantMessages: [],
@@ -335,6 +382,30 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
         };
       }
     })();
+    if (!isToolResultModerated(result)) {
+      const originalResponse = result.response;
+      const moderatedResponse = originalResponse
+        ? await checkToolResultModeration({
+            response: originalResponse,
+            context: { teamId: runtime.teamId }
+          })
+        : originalResponse;
+      const hitModeration =
+        moderatedResponse !== originalResponse ||
+        isModerationBlockErrorMessage(result.errorMessage);
+      if (hitModeration) {
+        result.response = MODERATION_BLOCKED_REPLACE_TEXT;
+        result.errorMessage = undefined;
+        result.assistantMessages = [];
+        result.assistantResponses = undefined;
+        if (result.metadata && typeof result.metadata === 'object') {
+          result.metadata = sanitizeModeratedToolNodeResponse(
+            result.metadata as ChatHistoryItemResType
+          );
+        }
+      }
+      markToolResultModerated(result);
+    }
     const normalizedResponse = normalizeToolResponseContent(result.response);
     pushAgentLoopUsages(runtime, result.usages);
     runtime.emitEvent?.({
@@ -435,13 +506,7 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
       });
       if (continuationMessage) toolContinuationMessages.push(continuationMessage);
     },
-    isToolCallRejected: (callId) => isRunBlocked || rejectedToolCallIds.has(callId),
-    onToolRejected: (callId, errorMessage) => {
-      rejectedToolCallIds.add(callId);
-      isRunBlocked = true;
-      latestError ||= new UserError(errorMessage || MODERATION_BLOCKED_ERROR_MESSAGE);
-      abortCurrentRunRef.current?.();
-    }
+    isToolCallParamsAllowed
   });
 
   const pendingRequests: Array<{
@@ -584,9 +649,14 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
 
   abortCurrentRunRef.current = () => agent.abort();
 
-  agent.subscribe(async (event: AgentEvent) => {
+  let subscriberQueue = Promise.resolve();
+  const handleAgentEvent = async (event: AgentEvent) => {
     if (event.type === 'tool_execution_start') {
-      if (isRunBlocked || rejectedToolCallIds.has(event.toolCallId)) {
+      if (
+        isRunBlocked ||
+        streamModerationBuffer.enabled ||
+        moderatedParamToolCallIds.has(event.toolCallId)
+      ) {
         return;
       }
       emitOrdinaryToolExecution({
@@ -690,24 +760,30 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
         : event.message;
       const messageData = readAssistantMessage(assistantMessage);
 
-      let isToolCallsBlocked = false;
       if (messageData.toolCalls.length && streamModerationBuffer.enabled) {
-        const toolCheck = await checkToolParamsModeration({
-          toolCalls: messageData.toolCalls,
-          context: { teamId: runtime.teamId, requestId: request.requestId }
+        const allowedList = await Promise.all(
+          messageData.toolCalls.map((call) => isToolCallParamsAllowed(call))
+        );
+        messageData.toolCalls = messageData.toolCalls.map((call, idx) =>
+          allowedList[idx]
+            ? call
+            : {
+                ...call,
+                function: {
+                  ...call.function,
+                  arguments: '{}'
+                }
+              }
+        );
+        event.message.content.forEach((item) => {
+          if (item.type === 'toolCall' && moderatedParamToolCallIds.has(item.id)) {
+            item.arguments = {};
+          }
         });
-        if (!toolCheck.isPass) {
-          isToolCallsBlocked = true;
-          messageData.toolCalls.forEach((call) => rejectedToolCallIds.add(call.id));
-          latestError = new UserError(
-            toolCheck.blockErrorMessage || MODERATION_BLOCKED_ERROR_MESSAGE
-          );
-        }
       }
-      const isBlocked = isContentBlocked || isToolCallsBlocked;
+      const isBlocked = isContentBlocked;
       if (isBlocked) {
         isRunBlocked = true;
-        messageData.toolCalls.forEach((call) => rejectedToolCallIds.add(call.id));
         answerText = '';
         latestAnswerText = '';
         reasoningText = '';
@@ -805,6 +881,13 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
       const errMsg = (event.message as { errorMessage?: string }).errorMessage;
       if (errMsg) latestError = errMsg;
     }
+  };
+  agent.subscribe((event: AgentEvent) => {
+    const task = handleAgentEvent(event);
+    subscriberQueue = subscriberQueue.then(
+      () => task,
+      () => task
+    );
   });
 
   const stopPoller = setInterval(() => {
@@ -872,6 +955,7 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
     latestError = error;
   } finally {
     clearInterval(stopPoller);
+    await subscriberQueue;
   }
 
   if (streamModerationBuffer.enabled) {
@@ -968,7 +1052,7 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
     !isModerationBlocked &&
     pendingAsk &&
     resolvedPendingAskId &&
-    !rejectedToolCallIds.has(resolvedPendingAskId)
+    !moderatedParamToolCallIds.has(resolvedPendingAskId)
   ) {
     runtime.emitEvent?.({
       type: 'ask',
@@ -1006,7 +1090,7 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
   if (
     !isModerationBlocked &&
     pendingToolChild &&
-    !rejectedToolCallIds.has(pendingToolChild.toolCallId)
+    !moderatedParamToolCallIds.has(pendingToolChild.toolCallId)
   ) {
     return {
       status: 'paused',

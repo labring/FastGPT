@@ -2015,10 +2015,14 @@ describe('runPiAgentLoop', () => {
     expect(endEvent?.toolCalls).toEqual([]);
   });
 
-  it('blocks toxic tool parameters in piAgent and stops tool execution', async () => {
+  it('masks toxic tool parameters in piAgent and returns unified moderation tool result without aborting loop', async () => {
+    const { MODERATION_BLOCKED_REPLACE_TEXT } =
+      await import('@fastgpt/global/core/plugin/moderation/constants');
     const outputMod = await import('@fastgpt/service/core/plugin/moderation/output');
     vi.spyOn(outputMod, 'checkToolParamsModeration').mockResolvedValue({
       isPass: false,
+      blockedToolName: 'search',
+      blockedToolCallIds: ['call_toxic_param'],
       blockErrorMessage: 'Tool param violated moderation'
     });
 
@@ -2057,15 +2061,38 @@ describe('runPiAgentLoop', () => {
 
     expect(executeTool).not.toHaveBeenCalled();
     expect(emittedEvents.some((e) => e.type === 'tool_run_start')).toBe(false);
-    expect(result.status).toBe('error');
-    expect(result.error).toBeInstanceOf(Error);
-    expect((result.error as Error).message).toBe('Tool param violated moderation');
+    expect(result.status).toBe('done');
+    const toolEndEvent = emittedEvents.find((e) => e.type === 'tool_run_end');
+    expect(toolEndEvent).toMatchObject({
+      call: {
+        id: 'call_toxic_param',
+        function: {
+          name: 'search',
+          arguments: '{}'
+        }
+      },
+      response: MODERATION_BLOCKED_REPLACE_TEXT
+    });
+    expect(toolEndEvent?.errorMessage).toBeUndefined();
+    expect(
+      result.completeMessages.find(
+        (msg) => msg.role === 'tool' && msg.tool_call_id === 'call_toxic_param'
+      )
+    ).toMatchObject({
+      role: 'tool',
+      tool_call_id: 'call_toxic_param',
+      content: MODERATION_BLOCKED_REPLACE_TEXT
+    });
   });
 
-  it('blocks toxic control tool parameters like ask_user and returns error instead of paused', async () => {
+  it('masks toxic control tool parameters like ask_user and returns unified moderation tool result instead of pausing or failing', async () => {
+    const { MODERATION_BLOCKED_REPLACE_TEXT } =
+      await import('@fastgpt/global/core/plugin/moderation/constants');
     const outputMod = await import('@fastgpt/service/core/plugin/moderation/output');
     vi.spyOn(outputMod, 'checkToolParamsModeration').mockResolvedValue({
       isPass: false,
+      blockedToolName: 'ask_user',
+      blockedToolCallIds: ['call_toxic_ask'],
       blockErrorMessage: 'Ask question violated moderation'
     });
 
@@ -2094,8 +2121,63 @@ describe('runPiAgentLoop', () => {
       }
     });
 
-    expect(result.status).toBe('error');
+    expect(result.status).toBe('done');
     expect(emittedEvents.some((e) => e.type === 'tool_interactive')).toBe(false);
     expect(emittedEvents.some((e) => e.type === 'ask')).toBe(false);
+    expect(
+      result.completeMessages.find(
+        (msg) => msg.role === 'tool' && msg.tool_call_id === 'call_toxic_ask'
+      )
+    ).toMatchObject({
+      role: 'tool',
+      tool_call_id: 'call_toxic_ask',
+      content: MODERATION_BLOCKED_REPLACE_TEXT
+    });
+  });
+
+  it('masks failed sandbox tool output and clears errorMessage when sandbox result hits moderation', async () => {
+    const { MODERATION_BLOCKED_REPLACE_TEXT } =
+      await import('@fastgpt/global/core/plugin/moderation/constants');
+    const modelInputMod = await import('@fastgpt/service/core/plugin/moderation/modelInput');
+    vi.spyOn(modelInputMod, 'checkToolResultModeration').mockResolvedValue(
+      MODERATION_BLOCKED_REPLACE_TEXT
+    );
+
+    runSandboxToolsMock.mockResolvedValueOnce({
+      success: false,
+      response: 'raw toxic stderr leak'
+    });
+
+    const emittedEvents: any[] = [];
+    agentToolToExecute.value = {
+      name: 'sandbox_shell',
+      callId: 'call_sandbox_toxic',
+      args: { command: 'cat /tmp/out' }
+    };
+
+    const result = await runPiAgentLoop({
+      input: {
+        messages: [{ role: 'user', content: 'run command' }]
+      },
+      runtime: {
+        llmParams: { model: 'gpt-5' },
+        toolCatalog: { runtimeTools: [] },
+        systemTools: {
+          sandbox: {
+            enabled: true,
+            client: {} as any
+          }
+        },
+        executeTool: vi.fn(),
+        checkIsStopping: vi.fn(() => false),
+        teamId: 'test_team',
+        emitEvent: (e) => emittedEvents.push(e)
+      }
+    });
+
+    expect(result.status).toBe('done');
+    const toolEndEvent = emittedEvents.find((e) => e.type === 'tool_run_end');
+    expect(toolEndEvent?.response).toBe(MODERATION_BLOCKED_REPLACE_TEXT);
+    expect(toolEndEvent?.errorMessage).toBeUndefined();
   });
 });

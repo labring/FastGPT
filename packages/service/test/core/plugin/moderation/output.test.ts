@@ -120,9 +120,9 @@ describe('Output / Stream Guard (Anchor 3)', () => {
       );
     });
 
-    it('returns isPass: false and identifies tool when argument violates moderation', async () => {
+    it('returns isPass: false and identifies blocked tool call IDs when argument violates moderation', async () => {
       vi.spyOn(checkerMod, 'checkContentByPolicy').mockResolvedValue({
-        action: ModerationActionEnum.block,
+        action: ModerationActionEnum.replace,
         isPass: false,
         text: '{"cmd":"rm -rf /"}'
       });
@@ -140,6 +140,7 @@ describe('Output / Stream Guard (Anchor 3)', () => {
 
       expect(res.isPass).toBe(false);
       expect(res.blockedToolName).toBe('execBash');
+      expect(res.blockedToolCallIds).toEqual(['call_1']);
     });
   });
 
@@ -496,10 +497,10 @@ describe('Output / Stream Guard (Anchor 3)', () => {
       expect(result.usage.outputTokens).toBe(8);
     });
 
-    it('blocks toxic tool parameters, suppresses onToolCall, and retains usage when throwError=false', async () => {
+    it('masks toxic tool parameters without failing LLM response, suppresses onToolCall for blocked call, and retains usage', async () => {
       vi.spyOn(checkerMod, 'checkContentByPolicy').mockImplementation(async ({ text }) => {
         if (text.includes('toxic param')) {
-          return { action: ModerationActionEnum.block, isPass: false, text };
+          return { action: ModerationActionEnum.replace, isPass: false, text };
         }
         return { action: ModerationActionEnum.pass, isPass: true, text };
       });
@@ -554,8 +555,18 @@ describe('Output / Stream Guard (Anchor 3)', () => {
       });
 
       expect(onToolCall).not.toHaveBeenCalled();
-      expect(result.toolCalls ?? []).toEqual([]);
-      expect(result.error).toBeInstanceOf(UserError);
+      expect(result.error).toBeUndefined();
+      expect(result.moderatedToolCallIds).toEqual(['call_1']);
+      expect(result.toolCalls).toEqual([
+        {
+          id: 'call_1',
+          type: 'function',
+          function: {
+            name: 'search',
+            arguments: '{}'
+          }
+        }
+      ]);
       expect(result.usage.inputTokens).toBe(15);
       expect(result.usage.outputTokens).toBe(12);
     });

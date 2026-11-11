@@ -4,7 +4,18 @@ import type {
 } from '../../../../../../ai/llm/agentLoop/domain/tool';
 import type { SandboxClient } from '../../../../../../ai/sandbox/application/runtime/client';
 import type { AgentLoopDatasetSearchExecutor } from '../../../../../../ai/llm/agentLoop/domain/systemTool/datasetSearch';
-import { checkToolResultModeration } from '../../../../../../plugin/moderation/modelInput';
+import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
+import { getErrText } from '@fastgpt/global/common/error/utils';
+import {
+  isModerationBlockErrorMessage,
+  MODERATION_BLOCKED_REPLACE_TEXT
+} from '@fastgpt/global/core/plugin/moderation/constants';
+import {
+  checkToolResultModeration,
+  isToolResultModerated,
+  markToolResultModerated,
+  sanitizeModeratedToolNodeResponse
+} from '../../../../../../plugin/moderation/modelInput';
 import type { CheckContentByPolicyParams } from '@fastgpt/global/core/plugin/moderation/type';
 
 export type CreateAgentLoopCoreSystemToolsParams = {
@@ -60,11 +71,27 @@ export const createAgentLoopCoreSystemTools = (
           maxFileAmount: readFile.maxFileAmount,
           execute: async (params) => {
             const res = await readFile.execute(params);
-            if (res.response) {
-              res.response = await checkToolResultModeration({
-                response: res.response,
-                context
-              });
+            if (!isToolResultModerated(res)) {
+              const originalResponse = res.response;
+              const moderatedResponse = originalResponse
+                ? await checkToolResultModeration({
+                    response: originalResponse,
+                    context
+                  })
+                : originalResponse;
+              const hitModeration =
+                moderatedResponse !== originalResponse ||
+                (res.error !== undefined && isModerationBlockErrorMessage(getErrText(res.error)));
+              if (hitModeration) {
+                res.response = MODERATION_BLOCKED_REPLACE_TEXT;
+                res.error = undefined;
+                if (res.metadata && typeof res.metadata === 'object') {
+                  res.metadata = sanitizeModeratedToolNodeResponse(
+                    res.metadata as ChatHistoryItemResType
+                  );
+                }
+              }
+              markToolResultModerated(res);
             }
             return res;
           }
@@ -78,11 +105,27 @@ export const createAgentLoopCoreSystemTools = (
           currentInputFiles: datasetSearch.currentInputFiles,
           execute: async (params) => {
             const res = await datasetSearch.execute(params);
-            if (res.response) {
-              res.response = await checkToolResultModeration({
-                response: res.response,
-                context
-              });
+            if (!isToolResultModerated(res)) {
+              const originalResponse = res.response;
+              const moderatedResponse = originalResponse
+                ? await checkToolResultModeration({
+                    response: originalResponse,
+                    context
+                  })
+                : originalResponse;
+              const hitModeration =
+                moderatedResponse !== originalResponse ||
+                (res.error !== undefined && isModerationBlockErrorMessage(getErrText(res.error)));
+              if (hitModeration) {
+                res.response = MODERATION_BLOCKED_REPLACE_TEXT;
+                res.error = undefined;
+                if (res.metadata && typeof res.metadata === 'object') {
+                  res.metadata = sanitizeModeratedToolNodeResponse(
+                    res.metadata as ChatHistoryItemResType
+                  );
+                }
+              }
+              markToolResultModerated(res);
             }
             return res;
           }

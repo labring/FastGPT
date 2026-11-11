@@ -90,6 +90,7 @@ export type LLMResponse = {
   answerText: string;
   reasoningText: string;
   toolCalls?: ChatCompletionMessageToolCall[];
+  moderatedToolCallIds?: string[];
   finish_reason: CompletionFinishReason;
   responseEmptyTip?: string;
   usage: {

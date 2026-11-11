@@ -90,6 +90,7 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
     usedUserOpenAIKey: false
   };
   let hasSavedLLMRequestRecord = false;
+  const moderatedToolCallIdSet = new Set<string>();
 
   try {
     // 自带“继续”的循环：finish_reason=length 时追加已生成内容后继续请求。
@@ -245,20 +246,31 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
         });
       })();
 
-      let isToolBlockedByModeration = false;
-      // 锚点 3：模型生成的工具参数检查 - 违规终止调用并清空参数，但不提前 throw 以便保留已发生的 token 用量
-      if (parsedResponse.toolCalls?.length) {
+      const blockedToolCallIdSet = new Set<string>();
+      // 锚点 3：模型生成的工具参数检查 - 违规脱敏参数并标记由 Agent Loop 直接回填统一审核结果，不中断整个 Loop
+      if (!parsedResponse.isBlockedByModeration && parsedResponse.toolCalls?.length) {
         const toolCheck = await checkToolParamsModeration({
           toolCalls: parsedResponse.toolCalls,
           context: { teamId, requestId }
         });
         if (!toolCheck.isPass) {
-          isToolBlockedByModeration = true;
-          const errMessage = toolCheck.blockErrorMessage || MODERATION_BLOCKED_ERROR_MESSAGE;
-          parsedResponse.toolCalls = [];
-          parsedResponse.answerText = '';
-          parsedResponse.reasoningText = '';
-          parsedResponse.error = new UserError(errMessage);
+          const blockedIds =
+            toolCheck.blockedToolCallIds ?? parsedResponse.toolCalls.map((call) => call.id);
+          blockedIds.forEach((id) => {
+            blockedToolCallIdSet.add(id);
+            moderatedToolCallIdSet.add(id);
+          });
+          parsedResponse.toolCalls = parsedResponse.toolCalls.map((call) =>
+            blockedToolCallIdSet.has(call.id)
+              ? {
+                  ...call,
+                  function: {
+                    ...call.function,
+                    arguments: '{}'
+                  }
+                }
+              : call
+          );
         }
       }
 
@@ -272,19 +284,23 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
           if (parsedResponse.answerText) {
             args.onStreaming?.({ text: parsedResponse.answerText });
           }
-        }
-        if (!isToolBlockedByModeration && parsedResponse.toolCalls?.length) {
-          parsedResponse.toolCalls.forEach((call) => {
-            args.onToolCall?.({ call });
-          });
+          if (parsedResponse.toolCalls?.length) {
+            parsedResponse.toolCalls.forEach((call) => {
+              if (!blockedToolCallIdSet.has(call.id)) {
+                args.onToolCall?.({ call });
+              }
+            });
+          }
         }
       } else if (
         parsedResponse.isOutputModerationEnabled &&
-        !isToolBlockedByModeration &&
+        !isBlockedByModeration &&
         parsedResponse.toolCalls?.length
       ) {
         parsedResponse.toolCalls.forEach((call) => {
-          args.onToolCall?.({ call });
+          if (!blockedToolCallIdSet.has(call.id)) {
+            args.onToolCall?.({ call });
+          }
         });
       }
 
@@ -412,6 +428,9 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
       answerText,
       reasoningText,
       toolCalls,
+      ...(moderatedToolCallIdSet.size > 0
+        ? { moderatedToolCallIds: Array.from(moderatedToolCallIdSet) }
+        : {}),
       finish_reason,
       usage: {
         inputTokens,

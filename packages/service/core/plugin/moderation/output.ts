@@ -85,7 +85,8 @@ export const checkOutputTextModeration = async ({
 /**
  * 审查模型生成的工具调用参数
  *
- * 若任意工具调用参数命中违规：终止模型调用并抛错，参数不返回客户端。
+ * 逐一检查工具调用参数，违规项记录审计日志并收集被拦截的 toolCallId，
+ * 由上层 Agent Loop 跳过实际工具执行并返回统一脱敏工具结果，不中断整个 Agent Loop。
  */
 export const checkToolParamsModeration = async ({
   toolCalls,
@@ -98,6 +99,7 @@ export const checkToolParamsModeration = async ({
 }): Promise<{
   isPass: boolean;
   blockedToolName?: string;
+  blockedToolCallIds?: string[];
   blockErrorMessage?: string;
 }> => {
   if (!toolCalls || toolCalls.length === 0) {
@@ -109,6 +111,12 @@ export const checkToolParamsModeration = async ({
     return { isPass: true };
   }
 
+  const blockedCalls: Array<{
+    id: string;
+    name: string;
+    blockErrorMessage: string;
+  }> = [];
+
   for (const call of toolCalls) {
     const args = call.function?.arguments;
     if (args && args.trim()) {
@@ -117,23 +125,34 @@ export const checkToolParamsModeration = async ({
         text: args,
         stage: ModerationStageEnum.output,
         targetField,
+        actionOnBlock: ModerationActionEnum.replace,
         policy,
         context
       });
 
-      if (res.action === ModerationActionEnum.block) {
+      if (res.action !== ModerationActionEnum.pass) {
         ensureNodeModerationRecord(res, {
           stage: ModerationStageEnum.output,
           targetField,
-          content: args
+          content: args,
+          actionTaken: ModerationActionEnum.replace
         });
-        return {
-          isPass: false,
-          blockedToolName: call.function.name,
+        blockedCalls.push({
+          id: call.id,
+          name: call.function.name,
           blockErrorMessage: getModerationBlockErrorMessage(res.verdict)
-        };
+        });
       }
     }
+  }
+
+  if (blockedCalls.length > 0) {
+    return {
+      isPass: false,
+      blockedToolName: blockedCalls[0].name,
+      blockedToolCallIds: blockedCalls.map((item) => item.id),
+      blockErrorMessage: blockedCalls[0].blockErrorMessage
+    };
   }
 
   return { isPass: true };

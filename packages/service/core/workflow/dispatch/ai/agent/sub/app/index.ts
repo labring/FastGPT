@@ -36,6 +36,7 @@ import {
   getAppToolOwnUsage,
   getAppToolOutputError
 } from '../../../../../../app/tool/runtime/utils';
+import { MODERATION_BLOCKED_REPLACE_TEXT } from '@fastgpt/global/core/plugin/moderation/constants';
 
 type Props = Pick<
   RunWorkflowProps,
@@ -90,9 +91,11 @@ export const dispatchApp = async (props: Props): Promise<DispatchSubAppResponse>
 
   // AgentV2 子应用固定关闭 stream；子流程 transcript 不属于父 Agent 的上下文，
   // 仅通过 response/nodeResponse/usage/interactive 返回，避免 child answer 被重复拼入最终回答。
+  const hasModerationBlock = !!runtimeSummary.hasModerationBlock;
+  const finalText = hasModerationBlock ? MODERATION_BLOCKED_REPLACE_TEXT : text;
   return {
-    response: text,
-    ...(!!runtimeSummary.errorCount
+    response: finalText,
+    ...(!hasModerationBlock && !!runtimeSummary.errorCount
       ? { errorMessage: runtimeSummary.errorText || 'Run workflow failed' }
       : {}),
     usages: flowUsages,
@@ -107,7 +110,7 @@ export const dispatchApp = async (props: Props): Promise<DispatchSubAppResponse>
         userChatInput,
         ...resolvedVariables
       },
-      toolRes: text,
+      toolRes: finalText,
       childResponseCount: runtimeSummary.childResponseCount
     }
   };
@@ -341,20 +344,25 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
           return acc;
         }, {})
     : undefined;
-  const response = filteredPluginOutput
-    ? JSON.stringify(
-        pluginOutputError
-          ? { ...filteredPluginOutput, error: pluginOutputError }
-          : filteredPluginOutput
-      )
-    : workflowInteractiveResponse
-      ? assistantText
-      : 'Run workflow tool failed';
-  const errorMessage = !!runtimeSummary.errorCount
-    ? runtimeSummary.errorText || 'Run workflow tool failed'
-    : !pluginOutput
-      ? 'Run workflow tool failed'
-      : pluginOutputError;
+  const hasModerationBlock = !!runtimeSummary.hasModerationBlock;
+  const response = hasModerationBlock
+    ? MODERATION_BLOCKED_REPLACE_TEXT
+    : filteredPluginOutput
+      ? JSON.stringify(
+          pluginOutputError
+            ? { ...filteredPluginOutput, error: pluginOutputError }
+            : filteredPluginOutput
+        )
+      : workflowInteractiveResponse
+        ? assistantText
+        : 'Run workflow tool failed';
+  const errorMessage = hasModerationBlock
+    ? undefined
+    : !!runtimeSummary.errorCount
+      ? runtimeSummary.errorText || 'Run workflow tool failed'
+      : !pluginOutput
+        ? 'Run workflow tool failed'
+        : pluginOutputError;
   const usagePoints = billingTool
     ? await computedAppToolUsage({
         plugin: billingTool,
@@ -405,7 +413,7 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
       moduleLogo: app.avatar,
       totalPoints: ownUsagePoints,
       toolInput: workflowToolVariables,
-      toolRes: pluginOutput || {},
+      toolRes: hasModerationBlock ? MODERATION_BLOCKED_REPLACE_TEXT : pluginOutput || {},
       childResponseCount: runtimeSummary.childResponseCount,
       ...(errorMessage ? { errorText: errorMessage } : {})
     }

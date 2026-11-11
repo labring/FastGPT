@@ -19,7 +19,17 @@ import type {
   FastAgentLoopResult
 } from './type';
 import { runSandboxTools } from '../../../../../sandbox/application/toolCall';
-import { checkToolResultModeration } from '../../../../../../plugin/moderation/modelInput';
+import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
+import {
+  isModerationBlockErrorMessage,
+  MODERATION_BLOCKED_REPLACE_TEXT
+} from '@fastgpt/global/core/plugin/moderation/constants';
+import {
+  checkToolResultModeration,
+  isToolResultModerated,
+  markToolResultModerated,
+  sanitizeModeratedToolNodeResponse
+} from '../../../../../../plugin/moderation/modelInput';
 
 /**
  * 创建工具执行结果的最小结构。
@@ -441,11 +451,30 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
         return toolResult;
       })();
 
-      if (toolResult?.response) {
-        toolResult.response = await checkToolResultModeration({
-          response: toolResult.response,
-          context: { teamId: runtime.teamId }
-        });
+      if (toolResult && !isToolResultModerated(toolResult)) {
+        const originalResponse = toolResult.response;
+        const moderatedResponse = originalResponse
+          ? await checkToolResultModeration({
+              response: originalResponse,
+              context: { teamId: runtime.teamId }
+            })
+          : originalResponse;
+        const hitModeration =
+          moderatedResponse !== originalResponse ||
+          isModerationBlockErrorMessage(toolResult.errorMessage);
+        if (hitModeration) {
+          toolResult.response = MODERATION_BLOCKED_REPLACE_TEXT;
+          toolResult.errorMessage = undefined;
+          toolResult.assistantMessages = [];
+          toolResult.assistantResponses = undefined;
+          toolResult.skipResponseCompress = true;
+          if (toolResult.metadata && typeof toolResult.metadata === 'object') {
+            toolResult.metadata = sanitizeModeratedToolNodeResponse(
+              toolResult.metadata as ChatHistoryItemResType
+            );
+          }
+        }
+        markToolResultModerated(toolResult);
       }
 
       return toolResult;
@@ -457,11 +486,30 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
             'Interactive tool is not supported in fastAgent loop yet.'
           );
 
-      if (result?.response) {
-        result.response = await checkToolResultModeration({
-          response: result.response,
-          context: { teamId: runtime.teamId }
-        });
+      if (result && !isToolResultModerated(result)) {
+        const originalResponse = result.response;
+        const moderatedResponse = originalResponse
+          ? await checkToolResultModeration({
+              response: originalResponse,
+              context: { teamId: runtime.teamId }
+            })
+          : originalResponse;
+        const hitModeration =
+          moderatedResponse !== originalResponse ||
+          isModerationBlockErrorMessage(result.errorMessage);
+        if (hitModeration) {
+          result.response = MODERATION_BLOCKED_REPLACE_TEXT;
+          result.errorMessage = undefined;
+          result.assistantMessages = [];
+          result.assistantResponses = undefined;
+          result.skipResponseCompress = true;
+          if (result.metadata && typeof result.metadata === 'object') {
+            result.metadata = sanitizeModeratedToolNodeResponse(
+              result.metadata as ChatHistoryItemResType
+            );
+          }
+        }
+        markToolResultModerated(result);
       }
 
       return result;

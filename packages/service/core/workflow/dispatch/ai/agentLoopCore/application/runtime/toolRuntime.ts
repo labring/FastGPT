@@ -4,7 +4,16 @@ import type {
   AgentLoopCoreToolRunResult
 } from '../../domain/toolProvider';
 import { normalizeAgentLoopCoreToolRunResult } from '../../domain/toolProvider';
-import { checkToolResultModeration } from '../../../../../../plugin/moderation/modelInput';
+import {
+  isModerationBlockErrorMessage,
+  MODERATION_BLOCKED_REPLACE_TEXT
+} from '@fastgpt/global/core/plugin/moderation/constants';
+import {
+  checkToolResultModeration,
+  isToolResultModerated,
+  markToolResultModerated,
+  sanitizeModeratedToolNodeResponse
+} from '../../../../../../plugin/moderation/modelInput';
 import type { CheckContentByPolicyParams } from '@fastgpt/global/core/plugin/moderation/type';
 
 export type CreateAgentLoopCoreToolRuntimeParams<TChildrenResponse = unknown> = {
@@ -44,12 +53,28 @@ export const createAgentLoopCoreToolRuntime = <TChildrenResponse = unknown>({
     executeTool: async ({ call, messages }) => {
       const result = await toolProvider.executeTool({ call, messages });
 
-      // 锚点 2：Agent Loop 内工具执行响应审查，违规脱敏替换后继续送入模型规划
-      if (result.response) {
-        result.response = await checkToolResultModeration({
-          response: result.response,
-          context
-        });
+      // 锚点 2/3：Agent Loop 内工具执行响应审查，违规脱敏替换并清理原始详情与报错，继续送入模型规划
+      if (!isToolResultModerated(result) && !result.nodeSummary?.hasToolResultModerated) {
+        const originalResponse = result.response;
+        const moderatedResponse = originalResponse
+          ? await checkToolResultModeration({
+              response: originalResponse,
+              context
+            })
+          : originalResponse;
+        const hitModeration =
+          moderatedResponse !== originalResponse ||
+          isModerationBlockErrorMessage(result.errorMessage);
+        if (hitModeration) {
+          result.response = MODERATION_BLOCKED_REPLACE_TEXT;
+          result.errorMessage = undefined;
+          result.assistantMessages = [];
+          result.assistantResponses = undefined;
+          if (result.nodeResponse) {
+            result.nodeResponse = sanitizeModeratedToolNodeResponse(result.nodeResponse);
+          }
+        }
+        markToolResultModerated(result);
       }
 
       onToolResult?.({
@@ -57,28 +82,46 @@ export const createAgentLoopCoreToolRuntime = <TChildrenResponse = unknown>({
         result
       });
 
-      return normalizeAgentLoopCoreToolRunResult(result);
+      return markToolResultModerated(normalizeAgentLoopCoreToolRunResult(result));
     },
     ...(toolProvider.executeInteractiveTool
       ? {
           executeInteractiveTool: async (params) => {
             const result = await toolProvider.executeInteractiveTool!(params);
 
-            if (result.response) {
-              result.response = await checkToolResultModeration({
-                response: result.response,
-                context
-              });
+            if (!isToolResultModerated(result) && !result.nodeSummary?.hasToolResultModerated) {
+              const originalResponse = result.response;
+              const moderatedResponse = originalResponse
+                ? await checkToolResultModeration({
+                    response: originalResponse,
+                    context
+                  })
+                : originalResponse;
+              const hitModeration =
+                moderatedResponse !== originalResponse ||
+                isModerationBlockErrorMessage(result.errorMessage);
+              if (hitModeration) {
+                result.response = MODERATION_BLOCKED_REPLACE_TEXT;
+                result.errorMessage = undefined;
+                result.assistantMessages = [];
+                result.assistantResponses = undefined;
+                if (result.nodeResponse) {
+                  result.nodeResponse = sanitizeModeratedToolNodeResponse(result.nodeResponse);
+                }
+              }
+              markToolResultModerated(result);
             }
 
             onToolResult?.({ callId: params.call.id, result });
 
-            return normalizeAgentLoopCoreToolRunResult({
-              ...result,
-              usages: normalizeInteractiveUsages
-                ? normalizeInteractiveUsages(result.usages)
-                : result.usages
-            });
+            return markToolResultModerated(
+              normalizeAgentLoopCoreToolRunResult({
+                ...result,
+                usages: normalizeInteractiveUsages
+                  ? normalizeInteractiveUsages(result.usages)
+                  : result.usages
+              })
+            );
           }
         }
       : {})
