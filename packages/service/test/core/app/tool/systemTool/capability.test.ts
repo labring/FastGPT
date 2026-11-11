@@ -7,6 +7,7 @@ import type { SystemToolListItemType } from '@fastgpt/global/core/app/tool/syste
 import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
 import { TeamPluginPolicyStatusEnum } from '@fastgpt/global/core/plugin/schema/type';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { ApiHttpError } from '@fastgpt/service/common/http/apiError';
 import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
 
 const mocks = vi.hoisted(() => ({
@@ -432,6 +433,33 @@ describe('getAuthorizedSystemToolTemplateCatalog', () => {
     });
 
     await expect(getAuthorizedSystemToolTemplateCatalog(context)).resolves.toEqual([]);
+  });
+
+  it('keeps healthy tools when remote debugging is disabled after discovery', async () => {
+    mocks.getSystemToolList.mockResolvedValue([
+      createTool('debug-tool', { source: 'debug:tmbId:member-1' }),
+      createTool('systemTool-healthy')
+    ]);
+    mocks.getClientToolPreviewNode.mockImplementation(
+      async ({ appId, source }: { appId: string; source: string }) => {
+        if (source.startsWith('debug:')) {
+          throw new ApiHttpError(403, 'Plugin remote debugging is disabled');
+        }
+        return createTemplate(appId);
+      }
+    );
+
+    const catalog = await getAuthorizedSystemToolTemplateCatalog(context);
+
+    expect(catalog.map((item) => item.toolId)).toEqual(['systemTool-healthy']);
+  });
+
+  it('still propagates unrelated forbidden errors', async () => {
+    mocks.getSystemToolList.mockResolvedValue([createTool('systemTool-forbidden')]);
+    const failure = new ApiHttpError(403, 'Permission denied by upstream');
+    mocks.getClientToolPreviewNode.mockRejectedValue(failure);
+
+    await expect(getAuthorizedSystemToolTemplateCatalog(context)).rejects.toBe(failure);
   });
 
   it.each(['children', 'detail'])(

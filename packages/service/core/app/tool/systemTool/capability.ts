@@ -27,7 +27,10 @@ import {
   resolveTeamPluginList
 } from '../../../plugin/teamPluginPolicy';
 import { SystemToolRepo } from './systemTool.repo';
-import { isPluginRemoteDebugEnabled } from '../../../plugin/debug/policy';
+import {
+  isPluginRemoteDebugDisabledError,
+  isPluginRemoteDebugEnabled
+} from '../../../plugin/debug/policy';
 
 export type AuthorizedSystemToolListItem = NodeTemplateListItemType & { source: string };
 
@@ -220,7 +223,8 @@ export const getAuthorizedSystemToolTemplateCatalog = async (
         code === PluginErrEnum.unAuth ||
         code === AppErrEnum.unExist ||
         code === AppErrEnum.unAuthApp ||
-        isToolNotExistError(code)
+        isToolNotExistError(code) ||
+        isPluginRemoteDebugDisabledError(error)
       ) {
         return;
       }
