@@ -1,3 +1,7 @@
+import {
+  assertAppDatasetIndexModelsAvailable,
+  getAssertedDatasetEmbeddingModel
+} from '@fastgpt/service/core/dataset/model';
 import { NextAPI } from '@/service/middleware/entry';
 import { pushDatasetTestUsage } from '@/service/support/wallet/usage/push';
 import {
@@ -15,7 +19,6 @@ import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 import { isAuthorizedTempFileS3Key } from '@fastgpt/service/common/s3/sources/temp/key';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/catalog/service';
-import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
 import { defaultSearchDatasetData } from '@fastgpt/service/core/dataset/search';
 import { findFirstDatasetSearchVlmModel } from '@fastgpt/service/core/dataset/search/vlm';
 import { updateApiKeyUsage } from '@fastgpt/service/support/openapi/tools';
@@ -101,6 +104,12 @@ export async function handler(
     actor: { teamId, tmbId, isRoot },
     handle: modelHandle
   });
+  const embeddingModels = await assertAppDatasetIndexModelsAvailable({
+    resources: [{ type: 'dataset', id: String(datasetId) }],
+    teamId,
+    modelHandle,
+    authorizedIds
+  });
   const rerankModelData = usingReRank
     ? modelHandle.getModelData(
         { modelId: rerankModelId, model: rerankModel },
@@ -126,10 +135,7 @@ export async function handler(
     handle: modelHandle
   });
 
-  const embeddingModelData = modelHandle.getModelData(
-    getDatasetModelReference(dataset, 'embedding'),
-    { type: 'embedding' }
-  );
+  const embeddingModelData = getAssertedDatasetEmbeddingModel(embeddingModels, String(datasetId));
   const vlmModelData = findFirstDatasetSearchVlmModel([dataset], modelHandle);
 
   const searchData = {
