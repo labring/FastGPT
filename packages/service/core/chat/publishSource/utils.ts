@@ -1,5 +1,6 @@
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatSourceSchema } from '@fastgpt/global/core/chat/schema';
 import {
   ChatPublishSourceSchema,
   type ChatPublishSourceType
@@ -41,13 +42,30 @@ export const assertChatPublishSource = ({
   }
 };
 
-/** 新分类优先；缺失（含 null）时才按旧 source 查询，空数组保持未选择语义。 */
+/**
+ * 新分类优先，缺失（含 null）时回退旧 source，再按公共 schema 的枚举范围归类。
+ * Mongo 表达式按完整字段值比较，名称、空值、数组等均归为 unknown，避免与响应/CSV 分类不同。
+ * 省略参数不筛选，空数组保持未选择语义；应用、团队和时间范围仍由调用方限定。
+ */
 export const buildChatPublishSourceFilter = (sources?: readonly string[]) =>
   sources === undefined
     ? {}
     : {
-        $or: [
-          { 'publishSource.type': { $in: [...sources] } },
-          { 'publishSource.type': null, source: { $in: [...sources] } }
-        ]
+        $expr: {
+          $in: [
+            {
+              $let: {
+                vars: { source: { $ifNull: ['$publishSource.type', '$source'] } },
+                in: {
+                  $cond: [
+                    { $in: ['$$source', ChatSourceSchema.unwrap().options] },
+                    '$$source',
+                    ChatSourceEnum.unknown
+                  ]
+                }
+              }
+            },
+            { $literal: [...sources] }
+          ]
+        }
       };
