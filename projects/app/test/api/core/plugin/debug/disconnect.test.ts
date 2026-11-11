@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Call } from '@test/utils/request';
+import { getTestInstanceConfig } from '@test/utils/instanceConfigSnapshot';
 
 const mocks = vi.hoisted(() => ({
   authCert: vi.fn(),
@@ -44,6 +45,8 @@ describe('plugin debug channel revoke handler', () => {
   });
 
   it('uses current tmbId to revoke debug channel', async () => {
+    const original = getTestInstanceConfig().subservice.plugin.remoteDebug;
+    getTestInstanceConfig().subservice.plugin.remoteDebug = false;
     const res = await Call(handler, {
       body: {},
       auth: {
@@ -65,6 +68,7 @@ describe('plugin debug channel revoke handler', () => {
     expect(res.data).toEqual({
       revoked: true
     });
+    getTestInstanceConfig().subservice.plugin.remoteDebug = original;
   });
 
   it('treats missing debug channel as already revoked', async () => {

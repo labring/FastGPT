@@ -1,3 +1,4 @@
+import { getTestInstanceConfig } from '@test/utils/instanceConfigSnapshot';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Call } from '@test/utils/request';
 
@@ -20,8 +21,11 @@ import handler from '@/pages/api/plugin/debug-channel/enable';
 
 describe('plugin debug channel enable handler', () => {
   let originalIsPlus: unknown;
+  let originalRemoteDebug: boolean;
 
   beforeEach(() => {
+    originalRemoteDebug = getTestInstanceConfig().subservice.plugin.remoteDebug;
+    getTestInstanceConfig().subservice.plugin.remoteDebug = true;
     vi.clearAllMocks();
     originalIsPlus = global.feConfigs?.isPlus;
     global.feConfigs = {
@@ -44,6 +48,7 @@ describe('plugin debug channel enable handler', () => {
   });
 
   afterEach(() => {
+    getTestInstanceConfig().subservice.plugin.remoteDebug = originalRemoteDebug;
     global.feConfigs = {
       ...global.feConfigs,
       isPlus: originalIsPlus
@@ -84,5 +89,28 @@ describe('plugin debug channel enable handler', () => {
       createdAt: 1_781_500_000_000,
       updatedAt: 1_781_500_000_000
     });
+  });
+
+  it('blocks creation immediately after the admin switch is disabled and permits re-enabling', async () => {
+    const request = { body: {}, headers: { host: 'fastgpt.example.com' } };
+    expect((await Call(handler, request)).code).toBe(200);
+    mocks.pluginClient.createDebugSession.mockClear();
+
+    getTestInstanceConfig().subservice.plugin.remoteDebug = false;
+    const disabled = await Call(handler, request);
+    expect(disabled.error).toHaveProperty('message', 'Plugin remote debugging is disabled');
+    expect(disabled.error).toHaveProperty('statusCode', 403);
+    expect(mocks.pluginClient.createDebugSession).not.toHaveBeenCalled();
+
+    getTestInstanceConfig().subservice.plugin.remoteDebug = true;
+    expect((await Call(handler, request)).code).toBe(200);
+    expect(mocks.pluginClient.createDebugSession).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps commercial authorization mandatory when the admin switch is enabled', async () => {
+    global.feConfigs.isPlus = false;
+    const result = await Call(handler, { body: {} });
+    expect(result.error).toBe('commercialFeature');
+    expect(mocks.pluginClient.createDebugSession).not.toHaveBeenCalled();
   });
 });

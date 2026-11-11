@@ -44,6 +44,7 @@ import { MongoAppVersion } from '../../version/schema';
 import type { SystemPluginToolCollectionType } from '@fastgpt/global/core/plugin/tool/type';
 import type { AppToolRuntimeType } from '@fastgpt/global/core/app/tool/type';
 import { Types } from '../../../../common/mongo';
+import { assertPluginDebugSourceEnabled } from '../../../plugin/debug/policy';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import {
   decryptSystemToolSecrets,
@@ -375,6 +376,7 @@ export class SystemToolRepo {
     fallbackLatestVersion?: boolean;
     maskSecrets?: boolean;
   }): Promise<SystemToolDetailType> => {
+    assertPluginDebugSourceEnabled(toolSource);
     const isIsolatedSource = isIsolatedPluginSource(toolSource);
     const { pluginId: rawPluginId, source: idSource } = parseSystemToolId({
       pluginId,
@@ -583,6 +585,7 @@ export class SystemToolRepo {
     source?: string;
     lang?: `${LangEnum}`;
   }): Promise<SystemToolDisplayInfoType> => {
+    assertPluginDebugSourceEnabled(source);
     const isIsolatedSource = isIsolatedPluginSource(source);
     const { pluginId: rawPluginId, source: idSource } = parseSystemToolId({ pluginId, source });
     const [parentPluginId, childPluginId] = rawPluginId.split('/');
@@ -750,6 +753,7 @@ export class SystemToolRepo {
     source?: string;
     lang?: `${LangEnum}`;
   }): Promise<SystemToolVersionType[]> => {
+    assertPluginDebugSourceEnabled(source);
     const { pluginId: rawPluginId, source: idSource } = parseSystemToolId({ pluginId, source });
     const tool = isTeamPluginSource(source) ? undefined : await getSystemToolConfig(pluginId);
     if (tool?.customConfig?.associatedPluginId) {
@@ -794,6 +798,7 @@ export class SystemToolRepo {
     version?: string;
     source?: string;
   }): Promise<SystemToolRuntimeType> => {
+    assertPluginDebugSourceEnabled(source);
     const { pluginId: rawPluginId, source: idSource } = parseSystemToolId({ pluginId, source });
     const pluginSource = getPluginClientSource({ idSource, runtimeSource: source });
     const isIsolatedSource = isIsolatedPluginSource(pluginSource);

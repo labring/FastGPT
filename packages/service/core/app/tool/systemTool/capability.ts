@@ -27,6 +27,7 @@ import {
   resolveTeamPluginList
 } from '../../../plugin/teamPluginPolicy';
 import { SystemToolRepo } from './systemTool.repo';
+import { isPluginRemoteDebugEnabled } from '../../../plugin/debug/policy';
 
 export type AuthorizedSystemToolListItem = NodeTemplateListItemType & { source: string };
 
@@ -80,6 +81,7 @@ const filterTemplateBySearchKey = ({
 };
 
 const getActiveDebugSource = async ({ tmbId, source }: { tmbId: string; source?: string }) => {
+  if (!isPluginRemoteDebugEnabled()) return;
   const status = await pluginClient.getDebugSessionStatus({ tmbId }).catch(() => undefined);
   if (
     status?.enabled &&
@@ -122,6 +124,8 @@ const getSystemToolTemplateList = async ({
     const parentSource = isDebugToolSource(source)
       ? await getActiveDebugSource({ tmbId, source })
       : source;
+    // 显式调试来源失效时不能回落 system，同 ID 可能指向完全不同的生产工具。
+    if (isDebugToolSource(source) && !parentSource) return [];
     const parent = await systemToolRepo.getSystemToolDisplayInfoWithChildIcons({
       pluginId: parentId,
       lang,

@@ -1,10 +1,12 @@
 import { SystemErrEnum } from '@fastgpt/global/common/error/code/system';
+import { assertPluginRemoteDebugEnabled } from '@fastgpt/service/core/plugin/debug/policy';
 
 /**
- * 系统工具远程调试依赖商业版能力；API 层统一拦截，避免绕过前端直接创建或使用调试通道。
+ * 创建、刷新和兑换调试连接同时校验商业授权与当前管理员开关；查询和撤销不受开关限制。
  */
 export function assertCommercialPluginDebugEnabled() {
   if (!global.feConfigs?.isPlus) {
     throw SystemErrEnum.commercialFeature;
   }
+  assertPluginRemoteDebugEnabled();
 }
