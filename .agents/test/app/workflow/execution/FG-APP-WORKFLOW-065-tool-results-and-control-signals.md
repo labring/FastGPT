@@ -21,7 +21,7 @@ sources:
   - packages/service/core/chat/chatItemSchema.ts
   - projects/app/src/pages/api/v2/chat/completions.ts
 routes: ["POST /api/v2/chat/completions"]
-related: [FG-APP-WORKFLOW-055, FG-APP-WORKFLOW-059, FG-APP-WORKFLOW-060, FG-APP-WORKFLOW-062]
+related: [FG-APP-WORKFLOW-067, FG-APP-WORKFLOW-071, FG-APP-WORKFLOW-060, FG-APP-WORKFLOW-062]
 automation:
   - runner: node
     script: .agents/test/app/workflow/execution/FG-APP-WORKFLOW-065.mjs

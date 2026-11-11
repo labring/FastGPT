@@ -1,6 +1,6 @@
 ---
 case_version: 1
-id: "FG-PERMISSION-RESOURCE-003"
+id: "FG-PERMISSION-RESOURCE-004"
 title: "工作流资源快照与动态引用的权限边界"
 business: "permission/resource"
 types: [api, integration]
@@ -22,7 +22,7 @@ sources:
 routes:
   - "POST /api/v2/chat/completions"
   - "POST /api/core/workflow/debug"
-related: [FG-APP-WORKFLOW-054, FG-APP-AGENTV2-001]
+related: [FG-APP-WORKFLOW-066, FG-APP-AGENTV2-001]
 baseline: "37b271c759eda4e3134c88d98939f81f053a8553"
 ---
 

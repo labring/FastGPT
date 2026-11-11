@@ -33,7 +33,7 @@ routes:
   - "POST /api/core/workflow/debug"
   - "POST /api/core/chat/chatTest"
   - "POST /api/v2/chat/completions"
-related: [FG-APP-WORKFLOW-054, FG-APP-WORKFLOW-055, FG-APP-AGENTV2-001]
+related: [FG-APP-WORKFLOW-066, FG-APP-WORKFLOW-067, FG-APP-AGENTV2-001]
 baseline: "37b271c759eda4e3134c88d98939f81f053a8553"
 ---
 

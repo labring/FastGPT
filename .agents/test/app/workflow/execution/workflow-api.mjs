@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
-import { createScenario, success, poll } from '../../../support/scenario.mjs';
+import { createScenario, success, poll, required } from '../../../support/scenario.mjs';
 import { workflowDatabase } from './workflow-database.mjs';
 import { Blocked } from '../../../support/runtime.mjs';
 
@@ -105,12 +105,12 @@ export async function workflowScenario(context) {
     const data = await response.json();
     return data.observations;
   }
-  /** 仅选择已在本轮隔离目录中启用的真实模型，不更改共享 Dev 模型配置。 */
+  /** 只选择已启用的真实模型，使用权限仍由发布及运行 API 校验，不改共享模型配置。 */
   async function activeModel(name) {
     const model = await db
       .collection('ai_models')
       .findOne({ model: name, scope: 'system', isActive: true }, { projection: { model: 1 } });
-    if (!model) throw new Blocked('本轮隔离环境缺少已启用模型：' + name);
+    if (!model) throw new Blocked('当前环境缺少已启用模型：' + name);
     const value = { modelId: String(model._id), model: model.model };
     c.record('本轮已授权模型', value);
     return value;
@@ -155,8 +155,24 @@ export async function workflowScenario(context) {
     context.secrets.add(data.url);
     context.secrets.add(data.previewUrl);
     const uploadUrl = new URL(data.url, c.fixture.baseUrl);
+    // Dev 配置可能仍指向默认端口；本地短链须回到签发它的本轮主站，不能误投其他工作树。
+    if (
+      c.fixture.environment === 'local-dev' &&
+      ['localhost', '127.0.0.1'].includes(uploadUrl.hostname) &&
+      uploadUrl.pathname.startsWith('/api/system/file/u/')
+    ) {
+      uploadUrl.host = new URL(c.fixture.baseUrl).host;
+    }
     const env = JSON.parse(
-      await readFile(c.secret(c.fixture.privateEnvironment.serviceEnvFileEnv), 'utf8')
+      await readFile(
+        c.secret(
+          required(
+            c.fixture.serviceEnvFileEnv ?? c.fixture.privateEnvironment?.serviceEnvFileEnv,
+            'serviceEnvFileEnv'
+          )
+        ),
+        'utf8'
+      )
     );
     const storage = createRequire(
       new URL('../../../../../sdk/storage/package.json', import.meta.url)
@@ -172,14 +188,6 @@ export async function workflowScenario(context) {
       }
     });
     // PUT 可能在服务端成功后才因网络错误失败，因此必须提前登记精确 key 的清理。
-    const response = await fetch(uploadUrl, {
-      method: 'PUT',
-      headers: data.headers,
-      body: content,
-      signal: AbortSignal.timeout(30000)
-    });
-    c.record('真实上传 HTTP 状态', { status: response.status, host: uploadUrl.hostname });
-    assert.ok(response.ok, `真实 PUT 上传必须成功，HTTP ${response.status}`);
     context.itemFinalizers.push(async () => {
       try {
         await client.send(
@@ -194,6 +202,14 @@ export async function workflowScenario(context) {
         client.destroy();
       }
     });
+    const response = await fetch(uploadUrl, {
+      method: 'PUT',
+      headers: data.headers,
+      body: content,
+      signal: AbortSignal.timeout(30000)
+    });
+    c.record('真实上传 HTTP 状态', { status: response.status, host: uploadUrl.hostname });
+    assert.ok(response.ok, `真实 PUT 上传必须成功，HTTP ${response.status}`);
     const result = { key: data.key, url: data.previewUrl, name: filename, type: 'document' };
     c.record('真实聊天文件上传', {
       key: data.key,

@@ -29,7 +29,7 @@ async function runProbe(c, { name, graph, expected }) {
   c.record('代码沙盒参数与输出链路', { name, question, probe, reply });
 }
 
-await runNodeCase('FG-APP-WORKFLOW-057', {
+await runNodeCase('FG-APP-WORKFLOW-069', {
   async C1(context) {
     const c = await workflowScenario(context);
     await runProbe(c, {

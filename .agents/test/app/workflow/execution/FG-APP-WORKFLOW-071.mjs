@@ -64,7 +64,7 @@ async function prepareDataset(context, c) {
   return { model, datasetId, collectionId, dataId, keyword, answer, absent };
 }
 
-await runNodeCase('FG-APP-WORKFLOW-059', {
+await runNodeCase('FG-APP-WORKFLOW-071', {
   async C1(context) {
     const c = await workflowScenario(context);
     for (const mode of ['json', 'get', 'form', 'raw']) {

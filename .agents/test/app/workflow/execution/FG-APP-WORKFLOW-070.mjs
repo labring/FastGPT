@@ -46,7 +46,7 @@ async function runBranchVariants(c, variants) {
   }
 }
 
-await runNodeCase('FG-APP-WORKFLOW-058', {
+await runNodeCase('FG-APP-WORKFLOW-070', {
   async C1(context) {
     const c = await workflowScenario(context);
     const appId = await c.create('serial-dataflow', await c.load('basic-dataflow'));

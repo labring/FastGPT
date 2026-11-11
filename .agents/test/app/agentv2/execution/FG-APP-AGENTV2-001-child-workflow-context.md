@@ -22,8 +22,8 @@ sources:
   - packages/service/core/chat/constants.ts
 routes:
   - "POST /api/v2/chat/completions"
-related: [FG-APP-WORKFLOW-060, FG-APP-WORKFLOW-054, FG-APP-WORKFLOW-055, FG-PERMISSION-RESOURCE-003, FG-CHAT-CONVERSATION-004]
-baseline: "37b271c759eda4e3134c88d98939f81f053a8553"
+related: [FG-APP-WORKFLOW-060, FG-APP-WORKFLOW-066, FG-APP-WORKFLOW-067, FG-PERMISSION-RESOURCE-004, FG-CHAT-CONVERSATION-004]
+baseline: "44b0ae2cf38cf08190a800b448135eab1bce324c"
 ---
 
 # AgentV2 子应用上下文隔离与交互续跑
@@ -49,7 +49,6 @@ AgentV2 调用子应用时，子应用需要独立的变量、资源和响应摘
 | --- | --- | --- |
 | C1 | 基础/边界；D0 | 第一轮调用 A、B，再在同会话第二轮仅调用 A；记录各次 K 的历史、A/B 子变量、父最终变量和最终正文。 |
 | C2 | 边界；D1 | A 暂停后刷新聊天页面，提交与最初工具入参不同的表单值 `RESUME-RUN`；恢复到子应用完成、Agent 最终回复。 |
-| C3 | 边界；D0 的独立配置副本 | 将 G 的 Agent 节点分别设为普通历史、禁用历史 `history=0` 执行下一轮；另在 `history=0` 的交互暂停场景恢复，检查当前 checkpoint 与普通历史禁用的区别。 |
 | C4 | 异常；D0 | A 的后代工具产生可复现失败，B 正常成功；观察错误传回 Agent、B 的历史与响应归属，随后在新会话重新正常调用。 |
 
 ## 预期结果
@@ -60,5 +59,8 @@ AgentV2 调用子应用时，子应用需要独立的变量、资源和响应摘
 | --- | --- | --- |
 | C1 | A/B→K 的历史彼此隔离，第二轮 A 只续接自身路径；子变量变化不直接覆盖 G.local。最终正文只有受控 Agent 的 PARENT-RUN，CHILD 标记只在各自工具结果/详情中，不重复拼成正文。子记忆 delta 能合并保存，刷新后的下一轮不会全部丢失。 | 真实模型历史请求、父/子输入输出、chatitems.memories 和最终正文/详情。 |
 | C2 | 恢复使用当前表单 RESUME-RUN，而不是最初 userChatInput；gate 不重放，暂停前节点输出与记忆边沿用，表单不会无故再次出现；响应仍挂原子调用路径。 | 两轮用户值、gate 次数、子输出、交互记录与树的父级身份。 |
-| C3 | 普通新调用禁用历史时不继承旧轮次记忆；同一交互的恢复仍保留当前 checkpoint，不能因为 history=0 把恢复当作从头开始。 | 各模型实际收到的历史、gate 次数和恢复结果；不通过清空数据库代替 history 配置。 |
 | C4 | A 的错误返回其工具结果/摘要，不串到 B 的独立 Context；B 的合法响应、记忆和用量仍可保存。新会话不继承旧错误/停止状态，不要求已发生的请求和费用回滚。 | A/B 详情、模型请求、最终统计与新会话正向结果。 |
+
+## 旧编号索引
+
+- C3（禁用历史配置）撤回并保留编号：当前 AgentV2 节点模板及执行入口不提供 `history=0` 配置，本轮不新增该能力。跨轮记忆隔离由 C1 验证，当前交互 checkpoint 的恢复由 C2 验证，不额外复制场景。
