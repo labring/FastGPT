@@ -1,7 +1,9 @@
 # T03：`chat` 对话执行（含 SSE 流式）与历史会话域
 
+- **所属需求包**：`PKG-02` 应用、对话与模型核心链路（Record: `reczz28YGuG6R28N`）
+- **覆盖 FR**：`FR-201` `chat run/stop/init` SSE/NDJSON、`FR-202` `appKey` 自动绑定与 `chat test`、`FR-203` `history/record/feedback`
 - **阶段 / 优先级**：Phase 1 · P1（高频主力域，唯一重度覆盖 `appKey` 凭据）
-- **状态**：待前置 T00（飞书多维表格 Record: `reczz28YDq8uVFMC` · [任务看板](https://fael3z0zfze.feishu.cn/base/L8MsbBBOiaVIzdsfwa1cF78UnGc)）
+- **状态**：待前置 T00（PRD Record: `reczz28YDq8uVFMC` · [飞书任务看板](https://fael3z0zfze.feishu.cn/base/L8MsbBBOiaVIzdsfwa1cF78UnGc)）
 - **前置依赖**：T00（需要 SSE 解析器、流式渲染、确认门禁与上传适配器）
 - **开发红线**：必读 [engineering-standards.md](../engineering-standards.md) · 总览 [design.md](../design.md) · 索引 [index.md](../index.md)
 - **可并行性**：T00 合入后与 T01、T02、T04 ~ T10 完全并行

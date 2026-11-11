@@ -1,7 +1,9 @@
 # T05：`model` AI 模型目录与连通性测试域
 
+- **所属需求包**：`PKG-02` 应用、对话与模型核心链路（Record: `reczz28YGuG6R28N`）
+- **覆盖 FR**：`FR-208` `model` 目录查询、详情查看与连通性 `test` 探测
 - **阶段 / 优先级**：Phase 1 · P1（高频基础查询域，支撑 `dataset create`、`workflow`、`app` 选模型）
-- **状态**：待前置 T00（飞书多维表格 Record: `reczz28YDq8uVwHs` · [任务看板](https://fael3z0zfze.feishu.cn/base/L8MsbBBOiaVIzdsfwa1cF78UnGc)）
+- **状态**：待前置 T00（PRD Record: `reczz28YDq8uVwHs` · [飞书任务看板](https://fael3z0zfze.feishu.cn/base/L8MsbBBOiaVIzdsfwa1cF78UnGc)）
 - **前置依赖**：T00（基础渲染与管线即可，工作量较轻）
 - **开发红线**：必读 [engineering-standards.md](../engineering-standards.md) · 总览 [design.md](../design.md) · 索引 [index.md](../index.md)
 - **可并行性**：T00 合入后与 T01 ~ T10 完全并行

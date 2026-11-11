@@ -1,7 +1,9 @@
 # T01：`api` 通用逃生口（`fastgpt api` & `fastgpt api schema`）
 
+- **所属需求包**：`PKG-01` 通用 API 逃生口与能力自发现（Record: `reczz28YGuG6RNyE`）
+- **覆盖 FR**：`FR-101` `api schema` 缓存与自省、`FR-102` `api <method> <path>` 通用调用
 - **阶段 / 优先级**：Phase 1 · P0（让未单独封装的任何 FastGPT API 立即可通过 CLI / Agent 调用）
-- **状态**：待前置 T00（飞书多维表格 Record: `reczz28YDq8uU4ot` · [任务看板](https://fael3z0zfze.feishu.cn/base/L8MsbBBOiaVIzdsfwa1cF78UnGc)）
+- **状态**：待前置 T00（PRD Record: `reczz28YDq8uU4ot` · [飞书任务看板](https://fael3z0zfze.feishu.cn/base/L8MsbBBOiaVIzdsfwa1cF78UnGc)）
 - **前置依赖**：T00（需要 `requestRaw` / JSON 文件输入 / `--dry-run` / `destructive` 护栏）
 - **开发红线**：必读 [engineering-standards.md](../engineering-standards.md) · 总览 [design.md](../design.md) · 索引 [index.md](../index.md)
 - **可并行性**：T00 合入后与 T02 ~ T10 完全并行

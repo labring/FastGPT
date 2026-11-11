@@ -1,7 +1,9 @@
 # T10：`team`（团队、API Key、账单）与 `admin`（系统管理员隔离域）
 
+- **所属需求包**：`PKG-06` 团队治理、管理后台与 Agent 赋能（Record: `reczz28YGuG6RmrU`）
+- **覆盖 FR**：`FR-601` 团队治理与账单用量、`FR-602` `team apikey` 自助管理与脱敏、`FR-603` `admin` 高危隔离域
 - **阶段 / 优先级**：Phase 3 · P3
-- **状态**：待前置 T00（飞书多维表格 Record: `reczz28YDq8uXEJb` · [任务看板](https://fael3z0zfze.feishu.cn/base/L8MsbBBOiaVIzdsfwa1cF78UnGc)）
+- **状态**：待前置 T00（PRD Record: `reczz28YDq8uXEJb` · [飞书任务看板](https://fael3z0zfze.feishu.cn/base/L8MsbBBOiaVIzdsfwa1cF78UnGc)）
 - **前置依赖**：T00（需要确认门禁、`--dry-run`、脱敏输出、分页列表）
 - **开发红线**：必读 [engineering-standards.md](../engineering-standards.md) · 总览 [design.md](../design.md) · 索引 [index.md](../index.md)
 - **可并行性**：T00 合入后与 T06 ~ T09、T11 并行

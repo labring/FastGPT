@@ -1,7 +1,9 @@
 # T09：`skill` 平台 AI Skill 与沙盒调试域
 
+- **所属需求包**：`PKG-05` MCP 全向集成与平台 AI Skill（Record: `reczz28YGuG6QeIn`）
+- **覆盖 FR**：`FR-504` `skill` 平台 AI Skill 管理、沙盒运行态调试与版本切换（含消歧护栏）
 - **阶段 / 优先级**：Phase 2 · P2
-- **状态**：待前置 T00（飞书多维表格 Record: `reczz28YDq8ua7KK` · [任务看板](https://fael3z0zfze.feishu.cn/base/L8MsbBBOiaVIzdsfwa1cF78UnGc)）
+- **状态**：待前置 T00（PRD Record: `reczz28YDq8ua7KK` · [飞书任务看板](https://fael3z0zfze.feishu.cn/base/L8MsbBBOiaVIzdsfwa1cF78UnGc)）
 - **前置依赖**：T00（需要 SSE 流式处理、文件导入导出、`--dry-run`、确认门禁）
 - **开发红线**：必读 [engineering-standards.md](../engineering-standards.md) · 总览 [design.md](../design.md) · 索引 [index.md](../index.md)
 - **可并行性**：T00 合入后与 T06 ~ T08、T10 并行

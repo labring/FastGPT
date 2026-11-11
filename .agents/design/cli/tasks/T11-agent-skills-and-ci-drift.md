@@ -1,7 +1,9 @@
 # T11：`skills`（Agent 技能包分发）与 OpenAPI 契约漂移 CI 门禁
 
+- **所属需求包**：`PKG-06` 团队治理、管理后台与 Agent 赋能（Record: `reczz28YGuG6RmrU`）
+- **覆盖 FR**：`FR-604` 5 个官方 Agent Skill 静态内嵌分发、`FR-605` Registry 与 OpenAPI 漂移 CI 门禁
 - **阶段 / 优先级**：Phase 3 · P3（面向 AI Agent 协同能力放大与长期可维护性）
-- **状态**：待前置 T00（飞书多维表格 Record: `reczz28YDq8uWbOm` · [任务看板](https://fael3z0zfze.feishu.cn/base/L8MsbBBOiaVIzdsfwa1cF78UnGc)）
+- **状态**：待前置 T00（PRD Record: `reczz28YDq8uWbOm` · [飞书任务看板](https://fael3z0zfze.feishu.cn/base/L8MsbBBOiaVIzdsfwa1cF78UnGc)）
 - **前置依赖**：T00，以及 T01 ~ T05 主力命令面稳定后编写对应 Skill 内容
 - **开发红线**：必读 [engineering-standards.md](../engineering-standards.md) · 总览 [design.md](../design.md) · 索引 [index.md](../index.md)
 - **可并行性**：架构与 `fastgpt skills` 框架可先行，Skill 文案内容随各域落地补齐

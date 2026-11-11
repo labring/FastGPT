@@ -1,7 +1,9 @@
 # T04：`app` 应用生命周期、版本、发布渠道、日志与评测域
 
+- **所属需求包**：`PKG-02` 应用、对话与模型核心链路（Record: `reczz28YGuG6R28N`）
+- **覆盖 FR**：`FR-204` app 基础管理、`FR-205` 客户端导出导入、`FR-206` version 与 channel、`FR-207` logs 与 eval
 - **阶段 / 优先级**：Phase 1 · P1（高频主力域）
-- **状态**：待前置 T00（飞书多维表格 Record: `reczz28YDq8uSoiE` · [任务看板](https://fael3z0zfze.feishu.cn/base/L8MsbBBOiaVIzdsfwa1cF78UnGc)）
+- **状态**：待前置 T00（PRD Record: `reczz28YDq8uSoiE` · [飞书任务看板](https://fael3z0zfze.feishu.cn/base/L8MsbBBOiaVIzdsfwa1cF78UnGc)）
 - **前置依赖**：T00（需要文件下载、JSON 文件入参、`--dry-run`、破坏性确认）
 - **开发红线**：必读 [engineering-standards.md](../engineering-standards.md) · 总览 [design.md](../design.md) · 索引 [index.md](../index.md)
 - **可并行性**：T00 合入后与 T01 ~ T03、T05 ~ T10 完全并行

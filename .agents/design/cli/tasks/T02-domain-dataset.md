@@ -1,7 +1,9 @@
 # T02：`dataset` 知识库域全链路命令
 
+- **所属需求包**：`PKG-03` 知识库 RAG 全链路（Record: `reczz28YGuG6QfA7`）
+- **覆盖 FR**：`FR-301` dataset CRUD/检索/导出、`FR-302` collection 导入/重训、`FR-303` data 分块管理、`FR-304` train 队列与轮询、`FR-305` tag 与 synonym
 - **阶段 / 优先级**：Phase 1 · P1（高频主力域）
-- **状态**：待前置 T00（飞书多维表格 Record: `reczz28YDq8uS2GJ` · [任务看板](https://fael3z0zfze.feishu.cn/base/L8MsbBBOiaVIzdsfwa1cF78UnGc)）
+- **状态**：待前置 T00（PRD Record: `reczz28YDq8uS2GJ` · [飞书任务看板](https://fael3z0zfze.feishu.cn/base/L8MsbBBOiaVIzdsfwa1cF78UnGc)）
 - **前置依赖**：T00（需要 multipart 上传、文件下载、确认门禁、`--dry-run`、分页与文本列表渲染）
 - **开发红线**：必读 [engineering-standards.md](../engineering-standards.md) · 总览 [design.md](../design.md) · 索引 [index.md](../index.md)
 - **可并行性**：T00 合入后与 T01、T03 ~ T10 完全并行

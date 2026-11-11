@@ -1,7 +1,9 @@
 # T08：`mcp` 独立一级域（外部 MCP 接入 / MCP Server 发布 / 本地 `mcp serve`）
 
+- **所属需求包**：`PKG-05` MCP 全向集成与平台 AI Skill（Record: `reczz28YGuG6QeIn`）
+- **覆盖 FR**：`FR-501` 外部 `mcp tool`、`FR-502` 平台 `mcp server`、`FR-503` 本地 stdio `mcp serve`
 - **阶段 / 优先级**：Phase 2 · P2
-- **状态**：待前置 T00（飞书多维表格 Record: `reczz28YDq8uZs9H` · [任务看板](https://fael3z0zfze.feishu.cn/base/L8MsbBBOiaVIzdsfwa1cF78UnGc)）
+- **状态**：待前置 T00（PRD Record: `reczz28YDq8uZs9H` · [飞书任务看板](https://fael3z0zfze.feishu.cn/base/L8MsbBBOiaVIzdsfwa1cF78UnGc)）
 - **前置依赖**：T00（以及 `registry.ts` `CliCommandSpec` 元数据机制）
 - **开发红线**：必读 [engineering-standards.md](../engineering-standards.md) · 总览 [design.md](../design.md) · 索引 [index.md](../index.md)
 - **可并行性**：T00 合入后与 T06、T07、T09、T10 并行

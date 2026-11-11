@@ -1,7 +1,7 @@
 # FastGPT CLI 任务拆解看板（Tasks）
 
 > 总索引：[../index.md](../index.md) · 正式设计基线：[../design.md](../design.md) · 研发红线（必读）：[../engineering-standards.md](../engineering-standards.md)
-> 飞书同步看板：[FastGPT CLI 任务分配与进度看板](https://fael3z0zfze.feishu.cn/base/L8MsbBBOiaVIzdsfwa1cF78UnGc)（Base: `L8MsbBBOiaVIzdsfwa1cF78UnGc` / Table: `tblsOxwpSdMPxncf` / 看板视图: `vewf9gYsOF`）
+> 飞书同步看板：[FastGPT CLI 任务分配与进度看板](https://fael3z0zfze.feishu.cn/base/L8MsbBBOiaVIzdsfwa1cF78UnGc)（三表关联：`需求包` `tbltZMVyb9WKXFw5` ↔ `FR 功能需求` `tblNyRRtu9OoC9c4` ↔ `PRD 开发任务单` `tblsOxwpSdMPxncf`）
 >
 > 本文档面向多人 / 多 Agent 并行认领：**先合入 `T00` 公共运行时扩展，之后 `T01` ~ `T11` 按业务域严格隔离目录，可独立分支并行开发与提交 PR。**
 
@@ -33,20 +33,20 @@ Phase 1（P0 收尾 & P1 高频域，全员可并行）                      Pha
 
 ## 2. 任务总览表
 
-| 编号 | 模块 / 领域 | 优先级 | 状态 | 前置依赖 | 飞书 Record ID | 独占代码目录（防冲突） | 详细文档 |
-|---|---|---|---|---|---|---|---|
-| **T00** | 公共运行时扩展 | **P0（阻塞）** | 待认领 | Phase 0 | `reczz28YDq8uUbAc` | `infra/http/`, `infra/ui/`, `infra/fs/`, `cli/pipeline.ts`, `shared/{input,pagination}.ts` | [T00-shared-runtime-extensions.md](./T00-shared-runtime-extensions.md) |
-| **T01** | `api` 通用逃生口 | **P0** | 待前置 T00 | T00 | `reczz28YDq8uU4ot` | `domain/api/`, `infra/cache/`, `cli/commands/api.ts` | [T01-api-escape-hatch.md](./T01-api-escape-hatch.md) |
-| **T02** | `dataset` 知识库域 | **P1** | 待前置 T00 | T00 | `reczz28YDq8uS2GJ` | `domain/dataset/`, `cli/commands/dataset/` | [T02-domain-dataset.md](./T02-domain-dataset.md) |
-| **T03** | `chat` 对话与历史域 | **P1** | 待前置 T00 | T00 | `reczz28YDq8uVFMC` | `domain/chat/`, `cli/commands/chat/` | [T03-domain-chat.md](./T03-domain-chat.md) |
-| **T04** | `app` 应用与发布域 | **P1** | 待前置 T00 | T00 | `reczz28YDq8uSoiE` | `domain/app/`, `cli/commands/app/` | [T04-domain-app.md](./T04-domain-app.md) |
-| **T05** | `model` 模型域 | **P1** | 待前置 T00 | T00 | `reczz28YDq8uVwHs` | `domain/model/`, `cli/commands/model.ts` | [T05-domain-model.md](./T05-domain-model.md) |
-| **T06** | `workflow` 工作流域 | **P2** | 待前置 T00 | T00(参考 T04) | `reczz28YDq8uXqGq` | `domain/workflow/`, `cli/commands/workflow/` | [T06-domain-workflow.md](./T06-domain-workflow.md) |
-| **T07** | `tool` 工具与插件域 | **P2** | 待前置 T00 | T00 | `reczz28YDq8uYkYY` | `domain/tool/`, `cli/commands/tool/` | [T07-domain-tool.md](./T07-domain-tool.md) |
-| **T08** | `mcp` 域（含 `mcp serve`） | **P2** | 待前置 T00 | T00 | `reczz28YDq8uZs9H` | `domain/mcp/`, `cli/commands/mcp/` | [T08-domain-mcp.md](./T08-domain-mcp.md) |
-| **T09** | `skill` 平台 AI Skill 域 | **P2** | 待前置 T00 | T00 | `reczz28YDq8ua7KK` | `domain/skill/`, `cli/commands/skill/` | [T09-domain-skill.md](./T09-domain-skill.md) |
-| **T10** | `team` & `admin` 域 | **P3** | 待前置 T00 | T00 | `reczz28YDq8uXEJb` | `domain/team/`, `domain/admin/`, `cli/commands/team/`, `cli/commands/admin/` | [T10-domain-team-and-admin.md](./T10-domain-team-and-admin.md) |
-| **T11** | `skills` Agent 包 & 漂移门禁 | **P3** | 待前置 T00 | T00, T01~T05 | `reczz28YDq8uWbOm` | `skills/`, `domain/skills/`, `cli/commands/skills.ts`, `scripts/` | [T11-agent-skills-and-ci-drift.md](./T11-agent-skills-and-ci-drift.md) |
+| 编号 | 所属需求包 | 覆盖 FR | 模块 / 领域 | 优先级 | 状态 | 前置依赖 | PRD Record ID | 独占代码目录（防冲突） | 详细文档 |
+|---|---|---|---|---|---|---|---|---|---|
+| **T00** | `PKG-00` | `FR-004`~`FR-006` | 公共运行时扩展 | **P0（阻塞）** | 待认领 | Phase 0 | `reczz28YDq8uUbAc` | `infra/http/`, `infra/ui/`, `infra/fs/`, `cli/pipeline.ts`, `shared/{input,pagination}.ts` | [T00-shared-runtime-extensions.md](./T00-shared-runtime-extensions.md) |
+| **T01** | `PKG-01` | `FR-101`~`FR-102` | `api` 通用逃生口 | **P0** | 待前置 T00 | T00 | `reczz28YDq8uU4ot` | `domain/api/`, `infra/cache/`, `cli/commands/api.ts` | [T01-api-escape-hatch.md](./T01-api-escape-hatch.md) |
+| **T02** | `PKG-03` | `FR-301`~`FR-305` | `dataset` 知识库域 | **P1** | 待前置 T00 | T00 | `reczz28YDq8uS2GJ` | `domain/dataset/`, `cli/commands/dataset/` | [T02-domain-dataset.md](./T02-domain-dataset.md) |
+| **T03** | `PKG-02` | `FR-201`~`FR-203` | `chat` 对话与历史域 | **P1** | 待前置 T00 | T00 | `reczz28YDq8uVFMC` | `domain/chat/`, `cli/commands/chat/` | [T03-domain-chat.md](./T03-domain-chat.md) |
+| **T04** | `PKG-02` | `FR-204`~`FR-207` | `app` 应用与发布域 | **P1** | 待前置 T00 | T00 | `reczz28YDq8uSoiE` | `domain/app/`, `cli/commands/app/` | [T04-domain-app.md](./T04-domain-app.md) |
+| **T05** | `PKG-02` | `FR-208` | `model` 模型域 | **P1** | 待前置 T00 | T00 | `reczz28YDq8uVwHs` | `domain/model/`, `cli/commands/model.ts` | [T05-domain-model.md](./T05-domain-model.md) |
+| **T06** | `PKG-04` | `FR-401`~`FR-402` | `workflow` 工作流域 | **P2** | 待前置 T00 | T00(参考 T04) | `reczz28YDq8uXqGq` | `domain/workflow/`, `cli/commands/workflow/` | [T06-domain-workflow.md](./T06-domain-workflow.md) |
+| **T07** | `PKG-04` | `FR-403`~`FR-404` | `tool` 工具与插件域 | **P2** | 待前置 T00 | T00 | `reczz28YDq8uYkYY` | `domain/tool/`, `cli/commands/tool/` | [T07-domain-tool.md](./T07-domain-tool.md) |
+| **T08** | `PKG-05` | `FR-501`~`FR-503` | `mcp` 域（含 `mcp serve`） | **P2** | 待前置 T00 | T00 | `reczz28YDq8uZs9H` | `domain/mcp/`, `cli/commands/mcp/` | [T08-domain-mcp.md](./T08-domain-mcp.md) |
+| **T09** | `PKG-05` | `FR-504` | `skill` 平台 AI Skill 域 | **P2** | 待前置 T00 | T00 | `reczz28YDq8ua7KK` | `domain/skill/`, `cli/commands/skill/` | [T09-domain-skill.md](./T09-domain-skill.md) |
+| **T10** | `PKG-06` | `FR-601`~`FR-603` | `team` & `admin` 域 | **P3** | 待前置 T00 | T00 | `reczz28YDq8uXEJb` | `domain/team/`, `domain/admin/`, `cli/commands/team/`, `cli/commands/admin/` | [T10-domain-team-and-admin.md](./T10-domain-team-and-admin.md) |
+| **T11** | `PKG-06` | `FR-604`~`FR-605` | `skills` Agent 包 & 漂移门禁 | **P3** | 待前置 T00 | T00, T01~T05 | `reczz28YDq8uWbOm` | `skills/`, `domain/skills/`, `cli/commands/skills.ts`, `scripts/` | [T11-agent-skills-and-ci-drift.md](./T11-agent-skills-and-ci-drift.md) |
 
 ---
 

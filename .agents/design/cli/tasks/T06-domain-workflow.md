@@ -1,7 +1,9 @@
 # T06：`workflow` 独立一级工作流域（GitOps + 复用 `workflow-cli`）
 
+- **所属需求包**：`PKG-04` 工作流 GitOps 与工具生态（Record: `reczz28YGuG6RMRm`）
+- **覆盖 FR**：`FR-401` `workflow` 云端 GitOps、`FR-402` 本地 DSL 编辑桥接 `workflow-cli`
 - **阶段 / 优先级**：Phase 2 · P2
-- **状态**：待前置 T00（飞书多维表格 Record: `reczz28YDq8uXqGq` · [任务看板](https://fael3z0zfze.feishu.cn/base/L8MsbBBOiaVIzdsfwa1cF78UnGc)）
+- **状态**：待前置 T00（PRD Record: `reczz28YDq8uXqGq` · [飞书任务看板](https://fael3z0zfze.feishu.cn/base/L8MsbBBOiaVIzdsfwa1cF78UnGc)）
 - **前置依赖**：T00（并建议参考 T04 `app` 应用详情/发布结构）
 - **开发红线**：必读 [engineering-standards.md](../engineering-standards.md) · 总览 [design.md](../design.md) · 索引 [index.md](../index.md)
 - **可并行性**：T00 合入后与 T07 ~ T10 并行
