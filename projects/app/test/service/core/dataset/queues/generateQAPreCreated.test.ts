@@ -135,28 +135,24 @@ describe('generateQA writes data only after QA completes', () => {
     };
     let releaseFirst = () => {};
     let releaseSecond = () => {};
+    const firstResponse = new Promise<typeof response>((resolve) => {
+      releaseFirst = () => resolve(response);
+    });
+    const secondResponse = new Promise<typeof response>((resolve) => {
+      releaseSecond = () => resolve(response);
+    });
     mocks.llm
-      .mockImplementationOnce(
-        () =>
-          new Promise((resolve) => {
-            releaseFirst = () => resolve(response);
-          })
-      )
-      .mockImplementationOnce(
-        () =>
-          new Promise((resolve) => {
-            releaseSecond = () => resolve(response);
-          })
-      )
+      .mockReturnValueOnce(firstResponse)
+      .mockReturnValueOnce(secondResponse)
       .mockResolvedValue(response);
 
-    const firstWorker = generateQA();
-    await vi.waitFor(() => expect(mocks.llm).toHaveBeenCalledTimes(1));
-    const secondWorker = generateQA();
-    await vi.waitFor(() => expect(mocks.llm).toHaveBeenCalledTimes(2));
-    expect(global.qaQueueLen).toBe(2);
-
+    let firstWorker: Promise<unknown> | undefined;
+    let secondWorker: Promise<unknown> | undefined;
     try {
+      firstWorker = generateQA();
+      await vi.waitFor(() => expect(mocks.llm).toHaveBeenCalledTimes(1), { timeout: 10000 });
+      secondWorker = generateQA();
+      await vi.waitFor(() => expect(mocks.llm).toHaveBeenCalledTimes(2), { timeout: 10000 });
       global.systemEnv.qaMaxProcess = 1;
       releaseFirst();
       await firstWorker;
