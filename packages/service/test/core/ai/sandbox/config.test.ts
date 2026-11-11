@@ -60,7 +60,9 @@ describe('agent sandbox config', () => {
   it('rejects storage sizes without enough space for the reserved system capacity', () => {
     ((global as any).systemInstanceConfig.subservice.agentSandbox.common as any).storageSizeGi =
       0.29;
-    expect(() => getAgentSandboxDiskBytes()).toThrow('AGENT_SANDBOX_STORAGE_SIZE_GI');
+    expect(() => getAgentSandboxDiskBytes()).toThrow(
+      'Agent Sandbox storage size must be greater than 300 MiB'
+    );
   });
 
   it('reads lifecycle thresholds from instance config', () => {

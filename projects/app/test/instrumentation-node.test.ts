@@ -136,6 +136,10 @@ describe('registerNodeInstrumentation', () => {
       {
         _id: '20261110_backfill_external_file_check',
         status: SystemMigrationStatusEnum.succeeded
+      },
+      {
+        _id: '20261111_backfill_model_deprecation_sms',
+        status: SystemMigrationStatusEnum.succeeded
       }
     ]);
     // 旧实例已完成域迁移，但 cleanup 完成后仍可能遗留现已退役的子服务字段。
