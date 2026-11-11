@@ -169,10 +169,17 @@ export const isToolResultModerated = (target: unknown): boolean => {
 
 /**
  * 清洗命中内容审核的工具节点运行详情：隐藏原始敏感输出并移除错误标识，避免向用户展示原始敏感值或错误横幅。
+ * 若传入非普通对象（如 undefined），原样返回以便 agentLoop 等上层无需依赖 ChatHistoryItemResType 类型断言。
  */
-export const sanitizeModeratedToolNodeResponse = (
+export function sanitizeModeratedToolNodeResponse(
   nodeResponse: ChatHistoryItemResType
-): ChatHistoryItemResType => {
+): ChatHistoryItemResType;
+export function sanitizeModeratedToolNodeResponse<T>(nodeResponse: T): T;
+export function sanitizeModeratedToolNodeResponse(nodeResponse: unknown): unknown {
+  if (!nodeResponse || typeof nodeResponse !== 'object' || Array.isArray(nodeResponse)) {
+    return nodeResponse;
+  }
+
   const {
     error: _error,
     errorText: _errorText,
@@ -190,10 +197,10 @@ export const sanitizeModeratedToolNodeResponse = (
     extractResult: _extractResult,
     cqResult: _cqResult,
     ...rest
-  } = nodeResponse;
+  } = nodeResponse as Record<string, unknown>;
 
   return {
     ...rest,
     toolRes: MODERATION_BLOCKED_REPLACE_TEXT
   };
-};
+}

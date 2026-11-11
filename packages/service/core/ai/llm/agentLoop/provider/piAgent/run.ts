@@ -9,7 +9,6 @@ import { isTeamModel } from '@fastgpt/global/core/ai/model/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import type { AgentAskPayload } from '@fastgpt/global/core/ai/agent/type';
 import { getErrText, UserError } from '@fastgpt/global/common/error/utils';
-import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import {
   isModerationBlockErrorMessage,
   MODERATION_BLOCKED_ERROR_MESSAGE,
@@ -398,11 +397,7 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
         result.errorMessage = undefined;
         result.assistantMessages = [];
         result.assistantResponses = undefined;
-        if (result.metadata && typeof result.metadata === 'object') {
-          result.metadata = sanitizeModeratedToolNodeResponse(
-            result.metadata as ChatHistoryItemResType
-          );
-        }
+        result.metadata = sanitizeModeratedToolNodeResponse(result.metadata);
       }
       markToolResultModerated(result);
     }

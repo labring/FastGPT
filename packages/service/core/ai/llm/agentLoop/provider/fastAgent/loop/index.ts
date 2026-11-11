@@ -19,7 +19,6 @@ import type {
   FastAgentLoopResult
 } from './type';
 import { runSandboxTools } from '../../../../../sandbox/application/toolCall';
-import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import {
   isModerationBlockErrorMessage,
   MODERATION_BLOCKED_REPLACE_TEXT
@@ -468,11 +467,7 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
           toolResult.assistantMessages = [];
           toolResult.assistantResponses = undefined;
           toolResult.skipResponseCompress = true;
-          if (toolResult.metadata && typeof toolResult.metadata === 'object') {
-            toolResult.metadata = sanitizeModeratedToolNodeResponse(
-              toolResult.metadata as ChatHistoryItemResType
-            );
-          }
+          toolResult.metadata = sanitizeModeratedToolNodeResponse(toolResult.metadata);
         }
         markToolResultModerated(toolResult);
       }
@@ -503,11 +498,7 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
           result.assistantMessages = [];
           result.assistantResponses = undefined;
           result.skipResponseCompress = true;
-          if (result.metadata && typeof result.metadata === 'object') {
-            result.metadata = sanitizeModeratedToolNodeResponse(
-              result.metadata as ChatHistoryItemResType
-            );
-          }
+          result.metadata = sanitizeModeratedToolNodeResponse(result.metadata);
         }
         markToolResultModerated(result);
       }

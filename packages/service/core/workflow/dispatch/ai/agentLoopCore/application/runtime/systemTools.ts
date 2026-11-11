@@ -4,7 +4,6 @@ import type {
 } from '../../../../../../ai/llm/agentLoop/domain/tool';
 import type { SandboxClient } from '../../../../../../ai/sandbox/application/runtime/client';
 import type { AgentLoopDatasetSearchExecutor } from '../../../../../../ai/llm/agentLoop/domain/systemTool/datasetSearch';
-import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import {
   isModerationBlockErrorMessage,
@@ -85,11 +84,7 @@ export const createAgentLoopCoreSystemTools = (
               if (hitModeration) {
                 res.response = MODERATION_BLOCKED_REPLACE_TEXT;
                 res.error = undefined;
-                if (res.metadata && typeof res.metadata === 'object') {
-                  res.metadata = sanitizeModeratedToolNodeResponse(
-                    res.metadata as ChatHistoryItemResType
-                  );
-                }
+                res.metadata = sanitizeModeratedToolNodeResponse(res.metadata);
               }
               markToolResultModerated(res);
             }
@@ -119,11 +114,7 @@ export const createAgentLoopCoreSystemTools = (
               if (hitModeration) {
                 res.response = MODERATION_BLOCKED_REPLACE_TEXT;
                 res.error = undefined;
-                if (res.metadata && typeof res.metadata === 'object') {
-                  res.metadata = sanitizeModeratedToolNodeResponse(
-                    res.metadata as ChatHistoryItemResType
-                  );
-                }
+                res.metadata = sanitizeModeratedToolNodeResponse(res.metadata);
               }
               markToolResultModerated(res);
             }

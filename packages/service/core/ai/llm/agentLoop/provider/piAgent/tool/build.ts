@@ -8,7 +8,6 @@ import type {
   ChatCompletionMessageToolCall
 } from '@fastgpt/global/core/ai/llm/type';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import {
   checkToolResultModeration,
   isToolResultModerated,
@@ -208,11 +207,7 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
         result.errorMessage = undefined;
         result.assistantMessages = [];
         result.assistantResponses = undefined;
-        if (result.metadata && typeof result.metadata === 'object') {
-          result.metadata = sanitizeModeratedToolNodeResponse(
-            result.metadata as ChatHistoryItemResType
-          );
-        }
+        result.metadata = sanitizeModeratedToolNodeResponse(result.metadata);
       }
       markToolResultModerated(result);
     }
