@@ -342,6 +342,7 @@
   "core.app.schedule.Every month": "매월 {{day}}일 {{hour}}시",
   "core.app.schedule.Every week": "매주 {{day}} {{hour}}시",
   "core.app.schedule.Interval": "{{interval}}시간마다",
+  "core.app.schedule.Minute interval": "{{interval}}분마다",
   "core.app.schedule.Open schedule": "예약 실행",
   "core.app.setting": "앱 정보 설정",
   "core.app.share.Amount limit tip": "최대 10개 그룹",

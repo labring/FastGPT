@@ -344,6 +344,7 @@
   "core.app.schedule.Every month": "Every month on the {{day}} at {{hour}}:00",
   "core.app.schedule.Every week": "Every week on {{day}} at {{hour}}:00",
   "core.app.schedule.Interval": "Every {{interval}} hours",
+  "core.app.schedule.Minute interval": "Every {{interval}} min",
   "core.app.schedule.Open schedule": "Scheduled run",
   "core.app.setting": "App Information Settings",
   "core.app.share.Amount limit tip": "Up to 10 groups",

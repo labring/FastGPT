@@ -9,6 +9,7 @@ import { getScheduleTriggerApp } from '@/service/core/app/utils';
 import { cronJob as sandboxCronJob } from '@fastgpt/service/core/ai/sandbox/application/cron';
 import { clearExpiredS3FilesCron } from '@fastgpt/service/common/s3/lifecycle/cleanup';
 import { checkAndRunModelStatusProbe } from '@fastgpt/service/core/ai/modelStatus/service';
+import { getLogger } from '@fastgpt/service/common/logger';
 
 // Try to run train every minute
 const setTrainingQueueCron = () => {
@@ -49,19 +50,14 @@ const clearInvalidDataCron = () => {
   });
 };
 
-// Run app timer trigger every hour
+/** 每分钟扫描到期计划；启动扫描走同一入口，由应用级原子领取避免多实例重复执行。 */
 const scheduleTriggerAppCron = () => {
-  setCron('0 */1 * * *', async () => {
-    if (
-      await checkTimerLock({
-        timerId: TimerIdEnum.scheduleTriggerApp,
-        lockMinuted: 59
-      })
-    ) {
-      getScheduleTriggerApp();
-    }
-  });
-  getScheduleTriggerApp();
+  const scan = () =>
+    getScheduleTriggerApp().catch((error) => {
+      getLogger().error('Schedule trigger scan failed', { error });
+    });
+  setCron('*/1 * * * *', scan);
+  void scan();
 };
 
 /** 每分钟先获取 timer lock，进入后由服务层统一校验开关与探测间隔。 */

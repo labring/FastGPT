@@ -1,24 +1,27 @@
-import React, { useCallback, useRef } from 'react';
+import React, { useCallback } from 'react';
 import MultipleRowSelect from './MultipleRowSelect';
 import { useTranslation } from 'next-i18next';
 import { type MultipleSelectProps } from './type';
 import { cronParser2Fields } from '@fastgpt/global/common/string/time';
 
-type CronType = 'month' | 'week' | 'day' | 'interval';
+type CronType = 'month' | 'week' | 'day' | 'interval' | 'minuteInterval';
 
 type CronFieldType = [CronType, number, number];
+const minuteIntervals = [1, 5, 10, 15, 20, 30];
 
 enum CronJobTypeEnum {
   month = 'month',
   week = 'week',
   day = 'day',
-  interval = 'interval'
+  interval = 'interval',
+  minuteInterval = 'minuteInterval'
 }
 
 export const defaultCronString = '0 0 * * *';
 
 export const defaultValue = [CronJobTypeEnum.day, 0, 0];
 
+/** 解析编辑器支持的时间计划；分钟间隔独立于旧版小时间隔，保存后可恢复原选项。 */
 export const cronString2Fields = (cronString?: string) => {
   if (!cronString) {
     return undefined;
@@ -34,6 +37,13 @@ export const cronString2Fields = (cronString?: string) => {
   }
   if (cronField.dayOfWeek.length !== 8) {
     return [CronJobTypeEnum.week, cronField.dayOfWeek[0], cronField.hour[0]];
+  }
+  if (cronField.hour.length === 24 && cronField.minute.length > 1) {
+    const interval = 60 / cronField.minute.length;
+    // 只把从整点开始、跨小时仍等距的分钟序列显示为固定间隔。
+    if (cronField.minute.every((minute, index) => minute === index * interval)) {
+      return [CronJobTypeEnum.minuteInterval, interval, 0];
+    }
   }
   if (cronField.hour.length === 1) {
     return [CronJobTypeEnum.day, cronField.hour[0], 0];
@@ -78,6 +88,11 @@ export const cronString2Label = (
   }
   if (cronField[0] === 'interval') {
     return t('common:core.app.schedule.Interval', {
+      interval: cronField[1]
+    });
+  }
+  if (cronField[0] === 'minuteInterval') {
+    return t('common:core.app.schedule.Minute interval', {
       interval: cronField[1]
     });
   }
@@ -173,6 +188,8 @@ const CronSelector = ({
 
   const cronConfig2cronString = useCallback(
     (e: CronFieldType) => {
+      // 级联选择器切换分组时会保留上一组的数值；等用户选定有效分钟数后再保存。
+      if (e[0] === CronJobTypeEnum.minuteInterval && !minuteIntervals.includes(e[1])) return;
       const str = (() => {
         if (e[0] === CronJobTypeEnum.month) {
           return `0 ${e[2]} ${e[1]} * *`;
@@ -182,6 +199,8 @@ const CronSelector = ({
           return `0 ${e[1]} * * *`;
         } else if (e[0] === CronJobTypeEnum.interval) {
           return `0 */${e[1]} * * *`;
+        } else if (e[0] === CronJobTypeEnum.minuteInterval) {
+          return `*/${e[1]} * * * *`;
         } else {
           return '';
         }
@@ -191,7 +210,15 @@ const CronSelector = ({
     [onChange]
   );
 
-  const cronSelectList = useRef<MultipleSelectProps['list']>([
+  const cronSelectList: MultipleSelectProps['list'] = [
+    {
+      label: `${t('app:cron.interval')} (${t('common:minute')})`,
+      value: CronJobTypeEnum.minuteInterval,
+      children: minuteIntervals.map((interval) => ({
+        label: t('common:core.app.schedule.Minute interval', { interval }),
+        value: interval
+      }))
+    },
     {
       label: t('app:cron.every_day'),
       value: CronJobTypeEnum.day,
@@ -212,13 +239,13 @@ const CronSelector = ({
       value: CronJobTypeEnum.interval,
       children: getInterValOptions()
     }
-  ]);
+  ];
 
   return (
     <MultipleRowSelect
       label={formatLabel}
       value={cronField}
-      list={cronSelectList.current}
+      list={cronSelectList}
       onSelect={(e) => {
         cronConfig2cronString(e as CronFieldType);
       }}

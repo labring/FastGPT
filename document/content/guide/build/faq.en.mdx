@@ -15,6 +15,10 @@ Tip: Build batch test scripts to evaluate your question classification accuracy.
 
 If a user opens a shared link and stays on the page, scheduled execution still works as expected — it takes effect after the app is published and runs in the background.
 
+Interval schedules support every 1, 5, 10, 15, 20, or 30 minutes, aligned to the clock in the selected time zone. For example, every 15 minutes runs at minute 00, 15, 30, and 45 of each hour. Existing hourly, daily, weekly, and monthly schedules remain available. The system checks for due tasks every minute; actual starts can be delayed under load.
+
+Only one instance can claim a given due occurrence. Different occurrences may overlap, so workflows that take longer than their interval must support concurrent execution. Missed time slots are not replayed individually after downtime. A process exit after claiming can also lose that occurrence; critical workflows should use idempotent operations and verify execution results.
+
 ## Changes Not Applied
 
 After changing an app, click **Publish**. Chat and published channels only use the updated app configuration after publishing.

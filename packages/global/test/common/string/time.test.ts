@@ -219,6 +219,21 @@ describe('cronParser2Fields', () => {
 });
 
 describe('getNextTimeByCronStringAndTimezone', () => {
+  it.each([
+    ['*/5 * * * *', 'Asia/Shanghai', '2026-11-11T15:59:59.500Z', '2026-11-11T16:00:00.000Z'],
+    ['*/15 * * * *', 'America/New_York', '2026-11-11T23:58:00.000Z', '2026-11-12T00:00:00.000Z'],
+    ['*/30 * * * *', 'Asia/Kathmandu', '2026-11-11T00:00:00.000Z', '2026-11-11T00:15:00.000Z'],
+    ['*/1 * * * *', 'UTC', '2026-11-11T23:59:59.000Z', '2026-11-12T00:00:00.000Z']
+  ])('aligns minute intervals across boundaries: %s in %s', (cronString, timezone, now, next) => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    try {
+      vi.setSystemTime(new Date(now));
+      expect(getNextTimeByCronStringAndTimezone({ cronString, timezone }).toISOString()).toBe(next);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('should return next execution time for valid cron expression', () => {
     const result = getNextTimeByCronStringAndTimezone({
       cronString: '0 0 * * *',

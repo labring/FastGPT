@@ -1,7 +1,7 @@
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { getNextTimeByCronStringAndTimezone } from '@fastgpt/global/common/string/time';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { batchRun, retryFn } from '@fastgpt/global/common/system/utils';
+import { batchRunSettled, retryFn } from '@fastgpt/global/common/system/utils';
 import {
   ChatRoleEnum,
   ChatSourceEnum,
@@ -37,6 +37,11 @@ import { createWorkflowResourceContext } from '@fastgpt/service/core/workflow/re
 
 const logger = getLogger();
 
+/**
+ * 扫描到期应用并原子领取本次计划；领取时推进下次时间，同一到期快照只有一个实例能领取。
+ * 不补跑停机期间错过的每个时间点；不同时间点可并行执行，旧任务收尾不覆盖新发布的计划。
+ * 领取后进程退出可能丢失本次执行，本入口不提供持久化任务队列的投递保证。
+ */
 export const getScheduleTriggerApp = async () => {
   const startAt = new Date();
   logger.info('Schedule trigger scan started', { startAt });
@@ -45,8 +50,9 @@ export const getScheduleTriggerApp = async () => {
   const apps = await retryFn(() => {
     return MongoApp.find(
       {
+        deleteTime: null,
         scheduledTriggerConfig: { $exists: true },
-        scheduledTriggerNextTime: { $lte: new Date() }
+        scheduledTriggerNextTime: { $lte: startAt }
       },
       {
         _id: 1,
@@ -62,10 +68,30 @@ export const getScheduleTriggerApp = async () => {
   logger.info('Schedule trigger scan completed', { dueCount: apps.length, startAt });
 
   // 2. Run apps
-  await batchRun(
+  const results = await batchRunSettled(
     apps,
     async (app) => {
-      if (!app.scheduledTriggerConfig) return;
+      if (!app.scheduledTriggerConfig?.cronString || !app.scheduledTriggerNextTime) return;
+
+      const nextTime = getNextTimeByCronStringAndTimezone(app.scheduledTriggerConfig);
+      if (!Number.isFinite(nextTime.getTime()) || nextTime.getTime() <= Date.now()) {
+        throw new Error('Scheduled trigger must have a valid future execution time');
+      }
+
+      // 在模型调用、计费和聊天落库前领取。配置或发布版本已变化时丢弃本次扫描快照。
+      // 不重试不确定结果的领取写入，避免已领取后又用旧快照执行。
+      const claimed = await MongoApp.updateOne(
+        {
+          _id: app._id,
+          deleteTime: null,
+          scheduledTriggerNextTime: app.scheduledTriggerNextTime,
+          scheduledTriggerConfig: app.scheduledTriggerConfig,
+          publishedVersionId: app.publishedVersionId ?? null
+        },
+        { $set: { scheduledTriggerNextTime: nextTime } }
+      );
+      if (claimed.matchedCount !== 1) return;
+
       const chatId = getNanoid();
       const responseChatItemId = getNanoid(24);
       let chatRoundFinalized = false;
@@ -239,24 +265,17 @@ export const getScheduleTriggerApp = async () => {
           }
         }
       } finally {
-        try {
-          // update next time
-          const nextTime = getNextTimeByCronStringAndTimezone(app.scheduledTriggerConfig);
-          await retryFn(() =>
-            MongoApp.updateOne({ _id: app._id }, { $set: { scheduledTriggerNextTime: nextTime } })
-          ).catch((err) => {
-            logger.error('Schedule trigger update next time failed', {
-              error: err,
-              appId: app._id,
-              appName: app.name,
-              nextTime
-            });
-          });
-        } finally {
-          await preparedRound?.releaseGenerationLease?.();
-        }
+        await preparedRound?.releaseGenerationLease?.();
       }
     },
     50
   );
+  results.forEach((result, index) => {
+    if (!result.success) {
+      logger.error('Schedule trigger application failed', {
+        appId: apps[index]._id,
+        error: result.error
+      });
+    }
+  });
 };
