@@ -959,8 +959,8 @@ const LimitsSettingComponent = () => {
               render={({ field }) => (
                 <NumberInput
                   {...numberInputProps}
-                  min={10}
-                  max={2000}
+                  min={100}
+                  max={1000}
                   value={field.value ?? 200}
                   onChange={(_, val) => field.onChange(val || 200)}
                 >
