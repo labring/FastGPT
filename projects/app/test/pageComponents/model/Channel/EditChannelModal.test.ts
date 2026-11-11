@@ -96,11 +96,15 @@ describe('EditChannelModal channel metadata', () => {
     };
   });
 
-  const render = (
-    channelType: 'system' | 'team',
-    config: Partial<ChannelInfoType> = {},
+  const render = ({
+    channelType,
+    config = {},
     compact = false
-  ) =>
+  }: {
+    channelType: 'system' | 'team';
+    config?: Partial<ChannelInfoType>;
+    compact?: boolean;
+  }) =>
     renderToStaticMarkup(
       React.createElement(
         ChakraProvider,
@@ -118,7 +122,7 @@ describe('EditChannelModal channel metadata', () => {
   it.each(['system', 'team'] as const)(
     'renders %s options and hints without initialization or model-config channel metadata',
     (channelType) => {
-      const html = render(channelType);
+      const html = render({ channelType });
       expect(mocks.options).toEqual([
         expect.objectContaining({ label: '展示协议', value: 1, icon: 'display.svg' })
       ]);
@@ -130,11 +134,11 @@ describe('EditChannelModal channel metadata', () => {
 
   it('uses the protocol name when a translated name is absent and supports empty metadata', () => {
     mocks.metadata[1].displayName = undefined;
-    render('team');
+    render({ channelType: 'team' });
     expect(mocks.options[0].label).toBe('Upstream');
 
     mocks.metadata = {};
-    const html = render('team');
+    const html = render({ channelType: 'team' });
     expect(mocks.options).toEqual([]);
     expect(html).toContain('https://api.openai.com/v1');
     expect(html).not.toContain('https://provider.example.com');
@@ -149,14 +153,14 @@ describe('EditChannelModal channel metadata', () => {
       4: { name: 'Unsupported', defaultBaseUrl: '', keyHelp: '', canCreate: false, order: 0 },
       99: { name: 'Unranked', defaultBaseUrl: '', keyHelp: '', canCreate: true }
     };
-    render('team');
+    render({ channelType: 'team' });
     expect(mocks.options.map(({ value }) => value)).toEqual([23, 8, 1, 2, 99]);
     expect(mocks.metadata[23].order).toBe(0);
   });
 
   it.each([1, 3, 4])('defaults new type %s channels to auto in both layouts', (type) => {
     for (const compact of [false, true]) {
-      const html = render('team', { type }, compact);
+      const html = render({ channelType: 'team', config: { type }, compact });
       expect(html).toContain('config_model:chat_upstream_protocol');
       expect(mocks.protocol?.value).toBe('auto');
       expect(mocks.protocol?.list.map(({ value }) => value)).toEqual([
@@ -168,39 +172,51 @@ describe('EditChannelModal channel metadata', () => {
   });
 
   it('hides the protocol selector for other channel types', async () => {
-    render('team', { name: 'test-channel', type: 14, models: ['claude'] });
+    render({ channelType: 'team', config: { name: 'test-channel', type: 14, models: ['claude'] } });
     expect(mocks.protocol).toBeUndefined();
     await mocks.submit();
     expect(postCreateChannel).toHaveBeenCalledWith(expect.objectContaining({ configs: {} }));
   });
 
   it('defaults an unconfigured existing channel to auto and preserves explicit values', () => {
-    render('system', { id: 12 });
+    render({ channelType: 'system', config: { id: 12 } });
     expect(mocks.protocol?.value).toBe('auto');
     expect(mocks.protocol?.list.map(({ value }) => value)).toEqual([
       'auto',
       'responses',
       'chat_completions'
     ]);
-    render('system', { id: 12, configs: { chat_upstream_protocol: 'auto' } });
+    render({
+      channelType: 'system',
+      config: { id: 12, configs: { chat_upstream_protocol: 'auto' } }
+    });
     expect(mocks.protocol?.value).toBe('auto');
     expect(mocks.protocol?.list.map(({ value }) => value)).toEqual([
       'auto',
       'responses',
       'chat_completions'
     ]);
-    render('system', { id: 12, configs: { chat_upstream_protocol: 'responses' } });
+    render({
+      channelType: 'system',
+      config: { id: 12, configs: { chat_upstream_protocol: 'responses' } }
+    });
     expect(mocks.protocol?.value).toBe('responses');
-    render('system', { id: 12, configs: { chat_upstream_protocol: 'chat_completions' } });
+    render({
+      channelType: 'system',
+      config: { id: 12, configs: { chat_upstream_protocol: 'chat_completions' } }
+    });
     expect(mocks.protocol?.value).toBe('chat_completions');
   });
 
   it('sends the selected protocol and retains other configs on update', async () => {
-    render('system', {
-      name: 'test-channel',
-      id: 12,
-      models: ['gpt-5.4-nano'],
-      configs: { responses_first_event_timeout: 10 }
+    render({
+      channelType: 'system',
+      config: {
+        name: 'test-channel',
+        id: 12,
+        models: ['gpt-5.4-nano'],
+        configs: { responses_first_event_timeout: 10 }
+      }
     });
     mocks.protocol?.onChange('chat_completions');
     await mocks.submit();
@@ -212,7 +228,7 @@ describe('EditChannelModal channel metadata', () => {
   });
 
   it('submits auto by default for a newly created channel', async () => {
-    render('team', { name: 'test-channel', models: ['gpt-5.4-nano'] });
+    render({ channelType: 'team', config: { name: 'test-channel', models: ['gpt-5.4-nano'] } });
     await mocks.submit();
     expect(postCreateChannel).toHaveBeenCalledWith(
       expect.objectContaining({
