@@ -207,7 +207,11 @@ describe('team model management integration: permission, member isolation and AI
     const groupId = `fastgpt:tmb:${installer.tmbId}`;
     expect(bucketOf(groupId)[0]).toMatchObject({
       name: 'created-channel',
-      configs: { map_reasoning_to_reasoning_content: true, custom: 'kept' }
+      configs: {
+        map_reasoning_to_reasoning_content: true,
+        chat_upstream_protocol: 'responses',
+        custom: 'kept'
+      }
     });
     const second = await Call(channelCreateHandler, { auth: otherInstaller, body });
     expect(second.code).toBe(200);

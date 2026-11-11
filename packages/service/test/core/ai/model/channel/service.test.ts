@@ -168,7 +168,7 @@ describe('channel service', () => {
       expect(mocks.group.create).toHaveBeenLastCalledWith({
         ...channelData,
         name: 'normalized',
-        configs: { map_reasoning_to_reasoning_content: true }
+        configs: { map_reasoning_to_reasoning_content: true, chat_upstream_protocol: 'responses' }
       });
       await createChannel({
         channelType: 'team',
@@ -180,7 +180,11 @@ describe('channel service', () => {
       });
       expect(mocks.group.create).toHaveBeenLastCalledWith(
         expect.objectContaining({
-          configs: { map_reasoning_to_reasoning_content: false, custom: 1 }
+          configs: {
+            map_reasoning_to_reasoning_content: false,
+            chat_upstream_protocol: 'responses',
+            custom: 1
+          }
         })
       );
       await createChannel({
@@ -192,6 +196,37 @@ describe('channel service', () => {
         expect.objectContaining({ configs: { custom: 2 } })
       );
     });
+
+    it.each([1, 3, 4])(
+      'defaults channel type %s to Responses and allows explicit Chat',
+      async (type) => {
+        const channelData = {
+          name: 'protocol-channel',
+          type,
+          key: 'sk-new',
+          models: ['gpt-5.4-nano']
+        };
+        await createChannel({ channelType: 'system', tmbId: TMB_ID, channelData });
+        expect(mocks.system.create).toHaveBeenLastCalledWith(
+          expect.objectContaining({
+            configs: expect.objectContaining({ chat_upstream_protocol: 'responses' })
+          })
+        );
+        await createChannel({
+          channelType: 'system',
+          tmbId: TMB_ID,
+          channelData: {
+            ...channelData,
+            configs: { chat_upstream_protocol: 'chat_completions' }
+          }
+        });
+        expect(mocks.system.create).toHaveBeenLastCalledWith(
+          expect.objectContaining({
+            configs: expect.objectContaining({ chat_upstream_protocol: 'chat_completions' })
+          })
+        );
+      }
+    );
 
     it('rejects creation if a channel with the same name already exists', async () => {
       mocks.group.list.mockResolvedValue({
@@ -235,6 +270,39 @@ describe('channel service', () => {
   });
 
   describe('updateChannel', () => {
+    it.each(['system', 'team'] as const)(
+      'merges protocol changes without dropping other %s channel configs',
+      async (channelType) => {
+        const client = channelType === 'system' ? mocks.system : mocks.group;
+        client.get.mockResolvedValue(
+          makeChannel(1, {
+            configs: {
+              chat_upstream_protocol: 'responses',
+              map_reasoning_to_reasoning_content: false,
+              responses_first_event_timeout: 10,
+              vendor_option: { enabled: true }
+            }
+          })
+        );
+        await updateChannel({
+          id: 1,
+          channelType,
+          tmbId: TMB_ID,
+          channelData: {
+            configs: { chat_upstream_protocol: 'chat_completions' }
+          }
+        });
+        expect(client.update).toHaveBeenCalledWith(1, {
+          configs: {
+            chat_upstream_protocol: 'chat_completions',
+            map_reasoning_to_reasoning_content: false,
+            responses_first_event_timeout: 10,
+            vendor_option: { enabled: true }
+          }
+        });
+      }
+    );
+
     it('forwards only explicitly provided fields and preserves key when key is omitted', async () => {
       mocks.group.get.mockResolvedValue(makeChannel(1, { name: 'ch-1', key: 'sk-1' }));
       mocks.group.list.mockResolvedValue({

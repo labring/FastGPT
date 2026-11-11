@@ -1,3 +1,7 @@
+import {
+  CHAT_UPSTREAM_PROTOCOL_CHANNEL_TYPES,
+  ChatUpstreamProtocolSchema
+} from '@fastgpt/global/core/ai/model/channel';
 import type { ChannelListItem } from '@fastgpt/global/openapi/core/ai/model/channel/api';
 import type { AiproxyChannel, AiproxyGroupChannel } from '../../../../thirdProvider/aiproxy/type';
 import { getAiproxyClientByGroupId, getAiproxyClientByScope } from './client';
@@ -17,6 +21,16 @@ const buildChannelListItem = (
   type: channel.type,
   status: channel.status,
   models: channel.models ?? [],
+  // 渠道配置可能包含凭证，只投影已配置的协议；缺失时由表单提供默认值。
+  configs:
+    CHAT_UPSTREAM_PROTOCOL_CHANNEL_TYPES.some((type) => type === channel.type) &&
+    channel.configs?.chat_upstream_protocol !== undefined
+      ? {
+          chat_upstream_protocol: ChatUpstreamProtocolSchema.catch('auto').parse(
+            channel.configs?.chat_upstream_protocol
+          )
+        }
+      : undefined,
   // AI Proxy 对未配置字段可能返回 null（Go nil 序列化），统一归一化为 undefined 以符合 FastGPT 契约
   model_mapping: channel.model_mapping ?? undefined,
   base_url: channel.base_url ?? undefined,

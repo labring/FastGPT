@@ -33,7 +33,7 @@ export const ChannelPath: OpenAPIPath = {
     get: {
       summary: '渠道列表',
       description:
-        'team 返回当前登录成员本人渠道视图；root 带 channelType=system 时返回系统渠道视图。每条含关联模型数。',
+        'team 返回当前登录成员本人渠道视图；root 带 channelType=system 时返回系统渠道视图。每条含关联模型数与可公开的聊天上游协议配置。',
       tags: [DevApiTagsMap.model],
       requestParams: { query: ListChannelsQuerySchema },
       responses: {
@@ -48,7 +48,7 @@ export const ChannelPath: OpenAPIPath = {
     post: {
       summary: '创建渠道',
       description:
-        '由 channelType 显式指定 system/team：system 仅 root 可用；team 固定为当前成员分组。返回创建的渠道 ID，groupId 一律由服务端推导。',
+        '由 channelType 显式指定 system/team：system 仅 root 可用；team 固定为当前成员分组。返回创建的渠道 ID，groupId 一律由服务端推导。OpenAI/Azure 渠道默认使用 Responses 聊天上游协议，显式 configs 配置优先。',
       tags: [DevApiTagsMap.model],
       requestBody: {
         content: { 'application/json': { schema: CreateChannelBodySchema } }
@@ -65,7 +65,7 @@ export const ChannelPath: OpenAPIPath = {
     put: {
       summary: '更新渠道',
       description:
-        'aiproxy PUT 为全量替换；按渠道归属路由：成员仅本人渠道（channelNotExist 拒绝他人渠道），root 系统渠道优先、未命中回退成员渠道。Key 轮换即时生效。',
+        '按指定 system/team 作用域校验渠道归属，成员仅本人渠道；未传入的字段保持原值，configs 与已有渠道配置合并，避免只修改协议时覆盖高级配置。Key 轮换即时生效。',
       tags: [DevApiTagsMap.model],
       requestBody: {
         content: { 'application/json': { schema: UpdateChannelBodySchema } }
