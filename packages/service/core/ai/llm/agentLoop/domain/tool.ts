@@ -4,6 +4,7 @@ import type {
   ChatCompletionTool,
   ChatCompletionToolMessageContentPart
 } from '@fastgpt/global/core/ai/llm/type';
+import { ChatCompletionToolMessageContentPartSchema } from '@fastgpt/global/core/ai/llm/type';
 import { maxToolImagePartAmount } from '@fastgpt/global/common/file/constants';
 import type { SandboxClient } from '../../../sandbox/application/runtime/client';
 import type { SandboxToolCallValidator } from '../../../sandbox/application/toolCall/type';
@@ -30,14 +31,23 @@ export type AgentLoopToolCatalog = {
  */
 export const buildToolMessageContent = ({
   content,
-  text
+  text,
+  preserveImageParts = true
 }: {
   content?: ChatCompletionToolMessageContentPart[];
   text: string;
+  preserveImageParts?: boolean;
 }): string | ChatCompletionToolMessageContentPart[] => {
-  if (!content?.length) return text;
+  if (!content?.length || !preserveImageParts) return text;
 
-  const images = content.filter((part) => part.type !== 'text').slice(0, maxToolImagePartAmount);
+  const images = content
+    .map((part) => ChatCompletionToolMessageContentPartSchema.safeParse(part))
+    .filter(
+      (parsed): parsed is { success: true; data: ChatCompletionToolMessageContentPart } =>
+        parsed.success && parsed.data.type === 'image_url'
+    )
+    .map((parsed) => parsed.data)
+    .slice(0, maxToolImagePartAmount);
 
   return images.length ? [{ type: 'text', text }, ...images] : text;
 };

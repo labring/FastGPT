@@ -619,10 +619,11 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
           }
         })();
         // Compress tool response
-        const { toolFinalResponse, toolResponseCompress } = await (async () => {
+        const { toolFinalResponse, toolResponseCompress, isCompressed } = await (async () => {
           if (skipResponseCompress) {
             return {
-              toolFinalResponse: normalizeToolResponseContent(response)
+              toolFinalResponse: normalizeToolResponseContent(response),
+              isCompressed: false
             };
           }
 
@@ -639,6 +640,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
           if (compressionUsage) {
             return {
               toolFinalResponse: normalizedCompressedContext,
+              isCompressed: true,
               toolResponseCompress: {
                 response: normalizedCompressedContext,
                 modelName: modelData.name,
@@ -650,7 +652,8 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
           }
 
           return {
-            toolFinalResponse: normalizedCompressedContext
+            toolFinalResponse: normalizedCompressedContext,
+            isCompressed: normalizedCompressedContext !== normalizeToolResponseContent(response)
           };
         })();
 
@@ -658,7 +661,8 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
         // 事件、聊天记录和下一轮模型请求必须使用同一份内容。
         const toolMessageContent = buildToolMessageContent({
           content: toolContent,
-          text: toolFinalResponse
+          text: toolFinalResponse,
+          preserveImageParts: !isCompressed
         });
 
         onToolRunEnd?.({

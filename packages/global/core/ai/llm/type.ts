@@ -59,6 +59,16 @@ export const ChatCompletionContentPartImageSchema = z.object({
   }),
   key: z.string().optional()
 });
+/** 工具图片只接受可发送的 http(s) URL 或非空图片 data URI。 */
+const ChatCompletionToolImageUrlSchema = z.string().refine((url) => {
+  if (/^data:image\/[^;,]+;base64,[^,]+$/i.test(url)) return true;
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}, 'Tool image url must be an http(s) URL or base64 image data URI');
 export const ChatCompletionContentPartInputAudioSchema = z.object({
   type: z.literal('input_audio'),
   input_audio: z.object({
@@ -139,7 +149,11 @@ export type ChatCompletionUserMessageParam = z.infer<typeof ChatCompletionUserMe
  */
 export const ChatCompletionToolMessageContentPartSchema = z.union([
   ChatCompletionContentPartTextSchema,
-  ChatCompletionContentPartImageSchema
+  ChatCompletionContentPartImageSchema.extend({
+    image_url: ChatCompletionContentPartImageSchema.shape.image_url.extend({
+      url: ChatCompletionToolImageUrlSchema
+    })
+  })
 ]);
 export type ChatCompletionToolMessageContentPart = z.infer<
   typeof ChatCompletionToolMessageContentPartSchema

@@ -798,6 +798,94 @@ describe('runFastAgentMainLoop', () => {
     ]);
   });
 
+  it('uses only compressed text in the next round when tool compression runs', async () => {
+    const events: any[] = [];
+    const imagePart = {
+      type: 'image_url' as const,
+      image_url: { url: 'data:image/png;base64,AAAA' }
+    };
+    compressToolResponseMock.mockResolvedValue({
+      compressed: 'compressed tool result',
+      usage: { totalPoints: 1, inputTokens: 10, outputTokens: 2, moduleName: 'compress' },
+      requestIds: ['compress_req']
+    });
+    mockCreateLLMResponseQueue(createLLMResponseMock, [
+      toolCall({ id: 'call_compressed_image', name: 'search', args: { query: 'chart' } }),
+      text({ requestId: 'req_after_compressed_image', content: 'done' })
+    ]);
+    const executeTool = vi.fn(async () => ({
+      response: JSON.stringify({ image: imagePart.image_url.url }),
+      content: [imagePart],
+      assistantMessages: [],
+      usages: [],
+      stop: false
+    }));
+
+    const result = await runFastAgentMainLoop({
+      runtime: createRuntime({ executeTool, emitEvent: (event) => events.push(event) }),
+      input: {
+        messages: [{ role: ChatCompletionRequestMessageRoleEnum.User, content: 'inspect chart' }]
+      }
+    });
+
+    expect(result.status).toBe('done');
+    expect(compressToolResponseMock).toHaveBeenCalledTimes(1);
+    const secondRequest = createLLMResponseMock.mock.calls[1][0];
+    const toolMessage = (secondRequest.body.messages as ChatCompletionMessageParam[]).find(
+      (message) => message.role === ChatCompletionRequestMessageRoleEnum.Tool
+    );
+    expect(toolMessage?.content).toBe('compressed tool result');
+    expect(
+      events.find(
+        (event) => event.type === 'tool_run_end' && event.call.id === 'call_compressed_image'
+      )
+    ).toMatchObject({
+      response: 'compressed tool result',
+      content: 'compressed tool result'
+    });
+  });
+
+  it.each([
+    { label: 'unchanged', compressed: '{"jobId":"task-123"}' },
+    { label: 'rewritten without usage', compressed: 'locally shortened' }
+  ])(
+    'preserves image parts only when compression leaves text unchanged: $label',
+    async ({ compressed }) => {
+      const imagePart = {
+        type: 'image_url' as const,
+        image_url: { url: 'data:image/png;base64,AAAA' }
+      };
+      compressToolResponseMock.mockResolvedValue({ compressed });
+      mockCreateLLMResponseQueue(createLLMResponseMock, [
+        toolCall({ id: 'call_conditional_image', name: 'search', args: { query: 'chart' } }),
+        text({ requestId: 'req_after_conditional_image', content: 'done' })
+      ]);
+      const executeTool = vi.fn(async () => ({
+        response: '{"jobId":"task-123"}',
+        content: [imagePart],
+        assistantMessages: [],
+        usages: [],
+        stop: false
+      }));
+
+      await runFastAgentMainLoop({
+        runtime: createRuntime({ executeTool }),
+        input: {
+          messages: [{ role: ChatCompletionRequestMessageRoleEnum.User, content: 'inspect chart' }]
+        }
+      });
+
+      const toolMessage = (
+        createLLMResponseMock.mock.calls[1][0].body.messages as ChatCompletionMessageParam[]
+      ).find((message) => message.role === ChatCompletionRequestMessageRoleEnum.Tool);
+      expect(toolMessage?.content).toEqual(
+        compressed === '{"jobId":"task-123"}'
+          ? [{ type: 'text', text: compressed }, imagePart]
+          : compressed
+      );
+    }
+  );
+
   it('uses reconstructed messages without an Ask-specific snapshot', async () => {
     mockCreateLLMResponseQueue(createLLMResponseMock, [text({ content: 'continued' })]);
     const messages = [{ role: 'user' as const, content: 'Continue normally' }];
@@ -951,6 +1039,34 @@ describe('buildToolMessageContent', () => {
 
     expect(buildToolMessageContent({ content, text: 'summary' })).toEqual([
       { type: 'text', text: 'summary' },
+      { type: 'image_url', image_url: { url: 'data:image/png;base64,aW1hZ2U=' } }
+    ]);
+  });
+
+  it('drops image parts when compression produced the final text', () => {
+    const content: ChatCompletionToolMessageContentPart[] = [
+      { type: 'image_url', image_url: { url: 'data:image/png;base64,aW1hZ2U=' } }
+    ];
+
+    expect(buildToolMessageContent({ content, text: 'summary', preserveImageParts: false })).toBe(
+      'summary'
+    );
+  });
+
+  it('keeps valid images and drops unsupported image values', () => {
+    const content = [
+      { type: 'text' as const, text: 'raw output' },
+      { type: 'image_url' as const, image_url: { url: 'https://example.com/chart.png' } },
+      { type: 'image_url' as const, image_url: { url: 'not-a-url' } },
+      {
+        type: 'image_url' as const,
+        image_url: { url: 'data:image/png;base64,aW1hZ2U=' }
+      }
+    ];
+
+    expect(buildToolMessageContent({ content, text: 'summary' })).toEqual([
+      { type: 'text', text: 'summary' },
+      { type: 'image_url', image_url: { url: 'https://example.com/chart.png' } },
       { type: 'image_url', image_url: { url: 'data:image/png;base64,aW1hZ2U=' } }
     ]);
   });

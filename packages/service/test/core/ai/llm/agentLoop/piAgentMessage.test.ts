@@ -12,6 +12,7 @@ import {
   replaceInteractiveToolResult,
   resolveInteractiveToolCall
 } from '@fastgpt/service/core/ai/llm/agentLoop/provider/piAgent/message';
+import { ChatCompletionToolMessageContentPartSchema } from '@fastgpt/global/core/ai/llm/type';
 
 vi.mock('@fastgpt/service/common/file/image/utils', () => ({
   getImageBase64: vi.fn()
@@ -27,6 +28,34 @@ const model = {
 } as any;
 
 describe('piAgent message conversion', () => {
+  it.each([
+    'not-a-url',
+    'preview:/workspace/chart.png',
+    'data:image/png;base64,',
+    'data:text/plain;base64,AAAA'
+  ])('rejects unsupported tool image value: %s', (url) => {
+    expect(
+      ChatCompletionToolMessageContentPartSchema.safeParse({
+        type: 'image_url',
+        image_url: { url }
+      }).success
+    ).toBe(false);
+  });
+
+  it.each([
+    'https://example.com/chart.png',
+    'http://localhost:3000/chart.png',
+    'data:image/png;base64,aW1hZ2U=',
+    'data:image/jpeg;BASE64,aW1hZ2U='
+  ])('accepts supported tool image value: %s', (url) => {
+    expect(
+      ChatCompletionToolMessageContentPartSchema.safeParse({
+        type: 'image_url',
+        image_url: { url }
+      }).success
+    ).toBe(true);
+  });
+
   it.each(['', 'Original reasoning.'])(
     'keeps the reasoning field and its signature across context conversion: %s',
     async (reasoning) => {
