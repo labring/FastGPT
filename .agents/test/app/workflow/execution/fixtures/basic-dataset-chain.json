@@ -191,7 +191,13 @@
           "label": "workflow:search_query",
           "toolDescription": "workflow:content_to_search",
           "required": true,
-          "defaultToAgentGenerated": true
+          "defaultToAgentGenerated": true,
+          "value": [
+            [
+              "Start",
+              "userChatInput"
+            ]
+          ]
         },
         {
           "key": "collectionFilterVersion",
@@ -213,18 +219,6 @@
           "isPro": true,
           "description": "workflow:tag_filter_description",
           "valueDesc": "{\n  \"tags\": {\n    \"$and\": [\n      { \"tag_name\": { \"$eq\": \"value\" } },\n      { \"tag_name2\": { \"$eq\": \"value\" } }\n    ]\n  },\n  \"createTime\": {\n    \"$gte\": \"YYYY-MM-DD HH:mm\",\n    \"$lte\": \"YYYY-MM-DD HH:mm\"\n  },\n  \"collectionIds\": [\"collectionId\"]\n}"
-        },
-        {
-          "key": "userChatInput",
-          "label": "userChatInput",
-          "value": [
-            "Start",
-            "userChatInput"
-          ],
-          "valueType": "any",
-          "renderTypeList": [
-            "input"
-          ]
         }
       ],
       "outputs": [

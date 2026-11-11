@@ -25,7 +25,10 @@ sources:
   - projects/app/src/pages/api/v2/chat/completions.ts
 routes: ["POST /api/v2/chat/completions"]
 related: [FG-APP-WORKFLOW-055, FG-APP-WORKFLOW-056, FG-APP-WORKFLOW-058, FG-APP-WORKFLOW-060, FG-CHAT-CONVERSATION-004]
-automation: []
+automation:
+  - runner: node
+    script: .agents/test/app/workflow/execution/FG-APP-WORKFLOW-062.mjs
+    items: [C1, C2, C3, C4, C5, C6, C7]
 baseline: "37b271c759eda4e3134c88d98939f81f053a8553"
 ---
 
@@ -54,7 +57,7 @@ baseline: "37b271c759eda4e3134c88d98939f81f053a8553"
 | C4 | 嵌套条件；恢复 D0 | 在 W 中用条件节点分别选择 A 路径和无关成功路径；A 路径采用 C2 的父层捕获。两组均通过外部 gate 记录 A、未选分支及各后继的实际调用集合。 |
 | C5 | 循环异常；独立 L 图 | 第 2 次迭代返回 503，分别开启和关闭 L 节点 catchError；比较两次运行的迭代历史、父级错误出口、正常后继、最终错误数与详情。 |
 | C6 | 并行恢复；独立 P 图 | 按 WORKFLOW-060/C5 的两任务图运行一次重试成功；恢复零重试变体再运行一次。对照每个 attempt 的错误详情、父级并行状态与工作流摘要。 |
-| C7 | 暂停后失败；D0 的独立变体 | 在 K 的 F 前插入计数 gate 和表单，首次运行到真实交互暂停；刷新页面后以原 chatId 提交表单，随后让 F 失败并在 W 的 A 节点捕获。再用新 chatId 执行成功对照。 |
+| C7 | 暂停后失败；D0 的独立变体 | 在子应用 A 的 K 调用之前插入计数 gate 和表单，首次运行到真实交互暂停；刷新页面后以原 chatId 提交表单，随后让 K 内的 F 失败并在 W 的 A 节点捕获。再用新 chatId 执行成功对照。个人工作流工具不提供表单节点，因此不能将表单放进 K。 |
 
 ## 预期结果
 

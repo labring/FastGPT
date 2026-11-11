@@ -8,7 +8,10 @@ category: boundary
 scenario: special
 priority: P0
 status: ready
-automation: []
+automation:
+  - runner: node
+    script: .agents/test/app/workflow/execution/FG-APP-WORKFLOW-056.mjs
+    items: [C1, C2, C3, C4, C5, C6]
 tags: [pr-7992, workflow-context, runtime-control, workflow-queue, headless, debug, 覆盖基础场景, 覆盖异常场景, 覆盖边界场景]
 evidence: [response, database, cache]
 sources:
@@ -35,7 +38,7 @@ baseline: "37b271c759eda4e3134c88d98939f81f053a8553"
 
 ## 前置准备
 
-- 部署上述 PR 工作树，记录 commit、未提交改动摘要和实际启动路径；Mongo/PG/Redis 使用 Mac Mini 的独立测试库、schema 或 Redis DB，对象存储使用本轮专用前缀；不创建本机数据库、容器或卷，不修改 Dev 业务数据。准备隔离测试团队及登录态，确认主站、Pro 与服务入口均指向本轮依赖；未核验旧自动化适配前由执行方逐项取证。
+- 部署上述 PR 工作树，记录 commit、未提交改动摘要和实际启动路径；Mongo/PG/Redis 使用 Mac Mini 的独立测试库、schema 或 Redis DB，对象存储使用本轮专用前缀；不创建本机数据库、容器或卷，不修改 Dev 业务数据。准备隔离测试团队及登录态，确认主站、Pro 与服务入口均指向本轮依赖，并逐项保留执行证据。
 - 使用同目录 `fixtures/*.json`；生成与静态校验入口为 `workflow-fixtures.mjs`。所有 `__CHILD_APP_ID__`、`__GATE_URL__`、`__MODEL_ID__`、`__FILE_URL__` 必须绑定真实本轮资源后保存一份最终 JSON。静态校验不算业务通过。
 - 公共 D0 使用 `input-precedence.json`，变量默认 `a=A0,b=B0,stamp=S0,n=9,flag=true,text=seed`。故障使用真实 HTTP 节点访问 `workflow-fixture-server.mjs` 的外部受控 503；目录服务只提供明确声明的空模型目录，不替换内部权限、Context 或队列。
 - 每个独立变体新建 `fgtest-<RUN>-<场景>-<变体>` chatId；暂停恢复必须沿用原 chatId，连续 Debug 必须携带真实 memoryNodes/memoryEdges/entryNodeIds/skipNodeQueue，不伪造完成状态。

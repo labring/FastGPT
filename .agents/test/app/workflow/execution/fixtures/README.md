@@ -72,6 +72,25 @@ JSON 是拓扑基线；表中列明的权限矩阵、大小/并发/失败变体�
 - 用例定义在同目录 WORKFLOW-054～060、062～065，以及 AgentV2、权限和会话业务目录；不复制第二份用例库。
 - `workflow-fixture-server.mjs` 仅模拟声明的外部空目录、HTTP gate/错误和文件源；未知路由 404，不返回假的 Workflow、变量、权限、模型 usage 或代码执行结果。
 - Mongo、PostgreSQL 和 Redis 必须使用 Mac Mini（100.96.142.32）的独立测试库、schema 或 Redis DB；凭据从 `~/.config/fastgpt/test.env` 读取但不写入用例和报告。主站与 Pro 也必须连接该隔离环境，不能把仅创建测试团队当作数据库隔离；本机不得新建数据库、容器或存储卷。
-- 当前只归档可绑定 JSON、生成器和外部 gate；各 Markdown 的 `automation: []` 表示由执行方逐项运行，不宣称旧 Node 执行脚本已经适配上述远端隔离约束。旧辅助脚本可能依赖共享 dev 或创建本地数据库，未经改造和验证不得执行；更不能对共享 dev 安装临时模型或执行原始数据库清理。
+- 已验证的完整子场景在对应 Markdown 的 `automation` 中声明；其他子场景仍须由执行方逐项运行，不能因同用例其他场景通过而推断通过。辅助脚本不会创建本地数据库；不得对共享 dev 安装临时模型或执行原始数据库清理。
 - 报告由 integration-test-runner 初始化；执行前逐项写 running，完成后保存真实响应、绑定图与数据库差集。缺少模型目录/Pro/沙箱/第二实例时只阻塞受影响场景，不把其他分支的成功外推。
 - 不自动提交、部署、修改全站配置或连接生产环境。清理只针对本轮 FG-TEST 应用和专用依赖。
+
+可手动启动本工作树的测试主站及 Pro（先确认指定 Redis DB 为空且没有其他测试使用）：
+
+```bash
+source ~/.config/fastgpt/test.env
+node .agents/test/support/private-environment.mjs \
+  --source-env "$PWD/projects/app/.env.local" \
+  --pro-source-env "$PWD/pro/admin/.env.local" \
+  --port 3320 --pro-port 3321 --redis-db 10
+```
+
+启动器输出的临时目录含 `fixture.json` 和仅限本机读取的 `secrets.json`，不得提交或粘贴凭据。它复用所给配置中的沙盒和对象存储，但为本轮创建远端独立 Mongo/PG 库；运行期只删除明确归属本轮的应用、会话和对象。退出时关闭服务并删除有归属标记的测试库；不会对 Redis 执行 `FLUSHDB`，其他测试键须单独确认归属后处理。需真实模型的场景还要求测试环境已配置相应模型；Pro 功能需要有效授权，不能复制或伪造授权来绕过检查。
+
+报告初始化后，先用 `report.mjs context` 填写测试环境和主站 `--base-url`（例如 `http://127.0.0.1:3320`）；否则调度器无法构造请求地址。再把该目录内的凭据安全传给正式调度器（不会打印环境变量）：
+
+```bash
+node -e 'const fs=require("fs"),{spawnSync}=require("child_process");const secrets=JSON.parse(fs.readFileSync(process.argv[1],"utf8"));const result=spawnSync("pnpm",["test:cases","--report",process.argv[2]],{env:{...process.env,...secrets},stdio:"inherit"});process.exit(result.status??1)' \
+  /实际临时目录/secrets.json /实际报告目录/report.html
+```

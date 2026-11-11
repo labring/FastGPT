@@ -25,7 +25,10 @@ sources:
   - projects/app/src/pages/api/v2/chat/completions.ts
 routes: ["POST /api/core/chat/chatTest", "POST /api/core/app/version/publish", "POST /api/v2/chat/completions"]
 related: [FG-APP-WORKFLOW-013, FG-APP-WORKFLOW-040, FG-APP-WORKFLOW-060, FG-APP-WORKFLOW-056, FG-APP-WORKFLOW-057]
-automation: []
+automation:
+  - runner: node
+    script: .agents/test/app/workflow/execution/FG-APP-WORKFLOW-058.mjs
+    items: [C1, C2, C3, C4, C5, C6]
 baseline: "37b271c759eda4e3134c88d98939f81f053a8553"
 ---
 

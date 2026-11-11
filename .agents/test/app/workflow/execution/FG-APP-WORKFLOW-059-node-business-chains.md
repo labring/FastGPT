@@ -33,7 +33,10 @@ sources:
   - projects/app/src/pages/api/v2/chat/completions.ts
 routes: ["POST /api/v2/chat/completions"]
 related: [FG-APP-WORKFLOW-060, FG-APP-WORKFLOW-054, FG-APP-WORKFLOW-055, FG-APP-WORKFLOW-056, FG-APP-WORKFLOW-057, FG-APP-WORKFLOW-058, FG-APP-AGENTV2-001, FG-PERMISSION-RESOURCE-003]
-automation: []
+automation:
+  - runner: node
+    script: .agents/test/app/workflow/execution/FG-APP-WORKFLOW-059.mjs
+    items: [C1, C2, C3, C4, C5, C6, C7]
 baseline: "37b271c759eda4e3134c88d98939f81f053a8553"
 ---
 
@@ -58,7 +61,7 @@ baseline: "37b271c759eda4e3134c88d98939f81f053a8553"
 | 子场景 | 类型与起始状态 | 输入与操作 |
 | --- | --- | --- |
 | C1 | HTTP 协议；每变体恢复 `basic-http` | 依次执行原图 POST JSON、GET（只传 query/header）、POST x-www-form-urlencoded、POST raw。GET 的 RUN 放 query；表单设置键 runId/text，raw 设置含本轮 RUN 的文本。每组读取 Echo 实际出站请求、供应商回显和 Observe 消费结果。 |
-| C2 | 代码节点；每变体恢复 `basic-parameters` | JS 原图运行后，改 codeType=py 且代码为 `def main(**inputs): return {"result": inputs}`，输入/输出声明不变。另以 JS 抛出 `Error("FG-TEST sandbox failure")`，开启 catchError，连接唯一 Caught Answer，正常 Reply 仍保留；错误端口使用 `Probe-source_catch-right`。 |
+| C2 | 代码节点；每变体恢复 `basic-parameters` | JS 原图运行后，改 codeType=py 且代码为 `def main(inputs): return {"result": inputs}`，输入/输出声明不变。Python 沙盒将整个输入对象作为单个位置参数传入。另以 JS 抛出 `Error("FG-TEST sandbox failure")`，开启 catchError，连接唯一 Caught Answer，正常 Reply 仍保留；错误端口使用 `Probe-source_catch-right`。 |
 | C3 | AI 输入与输出；`basic-model-chain` | 以唯一问题 Q 执行，模板 Model.history=0、isResponseAnswerText=false。同会话第二轮问题 Q2，将 Model.history 改 2 并发布（或在有写权限的编辑测试中传入同一图）；另以新会话开启 isResponseAnswerText=true。记录实际模型请求或节点 historyPreview/query，消费 Model.answerText 的 Reply 始终保留。 |
 | C4 | 检索到 AI；`basic-dataset-chain` | 使用唯一关键词命中本轮知识库；读取 Search.quoteQA / quoteList、Model 收到的引用上下文及最终 Reply。再恢复新会话使用预检无结果的对照，保持 Search 到 Model 到 Reply 拓扑及真实资源授权。 |
 | C5 | 工作流工具与子应用结果 | 完整执行 `basic-tool-parent`，令 label 为本轮问题，核对 Input → Output → 父 Tool → Reply。随后执行 `child-parent`：父传 a=child-input，子更新 a=child-output 并回复，父读取自己的 a 和子 answerText。此处只验证结构与输出消费，默认值矩阵复用 057/C5。 |
