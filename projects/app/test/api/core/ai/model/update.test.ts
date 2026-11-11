@@ -280,7 +280,8 @@ describe('admin settings model create/update api', () => {
       expect(
         calculateModelPrice({
           config: formatDbModelToRuntimeModel(stored!, { fallbackProvider: true }),
-          inputTokens: multiple
+          inputTokens: type === ModelTypeEnum.stt ? undefined : multiple,
+          sttUsage: type === ModelTypeEnum.stt ? { type: 'duration', seconds: multiple } : undefined
         }).totalPoints
       ).toBe(1.01);
     }
