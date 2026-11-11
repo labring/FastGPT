@@ -20,7 +20,7 @@ sources:
   - packages/global/core/workflow/constants.ts
   - projects/app/src/pages/api/v2/chat/completions.ts
 routes: ["POST /api/v2/chat/completions"]
-related: [FG-APP-WORKFLOW-058, FG-APP-WORKFLOW-059, FG-APP-WORKFLOW-062, FG-PERMISSION-RESOURCE-003]
+related: [FG-APP-WORKFLOW-070, FG-APP-WORKFLOW-071, FG-APP-WORKFLOW-062, FG-PERMISSION-RESOURCE-004]
 automation:
   - runner: node
     script: .agents/test/app/workflow/execution/FG-APP-WORKFLOW-063.mjs

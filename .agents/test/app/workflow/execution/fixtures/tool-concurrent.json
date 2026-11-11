@@ -279,7 +279,7 @@
     },
     {
       "id": "toolParams",
-      "templateType": "ai",
+      "templateType": "toolCall",
       "flowNodeType": "toolParams",
       "showSourceHandle": true,
       "showTargetHandle": true,
@@ -299,7 +299,7 @@
     },
     {
       "id": "toolParams",
-      "templateType": "ai",
+      "templateType": "toolCall",
       "flowNodeType": "toolParams",
       "showSourceHandle": true,
       "showTargetHandle": true,

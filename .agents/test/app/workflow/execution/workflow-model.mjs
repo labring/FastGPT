@@ -2,9 +2,13 @@ import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import { once } from 'node:events';
 import { success } from '../../../support/scenario.mjs';
+import { Blocked } from '../../../support/runtime.mjs';
 
 /** 仅替代外部 LLM HTTP：通过真实模型管理 API 安装临时系统模型，实际鉴权、SDK、工具执行与用量聚合不替换。 */
 export async function workflowModel(context, c) {
+  if (c.fixture.environment === 'local-dev') {
+    throw new Blocked('共享 Dev 不注册临时系统模型；需使用已授权的受控团队模型');
+  }
   const calls = [];
   const plannedContent = [];
   const plannedTools = [];

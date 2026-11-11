@@ -9,6 +9,9 @@ const tsx = require('tsx/cjs/api');
 const load = (file) => tsx.require(repo + file, fileURLToPath(import.meta.url));
 const { StoreNodeItemTypeSchema } = load('packages/global/core/workflow/type/node.ts');
 const { StoreEdgeItemTypeSchema } = load('packages/global/core/workflow/type/edge.ts');
+const { CanonicalSelectedToolsValueSchema } = load(
+  'packages/global/core/workflow/migration/schema.ts'
+);
 const {
   NodeInputKeyEnum: I,
   NodeOutputKeyEnum: O,
@@ -456,7 +459,7 @@ export function buildWorkflowFixtures() {
         [I.aiModelId]: '__MODEL_ID__',
         [I.userChatInput]: ref('Start', O.userChatInput),
         [I.datasetSearchUsingExtensionQuery]: true,
-        [I.selectedTools]: [{ toolId: '__CHILD_APP_ID__' }]
+        [I.selectedTools]: [{ id: '__CHILD_APP_ID__', config: {} }]
       }
     })
   );
@@ -899,7 +902,13 @@ export function buildWorkflowFixtures() {
 export function validateFixture(value) {
   const ids = new Set(value.nodes.map((node) => node.nodeId));
   assert.equal(ids.size, value.nodes.length, '节点 ID 不得重复');
-  for (const node of value.nodes) StoreNodeItemTypeSchema.parse(node);
+  for (const node of value.nodes) {
+    StoreNodeItemTypeSchema.parse(node);
+    if (node.flowNodeType === 'agent') {
+      const tools = node.inputs.find((input) => input.key === I.selectedTools)?.value;
+      if (tools !== undefined) CanonicalSelectedToolsValueSchema.parse(tools);
+    }
+  }
   for (const edge of value.edges) {
     StoreEdgeItemTypeSchema.parse(edge);
     assert.ok(ids.has(edge.source) && ids.has(edge.target), '连线端点必须存在');

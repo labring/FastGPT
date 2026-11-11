@@ -1,6 +1,6 @@
 ---
 case_version: 1
-id: "FG-APP-WORKFLOW-055"
+id: "FG-APP-WORKFLOW-067"
 title: "嵌套节点响应归属、隐藏策略与统计不重复"
 business: "app/workflow/execution"
 types: [api, ui, integration]
@@ -10,7 +10,7 @@ priority: P0
 status: ready
 automation:
   - runner: node
-    script: .agents/test/app/workflow/execution/FG-APP-WORKFLOW-055.mjs
+    script: .agents/test/app/workflow/execution/FG-APP-WORKFLOW-067.mjs
     items: [C1, C2, C3, C4, C5]
 tags: [pr-7992, workflow-context, node-response, runtime-summary, debug, 覆盖基础场景, 覆盖异常场景, 覆盖边界场景]
 evidence: [response, ui, database]

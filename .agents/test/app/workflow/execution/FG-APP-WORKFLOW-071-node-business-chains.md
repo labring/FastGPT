@@ -1,6 +1,6 @@
 ---
 case_version: 1
-id: "FG-APP-WORKFLOW-059"
+id: "FG-APP-WORKFLOW-071"
 title: "常用节点的真实业务链路与下游消费"
 business: "app/workflow/execution"
 types: [api, integration]
@@ -32,10 +32,10 @@ sources:
   - packages/global/core/workflow/runtime/utils.ts
   - projects/app/src/pages/api/v2/chat/completions.ts
 routes: ["POST /api/v2/chat/completions"]
-related: [FG-APP-WORKFLOW-060, FG-APP-WORKFLOW-054, FG-APP-WORKFLOW-055, FG-APP-WORKFLOW-056, FG-APP-WORKFLOW-057, FG-APP-WORKFLOW-058, FG-APP-AGENTV2-001, FG-PERMISSION-RESOURCE-003]
+related: [FG-APP-WORKFLOW-060, FG-APP-WORKFLOW-066, FG-APP-WORKFLOW-067, FG-APP-WORKFLOW-068, FG-APP-WORKFLOW-069, FG-APP-WORKFLOW-070, FG-APP-AGENTV2-001, FG-PERMISSION-RESOURCE-004]
 automation:
   - runner: node
-    script: .agents/test/app/workflow/execution/FG-APP-WORKFLOW-059.mjs
+    script: .agents/test/app/workflow/execution/FG-APP-WORKFLOW-071.mjs
     items: [C1, C2, C3, C4, C5, C6, C7]
 baseline: "37b271c759eda4e3134c88d98939f81f053a8553"
 ---

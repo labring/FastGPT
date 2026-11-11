@@ -9,7 +9,7 @@ import { workflowService } from './workflow-service.mjs';
 import { workflowModel } from './workflow-model.mjs';
 import { createTestPdf } from './workflow-pdf.mjs';
 
-await runNodeCase('FG-APP-WORKFLOW-054', {
+await runNodeCase('FG-APP-WORKFLOW-066', {
   async C1(context) {
     const c = await workflowScenario(context);
     const s = await workflowService(context, c);

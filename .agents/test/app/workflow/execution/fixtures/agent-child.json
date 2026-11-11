@@ -230,7 +230,8 @@
           "valueDesc": "{\n toolId:string;\n}[]",
           "value": [
             {
-              "toolId": "__CHILD_APP_ID__"
+              "id": "__CHILD_APP_ID__",
+              "config": {}
             }
           ]
         },

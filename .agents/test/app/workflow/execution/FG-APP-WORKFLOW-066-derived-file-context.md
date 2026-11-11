@@ -1,6 +1,6 @@
 ---
 case_version: 1
-id: "FG-APP-WORKFLOW-054"
+id: "FG-APP-WORKFLOW-066"
 title: "父子流程文件的最小传递、登记与限额"
 business: "app/workflow/execution"
 types: [api, ui, integration]
@@ -10,7 +10,7 @@ priority: P0
 status: ready
 automation:
   - runner: node
-    script: .agents/test/app/workflow/execution/FG-APP-WORKFLOW-054.mjs
+    script: .agents/test/app/workflow/execution/FG-APP-WORKFLOW-066.mjs
     items: [C1, C2, C3, C4, C5]
 tags: [pr-7992, pr-1193, workflow-context, file-context, private-file, workflow-builder, 覆盖基础场景, 覆盖异常场景, 覆盖边界场景]
 evidence: [response, ui, database, storage]
@@ -34,7 +34,7 @@ routes:
   - "POST /api/core/chat/chatTest"
   - "POST /api/v2/chat/completions"
   - "POST /api/proApi/core/workflow/builder/chat"
-related: [FG-APP-WORKFLOW-060, FG-APP-AGENTV2-001, FG-PERMISSION-RESOURCE-003]
+related: [FG-APP-WORKFLOW-060, FG-APP-AGENTV2-001, FG-PERMISSION-RESOURCE-004]
 baseline: "37b271c759eda4e3134c88d98939f81f053a8553"
 ---
 

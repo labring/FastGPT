@@ -19,7 +19,7 @@ sources:
   - packages/service/test/core/workflow/loopTest.json
   - projects/app/src/pages/api/v2/chat/completions.ts
 routes: ["POST /api/v2/chat/completions"]
-related: [FG-APP-WORKFLOW-056, FG-APP-WORKFLOW-060, FG-APP-WORKFLOW-062]
+related: [FG-APP-WORKFLOW-068, FG-APP-WORKFLOW-060, FG-APP-WORKFLOW-062]
 automation: []
 baseline: "37b271c759eda4e3134c88d98939f81f053a8553"
 ---

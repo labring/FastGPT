@@ -2196,7 +2196,7 @@ describe('runWorkflow inline MCP discovery timing', () => {
           { name: 'search', description: 'Search', inputSchema: { type: 'object', properties: {} } }
         ]);
       const secrets = vi.spyOn(secretUtils, 'getSecretValue');
-      const variableState = createWorkflowVariableState({ token: 'stale-token' });
+      const variableContext = createTestVariableContext({ token: 'stale-token' });
       const login = createNode('login', FlowNodeTypeEnum.textEditor);
       login.isEntry = scenario !== 'resume';
       login.outputs = [
@@ -2243,7 +2243,7 @@ describe('runWorkflow inline MCP discovery timing', () => {
         .spyOn(callbackMap, FlowNodeTypeEnum.textEditor)
         .mockImplementation(async () => {
           expect(discovery).not.toHaveBeenCalled();
-          await variableState.set('token', 'current-token');
+          await variableContext.set('token', 'current-token');
           return { data: { token: 'current-token' } };
         });
       const executeToolCall = vi
@@ -2285,12 +2285,11 @@ describe('runWorkflow inline MCP discovery timing', () => {
         chatConfig: {},
         runtimeNodes,
         runtimeEdges,
-        variableState,
+        variableContext,
         externalProvider: {},
         workflowDispatchDeep: 0,
         maxRunTimes: 10,
-        stream: false,
-        checkIsStopping: () => false
+        stream: false
       } as any);
 
       expect(result.workflowRuntimeSummary.errorCount).toBe(0);

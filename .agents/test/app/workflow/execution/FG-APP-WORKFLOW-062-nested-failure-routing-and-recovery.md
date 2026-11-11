@@ -24,7 +24,7 @@ sources:
   - projects/app/src/service/core/workflow/nodeResponse.ts
   - projects/app/src/pages/api/v2/chat/completions.ts
 routes: ["POST /api/v2/chat/completions"]
-related: [FG-APP-WORKFLOW-055, FG-APP-WORKFLOW-056, FG-APP-WORKFLOW-058, FG-APP-WORKFLOW-060, FG-CHAT-CONVERSATION-004]
+related: [FG-APP-WORKFLOW-067, FG-APP-WORKFLOW-068, FG-APP-WORKFLOW-070, FG-APP-WORKFLOW-060, FG-CHAT-CONVERSATION-004]
 automation:
   - runner: node
     script: .agents/test/app/workflow/execution/FG-APP-WORKFLOW-062.mjs

@@ -5,6 +5,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { workflowDatabase } from './workflow-database.mjs';
+import { required } from '../../../support/scenario.mjs';
 
 /** 启动独立 Node 服务执行方，连接已核验的本轮真实依赖；不启动 cron/worker 或替换生产 callback。 */
 export async function workflowService(context, c) {
@@ -15,10 +16,16 @@ export async function workflowService(context, c) {
     );
   await stage('private-dependency-validation');
   await workflowDatabase(context, c);
-  const filename = c.secret(c.fixture.privateEnvironment.serviceEnvFileEnv);
+  const filename = c.secret(
+    required(
+      c.fixture.serviceEnvFileEnv ?? c.fixture.privateEnvironment?.serviceEnvFileEnv,
+      'serviceEnvFileEnv'
+    )
+  );
   const env = JSON.parse(await readFile(filename, 'utf8'));
   assert.equal(env.MONGODB_URI, c.secret(c.fixture.mongo.writeUriEnv));
   Object.assign(process.env, env);
+  if (c.fixture.environment === 'local-dev') process.env.SYNC_INDEX = 'false';
   process.env.TSX_TSCONFIG_PATH = fileURLToPath(
     new URL('../../../../../projects/app/test/tsconfig.json', import.meta.url)
   );
@@ -152,6 +159,12 @@ export async function workflowService(context, c) {
   const redis = configureRedisRuntime({ redisUrl: env.REDIS_URL });
   await stage('redis-configured');
   const mongo = load('packages/service/common/mongo/index.ts');
+  if (c.fixture.environment === 'local-dev') {
+    mongo.connectionMongo.set('autoIndex', false);
+    mongo.connectionMongo.set('autoCreate', false);
+    mongo.connectionLogMongo.set('autoIndex', false);
+    mongo.connectionLogMongo.set('autoCreate', false);
+  }
   context.cleanups.unshift(async () => {
     await redis.close();
     await mongo.connectionMongo.disconnect();
@@ -159,7 +172,7 @@ export async function workflowService(context, c) {
   });
   await mongo.connectionMongo.connect(env.MONGODB_URI);
   await stage('mongo-connected');
-  await mongo.connectionLogMongo.connect(env.MONGODB_LOG_URI);
+  await mongo.connectionLogMongo.connect(env.MONGODB_LOG_URI ?? env.MONGODB_URI);
   await stage('mongo-log-connected');
   const system = load('projects/app/src/service/common/system/index.ts');
   await stage('system-module-loaded');
@@ -189,11 +202,11 @@ export async function workflowService(context, c) {
   const dispatch = load('packages/service/core/workflow/dispatch/index.ts');
   await stage('workflow-module-loaded');
   c.record('真实服务执行方', {
-    commit: c.fixture.workflowRuntime.commit,
+    commit: c.fixture.workflowRuntime?.commit ?? '未提供，需要执行方另行核实',
     source: fileURLToPath(
       new URL('../../../../../packages/service/core/workflow/dispatch/index.ts', import.meta.url)
     ),
-    externalDependencies: ['private-Mongo', 'private-Redis', 'private-S3'],
+    externalDependencies: ['configured-Mongo', 'configured-Redis', 'configured-S3'],
     callbackMapMocked: false
   });
 

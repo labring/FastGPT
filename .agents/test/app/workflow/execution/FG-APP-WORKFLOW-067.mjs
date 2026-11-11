@@ -233,7 +233,7 @@ async function responseGraph(c, modelId, interactive) {
   return graph;
 }
 
-await runNodeCase('FG-APP-WORKFLOW-055', {
+await runNodeCase('FG-APP-WORKFLOW-067', {
   async C1(context) {
     const c = await workflowScenario(context);
     const model = await workflowModel(context, c);

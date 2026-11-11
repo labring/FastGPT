@@ -1,6 +1,6 @@
 ---
 case_version: 1
-id: "FG-APP-WORKFLOW-056"
+id: "FG-APP-WORKFLOW-068"
 title: "运行内核的协议、调度控制与请求隔离"
 business: "app/workflow/execution"
 types: [api, integration]
@@ -10,7 +10,7 @@ priority: P0
 status: ready
 automation:
   - runner: node
-    script: .agents/test/app/workflow/execution/FG-APP-WORKFLOW-056.mjs
+    script: .agents/test/app/workflow/execution/FG-APP-WORKFLOW-068.mjs
     items: [C1, C2, C3, C4, C5, C6]
 tags: [pr-7992, workflow-context, runtime-control, workflow-queue, headless, debug, 覆盖基础场景, 覆盖异常场景, 覆盖边界场景]
 evidence: [response, database, cache]
@@ -25,7 +25,7 @@ sources:
   - projects/app/src/pages/api/core/workflow/debug.ts
   - projects/app/src/pages/api/v1/chat/completions.ts
   - projects/app/src/pages/api/v2/chat/completions.ts
-related: [FG-APP-WORKFLOW-060, FG-APP-WORKFLOW-054, FG-APP-WORKFLOW-055, FG-CHAT-CONVERSATION-004]
+related: [FG-APP-WORKFLOW-060, FG-APP-WORKFLOW-066, FG-APP-WORKFLOW-067, FG-CHAT-CONVERSATION-004]
 routes: ["POST /api/v1/chat/completions", "POST /api/v2/chat/completions", "POST /api/core/workflow/debug"]
 baseline: "37b271c759eda4e3134c88d98939f81f053a8553"
 ---
