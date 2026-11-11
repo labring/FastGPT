@@ -19,6 +19,7 @@ import { i18nT } from '../../../i18n/utils';
 import {
   filterSelectableWorkflowNodeOutputs,
   getHTTPToolParamOutputs,
+  getWorkflowReferenceItems,
   getWorkflowReferenceItemsFromValue,
   isWorkflowReferenceItem,
   isToolParamInput
@@ -995,16 +996,21 @@ export const createReferenceModule = (document: DocumentReadApi) => {
     value,
     targetNodeId,
     targetType,
-    allowAllSourceTypes = false
+    allowAllSourceTypes = false,
+    allowInterpolationSourceTypes = false
   }: {
     value: unknown;
     targetNodeId: string;
     targetType?: WorkflowIOValueTypeEnum;
     allowAllSourceTypes?: boolean;
+    allowInterpolationSourceTypes?: boolean;
   }): WorkflowReferenceStatus[] => {
     // Multiple-select 的选项值也可能是二元字符串数组；只有选中 reference 模式才按引用解释。
     if (isOrdinaryMultipleSelectValue(targetNodeId, value)) return [];
 
+    const canonicalReferences = new Set(
+      getWorkflowReferenceItems(value).map((reference) => reference.join('\0'))
+    );
     const statuses = getWorkflowReferenceItemsFromValue(value, {
       includeCanonicalReferences: true
     }).map((reference) =>
@@ -1012,7 +1018,9 @@ export const createReferenceModule = (document: DocumentReadApi) => {
         reference,
         targetType,
         targetNodeId,
-        allowAllSourceTypes
+        allowAllSourceTypes:
+          allowAllSourceTypes &&
+          (!allowInterpolationSourceTypes || !canonicalReferences.has(reference.join('\0')))
       })
     );
     return hasMalformedReferenceArray(value) || (statuses.length === 0 && !isEmptyValue(value))

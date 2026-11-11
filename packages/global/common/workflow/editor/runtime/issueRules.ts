@@ -743,7 +743,8 @@ export const collectNodeIssues = (
                 value: effectiveValue,
                 targetNodeId: nodeId,
                 targetType: input.valueType,
-                allowAllSourceTypes: true
+                allowAllSourceTypes: !isReferenceInput,
+                allowInterpolationSourceTypes: !isReferenceInput
               })
             : [];
       const referenceIssueCode = pickReferenceIssueCode(referenceStatuses);

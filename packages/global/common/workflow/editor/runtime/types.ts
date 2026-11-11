@@ -179,6 +179,8 @@ export type ReferenceReadApi = {
     targetNodeId: string;
     targetType?: WorkflowIOValueTypeEnum;
     allowAllSourceTypes?: boolean;
+    /** 仅放行文本插值来源；canonical reference tuple 仍按目标类型严格校验。 */
+    allowInterpolationSourceTypes?: boolean;
   }) => WorkflowReferenceStatus[];
   /** 引用来源的值类型；来源不存在时返回 undefined，调用方按 any 处理。 */
   readonly getReferenceValueType: (reference: unknown) => WorkflowIOValueTypeEnum | undefined;
