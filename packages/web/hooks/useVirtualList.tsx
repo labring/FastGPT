@@ -194,13 +194,16 @@ const useVirtualWindow = <T,>({
 export const useStaticVirtualList = <T,>({
   data,
   itemHeight,
-  overscan = defaultOverscan
+  overscan = defaultOverscan,
+  containerRef: externalContainerRef
 }: {
   data: T[];
   itemHeight: number;
   overscan?: number;
+  containerRef?: RefObject<HTMLDivElement>;
 }) => {
-  const containerRef = useRef<HTMLDivElement>(null);
+  const internalContainerRef = useRef<HTMLDivElement>(null);
+  const containerRef = externalContainerRef ?? internalContainerRef;
   const { list, topPlaceholderHeight, bottomPlaceholderHeight } = useVirtualWindow({
     data,
     containerRef,

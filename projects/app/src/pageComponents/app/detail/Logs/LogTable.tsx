@@ -148,7 +148,8 @@ const LogTable = ({
     list: AppLogsListItemType[];
     nextCursor?: AppChatLogsSearchCursor;
     loading: boolean;
-  }>({ list: [], loading: false });
+    error: boolean;
+  }>({ list: [], loading: false, error: false });
   const searchNextCursorRef = useRef<AppChatLogsSearchCursor>();
   const searchLoadingRef = useRef(false);
   const searchRequestIdRef = useRef(0);
@@ -259,19 +260,23 @@ const LogTable = ({
     [isCursorSearchMode]
   );
 
-  const {
-    data: listLogs,
-    isLoading,
-    Pagination,
-    getData,
-    pageNum,
-    total,
-    pageSize
-  } = usePagination(listApi, {
+  // @types/react 18 的 DOM ref 与 FixedTable 的 RefObject<HTMLDivElement> 签名兼容。
+  const virtualContainerRef = useRef<HTMLDivElement>(null!);
+  const pagination = usePagination(listApi, {
     defaultPageSize: 20,
     pageSizeCacheKey,
     params,
-    refreshDeps: [params, isCursorSearchMode]
+    refreshDeps: [params, isCursorSearchMode],
+    scrollContainerRef: virtualContainerRef
+  });
+
+  const { data: listLogs, isLoading, Pagination, getData, pageNum, total, pageSize } = pagination;
+  const logs = isCursorSearchMode ? searchResult.list : listLogs;
+  const { virtualDataList, topPlaceholderHeight, bottomPlaceholderHeight } = useStaticVirtualList({
+    data: logs,
+    itemHeight: logRowHeight,
+    overscan: 8,
+    containerRef: virtualContainerRef
   });
 
   /**
@@ -285,6 +290,8 @@ const LogTable = ({
 
       if (reset) {
         searchControllerRef.current?.abort();
+        searchNextCursorRef.current = undefined;
+        if (virtualContainerRef.current) virtualContainerRef.current.scrollTop = 0;
       }
 
       const controller = new AbortController();
@@ -293,8 +300,9 @@ const LogTable = ({
       searchLoadingRef.current = true;
       setSearchResult((prev) => ({
         list: reset ? [] : prev.list,
-        nextCursor: prev.nextCursor,
-        loading: true
+        nextCursor: reset ? undefined : prev.nextCursor,
+        loading: true,
+        error: false
       }));
 
       try {
@@ -312,11 +320,12 @@ const LogTable = ({
         setSearchResult((prev) => ({
           list: reset ? res.list : [...prev.list, ...res.list],
           nextCursor: res.nextCursor,
-          loading: false
+          loading: false,
+          error: false
         }));
       } catch {
         if (controller.signal.aborted || requestId !== searchRequestIdRef.current) return;
-        setSearchResult((prev) => ({ ...prev, loading: false }));
+        setSearchResult((prev) => ({ ...prev, loading: false, error: true }));
       } finally {
         if (requestId === searchRequestIdRef.current && searchControllerRef.current === controller)
           searchLoadingRef.current = false;
@@ -337,14 +346,6 @@ const LogTable = ({
     };
   }, [isCursorSearchMode, loadSearchPage]);
 
-  const logs = isCursorSearchMode ? searchResult.list : listLogs;
-  const {
-    containerRef: virtualContainerRef,
-    virtualDataList,
-    topPlaceholderHeight,
-    bottomPlaceholderHeight
-  } = useStaticVirtualList({ data: logs, itemHeight: logRowHeight, overscan: 8 });
-
   useEventListener(
     'scroll',
     () => {
@@ -353,6 +354,7 @@ const LogTable = ({
         !isCursorSearchMode ||
         !container ||
         searchLoadingRef.current ||
+        searchResult.error ||
         !searchNextCursorRef.current
       ) {
         return;
@@ -799,6 +801,19 @@ const LogTable = ({
           <Box mt={2} h={8} position={'relative'} fontSize={'xs'} color={'blackAlpha.500'}>
             {searchResult.loading ? (
               <MyLoading fixed={false} bg={'transparent'} size={'md'} />
+            ) : searchResult.error ? (
+              <Flex alignItems={'center'} justifyContent={'center'} gap={1}>
+                <Box>{t('common:load_failed')}</Box>
+                <Box
+                  as={'button'}
+                  type={'button'}
+                  color={'primary.600'}
+                  cursor={'pointer'}
+                  onClick={() => loadSearchPage({ reset: searchResult.list.length === 0 })}
+                >
+                  {t('common:refresh')}
+                </Box>
+              </Flex>
             ) : (
               !searchResult.nextCursor && <Box textAlign={'center'}>{t('common:request_end')}</Box>
             )}

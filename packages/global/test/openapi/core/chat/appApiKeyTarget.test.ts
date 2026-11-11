@@ -148,6 +148,17 @@ describe('application API key targets across dialogue APIs', () => {
     }
   );
 
+  it('documents the application log search cursor contract', () => {
+    const operation = openAPIDocument.paths?.['/core/app/logs/search']?.post;
+    expect(operation).toMatchObject({
+      summary: '搜索应用日志列表',
+      description: '按游标搜索应用的对话日志列表，每页固定 50 条且不查询总数'
+    });
+    const cursor = JSON.stringify(operation?.requestBody);
+    expect(cursor).toContain('上一页响应中的 nextCursor');
+    expect(cursor).toContain('68ad85a7463006c963799a05');
+  });
+
   it('publishes the no-appId union branch in every dialogue operation', () => {
     /** 检查最终生成的文档，避免 union/intersection 合并后重新暴露服务端固定字段。 */
     const checkAppKeyBranch = (value: unknown, path: string) => {

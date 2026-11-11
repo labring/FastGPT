@@ -194,7 +194,13 @@ export const GetAppChatLogsResponseSchema = z
   .meta({ example: { total: 100, list: [] }, description: '应用对话日志列表' });
 export type getAppChatLogsResponseType = z.infer<typeof GetAppChatLogsResponseSchema>;
 
-/* Search app chat logs */
+/* ============================================================================
+ * API: 搜索应用对话日志
+ * Route: POST /api/core/app/logs/search
+ * Method: POST
+ * Description: 按复合游标搜索指定应用的对话日志，每页固定返回 50 条且不查询总数
+ * Tags: ['App', 'Log', 'Read']
+ * ============================================================================ */
 export const AppChatLogsSearchCursorSchema = z.object({
   timestamp: IntSchema.meta({
     example: 1735689600000,
@@ -214,7 +220,13 @@ const { appId: appIdSchema, ...appChatLogsFilterShape } = AppChatLogsFilterSchem
 export const SearchAppChatLogsBodySchema = z.intersection(
   createAppApiKeyInputSchema(z.object({ appId: appIdSchema })),
   z.object(appChatLogsFilterShape).extend({
-    cursor: AppChatLogsSearchCursorSchema.optional()
+    cursor: AppChatLogsSearchCursorSchema.optional().meta({
+      example: {
+        timestamp: 1735689600000,
+        id: '68ad85a7463006c963799a05'
+      },
+      description: '上一页响应中的 nextCursor；首屏请求省略，后续请求原样传入'
+    })
   })
 );
 export type SearchAppChatLogsBody = z.infer<typeof SearchAppChatLogsBodySchema>;
