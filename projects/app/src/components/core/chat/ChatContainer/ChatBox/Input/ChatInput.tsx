@@ -37,6 +37,7 @@ import {
   getEditedCompletionContext,
   insertNewline,
   isCompletionContextCurrent,
+  isSameCompletionContext,
   type CompletionContext
 } from '../utils/inputGuide';
 
@@ -392,14 +393,15 @@ const ChatInput = ({
             onKeyUp={(e) => {
               if (!completionContext || !completionNavigationKeys.has(e.key)) return;
               const textarea = e.currentTarget;
-              setCompletionContext(
-                getCompletionContext({
-                  anchor: completionContext.anchor,
-                  value: textarea.value,
-                  cursor: textarea.selectionStart
-                })
-              );
-              resetCompletionOptions();
+              const nextContext = getCompletionContext({
+                anchor: completionContext.anchor,
+                value: textarea.value,
+                cursor: textarea.selectionStart
+              });
+              setCompletionContext(nextContext);
+              if (!isSameCompletionContext(completionContext, nextContext)) {
+                resetCompletionOptions();
+              }
             }}
             onPointerDown={resetCompletionContext}
             onKeyDown={(e) => {

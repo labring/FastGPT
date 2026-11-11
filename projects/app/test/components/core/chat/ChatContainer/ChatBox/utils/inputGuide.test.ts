@@ -11,7 +11,8 @@ import {
   getNextCompletionIndex,
   insertNewline,
   isCompletionContextCurrent,
-  isCompletionResultCurrent
+  isCompletionResultCurrent,
+  isSameCompletionContext
 } from '@/components/core/chat/ChatContainer/ChatBox/utils/inputGuide';
 
 describe('input guide completion context', () => {
@@ -112,6 +113,26 @@ describe('input guide completion context', () => {
       anchor: 3,
       userQuery: 'Fas'
     });
+  });
+
+  it('keeps options when caret movement does not change the query', () => {
+    const context = { anchor: 0, userQuery: 'FastG' };
+    const nextContext = getCompletionContext({
+      anchor: context.anchor,
+      value: 'FastG',
+      cursor: 5
+    });
+
+    expect(nextContext).toEqual(context);
+    expect(isSameCompletionContext(context, nextContext)).toBe(true);
+  });
+
+  it('resets options when caret movement changes or closes the query', () => {
+    const context = { anchor: 0, userQuery: 'FastG' };
+
+    expect(isSameCompletionContext(context, { anchor: 0, userQuery: 'Fast' })).toBe(false);
+    expect(isSameCompletionContext(context, undefined)).toBe(false);
+    expect(isSameCompletionContext(undefined, undefined)).toBe(true);
   });
 
   it('resets at or before the anchor', () => {

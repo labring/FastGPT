@@ -5,6 +5,10 @@ export type CompletionContext = {
   userQuery: string;
 };
 
+/** 判断光标移动后查询区间是否保持不变。 */
+export const isSameCompletionContext = (before?: CompletionContext, after?: CompletionContext) =>
+  before?.anchor === after?.anchor && before?.userQuery === after?.userQuery;
+
 /** 生成从完整查询到末段的后缀搜索词，优先保留更多上下文。 */
 export const getCompletionSearchKeys = (query: string) => {
   const keys: string[] = [];
