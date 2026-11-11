@@ -89,5 +89,10 @@
   "migrations.20261111_rehome_subservice_connections.name": "Migrate subservice connections",
   "migrations.20261111_rehome_subservice_connections.description": "Backfill the Code Sandbox connection and MCP SSE switch once, preserving administrator settings and explicitly cleared values.",
   "migrations.20261111_rehome_subservice_connections.result": "Updated {{updatedDocuments}} subservice configuration documents.",
-  "migrations.20261111_rehome_subservice_connections.migrate": "Backfill subservice connections and switch"
+  "migrations.20261111_rehome_subservice_connections.migrate": "Backfill subservice connections and switch",
+  "migrations.20261111_backfill_model_deprecation_sms.name": "Backfill model deprecation SMS template",
+  "migrations.20261111_backfill_model_deprecation_sms.description": "Migrate the legacy model deprecation SMS template once, preserving administrator settings and explicit clears.",
+  "migrations.20261111_backfill_model_deprecation_sms.result": "Updated {{updatedDocuments}} authentication configuration documents.",
+  "migrations.20261111_backfill_model_deprecation_sms.backfill": "Backfill template",
+  "migrations.20261111_backfill_model_deprecation_sms.validation": "Validate template"
 }

@@ -813,6 +813,8 @@
   "unified_prefix_for_generated_openapi_keys_default_fastgpt_ch": "OpenAPI Key 생성 시 사용하는 통합 접두사 (기본 fastgpt). 변경 사항은 새로 생성되는 Key에만 적용되며 기존 Key는 영향을 받지 않습니다.",
   "system_wide_chat_requests_per_minute_limit_plan_limits_take": "시스템 수준 분당 대화 요청 제한 (사용자 플랜에 별도 제한이 있으면 플랜 제한 우선)",
   "max_single_websocket_package_size_between_the_terminal_and_t": "터미널과 샌드박스 통신의 단일 WebSocket 최대 패킷 크기",
+  "model_deprecation_chinese_template": "모델 서비스 종료 알림 · 중국어 템플릿",
+  "sms_template_id_for_model_deprecation_chinese": "모델 서비스 종료 알림용 중국어 SMS 템플릿 ID",
   "binding_notification_chinese_template": "바인딩 알림 · 중국어 템플릿",
   "sms_template_id_for_binding_notification_methods_chinese": "알림 방식 바인딩 시나리오 중국어 SMS 템플릿 ID",
   "end_time": "종료 시간",

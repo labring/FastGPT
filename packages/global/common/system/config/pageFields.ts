@@ -70,6 +70,7 @@ export const adminConfigPageFieldsMap: Record<string, readonly string[]> = {
     'auth.loginProviders.sms.resetPassword.zh',
     'auth.loginProviders.sms.changePassword.zh',
     'auth.loginProviders.sms.bindNotification.zh',
+    'auth.loginProviders.sms.modelDeprecation.zh',
     'auth.loginProviders.wechat.appId',
     'auth.loginProviders.wecom.suiteId',
     'auth.loginProviders.wecom.corpId',

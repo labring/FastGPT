@@ -14,6 +14,15 @@ import {
 } from '@fastgpt/global/common/system/config/registry';
 
 describe('Domain default config and overrides validation', () => {
+  it('defaults the model deprecation SMS template to empty and accepts a Chinese template ID', () => {
+    expect(getDomainDefaultConfig('auth').loginProviders.sms.modelDeprecation.zh).toBe('');
+    const overrides = { loginProviders: { sms: { modelDeprecation: { zh: 'SMS_MODEL_ID' } } } };
+    expect(parseDomainOverrides({ domain: 'auth', overrides })).toEqual(overrides);
+    expect(
+      resolveDomainEffectiveConfig({ domain: 'auth', overrides }).loginProviders.sms
+        .modelDeprecation.zh
+    ).toBe('SMS_MODEL_ID');
+  });
   it('validates only the sandbox and MCP connection base URLs', () => {
     for (const key of ['codeSandbox', 'mcp'] as const) {
       const field = key === 'codeSandbox' ? 'url' : 'sseProxyUrl';

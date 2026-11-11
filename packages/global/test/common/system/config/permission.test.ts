@@ -48,6 +48,10 @@ describe('Field permissions by edition', () => {
     expect(isConfigFieldAllowed('commercial.showCoupon', 'pro')).toBe(true);
     expect(isConfigFieldAllowed('commercial.payFormUrl', 'community')).toBe(false);
     expect(isConfigFieldAllowed('commercial.payFormUrl', 'pro')).toBe(true);
+    expect(isConfigFieldAllowed('auth.loginProviders.sms.modelDeprecation.zh', 'community')).toBe(
+      false
+    );
+    expect(isConfigFieldAllowed('auth.loginProviders.sms.modelDeprecation.zh', 'pro')).toBe(true);
 
     // subservice fields are pro-only
     expect(isConfigFieldAllowed('subservice.codeSandbox.enabled', 'community')).toBe(true);

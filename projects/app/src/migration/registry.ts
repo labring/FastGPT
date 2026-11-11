@@ -9,6 +9,7 @@ import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import type { ZodType } from 'zod';
 import { initializeDatasetVectorIndexes } from './tasks/4180/20261022_initialize_dataset_vector_indexes';
 import { migrateInstanceConfigs } from './tasks/4180/20260928_migrate_instance_configs';
+import { backfillModelDeprecationSmsTask } from './tasks/4180/20261111_backfill_model_deprecation_sms';
 import { cleanupInstanceConfigDeprecatedFieldsTask } from './tasks/4180/20260929_cleanup_instance_config_deprecated_fields';
 import { backfillChatPublishSource } from './tasks/4180/20261104_backfill_chat_publish_source';
 import { backfillOpenApiKeyType } from './tasks/4180/20261104_backfill_openapi_key_type';
@@ -285,6 +286,35 @@ export const systemMigrations = [
     dependsOn: ['20260929_cleanup_instance_config_deprecated_fields'],
     blockStartup: true,
     run: rehomeSubserviceConnectionsTask
+  },
+  {
+    id: '20261111_backfill_model_deprecation_sms',
+    version: '4.18.0',
+    nameKey: i18nT('system_migration:migrations.20261111_backfill_model_deprecation_sms.name'),
+    descriptionKey: i18nT(
+      'system_migration:migrations.20261111_backfill_model_deprecation_sms.description'
+    ),
+    resultKey: i18nT('system_migration:migrations.20261111_backfill_model_deprecation_sms.result'),
+    progressSteps: [
+      {
+        key: 'backfill',
+        labelKey: i18nT(
+          'system_migration:migrations.20261111_backfill_model_deprecation_sms.backfill'
+        )
+      },
+      {
+        key: 'validation',
+        labelKey: i18nT(
+          'system_migration:migrations.20261111_backfill_model_deprecation_sms.validation'
+        )
+      }
+    ],
+    dependsOn: [
+      '20260928_migrate_instance_configs',
+      '20260929_cleanup_instance_config_deprecated_fields'
+    ],
+    blockStartup: true,
+    run: backfillModelDeprecationSmsTask
   }
 ] as const satisfies readonly SystemMigration[];
 

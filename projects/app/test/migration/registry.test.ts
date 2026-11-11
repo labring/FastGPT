@@ -21,7 +21,8 @@ describe('validateSystemMigrationRegistry', () => {
       '20260928_migrate_instance_configs',
       '20260929_cleanup_instance_config_deprecated_fields',
       '20261110_backfill_external_file_check',
-      '20261111_rehome_subservice_connections'
+      '20261111_rehome_subservice_connections',
+      '20261111_backfill_model_deprecation_sms'
     ]);
     expect(
       systemMigrations.filter((task: SystemMigration) => task.delay).map(({ id }) => id)
@@ -39,23 +40,24 @@ describe('validateSystemMigrationRegistry', () => {
       '20260928_migrate_instance_configs',
       '20260929_cleanup_instance_config_deprecated_fields',
       '20261110_backfill_external_file_check',
-      '20261111_rehome_subservice_connections'
+      '20261111_rehome_subservice_connections',
+      '20261111_backfill_model_deprecation_sms'
     ]);
-    expect(systemMigrations.at(-4)).toMatchObject({
+    expect(systemMigrations.at(-5)).toMatchObject({
       id: '20260928_migrate_instance_configs',
       version: '4.18.0',
       blockStartup: true,
       progressSteps: [{ key: 'inspect' }, { key: 'migrate' }, { key: 'validate' }]
     });
-    expect(systemMigrations.at(-4)).not.toHaveProperty('resumable', true);
-    expect(systemMigrations.at(-3)).toMatchObject({
+    expect(systemMigrations.at(-5)).not.toHaveProperty('resumable', true);
+    expect(systemMigrations.at(-4)).toMatchObject({
       id: '20260929_cleanup_instance_config_deprecated_fields',
       version: '4.18.0',
       blockStartup: true,
       resumable: true,
       progressSteps: [{ key: 'cleanup' }, { key: 'validation' }]
     });
-    expect(systemMigrations.at(-2)).toMatchObject({
+    expect(systemMigrations.at(-3)).toMatchObject({
       id: '20261110_backfill_external_file_check',
       blockStartup: true,
       dependsOn: [
@@ -63,6 +65,16 @@ describe('validateSystemMigrationRegistry', () => {
         '20260929_cleanup_instance_config_deprecated_fields'
       ]
     });
+    expect(systemMigrations.at(-1)).toMatchObject({
+      id: '20261111_backfill_model_deprecation_sms',
+      blockStartup: true,
+      dependsOn: [
+        '20260928_migrate_instance_configs',
+        '20260929_cleanup_instance_config_deprecated_fields'
+      ],
+      progressSteps: [{ key: 'backfill' }, { key: 'validation' }]
+    });
+    expect(systemMigrations.at(-1)).not.toHaveProperty('resumable', true);
     expect(() => validateSystemMigrationRegistry(systemMigrations)).not.toThrow();
   });
 

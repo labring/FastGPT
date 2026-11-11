@@ -89,5 +89,10 @@
   "migrations.20261111_rehome_subservice_connections.name": "하위 서비스 연결 설정 마이그레이션",
   "migrations.20261111_rehome_subservice_connections.description": "Code Sandbox 연결과 MCP SSE 스위치를 한 번 채우고 관리자가 설정하거나 명시적으로 비운 값을 유지합니다.",
   "migrations.20261111_rehome_subservice_connections.result": "하위 서비스 설정 문서 {{updatedDocuments}}개를 업데이트했습니다.",
-  "migrations.20261111_rehome_subservice_connections.migrate": "하위 서비스 연결 및 스위치 채우기"
+  "migrations.20261111_rehome_subservice_connections.migrate": "하위 서비스 연결 및 스위치 채우기",
+  "migrations.20261111_backfill_model_deprecation_sms.name": "모델 서비스 종료 SMS 템플릿 이전",
+  "migrations.20261111_backfill_model_deprecation_sms.description": "기존 모델 서비스 종료 SMS 템플릿을 한 번 이전하고 관리자 설정과 명시적으로 비운 값을 유지합니다.",
+  "migrations.20261111_backfill_model_deprecation_sms.result": "인증 설정 문서 {{updatedDocuments}}개를 업데이트했습니다.",
+  "migrations.20261111_backfill_model_deprecation_sms.backfill": "템플릿 채우기",
+  "migrations.20261111_backfill_model_deprecation_sms.validation": "템플릿 검증"
 }
