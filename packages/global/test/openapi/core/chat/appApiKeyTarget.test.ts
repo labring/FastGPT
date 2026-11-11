@@ -114,6 +114,7 @@ const cases: [string, z.ZodType, Record<string, unknown>][] = [
   ['/core/dataset/collection/export', ExportCollectionBodySchema, { ...quote, collectionId: id }],
   ['/core/dataset/data/getQuoteData', GetQuoteDataBodySchema, { ...quote, id }],
   ['/core/app/logs/list', log.GetAppChatLogsBodySchema, dates],
+  ['/core/app/logs/search', log.SearchAppChatLogsBodySchema, dates],
   [
     '/core/app/logs/exportLogs',
     log.ExportChatLogsBodySchema,
