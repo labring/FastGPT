@@ -1,9 +1,10 @@
 /**
  * 沙盒业务层：为运行态 sandbox 准备包管理器镜像源。
  *
- * 负责根据环境配置写入 npm/pip/uv/apt 等镜像文件，不处理 Skill 包部署。
+ * 负责根据实例配置写入 npm/pip/uv/apt 等镜像文件，不处理 Skill 包部署。
  */
 import type { ISandbox } from '@fastgpt-sdk/sandbox-adapter';
+import { z } from 'zod';
 import { getLogger, LogCategories } from '../../../../../common/logger';
 import { getAgentSandboxCommonConfig } from '../../config';
 import { buildRuntimeHash, joinSandboxPath } from '../../utils';
@@ -28,6 +29,19 @@ const APT_SOURCE_PATHS = {
   ubuntu: '/etc/apt/sources.list.d/ubuntu.sources'
 } as const;
 const SANDBOX_MIRROR_COPY_SUFFIX = '.copy';
+const MirrorFileMarkerSchema = z.strictObject({
+  version: z.literal(1),
+  path: z.string(),
+  origin: z.enum(['created', 'backup', 'legacyBackup']),
+  backupHash: z
+    .string()
+    .regex(/^sha256:[a-f0-9]{64}$/)
+    .optional(),
+  hashes: z
+    .array(z.string().regex(/^sha256:[a-f0-9]{64}$/))
+    .min(1)
+    .max(2)
+});
 
 type SandboxRuntimeMirrorGroup = 'npm' | 'pypi' | 'apt';
 type SandboxAptDistribution = 'ubuntu' | 'debian';
@@ -74,10 +88,14 @@ export const prepareSandboxRuntimeMirrors = async ({
   if (!stateContext.statePath) return;
 
   const aptMirrorHash = buildRuntimeHash(normalizedConfig.aptMirror ?? '');
-  const aptMirrorSynchronized =
-    getRuntimeStateValue(stateContext.state, SANDBOX_MIRROR_STATE_HASH_KEYS.apt) === aptMirrorHash;
+  const previousAptHash = getRuntimeStateValue(
+    stateContext.state,
+    SANDBOX_MIRROR_STATE_HASH_KEYS.apt
+  );
+  const aptMirrorSynchronized = previousAptHash === aptMirrorHash;
   const aptPlatform =
-    normalizedConfig.aptMirror && !aptMirrorSynchronized
+    !aptMirrorSynchronized &&
+    (normalizedConfig.aptMirror || (previousAptHash && previousAptHash !== buildRuntimeHash('')))
       ? await resolveSandboxAptPlatform(sandbox)
       : undefined;
 
@@ -113,7 +131,8 @@ export const prepareSandboxRuntimeMirrors = async ({
       group: 'apt',
       stateKey: SANDBOX_MIRROR_STATE_HASH_KEYS.apt,
       value: normalizedConfig.aptMirror,
-      managedPaths: mirrorPaths.apt,
+      // 只处理当前发行版的源文件，不能误动另一发行版的用户文件。
+      managedPaths: aptPlatform ? [APT_SOURCE_PATHS[aptPlatform.distribution]] : mirrorPaths.apt,
       files: files.apt
     }
   ];
@@ -121,23 +140,43 @@ export const prepareSandboxRuntimeMirrors = async ({
   let stateDirty = false;
   for (const mirrorGroup of mirrorGroups) {
     const configHash = buildRuntimeHash(mirrorGroup.value ?? '');
-    if (getRuntimeStateValue(stateContext.state, mirrorGroup.stateKey) === configHash) {
+    const previousHash = getRuntimeStateValue(stateContext.state, mirrorGroup.stateKey);
+    if (mirrorGroup.value && previousHash === configHash) {
       continue;
     }
 
     // APT 无法识别发行版时只跳过 APT，保留旧状态让下一次调用继续重试。
-    if (mirrorGroup.group === 'apt' && mirrorGroup.value && !aptPlatform) continue;
+    if (
+      mirrorGroup.group === 'apt' &&
+      !aptMirrorSynchronized &&
+      (mirrorGroup.value || (previousHash && previousHash !== buildRuntimeHash(''))) &&
+      !aptPlatform
+    )
+      continue;
 
     const synchronized = await new SandboxRuntimeMirrorFileManager(
-      mirrorGroup.managedPaths
+      mirrorGroup.managedPaths,
+      joinSandboxPath(homeDirectory, '.fastgpt/runtime/mirrors')
     ).synchronize({
       sandbox,
-      files: mirrorGroup.files
+      files: mirrorGroup.files,
+      previouslyActive: Boolean(previousHash) && previousHash !== buildRuntimeHash(''),
+      legacyActivePaths:
+        mirrorGroup.group === 'apt' && aptPlatform
+          ? [APT_SOURCE_PATHS[aptPlatform.distribution]]
+          : mirrorGroup.managedPaths
     });
-    if (!synchronized) continue;
+    if (!synchronized) {
+      logger.warn('[Sandbox Runtime] Mirror files not synchronized; will retry', {
+        group: mirrorGroup.group
+      });
+      continue;
+    }
 
-    setRuntimeStateValue(stateContext.state, mirrorGroup.stateKey, configHash);
-    stateDirty = true;
+    if (previousHash !== configHash) {
+      setRuntimeStateValue(stateContext.state, mirrorGroup.stateKey, configHash);
+      stateDirty = true;
+    }
   }
 
   if (stateDirty) await writeSandboxRuntimeState(sandbox, stateContext);
@@ -203,74 +242,241 @@ const getSandboxRuntimeMirrorPaths = (homeDirectory: string) => ({
   apt: Object.values(APT_SOURCE_PATHS)
 });
 
-/** 统一处理镜像文件的备份、写入和环境变量删除后的恢复。 */
+/** 统一处理镜像文件的备份、写入和配置清空后的恢复。 */
 class SandboxRuntimeMirrorFileManager {
-  constructor(private readonly managedPaths: readonly string[]) {}
+  constructor(
+    private readonly managedPaths: readonly string[],
+    private readonly markerDirectory: string
+  ) {}
 
   /**
-   * 配置变化时先读取目标文件和备份文件；目标存在且没有备份时只备份一次，
-   * 配置未生成目标文件时则恢复已有备份，没有备份的文件保持不变。
+   * 先保存备份和来源标记，再覆盖目标。清空时只删除有标记且内容仍匹配的自建文件；
+   * 未知来源的旧文件保留，并让调用方继续重试而不是把清空状态记为成功。
    */
   async synchronize({
     sandbox,
-    files
+    files,
+    previouslyActive,
+    legacyActivePaths
   }: {
     sandbox: ISandbox;
     files: SandboxRuntimeMirrorFile[];
+    previouslyActive: boolean;
+    legacyActivePaths: readonly string[];
   }): Promise<boolean> {
-    const activePaths = new Set(files.map(({ path }) => path));
-    const restorePaths = this.managedPaths.filter((path) => !activePaths.has(path));
-    const readPaths = Array.from(
-      new Set([
-        ...files.map(({ path }) => path),
-        ...this.managedPaths.map((path) => this.getCopyPath(path))
-      ])
-    );
-    const readResults = await sandbox.readFiles(readPaths).catch((error) => {
-      logger.warn('[Sandbox Runtime] Failed to read mirror config files', { error });
+    const paths = this.managedPaths.flatMap((path) => [
+      path,
+      this.getCopyPath(path),
+      this.getMarkerPath(path),
+      this.getBackupPath(path)
+    ]);
+    // readFiles 的 error 不区分缺失与权限/传输错误；只有 stat 明确缺失才能视作不存在。
+    const info = await sandbox.getFileInfo(paths).catch((error) => {
+      logger.warn('[Sandbox Runtime] Failed to inspect mirror config files', { error });
       return undefined;
     });
-    if (!readResults) return false;
+    if (!info || [...info.values()].some((item) => item.isDirectory || item.isSymlink))
+      return false;
 
-    const contents = new Map(
-      readResults
-        .filter(({ error }) => !error)
-        .map(({ path, content }) => [path, Buffer.from(content).toString('utf-8')])
-    );
-    const backupFiles = files.flatMap(({ path }) => {
-      const copyPath = this.getCopyPath(path);
-      if (contents.has(copyPath) || !contents.has(path)) return [];
-      return [{ path: copyPath, data: contents.get(path)! }];
-    });
-    const restoreFiles = restorePaths.flatMap((path) => {
-      const copyPath = this.getCopyPath(path);
-      return contents.has(copyPath) ? [{ path, data: contents.get(copyPath)! }] : [];
-    });
-    const writes = [...backupFiles, ...files, ...restoreFiles];
-    if (writes.length === 0) return true;
-
-    const writeResults = await prepareSandboxFileParentDirectories(
-      sandbox,
-      writes.map(({ path }) => path)
+    const existingPaths = paths.filter((path) => info.has(path));
+    const readResults = await sandbox.readFiles(existingPaths).catch(() => undefined);
+    if (
+      !readResults ||
+      readResults.length !== existingPaths.length ||
+      readResults.some((result, index) => result.error || result.path !== existingPaths[index])
     )
-      .then(() => sandbox.writeFiles(writes))
-      .catch((error) => {
-        logger.warn('[Sandbox Runtime] Failed to write mirror config files', { error });
-        return undefined;
-      });
-    const failedWrite = writeResults?.find((result) => result.error);
-    if (!writeResults || failedWrite) {
-      logger.warn('[Sandbox Runtime] Failed to write mirror config files', {
-        path: failedWrite?.path,
-        error: failedWrite?.error
-      });
+      return false;
+    const contents = new Map(readResults.map(({ path, content }) => [path, content]));
+
+    const markers = new Map<string, z.infer<typeof MirrorFileMarkerSchema>>();
+    for (const path of this.managedPaths) {
+      const raw = contents.get(this.getMarkerPath(path));
+      if (!raw) continue;
+      try {
+        const marker = MirrorFileMarkerSchema.parse(JSON.parse(Buffer.from(raw).toString('utf8')));
+        if (marker.path !== path) return false;
+        markers.set(path, marker);
+      } catch {
+        // 无法证明来源的标记或文件均不能覆盖或删除。
+        return false;
+      }
+    }
+
+    const write = async (entries: Array<{ path: string; data: string | Uint8Array }>) => {
+      if (entries.length === 0) return true;
+      const results = await prepareSandboxFileParentDirectories(
+        sandbox,
+        entries.map(({ path }) => path)
+      )
+        .then(() => sandbox.writeFiles(entries))
+        .catch(() => undefined);
+      return Boolean(
+        results &&
+        results.length === entries.length &&
+        results.every((result, index) => !result.error && result.path === entries[index].path)
+      );
+    };
+    const remove = async (paths: string[]) => {
+      if (paths.length === 0) return true;
+      const results = await sandbox.deleteFiles(paths).catch(() => undefined);
+      return Boolean(
+        results &&
+        results.length === paths.length &&
+        results.every(
+          (result, index) => result.success && !result.error && result.path === paths[index]
+        )
+      );
+    };
+    if (files.length > 0) {
+      const backups: Array<{ path: string; data: Uint8Array }> = [];
+      const markerWrites: Array<{ path: string; data: string }> = [];
+      for (const file of files) {
+        const copyPath = this.getCopyPath(file.path);
+        const backupPath = this.getBackupPath(file.path);
+        const content = contents.get(file.path);
+        const marker = markers.get(file.path);
+        const copy = contents.get(copyPath);
+        const backup = contents.get(backupPath);
+        if (
+          marker?.origin === 'backup' &&
+          !backup &&
+          (!content || !marker.backupHash || buildRuntimeHash(content) !== marker.backupHash)
+        )
+          return false;
+        if (marker?.origin === 'legacyBackup' && !copy) return false;
+
+        // 自建文件被用户修改后，先把修改作为新的原始文件备份。
+        const userFile = content && (!marker || !marker.hashes.includes(buildRuntimeHash(content)));
+        const legacyBackup =
+          !marker && previouslyActive && legacyActivePaths.includes(file.path) && copy;
+        // 用户更改了受管的已有文件时不覆盖其编辑；先等待清空阶段保留编辑内容。
+        if (
+          userFile &&
+          (marker?.origin === 'backup' || marker?.origin === 'legacyBackup') &&
+          (!marker.backupHash || buildRuntimeHash(content) !== marker.backupHash)
+        )
+          return false;
+        if (
+          marker?.origin === 'backup' &&
+          backup &&
+          (!marker.backupHash || buildRuntimeHash(backup) !== marker.backupHash)
+        )
+          return false;
+        if (
+          marker?.origin === 'legacyBackup' &&
+          copy &&
+          (!marker.backupHash || buildRuntimeHash(copy) !== marker.backupHash)
+        )
+          return false;
+        const needsBackup =
+          userFile &&
+          !legacyBackup &&
+          marker?.origin !== 'legacyBackup' &&
+          (marker?.origin !== 'backup' || !backup);
+        if (needsBackup) {
+          // 不覆盖未知来源的同名备份；失败后的遗留文件须保守处理。
+          if (backup) return false;
+          backups.push({ path: backupPath, data: content });
+        }
+        const origin = legacyBackup
+          ? 'legacyBackup'
+          : needsBackup
+            ? 'backup'
+            : (marker?.origin ?? 'created');
+        const backupHash = needsBackup
+          ? buildRuntimeHash(content)
+          : (marker?.backupHash ?? (legacyBackup ? buildRuntimeHash(legacyBackup) : undefined));
+        const currentHash =
+          content && marker?.hashes.includes(buildRuntimeHash(content))
+            ? buildRuntimeHash(content)
+            : undefined;
+        const hashes = [
+          ...new Set(
+            [currentHash, buildRuntimeHash(file.data)].filter((hash): hash is string =>
+              Boolean(hash)
+            )
+          )
+        ];
+        markerWrites.push({
+          path: this.getMarkerPath(file.path),
+          data: JSON.stringify({ version: 1, path: file.path, origin, hashes, backupHash })
+        });
+      }
+      // 先记录来源，再落备份，最后覆盖目标；任一步失败后可按标记安全重试。
+      return (await write(markerWrites)) && (await write(backups)) && (await write(files));
+    }
+
+    const restores: Array<{ path: string; data: Uint8Array }> = [];
+    const generatedFiles: string[] = [];
+    const backupsToRemove: string[] = [];
+    const markersToRemove: string[] = [];
+    let unknownLegacyFile = false;
+    for (const path of this.managedPaths) {
+      const marker = markers.get(path);
+      const content = contents.get(path);
+      const copy = contents.get(this.getCopyPath(path));
+      const backup = contents.get(this.getBackupPath(path));
+      if (marker?.origin === 'backup' || marker?.origin === 'legacyBackup') {
+        const original = marker.origin === 'backup' ? backup : copy;
+        if (!marker.backupHash) return false;
+        // 上次可能已恢复并删除备份、但删除标记失败；校验恢复内容后即可继续收尾。
+        if (!original) {
+          if (!content || buildRuntimeHash(content) !== marker.backupHash) return false;
+        } else if (buildRuntimeHash(original) !== marker.backupHash) {
+          // 原文件尚未覆盖时允许移除不完整备份；后续重试不再接触用户内容。
+          if (!content || buildRuntimeHash(content) !== marker.backupHash) return false;
+          if (marker.origin === 'backup') backupsToRemove.push(this.getBackupPath(path));
+          markersToRemove.push(this.getMarkerPath(path));
+          continue;
+        }
+        // 只恢复被本功能覆盖的内容；管理员或用户中途改写后应保留现有文件。
+        if (original && (!content || marker.hashes.includes(buildRuntimeHash(content)))) {
+          restores.push({ path, data: original });
+        }
+        if (marker.origin === 'backup' && original) backupsToRemove.push(this.getBackupPath(path));
+      } else if (copy && !marker && previouslyActive && legacyActivePaths.includes(path)) {
+        restores.push({ path, data: copy });
+      } else if (
+        marker?.origin === 'created' &&
+        content &&
+        marker.hashes.includes(buildRuntimeHash(content))
+      ) {
+        generatedFiles.push(path);
+      } else if (
+        !marker &&
+        !copy &&
+        content &&
+        previouslyActive &&
+        legacyActivePaths.includes(path)
+      ) {
+        // 旧版没有来源标记，无法安全判断是否由 FastGPT 创建。
+        unknownLegacyFile = true;
+      }
+      if (marker) markersToRemove.push(this.getMarkerPath(path));
+    }
+
+    // 已恢复的备份和已删除的文件可重试；任何一步失败都保留该组旧 hash。
+    if (
+      !(await write(restores)) ||
+      !(await remove(generatedFiles)) ||
+      !(await remove(backupsToRemove)) ||
+      !(await remove(markersToRemove))
+    ) {
       return false;
     }
-    return true;
+    return !unknownLegacyFile;
   }
 
   private getCopyPath(path: string): string {
     return `${path}${SANDBOX_MIRROR_COPY_SUFFIX}`;
+  }
+
+  private getMarkerPath(path: string): string {
+    return joinSandboxPath(this.markerDirectory, `${buildRuntimeHash(path).slice(7)}.json`);
+  }
+
+  private getBackupPath(path: string): string {
+    return joinSandboxPath(this.markerDirectory, `${buildRuntimeHash(path).slice(7)}.backup`);
   }
 }
 

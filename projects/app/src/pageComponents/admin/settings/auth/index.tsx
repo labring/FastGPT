@@ -366,6 +366,15 @@ const AuthSettingComponent = () => {
                 placeholder="SMS_xxx"
               />
             </AdminFormItem>
+            <AdminFormItem
+              label={t('admin:model_deprecation_chinese_template')}
+              tooltip={t('admin:sms_template_id_for_model_deprecation_chinese')}
+            >
+              <Input
+                {...register('loginProviders.sms.modelDeprecation.zh')}
+                placeholder="SMS_xxx"
+              />
+            </AdminFormItem>
           </SimpleGrid>
         </AdminSettingSection>
       )}

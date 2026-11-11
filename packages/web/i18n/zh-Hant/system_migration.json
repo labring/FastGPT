@@ -89,5 +89,10 @@
   "migrations.20261111_rehome_subservice_connections.name": "遷移子服務連線設定",
   "migrations.20261111_rehome_subservice_connections.description": "一次性回填 Code Sandbox 連線和 MCP SSE 開關，保留管理員現有設定與明確清空的值。",
   "migrations.20261111_rehome_subservice_connections.result": "已更新 {{updatedDocuments}} 筆子服務設定。",
-  "migrations.20261111_rehome_subservice_connections.migrate": "回填子服務連線與開關"
+  "migrations.20261111_rehome_subservice_connections.migrate": "回填子服務連線與開關",
+  "migrations.20261111_backfill_model_deprecation_sms.name": "回填模型下架簡訊範本",
+  "migrations.20261111_backfill_model_deprecation_sms.description": "一次性遷移舊模型下架簡訊範本，保留管理員設定與明確清空的值。",
+  "migrations.20261111_backfill_model_deprecation_sms.result": "已更新 {{updatedDocuments}} 筆認證設定。",
+  "migrations.20261111_backfill_model_deprecation_sms.backfill": "回填範本",
+  "migrations.20261111_backfill_model_deprecation_sms.validation": "驗證範本"
 }

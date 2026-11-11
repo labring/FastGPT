@@ -89,5 +89,10 @@
   "migrations.20261111_rehome_subservice_connections.name": "迁移子服务连接配置",
   "migrations.20261111_rehome_subservice_connections.description": "一次性回填 Code Sandbox 连接和 MCP SSE 开关，保留管理员已有配置与显式清空。",
   "migrations.20261111_rehome_subservice_connections.result": "已更新 {{updatedDocuments}} 条子服务配置。",
-  "migrations.20261111_rehome_subservice_connections.migrate": "回填子服务连接与开关"
+  "migrations.20261111_rehome_subservice_connections.migrate": "回填子服务连接与开关",
+  "migrations.20261111_backfill_model_deprecation_sms.name": "回填模型下架短信模板",
+  "migrations.20261111_backfill_model_deprecation_sms.description": "一次性迁移旧模型下架短信模板，保留管理员设置和显式清空。",
+  "migrations.20261111_backfill_model_deprecation_sms.result": "已更新 {{updatedDocuments}} 条认证配置。",
+  "migrations.20261111_backfill_model_deprecation_sms.backfill": "回填模板",
+  "migrations.20261111_backfill_model_deprecation_sms.validation": "验证模板"
 }

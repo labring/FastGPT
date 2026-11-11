@@ -813,6 +813,8 @@
   "unified_prefix_for_generated_openapi_keys_default_fastgpt_ch": "系统生成 OpenAPI Key 时的统一前缀（默认 fastgpt）。修改仅对后续新创建的 API Key 生效，已生成的历史 Key 不受影响。",
   "system_wide_chat_requests_per_minute_limit_plan_limits_take": "系统级对话每分钟请求量上限（若用户套餐有独立限制则优先执行套餐限制）",
   "max_single_websocket_package_size_between_the_terminal_and_t": "终端与沙箱通信的单次 WebSocket 最大包体大小",
+  "model_deprecation_chinese_template": "模型下架通知 · 中文模板",
+  "sms_template_id_for_model_deprecation_chinese": "模型下架通知的中文短信模板 ID",
   "binding_notification_chinese_template": "绑定通知 · 中文模板",
   "sms_template_id_for_binding_notification_methods_chinese": "绑定通知方式场景中文短信模板 ID",
   "end_time": "结束时间",

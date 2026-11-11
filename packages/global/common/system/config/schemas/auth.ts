@@ -1,7 +1,7 @@
 import z from 'zod';
 import { positiveInteger, textWithDefault, urlWithDefault } from './primitives';
 
-/** 账号验证类短信模板（登录、注册、找回、绑定、注销）。 */
+/** 短信模板仅保存中文模板 ID。 */
 const SmsTemplateConfigSchema = z.strictObject({
   zh: z.string().max(2000).default('')
 });

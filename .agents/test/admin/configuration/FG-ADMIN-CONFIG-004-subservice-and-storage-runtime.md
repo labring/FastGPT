@@ -39,6 +39,10 @@ sources:
   - "packages/service/core/workflow/dispatch/tools/codeSandbox.ts"
   - "packages/service/thirdProvider/codeSandbox/index.ts"
   - "packages/service/core/ai/sandbox/config.ts"
+  - "packages/service/core/ai/sandbox/application/toolCall/index.ts"
+  - "packages/service/core/ai/sandbox/application/runtime/prepare.ts"
+  - "packages/service/core/ai/sandbox/application/runtime/mirrors.ts"
+  - "sdk/sandbox-adapter/src/adapters/opensandbox/adapter.ts"
   - "packages/service/common/s3/config/constants.ts"
   - "packages/service/common/s3/config/utils.ts"
   - "packages/service/common/s3/index.ts"
@@ -59,13 +63,14 @@ routes:
   - "POST /api/admin/system/config/update"
   - "POST /api/admin/system/config/probe"
   - "POST /api/v1/chat/completions"
+  - "POST /api/core/workflow/debug"
   - "GET /api/common/system/getInitData"
   - "GET /api/system/file/d/{signedAlias}"
   - "GET /api/system/img/{id}"
 related:
   - "FG-ADMIN-CONFIG-001"
   - "FG-ADMIN-CONFIG-003"
-baseline: "ab2ad2fa4bbd069fa3cf6c1e61cc7aaadc6d3da7"
+baseline: "e3c79af52eb772e7318e829f0cadcce558bd9a40"
 ---
 
 # 子服务与存储策略：AI Proxy、代码沙箱与下载模式
@@ -80,7 +85,8 @@ baseline: "ab2ad2fa4bbd069fa3cf6c1e61cc7aaadc6d3da7"
 - 测试数据：记录 `subservice`、`storage` 的 revision 和当前值；记录 `AIPROXY_API_TOKEN`、`PLUGIN_TOKEN` 是否存在（只记录存在性，不记录凭据），记录 AI Proxy mock 请求计数、code-sandbox 请求计数、MinIO/R2 endpoint、当前 `STORAGE_VENDOR`、`FILE_DOWNLOAD_PUBLIC_URL_PREFIX`。准备短链所需的真实文件对象和头像对象，所有对象键带本次 run 前缀。
 - 复位约定：每个子场景结束后通过 Admin API 恢复 D0（端点、enabled、MCP 地址），恢复本轮修改过的 ENV 并重启；删除测试对象。AI Proxy 缺少 ENV 后的外呼可能失败，不要求模型回答成功，只要求没有发往 mock、没有携带 Token。C8 修改 endpoint 后要恢复并确认 bucket 使用新配置。
 - 验证能力：浏览器可操作子服务页/核心配置页并读取 Toast；fake AI Proxy、fake code-sandbox 和 MCP mock 记录请求；Mongo 只读查询配置；对象存储可查询对象；日志按 requestId/时间窗读取 `getAiProxyBaseUrl`、`S3` 等 callsite。不得在文档保存 mock 的 Authorization 原值。
-- 条件范围：C7 接口拒绝可能映射为 500，本例验收“拒绝且零写入”，不把具体拒绝状态码作为契约。若环境无法把系统模型外呼固定到 mock（例如出口代理不可控），C2/C3 记录阻塞；无可用 provider 或 R2 时仅记录相应变体未执行，不冒充真实服务通过。
+- 条件范围：C7 以有效 D0 为基线，本次提交造成的非法组合应返回 HTTP/业务 code 400 且零写入；库中原有坏数据引发的内部错误不属于这些变体。若环境无法把系统模型外呼固定到 mock（例如出口代理不可控），C2/C3 记录阻塞；无可用 provider 或 R2 时仅记录相应变体未执行，不冒充真实服务通过。
+- C12 夹具：使用仅属于本轮隔离测试库的 App、零价合成模型和 OpenSandbox 协议 mock；mock 的文件仅在内存中，预置 Debian 的 `/etc/os-release` 和部分 npm、pip、apt 原始文件，另有部分目标文件不存在。控制模型及 provider 端点只监听回环地址，记录本轮资源 ID，串行独占配置，保存并恢复加密快照；mock 不执行未声明的命令或创建容器、卷。
 
 ## 测试步骤
 
@@ -97,6 +103,7 @@ baseline: "ab2ad2fa4bbd069fa3cf6c1e61cc7aaadc6d3da7"
 | C9 | 边界；头像对象已上传 | 在 short-redirect 与 short-proxy 下分别请求同一头像 URL；记录 301/200、Location host 和字节内容。 |
 | C10 | 基础；MCP mock 可用，D0 | 打开 `/admin/subservice/mcp`，启用开关、把 `subservice.mcp.sseProxyUrl` 设为 MCP mock 地址并保存；点击页面连通测试并读取初始化配置及工作台 SSE 发布选项。再关闭开关保存并重复读取，最后重新开启检查地址是否保留。 |
 | C11 | 页面/异常；D0 | 核对子服务菜单无 Plugin/AI Proxy，MCP 名称为“MCP SSE 服务”。分别关闭 Code Sandbox/MCP 后检查隐藏字段；开启后尝试空字段保存，再填写合法 URL/Token 保存并刷新；探测有效服务、错误 Token、普通 HTTP 冒充服务和不可达地址。提交 query/hash/账号密码或非 HTTP(S) 的 base URL，观察拒绝；探测中修改 URL/Token，旧结果不得覆盖当前输入。 |
+| C12 | 边界；商业版隔离 App 和 OpenSandbox 协议 mock | 依次通过真实配置 API 设置 `agentSandbox.common.npmRegistry/pypiIndexUrl/aptMirror` 为受控值 A、B、空值；每次等待配置刷新，再以同一 App/chat 调用包含 `useAgentSandbox=true` ToolCall 节点的 workflow debug，读取 mock 中的文件、备份、来源标记与运行态状态。B 生效后人工改写一个受管的自建文件，再清空配置。结束后按本轮 ID 清理模型、会话和沙箱记录并恢复配置。 |
 
 ## 预期结果
 
@@ -110,8 +117,9 @@ baseline: "ab2ad2fa4bbd069fa3cf6c1e61cc7aaadc6d3da7"
 | C4 | UI + DB | 空 baseUrl 的 provider 保存被拒绝、无成功 Toast、revision 不变；有效 baseUrl 保存成功；`none` 保存成功。重启后 provider 读取为 DB 值；没有真实 provider 时不能把“配置已保存”当成沙箱可运行。 | 保存响应/Toast、DB、重启后 sandbox 能力/日志。 |
 | C5 | API + storage | 短链返回 HTTP 200，无 `Location`，正文哈希与上传文件一致；响应由 FastGPT 代理，不把对象存储内部地址暴露给客户端。 | 短链响应、对象存储对象、哈希。 |
 | C6 | API + storage | 短链返回 302，`Cache-Control: no-store`，Location 的 host 为 externalEndpoint（配置 CDN 时为 CDN host），带预签名参数；TTL 不超过 5 秒且不超过短链本身剩余有效期；跟随 Location 下载的字节与原文一致。 | 两次 HTTP 响应、Location 解析、下载哈希。 |
-| C7 | API + DB | 7a/7b/7c 均被拒绝，storage revision 不变；7d 成功并保存 mode/endpoint。拒绝状态码按实现记录（当前可能为 500，业务期望 400），本用例不把错误码写成已确认契约。 | update 响应、storage 文档。 |
+| C7 | API + DB | 7a/7b/7c 均返回 HTTP/业务 code 400，storage revision 不变；7d 成功并保存 mode/endpoint。 | update 响应、storage 文档。 |
 | C8 | API + storage + DB | 改 endpoint 后无需重启，新短链和旧短链都按当前 DB endpoint 生成 Location；S3 bucket/头像单例已重建，不继续使用旧 host。把 ENV 改为 short-proxy 并重启后仍返回 302，证明 ENV 不覆盖 DB。 | Location host、旧/新短链响应、重启后结果、日志。 |
 | C9 | API + storage | short-redirect 下头像请求返回 301，Location 指向公开存储/CDN host；short-proxy 下返回 200 和图片字节。两种模式都不应把私有 bucket 签名永久写入业务数据。 | 头像响应、对象键、DB site 引用。 |
 | C10 | UI + API + DB | 开启且有效地址保存后，DB enabled=true、地址更新，`getInitData` 的 `feConfigs.mcpServerProxyEndpoint` 为新值，页面探测收到符合 MCP SSE 协议的 endpoint 事件后主动断开；工作台出现 SSE 选项。关闭后隐藏地址表单和 SSE 选项，初始化投影不再包含旧地址；再次开启后原地址可回显。HTTP 发布方式始终可用。 | 页面 Toast/测试结果、`getInitData` 响应、subservice 文档。 |
 | C11 | UI + API + DB | 关闭时仅显示启用开关；启用时显示对应 URL，沙箱另显示密码 Token 及一级连通测试按钮。必填为空不得提交；保存刷新正确回显且 Token 为掩码，原有 Agent Sandbox 等兄弟配置保持。有效服务探测成功，错误 Token/协议响应失败，网络错误分类明确且不含凭据；非法 base URL 被拒绝且无配置写入。修改输入后旧探测结果消失，迟到响应不能标记当前输入成功；Plugin/AI Proxy 页面不可访问。 | 截图、脱敏响应、前后 DB 对照、mock 请求与断连记录。 |
+| C12 | API + DB + mock | A、B 两次分别通过真实 SDK 在同一 mock 文件系统写入 npm、pip/uv 与 Debian apt 的对应新地址，原文件备份及来源标记正确；清空后原有文件逐字节恢复、未被用户修改的自建文件删除、B 后人工改写的文件保留。运行态 marker 反映各阶段状态；其他 10 个配置域及非本轮资源不变。测试结束后配置恢复，mock 不再监听且没有本轮沙箱/模型残留。 | 配置 API revision、workflow debug 响应、SDK 协议事件、内存文件/marker 的脱敏比较、Mongo 精确查询及恢复结果。 |

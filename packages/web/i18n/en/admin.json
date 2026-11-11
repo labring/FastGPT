@@ -813,6 +813,8 @@
   "unified_prefix_for_generated_openapi_keys_default_fastgpt_ch": "Unified prefix for generated OpenAPI Keys (default fastgpt). Changes apply only to newly created keys; existing keys are unaffected.",
   "system_wide_chat_requests_per_minute_limit_plan_limits_take": "System-wide chat requests per minute limit (plan limits take precedence when set)",
   "max_single_websocket_package_size_between_the_terminal_and_t": "Max single WebSocket package size between the terminal and the sandbox",
+  "model_deprecation_chinese_template": "Model Deprecation · Chinese Template",
+  "sms_template_id_for_model_deprecation_chinese": "Chinese SMS template ID for model deprecation notices",
   "binding_notification_chinese_template": "Binding Notification · Chinese Template",
   "sms_template_id_for_binding_notification_methods_chinese": "SMS template ID for binding notification methods (Chinese)",
   "end_time": "End Time",
