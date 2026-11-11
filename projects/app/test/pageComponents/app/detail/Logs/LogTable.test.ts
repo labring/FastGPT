@@ -18,6 +18,7 @@ vi.mock('@/web/common/system/utils', () => ({ downloadFetch: vi.fn() }));
 vi.mock('@/web/core/app/api/log', () => ({
   getLogKeys: vi.fn(async () => ({ logKeys: [] })),
   getAppChatLogs: vi.fn(),
+  searchAppChatLogs: vi.fn(),
   updateLogKeys: vi.fn()
 }));
 vi.mock('@fastgpt/web/hooks/useRequest', async () => {
@@ -52,6 +53,9 @@ vi.mock('@fastgpt/web/hooks/usePagination', () => ({
 vi.mock('@fastgpt/web/hooks/useTableMultipleSelect', () => ({
   useTableMultipleSelect: () => ({
     selectedItems: [],
+    setSelectedItems: vi.fn(),
+    isSelecteAll: false,
+    selectAllTrigger: vi.fn(),
     isSelected: () => false,
     getRowSelectionProps: (_item: any, props: any) => props,
     FloatingActionBar: () => null
@@ -84,6 +88,17 @@ vi.mock('@fastgpt/web/components/common/Icon', async () => {
   return {
     default: ({ name, onClick }: any) =>
       onClick ? React.createElement('button', { onClick, 'aria-label': name }, name) : null
+  };
+});
+vi.mock('@fastgpt/web/components/common/TagFilter', async () => {
+  const React = await import('react');
+  return {
+    FilterInput: ({ value = '', onChange, ...props }: any) =>
+      React.createElement('input', { ...props, value, onChange }),
+    MultiSelectFilter: () => null,
+    createMultiSelectFilter: () => ({ mode: 'all', values: [] }),
+    toMultiSelectFilterQuery: () => undefined,
+    useCommonFilterLabels: () => ({})
   };
 });
 vi.mock('@fastgpt/web/components/common/Avatar', async () => {
@@ -176,7 +191,7 @@ describe('LogTable identity columns UI', () => {
     dom.window.close();
     vi.unstubAllGlobals();
   });
-  const render = async () => {
+  const render = async (props: Record<string, unknown> = {}) => {
     await act(async () =>
       root.render(
         React.createElement(
@@ -188,7 +203,8 @@ describe('LogTable identity columns UI', () => {
             sourceFilter: { mode: 'all', values: [] },
             setSourceFilter: () => {},
             dateRange: { from: new Date(), to: new Date() },
-            setDateRange: () => {}
+            setDateRange: () => {},
+            ...props
           })
         )
       )
