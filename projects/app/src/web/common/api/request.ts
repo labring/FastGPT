@@ -189,7 +189,12 @@ function responseError(err: any) {
     [`${subRoute}/login`]: true
   }[pathname];
 
-  const data = err?.response?.data || err;
+  const status = err?.response?.status;
+  const responseData = err?.response?.data;
+  const data =
+    status === 501 && responseData && typeof responseData === 'object'
+      ? { ...responseData, status }
+      : responseData || err;
 
   if (!err) {
     return Promise.reject({ message: i18nT('common:error.unKnow') });

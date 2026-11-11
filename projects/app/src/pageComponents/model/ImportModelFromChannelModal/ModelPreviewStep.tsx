@@ -66,6 +66,14 @@ type RowSelection = {
   modelType?: ModelTypeEnum;
   isActive?: boolean;
 };
+/** Catalog 不支持是能力限制而非临时故障，展示返回入口而不是让用户重复请求。 */
+export const isUnsupportedChannelCatalogError = (error: unknown) =>
+  Boolean(
+    error &&
+    typeof error === 'object' &&
+    'status' in error &&
+    (error as { status?: unknown }).status === 501
+  );
 type RowCatalog = {
   availableTemplates: AIModelDocumentDataType[];
   templateMap: Map<string, AIModelDocumentDataType>;
@@ -754,10 +762,20 @@ const ModelPreviewStep = ({
             gap={3}
           >
             <Box color="red.500">
-              {getErrText(state.loadError, t('config_model:channel_import_load_error'))}
+              {isUnsupportedChannelCatalogError(state.loadError)
+                ? t('config_model:channel_import_unsupported')
+                : getErrText(state.loadError, t('config_model:channel_import_load_error'))}
             </Box>
-            <Button size="sm" variant="whiteBase" onClick={retryPreview}>
-              {t('config_model:channel_import_retry')}
+            <Button
+              size="sm"
+              variant="whiteBase"
+              onClick={
+                isUnsupportedChannelCatalogError(state.loadError) ? onPrevious : retryPreview
+              }
+            >
+              {isUnsupportedChannelCatalogError(state.loadError)
+                ? t('common:back')
+                : t('config_model:channel_import_retry')}
             </Button>
           </Flex>
         ) : previewItems.length === 0 ? (
