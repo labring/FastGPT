@@ -315,6 +315,14 @@ const EXPECTED_ISSUES: Record<string, { nodes: string[]; config: string[] }> = {
   'template:loopRunStart:workflow:loop_run_start': { nodes: [], config: [] },
   'template:tool:': { nodes: ['tool|no_upstream|'], config: [] },
   'template:toolSet:': { nodes: ['toolSet|no_upstream|'], config: [] },
+  'template:toolSet:app:toolType_mcp': {
+    nodes: ['toolSet|no_upstream|'],
+    config: []
+  },
+  'template:toolSet:app:toolType_http': {
+    nodes: ['toolSet|no_upstream|'],
+    config: []
+  },
   'template:cfr:workflow:question_optimization': {
     nodes: [
       'cfr|model_required|modelId',

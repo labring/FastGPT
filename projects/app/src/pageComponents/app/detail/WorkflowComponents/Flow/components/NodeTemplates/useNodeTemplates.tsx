@@ -90,6 +90,14 @@ export const useNodeTemplates = (context: NodeTemplateContext | null = null) => 
             // unique 模板只按作用域提供（容器内不给「流程开始」这类根级系统节点），
             // 模板标记只是目录输入，runtime 仍是唯一性的最终拒绝方。
             if (!isTemplateAddable(item, context)) return false;
+            // 工具集只在侧栏和工具调用节点的工具选择器中展示。
+            if (
+              item.flowNodeType === FlowNodeTypeEnum.toolSet &&
+              !context?.isSidebar &&
+              context?.handleId !== NodeOutputKeyEnum.selectedTools
+            ) {
+              return false;
+            }
             return isTemplateVisible(item, context);
           })
           .map<NodeTemplateListItemType>((item) => ({

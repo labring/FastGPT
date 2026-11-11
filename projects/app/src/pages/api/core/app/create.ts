@@ -4,7 +4,6 @@ import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils'
 import { AppFolderTypeList, AppTypeEnum, ToolTypeList } from '@fastgpt/global/core/app/constants';
 import type { AppResourcesType, AppSchemaType } from '@fastgpt/global/core/app/type';
 import type { AppVersionSchemaType } from '@fastgpt/global/core/app/version/type';
-import { migrateWorkflowToCurrent } from '@fastgpt/global/common/workflow/migration';
 import { formatModels } from '@fastgpt/global/common/workflow/model';
 import {
   CreateAppRequestBodySchema,
@@ -34,6 +33,7 @@ import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { isPluginSystemTemplate } from '@fastgpt/service/core/app/templates/register';
 import { MongoAppTemplate } from '@fastgpt/service/core/app/templates/templateSchema';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
+import { normalizeAppWorkflow } from '@fastgpt/service/core/app/version/controller';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { filterAuthorizedAppResources } from '@fastgpt/service/support/permission/app/resource';
 import { createResourceDefaultCollaborators } from '@fastgpt/service/support/permission/controller';
@@ -132,7 +132,7 @@ export const config = {
 
 /**
  * 将创建、复制或转换传入的工作流统一迁移为当前 canonical 结构，
- * 并按团队模型目录与操作人可用模型完成 fallback 格式化及敏感字段处理。
+ * 按应用类型保留源工具集 App 的完整根配置，再按团队模型目录与操作人可用模型完成 fallback 及敏感字段处理。
  */
 const formatAppWorkflowForSave = async ({
   nodes,
@@ -141,8 +141,10 @@ const formatAppWorkflowForSave = async ({
   referenceSnapshots,
   teamId,
   tmbId,
-  isRoot
+  isRoot,
+  appType
 }: {
+  appType?: AppTypeEnum;
   nodes?: unknown[];
   edges?: AppVersionSchemaType['edges'];
   chatConfig?: AppVersionSchemaType['chatConfig'];
@@ -151,12 +153,15 @@ const formatAppWorkflowForSave = async ({
   tmbId: string;
   isRoot?: boolean;
 }) => {
-  const workflow = migrateWorkflowToCurrent({
-    nodes: nodes ?? [],
-    edges: edges ?? [],
-    chatConfig,
-    referenceSnapshots
-  });
+  const workflow = normalizeAppWorkflow(
+    {
+      nodes: nodes ?? [],
+      edges: edges ?? [],
+      chatConfig,
+      referenceSnapshots
+    },
+    appType
+  );
   const modelHandle = await getTeamModelHandle({ teamId });
   const authorizedIds = await getAuthorizedModelIds({
     actor: { teamId, tmbId, isRoot: Boolean(isRoot) },
@@ -249,6 +254,7 @@ export const onCreateApp = async ({
     ? undefined
     : await (async () => {
         const { workflow, modelHandle } = await formatAppWorkflowForSave({
+          appType: type,
           nodes,
           edges,
           chatConfig,

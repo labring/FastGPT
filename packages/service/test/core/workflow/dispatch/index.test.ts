@@ -1,4 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { MCPClient } from '@fastgpt/service/core/app/mcp';
+import * as secretUtils from '@fastgpt/service/common/secret/utils';
 import * as teamLimit from '@fastgpt/service/support/permission/teamLimit';
 import { WorkflowStopSignalCache } from '@fastgpt/dal/redis/caches/workflowStopSignal';
 import { setAgentRuntimeStop, shouldWorkflowStop } from '@fastgpt/service/core/chat/stop';
@@ -2521,6 +2523,125 @@ describe('Workflow raw error logging', () => {
         warn.mockRestore();
         diagnosticLog.mockRestore();
       }
+    }
+  );
+});
+
+describe('runWorkflow inline MCP discovery timing', () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it.each(['output', 'variable', 'resume', 'shared'] as const)(
+    'discovers tools with current credentials at ToolCall execution (%s)',
+    async (scenario) => {
+      vi.spyOn(teamLimit, 'checkTeamAIPoints').mockResolvedValue(undefined);
+      const discovery = vi
+        .spyOn(MCPClient.prototype, 'getTools')
+        .mockResolvedValue([
+          { name: 'search', description: 'Search', inputSchema: { type: 'object', properties: {} } }
+        ]);
+      const secrets = vi.spyOn(secretUtils, 'getSecretValue');
+      const variableState = createWorkflowVariableState({ token: 'stale-token' });
+      const login = createNode('login', FlowNodeTypeEnum.textEditor);
+      login.isEntry = scenario !== 'resume';
+      login.outputs = [
+        {
+          id: 'token',
+          key: 'token',
+          label: '',
+          type: FlowNodeOutputTypeEnum.static,
+          valueType: WorkflowIOValueTypeEnum.string,
+          ...(scenario === 'resume' ? { value: 'current-token' } : {})
+        }
+      ];
+      const toolCall = createNode('tool-call', FlowNodeTypeEnum.toolCall);
+      toolCall.isEntry = scenario === 'resume';
+      const toolSet = createNode('mcp-set', FlowNodeTypeEnum.toolSet);
+      toolSet.toolConfig = {
+        mcpToolSet: {
+          url: 'https://mcp.example.com',
+          headerSecret: {
+            Authorization: { ref: [scenario === 'variable' ? VARIABLE_NODE_ID : 'login', 'token'] }
+          },
+          toolList: [{ name: 'search', description: 'Search' }]
+        }
+      };
+      const runtimeNodes = [login, toolCall, toolSet];
+      const runtimeEdges = [
+        createEdge('login', 'tool-call', scenario === 'resume' ? 'active' : 'waiting'),
+        createEdge(
+          'tool-call',
+          scenario === 'resume' ? 'mcp-set0' : 'mcp-set',
+          'waiting',
+          'selectedTools',
+          'selectedTools'
+        )
+      ];
+      if (scenario === 'shared') {
+        runtimeNodes.push(createNode('second-call', FlowNodeTypeEnum.toolCall));
+        runtimeEdges.push(
+          createEdge('login', 'second-call'),
+          createEdge('second-call', 'mcp-set', 'waiting', 'selectedTools', 'selectedTools')
+        );
+      }
+      const executeLogin = vi
+        .spyOn(callbackMap, FlowNodeTypeEnum.textEditor)
+        .mockImplementation(async () => {
+          expect(discovery).not.toHaveBeenCalled();
+          await variableState.set('token', 'current-token');
+          return { data: { token: 'current-token' } };
+        });
+      const executeToolCall = vi
+        .spyOn(callbackMap, FlowNodeTypeEnum.toolCall)
+        .mockImplementation(async (props) => {
+          expect(discovery).toHaveBeenCalledOnce();
+          const searchTool = Array.from(props.runtimeNodesMap.values()).find((node) =>
+            node.toolConfig?.mcpTool && 'name' in node.toolConfig.mcpTool
+              ? node.toolConfig.mcpTool.name === 'search'
+              : false
+          );
+          expect(searchTool?.toolConfig?.mcpTool).toMatchObject({
+            name: 'search',
+            url: 'https://mcp.example.com'
+          });
+          expect(props.runtimeEdges).toContainEqual(
+            expect.objectContaining({
+              source: props.node.nodeId,
+              target: searchTool?.nodeId,
+              targetHandle: 'selectedTools'
+            })
+          );
+          return { data: {} };
+        });
+
+      const result = await runWorkflow({
+        apiVersion: 'v2',
+        mode: 'chat',
+        runningAppInfo: {
+          id: '67e0d5535c02d1d5cdede721',
+          name: 'MCP timing',
+          teamId: '654a4107c32f3bf5f998452f'
+        },
+        runningUserInfo: { teamId: '654a4107c32f3bf5f998452f', tmbId: '65ab7007462ada7dbb899948' },
+        uid: 'mcp-timing-test',
+        lang: 'zh-CN',
+        histories: [],
+        query: [],
+        chatConfig: {},
+        runtimeNodes,
+        runtimeEdges,
+        variableState,
+        externalProvider: {},
+        workflowDispatchDeep: 0,
+        maxRunTimes: 10,
+        stream: false,
+        checkIsStopping: () => false
+      } as any);
+
+      expect(result.workflowRuntimeSummary.errorCount).toBe(0);
+      expect(executeLogin).toHaveBeenCalledTimes(scenario === 'resume' ? 0 : 1);
+      expect(executeToolCall).toHaveBeenCalledTimes(scenario === 'shared' ? 2 : 1);
+      expect(discovery).toHaveBeenCalledOnce();
+      expect(secrets.mock.results[0]?.value).toEqual({ Authorization: 'current-token' });
     }
   );
 });

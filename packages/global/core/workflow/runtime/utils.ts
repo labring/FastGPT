@@ -261,7 +261,24 @@ export const storeEdges2RuntimeEdges = (
   if (lastInteractive) {
     const memoryEdges = lastInteractive.memoryEdges || [];
     if (memoryEdges && memoryEdges.length > 0) {
-      return memoryEdges.map((edge) => ({ ...edge }));
+      const runtimeEdges = memoryEdges.map((edge) => ({ ...edge }));
+      // 工具集父边属于持久化图结构，暂停快照只保存展开后的子工具边。
+      edges?.forEach((edge) => {
+        if (
+          edge.sourceHandle === NodeOutputKeyEnum.selectedTools &&
+          edge.targetHandle === NodeOutputKeyEnum.selectedTools &&
+          !runtimeEdges.some(
+            (runtimeEdge) =>
+              runtimeEdge.source === edge.source &&
+              runtimeEdge.sourceHandle === edge.sourceHandle &&
+              runtimeEdge.target === edge.target &&
+              runtimeEdge.targetHandle === edge.targetHandle
+          )
+        ) {
+          runtimeEdges.push({ ...edge, status: 'waiting' });
+        }
+      });
+      return runtimeEdges;
     }
   }
 

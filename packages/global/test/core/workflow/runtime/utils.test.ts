@@ -1148,6 +1148,43 @@ describe('getLastInteractiveValue', () => {
     expect(memoryEdges[0].status).toBe('active');
   });
 
+  it('should keep persisted selected tool parent edges when resuming', () => {
+    const edges: StoreEdgeItemType[] = [
+      {
+        source: 'tool-call',
+        sourceHandle: NodeOutputKeyEnum.selectedTools,
+        target: 'tool-set',
+        targetHandle: NodeOutputKeyEnum.selectedTools
+      }
+    ];
+    const memoryEdges: RuntimeEdgeItemType[] = [
+      {
+        source: 'tool-call',
+        sourceHandle: NodeOutputKeyEnum.selectedTools,
+        target: 'tool-set0',
+        targetHandle: NodeOutputKeyEnum.selectedTools,
+        status: 'active'
+      }
+    ];
+    const lastInteractive = {
+      type: 'userSelect',
+      entryNodeIds: ['tool-call'],
+      memoryEdges,
+      nodeOutputs: [],
+      params: { description: '', userSelectOptions: [] }
+    } as WorkflowInteractiveResponseType;
+
+    const result = storeEdges2RuntimeEdges(edges, lastInteractive);
+
+    expect(result).toEqual([
+      memoryEdges[0],
+      {
+        ...edges[0],
+        status: 'waiting'
+      }
+    ]);
+  });
+
   it('should return converted edges when lastInteractive has empty memoryEdges', () => {
     const edges: StoreEdgeItemType[] = [
       { source: 'node1', sourceHandle: 'out1', target: 'node2', targetHandle: 'in1' }

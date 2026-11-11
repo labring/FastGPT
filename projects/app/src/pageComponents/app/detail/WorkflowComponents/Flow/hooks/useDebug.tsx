@@ -1,5 +1,3 @@
-import React from 'react';
-import { getGlobalVariableNode } from '@/web/core/workflow/adapt';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import { storeNodes2RuntimeNodes } from '@fastgpt/global/common/workflow/runtime';
 import type {
@@ -7,20 +5,26 @@ import type {
   StoreEdgeItemType
 } from '@fastgpt/global/core/workflow/type/edge';
 import { type StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { getGlobalVariableNode } from '@/web/core/workflow/adapt';
 
 import LabelAndFormRender from '@/components/core/app/formRender/LabelAndForm';
 import { variableInputTypeToInputType } from '@/components/core/app/formRender/utils';
 import { WorkflowRuntimeContext } from '@/components/core/chat/ChatContainer/context/workflowRuntimeContext';
-import { Box, Button, Flex } from '@chakra-ui/react';
+import { Box, Button, Flex, useToast } from '@chakra-ui/react';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { useTranslation } from 'next-i18next';
+import MySelect from '@fastgpt/web/components/common/MySelect';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
+import { getClientToolPreviewNode } from '@/web/core/app/api/tool';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 import dynamic from 'next/dynamic';
-import { type FieldErrors, useForm } from 'react-hook-form';
+import { type FieldErrors, useForm, useWatch } from 'react-hook-form';
 import { useContextSelector } from 'use-context-selector';
 import { useWorkflowPersistence } from '@/web/core/workflow/editor/session/workflowSession';
 import {
@@ -43,6 +47,15 @@ import {
   getWorkflowStartDebugQuery,
   isDebugFileUrlInput
 } from './useDebugInput';
+import {
+  getToolSetDebugData,
+  getToolSetDebugRuntimeNode,
+  type ToolSetDebugData
+} from './toolSetDebug';
+import {
+  HttpToolSetNodeConfigSchema,
+  McpToolSetNodeConfigSchema
+} from '@fastgpt/global/core/workflow/type/node';
 
 const MyRightDrawer = dynamic(
   () => import('@fastgpt/web/components/common/MyDrawer/MyRightDrawer')
@@ -53,9 +66,26 @@ enum TabEnum {
   node = 'node'
 }
 
+/** 子工具切换只刷新节点参数，保留用户正在填写的全局变量。 */
+export const resetDebugNodeVariables = ({
+  resetField,
+  inputs
+}: {
+  resetField: (name: 'nodeVariables', options: { defaultValue: Record<string, any> }) => void;
+  inputs: RuntimeNodeItemType['inputs'];
+}) => {
+  resetField('nodeVariables', {
+    defaultValue: inputs.reduce<Record<string, any>>((acc, input) => {
+      acc[input.key] = getDebugInputFormValue(input);
+      return acc;
+    }, {})
+  });
+};
+
 export const useDebug = () => {
   const { t } = useSafeTranslation();
   const { t: workflowT } = useTranslation();
+  const toast = useToast();
   const { maxUploadFileCount } = useFileUploadLimits();
   const debugFileMaxAmount = getUserFileAmountLimit({
     systemMaxFileAmount: maxUploadFileCount
@@ -125,22 +155,125 @@ export const useDebug = () => {
 
     const [currentTab, setCurrentTab] = useState<TabEnum>(TabEnum.node);
     const [hasFileError, setHasFileError] = useState(false);
+    const [toolIndex, setToolIndex] = useState(0);
+    const [toolSetDebugData, setToolSetDebugData] = useState<{
+      nodeId: string;
+      data: ToolSetDebugData;
+    }>();
+    const [isLoadingToolSet, setIsLoadingToolSet] = useState(false);
+    const [toolSetDebugError, setToolSetDebugError] = useState<string>();
+    const [toolSetReloadKey, setToolSetReloadKey] = useState(0);
+    const [toolPreview, setToolPreview] = useState<{
+      id: string;
+      node: Awaited<ReturnType<typeof getClientToolPreviewNode>>;
+    }>();
     const fileUploading = useContextSelector(WorkflowRuntimeContext, (v) => v.fileUploading);
 
     const runtimeNode = runtimeNodes.find((node) => node.nodeId === runtimeNodeId);
+    const mcpToolSet = runtimeNode?.toolConfig?.mcpToolSet;
+    const httpToolSet = runtimeNode?.toolConfig?.httpToolSet;
+    const isToolSet =
+      runtimeNode?.flowNodeType === FlowNodeTypeEnum.toolSet && !!(mcpToolSet || httpToolSet);
+    const isIndependentToolSet = Boolean(
+      isToolSet &&
+      runtimeNode &&
+      !runtimeNode.pluginId &&
+      (McpToolSetNodeConfigSchema.safeParse(mcpToolSet).success ||
+        HttpToolSetNodeConfigSchema.safeParse(httpToolSet).success)
+    );
+    const hasToolSetSummary = Boolean(
+      mcpToolSet?.toolList?.length || httpToolSet?.toolList?.length
+    );
+    const currentToolSetDebugData =
+      toolSetDebugData && toolSetDebugData.nodeId === runtimeNode?.nodeId
+        ? toolSetDebugData.data
+        : undefined;
+    const toolList = isIndependentToolSet
+      ? (currentToolSetDebugData?.toolList ?? [])
+      : (mcpToolSet?.toolList ?? httpToolSet?.toolList ?? []);
+    const selectedTool = toolList[toolIndex];
+    const toolPreviewId = (() => {
+      if (!runtimeNode?.pluginId || !selectedTool) return;
+      if (mcpToolSet && 'toolId' in mcpToolSet)
+        return `${AppToolSourceEnum.mcp}-${mcpToolSet.toolId}/${selectedTool.name}`;
+      if (httpToolSet && 'toolId' in httpToolSet)
+        return `${AppToolSourceEnum.http}-${httpToolSet.toolId}/${selectedTool.name}`;
+    })();
+
+    useEffect(() => {
+      if (!toolPreviewId) return;
+      let cancelled = false;
+      getClientToolPreviewNode({ appId: toolPreviewId, getLatestVersion: true })
+        .then((node) => {
+          if (!cancelled) setToolPreview({ id: toolPreviewId, node });
+        })
+        .catch((error) => {
+          if (!cancelled) {
+            toast({ status: 'error', title: getErrText(error) });
+          }
+        });
+      return () => {
+        cancelled = true;
+      };
+    }, [toolPreviewId]);
+
+    const debugNode = useMemo(() => {
+      if (!runtimeNode) return;
+      if (!isToolSet) return runtimeNode;
+      return getToolSetDebugRuntimeNode({
+        toolSetNode: runtimeNode,
+        toolIndex,
+        debugData: currentToolSetDebugData,
+        previewNode: toolPreview && toolPreview.id === toolPreviewId ? toolPreview.node : undefined
+      });
+    }, [runtimeNode, isToolSet, toolIndex, currentToolSetDebugData, toolPreview, toolPreviewId]);
+
+    const referenceSourceNodes = useMemo(() => {
+      if (!runtimeNode) return [];
+      return [
+        ...(graph?.getSourceNodeIds({ nodeId: runtimeNode.nodeId, includeChildren: true }) ?? [])
+          .map((sourceNodeId) => getNodeById(sourceNodeId))
+          .filter((sourceNode): sourceNode is NonNullable<typeof sourceNode> => !!sourceNode)
+          .map((sourceNode) => ({
+            nodeId: sourceNode.nodeId,
+            sourceLabel: sourceNode.name,
+            icon: sourceNode.avatar,
+            outputs: sourceNode.outputs.map((output) => ({ ...output })),
+            catchError: sourceNode.catchError
+          })),
+        getGlobalVariableNode({
+          chatConfig: getWorkflow()?.chatConfig as AppChatConfigType,
+          t: workflowT
+        })
+      ];
+    }, [runtimeNode, graph, getNodeById, getWorkflow, workflowT]);
+    const renderInputs = useMemo(() => {
+      if (!runtimeNode) return [];
+      const fileSelectConfig = getWorkflow()?.chatConfig?.fileSelectConfig;
+      const workflowStartFileInput = getWorkflowStartDebugFileInput({
+        flowNodeType: runtimeNode.flowNodeType,
+        fileSelectConfig: fileSelectConfig
+          ? {
+              ...fileSelectConfig,
+              customFileExtensionList: fileSelectConfig.customFileExtensionList?.map((item) => item)
+            }
+          : undefined
+      });
+      return [
+        ...(debugNode?.inputs ?? []).filter((input) =>
+          checkInputShouldRenderInDebug(input, {
+            showAllInputs: isToolSet || debugNodeShouldShowAllInputs(runtimeNode.flowNodeType),
+            referenceSourceNodes
+          })
+        ),
+        ...(workflowStartFileInput ? [workflowStartFileInput] : [])
+      ];
+    }, [runtimeNode, debugNode, isToolSet, referenceSourceNodes, getWorkflow]);
 
     if (!runtimeNode) return <></>;
     const workflow = getWorkflow();
     const chatConfig = workflow?.chatConfig;
     const variables = chatConfig?.variables ?? [];
-    const debugFileSelectConfig = chatConfig?.fileSelectConfig
-      ? {
-          ...chatConfig.fileSelectConfig,
-          customFileExtensionList: chatConfig.fileSelectConfig.customFileExtensionList?.map(
-            (item) => item
-          )
-        }
-      : undefined;
     const getFormVariable = (item: (typeof variables)[number]) =>
       getDebugGlobalVariableFormProps({
         ...item,
@@ -166,36 +299,6 @@ export const useDebug = () => {
     );
     const customVar = variables.filter((item) => item.type === VariableInputEnum.custom);
     const internalVar = variables.filter((item) => item.type === VariableInputEnum.internal);
-    const referenceSourceNodes = [
-      ...(graph?.getSourceNodeIds({ nodeId: runtimeNode.nodeId, includeChildren: true }) ?? [])
-        .map((sourceNodeId) => getNodeById(sourceNodeId))
-        .filter((sourceNode): sourceNode is NonNullable<typeof sourceNode> => !!sourceNode)
-        .map((sourceNode) => ({
-          nodeId: sourceNode.nodeId,
-          sourceLabel: sourceNode.name,
-          icon: sourceNode.avatar,
-          outputs: sourceNode.outputs.map((output) => ({ ...output })),
-          catchError: sourceNode.catchError
-        })),
-      getGlobalVariableNode({
-        chatConfig: chatConfig as AppChatConfigType,
-        t: workflowT
-      })
-    ];
-    const workflowStartFileInput = getWorkflowStartDebugFileInput({
-      flowNodeType: runtimeNode.flowNodeType,
-      fileSelectConfig: debugFileSelectConfig
-    });
-    const renderInputs = [
-      ...runtimeNode.inputs.filter((input) => {
-        return checkInputShouldRenderInDebug(input, {
-          showAllInputs: debugNodeShouldShowAllInputs(runtimeNode.flowNodeType),
-          referenceSourceNodes
-        });
-      }),
-      ...(workflowStartFileInput ? [workflowStartFileInput] : [])
-    ];
-
     const variablesForm = useForm<Record<string, any>>({
       defaultValues: {
         nodeVariables: renderInputs.reduce((acc: Record<string, any>, input) => {
@@ -205,7 +308,52 @@ export const useDebug = () => {
         variables: defaultGlobalVariables
       }
     });
-    const { handleSubmit } = variablesForm;
+    const { control, handleSubmit, resetField } = variablesForm;
+    const debugVariables = useWatch({ control, name: 'variables' });
+
+    useEffect(() => {
+      if (!runtimeNode || !isIndependentToolSet || !hasToolSetSummary) {
+        setIsLoadingToolSet(false);
+        setToolSetDebugData(undefined);
+        return;
+      }
+      let cancelled = false;
+      setIsLoadingToolSet(true);
+      setToolSetDebugError(undefined);
+      setToolSetDebugData(undefined);
+      getToolSetDebugData(runtimeNode, { runtimeNodes, variables: debugVariables })
+        .then((data) => {
+          if (cancelled) return;
+          setToolIndex(0);
+          setToolSetDebugData({ nodeId: runtimeNode.nodeId, data });
+        })
+        .catch((error) => {
+          if (!cancelled) {
+            const message = getErrText(error);
+            setToolSetDebugError(message);
+            toast({ status: 'error', title: message });
+          }
+        })
+        .finally(() => {
+          if (!cancelled) setIsLoadingToolSet(false);
+        });
+
+      return () => {
+        cancelled = true;
+      };
+    }, [
+      runtimeNode,
+      runtimeNodes,
+      debugVariables,
+      isIndependentToolSet,
+      hasToolSetSummary,
+      toast,
+      toolSetReloadKey
+    ]);
+
+    useEffect(() => {
+      resetDebugNodeVariables({ resetField, inputs: renderInputs });
+    }, [debugNode, renderInputs, resetField]);
 
     const onClose = () => {
       setRuntimeNodeId(undefined);
@@ -214,8 +362,8 @@ export const useDebug = () => {
     };
 
     const onClickRun = (data: Record<string, any>) => {
-      if (fileUploading || hasFileError) return;
-      const fileUrlInputs = runtimeNode.inputs.filter((input) => isDebugFileUrlInput({ input }));
+      if (fileUploading || hasFileError || !debugNode) return;
+      const fileUrlInputs = debugNode.inputs.filter((input) => isDebugFileUrlInput({ input }));
       if (fileUrlInputs.length > 0) {
         const nodeVariables = { ...data.nodeVariables };
         fileUrlInputs.forEach((input) => {
@@ -237,18 +385,28 @@ export const useDebug = () => {
 
       onStartNodeDebug({
         entryNodeId: runtimeNode.nodeId,
-        runtimeNodes: runtimeNodes.map((node) =>
-          node.nodeId === runtimeNode.nodeId
-            ? {
-                ...runtimeNode,
+        runtimeNodes: isToolSet
+          ? [
+              {
+                ...debugNode,
                 inputs: getDebugRuntimeInputs({
-                  inputs: runtimeNode.inputs,
+                  inputs: debugNode.inputs,
                   nodeVariables: data.nodeVariables
                 })
               }
-            : node
-        ),
-        runtimeEdges: runtimeEdges,
+            ]
+          : runtimeNodes.map((node) =>
+              node.nodeId === runtimeNode.nodeId
+                ? {
+                    ...runtimeNode,
+                    inputs: getDebugRuntimeInputs({
+                      inputs: runtimeNode.inputs,
+                      nodeVariables: data.nodeVariables
+                    })
+                  }
+                : node
+            ),
+        runtimeEdges: isToolSet ? [] : runtimeEdges,
         variables: data.variables,
         query: getWorkflowStartDebugQuery({
           flowNodeType: runtimeNode.flowNodeType,
@@ -302,6 +460,18 @@ export const useDebug = () => {
             />
           )}
           <Box display={currentTab === TabEnum.node ? 'block' : 'none'}>
+            {isToolSet && (
+              <Box mb={5}>
+                <Box mb={2} fontWeight={'medium'}>
+                  {t('app:tool_select')}
+                </Box>
+                <MySelect<number>
+                  list={toolList.map((tool, index) => ({ label: tool.name, value: index }))}
+                  value={toolIndex}
+                  onChange={setToolIndex}
+                />
+              </Box>
+            )}
             {renderInputs.map((item) => {
               const { inputProps, inputType } = getDebugInputFormConfig(item, {
                 maxFiles: debugFileMaxAmount
@@ -323,6 +493,22 @@ export const useDebug = () => {
                 />
               );
             })}
+            {isToolSet && toolList.length === 0 && (
+              <Box>{isLoadingToolSet ? t('common:Loading') : t('app:tools_no_data')}</Box>
+            )}
+            {isToolSet && toolSetDebugError && (
+              <Box>
+                <Box mb={2} color={'red.600'}>
+                  {toolSetDebugError}
+                </Box>
+                <Button size={'sm'} onClick={() => setToolSetReloadKey((value) => value + 1)}>
+                  {t('common:refresh')}
+                </Button>
+              </Box>
+            )}
+            {isToolSet && debugNode && renderInputs.length === 0 && (
+              <Box>{t('app:this_tool_requires_no_input')}</Box>
+            )}
           </Box>
           <Box display={currentTab === TabEnum.global ? 'block' : 'none'}>
             {customVar.map((item) => (
@@ -368,7 +554,9 @@ export const useDebug = () => {
         </Box>
         <Flex py={2} justifyContent={'flex-end'} px={6}>
           <Button
-            isDisabled={fileUploading || hasFileError}
+            isDisabled={
+              fileUploading || hasFileError || (isToolSet && (!debugNode || isLoadingToolSet))
+            }
             onClick={handleSubmit(onClickRun, onCheckRunError)}
           >
             {t('common:Run')}
@@ -387,7 +575,8 @@ export const useDebug = () => {
     getWorkflow,
     getNodeById,
     graph,
-    debugFileMaxAmount
+    debugFileMaxAmount,
+    toast
   ]);
 
   return {

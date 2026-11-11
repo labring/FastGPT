@@ -202,7 +202,10 @@ const NodeDebugResponse = ({ nodeId, debugResult }: NodeDebugResponseProps) => {
             )}
             {!interactive && (
               <>
-                {(debugResult.status === 'success' || debugResult.status === 'skipped') &&
+                {/* 节点错误可能已进入 catch 分支，或同轮其他分支仍有待执行节点。 */}
+                {(debugResult.status === 'success' ||
+                  debugResult.status === 'skipped' ||
+                  (debugResult.status === 'failed' && !!response)) &&
                   !debugResult.isExpired &&
                   workflowDebugData?.entryNodeIds &&
                   workflowDebugData.entryNodeIds.length > 0 && (

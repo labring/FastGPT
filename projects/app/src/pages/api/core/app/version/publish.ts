@@ -9,7 +9,9 @@ import { formatModels } from '@fastgpt/global/common/workflow/model';
 import {
   PublishAppBodySchema,
   PublishAppQuerySchema,
-  PublishAppResponseSchema
+  PublishAppResponseSchema,
+  PublishHttpToolSetAppBodySchema,
+  PublishMcpToolSetAppBodySchema
 } from '@fastgpt/global/openapi/core/app/version/api';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
@@ -22,6 +24,7 @@ import {
   beforeUpdateAppFormat,
   updateParentFoldersUpdateTime
 } from '@fastgpt/service/core/app/controller';
+import { assertAppDatasetIndexModelsAvailable } from '@fastgpt/service/core/dataset/model';
 import { extractAppResources } from '@fastgpt/service/core/app/resource/utils';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
@@ -30,11 +33,26 @@ import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { getAuthorizedModelIds } from '@fastgpt/service/support/permission/model/auth';
 import { resolveAppResourcesByPermission } from '@fastgpt/service/core/app/resource/service';
 import { addAuditLog, getI18nAppType } from '@fastgpt/service/support/user/audit/util';
+import { normalizeAppWorkflow } from '@fastgpt/service/core/app/version/controller';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 
 /** 保存或发布应用版本，资源归属和模型目录以目标应用团队为边界，ACL 保留实际操作者身份。 */
 async function handler(req: ApiRequestProps<PostPublishAppProps>) {
   const {
-    query: { appId },
+    query: { appId }
+  } = parseApiInput({
+    req,
+    querySchema: PublishAppQuerySchema
+  });
+
+  const { app, tmbId, isRoot } = await authApp({
+    appId,
+    req,
+    per: WritePermissionVal,
+    authToken: true
+  });
+
+  const {
     body: {
       nodes = [],
       edges = [],
@@ -46,25 +64,19 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>) {
     }
   } = parseApiInput({
     req,
-    querySchema: PublishAppQuerySchema,
-    bodySchema: PublishAppBodySchema
+    bodySchema: (() => {
+      if (app.type === AppTypeEnum.mcpToolSet) return PublishMcpToolSetAppBodySchema;
+      if (app.type === AppTypeEnum.httpToolSet) return PublishHttpToolSetAppBodySchema;
+      return PublishAppBodySchema;
+    })()
   });
 
-  const { app, tmbId, isRoot } = await authApp({
-    appId,
-    req,
-    per: WritePermissionVal,
-    authToken: true
-  });
-
-  // Root 可管理其他团队的应用；资源归属与默认模型以应用团队为边界。
+  // Root 可管理其他团队的应用；登录团队不能替代应用团队决定资源归属、默认模型和审计范围。
   const teamId = String(app.teamId);
-  const normalizedWorkflow = migrateWorkflowToCurrent({
-    nodes,
-    edges,
-    chatConfig,
-    referenceSnapshots
-  });
+  const normalizedWorkflow =
+    app.type === AppTypeEnum.mcpToolSet || app.type === AppTypeEnum.httpToolSet
+      ? normalizeAppWorkflow({ nodes, edges, chatConfig, referenceSnapshots }, app.type)
+      : migrateWorkflowToCurrent({ nodes, edges, chatConfig, referenceSnapshots });
   const modelHandle = await getTeamModelHandle({ teamId });
   const authorizedIds = await getAuthorizedModelIds({
     actor: { teamId, tmbId, isRoot },
@@ -186,6 +198,15 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>) {
       modelHandle,
       session
     });
+    if (isPublish) {
+      await assertAppDatasetIndexModelsAvailable({
+        resources,
+        teamId,
+        modelHandle,
+        authorizedIds,
+        session
+      });
+    }
 
     // create version histories
     const [{ _id }] = await MongoAppVersion.create(
