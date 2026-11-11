@@ -1,7 +1,6 @@
-import { ChatIdSchema } from '../../chat/schema';
+import { ChatIdSchema, ChatSourceSchema } from '../../chat/schema';
 import { ChatPublishSourceSchema } from '../../chat/publishSource/type';
 import { ObjectIdSchema } from '../../../common/type/mongo';
-import { ChatSourceEnum } from '../../chat/constants';
 import { AppLogKeysEnum } from './constants';
 import z from 'zod';
 import { BoolSchema, NumSchema } from '../../../common/zod';
@@ -32,7 +31,7 @@ export const AppChatLogSchema = z.object({
   chatId: ChatIdSchema,
   userId: z.string(),
   publishSource: ChatPublishSourceSchema.optional(),
-  source: z.enum(ChatSourceEnum).meta({
+  source: ChatSourceSchema.meta({
     deprecated: true,
     description: '旧统计桶渠道类型，仅作兼容；使用 publishSource.type'
   }),

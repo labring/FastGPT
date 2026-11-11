@@ -1,11 +1,10 @@
-import { ChatIdSchema } from './schema';
+import { ChatIdSchema, ChatSourceSchema } from './schema';
 import { ChatPublishSourceSchema } from './publishSource/type';
 import { SearchDataResponseQuoteListItemSchema } from '../dataset/type';
 import {
   ChatFileTypeEnum,
   ChatGenerateStatusEnum,
   ChatRoleEnum,
-  ChatSourceEnum,
   ChatSourceTypeEnum
 } from './constants';
 import { FlowNodeTypeEnum } from '../workflow/node/constant';
@@ -129,7 +128,7 @@ export const ChatSchema = z.object({
   customTitle: z.string().optional(),
   top: z.boolean().default(false),
   publishSource: ChatPublishSourceSchema.optional(),
-  source: z.enum(ChatSourceEnum).meta({
+  source: ChatSourceSchema.meta({
     deprecated: true,
     description: '旧调用渠道类型，仅作兼容；使用 publishSource.type'
   }),

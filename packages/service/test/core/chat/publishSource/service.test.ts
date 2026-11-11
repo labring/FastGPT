@@ -22,6 +22,20 @@ beforeEach(() => {
 });
 
 describe('updateChatPublishSource', () => {
+  it('新运行的未知来源可正常保存，并清除无归属的渠道 ID 和名称', async () => {
+    await updateChatPublishSource({
+      ...scope,
+      chatId,
+      source: 'future',
+      publishSource: { type: ChatSourceEnum.unknown, id: oid() },
+      sourceName: '无法确认的渠道'
+    });
+    const chat = await MongoChat.findOne({ chatId }).lean();
+    expect(chat).toMatchObject({ source: 'unknown', publishSource: { type: 'unknown' } });
+    expect(chat?.publishSource).not.toHaveProperty('id');
+    expect(chat).not.toHaveProperty('sourceName');
+  });
+
   it('创建并整体替换最新来源，内部入口清除旧渠道和名称', async () => {
     const id = oid();
     await updateChatPublishSource({
@@ -301,7 +315,8 @@ describe('extendChatPublishSources', () => {
       '旧接口名',
       undefined
     ]);
-    expect(rows[5].publishSource).toEqual({ name: '旧接口名' });
+    expect(rows[5].publishSource).toEqual({ type: 'unknown', name: '旧接口名' });
+    expect(rows[6].publishSource).toEqual({ type: 'unknown' });
     expect(JSON.stringify(rows)).not.toContain('credential');
     const otherApp = await extendChatPublishSources({ list, teamId: scope.teamId, appId: oid() });
     expect(otherApp[0].publishSource?.name).toBe('改名后的后台');
@@ -332,7 +347,15 @@ describe('来源查询兼容的 Mongo 语义', () => {
       { chatId: 'type-only', publishSource: { type: 'share' } },
       { chatId: 'id-only', source: 'share', publishSource: { id } },
       { chatId: 'null-source', source: 'share', publishSource: null },
-      { chatId: 'new-api', source: 'share', publishSource: { type: 'api', id } }
+      { chatId: 'new-api', source: 'share', publishSource: { type: 'api', id } },
+      { chatId: 'unknown', publishSource: { type: 'unknown' } },
+      { chatId: 'future', publishSource: { type: 'future' } },
+      { chatId: 'empty-type', publishSource: { type: '' } },
+      { chatId: 'legacy-name', source: '历史渠道' },
+      { chatId: 'missing-source', source: undefined },
+      { chatId: 'null-legacy-source', source: null },
+      { chatId: 'array-type', publishSource: { type: ['api'] } },
+      { chatId: 'array-source', source: ['api'] }
     ];
     await MongoChat.collection.insertMany(records.map((record) => ({ ...base, ...record })));
     expect(
@@ -340,6 +363,31 @@ describe('来源查询兼容的 Mongo 语义', () => {
         .map((c) => c.chatId)
         .sort()
     ).toEqual(['id-only', 'legacy-share', 'new-share', 'null-source', 'type-only']);
+    const unknownIds = [
+      'unknown',
+      'future',
+      'empty-type',
+      'legacy-name',
+      'missing-source',
+      'null-legacy-source',
+      'array-type',
+      'array-source'
+    ];
+    expect(
+      (await MongoChat.find(buildChatPublishSourceFilter(['unknown'])).lean())
+        .map((c) => c.chatId)
+        .sort()
+    ).toEqual(unknownIds.sort());
+    expect(
+      (await MongoChat.find(buildChatPublishSourceFilter(['api', 'unknown'])).lean())
+        .map((c) => c.chatId)
+        .sort()
+    ).toEqual([...unknownIds, 'new-api', 'legacy-api'].sort());
+    expect(
+      (await MongoChat.find(buildChatPublishSourceFilter(['api'])).lean())
+        .map((c) => c.chatId)
+        .sort()
+    ).toEqual(['legacy-api', 'new-api']);
     expect(await MongoChat.countDocuments(buildChatPublishSourceFilter())).toBe(records.length);
     expect(await MongoChat.countDocuments(buildChatPublishSourceFilter([]))).toBe(0);
   });
