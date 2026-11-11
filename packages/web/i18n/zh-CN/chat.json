@@ -58,6 +58,7 @@
   "image_parse": "图片解析",
   "in_progress": "进行中",
   "input_guide": "输入引导",
+  "input_guide_hint": "使用键盘 ↑↓ 切换，Enter 填充",
   "input_placeholder_phone": "发消息给FastGPT",
   "internal_variables_tip": "内部变量仅调试时可见",
   "invalid_share_url": "无效的分享链接",

@@ -58,6 +58,7 @@
   "image_parse": "이미지 분석",
   "in_progress": "진행 중",
   "input_guide": "입력 가이드",
+  "input_guide_hint": "↑↓ 키로 전환하고 Enter로 채우기",
   "input_placeholder_phone": "질문을 입력해 주세요",
   "internal_variables_tip": "내부 변수는 디버깅 시에만 표시됩니다",
   "invalid_share_url": "유효하지 않은 공유 링크입니다",

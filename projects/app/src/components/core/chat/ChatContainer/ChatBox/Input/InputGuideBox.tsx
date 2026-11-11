@@ -85,14 +85,13 @@ export default function InputGuideBox({
       p={2}
       borderRadius={'md'}
       position={'absolute'}
-      top={-3}
-      w={'100%'}
+      bottom={'calc(100% + 8px)'}
+      left={0}
+      right={0}
       zIndex={150}
-      transform={'translateY(-100%)'}
     >
-      <Flex alignItems={'center'} fontSize={'sm'} color={'myGray.600'} gap={2} mb={2} px={2}>
-        <MyIcon name={'union'} />
-        <Box>{t('chat:input_guide')}</Box>
+      <Flex alignItems={'center'} pb={1} fontSize={'sm'} color={'myGray.500'}>
+        <Box>{t('chat:input_guide_hint')}</Box>
       </Flex>
       {filterData.map((item, index) => (
         <Flex
@@ -101,8 +100,7 @@ export default function InputGuideBox({
           key={item}
           id={`${id}-${index}`}
           role={'option'}
-          px={4}
-          py={3}
+          p={2}
           borderRadius={'sm'}
           cursor={'pointer'}
           overflow={'auto'}
@@ -110,14 +108,11 @@ export default function InputGuideBox({
             mb: 1
           }}
           bg={index === activeIndex ? 'primary.50' : 'myGray.50'}
-          color={'myGray.600'}
+          color={index === activeIndex ? 'primary.600' : 'myGray.600'}
           aria-selected={index === activeIndex}
           _hover={{
             bg: 'primary.50',
-            color: 'primary.600',
-            '.send-icon': {
-              display: 'block'
-            }
+            color: 'primary.600'
           }}
           onClick={() => onSelect(item, matchText)}
         >
@@ -126,14 +121,10 @@ export default function InputGuideBox({
           </Box>
           <MyTooltip label={t('common:core.chat.markdown.Send Question')}>
             <MyIcon
-              className="send-icon"
-              display={'none'}
+              display={index === activeIndex ? 'block' : 'none'}
               name={'chatSend'}
               boxSize={4}
-              color={'myGray.500'}
-              _hover={{
-                color: 'primary.600'
-              }}
+              color={'primary.600'}
               onClick={(e) => {
                 e.stopPropagation();
                 onSend(item);
