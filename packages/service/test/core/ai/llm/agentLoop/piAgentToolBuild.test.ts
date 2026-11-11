@@ -5,7 +5,11 @@ import { buildPiAgentTools } from '@fastgpt/service/core/ai/llm/agentLoop/provid
 const createRuntime = (runtimeTools: ChatCompletionTool[]) =>
   ({
     toolCatalog: { runtimeTools },
-    systemTools: undefined
+    systemTools: undefined,
+    llmParams: {
+      useVision: false,
+      model: { config: { vision: false } }
+    }
   }) as any;
 
 const buildTools = (runtimeTools: ChatCompletionTool[]) =>

@@ -141,6 +141,56 @@ describe('dispatchTool runtime toolset auth', () => {
     expect(JSON.parse(result.response)).toEqual(toolResult);
   });
 
+  it('extracts structured content from plugin output and keeps inline image data out of the text', async () => {
+    const imagePart = {
+      type: 'image_url' as const,
+      image_url: { url: 'data:image/png;base64,AAAA' }
+    };
+    runToolStreamMock.mockResolvedValueOnce({
+      output: {
+        jobId: 'task-123',
+        content: [{ type: 'text', text: '{"jobId":"task-123"}' }, imagePart]
+      }
+    });
+
+    const result = await dispatchTool(
+      createDispatchToolProps({ systemTool: { toolId: 'systemTool-search' } })
+    );
+
+    // content 通道承载图片，业务字段仍留在 response 文本里。
+    expect(result.content).toEqual([{ type: 'text', text: '{"jobId":"task-123"}' }, imagePart]);
+    expect(JSON.parse(result.response).jobId).toBe('task-123');
+    expect(result.response).not.toContain('AAAA');
+  });
+
+  it('converts MCP image blocks into image parts and masks the base64 text', async () => {
+    const tool = { name: 'search', description: 'Search' };
+    const nodes = [
+      { toolConfig: { mcpToolSet: { url: 'https://mcp.example.com', toolList: [tool] } } }
+    ];
+    authAppByTmbIdMock.mockResolvedValueOnce({ app: { _id: 'victim-toolset', modules: nodes } });
+    getAppVersionByIdMock.mockResolvedValueOnce({ nodes });
+    getMCPChildrenMock.mockResolvedValueOnce([tool]);
+    const toolResult = {
+      content: [
+        { type: 'text', text: 'chart ready' },
+        { type: 'image', data: 'AAAA', mimeType: 'image/png' }
+      ]
+    };
+    mcpToolCallMock.mockResolvedValueOnce(toolResult);
+
+    const result = await dispatchTool(
+      createDispatchToolProps({ mcpTool: { toolId: 'mcp-victim-toolset/search' } })
+    );
+
+    expect(result.content).toEqual([
+      { type: 'image_url', image_url: { url: 'data:image/png;base64,AAAA' } }
+    ]);
+    // 文本里不再带一份 base64；原始结果仍保留在节点响应里供详情展示。
+    expect(result.response).not.toContain('AAAA');
+    expect(result.nodeResponse?.toolRes).toEqual(toolResult);
+  });
+
   it.each(['mcp', 'http'] as const)(
     'passes Agent %s params through without schema validation',
     async (source) => {

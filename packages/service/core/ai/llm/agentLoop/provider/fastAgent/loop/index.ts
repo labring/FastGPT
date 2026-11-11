@@ -271,6 +271,7 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
     onToolRunEnd: ({
       call,
       response,
+      content,
       assistantMessages,
       assistantResponses,
       seconds,
@@ -290,6 +291,7 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
         hideInUI: hideInUI || controlToolNames.has(call.function.name),
         call,
         response,
+        content,
         assistantMessages,
         assistantResponses,
         seconds,
@@ -376,7 +378,8 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
         });
         return createToolResponse(sandboxResult.response, {
           skipResponseCompress: true,
-          errorMessage: sandboxResult.success ? undefined : sandboxResult.response
+          errorMessage: sandboxResult.success ? undefined : sandboxResult.response,
+          content: sandboxResult.content
         });
       }
 

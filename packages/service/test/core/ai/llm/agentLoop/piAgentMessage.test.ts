@@ -1,13 +1,24 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { convertMessages } from '@mariozechner/pi-ai/openai-completions';
+import { serviceEnv } from '@fastgpt/service/env';
+
+const previewProxyEnv: { AGENT_SANDBOX_PREVIEW_PROXY_URL?: string | undefined } = serviceEnv;
 import {
   convertChatMessagesToPiAgentMessages,
   convertPiAgentMessagesToChatMessages,
+  convertToolResponseContentToPiContent,
   mapStopReason,
   normalizePiAgentMessages,
   replaceInteractiveToolResult,
   resolveInteractiveToolCall
 } from '@fastgpt/service/core/ai/llm/agentLoop/provider/piAgent/message';
+import { ChatCompletionToolMessageContentPartSchema } from '@fastgpt/global/core/ai/llm/type';
+
+vi.mock('@fastgpt/service/common/file/image/utils', () => ({
+  getImageBase64: vi.fn()
+}));
+
+import { getImageBase64 } from '@fastgpt/service/common/file/image/utils';
 
 const model = {
   api: 'openai-completions',
@@ -17,10 +28,38 @@ const model = {
 } as any;
 
 describe('piAgent message conversion', () => {
+  it.each([
+    'not-a-url',
+    'preview:/workspace/chart.png',
+    'data:image/png;base64,',
+    'data:text/plain;base64,AAAA'
+  ])('rejects unsupported tool image value: %s', (url) => {
+    expect(
+      ChatCompletionToolMessageContentPartSchema.safeParse({
+        type: 'image_url',
+        image_url: { url }
+      }).success
+    ).toBe(false);
+  });
+
+  it.each([
+    'https://example.com/chart.png',
+    'http://localhost:3000/chart.png',
+    'data:image/png;base64,aW1hZ2U=',
+    'data:image/jpeg;BASE64,aW1hZ2U='
+  ])('accepts supported tool image value: %s', (url) => {
+    expect(
+      ChatCompletionToolMessageContentPartSchema.safeParse({
+        type: 'image_url',
+        image_url: { url }
+      }).success
+    ).toBe(true);
+  });
+
   it.each(['', 'Original reasoning.'])(
     'keeps the reasoning field and its signature across context conversion: %s',
-    (reasoning) => {
-      const converted = convertChatMessagesToPiAgentMessages({
+    async (reasoning) => {
+      const converted = await convertChatMessagesToPiAgentMessages({
         model,
         messages: [{ role: 'assistant', content: 'Answer.', reasoning_content: reasoning }]
       });
@@ -44,8 +83,8 @@ describe('piAgent message conversion', () => {
     }
   );
 
-  it('does not add thinking blocks to non-reasoning models', () => {
-    const converted = convertChatMessagesToPiAgentMessages({
+  it('does not add thinking blocks to non-reasoning models', async () => {
+    const converted = await convertChatMessagesToPiAgentMessages({
       model: { ...model, reasoning: false },
       messages: [{ role: 'assistant', content: 'Answer.', reasoning_content: '' }]
     });
@@ -55,8 +94,8 @@ describe('piAgent message conversion', () => {
     );
   });
 
-  it('converts standard history while preserving reasoning and tool relationships', () => {
-    const result = convertChatMessagesToPiAgentMessages({
+  it('converts standard history while preserving reasoning and tool relationships', async () => {
+    const result = await convertChatMessagesToPiAgentMessages({
       model,
       messages: [
         { role: 'system', content: 'system prompt' },
@@ -126,8 +165,8 @@ describe('piAgent message conversion', () => {
     ]);
   });
 
-  it('converts supported images and safely degrades unsupported remote media', () => {
-    const [message] = convertChatMessagesToPiAgentMessages({
+  it('converts supported images and safely degrades unsupported remote media', async () => {
+    const [message] = await convertChatMessagesToPiAgentMessages({
       model,
       messages: [
         {
@@ -164,8 +203,91 @@ describe('piAgent message conversion', () => {
     );
   });
 
-  it('falls back to empty tool arguments when persisted JSON is malformed', () => {
-    const [message] = convertChatMessagesToPiAgentMessages({
+  it('rehydrates remote tool images when vision is enabled during recovery', async () => {
+    vi.mocked(getImageBase64).mockResolvedValue({
+      completeBase64: 'data:image/png;base64,aW1hZ2U=',
+      base64: 'aW1hZ2U=',
+      mime: 'image/png'
+    });
+    const result = await convertChatMessagesToPiAgentMessages({
+      model,
+      useVision: true,
+      messages: [
+        {
+          role: 'assistant',
+          content: null,
+          tool_calls: [
+            {
+              id: 'call_image',
+              type: 'function',
+              function: { name: 'render', arguments: '{}' }
+            }
+          ]
+        },
+        {
+          role: 'tool',
+          tool_call_id: 'call_image',
+          content: [
+            { type: 'text', text: 'rendered' },
+            {
+              type: 'image_url',
+              image_url: { url: 'https://example.com/result.png' }
+            }
+          ]
+        }
+      ]
+    });
+
+    expect(result[1]).toMatchObject({
+      role: 'toolResult',
+      content: [
+        { type: 'text', text: 'rendered' },
+        { type: 'image', mimeType: 'image/png', data: 'aW1hZ2U=' }
+      ]
+    });
+  });
+
+  it('drops tool images during recovery when vision is disabled', async () => {
+    const result = await convertChatMessagesToPiAgentMessages({
+      model,
+      useVision: false,
+      messages: [
+        {
+          role: 'assistant',
+          content: null,
+          tool_calls: [
+            {
+              id: 'call_image',
+              type: 'function',
+              function: { name: 'render', arguments: '{}' }
+            }
+          ]
+        },
+        {
+          role: 'tool',
+          tool_call_id: 'call_image',
+          content: [
+            { type: 'text', text: 'rendered' },
+            {
+              type: 'image_url',
+              image_url: { url: 'data:image/png;base64,aW1hZ2U=' }
+            }
+          ]
+        }
+      ]
+    });
+
+    expect(result[1]).toMatchObject({
+      role: 'toolResult',
+      content: [
+        { type: 'text', text: 'rendered' },
+        { type: 'text', text: '[Image: image/png]' }
+      ]
+    });
+  });
+
+  it('falls back to empty tool arguments when persisted JSON is malformed', async () => {
+    const [message] = await convertChatMessagesToPiAgentMessages({
       model,
       messages: [
         {
@@ -196,6 +318,60 @@ describe('piAgent message conversion', () => {
         ]
       })
     );
+  });
+
+  it('drops user images during recovery when vision is disabled', async () => {
+    const [message] = await convertChatMessagesToPiAgentMessages({
+      model,
+      useVision: false,
+      messages: [
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: 'inspect' },
+            {
+              type: 'image_url',
+              image_url: { url: 'data:image/png;base64,aW1hZ2U=' }
+            }
+          ]
+        }
+      ]
+    });
+
+    expect(message).toMatchObject({
+      role: 'user',
+      content: [
+        { type: 'text', text: 'inspect' },
+        { type: 'text', text: '[Image: image/png]' }
+      ]
+    });
+  });
+
+  it('keeps user images during recovery when vision is enabled', async () => {
+    const [message] = await convertChatMessagesToPiAgentMessages({
+      model,
+      useVision: true,
+      messages: [
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: 'inspect' },
+            {
+              type: 'image_url',
+              image_url: { url: 'data:image/png;base64,aW1hZ2U=' }
+            }
+          ]
+        }
+      ]
+    });
+
+    expect(message).toMatchObject({
+      role: 'user',
+      content: [
+        { type: 'text', text: 'inspect' },
+        { type: 'image', mimeType: 'image/png', data: 'aW1hZ2U=' }
+      ]
+    });
   });
 
   it('converts pi context back to standard messages for checkpoint compression', () => {
@@ -270,6 +446,35 @@ describe('piAgent message conversion', () => {
         content: 'result'
       }
     ]);
+  });
+
+  it('keeps tool images when converting pi context back for checkpoint compression', () => {
+    const result = convertPiAgentMessagesToChatMessages([
+      {
+        role: 'toolResult',
+        toolCallId: 'call_image',
+        toolName: 'render',
+        content: [
+          { type: 'text', text: 'result' },
+          { type: 'image', mimeType: 'image/png', data: 'aW1hZ2U=' }
+        ],
+        details: {},
+        isError: false,
+        timestamp: 1
+      }
+    ]);
+
+    expect(result[0]).toMatchObject({
+      role: 'tool',
+      tool_call_id: 'call_image',
+      content: [
+        { type: 'text', text: 'result' },
+        {
+          type: 'image_url',
+          image_url: { url: 'data:image/png;base64,aW1hZ2U=' }
+        }
+      ]
+    });
   });
 
   it('merges unnamed streamed tool blocks into the best matching named call', () => {
@@ -365,6 +570,128 @@ describe('piAgent message conversion', () => {
         isError: false
       })
     ]);
+  });
+
+  it('keeps tool image content when an interactive tool resumes', () => {
+    const call = {
+      id: 'call_ask',
+      type: 'function',
+      function: { name: 'ask_user', arguments: '{}' }
+    } as any;
+
+    const result = replaceInteractiveToolResult({
+      messages: [
+        {
+          role: 'toolResult',
+          toolCallId: 'call_ask',
+          toolName: 'ask_user',
+          content: [{ type: 'text', text: 'pending' }],
+          details: {},
+          isError: true,
+          timestamp: 1
+        } as any
+      ],
+      call,
+      response: '{"jobId":"task-123"}',
+      isError: false,
+      content: [
+        { type: 'text', text: '{"jobId":"task-123"}' },
+        { type: 'image', mimeType: 'image/png', data: 'AAAA' }
+      ]
+    });
+
+    // 恢复路径必须和普通路径一样保留图片，否则 ask_user 续跑会丢视觉输入。
+    expect((result[0] as any).content).toEqual([
+      { type: 'text', text: '{"jobId":"task-123"}' },
+      { type: 'image', mimeType: 'image/png', data: 'AAAA' }
+    ]);
+  });
+
+  it('converts tool response parts to pi content and degrades images when vision is disabled', async () => {
+    const parts = [
+      { type: 'text', text: 'ok' },
+      { type: 'image_url', image_url: { url: 'data:image/png;base64,aW1hZ2U=' } }
+    ];
+
+    const withVision = await convertToolResponseContentToPiContent(parts as any);
+    expect(withVision).toEqual([
+      { type: 'text', text: 'ok' },
+      { type: 'image', mimeType: 'image/png', data: 'aW1hZ2U=' }
+    ]);
+
+    const withoutVision = await convertToolResponseContentToPiContent(parts as any, {
+      useVision: false
+    });
+    expect(withoutVision).toEqual([
+      { type: 'text', text: 'ok' },
+      // data URI 不能原样铺进文本，只保留 mime 占位。
+      { type: 'text', text: '[Image: image/png]' }
+    ]);
+  });
+
+  it('never echoes a malformed data uri into the placeholder text', async () => {
+    const result = await convertToolResponseContentToPiContent(
+      [
+        {
+          type: 'image_url',
+          image_url: { url: 'data:;base64,THIS_IS_PAYLOAD' }
+        }
+      ] as any,
+      { useVision: false }
+    );
+
+    // 缺 mime 的 data URI 也要脱敏，否则整段 base64 会进 prompt 文本。
+    expect(result).toEqual([{ type: 'text', text: '[Image: data URI]' }]);
+  });
+
+  it('masks sandbox preview urls in image placeholders when vision is disabled', async () => {
+    const original = previewProxyEnv.AGENT_SANDBOX_PREVIEW_PROXY_URL;
+    previewProxyEnv.AGENT_SANDBOX_PREVIEW_PROXY_URL = 'https://sandbox-preview.example.com';
+    try {
+      const result = await convertToolResponseContentToPiContent(
+        [
+          {
+            type: 'image_url',
+            image_url: {
+              url: 'https://sandbox-preview.example.com/preview/sandbox-1/session-1/a.png'
+            }
+          }
+        ] as any,
+        { useVision: false }
+      );
+
+      expect(result).toEqual([{ type: 'text', text: '[Image: sandbox preview file]' }]);
+    } finally {
+      previewProxyEnv.AGENT_SANDBOX_PREVIEW_PROXY_URL = original;
+    }
+  });
+
+  it('masks sandbox preview urls when image download fails', async () => {
+    const original = previewProxyEnv.AGENT_SANDBOX_PREVIEW_PROXY_URL;
+    previewProxyEnv.AGENT_SANDBOX_PREVIEW_PROXY_URL = 'https://sandbox-preview.example.com';
+    vi.mocked(getImageBase64).mockRejectedValue(new Error('download failed'));
+    try {
+      const result = await convertToolResponseContentToPiContent(
+        [
+          {
+            type: 'image_url',
+            image_url: {
+              url: 'https://sandbox-preview.example.com/preview/sandbox-1/session-1/a.png'
+            }
+          }
+        ] as any,
+        { useVision: true }
+      );
+
+      expect(result).toEqual([{ type: 'text', text: '[Image: sandbox preview file]' }]);
+    } finally {
+      previewProxyEnv.AGENT_SANDBOX_PREVIEW_PROXY_URL = original;
+    }
+  });
+
+  it('converts string tool responses to a single text part', async () => {
+    const result = await convertToolResponseContentToPiContent('plain');
+    expect(result).toEqual([{ type: 'text', text: 'plain' }]);
   });
 
   it('maps pi stop reasons to the shared agent-loop finish reasons', () => {

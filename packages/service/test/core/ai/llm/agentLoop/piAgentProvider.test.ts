@@ -1507,6 +1507,72 @@ describe('runPiAgentLoop', () => {
     expect(agentContinueMock).toHaveBeenCalledTimes(1);
   });
 
+  it('keeps structured content when a pi child tool recovers after Ask', async () => {
+    const events: any[] = [];
+    const content = [
+      { type: 'text' as const, text: 'child resumed' },
+      {
+        type: 'image_url' as const,
+        image_url: { url: 'https://files.example.com/child.png' }
+      }
+    ];
+
+    await runPiAgentLoop({
+      input: {
+        messages: [
+          {
+            role: 'assistant',
+            content: null,
+            tool_calls: [
+              {
+                id: 'call_child',
+                type: 'function',
+                function: { name: 'child_workflow', arguments: '{}' }
+              }
+            ]
+          },
+          { role: 'tool', tool_call_id: 'call_child', content: 'waiting for selection' }
+        ],
+        providerState: {
+          piMessages: [
+            {
+              role: 'toolResult',
+              toolCallId: 'call_child',
+              toolName: 'child_workflow',
+              content: [{ type: 'text', text: 'waiting for selection' }],
+              details: {},
+              isError: false,
+              timestamp: 1
+            }
+          ]
+        },
+        childrenInteractiveParams: {
+          childrenResponse: { type: 'userSelect', entryNodeIds: ['select'] },
+          toolCallId: 'call_child'
+        }
+      },
+      runtime: {
+        llmParams: { model: 'gpt-5' },
+        toolCatalog: { runtimeTools: [] },
+        executeTool: vi.fn(),
+        executeInteractiveTool: vi.fn().mockResolvedValue({
+          response: 'child resumed',
+          content,
+          assistantMessages: [],
+          usages: [],
+          stop: false
+        }),
+        checkIsStopping: vi.fn(() => false),
+        emitEvent: (event) => events.push(event)
+      }
+    });
+
+    expect(events.find((event) => event.type === 'tool_run_end')).toMatchObject({
+      call: { id: 'call_child' },
+      content
+    });
+  });
+
   it('turns a pi interactive tool resume exception into a tool_run_end error', async () => {
     const events: any[] = [];
     const result = await runPiAgentLoop({

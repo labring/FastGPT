@@ -27,7 +27,10 @@ import { BoolSchema, NumSchema } from '../../common/zod';
 import { WorkflowBuilderVersionSchema } from '../workflow/builder/type';
 import { ChatAgentBuilderVersionSchema } from '../ai/auxiliaryGeneration/chatAgentBuilderVersion';
 import { UserChatSelectSchema } from './input/type';
-import { ChatCompletionUserMessageParamSchema } from '../ai/llm/type';
+import {
+  ChatCompletionToolMessageContentPartSchema,
+  ChatCompletionUserMessageParamSchema
+} from '../ai/llm/type';
 
 export const ChatHistoryItemResSchema = DispatchNodeResponseSchema.extend({
   nodeId: z.string(),
@@ -48,6 +51,11 @@ export const ToolModuleResponseItemSchema = z.object({
   toolAvatar: z.string(),
   params: z.string(),
   response: z.string().nullish(),
+  /** 工具实际返回给模型的结构化内容；response 仅保留展示文本。 */
+  content: z
+    .array(ChatCompletionToolMessageContentPartSchema)
+    .optional()
+    .meta({ description: '工具实际返回给模型的结构化内容' }),
   hideDetails: BoolSchema.optional().meta({ description: '仅展示工具信息，不提供参数或响应详情' }),
   hideInUI: z.boolean().optional().meta({ description: '隐藏内部工具展示，仍保留模型上下文' }),
   internalOnly: z
@@ -260,7 +268,16 @@ export const AIChatItemValueSchema = z.object({
     .meta({ description: '本次响应的工具调用原始顺序，含交互工具' }),
   displayOnly: z.boolean().optional().meta({ description: '子工具展示输出，不进入父模型上下文' }),
   toolResponses: z
-    .array(z.object({ id: z.string().min(1), response: z.string() }))
+    .array(
+      z.object({
+        id: z.string().min(1),
+        response: z.string(),
+        content: z
+          .array(ChatCompletionToolMessageContentPartSchema)
+          .optional()
+          .meta({ description: '子工具恢复时返回给模型的结构化内容' })
+      })
+    )
     .optional()
     .meta({ description: '子工具续跑产生的实际结果，补齐原调用，不创建新调用' }),
   askId: z

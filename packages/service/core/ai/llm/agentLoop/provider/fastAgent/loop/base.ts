@@ -4,6 +4,7 @@ import type {
   ChatCompletionMessageParam,
   ChatCompletionMessageToolCall,
   ChatCompletionTool,
+  ChatCompletionToolMessageContentPart,
   CompletionFinishReason
 } from '@fastgpt/global/core/ai/llm/type';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
@@ -15,6 +16,7 @@ import { countGptMessagesTokens } from '../../../../../../../common/string/tikto
 import { formatModelChars2Points } from '../../../../../../../support/wallet/usage/utils';
 import type { LLMModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import type { AgentLoopAssistantResponse } from '../../../domain/tool';
+import { buildToolMessageContent } from '../../../domain/tool';
 import type {
   AgentLoopChildrenInteractiveParams,
   AgentLoopCompletionPolicy,
@@ -98,6 +100,7 @@ type RunAgentCallProps<TChildrenResponse = unknown> = {
     hideInUI?: boolean;
     call: ChatCompletionMessageToolCall;
     response: string;
+    content?: string | ChatCompletionToolMessageContentPart[];
     assistantMessages?: ChatCompletionMessageParam[];
     assistantResponses?: AgentLoopAssistantResponse[];
     errorMessage?: string;
@@ -322,7 +325,8 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
       interactive,
       stop,
       errorMessage,
-      metadata
+      metadata,
+      content: toolContentParts
     } = await (async () => {
       try {
         return await onRunInteractiveTool({
@@ -341,10 +345,15 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
       }
     })();
 
+    const toolContent = buildToolMessageContent({
+      content: toolContentParts,
+      text: normalizeToolResponseContent(response)
+    });
     onToolRunEnd?.({
       resumed: true,
       call: resumedToolCall,
       response: normalizeToolResponseContent(response),
+      content: toolContent,
       assistantMessages: toolAssistantMessages,
       assistantResponses: toolAssistantResponses,
       errorMessage: interactiveToolErrorMessage || errorMessage,
@@ -355,11 +364,12 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
     });
 
     // FastAgent 只使用 ChatItem 重建的上下文，旧交互中的 memory 快照不再参与恢复。
+    // 与普通工具执行路径保持一致：结构化 parts 与最终文本统一通过 buildToolMessageContent 组装。
     requestMessages = requestMessages.map((item) =>
       item.role === 'tool' && item.tool_call_id === childrenInteractiveParams.toolCallId
         ? {
             ...item,
-            content: normalizeToolResponseContent(response)
+            content: toolContent
           }
         : item
     );
@@ -369,7 +379,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
     assistantMessages.push({
       role: ChatCompletionRequestMessageRoleEnum.Tool,
       tool_call_id: childrenInteractiveParams.toolCallId,
-      content: response
+      content: toolContent
     });
     assistantMessages.push(...filterEmptyAssistantMessages(toolAssistantMessages));
     // 相同 tool 触发了多次交互, 调用的 toolId 认为是相同的
@@ -589,7 +599,8 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
           errorMessage,
           hideInUI,
           continuationMessage,
-          metadata
+          metadata,
+          content: toolContent
         } = await (async () => {
           try {
             return await onRunTool({
@@ -608,10 +619,11 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
           }
         })();
         // Compress tool response
-        const { toolFinalResponse, toolResponseCompress } = await (async () => {
+        const { toolFinalResponse, toolResponseCompress, isCompressed } = await (async () => {
           if (skipResponseCompress) {
             return {
-              toolFinalResponse: normalizeToolResponseContent(response)
+              toolFinalResponse: normalizeToolResponseContent(response),
+              isCompressed: false
             };
           }
 
@@ -628,6 +640,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
           if (compressionUsage) {
             return {
               toolFinalResponse: normalizedCompressedContext,
+              isCompressed: true,
               toolResponseCompress: {
                 response: normalizedCompressedContext,
                 modelName: modelData.name,
@@ -639,13 +652,23 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
           }
 
           return {
-            toolFinalResponse: normalizedCompressedContext
+            toolFinalResponse: normalizedCompressedContext,
+            isCompressed: normalizedCompressedContext !== normalizeToolResponseContent(response)
           };
         })();
+
+        // 工具返回结构化 content 时，保留最终展示/计费文本作为 text part，
+        // 事件、聊天记录和下一轮模型请求必须使用同一份内容。
+        const toolMessageContent = buildToolMessageContent({
+          content: toolContent,
+          text: toolFinalResponse,
+          preserveImageParts: !isCompressed
+        });
 
         onToolRunEnd?.({
           call: tool,
           response: toolFinalResponse,
+          content: toolMessageContent,
           assistantMessages: toolAssistantMessages,
           assistantResponses: toolAssistantResponses,
           ...(toolErrorMessage || errorMessage
@@ -667,7 +690,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
           toolMessage: {
             tool_call_id: tool.id,
             role: ChatCompletionRequestMessageRoleEnum.Tool,
-            content: toolFinalResponse
+            content: toolMessageContent
           } as ChatCompletionMessageParam,
           toolAssistantMessages: filterEmptyAssistantMessages(toolAssistantMessages)
         };

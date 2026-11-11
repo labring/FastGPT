@@ -820,6 +820,7 @@ export const updateInteractiveChat = async ({
         const existingTool = item.tools?.find((tool) => tool.id === incomingTool.id);
         if (existingTool) {
           existingTool.response = incomingTool.response;
+          existingTool.content = incomingTool.content ?? existingTool.content;
           existingTool.toolName = existingTool.toolName || incomingTool.toolName;
           existingTool.toolAvatar = existingTool.toolAvatar || incomingTool.toolAvatar;
           existingTool.functionName = existingTool.functionName || incomingTool.functionName;
@@ -829,6 +830,7 @@ export const updateInteractiveChat = async ({
 
         if (item.tool?.id === incomingTool.id) {
           item.tool.response = incomingTool.response;
+          item.tool.content = incomingTool.content ?? item.tool.content;
           item.tool.toolName = item.tool.toolName || incomingTool.toolName;
           item.tool.toolAvatar = item.tool.toolAvatar || incomingTool.toolAvatar;
           item.tool.functionName = item.tool.functionName || incomingTool.functionName;
