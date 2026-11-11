@@ -343,9 +343,14 @@ const handlers = {
       [3, 19, ['Start', 'Update', 'ReadVariables']],
       [3, 20, []]
     ]) {
-      const run = await s.run(appId, graph, c.run + '-control-' + budget + '-' + depth, {
-        maxRunTimes: budget,
-        workflowDispatchDeep: depth
+      const run = await s.run({
+        appId,
+        graph,
+        chatId: c.run + '-control-' + budget + '-' + depth,
+        control: {
+          maxRunTimes: budget,
+          workflowDispatchDeep: depth
+        }
       });
       assert.deepEqual(
         run.flat.map((row) => row.nodeId),
@@ -375,7 +380,12 @@ const handlers = {
       fixtureEdge({ source: 'Start', target: 'FastSibling' })
     ];
     const parentId = await c.create('budget-snapshot', parent);
-    const run = await s.run(parentId, parent, c.run + '-snapshot', { maxRunTimes: 3 });
+    const run = await s.run({
+      appId: parentId,
+      graph: parent,
+      chatId: c.run + '-snapshot',
+      control: { maxRunTimes: 3 }
+    });
     const events = run.events.filter((event) => event.event === 'flowNodeResponse');
     const fast = events.findIndex((event) => event.data.nodeId === 'FastSibling');
     const childStart = events.findIndex((event) => event.data.nodeId === 'ChildStart');

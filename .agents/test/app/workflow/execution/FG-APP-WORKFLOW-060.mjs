@@ -173,13 +173,12 @@ await runNodeCase('FG-APP-WORKFLOW-060', {
           runId: run + '-' + role.toLowerCase()
         });
       const appId = await c.create('tool-completion-' + order, graph);
-      const result = await s.run(
+      const result = await s.run({
         appId,
         graph,
-        run,
-        { workflowDispatchDeep: 1 },
-        undefined,
-        async ({ data, context: ctx }) => {
+        chatId: run,
+        control: { workflowDispatchDeep: 1 },
+        execute: async ({ data, context: ctx }) => {
           // 等效于父 Queue 已完成 Start 并进入 ToolCall callback 的真实初态，不能重启根入口。
           data.runtimeNodes.forEach((node) => {
             node.isEntry = false;
@@ -257,7 +256,7 @@ await runNodeCase('FG-APP-WORKFLOW-060', {
             await Promise.all(Object.values(running));
           }
         }
-      );
+      });
       const persisted = await c.persisted(appId, run);
       for (const id of ['SlowUpdate', 'FastUpdate']) {
         assert.equal(result.flat.filter((row) => row.nodeId === id).length, 1);

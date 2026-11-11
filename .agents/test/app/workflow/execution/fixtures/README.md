@@ -10,7 +10,7 @@
 node .agents/test/app/workflow/execution/workflow-fixtures.mjs
 ```
 
-该命令逐份比较生成源和落盘 JSON，校验节点 Schema、重复 ID 与连线端点。需要更新时，`--patch` 输出供 apply_patch 使用的补丁；不自动改动应用或环境。静态校验不能代替导入、发布、真实运行与持久化检查。
+该命令比较常规模板的生成源与落盘 JSON，并校验全部模板的节点 Schema、重复 ID 与连线端点。`legacy-*.json` 是固定旧版弃用模板的兼容快照，仅做静态校验，不随新版模板自动重建。常规模板需要更新时，`--patch` 输出供 apply_patch 使用的补丁；不自动改动应用或环境。静态校验不能代替导入、发布、真实运行与持久化检查。
 
 ## 模板与业务场景
 
@@ -44,6 +44,9 @@ node .agents/test/app/workflow/execution/workflow-fixtures.mjs
 | basic-dataset-chain | WORKFLOW-071/C4 | DATASET_ID / MODEL_ID；真实本轮知识库先训练并预检，Search.quoteQA → AI → Reply；不以伪造数组证明检索正确 |
 | basic-tool-child + basic-tool-parent | WORKFLOW-069/C5、071/C5 | 先以工作流工具类型发布 child，绑定 CHILD_TOOL_ID；Plugin Input/Output、缺省与显式空/假值、父输出 ID/key 映射 |
 | basic-interactive | WORKFLOW-071/C6 | GATE_URL；真实选择 A/B 后继续表单，沿原 chatId 恢复；动态模式只留 ref_default 出口，移除 SelectedB 及其入出边 |
+| legacy-run-app | WORKFLOW-064/C1 | CHILD_APP_ID；真实弃用类型 `app`，复用 child-leaf；Check 实际消费旧节点 history/answerText，空问题不进入子应用 |
+| legacy-loop + legacy-loop-pause | WORKFLOW-064/C2 | 真正的旧 `loop/loopStart/loopEnd`；普通图用空数组/假值数组，暂停图仅 1-based index=2 进入表单；保留旧共享变量语义 |
+| legacy-query-extension | WORKFLOW-064/C3 | MODEL_ID；真实弃用类型 `cfr`，下游引用 `system_text`（不是 `text`）；候选筛选后去重，确定性外部响应与实时模型调用须分别标注 |
 
 JSON 是拓扑基线；表中列明的权限矩阵、大小/并发/失败变体由本轮配置绑定生成，执行时应把最终实际 JSON 另存报告 evidence。只有完成对应 Markdown 所有必需变体与断言才能将整行标为通过；拓扑预检或部分 API 结果不能代替 UI、对象存储或权限证据。
 
@@ -60,7 +63,7 @@ JSON 是拓扑基线；表中列明的权限矩阵、大小/并发/失败变体�
 | v1/v2 与 stream、错误路由、循环/并行空数组与假值/break、Debug、预算/深度 | WORKFLOW-068 |
 | 子应用→工作流工具多层错误传播、捕获、循环失败及并行恢复摘要 | WORKFLOW-062 |
 | 分类、结构化提取与同节点记忆 | WORKFLOW-063 |
-| 旧 runApp/loop/queryExtension 的真实历史图兼容 | WORKFLOW-064；缺历史导出前保持 draft |
+| 旧 runApp/loop/queryExtension 的兼容图 | WORKFLOW-064；模板取自固定旧版弃用节点，并先运行对照版本，不伪造新版节点替代 |
 | 画布直接工具与模型工具调用、stopTool 和自定义反馈 | WORKFLOW-065 |
 | SSE、断连恢复、停止和竞争 | CHAT-CONVERSATION-003/004 |
 | Agent 子应用与模型/知识库鉴权 | AGENTV2-001、PERMISSION-RESOURCE-004 |

@@ -217,7 +217,8 @@ export async function workflowService(context, c) {
     callbackMapMocked: false
   });
 
-  async function props(appId, graph, chatId, extra = {}) {
+  /** 构建真实服务入口参数；默认使用本轮 owner，边界变体可显式覆盖 query 与文件限额。 */
+  async function props({ appId, graph, chatId, extra = {} }) {
     const tmbId = c.fixture.actors.owner.tmbId;
     return {
       mode: 'chat',
@@ -255,8 +256,8 @@ export async function workflowService(context, c) {
     };
   }
   /** 直接内核变体仍构建完整真实文件/变量与 DB writer；可调整非 HTTP 的预算和深度。 */
-  async function run(appId, graph, chatId, control = {}, observe, execute) {
-    const data = await props(appId, graph, chatId);
+  async function run({ appId, graph, chatId, control = {}, observe, execute }) {
+    const data = await props({ appId, graph, chatId });
     const prepared = await prepareWorkflowFileContext({
       query: data.query,
       histories: [],

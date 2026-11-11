@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { runNodeCase } from '../../../support/runtime.mjs';
 import { success } from '../../../support/scenario.mjs';
 import { workflowScenario } from './workflow-api.mjs';
+import { openEventStream } from '../../../support/stream.mjs';
 
 /** 各分支变体独立发布并以真实外部调用集合校验，避免仅凭最终文本判断路由。 */
 async function runBranchVariants(c, variants) {
@@ -86,37 +87,14 @@ await runNodeCase('FG-APP-WORKFLOW-070', {
         raw: true
       });
       assert.equal(response.status, 200);
-      const events = [];
-      const collect = (async () => {
-        const decoder = new TextDecoder();
-        let pending = '';
-        for await (const chunk of response.body) {
-          pending += decoder.decode(chunk, { stream: true }).replace(/\r\n/g, '\n');
-          let boundary;
-          while ((boundary = pending.indexOf('\n\n')) >= 0) {
-            const frame = pending.slice(0, boundary);
-            pending = pending.slice(boundary + 2);
-            const lines = frame.split('\n');
-            const payload = lines
-              .filter((line) => line.startsWith('data:'))
-              .map((line) => line.slice(5).trimStart())
-              .join('\n');
-            if (!payload) continue;
-            events.push({
-              event:
-                lines
-                  .find((line) => line.startsWith('event:'))
-                  ?.slice(6)
-                  .trim() ?? 'message',
-              data: payload === '[DONE]' ? payload : JSON.parse(payload)
-            });
-          }
-        }
-      })();
+      const stream = openEventStream(response);
+      const { events } = stream;
       context.itemFinalizers.push(async () => {
-        await c.release(`${question}-Fast`);
-        await c.release(`${question}-Slow`);
-        await collect.catch(() => undefined);
+        try {
+          await Promise.all([c.release(`${question}-Fast`), c.release(`${question}-Slow`)]);
+        } finally {
+          await stream.cancel();
+        }
       });
       await c.poll(async () => {
         const observations = await c.gateObservations();
@@ -135,7 +113,10 @@ await runNodeCase('FG-APP-WORKFLOW-070', {
       assert.ok(!interim.some((item) => item.body.node === 'Merge'));
       assert.ok(!events.some((event) => event.data?.nodeId === 'Reply'));
       await c.release(`${question}-${second}`);
-      await collect;
+      const completed = await stream.finished;
+      assert.equal(completed.error, undefined, 'SSE 读取不能静默失败');
+      assert.equal(completed.cancelled, false, '正常汇合不能提前取消');
+      assert.equal(completed.done, true);
       assert.ok(events.some((event) => event.data === '[DONE]'));
       assert.ok(!events.some((event) => event.event === 'error'));
       const stored = await c.persisted(appId, chatId);
