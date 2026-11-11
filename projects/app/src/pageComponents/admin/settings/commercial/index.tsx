@@ -262,12 +262,6 @@ const CommercialSettingComponent = () => {
               placeholder="https://openapi.alipay.com/gateway.do"
             />
           </AdminFormItem>
-          <AdminFormItem
-            label={t('admin:fallback_endpoint')}
-            tooltip={t('admin:custom_endpoint_for_private_or_special_scenarios')}
-          >
-            <Input {...register('payment.alipay.endpoint')} placeholder="https://..." />
-          </AdminFormItem>
         </SimpleGrid>
         <SimpleGrid columns={[1, 2]} spacing={5}>
           <AdminFormItem

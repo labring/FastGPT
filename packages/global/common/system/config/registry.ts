@@ -248,7 +248,6 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
       'payment.wx.notifyUrl',
       'payment.alipay.appId',
       'payment.alipay.gateway',
-      'payment.alipay.endpoint',
       'payment.bank.description',
       'billingNotify.lackOfPoints.zh',
       'billingNotify.pointsThirtyPercentRemain.zh',

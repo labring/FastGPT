@@ -666,8 +666,7 @@ export const buildLegacyProOverrides = (pro: LegacyProConfig): DomainOverrides =
         appCertContent: optionalText(alipay.APP_CERT_CONTENT),
         gateway: optionalText(alipay.ALIPAY_GATEWAY),
         rootCertContent: optionalText(alipay.ALIPAY_ROOT_CERT_CONTENT),
-        publicCertContent: optionalText(alipay.ALIPAY_PUBLIC_CERT_CONTENT),
-        endpoint: optionalText(alipay.ALIPAY_ENDPOINT)
+        publicCertContent: optionalText(alipay.ALIPAY_PUBLIC_CERT_CONTENT)
       }),
       bank: compact({ description: optionalText(bank.description) })
     }),

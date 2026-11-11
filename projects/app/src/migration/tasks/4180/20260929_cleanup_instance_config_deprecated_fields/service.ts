@@ -72,6 +72,8 @@ export const deprecatedOverridePaths: Partial<
     ['agentSandboxFreeTip'],
     // 支付宝异步通知未接入，充值到账通知模板没有消费点，字段已从 Schema 删除
     ['payment', 'alipay', 'notifyUrl'],
+    // 当前支付宝支付、查询和退款均走 V2 gateway；未使用 V3 endpoint。
+    ['payment', 'alipay', 'endpoint'],
     ['billingNotify', 'paymentReceived'],
     ['billingNotify', 'lackOfPoints', 'en'],
     ['billingNotify', 'pointsTenPercentRemain', 'en'],

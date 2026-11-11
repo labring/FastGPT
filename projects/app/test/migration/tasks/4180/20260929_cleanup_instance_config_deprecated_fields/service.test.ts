@@ -183,6 +183,30 @@ describe('cleanupInstanceConfigDeprecatedFields (integration)', () => {
     await MongoSystemInstanceConfig.deleteMany({});
   });
 
+  it('removes the unused Alipay endpoint without losing payment credentials or rewriting on replay', async () => {
+    const alipay = {
+      appId: 'synthetic-app',
+      gateway: 'https://gateway.example.test/gateway.do',
+      appPrivateKey: 'synthetic-key'
+    };
+    await seedDirtyDoc({
+      domain: 'commercial',
+      revision: 4,
+      overrides: { payment: { alipay: { ...alipay, endpoint: 'https://unused.example.test' } } }
+    });
+
+    expect((await cleanupInstanceConfigDeprecatedFields({ logger })).removedFieldCount).toBe(1);
+    const first = await MongoSystemInstanceConfig.collection.findOne({ domain: 'commercial' });
+    expect(first?.overrides).toEqual({ payment: { alipay } });
+    expect(first?.revision).toBe(5);
+    expect((await verifyInstanceConfigDeprecatedFields()).invalidDomains).toEqual([]);
+
+    expect((await cleanupInstanceConfigDeprecatedFields({ logger })).removedFieldCount).toBe(0);
+    expect(await MongoSystemInstanceConfig.collection.findOne({ domain: 'commercial' })).toEqual(
+      first
+    );
+  });
+
   it('cleans deprecated fields and passes verification', async () => {
     await seedDirtyDoc({
       domain: 'vector',
