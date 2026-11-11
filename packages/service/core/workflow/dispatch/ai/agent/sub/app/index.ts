@@ -189,10 +189,15 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
     name: childAppInfo.name,
     isChildApp: true
   };
+  const childMemoryContext = memoryContext.fork(`app:${childRunningAppInfo.sourceId}`);
+  const checkpointVariables = data.lastInteractive
+    ? childMemoryContext.readVariableCheckpoint({ runningAppInfo: childRunningAppInfo })
+    : undefined;
   const childFileInputs = [
     ...getWorkflowFileVariableInputs({
       variablesConfig: chatConfig.variables ?? [],
-      inputVariables: {}
+      inputVariables: {},
+      checkpointVariables
     }),
     ...nodes.flatMap((node) =>
       node.flowNodeType === FlowNodeTypeEnum.pluginInput
@@ -235,6 +240,7 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
         uid: data.uid,
         variablesConfig: chatConfig.variables ?? [],
         inputVariables: {},
+        checkpointVariables,
         externalVariables: externalProvider?.externalWorkflowVariables,
         sourceVariableState: variableState,
         resolveInputFile
@@ -283,8 +289,6 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
           showStatus: false
         };
       });
-      const childMemoryContext = memoryContext.fork(`app:${childRunningAppInfo.sourceId}`);
-
       const childContext = getWorkflowContext().getChildContext({
         workflowStreamResponse: undefined,
         memoryContext: childMemoryContext,
@@ -297,7 +301,7 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
             : {})
         })
       });
-      return runWithContext(childContext, () =>
+      const result = await runWithContext(childContext, () =>
         runWorkflow({
           ...data,
           runningAppInfo: childRunningAppInfo,
@@ -318,6 +322,18 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
           stream: false
         })
       );
+      return {
+        ...result,
+        system_memories: {
+          ...result.system_memories,
+          ...childMemoryContext.createVariableCheckpoint({
+            runningAppInfo: childRunningAppInfo,
+            variables: result.workflowInteractiveResponse
+              ? childrenVariableState.toStoreRecord()
+              : undefined
+          })
+        }
+      };
     }
   });
   memoryContext.merge(system_memories);

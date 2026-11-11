@@ -124,12 +124,28 @@ export const runChildAppWorkflow = async ({
       ? parentHistories
       : getHistories(effectiveHistory, parentHistories);
 
+  // 变量与节点记忆使用同一调用路径；只在真实交互恢复时消费 checkpoint，普通新调用仍使用独立初值。
+  const childMemoryContext = isTool
+    ? parentMemoryContext.fork(`app:${childRunningAppInfo.sourceId}`)
+    : parentMemoryContext.fork(
+        workflowProps.node?.nodeId ? `node:${workflowProps.node.nodeId}` : undefined,
+        {
+          history: effectiveHistory,
+          histories: inputHistories,
+          hasInteractiveResume: !!interactive
+        }
+      );
+  const checkpointVariables = interactive
+    ? childMemoryContext.readVariableCheckpoint({ runningAppInfo: childRunningAppInfo })
+    : undefined;
+
   const workflowResult = await runWithDerivedWorkflowFileContext({
     query: theQuery,
     histories: inputHistories,
     files: getWorkflowFileVariableInputs({
       variablesConfig: chatConfig.variables ?? [],
-      inputVariables: childrenAppVariables
+      inputVariables: childrenAppVariables,
+      checkpointVariables
     }),
     resourceContext,
     fn: async ({ resolveInputFile, query: childQuery, histories: childHistories }) => {
@@ -142,22 +158,11 @@ export const runChildAppWorkflow = async ({
         uid: workflowProps.uid,
         variablesConfig: chatConfig.variables,
         inputVariables: childrenAppVariables,
+        checkpointVariables,
         externalVariables: externalProvider?.externalWorkflowVariables,
         sourceVariableState: getWorkflowContext().variableContext,
         resolveInputFile
       });
-      // 应用工具按 appId 隔离记忆作用域；画布子应用按节点隔离，并在自定义历史切片时跳过继承父级记忆。
-      const childMemoryContext = isTool
-        ? parentMemoryContext.fork(`app:${childRunningAppInfo.sourceId}`)
-        : parentMemoryContext.fork(
-            workflowProps.node?.nodeId ? `node:${workflowProps.node.nodeId}` : undefined,
-            {
-              history: effectiveHistory,
-              histories: childHistories,
-              hasInteractiveResume: !!interactive
-            }
-          );
-
       // 统一入口同时服务画布子应用与 Agent 工具；继承根沙箱，独立变量和本层响应摘要。
       const parentContext = getWorkflowContext();
       const childContext = parentContext.getChildContext({
@@ -186,6 +191,15 @@ export const runChildAppWorkflow = async ({
       );
       return {
         ...result,
+        system_memories: {
+          ...result.system_memories,
+          ...childMemoryContext.createVariableCheckpoint({
+            runningAppInfo: childRunningAppInfo,
+            variables: result.workflowInteractiveResponse
+              ? childrenVariableState.toStoreRecord()
+              : undefined
+          })
+        },
         completeMessages: childHistories.concat(
           interactive ? [] : [{ obj: ChatRoleEnum.Human, value: childQuery }],
           { obj: ChatRoleEnum.AI, value: result.assistantResponses }

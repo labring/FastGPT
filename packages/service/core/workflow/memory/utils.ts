@@ -8,6 +8,8 @@ export type WorkflowMemorySource = {
 };
 
 const LEGACY_AGENT_MEMORY_PREFIX = 'agentLoopMemory-';
+/** 独立变量 checkpoint 不属于节点记忆，禁止旧节点键迁移规则改写其归属。 */
+export const WORKFLOW_VARIABLE_CHECKPOINT_PREFIX = 'workflow-variable-checkpoint/';
 
 /** 根来源的无前缀键是合法记忆，递归子流程不能把它当成旧子流程键。 */
 const isRootMemoryKey = (key: string, rootSource?: WorkflowMemorySource): boolean =>
@@ -92,6 +94,7 @@ export const mergeWorkflowMemories = ({
   const record = cloneDeep({ ...baseline, ...updates });
 
   for (const memoryKey of Object.keys(updates)) {
+    if (memoryKey.startsWith(WORKFLOW_VARIABLE_CHECKPOINT_PREFIX)) continue;
     const baseKey = memoryKey.slice(memoryKey.lastIndexOf('/') + 1);
     if (memoryKey !== baseKey) {
       if (isRootMemoryKey(baseKey, rootSource)) continue;

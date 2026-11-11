@@ -101,6 +101,8 @@ export type WorkflowVariableStateCreateProps = {
   variablesConfig?: AppChatConfigType['variables'];
   // 外部传入的变量，需要基于 variablesConfig 加工
   inputVariables?: Record<string, unknown>;
+  /** 从服务端记忆恢复的 canonical key -> store value；优先于旧调用参数及其 label 别名。 */
+  checkpointVariables?: Record<string, unknown>;
   // 源变量状态，用于复制变量状态
   sourceVariableState?: WorkflowVariableStateLike;
   // 根 Workflow 创建状态时尚未进入 AsyncLocalStorage，需要显式传入请求级文件数量限制。
@@ -109,14 +111,19 @@ export type WorkflowVariableStateCreateProps = {
   resolveInputFile?: (file: ChatFileStoreValue) => Promise<string | undefined>;
 };
 
-/** 根据变量配置从入参中取值，兼容 API label 入参与前端 key 入参。 */
+/** 交互恢复优先读取 canonical store 值；其余场景兼容 API label 入参与前端 key 入参。 */
 const getVariableInputValue = ({
   variables,
-  item
+  item,
+  checkpointVariables
 }: {
   variables: Record<string, unknown>;
   item: VariableItemType;
+  checkpointVariables?: Record<string, unknown>;
 }) => {
+  if (checkpointVariables && Object.hasOwn(checkpointVariables, item.key)) {
+    return checkpointVariables[item.key];
+  }
   if (item.label && variables[item.label] !== undefined) return variables[item.label];
   if (variables[item.key] !== undefined) return variables[item.key];
   return item.defaultValue;
@@ -144,14 +151,15 @@ export const getWorkflowFileInputsFromValue = (
 export const getWorkflowFileVariableInputs = ({
   variablesConfig = [],
   inputVariables = {},
+  checkpointVariables,
   maxFileAmount = getWorkflowFileContext()?.limits.maxFileAmount
 }: Pick<
   WorkflowVariableStateCreateProps,
-  'variablesConfig' | 'inputVariables' | 'maxFileAmount'
+  'variablesConfig' | 'inputVariables' | 'checkpointVariables' | 'maxFileAmount'
 >) =>
   variablesConfig.flatMap((item) => {
     if (item.type !== VariableInputEnum.file) return [];
-    const value = getVariableInputValue({ variables: inputVariables, item });
+    const value = getVariableInputValue({ variables: inputVariables, item, checkpointVariables });
     return getWorkflowFileInputsFromValue(value, item.maxFiles, maxFileAmount);
   });
 
@@ -211,6 +219,7 @@ export class WorkflowVariableState implements WorkflowVariableStateLike {
     histories = [],
     variablesConfig = [],
     inputVariables = {},
+    checkpointVariables,
     externalVariables = {},
     runtimeOnlyVariables = {},
     sourceVariableState,
@@ -229,7 +238,11 @@ export class WorkflowVariableState implements WorkflowVariableStateLike {
           defaultModuleMaxFileAmount: DEFAULT_VARIABLE_FILE_INPUT_MAX_FILES
         })
       };
-      const value = getVariableInputValue({ variables: inputVariables, item: config });
+      const value = getVariableInputValue({
+        variables: inputVariables,
+        item: config,
+        checkpointVariables
+      });
       await state.initConfiguredVariable(config, value, resolveInputFile);
     }
 

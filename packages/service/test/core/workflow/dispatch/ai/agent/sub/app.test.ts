@@ -18,6 +18,7 @@ import {
 } from '@fastgpt/global/core/chat/constants';
 import { prepareWorkflowFileContext } from '@fastgpt/service/core/workflow/dispatch/context/file';
 import { getWorkflowFileContext } from '@fastgpt/service/core/workflow/dispatch/context';
+import { WorkflowMemoryContext } from '@fastgpt/service/core/workflow/dispatch/context/memory';
 import { runWithTestWorkflowContext as runWithContext } from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
 
 const mocks = vi.hoisted(() => ({
@@ -543,6 +544,12 @@ describe('agent sub app dispatchPlugin', () => {
   });
 
   it('returns plugin child interactive state and forwards lastInteractive on resume', async () => {
+    const memoryContext = WorkflowMemoryContext.fromRecord();
+    const source = { sourceType: ChatSourceTypeEnum.app, sourceId: 'child-plugin' };
+    const childMemory = memoryContext.fork('app:child-plugin');
+    memoryContext.merge(
+      childMemory.createVariableCheckpoint({ runningAppInfo: source, variables: { counter: 41 } })
+    );
     const previousInteractive = {
       type: 'userSelect',
       entryNodeIds: ['select_1'],
@@ -575,13 +582,27 @@ describe('agent sub app dispatchPlugin', () => {
       edges: [
         { source: 'before', sourceHandle: 'output', target: 'select_1', targetHandle: 'input' }
       ],
-      chatConfig: { variables: [] }
+      chatConfig: {
+        variables: [
+          {
+            key: 'counter',
+            type: VariableInputEnum.numberInput,
+            valueType: WorkflowIOValueTypeEnum.number,
+            defaultValue: 0
+          }
+        ]
+      }
     });
-    mocks.runWorkflow.mockResolvedValue({
-      assistantResponses: [{ text: { content: 'waiting for plugin input' } }],
-      flowUsages: [],
-      workflowRuntimeSummary: undefined,
-      workflowInteractiveResponse: nextInteractive
+    mocks.runWorkflow.mockImplementationOnce(async (args: any) => {
+      const state = getCapturedTestWorkflowContext(args).variableContext;
+      expect(state.get('counter')).toBe(41);
+      await state.set('counter', 42);
+      return {
+        assistantResponses: [{ text: { content: 'waiting for plugin input' } }],
+        flowUsages: [],
+        workflowRuntimeSummary: undefined,
+        workflowInteractiveResponse: nextInteractive
+      };
     });
 
     const result = await dispatchPlugin({
@@ -611,6 +632,7 @@ describe('agent sub app dispatchPlugin', () => {
       maxRunTimes: 20,
       workflowDispatchDeep: 0,
       lastInteractive: previousInteractive,
+      memoryContext,
       query: [{ text: { content: '{"selection":"Confirm"}' } }]
     } as any);
 
@@ -633,6 +655,9 @@ describe('agent sub app dispatchPlugin', () => {
       interactive: nextInteractive
     });
     expect(result.assistantMessages).toBeUndefined();
+    expect(
+      memoryContext.fork('app:child-plugin').readVariableCheckpoint({ runningAppInfo: source })
+    ).toEqual({ counter: 42 });
   });
 });
 

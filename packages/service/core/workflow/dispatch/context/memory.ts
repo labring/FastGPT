@@ -5,6 +5,7 @@ import {
   getWorkflowMemoryKey,
   mergeWorkflowMemories,
   readLegacyWorkflowMemory,
+  WORKFLOW_VARIABLE_CHECKPOINT_PREFIX,
   type WorkflowMemorySource
 } from '../../memory/utils';
 
@@ -126,6 +127,44 @@ export class WorkflowMemoryContext {
         memoryKey,
         rootSource: this.rootSource
       })
+    );
+  }
+
+  /** 仅恢复当前子运行路径的可持久化变量；不回退到根或旧节点键，旧暂停记录缺省时仍用原入参。 */
+  readVariableCheckpoint({ runningAppInfo }: { runningAppInfo: WorkflowMemorySource }) {
+    const key = this.getVariableCheckpointKey(runningAppInfo);
+    const variables = Object.hasOwn(this.delta, key) ? this.delta[key] : this.baseline[key];
+    return variables !== null && typeof variables === 'object' && !Array.isArray(variables)
+      ? cloneDeep(variables as Record<string, unknown>)
+      : undefined;
+  }
+
+  /**
+   * 为子运行结果生成变量增量：暂停时保存 store record，完成时清除旧 checkpoint。
+   * 不写入公开交互响应，避免把子流程独立变量暴露给客户端；普通完成且没有旧快照时不增加记忆键。
+   */
+  createVariableCheckpoint({
+    runningAppInfo,
+    variables
+  }: {
+    runningAppInfo: WorkflowMemorySource;
+    variables?: Record<string, unknown>;
+  }): Record<string, Record<string, unknown> | undefined> {
+    const key = this.getVariableCheckpointKey(runningAppInfo);
+    if (
+      variables === undefined &&
+      !Object.hasOwn(this.delta, key) &&
+      !Object.hasOwn(this.baseline, key)
+    ) {
+      return {};
+    }
+    return { [key]: cloneDeep(variables) };
+  }
+
+  /** 复用完整调用路径和应用来源，但以独立前缀与任意用户 nodeId 区分。 */
+  private getVariableCheckpointKey(runningAppInfo: WorkflowMemorySource) {
+    return (
+      WORKFLOW_VARIABLE_CHECKPOINT_PREFIX + this.getNodeMemoryKey({ runningAppInfo, nodeId: '' })
     );
   }
 
