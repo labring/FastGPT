@@ -154,12 +154,13 @@ describe('EditChannelModal channel metadata', () => {
     expect(mocks.metadata[23].order).toBe(0);
   });
 
-  it.each([1, 3, 4])('defaults new type %s channels to Responses in both layouts', (type) => {
+  it.each([1, 3, 4])('defaults new type %s channels to auto in both layouts', (type) => {
     for (const compact of [false, true]) {
       const html = render('team', { type }, compact);
       expect(html).toContain('config_model:chat_upstream_protocol');
-      expect(mocks.protocol?.value).toBe('responses');
+      expect(mocks.protocol?.value).toBe('auto');
       expect(mocks.protocol?.list.map(({ value }) => value)).toEqual([
+        'auto',
         'responses',
         'chat_completions'
       ]);
@@ -173,20 +174,23 @@ describe('EditChannelModal channel metadata', () => {
     expect(postCreateChannel).toHaveBeenCalledWith(expect.objectContaining({ configs: {} }));
   });
 
-  it('defaults an unconfigured existing channel to Responses and preserves explicit values', () => {
+  it('defaults an unconfigured existing channel to auto and preserves explicit values', () => {
     render('system', { id: 12 });
-    expect(mocks.protocol?.value).toBe('responses');
+    expect(mocks.protocol?.value).toBe('auto');
     expect(mocks.protocol?.list.map(({ value }) => value)).toEqual([
+      'auto',
       'responses',
       'chat_completions'
     ]);
     render('system', { id: 12, configs: { chat_upstream_protocol: 'auto' } });
     expect(mocks.protocol?.value).toBe('auto');
     expect(mocks.protocol?.list.map(({ value }) => value)).toEqual([
+      'auto',
       'responses',
-      'chat_completions',
-      'auto'
+      'chat_completions'
     ]);
+    render('system', { id: 12, configs: { chat_upstream_protocol: 'responses' } });
+    expect(mocks.protocol?.value).toBe('responses');
     render('system', { id: 12, configs: { chat_upstream_protocol: 'chat_completions' } });
     expect(mocks.protocol?.value).toBe('chat_completions');
   });
@@ -207,12 +211,12 @@ describe('EditChannelModal channel metadata', () => {
     );
   });
 
-  it('submits Responses by default for a newly created channel', async () => {
+  it('submits auto by default for a newly created channel', async () => {
     render('team', { name: 'test-channel', models: ['gpt-5.4-nano'] });
     await mocks.submit();
     expect(postCreateChannel).toHaveBeenCalledWith(
       expect.objectContaining({
-        configs: { chat_upstream_protocol: 'responses' }
+        configs: { chat_upstream_protocol: 'auto' }
       })
     );
   });

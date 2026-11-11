@@ -209,7 +209,7 @@ describe('team model management integration: permission, member isolation and AI
       name: 'created-channel',
       configs: {
         map_reasoning_to_reasoning_content: true,
-        chat_upstream_protocol: 'responses',
+        chat_upstream_protocol: 'auto',
         custom: 'kept'
       }
     });

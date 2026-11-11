@@ -48,7 +48,7 @@ export const ChannelPath: OpenAPIPath = {
     post: {
       summary: '创建渠道',
       description:
-        '由 channelType 显式指定 system/team：system 仅 root 可用；team 固定为当前成员分组。返回创建的渠道 ID，groupId 一律由服务端推导。OpenAI/Azure 渠道默认使用 Responses 聊天上游协议，显式 configs 配置优先。',
+        '由 channelType 显式指定 system/team：system 仅 root 可用；team 固定为当前成员分组。返回创建的渠道 ID，groupId 一律由服务端推导。OpenAI/Azure 渠道默认按模型自动选择聊天上游协议（auto），显式 configs 配置优先。',
       tags: [DevApiTagsMap.model],
       requestBody: {
         content: { 'application/json': { schema: CreateChannelBodySchema } }

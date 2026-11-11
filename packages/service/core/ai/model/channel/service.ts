@@ -115,7 +115,7 @@ export const createChannel = async ({
         ? { map_reasoning_to_reasoning_content: true }
         : {}),
       ...(CHAT_UPSTREAM_PROTOCOL_CHANNEL_TYPES.some((type) => type === channelData.type)
-        ? { chat_upstream_protocol: 'responses' }
+        ? { chat_upstream_protocol: 'auto' }
         : {}),
       ...channelData.configs
     }

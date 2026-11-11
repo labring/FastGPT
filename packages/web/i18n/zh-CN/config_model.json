@@ -7,7 +7,7 @@
   "all": "全部",
   "chat_upstream_protocol": "模型端点协议",
   "chat_upstream_protocol_tip": "仅影响聊天模型，向量等模型保持原接口。上游需支持所选协议。",
-  "chat_upstream_protocol_auto": "自动（兼容旧配置）",
+  "chat_upstream_protocol_auto": "自动（按模型选择）",
   "api_key": "API 密钥",
   "audio": "支持音频识别",
   "audio_tip": "如果模型支持音频识别，则打开该开关。",

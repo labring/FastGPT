@@ -7,7 +7,7 @@
   "all": "All",
   "chat_upstream_protocol": "Model endpoint protocol",
   "chat_upstream_protocol_tip": "Applies to chat models only. Other models keep their existing endpoints. The upstream must support the selected protocol.",
-  "chat_upstream_protocol_auto": "Auto (legacy behavior)",
+  "chat_upstream_protocol_auto": "Auto (based on model)",
   "api_key": "API key",
   "audio": "Audio recognition",
   "audio_tip": "Turn this on if the model supports audio recognition.",

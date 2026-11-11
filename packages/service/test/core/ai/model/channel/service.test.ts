@@ -168,7 +168,7 @@ describe('channel service', () => {
       expect(mocks.group.create).toHaveBeenLastCalledWith({
         ...channelData,
         name: 'normalized',
-        configs: { map_reasoning_to_reasoning_content: true, chat_upstream_protocol: 'responses' }
+        configs: { map_reasoning_to_reasoning_content: true, chat_upstream_protocol: 'auto' }
       });
       await createChannel({
         channelType: 'team',
@@ -182,7 +182,7 @@ describe('channel service', () => {
         expect.objectContaining({
           configs: {
             map_reasoning_to_reasoning_content: false,
-            chat_upstream_protocol: 'responses',
+            chat_upstream_protocol: 'auto',
             custom: 1
           }
         })
@@ -198,7 +198,7 @@ describe('channel service', () => {
     });
 
     it.each([1, 3, 4])(
-      'defaults channel type %s to Responses and allows explicit Chat',
+      'defaults channel type %s to auto and preserves explicit overrides',
       async (type) => {
         const channelData = {
           name: 'protocol-channel',
@@ -209,7 +209,7 @@ describe('channel service', () => {
         await createChannel({ channelType: 'system', tmbId: TMB_ID, channelData });
         expect(mocks.system.create).toHaveBeenLastCalledWith(
           expect.objectContaining({
-            configs: expect.objectContaining({ chat_upstream_protocol: 'responses' })
+            configs: expect.objectContaining({ chat_upstream_protocol: 'auto' })
           })
         );
         await createChannel({

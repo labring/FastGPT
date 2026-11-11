@@ -69,8 +69,8 @@ const EditChannelModal = ({
       ...defaultConfig,
       configs: {
         ...defaultConfig.configs,
-        // 未配置时默认 Responses；只在用户保存后写入，不主动迁移已有渠道。
-        chat_upstream_protocol: defaultConfig.configs?.chat_upstream_protocol ?? 'responses'
+        // 未配置时默认 auto，按模型选择上游协议；只在用户保存后写入，不主动迁移已有渠道。
+        chat_upstream_protocol: defaultConfig.configs?.chat_upstream_protocol ?? 'auto'
       }
     }
   });
@@ -184,11 +184,9 @@ const EditChannelModal = ({
         h={isCompactCreate ? '36px' : undefined}
         value={chatUpstreamProtocol}
         list={[
+          { label: t('config_model:chat_upstream_protocol_auto'), value: 'auto' },
           { label: 'Responses', value: 'responses' },
-          { label: 'Chat Completions', value: 'chat_completions' },
-          ...(defaultConfig.configs?.chat_upstream_protocol === 'auto'
-            ? [{ label: t('config_model:chat_upstream_protocol_auto'), value: 'auto' as const }]
-            : [])
+          { label: 'Chat Completions', value: 'chat_completions' }
         ]}
         onChange={(value) => setValue('configs.chat_upstream_protocol', value)}
       />
