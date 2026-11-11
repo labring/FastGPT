@@ -1,0 +1,50 @@
+{
+  "name": "@fastgpt/cli",
+  "version": "0.1.0-alpha.1",
+  "description": "Official CLI for FastGPT",
+  "private": true,
+  "type": "module",
+  "main": "./dist/run.mjs",
+  "bin": {
+    "fastgpt": "./dist/cli.mjs"
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/run.mjs"
+    },
+    "./run": {
+      "import": "./dist/run.mjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": false,
+  "engines": {
+    "node": "~24.22.2"
+  },
+  "scripts": {
+    "build:tsdown": "tsdown --config ./scripts/build.tsdown.ts && chmod +x dist/cli.mjs",
+    "build:bun": "bun ./scripts/build.bun.ts --bundle-only",
+    "compile": "bun ./scripts/build.bun.ts",
+    "test": "vitest run --config ./vitest.config.ts",
+    "test:bin": "pnpm build:tsdown && node test/bin-smoke.mjs",
+    "test:ci": "pnpm typecheck && pnpm test && pnpm test:bin",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint ./src ./test"
+  },
+  "devDependencies": {
+    "@clack/prompts": "catalog:",
+    "@fastgpt/global": "workspace:*",
+    "@types/bun": "catalog:",
+    "@types/node": "catalog:",
+    "@vitest/coverage-v8": "catalog:",
+    "commander": "catalog:",
+    "ky": "catalog:",
+    "picocolors": "catalog:",
+    "tsdown": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:",
+    "zod": "catalog:"
+  }
+}
