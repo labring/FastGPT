@@ -119,7 +119,7 @@ const RenderList = React.memo(function RenderList({
                   newValue[index] = item.value;
                   setCloneValue(newValue);
 
-                  if (changeOnEverySelect) {
+                  if (changeOnEverySelect || !hasChildren) {
                     onSelect(newValue);
                   }
 

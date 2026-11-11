@@ -183,6 +183,9 @@ const NodeCard = (props: Props) => {
   // 工具子流程节点：结构快照里指向本节点的 selectedTools 入边即可判定；
   // 该入边必然来自工具调用节点，不必再额外确认画布上存在工具调用节点。
   const isTool = useIsToolNode(nodeId);
+  const canBeTool = moduleTemplatesFlat.some(
+    (template) => template.flowNodeType === node?.flowNodeType && template.isTool
+  );
   useNodeHandleLayout({
     node: node ? { ...node, isFolded, intro: introOverride ?? node.intro } : undefined,
     toolConnected: isTool,
@@ -228,7 +231,7 @@ const NodeCard = (props: Props) => {
     focusNodes([nodeId], { padding: 0.3, minZoom: 0.6 });
   }, [focusNodes, nodeActions, setPresentationMode, nodeId]);
 
-  const showToolHandle = isTool;
+  const showToolHandle = isTool || canBeTool;
 
   const gradient = useMemo(() => {
     const { source } = splitCombineToolId(pluginId ?? '');

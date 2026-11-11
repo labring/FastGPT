@@ -23,6 +23,8 @@ afterEach(() => {
   document.body.replaceChildren();
 });
 
+HTMLElement.prototype.scrollTo ??= () => {};
+
 describe('MultipleRowSelect', () => {
   it('mounts the loading overlay only after opening', async () => {
     const host = document.createElement('div');
@@ -252,6 +254,49 @@ describe('MultipleRowSelect', () => {
 
     expect(host.textContent).toContain('Output B');
     expect(onSelect).not.toHaveBeenCalled();
+    root.unmount();
+  });
+
+  it('submits a child selection without the opt-in every-select flag', async () => {
+    const host = document.createElement('div');
+    document.body.appendChild(host);
+    const root = createRoot(host);
+    const onSelect = vi.fn();
+
+    await act(async () => {
+      root.render(
+        React.createElement(
+          ChakraProvider,
+          null,
+          React.createElement(MultipleRowSelect, {
+            list: [
+              {
+                label: 'Source A',
+                value: 'source-a',
+                children: [
+                  { label: 'Output A', value: 'output-a' },
+                  { label: 'Output B', value: 'output-b' }
+                ]
+              }
+            ],
+            value: ['source-a', 'output-a'],
+            onSelect
+          })
+        )
+      );
+    });
+    await act(async () => {
+      host.querySelector('button')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+    const outputB = Array.from(host.querySelectorAll('*')).find(
+      (element) => element.textContent === 'Output B'
+    );
+    if (!outputB) throw new Error('Missing output B');
+    await act(async () => {
+      outputB.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+
+    expect(onSelect).toHaveBeenCalledWith(['source-a', 'output-b']);
     root.unmount();
   });
 
