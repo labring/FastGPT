@@ -219,6 +219,45 @@ describe('sandbox runtime mirrors', () => {
     expect(sandbox.getState()?.values.npmMirror).toBe(buildRuntimeHash(''));
   });
 
+  it('restores the original file after a failed partial target write', async () => {
+    const target = '/home/test/.npmrc';
+    const config = { npmRegistry: 'https://npm.example.com' };
+    const sandbox = createSandbox({ [target]: 'original\n' });
+    await prepareSandboxRuntimeMirrors({ sandbox: sandbox as any, config });
+
+    const markerPath = `/home/test/.fastgpt/runtime/mirrors/${buildRuntimeHash(target).slice(7)}.json`;
+    const backupPath = `/home/test/.fastgpt/runtime/mirrors/${buildRuntimeHash(target).slice(7)}.backup`;
+    const write = sandbox.writeFiles.getMockImplementation()!;
+    sandbox.writeFiles.mockImplementation(async (entries) => {
+      if (!entries.some((entry) => entry.path === target)) return write(entries);
+      const results = await write(entries);
+      // 模拟 provider 截断目标后写入部分内容并返回失败。
+      sandbox.setFile(target, 'partial\n');
+      return results.map((result) =>
+        result.path === target
+          ? { ...result, bytesWritten: 8, error: new Error('partial write') }
+          : result
+      );
+    });
+
+    await prepareSandboxRuntimeMirrors({
+      sandbox: sandbox as any,
+      config: { npmRegistry: 'https://npm2.example.com' }
+    });
+    sandbox.writeFiles.mockImplementation(write);
+    expect(sandbox.getFile(target)).toBe('partial\n');
+    expect(sandbox.getFile(backupPath)).toBe('original\n');
+    expect(sandbox.getFile(markerPath)).toContain('"pending":true');
+    expect(sandbox.getState()?.values.npmMirror).toBe(buildRuntimeHash(config.npmRegistry));
+
+    await prepareSandboxRuntimeMirrors({ sandbox: sandbox as any, config: {} });
+
+    expect(sandbox.getFile(target)).toBe('original\n');
+    expect(sandbox.getFile(backupPath)).toBeUndefined();
+    expect(sandbox.getFile(markerPath)).toBeUndefined();
+    expect(sandbox.getState()?.values.npmMirror).toBe(buildRuntimeHash(''));
+  });
+
   it('does not overwrite an existing file when backing it up fails', async () => {
     const target = '/home/test/.npmrc';
     const sandbox = createSandbox({ [target]: 'original\n' });

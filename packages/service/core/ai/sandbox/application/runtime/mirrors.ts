@@ -33,6 +33,8 @@ const MirrorFileMarkerSchema = z.strictObject({
   version: z.literal(1),
   path: z.string(),
   origin: z.enum(['created', 'backup', 'legacyBackup']),
+  /** 目标文件写入进行中；失败残留不能当作管理员编辑，必须保留恢复材料。 */
+  pending: z.boolean().optional(),
   backupHash: z
     .string()
     .regex(/^sha256:[a-f0-9]{64}$/)
@@ -329,7 +331,7 @@ class SandboxRuntimeMirrorFileManager {
     };
     if (files.length > 0) {
       const backups: Array<{ path: string; data: Uint8Array }> = [];
-      const markerWrites: Array<{ path: string; data: string }> = [];
+      const markerWrites: Array<{ path: string; payload: Record<string, unknown> }> = [];
       for (const file of files) {
         const copyPath = this.getCopyPath(file.path);
         const backupPath = this.getBackupPath(file.path);
@@ -399,11 +401,24 @@ class SandboxRuntimeMirrorFileManager {
         ];
         markerWrites.push({
           path: this.getMarkerPath(file.path),
-          data: JSON.stringify({ version: 1, path: file.path, origin, hashes, backupHash })
+          payload: { version: 1, path: file.path, origin, hashes, backupHash }
         });
       }
-      // 先记录来源，再落备份，最后覆盖目标；任一步失败后可按标记安全重试。
-      return (await write(markerWrites)) && (await write(backups)) && (await write(files));
+      const writeMarkers = (pending: boolean) =>
+        write(
+          markerWrites.map(({ path, payload }) => ({
+            path,
+            data: JSON.stringify({ ...payload, ...(pending ? { pending: true } : {}) })
+          }))
+        );
+      // 先记录来源和写入中标记，再落备份，最后覆盖目标；成功后才清除 pending。
+      // provider 写入失败可能留下部分内容，pending 让清理阶段保留备份而不是误判为用户编辑。
+      return (
+        (await writeMarkers(true)) &&
+        (await write(backups)) &&
+        (await write(files)) &&
+        (await writeMarkers(false))
+      );
     }
 
     const restores: Array<{ path: string; data: Uint8Array }> = [];
@@ -419,6 +434,22 @@ class SandboxRuntimeMirrorFileManager {
       if (marker?.origin === 'backup' || marker?.origin === 'legacyBackup') {
         const original = marker.origin === 'backup' ? backup : copy;
         if (!marker.backupHash) return false;
+        // 上次目标写入未完成：只要有可校验的原始备份，清空时直接恢复它并收尾，
+        // 不把失败残留误判为用户编辑；没有备份时才保留 marker 并让同步失败。
+        if (marker.pending) {
+          if (original && marker.backupHash && buildRuntimeHash(original) === marker.backupHash) {
+            restores.push({ path, data: original });
+            if (marker.origin === 'backup') backupsToRemove.push(this.getBackupPath(path));
+            markersToRemove.push(this.getMarkerPath(path));
+            continue;
+          }
+          const contentHash = content ? buildRuntimeHash(content) : undefined;
+          const isManagedOrRestored =
+            !contentHash ||
+            marker.hashes.includes(contentHash) ||
+            contentHash === marker.backupHash;
+          if (!isManagedOrRestored) return false;
+        }
         // 上次可能已恢复并删除备份、但删除标记失败；校验恢复内容后即可继续收尾。
         if (!original) {
           if (!content || buildRuntimeHash(content) !== marker.backupHash) return false;
