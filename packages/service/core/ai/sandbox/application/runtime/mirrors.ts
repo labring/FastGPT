@@ -389,18 +389,19 @@ class SandboxRuntimeMirrorFileManager {
           !legacyBackup &&
           marker?.origin !== 'legacyBackup' &&
           (marker?.origin !== 'backup' || !backup);
+        const backupContent = needsBackup ? content : undefined;
         if (needsBackup) {
           // 不覆盖未知来源的同名备份；失败后的遗留文件须保守处理。
-          if (backup) return false;
-          backups.push({ path: backupPath, data: content });
+          if (backup || !backupContent) return false;
+          backups.push({ path: backupPath, data: backupContent });
         }
         const origin = legacyBackup
           ? 'legacyBackup'
           : needsBackup
             ? 'backup'
             : (marker?.origin ?? 'created');
-        const backupHash = needsBackup
-          ? buildRuntimeHash(content)
+        const backupHash = backupContent
+          ? buildRuntimeHash(backupContent)
           : (marker?.backupHash ?? (legacyBackup ? buildRuntimeHash(legacyBackup) : undefined));
         const currentHash =
           content && marker?.hashes.includes(buildRuntimeHash(content))
