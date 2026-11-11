@@ -179,7 +179,6 @@ export const adminConfigPageFieldsMap: Record<string, readonly string[]> = {
     'commercial.payment.wx.notifyUrl',
     'commercial.payment.alipay.appId',
     'commercial.payment.alipay.gateway',
-    'commercial.payment.alipay.endpoint',
     'commercial.payment.bank.description',
     'commercial.billingNotify.lackOfPoints.zh',
     'commercial.billingNotify.pointsThirtyPercentRemain.zh',

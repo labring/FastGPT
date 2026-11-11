@@ -18,8 +18,7 @@ const AlipayConfigSchema = z.strictObject({
   appCertContent: textWithDefault(),
   gateway: textWithDefault(),
   rootCertContent: textWithDefault(),
-  publicCertContent: textWithDefault(),
-  endpoint: textWithDefault()
+  publicCertContent: textWithDefault()
 });
 
 /** 对公转账说明。 */

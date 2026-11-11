@@ -8,6 +8,7 @@ import {
 import {
   applyInstanceConfigMigration,
   buildLegacyDomainOverrides,
+  buildLegacyProOverrides,
   inspectInstanceConfigMigration,
   sanitizeOverridesForSchema,
   type SchemaSanitizedIssue
@@ -19,6 +20,33 @@ const logger = {
   warn: () => {},
   error: () => {}
 };
+
+describe('legacy Alipay configuration migration', () => {
+  it('ignores the unused V3 endpoint while preserving V2 payment credentials', () => {
+    const alipay = {
+      APP_ID: 'synthetic-app',
+      APP_PRIVATE_KEY: 'synthetic-key',
+      APP_CERT_CONTENT: 'synthetic-app-cert',
+      ALIPAY_GATEWAY: 'https://gateway.example.test/gateway.do',
+      ALIPAY_ROOT_CERT_CONTENT: 'synthetic-root-cert',
+      ALIPAY_PUBLIC_CERT_CONTENT: 'synthetic-public-cert',
+      ALIPAY_ENDPOINT: 'https://unused.example.test'
+    };
+    const raw = buildLegacyProOverrides({ pay: { alipay } });
+    const warnings: string[] = [];
+    const sanitized = sanitizeOverridesForSchema({ overrides: raw, warnings });
+
+    expect(sanitized.commercial?.payment?.alipay).toEqual({
+      appId: alipay.APP_ID,
+      appPrivateKey: alipay.APP_PRIVATE_KEY,
+      appCertContent: alipay.APP_CERT_CONTENT,
+      gateway: alipay.ALIPAY_GATEWAY,
+      rootCertContent: alipay.ALIPAY_ROOT_CERT_CONTENT,
+      publicCertContent: alipay.ALIPAY_PUBLIC_CERT_CONTENT
+    });
+    expect(warnings).toEqual([]);
+  });
+});
 
 describe('legacy CORS allowlist migration', () => {
   beforeEach(async () => {

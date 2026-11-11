@@ -2,11 +2,13 @@ import { NextAPI } from '@/service/middleware/entry';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { Readable } from 'stream';
+import { finished, pipeline } from 'node:stream/promises';
 import { authSystemAdmin, authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { buildSameOriginUrl } from '@fastgpt/service/common/security/network';
 import { getSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/runtime';
 
-async function handler(req: NextApiRequest, res: NextApiResponse) {
+/** 转发市场响应并等待流结束，避免统一入口抢先写入默认 JSON 或覆盖上游状态码。 */
+async function handler(req: NextApiRequest, res: NextApiResponse): Promise<void> {
   try {
     const { path = [], ...query } = req.query as any;
     const pathSegments = Array.isArray(path) ? path : [path];
@@ -63,11 +65,17 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
     if (response.body) {
       const nodeStream = Readable.fromWeb(response.body as any);
-      nodeStream.pipe(res);
+      await pipeline(nodeStream, res);
     } else {
       res.end();
+      await finished(res, { cleanup: true });
     }
   } catch (error) {
+    // 流失败可能已经发送响应或销毁连接，交由统一入口收尾，不能再追加 JSON。
+    if (res.headersSent || res.writableEnded || res.destroyed) {
+      throw error;
+    }
+
     jsonRes(res, {
       code: 500,
       error

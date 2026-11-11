@@ -125,7 +125,6 @@ export type SystemConfigType = {
       ALIPAY_GATEWAY?: string;
       ALIPAY_ROOT_CERT_CONTENT?: string;
       ALIPAY_PUBLIC_CERT_CONTENT?: string;
-      ALIPAY_ENDPOINT?: string;
     };
     bank?: {
       description?: string;
