@@ -195,9 +195,16 @@ describe('member knowledge search orchestration', () => {
     { teamId: actor.teamId, type: 'folder' }
   ])('rejects invalid resource scope even for a root actor', async (dataset) => {
     mocks.auth.mockResolvedValue(dataset);
-    await expect(
-      run(undefined, { context: { actor: { ...actor, isRoot: true } } }).promise
-    ).rejects.toBeDefined();
+    const { promise } = run(undefined, { context: { actor: { ...actor, isRoot: true } } });
+    if (dataset.type === 'folder') {
+      await expect(promise).rejects.toMatchObject({
+        name: 'UserConfigError',
+        message: 'Search targets must be datasets, not folders',
+        displayMessage: 'dataset:search_targets_must_be_datasets'
+      });
+    } else {
+      await expect(promise).rejects.toBeDefined();
+    }
     expect(mocks.recall).not.toHaveBeenCalled();
   });
 
@@ -205,9 +212,11 @@ describe('member knowledge search orchestration', () => {
     mocks.models.mockResolvedValue({
       embeddings: [embedding, { ...embedding, modelId: 'different-model' }]
     });
-    await expect(run().promise).rejects.toThrow(
-      'Multi-dataset vector search requires all datasets to use the same embedding model'
-    );
+    await expect(run().promise).rejects.toMatchObject({
+      name: 'UserConfigError',
+      message: 'Multi-dataset vector search requires all datasets to use the same embedding model',
+      displayMessage: 'dataset:search_embedding_models_must_match'
+    });
     expect(mocks.recall).not.toHaveBeenCalled();
     await run({
       scope: { datasetIds: ids },
@@ -221,7 +230,11 @@ describe('member knowledge search orchestration', () => {
     await expect(
       run({ scope: { datasetIds: ids }, query: { imageKeys: ['temp/other-team/query.png'] } })
         .promise
-    ).rejects.toThrow('Query images must be temporary files uploaded by the current team');
+    ).rejects.toMatchObject({
+      name: 'UserConfigError',
+      message: 'Query images must be temporary files uploaded by the current team',
+      displayMessage: 'dataset:search_query_images_must_belong_to_team'
+    });
     expect(mocks.signImage).not.toHaveBeenCalled();
     await run({
       scope: { datasetIds: ids },
@@ -253,9 +266,11 @@ describe('member knowledge search orchestration', () => {
       },
       query: { text: 'q' }
     };
-    await expect(run(params).promise).rejects.toThrow(
-      'Dataset search filters are not supported in this edition'
-    );
+    await expect(run(params).promise).rejects.toMatchObject({
+      name: 'UserConfigError',
+      message: 'Dataset search filters are not supported in this edition',
+      displayMessage: 'dataset:search_filters_unsupported'
+    });
     // 全局开关关闭时，显式能力仍能完整传到召回适配器。
     await run(params, { context: { capabilities: { metadataFilter: true } } }).promise;
     expect(mocks.recall.mock.calls[0][0].metadataFilterEnabled).toBe(true);
@@ -363,7 +378,11 @@ describe('member knowledge search orchestration', () => {
     });
     await expect(
       run(undefined, { params: { ...params, scope: { datasetIds: [] } } }).promise
-    ).rejects.toThrow('At least one dataset is required');
+    ).rejects.toMatchObject({
+      name: 'UserConfigError',
+      message: 'At least one dataset is required',
+      displayMessage: 'dataset:search_targets_required'
+    });
     expect(mocks.auth).not.toHaveBeenCalled();
     mocks.models.mockResolvedValueOnce({ embeddings: [] });
     await expect(run().promise).rejects.toThrow(

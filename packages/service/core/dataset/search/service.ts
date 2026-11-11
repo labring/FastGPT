@@ -1,3 +1,4 @@
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { UserConfigError } from '@fastgpt/global/common/error/utils';
 import type {
   DatasetSearchTagCondition,
@@ -10,6 +11,7 @@ import type { DatasetSearchProps, DatasetSearchUsage } from './type';
 /**
  * 执行成员身份下的完整知识库搜索。参数由入口校验并补齐默认值，HTTP 凭证在入口层解析；余额、限流、账单和审计
  * 及基础设施由调用方注入。资源与集合权限固定在召回前验证，任何不可读目标都会使请求失败；
+ * 业务异常保留英文 message，displayMessage 只提供静态翻译 key；
  * 回调异常原样传出，调用方负责确定哪些外部副作用允许降级。
  */
 export const search = async ({
@@ -20,7 +22,11 @@ export const search = async ({
   const start = Date.now();
   const { actor, capabilities } = context;
   const datasetIds = [...new Set(input.scope.datasetIds)];
-  if (datasetIds.length === 0) throw new UserConfigError('At least one dataset is required');
+  if (datasetIds.length === 0)
+    throw new UserConfigError(
+      'At least one dataset is required',
+      i18nT('dataset:search_targets_required')
+    );
 
   // 1. 对全部目标做资源鉴权；root 也只能在本次请求明确的团队范围内搜索。
   const datasets = await Promise.all(
@@ -28,20 +34,29 @@ export const search = async ({
       const dataset = await deps.permissions.loadReadableDataset({ actor, datasetId });
       if (String(dataset.teamId) !== actor.teamId) throw DatasetErrEnum.unAuthDataset;
       if (dataset.type === DatasetTypeEnum.folder) {
-        throw new UserConfigError('Search targets must be datasets, not folders');
+        throw new UserConfigError(
+          'Search targets must be datasets, not folders',
+          i18nT('dataset:search_targets_must_be_datasets')
+        );
       }
       return dataset;
     })
   );
   const imageKeys = [...new Set(input.query.imageKeys)];
   if (imageKeys.some((key) => !deps.images.isAuthorizedKey({ key, teamId: actor.teamId }))) {
-    throw new UserConfigError('Query images must be temporary files uploaded by the current team');
+    throw new UserConfigError(
+      'Query images must be temporary files uploaded by the current team',
+      i18nT('dataset:search_query_images_must_belong_to_team')
+    );
   }
 
   // 现有元数据过滤器在非商业版本会忽略配置，新入口明确拒绝，避免无声扩大召回范围。
   const filter = input.scope.filter;
   if (filter && Object.keys(filter).length > 0 && !capabilities.metadataFilter) {
-    throw new UserConfigError('Dataset search filters are not supported in this edition');
+    throw new UserConfigError(
+      'Dataset search filters are not supported in this edition',
+      i18nT('dataset:search_filters_unsupported')
+    );
   }
 
   // 2. 选择本次模型快照；向量检索不允许用首库模型查询其他模型生成的索引。
@@ -58,7 +73,8 @@ export const search = async ({
     vectorModels.some((model) => model.modelId !== vectorModel.modelId)
   ) {
     throw new UserConfigError(
-      'Multi-dataset vector search requires all datasets to use the same embedding model'
+      'Multi-dataset vector search requires all datasets to use the same embedding model',
+      i18nT('dataset:search_embedding_models_must_match')
     );
   }
   const rerankModel = models.rerank;

@@ -25,7 +25,7 @@ export const searchDatasetForApi = ({
   params,
   auth,
   modelHandle,
-  usageAppName = 'Knowledge search',
+  usageAppName = i18nT('account_usage:dataset_search'),
   onRateLimit
 }: {
   params: DatasetSearchParams;

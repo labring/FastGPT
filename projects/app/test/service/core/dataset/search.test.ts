@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 import type {
   DatasetSearchProps,
@@ -94,7 +95,7 @@ describe('search API business adapter', () => {
     expect(mocks.bill).toHaveBeenCalledExactlyOnceWith(
       expect.objectContaining({
         source: 'api',
-        appName: 'Knowledge search',
+        appName: i18nT('account_usage:dataset_search'),
         totalPoints: 10,
         list: [expect.objectContaining({ modelId: 'model', inputTokens: 10, amount: 10 })]
       })
