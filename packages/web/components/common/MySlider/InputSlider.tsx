@@ -2,12 +2,14 @@ import React, { useMemo } from 'react';
 import { Slider, SliderTrack, SliderThumb, HStack, SliderMark } from '@chakra-ui/react';
 import MyNumberInput from '../Input/NumberInput';
 
+/** 滑块与输入框共享当前值，输入框可独立设置更细的步长。 */
 const InputSlider = ({
   onChange,
   value,
   max = 100,
   min = 0,
   step = 1,
+  inputStep = step,
   isDisabled,
   inputVariant
 }: {
@@ -16,6 +18,8 @@ const InputSlider = ({
   max: number;
   min: number;
   step?: number;
+  /** 输入框可使用更细的步长；未指定时沿用滑块步长。 */
+  inputStep?: number;
   isDisabled?: boolean;
   inputVariant?: string;
 }) => {
@@ -62,7 +66,6 @@ const InputSlider = ({
           w={'18px'}
           h={'18px'}
           boxShadow={'none'}
-          // transform={'translate(-50%, -50%) !important'}
         />
       </Slider>
       <MyNumberInput
@@ -71,7 +74,7 @@ const InputSlider = ({
         width={'150px'}
         min={min}
         max={max}
-        step={step}
+        step={inputStep}
         value={value}
         isDisabled={isDisabled}
         onChange={(e) => onChange(e ?? min)}

@@ -1,5 +1,6 @@
 import { authDatasetCollectionCreate } from '@fastgpt/service/support/permission/dataset/auth';
 import { createCollectionAndInsertData } from '@fastgpt/service/core/dataset/collection/controller';
+import { getDatasetModelAuthContext } from '@fastgpt/service/core/dataset/model';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/next/type';
@@ -13,12 +14,18 @@ import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResultResponseType> {
   const { link, ...body } = parseApiInput({ req, bodySchema: CreateLinkCollectionBodySchema }).body;
 
-  const { teamId, tmbId, dataset } = await authDatasetCollectionCreate({
+  const { teamId, tmbId, isRoot, dataset } = await authDatasetCollectionCreate({
     req,
     authToken: true,
     authApiKey: true,
     datasetId: body.datasetId,
     parentId: body.parentId
+  });
+  const modelAuthContext = await getDatasetModelAuthContext({
+    dataset,
+    teamId,
+    tmbId,
+    isRoot
   });
 
   // Check dataset limit
@@ -29,6 +36,7 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResult
 
   return createCollectionAndInsertData({
     dataset,
+    modelAuthContext,
     createCollectionParams: {
       ...body,
       name: link,

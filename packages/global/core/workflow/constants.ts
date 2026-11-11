@@ -6,6 +6,7 @@ export enum FlowNodeTemplateTypeEnum {
   ai = 'ai',
   interactive = 'interactive',
   tools = 'tools',
+  toolCall = 'toolCall',
   other = 'other',
 
   // Team app type
@@ -193,6 +194,7 @@ export enum NodeInputKeyEnum {
 
   datasetSearchUsingReRank = 'usingReRank',
   datasetSearchRerankWeight = 'rerankWeight',
+  datasetSearchRerankCandidateNum = 'rerankCandidateNum',
   datasetSearchRerankModelId = 'rerankModelId',
   /** @deprecated */
   datasetSearchRerankModel = 'rerankModel',

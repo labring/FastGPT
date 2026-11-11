@@ -214,7 +214,8 @@ export const lockTrainingDataByTeamId = async (
 };
 
 /**
- * 按训练阶段写入待处理数据。辅助模型对象只用于分块上限，缺失时不额外丢弃上游已分块的数据。
+ * 按训练阶段写入待处理数据；auto 超长条目在原遍历中逐条降级为 index，并使用向量模型权重。
+ * 辅助模型对象只用于分块上限，缺失时不额外丢弃上游已分块的数据。
  * 解析队列可显式传入 VLM 配置状态，将可用性校验留给实际图片处理阶段；其他调用方保持原有检查。
  */
 export const pushDataListToTrainingQueue = async ({
@@ -262,8 +263,11 @@ export const pushDataListToTrainingQueue = async ({
     vlmModelConfigured
   });
 
-  // format q and a, remove empty char
-  data = filterTrainingDataList({ data, maxToken });
+  // auto 增强是可选阶段，超长内容保留到任务映射中逐条降级；其他模式沿用原过滤规则。
+  data = filterTrainingDataList({
+    data,
+    maxToken: mode === TrainingModeEnum.auto ? Infinity : maxToken
+  });
 
   // insert data to db
   const batchSize = 500; // Batch insert size
@@ -281,24 +285,38 @@ export const pushDataListToTrainingQueue = async ({
       if (batch.length === 0) continue;
 
       const result = await MongoDatasetTraining.insertMany(
-        batch.map((item) => ({
-          teamId,
-          tmbId,
-          datasetId,
-          collectionId,
-          billId,
-          mode,
-          ...(item.q && { q: item.q }),
-          ...(item.a && { a: item.a }),
-          ...(item.imageId && { imageId: item.imageId }),
-          ...(item.dataId && { dataId: item.dataId }),
-          ...(item.metadata && { dataMetadata: item.metadata }),
-          chunkIndex: item.chunkIndex ?? 0,
-          indexSize,
-          weight: weight ?? 0,
-          indexes: item.indexes,
-          retryCount: 3
-        })),
+        batch.map((item) => {
+          // 只切换当前任务的模式，不拆分输入数组，保证预落库 dataIds 与输入顺序一致。
+          const itemMode = (() => {
+            if (
+              mode === TrainingModeEnum.auto &&
+              ((item.q ?? '') + (item.a ?? '')).length > maxToken
+            ) {
+              return TrainingModeEnum.index;
+            }
+            return mode;
+          })();
+
+          return {
+            teamId,
+            tmbId,
+            datasetId,
+            collectionId,
+            billId,
+            mode: itemMode,
+            ...(item.q && { q: item.q }),
+            ...(item.a && { a: item.a }),
+            ...(item.imageId && { imageId: item.imageId }),
+            ...(item.dataId && { dataId: item.dataId }),
+            ...(item.metadata && { dataMetadata: item.metadata }),
+            chunkIndex: item.chunkIndex ?? 0,
+            indexSize,
+            weight:
+              itemMode === TrainingModeEnum.index ? vectorModelData.config.weight : (weight ?? 0),
+            indexes: item.indexes,
+            retryCount: 3
+          };
+        }),
         {
           session,
           ordered: true, // 改为 true: 任何失败立即停止,事务回滚
@@ -378,10 +396,10 @@ const preCreateBatchSize = 500;
  * 提前落库：在调用方 session 内先写入 indexing 数据，再创建携带相同 dataId 的训练任务。
  *
  * 数据与任务共享同一 `dataId`，下游按 DS-07 分流把向量结果写回同一条数据，全流程只有一条数据行。
- * 只由解析最终分块、图片导入和问答叶子这几条入口使用，其他 `pushDataListToTrainingQueue` 调用方行为不变。
+ * 由解析最终分块、图片导入、pushData 和问答叶子等入口使用；auto 超长降级统一在入队时处理。
  *
  * 说明：
- * - 过滤（空内容/超长）在建数据行之前完成，避免写出无人处理的数据。
+ * - 建行前过滤空内容；auto 超长条目保留并在入队时降级为 index，其他模式仍过滤超长内容。
  * - `indexes` 保持为空：自定义/question/summary/image 索引草稿仍留在训练任务里。
  * - `synonymVersion` 与创建路径同源写入，避免预落库数据被同义词重建误选。
  * - 图片 `imageId` 随数据落库移除临时对象过期设置，避免待索引期间被清理。
@@ -426,7 +444,10 @@ export const preCreateDatasetDataAndPushToTrainingQueue = async ({
     vlmModel,
     vlmModelConfigured
   });
-  const dataList = filterTrainingDataList({ data, maxToken });
+  const dataList = filterTrainingDataList({
+    data,
+    maxToken: mode === TrainingModeEnum.auto ? Infinity : maxToken
+  });
 
   if (dataList.length === 0) {
     return { insertLen: 0, dataIds: [] };

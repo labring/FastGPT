@@ -89,6 +89,8 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
   const requestIds: string[] = [];
   let requestIndex = 0;
   let answerText = '';
+  // 完成检查需要最近一次自然结束的正文，answerText 只保留首个回复用于汇总兼容。
+  let latestAnswerText = '';
   let reasoningText = '';
   let inputTokens = 0;
   let outputTokens = 0;
@@ -243,6 +245,20 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
   const completeMessages: ChatCompletionMessageParam[] = [
     ...(standardAskResumeMessages ?? input.messages)
   ];
+  /** 同步核对取消、暂停和工具停止；终止后不能写入续跑历史或事件，不等待取消轮询。 */
+  const recordContinuationMessage = (content: string): ChatCompletionMessageParam | undefined => {
+    if (pendingAsk || pendingToolChild || pendingToolStop || runtime.checkIsStopping?.()) return;
+
+    const message: ChatCompletionMessageParam = {
+      role: ChatCompletionRequestMessageRoleEnum.User,
+      content,
+      hideInUI: true
+    };
+    completeMessages.push(message);
+    assistantMessages.push(message);
+    runtime.emitEvent?.({ type: 'user_message', content, source: 'server' });
+    return message;
+  };
   const shouldRestoreRawState = !!input.childrenInteractiveParams;
   let initialPiMessages = normalizePiAgentMessages({
     messages:
@@ -382,6 +398,7 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
     });
   }
 
+  const toolContinuationMessages: string[] = [];
   const tools = await buildPiAgentTools({
     runtime,
     getActivePlan: () => activePlan,
@@ -403,12 +420,13 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
     },
     getMessages: () => completeMessages,
     onToolCall: emitOrdinaryToolExecution,
-    onToolResult: ({ call, response, assistantMessages }) => {
+    onToolResult: ({ call, response, assistantMessages, continuationMessage }) => {
       recordToolResult({
         call,
         response,
         childAssistantMessages: assistantMessages
       });
+      if (continuationMessage) toolContinuationMessages.push(continuationMessage);
     }
   });
 
@@ -455,11 +473,23 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
       });
     },
     transformContext: async (messages) => {
+      // 工具全部执行完后才进入下一次请求，在此追加 User，保持工具结果的完整配对。
+      for (const content of toolContinuationMessages.splice(0)) {
+        const message = recordContinuationMessage(content);
+        if (!message) break;
+        const nextMessages = [
+          ...messages,
+          ...convertChatMessagesToPiAgentMessages({ messages: [message], model: piModel })
+        ];
+        messages.splice(0, messages.length, ...nextMessages);
+        agent.state.messages = nextMessages;
+      }
       const startTime = Date.now();
       try {
         const standardMessages = convertPiAgentMessagesToChatMessages(messages);
         const result = await compressRequestMessages({
           activePlan,
+          getCheckpointContext: runtime.getCheckpointContext,
           checkIsStopping: runtime.checkIsStopping,
           messages: standardMessages,
           model: modelData,
@@ -596,6 +626,7 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
       if (!answerText && messageData.answerText) {
         answerText = messageData.answerText;
       }
+      latestAnswerText = messageData.answerText;
       if (!reasoningText && messageData.reasoningText) {
         reasoningText = messageData.reasoningText;
       }
@@ -722,7 +753,10 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
       !agent.state.errorMessage &&
       !reachedRunLimit
     ) {
-      const decision = await runtime.completionPolicy({ requestIndex });
+      const decision = await runtime.completionPolicy({
+        requestIndex,
+        answerText: latestAnswerText
+      });
       if (decision.action === 'complete') break;
       if (requestIndex >= maxRunAgentTimes) {
         reachedRunLimit = true;
@@ -730,11 +764,7 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
         break;
       }
 
-      const continuationMessage: ChatCompletionMessageParam = {
-        role: ChatCompletionRequestMessageRoleEnum.User,
-        content: decision.message
-      };
-      completeMessages.push(continuationMessage);
+      if (!recordContinuationMessage(decision.message)) break;
       await runAgent(() => agent.prompt(decision.message));
     }
   } catch (error) {

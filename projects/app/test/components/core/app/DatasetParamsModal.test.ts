@@ -116,7 +116,10 @@ vi.mock('@chakra-ui/react', async (importOriginal) => {
   };
 });
 
-import DatasetParamsModal from '@/components/core/app/DatasetParamsModal';
+import DatasetParamsModal, {
+  formatDatasetParamsForSubmit,
+  type DatasetParamsModalFormType
+} from '@/components/core/app/DatasetParamsModal';
 
 describe('DatasetParamsModal', () => {
   beforeEach(() => {
@@ -449,5 +452,21 @@ describe('DatasetParamsModal', () => {
         datasetIds: ['ds-1']
       })
     );
+  });
+
+  it('normalizes a cleared rerank candidate num on submit', () => {
+    expect(
+      formatDatasetParamsForSubmit({
+        searchMode: DatasetSearchModeEnum.embedding,
+        rerankCandidateNum: '' as unknown as number
+      } as DatasetParamsModalFormType)
+    ).toMatchObject({ rerankCandidateNum: 100 });
+
+    expect(
+      formatDatasetParamsForSubmit({
+        searchMode: DatasetSearchModeEnum.embedding,
+        rerankCandidateNum: 20
+      } as DatasetParamsModalFormType)
+    ).toMatchObject({ rerankCandidateNum: 20 });
   });
 });

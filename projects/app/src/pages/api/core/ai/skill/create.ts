@@ -42,8 +42,11 @@ async function handler(req: ApiRequestProps<CreateSkillBody>): Promise<CreateSki
     name,
     description,
     category = [],
-    avatar
+    avatar,
+    inheritPermission
   } = parseApiInput({ req, bodySchema: CreateSkillBodySchema }).body;
+
+  const inheritPermissionValue = inheritPermission ?? true;
 
   const requestedName = name.trim();
   const requestedDescription = description?.trim() || '';
@@ -91,6 +94,7 @@ async function handler(req: ApiRequestProps<CreateSkillBody>): Promise<CreateSki
         avatar,
         teamId,
         tmbId,
+        inheritPermission: inheritPermissionValue,
         creationStatus: AgentSkillCreationStatusEnum.creating
       },
       session
@@ -101,6 +105,7 @@ async function handler(req: ApiRequestProps<CreateSkillBody>): Promise<CreateSki
         _id: newSkillId,
         type: AgentSkillTypeEnum.skill,
         teamId,
+        inheritPermission: inheritPermissionValue,
         ...(parentId ? { parentId } : {})
       },
       tmbId,

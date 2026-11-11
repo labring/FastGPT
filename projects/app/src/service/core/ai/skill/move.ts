@@ -24,6 +24,7 @@ import { getResourceOwnedClbs } from '@fastgpt/service/support/permission/contro
 import { shouldInheritResourcePermission } from '@fastgpt/service/support/permission/resourcePermissionPolicy';
 import { addAuditLog, getI18nSkillType } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
 
 const logSkillMove = ({
   tmbId,
@@ -89,6 +90,8 @@ export const moveSkill = async ({
       authToken: true,
       authApiKey: true
     });
+  } else if (!skill.permission.hasManagePer) {
+    return Promise.reject(SkillErrEnum.unAuthSkill);
   }
   if (parentId === null || !skill.parentId) {
     await authUserPer({

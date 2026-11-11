@@ -214,3 +214,11 @@ for o in "" "--security-opt seccomp=unconfined"; do docker run --rm $o -v <volum
 To fix it, add `seccomp_profile = "unconfined"` under `[docker]` in `opensandbox-config` in your compose file, run `docker compose up -d --force-recreate fastgpt-opensandbox-server`, and click "Retry" on the page. This loosens the system call restrictions of the sandbox containers, so use it only after you have confirmed that seccomp is the cause.
 
 ---
+
+### What should I do when a tool reports "Invoke upload file failed" and /api/invoke/fileUpload returns 401?
+
+When you deploy 4.15.0 to 4.17.4 with the official `main` docker-compose (the one used by the official deployment page and by `install.sh` by default), `fastgpt-plugin` does not set `FASTGPT_BASE_URL` (the `v4.15` compose sets it from 4.15.2). After a tool of the plugin (for example the basic chart tool) generates a file, it uploads the file by calling `/api/invoke/fileUpload` of FastGPT through this variable. It defaults to `http://localhost:3000`, which points to the plugin container itself. The plugin's own authentication rejects the request (401), and the tool reports "Invoke upload file failed".
+
+If the 401 log is printed by `fastgpt-plugin` (it contains `HTTP Exception: Unauthorized`), add `FASTGPT_BASE_URL: http://fastgpt-app:3000` to its environment variables (use the service name of the main FastGPT service in your compose file), run `docker compose up -d fastgpt-plugin` to recreate the container, and run the tool again.
+
+---

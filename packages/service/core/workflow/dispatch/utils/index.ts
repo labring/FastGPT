@@ -22,15 +22,20 @@ import {
 import {
   getHTTPToolRuntimeSchemas,
   getHTTPToolRuntimeNode,
-  parseHttpToolConfig
+  parseHttpToolConfig,
+  pathData2ToolList
 } from '@fastgpt/global/core/app/tool/httpTool/utils';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { getMCPChildren } from '../../../app/mcp';
+import { getMCPChildren, MCPClient } from '../../../app/mcp';
 import { getSystemToolRunTimeNodeFromSystemToolset } from '../../utils';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
 import type { HttpToolConfigType } from '@fastgpt/global/core/app/tool/httpTool/type';
 import type { McpToolConfigType } from '@fastgpt/global/core/app/tool/mcpTool/type';
-import type { McpToolSetRuntimeConfigType } from '@fastgpt/global/core/workflow/type/node';
+import {
+  HttpToolSetNodeConfigSchema,
+  McpToolSetNodeConfigSchema,
+  type McpToolSetRuntimeConfigType
+} from '@fastgpt/global/core/workflow/type/node';
 import type { WorkflowResponseType } from '@fastgpt/global/core/workflow/runtime/sse';
 import { getLogger, LogCategories } from '../../../../common/logger';
 
@@ -38,14 +43,24 @@ import { getHTTPToolList } from '../../../app/http';
 import { getWorkflowResourceContext } from '../../utils/context';
 import { filterWorkflowToolList } from '../../resource/context';
 import { loadWorkflowAppResource } from '../../resource/service';
+import { axios } from '../../../../common/api/axios';
+import { getSecretValue } from '../../../../common/secret/utils';
+import { checkUrlSafety } from '../../../../common/system/utils';
 import { getLastInteractiveValue } from '@fastgpt/global/core/workflow/runtime/utils';
 import {
   getSavedToolInputSelectedType,
   initToolInputsTypeByDefaultMode,
   normalizeFlowNodeInputType
 } from '@fastgpt/global/core/app/formEdit/utils';
-import { jsonSchema2NodeInput } from '@fastgpt/global/core/app/jsonschema';
-import { getToolSetChildDescription } from '@fastgpt/global/core/app/tool/utils';
+import { jsonSchema2NodeInput, str2OpenApiSchema } from '@fastgpt/global/core/app/jsonschema';
+import {
+  getInlineToolSetChildNodeId,
+  getToolSetChildDescription
+} from '@fastgpt/global/core/app/tool/utils';
+import {
+  bundleOpenAPISchema,
+  parseOpenAPISchemaString
+} from '@fastgpt/global/common/string/swagger';
 
 /**
  * 构造 workflow SSE 写入函数。
@@ -347,19 +362,96 @@ export const filterSystemVariables = (variables: Record<string, any>): SystemVar
 export { formatHttpError } from '../../../../common/api/httpError';
 
 /**
+ * Expand a ToolSet into runtime-only child nodes without persisting default-mode changes.
+ * HTTP children retain their per-input mode; other ToolSet types keep the legacy forced mode.
+ */
+const initToolSetChildNode = (node: RuntimeNodeItemType): RuntimeNodeItemType => {
+  const isHttpToolChild = Boolean(node.toolConfig?.httpTool);
+
+  return {
+    ...node,
+    inputs: initToolInputsTypeByDefaultMode(
+      node.inputs.map((input) => ({
+        ...input,
+        ...(isHttpToolChild ? {} : { defaultToAgentGenerated: true })
+      })),
+      {
+        forceDefaultMode: !isHttpToolChild,
+        allowUserChatInputAgentGenerated: true
+      }
+    )
+  };
+};
+
+/** 本地摘要仅覆盖同名远端工具的描述，不能限制远端当前工具列表。 */
+const mergeToolSetChildDescriptions = <T extends { name: string; description?: string }>({
+  toolList,
+  summaries
+}: {
+  toolList: T[];
+  summaries: { name: string; description?: string }[];
+}) => {
+  const descriptionMap = new Map(
+    summaries.map(({ name, description }) => [name, description] as const)
+  );
+  return toolList.map((tool) => ({
+    ...tool,
+    description: getToolSetChildDescription(descriptionMap.get(tool.name), tool.description)
+  }));
+};
+
+/** 按执行时鉴权发现内联 MCP 工具；摘要只覆盖描述，完整定义仅用于本轮临时子节点。 */
+export const getInlineMcpToolSetRuntimeNodes = async ({
+  toolSetNode,
+  resolveReference
+}: {
+  toolSetNode: RuntimeNodeItemType;
+  resolveReference?: Parameters<typeof getSecretValue>[0]['resolveReference'];
+}): Promise<RuntimeNodeItemType[]> => {
+  const mcpToolSet = McpToolSetNodeConfigSchema.parse(toolSetNode.toolConfig?.mcpToolSet);
+  const remoteToolList = await new MCPClient({
+    url: mcpToolSet.url,
+    headers: getSecretValue({
+      storeSecret: mcpToolSet.headerSecret ?? undefined,
+      ...(resolveReference ? { resolveReference } : {})
+    })
+  }).getTools();
+  const toolList = mergeToolSetChildDescriptions({
+    toolList: remoteToolList,
+    summaries: mcpToolSet.toolList
+  });
+
+  return toolList.map((tool) => {
+    const node = initToolSetChildNode(
+      getMCPToolRuntimeNode({
+        nodeId: getInlineToolSetChildNodeId({ toolSetNodeId: toolSetNode.nodeId, tool }),
+        toolsetName: toolSetNode.name,
+        avatar: toolSetNode.avatar,
+        tool,
+        url: mcpToolSet.url,
+        headerSecret: mcpToolSet.headerSecret ?? undefined
+      })
+    );
+    node.inputs = node.inputs.map((input) => normalizeFlowNodeInputType(input, { isTool: true }));
+    return node;
+  });
+};
+
+/**
  * 重写 runtime workflow 中的工具相关节点配置。
  *
  * 该函数会原地修改 nodes 和 edges：
  * - 将当前工具输入与最新 MCP/HTTP resource schema 合并，并保留最终 selectedType。
  * - 将 ToolSet 节点展开为具体 Tool 节点，并把原来指向 ToolSet 的边改接到子工具节点。
  * - 为 MCP/HTTP Tool 节点补充原始 jsonSchema 和描述，供模型 tool call 生成参数时使用。
+ * - 保留内联 MCP 聚合连接，供 ToolCall 使用已就绪的上游鉴权延迟展开。
  */
 export const rewriteRuntimeWorkFlow = async ({
   teamId,
   tmbId,
   nodes,
   edges,
-  lang
+  lang: _lang
 }: {
   teamId: string;
   tmbId: string;
@@ -415,28 +507,6 @@ export const rewriteRuntimeWorkFlow = async ({
     );
   };
 
-  /**
-   * Expand a ToolSet into runtime-only child nodes without persisting default-mode changes.
-   * HTTP children retain their per-input mode; other ToolSet types keep the legacy forced mode.
-   */
-  const initToolSetChildNode = (node: RuntimeNodeItemType): RuntimeNodeItemType => {
-    const isHttpToolChild = Boolean(node.toolConfig?.httpTool);
-
-    return {
-      ...node,
-      inputs: initToolInputsTypeByDefaultMode(
-        node.inputs.map((input) => ({
-          ...input,
-          ...(isHttpToolChild ? {} : { defaultToAgentGenerated: true })
-        })),
-        {
-          forceDefaultMode: !isHttpToolChild,
-          allowUserChatInputAgentGenerated: true
-        }
-      )
-    };
-  };
-
   const getAuthorizedToolSet = async (toolSetId: string) => {
     try {
       return await loadWorkflowAppResource({ appId: toolSetId, tmbId, type: 'tool' });
@@ -444,6 +514,16 @@ export const rewriteRuntimeWorkFlow = async ({
       return undefined;
     }
   };
+
+  /** 历史外部 ToolSet 可能缺少嵌套 ID，运行时回退到父节点 pluginId。 */
+  const getToolSetReferenceId = (toolSet: unknown, pluginId: string) =>
+    typeof toolSet === 'object' &&
+    toolSet !== null &&
+    'toolId' in toolSet &&
+    typeof toolSet.toolId === 'string' &&
+    toolSet.toolId
+      ? toolSet.toolId
+      : pluginId;
 
   type RuntimeMcpTool = McpToolConfigType & {
     url?: string;
@@ -460,6 +540,33 @@ export const rewriteRuntimeWorkFlow = async ({
       const nodeIdsToRemove = new Set<string>();
 
       for (const toolSetNode of toolSetNodes) {
+        if (!toolSetNode.pluginId && toolSetNode.toolConfig?.mcpToolSet) {
+          // 暂停快照可能只有未展开的子工具边；先还原聚合连接，待 ToolCall 执行前再展开。
+          const nodeIds = new Set(nodes.map((node) => node.nodeId));
+          const inlineMcpChildIds = new Set(
+            (toolSetNode.toolConfig.mcpToolSet.toolList ?? []).map((tool) =>
+              getInlineToolSetChildNodeId({ toolSetNodeId: toolSetNode.nodeId, tool })
+            )
+          );
+          for (const edge of [...edges]) {
+            const legacyChildId = edge.target.startsWith(toolSetNode.nodeId)
+              ? edge.target.slice(toolSetNode.nodeId.length)
+              : '';
+            const isLegacyChildId = /^\d+$/.test(legacyChildId) && !nodeIds.has(edge.target);
+            const isUnresolvedInlineChildId =
+              inlineMcpChildIds.has(edge.target) && !nodeIds.has(edge.target);
+            if (
+              edge.targetHandle === NodeOutputKeyEnum.selectedTools &&
+              (isLegacyChildId || isUnresolvedInlineChildId) &&
+              !edges.some(
+                (item) => item.source === edge.source && item.target === toolSetNode.nodeId
+              )
+            ) {
+              edges.push({ ...edge, target: toolSetNode.nodeId });
+            }
+          }
+          continue;
+        }
         nodeIdsToRemove.add(toolSetNode.nodeId);
 
         const systemToolId = toolSetNode.toolConfig?.systemToolSet?.toolId;
@@ -470,6 +577,17 @@ export const rewriteRuntimeWorkFlow = async ({
         // ToolSet 只是编辑态聚合节点，运行态需要把入口边复制到每个实际工具节点。
         const pushEdges = (nodeId: string) => {
           for (const inEdge of incomingEdges) {
+            if (
+              edges.some(
+                (edge) =>
+                  edge.source === inEdge.source &&
+                  edge.sourceHandle === inEdge.sourceHandle &&
+                  edge.target === nodeId &&
+                  edge.targetHandle === NodeOutputKeyEnum.selectedTools
+              )
+            ) {
+              continue;
+            }
             edges.push({
               source: inEdge.source,
               target: nodeId,
@@ -491,12 +609,8 @@ export const rewriteRuntimeWorkFlow = async ({
             nodes.push(runtimeNode);
             pushEdges(runtimeNode.nodeId);
           });
-        } else if (mcpToolsetVal) {
-          // 旧调试状态可能仍携带空 toolId，占位值不能阻止按 pluginId 加载资源。
-          const toolSetId =
-            ('toolId' in mcpToolsetVal ? mcpToolsetVal.toolId : undefined) || toolSetNode.pluginId;
-          if (!toolSetId) continue;
-
+        } else if (mcpToolsetVal && toolSetNode.pluginId) {
+          const toolSetId = getToolSetReferenceId(mcpToolsetVal, toolSetNode.pluginId);
           const app = await getAuthorizedToolSet(toolSetId);
           if (!app) continue;
           const toolList = filterWorkflowToolList({
@@ -529,43 +643,104 @@ export const rewriteRuntimeWorkFlow = async ({
             pushEdges(newToolNode.nodeId);
           });
         } else if (httpToolsetVal) {
-          const toolSetId =
-            ('toolId' in httpToolsetVal ? httpToolsetVal.toolId : undefined) ||
-            toolSetNode.pluginId;
-          if (!toolSetId) continue;
+          if (!toolSetNode.pluginId) {
+            const httpToolSet = HttpToolSetNodeConfigSchema.parse(httpToolsetVal);
+            if (!httpToolSet.apiSchemaUrl) throw new Error('HTTP tool set schema URL is missing');
+            const nodeIds = new Set(nodes.map((node) => node.nodeId));
 
-          const app = await getAuthorizedToolSet(toolSetId);
-          if (!app) continue;
-
-          const toolList = filterWorkflowToolList({
-            context: getWorkflowResourceContext(),
-            appId: String(app._id),
-            tools: await getHTTPToolList(app)
-          });
-
-          const savedDescriptionMap = new Map(
-            (httpToolsetVal.toolList ?? []).map((tool) => [tool.name, tool.description])
-          );
-          toolList.forEach((tool: HttpToolConfigType, index: number) => {
-            const runtimeTool = {
-              ...tool,
-              description: getToolSetChildDescription(
-                savedDescriptionMap.get(tool.name),
-                tool.description
-              )
-            };
-            const newToolNode = initToolSetChildNode(
-              getHTTPToolRuntimeNode({
-                tool: runtimeTool,
-                nodeId: `${toolSetNode.nodeId}${index}`,
-                avatar: toolSetNode.avatar,
-                toolSetId,
-                toolsetName: toolSetNode.name
-              })
+            await checkUrlSafety(httpToolSet.apiSchemaUrl, 'OpenAPI Schema URL');
+            const { data: downloadedSchema } = await axios.get<string>(httpToolSet.apiSchemaUrl, {
+              responseType: 'text',
+              maxRedirects: 0,
+              timeout: 30000,
+              transformResponse: (value) => value
+            });
+            const bundledSchema = await bundleOpenAPISchema(
+              parseOpenAPISchemaString(downloadedSchema)
             );
-            nodes.push(newToolNode);
-            pushEdges(newToolNode.nodeId);
-          });
+            const apiSchemaStr = JSON.stringify(bundledSchema);
+            if (!apiSchemaStr) throw new Error('Failed to serialize HTTP tool schema');
+
+            const apiSchema = await str2OpenApiSchema(apiSchemaStr);
+            const parsedToolList = await pathData2ToolList(apiSchema.pathData);
+            if (parsedToolList.length !== apiSchema.pathData.length) {
+              throw new Error('Failed to parse HTTP tool schema');
+            }
+            const toolList = mergeToolSetChildDescriptions({
+              toolList: parsedToolList,
+              summaries: httpToolSet.toolList
+            });
+
+            toolList.forEach((tool, index) => {
+              const runtimeNode = getHTTPToolRuntimeNode({
+                tool,
+                nodeId: getInlineToolSetChildNodeId({ toolSetNodeId: toolSetNode.nodeId, tool }),
+                avatar: toolSetNode.avatar,
+                toolSetId: 'inline',
+                toolsetName: toolSetNode.name
+              });
+              const { headerSecret: _headerSecret, ...toolWithoutHeaderSecret } = tool;
+              runtimeNode.toolConfig = {
+                ...runtimeNode.toolConfig,
+                httpTool: {
+                  ...toolWithoutHeaderSecret,
+                  baseUrl: httpToolSet.baseUrl?.trim() || apiSchema.serverPath,
+                  apiSchemaStr,
+                  customHeaders: httpToolSet.customHeaders,
+                  headerSecret: httpToolSet.headerSecret ?? undefined
+                }
+              };
+
+              const newToolNode = initToolSetChildNode(runtimeNode);
+              nodes.push(newToolNode);
+              const legacyChildId = `${toolSetNode.nodeId}${index}`;
+              if (!nodeIds.has(legacyChildId)) {
+                edges.forEach((edge) => {
+                  if (
+                    edge.target === legacyChildId &&
+                    edge.targetHandle === NodeOutputKeyEnum.selectedTools
+                  ) {
+                    edge.target = newToolNode.nodeId;
+                  }
+                });
+              }
+              pushEdges(newToolNode.nodeId);
+            });
+          } else {
+            const toolSetId = getToolSetReferenceId(httpToolsetVal, toolSetNode.pluginId);
+            const app = await getAuthorizedToolSet(toolSetId);
+            if (!app) continue;
+
+            const toolList = filterWorkflowToolList({
+              context: getWorkflowResourceContext(),
+              appId: String(app._id),
+              tools: await getHTTPToolList(app)
+            });
+
+            const savedDescriptionMap = new Map(
+              (httpToolsetVal.toolList ?? []).map((tool) => [tool.name, tool.description])
+            );
+            toolList.forEach((tool: HttpToolConfigType, index: number) => {
+              const runtimeTool = {
+                ...tool,
+                description: getToolSetChildDescription(
+                  savedDescriptionMap.get(tool.name),
+                  tool.description
+                )
+              };
+              const newToolNode = initToolSetChildNode(
+                getHTTPToolRuntimeNode({
+                  tool: runtimeTool,
+                  nodeId: `${toolSetNode.nodeId}${index}`,
+                  avatar: toolSetNode.avatar,
+                  toolSetId,
+                  toolsetName: toolSetNode.name
+                })
+              );
+              nodes.push(newToolNode);
+              pushEdges(newToolNode.nodeId);
+            });
+          }
         }
       }
 
@@ -592,7 +767,7 @@ export const rewriteRuntimeWorkFlow = async ({
     const parseMcpToolConfigs = mcpToolNodes
       .map((node) => {
         const mcpTool = node.toolConfig?.mcpTool;
-        return mcpTool ? parsetMcpToolConfig(mcpTool) : undefined;
+        return mcpTool && 'toolId' in mcpTool ? parsetMcpToolConfig(mcpTool) : undefined;
       })
       .filter(Boolean) as { toolsetId: string; toolName: string }[];
     // 批量获取 toolset，避免每个工具节点都单独查询一次数据库。
@@ -614,6 +789,7 @@ export const rewriteRuntimeWorkFlow = async ({
     mcpToolNodes.forEach((node) => {
       const mcpTool = node.toolConfig?.mcpTool;
       if (!mcpTool) return;
+      if (!('toolId' in mcpTool)) return;
       const parseResult = parsetMcpToolConfig(mcpTool);
       if (!parseResult) return;
       const toolList = toolListMap.get(parseResult.toolsetId);

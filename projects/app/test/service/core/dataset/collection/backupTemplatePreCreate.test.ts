@@ -4,9 +4,11 @@ import {
   TrainingModeEnum
 } from '@fastgpt/global/core/dataset/constants';
 import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
+import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
+import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/catalog/service';
 import { serviceEnv } from '@fastgpt/service/env';
 import { countPromptTokensInWorker } from '@fastgpt/service/worker/countGptMessagesTokens/count';
 import { getRootUser } from '@test/datas/users';
@@ -217,6 +219,27 @@ describe('backup / template pre-created data', () => {
     // 每条任务指向一条已存在的预落库数据，不能有悬空 dataId。
     const rowIds = new Set(rows.map((row) => String(row._id)));
     expect(tasks.every((task) => rowIds.has(String(task.dataId)))).toBe(true);
+  });
+
+  it('rejects unauthorized embedding before creating a collection', async () => {
+    const { dataset, user } = await createDataset();
+    const modelHandle = await getTeamModelHandle({ teamId: String(user.teamId) });
+
+    await expect(
+      createCollectionAndInsertData({
+        dataset,
+        modelAuthContext: { modelHandle, authorizedIds: new Set<string>() },
+        createCollectionParams: {
+          teamId: String(dataset.teamId),
+          tmbId: String(dataset.tmbId),
+          datasetId: String(dataset._id),
+          name: 'unauthorized.csv',
+          type: DatasetCollectionTypeEnum.file
+        }
+      })
+    ).rejects.toThrow();
+
+    expect(await MongoDatasetCollection.countDocuments({ datasetId: dataset._id })).toBe(0);
   });
 
   /** 模板导入与备份导入同源，行为应一致。 */

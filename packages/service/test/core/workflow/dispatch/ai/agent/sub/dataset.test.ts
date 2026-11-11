@@ -274,6 +274,7 @@ describe('dispatchAgentDatasetSearch', () => {
         embeddingWeight: 0.5,
         usingReRank: false,
         rerankWeight: 0.5,
+        rerankCandidateNum: 30,
         datasetSearchUsingExtensionQuery: true,
         collectionFilterMatch: {
           logic: 'AND',
@@ -290,6 +291,7 @@ describe('dispatchAgentDatasetSearch', () => {
     expect(defaultSearchDatasetDataMock).toHaveBeenCalledWith(
       expect.objectContaining({
         textQueries: ['origin'],
+        rerankCandidateNum: 30,
         collectionFilterMatch: JSON.stringify({
           tags: { $and: [{ price: { $gte: 10 } }] }
         })

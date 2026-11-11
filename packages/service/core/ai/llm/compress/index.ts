@@ -536,6 +536,7 @@ const getToolResponseCompressionLimits = ({ maxContext }: { maxContext: number }
  */
 export const compressRequestMessages = async ({
   activePlan,
+  getCheckpointContext,
   checkIsStopping,
   messageTokens: cachedMessageTokens,
   messages,
@@ -546,6 +547,7 @@ export const compressRequestMessages = async ({
   teamId
 }: {
   activePlan?: AgentPlanType;
+  getCheckpointContext?: () => Promise<string>;
   checkIsStopping?: CreateLLMResponseProps['isAborted'];
   messageTokens?: number;
   messages: ChatCompletionMessageParam[];
@@ -623,6 +625,8 @@ export const compressRequestMessages = async ({
   logger.info('Message compression started');
 
   try {
+    // 业务恢复快照只在真正压缩时生成；读取失败保留原上下文，不能发布缺少入口的 checkpoint。
+    const checkpointContext = await getCheckpointContext?.();
     // 触发压缩后，全部非 system/developer 历史都写进 checkpoint，避免继续保留大量原始 history。
     const compressPrompt = await getCompressRequestMessagesPrompt();
     const userPrompt = await getCompressRequestMessagesUserPrompt({
@@ -701,10 +705,12 @@ export const compressRequestMessages = async ({
       return { messages, messageTokens, usage: compressedUsage, requestIds: [requestId] };
     }
 
-    const compressedContextContent = createCompressedContextContent({
-      activePlan,
-      checkpointContent
-    });
+    const compressedContextContent = [
+      createCompressedContextContent({ activePlan, checkpointContent }),
+      checkpointContext
+    ]
+      .filter(Boolean)
+      .join('\n\n');
     const checkpointMessage = createContextCheckpointMessage(compressedContextContent);
     const finalMessages = [...systemMessages, checkpointMessage];
     const compressedTokens = await countRequestMessagesTokens({

@@ -32,6 +32,7 @@ describe('getDefaultAppForm', () => {
       searchMode: DatasetSearchModeEnum.embedding,
       usingReRank: false,
       rerankWeight: 0.5,
+      rerankCandidateNum: 100,
       datasetSearchUsingExtensionQuery: false,
       datasetSearchExtensionBg: '',
       authTmbId: false

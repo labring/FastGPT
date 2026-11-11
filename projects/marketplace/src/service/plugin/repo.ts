@@ -256,6 +256,7 @@ export class PluginRepo {
           downloadObjectKey: '',
           downloadUrl: '',
           readmeUrl: '',
+          readmeUrls: '',
           size: ''
         }
       },
@@ -363,6 +364,7 @@ export class PluginRepo {
       downloadObjectKey: pkgObjectKey,
       downloadUrl: getPkgDownloadURLByKey(pkgObjectKey),
       readmeUrl: tool.readmeUrl,
+      readmeUrls: tool.readmeUrls,
       filename: index.filename ?? getPkgFilename(index),
       size: buffer.length,
       createTime: index.createTime,
