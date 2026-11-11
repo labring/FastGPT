@@ -240,6 +240,7 @@
   "logs_error_rate": "對話報錯比例",
   "logs_error_rate_description": "報錯對話佔總對話數量的比例",
   "logs_export_confirm_tip": "目前共有 {{total}} 筆對話記錄，每筆對話最多可匯出最新 100 則訊息。確定要匯出嗎？",
+  "logs_export_confirm_tip_without_total": "每筆對話最多可匯出最新 100 則訊息。確定要匯出嗎？",
   "logs_good_feedback": "好評",
   "logs_has_any_feedback": "包含反饋",
   "logs_has_bad_feedback": "包含踩",
