@@ -9,19 +9,14 @@ import {
 } from './primitives';
 
 const McpSubserviceConfigSchema = z.strictObject({
+  enabled: z.boolean().default(false),
   sseProxyUrl: urlWithDefault()
 });
 
-const PluginSubserviceConfigSchema = z.strictObject({
-  remoteDebug: z.boolean().default(false)
-});
-
 const CodeSandboxSubserviceConfigSchema = z.strictObject({
-  enabled: z.boolean().default(true)
-});
-
-const AiProxySubserviceConfigSchema = z.strictObject({
-  enabled: z.boolean().default(false)
+  enabled: z.boolean().default(false),
+  url: urlWithDefault(),
+  token: textWithDefault()
 });
 
 const AgentSandboxSubserviceConfigSchema = z.strictObject({
@@ -93,9 +88,7 @@ const AgentSandboxSubserviceConfigSchema = z.strictObject({
 });
 
 export const SubserviceConfigBaseSchema = z.strictObject({
-  plugin: PluginSubserviceConfigSchema.prefault({}),
   codeSandbox: CodeSandboxSubserviceConfigSchema.prefault({}),
-  aiProxy: AiProxySubserviceConfigSchema.prefault({}),
   agentSandbox: AgentSandboxSubserviceConfigSchema.prefault({}),
   mcp: McpSubserviceConfigSchema.prefault({})
 });

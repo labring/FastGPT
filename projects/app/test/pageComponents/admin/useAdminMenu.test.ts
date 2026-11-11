@@ -8,9 +8,14 @@ describe('getAdminMenuList', () => {
 
     const topLabels = menus.map((item) => item.label);
 
-    // 开源社区版：系统概览、系统资源、系统配置（含开源字段）、版本升级可见；
-    // 商业化、子服务等全为商业字段的分组自动隐藏，不再单独维护固定白名单。
-    expect(topLabels).toEqual(['系统概览', '系统资源', '系统配置', '版本升级']);
+    // 沙箱和 MCP SSE 的配置入口对社区版开放，Agent Sandbox 仍仅限商业版。
+    expect(topLabels).toEqual(['系统概览', '系统资源', '子服务', '系统配置', '版本升级']);
+    const subserviceMenu = menus.find((item) => item.label === '子服务');
+    expect(subserviceMenu?.value).toBe('/admin/subservice/code-sandbox');
+    expect(subserviceMenu?.children?.map((child) => child.value)).toEqual([
+      '/admin/subservice/code-sandbox',
+      '/admin/subservice/mcp'
+    ]);
 
     // 系统概览为单级菜单，无子项
     const overviewMenu = menus.find((item) => item.label === '系统概览');
@@ -40,9 +45,8 @@ describe('getAdminMenuList', () => {
     const migrationMenu = menus.find((item) => item.label === '版本升级');
     expect(migrationMenu?.value).toBe('/admin/migration');
 
-    // 确认商业化、子服务（全为 pro 字段）、数据面板等均自动隐藏
+    // 商业化和数据面板等商业业务自动隐藏。
     expect(topLabels).not.toContain('商业化');
-    expect(topLabels).not.toContain('子服务');
     expect(topLabels).not.toContain('数据面板');
     expect(topLabels).not.toContain('运营管理');
     expect(topLabels).not.toContain('用户与团队');
@@ -73,9 +77,7 @@ describe('getAdminMenuList', () => {
     // 验证子服务监控子菜单
     const subserviceMenu = menus.find((item) => item.label === '子服务');
     expect(subserviceMenu?.children?.map((c) => c.value)).toEqual([
-      '/admin/subservice/plugin',
       '/admin/subservice/code-sandbox',
-      '/admin/subservice/ai-proxy',
       '/admin/subservice/agent-sandbox',
       '/admin/subservice/mcp'
     ]);

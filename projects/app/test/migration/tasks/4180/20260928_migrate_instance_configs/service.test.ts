@@ -1,4 +1,4 @@
-import { describe, expect, it, beforeEach, vi } from 'vitest';
+import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest';
 import { MongoSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/schema';
 import {
   SYSTEM_INSTANCE_CONFIG_DOMAINS,
@@ -157,6 +157,8 @@ describe('applyInstanceConfigMigration (per-domain idempotency)', () => {
     await MongoSystemInstanceConfig.deleteMany({});
   });
 
+  afterEach(() => vi.unstubAllEnvs());
+
   it('creates missing domains and never overwrites existing documents on rerun', async () => {
     const overrides = {
       site: { name: 'Migrated Site' },
@@ -211,8 +213,8 @@ describe('applyInstanceConfigMigration (per-domain idempotency)', () => {
   });
 
   it('inspect reports missingDomainCount against migration target domains', async () => {
-    // 测试环境变量（如 AIPROXY_API_ENDPOINT）本身也会生成 overrides，
-    // 因此不假设具体域数量，只验证 missing 计数与 apply 结果的一致性。
+    // 显式提供待迁移连接，避免测试依赖运行环境里的可选配置。
+    vi.stubEnv('CODE_SANDBOX_URL', 'https://sandbox.example.test');
     const before = await inspectInstanceConfigMigration();
     expect(before.existingDomainCount).toBe(0);
     const targetDomainCount = Object.keys(before.overrides).length;
@@ -232,6 +234,7 @@ describe('applyInstanceConfigMigration (per-domain idempotency)', () => {
   });
 
   it('inspect reports field-level gaps inside an existing domain', async () => {
+    vi.stubEnv('CODE_SANDBOX_URL', 'https://sandbox.example.test');
     const target = await inspectInstanceConfigMigration();
     const [domain] = Object.keys(target.overrides) as SystemInstanceConfigDomainKey[];
     expect(domain).toBeDefined();

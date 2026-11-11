@@ -8,13 +8,14 @@ sidebarTag: In progress
 
 ### Configuration changes
 
-This version has no environment variable or system configuration changes. Upgrading from V4.17.3 requires no additional configuration.
+- **Code Sandbox and MCP SSE service**: Configure their connections under **Admin → Subservice configuration** in either the Community or Commercial edition. Enable Code Sandbox and enter its URL and token; the token must match the sandbox process’s `SANDBOX_TOKEN`. You can test the connection on the page. Enable the MCP SSE service and enter a proxy URL accessible to clients. Both are disabled by default when no legacy configuration exists, and their entry points are hidden when disabled or missing required configuration.
+- **AI Proxy and Plugin**: AI Proxy continues to use the `AIPROXY_API_ENDPOINT` and `AIPROXY_API_TOKEN` environment variables. Both must be configured to use the proxy; otherwise, FastGPT does not use it. Plugin remote debugging is controlled by the Plugin service configuration.
 
 ### Image updates
 
 ### Upgrade scripts
 
-No automatic upgrade scripts were added or changed in this version.
+A new one-time startup migration backfills the Code Sandbox connection and MCP SSE switch from legacy configuration, preserving administrator values and explicitly cleared settings. `CODE_SANDBOX_URL`, `CODE_SANDBOX_TOKEN`, and `SSE_MCP_SERVER_PROXY_ENDPOINT` are read only for migration and no longer serve as runtime configuration. Check the Admin settings after the migration succeeds.
 
 ### Compatibility notes
 

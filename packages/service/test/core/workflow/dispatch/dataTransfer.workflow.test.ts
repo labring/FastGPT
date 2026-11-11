@@ -14,6 +14,7 @@ import {
 } from '@fastgpt/global/core/workflow/node/constant';
 import { VariableConditionEnum } from '@fastgpt/global/core/workflow/template/system/ifElse/constant';
 import { codeSandbox } from '@fastgpt/service/thirdProvider/codeSandbox';
+import { getTestInstanceConfig } from '@test/utils/instanceConfigSnapshot';
 import { UserConfigError } from '@fastgpt/global/common/error/utils';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import * as workflowMetrics from '@fastgpt/service/core/workflow/metrics';
@@ -47,7 +48,6 @@ vi.mock('@fastgpt/service/env', async (importOriginal) => {
     ...actual,
     serviceEnv: {
       ...actual.serviceEnv,
-      CODE_SANDBOX_URL: 'http://sandbox.test',
       WORKFLOW_MAX_LOOP_TIMES: 10
     }
   };
@@ -68,6 +68,11 @@ const consumer = (id: string, references: Record<string, [string, string]>) =>
   });
 
 beforeEach(() => {
+  getTestInstanceConfig().subservice.codeSandbox = {
+    enabled: true,
+    url: 'http://sandbox.test',
+    token: 'test-token'
+  };
   axiosMock.mockReset();
   isInternalAddressMock.mockReset();
   isInternalAddressMock.mockResolvedValue(false);

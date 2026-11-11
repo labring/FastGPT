@@ -1,5 +1,4 @@
-import { getTestInstanceConfig } from '@test/utils/instanceConfigSnapshot';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Call } from '@test/utils/request';
 import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
 import { TeamPluginPolicyStatusEnum } from '@fastgpt/global/core/plugin/schema/type';
@@ -46,10 +45,7 @@ vi.mock('@fastgpt/service/core/plugin/teamPluginPolicy', async (importOriginal) 
 import handler from '@/pages/api/core/plugin/team/tool/list';
 
 describe('team system plugin list handler', () => {
-  let originalRemoteDebug: boolean;
   beforeEach(() => {
-    originalRemoteDebug = getTestInstanceConfig().subservice.plugin.remoteDebug;
-    getTestInstanceConfig().subservice.plugin.remoteDebug = true;
     vi.clearAllMocks();
     mocks.authUserPer.mockResolvedValue({
       teamId: 'team-1',
@@ -92,10 +88,6 @@ describe('team system plugin list handler', () => {
     ]);
   });
 
-  afterEach(() => {
-    getTestInstanceConfig().subservice.plugin.remoteDebug = originalRemoteDebug;
-  });
-
   it('adds current debug source from plugin service while keeping production sources', async () => {
     const res = await Call(handler, {
       query: {},
@@ -112,18 +104,6 @@ describe('team system plugin list handler', () => {
     expect(mocks.getSystemToolList).toHaveBeenCalledWith({
       op: 'or',
       sources: ['system', 'teamId:team-1', 'debug:tmbId:tmb-1'],
-      lang: 'zh'
-    });
-  });
-
-  it('keeps production sources and skips debug discovery when the administrator disables it', async () => {
-    getTestInstanceConfig().subservice.plugin.remoteDebug = false;
-    const result = await Call(handler, { query: {} });
-    expect(result.code).toBe(200);
-    expect(mocks.pluginClient.getDebugSessionStatus).not.toHaveBeenCalled();
-    expect(mocks.getSystemToolList).toHaveBeenCalledWith({
-      op: 'or',
-      sources: ['system', 'teamId:team-1'],
       lang: 'zh'
     });
   });

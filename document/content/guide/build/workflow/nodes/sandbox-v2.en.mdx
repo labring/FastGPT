@@ -16,7 +16,7 @@ The Code Run node executes JavaScript and Python code in a secure sandbox for da
 
 **Important Notes**
 
-- Self-hosted users need to deploy the `fastgpt-sandbox` image and configure the `CODE_SANDBOX_URL` environment variable.
+- Self-hosted users need to deploy the `fastgpt-sandbox` image. Starting with V4.18.0, enable the service under **Admin → Subservice configuration → Code Sandbox** and enter its URL and token. The token must match the sandbox process’s `SANDBOX_TOKEN`; you can test the connection on the page. The Code Run entry point is hidden when the service is disabled or required configuration is missing.
 - The sandbox has a default maximum runtime of 60s (configurable).
 - Code runs in isolated process pools with no access to the file system or internal network.
 

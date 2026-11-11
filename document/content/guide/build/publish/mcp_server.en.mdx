@@ -141,22 +141,6 @@ fastgpt-mcp-server:
     - FASTGPT_ENDPOINT=http://fastgpt:3000
 ```
 
-### Update FastGPT Container Environment Variables
+### Configure the MCP SSE service
 
-Configure `SSE_MCP_SERVER_PROXY_ENDPOINT` in the FastGPT container. Set it to the client-accessible `fastgpt-mcp-server` URL without a trailing `/`. For example:
-
-```yaml
-environment:
-  SSE_MCP_SERVER_PROXY_ENDPOINT: https://mcp.fastgpt.cn
-```
-
-### Restart FastGPT
-
-Restart FastGPT after changing the environment variable:
-
-```bash
-docker-compose down
-docker-compose up -d
-```
-
-After restarting, the MCP Server option will appear in Studio.
+After starting `fastgpt-mcp-server`, open **Admin → Subservice configuration → MCP SSE service** in V4.18.0 or later. Enable the service and enter a client-accessible `fastgpt-mcp-server` URL without a trailing `/`, such as `https://mcp.fastgpt.cn`. The service is disabled by default; Studio hides the SSE publishing entry when it is disabled or its URL is missing.

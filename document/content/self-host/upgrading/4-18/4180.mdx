@@ -8,13 +8,14 @@ sidebarTag: 进行中
 
 ### 配置变更
 
-本轮无环境变量或系统配置变更，从 V4.17.3 升级无需额外调整配置。
+- **Code Sandbox 与 MCP SSE 服务**：连接配置移至管理员的「子服务配置」，社区版和商业版均可使用。Code Sandbox 需启用并填写地址、Token；Token 须与沙箱进程的 `SANDBOX_TOKEN` 一致，页面支持连通测试。MCP SSE 服务需启用并填写客户端可访问的代理地址。无旧配置时默认关闭，关闭或必要配置缺失时不展示对应业务入口。
+- **AI Proxy 与 Plugin**：AI Proxy 继续使用环境变量 `AIPROXY_API_ENDPOINT` 和 `AIPROXY_API_TOKEN`，两项均有效时才使用代理；缺一时不使用代理。Plugin 远程调试由 Plugin 服务配置控制。
 
 ### 镜像更新
 
 ### 升级脚本
 
-本轮无新增或调整的自动升级脚本。
+新增一次性启动迁移，从旧配置回填 Code Sandbox 连接和 MCP SSE 开关，保留管理员已有值与显式清空。`CODE_SANDBOX_URL`、`CODE_SANDBOX_TOKEN` 和 `SSE_MCP_SERVER_PROXY_ENDPOINT` 仅用于兼容迁移，之后不再作为运行期配置；请在迁移成功后检查管理页面配置。
 
 ### 兼容说明
 

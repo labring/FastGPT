@@ -37,7 +37,8 @@ import { initS3Buckets } from '@fastgpt/service/common/s3';
 import { logInstanceConfigRead } from '@fastgpt/service/common/system/migrationCoverageLog';
 import { buildAuthoritativeSystemEnv } from './buildAuthoritativeSystemEnv';
 import { applyEnvAuthoritativeFeConfigs } from './envAuthoritativeFeConfigs';
-import { resolvePluginRemoteDebug } from './pluginRemoteDebug';
+import { isCodeSandboxConfigured } from '@fastgpt/service/thirdProvider/codeSandbox';
+import { isValidHttpUrl } from '@fastgpt/global/common/string/url';
 import {
   buildAuthMethodProjection,
   buildOauthFeConfig,
@@ -275,7 +276,12 @@ async function doInitSystemConfig({
       customDomain: instanceConfig.site.customDomain,
       botIframeUrl: instanceConfig.site.botIframeUrl,
       scripts: instanceConfig.site.scripts,
-      mcpServerProxyEndpoint: instanceConfig.subservice.mcp.sseProxyUrl,
+      mcpServerProxyEndpoint:
+        instanceConfig.subservice.mcp.enabled &&
+        isValidHttpUrl(instanceConfig.subservice.mcp.sseProxyUrl)
+          ? instanceConfig.subservice.mcp.sseProxyUrl
+          : undefined,
+      codeSandboxEnabled: isCodeSandboxConfigured(instanceConfig.subservice.codeSandbox),
       limit: {
         ...defaultFeConfigs.limit,
         ...(fastgptConfig.feConfigs?.limit || {}),
@@ -293,11 +299,7 @@ async function doInitSystemConfig({
       datasetSynonymEnabled: serviceEnv.DATASET_SYNONYM_ENABLED,
       show_dataset_enhance: licenseData?.functions?.datasetEnhance,
       show_intelligent_chunking: !!serviceEnv.SANGFOR_CHUNK_URL,
-      // 管理员开关是准入门槛，Plugin 服务探测只表示能力可用；关闭表单后不能继续展示入口。
-      pluginRemoteDebug: resolvePluginRemoteDebug({
-        adminEnabled: instanceConfig.subservice.plugin.remoteDebug,
-        pluginAvailable: pluginRemoteDebug
-      }),
+      pluginRemoteDebug,
       disableMarketplace: appEnv.DISABLE_MARKETPLACE,
       show_agent_sandbox_free_tip: serviceEnv.AGENT_SANDBOX_SHOW_FREE_TIP,
       agentSandboxProxyUrl: serviceEnv.AGENT_SANDBOX_PROXY_URL

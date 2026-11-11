@@ -50,7 +50,7 @@ describe('Field permissions by edition', () => {
     expect(isConfigFieldAllowed('commercial.payFormUrl', 'pro')).toBe(true);
 
     // subservice fields are pro-only
-    expect(isConfigFieldAllowed('subservice.codeSandbox.enabled', 'community')).toBe(false);
+    expect(isConfigFieldAllowed('subservice.codeSandbox.enabled', 'community')).toBe(true);
     expect(isConfigFieldAllowed('subservice.codeSandbox.enabled', 'pro')).toBe(true);
   });
 

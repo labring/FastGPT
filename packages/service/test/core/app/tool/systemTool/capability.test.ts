@@ -1,5 +1,4 @@
-import { getTestInstanceConfig } from '@test/utils/instanceConfigSnapshot';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { PluginErrEnum } from '@fastgpt/global/common/error/code/plugin';
 import { SystemToolSystemSecretStatusEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
@@ -85,15 +84,6 @@ const createTemplate = (
   ...overrides
 });
 
-let originalRemoteDebug: boolean;
-beforeEach(() => {
-  originalRemoteDebug = getTestInstanceConfig().subservice.plugin.remoteDebug;
-  getTestInstanceConfig().subservice.plugin.remoteDebug = true;
-});
-afterEach(() => {
-  getTestInstanceConfig().subservice.plugin.remoteDebug = originalRemoteDebug;
-});
-
 describe('listAuthorizedSystemToolTemplates', () => {
   beforeEach(() => {
     vi.resetAllMocks();
@@ -101,21 +91,7 @@ describe('listAuthorizedSystemToolTemplates', () => {
     mocks.getDebugSessionStatus.mockResolvedValue(undefined);
   });
 
-  it('skips debug discovery when disabled while retaining production sources', async () => {
-    getTestInstanceConfig().subservice.plugin.remoteDebug = false;
-    mocks.getSystemToolList.mockResolvedValue([]);
-    mocks.getTeamPluginPolicyMap.mockResolvedValue(new Map());
-    await expect(listAuthorizedSystemToolTemplates(context)).resolves.toEqual([]);
-    expect(mocks.getDebugSessionStatus).not.toHaveBeenCalled();
-    expect(mocks.getSystemToolList).toHaveBeenCalledWith(
-      expect.objectContaining({
-        sources: ['system', 'teamId:team-1']
-      })
-    );
-  });
-
   it('does not resolve an explicit inactive debug parent as a system tool', async () => {
-    getTestInstanceConfig().subservice.plugin.remoteDebug = false;
     await expect(
       listAuthorizedSystemToolTemplates({
         ...context,
@@ -123,7 +99,7 @@ describe('listAuthorizedSystemToolTemplates', () => {
         source: 'debug:tmbId:member-1'
       })
     ).resolves.toEqual([]);
-    expect(mocks.getDebugSessionStatus).not.toHaveBeenCalled();
+    expect(mocks.getDebugSessionStatus).toHaveBeenCalledWith({ tmbId: context.tmbId });
     expect(mocks.getSystemToolDisplayInfoWithChildIcons).not.toHaveBeenCalled();
   });
 
@@ -433,25 +409,6 @@ describe('getAuthorizedSystemToolTemplateCatalog', () => {
     });
 
     await expect(getAuthorizedSystemToolTemplateCatalog(context)).resolves.toEqual([]);
-  });
-
-  it('keeps healthy tools when remote debugging is disabled after discovery', async () => {
-    mocks.getSystemToolList.mockResolvedValue([
-      createTool('debug-tool', { source: 'debug:tmbId:member-1' }),
-      createTool('systemTool-healthy')
-    ]);
-    mocks.getClientToolPreviewNode.mockImplementation(
-      async ({ appId, source }: { appId: string; source: string }) => {
-        if (source.startsWith('debug:')) {
-          throw new ApiHttpError(403, 'Plugin remote debugging is disabled');
-        }
-        return createTemplate(appId);
-      }
-    );
-
-    const catalog = await getAuthorizedSystemToolTemplateCatalog(context);
-
-    expect(catalog.map((item) => item.toolId)).toEqual(['systemTool-healthy']);
   });
 
   it('still propagates unrelated forbidden errors', async () => {

@@ -3,7 +3,6 @@ import { stripUrlTrailingSlash } from '@fastgpt/global/common/string/url';
 import { type OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
 import type { AIModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import { isSystemModel, isTeamModel } from '@fastgpt/global/core/ai/model/utils';
-import { getSystemInstanceConfig } from '../../common/system/systemInstanceConfig/runtime';
 import { serviceEnv } from '../../env';
 import { getMemberGroupId } from '../../thirdProvider/aiproxy/group';
 import { axios, axiosWithoutSSRF } from '../../common/api/axios';
@@ -21,32 +20,29 @@ import {
  * 地址与 Token 都由 ENV 提供；这里仍需保留两个归一化约定：
  *  - 去尾部斜杠：避免 `http://x/` 与 `/v1` 拼成 `http://x//v1`；
  *  - token 去首尾空白：避免粘贴 Key 时带入换行/空格导致鉴权静默失败。
- *  - 以实例配置的 `enabled` 作为准入门槛；迁移任务按 `AIPROXY_API_ENDPOINT` 是否配置写入
- *    `enabled`，因此未安装 AI Proxy 的部署仍会回落到 OpenAI 官方地址。
+ *  - 地址与 token 缺一不可，未配置时回落到 OpenAI 官方地址。
  */
 export const getAiProxyBaseUrl = () => {
-  const { enabled } = getSystemInstanceConfig().subservice.aiProxy;
-  if (!enabled) return undefined;
-
   const normalizedEndpoint = stripUrlTrailingSlash(serviceEnv.AIPROXY_API_ENDPOINT ?? '');
-  return normalizedEndpoint ? `${normalizedEndpoint}/v1` : undefined;
+  return normalizedEndpoint && serviceEnv.AIPROXY_API_TOKEN?.trim()
+    ? `${normalizedEndpoint}/v1`
+    : undefined;
 };
 
 export const getOpenaiBaseUrl = () => {
   return getAiProxyBaseUrl() || 'https://api.openai.com/v1';
 };
 export const getOpenaiBaseKey = () => {
-  const { enabled } = getSystemInstanceConfig().subservice.aiProxy;
   // 地址与凭据必须绑定同一连接配置：禁用或缺少有效代理地址时请求会回落到
   // api.openai.com，此时绝不能携带保留的私有代理 token。
-  if (!enabled || !getAiProxyBaseUrl()) return '';
+  if (!getAiProxyBaseUrl()) return '';
   return serviceEnv.AIPROXY_API_TOKEN?.trim() ?? '';
 };
 export const defaultUserOpenAIBaseUrl = 'https://api.openai.com/v1';
 
-/** @deprecated 使用 getOpenaiBaseUrl() 动态读取实例配置 */
+/** @deprecated 使用 getOpenaiBaseUrl() 读取 ENV */
 export const openaiBaseUrl = 'https://api.openai.com/v1';
-/** @deprecated 使用 getOpenaiBaseKey() 动态读取实例配置 */
+/** @deprecated 使用 getOpenaiBaseKey() 读取 ENV */
 export const openaiBaseKey = '';
 
 export type AIApiRequestMeta = {

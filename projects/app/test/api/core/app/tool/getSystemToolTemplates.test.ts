@@ -1,5 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { getTestInstanceConfig } from '@test/utils/instanceConfigSnapshot';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
@@ -61,11 +60,7 @@ import {
 import { getAuthorizedSystemToolTemplateCatalog } from '@fastgpt/service/core/app/tool/systemTool/capability';
 
 describe('get system tool templates handler', () => {
-  let originalRemoteDebug: boolean;
-
   beforeEach(() => {
-    originalRemoteDebug = getTestInstanceConfig().subservice.plugin.remoteDebug;
-    getTestInstanceConfig().subservice.plugin.remoteDebug = true;
     vi.clearAllMocks();
     mocks.authCert.mockResolvedValue({
       teamId: 'team-1',
@@ -95,10 +90,6 @@ describe('get system tool templates handler', () => {
         source
       })
     );
-  });
-
-  afterEach(() => {
-    getTestInstanceConfig().subservice.plugin.remoteDebug = originalRemoteDebug;
   });
 
   it('filters root system tools by searchKey', async () => {

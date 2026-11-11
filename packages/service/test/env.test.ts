@@ -326,8 +326,14 @@ describe('serviceEnv bootstrap configuration', () => {
     vi.stubEnv('WORKFLOW_MAX_RUN_TIMES', '-100');
     vi.stubEnv('DATASET_ARCHIVE_MAX_FILES', '0');
     vi.stubEnv('AGENT_SANDBOX_PROVIDER', 'invalid-provider');
+    vi.stubEnv('CODE_SANDBOX_URL', 'invalid-legacy-code-url');
+    vi.stubEnv('CODE_SANDBOX_TOKEN', 'legacy-token');
+    vi.stubEnv('SSE_MCP_SERVER_PROXY_ENDPOINT', 'invalid-legacy-mcp-url');
     const { serviceEnv } = await importServiceEnv();
     for (const key of [
+      'CODE_SANDBOX_URL',
+      'CODE_SANDBOX_TOKEN',
+      'SSE_MCP_SERVER_PROXY_ENDPOINT',
       'WORKFLOW_MAX_RUN_TIMES',
       'AGENT_SANDBOX_PROVIDER',
       'STORAGE_EXTERNAL_ENDPOINT',

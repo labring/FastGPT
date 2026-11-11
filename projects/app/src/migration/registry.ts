@@ -1,3 +1,4 @@
+import { rehomeSubserviceConnectionsTask } from './tasks/4180/20261111_rehome_subservice_connections';
 import type {
   SystemMigrationFailedRecord,
   SystemMigrationFailureInput,
@@ -264,6 +265,26 @@ export const systemMigrations = [
     ],
     blockStartup: true,
     run: backfillExternalFileCheckTask
+  },
+  {
+    id: '20261111_rehome_subservice_connections',
+    version: '4.18.0',
+    nameKey: i18nT('system_migration:migrations.20261111_rehome_subservice_connections.name'),
+    descriptionKey: i18nT(
+      'system_migration:migrations.20261111_rehome_subservice_connections.description'
+    ),
+    resultKey: i18nT('system_migration:migrations.20261111_rehome_subservice_connections.result'),
+    progressSteps: [
+      {
+        key: 'migrate',
+        labelKey: i18nT(
+          'system_migration:migrations.20261111_rehome_subservice_connections.migrate'
+        )
+      }
+    ],
+    dependsOn: ['20260929_cleanup_instance_config_deprecated_fields'],
+    blockStartup: true,
+    run: rehomeSubserviceConnectionsTask
   }
 ] as const satisfies readonly SystemMigration[];
 

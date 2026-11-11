@@ -24,7 +24,9 @@ describe('isRouteVisible', () => {
       isRouteVisible('/admin/settings/pay', { isProService: true, licenseActive: false })
     ).toBe(true);
     expect(isRouteVisible('/admin/pays', { isProService: true, licenseActive: false })).toBe(false);
-    expect(isRouteVisible('/admin/subservice/code-sandbox', { isProService: false })).toBe(false);
+    expect(isRouteVisible('/admin/subservice/code-sandbox', { isProService: false })).toBe(true);
     expect(isRouteVisible('/admin/subservice/code-sandbox', { isProService: true })).toBe(true);
+    expect(isRouteVisible('/admin/subservice/mcp', { isProService: false })).toBe(true);
+    expect(isRouteVisible('/admin/subservice/agent-sandbox', { isProService: false })).toBe(false);
   });
 });

@@ -4,6 +4,7 @@ const mocks = vi.hoisted(() => ({
   checkRedisHealth: vi.fn(),
   loadModelProviders: vi.fn(),
   runCode: vi.fn(),
+  isCodeSandboxConfigured: vi.fn(),
   postHealth: vi.fn()
 }));
 
@@ -15,7 +16,8 @@ vi.mock('@fastgpt/service/thirdProvider/fastgptPlugin/model', () => ({
   loadModelProviders: mocks.loadModelProviders
 }));
 vi.mock('@fastgpt/service/thirdProvider/codeSandbox', () => ({
-  codeSandbox: { runCode: mocks.runCode }
+  codeSandbox: { runCode: mocks.runCode },
+  isCodeSandboxConfigured: mocks.isCodeSandboxConfigured
 }));
 vi.mock('@fastgpt/service/thirdProvider/fastgptPro/api', () => ({
   postHealth: mocks.postHealth
@@ -34,6 +36,7 @@ describe('instrumentationCheck', () => {
     mocks.checkRedisHealth.mockResolvedValue(undefined);
     mocks.loadModelProviders.mockResolvedValue(undefined);
     mocks.runCode.mockResolvedValue(undefined);
+    mocks.isCodeSandboxConfigured.mockReturnValue(true);
     mocks.postHealth.mockResolvedValue({ auth: true, data: '' });
     publicBucketHealth.mockResolvedValue(undefined);
     privateBucketHealth.mockResolvedValue(undefined);
@@ -97,5 +100,11 @@ describe('instrumentationCheck', () => {
     mocks.runCode.mockRejectedValueOnce(new Error('sandbox unavailable'));
 
     await expect(instrumentationCheck()).resolves.toBeUndefined();
+  });
+
+  it('skips the sandbox check when it is not configured', async () => {
+    mocks.isCodeSandboxConfigured.mockReturnValue(false);
+    await expect(instrumentationCheck()).resolves.toBeUndefined();
+    expect(mocks.runCode).not.toHaveBeenCalled();
   });
 });

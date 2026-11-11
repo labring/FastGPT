@@ -1,5 +1,4 @@
-import { getTestInstanceConfig } from '@test/utils/instanceConfigSnapshot';
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   SystemToolSecretMaskedValue,
   SystemToolSystemSecretStatusEnum
@@ -112,15 +111,6 @@ const createToolConfig = ({
     version: '1.0.0',
     tags
   }
-});
-
-let originalRemoteDebug: boolean;
-beforeEach(() => {
-  originalRemoteDebug = getTestInstanceConfig().subservice.plugin.remoteDebug;
-  getTestInstanceConfig().subservice.plugin.remoteDebug = true;
-});
-afterEach(() => {
-  getTestInstanceConfig().subservice.plugin.remoteDebug = originalRemoteDebug;
 });
 
 beforeEach(() => {
@@ -1238,28 +1228,6 @@ describe('SystemToolRepo.getSystemToolDisplayInfo', () => {
 });
 
 describe('SystemToolRepo.getSystemToolRuntime', () => {
-  it.each([
-    'getSystemToolRuntime',
-    'getSystemToolDetail',
-    'getSystemToolDisplayInfo',
-    'getVersions'
-  ] as const)(
-    'rejects disabled debug sources in %s before database or Plugin access',
-    async (method) => {
-      getTestInstanceConfig().subservice.plugin.remoteDebug = false;
-      await expect(
-        SystemToolRepo.getInstance()[method]({
-          pluginId: 'systemTool-weather',
-          source: 'debug:tmbId:tmb-1'
-        })
-      ).rejects.toMatchObject({ statusCode: 403, message: 'Plugin remote debugging is disabled' });
-      expect(mocks.findSystemTool).not.toHaveBeenCalled();
-      expect(mocks.findSystemTools).not.toHaveBeenCalled();
-      expect(mocks.getTool).not.toHaveBeenCalled();
-      expect(mocks.listTools).not.toHaveBeenCalled();
-      expect(mocks.listPluginVersions).not.toHaveBeenCalled();
-    }
-  );
   it('keeps hidden system tools runnable for existing applications', async () => {
     mocks.findSystemTool.mockResolvedValue({
       pluginId: 'systemTool-weather',

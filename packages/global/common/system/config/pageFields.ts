@@ -193,10 +193,12 @@ export const adminConfigPageFieldsMap: Record<string, readonly string[]> = {
     'commercial.payment.alipay.rootCertContent',
     'commercial.payment.alipay.publicCertContent'
   ],
-  '/admin/subservice/plugin': ['subservice.plugin.remoteDebug'],
-  '/admin/subservice/code-sandbox': ['subservice.codeSandbox.enabled'],
-  '/admin/subservice/ai-proxy': ['subservice.aiProxy.enabled'],
-  '/admin/subservice/mcp': ['subservice.mcp.sseProxyUrl'],
+  '/admin/subservice/code-sandbox': [
+    'subservice.codeSandbox.enabled',
+    'subservice.codeSandbox.url',
+    'subservice.codeSandbox.token'
+  ],
+  '/admin/subservice/mcp': ['subservice.mcp.enabled', 'subservice.mcp.sseProxyUrl'],
   '/admin/subservice/agent-sandbox': [
     'subservice.agentSandbox.provider',
     'subservice.agentSandbox.common.cpuCount',

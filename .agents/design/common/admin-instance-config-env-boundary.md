@@ -1,6 +1,6 @@
 # Admin 实例配置与环境变量边界
 
-> 状态：已实现，2026-11-04 逐字段复核。第 13 章是当前版本、页面与 API 契约；前文保留迁移背景与早期盘点，不应把历史 ENV 名视为当前运行期来源。
+> 状态：已实现，2026-11-11 更新子服务边界。第 13 章是当前版本、页面与 API 契约；前文保留迁移背景与早期盘点，不应把历史 ENV 名视为当前运行期来源。
 >
 > 目标：为 `/admin` 配置中心和运行时配置加载确定边界。当前阶段不做加密，进入 MongoDB 的敏感字段暂时明文保存，但配置注册表必须保留 `secret` 元数据，为后续加密迁移保留空间。
 
@@ -57,7 +57,7 @@ system_instance_configs（按 11 个 Domain 分别保存文档）
     ├── storage              文件策略；对象存储连接仍由环境变量提供
     ├── vector               向量检索策略；向量库连接仍由环境变量提供
     ├── providers             PDF、分块、第三方数据源等提供商
-    └── subservice            插件、代码沙箱、AI Proxy、Agent Sandbox
+    └── subservice            Code Sandbox、MCP SSE 服务、Agent Sandbox
 
 环境变量
 ├── bootstrap                MongoDB、Redis、日志库和连接池
@@ -162,13 +162,14 @@ config.resource
 
 ### 3.4 外部提供商与子服务客户端配置
 
-目标是把“FastGPT 如何调用外部服务”放到数据库；服务本身的监听端口和进程启动参数另行处理。
+主站调用侧可编辑的 Code Sandbox、MCP SSE 与 Agent Sandbox 配置放到数据库；插件和 AI Proxy 按下表保留各自边界，独立服务的监听端口和进程启动参数另行处理。
 
 | 配置项 | 当前环境变量 | 目标位置 | 敏感性 | 说明 |
 | --- | --- | --- | --- | --- |
-| 插件服务地址和访问 Token | `PLUGIN_BASE_URL`、`PLUGIN_TOKEN` | **环境变量** | Token 是敏感字段 | 运行时由部署 ENV 提供，不进入实例配置表单 |
-| Code Sandbox 地址和访问 Token | `CODE_SANDBOX_URL`、`CODE_SANDBOX_TOKEN` | **环境变量** | Token 是敏感字段 | 主站客户端地址与凭据由部署 ENV 提供；Sandbox 进程自身的监听认证另行保留启动配置 |
-| AI Proxy 地址和 Token | `AIPROXY_API_ENDPOINT`、`AIPROXY_API_TOKEN` | **环境变量** | Token 是敏感字段 | 由部署 ENV 提供；数据库只保留是否启用 AI Proxy |
+| 插件服务地址和访问 Token | `PLUGIN_BASE_URL`、`PLUGIN_TOKEN` | **环境变量** | Token 是敏感字段 | 运行时由部署 ENV 提供；远程调试由 Plugin 服务配置控制，无主站子服务页面或本地开关 |
+| Code Sandbox 开关、地址和访问 Token | `CODE_SANDBOX_URL`、`CODE_SANDBOX_TOKEN`（仅迁移读取） | `config.subservice.codeSandbox.enabled/url/token` | Token 是敏感字段 | 无旧配置时默认关闭；启用且地址、Token 完整时才提供相关业务入口，管理页可测试连通性。Sandbox 进程自身的监听认证仍由进程 ENV 配置 |
+| MCP SSE 服务开关和代理地址 | `SSE_MCP_SERVER_PROXY_ENDPOINT`（仅迁移读取） | `config.subservice.mcp.enabled/sseProxyUrl` | 否 | 无旧配置时默认关闭；关闭或地址缺失时隐藏 SSE 发布入口 |
+| AI Proxy 地址和 Token | `AIPROXY_API_ENDPOINT`、`AIPROXY_API_TOKEN` | **环境变量** | Token 是敏感字段 | 两项均有效才使用代理；缺一时不使用代理，无管理页或实例配置开关 |
 | Agent Sandbox Provider 与参数 | `AGENT_SANDBOX_PROVIDER`、各 `AGENT_SANDBOX_*` | `config.subservice.agentSandbox` | 多个 Token/Key | 主站调用侧的 Provider、地址、CPU、内存、存储、镜像、超时和代理地址均属于实例配置；独立 Sandbox 进程自身的启动参数见第 5 节 |
 | Agent Sandbox Proxy HMAC 密钥 | `AGENT_SANDBOX_PROXY_SECRET` | 环境变量 | 高敏感 | 主站和独立 Proxy 之间的跨进程信任根，暂不进入 Admin |
 | PDF 增强解析服务 | `CUSTOM_PDF_PARSE_*`、`SOMARK_API_KEY`、`DOC2X_KEY`、`TEXTIN_*` | `config.providers.documentParse` | Key 是敏感字段 | 暂时明文，但 UI/API 必须按 secret 字段处理 |
@@ -292,7 +293,6 @@ RuntimeConfigSchema.parse(runtimeConfig)
 | Web 路径前缀 | `NEXT_PUBLIC_BASE_URL` | 可能在构建期注入并影响前端资源路径 |
 | 系统迁移批大小 | `SYSTEM_MIGRATION_BATCH_SIZE` | 迁移执行期保护参数，避免修改配置后影响正在运行的升级 |
 | 默认根用户密码 | `DEFAULT_ROOT_PSW` | 只用于首次初始化/引导；初始化后不能作为运行时配置源 |
-| MCP SSE Proxy 地址 | `SSE_MCP_SERVER_PROXY_ENDPOINT` | 已明确保持环境变量注入 |
 | Pro 服务连接 | `PRO_URL`、`PRO_TOKEN` | 商业版服务和授权边界，开源版不暴露为普通 Admin 配置 |
 
 `MONGODB_LOG_URI`、`REDIS_URL` 和 `DB_MAX_LINK` 可能在当前 Zod schema 中是 optional 或带默认值，但仍属于“部署基础设施环境变量”。这里的“必填”指进程职责上的启动前依赖，不机械等同于 `z.optional()` 或是否存在默认值。
@@ -328,7 +328,7 @@ TRACING_OTEL_SAMPLE_RATIO
 Admin config.subservice
 ├── 记录 FastGPT 调用子服务所需的地址、业务参数和可轮换凭据
 ├── 由主站读取并生成运行时配置快照
-└── 后续通过配置版本或 change stream 通知客户端刷新
+└── 通过配置版本或 change stream 通知主站刷新客户端配置
 
 子服务环境变量
 ├── 自身监听端口
@@ -363,7 +363,7 @@ SANDBOX_PYTHON_ALLOWED_MODULES
 
 `packages/service/worker/env.ts` 中的 `MAX_HTML_TRANSFORM_CHARS` 和 `XLSX_PARSE_MAX_*` 不应继续维护第二份独立来源。迁移后它们归属主站 `config.performance.parse`，主站启动 worker 时显式注入经过校验的运行时配置；worker 自身只保留进程通信、`NODE_ENV` 和代理等启动环境。
 
-MCP Server 和 Marketplace 也先保留各自的进程启动环境。它们不是主站 `/admin` 实例配置的直接消费者，后续可以通过统一配置客户端另立设计。
+MCP Server 和 Marketplace 也保留各自的进程启动环境。它们不是主站 `/admin` 实例配置的直接消费者；主站的 MCP SSE 开关及代理地址独立存入实例配置。
 
 ## 6. 开源版与商业版过滤
 
@@ -436,7 +436,7 @@ MONGODB_URI 环境变量
 
 1. 先建立配置注册表及按 Domain 保存稀疏 overrides 的 Schema，以 Schema 默认值合成初始快照。
 2. 先迁移站点、功能开关、认证策略、并发限制等无外部连接的配置。
-3. 再迁移 PDF/分块、AI Proxy、插件和 Agent Sandbox 等外部提供商配置。
+3. 再迁移 PDF/分块、Code Sandbox、MCP SSE 与 Agent Sandbox 等外部提供商和子服务客户端配置；插件和 AI Proxy 连接继续由 ENV 提供。
 4. 最后迁移对象存储和向量数据库，并把初始化从 import 阶段改为读取配置后的显式初始化。
 5. 稳定后再考虑独立 Code Sandbox、MCP Server、Marketplace 的配置中心接入。
 
@@ -455,7 +455,7 @@ MONGODB_URI 环境变量
 
 ## 10. 历史环境变量盘点与迁移背景
 
-本章保留迁移前盘点，部分目标位置已在后续讨论中调整，不作为当前配置或导入契约。当前实例字段见第 13.6 节；实际兼容导入以 `projects/app/src/migration/tasks/4180/20260928_migrate_instance_configs/env.ts` 和 `service.ts` 为准。历史盘点覆盖以下来源：
+本章保留迁移前盘点，部分目标位置已在后续讨论中调整，不作为当前配置或导入契约。当前实例字段见第 13.6 节；实际兼容导入以 `projects/app/src/migration/tasks/4180/20260928_migrate_instance_configs/` 和 `projects/app/src/migration/tasks/4180/20261111_rehome_subservice_connections/` 为准。历史盘点覆盖以下来源：
 
 - `packages/service/env.ts`：主站共享服务配置；
 - `projects/app/src/env.ts`：App 配置；
@@ -619,12 +619,9 @@ config.performance.workflow.parallelMaxConcurrency
 
 | 环境变量 | MongoDB 配置路径 | 迁移说明 |
 | --- | --- | --- |
-| `PLUGIN_BASE_URL` | `config.subservice.plugin.baseUrl` | 主站调用插件服务的地址 |
-| `PLUGIN_TOKEN` | `config.subservice.plugin.token` | `secret: true` |
-| `CODE_SANDBOX_URL` | `config.subservice.codeSandbox.baseUrl` | 主站调用 Code Sandbox 的地址 |
-| `CODE_SANDBOX_TOKEN` | `config.subservice.codeSandbox.token` | `secret: true` |
-| `AIPROXY_API_ENDPOINT` | `config.subservice.aiProxy.endpoint` | 迁移时有值则启用 AI Proxy |
-| `AIPROXY_API_TOKEN` | `config.subservice.aiProxy.token` | `secret: true` |
+| `CODE_SANDBOX_URL` | `config.subservice.codeSandbox.url` | 仅一次性迁移读取；缺省值为空，不再作为运行时来源 |
+| `CODE_SANDBOX_TOKEN` | `config.subservice.codeSandbox.token` | 仅一次性迁移读取；`secret: true` |
+| `SSE_MCP_SERVER_PROXY_ENDPOINT` | `config.subservice.mcp.sseProxyUrl` | 仅旧配置兼容迁移读取；主站运行时只读实例配置 |
 | `AGENT_SANDBOX_PROVIDER` | `config.subservice.agentSandbox.provider` | 空值转换为 `none` |
 | `AGENT_SANDBOX_SEALOS_BASEURL` | `config.subservice.agentSandbox.sealosdevbox.baseUrl` | Provider 依赖字段 |
 | `AGENT_SANDBOX_SEALOS_TOKEN` | `config.subservice.agentSandbox.sealosdevbox.token` | `secret: true` |
@@ -652,9 +649,11 @@ config.performance.workflow.parallelMaxConcurrency
 | `AGENT_SANDBOX_PYPI_INDEX_URL` | `config.subservice.agentSandbox.common.pypiIndexUrl` | 运行环境镜像源 |
 | `AGENT_SANDBOX_APT_MIRROR` | `config.subservice.agentSandbox.common.aptMirror` | 运行环境镜像源 |
 
+Code Sandbox 与 MCP SSE 开关默认关闭。迁移仅在目标字段缺失且没有显式默认标记时回填：Code Sandbox 地址和 Token 完整时启用，MCP 旧代理地址非空时启用；已有管理员值与显式清空均优先。`PLUGIN_BASE_URL`、`PLUGIN_TOKEN`、`AIPROXY_API_ENDPOINT` 和 `AIPROXY_API_TOKEN` 继续由运行时 ENV 提供，不迁入实例配置。
+
 ### 10.2 永久保留为主站环境变量的变量
 
-这些变量即使有默认值，也不允许由 Admin 修改，因为它们决定进程能否启动、基础设施拓扑、跨进程信任或已签发凭据的有效性。
+这些变量即使有默认值，也不允许由 Admin 修改，涵盖基础设施拓扑、跨进程信任、已签发凭据以及按部署配置的插件和 AI Proxy 连接。
 
 #### 基础设施与进程身份
 
@@ -695,12 +694,22 @@ FILE_DOWNLOAD_PUBLIC_URL_PREFIX
 NEXT_PUBLIC_BASE_URL
 SYSTEM_MIGRATION_BATCH_SIZE
 DEFAULT_ROOT_PSW
-SSE_MCP_SERVER_PROXY_ENDPOINT
 PRO_URL
 PRO_TOKEN
 ```
 
 其中 `SYSTEM_NAME`、`SYSTEM_DESCRIPTION`、`SYSTEM_FAVICON` 当前还被 `next.config.ts` 和浏览器端初始化读取。迁移到 DB 后必须先增加运行时初始化配置，再移除构建期读取；不能直接删除环境变量导致静态页面拿不到站点信息。
+
+#### 插件与 AI Proxy 连接
+
+```text
+PLUGIN_BASE_URL
+PLUGIN_TOKEN
+AIPROXY_API_ENDPOINT
+AIPROXY_API_TOKEN
+```
+
+插件远程调试由 Plugin 服务配置决定。AI Proxy 两项同时有效时才使用代理；缺一时不使用代理，不登记本地开关。
 
 #### 对象存储基础设施连接
 
@@ -778,7 +787,7 @@ ALL_PROXY
 
 ### 10.3 独立子服务自己的环境变量
 
-这些变量不应直接写入主站 `system_instance_configs`。即使 Admin 未来提供“子服务配置”菜单，也只能通过独立服务的配置客户端或受控重启协议修改。
+这些变量不应直接写入主站 `system_instance_configs`。现有“子服务配置”菜单只配置主站调用侧；独立服务自身参数需通过服务部署配置或受控重启修改。
 
 #### Code Sandbox
 
@@ -802,7 +811,7 @@ SANDBOX_JS_ALLOWED_MODULES
 SANDBOX_PYTHON_ALLOWED_MODULES
 ```
 
-这些变量在进程启动时创建 Worker 池、设置 OS 隔离和网络访问限制。主站更新 `config.subservice.codeSandbox` 后，Code Sandbox 不会自动获得新值，因此第一批迁移保持独立环境变量。
+这些变量在进程启动时创建 Worker 池、设置 OS 隔离和网络访问限制。主站更新 `config.subservice.codeSandbox` 只影响调用侧，独立 Code Sandbox 不会自动获得这些进程变量的新值；其中 `SANDBOX_TOKEN` 须与主站页面填写的 Token 一致。
 
 #### MCP Server
 
@@ -912,7 +921,7 @@ system_instance_configs 不存在
 - `AGENT_SANDBOX_PROVIDER` 空值写成 `none`；
 - `PASSWORD_EXPIRED_MONTH`、`CHAT_LOG_INTERVAL` 未配置写成 `null`；
 - `ALLOWED_ORIGINS` 未配置写成 `[]`，配置后按逗号和空白拆分；
-- `SANGFOR_CHUNK_URL`、`CRM_API_URL`、`AIPROXY_API_ENDPOINT` 有效时才启用对应 Provider；
+- `SANGFOR_CHUNK_URL`、`CRM_API_URL` 有效时才启用对应 Provider；AI Proxy 独立读取 ENV，地址与 Token 均有效时才使用代理；
 - `DOCUMENT_PARSE_PROVIDER=sangfor` 时，将 `CUSTOM_PDF_PARSE_URL/KEY` 同步到
   `documentParse.sangfor.url/key`，同时保留 `documentParse.customPdf` 的兼容值；
 - secret 字段即使暂时明文存储，也必须按照注册表的 `secret: true` 处理，不能进入日志、审计详情或普通查询响应。
@@ -960,9 +969,8 @@ Server、Agent Sandbox Proxy 和 IDE Agent 的运行时变量。为了避免“�
 │   ├── 系统工具
 │   └── 应用模板
 ├── 子服务配置
-│   ├── 插件服务
 │   ├── Code Sandbox
-│   ├── AI Proxy
+│   ├── MCP SSE 服务
 │   └── Agent Sandbox
 ├── 系统配置
 │   ├── 基础配置（site）
@@ -976,9 +984,7 @@ Server、Agent Sandbox Proxy 和 IDE Agent 的运行时变量。为了避免“�
 └── 审计日志
 ```
 
-菜单节点和字段都通过同一份注册表过滤。商业化菜单、商业版子服务字段以及其
-运行时能力在社区版统一隐藏；页面隐藏、API 字段过滤和运行时能力判断必须使用
-同一套 edition 结果，不能由前端单独维护一份白名单。
+菜单节点和字段都通过同一份注册表过滤。Code Sandbox 与 MCP SSE 服务在社区版和商业版均可配置；商业化菜单、仅商业版子服务字段以及其运行时能力在社区版统一隐藏。页面隐藏、API 字段过滤和运行时能力判断使用同一套 edition 结果，不能由前端单独维护一份白名单。
 
 访问 `/admin` 时由入口页按部署形态与授权状态分发默认落地页：社区版固定进
 `/admin/license`；商业版 License 可授权时进 `/admin/dashboard`，未激活或已过期
@@ -1070,7 +1076,7 @@ Server、Agent Sandbox Proxy 和 IDE Agent 的运行时变量。为了避免“�
 
 ### 13.6 逐字段版本、表单与页面映射
 
-本表逐项覆盖注册表的 **199 个配置叶子**，不使用通配符或虚构的聚合字段。字段定义与默认值以 `schemas/*.ts` 为准，版本、敏感项和 SaaS 显示条件以 `registry.ts` 为准；页面归属与 `pageFields.ts`、实际表单保持一致。
+本表逐项覆盖注册表的 **200 个配置叶子**，不使用通配符或虚构的聚合字段。字段定义与默认值以 `schemas/*.ts` 为准，版本、敏感项和 SaaS 显示条件以 `registry.ts` 为准；页面归属与 `pageFields.ts`、实际表单保持一致。
 
 - 社区版／商业版的勾选表示配置 API 的读写权限；商业版按是否配置 `PRO_URL` 判定，不依赖 License 是否激活。
 - “仅 SaaS 显示”表示 `ENABLE_SAAS_ADMIN_CONFIG=true` 才显示对应控件，**不收紧商业版 API 权限**。标为“仅 API”的字段当前没有新表单，开启显示开关也不会产生控件。
@@ -1301,12 +1307,15 @@ Server、Agent Sandbox Proxy 和 IDE Agent 的运行时变量。为了避免“�
 
 #### 子服务客户端（subservice）
 
+Code Sandbox 和 MCP SSE 五个字段均为 `edition: all`、`applyMode: reload`；Code Sandbox Token 为敏感项。插件远程调试由 Plugin 服务配置控制，AI Proxy 的地址和 Token 由 ENV 提供，两者均无实例配置注册项或管理页。
+
 | 配置字段 | 用途 | 社区版 | 商业版 | 仅 SaaS 显示 | 敏感项 | 当前管理入口 |
 | --- | --- | :---: | :---: | :---: | :---: | --- |
-| `subservice.plugin.remoteDebug` | 开启插件远程调试通道 (Remote Debug) | — | ✅ | — | — | 可编辑：`/admin/subservice/plugin` |
-| `subservice.codeSandbox.enabled` | 启用 Code Sandbox | — | ✅ | — | — | 可编辑：`/admin/subservice/code-sandbox` |
-| `subservice.aiProxy.enabled` | 启用 AI Proxy | — | ✅ | — | — | 可编辑：`/admin/subservice/ai-proxy` |
-| `subservice.mcp.sseProxyUrl` | MCP SSE 代理地址 | — | ✅ | — | — | 可编辑：`/admin/subservice/mcp` |
+| `subservice.codeSandbox.enabled` | 启用 Code Sandbox，默认关闭 | ✅ | ✅ | — | — | 可编辑：`/admin/subservice/code-sandbox` |
+| `subservice.codeSandbox.url` | Code Sandbox 服务地址 | ✅ | ✅ | — | — | 可编辑：`/admin/subservice/code-sandbox` |
+| `subservice.codeSandbox.token` | Code Sandbox 访问 Token | ✅ | ✅ | — | ✅ | 可编辑：`/admin/subservice/code-sandbox` |
+| `subservice.mcp.enabled` | 启用 MCP SSE 服务，默认关闭 | ✅ | ✅ | — | — | 可编辑：`/admin/subservice/mcp` |
+| `subservice.mcp.sseProxyUrl` | MCP SSE 代理地址 | ✅ | ✅ | — | — | 可编辑：`/admin/subservice/mcp` |
 | `subservice.agentSandbox.provider` | 当前沙箱 Provider | — | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
 | `subservice.agentSandbox.common.cpuCount` | CPU 核心数 (Core) | — | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
 | `subservice.agentSandbox.common.memoryMiB` | 内存规格 (MiB) | — | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |

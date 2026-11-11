@@ -2,7 +2,9 @@ import { SandboxCodeTypeEnum } from '@fastgpt/global/core/workflow/template/syst
 import type { AxiosInstance } from 'axios';
 import { createProxyAxios } from '../../common/api/axios';
 import { getLogger, LogCategories } from '../../common/logger';
-import { serviceEnv } from '../../env';
+import type { SystemInstanceConfig } from '@fastgpt/global/common/system/config/schema';
+import { getSystemInstanceConfig } from '../../common/system/systemInstanceConfig/runtime';
+import { isValidHttpUrl } from '@fastgpt/global/common/string/url';
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.CODE_SANDBOX);
 
 export type SanndboxPackagesResponse = {
@@ -11,14 +13,26 @@ export type SanndboxPackagesResponse = {
   builtinGlobals: string[];
 };
 
+/** 仅完整启用且地址、凭据均已配置时允许发起沙箱请求。 */
+export const isCodeSandboxConfigured = (
+  config: SystemInstanceConfig['subservice']['codeSandbox'] = getSystemInstanceConfig().subservice
+    .codeSandbox
+): boolean => config.enabled && isValidHttpUrl(config.url) && Boolean(config.token.trim());
+
 export class CodeSandbox {
   private client: AxiosInstance | undefined;
   private currentBaseUrl = '';
   private currentToken = '';
 
   private getClient(): AxiosInstance {
-    const baseUrl = serviceEnv.CODE_SANDBOX_URL;
-    const token = serviceEnv.CODE_SANDBOX_TOKEN;
+    const config = getSystemInstanceConfig().subservice.codeSandbox;
+    if (!isCodeSandboxConfigured(config)) {
+      // 即使客户端已缓存，停用或清空配置后也不得发起新的请求。
+      this.client = undefined;
+      throw new Error('Code sandbox service is not configured or disabled');
+    }
+    const baseUrl = config.url.trim().replace(/\/+$/, '');
+    const token = config.token.trim();
 
     if (!this.client || this.currentBaseUrl !== baseUrl || this.currentToken !== token) {
       this.currentBaseUrl = baseUrl;
@@ -40,7 +54,7 @@ export class CodeSandbox {
         (response) => {
           const data = response.data;
           if (!data.success) {
-            logger.warn('Request code sandbox failed', { data });
+            logger.warn('Request code sandbox failed');
             return Promise.reject(new Error(data.message || 'Request code sandbox failed'));
           }
           return response.data;
@@ -75,7 +89,7 @@ export class CodeSandbox {
     queueId?: string;
   }) {
     const url = (() => {
-      if (codeType == SandboxCodeTypeEnum.py) {
+      if (codeType === SandboxCodeTypeEnum.py) {
         return `/python`;
       } else {
         return `/js`;

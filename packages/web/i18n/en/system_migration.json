@@ -85,5 +85,9 @@
   "migrations.20261110_backfill_external_file_check.description": "Derive the check switch from existing domain allowlists while preserving explicit settings and the original list.",
   "migrations.20261110_backfill_external_file_check.result": "Updated {{updatedDocuments}} security configuration documents.",
   "migrations.20261110_backfill_external_file_check.backfill": "Backfill check switch",
-  "migrations.20261110_backfill_external_file_check.validation": "Validate check switch"
+  "migrations.20261110_backfill_external_file_check.validation": "Validate check switch",
+  "migrations.20261111_rehome_subservice_connections.name": "Migrate subservice connections",
+  "migrations.20261111_rehome_subservice_connections.description": "Backfill the Code Sandbox connection and MCP SSE switch once, preserving administrator settings and explicitly cleared values.",
+  "migrations.20261111_rehome_subservice_connections.result": "Updated {{updatedDocuments}} subservice configuration documents.",
+  "migrations.20261111_rehome_subservice_connections.migrate": "Backfill subservice connections and switch"
 }

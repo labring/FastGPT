@@ -1,4 +1,3 @@
-import { getTestInstanceConfig } from '@test/utils/instanceConfigSnapshot';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Call } from '@test/utils/request';
 
@@ -21,11 +20,8 @@ import handler from '@/pages/api/plugin/debug-channel/key/refresh';
 
 describe('plugin debug channel key refresh handler', () => {
   let originalIsPlus: unknown;
-  let originalRemoteDebug: boolean;
 
   beforeEach(() => {
-    originalRemoteDebug = getTestInstanceConfig().subservice.plugin.remoteDebug;
-    getTestInstanceConfig().subservice.plugin.remoteDebug = true;
     vi.clearAllMocks();
     originalIsPlus = global.feConfigs?.isPlus;
     global.feConfigs = {
@@ -49,7 +45,6 @@ describe('plugin debug channel key refresh handler', () => {
   });
 
   afterEach(() => {
-    getTestInstanceConfig().subservice.plugin.remoteDebug = originalRemoteDebug;
     global.feConfigs = {
       ...global.feConfigs,
       isPlus: originalIsPlus
@@ -84,12 +79,5 @@ describe('plugin debug channel key refresh handler', () => {
       updatedAt: 1_781_500_100_000,
       refreshedAt: 1_781_500_100_000
     });
-  });
-
-  it('does not refresh credentials after the administrator disables remote debugging', async () => {
-    getTestInstanceConfig().subservice.plugin.remoteDebug = false;
-    const result = await Call(handler, { body: {} });
-    expect(result.error).toHaveProperty('statusCode', 403);
-    expect(mocks.pluginClient.refreshDebugSessionKey).not.toHaveBeenCalled();
   });
 });

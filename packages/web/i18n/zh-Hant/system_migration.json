@@ -85,5 +85,9 @@
   "migrations.20261110_backfill_external_file_check.description": "根據現有網域名單回填檢查開關，保留管理員明確設定與原名單。",
   "migrations.20261110_backfill_external_file_check.result": "已回填 {{updatedDocuments}} 筆安全設定。",
   "migrations.20261110_backfill_external_file_check.backfill": "回填檢查開關",
-  "migrations.20261110_backfill_external_file_check.validation": "驗證檢查開關"
+  "migrations.20261110_backfill_external_file_check.validation": "驗證檢查開關",
+  "migrations.20261111_rehome_subservice_connections.name": "遷移子服務連線設定",
+  "migrations.20261111_rehome_subservice_connections.description": "一次性回填 Code Sandbox 連線和 MCP SSE 開關，保留管理員現有設定與明確清空的值。",
+  "migrations.20261111_rehome_subservice_connections.result": "已更新 {{updatedDocuments}} 筆子服務設定。",
+  "migrations.20261111_rehome_subservice_connections.migrate": "回填子服務連線與開關"
 }

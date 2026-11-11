@@ -1,10 +1,12 @@
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import React, { useEffect } from 'react';
-import { useForm, Controller } from 'react-hook-form';
+import { Box, Text } from '@chakra-ui/react';
+import { useForm, Controller, useWatch } from 'react-hook-form';
 import { useDomainConfig } from '@/web/common/system/useDomainConfig';
 import AdminSettingPage from '@/pageComponents/admin/settings/AdminSettingPage';
 import AdminSettingSection from '@/pageComponents/admin/settings/AdminSettingSection';
 import AdminFormItem from '@/pageComponents/admin/settings/AdminFormItem';
+import AdminSwitchRow from '@/pageComponents/admin/settings/AdminSwitchRow';
 import ConnectivityTestInput from '@/pageComponents/admin/settings/ConnectivityTestInput';
 import type { SettingTOCItem } from '@/pageComponents/admin/settings/AdminSettingTOC';
 import type { SystemInstanceConfigDomainMap } from '@fastgpt/global/common/system/config/schema';
@@ -19,9 +21,15 @@ const McpSubserviceComponent = () => {
     { id: 'connection', label: t('admin:connection_connectivity') }
   ];
 
-  const { control, handleSubmit, reset } = useForm<SubserviceConfigForm>({
+  const {
+    control,
+    handleSubmit,
+    reset,
+    formState: { errors }
+  } = useForm<SubserviceConfigForm>({
     defaultValues: effectiveConfig
   });
+  const enabled = useWatch({ control, name: 'mcp.enabled' }) ?? false;
 
   useEffect(() => {
     if (effectiveConfig && Object.keys(effectiveConfig).length > 0) {
@@ -30,11 +38,7 @@ const McpSubserviceComponent = () => {
   }, [effectiveConfig, reset]);
 
   const onSave = handleSubmit(async (formData) => {
-    await patchConfig({
-      mcp: {
-        sseProxyUrl: formData.mcp?.sseProxyUrl || ''
-      }
-    });
+    await patchConfig({ mcp: formData.mcp });
   });
 
   return (
@@ -47,19 +51,48 @@ const McpSubserviceComponent = () => {
     >
       {/* 1. 连接与连通性 */}
       <AdminSettingSection id="connection" title={t('admin:connection_connectivity')}>
-        <AdminFormItem
-          label={t('admin:mcp_sse_proxy_url')}
-          tooltip={t('admin:public_sse_proxy_endpoint_external_clients_use_to_connect_to')}
-          mb={0}
-        >
-          <Controller
-            name="mcp.sseProxyUrl"
-            control={control}
-            render={({ field }) => (
-              <ConnectivityTestInput {...field} isEditable placeholder="http://localhost:3003" />
-            )}
-          />
-        </AdminFormItem>
+        <Controller
+          name="mcp.enabled"
+          control={control}
+          render={({ field }) => (
+            <AdminSwitchRow
+              label={t('admin:enable_mcp_sse')}
+              isChecked={field.value}
+              onChange={field.onChange}
+            />
+          )}
+        />
+        {enabled && (
+          <Box mt={6}>
+            <AdminFormItem
+              label={t('admin:mcp_sse_proxy_url')}
+              tooltip={t('admin:public_sse_proxy_endpoint_external_clients_use_to_connect_to')}
+              isRequired
+              mb={0}
+            >
+              <Controller
+                name="mcp.sseProxyUrl"
+                control={control}
+                rules={{ validate: (value) => !enabled || Boolean(value?.trim()) }}
+                render={({ field }) => (
+                  <ConnectivityTestInput
+                    {...field}
+                    isEditable
+                    service="mcpSse"
+                    buttonVariant="solid"
+                    placeholder="http://localhost:3003"
+                    isInvalid={Boolean(errors.mcp?.sseProxyUrl)}
+                  />
+                )}
+              />
+              {errors.mcp?.sseProxyUrl && (
+                <Text color={'red.500'} fontSize={'xs'} mt={1}>
+                  {t('admin:required')}
+                </Text>
+              )}
+            </AdminFormItem>
+          </Box>
+        )}
       </AdminSettingSection>
     </AdminSettingPage>
   );

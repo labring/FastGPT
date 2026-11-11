@@ -28,11 +28,11 @@ const LegacyEnvBooleanSchema = z
 /**
  * 仅供 4.18 实例配置迁移读取的历史 ENV 合约。
  * 运行时 serviceEnv/appEnv 不再声明这些字段；保留历史校验和默认值以承接已有部署，
- * 不让退役 ENV 再影响业务读取或全局 ENV 初始化。AI Proxy 可缺省，启用条件由迁移和配置校验负责。
+ * 不让退役 ENV 再影响业务读取或全局 ENV 初始化。AI Proxy 继续由运行时 ENV 独立管理。
  */
 const LegacyInstanceConfigEnvSchema = z.object({
-  CODE_SANDBOX_URL: UrlSchema.default('http://localhost:3002'),
-  AIPROXY_API_ENDPOINT: UrlSchema.optional(),
+  CODE_SANDBOX_URL: UrlSchema.optional(),
+  CODE_SANDBOX_TOKEN: z.string().optional(),
   AGENT_SANDBOX_PROVIDER: z.enum(agentSandboxProviderList).optional().meta({
     description: 'Agent 沙箱提供方，可选 sealosdevbox 或 opensandbox；为空时不启用沙箱'
   }),

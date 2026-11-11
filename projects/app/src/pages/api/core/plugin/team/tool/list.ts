@@ -13,7 +13,6 @@ import { getUserDetail } from '@fastgpt/service/support/user/controller';
 import type { UserTagsType } from '@fastgpt/global/support/user/type';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { pluginClient } from '@fastgpt/service/thirdProvider/fastgptPlugin';
-import { isPluginRemoteDebugEnabled } from '@fastgpt/service/core/plugin/debug/policy';
 import {
   getTeamPluginSource,
   isDebugToolSource,
@@ -91,8 +90,6 @@ async function handler(req: ApiRequestProps<listBody, listQuery>): Promise<listR
 export default NextAPI(handler);
 
 async function getActiveDebugSource(tmbId: string) {
-  // 管理员关闭后不再发现已连接的调试工具，普通系统和团队工具继续可用。
-  if (!isPluginRemoteDebugEnabled()) return;
   const status = await pluginClient.getDebugSessionStatus({ tmbId }).catch(() => undefined);
 
   if (

@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { Box, Button, HStack, Input, Tag, Text, type InputProps } from '@chakra-ui/react';
 import { POST } from '@/web/common/api/request';
@@ -10,9 +10,12 @@ export type ConnectivityTestInputProps = Omit<InputProps, 'value' | 'onChange'> 
   value?: string;
   testUrl?: string;
   testPath?: string;
+  service?: 'codeSandbox' | 'mcpSse';
+  token?: string;
   onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
   placeholder?: string;
   buttonText?: string;
+  buttonVariant?: string;
   timeoutMs?: number;
   isDisabled?: boolean;
   isEditable?: boolean;
@@ -23,26 +26,44 @@ export type ConnectivityTestInputProps = Omit<InputProps, 'value' | 'onChange'> 
  * - 支持只读展示或直接编辑输入（通过 isEditable 控制），右侧集成测试按钮；
  * - 接收 url 或 value 参数，点击按钮后由后端服务发起实际 HTTP 探测并展示连通状态与延迟结果。
  */
-const ConnectivityTestInput = ({
-  url,
-  value,
-  testUrl,
-  testPath,
-  onChange,
-  placeholder,
-  buttonText,
-  timeoutMs = 5000,
-  isDisabled = false,
-  isEditable = false,
-  ...inputProps
-}: ConnectivityTestInputProps) => {
+function ConnectivityTestInput(
+  {
+    url,
+    value,
+    testUrl,
+    testPath,
+    service,
+    token,
+    onChange,
+    placeholder,
+    buttonText,
+    buttonVariant = 'outline',
+    timeoutMs = 5000,
+    isDisabled = false,
+    isEditable = false,
+    ...inputProps
+  }: ConnectivityTestInputProps,
+  ref: React.ForwardedRef<HTMLInputElement>
+) {
   const { t } = useSafeTranslation();
-  const [isTesting, setIsTesting] = useState(false);
   const resolvedButtonText = buttonText ?? t('admin:probe_button');
   const resolvedPlaceholder = placeholder ?? t('admin:not_configured_service_address');
-  const [result, setResult] = useState<ProbeConnectionResponse | null>(null);
-  /** 地址编辑或新探测会递增，旧请求返回时据此丢弃结果。 */
+  const effectiveUrl = value ?? url ?? '';
+  // 结果绑定完整输入快照；外部重置、凭据修改或禁用后不会展示旧结果。
+  const probeInputs = useMemo(
+    () => ({ effectiveUrl, testUrl, testPath, service, token, timeoutMs, isDisabled }),
+    [effectiveUrl, testUrl, testPath, service, token, timeoutMs, isDisabled]
+  );
+  const [probeState, setProbeState] = useState<{
+    inputs: typeof probeInputs;
+    status: 'testing' | 'complete';
+    result?: ProbeConnectionResponse;
+  }>();
+  /** 递增请求编号保证后发请求不会被先前请求覆盖。 */
   const probeRequestIdRef = useRef(0);
+  const currentProbe = probeState?.inputs === probeInputs ? probeState : undefined;
+  const isTesting = currentProbe?.status === 'testing';
+  const result = currentProbe?.result;
 
   /** 使用字面量 i18n key，保证静态扫描能提取探测错误文案。 */
   const getProbeErrorText = (response: ProbeConnectionResponse) => {
@@ -55,6 +76,8 @@ const ConnectivityTestInput = ({
         return t('admin:probe_error_refused');
       case 'dns':
         return t('admin:probe_error_dns');
+      case 'response':
+        return t('admin:probe_error_response');
       case 'unknown':
         return t('admin:probe_error_unknown');
       default:
@@ -62,18 +85,10 @@ const ConnectivityTestInput = ({
     }
   };
 
-  const effectiveUrl = value !== undefined ? value : url || '';
-
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     // 地址一旦变化，正在等待的旧探测结果就不再对应当前输入，必须丢弃。
     probeRequestIdRef.current += 1;
-    if (result) {
-      setResult(null);
-    }
-    // 允许用户立即对新地址发起探测；旧请求的 finally 不会覆盖这里的状态。
-    if (isTesting) {
-      setIsTesting(false);
-    }
+    setProbeState(undefined);
     onChange?.(e);
   };
 
@@ -93,27 +108,28 @@ const ConnectivityTestInput = ({
     if (!targetUrl || isTesting || isDisabled) return;
 
     const requestId = ++probeRequestIdRef.current;
-    setIsTesting(true);
-    setResult(null);
+    setProbeState({ inputs: probeInputs, status: 'testing' });
 
     try {
       const res = await POST<ProbeConnectionResponse>('/admin/system/config/probe', {
         url: targetUrl,
-        timeoutMs
+        timeoutMs,
+        ...(service ? { service } : {}),
+        ...(service === 'codeSandbox' ? { token } : {})
       });
       if (probeRequestIdRef.current !== requestId) return;
-      setResult(res);
+      setProbeState({ inputs: probeInputs, status: 'complete', result: res });
     } catch (err: any) {
       if (probeRequestIdRef.current !== requestId) return;
-      setResult({
-        connected: false,
-        responseTimeMs: 0,
-        error: typeof err === 'string' ? err : err?.message || t('admin:probe_request_failed')
+      setProbeState({
+        inputs: probeInputs,
+        status: 'complete',
+        result: {
+          connected: false,
+          responseTimeMs: 0,
+          error: typeof err === 'string' ? err : err?.message || t('admin:probe_request_failed')
+        }
       });
-    } finally {
-      if (probeRequestIdRef.current === requestId) {
-        setIsTesting(false);
-      }
     }
   };
 
@@ -123,6 +139,7 @@ const ConnectivityTestInput = ({
         <Box flex={'1 0 0'} minW={0}>
           {isEditable ? (
             <Input
+              ref={ref}
               value={effectiveUrl}
               onChange={handleInputChange}
               placeholder={resolvedPlaceholder}
@@ -137,7 +154,7 @@ const ConnectivityTestInput = ({
         {/* 禁用条件与 resolveTargetUrl 一致：testUrl 可独立提供探测目标，不能只看 effectiveUrl */}
         <Button
           colorScheme={'blue'}
-          variant={'outline'}
+          variant={buttonVariant}
           flexShrink={0}
           px={5}
           isLoading={isTesting}
@@ -156,14 +173,17 @@ const ConnectivityTestInput = ({
               <Tag
                 size={'sm'}
                 colorScheme={
-                  result.status && result.status >= 200 && result.status < 400 ? 'green' : 'orange'
+                  result.status === undefined || (result.status >= 200 && result.status < 400)
+                    ? 'green'
+                    : 'orange'
                 }
                 variant={'subtle'}
               >
-                {result.status && result.status >= 200 && result.status < 400
+                {result.status === undefined || (result.status >= 200 && result.status < 400)
                   ? t('admin:probe_connected')
-                  : t('admin:probe_warning')}{' '}
-                ({result.status} {result.statusText})
+                  : t('admin:probe_warning')}
+                {result.status !== undefined &&
+                  ` (${result.status}${result.statusText ? ` ${result.statusText}` : ''})`}
               </Tag>
               <Text fontSize={'xs'} color={'myGray.500'}>
                 {t('admin:probe_latency')}: {result.responseTimeMs}ms
@@ -183,6 +203,6 @@ const ConnectivityTestInput = ({
       )}
     </Box>
   );
-};
+}
 
-export default React.memo(ConnectivityTestInput);
+export default React.memo(React.forwardRef(ConnectivityTestInput));

@@ -73,9 +73,7 @@ const ADMIN_MENU_I18N_KEYS = {
   menu_datasets: 'admin:menu_datasets',
   menu_app_templates: 'admin:menu_app_templates',
   menu_subservices: 'admin:menu_subservices',
-  menu_subservice_plugin: 'admin:menu_subservice_plugin',
   menu_subservice_code_sandbox: 'admin:menu_subservice_code_sandbox',
-  menu_subservice_ai_proxy: 'admin:menu_subservice_ai_proxy',
   menu_subservice_agent_sandbox: 'admin:menu_subservice_agent_sandbox',
   menu_subservice_mcp: 'admin:menu_subservice_mcp',
   menu_system_settings: 'admin:menu_system_settings',
@@ -211,27 +209,18 @@ export const getAdminMenuList = (params: GetAdminMenuListParams): AdminMenuItem[
     {
       icon: 'common/subserviceLight',
       label: lbl('menu_subservices', '子服务'),
-      value: '/admin/subservice/plugin',
-      isProOnly: true,
+      value: '/admin/subservice/code-sandbox',
       children: [
-        {
-          label: lbl('menu_subservice_plugin', '插件服务'),
-          value: '/admin/subservice/plugin'
-        },
         {
           label: lbl('menu_subservice_code_sandbox', 'Code Sandbox'),
           value: '/admin/subservice/code-sandbox'
-        },
-        {
-          label: lbl('menu_subservice_ai_proxy', 'AI Proxy'),
-          value: '/admin/subservice/ai-proxy'
         },
         {
           label: lbl('menu_subservice_agent_sandbox', 'Agent Sandbox'),
           value: '/admin/subservice/agent-sandbox'
         },
         {
-          label: lbl('menu_subservice_mcp', 'MCP 服务'),
+          label: lbl('menu_subservice_mcp', 'MCP SSE 服务'),
           value: '/admin/subservice/mcp'
         }
       ]

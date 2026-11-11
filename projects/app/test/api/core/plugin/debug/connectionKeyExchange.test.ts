@@ -1,4 +1,3 @@
-import { getTestInstanceConfig } from '@test/utils/instanceConfigSnapshot';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Call } from '@test/utils/request';
 
@@ -16,11 +15,8 @@ import handler from '@/pages/api/plugin/debug-channel/connection-key/exchange';
 
 describe('plugin debug channel connection key exchange handler', () => {
   let originalIsPlus: unknown;
-  let originalRemoteDebug: boolean;
 
   beforeEach(() => {
-    originalRemoteDebug = getTestInstanceConfig().subservice.plugin.remoteDebug;
-    getTestInstanceConfig().subservice.plugin.remoteDebug = true;
     originalIsPlus = global.feConfigs?.isPlus;
     global.feConfigs = {
       ...global.feConfigs,
@@ -37,7 +33,6 @@ describe('plugin debug channel connection key exchange handler', () => {
   });
 
   afterEach(() => {
-    getTestInstanceConfig().subservice.plugin.remoteDebug = originalRemoteDebug;
     global.feConfigs = {
       ...global.feConfigs,
       isPlus: originalIsPlus
@@ -77,18 +72,4 @@ describe('plugin debug channel connection key exchange handler', () => {
       connectionKey: 'connection_key_from_link'
     });
   });
-
-  it.each(['GET', 'POST'])(
-    'rejects %s exchanges while remote debugging is disabled',
-    async (method) => {
-      getTestInstanceConfig().subservice.plugin.remoteDebug = false;
-      const key = { connectionKey: 'synthetic-existing-connection-key' };
-      const result = await Call(handler, {
-        method,
-        ...(method === 'GET' ? { query: key } : { body: key })
-      });
-      expect(result.error).toHaveProperty('statusCode', 403);
-      expect(mocks.pluginClient.exchangeDebugSessionConnectionKey).not.toHaveBeenCalled();
-    }
-  );
 });

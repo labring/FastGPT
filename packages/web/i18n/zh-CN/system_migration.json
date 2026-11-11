@@ -85,5 +85,9 @@
   "migrations.20261110_backfill_external_file_check.description": "根据已有域名名单回填检查开关，保留管理员显式配置与原名单。",
   "migrations.20261110_backfill_external_file_check.result": "回填了 {{updatedDocuments}} 条安全配置。",
   "migrations.20261110_backfill_external_file_check.backfill": "回填检查开关",
-  "migrations.20261110_backfill_external_file_check.validation": "验证检查开关"
+  "migrations.20261110_backfill_external_file_check.validation": "验证检查开关",
+  "migrations.20261111_rehome_subservice_connections.name": "迁移子服务连接配置",
+  "migrations.20261111_rehome_subservice_connections.description": "一次性回填 Code Sandbox 连接和 MCP SSE 开关，保留管理员已有配置与显式清空。",
+  "migrations.20261111_rehome_subservice_connections.result": "已更新 {{updatedDocuments}} 条子服务配置。",
+  "migrations.20261111_rehome_subservice_connections.migrate": "回填子服务连接与开关"
 }

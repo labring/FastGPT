@@ -1,6 +1,7 @@
 import z from 'zod';
 import type { OpenAPIPath } from '../../../type';
 import { DevApiTagsMap } from '../../../tag';
+import { IntSchema } from '../../../../common/zod';
 
 /* ============================================================================
  * API: 后端探测目标 URL 连通性
@@ -10,14 +11,27 @@ import { DevApiTagsMap } from '../../../tag';
  * Tags: ['Admin', 'InstanceConfig', 'Probe']
  * ============================================================================ */
 
-export const ProbeConnectionBodySchema = z.object({
-  url: z.string().url().meta({
-    description: '待测试连通性的目标服务地址'
-  }),
-  timeoutMs: z.number().int().min(500).max(30000).default(5000).meta({
-    description: '探测超时时间（毫秒），默认 5000ms'
+export const ProbeConnectionBodySchema = z
+  .object({
+    url: z.string().url().meta({
+      description: '待测试连通性的目标服务地址',
+      example: 'http://sandbox:3002'
+    }),
+    timeoutMs: IntSchema.min(500).max(30000).default(5000).meta({
+      description: '探测超时时间（毫秒），默认 5000ms',
+      example: 5000
+    }),
+    service: z.enum(['codeSandbox', 'mcpSse']).optional().meta({
+      description: '子服务类型；省略时只探测网络连通性'
+    }),
+    token: z.string().optional().meta({
+      description: '代码沙箱草稿凭据；掩码表示使用当前已保存的凭据'
+    })
   })
-});
+  .refine((body) => body.token === undefined || body.service === 'codeSandbox', {
+    message: 'Token is only supported for code sandbox probes',
+    path: ['token']
+  });
 export type ProbeConnectionBody = z.infer<typeof ProbeConnectionBodySchema>;
 
 export const ProbeConnectionErrorCodeSchema = z.enum([
@@ -25,7 +39,8 @@ export const ProbeConnectionErrorCodeSchema = z.enum([
   'timeout',
   'refused',
   'dns',
-  'unknown'
+  'unknown',
+  'response'
 ]);
 export type ProbeConnectionErrorCode = z.infer<typeof ProbeConnectionErrorCodeSchema>;
 
@@ -45,7 +60,8 @@ export const AdminInstanceConfigProbePath: OpenAPIPath = {
   '/api/admin/system/config/probe': {
     post: {
       summary: '后端探测目标服务 URL 连通性',
-      description: '由后端服务发起 HTTP 探测请求，检测目标 URL 连通性与网络延迟',
+      description:
+        '默认检测网络连通性；代码沙箱执行固定算术，MCP SSE 验证传输握手，不验证真实密钥或工具调用',
       tags: [DevApiTagsMap.adminSettings],
       requestBody: {
         content: {

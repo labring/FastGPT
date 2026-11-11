@@ -1,3 +1,4 @@
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import type {
@@ -19,6 +20,9 @@ import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 
 export const useNodeTemplates = (context: NodeTemplateContext | null = null) => {
   const [templateType, setTemplateType] = useState(TemplateTypeEnum.basic);
+  const codeSandboxEnabled = useSystemStore(
+    (state) => state.feConfigs?.codeSandboxEnabled === true
+  );
 
   const [searchKey, setSearchKey] = useState('');
 
@@ -82,6 +86,7 @@ export const useNodeTemplates = (context: NodeTemplateContext | null = null) => 
         return basicNodeTemplates
           .filter((item) => {
             if (item.flowNodeType === FlowNodeTypeEnum.queryExtension) return false;
+            if (item.flowNodeType === FlowNodeTypeEnum.code && !codeSandboxEnabled) return false;
             // 工具集只在侧栏和工具调用节点的工具选择器中展示。
             if (
               item.flowNodeType === FlowNodeTypeEnum.toolSet &&
@@ -115,7 +120,7 @@ export const useNodeTemplates = (context: NodeTemplateContext | null = null) => 
     {
       manual: false,
       throttleWait: 100,
-      refreshDeps: [basicNodeTemplates, nodeAmount, templateType, context]
+      refreshDeps: [basicNodeTemplates, nodeAmount, templateType, context, codeSandboxEnabled]
     }
   );
 

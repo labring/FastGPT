@@ -27,10 +27,6 @@ import {
   resolveTeamPluginList
 } from '../../../plugin/teamPluginPolicy';
 import { SystemToolRepo } from './systemTool.repo';
-import {
-  isPluginRemoteDebugDisabledError,
-  isPluginRemoteDebugEnabled
-} from '../../../plugin/debug/policy';
 
 export type AuthorizedSystemToolListItem = NodeTemplateListItemType & { source: string };
 
@@ -84,7 +80,6 @@ const filterTemplateBySearchKey = ({
 };
 
 const getActiveDebugSource = async ({ tmbId, source }: { tmbId: string; source?: string }) => {
-  if (!isPluginRemoteDebugEnabled()) return;
   const status = await pluginClient.getDebugSessionStatus({ tmbId }).catch(() => undefined);
   if (
     status?.enabled &&
@@ -223,8 +218,7 @@ export const getAuthorizedSystemToolTemplateCatalog = async (
         code === PluginErrEnum.unAuth ||
         code === AppErrEnum.unExist ||
         code === AppErrEnum.unAuthApp ||
-        isToolNotExistError(code) ||
-        isPluginRemoteDebugDisabledError(error)
+        isToolNotExistError(code)
       ) {
         return;
       }

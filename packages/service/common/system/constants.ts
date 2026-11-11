@@ -3,7 +3,7 @@ import { logInstanceConfigRead } from './migrationCoverageLog';
 import { serviceEnv } from '../../env';
 
 export const FastGPTProUrl = serviceEnv.PRO_URL ? `${serviceEnv.PRO_URL}/api` : '';
-/** @deprecated 插件地址已由实例配置 subservice.plugin 管理 */
+/** @deprecated 插件地址由插件服务连接环境变量管理，业务调用使用插件客户端。 */
 export const FastGPTPluginUrl = '';
 // @ts-ignore
 export const isFastGPTProService = () => !!global.systemConfig;

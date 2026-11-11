@@ -68,6 +68,7 @@ export const FastGPTFeConfigsSchema = z.looseObject({
     .boolean()
     .optional()
     .meta({ description: '检索服务是否启用同义词映射能力' }),
+  codeSandboxEnabled: z.boolean().optional().meta({ description: '代码沙箱已启用且连接配置完整' }),
   show_workorder: z.boolean().optional().meta({ description: '是否展示工单入口' }),
   isPlus: z
     .boolean()

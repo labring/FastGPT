@@ -57,7 +57,8 @@ vi.mock('@fastgpt/service/thirdProvider/fastgptPlugin/model', () => ({
   loadModelProviders: vi.fn()
 }));
 vi.mock('@fastgpt/service/thirdProvider/codeSandbox', () => ({
-  codeSandbox: { runCode: vi.fn() }
+  codeSandbox: { runCode: vi.fn() },
+  isCodeSandboxConfigured: vi.fn(() => false)
 }));
 vi.mock('@fastgpt/dal/redis', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@fastgpt/dal/redis')>()),
@@ -97,6 +98,7 @@ import { Types } from '@fastgpt/service/common/mongo';
 import { redisCacheAdapter } from '@fastgpt/dal/redis/adapter';
 import { registerNodeInstrumentation } from '@/instrumentation-node';
 import { MongoSystemMigrationState } from '@/migration/mongoSchema';
+import { MongoSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/schema';
 
 afterEach(async () => {
   const runner = global.systemMigrationRunner;
@@ -136,6 +138,14 @@ describe('registerNodeInstrumentation', () => {
         status: SystemMigrationStatusEnum.succeeded
       }
     ]);
+    // 旧实例已完成域迁移，但 cleanup 完成后仍可能遗留现已退役的子服务字段。
+    await MongoSystemInstanceConfig.collection.insertOne({
+      domain: 'subservice',
+      schemaVersion: 1,
+      revision: 1,
+      overrides: { plugin: { remoteDebug: true }, aiProxy: { enabled: true } },
+      explicitDefaultPaths: []
+    });
     const legacyState = await MongoSystemMigrationState.findById(legacyMigrationId).lean();
     const { insertedId } = await MongoChat.collection.insertOne({
       teamId: new Types.ObjectId(),

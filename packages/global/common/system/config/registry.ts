@@ -380,11 +380,17 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
   }),
   ...createEntries({
     section: 'subservice',
+    keys: ['codeSandbox.enabled', 'codeSandbox.url', 'mcp.enabled', 'mcp.sseProxyUrl'],
+    options: { edition: 'all', secret: false, applyMode: 'reload' }
+  }),
+  ...createEntries({
+    section: 'subservice',
+    keys: ['codeSandbox.token'],
+    options: { edition: 'all', secret: true, applyMode: 'reload' }
+  }),
+  ...createEntries({
+    section: 'subservice',
     keys: [
-      'plugin.remoteDebug',
-      'codeSandbox.enabled',
-      'aiProxy.enabled',
-      'mcp.sseProxyUrl',
       'agentSandbox.provider',
       'agentSandbox.common.cpuCount',
       'agentSandbox.common.memoryMiB',

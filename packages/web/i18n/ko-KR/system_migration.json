@@ -85,5 +85,9 @@
   "migrations.20261110_backfill_external_file_check.description": "기존 도메인 허용 목록에서 검사 설정을 채우고 명시적 설정과 원래 목록을 유지합니다.",
   "migrations.20261110_backfill_external_file_check.result": "보안 설정 {{updatedDocuments}}개를 업데이트했습니다.",
   "migrations.20261110_backfill_external_file_check.backfill": "검사 설정 채우기",
-  "migrations.20261110_backfill_external_file_check.validation": "검사 설정 검증"
+  "migrations.20261110_backfill_external_file_check.validation": "검사 설정 검증",
+  "migrations.20261111_rehome_subservice_connections.name": "하위 서비스 연결 설정 마이그레이션",
+  "migrations.20261111_rehome_subservice_connections.description": "Code Sandbox 연결과 MCP SSE 스위치를 한 번 채우고 관리자가 설정하거나 명시적으로 비운 값을 유지합니다.",
+  "migrations.20261111_rehome_subservice_connections.result": "하위 서비스 설정 문서 {{updatedDocuments}}개를 업데이트했습니다.",
+  "migrations.20261111_rehome_subservice_connections.migrate": "하위 서비스 연결 및 스위치 채우기"
 }

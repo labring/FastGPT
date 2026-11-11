@@ -44,21 +44,12 @@ export const deprecatedOverridePaths: Partial<
   ],
   vector: [['vqLevel'], ['languageIdentifier'], ['hnswMaxScanTuples']],
   providers: [['chunk'], ['crm']],
-  // 代理连接地址保留在部署 ENV；删除开发期写入的两个配置叶子。
+  // Plugin 配置由 Plugin 服务管理，AI Proxy 连接只由部署 ENV 提供。
   subservice: [
-    // plugin.enabled 没有消费点：启停实际由 baseUrl/token 是否存在决定，删除冗余开关
-    ['plugin', 'enabled'],
-    // 插件服务地址/Token 改由 ENV 提供
-    ['plugin', 'baseUrl'],
-    ['plugin', 'token'],
-    // 远程调试链接由请求域名/NEXT_PUBLIC_BASE_URL 生成，不再读取该字段
-    ['plugin', 'remoteDebugUrl'],
-    ['codeSandbox', 'token'],
+    ['plugin'],
+    ['aiProxy'],
+    // 早期开发版本使用 baseUrl，正式配置统一为 url；token 与 mcp.enabled 现为有效字段。
     ['codeSandbox', 'baseUrl'],
-    ['aiProxy', 'token'],
-    ['aiProxy', 'endpoint'],
-    // mcp.enabled 冗余：SSE 接入地址按 sseProxyUrl 是否为空生成
-    ['mcp', 'enabled'],
     ['agentSandbox', 'proxy', 'wsUrl'],
     ['agentSandbox', 'proxy', 'httpUrl']
   ],
