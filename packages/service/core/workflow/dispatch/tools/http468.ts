@@ -620,7 +620,11 @@ async function fetchData({
   }).catch((error: unknown) => {
     if (!proxyUrl) throw error;
     // Axios/agent 错误可能持有含代理密码的 config；对外保留响应摘要，不传播该配置。
-    throw Object.assign(new Error('HTTP request through the configured proxy failed'), {
+    const safeMessage =
+      error instanceof Error && error.message === PRIVATE_URL_TEXT
+        ? PRIVATE_URL_TEXT
+        : 'HTTP request through the configured proxy failed';
+    throw Object.assign(new Error(safeMessage), {
       name: 'HttpProxyRequestError',
       ...(isAxiosError(error)
         ? {

@@ -1,4 +1,6 @@
 import _, {
+  getAdapter,
+  isAxiosError,
   type AxiosInstance,
   type AxiosRequestConfig,
   type AxiosResponse,
@@ -8,6 +10,7 @@ import dns from 'dns/promises';
 import http from 'http';
 import https from 'https';
 import { isIP } from 'net';
+import { finished, Readable } from 'stream';
 import { ProxyAgent, type ProxyAgentOptions } from 'proxy-agent';
 import { getProxyForUrl } from 'proxy-from-env';
 import { isDevEnv } from '@fastgpt/global/common/system/constants';
@@ -56,6 +59,11 @@ const addSSRFInterceptor = (instance: AxiosInstance) => {
     const currentUrl = buildRequestUrl(config);
     // 理论上 request interceptor 会注入状态；缺失时按普通响应返回,避免误处理其它实例响应。
     if (!redirectState || !currentUrl) return response;
+
+    // 重定向正文不会交给调用方；流式代理响应需主动结束当前跳，释放其连接生命周期。
+    if (config.__safeAxios?.proxyUrl && response.data instanceof Readable) {
+      response.data.destroy();
+    }
 
     if (redirectState.count >= redirectState.maxRedirects) {
       return Promise.reject(new Error(`Maximum redirects exceeded: ${redirectState.maxRedirects}`));
@@ -171,13 +179,50 @@ const prepareSafeRequestConfig = async (
     const resolvedProxy = await resolveSafeConnectAddress(
       parsedProxyUrl.hostname.replace(/^\[|\]$/g, '')
     );
+    const connectionAbortController = new AbortController();
     const agent = createProxyAgent({
       getProxyForUrl: () => proxyUrl,
       // 代理主机也固定 DNS 结果，防止预检后第二次解析转向本机或云元数据地址。
       lookup: createPinnedLookup(resolvedProxy),
+      // net/tls 在 CONNECT 完成前已创建 socket，必须直接持有其取消信号。
+      signal: connectionAbortController.signal,
       rejectUnauthorized: config.__safeAxios?.rejectUnauthorized ?? true
     });
-    return { ...config, proxy: false, httpAgent: agent, httpsAgent: agent };
+    const requestAdapter = getAdapter(config.adapter ?? _.defaults.adapter);
+    const closeProxyConnections = () => {
+      connectionAbortController.abort();
+      agent.destroy();
+    };
+    /** 成功或 HTTP 错误中的流正文都交给调用方，消费结束/出错/关闭时再清理连接。 */
+    const releaseProxyAfterResponse = (response?: AxiosResponse) => {
+      if (config.responseType === 'stream' && response?.data instanceof Readable) {
+        const removeListeners = finished(response.data, () => {
+          removeListeners();
+          closeProxyConnections();
+        });
+      } else {
+        closeProxyConnections();
+      }
+    };
+
+    return {
+      ...config,
+      proxy: false,
+      httpAgent: agent,
+      httpsAgent: agent,
+      adapter: async (requestConfig) => {
+        try {
+          // 保留原 adapter，重定向时重新创建单跳生命周期，避免嵌套旧的清理 wrapper。
+          const response = await requestAdapter({ ...requestConfig, adapter: requestAdapter });
+          releaseProxyAfterResponse(response);
+          return response;
+        } catch (error) {
+          // Axios 的超时/取消已经结束调用，但握手 socket 可能还未登记到 agent 中。
+          releaseProxyAfterResponse(isAxiosError(error) ? error.response : undefined);
+          throw error;
+        }
+      }
+    };
   }
 
   if (isRequestUsingProxy(requestUrl, config)) {

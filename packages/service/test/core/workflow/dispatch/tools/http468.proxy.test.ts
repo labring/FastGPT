@@ -39,7 +39,7 @@ const proxyEnvKeys = [
 ];
 
 describe('HTTP node proxy over real sockets', () => {
-  const servers: http.Server[] = [];
+  const servers: net.Server[] = [];
   const sockets = new Set<Socket>();
   const tlsOptions = httpProxyTestTlsOptions;
   const savedEnv = Object.fromEntries(proxyEnvKeys.map((key) => [key, process.env[key]]));
@@ -49,8 +49,7 @@ describe('HTTP node proxy over real sockets', () => {
     .flat()
     .find((item) => item?.family === 'IPv4' && !item.internal)?.address;
 
-  const listen = async (handler: http.RequestListener, secure = false) => {
-    const server = secure ? https.createServer(tlsOptions, handler) : http.createServer(handler);
+  const listenServer = async (server: net.Server, secure = false) => {
     servers.push(server);
     server.on('connection', (socket) => {
       sockets.add(socket);
@@ -64,6 +63,12 @@ describe('HTTP node proxy over real sockets', () => {
       throw new Error('Test needs a non-loopback IPv4 address');
     return `${secure ? 'https' : 'http'}://${host}:${address.port}`;
   };
+
+  const listen = (handler: http.RequestListener, secure = false) =>
+    listenServer(
+      secure ? https.createServer(tlsOptions, handler) : http.createServer(handler),
+      secure
+    );
 
   const props = (url: string, proxy?: unknown) =>
     ({
@@ -102,7 +107,7 @@ describe('HTTP node proxy over real sockets', () => {
       servers.splice(0).map(
         (server) =>
           new Promise<void>((resolve) => {
-            server.closeAllConnections();
+            if (server instanceof http.Server) server.closeAllConnections();
             server.close(() => resolve());
           })
       )
@@ -259,7 +264,7 @@ describe('HTTP node proxy over real sockets', () => {
       const result = await dispatchHttp468Request(
         props('http://public.example.test/', { value: proxy })
       );
-      expect(result.error).toBeDefined();
+      expect(result.error?.[NodeOutputKeyEnum.error]).toContain(PRIVATE_URL_TEXT);
     }
   );
 
@@ -329,6 +334,184 @@ describe('HTTP node proxy over real sockets', () => {
     requestProps.params[NodeInputKeyEnum.httpTimeout] = 0.05;
     const result = await dispatchHttp468Request(requestProps);
     expect(result.error?.[NodeOutputKeyEnum.httpRawError]).toMatchObject({ code: 'ECONNABORTED' });
+  });
+
+  it.each([false, true])(
+    'closes the proxy connection after a stalled CONNECT times out (proxy TLS: %s)',
+    async (secureProxy) => {
+      const proxy = await listen((_req, _res) => {}, secureProxy);
+      const proxyServer = servers[servers.length - 1];
+      let openConnections = 0;
+      let receivedConnect = false;
+      proxyServer.on('connect', (_req, client) => {
+        receivedConnect = true;
+        openConnections++;
+        client.on('close', () => openConnections--);
+        // HTTP CONNECT socket 允许半关闭；只有收到客户端 FIN 后才结束服务端写侧。
+        client.on('end', () => client.end());
+        client.resume();
+      });
+      global.systemEnv = { workflowHttpNode: { ignoreHttpsCertificate: true } } as any;
+      const requestProps = props('https://public.example.test/', { value: proxy });
+      requestProps.params[NodeInputKeyEnum.httpTimeout] = 0.15;
+      const result = await dispatchHttp468Request(requestProps);
+      expect(receivedConnect).toBe(true);
+      expect(result.error?.[NodeOutputKeyEnum.httpRawError]).toMatchObject({
+        code: 'ECONNABORTED'
+      });
+      // 必须在测试清理主动销毁 socket 之前观察到远端连接释放。
+      await vi.waitFor(() => expect(openConnections).toBe(0), { timeout: 700, interval: 20 });
+    }
+  );
+
+  it.each([false, true])(
+    'closes a pending CONNECT when the caller cancels (proxy TLS: %s)',
+    async (secureProxy) => {
+      let notifyConnect = () => {};
+      const connected = new Promise<void>((resolve) => {
+        notifyConnect = resolve;
+      });
+      let openConnections = 0;
+      const proxy = await listen((_req, _res) => {}, secureProxy);
+      const proxyServer = servers[servers.length - 1];
+      proxyServer.on('connect', (_req, client) => {
+        openConnections++;
+        client.on('close', () => openConnections--);
+        client.on('end', () => client.end());
+        client.resume();
+        notifyConnect();
+      });
+      const controller = new AbortController();
+      const request = createProxyAxios()
+        .get('https://public.example.test/', {
+          timeout: 5000,
+          signal: controller.signal,
+          __safeAxios: { proxyUrl: proxy, rejectUnauthorized: false }
+        })
+        .catch((error: unknown) => error);
+      await connected;
+      controller.abort();
+      expect(await request).toMatchObject({ code: 'ERR_CANCELED' });
+      await vi.waitFor(() => expect(openConnections).toBe(0), { timeout: 700, interval: 20 });
+    }
+  );
+
+  it.each([
+    { targetProtocol: 'http', cancel: false },
+    { targetProtocol: 'https', cancel: false },
+    { targetProtocol: 'http', cancel: true },
+    { targetProtocol: 'https', cancel: true }
+  ])(
+    'closes a stalled proxy TLS handshake ($targetProtocol target, cancellation: $cancel)',
+    async ({ targetProtocol, cancel }) => {
+      let notifyData = () => {};
+      const receivedData = new Promise<void>((resolve) => {
+        notifyData = resolve;
+      });
+      let receivedTls = false;
+      let openConnections = 0;
+      const server = net.createServer((socket) => {
+        openConnections++;
+        socket.on('data', () => {
+          receivedTls = true;
+          notifyData();
+        });
+        socket.on('end', () => socket.end());
+        socket.on('close', () => openConnections--);
+      });
+      const proxy = await listenServer(server, true);
+      const controller = new AbortController();
+      const request = createProxyAxios()
+        .get(`${targetProtocol}://public.example.test/`, {
+          timeout: cancel ? 5000 : 150,
+          signal: controller.signal,
+          __safeAxios: { proxyUrl: proxy, rejectUnauthorized: false }
+        })
+        .catch((error: unknown) => error);
+      await receivedData;
+      if (cancel) controller.abort();
+      expect(await request).toMatchObject({ code: cancel ? 'ERR_CANCELED' : 'ECONNABORTED' });
+      expect(receivedTls).toBe(true);
+      await vi.waitFor(() => expect(openConnections).toBe(0), { timeout: 700, interval: 20 });
+    }
+  );
+
+  it.each([200, 502])(
+    'keeps streamed proxy response bodies alive until consumption finishes (status: %s)',
+    async (status) => {
+      let finishBody = () => {};
+      let openConnections = 0;
+      const proxy = await listen((req, res) => {
+        openConnections++;
+        req.socket.on('close', () => openConnections--);
+        res.writeHead(status, { 'Content-Type': 'text/plain' });
+        res.write('first-');
+        finishBody = () => res.end('last');
+      });
+      const response = await createProxyAxios()
+        .get('http://public.example.test/', {
+          responseType: 'stream',
+          __safeAxios: { proxyUrl: proxy }
+        })
+        .catch((error) => error.response);
+      expect(response.status).toBe(status);
+      expect(openConnections).toBe(1);
+      const body = (async () => {
+        let content = '';
+        for await (const chunk of response.data) content += chunk.toString();
+        return content;
+      })();
+      finishBody();
+      expect(await body).toBe('first-last');
+      await vi.waitFor(() => expect(openConnections).toBe(0), { timeout: 700, interval: 20 });
+    }
+  );
+
+  it('closes a streaming proxy response when its caller cancels', async () => {
+    let openConnections = 0;
+    const proxy = await listen((req, res) => {
+      openConnections++;
+      req.socket.on('close', () => openConnections--);
+      res.writeHead(200, { 'Content-Type': 'text/plain' });
+      res.write('unfinished body');
+    });
+    const controller = new AbortController();
+    const response = await createProxyAxios().get('http://public.example.test/', {
+      responseType: 'stream',
+      signal: controller.signal,
+      __safeAxios: { proxyUrl: proxy }
+    });
+    const streamError = once(response.data, 'error');
+    controller.abort();
+    expect(await streamError).toEqual([expect.objectContaining({ code: 'ERR_CANCELED' })]);
+    await vi.waitFor(() => expect(openConnections).toBe(0), { timeout: 700, interval: 20 });
+  });
+
+  it('closes a discarded streaming redirect before consuming the next response', async () => {
+    let discardedClosed = false;
+    let requests = 0;
+    const proxy = await listen((req, res) => {
+      requests++;
+      if (req.url?.endsWith('/start')) {
+        req.socket.on('close', () => {
+          discardedClosed = true;
+        });
+        res.writeHead(302, { Location: 'http://public.example.test/final' });
+        res.write('unfinished redirect body');
+      } else {
+        res.end('final body');
+      }
+    });
+    const response = await createProxyAxios().get('http://public.example.test/start', {
+      timeout: 1000,
+      responseType: 'stream',
+      __safeAxios: { proxyUrl: proxy }
+    });
+    let body = '';
+    for await (const chunk of response.data) body += chunk.toString();
+    expect(body).toBe('final body');
+    expect(requests).toBe(2);
+    await vi.waitFor(() => expect(discardedClosed).toBe(true), { timeout: 700, interval: 20 });
   });
 
   it('preserves POST method and JSON bytes through a 307 proxy redirect', async () => {
