@@ -1,5 +1,12 @@
 import type { OpenAPIPath } from '../../../type';
 import {
+  ListModelDeprecationInformFailuresBodySchema,
+  ListModelDeprecationInformFailuresResponseSchema,
+  ModelDeprecationInformRunBodySchema,
+  ModelDeprecationInformRunResponseSchema,
+  RetryModelDeprecationInformRunResponseSchema,
+  TerminateModelDeprecationInformPlanBodySchema,
+  TerminateModelDeprecationInformPlanResponseSchema,
   CreateModelDeprecationInformBodySchema,
   CreateModelDeprecationInformResponseSchema,
   ListModelDeprecationInformQuerySchema,
@@ -15,6 +22,75 @@ import {
 import { DevApiTagsMap } from '../../../tag';
 
 export const AdminInformPath: OpenAPIPath = {
+  '/proApi/admin/system/inform/modelDeprecation/failures': {
+    post: {
+      summary: '查询模型下架通知失败记录',
+      description: '按计划和轮次分页查询失败记录，不包含联系方式或消息正文',
+      tags: [DevApiTagsMap.adminInform],
+      requestBody: {
+        content: { 'application/json': { schema: ListModelDeprecationInformFailuresBodySchema } }
+      },
+      responses: {
+        200: {
+          description: '操作成功',
+          content: {
+            'application/json': { schema: ListModelDeprecationInformFailuresResponseSchema }
+          }
+        }
+      }
+    }
+  },
+  '/proApi/admin/system/inform/modelDeprecation/recover': {
+    post: {
+      summary: '恢复模型下架通知轮次',
+      description: '使用原轮次和游标恢复失败或中断的执行',
+      tags: [DevApiTagsMap.adminInform],
+      requestBody: {
+        content: { 'application/json': { schema: ModelDeprecationInformRunBodySchema } }
+      },
+      responses: {
+        200: {
+          description: '操作成功',
+          content: { 'application/json': { schema: ModelDeprecationInformRunResponseSchema } }
+        }
+      }
+    }
+  },
+  '/proApi/admin/system/inform/modelDeprecation/retry': {
+    post: {
+      summary: '重发模型下架通知失败记录',
+      description: '为已完成轮次中未解决的失败记录创建独立重发轮次',
+      tags: [DevApiTagsMap.adminInform],
+      requestBody: {
+        content: { 'application/json': { schema: ModelDeprecationInformRunBodySchema } }
+      },
+      responses: {
+        200: {
+          description: '操作成功',
+          content: { 'application/json': { schema: RetryModelDeprecationInformRunResponseSchema } }
+        }
+      }
+    }
+  },
+  '/proApi/admin/system/inform/modelDeprecation/terminate': {
+    post: {
+      summary: '终止模型下架通知计划',
+      description: '终止未完成轮次并返回状态索引，保留已完成结果',
+      tags: [DevApiTagsMap.adminInform],
+      requestBody: {
+        content: { 'application/json': { schema: TerminateModelDeprecationInformPlanBodySchema } }
+      },
+      responses: {
+        200: {
+          description: '操作成功',
+          content: {
+            'application/json': { schema: TerminateModelDeprecationInformPlanResponseSchema }
+          }
+        }
+      }
+    }
+  },
+
   '/proApi/admin/system/inform/modelDeprecation/create': {
     post: {
       summary: '创建模型下架通知计划',

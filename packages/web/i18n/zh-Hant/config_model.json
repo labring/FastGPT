@@ -332,5 +332,19 @@
   "replace_invalid_request_failed": "替換請求失敗；已寫入的記錄不會自動回復，可重新執行。",
   "model.custom_sort": "自訂排序",
   "model.cancel_sort": "取消",
-  "model.save_sort": "儲存排序"
+  "model.save_sort": "儲存排序",
+  "model_deprecation.error_request_conflict": "同一請求識別碼不能用於不同的計畫內容",
+  "model_deprecation.error_deadline_reached": "通知計畫已達到下架截止時間",
+  "model_deprecation.error_future_deadline": "計畫下架時間必須晚於目前時間",
+  "model_deprecation.error_deadline_range": "計畫下架日不能超過 90 天",
+  "model_deprecation.error_invalid_models": "所選模型不存在或未標記為即將下架",
+  "model_deprecation.error_run_not_found": "通知計畫或輪次不存在",
+  "model_deprecation.error_plan_terminated": "通知計畫已終止，無法執行此操作",
+  "model_deprecation.error_retry_requires_completed": "只有已完成輪次可以重新傳送",
+  "model_deprecation.error_plan_unavailable": "通知計畫已終止或已下架，無法執行此操作",
+  "model_deprecation.error_no_failed_deliveries": "沒有可重新傳送的失敗記錄",
+  "model_deprecation.error_plan_changed": "通知計畫狀態已變更，請重新整理後再試",
+  "model_deprecation.error_recover_requires_incomplete": "只有失敗或中斷輪次可以恢復",
+  "model_deprecation.error_plan_not_found": "通知計畫不存在",
+  "model_deprecation.error_no_terminable_runs": "通知計畫目前沒有可終止的輪次"
 }

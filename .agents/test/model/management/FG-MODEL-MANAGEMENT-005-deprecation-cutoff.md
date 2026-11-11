@@ -28,7 +28,7 @@ related:
   - "FG-MODEL-MANAGEMENT-002"
   - "FG-MODEL-MANAGEMENT-003"
   - "FG-MODEL-MANAGEMENT-004"
-baseline: "0ff94ba7326fecf7aaf35f4413d7d93b78a94dae; pro=c60a9d5244dabda2fe12ab73ce70659e7d5cb00a"
+baseline: "b3e128bfcc22b0de0ca435fcc3f1da0f906bbe12; pro=4d64498b1ef48009d314794ef895a4612db9a017"
 ---
 
 # 实际下架截止时刻起所有通知路径停止投递

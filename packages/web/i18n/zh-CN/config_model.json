@@ -332,5 +332,19 @@
   "replace_invalid_request_failed": "替换请求失败；已写入的记录不会自动回滚，可重新执行。",
   "model.custom_sort": "自定义排序",
   "model.cancel_sort": "取消",
-  "model.save_sort": "保存排序"
+  "model.save_sort": "保存排序",
+  "model_deprecation.error_request_conflict": "同一请求标识不能用于不同的计划内容",
+  "model_deprecation.error_deadline_reached": "通知计划已到达下架截止时间",
+  "model_deprecation.error_future_deadline": "计划下架时间必须晚于当前时间",
+  "model_deprecation.error_deadline_range": "计划下架日不能超过 90 天",
+  "model_deprecation.error_invalid_models": "所选模型不存在或未标记为即将下架",
+  "model_deprecation.error_run_not_found": "通知计划或轮次不存在",
+  "model_deprecation.error_plan_terminated": "通知计划已终止，无法执行此操作",
+  "model_deprecation.error_retry_requires_completed": "只有已完成轮次可以重发",
+  "model_deprecation.error_plan_unavailable": "通知计划已终止或已下架，无法执行此操作",
+  "model_deprecation.error_no_failed_deliveries": "没有可重发的失败记录",
+  "model_deprecation.error_plan_changed": "通知计划状态已变化，请刷新后重试",
+  "model_deprecation.error_recover_requires_incomplete": "只有失败或中断轮次可以恢复",
+  "model_deprecation.error_plan_not_found": "通知计划不存在",
+  "model_deprecation.error_no_terminable_runs": "通知计划当前没有可终止的轮次"
 }

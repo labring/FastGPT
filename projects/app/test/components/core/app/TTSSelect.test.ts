@@ -32,18 +32,21 @@ vi.mock('@/web/core/ai/model/useUserModelStore', () => ({
 }));
 vi.mock('@/web/core/ai/model/useModelList', () => ({
   useModelList: () => ({
-    modelList: [
-      {
-        modelId: 'tts',
-        model: 'tts-name',
-        name: 'Default TTS',
-        type: 'tts',
-        provider: 'OpenAI',
-        isActive: true,
-        isUpcomingDeprecation: mocks.listIsUpcomingDeprecation,
-        config: { voices: [{ label: 'First voice', value: 'first' }] }
-      }
-    ]
+    modelList:
+      mocks.status === 'active'
+        ? [
+            {
+              modelId: 'tts',
+              model: 'tts-name',
+              name: 'Default TTS',
+              type: 'tts',
+              provider: 'OpenAI',
+              isActive: true,
+              isUpcomingDeprecation: mocks.listIsUpcomingDeprecation,
+              config: { voices: [{ label: 'First voice', value: 'first' }] }
+            }
+          ]
+        : []
   })
 }));
 vi.mock('@/web/core/ai/model/useModelDetail', () => ({
@@ -155,6 +158,26 @@ describe('TTSSelect actual selection and display', () => {
     mocks.effects.forEach((effect) => effect());
     expect(onChange).not.toHaveBeenCalled();
   });
+  it.each(['disabled', 'deleted'] as const)(
+    'hides upcoming deprecation for an unavailable selected TTS (%s)',
+    (status) => {
+      mocks.status = status;
+      mocks.isUpcomingDeprecation = true;
+      mocks.listIsUpcomingDeprecation = true;
+      const onChange = vi.fn();
+      const html = renderToStaticMarkup(
+        React.createElement(TTSSelect, {
+          value: { type: TTSTypeEnum.model, modelId: 'tts' },
+          onChange
+        })
+      );
+      expect(html).toContain(
+        status === 'disabled' ? 'common:model_disabled' : 'common:model_delisted'
+      );
+      expect(html).not.toContain('common:model.upcoming_deprecation');
+      expect(onChange).not.toHaveBeenCalled();
+    }
+  );
   it('shows the deprecation tag for an upcoming TTS model', () => {
     mocks.isUpcomingDeprecation = true;
     mocks.listIsUpcomingDeprecation = true;

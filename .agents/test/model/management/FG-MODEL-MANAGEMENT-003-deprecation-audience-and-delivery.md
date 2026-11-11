@@ -42,7 +42,7 @@ routes:
 related:
   - "FG-MODEL-MANAGEMENT-002"
   - "FG-MODEL-MANAGEMENT-005"
-baseline: "738e6bdafdfb4b10fa9254c6fbf2cffc7d25e925; pro=bde643736c348e08239fad15e0e2b8fbb8013001"
+baseline: "b3e128bfcc22b0de0ca435fcc3f1da0f906bbe12; pro=4d64498b1ef48009d314794ef895a4612db9a017"
 ---
 
 # 按模型引用识别受影响团队并投递正确渠道

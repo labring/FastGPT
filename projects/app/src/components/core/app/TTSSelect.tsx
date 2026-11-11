@@ -109,22 +109,13 @@ const TTSSelect = ({
     const voice = selectedTtsModel?.config.voices.find((item) => item.value === formatValue[1]);
     if (isBuiltin) return provider?.label;
     return (
-      <Flex minW={0} w={'100%'} overflow="hidden" alignItems="center" gap={1}>
-        <Flex minW={0} flex={'1 1 0'} overflow="hidden" alignItems="center" gap={1}>
-          <Flex minW={0} flex={'1 1 0'}>
-            <ModelStatusLabel
-              modelId={modelId}
-              {...detailState}
-              nameSuffix={voice ? ` / ${voice.label}` : undefined}
-            />
-          </Flex>
-        </Flex>
-        {detailState.detail?.isUpcomingDeprecation === true && (
-          <Box mr={2}>
-            <DeprecationTag size={'sm'} />
-          </Box>
-        )}
-      </Flex>
+      <ModelStatusLabel
+        modelId={modelId}
+        {...detailState}
+        nameSuffix={voice ? ` / ${voice.label}` : undefined}
+        showUpcomingDeprecationTag
+        hideUpcomingDeprecationTagWhenDisabled
+      />
     );
   }, [detailState, formatValue, isBuiltin, modelId, selectorList, selectedTtsModel]);
 

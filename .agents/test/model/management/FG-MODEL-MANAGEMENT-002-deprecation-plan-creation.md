@@ -37,7 +37,7 @@ related:
   - "FG-MODEL-MANAGEMENT-003"
   - "FG-MODEL-MANAGEMENT-004"
   - "FG-MODEL-MANAGEMENT-005"
-baseline: "738e6bdafdfb4b10fa9254c6fbf2cffc7d25e925; pro=bde643736c348e08239fad15e0e2b8fbb8013001"
+baseline: "b3e128bfcc22b0de0ca435fcc3f1da0f906bbe12; pro=4d64498b1ef48009d314794ef895a4612db9a017"
 ---
 
 # 管理员创建模型下架通知计划并幂等保存排期
