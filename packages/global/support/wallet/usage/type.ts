@@ -1,4 +1,5 @@
 import type { SourceMemberType } from '../../../support/user/type';
+import type { STTBillingSnapshotType } from '../../../core/ai/audio/type';
 import type { UsageItemTypeEnum, UsageSourceEnum } from './constants';
 
 export type UsageSchemaType = {
@@ -34,6 +35,8 @@ export type UsageItemCountType = {
   model?: string;
   inputTokens?: number;
   outputTokens?: number;
+  totalTokens?: number;
+  sttBilling?: STTBillingSnapshotType;
   charsLength?: number;
   duration?: number;
   pages?: number;

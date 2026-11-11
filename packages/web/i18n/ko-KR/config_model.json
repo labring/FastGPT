@@ -349,5 +349,9 @@
   "model_deprecation.error_plan_changed": "알림 계획 상태가 변경되었습니다. 새로고침 후 다시 시도하세요.",
   "model_deprecation.error_recover_requires_incomplete": "실패하거나 중단된 실행만 복구할 수 있습니다.",
   "model_deprecation.error_plan_not_found": "알림 계획이 없습니다.",
-  "model_deprecation.error_no_terminable_runs": "알림 계획에 종료할 수 있는 실행이 없습니다."
+  "model_deprecation.error_no_terminable_runs": "알림 계획에 종료할 수 있는 실행이 없습니다.",
+  "model.stt_billing_type": "과금 유형",
+  "model.stt_billing_duration": "시간 기준",
+  "model.stt_billing_tokens": "토큰 기준",
+  "model.stt_seconds_per_unit": "가격 단위당 초"
 }

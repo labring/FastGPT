@@ -1,42 +1,59 @@
 import { describe, expect, it } from 'vitest';
-import { getSTTDuration } from '@fastgpt/service/core/ai/audio/utils';
+import { getSTTBillableUsage } from '@fastgpt/service/core/ai/audio/utils';
 
-describe('getSTTDuration', () => {
-  it('bills a one-second Qwen recording by seconds rather than its 43 tokens', () => {
-    const usage = { seconds: 1, total_tokens: 43 };
-    expect(getSTTDuration({ usage, fallbackDuration: 2 })).toBe(1);
-  });
-
-  it('uses three audio seconds rather than the 77 tokens in a short Qwen response', () => {
-    const usage = { seconds: 3, total_tokens: 77 };
-    expect(getSTTDuration({ usage, fallbackDuration: 4 })).toBe(3);
-  });
-
-  it('keeps a one-minute Qwen recording separate from its 1733 tokens', () => {
-    const usage = { seconds: 60, total_tokens: 1733 };
-    expect(getSTTDuration({ usage, fallbackDuration: 61 })).toBe(60);
-  });
-
-  it('never treats a token-only usage response as seconds', () => {
-    const usage: { seconds?: number; total_tokens: number } = { total_tokens: 77 };
-    expect(getSTTDuration({ usage, fallbackDuration: 3 })).toBe(3);
-  });
-
-  it.each([undefined, null, 0, -1, NaN, Infinity, '43'])(
-    'uses the recording duration when upstream seconds is %s',
-    (seconds) => {
-      expect(getSTTDuration({ usage: { seconds }, fallbackDuration: 3 })).toBe(3);
+describe('getSTTBillableUsage', () => {
+  it.each([undefined, {}, { unitPrice: 0.2 }, { type: 'duration' as const, secondsPerUnit: 30 }])(
+    'uses only upstream seconds for duration pricing %j',
+    (pricing) => {
+      expect(
+        getSTTBillableUsage({ pricing, usage: { type: 'tokens', seconds: 3, total_tokens: 77 } })
+      ).toEqual({ type: 'duration', seconds: 3 });
     }
   );
-
-  it('uses the recording duration when the provider reports no usage', () => {
-    expect(getSTTDuration({ fallbackDuration: 3 })).toBe(3);
+  it.each([undefined, null, -1, NaN, Infinity, -Infinity, '77'])(
+    'treats invalid seconds %s as zero',
+    (seconds) => {
+      expect(getSTTBillableUsage({ usage: { seconds, total_tokens: 77 } })).toEqual({
+        type: 'duration',
+        seconds: 0
+      });
+    }
+  );
+  it.each([0, 0.2, 2.5, 60])('does not round or enforce a minimum on %s seconds', (seconds) => {
+    expect(getSTTBillableUsage({ usage: { seconds } })).toEqual({ type: 'duration', seconds });
   });
-
-  it.each([
-    [0.2, 1],
-    [2.5, 2.5]
-  ])('normalizes upstream %s seconds to %s', (seconds, expected) => {
-    expect(getSTTDuration({ usage: { seconds }, fallbackDuration: 3 })).toBe(expected);
+  it('records zero when upstream usage is absent', () => {
+    expect(getSTTBillableUsage({})).toEqual({ type: 'duration', seconds: 0 });
+    expect(getSTTBillableUsage({ pricing: { type: 'tokens' } })).toEqual({
+      type: 'tokens',
+      totalTokens: 0
+    });
+  });
+  it.each([undefined, null, -1, 1.5, NaN, Infinity, '77', Number.MAX_SAFE_INTEGER + 1])(
+    'treats invalid tokens %s as zero',
+    (total_tokens) => {
+      expect(
+        getSTTBillableUsage({ pricing: { type: 'tokens' }, usage: { seconds: 3, total_tokens } })
+      ).toEqual({ type: 'tokens', totalTokens: 0 });
+    }
+  );
+  it.each([0, 77, 1733])('uses only reported total_tokens=%s for token pricing', (total_tokens) => {
+    expect(
+      getSTTBillableUsage({
+        pricing: { type: 'tokens' },
+        usage: { type: 'tokens', seconds: 60, total_tokens }
+      })
+    ).toEqual({ type: 'tokens', totalTokens: total_tokens });
+  });
+  it('accepts genuine untyped token usage but excludes duration compatibility counters', () => {
+    expect(
+      getSTTBillableUsage({ pricing: { type: 'tokens' }, usage: { total_tokens: 77 } })
+    ).toEqual({ type: 'tokens', totalTokens: 77 });
+    expect(
+      getSTTBillableUsage({
+        pricing: { type: 'tokens' },
+        usage: { type: 'duration', seconds: 3, total_tokens: 3 }
+      })
+    ).toEqual({ type: 'tokens', totalTokens: 0 });
   });
 });

@@ -349,5 +349,9 @@
   "model_deprecation.error_plan_changed": "通知計畫狀態已變更，請重新整理後再試",
   "model_deprecation.error_recover_requires_incomplete": "只有失敗或中斷輪次可以恢復",
   "model_deprecation.error_plan_not_found": "通知計畫不存在",
-  "model_deprecation.error_no_terminable_runs": "通知計畫目前沒有可終止的輪次"
+  "model_deprecation.error_no_terminable_runs": "通知計畫目前沒有可終止的輪次",
+  "model.stt_billing_type": "計費類型",
+  "model.stt_billing_duration": "按時長",
+  "model.stt_billing_tokens": "按 Tokens",
+  "model.stt_seconds_per_unit": "計價單位（秒）"
 }

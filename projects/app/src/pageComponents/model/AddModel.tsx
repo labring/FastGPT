@@ -111,7 +111,8 @@ const createBlankModelData = ({
   if (type === ModelTypeEnum.tts) {
     return { ...base, type, config: { voices: [] } };
   }
-  if (type === ModelTypeEnum.stt) return { ...base, type, config: {} };
+  if (type === ModelTypeEnum.stt)
+    return { ...base, type, config: {}, pricing: { type: 'duration', secondsPerUnit: 60 } };
   return { ...base, type: ModelTypeEnum.rerank, config: { maxToken: 8000 } };
 };
 

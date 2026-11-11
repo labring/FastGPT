@@ -1,17 +1,35 @@
+import { resolveSTTPricing } from '@fastgpt/global/core/ai/model/pricing';
+import type { ModelPricingType } from '@fastgpt/global/core/ai/model/schema';
+import type {
+  STTBillableUsageType,
+  STTUpstreamUsageType
+} from '@fastgpt/global/core/ai/audio/type';
+
 /**
- * STT 按音频秒数计费，优先使用上游报告的有效时长，缺省时回退到调用方时长。
- * total_tokens 对 Qwen-ASR 等模型是真实 token 数，不能作为音频秒数使用。
- * fallbackDuration 由调用方校验为至少 1 秒；有效的上游时长也按最少 1 秒处理。
+ * 仅按模型价格口径提取上游用量。缺失、负数和非有限值记 0；
+ * 不使用客户端时长，不跨字段兜底，不强制最少一秒，也不从识别文字估算 Tokens。
  */
-export const getSTTDuration = ({
-  usage,
-  fallbackDuration
+export const getSTTBillableUsage = ({
+  pricing,
+  usage
 }: {
-  usage?: { seconds?: unknown };
-  fallbackDuration: number;
-}) => {
-  const seconds = usage?.seconds;
-  return typeof seconds === 'number' && Number.isFinite(seconds) && seconds > 0
-    ? Math.max(1, seconds)
-    : fallbackDuration;
+  pricing?: ModelPricingType;
+  usage?: STTUpstreamUsageType;
+}): STTBillableUsageType => {
+  const resolved = resolveSTTPricing(pricing);
+  if (resolved.type === 'duration') {
+    const seconds = usage?.seconds;
+    return {
+      type: 'duration',
+      seconds: typeof seconds === 'number' && Number.isFinite(seconds) && seconds >= 0 ? seconds : 0
+    };
+  }
+
+  // 部分网关在 duration 响应中兼容填充 total_tokens=seconds，这不是真实 Tokens。
+  const tokens = usage?.type === 'duration' ? undefined : usage?.total_tokens;
+  return {
+    type: 'tokens',
+    totalTokens:
+      typeof tokens === 'number' && Number.isSafeInteger(tokens) && tokens >= 0 ? tokens : 0
+  };
 };

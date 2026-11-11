@@ -40,7 +40,7 @@ const UsageDetail = ({ usage, onClose }: { usage: UsageListItemType; onClose: ()
         hasModel = true;
       }
 
-      if (typeof item.tokens === 'number') {
+      if (typeof item.totalTokens === 'number' || typeof item.tokens === 'number') {
         hasToken = true;
       }
       if (typeof item.inputTokens === 'number') {
@@ -74,6 +74,8 @@ const UsageDetail = ({ usage, onClose }: { usage: UsageListItemType; onClose: ()
       hasCount
     };
   }, [usage.list]);
+
+  const hasSTTBilling = usage.list.some((item) => item.sttBilling);
 
   return (
     <MyModal isOpen={true} onClose={onClose} title={t('account_usage:usage_detail')} w={'700px'}>
@@ -114,6 +116,7 @@ const UsageDetail = ({ usage, onClose }: { usage: UsageListItemType; onClose: ()
                 {hasCharsLen && <Th>{t('account_usage:text_length')}</Th>}
                 {hasDuration && <Th>{t('account_usage:duration_seconds')}</Th>}
                 {hasPages && <Th>{t('account_usage:pages')}</Th>}
+                {hasSTTBilling && <Th>{t('account_usage:billing_type')}</Th>}
                 <Th>{t('account_usage:total_points_consumed')}</Th>
               </Tr>
             </Thead>
@@ -122,13 +125,24 @@ const UsageDetail = ({ usage, onClose }: { usage: UsageListItemType; onClose: ()
                 <Tr key={i}>
                   <Td>{t(item.moduleName as any)}</Td>
                   {hasModel && <Td>{item.model ?? '-'}</Td>}
-                  {hasToken && <Td>{item.tokens ?? '-'}</Td>}
+                  {hasToken && <Td>{item.totalTokens ?? item.tokens ?? '-'}</Td>}
                   {hasInputToken && <Td>{item.inputTokens ?? '-'}</Td>}
                   {hasOutputToken && <Td>{item.outputTokens ?? '-'}</Td>}
                   {hasCount && <Td>{item.count ?? '-'}</Td>}
                   {hasCharsLen && <Td>{item.charsLength ?? '-'}</Td>}
                   {hasDuration && <Td>{item.duration ?? '-'}</Td>}
                   {hasPages && <Td>{item.pages ?? '-'}</Td>}
+                  {hasSTTBilling && (
+                    <Td>
+                      {item.sttBilling
+                        ? t(
+                            item.sttBilling.type === 'duration'
+                              ? 'account_usage:billing_duration'
+                              : 'account_usage:billing_tokens'
+                          )
+                        : '-'}
+                    </Td>
+                  )}
                   <Td>{formatNumber(item.amount)}</Td>
                 </Tr>
               ))}

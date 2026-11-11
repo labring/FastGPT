@@ -11,6 +11,7 @@ import { MAX_MODEL_PRICE_TIERS } from '@fastgpt/global/core/ai/model/pricing';
 import type { ModelProviderItemType } from '@fastgpt/global/core/ai/model/provider';
 import {
   getRuntimeResolvedPriceTiers,
+  resolveSTTPricing,
   roundModelPrice,
   normalizeModelPricingForRead,
   normalizeModelPricingForSave
@@ -397,6 +398,8 @@ const ModelConfigForm = ({
     formState: { isDirty }
   } = useForm<AIModelDocumentDataType>({
     defaultValues: (() => {
+      if (initialModelData.type === ModelTypeEnum.stt)
+        return { ...initialModelData, pricing: resolveSTTPricing(initialModelData.pricing) };
       if (initialModelData.type !== ModelTypeEnum.llm) return initialModelData;
       const tiers: Partial<ModelPriceTierType>[] = (initialModelData.pricing?.tiers ?? []).slice(
         0,
@@ -430,6 +433,8 @@ const ModelConfigForm = ({
   }, [getValues, getValuesRef]);
   const reasoningEnabled = useWatch({ control, name: 'config.reasoning' });
   const model = useWatch({ control, name: 'model' });
+  const sttPriceType = useWatch({ control, name: 'pricing.type' }) ?? 'duration';
+  const sttSecondsPerUnit = useWatch({ control, name: 'pricing.secondsPerUnit' }) ?? 60;
 
   useEffect(() => {
     onModelChange?.(model);
@@ -465,9 +470,21 @@ const ModelConfigForm = ({
   const priceUnit = useMemo(() => {
     if (isLLMModel || isEmbeddingModel || isRerankModel) return '/ M Tokens';
     if (isTTSModel) return `/ 1M ${t('common:unit.character')}`;
-    if (isSTTModel) return `/ 60 ${t('common:unit.seconds')}`;
+    if (isSTTModel)
+      return sttPriceType === 'tokens'
+        ? '/ M Tokens'
+        : `/ ${sttSecondsPerUnit} ${t('common:unit.seconds')}`;
     return '';
-  }, [isLLMModel, isEmbeddingModel, isTTSModel, t, isSTTModel, isRerankModel]);
+  }, [
+    isLLMModel,
+    isEmbeddingModel,
+    isTTSModel,
+    t,
+    isSTTModel,
+    isRerankModel,
+    sttPriceType,
+    sttSecondsPerUnit
+  ]);
 
   const { runAsync: submitModelRequest, loading: submittingModel } = useRequest(
     async (data: AIModelDocumentDataType) => {
@@ -786,6 +803,45 @@ const ModelConfigForm = ({
             />
           ) : (
             <Grid templateColumns={['1fr', 'repeat(2, minmax(0, 1fr))']} gap={4}>
+              {isSTTModel && (
+                <>
+                  <Field label={t('config_model:model.stt_billing_type')}>
+                    <MySelect
+                      value={sttPriceType}
+                      list={[
+                        { label: t('config_model:model.stt_billing_duration'), value: 'duration' },
+                        { label: t('config_model:model.stt_billing_tokens'), value: 'tokens' }
+                      ]}
+                      onChange={(value) => {
+                        const unitPrice = getValues('pricing.unitPrice');
+                        setValue(
+                          'pricing',
+                          value === 'tokens'
+                            ? { type: 'tokens', unitPrice }
+                            : { type: 'duration', unitPrice, secondsPerUnit: 60 },
+                          { shouldDirty: true }
+                        );
+                      }}
+                    />
+                  </Field>
+                  {sttPriceType === 'duration' && (
+                    <Field label={t('config_model:model.stt_seconds_per_unit')} required>
+                      <Input
+                        type="number"
+                        step={1}
+                        min={1}
+                        {...InputStyles}
+                        {...register('pricing.secondsPerUnit', {
+                          valueAsNumber: true,
+                          required: true,
+                          min: 1,
+                          validate: Number.isSafeInteger
+                        })}
+                      />
+                    </Field>
+                  )}
+                </>
+              )}
               <Field
                 label={`${t('config_model:model.unitPrice')}`}
                 tip={t('config_model:model.unitPrice_tip')}

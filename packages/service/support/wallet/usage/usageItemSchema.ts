@@ -33,6 +33,19 @@ const UsageItemSchema = new Schema({
   // Params
   inputTokens: Number,
   outputTokens: Number,
+  totalTokens: Number,
+  sttBilling: {
+    type: new Schema(
+      {
+        type: { type: String, enum: ['duration', 'tokens'] },
+        quantity: Number,
+        unitPrice: Number,
+        unitSize: Number
+      },
+      { _id: false }
+    ),
+    default: undefined
+  },
   charsLength: Number,
   duration: Number,
   pages: Number,

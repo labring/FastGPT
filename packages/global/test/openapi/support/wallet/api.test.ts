@@ -1,3 +1,4 @@
+import { UsageListItemSchema } from '../../../../openapi/support/wallet/usage/api';
 import { describe, expect, it } from 'vitest';
 import { openAPIDocument } from '../../../../openapi/provider/devapi';
 import { openAPIPaths, openAPITagGroups } from '../../../../openapi/path';
@@ -40,6 +41,20 @@ describe('wallet OpenAPI contracts', () => {
     '/proApi/support/wallet/bill/invoice/account/getTeamHeader': 'get',
     '/proApi/support/wallet/bill/invoice/account/updateHeader': 'post'
   } as const;
+
+  it('preserves STT quantities and the historical billing snapshot in usage responses', () => {
+    const item = UsageListItemSchema.shape.list.element;
+    const record = {
+      moduleName: 'STT',
+      amount: 0.00077,
+      totalTokens: 77,
+      sttBilling: { type: 'tokens', quantity: 77, unitPrice: 10, unitSize: 1000000 }
+    };
+    expect(item.parse(record)).toEqual(record);
+    expect(item.parse({ moduleName: 'Legacy STT', amount: 1, duration: 77 })).not.toHaveProperty(
+      'sttBilling'
+    );
+  });
 
   it('registers all wallet routes with their real proApi paths and methods', () => {
     for (const [path, method] of Object.entries(routes)) {

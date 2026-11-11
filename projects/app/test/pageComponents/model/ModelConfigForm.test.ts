@@ -17,8 +17,18 @@ vi.mock('@fastgpt/web/hooks/useRequest', () => ({
 }));
 // 只隔离无关的选择器、提示和编辑器；价格输入、Chakra、表单与保存规范化均执行真实代码。
 vi.mock('@fastgpt/web/components/common/MySelect', () => ({
-  default: React.forwardRef(function SelectFixture(_props, _ref) {
-    return null;
+  default: React.forwardRef(function SelectFixture({ value, list, onChange }: any, _ref) {
+    return React.createElement(
+      'select',
+      { value, onChange: (event: any) => onChange?.(event.target.value) },
+      list.map((item: any) =>
+        React.createElement(
+          'option',
+          { key: item.value, value: item.value },
+          typeof item.label === 'string' ? item.label : item.value
+        )
+      )
+    );
   })
 }));
 vi.mock('@fastgpt/web/components/common/MySelect/MultipleSelect', () => ({ default: () => null }));
@@ -157,6 +167,38 @@ describe('ModelConfigForm comprehensive price', () => {
       expect(ModelPricingSchema.parse(save.mock.calls[0][0].pricing).unitPrice).toBe(expected);
     }
   );
+
+  it('switches STT pricing to tokens and removes seconds from the saved configuration', async () => {
+    await render({ type: ModelTypeEnum.stt, unitPrice: 10 });
+    const select = Array.from(container.querySelectorAll('select')).find((element) =>
+      Array.from(element.options).some((option) => option.value === 'tokens')
+    )!;
+    await act(async () => {
+      select.value = 'tokens';
+      select.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    expect(container.textContent).toContain('/ M Tokens');
+    expect(container.querySelector('input[name="pricing.secondsPerUnit"]')).toBeNull();
+    await act(async () => container.querySelector('form')!.requestSubmit());
+    await vi.waitFor(() => expect(save).toHaveBeenCalledOnce());
+    expect(save.mock.calls[0][0].pricing).toEqual({ type: 'tokens', unitPrice: 10 });
+  });
+
+  it('saves an independent seconds denominator and displays the same unit', async () => {
+    await render({ type: ModelTypeEnum.stt, unitPrice: 0.2 });
+    const denominator = container.querySelector<HTMLInputElement>(
+      'input[name="pricing.secondsPerUnit"]'
+    )!;
+    await fillAndBlur(denominator, '30');
+    expect(container.textContent).toContain('/ 30 common:unit.seconds');
+    await act(async () => container.querySelector('form')!.requestSubmit());
+    await vi.waitFor(() => expect(save).toHaveBeenCalledOnce());
+    expect(save.mock.calls[0][0].pricing).toEqual({
+      type: 'duration',
+      unitPrice: 0.2,
+      secondsPerUnit: 30
+    });
+  });
 
   it('preserves explicit free prices and omitted prices after clearing the input', async () => {
     const field = await render({ type: ModelTypeEnum.stt, unitPrice: 0.125 });

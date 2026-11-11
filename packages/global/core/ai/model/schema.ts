@@ -14,22 +14,50 @@ export const ModelPriceTierSchema = z.object({
 });
 export type ModelPriceTierType = z.infer<typeof ModelPriceTierSchema>;
 
-/** 单价只存金额，计价分母由模型类型固定；空对象表示已配置但尚未填写价格。 */
+/** STT 支持独立计价口径；其他类型仍由模型类型确定分母。 */
 export const ModelPricingSchema = z.object({
+  type: z.enum(['duration', 'tokens']).optional().meta({ description: 'STT 计价类型' }),
+  secondsPerUnit: z
+    .number()
+    .int()
+    .positive()
+    .optional()
+    .meta({ description: 'STT 时长计价的秒数分母', example: 60 }),
   tiers: z
     .array(ModelPriceTierSchema)
     .max(5)
     .optional()
     .meta({ description: 'LLM 阶梯价格，下限从上一档上限推导' }),
-  unitPrice: z
-    .number()
-    .min(0)
-    .optional()
-    .meta({ description: '综合单价；Token/TTS 每百万数量，STT 每 60 秒', example: 2 })
+  unitPrice: z.number().min(0).optional().meta({
+    description: '综合单价；Token/TTS 每百万数量，STT 由计价类型及秒数分母决定',
+    example: 2
+  })
 });
 export type ModelPricingType = z.infer<typeof ModelPricingSchema>;
-export const LLMModelPricingSchema = ModelPricingSchema.omit({ unitPrice: true });
-export const UnitModelPricingSchema = ModelPricingSchema.omit({ tiers: true });
+export const LLMModelPricingSchema = ModelPricingSchema.omit({
+  unitPrice: true,
+  type: true,
+  secondsPerUnit: true
+});
+export const UnitModelPricingSchema = ModelPricingSchema.omit({
+  tiers: true,
+  type: true,
+  secondsPerUnit: true
+});
+/** 旧 STT 单价始终表示每 60 秒；只兼容价格，不推断上游用量或读取旧根字段。 */
+export const STTModelPricingSchema = z.union([
+  z.object({
+    // 默认值只兼容旧价格对象；保留可生成完整 OpenAPI 的对象输入结构。
+    type: z.literal('duration').default('duration'),
+    unitPrice: UnitModelPricingSchema.shape.unitPrice,
+    secondsPerUnit: z.number().int().positive().default(60).meta({
+      description: '每个价格单位的秒数',
+      example: 60
+    })
+  }),
+  z.object({ type: z.literal('tokens'), unitPrice: UnitModelPricingSchema.shape.unitPrice })
+]);
+export type STTModelPricingType = z.infer<typeof STTModelPricingSchema>;
 export const PriceTypeSchema = z.object({ pricing: ModelPricingSchema.optional() });
 export type PriceType = z.infer<typeof PriceTypeSchema>;
 
@@ -145,9 +173,9 @@ export const TTSModelDocumentSchema = AIModelDocumentBaseSchema.extend({
 });
 
 export const STTModelDocumentSchema = AIModelDocumentBaseSchema.extend({
-  pricing: UnitModelPricingSchema.optional().meta({
-    description: '每固定计价单位的积分单价；缺省免费',
-    example: { unitPrice: 2 }
+  pricing: STTModelPricingSchema.optional().meta({
+    description: 'STT 按秒数或百万 Tokens 计价；缺省免费',
+    example: { type: 'duration', unitPrice: 2, secondsPerUnit: 60 }
   }),
   type: z.literal(ModelTypeEnum.stt),
   config: STTModelConfigSchema

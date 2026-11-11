@@ -349,5 +349,9 @@
   "model_deprecation.error_plan_changed": "通知计划状态已变化，请刷新后重试",
   "model_deprecation.error_recover_requires_incomplete": "只有失败或中断轮次可以恢复",
   "model_deprecation.error_plan_not_found": "通知计划不存在",
-  "model_deprecation.error_no_terminable_runs": "通知计划当前没有可终止的轮次"
+  "model_deprecation.error_no_terminable_runs": "通知计划当前没有可终止的轮次",
+  "model.stt_billing_type": "计费类型",
+  "model.stt_billing_duration": "按时长",
+  "model.stt_billing_tokens": "按 Tokens",
+  "model.stt_seconds_per_unit": "计价单位（秒）"
 }

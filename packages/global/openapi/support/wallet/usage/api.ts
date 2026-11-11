@@ -1,4 +1,5 @@
 import z from 'zod';
+import { STTBillingSnapshotSchema } from '../../../../core/ai/audio/type';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
 import { DateSchema, IntSchema, NumSchema } from '../../../../common/zod';
 import { UsageSourceEnum } from '../../../../support/wallet/usage/constants';
@@ -53,6 +54,11 @@ const UsageItemSchema = z
     }),
     inputTokens: IntSchema.optional().meta({ example: 1200, description: '输入 token 数' }),
     outputTokens: IntSchema.optional().meta({ example: 800, description: '输出 token 数' }),
+    totalTokens: IntSchema.optional().meta({
+      example: 77,
+      description: 'STT 按 Tokens 计费的总用量'
+    }),
+    sttBilling: STTBillingSnapshotSchema.optional().meta({ description: 'STT 计费口径和价格快照' }),
     charsLength: IntSchema.optional().meta({ example: 2400, description: '文本字符数' }),
     duration: NumSchema.optional().meta({ example: 1.2, description: '处理耗时' }),
     pages: IntSchema.optional().meta({ example: 3, description: '处理页数' }),

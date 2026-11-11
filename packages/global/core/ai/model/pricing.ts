@@ -3,11 +3,17 @@ import { ModelScopeEnum, ModelTypeEnum } from '../constants';
 import {
   LLMModelPricingSchema,
   UnitModelPricingSchema,
+  STTModelPricingSchema,
   type ModelPriceTierType,
   type ModelPricingType,
   type PriceType,
   type AIModelDocumentDataType
 } from './schema';
+import type { STTBillableUsageType } from '../audio/type';
+
+/** 旧 STT 单价按每 60 秒解释；未配置单价保持免费，不读取任何用量字段。 */
+export const resolveSTTPricing = (pricing?: ModelPricingType) =>
+  STTModelPricingSchema.parse(pricing ?? {});
 
 export const MAX_MODEL_PRICE_TIERS = 5;
 
@@ -54,6 +60,8 @@ export const normalizeModelPricingForSave = (
 ): AIModelDocumentDataType => {
   /** 统一单价精度，不改变阶梯边界或未配置状态。 */
   const roundModelPricing = (pricing: ModelPricingType): ModelPricingType => ({
+    ...(pricing.type === undefined ? {} : { type: pricing.type }),
+    ...(pricing.secondsPerUnit === undefined ? {} : { secondsPerUnit: pricing.secondsPerUnit }),
     ...(pricing.unitPrice === undefined ? {} : { unitPrice: roundModelPrice(pricing.unitPrice) }),
     ...(pricing.tiers === undefined
       ? {}
@@ -66,8 +74,9 @@ export const normalizeModelPricingForSave = (
         })
   });
 
-  // 新版保存即使清空价格也持久化空对象，后台迁移不能再用历史价格覆盖此编辑。
+  // 清空价格仍保留已编辑状态；STT 同时保留所选计价口径，不恢复历史根字段。
   const pricing = roundModelPricing(model.pricing ?? {});
+  if (model.type === ModelTypeEnum.stt) return { ...model, pricing: resolveSTTPricing(pricing) };
   if (model.type === ModelTypeEnum.llm)
     return {
       ...model,
@@ -79,18 +88,35 @@ export const normalizeModelPricingForSave = (
   };
 };
 
-/** 仅系统模型计费；新 pricing 缺失与团队模型均免费，分母只由模型类型决定。 */
+/** 仅系统模型计费；STT 必须传入带口径的用量，秒数不再复用 inputTokens。 */
 export const calculateModelPrice = ({
   config,
   inputTokens = 0,
-  outputTokens = 0
+  outputTokens = 0,
+  sttUsage
 }: {
   config?: PriceType & { type?: ModelTypeEnum; scope?: ModelScopeEnum };
   inputTokens?: number;
   outputTokens?: number;
+  sttUsage?: STTBillableUsageType;
 }) => {
   const tiers = getRuntimeResolvedPriceTiers(config);
-  const multiple = config?.type === ModelTypeEnum.stt ? 60 : 1000000;
+  const multiple = 1000000;
+  if (config?.type === ModelTypeEnum.stt) {
+    const pricing = resolveSTTPricing(config.pricing);
+    const quantity =
+      sttUsage?.type === pricing.type
+        ? sttUsage.type === 'duration'
+          ? sttUsage.seconds
+          : sttUsage.totalTokens
+        : 0;
+    const unitSize = pricing.type === 'duration' ? pricing.secondsPerUnit : multiple;
+    const totalPoints =
+      config.scope === ModelScopeEnum.system && Number.isFinite(quantity) && quantity >= 0
+        ? (quantity / unitSize) * (pricing.unitPrice ?? 0)
+        : 0;
+    return { totalPoints, tiers, matchedTier: undefined };
+  }
   const matchedTier =
     tiers.find(
       (tier) => tier.maxInputTokens === undefined || inputTokens / multiple <= tier.maxInputTokens

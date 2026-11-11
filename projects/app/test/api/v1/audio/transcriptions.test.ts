@@ -137,17 +137,17 @@ describe('audio transcription API', () => {
       usage: { seconds: 60, total_tokens: 1733 },
       duration: 60
     },
-    { label: 'legacy token-only usage', usage: { total_tokens: 77 }, duration: 4 },
-    { label: 'missing usage', usage: undefined, duration: 4 },
-    { label: 'zero seconds', usage: { seconds: 0, total_tokens: 77 }, duration: 4 },
-    { label: 'subsecond audio', usage: { seconds: 0.2, total_tokens: 77 }, duration: 1 }
+    { label: 'legacy token-only usage', usage: { total_tokens: 77 }, duration: 0 },
+    { label: 'missing usage', usage: undefined, duration: 0 },
+    { label: 'zero seconds', usage: { seconds: 0, total_tokens: 77 }, duration: 0 },
+    { label: 'subsecond audio', usage: { seconds: 0.2, total_tokens: 77 }, duration: 0.2 }
   ])('records duration and actual STT price for $label', async ({ usage, duration }) => {
     mocks.aiTranscriptions.mockResolvedValue({ text: '测试文本', usage });
 
     const result = await invoke({
       appId: '68ad85a7463006c963799a05',
       chatId: 'chat',
-      duration: 4
+      duration: 'forged-client-value'
     });
 
     // 保留真实计费函数和价格计算，仅在用量持久化入口捕获账单。
@@ -157,12 +157,52 @@ describe('audio transcription API', () => {
       teamId: 'team',
       tmbId: 'member',
       source: UsageSourceEnum.fastgpt,
-      list: [{ modelId: '65f000000000000000000072', duration }]
+      list: [
+        {
+          modelId: '65f000000000000000000072',
+          duration,
+          sttBilling: { type: 'duration', quantity: duration, unitPrice: 0.2, unitSize: 60 }
+        }
+      ]
     });
     expect(bill.totalPoints).toBeCloseTo((duration / 60) * 0.2, 10);
     expect(bill.list?.[0].amount).toBeCloseTo((duration / 60) * 0.2, 10);
     expect(result).toMatchObject({ status: 200, body: { code: 200, data: '测试文本' } });
     expect(mocks.clearDiskTempFiles).toHaveBeenCalledWith([temporaryFile]);
+  });
+
+  it('bills tokens according to the selected model even when seconds are present', async () => {
+    const model = mocks.getDefaultModelData();
+    mocks.getDefaultModelData.mockReturnValue({
+      ...model,
+      pricing: { type: 'tokens', unitPrice: 10 }
+    });
+    mocks.aiTranscriptions.mockResolvedValue({
+      text: '测试文本',
+      usage: { seconds: 3, total_tokens: 77 }
+    });
+    await invoke({ appId: '68ad85a7463006c963799a05', chatId: 'chat' });
+    const bill = createUsageHandler.mock.calls[0][0];
+    expect(bill.totalPoints).toBeCloseTo((77 / 1000000) * 10, 10);
+    expect(bill.list?.[0]).toMatchObject({
+      totalTokens: 77,
+      sttBilling: { type: 'tokens', quantity: 77, unitPrice: 10, unitSize: 1000000 }
+    });
+    expect(bill.list?.[0]).not.toHaveProperty('duration');
+    expect(mocks.getDefaultModelData).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not bill token pricing from seconds when total_tokens is absent', async () => {
+    mocks.getDefaultModelData.mockReturnValue({
+      ...mocks.getDefaultModelData(),
+      pricing: { type: 'tokens', unitPrice: 10 }
+    });
+    mocks.aiTranscriptions.mockResolvedValue({ text: '测试文本', usage: { seconds: 77 } });
+    await invoke({ appId: '68ad85a7463006c963799a05', chatId: 'chat' });
+    expect(createUsageHandler.mock.calls[0][0]).toMatchObject({
+      totalPoints: 0,
+      list: [{ totalTokens: 0 }]
+    });
   });
 
   it('does not create a bill when upstream transcription fails', async () => {
@@ -172,7 +212,7 @@ describe('audio transcription API', () => {
     const result = await invoke({
       appId: '68ad85a7463006c963799a05',
       chatId: 'chat',
-      duration: 4
+      duration: 'forged-client-value'
     });
 
     expect(createUsageHandler).not.toHaveBeenCalled();

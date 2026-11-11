@@ -40,6 +40,18 @@ const props = {
 describe('model table projection', () => {
   it.each([
     {
+      type: ModelTypeEnum.stt,
+      pricing: { type: 'tokens' as const, unitPrice: 10 },
+      price: 10,
+      unit: 'M Tokens'
+    },
+    {
+      type: ModelTypeEnum.stt,
+      pricing: { type: 'duration' as const, unitPrice: 0.2, secondsPerUnit: 30 },
+      price: 0.2,
+      unit: '30common:unit.seconds'
+    },
+    {
       type: ModelTypeEnum.embedding,
       pricing: { unitPrice: 1.234 },
       price: 1.23,

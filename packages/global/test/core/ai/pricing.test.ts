@@ -1,8 +1,10 @@
+import { STTModelPricingSchema } from '@fastgpt/global/core/ai/model/schema';
 import { describe, expect, it } from 'vitest';
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { AIModelDocumentDataType } from '@fastgpt/global/core/ai/model/schema';
 import {
   calculateModelPrice,
+  resolveSTTPricing,
   roundModelPrice,
   getRuntimeResolvedPriceTiers,
   MAX_MODEL_PRICE_TIERS,
@@ -122,8 +124,21 @@ describe('calculateModelPrice', () => {
     (type) => {
       const inputTokens = type === ModelTypeEnum.stt ? 60 : 1000000;
       const config = { type, scope: ModelScopeEnum.system, pricing: { unitPrice: 2 } };
-      expect(calculateModelPrice({ config, inputTokens }).totalPoints).toBe(2);
-      expect(calculateModelPrice({ config, inputTokens: 1 }).totalPoints).toBe(2 / inputTokens);
+      expect(
+        calculateModelPrice({
+          config,
+          inputTokens,
+          sttUsage:
+            type === ModelTypeEnum.stt ? { type: 'duration', seconds: inputTokens } : undefined
+        }).totalPoints
+      ).toBe(2);
+      expect(
+        calculateModelPrice({
+          config,
+          inputTokens: 1,
+          sttUsage: type === ModelTypeEnum.stt ? { type: 'duration', seconds: 1 } : undefined
+        }).totalPoints
+      ).toBe(2 / inputTokens);
       expect(
         calculateModelPrice({ config: { ...config, scope: ModelScopeEnum.team }, inputTokens })
           .totalPoints
@@ -169,17 +184,24 @@ const sttModel = {
   ...model,
   type: ModelTypeEnum.stt as const,
   config: {},
-  pricing: { unitPrice: 0.125 }
+  pricing: { type: 'duration' as const, secondsPerUnit: 60, unitPrice: 0.125 }
 };
 
 describe('normalizeModelPricingForRead', () => {
   it('rounds editing values without changing missing pricing, source rates or precise bounds', () => {
     expect(normalizeModelPricingForRead(model)).toBe(model);
     expect(normalizeModelPricingForRead(tieredModel).pricing).toEqual({ tiers: roundedTiers });
-    expect(normalizeModelPricingForRead(sttModel).pricing).toEqual({ unitPrice: 0.13 });
+    expect(normalizeModelPricingForRead(sttModel).pricing).toEqual({
+      type: 'duration',
+      secondsPerUnit: 60,
+      unitPrice: 0.13
+    });
     expect(tieredModel.pricing.tiers[0].inputPrice).toBe(1.005);
     expect(sttModel.pricing.unitPrice).toBe(0.125);
-    expect(calculateModelPrice({ config: sttModel, inputTokens: 60 }).totalPoints).toBe(0.125);
+    expect(
+      calculateModelPrice({ config: sttModel, sttUsage: { type: 'duration', seconds: 60 } })
+        .totalPoints
+    ).toBe(0.125);
   });
 });
 
@@ -189,13 +211,101 @@ describe('normalizeModelPricingForSave', () => {
     for (const pricing of [{}, { tiers: [] }, { tiers: [{ inputPrice: 0, outputPrice: 0 }] }]) {
       expect(normalizeModelPricingForSave({ ...model, pricing })).toEqual({ ...model, pricing });
     }
-    expect(normalizeModelPricingForSave({ ...sttModel, pricing: undefined }).pricing).toEqual({});
+    expect(normalizeModelPricingForSave({ ...sttModel, pricing: undefined }).pricing).toEqual({
+      type: 'duration',
+      secondsPerUnit: 60
+    });
     expect(
-      normalizeModelPricingForSave({ ...sttModel, pricing: { unitPrice: 0 } }).pricing
+      normalizeModelPricingForSave({
+        ...sttModel,
+        pricing: { type: 'duration', secondsPerUnit: 60, unitPrice: 0 }
+      }).pricing
     ).toEqual({
+      type: 'duration',
+      secondsPerUnit: 60,
       unitPrice: 0
     });
     expect(normalizeModelPricingForSave(tieredModel).pricing).toEqual({ tiers: roundedTiers });
-    expect(normalizeModelPricingForSave(sttModel).pricing).toEqual({ unitPrice: 0.13 });
+    expect(normalizeModelPricingForSave(sttModel).pricing).toEqual({
+      type: 'duration',
+      secondsPerUnit: 60,
+      unitPrice: 0.13
+    });
+  });
+});
+
+describe('STT pricing', () => {
+  const config = { type: ModelTypeEnum.stt, scope: ModelScopeEnum.system };
+  it('normalizes legacy per-minute prices without a database migration', () => {
+    expect(resolveSTTPricing({ unitPrice: 0.2 })).toEqual({
+      type: 'duration',
+      secondsPerUnit: 60,
+      unitPrice: 0.2
+    });
+    expect(resolveSTTPricing()).toEqual({ type: 'duration', secondsPerUnit: 60 });
+    expect(resolveSTTPricing({})).toEqual({ type: 'duration', secondsPerUnit: 60 });
+  });
+  it('rejects invalid pricing instead of silently using a different meter', () => {
+    for (const pricing of [
+      { type: 'unknown' },
+      { type: 'duration', secondsPerUnit: 0 },
+      { type: 'duration', secondsPerUnit: 1.5 },
+      { type: 'duration', secondsPerUnit: Infinity },
+      { type: 'tokens', unitPrice: -1 }
+    ]) {
+      expect(STTModelPricingSchema.safeParse(pricing).success).toBe(false);
+    }
+    expect(
+      STTModelPricingSchema.parse({ type: 'tokens', unitPrice: 10, secondsPerUnit: 60 })
+    ).toEqual({ type: 'tokens', unitPrice: 10 });
+  });
+  it('calculates fractional seconds with the configured denominator and no rounding', () => {
+    expect(
+      calculateModelPrice({
+        config: { ...config, pricing: { type: 'duration', secondsPerUnit: 30, unitPrice: 0.2 } },
+        sttUsage: { type: 'duration', seconds: 0.3 }
+      }).totalPoints
+    ).toBeCloseTo(0.002, 12);
+  });
+  it('uses total tokens with the million-token denominator', () => {
+    expect(
+      calculateModelPrice({
+        config: { ...config, pricing: { type: 'tokens', unitPrice: 10 } },
+        sttUsage: { type: 'tokens', totalTokens: 77 }
+      }).totalPoints
+    ).toBeCloseTo(0.00077, 12);
+  });
+  it('does not use inputTokens or a mismatching meter to bill STT', () => {
+    expect(
+      calculateModelPrice({ config: { ...config, pricing: { unitPrice: 2 } }, inputTokens: 77 })
+        .totalPoints
+    ).toBe(0);
+    expect(
+      calculateModelPrice({
+        config: { ...config, pricing: { type: 'tokens', unitPrice: 2 } },
+        sttUsage: { type: 'duration', seconds: 77 }
+      }).totalPoints
+    ).toBe(0);
+    expect(
+      calculateModelPrice({
+        config: { ...config, pricing: { unitPrice: 2 } },
+        sttUsage: { type: 'duration', seconds: NaN }
+      }).totalPoints
+    ).toBe(0);
+  });
+  it('keeps team and unpriced models free even when upstream usage is present', () => {
+    expect(
+      calculateModelPrice({
+        config: {
+          ...config,
+          scope: ModelScopeEnum.team,
+          pricing: { type: 'tokens', unitPrice: 2 }
+        },
+        sttUsage: { type: 'tokens', totalTokens: 77 }
+      }).totalPoints
+    ).toBe(0);
+    expect(
+      calculateModelPrice({ config, sttUsage: { type: 'duration', seconds: 77 } }).totalPoints
+    ).toBe(0);
   });
 });
