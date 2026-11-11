@@ -70,7 +70,7 @@ routes:
 related:
   - "FG-ADMIN-CONFIG-001"
   - "FG-ADMIN-CONFIG-003"
-baseline: "ab2ad2fa4bbd069fa3cf6c1e61cc7aaadc6d3da7"
+baseline: "e3c79af52eb772e7318e829f0cadcce558bd9a40"
 ---
 
 # 子服务与存储策略：AI Proxy、代码沙箱与下载模式
