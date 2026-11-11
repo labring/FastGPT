@@ -136,7 +136,8 @@ export const datasetParseQueue = async (): Promise<any> => {
   global.datasetParseQueueLen++;
 
   try {
-    while (true) {
+    // 配置下调后先完成在途任务，再让超额循环退出；每次领取前重新读取上限。
+    while (global.datasetParseQueueLen <= (global.systemEnv?.datasetParseMaxProcess || 10)) {
       const startTime = Date.now();
 
       let claimed;

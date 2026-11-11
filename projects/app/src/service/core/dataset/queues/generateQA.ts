@@ -57,7 +57,8 @@ export async function generateQA(): Promise<any> {
   global.qaQueueLen++;
 
   try {
-    while (true) {
+    // 配置下调后先完成在途任务，再让超额循环退出；每次领取前重新读取上限。
+    while (global.qaQueueLen <= (global.systemEnv?.qaMaxProcess || 10)) {
       const startTime = Date.now();
       // get training data
       let claimed;

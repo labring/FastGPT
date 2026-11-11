@@ -65,7 +65,8 @@ export async function generatePreCreatedData(): Promise<any> {
   global.preCreatedQueueLen++;
 
   try {
-    while (true) {
+    // 配置下调后先完成在途任务，再让超额循环退出；每次领取前重新读取上限。
+    while (global.preCreatedQueueLen <= (global.systemEnv?.vectorMaxProcess || 10)) {
       const start = Date.now();
       let claimed;
       try {
