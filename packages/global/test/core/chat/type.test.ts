@@ -1,4 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import { AppChatLogSchema } from '@fastgpt/global/core/app/logs/type';
+import { ChatLogItemSchema } from '@fastgpt/global/openapi/core/app/log/api';
+import { ChatPublishSourceResponseSchema } from '@fastgpt/global/core/chat/publishSource/type';
 import {
   ChatSchema,
   ToolModuleResponseItemSchema,
@@ -52,7 +55,7 @@ describe('ChatSchema', () => {
     }
   });
 
-  it('should reject invalid chat source', () => {
+  it('should normalize an unrecognized chat source to unknown', () => {
     const result = ChatSchema.safeParse({
       _id: objectId,
       chatId,
@@ -70,7 +73,32 @@ describe('ChatSchema', () => {
       hasBeenRead: false
     });
 
-    expect(result.success).toBe(false);
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.source).toBe(ChatSourceEnum.unknown);
+  });
+
+  it('日常会话、统计桶和日志响应统一兼容无效来源，保留有效来源及渠道信息', () => {
+    for (const schema of [ChatSchema, AppChatLogSchema, ChatLogItemSchema]) {
+      const sources = schema.pick({ source: true, publishSource: true });
+      for (const value of ['历史渠道名', null, '', 0, false, {}]) {
+        expect(sources.parse({ source: value, publishSource: { type: value } })).toEqual({
+          source: ChatSourceEnum.unknown,
+          publishSource: { type: ChatSourceEnum.unknown }
+        });
+      }
+      expect(sources.parse({})).toEqual({ source: ChatSourceEnum.unknown });
+      expect(
+        sources.parse({ source: 'share', publishSource: { type: 'api', id: objectId } })
+      ).toEqual({ source: 'share', publishSource: { type: 'api', id: objectId } });
+      expect(() =>
+        sources.parse({ source: '历史渠道名', publishSource: { type: 'future', id: 'invalid' } })
+      ).toThrow();
+    }
+    // 可选字段缺失仍表示未记录，不能因为 catch 生成一个虚构的来源。
+    expect(ChatPublishSourceResponseSchema.parse({ name: '历史渠道' })).toEqual({
+      name: '历史渠道'
+    });
+    expect(ChatSchema.shape.sourceType.safeParse('future-resource').success).toBe(false);
   });
 });
 

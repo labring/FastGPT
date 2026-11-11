@@ -1,5 +1,6 @@
 {
   "source_dingtalk": "釘釘",
+  "source_unknown": "未知",
   "AI_input_is_empty": "傳送至 AI 節點的內容為空",
   "LLM_model_response_empty": "模型響應為空，請查看模型詳情請求",
   "Next": "下一個",

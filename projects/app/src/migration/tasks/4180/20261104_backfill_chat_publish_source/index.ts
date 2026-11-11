@@ -181,7 +181,13 @@ export const backfillChatPublishSource = async (context: SystemMigrationContext)
     missingChannelIds += await collection.countDocuments({
       ...range,
       'publishSource.type': {
-        $nin: [ChatSourceEnum.online, ChatSourceEnum.test, ChatSourceEnum.cronJob]
+        $nin: [
+          ChatSourceEnum.online,
+          ChatSourceEnum.test,
+          ChatSourceEnum.cronJob,
+          // 未知来源没有可确认的渠道，不计入已知外部渠道缺失 ID 的数量。
+          ChatSourceEnum.unknown
+        ]
       },
       'publishSource.id': null
     });
