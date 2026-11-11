@@ -4,6 +4,34 @@ export enum InformLevelEnum {
   'emergency' = 'emergency'
 }
 
+export enum ModelDeprecationInformChannelEnum {
+  inApp = 'inApp',
+  sms = 'sms',
+  email = 'email'
+}
+
+export enum ModelDeprecationInformRunKindEnum {
+  delivery = 'delivery',
+  retry = 'retry'
+}
+
+export enum ModelDeprecationInformRunStatusEnum {
+  scheduled = 'scheduled',
+  running = 'running',
+  completed = 'completed',
+  failed = 'failed',
+  interrupted = 'interrupted',
+  terminated = 'terminated',
+  skipped = 'skipped'
+}
+
+export enum ModelDeprecationInformFailureStatusEnum {
+  unresolved = 'unresolved',
+  resolved = 'resolved',
+  superseded = 'superseded',
+  notApplicable = 'not_applicable'
+}
+
 export const InformLevelMap = {
   [InformLevelEnum.common]: {
     label: '普通'
@@ -41,5 +69,6 @@ export enum SendInformTemplateCodeEnum {
   DATASET_INDEX_THIRTY_PERCENT_REMAIN = 'DATASET_INDEX_THIRTY_PERCENT_REMAIN', // 数据集索引30%剩余
 
   MANAGE_RENAME = 'MANAGE_RENAME', // 管理员重命名
+  MODEL_DEPRECATION = 'MODEL_DEPRECATION', // 模型下架提醒
   CUSTOM = 'CUSTOM' // 自定义
 }

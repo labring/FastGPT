@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({
   authDatasetCollectionCreate: vi.fn(),
   checkDatasetIndexLimit: vi.fn(),
+  getDatasetModelAuthContext: vi.fn(),
   getFileMetadata: vi.fn(),
   createCollectionAndInsertData: vi.fn()
 }));
@@ -25,6 +26,10 @@ vi.mock('@fastgpt/service/common/s3/sources/dataset', () => ({
 
 vi.mock('@fastgpt/service/support/permission/teamLimit', () => ({
   checkDatasetIndexLimit: mocks.checkDatasetIndexLimit
+}));
+
+vi.mock('@fastgpt/service/core/dataset/model', () => ({
+  getDatasetModelAuthContext: mocks.getDatasetModelAuthContext
 }));
 
 vi.mock('@fastgpt/service/core/dataset/collection/controller', () => ({
@@ -49,6 +54,10 @@ describe('collection create from fileId key binding', () => {
       dataset: { _id: datasetId }
     });
     mocks.checkDatasetIndexLimit.mockResolvedValue(undefined);
+    mocks.getDatasetModelAuthContext.mockResolvedValue({
+      modelHandle: {},
+      authorizedIds: []
+    });
     mocks.getFileMetadata.mockResolvedValue({ filename: 'demo.pdf' });
     mocks.createCollectionAndInsertData.mockResolvedValue({
       collectionId: '68ad85a7463006c963799440',

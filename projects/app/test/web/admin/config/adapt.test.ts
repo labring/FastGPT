@@ -134,7 +134,11 @@ describe('formatFormData2ConfigStore', () => {
         loginSettings: {
           email: {},
           phone: {},
-          sms: { LOGIN: 'SMS_LOGIN', LOGIN_EN: 'SMS_LOGIN_EN' },
+          sms: {
+            LOGIN: 'SMS_LOGIN',
+            LOGIN_EN: 'SMS_LOGIN_EN',
+            MODEL_DEPRECATION: 'SMS_MODEL_DEPRECATION'
+          },
           github: {},
           wechat: {},
           wecom: {},
@@ -149,7 +153,8 @@ describe('formatFormData2ConfigStore', () => {
 
     expect(result.fastgptPro.auth?.sms).toMatchObject({
       LOGIN: 'SMS_LOGIN',
-      LOGIN_EN: 'SMS_LOGIN_EN'
+      LOGIN_EN: 'SMS_LOGIN_EN',
+      MODEL_DEPRECATION: 'SMS_MODEL_DEPRECATION'
     });
   });
 

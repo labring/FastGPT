@@ -48,9 +48,11 @@ const SettingLLMModel = ({ defaultData, onChange, ...props }: AIChatSettingsModa
         }
       })}
       position={'relative'}
+      minW={0}
+      maxW={'100%'}
     >
-      <HStack spacing={1}>
-        <Box flex={'1 0 0'}>
+      <HStack spacing={1} minW={0}>
+        <Box flex={'1 1 0'} minW={0}>
           <AIModelSelector
             {...props}
             modelType={ModelTypeEnum.llm}

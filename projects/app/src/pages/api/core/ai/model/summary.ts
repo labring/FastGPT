@@ -6,6 +6,7 @@ import {
   type GetModelSummariesBody,
   type GetModelSummariesResponse
 } from '@fastgpt/global/openapi/core/ai/model/summary';
+import { isSystemModel } from '@fastgpt/global/core/ai/model/utils';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
@@ -62,6 +63,7 @@ export async function handler(
       const isPermitted = authorizedIds.has(modelId) || appBaselineModelIds.has(modelId);
       return {
         modelId,
+        isUpcomingDeprecation: isSystemModel(model) ? model.isUpcomingDeprecation : undefined,
         type: model.type,
         name: model.name,
         avatar: model.avatar,

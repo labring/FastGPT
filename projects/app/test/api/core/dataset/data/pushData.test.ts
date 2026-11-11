@@ -1,9 +1,20 @@
+vi.mock('@fastgpt/service/core/dataset/entity', () => ({
+  findDatasetIndexModelReferences: vi.fn().mockResolvedValue([
+    {
+      _id: '507f1f77bcf86cd799439011',
+      vectorModelId: 'vec-model',
+      vectorModel: 'vec-model'
+    }
+  ])
+}));
+
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   parseApiInput: vi.fn(),
   authDatasetCollection: vi.fn(),
+  getAuthorizedModelIds: vi.fn(),
   checkDatasetIndexLimit: vi.fn(),
   getSystemModelHandle: vi.fn(),
   getTeamModelHandle: vi.fn(),
@@ -25,6 +36,10 @@ vi.mock('@fastgpt/service/common/zod/requestParseError', () => ({
 
 vi.mock('@fastgpt/service/support/permission/dataset/auth', () => ({
   authDatasetCollection: mocks.authDatasetCollection
+}));
+
+vi.mock('@fastgpt/service/support/permission/model/auth', () => ({
+  getAuthorizedModelIds: mocks.getAuthorizedModelIds
 }));
 
 vi.mock('@fastgpt/service/support/permission/teamLimit', () => ({
@@ -66,9 +81,11 @@ describe('pushData imageId authorization', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.getAuthorizedModelIds.mockResolvedValue(new Set<string>());
     mocks.authDatasetCollection.mockResolvedValue({
       teamId: 'team-a',
       tmbId: 'tmb-a',
+      isRoot: false,
       collection: {
         _id: collectionId,
         datasetId,
