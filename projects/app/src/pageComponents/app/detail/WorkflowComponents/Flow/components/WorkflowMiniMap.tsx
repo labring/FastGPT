@@ -180,22 +180,16 @@ const drawMiniMap = (
 
   model.nodes.forEach(({ rect, selected }) => {
     const mapped = mapRect(rect, model.transform);
-    context.fillStyle = selected ? '#31323E' : '#CBD5E0';
-    context.strokeStyle = selected ? '#2B3C30' : '#A0AEC0';
-    context.lineWidth = 1;
+    context.fillStyle = selected ? '#E2E2E2' : '#E2E2E2';
     context.fillRect(mapped.x, mapped.y, mapped.width, mapped.height);
-    context.strokeRect(mapped.x, mapped.y, mapped.width, mapped.height);
   });
 
   const view = mapRect(model.viewport, model.transform);
   context.beginPath();
   context.rect(0, 0, width, height);
   context.rect(view.x, view.y, view.width, view.height);
-  context.fillStyle = 'rgba(255, 255, 255, 0.72)';
+  context.fillStyle = 'rgba(240, 240, 240, 0.6)';
   context.fill('evenodd');
-  context.strokeStyle = '#91929E';
-  context.lineWidth = 1;
-  context.strokeRect(view.x, view.y, view.width, view.height);
 };
 
 const WorkflowMiniMap = React.memo(function WorkflowMiniMap({
