@@ -25,11 +25,15 @@ export const getNodeToolSetList = (tool: Pick<FlowNodeTemplateType, 'toolConfig'
 const ToolSetList = ({
   toolList,
   title,
-  onSaveDescription
+  onSaveDescription,
+  emptyText,
+  emptyMinH
 }: {
   toolList: ToolSetListItemType[];
   title?: React.ReactNode;
   onSaveDescription: (index: number, description: string) => void;
+  emptyText?: string;
+  emptyMinH?: string;
 }) => {
   const { t } = useTranslation();
   const [editingItem, setEditingItem] = useState<{
@@ -114,6 +118,13 @@ const ToolSetList = ({
             </Box>
           </Flex>
         ))}
+        {toolList.length === 0 && emptyText && (
+          <Flex minH={emptyMinH} alignItems={'center'} justifyContent={'center'} px={4}>
+            <Box color={'myGray.500'} fontSize={'sm'} textAlign={'center'} data-empty-state>
+              {emptyText}
+            </Box>
+          </Flex>
+        )}
       </Box>
       {editingItem && (
         <MyModal

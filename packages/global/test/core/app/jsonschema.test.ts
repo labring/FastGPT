@@ -94,6 +94,29 @@ describe('parseToolParamJsonSchema', () => {
 });
 
 describe('jsonSchema2NodeInput', () => {
+  it.each(['mcp', 'http', 'systemTool'] as const)(
+    'applies the %s input default without overriding explicit flags',
+    (schemaType) => {
+      const inputs = jsonSchema2NodeInput({
+        schemaType,
+        jsonSchema: {
+          type: 'object',
+          properties: {
+            implicit: { type: 'string' },
+            manual: { type: 'string', isToolParam: false },
+            generated: { type: 'string', isToolParam: true }
+          }
+        }
+      });
+
+      expect(inputs.map(({ defaultToAgentGenerated }) => defaultToAgentGenerated)).toEqual([
+        schemaType === 'mcp' ? true : undefined,
+        false,
+        true
+      ]);
+    }
+  );
+
   const omitPreservedSchema = (inputs: FlowNodeInputItemType[]) =>
     inputs.map(({ customJsonSchema: _customJsonSchema, ...input }) => input);
 
@@ -498,6 +521,7 @@ describe('jsonSchema2NodeInput', () => {
     const expectResponse = [
       {
         key: 'name',
+        defaultToAgentGenerated: true,
         label: 'name',
         valueType: 'string',
         description: 'User name',
@@ -507,6 +531,7 @@ describe('jsonSchema2NodeInput', () => {
       },
       {
         key: 'age',
+        defaultToAgentGenerated: true,
         label: 'age',
         valueType: 'number',
         toolDescription: 'age',
@@ -517,6 +542,7 @@ describe('jsonSchema2NodeInput', () => {
       },
       {
         key: 'withoutDesc',
+        defaultToAgentGenerated: true,
         label: 'withoutDesc',
         valueType: 'string',
         toolDescription: 'withoutDesc',
@@ -551,6 +577,7 @@ describe('jsonSchema2NodeInput', () => {
     expect(omitPreservedSchema(result)).toEqual([
       {
         key: 'sources',
+        defaultToAgentGenerated: true,
         label: '热榜来源',
         valueType: WorkflowIOValueTypeEnum.arrayString,
         description: '选择热榜来源网站（可多选）',

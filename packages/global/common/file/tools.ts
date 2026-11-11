@@ -235,12 +235,16 @@ export const parseContentDispositionFilename = (contentDisposition?: string) => 
   }
 
   // 精确匹配普通参数，避免解码失败后再次把 filename* 当作备用文件名。
-  const filenameRegex = /(?:^|;)\s*filename\s*=\s*((['"]).*?\2|[^;\n]*)/i;
+  // 双引号值是 RFC 6266 的 quoted-string，里面的 `\"` 是转义而不是结束引号。
+  const filenameRegex = /(?:^|;)\s*filename\s*=\s*("(?:[^"\\]|\\.)*"|'[^']*'|[^;\n]*)/i;
   const matches = filenameRegex.exec(contentDisposition);
   if (matches?.[1]) {
     const filename = matches[1];
     const quote = filename[0];
-    if ((quote === '"' || quote === "'") && filename.endsWith(quote)) {
+    if (quote === '"' && filename.endsWith(quote)) {
+      return filename.slice(1, -1).replace(/\\(.)/g, '$1');
+    }
+    if (quote === "'" && filename.endsWith(quote)) {
       return filename.slice(1, -1);
     }
     return filename;
