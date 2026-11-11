@@ -994,6 +994,8 @@ export const GPTMessages2Chats = ({
                 msg.tool_call_id === tool.id
             )?.content;
             const toolResponse = getToolResponseText(toolContent);
+            const parsedContent =
+              ChatCompletionToolMessageContentPartSchema.array().safeParse(toolContent);
 
             const toolInfo = getToolInfo?.(tool.function.name);
 
@@ -1004,7 +1006,8 @@ export const GPTMessages2Chats = ({
                 toolAvatar: toolInfo?.avatar || '',
                 functionName: tool.function.name,
                 params: tool.function.arguments,
-                response: toolResponse as string
+                response: toolResponse as string,
+                ...(parsedContent.success ? { content: parsedContent.data } : {})
               }
             ];
           });
@@ -1012,19 +1015,7 @@ export const GPTMessages2Chats = ({
             value.push({
               ...valueVisibility,
               ...(!hasAttachedReasoning ? reasoning : {}),
-              tools: tools.map((tool) => {
-                const toolContent = normalizedMessages.find(
-                  (msg) =>
-                    msg.role === ChatCompletionRequestMessageRoleEnum.Tool &&
-                    msg.tool_call_id === tool.id
-                )?.content;
-                const parsedContent =
-                  ChatCompletionToolMessageContentPartSchema.array().safeParse(toolContent);
-                return {
-                  ...tool,
-                  ...(parsedContent.success ? { content: parsedContent.data } : {})
-                };
-              })
+              tools
             });
             hasAttachedReasoning = hasAttachedReasoning || Boolean(reasoning.reasoning);
           }
