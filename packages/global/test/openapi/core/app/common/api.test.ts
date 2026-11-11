@@ -8,7 +8,11 @@ import {
   OpenAPIAppScheduledTriggerConfigSchema,
   UpdateAppBodySchema
 } from '@fastgpt/global/openapi/core/app/common/api';
-import { PublishAppBodySchema } from '@fastgpt/global/openapi/core/app/version/api';
+import {
+  PublishAppBodySchema,
+  PublishAppRequestBodySchema
+} from '@fastgpt/global/openapi/core/app/version/api';
+import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import type { z } from 'zod';
 import { describe, expect, it } from 'vitest';
 
@@ -159,6 +163,269 @@ describe('PublishAppBodySchema', () => {
 
     expect(result).not.toHaveProperty('nodes.0.unsupportedNodeField');
     expect(result).not.toHaveProperty('nodes.0.inputs.0.unsupportedInputField');
+  });
+
+  it('documents toolset App runtime roots without weakening normal workflow validation', () => {
+    const toolsetNode = {
+      ...currentNode,
+      flowNodeType: 'toolSet',
+      toolConfig: {
+        mcpToolSet: {
+          url: 'https://mcp.example.com',
+          toolList: [{ name: 'search', description: 'Search', inputSchema: { type: 'object' } }]
+        }
+      }
+    };
+
+    expect(PublishAppRequestBodySchema.safeParse({ nodes: [toolsetNode] }).success).toBe(true);
+    expect(PublishAppBodySchema.safeParse({ nodes: [toolsetNode] }).success).toBe(false);
+  });
+});
+
+describe('persisted workflow node tool secrets', () => {
+  const parseCreateNode = (node: StoreNodeItemType) =>
+    CreateAppRequestBodySchema.safeParse({
+      name: 'tool secret app',
+      type: 'simple',
+      nodes: [node],
+      edges: []
+    }).success;
+
+  it.each([
+    {
+      nodeType: 'external MCP tool reference',
+      flowNodeType: 'tool',
+      toolConfig: {
+        mcpTool: { toolId: 'mcp-app/search', headerSecret: { Authorization: { value: 'secret' } } }
+      },
+      pluginId: undefined
+    },
+    {
+      nodeType: 'external HTTP tool set',
+      flowNodeType: 'toolSet',
+      toolConfig: {
+        httpToolSet: {
+          toolId: 'http-app',
+          headerSecret: { Authorization: { value: 'secret' } },
+          toolList: []
+        }
+      },
+      pluginId: 'http-app'
+    }
+  ])('rejects a secret on $nodeType', ({ flowNodeType, toolConfig, pluginId }) => {
+    const node = {
+      ...currentNode,
+      flowNodeType,
+      pluginId,
+      toolConfig
+    } as StoreNodeItemType;
+
+    expect(parseCreateNode(node)).toBe(false);
+  });
+
+  it.each([
+    {
+      toolSetKey: 'mcpToolSet',
+      config: {
+        url: 'https://mcp.example.com',
+        headerSecret: { Authorization: { value: 'secret' } },
+        toolList: [{ name: 'search', description: 'Search' }]
+      }
+    },
+    {
+      toolSetKey: 'httpToolSet',
+      config: {
+        apiSchemaUrl: 'https://api.example.com/openapi.json',
+        headerSecret: { Authorization: { value: 'secret' } },
+        toolList: [{ name: 'search', description: 'Search' }]
+      }
+    }
+  ] as const)('keeps a secret on a node-local $toolSetKey', ({ toolSetKey, config }) => {
+    const toolConfig = {
+      [toolSetKey]: config
+    };
+    const node = {
+      ...currentNode,
+      flowNodeType: 'toolSet',
+      toolConfig
+    } as StoreNodeItemType;
+
+    expect(parseCreateNode(node)).toBe(true);
+  });
+
+  it.each([
+    {
+      toolSetKey: 'mcpToolSet',
+      config: {
+        url: 'https://mcp.example.com',
+        toolList: [
+          {
+            name: 'search',
+            description: 'Search',
+            inputSchema: { type: 'object' }
+          }
+        ]
+      }
+    },
+    {
+      toolSetKey: 'httpToolSet',
+      config: {
+        baseUrl: 'https://api.example.com',
+        apiSchemaStr: '{"openapi":"3.0.0"}',
+        toolList: [
+          {
+            name: 'search',
+            description: 'Search',
+            path: '/search',
+            method: 'GET',
+            inputSchema: { type: 'object' }
+          }
+        ]
+      }
+    }
+  ] as const)(
+    'rejects a full $toolSetKey runtime config on independent workflow nodes',
+    ({ toolSetKey, config }) => {
+      const node = {
+        ...currentNode,
+        flowNodeType: 'toolSet',
+        toolConfig: { [toolSetKey]: config }
+      } as StoreNodeItemType;
+
+      expect(parseCreateNode(node)).toBe(false);
+    }
+  );
+
+  it.each([
+    {
+      appType: 'toolSet',
+      toolSetKey: 'mcpToolSet',
+      config: {
+        url: 'https://mcp.example.com',
+        headerSecret: { Authorization: { value: 'secret' } },
+        toolList: [
+          {
+            name: 'search',
+            description: 'Search',
+            inputSchema: { type: 'object' },
+            unsupportedToolField: true
+          }
+        ],
+        unsupportedRuntimeField: true
+      }
+    },
+    {
+      appType: 'httpToolSet',
+      toolSetKey: 'httpToolSet',
+      config: {
+        baseUrl: 'https://api.example.com',
+        apiSchemaStr: '{"openapi":"3.0.0"}',
+        headerSecret: { Authorization: { value: 'secret' } },
+        toolList: [
+          {
+            name: 'search',
+            description: 'Search',
+            path: '/search',
+            method: 'GET',
+            inputSchema: { type: 'object' }
+          }
+        ],
+        unsupportedRuntimeField: true
+      }
+    }
+  ] as const)(
+    'accepts and cleans a full $toolSetKey runtime config on its source App root',
+    ({ appType, toolSetKey, config }) => {
+      const result = CreateAppRequestBodySchema.safeParse({
+        name: 'toolset app',
+        type: appType,
+        nodes: [
+          {
+            ...currentNode,
+            flowNodeType: 'toolSet',
+            toolConfig: { [toolSetKey]: config }
+          }
+        ],
+        edges: []
+      });
+
+      expect(result.success).toBe(true);
+      if (!result.success) return;
+
+      const parsedConfig = result.data.nodes?.[0].toolConfig?.[toolSetKey];
+      expect(parsedConfig).not.toHaveProperty('unsupportedRuntimeField');
+      expect(parsedConfig?.toolList?.[0]).not.toHaveProperty('unsupportedToolField');
+    }
+  );
+
+  it.each([
+    {
+      appType: 'httpToolSet',
+      toolSetKey: 'mcpToolSet',
+      config: {
+        url: 'https://mcp.example.com',
+        toolList: [{ name: 'search', description: 'Search', inputSchema: { type: 'object' } }]
+      }
+    },
+    {
+      appType: 'toolSet',
+      toolSetKey: 'httpToolSet',
+      config: {
+        toolList: [
+          {
+            name: 'search',
+            description: 'Search',
+            path: '/search',
+            method: 'GET',
+            inputSchema: { type: 'object' }
+          }
+        ]
+      }
+    }
+  ] as const)(
+    'rejects a full $toolSetKey config on a mismatched source App',
+    ({ appType, toolSetKey, config }) => {
+      expect(
+        CreateAppRequestBodySchema.safeParse({
+          name: 'mismatched toolset app',
+          type: appType,
+          nodes: [
+            {
+              ...currentNode,
+              flowNodeType: 'toolSet',
+              toolConfig: { [toolSetKey]: config }
+            }
+          ],
+          edges: []
+        }).success
+      ).toBe(false);
+    }
+  );
+
+  it('rejects a full MCP runtime config outside the source App root node', () => {
+    expect(
+      CreateAppRequestBodySchema.safeParse({
+        name: 'toolset app',
+        type: 'toolSet',
+        nodes: [
+          currentNode,
+          {
+            ...currentNode,
+            nodeId: 'toolset-2',
+            flowNodeType: 'toolSet',
+            toolConfig: {
+              mcpToolSet: {
+                url: 'https://mcp.example.com',
+                toolList: [
+                  { name: 'search', description: 'Search', inputSchema: { type: 'object' } }
+                ]
+              }
+            }
+          }
+        ],
+        edges: []
+      }).success
+    ).toBe(false);
   });
 });
 

@@ -474,6 +474,52 @@ describe('dispatchRunTool runtime toolset auth', () => {
     );
   });
 
+  it('executes inline HTTP tools without external authorization', async () => {
+    const tool = {
+      name: 'search',
+      description: 'Search documents',
+      path: '/search',
+      method: 'get',
+      inputSchema: {
+        type: 'object',
+        properties: { query: { type: 'string' } },
+        required: ['query']
+      },
+      requestSchema: {
+        type: 'object',
+        properties: { query: { type: 'string' } },
+        required: ['query']
+      },
+      outputSchema: { type: 'object', properties: { ok: { type: 'boolean' } } },
+      baseUrl: 'https://api.example.com',
+      apiSchemaStr: '{"openapi":"3.0.0"}',
+      customHeaders: '{"X-Trace":"enabled"}',
+      headerSecret: { Authorization: { value: '', secret: 'encrypted-token' } }
+    };
+    runHTTPToolMock.mockResolvedValueOnce({ data: { ok: true } });
+
+    const result = await dispatchRunTool(
+      createRunToolProps({ httpTool: tool }, { query: 'fastgpt' })
+    );
+
+    expect(authAppByTmbIdMock).not.toHaveBeenCalled();
+    expect(getHTTPToolListMock).not.toHaveBeenCalled();
+    expect(runHTTPToolMock).toHaveBeenCalledExactlyOnceWith({
+      apiSchemaStr: tool.apiSchemaStr,
+      baseUrl: tool.baseUrl,
+      toolPath: tool.path,
+      method: tool.method,
+      params: { query: 'fastgpt' },
+      headerSecret: tool.headerSecret,
+      customHeaders: { 'X-Trace': 'enabled' },
+      staticParams: undefined,
+      staticHeaders: undefined,
+      staticBody: undefined,
+      resolveReference: expect.any(Function)
+    });
+    expect(result.data).toEqual({ [NodeOutputKeyEnum.rawResponse]: { ok: true }, ok: true });
+  });
+
   it('should reject MCP tool execution when running app tmb has no parent toolset permission', async () => {
     authAppByTmbIdMock.mockRejectedValueOnce(new Error('unAuthApp'));
 
@@ -590,6 +636,39 @@ describe('dispatchRunTool runtime toolset auth', () => {
 
     expect(result.error?.[NodeOutputKeyEnum.errorText]).toBe('Invalid MCP URL');
     expect(mockLogger.error).toHaveBeenCalledWith('Tool Run Error', { error: result.rawError });
+  });
+
+  it('executes inline MCP tools without external resource authorization', async () => {
+    const url = 'https://mcp.example.com';
+    mcpToolCallMock.mockResolvedValueOnce({ ok: true });
+
+    const result = await dispatchRunTool(
+      createRunToolProps(
+        {
+          mcpTool: {
+            name: 'search',
+            description: 'Search documents',
+            inputSchema: { type: 'object' },
+            url,
+            headerSecret: { 'X-API-Key': { value: 'inline-token', secret: '' } }
+          }
+        },
+        { query: 'fastgpt' }
+      )
+    );
+
+    expect(authAppByTmbIdMock).not.toHaveBeenCalled();
+    expect(getMCPChildrenMock).not.toHaveBeenCalled();
+    expect(MCPClient).toHaveBeenCalledWith({
+      url,
+      headers: { 'X-API-Key': 'inline-token' }
+    });
+    expect(mcpToolCallMock).toHaveBeenCalledWith({
+      toolName: 'search',
+      params: { query: 'fastgpt' },
+      closeConnection: false
+    });
+    expect(result.data).toEqual({ [NodeOutputKeyEnum.rawResponse]: { ok: true } });
   });
 
   it('resolves MCP auth references per call and reuses clients for matching auth', async () => {
