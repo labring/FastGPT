@@ -321,6 +321,35 @@ describe('request utils', () => {
   });
 
   describe('responseError', () => {
+    it('preserves an unsupported catalog response status', async () => {
+      const err = {
+        response: {
+          status: 501,
+          data: { success: false, message: 'model catalog is unsupported' }
+        }
+      };
+
+      await expect(responseError(err)).rejects.toEqual({
+        success: false,
+        message: 'model catalog is unsupported',
+        status: 501
+      });
+    });
+
+    it('does not change other object error responses', async () => {
+      const err = {
+        response: {
+          status: 502,
+          data: { success: false, message: 'upstream unavailable' }
+        }
+      };
+
+      await expect(responseError(err)).rejects.toEqual({
+        success: false,
+        message: 'upstream unavailable'
+      });
+    });
+
     it('suppresses concurrent token errors during intentional logout', async () => {
       mockLocation.pathname = '/dashboard';
       beginLogout();

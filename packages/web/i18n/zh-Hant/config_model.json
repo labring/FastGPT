@@ -208,6 +208,7 @@
   "channel_import_result_skipped": "已略過",
   "channel_import_result_failed": "失敗",
   "channel_import_load_error": "模型目錄讀取失敗",
+  "channel_import_unsupported": "目前渠道上游不支援取得模型目錄",
   "channel_import_template_load_error": "範本清單載入失敗",
   "channel_import_apply_error": "批次匯入失敗",
   "channel_import_empty": "此渠道沒有模型",

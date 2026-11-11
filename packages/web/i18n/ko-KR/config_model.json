@@ -208,6 +208,7 @@
   "channel_import_result_skipped": "건너뜀",
   "channel_import_result_failed": "실패",
   "channel_import_load_error": "채널 모델 목록을 불러오지 못했습니다",
+  "channel_import_unsupported": "이 채널의 상위 제공업체는 모델 목록 조회를 지원하지 않습니다",
   "channel_import_template_load_error": "모델 템플릿을 불러오지 못했습니다",
   "channel_import_apply_error": "선택한 모델을 적용하지 못했습니다",
   "channel_import_empty": "이 채널에는 모델이 없습니다",

@@ -208,6 +208,7 @@
   "channel_import_result_skipped": "Skipped",
   "channel_import_result_failed": "Failed",
   "channel_import_load_error": "Could not load the channel model list",
+  "channel_import_unsupported": "The channel upstream does not support listing models",
   "channel_import_template_load_error": "Could not load model templates",
   "channel_import_apply_error": "Could not apply the selected models",
   "channel_import_empty": "This channel has no models",

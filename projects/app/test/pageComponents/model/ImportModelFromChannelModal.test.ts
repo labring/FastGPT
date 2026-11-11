@@ -197,6 +197,47 @@ afterEach(async () => {
 const flush = async () => new Promise<void>((resolve) => window.setTimeout(resolve, 0));
 
 describe('ImportModelFromChannelModal', () => {
+  it.each([
+    {
+      title: 'shows an unsupported message with a back action',
+      error: { message: 'model catalog is unsupported', status: 501 },
+      messageKey: 'config_model:channel_import_unsupported',
+      buttonKey: 'common:back'
+    },
+    {
+      title: 'keeps other load errors retryable',
+      error: { message: 'upstream unavailable', status: 502 },
+      messageKey: 'upstream unavailable',
+      buttonKey: 'config_model:channel_import_retry'
+    }
+  ])('$title', async ({ error, messageKey, buttonKey }) => {
+    apiMocks.getImportPreviewFromChannel.mockRejectedValue(error);
+    const onClose = vi.fn();
+    const props = {
+      channels: [],
+      installedModels: [],
+      providers: [],
+      createModelData: () => ({}) as AIModelDocumentDataType,
+      onSuccess: vi.fn(async () => undefined),
+      onClose
+    };
+    const getButton = (text: string) =>
+      [...host.querySelectorAll('button')].find((button) => button.textContent === text)!;
+
+    await act(async () => {
+      root.render(React.createElement(ImportModelFromChannelModal, props));
+      await flush();
+    });
+    await act(async () => getButton('choose channel').click());
+    await act(async () => {
+      getButton('config_model:next_step').click();
+      await flush();
+    });
+
+    expect(host.textContent).toContain(messageKey);
+    expect(getButton(buttonKey)).not.toBeUndefined();
+  });
+
   it('remounts and refreshes the preview after returning from results', async () => {
     const installedModel = {
       modelId: 'installed-model-id',
