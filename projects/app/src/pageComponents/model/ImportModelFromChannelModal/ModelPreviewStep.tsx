@@ -13,6 +13,7 @@ import {
   Tr
 } from '@chakra-ui/react';
 import { getErrText } from '@fastgpt/global/common/error/utils';
+import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { AIModelDocumentDataType } from '@fastgpt/global/core/ai/model/schema';
 import type { ModelProviderItemType } from '@fastgpt/global/core/ai/model/provider';
@@ -71,8 +72,8 @@ export const isUnsupportedChannelCatalogError = (error: unknown) =>
   Boolean(
     error &&
     typeof error === 'object' &&
-    'status' in error &&
-    (error as { status?: unknown }).status === 501
+    'statusText' in error &&
+    (error as { statusText?: unknown }).statusText === ModelErrEnum.channelCatalogUnsupported
   );
 type RowCatalog = {
   availableTemplates: AIModelDocumentDataType[];

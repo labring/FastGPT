@@ -2,6 +2,7 @@ import React, { act } from 'react';
 import { JSDOM } from 'jsdom';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import type { AIModelDocumentDataType } from '@fastgpt/global/core/ai/model/schema';
 import type { ModelConfigListItem } from '@fastgpt/global/openapi/core/ai/model/api';
 import type { ChannelImportPlan } from '@/pageComponents/model/ImportModelFromChannelModal/types';
@@ -200,7 +201,10 @@ describe('ImportModelFromChannelModal', () => {
   it.each([
     {
       title: 'shows an unsupported message with a back action',
-      error: { message: 'model catalog is unsupported', status: 501 },
+      error: {
+        message: 'model catalog is unsupported',
+        statusText: ModelErrEnum.channelCatalogUnsupported
+      },
       messageKey: 'config_model:channel_import_unsupported',
       buttonKey: 'common:back'
     },

@@ -1,4 +1,5 @@
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import type { ApplyChangesBody } from '@fastgpt/global/openapi/core/ai/model/api';
 import type { AiproxyChannel } from '@fastgpt/service/thirdProvider/aiproxy/type';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -147,6 +148,24 @@ describe('apply model imports from channel', () => {
     if (preview.items[0].candidates[0].category === 'blank') {
       expect(preview.items[0].candidates[0].modelData).not.toHaveProperty('provider');
     }
+  });
+
+  it('maps an unsupported channel catalog to a stable model error', async () => {
+    getSystemChannelModelsMock.mockRejectedValueOnce(
+      Object.assign(new Error('model catalog is unsupported for this channel type'), {
+        status: 501
+      })
+    );
+
+    await expect(
+      previewImportFromChannel({
+        channelId: 1,
+        tmbId: '60000000000000000000000a'
+      })
+    ).rejects.toMatchObject({
+      name: 'UserError',
+      message: ModelErrEnum.channelCatalogUnsupported
+    });
   });
 
   it('uses the target channel mapping when selecting a current model', async () => {

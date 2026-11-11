@@ -88,6 +88,13 @@ export class AIProxyClient {
       data: body,
       headers: { Authorization: `Bearer ${token}` },
       timeout: 10000
+    }).catch((error) => {
+      if (error?.response?.status !== 501) throw error;
+
+      const envelope = error.response.data as AiproxyEnvelope<T> | undefined;
+      throw Object.assign(new Error(envelope?.message || 'aiproxy request failed'), {
+        status: 501
+      });
     });
 
     const envelope = res.data as AiproxyEnvelope<T>;

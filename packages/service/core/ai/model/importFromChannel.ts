@@ -1,4 +1,6 @@
 import { ModelScopeEnum } from '@fastgpt/global/core/ai/constants';
+import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
+import { UserError } from '@fastgpt/global/common/error/utils';
 import type {
   ApplyChangesBody,
   ApplyChangesResponse,
@@ -27,7 +29,12 @@ export const previewImportFromChannel = async ({
   const channel = await resolveChannelForOperation({ id: channelId, channelType: 'system', tmbId });
   // 2. 并行读取预览所需目录与 type-meta，减少多段网络/存储等待。
   const [channelModels, channels, modelHandle, templates, typeMetas] = await Promise.all([
-    aiProxyClient.getSystemChannelModels(channelId),
+    aiProxyClient.getSystemChannelModels(channelId).catch((error) => {
+      if ((error as { status?: number })?.status === 501) {
+        throw new UserError(ModelErrEnum.channelCatalogUnsupported);
+      }
+      throw error;
+    }),
     aiProxyClient.system.channels.listAll(),
     getSystemModelHandle(),
     refreshModelTemplates(),
