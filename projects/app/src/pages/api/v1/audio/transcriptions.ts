@@ -6,6 +6,7 @@ import {
 } from '@fastgpt/service/common/rateLimit/interface/member';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { aiTranscriptions } from '@fastgpt/service/core/ai/audio/transcriptions';
+import { getSTTDuration } from '@fastgpt/service/core/ai/audio/utils';
 import { getSystemModelHandle } from '@fastgpt/service/core/ai/model/catalog/service';
 import { pushWhisperUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import type { NextApiRequest, NextApiResponse } from 'next';
@@ -72,7 +73,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     await pushWhisperUsage({
       teamId,
       tmbId,
-      duration: transcriptionsResult?.usage?.total_tokens || duration,
+      duration: getSTTDuration({ usage: transcriptionsResult.usage, fallbackDuration: duration }),
       source: UsageSourceEnum.fastgpt
     });
 

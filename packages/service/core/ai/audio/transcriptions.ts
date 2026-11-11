@@ -43,7 +43,7 @@ export const aiTranscriptions = async ({
   try {
     const { data: result } = await getModelRequestClient(modelData).post<{
       text: string;
-      usage?: { total_tokens: number };
+      usage?: { seconds?: number; total_tokens?: number };
     }>(axiosConfig.url, data, {
       headers: axiosConfig.headers,
       ...(timeoutMs === undefined ? {} : { timeout: timeoutMs }),
