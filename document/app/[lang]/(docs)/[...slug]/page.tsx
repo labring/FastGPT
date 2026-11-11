@@ -5,7 +5,13 @@ import { notFound } from 'next/navigation';
 import { createRelativeLink } from 'fumadocs-ui/mdx';
 import { getMDXComponents } from '@/mdx-components';
 import { i18n } from '@/lib/i18n';
-import { generateArticleSchema, generateBreadcrumbSchema, generateFaqSchema } from '@/lib/schema';
+import {
+  generateArticleSchema,
+  generateBreadcrumbSchema,
+  generateFaqSchema,
+  generateWebSiteSchema,
+  resolvePageSeoTitle
+} from '@/lib/schema';
 import { getFastGPTDocsOriginForLocale } from '@/lib/fastgpt-home-url';
 import { CalendarDays } from 'lucide-react';
 import { LocalizedLink } from '@/components/docs/LocalizedLink';
@@ -103,11 +109,26 @@ export default async function Page({
   const breadcrumbItems = [...breadcrumbByUrl.values()];
 
   // 4. Generate structured data (Article, BreadcrumbList, and FAQPage).
-  const articleSchema = generateArticleSchema({
+  const shouldNoIndex =
+    Boolean(page.data.deprecated) || /^toc(?:\.en)?\.mdx$/.test(page.data._file.path);
+  const isDocsHome = page.url === `/${lang}/guide/getting-started`;
+  const seoTitle = resolvePageSeoTitle({
+    path: page.path,
     title: page.data.title,
+    seoTitle: page.data.seoTitle,
+    lang
+  });
+  const publishedDate = releaseTime
+    ? new Date(`${releaseTime}T00:00:00.000+08:00`)
+    : lastModified
+      ? new Date(lastModified)
+      : undefined;
+
+  const articleSchema = generateArticleSchema({
+    title: seoTitle,
     description: page.data.description || '',
     url,
-    datePublished: releaseTime ? new Date(`${releaseTime}T00:00:00.000+08:00`) : undefined,
+    datePublished: publishedDate,
     dateModified: lastModified ? new Date(lastModified) : undefined,
     lang
   });
@@ -118,23 +139,37 @@ export default async function Page({
   const isFaqPage =
     /(?:^|\/)faq(?:\.en)?\.mdx$/.test(page.data._file.path) ||
     page.data._file.path.startsWith('faq/');
-  const faqSchema = isFaqPage ? generateFaqSchema(page.data.structuredData ?? {}) : null;
+  const faqSchema = isFaqPage
+    ? generateFaqSchema({ ...page.data.structuredData, toc: page.data.toc })
+    : null;
 
   return (
     <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(articleSchema) }}
-      />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
-      />
-      {faqSchema && (
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
-        />
+      {!shouldNoIndex && (
+        <>
+          <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{ __html: JSON.stringify(articleSchema) }}
+          />
+          <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
+          />
+          {faqSchema !== null && (
+            <script
+              type="application/ld+json"
+              dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
+            />
+          )}
+          {isDocsHome && (
+            <script
+              type="application/ld+json"
+              dangerouslySetInnerHTML={{
+                __html: JSON.stringify(generateWebSiteSchema({ url: domain, lang }))
+              }}
+            />
+          )}
+        </>
       )}
       <DocsPage
         toc={page.data.toc}
@@ -205,18 +240,31 @@ export async function generateMetadata(props: {
     languages['x-default'] = languages.en;
   }
   const shouldNoIndex =
-    page.data.deprecated || /^toc(?:\.en)?\.mdx$/.test(page.data._file.path);
+    Boolean(page.data.deprecated) || /^toc(?:\.en)?\.mdx$/.test(page.data._file.path);
+  const seoTitle = resolvePageSeoTitle({
+    path: page.path,
+    title: page.data.title,
+    seoTitle: page.data.seoTitle,
+    lang
+  });
 
   return {
-    title: page.data.title,
+    title: seoTitle,
     description: page.data.description,
     ...(shouldNoIndex ? { robots: { index: false, follow: true } } : {}),
-    alternates: {
-      canonical: url,
-      languages
-    },
+    alternates: shouldNoIndex
+      ? {
+          canonical: url
+        }
+      : {
+          canonical: url,
+          languages,
+          types: {
+            'text/markdown': `${url}.md`
+          }
+        },
     openGraph: {
-      title: `${page.data.title} | FastGPT`,
+      title: `${seoTitle} | FastGPT`,
       description: page.data.description,
       url,
       siteName: 'FastGPT',
@@ -224,7 +272,9 @@ export async function generateMetadata(props: {
       type: 'article',
       publishedTime: page.data.releaseTime
         ? new Date(`${page.data.releaseTime}T00:00:00.000+08:00`).toISOString()
-        : undefined,
+        : lastModified
+          ? new Date(lastModified).toISOString()
+          : undefined,
       modifiedTime: lastModified ? new Date(lastModified).toISOString() : undefined,
       images: [
         {
@@ -237,7 +287,7 @@ export async function generateMetadata(props: {
     },
     twitter: {
       card: 'summary_large_image',
-      title: `${page.data.title} | FastGPT`,
+      title: `${seoTitle} | FastGPT`,
       description: page.data.description,
       images: ['/og-image.png']
     }

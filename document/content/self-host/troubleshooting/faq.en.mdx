@@ -8,7 +8,9 @@ description: Troubleshoot common self-hosted FastGPT issues including port confl
 <span id="page-crash" />
 <span id="after-enabling-content-completion-the-response-speed-becomes-slow" />
 
-### Frontend Page Crash
+<span id="frontend-page-crash" />
+
+### How do I troubleshoot a frontend page crash or URI malformed error?
 
 1. Record reproduction steps, FastGPT version, console errors, and failed requests.
 2. Check Admin model configuration, service initialization logs, and network requests.
@@ -24,7 +26,9 @@ This limit is determined by the single-chunk token limit of the Dataset's select
 
 ---
 
-### How to mount the Mini Program configuration file
+<span id="how-to-mount-the-mini-program-configuration-file" />
+
+### How do I mount a WeChat Mini Program verification file into the container?
 
 Mount the verification file to `/app/projects/app/public/xxxx.txt` inside the container and restart the service:
 
@@ -35,37 +39,49 @@ Mount the verification file to `/app/projects/app/public/xxxx.txt` inside the co
 
 ---
 
-### Host port is occupied, service startup failed
+<span id="host-port-is-occupied-service-startup-failed" />
+
+### How do I fix service startup failures caused by an occupied host port?
 
 Check the `ports` mapping of the failing service in `docker-compose.yml` and change the host port on the left side of the colon to an available port (for example, change `3000:3000` to `3001:3000`) while keeping the container port on the right unchanged, then run `docker compose up -d`.
 
 ---
 
-### Can it run purely locally?
+<span id="can-it-run-purely-locally" />
+
+### Can FastGPT run purely locally or offline?
 
 Yes. Prepare local language and Embedding models together with the databases, object storage, AI Proxy, and plugin services required by the deployment template. Offline installations also need image archives, model files, and plugin packages prepared in advance. Verify each request path.
 
 ---
 
-### Other models cannot perform question classification/content extraction
+<span id="other-models-cannot-perform-question-classificationcontent-extraction" />
+
+### Why do some models fail at Question Classification or Content Extraction?
 
 Inspect Run Details and the model response. Confirm that the model and channel support the tool calling or structured output required by the node. JSON parsing errors can also result from response formatting, truncation, or prompts. Test the model in Admin, reproduce the node with a small input, and adjust model capabilities and prompts accordingly. See [Model Troubleshooting](/en/self-host/troubleshooting/model-errors).
 
 ---
 
-### Response slows down after enabling Query Optimization
+<span id="response-slows-down-after-enabling-query-optimization" />
+
+### Why does response latency increase after enabling Query Optimization?
 
 Enabling **Query Optimization** adds an LLM call and may generate multiple retrieval queries. Inspect the timing of query optimization, recall, and reranking in Run Details, then adjust the optimization model, retrieval settings, and concurrency. Actual query counts depend on configuration and runtime results.
 
 ---
 
-### Normal reply in the page, API error
+<span id="normal-reply-in-the-page-api-error" />
+
+### Why does chat work in the web UI while API requests fail?
 
 Compare the app, identity, request body, and `stream` value in both calls. Test streaming and non-streaming separately and record HTTP status, error body, and server requestId. Trace the request through FastGPT, AI Proxy, and the upstream model. See [Chat API](/en/openapi/chat).
 
 ---
 
-### Dataset indexing has no progress/indexing is very slow
+<span id="dataset-indexing-has-no-progressindexing-is-very-slow" />
+
+### How do I troubleshoot stalled or slow Dataset indexing?
 
 1. Inspect Collection processing status and parsing/indexing errors.
 2. Test the Dataset’s Embedding model and channel in Admin.

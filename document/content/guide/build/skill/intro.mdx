@@ -5,6 +5,8 @@ description: AI 智能体技能概念，以及它在 FastGPT 中的设计与实�
 
 import { Alert } from '@/components/docs/Alert';
 
+FastGPT 中的 **Skill（技能）** 是将提示词规范、Python/Shell 脚本、模板文件与依赖说明打包成独立目录（含 `SKILL.md`）的可复用能力单元，供 Agent 在虚拟机沙箱中按需加载并稳定执行复杂专业任务。
+
 ## 什么是 AI 智能体的“技能”？
 
 在当前主流 AI 厂商的最新生态设计中，**“技能”（Skills）** 被定义为一种**可持久保存、可复用的模块化专业流程与能力包**。

@@ -5,6 +5,8 @@ description: Deploy FastGPT and its required database services on Sealos Cloud w
 
 import { Alert } from '@/components/docs/Alert';
 
+Deploying FastGPT on Sealos Cloud provisions the FastGPT app, MongoDB, PostgreSQL (`pgvector`), object storage, and AI Proxy from a one-click cloud-native template with elastic resource scaling and automatic networking.
+
 ## Deployment Architecture
 
 ![FastGPT core deployment](/imgs/diagrams/deployment-core.en.light.svg)
@@ -106,7 +108,8 @@ In **App Launchpad**, select FastGPT, click **Change**, and you'll see environme
 ![Modifying Config Files and Environment Variables — interface example](/imgs/optimized/fastgptonsealos1.png.webp)
 
 <Alert icon="🤖" context="success">
-  Before pausing or deleting services, inspect the complete dependency and persistent-data inventory. Verify backups and restoration before handling individual services.
+  Before pausing or deleting services, inspect the complete dependency and persistent-data
+  inventory. Verify backups and restoration before handling individual services.
 </Alert>
 
 ### How to Update/Upgrade FastGPT
@@ -157,8 +160,6 @@ SYSTEM_FAVICON=/favicon.ico
 ```
 
 SYSTEM_FAVICON can be a URL.
-
-
 
 ### Mount a Logo
 

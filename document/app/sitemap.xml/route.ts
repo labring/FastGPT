@@ -9,6 +9,9 @@ import {
 
 export const dynamic = 'force-static';
 
+const isLocaleFileMatch = (filePath: string, targetLocale: 'zh-CN' | 'en') =>
+  filePath.endsWith('.en.mdx') === (targetLocale === 'en');
+
 /** Generate a localized XML sitemap with reciprocal language and x-default alternates. */
 export function GET() {
   const domain = getFastGPTDocsOrigin();
@@ -18,7 +21,12 @@ export function GET() {
 
   const pages = source
     .getPages(locale)
-    .filter((page) => !page.data.deprecated && !/^toc(?:\.en)?\.mdx$/.test(page.data._file.path));
+    .filter(
+      (page) =>
+        isLocaleFileMatch(page.data._file.path, locale) &&
+        !page.data.deprecated &&
+        !/^toc(?:\.en)?\.mdx$/.test(page.data._file.path)
+    );
 
   const urlEntries = pages
     .map((page) => {
@@ -32,15 +40,33 @@ export function GET() {
             ? new Date(rawLastModified).toISOString()
             : undefined;
       const routePath = page.url.replace(/^\/(?:zh-CN|en)/, '');
-      const zhUrl = `${zhOrigin}/zh-CN${routePath}`;
-      const enUrl = `${enOrigin}/en${routePath}`;
+      const hasPublishedLocale = (targetLocale: 'zh-CN' | 'en') => {
+        if (targetLocale === locale) return true;
+        const altPage = source.getPage(page.slugs, targetLocale);
+        return Boolean(
+          altPage &&
+            !altPage.data.deprecated &&
+            isLocaleFileMatch(altPage.data._file.path, targetLocale)
+        );
+      };
+      const alternateLinks: string[] = [];
+      if (hasPublishedLocale('zh-CN')) {
+        alternateLinks.push(
+          `    <xhtml:link rel="alternate" hreflang="zh-CN" href="${zhOrigin}/zh-CN${routePath}" />`
+        );
+      }
+      if (hasPublishedLocale('en')) {
+        const enUrl = `${enOrigin}/en${routePath}`;
+        alternateLinks.push(`    <xhtml:link rel="alternate" hreflang="en" href="${enUrl}" />`);
+        alternateLinks.push(
+          `    <xhtml:link rel="alternate" hreflang="x-default" href="${enUrl}" />`
+        );
+      }
 
       return `  <url>
     <loc>${domain}${page.url}</loc>${lastModified ? `
     <lastmod>${lastModified}</lastmod>` : ''}
-    <xhtml:link rel="alternate" hreflang="zh-CN" href="${zhUrl}" />
-    <xhtml:link rel="alternate" hreflang="en" href="${enUrl}" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="${enUrl}" />
+${alternateLinks.join('\n')}
   </url>`;
     })
     .join('\n');

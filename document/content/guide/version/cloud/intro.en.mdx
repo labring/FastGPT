@@ -5,22 +5,24 @@ description: Explore FastGPT Cloud managed hosting, multi-model access, knowledg
 
 import FastGPTLink from '@/components/docs/linkFastGPT';
 
+FastGPT Cloud is the official fully managed SaaS edition of FastGPT, operating isolated Global (`fastgpt.io`) and China (`fastgpt.cn`) regions with pre-integrated LLMs, embedding and rerank models, enhanced PDF parsing, scheduled Dataset sync, and Agent virtual machine sandboxes.
+
 ## Cloud Service Capabilities and Edition Comparison
 
 FastGPT Cloud provides a fully managed AI application platform with pre-configured language models, embedding models, rerankers, enhanced PDF parsing, and Agent virtual machine sandboxes out of the box.
 
-| Dimension | FastGPT Cloud Service | Self-Hosted (Community / Commercial) |
-| --- | --- | --- |
-| **Infrastructure & Operations** | Fully managed by the FastGPT team with high availability, elastic scaling, and seamless version upgrades | Deployed on your own servers or private cloud; requires self-managed MongoDB, VectorDB, S3, sandbox, and upgrades |
-| **Model Provisioning** | Pre-integrated LLMs, embedding models, rerankers, and enhanced PDF parsing billed via AI points | Configured by operators via [AIProxy / OneAPI](/en/self-host/config/model/intro) or local Ollama |
-| **Feature Scope** | Includes enterprise orchestration, third-party dataset sync, evaluations, log dashboards, and team permissions (excluding SSO and custom branding; reranking and website datasets require a paid plan) | Community Edition provides core orchestration and datasets; enterprise features require a [Commercial License](/en/guide/version/commercial) |
-| **Billing & Statements** | Flexible team subscription plans and add-on resource packs; see [Usage and Billing](/en/guide/workspace/usage-and-billing) | Free open-source Community Edition; Commercial Edition licensed by deployment tier and term |
+| Dimension                       | FastGPT Cloud Service                                                                                                                                                                                  | Self-Hosted (Community / Commercial)                                                                                                         |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Infrastructure & Operations** | Fully managed by the FastGPT team with high availability, elastic scaling, and seamless version upgrades                                                                                               | Deployed on your own servers or private cloud; requires self-managed MongoDB, VectorDB, S3, sandbox, and upgrades                            |
+| **Model Provisioning**          | Pre-integrated LLMs, embedding models, rerankers, and enhanced PDF parsing billed via AI points                                                                                                        | Configured by operators via [AIProxy / OneAPI](/en/self-host/config/model/intro) or local Ollama                                             |
+| **Feature Scope**               | Includes enterprise orchestration, third-party dataset sync, evaluations, log dashboards, and team permissions (excluding SSO and custom branding; reranking and website datasets require a paid plan) | Community Edition provides core orchestration and datasets; enterprise features require a [Commercial License](/en/guide/version/commercial) |
+| **Billing & Statements**        | Flexible team subscription plans and add-on resource packs; see [Usage and Billing](/en/guide/workspace/usage-and-billing)                                                                             | Free open-source Community Edition; Commercial Edition licensed by deployment tier and term                                                  |
 
 ## Regional Sites and Access Entry Points
 
 FastGPT Cloud operates two isolated regional sites with independent account systems and data residency. Choose the site that matches your region and compliance requirements:
 
-| Regional Site | Access URL | Supported Sign-In Methods | Billing & Invoicing |
-| --- | --- | --- | --- |
-| **Mainland China Site** | <FastGPTLink campaign="docs_cloud_intro" content="cloud_entry_cn" site="cn">{'https://fastgpt.cn'}</FastGPTLink> | WeChat QR code, mobile SMS verification, password | CNY settlement with online VAT invoice issuance |
-| **International Site** | <FastGPTLink campaign="docs_cloud_intro" content="cloud_entry_io" site="io">{'https://fastgpt.io'}</FastGPTLink> | Email, Google, GitHub | International payment methods with downloadable billing statements |
+| Regional Site           | Access URL                                                                                                       | Supported Sign-In Methods                         | Billing & Invoicing                                                |
+| ----------------------- | ---------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- | ------------------------------------------------------------------ |
+| **Mainland China Site** | <FastGPTLink campaign="docs_cloud_intro" content="cloud_entry_cn" site="cn">{'https://fastgpt.cn'}</FastGPTLink> | WeChat QR code, mobile SMS verification, password | CNY settlement with online VAT invoice issuance                    |
+| **International Site**  | <FastGPTLink campaign="docs_cloud_intro" content="cloud_entry_io" site="io">{'https://fastgpt.io'}</FastGPTLink> | Email, Google, GitHub                             | International payment methods with downloadable billing statements |

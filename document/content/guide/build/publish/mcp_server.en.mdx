@@ -1,7 +1,9 @@
 ---
 title: MCP Server
-description: "Publish FastGPT applications and tools as an MCP service endpoint for external Model Context Protocol clients."
+description: 'Publish FastGPT applications and tools as an MCP service endpoint for external Model Context Protocol clients.'
 ---
+
+FastGPT MCP Server publishing exposes one or more FastGPT Agents and workflows as a standard Model Context Protocol (MCP) endpoint over `Streamable HTTP` (plus standalone `SSE` for self-hosted deployments) so external clients like Claude and Cursor can invoke them as tools.
 
 ## What is MCP Server?
 
@@ -61,7 +63,7 @@ When a request does not include an identity proxy header, the tool continues to 
 Pass the identity in the MCP transport headers, not in the tool arguments. FastGPT accepts these headers:
 
 | Header                          | Value                      | Description                                                      |
-| --- | --- | --- |
+| ------------------------------- | -------------------------- | ---------------------------------------------------------------- |
 | `x-fastgpt-auth-proxy-username` | Team member login username | Recommended; this is usually the member's login email address    |
 | `x-fastgpt-auth-proxy-tmb-id`   | FastGPT team member ID     | Use this when your system already stores FastGPT team member IDs |
 

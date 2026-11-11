@@ -1,9 +1,10 @@
 ---
-title: "Web Scraping and Scheduled Synchronization"
+title: 'Web Scraping and Scheduled Synchronization'
 description: Master website ingestion rules, CSS selector extraction, chunk index configuration, and automated scheduled syncing.
 ---
 
 {/* Preserve incoming bookmarks for reorganized sections. */}
+
 <span id="article-content" />
 <span id="what-is-web-site-sync" />
 <span id="how-to-use" />
@@ -34,6 +35,8 @@ In the **Website Info** step of the **Web site configuration** modal, enter the 
 
 ![Configure root URL and content selector](/imgs/optimized/current/website-dataset-url.png.webp)
 
+<span id="selector" />
+
 ## Step 3: Select the Article Body
 
 Inspect the target page's HTML and enter a CSS selector such as `article`, `main`, or `#content` in **Selector (optional)**. Choose a container holding the useful body text. Combine selectors with commas when the title and article are separate, for example `h1.page-title, article`.
@@ -51,11 +54,11 @@ Check the selected elements in browser developer tools, then inspect imported ch
 
 ## Scraping Troubleshooting
 
-| Issue | Resolution Focus |
-| --- | --- |
-| Crawled content is empty | The target page relies on client-side single-page JavaScript (SPA); provide server-rendered (SSR) or static URLs |
-| Extracted text contains sidebar links | Refine the Content Selector to target the specific HTML class or ID containing the article text |
-| Crawler encounters HTTP 403 Forbidden | Confirm the site allows crawler access and request an authorized access method from its administrator |
+| Issue                                 | Resolution Focus                                                                                                 |
+| ------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| Crawled content is empty              | The target page relies on client-side single-page JavaScript (SPA); provide server-rendered (SSR) or static URLs |
+| Extracted text contains sidebar links | Refine the Content Selector to target the specific HTML class or ID containing the article text                  |
+| Crawler encounters HTTP 403 Forbidden | Confirm the site allows crawler access and request an authorized access method from its administrator            |
 
 ## Next Steps
 

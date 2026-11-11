@@ -1,10 +1,12 @@
 ---
 title: Docker Compose 部署
-description: 使用 Docker Compose 快速部署 FastGPT
+description: 使用 Docker Compose 快速部署 FastGPT，包含架构拓扑、向量数据库选型对比、硬件规格估算与一键安装脚本说明。
 ---
 
 import { Alert } from '@/components/docs/Alert';
 import { CurrentOriginCodeBlockUpdater } from '@/components/docs/CurrentOriginCodeBlockUpdater';
+
+FastGPT 支持通过 Docker Compose 在单台 Linux、macOS 或 Windows 服务器上一键拉起完整私有化服务栈，涵盖主应用、插件服务、AI Proxy 模型网关、MongoDB、RustFS 对象存储，以及 PostgreSQL（pgvector）、Milvus、Zilliz、OceanBase、SeekDB 或 OpenGauss 向量数据库。
 
 ## 前置知识
 
@@ -24,6 +26,16 @@ import { CurrentOriginCodeBlockUpdater } from '@/components/docs/CurrentOriginCo
 </Alert>
 
 ## 推荐配置
+
+### 向量数据库选型对比
+
+| 向量库方案             | 部署形态与接入协议                | 混合检索支持                | 运维复杂度         | 适用规模与场景                                   |
+| ---------------------- | --------------------------------- | --------------------------- | ------------------ | ------------------------------------------------ |
+| **PgVector**           | 单容器 PostgreSQL 扩展（`pg`）    | 向量检索 + MongoDB 全文检索 | 低（单实例易备份） | 默认推荐；快速验证、中小规模及百万级向量生产环境 |
+| **Milvus**             | 独立分布式向量引擎（需 ≥ 2.5.16） | 向量检索 + Milvus 原生 BM25 | 中高（独立组件）   | 千万级以上大规模向量、高并发检索与独立算力扩容   |
+| **Zilliz Cloud**       | 全托管云端 Milvus 服务            | 向量检索 + 云端原生全文检索 | 极低（云端免运维） | 追求免运维弹性扩展、降低本地内存开销的生产团队   |
+| **OceanBase / SeekDB** | 分布式数据库 / MySQL 协议接入     | 向量检索 + 混合召回         | 中                 | 已具备 OceanBase 或 MySQL 运维体系的企业环境     |
+| **OpenGauss**          | 国产企业级关系型向量库            | 向量检索 + 混合召回         | 中                 | 信创合规与国产化基础设施环境                     |
 
 ### PgVector 版本
 
@@ -261,6 +273,7 @@ docker compose up -d
 ### 5. 访问 FastGPT
 
 可通过第三步开放的端口/域名访问 FastGPT。登录用户名为 `root`：
+
 - **v4.17.3 及更高版本**：初始密码固定为 `123456`，首次登录后系统会弹出激活窗口强制要求修改密码（`v4.17.3+` 部署模板中残留的 `DEFAULT_ROOT_PSW` 环境变量会被忽略）。忘记密码时可通过内置 CLI 脚本重置，详见[修改与重置 root 密码](/zh-CN/self-host/config/root-password)。
 - **旧版本（v4.17.2 及更早）**：密码为 `docker-compose.yml` 环境变量里设置的 `DEFAULT_ROOT_PSW`。如果使用交互式脚本部署，脚本会随机生成并在完成后输出登录密码。每次重启容器都会按该变量自动更新密码。
 

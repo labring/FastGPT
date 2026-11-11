@@ -1,10 +1,12 @@
 ---
 title: Model Configuration
-description: "Configure LLMs, embedding models, rerankers, and speech models in self-hosted FastGPT deployments, including channel routing and pricing."
+description: 'Configure LLMs, embedding models, rerankers, and speech models in self-hosted FastGPT deployments, including channel routing and pricing.'
 ---
 
 import { Alert } from '@/components/docs/Alert';
 import { Accordion, Accordions } from 'fumadocs-ui/components/accordion';
+
+In self-hosted deployments, FastGPT routes model traffic through `AI Proxy` to connect OpenAI-compatible APIs, local inference engines, and cloud providers, centralizing load balancing, failover, pricing, and request logs across LLMs, Embedding models, Rerankers, and speech models.
 
 ## Introduction
 
@@ -102,8 +104,8 @@ The system includes models from major providers by default. If you're not famili
 
 Click "Enable" to activate the model.
 
-| Enable Models                                     | Model ID Mapping                                   |
-| ------------------------------------------------- | -------------------------------------------------- |
+| Enable Models                                                              | Model ID Mapping                                                            |
+| -------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
 | ![3. Enable Models — interface example](/imgs/optimized/image-92.png.webp) | ![3. Enable Models — interface example](/imgs/optimized/image-124.png.webp) |
 
 ### 4. Test Models
@@ -118,8 +120,8 @@ FastGPT provides simple tests for each model type on the UI to verify that model
 
 Click the gear icon next to a model to open its configuration. Different model types have different configuration options.
 
-|                                                   |                                                   |
-| ------------------------------------------------- | ------------------------------------------------- |
+|                                                                                    |                                                                                    |
+| ---------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
 | ![Edit Model Configuration — interface example](/imgs/optimized/image-93.png.webp) | ![Edit Model Configuration — interface example](/imgs/optimized/image-94.png.webp) |
 
 ### Add a Custom Model
@@ -130,8 +132,8 @@ If the built-in models do not meet your needs, you can add custom models. When i
 
 In `Model Configuration`, click `Add Model` in the top-right corner and select the model type. Enter the provider, a unique model ID, display name, pricing, and supported capabilities, then click `Confirm`.
 
-|                                                   |                                                   |
-| ------------------------------------------------- | ------------------------------------------------- |
+|                                                                              |                                                                              |
+| ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
 | ![Add a Custom Model — interface example](/imgs/optimized/image-96.png.webp) | ![Add a Custom Model — interface example](/imgs/optimized/image-97.png.webp) |
 
 2. **Add via Configuration File**
@@ -140,8 +142,8 @@ If you find it tedious to configure models through the UI, you can use a configu
 
 Click `Configuration File` in the top-right corner of `Model Configuration` to open the JSON editor. Copy the existing configuration as a backup, edit the model array, and click `Confirm` to apply it. Confirming replaces the entire current model configuration, so include every model you want to retain.
 
-|                                                   |                                                   |
-| ------------------------------------------------- | ------------------------------------------------- |
+|                                                                              |                                                                              |
+| ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
 | ![Add a Custom Model — interface example](/imgs/optimized/image-98.png.webp) | ![Add a Custom Model — interface example](/imgs/optimized/image-99.png.webp) |
 
 Token model prices and tier boundaries use M Tokens. Text-to-speech is priced per 1M characters; speech-to-text remains per 60 seconds. Unit prices support up to two decimal places.

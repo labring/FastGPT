@@ -76,14 +76,6 @@ export async function generateMetadata({
     creator: 'Labring',
     publisher: 'Labring',
     metadataBase: new URL(domain),
-    alternates: {
-      canonical: `${domain}/${lang}/guide/getting-started`,
-      languages: {
-        en: `${getFastGPTDocsOriginForLocale('en')}/en/guide/getting-started`,
-        'zh-CN': `${getFastGPTDocsOriginForLocale('zh-CN')}/zh-CN/guide/getting-started`,
-        'x-default': `${getFastGPTDocsOriginForLocale('en')}/en/guide/getting-started`
-      }
-    },
     openGraph: {
       type: 'website',
       locale: lang === 'zh-CN' ? 'zh_CN' : 'en_US',

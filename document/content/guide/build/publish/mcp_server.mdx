@@ -3,6 +3,8 @@ title: MCP 发布
 description: 快速了解 FastGPT MCP server
 ---
 
+FastGPT MCP Server 发布能力可将工作台中的一个或多个 Agent 与工作流封装为标准 Model Context Protocol（MCP）服务端点，支持通过 `Streamable HTTP`（及自部署独立 `SSE` 服务）供 Claude、Cursor 等外部 MCP 客户端直接调用。
+
 ## MCP server 介绍
 
 MCP 协议（Model Context Protocol），是由 Anthropic 在 2024 年 11 月初发布的协议。它的目的在于统一 AI 模型与外部系统之间的通信方式，从而简化 AI 模型与外部系统之间的通信问题。随着 OpenAI 官宣支持 MCP 协议，越来越多的 AI 厂商开始支持 MCP 协议。
@@ -37,8 +39,7 @@ FastGPT 支持 `Streamable HTTP` 协议；私有化部署还可以通过独立�
 
 此时返回 Cursor 的 MCP 管理页面，即可看到你创建的 MCP server，记得设成 `enabled` 状态。
 
-打开 Cursor 的对话框，切换到 `Agent` 模式并选择支持工具调用的模型，按当前客户端界面启用该服务。
-发送一个关于 `fastgpt` 的问题后，可以看到，cursor 调用了一个 MCP 工具（描述为：查询 fastgpt 知识库），也就是调用 FastGPT 应用去进行处理该问题，并返回了结果。
+打开 Cursor 的对话框，切换到 `Agent` 模式并选择支持工具调用的模型，按当前客户端界面启用该服务。发送一个关于 `fastgpt` 的问题后，可以看到，cursor 调用了一个 MCP 工具（描述为：查询 fastgpt 知识库），也就是调用 FastGPT 应用去进行处理该问题，并返回了结果。
 
 ## 配置身份代理
 
@@ -61,7 +62,7 @@ FastGPT 支持 `Streamable HTTP` 协议；私有化部署还可以通过独立�
 身份信息需要放在 MCP transport 请求头中，不要放入工具参数。支持以下请求头：
 
 | 请求头                          | 值                   | 说明                           |
-| --- | --- | --- |
+| ------------------------------- | -------------------- | ------------------------------ |
 | `x-fastgpt-auth-proxy-username` | 团队成员的登录用户名 | 推荐使用，通常为成员的登录邮箱 |
 | `x-fastgpt-auth-proxy-tmb-id`   | FastGPT 团队成员 ID  | 适合已经保存团队成员 ID 的系统 |
 

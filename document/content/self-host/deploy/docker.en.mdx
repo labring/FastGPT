@@ -6,6 +6,8 @@ description: Deploy and configure FastGPT with PostgreSQL pgvector or Milvus usi
 import { Alert } from '@/components/docs/Alert';
 import { CurrentOriginCodeBlockUpdater } from '@/components/docs/CurrentOriginCodeBlockUpdater';
 
+FastGPT supports single-host self-hosted deployment via Docker Compose on Linux, macOS, and Windows, provisioning the core web app, plugin runtime, AI Proxy model gateway, MongoDB, RustFS object storage, and your choice of pgvector, Milvus, Zilliz, OceanBase, SeekDB, or OpenGauss vector database.
+
 ## Prerequisites
 
 1. Basic networking knowledge: ports, firewalls, etc.
@@ -24,6 +26,16 @@ import { CurrentOriginCodeBlockUpdater } from '@/components/docs/CurrentOriginCo
 </Alert>
 
 ## Recommended Specs
+
+### Vector Database Selection Matrix
+
+| Vector Store           | Architecture & Protocol                             | Hybrid Retrieval                   | Ops Complexity         | Best-Fit Workload                                                         |
+| ---------------------- | --------------------------------------------------- | ---------------------------------- | ---------------------- | ------------------------------------------------------------------------- |
+| **PgVector**           | Single-container PostgreSQL extension (`pg`)        | Vector search + MongoDB full-text  | Low (simple backups)   | Default choice for PoCs and small-to-medium production up to ~5M vectors  |
+| **Milvus**             | Dedicated vector engine (requires ≥ 2.5.16)         | Vector search + native Milvus BM25 | Medium–High            | High-concurrency or 10M+ vector workloads needing independent scaling     |
+| **Zilliz Cloud**       | Fully managed cloud Milvus service                  | Vector search + managed full-text  | Minimal (managed SaaS) | Teams offloading vector index memory and cluster maintenance to the cloud |
+| **OceanBase / SeekDB** | Distributed DB / MySQL-compatible protocol          | Vector search + hybrid recall      | Medium                 | Enterprises standardized on OceanBase or MySQL operational tooling        |
+| **OpenGauss**          | Enterprise relational database with vector indexing | Vector search + hybrid recall      | Medium                 | Regulated on-premises environments standardized on OpenGauss              |
 
 ### PgVector Version
 
@@ -121,7 +133,7 @@ Or [install the command-line version of Docker directly in WSL 2](https://nickja
 Copy the following content to your Coding Agent:
 
 ```text
-Refer to https://doc.fastgpt.cn/deploy/SKILL.md and deploy FastGPT with Docker for me.
+Refer to https://doc.fastgpt.io/deploy/SKILL.md and deploy FastGPT with Docker for me.
 ```
 
 <CurrentOriginCodeBlockUpdater />
@@ -131,7 +143,7 @@ Refer to https://doc.fastgpt.cn/deploy/SKILL.md and deploy FastGPT with Docker f
 Run in Linux/MacOS/Windows WSL. The script prompts for the deployment version, image registry, vector database, and whether to generate credentials automatically, then asks for the FastGPT access URL, the Sandbox WebSocket / preview URLs, and host ports before the final confirmation.
 
 ```bash
-FASTGPT_DEPLOY_BASE_URL=https://doc.fastgpt.cn bash <(curl -fsSL https://doc.fastgpt.cn/deploy/install.sh)
+FASTGPT_DEPLOY_BASE_URL=https://doc.fastgpt.io bash <(curl -fsSL https://doc.fastgpt.io/deploy/install.sh)
 ```
 
 <CurrentOriginCodeBlockUpdater />
@@ -158,7 +170,7 @@ After the script finishes, the terminal prints the `root` login details: for v4.
 To use an existing local `docker-compose.yml` file, for example when testing a version that has not been published to the docs site yet, choose `Local docker-compose.yml` in the deployment version step and enter the local file path. You can also pass the path with an environment variable:
 
 ```bash
-FASTGPT_LOCAL_COMPOSE_PATH=/path/to/docker-compose.yml bash <(curl -fsSL https://doc.fastgpt.cn/deploy/install.sh)
+FASTGPT_LOCAL_COMPOSE_PATH=/path/to/docker-compose.yml bash <(curl -fsSL https://doc.fastgpt.io/deploy/install.sh)
 ```
 
 <CurrentOriginCodeBlockUpdater />
@@ -170,7 +182,7 @@ If you need to pin deployment to a specific `docker-compose.yml` file, we recomm
 1. Download the required `docker-compose.yml` file to the server, for example:
 
 ```bash
-curl -fsSL https://doc.fastgpt.cn/deploy/docker/main/cn/docker-compose.pg.yml -o docker-compose.source.yml
+curl -fsSL https://doc.fastgpt.io/deploy/docker/main/global/docker-compose.pg.yml -o docker-compose.source.yml
 ```
 
 <CurrentOriginCodeBlockUpdater />
@@ -202,7 +214,7 @@ curl -fsSL https://doc.fastgpt.cn/deploy/docker/main/cn/docker-compose.pg.yml -o
 2. Download `install.sh` to the server:
 
 ```bash
-curl -fsSL https://doc.fastgpt.cn/deploy/install.sh -o install.sh
+curl -fsSL https://doc.fastgpt.io/deploy/install.sh -o install.sh
 ```
 
 <CurrentOriginCodeBlockUpdater />
@@ -263,6 +275,7 @@ docker compose up -d
 ### 5. Access FastGPT
 
 Access FastGPT via the port/domain opened in step 3. The login username is `root`:
+
 - **Version v4.17.3 and later**: The initial password is fixed at `123456`. An activation modal requires setting a new password upon first login (any residual `DEFAULT_ROOT_PSW` variable in `v4.17.3+` Compose templates is ignored). If forgotten, reset the password using the built-in CLI script. See [Modify and Reset Root Password](/en/self-host/config/root-password).
 - **Legacy versions (v4.17.2 and earlier)**: The password is set via `DEFAULT_ROOT_PSW` in `docker-compose.yml`. When deploying with the interactive script, a random password is generated and displayed upon completion. Each container restart updates the password to this value.
 

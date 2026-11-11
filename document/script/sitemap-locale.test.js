@@ -4,6 +4,7 @@ const path = require('node:path');
 const { execSync } = require('node:child_process');
 const test = require('node:test');
 const vm = require('node:vm');
+const matter = require('gray-matter');
 const ts = require('typescript');
 const { NextResponse } = require('next/server');
 const { getFastGPTDocsLocaleFromHomeOrigin } = require('../lib/docs-locale');
@@ -21,7 +22,7 @@ function loadModule(file, { imports, env = {} }) {
       assert.ok(Object.hasOwn(imports, id), `Unexpected import: ${id}`);
       return imports[id];
     },
-    process: { env },
+    process: { env, cwd: () => path.resolve(__dirname, '..') },
     URL,
     Headers,
     Response
@@ -158,10 +159,14 @@ for (const [homeOrigin, docsOrigin] of [
       'ChatGPT-User',
       'PerplexityBot',
       'ClaudeBot',
-      'Google-Extended'
+      'Google-Extended',
+      'Applebot-Extended',
+      'Amazonbot'
     ]) {
       assert.ok(text.includes(`User-Agent: ${agent}\nAllow: /\nDisallow: /api/`), `Missing ${agent}`);
     }
+    assert.ok(text.includes(`# AI Context: ${docsOrigin}/llms.txt`));
+    assert.ok(text.includes(`# Pricing & Editions: ${docsOrigin}/pricing.md`));
     assert.ok(text.endsWith(`\nSitemap: ${docsOrigin}/sitemap.xml\n`));
   });
 }
@@ -171,54 +176,69 @@ test('llms.txt emits an llmstxt.org Markdown index with canonical links and excl
     imports: { './docs-locale': require('../lib/docs-locale') },
     env: { FASTGPT_HOME_DOMAIN: 'https://fastgpt.io' }
   });
+  const mockSource = {
+    source: {
+      getPages: () => [
+        {
+          url: '/en/guide/getting-started',
+          data: {
+            title: 'Getting Started',
+            description: 'Build your first FastGPT agent.',
+            _file: { path: 'guide/getting-started/index.en.mdx' }
+          }
+        },
+        {
+          url: '/en/openapi/intro',
+          data: {
+            title: 'OpenAPI Intro',
+            description: 'Authenticate and call FastGPT APIs.',
+            _file: { path: 'openapi/intro.en.mdx' }
+          }
+        },
+        {
+          url: '/en/self-host',
+          data: {
+            title: 'Self-Host Overview',
+            description: 'Deploy and operate FastGPT.',
+            _file: { path: 'self-host/index.en.mdx' }
+          }
+        },
+        {
+          url: '/en/openapi/legacy/app',
+          data: {
+            title: 'Legacy App API',
+            deprecated: true,
+            _file: { path: 'openapi/legacy/app.en.mdx' }
+          }
+        },
+        {
+          url: '/en/self-host/upgrading/outdated/48',
+          data: {
+            title: 'V4.8',
+            _file: { path: 'self-host/upgrading/outdated/48.en.mdx' }
+          }
+        }
+      ]
+    }
+  };
+  const llmsMarkdown = loadModule('../lib/llms-markdown.ts', {
+    imports: {
+      'node:fs/promises': require('node:fs/promises'),
+      'node:path': path,
+      'fast-glob': require('fast-glob'),
+      'gray-matter': matter,
+      remark: require('remark'),
+      'remark-gfm': require('remark-gfm'),
+      'remark-mdx': require('remark-mdx'),
+      'remark-stringify': require('remark-stringify'),
+      'fumadocs-mdx/config': { remarkInclude: () => () => {} },
+      '@/lib/source': mockSource,
+      '@/lib/fastgpt-home-url': routing
+    }
+  });
   const { GET } = loadModule('../app/[lang]/llms.txt/route.ts', {
     imports: {
-      '@/lib/source': {
-        source: {
-          getPages: () => [
-            {
-              url: '/en/guide/getting-started',
-              data: {
-                title: 'Getting Started',
-                description: 'Build your first FastGPT agent.',
-                _file: { path: 'guide/getting-started/index.en.mdx' }
-              }
-            },
-            {
-              url: '/en/openapi/intro',
-              data: {
-                title: 'OpenAPI Intro',
-                description: 'Authenticate and call FastGPT APIs.',
-                _file: { path: 'openapi/intro.en.mdx' }
-              }
-            },
-            {
-              url: '/en/self-host',
-              data: {
-                title: 'Self-Host Overview',
-                description: 'Deploy and operate FastGPT.',
-                _file: { path: 'self-host/index.en.mdx' }
-              }
-            },
-            {
-              url: '/en/openapi/legacy/app',
-              data: {
-                title: 'Legacy App API',
-                deprecated: true,
-                _file: { path: 'openapi/legacy/app.en.mdx' }
-              }
-            },
-            {
-              url: '/en/self-host/upgrading/outdated/48',
-              data: {
-                title: 'V4.8',
-                _file: { path: 'self-host/upgrading/outdated/48.en.mdx' }
-              }
-            }
-          ]
-        }
-      },
-      '@/lib/fastgpt-home-url': routing,
+      '@/lib/llms-markdown': llmsMarkdown,
       '@/lib/i18n': { i18n: { languages: ['zh-CN', 'en'] } }
     }
   });
@@ -230,33 +250,158 @@ test('llms.txt emits an llmstxt.org Markdown index with canonical links and excl
   const body = await response.text();
   assert.ok(body.startsWith('# FastGPT Documentation\n'));
   assert.ok(body.includes('https://doc.fastgpt.io/en/llms-full.txt'));
+  assert.ok(body.includes('https://doc.fastgpt.io/en/llms-guide.txt'));
+  assert.ok(body.includes('https://doc.fastgpt.io/en/llms-openapi.txt'));
+  assert.ok(body.includes('https://doc.fastgpt.io/en/llms-self-host.txt'));
+  assert.ok(body.includes('https://doc.fastgpt.io/pricing.md'));
   assert.ok(body.includes('- [Getting Started](https://doc.fastgpt.io/en/guide/getting-started): Build your first FastGPT agent.'));
   assert.ok(body.includes('- [OpenAPI Intro](https://doc.fastgpt.io/en/openapi/intro): Authenticate and call FastGPT APIs.'));
   assert.ok(body.includes('- [Self-Host Overview](https://doc.fastgpt.io/en/self-host): Deploy and operate FastGPT.'));
   assert.ok(!body.includes('/en/openapi/legacy/app'));
   assert.ok(!body.includes('/en/self-host/upgrading/outdated/48'));
+
+  const cleaned = await llmsMarkdown.renderCleanMdxBody(
+    './content/sample.en.mdx',
+    [
+      "import { Alert } from '@/components/docs/Alert';",
+      '',
+      '<span id="anchor" />',
+      '',
+      '<Alert context="info">',
+      '  Important deployment tip.',
+      '</Alert>',
+      '',
+      '<Tabs items={["Docker"]}>',
+      '  <Tab value="Docker">',
+      '    Run `docker compose up -d`.',
+      '  </Tab>',
+      '</Tabs>',
+      '',
+      '<MermaidDiagram chart="graph TD; A-->B;" />',
+      '',
+      '<CommercialContactDialog label="Contact Sales" url="https://fastgpt.io/contact" />'
+    ].join('\n')
+  );
+  assert.ok(!cleaned.includes('import '));
+  assert.ok(!cleaned.includes('<Alert'));
+  assert.ok(!cleaned.includes('<Tabs'));
+  assert.ok(!cleaned.includes('<span'));
+  assert.ok(cleaned.includes('> Important deployment tip.'));
+  assert.ok(cleaned.includes('#### Docker'));
+  assert.ok(cleaned.includes('```mermaid\ngraph TD; A-->B;\n```'));
+  assert.ok(cleaned.includes('[Contact Sales](https://fastgpt.io/contact)'));
 });
 
-test('generateArticleSchema and generateFaqSchema emit rich-result compliant JSON-LD', () => {
-  const { generateArticleSchema, generateFaqSchema } = loadModule('../lib/schema.ts', { imports: {} });
+test('schema helpers expand search titles and emit rich-result compliant JSON-LD', () => {
+  const {
+    resolvePageSeoTitle,
+    generateArticleSchema,
+    generateWebSiteSchema,
+    generateFaqSchema
+  } = loadModule('../lib/schema.ts', { imports: {} });
+
+  assert.equal(
+    resolvePageSeoTitle({
+      path: 'guide/build/workflow/nodes/ai_chat.mdx',
+      title: 'AI 对话',
+      lang: 'zh-CN'
+    }),
+    'AI 对话工作流节点'
+  );
+  assert.equal(
+    resolvePageSeoTitle({
+      path: 'guide/build/workflow/nodes/ai_chat.en.mdx',
+      title: 'AI Chat',
+      lang: 'en'
+    }),
+    'AI Chat Workflow Node'
+  );
+  assert.equal(
+    resolvePageSeoTitle({
+      path: 'self-host/upgrading/4-18/4180.mdx',
+      title: 'V4.18.0(含初始化脚本)',
+      lang: 'zh-CN'
+    }),
+    'V4.18.0(含初始化脚本) 更新说明与升级指南'
+  );
+  assert.equal(
+    resolvePageSeoTitle({
+      path: 'self-host/upgrading/4-18/4180.en.mdx',
+      title: 'V4.18.0 (Includes Initialization Script)',
+      lang: 'en'
+    }),
+    'V4.18.0 (Includes Initialization Script) Release Notes & Upgrade Guide'
+  );
+  assert.equal(
+    resolvePageSeoTitle({
+      path: 'self-host/deploy/docker.mdx',
+      title: 'Docker Compose 部署',
+      lang: 'zh-CN'
+    }),
+    'Docker Compose 私有化部署指南'
+  );
+  assert.equal(
+    resolvePageSeoTitle({
+      path: 'self-host/deploy/docker.en.mdx',
+      title: 'Deploy with Docker Compose',
+      lang: 'en'
+    }),
+    'Deploy with Docker Compose (Self-Hosted)'
+  );
+  assert.equal(
+    resolvePageSeoTitle({
+      path: 'openapi/chat.mdx',
+      title: '会话、流式响应与错误处理',
+      lang: 'zh-CN'
+    }),
+    '会话、流式响应与错误处理 OpenAPI 参考'
+  );
+  assert.equal(
+    resolvePageSeoTitle({
+      path: 'openapi/chat.en.mdx',
+      title: 'Conversations, streaming, and errors',
+      lang: 'en'
+    }),
+    'Conversations, streaming, and errors — OpenAPI Reference'
+  );
+
+  const modifiedDate = new Date('2026-10-20T00:00:00.000Z');
   const schema = generateArticleSchema({
     title: 'Quick Start',
     description: 'Build your first FastGPT agent.',
     url: 'https://doc.fastgpt.cn/zh-CN/guide/getting-started/quick-start',
+    dateModified: modifiedDate,
     lang: 'zh-CN'
   });
   assert.equal(schema['@type'], 'TechArticle');
   assert.equal(schema.publisher.logo.url, 'https://doc.fastgpt.cn/favicon/android-chrome-512x512.png');
   assert.equal(schema.image, 'https://doc.fastgpt.cn/og-image.png');
+  assert.equal(schema.datePublished, '2026-10-20T00:00:00.000Z');
+  assert.equal(schema.dateModified, '2026-10-20T00:00:00.000Z');
+
+  const siteSchema = generateWebSiteSchema({
+    url: 'https://doc.fastgpt.io/en/guide/getting-started',
+    lang: 'en'
+  });
+  assert.equal(siteSchema['@graph'].length, 2);
+  assert.equal(siteSchema['@graph'][0]['@type'], 'Organization');
+  assert.equal(siteSchema['@graph'][1]['@type'], 'WebSite');
 
   const faqSchema = generateFaqSchema({
     headings: [
       { id: 'section-1', content: '1. Import Stage' },
+      { id: 'account-group', content: 'Account and Team Questions' },
       { id: 'q1', content: 'Why did PDF parsing fail?' }
     ],
     contents: [
+      { heading: 'account-group', content: 'Introductory overview paragraph for the section.' },
       { heading: 'q1', content: 'Check whether the PDF is password-protected or scanned.' },
       { heading: 'q1', content: 'Run OCR before uploading scanned PDFs.' }
+    ],
+    toc: [
+      { url: '#section-1', depth: 2 },
+      { url: '#account-group', depth: 2 },
+      { url: '#q1', depth: 3 }
     ]
   });
   assert.equal(faqSchema['@type'], 'FAQPage');
@@ -279,6 +424,7 @@ test('middleware resolves section landings, language roots, and historical paths
         i18n: { defaultLanguage: 'zh-CN', languages: ['zh-CN', 'en'] }
       },
       '@/lib/docs-locale': require('../lib/docs-locale'),
+      '@/data/doc-last-modified.json': require('../data/doc-last-modified.json'),
       'next/server': { NextResponse }
     }
   }).default;
@@ -286,6 +432,9 @@ test('middleware resolves section landings, language roots, and historical paths
   const cases = [
     ['/zh-CN', '/zh-CN/guide/getting-started'],
     ['/en', '/en/guide/getting-started'],
+    ['/EN/openapi/intro', '/en/openapi/intro'],
+    ['/zh-CN/Docs/openapi/intro', '/zh-CN/openapi/intro'],
+    ['/zh-CN/guide/admin/teammode', '/zh-CN/guide/admin/teamMode'],
     ['/en/plugin', '/en/plugin/intro'],
     ['/zh-CN/faq/app', '/zh-CN/guide/build/faq'],
     ['/zh-CN/faq/dataset', '/zh-CN/guide/dataset/faq'],
@@ -320,7 +469,9 @@ test('middleware resolves section landings, language roots, and historical paths
     ['/zh-CN/guide/dashboard/workflow/ai_chat', '/zh-CN/guide/build/workflow/nodes/ai_chat'],
     ['/zh-CN/guide/build/workflow/nodes/laf', '/zh-CN/guide/build/workflow/nodes/sandbox-v2'],
     ['/zh-CN/guide/build/tools/system-plugins/bing_search_plugin', '/zh-CN/plugin/team-installation'],
-    ['/zh-CN/use-cases/app-cases/dalle3', '/zh-CN/guide/getting-started'],
+    ['/zh-CN/use-cases/app-cases/feishu_webhook', '/zh-CN/guide/build/publish/feishu'],
+    ['/zh-CN/use-cases/app-cases/english_essay_correction_bot', '/zh-CN/guide/getting-started/first-agent'],
+    ['/zh-CN/use-cases/app-cases/unknown_legacy_case', '/zh-CN/guide/getting-started'],
     ['/zh-CN/docs/introduction/guide/team_permissions/customDomain', '/zh-CN/guide/workspace/customDomain'],
     ['/zh-CN/docs/introduction/guide/course/collection_tags', '/zh-CN/guide/dataset/collection_tags'],
     ['/zh-CN/docs/introduction/guide/course/welcomeText', '/zh-CN/guide/build/general/welcomeText'],
@@ -343,6 +494,7 @@ test('middleware resolves section landings, language roots, and historical paths
     ['/zh-CN/introduction/openapi/swagger', '/zh-CN/openapi/intro'],
     ['/zh-CN/introduction/development/openapi/swagger', '/zh-CN/openapi/intro'],
     ['/zh-CN/openapi/swagger', '/zh-CN/openapi/intro'],
+    ['/zh-CN/openapi/best-practices', '/zh-CN/openapi/intro'],
     ['/zh-CN/introduction/guide/knowledge_base/externalFile', '/zh-CN/guide/dataset/third-party/third_dataset'],
     ['/zh-CN/introduction/guide/plugins/how_to_submit_system_plugin', '/zh-CN/plugin/system-tool-development'],
     ['/zh-CN/protocol', '/zh-CN/guide/version/opensource/license'],
@@ -388,8 +540,38 @@ test('middleware resolves section landings, language roots, and historical paths
     ['/zh-CN/self-host/upgrading/4-14', '/zh-CN/self-host/upgrading/4-14/41431'],
     ['/zh-CN/self-host/upgrading/4-15', '/zh-CN/self-host/upgrading/4-15/4158'],
     ['/zh-CN/self-host/upgrading/4-16', '/zh-CN/self-host/upgrading/4-16/4162'],
-    ['/zh-CN/self-host/upgrading/4-17', '/zh-CN/self-host/upgrading/4-17/4173'],
-    ['/zh-CN/self-host/upgrading/outdated', '/zh-CN/self-host/upgrading/outdated/4111']
+    ['/zh-CN/self-host/upgrading/4-17', '/zh-CN/self-host/upgrading/4-17/4175'],
+    ['/zh-CN/self-host/upgrading/4-18', '/zh-CN/self-host/upgrading/4-18/4180'],
+    ['/zh-CN/self-host/upgrading/outdated', '/zh-CN/self-host/upgrading/outdated/4111'],
+    ['/docs/agreement/terms/', '/zh-CN/guide/version/cloud/terms'],
+    ['/docs/agreement/privacy/', '/zh-CN/guide/version/cloud/privacy'],
+    ['/docs/agreement/disclaimer/', '/zh-CN/guide/version/cloud/terms'],
+    ['/docs/commercial', '/zh-CN/guide/version/commercial'],
+    ['/docs/pricing/', '/zh-CN/guide/version/commercial'],
+    ['/docs/course/ai_settings/', '/zh-CN/guide/build/general/ai_settings'],
+    ['/docs/course/chat_input_guide', '/zh-CN/guide/build/general/chat_input_guide'],
+    ['/docs/course/custom_link', '/zh-CN/guide/build/publish/link'],
+    ['/docs/course/feishu', '/zh-CN/guide/build/publish/feishu'],
+    ['/docs/course/official_account', '/zh-CN/guide/build/publish/official_account'],
+    ['/docs/course/webSync', '/zh-CN/guide/dataset/websync'],
+    ['/docs/installation', '/zh-CN/self-host/deploy/docker'],
+    ['/docs/installation/one-api/', '/zh-CN/self-host/config/model/intro'],
+    ['/docs/installation/reference', '/zh-CN/self-host/config/env'],
+    ['/docs/installation/reference/models', '/zh-CN/self-host/config/model/intro'],
+    ['/docs/installation/upgrading', '/zh-CN/self-host/upgrading/upgrade-instruction'],
+    ['/docs/use-cases/ai_settings/', '/zh-CN/guide/build/general/ai_settings'],
+    ['/docs/use-cases/datasetengine', '/zh-CN/guide/dataset/rag'],
+    ['/docs/use-cases/feishu-bot', '/zh-CN/guide/build/publish/feishu'],
+    ['/docs/use-cases/wecom-bot', '/zh-CN/guide/build/publish/wecom'],
+    ['/docs/use-cases/official_account', '/zh-CN/guide/build/publish/official_account'],
+    ['/docs/use-cases/onwechat/', '/zh-CN/guide/build/publish/wechat'],
+    ['/docs/workflow', '/zh-CN/guide/build/workflow/intro'],
+    ['/docs/workflow/intro', '/zh-CN/guide/build/workflow/intro'],
+    ['/docs/workflow/modules/laf/', '/zh-CN/guide/build/workflow/nodes/sandbox-v2'],
+    ['/docs/workflow/modules/text_editor/', '/zh-CN/guide/build/workflow/nodes/text_editor'],
+    ['/docs/workflow/modules/tfswitch/', '/zh-CN/guide/build/workflow/nodes/tfswitch'],
+    ['/docs/workflow/modules/custom_feedback/', '/zh-CN/guide/build/workflow/nodes/custom_feedback'],
+    ['/docs/workflow/modules/coreferenceresolution/', '/zh-CN/guide/build/workflow/nodes/coreferenceResolution']
   ];
 
   const contentRoot = path.join(__dirname, '../content');
@@ -410,6 +592,62 @@ test('middleware resolves section landings, language roots, and historical paths
     assert.ok(targetExists, `Redirect target must exist in content/: ${expected}`);
   }
 
+  const retiredTopics = new Set([
+    '/use-cases/app-cases/dalle3',
+    '/use-cases/app-cases/fixingevidence',
+    '/use-cases/app-cases/translate-subtitle-using-gpt'
+  ]);
+  for (const retired of [
+    '/zh-CN/use-cases/app-cases/dalle3',
+    '/en/docs/use-cases/app-cases/fixingevidence',
+    '/zh-CN/use-cases/app-cases/translate-subtitle-using-gpt.md'
+  ]) {
+    const res = middleware(new NextRequest(`http://localhost:3210${retired}`));
+    assert.equal(res.status, 410, `${retired} should return 410 Gone`);
+    assert.equal(res.headers.get('x-robots-tag'), 'noindex');
+  }
+
+  const anonPass = middleware(new NextRequest('http://localhost:3210/en/openapi/intro'));
+  assert.equal(anonPass.status, 200);
+  assert.equal(
+    anonPass.headers.get('cache-control'),
+    'public, max-age=0, s-maxage=60, stale-while-revalidate=600'
+  );
+  assert.equal(anonPass.headers.get('set-cookie'), null);
+
+  const localizedPricing = middleware(new NextRequest('http://localhost:3210/en/pricing.md?src=agent'));
+  assert.equal(localizedPricing.status, 301);
+  assert.equal(localizedPricing.headers.get('location'), 'http://localhost:3210/pricing.md?src=agent');
+
+  const legacyCnDomain = middleware(
+    new NextRequest('https://doc.fastgpt.in/docs/course/websync', {
+      headers: { host: 'doc.fastgpt.in' }
+    })
+  );
+  assert.equal(legacyCnDomain.status, 301);
+  assert.equal(
+    legacyCnDomain.headers.get('location'),
+    'https://doc.fastgpt.cn/zh-CN/guide/dataset/websync'
+  );
+
+  const legacyEnDomain = middleware(
+    new NextRequest('https://doc.tryfastgpt.ai/en/openapi/intro', {
+      headers: { host: 'doc.tryfastgpt.ai' }
+    })
+  );
+  assert.equal(legacyEnDomain.status, 301);
+  assert.equal(
+    legacyEnDomain.headers.get('location'),
+    'https://doc.fastgpt.io/en/openapi/intro'
+  );
+
+  const staleCookiePass = middleware(
+    new NextRequest('http://localhost:3210/en/openapi/intro', {
+      headers: { cookie: 'FD_LOCALE=zh-CN' }
+    })
+  );
+  assert.match(staleCookiePass.headers.get('set-cookie') ?? '', /FD_LOCALE=en/);
+
   const historicalFiles = [
     ...new Set(
       execSync(
@@ -429,18 +667,40 @@ test('middleware resolves section landings, language roots, and historical paths
     rel = rel.replace(/(?:\.en)?\.(?:mdx|md)$/, '');
     if (rel.endsWith('/index')) rel = rel.slice(0, -6) || '/';
     if (rel === '/toc' || rel.startsWith('/api')) continue;
+    const ext = isEn ? '.en.mdx' : '.mdx';
+    const currentSourceCandidates = [
+      path.join(contentRoot, `${rel.slice(1)}${ext}`),
+      path.join(contentRoot, rel.slice(1), `index${ext}`)
+    ];
+    const currentSourceFile = currentSourceCandidates.find((filePath) => fs.existsSync(filePath));
+    if (
+      currentSourceFile &&
+      matter(fs.readFileSync(currentSourceFile, 'utf8')).data.draft === true
+    ) {
+      continue;
+    }
     const locale = isEn ? 'en' : 'zh-CN';
     const req = new NextRequest(`http://localhost:3210/${locale}${rel}`);
     const res = middleware(req);
+    if (retiredTopics.has(rel.toLowerCase())) {
+      assert.equal(res.status, 410, `Retired historical route ${histFile} must return 410`);
+      continue;
+    }
     const finalPathname =
       res.status === 301
         ? new URL(res.headers.get('location')).pathname
         : `/${locale}${rel}`;
     const slug = finalPathname.replace(/^\/(?:zh-CN|en)\//, '');
-    const ext = isEn ? '.en.mdx' : '.mdx';
-    const exists =
-      fs.existsSync(path.join(contentRoot, `${slug}${ext}`)) ||
-      fs.existsSync(path.join(contentRoot, slug, `index${ext}`));
-    assert.ok(exists, `Historical route ${histFile} -> ${finalPathname} must exist`);
+    const targetCandidates = [
+      path.join(contentRoot, `${slug}${ext}`),
+      path.join(contentRoot, slug, `index${ext}`)
+    ];
+    const targetFile = targetCandidates.find((filePath) => fs.existsSync(filePath));
+    assert.ok(targetFile, `Historical route ${histFile} -> ${finalPathname} must exist`);
+    assert.notEqual(
+      matter(fs.readFileSync(targetFile, 'utf8')).data.draft,
+      true,
+      `Historical route ${histFile} -> ${finalPathname} must resolve to a published page`
+    );
   }
 });

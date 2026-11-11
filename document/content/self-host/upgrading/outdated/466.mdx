@@ -1,9 +1,10 @@
 ---
 title: V4.6.6
-description: "FastGPT V4.6.6 版本更新说明，涵盖镜像升级步骤、兼容性变更与功能优化详情。"
+description: 'FastGPT V4.6.6 版本更新说明，涵盖镜像升级步骤、兼容性变更与功能优化详情。'
 releaseTime: '2024-01-08'
 upgradeTags:
   - 配置变更
+deprecated: true
 ---
 
 ## 配置文件变更
@@ -15,8 +16,8 @@ upgradeTags:
 1. 更新商业版镜像到 4.6.6 版本。
 2. 将旧版配置文件中的 `SystemParams.pluginBaseUrl` 放置到环境变量中:
 
-   PRO_URL=商业版镜像地址（此处不再需要以 /api 结尾），例如:  
-   PRO_URL=http://fastgpt-plugin.ns-hsss5d.svc.cluster.local:3000
+   PRO_URL=商业版镜像地址（此处不再需要以 /API 结尾），例如:  
+   PRO_URL= http://fastgpt-plugin.ns-hsss5d.svc.cluster.local:3000
 
 3. 原本在配置文件中的 `FeConfig` 已被移除，可以直接打开新的商业版镜像外网地址进行配置。包括 FastGPT 的各个参数和模型都可以直接在商业版镜像中配置，无需再变更 `config.json` 文件。
 

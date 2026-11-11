@@ -1,10 +1,11 @@
 ---
 title: V4.9.4
-description: "FastGPT V4.9.4 release notes covering container image updates, upgrade steps, and feature changes."
+description: 'FastGPT V4.9.4 release notes covering container image updates, upgrade steps, and feature changes.'
 releaseTime: '2025-04-10'
 upgradeTags:
   - CONFIG
   - MIGRATION
+deprecated: true
 ---
 
 ## Upgrade Guide
@@ -16,8 +17,8 @@ upgradeTags:
 - For Docker deployments, refer to the latest `docker-compose.yml` file to add Redis configuration. Add a Redis container and configure the `REDIS_URL` environment variable for both `fastgpt` and `fastgpt-pro`.
 - For Sealos deployments, create a new `redis` database in the Database section, copy the `internal connection` URL as the Redis connection string, then configure the `REDIS_URL` environment variable for both `fastgpt` and `fastgpt-pro`.
 
-|                                                |                                                |                                                |
-| ---------------------------------------------- | ---------------------------------------------- | ---------------------------------------------- |
+|                                                                                                |                                                                                                               |                                                                                                                                   |
+| ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
 | ![Select Redis in the Sealos database deployment form](/imgs/optimized/sealos-redis1.png.webp) | ![Copy the Connection value under the Redis internal network address](/imgs/optimized/sealos-redis2.png.webp) | ![Set REDIS_URL to the copied Redis connection string in the environment variable editor](/imgs/optimized/sealos-redis3.png.webp) |
 
 ### 3. Update Image Tags

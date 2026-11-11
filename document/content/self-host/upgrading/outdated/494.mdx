@@ -1,10 +1,11 @@
 ---
 title: V4.9.4
-description: "FastGPT V4.9.4 版本更新说明，涵盖镜像升级步骤、兼容性变更与功能优化详情。"
+description: 'FastGPT V4.9.4 版本更新说明，涵盖镜像升级步骤、兼容性变更与功能优化详情。'
 releaseTime: '2025-04-10'
 upgradeTags:
   - 配置变更
   - 升级脚本
+deprecated: true
 ---
 
 ## 升级指南
@@ -16,8 +17,8 @@ upgradeTags:
 - docker 部署的用户，参考最新的 `docker-compose.yml` 文件增加 Redis 配置。增加一个 redis 容器，并配置 `fastgpt` , `fastgpt-pro` 的环境变量，增加 `REDIS_URL` 环境变量。
 - Sealos 部署的用户，在数据库里新建一个 `redis` 数据库，并复制 `内网地址的 connection` 作为 `redis` 的链接串。然后配置 `fastgpt` , `fastgpt-pro` 的环境变量，增加 `REDIS_URL` 环境变量。
 
-|                                                |                                                |                                                |
-| ---------------------------------------------- | ---------------------------------------------- | ---------------------------------------------- |
+|                                                                              |                                                                    |                                                                                   |
+| ---------------------------------------------------------------------------- | ------------------------------------------------------------------ | --------------------------------------------------------------------------------- |
 | ![在 Sealos 数据库中新建 Redis 实例](/imgs/optimized/sealos-redis1.png.webp) | ![复制 Redis 内网连接地址](/imgs/optimized/sealos-redis2.png.webp) | ![为 FastGPT 应用配置 REDIS_URL 环境变量](/imgs/optimized/sealos-redis3.png.webp) |
 
 ### 3. 更新镜像 tag

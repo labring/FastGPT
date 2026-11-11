@@ -10,7 +10,9 @@ const AI_SEARCH_AGENTS = [
   'ChatGPT-User',
   'PerplexityBot',
   'ClaudeBot',
-  'Google-Extended'
+  'Google-Extended',
+  'Applebot-Extended',
+  'Amazonbot'
 ];
 
 /** Allow search and AI retrieval crawlers across documentation pages while restricting internal API routes. */
@@ -19,7 +21,10 @@ export function GET() {
   const rules = AI_SEARCH_AGENTS.map(
     (agent) => `User-Agent: ${agent}\nAllow: /\nDisallow: /api/`
   ).join('\n\n');
-  const content = `${rules}
+  const content = `# AI Context: ${domain}/llms.txt
+# Pricing & Editions: ${domain}/pricing.md
+
+${rules}
 
 Sitemap: ${domain}/sitemap.xml
 `;

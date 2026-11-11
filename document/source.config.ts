@@ -23,6 +23,7 @@ export const docs = defineDocs({
   docs: {
     schema: frontmatterSchema.extend({
       title: z.string().optional().default('Untitled'),
+      seoTitle: z.string().optional(),
       draft: z.boolean().default(false),
       releaseTime: z.iso.date().optional(),
       deprecated: z.boolean().optional(),

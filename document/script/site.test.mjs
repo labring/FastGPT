@@ -45,9 +45,63 @@ for (const locale of ['zh-CN', 'en']) {
     assert.ok(files.every((file) => !/\/toc(?:\.en)?\.mdx$/.test(file)));
     assert.ok(files.every((file) => !file.includes('/self-host/upgrading/outdated/')));
     assert.ok(urls.every((url) => url.startsWith(`https://${host}/${locale}/`)));
+    assert.ok(
+      !/^import\s+.*from\s+['"](?:@\/components\/|fumadocs-)/m.test(fullBody),
+      'MDX component import statements stripped from llms-full.txt'
+    );
+    assert.ok(!/<Alert[\s>]/.test(fullBody), 'Alert JSX converted to pure Markdown');
+    assert.ok(!/<Tabs[\s>]/.test(fullBody), 'Tabs JSX converted to pure Markdown');
+    assert.ok(!/<MermaidDiagram[\s>]/.test(fullBody), 'MermaidDiagram JSX converted to code block');
+    assert.ok(!/<FastGPTLink[\s>]/.test(fullBody), 'FastGPTLink JSX unwrapped in llms-full.txt');
     assert.match(fullResponse.headers.get('content-type'), /text\/plain/);
   });
 }
+
+test('root machine-readable endpoints and single-page Markdown negotiation respond directly', async () => {
+  const rootLlms = await fetch(`${origin}/llms.txt`, { redirect: 'manual' });
+  assert.equal(rootLlms.status, 200);
+  assert.match(await rootLlms.text(), /^# FastGPT/m);
+
+  const pricing = await fetch(`${origin}/pricing.md`, { redirect: 'manual' });
+  assert.equal(pricing.status, 200);
+  assert.match(pricing.headers.get('content-type') ?? '', /text\/markdown/);
+  assert.match(
+    pricing.headers.get('link') ?? '',
+    /<https:\/\/doc\.fastgpt\.(?:io\/en|cn\/zh-CN)\/guide\/version\/commercial>;\s*rel="canonical"/
+  );
+  const pricingBody = await pricing.text();
+  assert.ok(pricingBody.includes('Sealos') && pricingBody.includes('0.410993'));
+
+  const localizedPricing = await fetch(`${origin}/en/pricing.md`, { redirect: 'manual' });
+  assert.equal(localizedPricing.status, 301);
+  assert.equal(new URL(localizedPricing.headers.get('location'), origin).pathname, '/pricing.md');
+
+  for (const bundlePath of ['/llms-guide.txt', '/en/llms-openapi.txt', '/zh-CN/llms-self-host.txt']) {
+    const bundleRes = await fetch(`${origin}${bundlePath}`, { redirect: 'manual' });
+    assert.equal(bundleRes.status, 200, bundlePath);
+    assert.match(bundleRes.headers.get('content-type') ?? '', /text\/plain/);
+    assert.ok((await bundleRes.text()).includes('url: https://doc.fastgpt.'));
+  }
+
+  const dotMd = await fetch(`${origin}/en/openapi/intro.md`, { redirect: 'manual' });
+  assert.equal(dotMd.status, 200);
+  assert.match(dotMd.headers.get('content-type') ?? '', /text\/markdown/);
+  assert.equal(
+    dotMd.headers.get('link'),
+    '<https://doc.fastgpt.io/en/openapi/intro>; rel="canonical"'
+  );
+  const dotMdBody = await dotMd.text();
+  assert.ok(dotMdBody.includes('Source: https://doc.fastgpt.io/en/openapi/intro'));
+  assert.ok(!/^import\s+.*from\s+['"](?:@\/components\/|fumadocs-)/m.test(dotMdBody));
+
+  const negotiated = await fetch(`${origin}/en/openapi/intro`, {
+    redirect: 'manual',
+    headers: { accept: 'text/markdown' }
+  });
+  assert.equal(negotiated.status, 200);
+  assert.match(negotiated.headers.get('content-type') ?? '', /text\/markdown/);
+  assert.ok((await negotiated.text()).includes('Source: https://doc.fastgpt.io/en/openapi/intro'));
+});
 
 test('legacy paths resolve directly and preserve the query', async () => {
   const response = await fetch(`${origin}/en/docs/FAQ?source=bookmark`, { redirect: 'manual' });
@@ -77,6 +131,7 @@ for (const [locale, host] of [['zh-CN', 'doc.fastgpt.cn'], ['en', 'doc.fastgpt.i
       assert.ok(html.includes(`<link rel="alternate" hrefLang="${alternate}" href="https://${alternateHost}/${alternate}/openapi/intro"`));
     }
     assert.ok(html.includes('<link rel="alternate" hrefLang="x-default" href="https://doc.fastgpt.io/en/openapi/intro"'));
+    assert.ok(html.includes(`<link rel="alternate" type="text/markdown" href="https://${host}/${locale}/openapi/intro.md"`));
     assert.ok(html.includes('"@type":"TechArticle"'));
     assert.ok(html.includes(`https://${host}/favicon/android-chrome-512x512.png`));
     assert.ok(html.includes(`https://${host}/og-image.png`));
@@ -96,10 +151,19 @@ for (const [locale, host] of [['zh-CN', 'doc.fastgpt.cn'], ['en', 'doc.fastgpt.i
     assert.ok(breadcrumb, 'BreadcrumbList JSON-LD present');
     const urls = breadcrumb.itemListElement.map((item) => item.item);
     assert.equal(new Set(urls).size, urls.length, 'BreadcrumbList URLs are unique');
+    const siteGraph = ldScripts.find((item) => Array.isArray(item['@graph']));
+    assert.ok(
+      siteGraph && siteGraph['@graph'].some((node) => node['@type'] === 'WebSite'),
+      'Home page emits WebSite JSON-LD graph'
+    );
 
     const deepResponse = await fetch(`${origin}/${locale}/guide/build/workflow/nodes/ai_chat`);
     assert.equal(deepResponse.status, 200);
     const deepHtml = await deepResponse.text();
+    assert.ok(
+      deepHtml.includes(locale === 'en' ? 'AI Chat Workflow Node' : 'AI 对话工作流节点'),
+      'Workflow node title expanded for search intent'
+    );
     const deepScripts = [...deepHtml.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)].map((m) =>
       JSON.parse(m[1])
     );
@@ -123,12 +187,15 @@ for (const [locale, host] of [['zh-CN', 'doc.fastgpt.cn'], ['en', 'doc.fastgpt.i
       `/${locale}/toc`,
       `/${locale}/guide/chat/htmlRendering`,
       `/${locale}/openapi/legacy/app`,
-      `/${locale}/guide/build/workflow/nodes/loop`
+      `/${locale}/guide/build/workflow/nodes/loop`,
+      `/${locale}/self-host/upgrading/outdated/48`
     ]) {
       const res = await fetch(`${origin}${noindexRoute}`);
       assert.equal(res.status, 200, noindexRoute);
       const body = await res.text();
       assert.ok(body.includes('noindex'), `Expected noindex on ${noindexRoute}`);
+      assert.ok(!body.includes('hrefLang='), `Unexpected hreflang on noindex route ${noindexRoute}`);
+      assert.ok(!body.includes('"@type":"TechArticle"'), `Unexpected TechArticle JSON-LD on noindex route ${noindexRoute}`);
     }
   });
 
@@ -138,6 +205,8 @@ for (const [locale, host] of [['zh-CN', 'doc.fastgpt.cn'], ['en', 'doc.fastgpt.i
     const html = await response.text();
     // Next hydrates the localized recovery boundary; its links are checked in browser acceptance.
     assert.ok(html.includes('<meta name="robots" content="noindex"'));
+    assert.ok(!html.includes('<link rel="canonical"'), '404 must omit root canonical tag');
+    assert.ok(!html.includes('hrefLang='), '404 must omit root hreflang tags');
   });
 
   test(`${locale} search returns localized topics and historical version references`, async () => {
@@ -151,6 +220,15 @@ for (const [locale, host] of [['zh-CN', 'doc.fastgpt.cn'], ['en', 'doc.fastgpt.i
         assert.ok(results.some((result) => result.url.includes('/self-host/upgrading/4-14/4145')));
       }
     }
+    const outdatedSearch = await fetch(
+      `${origin}/api/search?${new URLSearchParams({ query: 'V4.8', locale })}`
+    );
+    assert.equal(outdatedSearch.status, 200);
+    const outdatedResults = await outdatedSearch.json();
+    assert.ok(
+      outdatedResults.every((result) => !result.url.includes('/self-host/upgrading/outdated/')),
+      'Deprecated outdated release pages are excluded from search'
+    );
   });
 }
 
@@ -163,7 +241,7 @@ test('legacy prefix redirects match path segments and retain encoded query value
     ['/zh-CN/self-host/config/json', '/zh-CN/self-host/config/env'],
     ['/zh-CN/self-host/upgrading/4-15/4150', '/zh-CN/self-host/upgrading/4-15/41500'],
     ['/zh-CN/guide/build/workflow/nodes/sandbox', '/zh-CN/guide/build/workflow/nodes/sandbox-v2'],
-    ['/zh-CN/use-cases/app-cases/dalle3', '/zh-CN/guide/getting-started']
+    ['/zh-CN/use-cases/app-cases/feishu_webhook', '/zh-CN/guide/build/publish/feishu']
   ]) {
     const query = '?source=bookmark&value=a%2Fb%20c';
     const response = await fetch(`${origin}${legacy}${query}`, { redirect: 'manual' });
@@ -174,6 +252,12 @@ test('legacy prefix redirects match path segments and retain encoded query value
     const targetResponse = await fetch(`${origin}${destination.pathname}`, { redirect: 'manual' });
     assert.equal(targetResponse.status, 200, `Redirect target must return 200: ${destination.pathname}`);
   }
+  const goneResponse = await fetch(`${origin}/zh-CN/use-cases/app-cases/dalle3`, {
+    redirect: 'manual'
+  });
+  assert.equal(goneResponse.status, 410);
+  assert.equal(goneResponse.headers.get('x-robots-tag'), 'noindex');
+
   for (const path of ['/en/FAQish', '/english/openapi/intro']) {
     const response = await fetch(`${origin}${path}`, { redirect: 'manual' });
     const location = response.headers.get('location');
@@ -200,7 +284,8 @@ test('social preview image and static search export satisfy discovery contracts'
       (record) =>
         !/\/toc$/.test(record.url) &&
         !record.url.includes('/openapi/legacy/') &&
-        !record.url.endsWith('/guide/chat/htmlRendering')
+        !record.url.endsWith('/guide/chat/htmlRendering') &&
+        !record.url.includes('/self-host/upgrading/outdated/')
     )
   );
 });
