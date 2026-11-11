@@ -6,7 +6,7 @@ import { isAuthorizedTempFileS3Key } from '../../../common/s3/sources/temp/key';
 import { getS3DatasetSource } from '../../../common/s3/sources/dataset';
 import { getTeamModelHandle } from '../../ai/model/catalog/service';
 import type { ModelHandle } from '../../ai/model/catalog/handle';
-import { getDatasetModelReference } from '../model';
+import { assertAppDatasetIndexModelsAvailable, getAssertedDatasetEmbeddingModel } from '../model';
 import { defaultSearchDatasetData } from './index';
 import { findFirstDatasetSearchVlmModel } from './vlm';
 import type { DatasetSearchRuntime } from './type';
@@ -28,10 +28,17 @@ export const createDatasetSearchRuntime = ({
   },
   resolveModels: async ({ actor, datasets, rerank, queryExtension }) => {
     const handle = modelHandle ?? (await getTeamModelHandle({ teamId: actor.teamId }));
-    const embeddings = datasets.map((dataset) =>
-      handle.getModelData(getDatasetModelReference(dataset, 'embedding'), { type: 'embedding' })
-    );
     const authorizedIds = await getAuthorizedModelIds({ actor, handle });
+    // 沿用索引模型校验：停用或无权使用的模型必须在召回前拒绝，且复用同一目录快照。
+    const embeddingModels = await assertAppDatasetIndexModelsAvailable({
+      resources: datasets.map((dataset) => ({ type: 'dataset', id: String(dataset._id) })),
+      teamId: actor.teamId,
+      modelHandle: handle,
+      authorizedIds
+    });
+    const embeddings = datasets.map((dataset) =>
+      getAssertedDatasetEmbeddingModel(embeddingModels, String(dataset._id))
+    );
     const rerankModel = rerank.enabled
       ? handle.getModelData(
           { modelId: rerank.modelId },

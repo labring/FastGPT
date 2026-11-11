@@ -48,7 +48,12 @@ export const searchDatasetTestForApi = async ({
       embeddingWeight: params.embeddingWeight ?? 0.5
     },
     rerank: params.usingReRank
-      ? { enabled: true, modelId: rerankModel?.modelId, weight: params.rerankWeight ?? 0.5 }
+      ? {
+          enabled: true,
+          modelId: rerankModel?.modelId,
+          weight: params.rerankWeight ?? 0.5,
+          candidateNum: params.rerankCandidateNum
+        }
       : { enabled: false },
     queryExtension: params.datasetSearchUsingExtensionQuery
       ? {

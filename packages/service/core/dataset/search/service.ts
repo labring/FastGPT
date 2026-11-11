@@ -107,6 +107,7 @@ export const search = async ({
     usingReRank: rerank.enabled,
     rerankModel,
     rerankWeight: rerank.enabled ? rerank.weight : undefined,
+    rerankCandidateNum: rerank.enabled ? rerank.candidateNum : undefined,
     datasetSearchUsingExtensionQuery: extension.enabled,
     datasetSearchExtensionModel: extensionModel,
     datasetSearchExtensionBg: extension.enabled ? extension.background : undefined,

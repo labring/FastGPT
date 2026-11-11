@@ -34,6 +34,31 @@ import {
 const objectId = '68ad85a7463006c963799a05';
 
 describe('structured dataset search OpenAPI', () => {
+  it.each([10, 100, undefined])(
+    'accepts an optional rerank candidate count: %s',
+    (candidateNum) => {
+      const result = SearchDatasetBodySchema.parse({
+        scope: { datasetIds: [objectId] },
+        query: { text: 'question' },
+        rerank: { enabled: true, candidateNum }
+      });
+      expect(result.rerank).toMatchObject({ enabled: true, weight: 0.5, candidateNum });
+    }
+  );
+
+  it.each([9, 101, 10.5, '20', null])(
+    'rejects an invalid structured candidate count: %s',
+    (candidateNum) => {
+      expect(
+        SearchDatasetBodySchema.safeParse({
+          scope: { datasetIds: [objectId] },
+          query: { text: 'question' },
+          rerank: { enabled: true, candidateNum }
+        }).success
+      ).toBe(false);
+    }
+  );
+
   it.each([
     ['DevAPI', openAPIDocument],
     ['System OpenAPI', apiDocOpenAPIDocument]
@@ -62,7 +87,20 @@ describe('structured dataset search OpenAPI', () => {
           ]
         },
         retrieval: { properties: { mode: { default: 'embedding' } } },
-        rerank: { default: { enabled: false } },
+        rerank: {
+          default: { enabled: false },
+          oneOf: expect.arrayContaining([
+            expect.objectContaining({
+              properties: expect.objectContaining({
+                candidateNum: expect.objectContaining({
+                  type: 'integer',
+                  minimum: 10,
+                  maximum: 100
+                })
+              })
+            })
+          ])
+        },
         queryExtension: { default: { enabled: false } },
         result: { properties: { maxTokens: { minimum: 1, maximum: 20000 } } }
       }

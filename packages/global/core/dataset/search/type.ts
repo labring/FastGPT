@@ -189,6 +189,10 @@ export const DatasetSearchParamsSchema = z.strictObject({
       z.strictObject({
         enabled: z.literal(true).meta({ description: '启用重排', example: true }),
         modelId: ModelIdSchema.optional(),
+        candidateNum: z.number().int().min(10).max(100).optional().meta({
+          description: '重排候选数，范围 10–100；省略时使用默认值 100',
+          example: 100
+        }),
         weight: WeightSchema.default(0.5).meta({ description: '重排结果的融合权重', example: 0.5 })
       })
     ])

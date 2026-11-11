@@ -38,6 +38,7 @@ describe('legacy search protocol adapter', () => {
       queryImageUrls: ['image-key'],
       limit: 50000,
       usingReRank: true,
+      rerankCandidateNum: 20,
       rerankModel: 'old-rerank',
       datasetSearchUsingExtensionQuery: true,
       datasetSearchExtensionModel: 'old-llm'
@@ -53,7 +54,7 @@ describe('legacy search protocol adapter', () => {
         scope: { datasetIds: [id] },
         query: { text: '', imageKeys: ['image-key'] },
         result: { maxTokens: 20000, similarity: 0 },
-        rerank: { enabled: true, modelId: 'selected-model', weight: 0.5 }
+        rerank: { enabled: true, modelId: 'selected-model', weight: 0.5, candidateNum: 20 }
       }),
       auth,
       modelHandle: expect.any(Object),

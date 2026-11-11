@@ -2,9 +2,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ModelHandle } from '../../../../core/ai/model/catalog/handle';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { createModelHandle } from '../../../../core/ai/model/catalog/handle';
 
 const mocks = vi.hoisted(() => ({
   auth: vi.fn(),
+  indexModels: vi.fn(),
   readable: vi.fn(),
   authorized: vi.fn(),
   assertModels: vi.fn(),
@@ -13,6 +16,9 @@ const mocks = vi.hoisted(() => ({
   findModel: vi.fn(),
   sign: vi.fn(),
   recall: vi.fn()
+}));
+vi.mock('@fastgpt/service/core/dataset/entity', () => ({
+  findDatasetIndexModelReferences: mocks.indexModels
 }));
 vi.mock('@fastgpt/service/support/permission/dataset/auth', () => ({
   authDatasetByTmbId: mocks.auth
@@ -51,6 +57,7 @@ const handle = {
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.auth.mockResolvedValue({ dataset });
+  mocks.indexModels.mockResolvedValue([dataset]);
   mocks.readable.mockResolvedValue(['readable']);
   mocks.authorized.mockResolvedValue(new Set(['rerank', 'llm']));
   mocks.assertModels.mockResolvedValue(undefined);
@@ -90,6 +97,15 @@ describe('createDatasetSearchRuntime', () => {
     });
     expect(mocks.getHandle).not.toHaveBeenCalled();
     expect(result.embeddings).toEqual([{ modelId: 'embedding', type: 'embedding' }]);
+    expect(mocks.indexModels).toHaveBeenCalledExactlyOnceWith({
+      datasetIds: ['dataset'],
+      teamId: actor.teamId,
+      session: undefined
+    });
+    expect(mocks.getModel).toHaveBeenCalledWith(
+      { modelId: 'embedding', model: undefined },
+      { type: 'embedding', authorizedIds: new Set(['rerank', 'llm']) }
+    );
     expect(result.imageCaption?.modelId).toBe('vision');
     expect(mocks.assertModels).toHaveBeenCalledExactlyOnceWith({
       actor,
@@ -137,6 +153,61 @@ describe('createDatasetSearchRuntime', () => {
     mocks.assertModels.mockRejectedValueOnce(new Error('unauthorized model'));
     await expect(runtime.resolveModels(input)).rejects.toThrow('unauthorized model');
   });
+
+  it('rejects unavailable index models and datasets removed after resource authorization', async () => {
+    const runtime = createDatasetSearchRuntime({ modelHandle: handle });
+    const input = {
+      actor,
+      datasets: [dataset],
+      rerank: { enabled: false as const },
+      queryExtension: { enabled: false as const }
+    };
+    mocks.getModel.mockImplementationOnce(() => {
+      throw new Error('index model unavailable');
+    });
+    await expect(runtime.resolveModels(input)).rejects.toThrow('index model unavailable');
+    expect(mocks.assertModels).not.toHaveBeenCalled();
+    mocks.indexModels.mockResolvedValueOnce([]);
+    await expect(runtime.resolveModels(input)).rejects.toBeDefined();
+    expect(mocks.assertModels).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { isActive: false, authorizedIds: new Set(['embedding']) },
+    { isActive: true, authorizedIds: new Set<string>() }
+  ])(
+    'enforces index model availability and member authorization: %j',
+    async ({ isActive, authorizedIds }) => {
+      const modelHandle = createModelHandle({
+        models: [
+          {
+            modelId: 'embedding',
+            model: 'embedding',
+            name: 'Embedding',
+            provider: 'test',
+            scope: ModelScopeEnum.system,
+            type: ModelTypeEnum.embedding,
+            isActive,
+            config: { defaultToken: 512, maxToken: 8192, weight: 1 }
+          }
+        ],
+        defaultModels: {},
+        configuredDefaultModelIds: {},
+        revision: 0,
+        version: 'test'
+      });
+      mocks.authorized.mockResolvedValueOnce(authorizedIds);
+      await expect(
+        createDatasetSearchRuntime({ modelHandle }).resolveModels({
+          actor,
+          datasets: [dataset],
+          rerank: { enabled: false },
+          queryExtension: { enabled: false }
+        })
+      ).rejects.toBeDefined();
+      expect(mocks.assertModels).not.toHaveBeenCalled();
+    }
+  );
 
   it('validates temporary image ownership and binds storage and recall without business callbacks', async () => {
     const runtime = createDatasetSearchRuntime();

@@ -68,12 +68,18 @@ describe('legacy searchTest HTTP boundary', () => {
 
   it('retains image-only input and strips retired request options', async () => {
     await handler(
-      request({ datasetId: id, queryImageUrls: ['temp/team/image.png'], retiredOption: 'ignored' })
+      request({
+        datasetId: id,
+        queryImageUrls: ['temp/team/image.png'],
+        datasetDeepSearch: true,
+        datasetDeepSearchModelId: 'deleted-model'
+      })
     );
     const params = mocks.search.mock.calls[0][0].params;
     expect(params.text).toBe('');
     expect(params.queryImageUrls).toEqual(['temp/team/image.png']);
-    expect(params).not.toHaveProperty('retiredOption');
+    expect(params).not.toHaveProperty('datasetDeepSearch');
+    expect(params).not.toHaveProperty('datasetDeepSearchModelId');
   });
 
   it.each([

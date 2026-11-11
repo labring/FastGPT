@@ -292,10 +292,11 @@ describe('member knowledge search orchestration', () => {
     const { deps, promise } = run({
       scope: { datasetIds: ids },
       query: { text: 'q' },
-      rerank: { enabled: true, modelId: rerank.modelId, weight: 0 },
+      rerank: { enabled: true, modelId: rerank.modelId, weight: 0, candidateNum: 20 },
       queryExtension: { enabled: true, modelId: llm.modelId }
     });
     expect((await promise).meta.queryExtensionModelId).toBe(llm.modelId);
+    expect(mocks.recall).toHaveBeenCalledWith(expect.objectContaining({ rerankCandidateNum: 20 }));
     const usage = vi.mocked(deps.onUsage).mock.calls[0]?.[0];
     expect(usage).toHaveProperty(
       'items',
