@@ -162,4 +162,137 @@ describe('MultipleRowSelect', () => {
     expect(host.textContent).not.toContain('Old item');
     root.unmount();
   });
+
+  it('enters the first source column when opened without a selection', async () => {
+    const host = document.createElement('div');
+    document.body.appendChild(host);
+    const root = createRoot(host);
+    const onSelect = vi.fn();
+
+    await act(async () => {
+      root.render(
+        React.createElement(
+          ChakraProvider,
+          null,
+          React.createElement(MultipleRowSelect, {
+            list: [
+              {
+                label: 'Source A',
+                value: 'source-a',
+                children: [{ label: 'Output A', value: 'output-a' }]
+              },
+              {
+                label: 'Source B',
+                value: 'source-b',
+                children: [{ label: 'Output B', value: 'output-b' }]
+              }
+            ],
+            value: [],
+            onSelect
+          })
+        )
+      );
+    });
+    await act(async () => {
+      host.querySelector('button')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+    const sourceA = Array.from(host.querySelectorAll('*')).find(
+      (element) => element.textContent === 'Source A'
+    );
+    if (!sourceA) throw new Error('Missing first source');
+    await act(async () => {
+      sourceA.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+
+    expect(host.textContent).toContain('Output A');
+    expect(onSelect).not.toHaveBeenCalled();
+    root.unmount();
+  });
+
+  it('keeps the selected source when reopening an existing reference', async () => {
+    const host = document.createElement('div');
+    document.body.appendChild(host);
+    const root = createRoot(host);
+    const onSelect = vi.fn();
+
+    await act(async () => {
+      root.render(
+        React.createElement(
+          ChakraProvider,
+          null,
+          React.createElement(MultipleRowSelect, {
+            list: [
+              {
+                label: 'Source A',
+                value: 'source-a',
+                children: [{ label: 'Output A', value: 'output-a' }]
+              },
+              {
+                label: 'Source B',
+                value: 'source-b',
+                children: [{ label: 'Output B', value: 'output-b' }]
+              }
+            ],
+            value: ['source-a', 'output-a'],
+            onSelect
+          })
+        )
+      );
+    });
+    await act(async () => {
+      host.querySelector('button')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+    const sourceB = Array.from(host.querySelectorAll('*')).find(
+      (element) => element.textContent === 'Source B'
+    );
+    if (!sourceB) throw new Error('Missing source B');
+    await act(async () => {
+      sourceB.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+
+    expect(host.textContent).toContain('Output B');
+    expect(onSelect).not.toHaveBeenCalled();
+    root.unmount();
+  });
+
+  it('reopens the current source column without clearing its selection', async () => {
+    const host = document.createElement('div');
+    document.body.appendChild(host);
+    const root = createRoot(host);
+    const onSelect = vi.fn();
+
+    await act(async () => {
+      root.render(
+        React.createElement(
+          ChakraProvider,
+          null,
+          React.createElement(MultipleRowSelect, {
+            list: [
+              {
+                label: 'Source A',
+                value: 'source-a',
+                children: [{ label: 'Output A', value: 'output-a' }]
+              }
+            ],
+            value: ['source-a', 'output-a'],
+            onSelect
+          })
+        )
+      );
+    });
+    await act(async () => {
+      host.querySelector('button')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+    const sourceA = Array.from(host.querySelectorAll('*')).find(
+      (element) => element.textContent === 'Source A'
+    );
+    if (!sourceA) throw new Error('Missing source A');
+    await act(async () => {
+      sourceA.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+
+    expect(host.textContent).toContain('Output A');
+    expect(onSelect).not.toHaveBeenCalled();
+    root.unmount();
+  });
 });

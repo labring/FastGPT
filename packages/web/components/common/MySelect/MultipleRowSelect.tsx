@@ -5,6 +5,7 @@ import {
   Box,
   Flex,
   Checkbox,
+  css,
   Menu,
   MenuButton,
   MenuList,
@@ -100,8 +101,15 @@ const RenderList = React.memo(function RenderList({
               }}
               onClick={() => {
                 const newValue = [...safeCloneValue];
-
-                if (item.value === selectedValue) {
+                // 父级节点只负责展开列，不能被当成叶子清空；这样单选可重新进入当前来源。
+                if (hasChildren) {
+                  newValue[index] = item.value;
+                  for (let i = index + 1; i < newValue.length; i++) {
+                    newValue[i] = undefined;
+                  }
+                  setCloneValue(newValue);
+                  if (changeOnEverySelect) onSelect(newValue);
+                } else if (item.value === selectedValue) {
                   for (let i = index; i < newValue.length; i++) {
                     newValue[i] = undefined;
                   }
@@ -111,13 +119,11 @@ const RenderList = React.memo(function RenderList({
                   newValue[index] = item.value;
                   setCloneValue(newValue);
 
-                  if (changeOnEverySelect || !hasChildren) {
+                  if (changeOnEverySelect) {
                     onSelect(newValue);
                   }
 
-                  if (!hasChildren) {
-                    onClose();
-                  }
+                  onClose();
                 }
               }}
               {...(item.value === selectedValue
@@ -300,14 +306,11 @@ const MultipleRowSelect = React.memo(function MultipleRowSelect({
   const safeCloneValue = Array.isArray(cloneValue) ? cloneValue : [];
   const selectedFirstColumn = list.find((item) => item.value === safeCloneValue[0]);
   const valueFirstColumn = list.find((item) => item.value === safeValue[0]);
-  const selectedChildExists = selectedFirstColumn?.children?.some(
-    (item) => item.value === safeCloneValue[1]
-  );
   // 列表原地刷新后旧路径可能失效；回到外部值的分组，再回落到新列表首项。
   const fallbackValue =
     (valueFirstColumn ? [safeValue[0]] : undefined) ?? (list[0] ? [list[0].value] : []);
   const resolvedCloneValue =
-    isOpen && (!selectedFirstColumn || !selectedChildExists) ? fallbackValue : safeCloneValue;
+    isOpen && safeCloneValue[0] && !selectedFirstColumn ? fallbackValue : safeCloneValue;
   const { isMounted, mount, onAnimationComplete } = useMenuListPresence(isOpen);
 
   // 首次打开时先锁定首列宽度，避免后续列在首帧按内容宽度收缩，点击节点后才跳宽。
@@ -471,7 +474,16 @@ const MultipleRowSelect = React.memo(function MultipleRowSelect({
 
   return (
     // 保留标签自身的截断宽度，避免长名称撑大控件和后续音色列。
-    <Box ref={OutsideClickRef} minW={0} maxW={'100%'}>
+    <Box
+      ref={OutsideClickRef}
+      minW={0}
+      maxW={'100%'}
+      css={css({
+        '& div:not([data-preserve-width])': {
+          width: 'auto !important'
+        }
+      })}
+    >
       {isMounted ? (
         <Menu
           autoSelect={false}
