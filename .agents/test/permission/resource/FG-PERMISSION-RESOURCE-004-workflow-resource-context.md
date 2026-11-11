@@ -23,6 +23,10 @@ routes:
   - "POST /api/v2/chat/completions"
   - "POST /api/core/workflow/debug"
 related: [FG-APP-WORKFLOW-066, FG-APP-AGENTV2-001]
+automation:
+  - runner: node
+    script: .agents/test/permission/resource/FG-PERMISSION-RESOURCE-004.mjs
+    items: [C2]
 baseline: "37b271c759eda4e3134c88d98939f81f053a8553"
 ---
 
@@ -39,6 +43,7 @@ baseline: "37b271c759eda4e3134c88d98939f81f053a8553"
 - 两个隔离团队 T1/T2，Mongo/PG/Redis 使用 Mac Mini 的独立测试库、schema 或 Redis DB；不创建本机数据库或清理 Dev 业务数据。T1 内发布者 P、运行者 R，R 有权运行 W 但对动态资源分别有/无 use 权限；另备 root 跨团队反例。资源为 T1 的静态模型 M1、动态模型 M2、知识库 D1/D2 和子应用 A，以及 T2 的私有模型/知识库。先完成合法发布，再通过管理界面撤去 R 的独立动态权限；确认目录/权限缓存已反映新配置后开始，不能用缓存尚未刷新当权限结论。
 - D0：固定 W 的发布 Version V1 及其 `resources`，A 使用独立发布版本 VA、独立资源快照；R 可以调用 A。抓取真实 completions/debug 请求，不在 body 伪造可信 resourceContext。记录执行实际选中的 Version ID，草稿编辑不得默认为已经更新 V1 快照。
 - 动态资源若没有对应的公开可配置引用入口，使用真实服务集成：在完整 `runWithContext` 中调用 `loadWorkflowModelResource`/`loadWorkflowDatasetResource`，上下文通过真实文件准备、变量工厂和 entry sink 构造；使用真实团队 ModelHandle、Mongo、权限与缓存，禁止 mock assertAuthModels 或直接返回“已授权”。该变体不是 HTTP 覆盖，不捏造路由字段。
+- C2 脚本复用本轮 Dev 团队清单，新建成员 A 无默认使用权的团队模型与空知识库，以真实 ACL 授权、撤权并清除本轮团队的模型缓存；只验证资源加载器，不发起模型推理或向量检索。D1 快照命中、D2 动态鉴权的混合列表同时验证允许与拒绝，收尾精确核对资源和 ACL 都已删除。
 - 损坏快照反例只允许在隔离测试库克隆本例 `app_versions` 或构造该次真实服务 Context，保存并恢复 resources 快照；明确区分故意损坏夹具与正常发布途径。禁止修改共享应用或生产权限。
 - 受控模型服务记录实际收到的 model 身份和调用次数，知识库返回带 D1/D2 唯一标记；失败时验证受保护正文未返回。预期只固定权限结果/实际资源身份，不臆造统一 HTTP 错误码；流式失败检查节点错误和终态而非仅 HTTP 200。
 - 每行新 chatId、恢复权限与 V1/VA 基线；完成后清理本例应用、资源及会话并恢复目录配置。模型执行最长 120 秒，授权拒绝在同请求终态确认；没有可信目录和权限数据时记为阻塞。
