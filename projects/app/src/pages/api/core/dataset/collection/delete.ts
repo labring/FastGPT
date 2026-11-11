@@ -48,13 +48,19 @@ async function handler(req: ApiRequestProps) {
           { 'metadata.apiFileSourceId': { $in: apiFileIds } }
         ]
       },
-      '_id'
+      '_id parentId'
     ).lean();
 
     if (matched.length === 0) {
       return Promise.reject(DatasetErrEnum.unExistCollection);
     }
-    return matched.map((item) => String(item._id));
+    // 集合所有权可以单独转移到正文而不转移父目录。挂在同一命中节点下的正文随该节点的子树删除，
+    // 不再作为独立根要求 owner；否则目录 owner 无法按外部 ID 清理整棵树。
+    // 只命中正文（目录未命中或正文已移出）时仍以正文自身为根，单有正文的调用者依旧会被拒绝。
+    const matchedIds = new Set(matched.map((item) => String(item._id)));
+    return matched
+      .filter((item) => !item.parentId || !matchedIds.has(String(item.parentId)))
+      .map((item) => String(item._id));
   })();
 
   // 删除是 owner 专属操作：仅集合所有者（collection.tmbId）可删，持有 manage/write 的协作者不可删。

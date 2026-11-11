@@ -131,20 +131,32 @@ export const DeleteCollectionQuerySchema = z.object({
 });
 export type DeleteCollectionQueryType = z.infer<typeof DeleteCollectionQuerySchema>;
 
-export const DeleteCollectionBodySchema = z.object({
-  collectionIds: z.array(z.string()).optional().meta({ description: '集合 ID 列表' }),
-  apiFileIds: z
-    .array(z.string())
-    .optional()
-    .meta({
-      example: ['6893c04c0a1c3e0012a3b4c5'],
-      description: 'API 文件库的外部文件 ID 列表（需配合 datasetId 使用）'
-    }),
-  datasetId: z.string().optional().meta({
-    example: '68ad85a7463006c963799a05',
-    description: '数据集 ID（配合 apiFileIds 使用）'
+export const DeleteCollectionBodySchema = z
+  .object({
+    collectionIds: z.array(z.string()).optional().meta({ description: '集合 ID 列表' }),
+    apiFileIds: z
+      .array(z.string())
+      .optional()
+      .meta({
+        example: ['6893c04c0a1c3e0012a3b4c5'],
+        description: 'API 文件库的外部文件 ID 列表（需配合 datasetId 使用）'
+      }),
+    datasetId: z.string().optional().meta({
+      example: '68ad85a7463006c963799a05',
+      description: '数据集 ID（配合 apiFileIds 使用）'
+    })
   })
-});
+  .superRefine((data, ctx) => {
+    // 外部定位必须成对出现；query.id 请求允许空 body，所以不能用必选分支表达。
+    // 不做成 union：不完整的单字段会被空对象分支清洗掉，反而静默忽略外部参数。
+    if (Boolean(data.datasetId) !== Boolean(data.apiFileIds?.length)) {
+      ctx.addIssue({
+        code: 'custom',
+        path: [data.datasetId ? 'apiFileIds' : 'datasetId'],
+        message: 'datasetId 与 apiFileIds 必须同时提供'
+      });
+    }
+  });
 export type DeleteCollectionBodyType = z.infer<typeof DeleteCollectionBodySchema>;
 
 // ============= Get Collection Detail =============

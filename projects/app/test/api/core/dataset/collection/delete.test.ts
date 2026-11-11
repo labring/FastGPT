@@ -14,6 +14,7 @@ import { buildApiFileRecords, toApiFileDirId } from '@fastgpt/service/core/datas
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
+import { ApiRequestInputParseError } from '@fastgpt/service/common/zod/requestParseError';
 import { getFakeUsers } from '@test/datas/users';
 import { Call } from '@test/utils/request';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -316,6 +317,7 @@ describe('delete collection by apiFileId', () => {
   const insertApiFileLayout = async ({
     teamId,
     tmbId,
+    bodyTmbId,
     datasetId,
     fileId,
     childId,
@@ -323,6 +325,8 @@ describe('delete collection by apiFileId', () => {
   }: {
     teamId: string;
     tmbId: string;
+    /** 正文单独转给其他成员，用于验证目录 owner 仍可按外部 ID 清理整棵树。 */
+    bodyTmbId?: string;
     datasetId: string;
     fileId: string;
     childId: string;
@@ -358,7 +362,7 @@ describe('delete collection by apiFileId', () => {
             ? DatasetCollectionTypeEnum.folder
             : DatasetCollectionTypeEnum.apiFile,
         teamId,
-        tmbId,
+        tmbId: record.type === 'folder' ? tmbId : (bodyTmbId ?? tmbId),
         datasetId,
         apiFileId: record.apiFileId,
         apiFileParentId: record.apiFileParentId ?? undefined,
@@ -487,6 +491,90 @@ describe('delete collection by apiFileId', () => {
         apiFileId: { $in: ['doc#dir', 'child'] }
       })
     ).toBe(0);
+  });
+
+  it('deletes the whole tree by apiFileId when the body was transferred to another member', async () => {
+    const users = await getFakeUsers(2);
+    const dirOwner = users.members[0];
+    const bodyOwner = users.members[1];
+    const { dataset } = await createDatasetWithCollection({
+      teamId: users.owner.teamId,
+      datasetTmbId: dirOwner.tmbId,
+      collectionTmbId: dirOwner.tmbId
+    });
+    await insertApiFileLayout({
+      teamId: users.owner.teamId,
+      tmbId: dirOwner.tmbId,
+      bodyTmbId: bodyOwner.tmbId,
+      datasetId: String(dataset._id),
+      fileId: 'doc',
+      childId: 'child'
+    });
+
+    const response = await Call(deleteHandler, {
+      auth: dirOwner,
+      body: { datasetId: String(dataset._id), apiFileIds: ['doc'] }
+    });
+
+    expect(response.code).toBe(200);
+    expect(
+      await MongoDatasetCollection.countDocuments({
+        datasetId: dataset._id,
+        apiFileId: { $in: ['doc', 'doc#dir', 'child'] }
+      })
+    ).toBe(0);
+  });
+
+  it('rejects a caller who owns only the body but not its directory', async () => {
+    const users = await getFakeUsers(2);
+    const dirOwner = users.members[0];
+    const bodyOwner = users.members[1];
+    const { dataset } = await createDatasetWithCollection({
+      teamId: users.owner.teamId,
+      datasetTmbId: dirOwner.tmbId,
+      collectionTmbId: dirOwner.tmbId
+    });
+    await insertApiFileLayout({
+      teamId: users.owner.teamId,
+      tmbId: dirOwner.tmbId,
+      bodyTmbId: bodyOwner.tmbId,
+      datasetId: String(dataset._id),
+      fileId: 'doc',
+      childId: 'child'
+    });
+    // 正文 owner 需要 dataset read 才能走到集合级 owner 校验
+    await MongoResourcePermission.create({
+      resourceType: PerResourceTypeEnum.dataset,
+      teamId: users.owner.teamId,
+      resourceId: String(dataset._id),
+      tmbId: bodyOwner.tmbId,
+      permission: ReadRoleVal
+    });
+
+    const response = await Call(deleteHandler, {
+      auth: bodyOwner,
+      body: { datasetId: String(dataset._id), apiFileIds: ['doc'] }
+    });
+
+    expect(response.code).not.toBe(200);
+    expect(
+      await MongoDatasetCollection.countDocuments({
+        datasetId: dataset._id,
+        apiFileId: { $in: ['doc', 'doc#dir', 'child'] }
+      })
+    ).toBe(3);
+  });
+
+  it('rejects unpaired external ids', async () => {
+    const { member, dataset } = await fixture();
+
+    const response = await Call(deleteHandler, {
+      auth: member,
+      body: { datasetId: String(dataset._id) }
+    });
+
+    expect(response.code).not.toBe(200);
+    expect(response.error).toBeInstanceOf(ApiRequestInputParseError);
   });
 
   it('rejects the virtual root apiFileId', async () => {
