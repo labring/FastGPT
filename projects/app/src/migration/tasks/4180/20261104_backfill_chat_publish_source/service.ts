@@ -18,6 +18,7 @@ export const getPublishSourceMigrationModel = (stage: PublishSourceMigrationStag
  * 返回可定位的逐条数据错误；数据库异常直接抛出，阻止推进断点。
  * CAS 未全部命中时批量重读，保留正常对话写入的新来源，尚未回填的记录留待重试。
  * 仅追加 publishSource，不修改或删除旧字段，支持批次重放。
+ * 无法识别的旧来源统一归为 unknown，不按名称或当前外链猜测真实渠道。
  */
 export const backfillPublishSourceBatch = async ({
   stage,
@@ -110,7 +111,7 @@ export const backfillPublishSourceBatch = async ({
               // 按原值比较，避免未知旧值中的对象被解释成查询运算符。
               sourceType: { $eq: raw.sourceType ?? null },
               publishSource: null,
-              source: raw.source,
+              source: { $eq: raw.source ?? null },
               shareId: raw.shareId ?? null,
               sourceName: raw.sourceName ?? null
             },

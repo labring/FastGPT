@@ -67,6 +67,7 @@ Hover 渠道名时，有 id 就显示 `渠道 ID：{id}`，没有则不显示 To
 ## 5. 旧数据怎么兼容
 
 - 旧 source 回填为 type；旧 shareId 能在同团队、同应用唯一匹配外链且类型一致时，回填对应 OutLink._id。
+- 无法识别的旧 source（包括旧版落库的渠道名称及空值）统一回填为 `publishSource.type = unknown`，保留旧字段、不推断渠道 ID；`unknown` 展示为“未知”，不计入已知外部渠道缺失 ID 的数量。兜底仅限旧 source 的解析，身份字段、已有 publishSource 及数据库异常仍按原规则报错；失败记录继续从原断点重试。
 - 历史 API/MCP 没有 Key ID，只保留 type，不按名称或 tmbId 猜测。已有新来源不被回填覆盖。
 - 历史 `sourceType` 只用于判断资源归属，不按当前枚举阻断回填；空值或未知旧值保留原样，仅从合法 `source` 回填分类，不推断渠道 ID。只有明确为 App 或字段缺失时，才恢复可靠外链引用。
 - Chat.shareId 保留可选 Schema/类型并标记 deprecated，仅作历史数据与迁移读取；移除正常保存传参和查询回退，旧索引保留、不登记自动清理。OutLink.shareId 仍是分享 URL、外部请求、回调和计费使用的凭证，保留；source/sourceName 继续支持约定的名称回退。

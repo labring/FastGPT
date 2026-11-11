@@ -9,7 +9,8 @@ export const LegacyPublishSourceRecordSchema = z.object({
   appId: ObjectIdSchema,
   // 旧资源类型只用于判断能否恢复外链引用，不参与 publishSource.type 转换。
   sourceType: z.unknown().optional(),
-  source: z.enum(ChatSourceEnum),
+  // 旧版曾将渠道名称写入 source；仅来源解析失败时归为未知，不吞掉其他字段错误。
+  source: z.enum(ChatSourceEnum).catch(ChatSourceEnum.unknown),
   shareId: z.string().nullish(),
   sourceName: z.string().nullish(),
   publishSource: ChatPublishSourceSchema.nullish()
