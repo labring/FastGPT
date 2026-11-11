@@ -1,5 +1,6 @@
 {
   "source_dingtalk": "DingTalk",
+  "source_unknown": "Unknown",
   "AI_input_is_empty": "The content passed to the AI ​​node is empty",
   "LLM_model_response_empty": "The model returned an empty response. Check the model request details.",
   "Next": "Next",
@@ -58,6 +59,7 @@
   "image_parse": "Image parsing",
   "in_progress": "In Progress",
   "input_guide": "Input Guide",
+  "input_guide_hint": "Use ↑↓ to switch, Enter to fill",
   "input_placeholder_phone": "Enter your question",
   "internal_variables_tip": "Internal variables are visible only when debugging",
   "invalid_share_url": "Invalid sharing link",

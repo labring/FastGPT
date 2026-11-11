@@ -53,9 +53,10 @@ const NodeLoopEnd = ({ data, selected }: CanvasNodeProps) => {
 
   // Get loopEnd input value type
   const valueType = useMemo(() => {
-    if (!inputItem) return;
+    if (!inputItem || !Array.isArray(inputItem.value)) return;
 
-    const targetId = inputItem.value[0];
+    const [targetId, outputId] = inputItem.value;
+    if (!targetId || !outputId) return;
 
     const globalNode = getGlobalVariableNode({
       t,
@@ -66,13 +67,12 @@ const NodeLoopEnd = ({ data, selected }: CanvasNodeProps) => {
       return getNodeById(targetId);
     })();
 
-    return node?.outputs.find((output) => output.id === inputItem?.value[1])
-      ?.valueType as keyof typeof typeMap;
+    return node?.outputs.find((output) => output.id === outputId)?.valueType as
+      | keyof typeof typeMap
+      | undefined;
   }, [appDetail.chatConfig, getNodeById, inputItem, t]);
 
   useEffect(() => {
-    if (!valueType) return;
-
     if (!parentOutputs) return;
 
     // 父容器是并行运行还是循环，决定同步哪一个聚合输出的类型。
@@ -81,7 +81,9 @@ const NodeLoopEnd = ({ data, selected }: CanvasNodeProps) => {
         ? NodeOutputKeyEnum.parallelSuccessResults
         : NodeOutputKeyEnum.nestedArrayResult;
     const targetOutput = parentOutputs.find((output) => output.key === outputKey);
-    const newArrayType = typeMap[valueType] ?? WorkflowIOValueTypeEnum.arrayAny;
+    // 引用为空或来源节点已删除时回退为 arrayAny，避免父容器残留旧输出类型。
+    const newArrayType =
+      (valueType ? typeMap[valueType] : undefined) ?? WorkflowIOValueTypeEnum.arrayAny;
     if (!targetOutput || targetOutput.valueType === newArrayType) return;
 
     parentNodeActions?.updateNode((current) => ({

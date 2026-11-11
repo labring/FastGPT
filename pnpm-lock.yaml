@@ -187,8 +187,8 @@ catalogs:
       specifier: ^10.1.4
       version: 10.1.4
     mongoose:
-      specifier: ^8.22.1
-      version: 8.23.1
+      specifier: ^8.24.7
+      version: 8.24.8
     nanoid:
       specifier: ^5.1.3
       version: 5.1.5
@@ -346,7 +346,7 @@ importers:
         version: 10.1.4(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.8.10)
       next-i18next:
         specifier: 'catalog:'
-        version: 15.4.2(i18next@23.16.8)(next@16.3.6(@babel/core@7.26.10)(@opentelemetry/api@1.9.0)(@playwright/test@1.64.1)(@types/node@24.13.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(react-i18next@14.1.2(i18next@23.16.8)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
+        version: 15.4.2(i18next@23.16.8)(next@16.3.6(@opentelemetry/api@1.9.0)(@playwright/test@1.64.1)(@types/node@24.13.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(react-i18next@14.1.2(i18next@23.16.8)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
       prettier:
         specifier: catalog:lint
         version: 3.8.3
@@ -388,13 +388,13 @@ importers:
         version: 11.3.4
       fumadocs-core:
         specifier: 15.6.3
-        version: 15.6.3(@types/react@18.3.1)(next@15.5.27(@babel/core@7.26.10)(@opentelemetry/api@1.9.0)(@playwright/test@1.64.1)(@types/node@24.0.13)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        version: 15.6.3(@types/react@18.3.1)(next@15.5.27(@opentelemetry/api@1.9.0)(@playwright/test@1.64.1)(@types/node@24.0.13)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       fumadocs-mdx:
         specifier: 11.6.11
-        version: 11.6.11(fumadocs-core@15.6.3(@types/react@18.3.1)(next@15.5.27(@babel/core@7.26.10)(@opentelemetry/api@1.9.0)(@playwright/test@1.64.1)(@types/node@24.0.13)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(next@15.5.27(@babel/core@7.26.10)(@opentelemetry/api@1.9.0)(@playwright/test@1.64.1)(@types/node@24.0.13)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(vite@6.4.5(@types/node@24.0.13)(jiti@2.7.0)(lightningcss@1.32.0)(sass@1.85.1)(terser@5.39.0)(tsx@4.20.6)(yaml@2.8.4))
+        version: 11.6.11(fumadocs-core@15.6.3(@types/react@18.3.1)(next@15.5.27(@opentelemetry/api@1.9.0)(@playwright/test@1.64.1)(@types/node@24.0.13)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(next@15.5.27(@opentelemetry/api@1.9.0)(@playwright/test@1.64.1)(@types/node@24.0.13)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(vite@6.4.5(@types/node@24.0.13)(jiti@2.7.0)(lightningcss@1.32.0)(sass@1.85.1)(terser@5.39.0)(tsx@4.20.6)(yaml@2.8.4))
       fumadocs-ui:
         specifier: 15.6.3
-        version: 15.6.3(@types/react-dom@18.3.0)(@types/react@18.3.1)(next@15.5.27(@babel/core@7.26.10)(@opentelemetry/api@1.9.0)(@playwright/test@1.64.1)(@types/node@24.0.13)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(tailwindcss@4.2.4)
+        version: 15.6.3(@types/react-dom@18.3.0)(@types/react@18.3.1)(next@15.5.27(@opentelemetry/api@1.9.0)(@playwright/test@1.64.1)(@types/node@24.0.13)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(tailwindcss@4.2.4)
       gray-matter:
         specifier: ^4.0.3
         version: 4.0.3
@@ -406,7 +406,7 @@ importers:
         version: 10.9.6
       next:
         specifier: ^15.5.27
-        version: 15.5.27(@babel/core@7.26.10)(@opentelemetry/api@1.9.0)(@playwright/test@1.64.1)(@types/node@24.0.13)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1)
+        version: 15.5.27(@opentelemetry/api@1.9.0)(@playwright/test@1.64.1)(@types/node@24.0.13)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1)
       react:
         specifier: ^18
         version: 18.3.1
@@ -440,7 +440,7 @@ importers:
         version: 0.15.0(typescript@6.0.3)
       '@content-collections/next':
         specifier: ^0.2.6
-        version: 0.2.11(@content-collections/core@0.15.0(typescript@6.0.3))(next@15.5.27(@babel/core@7.26.10)(@opentelemetry/api@1.9.0)(@playwright/test@1.64.1)(@types/node@24.0.13)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))
+        version: 0.2.11(@content-collections/core@0.15.0(typescript@6.0.3))(next@15.5.27(@opentelemetry/api@1.9.0)(@playwright/test@1.64.1)(@types/node@24.0.13)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))
       '@tailwindcss/postcss':
         specifier: ^4.1.11
         version: 4.2.4
@@ -586,7 +586,7 @@ importers:
         version: 16.3.6(@babel/core@7.26.10)(@opentelemetry/api@1.9.0)(@playwright/test@1.64.1)(@types/node@24.13.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1)
       nextjs-cors:
         specifier: 2.2.1
-        version: 2.2.1(next@16.3.6(@babel/core@7.26.10)(@opentelemetry/api@1.9.0)(@playwright/test@1.64.1)(@types/node@24.13.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))
+        version: 2.2.1(next@16.3.6(@opentelemetry/api@1.9.0)(@playwright/test@1.64.1)(@types/node@24.13.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))
 
   packages/service:
     dependencies:
@@ -727,7 +727,7 @@ importers:
         version: 8.0.7
       mongoose:
         specifier: 'catalog:'
-        version: 8.23.1(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.8.10)
+        version: 8.24.8(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.8.10)
       multer:
         specifier: 2.5.0
         version: 2.5.0
@@ -842,7 +842,7 @@ importers:
         version: 2.1.1(@chakra-ui/system@2.6.1(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@emotion/styled@11.11.0(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@types/react@18.3.1)(react@18.3.1))(react@18.3.1))(react@18.3.1)
       '@chakra-ui/next-js':
         specifier: 'catalog:'
-        version: 2.4.2(@chakra-ui/react@2.10.7(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@emotion/styled@11.11.0(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@types/react@18.3.1)(react@18.3.1))(@types/react@18.3.1)(framer-motion@9.1.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(next@16.3.6(@babel/core@7.26.10)(@opentelemetry/api@1.9.0)(@playwright/test@1.64.1)(@types/node@24.13.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(react@18.3.1)
+        version: 2.4.2(@chakra-ui/react@2.10.7(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@emotion/styled@11.11.0(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@types/react@18.3.1)(react@18.3.1))(@types/react@18.3.1)(framer-motion@9.1.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(next@16.3.6(@opentelemetry/api@1.9.0)(@playwright/test@1.64.1)(@types/node@24.13.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(react@18.3.1)
       '@chakra-ui/react':
         specifier: 'catalog:'
         version: 2.10.7(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@emotion/styled@11.11.0(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@types/react@18.3.1)(react@18.3.1))(@types/react@18.3.1)(framer-motion@9.1.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -923,7 +923,7 @@ importers:
         version: 16.3.6(@babel/core@7.26.10)(@opentelemetry/api@1.9.0)(@playwright/test@1.64.1)(@types/node@24.13.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1)
       next-i18next:
         specifier: 'catalog:'
-        version: 15.4.2(i18next@23.16.8)(next@16.3.6(@babel/core@7.26.10)(@opentelemetry/api@1.9.0)(@playwright/test@1.64.1)(@types/node@24.13.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(react-i18next@14.1.2(i18next@23.16.8)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
+        version: 15.4.2(i18next@23.16.8)(next@16.3.6(@opentelemetry/api@1.9.0)(@playwright/test@1.64.1)(@types/node@24.13.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(react-i18next@14.1.2(i18next@23.16.8)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
       papaparse:
         specifier: ^5.4.1
         version: 5.4.1
@@ -1156,7 +1156,7 @@ importers:
         version: 4.18.1
       mongoose:
         specifier: 'catalog:'
-        version: 8.23.1(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.8.10)
+        version: 8.24.8(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.8.10)
       nanoid:
         specifier: 'catalog:'
         version: 5.1.5
@@ -1403,7 +1403,7 @@ importers:
         version: 2.1.1(@chakra-ui/system@2.6.1(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@emotion/styled@11.11.0(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@types/react@18.3.1)(react@18.3.1))(react@18.3.1))(react@18.3.1)
       '@chakra-ui/next-js':
         specifier: 'catalog:'
-        version: 2.4.2(@chakra-ui/react@2.10.7(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@emotion/styled@11.11.0(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@types/react@18.3.1)(react@18.3.1))(@types/react@18.3.1)(framer-motion@9.1.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(next@16.3.6(@babel/core@7.26.10)(@opentelemetry/api@1.9.0)(@playwright/test@1.64.1)(@types/node@24.13.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(react@18.3.1)
+        version: 2.4.2(@chakra-ui/react@2.10.7(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@emotion/styled@11.11.0(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@types/react@18.3.1)(react@18.3.1))(@types/react@18.3.1)(framer-motion@9.1.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(next@16.3.6(@opentelemetry/api@1.9.0)(@playwright/test@1.64.1)(@types/node@24.13.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(react@18.3.1)
       '@chakra-ui/react':
         specifier: 'catalog:'
         version: 2.10.7(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@emotion/styled@11.11.0(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@types/react@18.3.1)(react@18.3.1))(@types/react@18.3.1)(framer-motion@9.1.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -1577,7 +1577,7 @@ importers:
         version: 8.0.7
       mongoose:
         specifier: 'catalog:'
-        version: 8.23.1(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.8.10)
+        version: 8.24.8(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.8.10)
       nanoid:
         specifier: 'catalog:'
         version: 5.1.5
@@ -1586,7 +1586,7 @@ importers:
         version: 16.3.6(@babel/core@7.26.10)(@opentelemetry/api@1.9.0)(@playwright/test@1.64.1)(@types/node@24.13.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1)
       next-i18next:
         specifier: 'catalog:'
-        version: 15.4.2(i18next@23.16.8)(next@16.3.6(@babel/core@7.26.10)(@opentelemetry/api@1.9.0)(@playwright/test@1.64.1)(@types/node@24.13.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(react-i18next@14.1.2(i18next@23.16.8)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
+        version: 15.4.2(i18next@23.16.8)(next@16.3.6(@opentelemetry/api@1.9.0)(@playwright/test@1.64.1)(@types/node@24.13.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(react-i18next@14.1.2(i18next@23.16.8)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
       nodemailer:
         specifier: 'catalog:'
         version: 10.2.1
@@ -1831,7 +1831,7 @@ importers:
         version: 2.1.1(@chakra-ui/system@2.6.1(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@emotion/styled@11.11.0(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@types/react@18.3.1)(react@18.3.1))(react@18.3.1))(react@18.3.1)
       '@chakra-ui/next-js':
         specifier: 'catalog:'
-        version: 2.4.2(@chakra-ui/react@2.10.7(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@emotion/styled@11.11.0(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@types/react@18.3.1)(react@18.3.1))(@types/react@18.3.1)(framer-motion@9.1.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(next@16.3.6(@babel/core@7.26.10)(@opentelemetry/api@1.9.0)(@playwright/test@1.64.1)(@types/node@24.13.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(react@18.3.1)
+        version: 2.4.2(@chakra-ui/react@2.10.7(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@emotion/styled@11.11.0(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@types/react@18.3.1)(react@18.3.1))(@types/react@18.3.1)(framer-motion@9.1.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(next@16.3.6(@opentelemetry/api@1.9.0)(@playwright/test@1.64.1)(@types/node@24.13.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(react@18.3.1)
       '@chakra-ui/react':
         specifier: 'catalog:'
         version: 2.10.7(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@emotion/styled@11.11.0(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@types/react@18.3.1)(react@18.3.1))(@types/react@18.3.1)(framer-motion@9.1.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -1870,13 +1870,13 @@ importers:
         version: 23.16.8
       mongoose:
         specifier: 'catalog:'
-        version: 8.23.1(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.8.10)
+        version: 8.24.8(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.8.10)
       next:
         specifier: 'catalog:'
         version: 16.3.6(@babel/core@7.26.10)(@opentelemetry/api@1.9.0)(@playwright/test@1.64.1)(@types/node@24.13.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1)
       next-i18next:
         specifier: 'catalog:'
-        version: 15.4.2(i18next@23.16.8)(next@16.3.6(@babel/core@7.26.10)(@opentelemetry/api@1.9.0)(@playwright/test@1.64.1)(@types/node@24.13.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(react-i18next@14.1.2(i18next@23.16.8)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
+        version: 15.4.2(i18next@23.16.8)(next@16.3.6(@opentelemetry/api@1.9.0)(@playwright/test@1.64.1)(@types/node@24.13.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(react-i18next@14.1.2(i18next@23.16.8)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
       react:
         specifier: ^18
         version: 18.3.1
@@ -11532,16 +11532,16 @@ packages:
       socks:
         optional: true
 
-  mongoose@8.23.1:
-    resolution: {integrity: sha512-gHSPD8qEwRmiXapK17hEnFWZdcFENMegHTcw5XIIg2+7R8eXQvdwSiMpD/A2oG8tKzFLLHyRXd8/eaDPAVwZgQ==}
+  mongoose@8.24.8:
+    resolution: {integrity: sha512-p6g/mvvW2PJlC3lgzQJ7PECArfaOTKWJVG/KHf67WYU3MvJ72ZWdv5u7syFRe881IjALMZpKwffNE97G10HTzg==}
     engines: {node: '>=16.20.1'}
 
   mpath@0.9.0:
     resolution: {integrity: sha512-ikJRQTk8hw5DEoFVxHG1Gn9T/xcjtdnOKIU1JTmGjZZlg9LST2mBLmcX3/ICIbgJydT2GOc15RnNy5mHmzfSew==}
     engines: {node: '>=4.0.0'}
 
-  mquery@5.0.0:
-    resolution: {integrity: sha512-iQMncpmEK8R8ncT8HJGsGc9Dsp8xcgYMVSbs5jgnm1lFHTZqMJTUWTDx1LBO8+mK3tPNZWFLBghQEIOULSTHZg==}
+  mquery@5.0.1:
+    resolution: {integrity: sha512-C99lWV0TFI34pS008jBsi3JrE2xZPnTgUw5yApQR71nRP0hxLy8D5m1Lbbk83c8AQWJwdJ0329HzFtZ1MRTUIw==}
     engines: {node: '>=14.0.0'}
 
   mri@1.2.0:
@@ -16639,7 +16639,7 @@ snapshots:
       '@chakra-ui/system': 2.6.1(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@emotion/styled@11.11.0(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@types/react@18.3.1)(react@18.3.1))(react@18.3.1)
       react: 18.3.1
 
-  '@chakra-ui/next-js@2.4.2(@chakra-ui/react@2.10.7(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@emotion/styled@11.11.0(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@types/react@18.3.1)(react@18.3.1))(@types/react@18.3.1)(framer-motion@9.1.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(next@16.3.6(@babel/core@7.26.10)(@opentelemetry/api@1.9.0)(@playwright/test@1.64.1)(@types/node@24.13.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(react@18.3.1)':
+  '@chakra-ui/next-js@2.4.2(@chakra-ui/react@2.10.7(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@emotion/styled@11.11.0(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@types/react@18.3.1)(react@18.3.1))(@types/react@18.3.1)(framer-motion@9.1.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(next@16.3.6(@opentelemetry/api@1.9.0)(@playwright/test@1.64.1)(@types/node@24.13.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(react@18.3.1)':
     dependencies:
       '@chakra-ui/react': 2.10.7(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@emotion/styled@11.11.0(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@types/react@18.3.1)(react@18.3.1))(@types/react@18.3.1)(framer-motion@9.1.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@emotion/cache': 11.14.0
@@ -16875,11 +16875,11 @@ snapshots:
     dependencies:
       '@content-collections/core': 0.15.0(typescript@6.0.3)
 
-  '@content-collections/next@0.2.11(@content-collections/core@0.15.0(typescript@6.0.3))(next@15.5.27(@babel/core@7.26.10)(@opentelemetry/api@1.9.0)(@playwright/test@1.64.1)(@types/node@24.0.13)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))':
+  '@content-collections/next@0.2.11(@content-collections/core@0.15.0(typescript@6.0.3))(next@15.5.27(@opentelemetry/api@1.9.0)(@playwright/test@1.64.1)(@types/node@24.0.13)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))':
     dependencies:
       '@content-collections/core': 0.15.0(typescript@6.0.3)
       '@content-collections/integrations': 0.5.0(@content-collections/core@0.15.0(typescript@6.0.3))
-      next: 15.5.27(@babel/core@7.26.10)(@opentelemetry/api@1.9.0)(@playwright/test@1.64.1)(@types/node@24.0.13)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1)
+      next: 15.5.27(@opentelemetry/api@1.9.0)(@playwright/test@1.64.1)(@types/node@24.0.13)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1)
 
   '@crawlee/basic@3.18.2':
     dependencies:
@@ -23402,7 +23402,7 @@ snapshots:
       '@next/eslint-plugin-next': 16.3.6(eslint@9.39.4(jiti@1.21.7))
       eslint: 9.39.4(jiti@1.21.7)
       eslint-import-resolver-node: 0.3.9
-      eslint-import-resolver-typescript: 3.9.0(eslint-plugin-import@2.32.0)(eslint@9.39.4(jiti@1.21.7))
+      eslint-import-resolver-typescript: 3.9.0(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.59.2(eslint@9.39.4(jiti@2.7.0))(typescript@6.0.3))(eslint@9.39.4(jiti@2.7.0)))(eslint@9.39.4(jiti@1.21.7))
       eslint-plugin-import: 2.32.0(@typescript-eslint/parser@8.59.2(eslint@9.39.4(jiti@2.7.0))(typescript@6.0.3))(eslint-import-resolver-typescript@3.9.0)(eslint@9.39.4(jiti@1.21.7))
       eslint-plugin-jsx-a11y: 6.10.2(eslint@9.39.4(jiti@1.21.7))
       eslint-plugin-react: 7.37.4(eslint@9.39.4(jiti@1.21.7))
@@ -23445,7 +23445,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  eslint-import-resolver-typescript@3.9.0(eslint-plugin-import@2.32.0)(eslint@9.39.4(jiti@1.21.7)):
+  eslint-import-resolver-typescript@3.9.0(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.59.2(eslint@9.39.4(jiti@2.7.0))(typescript@6.0.3))(eslint@9.39.4(jiti@2.7.0)))(eslint@9.39.4(jiti@1.21.7)):
     dependencies:
       '@nolyfill/is-core-module': 1.0.39
       debug: 4.4.3
@@ -23456,7 +23456,7 @@ snapshots:
       stable-hash: 0.0.5
       tinyglobby: 0.2.17
     optionalDependencies:
-      eslint-plugin-import: 2.32.0(@typescript-eslint/parser@8.59.2(eslint@9.39.4(jiti@2.7.0))(typescript@6.0.3))(eslint-import-resolver-typescript@3.9.0)(eslint@9.39.4(jiti@1.21.7))
+      eslint-plugin-import: 2.32.0(@typescript-eslint/parser@8.59.2(eslint@9.39.4(jiti@2.7.0))(typescript@6.0.3))(eslint-import-resolver-typescript@3.9.0)(eslint@9.39.4(jiti@2.7.0))
     transitivePeerDependencies:
       - supports-color
 
@@ -23482,7 +23482,7 @@ snapshots:
       '@typescript-eslint/parser': 8.59.2(eslint@9.39.4(jiti@2.7.0))(typescript@6.0.3)
       eslint: 9.39.4(jiti@1.21.7)
       eslint-import-resolver-node: 0.3.9
-      eslint-import-resolver-typescript: 3.9.0(eslint-plugin-import@2.32.0)(eslint@9.39.4(jiti@1.21.7))
+      eslint-import-resolver-typescript: 3.9.0(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.59.2(eslint@9.39.4(jiti@2.7.0))(typescript@6.0.3))(eslint@9.39.4(jiti@2.7.0)))(eslint@9.39.4(jiti@1.21.7))
     transitivePeerDependencies:
       - supports-color
 
@@ -24264,7 +24264,7 @@ snapshots:
   fsevents@2.3.3:
     optional: true
 
-  fumadocs-core@15.6.3(@types/react@18.3.1)(next@15.5.27(@babel/core@7.26.10)(@opentelemetry/api@1.9.0)(@playwright/test@1.64.1)(@types/node@24.0.13)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
+  fumadocs-core@15.6.3(@types/react@18.3.1)(next@15.5.27(@opentelemetry/api@1.9.0)(@playwright/test@1.64.1)(@types/node@24.0.13)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
     dependencies:
       '@formatjs/intl-localematcher': 0.6.2
       '@orama/orama': 3.1.18
@@ -24285,20 +24285,20 @@ snapshots:
       unist-util-visit: 5.0.0
     optionalDependencies:
       '@types/react': 18.3.1
-      next: 15.5.27(@babel/core@7.26.10)(@opentelemetry/api@1.9.0)(@playwright/test@1.64.1)(@types/node@24.0.13)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1)
+      next: 15.5.27(@opentelemetry/api@1.9.0)(@playwright/test@1.64.1)(@types/node@24.0.13)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1)
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
     transitivePeerDependencies:
       - supports-color
 
-  fumadocs-mdx@11.6.11(fumadocs-core@15.6.3(@types/react@18.3.1)(next@15.5.27(@babel/core@7.26.10)(@opentelemetry/api@1.9.0)(@playwright/test@1.64.1)(@types/node@24.0.13)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(next@15.5.27(@babel/core@7.26.10)(@opentelemetry/api@1.9.0)(@playwright/test@1.64.1)(@types/node@24.0.13)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(vite@6.4.5(@types/node@24.0.13)(jiti@2.7.0)(lightningcss@1.32.0)(sass@1.85.1)(terser@5.39.0)(tsx@4.20.6)(yaml@2.8.4)):
+  fumadocs-mdx@11.6.11(fumadocs-core@15.6.3(@types/react@18.3.1)(next@15.5.27(@opentelemetry/api@1.9.0)(@playwright/test@1.64.1)(@types/node@24.0.13)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(next@15.5.27(@opentelemetry/api@1.9.0)(@playwright/test@1.64.1)(@types/node@24.0.13)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(vite@6.4.5(@types/node@24.0.13)(jiti@2.7.0)(lightningcss@1.32.0)(sass@1.85.1)(terser@5.39.0)(tsx@4.20.6)(yaml@2.8.4)):
     dependencies:
       '@mdx-js/mdx': 3.1.1
       '@standard-schema/spec': 1.1.0
       chokidar: 4.0.3
       esbuild: 0.25.11
       estree-util-value-to-estree: 3.5.0
-      fumadocs-core: 15.6.3(@types/react@18.3.1)(next@15.5.27(@babel/core@7.26.10)(@opentelemetry/api@1.9.0)(@playwright/test@1.64.1)(@types/node@24.0.13)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      fumadocs-core: 15.6.3(@types/react@18.3.1)(next@15.5.27(@opentelemetry/api@1.9.0)(@playwright/test@1.64.1)(@types/node@24.0.13)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       js-yaml: 4.1.1
       lru-cache: 11.2.7
       picocolors: 1.1.1
@@ -24307,12 +24307,12 @@ snapshots:
       unist-util-visit: 5.0.0
       zod: 4.6.7
     optionalDependencies:
-      next: 15.5.27(@babel/core@7.26.10)(@opentelemetry/api@1.9.0)(@playwright/test@1.64.1)(@types/node@24.0.13)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1)
+      next: 15.5.27(@opentelemetry/api@1.9.0)(@playwright/test@1.64.1)(@types/node@24.0.13)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1)
       vite: 6.4.5(@types/node@24.0.13)(jiti@2.7.0)(lightningcss@1.32.0)(sass@1.85.1)(terser@5.39.0)(tsx@4.20.6)(yaml@2.8.4)
     transitivePeerDependencies:
       - supports-color
 
-  fumadocs-ui@15.6.3(@types/react-dom@18.3.0)(@types/react@18.3.1)(next@15.5.27(@babel/core@7.26.10)(@opentelemetry/api@1.9.0)(@playwright/test@1.64.1)(@types/node@24.0.13)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(tailwindcss@4.2.4):
+  fumadocs-ui@15.6.3(@types/react-dom@18.3.0)(@types/react@18.3.1)(next@15.5.27(@opentelemetry/api@1.9.0)(@playwright/test@1.64.1)(@types/node@24.0.13)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(tailwindcss@4.2.4):
     dependencies:
       '@radix-ui/react-accordion': 1.2.12(@types/react-dom@18.3.0)(@types/react@18.3.1)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@radix-ui/react-collapsible': 1.1.12(@types/react-dom@18.3.0)(@types/react@18.3.1)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -24325,7 +24325,7 @@ snapshots:
       '@radix-ui/react-slot': 1.2.4(@types/react@18.3.1)(react@18.3.1)
       '@radix-ui/react-tabs': 1.1.13(@types/react-dom@18.3.0)(@types/react@18.3.1)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       class-variance-authority: 0.7.1
-      fumadocs-core: 15.6.3(@types/react@18.3.1)(next@15.5.27(@babel/core@7.26.10)(@opentelemetry/api@1.9.0)(@playwright/test@1.64.1)(@types/node@24.0.13)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      fumadocs-core: 15.6.3(@types/react@18.3.1)(next@15.5.27(@opentelemetry/api@1.9.0)(@playwright/test@1.64.1)(@types/node@24.0.13)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       lodash.merge: 4.6.2
       next-themes: 0.4.6(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       postcss-selector-parser: 7.1.1
@@ -24336,7 +24336,7 @@ snapshots:
       tailwind-merge: 3.5.0
     optionalDependencies:
       '@types/react': 18.3.1
-      next: 15.5.27(@babel/core@7.26.10)(@opentelemetry/api@1.9.0)(@playwright/test@1.64.1)(@types/node@24.0.13)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1)
+      next: 15.5.27(@opentelemetry/api@1.9.0)(@playwright/test@1.64.1)(@types/node@24.0.13)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1)
       tailwindcss: 4.2.4
     transitivePeerDependencies:
       - '@oramacloud/client'
@@ -26951,13 +26951,13 @@ snapshots:
       gcp-metadata: 5.3.0(encoding@0.1.13)
       socks: 2.8.10
 
-  mongoose@8.23.1(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.8.10):
+  mongoose@8.24.8(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.8.10):
     dependencies:
       bson: 6.10.4
       kareem: 2.6.3
       mongodb: 6.20.0(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.8.10)
       mpath: 0.9.0
-      mquery: 5.0.0
+      mquery: 5.0.1
       ms: 2.1.3
       sift: 17.1.3
     transitivePeerDependencies:
@@ -26972,7 +26972,7 @@ snapshots:
 
   mpath@0.9.0: {}
 
-  mquery@5.0.0:
+  mquery@5.0.1:
     dependencies:
       debug: 4.4.3
     transitivePeerDependencies:
@@ -27059,7 +27059,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  next-i18next@15.4.2(i18next@23.16.8)(next@16.3.6(@babel/core@7.26.10)(@opentelemetry/api@1.9.0)(@playwright/test@1.64.1)(@types/node@24.13.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(react-i18next@14.1.2(i18next@23.16.8)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1):
+  next-i18next@15.4.2(i18next@23.16.8)(next@16.3.6(@opentelemetry/api@1.9.0)(@playwright/test@1.64.1)(@types/node@24.13.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(react-i18next@14.1.2(i18next@23.16.8)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1):
     dependencies:
       '@babel/runtime': 7.26.10
       '@types/hoist-non-react-statics': 3.3.6
@@ -27076,7 +27076,7 @@ snapshots:
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
 
-  next@15.5.27(@babel/core@7.26.10)(@opentelemetry/api@1.9.0)(@playwright/test@1.64.1)(@types/node@24.0.13)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1):
+  next@15.5.27(@opentelemetry/api@1.9.0)(@playwright/test@1.64.1)(@types/node@24.0.13)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1):
     dependencies:
       '@next/env': 15.5.27
       '@swc/helpers': 0.5.23
@@ -27131,7 +27131,7 @@ snapshots:
       - '@types/node'
       - babel-plugin-macros
 
-  nextjs-cors@2.2.1(next@16.3.6(@babel/core@7.26.10)(@opentelemetry/api@1.9.0)(@playwright/test@1.64.1)(@types/node@24.13.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1)):
+  nextjs-cors@2.2.1(next@16.3.6(@opentelemetry/api@1.9.0)(@playwright/test@1.64.1)(@types/node@24.13.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1)):
     dependencies:
       cors: 2.8.6
       next: 16.3.6(@babel/core@7.26.10)(@opentelemetry/api@1.9.0)(@playwright/test@1.64.1)(@types/node@24.13.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1)
