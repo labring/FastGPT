@@ -13,6 +13,7 @@ import {
   isSsoPasswordPolicyEnabled,
   isSsoUsername
 } from '@fastgpt/global/support/user/account/password/utils';
+import { getSsoConfigured } from '../../../../common/system/sso';
 
 export const PASSWORD_CHANGE_SESSION_TTL_SECONDS = 5 * 60;
 
@@ -21,26 +22,35 @@ type PasswordChangeSessionData = {
   loginSessionId: string;
 };
 
-/** 后端从真实连接配置派生 SSO 接入状态，忽略 feConfigs 中缓存或外部传入的 enabled。 */
-const getSsoPasswordPolicy = () => ({
-  enabled: Boolean(global.systemEnv?.sso?.url),
-  disablePasswordForSsoUsers: global.feConfigs?.sso?.disablePasswordForSsoUsers
-});
-
-/** 当前运行时是否开启 SSO 用户禁用密码策略。判定口径由 global 统一提供，此处只负责注入运行时配置。 */
-export const isSsoPasswordDisabled = () => isSsoPasswordPolicyEnabled(getSsoPasswordPolicy());
+/** 仅在密码策略开启时读取 Pro 接入状态，避免无关账号操作依赖 Pro 可用性。 */
+export const isSsoPasswordDisabled = async () => {
+  if (global.feConfigs?.sso?.disablePasswordForSsoUsers !== true) return false;
+  return isSsoPasswordPolicyEnabled({
+    enabled: await getSsoConfigured(),
+    disablePasswordForSsoUsers: true
+  });
+};
 
 /** 使用共享账号分类规则判断持久化 username 是否属于当前 SSO 环境。 */
-export const isSsoUserByUsername = (username: string) =>
-  isSsoUsername(username, getSsoPasswordPolicy());
+export const isSsoUserByUsername = async (username: string) => {
+  if (!isSsoUsername(username, { enabled: true })) return false;
+  return isSsoUsername(username, { enabled: await getSsoConfigured() });
+};
 
-/** 返回当前运行时中指定账号是否允许使用或维护平台密码。 */
-export const getUserPasswordAvailability = (username: string) =>
-  isPasswordAvailableForUsername(username, getSsoPasswordPolicy());
+/** 非 SSO 用户和未开启策略的部署无需访问 Pro；能力未知时拒绝受影响账号的密码操作。 */
+export const getUserPasswordAvailability = async (username: string) => {
+  if (global.feConfigs?.sso?.disablePasswordForSsoUsers !== true) return true;
+  if (!isSsoUsername(username, { enabled: true })) return true;
+
+  return isPasswordAvailableForUsername(username, {
+    enabled: await getSsoConfigured(),
+    disablePasswordForSsoUsers: true
+  });
+};
 
 /** 在密码比对或最终写入前拒绝受限 SSO 用户。 */
-export const assertUserPasswordAvailable = (username: string) => {
-  if (!getUserPasswordAvailability(username)) {
+export const assertUserPasswordAvailable = async (username: string) => {
+  if (!(await getUserPasswordAvailability(username))) {
     throw new UserError(UserErrEnum.ssoPasswordUnavailable);
   }
 };

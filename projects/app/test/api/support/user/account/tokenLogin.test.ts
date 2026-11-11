@@ -54,6 +54,47 @@ describe('tokenLogin API', () => {
     expect(res.data.team.tmbId).toBe(String(testTmb._id));
   });
 
+  it('reports password availability from Pro rather than the legacy URL', async () => {
+    const oldFeConfigs = global.feConfigs;
+    const oldSystemEnv = global.systemEnv;
+    const oldHandler = global.getSsoConfiguredHandler;
+    try {
+      await MongoUser.updateOne({ _id: testUser._id }, { username: 'tenant-user' });
+      global.feConfigs = { ...global.feConfigs, sso: { disablePasswordForSsoUsers: true } };
+      global.systemEnv = { ...global.systemEnv, sso: undefined };
+      global.getSsoConfiguredHandler = () => true;
+      const auth = {
+        userId: String(testUser._id),
+        teamId: String(testTeam._id),
+        tmbId: String(testTmb._id),
+        isRoot: false,
+        sessionId: 'session123'
+      } as any;
+
+      const restricted = await Call(tokenLoginApi.default, { auth });
+      expect(restricted.code).toBe(200);
+      expect(restricted.data.passwordAvailable).toBe(false);
+
+      global.systemEnv.sso = { url: 'http://legacy.invalid' };
+      global.getSsoConfiguredHandler = () => false;
+      const unrestricted = await Call(tokenLoginApi.default, { auth });
+      expect(unrestricted.code).toBe(200);
+      expect(unrestricted.data.passwordAvailable).toBe(true);
+
+      global.getSsoConfiguredHandler = () => {
+        throw new Error('synthetic-private-token');
+      };
+      const unavailable = await Call(tokenLoginApi.default, { auth });
+      expect(unavailable.code).toBe(200);
+      expect(unavailable.data.passwordAvailable).toBe(false);
+      expect(JSON.stringify(unavailable.data)).not.toContain('synthetic-private-token');
+    } finally {
+      global.feConfigs = oldFeConfigs;
+      global.systemEnv = oldSystemEnv;
+      global.getSsoConfiguredHandler = oldHandler;
+    }
+  });
+
   it('should return user detail when user and team notification contacts are null', async () => {
     await Promise.all([
       MongoUser.findByIdAndUpdate(testUser._id, { contact: null }),

@@ -32,6 +32,21 @@ export const ProHealthResponseSchema = z.object({
 export type ProHealthResponse = z.infer<typeof ProHealthResponseSchema>;
 
 /* ============================================================================
+ * API: 获取 Pro SSO 接入状态
+ * Route: GET /api/common/system/sso/config (Pro 内部接口)
+ * Method: GET
+ * Description: 返回 Pro 部署环境中的 SSO 接入状态，不返回服务地址或凭据
+ * Tags: ['系统接口', 'Read']
+ * ============================================================================ */
+
+export const ProSsoConfigResponseSchema = z
+  .object({
+    enabled: z.boolean().meta({ description: 'Pro 是否配置 SSO 服务', example: true })
+  })
+  .strict();
+export type ProSsoConfigResponse = z.infer<typeof ProSsoConfigResponseSchema>;
+
+/* ============================================================================
  * API: 获取系统初始化数据
  * Route: GET /api/common/system/getInitData
  * Method: GET
@@ -81,7 +96,7 @@ const ClientFeConfigsSchema = FastGPTFeConfigsSchema.partial()
 export const GetSystemInitDataResponseSchema = z.object({
   bufferId: z.string().optional().meta({
     example: 'system-config-20260811',
-    description: '当前系统配置缓存标识；未登录时带 unAuth_v9_ 前缀，包含匿名过滤规则版本'
+    description: '当前系统配置缓存标识；未登录时以 unAuth_v10_sso_ 开头，包含 SSO 能力状态'
   }),
   feConfigs: ClientFeConfigsSchema.optional().meta({
     description:
