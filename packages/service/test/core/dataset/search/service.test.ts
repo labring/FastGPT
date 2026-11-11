@@ -205,7 +205,9 @@ describe('member knowledge search orchestration', () => {
     mocks.models.mockResolvedValue({
       embeddings: [embedding, { ...embedding, modelId: 'different-model' }]
     });
-    await expect(run().promise).rejects.toThrow('相同的向量模型');
+    await expect(run().promise).rejects.toThrow(
+      'Multi-dataset vector search requires all datasets to use the same embedding model'
+    );
     expect(mocks.recall).not.toHaveBeenCalled();
     await run({
       scope: { datasetIds: ids },
@@ -219,7 +221,7 @@ describe('member knowledge search orchestration', () => {
     await expect(
       run({ scope: { datasetIds: ids }, query: { imageKeys: ['temp/other-team/query.png'] } })
         .promise
-    ).rejects.toThrow('当前团队');
+    ).rejects.toThrow('Query images must be temporary files uploaded by the current team');
     expect(mocks.signImage).not.toHaveBeenCalled();
     await run({
       scope: { datasetIds: ids },
@@ -251,7 +253,9 @@ describe('member knowledge search orchestration', () => {
       },
       query: { text: 'q' }
     };
-    await expect(run(params).promise).rejects.toThrow('不支持');
+    await expect(run(params).promise).rejects.toThrow(
+      'Dataset search filters are not supported in this edition'
+    );
     // 全局开关关闭时，显式能力仍能完整传到召回适配器。
     await run(params, { context: { capabilities: { metadataFilter: true } } }).promise;
     expect(mocks.recall.mock.calls[0][0].metadataFilterEnabled).toBe(true);
@@ -359,10 +363,12 @@ describe('member knowledge search orchestration', () => {
     });
     await expect(
       run(undefined, { params: { ...params, scope: { datasetIds: [] } } }).promise
-    ).rejects.toThrow('不能为空');
+    ).rejects.toThrow('At least one dataset is required');
     expect(mocks.auth).not.toHaveBeenCalled();
     mocks.models.mockResolvedValueOnce({ embeddings: [] });
-    await expect(run().promise).rejects.toThrow('每个知识库');
+    await expect(run().promise).rejects.toThrow(
+      'The search model adapter must resolve one embedding model for each dataset'
+    );
     expect(mocks.recall).not.toHaveBeenCalled();
   });
 });

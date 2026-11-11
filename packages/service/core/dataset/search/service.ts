@@ -20,7 +20,7 @@ export const search = async ({
   const start = Date.now();
   const { actor, capabilities } = context;
   const datasetIds = [...new Set(input.scope.datasetIds)];
-  if (datasetIds.length === 0) throw new UserConfigError('搜索目标不能为空');
+  if (datasetIds.length === 0) throw new UserConfigError('At least one dataset is required');
 
   // 1. 对全部目标做资源鉴权；root 也只能在本次请求明确的团队范围内搜索。
   const datasets = await Promise.all(
@@ -28,20 +28,20 @@ export const search = async ({
       const dataset = await deps.permissions.loadReadableDataset({ actor, datasetId });
       if (String(dataset.teamId) !== actor.teamId) throw DatasetErrEnum.unAuthDataset;
       if (dataset.type === DatasetTypeEnum.folder) {
-        throw new UserConfigError('搜索目标必须是知识库，不能是文件夹');
+        throw new UserConfigError('Search targets must be datasets, not folders');
       }
       return dataset;
     })
   );
   const imageKeys = [...new Set(input.query.imageKeys)];
   if (imageKeys.some((key) => !deps.images.isAuthorizedKey({ key, teamId: actor.teamId }))) {
-    throw new UserConfigError('检索图片必须是当前团队上传的临时图片');
+    throw new UserConfigError('Query images must be temporary files uploaded by the current team');
   }
 
   // 现有元数据过滤器在非商业版本会忽略配置，新入口明确拒绝，避免无声扩大召回范围。
   const filter = input.scope.filter;
   if (filter && Object.keys(filter).length > 0 && !capabilities.metadataFilter) {
-    throw new UserConfigError('当前版本不支持知识库搜索筛选');
+    throw new UserConfigError('Dataset search filters are not supported in this edition');
   }
 
   // 2. 选择本次模型快照；向量检索不允许用首库模型查询其他模型生成的索引。
@@ -51,13 +51,15 @@ export const search = async ({
   const vectorModels = models.embeddings;
   const vectorModel = vectorModels[0];
   if (!vectorModel || vectorModels.length !== datasets.length) {
-    throw new Error('搜索模型适配器必须为每个知识库解析一个向量模型');
+    throw new Error('The search model adapter must resolve one embedding model for each dataset');
   }
   if (
     input.retrieval.mode !== DatasetSearchModeEnum.fullTextRecall &&
     vectorModels.some((model) => model.modelId !== vectorModel.modelId)
   ) {
-    throw new UserConfigError('联合向量检索要求知识库使用相同的向量模型');
+    throw new UserConfigError(
+      'Multi-dataset vector search requires all datasets to use the same embedding model'
+    );
   }
   const rerankModel = models.rerank;
   const extensionModel = models.queryExtension;

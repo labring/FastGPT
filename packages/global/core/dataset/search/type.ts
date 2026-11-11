@@ -75,13 +75,16 @@ export const DatasetSearchFilterSchema = z.strictObject({
         .optional()
         .meta({ description: '创建时间上界，含边界', example: '2026-12-31T23:59:59Z' })
     })
-    .refine((range) => range.gte !== undefined || range.lte !== undefined, '时间范围不能为空')
+    .refine(
+      (range) => range.gte !== undefined || range.lte !== undefined,
+      'Time range must not be empty'
+    )
     .refine(
       (range) =>
         range.gte === undefined ||
         range.lte === undefined ||
         Date.parse(range.gte) <= Date.parse(range.lte),
-      '开始时间不能晚于结束时间'
+      'Start time must not be later than end time'
     )
     .optional()
     .meta({ description: '集合创建时间范围', example: { gte: '2026-01-01T00:00:00Z' } }),
@@ -106,7 +109,10 @@ export const DatasetSearchFilterSchema = z.strictObject({
           example: [{ tag: 'department', op: '$eq', value: 'sales' }]
         })
     })
-    .refine((tags) => tags.and !== undefined || tags.or !== undefined, '标签条件不能为空')
+    .refine(
+      (tags) => tags.and !== undefined || tags.or !== undefined,
+      'Tag conditions must not be empty'
+    )
     .optional()
     .meta({
       description: '标签条件；and 与 or 两组之间求交集',
