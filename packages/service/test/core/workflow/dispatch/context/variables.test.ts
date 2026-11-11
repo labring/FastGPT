@@ -40,6 +40,65 @@ const createState = (props: Partial<Parameters<typeof WorkflowVariableState.crea
 
 describe('WorkflowVariableState', () => {
   describe('create', () => {
+    it.each([0, false, '', null])(
+      'prioritizes canonical checkpoint value %j over old label input',
+      async (value) => {
+        const state = await createState({
+          variablesConfig: [
+            {
+              key: 'value',
+              label: 'alias',
+              type: VariableInputEnum.input,
+              valueType: WorkflowIOValueTypeEnum.any,
+              defaultValue: 'default'
+            } as any
+          ],
+          inputVariables: { alias: 'original', value: 'original-key' },
+          checkpointVariables: { value }
+        });
+        expect(state.get('value')).toBe(value);
+      }
+    );
+
+    it('restores password/file store values and excludes runtime-only values from the next snapshot', async () => {
+      const file = { key: 'chat/app/a.pdf', name: 'a.pdf', type: ChatFileTypeEnum.document };
+      const variablesConfig = [
+        { key: 'files', label: 'oldFileAlias', type: VariableInputEnum.file, maxFiles: 1 },
+        { key: 'password', type: VariableInputEnum.password },
+        {
+          key: 'keep',
+          label: 'keepAlias',
+          type: VariableInputEnum.input,
+          valueType: WorkflowIOValueTypeEnum.string
+        }
+      ] as any;
+      const checkpointVariables = {
+        files: [file],
+        password: { secret: encryptSecret('restored-secret') }
+      };
+      const inputVariables = {
+        oldFileAlias: ['https://example.com/original.pdf'],
+        keepAlias: 'original-kept'
+      };
+      const resolveInputFile = vi.fn(async () => 'http://preview.local/restored');
+      expect(
+        getWorkflowFileVariableInputs({ variablesConfig, inputVariables, checkpointVariables })
+      ).toEqual([file]);
+      const state = await createState({
+        variablesConfig,
+        inputVariables,
+        checkpointVariables,
+        resolveInputFile
+      });
+      expect(resolveInputFile).toHaveBeenCalledWith(file);
+      expect(state.get('files')).toEqual(['http://preview.local/restored']);
+      expect(state.getStoreValue('files')).toEqual([file]);
+      expect(state.get('password')).toBe('restored-secret');
+      expect(state.get('keep')).toBe('original-kept');
+      expect(state.toStoreRecord()).not.toHaveProperty('chatId');
+      expect(JSON.stringify(state.toStoreRecord())).not.toContain('restored-secret');
+    });
+
     it.each([
       {
         name: 'label takes precedence over key and default',

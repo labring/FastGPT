@@ -341,6 +341,84 @@ describe('dispatchRunAppNode', () => {
     ]);
   });
 
+  it('restores an isolated child variable checkpoint without reusing the original label input', async () => {
+    const parent = await createParentVariableState();
+    await parent.set('a', 'parent');
+    const resource = await mocks.loadChildWorkflowWithResource();
+    resource.childVersion.chatConfig.variables = [
+      { key: 'a', label: 'displayed', type: 'input', valueType: 'string', defaultValue: 'A0' }
+    ];
+    mocks.loadChildWorkflowWithResource.mockResolvedValue(resource);
+    const completed = await mocks.runWorkflow();
+    mocks.runWorkflow.mockClear();
+    mocks.runWorkflow.mockImplementationOnce(async (args: any) => {
+      const child = getCapturedTestWorkflowContext(args).variableContext;
+      expect(child.get('a')).toBe('original');
+      await child.set('a', 'checkpoint');
+      return {
+        ...completed,
+        workflowInteractiveResponse: {
+          type: 'userInput',
+          params: { description: '', inputForm: [] },
+          entryNodeIds: ['Form'],
+          memoryEdges: [],
+          nodeOutputs: []
+        }
+      };
+    });
+    const props: any = {
+      runningAppInfo: {
+        sourceType: 'app',
+        sourceId: 'parent-app',
+        teamId: 'team',
+        tmbId: 'owner',
+        name: 'Parent'
+      },
+      runningUserInfo: { teamId: 'team', tmbId: 'caller' },
+      node: { nodeId: 'child-node', pluginId: 'child-app-id' },
+      params: { userChatInput: 'original question', displayed: 'original' },
+      query: [{ text: { content: 'original question' } }],
+      histories: [],
+      variableContext: parent,
+      timezone: 'Asia/Shanghai',
+      uid: 'caller',
+      chatId: 'checkpoint-chat',
+      usagePush: vi.fn(),
+      nodeSummary: createNodeSummary()
+    };
+    const paused = await dispatchRunAppNode(props);
+    expect(paused.error).toBeUndefined();
+    expect(paused.system_memories).toEqual({
+      'workflow-variable-checkpoint/node:child-node/app:child-app-id:': { a: 'checkpoint' }
+    });
+    expect(parent.get('a')).toBe('parent');
+
+    mocks.runWorkflow.mockImplementationOnce(async (args: any) => {
+      expect(getCapturedTestWorkflowContext(args).variableContext.get('a')).toBe('checkpoint');
+      expect(args.query).toEqual([{ text: { content: '{"value":"RESUME"}' } }]);
+      return completed;
+    });
+    const resumed = await dispatchRunAppNode({
+      ...props,
+      histories: [
+        {
+          obj: ChatRoleEnum.AI,
+          value: [],
+          memories: JSON.parse(JSON.stringify(paused.system_memories))
+        }
+      ],
+      query: [{ text: { content: '{"value":"RESUME"}' } }],
+      lastInteractive: paused[DispatchNodeResponseKeyEnum.interactive]
+    });
+    expect(resumed.error).toBeUndefined();
+    expect(resumed.system_memories).toHaveProperty(
+      'workflow-variable-checkpoint/node:child-node/app:child-app-id:',
+      undefined
+    );
+    expect(mocks.runWorkflow).toHaveBeenCalledTimes(2);
+    expect(parent.get('a')).toBe('parent');
+  });
+
   it('propagates full histories, toolResponse text, and sandbox usage for nested chatAgent', async () => {
     const parentVariableState = await createParentVariableState();
     const nodeSummary = createNodeSummary();

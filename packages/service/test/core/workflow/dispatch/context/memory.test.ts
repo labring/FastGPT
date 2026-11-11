@@ -37,6 +37,68 @@ const createAiHistory = (memories: Record<string, any>): ChatItemMiniType[] => [
 ];
 
 describe('WorkflowMemoryContext & unified node memory helpers', () => {
+  describe('variable checkpoints', () => {
+    it('isolates paths, deep copies snapshots and clears only the completed child', () => {
+      const root = WorkflowMemoryContext.fromRecord({}, { rootSource: rootAppInfo });
+      const a = root.fork('node:A');
+      const b = root.fork('node:B');
+      const values = { value: 0, nested: { flag: false } };
+      root.merge(
+        a.createVariableCheckpoint({ runningAppInfo: sharedChildAppInfo, variables: values })
+      );
+      root.merge(
+        b.createVariableCheckpoint({
+          runningAppInfo: sharedChildAppInfo,
+          variables: { value: 'B' }
+        })
+      );
+      values.nested.flag = true;
+
+      const restored = WorkflowMemoryContext.fromRecord(
+        JSON.parse(JSON.stringify(root.toRecord())),
+        { rootSource: rootAppInfo }
+      );
+      const restoredA = restored.fork('node:A', { history: 0, hasInteractiveResume: true });
+      const read = restoredA.readVariableCheckpoint({ runningAppInfo: sharedChildAppInfo })!;
+      expect(read).toEqual({ value: 0, nested: { flag: false } });
+      (read.nested as { flag: boolean }).flag = true;
+      expect(restoredA.readVariableCheckpoint({ runningAppInfo: sharedChildAppInfo })).toEqual({
+        value: 0,
+        nested: { flag: false }
+      });
+      expect(
+        restored
+          .fork('node:A', { history: 0 })
+          .readVariableCheckpoint({ runningAppInfo: sharedChildAppInfo })
+      ).toBeUndefined();
+      expect(
+        restored.readVariableCheckpoint({ runningAppInfo: sharedChildAppInfo })
+      ).toBeUndefined();
+
+      const cleared = restoredA.createVariableCheckpoint({ runningAppInfo: sharedChildAppInfo });
+      restoredA.merge(cleared);
+      expect(
+        restoredA.readVariableCheckpoint({ runningAppInfo: sharedChildAppInfo })
+      ).toBeUndefined();
+      restored.merge(cleared);
+      expect(
+        restored.fork('node:B').readVariableCheckpoint({ runningAppInfo: sharedChildAppInfo })
+      ).toEqual({ value: 'B' });
+      expect(
+        WorkflowMemoryContext.fromRecord().createVariableCheckpoint({
+          runningAppInfo: sharedChildAppInfo
+        })
+      ).toEqual({});
+    });
+
+    it.each([null, [], false])('ignores malformed variable checkpoints: %j', (value) => {
+      const state = WorkflowMemoryContext.fromRecord({
+        'workflow-variable-checkpoint/app:shared_child_app:': value
+      });
+      expect(state.readVariableCheckpoint({ runningAppInfo: sharedChildAppInfo })).toBeUndefined();
+    });
+  });
+
   describe('baseline / delta separation & unified key scoping', () => {
     it('separates baseline and delta so forked child workflows only report their own writes', () => {
       const rootState = WorkflowMemoryContext.fromHistories(
