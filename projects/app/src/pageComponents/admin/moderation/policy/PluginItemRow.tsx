@@ -66,15 +66,16 @@ const PluginItemRow: React.FC<PluginItemRowProps> = ({
       {/* Plugin name column (180px). */}
       <Flex w={'180px'} alignItems={'center'} gap={2} flexShrink={0} px={6} minW={0}>
         <Avatar src={plugin.icon} w={'20px'} h={'20px'} borderRadius={'md'} flexShrink={0} />
-        <Text
-          fontSize={'sm'}
-          fontWeight={'medium'}
-          color={'myGray.900'}
-          isTruncated
-          title={plugin.name || plugin.pluginId}
+        <MyTooltip
+          label={plugin.name || plugin.pluginId}
+          placement="top"
+          showOnlyWhenOverflow
+          shouldWrapChildren={false}
         >
-          {plugin.name || plugin.pluginId}
-        </Text>
+          <Box minW={0} isTruncated fontSize={'sm'} fontWeight={'medium'} color={'myGray.900'}>
+            {plugin.name || plugin.pluginId}
+          </Box>
+        </MyTooltip>
       </Flex>
 
       {/* 3. 描述 (自适应 flex: 1，严格单行超出省略) */}
