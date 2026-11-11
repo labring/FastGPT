@@ -20,11 +20,11 @@ export type AgentLoopToolCatalog = {
 /**
  * 构造写入 tool message 的 content：
  * - 无结构化 parts 时直接用文本字符串；
- * - 有 parts 时把最终要发送的文本作为 text part 拼在图片等 parts 前，
- *   保证模型实际拿到的文本与展示/计费统计一致（文本已压缩时传压缩后的值）。
+ * - 保留 images 时把最终要发送的文本作为 text part 拼在图片前；
+ * - 压缩改写正文时只返回最终文本，避免原图重新进入展示和模型上下文。
  *
  * fastAgent 与 piAgent 共用这层组合规则，避免两条 provider 路径对同一个工具结果
- * 给出不同的内容：业务 response 文本永远保留，图片只作为附加 part。
+ * 给出不同的内容。
  *
  * 图片数量按 `maxToolImagePartAmount` 截断：一次工具调用列出很多文件时，每轮请求都会重复
  * 下载并内联这些图片，必须限制单个工具结果的视觉输入量。
