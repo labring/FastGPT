@@ -185,11 +185,12 @@ export async function dispatchWorkFlow({
 
   try {
     // 锚点 1：信息接入平台（Entry Guard）- 校验用户输入与全局变量/表单输入，违规直接阻断且不写入节点响应
-    if (!consumeEntryModerationChecked({ chatId, responseChatItemId })) {
+    const entryChecked = consumeEntryModerationChecked({ chatId, responseChatItemId });
+    if (!entryChecked.queryChecked || (!entryChecked.variablesChecked && data.variables)) {
       const entryNode = data.runtimeNodes?.find((item) => item.isEntry) || data.runtimeNodes?.[0];
       await checkEntryModeration({
-        query,
-        variables: data.variables,
+        query: entryChecked.queryChecked ? undefined : query,
+        variables: entryChecked.variablesChecked ? undefined : data.variables,
         context: {
           teamId: runningUserInfo.teamId,
           tmbId: runningUserInfo.tmbId,

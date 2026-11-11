@@ -13,9 +13,14 @@ import { workflowSystemVariables } from '@fastgpt/global/core/workflow/node/cons
 import { checkContentByPolicy, isModerationHookEnabled } from './checker';
 import { getModerationPolicy } from './service';
 
+type EntryCheckedRoundState = {
+  expiresAt: number;
+  variablesChecked: boolean;
+};
+
 const SYSTEM_VARIABLE_KEYS = new Set<string>(workflowSystemVariables.map((item) => item.key));
 const ENTRY_CHECKED_TTL_MS = 60_000;
-const entryCheckedRounds = new Map<string, number>();
+const entryCheckedRounds = new Map<string, EntryCheckedRoundState>();
 
 const buildEntryRoundKey = ({
   chatId,
@@ -31,31 +36,41 @@ const buildEntryRoundKey = ({
 export const markEntryModerationChecked = (params: {
   chatId?: string;
   responseChatItemId?: string;
+  variablesChecked?: boolean;
 }) => {
   const key = buildEntryRoundKey(params);
   if (!key) return;
   const now = Date.now();
   if (entryCheckedRounds.size > 500) {
-    for (const [k, expiresAt] of entryCheckedRounds.entries()) {
-      if (expiresAt <= now) entryCheckedRounds.delete(k);
+    for (const [k, state] of entryCheckedRounds.entries()) {
+      if (state.expiresAt <= now) entryCheckedRounds.delete(k);
     }
   }
-  entryCheckedRounds.set(key, now + ENTRY_CHECKED_TTL_MS);
+  entryCheckedRounds.set(key, {
+    expiresAt: now + ENTRY_CHECKED_TTL_MS,
+    variablesChecked: Boolean(params.variablesChecked)
+  });
 };
 
 /**
- * 消费一次性的入口已审标记；若未在 preChatRound 预审（如直接调用 dispatchWorkFlow），返回 false。
+ * 消费一次性的入口已审标记；若 preChatRound 未传入 variables，允许 dispatchWorkFlow 仅补审 variables。
  */
 export const consumeEntryModerationChecked = (params: {
   chatId?: string;
   responseChatItemId?: string;
-}): boolean => {
+}): { queryChecked: boolean; variablesChecked: boolean } => {
   const key = buildEntryRoundKey(params);
-  if (!key) return false;
-  const expiresAt = entryCheckedRounds.get(key);
-  if (expiresAt === undefined) return false;
+  if (!key) return { queryChecked: false, variablesChecked: false };
+  const state = entryCheckedRounds.get(key);
+  if (state === undefined) return { queryChecked: false, variablesChecked: false };
   entryCheckedRounds.delete(key);
-  return expiresAt > Date.now();
+  if (state.expiresAt <= Date.now()) {
+    return { queryChecked: false, variablesChecked: false };
+  }
+  return {
+    queryChecked: true,
+    variablesChecked: state.variablesChecked
+  };
 };
 
 export type CheckEntryModerationParams = {

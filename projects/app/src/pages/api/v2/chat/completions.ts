@@ -76,7 +76,6 @@ import {
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   filterWorkflowFinalResponseData,
-  createModerationFilteredWorkflowResponse,
   getWorkflowDatasetCiteRetention,
   getWorkflowFinalResponseData,
   getWorkflowFinalResponseError,
@@ -84,6 +83,7 @@ import {
 } from '@/service/core/workflow/nodeResponse';
 import { formatCompletionResponseContent } from '@/service/core/chat/utils';
 import {
+  createModerationFilteredWorkflowResponse,
   createWorkflowStreamResponseContext,
   type WorkflowStreamResponseContext
 } from '@fastgpt/service/core/workflow/utils/streamResponseContext';

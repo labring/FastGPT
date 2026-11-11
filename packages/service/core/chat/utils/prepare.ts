@@ -220,7 +220,11 @@ export const preChatRound = async (params: PreChatRoundParams): Promise<PreChatR
       requestId: params.requestId
     }
   });
-  markEntryModerationChecked({ chatId, responseChatItemId });
+  markEntryModerationChecked({
+    chatId,
+    responseChatItemId,
+    variablesChecked: params.variables !== undefined
+  });
 
   if (!shouldPersistChatRound) {
     // 不落库的入口没有 lease，在准备阶段重置旧信号；执行器启动后不再清理主动停止。

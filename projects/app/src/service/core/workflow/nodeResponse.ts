@@ -4,8 +4,6 @@ import {
   findFailedResponseNode,
   stripModerationRecordsFromNodeResponses
 } from '@fastgpt/global/core/chat/utils';
-import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import type { WorkflowResponseType } from '@fastgpt/global/core/workflow/runtime/sse';
 import { getChildrenResponses } from '@fastgpt/global/core/chat/utils/mergeNode';
 import { composeNodeResponseDetail } from '@fastgpt/service/core/chat/nodeResponseStorage';
 import type {
@@ -101,31 +99,6 @@ export const filterWorkflowFinalResponseData = ({
       : stripModerationRecordsFromNodeResponses(responseData);
   }
   return filterNodeResponseTreeData({ nodeResponses: responseData, responseDetail });
-};
-
-/** Filter outgoing node events before SSE/resume storage without changing persisted node records. */
-export const createModerationFilteredWorkflowResponse = ({
-  responseWrite,
-  canReadModerationRecords = false
-}: {
-  responseWrite: WorkflowResponseType;
-  canReadModerationRecords?: boolean;
-}): WorkflowResponseType => {
-  return (event) => {
-    if (
-      !canReadModerationRecords &&
-      event.event === SseResponseEventEnum.flowNodeResponse &&
-      typeof event.data !== 'string'
-    ) {
-      responseWrite({
-        id: event.id,
-        event: SseResponseEventEnum.flowNodeResponse,
-        data: stripModerationRecordsFromNodeResponses([event.data as ChatHistoryItemResType])[0]
-      });
-      return;
-    }
-    responseWrite(event);
-  };
 };
 
 /**

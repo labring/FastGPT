@@ -8,11 +8,11 @@ import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import {
   filterWorkflowFinalResponseData,
-  createModerationFilteredWorkflowResponse,
   getWorkflowDatasetCiteRetention,
   getWorkflowFinalResponseError,
   shouldRetainWorkflowNodeResponses
 } from '@/service/core/workflow/nodeResponse';
+import { createModerationFilteredWorkflowResponse } from '@fastgpt/service/core/workflow/utils/streamResponseContext';
 
 describe('completion moderation visibility', () => {
   const child: ChatHistoryItemResType = {
