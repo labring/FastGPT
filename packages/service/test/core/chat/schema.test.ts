@@ -38,6 +38,11 @@ describe('chat schema indexes', () => {
     expect(sourceAwareIndex?.[1]?.unique).toBe(true);
   });
 
+  it('declares indexes for list and cursor search pagination', () => {
+    expect(hasIndex(MongoChat.schema.indexes(), { appId: 1, updateTime: -1 })).toBe(true);
+    expect(hasIndex(MongoChat.schema.indexes(), { appId: 1, updateTime: -1, _id: -1 })).toBe(true);
+  });
+
   it('keeps deprecated share data and its index, only cleaning the obsolete generation status index', () => {
     expect(MongoChat.schema.path('shareId')).toBeDefined();
     expect(

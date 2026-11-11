@@ -183,6 +183,8 @@ defineIndex(ChatSchema, {
 /* get chat logs */
 // 1. Common get
 defineIndex(ChatSchema, { key: { appId: 1, updateTime: -1 } });
+// Cursor search, ordered by updateTime then _id.
+defineIndex(ChatSchema, { key: { appId: 1, updateTime: -1, _id: -1 } });
 // Get history(tmbId)
 defineIndex(ChatSchema, { key: { appId: 1, tmbId: 1, updateTime: -1 } });
 // clearHistory(API)
