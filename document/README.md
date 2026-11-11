@@ -63,6 +63,4 @@ DOCS_TEST_ORIGIN=http://localhost:3210 pnpm --dir document test:site
 
 Use a browser to inspect both editions: first-task links, cross-directory section ownership, search results, language switching, keyboard access, mobile navigation, tables, and media. Production-host routing tests send explicit Host headers to the local server.
 
-Record per-topic disposition, semantic review, evidence, and runtime limitations with the [reconstruction inventory](../.agents/design/documentation/reconstruction-pages.csv). Published-media inspection levels and removals are tracked in the [media inventory](../.agents/design/documentation/reconstruction-public-media.csv). A structural check establishes structural coverage; source review and a successful product execution are separate evidence levels. Full repository tests follow final user acceptance.
-
 Reuse the [UTM attribution contract](./UTM_ATTRIBUTION.md) for links to the FastGPT marketing sites.
