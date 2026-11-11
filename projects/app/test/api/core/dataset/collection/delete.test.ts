@@ -10,6 +10,7 @@ import {
   ReadRoleVal
 } from '@fastgpt/global/support/permission/constant';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
+import { buildApiFileRecords, toApiFileDirId } from '@fastgpt/service/core/dataset/apiDataset/tree';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
@@ -308,6 +309,67 @@ describe('delete collection by apiFileId', () => {
     return { member, dataset, collection, createCollection };
   };
 
+  /**
+   * 按真实导入布局写入集合：带子文档的文件产出「派生目录 + 正文」两条记录，
+   * 子文档挂在目录下，目录带 apiFileSourceId 来源标记（与 createApiFileFolders 一致）。
+   */
+  const insertApiFileLayout = async ({
+    teamId,
+    tmbId,
+    datasetId,
+    fileId,
+    childId,
+    skipApiFileIds = []
+  }: {
+    teamId: string;
+    tmbId: string;
+    datasetId: string;
+    fileId: string;
+    childId: string;
+    skipApiFileIds?: string[];
+  }) => {
+    const records = buildApiFileRecords([
+      {
+        serverId: fileId,
+        serverParentId: null,
+        dirId: toApiFileDirId(fileId, 'file'),
+        type: 'file',
+        name: fileId,
+        depth: 0,
+        hasChild: true
+      },
+      {
+        serverId: childId,
+        serverParentId: fileId,
+        dirId: toApiFileDirId(childId, 'file'),
+        type: 'file',
+        name: childId,
+        depth: 1,
+        hasChild: false
+      }
+    ]);
+    const idByApiFileId = new Map<string, string>();
+    for (const record of records) {
+      if (skipApiFileIds.includes(record.apiFileId)) continue;
+      const created = await MongoDatasetCollection.create({
+        name: record.name,
+        type:
+          record.type === 'folder'
+            ? DatasetCollectionTypeEnum.folder
+            : DatasetCollectionTypeEnum.apiFile,
+        teamId,
+        tmbId,
+        datasetId,
+        apiFileId: record.apiFileId,
+        apiFileParentId: record.apiFileParentId ?? undefined,
+        parentId: record.parentDirId ? idByApiFileId.get(record.parentDirId)! : null,
+        ...(record.type === 'folder' ? { metadata: { apiFileSourceId: record.sourceId } } : {})
+      });
+      idByApiFileId.set(record.apiFileId, String(created._id));
+    }
+    return { records, idByApiFileId };
+  };
+
   it('deletes the matched node and its subtree, keeping unrelated collections', async () => {
     const { member, dataset, createCollection } = await fixture();
     const folder = await createCollection({
@@ -376,6 +438,55 @@ describe('delete collection by apiFileId', () => {
     await expect(
       MongoDatasetCollection.findById(otherDataset.collection._id).lean()
     ).resolves.not.toBeNull();
+  });
+
+  it('deletes the derived folder and child documents of a file with children', async () => {
+    const { member, dataset } = await fixture();
+    await insertApiFileLayout({
+      teamId: member.teamId,
+      tmbId: member.tmbId,
+      datasetId: String(dataset._id),
+      fileId: 'doc',
+      childId: 'child'
+    });
+
+    const response = await Call(deleteHandler, {
+      auth: member,
+      body: { datasetId: String(dataset._id), apiFileIds: ['doc'] }
+    });
+
+    expect(response.code).toBe(200);
+    const remaining = await MongoDatasetCollection.find({
+      datasetId: dataset._id,
+      apiFileId: { $in: ['doc', 'doc#dir', 'child'] }
+    }).lean();
+    expect(remaining).toHaveLength(0);
+  });
+
+  it('deletes the derived folder even when the body was never persisted', async () => {
+    const { member, dataset } = await fixture();
+    const { idByApiFileId } = await insertApiFileLayout({
+      teamId: member.teamId,
+      tmbId: member.tmbId,
+      datasetId: String(dataset._id),
+      fileId: 'doc',
+      childId: 'child',
+      skipApiFileIds: ['doc']
+    });
+    expect(idByApiFileId.has('doc')).toBe(false);
+
+    const response = await Call(deleteHandler, {
+      auth: member,
+      body: { datasetId: String(dataset._id), apiFileIds: ['doc'] }
+    });
+
+    expect(response.code).toBe(200);
+    expect(
+      await MongoDatasetCollection.countDocuments({
+        datasetId: dataset._id,
+        apiFileId: { $in: ['doc#dir', 'child'] }
+      })
+    ).toBe(0);
   });
 
   it('rejects the virtual root apiFileId', async () => {

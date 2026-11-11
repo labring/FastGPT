@@ -26,30 +26,36 @@ async function handler(req: ApiRequestProps) {
     bodySchema: DeleteCollectionBodySchema
   }).body;
 
-  let deletedIds: string[];
-
-  if (id) {
-    deletedIds = [id];
-  } else if (collectionIds?.length) {
-    deletedIds = collectionIds;
-  } else if (apiFileIds?.length && datasetId) {
+  const deletedIds = await (async (): Promise<string[]> => {
+    if (id) return [id];
+    if (collectionIds?.length) return collectionIds;
+    if (!apiFileIds?.length || !datasetId) {
+      return Promise.reject(CommonErrEnum.missingParams);
+    }
     // 外部集成只知道 API 文件身份：用请求头 teamId + datasetId 定位内部 _id，后续复用原有删除流程
     if (apiFileIds.includes(RootCollectionId)) {
       return Promise.reject(CommonErrEnum.invalidParams);
     }
     const { teamId } = await parseHeaderCert({ req, authToken: true, authApiKey: true });
+    // 带子文档的文件会拆成「派生目录 + 正文」两条记录，子文档挂在目录下且有 apiFileSourceId 来源标记；
+    // 只按 apiFileId 命中正文会残留目录和子文档，必须同时按来源标记取出派生目录。
     const matched = await MongoDatasetCollection.find(
-      { teamId, datasetId, apiFileId: { $in: apiFileIds } },
+      {
+        teamId,
+        datasetId,
+        $or: [
+          { apiFileId: { $in: apiFileIds } },
+          { 'metadata.apiFileSourceId': { $in: apiFileIds } }
+        ]
+      },
       '_id'
     ).lean();
 
     if (matched.length === 0) {
       return Promise.reject(DatasetErrEnum.unExistCollection);
     }
-    deletedIds = matched.map((item) => String(item._id));
-  } else {
-    return Promise.reject(CommonErrEnum.missingParams);
-  }
+    return matched.map((item) => String(item._id));
+  })();
 
   // 删除是 owner 专属操作：仅集合所有者（collection.tmbId）可删，持有 manage/write 的协作者不可删。
   // 与 dataset / app / skill 删除保持一致（不可逆操作由 owner 唯一决策）。

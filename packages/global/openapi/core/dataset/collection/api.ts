@@ -136,8 +136,14 @@ export const DeleteCollectionBodySchema = z.object({
   apiFileIds: z
     .array(z.string())
     .optional()
-    .meta({ description: 'API 文件 ID 列表（需配合 datasetId 使用）' }),
-  datasetId: z.string().optional().meta({ description: '数据集 ID（配合 apiFileIds 使用）' })
+    .meta({
+      example: ['6893c04c0a1c3e0012a3b4c5'],
+      description: 'API 文件库的外部文件 ID 列表（需配合 datasetId 使用）'
+    }),
+  datasetId: z.string().optional().meta({
+    example: '68ad85a7463006c963799a05',
+    description: '数据集 ID（配合 apiFileIds 使用）'
+  })
 });
 export type DeleteCollectionBodyType = z.infer<typeof DeleteCollectionBodySchema>;
 
