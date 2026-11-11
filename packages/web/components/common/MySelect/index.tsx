@@ -43,6 +43,7 @@ export type SelectProps<T = any> = Omit<ButtonProps, 'onChange' | 'value'> & {
   valueLabel?: string | React.ReactNode;
   placeholder?: string;
   isSearch?: boolean;
+  onSearchChange?: (val: string) => void;
   list: {
     icon?: string;
     iconSize?: string;
@@ -86,6 +87,7 @@ const MySelect = <T = any,>(
     value,
     valueLabel,
     isSearch = false,
+    onSearchChange,
     width = '100%',
     list = [],
     onChange,
@@ -123,9 +125,10 @@ const MySelect = <T = any,>(
     defaultOnClose();
     if (isSearch) {
       setSearch('');
+      onSearchChange?.('');
     }
     customOnClose?.();
-  }, [customOnClose, defaultOnClose, isSearch]);
+  }, [customOnClose, defaultOnClose, isSearch, onSearchChange]);
 
   useCloseOnFlowNodeDragAreaPointerDown(MenuRef, onClose, isOpen);
 
@@ -307,7 +310,10 @@ const MySelect = <T = any,>(
                 ref={searchInputRef}
                 value={search}
                 placeholder={t('common:Search')}
-                onChange={setSearch}
+                onChange={(val) => {
+                  setSearch(val);
+                  onSearchChange?.(val);
+                }}
               />
             </Box>
           )}

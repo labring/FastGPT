@@ -1,5 +1,6 @@
 import z from 'zod';
 import { ObjectIdSchema } from '../../../common/type/mongo';
+import { IntSchema } from '../../../common/zod';
 import { PaginationResponseSchema, createPaginationSchema } from '../../api';
 
 /* ============================================================================
@@ -53,3 +54,84 @@ export const GetTeamMembersResponseSchema = z.object({
     .meta({ description: '团队基本信息' })
 });
 export type GetTeamMembersResponseType = z.infer<typeof GetTeamMembersResponseSchema>;
+
+/* ============================================================================
+ * API: 系统管理员切换任意团队
+ * Route: PUT /api/admin/team/switch
+ * Method: PUT
+ * Description: 系统超级管理员（root）切换到指定团队，按需确保团队内存在活跃的 root 成员记录并签发新会话令牌
+ * Tags: ['Admin', 'Teams', 'Write']
+ * ============================================================================ */
+
+export const AdminSwitchTeamBodySchema = z
+  .object({
+    teamId: ObjectIdSchema.meta({
+      example: '68ad85a7463006c963799a06',
+      description: '要切换到的目标团队 ID'
+    })
+  })
+  .meta({
+    example: {
+      teamId: '68ad85a7463006c963799a06'
+    }
+  });
+export type AdminSwitchTeamBodyType = z.infer<typeof AdminSwitchTeamBodySchema>;
+
+export const AdminSwitchTeamResponseSchema = z.object({
+  token: z.string().meta({
+    example: '68ad85a7463006c963799a05:abc123def456',
+    description: '切换团队后生成的新登录会话令牌，同时写入登录 Cookie'
+  }),
+  teamId: ObjectIdSchema.meta({
+    example: '68ad85a7463006c963799a06',
+    description: '切换后的当前团队 ID'
+  }),
+  tmbId: ObjectIdSchema.meta({
+    example: '68ad85a7463006c963799a07',
+    description: 'root 用户在目标团队中的成员 ID'
+  })
+});
+export type AdminSwitchTeamResponseType = z.infer<typeof AdminSwitchTeamResponseSchema>;
+
+/* ============================================================================
+ * API: 系统管理员检索全站可切换团队列表
+ * Route: GET /api/admin/team/list
+ * Method: GET
+ * Description: 供系统超级管理员（root）在团队切换器中按团队名检索全站可用团队列表，并确保包含当前所处团队
+ * Tags: ['Admin', 'Teams', 'Read']
+ * ============================================================================ */
+
+export const AdminTeamSelectorItemSchema = z.object({
+  teamId: ObjectIdSchema.meta({
+    example: '68ad85a7463006c963799a06',
+    description: '团队 ID'
+  }),
+  teamName: z.string().meta({
+    example: 'My Team',
+    description: '团队名称'
+  }),
+  avatar: z.string().nullish().meta({
+    example: '/icon/logo.svg',
+    description: '团队头像'
+  })
+});
+export type AdminTeamSelectorItemType = z.infer<typeof AdminTeamSelectorItemSchema>;
+
+export const AdminTeamSelectorQuerySchema = z.object({
+  search: z.string().trim().max(100).optional().meta({
+    example: 'My Team',
+    description: '按团队名称模糊搜索关键词'
+  }),
+  limit: IntSchema.min(1).max(200).optional().default(100).meta({
+    example: 100,
+    description: '单次返回的最大团队数量（1-200，默认 100）'
+  })
+});
+export type AdminTeamSelectorQueryType = z.infer<typeof AdminTeamSelectorQuerySchema>;
+
+export const AdminTeamSelectorResponseSchema = z.object({
+  list: z.array(AdminTeamSelectorItemSchema).meta({
+    description: '匹配的团队列表'
+  })
+});
+export type AdminTeamSelectorResponseType = z.infer<typeof AdminTeamSelectorResponseSchema>;

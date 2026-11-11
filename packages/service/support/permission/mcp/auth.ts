@@ -30,8 +30,8 @@ export const authMcp = async ({
     return Promise.reject(TeamErrEnum.unPermission);
   }
 
-  // MCP 发布项与个人 APIKey 一样只归创建成员管理。
-  if (tmbId !== String(mcp.tmbId)) {
+  // MCP 发布项默认只归创建成员管理；系统 root 代管该团队时允许统一维护。
+  if (!isRoot && tmbId !== String(mcp.tmbId)) {
     return Promise.reject(TeamErrEnum.unPermission);
   }
 
