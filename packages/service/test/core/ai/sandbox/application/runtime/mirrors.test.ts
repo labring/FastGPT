@@ -287,6 +287,37 @@ describe('sandbox runtime mirrors', () => {
     expect(sandbox.getFile(target)).toBeUndefined();
   });
 
+  it('keeps pending created-file evidence when clearing before a successful retry', async () => {
+    const target = '/home/test/.yarnrc';
+    const sandbox = createSandbox();
+    const config = { npmRegistry: 'https://npm.example.com' };
+    const write = sandbox.writeFiles.getMockImplementation()!;
+    let failed = false;
+    sandbox.writeFiles.mockImplementation(async (entries) => {
+      if (failed || !entries.some((entry) => entry.path === target)) return write(entries);
+      failed = true;
+      const results = await write(entries);
+      sandbox.setFile(target, 'partial\n');
+      return results.map((result) =>
+        result.path === target
+          ? { ...result, bytesWritten: 8, error: new Error('partial write') }
+          : result
+      );
+    });
+
+    await prepareSandboxRuntimeMirrors({ sandbox: sandbox as any, config });
+    sandbox.writeFiles.mockImplementation(write);
+    const markerPath = `/home/test/.fastgpt/runtime/mirrors/${buildRuntimeHash(target).slice(7)}.json`;
+    expect(sandbox.getFile(target)).toBe('partial\n');
+    expect(sandbox.getFile(markerPath)).toContain('"pending":true');
+
+    await prepareSandboxRuntimeMirrors({ sandbox: sandbox as any, config: {} });
+
+    expect(sandbox.getFile(target)).toBe('partial\n');
+    expect(sandbox.getFile(markerPath)).toContain('"pending":true');
+    expect(sandbox.getState()?.values?.npmMirror).not.toBe(buildRuntimeHash(''));
+  });
+
   it('restores the original file after a failed partial target write', async () => {
     const target = '/home/test/.npmrc';
     const config = { npmRegistry: 'https://npm.example.com' };

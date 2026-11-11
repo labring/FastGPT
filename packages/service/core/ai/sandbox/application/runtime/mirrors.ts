@@ -480,6 +480,15 @@ class SandboxRuntimeMirrorFileManager {
         if (marker.origin === 'backup' && original) backupsToRemove.push(this.getBackupPath(path));
       } else if (copy && !marker && previouslyActive && legacyActivePaths.includes(path)) {
         restores.push({ path, data: copy });
+      } else if (marker?.origin === 'created' && marker.pending) {
+        // pending 自建文件可能是部分写入残片，也可能已被用户改写；无法证明归属时
+        // 保留 marker 并让清空失败，避免删除证据后错误记录空 hash。
+        if (!content) {
+          markersToRemove.push(this.getMarkerPath(path));
+          continue;
+        }
+        if (!marker.hashes.includes(buildRuntimeHash(content))) return false;
+        generatedFiles.push(path);
       } else if (
         marker?.origin === 'created' &&
         content &&
