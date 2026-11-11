@@ -48,7 +48,14 @@ export async function workflowService(context, c) {
     'packages/service/core/workflow/dispatch/context/nodeResponse.ts',
     'packages/service/core/workflow/dispatch/index.ts',
     'packages/service/core/workflow/dispatch/ai/toolcall/toolProvider/createToolCallToolProvider.ts',
-    'packages/service/core/workflow/dispatch/utils/summary.ts'
+    'packages/service/core/workflow/dispatch/utils/summary.ts',
+    'packages/service/core/workflow/resource/service.ts',
+    'packages/service/core/ai/model/catalog/service.ts',
+    'packages/service/support/permission/model/auth.ts',
+    'packages/service/support/permission/repository/resourcePermissionRepo.ts',
+    'packages/service/support/permission/model/cache.ts',
+    'packages/service/core/ai/model/schema.ts',
+    'packages/service/core/dataset/schema.ts'
   ];
   // 与主站 bundler 一样处理仅提供 ESM import 的插件 SDK，避免 CJS require 兼容错误；源码不变。
   const bundleDir = repo + 'local/tmp/workflow-integration';
