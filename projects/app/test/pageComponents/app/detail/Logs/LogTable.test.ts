@@ -3,12 +3,17 @@ import React, { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { downloadFetch } from '@/web/common/system/utils';
-import { getLogKeys, updateLogKeys } from '@/web/core/app/api/log';
+import { getLogKeys, searchAppChatLogs, updateLogKeys } from '@/web/core/app/api/log';
 
 const getLogRows = vi.hoisted(() => vi.fn());
+const getPaginationOptions = vi.hoisted(() => vi.fn());
 
 vi.mock('next-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
 vi.mock('next/dynamic', () => ({ default: () => () => null }));
+vi.mock('ahooks', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('ahooks')>()),
+  useDebounce: <T>(value: T) => value
+}));
 vi.mock('@/web/common/system/useSystemStore', () => ({
   useSystemStore: () => ({ feConfigs: {} })
 }));
@@ -41,14 +46,17 @@ vi.mock('@fastgpt/web/hooks/useRequest', async () => {
   };
 });
 vi.mock('@fastgpt/web/hooks/usePagination', () => ({
-  usePagination: () => ({
-    data: getLogRows(),
-    Pagination: () => null,
-    getData: vi.fn(),
-    pageNum: 1,
-    total: 1,
-    pageSize: 20
-  })
+  usePagination: (_api: unknown, options: unknown) => {
+    getPaginationOptions(options);
+    return {
+      data: getLogRows(),
+      Pagination: () => null,
+      getData: vi.fn(),
+      pageNum: 1,
+      total: 1,
+      pageSize: 20
+    };
+  }
 }));
 vi.mock('@fastgpt/web/hooks/useTableMultipleSelect', () => ({
   useTableMultipleSelect: () => ({
@@ -94,7 +102,17 @@ vi.mock('@fastgpt/web/components/common/TagFilter', async () => {
   const React = await import('react');
   return {
     FilterInput: ({ value = '', onChange, ...props }: any) =>
-      React.createElement('input', { ...props, value, onChange }),
+      props.placeholder === 'app:logs_search_placeholder'
+        ? React.createElement(
+            'button',
+            {
+              ...props,
+              onClick: () => onChange({ target: { value: 'needle' } }),
+              'aria-label': props.placeholder
+            },
+            value
+          )
+        : React.createElement('input', { ...props, value, onChange }),
     MultiSelectFilter: () => null,
     createMultiSelectFilter: () => ({ mode: 'all', values: [] }),
     toMultiSelectFilterQuery: () => undefined,
@@ -213,6 +231,14 @@ describe('LogTable identity columns UI', () => {
   const click = async (element: Element | undefined | null) => {
     expect(element).toBeTruthy();
     await act(async () => element!.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+  };
+  const setSearch = async () => {
+    const input = container.querySelector('button[aria-label="app:logs_search_placeholder"]');
+    expect(input).toBeTruthy();
+    await act(async () => {
+      input!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      await Promise.resolve();
+    });
   };
   const authorizerToggle = () =>
     [...container.querySelectorAll('button[aria-label="invisible"]')].find((button) =>
@@ -350,5 +376,34 @@ describe('LogTable identity columns UI', () => {
         { key: 'authUser', enable: false }
       ])
     });
+  });
+  it('shows search failure and retries the first page without an end marker', async () => {
+    vi.mocked(searchAppChatLogs)
+      .mockRejectedValueOnce(new Error('503'))
+      .mockResolvedValueOnce({ list: [], nextCursor: undefined });
+    await render({ cursorSearch: true });
+    await setSearch();
+
+    expect(container.textContent).toContain('common:load_failed');
+    expect(container.textContent).not.toContain('common:request_end');
+    expect(searchAppChatLogs).toHaveBeenCalledTimes(1);
+
+    await click(
+      [...container.querySelectorAll('button')].find(
+        (button) => button.textContent === 'common:refresh'
+      )
+    );
+    expect(searchAppChatLogs).toHaveBeenCalledTimes(2);
+    expect(vi.mocked(searchAppChatLogs).mock.calls[1][0].cursor).toBeUndefined();
+    expect(container.textContent).toContain('common:request_end');
+  });
+  it('connects pagination to the actual table body scroll container', async () => {
+    await render();
+    const scrollContainerRef = getPaginationOptions.mock.calls.at(-1)?.[0].scrollContainerRef as {
+      current: HTMLDivElement | null;
+    };
+    const tableBody = container.querySelector('table')?.parentElement;
+    expect(scrollContainerRef.current).toBeTruthy();
+    expect(scrollContainerRef.current).toBe(tableBody);
   });
 });
