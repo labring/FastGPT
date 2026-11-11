@@ -6,7 +6,10 @@ import type {
   ChatCompletionTool,
   CompletionFinishReason
 } from '@fastgpt/global/core/ai/llm/type';
-import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
+import {
+  ChatCompletionRequestMessageRoleEnum,
+  LLM_TOOL_CALL_ARGUMENTS_TRUNCATED
+} from '@fastgpt/global/core/ai/constants';
 import type { CreateLLMResponseProps } from '../../../../request';
 import { createLLMResponse } from '../../../../request';
 import { compressRequestMessages, compressToolResponse } from '../../../../compress';
@@ -490,7 +493,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
     const requestFailure =
       error ??
       (finishReason === 'length' && toolCalls.length > 0
-        ? new Error('LLM tool call arguments were truncated by the output token limit.')
+        ? new Error(LLM_TOOL_CALL_ARGUMENTS_TRUNCATED)
         : undefined);
     const totalPoints = usage.usedUserOpenAIKey
       ? 0

@@ -1118,7 +1118,7 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
       expect(onRunInteractiveTool).not.toHaveBeenCalled();
       expect(createLLMResponseMock).toHaveBeenCalledTimes(1);
       expect(result.error).toBeInstanceOf(Error);
-      expect(result.error.message).toMatch(/truncated.*output token limit/i);
+      expect(result.error.message).toBe('chat:llm_tool_call_arguments_truncated');
       expect(result.finish_reason).toBe('length');
       expect(result.inputTokens).toBe(100);
       expect(result.outputTokens).toBe(20);

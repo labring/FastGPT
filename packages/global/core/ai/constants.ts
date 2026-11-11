@@ -2,6 +2,8 @@ import { i18nT } from '../../common/i18n/utils';
 import type { CompletionUsage, ReasoningEffort } from './llm/type';
 import type { EmbeddingModelDataType, LLMModelDataType, STTModelDataType } from './model/schema';
 
+export const LLM_TOOL_CALL_ARGUMENTS_TRUNCATED = i18nT('chat:llm_tool_call_arguments_truncated');
+
 export const getLLMDefaultUsage = (): CompletionUsage => {
   return {
     prompt_tokens: 0,
