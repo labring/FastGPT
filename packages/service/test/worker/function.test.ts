@@ -548,6 +548,28 @@ describe('worker/function', () => {
       expect(mockRun).toHaveBeenCalledWith({ html: '<h1>Title</h1>' });
     });
 
+    it('随 HTML 解析阈值更新 worker 环境版本，保留零值', async () => {
+      mockRun.mockResolvedValue({ rawText: 'content' });
+      const config = createDefaultInstanceConfig();
+      global.systemInstanceConfig = config;
+
+      config.performance.parse.maxHtmlTransformChars = 5;
+      await htmlToMarkdown('content');
+      await htmlToMarkdown('content');
+      config.performance.parse.maxHtmlTransformChars = 0;
+      await htmlToMarkdown('content');
+      config.performance.parse.maxHtmlTransformChars = 1000;
+      await htmlToMarkdown('content');
+
+      expect(mockGetWorkerController).toHaveBeenCalledTimes(4);
+      ['5', '5', '0', '1000'].forEach((workerEnvVersion, index) => {
+        expect(mockGetWorkerController).toHaveBeenNthCalledWith(
+          index + 1,
+          expect.objectContaining({ workerEnvVersion })
+        );
+      });
+    });
+
     it('空 html 统一传空字符串', async () => {
       mockRun.mockResolvedValueOnce({ rawText: '' });
 
