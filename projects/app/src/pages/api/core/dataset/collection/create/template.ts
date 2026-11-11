@@ -3,6 +3,7 @@ import { NextAPI } from '@/service/middleware/entry';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { authDatasetCollectionCreate } from '@fastgpt/service/support/permission/dataset/auth';
 import { createCollectionAndInsertData } from '@fastgpt/service/core/dataset/collection/controller';
+import { getDatasetModelAuthContext } from '@fastgpt/service/core/dataset/model';
 import {
   DatasetCollectionDataProcessModeEnum,
   DatasetCollectionTypeEnum
@@ -35,12 +36,18 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResult
       result.data
     );
 
-    const { teamId, tmbId, dataset } = await authDatasetCollectionCreate({
+    const { teamId, tmbId, isRoot, dataset } = await authDatasetCollectionCreate({
       req,
       authToken: true,
       authApiKey: true,
       datasetId,
       parentId
+    });
+    const modelAuthContext = await getDatasetModelAuthContext({
+      dataset,
+      teamId,
+      tmbId,
+      isRoot
     });
 
     // Check dataset limit
@@ -77,6 +84,7 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResult
     const collectionResult = await createCollectionAndInsertData({
       dataset,
       rawText,
+      modelAuthContext,
       backupParse: true,
       createCollectionParams: {
         teamId,

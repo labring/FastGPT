@@ -14,6 +14,7 @@ import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/cons
 import type { FlowNodeTemplateOutputItemType } from '@fastgpt/global/core/workflow/template/output';
 import { EmptyNode } from '@fastgpt/global/core/workflow/template/system/emptyNode';
 import type { ClassifyQuestionAgentItemType } from '@fastgpt/global/core/workflow/template/system/classifyQuestion/type';
+import { HttpToolSetNode } from '@fastgpt/global/core/workflow/template/system/httpToolSet';
 import type { IfElseListItemType } from '@fastgpt/global/core/workflow/template/system/ifElse/type';
 import { initNewIfElseList } from '@fastgpt/global/common/workflow/condition';
 import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
@@ -154,7 +155,12 @@ export const storeNode2FlowNode = ({
 }: StoreNode2FlowNodeProps): Node<FlowNodeItemType> => {
   // init some static data
   const nodeTemplate =
-    moduleTemplatesFlat.find((template) => template.flowNodeType === storeNode.flowNodeType) ||
+    (storeNode.flowNodeType === FlowNodeTypeEnum.toolSet &&
+    !storeNode.pluginId &&
+    storeNode.toolConfig?.httpToolSet &&
+    !('toolId' in storeNode.toolConfig.httpToolSet)
+      ? HttpToolSetNode
+      : moduleTemplatesFlat.find((template) => template.flowNodeType === storeNode.flowNodeType)) ||
     EmptyNode;
 
   const storedInputs = storeNode.inputs;
@@ -257,7 +263,10 @@ export const storeNode2FlowNode = ({
     showSourceHandle: nodeTemplate.showSourceHandle,
     name: isPluginNode ? storeNode.name : t(storeNode.name),
     intro: isPluginNode || !storeNode.intro ? storeNode.intro : t(storeNode.intro),
-    avatar: nodeTemplate.avatar ?? storeNode.avatar,
+    avatar:
+      isPluginNode && storeNode.flowNodeType === FlowNodeTypeEnum.toolSet
+        ? storeNode.avatar || nodeTemplate.avatar
+        : (nodeTemplate.avatar ?? storeNode.avatar),
     version: nodeTemplate.version || storeNode.version,
     catchError: storeNode.catchError ?? nodeTemplate.catchError,
     // 按模板顺序恢复当前输入及存量废弃输入。
@@ -424,10 +433,47 @@ export const storeNode2FlowNode = ({
 };
 
 export const filterSensitiveNodesData = (nodes: StoreNodeItemType[]) => {
-  // 当前导出脱敏范围与历史基线保持一致，仅处理数据集选择和系统密钥输入；工具配置暂不做递归脱敏，避免误删普通 value/defaultValue。
+  // 只清理 MCP/HTTP 工具配置的鉴权字段，不递归处理普通 value/defaultValue。
   const cloneNodes = JSON.parse(JSON.stringify(nodes)) as StoreNodeItemType[];
+  const isRecord = (value: unknown): value is Record<string, unknown> =>
+    typeof value === 'object' && value !== null && !Array.isArray(value);
+  const stripHeaderSecret = (value: unknown) => {
+    if (!isRecord(value) || !('headerSecret' in value)) return value;
+    const sanitized = { ...value };
+    delete sanitized.headerSecret;
+    return sanitized;
+  };
+  const clearToolCredentials = (toolConfig: unknown) => {
+    if (!isRecord(toolConfig)) return;
+
+    (['mcpTool', 'httpTool'] as const).forEach((key) => {
+      const tool = toolConfig[key];
+      if (isRecord(tool)) toolConfig[key] = stripHeaderSecret(tool);
+    });
+
+    (['mcpToolSet', 'httpToolSet'] as const).forEach((key) => {
+      const toolSet = toolConfig[key];
+      if (!isRecord(toolSet)) return;
+      const sanitizedToolSet = stripHeaderSecret(toolSet);
+      if (!isRecord(sanitizedToolSet)) return;
+      if (Array.isArray(toolSet.toolList)) {
+        sanitizedToolSet.toolList = toolSet.toolList.map(stripHeaderSecret);
+      }
+      toolConfig[key] = sanitizedToolSet;
+    });
+  };
 
   cloneNodes.forEach((node) => {
+    clearToolCredentials(node.toolConfig);
+
+    const selectedToolsInput = node.inputs.find(
+      (input) => input.key === NodeInputKeyEnum.selectedTools
+    );
+    if (Array.isArray(selectedToolsInput?.value)) {
+      selectedToolsInput.value.forEach((selectedTool) => {
+        if (isRecord(selectedTool)) clearToolCredentials(selectedTool.toolConfig);
+      });
+    }
     // selected dataset
     if (node.flowNodeType === FlowNodeTypeEnum.datasetSearchNode) {
       node.inputs.forEach((input) => {
@@ -710,6 +756,8 @@ export const compareSnapshot = (
           intro: node.data.intro,
           avatar: node.data.avatar,
           version: node.data.version,
+          // 工具集配置随节点持久化，必须参与脏状态和撤销快照比较。
+          toolConfig: node.data.toolConfig,
           isFolded: node.data.isFolded
         }
       }));

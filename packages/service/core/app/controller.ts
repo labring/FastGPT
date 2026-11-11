@@ -3,10 +3,13 @@ import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { isSystemOrCommercialToolId } from '@fastgpt/global/core/app/tool/utils';
+import { StoreSecretValueTypeSchema } from '@fastgpt/global/common/secret/type';
+import { HttpToolSetRuntimeConfigSchema } from '@fastgpt/global/core/workflow/type/node';
 import { MongoApp } from './schema';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { getClientToolPreviewNode } from './tool/utils/client';
-import { formatToolInputSecrets } from './tool/secretConfig';
+import { formatToolConfigHeaderSecrets, formatToolInputSecrets } from './tool/secretConfig';
+import { storeSecretValue } from '../../common/secret/utils';
 import { MongoEvaluation } from './evaluation/evalSchema';
 import { removeEvaluationJob } from './evaluation/mq';
 import { MongoOutLink } from '../../support/outLink/schema';
@@ -47,7 +50,7 @@ const logger = getLogger(LogCategories.MODULE.APP.FOLDER);
  * 主要职责：
  * 1. 知识库：仅保存 datasetId，展示信息由应用详情接口实时补全。
  * 2. Skill: 移除编辑态状态并保留展示快照（skillId, avatar, name, description）。
- * 3. 密钥输入：清理敏感信息。
+ * 3. 密钥输入与 MCP/HTTP 工具集鉴权：使用服务级密钥加密。
  */
 export const beforeUpdateAppFormat = async ({
   nodes,
@@ -70,6 +73,37 @@ export const beforeUpdateAppFormat = async ({
   };
 
   nodes.forEach((node) => {
+    const mcpToolSet = node.toolConfig?.mcpToolSet;
+    if (
+      mcpToolSet &&
+      'url' in mcpToolSet &&
+      mcpToolSet.headerSecret !== null &&
+      mcpToolSet.headerSecret !== undefined
+    ) {
+      mcpToolSet.headerSecret = storeSecretValue(mcpToolSet.headerSecret);
+    }
+    const httpToolSet = node.toolConfig?.httpToolSet;
+    if (httpToolSet && !('toolId' in httpToolSet)) {
+      const headerSecret = StoreSecretValueTypeSchema.safeParse(httpToolSet.headerSecret);
+      if (headerSecret.success) {
+        Object.assign(httpToolSet, { headerSecret: storeSecretValue(headerSecret.data) });
+      }
+
+      const runtimeToolSet = HttpToolSetRuntimeConfigSchema.safeParse(httpToolSet);
+      if (runtimeToolSet.success) {
+        const toolList = runtimeToolSet.data.toolList.map((tool, index) => {
+          if (tool.headerSecret === undefined || tool.headerSecret === null) {
+            return httpToolSet.toolList[index];
+          }
+          return {
+            ...httpToolSet.toolList[index],
+            headerSecret: storeSecretValue(tool.headerSecret)
+          };
+        });
+        Object.assign(httpToolSet, { toolList });
+      }
+    }
+
     const isDatasetNode =
       node.flowNodeType === FlowNodeTypeEnum.datasetSearchNode ||
       node.flowNodeType === FlowNodeTypeEnum.agent;
@@ -115,6 +149,8 @@ export const beforeUpdateAppFormat = async ({
 
       await Promise.all(
         selectedToolsInput.value.map(async (selectedTool: any) => {
+          // 即使工具预览不可用，已确认的鉴权容器也不能保存明文。
+          formatToolConfigHeaderSecrets(selectedTool?.toolConfig);
           if (!selectedTool?.id || !selectedTool.config) return;
 
           try {
