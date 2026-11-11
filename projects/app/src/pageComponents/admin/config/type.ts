@@ -244,7 +244,7 @@ export type ConfigFormType = {
       /**
        * 开启后，SSO 命名空间下的账号（username 形如 `<租户>-<账号>`）不再允许使用平台密码：
        * 登录、找回密码、管理端改密都会被服务端拒绝，登录页首屏改为登录方式选择页。
-       * 仅在配置了 systemEnv.sso.url 时生效。
+       * 仅在 Pro 接入 SSO 时生效。
        */
       disablePasswordForSsoUsers?: boolean;
     };

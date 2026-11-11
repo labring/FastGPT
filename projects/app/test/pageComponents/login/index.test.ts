@@ -65,6 +65,7 @@ describe('LoginContainer route initialization', () => {
     mocks.router.isReady = false;
     mocks.router.query = {};
     mocks.system.initd = true;
+    mocks.system.feConfigs = { sso: { enabled: true, autoLogin: true } };
     container = document.createElement('div');
     document.body.appendChild(container);
     root = createRoot(container);
@@ -118,6 +119,21 @@ describe('LoginContainer route initialization', () => {
     mocks.startLogin.mockRejectedValueOnce(new Error('SSO unavailable'));
     await render();
     expect(container.textContent).toBe(LoginPageTypeEnum.passwordLogin);
+    expect(mocks.startLogin).toHaveBeenCalledOnce();
+  });
+
+  it('starts automatic login once when SSO capability later recovers', async () => {
+    mocks.system.feConfigs.sso.enabled = false;
+    await render();
+    expect(container.textContent).toBe(LoginPageTypeEnum.passwordLogin);
+    expect(mocks.startLogin).not.toHaveBeenCalled();
+
+    mocks.system.feConfigs.sso.enabled = true;
+    await render();
+    expect(mocks.startLogin).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ provider: 'sso' })
+    );
+    await render();
     expect(mocks.startLogin).toHaveBeenCalledOnce();
   });
 });

@@ -88,12 +88,11 @@ export const LoginContainer = ({
   }, [feConfigs?.oauth?.wechat, resetChatCache]);
 
   useEffect(() => {
-    if (!initd || initializedRef.current) return;
+    // 配置暂不可用后可能由既有轮询恢复；只有实际开始自动登录才消耗唯一尝试。
+    if (!initd || initializedRef.current || !autoLoginMethod) return;
     initializedRef.current = true;
 
-    if (autoLoginMethod) {
-      void startLogin(autoLoginMethod).catch(() => setAutoLoginFailed(true));
-    }
+    void startLogin(autoLoginMethod).catch(() => setAutoLoginFailed(true));
   }, [autoLoginMethod, initd, startLogin]);
 
   return (

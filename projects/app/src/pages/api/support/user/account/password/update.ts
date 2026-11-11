@@ -38,7 +38,7 @@ async function handler(req: ApiRequestProps<UpdatePasswordBody>): Promise<void> 
     // 开启 SSO 禁用密码策略后，受限 SSO 用户不允许继续维护平台密码。
     const user = await MongoUser.findById(userId);
     if (!user) throw new Error('Failed to update password');
-    assertUserPasswordAvailable(user.username);
+    await assertUserPasswordAvailable(user.username);
 
     await updatePassword({
       sessionId: body.passwordChangeSession,

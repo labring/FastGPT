@@ -84,7 +84,10 @@ const channel = {
 };
 
 describe('getInitData anonymous configuration filtering', () => {
+  let originalSsoHandler: typeof global.getSsoConfiguredHandler;
   beforeEach(() => {
+    originalSsoHandler = global.getSsoConfiguredHandler;
+    global.getSsoConfiguredHandler = () => true;
     vi.clearAllMocks();
     serviceEnv.AUXILIARY_GENERATION_SHOW_RUN_DETAIL = false;
     serviceEnv.PRO_URL = undefined;
@@ -122,6 +125,7 @@ describe('getInitData anonymous configuration filtering', () => {
   });
 
   afterEach(() => {
+    global.getSsoConfiguredHandler = originalSsoHandler;
     serviceEnv.AUXILIARY_GENERATION_SHOW_RUN_DETAIL = originalShowRunDetail;
     serviceEnv.PRO_URL = originalProUrl;
     vi.restoreAllMocks();
@@ -140,7 +144,7 @@ describe('getInitData anonymous configuration filtering', () => {
 
     expect(code).toBe(200);
     expect(data).toEqual({
-      bufferId: 'unAuth_v9_config-1',
+      bufferId: 'unAuth_v10_sso_1_config-1',
       feConfigs: publicConfig
     });
     expect(global.feConfigs).toEqual(originalConfig);
@@ -167,7 +171,7 @@ describe('getInitData anonymous configuration filtering', () => {
     const { code, data } = await Call(handler, {
       auth,
       headers: {},
-      query: { bufferId: 'unAuth_v9_config-1' }
+      query: { bufferId: 'unAuth_v10_sso_1_config-1' }
     });
 
     expect(code).toBe(200);
@@ -300,17 +304,17 @@ describe('getInitData anonymous configuration filtering', () => {
   ])('refreshes stale or authenticated cache %s with filtered data', async (bufferId) => {
     const { data } = await Call(handler, { headers: {}, query: { bufferId } });
 
-    expect(data.bufferId).toBe('unAuth_v9_config-1');
+    expect(data.bufferId).toBe('unAuth_v10_sso_1_config-1');
     expect(data.feConfigs).toEqual(publicConfig);
   });
 
   it('retains the anonymous cache-hit response only for the current policy version', async () => {
     const { data } = await Call(handler, {
       headers: {},
-      query: { bufferId: 'unAuth_v9_config-1' }
+      query: { bufferId: 'unAuth_v10_sso_1_config-1' }
     });
 
-    expect(data).toEqual({ bufferId: 'unAuth_v9_config-1' });
+    expect(data).toEqual({ bufferId: 'unAuth_v10_sso_1_config-1' });
   });
 
   it.each([
@@ -326,10 +330,10 @@ describe('getInitData anonymous configuration filtering', () => {
     async (referer) => {
       const { data } = await Call(handler, {
         headers: { referer },
-        query: { bufferId: 'unAuth_v9_config-1', includeSubPlans: 'true' }
+        query: { bufferId: 'unAuth_v10_sso_1_config-1', includeSubPlans: 'true' }
       });
       expect(data).toEqual({
-        bufferId: 'unAuth_v9_config-1',
+        bufferId: 'unAuth_v10_sso_1_config-1',
         subPlans: global.subPlans
       });
     }
@@ -364,7 +368,7 @@ describe('getInitData anonymous configuration filtering', () => {
     }
   ])('preserves $name', async ({ config }) => {
     global.feConfigs = config;
-    global.systemEnv.sso = undefined;
+    global.getSsoConfiguredHandler = () => false;
     const { code, data } = await Call(handler, { headers: {} });
     expect(code).toBe(200);
     expect(data.feConfigs).toEqual({
@@ -380,7 +384,7 @@ describe('getInitData anonymous configuration filtering', () => {
       headers: { referer: 'https://app.example.com/login' }
     });
 
-    expect(data.bufferId).toBe('unAuth_v9_config-1');
+    expect(data.bufferId).toBe('unAuth_v10_sso_1_config-1');
     expect(data.feConfigs).not.toHaveProperty('payConfig');
   });
 
@@ -428,7 +432,7 @@ describe('getInitData anonymous configuration filtering', () => {
     async (includeSubPlans) => {
       const { data } = await Call(handler, { headers: {}, query: { includeSubPlans } });
       expect(data).toEqual({
-        bufferId: 'unAuth_v9_config-1',
+        bufferId: 'unAuth_v10_sso_1_config-1',
         feConfigs: publicConfig,
         subPlans: global.subPlans
       });
@@ -467,13 +471,47 @@ describe('getInitData anonymous configuration filtering', () => {
 
   it('reports unavailable SSO even when stored display and password-policy switches are enabled', async () => {
     global.feConfigs.sso = { enabled: true, autoLogin: true, disablePasswordForSsoUsers: true };
-    global.systemEnv.sso = { url: '' };
+    global.getSsoConfiguredHandler = () => false;
     const { data } = await Call(handler, { headers: {} });
     expect(data.feConfigs.sso).toEqual({
       enabled: false,
       autoLogin: true,
       disablePasswordForSsoUsers: true
     });
+  });
+
+  it('refreshes an anonymous cache when Pro SSO changes or becomes unavailable', async () => {
+    global.systemEnv.sso = undefined;
+    const enabled = await Call(handler, { headers: {} });
+    expect(enabled.data.feConfigs.sso.enabled).toBe(true);
+
+    global.systemEnv.sso = { url: 'http://legacy.invalid' };
+    global.getSsoConfiguredHandler = () => false;
+    const disabled = await Call(handler, {
+      headers: {},
+      query: { bufferId: enabled.data.bufferId }
+    });
+    expect(disabled.data.feConfigs.sso.enabled).toBe(false);
+    expect(disabled.data.bufferId).not.toBe(enabled.data.bufferId);
+
+    global.getSsoConfiguredHandler = () => {
+      throw new Error('private-token');
+    };
+    const unavailable = await Call(handler, {
+      headers: {},
+      query: { bufferId: disabled.data.bufferId }
+    });
+    expect(unavailable.code).toBe(200);
+    expect(unavailable.data.feConfigs.sso.enabled).toBe(false);
+    expect(unavailable.data.bufferId).not.toBe(disabled.data.bufferId);
+
+    global.getSsoConfiguredHandler = () => true;
+    const recovered = await Call(handler, {
+      headers: {},
+      query: { bufferId: unavailable.data.bufferId }
+    });
+    expect(recovered.data.feConfigs.sso.enabled).toBe(true);
+    expect(recovered.data.bufferId).toBe(enabled.data.bufferId);
   });
 
   it.each([false, true])(

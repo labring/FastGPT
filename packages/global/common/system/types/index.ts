@@ -248,14 +248,14 @@ export const FastGPTFeConfigsSchema = z.looseObject({
       icon: z.string().optional().meta({ description: 'SSO 登录方式图标' }),
       title: z.string().optional().meta({ description: 'SSO 登录按钮显示标题' }),
       enabled: BoolSchema.optional().meta({
-        description: '是否接入 SSO，由服务端根据 systemEnv.sso.url 派生，不作为后端鉴权依据'
+        description: '是否接入 SSO，由 Pro 部署配置派生，不作为后端鉴权依据'
       }),
       autoLogin: z
         .boolean()
         .optional()
         .meta({ description: '是否在首次进入页面时自动跳转 SSO 登录' }),
       disablePasswordForSsoUsers: z.boolean().optional().meta({
-        description: '是否禁止 SSO 账号使用平台密码登录与改密；仅在配置了 systemEnv.sso.url 时生效'
+        description: '是否禁止 SSO 账号使用平台密码登录与改密；仅在 Pro 接入 SSO 时生效'
       })
     })
     .optional()

@@ -37,7 +37,7 @@ async function handler(req: ApiRequestProps<ActivateAccountBody>): Promise<void>
   await withUserLock(userId, async () => {
     const user = await MongoUser.findById(userId);
     if (!user) throw new Error('Failed to activate account');
-    assertUserPasswordAvailable(user.username);
+    await assertUserPasswordAvailable(user.username);
 
     await activateAccount({
       userId,

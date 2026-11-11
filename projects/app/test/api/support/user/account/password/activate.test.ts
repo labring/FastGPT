@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import { UserStatusEnum } from '@fastgpt/global/support/user/constant';
 import type { ActivateAccountBody } from '@fastgpt/global/openapi/support/user/account/password/api';
@@ -34,10 +34,12 @@ const OLD_PASSWORD = 'old-password';
 const NEW_PASSWORD = 'brand-new-password';
 
 describe('password/activate API', () => {
+  let originalSsoHandler: typeof global.getSsoConfiguredHandler;
   let pendingUser: any;
   let normalUser: any;
 
   beforeEach(async () => {
+    originalSsoHandler = global.getSsoConfiguredHandler;
     mocks.withUserLock.mockImplementation((_userId: string, fn: () => Promise<unknown>) => fn());
     mocks.assertPasswordUpdateRateLimit.mockResolvedValue(undefined);
     global.feConfigs = { ...global.feConfigs, sso: undefined, isPlus: false };
@@ -56,6 +58,10 @@ describe('password/activate API', () => {
     });
 
     vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    global.getSsoConfiguredHandler = originalSsoHandler;
   });
 
   // 目标账号恒为 authCert 解析出的 userId，teamId / tmbId 只用于审计日志（已被全局 mock）。
@@ -215,8 +221,9 @@ describe('password/activate API', () => {
   });
 
   it('rejects a restricted SSO user before changing password or sessions', async () => {
+    global.getSsoConfiguredHandler = () => true;
     await MongoUser.updateOne({ _id: pendingUser._id }, { username: 'tenant-user' });
-    // SSO 接入状态由服务端从 systemEnv.sso.url 派生，feConfigs 只承载策略开关。
+    // SSO 接入状态来自 Pro，feConfigs 只承载策略开关。
     global.systemEnv = { ...global.systemEnv, sso: { url: 'https://sso.example.com' } };
     global.feConfigs = {
       ...global.feConfigs,

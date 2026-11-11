@@ -13,6 +13,7 @@ import { getRuntimeSubPlansConfig } from '@fastgpt/global/support/wallet/sub/uti
 import { serviceEnv } from '@fastgpt/service/env';
 import { postHealth } from '@fastgpt/service/thirdProvider/fastgptPro/api';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
+import { getSsoConfigured } from '@fastgpt/service/common/system/sso';
 
 const logger = getLogger(LogCategories.SYSTEM);
 
@@ -26,6 +27,8 @@ async function handler(
     querySchema: GetSystemInitDataQuerySchema
   }).query;
   const subPlans = getRuntimeSubPlansConfig(global.subPlans);
+  // 展示可在 Pro 不可用时暂时隐藏入口；密码安全校验独立读取并拒绝未知状态。
+  const ssoConfigured = await getSsoConfigured().catch(() => undefined);
 
   /**
    * 登录后返回 Schema 声明的公开配置；匿名统一投影公共页面实际使用的字段。
@@ -37,9 +40,9 @@ async function handler(
       // 每次响应直接读取环境变量，忽略文件、数据库和热更新配置中的同名字段。
       showAuxiliaryGenerationRunDetail: serviceEnv.AUXILIARY_GENERATION_SHOW_RUN_DETAIL,
       sso: (() => {
-        if (!global.feConfigs.sso && !global.systemEnv?.sso?.url) return undefined;
-        // 地址及启用状态以服务端连接配置为准，不能信任存储的前端能力标志。
-        return { ...global.feConfigs.sso, enabled: Boolean(global.systemEnv?.sso?.url) };
+        if (!global.feConfigs.sso && ssoConfigured !== true) return undefined;
+        // 只信任 Pro 的部署能力，旧库地址和存储的前端能力标志都不是权威来源。
+        return { ...global.feConfigs.sso, enabled: ssoConfigured === true };
       })()
     };
     if (isAuthenticated) return config;
@@ -124,9 +127,10 @@ async function handler(
       };
     }
 
-    // 白名单改变时升级版本，强制旧匿名缓存重新获取过滤后的配置。
+    // Pro 环境变化不改变 Mongo revision，必须把能力及不可用状态加入匿名缓存标识。
+    const ssoVersion = ssoConfigured === undefined ? 'unavailable' : ssoConfigured ? '1' : '0';
     const unAuthBufferId = global.systemInitBufferId
-      ? `unAuth_v9_${global.systemInitBufferId}`
+      ? `unAuth_v10_sso_${ssoVersion}_${global.systemInitBufferId}`
       : '';
     if (bufferId && unAuthBufferId === bufferId) {
       return {

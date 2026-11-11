@@ -3,7 +3,7 @@ import { resolveAccountKindByUsername } from '../verification/utils';
 /**
  * 「禁止 SSO 用户使用平台密码」策略所需的 SSO 配置切片。
  *
- * 服务端先根据 systemEnv.sso.url 派生 enabled，客户端直接消费该能力标志。
+ * 服务端先根据 Pro 部署配置派生 enabled，客户端直接消费该能力标志。
  * 策略函数只接收能力与开关，不依赖地址或整个配置对象。
  */
 export type SsoPasswordPolicyConfig = {

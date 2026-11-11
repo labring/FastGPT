@@ -152,6 +152,40 @@ describe('checkPswExpired API', () => {
     expect(res.data).toBe(true);
   });
 
+  it('checks expiry only when the Pro SSO policy permits the account password', async () => {
+    const oldFeConfigs = global.feConfigs;
+    const oldHandler = global.getSsoConfiguredHandler;
+    try {
+      global.systemInstanceConfig!.auth.passwordExpiredMonth = 1;
+      global.feConfigs = { ...global.feConfigs, sso: { disablePasswordForSsoUsers: true } };
+      global.getSsoConfiguredHandler = () => true;
+      await MongoUser.findByIdAndUpdate(testUser._id, {
+        username: 'tenant-user',
+        passwordUpdateTime: new Date(0)
+      });
+      const checkPswExpiredApi = await loadCheckPswExpiredApi();
+      const auth = {
+        userId: String(testUser._id),
+        teamId: String(testTeam._id),
+        tmbId: String(testTmb._id),
+        isRoot: false,
+        sessionId: 'session123'
+      } as any;
+
+      const restricted = await Call(checkPswExpiredApi.default, { auth });
+      expect(restricted.code).toBe(200);
+      expect(restricted.data).toBe(false);
+
+      global.getSsoConfiguredHandler = () => false;
+      const permitted = await Call(checkPswExpiredApi.default, { auth });
+      expect(permitted.code).toBe(200);
+      expect(permitted.data).toBe(true);
+    } finally {
+      global.feConfigs = oldFeConfigs;
+      global.getSsoConfiguredHandler = oldHandler;
+    }
+  });
+
   it('should return false for root when password expiry is configured', async () => {
     global.systemInstanceConfig!.auth.passwordExpiredMonth = 1;
     const checkPswExpiredApi = await loadCheckPswExpiredApi();
