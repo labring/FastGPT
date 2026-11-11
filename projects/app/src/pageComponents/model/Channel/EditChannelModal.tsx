@@ -2,6 +2,7 @@ import { sortModelSelectorModels } from '@/components/Select/AIModelSelector.uti
 import type { CreateChannelResponse } from '@fastgpt/global/openapi/core/ai/model/channel/api';
 import {
   CHAT_UPSTREAM_PROTOCOL_CHANNEL_TYPES,
+  ChatUpstreamProtocolSchema,
   type ChannelInfoType,
   type ChatUpstreamProtocol
 } from '@fastgpt/global/core/ai/model/channel';
@@ -70,7 +71,9 @@ const EditChannelModal = ({
       configs: {
         ...defaultConfig.configs,
         // 未配置时默认 auto，按模型选择上游协议；只在用户保存后写入，不主动迁移已有渠道。
-        chat_upstream_protocol: defaultConfig.configs?.chat_upstream_protocol ?? 'auto'
+        chat_upstream_protocol: ChatUpstreamProtocolSchema.parse(
+          defaultConfig.configs?.chat_upstream_protocol
+        )
       }
     }
   });

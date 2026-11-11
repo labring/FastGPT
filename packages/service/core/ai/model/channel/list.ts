@@ -26,7 +26,7 @@ const buildChannelListItem = (
     CHAT_UPSTREAM_PROTOCOL_CHANNEL_TYPES.some((type) => type === channel.type) &&
     channel.configs?.chat_upstream_protocol !== undefined
       ? {
-          chat_upstream_protocol: ChatUpstreamProtocolSchema.catch('auto').parse(
+          chat_upstream_protocol: ChatUpstreamProtocolSchema.parse(
             channel.configs?.chat_upstream_protocol
           )
         }

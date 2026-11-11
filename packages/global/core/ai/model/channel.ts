@@ -10,10 +10,14 @@ export const REASONING_FIELD_MAPPING_CHANNEL_TYPES = [1] as const;
 /** AIProxy 中完整支持 Chat Completions 上游协议切换的渠道：OpenAI、Azure、Azure2。 */
 export const CHAT_UPSTREAM_PROTOCOL_CHANNEL_TYPES = [1, 3, 4] as const;
 
-export const ChatUpstreamProtocolSchema = z.enum(['auto', 'responses', 'chat_completions']).meta({
-  description: '聊天上游协议：responses、chat_completions；auto 保留旧版模型自动判断',
-  example: 'responses'
-});
+// 兼容未知协议名和旧配置中的错误类型，统一交由 AIProxy 按模型自动选择。
+export const ChatUpstreamProtocolSchema = z
+  .enum(['auto', 'responses', 'chat_completions'])
+  .catch('auto')
+  .meta({
+    description: '聊天上游协议：responses、chat_completions；auto 按模型自动判断，未知值回退 auto',
+    example: 'responses'
+  });
 export type ChatUpstreamProtocol = z.infer<typeof ChatUpstreamProtocolSchema>;
 
 export enum ChannelStatusEnum {
