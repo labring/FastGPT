@@ -1,6 +1,6 @@
 ---
 case_version: 1
-id: FG-APP-WORKFLOW-052
+id: FG-APP-WORKFLOW-061
 title: 工作流配置菜单在弹窗与缩放画布中可见且可操作
 business: app/workflow/editor
 category: boundary
