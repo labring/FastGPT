@@ -119,15 +119,17 @@ describe('Agent read_files tool protocol', () => {
     expect(dispatchAgentDatasetSearchMock).not.toHaveBeenCalled();
   });
 
-  it('does not forward child tool streams from Agent', async () => {
+  it('preserves usage identity while suppressing child tool streams from Agent', async () => {
     const workflowStreamResponse = vi.fn();
     dispatchToolMock.mockImplementation(async (props) => {
       expect(props).not.toHaveProperty('workflowStreamResponse');
+      expect(props.usageId).toBe('usage-agent-tool');
       expect(getWorkflowContext().workflowStreamResponse).toBeUndefined();
       return { response: 'ok' };
     });
     const executeTool = createExecuteToolForTest({
       stream: true,
+      usageId: 'usage-agent-tool',
       getSubApp: () => ({
         type: 'tool',
         id: 'system-tool',
