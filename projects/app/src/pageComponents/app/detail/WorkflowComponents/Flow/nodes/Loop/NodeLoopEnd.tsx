@@ -47,9 +47,10 @@ const NodeLoopEnd = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
 
   // Get loopEnd input value type
   const valueType = useMemo(() => {
-    if (!inputItem) return;
+    if (!inputItem || !Array.isArray(inputItem.value)) return;
 
-    const targetId = inputItem.value[0];
+    const [targetId, outputId] = inputItem.value;
+    if (!targetId || !outputId) return;
 
     const globalNode = getGlobalVariableNode({
       t,
@@ -60,17 +61,18 @@ const NodeLoopEnd = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
       return getNodeById(targetId);
     })();
 
-    return node?.outputs.find((output) => output.id === inputItem?.value[1])
-      ?.valueType as keyof typeof typeMap;
+    return node?.outputs.find((output) => output.id === outputId)?.valueType as
+      | keyof typeof typeMap
+      | undefined;
   }, [appDetail.chatConfig, getNodeById, inputItem, t]);
 
   useEffect(() => {
-    if (!valueType) return;
-
     const parentNode = getNodeById(parentNodeId);
     if (!parentNode) return;
 
-    const newArrayType = typeMap[valueType] ?? WorkflowIOValueTypeEnum.arrayAny;
+    // 引用为空或来源节点已删除时回退为 arrayAny，避免父容器残留旧输出类型。
+    const newArrayType =
+      (valueType ? typeMap[valueType] : undefined) ?? WorkflowIOValueTypeEnum.arrayAny;
 
     if (parentNode.flowNodeType === FlowNodeTypeEnum.parallelRun) {
       // For parallelRun parent: update parallelSuccessResults output type
@@ -99,7 +101,7 @@ const NodeLoopEnd = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         });
       }
     }
-  }, [valueType, nodeId, onChangeNode, parentNodeId, getNodeById]);
+  }, [valueType, onChangeNode, parentNodeId, getNodeById]);
 
   return (
     <NodeCard
