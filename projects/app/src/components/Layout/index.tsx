@@ -21,6 +21,7 @@ import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
 import { isRouteVisible } from '@/pageComponents/admin/utils';
 import { isLicenseActive } from '@fastgpt/global/common/system/license/utils';
+import { clientInitData } from '@/web/common/system/staticData';
 
 const Navbar = dynamic(() => import('./navbar'));
 const NavbarPhone = dynamic(() => import('./navbarPhone'));
@@ -77,6 +78,7 @@ const Layout = ({ children }: { children: JSX.Element }) => {
   const { Loading } = useLoading();
   const {
     setLastRoute,
+    initd,
     loading,
     feConfigs,
     showProModal,
@@ -98,37 +100,44 @@ const Layout = ({ children }: { children: JSX.Element }) => {
   const isAdminRoute = router.pathname.startsWith('/admin/');
 
   useEffect(() => {
-    if (!userInfo || !isRoot) return;
+    if (!initd || !isRoot || typeof feConfigs.isProService === 'boolean') return;
+    // 较早的匿名初始化可能晚于登录态响应返回；缺少版本投影时补取当前登录态。
+    void clientInitData().catch(() => {});
+  }, [feConfigs.isProService, initd, isRoot]);
+
+  useEffect(() => {
+    if (!initd || !isRoot || feConfigs.isProService !== true) return;
     void initLicenseData();
-  }, [initLicenseData, isRoot, userInfo]);
+  }, [feConfigs.isProService, initLicenseData, initd, isRoot]);
 
   // 路由和菜单共用字段可见性规则；配置页不受商业业务 License 门禁的固定白名单限制。
   const isLicenseValid = useMemo(() => isLicenseActive(licenseData), [licenseData]);
+  // 匿名初始化响应没有版本信息，要等登录态配置和 License 决议完成再挂载后台页面。
+  const isAdminAccessReady =
+    initd && typeof feConfigs.isProService === 'boolean' && !licenseLoading;
+  const isAdminRouteVisible = isRouteVisible(router.pathname, {
+    isProService: !!feConfigs.isProService,
+    licenseActive: isLicenseValid,
+    hasPayCapability: licenseData?.functions?.pay ?? true,
+    enableSaasAdminConfig: feConfigs.enableSaasAdminConfig
+  });
   useEffect(() => {
-    if (
-      !isRoot ||
-      loading ||
-      licenseLoading ||
-      !isAdminRoute ||
-      isRouteVisible(router.pathname, {
-        isProService: !!feConfigs.isProService,
-        licenseActive: isLicenseValid,
-        hasPayCapability: licenseData?.functions?.pay ?? true,
-        enableSaasAdminConfig: feConfigs.enableSaasAdminConfig
-      })
-    ) {
+    if (!isAdminRoute || !initd || !userInfo) return;
+    if (!isRoot) {
+      void router.replace('/account/info');
       return;
     }
+    if (loading || !isAdminAccessReady || isAdminRouteVisible) return;
     void router.replace('/admin/license');
   }, [
+    initd,
+    isAdminAccessReady,
     isAdminRoute,
+    isAdminRouteVisible,
     isRoot,
-    isLicenseValid,
-    licenseLoading,
     loading,
-    feConfigs,
-    licenseData,
-    router
+    router,
+    userInfo
   ]);
 
   // Auto redeem coupon
@@ -246,7 +255,7 @@ const Layout = ({ children }: { children: JSX.Element }) => {
               {...(showPhoneNavbar ? { h: 0, flex: '1 0 0' } : { h: '100%' })}
               {...(showPcNavbar ? { ml: navbarWidth, overflow: 'overlay' } : {})}
             >
-              {children}
+              {(!isAdminRoute || (isRoot && isAdminAccessReady && isAdminRouteVisible)) && children}
             </Box>
 
             {showPhoneNavbar && (
@@ -274,7 +283,10 @@ const Layout = ({ children }: { children: JSX.Element }) => {
       />
       {showProModal && <ProModal isOpen onClose={() => setShowProModal(false)} />}
       {/* 全局 Loading */}
-      <Loading loading={loading} zIndex={999999} />
+      <Loading
+        loading={loading || (isAdminRoute && isRoot && !isAdminAccessReady)}
+        zIndex={999999}
+      />
     </>
   );
 };
