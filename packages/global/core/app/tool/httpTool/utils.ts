@@ -1,5 +1,5 @@
 import { getNanoid } from '../../../../common/string/tools';
-import type { PathDataType, HttpToolConfigType } from './type';
+import { type PathDataType, type HttpToolConfigType } from './type';
 import { type RuntimeNodeItemType } from '../../../workflow/runtime/type';
 import { FlowNodeOutputTypeEnum, FlowNodeTypeEnum } from '../../../workflow/node/constant';
 import { AppToolSourceEnum } from '../constants';
@@ -126,7 +126,7 @@ export const getHTTPToolRuntimeNode = ({
   toolSetId,
   toolsetName
 }: {
-  tool: Omit<HttpToolConfigType, 'path' | 'method'>;
+  tool: Omit<HttpToolConfigType, 'path' | 'method' | 'headerSecret'>;
   nodeId: string;
   avatar?: string;
   toolSetId: string;
@@ -249,6 +249,8 @@ export const parseHttpToolConfig = (
       toolName: string;
     }
   | undefined => {
+  if (!('toolId' in config)) return undefined;
+
   const prefix = `${AppToolSourceEnum.http}-`;
   if (!config.toolId.startsWith(prefix)) return undefined;
   const [toolsetId, ...rest] = config.toolId.slice(prefix.length).split('/');

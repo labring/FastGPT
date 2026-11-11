@@ -356,7 +356,10 @@ export const getAgentRuntimeTools = async ({
       };
     }
 
-    const nodeIO = appData2FlowNodeIO({ chatConfig: version.chatConfig });
+    const nodeIO = appData2FlowNodeIO({
+      chatConfig: version.chatConfig,
+      isChatAgent: app.type === AppTypeEnum.chatAgent
+    });
     return {
       ...baseNode,
       flowNodeType: FlowNodeTypeEnum.appModule,
@@ -559,18 +562,6 @@ export const getAgentRuntimeTools = async ({
         ]);
         const authApp = authResult?.app;
         toolNode.name = tool.name ?? toolNode.name;
-        if (
-          !validateToolConfiguration({
-            toolTemplate: toolNode,
-            isAppTool: true
-          })
-        ) {
-          getLogger(LogCategories.MODULE.AI.AGENT).warn(`[Agent] tool has unsupported inputs`, {
-            toolId: tool.id,
-            toolName: toolNode.name
-          });
-          return [];
-        }
         const legacyDefaultMode =
           tool.inputs === undefined
             ? isSystemOrCommercialToolId(tool.id)
@@ -592,6 +583,19 @@ export const getAgentRuntimeTools = async ({
             legacyDefaultMode
           })
         );
+        // 必须在输入类型归一化并应用已保存 mode 之后再校验，与 UI 侧校验状态对齐，避免 reference 等合法由 Agent 生成的入参被误判拦截。
+        if (
+          !validateToolConfiguration({
+            toolTemplate: toolNode,
+            isAppTool: true
+          })
+        ) {
+          getLogger(LogCategories.MODULE.AI.AGENT).warn(`[Agent] tool has unsupported inputs`, {
+            toolId: tool.id,
+            toolName: toolNode.name
+          });
+          return [];
+        }
         const configuredParams = filterToolConfiguredParams({
           params: tool.config,
           inputs: toolNode.inputs
@@ -637,7 +641,7 @@ export const getAgentRuntimeTools = async ({
           }
         });
 
-        // 缺少必填运行配置时，不把该工具注册给模型，避免模型调用后才失败。
+        // 缺少必填运行配置或配置无效时，不把该工具注册给模型，避免模型调用后才失败。
         const configStatus = getToolConfigStatus({
           tool: toolNode
         });

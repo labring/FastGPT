@@ -1,5 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { ChatRoleEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { WorkflowVariableState } from '../../../../../core/workflow/dispatch/utils/variables';
 import { createNodeSummary } from '../../../../../core/workflow/dispatch/utils/summary';
@@ -320,5 +322,73 @@ describe('dispatchRunAppNode', () => {
         value: [{ type: 'text', text: { content: 'child output' } }]
       }
     ]);
+  });
+
+  it('propagates full histories, toolResponse text, and sandbox usage for nested chatAgent', async () => {
+    const parentVariableState = await createParentVariableState();
+    const nodeSummary = createNodeSummary();
+    const histories = [
+      { obj: ChatRoleEnum.Human, value: [{ text: { content: 'q1' } }] },
+      { obj: ChatRoleEnum.AI, value: [{ text: { content: 'a1' } }] }
+    ];
+
+    mocks.loadChildWorkflowWithResource.mockResolvedValueOnce({
+      appData: {
+        _id: 'child-chat-agent-id',
+        type: AppTypeEnum.chatAgent,
+        name: 'Child ChatAgent',
+        avatar: 'agent-avatar',
+        teamId: 'child-team-id',
+        tmbId: 'child-owner-tmb'
+      },
+      childVersion: { nodes: [], edges: [], chatConfig: { variables: [] }, resources: [] },
+      resourceContext: {}
+    });
+    mocks.runWorkflow.mockResolvedValueOnce({
+      flowUsages: [{ moduleName: 'Child ChatAgent', totalPoints: 5 }],
+      assistantResponses: [{ text: { content: 'resumed turn bubble' } }],
+      toolResponse: 'before ask | resumed turn bubble',
+      runTimes: 1,
+      workflowInteractiveResponse: undefined,
+      system_memories: [],
+      customFeedbacks: [],
+      workflowRuntimeSummary: {
+        responseIds: [],
+        finishedNodeIds: [],
+        hasAgentSandbox: true,
+        childResponseCount: 1
+      }
+    });
+
+    const result = await dispatchRunAppNode({
+      runningAppInfo: {
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: 'middle-app-id',
+        teamId: 'parent-team',
+        tmbId: 'parent-owner-tmb',
+        name: 'Middle App'
+      },
+      runningUserInfo: { teamId: 'caller-team-id', tmbId: 'caller-tmb-id' },
+      histories,
+      query: [{ type: 'text', text: { content: 'hello' } }],
+      node: { nodeId: 'nested_agent_node', pluginId: 'child-chat-agent-id', version: 'v1' },
+      params: { userChatInput: 'hello to child' },
+      variableState: parentVariableState,
+      timezone: 'Asia/Shanghai',
+      uid: 'caller-uid',
+      chatId: 'chat-1',
+      responseChatItemId: 'resp-1',
+      usagePush: vi.fn(),
+      nodeSummary
+    } as any);
+
+    const callArgs = mocks.runWorkflow.mock.calls[0][0];
+    expect(callArgs.histories).toEqual(histories);
+    expect(result.data?.[NodeOutputKeyEnum.answerText]).toBe('before ask | resumed turn bubble');
+    expect(result[DispatchNodeResponseKeyEnum.toolResponse]).toBe(
+      'before ask | resumed turn bubble'
+    );
+    expect(result.assistantResponses).toEqual([{ text: { content: 'resumed turn bubble' } }]);
+    expect(nodeSummary.hasAgentSandbox).toBe(true);
   });
 });

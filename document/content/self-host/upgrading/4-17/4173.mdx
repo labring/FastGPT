@@ -25,6 +25,9 @@ upgradeTags:
 - 更新 fastgpt-pro（FastGPT 商业版）镜像 tag: v4.17.3
 - 更新 fastgpt-plugin 镜像 tag: v1.2.0
 - 更新 fastgpt-code-sandbox 镜像 tag（后续都独立发布，按需更新）: v5.0.0
+- 更新 fastgpt-agent-sandbox-proxy 镜像 tag: v0.4.0
+- 更新 fastgpt-agent-sandbox 镜像 tag: v0.4.0
+- 更新 fastgpt-agent-volume-manager 镜像 tag: v0.4.0
 - 更新 AI Proxy 镜像 tag: v0.7.7
 
 ### 升级脚本
@@ -37,6 +40,7 @@ upgradeTags:
 
 ### 兼容说明
 
+- **Agent 沙盒预览代理**：沙盒文件预览 URL 格式已调整为随机 Token 路由并兼容历史链接，启用 Agent 沙盒时需同步更新 `fastgpt-agent-sandbox-proxy` 至 `v0.4.0`，避免旧版 Proxy 路由校验报错导致沙盒预览不可用。
 - **root 激活与密码**：移除 `DEFAULT_ROOT_PSW` 读取逻辑，启动时保持已有 root 密码不变；官方 4.17.3 部署模板中残留的 `DEFAULT_ROOT_PSW` 与 `x-default-root-psw` 在运行期已忽略，可直接保留或从 `docker-compose.yml` 删除。新建 root 初始密码为 `123456`，首次登录需设置新密码；历史 root 未保存 `status` 时需使用原密码登录并完成激活。日常改密在账号信息页操作，忘记密码时使用 root 密码重置脚本，并显式提供新密码。
 - **模型计价单位**：LLM 使用 `pricing.tiers`，其他模型使用 `pricing.unitPrice`。Token 单价与阶梯 `maxInputTokens` 上限改为百万 Tokens，TTS 改为每百万字符，STT 仍按每 60 秒，单价最多保留两位小数。升级后确认后台迁移成功并核对系统模型价格；未迁入 `pricing` 的系统模型暂按免费处理，团队模型免费。
 - **工作流编排校验**：画布、调试与辅助生成统一遵循[编排规则](/zh-CN/guide/build/workflow/rules)，禁止纯串行回环、跨工具流程连线及多个调用节点共用同一工具入口，允许由有效条件出口控制的回流。工具子流程可读取调用者上游，但不可引用调用者自身尚未产生的输出。旧工作流保留已有连线并可保存草稿，调试和发布前需修正不符合规则的连线。

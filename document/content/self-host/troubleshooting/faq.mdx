@@ -120,7 +120,7 @@ description: 汇总 FastGPT 私有部署启动、端口占用、向量库切换�
 
 适用版本：4.16.0 及以后。从 4.16.0 起，沙箱镜像只用 `AGENT_SANDBOX_OPENSANDBOX_IMAGE` 这一个变量，并且必须配置 `AGENT_SANDBOX_PREVIEW_PROXY_URL`。用 4.15 或更早的 compose 模板搭配新版镜像，就会报这两个错。
 
-怎么做：按 [Docker Compose 部署](/zh-CN/self-host/deploy/docker) 使用一键脚本，或手动下载和镜像同一版本的模板（当前版本用 `main` 目录，没有 v4.16、v4.17 目录）。
+怎么做：按 [Docker Compose 部署](/zh-CN/self-host/deploy/docker) 使用一键脚本，或手动下载和镜像同一版本的模板（4.17.x 使用 `main` 目录，4.16.x 使用 `v4.16` 目录）。
 
 注意：在已经部署过的目录里重新运行一键脚本，会重新生成数据库密码和 `AES256_SECRET_KEY`，并覆盖 `docker-compose.yml`。请先备份原文件；要保留数据，就选择不自动生成密码（或设置 `FASTGPT_AUTO_GENERATE_CREDENTIALS=false`），并把原来的密码和密钥拷过去。
 
@@ -208,3 +208,25 @@ description: 汇总 FastGPT 私有部署启动、端口占用、向量库切换�
 - **`Illegal instruction`**：核对报错容器镜像、宿主机 CPU 架构与 MongoDB 版本所需的指令集（如 AVX），选用受支持的宿主机与镜像组合。
 - **`relation "modeldata" does not exist`**：PostgreSQL 尚未就绪或缺少 `vector` 扩展，检查 PG 容器日志并确认已启用 pgvector 插件。
 - **S3 / 对象存储无法正常连接**：核对 FastGPT 容器可访问的对象存储地址与签名主机名，详见 [对象存储配置](/zh-CN/self-host/config/object-storage) 与 [Docker Compose 从 MinIO 迁移到 RustFS](/zh-CN/self-host/docker_minio_to_rustfs)。
+
+---
+
+### 沙箱启动报 Sandbox work directory is not writable: /workspace，但卷的权限是正确的怎么办？
+
+4.15.2 及以上版本使用 OpenSandbox 时，沙箱启动后会检查 `/workspace` 是否可写，不可写时报错退出。若卷内 `/workspace` 的属主和权限均已正确但仍报错，可能是宿主机 Docker 默认的 seccomp 配置拦截了沙箱容器。
+
+用沙箱镜像执行以下命令（`<卷名>` 为沙箱容器挂载到 `/workspace` 的卷，可通过 `docker inspect <沙箱容器名>` 查看）；先后输出 `fail`、`ok` 即确认由 seccomp 引起：
+
+```bash
+for o in "" "--security-opt seccomp=unconfined"; do docker run --rm $o -v <卷名>:/workspace --entrypoint bash <沙箱镜像> -c '[ -w /workspace ] && echo ok || echo fail'; done
+```
+
+解决方法：在 compose 的 `opensandbox-config` 中 `[docker]` 下增加 `seccomp_profile = "unconfined"`，执行 `docker compose up -d --force-recreate fastgpt-opensandbox-server`，再到页面点击「重试」。该配置会放宽沙箱容器的系统调用限制，请在确认由 seccomp 引起后启用。
+
+---
+
+### 工具报“反向调用上传文件失败”，日志里 /api/invoke/fileUpload 返回 401 怎么办？
+
+使用官方 `main` 版 docker-compose（官网部署页和 `install.sh` 默认使用）部署 4.15.0 到 4.17.4 时，`fastgpt-plugin` 默认未显式配置 `FASTGPT_BASE_URL`（`v4.15` / `v4.16` 模板自 4.15.2 起已配置）。插件工具（例如基础图表）生成文件后通过该变量反向调用 FastGPT 的 `/api/invoke/fileUpload` 上传文件；默认 `http://localhost:3000` 会指向插件容器自身并触发鉴权 401（日志含 `HTTP Exception: Unauthorized`），工具随之报“反向调用上传文件失败”。
+
+解决方法：在 `fastgpt-plugin` 的环境变量中增加 `FASTGPT_BASE_URL: http://fastgpt-app:3000`（按你的 compose 中 FastGPT 主服务名填写），执行 `docker compose up -d fastgpt-plugin` 重建容器后重新运行工具。

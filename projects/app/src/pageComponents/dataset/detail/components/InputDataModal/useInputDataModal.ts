@@ -315,6 +315,24 @@ export const useInputDataModal = ({
     }
   );
 
+  const { model: vectorModel } = useModelDetail({
+    modelId: collection.dataset.vectorModelId,
+    model: collection.dataset.vectorModel,
+    modelType: ModelTypeEnum.embedding
+  });
+  const blockMissingIndexModel = useCallback(() => {
+    if (vectorModel?.isActive === true) return false;
+    toast({
+      title: t('app:dataset.Configure_index_model_first'),
+      status: 'error'
+    });
+    return true;
+  }, [t, toast, vectorModel?.isActive]);
+  const onAddIndex = useCallback(() => {
+    if (blockMissingIndexModel()) return;
+    prependCustomIndex();
+  }, [blockMissingIndexModel, prependCustomIndex]);
+
   const { runAsync: sureImportData, loading: isImporting } = useRequest(
     async (e: InputDataType) => {
       const data = { ...e };
@@ -412,6 +430,7 @@ export const useInputDataModal = ({
       }
 
       if (!dataId) return;
+      if (blockMissingIndexModel()) return;
 
       pendingIndexClientIdsRef.current.add(clientId);
       let shouldSaveLatest = false;
@@ -503,6 +522,7 @@ export const useInputDataModal = ({
         getValues,
         removeIndexes,
         setValue,
+        blockMissingIndexModel,
         t,
         toast
       ]
@@ -586,14 +606,12 @@ export const useInputDataModal = ({
     deleteIndexRunnerRef.current = onDeleteIndex;
   }, [onDeleteIndex]);
 
-  const { model: vectorModel } = useModelDetail({
-    modelId: collection.dataset.vectorModelId,
-    model: collection.dataset.vectorModel,
-    modelType: ModelTypeEnum.embedding
-  });
   const maxToken = vectorModel?.config.maxToken ?? 2000;
 
-  const submitData = handleSubmit((data) => (dataId ? onUpdateData(data) : sureImportData(data)));
+  const submitData = handleSubmit((data) => {
+    if (blockMissingIndexModel()) return;
+    return dataId ? onUpdateData(data) : sureImportData(data);
+  });
   const showTabs = currentTab === TabEnum.chunk || currentTab === TabEnum.qa;
 
   return {
@@ -615,7 +633,7 @@ export const useInputDataModal = ({
     watchedIndexes,
     onDeleteIndex,
     onSaveIndex,
-    prependCustomIndex,
+    onAddIndex,
     setCurrentTab,
     clearFocusIndexClientId,
     markEditingIndex,

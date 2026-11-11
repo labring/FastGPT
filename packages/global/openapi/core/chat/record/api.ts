@@ -1,14 +1,15 @@
+import { ChatIdSchema } from '../../../../core/chat/schema';
 import z from 'zod';
-import { OutLinkChatAuthSchema } from '../../../../support/permission/chat';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
 import { OpenObjectOpenApiMeta } from '../../../../common/zod/openapi';
-import { queryArrayParam } from '../../../../common/zod';
 import { DatasetCiteItemSchema } from '../../../../core/dataset/type';
 import { LinkedListResponseSchema, LinkedPaginationSchema } from '../../../api';
 import { ChatItemMiniSchema } from '../../../../core/chat/type';
 import { AppTTSConfigInputSchema } from '../../app/common/api';
-import { ChatSourceTypeEnum, GetChatTypeEnum } from '../../../../core/chat/constants';
+import { GetChatTypeEnum } from '../../../../core/chat/constants';
 import {
+  createChatSourceInputSchema,
+  transformChatSourceInput,
   createOutLinkChatTargetInputSchema,
   createOutLinkChatTargetQuerySchema,
   createPaginatedChatTargetInputSchema,
@@ -21,8 +22,6 @@ const GetRecordTypeSchema = z.enum([
   GetChatTypeEnum.home
 ]);
 
-const QueryStringArraySchema = queryArrayParam(z.array(z.string().trim()).optional());
-
 /* ============================================================================
  * API: 获取对话响应详细数据
  * Route: GET /api/core/chat/record/getResData
@@ -31,7 +30,7 @@ const QueryStringArraySchema = queryArrayParam(z.array(z.string().trim()).option
  * ============================================================================ */
 
 export const GetResDataQueryRawSchema = createOutLinkChatTargetQuerySchema({
-  chatId: z.string().optional().describe('会话ID'),
+  chatId: ChatIdSchema.optional().describe('会话ID'),
   dataId: z.string().describe('对话数据ID')
 });
 export const GetResDataQuerySchema = GetResDataQueryRawSchema.transform(
@@ -48,20 +47,20 @@ export type GetResDataQueryRuntimeType = z.infer<typeof GetResDataQuerySchema>;
  * Tags: ['Chat', 'Delete']
  * ============================================================================ */
 
-const DeleteChatRecordPropsSchema = {
-  chatId: z.string().meta({ example: 'chat123', description: '会话 ID' }),
+export const DeleteChatRecordBodyRawSchema = createOutLinkChatTargetInputSchema({
+  chatId: ChatIdSchema.meta({ example: 'chat123', description: '会话 ID' }),
   contentId: z.string().optional().meta({
     example: 'content123',
     description: '要删除的消息 ID'
   }),
-  contentIds: QueryStringArraySchema.meta({
-    example: ['content123', 'content456'],
-    description: '要删除的消息 ID 列表'
-  })
-};
-export const DeleteChatRecordBodyRawSchema = createOutLinkChatTargetInputSchema(
-  DeleteChatRecordPropsSchema
-);
+  contentIds: z
+    .array(z.string().trim())
+    .optional()
+    .meta({
+      example: ['content123', 'content456'],
+      description: '要删除的消息 ID 列表'
+    })
+});
 export const DeleteChatRecordBodySchema = DeleteChatRecordBodyRawSchema.transform(
   transformChatAuthTargetInput
 );
@@ -69,7 +68,7 @@ export type DeleteChatRecordBodyType = z.infer<typeof DeleteChatRecordBodyRawSch
 export type DeleteChatRecordBodyRuntimeType = z.infer<typeof DeleteChatRecordBodySchema>;
 
 const QuoteBodyPropsSchema = {
-  chatId: z.string().min(1).max(256).describe('会话ID'),
+  chatId: ChatIdSchema.min(1).describe('会话ID'),
   chatItemDataId: z.string().min(1).max(256).meta({
     example: 'item_abc123',
     description: '对话消息 dataId'
@@ -95,9 +94,6 @@ export const GetQuoteBodySchema = GetQuoteBodyRawSchema.transform(transformChatA
 export type GetQuoteBodyType = z.infer<typeof GetQuoteBodyRawSchema>;
 export type GetQuoteBodyRuntimeType = z.infer<typeof GetQuoteBodySchema>;
 
-export const DeleteChatRecordResponseSchema = z.undefined().meta({ description: '删除成功' });
-export type DeleteChatRecordResponseType = z.infer<typeof DeleteChatRecordResponseSchema>;
-
 /* ============================================================================
  * API: 获取对话引用数据
  * Route: POST /api/core/chat/record/getQuote
@@ -106,7 +102,7 @@ export type DeleteChatRecordResponseType = z.infer<typeof DeleteChatRecordRespon
  * ============================================================================ */
 
 const CollectionQuoteBodyPropsSchema = {
-  chatId: z.string().min(1).max(256).describe('会话 ID'),
+  chatId: ChatIdSchema.min(1).describe('会话 ID'),
   chatItemDataId: z.string().min(1).max(256).meta({
     example: 'item_abc123',
     description: '对话消息 dataId'
@@ -158,7 +154,7 @@ export type GetCollectionQuoteResType = z.infer<typeof GetCollectionQuoteResSche
  * ============================================================================ */
 
 const GetRecordPropsSchema = {
-  chatId: z.string().optional().meta({ example: 'chat123', description: '会话 ID' }),
+  chatId: ChatIdSchema.optional().meta({ example: 'chat123', description: '会话 ID' }),
   loadCustomFeedbacks: z.boolean().optional().meta({
     example: false,
     description: '是否加载自定义反馈'
@@ -214,6 +210,7 @@ export type GetRecordsV2ResponseType = z.infer<typeof GetRecordsV2ResponseSchema
  * ============================================================================ */
 
 export const GetChatSpeechBodySchema = createOutLinkChatTargetInputSchema({
+  chatId: ChatIdSchema.min(1).optional().describe('已有会话 ID；传入时同时校验会话归属'),
   ttsConfig: AppTTSConfigInputSchema.meta({ description: 'TTS 配置' }),
   input: z.string().meta({ example: '你好，世界', description: '要转换的文本内容' })
 }).transform(transformChatAuthTargetInput);
@@ -226,14 +223,15 @@ export type GetChatSpeechBodyType = z.infer<typeof GetChatSpeechBodySchema>;
  * Description: 将 multipart 表单里的音频转换为文本
  * ============================================================================ */
 
-export const AudioTranscriptionsDataRawSchema = z.object({
-  sourceType: z.enum(ChatSourceTypeEnum).describe('会话归属资源类型'),
-  sourceId: ObjectIdSchema.describe('会话归属资源 ID'),
-  chatId: z.string().min(1).max(256).describe('会话 ID'),
-  outLinkAuthData: OutLinkChatAuthSchema.optional().describe('外链鉴权数据'),
+const AudioTranscriptionsProps = {
+  chatId: ChatIdSchema.min(1).describe('会话 ID'),
   duration: z.coerce.number().optional().describe('录音时长，单位秒')
-});
-export const AudioTranscriptionsDataSchema = AudioTranscriptionsDataRawSchema;
+};
+export const AudioTranscriptionsDataRawSchema =
+  createChatSourceInputSchema(AudioTranscriptionsProps);
+export const AudioTranscriptionsDataSchema =
+  AudioTranscriptionsDataRawSchema.transform(transformChatSourceInput);
+
 export type AudioTranscriptionsDataType = z.infer<typeof AudioTranscriptionsDataRawSchema>;
 export type AudioTranscriptionsDataRuntimeType = z.infer<typeof AudioTranscriptionsDataSchema>;
 

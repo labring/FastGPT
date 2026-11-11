@@ -15,13 +15,14 @@ import {
   TTSModelDocumentSchema
 } from '../../../../core/ai/model/schema';
 import z from 'zod';
-import { IntSchema } from '../../../../common/zod';
+import { BoolSchema, IntSchema } from '../../../../common/zod';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
 import { I18nStringSchema } from '../../../../common/i18n/type';
 import { ModelDefaultIdsSchema } from '../../../../core/ai/model/default';
 import { OutLinkChatAuthQuerySchema } from '../../../../support/permission/chat';
 import { ChannelTypeSchema } from '../../../../core/ai/model/scope';
 import { ModelOrderIdsSchema } from '../../../../core/ai/model/order';
+import { SourceMemberSchema } from '../../../../support/user/type';
 
 export const ModelChannelSummarySchema = z.object({
   id: IntSchema.positive().meta({ example: 1, description: 'AI Proxy 渠道 ID' }),
@@ -42,8 +43,12 @@ const MyModelBaseSchema = z.object({
   scope: z.nativeEnum(ModelScopeEnum).meta({ description: '模型实例作用域' }),
   sortOrder: LLMModelDocumentSchema.shape.sortOrder,
   tmbId: z.string().optional().meta({ description: '模型归属成员 ID' }),
+  sourceMember: SourceMemberSchema.optional().meta({
+    description: '创建人资料，仅成员展示请求返回'
+  }),
   avatar: z.string().optional().meta({ description: '模型图标' }),
   isActive: z.boolean().optional().meta({ description: '模型是否启用' }),
+  isUpcomingDeprecation: LLMModelDocumentSchema.shape.isUpcomingDeprecation,
   testMode: z.boolean().optional().meta({ description: '是否为测试模式' }),
   pricing: ModelPricingSchema.optional().meta({ description: '模型计价配置；缺失时免费' })
 });
@@ -116,6 +121,10 @@ export const ModelProviderSchema = z.object({
 
 export const GetModelCatalogQuerySchema = z.object({
   version: z.string().trim().min(1).optional().meta({ description: '客户端已有目录版本' }),
+  includeSourceMember: BoolSchema.optional().meta({
+    example: true,
+    description: '补充创建人资料；仅成员生效，开启后始终返回完整目录，不使用版本缓存'
+  }),
   orderBy: z.literal('custom').optional().meta({
     example: 'custom',
     description:
@@ -137,7 +146,7 @@ export const GetModelCatalogResponseSchema = z.object({
       defaultModelIds: ModelDefaultIdsSchema
     })
     .optional()
-    .meta({ description: '版本变化时返回的完整目录；版本一致时省略' })
+    .meta({ description: '版本变化或成员显式请求创建人资料时返回完整目录；否则版本一致时省略' })
 });
 export type GetModelCatalogResponse = z.infer<typeof GetModelCatalogResponseSchema>;
 

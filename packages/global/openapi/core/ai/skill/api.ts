@@ -1,3 +1,4 @@
+import { ChatIdSchema } from '../../../../core/chat/schema';
 import { z } from 'zod';
 import { LOGO_ICON } from '../../../../common/system/constants';
 import { TeamMemberStatusEnum } from '../../../../support/user/team/constant';
@@ -14,6 +15,7 @@ import {
   ZipEntryInfoSchema
 } from '../../../../core/ai/skill/type';
 import { SkillPermissionSchema } from '../../../../support/permission/skill/controller.schema';
+import { InheritPermissionSchema } from '../../../../support/permission/inheritPermission';
 import { ChatCompletionMessageParamSchema } from '../../../../core/ai/llm/type';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
 import {
@@ -123,7 +125,8 @@ export const CreateSkillBodySchema = z.object({
   name: z.string().trim().min(1).describe('技能名称'),
   description: z.string().optional().describe('技能描述'),
   category: z.array(AgentSkillCategorySchema).optional().describe('技能分类'),
-  avatar: z.string().optional().describe('技能头像')
+  avatar: z.string().optional().describe('技能头像'),
+  inheritPermission: InheritPermissionSchema
 });
 export type CreateSkillBody = z.infer<typeof CreateSkillBodySchema>;
 
@@ -396,7 +399,7 @@ export type {
 
 export const SkillDebugChatBodySchema = z.object({
   skillId: IdSchema,
-  chatId: z.string().min(1),
+  chatId: ChatIdSchema.min(1),
   responseChatItemId: z.string().optional(),
   messages: z.array(ChatCompletionMessageParamSchema),
   modelId: z.string().meta({ description: '调试使用的模型 ID' }),
@@ -407,7 +410,8 @@ export type SkillDebugChatBody = z.infer<typeof SkillDebugChatBodySchema>;
 export const CreateSkillFolderBodySchema = z.object({
   parentId: NullableParentIdSchema,
   name: z.string(),
-  description: z.string().optional()
+  description: z.string().optional(),
+  inheritPermission: InheritPermissionSchema
 });
 export type CreateSkillFolderBody = z.infer<typeof CreateSkillFolderBodySchema>;
 

@@ -8,12 +8,17 @@ import { isAuthorizedChatFileS3Key } from '@fastgpt/service/common/s3/sources/ch
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 
 async function handler(req: ApiRequestProps): Promise<string> {
-  const { key, chatId, sourceType, sourceId, outLinkAuthData } = parseApiInput({
-    req,
-    bodySchema: PresignChatFileGetUrlSchema
-  }).body;
+  const { customUid, authProxy, key, chatId, sourceType, sourceId, outLinkAuthData } =
+    parseApiInput({
+      req,
+      bodySchema: PresignChatFileGetUrlSchema
+    }).body;
 
+  // 首次发消息前也可预览文件；后续 key 校验仍严格绑定应用、UID 和 chatId。
   const authRes = await authChatTargetCrud({
+    allowMissingChat: true,
+    customUid,
+    authProxy,
     req,
     authToken: true,
     authApiKey: true,

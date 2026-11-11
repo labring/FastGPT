@@ -81,9 +81,20 @@ export const WorkflowBuilderPreviewSectionSchema = z.object({
 });
 export type WorkflowBuilderPreviewSection = z.infer<typeof WorkflowBuilderPreviewSectionSchema>;
 
-/** Preview 展示与服务端校验共用的工具参数，解析结果不重复持久化。 */
+/** 模型结合完整对话选择任务归属；后端只校验身份与执行资格，不解释用户措辞。 */
+export const WorkflowBuilderTaskSelectionSchema = z.discriminatedUnion('mode', [
+  z.object({ mode: z.literal('new') }).strict(),
+  z.object({ mode: z.literal('continue'), taskId: z.string().min(1) }).strict()
+]);
+export type WorkflowBuilderTaskSelection = z.infer<typeof WorkflowBuilderTaskSelectionSchema>;
+
+/** Preview 展示与历史恢复共用的参数；summary 可缺省以兼容历史记录，解析结果不重复持久化。 */
 export const WorkflowBuilderPreviewPayloadSchema = z.object({
+  task: WorkflowBuilderTaskSelectionSchema.optional(),
   title: z.string().trim().min(1),
+  summary: z.string().trim().min(1).optional().meta({
+    description: '用两三句话说明工作流的输入、主要处理和最终结果；历史预览可缺省'
+  }),
   mermaid: z.string().trim().min(1),
   sections: z.array(WorkflowBuilderPreviewSectionSchema).min(1)
 });
@@ -129,7 +140,7 @@ export type WorkflowBuilderPreviewDecision = {
 };
 
 /** Builder 只持久化业务执行事实；对话、计划和模型暂停状态沿用 ChatItem 协议。 */
-export const WorkflowBuilderTaskSchema = z.object({
+const WorkflowBuilderPreviewTaskSchema = z.object({
   schemaVersion: z.literal(1),
   taskId: z.string().min(1),
   requestChatItemId: z.string().min(1),
@@ -150,4 +161,14 @@ export const WorkflowBuilderTaskSchema = z.object({
     })
     .optional()
 });
+/** 直接执行任务保存原始需求，不伪造预览或用户确认；旧任务继续使用 v1 协议。 */
+export const WorkflowBuilderTaskSchema = z.discriminatedUnion('schemaVersion', [
+  WorkflowBuilderPreviewTaskSchema,
+  WorkflowBuilderPreviewTaskSchema.extend({
+    schemaVersion: z.literal(2),
+    executionSource: z.literal('user_request'),
+    requestSummary: z.string().min(1),
+    preview: z.undefined().optional()
+  })
+]);
 export type WorkflowBuilderTask = z.infer<typeof WorkflowBuilderTaskSchema>;

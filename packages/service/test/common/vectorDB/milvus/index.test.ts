@@ -65,6 +65,7 @@ vi.unmock('@fastgpt/service/common/vectorDB/milvus');
 import { MilvusCtrl } from '@fastgpt/service/common/vectorDB/milvus/index';
 
 beforeEach(() => {
+  global.systemEnv = {} as any;
   vi.resetModules();
   mockCreateCollection.mockReset();
   mockHasCollection.mockReset().mockResolvedValue({ value: false });
@@ -179,6 +180,13 @@ describe('MilvusCtrl', () => {
     expect(v2.collection_name).toBe('modeldata_v2');
     expect(v2.functions).toHaveLength(1);
     expect(v2.fields.map((f: any) => f.name)).toContain('sparse');
+    expect(v2.index_params).toContainEqual(
+      expect.objectContaining({
+        field_name: 'vector',
+        index_type: 'HNSW',
+        params: { efConstruction: 256, M: 32 }
+      })
+    );
   });
 
   // 被测函数: MilvusCtrl.init  等级: 3-High
@@ -371,22 +379,32 @@ describe('MilvusCtrl', () => {
 
   // 被测函数: MilvusCtrl.embRecall  等级: 3-High
   // (正常场景) 期望: SDK 2.6 的 client.search 使用 data: [vector](非 vector 字段)
-  it('TC-8.6 embRecall uses SDK 2.6 data field', async () => {
-    const ctrl = new MilvusCtrl();
-    await ctrl.embRecall({
-      teamId: 't',
-      datasetIds: ['d'],
-      vector: [0.1, 0.2],
-      limit: 10,
-      forbidCollectionIdList: []
-    });
-    const arg = mockSearch.mock.calls[0][0];
-    expect(arg.data).toEqual([[0.1, 0.2]]);
-    // 单表有 dense vector + sparse 两个 ANN 字段:anns_field 必须显式指 dense,SDK 缺省取 schema 第一个
-    expect(arg.anns_field).toBe('vector');
-    // 主键不自动回填:output_fields 必须含 id,否则结果行解析不出 id
-    expect(arg.output_fields).toEqual(['id', 'collectionId']);
-  });
+  it.each([
+    { configured: undefined, limit: 10, expected: 200 },
+    { configured: 100, limit: 10, expected: 100 },
+    { configured: 400, limit: 10, expected: 400 },
+    { configured: 100, limit: 300, expected: 300 }
+  ])(
+    'TC-8.6 embRecall uses SDK 2.6 data and HNSW search parameters: %j',
+    async ({ configured, limit, expected }) => {
+      if (configured !== undefined) global.systemEnv.hnswEfSearch = configured;
+      const ctrl = new MilvusCtrl();
+      await ctrl.embRecall({
+        teamId: 't',
+        datasetIds: ['d'],
+        vector: [0.1, 0.2],
+        limit,
+        forbidCollectionIdList: []
+      });
+      const arg = mockSearch.mock.calls[0][0];
+      expect(arg.data).toEqual([[0.1, 0.2]]);
+      expect(arg.params).toEqual({ ef: expected });
+      // 单表有 dense vector + sparse 两个 ANN 字段:anns_field 必须显式指 dense,SDK 缺省取 schema 第一个
+      expect(arg.anns_field).toBe('vector');
+      // 主键不自动回填:output_fields 必须含 id,否则结果行解析不出 id
+      expect(arg.output_fields).toEqual(['id', 'collectionId']);
+    }
+  );
 
   // 被测函数: MilvusCtrl.getVectorDataByTime  等级: 3-High
   // (正常场景) 期望: client.query 的 output_fields 不含 dataId, 返回行不含 dataId, 目标集合 modeldata_v2

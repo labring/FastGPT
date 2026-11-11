@@ -12,6 +12,7 @@ import { ProxyAgent, type ProxyAgentOptions } from 'proxy-agent';
 import { getProxyForUrl } from 'proxy-from-env';
 import { isDevEnv } from '@fastgpt/global/common/system/constants';
 import { isInternalAddress, isInternalResolvedIP, PRIVATE_URL_TEXT } from '../system/utils';
+import { serviceAxiosMaxContentLength } from '../system/constants';
 
 /**
  * 给 shared axios 实例添加 SSRF 防护。
@@ -398,6 +399,37 @@ export const httpsCertificateIgnoreAgent = createProxyAgent({
   rejectUnauthorized: false
 });
 
+/**
+ * 为共享实例补充默认响应体上限。
+ *
+ * axios 1.18 起对 responseType=stream 也会执行 maxContentLength，而流式下载入口
+ * 已经有各自的业务配额，并在消费流时限制字节数。如果把上限放在实例默认值上，
+ * 会先于业务配额截断合法的附件下载（例如 Pro 渠道按团队配额允许 100 MiB）。
+ * 因此这里只在调用方没有显式限制（保持 axios 默认 -1）且非流式响应时注入默认值，
+ * 仍覆盖网页、OpenAPI 等会完整缓冲响应的入口。
+ */
+const addResponseSizeLimitInterceptor = (instance: AxiosInstance) => {
+  instance.interceptors.request.use((config) => {
+    // undefined 表示调用方没有提供上限（工厂会清空 axios 的 -1 默认值），
+    // 以便与调用方显式传入 -1 取消限制的语义区分开。
+    if (config.maxContentLength === undefined) {
+      config.maxContentLength =
+        config.responseType === 'stream' ? -1 : serviceAxiosMaxContentLength;
+    }
+    return config;
+  });
+
+  return instance;
+};
+
+/**
+ * 创建共享 axios 实例。
+ *
+ * 缓冲型响应默认限制解压后的响应体大小，避免请求攻击者控制的 URL 时被 gzip
+ * 炸弹等高压缩比响应耗尽内存；调用方可按请求传入 maxContentLength 覆盖。
+ * 流式响应保持调用方或业务层自己的配额限制。
+ * 这里不限制 maxBodyLength：共享实例还承担大文件上传（文档解析、API 数据集等）。
+ */
 export function createProxyAxios(config?: AxiosRequestConfig, ssrfCheck = true) {
   const agent = createProxyAgent();
 
@@ -410,7 +442,15 @@ export function createProxyAxios(config?: AxiosRequestConfig, ssrfCheck = true) 
         ...config
       });
 
-  return ssrfCheck ? addSSRFInterceptor(instance) : instance;
+  // axios 自身默认 maxContentLength=-1，仅看合并后的配置无法区分“未提供”和
+  // “显式取消限制”。未显式提供时清空实例默认值，交给请求拦截器按响应类型注入。
+  if (typeof config?.maxContentLength !== 'number') {
+    instance.defaults.maxContentLength = undefined;
+  }
+
+  const instanceWithSizeLimit = addResponseSizeLimitInterceptor(instance);
+
+  return ssrfCheck ? addSSRFInterceptor(instanceWithSizeLimit) : instanceWithSizeLimit;
 }
 
 /** @see https://github.com/axios/axios/issues/4531 */

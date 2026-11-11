@@ -170,7 +170,6 @@ export async function initSystemConfig() {
         qaMaxProcess: serviceEnv.QA_MAX_PROCESS,
         vlmMaxProcess: serviceEnv.VLM_MAX_PROCESS,
         hnswEfSearch: serviceEnv.HNSW_EF_SEARCH,
-        hnswMaxScanTuples: serviceEnv.HNSW_MAX_SCAN_TUPLES,
         customPdfParse: {
           url: serviceEnv.CUSTOM_PDF_PARSE_URL,
           key: serviceEnv.CUSTOM_PDF_PARSE_KEY,

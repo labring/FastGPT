@@ -624,15 +624,15 @@ describe('getClientToolPreviewNode', () => {
     expect(getToolConfigStatus({ tool: result }).status).not.toBe('waitingForConfig');
   });
 
-  it('defaults an ordinary workflow user question to Agent generation', async () => {
-    const appId = '507f1f77bcf86cd799439021';
+  it('omits history input and output for a chatAgent preview node', async () => {
+    const appId = '507f1f77bcf86cd799439023';
     mocks.findOne.mockReturnValueOnce({
       lean: vi.fn().mockResolvedValue({
         _id: appId,
         teamId: '507f1f77bcf86cd799439022',
-        type: AppTypeEnum.workflow,
-        name: 'Workflow',
-        avatar: 'workflow.svg',
+        type: AppTypeEnum.chatAgent,
+        name: 'ChatAgent',
+        avatar: 'agent.svg',
         intro: ''
       })
     });
@@ -647,12 +647,8 @@ describe('getClientToolPreviewNode', () => {
     const result = await getClientToolPreviewNode({ appId, versionId: '' });
 
     expect(result.flowNodeType).toBe('appModule');
-    expect(result.inputs.find((item) => item.key === 'userChatInput')).toMatchObject({
-      selectedType: 'agentGenerated',
-      renderTypeList: ['agentGenerated', 'reference', 'textarea'],
-      defaultToAgentGenerated: true
-    });
-    expect(getToolConfigStatus({ tool: result }).status).not.toBe('waitingForConfig');
+    expect(result.inputs.find((item) => item.key === NodeInputKeyEnum.history)).toBeUndefined();
+    expect(result.outputs.map((item) => item.key)).toEqual(['answerText', 'system_error_text']);
   });
 
   it('rejects with unExist when app is soft-deleted or does not exist', async () => {

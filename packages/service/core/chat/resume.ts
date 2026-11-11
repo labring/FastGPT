@@ -1,11 +1,12 @@
+import { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
+import { getChatGenerationStatuses } from './generationLease';
 import { serviceEnv } from '../../env';
 import { getLogger, LogCategories } from '../../common/logger';
 import {
   StreamResumeCache,
-  type StreamResumeActiveState as DalStreamResumeActiveState,
   type StreamResumeParams,
   type StreamResumeUnavailableState as DalStreamResumeUnavailableState
-} from '@fastgpt/dal/redis/caches';
+} from '@fastgpt/dal/redis/lease/chat/streamResume';
 import type { NodeHttpResponse } from '../../types/http';
 import type { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { StreamResumeUnavailableReasonEnum } from '@fastgpt/global/core/workflow/runtime/constants';
@@ -28,7 +29,10 @@ export const STREAM_RESUME_REDIS_MEMORY_CHECK_INTERVAL_MS =
  */
 export const STREAM_RESUME_BLOCK_MS = 30000;
 export const STREAM_RESUME_TTL_TOUCH_INTERVAL_MS = 1000;
-export const STREAM_RESUME_INACTIVE_MS = 2 * 60 * 1000;
+export const STREAM_RESUME_MIRROR_KEEPALIVE_INTERVAL_MS = Math.max(
+  1_000,
+  Math.min(30_000, (STREAM_RESUME_TTL_SECONDS * 1000) / 3)
+);
 
 const streamResumeCache = new StreamResumeCache({
   logger,
@@ -64,7 +68,6 @@ export const getStreamResumeRedisKeys = ({
 export type StreamResumeUnavailableState = DalStreamResumeUnavailableState & {
   reason: `${StreamResumeUnavailableReasonEnum}`;
 };
-export type StreamResumeActiveState = DalStreamResumeActiveState;
 
 const resumeRequestEnabledValues = new Set(['1', 'true', 'yes', 'on']);
 
@@ -175,15 +178,6 @@ export const getStreamResumeUnavailableState = async (params: StreamResumeRedisK
   return streamResumeCache.getUnavailable(params);
 };
 
-export const getStreamResumeActiveState = async (params: StreamResumeRedisKeysParams) => {
-  return streamResumeCache.getActive(params);
-};
-
-export const isStreamResumeActiveStale = (
-  state: StreamResumeActiveState | undefined,
-  now = Date.now()
-) => !state || now - state.updatedAt > STREAM_RESUME_INACTIVE_MS;
-
 const chunkToString = (chunk: string | Buffer | Uint8Array, encoding?: BufferEncoding) => {
   if (typeof chunk === 'string') return chunk;
   if (Buffer.isBuffer(chunk)) return chunk.toString(encoding || 'utf8');
@@ -197,9 +191,30 @@ export const mirrorChatStream = (params: StreamResumeRedisKeysParams) => {
     ...getStreamResumeRedisKeys(params),
     enqueueRaw: (chunk: string | Buffer | Uint8Array, encoding?: BufferEncoding) =>
       mirror.enqueueRaw(chunkToString(chunk, encoding)),
+    touch: mirror.touch,
     flush: mirror.flush,
     shrinkTTLAfterComplete: mirror.shrinkTTLAfterComplete
   };
+};
+
+/**
+ * Resume mirror 的 TTL 由执行体保活，不能依赖客户端 SSE 连接。
+ * 客户端断开后仍持续续期，直到 workflow/auxiliary generation 收尾。
+ */
+export const startStreamResumeMirrorKeepAlive = (
+  mirror: { touch?: () => Promise<void> } | undefined
+) => {
+  const touch = mirror?.touch;
+  if (!touch) return () => undefined;
+
+  const timer = setInterval(() => {
+    void touch().catch((error) => {
+      logger.warn('Stream resume mirror keepalive failed', { error });
+    });
+  }, STREAM_RESUME_MIRROR_KEEPALIVE_INTERVAL_MS);
+  timer.unref?.();
+
+  return () => clearInterval(timer);
 };
 
 export const getStreamResumeMirror = async ({
@@ -335,6 +350,13 @@ export const _resume = async ({
         const streamItems = await blockingReader.read(streamId);
 
         if (streamItems.length === 0) {
+          // Redis Stream 无终止事件时也要检查生成租约，避免进程退出后恢复连接永久等待。
+          // 读取异常也按空闲结束本次恢复；Redis 恢复且原 lease 有效时，后续发送冲突可触发客户端重新恢复。
+          const statuses = await getChatGenerationStatuses({
+            ...params,
+            chatIds: [params.chatId]
+          });
+          if (statuses.get(params.chatId) !== ChatGenerateStatusEnum.generating) return cursor;
           continue;
         }
 

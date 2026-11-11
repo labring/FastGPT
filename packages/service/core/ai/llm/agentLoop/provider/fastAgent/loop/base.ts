@@ -35,6 +35,7 @@ import {
 type RunAgentCallProps<TChildrenResponse = unknown> = {
   maxRunAgentTimes: number;
   completionPolicy?: AgentLoopCompletionPolicy;
+  getCheckpointContext?: () => Promise<string>;
   batchToolSize?: number;
   fileContext?: FileClassificationContext;
   body: CreateLLMResponseProps['body'] & {
@@ -142,6 +143,7 @@ type RunAgentResponse<TChildrenResponse = unknown> = {
  */
 export const onCompressContext = async ({
   activePlan,
+  getCheckpointContext,
   isAborted,
   messageTokens,
   requestMessages,
@@ -152,6 +154,7 @@ export const onCompressContext = async ({
   teamId
 }: {
   activePlan?: AgentPlanType;
+  getCheckpointContext?: () => Promise<string>;
   isAborted: RunAgentCallProps['isAborted'];
   messageTokens?: number;
   requestMessages: ChatCompletionMessageParam[];
@@ -164,6 +167,7 @@ export const onCompressContext = async ({
   const compressStartTime = Date.now();
   const result = await compressRequestMessages({
     activePlan,
+    getCheckpointContext,
     checkIsStopping: isAborted,
     messageTokens,
     messages: requestMessages,
@@ -205,6 +209,7 @@ export const onCompressContext = async ({
 export const runAgentLoop = async <TChildrenResponse = unknown>({
   maxRunAgentTimes,
   completionPolicy,
+  getCheckpointContext,
   batchToolSize = 1,
   // 同次 Agent 运行的各轮模型请求共享分类缓存，支持上层传入已有上下文（如 WorkflowFileContext）。
   fileContext = createFileClassificationContext(),
@@ -267,6 +272,18 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
         messages: newMessages
       });
     }
+  };
+
+  /** 服务端续跑指令与普通 User 消息使用同一条上下文，并以隐藏消息持久化。 */
+  const appendContinuationMessage = async (content: string) => {
+    const message: ChatCompletionMessageParam = {
+      role: ChatCompletionRequestMessageRoleEnum.User,
+      content,
+      hideInUI: true
+    };
+    assistantMessages.push(message);
+    await appendRequestMessages(message);
+    onUserMessage?.({ content, source: 'server' });
   };
 
   let inputTokens: number = 0;
@@ -395,6 +412,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
     {
       const compressResult = await onCompressContext({
         activePlan: getActivePlan?.(),
+        getCheckpointContext,
         isAborted,
         messageTokens: requestMessagesTokenCount,
         requestMessages,
@@ -540,12 +558,14 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
 
     if (toolCalls.length) {
       // 3. Call tools
+      const continuationMessages: string[] = [];
       type ToolRunResult = {
         tool: ChatCompletionMessageToolCall;
         interactive?: TChildrenResponse | AgentAskInteractive;
         stopLoop?: boolean;
         toolMessage: ChatCompletionMessageParam;
         toolAssistantMessages: ChatCompletionMessageParam[];
+        continuationMessage?: string;
       };
 
       const runTool = async ({
@@ -568,6 +588,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
           skipResponseCompress,
           errorMessage,
           hideInUI,
+          continuationMessage,
           metadata
         } = await (async () => {
           try {
@@ -642,6 +663,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
           tool,
           interactive,
           stopLoop,
+          continuationMessage,
           toolMessage: {
             tool_call_id: tool.id,
             role: ChatCompletionRequestMessageRoleEnum.Tool,
@@ -658,7 +680,8 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
           interactive,
           stopLoop,
           toolMessage,
-          toolAssistantMessages
+          toolAssistantMessages,
+          continuationMessage
         } of toolRunResults) {
           if (interactive) {
             pause = {
@@ -674,6 +697,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
           await appendRequestMessages(toolMessage);
           // toolAssistantMessages 也需要记录成 AI 响应，所以这里需要推送。
           assistantMessages.push(...toolAssistantMessages);
+          if (continuationMessage) continuationMessages.push(continuationMessage);
         }
       };
 
@@ -739,6 +763,11 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
         await appendRequestMessages(toolMessage);
         onToolRunEnd?.({ call: tool, response, seconds: 0 });
       }
+
+      // 先补齐同一 assistant 的全部工具结果，再追加 User，避免破坏工具调用配对。
+      if (!pause && !stopAgentLoop && !isAborted?.()) {
+        for (const content of continuationMessages) await appendContinuationMessage(content);
+      }
     }
 
     // 暂停、工具显式停止和取消优先于业务完成判断。
@@ -752,20 +781,13 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
     // 只有模型自然结束时，才由业务策略决定是否追加指令继续。
     try {
       if (!completionPolicy) break;
-      const decision = await completionPolicy({ requestIndex: runTimes });
+      const decision = await completionPolicy({ requestIndex: runTimes, answerText: answer });
       // 策略可能异步执行，等待期间的取消不能触发下一轮请求。
       if (isAborted?.() || decision.action === 'complete') {
         break;
       }
       // 续跑指令是服务端输入，按 User 角色落库；不伪造模型工具调用，也不提升为 System。
-      const message: ChatCompletionMessageParam = {
-        role: ChatCompletionRequestMessageRoleEnum.User,
-        content: decision.message,
-        hideInUI: true
-      };
-      assistantMessages.push(message);
-      await appendRequestMessages(message);
-      onUserMessage?.({ content: decision.message, source: 'server' });
+      await appendContinuationMessage(decision.message);
       if (runTimes >= maxRunAgentTimes) {
         requestError = new Error(`Agent loop reached max run times: ${maxRunAgentTimes}`);
         break;

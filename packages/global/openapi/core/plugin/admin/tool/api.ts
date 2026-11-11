@@ -170,12 +170,6 @@ export const CreateAppToolBodySchema = UpdateWorkflowToolBodySchema.omit({
 });
 export type CreateAppToolBodyType = z.infer<typeof CreateAppToolBodySchema>;
 
-// Delete system Tool
-export const DeleteSystemToolQuerySchema = z.object({
-  toolId: z.string()
-});
-export type DeleteSystemToolQueryType = z.infer<typeof DeleteSystemToolQuerySchema>;
-
 /* ======= App type tool ====== */
 // Get all system plugin apps
 export const GetAllSystemAppsBodySchema = z.object({

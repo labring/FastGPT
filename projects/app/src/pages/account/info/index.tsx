@@ -84,9 +84,13 @@ const MemberNameModal = dynamic(() => import('@/pageComponents/account/info/Memb
 
 const Info = () => {
   const { isPc } = useSystem();
-  const { teamPlanStatus } = useUserStore();
+  const { teamPlanStatus, initTeamPlanStatus } = useUserStore();
   const standardPlan = teamPlanStatus?.standard;
   const { isOpen: isOpenContact, onClose: onCloseContact, onOpen: onOpenContact } = useDisclosure();
+
+  useEffect(() => {
+    void initTeamPlanStatus().catch(() => {});
+  }, [initTeamPlanStatus]);
 
   return (
     <AccountContainer>

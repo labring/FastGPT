@@ -1,11 +1,11 @@
+import { assertChatPublishSource } from '@fastgpt/service/core/chat/publishSource/utils';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { sseErrRes, jsonRes } from '@fastgpt/service/common/response';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import {
   ChatRoleEnum,
   ChatSourceEnum,
-  ChatSourceTypeEnum,
-  ChatGenerateStatusEnum
+  ChatSourceTypeEnum
 } from '@fastgpt/global/core/chat/constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { dispatchWorkFlow } from '@fastgpt/service/core/workflow/dispatch';
@@ -71,8 +71,6 @@ import {
   type AuthResponseType,
   CompletionsPropsSchema
 } from '@fastgpt/global/openapi/core/chat/completion/api';
-
-import { updateChatGenerateStatus } from '@fastgpt/service/core/chat/chatGenerateStatus';
 
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
@@ -145,6 +143,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       showCite,
       authType,
       sourceName,
+      publishSource,
       apikey,
       responseAllData,
       outLinkUserId = customUid,
@@ -176,6 +175,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         req,
         appId,
         chatId,
+        customUid,
         authProxy
       });
     })();
@@ -324,8 +324,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       teamId,
       tmbId: String(tmbId),
       source,
+      publishSource,
       sourceName: sourceName || '',
-      shareId,
       outLinkUid: outLinkUserId,
       userContent: workflowUserQuestion,
       responseChatItemId: roundState.responseChatItemId,
@@ -443,9 +443,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       nodes,
       appChatConfig: chatConfig,
       variables: newVariables,
-      shareId,
       outLinkUid: outLinkUserId,
       source,
+      publishSource: preparedRound.publishSource,
       sourceName: sourceName || '',
       userContent: workflowUserQuestion,
       aiContent: aiResponse,
@@ -464,14 +464,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       });
     } else if (preparedRound.shouldFinalizePreparedRound) {
       await finalizeChatRound(params);
-    }
-
-    if (!preparedRound.shouldFinalizePreparedRound && preparedRound.shouldPersistChatRound) {
-      await updateChatGenerateStatus({
-        ...chatSource,
-        chatId: saveChatId,
-        status: ChatGenerateStatusEnum.done
-      });
     }
     const isOwnerUse = !shareId;
     if (isOwnerUse && source === ChatSourceEnum.online) {
@@ -578,13 +570,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           responseChatItemId: roundState.responseChatItemId,
           error: err
         });
-      } else {
-        await updateChatGenerateStatus({
-          sourceType: ChatSourceTypeEnum.app,
-          sourceId: roundState.sourceId,
-          chatId: roundState.chatId,
-          status: ChatGenerateStatusEnum.error
-        });
       }
     }
     if (stream) {
@@ -602,10 +587,14 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       });
     }
   } finally {
-    if (stream) {
-      // 失败状态写入再次报错时，也必须等待续流缓存收尾后再关闭响应。
-      await streamResponseContext?.flushResume();
-      res.end();
+    try {
+      if (stream) {
+        // 失败状态写入再次报错时，也必须等待续流缓存收尾后再关闭响应。
+        await streamResponseContext?.flushResume();
+        res.end();
+      }
+    } finally {
+      await roundState.preparedRound?.releaseGenerationLease?.();
     }
   }
 }
@@ -629,6 +618,7 @@ const authShareChat = async ({
     showRunningStatus,
     showSkillReferences,
     uid,
+    publishSource,
     sourceName
   } = await authOutLinkChatStart({ ...data, req });
   const app = await MongoApp.findById(appId).lean();
@@ -642,11 +632,15 @@ const authShareChat = async ({
     ...buildChatSourceQuery({ sourceType: ChatSourceTypeEnum.app, sourceId: String(appId) }),
     chatId
   }).lean();
-  if (chat && (chat.shareId !== data.shareId || chat.outLinkUid !== uid)) {
-    return Promise.reject(ChatErrEnum.unAuthChat);
+  if (chat) {
+    assertChatPublishSource({ previous: chat.publishSource, current: publishSource });
+    if (chat.outLinkUid !== uid) {
+      return Promise.reject(ChatErrEnum.unAuthChat);
+    }
   }
 
   return {
+    publishSource,
     sourceName,
     teamId,
     tmbId,

@@ -58,6 +58,9 @@ const createSdkSandbox = (
     yield new TextEncoder().encode('stream');
   });
   const writeFiles = vi.fn(async (_entries: WriteEntry[]) => undefined);
+  const replaceContents = vi.fn(
+    async (_entries: Array<{ path: string; oldContent: string; newContent: string }>) => undefined
+  );
   const getFileInfo = vi.fn(async () => ({}));
   const commandInterrupt = vi.fn(async (_sessionId: string) => undefined);
   const commandRunStream = vi.fn((_command: string, _options?: unknown, _signal?: AbortSignal) =>
@@ -80,6 +83,7 @@ const createSdkSandbox = (
       readBytes,
       readBytesStream,
       writeFiles,
+      replaceContents,
       getFileInfo
     }
   } as unknown as Sandbox;
@@ -90,6 +94,7 @@ const createSdkSandbox = (
     readBytes,
     readBytesStream,
     writeFiles,
+    replaceContents,
     getFileInfo,
     commandInterrupt,
     commandRunStream
@@ -186,6 +191,63 @@ describe('OpenSandboxAdapter', () => {
     expect(managerCreate).not.toHaveBeenCalled();
     expect(connect).not.toHaveBeenCalled();
   });
+
+  it.each(['Allocated', 'Pending'])(
+    'waits for provider state %s to reach Running instead of failing',
+    async (state) => {
+      vi.useFakeTimers();
+      try {
+        const adapter = new OpenSandboxAdapter(CONNECTION);
+        const bound = createSdkSandbox({
+          info: [sdkInfo(state), sdkInfo(state), sdkInfo('Running')]
+        });
+        bindSandbox(adapter, bound.sandbox);
+
+        const ensureRunning = adapter.ensureRunning();
+        await vi.advanceTimersByTimeAsync(2_000);
+        await ensureRunning;
+
+        expect(adapter.status.state).toBe('Running');
+        expect(bound.getInfo).toHaveBeenCalledTimes(3);
+      } finally {
+        vi.useRealTimers();
+      }
+    }
+  );
+
+  it('waits for an allocated session resource discovered by metadata before connecting', async () => {
+    vi.useFakeTimers();
+    try {
+      const manager = mockManager([sdkInfo('Allocated')]);
+      manager.getSandboxInfo
+        .mockResolvedValueOnce(sdkInfo('Allocated'))
+        .mockResolvedValueOnce(sdkInfo('Running'))
+        .mockResolvedValue(sdkInfo('Running'));
+      const bound = createSdkSandbox();
+      const connect = vi.spyOn(Sandbox, 'connect').mockResolvedValue(bound.sandbox);
+      const adapter = new OpenSandboxAdapter(CONNECTION);
+
+      const ensureRunning = adapter.ensureRunning();
+      await vi.advanceTimersByTimeAsync(1_000);
+      await ensureRunning;
+
+      expect(connect).toHaveBeenCalledWith(expect.objectContaining({ sandboxId: 'sandbox-1' }));
+      expect(adapter.status.state).toBe('Running');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it.each(['Failed', 'Unknown', 'Terminated'])(
+    'keeps terminal provider state %s fatal',
+    async (state) => {
+      const adapter = new OpenSandboxAdapter(CONNECTION);
+      const bound = createSdkSandbox({ info: [sdkInfo(state)] });
+      bindSandbox(adapter, bound.sandbox);
+
+      await expect(adapter.ensureRunning()).rejects.toThrow('Sandbox error');
+    }
+  );
 
   it('resumes the reusable paused resource found by session metadata', async () => {
     mockManager([sdkInfo('Paused')]);
@@ -315,6 +377,36 @@ describe('OpenSandboxAdapter', () => {
     expect(bound.readBytesStream).toHaveBeenCalledWith('/workspace/file.txt');
     expect(new TextDecoder().decode(chunks[0])).toBe('stream');
     expect(bound.readBytes).toHaveBeenCalledTimes(1);
+  });
+
+  it('applies every edit when one call edits the same file more than once', async () => {
+    const adapter = new OpenSandboxAdapter(CONNECTION);
+    const bound = createSdkSandbox();
+    const files = new Map([
+      ['/workspace/app.py', 'import x\nuse(x)\n'],
+      ['/workspace/util.py', 'a = 1\n']
+    ]);
+    // Same as the SDK: the /files/replace body is keyed by path, so a later entry for a path
+    // overwrites an earlier one in the same request.
+    bound.replaceContents.mockImplementation(async (entries) => {
+      const body: Record<string, { old: string; new: string }> = {};
+      for (const entry of entries) {
+        body[entry.path] = { old: entry.oldContent, new: entry.newContent };
+      }
+      for (const [path, edit] of Object.entries(body)) {
+        files.set(path, (files.get(path) ?? '').split(edit.old).join(edit.new));
+      }
+    });
+    bindSandbox(adapter, bound.sandbox);
+
+    await adapter.replaceContent([
+      { path: 'app.py', oldContent: 'import x', newContent: 'import y' },
+      { path: 'util.py', oldContent: 'a = 1', newContent: 'a = 2' },
+      { path: '/workspace/app.py', oldContent: 'use(x)', newContent: 'use(y)' }
+    ]);
+
+    expect(files.get('/workspace/app.py')).toBe('import y\nuse(y)\n');
+    expect(files.get('/workspace/util.py')).toBe('a = 2\n');
   });
 
   it('converts POSIX modes at the SDK boundary', async () => {

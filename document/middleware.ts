@@ -348,8 +348,9 @@ export default function middleware(request: NextRequest) {
   return i18nMiddleware(request);
 }
 
+// Keep static search index, sitemaps, and public assets unprefixed without locale redirects.
 export const config = {
   matcher: [
-    '/((?!api|_next/static|_next/image|favicon(?:\\.ico|/)|robots\\.txt|sitemap.*\\.xml|static\\.json|.*\\.(?:svg|png|jpe?g|webp)|deploy/.*|examples/.*).*)'
+    '/((?!api|_next/static|_next/image|favicon(?:\\.ico|/)|robots\\.txt|static\\.json(?:$|/)|sitemap.*\\.xml|.*\\.(?:svg|png|jpe?g|webp)|deploy/.*|examples/.*).*)'
   ]
 };

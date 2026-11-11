@@ -32,6 +32,7 @@ import Icon from '@fastgpt/web/components/common/Icon';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import TagManageModal from './TagManageModal';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 
 const FileSourceSelector = dynamic(() => import('../Import/components/FileSourceSelector'));
 const BackupImportModal = dynamic(() => import('./BackupImportModal'));
@@ -63,6 +64,7 @@ const Header = ({
   onOpenTrainingErrorModal: () => void;
 }) => {
   const { t } = useTranslation();
+  const { toast } = useToast();
   const { feConfigs } = useSystemStore();
   const { isPc } = useSystem();
 
@@ -147,6 +149,14 @@ const Header = ({
   );
 
   const isWebSite = datasetDetail?.type === DatasetTypeEnum.websiteDataset;
+  const isIndexModelAvailable = datasetDetail.vectorModel?.isActive === true;
+  const blockMissingIndexModel = (onClick?: () => void) => () => {
+    if (isIndexModelAvailable) return onClick?.();
+    toast({
+      status: 'error',
+      title: t('app:dataset.Configure_index_model_first')
+    });
+  };
 
   return (
     <MyBox display={['block', 'flex']} alignItems={'center'} gap={3}>
@@ -290,7 +300,7 @@ const Header = ({
                           {t('common:core.dataset.Text collection')}
                         </Flex>
                       ),
-                      onClick: onOpenFileSourceSelector
+                      onClick: blockMissingIndexModel(onOpenFileSourceSelector)
                     },
                     ...(feConfigs?.isPlus
                       ? [
@@ -301,7 +311,7 @@ const Header = ({
                                 {t('dataset:core.dataset.Image collection')}
                               </Flex>
                             ),
-                            onClick: () =>
+                            onClick: blockMissingIndexModel(() =>
                               router.replace({
                                 query: {
                                   ...router.query,
@@ -309,6 +319,7 @@ const Header = ({
                                   source: ImportDataSourceEnum.imageDataset
                                 }
                               })
+                            )
                           }
                         ]
                       : []),
@@ -320,13 +331,13 @@ const Header = ({
                           {t('dataset:empty_collection')}
                         </Flex>
                       ),
-                      onClick: () => {
+                      onClick: blockMissingIndexModel(() => {
                         onOpenCreateVirtualFileModal({
                           defaultVal: '',
                           onSuccess: (name) =>
                             onCreateCollection({ name, type: DatasetCollectionTypeEnum.virtual })
                         });
-                      }
+                      })
                     }
                   ]
                 },
@@ -339,7 +350,7 @@ const Header = ({
                           {t('dataset:template_dataset')}
                         </Flex>
                       ),
-                      onClick: onOpenTemplateImportModal
+                      onClick: blockMissingIndexModel(onOpenTemplateImportModal)
                     },
                     {
                       label: (
@@ -348,7 +359,7 @@ const Header = ({
                           {t('dataset:backup_dataset')}
                         </Flex>
                       ),
-                      onClick: onOpenBackupImportModal
+                      onClick: blockMissingIndexModel(onOpenBackupImportModal)
                     }
                   ]
                 }
@@ -455,7 +466,7 @@ const Header = ({
                           {t('common:core.dataset.Text collection')}
                         </Flex>
                       ),
-                      onClick: () =>
+                      onClick: blockMissingIndexModel(() =>
                         router.replace({
                           query: {
                             ...router.query,
@@ -463,6 +474,7 @@ const Header = ({
                             source: ImportDataSourceEnum.externalFile
                           }
                         })
+                      )
                     }
                   ]
                 }
@@ -482,7 +494,7 @@ const Header = ({
                     bg={'primary.500'}
                     overflow={'hidden'}
                     color={'white'}
-                    onClick={() =>
+                    onClick={blockMissingIndexModel(() =>
                       router.replace({
                         query: {
                           ...router.query,
@@ -490,7 +502,7 @@ const Header = ({
                           source: ImportDataSourceEnum.apiDataset
                         }
                       })
-                    }
+                    )}
                   >
                     <Flex h={'20px'} alignItems={'center'}>
                       <MyIcon

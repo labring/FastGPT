@@ -1,5 +1,6 @@
+import { getChatGenerationStatuses } from '@fastgpt/service/core/chat/generationLease';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
-import { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatGenerateStatusEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps, type ApiResponseType } from '@fastgpt/next/type';
@@ -17,12 +18,14 @@ export async function handler(
   req: ApiRequestProps,
   _res: ApiResponseType
 ): Promise<GetHistoryStatusResponseType> {
-  const { sourceType, sourceId, chatIds, outLinkAuthData } = parseApiInput({
+  const { customUid, authProxy, sourceType, sourceId, chatIds, outLinkAuthData } = parseApiInput({
     req,
     bodySchema: GetHistoryStatusBodySchema
   }).body;
 
   const match = await buildChatHistoryMatch({
+    customUid,
+    authProxy,
     req,
     sourceType,
     sourceId,
@@ -43,14 +46,22 @@ export async function handler(
       chatId: { $in: chatIds },
       deleteTime: null
     },
-    'chatId updateTime chatGenerateStatus hasBeenRead'
+    'chatId updateTime hasBeenRead'
   ).lean();
+
+  // 读取异常必须上抛，避免轮询把未知状态覆盖成空闲；只查询权限过滤后的会话。
+  const generationStatuses = await getChatGenerationStatuses({
+    sourceType: sourceType ?? ChatSourceTypeEnum.app,
+    sourceId: String(match.appId),
+    chatIds: data.map((item) => item.chatId),
+    fallbackOnError: false
+  });
 
   return GetHistoryStatusResponseSchema.parse({
     list: data.map((item) => ({
       chatId: item.chatId,
       updateTime: item.updateTime,
-      chatGenerateStatus: item.chatGenerateStatus ?? ChatGenerateStatusEnum.done,
+      chatGenerateStatus: generationStatuses.get(item.chatId) ?? ChatGenerateStatusEnum.done,
       hasBeenRead: item.hasBeenRead
     }))
   });

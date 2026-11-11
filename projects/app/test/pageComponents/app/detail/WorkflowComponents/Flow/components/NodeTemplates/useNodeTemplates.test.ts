@@ -187,7 +187,7 @@ describe('useNodeTemplates parent type routing', () => {
     expect(getLatestPaginationParams()).toEqual({
       parentId: 'parent',
       searchKey: undefined,
-      type: [AppTypeEnum.folder, AppTypeEnum.simple, AppTypeEnum.workflow],
+      type: [AppTypeEnum.folder, AppTypeEnum.simple, AppTypeEnum.chatAgent, AppTypeEnum.workflow],
       parentType: undefined,
       excludeAppId: 'current-app'
     });

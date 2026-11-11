@@ -291,6 +291,81 @@ describe('team model writes', () => {
       expect(await readModelCatalogRevision(context)).toBe(1);
       expect(await readModelCatalogRevision({ scope: ModelScopeEnum.system })).toBe(0);
     });
+    it('validates, persists and clears team custom endpoints across create, update and template install', async () => {
+      const unsafeUrl = 'http://169.254.169.254/latest/meta-data';
+      await expect(
+        createModel({ ...owner, modelData: { ...draft, requestUrl: unsafeUrl } })
+      ).rejects.toThrow('requestUrl');
+
+      const templateModule = await import('@fastgpt/service/core/ai/model/template');
+      const templateSpy = vi
+        .spyOn(templateModule, 'refreshModelTemplates')
+        .mockResolvedValue([{ ...draft, requestUrl: unsafeUrl }]);
+      try {
+        await expect(
+          createModelsFromTemplates({
+            ...owner,
+            templates: [{ model: draft.model, type: draft.type }]
+          })
+        ).rejects.toThrow('requestUrl');
+      } finally {
+        templateSpy.mockRestore();
+      }
+      expect(await MongoAIModel.countDocuments({})).toBe(0);
+
+      const created = await createModel({
+        ...owner,
+        modelData: {
+          ...draft,
+          requestUrl: 'https://93.184.216.34/v1',
+          requestAuth: 'sk-team'
+        }
+      });
+      expect(await MongoAIModel.findById(created.modelId).lean()).toMatchObject({
+        requestUrl: 'https://93.184.216.34/v1',
+        requestAuth: 'sk-team'
+      });
+
+      await expect(
+        updateModel({
+          ...owner,
+          modelId: created.modelId,
+          modelData: { ...draft, requestUrl: unsafeUrl }
+        })
+      ).rejects.toThrow('requestUrl');
+
+      await updateModel({
+        ...owner,
+        modelId: created.modelId,
+        modelData: { ...draft, requestUrl: '', requestAuth: '' }
+      });
+      const stored = await MongoAIModel.findById(created.modelId).lean();
+      expect(stored?.requestUrl).toBeUndefined();
+      expect(stored?.requestAuth).toBeUndefined();
+    });
+    it('only validates missing templates when binding already installed team models', async () => {
+      const installed = await createModel({ ...owner, modelData: draft });
+      const second = { ...draft, model: 'second' };
+      const templateModule = await import('@fastgpt/service/core/ai/model/template');
+      const templateSpy = vi
+        .spyOn(templateModule, 'refreshModelTemplates')
+        .mockResolvedValue([
+          { ...draft, requestUrl: 'http://169.254.169.254/latest/meta-data' },
+          second
+        ]);
+      try {
+        const result = await createModelsFromTemplates({
+          ...owner,
+          templates: [draft, second].map(({ model, type }) => ({ model, type })),
+          channelIds: [1]
+        });
+        expect(result.models.map(({ model }) => model)).toEqual(['second']);
+        expect(proxy.append.mock.calls.map(([arg]) => arg.model)).toEqual(['custom', 'second']);
+        expect((await MongoAIModel.findById(installed.modelId).lean())?.requestUrl).toBeUndefined();
+      } finally {
+        templateSpy.mockRestore();
+      }
+    });
     it('keeps team model order isolated to the owning member', async () => {
       const ownFirst = await createModel({ ...owner, modelData: draft });
       const ownSecond = await createModel({

@@ -22,7 +22,8 @@ export type SkillLabelItemType = Partial<SelectedToolItemType> & {
   name: string;
   avatar?: string;
   flowNodeType: FlowNodeTypeEnum;
-  configStatus?: SelectedToolItemType['configStatus'];
+  /** 仅用于编辑器展示，由工具或内置能力的当前配置推导。 */
+  configStatus?: 'noConfig' | 'waitingForConfig' | 'configured' | 'invalid';
   tooltip?: string;
 };
 
@@ -33,7 +34,6 @@ function SkillLabelPlugin({
 }: {
   selectedSkills: SkillLabelItemType[];
   onClickSkill: (id: string, source?: string) => void;
-  onRemoveSkill: (id: string) => void;
   pendingSkillsRef: React.MutableRefObject<Map<string, SkillLabelItemType>>;
 }) {
   const [editor] = useLexicalComposerContext();

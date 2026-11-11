@@ -126,6 +126,14 @@ describe('appData2FlowNodeIO', () => {
     expect(result.outputs[1].key).toBe(NodeOutputKeyEnum.answerText);
   });
 
+  it('should omit chat history input and output when isChatAgent is true', () => {
+    const result = appData2FlowNodeIO({ isChatAgent: true });
+
+    expect(result.inputs.find((input) => input.key === NodeInputKeyEnum.history)).toBeUndefined();
+    expect(result.outputs).toHaveLength(1);
+    expect(result.outputs[0].key).toBe(NodeOutputKeyEnum.answerText);
+  });
+
   it('should preserve workflow variable descriptions without adding a tool default mode', () => {
     const result = appData2FlowNodeIO({
       chatConfig: {

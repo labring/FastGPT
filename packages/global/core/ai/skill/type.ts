@@ -1,3 +1,4 @@
+import { ChatIdSchema } from '../../chat/schema';
 import z from 'zod';
 import { BoolSchema, IntSchema } from '../../../common/zod';
 import {
@@ -173,7 +174,7 @@ export const SandboxInstanceSchema = z.object({
   sandboxId: z.string(),
   appId: z.string(),
   userId: z.string(),
-  chatId: z.string(),
+  chatId: ChatIdSchema,
   status: SandboxStatusSchema,
   lastActiveAt: z.coerce.date(),
   createdAt: z.coerce.date(),

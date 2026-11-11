@@ -75,7 +75,7 @@ cp .env.template .env.local
 - `VECTOR_MAX_PROCESS` : 向量生成最大进程（默认 `10`），按数据库与模型 Key 的并发能力调整，2c4g 服务器建议设置 10~15。
 - `QA_MAX_PROCESS` : QA 生成最大进程
 - `VLM_MAX_PROCESS` : 图片理解模型最大进程
-- `HNSW_EF_SEARCH` : 向量搜索参数，仅对 PG、OceanBase 和 openGauss 生效；数值越大搜索精度越高，相应检索延迟也会增加。
+- `HNSW_EF_SEARCH` : HNSW 向量检索搜索宽度（默认 `200`），对 PG、Milvus、OceanBase、SeekDB、openGauss 生效；数值越大通常召回率越高，相应检索耗时也会增加。
 
 ### 5. 运行
 

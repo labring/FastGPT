@@ -1,3 +1,4 @@
+import { ChatIdSchema } from '@fastgpt/global/core/chat/schema';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/next/type';
 import { buildSandboxClientQueryFromChatSource } from '@fastgpt/service/core/ai/sandbox/interface/runtime';
@@ -29,7 +30,7 @@ const SANDBOX_PREVIEW_SESSION_HEADER = 'x-sandbox-preview-session';
 
 const BaseSandboxTicketClaimsSchema = z.object({
   userId: z.string(),
-  chatId: z.string(),
+  chatId: ChatIdSchema,
   teamId: z.string(),
   channel: SandboxChannelSchema,
   permission: SandboxTicketPermissionSchema

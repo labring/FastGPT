@@ -1,3 +1,5 @@
+import { ChatIdSchema } from './schema';
+import { ChatPublishSourceSchema } from './publishSource/type';
 import { SearchDataResponseQuoteListItemSchema } from '../dataset/type';
 import {
   ChatFileTypeEnum,
@@ -100,14 +102,17 @@ export type SkillModuleResponseItemType = z.infer<typeof SkillModuleResponseItem
 export const ChatSummarySchema = z
   .object({
     llmInputTokens: NumSchema.default(0).meta({ description: '会话累计 LLM 输入 token 数' }),
-    llmOutputTokens: NumSchema.default(0).meta({ description: '会话累计 LLM 输出 token 数' })
+    llmOutputTokens: NumSchema.default(0).meta({ description: '会话累计 LLM 输出 token 数' }),
+    hasAgentSandbox: BoolSchema.optional().meta({
+      description: '服务端记录的会话运行期 Agent Sandbox 启用标记'
+    })
   })
   .default({ llmInputTokens: 0, llmOutputTokens: 0 });
 export type ChatSummaryType = z.infer<typeof ChatSummarySchema>;
 
 export const ChatSchema = z.object({
   _id: ObjectIdSchema,
-  chatId: z.string(),
+  chatId: ChatIdSchema,
   userId: ObjectIdSchema,
   teamId: ObjectIdSchema,
   tmbId: ObjectIdSchema,
@@ -123,10 +128,19 @@ export const ChatSchema = z.object({
   title: z.string(),
   customTitle: z.string().optional(),
   top: z.boolean().default(false),
-  source: z.enum(ChatSourceEnum),
-  sourceName: z.string().optional(),
-
-  shareId: z.string().optional(),
+  publishSource: ChatPublishSourceSchema.optional(),
+  source: z.enum(ChatSourceEnum).meta({
+    deprecated: true,
+    description: '旧调用渠道类型，仅作兼容；使用 publishSource.type'
+  }),
+  sourceName: z.string().optional().meta({
+    deprecated: true,
+    description: '旧渠道名称，仅用于兼容及历史名称回退；日志展示使用扩展的 publishSource.name'
+  }),
+  shareId: z.string().optional().meta({
+    deprecated: true,
+    description: '旧分享渠道标识，仅保留历史数据及迁移读取；当前渠道关联使用 publishSource.id'
+  }),
   outLinkUid: z.string().optional(),
 
   variableList: z.array(VariableItemTypeSchema).optional(),
@@ -145,11 +159,6 @@ export const ChatSchema = z.object({
   /** 会话累计的 LLM token 摘要，不包含 embedding/rerank 等非 LLM token。 */
   summary: ChatSummarySchema,
 
-  /** 旧数据可能无此字段；业务上按 done 处理 */
-  chatGenerateStatus: z
-    .enum(ChatGenerateStatusEnum)
-    .default(ChatGenerateStatusEnum.done)
-    .meta({ description: '生成状态' }),
   hasBeenRead: z.boolean().default(true),
 
   deleteTime: z.coerce.date().nullish()
@@ -323,7 +332,7 @@ export type ChatItemObjItemType = z.infer<typeof ChatItemObjItemSchema>;
 export const ChatItemDBSchema = ChatItemObjItemSchema.and(
   z.object({
     dataId: z.string(),
-    chatId: z.string(),
+    chatId: ChatIdSchema,
     userId: z.string(),
     teamId: z.string(),
     tmbId: z.string(),
@@ -347,7 +356,7 @@ export const ChatItemResponseSchema = z.object({
   teamId: z.string(),
   sourceType: z.enum(ChatSourceTypeEnum).default(ChatSourceTypeEnum.app),
   appId: z.string(),
-  chatId: z.string(),
+  chatId: ChatIdSchema,
   chatItemDataId: z.string(),
   time: z.coerce.date().optional(),
   data: ChatHistoryItemResSchema
@@ -364,7 +373,7 @@ export type ChatAppListSchemaType = z.infer<typeof ChatAppListSchema>;
 
 /* ---------- history ------------- */
 export const HistoryItemSchema = z.object({
-  chatId: z.string(),
+  chatId: ChatIdSchema,
   updateTime: z.coerce.date(),
   customTitle: z.string().optional(),
   title: z.string()

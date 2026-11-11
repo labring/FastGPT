@@ -18,6 +18,8 @@ import { buildChatSourceQuery } from '@fastgpt/service/core/chat/source';
 
 async function handler(req: ApiRequestProps): Promise<GetQuoteResponseType> {
   const {
+    customUid,
+    authProxy,
     sourceType,
     sourceId,
     chatId,
@@ -28,6 +30,8 @@ async function handler(req: ApiRequestProps): Promise<GetQuoteResponseType> {
   } = parseApiInput({ req, bodySchema: GetQuoteBodySchema }).body;
 
   const authRes = await authChatTargetCrud({
+    customUid,
+    authProxy,
     req,
     authToken: true,
     authApiKey: true,

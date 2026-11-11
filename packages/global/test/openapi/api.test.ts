@@ -119,7 +119,12 @@ describe('shared API schemas', () => {
         io: 'input',
         opts: openApiDocumentOptions
       });
-      expect(document).toMatchObject({
+      // 日志把身份选择与分页相交，其他接口直接展示分页；两种结构都必须保留默认值。
+      const pagination =
+        document.allOf?.find((part) =>
+          part.anyOf?.every((branch) => branch.properties?.pageSize)
+        ) ?? document;
+      expect(pagination).toMatchObject({
         anyOf: [
           { properties: { pageSize: { default: pageSize } } },
           { properties: { pageSize: { default: pageSize } } }
@@ -261,12 +266,12 @@ describe('exclusive pagination', () => {
     expect(document.anyOf?.[0]).toMatchObject({
       title: '按偏移量获取',
       required: ['offset'],
-      properties: { offset: { example: 0 } }
+      properties: { offset: { example: 0, 'x-fastgpt-union-parameter': true } }
     });
     expect(document.anyOf?.[0]).not.toHaveProperty('properties.pageNum');
     expect(document.anyOf?.[1]).toMatchObject({
       title: '按页码获取',
-      properties: { pageNum: { default: 1 } }
+      properties: { pageNum: { default: 1, 'x-fastgpt-union-parameter': true } }
     });
     expect(document.anyOf?.[1]).not.toHaveProperty('properties.offset');
   });

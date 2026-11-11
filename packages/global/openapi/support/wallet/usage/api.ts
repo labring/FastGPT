@@ -1,6 +1,6 @@
 import z from 'zod';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
-import { IntSchema, NumSchema } from '../../../../common/zod';
+import { DateSchema, IntSchema, NumSchema } from '../../../../common/zod';
 import { UsageSourceEnum } from '../../../../support/wallet/usage/constants';
 import { SourceMemberSchema } from '../../../../support/user/type';
 import { PaginationResponseSchema, createPaginationSchema } from '../../../api';
@@ -13,17 +13,15 @@ import { PaginationResponseSchema, createPaginationSchema } from '../../../api';
  * Tags: ['使用记录']
  * ============================================================================ */
 
-const UsageDateSchema = z.string().datetime({ offset: true });
-
 const UsageFilterSchema = z
   .object({
-    dateStart: UsageDateSchema.optional().meta({
+    dateStart: DateSchema.optional().meta({
       example: '2026-01-01T00:00:00+08:00',
-      description: '查询开始时间'
+      description: '查询开始时间（包含），按自带偏移解释；无偏移时按服务器时区'
     }),
-    dateEnd: UsageDateSchema.optional().meta({
+    dateEnd: DateSchema.optional().meta({
       example: '2026-01-08T00:00:00+08:00',
-      description: '查询结束时间'
+      description: '查询结束时间（包含），按自带偏移解释；无偏移时按服务器时区'
     }),
     sources: z
       .array(z.enum(UsageSourceEnum))
@@ -92,13 +90,13 @@ export const GetUsageResponseSchema = PaginationResponseSchema(UsageListItemSche
 export type GetUsageResponseType = z.infer<typeof GetUsageResponseSchema>;
 
 export const GetUsageDashboardBodySchema = UsageFilterSchema.extend({
-  dateStart: UsageDateSchema.meta({
+  dateStart: DateSchema.meta({
     example: '2026-01-01T00:00:00+08:00',
-    description: '统计开始时间'
+    description: '统计开始时间（包含），按自带偏移解释；无偏移时按服务器时区'
   }),
-  dateEnd: UsageDateSchema.meta({
+  dateEnd: DateSchema.meta({
     example: '2026-01-08T00:00:00+08:00',
-    description: '统计结束时间'
+    description: '统计结束时间（包含），按自带偏移解释；无偏移时按服务器时区'
   }),
   unit: z.enum(['day', 'month']).meta({ example: 'day', description: '统计粒度' })
 }).meta({ description: '使用趋势统计参数' });
@@ -116,13 +114,13 @@ export const GetUsageDashboardResponseSchema = z.array(GetUsageDashboardResponse
 export type GetUsageDashboardResponseType = z.infer<typeof GetUsageDashboardResponseSchema>;
 
 export const ExportUsageBodySchema = UsageFilterSchema.extend({
-  dateStart: UsageDateSchema.meta({
+  dateStart: DateSchema.meta({
     example: '2026-01-01T00:00:00+08:00',
-    description: '导出开始时间'
+    description: '导出开始时间（包含），按自带偏移解释；无偏移时按服务器时区'
   }),
-  dateEnd: UsageDateSchema.meta({
+  dateEnd: DateSchema.meta({
     example: '2026-01-08T00:00:00+08:00',
-    description: '导出结束时间'
+    description: '导出结束时间（包含），按自带偏移解释；无偏移时按服务器时区'
   }),
   appNameMap: z.record(z.string(), z.string()).meta({
     example: { 'core.app.Question Guide': '问题引导' },

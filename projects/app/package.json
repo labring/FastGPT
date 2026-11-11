@@ -1,6 +1,6 @@
 {
   "name": "@fastgpt/app",
-  "version": "4.17.3",
+  "version": "4.18.0.1",
   "private": false,
   "browserslist": [
     "Chrome >= 80",
@@ -100,6 +100,7 @@
     "nodemailer": "catalog:",
     "nprogress": "^0.2.0",
     "p-limit": "^7.2.0",
+    "pg": "^8.10.0",
     "qrcode": "^1.5.4",
     "react": "catalog:",
     "react-dom": "catalog:",
@@ -140,6 +141,7 @@
     "@types/lodash-es": "catalog:",
     "@types/node": "catalog:",
     "@types/nprogress": "^0.2.0",
+    "@types/pg": "^8.6.6",
     "@types/qrcode": "^1.5.5",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",

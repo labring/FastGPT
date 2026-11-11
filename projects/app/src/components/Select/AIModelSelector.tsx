@@ -1,4 +1,5 @@
 import React from 'react';
+import DeprecationTag from '@/components/core/ai/DeprecationTag';
 import MultimodalTag from '@/components/core/ai/MultimodelTag';
 import TestModeBetaTag from '@/components/core/ai/TestModeBetaTag';
 import { useModelList } from '@/web/core/ai/model/useModelList';
@@ -25,10 +26,9 @@ import {
   resolveModelSelectorDisabled,
   resolveModelSelectorProviders,
   resolveModelSelectorSelection,
+  shouldShowTestModeTag,
   sortModelSelectorModels
 } from './AIModelSelector.utils';
-import { useContextSelector } from 'use-context-selector';
-import { AppContext } from '@/pageComponents/app/detail/context';
 import { ModelStatusLabel } from './ModelStatusLabel';
 
 type Props = Omit<SelectProps, 'list'> & {
@@ -100,12 +100,13 @@ const ModelLabel = ({
       </Flex>
       {showTags && (
         <Flex alignItems={'center'} gap={1} ml={2} flexShrink={0}>
+          {isSystem && model.isUpcomingDeprecation === true && <DeprecationTag size={'sm'} />}
           {isSystem && enableTeamModel && (
             <MyTag type={'borderFill'} colorSchema={'gray'} fontSize={'xs'} px={1.5} py={0.5}>
               {t('common:model.system_model_tag')}
             </MyTag>
           )}
-          {model.testMode && <TestModeBetaTag />}
+          {shouldShowTestModeTag(model) && <TestModeBetaTag />}
           {multimodalEmbedding && <MultimodalTag />}
         </Flex>
       )}
@@ -132,8 +133,6 @@ const AIModelSelector = ({
 }: Props) => {
   const { t, i18n } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
-  const contextAppId = useContextSelector(AppContext, (e) => e?.appId);
-  const effectiveAppId = appId ?? (contextAppId || undefined);
 
   const {
     modelList,
@@ -160,7 +159,7 @@ const AIModelSelector = ({
   const currentValue = isEmptyModelValue(props.value) ? '' : String(props.value);
   const detailState = useModelSummary({
     modelId: currentValue,
-    appId: effectiveAppId,
+    appId,
     outLinkAuthData
   });
 
@@ -198,16 +197,16 @@ const AIModelSelector = ({
       return;
     }
     if (!currentValue) return;
-    const key = JSON.stringify([catalogVersion, currentValue, effectiveAppId]);
+    const key = JSON.stringify([catalogVersion, currentValue, appId]);
     if (checkedCatalogRef.current === key) return;
     checkedCatalogRef.current = key;
     const currentModel = modelList.find((model) => model.modelId === currentValue);
     if (currentModel) setFromCatalog(currentModel);
   }, [
+    appId,
     catalogError,
     catalogVersion,
     currentValue,
-    effectiveAppId,
     setFromCatalog,
     isOpen,
     loading,
@@ -273,6 +272,9 @@ const AIModelSelector = ({
           error={detailState.error}
           emptyLabel={canBeUnset ? unsetLabel : placeholder}
           avatarSize={avatarSize}
+          showUpcomingDeprecationTag
+          hideUpcomingDeprecationTagWhenDisabled
+          disabledLabel={(name) => t('common:model_disabled_prefix', { model: name })}
         />
       }
       list={loading || catalogError ? [] : selectorList}
@@ -318,12 +320,12 @@ const AIModelSelector = ({
         onChange?.(value);
       }}
       ButtonProps={{
+        size: 'md',
         ...props,
         isDisabled: resolveModelSelectorDisabled({
           isDisabled: props.isDisabled,
           disableTip
         }),
-        h: '40px',
         whiteSpace: 'nowrap'
       }}
     />

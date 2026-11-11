@@ -3,14 +3,19 @@ import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { isSystemOrCommercialToolId } from '@fastgpt/global/core/app/tool/utils';
+import { StoreSecretValueTypeSchema } from '@fastgpt/global/common/secret/type';
+import { HttpToolSetRuntimeConfigSchema } from '@fastgpt/global/core/workflow/type/node';
 import { MongoApp } from './schema';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { getClientToolPreviewNode } from './tool/utils/client';
-import { formatToolInputSecrets } from './tool/secretConfig';
+import { formatToolConfigHeaderSecrets, formatToolInputSecrets } from './tool/secretConfig';
+import { storeSecretValue } from '../../common/secret/utils';
 import { MongoEvaluation } from './evaluation/evalSchema';
 import { removeEvaluationJob } from './evaluation/mq';
 import { MongoOutLink } from '../../support/outLink/schema';
 import { MongoOpenApi } from '../../support/openapi/schema';
+import { getOpenApiTypeFilter, getOpenApiAppIdFilter } from '../../support/openapi/utils';
+import { ApiKeyTypeEnum } from '@fastgpt/global/support/openapi/constants';
 import { MongoAppVersion } from './version/schema';
 import { MongoChatInputGuide } from '../chat/inputGuide/schema';
 import { MongoChatFavouriteApp } from '../chat/favouriteApp/schema';
@@ -28,13 +33,13 @@ import { type ClientSession } from '../../common/mongo';
 import { getLogger, LogCategories } from '../../common/logger';
 import { deleteAppSandboxes } from '../ai/sandbox/interface/resource/sourceCleanup';
 import { MongoSystemTool } from '../plugin/tool/systemToolSchema';
-import { StoredSelectedDatasetSchema } from '@fastgpt/global/core/workflow/type/io';
 import {
   StoredSelectedAgentSkillItemTypeSchema,
   type AppFormEditFormType
 } from '@fastgpt/global/core/app/formEdit/type';
 import z from 'zod';
 import { nodeInputIsReference } from '@fastgpt/global/common/workflow/reference';
+import { normalizeDatasetSelectValue } from '@fastgpt/global/common/workflow/input';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { deleteChatResourcesBySource } from '../chat/delete';
 
@@ -45,7 +50,7 @@ const logger = getLogger(LogCategories.MODULE.APP.FOLDER);
  * 主要职责：
  * 1. 知识库：仅保存 datasetId，展示信息由应用详情接口实时补全。
  * 2. Skill: 移除编辑态状态并保留展示快照（skillId, avatar, name, description）。
- * 3. 密钥输入：清理敏感信息。
+ * 3. 密钥输入与 MCP/HTTP 工具集鉴权：使用服务级密钥加密。
  */
 export const beforeUpdateAppFormat = async ({
   nodes,
@@ -61,19 +66,44 @@ export const beforeUpdateAppFormat = async ({
    * 引用模式由调用处判断并跳过，避免把 [nodeId, key] 误压缩成空数组。
    * 未配置的草稿节点按空数组保存，仍由发布/运行前的工作流校验提示必填。
    * 兼容历史单选格式 { datasetId }，避免旧应用再次保存时丢失知识库配置。
+   * 过滤无效项，避免旧引用值或导入脏数据阻断保存；不展开嵌套数组猜测其业务语义。
    */
   const formatDatasetSelectValue = (value: unknown) => {
-    if (value === undefined || value === null) return [];
-
-    const datasetReferenceSchema = StoredSelectedDatasetSchema.pick({ datasetId: true });
-    const datasets = z
-      .union([datasetReferenceSchema, z.array(datasetReferenceSchema)])
-      .parse(value);
-
-    return Array.isArray(datasets) ? datasets : [datasets];
+    return normalizeDatasetSelectValue(value).map(({ datasetId }) => ({ datasetId }));
   };
 
   nodes.forEach((node) => {
+    const mcpToolSet = node.toolConfig?.mcpToolSet;
+    if (
+      mcpToolSet &&
+      'url' in mcpToolSet &&
+      mcpToolSet.headerSecret !== null &&
+      mcpToolSet.headerSecret !== undefined
+    ) {
+      mcpToolSet.headerSecret = storeSecretValue(mcpToolSet.headerSecret);
+    }
+    const httpToolSet = node.toolConfig?.httpToolSet;
+    if (httpToolSet && !('toolId' in httpToolSet)) {
+      const headerSecret = StoreSecretValueTypeSchema.safeParse(httpToolSet.headerSecret);
+      if (headerSecret.success) {
+        Object.assign(httpToolSet, { headerSecret: storeSecretValue(headerSecret.data) });
+      }
+
+      const runtimeToolSet = HttpToolSetRuntimeConfigSchema.safeParse(httpToolSet);
+      if (runtimeToolSet.success) {
+        const toolList = runtimeToolSet.data.toolList.map((tool, index) => {
+          if (tool.headerSecret === undefined || tool.headerSecret === null) {
+            return httpToolSet.toolList[index];
+          }
+          return {
+            ...httpToolSet.toolList[index],
+            headerSecret: storeSecretValue(tool.headerSecret)
+          };
+        });
+        Object.assign(httpToolSet, { toolList });
+      }
+    }
+
     const isDatasetNode =
       node.flowNodeType === FlowNodeTypeEnum.datasetSearchNode ||
       node.flowNodeType === FlowNodeTypeEnum.agent;
@@ -119,6 +149,8 @@ export const beforeUpdateAppFormat = async ({
 
       await Promise.all(
         selectedToolsInput.value.map(async (selectedTool: any) => {
+          // 即使工具预览不可用，已确认的鉴权容器也不能保存明文。
+          formatToolConfigHeaderSecrets(selectedTool?.toolConfig);
           if (!selectedTool?.id || !selectedTool.config) return;
 
           try {
@@ -251,8 +283,6 @@ export const deleteAppDataProcessor = async ({
   await cleanupAppDirectRefs({ teamId, appIds: [appId] });
 
   {
-    // 旧应用 APIKey 保留为系统 APIKey，仅移除 deprecated appId 兼容字段。
-    await MongoOpenApi.updateMany({ appId }, { $unset: { appId: '' } });
     // 删除应用版本
     await MongoAppVersion.deleteMany({ appId });
     // 删除聊天输入引导
@@ -288,6 +318,11 @@ export const cleanupAppDirectRefs = async ({
 }) => {
   if (appIds.length === 0) return;
 
+  // 应用凭证随绑定应用删除，不能解除绑定后提升为个人凭证。
+  await MongoOpenApi.deleteMany(
+    { teamId, ...getOpenApiTypeFilter(ApiKeyTypeEnum.app), appId: getOpenApiAppIdFilter(appIds) },
+    { session }
+  );
   // 删除分享链接
   await MongoOutLink.deleteMany({ teamId, appId: { $in: appIds } }, { session });
   // 删除精选应用记录

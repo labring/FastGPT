@@ -50,6 +50,7 @@ export async function searchDatasetData(
     usingReRank: inputUsingReRank = false,
     rerankModel,
     rerankWeight = 0.5,
+    rerankCandidateNum,
     datasetIds = [],
     collectionFilterMatch,
     readableCollectionIdList
@@ -114,7 +115,12 @@ export async function searchDatasetData(
   const textRecallResults = concatWeightedRecallLists([
     { weight: embeddingWeight, list: textEmbeddingRecallResults },
     { weight: 1 - embeddingWeight, list: textFullTextRecallResults }
-  ]);
+  ]).map((item, index) => ({
+    ...item,
+    // 记录候选在“重排前文本召回序列”中的位置（0 起步）。重排会改变顺序，调用方需要
+    // 该字段对比召回与重排；retrievalResults 快照与最终 quoteList 都复用这里的对象。
+    retrievalRank: index
+  }));
   const imageCaptionRecallResults = concatWeightedRecallLists([
     { weight: embeddingWeight, list: imageCaptionEmbeddingRecallResults },
     { weight: 1 - embeddingWeight, list: imageCaptionFullTextRecallResults }
@@ -140,7 +146,8 @@ export async function searchDatasetData(
     textRecallResults,
     rerankModel,
     query: reRankQuery,
-    rerankWeight
+    rerankWeight,
+    rerankCandidateNum
   });
 
   const hasTextQuery = textQueries.some((item) => item.trim());

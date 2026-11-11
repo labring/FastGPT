@@ -5,21 +5,42 @@ description: "Create application API keys and invoke published FastGPT applicati
 
 import { Alert } from '@/components/docs/Alert';
 
-In FastGPT, the **API Request** entry under Publishing Channels shows **API Keys** available to the current signed-in member. API Keys serve as member credentials for OpenAPI calls and are managed at the member level.
+**App keys require FastGPT 4.18.0 or later.** Under **Publishing Channels → API Access**, switch between **App keys** and **Personal keys**:
 
-When calling this app through `chat/completions`, passing `appId` in the request body is recommended. If a third-party app only supports OpenAI SDK-style key configuration, you can use the `apiKey-appId` compatibility format. For details, [see the OpenAPI Introduction](/en/openapi/intro).
+- **App key**: bound to the current app for its chat and chat management endpoints. App administrators can view, create, and manage all keys on the app, including keys created by other administrators. Authorization comes from the key itself independently of its owning member's app permissions.
+- **Personal key**: accesses supported OpenAPI endpoints as the current member. Permissions follow that member's team and resource access, and members view and manage their own keys.
+
+With an app key, omit `appId` and `sourceType` on supported chat endpoints; the server uses the bound app and fixes `sourceType` to `app` even when a request supplies `appId` or an `apiKey-appId` suffix. With a personal key, pass `body.appId` to `chat/completions` whenever possible, or use the `apiKey-appId` compatibility format.
+
+When listing sessions, an app key queries API-source sessions for the bound app. See the [OpenAPI Introduction](/en/openapi/intro) for pagination parameters and a request example.
 
 ![API channel: APIKey list and New action](/imgs/optimized/current/publish-api.png.webp)
 
-The APIKey list is empty in this example. The displayed service root ends in `/api`; an OpenAI-compatible SDK uses `/api/v1` as described below.
+The APIKey list is empty in this example. The displayed service root ends in `/api`; an OpenAI-compatible SDK uses `/api/v1` or `/api/v2` as described below.
+
+## Connect your user system
+
+**Requires FastGPT 4.18.0 or later.**
+
+Keep the API key on your backend. After authenticating a user, pass your user ID as `customUid`. This example uses an app key and omits `appId`:
+
+```json
+{
+  "customUid": "customer-42",
+  "messages": [{ "role": "user", "content": "Hello" }]
+}
+```
+
+`customUid` accepts up to `1,024` characters. FastGPT forwards the value unchanged to the Workflow's `userId` and records it as the user in chat logs. An omitted, `null`, or empty value uses the default member identity while keeping the API key's authenticated member and scope unchanged. Personal keys support `authProxy`, which is mutually exclusive with `customUid` (providing both returns a parameter error); app keys identify external users via `customUid`.
+
+Chat logs display the user by default. Enable the hidden **Authorizer** column in column settings to view the authenticated member; CSV exports follow your selected columns. Your backend remains responsible for user authentication and session access control.
 
 ## Get an API Key
 
-Go to App -> **Publishing Channels** -> **API Request**, then click **New** in the upper-right corner and create a key in the **Create New Key** dialog.
+Go to App -> **Publishing Channels** -> **API Access**, select the key type, and click **New** in the upper-right corner. Creating an app key requires app administrator permissions on the app; personal keys follow the team's **Create API Keys** permission setting.
 
 <Alert icon="⚠️" context="warning">
-  An API Key represents the current signed-in member's OpenAPI credential. Keep your key safe. To
-  copy it again later, use the copy button in the API list.
+  Keep keys on your backend, away from browsers and client apps. To copy a key again later, use the copy button in the API list.
 </Alert>
 
 <Alert icon="🍅" context="success">
@@ -32,7 +53,7 @@ OpenAI-compatible clients use your instance URL plus `/api/v1` as the SDK base U
 
 ```text
 Base URL: https://YOUR_FASTGPT_HOST/api/v1
-API key: YOUR_API_KEY-YOUR_APP_ID
+API key: YOUR_APP_API_KEY (use an app key as-is; for a personal key, pass appId in the request body or use YOUR_PERSONAL_KEY-YOUR_APP_ID)
 ```
 
 Some clients expect a service origin and append `/api/v1` themselves. Follow that client’s version-specific configuration and inspect the final request URL. Test a short message and confirm the published application answers; credentials stay in a trusted server-side configuration.

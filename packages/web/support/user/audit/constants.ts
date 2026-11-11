@@ -1,3 +1,4 @@
+import type { ApiKeyAuditParams } from '@fastgpt/global/support/openapi/schema';
 import { AuditEventEnum, AdminAuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 
@@ -138,6 +139,18 @@ export const adminAuditLogMap = {
 };
 
 export const auditLogMap = {
+  [AuditEventEnum.EXPORT_AUDIT_LOGS]: {
+    content: i18nT('account_team:log_export_audit_logs'),
+    typeLabel: i18nT('account_team:export_audit_logs'),
+    params: {} as {
+      name?: string;
+      dateStart: string;
+      dateEnd: string;
+      tmbIds: string;
+      events: string;
+      total: string;
+    }
+  },
   //Team
   [AuditEventEnum.LOGIN]: {
     content: i18nT('account_team:log_login'),
@@ -682,22 +695,22 @@ export const auditLogMap = {
   [AuditEventEnum.CREATE_API_KEY]: {
     content: i18nT('account_team:log_create_api_key'),
     typeLabel: i18nT('account_team:create_api_key'),
-    params: {} as { name?: string; keyName: string }
+    params: {} as ApiKeyAuditParams
   },
   [AuditEventEnum.UPDATE_API_KEY]: {
     content: i18nT('account_team:log_update_api_key'),
     typeLabel: i18nT('account_team:update_api_key'),
-    params: {} as { name?: string; keyName: string }
+    params: {} as ApiKeyAuditParams
   },
   [AuditEventEnum.COPY_API_KEY]: {
     content: i18nT('account_team:log_copy_api_key'),
     typeLabel: i18nT('account_team:copy_api_key'),
-    params: {} as { name?: string; keyName: string }
+    params: {} as ApiKeyAuditParams
   },
   [AuditEventEnum.DELETE_API_KEY]: {
     content: i18nT('account_team:log_delete_api_key'),
     typeLabel: i18nT('account_team:delete_api_key'),
-    params: {} as { name?: string; keyName: string }
+    params: {} as ApiKeyAuditParams
   },
   //Agent Skills
   [AuditEventEnum.CREATE_SKILL]: {

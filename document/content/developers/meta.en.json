@@ -8,6 +8,7 @@
     "../openapi/identity-proxy",
     "../openapi/interactive-and-variables",
     "---Integration Tasks---",
+    "../openapi/best-practices",
     "../openapi/app",
     "../openapi/chat",
     "../openapi/dataset",

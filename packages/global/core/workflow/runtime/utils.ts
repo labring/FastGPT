@@ -267,7 +267,24 @@ export const storeEdges2RuntimeEdges = (
   if (lastInteractive) {
     const memoryEdges = lastInteractive.memoryEdges || [];
     if (memoryEdges && memoryEdges.length > 0) {
-      return memoryEdges.map((edge) => ({ ...edge }));
+      const runtimeEdges = memoryEdges.map((edge) => ({ ...edge }));
+      // 工具集父边属于持久化图结构，暂停快照只保存展开后的子工具边。
+      edges?.forEach((edge) => {
+        if (
+          edge.sourceHandle === NodeOutputKeyEnum.selectedTools &&
+          edge.targetHandle === NodeOutputKeyEnum.selectedTools &&
+          !runtimeEdges.some(
+            (runtimeEdge) =>
+              runtimeEdge.source === edge.source &&
+              runtimeEdge.sourceHandle === edge.sourceHandle &&
+              runtimeEdge.target === edge.target &&
+              runtimeEdge.targetHandle === edge.targetHandle
+          )
+        ) {
+          runtimeEdges.push({ ...edge, status: 'waiting' });
+        }
+      });
+      return runtimeEdges;
     }
   }
 
@@ -472,7 +489,7 @@ export const appendWorkflowInteractiveValue = ({
 }) => {
   const latest = extractDeepestInteractive(interactive);
   if (isAskInteractive(latest)) {
-    const existing = values.find((value) => {
+    const existingIndex = values.findIndex((value) => {
       if (value.displayOnly || !value.interactive) return false;
       const current = extractDeepestInteractive(value.interactive);
       return isAgentAskInteractive(latest)
@@ -482,8 +499,12 @@ export const appendWorkflowInteractiveValue = ({
         : current?.type === 'workflowBuilderPreview' &&
             current.params.toolCallId === latest.params.toolCallId;
     });
-    if (existing) {
-      existing.interactive = interactive;
+    if (existingIndex !== -1) {
+      // 避免原地修改被子流程 nodeOutputs（如 history 输出）共享引用的 item，防止形成循环引用
+      values[existingIndex] = {
+        ...values[existingIndex],
+        interactive
+      };
       return;
     }
   }

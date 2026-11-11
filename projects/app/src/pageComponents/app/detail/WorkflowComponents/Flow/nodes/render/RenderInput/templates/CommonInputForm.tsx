@@ -120,6 +120,7 @@ const CommonInputForm = ({ item, nodeId }: RenderInputProps) => {
       inputType={inputType}
       value={item.value}
       onChange={handleChange}
+      appId={appDetail._id}
       variables={[...(editorVariables || []), ...(externalVariables || [])]}
       variableLabels={editorVariables}
       ExtensionPopover={canOptimizePrompt ? [OptimizerPopverComponent] : undefined}

@@ -1,3 +1,4 @@
+import { ChatIdSchema } from '../../../../core/chat/schema';
 import z from 'zod';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
 import {
@@ -152,32 +153,31 @@ export type DeleteDatasetDataIndexResponse = z.infer<typeof DeleteDatasetDataInd
  * API: 获取引用数据
  * Route: POST /api/core/dataset/data/getQuoteData
  * ============================================================================ */
-export const GetQuoteDataBodyRawSchema = createOptionalOutLinkChatTargetInputSchema({
-  id: ObjectIdSchema.meta({
-    example: '68ad85a7463006c963799a05',
-    description: '数据 ID'
-  }),
-  chatId: z.string().optional().meta({
-    example: '68ad85a7463006c963799a11',
-    description: '对话 ID（对话模式必填）'
-  }),
-  chatItemDataId: z.string().optional().meta({
-    example: '68ad85a7463006c963799a12',
-    description: '对话条目数据 ID（对话模式必填）'
-  })
-}).refine(
+export const GetQuoteDataBodyRawSchema = createOptionalOutLinkChatTargetInputSchema(
+  {
+    id: ObjectIdSchema.meta({
+      example: '68ad85a7463006c963799a05',
+      description: '数据 ID'
+    }),
+    chatId: ChatIdSchema.min(1).optional().meta({
+      example: '68ad85a7463006c963799a11',
+      description: '对话 ID（对话模式必填）'
+    }),
+    chatItemDataId: z.string().min(1).optional().meta({
+      example: '68ad85a7463006c963799a12',
+      description: '对话条目数据 ID（对话模式必填）'
+    })
+  },
+  { requiredIdentityFields: ['chatId', 'chatItemDataId'] }
+).refine(
   (d) =>
-    (!!d.chatId &&
-      (!!d.appId ||
-        !!d.skillId ||
-        !!(d.outLinkAuthData?.shareId && d.outLinkAuthData?.outLinkUid)) &&
-      !!d.chatItemDataId) ||
+    (!!d.chatId && !!d.chatItemDataId) ||
     (!d.chatId &&
       !d.appId &&
       !d.skillId &&
       !(d.outLinkAuthData?.shareId || d.outLinkAuthData?.outLinkUid) &&
       !d.chatItemDataId),
-  { message: '对话模式下 chat target / chatId / chatItemDataId 必须同时提供' }
+  { message: '对话模式下 chatId / chatItemDataId 必须同时提供；个人密钥和登录态还需 appId' }
 );
 export const GetQuoteDataBodySchema = GetQuoteDataBodyRawSchema.transform(
   transformOptionalChatAuthTargetInput

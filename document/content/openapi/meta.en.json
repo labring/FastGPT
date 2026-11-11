@@ -3,6 +3,7 @@
   "title": "OpenAPI Documentation",
   "pages": [
     "intro",
+    "best-practices",
     "interactive-and-variables",
     "app",
     "chat",

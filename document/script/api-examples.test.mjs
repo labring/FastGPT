@@ -8,8 +8,8 @@ for (const suffix of ['.mdx', '.en.mdx']) {
     test(`${topic}${suffix} curl examples emit valid request JSON`, () => {
       const source = fs.readFileSync(new URL(`../content/openapi/${topic}${suffix}`, import.meta.url), 'utf8');
       const blocks = [...source.matchAll(/```bash\n([\s\S]*?)\n```/g)].map((match) => match[1]);
-      assert.equal(blocks.length, topic === 'intro' ? 1 : 2);
-      for (const block of blocks) {
+      assert.equal(blocks.length, 2);
+      for (const [index, block] of blocks.entries()) {
         // Replace curl before execution so examples never make a network request.
         const result = spawnSync('bash', ['-c', `curl() { cat; }\n${block}`], {
           encoding: 'utf8',
@@ -18,9 +18,15 @@ for (const suffix of ['.mdx', '.en.mdx']) {
         assert.equal(result.status, 0, result.stderr);
         const body = JSON.parse(result.stdout);
         if (topic === 'intro') {
-          assert.equal(body.appId, 'YOUR_APP_ID');
-          assert.equal(body.stream, false);
-          assert.equal(body.messages[0].role, 'user');
+          if (index === 0) {
+            assert.equal(body.appId, 'YOUR_APP_ID');
+            assert.equal(body.stream, false);
+            assert.equal(body.messages[0].role, 'user');
+          } else {
+            assert.equal(body.offset, 0);
+            assert.equal(body.pageSize, 20);
+            assert.equal(body.appId, undefined);
+          }
         } else {
           assert.ok(body.datasetId);
           assert.equal(typeof body.text, 'string');

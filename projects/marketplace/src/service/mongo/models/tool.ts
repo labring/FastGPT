@@ -5,6 +5,7 @@ import {
   MarketplaceOfficialSource,
   MarketplacePkgSourceSchema
 } from '@fastgpt/global/openapi/core/plugin/marketplace/api';
+import { LanguageSchema } from '@fastgpt/global/common/i18n/type';
 
 export const MarketplaceToolIndexZodSchema = z.object({
   type: z.literal('tool'),
@@ -24,6 +25,7 @@ export const MarketplaceToolManifestZodSchema = MarketplaceToolIndexZodSchema.ex
   downloadObjectKey: z.string(),
   downloadUrl: z.string(),
   readmeUrl: z.string().optional(),
+  readmeUrls: z.partialRecord(LanguageSchema, z.string()).optional(),
   source: MarketplacePkgSourceSchema.optional().default(MarketplaceOfficialSource),
   filename: z.string(),
   size: z.number()

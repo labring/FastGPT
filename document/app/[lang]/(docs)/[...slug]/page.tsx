@@ -9,6 +9,7 @@ import { generateArticleSchema, generateBreadcrumbSchema, generateFaqSchema } fr
 import { getFastGPTDocsOriginForLocale } from '@/lib/fastgpt-home-url';
 import { CalendarDays } from 'lucide-react';
 import { LocalizedLink } from '@/components/docs/LocalizedLink';
+import DocsTocCta from '@/components/docs/DocsTocCta';
 import {
   UpgradeVersionTimeline,
   type UpgradeVersionTimelineItem
@@ -24,6 +25,7 @@ export default async function Page({
 }) {
   // 1. Resolve target page and optional upgrade timeline items.
   const { lang, slug } = await params;
+  // source.getPage excludes draft pages; enforce locale file suffix parity as well.
   const page = source.getPage(slug, lang);
   if (!page?.data || page.data._file.path.endsWith('.en.mdx') !== (lang === 'en')) notFound();
 
@@ -138,7 +140,8 @@ export default async function Page({
         toc={page.data.toc}
         full={page.data.full}
         tableOfContent={{
-          style: 'clerk'
+          style: 'clerk',
+          footer: <DocsTocCta lang={lang} />
         }}
         editOnGithub={{
           owner: 'labring',

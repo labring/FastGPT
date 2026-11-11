@@ -44,13 +44,9 @@ pro/admin/worker/
 .antigravitycli
 .chrome-user-data
 
-# content_benchmark local secrets and generated artifacts
-/pro/llm_benchmark/content_benchmark/.env.local
-/pro/llm_benchmark/content_benchmark/.env.*.local
-/pro/llm_benchmark/content_benchmark/eval-runs/
-/pro/llm_benchmark/content_benchmark/.cache/
 .gstack/
 .worktrees/
 
 .pi
 .claude/
+projects/code-sandbox/src/isolated/fastgpt_js_launcher

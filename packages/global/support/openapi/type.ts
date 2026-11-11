@@ -1,3 +1,5 @@
+import type { ApiKeyTypeEnum } from './constants';
+
 export type OpenApiSchema = {
   _id: string;
   teamId: string;
@@ -5,6 +7,7 @@ export type OpenApiSchema = {
   createTime: Date;
   lastUsedTime?: Date;
   apiKey: string;
+  type: ApiKeyTypeEnum;
   appId?: string;
   appName?: string;
   tagIds?: string[];

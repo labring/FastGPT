@@ -85,7 +85,7 @@ export function formatConfigStore2FormSchema({
     datasetParseMaxProcess = 10,
     vectorMaxProcess = 10,
     qaMaxProcess = 10,
-    hnswEfSearch = 100,
+    hnswEfSearch = 200,
     vectorRecallConcurrency = 0,
     vlmMaxProcess = 5,
     customPdfParse,
@@ -185,6 +185,11 @@ export function formatConfigStore2FormSchema({
         ACCOUNT_CANCELLATION_TODAY_EN:
           fastgptPro?.auth?.sms?.ACCOUNT_CANCELLATION_TODAY_EN ||
           fastgptPro?.auth?.sms?.ACCOUNT_CANCELLATION_TODAY ||
+          '',
+        MODEL_DEPRECATION: fastgptPro?.auth?.sms?.MODEL_DEPRECATION || '',
+        MODEL_DEPRECATION_EN:
+          fastgptPro?.auth?.sms?.MODEL_DEPRECATION_EN ||
+          fastgptPro?.auth?.sms?.MODEL_DEPRECATION ||
           '',
         EXPIRE_SOON: fastgptPro?.auth?.sms?.EXPIRE_SOON || '',
         EXPIRED: fastgptPro?.auth?.sms?.EXPIRED || '',

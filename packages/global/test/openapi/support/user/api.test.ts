@@ -52,6 +52,10 @@ const thirdObjectId = '68ad85a7463006c963799a07';
 describe('support user OpenAPI contracts', () => {
   it('registers all requested Pro user routes', () => {
     expect(openAPIDocument.paths?.['/proApi/support/user/team/audit/list']?.post).toBeDefined();
+    expect(
+      openAPIDocument.paths?.['/proApi/support/user/team/audit/export']?.post?.responses?.[200]
+        ?.content?.['text/csv']
+    ).toBeDefined();
     expect(openAPIDocument.paths?.['/proApi/support/user/inform/list']?.post).toBeDefined();
     expect(openAPIDocument.paths?.['/proApi/support/user/inform/countUnread']?.get).toBeDefined();
     expect(openAPIDocument.paths?.['/proApi/support/user/inform/read']?.get).toBeDefined();
@@ -148,7 +152,13 @@ describe('support user OpenAPI contracts', () => {
 
     expect(TeamAuditEventList).toEqual(expect.arrayContaining(datasetEvents));
 
-    expect(AuditListBodySchema.parse({ events: datasetEvents }).events).toEqual(datasetEvents);
+    expect(
+      AuditListBodySchema.parse({
+        dateStart: '2026-01-01T00:00:00.000Z',
+        dateEnd: '2026-01-07T23:59:59.999Z',
+        events: datasetEvents
+      }).events
+    ).toEqual(datasetEvents);
 
     for (const event of datasetEvents) {
       const parsed = AuditListResponseSchema.parse({
@@ -174,6 +184,8 @@ describe('support user OpenAPI contracts', () => {
   it('parses audit filters and responses', () => {
     expect(
       AuditListBodySchema.parse({
+        dateStart: '2026-01-01T00:00:00.000Z',
+        dateEnd: '2026-01-07T23:59:59.999Z',
         pageSize: '20',
         pageNum: '1',
         tmbIds: [objectId],
@@ -455,6 +467,7 @@ describe('support user OpenAPI contracts', () => {
           list: [
             {
               userId: objectId,
+              username: 'member-account',
               tmbId: objectId,
               teamId: objectId,
               memberName,
@@ -628,6 +641,33 @@ describe('support user OpenAPI contracts', () => {
     expect(ListTeamMembersBodySchema.safeParse({ tmbIds: ['not-an-id'] }).success).toBe(false);
   });
 
+  it('requires a login username in team member responses', () => {
+    const member = {
+      userId: objectId,
+      tmbId: objectId,
+      teamId: objectId,
+      memberName: 'Member',
+      status: 'active',
+      createTime: '2025-01-13T05:34:31.329Z'
+    };
+
+    expect(
+      ListTeamMembersResponseSchema.parse({
+        total: 1,
+        list: [{ ...member, username: 'member-account' }]
+      }).list[0].username
+    ).toBe('member-account');
+
+    for (const username of [undefined, null]) {
+      expect(
+        ListTeamMembersResponseSchema.safeParse({
+          total: 1,
+          list: [{ ...member, username }]
+        }).success
+      ).toBe(false);
+    }
+  });
+
   it('accepts nullable contact values for historical team members', () => {
     expect(
       ListTeamMembersResponseSchema.parse({
@@ -635,6 +675,7 @@ describe('support user OpenAPI contracts', () => {
         list: [
           {
             userId: objectId,
+            username: 'member-account',
             tmbId: objectId,
             teamId: objectId,
             memberName: '历史成员',
@@ -656,6 +697,7 @@ describe('support user OpenAPI contracts', () => {
         list: [
           {
             userId: objectId,
+            username: 'member-account',
             tmbId: objectId,
             teamId: objectId,
             memberName: '历史成员',

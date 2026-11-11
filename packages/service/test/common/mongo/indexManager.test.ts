@@ -9,12 +9,14 @@ import {
 import type { DeprecatedMongoIndexDefinition } from '@fastgpt/service/common/mongo/schemaIndexes';
 import { MongoIndexManager } from '@fastgpt/service/common/mongo/indexManager';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
+import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import {
   MongoDatasetSynonym,
   MongoDatasetSynonymMapping
 } from '@fastgpt/service/core/dataset/synonym/schema';
 import { MongoSandboxInstance } from '@fastgpt/service/core/ai/sandbox/infrastructure/instance/schema';
+import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { MongoModelStatusProbeRecord } from '@fastgpt/service/core/ai/modelStatus/schema';
 
 const logger = {
@@ -246,6 +248,54 @@ describe('MongoIndexManager.syncModelIndexes', () => {
         })
       ])
     );
+  });
+
+  it('keeps legacy share and customer indexes while removing the obsolete generating index', async () => {
+    const schema = new Schema({}, { autoIndex: false });
+    const [key, options] = MongoChat.schema.indexes().find(([key]) => 'publishSource.id' in key)!;
+    defineIndex(schema, { key, options });
+    const [legacyKey, legacyOptions] = MongoChat.schema
+      .indexes()
+      .find(([key]) => 'shareId' in key)!;
+    defineIndex(schema, { key: legacyKey, options: legacyOptions });
+    defineDeprecatedTestIndexes(schema, getSchemaDeprecatedMongoIndexes(MongoChat.schema));
+    const model = createModel({ schema, prefix: 'ChatLeaseIndex' });
+    await model.collection.createIndex(
+      { shareId: 1, outLinkUid: 1, updateTime: -1 },
+      { partialFilterExpression: { shareId: { $exists: true } } }
+    );
+    await model.collection.createIndex(
+      { chatGenerateStatus: 1, updateTime: 1 },
+      {
+        name: 'chatGenerateStatus_1_updateTime_1',
+        partialFilterExpression: { chatGenerateStatus: 0 }
+      }
+    );
+    await model.collection.createIndex({ customerField: 1 }, { name: 'customer_chat_index' });
+    await model.collection.createIndex({ shareId: 1 }, { name: 'customer_share_index' });
+
+    const result = await MongoIndexManager.syncModelIndexes({ model, logger });
+    const indexNames = await getIndexNames(model);
+    expect(indexNames).not.toContain('chatGenerateStatus_1_updateTime_1');
+    expect(indexNames).toContain('shareId_1_outLinkUid_1_updateTime_-1');
+    expect(indexNames).toContain(
+      'publishSource.type_1_publishSource.id_1_outLinkUid_1_updateTime_-1'
+    );
+    expect(indexNames).toContain('customer_chat_index');
+    expect(indexNames).toContain('customer_share_index');
+    expect(result.cleanupReport.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          action: 'drop',
+          applied: true,
+          indexName: 'chatGenerateStatus_1_updateTime_1'
+        })
+      ])
+    );
+    expect(MongoChat.schema.path('shareId')).toBeDefined();
+    expect(MongoChat.schema.indexes().some(([key]) => 'shareId' in key)).toBe(true);
+    expect(MongoChat.schema.path('chatGenerateStatus')).toBeUndefined();
+    expect(MongoChat.schema.indexes().some(([key]) => 'chatGenerateStatus' in key)).toBe(false);
   });
 
   it('replaces model status testedAt indexes with requestEndedAt indexes', async () => {
@@ -578,6 +628,43 @@ describe('MongoIndexManager.cleanupModelDeprecatedIndexes', () => {
       errors: 1
     });
     expect(MongoIndexManager.formatCleanupReport(report)).toContain('error=test error');
+  });
+});
+
+describe('dataset collection index consolidation', () => {
+  it('replaces three managed indexes without growing the index count or breaking legacy hints', async () => {
+    const schema = new Schema({}, { autoIndex: false });
+    MongoDatasetCollection.schema.indexes().forEach(([key, options]) => {
+      defineIndex(schema, { key, options });
+    });
+    defineDeprecatedTestIndexes(
+      schema,
+      getSchemaDeprecatedMongoIndexes(MongoDatasetCollection.schema)
+    );
+    const model = createModel({ schema, prefix: 'CollectionConsolidatedIndex' });
+    await model.collection.createIndex({
+      teamId: 1,
+      datasetId: 1,
+      parentId: 1,
+      inheritPermission: 1
+    });
+    await model.collection.createIndex({ teamId: 1, datasetId: 1, tags: 1 });
+    await model.collection.createIndex({ teamId: 1, 'metadata.relatedImgId': 1 });
+    await model.collection.createIndex({ fileId: 1 }, { name: 'customer_file_lookup' });
+
+    const result = await MongoIndexManager.syncModelIndexes({ model, logger });
+    const names = await getIndexNames(model);
+    expect(names.size).toBe(10); // 9 条内置索引（含 _id）及 1 条客户索引。
+    expect(names).toContain('teamId_1_fileId_1');
+    expect(names).toContain('teamId_1_datasetId_1_tags.tagId_1');
+    expect(names).toContain('teamId_1_datasetId_1_tags.tagId_1_tags.value_1');
+    expect(names).toContain('teamId_1_datasetId_1_type_1_parentId_1_inheritPermission_1__id_1');
+    expect(names).toContain('teamId_1_datasetId_1_forbid_1__id_1');
+    expect(names).toContain('customer_file_lookup');
+    expect(result.cleanupReport.items.filter(({ action }) => action === 'drop')).toHaveLength(3);
+    expect(names).not.toContain('teamId_1_datasetId_1_tags_1');
+    expect(names).not.toContain('teamId_1_metadata.relatedImgId_1');
+    expect(names).not.toContain('teamId_1_datasetId_1_parentId_1_inheritPermission_1');
   });
 });
 

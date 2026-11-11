@@ -20,7 +20,7 @@ import type {
   OutLinkUpdateBodyType,
   OutLinkUpdateResponseType
 } from '@fastgpt/global/openapi/support/outLink/api';
-import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
+import type { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
 import { GET, POST, DELETE, PUT } from '@/web/common/api/request';
 
 type LegacyOutLinkCreateBodyType =

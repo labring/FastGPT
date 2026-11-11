@@ -10,6 +10,7 @@ import {
   type CopyApiKeyBodyType,
   type CopyApiKeyResponseType
 } from '@fastgpt/global/openapi/support/openapi/api';
+import { resolveApiKeyScope } from '@fastgpt/service/support/openapi/utils';
 
 async function handler(req: ApiRequestProps<CopyApiKeyBodyType>): Promise<CopyApiKeyResponseType> {
   const { id } = parseApiInput({
@@ -23,12 +24,16 @@ async function handler(req: ApiRequestProps<CopyApiKeyBodyType>): Promise<CopyAp
     id
   });
 
+  const scope = resolveApiKeyScope(openapi);
   await addAuditLog({
     tmbId,
     teamId,
     event: AuditEventEnum.COPY_API_KEY,
     params: {
-      keyName: openapi.name
+      keyName: openapi.name,
+      keyId: String(openapi._id),
+      keyType: scope.type,
+      ...('appId' in scope ? { appId: scope.appId } : {})
     }
   });
 

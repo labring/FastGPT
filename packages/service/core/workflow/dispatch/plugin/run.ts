@@ -308,15 +308,7 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
                 workflowStreamResponse: undefined
               }
             : {}),
-          runningAppInfo: {
-            sourceType: ChatSourceTypeEnum.app,
-            sourceId: String(childWorkflowTool.id),
-            name: childWorkflowTool.name,
-            // 如果系统插件有 teamId 和 tmbId，则使用系统插件的 teamId 和 tmbId（管理员指定了插件作为系统插件）
-            teamId: childWorkflowTool.teamId || runningAppInfo.teamId,
-            tmbId: childWorkflowTool.tmbId || runningAppInfo.tmbId,
-            isChildApp: true
-          },
+          runningAppInfo: childRunningAppInfo,
           variableState: childVariableState,
           histories: childHistories,
           query: serverGetWorkflowToolRunUserQuery({
@@ -368,7 +360,8 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
       totalPoints: Math.max(0, usagePoints - ownUsagePoints),
       ...(shouldStoreChildNodeResponses
         ? { citeCollectionIds: runtimeSummary.citeCollectionIds }
-        : {})
+        : {}),
+      hasAgentSandbox: runtimeSummary.hasAgentSandbox
     });
     // Child run not push usage
     props.usagePush([

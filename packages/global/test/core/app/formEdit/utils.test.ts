@@ -1,3 +1,5 @@
+import { AgentToolInputModeEnum } from '@fastgpt/global/core/app/tool/constants';
+import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
 import { describe, expect, it } from 'vitest';
 import {
   validateToolConfiguration,
@@ -11,6 +13,7 @@ import {
   getToolInputDisplayRenderTypeList,
   getToolInputManualRenderType,
   getToolConfigStatus,
+  getAgentToolRuntimeStatus,
   initAgentToolInputType,
   initToolInputTypeByDefaultMode,
   isAgentGeneratedToolInput,
@@ -18,12 +21,14 @@ import {
   migrateToolInputConfig,
   normalizeFlowNodeInputType,
   parseJsonEditorValue,
+  serializeAgentTool,
   stripToolInputDefaultMode
 } from '@fastgpt/global/core/app/formEdit/utils';
 import {
   FlowNodeInputTypeEnum,
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
+import { AgentNode } from '@fastgpt/global/core/workflow/template/system/agent';
 import {
   NodeInputKeyEnum,
   VARIABLE_NODE_ID,
@@ -91,6 +96,35 @@ describe('formatJsonEditorValue', () => {
   });
 });
 
+describe('normalizeFlowNodeInputType 知识库选择', () => {
+  it('保留仍支持的引用模式及其引用数组', () => {
+    const value = [['source-node', 'datasets']];
+    const input = normalizeFlowNodeInputType(
+      createMockInput({
+        renderTypeList: [FlowNodeInputTypeEnum.selectDataset, FlowNodeInputTypeEnum.reference],
+        selectedType: FlowNodeInputTypeEnum.reference,
+        value
+      })
+    );
+
+    expect(input.selectedType).toBe(FlowNodeInputTypeEnum.reference);
+    expect(input.value).toBe(value);
+  });
+
+  it('未显式配置手动选择值时保留 defaultValue 的回退语义', () => {
+    const defaultValue = [{ datasetId: 'default-dataset' }];
+    const input = normalizeFlowNodeInputType(
+      createMockInput({
+        renderTypeList: [FlowNodeInputTypeEnum.selectDataset],
+        defaultValue
+      })
+    );
+
+    expect(input.value).toBeUndefined();
+    expect(input.defaultValue).toBe(defaultValue);
+  });
+});
+
 describe('validateToolConfiguration', () => {
   describe('valid configurations', () => {
     it('should return true for empty inputs', () => {
@@ -142,40 +176,8 @@ describe('validateToolConfiguration', () => {
       expect(result).toBe(false);
     });
 
-    it('should return false for fileSelect without canUploadFile', () => {
-      const toolTemplate = createMockToolTemplate([
-        createMockInput({ renderTypeList: [FlowNodeInputTypeEnum.fileSelect] })
-      ]);
-      const result = validateToolConfiguration({ toolTemplate, isAppTool: true });
-      expect(result).toBe(false);
-    });
-
-    it('should return false for fileSelect with canUploadFile=false', () => {
-      const toolTemplate = createMockToolTemplate([
-        createMockInput({ renderTypeList: [FlowNodeInputTypeEnum.fileSelect] })
-      ]);
-      const result = validateToolConfiguration({
-        toolTemplate,
-        canUploadFile: false,
-        isAppTool: true
-      });
-      expect(result).toBe(false);
-    });
-
-    it('should return false for multiple fileSelect inputs even with canUploadFile', () => {
-      const toolTemplate = createMockToolTemplate([
-        createMockInput({ key: 'file1', renderTypeList: [FlowNodeInputTypeEnum.fileSelect] }),
-        createMockInput({ key: 'file2', renderTypeList: [FlowNodeInputTypeEnum.fileSelect] })
-      ]);
-      const result = validateToolConfiguration({
-        toolTemplate,
-        canUploadFile: true,
-        isAppTool: true
-      });
-      expect(result).toBe(false);
-    });
-
     it.each([
+      FlowNodeInputTypeEnum.fileSelect,
       FlowNodeInputTypeEnum.selectDataset,
       FlowNodeInputTypeEnum.selectDatasetParamsModal,
       FlowNodeInputTypeEnum.settingDatasetQuotePrompt,
@@ -188,20 +190,9 @@ describe('validateToolConfiguration', () => {
         createMockInput({ renderTypeList: [renderType] })
       ]);
 
-      expect(validateToolConfiguration({ toolTemplate, isAppTool: true })).toBe(false);
-    });
-
-    it('should return false for fileSelect input type (always invalid as special type)', () => {
-      const toolTemplate = createMockToolTemplate([
-        createMockInput({ renderTypeList: [FlowNodeInputTypeEnum.fileSelect] })
-      ]);
-      // fileSelect is in the special input types list, so it's always invalid
-      const result = validateToolConfiguration({
-        toolTemplate,
-        canUploadFile: true,
-        isAppTool: true
-      });
-      expect(result).toBe(false);
+      expect(
+        validateToolConfiguration({ toolTemplate, canUploadFile: true, isAppTool: true })
+      ).toBe(false);
     });
 
     it('should return false when an agent-generated input uses a special render type', () => {
@@ -310,54 +301,13 @@ describe('checkNeedsUserConfiguration', () => {
       expect(result).toBe(false);
     });
 
-    it('should return false for forbidStream input', () => {
-      const tool = {
-        inputs: [
-          createMockInput({
-            key: NodeInputKeyEnum.forbidStream,
-            renderTypeList: [FlowNodeInputTypeEnum.switch]
-          })
-        ]
-      };
-      const result = checkNeedsUserConfiguration(tool);
-      expect(result).toBe(false);
-    });
-
-    it('should return false for history input', () => {
-      const tool = {
-        inputs: [
-          createMockInput({
-            key: NodeInputKeyEnum.history,
-            renderTypeList: [FlowNodeInputTypeEnum.input]
-          })
-        ]
-      };
-      const result = checkNeedsUserConfiguration(tool);
-      expect(result).toBe(false);
-    });
-
-    it('should return false for non-form render types', () => {
-      const tool = {
-        inputs: [
-          createMockInput({
-            renderTypeList: [FlowNodeInputTypeEnum.reference]
-          })
-        ]
-      };
-      const result = checkNeedsUserConfiguration(tool);
-      expect(result).toBe(false);
-    });
-
-    it('should return false for hidden render type', () => {
-      const tool = {
-        inputs: [
-          createMockInput({
-            renderTypeList: [FlowNodeInputTypeEnum.hidden]
-          })
-        ]
-      };
-      const result = checkNeedsUserConfiguration(tool);
-      expect(result).toBe(false);
+    it.each([
+      { key: NodeInputKeyEnum.forbidStream, renderTypeList: [FlowNodeInputTypeEnum.switch] },
+      { key: NodeInputKeyEnum.history, renderTypeList: [FlowNodeInputTypeEnum.input] },
+      { renderTypeList: [FlowNodeInputTypeEnum.reference] },
+      { renderTypeList: [FlowNodeInputTypeEnum.hidden] }
+    ])('should return false for excluded or non-form input %j', (overrides) => {
+      expect(checkNeedsUserConfiguration({ inputs: [createMockInput(overrides)] })).toBe(false);
     });
 
     it('should tolerate legacy inputs without renderTypeList', () => {
@@ -384,128 +334,26 @@ describe('checkNeedsUserConfiguration', () => {
           })
         ]
       };
-      const result = checkNeedsUserConfiguration(tool);
-      expect(result).toBe(true);
+      expect(checkNeedsUserConfiguration(tool)).toBe(true);
     });
 
-    it('should return true for input render type without toolDescription', () => {
-      const tool = {
-        inputs: [
-          createMockInput({
-            renderTypeList: [FlowNodeInputTypeEnum.input]
-          })
-        ]
-      };
-      const result = checkNeedsUserConfiguration(tool);
-      expect(result).toBe(true);
-    });
-
-    it('should return true for textarea render type without toolDescription', () => {
-      const tool = {
-        inputs: [
-          createMockInput({
-            renderTypeList: [FlowNodeInputTypeEnum.textarea]
-          })
-        ]
-      };
-      const result = checkNeedsUserConfiguration(tool);
-      expect(result).toBe(true);
-    });
-
-    it('should return true for numberInput render type without toolDescription', () => {
-      const tool = {
-        inputs: [
-          createMockInput({
-            renderTypeList: [FlowNodeInputTypeEnum.numberInput]
-          })
-        ]
-      };
-      const result = checkNeedsUserConfiguration(tool);
-      expect(result).toBe(true);
-    });
-
-    it('should return true for password render type without toolDescription', () => {
-      const tool = {
-        inputs: [
-          createMockInput({
-            renderTypeList: [FlowNodeInputTypeEnum.password]
-          })
-        ]
-      };
-      const result = checkNeedsUserConfiguration(tool);
-      expect(result).toBe(true);
-    });
-
-    it('should return true for switch render type without toolDescription', () => {
-      const tool = {
-        inputs: [
-          createMockInput({
-            renderTypeList: [FlowNodeInputTypeEnum.switch]
-          })
-        ]
-      };
-      const result = checkNeedsUserConfiguration(tool);
-      expect(result).toBe(true);
-    });
-
-    it('should return true for select render type without toolDescription', () => {
-      const tool = {
-        inputs: [
-          createMockInput({
-            renderTypeList: [FlowNodeInputTypeEnum.select]
-          })
-        ]
-      };
-      const result = checkNeedsUserConfiguration(tool);
-      expect(result).toBe(true);
-    });
-
-    it('should return true for multipleSelect render type without toolDescription', () => {
-      const tool = {
-        inputs: [
-          createMockInput({
-            renderTypeList: [FlowNodeInputTypeEnum.multipleSelect]
-          })
-        ]
-      };
-      const result = checkNeedsUserConfiguration(tool);
-      expect(result).toBe(true);
-    });
-
-    it('should return true for JSONEditor render type without toolDescription', () => {
-      const tool = {
-        inputs: [
-          createMockInput({
-            renderTypeList: [FlowNodeInputTypeEnum.JSONEditor]
-          })
-        ]
-      };
-      const result = checkNeedsUserConfiguration(tool);
-      expect(result).toBe(true);
-    });
-
-    it('should return true for timePointSelect render type without toolDescription', () => {
-      const tool = {
-        inputs: [
-          createMockInput({
-            renderTypeList: [FlowNodeInputTypeEnum.timePointSelect]
-          })
-        ]
-      };
-      const result = checkNeedsUserConfiguration(tool);
-      expect(result).toBe(true);
-    });
-
-    it('should return true for timeRangeSelect render type without toolDescription', () => {
-      const tool = {
-        inputs: [
-          createMockInput({
-            renderTypeList: [FlowNodeInputTypeEnum.timeRangeSelect]
-          })
-        ]
-      };
-      const result = checkNeedsUserConfiguration(tool);
-      expect(result).toBe(true);
+    it.each([
+      FlowNodeInputTypeEnum.input,
+      FlowNodeInputTypeEnum.textarea,
+      FlowNodeInputTypeEnum.numberInput,
+      FlowNodeInputTypeEnum.password,
+      FlowNodeInputTypeEnum.switch,
+      FlowNodeInputTypeEnum.select,
+      FlowNodeInputTypeEnum.multipleSelect,
+      FlowNodeInputTypeEnum.JSONEditor,
+      FlowNodeInputTypeEnum.timePointSelect,
+      FlowNodeInputTypeEnum.timeRangeSelect
+    ])('should return true for %s render type without toolDescription', (renderType) => {
+      expect(
+        checkNeedsUserConfiguration({
+          inputs: [createMockInput({ renderTypeList: [renderType] })]
+        })
+      ).toBe(true);
     });
   });
 
@@ -693,42 +541,28 @@ describe('getToolConfigStatus', () => {
   });
 
   describe('configured status', () => {
-    it('should return configured when required input has value', () => {
+    it.each([
+      { renderTypeList: [FlowNodeInputTypeEnum.input], value: 'some value' },
+      {
+        renderTypeList: [FlowNodeInputTypeEnum.input],
+        value: undefined,
+        defaultValue: 'default value'
+      },
+      { renderTypeList: [FlowNodeInputTypeEnum.multipleSelect], value: ['option1', 'option2'] },
+      { renderTypeList: [FlowNodeInputTypeEnum.JSONEditor], value: { key: 'value' } },
+      { renderTypeList: [FlowNodeInputTypeEnum.switch], value: false },
+      { renderTypeList: [FlowNodeInputTypeEnum.numberInput], value: 0 }
+    ])('should return configured for valid required input %j', (overrides) => {
       const tool = {
-        inputs: [
-          createMockInput({
-            renderTypeList: [FlowNodeInputTypeEnum.input],
-            required: true,
-            value: 'some value'
-          })
-        ]
+        inputs: [createMockInput({ required: true, ...overrides })]
       };
-      const result = getToolConfigStatus({ tool });
-      expect(result).toEqual({
-        needConfig: false,
-        status: 'configured'
-      });
-    });
-
-    it('should return configured when required input falls back to defaultValue', () => {
-      const tool = {
-        inputs: [
-          createMockInput({
-            renderTypeList: [FlowNodeInputTypeEnum.input],
-            required: true,
-            value: undefined,
-            defaultValue: 'default value'
-          })
-        ]
-      };
-
       expect(getToolConfigStatus({ tool })).toEqual({
         needConfig: false,
         status: 'configured'
       });
     });
 
-    it('should return configured when all required inputs have values', () => {
+    it('should return configured when all required inputs have values and optional inputs are empty', () => {
       const tool = {
         inputs: [
           createMockInput({
@@ -742,58 +576,6 @@ describe('getToolConfigStatus', () => {
             renderTypeList: [FlowNodeInputTypeEnum.numberInput],
             required: true,
             value: 123
-          })
-        ]
-      };
-      const result = getToolConfigStatus({ tool });
-      expect(result).toEqual({
-        needConfig: false,
-        status: 'configured'
-      });
-    });
-
-    it('should return configured when required input has non-empty array value', () => {
-      const tool = {
-        inputs: [
-          createMockInput({
-            renderTypeList: [FlowNodeInputTypeEnum.multipleSelect],
-            required: true,
-            value: ['option1', 'option2']
-          })
-        ]
-      };
-      const result = getToolConfigStatus({ tool });
-      expect(result).toEqual({
-        needConfig: false,
-        status: 'configured'
-      });
-    });
-
-    it('should return configured when required input has non-empty object value', () => {
-      const tool = {
-        inputs: [
-          createMockInput({
-            renderTypeList: [FlowNodeInputTypeEnum.JSONEditor],
-            required: true,
-            value: { key: 'value' }
-          })
-        ]
-      };
-      const result = getToolConfigStatus({ tool });
-      expect(result).toEqual({
-        needConfig: false,
-        status: 'configured'
-      });
-    });
-
-    it('should return configured when optional inputs are empty but required inputs are filled', () => {
-      const tool = {
-        inputs: [
-          createMockInput({
-            key: 'required',
-            renderTypeList: [FlowNodeInputTypeEnum.input],
-            required: true,
-            value: 'filled'
           }),
           createMockInput({
             key: 'optional',
@@ -803,8 +585,7 @@ describe('getToolConfigStatus', () => {
           })
         ]
       };
-      const result = getToolConfigStatus({ tool });
-      expect(result).toEqual({
+      expect(getToolConfigStatus({ tool })).toEqual({
         needConfig: false,
         status: 'configured'
       });
@@ -812,103 +593,37 @@ describe('getToolConfigStatus', () => {
   });
 
   describe('waitingForConfig status', () => {
-    it('should return waitingForConfig when required input has no value', () => {
+    it.each([
+      { renderTypeList: [FlowNodeInputTypeEnum.input], value: undefined },
+      { renderTypeList: [FlowNodeInputTypeEnum.input], value: null },
+      { renderTypeList: [FlowNodeInputTypeEnum.input], value: '' },
+      { renderTypeList: [FlowNodeInputTypeEnum.multipleSelect], value: [] },
+      {
+        renderTypeList: [FlowNodeInputTypeEnum.timeRangeSelect],
+        value: ['2026-07-07T00:00:00+08:00', undefined]
+      },
+      { renderTypeList: [FlowNodeInputTypeEnum.JSONEditor], value: {} },
+      {
+        key: NodeInputKeyEnum.systemInputConfig,
+        renderTypeList: [FlowNodeInputTypeEnum.custom],
+        required: false,
+        value: undefined
+      },
+      {
+        renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.agentGenerated],
+        toolDescription: 'Legacy description',
+        value: ''
+      },
+      {
+        renderTypeList: [FlowNodeInputTypeEnum.agentGenerated, FlowNodeInputTypeEnum.password],
+        toolDescription: 'API key',
+        value: ''
+      }
+    ])('should return waitingForConfig for incomplete input %j', (overrides) => {
       const tool = {
-        inputs: [
-          createMockInput({
-            renderTypeList: [FlowNodeInputTypeEnum.input],
-            required: true,
-            value: undefined
-          })
-        ]
+        inputs: [createMockInput({ required: true, ...overrides })]
       };
-      const result = getToolConfigStatus({ tool });
-      expect(result).toEqual({
-        needConfig: true,
-        status: 'waitingForConfig'
-      });
-    });
-
-    it('should return waitingForConfig when required input has null value', () => {
-      const tool = {
-        inputs: [
-          createMockInput({
-            renderTypeList: [FlowNodeInputTypeEnum.input],
-            required: true,
-            value: null
-          })
-        ]
-      };
-      const result = getToolConfigStatus({ tool });
-      expect(result).toEqual({
-        needConfig: true,
-        status: 'waitingForConfig'
-      });
-    });
-
-    it('should return waitingForConfig when required input has empty string value', () => {
-      const tool = {
-        inputs: [
-          createMockInput({
-            renderTypeList: [FlowNodeInputTypeEnum.input],
-            required: true,
-            value: ''
-          })
-        ]
-      };
-      const result = getToolConfigStatus({ tool });
-      expect(result).toEqual({
-        needConfig: true,
-        status: 'waitingForConfig'
-      });
-    });
-
-    it('should return waitingForConfig when required input has empty array value', () => {
-      const tool = {
-        inputs: [
-          createMockInput({
-            renderTypeList: [FlowNodeInputTypeEnum.multipleSelect],
-            required: true,
-            value: []
-          })
-        ]
-      };
-      const result = getToolConfigStatus({ tool });
-      expect(result).toEqual({
-        needConfig: true,
-        status: 'waitingForConfig'
-      });
-    });
-
-    it('should return waitingForConfig when required time range is incomplete', () => {
-      const tool = {
-        inputs: [
-          createMockInput({
-            renderTypeList: [FlowNodeInputTypeEnum.timeRangeSelect],
-            required: true,
-            value: ['2026-07-07T00:00:00+08:00', undefined]
-          })
-        ]
-      };
-      const result = getToolConfigStatus({ tool });
-      expect(result).toEqual({
-        needConfig: true,
-        status: 'waitingForConfig'
-      });
-    });
-
-    it('should return waitingForConfig when required input has empty object value', () => {
-      const tool = {
-        inputs: [
-          createMockInput({
-            renderTypeList: [FlowNodeInputTypeEnum.JSONEditor],
-            required: true,
-            value: {}
-          })
-        ]
-      };
-      const result = getToolConfigStatus({ tool });
-      expect(result).toEqual({
+      expect(getToolConfigStatus({ tool })).toEqual({
         needConfig: true,
         status: 'waitingForConfig'
       });
@@ -931,118 +646,9 @@ describe('getToolConfigStatus', () => {
           })
         ]
       };
-      const result = getToolConfigStatus({ tool });
-      expect(result).toEqual({
+      expect(getToolConfigStatus({ tool })).toEqual({
         needConfig: true,
         status: 'waitingForConfig'
-      });
-    });
-
-    it('should return waitingForConfig for systemInputConfig key', () => {
-      const tool = {
-        inputs: [
-          createMockInput({
-            key: NodeInputKeyEnum.systemInputConfig,
-            renderTypeList: [FlowNodeInputTypeEnum.custom],
-            value: undefined
-          })
-        ]
-      };
-      const result = getToolConfigStatus({ tool });
-      expect(result).toEqual({
-        needConfig: true,
-        status: 'waitingForConfig'
-      });
-    });
-
-    it('should return waitingForConfig when developer-configured required input keeps toolDescription', () => {
-      const tool = {
-        inputs: [
-          createMockInput({
-            renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.agentGenerated],
-            required: true,
-            toolDescription: 'Legacy description',
-            value: ''
-          })
-        ]
-      };
-      const result = getToolConfigStatus({ tool });
-      expect(result).toEqual({
-        needConfig: true,
-        status: 'waitingForConfig'
-      });
-    });
-
-    it('should return waitingForConfig when invalid agent-generated input still needs developer config', () => {
-      const tool = {
-        inputs: [
-          createMockInput({
-            renderTypeList: [FlowNodeInputTypeEnum.agentGenerated, FlowNodeInputTypeEnum.password],
-            required: true,
-            toolDescription: 'API key',
-            value: ''
-          })
-        ]
-      };
-      const result = getToolConfigStatus({ tool });
-      expect(result).toEqual({
-        needConfig: true,
-        status: 'waitingForConfig'
-      });
-    });
-  });
-
-  describe('edge cases', () => {
-    it('should ignore agent-generated inputs when checking config status', () => {
-      const tool = {
-        inputs: [
-          createMockInput({
-            renderTypeList: [FlowNodeInputTypeEnum.agentGenerated, FlowNodeInputTypeEnum.input],
-            selectedType: FlowNodeInputTypeEnum.agentGenerated,
-            required: true,
-            toolDescription: 'Has description',
-            value: ''
-          })
-        ]
-      };
-      const result = getToolConfigStatus({ tool });
-      expect(result).toEqual({
-        needConfig: false,
-        status: 'noConfig'
-      });
-    });
-
-    it('should handle boolean false value as valid', () => {
-      const tool = {
-        inputs: [
-          createMockInput({
-            renderTypeList: [FlowNodeInputTypeEnum.switch],
-            required: true,
-            value: false
-          })
-        ]
-      };
-      const result = getToolConfigStatus({ tool });
-      expect(result).toEqual({
-        needConfig: false,
-        status: 'configured'
-      });
-    });
-
-    it('should handle number 0 value as valid', () => {
-      const tool = {
-        inputs: [
-          createMockInput({
-            renderTypeList: [FlowNodeInputTypeEnum.numberInput],
-            required: true,
-            value: 0
-          })
-        ]
-      };
-      const result = getToolConfigStatus({ tool });
-      expect(result).toEqual({
-        needConfig: false,
-        status: 'configured'
       });
     });
   });
@@ -1272,36 +878,24 @@ describe('agent generated tool input helpers', () => {
     expect(input.defaultToAgentGenerated).toBe(true);
   });
 
-  it('should keep developer-configured input when defaultToAgentGenerated is not true', () => {
-    const input = initToolInputTypeByDefaultMode(
-      createMockInput({
-        renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference]
-      })
-    );
+  it.each([undefined, false])(
+    'should keep developer-configured input when defaultToAgentGenerated is %s',
+    (defaultToAgentGenerated) => {
+      const input = initToolInputTypeByDefaultMode(
+        createMockInput({
+          renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
+          defaultToAgentGenerated
+        })
+      );
 
-    expect(input.renderTypeList).toEqual([
-      FlowNodeInputTypeEnum.agentGenerated,
-      FlowNodeInputTypeEnum.input,
-      FlowNodeInputTypeEnum.reference
-    ]);
-    expect(isAgentGeneratedToolInput(input)).toBe(false);
-  });
-
-  it('should keep developer-configured input when defaultToAgentGenerated is false', () => {
-    const input = initToolInputTypeByDefaultMode(
-      createMockInput({
-        renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
-        defaultToAgentGenerated: false
-      })
-    );
-
-    expect(input.renderTypeList).toEqual([
-      FlowNodeInputTypeEnum.agentGenerated,
-      FlowNodeInputTypeEnum.input,
-      FlowNodeInputTypeEnum.reference
-    ]);
-    expect(isAgentGeneratedToolInput(input)).toBe(false);
-  });
+      expect(input.renderTypeList).toEqual([
+        FlowNodeInputTypeEnum.agentGenerated,
+        FlowNodeInputTypeEnum.input,
+        FlowNodeInputTypeEnum.reference
+      ]);
+      expect(isAgentGeneratedToolInput(input)).toBe(false);
+    }
+  );
 
   it('should keep built-in user chat input manual outside a tool context', () => {
     const input = initToolInputTypeByDefaultMode(
@@ -1512,37 +1106,6 @@ describe('agent generated tool input helpers', () => {
     ]);
   });
 
-  it('should use defaultToAgentGenerated when no current selection is saved', () => {
-    const input = initToolInputTypeByDefaultMode(
-      createMockInput({
-        renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.agentGenerated],
-        defaultToAgentGenerated: true
-      })
-    );
-
-    expect(input.renderTypeList).toEqual([
-      FlowNodeInputTypeEnum.agentGenerated,
-      FlowNodeInputTypeEnum.input
-    ]);
-    expect(input.selectedType).toBe(FlowNodeInputTypeEnum.agentGenerated);
-    expect(isAgentGeneratedToolInput(input)).toBe(true);
-  });
-
-  it('should default user chat input to agent generated in tool context', () => {
-    const input = initToolInputTypeByDefaultMode(
-      createMockInput({
-        key: NodeInputKeyEnum.userChatInput,
-        renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.textarea],
-        defaultToAgentGenerated: true,
-        required: true
-      }),
-      { allowUserChatInputAgentGenerated: true }
-    );
-
-    expect(input.selectedType).toBe(FlowNodeInputTypeEnum.agentGenerated);
-    expect(isAgentGeneratedToolInput(input)).toBe(true);
-  });
-
   it('should preserve an explicit selected reference type for user chat input', () => {
     const input = initToolInputTypeByDefaultMode(
       createMockInput({
@@ -1556,58 +1119,6 @@ describe('agent generated tool input helpers', () => {
 
     expect(input.selectedType).toBe(FlowNodeInputTypeEnum.reference);
     expect(isAgentGeneratedToolInput(input)).toBe(false);
-  });
-
-  it('should initialize defaultToAgentGenerated when no final type is saved', () => {
-    const input = initToolInputTypeByDefaultMode(
-      createMockInput({
-        renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.agentGenerated],
-        defaultToAgentGenerated: true
-      })
-    );
-
-    expect(input.renderTypeList).toEqual([
-      FlowNodeInputTypeEnum.agentGenerated,
-      FlowNodeInputTypeEnum.input
-    ]);
-    expect(input.selectedType).toBe(FlowNodeInputTypeEnum.agentGenerated);
-    expect(isAgentGeneratedToolInput(input)).toBe(true);
-  });
-
-  it('should preserve a canonical developer mode before applying defaults', () => {
-    const input = normalizeFlowNodeInputType(
-      createMockInput({
-        renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.input],
-        selectedType: FlowNodeInputTypeEnum.input,
-        defaultToAgentGenerated: true
-      }),
-      { isTool: true }
-    );
-
-    expect(input.renderTypeList).toEqual([
-      FlowNodeInputTypeEnum.agentGenerated,
-      FlowNodeInputTypeEnum.reference,
-      FlowNodeInputTypeEnum.input
-    ]);
-    expect(input.selectedType).toBe(FlowNodeInputTypeEnum.input);
-    expect(isAgentGeneratedToolInput(input)).toBe(false);
-  });
-
-  it('should retain a canonical agent generated mode', () => {
-    const input = initToolInputTypeByDefaultMode(
-      createMockInput({
-        renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.agentGenerated],
-        selectedType: FlowNodeInputTypeEnum.agentGenerated,
-        defaultToAgentGenerated: true
-      })
-    );
-
-    expect(input.renderTypeList).toEqual([
-      FlowNodeInputTypeEnum.agentGenerated,
-      FlowNodeInputTypeEnum.input
-    ]);
-    expect(input.selectedType).toBe(FlowNodeInputTypeEnum.agentGenerated);
-    expect(isAgentGeneratedToolInput(input)).toBe(true);
   });
 
   it('should filter model params by final agent generated selection', () => {
@@ -1679,46 +1190,31 @@ describe('agent generated tool input helpers', () => {
     expect(params).toEqual({ apiKey: 'fixed secret' });
   });
 
-  it('should initialize file fields as agent generated', () => {
-    const input = initToolInputTypeByDefaultMode(
+  it('should initialize fileSelect as agentGenerated while excluding password and custom fields', () => {
+    const fileInput = initToolInputTypeByDefaultMode(
       createMockInput({
         renderTypeList: [FlowNodeInputTypeEnum.fileSelect],
         toolDescription: 'Files',
         defaultToAgentGenerated: true
       })
     );
-
-    expect(input.renderTypeList).toEqual([
+    expect(fileInput.renderTypeList).toEqual([
       FlowNodeInputTypeEnum.agentGenerated,
       FlowNodeInputTypeEnum.fileSelect
     ]);
-    expect(isAgentGeneratedToolInput(input)).toBe(true);
-  });
+    expect(isAgentGeneratedToolInput(fileInput)).toBe(true);
 
-  it('should not initialize password fields as agent generated', () => {
-    const input = initToolInputTypeByDefaultMode(
-      createMockInput({
-        renderTypeList: [FlowNodeInputTypeEnum.password],
-        toolDescription: 'API key',
-        defaultToAgentGenerated: true
-      })
-    );
-
-    expect(input.renderTypeList).toEqual([FlowNodeInputTypeEnum.password]);
-    expect(isAgentGeneratedToolInput(input)).toBe(false);
-  });
-
-  it('should not initialize custom render fields as agent generated', () => {
-    const input = initToolInputTypeByDefaultMode(
-      createMockInput({
-        renderTypeList: [FlowNodeInputTypeEnum.custom],
-        toolDescription: 'Custom renderer',
-        defaultToAgentGenerated: true
-      })
-    );
-
-    expect(input.renderTypeList).toEqual([FlowNodeInputTypeEnum.custom]);
-    expect(isAgentGeneratedToolInput(input)).toBe(false);
+    for (const renderType of [FlowNodeInputTypeEnum.password, FlowNodeInputTypeEnum.custom]) {
+      const input = initToolInputTypeByDefaultMode(
+        createMockInput({
+          renderTypeList: [renderType],
+          toolDescription: 'Excluded',
+          defaultToAgentGenerated: true
+        })
+      );
+      expect(input.renderTypeList).toEqual([renderType]);
+      expect(isAgentGeneratedToolInput(input)).toBe(false);
+    }
   });
 });
 
@@ -1806,5 +1302,131 @@ describe('migrateToolInputConfig', () => {
     });
 
     expect(result.value).toEqual(['shared']);
+  });
+});
+
+describe('getAgentToolRuntimeStatus & serializeAgentTool', () => {
+  it('allows only aiSystemPrompt, fileUrlList, and userChatInput to be agentGenerated on AgentNode in tool mode', () => {
+    const normalizedInputs = AgentNode.inputs.map((input) =>
+      normalizeFlowNodeInputType(input, { isTool: true })
+    );
+    const agentGeneratableKeys = normalizedInputs
+      .filter((input) => canInputBeAgentGenerated(input))
+      .map((input) => input.key);
+
+    expect(agentGeneratableKeys).toEqual([
+      NodeInputKeyEnum.aiSystemPrompt,
+      NodeInputKeyEnum.fileUrlList,
+      NodeInputKeyEnum.userChatInput
+    ]);
+    expect(
+      normalizedInputs.find((input) => input.key === NodeInputKeyEnum.userChatInput)?.selectedType
+    ).toBe(FlowNodeInputTypeEnum.agentGenerated);
+  });
+
+  it('derives configuration from current inputs and prioritizes unavailable resources', () => {
+    const tool = {
+      inputs: [
+        createMockInput({
+          required: true,
+          selectedType: FlowNodeInputTypeEnum.input,
+          renderTypeList: [FlowNodeInputTypeEnum.input],
+          value: ''
+        })
+      ]
+    };
+    expect(getAgentToolRuntimeStatus(tool)).toBe('waitingForConfig');
+    tool.inputs[0].value = 0;
+    expect(getAgentToolRuntimeStatus(tool)).toBe('configured');
+    expect(getAgentToolRuntimeStatus({ ...tool, status: PluginStatusEnum.Offline })).toBe(
+      'offline'
+    );
+    expect(
+      getAgentToolRuntimeStatus({ ...tool, pluginData: { status: PluginStatusEnum.Offline } })
+    ).toBe('offline');
+    expect(
+      getAgentToolRuntimeStatus({
+        ...tool,
+        status: PluginStatusEnum.Offline,
+        pluginData: { error: 'resource_no_permission' }
+      })
+    ).toBe('invalid');
+    expect(getAgentToolRuntimeStatus({ inputs: [] })).toBe('noConfig');
+    expect(getAgentToolRuntimeStatus({ ...tool, status: PluginStatusEnum.SoonOffline })).toBe(
+      'configured'
+    );
+  });
+
+  it('preserves name, avatar, config, and rawInputs snapshots when serializing unavailable tools', () => {
+    const baseInvalidTool = {
+      id: 'missing-tool',
+      pluginId: 'missing-tool',
+      name: 'Missing Tool',
+      avatar: 'icon/missing',
+      version: '1.0.0',
+      templateType: 'personalTool' as const,
+      flowNodeType: FlowNodeTypeEnum.tool,
+      intro: '',
+      inputs: [],
+      outputs: [],
+      pluginData: { error: 'tool_missing' },
+      config: { apiKey: 'secret-key' }
+    };
+
+    expect(
+      serializeAgentTool({
+        tool: {
+          ...baseInvalidTool,
+          rawInputs: [{ key: 'query', mode: AgentToolInputModeEnum.agentGenerated }]
+        }
+      })
+    ).toEqual({
+      id: 'missing-tool',
+      name: 'Missing Tool',
+      avatar: 'icon/missing',
+      version: '1.0.0',
+      source: undefined,
+      toolConfig: undefined,
+      inputs: [{ key: 'query', mode: 'agentGenerated' }],
+      config: { apiKey: 'secret-key' }
+    });
+    expect(serializeAgentTool({ tool: baseInvalidTool }).inputs).toBeUndefined();
+  });
+
+  it('omits built-in history only for appModule tools while preserving plugin and tool history inputs', () => {
+    const inputs = [
+      createMockInput({
+        key: NodeInputKeyEnum.forbidStream,
+        selectedType: FlowNodeInputTypeEnum.switch,
+        renderTypeList: [FlowNodeInputTypeEnum.switch],
+        value: true
+      }),
+      createMockInput({
+        key: NodeInputKeyEnum.history,
+        selectedType: FlowNodeInputTypeEnum.input,
+        renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.agentGenerated],
+        value: 'order audit history'
+      })
+    ];
+    const serializeWithNodeType = (flowNodeType: FlowNodeTypeEnum) =>
+      serializeAgentTool({
+        tool: {
+          id: 'tool-id',
+          pluginId: 'tool-id',
+          name: 'Tool',
+          avatar: '',
+          version: '1.0.0',
+          templateType: 'teamApp',
+          flowNodeType,
+          intro: '',
+          inputs,
+          outputs: []
+        }
+      }).config;
+
+    expect(serializeWithNodeType(FlowNodeTypeEnum.appModule)).toEqual({});
+    expect(serializeWithNodeType(FlowNodeTypeEnum.pluginModule)).toEqual({
+      [NodeInputKeyEnum.history]: 'order audit history'
+    });
   });
 });

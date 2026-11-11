@@ -1,3 +1,4 @@
+import type { AgentToolType } from '@fastgpt/global/core/app/tool/type';
 import {
   DYNAMIC_OPTION_EXCLUDED_VALUE_TYPES,
   workflowReferenceValueIsSelectable,
@@ -32,7 +33,7 @@ import {
   normalizeFlowNodeInputType,
   serializeAgentTool
 } from '@fastgpt/global/core/app/formEdit/utils';
-import { SelectedToolItemTypeSchema } from '@fastgpt/global/core/app/formEdit/type';
+import type { SelectedToolItemType } from '@fastgpt/global/core/app/formEdit/type';
 import { type TFunction } from 'i18next';
 import { type Edge, type Node } from 'reactflow';
 
@@ -85,12 +86,11 @@ export const uiWorkflow2StoreWorkflow = ({
       !nodeInputIsReference(selectedToolsInput) &&
       Array.isArray(selectedToolsInput.value)
     ) {
-      const serializedTools: any[] = [];
-      for (const tool of selectedToolsInput.value as any[]) {
-        const parsed = SelectedToolItemTypeSchema.safeParse(tool);
-        if (parsed.success) serializedTools.push(serializeAgentTool({ tool: parsed.data }));
-      }
-      selectedToolsInput.value = serializedTools as any;
+      // 展开态独有 flowNodeType；保存只提取配置，存储态原样保留，不因展示字段缺失而丢工具。
+      selectedToolsInput.value = selectedToolsInput.value.map(
+        (tool: SelectedToolItemType | AgentToolType) =>
+          'flowNodeType' in tool ? serializeAgentTool({ tool }) : tool
+      );
     }
 
     return {

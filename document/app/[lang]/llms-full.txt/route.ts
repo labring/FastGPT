@@ -50,7 +50,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ lan
       files.map(async (file: string) => {
         const fileContent = await fs.readFile(file);
         const { content, data } = matter(fileContent.toString());
-        if (data.deprecated) return null;
+        if (data.deprecated || data.draft) return null;
 
         const processed = await processor.process({
           path: file,

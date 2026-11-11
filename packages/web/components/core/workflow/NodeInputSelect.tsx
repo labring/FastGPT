@@ -25,17 +25,20 @@ export const getSelectedRenderTypeState = ({
   };
 };
 
+/** 输入类型菜单默认避开弹窗裁切；缩放画布内可使用 absolute 保持与节点相同的坐标系。 */
 const NodeInputSelect = ({
   renderTypeList,
   selectedType,
   onChange,
   isAgentGeneratedMode = false,
+  strategy = 'fixed',
   bg = 'myGray.100'
 }: {
   renderTypeList: string[];
   selectedType?: string;
   onChange: (e: string) => void;
   isAgentGeneratedMode?: boolean;
+  strategy?: 'absolute' | 'fixed';
   bg?: string;
 }) => {
   const { t } = useTranslation();
@@ -212,6 +215,7 @@ const NodeInputSelect = ({
 
   return (
     <MyMenu
+      strategy={strategy}
       offset={[-0.5, 0.5]}
       trigger="click"
       size="mini"

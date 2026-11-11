@@ -1,3 +1,6 @@
+import { getChatGenerationStatuses } from '@fastgpt/service/core/chat/generationLease';
+import { getOutLinkBranding } from '@fastgpt/service/support/outLink/branding/service';
+import { getTeamCanHideShareBrand } from '@fastgpt/service/support/wallet/sub/service';
 import type { NextApiRequest } from 'next';
 import { getAppChatConfig } from '@fastgpt/global/common/app/chat';
 import { authOutLink } from '@fastgpt/service/support/permission/publish/authChat';
@@ -20,7 +23,7 @@ import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { buildChatSourceQuery } from '@fastgpt/service/core/chat/source';
 import { buildChatTargetResponse } from '@fastgpt/global/openapi/core/chat/api';
 
-async function handler(req: NextApiRequest): Promise<InitOutLinkChatResponseType> {
+export async function handler(req: NextApiRequest): Promise<InitOutLinkChatResponseType> {
   const { chatId, outLinkAuthData } = parseApiInput({
     req,
     querySchema: InitOutLinkChatQuerySchema
@@ -28,7 +31,7 @@ async function handler(req: NextApiRequest): Promise<InitOutLinkChatResponseType
   const { shareId, outLinkUid } = outLinkAuthData;
 
   // auth link permission
-  const { uid, appId } = await authOutLink({ shareId, outLinkUid, req });
+  const { uid, appId, outLinkConfig } = await authOutLink({ shareId, outLinkUid, req });
 
   // auth app permission
   const [chat, app] = await Promise.all([
@@ -48,7 +51,12 @@ async function handler(req: NextApiRequest): Promise<InitOutLinkChatResponseType
     return Promise.reject(ChatErrEnum.unAuthChat);
   }
 
-  const chatGenerateStatus = chat?.chatGenerateStatus ?? ChatGenerateStatusEnum.done;
+  const generationStatuses = await getChatGenerationStatuses({
+    sourceType: ChatSourceTypeEnum.app,
+    sourceId: String(appId),
+    chatIds: chatId ? [chatId] : []
+  });
+  const chatGenerateStatus = generationStatuses.get(chatId ?? '') ?? ChatGenerateStatusEnum.done;
   if (chat?.hasBeenRead === false && chatGenerateStatus !== ChatGenerateStatusEnum.generating) {
     await MongoChat.updateOne(
       {
@@ -77,7 +85,12 @@ async function handler(req: NextApiRequest): Promise<InitOutLinkChatResponseType
     variableConfig: appChatConfig.variables
   });
 
+  const branding = await getOutLinkBranding({
+    outLink: outLinkConfig,
+    getTeamCanHideShareBrand
+  });
   return InitOutLinkChatResponseSchema.parse({
+    branding,
     chatId,
     ...buildChatTargetResponse({
       sourceType: ChatSourceTypeEnum.app,
@@ -86,7 +99,7 @@ async function handler(req: NextApiRequest): Promise<InitOutLinkChatResponseType
     title: chat?.customTitle || chat?.title || '',
     userAvatar: getRandomUserAvatar(),
     variables,
-    chatGenerateStatus: chat?.chatGenerateStatus,
+    chatGenerateStatus,
     hasBeenRead: chat?.hasBeenRead,
     app: {
       chatConfig: appChatConfig,

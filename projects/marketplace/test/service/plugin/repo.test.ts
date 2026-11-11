@@ -63,7 +63,10 @@ vi.mock('../../../src/service/mongo/models/tool', () => ({
 
 vi.mock('../../../src/service/s3', () => s3Mocks);
 
-vi.mock('@fastgpt/global/sdk/fastgpt-plugin', () => sdkMocks);
+vi.mock('@fastgpt/global/sdk/fastgpt-plugin', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fastgpt/global/sdk/fastgpt-plugin')>()),
+  ...sdkMocks
+}));
 
 vi.mock('../../../src/service/logger', () => ({
   LogCategories: {

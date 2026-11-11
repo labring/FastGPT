@@ -140,9 +140,7 @@ FASTGPT_DEPLOY_BASE_URL=https://doc.fastgpt.cn bash <(curl -fsSL https://doc.fas
 
 设置 `FASTGPT_NON_INTERACTIVE=true` 可进入非交互模式，脚本不再逐项询问，改从 `FASTGPT_DEPLOY_VERSION`、`FASTGPT_REGION`、`FASTGPT_VECTOR`、`FASTGPT_AUTO_GENERATE_CREDENTIALS` 等变量读取选项，未设置时依次使用 `main`、`cn`、`pg` 和自动生成密钥。识别不了镜像版本时，可用 `FASTGPT_IMAGE_TAG` 或 `FASTGPT_ROOT_ACTIVATION` 指定版本能力。
 
-非交互模式还必须通过 `FASTGPT_FE_DOMAIN` 指定用户访问 FastGPT 的完整地址，例如 `https://fastgpt.example.com`。
-启用 Agent/Skill 沙盒的版本还需要通过 `FASTGPT_SANDBOX_PROXY_URL` 指定沙盒 WebSocket 地址，例如 `wss://sandbox-proxy.example.com`；
-4.16 及以上版本还需要通过 `FASTGPT_SANDBOX_PREVIEW_PROXY_URL` 指定 HTTP 预览地址。
+非交互模式还必须通过 `FASTGPT_FE_DOMAIN` 指定用户访问 FastGPT 的完整地址，例如 `https://fastgpt.example.com`。启用 Agent/Skill 沙盒的版本还需要通过 `FASTGPT_SANDBOX_PROXY_URL` 指定沙盒 WebSocket 地址，例如 `wss://sandbox-proxy.example.com`；4.16 及以上版本还需要通过 `FASTGPT_SANDBOX_PREVIEW_PROXY_URL` 指定 HTTP 预览地址。
 
 访问地址和宿主机端口是独立配置。需要直连时，可通过 `FASTGPT_PORT` 设置 FastGPT 宿主机端口（默认 `3000`），通过 `FASTGPT_SANDBOX_PROXY_PORT` 设置 Sandbox Proxy 宿主机端口（默认 `3006`）；容器端口仍分别为 `3000` 和 `1006`。如果使用反向代理，`FASTGPT_FE_DOMAIN`、`FASTGPT_SANDBOX_PROXY_URL` 及预览地址中的公网端口（例如 `443`）不会被当作宿主机端口，脚本会保留 Compose 中的默认映射。
 
@@ -296,5 +294,5 @@ docker compose up -d
 
 ## 部署后运维与故障排查
 
-- **日常运维**：修改容器环境变量参见 [环境变量说明](/zh-CN/self-host/config/env)；修改或重置管理员密码参见 [修改与重置 root 密码](/zh-CN/self-host/config/root-password)；跨版本升级前请先阅读 [升级说明](/zh-CN/self-host/upgrading/upgrade-instruction)。
+- **日常运维**：修改容器环境变量参见 [环境变量说明](/zh-CN/self-host/config/env)；修改或重置管理员密码参见 [修改与重置 root 密码](/zh-CN/self-host/config/root-password)；跨版本升级前请先阅读 [升级说明](/zh-CN/self-host/upgrading/upgrade-instruction)；将自带 MongoDB 5.x 迁移到 8.x 参见 [MongoDB 5.x 迁移到 8.x（导出/恢复）](/zh-CN/self-host/upgrading/mongodb-8)。
 - **故障排查**：遇到组件镜像版本匹配、S3 连接异常、MongoDB 副本集初始化、`relation "modeldata" does not exist`、`Illegal instruction` 或端口冲突等问题时，请查阅 [通用问题排查](/zh-CN/self-host/troubleshooting/faq)。

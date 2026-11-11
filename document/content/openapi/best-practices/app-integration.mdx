@@ -1,0 +1,142 @@
+---
+title: 应用对接
+draft: true
+description: 使用应用 Key 将 FastGPT 接入自己的系统，对接用户身份并管理聊天记录。
+---
+
+本文以“在自己的系统中提供 AI 助手”为例，串起应用调用、用户身份和聊天记录管理。
+
+**版本要求：FastGPT 4.18.0 及以上。** 示例使用绑定应用的 **应用 Key**，不需要传 `appId`；个人密钥的用法见 [API 文档介绍](/zh-CN/openapi/intro)。接口参数以你部署版本的 `/apidoc/systemopenapi` 为准。
+
+## 接入结构
+
+```text
+你的前端 → 你的后端（登录校验、会话归属、应用 Key）→ FastGPT 应用
+```
+
+前端继续使用你的登录系统。由后端读取当前用户，调用 FastGPT，再将结果返回前端。应用 Key 只保存在后端配置中。
+
+> **配图占位：** 前端、业务后端与 FastGPT 之间的调用流程图。
+
+## 1. 创建应用 Key
+
+发布应用后，进入 **应用 → 发布渠道 → API 访问 → 应用 Key**，创建一个用于业务后端的 Key。创建、查看和管理需要应用管理员权限。
+
+```bash
+export FASTGPT_BASE_URL='http://localhost:3000/api'
+export FASTGPT_APP_KEY='YOUR_APP_API_KEY'
+```
+
+`FASTGPT_BASE_URL` 包含 `/api`。下面的对话接口再追加 `/v1/chat/completions`，聊天记录接口则追加 `/core/chat/...`，不要统一再加 `/v1`。
+
+> **配图占位：** 应用发布页中创建应用 Key 的入口，隐藏真实密钥。
+
+## 2. 对接自己的用户
+
+用 `customUid` 传入你平台的稳定用户标识。FastGPT 不需要为每位业务用户创建团队成员。
+
+| 字段        | 用途                               | 示例                |
+| ----------- | ---------------------------------- | ------------------- |
+| 应用 Key    | 授权调用绑定的 FastGPT 应用        | 后端配置中的密钥    |
+| `customUid` | 标识正在使用应用的业务用户         | `tenant-01:user-42` |
+| `chatId`    | 标识一次独立会话，多轮对话保持不变 | 后端生成的 UUID     |
+
+- `customUid` 由后端根据登录态生成，不直接信任前端提交的用户 ID。
+- 同一用户的不同会话使用不同 `chatId`；同一会话续聊时保持 `chatId` 和 `customUid` 一致。
+- 多租户系统建议带上租户前缀，避免不同租户使用相同用户 ID。
+- `customUid` 最长 1024 字符。新建对话时，未传或传空字符串沿用默认使用者；首轮确定身份后，续聊不能更换、漏传或清空已绑定的 `customUid`。它与 `authProxy` 互斥；应用 Key 不支持 `authProxy`。
+
+**`customUid` 是使用者标识，不是鉴权凭证。** 应用 Key 的权限属于绑定应用，后端仍需检查业务用户与会话的归属关系。
+
+建议在自己的数据库保存以下映射，用于“我的会话”列表及后续权限检查：
+
+```json
+{
+  "tenantId": "tenant-01",
+  "userId": "user-42",
+  "fastgptAppId": "YOUR_FASTGPT_APP_ID",
+  "customUid": "tenant-01:user-42",
+  "chatId": "de305d54-75b4-431b-adb2-eb6b9e546014"
+}
+```
+
+这里的 `fastgptAppId` 用于业务侧记录绑定关系，应用 Key 请求仍可省略 `appId`。
+
+## 3. 发起对话与多轮续聊
+
+后端为新会话生成 `chatId`、保存用户归属，再发起第一次调用：
+
+```bash
+curl "$FASTGPT_BASE_URL/v1/chat/completions" \
+  --header "Authorization: Bearer $FASTGPT_APP_KEY" \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "chatId": "de305d54-75b4-431b-adb2-eb6b9e546014",
+    "customUid": "tenant-01:user-42",
+    "stream": false,
+    "messages": [{ "role": "user", "content": "你好，请介绍一下你能提供的帮助。" }]
+  }'
+```
+
+续聊时，先确认 `chatId` 属于当前用户，然后使用相同 `chatId`、`customUid`，将 `messages` 换成本轮的新问题。FastGPT 会读取该会话已保存的历史；普通续聊不需要重复上传整段历史。
+
+需要打字机效果时，将 `stream` 改为 `true`，由后端处理并转发 SSE 流。完成当前轮次后再发送下一轮，具体流事件见部署版本的接口文档。
+
+## 4. 展示与管理聊天记录
+
+### 会话列表
+
+使用 `getHistories`，由后端从登录态填入当前用户的 `customUid`。应用 Key 的列表只返回绑定应用的 API 来源会话，传入 `customUid` 后进一步限定为该使用者：
+
+```bash
+curl "$FASTGPT_BASE_URL/core/chat/history/getHistories" \
+  --header "Authorization: Bearer $FASTGPT_APP_KEY" \
+  --header 'Content-Type: application/json' \
+  --data '{ "customUid": "tenant-01:user-42", "offset": 0, "pageSize": 20 }'
+```
+
+省略 `customUid` 会返回该应用下不同业务用户的 API 会话，适合后端管理；不要把未筛选的结果直接返回给业务用户。自己的会话映射表仍可用于归属校验和业务扩展。需要消息数、反馈或按日期统计时，可使用对话日志接口 `POST /core/app/logs/list`，通过 `outLinkUids: ["tenant-01:user-42"]` 筛选。
+
+结果在响应的 `data.list` 和 `data.total` 中。列表项包含 `chatId`、`title`、`customTitle`、`updateTime` 等信息。下一页增加 `offset`；也可使用从 `1` 开始的 `pageNum`，两者同时传入时以 `offset` 为准。
+
+### 打开一个会话
+
+用户打开会话时，后端先校验归属，再分页读取消息：
+
+```bash
+curl "$FASTGPT_BASE_URL/core/chat/record/getPaginationRecords" \
+  --header "Authorization: Bearer $FASTGPT_APP_KEY" \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "chatId": "de305d54-75b4-431b-adb2-eb6b9e546014",
+    "customUid": "tenant-01:user-42",
+    "offset": 0,
+    "pageSize": 20
+  }'
+```
+
+从 `data.list` 读取消息，从 `data.total` 判断是否还有更多。消息通过 `obj` 区分 `Human`、`AI`，`value` 包含文本、文件等内容块；前端需按内容类型渲染。
+
+> **配图占位：** 你的系统中的会话列表、消息区，以及 FastGPT 对话日志中的使用者。
+
+### 其他常用操作
+
+以下接口同样使用应用 Key，省略 `appId`；每次操作前都由业务后端校验会话归属，并传入当前用户的 `customUid`。Query 中的 `customUid` 为普通字符串，由 URLSearchParams 等工具编码。
+
+| 操作                 | 方法与路径（相对于 `/api`）                | 主要参数                                   |
+| -------------------- | ------------------------------------------ | ------------------------------------------ |
+| 修改会话标题、置顶   | `PUT /core/chat/history/updateHistory`     | body 中传 `chatId`、`customTitle` 或 `top` |
+| 删除一个会话         | `DELETE /core/chat/history/delHistory`     | query 中传 `chatId`                        |
+| 批量查询会话运行状态 | `POST /core/chat/history/getHistoryStatus` | body 中传 `chatIds`                        |
+
+`clearHistories` 传入 `customUid` 时，只清空该使用者的 API 来源会话；省略时清空整个应用的 API 来源会话。批量物理删除属于日志管理接口，不处理使用者身份参数，不用于业务用户的“清空我的会话”。
+
+## 在 FastGPT 中排查问题
+
+打开应用的 **对话日志**，通过会话 ID 查找记录：
+
+- **使用者**：展示 `customUid`，方便对应到你的平台用户。
+- **鉴权者**：表示本次调用的团队成员身份，默认隐藏，可在字段配置中开启。
+- **调用渠道 / 渠道名**：可识别 API 调用及对应的密钥渠道。
+
+先跑通“新建会话 → 多轮续聊 → 读取消息 → 删除会话”，再扩展文件上传、反馈和流式展示。字段和返回值详情统一查阅你部署版本的 System OpenAPI 文档。

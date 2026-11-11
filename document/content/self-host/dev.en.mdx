@@ -77,7 +77,7 @@ Starting with 4.15.0, the open-source edition reads environment variables for sy
 - `VECTOR_MAX_PROCESS`: Max vector generation processes (defaults to `10`). Adjust based on database and model key concurrency; 10–15 is recommended for a 2c4g server.
 - `QA_MAX_PROCESS`: Max QA generation processes
 - `VLM_MAX_PROCESS`: Max image understanding model processes
-- `HNSW_EF_SEARCH`: Vector search parameter (PG, OceanBase, and openGauss only). Higher values provide better accuracy with increased search latency.
+- `HNSW_EF_SEARCH`: HNSW vector search width (defaults to `200`) for PG, Milvus, OceanBase, SeekDB, and openGauss. Higher values generally improve recall with increased search latency.
 
 ### 5. Run
 

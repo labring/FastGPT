@@ -42,7 +42,7 @@ export const ChatHistoryPath: OpenAPIPath = {
     post: {
       summary: '批量获取会话状态（生成中/已读）',
       description:
-        '按 chatId 列表返回 chatGenerateStatus、hasBeenRead、updateTime，用于侧栏轻量轮询同步',
+        '按 chatId 批量读取 Redis lease 运行状态，并返回 hasBeenRead、updateTime，用于侧栏轻量轮询同步。读取异常时返回错误，调用方保留上次状态并稍后重试。',
       tags: [DevApiTagsMap.chatHistory, SystemOpenApiTagMap.chatHistory],
       requestBody: {
         content: {
@@ -66,7 +66,8 @@ export const ChatHistoryPath: OpenAPIPath = {
   '/core/chat/history/markRead': {
     post: {
       summary: '标记会话已读',
-      description: '用户在本页看完回复后调用，同步 Mongo hasBeenRead',
+      description:
+        '用户在本页看完回复后调用，同步 Mongo hasBeenRead。App 来源要求应用读取权限，其他来源保留资源写权限；同时校验对应来源的会话访问范围。',
       tags: [DevApiTagsMap.chatHistory, SystemOpenApiTagMap.chatHistory],
       requestBody: {
         content: {
@@ -130,7 +131,7 @@ export const ChatHistoryPath: OpenAPIPath = {
   '/core/chat/history/batchDelete': {
     post: {
       summary: '批量删除会话',
-      description: '批量删除多个会话（真实删除），需对应会话目标的管理权限。',
+      description: '物理删除选中的会话及其消息、响应和会话文件，需对应资源的日志管理权限。',
       tags: [DevApiTagsMap.chatHistory, SystemOpenApiTagMap.chatHistory],
       requestBody: {
         content: {

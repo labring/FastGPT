@@ -16,7 +16,7 @@ Complete [your first request](/en/openapi/intro). The current interface supports
 
 ## Conversation identity
 
-Omitting `chatId` or passing an empty value generates a new conversation ID. The response `id` identifies the conversation. Reuse `chatId` with the same application for continued conversations and submit current input according to the message contract. Keep separate conversation identifiers and trusted identity mappings for each business user.
+Omitting `chatId` or passing an empty value generates a new conversation ID; a non-empty `chatId` must be unique and at most `1,024` characters long. The response `id` identifies the conversation. Reuse `chatId` with the same application for continued conversations and submit current input according to the message contract. Keep separate conversation identifiers and trusted identity mappings for each business user; in FastGPT 4.18.0 or later, pass `customUid` (up to `1,024` characters) to forward your business user ID to Workflow `userId` and chat logs (see [Access App via API](/en/guide/build/publish/openapi#connect-your-user-system)).
 
 Access to an existing conversation checks team and conversation permissions. [Identity proxy](/en/openapi/identity-proxy) follows the same checks.
 
@@ -67,7 +67,7 @@ Use the same input to verify JSON and streaming outputs satisfy application rule
 
 ## System OpenAPI Endpoint Reference (Chat, Sessions, Records, and Feedback)
 
-Aside from `/api/v1/chat/completions` and `/api/v2/chat/completions` (which also accept `Bearer <apiKey>-<appId>`), session, record, and feedback endpoints locate the target resource using any of `appId`, `skillId`, or `outLinkAuthData`.
+When authenticating with a FastGPT 4.18.0+ **app key**, supported chat, session, record, and feedback endpoints automatically target the key's bound app and omit `appId` (`getHistories` queries API-source sessions). With a **personal key**, `/api/v1/chat/completions` and `/api/v2/chat/completions` also accept `Bearer <apiKey>-<appId>`, while other session, record, and feedback endpoints locate the target resource using `appId`, `skillId`, or `outLinkAuthData`.
 
 ### 1. Chat Generation and Execution Control (`chatController`)
 

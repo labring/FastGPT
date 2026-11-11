@@ -311,40 +311,93 @@ export class CommandFilesystemPolyfill {
   // ==================== Metadata Operations ====================
 
   /**
-   * Get file information via stat.
+   * 通过 GNU stat 读取元数据，只省略确定返回 ENOENT 的路径。
+   * 传输、命令或响应校验失败时中止整批查询，不返回部分 Map。
    */
   async getFileInfo(paths: string[]): Promise<Map<string, FileInfo>> {
     const infoMap = new Map<string, FileInfo>();
 
     for (const path of paths) {
-      try {
-        // Use stat for detailed info
-        const result = await this.executor.execute(
-          `stat -c '%s|%Y|%W|%a|%U|%G|%F' ${this.shellQuote(path)} 2>/dev/null || echo "STAT_FAILED"`
-        );
+      // 固定诊断和文件类型的语言，保留退出码及 stderr，避免把执行失败当成缺失。
+      const command = `LC_ALL=C stat -c '%s|%Y|%W|%a|%U|%G|%F' -- ${this.shellQuote(path)}`;
+      const result = await this.executor.execute(command);
 
-        if (result.stdout.includes('STAT_FAILED')) {
-          continue; // File doesn't exist
-        }
-
-        const parts = result.stdout.trim().split('|');
-        if (parts.length >= 7) {
-          infoMap.set(path, {
-            path,
-            size: Number.parseInt(parts[0], 10) || undefined,
-            modifiedAt: parts[1] ? new Date(Number.parseInt(parts[1], 10) * 1000) : undefined,
-            createdAt: parts[2] ? new Date(Number.parseInt(parts[2], 10) * 1000) : undefined,
-            mode: Number.parseInt(parts[3], 8) || undefined,
-            owner: parts[4] || undefined,
-            group: parts[5] || undefined,
-            isDirectory: parts[6].includes('directory'),
-            isFile: parts[6].includes('regular file'),
-            isSymlink: parts[6].includes('symbolic link')
-          });
-        }
-      } catch {
-        // Skip files that can't be stat'd
+      if (result.truncated) {
+        throw new FileOperationError('Stat output was truncated', path, 'TRANSFER_ERROR');
       }
+
+      if (result.exitCode !== 0) {
+        // 单路径 stat 的完整 ENOENT 诊断才能证明缺失；裸错误文本或其他退出状态不算。
+        const diagnostic =
+          /^stat: cannot stat(?:x)? .+: (No such file or directory|Permission denied)\n?$/.exec(
+            result.stderr
+          );
+        const reason = diagnostic?.[0] === result.stderr ? diagnostic[1] : undefined;
+        if (
+          result.exitCode === 1 &&
+          result.stdout === '' &&
+          reason === 'No such file or directory'
+        ) {
+          continue;
+        }
+
+        const error = new CommandExecutionError(
+          `Failed to stat file: ${result.stderr.trim() || 'No diagnostic output'}`,
+          command,
+          result.exitCode ?? undefined,
+          result.stdout,
+          result.stderr
+        );
+        if (reason === 'Permission denied') {
+          throw new FileOperationError(result.stderr, path, 'PERMISSION_DENIED', error);
+        }
+        throw error;
+      }
+
+      // 校验完整记录，拒绝截断字段、宽松数值解析及无效日期，零值仍然有效。
+      const metadata =
+        /^(\d+)\|(-?\d+)\|(-?\d+)\|([0-7]{1,4})\|([^|\r\n]+)\|([^|\r\n]+)\|([^|\r\n]+)\n?$/.exec(
+          result.stdout
+        );
+      if (!metadata || metadata[0] !== result.stdout || result.stderr !== '') {
+        throw new FileOperationError('Invalid stat metadata', path, 'TRANSFER_ERROR');
+      }
+
+      const [, sizeText, modifiedAtText, createdAtText, modeText, owner, group, fileType] =
+        metadata;
+      const size = Number(sizeText);
+      const modifiedAt = new Date(Number(modifiedAtText) * 1000);
+      const createdAt = new Date(Number(createdAtText) * 1000);
+      if (
+        !Number.isSafeInteger(size) ||
+        !Number.isFinite(modifiedAt.getTime()) ||
+        !Number.isFinite(createdAt.getTime()) ||
+        ![
+          'regular file',
+          'regular empty file',
+          'directory',
+          'symbolic link',
+          'block special file',
+          'character special file',
+          'fifo',
+          'socket'
+        ].includes(fileType)
+      ) {
+        throw new FileOperationError('Invalid stat metadata', path, 'TRANSFER_ERROR');
+      }
+
+      infoMap.set(path, {
+        path,
+        size,
+        modifiedAt,
+        createdAt,
+        mode: Number.parseInt(modeText, 8),
+        owner,
+        group,
+        isDirectory: fileType === 'directory',
+        isFile: fileType === 'regular file' || fileType === 'regular empty file',
+        isSymlink: fileType === 'symbolic link'
+      });
     }
 
     return infoMap;

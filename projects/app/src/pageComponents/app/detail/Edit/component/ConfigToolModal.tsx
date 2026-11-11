@@ -37,7 +37,6 @@ import {
   canInputBeManuallyConfigured,
   formatJsonEditorValue,
   getToolInputManualRenderType,
-  getToolConfigStatus,
   initToolInputTypeByDefaultMode,
   isAgentGeneratedToolInput,
   isToolInputValueConfigured,
@@ -48,6 +47,8 @@ import { getSelectedInputRenderType } from '@fastgpt/global/common/workflow/refe
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import NodeInputSelect from '@fastgpt/web/components/core/workflow/NodeInputSelect';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
+import { useContextSelector } from 'use-context-selector';
+import { AppContext } from '@/pageComponents/app/detail/context';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { getClientToolPreviewNode } from '@/web/core/app/api/tool';
 import { getAppVersionList } from '@/web/core/app/api/version';
@@ -242,7 +243,6 @@ const mergeConfiguredTool = ({
 
   const mergedTool = {
     ...inheritedNextTool,
-    configStatus: prevTool.configStatus,
     inputs: inheritedNextTool.inputs.map((input) => {
       const selectedInputType = input.renderTypeList.includes(
         formValues[inputTypeFormKey(input.key)]
@@ -271,8 +271,7 @@ const mergeConfiguredTool = ({
     ...mergedTool,
     name: prevTool.name ?? mergedTool.name,
     intro: prevTool.intro ?? mergedTool.intro,
-    metadataLocale: prevTool.metadataLocale ?? mergedTool.metadataLocale,
-    configStatus: getToolConfigStatus({ tool: mergedTool }).status
+    metadataLocale: prevTool.metadataLocale ?? mergedTool.metadataLocale
   };
 };
 
@@ -434,6 +433,7 @@ const ConfigValueInput = ({
   control: Control<Record<string, any>>;
 }) => {
   const { t } = useSafeTranslation();
+  const appId = useContextSelector(AppContext, (v) => v.appId);
   const selectedInputType = useWatch({
     control,
     name: inputTypeFormKey(input.key)
@@ -477,6 +477,7 @@ const ConfigValueInput = ({
           <FormControl isInvalid={!!error}>
             <InputRender
               {...input}
+              appId={appId || undefined}
               isRichText={false}
               isInvalid={!!error}
               inputType={nodeInputTypeToInputType([inputType])}
@@ -928,7 +929,7 @@ const ConfigToolModal = ({
   });
 
   const onSubmit = handleSubmit((data) => {
-    onAddTool({
+    const nextTool: SelectedToolItemType = {
       ...editingTool,
       inputs: editingTool.inputs.map((input) => {
         if (!shouldShowConfigInput(input)) {
@@ -961,7 +962,9 @@ const ConfigToolModal = ({
                 })()
         });
       })
-    });
+    };
+
+    onAddTool(nextTool);
     onCloseConfigTool();
   });
 

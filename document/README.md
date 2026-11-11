@@ -23,7 +23,7 @@ Follow [the domain glossary](./CONTEXT.md). Use these page contracts:
 - Reference: responsibility, inputs, configuration, outputs, boundaries, verified example.
 - Concept: object relationships, selection criteria, links to tasks and references.
 
-Frontmatter supports `title`, `description`, `icon`, `releaseTime`, `sidebarTag`, and `upgradeTags`. Quote values containing a colon. Use descriptive image alt text, inspect media for credentials and private data, and keep research screenshots separate from approved public assets.
+Frontmatter supports `title`, `description`, `icon`, `draft`, `releaseTime`, `sidebarTag`, and `upgradeTags`. Setting `draft: true` excludes a locale page from routes, navigation, search, sitemap, static index, and LLM exports; run `pnpm --dir document initDocToc` when publishing a draft. Quote values containing a colon. Use descriptive image alt text, inspect media for credentials and private data, and keep research screenshots separate from approved public assets.
 
 ```mdx
 ---
@@ -59,6 +59,7 @@ For HTTP acceptance, start the site, then run:
 
 ```bash
 DOCS_TEST_ORIGIN=http://localhost:3210 pnpm --dir document test:site
+node document/script/check-doc-publication.mjs --base-url http://localhost:3210
 ```
 
 Use a browser to inspect both editions: first-task links, cross-directory section ownership, search results, language switching, keyboard access, mobile navigation, tables, and media. Production-host routing tests send explicit Host headers to the local server.

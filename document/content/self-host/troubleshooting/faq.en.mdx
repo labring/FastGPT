@@ -118,7 +118,7 @@ What to do: before upgrading, follow [Milvus BM25 Full-Text Search Configuration
 
 Applies to: 4.16.0 and later. Since 4.16.0 the sandbox image is set only by `AGENT_SANDBOX_OPENSANDBOX_IMAGE`, and `AGENT_SANDBOX_PREVIEW_PROXY_URL` must be configured. Using a 4.15 or earlier docker-compose template with a newer image causes both errors.
 
-What to do: follow [Deploy with Docker Compose](/en/self-host/deploy/docker) and use the one-click script, or manually download the template that matches the image version (for the current version, use the `main` directory; there are no v4.16 or v4.17 directories).
+What to do: follow [Deploy with Docker Compose](/en/self-host/deploy/docker) and use the one-click script, or manually download the template that matches the image version (use `main` for 4.17.x and `v4.16` for 4.16.x).
 
 Note: running the one-click script again in a directory that is already deployed regenerates the database passwords and `AES256_SECRET_KEY` and overwrites `docker-compose.yml`. Back up the original file first. To keep your data, choose not to auto-generate passwords (or set `FASTGPT_AUTO_GENERATE_CREDENTIALS=false`) and copy the original passwords and secrets over.
 
@@ -136,7 +136,7 @@ What to do: add a Code run node before Parallel Run that splits the text into an
 
 Applies to: verified against 4.17.3. The address the browser uploads files to comes from `FILE_DOMAIN`, or from `FE_DOMAIN` if it is not set. If the page uses HTTPS but this address is `http://`, the browser blocks the request as mixed content and it never reaches the server.
 
-What to do: change the matching setting to a reachable https address (`FILE_DOMAIN` if it is set, otherwise `FE_DOMAIN`) and restart. You can confirm in the browser console whether there is a Mixed Content error.
+What to do: change the matching setting to a reachable HTTPS address (`FILE_DOMAIN` if it is set, otherwise `FE_DOMAIN`) and restart. You can confirm in the browser console whether there is a Mixed Content error.
 
 ---
 
@@ -206,3 +206,25 @@ The Loop Node added in 4.15.0 keeps only the value of the last iteration in its 
 - **`Illegal instruction`**: Verify host CPU instruction set support (such as AVX) against the MongoDB image requirements and choose a compatible host/image combination.
 - **`relation "modeldata" does not exist`**: PostgreSQL is unreachable or missing the `vector` extension; inspect PG logs and ensure `pgvector` is installed.
 - **S3 / Object Storage connection errors**: Verify the storage endpoint reachable from FastGPT and signing host headers; see [Object Storage Configuration](/en/self-host/config/object-storage) and [Migrate Docker Compose from MinIO to RustFS](/en/self-host/docker_minio_to_rustfs).
+
+---
+
+### The sandbox fails to start with "Sandbox work directory is not writable: /workspace", even though volume permissions are correct
+
+When using OpenSandbox in 4.15.2 and later, the sandbox checks whether `/workspace` is writable at startup and exits with this error when the check fails. If the owner and permissions of `/workspace` in the volume are already valid, the host Docker daemon's default seccomp profile may be blocking the sandbox container.
+
+Run the command below with the sandbox image (`<volume-name>` is the volume mounted at `/workspace`, visible via `docker inspect <sandbox-container-name>`). Outputting `fail` followed by `ok` confirms seccomp as the cause:
+
+```bash
+for o in "" "--security-opt seccomp=unconfined"; do docker run --rm $o -v <volume-name>:/workspace --entrypoint bash <sandbox-image> -c '[ -w /workspace ] && echo ok || echo fail'; done
+```
+
+To resolve it, add `seccomp_profile = "unconfined"` under `[docker]` in `opensandbox-config` in your Compose file, run `docker compose up -d --force-recreate fastgpt-opensandbox-server`, and click **Retry** on the page. Apply this setting after confirming seccomp as the root cause, as it relaxes system call filtering on sandbox containers.
+
+---
+
+### What should I do when a tool reports "Invoke upload file failed" and /api/invoke/fileUpload returns 401?
+
+When deploying 4.15.0 through 4.17.4 with the official `main` Docker Compose template (used by default on the deployment page and in `install.sh`), `fastgpt-plugin` leaves `FASTGPT_BASE_URL` unset (the `v4.15` / `v4.16` template sets it starting from 4.15.2). When a plugin tool such as the basic chart tool generates a file, it calls `/api/invoke/fileUpload` via `FASTGPT_BASE_URL`; the default `http://localhost:3000` points back to the plugin container itself and returns 401 (`HTTP Exception: Unauthorized`), causing "Invoke upload file failed".
+
+Add `FASTGPT_BASE_URL: http://fastgpt-app:3000` to the `fastgpt-plugin` environment variables (matching the main FastGPT service name in your Compose file), recreate the container with `docker compose up -d fastgpt-plugin`, and run the tool again.

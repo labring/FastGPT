@@ -16,7 +16,7 @@ import { Alert } from '@/components/docs/Alert';
 
 ## 会话标识
 
-`chatId` 省略或为空时生成新会话 ID。响应 `id` 用于后续会话识别；持续对话时复用同一应用下的 `chatId`，并按接口的消息契约提交当前输入。每位业务用户应使用独立的会话标识和可信身份映射。
+`chatId` 省略或为空时生成新会话 ID；传入非空字符串时须保证唯一且长度最多 `1024` 字符。响应 `id` 用于后续会话识别；持续对话时复用同一应用下的 `chatId`，并按接口的消息契约提交当前输入。每位业务用户应使用独立的会话标识和可信身份映射；在 FastGPT 4.18.0 及以上版本中，还可通过 `customUid`（最长 `1024` 字符）传入业务侧使用者 ID，透传给工作流 `userId` 并记录至对话日志（详见[通过 API 访问应用](/zh-CN/guide/build/publish/openapi#对接自己的用户系统)）。
 
 访问既有会话时会检查团队和会话权限。身份代理也遵循这些检查，见[身份代理](/zh-CN/openapi/identity-proxy)。
 
@@ -67,7 +67,7 @@ import { Alert } from '@/components/docs/Alert';
 
 ## 开放接口端点参考（System OpenAPI—对话、会话、记录与反馈）
 
-除 `/api/v1/chat/completions` 与 `/api/v2/chat/completions` 支持在 `Bearer <apiKey>-<appId>` 中附带应用 ID 外，其余会话、记录与反馈接口可通过 `appId`、`skillId` 或 `outLinkAuthData` 任一方式定位目标资源。
+使用 FastGPT 4.18.0+ **应用 Key** 鉴权时，支持应用 Key 的对话、会话、记录与反馈接口均自动读取绑定应用，无需传入 `appId`（`getHistories` 固定查询 API 来源会话）。使用**个人密钥**时，除 `/api/v1/chat/completions` 与 `/api/v2/chat/completions` 支持在 `Bearer <apiKey>-<appId>` 中附带应用 ID 外，其余接口通过 `appId`、`skillId` 或 `outLinkAuthData` 定位目标资源。
 
 ### 1. 对话生成与运行控制（`chatController`）
 

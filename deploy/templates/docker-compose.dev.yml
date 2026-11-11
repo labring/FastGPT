@@ -26,6 +26,9 @@ x-volume-manager-auth-token: &x-volume-manager-auth-token 'vmtoken'
 x-agent-sandbox-proxy-secret: &x-agent-sandbox-proxy-secret 'default_fastgpt_agent_sandbox_proxy_secret'
 # aiproxy token
 x-aiproxy-token: &x-aiproxy-token 'token'
+# RustFS credentials shared by the object store and FastGPT services
+x-rustfs-access-key: &x-rustfs-access-key 'minioadmin'
+x-rustfs-secret-key: &x-rustfs-secret-key 'minioadmin'
 # 数据库连接相关配置
 x-share-db-config: &x-share-db-config
   MONGODB_URI: mongodb://myusername:mypassword@fastgpt-mongo:27017/fastgpt?authSource=admin
@@ -34,12 +37,12 @@ x-share-db-config: &x-share-db-config
   # @see https://doc.fastgpt.cn/self-host/config/object-storage
   STORAGE_VENDOR: minio # minio | aws-s3 | cos | oss
   STORAGE_REGION: us-east-1
-  STORAGE_ACCESS_KEY_ID: minioadmin
-  STORAGE_SECRET_ACCESS_KEY: minioadmin
+  STORAGE_ACCESS_KEY_ID: *x-rustfs-access-key
+  STORAGE_SECRET_ACCESS_KEY: *x-rustfs-secret-key
   STORAGE_PUBLIC_BUCKET: fastgpt-public
   STORAGE_PRIVATE_BUCKET: fastgpt-private
   STORAGE_DOWNLOAD_URL_MODE: short-proxy # short-proxy | short-redirect
-  STORAGE_S3_ENDPOINT: http://fastgpt-minio:9000 # 协议://域名(IP):端口
+  STORAGE_S3_ENDPOINT: http://fastgpt-rustfs:9000 # 协议://域名(IP):端口
   STORAGE_S3_FORCE_PATH_STYLE: true
   STORAGE_S3_MAX_RETRIES: 3
 # Log 配置
@@ -52,8 +55,8 @@ x-log-config: &x-log-config
 # 容器运行环境可能会自动注入 HTTP_PROXY/HTTPS_PROXY。
 # 明确绕过 compose 内部服务，避免内部请求被代理劫持。
 x-no-proxy-config: &x-no-proxy-config
-  NO_PROXY: localhost,127.0.0.1,::1,fastgpt,fastgpt-plugin,fastgpt-code-sandbox,fastgpt-agent-sandbox-proxy,fastgpt-aiproxy,fastgpt-aiproxy-pg,fastgpt-minio,fastgpt-mongo,fastgpt-redis,fastgpt-pg,opensandbox-server,fastgpt-volume-manager,host.docker.internal,*.orb.internal,*.orb.local
-  no_proxy: localhost,127.0.0.1,::1,fastgpt,fastgpt-plugin,fastgpt-code-sandbox,fastgpt-agent-sandbox-proxy,fastgpt-aiproxy,fastgpt-aiproxy-pg,fastgpt-minio,fastgpt-mongo,fastgpt-redis,fastgpt-pg,opensandbox-server,fastgpt-volume-manager,host.docker.internal,*.orb.internal,*.orb.local
+  NO_PROXY: localhost,127.0.0.1,::1,fastgpt,fastgpt-plugin,fastgpt-code-sandbox,fastgpt-agent-sandbox-proxy,fastgpt-aiproxy,fastgpt-aiproxy-pg,fastgpt-rustfs,fastgpt-mongo,fastgpt-redis,fastgpt-pg,opensandbox-server,fastgpt-volume-manager,host.docker.internal,*.orb.internal,*.orb.local
+  no_proxy: localhost,127.0.0.1,::1,fastgpt,fastgpt-plugin,fastgpt-code-sandbox,fastgpt-agent-sandbox-proxy,fastgpt-aiproxy,fastgpt-aiproxy-pg,fastgpt-rustfs,fastgpt-mongo,fastgpt-redis,fastgpt-pg,opensandbox-server,fastgpt-volume-manager,host.docker.internal,*.orb.internal,*.orb.local
 
 services:
   # Vector DB
@@ -159,9 +162,9 @@ services:
       start_period: 30s
     volumes:
       - fastgpt-redis:/data
-  fastgpt-minio:
-    image: ${{minio.image}}:${{minio.tag}} # cpu 不支持 AVX 时候使用 ${{minio.tag}}-cpuv1
-    container_name: fastgpt-minio
+  fastgpt-rustfs:
+    image: ${{rustfs.image}}:${{rustfs.tag}}
+    container_name: fastgpt-rustfs
     restart: always
     networks:
       - fastgpt
@@ -169,16 +172,23 @@ services:
       - '9000:9000'
       - '9001:9001'
     environment:
-      - MINIO_ROOT_USER=minioadmin
-      - MINIO_ROOT_PASSWORD=minioadmin
+      RUSTFS_ACCESS_KEY: *x-rustfs-access-key
+      RUSTFS_SECRET_KEY: *x-rustfs-secret-key
+      RUSTFS_VOLUMES: /data
+      RUSTFS_ADDRESS: :9000
+      RUSTFS_CONSOLE_ADDRESS: :9001
+      RUSTFS_CONSOLE_ENABLE: "true"
+      RUSTFS_OBS_LOGGER_LEVEL: error
+      RUSTFS_OBS_LOG_DIRECTORY: /logs
     volumes:
+      # Keep the existing volume so this service rename preserves local object data.
       - fastgpt-minio:/data
-    command: server /data --console-address ":9001"
     healthcheck:
-      test: ['CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live']
+      test: ['CMD-SHELL', 'curl -fsS http://127.0.0.1:9000/health && curl -fsS http://127.0.0.1:9001/rustfs/console/health']
       interval: 30s
-      timeout: 20s
+      timeout: 10s
       retries: 3
+      start_period: 40s
   fastgpt-code-sandbox:
     container_name: fastgpt-code-sandbox
     image: ${{fastgpt-code-sandbox.image}}:${{fastgpt-code-sandbox.tag}}
@@ -255,7 +265,7 @@ services:
       # 传递给 OTLP 收集器的服务名称
       LOG_OTEL_SERVICE_NAME: fastgpt-plugin
     depends_on:
-      fastgpt-minio:
+      fastgpt-rustfs:
         condition: service_healthy
     healthcheck:
       test: ['CMD', 'curl', '-f', 'http://localhost:3004/health']

@@ -5,6 +5,7 @@ import type {
   CompletionFinishReason
 } from '@fastgpt/global/core/ai/llm/type';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
+import { isTeamModel } from '@fastgpt/global/core/ai/model/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import type { AgentAskPayload } from '@fastgpt/global/core/ai/agent/type';
 import { getErrText } from '@fastgpt/global/common/error/utils';
@@ -25,6 +26,11 @@ import {
   type AgentLoopUsage
 } from '../../domain';
 import { buildPiModel, getModelApiKey, getPiThinkingLevel } from './modelBridge';
+import { getLegacyModelEndpoint } from '../../../../legacy/requestUrl';
+import {
+  installSafeLegacyFetchShim,
+  runWithSafeLegacyFetch
+} from '../../../../../../common/api/safeFetch';
 import { mergePiAgentPayload } from './payload';
 import { buildPiAgentTools } from './tool/build';
 import { getPiAgentNormalizationTools } from './tool/catalog';
@@ -83,6 +89,8 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
   const requestIds: string[] = [];
   let requestIndex = 0;
   let answerText = '';
+  // 完成检查需要最近一次自然结束的正文，answerText 只保留首个回复用于汇总兼容。
+  let latestAnswerText = '';
   let reasoningText = '';
   let inputTokens = 0;
   let outputTokens = 0;
@@ -237,6 +245,20 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
   const completeMessages: ChatCompletionMessageParam[] = [
     ...(standardAskResumeMessages ?? input.messages)
   ];
+  /** 同步核对取消、暂停和工具停止；终止后不能写入续跑历史或事件，不等待取消轮询。 */
+  const recordContinuationMessage = (content: string): ChatCompletionMessageParam | undefined => {
+    if (pendingAsk || pendingToolChild || pendingToolStop || runtime.checkIsStopping?.()) return;
+
+    const message: ChatCompletionMessageParam = {
+      role: ChatCompletionRequestMessageRoleEnum.User,
+      content,
+      hideInUI: true
+    };
+    completeMessages.push(message);
+    assistantMessages.push(message);
+    runtime.emitEvent?.({ type: 'user_message', content, source: 'server' });
+    return message;
+  };
   const shouldRestoreRawState = !!input.childrenInteractiveParams;
   let initialPiMessages = normalizePiAgentMessages({
     messages:
@@ -376,6 +398,7 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
     });
   }
 
+  const toolContinuationMessages: string[] = [];
   const tools = await buildPiAgentTools({
     runtime,
     getActivePlan: () => activePlan,
@@ -397,12 +420,13 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
     },
     getMessages: () => completeMessages,
     onToolCall: emitOrdinaryToolExecution,
-    onToolResult: ({ call, response, assistantMessages }) => {
+    onToolResult: ({ call, response, assistantMessages, continuationMessage }) => {
       recordToolResult({
         call,
         response,
         childAssistantMessages: assistantMessages
       });
+      if (continuationMessage) toolContinuationMessages.push(continuationMessage);
     }
   });
 
@@ -449,11 +473,23 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
       });
     },
     transformContext: async (messages) => {
+      // 工具全部执行完后才进入下一次请求，在此追加 User，保持工具结果的完整配对。
+      for (const content of toolContinuationMessages.splice(0)) {
+        const message = recordContinuationMessage(content);
+        if (!message) break;
+        const nextMessages = [
+          ...messages,
+          ...convertChatMessagesToPiAgentMessages({ messages: [message], model: piModel })
+        ];
+        messages.splice(0, messages.length, ...nextMessages);
+        agent.state.messages = nextMessages;
+      }
       const startTime = Date.now();
       try {
         const standardMessages = convertPiAgentMessagesToChatMessages(messages);
         const result = await compressRequestMessages({
           activePlan,
+          getCheckpointContext: runtime.getCheckpointContext,
           checkIsStopping: runtime.checkIsStopping,
           messages: standardMessages,
           model: modelData,
@@ -590,6 +626,7 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
       if (!answerText && messageData.answerText) {
         answerText = messageData.answerText;
       }
+      latestAnswerText = messageData.answerText;
       if (!reasoningText && messageData.reasoningText) {
         reasoningText = messageData.reasoningText;
       }
@@ -675,9 +712,17 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
     }
   }, 200);
 
+  // 仅团队成员模型启用运行时 SSRF 防护；系统模型保持原有传输。
+  const legacyEndpoint = isTeamModel(modelData) ? getLegacyModelEndpoint(modelData) : undefined;
+  const runAgent = <T>(run: () => Promise<T>): Promise<T> => {
+    if (!legacyEndpoint) return run();
+    installSafeLegacyFetchShim();
+    return runWithSafeLegacyFetch(legacyEndpoint.baseUrl, run);
+  };
+
   try {
     if (resumedInteractiveTool || resumedAsk || shouldContinueFromMessages) {
-      await agent.continue();
+      await runAgent(() => agent.continue());
     } else {
       const prompt = getPiAgentPrompt(requestMessages);
       const currentUserMessage = requestMessages[lastUserMessageIndex];
@@ -692,9 +737,9 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
           : undefined;
 
       if (piPromptMessage) {
-        await agent.prompt(piPromptMessage);
+        await runAgent(() => agent.prompt(piPromptMessage));
       } else {
-        await agent.prompt(prompt);
+        await runAgent(() => agent.prompt(prompt));
       }
     }
 
@@ -708,7 +753,10 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
       !agent.state.errorMessage &&
       !reachedRunLimit
     ) {
-      const decision = await runtime.completionPolicy({ requestIndex });
+      const decision = await runtime.completionPolicy({
+        requestIndex,
+        answerText: latestAnswerText
+      });
       if (decision.action === 'complete') break;
       if (requestIndex >= maxRunAgentTimes) {
         reachedRunLimit = true;
@@ -716,12 +764,8 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
         break;
       }
 
-      const continuationMessage: ChatCompletionMessageParam = {
-        role: ChatCompletionRequestMessageRoleEnum.User,
-        content: decision.message
-      };
-      completeMessages.push(continuationMessage);
-      await agent.prompt(decision.message);
+      if (!recordContinuationMessage(decision.message)) break;
+      await runAgent(() => agent.prompt(decision.message));
     }
   } catch (error) {
     latestError = error;

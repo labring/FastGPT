@@ -62,6 +62,8 @@ export type ChatGenerateStatusChangePayload = {
 export type ChatGenerateStatusChangeHandler = (data: ChatGenerateStatusChangePayload) => void;
 
 export type ChatGeneratingConflictRecovery = {
+  /** 服务端明确返回的当前 AI 消息 ID，可能已在客户端记录中。 */
+  responseChatItemId?: string;
   previousAiDataId?: string;
   canReusePreviousAi: boolean;
 };

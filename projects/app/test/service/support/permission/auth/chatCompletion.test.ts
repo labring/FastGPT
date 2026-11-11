@@ -8,17 +8,12 @@ import {
   PerResourceTypeEnum,
   ReadPermissionVal
 } from '@fastgpt/global/support/permission/constant';
-import { TeamMemberStatusEnum } from '@fastgpt/global/support/user/team/constant';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
-import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 import { getUser } from '@test/datas/users';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
-import {
-  authChatCompletionHeaderRequest,
-  resolveChatCompletionEffectiveTmbId
-} from '@/service/support/permission/auth/chatCompletion';
+import { authChatCompletionHeaderRequest } from '@/service/support/permission/auth/chatCompletion';
 
 type TestUser = Awaited<ReturnType<typeof getUser>>;
 
@@ -47,6 +42,8 @@ const createApiKeyAuth = ({
   ...owner,
   appId: appId || '',
   legacyAppId: legacyAppId || '',
+  apiKeyType: legacyAppId ? 'app' : 'personal',
+  boundAppId: legacyAppId || undefined,
   parsedAppId: parsedAppId || '',
   authType: AuthUserTypeEnum.apikey,
   apikey: 'test-api-key',
@@ -70,235 +67,6 @@ const grantAppReadPermission = async ({
     permission: ReadPermissionVal
   });
 };
-
-describe('resolveChatCompletionEffectiveTmbId', () => {
-  it('keeps API key owner as effective caller when authProxy is omitted', async () => {
-    const owner = await getUser('completion-proxy-owner-omitted');
-
-    await expect(
-      resolveChatCompletionEffectiveTmbId({
-        authType: AuthUserTypeEnum.apikey,
-        teamId: owner.teamId,
-        tmbId: owner.tmbId
-      })
-    ).resolves.toEqual({
-      tmbId: owner.tmbId,
-      isProxy: false
-    });
-  });
-
-  it('resolves username to an active team member in the API key team', async () => {
-    const owner = await getUser('completion-proxy-owner-username');
-    const member = await getUser('completion-proxy-member-username', owner.teamId);
-
-    await expect(
-      resolveChatCompletionEffectiveTmbId({
-        authType: AuthUserTypeEnum.apikey,
-        teamId: owner.teamId,
-        tmbId: owner.tmbId,
-        apiKeyAuthProxy: true,
-        authProxy: {
-          username: 'completion-proxy-member-username'
-        }
-      })
-    ).resolves.toEqual({
-      tmbId: member.tmbId,
-      isProxy: true
-    });
-  });
-
-  it('resolves tmbId to an active team member in the API key team', async () => {
-    const owner = await getUser('completion-proxy-owner-tmbid');
-    const member = await getUser('completion-proxy-member-tmbid', owner.teamId);
-
-    await expect(
-      resolveChatCompletionEffectiveTmbId({
-        authType: AuthUserTypeEnum.apikey,
-        teamId: owner.teamId,
-        tmbId: owner.tmbId,
-        apiKeyAuthProxy: true,
-        authProxy: {
-          tmbId: member.tmbId
-        }
-      })
-    ).resolves.toEqual({
-      tmbId: member.tmbId,
-      isProxy: true
-    });
-  });
-
-  it('accepts username and tmbId that point to the same member', async () => {
-    const owner = await getUser('completion-proxy-owner-both');
-    const member = await getUser('completion-proxy-member-both', owner.teamId);
-
-    await expect(
-      resolveChatCompletionEffectiveTmbId({
-        authType: AuthUserTypeEnum.apikey,
-        teamId: owner.teamId,
-        tmbId: owner.tmbId,
-        apiKeyAuthProxy: true,
-        authProxy: {
-          username: 'completion-proxy-member-both',
-          tmbId: member.tmbId
-        }
-      })
-    ).resolves.toEqual({
-      tmbId: member.tmbId,
-      isProxy: true
-    });
-  });
-
-  it('prioritizes tmbId when username points to a different member', async () => {
-    const owner = await getUser('completion-proxy-owner-mismatch');
-    const memberA = await getUser('completion-proxy-member-a-mismatch', owner.teamId);
-    const memberB = await getUser('completion-proxy-member-b-mismatch', owner.teamId);
-
-    await expect(
-      resolveChatCompletionEffectiveTmbId({
-        authType: AuthUserTypeEnum.apikey,
-        teamId: owner.teamId,
-        tmbId: owner.tmbId,
-        apiKeyAuthProxy: true,
-        authProxy: {
-          username: 'completion-proxy-member-a-mismatch',
-          tmbId: memberB.tmbId
-        }
-      })
-    ).resolves.toEqual({
-      tmbId: memberB.tmbId,
-      isProxy: true
-    });
-
-    expect(memberA.tmbId).not.toBe(memberB.tmbId);
-  });
-
-  it('ignores a nonexistent username when tmbId resolves to an active member', async () => {
-    const owner = await getUser('completion-proxy-owner-missing-username');
-    const member = await getUser('completion-proxy-member-missing-username', owner.teamId);
-
-    await expect(
-      resolveChatCompletionEffectiveTmbId({
-        authType: AuthUserTypeEnum.apikey,
-        teamId: owner.teamId,
-        tmbId: owner.tmbId,
-        apiKeyAuthProxy: true,
-        authProxy: {
-          username: 'nonexistent-proxy-user',
-          tmbId: member.tmbId
-        }
-      })
-    ).resolves.toEqual({
-      tmbId: member.tmbId,
-      isProxy: true
-    });
-  });
-
-  it('does not fall back to username when the selected tmbId does not exist', async () => {
-    const username = 'completion-proxy-owner-missing-tmbid';
-    const owner = await getUser(username);
-
-    await expect(
-      resolveChatCompletionEffectiveTmbId({
-        authType: AuthUserTypeEnum.apikey,
-        teamId: owner.teamId,
-        tmbId: owner.tmbId,
-        apiKeyAuthProxy: true,
-        authProxy: {
-          username,
-          tmbId: '68ad85a7463006c963799a05'
-        }
-      })
-    ).rejects.toBe(ChatErrEnum.unAuthChat);
-  });
-
-  it('rejects members outside the API key team', async () => {
-    const owner = await getUser('completion-proxy-owner-cross-team');
-    const outsider = await getUser('completion-proxy-outsider-cross-team');
-
-    await expect(
-      resolveChatCompletionEffectiveTmbId({
-        authType: AuthUserTypeEnum.apikey,
-        teamId: owner.teamId,
-        tmbId: owner.tmbId,
-        apiKeyAuthProxy: true,
-        authProxy: {
-          username: 'completion-proxy-owner-cross-team',
-          tmbId: outsider.tmbId
-        }
-      })
-    ).rejects.toBe(ChatErrEnum.unAuthChat);
-  });
-
-  it('rejects leave or forbidden members', async () => {
-    const owner = await getUser('completion-proxy-owner-forbidden');
-    const forbidden = await getUser('completion-proxy-member-forbidden', owner.teamId);
-    await MongoTeamMember.updateOne(
-      { _id: forbidden.tmbId },
-      { status: TeamMemberStatusEnum.forbidden }
-    );
-
-    await expect(
-      resolveChatCompletionEffectiveTmbId({
-        authType: AuthUserTypeEnum.apikey,
-        teamId: owner.teamId,
-        tmbId: owner.tmbId,
-        apiKeyAuthProxy: true,
-        authProxy: {
-          username: 'completion-proxy-owner-forbidden',
-          tmbId: forbidden.tmbId
-        }
-      })
-    ).rejects.toBe(ChatErrEnum.unAuthChat);
-  });
-
-  it('rejects authProxy when APIKey capability is disabled', async () => {
-    const owner = await getUser('completion-proxy-owner-disabled');
-
-    await expect(
-      resolveChatCompletionEffectiveTmbId({
-        authType: AuthUserTypeEnum.apikey,
-        teamId: owner.teamId,
-        tmbId: owner.tmbId,
-        apiKeyAuthProxy: false,
-        authProxy: {
-          tmbId: owner.tmbId
-        }
-      })
-    ).rejects.toBe(ChatErrEnum.unAuthChat);
-  });
-
-  it('rejects authProxy for app-level APIKey', async () => {
-    const owner = await getUser('completion-proxy-owner-app-key');
-
-    await expect(
-      resolveChatCompletionEffectiveTmbId({
-        authType: AuthUserTypeEnum.apikey,
-        teamId: owner.teamId,
-        tmbId: owner.tmbId,
-        legacyAppId: '507f1f77bcf86cd799439011',
-        apiKeyAuthProxy: true,
-        authProxy: {
-          tmbId: owner.tmbId
-        }
-      })
-    ).rejects.toBe(ChatErrEnum.unAuthChat);
-  });
-
-  it('rejects authProxy for non API key auth', async () => {
-    const owner = await getUser('completion-proxy-owner-token');
-
-    await expect(
-      resolveChatCompletionEffectiveTmbId({
-        authType: AuthUserTypeEnum.token,
-        teamId: owner.teamId,
-        tmbId: owner.tmbId,
-        authProxy: {
-          tmbId: owner.tmbId
-        }
-      })
-    ).rejects.toBe(ChatErrEnum.unAuthChat);
-  });
-});
 
 describe('authChatCompletionHeaderRequest', () => {
   beforeEach(() => {
@@ -411,6 +179,42 @@ describe('authChatCompletionHeaderRequest', () => {
     ).rejects.toBe(ChatErrEnum.unAuthChat);
   });
 
+  it.each(['personal', 'app'])(
+    'keeps the first external user binding for %s keys',
+    async (type) => {
+      const owner = await getUser('completion-fixed-uid-' + type);
+      const app = await createApiApp(owner);
+      const chatId = 'fixed-uid';
+      await MongoChat.create({
+        appId: app._id,
+        chatId,
+        teamId: owner.teamId,
+        tmbId: owner.tmbId,
+        sourceType: ChatSourceTypeEnum.app,
+        source: ChatSourceEnum.api,
+        outLinkUid: 'u1'
+      });
+      const params = {
+        req: {
+          auth: createApiKeyAuth({
+            owner,
+            ...(type === 'app' ? { legacyAppId: String(app._id) } : {})
+          })
+        } as any,
+        appId: String(app._id),
+        chatId
+      };
+      for (const customUid of [undefined, '', 'u2']) {
+        await expect(authChatCompletionHeaderRequest({ ...params, customUid })).rejects.toBe(
+          ChatErrEnum.unAuthChat
+        );
+      }
+      await expect(
+        authChatCompletionHeaderRequest({ ...params, customUid: 'u1' })
+      ).resolves.toMatchObject({ tmbId: owner.tmbId });
+    }
+  );
+
   it('rejects authProxy when the APIKey is bound to an app', async () => {
     const owner = await getUser('completion-header-owner-app-key');
     const member = await getUser('completion-header-member-app-key', owner.teamId);
@@ -432,7 +236,7 @@ describe('authChatCompletionHeaderRequest', () => {
     ).rejects.toBe(ChatErrEnum.unAuthChat);
   });
 
-  it('uses body appId before legacyAppId and checks the key member app permission', async () => {
+  it('uses the app API key binding before a different body appId', async () => {
     const owner = await getUser('completion-header-owner-app-key-same-team');
     const boundApp = await createApiApp(owner);
     const requestApp = await createApiApp(owner);
@@ -448,29 +252,28 @@ describe('authChatCompletionHeaderRequest', () => {
       appId: String(requestApp._id)
     });
 
-    expect(String(result.app._id)).toBe(String(requestApp._id));
+    expect(String(result.app._id)).toBe(String(boundApp._id));
     expect(result.teamId).toBe(owner.teamId);
     expect(result.tmbId).toBe(owner.tmbId);
   });
 
-  it('rejects app APIKey body appId from another team', async () => {
+  it('ignores a foreign body appId and executes the app API key binding', async () => {
     const owner = await getUser('completion-header-owner-app-key-cross-team');
     const outsider = await getUser('completion-header-outsider-app-key-cross-team');
     const boundApp = await createApiApp(owner);
     const outsiderApp = await createApiApp(outsider);
 
-    await expect(
-      authChatCompletionHeaderRequest({
-        req: {
-          auth: createApiKeyAuth({
-            owner,
-            appId: String(boundApp._id),
-            legacyAppId: String(boundApp._id)
-          })
-        } as any,
-        appId: String(outsiderApp._id)
-      })
-    ).rejects.toBe(AppErrEnum.unAuthApp);
+    const result = await authChatCompletionHeaderRequest({
+      req: {
+        auth: createApiKeyAuth({
+          owner,
+          appId: String(boundApp._id),
+          legacyAppId: String(boundApp._id)
+        })
+      } as any,
+      appId: String(outsiderApp._id)
+    });
+    expect(String(result.app._id)).toBe(String(boundApp._id));
   });
 
   it('rejects authProxy when the proxied member lacks target app permission', async () => {

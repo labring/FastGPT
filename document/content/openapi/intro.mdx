@@ -19,13 +19,21 @@ description: 配置服务地址、成员密钥和应用 ID，调用已发布应�
 
 ## 前置准备
 
-准备一个已调试并发布的应用、该应用的读取权限及模型额度。在**账号 → API 密钥**（仅对具备“创建 API 密钥”权限的成员显示；若未看到该入口，请联系团队管理员在**账号 → 团队管理 → 权限**中勾选**创建 API 密钥**）或**工作台 → 目标应用 → 发布渠道 → API 访问**中创建当前成员的团队级 API Key。密钥可访问该成员在当前团队中拥有权限且允许 API Key 调用的资源。
+准备一个已调试并发布的应用及可用模型额度，并在以下位置创建或管理 API 密钥：
 
-密钥由创建成员管理。当团队开通套餐用量计划后，可在创建或编辑密钥时设置**积分上限**与**过期时间**。请将密钥保存在可信服务端或密钥管理系统。
+1. **账号 → API 密钥**：管理当前成员的个人密钥（仅对具备“创建 API 密钥”权限的成员显示；可在**账号 → 团队管理 → 权限**中勾选**创建 API 密钥**开启）。
+2. **工作台 → 目标应用 → 发布渠道 → API 访问**：切换管理 **应用 Key**（FastGPT 4.18.0 及以上）与 **个人密钥**。
+
+| 类型 | 授权范围 | 管理方式 |
+| --- | --- | --- |
+| 应用 Key | 绑定单个应用的对话与对话管理接口（含对话日志、对话文件与沙盒文件接口） | 应用管理员可查看、创建和管理同一应用下的全部应用 Key |
+| 个人密钥 | 以成员身份访问当前团队中有权限且开放 API Key 鉴权的资源 | 创建成员管理本人的密钥 |
+
+应用 Key 的调用授权来自 Key 本身：只要 Key、归属成员、团队和绑定应用有效，归属成员权限变更后仍可继续调用。个人密钥支持由团队所有者开启 `authProxy` 代理团队成员身份（FastGPT >= v4.15.0，见[身份代理](/zh-CN/openapi/identity-proxy)）；应用 Key 通过 `customUid` 标记外部使用者。当团队开通套餐用量计划后，可在创建或编辑密钥时设置**积分上限**与**过期时间**。请将密钥保存在可信服务端或密钥管理系统。
 
 ## 首次请求
 
-将 `FASTGPT_ORIGIN` 替换为自己的 FastGPT 访问地址，复制应用详情 URL 中的 `appId`。下面请求通过 `/api/v2/chat/completions`（推荐使用 v2；`/api/v1/chat/completions` 仅保留历史兼容）调用发布版本：
+将 `FASTGPT_ORIGIN` 替换为自己的 FastGPT 访问地址，复制应用详情 URL 中的 `appId`（使用 4.18.0+ 应用 Key 时可省略 `appId`，服务端自动读取绑定应用）。下面请求通过 `/api/v2/chat/completions`（推荐使用 v2；`/api/v1/chat/completions` 保留历史兼容）调用发布版本：
 
 ```bash
 export FASTGPT_ORIGIN='https://cloud.fastgpt.cn'
@@ -104,7 +112,27 @@ main().catch(console.error);
   </Tab>
 </Tabs>
 
-对于只支持配置 API Key 的第三方客户端工具，可使用 `<apiKey>-<appId>` 格式组合。服务端解析应用 ID 的优先级为：请求体 `body.appId` → Authorization 请求头后缀 → 密钥历史绑定的单一应用。
+使用应用 Key 时，所有支持应用 Key 的对话与对话管理接口均可省略 `appId` 与 `sourceType`（服务端固定使用绑定应用与 `sourceType=app`，在在线接口文档中可选择“应用 API Key（无需 appId）”查看对应入参）。使用个人密钥且第三方客户端只支持配置单个 API Key 时，可使用 `<apiKey>-<appId>` 组合格式，解析优先级为：请求体 `body.appId` → Authorization 请求头后缀 → 密钥历史绑定的单一应用。
+
+### 使用应用 Key 获取会话列表
+
+应用 Key 调用 `/api/core/chat/history/getHistories` 时固定查询绑定应用的 API 来源会话，无需传入 `appId`、`sourceType` 或 `source`：
+
+```bash
+export FASTGPT_ORIGIN='https://cloud.fastgpt.cn'
+export FASTGPT_APP_API_KEY='YOUR_APP_API_KEY'
+curl --fail-with-body "$FASTGPT_ORIGIN/api/core/chat/history/getHistories" \
+  -H "Authorization: Bearer $FASTGPT_APP_API_KEY" \
+  -H 'Content-Type: application/json' \
+  --data @- <<EOF
+{"offset":0,"pageSize":20}
+EOF
+```
+
+- 按偏移量分页：传 `offset`（从 `0` 开始）。
+- 按页码分页：省略 `offset`，传 `pageNum`（从 `1` 开始，例如 `{"pageNum": 2, "pageSize": 20}`）；同时传入时以 `offset` 为准。
+- `pageSize` 默认 `20`，最大 `500`（超出上限按 `500` 处理）；省略分页参数时返回第一页。
+- 可选传入 `startCreateTime`、`endCreateTime`、`startUpdateTime`、`endUpdateTime` 筛选时间范围。
 
 ## API 文档地址
 

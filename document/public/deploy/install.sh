@@ -528,14 +528,14 @@ request_sandbox_proxy_url() {
     SANDBOX_PROXY_URL_INPUT="${input%/}"
 }
 
-is_v415_deploy() {
-    [ "$DEPLOY_VERSION" = "v4.15" ] ||
-        { [ "$DEPLOY_VERSION" = "$LOCAL_DEPLOY_VERSION" ] && grep -q 'fastgpt:v4\.15' "$LOCAL_COMPOSE_PATH" 2>/dev/null; }
+# 本地旧版 Compose 仍使用从 WebSocket 地址推导预览地址的方式。
+is_v415_local_deploy() {
+    [ "$DEPLOY_VERSION" = "$LOCAL_DEPLOY_VERSION" ] &&
+        grep -q 'fastgpt:v4\.15' "$LOCAL_COMPOSE_PATH" 2>/dev/null
 }
 
-# v4.14 以及未定义该服务的本地 Compose 不需要 Sandbox Proxy 地址和端口配置。
+# 未定义该服务的本地 Compose 不需要 Sandbox Proxy 地址和端口配置。
 is_sandbox_proxy_deploy() {
-    [ "$DEPLOY_VERSION" != "v4.14" ] || return 1
     [ "$DEPLOY_VERSION" != "$LOCAL_DEPLOY_VERSION" ] ||
         grep -qE '^  fastgpt-agent-sandbox-proxy:[[:space:]]*(#.*)?$' "$LOCAL_COMPOSE_PATH"
 }
@@ -545,7 +545,7 @@ request_sandbox_preview_proxy_url() {
 
     if [ -n "$FASTGPT_SANDBOX_PREVIEW_PROXY_URL" ]; then
         input="$FASTGPT_SANDBOX_PREVIEW_PROXY_URL"
-    elif is_v415_deploy; then
+    elif is_v415_local_deploy; then
         if [[ "$SANDBOX_PROXY_URL_INPUT" == wss://* ]]; then
             input="https://${SANDBOX_PROXY_URL_INPUT#wss://}"
         else
@@ -918,7 +918,7 @@ randomize_compose_credentials() {
     replace_text "'redis-cli', '-a', 'mypassword', 'ping'" "'redis-cli', '-a', '$redis_password', 'ping'"
     replace_text '"redis-cli", "-a", "mypassword", "ping"' "\"redis-cli\", \"-a\", \"$redis_password\", \"ping\""
 
-    # v4.14/v4.15 历史模板仍使用 FastGPT 自带 MinIO。用户名保持 minioadmin 便于识别和登录控制台，只随机化密钥。
+    # 本地旧版 Compose 可能使用 FastGPT 自带 MinIO。用户名保持 minioadmin 便于识别和登录控制台，只随机化密钥。
     replace_text "STORAGE_SECRET_ACCESS_KEY: minioadmin" "STORAGE_SECRET_ACCESS_KEY: $minio_password"
     replace_text "MINIO_SECRET_KEY: minioadmin" "MINIO_SECRET_KEY: $minio_password"
     replace_text "- MINIO_ROOT_PASSWORD=minioadmin" "- MINIO_ROOT_PASSWORD=$minio_password"
@@ -956,8 +956,7 @@ randomize_compose_credentials() {
 # BEGIN GENERATED DEPLOY VERSIONS
 DEPLOY_VERSIONS=(
     "main"
-    "v4.15"
-    "v4.14"
+    "v4.16"
 )
 # END GENERATED DEPLOY VERSIONS
 LOCAL_DEPLOY_VERSION="local"
@@ -983,15 +982,13 @@ if [ -n "$FASTGPT_DEPLOY_BASE_URL" ]; then
     CUSTOM_DEPLOY_BASE_URL="$(normalize_deploy_base_url "$FASTGPT_DEPLOY_BASE_URL")"
 fi
 
-# 获取部署版本展示文案：main 对应当前稳定版，已停止维护的版本单独标记
+# 获取部署版本展示文案：main 对应当前稳定版，维护版本单独标记
 get_version_label() {
     local version="$1"
     if [ "$version" == "$LOCAL_DEPLOY_VERSION" ]; then
         echo "$LOCAL_DEPLOY_LABEL"
-    elif [ "$version" == "v4.14" ]; then
-        echo "稳定版 v4.14 (不再维护)"
     elif [ "$version" == "main" ]; then
-        echo "稳定版 v4.17"
+        echo "稳定版 v4.17 (main)"
     else
         echo "稳定版 $version"
     fi
@@ -1230,11 +1227,9 @@ select_address() {
     fi
 }
 
-# v4.14 使用旧版 MinIO 下载链路；本地 Compose 则以实际配置决定是否需要外部地址。
+# 本地旧版 Compose 以实际配置决定是否需要外部 S3 地址。
 NEEDS_S3_EXTERNAL_ENDPOINT=false
-if [ "$DEPLOY_VERSION" == "v4.14" ]; then
-    NEEDS_S3_EXTERNAL_ENDPOINT=true
-elif [ "$DEPLOY_VERSION" == "$LOCAL_DEPLOY_VERSION" ] && LC_ALL=C grep -q "STORAGE_EXTERNAL_ENDPOINT" "$LOCAL_COMPOSE_PATH"; then
+if [ "$DEPLOY_VERSION" == "$LOCAL_DEPLOY_VERSION" ] && LC_ALL=C grep -q "STORAGE_EXTERNAL_ENDPOINT" "$LOCAL_COMPOSE_PATH"; then
     NEEDS_S3_EXTERNAL_ENDPOINT=true
 fi
 
@@ -1254,7 +1249,7 @@ fi
 request_fe_domain
 if [ "$SANDBOX_PROXY_EXPECTED" = true ]; then
     request_sandbox_proxy_url
-    if ! is_v415_deploy; then
+    if ! is_v415_local_deploy; then
         request_sandbox_preview_proxy_url
     fi
 fi
@@ -1316,7 +1311,7 @@ echo "  FastGPT 宿主端口: $FASTGPT_HOST_PORT -> 容器 3000"
 if [ "$SANDBOX_PROXY_EXPECTED" = true ]; then
     echo "  Sandbox WebSocket 地址: $SANDBOX_PROXY_URL_INPUT"
     echo "  Sandbox Proxy 宿主端口: $SANDBOX_PROXY_HOST_PORT -> 容器 1006"
-    if ! is_v415_deploy; then
+    if ! is_v415_local_deploy; then
         echo "  Sandbox 预览地址: $SANDBOX_PREVIEW_PROXY_URL_INPUT"
     fi
 fi
@@ -1626,7 +1621,7 @@ fi
 if [ "$SANDBOX_PROXY_EXPECTED" = true ]; then
     echo "Sandbox WebSocket 地址: $SANDBOX_PROXY_URL_INPUT"
 fi
-if [ "$SANDBOX_PROXY_EXPECTED" = true ] && ! is_v415_deploy; then
+if [ "$SANDBOX_PROXY_EXPECTED" = true ] && ! is_v415_local_deploy; then
     echo "Sandbox 预览地址: $SANDBOX_PREVIEW_PROXY_URL_INPUT"
 fi
 echo "直连时按实际宿主机映射放行端口；使用反向代理时，公网端口由代理负责。"

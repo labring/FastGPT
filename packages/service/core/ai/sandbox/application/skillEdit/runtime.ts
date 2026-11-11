@@ -555,6 +555,30 @@ export async function getRunningSkillEditSandbox(params: { skillId: string; team
 }
 
 /**
+ * 确保 Skill Edit sandbox 已启动并等待就绪，供导出接口在打包前调用。
+ *
+ * 已运行的实例直接复用；不存在时按现有 runtime 状态初始化，初始化完成后再次确认实例已注册。
+ */
+export async function ensureSkillEditRuntimeSandbox(params: { skillId: string; teamId: string }) {
+  const running = await getRunningSkillEditSandbox(params);
+  if (running) return running;
+
+  const context = await getSkillEditRuntimeContext(params);
+  const status = await getSkillEditRuntimeStatus({ context });
+  if (status.status !== 'readyToInit') {
+    throw new Error(status.lastError || SKILL_EDIT_SANDBOX_NOT_RUNNING_ERROR);
+  }
+
+  await initSkillEditRuntimeSandbox({ context });
+
+  const ready = await getRunningSkillEditSandbox(params);
+  if (!ready) {
+    throw new Error(SKILL_EDIT_SANDBOX_NOT_RUNNING_ERROR);
+  }
+  return ready;
+}
+
+/**
  * 打包当前正在运行的 Skill Edit sandbox 工作区。
  *
  * 调用方需要先完成权限校验；本函数只负责定位运行态 sandbox 和调用打包逻辑。
@@ -564,10 +588,7 @@ export async function packageSkillEditWorkspace(params: {
   teamId: string;
   validationMode?: Parameters<typeof packageSkillInSandbox>[0]['validationMode'];
 }) {
-  const sandboxInfo = await getRunningSkillEditSandbox(params);
-  if (!sandboxInfo) {
-    throw new Error(SKILL_EDIT_SANDBOX_NOT_RUNNING_ERROR);
-  }
+  const sandboxInfo = await ensureSkillEditRuntimeSandbox(params);
 
   const runtimeProfile = getSandboxRuntimeProfile(sandboxInfo.provider);
   return packageSkillInSandbox({

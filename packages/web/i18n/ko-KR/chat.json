@@ -1,4 +1,5 @@
 {
+  "source_dingtalk": "딩톡",
   "AI_input_is_empty": "AI 노드로 전달된 내용이 비어 있습니다",
   "LLM_model_response_empty": "모델 응답이 비어 있습니다. 모델 상세 요청을 확인해 주세요",
   "Next": "다음",
@@ -305,5 +306,7 @@
   "interactive.agent_ask.waiting": "질문 중",
   "interactive.agent_ask.asked_questions": "{{count}}개 질문 완료",
   "view_all_citations": "모두 보기",
-  "view_citations": "인용 보기"
+  "view_citations": "인용 보기",
+  "sandbox_connection_closed": "샌드박스 연결이 종료되었습니다",
+  "sandbox_invalid_file_name": "파일 이름이 올바르지 않습니다"
 }

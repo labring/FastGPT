@@ -27,6 +27,10 @@ describe('getNodeInputValueSchema', () => {
     { type: 'manual', value: { appSecret: { value: '', secret: 'existing-ciphertext' } } },
     { type: 'manual', value: { appSecret: { value: 'demo-secret', secret: '' } } },
     { type: 'manual', value: { limit: { value: 0 }, enabled: { value: false } } },
+    {
+      type: 'manual',
+      value: { appId: { ref: ['node', 'output'] }, limit: { ref: [['node', 'output']] } }
+    },
     { type: 'manual', value: { region: { value: 'us' }, custom: { value: 'custom' } } },
     {
       type: 'manual',
@@ -48,6 +52,11 @@ describe('getNodeInputValueSchema', () => {
     { type: 'manual' },
     { type: 'manual', value: { appSecret: 'not-a-secret-wrapper' } },
     { type: 'manual', value: { appSecret: { secret: 42 } } },
+    { type: 'manual', value: { appId: { ref: [] } } },
+    { type: 'manual', value: { appId: { ref: ['node'] } } },
+    { type: 'manual', value: { appId: { ref: ['node', ''] } } },
+    { type: 'manual', value: { appId: { ref: ['node', 'output'], value: 'mixed' } } },
+    { type: 'manual', value: { appId: { ref: ['node', 'output'], secret: 'mixed' } } },
     { type: 'manual', value: { unknownKey: { value: 'unknown-field' } } },
     { type: 'manual', value: { limit: { value: 'not-a-number' } } },
     { type: 'manual', value: { enabled: { value: 'not-a-boolean' } } },

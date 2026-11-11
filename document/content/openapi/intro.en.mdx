@@ -20,13 +20,21 @@ description: Configure a service address, member API key, and application ID, th
 
 ## Prerequisites
 
-Prepare a debugged, published application, read permission for it, and model quota. Create a team-level key for the current member under **Account → API Keys** (visible to members granted the **Create API Keys** team permission; if hidden, ask a Team Admin to enable **Create API Keys** under **Account → Team management → Permissions**) or **Studio → Target App → Publish Channels → API Access**. The key can access resources permitted to that member in the current team through operations accepting API keys.
+Prepare a debugged, published application and available model quota, then create or manage API keys in either location:
 
-The creating member manages the key. When the team has an active subscription usage plan, you can configure **Max usage points** and **Expiration time** when creating or editing a key. Store the key on a trusted server or in a secret manager.
+1. **Account → API Keys**: manage personal keys for the current member (visible to members granted the **Create API Keys** permission under **Account → Team management → Permissions**).
+2. **Studio → Target App → Publish Channels → API Access**: switch between **App keys** (FastGPT 4.18.0 or later) and **Personal keys**.
+
+| Type | Scope | Management |
+| --- | --- | --- |
+| App key | Chat and chat management endpoints for its bound app, including chat logs, chat files, and Sandbox files | App administrators view, create, and manage all keys on the same app |
+| Personal key | Team resources accessible to the owning member on endpoints that accept API keys | Members manage their own keys |
+
+An app key grants access independently of its owning member's app permissions as long as the key, member, team, and bound app remain valid. Personal keys support `authProxy` when enabled by the team owner (FastGPT >= v4.15.0; see [identity proxy](/en/openapi/identity-proxy)), while app keys identify external users via `customUid`. When the team has an active subscription usage plan, you can configure **Max usage points** and **Expiration time** when creating or editing a key. Store keys on a trusted server or in a secret manager.
 
 ## First request
 
-Set `FASTGPT_ORIGIN` to your FastGPT instance and copy `appId` from the application details URL. This request calls its published version through `/api/v2/chat/completions` (`v2` is recommended; `/api/v1/chat/completions` is retained for legacy compatibility):
+Set `FASTGPT_ORIGIN` to your FastGPT instance and copy `appId` from the application details URL (with a 4.18.0+ app key, `appId` can be omitted because the server uses the bound app). This request calls the published version through `/api/v2/chat/completions` (`v2` is recommended; `/api/v1/chat/completions` is retained for legacy compatibility):
 
 ```bash
 export FASTGPT_ORIGIN='https://cloud.fastgpt.io'
@@ -105,7 +113,27 @@ main().catch(console.error);
   </Tab>
 </Tabs>
 
-For third-party tools that only accept an API Key string, use the `<apiKey>-<appId>` composite format. FastGPT resolves target applications in this order: request body `body.appId` -> Bearer header suffix -> legacy key-bound application.
+With an app key, omit `appId` and `sourceType` on supported chat and chat management endpoints (the server uses the bound app and fixes `sourceType` to `app`; select **app API key (no appId required)** in the generated API reference to inspect its parameters). With a personal key in third-party tools that accept only a single API key string, use the `<apiKey>-<appId>` composite format; FastGPT resolves target applications in order of request body `body.appId` -> Bearer header suffix -> legacy key-bound application.
+
+### List sessions with an app key
+
+With an app key, `/api/core/chat/history/getHistories` queries API-source sessions for the bound app. Omit `appId`, `sourceType`, and `source`:
+
+```bash
+export FASTGPT_ORIGIN='https://cloud.fastgpt.io'
+export FASTGPT_APP_API_KEY='YOUR_APP_API_KEY'
+curl --fail-with-body "$FASTGPT_ORIGIN/api/core/chat/history/getHistories" \
+  -H "Authorization: Bearer $FASTGPT_APP_API_KEY" \
+  -H 'Content-Type: application/json' \
+  --data @- <<EOF
+{"offset":0,"pageSize":20}
+EOF
+```
+
+- Offset pagination: pass `offset` starting at `0`.
+- Page pagination: omit `offset` and pass `pageNum` starting at `1` (for example `{"pageNum": 2, "pageSize": 20}`); `offset` takes precedence when both are provided.
+- `pageSize` defaults to `20` and caps at `500` (larger values clamp to `500`); omitting pagination parameters returns the first page.
+- Filter time ranges optionally with `startCreateTime`, `endCreateTime`, `startUpdateTime`, and `endUpdateTime`.
 
 ## API reference addresses
 

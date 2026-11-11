@@ -1,10 +1,12 @@
+import * as commonAuth from '@fastgpt/service/support/permission/auth/common';
+import * as chatIdentity from '@fastgpt/service/core/chat/identity';
 import { MarkChatReadBodySchema } from '@fastgpt/global/openapi/core/chat/history/api';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { authChatTargetCrud, assertChatAccess } from '@fastgpt/service/core/chat/auth';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
-import { authApp } from '@fastgpt/service/support/permission/app/auth';
+import { authApp, authAppByTmbId } from '@fastgpt/service/support/permission/app/auth';
 import { authSkill } from '@fastgpt/service/support/permission/skill/auth';
 import { authOutLink } from '@fastgpt/service/support/permission/publish/authChat';
 import { AppPermission } from '@fastgpt/global/support/permission/app/controller';
@@ -61,17 +63,21 @@ describe('authChatTargetCrud App and share access', () => {
   });
 
   describe('validation', () => {
-    it.each(['', undefined, null])('rejects an invalid appId: %s', async (sourceId) => {
-      await expect(
-        authChatTargetCrud({
-          sourceId: sourceId as string,
-          req: {} as any,
-          authToken: true,
-          sourceType: ChatSourceTypeEnum.app
-        })
-      ).rejects.toBe(ChatErrEnum.unAuthChat);
-      expect(authApp).not.toHaveBeenCalled();
-    });
+    it.each(['', undefined, null])(
+      'delegates an omitted appId to authentication: %s',
+      async (sourceId) => {
+        vi.mocked(authApp).mockRejectedValueOnce(ChatErrEnum.unAuthChat);
+        await expect(
+          authChatTargetCrud({
+            sourceId: sourceId as string,
+            req: {} as any,
+            authToken: true,
+            sourceType: ChatSourceTypeEnum.app
+          })
+        ).rejects.toBe(ChatErrEnum.unAuthChat);
+        expect(authApp).toHaveBeenCalled();
+      }
+    );
   });
 
   describe('outLink authentication', () => {
@@ -730,7 +736,8 @@ describe('authChatTargetCrud resource context', () => {
       teamId: 'team-1',
       tmbId: 'member-1',
       userId: 'user-1',
-      app: { name: 'App' },
+      app: { _id: 'app-1', name: 'App' },
+      appId: 'app-1',
       permission: new AppPermission({ role: 0 })
     } as any);
     vi.mocked(authSkill).mockResolvedValue({
@@ -811,6 +818,105 @@ describe('authChatTargetCrud resource context', () => {
     }
   );
 
+  it('authorizes the proxy member before resource ACL and uses that member’s actual chat permissions', async () => {
+    const cert = vi.spyOn(commonAuth, 'parseHeaderCert').mockResolvedValue({
+      teamId: 'team-1',
+      tmbId: 'creator',
+      userId: 'creator-user',
+      authType: AuthUserTypeEnum.apikey,
+      apiKeyType: 'personal',
+      apiKeyAuthProxy: true
+    } as any);
+    const proxy = vi
+      .spyOn(chatIdentity, 'resolveChatProxyMember')
+      .mockResolvedValue({ tmbId: 'member-2', userId: 'user-2', isProxy: true });
+    vi.mocked(authAppByTmbId).mockResolvedValue({
+      app: { _id: 'app-1', permission: new AppPermission({ isOwner: true }) }
+    } as any);
+    const target = {
+      ...params,
+      sourceType: ChatSourceTypeEnum.app,
+      chatId: 'proxy-chat',
+      authProxy: { tmbId: 'member-2' }
+    };
+    try {
+      vi.mocked(MongoChat.findOne).mockReturnValue({
+        lean: async () => ({ teamId: 'team-1', tmbId: 'member-2' })
+      } as any);
+      await expect(authChatTargetCrud(target)).resolves.toMatchObject({
+        tmbId: 'member-2',
+        userId: 'user-2',
+        isProxy: true,
+        scope: { teamId: 'team-1' }
+      });
+      expect(authApp).not.toHaveBeenCalled();
+      expect(authAppByTmbId).toHaveBeenCalledWith(
+        expect.objectContaining({ tmbId: 'member-2', appId: 'app-1' })
+      );
+      vi.mocked(authAppByTmbId).mockResolvedValue({
+        app: { _id: 'app-1', permission: new AppPermission({ role: 4 }) }
+      } as any);
+      vi.mocked(MongoChat.findOne).mockReturnValue({
+        lean: async () => ({ teamId: 'team-1', tmbId: 'creator' })
+      } as any);
+      await expect(authChatTargetCrud(target)).rejects.toBe(ChatErrEnum.unAuthChat);
+    } finally {
+      cert.mockRestore();
+      proxy.mockRestore();
+    }
+  });
+
+  it('narrows API access by the exact external UID and never falls back to member ID', async () => {
+    vi.mocked(authApp).mockResolvedValue({
+      teamId: 'team-1',
+      tmbId: 'member-1',
+      authType: AuthUserTypeEnum.apikey,
+      app: { _id: 'app-1' },
+      appId: 'app-1',
+      permission: new AppPermission({ isOwner: true })
+    } as any);
+    const target = {
+      ...params,
+      sourceType: ChatSourceTypeEnum.app,
+      chatId: 'chat-1',
+      customUid: 'external'
+    };
+    vi.mocked(MongoChat.findOne).mockReturnValue({
+      lean: async () => ({ teamId: 'team-1', tmbId: 'member-2', outLinkUid: 'external' })
+    } as any);
+    await expect(authChatTargetCrud(target)).resolves.toMatchObject({
+      uid: 'external',
+      scope: { teamId: 'team-1', outLinkUid: 'external' }
+    });
+    vi.mocked(MongoChat.findOne).mockReturnValue({
+      lean: async () => ({ teamId: 'team-1', tmbId: 'external' })
+    } as any);
+    await expect(authChatTargetCrud(target)).rejects.toBe(ChatErrEnum.unAuthChat);
+    vi.mocked(MongoChat.findOne).mockReturnValue({ lean: async () => undefined } as any);
+    await expect(authChatTargetCrud(target)).rejects.toBe(ChatErrEnum.unAuthChat);
+    await expect(authChatTargetCrud({ ...target, allowMissingChat: true })).resolves.toMatchObject({
+      uid: 'external'
+    });
+  });
+
+  it('rejects external user scopes on login and auxiliary generation', async () => {
+    vi.mocked(authApp).mockResolvedValue({
+      teamId: 'team-1',
+      tmbId: 'member-1',
+      authType: AuthUserTypeEnum.token
+    } as any);
+    await expect(
+      authChatTargetCrud({ ...params, sourceType: ChatSourceTypeEnum.app, customUid: 'u1' })
+    ).rejects.toBe(ChatErrEnum.unAuthChat);
+    await expect(
+      authChatTargetCrud({
+        ...params,
+        sourceType: ChatSourceTypeEnum.workflowBuilder,
+        customUid: 'u1'
+      })
+    ).rejects.toBe(ChatErrEnum.unAuthChat);
+  });
+
   it('keeps Skill chats team-scoped and uses the authenticated member for its identity', async () => {
     vi.mocked(MongoChat.findOne).mockReturnValueOnce({
       lean: async () => ({ teamId: 'team-1', tmbId: 'member-2' })
@@ -836,7 +942,7 @@ describe('authChatTargetCrud resource context', () => {
     await expect(
       authChatTargetCrud({ ...params, sourceType: ChatSourceTypeEnum.app, sourceId: '' })
     ).rejects.toBe(ChatErrEnum.unAuthChat);
-    expect(authApp).toHaveBeenCalledTimes(1);
+    expect(authApp).toHaveBeenCalledTimes(2);
   });
 });
 
