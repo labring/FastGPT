@@ -190,7 +190,7 @@ async function inspectDebugDrawer(context, { c, appId }) {
 }
 
 /** 固定外壳和两次循环，只有交互开关不同；普通 AI 节点使用相同真实目录模型和 HTTP usage。 */
-async function responseGraph(c, modelId, interactive) {
+async function responseGraph({ c, modelId, interactive }) {
   const graph = await c.load('tool-concurrent', { __MODEL_ID__: modelId });
   for (const id of ['SlowGate', 'FastGate'])
     graph.nodes
@@ -237,7 +237,7 @@ await runNodeCase('FG-APP-WORKFLOW-067', {
   async C1(context) {
     const c = await workflowScenario(context);
     const model = await workflowModel(context, c);
-    const graph = await responseGraph(c, model.modelId, false);
+    const graph = await responseGraph({ c, modelId: model.modelId, interactive: false });
     const appId = await c.create('nested-response-tree', graph);
     const chatId = `${c.run}-tree`;
     const response = await c.complete(appId, { chatId, question: chatId, stream: true });
@@ -280,7 +280,7 @@ await runNodeCase('FG-APP-WORKFLOW-067', {
   async C2(context) {
     const c = await workflowScenario(context),
       model = await workflowModel(context, c);
-    const graph = await responseGraph(c, model.modelId, true);
+    const graph = await responseGraph({ c, modelId: model.modelId, interactive: true });
     const appId = await c.create('nested-response-checkpoint', graph),
       chatId = c.run + '-resume';
     const beforeCalls = model.calls.length,
@@ -466,7 +466,7 @@ await runNodeCase('FG-APP-WORKFLOW-067', {
     const c = await workflowScenario(context);
     const model = await workflowModel(context, c);
     for (const caught of [false, true]) {
-      const graph = await responseGraph(c, model.modelId, false);
+      const graph = await responseGraph({ c, modelId: model.modelId, interactive: false });
       const failing = fixtureNode({
         kind: 'http',
         id: 'Failure',
@@ -526,7 +526,7 @@ await runNodeCase('FG-APP-WORKFLOW-067', {
   async C5(context) {
     const c = await workflowScenario(context),
       model = await workflowModel(context, c);
-    const graph = await responseGraph(c, model.modelId, false);
+    const graph = await responseGraph({ c, modelId: model.modelId, interactive: false });
     // 合成图的 Loop 原坐标与 Tools 重叠，真实画布上无法点击节点菜单。
     for (const node of graph.nodes) {
       if (node.nodeId === 'Loop' || node.parentNodeId === 'Loop') {

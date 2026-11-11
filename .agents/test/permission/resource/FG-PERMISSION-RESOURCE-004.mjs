@@ -125,13 +125,12 @@ await runNodeCase('FG-PERMISSION-RESOURCE-004', {
 
     /** 完整真实 Context 下测试动态引用；D1 快照命中不能授权后续 D2。 */
     async function within(fn) {
-      return s.run(
-        c.fixture.apps.identity,
+      return s.run({
+        appId: c.fixture.apps.identity,
         graph,
-        c.run + '-dynamic',
-        {},
-        undefined,
-        ({ context: parent }) =>
+        chatId: c.run + '-dynamic',
+        control: {},
+        execute: ({ context: parent }) =>
           s.runWithContext(
             parent.getChildContext({
               resourceContext: createWorkflowResourceContext({
@@ -142,7 +141,7 @@ await runNodeCase('FG-PERMISSION-RESOURCE-004', {
             }),
             fn
           )
-      );
+      });
     }
 
     for (const allowed of [true, false]) {

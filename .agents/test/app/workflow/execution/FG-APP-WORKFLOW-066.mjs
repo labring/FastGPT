@@ -120,13 +120,12 @@ await runNodeCase('FG-APP-WORKFLOW-066', {
         body: { ...root, isPublish: true, versionName: 'FG-TEST derived files' }
       })
     );
-    const result = await s.run(
+    const result = await s.run({
       appId,
-      root,
+      graph: root,
       chatId,
-      {},
-      undefined,
-      async ({ data, context: parent }) =>
+      control: {},
+      execute: async ({ data, context: parent }) =>
         s.runWithContext(parent.getChildContext({ fileContext: prepared.fileContext }), () =>
           s.runWorkflow({
             ...data,
@@ -135,7 +134,7 @@ await runNodeCase('FG-APP-WORKFLOW-066', {
             maxFileAmount: 2
           })
         )
-    );
+    });
     assert.equal(model.calls.length, 1, '子应用必须实际调用模型');
     const modelMessages = JSON.stringify(model.calls[0].body.messages);
     assert.ok(modelMessages.includes(aText), '模型必须读到 A 的真实 PDF 解析正文');
@@ -249,67 +248,72 @@ await runNodeCase('FG-APP-WORKFLOW-066', {
     const child = await prepared.fileContext.derive([
       prepared.fileContext.resolveInputFile(a).modelUrl
     ]);
-    await s.run(appId, graph, chatId, {}, undefined, async ({ data, context: parent }) =>
-      s.runWithContext(parent.getChildContext({ fileContext: child }), async () => {
-        const paused = await s.runWorkflow(data);
-        assert.equal(paused.workflowInteractiveResponse.type, 'userInput');
-        const interactive = paused.workflowInteractiveResponse;
-        const resumed = await s.runWorkflow({
-          ...data,
-          runtimeNodes: paused.debugResponse.memoryNodes.map((node) => ({
-            ...node,
-            isEntry: interactive.entryNodeIds.includes(node.nodeId)
-          })),
-          runtimeEdges: s
-            .load('packages/global/core/workflow/runtime/utils.ts')
-            .storeEdges2RuntimeEdges(graph.edges, interactive),
-          lastInteractive: interactive,
-          query: [
-            {
-              type: 'text',
-              text: {
-                content: JSON.stringify({
-                  first: [{ key: first.key, name: first.name, type: first.type }],
-                  second: [{ key: second.key, name: second.name, type: second.type }]
-                })
+    await s.run({
+      appId,
+      graph,
+      chatId,
+      control: {},
+      execute: async ({ data, context: parent }) =>
+        s.runWithContext(parent.getChildContext({ fileContext: child }), async () => {
+          const paused = await s.runWorkflow(data);
+          assert.equal(paused.workflowInteractiveResponse.type, 'userInput');
+          const interactive = paused.workflowInteractiveResponse;
+          const resumed = await s.runWorkflow({
+            ...data,
+            runtimeNodes: paused.debugResponse.memoryNodes.map((node) => ({
+              ...node,
+              isEntry: interactive.entryNodeIds.includes(node.nodeId)
+            })),
+            runtimeEdges: s
+              .load('packages/global/core/workflow/runtime/utils.ts')
+              .storeEdges2RuntimeEdges(graph.edges, interactive),
+            lastInteractive: interactive,
+            query: [
+              {
+                type: 'text',
+                text: {
+                  content: JSON.stringify({
+                    first: [{ key: first.key, name: first.name, type: first.type }],
+                    second: [{ key: second.key, name: second.name, type: second.type }]
+                  })
+                }
               }
-            }
-          ]
-        });
-        const form = resumed.debugResponse.memoryNodes.find((node) => node.nodeId === 'FileForm');
-        const values = form.outputs.find((output) => output.key === 'formInputResult').value;
-        assert.equal(
-          values.first.length + values.second.length,
-          1,
-          '两个字段必须共用子作用域额度，不能各自接受一个'
-        );
-        const selected = [first, second].filter((file) => child.resolveInputFile(file));
-        assert.equal(selected.length, 1);
-        assert.ok(child.resolveInputFile(a), '原始 A 复用且保留');
-        const rejected = await child.register({
-          file: { key: third.key, name: third.name, type: third.type },
-          source: 'interactive'
-        });
-        assert.equal(rejected, undefined);
-        assert.equal(child.resolveInputFile(third), undefined);
-        assert.equal(
-          (
-            await child.readBuffer({ url: child.resolveInputFile(selected[0]).modelUrl })
-          ).toString(),
-          'FG-TEST private content'
-        );
-        c.record('真实表单暂停恢复/子作用域额度', {
-          limit: 2,
-          initialKey: a.key,
-          acceptedKeys: selected.map((file) => file.key),
-          fieldLengths: [values.first.length, values.second.length],
-          thirdRegistered: Boolean(rejected),
-          paused,
-          resumed
-        });
-        return resumed;
-      })
-    );
+            ]
+          });
+          const form = resumed.debugResponse.memoryNodes.find((node) => node.nodeId === 'FileForm');
+          const values = form.outputs.find((output) => output.key === 'formInputResult').value;
+          assert.equal(
+            values.first.length + values.second.length,
+            1,
+            '两个字段必须共用子作用域额度，不能各自接受一个'
+          );
+          const selected = [first, second].filter((file) => child.resolveInputFile(file));
+          assert.equal(selected.length, 1);
+          assert.ok(child.resolveInputFile(a), '原始 A 复用且保留');
+          const rejected = await child.register({
+            file: { key: third.key, name: third.name, type: third.type },
+            source: 'interactive'
+          });
+          assert.equal(rejected, undefined);
+          assert.equal(child.resolveInputFile(third), undefined);
+          assert.equal(
+            (
+              await child.readBuffer({ url: child.resolveInputFile(selected[0]).modelUrl })
+            ).toString(),
+            'FG-TEST private content'
+          );
+          c.record('真实表单暂停恢复/子作用域额度', {
+            limit: 2,
+            initialKey: a.key,
+            acceptedKeys: selected.map((file) => file.key),
+            fieldLengths: [values.first.length, values.second.length],
+            thirdRegistered: Boolean(rejected),
+            paused,
+            resumed
+          });
+          return resumed;
+        })
+    });
     return '真实 Form Queue 先暂停再恢复，两个 fileSelect 字段并发登记只接受一个新私有文件，A 仍可复用，总量为 2，第三个合法新文件不再获得 Ref。';
   },
   async C4(context) {
@@ -456,7 +460,12 @@ await runNodeCase('FG-APP-WORKFLOW-066', {
         url,
         baseUrl + '/small.txt?run=' + chatId
       ];
-      const data = await s.props(appId, copy, chatId, { query, maxBytesPerFile: limit });
+      const data = await s.props({
+        appId,
+        graph: copy,
+        chatId,
+        extra: { query, maxBytesPerFile: limit }
+      });
       const result = await s.dispatchWorkFlow(data);
       const rows = result.debugResponse.memoryNodes
         .find((node) => node.nodeId === 'Files')
@@ -497,7 +506,12 @@ await runNodeCase('FG-APP-WORKFLOW-066', {
     assert.deepEqual(filtered.query, [zeroQuery[0]]);
     assert.equal(filtered.fileContext.resolveInputFile(zero), undefined);
     const zeroResult = await s.dispatchWorkFlow(
-      await s.props(appId, zeroGraph, c.run + '-zero', { maxFileAmount: 0, query: zeroQuery })
+      await s.props({
+        appId,
+        graph: zeroGraph,
+        chatId: c.run + '-zero',
+        extra: { maxFileAmount: 0, query: zeroQuery }
+      })
     );
     const start = zeroResult.debugResponse.memoryNodes.find((node) => node.nodeId === 'Start');
     assert.equal(start.outputs.find((output) => output.key === 'userChatInput').value, 'KEEP-TEXT');

@@ -944,6 +944,18 @@ if (process.argv[1] && (await realpath(process.argv[1])) === fileURLToPath(impor
       assert.deepEqual(stored, graph, name + ' 需要重新生成');
       results.push({ name, ...validateFixture(stored) });
     }
+    // 固定旧版的弃用节点快照不随新模板重建；仍校验 Schema 和所有连线端点。
+    for (const name of [
+      'legacy-run-app',
+      'legacy-loop',
+      'legacy-loop-pause',
+      'legacy-query-extension'
+    ]) {
+      const stored = JSON.parse(
+        await readFile(new URL('./fixtures/' + name + '.json', import.meta.url), 'utf8')
+      );
+      results.push({ name, ...validateFixture(stored) });
+    }
     console.log(JSON.stringify({ fixtures: results, validation: 'static-only' }, null, 2));
   }
 }
