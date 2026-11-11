@@ -10,7 +10,6 @@ import { createWorkflowDocument } from '../../src/domain/document';
 import { formatNodeTemplateRef, parseNodeTemplateRef } from '../../src/template/type';
 import { instantiateNodeFromTemplate } from '../../src/template/instantiate';
 import { normalizeNodeTemplateDescriptor } from '../../src/template/descriptor';
-import { createTranslator } from '../../../web/i18n/workflowTemplate';
 
 import { describe, expect, it } from 'vitest';
 
@@ -173,8 +172,7 @@ describe('builtinTemplateProvider', () => {
     const resolved = await builtinTemplateProvider.resolve(ref, { locale: 'en' });
     const descriptor = normalizeNodeTemplateDescriptor({
       ...resolved,
-      templateRef: ref,
-      translate: createTranslator('en')
+      templateRef: ref
     });
     const input = descriptor.inputs.find((item) => item.key === 'system_textareaInput');
 
