@@ -34,9 +34,7 @@ sources:
   - "projects/app/src/pages/admin/settings/limits.tsx"
   - "projects/app/src/pages/admin/settings/providers.tsx"
   - "projects/app/src/pages/admin/settings/pay.tsx"
-  - "projects/app/src/pages/admin/subservice/plugin.tsx"
   - "projects/app/src/pages/admin/subservice/code-sandbox.tsx"
-  - "projects/app/src/pages/admin/subservice/ai-proxy.tsx"
   - "projects/app/src/pages/admin/subservice/mcp.tsx"
   - "projects/app/src/pages/admin/subservice/agent-sandbox.tsx"
   - "projects/app/src/pageComponents/admin/settings/core/index.tsx"
@@ -86,7 +84,7 @@ baseline: "27d88d71f44614d89aef7d7d04fe65431ea19288"
 
 | 子场景 | 类型与起始状态 | 输入与操作 |
 | --- | --- | --- |
-| C1 | 基础；商业版 B、D0 | 依次打开 `/admin/settings/core`、`site`、`feature`、`auth`、`security`、`limits`、`providers`、`pay` 和 `/admin/subservice/plugin`、`code-sandbox`、`ai-proxy`、`mcp`、`agent-sandbox`。逐页记录可见字段、是否报错、敏感字段显示值；不改值直接保存一次。 |
+| C1 | 基础；商业版 B、D0 | 依次打开 `/admin/settings/core`、`site`、`feature`、`auth`、`security`、`limits`、`providers`、`pay` 和 `/admin/subservice/code-sandbox`、`mcp`、`agent-sandbox`。逐页记录可见字段、是否报错、敏感字段显示值；不改值直接保存一次。 |
 | C2 | 基础；core 页 D0 | 在核心配置页修改 teamMode、`feature.multipleDataToBase64`、`storage.downloadMode`（改为 short-proxy 或当前 vendor 可用的合法模式）、`site.openApiPrefix` 四项，保存并刷新页面；再查四个 domain 的 revision 和未修改字段。 |
 | C3 | 边界；site 页 D0，上传 A/B | 3a：上传 A，设为 favicon，并在导航项使用头像 A，保存。3b：仅把 favicon 改为 B，保存。3c：清空 favicon 并删除引用 A 的导航项，保存。每步记录 S3 对象是否存在及 DB 引用。 |
 | C4 | 边界；providers 页已有密钥 | 打开 providers 页，确认密钥显示为掩码；只改 URL 保存。再次打开并把密钥输入框显式清空后保存。比较 DB 密钥和页面回显。 |
@@ -109,7 +107,7 @@ baseline: "27d88d71f44614d89aef7d7d04fe65431ea19288"
 | C4 | UI + DB | 改 URL 时掩码原样提交，DB 密钥保持第一次保存的真实值；显式清空后 DB 密钥变为空串（或按 Schema 默认值生效），页面回显为空而不是再次显示掩码。 | providers 文档、页面输入框回显、update 请求体。 |
 | C5 | UI + response + DB | 标签页 2 收到 warning Toast `配置已被他人修改，请先保留当前修改，再刷新页面重新编辑并保存。`；不自动 refetch、不自动更新 revision，标签页 2 的草稿保持可见，DB 只有标签页 1 的结果。手动刷新后表单显示标签页 1 的最新值，用户重新编辑后可用新 revision 成功保存；刷新前不得把旧草稿静默写入。 | 两个标签页截图、update 409 响应、刷新前后表单值、DB revision。 |
 | C6 | UI + response + DB | 6a：commercial revision+1，`system_configs` 新增一条 fastgpt 文档且 subPlans 为嵌套存储形状。6b：页面校验失败时不发 update 请求、不出现成功 Toast、commercial 与 system_configs 均不变。6c：套餐未读取成功时保存请求不带 `subPlans` 键，commercial 保存成功且旧套餐文档不变；不得把读取失败写成清空套餐。 | 网络请求列表、Toast、commercial 文档、system_configs 前后快照。 |
-| C7 | UI | 社区版菜单保留 License、版本升级、系统资源（模型/工具）和系统配置中至少有一个可见字段的页面；隐藏数据面板、运营管理、用户与团队、商业化、应用模板、子服务、支付配置和审计日志。`/admin/settings/auth` 因安全域仍可见，`/admin/settings/pay` 因全为商业字段而隐藏；不出现空父级。 | 侧栏文本/层级截图与页面路由。 |
+| C7 | UI | 社区版菜单保留 License、版本升级、系统资源（模型/工具）和系统配置中至少有一个可见字段的页面；隐藏数据面板、运营管理、用户与团队、商业化、应用模板、支付配置和审计日志；子服务分组保留 Code Sandbox 与 MCP SSE 服务，隐藏商业专用 Agent Sandbox。`/admin/settings/auth` 因安全域仍可见，`/admin/settings/pay` 因全为商业字段而隐藏；不出现空父级。 | 侧栏文本/层级截图与页面路由。 |
 | C8 | UI | 8a：pay 页因支付通道字段仍可见，但 coupon/discount/payForm/freeClean 控件不出现；auth 页企微服务商凭据字段不出现；subservice（含 mcp）页面仍可见。8b：上述 SaaS 运营字段出现，页面无空白/布局断裂。隐藏只影响展示，不能据此断言 API 拒绝这些字段；API 边界由 FG-ADMIN-CONFIG-001 验证。 | 两状态页面截图与字段列表。 |
 | C9 | UI | 默认落到 `/admin/license`；数据面板、用户与团队、应用/知识库管理、商业化业务页、审计日志被隐藏；配置页、子服务页、系统模型/工具、版本升级仍可进入。该行为表示 License 只限制商业业务页，不限制按部署版本开放的配置页；不应出现配置页误拦截或商业业务页绕过。 | 访问 `/admin` 的落地 URL、侧栏和页面响应。 |
 | C10 | API + DB + UI | 保存对公说明后 `feConfigs.show_pay=true`、`payConfig.bank=true`，前台出现支付入口；清空后 `show_pay=false`、bank=false，入口消失。投影必须来自当前 commercial 实例配置而不是旧 `feConfigs.payConfig`；微信/支付宝字段删除后对应入口也不能残留。 | `getInitData` 响应、支付页/前台入口、commercial 文档。 |
