@@ -228,9 +228,7 @@ describe('channel controller — delete protection / refs', () => {
       ...GROUP_A_SCOPE
     });
 
-    expect(affected).toEqual([
-      { modelId: 'own-a-1', name: 'A Qwen Plus', model: 'qwen-plus' }
-    ]);
+    expect(affected).toEqual([{ modelId: 'own-a-1', name: 'A Qwen Plus', model: 'qwen-plus' }]);
   });
 
   it('group bucket counts ignore other members channels (route scope isolation)', async () => {

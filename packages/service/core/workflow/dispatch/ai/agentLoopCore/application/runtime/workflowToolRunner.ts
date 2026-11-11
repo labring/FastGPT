@@ -19,7 +19,10 @@ import type { AgentLoopCoreToolRunFlowResponse } from '../../adapter/nodeRespons
 import { normalizeAgentLoopCoreDatasetSearchResult } from './systemToolHelpers';
 import { cloneDeep } from 'lodash-es';
 import { compileToolRuntime, mergeToolRuntimeParams } from '@fastgpt/global/core/app/tool/runtime';
-import { rewriteNodeOutputByHistories } from '@fastgpt/global/core/workflow/runtime/utils';
+import {
+  rewriteNodeOutputByHistories,
+  storeEdges2RuntimeEdges
+} from '@fastgpt/global/core/workflow/runtime/utils';
 import {
   createContainerRunStateSnapshot,
   syncContainerRunState
@@ -360,11 +363,8 @@ export const createAgentLoopCoreWorkflowToolRunner = <TChildrenResponse = unknow
       const restoredNodes = rewriteNodeOutputByHistories(isolatedRuntimeNodes, interactive as any);
       isolatedRuntimeNodes.splice(0, isolatedRuntimeNodes.length, ...restoredNodes);
       if (interactive.memoryEdges?.length) {
-        isolatedRuntimeEdges.splice(
-          0,
-          isolatedRuntimeEdges.length,
-          ...cloneDeep(interactive.memoryEdges)
-        );
+        const restoredEdges = storeEdges2RuntimeEdges(isolatedRuntimeEdges, interactive as any);
+        isolatedRuntimeEdges.splice(0, isolatedRuntimeEdges.length, ...cloneDeep(restoredEdges));
       }
     }
     initAgentLoopCoreWorkflowToolNodes(isolatedRuntimeNodes, entryNodeIds, startParams);
