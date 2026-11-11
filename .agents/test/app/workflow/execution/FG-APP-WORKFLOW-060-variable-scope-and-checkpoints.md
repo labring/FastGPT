@@ -8,7 +8,10 @@ category: boundary
 scenario: special
 priority: P0
 status: ready
-automation: []
+automation:
+  - runner: node
+    script: .agents/test/app/workflow/execution/FG-APP-WORKFLOW-060.mjs
+    items: [C1, C2, C3, C4, C5, C6]
 tags: [pr-7992, workflow-context, variable-context, snapshot, toolcall, loop, parallel, 覆盖基础场景, 覆盖异常场景, 覆盖边界场景]
 evidence: [response, ui, database]
 sources:

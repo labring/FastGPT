@@ -8,7 +8,10 @@ category: boundary
 scenario: special
 priority: P0
 status: ready
-automation: []
+automation:
+  - runner: node
+    script: .agents/test/app/workflow/execution/FG-APP-WORKFLOW-054.mjs
+    items: [C1, C2, C3, C4, C5]
 tags: [pr-7992, pr-1193, workflow-context, file-context, private-file, workflow-builder, 覆盖基础场景, 覆盖异常场景, 覆盖边界场景]
 evidence: [response, ui, database, storage]
 sources:
@@ -45,7 +48,7 @@ baseline: "37b271c759eda4e3134c88d98939f81f053a8553"
 
 - 本轮 JSON 拓扑基线：file-reader、file-form、child-leaf/child-parent；统一绑定说明见 `.agents/test/app/workflow/execution/fixtures/README.md`。资源、权限、失败和并发变体须完成真实绑定并保存最终 JSON，不能将模板校验算作业务通过。
 
-- 主仓库及 Pro 使用本轮 PR 实际代码基线。Mongo 和 Redis 使用 Mac Mini 的独立测试库及 Redis DB；对象存储使用本轮专用前缀，不得新建本机数据库或清理 Dev 业务数据。准备真实私有对象存储、文件读取节点及外部 HTTP 文件源；Builder 另需开启 workflow builder/agent sandbox 并具备可用沙箱。普通 Workflow 的额度断言不直接套用到 Builder 的独立常量/私有读取上限。当前没有核验过该隔离环境的自动化映射，由执行方按子场景取证。
+- 主仓库及 Pro 使用本轮 PR 实际代码基线。Mongo 和 Redis 使用 Mac Mini 的独立测试库及 Redis DB；对象存储使用本轮专用前缀，不得新建本机数据库或清理 Dev 业务数据。准备真实私有对象存储、文件读取节点及外部 HTTP 文件源；Builder 另需开启 workflow builder/agent sandbox 并具备可用沙箱。普通 Workflow 的额度断言不直接套用到 Builder 的独立常量/私有读取上限。未列入 automation 的场景由执行方逐项取证。
 - D0：专用 W/U/CHAT，通过对应页面上传 A、B 两个含不同 RUN 文本的 PDF；保存真实 key、name、type 与运行 URL。另准备同用户不同会话文件 X、他人文件 Y、公网 U1、U2。不要手工拼造一个实际上不存在的上传 key。
 - 普通 Workflow 固定有效文件数 N=2 和单文件上限 L，记录团队配置及系统回退值；子流程 A1 的 query 只传 A，显式文件变量传 U1，历史含 B。模型/HTTP 消费者记录真正收到的文件列表，不能只看父请求 body。对数值 0 的变体，在隔离服务集成入口调用真实 `prepareWorkflowFileContext`，显式传 `maxFileAmount: 0`，不给公开 API 增加不存在的限额字段。
 - 私有读取保留对象 key 与读取内容散列，公网源记录 HEAD/GET。大小变体分别提供 L、L+1 字节内容，以及 HEAD 声称不超限但 GET chunked 实际为 L+1 的源；不修改全站网络策略。证据不保存完整签名 URL 或其他人的内容。

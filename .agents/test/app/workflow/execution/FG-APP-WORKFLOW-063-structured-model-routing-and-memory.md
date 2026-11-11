@@ -21,7 +21,10 @@ sources:
   - projects/app/src/pages/api/v2/chat/completions.ts
 routes: ["POST /api/v2/chat/completions"]
 related: [FG-APP-WORKFLOW-058, FG-APP-WORKFLOW-059, FG-APP-WORKFLOW-062, FG-PERMISSION-RESOURCE-003]
-automation: []
+automation:
+  - runner: node
+    script: .agents/test/app/workflow/execution/FG-APP-WORKFLOW-063.mjs
+    items: [C1, C2, C3, C4, C5]
 baseline: "37b271c759eda4e3134c88d98939f81f053a8553"
 ---
 
@@ -37,7 +40,7 @@ baseline: "37b271c759eda4e3134c88d98939f81f053a8553"
 - 基于 `fixtures/basic-model-chain.json`，在编辑器分别构建并发布两张图：分类图 W1 的类别为 `a=订单`、`b=售后`、`other=其他`，三个出口各连接不同的计数节点及汇合回复；提取图 W2 声明必填字符串 `status`（默认 `closed`），连接下游回显 `status`、`success` 和完整提取结果。保留实际节点 ID、分类端口 ID 和发布图。
 - 优先使用测试团队已授权的 DeepSeek-V4.1 flash 完成真实模型可用性对照；严格验证未知类别、额外字段和非法 JSON 时，使用仅在隔离环境配置、可记录请求的受控外部模型服务，逐次返回下表指定内容。仍保留真实模型资源鉴权、LLM 客户端、Queue、Context 和用量链路，不 mock 节点 callback；无法配置受控模型时对应变体标记阻塞，不能以真实模型偶然输出代替确定性证据。
 - 用真实 `POST /api/v2/chat/completions`、独立 `fgtest-<RUN>-<case>` chatId 运行；C4 的两轮沿用同一 chatId，其余变体使用新会话。每阶段最长 120 秒；记录实际模型 ID/请求、所选节点/端口、最终消息、运行用量和响应详情。数据库只读查询限定本轮 teamId/sourceType/appId/chatId，所有证据去除凭据与敏感内容。
-- 完成后按本轮明确的资源 ID 清理隔离测试资源；不得对共享 dev 安装或删除模型。当前无已验证的自动化映射，由执行方逐项留证。
+- 完成后按本轮明确的资源 ID 清理隔离测试资源；不得对共享 dev 安装或删除模型。按已验证的 automation 映射逐项留证。
 
 ## 测试步骤
 
