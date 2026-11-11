@@ -37,10 +37,7 @@ const AppTemplateSchema = new Schema({
     default: -1
   },
   workflow: Object,
-  experienceUrl: {
-    type: String,
-    default: ''
-  }
+  experienceUrl: String
 });
 
 defineIndex(AppTemplateSchema, { key: { templateId: 1 } });
