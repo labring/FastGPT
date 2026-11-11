@@ -1,7 +1,7 @@
 /**
  * 沙盒原子层：解析 provider 连接配置和创建配置。
  *
- * 只负责把环境变量转换成 adapter 可用的配置，不执行远端生命周期动作。
+ * 只负责把实例配置转换成 adapter 可用的配置，不执行远端生命周期动作。
  */
 import {
   getAgentSandboxCommonConfig,
@@ -47,7 +47,7 @@ function assertNever(value: never): never {
 export function getConfiguredSandboxProvider(): SandboxProviderType {
   const provider = getAgentSandboxProvider();
   if (provider === 'none') {
-    throw new Error('AGENT_SANDBOX_PROVIDER is required when Agent Sandbox is used');
+    throw new Error('Configure the provider in Agent Sandbox admin settings before using it');
   }
   return provider;
 }

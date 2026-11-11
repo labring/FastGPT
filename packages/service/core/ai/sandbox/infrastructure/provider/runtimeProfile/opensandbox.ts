@@ -108,7 +108,7 @@ export function buildOpenSandboxRuntimeProfile(): SandboxRuntimeProfile {
       } = createConfig;
       const image = input.image ?? createConfig.image ?? defaultImage;
       if (!image?.repository) {
-        throw new Error('AGENT_SANDBOX_OPENSANDBOX_IMAGE is required for opensandbox provider');
+        throw new Error('Configure the OpenSandbox image in Agent Sandbox admin settings');
       }
 
       const entrypoint = createConfig.entrypoint ?? normalizeEntrypoint(input.entrypoint);

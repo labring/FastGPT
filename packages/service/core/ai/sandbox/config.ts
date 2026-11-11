@@ -73,9 +73,7 @@ export const getAgentSandboxDiskBytes = () => {
   const storageMB = getAgentSandboxCommonConfig().storageSizeGi * 1024;
   const diskMB = Math.round(storageMB / 2 - RESERVED_DISK_MB);
   if (diskMB <= 0) {
-    throw new Error(
-      `AGENT_SANDBOX_STORAGE_SIZE_GI must be greater than ${RESERVED_DISK_MB * 2}MiB`
-    );
+    throw new Error(`Agent Sandbox storage size must be greater than ${RESERVED_DISK_MB * 2} MiB`);
   }
   return diskMB * MB_BYTES;
 };

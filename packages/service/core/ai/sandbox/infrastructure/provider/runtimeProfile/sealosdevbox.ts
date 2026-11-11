@@ -34,7 +34,7 @@ export function buildSealosRuntimeProfile(): SandboxRuntimeProfile {
       const createConfig = input.createConfig ?? {};
       const image = input.image ?? createConfig.image ?? defaultImage;
       if (!image?.repository) {
-        throw new Error('AGENT_SANDBOX_SEALOS_IMAGE is required for sealosdevbox provider');
+        throw new Error('Configure the Sealos Devbox image in Agent Sandbox admin settings');
       }
 
       const env = mergeStringRecord(mergeStringRecord(createConfig.env, input.env), {

@@ -153,10 +153,10 @@ describe('sandbox provider config', () => {
       await loadSandboxConfigModule();
 
     expect(getConfiguredSandboxProvider).toThrow(
-      'AGENT_SANDBOX_PROVIDER is required when Agent Sandbox is used'
+      'Configure the provider in Agent Sandbox admin settings before using it'
     );
     expect(getSandboxProviderConfig).toThrow(
-      'AGENT_SANDBOX_PROVIDER is required when Agent Sandbox is used'
+      'Configure the provider in Agent Sandbox admin settings before using it'
     );
   });
 
@@ -519,7 +519,7 @@ describe('sandbox provider config', () => {
       const runtimeProfile = getSandboxRuntimeProfile('opensandbox');
 
       expect(() => runtimeProfile.buildConfig()).toThrow(
-        'AGENT_SANDBOX_OPENSANDBOX_IMAGE is required'
+        'Configure the OpenSandbox image in Agent Sandbox admin settings'
       );
       expect(
         runtimeProfile.buildConfig({

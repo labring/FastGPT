@@ -37,7 +37,7 @@ describe('sandbox volume config', () => {
     global.systemInstanceConfig = createDefaultInstanceConfig();
     const { getVolumeManagerEnvConfig } = await loadVolumeConfigModule();
     expect(getVolumeManagerEnvConfig).toThrow(
-      'AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL is required'
+      'Configure the volume manager URL in Agent Sandbox admin settings'
     );
   });
 });

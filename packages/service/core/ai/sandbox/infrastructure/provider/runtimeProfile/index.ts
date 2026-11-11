@@ -16,7 +16,7 @@ function assertNever(value: never): never {
 function getConfiguredProvider(): SandboxProviderType {
   const provider = getAgentSandboxProvider();
   if (provider === 'none') {
-    throw new Error('AGENT_SANDBOX_PROVIDER is required when Agent Sandbox is used');
+    throw new Error('Configure the provider in Agent Sandbox admin settings before using it');
   }
   return provider;
 }

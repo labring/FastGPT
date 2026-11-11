@@ -76,7 +76,7 @@ export const validateAgentSandboxProxyEnv = (provider: string): void => {
   throw new Error(
     `Invalid Agent Sandbox proxy environment variables: ${missingAgentSandboxProxyEnvKeys.join(
       ', '
-    )} are required when AGENT_SANDBOX_PROVIDER is ${provider}.`
+    )} are required when the Agent Sandbox provider is ${provider}.`
   );
 };
 
@@ -94,7 +94,7 @@ export const validateAgentSandboxPreviewProxyEnv = (provider: string): void => {
   }
 
   throw new Error(
-    `Invalid Agent Sandbox preview proxy environment variable: AGENT_SANDBOX_PREVIEW_PROXY_URL is required when AGENT_SANDBOX_PROVIDER is ${provider}.`
+    `Invalid Agent Sandbox preview proxy environment variable: AGENT_SANDBOX_PREVIEW_PROXY_URL is required when the Agent Sandbox provider is ${provider}.`
   );
 };
 
