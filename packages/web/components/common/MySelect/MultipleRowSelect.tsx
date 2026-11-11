@@ -302,8 +302,16 @@ const MultipleRowSelect = React.memo(function MultipleRowSelect({
   // 异步列表从单列切换为分组时，使用外部 value 恢复完整路径；有效的手动路径保持不变。
   const safeValue = Array.isArray(value) ? value : [];
   const safeCloneValue = Array.isArray(cloneValue) ? cloneValue : [];
+  const selectedFirstColumn = list.find((item) => item.value === safeCloneValue[0]);
+  const valueFirstColumn = list.find((item) => item.value === safeValue[0]);
+  const selectedChildExists = selectedFirstColumn?.children?.some(
+    (item) => item.value === safeCloneValue[1]
+  );
+  // 列表原地刷新后旧路径可能失效；回到外部值的分组，再回落到新列表首项。
+  const fallbackValue =
+    (valueFirstColumn ? [safeValue[0]] : undefined) ?? (list[0] ? [list[0].value] : []);
   const resolvedCloneValue =
-    isOpen && !list.some((item) => item.value === safeCloneValue[0]) ? safeValue : safeCloneValue;
+    isOpen && (!selectedFirstColumn || !selectedChildExists) ? fallbackValue : safeCloneValue;
   const { isMounted, mount, onAnimationComplete } = useMenuListPresence(isOpen);
 
   // 首次打开时先锁定首列宽度，避免后续列在首帧按内容宽度收缩，点击节点后才跳宽。

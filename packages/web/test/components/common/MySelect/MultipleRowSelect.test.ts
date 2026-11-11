@@ -115,4 +115,51 @@ describe('MultipleRowSelect', () => {
       );
     }).not.toThrow();
   });
+
+  it('updates an open menu when list props change', async () => {
+    const host = document.createElement('div');
+    document.body.appendChild(host);
+    const root = createRoot(host);
+    const firstList = [
+      {
+        label: 'Group A',
+        value: 'groupA',
+        children: [{ label: 'Old item', value: 'old' }]
+      }
+    ];
+    const nextList = [
+      {
+        label: 'Group A',
+        value: 'groupA',
+        children: [{ label: 'New item', value: 'new' }]
+      }
+    ];
+    const render = (list: typeof firstList) =>
+      React.createElement(
+        ChakraProvider,
+        null,
+        React.createElement(MultipleRowSelect, {
+          list,
+          value: ['groupA', 'old'],
+          onSelect: () => {}
+        })
+      );
+
+    await act(async () => {
+      root.render(render(firstList));
+    });
+    await act(async () => {
+      host.querySelector('button')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+    expect(host.textContent).toContain('Old item');
+
+    await act(async () => {
+      root.render(render(nextList));
+    });
+    await act(async () => undefined);
+
+    expect(host.textContent).toContain('New item');
+    expect(host.textContent).not.toContain('Old item');
+    root.unmount();
+  });
 });
