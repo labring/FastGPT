@@ -81,11 +81,15 @@ export const DatasetCollectionPath: OpenAPIPath = {
     post: {
       'x-required-parameter-alternatives': [
         [{ in: 'query', name: 'id' }],
-        [{ in: 'body', name: 'collectionIds' }]
+        [{ in: 'body', name: 'collectionIds' }],
+        [
+          { in: 'body', name: 'datasetId' },
+          { in: 'body', name: 'apiFileIds' }
+        ]
       ],
       summary: '删除集合',
       description:
-        '删除一个或多个集合及其子集合，支持通过 query.id 或 body.collectionIds 指定。仅集合所有者（owner）可删除；持有 manage/write 权限的协作者不可删除',
+        '删除一个或多个集合及其子集合，支持通过 query.id、body.collectionIds 或 body.datasetId + body.apiFileIds（API 文件库外部文件 ID）指定。仅集合所有者（owner）可删除；持有 manage/write 权限的协作者不可删除。按 apiFileIds 定位时全部未命中会返回集合不存在错误',
       tags: [DevApiTagsMap.datasetCollection, SystemOpenApiTagMap.datasetCollection],
       requestParams: {
         query: DeleteCollectionQuerySchema

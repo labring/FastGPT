@@ -132,7 +132,12 @@ export const DeleteCollectionQuerySchema = z.object({
 export type DeleteCollectionQueryType = z.infer<typeof DeleteCollectionQuerySchema>;
 
 export const DeleteCollectionBodySchema = z.object({
-  collectionIds: z.array(z.string()).optional().meta({ description: '集合 ID 列表' })
+  collectionIds: z.array(z.string()).optional().meta({ description: '集合 ID 列表' }),
+  apiFileIds: z
+    .array(z.string())
+    .optional()
+    .meta({ description: 'API 文件 ID 列表（需配合 datasetId 使用）' }),
+  datasetId: z.string().optional().meta({ description: '数据集 ID（配合 apiFileIds 使用）' })
 });
 export type DeleteCollectionBodyType = z.infer<typeof DeleteCollectionBodySchema>;
 

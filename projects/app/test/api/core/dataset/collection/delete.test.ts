@@ -1,5 +1,8 @@
 import deleteHandler from '@/pages/api/core/dataset/collection/delete';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import { RootCollectionId } from '@fastgpt/global/core/dataset/collection/constants';
+import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
+import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import {
   ManageRoleVal,
   OwnerRoleVal,
@@ -278,5 +281,118 @@ describe('delete collection permission', () => {
     // 关闭态 dataset owner 的 role 被 cap 为 manage，不得透传为 collection owner
     expect(response.code).not.toBe(200);
     await expect(MongoDatasetCollection.findById(collection._id).lean()).resolves.not.toBeNull();
+  });
+});
+
+describe('delete collection by apiFileId', () => {
+  beforeEach(() => {
+    mockDeleteDatasetFilesByKeys.mockReset();
+    mockDeleteDatasetFilesByKeys.mockResolvedValue(undefined);
+  });
+
+  const fixture = async () => {
+    const users = await getFakeUsers(1);
+    const member = users.members[0];
+    const { dataset, collection } = await createDatasetWithCollection({
+      teamId: users.owner.teamId,
+      datasetTmbId: member.tmbId,
+      collectionTmbId: member.tmbId
+    });
+    const createCollection = (data: Record<string, any>) =>
+      MongoDatasetCollection.create({
+        teamId: users.owner.teamId,
+        tmbId: member.tmbId,
+        datasetId: dataset._id,
+        ...data
+      });
+    return { member, dataset, collection, createCollection };
+  };
+
+  it('deletes the matched node and its subtree, keeping unrelated collections', async () => {
+    const { member, dataset, createCollection } = await fixture();
+    const folder = await createCollection({
+      name: 'api-folder',
+      type: DatasetCollectionTypeEnum.folder,
+      apiFileId: 'api-folder-1'
+    });
+    const child = await createCollection({
+      name: 'api-child',
+      type: DatasetCollectionTypeEnum.apiFile,
+      parentId: folder._id,
+      apiFileId: 'api-child-1'
+    });
+    const untouched = await createCollection({
+      name: 'kept',
+      type: DatasetCollectionTypeEnum.folder
+    });
+
+    const response = await Call(deleteHandler, {
+      auth: member,
+      body: { datasetId: String(dataset._id), apiFileIds: ['api-folder-1'] }
+    });
+
+    expect(response.code).toBe(200);
+    await expect(MongoDatasetCollection.findById(folder._id).lean()).resolves.toBeNull();
+    await expect(MongoDatasetCollection.findById(child._id).lean()).resolves.toBeNull();
+    await expect(MongoDatasetCollection.findById(untouched._id).lean()).resolves.not.toBeNull();
+  });
+
+  it('rejects when none of the apiFileIds match', async () => {
+    const { member, dataset, collection } = await fixture();
+
+    const response = await Call(deleteHandler, {
+      auth: member,
+      body: { datasetId: String(dataset._id), apiFileIds: ['missing'] }
+    });
+
+    expect(response.code).not.toBe(200);
+    expect(response.error).toBe(DatasetErrEnum.unExistCollection);
+    await expect(MongoDatasetCollection.findById(collection._id).lean()).resolves.not.toBeNull();
+  });
+
+  it('only deletes within the given dataset', async () => {
+    const { member, dataset, collection } = await fixture();
+    const otherDataset = await createDatasetWithCollection({
+      teamId: member.teamId,
+      datasetTmbId: member.tmbId,
+      collectionTmbId: member.tmbId
+    });
+    await MongoDatasetCollection.updateOne(
+      { _id: collection._id },
+      { $set: { apiFileId: 'shared-file' } }
+    );
+    await MongoDatasetCollection.updateOne(
+      { _id: otherDataset.collection._id },
+      { $set: { apiFileId: 'shared-file' } }
+    );
+
+    const response = await Call(deleteHandler, {
+      auth: member,
+      body: { datasetId: String(dataset._id), apiFileIds: ['shared-file'] }
+    });
+
+    expect(response.code).toBe(200);
+    await expect(MongoDatasetCollection.findById(collection._id).lean()).resolves.toBeNull();
+    await expect(
+      MongoDatasetCollection.findById(otherDataset.collection._id).lean()
+    ).resolves.not.toBeNull();
+  });
+
+  it('rejects the virtual root apiFileId', async () => {
+    const { member, dataset, createCollection } = await fixture();
+    const root = await createCollection({
+      name: 'api-root',
+      type: DatasetCollectionTypeEnum.folder,
+      apiFileId: RootCollectionId
+    });
+
+    const response = await Call(deleteHandler, {
+      auth: member,
+      body: { datasetId: String(dataset._id), apiFileIds: [RootCollectionId] }
+    });
+
+    expect(response.code).not.toBe(200);
+    expect(response.error).toBe(CommonErrEnum.invalidParams);
+    await expect(MongoDatasetCollection.findById(root._id).lean()).resolves.not.toBeNull();
   });
 });
