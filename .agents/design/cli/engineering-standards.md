@@ -75,8 +75,22 @@
 
 ### 3.3 统一 HTTP 客户端规范
 
-- 所有远端请求**必须**通过 `container.createHttpClient({ baseUrl, insecure, caCertPath })`（或 `resolvedAuth` 构造的客户端）发起，**严禁**直接调用 `globalThis.fetch`、`axios` 或硬编码 `headers`。
+- 所有远端请求**必须**通过 `container.createHttpClient({ baseUrl, insecure, caCertPath })` 或管线自动注入的 `ctx.client` 发起，**严禁**直接调用 `globalThis.fetch`、`axios` 或硬编码 `headers`。
 - 理由：只有经过 `FastGptHttpClient` 才能统一处理 `X-FastGPT-Client` 追踪头、非 loopback HTTPS 校验、`--ca-cert`/`--insecure`、FastGPT `{ code, statusText, message, data }` 信封解包、514/`unAuthApiKey` 错误映射与密钥脱敏。
+- 客户端已内置四种标准传输方法：
+  - `client.request<T>(params)`: 标准 JSON REST/RPC 请求与信封解包
+  - `client.requestRaw(params)`: 二进制/流式下载与 S3 PUT 原始响应
+  - `client.uploadMultipart<T>(params)`: 标准 `FormData` 表单上传（自动带 boundary）
+  - `client.streamSse(params)`: `AsyncIterable<SseEvent>` 服务端推送事件流（带断句与终止符解析）
+
+### 3.4 上下文自动注入与 Result 构造器（减少 50% 胶水代码）
+
+- **`ctx.client` 预绑定**：命令声明了非 `none` 的 `authModes` 且通过门禁后，管线在 `CommandExecutionContext` 自动注入已绑定当前生效 Base URL 与凭据的 `client: FastGptHttpClient`。业务命令无需再手动执行 `createHttpClient` 和传递 `auth: { authType, secret }`。
+- **`ctx.logger`**：提供 `debug` / `info` / `warn` / `error`。日志严格走 `stderr`，并在 `--quiet` 下自动静默。
+- **结果构建器（`src/shared/result.ts`）**：
+  - `createSuccessResult({ data, message, meta, warnings })`: 只读查询成功（`changed: false`）
+  - `createChangedResult({ data, message, meta, warnings })`: 实体变更成功（`changed: true`）
+  - `createDryRunResult({ operation, preview })`: `--dry-run` 统一构造（`changed: false` + `data.dryRun: true`）
 
 ---
 

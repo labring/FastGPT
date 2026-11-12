@@ -39,7 +39,14 @@ cli/
 
 代码与工程约束：
 - **四层单向依赖**：`cli -> domain -> infra -> shared`；`domain` 层只依赖端口类型，不碰 `commander` 或 `process.stdout`。
-- **关键设计模式**：Strategy（凭据存储、登录方式、输出渲染）、Chain of Responsibility（四级 `whoami` 探活链）、Pipeline Middleware（鉴权预检 + 渲染 + 退出码映射）、Descriptor Table（`CONFIG_DESCRIPTORS` 表驱动配置）、Composition Root DI（`container.ts`）。
+- **关键设计模式与工程最佳实践**：
+  - **Strategy（策略模式）**：凭据存储（Keychain/0600 文件）、登录方式（密码+2FA/API Key/Token）、输出渲染（Text/JSON）。
+  - **Chain of Responsibility（责任链模式）**：四级 `whoami` 探活链（whoami -> tokenLogin -> openapi-health -> dataset-list）。
+  - **Pipeline Middleware（洋葱/中间件管线）**：提取参数 -> 鉴权门禁 -> 破坏性安全拦截（非 TTY 强制 `--yes`） -> 上下文绑定（自动注入预绑定的 `ctx.client` 与 `ctx.logger`） -> 耗时度量 -> 敏感信息脱敏与格式化。
+  - **Ports & Adapters（六边形/端口适配器）**：HTTP 客户端标准化四种传输能力（JSON `request`、二进制 `requestRaw`、表单 `uploadMultipart`、流式 `streamSse`），对上层屏蔽 Node/Bun 传输层细节。
+  - **Result Builder（结果构建器）**：通过纯函数统一构建 `createSuccessResult`、`createChangedResult`、`createDryRunResult` 标准响应体。
+  - **Command Registry as a Service（一等命令注册表服务）**：`createCommandRegistry` 支持按路径寻址、按 `risk` 级别过滤（为 `mcp serve` 只读沙盒打底）、按认证模式检索。
+  - **Composition Root DI（组合根依赖注入）**：统一在 `container.ts` 装配所有外部适配器与领域服务单例。
 - **代码风格**：文件命名全部 `kebab-case`；顶层函数统一使用 `function` 声明；禁止 barrel / re-export。
 - **核心纯 JS 依赖**（由 `tsdown` 打包进产物，同样兼容 `bun build --compile`）：`commander`（命令树）、`@clack/prompts`（交互提示）、`ky`（HTTP 客户端）、`picocolors`（终端着色）。
 
@@ -492,3 +499,4 @@ CLI 不能假设所有部署实例都已升级到包含 `whoami` 的版本，因
 - v1.0（2026-11-11）：移除草稿状态，升级为协同开发正式参考基线；新增 [index.md](./index.md) 索引与飞书任务分配多维表格联动。
 - v1.1（2026-11-11）：将 `@fastgpt/cli` 从 `packages/cli/` 迁至仓库根目录 `cli/`（与 `projects/`、`packages/` 平级），彻底隔离主应用 Docker 构建与全局 `tsconfig` 扫描。
 - v1.2（2026-11-12）：重构飞书多维表格与任务映射为 **9 业务需求包（`PKG-00`~`PKG-08`）× 44 原子 FR × 24 细粒度可并行 PRD**，默认视图均配置按彩色需求包可折叠分组。
+- v1.3（2026-11-12）：架构重构与最佳实践升级（引入 Ports & Adapters 四传输 HTTP Client、Pipeline 自动上下文绑定 `ctx.client` 与破坏性操作安全门禁、Result Builder 与 CommandRegistry 服务）。

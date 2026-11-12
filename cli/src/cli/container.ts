@@ -58,6 +58,8 @@ export type CliContainer = {
   readonly authService: AuthService;
   readonly profileService: ProfileService;
   readonly doctorService: DoctorService;
+  readonly stdout: (value: string) => void;
+  readonly stderr: (value: string) => void;
 };
 
 /**
@@ -157,6 +159,8 @@ export function createCliContainer(deps: CliRuntimeDeps): CliContainer {
     createHttpClient,
     authService,
     profileService,
-    doctorService
+    doctorService,
+    stdout: deps.stdout,
+    stderr: deps.stderr
   };
 }

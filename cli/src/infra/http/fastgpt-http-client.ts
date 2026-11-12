@@ -12,6 +12,19 @@ export type HttpRequestAuth = {
   secret: string;
 };
 
+export type SseEvent = {
+  event?: string;
+  data: string;
+  id?: string;
+};
+
+export type RawHttpResponse = {
+  status: number;
+  headers: Headers;
+  text: () => Promise<string>;
+  arrayBuffer: () => Promise<ArrayBuffer>;
+};
+
 export type FastGptHttpClient = {
   readonly baseUrl: string;
   request: <T = unknown>(params: {
@@ -23,6 +36,33 @@ export type FastGptHttpClient = {
     headers?: Record<string, string>;
     timeoutMs?: number;
   }) => Promise<T>;
+  requestRaw: (params: {
+    method: 'GET' | 'POST' | 'PUT' | 'DELETE';
+    path: string;
+    query?: Record<string, string | number | boolean | undefined>;
+    body?: BodyInit | null;
+    auth?: HttpRequestAuth;
+    headers?: Record<string, string>;
+    timeoutMs?: number;
+  }) => Promise<RawHttpResponse>;
+  uploadMultipart: <T = unknown>(params: {
+    path: string;
+    formData: FormData;
+    query?: Record<string, string | number | boolean | undefined>;
+    auth?: HttpRequestAuth;
+    headers?: Record<string, string>;
+    timeoutMs?: number;
+  }) => Promise<T>;
+  streamSse: (params: {
+    method?: 'GET' | 'POST';
+    path: string;
+    query?: Record<string, string | number | boolean | undefined>;
+    body?: unknown;
+    auth?: HttpRequestAuth;
+    headers?: Record<string, string>;
+    signal?: AbortSignal;
+    timeoutMs?: number;
+  }) => AsyncIterable<SseEvent>;
 };
 
 function getRuntimeTag(): string {
@@ -129,6 +169,142 @@ function mapServerError({
   });
 }
 
+function unpackFastGptResponse<T>({
+  response,
+  rawText,
+  displayUrl
+}: {
+  response: Response;
+  rawText: string;
+  displayUrl: string;
+}): T {
+  let parsed: unknown = undefined;
+  if (rawText.trim().length > 0) {
+    try {
+      parsed = JSON.parse(rawText);
+    } catch {
+      if (response.status >= 400) {
+        throw mapServerError({
+          httpStatus: response.status,
+          message: rawText.slice(0, 300) || `HTTP ${response.status}`,
+          url: displayUrl
+        });
+      }
+      return rawText as T;
+    }
+  }
+
+  if (parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed)) {
+    const envelope = parsed as {
+      code?: unknown;
+      statusText?: unknown;
+      message?: unknown;
+      data?: unknown;
+    };
+    const serverCode = typeof envelope.code === 'number' ? envelope.code : undefined;
+    const statusText = typeof envelope.statusText === 'string' ? envelope.statusText : undefined;
+    const serverMessage =
+      typeof envelope.message === 'string' && envelope.message.length > 0
+        ? envelope.message
+        : statusText || `Request failed (HTTP ${response.status})`;
+
+    if (response.status >= 400 || (serverCode !== undefined && serverCode >= 400)) {
+      throw mapServerError({
+        httpStatus: response.status,
+        serverCode,
+        statusText,
+        message: serverMessage,
+        url: displayUrl
+      });
+    }
+
+    if ('code' in envelope && 'data' in envelope) {
+      return envelope.data as T;
+    }
+  }
+
+  if (response.status >= 400) {
+    throw mapServerError({
+      httpStatus: response.status,
+      message: `Request failed (HTTP ${response.status})`,
+      url: displayUrl
+    });
+  }
+
+  return parsed as T;
+}
+
+async function* parseSseStream(stream: ReadableStream<Uint8Array>): AsyncIterable<SseEvent> {
+  const reader = stream.getReader();
+  const decoder = new TextDecoder('utf-8');
+  let buffer = '';
+  let currentEvent: string | undefined;
+  let currentId: string | undefined;
+  let currentDataLines: string[] = [];
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) {
+        break;
+      }
+      buffer += decoder.decode(value, { stream: true });
+
+      let newlineIndex: number;
+      while ((newlineIndex = buffer.indexOf('\n')) >= 0) {
+        const rawLine = buffer.slice(0, newlineIndex);
+        buffer = buffer.slice(newlineIndex + 1);
+        const line = rawLine.endsWith('\r') ? rawLine.slice(0, -1) : rawLine;
+
+        if (line === '') {
+          if (currentDataLines.length > 0) {
+            const data = currentDataLines.join('\n');
+            if (data === '[DONE]') {
+              return;
+            }
+            yield {
+              ...(currentEvent !== undefined ? { event: currentEvent } : {}),
+              ...(currentId !== undefined ? { id: currentId } : {}),
+              data
+            };
+            currentEvent = undefined;
+            currentId = undefined;
+            currentDataLines = [];
+          }
+          continue;
+        }
+
+        if (line.startsWith(':')) {
+          continue;
+        }
+
+        if (line.startsWith('event:')) {
+          currentEvent = line.slice(6).trim();
+        } else if (line.startsWith('data:')) {
+          const content = line.startsWith('data: ') ? line.slice(6) : line.slice(5);
+          currentDataLines.push(content);
+        } else if (line.startsWith('id:')) {
+          currentId = line.slice(3).trim();
+        }
+      }
+    }
+
+    // 处理末尾残留块
+    if (currentDataLines.length > 0) {
+      const data = currentDataLines.join('\n');
+      if (data !== '[DONE]') {
+        yield {
+          ...(currentEvent !== undefined ? { event: currentEvent } : {}),
+          ...(currentId !== undefined ? { id: currentId } : {}),
+          data
+        };
+      }
+    }
+  } finally {
+    reader.releaseLock();
+  }
+}
+
 /**
  * 基于 `ky` 封装的 FastGPT HTTP 客户端：提供标准 `fetch` 适配、追踪头注入、FastGPT 信封解包与错误分级映射。
  */
@@ -160,6 +336,20 @@ export function createFastGptHttpClient({
     return createNodeTlsFetch({ insecure, caPem: cachedCaPem });
   }
 
+  function filterQuery(
+    query?: Record<string, string | number | boolean | undefined>
+  ): Record<string, string | number | boolean> | undefined {
+    if (!query) {
+      return undefined;
+    }
+    const filtered = Object.fromEntries(
+      Object.entries(query).filter(([, value]) => value !== undefined) as Array<
+        [string, string | number | boolean]
+      >
+    );
+    return Object.keys(filtered).length > 0 ? filtered : undefined;
+  }
+
   return {
     baseUrl: normalizedBaseUrl,
     request: async <T = unknown>({
@@ -180,14 +370,7 @@ export function createFastGptHttpClient({
       timeoutMs?: number;
     }): Promise<T> => {
       const relativePath = path.replace(/^\/+/, '');
-      const filteredQuery = query
-        ? Object.fromEntries(
-            Object.entries(query).filter(([, value]) => value !== undefined) as Array<
-              [string, string | number | boolean]
-            >
-          )
-        : undefined;
-
+      const searchParams = filterQuery(query);
       const activeFetch = await resolveTransportFetch();
       const client = ky.create({
         prefixUrl: normalizedBaseUrl,
@@ -212,9 +395,7 @@ export function createFastGptHttpClient({
       try {
         response = await client(relativePath, {
           method,
-          ...(filteredQuery && Object.keys(filteredQuery).length > 0
-            ? { searchParams: filteredQuery }
-            : {}),
+          ...(searchParams ? { searchParams } : {}),
           ...(body !== undefined ? { json: body } : {})
         });
       } catch (error) {
@@ -230,61 +411,192 @@ export function createFastGptHttpClient({
       }
 
       const rawText = await response.text();
-      let parsed: unknown = undefined;
-      if (rawText.trim().length > 0) {
-        try {
-          parsed = JSON.parse(rawText);
-        } catch {
-          if (response.status >= 400) {
-            throw mapServerError({
-              httpStatus: response.status,
-              message: rawText.slice(0, 300) || `HTTP ${response.status}`,
-              url: displayUrl
-            });
-          }
-          return rawText as T;
-        }
-      }
+      return unpackFastGptResponse<T>({ response, rawText, displayUrl });
+    },
 
-      if (parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed)) {
-        const envelope = parsed as {
-          code?: unknown;
-          statusText?: unknown;
-          message?: unknown;
-          data?: unknown;
-        };
-        const serverCode = typeof envelope.code === 'number' ? envelope.code : undefined;
-        const statusText =
-          typeof envelope.statusText === 'string' ? envelope.statusText : undefined;
-        const serverMessage =
-          typeof envelope.message === 'string' && envelope.message.length > 0
-            ? envelope.message
-            : statusText || `Request failed (HTTP ${response.status})`;
-
-        if (response.status >= 400 || (serverCode !== undefined && serverCode >= 400)) {
-          throw mapServerError({
-            httpStatus: response.status,
-            serverCode,
-            statusText,
-            message: serverMessage,
-            url: displayUrl
-          });
+    requestRaw: async ({
+      method,
+      path,
+      query,
+      body,
+      auth,
+      headers: extraHeaders,
+      timeoutMs: requestTimeout = timeoutMs
+    }): Promise<RawHttpResponse> => {
+      const relativePath = path.replace(/^\/+/, '');
+      const searchParams = filterQuery(query);
+      const activeFetch = await resolveTransportFetch();
+      const client = ky.create({
+        prefixUrl: normalizedBaseUrl,
+        timeout: requestTimeout,
+        retry: 0,
+        throwHttpErrors: false,
+        fetch: activeFetch,
+        hooks: {
+          beforeRequest: [
+            (req) => {
+              const builtHeaders = buildAuthHeaders({ auth, cliVersion, extraHeaders });
+              for (const [key, value] of Object.entries(builtHeaders)) {
+                req.headers.set(key, value);
+              }
+            }
+          ]
         }
+      });
 
-        if ('code' in envelope && 'data' in envelope) {
-          return envelope.data as T;
-        }
+      const displayUrl = `${normalizedBaseUrl}/${relativePath}`;
+      let response: Response;
+      try {
+        response = await client(relativePath, {
+          method,
+          ...(searchParams ? { searchParams } : {}),
+          ...(body !== undefined && body !== null ? { body } : {})
+        });
+      } catch (error) {
+        const msg = redactText(error instanceof Error ? error.message : String(error));
+        throw new CliNetworkError(`Raw request failed for ${redactText(displayUrl)}: ${msg}`);
       }
 
       if (response.status >= 400) {
+        const rawText = await response.text();
         throw mapServerError({
           httpStatus: response.status,
-          message: `Request failed (HTTP ${response.status})`,
+          message: rawText.slice(0, 300) || `HTTP ${response.status}`,
           url: displayUrl
         });
       }
 
-      return parsed as T;
+      return {
+        status: response.status,
+        headers: response.headers,
+        text: () => response.text(),
+        arrayBuffer: () => response.arrayBuffer()
+      };
+    },
+
+    uploadMultipart: async <T = unknown>({
+      path,
+      formData,
+      query,
+      auth,
+      headers: extraHeaders,
+      timeoutMs: requestTimeout = timeoutMs
+    }: {
+      path: string;
+      formData: FormData;
+      query?: Record<string, string | number | boolean | undefined>;
+      auth?: HttpRequestAuth;
+      headers?: Record<string, string>;
+      timeoutMs?: number;
+    }): Promise<T> => {
+      const relativePath = path.replace(/^\/+/, '');
+      const searchParams = filterQuery(query);
+      const activeFetch = await resolveTransportFetch();
+      const client = ky.create({
+        prefixUrl: normalizedBaseUrl,
+        timeout: requestTimeout,
+        retry: 0,
+        throwHttpErrors: false,
+        fetch: activeFetch,
+        hooks: {
+          beforeRequest: [
+            (req) => {
+              // FormData 会由底层 fetch 自动生成带 boundary 的 multipart Content-Type，不要写死 application/json
+              const builtHeaders = buildAuthHeaders({ auth, cliVersion, extraHeaders });
+              delete builtHeaders.accept;
+              for (const [key, value] of Object.entries(builtHeaders)) {
+                req.headers.set(key, value);
+              }
+            }
+          ]
+        }
+      });
+
+      const displayUrl = `${normalizedBaseUrl}/${relativePath}`;
+      let response: Response;
+      try {
+        response = await client(relativePath, {
+          method: 'POST',
+          body: formData,
+          ...(searchParams ? { searchParams } : {})
+        });
+      } catch (error) {
+        const msg = redactText(error instanceof Error ? error.message : String(error));
+        throw new CliNetworkError(`Multipart upload failed for ${redactText(displayUrl)}: ${msg}`);
+      }
+
+      const rawText = await response.text();
+      return unpackFastGptResponse<T>({ response, rawText, displayUrl });
+    },
+
+    streamSse: async function* ({
+      method = 'POST',
+      path,
+      query,
+      body,
+      auth,
+      headers: extraHeaders,
+      signal,
+      timeoutMs: requestTimeout = timeoutMs
+    }): AsyncIterable<SseEvent> {
+      const relativePath = path.replace(/^\/+/, '');
+      const searchParams = filterQuery(query);
+      const activeFetch = await resolveTransportFetch();
+      const client = ky.create({
+        prefixUrl: normalizedBaseUrl,
+        timeout: requestTimeout,
+        retry: 0,
+        throwHttpErrors: false,
+        fetch: activeFetch,
+        hooks: {
+          beforeRequest: [
+            (req) => {
+              const builtHeaders = buildAuthHeaders({
+                auth,
+                cliVersion,
+                extraHeaders: {
+                  accept: 'text/event-stream',
+                  ...extraHeaders
+                }
+              });
+              for (const [key, value] of Object.entries(builtHeaders)) {
+                req.headers.set(key, value);
+              }
+            }
+          ]
+        }
+      });
+
+      const displayUrl = `${normalizedBaseUrl}/${relativePath}`;
+      let response: Response;
+      try {
+        response = await client(relativePath, {
+          method,
+          signal,
+          ...(searchParams ? { searchParams } : {}),
+          ...(body !== undefined ? { json: body } : {})
+        });
+      } catch (error) {
+        const msg = redactText(error instanceof Error ? error.message : String(error));
+        throw new CliNetworkError(
+          `SSE stream connection failed for ${redactText(displayUrl)}: ${msg}`
+        );
+      }
+
+      if (response.status >= 400) {
+        const rawText = await response.text();
+        throw mapServerError({
+          httpStatus: response.status,
+          message: rawText.slice(0, 300) || `HTTP ${response.status}`,
+          url: displayUrl
+        });
+      }
+
+      if (!response.body) {
+        return;
+      }
+
+      yield* parseSseStream(response.body);
     }
   };
 }

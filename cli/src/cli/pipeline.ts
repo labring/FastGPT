@@ -1,10 +1,11 @@
 import type { Command } from 'commander';
-import { ZodError } from 'zod';
+import { ZodError, type z } from 'zod';
 import {
   assertAuthAllowed,
   resolveEffectiveAuth,
   type ResolvedAuthContext
 } from '../domain/auth/auth-resolver';
+import type { FastGptHttpClient } from '../infra/http/fastgpt-http-client';
 import { createOutputRenderer } from '../infra/ui/renderer';
 import { CliArgumentError } from '../shared/errors';
 import type {
@@ -19,6 +20,13 @@ import type {
 } from '../shared/types';
 import type { CliContainer } from './container';
 
+export type CliLogger = {
+  debug: (message: string) => void;
+  info: (message: string) => void;
+  warn: (message: string) => void;
+  error: (message: string) => void;
+};
+
 export type CommandExecutionContext = {
   readonly global: GlobalCliOptions;
   readonly options: Record<string, unknown>;
@@ -26,6 +34,8 @@ export type CommandExecutionContext = {
   readonly resolvedAuth?: ResolvedAuthContext;
   readonly container: CliContainer;
   readonly commandMetas: readonly CommandMeta[];
+  readonly logger: CliLogger;
+  readonly client?: FastGptHttpClient;
 };
 
 export type CliCommandSpec = {
@@ -36,6 +46,7 @@ export type CliCommandSpec = {
   readonly authModes: readonly CliAuthModeRequirement[];
   readonly positionalArgs?: readonly CommandPositionalMeta[];
   readonly options: readonly CommandOptionMeta[];
+  readonly inputSchema?: z.ZodTypeAny;
   readonly examples?: readonly { description: string; args: readonly string[] }[];
   readonly configure?: (command: Command) => void;
   readonly execute: (ctx: CommandExecutionContext) => Promise<CliResult>;
@@ -70,10 +81,48 @@ export function extractGlobalOptions({
 }
 
 /**
+ * 构造与当前认证上下文绑定的 HTTP Client，自动注入 Base URL 与认证头。
+ */
+function createBoundHttpClient({
+  container,
+  global,
+  resolvedAuth
+}: {
+  container: CliContainer;
+  global: GlobalCliOptions;
+  resolvedAuth?: ResolvedAuthContext;
+}): FastGptHttpClient | undefined {
+  if (!resolvedAuth || !resolvedAuth.credential) {
+    return undefined;
+  }
+
+  const baseClient = container.createHttpClient({
+    baseUrl: resolvedAuth.baseUrl,
+    insecure: resolvedAuth.allowInsecureHttp || global.insecure,
+    caCertPath: global.caCert
+  });
+
+  const authPayload = {
+    authType: resolvedAuth.credential.authType,
+    secret: resolvedAuth.credential.secret
+  };
+
+  return {
+    baseUrl: baseClient.baseUrl,
+    request: (params) => baseClient.request({ auth: authPayload, ...params }),
+    requestRaw: (params) => baseClient.requestRaw({ auth: authPayload, ...params }),
+    uploadMultipart: (params) => baseClient.uploadMultipart({ auth: authPayload, ...params }),
+    streamSse: (params) => baseClient.streamSse({ auth: authPayload, ...params })
+  };
+}
+
+/**
  * 统一命令执行中间件管线：
  * 1. 提取并校验全局选项；
- * 2. 若命令要求鉴权，先本地执行凭据解析与 `authModes` 门禁检查；
- * 3. 调用命令执行体并交由渲染器输出至 stdout。
+ * 2. 鉴权门禁中间件：解析凭据并在本地执行 authModes 检查；
+ * 3. 破坏性操作确认门禁：非 TTY 或 --format json 下强制校验 --yes；
+ * 4. 自动绑定上下文 HTTP 客户端与结构化 Logger；
+ * 5. 执行命令并在 meta 自动注入耗时 durationMs，最后交由渲染器输出。
  */
 export async function executeCommandWithPipeline({
   spec,
@@ -94,8 +143,30 @@ export async function executeCommandWithPipeline({
   commandMetas: readonly CommandMeta[];
   stdout: (value: string) => void;
 }): Promise<void> {
+  const startTime = Date.now();
   const global = extractGlobalOptions({ raw: rawOptions, defaultFormat, defaultColor });
   const commandName = spec.path.join(' ');
+
+  const logger: CliLogger = {
+    debug: (msg) => {
+      if (!global.quiet && (container.env.DEBUG || container.env.FASTGPT_DEBUG)) {
+        container.stderr(`[DEBUG] ${msg}`);
+      }
+    },
+    info: (msg) => {
+      if (!global.quiet && global.format === 'text') {
+        container.stdout(msg);
+      }
+    },
+    warn: (msg) => {
+      if (!global.quiet) {
+        container.stderr(`Warning: ${msg}`);
+      }
+    },
+    error: (msg) => {
+      container.stderr(`Error: ${msg}`);
+    }
+  };
 
   let resolvedAuth: ResolvedAuthContext | undefined;
   if (!spec.authModes.includes('none')) {
@@ -112,15 +183,45 @@ export async function executeCommandWithPipeline({
     });
   }
 
+  // 破坏性操作安全中间件：在非交互环境（如脚本、CI、--format json）未显式传 --yes 时阻断执行
+  if (spec.risk === 'destructive' && rawOptions.dryRun !== true) {
+    const isNonInteractive = !container.prompter.isInteractive || global.format === 'json';
+    if (isNonInteractive && rawOptions.yes !== true) {
+      throw new CliArgumentError(
+        `Destructive command "${commandName}" requires explicit confirmation in non-interactive / JSON mode.`,
+        undefined,
+        'Pass --yes to confirm execution.'
+      );
+    }
+  }
+
+  const client = createBoundHttpClient({ container, global, resolvedAuth });
+
+  let effectiveOptions = rawOptions;
+  if (spec.inputSchema) {
+    try {
+      effectiveOptions = spec.inputSchema.parse(rawOptions) as Record<string, unknown>;
+    } catch (error) {
+      if (error instanceof ZodError) {
+        throw new CliArgumentError(`Invalid options for "${commandName}".`, {
+          issues: error.issues
+        });
+      }
+      throw error;
+    }
+  }
+
   let result: CliResult;
   try {
     result = await spec.execute({
       global,
-      options: rawOptions,
+      options: effectiveOptions,
       positional,
       resolvedAuth,
       container,
-      commandMetas
+      commandMetas,
+      logger,
+      client
     });
   } catch (error) {
     if (error instanceof ZodError) {
@@ -131,9 +232,21 @@ export async function executeCommandWithPipeline({
     throw error;
   }
 
+  // 自动在 meta 注入执行耗时（若未显式指定）
+  const durationMs = Date.now() - startTime;
+  const enrichedResult: CliResult = {
+    ...result,
+    meta: {
+      durationMs,
+      ...(result.meta ?? {})
+    }
+  };
+
   const renderer = createOutputRenderer({
     format: global.format,
     color: global.color
   });
-  stdout(renderer.renderSuccess({ command: commandName, result, quiet: global.quiet }));
+  stdout(
+    renderer.renderSuccess({ command: commandName, result: enrichedResult, quiet: global.quiet })
+  );
 }

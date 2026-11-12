@@ -143,4 +143,79 @@ describe('FastGptHttpClient (ky) & OutputRenderer (picocolors)', () => {
     expect(errJson.error.code).toBe('CLI_INTERNAL_ERROR');
     expect(errJson.error.message).toBe('Authorization: Bearer [REDACTED]');
   });
+
+  it('streams SSE events with chunk parsing and termination', async () => {
+    const sseBody = [
+      ': ping comment\n\n',
+      'event: answer\n',
+      'data: Hello\n\n',
+      'data: World\n',
+      'id: msg-1\n\n',
+      'data: [DONE]\n\n'
+    ].join('');
+
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(encoder.encode(sseBody));
+        controller.close();
+      }
+    });
+
+    const client = createFastGptHttpClient({
+      baseUrl: 'http://127.0.0.1:3000/api',
+      cliVersion: '0.1.0',
+      fetchFn: async () =>
+        new Response(stream, { headers: { 'content-type': 'text/event-stream' } })
+    });
+
+    const events: Array<{ event?: string; data: string; id?: string }> = [];
+    for await (const evt of client.streamSse({
+      path: '/v2/chat/completions',
+      body: { msg: 'hi' }
+    })) {
+      events.push(evt);
+    }
+
+    expect(events).toEqual([
+      { event: 'answer', data: 'Hello' },
+      { data: 'World', id: 'msg-1' }
+    ]);
+  });
+
+  it('supports uploadMultipart and requestRaw methods', async () => {
+    let capturedFormData: FormData | undefined;
+    const client = createFastGptHttpClient({
+      baseUrl: 'http://127.0.0.1:3000/api',
+      cliVersion: '0.1.0',
+      fetchFn: async (input, init) => {
+        const url = String(input instanceof Request ? input.url : input);
+        if (url.endsWith('/upload')) {
+          if (input instanceof Request) {
+            capturedFormData = await input.clone().formData();
+          } else if (init?.body instanceof FormData) {
+            capturedFormData = init.body;
+          }
+          return jsonResponse({ code: 200, data: { uploaded: true } });
+        }
+        if (url.endsWith('/download')) {
+          return new Response('file-content-raw', {
+            status: 200,
+            headers: { 'content-disposition': 'attachment; filename="data.csv"' }
+          });
+        }
+        return jsonResponse({}, 404);
+      }
+    });
+
+    const formData = new FormData();
+    formData.append('data', JSON.stringify({ name: 'test-col' }));
+    const uploadRes = await client.uploadMultipart({ path: '/upload', formData });
+    expect(uploadRes).toEqual({ uploaded: true });
+    expect(capturedFormData?.get('data')).toBe(JSON.stringify({ name: 'test-col' }));
+
+    const rawRes = await client.requestRaw({ method: 'GET', path: '/download' });
+    expect(rawRes.status).toBe(200);
+    expect(await rawRes.text()).toBe('file-content-raw');
+  });
 });
