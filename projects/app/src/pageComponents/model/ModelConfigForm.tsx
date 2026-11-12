@@ -809,10 +809,7 @@ const ModelConfigForm = ({
                   </Field>
                 </>
               )}
-              <Field
-                label={`${t('config_model:model.unitPrice')}`}
-                tip={t('config_model:model.unitPrice_tip')}
-              >
+              <Field label={t('config_model:model.unitPrice')}>
                 <Flex alignItems={'center'} gap={2}>
                   <Input
                     type="number"
