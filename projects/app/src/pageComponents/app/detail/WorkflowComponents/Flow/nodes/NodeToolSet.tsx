@@ -91,7 +91,7 @@ const NodeToolSet = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
       {localHttpToolSet && (
         <Button
           size={'sm'}
-          variant={'primary'}
+          variant={'whitePrimary'}
           ml={3}
           leftIcon={<MyIcon name={'common/setting'} w={'16px'} />}
           onClick={() => setIsEditingHttpToolSet(true)}
@@ -220,7 +220,7 @@ const McpToolSetForm = ({
         <HeaderAuthConfig
           storeHeaderSecretConfig={headerSecret}
           onUpdate={onUpdateHeaderSecret}
-          buttonProps={{ size: 'sm', variant: 'primary' }}
+          buttonProps={{ size: 'sm' }}
         />
       </Flex>
       <Flex gap={2}>
