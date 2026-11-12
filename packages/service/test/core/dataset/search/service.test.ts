@@ -110,8 +110,8 @@ beforeEach(() => {
 });
 
 describe('member knowledge search orchestration', () => {
-  it.each([{ topk: 1 }, { topk: 100, maxTokens: 1 }])(
-    'gives topk priority over token filtering: %j',
+  it.each([{ topk: 1 }, { topk: 100 }])(
+    'skips token filtering for a topk budget: %j',
     async (budget) => {
       await run({ scope: { datasetIds: ids }, query: { text: 'q' }, result: budget }).promise;
       expect(mocks.recall).toHaveBeenCalledWith(

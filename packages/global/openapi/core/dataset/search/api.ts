@@ -19,6 +19,31 @@ export const SearchDatasetBodySchema = DatasetSearchParamsSchema.extend({
   })
 }).meta({ description: '结构化多知识库检索参数；身份由 Authorization API Key 或登录态解析' });
 export type SearchDatasetBody = z.input<typeof SearchDatasetBodySchema>;
+
+/**
+ * HTTP 兼容双预算输入：显式 topk 优先并删除 maxTokens，再按互斥协议校验。
+ * 只剥离被覆盖的预算；其他未知字段仍由严格 Schema 拒绝。文档与客户端使用上面的二选一协议。
+ */
+export const SearchDatasetRequestBodySchema = z.preprocess((input) => {
+  if (typeof input !== 'object' || input === null || Array.isArray(input) || !('result' in input)) {
+    return input;
+  }
+  const result = input.result;
+  if (
+    typeof result !== 'object' ||
+    result === null ||
+    Array.isArray(result) ||
+    !('topk' in result) ||
+    result.topk === undefined ||
+    !('maxTokens' in result)
+  ) {
+    return input;
+  }
+  const { maxTokens, ...budget } = result;
+  return { ...input, result: budget };
+}, SearchDatasetBodySchema);
+export type SearchDatasetRequestBody = z.output<typeof SearchDatasetRequestBodySchema>;
+
 // HTTP 只返回实际执行信息；内部预算及入参回显保留给旧 searchTest 适配，不对外重复输出。
 export const SearchDatasetResponseSchema = DatasetSearchResultSchema.extend({
   meta: DatasetSearchResultSchema.shape.meta.omit({

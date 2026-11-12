@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, expectTypeOf, it } from 'vitest';
 import { openAPIDocument } from '../../../openapi/provider/devapi';
 import { apiDocOpenAPIDocument } from '../../../openapi/provider/systemopenapi';
 import { openAPITagGroups } from '../../../openapi/path';
@@ -14,7 +14,10 @@ import {
   SearchDatasetTestBodySchema
 } from '../../../openapi/core/dataset/api';
 import { CreateCollectionByFileIdBodySchema } from '../../../openapi/core/dataset/collection/createApi';
-import { SearchDatasetBodySchema } from '../../../openapi/core/dataset/search/api';
+import {
+  SearchDatasetBodySchema,
+  type SearchDatasetBody
+} from '../../../openapi/core/dataset/search/api';
 import {
   ChangeCollectionOwnerBodySchema,
   ChangeCollectionOwnerResponseSchema,
@@ -34,6 +37,19 @@ import {
 const objectId = '68ad85a7463006c963799a05';
 
 describe('structured dataset search OpenAPI', () => {
+  it('rejects both budgets in the canonical input contract', () => {
+    expectTypeOf<{ topk: number; maxTokens: number }>().not.toMatchTypeOf<
+      NonNullable<SearchDatasetBody['result']>
+    >();
+    expect(
+      SearchDatasetBodySchema.safeParse({
+        scope: { datasetIds: [objectId] },
+        query: { text: 'question' },
+        result: { topk: 20, maxTokens: 5000 }
+      }).success
+    ).toBe(false);
+  });
+
   it.each([undefined, {}, { similarity: 0.3 }])(
     'defaults missing result budgets to topk=20 without a token budget: %j',
     (result) => {
@@ -132,6 +148,22 @@ describe('structured dataset search OpenAPI', () => {
       }
     });
     expect(SearchDatasetBodySchema.safeParse(media.example).success).toBe(true);
+    expect(media.schema).not.toHaveProperty([
+      'properties',
+      'result',
+      'anyOf',
+      0,
+      'properties',
+      'topk'
+    ]);
+    expect(media.schema).not.toHaveProperty([
+      'properties',
+      'result',
+      'anyOf',
+      1,
+      'properties',
+      'maxTokens'
+    ]);
     for (const field of ['topk', 'maxTokens', 'similarity', 'searchMode']) {
       expect(operation.responses![200]).not.toHaveProperty([
         'content',

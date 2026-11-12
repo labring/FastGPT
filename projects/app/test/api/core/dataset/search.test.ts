@@ -74,13 +74,20 @@ describe('structured knowledge search HTTP boundary', () => {
     expect(mocks.search.mock.calls[0][0].params).not.toHaveProperty('usageScene');
   });
 
-  it.each([{ topk: 1 }, { topk: 100, maxTokens: 1 }, { maxTokens: 25000 }])(
-    'passes a selected budget to the shared search service: %j',
-    async (budget) => {
-      await handler(request({ scope: { datasetIds: [id] }, query: { text: 'q' }, result: budget }));
-      expect(mocks.search.mock.calls[0][0].params.result).toEqual({ ...budget, similarity: 0 });
-    }
-  );
+  it.each([
+    { topk: 1 },
+    { topk: 100, maxTokens: 1 },
+    { maxTokens: 25000 },
+    { topk: 20, maxTokens: 0 },
+    { topk: 20, maxTokens: 'ignored' }
+  ])('passes only the effective budget to the shared search service: %j', async (budget) => {
+    await handler(request({ scope: { datasetIds: [id] }, query: { text: 'q' }, result: budget }));
+    const effectiveBudget = 'topk' in budget ? { topk: budget.topk } : budget;
+    expect(mocks.search.mock.calls[0][0].params.result).toEqual({
+      ...effectiveBudget,
+      similarity: 0
+    });
+  });
 
   it.each([{ imageKeys: undefined }, { imageKeys: ['temp/team/search-image.png'] }])(
     'accepts 10000 query characters after trimming, with images: %j',
@@ -94,6 +101,13 @@ describe('structured knowledge search HTTP boundary', () => {
   );
 
   it.each([
+    null,
+    [],
+    ...[null, [], 'invalid'].map((result) => ({
+      scope: { datasetIds: [id] },
+      query: { text: 'q' },
+      result
+    })),
     { scope: { datasetIds: [] }, query: { text: 'q' } },
     { scope: { datasetIds: [id] }, query: { text: ' ' } },
     ...[undefined, ['temp/team/search-image.png']].map((imageKeys) => ({
@@ -109,6 +123,11 @@ describe('structured knowledge search HTTP boundary', () => {
     },
     { scope: { datasetIds: [id] }, query: { text: 'q' }, result: { maxTokens: 0 } },
     { scope: { datasetIds: [id] }, query: { text: 'q' }, result: { maxTokens: 0.5 } },
+    {
+      scope: { datasetIds: [id] },
+      query: { text: 'q' },
+      result: { topk: 20, maxTokens: 5000, unknownField: true }
+    },
     ...[0, 101, 1.5, '10'].map((topk) => ({
       scope: { datasetIds: [id] },
       query: { text: 'q' },
