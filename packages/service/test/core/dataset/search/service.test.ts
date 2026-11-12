@@ -152,7 +152,8 @@ describe('member knowledge search orchestration', () => {
         datasetIds: ids,
         textQueries: ['question'],
         readableCollectionIdList: ['readable-collection'],
-        limit: 5000,
+        limit: Infinity,
+        topk: 20,
         similarity: 0
       })
     );
@@ -171,7 +172,7 @@ describe('member knowledge search orchestration', () => {
     expect(deps.onSearched).toHaveBeenCalledTimes(1);
     expect(result.meta).toMatchObject({
       searchMode: 'embedding',
-      maxTokens: 5000,
+      maxTokens: Infinity,
       usingSimilarityFilter: true
     });
   });

@@ -232,23 +232,24 @@ export const DatasetSearchParamsSchema = z.strictObject({
     .meta({ description: '查询扩展配置', example: { enabled: false } }),
   result: z
     .union([
+      // 先匹配显式 token 预算，避免 topk 默认值覆盖只传 maxTokens 的请求。
       z.strictObject({
-        topk: z.number().int().min(1).max(100).meta({
-          description:
-            '返回排序后的前 k 条，范围 1–100；与 maxTokens 同时传入时优先，不做 token 过滤',
-          example: 20
-        }),
-        maxTokens: MaxTokensSchema.optional(),
+        maxTokens: MaxTokensSchema,
         similarity: ResultSimilaritySchema
       }),
       z.strictObject({
-        maxTokens: MaxTokensSchema.default(5000),
+        topk: z.number().int().min(1).max(100).default(20).meta({
+          description:
+            '返回排序后的前 k 条，范围 1–100；未传两种预算时默认 20，与 maxTokens 同时传入时优先，不做 token 过滤',
+          example: 20
+        }),
+        maxTokens: MaxTokensSchema.optional(),
         similarity: ResultSimilaritySchema
       })
     ])
     .prefault({})
     .meta({
-      description: '按条数或 token 预算过滤，topk 优先；未指定时默认 5000 tokens',
+      description: '按条数或 token 预算过滤，topk 优先；未指定时默认 topk=20，不设置 token 预算',
       example: { topk: 20, similarity: 0 }
     })
 });

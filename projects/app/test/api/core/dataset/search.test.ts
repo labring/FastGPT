@@ -45,7 +45,7 @@ describe('structured knowledge search HTTP boundary', () => {
         retrieval: { mode: 'embedding', embeddingWeight: 0.5 },
         rerank: { enabled: false },
         queryExtension: { enabled: false },
-        result: { maxTokens: 5000, similarity: 0 }
+        result: { topk: 20, similarity: 0 }
       },
       auth: expect.objectContaining({ teamId: id, apikey: 'test-key' }),
       usageAppName: 'account_usage:dataset_search'

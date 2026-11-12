@@ -121,7 +121,7 @@ export const search = async ({
     vlmModel,
     searchMode: input.retrieval.mode,
     embeddingWeight: input.retrieval.embeddingWeight,
-    limit: topk === undefined ? (input.result.maxTokens ?? 5000) : Infinity,
+    limit: 'topk' in input.result ? Infinity : input.result.maxTokens,
     ...(topk === undefined ? {} : { topk }),
     similarity: input.result.similarity,
     usingReRank: rerank.enabled,

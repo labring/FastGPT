@@ -34,6 +34,18 @@ import {
 const objectId = '68ad85a7463006c963799a05';
 
 describe('structured dataset search OpenAPI', () => {
+  it.each([undefined, {}, { similarity: 0.3 }])(
+    'defaults missing result budgets to topk=20 without a token budget: %j',
+    (result) => {
+      const parsed = SearchDatasetBodySchema.parse({
+        scope: { datasetIds: [objectId] },
+        query: { text: 'question' },
+        result
+      });
+      expect(parsed.result).toEqual({ topk: 20, similarity: result?.similarity ?? 0 });
+    }
+  );
+
   it.each([10, 100, undefined])(
     'accepts an optional rerank candidate count: %s',
     (candidateNum) => {
@@ -109,13 +121,11 @@ describe('structured dataset search OpenAPI', () => {
         result: {
           anyOf: [
             {
-              required: expect.arrayContaining(['topk']),
-              properties: { topk: { minimum: 1, maximum: 100 } }
+              required: ['maxTokens'],
+              properties: { maxTokens: { minimum: 1, maximum: Number.MAX_SAFE_INTEGER } }
             },
             {
-              properties: {
-                maxTokens: { minimum: 1, maximum: Number.MAX_SAFE_INTEGER, default: 5000 }
-              }
+              properties: { topk: { minimum: 1, maximum: 100, default: 20 } }
             }
           ]
         }
