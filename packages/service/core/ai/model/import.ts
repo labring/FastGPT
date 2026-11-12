@@ -120,7 +120,7 @@ export const importSystemModels = async ({ config }: ParsedSystemModelsWithJsonB
               ? getModelConfigUpdate(modelData)
               : {
                   $set: { ...modelData, sortOrder: NEW_MODEL_SORT_ORDER },
-                  $setOnInsert: { _id: new Types.ObjectId() }
+                  $setOnInsert: { _id: new Types.ObjectId() as unknown as string }
                 },
             upsert: !isExistingModel
           }
