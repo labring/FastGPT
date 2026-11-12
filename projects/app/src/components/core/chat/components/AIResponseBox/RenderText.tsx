@@ -43,7 +43,7 @@ const RenderText = React.memo(function RenderText({
     // Agent 错误可能与先前已生成的正文一起返回，只翻译末尾的固定错误标识。
     const rendered = text.endsWith(LLM_TOOL_CALL_ARGUMENTS_TRUNCATED)
       ? text.slice(0, -LLM_TOOL_CALL_ARGUMENTS_TRUNCATED.length) +
-        t(LLM_TOOL_CALL_ARGUMENTS_TRUNCATED)
+        t('chat:llm_tool_call_arguments_truncated')
       : text;
 
     if (isShowCite) {

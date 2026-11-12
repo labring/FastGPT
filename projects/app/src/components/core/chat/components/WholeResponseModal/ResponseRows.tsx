@@ -52,7 +52,11 @@ export const CommonInfoRows = ({ activeModule }: { activeModule: ChatHistoryItem
       )}
       <Row
         label={t('chat:response.error')}
-        value={errorText === LLM_TOOL_CALL_ARGUMENTS_TRUNCATED ? t(errorText) : errorText}
+        value={
+          errorText === LLM_TOOL_CALL_ARGUMENTS_TRUNCATED
+            ? t('chat:llm_tool_call_arguments_truncated')
+            : errorText
+        }
       />
       <Row label={t('chat:response.node_inputs')} value={activeModule.nodeInputs} />
     </>
