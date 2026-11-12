@@ -10,6 +10,21 @@ const context = {
 } as CliContext;
 
 describe('template contract commands', () => {
+  it('translates the text editor hint and preserves global variable reference syntax', async () => {
+    const result = await showTemplate({ template: 'builtin:text-editor' }, context);
+
+    expect(result.result).toMatchObject({
+      inputs: expect.arrayContaining([
+        expect.objectContaining({
+          key: 'system_textareaInput',
+          description: expect.stringContaining(
+            'global variables use {{$VARIABLE_NODE_ID.variableKey$}}'
+          )
+        })
+      ])
+    });
+  });
+
   it('returns versioned contracts for all builtin templates', async () => {
     const result = await listTemplates({}, context);
     const output = result.result as {
