@@ -29,7 +29,7 @@ export default async function Page({
 }: {
   params: Promise<{ lang: string; slug?: string[] }>;
 }) {
-  // 1. 解析目标文档页与版本升级时间线数据；source.getPage 已排除 draft 页面，此处同时校验物理语言文件后缀一致。
+  // 1. 解析目标文档页与版本升级时间线数据；source.getPage 按环境过滤草稿，此处同时校验物理语言文件后缀一致。
   const { lang, slug } = await params;
   const page = source.getPage(slug, lang);
   if (!page?.data || page.data._file.path.endsWith('.en.mdx') !== (lang === 'en')) notFound();
@@ -95,10 +95,7 @@ export default async function Page({
   ];
   const breadcrumbByUrl = new Map<string, { name: string; url: string }>();
   for (const item of rawBreadcrumbs) {
-    if (
-      item.url === `${domain}/${lang}/guide/getting-started` &&
-      breadcrumbByUrl.has(item.url)
-    ) {
+    if (item.url === `${domain}/${lang}/guide/getting-started` && breadcrumbByUrl.has(item.url)) {
       continue;
     }
     breadcrumbByUrl.set(item.url, item);
@@ -184,7 +181,14 @@ export default async function Page({
         lastUpdate={lastModified ? new Date(lastModified) : undefined}
       >
         <div className="flex items-start justify-between gap-4">
-          <DocsTitle>{page.data.title}</DocsTitle>
+          <div className="flex min-w-0 flex-wrap items-center gap-3">
+            <DocsTitle>{page.data.title}</DocsTitle>
+            {page.data.draft && (
+              <span className="shrink-0 rounded-md bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800 dark:bg-amber-400/15 dark:text-amber-300">
+                {lang === 'en' ? 'Draft' : '草稿'}
+              </span>
+            )}
+          </div>
           {releaseTime && (
             <div className="mt-2 flex shrink-0 items-center gap-1.5 text-sm tabular-nums text-fd-muted-foreground">
               <CalendarDays aria-hidden="true" className="size-3.5" />
@@ -230,7 +234,8 @@ export async function generateMetadata(props: {
   i18n.languages.forEach((locale) => {
     const localePage = source.getPage(slug, locale);
     if (localePage && localePage.data._file.path.endsWith('.en.mdx') === (locale === 'en')) {
-      languages[locale] = `${getFastGPTDocsOriginForLocale(locale === 'en' ? 'en' : 'zh-CN')}${localePage.url}`;
+      languages[locale] =
+        `${getFastGPTDocsOriginForLocale(locale === 'en' ? 'en' : 'zh-CN')}${localePage.url}`;
     }
   });
   if (languages.en) {

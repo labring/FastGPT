@@ -24,7 +24,7 @@ description: FastGPT CLI setup and initialization workflow for AI agents (Codex,
 node -v
 
 # 全局安装 FastGPT CLI
-npm install -g @fastgpt/cli || pnpm add -g @fastgpt/cli
+npm install -g @fastgpt/cli@beta || pnpm add -g @fastgpt/cli@beta
 
 # 验证安装与版本
 fastgpt --version
@@ -78,7 +78,7 @@ fastgpt commands --format json
 
 整理并向用户展示 CLI 的核心能力矩阵：
 - **认证与会话 (`auth` / `login` / `logout` / `whoami`)**：支持多 Profile 环境隔离、团队空间一键切换（`fastgpt auth switch-team --team-id <id>`）。
-- **知识库管理 (`dataset`)**：知识库全生命周期 CRUD、根目录与层级目录移动、`--dry-run` 请求预览、破坏性删除二次确认、混合检索召回测试。
+- **知识库管理 (`dataset`)**：知识库全生命周期 CRUD、根目录与层级目录移动、`--dry-run` 请求预览、破坏性删除二次确认、多知识库统一搜索。搜索默认使用 `embedding` 与 `topk=20`，支持筛选、重排和查询扩展；可用 `--maxTokens` 切换 token 预算，暂不支持图片输入。
 - **本地配置 (`config`)**：查看所有配置项（`fastgpt config list`）与修改参数。
 - **环境诊断 (`doctor`)**：环境体检与连通性诊断。
 
@@ -91,7 +91,7 @@ fastgpt commands --format json
 ```markdown
 ### ✅ FastGPT CLI 初始化完成
 
-- **CLI 版本**：v0.1.0-beta.1
+- **CLI 版本**：v0.1.0-beta.2
 - **当前身份**：<用户名>（团队：<团队名>）
 - **服务端地址**：https://cloud.fastgpt.cn/api
 - **健康诊断**：全部检查通过 (All checks passed)
@@ -101,7 +101,7 @@ fastgpt commands --format json
 | :--- | :--- | :--- |
 | `whoami` | 查看身份与团队 | `fastgpt whoami` |
 | `auth` | 切换工作空间团队 | `fastgpt auth switch-team --team-id <id>` |
-| `dataset` | 检索知识库与召回测试 | `fastgpt dataset list` / `fastgpt dataset search <id> "query"` |
+| `dataset` | 管理并统一搜索一个或多个知识库 | `fastgpt dataset list` / `fastgpt dataset search <id1,id2> "query"` |
 | `config` | 查看本地所有配置 | `fastgpt config list` |
 | `doctor` | 运行状态体检 | `fastgpt doctor` |
 

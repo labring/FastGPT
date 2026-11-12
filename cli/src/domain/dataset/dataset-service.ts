@@ -3,15 +3,17 @@ import {
   DeleteDatasetQuerySchema,
   GetDatasetDetailQuerySchema,
   GetDatasetListV2BodySchema,
-  SearchDatasetTestBodySchema,
   UpdateDatasetBodySchema,
   type CreateDatasetBody,
   type GetDatasetDetailResponse,
   type GetDatasetListV2Response,
-  type SearchDatasetTestBody,
-  type SearchDatasetTestResponse,
   type UpdateDatasetBody
 } from '@fastgpt/global/openapi/core/dataset/api';
+import {
+  SearchDatasetBodySchema,
+  type SearchDatasetBody,
+  type SearchDatasetResponse
+} from '@fastgpt/global/openapi/core/dataset/search/api';
 import type { FastGptHttpClient } from '../../infra/http/fastgpt-http-client';
 import { createChangedResult, createDryRunResult, createSuccessResult } from '../../shared/result';
 import type { CliResult } from '../../shared/types';
@@ -32,9 +34,18 @@ export type DatasetCreateParams = Pick<CreateDatasetBody, 'name'> &
 export type DatasetUpdateParams = Partial<Omit<UpdateDatasetBody, 'id'>>;
 
 export type DatasetSearchParams = {
-  datasetId: string;
+  datasetIds: string | string[];
   text: string;
-} & Partial<Omit<Extract<SearchDatasetTestBody, { text?: unknown }>, 'datasetId' | 'text'>>;
+  topk?: NonNullable<SearchDatasetBody['result']>['topk'];
+  maxTokens?: NonNullable<SearchDatasetBody['result']>['maxTokens'];
+  similarity?: NonNullable<SearchDatasetBody['result']>['similarity'];
+  mode?: NonNullable<SearchDatasetBody['retrieval']>['mode'];
+  embeddingWeight?: NonNullable<SearchDatasetBody['retrieval']>['embeddingWeight'];
+  filter?: SearchDatasetBody['scope']['filter'];
+  rerank?: SearchDatasetBody['rerank'];
+  queryExtension?: SearchDatasetBody['queryExtension'];
+  usageScene?: SearchDatasetBody['usageScene'];
+};
 
 export type DatasetService = {
   list: (params: {
@@ -64,11 +75,11 @@ export type DatasetService = {
   search: (params: {
     client: FastGptHttpClient;
     input: DatasetSearchParams;
-  }) => Promise<CliResult<SearchDatasetTestResponse>>;
+  }) => Promise<CliResult<SearchDatasetResponse>>;
 };
 
 /**
- * 知识库领域服务：封装知识库的查询、创建、更新、删除及召回检索测试。
+ * 知识库领域服务：封装知识库的查询、创建、更新、删除及统一检索。
  * 所有请求载荷与数据模型均从 @fastgpt/global/openapi 中的共享契约直接推导复用，保证 dryRun 与实际执行一致。
  */
 export function createDatasetService(): DatasetService {
@@ -225,26 +236,36 @@ export function createDatasetService(): DatasetService {
     },
 
     search: async ({ client, input }) => {
+      // 单个 ID、逗号分隔输入和 ID 数组统一适配；空项保留给共享 Schema 拒绝，避免静默缩小范围。
+      const datasetIds = (
+        Array.isArray(input.datasetIds) ? input.datasetIds : input.datasetIds.split(',')
+      ).map((id) => id.trim());
+
+      // 默认值统一由搜索接口 Schema 补齐；双传预算时沿用接口的 topk 优先约定。
       const payload = {
-        datasetId: input.datasetId?.trim(),
-        text: input.text?.trim(),
-        limit: input.limit ?? 5000,
-        similarity: input.similarity ?? 0,
-        searchMode: input.searchMode ?? 'mixedRecall',
-        usingReRank: input.usingReRank ?? false
+        scope: { datasetIds, filter: input.filter },
+        query: { text: input.text?.trim() },
+        retrieval: { mode: input.mode, embeddingWeight: input.embeddingWeight },
+        rerank: input.rerank,
+        queryExtension: input.queryExtension,
+        usageScene: input.usageScene,
+        result: {
+          ...(input.topk !== undefined ? { topk: input.topk } : { maxTokens: input.maxTokens }),
+          similarity: input.similarity
+        }
       };
 
-      const validatedBody = SearchDatasetTestBodySchema.parse(payload);
+      const validatedBody = SearchDatasetBodySchema.parse(payload);
 
-      const res = await client.request<SearchDatasetTestResponse>({
+      const res = await client.request<SearchDatasetResponse>({
         method: 'POST',
-        path: '/core/dataset/searchTest',
+        path: '/core/dataset/search',
         body: validatedBody
       });
 
       return createSuccessResult({
         data: res,
-        message: `Retrieved ${res.list.length} chunks (${res.duration}) using mode "${res.searchMode}"`
+        message: `Retrieved ${res.list.length} chunks (${res.meta.durationMs}ms) using mode "${validatedBody.retrieval.mode}"`
       });
     }
   };

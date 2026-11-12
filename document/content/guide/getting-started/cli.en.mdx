@@ -5,6 +5,7 @@ description: Manage FastGPT resources and automate workflows from the terminal u
 ---
 
 import { Alert } from '@/components/docs/Alert';
+import { CurrentOriginCodeBlockUpdater } from '@/components/docs/CurrentOriginCodeBlockUpdater';
 
 FastGPT CLI (`fastgpt`) is the official command-line interface for FastGPT, designed for developers, DevOps engineers, and AI coding agents (such as **Codex**, **Claude Code**, **Cursor**, and **Windsurf**) to interact with and manage FastGPT resources securely and programmatically.
 
@@ -24,11 +25,15 @@ If you are using an AI coding assistant (such as **Codex** or **Claude Code**), 
 Please help me install and configure the FastGPT CLI. First, fetch and follow the official Skill guide at https://doc.fastgpt.io/skill.md to complete CLI installation, guide me through login, run doctor diagnostics, and output the available CLI capabilities.
 ```
 
+<CurrentOriginCodeBlockUpdater fallbackOrigin="https://doc.fastgpt.io" />
+
 > You can also download the official Skill directly to your local skills directory:
 >
 > ```bash
 > curl -fsSL https://doc.fastgpt.io/skill.md -o skill.md
 > ```
+>
+> <CurrentOriginCodeBlockUpdater fallbackOrigin="https://doc.fastgpt.io" />
 
 ---
 
@@ -41,8 +46,8 @@ If you prefer manual terminal operation, get ready in just 3 steps:
 Requires Node.js `>= 20.12.0`. Install globally via npm:
 
 ```bash
-npm install -g @fastgpt/cli
-# Or using pnpm: pnpm add -g @fastgpt/cli
+npm install -g @fastgpt/cli@beta
+# Or using pnpm: pnpm add -g @fastgpt/cli@beta
 
 # Verify installation
 fastgpt --version
@@ -87,12 +92,12 @@ fastgpt doctor
 
 FastGPT CLI is organized around Domain-Driven Design (DDD) with clean, intuitive command namespaces:
 
-| Category               | Example Commands                                                                                                                      | Description                                                                 |
-| :--------------------- | :------------------------------------------------------------------------------------------------------------------------------------ | :-------------------------------------------------------------------------- |
-| **Auth & Team**        | `fastgpt whoami`<br/>`fastgpt auth switch-team --team-id <id>`                                                                        | View user identity and team spaces, or switch active teams                  |
-| **Dataset Recall**     | `fastgpt dataset list`<br/>`fastgpt dataset search <id> "query"`                                                                      | Search dataset lists with pagination, or test hybrid recall chunks          |
-| **Dataset Management** | `fastgpt dataset create --name "Docs"`<br/>`fastgpt dataset update <id> --parent-id null`<br/>`fastgpt dataset delete <id> --dry-run` | Full dataset lifecycle CRUD with root folder moves and `--dry-run` previews |
-| **Configuration**      | `fastgpt config list`<br/>`fastgpt commands --format json`                                                                            | Inspect local config, or discover all machine-readable command schemas      |
+| Category               | Example Commands                                                                                                                      | Description                                                                                |
+| :--------------------- | :------------------------------------------------------------------------------------------------------------------------------------ | :----------------------------------------------------------------------------------------- |
+| **Auth & Team**        | `fastgpt whoami`<br/>`fastgpt auth switch-team --team-id <id>`                                                                        | View user identity and team spaces, or switch active teams                                 |
+| **Dataset Search**     | `fastgpt dataset list`<br/>`fastgpt dataset search <id1,id2> "query"`                                                                 | List Datasets with pagination, or search one or more Datasets with a default of 20 results |
+| **Dataset Management** | `fastgpt dataset create --name "Docs"`<br/>`fastgpt dataset update <id> --parent-id null`<br/>`fastgpt dataset delete <id> --dry-run` | Full dataset lifecycle CRUD with root folder moves and `--dry-run` previews                |
+| **Configuration**      | `fastgpt config list`<br/>`fastgpt commands --format json`                                                                            | Inspect local config, or discover all machine-readable command schemas                     |
 
 ---
 

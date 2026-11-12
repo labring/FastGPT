@@ -5,6 +5,7 @@ description: 通过官方命令行工具（fastgpt）与 AI Agent 快速在终�
 ---
 
 import { Alert } from '@/components/docs/Alert';
+import { CurrentOriginCodeBlockUpdater } from '@/components/docs/CurrentOriginCodeBlockUpdater';
 
 FastGPT CLI（`fastgpt`）是 FastGPT 官方推出的终端命令行工具，旨在为开发者、DevOps 工程师以及 AI 编程助手（如 **Codex**、**Claude Code**、**Cursor**、**Windsurf** 等）提供稳定、安全、可编程的终端管理能力。
 
@@ -22,11 +23,15 @@ FastGPT CLI（`fastgpt`）是 FastGPT 官方推出的终端命令行工具，旨
 请帮我安装并配置 FastGPT CLI。请先读取官方 Skill 规范 https://doc.fastgpt.cn/skill.md ，严格按照其中的步骤完成 CLI 安装、引导登录、健康度体检，并最终输出当前环境的 CLI 能力列表。
 ```
 
+<CurrentOriginCodeBlockUpdater />
+
 > 你也可以通过终端命令将该 Skill 规范直接下载到本地技能目录：
 >
 > ```bash
 > curl -fsSL https://doc.fastgpt.cn/skill.md -o skill.md
 > ```
+>
+> <CurrentOriginCodeBlockUpdater />
 
 ---
 
@@ -39,8 +44,8 @@ FastGPT CLI（`fastgpt`）是 FastGPT 官方推出的终端命令行工具，旨
 需要 Node.js `>= 20.12.0` 环境，执行全局安装：
 
 ```bash
-npm install -g @fastgpt/cli
-# 或使用 pnpm: pnpm add -g @fastgpt/cli
+npm install -g @fastgpt/cli@beta
+# 或使用 pnpm: pnpm add -g @fastgpt/cli@beta
 
 # 确认安装就绪
 fastgpt --version
@@ -84,12 +89,12 @@ fastgpt doctor
 
 FastGPT CLI 采用领域驱动（DDD）设计，命令结构精炼清晰：
 
-| 功能分类       | 常用命令示例                                                                                                                            | 说明                                                         |
-| :------------- | :-------------------------------------------------------------------------------------------------------------------------------------- | :----------------------------------------------------------- |
-| **身份与团队** | `fastgpt whoami`<br/>`fastgpt auth switch-team --team-id <id>`                                                                          | 查看当前用户身份及团队空间，或快速切换工作团队               |
-| **知识库检索** | `fastgpt dataset list`<br/>`fastgpt dataset search <id> "关键词"`                                                                       | 分页检索知识库列表，或对指定知识库执行混合召回效果测试       |
-| **知识库管理** | `fastgpt dataset create --name "文档库"`<br/>`fastgpt dataset update <id> --parent-id null`<br/>`fastgpt dataset delete <id> --dry-run` | 知识库全生命周期 CRUD，支持移至根目录及 `--dry-run` 安全预览 |
-| **系统配置**   | `fastgpt config list`<br/>`fastgpt commands --format json`                                                                              | 查看客户端本地配置，或探测获取完整的可编程命令元数据         |
+| 功能分类       | 常用命令示例                                                                                                                            | 说明                                                             |
+| :------------- | :-------------------------------------------------------------------------------------------------------------------------------------- | :--------------------------------------------------------------- |
+| **身份与团队** | `fastgpt whoami`<br/>`fastgpt auth switch-team --team-id <id>`                                                                          | 查看当前用户身份及团队空间，或快速切换工作团队                   |
+| **知识库检索** | `fastgpt dataset list`<br/>`fastgpt dataset search <id1,id2> "关键词"`                                                                  | 分页查询知识库列表，或统一搜索一个或多个知识库，默认返回前 20 条 |
+| **知识库管理** | `fastgpt dataset create --name "文档库"`<br/>`fastgpt dataset update <id> --parent-id null`<br/>`fastgpt dataset delete <id> --dry-run` | 知识库全生命周期 CRUD，支持移至根目录及 `--dry-run` 安全预览     |
+| **系统配置**   | `fastgpt config list`<br/>`fastgpt commands --format json`                                                                              | 查看客户端本地配置，或探测获取完整的可编程命令元数据             |
 
 ---
 
