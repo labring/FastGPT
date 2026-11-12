@@ -274,8 +274,9 @@ describe('FastGptHttpClient (ky) & OutputRenderer (picocolors)', () => {
     expect(foreignReqHeaders).toBeUndefined();
   });
 
-  it('follows same-origin 307 redirect preserving method and payload (R1)', async () => {
+  it('follows same-origin 307 redirect preserving method and payload even outside /api prefix (R1)', async () => {
     let canonicalRequestReceived = false;
+    let canonicalUrl: string | undefined;
     let canonicalMethod: string | undefined;
     let canonicalBody: unknown;
 
@@ -286,13 +287,15 @@ describe('FastGptHttpClient (ky) & OutputRenderer (picocolors)', () => {
         const req = input instanceof Request ? input : new Request(input);
         const url = req.url;
         if (url.includes('/api/core/dataset/delete')) {
+          // Location 位于 /api 前缀之外的根路径 /canonical/delete
           return new Response(null, {
             status: 307,
-            headers: { location: 'http://127.0.0.1:3000/api/canonical/delete' }
+            headers: { location: '/canonical/delete?id=68ad85a7463006c963799a05' }
           });
         }
-        if (url.includes('/api/canonical/delete')) {
+        if (url.includes('/canonical/delete')) {
           canonicalRequestReceived = true;
+          canonicalUrl = url;
           canonicalMethod = req.method;
           canonicalBody = await req.json();
           return jsonResponse({ code: 200, data: { deleted: true } });
@@ -308,8 +311,62 @@ describe('FastGptHttpClient (ky) & OutputRenderer (picocolors)', () => {
     });
 
     expect(canonicalRequestReceived).toBe(true);
+    expect(canonicalUrl).toBe('http://127.0.0.1:3000/canonical/delete?id=68ad85a7463006c963799a05');
     expect(canonicalMethod).toBe('DELETE');
     expect(canonicalBody).toEqual({ id: '68ad85a7463006c963799a05' });
     expect(res).toEqual({ deleted: true });
+  });
+
+  it('adheres to WHATWG Fetch redirect rules: 301/302 preserve PUT/DELETE but rewrite POST to GET (R2)', async () => {
+    let receivedDeleteMethod: string | undefined;
+    let receivedPutMethod: string | undefined;
+    let receivedPostMethod: string | undefined;
+
+    const client = createFastGptHttpClient({
+      baseUrl: 'http://127.0.0.1:3000/api',
+      cliVersion: '0.1.0',
+      fetchFn: async (input) => {
+        const req = input instanceof Request ? input : new Request(input);
+        const url = req.url;
+
+        // DELETE + 302 -> 必须保持 DELETE
+        if (url.includes('/redirect-delete')) {
+          return new Response(null, { status: 302, headers: { location: '/target-delete' } });
+        }
+        if (url.includes('/target-delete')) {
+          receivedDeleteMethod = req.method;
+          return jsonResponse({ code: 200, data: { ok: true } });
+        }
+
+        // PUT + 301 -> 必须保持 PUT
+        if (url.includes('/redirect-put')) {
+          return new Response(null, { status: 301, headers: { location: '/target-put' } });
+        }
+        if (url.includes('/target-put')) {
+          receivedPutMethod = req.method;
+          return jsonResponse({ code: 200, data: { ok: true } });
+        }
+
+        // POST + 302 -> WHATWG 规定重写为 GET
+        if (url.includes('/redirect-post')) {
+          return new Response(null, { status: 302, headers: { location: '/target-post' } });
+        }
+        if (url.includes('/target-post')) {
+          receivedPostMethod = req.method;
+          return jsonResponse({ code: 200, data: { ok: true } });
+        }
+
+        return jsonResponse({}, 404);
+      }
+    });
+
+    await client.request({ method: 'DELETE', path: '/redirect-delete' });
+    expect(receivedDeleteMethod).toBe('DELETE');
+
+    await client.request({ method: 'PUT', path: '/redirect-put', body: { name: 'test' } });
+    expect(receivedPutMethod).toBe('PUT');
+
+    await client.request({ method: 'POST', path: '/redirect-post', body: { name: 'test' } });
+    expect(receivedPostMethod).toBe('GET');
   });
 });

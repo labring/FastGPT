@@ -421,5 +421,53 @@ describe('Dataset CLI Commands integration (cli/src/cli/commands/dataset.ts)', (
     expect(res.exitCode).toBe(2);
     const errJson = JSON.parse(res.stderr);
     expect(errJson.error.code).toBe('CLI_ARGUMENT_INVALID');
+
+    // 显式传入非法页码 --page typo，必须返回退出码 2，且未发出 HTTP 请求（R3）
+    let httpCalled = false;
+    const pageTypoRes = await execCli({
+      argv: ['dataset', 'list', '--page', 'typo', '--format', 'json'],
+      configDir,
+      fetchFn: async () => {
+        httpCalled = true;
+        return jsonResp({});
+      }
+    });
+    expect(pageTypoRes.exitCode).toBe(2);
+    expect(httpCalled).toBe(false);
+    expect(JSON.parse(pageTypoRes.stderr).error.code).toBe('CLI_ARGUMENT_INVALID');
+
+    // 显式传入非法页码 --page 0，必须返回退出码 2，且未发出 HTTP 请求（R3）
+    const pageZeroRes = await execCli({
+      argv: ['dataset', 'list', '--page', '0', '--format', 'json'],
+      configDir,
+      fetchFn: async () => {
+        httpCalled = true;
+        return jsonResp({});
+      }
+    });
+    expect(pageZeroRes.exitCode).toBe(2);
+    expect(httpCalled).toBe(false);
+
+    // 显式传入非法检索模式 --mode typo，必须返回退出码 2，且未发出 HTTP 请求（R3）
+    const modeTypoRes = await execCli({
+      argv: [
+        'dataset',
+        'search',
+        OBJECT_ID_DATASET,
+        'query text',
+        '--mode',
+        'typo',
+        '--format',
+        'json'
+      ],
+      configDir,
+      fetchFn: async () => {
+        httpCalled = true;
+        return jsonResp({});
+      }
+    });
+    expect(modeTypoRes.exitCode).toBe(2);
+    expect(httpCalled).toBe(false);
+    expect(JSON.parse(modeTypoRes.stderr).error.code).toBe('CLI_ARGUMENT_INVALID');
   });
 });

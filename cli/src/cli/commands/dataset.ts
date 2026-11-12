@@ -530,13 +530,10 @@ export function createDatasetCommandSpecs(): CliCommandSpec[] {
         }
 
         const searchMode = (() => {
-          if (options.mode === DatasetSearchModeEnum.embedding) {
-            return DatasetSearchModeEnum.embedding;
+          if (options.mode === undefined) {
+            return DatasetSearchModeEnum.mixedRecall;
           }
-          if (options.mode === DatasetSearchModeEnum.fullTextRecall) {
-            return DatasetSearchModeEnum.fullTextRecall;
-          }
-          return DatasetSearchModeEnum.mixedRecall;
+          return options.mode as any;
         })();
 
         const usingReRank = (() => {

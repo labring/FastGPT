@@ -384,7 +384,6 @@ export function createFastGptHttpClient({
   }) {
     const activeFetch = await resolveTransportFetch();
     return ky.create({
-      prefixUrl: normalizedBaseUrl,
       timeout,
       retry: 0,
       throwHttpErrors: false,
@@ -433,18 +432,20 @@ export function createFastGptHttpClient({
     formData?: FormData;
     signal?: AbortSignal;
   }): Promise<{ response: Response; finalUrl: string }> => {
-    let currentPath = initialPath;
+    const baseWithSlash = normalizedBaseUrl.endsWith('/')
+      ? normalizedBaseUrl
+      : `${normalizedBaseUrl}/`;
+    let currentUrl = new URL(initialPath, baseWithSlash).toString();
     let currentMethod = initialMethod;
     let currentJson = jsonBody;
     let currentRawBody = rawBody;
     let currentFormData = formData;
     let currentSearchParams = searchParams;
-    let currentDisplayUrl = `${normalizedBaseUrl}/${initialPath}`;
 
     for (let hop = 0; hop <= 5; hop += 1) {
       let response: Response;
       try {
-        response = await client(currentPath, {
+        response = await client(currentUrl, {
           method: currentMethod,
           ...(signal ? { signal } : {}),
           ...(currentSearchParams ? { searchParams: currentSearchParams } : {}),
@@ -459,11 +460,11 @@ export function createFastGptHttpClient({
         const msg = redactText(error instanceof Error ? error.message : String(error));
         const isTls = /cert|tls|ssl|self[- ]signed|unable to verify/i.test(msg);
         throw new CliNetworkError(
-          `Network request failed for ${redactText(currentDisplayUrl)}: ${msg}`,
+          `Network request failed for ${redactText(currentUrl)}: ${msg}`,
           isTls
             ? 'Verify your TLS certificate, or pass --ca-cert <pem> (or --insecure for debugging).'
             : 'Check FASTGPT_BASE_URL and confirm the FastGPT server is reachable.',
-          { url: redactText(currentDisplayUrl) }
+          { url: redactText(currentUrl) }
         );
       }
 
@@ -483,7 +484,7 @@ export function createFastGptHttpClient({
           );
         }
 
-        const targetUrl = new URL(location, currentDisplayUrl);
+        const targetUrl = new URL(location, currentUrl);
         if (targetUrl.origin !== baseOrigin) {
           throw new CliNetworkError(
             `Cross-origin redirect to "${redactText(location)}" blocked to prevent credential leakage.`,
@@ -491,19 +492,22 @@ export function createFastGptHttpClient({
           );
         }
 
-        // 计算相对于 normalizedBaseUrl 的相对路径
-        const basePrefix = new URL(normalizedBaseUrl).pathname.replace(/\/+$/, '');
-        const targetPathname = targetUrl.pathname;
-        const relativeTarget = targetPathname.startsWith(basePrefix)
-          ? targetPathname.slice(basePrefix.length).replace(/^\/+/, '')
-          : targetPathname.replace(/^\/+/, '');
-        currentPath = relativeTarget + targetUrl.search;
-        currentDisplayUrl = targetUrl.toString();
+        // 以解析后的完整绝对 URL 发出下一跳请求，避免 prefixUrl 干扰
+        currentUrl = targetUrl.toString();
         currentSearchParams = undefined;
 
-        // 301 / 302 / 303 按 HTTP 规范对非幂等请求重写为 GET
-        if (response.status === 301 || response.status === 302 || response.status === 303) {
+        // WHATWG HTTP-redirect fetch §4.5 规则：
+        // 303 将非 GET 请求重写为 GET 并清理请求体
+        if (response.status === 303) {
           if (currentMethod !== 'GET') {
+            currentMethod = 'GET';
+            currentJson = undefined;
+            currentRawBody = null;
+            currentFormData = undefined;
+          }
+        } else if (response.status === 301 || response.status === 302) {
+          // 301 / 302 仅对 POST 重写为 GET；PUT、DELETE 等保留原有方法和请求体
+          if (currentMethod === 'POST') {
             currentMethod = 'GET';
             currentJson = undefined;
             currentRawBody = null;
@@ -514,7 +518,7 @@ export function createFastGptHttpClient({
         continue;
       }
 
-      return { response, finalUrl: currentDisplayUrl };
+      return { response, finalUrl: currentUrl };
     }
 
     throw new CliNetworkError('Too many redirects.');

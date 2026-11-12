@@ -250,5 +250,46 @@ describe('DatasetService (cli/src/domain/dataset/dataset-service.ts)', () => {
         dryRun: true
       })
     ).rejects.toThrow();
+
+    // 非法页码数值必须抛出校验异常，不可被静默兜底为默认值 1 / 20（R3）
+    await expect(
+      service.list({
+        client,
+        input: { page: -1 }
+      })
+    ).rejects.toThrow();
+
+    await expect(
+      service.list({
+        client,
+        input: { page: 0 }
+      })
+    ).rejects.toThrow();
+
+    await expect(
+      service.list({
+        client,
+        input: { page: NaN }
+      })
+    ).rejects.toThrow();
+
+    await expect(
+      service.list({
+        client,
+        input: { pageSize: 0 }
+      })
+    ).rejects.toThrow();
+
+    // 非法检索模式必须抛出校验异常，不可静默回退为 mixedRecall（R3）
+    await expect(
+      service.search({
+        client,
+        input: {
+          datasetId: '68ad85a7463006c963799a05',
+          text: 'query',
+          searchMode: 'typo' as any
+        }
+      })
+    ).rejects.toThrow();
   });
 });

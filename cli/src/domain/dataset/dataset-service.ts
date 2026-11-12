@@ -74,12 +74,9 @@ export type DatasetService = {
 export function createDatasetService(): DatasetService {
   return {
     list: async ({ client, input }) => {
-      const pageNum = input.page && input.page > 0 ? input.page : 1;
-      const pageSize = input.pageSize && input.pageSize > 0 ? input.pageSize : 20;
-
       const body = {
-        pageNum,
-        pageSize,
+        ...(input.page !== undefined ? { pageNum: input.page } : {}),
+        ...(input.pageSize !== undefined ? { pageSize: input.pageSize } : {}),
         parentId: input.parentId === undefined ? null : input.parentId,
         ...(input.searchKey ? { searchKey: input.searchKey } : {}),
         ...(input.type ? { type: input.type as any } : {})
