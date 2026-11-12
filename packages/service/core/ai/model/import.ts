@@ -1,17 +1,18 @@
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { ModelScopeEnum } from '@fastgpt/global/core/ai/constants';
+import { NEW_MODEL_SORT_ORDER } from '@fastgpt/global/core/ai/model/order';
 import { normalizeModelPricingForSave } from '@fastgpt/global/core/ai/model/pricing';
 import { type ParsedSystemModelsWithJsonBody } from '@fastgpt/global/openapi/core/ai/model/api';
+import { Types } from '../../../common/mongo';
 import { runModelTransaction } from './catalog/transaction';
 import { deleteModelRecords } from './cleanup';
-import { reserveLeadingModelRanks } from './entity';
 import { MongoAIModel } from './schema';
 import { updatedReloadSystemModel } from './catalog/service';
 import { getModelConfigUpdate } from './utils';
 
 /**
- * 用导入配置替换系统模型集合，保留可匹配实例的稳定 ID 与相对展示顺序，并在同一事务内清理派生权限与探测记录。
- * 输入中的 sortOrder 始终忽略；新建模型按导入顺序分配顶部连续 rank（1..k）置顶展示。
+ * 用导入配置替换系统模型集合，保留可匹配实例的稳定 ID 与原有展示顺序，并在同一事务内清理派生权限与探测记录。
+ * 输入中的 sortOrder 始终忽略；新建模型写入置顶位 `0`，无需修改存量模型的 sortOrder。
  */
 export const importSystemModels = async ({ config }: ParsedSystemModelsWithJsonBody) => {
   const latestRecords = config.map((record) => ({ record, modelId: record.modelId }));
@@ -108,15 +109,14 @@ export const importSystemModels = async ({ config }: ParsedSystemModelsWithJsonB
       .map(({ _id }) => _id);
     await deleteModelRecords(removedModelIds.map(String), session);
 
-    const newModelCount = resolvedModels.filter((model) => !model.isExistingModel).length;
-    await reserveLeadingModelRanks({
-      filter: { scope: ModelScopeEnum.system },
-      count: newModelCount,
-      session
-    });
+    if (resolvedModels.length > 0) {
+      // 由本进程统一分配并逆序绑定新建模型 ObjectId，保证与普通创建同序列递增且在 `_id: -1` 下保持导入顺序。
+      const newIds = resolvedModels
+        .filter((model) => !model.isExistingModel)
+        .map(() => new Types.ObjectId())
+        .reverse();
+      let newIndex = 0;
 
-    let nextNewSortOrder = 1;
-    if (resolvedModels.length > 0)
       await MongoAIModel.bulkWrite(
         resolvedModels.map(({ modelId, model, modelData, isExistingModel }) => ({
           updateOne: {
@@ -125,12 +125,16 @@ export const importSystemModels = async ({ config }: ParsedSystemModelsWithJsonB
               : { scope: ModelScopeEnum.system, model },
             update: isExistingModel
               ? getModelConfigUpdate(modelData)
-              : { $set: { ...modelData, sortOrder: nextNewSortOrder++ } },
+              : {
+                  $set: { ...modelData, sortOrder: NEW_MODEL_SORT_ORDER },
+                  $setOnInsert: { _id: newIds[newIndex++] }
+                },
             upsert: !isExistingModel
           }
         })),
         { session }
       );
+    }
     return {
       renamedModels: resolvedModels.flatMap((model) => {
         const oldModel = existingModelMap.get(model.modelId)?.model;
