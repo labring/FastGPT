@@ -1,75 +1,73 @@
 ---
-title: 'Hands-on Guide: Using FastGPT CLI'
+title: 'Hands-on guide: Manage FastGPT with the CLI'
 draft: true
-description: Manage FastGPT resources and automate workflows from the terminal using the official CLI (fastgpt) and AI Agents.
+description: Manage FastGPT resources from your terminal with the official CLI (fastgpt) and AI Agents.
 ---
 
 import { Alert } from '@/components/docs/Alert';
 
-FastGPT CLI (`fastgpt`) is the official command-line interface for FastGPT, designed for developers, DevOps engineers, and AI coding agents (such as **Codex**, **Claude Code**, **Cursor**, and **Windsurf**) to interact with and manage FastGPT resources securely and programmatically.
+FastGPT CLI (`fastgpt`) is the official command-line tool for FastGPT. It gives developers, DevOps engineers, and AI coding assistants such as **Codex**, **Claude Code**, **Cursor**, and **Windsurf** reliable, secure, and programmable access to FastGPT resources.
 
-Whether you operate directly in the terminal or leverage AI Agents for automated execution, you can authenticate, switch workspaces, manage datasets, and test recall directly from your shell without opening a browser.
+Use the terminal directly or work with an AI Agent to authenticate, switch teams, manage Datasets, and test retrieval without opening a browser.
 
 ---
 
-## AI Agent One-Click Setup Guide
+## AI Agent setup
 
-If you are using an AI coding assistant (such as **Codex** or **Claude Code**), you can skip manual installation. Simply send the instruction below to your Agent. The Agent will fetch the official Skill specification and automatically complete CLI installation, login guidance, health diagnostics, and capability discovery:
+If you use an AI coding assistant such as **Codex** or **Claude Code**, send it the prompt below instead of installing the CLI manually. Your Agent will read the official Skill guide, install the CLI, help you sign in, run diagnostics, and list the available commands:
 
-<Alert context="info">
-  Copy and send the following prompt directly to your AI Agent (e.g., in Codex or Claude Code):
-</Alert>
+<Alert context="info">Send this prompt in your Codex or Claude Code chat:</Alert>
 
 ```text
-Follow https://doc.fastgpt.io/skill.md to install the FastGPT CLI and complete setup.
+Help me install FastGPT CLI and complete setup using https://doc.fastgpt.io/skill.md.
 ```
 
 ---
 
-## ⚡ Quick Start for Developers (3 Steps)
+## ⚡ Developer quick start: Three steps
 
-If you prefer manual terminal operation, get ready in just 3 steps:
+To set up the CLI yourself, follow these three steps:
 
-### 1. Install CLI
+### 1. Install the CLI
 
-Requires Node.js `>= 20.12.0`. Install globally via npm:
+With Node.js `>= 20.12.0` installed, run:
 
 ```bash
 npm install -g @fastgpt/cli@beta
-# Or using pnpm: pnpm add -g @fastgpt/cli@beta
+# Or use pnpm: pnpm add -g @fastgpt/cli@beta
 
 # Verify installation
 fastgpt --version
 ```
 
-### 2. Authenticate & Login
+### 2. Sign in
 
-Run the login command:
+Run the login command to authenticate:
 
 ```bash
-# Option A: Interactive login in TTY terminal (Cloud or self-hosted)
+# Option A: Sign in interactively (cloud or self-hosted)
 fastgpt login
 # For self-hosted instances: fastgpt login --base-url https://your-domain.com/api
 
-# Option B: API Key login (Recommended for CI / container / script environments)
+# Option B: Sign in with an API Key (for CI, containers, or Agent scripts)
 fastgpt login --api-key <FASTGPT_API_KEY>
 
-# Option C: Username and password via stdin
+# Option C: Pass a password through standard input
 echo "<PASSWORD>" | fastgpt login --username <USERNAME> --password-stdin
 ```
 
-Check your active identity and team workspace anytime:
+After signing in, check your current identity and team at any time:
 
 ```bash
 fastgpt whoami
 ```
 
 > **Credential storage and session expiration**:
-> Credentials are stored in your system keychain (macOS Keychain / Linux Secret Service) when available. Sessions expire 7 days after creation. Run `fastgpt login` to sign in again when your session expires.
+> Credentials are stored in your system keychain (macOS Keychain / Linux Secret Service) when available. Sessions expire 7 days after creation. Run `fastgpt login` to sign in again after expiration.
 
-### 3. Run Environment Diagnostics (Doctor)
+### 3. Run diagnostics (Doctor)
 
-Run the self-diagnostic check to verify your runtime, permissions, and server connectivity:
+Check your local environment, configuration file permissions, and connection to the server:
 
 ```bash
 fastgpt doctor
@@ -77,20 +75,20 @@ fastgpt doctor
 
 ---
 
-## Core Capabilities Overview
+## Core capabilities
 
-FastGPT CLI is organized around Domain-Driven Design (DDD) with clean, intuitive command namespaces:
+FastGPT CLI uses domain-driven design (DDD) and a concise command structure:
 
-| Category               | Example Commands                                                                                                                      | Description                                                                                |
-| :--------------------- | :------------------------------------------------------------------------------------------------------------------------------------ | :----------------------------------------------------------------------------------------- |
-| **Auth & Team**        | `fastgpt whoami`<br/>`fastgpt auth switch-team --team-id <id>`                                                                        | View user identity and team spaces, or switch active teams                                 |
-| **Dataset Search**     | `fastgpt dataset list`<br/>`fastgpt dataset search <id1,id2> "query"`                                                                 | List Datasets with pagination, or search one or more Datasets with a default of 20 results |
-| **Dataset Management** | `fastgpt dataset create --name "Docs"`<br/>`fastgpt dataset update <id> --parent-id null`<br/>`fastgpt dataset delete <id> --dry-run` | Full dataset lifecycle CRUD with root folder moves and `--dry-run` previews                |
-| **Configuration**      | `fastgpt config list`<br/>`fastgpt commands --format json`                                                                            | Inspect local config, or discover all machine-readable command schemas                     |
+| Category               | Example commands                                                                                                                      | Description                                                                                                  |
+| :--------------------- | :------------------------------------------------------------------------------------------------------------------------------------ | :----------------------------------------------------------------------------------------------------------- |
+| **Identity and teams** | `fastgpt whoami`<br/>`fastgpt auth switch-team --team-id <id>`                                                                        | View the current user and team, or switch teams                                                              |
+| **Dataset search**     | `fastgpt dataset list`<br/>`fastgpt dataset search <id1,id2> "query"`                                                                 | List Datasets with pagination, or search one or more Datasets; returns the top 20 results by default         |
+| **Dataset management** | `fastgpt dataset create --name "Docs"`<br/>`fastgpt dataset update <id> --parent-id null`<br/>`fastgpt dataset delete <id> --dry-run` | Create, read, update, and delete Datasets; move them to the root folder and preview changes with `--dry-run` |
+| **Configuration**      | `fastgpt config list`<br/>`fastgpt commands --format json`                                                                            | View local client configuration or discover complete, machine-readable command metadata                      |
 
 ---
 
-## Scripting & Automation Best Practices
+## Automation and scripting guidelines
 
-- **Agent & Automation Pipelines**: Pass `--format json` to get clean, structured JSON envelopes. Logs route to `stderr`, keeping `stdout` completely pure for UNIX piping.
-- **Destructive Operation Safety**: Deletions support `--dry-run` previews; non-interactive scripts and CI pipelines mandate `--yes` for destructive execution.
+- **Automation and AI Agents**: Add `--format json` for consistent, structured JSON envelopes. Logs go to `stderr`, leaving `stdout` ready for piping.
+- **Destructive operations**: Use `--dry-run` to preview deletions such as `dataset delete`. In non-interactive scripts or CI, explicitly pass `--yes` to confirm destructive operations.
