@@ -134,6 +134,21 @@ services:
       - bash
       - -c
       - |
+        # Bash 作为 PID 1 时显式转发停止信号，并等待 mongod 完成数据落盘。
+        mongo_pid=
+        stop_mongo() {
+          trap '' TERM INT
+          # 覆盖后台进程刚启动、PID 尚未赋值时收到信号的窗口。
+          local pid="$${mongo_pid:-$$!}"
+          if [ -n "$$pid" ]; then
+            kill -TERM "$$pid" 2>/dev/null || true
+            wait "$$pid"
+            exit $$?
+          fi
+          exit 0
+        }
+        trap stop_mongo TERM INT
+
         openssl rand -base64 128 > /data/mongodb.key
         chmod 400 /data/mongodb.key
         chown 999:999 /data/mongodb.key
@@ -148,16 +163,25 @@ services:
           });
         }' > /data/initReplicaSet.js
         # 启动MongoDB服务
-        exec docker-entrypoint.sh "$$@" &
+        docker-entrypoint.sh "$$@" &
+        mongo_pid=$$!
 
         # 认证未就绪或镜像仍处于临时初始化进程时继续等待，仅为真正的副本集进程初始化。
-        until mongosh --quiet -u myusername -p mypassword --authenticationDatabase admin /data/initReplicaSet.js; do
+        # 通过后台执行和 wait 保持信号可响应，避免 mongosh 连接等待阻塞停库。
+        until {
+          mongosh --quiet -u myusername -p mypassword --authenticationDatabase admin /data/initReplicaSet.js &
+          wait $$!
+        }; do
+          if ! kill -0 "$$mongo_pid" 2>/dev/null; then
+            wait "$$mongo_pid"
+            exit $$?
+          fi
           echo "Waiting for MongoDB replica set initialization..."
           sleep 2
         done
 
-        # 等待docker-entrypoint.sh脚本执行的MongoDB服务进程
-        wait $$!
+        # 等待同一个 mongod 进程，并保留其退出状态。
+        wait "$$mongo_pid"
   fastgpt-redis:
     image: redis:7.2-alpine
     container_name: fastgpt-redis
