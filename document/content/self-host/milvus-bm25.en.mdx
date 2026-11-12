@@ -5,7 +5,7 @@ description: 'Upgrade Milvus to 2.5.16+ and enable FastGPT BM25 full-text search
 
 ## Background
 
-FastGPT full-text search defaults to MongoDB `$text`. When **Milvus is used as the vector store**, full-text search automatically switches to Milvus BM25 (single `modeldata_v2` table, vector + full-text in one collection) and stops writing the MongoDB full-text table. This requires Milvus **≥ 2.5.16**; below 2.5.16 FastGPT fails to start with an explicit error — it never silently downgrades.
+This guide applies to deployments using Milvus that are upgrading from a version earlier than FastGPT V4.16.2 to V4.16.2 or later. FastGPT full-text search defaults to MongoDB `$text`; when **Milvus is used as the vector store**, starting with V4.16.2 full-text search automatically switches to Milvus BM25 (single `modeldata_v2` table, vector + full-text in one collection) and stops writing the MongoDB full-text table. This requires Milvus **≥ 2.5.16**; below 2.5.16 FastGPT fails to start with an explicit error.
 
 > The full-text backend follows the actual vector store: Milvus → BM25; other vector stores (PG / OceanBase / SeekDB / openGauss) keep MongoDB `$text`. There is no separate full-text engine switch to configure.
 
@@ -25,11 +25,11 @@ Run during a **low-write window**, or stop FastGPT app writes first. If you must
 
 ### 3. Upgrade Milvus to 2.5.16+
 
-Keep the existing Milvus data volume and the old `modeldata` collection during the upgrade. Replace the image tag and restart:
+Keep the existing Milvus data volume and the old `modeldata` collection during the upgrade. Upgrade to the current official template version (`v2.6.22`, minimum required `v2.5.16`) by replacing the image tag and restarting:
 
 ```yaml
 # Milvus service in docker-compose
-image: milvusdb/milvus:v2.5.16
+image: milvusdb/milvus:v2.6.22
 ```
 
 > The old `modeldata` collection is the vector source for the migration. After upgrading, verify that the collection exists and is non-empty. If it is missing or empty, stop the migration and restore the Milvus data from backup.
@@ -39,12 +39,14 @@ image: milvusdb/milvus:v2.5.16
 Start FastGPT — Milvus initialization calls `getVersion()` to gate the version; below 2.5.16, or when the version cannot be fetched/parsed, **startup terminates**. You can also verify manually:
 
 ```bash
-# Confirm the server version is >= v2.5.16 via milvus-cli / Attu / SDK getVersion
+# Inspect the running Milvus container image tag and server binary version (must be >= v2.5.16)
+docker inspect -f '{{.Config.Image}}' fastgpt-milvus-standalone
+docker exec fastgpt-milvus-standalone milvus --version
 ```
 
 ### 5. Migrate
 
-After confirming that the old Milvus `modeldata` collection exists and contains vectors, call the migration API. This is a pure copy and does not regenerate embeddings.
+After confirming that the old Milvus `modeldata` collection exists and contains vectors, call the migration API to perform a direct data copy.
 
 ```bash
 # 1. Dry run to preview stats
@@ -88,7 +90,7 @@ After migration, the old `modeldata` table is **never auto-deleted**. Once the a
 - If `removeOld` was run (old table dropped): restore the Milvus data volume from backup before downgrading.
 - Migration is re-runnable (idempotent upsert); on failure, resume with `resumeMigrationId`.
 
-## FAQ
+## Migration Troubleshooting
 
 - **Startup fails with `Milvus version ... is not supported`**: Milvus is below 2.5.16; upgrade to 2.5.16+.
 - **Migration reports that the old `modeldata` collection is missing or empty**: stop the migration and check whether FastGPT is connected to the correct Milvus instance and whether the data volume is mounted correctly. Restore from backup if the data is lost.

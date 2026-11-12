@@ -23,6 +23,7 @@ import {
 } from '@fastgpt/global/core/chat/utils/mergeNode';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { AuxiliaryGenerationEventEnum } from '@fastgpt/global/core/ai/auxiliaryGeneration/constants';
+import { isChatEntryModerationError } from '@fastgpt/global/core/chat/error';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
@@ -957,6 +958,30 @@ export const useChatGenerate = ({
             }
 
             const errorMsg = t(getErrText(err, t('common:core.chat.error.Chat error') as any));
+
+            if (isChatEntryModerationError(err)) {
+              // 仅在服务端明确标识入口审核拦截且尚未创建轮次时，弹出提示、回滚占位消息并恢复草稿输入。
+              toast({
+                title: errorMsg,
+                status: 'warning'
+              });
+              setChatRecords(history);
+              if (shouldRestoreSubmittedChatInput({ clearInput })) {
+                if (submission) restoreSubmittedInput(submission);
+              }
+              const finishedInActiveChat =
+                activeSourceKeyRef.current === sourceKey && activeChatIdRef.current === chatId;
+              finishChatGenerateStatus({
+                status: ChatGenerateStatusEnum.done,
+                finishedInActiveChat,
+                targetChatTarget: currentChatTarget,
+                targetSourceKey: sourceKey,
+                targetChatId: chatId,
+                shouldUpdateChatBoxData: (state) =>
+                  state.sourceKey === sourceKey && state.chatId === chatId
+              });
+              return;
+            }
 
             setChatRecords((state) =>
               state.map((item, index) => {

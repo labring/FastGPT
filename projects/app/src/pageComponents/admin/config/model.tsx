@@ -73,7 +73,6 @@ export const ModelSettings = () => {
   const isLoading = loadingConfig || loadingSave;
   const titles: Array<titleType> = [
     { mainTitle: '基础配置', subTitles: [] },
-    { mainTitle: '模型安全审查', subTitles: [] },
     { mainTitle: '其他', subTitles: [] }
   ];
   return (
@@ -84,22 +83,6 @@ export const ModelSettings = () => {
         description="开启后，所有工作流 HTTP 请求节点在请求 HTTPS 地址时将跳过证书校验。仅建议在内网自签证书或测试环境使用。不会影响 HTTP 工具集、模型请求或其他系统出站请求。"
       >
         <Switch control={control} name="workflowHttpNode.ignoreHttpsCertificate" />
-      </FormItem>
-      <FirstTitle title="模型安全审查" />
-      <FormItem
-        title="百度安全 id"
-        description="![](/config/baidu_censor.png)\nhttps://console.bce.baidu.com/ai/?_=1693133074333#/ai/antiporn/overview/index 注册百度安全校验账号，并创建对应应用。提供应用的 id 和 secret"
-      >
-        <Input {...register('censor.BAIDU_TEXT_CENSOR_CLIENTID')} placeholder="" />
-      </FormItem>
-      <FormItem title="百度安全 secret" description="">
-        <Input {...register('censor.BAIDU_TEXT_CENSOR_CLIENTSECRET')} placeholder="" />
-      </FormItem>
-      <FormItem
-        title="自定义安全校验 URL"
-        description="如果您有自己的安全校验服务，可以填写该地址，并在安全设置中开启自定义安全校验"
-      >
-        <Input {...register('censor.customCensorURL')} placeholder="" />
       </FormItem>
       <FirstTitle title="其他" />
       <FormItem

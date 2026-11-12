@@ -1,46 +1,49 @@
 ---
 title: 'FastGPT Commercial Edition'
-description: 'FastGPT Commercial Edition overview'
+description: 'Explore FastGPT Commercial Edition enterprise features including multi-tenancy, SSO, granular permissions, audit logs, and dedicated support.'
 ---
 
 import { Alert } from '@/components/docs/Alert';
 import { CommercialContactDialog } from '@/components/docs/CommercialContactDialog';
 
+FastGPT Commercial Edition is the enterprise production release of FastGPT. By deploying the `fastgpt-pro` service alongside the open-source Community Edition with a license key, organizations unlock multi-tenancy, SSO, collection-level permissions, Lark/WeCom/DingTalk publishing, evaluations, and platform audit logs.
+
 ## Overview
 
-FastGPT Commercial Edition is an enhanced version built on top of the Community Edition with additional exclusive features. Simply install the commercial image and configure the internal network address on your existing Community Edition setup to get started.
+FastGPT Commercial Edition is an enterprise-grade release built on top of the open-source Community Edition, adding multi-tenant governance, granular role-based access control, third-party dataset synchronization, application evaluation, and a platform administration console. To enable Commercial Edition capabilities, deploy the `fastgpt-pro` container image alongside your Community Edition instance and configure the internal service URL and license key.
 
 ## Feature Comparison
 
-|                                                        | Community Edition                                                | Commercial Edition | Cloud Service |
-| ------------------------------------------------------ | ---------------------------------------------------------------- | ------------------ | ------------- |
-| **App Building**                                       |                                                                  |                    |               |
-| Workflow orchestration                                 | ✅                                                               | ✅                 | ✅            |
-| Share links and API                                    | ✅                                                               | ✅                 | ✅            |
-| App publishing security config                         | ❌                                                               | ✅                 | ✅            |
-| Third-party publishing (Lark, WeChat Official Account) | ❌                                                               | ✅                 | ✅            |
-| Run log dashboard                                      | ❌                                                               | ✅                 | ✅            |
-| App evaluation                                         | ❌                                                               | ✅                 | ✅            |
-| Workflow, Agent, and Skill assisted generation         | ❌                                                               | ✅                 | ✅            |
-| System tool remote debugging                           | ❌                                                               | ✅                 | ✅            |
-| **Dataset**                                            |                                                                  |                    |               |
-| Dataset                                                | ✅                                                               | ✅                 | ✅            |
-| Third-party Dataset scheduled sync                     | ❌                                                               | ✅                 | ✅            |
-| Dataset index enhancement                              | ❌                                                               | ✅                 | ✅            |
-| Website sync                                           | ❌                                                               | ✅                 | ✅            |
-| Image Dataset                                          | ❌                                                               | ✅                 | ✅            |
-| Collection-level permission                            | ❌                                                               | ✅                 | ✅            |
-| **General Features**                                   |                                                                  |                    |               |
-| Multi-model configuration                              | ✅                                                               | ✅                 | ✅            |
-| Model log dashboard                                    | ✅                                                               | ✅                 | ✅            |
-| Model content moderation                               | ❌                                                               | ✅                 | ✅            |
-| **Enterprise Features**                                |                                                                  |                    |               |
-| Custom branding                                        | ❌                                                               | ✅                 | In design     |
-| Multi-tenancy & billing                                | ❌                                                               | ✅                 | ✅            |
-| Team spaces & permissions                              | ❌                                                               | ✅                 | ✅            |
-| Admin dashboard                                        | ❌                                                               | ✅                 | Not needed    |
-| SSO login                                              | ❌                                                               | ✅                 | In design     |
-| Commercial license                                     | [View open source license](/en/guide/version/opensource/license) | Full               | Full          |
+|                                                                  | Community Edition                                                | Commercial Edition | Cloud Service |
+| ---------------------------------------------------------------- | ---------------------------------------------------------------- | ------------------ | ------------- |
+| **App Building**                                                 |                                                                  |                    |               |
+| Workflow orchestration                                           | ✅                                                               | ✅                 | ✅            |
+| Share links and API                                              | ✅                                                               | ✅                 | ✅            |
+| App publishing security config                                   | ❌                                                               | ✅                 | ✅            |
+| Third-party publishing (Lark, WeCom, DingTalk, Official Account) | ❌                                                               | ✅                 | ✅            |
+| Run log dashboard                                                | ❌                                                               | ✅                 | ✅            |
+| App evaluation                                                   | ❌                                                               | ✅                 | ✅            |
+| Workflow, Agent, and Skill assisted generation                   | ❌                                                               | ✅                 | ✅            |
+| System tool remote debugging                                     | ❌                                                               | ✅                 | ✅            |
+| **Dataset**                                                      |                                                                  |                    |               |
+| Dataset                                                          | ✅                                                               | ✅                 | ✅            |
+| Third-party Dataset & scheduled sync                             | ❌                                                               | ✅                 | ✅            |
+| Dataset index enhancement                                        | ❌                                                               | ✅                 | ✅            |
+| Website Dataset                                                  | ❌                                                               | ✅                 | ✅            |
+| Image Dataset                                                    | ❌                                                               | ✅                 | ✅            |
+| Collection-level permission                                      | ❌                                                               | ✅                 | ✅            |
+| **General Features**                                             |                                                                  |                    |               |
+| Multi-model configuration                                        | ✅                                                               | ✅                 | ✅            |
+| Model log dashboard                                              | ✅                                                               | ✅                 | ✅            |
+| Model content moderation                                         | ❌                                                               | ✅                 | ✅            |
+| **Enterprise Features**                                          |                                                                  |                    |               |
+| Custom branding                                                  | ❌                                                               | ✅                 | Planned       |
+| Custom domain                                                    | ❌                                                               | ✅                 | ✅            |
+| Multi-tenancy & billing                                          | ❌                                                               | ✅                 | ✅            |
+| Team spaces & permissions                                        | ❌                                                               | ✅                 | ✅            |
+| Admin console & audit logs                                       | Basic (Models / Tools / Upgrade / License)                       | ✅                 | Managed       |
+| SSO login                                                        | ❌                                                               | ✅                 | Planned       |
+| Commercial license                                               | [View open source license](/en/guide/version/opensource/license) | Full               | Full          |
 
 ## Pricing
 
@@ -69,10 +72,9 @@ FastGPT Commercial Edition offers 3 pricing models based on deployment type. Bel
 <Alert icon="🤖" context="success">
 
 - The included upgrade support covers 6 upgrades performed with assistance from the FastGPT team. You can continue upgrading independently; most upgrades are straightforward.
-- Fully managed deployments handle service and database operations for teams with limited technical staff.
-- Self-hosted deployments run entirely on your own servers.
-- Single-node deployments suit small to mid-sized teams providing internal services. The team maintains its own database backups.
-- High-availability deployments support public-facing services with visual monitoring, replicas, load balancing, and automated database backups.
+- **Sealos Fully Managed**: Handles service and database operations for teams with limited operations staff.
+- **Sealos Fully Managed (Multi-node)**: Supports higher-concurrency production workloads with multi-node capacity.
+- **Self-hosted**: Runs entirely on your own servers, with your team managing infrastructure and database backups.
 
 </Alert>
 
@@ -90,7 +92,7 @@ Fill out{' '}<CommercialContactDialog
 
 ### App Customization
 
-We can build custom workflow orchestrations tailored to your needs, delivered as a complete app configuration. Pricing is negotiable based on scope.
+Our engineering team provides custom Agent and workflow orchestration development tailored to your business scenarios, delivering production-ready application configurations and documentation. Scope and delivery timelines can be arranged through our commercial team.
 
 ### Technical Services (Custom Development, Maintenance, Migration, Third-party Integration)
 
@@ -98,21 +100,21 @@ We can build custom workflow orchestrations tailored to your needs, delivered as
 
 ### Upgrade Fees
 
-Most upgrades just require pulling the new image and running the initialization script — no extra steps needed.
+Routine version updates are completed by pulling the target container image and restarting the service, with system migrations running automatically on startup.
 
-For cross-version or complex upgrades, follow the documentation to upgrade yourself, or pay for support at the standard technical service rate.
+For cross-version upgrades involving schema or infrastructure changes, follow the [Upgrade Instructions](/en/self-host/upgrading/upgrade-instruction) to upgrade independently, or engage our engineering team at the standard technical service rate.
 
-## FAQ
+## Delivery and Customization
 
 ### How is delivery handled?
 
 Full deployment = Community Edition image + Commercial Edition image
 
-We provide a Commercial Edition image that requires a License to start.
+Upon subscription, we provide the Commercial Edition container image and a corresponding License key required to start the service.
 
 ### How does custom development work?
 
-You can modify the Community Edition source code, but the Commercial Edition image cannot be modified. Since the full version = Community Edition + Commercial Edition image, you can customize part of the codebase. However, if you fork the code, you'll need to handle code merges yourself during future upgrades.
+A full deployment runs the open-source Community Edition service together with the Commercial Edition image. Your engineering team can customize and build the open-source Community Edition frontend and backend code while communicating with the standard Commercial Edition service interfaces. Teams maintaining custom code forks are responsible for merging upstream changes during future version upgrades.
 
 ### Sealos Usage Costs
 
@@ -128,12 +130,12 @@ Sealos cloud services use pay-as-you-go billing. The screenshot lists the follow
 
 Check the Sealos console for the rates applicable to your deployment.
 
-![Sealos resource and network usage pricing](/imgs/image-58.png)
+![Sealos resource and network usage pricing](/imgs/optimized/image-58.png.webp)
 
 ## Admin Dashboard Screenshots
 
 The examples show the statistics dashboard, team subscription management, and notification/login settings.
 
-|                                                   |                                                  |                                                                  |
-| ------------------------------------------------- | ------------------------------------------------ | ---------------------------------------------------------------- |
-| ![Admin statistics dashboard](/imgs/image-55.png) | ![Manage team subscriptions](/imgs/image-56.png) | ![Configure notifications and login methods](/imgs/image-57.png) |
+|                                                                  |                                                                 |                                                                                 |
+| ---------------------------------------------------------------- | --------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| ![Admin statistics dashboard](/imgs/optimized/image-55.png.webp) | ![Manage team subscriptions](/imgs/optimized/image-56.png.webp) | ![Configure notifications and login methods](/imgs/optimized/image-57.png.webp) |

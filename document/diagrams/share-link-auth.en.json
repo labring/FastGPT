@@ -1,0 +1,160 @@
+{
+  "type": "flowchart",
+  "title": "Share link with identity verification",
+  "nodes": [
+    {
+      "id": "open",
+      "label": "Open share link",
+      "row": 0,
+      "col": 0,
+      "kind": "input",
+      "illustration": "browser"
+    },
+    {
+      "id": "init",
+      "label": "Initialize identity",
+      "row": 1,
+      "col": 0,
+      "kind": "backend",
+      "shape": "decision",
+      "sub": "/shareAuth/init",
+      "illustration": "user"
+    },
+    {
+      "id": "app",
+      "label": "Enter app",
+      "row": 2,
+      "col": 0,
+      "kind": "backend",
+      "illustration": "core"
+    },
+    {
+      "id": "limits",
+      "label": "Submit and check limits",
+      "row": 3,
+      "col": 0,
+      "kind": "backend",
+      "shape": "decision",
+      "sub": "Expiry / usage / QPM",
+      "illustration": "gauge"
+    },
+    {
+      "id": "start",
+      "label": "Pre-chat check",
+      "row": 4,
+      "col": 0,
+      "kind": "backend",
+      "shape": "decision",
+      "sub": "/shareAuth/start",
+      "illustration": "shield"
+    },
+    {
+      "id": "chat",
+      "label": "Run conversation",
+      "row": 5,
+      "col": 0,
+      "kind": "backend",
+      "focal": true,
+      "illustration": "chat"
+    },
+    {
+      "id": "report",
+      "label": "Report completion",
+      "row": 6,
+      "col": 0,
+      "kind": "backend",
+      "sub": "/shareAuth/finish",
+      "illustration": "ready"
+    },
+    {
+      "id": "reject",
+      "label": "Reject operation",
+      "row": 3,
+      "col": 1,
+      "kind": "muted",
+      "shape": "terminal",
+      "illustration": "error"
+    }
+  ],
+  "edges": [
+    [
+      "open",
+      "init",
+      "",
+      "primary"
+    ],
+    [
+      "init",
+      "app",
+      "Valid uid / success",
+      "primary"
+    ],
+    [
+      "init",
+      "reject",
+      "Failure",
+      "async"
+    ],
+    [
+      "app",
+      "limits",
+      "",
+      "primary"
+    ],
+    [
+      "limits",
+      "start",
+      "Pass",
+      "primary"
+    ],
+    [
+      "limits",
+      "reject",
+      "Failure",
+      "async"
+    ],
+    [
+      "start",
+      "chat",
+      "success=true",
+      "primary"
+    ],
+    [
+      "start",
+      "reject",
+      "Failure",
+      "async"
+    ],
+    [
+      "chat",
+      "report",
+      "Complete",
+      "primary"
+    ]
+  ],
+  "evidence": [
+    {
+      "id": "init",
+      "file": "packages/service/support/outLink/runtime/auth.ts",
+      "line": 20
+    },
+    {
+      "id": "limits",
+      "file": "packages/service/support/outLink/runtime/auth.ts",
+      "line": 63
+    },
+    {
+      "id": "report",
+      "file": "packages/service/support/outLink/tools.ts",
+      "line": 198
+    }
+  ],
+  "dir": "TB",
+  "lang": "en",
+  "eyebrow": "",
+  "legend": false,
+  "motion": "trace",
+  "fonts": "system",
+  "watermark": false,
+  "skin": "light"
+}

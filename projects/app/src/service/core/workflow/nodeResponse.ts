@@ -1,7 +1,8 @@
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import {
   filterNodeResponseTreeData,
-  findFailedResponseNode
+  findFailedResponseNode,
+  stripModerationRecordsFromNodeResponses
 } from '@fastgpt/global/core/chat/utils';
 import { getChildrenResponses } from '@fastgpt/global/core/chat/utils/mergeNode';
 import { composeNodeResponseDetail } from '@fastgpt/service/core/chat/nodeResponseStorage';
@@ -84,18 +85,21 @@ export const getWorkflowFinalResponseData = ({
 export const filterWorkflowFinalResponseData = ({
   responseData,
   responseAllData,
-  responseDetail
+  responseDetail,
+  canReadModerationRecords = false
 }: {
   responseData: ChatHistoryItemResType[];
   responseAllData?: boolean;
   responseDetail?: boolean;
-}) =>
-  responseAllData
-    ? responseData
-    : filterNodeResponseTreeData({
-        nodeResponses: responseData,
-        responseDetail
-      });
+  canReadModerationRecords?: boolean;
+}) => {
+  if (responseAllData) {
+    return canReadModerationRecords
+      ? responseData
+      : stripModerationRecordsFromNodeResponses(responseData);
+  }
+  return filterNodeResponseTreeData({ nodeResponses: responseData, responseDetail });
+};
 
 /**
  * 将完整 responseData 树转换成 debug 面板按 nodeId 索引的结构。

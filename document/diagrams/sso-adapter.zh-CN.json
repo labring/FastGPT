@@ -1,0 +1,133 @@
+{
+  "type": "sequence",
+  "title": "通过适配服务完成 SSO 登录",
+  "participants": [
+    {
+      "id": "browser",
+      "label": "用户浏览器",
+      "kind": "external",
+      "focal": false,
+      "illustration": "browser"
+    },
+    {
+      "id": "app",
+      "label": "FastGPT",
+      "kind": "backend",
+      "focal": true,
+      "illustration": "core"
+    },
+    {
+      "id": "adapter",
+      "label": "SSO 适配服务",
+      "kind": "external",
+      "focal": false,
+      "illustration": "gateway"
+    },
+    {
+      "id": "idp",
+      "label": "身份系统",
+      "kind": "external",
+      "focal": false,
+      "illustration": "shield"
+    }
+  ],
+  "messages": [
+    [
+      "browser",
+      "app",
+      "获取授权地址",
+      "primary"
+    ],
+    [
+      "app",
+      "adapter",
+      "GET getAuthURL",
+      "sync"
+    ],
+    [
+      "adapter",
+      "app",
+      "authURL",
+      "reply"
+    ],
+    [
+      "app",
+      "browser",
+      "授权地址",
+      "reply"
+    ],
+    [
+      "browser",
+      "idp",
+      "跳转并登录",
+      "primary"
+    ],
+    [
+      "idp",
+      "browser",
+      "回调 /login/provider",
+      "reply"
+    ],
+    [
+      "browser",
+      "app",
+      "提交 code 等参数",
+      "primary"
+    ],
+    [
+      "app",
+      "adapter",
+      "GET getUserInfo",
+      "sync"
+    ],
+    [
+      "adapter",
+      "idp",
+      "按协议获取用户",
+      "sync"
+    ],
+    [
+      "idp",
+      "adapter",
+      "用户信息",
+      "reply"
+    ],
+    [
+      "adapter",
+      "app",
+      "标准用户信息",
+      "reply"
+    ],
+    [
+      "app",
+      "browser",
+      "登录结果",
+      "reply"
+    ]
+  ],
+  "numbered": true,
+  "evidence": [
+    {
+      "id": "browser",
+      "file": "projects/app/src/pageComponents/login/LoginForm/useLoginMethods.ts",
+      "line": 73
+    },
+    {
+      "id": "app",
+      "file": "projects/app/src/web/support/user/api.ts",
+      "line": 48
+    },
+    {
+      "id": "adapter",
+      "file": "document/content/guide/admin/sso.mdx",
+      "line": 644
+    }
+  ],
+  "lang": "zh-CN",
+  "eyebrow": "",
+  "legend": false,
+  "motion": "trace",
+  "fonts": "system",
+  "watermark": false,
+  "skin": "light"
+}

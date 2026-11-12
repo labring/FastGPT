@@ -177,6 +177,18 @@ const AdminContainer = ({
         ]
       },
       {
+        icon: 'support/bill/payRecordLight',
+        label: '内容审核',
+        value: '/admin/moderation/policy',
+        children: [
+          {
+            icon: 'common/settingLight',
+            label: '审核策略配置',
+            value: '/admin/moderation/policy'
+          }
+        ]
+      },
+      {
         icon: 'common/rocket',
         label: '版本升级',
         value: '/admin/migration'

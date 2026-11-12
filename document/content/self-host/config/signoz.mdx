@@ -21,21 +21,21 @@ description: FastGPT 接入 Signoz 监控服务
 
 1. 点击下方的卡片，即可一键部署 Signoz。
 
-[![](../../../public/imgs/Deploy-on-Sealos.svg)](https://hzh.sealos.run/?uid=fnWRt09fZP&openapp=system-template%3FtemplateName%3Dsignoz)
+[![部署 Signoz：界面示例](/imgs/Deploy-on-Sealos.svg)](https://hzh.sealos.run/?uid=fnWRt09fZP&openapp=system-template%3FtemplateName%3Dsignoz)
 
 2. 开启 Signoz 外网访问
 
-部署后，可点击 P1 中的详情，进入应用详情页, 然后点击右上角的变更，并开启 4318 端口的外网地址（如果走内网服务，可忽略该步骤）。
+部署后，在应用列表中点击目标服务右侧的「详情」进入应用详情页，点击右上角「变更」，开启 4318 端口的外网访问地址（同集群内网调用时可直接使用内网地址）。
 
-| P1 | P2 | P3 |
+| 进入应用详情 | 点击右上角变更 | 开启 4318 外网访问 |
 | --- | --- | --- |
-| ![alt text](../../../public/imgs/image-112.png) | ![alt text](../../../public/imgs/image-110.png) | ![alt text](../../../public/imgs/image-111.png) |
+| ![部署 Signoz：界面示例](/imgs/optimized/image-112.png.webp) | ![部署 Signoz：界面示例](/imgs/optimized/image-110.png.webp) | ![部署 Signoz：界面示例](/imgs/optimized/image-111.png.webp) |
 
 3. 获取 Signoz 访问地址
 
 变更完成后，等待公网地址就绪，复制该地址，将其填入 FastGPT 中。如果是走内网服务，可以直接复制 4318 端口的内网地址。
 
-![alt text](../../../public/imgs/image-113.png)
+![部署 Signoz：界面示例](/imgs/optimized/image-113.png.webp)
 
 ## 配置 FastGPT
 
@@ -43,14 +43,22 @@ description: FastGPT 接入 Signoz 监控服务
 
 **日志等级枚举**: `trace` | `debug` | `info` | `warning` | `error` | `fatal`
 
+将下方地址替换为上一步获取的 SigNoz OTLP 公网或内网地址（FastGPT 在容器内运行时，`localhost` 指向容器自身，请使用容器可达的服务地址或域名）：
+
 ```dotenv
 LOG_ENABLE_CONSOLE=true # 是否开启控制台打印
 LOG_CONSOLE_LEVEL=debug # 控制台打印最低日志等级
 LOG_ENABLE_OTEL=true # 是否开启 OTEL 日志收集
 LOG_OTEL_LEVEL=info # OTEL 日志收集的最低日志等级
 LOG_OTEL_SERVICE_NAME=fastgpt-client # 传递给 OTLP 收集器的服务名称
-LOG_OTEL_URL=http://localhost:4318/v1/logs # 你的 OTLP 收集器的地址，不要把 /v1/logs 遗漏了
+LOG_OTEL_URL=https://<signoz-otlp-地址>/v1/logs # OTLP 收集器地址，保留 /v1/logs 路径
+TRACING_ENABLE_OTEL=true # 是否开启 OTEL 链路追踪
+TRACING_OTEL_URL=https://<signoz-otlp-地址>/v1/traces # 链路追踪上报地址，保留 /v1/traces 路径
+METRICS_ENABLE_OTEL=true # 是否开启 OTEL 指标上报
+METRICS_OTEL_URL=https://<signoz-otlp-地址>/v1/metrics # 指标上报地址，保留 /v1/metrics 路径
 ```
+
+`LOG_*` 只上报日志；链路追踪和指标需要分别配置 `TRACING_*` 与 `METRICS_*`。生产环境（`NODE_ENV=production`）链路追踪默认采样率为 `0.01`，可通过 `TRACING_OTEL_SAMPLE_RATIO`（`0` 到 `1`）调整。
 
 2. 重启 FastGPT
 
@@ -60,22 +68,22 @@ LOG_OTEL_URL=http://localhost:4318/v1/logs # 你的 OTLP 收集器的地址，�
 
 | | |
 | --- | --- |
-| ![alt text](../../../public/imgs/image-114.png) | ![alt text](../../../public/imgs/image-115.png) |
+| ![查看效果：界面示例](/imgs/optimized/image-114.png.webp) | ![查看效果：界面示例](/imgs/optimized/image-115.png.webp) |
 
-首次注册需要注册一个账号（数据是存储本地数据库），随便填写即可。
+首次访问时填写管理员账号信息完成初始化注册（数据保存在当前 SigNoz 实例的本地数据库中）。
 
-![alt text](../../../public/imgs/image-116.png)
+![查看效果：界面示例](/imgs/optimized/image-116.png.webp)
 
-登录进去后，如果看到右侧 COMPLETED 的步骤条中，logs 和 traces 亮起，则说明配置成功。
+登录进去后，如果看到右侧 COMPLETED 的步骤条中 logs 亮起，说明日志上报成功；配置了 `TRACING_*` 变量且已有请求被采样时，traces 也会亮起。
 
-![alt text](../../../public/imgs/image-117.png)
+![查看效果：界面示例](/imgs/optimized/image-117.png.webp)
 
-![alt text](../../../public/imgs/image-118.png)
+![查看效果：界面示例](/imgs/optimized/image-118.png.webp)
 
 ## 注意事项
 
 1. 调整日志存储时长
 
-Signoz 监控是一个非常占用磁盘的服务，首先不要把 FastGPT debug 日志也存储进来，另外可以将日志存储时长调整为 7 天。如果突然发现 Signoz 数据不增加了，并且内存一直追加，则说明是磁盘满了，需要扩大容量。
+SigNoz 会持续占用较多磁盘空间，建议将 `LOG_OTEL_LEVEL` 设为 `info` 及以上，并将日志存储保留时长调整为 7 天。若发现磁盘占用写满且新监控数据停止增长，请及时扩容存储卷。
 
-![alt text](../../../public/imgs/image-119.png)
+![注意事项：界面示例](/imgs/optimized/image-119.png.webp)
