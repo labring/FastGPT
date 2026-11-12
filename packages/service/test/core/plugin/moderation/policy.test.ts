@@ -29,6 +29,12 @@ describe('moderation policy service', () => {
 
       expect(policy).toEqual(DefaultSystemModerationPolicy);
       expect(policy.enabled).toBe(false);
+      expect(policy.hooks).toEqual({
+        userInput: true,
+        modelInput: true,
+        finalOutput: true
+      });
+      expect(policy.strategy.streamInterval).toBe(100);
     });
 
     it('returns stored policy and aligns enabled state with active plugin', async () => {
