@@ -79,11 +79,14 @@ describe('structured dataset search OpenAPI', () => {
           anyOf: [
             {
               required: ['text'],
-              properties: { text: { minLength: 1 }, imageKeys: { maxItems: 10, default: [] } }
+              properties: {
+                text: { minLength: 1, maxLength: 10000 },
+                imageKeys: { maxItems: 10, default: [] }
+              }
             },
             {
               required: ['imageKeys'],
-              properties: { imageKeys: { minItems: 1 }, text: { default: '' } }
+              properties: { imageKeys: { minItems: 1 }, text: { default: '', maxLength: 10000 } }
             }
           ]
         },

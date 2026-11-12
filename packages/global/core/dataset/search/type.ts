@@ -131,8 +131,8 @@ const ModelIdSchema = z
   .trim()
   .min(1)
   .meta({ description: '模型 ID；省略时使用有权调用的默认模型', example: 'model-identifier' });
-const QueryTextSchema = z.string().trim().max(100000).meta({
-  description: '查询文本，与图片至少提供一项',
+const QueryTextSchema = z.string().trim().max(10000).meta({
+  description: '查询文本，trim 后最多 10000 字符；与图片至少提供一项',
   example: '如何创建知识库？'
 });
 const QueryImageKeysSchema = z

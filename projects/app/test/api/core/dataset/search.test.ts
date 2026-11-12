@@ -82,9 +82,24 @@ describe('structured knowledge search HTTP boundary', () => {
     }
   );
 
+  it.each([{ imageKeys: undefined }, { imageKeys: ['temp/team/search-image.png'] }])(
+    'accepts 10000 query characters after trimming, with images: %j',
+    async ({ imageKeys }) => {
+      const text = 'q'.repeat(10000);
+      await handler(
+        request({ scope: { datasetIds: [id] }, query: { text: `  ${text}  `, imageKeys } })
+      );
+      expect(mocks.search.mock.calls[0][0].params.query.text).toBe(text);
+    }
+  );
+
   it.each([
     { scope: { datasetIds: [] }, query: { text: 'q' } },
     { scope: { datasetIds: [id] }, query: { text: ' ' } },
+    ...[undefined, ['temp/team/search-image.png']].map((imageKeys) => ({
+      scope: { datasetIds: [id] },
+      query: { text: 'q'.repeat(10001), imageKeys }
+    })),
     { scope: { datasetIds: [id] }, query: { text: 'q' }, actor: { isRoot: true } },
     { scope: { datasetIds: [id] }, query: { text: 'q' }, usageScene: 'custom-name' },
     {
