@@ -12,7 +12,6 @@ const mocks = vi.hoisted(() => ({
   checkModerationForTest: vi.fn(),
   recordModerationPolicyAudit: vi.fn(),
   recordModerationConfigAudit: vi.fn(),
-  captureModerationUninstallAuditSnapshot: vi.fn(),
   recordModerationUninstallAudit: vi.fn(),
   recordModerationRestoreAudit: vi.fn()
 }));
@@ -42,7 +41,6 @@ vi.mock('@fastgpt/service/core/plugin/moderation/record/entity', () => ({
 vi.mock('@fastgpt/service/core/plugin/moderation/audit', () => ({
   recordModerationPolicyAudit: mocks.recordModerationPolicyAudit,
   recordModerationConfigAudit: mocks.recordModerationConfigAudit,
-  captureModerationUninstallAuditSnapshot: mocks.captureModerationUninstallAuditSnapshot,
   recordModerationUninstallAudit: mocks.recordModerationUninstallAudit,
   recordModerationRestoreAudit: mocks.recordModerationRestoreAudit
 }));
@@ -179,12 +177,17 @@ describe('admin moderation delete handler', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.authSystemAdmin.mockResolvedValue({ tmbId: 'tmb-1', userId: 'user-1' });
-    mocks.deleteModerationPlugin.mockResolvedValue(undefined);
+    mocks.getLocale.mockReturnValue('zh-CN');
+    mocks.deleteModerationPlugin.mockResolvedValue({
+      auditSnapshot: { wasEnabled: true }
+    });
   });
 
-  it('deletes by pluginId and source', async () => {
+  it('deletes by pluginId and source and forwards committed snapshot to audit without leaking it', async () => {
     const result = await deleteHandler(
-      makeReq({ body: { pluginId: 'baidu-moderation', source: 'local' } }),
+      makeReq({
+        body: { pluginId: 'baidu-moderation', source: 'local' }
+      }),
       res
     );
 
@@ -195,7 +198,9 @@ describe('admin moderation delete handler', () => {
     expect(mocks.recordModerationUninstallAudit).toHaveBeenCalledWith({
       operator: { tmbId: 'tmb-1', userId: 'user-1' },
       pluginId: 'baidu-moderation',
-      snapshot: undefined
+      source: 'local',
+      snapshot: { wasEnabled: true },
+      lang: undefined
     });
     expect(result).toBeUndefined();
   });

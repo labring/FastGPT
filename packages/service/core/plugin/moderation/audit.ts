@@ -9,19 +9,17 @@ import {
   listModerationPlugins
 } from '../../../thirdProvider/fastgptPlugin/moderation';
 import { getRetainedModerationDetail } from '../../../thirdProvider/fastgptPlugin/lifecycle';
-import { findModerationConfig } from './entity';
-import type { ModerationPolicyAuditSnapshot, ModerationConfigAuditSnapshot } from './service';
+import type {
+  ModerationPolicyAuditSnapshot,
+  ModerationConfigAuditSnapshot,
+  ModerationUninstallAuditSnapshot
+} from './service';
 
 const logger = getLogger(LogCategories.MODULE.PLUGIN.ADMIN);
 
 export type ModerationAuditOperator = {
   teamId?: string;
   tmbId?: string;
-};
-
-export type ModerationUninstallAuditSnapshot = {
-  wasEnabled: boolean;
-  pluginName: string;
 };
 
 const isValidAuditOperator = (
@@ -34,29 +32,41 @@ const pickPluginName = (resolved: string | undefined, fallbackId: string): strin
 /**
  * Resolve a readable display name for a moderation plugin.
  *
- * Checks active plugin metadata first, falls back to retained (soft-uninstalled) metadata,
- * and finally falls back to `pluginId` so audit logging never fails when remote metadata is unavailable.
+ * Checks active plugin metadata first by default (or retained metadata first right after
+ * soft-uninstall), falls back to the alternate metadata source, and finally falls back to
+ * `pluginId` so audit logging never fails when remote metadata is unavailable.
  */
 export const resolveModerationPluginName = async ({
   pluginId,
   source = 'system',
-  lang
+  lang,
+  preferRetained = false
 }: {
   pluginId: string;
   source?: string;
   lang?: `${LangEnum}`;
+  preferRetained?: boolean;
 }): Promise<string> => {
-  try {
-    const detail = await getModerationPluginDetail({ pluginId, source, lang });
-    return pickPluginName(parseI18nString(detail.name, lang), pluginId);
-  } catch {
+  const readers = preferRetained
+    ? [
+        () => getRetainedModerationDetail(pluginId, source),
+        () => getModerationPluginDetail({ pluginId, source, lang })
+      ]
+    : [
+        () => getModerationPluginDetail({ pluginId, source, lang }),
+        () => getRetainedModerationDetail(pluginId, source)
+      ];
+
+  for (const read of readers) {
     try {
-      const retained = await getRetainedModerationDetail(pluginId, source);
-      return pickPluginName(parseI18nString(retained.name, lang), pluginId);
+      const detail = await read();
+      return pickPluginName(parseI18nString(detail.name, lang), pluginId);
     } catch {
-      return pluginId;
+      // Try fallback metadata source before falling back to pluginId.
     }
   }
+
+  return pluginId;
 };
 
 /**
@@ -219,67 +229,46 @@ export const recordModerationConfigAudit = async ({
 };
 
 /**
- * Capture plugin display name and enablement state before `deleteModerationPlugin` disables it.
+ * Record admin audit logs after `deleteModerationPlugin` succeeds.
+ *
+ * Uses the enablement state returned by the uninstall transaction so concurrent
+ * enable/uninstall interleavings never omit the automatic plugin-disable event.
  */
-export const captureModerationUninstallAuditSnapshot = async ({
+export const recordModerationUninstallAudit = async ({
   operator,
   pluginId,
   source,
+  pluginName,
+  snapshot,
   lang
 }: {
   operator?: ModerationAuditOperator;
   pluginId: string;
   source?: string;
-  lang?: `${LangEnum}`;
-}): Promise<ModerationUninstallAuditSnapshot | undefined> => {
-  if (!isValidAuditOperator(operator)) return undefined;
-
-  try {
-    const [existing, pluginName] = await Promise.all([
-      findModerationConfig({ pluginId, source }),
-      resolveModerationPluginName({ pluginId, source, lang })
-    ]);
-
-    return {
-      wasEnabled: Boolean(existing?.enabled),
-      pluginName
-    };
-  } catch (error) {
-    logger.warn('Failed to capture moderation uninstall audit snapshot', { error, pluginId });
-    return {
-      wasEnabled: false,
-      pluginName: pluginId
-    };
-  }
-};
-
-/**
- * Record admin audit logs after `deleteModerationPlugin` succeeds.
- *
- * When uninstalling the last active moderation plugin automatically turns off moderation,
- * records both the plugin disable event and the uninstall event in chronological order.
- */
-export const recordModerationUninstallAudit = async ({
-  operator,
-  pluginId,
-  snapshot
-}: {
-  operator?: ModerationAuditOperator;
-  pluginId: string;
+  pluginName?: string;
   snapshot?: ModerationUninstallAuditSnapshot;
+  lang?: `${LangEnum}`;
 }): Promise<void> => {
-  if (!isValidAuditOperator(operator)) return;
+  if (!isValidAuditOperator(operator) || !snapshot) return;
 
   const { teamId, tmbId } = operator;
-  const pluginName = pickPluginName(snapshot?.pluginName, pluginId);
+  const resolvedName =
+    pluginName !== undefined && pluginName.trim() !== ''
+      ? pluginName
+      : await resolveModerationPluginName({
+          pluginId,
+          source,
+          lang,
+          preferRetained: true
+        });
   const logs: AuditLogInput[] = [];
 
-  if (snapshot?.wasEnabled) {
+  if (snapshot.wasEnabled) {
     logs.push({
       teamId,
       tmbId,
       event: AdminAuditEventEnum.ADMIN_DISABLE_MODERATION_PLUGIN,
-      params: { pluginName }
+      params: { pluginName: resolvedName }
     });
   }
 
@@ -287,7 +276,7 @@ export const recordModerationUninstallAudit = async ({
     teamId,
     tmbId,
     event: AdminAuditEventEnum.ADMIN_UNINSTALL_MODERATION_PLUGIN,
-    params: { pluginName }
+    params: { pluginName: resolvedName }
   });
 
   await addAuditLogs(logs);

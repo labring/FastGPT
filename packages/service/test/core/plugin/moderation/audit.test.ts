@@ -16,7 +16,6 @@ import * as lifecycle from '@fastgpt/service/thirdProvider/fastgptPlugin/lifecyc
 import * as moderationEntity from '@fastgpt/service/core/plugin/moderation/entity';
 import * as moderationService from '@fastgpt/service/core/plugin/moderation/service';
 import {
-  captureModerationUninstallAuditSnapshot,
   hasModerationPolicyConfigChanged,
   recordInstalledModerationPluginsAudit,
   recordModerationConfigAudit,
@@ -485,14 +484,26 @@ describe('moderation admin audit helpers', () => {
     );
   });
 
-  describe('captureModerationUninstallAuditSnapshot & recordModerationUninstallAudit', () => {
+  describe('deleteModerationPlugin & recordModerationUninstallAudit', () => {
     it('logs both disable and uninstall when uninstalling the last active moderation plugin', async () => {
-      await MongoSystemModerationPlugin.create({
-        pluginId: 'last-plugin',
-        source: 'system',
-        enabled: true
+      await moderationService.updateModerationPolicy({
+        ...DefaultSystemModerationPolicy,
+        enabled: true,
+        activePluginId: 'last-plugin'
       });
-      vi.spyOn(remoteModeration, 'getModerationPluginDetail').mockResolvedValueOnce({
+      vi.spyOn(remoteModeration, 'listModerationPlugins').mockResolvedValueOnce([
+        {
+          pluginId: 'last-plugin',
+          source: 'system',
+          version: '1.0.0',
+          etag: 'etag-last',
+          type: 'moderation',
+          name: '唯一审核插件',
+          icon: ''
+        } as any
+      ]);
+      vi.spyOn(lifecycle, 'disableSystemPlugin').mockResolvedValueOnce(undefined);
+      vi.spyOn(lifecycle, 'getRetainedModerationDetail').mockResolvedValueOnce({
         pluginId: 'last-plugin',
         source: 'system',
         version: '1.0.0',
@@ -502,14 +513,15 @@ describe('moderation admin audit helpers', () => {
         secretSchema: {}
       });
 
-      const snapshot = await captureModerationUninstallAuditSnapshot({
-        operator,
-        pluginId: 'last-plugin'
+      const { auditSnapshot } = await moderationService.deleteModerationPlugin({
+        pluginId: 'last-plugin',
+        source: 'system'
       });
       await recordModerationUninstallAudit({
         operator,
         pluginId: 'last-plugin',
-        snapshot
+        source: 'system',
+        snapshot: auditSnapshot
       });
 
       const logs = await MongoTeamAudit.find({}).sort({ _id: 1 }).lean();
@@ -525,32 +537,26 @@ describe('moderation admin audit helpers', () => {
       ]);
     });
 
-    it('logs only uninstall for an inactive plugin and falls back to pluginId on snapshot error', async () => {
-      expect(
-        await captureModerationUninstallAuditSnapshot({
-          operator: undefined,
-          pluginId: 'inactive-plugin'
-        })
-      ).toBeUndefined();
-
-      vi.spyOn(moderationEntity, 'findModerationConfig').mockRejectedValueOnce(new Error('db err'));
-      const fallbackSnapshot = await captureModerationUninstallAuditSnapshot({
+    it('logs only uninstall for an inactive plugin and skips logging when operator or snapshot is missing', async () => {
+      await recordModerationUninstallAudit({
+        operator: undefined,
+        pluginId: 'inactive-plugin',
+        snapshot: { wasEnabled: false }
+      });
+      await recordModerationUninstallAudit({
         operator,
         pluginId: 'inactive-plugin'
       });
-      expect(fallbackSnapshot).toEqual({
-        wasEnabled: false,
-        pluginName: 'inactive-plugin'
-      });
+      expect(await MongoTeamAudit.countDocuments({})).toBe(0);
 
-      await recordModerationUninstallAudit({
-        operator: undefined,
-        pluginId: 'inactive-plugin'
-      });
+      vi.spyOn(lifecycle, 'getRetainedModerationDetail').mockRejectedValueOnce(new Error('pruned'));
+      vi.spyOn(remoteModeration, 'getModerationPluginDetail').mockRejectedValueOnce(
+        new Error('missing')
+      );
       await recordModerationUninstallAudit({
         operator,
         pluginId: 'inactive-plugin',
-        snapshot: fallbackSnapshot
+        snapshot: { wasEnabled: false }
       });
 
       const logs = await MongoTeamAudit.find({}).lean();
@@ -560,6 +566,151 @@ describe('moderation admin audit helpers', () => {
         metadata: { pluginName: 'inactive-plugin' }
       });
     });
+
+    it.each(['preTransaction', 'inTransaction'] as const)(
+      'logs ENABLE, DISABLE and UNINSTALL when another request enables the last inactive plugin during %s uninstall window',
+      async (windowMode) => {
+        await MongoSystemModerationPlugin.create({
+          pluginId: 'A',
+          source: 'system',
+          enabled: false,
+          deleted: false
+        });
+        await moderationService.updateModerationPolicy({
+          ...DefaultSystemModerationPolicy,
+          enabled: false,
+          activePluginId: undefined
+        });
+
+        vi.spyOn(remoteModeration, 'listModerationPlugins').mockResolvedValue([
+          {
+            pluginId: 'A',
+            source: 'system',
+            version: '1.0.0',
+            etag: 'etag-a',
+            type: 'moderation',
+            name: 'A',
+            icon: ''
+          } as any
+        ]);
+        vi.spyOn(remoteModeration, 'getModerationPluginDetail').mockResolvedValue({
+          pluginId: 'A',
+          source: 'system',
+          version: '1.0.0',
+          type: 'moderation',
+          name: 'A',
+          meta: { provider: 'test' },
+          secretSchema: {}
+        });
+        vi.spyOn(lifecycle, 'getRetainedModerationDetail').mockResolvedValue({
+          pluginId: 'A',
+          source: 'system',
+          version: '1.0.0',
+          type: 'moderation',
+          name: 'A',
+          meta: { provider: 'test' },
+          secretSchema: {}
+        });
+        vi.spyOn(remoteModeration, 'checkModerationContent').mockResolvedValue({
+          verdict: 'pass',
+          provider: 'test',
+          hits: [],
+          keywords: []
+        });
+
+        const uninstallPaused = Promise.withResolvers<void>();
+        const concurrentEnableDone = Promise.withResolvers<void>();
+        let inTxReads = 0;
+
+        if (windowMode === 'preTransaction') {
+          // 卸载预检读到 enabled=false 后、进入数据库事务前，另一请求启用最后插件 A。
+          vi.spyOn(lifecycle, 'disableSystemPlugin').mockImplementationOnce(async () => {
+            uninstallPaused.resolve();
+            await concurrentEnableDone.promise;
+          });
+        } else {
+          vi.spyOn(lifecycle, 'disableSystemPlugin').mockResolvedValueOnce(undefined);
+          const originalFindConfig = moderationEntity.findModerationConfig;
+          // 卸载事务内首次读到 enabled=false 后暂停，另一事务提交启用 A，触发写冲突重试并重读 enabled=true。
+          vi.spyOn(moderationEntity, 'findModerationConfig').mockImplementation(
+            async (query, session) => {
+              const record = await originalFindConfig(query, session);
+              if (session?.inTransaction() && query.pluginId === 'A') {
+                const readIndex = ++inTxReads;
+                if (readIndex === 1) {
+                  expect(record?.enabled).toBe(false);
+                  uninstallPaused.resolve();
+                  await concurrentEnableDone.promise;
+                }
+              }
+              return record;
+            }
+          );
+        }
+
+        const uninstallTask = (async () => {
+          const { auditSnapshot } = await moderationService.deleteModerationPlugin({
+            pluginId: 'A',
+            source: 'system'
+          });
+          await recordModerationUninstallAudit({
+            operator,
+            pluginId: 'A',
+            source: 'system',
+            snapshot: auditSnapshot
+          });
+        })();
+
+        await uninstallPaused.promise;
+
+        const { item, auditSnapshot: enableSnapshot } =
+          await moderationService.saveModerationConfig({
+            pluginId: 'A',
+            enabled: true
+          });
+        await recordModerationConfigAudit({
+          operator,
+          snapshot: enableSnapshot,
+          pluginId: 'A',
+          pluginName: item.name,
+          secretsUpdated: false,
+          nextEnabled: true
+        });
+        concurrentEnableDone.resolve();
+
+        await uninstallTask;
+
+        if (windowMode === 'inTransaction') {
+          expect(inTxReads).toBeGreaterThanOrEqual(2);
+        }
+        expect(
+          await MongoSystemModerationPlugin.findOne({ pluginId: 'A', source: 'system' }).lean()
+        ).toMatchObject({
+          deleted: true,
+          enabled: false
+        });
+        expect(await moderationService.getModerationPolicy()).toMatchObject({
+          enabled: false,
+          activePluginId: undefined
+        });
+
+        const logs = await MongoTeamAudit.find({}).sort({ _id: 1 }).lean();
+        expect(logs.map(({ event, metadata }) => ({ event, metadata }))).toEqual([
+          {
+            event: AdminAuditEventEnum.ADMIN_ENABLE_MODERATION_PLUGIN,
+            metadata: { pluginName: 'A' }
+          },
+          {
+            event: AdminAuditEventEnum.ADMIN_DISABLE_MODERATION_PLUGIN,
+            metadata: { pluginName: 'A' }
+          },
+          {
+            event: AdminAuditEventEnum.ADMIN_UNINSTALL_MODERATION_PLUGIN,
+            metadata: { pluginName: 'A' }
+          }
+        ]);
+      }
+    );
   });
 
   describe('recordModerationRestoreAudit & recordInstalledModerationPluginsAudit', () => {

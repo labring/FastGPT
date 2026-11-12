@@ -8,10 +8,7 @@ import {
   type DeleteModerationPluginBodyType
 } from '@fastgpt/global/openapi/core/plugin/admin/moderation/api';
 import { deleteModerationPlugin } from '@fastgpt/service/core/plugin/moderation/service';
-import {
-  captureModerationUninstallAuditSnapshot,
-  recordModerationUninstallAudit
-} from '@fastgpt/service/core/plugin/moderation/audit';
+import { recordModerationUninstallAudit } from '@fastgpt/service/core/plugin/moderation/audit';
 
 export type AdminModerationDeleteQuery = Record<string, never>;
 export type AdminModerationDeleteBody = DeleteModerationPluginBodyType;
@@ -33,17 +30,13 @@ export async function handler(
   }).body;
 
   const lang = req.headers ? getLocale(req) : undefined;
-  const auditSnapshot = await captureModerationUninstallAuditSnapshot({
-    operator: authResult,
-    pluginId,
-    source,
-    lang
-  });
-  await deleteModerationPlugin({ pluginId, source });
+  const { auditSnapshot } = await deleteModerationPlugin({ pluginId, source });
   await recordModerationUninstallAudit({
     operator: authResult,
     pluginId,
-    snapshot: auditSnapshot
+    source,
+    snapshot: auditSnapshot,
+    lang
   });
 }
 
