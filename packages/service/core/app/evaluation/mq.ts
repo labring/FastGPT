@@ -23,9 +23,13 @@ let unsubscribeSnapshot: (() => void) | undefined;
 /** 快照重载后把新并发同步到已存在的 Worker；DAL 命中缓存时会原地更新 concurrency。 */
 const syncWorkerConcurrency = () => {
   if (!currentProcessor) return;
-  evaluationMQService.getWorker(currentProcessor, {
-    concurrency: getSystemInstanceConfig().performance.task.evalConcurrency
-  });
+  try {
+    evaluationMQService.getWorker(currentProcessor, {
+      concurrency: getSystemInstanceConfig().performance.task.evalConcurrency
+    });
+  } catch {
+    // Worker 处于断线重启窗口时新并发已写入 workerOpts，重建后自动生效
+  }
 };
 
 export const getEvaluationWorker = (processor: Processor<EvaluationJobData>) => {

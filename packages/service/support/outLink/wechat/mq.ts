@@ -234,8 +234,13 @@ export const initWechatPollWorker = async () => {
   // 快照重载后把新并发同步到已存在的 poll/reply Worker；DAL 命中缓存时原地更新 concurrency。
   unsubscribeSnapshot ??= onSystemInstanceConfigSnapshot(() => {
     const next = getSystemInstanceConfig().performance.channel.wechatConcurrency;
-    wechatMQService.getPollWorker(processWechatPollJob, { concurrency: next });
-    wechatMQService.getReplyWorker(processWechatReplyJob, { concurrency: next });
+    // 单个 Worker 若正处于断线重启窗口会抛错（新并发已写入 workerOpts），隔离异常以保证另一队列继续同步。
+    try {
+      wechatMQService.getPollWorker(processWechatPollJob, { concurrency: next });
+    } catch {}
+    try {
+      wechatMQService.getReplyWorker(processWechatReplyJob, { concurrency: next });
+    } catch {}
   });
   // 渠道并发只读实例配置 performance.channel。
   const concurrency = getSystemInstanceConfig().performance.channel.wechatConcurrency;

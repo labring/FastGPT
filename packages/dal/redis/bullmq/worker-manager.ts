@@ -61,6 +61,13 @@ export class BullMQWorkerManager {
       return existing as Worker<DataType, ReturnType>;
     }
     if (this.restartingWorkers.has(name)) {
+      // 重启窗口内收到热更新并发变更时先记录最新 workerOpts，待重建完成后直接按新并发恢复。
+      if (opts?.concurrency !== undefined) {
+        this.workerOpts.set(name, {
+          ...this.workerOpts.get(name),
+          concurrency: opts.concurrency
+        });
+      }
       throw new Error(`BullMQ worker ${name} is restarting`);
     }
 

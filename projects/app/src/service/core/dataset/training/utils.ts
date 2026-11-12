@@ -43,18 +43,38 @@ export const createDatasetTrainingMongoWatch = () =>
   });
 
 export const startTrainingQueue = (fast?: boolean) => {
-  const max = global.systemEnv?.qaMaxProcess || 10;
+  const qaMax = global.systemEnv?.qaMaxProcess || 10;
+  const vectorMax = global.systemEnv?.vectorMaxProcess || 15;
+  const parseMax = global.systemEnv?.datasetParseMaxProcess || 10;
   logInstanceConfigRead({
     callsite: 'runtime.app.dataset.training.startTrainingQueue',
     source: 'bridged-system-env',
-    fields: [{ path: 'performance.dataset.qaMaxProcess', value: max }]
+    fields: [
+      { path: 'performance.dataset.qaMaxProcess', value: qaMax },
+      { path: 'performance.dataset.vectorMaxProcess', value: vectorMax },
+      { path: 'performance.dataset.parseMaxProcess', value: parseMax }
+    ]
   });
 
-  for (let i = 0; i < (fast ? max : 1); i++) {
+  if (!fast) {
     generateQA();
     generateRebuildIndex();
     generateRebuildSynonym();
     generatePreCreatedData();
     datasetParseQueue();
+    return;
   }
+
+  // 快速拉起时各队列按自身并发上限分别唤醒消费者，避免某单一队列上限限制其它队列初始消费度。
+  for (let i = 0; i < qaMax; i++) {
+    generateQA();
+  }
+  for (let i = 0; i < vectorMax; i++) {
+    generatePreCreatedData();
+  }
+  for (let i = 0; i < parseMax; i++) {
+    datasetParseQueue();
+  }
+  generateRebuildIndex();
+  generateRebuildSynonym();
 };
