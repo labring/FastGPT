@@ -80,6 +80,20 @@ describe('moderation plugin deletion and filtering', () => {
   });
 
   it('soft-uninstalls an unconfigured installed plugin', async () => {
+    vi.spyOn(fastgptPluginMod, 'listModerationPlugins').mockResolvedValue([
+      {
+        pluginId: 'new-plugin',
+        source: 'system',
+        type: 'moderation' as any,
+        version: '1.0.0'
+      },
+      {
+        pluginId: 'other-plugin',
+        source: 'system',
+        type: 'moderation' as any,
+        version: '1.0.0'
+      }
+    ]);
     vi.spyOn(entity, 'findModerationConfig').mockResolvedValue(null);
     const deleteConfigSpy = vi
       .spyOn(entity, 'softDeleteModerationConfig')
@@ -89,6 +103,47 @@ describe('moderation plugin deletion and filtering', () => {
       deleteModerationPlugin({ pluginId: 'new-plugin', source: 'system' })
     ).resolves.toBeUndefined();
     expect(deleteConfigSpy).toHaveBeenCalledWith({ pluginId: 'new-plugin', source: 'system' });
+  });
+
+  it('rejects deletion without disabling active plugin or global policy when inventory query fails', async () => {
+    await MongoSystemModerationPlugin.create([
+      { pluginId: 'plugin-a', source: 'system', enabled: true, deleted: false },
+      { pluginId: 'plugin-b', source: 'system', enabled: false, deleted: false }
+    ]);
+    await updateModerationPolicy({
+      enabled: true,
+      activePluginId: 'plugin-a',
+      hooks: {
+        userInput: true,
+        modelInput: true,
+        finalOutput: true
+      },
+      strategy: {
+        streamInterval: 50,
+        suspectedRiskAction: 'blockAndLog' as any,
+        serviceExceptionAction: 'pass' as any
+      }
+    });
+
+    vi.spyOn(fastgptPluginMod, 'listModerationPlugins').mockRejectedValueOnce(
+      new Error('Plugin server unavailable')
+    );
+
+    await expect(
+      deleteModerationPlugin({ pluginId: 'plugin-b', source: 'system' })
+    ).rejects.toThrow('Plugin server unavailable');
+
+    expect(lifecycle.disableSystemPlugin).not.toHaveBeenCalled();
+    expect(await getModerationPolicy()).toMatchObject({
+      enabled: true,
+      activePluginId: 'plugin-a'
+    });
+    expect(
+      await MongoSystemModerationPlugin.findOne({ pluginId: 'plugin-a', source: 'system' }).lean()
+    ).toMatchObject({ enabled: true, deleted: false });
+    expect(
+      await MongoSystemModerationPlugin.findOne({ pluginId: 'plugin-b', source: 'system' }).lean()
+    ).toMatchObject({ enabled: false, deleted: false });
   });
 
   it('restores a moderation plugin without overwriting configuration', async () => {

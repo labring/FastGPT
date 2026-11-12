@@ -367,6 +367,7 @@ export const ModerationPolicy = () => {
                               key={plugin.pluginId}
                               plugin={plugin}
                               isActive={policy.activePluginId === plugin.pluginId}
+                              isModerationEnabled={policy.enabled}
                               isLastPlugin={plugins.length <= 1}
                               onSelect={() => handleToggleActivePlugin(plugin.pluginId)}
                               onEdit={() => setEditingPlugin(plugin)}

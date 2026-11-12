@@ -45,6 +45,33 @@ export const createAgentLoopCoreToolRuntime = <TChildrenResponse = unknown>({
   AgentLoopRuntime<TChildrenResponse>,
   'toolCatalog' | 'executeTool' | 'executeInteractiveTool'
 > => {
+  // 统一普通工具与交互工具的结果审核及敏感字段脱敏，避免两处入口规则分叉
+  const moderateToolRunResult = async (result: AgentLoopCoreToolRunResult<TChildrenResponse>) => {
+    if (isToolResultModerated(result) || result.nodeSummary?.hasToolResultModerated) {
+      return;
+    }
+
+    const originalResponse = result.response;
+    const moderatedResponse = originalResponse
+      ? await checkToolResultModeration({
+          response: originalResponse,
+          context
+        })
+      : originalResponse;
+    const hitModeration =
+      moderatedResponse !== originalResponse || isModerationBlockErrorMessage(result.errorMessage);
+    if (hitModeration) {
+      result.response = MODERATION_BLOCKED_REPLACE_TEXT;
+      result.errorMessage = undefined;
+      result.assistantMessages = [];
+      result.assistantResponses = undefined;
+      if (result.nodeResponse) {
+        result.nodeResponse = sanitizeModeratedToolNodeResponse(result.nodeResponse);
+      }
+    }
+    markToolResultModerated(result);
+  };
+
   return {
     toolCatalog: {
       runtimeTools: toolProvider.buildRuntimeTools(),
@@ -53,29 +80,7 @@ export const createAgentLoopCoreToolRuntime = <TChildrenResponse = unknown>({
     executeTool: async ({ call, messages }) => {
       const result = await toolProvider.executeTool({ call, messages });
 
-      // 锚点 2/3：Agent Loop 内工具执行响应审查，违规脱敏替换并清理原始详情与报错，继续送入模型规划
-      if (!isToolResultModerated(result) && !result.nodeSummary?.hasToolResultModerated) {
-        const originalResponse = result.response;
-        const moderatedResponse = originalResponse
-          ? await checkToolResultModeration({
-              response: originalResponse,
-              context
-            })
-          : originalResponse;
-        const hitModeration =
-          moderatedResponse !== originalResponse ||
-          isModerationBlockErrorMessage(result.errorMessage);
-        if (hitModeration) {
-          result.response = MODERATION_BLOCKED_REPLACE_TEXT;
-          result.errorMessage = undefined;
-          result.assistantMessages = [];
-          result.assistantResponses = undefined;
-          if (result.nodeResponse) {
-            result.nodeResponse = sanitizeModeratedToolNodeResponse(result.nodeResponse);
-          }
-        }
-        markToolResultModerated(result);
-      }
+      await moderateToolRunResult(result);
 
       onToolResult?.({
         callId: call.id,
@@ -89,28 +94,7 @@ export const createAgentLoopCoreToolRuntime = <TChildrenResponse = unknown>({
           executeInteractiveTool: async (params) => {
             const result = await toolProvider.executeInteractiveTool!(params);
 
-            if (!isToolResultModerated(result) && !result.nodeSummary?.hasToolResultModerated) {
-              const originalResponse = result.response;
-              const moderatedResponse = originalResponse
-                ? await checkToolResultModeration({
-                    response: originalResponse,
-                    context
-                  })
-                : originalResponse;
-              const hitModeration =
-                moderatedResponse !== originalResponse ||
-                isModerationBlockErrorMessage(result.errorMessage);
-              if (hitModeration) {
-                result.response = MODERATION_BLOCKED_REPLACE_TEXT;
-                result.errorMessage = undefined;
-                result.assistantMessages = [];
-                result.assistantResponses = undefined;
-                if (result.nodeResponse) {
-                  result.nodeResponse = sanitizeModeratedToolNodeResponse(result.nodeResponse);
-                }
-              }
-              markToolResultModerated(result);
-            }
+            await moderateToolRunResult(result);
 
             onToolResult?.({ callId: params.call.id, result });
 

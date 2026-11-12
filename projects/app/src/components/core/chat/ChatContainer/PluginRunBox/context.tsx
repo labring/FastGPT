@@ -19,7 +19,7 @@ import {
   mergeNodeResponseDataByIdAndParent
 } from '@fastgpt/global/core/chat/utils/mergeNode';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { isModerationBlockErrorMessage } from '@fastgpt/global/core/plugin/moderation/constants';
+import { isChatEntryModerationError } from '@fastgpt/global/core/chat/error';
 import { WorkflowRuntimeContextProvider } from '@/components/core/chat/ChatContainer/context/workflowRuntimeContext';
 import { safeAbortController } from '../ChatBox/utils/generate';
 
@@ -241,9 +241,8 @@ const PluginRunContextProvider = ({
           })
         );
       } catch (err: any) {
-        const rawErrorText = getErrText(err, '');
         const errorMsg = t(getErrText(err, t('common:core.chat.error.Chat error') as any));
-        if (isModerationBlockErrorMessage(rawErrorText)) {
+        if (isChatEntryModerationError(err)) {
           toast({ title: errorMsg, status: 'warning' });
           setChatRecords([]);
           setTab(PluginRunBoxTabEnum.input);

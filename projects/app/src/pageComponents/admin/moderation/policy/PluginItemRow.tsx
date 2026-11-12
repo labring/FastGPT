@@ -11,6 +11,7 @@ import type { AdminModerationPluginItemType } from '@fastgpt/global/core/plugin/
 type PluginItemRowProps = {
   plugin: AdminModerationPluginItemType;
   isActive: boolean;
+  isModerationEnabled?: boolean;
   isLastPlugin?: boolean;
   onSelect: () => void;
   onEdit: () => void;
@@ -20,6 +21,7 @@ type PluginItemRowProps = {
 const PluginItemRow: React.FC<PluginItemRowProps> = ({
   plugin,
   isActive,
+  isModerationEnabled = false,
   isLastPlugin = false,
   onSelect,
   onEdit,
@@ -29,6 +31,8 @@ const PluginItemRow: React.FC<PluginItemRowProps> = ({
   const { t } = useSafeTranslation();
 
   const isConfigured = !!plugin.hasConfiguredSecrets;
+  const shouldBypassConfirm =
+    isLastPlugin || Boolean(plugin.enabled) || Boolean(isModerationEnabled && isActive);
 
   const handleCheckboxClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -120,8 +124,8 @@ const PluginItemRow: React.FC<PluginItemRowProps> = ({
             }}
           />
 
-          {/* 删除插件按钮：仅剩最后一个插件或当前正处于生效状态时交由外层 Modal/提示处理，其余情况使用气泡二次确认 */}
-          {isLastPlugin || isActive || plugin.enabled ? (
+          {/* 删除插件按钮：仅剩最后一个插件或当前正处于生效/禁止卸载状态时交由外层 Modal/提示处理，其余可卸载的普通插件统一经过气泡二次确认 */}
+          {shouldBypassConfirm ? (
             <MyIconButton
               icon="common/trash"
               tip={t('admin:moderation.uninstall_plugin')}

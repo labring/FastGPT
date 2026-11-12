@@ -363,7 +363,7 @@ export const deleteModerationPlugin = async ({
 
   const [existing, remotePlugins, allConfigs] = await Promise.all([
     findModerationConfig({ pluginId, source }),
-    listModerationPlugins().catch(() => []),
+    listModerationPlugins(),
     findAllModerationConfigs()
   ]);
 

@@ -1,10 +1,13 @@
 import type { ChatPublishSourceType } from '@fastgpt/global/core/chat/publishSource/type';
 import { updateChatPublishSource } from '../publishSource/service';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
+import { UserError } from '@fastgpt/global/common/error/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatEntryModerationError } from '@fastgpt/global/core/chat/error';
 import type { AIChatItemType, UserChatItemType } from '@fastgpt/global/core/chat/type';
+import { isModerationBlockErrorMessage } from '@fastgpt/global/core/plugin/moderation/constants';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
@@ -207,19 +210,26 @@ export const preChatRound = async (params: PreChatRoundParams): Promise<PreChatR
   });
   const isInteractiveContinue = !!params.interactive && interactiveStatus !== 'query';
 
-  // 入口审核必须在获取生成租约和落库 Human/AI 占位消息之前执行：违规直接拒绝，不产生任何会话或消息持久化。
-  await checkEntryModeration({
-    query: params.userContent.value,
-    variables: params.variables,
-    context: {
-      teamId: params.teamId,
-      tmbId: params.tmbId,
-      appId: params.sourceId,
-      chatId,
-      responseChatItemId,
-      requestId: params.requestId
+  // 入口审核必须在获取生成租约和落库 Human/AI 占位消息之前执行：违规直接拒绝，并通过专用错误标识尚未创建持久化轮次。
+  try {
+    await checkEntryModeration({
+      query: params.userContent.value,
+      variables: params.variables,
+      context: {
+        teamId: params.teamId,
+        tmbId: params.tmbId,
+        appId: params.sourceId,
+        chatId,
+        responseChatItemId,
+        requestId: params.requestId
+      }
+    });
+  } catch (error) {
+    if (error instanceof UserError && isModerationBlockErrorMessage(error.message)) {
+      throw new ChatEntryModerationError(error.message);
     }
-  });
+    throw error;
+  }
   markEntryModerationChecked({
     chatId,
     responseChatItemId,

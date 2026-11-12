@@ -1,5 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { UserError } from '@fastgpt/global/common/error/utils';
+import { getErrText, UserError } from '@fastgpt/global/common/error/utils';
+import {
+  ChatEntryModerationError,
+  isChatEntryModerationError
+} from '@fastgpt/global/core/chat/error';
 import {
   MODERATION_BLOCKED_ERROR_MESSAGE,
   ModerationActionEnum
@@ -106,8 +110,9 @@ describe('dispatchWorkFlow Entry Guard integration', () => {
     const chatCreateSpy = vi.spyOn(MongoChat, 'findOneAndUpdate');
     const chatItemCreateSpy = vi.spyOn(MongoChatItem, 'create');
 
-    await expect(
-      preChatRound({
+    let caughtError: unknown;
+    try {
+      await preChatRound({
         sourceType: ChatSourceTypeEnum.app,
         sourceId: '67e0d5535c02d1d5cdede71f',
         chatId: 'blocked-chat-id',
@@ -119,9 +124,14 @@ describe('dispatchWorkFlow Entry Guard integration', () => {
           value: [{ text: { content: '甲基苯丙胺' } }]
         },
         responseChatItemId: 'blocked-resp-id'
-      })
-    ).rejects.toThrow(new UserError(MODERATION_BLOCKED_ERROR_MESSAGE));
+      });
+    } catch (error) {
+      caughtError = error;
+    }
 
+    expect(caughtError).toBeInstanceOf(ChatEntryModerationError);
+    expect(isChatEntryModerationError(caughtError)).toBe(true);
+    expect(getErrText(caughtError)).toBe(MODERATION_BLOCKED_ERROR_MESSAGE);
     expect(chatCreateSpy).not.toHaveBeenCalled();
     expect(chatItemCreateSpy).not.toHaveBeenCalled();
   });

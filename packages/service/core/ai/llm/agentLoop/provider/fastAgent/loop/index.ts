@@ -154,6 +154,35 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
   );
   const isSandboxSystemTool = (name: string) => sandboxToolNames.has(name);
 
+  // 统一普通工具与交互工具的结果审核及敏感字段脱敏，避免两处入口规则分叉
+  const moderateFastAgentToolResult = async <TResult>(
+    toolResult: AgentLoopToolExecutionResult<TResult> | undefined
+  ) => {
+    if (!toolResult || isToolResultModerated(toolResult)) {
+      return;
+    }
+
+    const originalResponse = toolResult.response;
+    const moderatedResponse = originalResponse
+      ? await checkToolResultModeration({
+          response: originalResponse,
+          context: { teamId: runtime.teamId }
+        })
+      : originalResponse;
+    const hitModeration =
+      moderatedResponse !== originalResponse ||
+      isModerationBlockErrorMessage(toolResult.errorMessage);
+    if (hitModeration) {
+      toolResult.response = MODERATION_BLOCKED_REPLACE_TEXT;
+      toolResult.errorMessage = undefined;
+      toolResult.assistantMessages = [];
+      toolResult.assistantResponses = undefined;
+      toolResult.skipResponseCompress = true;
+      toolResult.metadata = sanitizeModeratedToolNodeResponse(toolResult.metadata);
+    }
+    markToolResultModerated(toolResult);
+  };
+
   const result = await runAgentLoop({
     maxRunAgentTimes: runtime.maxRunAgentTimes ?? 100,
     completionPolicy: runtime.completionPolicy,
@@ -450,27 +479,7 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
         return toolResult;
       })();
 
-      if (toolResult && !isToolResultModerated(toolResult)) {
-        const originalResponse = toolResult.response;
-        const moderatedResponse = originalResponse
-          ? await checkToolResultModeration({
-              response: originalResponse,
-              context: { teamId: runtime.teamId }
-            })
-          : originalResponse;
-        const hitModeration =
-          moderatedResponse !== originalResponse ||
-          isModerationBlockErrorMessage(toolResult.errorMessage);
-        if (hitModeration) {
-          toolResult.response = MODERATION_BLOCKED_REPLACE_TEXT;
-          toolResult.errorMessage = undefined;
-          toolResult.assistantMessages = [];
-          toolResult.assistantResponses = undefined;
-          toolResult.skipResponseCompress = true;
-          toolResult.metadata = sanitizeModeratedToolNodeResponse(toolResult.metadata);
-        }
-        markToolResultModerated(toolResult);
-      }
+      await moderateFastAgentToolResult(toolResult);
 
       return toolResult;
     },
@@ -481,27 +490,7 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
             'Interactive tool is not supported in fastAgent loop yet.'
           );
 
-      if (result && !isToolResultModerated(result)) {
-        const originalResponse = result.response;
-        const moderatedResponse = originalResponse
-          ? await checkToolResultModeration({
-              response: originalResponse,
-              context: { teamId: runtime.teamId }
-            })
-          : originalResponse;
-        const hitModeration =
-          moderatedResponse !== originalResponse ||
-          isModerationBlockErrorMessage(result.errorMessage);
-        if (hitModeration) {
-          result.response = MODERATION_BLOCKED_REPLACE_TEXT;
-          result.errorMessage = undefined;
-          result.assistantMessages = [];
-          result.assistantResponses = undefined;
-          result.skipResponseCompress = true;
-          result.metadata = sanitizeModeratedToolNodeResponse(result.metadata);
-        }
-        markToolResultModerated(result);
-      }
+      await moderateFastAgentToolResult(result);
 
       return result;
     }

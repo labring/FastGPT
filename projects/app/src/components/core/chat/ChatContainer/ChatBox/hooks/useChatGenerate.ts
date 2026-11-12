@@ -23,7 +23,7 @@ import {
 } from '@fastgpt/global/core/chat/utils/mergeNode';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { AuxiliaryGenerationEventEnum } from '@fastgpt/global/core/ai/auxiliaryGeneration/constants';
-import { isModerationBlockErrorMessage } from '@fastgpt/global/core/plugin/moderation/constants';
+import { isChatEntryModerationError } from '@fastgpt/global/core/chat/error';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
@@ -957,11 +957,10 @@ export const useChatGenerate = ({
               return;
             }
 
-            const rawErrorText = getErrText(err, '');
             const errorMsg = t(getErrText(err, t('common:core.chat.error.Chat error') as any));
 
-            if (!err?.responseText && isModerationBlockErrorMessage(rawErrorText)) {
-              // 入口审核拦截时本轮并未真正发送或落库：弹出提示、回滚占位消息并恢复草稿输入。
+            if (isChatEntryModerationError(err)) {
+              // 仅在服务端明确标识入口审核拦截且尚未创建轮次时，弹出提示、回滚占位消息并恢复草稿输入。
               toast({
                 title: errorMsg,
                 status: 'warning'

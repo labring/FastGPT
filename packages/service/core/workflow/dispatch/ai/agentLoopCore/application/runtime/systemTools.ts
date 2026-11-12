@@ -48,79 +48,66 @@ export const createAgentLoopCoreSystemTools = (
     datasetSearch
   }: CreateAgentLoopCoreSystemToolsParams,
   context?: CheckContentByPolicyParams['context']
-): AgentLoopSystemTools => ({
-  plan: {
-    enabled: planEnabled
-  },
-  ask: {
-    enabled: askEnabled
-  },
-  ...(sandboxClient
-    ? {
-        sandbox: {
-          enabled: true,
-          client: sandboxClient
-        }
+): AgentLoopSystemTools => {
+  // 统一内置 read_files 与 dataset_search 工具的结果审核及详情脱敏，避免同模块两处入口规则分叉
+  const moderateSystemToolResult = async <
+    TResult extends { response: string; error?: unknown; metadata?: unknown }
+  >(
+    res: TResult
+  ): Promise<TResult> => {
+    if (!isToolResultModerated(res)) {
+      const originalResponse = res.response;
+      const moderatedResponse = originalResponse
+        ? await checkToolResultModeration({
+            response: originalResponse,
+            context
+          })
+        : originalResponse;
+      const hitModeration =
+        moderatedResponse !== originalResponse ||
+        (res.error !== undefined && isModerationBlockErrorMessage(getErrText(res.error)));
+      if (hitModeration) {
+        res.response = MODERATION_BLOCKED_REPLACE_TEXT;
+        res.error = undefined;
+        res.metadata = sanitizeModeratedToolNodeResponse(res.metadata);
       }
-    : {}),
-  ...(readFile?.enabled
-    ? {
-        readFile: {
-          enabled: true,
-          maxFileAmount: readFile.maxFileAmount,
-          execute: async (params) => {
-            const res = await readFile.execute(params);
-            if (!isToolResultModerated(res)) {
-              const originalResponse = res.response;
-              const moderatedResponse = originalResponse
-                ? await checkToolResultModeration({
-                    response: originalResponse,
-                    context
-                  })
-                : originalResponse;
-              const hitModeration =
-                moderatedResponse !== originalResponse ||
-                (res.error !== undefined && isModerationBlockErrorMessage(getErrText(res.error)));
-              if (hitModeration) {
-                res.response = MODERATION_BLOCKED_REPLACE_TEXT;
-                res.error = undefined;
-                res.metadata = sanitizeModeratedToolNodeResponse(res.metadata);
-              }
-              markToolResultModerated(res);
-            }
-            return res;
+      markToolResultModerated(res);
+    }
+    return res;
+  };
+
+  return {
+    plan: {
+      enabled: planEnabled
+    },
+    ask: {
+      enabled: askEnabled
+    },
+    ...(sandboxClient
+      ? {
+          sandbox: {
+            enabled: true,
+            client: sandboxClient
           }
         }
-      }
-    : {}),
-  ...(datasetSearch?.enabled
-    ? {
-        datasetSearch: {
-          enabled: true,
-          currentInputFiles: datasetSearch.currentInputFiles,
-          execute: async (params) => {
-            const res = await datasetSearch.execute(params);
-            if (!isToolResultModerated(res)) {
-              const originalResponse = res.response;
-              const moderatedResponse = originalResponse
-                ? await checkToolResultModeration({
-                    response: originalResponse,
-                    context
-                  })
-                : originalResponse;
-              const hitModeration =
-                moderatedResponse !== originalResponse ||
-                (res.error !== undefined && isModerationBlockErrorMessage(getErrText(res.error)));
-              if (hitModeration) {
-                res.response = MODERATION_BLOCKED_REPLACE_TEXT;
-                res.error = undefined;
-                res.metadata = sanitizeModeratedToolNodeResponse(res.metadata);
-              }
-              markToolResultModerated(res);
-            }
-            return res;
+      : {}),
+    ...(readFile?.enabled
+      ? {
+          readFile: {
+            enabled: true,
+            maxFileAmount: readFile.maxFileAmount,
+            execute: async (params) => moderateSystemToolResult(await readFile.execute(params))
           }
         }
-      }
-    : {})
-});
+      : {}),
+    ...(datasetSearch?.enabled
+      ? {
+          datasetSearch: {
+            enabled: true,
+            currentInputFiles: datasetSearch.currentInputFiles,
+            execute: async (params) => moderateSystemToolResult(await datasetSearch.execute(params))
+          }
+        }
+      : {})
+  };
+};

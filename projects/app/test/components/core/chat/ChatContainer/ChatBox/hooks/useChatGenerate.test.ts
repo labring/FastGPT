@@ -30,6 +30,7 @@ import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/cons
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import type { UserChatSelectType } from '@fastgpt/global/core/chat/input/type';
 import { AuxiliaryGenerationEventEnum } from '@fastgpt/global/core/ai/auxiliaryGeneration/constants';
+import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 import {
   MODERATION_BLOCKED_ERROR_MESSAGE,
   MODERATION_ERROR_BLOCKED_MESSAGE
@@ -1124,7 +1125,10 @@ describe('useChatGenerate.sendPrompt', () => {
     async (moderationMessage) => {
       mocks.start.mockRejectedValueOnce(
         createStreamFetchError({
-          error: { message: moderationMessage },
+          error: {
+            statusText: ChatErrEnum.chatEntryModerationBlocked,
+            message: moderationMessage
+          },
           fallbackMessage: 'Error',
           responseText: ''
         })
@@ -1151,4 +1155,28 @@ describe('useChatGenerate.sendPrompt', () => {
       );
     }
   );
+
+  it('preserves persisted chat round and sets errorMsg when post-persistence moderation fails with empty responseText', async () => {
+    mocks.start.mockRejectedValueOnce(
+      createStreamFetchError({
+        error: {
+          statusText: 'error',
+          message: MODERATION_BLOCKED_ERROR_MESSAGE
+        },
+        fallbackMessage: 'Error',
+        responseText: ''
+      })
+    );
+
+    await render();
+    await edit('build a workflow', [file]);
+    await send({ text: 'build a workflow' });
+
+    expect(mocks.start).toHaveBeenCalledOnce();
+    expect(records).toHaveLength(2);
+    expect(records[1]).toMatchObject({
+      status: 'finish',
+      errorMsg: MODERATION_BLOCKED_ERROR_MESSAGE
+    });
+  });
 });
