@@ -127,10 +127,15 @@ const CoreSettingComponent = () => {
 
   const { runAsync: onSave, loading: isSaving } = useAdminConfigSaveRequest(
     async (formData: CoreConfigForm) => {
-      // 存量库残留 sync 但管理员本次并未改动团队模式时，不重提 sync，避免缺少外部用户系统时误阻断 SMTP/存储等无关项保存。
-      const persistedTeamMode = auth.effectiveConfig?.teamMode;
+      // 存量库残留 sync 但管理员本次并未改动团队模式时，同时从保留的 auth.overrides 与本次补丁中排除 teamMode，
+      // 交由服务端保留库中原值，避免未配置外部用户系统时触发 update API 的 sync 前置校验 400。
+      const persistedTeamMode = auth.effectiveConfig?.teamMode ?? auth.overrides?.teamMode;
       const shouldSubmitTeamMode =
         showTeamMode && !(formData.teamMode === 'sync' && persistedTeamMode === 'sync');
+      const { teamMode: _preservedTeamMode, ...preservedAuthOverrides } = filterConfigDataByEdition(
+        'auth',
+        auth.overrides
+      ) as Record<string, unknown>;
 
       // 跨域原子提交：auth、feature、storage、site 四个域合并为单个事务请求，避免多域分步提交留下半写
       await updateDomainConfigApi({
@@ -139,7 +144,7 @@ const CoreSettingComponent = () => {
             domain: 'auth',
             expectedRevision: auth.revision,
             overrides: deepMergeConfig(
-              filterConfigDataByEdition('auth', auth.overrides) as Record<string, unknown>,
+              preservedAuthOverrides,
               filterConfigData('auth', {
                 ...(shouldSubmitTeamMode ? { teamMode: formData.teamMode } : {}),
                 loginProviders: {

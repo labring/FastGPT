@@ -32,7 +32,7 @@ vi.mock('@/web/common/system/useDomainConfig', () => ({
     overrides: domain === 'auth' ? mocks.authOverrides : {},
     effectiveConfig: filterDomainDataByEdition({
       domain,
-      data: resolveSystemInstanceConfig({})[domain],
+      data: resolveSystemInstanceConfig({ auth: mocks.authOverrides as any })[domain],
       edition: mocks.isPro ? 'pro' : 'community'
     }),
     refetch: vi.fn(),
@@ -282,5 +282,75 @@ describe('configuration form edition boundary', () => {
     });
     const auth = mocks.update.mock.calls[0][0].items[0];
     expect(auth.overrides).not.toHaveProperty('loginProviders.email');
+  });
+
+  it('excludes preserved sync teamMode on core settings save unless teamMode is changed', async () => {
+    mocks.isPro = true;
+    mocks.authOverrides = {
+      teamMode: 'sync',
+      loginProviders: { wecom: { providerSecret: 'keep-secret' } }
+    };
+    renderToStaticMarkup(React.createElement(CoreSettings));
+    const config = resolveSystemInstanceConfig({});
+
+    // 1. 存量已是 sync 且本次未改动 teamMode：请求中完全排除 teamMode，避免触发服务端 sync 前置校验 400
+    await mocks.save!({
+      teamMode: 'sync',
+      agentEngine: 'fastAgent',
+      multipleDataToBase64: false,
+      downloadMode: 'short-proxy',
+      externalEndpoint: '',
+      cdnEndpoint: '',
+      redirectTtlSeconds: 300,
+      openApiPrefix: 'fastgpt',
+      email: { ...config.auth.loginProviders.email, smtp: 'smtp.example.com' },
+      phone: config.auth.loginProviders.phone
+    });
+    const unchangedAuth = mocks.update.mock.calls[0][0].items.find(
+      (item: { domain: string }) => item.domain === 'auth'
+    );
+    expect(unchangedAuth.overrides).not.toHaveProperty('teamMode');
+    expect(unchangedAuth.overrides.loginProviders).toMatchObject({
+      email: { smtp: 'smtp.example.com' },
+      wecom: { providerSecret: 'keep-secret' }
+    });
+
+    // 2. 管理员主动把 sync 切换为 multi：正常提交 teamMode='multi'
+    await mocks.save!({
+      teamMode: 'multi',
+      agentEngine: 'fastAgent',
+      multipleDataToBase64: false,
+      downloadMode: 'short-proxy',
+      externalEndpoint: '',
+      cdnEndpoint: '',
+      redirectTtlSeconds: 300,
+      openApiPrefix: 'fastgpt',
+      email: config.auth.loginProviders.email,
+      phone: config.auth.loginProviders.phone
+    });
+    const switchedAuth = mocks.update.mock.calls[1][0].items.find(
+      (item: { domain: string }) => item.domain === 'auth'
+    );
+    expect(switchedAuth.overrides.teamMode).toBe('multi');
+
+    // 3. 存量为 single 但请求改为 sync：保留提交 teamMode='sync' 交由服务端校验拒绝
+    mocks.authOverrides = { teamMode: 'single' };
+    renderToStaticMarkup(React.createElement(CoreSettings));
+    await mocks.save!({
+      teamMode: 'sync',
+      agentEngine: 'fastAgent',
+      multipleDataToBase64: false,
+      downloadMode: 'short-proxy',
+      externalEndpoint: '',
+      cdnEndpoint: '',
+      redirectTtlSeconds: 300,
+      openApiPrefix: 'fastgpt',
+      email: config.auth.loginProviders.email,
+      phone: config.auth.loginProviders.phone
+    });
+    const requestedSyncAuth = mocks.update.mock.calls[2][0].items.find(
+      (item: { domain: string }) => item.domain === 'auth'
+    );
+    expect(requestedSyncAuth.overrides.teamMode).toBe('sync');
   });
 });
