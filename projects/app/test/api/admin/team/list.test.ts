@@ -78,15 +78,16 @@ describe('GET /api/admin/team/list', () => {
       'Alpha [Prod] Team'
     ]);
 
-    // 分页滚动：pageSize=1 连续按 offset=0,1,2 拉取全部 3 页，当前所在团队置顶且无遗漏、无重复
+    // 分页滚动：pageSize=1 连续按 offset=0,1,2 拉取全部 3 页，当前所在团队置顶且无遗漏、无重复；
+    // 同时传入有效 offset 与无效 pageNum 时应忽略 pageNum 而非返回 400
     const page1 = await Call(listTeamsApi.default, {
       method: 'GET',
-      query: { offset: '0', pageSize: '1' },
+      query: { offset: '0', pageSize: '1', pageNum: '0' } as any,
       auth: rootAuth
     });
     const page2 = await Call(listTeamsApi.default, {
       method: 'GET',
-      query: { offset: '1', pageSize: '1' },
+      query: { offset: '1', pageSize: '1', pageNum: 'invalid' } as any,
       auth: rootAuth
     });
     const page3 = await Call(listTeamsApi.default, {

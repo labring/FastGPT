@@ -1,11 +1,6 @@
 import z from 'zod';
 import { ObjectIdSchema } from '../../../common/type/mongo';
-import { IntSchema } from '../../../common/zod';
-import {
-  PaginationPageSizeSchema,
-  PaginationResponseSchema,
-  createPaginationSchema
-} from '../../api';
+import { PaginationResponseSchema, createPaginationSchema } from '../../api';
 
 /* ============================================================================
  * API: 获取团队列表
@@ -121,16 +116,7 @@ export const AdminTeamSelectorItemSchema = z.object({
 });
 export type AdminTeamSelectorItemType = z.infer<typeof AdminTeamSelectorItemSchema>;
 
-export const AdminTeamSelectorQuerySchema = z.object({
-  offset: IntSchema.optional().meta({
-    example: 0,
-    description: '分页偏移量，从 0 开始；传入时优先于 pageNum'
-  }),
-  pageNum: IntSchema.positive().optional().default(1).meta({
-    example: 1,
-    description: '页码，从 1 开始；传入 offset 时忽略'
-  }),
-  pageSize: PaginationPageSizeSchema.optional(),
+export const AdminTeamSelectorQuerySchema = createPaginationSchema({
   search: z.string().trim().max(100).optional().meta({
     example: 'My Team',
     description: '按团队名称模糊搜索关键词'

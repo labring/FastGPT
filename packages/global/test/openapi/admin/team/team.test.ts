@@ -77,7 +77,28 @@ describe('Admin team schemas', () => {
     expect(parsedQuery).toEqual({
       search: 'Alpha',
       offset: 20,
-      pageNum: 1,
+      pageSize: 30
+    });
+
+    // offset 优先分支忽略并移除无效 pageNum（如 0 或非数值字符串）
+    expect(
+      AdminTeamSelectorQuerySchema.parse({
+        offset: '0',
+        pageSize: '30',
+        pageNum: '0'
+      })
+    ).toEqual({
+      offset: 0,
+      pageSize: 30
+    });
+    expect(
+      AdminTeamSelectorQuerySchema.parse({
+        offset: '0',
+        pageSize: '30',
+        pageNum: 'legacy-invalid'
+      })
+    ).toEqual({
+      offset: 0,
       pageSize: 30
     });
 

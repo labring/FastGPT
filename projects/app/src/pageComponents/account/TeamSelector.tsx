@@ -148,9 +148,7 @@ const TeamSelector = ({
     }
     return (
       <>
-        {showAvatar && currentTeamAvatar && (
-          <Avatar mr={2} src={currentTeamAvatar as any} w={'1.25rem'} />
-        )}
+        {showAvatar && currentTeamAvatar && <Avatar mr={2} src={currentTeamAvatar} w={'1.25rem'} />}
         <Box noOfLines={1}>{currentTeamName}</Box>
       </>
     );
