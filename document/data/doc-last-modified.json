@@ -313,6 +313,8 @@
   "content/self-host/docker_minio_to_rustfs.mdx": "2026-11-03T10:58:34+08:00",
   "content/self-host/index.en.mdx": "2026-11-12T14:01:38+08:00",
   "content/self-host/index.mdx": "2026-11-12T14:01:38+08:00",
+  "content/self-host/migration/content-moderation.en.mdx": "2026-11-12T15:40:09+08:00",
+  "content/self-host/migration/content-moderation.mdx": "2026-11-12T15:40:09+08:00",
   "content/self-host/migration/docker_db.en.mdx": "2026-11-12T14:01:38+08:00",
   "content/self-host/migration/docker_db.mdx": "2026-11-12T14:01:38+08:00",
   "content/self-host/migration/docker_mongo.en.mdx": "2026-11-12T14:01:38+08:00",
@@ -465,8 +467,8 @@
   "content/self-host/upgrading/4-17/4174.mdx": "2026-11-12T14:01:38+08:00",
   "content/self-host/upgrading/4-17/4175.en.mdx": "2026-11-12T14:01:38+08:00",
   "content/self-host/upgrading/4-17/4175.mdx": "2026-11-12T14:01:38+08:00",
-  "content/self-host/upgrading/4-18/4180.en.mdx": "2026-11-12T14:01:38+08:00",
-  "content/self-host/upgrading/4-18/4180.mdx": "2026-11-12T14:01:38+08:00",
+  "content/self-host/upgrading/4-18/4180.en.mdx": "2026-11-12T15:40:09+08:00",
+  "content/self-host/upgrading/4-18/4180.mdx": "2026-11-12T17:00:53+08:00",
   "content/self-host/upgrading/mongodb-8.en.mdx": "2026-11-10T14:51:07+08:00",
   "content/self-host/upgrading/mongodb-8.mdx": "2026-11-10T14:51:07+08:00",
   "content/self-host/upgrading/outdated/40.en.mdx": "2026-11-12T14:01:38+08:00",
@@ -611,6 +613,6 @@
   "content/self-host/upgrading/upgrade-instruction.mdx": "2026-11-12T14:01:38+08:00",
   "content/self-host/upgrading/version-timeline.en.mdx": "2026-11-12T14:01:38+08:00",
   "content/self-host/upgrading/version-timeline.mdx": "2026-11-03T10:58:34+08:00",
-  "content/toc.en.mdx": "2026-11-12T14:01:38+08:00",
-  "content/toc.mdx": "2026-11-12T14:01:38+08:00"
+  "content/toc.en.mdx": "2026-11-12T15:40:09+08:00",
+  "content/toc.mdx": "2026-11-12T15:40:09+08:00"
 }
