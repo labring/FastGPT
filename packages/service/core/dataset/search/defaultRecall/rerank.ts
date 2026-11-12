@@ -108,9 +108,10 @@ export const reRankSearchResults = async ({
       };
     }
 
+    // 只融合送入重排的候选：超出部分没有重排分，会被按重排分过滤的阈值直接放行。
     return {
       results: concatWeightedRecallLists([
-        { weight: 1 - rerankWeight, list: textRecallResults },
+        { weight: 1 - rerankWeight, list: candidates },
         { weight: rerankWeight, list: reRankResults }
       ]),
       inputTokens,

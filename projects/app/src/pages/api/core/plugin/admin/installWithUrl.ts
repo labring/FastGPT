@@ -1,3 +1,4 @@
+import { restoreLocalPluginConfigs } from '@fastgpt/service/core/plugin/restoreLocalConfigs';
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { pluginClient } from '@fastgpt/service/thirdProvider/fastgptPlugin';
@@ -28,7 +29,13 @@ async function handler(
     return Promise.reject('Download URL is required');
   }
 
-  return await pluginClient.installPlugins(downloadUrls);
+  const result = await pluginClient.installPlugins(downloadUrls);
+  // The new server returns exact successful package identities, including partial successes.
+  const installed =
+    (result as PluginInstallResultType & { installed?: Array<{ pluginId: string }> }).installed ??
+    [];
+  await restoreLocalPluginConfigs({ pluginIds: installed.map((item) => item.pluginId) });
+  return result;
 }
 
 export default NextAPI(handler);

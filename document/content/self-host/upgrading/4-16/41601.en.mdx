@@ -1,6 +1,6 @@
 ---
 title: 'V4.16.0-beta1'
-description: 'FastGPT V4.16.0-beta1 release notes'
+description: "FastGPT V4.16.0-beta1 release notes covering container image updates, upgrade steps, and feature changes."
 releaseTime: '2026-08-07'
 upgradeTags:
   - CONFIG
@@ -20,7 +20,7 @@ PORT=1006
 PREVIEW_PORT=1007
 ```
 
-The access URL must start with `http://` or `https://`. With a single-port deployment, it can use the same host and port as `AGENT_SANDBOX_PROXY_URL`, while the protocols remain HTTP(S) and WebSocket(S), respectively. We strongly recommend using a different origin from the main FastGPT site. A same-origin deployment places user-generated scripts inside the main site's security boundary, where they may access site credentials or APIs. FastGPT does not currently enforce origin isolation.
+After configuring the ports, prepare a browser-accessible preview URL for the HTTP preview port (`PORT` when `PREVIEW_PORT` is not set). Step 2 sets this URL as `AGENT_SANDBOX_PREVIEW_PROXY_URL`. The preview URL must start with `http://` or `https://`. With a single-port deployment, it can use the same host and port as `AGENT_SANDBOX_PROXY_URL`, while the protocols remain HTTP(S) and WebSocket(S), respectively. We strongly recommend using a different origin from the main FastGPT site. A same-origin deployment places user-generated scripts inside the main site's security boundary, where they may access site credentials or APIs. FastGPT does not currently enforce origin isolation.
 
 Visit `https://{{host}}/health` to verify that the service is accessible.
 
@@ -31,10 +31,10 @@ Update the variables in both `fastgpt-app` and `fastgpt-pro`.
 1. Add the following environment variables
 
 ```dotenv
-# HTTP(S) URL used by browsers to preview Sandbox files. Use the URL configured in step 1.
+# HTTP(S) URL used by browsers to preview Sandbox files. Use the preview URL prepared in step 1.
 AGENT_SANDBOX_PREVIEW_PROXY_URL=https://sandbox-proxy.example.com
-# Required for OpenSandbox. Sets the full storage name prefix (previously configured on the volume image).
-VM_VOLUME_NAME_PREFIX=fastgpt-session
+# Required for OpenSandbox. Sets the storage volume name prefix (previously configured as VM_VOLUME_NAME_PREFIX on the fastgpt-volume-manager service).
+AGENT_SANDBOX_OPENSANDBOX_VOLUME_NAME_PREFIX=fastgpt-session
 ```
 
 2. Deprecated Sandbox environment variables
@@ -60,7 +60,7 @@ The E2B Sandbox Provider has been removed. Environments previously configured fo
 - Update the fastgpt-app (FastGPT main service) image tag to `v4.16.0-beta1`
 - Update the fastgpt-pro (FastGPT commercial edition) image tag to `v4.16.0-beta1`
 - Update the fastgpt-plugin image tag to `v1.1.0-beta1`
-- Update the agent-sandbox-volumn image tag to `v0.3.0-beta4` (for OpenSandbox only)
+- Update the fastgpt-agent-volume-manager image (compose service `fastgpt-volume-manager`) tag to `v0.3.0-beta4` (for OpenSandbox only)
 - Update the agent-sandbox-proxy image tag to `v0.3.0-beta4` (for Sandbox only)
 
 ### 4. Migrate Agent Sandbox data

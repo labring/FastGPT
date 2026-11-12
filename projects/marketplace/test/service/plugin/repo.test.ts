@@ -14,9 +14,7 @@ const s3Mocks = vi.hoisted(() => ({
   getPkgDownloadURLByKey: vi.fn((key: string) => `https://cdn.example.com/${key}`),
   getPkgFilename: vi.fn(({ pluginId, version, etag }) => `${pluginId}@${version}@${etag}.pkg`),
   getPkgObjectKey: vi.fn(({ source, pluginId, version, filename }) =>
-    source && filename
-      ? `pkgs/${source}/${filename}`
-      : `pkgs/${pluginId}/${version}.pkg`
+    source && filename ? `pkgs/${source}/${filename}` : `pkgs/${pluginId}/${version}.pkg`
   ),
   getPluginAssetObjectKey: vi.fn(({ source, pluginId, version, etag, filePath }) =>
     [source ?? 'assets', pluginId, version, etag, ...filePath].join('/')
@@ -25,11 +23,10 @@ const s3Mocks = vi.hoisted(() => ({
     [source ?? 'assets', pluginId, version, etag].join('/')
   ),
   getPublicURLByKey: vi.fn((key: string) => `https://cdn.example.com/${key}`),
-  getToolManifestObjectKey: vi.fn(
-    ({ source, pluginId, version }) =>
-      source
-        ? `marketplace/tools/${source}/${pluginId}/${version}.json`
-        : `marketplace/tools/${pluginId}/${version}.json`
+  getToolManifestObjectKey: vi.fn(({ source, pluginId, version }) =>
+    source
+      ? `marketplace/tools/${source}/${pluginId}/${version}.json`
+      : `marketplace/tools/${pluginId}/${version}.json`
   ),
   uploadJsonToS3: vi.fn()
 }));
@@ -78,19 +75,21 @@ vi.mock('../../../src/service/logger', () => ({
 }));
 
 const createIndex = ({
+  type = 'tool',
   pluginId = 'tool-a',
   version = '1.0.0',
   etag = `etag-${version}`,
   source,
   filename
 }: {
+  type?: 'tool' | 'moderation';
   pluginId?: string;
   version?: string;
   etag?: string;
   source?: string;
   filename?: string;
 } = {}) => ({
-  type: 'tool' as const,
+  type,
   pluginId,
   version,
   etag,
@@ -251,7 +250,6 @@ describe('PluginRepo', () => {
     await new PluginRepo().publishToolManifest(record);
 
     const indexFilter = {
-      type: 'tool',
       pluginId: 'tool-a',
       version: '1.0.0'
     };
@@ -326,7 +324,44 @@ describe('PluginRepo', () => {
     );
 
     expect(modelMocks.findOne).toHaveBeenNthCalledWith(2, {
-      type: 'tool',
+      pluginId: 'tool-a',
+      source: { $ne: 'community' }
+    });
+    expect(s3Mocks.uploadJsonToS3).not.toHaveBeenCalled();
+    expect(modelMocks.updateOne).not.toHaveBeenCalled();
+  });
+
+  it('rejects non-official moderation manifests when the pluginId already exists under another source', async () => {
+    const record = createManifest(
+      createIndex({
+        type: 'moderation',
+        pluginId: 'tool-a',
+        version: '2.0.0',
+        etag: 'new-etag',
+        source: 'community'
+      })
+    );
+
+    modelMocks.findOne
+      .mockReturnValueOnce(mockLean(null))
+      .mockReturnValueOnce(
+        mockLean(
+          createIndex({
+            type: 'moderation',
+            pluginId: 'tool-a',
+            version: '1.0.0',
+            source: 'official'
+          })
+        )
+      );
+
+    const { PluginRepo } = await import('../../../src/service/plugin/repo');
+
+    await expect(new PluginRepo().publishToolManifest(record)).rejects.toThrow(
+      'Marketplace toolId already exists: tool-a'
+    );
+
+    expect(modelMocks.findOne).toHaveBeenNthCalledWith(2, {
       pluginId: 'tool-a',
       source: { $ne: 'community' }
     });
@@ -419,11 +454,7 @@ describe('PluginRepo', () => {
       source: 'official'
     });
 
-    expect(s3Mocks.deleteObjectFromS3).toHaveBeenCalledWith(
-      'marketplace/tools/tool-a/1.0.0.json'
-    );
-    expect(s3Mocks.deleteObjectsByPrefixFromS3).toHaveBeenCalledWith(
-      'assets/tool-a/1.0.0/etag-1/'
-    );
+    expect(s3Mocks.deleteObjectFromS3).toHaveBeenCalledWith('marketplace/tools/tool-a/1.0.0.json');
+    expect(s3Mocks.deleteObjectsByPrefixFromS3).toHaveBeenCalledWith('assets/tool-a/1.0.0/etag-1/');
   });
 });

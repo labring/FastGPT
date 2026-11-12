@@ -39,21 +39,14 @@ curl --fail http://127.0.0.1:18080/health
 
 ## 3. Connect FastGPT
 
-Add or update `customPdfParse` under `systemEnv` in your existing `config.json`. Replace `GPU_SERVER_IP` with a GPU server address reachable from the FastGPT server:
+Add or update these environment variables on `fastgpt-app` (starting with 4.15.0, the open-source edition no longer reads `config.json`). Replace `GPU_SERVER_IP` with a GPU server address reachable from the FastGPT server:
 
-```json
-{
-  "systemEnv": {
-    "customPdfParse": {
-      "url": "http://GPU_SERVER_IP:18080/v2/parse/file",
-      "key": "",
-      "price": 0
-    }
-  }
-}
+```dotenv
+CUSTOM_PDF_PARSE_URL=http://GPU_SERVER_IP:18080/v2/parse/file
+CUSTOM_PDF_PARSE_KEY=
 ```
 
-No API key is required by default, so leave `key` empty. Restart FastGPT after changing the configuration file.
+No API key is required by default, so leave `CUSTOM_PDF_PARSE_KEY` empty. Restart FastGPT after changing the environment variables.
 
 In the commercial edition, go to **Admin → System configuration → Basic configuration → PDF parsing settings**. Enter the service URL in the **Custom PDF parsing URL (first priority)** field, leave the custom PDF parsing key empty by default, and click **Save**.
 
@@ -129,7 +122,7 @@ Recreate the container after changing environment variables or GPU options. `doc
 
 ### Enable an API key
 
-To enable authentication, add `-e FASTGPT_API_KEY=your-api-key` before the image address. Set `customPdfParse.key` in FastGPT to the same key. Direct API calls must include the `Authorization: Bearer your-api-key` header.
+To enable authentication, add `-e FASTGPT_API_KEY=your-api-key` before the image address. Set `CUSTOM_PDF_PARSE_KEY` in FastGPT to the same key. Direct API calls must include the `Authorization: Bearer your-api-key` header.
 
 ## 5. Offline deployment (optional)
 

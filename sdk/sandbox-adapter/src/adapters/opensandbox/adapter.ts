@@ -8,7 +8,12 @@ import {
   type ServerStreamEvent,
   type WriteEntry
 } from '@alibaba-group/opensandbox';
-import { CommandExecutionError, FeatureNotSupportedError, SandboxStateError } from '../../errors';
+import {
+  CommandExecutionError,
+  FeatureNotSupportedError,
+  FileOperationError,
+  SandboxStateError
+} from '../../errors';
 import type {
   BackgroundExecution,
   ContentReplaceEntry,
@@ -238,10 +243,37 @@ export class OpenSandboxAdapter extends BaseSandboxAdapter {
     );
   }
 
+  /**
+   * 按原文替换文件内容，同一文件的多处修改按传入顺序依次生效。
+   *
+   * OpenSandbox 的 /files/replace 请求体以路径为键，同一请求里同一路径只保留最后一项，
+   * 因此按“每个文件的第 n 处修改”分批：不同文件仍合并在同一请求，同一文件的后续修改进入下一批。
+   * 服务端明确返回零匹配时抛出错误并停止后续批次；当前批次的其他修改可能已生效。
+   * 不支持 verbose 的旧服务返回空结果，保留原有兼容行为，不将未知结果视为零匹配。
+   */
   async replaceContent(entries: ContentReplaceEntry[]): Promise<void> {
-    await this.lifecycle.sandbox.files.replaceContents(
-      entries.map((entry) => ({ ...entry, path: this.normalizePath(entry.path) }))
-    );
+    const batches: ContentReplaceEntry[][] = [];
+    const editCountByPath = new Map<string, number>();
+    for (const entry of entries) {
+      const path = this.normalizePath(entry.path);
+      const batchIndex = editCountByPath.get(path) ?? 0;
+      editCountByPath.set(path, batchIndex + 1);
+      (batches[batchIndex] ??= []).push({ ...entry, path });
+    }
+
+    for (const batch of batches) {
+      const results = await this.lifecycle.sandbox.files.replaceContentsDetailed(batch);
+      const unmatchedPaths = results
+        .filter(({ replacedCount }) => replacedCount === 0)
+        .map(({ path }) => path);
+      if (unmatchedPaths.length > 0) {
+        throw new FileOperationError(
+          `Content to replace was not found in: ${unmatchedPaths.join(', ')}. Other edits in this batch may have been applied; read the files before retrying.`,
+          unmatchedPaths[0],
+          'TRANSFER_ERROR'
+        );
+      }
+    }
   }
 
   async createDirectories(

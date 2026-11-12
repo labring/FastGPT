@@ -46,8 +46,8 @@ catalogs:
       specifier: ^11
       version: 11.11.0
     '@fastgpt-plugin/sdk-client':
-      specifier: 1.2.0-alpha.3
-      version: 1.2.0-alpha.3
+      specifier: 1.2.0-beta.2
+      version: 1.2.0-beta.2
     '@fastgpt-sdk/anydoc':
       specifier: 0.2.5
       version: 0.2.5
@@ -196,8 +196,8 @@ catalogs:
       specifier: ^10.1.4
       version: 10.1.4
     mongoose:
-      specifier: ^8.22.1
-      version: 8.23.1
+      specifier: ^8.24.7
+      version: 8.24.8
     nanoid:
       specifier: ^5.1.3
       version: 5.1.5
@@ -564,7 +564,7 @@ importers:
         version: 1.2.8
       '@fastgpt-plugin/sdk-client':
         specifier: 'catalog:'
-        version: 1.2.0-alpha.3(zod@4.1.12)
+        version: 1.2.0-beta.2(zod@4.1.12)
       '@fastgpt-sdk/sandbox-adapter':
         specifier: workspace:*
         version: link:../../sdk/sandbox-adapter
@@ -775,7 +775,7 @@ importers:
         version: 8.0.7
       mongoose:
         specifier: 'catalog:'
-        version: 8.23.1(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.8.10)
+        version: 8.24.8(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.8.10)
       multer:
         specifier: 2.5.0
         version: 2.5.0
@@ -1204,7 +1204,7 @@ importers:
         version: 4.18.1
       mongoose:
         specifier: 'catalog:'
-        version: 8.23.1(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.8.10)
+        version: 8.24.8(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.8.10)
       nanoid:
         specifier: 'catalog:'
         version: 5.1.5
@@ -1622,7 +1622,7 @@ importers:
         version: 8.0.7
       mongoose:
         specifier: 'catalog:'
-        version: 8.23.1(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.8.10)
+        version: 8.24.8(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.8.10)
       nanoid:
         specifier: 'catalog:'
         version: 5.1.5
@@ -1918,7 +1918,7 @@ importers:
         version: 23.16.8
       mongoose:
         specifier: 'catalog:'
-        version: 8.23.1(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.8.10)
+        version: 8.24.8(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.8.10)
       next:
         specifier: 'catalog:'
         version: 16.3.6(@babel/core@7.26.10)(@opentelemetry/api@1.9.0)(@playwright/test@1.64.1)(@types/node@24.13.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1)
@@ -3862,8 +3862,8 @@ packages:
     resolution: {integrity: sha512-43/qtrDUokr7LJqoF2c3+RInu/t4zfrpYdoSDfYyhg52rwLV6TnOvdG4fXm7IkSB3wErkcmJS9iEhjVtOSEjjA==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
 
-  '@fastgpt-plugin/sdk-client@1.2.0-alpha.3':
-    resolution: {integrity: sha512-0q4SRXtKoziiJekVrI5aVcDPy/XmQK+uLFr2tv9TmF1QfL1ih1lCS6BSM/borJ/nNRRs5T2+/ajSabGNqHGuFA==}
+  '@fastgpt-plugin/sdk-client@1.2.0-beta.2':
+    resolution: {integrity: sha512-nMC3zYCWH39AjMdSstsXvNOIGVFbwgSioQ+NXCxCIKFtGWd2eoM0y80nAGWmfjZnxBZcSVAPWOsNFPqOf7JyvA==}
     peerDependencies:
       zod: ^4
 
@@ -11746,16 +11746,16 @@ packages:
       socks:
         optional: true
 
-  mongoose@8.23.1:
-    resolution: {integrity: sha512-gHSPD8qEwRmiXapK17hEnFWZdcFENMegHTcw5XIIg2+7R8eXQvdwSiMpD/A2oG8tKzFLLHyRXd8/eaDPAVwZgQ==}
+  mongoose@8.24.8:
+    resolution: {integrity: sha512-p6g/mvvW2PJlC3lgzQJ7PECArfaOTKWJVG/KHf67WYU3MvJ72ZWdv5u7syFRe881IjALMZpKwffNE97G10HTzg==}
     engines: {node: '>=16.20.1'}
 
   mpath@0.9.0:
     resolution: {integrity: sha512-ikJRQTk8hw5DEoFVxHG1Gn9T/xcjtdnOKIU1JTmGjZZlg9LST2mBLmcX3/ICIbgJydT2GOc15RnNy5mHmzfSew==}
     engines: {node: '>=4.0.0'}
 
-  mquery@5.0.0:
-    resolution: {integrity: sha512-iQMncpmEK8R8ncT8HJGsGc9Dsp8xcgYMVSbs5jgnm1lFHTZqMJTUWTDx1LBO8+mK3tPNZWFLBghQEIOULSTHZg==}
+  mquery@5.0.1:
+    resolution: {integrity: sha512-C99lWV0TFI34pS008jBsi3JrE2xZPnTgUw5yApQR71nRP0hxLy8D5m1Lbbk83c8AQWJwdJ0329HzFtZ1MRTUIw==}
     engines: {node: '>=14.0.0'}
 
   mri@1.2.0:
@@ -17795,7 +17795,7 @@ snapshots:
       '@eslint/core': 0.17.0
       levn: 0.4.1
 
-  '@fastgpt-plugin/sdk-client@1.2.0-alpha.3(zod@4.1.12)':
+  '@fastgpt-plugin/sdk-client@1.2.0-beta.2(zod@4.1.12)':
     dependencies:
       zod: 4.1.12
 
@@ -27364,13 +27364,13 @@ snapshots:
       gcp-metadata: 5.3.0(encoding@0.1.13)
       socks: 2.8.10
 
-  mongoose@8.23.1(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.8.10):
+  mongoose@8.24.8(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.8.10):
     dependencies:
       bson: 6.10.4
       kareem: 2.6.3
       mongodb: 6.20.0(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.8.10)
       mpath: 0.9.0
-      mquery: 5.0.0
+      mquery: 5.0.1
       ms: 2.1.3
       sift: 17.1.3
     transitivePeerDependencies:
@@ -27385,7 +27385,7 @@ snapshots:
 
   mpath@0.9.0: {}
 
-  mquery@5.0.0:
+  mquery@5.0.1:
     dependencies:
       debug: 4.4.3
     transitivePeerDependencies:

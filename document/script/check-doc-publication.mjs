@@ -56,7 +56,7 @@ export async function checkDocumentPublication({ baseUrl }) {
     assert.equal((await search(target.title)).includes(targetRoute), !draft, `搜索与发布状态不符: ${targetRoute}`);
 
     const llms = await request(`/${locale}/llms.txt`, { status: 200, label: 'LLM 文档导出' });
-    assert.match(llms, /^file: /m);
+    assert.match(llms, /^# FastGPT/m);
     assert.ok(llms.includes('openapi/intro'), `LLM 导出缺少公开介绍页: ${locale}`);
     assert.equal(llms.includes('openapi/best-practices/app-integration'), !draft, `LLM 导出与发布状态不符: ${locale}`);
   }

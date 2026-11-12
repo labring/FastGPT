@@ -1,6 +1,6 @@
 ---
 title: Form Input
-description: FastGPT Form Input node overview
+description: "Configure the FastGPT Workflow Form Input interactive node to pause execution, collect structured user fields, and resume the workflow."
 ---
 
 ## Characteristics
@@ -9,20 +9,40 @@ description: FastGPT Form Input node overview
 - Can be added multiple times
 - Trigger-based execution
 
-![Form Input node configuration](/imgs/form_input1.png)
+![Characteristics — interface example](/imgs/optimized/current/node-form-input.png.webp)
 
 ## What It Does
 
 The Form Input node is a user interaction node. When triggered, the conversation enters an "interactive" state -- the workflow state is saved and execution pauses until the user completes the interaction.
 
-![Chat pauses while the form is displayed](/imgs/form_input2.png)
+![What It Does — interface example](/imgs/optimized/current/form-await-input.png.webp)
 
-In the example above, when the Form Input node is triggered, the chat box is hidden and the conversation enters interactive mode.
+The required test-name field is empty in the screenshot, so the form highlights it for validation.
 
-![Required fields and the form submission action](/imgs/form_input3.png)
+In the example above, when the Form input node is triggered, the chat box is hidden and the conversation enters interactive mode.
+
+![What It Does — interface example](/imgs/optimized/current/form-submit-result.png.webp)
 
 After the user fills in the required fields and clicks submit, the node collects the form data and passes it to subsequent nodes.
 
 ## Use Cases
 
 Precisely collect specific user information, then perform follow-up operations based on that data.
+
+## Configuration and outputs
+
+Enter the **Description Text**, then click **Add new input** to the right of **Form configuration** to add input fields. For each field, set its display name, unique variable key, type, and required status. Configure defaults, length, numeric range, or options where supported by the type. The name appears in the form and as the field output name in the variable selector; the key is the field name in the output data. Single-choice (select) and multiple-choice (multipleSelect) fields support supplying options dynamically through variable references in addition to manual configuration. As with the User Select node, if the resolved dynamic option list is empty, the node returns a clear error to avoid displaying an unfillable form field.
+
+After submission, **User complete input result** is an object mapping field keys to values. Each field also has its own output, shown by its name in the variable selector. Downstream nodes use the variable selector to reference individual fields or the complete object. File fields provide file-link lists for subsequent nodes, subject to the deployment's file-type and count limits.
+
+## Example: collect a contact name
+
+1. Connect the start node to Form input, then to Assigned Reply.
+2. Set **Description Text** to `Enter the contact name.` Add a text field named `Contact name`, with key `contactName`, and mark it required.
+3. In Assigned Reply, use the variable selector to reference the form node's `Contact name` output (key `contactName`).
+4. Start debugging. Confirm that the form appears and downstream execution waits. Enter `Alex` and submit.
+5. Expect the reply `Alex` and a **User complete input result** containing `{"contactName":"Alex"}` in Run Details.
+
+The access channel must support interaction. Parallel Run containers restrict interactive nodes; interaction within a Loop pauses execution until resumption. If the form fails to appear, inspect execution connections. For an empty downstream value, check the key, required settings, and output reference. API integrations must follow the deployed generated contract for interactive submissions and retain the same conversation.
+
+Next: [User Select](/en/guide/build/workflow/nodes/user-selection) or [publish and verify access](/en/guide/build/publish/versions).

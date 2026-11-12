@@ -4,6 +4,7 @@ export const HUGGING_FACE_ICON = `/imgs/model/huggingface.svg`;
 
 export const DEFAULT_TEAM_AVATAR = `/imgs/avatar/defaultTeamAvatar.svg`;
 export const DEFAULT_ORG_AVATAR = '/imgs/avatar/defaultOrgAvatar.svg';
+export const DEFAULT_FILTER_ORG_AVATAR = '/imgs/avatar/filterOrgAvatar.svg';
 export const DEFAULT_USER_AVATAR = '/imgs/avatar/BlueAvatar.svg';
 
 export const isDevEnv = process.env.NODE_ENV === 'development';

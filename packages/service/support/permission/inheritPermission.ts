@@ -16,6 +16,8 @@ export type SyncChildrenPermissionResourceType = {
   _id: string;
   type: string;
   teamId: string;
+  /** Collection 树的固定范围；其他资源树无需提供。 */
+  datasetId?: string;
   parentId?: ParentIdType;
   inheritPermission?: boolean;
 };

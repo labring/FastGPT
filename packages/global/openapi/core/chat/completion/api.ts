@@ -42,7 +42,7 @@ const ChatTestNodeInputSchema = OpenAPIFlowNodeInputItemTypeSchema.superRefine((
   });
 });
 
-const ChatTestNodeSchema = OpenAPIStoreNodeItemTypeSchema.extend({
+const ChatTestNodeSchema = OpenAPIStoreNodeItemTypeSchema.safeExtend({
   inputs: z.array(ChatTestNodeInputSchema)
 });
 
@@ -240,6 +240,9 @@ export const AuthResponseSchema = z.object({
   }),
   authType: z.enum(AuthUserTypeEnum).meta({ description: '认证类型' }),
   apikey: z.string().optional().meta({ description: 'API密钥' }),
+  canReadModerationRecords: z.boolean().optional().meta({
+    description: '是否具有应用写权限，可查看节点审核详情；未提供时不开放'
+  }),
   responseAllData: z.boolean().meta({
     description: '是否返回所有数据'
   }),

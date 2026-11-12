@@ -10,6 +10,7 @@ import {
   workflowSystemModelSlots,
   workflowDatasetParamModelSlots
 } from '../../core/workflow/model/constants';
+import { legacySystemConfigNodeType } from '../../core/workflow/migration/legacy/systemConfig';
 import type {
   WorkflowModelFeature,
   WorkflowModelValidationIssue
@@ -79,6 +80,173 @@ export const getWorkflowNodeModelInputs = ({
     (input) => input.key === slot.legacyKey && isWorkflowSystemModelInput({ node, input })
   );
   return { modelIdInputs, legacyInputs };
+};
+
+/**
+ * 遍历工作流内所有可静态定位的系统模型引用。
+ *
+ * `referenceNodes` 用于对照迁移后的输入模式，以识别只挂在历史 renderType 上的变量引用。
+ * 回调返回 true 时立即停止，供替换与只读扫描共用同一套槽位覆盖范围。
+ */
+export const walkWorkflowModelReferences = ({
+  nodes,
+  chatConfig,
+  referenceNodes,
+  onReference
+}: {
+  nodes?: unknown;
+  chatConfig?: unknown;
+  referenceNodes?: StoreNodeItemType[];
+  onReference: (params: {
+    source: 'systemInput' | 'legacyConfig' | 'datasetConfig' | 'chatConfig';
+    reference: { modelId?: unknown; model?: unknown };
+    type: ModelTypeEnum;
+    input?: FlowNodeInputItemType;
+    node?: StoreNodeItemType;
+    config?: Record<string, unknown>;
+    slot?: (typeof workflowSystemModelSlots)[number];
+    legacyInputs?: FlowNodeInputItemType[];
+    isReferenceInput: (input: FlowNodeInputItemType) => boolean;
+  }) => boolean | void;
+}) => {
+  const isObject = (value: unknown): value is Record<string, unknown> =>
+    value !== null && typeof value === 'object' && !Array.isArray(value);
+  const walkChatConfig = () => {
+    if (isObject(chatConfig) && isObject(chatConfig.questionGuide)) {
+      if (
+        onReference({
+          source: 'chatConfig',
+          reference: chatConfig.questionGuide,
+          type: ModelTypeEnum.llm,
+          config: chatConfig.questionGuide,
+          isReferenceInput: () => false
+        })
+      ) {
+        return true;
+      }
+    }
+    if (
+      isObject(chatConfig) &&
+      isObject(chatConfig.ttsConfig) &&
+      chatConfig.ttsConfig.type === 'model'
+    ) {
+      return onReference({
+        source: 'chatConfig',
+        reference: chatConfig.ttsConfig,
+        type: ModelTypeEnum.tts,
+        config: chatConfig.ttsConfig,
+        isReferenceInput: () => false
+      });
+    }
+  };
+  // 节点优先于 App 级配置，保持模型替换原有的同一引用去重顺序。
+  if (!Array.isArray(nodes)) {
+    walkChatConfig();
+    return;
+  }
+
+  const referenceNodeById = new Map(referenceNodes?.map((node) => [node.nodeId, node]));
+
+  for (const [nodeIndex, rawNode] of nodes.entries()) {
+    if (
+      !isObject(rawNode) ||
+      typeof rawNode.flowNodeType !== 'string' ||
+      (rawNode.nodeId !== undefined && typeof rawNode.nodeId !== 'string') ||
+      !Array.isArray(rawNode.inputs) ||
+      !rawNode.inputs.every(
+        (input) =>
+          isObject(input) &&
+          typeof input.key === 'string' &&
+          (input.renderTypeList === undefined ||
+            input.renderTypeList === null ||
+            Array.isArray(input.renderTypeList))
+      )
+    ) {
+      continue;
+    }
+    const node = rawNode as StoreNodeItemType;
+    const referenceNode = node.nodeId
+      ? referenceNodeById.get(node.nodeId)
+      : referenceNodes?.[nodeIndex];
+    const isReferenceInput = (input: FlowNodeInputItemType) =>
+      nodeInputIsReference(
+        referenceNode?.inputs.find((referenceInput) => referenceInput.key === input.key) ?? input
+      );
+
+    for (const slot of workflowSystemModelSlots) {
+      const { modelIdInputs, legacyInputs } = getWorkflowNodeModelInputs({ node, slot });
+      const effectiveInputs = modelIdInputs.length > 0 ? modelIdInputs : legacyInputs;
+      for (const input of effectiveInputs) {
+        if (isReferenceInput(input)) continue;
+        if (
+          onReference({
+            source: 'systemInput',
+            reference: {
+              modelId: input.key === slot.modelIdKey ? input.value : undefined,
+              model: input.key === slot.legacyKey ? input.value : legacyInputs[0]?.value
+            },
+            type: slot.type,
+            input,
+            node,
+            slot,
+            legacyInputs,
+            isReferenceInput
+          })
+        ) {
+          return;
+        }
+      }
+    }
+
+    if ((node.flowNodeType as string) === legacySystemConfigNodeType) {
+      for (const [inputKey, type] of [
+        [NodeInputKeyEnum.questionGuide, ModelTypeEnum.llm],
+        [NodeInputKeyEnum.tts, ModelTypeEnum.tts]
+      ] as const) {
+        const input = node.inputs.find(({ key }) => key === inputKey);
+        if (!input || isReferenceInput(input) || !isObject(input.value)) continue;
+        if (type === ModelTypeEnum.tts && input.value.type !== 'model') continue;
+        if (
+          onReference({
+            source: 'legacyConfig',
+            reference: input.value,
+            type,
+            input,
+            node,
+            config: input.value,
+            isReferenceInput
+          })
+        ) {
+          return;
+        }
+      }
+    }
+
+    if (node.flowNodeType !== FlowNodeTypeEnum.agent) continue;
+    const paramsInput = node.inputs.find((input) => input.key === NodeInputKeyEnum.datasetParams);
+    if (!paramsInput || isReferenceInput(paramsInput) || !isObject(paramsInput.value)) continue;
+    for (const slot of workflowDatasetParamModelSlots) {
+      if (
+        onReference({
+          source: 'datasetConfig',
+          reference: {
+            modelId: paramsInput.value[slot.modelIdKey],
+            model: paramsInput.value[slot.legacyKey]
+          },
+          type: slot.type,
+          input: paramsInput,
+          node,
+          config: paramsInput.value,
+          slot,
+          isReferenceInput
+        })
+      ) {
+        return;
+      }
+    }
+  }
+
+  walkChatConfig();
 };
 
 /** 静态资源声明只收录明确开启的功能；动态开关在执行点按运行成员权限处理。 */

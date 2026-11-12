@@ -501,6 +501,7 @@ const ModelConfigForm = ({
       }
       if (isTeamModel) {
         delete modelData.testMode;
+        delete modelData.isUpcomingDeprecation;
       }
 
       return onSubmit(normalizeModelPricingForSave(data));
@@ -749,14 +750,6 @@ const ModelConfigForm = ({
                 register={register}
               />
             )}
-            {feConfigs?.isPlus && (
-              <SwitchField
-                label={t('config_model:model.censor')}
-                tip={t('config_model:model.censor_tip')}
-                field={'config.censor'}
-                register={register}
-              />
-            )}
           </Grid>
         </Section>
       )}
@@ -871,6 +864,11 @@ const ModelConfigForm = ({
                   label={t('config_model:model.test_mode')}
                   tip={t('config_model:model.test_mode_tip')}
                   field={'testMode'}
+                  register={register}
+                />
+                <SwitchField
+                  label={t('config_model:model.upcoming_deprecation')}
+                  field={'isUpcomingDeprecation'}
                   register={register}
                 />
               </>

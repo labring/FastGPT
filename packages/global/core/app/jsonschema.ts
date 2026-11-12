@@ -579,7 +579,10 @@ export const jsonSchema2NodeInput = ({
       valueType: nodeMetadata?.valueType ?? valueType,
       description: localizedDescription,
       ...(localizedPlaceholder !== undefined ? { placeholder: localizedPlaceholder } : {}),
-      defaultToAgentGenerated: canProjectToNodeInput ? value.isToolParam : true,
+      // MCP 未声明输入方式时默认交给 AI；显式 false 及 HTTP/系统工具的原规则保持不变。
+      defaultToAgentGenerated: canProjectToNodeInput
+        ? (value.isToolParam ?? (schemaType === 'mcp' ? true : undefined))
+        : true,
       customJsonSchema: cloneJsonSchemaProperty(value),
       toolDescription:
         schemaType === 'http'

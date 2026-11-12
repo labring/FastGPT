@@ -58,7 +58,7 @@ baseline: "b30ce09a922a3f47401a9b84b2542378a40b0b0b"
 
 - D0 复用 OPENAPI-002 的独立 T/W 与 A，A 为普通 active 成员且不是应用/团队 owner，创建时拥有 W 管理权限及合法 Ka（type=app,appId=W）、个人 Pa。由 owner 撤销 A 对 W 的直接、组织/组及继承授权，确认 Pa 不能访问 W；A 仍在团队且 Ka 本身有效。另备 A 可访问的同团队 X、另一团队 Y，以及 A 可读取的临时知识库 D，避免“拒绝”仅由原成员权限不足造成。
 - W 发布可控回显工作流：输出 RUN 与系统变量 userId，不依赖随机模型文案。每个独立输入用新 chatId，Ka 的自定义用户为 RUN-u1。复用 OPENAPI-001 的协议和 UID 观测方法，不重跑完整长度/类型矩阵。基线请求：`{chatId:'RUN-Ax',customUid:'RUN-u1',messages:[{role:'user',content:'probe'}],stream:false,detail:true}`。
-- 保存真实 Key 值于环境变量。实际 body/suffix 中替换真实 ID；Authorization-only 请求无登录 Cookie。health 当前通过 query.apiKey 接收凭证，只在受控环境读取，原始 URL/日志/截图不对外留明文证据。
+- 保存真实 Key 值于环境变量。实际 body/suffix 中替换真实 ID；Authorization-only 请求无登录 Cookie。health 通过 Authorization 请求头接收凭证。
 - 类型开关行使用隔离服务集成：在真实测试 Mongo 放置 Ka/Pa，直接调用实现后的 parseHeaderCert、传入真实 Node 请求及服务端鉴权参数，不 mock 凭证/数据库，不新增 HTTP 测试后门。此行只证明认证类型的接受/拒绝；绑定范围仍须真实 HTTP 验证。
 - 证据：JSON completions 为根响应对象，SSE 检查完整事件、错误与终止；其他接口检查 NextAPI 的 HTTP 与 code/data。主库 chats/chatitems 按本次 teamId、appId 和 chatId 白名单读；日志库 app_chat_logs 允许 1 秒轮询、最长 30 秒等到实际保存。拒绝行不应新增业务会话/消息/本轮运行统计；Key 最近使用时间和请求日志允许变化。
 - 有效性行使用独立 Ka 副本：不存在的凭证、已过期和用量已大于上限的商业版 Key；不要在未定义的“恰好等于上限”上自定预期。没有商业版限制环境时对应变体阻塞。清理临时资源、权限变更和服务夹具，绝不撤销共享成员授权。

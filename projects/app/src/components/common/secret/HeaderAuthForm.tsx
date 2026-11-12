@@ -134,7 +134,8 @@ const CustomHeaderModeSelect = ({
   );
 };
 
-const AuthValueDisplay = ({
+/** 编辑前隐藏已保存的密钥，避免明文回显。 */
+export const AuthValueDisplay = ({
   showInput,
   index = 0,
   onEdit,

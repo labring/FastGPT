@@ -67,6 +67,12 @@ export const createNodeSummary = (): NodeSummaryCollector => {
       if (source.hasAgentSandbox) {
         summary.hasAgentSandbox = true;
       }
+      if (source.hasModerationBlock) {
+        summary.hasModerationBlock = true;
+      }
+      if (source.hasToolResultModerated) {
+        summary.hasToolResultModerated = true;
+      }
       if (source.nestedEndOutput !== undefined) {
         summary.nestedEndOutput = source.nestedEndOutput;
       }
@@ -99,6 +105,8 @@ export const getNodeSummaryData = (summary: NodeSummary): NodeSummary => ({
   ...(summary.hasToolStop ? { hasToolStop: true } : {}),
   ...(summary.hasNestedEnd ? { hasNestedEnd: true } : {}),
   ...(summary.hasAgentSandbox ? { hasAgentSandbox: true } : {}),
+  ...(summary.hasModerationBlock ? { hasModerationBlock: true } : {}),
+  ...(summary.hasToolResultModerated ? { hasToolResultModerated: true } : {}),
   ...(summary.nestedEndOutput !== undefined ? { nestedEndOutput: summary.nestedEndOutput } : {}),
   ...(summary.pluginOutput !== undefined ? { pluginOutput: summary.pluginOutput } : {}),
   ...(summary.totalPoints ? { totalPoints: summary.totalPoints } : {}),
@@ -128,6 +136,8 @@ export const stripNodeSummaryErrorFields = (summary?: NodeSummary): NodeSummary 
   const controlSummary = { ...summary };
   delete controlSummary.errorText;
   delete controlSummary.errorCount;
+  delete controlSummary.hasModerationBlock;
+  delete controlSummary.hasToolResultModerated;
 
   return Object.keys(controlSummary).length > 0 ? controlSummary : undefined;
 };
@@ -350,6 +360,12 @@ export const mergeWorkflowRuntimeSummary = ({
       if (summary.hasAgentSandbox) {
         merged.hasAgentSandbox = true;
       }
+      if (summary.hasModerationBlock) {
+        merged.hasModerationBlock = true;
+      }
+      if (summary.hasToolResultModerated) {
+        merged.hasToolResultModerated = true;
+      }
       if (summary.nestedEndOutput !== undefined) {
         merged.nestedEndOutput = summary.nestedEndOutput;
       }
@@ -380,6 +396,12 @@ export const mergeWorkflowRuntimeSummary = ({
     merged.hasNestedEnd ||= !!nodeSummary.hasNestedEnd;
     if (nodeSummary.hasAgentSandbox) {
       merged.hasAgentSandbox = true;
+    }
+    if (nodeSummary.hasModerationBlock) {
+      merged.hasModerationBlock = true;
+    }
+    if (nodeSummary.hasToolResultModerated) {
+      merged.hasToolResultModerated = true;
     }
     if (nodeSummary.nestedEndOutput !== undefined) {
       merged.nestedEndOutput = nodeSummary.nestedEndOutput;

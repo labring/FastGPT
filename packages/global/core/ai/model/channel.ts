@@ -7,6 +7,19 @@ import { IntSchema, NumSchema } from '../../../common/zod';
  */
 export const REASONING_FIELD_MAPPING_CHANNEL_TYPES = [1] as const;
 
+/** AIProxy 中完整支持 Chat Completions 上游协议切换的渠道：OpenAI、Azure、Azure2。 */
+export const CHAT_UPSTREAM_PROTOCOL_CHANNEL_TYPES = [1, 3, 4] as const;
+
+// 兼容未知协议名和旧配置中的错误类型，统一交由 AIProxy 按模型自动选择。
+export const ChatUpstreamProtocolSchema = z
+  .enum(['auto', 'responses', 'chat_completions'])
+  .catch('auto')
+  .meta({
+    description: '聊天上游协议：responses、chat_completions；auto 按模型自动判断，未知值回退 auto',
+    example: 'responses'
+  });
+export type ChatUpstreamProtocol = z.infer<typeof ChatUpstreamProtocolSchema>;
+
 export enum ChannelStatusEnum {
   ChannelStatusUnknown = 0,
   ChannelStatusEnabled = 1,
@@ -51,7 +64,11 @@ export const ChannelConfigSchema = z.object({
   priority: IntSchema.optional().meta({ description: '负载均衡权重，默认 10' }),
   status: ChannelManualStatusSchema.optional().meta({ description: '1=启用 / 2=禁用' }),
   sets: z.array(z.string()).optional().meta({ description: '模型集合，默认 default' }),
-  configs: z.record(z.string(), z.unknown()).optional().meta({ description: '提供商额外配置' })
+  configs: z
+    .object({ chat_upstream_protocol: ChatUpstreamProtocolSchema.optional() })
+    .catchall(z.unknown())
+    .optional()
+    .meta({ description: '提供商额外配置；支持的渠道新建时默认按模型自动选择聊天上游协议' })
 });
 export type ChannelConfig = z.infer<typeof ChannelConfigSchema>;
 

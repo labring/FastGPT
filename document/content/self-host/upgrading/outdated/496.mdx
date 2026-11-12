@@ -1,9 +1,10 @@
 ---
 title: V4.9.6
-description: FastGPT V4.9.6 更新说明
+description: 'FastGPT V4.9.6 版本更新说明，涵盖镜像升级步骤、兼容性变更与功能优化详情。'
 releaseTime: '2025-04-18'
 upgradeTags:
   - 配置变更
+deprecated: true
 ---
 
 ## 🚀 新增内容
@@ -62,7 +63,7 @@ fastgpt-mcp-server:
 
 #### 社区版
 
-修改 `config.json` 配置文件，增加: `"feconfigs.mcpServerProxyEndpoint": "fastgpt-mcp-server 的访问地址"`，末尾不要携带/，例如:
+修改 `config.json` 配置文件，在 `feConfigs` 对象下增加: `"mcpServerProxyEndpoint": "fastgpt-mcp-server 的访问地址"`，末尾不要携带/，例如:
 
 ```json
 {
