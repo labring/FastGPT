@@ -54,7 +54,11 @@ describe('support/openapi/copy', () => {
     expect(JSON.stringify(vi.mocked(addAuditLog).mock.calls)).not.toContain('fastgpt-team-secret');
   });
 
-  it('兼容旧应用 APIKey 复制审计并返回明文密钥', async () => {
+  it.each([
+    { label: '历史默认应用个人密钥', type: undefined, expectedType: 'personal' },
+    { label: '迁移后默认应用个人密钥', type: ApiKeyTypeEnum.personal, expectedType: 'personal' },
+    { label: '显式应用密钥', type: ApiKeyTypeEnum.app, expectedType: 'app' }
+  ])('$label 复制审计使用实际授权类型并返回明文密钥', async ({ type, expectedType }) => {
     const user = await getRootUser();
     const app = await MongoApp.create({
       teamId: user.teamId,
@@ -63,15 +67,19 @@ describe('support/openapi/copy', () => {
       type: AppTypeEnum.simple
     });
 
-    // 用原始集合模拟旧版缺少 type 的记录，保留历史数据兼容验证。
+    // 原始集合覆盖旧版缺少 type 且 appId 为字符串的记录，不能由新 Schema 预先转换。
     const openapi = new MongoOpenApi({
+      ...(type === undefined ? {} : { type }),
       teamId: user.teamId,
       tmbId: user.tmbId,
       appId: String(app._id),
       apiKey: 'fastgpt-app-secret',
       name: 'app key'
     });
-    await MongoOpenApi.collection.insertOne(openapi.toObject({ getters: false }));
+    await MongoOpenApi.collection.insertOne({
+      ...openapi.toObject({ getters: false }),
+      ...(type === undefined ? { appId: String(app._id) } : {})
+    });
 
     const auth = {
       ...user,
@@ -96,8 +104,8 @@ describe('support/openapi/copy', () => {
       params: {
         keyName: 'app key',
         keyId: String(openapi._id),
-        keyType: 'app',
-        appId: String(app._id)
+        keyType: expectedType,
+        ...(expectedType === 'app' ? { appId: String(app._id) } : {})
       }
     });
     expect(JSON.stringify(vi.mocked(addAuditLog).mock.calls)).not.toContain('fastgpt-app-secret');
