@@ -310,7 +310,6 @@ describe('NodeToolSet', () => {
       );
     });
     await renderNode(initialNode);
-    await click('app:toolset_config');
     const input = container.querySelector('input');
     const parseButton = Array.from(container.querySelectorAll('button')).find(
       (button) => button.textContent === 'common:Parse'
@@ -340,7 +339,6 @@ describe('NodeToolSet', () => {
       }
     });
 
-    await click('app:toolset_config');
     const urlInput = container.querySelector('input');
     if (!urlInput) throw new Error('Missing MCP URL input');
     await setFieldValue(urlInput, 'https://tools.example/mcp');
@@ -362,43 +360,6 @@ describe('NodeToolSet', () => {
     expect(container.textContent).toContain('common:auth_config');
   });
 
-  it('unloads the MCP form when closed and starts from the current config next time', async () => {
-    const initialNode = {
-      nodeId: 'node-mcp',
-      toolConfig: {
-        mcpToolSet: {
-          url: 'https://old.example/mcp',
-          headerSecret: {},
-          toolList: [{ name: 'search', description: 'Search' }]
-        }
-      }
-    };
-    await renderNode(initialNode);
-    mocks.onChangeNode.mockClear();
-
-    expect(container.querySelector('input')).toBeNull();
-    await click('app:toolset_config');
-    const urlInput = container.querySelector('input');
-    if (!urlInput) throw new Error('Missing MCP URL input');
-    await setFieldValue(urlInput, 'https://unsaved.example/mcp');
-    await click('common:Close');
-    expect(container.querySelector('input')).toBeNull();
-    expect(mocks.onChangeNode).not.toHaveBeenCalled();
-
-    await renderNode({
-      ...initialNode,
-      toolConfig: {
-        mcpToolSet: {
-          url: 'https://current.example/mcp',
-          headerSecret: {},
-          toolList: [{ name: 'search', description: 'Search' }]
-        }
-      }
-    });
-    await click('app:toolset_config');
-    expect(container.querySelector('input')?.value).toBe('https://current.example/mcp');
-  });
-
   it.each(['url', 'authentication'] as const)(
     'ignores an MCP parse result after its %s changes',
     async (changedField) => {
@@ -414,7 +375,6 @@ describe('NodeToolSet', () => {
           mcpToolSet: { url: 'https://old.example/mcp', headerSecret: {}, toolList: [] }
         }
       });
-      await click('app:toolset_config');
       await click('common:Parse');
       if (changedField === 'url') {
         const input = container.querySelector('input');
@@ -434,7 +394,7 @@ describe('NodeToolSet', () => {
     }
   );
 
-  it('drops an MCP parse result that arrives after the form is closed', async () => {
+  it('drops an MCP parse result that arrives after the node unmounts', async () => {
     let resolveTools: ((tools: typeof mocks.remoteMcpTools) => void) | undefined;
     mocks.getMCPTools.mockReturnValueOnce(
       new Promise((resolve) => {
@@ -452,9 +412,8 @@ describe('NodeToolSet', () => {
       }
     });
 
-    await click('app:toolset_config');
     await click('common:Parse');
-    await click('common:Close');
+    await act(async () => root.unmount());
     await act(async () => {
       resolveTools?.(mocks.remoteMcpTools);
       await Promise.resolve();
