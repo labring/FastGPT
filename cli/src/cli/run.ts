@@ -8,6 +8,7 @@ import { CliExitCode, getCliVersion, type CliFetchFn, type CliFormat } from '../
 import { createCliContainer } from './container';
 import { buildCommanderProgram } from './program';
 import { buildCommandMetas, getCliCommandSpecs } from './registry';
+import type { CliCommandSpec } from './pipeline';
 
 async function defaultReadStdin(): Promise<string> {
   const chunks: Buffer[] = [];
@@ -15,6 +16,31 @@ async function defaultReadStdin(): Promise<string> {
     chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
   }
   return Buffer.concat(chunks).toString('utf8');
+}
+
+function resolveSafeCommandName({
+  argv,
+  specs
+}: {
+  argv: readonly string[];
+  specs: readonly CliCommandSpec[];
+}): string {
+  const knownRoots = new Set(specs.map((s) => s.path[0]));
+  for (let i = 0; i < argv.length; i += 1) {
+    const arg = argv[i];
+    if (knownRoots.has(arg)) {
+      const nextArg = argv[i + 1];
+      if (nextArg && !nextArg.startsWith('-')) {
+        const potentialSub = `${arg} ${nextArg}`;
+        const matched = specs.find((s) => s.path.join(' ') === potentialSub);
+        if (matched) {
+          return potentialSub;
+        }
+      }
+      return arg;
+    }
+  }
+  return 'fastgpt';
 }
 
 function resolvePreparseFormat({
@@ -79,12 +105,9 @@ export async function runCli({
   stdout?: (value: string) => void;
   stderr?: (value: string) => void;
 }): Promise<number> {
+  const specs = getCliCommandSpecs();
+  const safeCommandName = resolveSafeCommandName({ argv, specs });
   const preparse = resolvePreparseFormat({ argv, env, isTTY });
-  const commandGuess =
-    argv
-      .filter((item) => !item.startsWith('-'))
-      .slice(0, 2)
-      .join(' ') || 'fastgpt';
 
   const renderer = createOutputRenderer({
     format: preparse.format,
@@ -125,7 +148,6 @@ export async function runCli({
   });
 
   const commanderErrBuffer: string[] = [];
-  const specs = getCliCommandSpecs();
   const commandMetas = buildCommandMetas(specs);
   const program = buildCommanderProgram({
     specs,
@@ -155,11 +177,11 @@ export async function runCli({
 
       const cleanMessage = error.message.replace(/^error:\s*/i, '').trim();
       const argError = new CliArgumentError(cleanMessage);
-      stderr(renderer.renderError({ command: commandGuess, error: argError }));
+      stderr(renderer.renderError({ command: safeCommandName, error: argError }));
       return argError.exitCode;
     }
 
-    stderr(renderer.renderError({ command: commandGuess, error }));
+    stderr(renderer.renderError({ command: safeCommandName, error }));
     if (error instanceof CliError) {
       return error.exitCode;
     }

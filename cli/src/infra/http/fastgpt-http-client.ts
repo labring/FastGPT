@@ -188,6 +188,20 @@ function unpackFastGptResponse<T>({
     }
   }
 
+  if (response.status >= 300 && response.status < 400) {
+    const location = response.headers?.get?.('location');
+    if (location) {
+      const baseOrigin = new URL(displayUrl).origin;
+      const targetOrigin = new URL(location, displayUrl).origin;
+      if (targetOrigin !== baseOrigin) {
+        throw new CliNetworkError(
+          `Cross-origin redirect to "${redactText(location)}" blocked to prevent credential leakage.`,
+          'Verify FASTGPT_BASE_URL and check for unintended external redirects.'
+        );
+      }
+    }
+  }
+
   let parsed: unknown = undefined;
   if (rawText.trim().length > 0) {
     try {
@@ -336,6 +350,7 @@ export function createFastGptHttpClient({
   onSessionRenewed?: (expiresAt: number) => void;
 }): FastGptHttpClient {
   const normalizedBaseUrl = baseUrl.replace(/\/+$/, '');
+  const baseOrigin = new URL(normalizedBaseUrl).origin;
   let cachedCaPem: string | undefined;
 
   async function resolveTransportFetch(): Promise<CliFetchFn> {
@@ -362,6 +377,48 @@ export function createFastGptHttpClient({
     return Object.keys(filtered).length > 0 ? filtered : undefined;
   }
 
+  async function buildKyClient({
+    timeout,
+    auth,
+    extraHeaders,
+    stripAccept = false
+  }: {
+    timeout: number;
+    auth?: HttpRequestAuth;
+    extraHeaders?: Record<string, string>;
+    stripAccept?: boolean;
+  }) {
+    const activeFetch = await resolveTransportFetch();
+    return ky.create({
+      prefixUrl: normalizedBaseUrl,
+      timeout,
+      retry: 0,
+      throwHttpErrors: false,
+      fetch: activeFetch,
+      hooks: {
+        beforeRequest: [
+          (req) => {
+            const reqOrigin = new URL(req.url).origin;
+            // 校验请求目标是否跨域，防范重定向将自定义 token/Authorization 凭据泄漏到其他服务
+            if (reqOrigin !== baseOrigin) {
+              throw new CliNetworkError(
+                `Cross-origin redirect to "${redactText(req.url)}" blocked to prevent credential leakage.`,
+                'Verify FASTGPT_BASE_URL and check for unintended external redirects.'
+              );
+            }
+            const builtHeaders = buildAuthHeaders({ auth, cliVersion, extraHeaders });
+            if (stripAccept) {
+              delete builtHeaders.accept;
+            }
+            for (const [key, value] of Object.entries(builtHeaders)) {
+              req.headers.set(key, value);
+            }
+          }
+        ]
+      }
+    });
+  }
+
   return {
     baseUrl: normalizedBaseUrl,
     request: async <T = unknown>({
@@ -383,24 +440,7 @@ export function createFastGptHttpClient({
     }): Promise<T> => {
       const relativePath = path.replace(/^\/+/, '');
       const searchParams = filterQuery(query);
-      const activeFetch = await resolveTransportFetch();
-      const client = ky.create({
-        prefixUrl: normalizedBaseUrl,
-        timeout: requestTimeout,
-        retry: 0,
-        throwHttpErrors: false,
-        fetch: activeFetch,
-        hooks: {
-          beforeRequest: [
-            (req) => {
-              const builtHeaders = buildAuthHeaders({ auth, cliVersion, extraHeaders });
-              for (const [key, value] of Object.entries(builtHeaders)) {
-                req.headers.set(key, value);
-              }
-            }
-          ]
-        }
-      });
+      const client = await buildKyClient({ timeout: requestTimeout, auth, extraHeaders });
 
       const displayUrl = `${normalizedBaseUrl}/${relativePath}`;
       let response: Response;
@@ -411,6 +451,7 @@ export function createFastGptHttpClient({
           ...(body !== undefined ? { json: body } : {})
         });
       } catch (error) {
+        if (error instanceof CliNetworkError) throw error;
         const msg = redactText(error instanceof Error ? error.message : String(error));
         const isTls = /cert|tls|ssl|self[- ]signed|unable to verify/i.test(msg);
         throw new CliNetworkError(
@@ -437,24 +478,7 @@ export function createFastGptHttpClient({
     }): Promise<RawHttpResponse> => {
       const relativePath = path.replace(/^\/+/, '');
       const searchParams = filterQuery(query);
-      const activeFetch = await resolveTransportFetch();
-      const client = ky.create({
-        prefixUrl: normalizedBaseUrl,
-        timeout: requestTimeout,
-        retry: 0,
-        throwHttpErrors: false,
-        fetch: activeFetch,
-        hooks: {
-          beforeRequest: [
-            (req) => {
-              const builtHeaders = buildAuthHeaders({ auth, cliVersion, extraHeaders });
-              for (const [key, value] of Object.entries(builtHeaders)) {
-                req.headers.set(key, value);
-              }
-            }
-          ]
-        }
-      });
+      const client = await buildKyClient({ timeout: requestTimeout, auth, extraHeaders });
 
       const displayUrl = `${normalizedBaseUrl}/${relativePath}`;
       let response: Response;
@@ -465,6 +489,7 @@ export function createFastGptHttpClient({
           ...(body !== undefined && body !== null ? { body } : {})
         });
       } catch (error) {
+        if (error instanceof CliNetworkError) throw error;
         const msg = redactText(error instanceof Error ? error.message : String(error));
         throw new CliNetworkError(`Raw request failed for ${redactText(displayUrl)}: ${msg}`);
       }
@@ -503,25 +528,11 @@ export function createFastGptHttpClient({
     }): Promise<T> => {
       const relativePath = path.replace(/^\/+/, '');
       const searchParams = filterQuery(query);
-      const activeFetch = await resolveTransportFetch();
-      const client = ky.create({
-        prefixUrl: normalizedBaseUrl,
+      const client = await buildKyClient({
         timeout: requestTimeout,
-        retry: 0,
-        throwHttpErrors: false,
-        fetch: activeFetch,
-        hooks: {
-          beforeRequest: [
-            (req) => {
-              // FormData 会由底层 fetch 自动生成带 boundary 的 multipart Content-Type，不要写死 application/json
-              const builtHeaders = buildAuthHeaders({ auth, cliVersion, extraHeaders });
-              delete builtHeaders.accept;
-              for (const [key, value] of Object.entries(builtHeaders)) {
-                req.headers.set(key, value);
-              }
-            }
-          ]
-        }
+        auth,
+        extraHeaders,
+        stripAccept: true
       });
 
       const displayUrl = `${normalizedBaseUrl}/${relativePath}`;
@@ -553,29 +564,12 @@ export function createFastGptHttpClient({
     }): AsyncIterable<SseEvent> {
       const relativePath = path.replace(/^\/+/, '');
       const searchParams = filterQuery(query);
-      const activeFetch = await resolveTransportFetch();
-      const client = ky.create({
-        prefixUrl: normalizedBaseUrl,
+      const client = await buildKyClient({
         timeout: requestTimeout,
-        retry: 0,
-        throwHttpErrors: false,
-        fetch: activeFetch,
-        hooks: {
-          beforeRequest: [
-            (req) => {
-              const builtHeaders = buildAuthHeaders({
-                auth,
-                cliVersion,
-                extraHeaders: {
-                  accept: 'text/event-stream',
-                  ...extraHeaders
-                }
-              });
-              for (const [key, value] of Object.entries(builtHeaders)) {
-                req.headers.set(key, value);
-              }
-            }
-          ]
+        auth,
+        extraHeaders: {
+          accept: 'text/event-stream',
+          ...extraHeaders
         }
       });
 
@@ -589,6 +583,7 @@ export function createFastGptHttpClient({
           ...(body !== undefined ? { json: body } : {})
         });
       } catch (error) {
+        if (error instanceof CliNetworkError) throw error;
         const msg = redactText(error instanceof Error ? error.message : String(error));
         throw new CliNetworkError(
           `SSE stream connection failed for ${redactText(displayUrl)}: ${msg}`

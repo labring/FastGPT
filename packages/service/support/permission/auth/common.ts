@@ -115,6 +115,7 @@ export async function parseHeaderCert({
     sourceName,
     sessionId,
     sessionCreatedAt,
+    sessionExpiresAt,
     legacyAppId,
     parsedAppId,
     apiKeyAuthProxy,
@@ -145,13 +146,19 @@ export async function parseHeaderCert({
       // user token(from fastgpt web)
       const sessionData = await authCookieToken(cookie, token);
 
-      let sessionExpiresAt = (sessionData.updatedAt ?? sessionData.createdAt) + 604_800_000;
-      // 触发防抖滑动续期（默认 24 小时防抖，成功则将 Redis TTL 刷新为 7 天并补发 Cookie 与响应头）
+      // 触发防抖滑动续期（默认 24 小时防抖，成功则将 Redis TTL 刷新为 7 天）
       const refreshedExpiresAt = await touchUserSession({ sessionId: sessionData.sessionId });
-      if (refreshedExpiresAt) {
-        sessionExpiresAt = refreshedExpiresAt;
-        if (res) {
-          res.setHeader('x-fastgpt-session-expires', String(refreshedExpiresAt));
+      const sessionExpiresAt =
+        refreshedExpiresAt ?? (sessionData.updatedAt ?? sessionData.createdAt) + 604_800_000;
+
+      // 只要传入了响应对象，向响应头写入最新过期时间；并在会话延期或已使用满 1 天时同步浏览器 Cookie
+      if (res) {
+        res.setHeader('x-fastgpt-session-expires', String(sessionExpiresAt));
+        const shouldSyncCookie =
+          Boolean(refreshedExpiresAt) ||
+          sessionData.updatedAt !== undefined ||
+          Date.now() - sessionData.createdAt >= 86_400_000;
+        if (shouldSyncCookie) {
           setCookie(res, sessionData.sessionId);
         }
       }
@@ -217,7 +224,8 @@ export async function parseHeaderCert({
     apikey: openApiKey,
     isRoot: !!isRoot,
     sessionId,
-    sessionCreatedAt
+    sessionCreatedAt,
+    sessionExpiresAt
   };
 }
 

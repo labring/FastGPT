@@ -236,4 +236,62 @@ describe('SecretStore strategies', () => {
     expect(timedOut.code).toBe(124);
     expect(timedOut.stderr).toContain('timed out');
   });
+
+  it('prevents recovered keychain from shadowing newer file credentials (authoritative backend tracking)', async () => {
+    const dir = await makeTempDir();
+    const keychainMap = new Map<string, string>([['profile:staging', 'old-keychain-A']]);
+    let keychainBlocked = true;
+
+    const execCommand: ExecCommandFn = async (params) => {
+      if (params.args[0] === 'default-keychain') {
+        return { code: 0, stdout: 'login.keychain\n', stderr: '' };
+      }
+      if (keychainBlocked) {
+        // 模拟 Keychain 处于锁定状态，读写删除均受阻
+        return { code: 1, stdout: '', stderr: 'security: User interaction is not allowed.' };
+      }
+      if (params.args[0] === '-i') {
+        const match = params.stdin?.match(/-a (\S+) -X ([0-9a-f]+)/);
+        if (match) {
+          keychainMap.set(match[1], Buffer.from(match[2], 'hex').toString('utf8'));
+        }
+        return { code: 0, stdout: '', stderr: '' };
+      }
+      if (params.args[0] === 'find-generic-password') {
+        const account = params.args[params.args.indexOf('-a') + 1];
+        const val = keychainMap.get(account);
+        return val
+          ? { code: 0, stdout: `${val}\n`, stderr: '' }
+          : { code: 44, stdout: '', stderr: 'not found' };
+      }
+      if (params.args[0] === 'delete-generic-password') {
+        const account = params.args[params.args.indexOf('-a') + 1];
+        keychainMap.delete(account);
+        return { code: 0, stdout: '', stderr: '' };
+      }
+      return { code: 1, stdout: '', stderr: '' };
+    };
+
+    const store = createDefaultSecretStore({
+      configDir: dir,
+      env: {},
+      platform: 'darwin',
+      execCommand
+    });
+
+    // 1. Keychain 阻塞时写入新凭据 B，降级落盘到文件
+    const setRes = await store.setSecret('staging', 'fresh-secret-B');
+    expect(setRes.backend).toBe('file');
+    expect(await store.getSecret('staging')).toBe('fresh-secret-B');
+    expect(await store.getBackendName('staging')).toBe('file');
+
+    // 2. 模拟 Keychain 恢复（此时 Keychain 中仍残留旧项 A）
+    keychainBlocked = false;
+
+    // 3. 读取时必须根据权威记录返回 B，而不是返回已陈旧的 A
+    expect(await store.getSecret('staging')).toBe('fresh-secret-B');
+    expect(await store.getBackendName('staging')).toBe('file');
+    // 读取过程中顺带清理掉了已失效的 Keychain 项 A
+    expect(keychainMap.has('profile:staging')).toBe(false);
+  });
 });

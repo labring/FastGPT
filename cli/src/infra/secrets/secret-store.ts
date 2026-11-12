@@ -1,3 +1,5 @@
+import { chmod, readFile, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import type { SecretStoreBackend } from '../../shared/types';
 import { execSystemCommand, type ExecCommandFn } from './exec-command';
 import { createFileSecretStore } from './file-secret-store';
@@ -23,13 +25,64 @@ export type SecretStore = {
  * 组合模式凭据存储：优先尝试主 Keychain 策略，不可用或写入失败时优雅降级到 0600 文件策略，
  * 并确保主/备存储之间不会因残留旧凭据造成跨后端读取错配。
  */
+const META_BACKENDS_FILE = '.secret-backends.json';
+
+async function loadAuthoritativeBackends(
+  configDir?: string
+): Promise<Record<string, SecretStoreBackend>> {
+  if (!configDir) return {};
+  try {
+    const raw = await readFile(join(configDir, META_BACKENDS_FILE), 'utf8');
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object'
+      ? (parsed as Record<string, SecretStoreBackend>)
+      : {};
+  } catch {
+    return {};
+  }
+}
+
+async function saveAuthoritativeBackend({
+  configDir,
+  profileName,
+  backend
+}: {
+  configDir?: string;
+  profileName: string;
+  backend?: SecretStoreBackend;
+}): Promise<void> {
+  if (!configDir) return;
+  try {
+    const current = await loadAuthoritativeBackends(configDir);
+    if (backend) {
+      current[profileName] = backend;
+    } else {
+      delete current[profileName];
+    }
+    const metaPath = join(configDir, META_BACKENDS_FILE);
+    await writeFile(metaPath, JSON.stringify(current, null, 2), { mode: 0o600 });
+    if (process.platform !== 'win32') {
+      await chmod(metaPath, 0o600).catch(() => {});
+    }
+  } catch {
+    // 忽略元数据保存异常，不阻断主流程
+  }
+}
+
+/**
+ * 组合模式凭据存储：优先尝试主 Keychain 策略，不可用或写入失败时优雅降级到 0600 文件策略，
+ * 并持久化记录每个 profile 的权威存储后端（.secret-backends.json），避免 Keychain 暂时不可用恢复后，
+ * 以旧 Keychain 记录覆盖后来成功保存到文件的更新凭据。
+ */
 export function createCompositeSecretStore({
   primary,
   fallback,
+  configDir,
   onFallbackWarning
 }: {
   primary?: SecretStoreStrategy;
   fallback: SecretStoreStrategy;
+  configDir?: string;
   onFallbackWarning?: (reason: string) => void;
 }): SecretStore {
   let warnedFallback = false;
@@ -44,6 +97,14 @@ export function createCompositeSecretStore({
 
   return {
     getBackendName: async (profileName) => {
+      if (profileName) {
+        const authoritative = await loadAuthoritativeBackends(configDir);
+        const recorded = authoritative[profileName];
+        if (recorded) {
+          return recorded;
+        }
+      }
+
       const primaryAvailable = primary ? await primary.isAvailable() : false;
       if (profileName && primary && primaryAvailable) {
         const inPrimary = await primary.get(profileName);
@@ -62,6 +123,20 @@ export function createCompositeSecretStore({
       return primaryAvailable && primary ? primary.backend : fallback.backend;
     },
     getSecret: async (profileName) => {
+      const authoritative = await loadAuthoritativeBackends(configDir);
+      const preferred = authoritative[profileName];
+
+      if (preferred === 'file') {
+        const inFallback = await fallback.get(profileName);
+        if (inFallback !== undefined) {
+          // Keychain 已恢复但文件是最新权威副本：尝试顺便清理掉 Keychain 残留旧凭据
+          if (primary && (await primary.isAvailable())) {
+            await primary.delete(profileName).catch(() => {});
+          }
+          return inFallback;
+        }
+      }
+
       if (primary && (await primary.isAvailable())) {
         const value = await primary.get(profileName);
         if (value !== undefined) {
@@ -74,12 +149,12 @@ export function createCompositeSecretStore({
       if (primary && (await primary.isAvailable())) {
         const stored = await primary.set(profileName, secret);
         if (stored) {
-          // 清理旧降级文件中的同名明文记录；文件权限异常等不阻断已成功的 Keychain 登录。
           await fallback.delete(profileName).catch((error: unknown) => {
             onFallbackWarning?.(
               `Keychain write succeeded, but cleaning stale credentials.json failed: ${error instanceof Error ? error.message : String(error)}`
             );
           });
+          await saveAuthoritativeBackend({ configDir, profileName, backend: primary.backend });
           return { backend: primary.backend };
         }
         warnOnce('System keychain write failed; falling back to 0600 credentials.json.');
@@ -92,13 +167,15 @@ export function createCompositeSecretStore({
         await primary.delete(profileName).catch(() => {});
       }
       await fallback.set(profileName, secret);
+      await saveAuthoritativeBackend({ configDir, profileName, backend: fallback.backend });
       return { backend: fallback.backend };
     },
     deleteSecret: async (profileName) => {
       if (primary && (await primary.isAvailable())) {
-        await primary.delete(profileName);
+        await primary.delete(profileName).catch(() => {});
       }
-      await fallback.delete(profileName);
+      await fallback.delete(profileName).catch(() => {});
+      await saveAuthoritativeBackend({ configDir, profileName, backend: undefined });
     }
   };
 }
@@ -121,7 +198,7 @@ export function createDefaultSecretStore({
 }): SecretStore {
   const fileStore = createFileSecretStore({ configDir });
   if (env.FASTGPT_SECRET_STORE === 'file') {
-    return createCompositeSecretStore({ fallback: fileStore });
+    return createCompositeSecretStore({ fallback: fileStore, configDir });
   }
 
   const primary = (() => {
@@ -137,6 +214,7 @@ export function createDefaultSecretStore({
   return createCompositeSecretStore({
     primary,
     fallback: fileStore,
+    configDir,
     onFallbackWarning
   });
 }

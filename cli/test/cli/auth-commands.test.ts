@@ -609,4 +609,22 @@ describe('CLI auth command integration', () => {
     const updatedCfg = JSON.parse(await readFile(join(configDir, 'config.json'), 'utf8'));
     expect(updatedCfg.profiles.default.sessionExpiresAt).toBe(renewedExpiresAt);
   });
+
+  it('does not leak token from options as command name in error envelopes (F1 regression)', async () => {
+    const configDir = await makeConfigDir();
+    const rawSecret = 'fastgpt-secret-token-abcdef1234567890';
+
+    const res = await execCli({
+      argv: ['--token', rawSecret, 'whoami', '--format', 'json'],
+      configDir,
+      fetchFn: async () => {
+        throw new Error('Connection failed');
+      }
+    });
+
+    expect(res.exitCode).toBe(5);
+    const parsedErr = JSON.parse(res.stderr);
+    expect(parsedErr.command).toBe('whoami');
+    expect(res.stderr).not.toContain(rawSecret);
+  });
 });

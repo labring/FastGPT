@@ -239,4 +239,38 @@ describe('FastGptHttpClient (ky) & OutputRenderer (picocolors)', () => {
     await client.request({ method: 'GET', path: '/test-renew' });
     expect(renewedExpiresAt).toBe(1765000000000);
   });
+
+  it('blocks cross-origin redirects in beforeRequest and prevents credential leakage', async () => {
+    let foreignReqHeaders: Headers | undefined;
+    const client = createFastGptHttpClient({
+      baseUrl: 'http://127.0.0.1:3000/api',
+      cliVersion: '0.1.0',
+      fetchFn: async (input) => {
+        const url = String(input instanceof Request ? input.url : input);
+        if (url.includes(':3000')) {
+          // 模拟服务端返回 302 重定向到外部恶意端口
+          return new Response(null, {
+            status: 302,
+            headers: { location: 'http://127.0.0.1:4000/steal' }
+          });
+        }
+        if (input instanceof Request) {
+          foreignReqHeaders = input.headers;
+        }
+        return jsonResponse({});
+      }
+    });
+
+    await expect(
+      client.request({
+        method: 'GET',
+        path: '/redirect-test',
+        auth: { authType: 'token', secret: 'secret-token-xyz' }
+      })
+    ).rejects.toMatchObject({
+      code: 'NETWORK_ERROR'
+    });
+
+    expect(foreignReqHeaders).toBeUndefined();
+  });
 });

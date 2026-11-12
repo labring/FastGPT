@@ -40,7 +40,7 @@ export function createSuccessEnvelope(command: string, result: CliResult): CliSu
   return {
     schemaVersion: CLI_OUTPUT_SCHEMA_VERSION,
     ok: true,
-    command,
+    command: redactText(command),
     changed: result.changed,
     ...(result.data !== undefined ? { data: redactValue(result.data) } : {}),
     ...(result.meta !== undefined ? { meta: redactValue(result.meta) } : {}),
@@ -78,7 +78,7 @@ export function createJsonRenderer(): OutputRenderer {
       const envelope: CliErrorEnvelope = {
         schemaVersion: CLI_OUTPUT_SCHEMA_VERSION,
         ok: false,
-        command,
+        command: redactText(command),
         changed: false,
         error: normalizeCliError(error)
       };
