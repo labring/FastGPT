@@ -143,7 +143,7 @@ describe('admin settings model create/update api', () => {
       });
       expect(result.code).toBe(200);
       const stored = await MongoAIModel.findById(result.data.modelId).lean();
-      expect(stored).not.toHaveProperty('sortOrder');
+      expect(stored?.sortOrder).toBe(1);
       expect(stored).not.toHaveProperty('inputPrice');
       expect(stored).not.toHaveProperty('pricing.unitPrice');
       expect(stored).not.toHaveProperty('pricing.extra');
@@ -315,6 +315,19 @@ describe('admin settings model create/update api', () => {
     await expect(MongoAIModel.findById(first._id).lean()).resolves.toMatchObject({
       sortOrder: 1
     });
+
+    const created = await callApi({
+      handler: createModelApi,
+      body: { modelData: { ...buildLlmDocument(), model: 'created-after-sort' } }
+    });
+    expect(created.error).toBeUndefined();
+    await expect(
+      MongoAIModel.find({ scope: ModelScopeEnum.system }).sort({ sortOrder: 1 }).lean()
+    ).resolves.toMatchObject([
+      { model: 'created-after-sort', sortOrder: 1 },
+      { model: 'first', sortOrder: 2 },
+      { model: 'second', sortOrder: 3 }
+    ]);
   });
 
   it('creates a custom model through the dedicated create endpoint', async () => {

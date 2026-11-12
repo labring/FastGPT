@@ -22,6 +22,7 @@ import {
 } from './channel/binding';
 import { deleteModelRecords } from './cleanup';
 import { importSystemModels as importSystemModelRecords } from './import';
+import { reserveLeadingModelRanks } from './order';
 import { MongoAIModel } from './schema';
 import { refreshModelTemplates } from './template';
 import {
@@ -203,7 +204,7 @@ export const updateModelOrder = async ({
   if (changed) await refreshMutationCatalog(context);
 };
 
-/** 创建时覆盖归属并忽略展示 rank；团队模型清洗测试模式并保留过渡期直连配置，唯一索引负责并发重名兜底。 */
+/** 创建时覆盖归属、忽略入参 rank 并将新建模型置顶（rank 1）；团队模型清洗测试模式，唯一索引负责并发重名兜底。 */
 export const createModel = async ({
   modelData,
   channelIds,
@@ -224,11 +225,14 @@ export const createModel = async ({
     if (await MongoAIModel.exists({ ...filter, model: data.model }).session(session)) {
       throw new UserError(ModelErrEnum.alreadyExists);
     }
+
+    await reserveLeadingModelRanks({ filter, count: 1, session });
     return MongoAIModel.create(
       [
         {
           ...(context.scope === ModelScopeEnum.team ? sanitizeTeamModelData(data) : data),
           ...filter,
+          sortOrder: 1,
           isActive: data.isActive ?? false
         }
       ],
@@ -240,7 +244,7 @@ export const createModel = async ({
   return { modelId: String(model._id) };
 };
 
-/** 从最新模板创建缺失的停用实例；重复提交不会覆盖已安装模型或无意义地增加目录版本。 */
+/** 从最新模板创建缺失的停用实例并按勾选顺序置顶；重复提交不会覆盖已安装模型或无意义地增加目录版本。 */
 export const createModelsFromTemplates = async ({
   templates,
   channelIds,
@@ -257,7 +261,7 @@ export const createModelsFromTemplates = async ({
         const key = `${reference.type}:${reference.model}`;
         const template = templateMap.get(key);
         if (!template) throw new UserError(`Model template no longer exists: ${key}`);
-        // 模板也只提供模型配置，不能把模板携带的 rank 写入本实例目录。
+        // 模板只提供模型配置，不继承模板携带的 rank，由本实例按本次新建顺序置顶分配。
         const { sortOrder: _sortOrder, ...modelData } = normalizeModelPricingForSave(template);
         return [template.model, modelData] as const;
       })
@@ -279,18 +283,20 @@ export const createModelsFromTemplates = async ({
   const models =
     missing.length === 0
       ? []
-      : await runModelTransaction(context, (session) =>
-          MongoAIModel.insertMany(
-            missing.map((template) => ({
+      : await runModelTransaction(context, async (session) => {
+          await reserveLeadingModelRanks({ filter, count: missing.length, session });
+          return MongoAIModel.insertMany(
+            missing.map((template, index) => ({
               ...(context.scope === ModelScopeEnum.team
                 ? sanitizeTeamModelData(template)
                 : template),
               ...filter,
+              sortOrder: index + 1,
               isActive: false
             })),
             { session }
-          )
-        );
+          );
+        });
   if (models.length > 0) await refreshMutationCatalog(context);
   await bindCreatedModelsToChannels({
     models: templates.map(({ model }) => model),

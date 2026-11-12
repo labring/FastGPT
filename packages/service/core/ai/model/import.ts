@@ -4,13 +4,14 @@ import { normalizeModelPricingForSave } from '@fastgpt/global/core/ai/model/pric
 import { type ParsedSystemModelsWithJsonBody } from '@fastgpt/global/openapi/core/ai/model/api';
 import { runModelTransaction } from './catalog/transaction';
 import { deleteModelRecords } from './cleanup';
+import { reserveLeadingModelRanks } from './order';
 import { MongoAIModel } from './schema';
 import { updatedReloadSystemModel } from './catalog/service';
 import { getModelConfigUpdate } from './utils';
 
 /**
- * 用导入配置替换系统模型集合，保留可匹配实例的稳定 ID 与展示 rank，并在同一事务内清理派生权限与探测记录。
- * 输入中的 sortOrder 始终忽略，新建模型也不从配置继承 rank。
+ * 用导入配置替换系统模型集合，保留可匹配实例的稳定 ID 与相对展示顺序，并在同一事务内清理派生权限与探测记录。
+ * 输入中的 sortOrder 始终忽略；新建模型按导入顺序分配顶部连续 rank（1..k）置顶展示。
  */
 export const importSystemModels = async ({ config }: ParsedSystemModelsWithJsonBody) => {
   const latestRecords = config.map((record) => ({ record, modelId: record.modelId }));
@@ -107,6 +108,14 @@ export const importSystemModels = async ({ config }: ParsedSystemModelsWithJsonB
       .map(({ _id }) => _id);
     await deleteModelRecords(removedModelIds.map(String), session);
 
+    const newModelCount = resolvedModels.filter((model) => !model.isExistingModel).length;
+    await reserveLeadingModelRanks({
+      filter: { scope: ModelScopeEnum.system },
+      count: newModelCount,
+      session
+    });
+
+    let nextNewSortOrder = 1;
     if (resolvedModels.length > 0)
       await MongoAIModel.bulkWrite(
         resolvedModels.map(({ modelId, model, modelData, isExistingModel }) => ({
@@ -114,7 +123,9 @@ export const importSystemModels = async ({ config }: ParsedSystemModelsWithJsonB
             filter: isExistingModel
               ? { _id: modelId, scope: ModelScopeEnum.system }
               : { scope: ModelScopeEnum.system, model },
-            update: isExistingModel ? getModelConfigUpdate(modelData) : { $set: modelData },
+            update: isExistingModel
+              ? getModelConfigUpdate(modelData)
+              : { $set: { ...modelData, sortOrder: nextNewSortOrder++ } },
             upsert: !isExistingModel
           }
         })),
