@@ -33,6 +33,10 @@ import {
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { logInstanceConfigWrite } from '@fastgpt/service/common/system/migrationCoverageLog';
 import { ApiHttpError } from '@fastgpt/service/common/http/apiError';
+import {
+  getSsoConfigured,
+  SsoConfigurationUnavailableError
+} from '@fastgpt/service/common/system/sso';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AdminAuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 
@@ -107,6 +111,32 @@ async function handler(
         `Edition boundary violation in domain "${item.domain}": fields not allowed in ${edition} edition: ${notAllowedKeys.join(
           ', '
         )}`
+      );
+    }
+  }
+
+  // 1.1 sync 团队模式必须依赖 Pro 侧 EXTERNAL_USER_SYSTEM_BASE_URL；未配置时在事务与 S3 操作前拒绝保存。
+  const authSyncRequested = items.some(
+    (item) =>
+      item.domain === 'auth' &&
+      typeof item.overrides === 'object' &&
+      item.overrides !== null &&
+      (item.overrides as Record<string, unknown>).teamMode === 'sync'
+  );
+  if (authSyncRequested) {
+    const ssoConfigured = await getSsoConfigured().catch((error: unknown) => {
+      if (error instanceof SsoConfigurationUnavailableError) {
+        throw new ApiHttpError(
+          503,
+          'SSO configuration is unavailable; cannot verify sync teamMode prerequisite'
+        );
+      }
+      throw error;
+    });
+    if (!ssoConfigured) {
+      throw new ApiHttpError(
+        400,
+        'Sync teamMode requires EXTERNAL_USER_SYSTEM_BASE_URL to be configured'
       );
     }
   }

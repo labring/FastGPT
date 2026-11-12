@@ -269,4 +269,54 @@ describe('instance config update API', () => {
       ).toBe(1);
     });
   });
+
+  it('rejects saving sync teamMode when EXTERNAL_USER_SYSTEM_BASE_URL is not configured or SSO status is unavailable', async () => {
+    const originalSsoHandler = global.getSsoConfiguredHandler;
+    try {
+      global.getSsoConfiguredHandler = () => false;
+      await expect(
+        handler({
+          body: {
+            items: [
+              { domain: 'auth', expectedRevision: 0, overrides: { teamMode: 'sync' } },
+              {
+                domain: 'site',
+                expectedRevision: 0,
+                overrides: { favicon: '/api/system/img/avatar/team/new.png' }
+              }
+            ]
+          }
+        } as any)
+      ).rejects.toMatchObject({
+        statusCode: 400,
+        message: expect.stringContaining('EXTERNAL_USER_SYSTEM_BASE_URL')
+      });
+      expect(mocks.copyForSiteReference).not.toHaveBeenCalled();
+      expect(await MongoSystemInstanceConfig.countDocuments({})).toBe(0);
+
+      global.getSsoConfiguredHandler = () => {
+        throw new Error('private-pro-token');
+      };
+      await expect(
+        handler({
+          body: {
+            items: [{ domain: 'auth', expectedRevision: 0, overrides: { teamMode: 'sync' } }]
+          }
+        } as any)
+      ).rejects.toMatchObject({
+        statusCode: 503
+      });
+      expect(await MongoSystemInstanceConfig.countDocuments({})).toBe(0);
+
+      global.getSsoConfiguredHandler = () => true;
+      const saved = await handler({
+        body: {
+          items: [{ domain: 'auth', expectedRevision: 0, overrides: { teamMode: 'sync' } }]
+        }
+      } as any);
+      expect(saved.results[0].effectiveConfig).toMatchObject({ teamMode: 'sync' });
+    } finally {
+      global.getSsoConfiguredHandler = originalSsoHandler;
+    }
+  });
 });

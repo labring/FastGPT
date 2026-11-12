@@ -579,4 +579,76 @@ describe('getInitData anonymous configuration filtering', () => {
     expect(invalidResponse.code).toBe(500);
     expect(invalidResponse.error).toBeInstanceOf(ZodError);
   });
+
+  it('snapshots feConfigs, subPlans and bufferId atomically when config rotates during async auth', async () => {
+    global.systemInitBufferId = 'config-v1';
+    global.feConfigs = { ...global.feConfigs, systemTitle: 'Old Title' };
+    global.subPlans = { extraDatasetSize: { price: 4 } };
+
+    vi.mocked(authCert).mockImplementationOnce(async () => {
+      // 模拟异步鉴权期间 initSystemConfig 原子切换到了新配置与新 bufferId
+      global.feConfigs = { ...global.feConfigs, systemTitle: 'New Title' };
+      global.subPlans = { extraDatasetSize: { price: 9 } };
+      global.systemInitBufferId = 'config-v2';
+      throw new Error('Anonymous visitor');
+    });
+
+    const first = await Call(handler, {
+      headers: {},
+      query: { includeSubPlans: true }
+    });
+    expect(first.code).toBe(200);
+    expect(first.data.bufferId).toBe('unAuth_v10_sso_1_config-v2');
+    expect(first.data.feConfigs?.systemTitle).toBe('New Title');
+    expect(first.data.subPlans).toEqual({ extraDatasetSize: { price: 9 } });
+  });
+
+  it('does not pair a rotated instance version tag with stale feConfigs before initSystemConfig publishes', async () => {
+    const { reloadSystemInstanceConfig, updateDomainConfig } =
+      await import('@fastgpt/service/common/system/systemInstanceConfig/controller');
+    const { MongoSystemInstanceConfig } =
+      await import('@fastgpt/service/common/system/systemInstanceConfig/schema');
+    await MongoSystemInstanceConfig.deleteMany({});
+
+    global.systemInitBufferId = 'v_stable';
+    global.feConfigs = { ...global.feConfigs, systemTitle: 'Title V1' };
+
+    await updateDomainConfig({
+      domain: 'site',
+      expectedRevision: 0,
+      submittedOverrides: { name: 'Title V2' },
+      actor: { actor: 'admin', userId: 'root' }
+    });
+    // 模拟 doInitSystemConfig 并行读取完成 reloadSystemInstanceConfig 但尚未调用 initFastGPTConfig
+    await reloadSystemInstanceConfig({ updateInitBufferId: false });
+
+    const duringReload = await Call(handler, { headers: {} });
+    expect(duringReload.data.bufferId).toBe('unAuth_v10_sso_1_v_stable');
+    expect(duringReload.data.feConfigs?.systemTitle).toBe('Title V1');
+
+    // 随后 initSystemConfig 在同一同步帧发布新 feConfigs 与新 bufferId，客户端携带旧 bufferId 请求必不命中旧缓存
+    global.feConfigs = { ...global.feConfigs, systemTitle: 'Title V2' };
+    global.systemInitBufferId = 'v_next';
+
+    const afterPublish = await Call(handler, {
+      headers: {},
+      query: { bufferId: duringReload.data.bufferId }
+    });
+    expect(afterPublish.data.bufferId).toBe('unAuth_v10_sso_1_v_next');
+    expect(afterPublish.data.feConfigs?.systemTitle).toBe('Title V2');
+  });
+
+  it('downgrades legacy sync teamMode to single when Pro reports SSO is not configured', async () => {
+    global.feConfigs = {
+      ...global.feConfigs,
+      teamMode: 'sync',
+      register_method: ['email', 'sync']
+    };
+    global.getSsoConfiguredHandler = () => false;
+
+    const { code, data } = await Call(handler, { auth, headers: {} });
+    expect(code).toBe(200);
+    expect(data.feConfigs?.teamMode).toBe('single');
+    expect(data.feConfigs?.register_method).toEqual(['email']);
+  });
 });

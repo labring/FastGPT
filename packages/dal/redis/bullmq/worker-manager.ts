@@ -44,6 +44,9 @@ export class BullMQWorkerManager {
        * 缓存命中时 opts 会被忽略，但并发是允许运行时调整的（BullMQ 提供公开 setter）。
        * 不在这里同步的话，registry 声明 applyMode: reload 的字段（评测 / 微信渠道并发）
        * 只有重启进程才生效，后台改完看起来「保存成功但不生效」。
+       * 注意：BullMQ Worker 在已跑满旧并发槽位时，内部主循环挂起在 `asyncFifoQueue.fetch()`
+       * 等待任一在途任务结束；提高 `existing.concurrency` 后无需重启，但需等至少一个在途任务完成
+       * 释放一次循环后才会按新并发拉满后续任务，这是单 Worker 实例的固有行为边界。
        * 只处理显式传入 concurrency 的调用方，其它 worker 参数仍以首次创建为准。
        */
       if (opts?.concurrency !== undefined) {

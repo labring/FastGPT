@@ -174,7 +174,7 @@ async function doInitSystemConfig({
   ] = await Promise.all([
     getFastGPTConfigFromDB(),
     getPluginRemoteDebugEnabled(),
-    reloadSystemInstanceConfig()
+    reloadSystemInstanceConfig({ updateInitBufferId: false })
   ]);
   logInstanceConfigRead({
     callsite: 'startup.app.system.initSystemConfig.snapshot',
@@ -322,8 +322,15 @@ async function doInitSystemConfig({
     config.feConfigs.loginGuideDocUrl = defaultOpenSourceLoginGuideDocUrl;
   }
 
-  // set config
+  // 在同一同步帧发布 feConfigs / subPlans 与确定性全局缓存标记，
+  // 避免异步 I/O 间隙让并发 getInitData 拿到“新标识 + 旧配置”或“旧标识 + 新配置”。
+  const nextSystemInitBufferId = computeSystemInitBufferId({
+    instanceVersionTag: getInstanceConfigVersionTag(),
+    licenseUpdateTime,
+    subPlansUpdateTime: fastgptConfigTime
+  });
   initFastGPTConfig(config);
+  global.systemInitBufferId = nextSystemInitBufferId;
 
   // 启动首次加载时实例配置迁移尚未完成，不能拿 Schema 默认值修改 Mongo TTL 索引；
   // 迁移后的 reload 以及 Watch/API 触发的普通 reload 才执行 TTL 同步。
@@ -340,13 +347,6 @@ async function doInitSystemConfig({
 
   const { refreshLangfuseTracing } = await import('@fastgpt/service/common/langfuse');
   await refreshLangfuseTracing();
-
-  // 全部加载完成后统一设置确定性全局缓存标记，结合实例配置多域版本、实际授权版本和套餐版本
-  global.systemInitBufferId = computeSystemInitBufferId({
-    instanceVersionTag: getInstanceConfigVersionTag(),
-    licenseUpdateTime,
-    subPlansUpdateTime: fastgptConfigTime
-  });
 
   logger.info('System config loaded', {
     instanceConfigVersion: getInstanceConfigVersionTag(),

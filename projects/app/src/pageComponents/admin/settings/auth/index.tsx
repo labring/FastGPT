@@ -129,9 +129,14 @@ const AuthSettingComponent = () => {
       }
 
       // 单次请求、单个数据库事务原子保存 auth 与 security 两个域，避免分步提交导致半写状态。
-      // 深度合并保留同域未在当前页编辑的字段（如 teamMode、OpenAPI Key 上限、CORS 等）及密钥。
+      // 深度合并保留同域未在当前页编辑的字段（如 OpenAPI Key 上限等）及密钥；
+      // teamMode 由核心配置页单独维护并由服务端合并保留，此处不重复提交以免存量 sync 阻断无关字段保存。
+      const { teamMode: _preservedTeamMode, ...preservedAuthOverrides } = filterConfigDataByEdition(
+        'auth',
+        auth.overrides
+      ) as Record<string, unknown>;
       const authOverrides = deepMergeConfig(
-        filterConfigDataByEdition('auth', auth.overrides) as Record<string, unknown>,
+        preservedAuthOverrides,
         filterConfigData('auth', {
           wecomLoginAutoRedirect: Boolean(rest.wecomLoginAutoRedirect),
           passwordExpiredMonth:

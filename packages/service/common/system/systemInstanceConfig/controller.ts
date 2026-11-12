@@ -667,19 +667,27 @@ export const getSystemInstanceConfigSnapshot = async ({
 /**
  * 重新加载并刷新系统实例配置内存快照。
  * 供服务启动、Admin API 保存后以及集群变更通知时调用。
+ *
+ * App 的 `initSystemConfig` 还需合并 `MongoSystemConfigs` / 插件能力后再统一发布 `feConfigs`，
+ * 因此传入 `updateInitBufferId: false`，避免提前旋转 `systemInitBufferId` 造成“新标识 + 旧页面配置”竞态。
  */
 export const reloadSystemInstanceConfig = async (options?: {
   readPreference?: 'primary';
+  updateInitBufferId?: boolean;
 }): Promise<SystemInstanceConfig> => {
-  const { snapshot, versionTag } = await getSystemInstanceConfigSnapshot(options);
+  const { snapshot, versionTag } = await getSystemInstanceConfigSnapshot({
+    readPreference: options?.readPreference
+  });
   // 环境变量仅提供基础设施 vendor；下载策略来自已加载配置，校验失败保留旧快照。
   assertStorageDownloadConfig(snapshot.storage);
   publishSystemInstanceConfigSnapshot({ snapshot, versionTag });
-  global.systemInitBufferId = computeSystemInitBufferId({
-    instanceVersionTag: getInstanceConfigVersionTag(),
-    licenseUpdateTime: (global.licenseData as any)?.expiredTime
-      ? new Date((global.licenseData as any).expiredTime).getTime()
-      : undefined
-  });
+  if (options?.updateInitBufferId !== false) {
+    global.systemInitBufferId = computeSystemInitBufferId({
+      instanceVersionTag: getInstanceConfigVersionTag(),
+      licenseUpdateTime: (global.licenseData as any)?.expiredTime
+        ? new Date((global.licenseData as any).expiredTime).getTime()
+        : undefined
+    });
+  }
   return snapshot;
 };
