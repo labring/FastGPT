@@ -31,6 +31,7 @@ import type {
 } from '@fastgpt/global/core/workflow/type/node';
 import { formatEditorVariablePickerIcon } from '@fastgpt/web/core/workflow/utils';
 import { getAppChatConfig } from '@fastgpt/global/common/app/chat';
+import { getWorkflowSecretInputKind } from '@fastgpt/global/common/workflow/input';
 import {
   getSelectedInputRenderType,
   getWorkflowReferenceSourceNodes,
@@ -538,10 +539,14 @@ export const filterSensitiveNodesData = (nodes: StoreNodeItemType[]) => {
     }
 
     for (const input of node.inputs) {
-      if (input.key === NodeInputKeyEnum.systemInputConfig) {
+      const secretInputKind = getWorkflowSecretInputKind({
+        flowNodeType: node.flowNodeType,
+        inputKey: input.key
+      });
+      if (secretInputKind === 'systemConfig') {
         clearSystemInputConfig(input);
       }
-      if (input.key === NodeInputKeyEnum.headerSecret) {
+      if (secretInputKind === 'headers') {
         const headerSecret = clearHeaderSecret(input.value);
         if (headerSecret) {
           input.value = headerSecret;

@@ -153,7 +153,7 @@ describe('filterSensitiveNodesData', () => {
     const nodes = [
       {
         nodeId: 'tool',
-        flowNodeType: FlowNodeTypeEnum.code,
+        flowNodeType: FlowNodeTypeEnum.tool,
         inputs: [
           {
             key: NodeInputKeyEnum.systemInputConfig,
@@ -188,7 +188,7 @@ describe('filterSensitiveNodesData', () => {
     const nodes = [
       {
         nodeId: 'tool',
-        flowNodeType: FlowNodeTypeEnum.code,
+        flowNodeType: FlowNodeTypeEnum.tool,
         inputs: [
           {
             key: NodeInputKeyEnum.systemInputConfig,
@@ -204,6 +204,27 @@ describe('filterSensitiveNodesData', () => {
 
     expect(filtered[0].inputs[0].value).toEqual({ type: 'manual', value: {} });
     expect(JSON.stringify(filtered)).not.toContain('plain-token');
+  });
+
+  it('preserves same-named business inputs on non-system nodes', () => {
+    const nodes = [
+      {
+        nodeId: 'code',
+        flowNodeType: FlowNodeTypeEnum.code,
+        inputs: [
+          { key: NodeInputKeyEnum.headerSecret, value: 'ordinary-business-value' },
+          { key: 'ordinaryRef', value: ['start', 'chatId'] },
+          {
+            key: NodeInputKeyEnum.systemInputConfig,
+            value: { type: 'manual', value: { token: { value: 'ordinary-token' } } },
+            inputList: [{ key: 'token', label: 'Token', inputType: 'secret' }]
+          }
+        ],
+        outputs: []
+      }
+    ] as any;
+
+    expect(filterSensitiveNodesData(nodes)[0].inputs).toEqual(nodes[0].inputs);
   });
 
   it('keeps a fully configured system input configured before export', () => {
@@ -239,7 +260,7 @@ describe('filterSensitiveNodesData', () => {
     const nodes = [
       {
         nodeId: 'tool',
-        flowNodeType: FlowNodeTypeEnum.code,
+        flowNodeType: FlowNodeTypeEnum.tool,
         inputs: [
           {
             key: NodeInputKeyEnum.systemInputConfig,
@@ -276,7 +297,7 @@ describe('filterSensitiveNodesData', () => {
     const nodes = [
       {
         nodeId: 'tool',
-        flowNodeType: FlowNodeTypeEnum.code,
+        flowNodeType: FlowNodeTypeEnum.tool,
         inputs: [
           {
             key: NodeInputKeyEnum.systemInputConfig,
@@ -305,7 +326,7 @@ describe('filterSensitiveNodesData', () => {
     const nodes = [
       {
         nodeId: 'tool',
-        flowNodeType: FlowNodeTypeEnum.code,
+        flowNodeType: FlowNodeTypeEnum.tool,
         inputs: [
           {
             key: NodeInputKeyEnum.systemInputConfig,
