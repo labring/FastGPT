@@ -20,13 +20,13 @@ If you are using an AI coding assistant (such as **Codex** or **Claude Code**), 
 </Alert>
 
 ```text
-Please help me install and configure the FastGPT CLI. First, fetch and follow the official Skill guide at https://doc.fastgpt.in/skill.md to complete CLI installation, guide me through login, run doctor diagnostics, and output the available CLI capabilities.
+Please help me install and configure the FastGPT CLI. First, fetch and follow the official Skill guide at https://doc.fastgpt.io/skill.md to complete CLI installation, guide me through login, run doctor diagnostics, and output the available CLI capabilities.
 ```
 
 > You can also download the official Skill directly to your local skills directory:
 >
 > ```bash
-> curl -fsSL https://doc.fastgpt.in/skill.md -o skill.md
+> curl -fsSL https://doc.fastgpt.io/skill.md -o skill.md
 > ```
 
 ---
@@ -37,7 +37,7 @@ If you prefer manual terminal operation, get ready in just 3 steps:
 
 ### 1. Install CLI
 
-Requires Node.js `>= 20.x`. Install globally via npm:
+Requires Node.js `>= 20.12.0`. Install globally via npm:
 
 ```bash
 npm install -g @fastgpt/cli
@@ -52,12 +52,15 @@ fastgpt --version
 Run the login command:
 
 ```bash
-# Option A: Interactive browser authorization (Cloud or self-hosted)
+# Option A: Interactive login in TTY terminal (Cloud or self-hosted)
 fastgpt login
 # For self-hosted instances: fastgpt login --base-url https://your-domain.com/api
 
 # Option B: API Key login (Recommended for CI / container / script environments)
 fastgpt login --api-key <FASTGPT_API_KEY>
+
+# Option C: Username and password via stdin
+echo "<PASSWORD>" | fastgpt login --username <USERNAME> --password-stdin
 ```
 
 Check your active identity and team workspace anytime:
@@ -85,10 +88,10 @@ FastGPT CLI is organized around Domain-Driven Design (DDD) with clean, intuitive
 
 | Category               | Example Commands                                                                                                                      | Description                                                                 |
 | :--------------------- | :------------------------------------------------------------------------------------------------------------------------------------ | :-------------------------------------------------------------------------- |
-| **Auth & Team**        | `fastgpt whoami`<br/>`fastgpt auth switch --team-id <id>`                                                                             | View user identity and team spaces, or switch active teams                  |
+| **Auth & Team**        | `fastgpt whoami`<br/>`fastgpt auth switch-team --team-id <id>`                                                                        | View user identity and team spaces, or switch active teams                  |
 | **Dataset Recall**     | `fastgpt dataset list`<br/>`fastgpt dataset search <id> "query"`                                                                      | Search dataset lists with pagination, or test hybrid recall chunks          |
 | **Dataset Management** | `fastgpt dataset create --name "Docs"`<br/>`fastgpt dataset update <id> --parent-id null`<br/>`fastgpt dataset delete <id> --dry-run` | Full dataset lifecycle CRUD with root folder moves and `--dry-run` previews |
-| **Configuration**      | `fastgpt config get`<br/>`fastgpt commands --format json`                                                                             | Inspect local config, or discover all machine-readable command schemas      |
+| **Configuration**      | `fastgpt config list`<br/>`fastgpt commands --format json`                                                                            | Inspect local config, or discover all machine-readable command schemas      |
 
 ---
 

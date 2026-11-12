@@ -30,7 +30,7 @@
   "license": "Apache-2.0",
   "sideEffects": false,
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=20.12.0"
   },
   "scripts": {
     "build:tsdown": "tsdown --config ./scripts/build.tsdown.ts && chmod +x dist/cli.mjs",

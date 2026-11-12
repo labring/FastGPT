@@ -43,6 +43,18 @@ export function createRuntimeCheck(): DoctorCheck {
     run: async () => {
       const cliVersion = getCliVersion();
       const bunVersion = (process.versions as Record<string, string | undefined>).bun;
+      if (!bunVersion) {
+        const nodeVersion = process.versions.node;
+        const [major, minor] = nodeVersion.split('.').map(Number);
+        if (major < 20 || (major === 20 && minor < 12)) {
+          return {
+            name: 'runtime',
+            status: 'fail',
+            message: `Node.js version ${nodeVersion} is unsupported. Requires Node.js >= 20.12.0.`,
+            hint: 'Please upgrade Node.js to >= 20.12.0 (recommended: Node.js 22 LTS or higher).'
+          };
+        }
+      }
       return {
         name: 'runtime',
         status: 'pass',

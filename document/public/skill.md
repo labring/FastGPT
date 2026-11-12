@@ -17,10 +17,10 @@ description: FastGPT CLI setup and initialization workflow for AI agents (Codex,
 ## 执行步骤
 
 ### 1. 安装 CLI
-首先检测本地运行环境，若 Node.js 版本低于 20.x，先提醒用户升级；随后执行全局安装：
+首先检测本地运行环境，若 Node.js 版本低于 20.12.0，先提醒用户升级（`@clack/prompts` 依赖 Node 20.12.0+ 的 `node:util` `styleText`）；随后执行全局安装：
 
 ```bash
-# 检查 Node 版本
+# 检查 Node 版本（需 >= 20.12.0）
 node -v
 
 # 全局安装 FastGPT CLI
@@ -39,18 +39,18 @@ fastgpt whoami --format json
 
 - **若返回成功 (`ok: true`)**：记录当前已登录的用户标识、所属团队及 Profile 名称，直接进入第 3 步。
 - **若尚未登录或凭据失效**：询问用户的 FastGPT 服务端地址（默认公有云为 `https://cloud.fastgpt.cn/api`，私有化部署请提供实例 API 地址）以及期望的认证方式：
-  1. **浏览器授权登录（人类终端推荐）**：
-     ```bash
-     fastgpt login
-     # 私有化部署：fastgpt login --base-url https://your-domain.com/api
-     ```
-  2. **API Key 登录（Agent / CI 自动化推荐）**：
+  1. **API Key 登录（Agent / CI 自动化首选推荐）**：
      ```bash
      fastgpt login --api-key <FASTGPT_API_KEY>
+     # 若为自建实例：fastgpt login --base-url https://your-domain.com/api --api-key <FASTGPT_API_KEY>
      ```
-  3. **账号密码登录**：
+  2. **账号密码登录（非交互式通过标准输入传密码）**：
      ```bash
-     fastgpt login --username <USERNAME> --password <PASSWORD>
+     echo "<PASSWORD>" | fastgpt login --username <USERNAME> --password-stdin
+     ```
+  3. **交互式终端登录（人类交互模式推荐）**：
+     ```bash
+     fastgpt login
      ```
   登录完成后，再次执行 `fastgpt whoami --format json` 验证登录结果。
 
@@ -62,7 +62,7 @@ fastgpt doctor --format json
 ```
 
 核心检查项说明：
-- `nodeRuntime`：Node.js 版本 `>= 20.x`。
+- `nodeRuntime`：Node.js 版本 `>= 20.12.0`。
 - `configStorage`：配置文件与本地凭据存储安全（密钥环可用或 0600 文件受保护）。
 - `serverReachability`：目标服务端可达且 TLS 握手正常。
 - `authentication`：凭据有效性及有效期限。
@@ -77,9 +77,9 @@ fastgpt commands --format json
 ```
 
 整理并向用户展示 CLI 的核心能力矩阵：
-- **认证与会话 (`auth` / `login` / `logout` / `whoami`)**：支持 24 小时防抖的 7 天滑动会话续期、多 Profile 环境隔离、团队空间一键切换。
+- **认证与会话 (`auth` / `login` / `logout` / `whoami`)**：支持 24 小时防抖的 7 天滑动会话续期、多 Profile 环境隔离、团队空间一键切换（`fastgpt auth switch-team --team-id <id>`）。
 - **知识库管理 (`dataset`)**：知识库全生命周期 CRUD、根目录与层级目录移动、`--dry-run` 请求预览、破坏性删除二次确认、混合检索召回测试。
-- **本地配置 (`config`)**：查看与修改客户端默认行为（格式、Profile 等）。
+- **本地配置 (`config`)**：查看所有配置项（`fastgpt config list`）与修改参数。
 - **环境诊断 (`doctor`)**：环境体检与连通性诊断。
 
 ---
@@ -91,7 +91,7 @@ fastgpt commands --format json
 ```markdown
 ### ✅ FastGPT CLI 初始化完成
 
-- **CLI 版本**：v0.1.0-alpha.1
+- **CLI 版本**：v0.1.0-beta.1
 - **当前身份**：<用户名>（团队：<团队名>）
 - **服务端地址**：https://cloud.fastgpt.cn/api
 - **健康诊断**：全部检查通过 (All checks passed)
@@ -100,8 +100,9 @@ fastgpt commands --format json
 | 命令域 | 核心能力 | 示例命令 |
 | :--- | :--- | :--- |
 | `whoami` | 查看身份与团队 | `fastgpt whoami` |
-| `auth` | 切换工作空间团队 | `fastgpt auth switch --team-id <id>` |
+| `auth` | 切换工作空间团队 | `fastgpt auth switch-team --team-id <id>` |
 | `dataset` | 检索知识库与召回测试 | `fastgpt dataset list` / `fastgpt dataset search <id> "query"` |
+| `config` | 查看本地所有配置 | `fastgpt config list` |
 | `doctor` | 运行状态体检 | `fastgpt doctor` |
 
 > 提示：在编写自动化脚本或通过 Agent 调用时，添加 `--format json` 即可获取纯净的结构化输出。
