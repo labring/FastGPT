@@ -3,6 +3,7 @@
   "root": true,
   "pages": [
     "getting-started",
+    "cli",
     "build",
     "chat",
     "dataset",

@@ -1,0 +1,60 @@
+---
+title: CLI Overview
+description: Introduction, core features, and use cases for the official FastGPT CLI (fastgpt).
+---
+
+import { Alert } from '@/components/docs/Alert';
+
+FastGPT CLI (`fastgpt`) is the official command-line interface for FastGPT, designed for developers, DevOps engineers, and AI coding agents (such as Claude Code, Codex, Cursor, and Windsurf) to interact with and manage FastGPT resources securely and efficiently.
+
+With FastGPT CLI, you can authenticate, switch between team workspaces, manage datasets, test knowledge recall, and run diagnostic health checks directly from your terminal without opening a browser.
+
+---
+
+## Key Features
+
+<Alert icon="⚡" context="success">
+  FastGPT CLI follows modern CLI architecture principles: local-first, security-first, and
+  agent-friendly, supporting both human interaction and agentic automation.
+</Alert>
+
+### 1. Dual-Mode Design (Human & Agent Friendly)
+
+- **Human-Friendly**: Interactive TTY mode provides colorized hierarchical output, friendly prompts, confirmation safety guards, and one-step diagnostics via `fastgpt doctor`.
+- **Agent & CI Friendly**: In non-TTY environments or with `--format json`, it automatically outputs deterministic structured JSON envelopes. All non-payload logs and warnings route to `stderr`, keeping `stdout` completely clean for UNIX pipes and automation.
+
+### 2. Local Security & Secret Protection
+
+- **System Keychains**: Credentials are preferentially stored in macOS Keychain or Linux Secret Service, gracefully falling back to mode `0600` files in headless or containerized environments.
+- **Deep Redaction & Anti-Leakage**: All logs, errors, and envelopes automatically redact sensitive tokens. Manual cross-origin redirects are intercepted to prevent credential leakage.
+- **Destructive Operation Guards**: Destructive commands require explicit confirmation in TTY mode, mandate `--yes` in non-interactive/JSON mode, and provide zero-side-effect `--dry-run` previews.
+
+### 3. Unified Sliding Session Renewal
+
+- Session tokens come with a standard 7-day TTL.
+- Active CLI usage triggers a debounced sliding renewal (24-hour interval) matching the Web experience, keeping active sessions fresh without unexpected logouts.
+
+---
+
+## Command Categories
+
+FastGPT CLI commands are organized into clean, domain-driven command groups:
+
+| Command Group      | Description                                                         | Example Commands                                 |
+| ------------------ | ------------------------------------------------------------------- | ------------------------------------------------ |
+| `auth`             | Authentication, multi-profile switching, and active team workspace  | `fastgpt auth status`, `fastgpt auth switch`     |
+| `login` / `logout` | Quick login and logout shortcuts                                    | `fastgpt login`, `fastgpt logout`                |
+| `whoami`           | Inspect current user identity, teams, and active session details    | `fastgpt whoami`                                 |
+| `dataset`          | Knowledge base lifecycle management and recall testing              | `fastgpt dataset list`, `fastgpt dataset search` |
+| `config`           | Inspect and configure local CLI client parameters                   | `fastgpt config get`, `fastgpt config set`       |
+| `doctor`           | Self-test runtime environment, permissions, and server reachability | `fastgpt doctor`                                 |
+
+---
+
+## Chapter Navigation
+
+Explore the CLI documentation by topic:
+
+1. [Installation](/en/guide/cli/installation): Install via npm or copy a one-click prompt for AI Agents.
+2. [Authentication](/en/guide/cli/auth): Interactive login, API Key auth, profiles, and secure storage.
+3. [Dataset Management](/en/guide/cli/dataset): CRUD operations, folder moves, `--dry-run` previews, and recall testing.

@@ -1,0 +1,97 @@
+---
+title: 安装与环境准备
+description: 通过 npm 全局安装 FastGPT CLI，或复制一键提示词让 AI Agent 自动化安装与配置。
+---
+
+import { Alert } from '@/components/docs/Alert';
+
+FastGPT CLI 基于 Node.js 构建，支持 macOS、Linux 以及 Windows（WSL2 / PowerShell）平台。
+
+---
+
+## 环境要求
+
+- **Node.js**：版本 `>= 20.x`（推荐 Node.js 22 LTS 或更高版本）
+- **包管理器**：`npm`、`pnpm` 或 `yarn`
+
+在安装前，可以通过以下命令检查当前的 Node.js 版本：
+
+```bash
+node -v
+```
+
+如果版本低于 `v20.0.0`，请先通过 [Node.js 官方网站](https://nodejs.org/) 或使用 `nvm` / `fnm` 升级 Node.js。
+
+---
+
+## 方式一：通过 npm 全局安装（手动安装）
+
+在终端中执行以下命令全局安装 `@fastgpt/cli`：
+
+```bash
+npm install -g @fastgpt/cli
+```
+
+也可以使用其他包管理器安装：
+
+```bash
+# 使用 pnpm
+pnpm add -g @fastgpt/cli
+
+# 使用 yarn
+yarn global add @fastgpt/cli
+```
+
+安装完成后，执行以下命令验证 CLI 是否就绪：
+
+```bash
+fastgpt --version
+```
+
+终端将打印当前安装的 CLI 版本号（例如 `0.1.0-alpha.1`）。
+
+---
+
+## 方式二：AI Agent 一键安装提示词（Agent 接入推荐）
+
+如果你正在使用 AI 编程助手（如 **Claude Code**、**Codex**、**Cursor**、**Windsurf** 等），可以直接将以下提示词复制发送给 Agent。Agent 将自动检测本地环境、执行安装、完成自检并引导你完成后续配置。
+
+<Alert icon="🤖" context="info">
+  点击下方代码框右上角复制提示词，直接粘贴到你的 AI Agent 对话框中即可。
+</Alert>
+
+```markdown
+请帮我在当前开发环境中安装并配置 FastGPT 官方 CLI 工具（@fastgpt/cli）：
+
+1. **环境检查**：检查当前系统的 Node.js 版本是否 >= 20.x；若未满足请提示我升级。
+2. **全局安装**：执行 `npm install -g @fastgpt/cli`（或根据当前环境使用 pnpm/yarn）。
+3. **版本验证**：运行 `fastgpt --version` 确认可执行文件已正确进入系统 PATH。
+4. **健康诊断**：运行 `fastgpt doctor --format json` 检查本地运行时、密钥环状态及配置文件完整性。
+5. **引导配置**：询问我的 FastGPT 服务端地址（默认为官方云端 `https://cloud.fastgpt.cn/api`，或输入自建实例地址）以及登录方式（账号密码或 API Key），并协助我运行 `fastgpt login` 完成初始化。
+```
+
+Agent 执行完成后，即可直接通过终端命令或让 Agent 协助你管理 FastGPT 平台上的知识库与工作流。
+
+---
+
+## 环境自检与健康诊断（fastgpt doctor）
+
+安装完成后，建议运行内置的自检诊断命令 `fastgpt doctor`：
+
+```bash
+fastgpt doctor
+```
+
+该命令将自动对你的本地环境展开 5 项核心指标体检：
+
+1. **Node.js 运行时**：验证 Node.js 版本是否符合规范（>= 20.x）。
+2. **配置文件状态**：检查 `config.json` 是否存在、格式是否合法，目录权限是否安全（`0700`）。
+3. **凭据安全存储**：检测系统密钥环（macOS Keychain / Linux Secret Service）是否可用，或是否已正确启用受保护的文件存储（`0600`）。
+4. **服务端连通性**：检测当前配置的 FastGPT Base URL 是否可访问、TLS 证书是否受信任。
+5. **身份认证有效性**：验证当前 Profile 的凭据是否有效、是否在有效期内、归属哪个用户与团队空间。
+
+对于自动化运维脚本或 Agent 场景，可传入 `--format json` 获取结构化的体检报告：
+
+```bash
+fastgpt doctor --format json
+```

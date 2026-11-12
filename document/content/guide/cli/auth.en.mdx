@@ -1,0 +1,150 @@
+---
+title: Authentication & Environments
+description: Authentication modes, sliding session renewal, multi-profile management, and workspace switching in FastGPT CLI.
+---
+
+import { Alert } from '@/components/docs/Alert';
+
+FastGPT CLI provides enterprise-grade multi-tenant and multi-environment management. You can maintain separate profiles for development, staging, and production environments, and switch effortlessly between team workspaces.
+
+---
+
+## Supported Credential Types
+
+FastGPT CLI supports two primary credential types:
+
+| Credential Type                             | Best For                                                 | Scope & Permissions                                         | Session Lifespan                                       |
+| ------------------------------------------- | -------------------------------------------------------- | ----------------------------------------------------------- | ------------------------------------------------------ |
+| **Session Token** (Username/password login) | Local development, interactive workflows, team switching | Full permissions granted to your account in the active team | 7-day sliding renewal (automatically refreshed on use) |
+| **Personal API Key** (`fastgpt-...`)        | CI/CD pipelines, automation scripts, AI Agents           | Full account owner capabilities across public APIs          | Persistent or as configured in the Web console         |
+
+<Alert icon="🔒" context="warning">
+  **Note**: **App-scoped API Keys** in FastGPT are restricted to individual applications and cannot
+  manage datasets or administrative resources. The CLI automatically enforces auth gates on commands
+  like `dataset` to prevent accidental credential misuse.
+</Alert>
+
+---
+
+## Logging In & Initialization
+
+### 1. Interactive Login (Recommended)
+
+Run `fastgpt login` and follow the interactive prompts:
+
+```bash
+fastgpt login
+```
+
+Steps:
+
+1. Enter your FastGPT server API URL (defaults to cloud `https://cloud.fastgpt.cn/api`; self-hosted users should enter their instance URL, such as `https://fastgpt.mycompany.com/api`).
+2. Enter your username/email/phone and password.
+3. Upon success, credentials are automatically and securely stored in your operating system keychain (macOS Keychain or Linux Secret Service).
+
+### 2. Fast API Key Login (Non-Interactive)
+
+If you prefer using a Personal API Key generated from the FastGPT Web console («Account - API Keys»):
+
+```bash
+fastgpt login --api-key "fastgpt-personal-xxxxxx" --base-url "https://cloud.fastgpt.cn/api"
+```
+
+### 3. Named Profiles
+
+Use `--profile <name>` to isolate configurations for different environments (defaults to `default`):
+
+```bash
+# Save to 'local' profile
+fastgpt login --profile local --base-url "http://localhost:3000/api"
+
+# Save to 'prod' profile
+fastgpt login --profile prod --base-url "https://ai.company.com/api"
+```
+
+---
+
+## Inspecting User & Session State
+
+### 1. Inspect Current User (fastgpt whoami)
+
+```bash
+fastgpt whoami
+```
+
+Prints detailed information about your active session:
+
+- User ID and username
+- Root administrator status
+- Active team workspace (Team ID, team name, member permission level)
+- Session expiration timestamp and upcoming auto-renewal time
+
+For programmatic use in scripts, add `--format json`:
+
+```bash
+fastgpt whoami --format json
+```
+
+### 2. Inspect Profile Status (fastgpt auth status)
+
+```bash
+fastgpt auth status
+```
+
+Displays the active profile name, base URL, auth type (Token or API Key), and underlying secret storage backend (Keychain or File).
+
+---
+
+## Sliding Session Renewal
+
+FastGPT session tokens utilize a **24-hour debounced sliding session renewal** mechanism:
+
+1. **Base TTL**: Each successful login yields a 7-day session.
+2. **Automatic Renewal**: When executing authenticated commands, if more than 24 hours have elapsed since the last renewal, the server atomically extends the session TTL in Redis by another 7 days and returns the new expiration timestamp in response headers.
+3. **Silent Client Update**: FastGPT CLI detects this header and silently updates your local expiration cache, eliminating unexpected expirations during active development.
+
+---
+
+## Multi-Profile and Workspace Switching
+
+### 1. List All Configured Profiles
+
+```bash
+fastgpt auth list
+```
+
+Displays all saved profiles and flags the currently active one (`*`).
+
+### 2. Switch Active Profile
+
+```bash
+fastgpt auth switch prod
+```
+
+All subsequent commands will default to the `prod` profile. You can also override the profile per command:
+
+```bash
+fastgpt dataset list --profile local
+```
+
+### 3. Switch Active Team Workspace
+
+If your account belongs to multiple team spaces, use `auth switch-team` to switch workspaces:
+
+```bash
+fastgpt auth switch-team 68ad85a7463006c963799a05
+```
+
+The CLI requests a team-scoped session token from the server, updates the local profile, and immediately redirects subsequent operations to the target team's resources.
+
+### 4. Logging Out
+
+```bash
+# Log out of current profile
+fastgpt logout
+
+# Log out of a specific profile
+fastgpt auth logout local
+```
+
+Logging out securely removes stored credentials from your system keychain or credentials file.

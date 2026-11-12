@@ -1,0 +1,5 @@
+{
+  "title": "Command Line (CLI)",
+  "root": false,
+  "pages": ["index", "installation", "auth", "dataset"]
+}
