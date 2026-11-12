@@ -172,12 +172,22 @@ function mapServerError({
 function unpackFastGptResponse<T>({
   response,
   rawText,
-  displayUrl
+  displayUrl,
+  onSessionRenewed
 }: {
   response: Response;
   rawText: string;
   displayUrl: string;
+  onSessionRenewed?: (expiresAt: number) => void;
 }): T {
+  const sessionExpiresHeader = response.headers?.get?.('x-fastgpt-session-expires');
+  if (sessionExpiresHeader) {
+    const expiresAt = Number(sessionExpiresHeader);
+    if (Number.isFinite(expiresAt) && expiresAt > 0) {
+      onSessionRenewed?.(expiresAt);
+    }
+  }
+
   let parsed: unknown = undefined;
   if (rawText.trim().length > 0) {
     try {
@@ -314,7 +324,8 @@ export function createFastGptHttpClient({
   fetchFn = globalThis.fetch,
   insecure = false,
   caCertPath,
-  timeoutMs = DEFAULT_TIMEOUT_MS
+  timeoutMs = DEFAULT_TIMEOUT_MS,
+  onSessionRenewed
 }: {
   baseUrl: string;
   cliVersion: string;
@@ -322,6 +333,7 @@ export function createFastGptHttpClient({
   insecure?: boolean;
   caCertPath?: string;
   timeoutMs?: number;
+  onSessionRenewed?: (expiresAt: number) => void;
 }): FastGptHttpClient {
   const normalizedBaseUrl = baseUrl.replace(/\/+$/, '');
   let cachedCaPem: string | undefined;
@@ -411,7 +423,7 @@ export function createFastGptHttpClient({
       }
 
       const rawText = await response.text();
-      return unpackFastGptResponse<T>({ response, rawText, displayUrl });
+      return unpackFastGptResponse<T>({ response, rawText, displayUrl, onSessionRenewed });
     },
 
     requestRaw: async ({
@@ -526,7 +538,7 @@ export function createFastGptHttpClient({
       }
 
       const rawText = await response.text();
-      return unpackFastGptResponse<T>({ response, rawText, displayUrl });
+      return unpackFastGptResponse<T>({ response, rawText, displayUrl, onSessionRenewed });
     },
 
     streamSse: async function* ({

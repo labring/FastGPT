@@ -125,14 +125,36 @@ cli/
 
 | 凭据类型 | 服务端标识 | 权限模型与覆盖范围 | 有效期 / 限制 |
 |---|---|---|---|
-| **Session Token** | `AuthUserTypeEnum.token` | 完整用户 + 团队权限（`TeamPermission`），覆盖全部管理接口与数据接口 | Redis `SessionCache` 存储，固定 **7 天 TTL**（604800s），受 `maxLoginSession` 限制 |
+| **Session Token** | `AuthUserTypeEnum.token` | 完整用户 + 团队权限（`TeamPermission`），覆盖全部管理接口与数据接口 | Redis `SessionCache` 存储，基准 **7 天 TTL**（604800s），支持 24h 防抖滑动续期，受 `maxLoginSession` 限制 |
 | **Personal API Key** | `AuthUserTypeEnum.apikey` + `ApiKeyTypeEnum.personal` | 继承创建者成员 ACL，覆盖 System OpenAPI 及标注 `authApiKey: true` 的接口；无法访问只允许 `authToken` 的接口（如 `app/detail`、`app/update`、`app/copy`、发布等） | 支持配置 `expiredTime` 与 `maxUsagePoints`（Pro 版强制校验） |
 | **App API Key** | `AuthUserTypeEnum.apikey` + `ApiKeyTypeEnum.app` | 强制绑定单一 `boundAppId`，**不授予成员 ACL**（`isOwner=false, canWrite=false`），仅可访问显式开启 `authAppApiKey: true` 的接口（如 `v1/v2 chat/completions`、`app/logs/*`、`chat/init`） | 支持配置 `expiredTime` 与 `maxUsagePoints` |
 
 **现有探活与团队接口现状**：
-- `GET /api/support/user/account/tokenLogin`：仅支持 `authToken: true`，用于校验 Session 并返回用户/团队信息。
+- `GET /api/support/user/account/tokenLogin`：仅支持 `authToken: true`，用于校验 Session 并返回用户/团队信息（已接入滑动续期）。
+- `GET /api/support/user/account/whoami`：统一返回三类凭据主体元数据与最新过期时间（已接入滑动续期）。
 - `GET /api/support/openapi/health`：仅支持 `authApiKey` / `authAppApiKey`，需通过 query `?apiKey=...` 传参，仅返回 `{ valid, type, usagePoints, maxUsagePoints, appId }`，缺少用户、团队、Key 名称、到期时间与可用能力描述。
 - `GET /api/proApi/support/user/team/list` 与 `PUT /api/proApi/support/user/team/switch`：仅商业版（Pro）提供，切换团队后签发新 Session Token；API Key 绑定固定团队，不支持跨团队切换。
+
+---
+
+### 6.1.1 统一防抖滑动会话续期机制（Web 与 CLI 同源自动续期）
+
+为解决人机交互 Session“固定 7 天后即便频繁在用也被强制踢出重登”的痛点，服务端与客户端建立了双端统一的**防抖式滑动会话机制**：
+
+1. **核心规则**：
+   - **基准周期**：7 天（604800 秒）。
+   - **防抖滑动阈值**：**每 24 小时（86400 秒）最多写一次 Redis**。避免高频 API 产生写放大。
+2. **服务端原子实现**：
+   - `packages/dal/redis/caches/session.ts`：`SessionCache.touchSession` 通过 Lua 脚本原子比较并更新 `updatedAt`，并在键存在时将 Redis TTL 重新设为 7 天。
+   - `packages/service/support/permission/auth/common.ts`：`parseHeaderCert` 校验成功后执行滑动检查。若触发展期：
+     - 向响应头注入 `X-FastGPT-Session-Expires: <timestamp>`；
+     - 若为 HTTP 响应（Web 浏览器），同时补发带最新 7 天 `Max-Age` 的 `Set-Cookie: fastgpt_token=...`。
+3. **Web 与 CLI 无感适配**：
+   - **Web 浏览器**：浏览器接收到补发的 `Set-Cookie`，原生 Cookie 过期时间自动顺延 7 天，用户日常使用网页永远不会突兀中断。
+   - **CLI 客户端**：`FastGptHttpClient` 拦截 `X-FastGPT-Session-Expires` 响应头，`pipeline.ts` 中间件静默将新到期时间写回本地 `config.json` 的 `sessionExpiresAt`。
+4. **安全与生命周期保障**：
+   - 用户连续 7 天彻底未使用时，Redis 键自然销毁，双端同步返回 401 强制重登。
+   - 用户在控制台修改密码或主动登出时，调用 `delUserAllSession` 瞬间清理 Redis 键，双端立即失效，无残留风险。
 
 ---
 
@@ -500,3 +522,4 @@ CLI 不能假设所有部署实例都已升级到包含 `whoami` 的版本，因
 - v1.1（2026-11-11）：将 `@fastgpt/cli` 从 `packages/cli/` 迁至仓库根目录 `cli/`（与 `projects/`、`packages/` 平级），彻底隔离主应用 Docker 构建与全局 `tsconfig` 扫描。
 - v1.2（2026-11-12）：重构飞书多维表格与任务映射为 **9 业务需求包（`PKG-00`~`PKG-08`）× 44 原子 FR × 24 细粒度可并行 PRD**，默认视图均配置按彩色需求包可折叠分组。
 - v1.3（2026-11-12）：架构重构与最佳实践升级（引入 Ports & Adapters 四传输 HTTP Client、Pipeline 自动上下文绑定 `ctx.client` 与破坏性操作安全门禁、Result Builder 与 CommandRegistry 服务）。
+- v1.4（2026-11-12）：实现 Web 与 CLI 双端统一的防抖式滑动会话自动续期（服务端 Redis `SessionCache.touchSession` 原子刷新 + Cookie 续期 + `X-FastGPT-Session-Expires` 响应头 + CLI 静默持久化）。

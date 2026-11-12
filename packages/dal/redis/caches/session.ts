@@ -14,6 +14,7 @@ export const SessionDataSchema = z.object({
   tmbId: z.string().min(1),
   isRoot: z.boolean(),
   createdAt: NonNegativeSafeIntegerSchema,
+  updatedAt: NonNegativeSafeIntegerSchema.optional(),
   ip: z.string().nullable().optional()
 });
 export type SessionData = z.infer<typeof SessionDataSchema>;
@@ -24,6 +25,12 @@ const SessionHashSchema = z.object({
   tmbId: z.string().min(1),
   isRoot: z.enum(['0', '1']).transform((value) => value === '1'),
   createdAt: z.string().regex(/^\d+$/).transform(Number).pipe(NonNegativeSafeIntegerSchema),
+  updatedAt: z
+    .string()
+    .regex(/^\d+$/)
+    .transform(Number)
+    .pipe(NonNegativeSafeIntegerSchema)
+    .optional(),
   ip: z.string().optional()
 });
 
@@ -121,6 +128,42 @@ export class SessionCache {
   /** 删除一个 session ID；调用方不需要知道物理 key。 */
   async delete(sessionId: string) {
     await this.redis.delete(this.getKey(sessionId));
+  }
+
+  /**
+   * 防抖滑动续期：若会话存在且距上次刷新（或创建）已达到 minIntervalSeconds（默认 24h），
+   * 原子更新 updatedAt 并将 Redis TTL 刷新为 7 天。
+   * 返回新的过期时间戳（毫秒）；若未达到滑动间隔（防抖未触发）或会话不存在则返回 undefined。
+   */
+  async touchSession({
+    sessionId,
+    minIntervalSeconds = 24 * 60 * 60,
+    now = Date.now()
+  }: {
+    sessionId: string;
+    minIntervalSeconds?: number;
+    now?: number;
+  }): Promise<number | undefined> {
+    const logicalKey = this.getKey(sessionId);
+    const session = await this.readByLogicalKey({ logicalKey, sessionId });
+    if (!session) return undefined;
+
+    const lastTouchAt = session.updatedAt ?? session.createdAt;
+    if (now - lastTouchAt < minIntervalSeconds * 1000) {
+      return undefined;
+    }
+
+    const touched = await this.redis.touchHashFieldWithTtl({
+      key: logicalKey,
+      field: 'updatedAt',
+      value: String(now),
+      ttlSeconds: SESSION_TTL_SECONDS
+    });
+
+    if (touched) {
+      return now + SESSION_TTL_SECONDS * 1000;
+    }
+    return undefined;
   }
 
   /** 分页扫描某个用户的全部 typed session，损坏记录会被尽力清理。 */

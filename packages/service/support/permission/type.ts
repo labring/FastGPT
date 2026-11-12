@@ -2,7 +2,7 @@ import type { Permission } from '@fastgpt/global/support/permission/controller';
 import type { PermissionValueType } from '@fastgpt/global/support/permission/type';
 import type { RequireAtLeastOne } from '@fastgpt/global/common/type/utils';
 import type { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
-import type { NodeHttpRequest } from '../../types/http';
+import type { NodeHttpRequest, NodeHttpResponse } from '../../types/http';
 import type { ApiKeyTypeEnum } from '@fastgpt/global/support/openapi/constants';
 
 export type ReqHeaderAuthType = {
@@ -16,6 +16,7 @@ export type ReqHeaderAuthType = {
 
 type authModeType = {
   req: NodeHttpRequest;
+  res?: NodeHttpResponse;
   authToken?: boolean;
   authRoot?: boolean;
   authApiKey?: boolean;
@@ -46,6 +47,7 @@ export type AuthResponseType<T extends Permission = Permission> = {
   sourceName?: string;
   sessionId?: string;
   sessionCreatedAt?: number;
+  sessionExpiresAt?: number;
   isRoot: boolean;
   permission: T;
 };

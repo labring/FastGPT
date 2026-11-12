@@ -1,6 +1,6 @@
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { getUserDetail } from '@fastgpt/service/support/user/controller';
-import type { ApiRequestProps } from '@fastgpt/next/type';
+import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 import {
@@ -8,9 +8,10 @@ import {
   type OpenAPIUserType
 } from '@fastgpt/global/openapi/support/user/account/login/api';
 
-async function handler(req: ApiRequestProps): Promise<OpenAPIUserType> {
+async function handler(req: ApiRequestProps, res: ApiResponseType): Promise<OpenAPIUserType> {
   const { tmbId, userId, isRoot } = await authCert({
     req,
+    res,
     authToken: true,
     allowAccountCancellation: true
   });

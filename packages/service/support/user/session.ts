@@ -85,3 +85,21 @@ export const authUserSession = async (key: string): Promise<SessionType> => {
   if (!data) return Promise.reject(ERROR_ENUM.unAuthorization);
   return data;
 };
+
+/**
+ * 尝试滑动续期会话：默认 24 小时防抖，成功则将 Redis TTL 刷新为 7 天并返回新过期时间戳（毫秒）。
+ */
+export const touchUserSession = async ({
+  sessionId,
+  minIntervalSeconds
+}: {
+  sessionId: string;
+  minIntervalSeconds?: number;
+}): Promise<number | undefined> => {
+  try {
+    return await sessionCache.touchSession({ sessionId, minIntervalSeconds });
+  } catch (error) {
+    logger.warn('Failed to touch user session TTL', { sessionId, error });
+    return undefined;
+  }
+};

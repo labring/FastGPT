@@ -57,6 +57,14 @@ end
 return value
 `;
 
+const TOUCH_HASH_FIELD_SCRIPT = `
+if redis.call("exists", KEYS[1]) == 1 then
+  redis.call("hset", KEYS[1], ARGV[1], ARGV[2])
+  return redis.call("expire", KEYS[1], ARGV[3])
+end
+return 0
+`;
+
 /**
  * Redis-backed Cache 的最小协议 adapter。
  *
@@ -869,6 +877,55 @@ export class RedisCacheAdapter {
             message: 'Redis hash set transaction returned an unsupported response'
           });
         }
+      }
+    });
+  };
+
+  /**
+   * 仅在 hash 键存在时原子更新单个字段并重新设置 TTL，避免为已过期的键重建孤儿 hash。
+   */
+  touchHashFieldWithTtl = ({
+    key,
+    field,
+    value,
+    ttlSeconds
+  }: {
+    key: RedisLogicalKey;
+    field: string;
+    value: string;
+    ttlSeconds: number;
+  }) => {
+    const operation = 'hash.touchFieldWithTtl';
+    if (!field || typeof field !== 'string' || typeof value !== 'string') {
+      throw new RedisInvalidArgumentError({
+        operation,
+        message: 'field and value must be non-empty strings'
+      });
+    }
+    const parsedTtlSeconds = parsePositiveInteger({
+      value: ttlSeconds,
+      operation,
+      field: 'ttlSeconds'
+    });
+
+    return this.operationExecutor.uncertainWrite({
+      operation,
+      execute: async () => {
+        const result = await this.getCommandClient().eval(
+          TOUCH_HASH_FIELD_SCRIPT,
+          1,
+          toPhysicalRedisKey(key),
+          field,
+          value,
+          String(parsedTtlSeconds)
+        );
+        if (result !== 0 && result !== 1) {
+          throw new RedisInvalidResponseError({
+            operation,
+            message: 'Redis touch hash field returned an unsupported response'
+          });
+        }
+        return result === 1;
       }
     });
   };

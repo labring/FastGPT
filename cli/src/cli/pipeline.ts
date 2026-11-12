@@ -86,11 +86,13 @@ export function extractGlobalOptions({
 function createBoundHttpClient({
   container,
   global,
-  resolvedAuth
+  resolvedAuth,
+  logger
 }: {
   container: CliContainer;
   global: GlobalCliOptions;
   resolvedAuth?: ResolvedAuthContext;
+  logger: CliLogger;
 }): FastGptHttpClient | undefined {
   if (!resolvedAuth || !resolvedAuth.credential) {
     return undefined;
@@ -99,7 +101,33 @@ function createBoundHttpClient({
   const baseClient = container.createHttpClient({
     baseUrl: resolvedAuth.baseUrl,
     insecure: resolvedAuth.allowInsecureHttp || global.insecure,
-    caCertPath: global.caCert
+    caCertPath: global.caCert,
+    onSessionRenewed: (expiresAt) => {
+      if (resolvedAuth.credential && resolvedAuth.credential.authType === 'token') {
+        resolvedAuth.credential.sessionExpiresAt = expiresAt;
+        logger.debug(`Session renewed until ${new Date(expiresAt).toISOString()}`);
+        void container.configRepo
+          .read()
+          .then(({ config }) => {
+            const profileName = resolvedAuth.profileName;
+            const profile = config.profiles[profileName];
+            if (profile && profile.authType === 'token') {
+              return container.configRepo.write({
+                ...config,
+                profiles: {
+                  ...config.profiles,
+                  [profileName]: {
+                    ...profile,
+                    sessionExpiresAt: expiresAt,
+                    updatedAt: Date.now()
+                  }
+                }
+              });
+            }
+          })
+          .catch(() => {});
+      }
+    }
   });
 
   const authPayload = {
@@ -195,7 +223,7 @@ export async function executeCommandWithPipeline({
     }
   }
 
-  const client = createBoundHttpClient({ container, global, resolvedAuth });
+  const client = createBoundHttpClient({ container, global, resolvedAuth, logger });
 
   let effectiveOptions = rawOptions;
   if (spec.inputSchema) {

@@ -4,7 +4,7 @@ import { SERVICE_LOCAL_HOST } from '../../../common/system/tools';
 import type { NodeHttpRequest, NodeHttpResponse } from '../../../types/http';
 import Cookie from 'cookie';
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
-import { authUserSession } from '../../../support/user/session';
+import { authUserSession, touchUserSession } from '../../../support/user/session';
 import { authOpenApiKey } from '../../../support/openapi/auth';
 import { assertCancellation } from '../../../support/user/account/cancellation/guard';
 import { getUserIdByTmbId } from '../../../support/user/team/utils';
@@ -31,6 +31,7 @@ export const authRequestFromLocal = ({ req }: { req: NodeHttpRequest }) => {
 
 export async function parseHeaderCert({
   req,
+  res,
   authToken = false,
   authRoot = false,
   authApiKey = false,
@@ -142,18 +143,30 @@ export async function parseHeaderCert({
     }
     if (authToken && (token || cookie)) {
       // user token(from fastgpt web)
-      const res = await authCookieToken(cookie, token);
+      const sessionData = await authCookieToken(cookie, token);
+
+      let sessionExpiresAt = (sessionData.updatedAt ?? sessionData.createdAt) + 604_800_000;
+      // 触发防抖滑动续期（默认 24 小时防抖，成功则将 Redis TTL 刷新为 7 天并补发 Cookie 与响应头）
+      const refreshedExpiresAt = await touchUserSession({ sessionId: sessionData.sessionId });
+      if (refreshedExpiresAt) {
+        sessionExpiresAt = refreshedExpiresAt;
+        if (res) {
+          res.setHeader('x-fastgpt-session-expires', String(refreshedExpiresAt));
+          setCookie(res, sessionData.sessionId);
+        }
+      }
 
       return {
-        uid: res.userId,
-        teamId: res.teamId,
-        tmbId: res.tmbId,
+        uid: sessionData.userId,
+        teamId: sessionData.teamId,
+        tmbId: sessionData.tmbId,
         appId: '',
         openApiKey: '',
         authType: AuthUserTypeEnum.token,
-        isRoot: res.isRoot,
-        sessionId: res.sessionId,
-        sessionCreatedAt: res.createdAt
+        isRoot: sessionData.isRoot,
+        sessionId: sessionData.sessionId,
+        sessionCreatedAt: sessionData.createdAt,
+        sessionExpiresAt
       };
     }
     if (authRoot && rootkey) {
