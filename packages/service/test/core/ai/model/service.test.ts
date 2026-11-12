@@ -159,6 +159,9 @@ describe('model lifecycle', () => {
       modelIds: afterTemplateCreate.map(({ _id }) => String(_id))
     });
 
+    // 等待超过 1 秒确保新建模型 ObjectId 的秒级时间戳严格大于前序模型，消除同秒多源随机位平级竞争导致的非确定性。
+    await new Promise((resolve) => setTimeout(resolve, 1050));
+
     await importSystemModels({
       config: [
         { ...draft, modelId: newest.modelId, model: 'newest' },
