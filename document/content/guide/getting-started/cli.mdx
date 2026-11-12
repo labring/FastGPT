@@ -11,19 +11,17 @@ FastGPT CLI（`fastgpt`）是 FastGPT 官方推出的终端命令行工具，旨
 
 ---
 
-## 🤖 AI Agent 一键接入引导
+## AI Agent 一键接入引导
 
 如果你正在使用 AI 编程助手（如 **Codex** 或 **Claude Code**），无需手动执行安装命令，直接将以下引导指令发送给你的 Agent。Agent 将自动获取官方 Skill 规范，并全自动完成 CLI 安装、登录引导、环境诊断与能力发现：
 
-<Alert icon="🤖" context="info">
-  在 Codex / Claude Code 对话框中直接发送以下提示词：
-</Alert>
+<Alert context="info">在 Codex / Claude Code 对话框中直接发送以下提示词：</Alert>
 
 ```text
 请帮我安装并配置 FastGPT CLI。请先读取官方 Skill 规范 https://doc.fastgpt.cn/skill.md ，严格按照其中的步骤完成 CLI 安装、引导登录、健康度体检，并最终输出当前环境的 CLI 能力列表。
 ```
 
-> 💡 你也可以通过终端命令将该 Skill 规范直接下载到本地技能目录：
+> 你也可以通过终端命令将该 Skill 规范直接下载到本地技能目录：
 >
 > ```bash
 > curl -fsSL https://doc.fastgpt.cn/skill.md -o skill.md
@@ -78,7 +76,7 @@ fastgpt doctor
 
 ---
 
-## 🚀 核心操作能力概览
+## 核心操作能力概览
 
 FastGPT CLI 采用领域驱动（DDD）设计，命令结构精炼清晰：
 
@@ -91,7 +89,7 @@ FastGPT CLI 采用领域驱动（DDD）设计，命令结构精炼清晰：
 
 ---
 
-## 💡 自动化与脚本规范建议
+## 自动化与脚本规范建议
 
 - **机器与 Agent 调用**：附加 `--format json` 参数，命令将输出确定性的结构化 JSON 信封，日志严格走 `stderr`，确保 `stdout` 纯净便于管道解析。
 - **高危操作保护**：删除操作（如 `dataset delete`）支持 `--dry-run` 预览；在非交互式脚本或 CI 中执行破坏性操作必须显式附加 `--yes` 确认。

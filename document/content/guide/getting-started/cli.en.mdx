@@ -11,11 +11,11 @@ Whether you operate directly in the terminal or leverage AI Agents for automated
 
 ---
 
-## 🤖 AI Agent One-Click Setup Guide
+## AI Agent One-Click Setup Guide
 
 If you are using an AI coding assistant (such as **Codex** or **Claude Code**), you can skip manual installation. Simply send the instruction below to your Agent. The Agent will fetch the official Skill specification and automatically complete CLI installation, login guidance, health diagnostics, and capability discovery:
 
-<Alert icon="🤖" context="info">
+<Alert context="info">
   Copy and send the following prompt directly to your AI Agent (e.g., in Codex or Claude Code):
 </Alert>
 
@@ -23,7 +23,7 @@ If you are using an AI coding assistant (such as **Codex** or **Claude Code**), 
 Please help me install and configure the FastGPT CLI. First, fetch and follow the official Skill guide at https://doc.fastgpt.in/skill.md to complete CLI installation, guide me through login, run doctor diagnostics, and output the available CLI capabilities.
 ```
 
-> 💡 You can also download the official Skill directly to your local skills directory:
+> You can also download the official Skill directly to your local skills directory:
 >
 > ```bash
 > curl -fsSL https://doc.fastgpt.in/skill.md -o skill.md
@@ -79,7 +79,7 @@ fastgpt doctor
 
 ---
 
-## 🚀 Core Capabilities Overview
+## Core Capabilities Overview
 
 FastGPT CLI is organized around Domain-Driven Design (DDD) with clean, intuitive command namespaces:
 
@@ -92,7 +92,7 @@ FastGPT CLI is organized around Domain-Driven Design (DDD) with clean, intuitive
 
 ---
 
-## 💡 Scripting & Automation Best Practices
+## Scripting & Automation Best Practices
 
 - **Agent & Automation Pipelines**: Pass `--format json` to get clean, structured JSON envelopes. Logs route to `stderr`, keeping `stdout` completely pure for UNIX piping.
 - **Destructive Operation Safety**: Deletions support `--dry-run` previews; non-interactive scripts and CI pipelines mandate `--yes` for destructive execution.
