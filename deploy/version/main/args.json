@@ -14,7 +14,7 @@
     "aiproxy": "v0.7.7",
     "aiproxy-pg": "0.8.0-pg15",
 
-    "mongo": "5.0.32",
+    "mongo": "8.0.34",
     "redis": "7.2-alpine",
     "minio": "RELEASE.2025-09-07T16-13-09Z",
     "rustfs": "1.0.4",
@@ -38,7 +38,7 @@
       "opensandbox-egress": "sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/egress",
       "aiproxy": "registry.cn-hangzhou.aliyuncs.com/labring/aiproxy",
       "aiproxy-pg": "registry.cn-hangzhou.aliyuncs.com/fastgpt/pgvector",
-      "mongo": "registry.cn-hangzhou.aliyuncs.com/fastgpt/mongo",
+      "mongo": "docker.m.daocloud.io/library/mongo",
       "redis": "registry.cn-hangzhou.aliyuncs.com/fastgpt/redis",
       "minio": "registry.cn-hangzhou.aliyuncs.com/fastgpt/minio",
       "rustfs": "docker.m.daocloud.io/rustfs/rustfs",

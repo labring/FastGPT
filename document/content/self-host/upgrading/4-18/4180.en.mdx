@@ -24,6 +24,8 @@ upgradeTags:
   - If you used a custom moderation URL (`customCensorURL`), install the official **Legacy Custom Moderation (`legacy-custom-censor`)** Plugin to connect your existing HTTP service without code changes, or build a native `moderation` Plugin with `@fastgpt-plugin/sdk-factory`.
   - For a full comparison of legacy and new behavior, field mappings, and Plugin development steps, see the [Content moderation upgrade and migration guide](/en/self-host/migration/content-moderation).
 
+- **New deployments**: The default MongoDB version in the `main` Compose templates is now `8.0.34`. Startup and health checks use `mongosh`, and dependent services wait for the replica set primary to become ready.
+
 ### Image updates
 
 This version is still in development. Image tags will be added at release.

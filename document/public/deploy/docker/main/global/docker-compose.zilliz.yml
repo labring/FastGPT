@@ -96,7 +96,7 @@ x-vec-config: &x-vec-config
 
 services:
   fastgpt-mongo:
-    image: mongo:5.0.32 # cpu 不支持 AVX 时候使用 4.4.29
+    image: mongo:8.0.34 # x86_64 CPU 需满足 MongoDB 8.0 的指令集要求
     container_name: fastgpt-mongo
     restart: always
     networks:
@@ -108,7 +108,7 @@ services:
     volumes:
       - fastgpt-mongo:/data/db
     healthcheck:
-      test: ['CMD', 'mongo', '-u', 'myusername', '-p', 'mypassword', '--authenticationDatabase', 'admin', '--eval', "db.adminCommand('ping')"]
+      test: ['CMD', 'mongosh', '-u', 'myusername', '-p', 'mypassword', '--authenticationDatabase', 'admin', '--eval', "quit(db.hello().isWritablePrimary ? 0 : 1)"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -120,26 +120,24 @@ services:
         openssl rand -base64 128 > /data/mongodb.key
         chmod 400 /data/mongodb.key
         chown 999:999 /data/mongodb.key
-        echo 'const isInited = rs.status().ok === 1
-        if(!isInited){
+        # mongosh 在副本集尚未初始化时抛出 code 94；其他错误交由启动循环重试。
+        echo 'try {
+          rs.status();
+        } catch (error) {
+          if (error.code !== 94) throw error;
           rs.initiate({
-              _id: "rs0",
-              members: [
-                  { _id: 0, host: "fastgpt-mongo:27017" }
-              ]
-          })
+            _id: "rs0",
+            members: [{ _id: 0, host: "fastgpt-mongo:27017" }]
+          });
         }' > /data/initReplicaSet.js
         # 启动MongoDB服务
         exec docker-entrypoint.sh "$$@" &
 
-        # 等待MongoDB服务启动
-        until mongo -u myusername -p mypassword --authenticationDatabase admin --eval "print('waited for connection')"; do
-          echo "Waiting for MongoDB to start..."
+        # 认证未就绪或镜像仍处于临时初始化进程时继续等待，仅为真正的副本集进程初始化。
+        until mongosh --quiet -u myusername -p mypassword --authenticationDatabase admin /data/initReplicaSet.js; do
+          echo "Waiting for MongoDB replica set initialization..."
           sleep 2
         done
-
-        # 执行初始化副本集的脚本
-        mongo -u myusername -p mypassword --authenticationDatabase admin /data/initReplicaSet.js
 
         # 等待docker-entrypoint.sh脚本执行的MongoDB服务进程
         wait $$!
