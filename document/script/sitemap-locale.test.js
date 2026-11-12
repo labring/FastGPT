@@ -433,7 +433,8 @@ test('schema helpers expand search titles and emit rich-result compliant JSON-LD
 
 test('middleware resolves section landings, language roots, and historical paths to single-hop 301 targets', () => {
   const { NextRequest } = require('next/server');
-  const middleware = loadModule('../middleware.ts', {
+  const { unstable_doesMiddlewareMatch } = require('next/experimental/testing/server');
+  const { default: middleware, config: middlewareConfig } = loadModule('../middleware.ts', {
     imports: {
       'fumadocs-core/i18n': { createI18nMiddleware: () => () => NextResponse.next() },
       '@/lib/i18n': {
@@ -444,7 +445,13 @@ test('middleware resolves section landings, language roots, and historical paths
       '@/data/doc-last-modified.json': require('../data/doc-last-modified.json'),
       'next/server': { NextResponse }
     }
-  }).default;
+  });
+
+  const cliSkillPath = '/cli/skill.md';
+  const cliSkillResponse = middleware(new NextRequest(`http://localhost:3210${cliSkillPath}`));
+  assert.equal(cliSkillResponse.headers.get('x-middleware-next'), '1');
+  assert.equal(unstable_doesMiddlewareMatch({ config: middlewareConfig, url: cliSkillPath }), false);
+  assert.ok(fs.existsSync(path.join(__dirname, '../public', cliSkillPath)));
 
   const cases = [
     ['/zh-CN', '/zh-CN/guide/getting-started'],
