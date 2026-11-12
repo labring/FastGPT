@@ -1,82 +1,104 @@
 ---
-title: Dataset Usage
-description: Common Dataset usage questions
+title: "Knowledge Base Troubleshooting"
+description: Comprehensive troubleshooting reference for document parsing, asynchronous training, index building, retrieval recall, and storage errors.
 ---
 
-## File Parsing Fails
+{/* Preserve incoming bookmarks for reorganized sections. */}
+<span id="empty-retrieval-results" />
+<span id="incorrect-answers-or-unsupported-citations" />
+<span id="stale-answers-after-an-update" />
+<span id="file-parsing-fails" />
+<span id="garbled-file-content" />
+<span id="processing-model-vs-embedding-model" />
+<span id="excel-file-import" />
+<span id="token-calculation" />
+<span id="restore-a-rerank-model" />
+<span id="data-retention-after-expiration" />
+<span id="too-many-results-interrupt-answers" />
+<span id="chat-history-context-limits" />
+<span id="knowledge-base-page-flickers" />
+<span id="ask-an-administrator-for-help" />
 
-Check the **Enhanced PDF Parsing** setting when uploading the file. Enhanced parsing also requires a correctly configured OCR module in the Admin console.
+This manual compiles typical issues encountered during knowledge base ingestion, training, retrieval, and runtime execution, along with standardized resolution steps.
 
-## Garbled File Content
+## 1. File Upload and Document Parsing
 
-Re-save the file with UTF-8 encoding.
+### Issue: Parsing fails after uploading PDF or Word files
+- **Diagnostic Focus**: Check whether the document is password-protected or restricted against copying; verify whether the PDF is a scanned image without a text layer.
+- **Actionable Fix**: Decrypt encrypted files prior to upload. For scanned PDFs, run optical character recognition (OCR) locally to embed a searchable text layer before importing.
 
-## Processing Model vs. Embedding model
+### Issue: Table import reports "Invalid file format. Check the headers and content"
+- **Diagnostic Focus**: Spreadsheet headers contain leading or trailing whitespace, typos, or multiple worksheets containing merged cells.
+- **Actionable Fix**: Review [Structured Dataset Template Specifications](/en/guide/dataset/template). Ensure headers are `q`, `a`, `index`, `metadata` (`index` may repeat; `metadata` is optional), and Excel files contain a single worksheet with no merged cells.
 
-- **File Processing Model**: Used for **Enhanced Processing** and **Q&A Splitting** during data ingestion. Enhanced Processing generates related questions and summaries; Q&A Splitting generates question-answer pairs.
-- **Embedding model**: Used for vectorization — it processes and organizes text data into a structure optimized for fast retrieval.
+---
 
-## Excel File Import
+## 2. Background Training and Index Construction
 
-You can upload XLSX files and other supported spreadsheet formats, including CSV.
+### Issue: Collection status remains stuck on "Queue" or training stages (such as "Parsing" or "Index vectorization")
+- **Diagnostic Focus**: Background worker consumers are inactive, Redis task queues are backed up, or model API keys have expired.
+- **Actionable Fix**:
+  1. Check your team's model quota and account balance.
+  2. Verify network connectivity to upstream AI proxies or model providers.
+  3. In self-hosted environments, inspect `fastgpt-app` (and `fastgpt-pro` in commercial deployments) container logs for training consumer health.
 
-## Token Calculation
+### Issue: Training tasks retry repeatedly due to lost lock leases (`RedisLeaseLostError`)
+- **Diagnostic Focus**: Chunk batch sizes are too large or remote embedding endpoints exhibit high latency, causing workers to exceed lease windows before committing.
+- **Actionable Fix**: Inspect application container health, model latency, and lease-renewal logs. In self-hosted deployments, lower `VECTOR_MAX_PROCESS`, `QA_MAX_PROCESS`, or `VLM_MAX_PROCESS` via environment variables or **Admin → System Configuration**, then retry failed tasks from the **Error list** modal after recovery.
 
-All token counts use the GPT-3.5 tokenizer as the standard.
+---
 
-## Restore a Rerank Model
+## 3. Retrieval Recall and Answer Quality
 
-![Rerank model selection in Dataset search settings](/imgs/dataset3.png)
+### Issue: Search test returns zero results (empty recall)
+- **Diagnostic Focus**: Lowest correlation thresholds are set too high, collections are not yet in a ready state, or an unmatched tag filter is active.
+- **Actionable Fix**:
+  1. Lower the **Lowest correlation** slider to 0.1 to probe candidate boundaries.
+  2. Confirm collection status displays a green "Ready" badge and chunk text is readable.
+  3. Check whether tag filters are active; clear tags temporarily and rerun the search.
 
-Add the rerank model configuration in your `config.json` file, then you'll be able to select it again.
+### Issue: Search hits target chunks, but the model answers "Information not mentioned"
+- **Diagnostic Focus**: Search results may be missing from the AI Chat knowledge input, or reference and context budgets may truncate the evidence.
+- **Actionable Fix**: Follow [Connecting Knowledge Bases to Applications](/en/guide/dataset/connect-application). Check the knowledge input and dedicated reference template, then balance reference, history, and output budgets within the model context window.
 
-## Data Retention After Expiration
+---
 
-On the free plan, Dataset data is cleared after 30 days of inactivity (no login). Apps are not affected. Paid plans automatically downgrade to the free plan upon expiration.
-![Plan information and Dataset retention settings](/imgs/dataset4.png)
+## 4. Storage and Infrastructure
 
-## Too Many Results Interrupt Answers
+### Issue: Vector database exhausts connections or times out
+- **Diagnostic Focus**: High-concurrency write batches deplete PGVector or Milvus connection pools.
+- **Actionable Fix**: In self-hosted deployments, adjust database connection pool caps (such as `PG_MAX_CONNECTIONS` or `MONGO_MAX_LINK`) or lower training concurrency; consult [Deployment and Operations](/en/self-host).
 
-FastGPT calculates the maximum response length as:
+### Issue: Uploaded source files vanish from object storage
+- **Diagnostic Focus**: S3 / MinIO bucket lifecycle policies enforce aggressive expiration, or persistent volume mounts are missing.
+- **Actionable Fix**: Review bucket retention policies and confirm persistent volume claims map to durable host storage.
 
-Max Response = min(Configured Max Response, Max Context Window - History)
+---
 
-For example, with an 18K context model, input + output share the same window. As output grows, available input shrinks.
+## 5. Collection Tags and Access Permissions
 
-To fix this:
+### Issue: Why is a tag missing from the Tag Filter dropdown?
+- **Diagnostic Focus**: When an application or workflow node attaches multiple knowledge bases, the Custom Tag dropdown lists only shared tags whose **names and attribute types match across every selected knowledge base**.
+- **Actionable Fix**: Confirm that each attached knowledge base defines the tag with the same name and attribute type; see [Collection Tag System and Scope Filtering](/en/guide/dataset/collection_tags).
 
-1. Check your configured max response (response limit) setting.
-2. Reduce input to free up space for output — specifically, reduce the number of chat history turns included in the workflow.
+### Issue: Where did legacy string tags go after upgrading?
+- **Diagnostic Focus**: During upgrade, legacy string tags are migrated without data loss into an **Option** tag named `default_tag`, preserving all existing file associations.
+- **Actionable Fix**: Rename `default_tag` in **Tagging** to your preferred business label (such as `Category`).
 
-Where to find the max response setting:
+### Issue: Does renaming a tag or option affect existing Tag Filters?
+- **Diagnostic Focus**: Tag Filters match by tag name and option text.
+- **Actionable Fix**: After renaming a tag or option in **Tagging**, update the corresponding filter conditions in your applications and workflows.
 
-![Maximum response length setting](/imgs/dataset1.png)
+### Issue: Why is the "Permission" entry missing from the file row menu, or why does the system prompt that dataset permissions are not enabled?
+- **Diagnostic Focus**: The "Permission" menu entry is visible only to members with `Administrator` permission on that file, and the prompt indicates that the knowledge base is still in its default disabled state.
+- **Actionable Fix**: Ask a knowledge base administrator to enable collection permissions from a row's `··· → Permission` menu and grant the required collaborator role; see [Collection Permission Control](/en/guide/dataset/collection_permission).
 
-![Chat history limit in the Workflow](/imgs/dataset2.png)
+### Issue: Are custom permissions preserved after turning collection permissions off?
+- **Diagnostic Focus**: Turning the switch off deletes all collection-level collaborator records in that knowledge base and reverts every collection to knowledge base inheritance; re-enabling generates fresh inherited snapshots from current knowledge base collaborators.
+- **Actionable Fix**: Record custom grants for critical collections before disabling the switch.
 
-For self-hosted deployments, you can reserve headroom when configuring model context limits. For example, set a 128K model to 120K — the remaining space will be allocated to output.
+## Next Steps
 
-## Chat History Context Limits
-
-FastGPT calculates the maximum response length as:
-
-Max Response = min(Configured Max Response, Max Context Window - History)
-
-For example, with an 18K context model, input + output share the same window. As output grows, available input shrinks.
-
-To fix this:
-
-1. Check your configured max response (response limit) setting.
-2. Reduce input to free up space for output — specifically, reduce the number of chat history turns included in the workflow.
-
-Where to find the max response setting:
-
-![Maximum response length setting](/imgs/dataset1.png)
-
-![Chat history limit in the Workflow](/imgs/dataset2.png)
-
-For self-hosted deployments, you can reserve headroom when configuring model context limits. For example, set a 128K model to 120K — the remaining space will be allocated to output.
-
-## Dataset Page Flickers
-
-Configure an Embedding model for the Dataset to resolve this issue.
+- Holistic overview: Read [Knowledge Base Full Lifecycle](/en/guide/dataset/lifecycle).
+- Practice tuning: Explore [Search Testing and Retrieval Parameters](/en/guide/dataset/test-retrieval).
+- Data maintenance: Review [Data Maintenance and Incremental Updates](/en/guide/dataset/update-data).

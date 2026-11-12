@@ -1,6 +1,6 @@
 ---
 title: V4.18.0
-description: FastGPT V4.18.0 release notes
+description: FastGPT V4.18.0 release notes covering configuration changes, upgrade steps, and feature updates.
 sidebarTag: In progress
 ---
 
@@ -8,9 +8,11 @@ sidebarTag: In progress
 
 ### Configuration changes
 
-This version has no environment variable or system configuration changes. Upgrading from V4.17.3 requires no additional configuration.
+The official Docker Compose deployment templates now use RustFS (`fastgpt-rustfs`) as the default object storage service instead of MinIO. Existing MinIO deployments can follow [Migrate Docker Compose from MinIO to RustFS](/en/self-host/docker_minio_to_rustfs) for an in-place migration or keep their existing MinIO configuration. All other environment variables and system settings remain unchanged when upgrading from V4.17.3.
 
 ### Image updates
+
+This version is still in development. Image tags will be added at release.
 
 ### Upgrade scripts
 

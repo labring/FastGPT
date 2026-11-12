@@ -7,4 +7,19 @@ function getFastGPTDocsLocaleFromHomeOrigin(homeOrigin) {
   return new URL(homeOrigin).hostname.endsWith('.cn') ? 'zh-CN' : 'en';
 }
 
-module.exports = { getFastGPTDocsLocaleFromHomeOrigin };
+/**
+ * Resolve the production documentation origin that owns a locale.
+ * @param {'zh-CN' | 'en'} locale
+ * @returns {string}
+ */
+function getFastGPTDocsOriginForLocale(locale) {
+  const origin = {
+    'zh-CN': 'https://doc.fastgpt.cn',
+    en: 'https://doc.fastgpt.io'
+  }[locale];
+
+  if (!origin) throw new Error(`Unsupported FastGPT docs locale: ${locale}`);
+  return origin;
+}
+
+module.exports = { getFastGPTDocsLocaleFromHomeOrigin, getFastGPTDocsOriginForLocale };

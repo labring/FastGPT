@@ -116,7 +116,7 @@ const UserSetting = () => {
           <FirstTitle title="自定义用户系统配置" />
           <FormItem
             title="用户服务根地址(末尾不加/)"
-            description="具体用法请看： [SSO & 外部成员同步](https://doc.fastgpt.io/guide/admin/sso)"
+            description="具体用法请看： [SSO & 外部成员同步](https://doc.fastgpt.cn/zh-CN/guide/admin/sso)"
           >
             <Box>{ssoUrl}</Box>
           </FormItem>

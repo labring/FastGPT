@@ -1,0 +1,141 @@
+{
+  "type": "flowchart",
+  "title": "Pause and resume on the next request",
+  "nodes": [
+    {
+      "id": "upstream",
+      "label": "Run upstream",
+      "row": 0,
+      "col": 0,
+      "kind": "backend",
+      "illustration": "workflow"
+    },
+    {
+      "id": "node",
+      "label": "Reach interaction",
+      "row": 1,
+      "col": 0,
+      "kind": "backend",
+      "illustration": "pause"
+    },
+    {
+      "id": "save",
+      "label": "Save resume state",
+      "row": 2,
+      "col": 0,
+      "kind": "store",
+      "sub": "Entries / edges / outputs",
+      "illustration": "database"
+    },
+    {
+      "id": "show",
+      "label": "Show choice/form",
+      "row": 3,
+      "col": 0,
+      "kind": "backend",
+      "illustration": "form"
+    },
+    {
+      "id": "submit",
+      "label": "Submit next request",
+      "row": 4,
+      "col": 0,
+      "kind": "input",
+      "illustration": "send"
+    },
+    {
+      "id": "load",
+      "label": "Restore chat state",
+      "row": 5,
+      "col": 0,
+      "kind": "backend",
+      "illustration": "restore"
+    },
+    {
+      "id": "input",
+      "label": "Consume input",
+      "row": 6,
+      "col": 0,
+      "kind": "backend",
+      "focal": true,
+      "illustration": "document"
+    },
+    {
+      "id": "downstream",
+      "label": "Continue downstream",
+      "row": 7,
+      "col": 0,
+      "kind": "backend",
+      "illustration": "ready"
+    }
+  ],
+  "edges": [
+    [
+      "upstream",
+      "node",
+      "",
+      "primary"
+    ],
+    [
+      "node",
+      "save",
+      "",
+      "primary"
+    ],
+    [
+      "save",
+      "show",
+      "",
+      "primary"
+    ],
+    [
+      "show",
+      "submit",
+      "Wait for user",
+      "async"
+    ],
+    [
+      "submit",
+      "load",
+      "",
+      "primary"
+    ],
+    [
+      "load",
+      "input",
+      "",
+      "primary"
+    ],
+    [
+      "input",
+      "downstream",
+      "",
+      "primary"
+    ]
+  ],
+  "evidence": [
+    {
+      "id": "save",
+      "file": "packages/service/core/workflow/dispatch/index.ts",
+      "line": 1498
+    },
+    {
+      "id": "load",
+      "file": "projects/app/src/pages/api/v1/chat/completions.ts",
+      "line": 277
+    },
+    {
+      "id": "input",
+      "file": "packages/service/core/workflow/dispatch/interactive/userSelect.ts",
+      "line": 28
+    }
+  ],
+  "dir": "TB",
+  "lang": "en",
+  "eyebrow": "",
+  "legend": false,
+  "motion": "trace",
+  "fonts": "system",
+  "watermark": false,
+  "skin": "light"
+}

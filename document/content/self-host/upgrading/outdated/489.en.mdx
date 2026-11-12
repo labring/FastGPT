@@ -1,9 +1,10 @@
 ---
 title: V4.8.9
-description: FastGPT V4.8.9 Release Notes
+description: 'FastGPT V4.8.9 release notes covering container image updates, upgrade steps, and feature changes.'
 releaseTime: '2024-08-12'
 upgradeTags:
   - MIGRATION
+deprecated: true
 ---
 
 ## Upgrade Guide
@@ -18,7 +19,7 @@ upgradeTags:
 
 ### 3. Run initialization (Commercial Edition)
 
-From any terminal, send an HTTP request. Replace `{{rootkey}}` with the `rootkey` from your environment variables, and `{{host}}` with your **FastGPT domain**:
+From any terminal, send an HTTP request. Replace `{{rootkey}}` with the `rootkey` from your environment variables, and `{{host}}` with your **FastGPT commercial edition (fastgpt-pro) domain**:
 
 ```bash
 curl --location --request POST 'https://{{host}}/api/admin/init/489' \

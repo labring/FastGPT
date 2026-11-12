@@ -1,0 +1,689 @@
+{
+  "nodes": [
+    {
+      "nodeId": "448745",
+      "name": "Start",
+      "intro": "",
+      "avatar": "core/workflow/template/workflowStart",
+      "flowNodeType": "workflowStart",
+      "position": {
+        "x": 0,
+        "y": 200
+      },
+      "version": "481",
+      "inputs": [
+        {
+          "key": "userChatInput",
+          "label": "workflow:user_question",
+          "valueType": "string",
+          "required": true,
+          "selectedType": "reference",
+          "renderTypeList": [
+            "agentGenerated",
+            "reference",
+            "textarea"
+          ],
+          "debugLabel": "",
+          "toolDescription": "User question",
+          "defaultToAgentGenerated": true
+        }
+      ],
+      "outputs": [
+        {
+          "id": "userChatInput",
+          "key": "userChatInput",
+          "type": "static",
+          "valueType": "string",
+          "label": "common:core.module.input.label.user question",
+          "description": ""
+        }
+      ]
+    },
+    {
+      "nodeId": "classify",
+      "name": "Content Classification",
+      "intro": "",
+      "avatar": "core/workflow/template/questionClassify",
+      "flowNodeType": "classifyQuestion",
+      "position": {
+        "x": 650,
+        "y": 200
+      },
+      "inputs": [
+        {
+          "key": "model",
+          "label": "model",
+          "valueType": "string",
+          "renderTypeList": [
+            "selectLLMModel"
+          ],
+          "selectedType": "selectLLMModel",
+          "value": "qwen3.8-flash"
+        },
+        {
+          "key": "systemPrompt",
+          "label": "systemPrompt",
+          "valueType": "string",
+          "renderTypeList": [
+            "textarea"
+          ],
+          "selectedType": "textarea",
+          "value": "Review one text per run. Safe: factual event notices and genuine feature descriptions. Rewritable: unsupported number-one or 100% claims, absolutes, or exaggerated results. Reject: invented certification, fabricated data, or impersonation of an official source. Classify the original text."
+        },
+        {
+          "key": "history",
+          "label": "history",
+          "valueType": "chatHistory",
+          "renderTypeList": [
+            "numberInput"
+          ],
+          "selectedType": "numberInput",
+          "value": 0
+        },
+        {
+          "key": "userChatInput",
+          "label": "userChatInput",
+          "valueType": "string",
+          "renderTypeList": [
+            "reference"
+          ],
+          "selectedType": "reference",
+          "value": [
+            "448745",
+            "userChatInput"
+          ]
+        },
+        {
+          "key": "agents",
+          "label": "agents",
+          "valueType": "any",
+          "renderTypeList": [
+            "custom"
+          ],
+          "selectedType": "custom",
+          "value": [
+            {
+              "key": "safe",
+              "value": "Safe"
+            },
+            {
+              "key": "rewrite",
+              "value": "Rewritable"
+            },
+            {
+              "key": "reject",
+              "value": "Reject"
+            }
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "id": "cqResult",
+          "key": "cqResult",
+          "type": "static",
+          "valueType": "string",
+          "label": "Classification result"
+        }
+      ],
+      "version": "4.9.2"
+    },
+    {
+      "nodeId": "safe",
+      "name": "Safe Content",
+      "intro": "",
+      "avatar": "core/workflow/template/reply",
+      "flowNodeType": "answerNode",
+      "position": {
+        "x": 1500,
+        "y": -300
+      },
+      "inputs": [
+        {
+          "key": "text",
+          "label": "Reply content",
+          "valueType": "any",
+          "renderTypeList": [
+            "reference"
+          ],
+          "selectedType": "reference",
+          "value": [
+            "448745",
+            "userChatInput"
+          ]
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "nodeId": "rewrite",
+      "name": "Rewrite Suggestion",
+      "intro": "AI model conversation",
+      "avatar": "core/workflow/template/aiChat",
+      "flowNodeType": "chatNode",
+      "showStatus": true,
+      "position": {
+        "x": 1500,
+        "y": 100
+      },
+      "version": "4.9.7",
+      "inputs": [
+        {
+          "key": "temperature",
+          "label": "",
+          "valueType": "number",
+          "selectedType": "hidden",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "debugLabel": "",
+          "toolDescription": ""
+        },
+        {
+          "key": "maxToken",
+          "label": "",
+          "valueType": "number",
+          "selectedType": "hidden",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "debugLabel": "",
+          "toolDescription": ""
+        },
+        {
+          "key": "isResponseAnswerText",
+          "label": "",
+          "valueType": "boolean",
+          "selectedType": "hidden",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "value": true,
+          "debugLabel": "",
+          "toolDescription": ""
+        },
+        {
+          "key": "aiChatQuoteRole",
+          "label": "",
+          "valueType": "string",
+          "selectedType": "hidden",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "value": "system",
+          "debugLabel": "",
+          "toolDescription": ""
+        },
+        {
+          "key": "quoteTemplate",
+          "label": "",
+          "valueType": "string",
+          "selectedType": "hidden",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "debugLabel": "",
+          "toolDescription": ""
+        },
+        {
+          "key": "quotePrompt",
+          "label": "",
+          "valueType": "string",
+          "selectedType": "hidden",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "debugLabel": "",
+          "toolDescription": ""
+        },
+        {
+          "key": "aiChatVision",
+          "label": "",
+          "valueType": "boolean",
+          "selectedType": "hidden",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "value": true,
+          "debugLabel": "",
+          "toolDescription": ""
+        },
+        {
+          "key": "aiChatAudio",
+          "label": "",
+          "valueType": "boolean",
+          "selectedType": "hidden",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "value": false,
+          "debugLabel": "",
+          "toolDescription": ""
+        },
+        {
+          "key": "aiChatVideo",
+          "label": "",
+          "valueType": "boolean",
+          "selectedType": "hidden",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "value": false,
+          "debugLabel": "",
+          "toolDescription": ""
+        },
+        {
+          "key": "aiChatExtractFiles",
+          "label": "",
+          "valueType": "boolean",
+          "selectedType": "hidden",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "value": true,
+          "debugLabel": "",
+          "toolDescription": ""
+        },
+        {
+          "key": "aiChatReasoning",
+          "label": "",
+          "valueType": "boolean",
+          "selectedType": "hidden",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "value": true,
+          "debugLabel": "",
+          "toolDescription": ""
+        },
+        {
+          "key": "aiChatReasoningEffort",
+          "label": "",
+          "valueType": "string",
+          "selectedType": "hidden",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "debugLabel": "",
+          "toolDescription": ""
+        },
+        {
+          "key": "aiChatTopP",
+          "label": "",
+          "valueType": "number",
+          "selectedType": "hidden",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "debugLabel": "",
+          "toolDescription": ""
+        },
+        {
+          "key": "aiChatStopSign",
+          "label": "",
+          "valueType": "string",
+          "selectedType": "hidden",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "debugLabel": "",
+          "toolDescription": ""
+        },
+        {
+          "key": "aiChatResponseFormat",
+          "label": "",
+          "valueType": "string",
+          "selectedType": "hidden",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "debugLabel": "",
+          "toolDescription": ""
+        },
+        {
+          "key": "aiChatJsonSchema",
+          "label": "",
+          "valueType": "string",
+          "selectedType": "hidden",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "debugLabel": "",
+          "toolDescription": ""
+        },
+        {
+          "key": "systemPrompt",
+          "label": "common:core.ai.Prompt",
+          "valueType": "string",
+          "isRichText": true,
+          "placeholder": "common:core.app.tip.chatNodeSystemPromptTip",
+          "maxLength": 100000,
+          "selectedType": "textarea",
+          "renderTypeList": [
+            "agentGenerated",
+            "textarea",
+            "reference"
+          ],
+          "value": "Rewrite the submitted text in neutral, verifiable language. Remove unsupported rankings, percentages, qualifications, and performance promises. Preserve facts supplied by the user. Identify information requiring verification. Output only a brief suggested rewrite in English.",
+          "description": "common:core.app.tip.systemPromptTip",
+          "debugLabel": "",
+          "toolDescription": ""
+        },
+        {
+          "key": "history",
+          "label": "common:core.module.input.label.chat history",
+          "valueType": "chatHistory",
+          "required": true,
+          "max": 50,
+          "min": 0,
+          "selectedType": "numberInput",
+          "renderTypeList": [
+            "agentGenerated",
+            "numberInput",
+            "reference"
+          ],
+          "value": 0,
+          "description": "workflow:max_dialog_rounds",
+          "debugLabel": "",
+          "toolDescription": ""
+        },
+        {
+          "key": "quoteQA",
+          "label": "",
+          "valueType": "datasetQuote",
+          "selectedType": "settingDatasetQuotePrompt",
+          "renderTypeList": [
+            "settingDatasetQuotePrompt"
+          ],
+          "debugLabel": "Knowledge references",
+          "description": "",
+          "toolDescription": ""
+        },
+        {
+          "key": "fileUrlList",
+          "label": "app:workflow.user_file_input",
+          "valueType": "arrayString",
+          "selectedType": "reference",
+          "renderTypeList": [
+            "agentGenerated",
+            "reference",
+            "JSONEditor"
+          ],
+          "debugLabel": "File links",
+          "description": "app:workflow.user_file_input_desc",
+          "defaultToAgentGenerated": true,
+          "toolDescription": ""
+        },
+        {
+          "key": "userChatInput",
+          "label": "workflow:user_question",
+          "valueType": "string",
+          "required": true,
+          "selectedType": "reference",
+          "renderTypeList": [
+            "agentGenerated",
+            "reference",
+            "textarea"
+          ],
+          "value": [
+            "448745",
+            "userChatInput"
+          ],
+          "toolDescription": "user question",
+          "defaultToAgentGenerated": true,
+          "debugLabel": ""
+        },
+        {
+          "key": "model",
+          "label": "common:core.module.input.label.aiModel",
+          "valueType": "string",
+          "selectedType": "settingLLMModel",
+          "renderTypeList": [
+            "settingLLMModel",
+            "reference"
+          ],
+          "value": "qwen3.8-flash",
+          "debugLabel": "",
+          "toolDescription": ""
+        }
+      ],
+      "outputs": [
+        {
+          "id": "history",
+          "key": "history",
+          "type": "static",
+          "valueType": "chatHistory",
+          "valueDesc": "{\n  obj: System | Human | AI;\n  value: string;\n}[]",
+          "label": "common:core.module.output.label.New context",
+          "description": "Append this response to the history and return the updated context",
+          "required": true
+        },
+        {
+          "id": "answerText",
+          "key": "answerText",
+          "type": "static",
+          "valueType": "string",
+          "valueDesc": "",
+          "label": "common:core.module.output.label.Ai response content",
+          "description": "Trigger after the streamed response completes",
+          "required": true
+        },
+        {
+          "id": "reasoningText",
+          "key": "reasoningText",
+          "type": "static",
+          "valueType": "string",
+          "valueDesc": "",
+          "label": "workflow:reasoning_content",
+          "description": "",
+          "required": false,
+          "invalid": false
+        },
+        {
+          "id": "system_error_text",
+          "key": "system_error_text",
+          "type": "error",
+          "valueType": "string",
+          "valueDesc": "",
+          "label": "workflow:error_text",
+          "description": ""
+        }
+      ],
+      "catchError": false
+    },
+    {
+      "nodeId": "reject",
+      "name": "Reject Publication",
+      "intro": "",
+      "avatar": "core/workflow/template/reply",
+      "flowNodeType": "answerNode",
+      "position": {
+        "x": 1500,
+        "y": 1600
+      },
+      "inputs": [
+        {
+          "key": "text",
+          "label": "Reply content",
+          "valueType": "any",
+          "renderTypeList": [
+            "textarea"
+          ],
+          "selectedType": "textarea",
+          "value": "Review rejected: the content involves invented certification or fabricated information. Provide genuine evidence before resubmitting."
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "nodeId": "confirm",
+      "name": "Human Confirmation",
+      "intro": "",
+      "avatar": "core/workflow/template/userSelect",
+      "flowNodeType": "userSelect",
+      "position": {
+        "x": 2400,
+        "y": 100
+      },
+      "inputs": [
+        {
+          "key": "description",
+          "label": "description",
+          "valueType": "string",
+          "renderTypeList": [
+            "textarea"
+          ],
+          "selectedType": "textarea",
+          "value": "Check the suggested rewrite above. Accept to return a confirmation or cancel to end this review."
+        },
+        {
+          "key": "userSelectOptions",
+          "label": "userSelectOptions",
+          "valueType": "any",
+          "renderTypeList": [
+            "custom"
+          ],
+          "selectedType": "custom",
+          "value": [
+            {
+              "key": "accept",
+              "value": "Accept rewrite"
+            },
+            {
+              "key": "cancel",
+              "value": "Cancel"
+            }
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "id": "selectResult",
+          "key": "selectResult",
+          "type": "static",
+          "valueType": "string",
+          "label": "Selection result"
+        }
+      ]
+    },
+    {
+      "nodeId": "accepted",
+      "name": "Confirmation Result",
+      "intro": "",
+      "avatar": "core/workflow/template/reply",
+      "flowNodeType": "answerNode",
+      "position": {
+        "x": 3100,
+        "y": 0
+      },
+      "inputs": [
+        {
+          "key": "text",
+          "label": "Reply content",
+          "valueType": "any",
+          "renderTypeList": [
+            "textarea"
+          ],
+          "selectedType": "textarea",
+          "value": "Rewrite accepted. The person responsible for publication must verify the facts before publishing."
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "nodeId": "cancelled",
+      "name": "End Review",
+      "intro": "",
+      "avatar": "core/workflow/template/reply",
+      "flowNodeType": "answerNode",
+      "position": {
+        "x": 3100,
+        "y": 650
+      },
+      "inputs": [
+        {
+          "key": "text",
+          "label": "Reply content",
+          "valueType": "any",
+          "renderTypeList": [
+            "textarea"
+          ],
+          "selectedType": "textarea",
+          "value": "Rewrite cancelled. Review ended."
+        }
+      ],
+      "outputs": []
+    }
+  ],
+  "edges": [
+    {
+      "source": "448745",
+      "target": "classify",
+      "sourceHandle": "448745-source-right",
+      "targetHandle": "classify-target-left"
+    },
+    {
+      "source": "classify",
+      "target": "safe",
+      "sourceHandle": "classify-source-safe",
+      "targetHandle": "safe-target-left"
+    },
+    {
+      "source": "classify",
+      "target": "rewrite",
+      "sourceHandle": "classify-source-rewrite",
+      "targetHandle": "rewrite-target-left"
+    },
+    {
+      "source": "classify",
+      "target": "reject",
+      "sourceHandle": "classify-source-reject",
+      "targetHandle": "reject-target-left"
+    },
+    {
+      "source": "rewrite",
+      "target": "confirm",
+      "sourceHandle": "rewrite-source-right",
+      "targetHandle": "confirm-target-left"
+    },
+    {
+      "source": "confirm",
+      "target": "accepted",
+      "sourceHandle": "confirm-source-accept",
+      "targetHandle": "accepted-target-left"
+    },
+    {
+      "source": "confirm",
+      "target": "cancelled",
+      "sourceHandle": "confirm-source-cancel",
+      "targetHandle": "cancelled-target-left"
+    }
+  ],
+  "chatConfig": {
+    "welcomeText": "Submit one text for review at a time. Suggested rewrites require human confirmation.",
+    "welcomeConfig": {
+      "welcomeText": "Submit one text for review at a time. Suggested rewrites require human confirmation."
+    },
+    "variables": [],
+    "questionGuide": {
+      "open": false
+    },
+    "ttsConfig": {
+      "type": "web"
+    },
+    "whisperConfig": {
+      "open": false,
+      "autoSend": false,
+      "autoTTSResponse": false
+    },
+    "scheduledTriggerConfig": {
+      "cronString": "",
+      "timezone": "Asia/Shanghai",
+      "defaultPrompt": ""
+    },
+    "entryPoints": []
+  },
+  "type": "advanced",
+  "name": "Content Review and Automatic Rewriting",
+  "intro": ""
+}

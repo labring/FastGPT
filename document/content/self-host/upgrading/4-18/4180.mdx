@@ -8,9 +8,11 @@ sidebarTag: 进行中
 
 ### 配置变更
 
-本轮无环境变量或系统配置变更，从 V4.17.3 升级无需额外调整配置。
+官方 Docker Compose 部署模板默认对象存储由 MinIO 切换为 RustFS（`fastgpt-rustfs`）。已有 MinIO 部署可参考[Docker Compose 从 MinIO 迁移到 RustFS](/zh-CN/self-host/docker_minio_to_rustfs)完成原地迁移，或保留原有 MinIO 配置继续运行。其余环境变量与系统配置从 V4.17.3 升级保持一致。
 
 ### 镜像更新
+
+本版本仍在开发中，镜像 tag 在正式发布时补充。
 
 ### 升级脚本
 

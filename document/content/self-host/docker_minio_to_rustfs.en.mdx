@@ -1,6 +1,6 @@
 ---
 title: MinIO to RustFS Migration
-description: Migrate FastGPT Docker object storage from MinIO to RustFS
+description: Migrate FastGPT Docker object storage from MinIO to RustFS while preserving existing volumes, database settings, and secrets.
 ---
 
 New deployments from the `main` version use RustFS as their object storage. Existing MinIO deployments must migrate in place, keeping the original Compose project, business volumes, database connection settings, and secrets while replacing only object storage.

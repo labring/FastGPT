@@ -17,11 +17,11 @@ OpenSandbox 适合需要自托管 Agent/Skill 沙盒运行环境的场景。Fast
 
 [查看最新版 docker-compose.yml（PgVector，中国大陆镜像源）](/deploy/docker/main/cn/docker-compose.pg.yml)
 
-其他向量数据库和全球镜像源版本见 [Docker Compose 部署](../../deploy/docker)。
+其他向量数据库和全球镜像源版本见 [Docker Compose 部署](/zh-CN/self-host/deploy/docker)。
 
 ## 环境变量配置
 
-Docker compose yml 文件里均已带默认值，这里补充做每个变量的说明。该文档始终是最新配置，旧版的配置可能存在差异，需找旧版的 yml 来看实际变量值。
+Docker Compose YAML 文件中已包含默认值，下文说明各变量的含义。本文对应最新配置，旧版配置请对照对应版本的 YAML 文件。
 
 ### OpenSandbox 服务
 
@@ -41,13 +41,13 @@ Docker compose yml 文件里均已带默认值，这里补充做每个变量的�
 | 变量                               | 默认值                                   | 说明                                                                                                    |
 | ---------------------------------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------- |
 | `PORT`                             | `1006`                                   | Proxy 容器监听端口，默认映射到宿主机 `3006`。                                                           |
-| `PREVIEW_PORT`                     | 与 `PORT` 相同                           | 4.16 可单独指定 HTTP 预览监听端口；修改后需同步调整宿主机端口映射和 `AGENT_SANDBOX_PREVIEW_PROXY_URL`。 |
+| `PREVIEW_PORT`                     | 与 `PORT` 相同                           | 自 4.16 起可单独指定 HTTP 预览监听端口；修改后需同步调整宿主机端口映射和 `AGENT_SANDBOX_PREVIEW_PROXY_URL`。 |
 | `AGENT_SANDBOX_PROXY_SECRET`       | 无                                       | 与 FastGPT 主服务共用的密钥，至少 32 位。                                                               |
-| `FASTGPT_APP_URL`                  | `http://fastgpt-app:3000`                | Proxy 回源 FastGPT 主服务的内网地址。                                                                   |
-| `FASTGPT_APP_REQUEST_TIMEOUT_SECS` | `10`                                     | Proxy 回源请求超时时间，单位秒；沙盒冷启动较慢时可适当调大。                                            |
+| `FASTGPT_APP_URL`                  | `http://localhost:3000`                  | Proxy 回源 FastGPT 主服务的内网地址；官方 Compose 模板设置为 `http://fastgpt-app:3000`。                |
+| `FASTGPT_APP_REQUEST_TIMEOUT_SECS` | `10`                                     | Proxy 回源请求超时时间，单位秒；官方 Compose 模板设置为 `60`，沙盒冷启动较慢时可适当调大。              |
 | `RUST_LOG`                         | `info,fastgpt_agent_sandbox_proxy=debug` | Proxy 服务日志级别。                                                                                    |
 
-4.16 默认使用同一个端口提供 WebSocket 和 HTTP 预览。如果网关不支持同端口转发，可设置 `PREVIEW_PORT` 为其他容器端口（例如 `1007`），并将 Compose 端口映射改为 `3007:1007`，同时把 `AGENT_SANDBOX_PREVIEW_PROXY_URL` 指向新的 3007 端口。
+自 4.16 起默认使用同一个端口提供 WebSocket 和 HTTP 预览。如果网关不支持同端口转发，可设置 `PREVIEW_PORT` 为其他容器端口（例如 `1007`），并将 Compose 端口映射改为 `3007:1007`，同时把 `AGENT_SANDBOX_PREVIEW_PROXY_URL` 指向新的 3007 端口。
 
 ### fastgpt-app 服务
 
@@ -155,7 +155,7 @@ AGENT_SANDBOX_APT_MIRROR=https://mirrors.tuna.tsinghua.edu.cn/ubuntu-ports
 | `AGENT_SANDBOX_SUSPEND_MINUTES`          | `60`       | 运行中的沙盒持续未活跃多少分钟后自动暂停。                                                                                    |
 | `AGENT_SANDBOX_ARCHIVE_INACTIVE_DAYS`    | `7`        | 已暂停的沙盒持续未活跃多少天后自动归档。                                                                                      |
 
-## 常见问题
+## 配置与连接排障
 
 ### 提示 Sandbox provider apiKey is required for opensandbox
 
@@ -165,7 +165,9 @@ AGENT_SANDBOX_APT_MIRROR=https://mirrors.tuna.tsinghua.edu.cn/ubuntu-ports
 
 检查 `AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL` 和 `AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN`，并确认 Volume Manager 服务正常运行。
 
-### 提示 AGENT_SANDBOX_PROXY_URL 或 AGENT_SANDBOX_PREVIEW_PROXY_URL is required
+<span id="提示-agent_sandbox_proxy_url-或-agent_sandbox_preview_proxy_url-is-required" />
+
+### 提示 Invalid Agent Sandbox proxy environment variables: AGENT_SANDBOX_PROXY_SECRET, AGENT_SANDBOX_PROXY_URL, AGENT_SANDBOX_PREVIEW_PROXY_URL are required when AGENT_SANDBOX_PROVIDER is opensandbox
 
 `fastgpt-app` 必须配置 `AGENT_SANDBOX_PROXY_SECRET`、`AGENT_SANDBOX_PROXY_URL` 和 `AGENT_SANDBOX_PREVIEW_PROXY_URL`；`fastgpt-pro` 必须配置 `AGENT_SANDBOX_PREVIEW_PROXY_URL`。
 
