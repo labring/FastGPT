@@ -214,17 +214,22 @@ const discoverProtectedResource = async ({
   return null;
 };
 
+/**
+ * AS metadata 线上的可选字段可能是显式 `null`（部分 AS 会这样返回）。
+ * 读侧容忍 null，写回存储前统一归一为 `undefined`，保证 MongoDB 中的
+ * `oauth.server` 不再新增 null 值（历史 null 由 schema 读侧兼容）。
+ */
 const AuthorizationServerMetadataSchema = z
   .object({
     issuer: z.string().max(2048),
     authorization_endpoint: z.string().max(2048),
     token_endpoint: z.string().max(2048),
-    registration_endpoint: z.string().max(2048).optional(),
-    revocation_endpoint: z.string().max(2048).optional(),
-    token_endpoint_auth_methods_supported: z.array(z.string().max(64)).max(16).optional(),
-    code_challenge_methods_supported: z.array(z.string().max(32)).max(16).optional(),
-    client_id_metadata_document_supported: z.boolean().optional(),
-    scopes_supported: z.array(z.string().max(256)).max(64).optional()
+    registration_endpoint: z.string().max(2048).nullish(),
+    revocation_endpoint: z.string().max(2048).nullish(),
+    token_endpoint_auth_methods_supported: z.array(z.string().max(64)).max(16).nullish(),
+    code_challenge_methods_supported: z.array(z.string().max(32)).max(16).nullish(),
+    client_id_metadata_document_supported: z.boolean().nullish(),
+    scopes_supported: z.array(z.string().max(256)).max(64).nullish()
   })
   .passthrough();
 
@@ -305,16 +310,19 @@ export const discoverAuthorizationServerMetadata = async ({
       ? await assertMcpOAuthUrlSafe(parsed.data.revocation_endpoint, { allowInsecureHttp })
       : undefined;
 
+    // 写库前把 AS 显式返回的 null 归一为 undefined，避免再次落库出历史 null 数据。
     return {
       issuer: normalizedIssuer,
       authorizationEndpoint,
       tokenEndpoint,
       registrationEndpoint,
       revocationEndpoint,
-      tokenEndpointAuthMethodsSupported: parsed.data.token_endpoint_auth_methods_supported,
-      codeChallengeMethodsSupported: parsed.data.code_challenge_methods_supported,
-      clientIdMetadataDocumentSupported: parsed.data.client_id_metadata_document_supported,
-      scopesSupported: parsed.data.scopes_supported,
+      tokenEndpointAuthMethodsSupported:
+        parsed.data.token_endpoint_auth_methods_supported ?? undefined,
+      codeChallengeMethodsSupported: parsed.data.code_challenge_methods_supported ?? undefined,
+      clientIdMetadataDocumentSupported:
+        parsed.data.client_id_metadata_document_supported ?? undefined,
+      scopesSupported: parsed.data.scopes_supported ?? undefined,
       source: 'discovered',
       fetchedAt: Date.now()
     };

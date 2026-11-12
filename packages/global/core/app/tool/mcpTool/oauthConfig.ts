@@ -34,16 +34,23 @@ export const McpOAuthUrlSchema = z
   .max(2048)
   .refine(isValidMcpOAuthEndpointUrl, { message: 'mcp_oauth_endpoint_insecure' });
 
+/**
+ * 可选字段读侧兼容：历史/第三方数据可能把可选字段写成 `null`（典型来源是 AS metadata
+ * 中的 `client_id_metadata_document_supported: null`），而旧契约只允许 `undefined` 或值本身。
+ *
+ * 这里只放宽读侧（`.nullish()`），不引入 transform：该 schema 参与 OpenAPI 响应文档生成，
+ * transform 会被 zod-openapi 拒绝。写路径（discovery）负责把 null 归一为 undefined。
+ */
 export const McpOAuthServerMetadataSchema = z.object({
   issuer: McpOAuthUrlSchema,
   authorizationEndpoint: McpOAuthUrlSchema,
   tokenEndpoint: McpOAuthUrlSchema,
-  registrationEndpoint: McpOAuthUrlSchema.optional(),
-  revocationEndpoint: McpOAuthUrlSchema.optional(),
-  tokenEndpointAuthMethodsSupported: z.array(z.string().max(64)).max(16).optional(),
-  codeChallengeMethodsSupported: z.array(z.string().max(32)).max(16).optional(),
-  clientIdMetadataDocumentSupported: z.boolean().optional(),
-  scopesSupported: z.array(z.string().max(256)).max(64).optional(),
+  registrationEndpoint: McpOAuthUrlSchema.nullish(),
+  revocationEndpoint: McpOAuthUrlSchema.nullish(),
+  tokenEndpointAuthMethodsSupported: z.array(z.string().max(64)).max(16).nullish(),
+  codeChallengeMethodsSupported: z.array(z.string().max(32)).max(16).nullish(),
+  clientIdMetadataDocumentSupported: z.boolean().nullish(),
+  scopesSupported: z.array(z.string().max(256)).max(64).nullish(),
   source: z.enum(['discovered', 'manual']).default('discovered'),
   fetchedAt: z.number()
 });

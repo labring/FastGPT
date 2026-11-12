@@ -244,6 +244,71 @@ describe('get app detail api', () => {
     expect(storedOAuth?.client?.registrationAccessToken).toBeDefined();
   });
 
+  it('returns OAuth toolset detail when persisted server metadata contains null optionals', async () => {
+    // 回归（Stage K3）：Mongo 中 `oauth.server.clientIdMetadataDocumentSupported = null`
+    // 曾使 LegacyStoreNodeItemSchema 拒绝节点，detail 返回 500。
+    const owner = await getUser(`detail-oauth-null-owner-${getNanoid(6)}`);
+    const appId = await onCreateApp({
+      name: 'oauth toolset detail with null metadata',
+      type: AppTypeEnum.mcpToolSet,
+      teamId: owner.teamId,
+      tmbId: owner.tmbId,
+      nodes: [
+        {
+          nodeId: 'mcp-node',
+          flowNodeType: FlowNodeTypeEnum.toolSet,
+          name: 'MCP',
+          toolConfig: {
+            mcpToolSet: {
+              url: 'https://example.com/mcp',
+              authMode: 'oauth',
+              toolList: [],
+              oauth: {
+                schemaVersion: 1,
+                clientMode: 'dcr',
+                credentialSeq: 7,
+                issuer: 'https://as.example.org/',
+                resource: 'https://example.com/mcp',
+                server: {
+                  issuer: 'https://as.example.org/',
+                  authorizationEndpoint: 'https://as.example.org/authorize',
+                  tokenEndpoint: 'https://as.example.org/token',
+                  registrationEndpoint: null,
+                  revocationEndpoint: null,
+                  tokenEndpointAuthMethodsSupported: null,
+                  codeChallengeMethodsSupported: null,
+                  clientIdMetadataDocumentSupported: null,
+                  scopesSupported: null,
+                  source: 'discovered',
+                  fetchedAt: 1
+                },
+                refreshLease: null
+              }
+            }
+          },
+          inputs: [],
+          outputs: []
+        }
+      ]
+    });
+
+    const res = await Call<Record<string, never>, GetAppDetailQueryType, GetAppDetailResponseType>(
+      handler,
+      { auth: owner, headers: {}, query: { appId } }
+    );
+
+    expect(res.code).toBe(200);
+    const mcpToolSet = (res.data.nodes[0]?.toolConfig as any)?.mcpToolSet;
+    expect(mcpToolSet?.authMode).toBe('oauth');
+    expect(mcpToolSet?.oauth?.server).toMatchObject({
+      issuer: 'https://as.example.org/',
+      authorizationEndpoint: 'https://as.example.org/authorize'
+    });
+    // 详情必须 200；null 读侧被容忍（历史数据原样保留，新写入由 discovery 归一）。
+    expect(mcpToolSet?.oauth?.server?.clientIdMetadataDocumentSupported).toBeNull();
+    expect(mcpToolSet?.oauth?.server?.registrationEndpoint).toBeNull();
+  });
+
   it('does not expose workflow configuration to a read-only collaborator', async () => {
     const owner = await getUser(`detail-owner-${getNanoid(6)}`);
     const reader = await getUser(`detail-reader-${getNanoid(6)}`, owner.teamId);

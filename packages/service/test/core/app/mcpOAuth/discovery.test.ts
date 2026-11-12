@@ -92,6 +92,43 @@ describe('mcpOAuth discovery', () => {
     expect(result.resource).toBe('https://legacy.example.com/mcp');
   });
 
+  it('accepts null AS metadata optionals and normalizes them to undefined before persisting', async () => {
+    setMcpOAuthFetchImpl(async (url) => {
+      const value = url.toString();
+      if (value === 'https://null.example.com/mcp') {
+        return json({}, 401);
+      }
+      if (value.includes('/.well-known/oauth-protected-resource')) {
+        return json({}, 404);
+      }
+      if (value === 'https://null.example.com/.well-known/oauth-authorization-server') {
+        return json({
+          issuer: 'https://null.example.com/',
+          authorization_endpoint: 'https://null.example.com/authorize',
+          token_endpoint: 'https://null.example.com/token',
+          registration_endpoint: null,
+          revocation_endpoint: null,
+          token_endpoint_auth_methods_supported: null,
+          code_challenge_methods_supported: null,
+          client_id_metadata_document_supported: null,
+          scopes_supported: null
+        });
+      }
+      return json({}, 404);
+    });
+
+    const result = await discoverMcpOAuth({ mcpUrl: 'https://null.example.com/mcp' });
+
+    // 写库前 null 归一为 undefined，避免 `oauth.server` 再次落库出 null。
+    expect(result.server.registrationEndpoint).toBeUndefined();
+    expect(result.server.revocationEndpoint).toBeUndefined();
+    expect(result.server.tokenEndpointAuthMethodsSupported).toBeUndefined();
+    expect(result.server.codeChallengeMethodsSupported).toBeUndefined();
+    expect(result.server.clientIdMetadataDocumentSupported).toBeUndefined();
+    expect(result.server.scopesSupported).toBeUndefined();
+    expect(result.server.issuer).toBe('https://null.example.com/');
+  });
+
   it('accepts cross-origin AS endpoints but still validates them individually', async () => {
     setMcpOAuthFetchImpl(async (url) => {
       const value = url.toString();
