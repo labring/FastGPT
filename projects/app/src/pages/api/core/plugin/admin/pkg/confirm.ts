@@ -1,3 +1,4 @@
+import { restoreLocalPluginConfigs } from '@fastgpt/service/core/plugin/restoreLocalConfigs';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
@@ -23,6 +24,13 @@ async function handler(req: ApiRequestProps<ConfirmUploadPkgPluginBodyType>): Pr
       pluginId: id.pluginId.replace(/^systemTool-/, '')
     }))
   );
+
+  // Restore only successfully confirmed packages, even when other packages failed.
+  if (confirmResult.confirmed.length > 0) {
+    await restoreLocalPluginConfigs({
+      pluginIds: confirmResult.confirmed.map((item) => item.pluginId)
+    });
+  }
 
   if (confirmResult.failed.length > 0) {
     return Promise.reject(JSON.stringify(confirmResult.failed));

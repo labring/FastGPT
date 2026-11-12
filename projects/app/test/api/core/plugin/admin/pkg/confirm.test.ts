@@ -3,7 +3,8 @@ import { Call } from '@test/utils/request';
 
 const mocks = vi.hoisted(() => ({
   authSystemAdmin: vi.fn(),
-  confirmPlugin: vi.fn()
+  confirmPlugin: vi.fn(),
+  restoreModerationConfigs: vi.fn()
 }));
 
 vi.mock('@fastgpt/service/support/permission/user/auth', () => ({
@@ -14,6 +15,10 @@ vi.mock('@fastgpt/service/thirdProvider/fastgptPlugin', () => ({
   pluginClient: {
     confirmPlugin: mocks.confirmPlugin
   }
+}));
+
+vi.mock('@fastgpt/service/core/plugin/restoreLocalConfigs', () => ({
+  restoreLocalPluginConfigs: mocks.restoreModerationConfigs
 }));
 
 import handler from '@/pages/api/core/plugin/admin/pkg/confirm';
@@ -38,7 +43,18 @@ describe('confirm system plugin package handler', () => {
     const res = await Call(handler, { body: { toolIds: [tool] } });
 
     expect(res.code).toBe(200);
+    expect(mocks.restoreModerationConfigs).toHaveBeenCalledWith({ pluginIds: ['weather'] });
     expect(mocks.confirmPlugin).toHaveBeenCalledWith([{ ...tool, pluginId: 'weather' }]);
+  });
+
+  it('restores only successfully confirmed packages on partial failure', async () => {
+    mocks.confirmPlugin.mockResolvedValueOnce({
+      confirmed: [{ pluginId: 'keyword', version: '1.0.0', etag: 'keyword-etag' }],
+      failed: [{ uniqueId: tool, reason: { en: 'Confirm failed' } }]
+    });
+    const res = await Call(handler, { body: { toolIds: [tool] } });
+    expect(res.code).not.toBe(200);
+    expect(mocks.restoreModerationConfigs).toHaveBeenCalledWith({ pluginIds: ['keyword'] });
   });
 
   it('returns failure when any plugin confirmation fails', async () => {
@@ -55,5 +71,6 @@ describe('confirm system plugin package handler', () => {
     const res = await Call(handler, { body: { toolIds: [tool] } });
 
     expect(res.code).not.toBe(200);
+    expect(mocks.restoreModerationConfigs).not.toHaveBeenCalled();
   });
 });

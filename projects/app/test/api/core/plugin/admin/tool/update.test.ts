@@ -5,6 +5,8 @@ import { decryptSecret, encryptSecret } from '@fastgpt/service/common/secret/aes
 
 const mocks = vi.hoisted(() => ({
   authSystemAdmin: vi.fn(),
+  disableSystemPlugin: vi.fn(),
+  restoreSystemPlugin: vi.fn(),
   findOne: vi.fn(),
   updateOne: vi.fn(),
   updateMany: vi.fn(),
@@ -38,6 +40,11 @@ vi.mock('@fastgpt/service/core/app/tool/systemTool/systemTool.repo', () => ({
       getSystemToolDetail: mocks.getSystemToolDetail
     })
   }
+}));
+
+vi.mock('@fastgpt/service/thirdProvider/fastgptPlugin/lifecycle', () => ({
+  disableSystemPlugin: mocks.disableSystemPlugin,
+  restoreSystemPlugin: mocks.restoreSystemPlugin
 }));
 
 import { handler } from '@/pages/api/core/plugin/admin/tool/update';
@@ -94,6 +101,44 @@ describe('admin system tool update handler', () => {
       { pluginId: { $regex: '^systemTool-weather/' } },
       { status: PluginStatusEnum.Offline },
       { session: 'session' }
+    );
+  });
+
+  it('does not commit local uninstall when the plugin server fails', async () => {
+    mocks.disableSystemPlugin.mockRejectedValueOnce(new Error('remote failed'));
+    await expect(
+      handler(
+        { body: { id: 'systemTool-weather', status: PluginStatusEnum.Offline } } as any,
+        {} as any
+      )
+    ).rejects.toThrow('remote failed');
+    expect(mocks.updateOne).not.toHaveBeenCalled();
+    expect(mocks.updateMany).not.toHaveBeenCalled();
+  });
+
+  it('activates retained remote files before restoring local configuration', async () => {
+    mocks.findOne.mockResolvedValueOnce({ status: PluginStatusEnum.Offline });
+    await handler(
+      { body: { id: 'systemTool-weather', status: PluginStatusEnum.Normal } } as any,
+      {} as any
+    );
+    expect(mocks.restoreSystemPlugin).toHaveBeenCalledWith('weather');
+    expect(mocks.restoreSystemPlugin.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.updateOne.mock.invocationCallOrder[0]
+    );
+  });
+
+  it('does not invoke remote lifecycle when updating status of a child tool', async () => {
+    await handler(
+      { body: { id: 'systemTool-weather/forecast', status: PluginStatusEnum.Offline } } as any,
+      {} as any
+    );
+    expect(mocks.disableSystemPlugin).not.toHaveBeenCalled();
+    expect(mocks.restoreSystemPlugin).not.toHaveBeenCalled();
+    expect(mocks.updateOne).toHaveBeenCalledWith(
+      { pluginId: 'systemTool-weather/forecast' },
+      expect.objectContaining({ status: PluginStatusEnum.Offline }),
+      expect.anything()
     );
   });
 
