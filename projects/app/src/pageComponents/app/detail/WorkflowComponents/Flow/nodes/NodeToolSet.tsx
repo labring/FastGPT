@@ -26,7 +26,7 @@ const NodeToolSet = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
   const toolList = getNodeToolSetList(data);
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
-  const [editingToolSet, setEditingToolSet] = useState<'mcp' | 'http'>();
+  const [isEditingHttpToolSet, setIsEditingHttpToolSet] = useState(false);
   const localMcpToolSet = data.pluginId
     ? undefined
     : McpToolSetNodeConfigSchema.safeParse(data.toolConfig?.mcpToolSet).data;
@@ -88,13 +88,13 @@ const NodeToolSet = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         mb={0}
         minW={0}
       />
-      {(localMcpToolSet || localHttpToolSet) && (
+      {localHttpToolSet && (
         <Button
           size={'sm'}
           variant={'primary'}
           ml={3}
           leftIcon={<MyIcon name={'common/setting'} w={'16px'} />}
-          onClick={() => setEditingToolSet(localMcpToolSet ? 'mcp' : 'http')}
+          onClick={() => setIsEditingHttpToolSet(true)}
         >
           {t('app:toolset_config')}
         </Button>
@@ -116,12 +116,19 @@ const NodeToolSet = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
             <Box color={'myGray.500'} fontSize={'sm'}>
               {t('app:tool_not_configured')}
             </Box>
-            <Button size={'sm'} variant={'primary'} onClick={() => setEditingToolSet('http')}>
+            <Button size={'sm'} variant={'primary'} onClick={() => setIsEditingHttpToolSet(true)}>
               {t('app:click_to_config')}
             </Button>
           </Flex>
         ) : (
           <>
+            {localMcpToolSet && (
+              <McpToolSetForm
+                key={data.nodeId}
+                initialConfig={localMcpToolSet}
+                onUpdateConfig={onSaveMcpToolSet}
+              />
+            )}
             <ToolSetList
               toolList={toolList}
               onSaveDescription={onSaveDescription}
@@ -132,19 +139,11 @@ const NodeToolSet = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
           </>
         )}
       </Container>
-      {editingToolSet === 'mcp' && localMcpToolSet && (
-        <McpToolSetForm
-          key={data.nodeId}
-          initialConfig={localMcpToolSet}
-          onUpdateConfig={onSaveMcpToolSet}
-          onClose={() => setEditingToolSet(undefined)}
-        />
-      )}
-      {editingToolSet === 'http' && localHttpToolSet && (
+      {isEditingHttpToolSet && localHttpToolSet && (
         <SchemaConfigModal
           key={`${data.nodeId}:${JSON.stringify(localHttpToolSet)}`}
           initialConfig={localHttpToolSet}
-          onClose={() => setEditingToolSet(undefined)}
+          onClose={() => setIsEditingHttpToolSet(false)}
           onSaveConfig={onSaveHttpToolSet}
         />
       )}
@@ -156,26 +155,25 @@ export default React.memo(NodeToolSet);
 
 const McpToolSetForm = ({
   initialConfig,
-  onUpdateConfig,
-  onClose
+  onUpdateConfig
 }: {
   initialConfig: McpToolSetNodeConfigType;
   onUpdateConfig: (config: McpToolSetNodeConfigType) => void;
-  onClose: () => void;
 }) => {
   const { t } = useTranslation();
   const [url, setUrl] = useState(initialConfig.url);
   const [headerSecret, setHeaderSecret] = useState<StoreSecretValueType>(
     initialConfig.headerSecret ?? {}
   );
-  const closingRef = useRef(false);
+  const isMountedRef = useRef(true);
   const parseGenerationRef = useRef(0);
-  useEffect(
-    () => () => {
-      closingRef.current = true;
-    },
-    []
-  );
+  useEffect(() => {
+    isMountedRef.current = true;
+
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
   const { runAsync: parseTools, loading } = useRequest(
     async () => {
       const generation = parseGenerationRef.current;
@@ -186,7 +184,7 @@ const McpToolSetForm = ({
       manual: true,
       onSuccess: ({ generation, tools }) => {
         // 表单保持挂载；URL 或鉴权变更后，旧请求不得覆盖当前配置。
-        if (closingRef.current || generation !== parseGenerationRef.current) return;
+        if (!isMountedRef.current || generation !== parseGenerationRef.current) return;
 
         const savedDescriptions = new Map(
           initialConfig.toolList.map((tool) => [tool.name, tool.description])
@@ -235,20 +233,10 @@ const McpToolSetForm = ({
             setUrl(event.target.value);
           }}
           onBlur={() => {
-            if (closingRef.current) return;
+            if (!isMountedRef.current) return;
             onUpdateConfig({ ...initialConfig, url: url.trim(), headerSecret });
           }}
         />
-        <Button
-          size={'sm'}
-          variant={'whiteBase'}
-          onClick={() => {
-            closingRef.current = true;
-            onClose();
-          }}
-        >
-          {t('common:Close')}
-        </Button>
         <Button
           size={'sm'}
           variant={'whitePrimary'}
