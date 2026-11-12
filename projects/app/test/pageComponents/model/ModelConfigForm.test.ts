@@ -177,26 +177,35 @@ describe('ModelConfigForm comprehensive price', () => {
       select.value = 'tokens';
       select.dispatchEvent(new Event('change', { bubbles: true }));
     });
-    expect(container.textContent).toContain('/ M Tokens');
+    expect(container.textContent).toContain('/ 1M Tokens');
     expect(container.querySelector('input[name="pricing.secondsPerUnit"]')).toBeNull();
     await act(async () => container.querySelector('form')!.requestSubmit());
     await vi.waitFor(() => expect(save).toHaveBeenCalledOnce());
     expect(save.mock.calls[0][0].pricing).toEqual({ type: 'tokens', unitPrice: 10 });
   });
 
-  it('saves an independent seconds denominator and displays the same unit', async () => {
+  it('fixes duration pricing to 60 seconds before and after switching price types', async () => {
     await render({ type: ModelTypeEnum.stt, unitPrice: 0.2 });
-    const denominator = container.querySelector<HTMLInputElement>(
-      'input[name="pricing.secondsPerUnit"]'
+    expect(container.querySelector('input[name="pricing.secondsPerUnit"]')).toBeNull();
+    expect(container.textContent).toContain('/ 60 common:unit.seconds');
+    const select = Array.from(container.querySelectorAll('select')).find((element) =>
+      Array.from(element.options).some((option) => option.value === 'tokens')
     )!;
-    await fillAndBlur(denominator, '30');
-    expect(container.textContent).toContain('/ 30 common:unit.seconds');
+    for (const type of ['tokens', 'duration']) {
+      await act(async () => {
+        select.value = type;
+        select.dispatchEvent(new Event('change', { bubbles: true }));
+      });
+      expect(container.querySelector('input[name="pricing.secondsPerUnit"]')).toBeNull();
+      expect(container.textContent).toContain(
+        type === 'tokens' ? '/ 1M Tokens' : '/ 60 common:unit.seconds'
+      );
+    }
     await act(async () => container.querySelector('form')!.requestSubmit());
     await vi.waitFor(() => expect(save).toHaveBeenCalledOnce());
     expect(save.mock.calls[0][0].pricing).toEqual({
       type: 'duration',
-      unitPrice: 0.2,
-      secondsPerUnit: 30
+      unitPrice: 0.2
     });
   });
 

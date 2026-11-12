@@ -58,10 +58,8 @@ describe('admin system model API schemas', () => {
     const priceVariants = stt.properties.pricing.anyOf;
     expect(priceVariants).toHaveLength(2);
     expect(priceVariants[0].properties.type.const).toBe('duration');
-    expect(priceVariants[0].properties.secondsPerUnit).toMatchObject({
-      type: 'integer',
-      default: 60
-    });
+    expect(priceVariants[0].properties).not.toHaveProperty('secondsPerUnit');
+    expect(priceVariants[0].properties.unitPrice.description).toContain('60');
     expect(priceVariants[1].properties.type.const).toBe('tokens');
     expect(priceVariants[1].properties).not.toHaveProperty('secondsPerUnit');
   });
@@ -77,7 +75,7 @@ describe('admin system model API schemas', () => {
         model.properties.type.const === 'stt' || model.properties.type.enum?.includes('stt')
     );
     const pricing = JSON.stringify(stt?.properties.pricing);
-    expect(pricing).toContain('secondsPerUnit');
+    expect(pricing).not.toContain('secondsPerUnit');
     expect(pricing).toContain('duration');
     expect(pricing).toContain('tokens');
     expect(pricing).toContain('unitPrice');

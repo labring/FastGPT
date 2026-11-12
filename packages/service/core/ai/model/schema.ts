@@ -50,8 +50,7 @@ const AIModelSchema = new Schema(
             default: undefined
           },
           unitPrice: Number,
-          type: { type: String, enum: ['duration', 'tokens'] },
-          secondsPerUnit: Number
+          type: { type: String, enum: ['duration', 'tokens'] }
         },
         { _id: false, minimize: false }
       ),

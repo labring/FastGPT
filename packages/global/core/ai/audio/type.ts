@@ -14,7 +14,7 @@ export const STTBillingSnapshotSchema = z.object({
   unitSize: z
     .number()
     .positive()
-    .meta({ description: '单价对应的数量分母，时长为 N 秒，Tokens 为百万' })
+    .meta({ description: '单价对应的数量分母，新账单时长固定为 60 秒，Tokens 固定为百万' })
 });
 export type STTBillingSnapshotType = z.infer<typeof STTBillingSnapshotSchema>;
 

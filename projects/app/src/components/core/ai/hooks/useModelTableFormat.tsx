@@ -1,3 +1,4 @@
+import { STT_PRICE_UNITS } from '@fastgpt/global/core/ai/audio/constants';
 import React, { useMemo } from 'react';
 import { Box, Flex } from '@chakra-ui/react';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
@@ -98,8 +99,8 @@ export const formatModelTableList = <T extends BaseFormatModelItem>({
       const unit =
         item.type === ModelTypeEnum.stt
           ? sttPricing.type === 'tokens'
-            ? 'M Tokens'
-            : `${sttPricing.secondsPerUnit}${t('common:unit.seconds')}`
+            ? '1M Tokens'
+            : `${STT_PRICE_UNITS.duration}${t('common:unit.seconds')}`
           : item.type === ModelTypeEnum.tts
             ? `1M ${t('common:unit.character')}`
             : 'M Tokens';

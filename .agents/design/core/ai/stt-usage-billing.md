@@ -9,16 +9,16 @@ STT 模型各自保存计价口径，网页语音输入、公众号语音和飞�
 `pricing.type` 与模型类别 `model.type`、上游返回的 `usage.type` 是不同字段。模型类别仍为 `stt`；新增的价格类型只允许以下两种：
 
 ```typescript
-// 每 60 秒 0.2 积分；N 可独立调整。
-pricing: { type: 'duration', unitPrice: 0.2, secondsPerUnit: 60 }
+// 固定每 60 秒 0.2 积分。
+pricing: { type: 'duration', unitPrice: 0.2 }
 
 // 每百万输入与输出合计 Tokens 10 积分。
 pricing: { type: 'tokens', unitPrice: 10 }
 ```
 
-时长费用为 `seconds / secondsPerUnit * unitPrice`；Tokens 费用为 `totalTokens / 1_000_000 * unitPrice`。N 是单价分母，不是分段进位步长。单次费用保留精度，时长不强制最少 1 秒，不做向上取整。
+时长费用为 `seconds / 60 * unitPrice`；Tokens 费用为 `totalTokens / 1_000_000 * unitPrice`。60 秒是固定单价分母，不是分段进位步长。单次费用保留精度，时长不强制最少 1 秒，不做向上取整。
 
-两种配置通过判别联合解析；Tokens 配置不保存秒数分母。表单提供计价类型单选，只有时长模式展示正整数 N。价格表和公开价格页展示对应单位。
+两种配置通过判别联合解析，均不保存可配置的单位分母。表单只提供计价类型和单价；按时长固定展示每 60 秒，按 Tokens 固定展示每 1M Tokens。价格表和公开价格页使用相同单位。
 
 缺少单价保持免费；单价 0 表示显式免费。清空 STT 单价时保留所选类型，但不恢复历史根级价格。其他模型保留原有清空语义。
 
@@ -60,7 +60,7 @@ usage: { type: 'tokens', totalTokens: number }
 - type：当时采用的价格类型。
 - quantity：本次实际计费数量。
 - unitPrice：当时的积分单价。
-- unitSize：时长模式为 N，Tokens 模式为 1_000_000。
+- unitSize：时长模式固定为 60，Tokens 模式固定为 1_000_000。
 
 快照在生成账单时写入，不根据当前模型配置重新推导。Pro 创建明细、批量明细持久化、查询响应及共享 Schema 均透传新字段。详情展示总 Tokens 或时长以及计费类型。
 
@@ -68,7 +68,7 @@ usage: { type: 'tokens', totalTokens: number }
 
 本次不新增自动系统迁移任务。只扩展普通业务字段，不修改已有索引，现有索引也没有因此废弃。
 
-旧 STT `pricing: { unitPrice }` 在统一 Schema 中解释为 duration、secondsPerUnit=60，单价数值不变。读取不写回 Mongo；下次保存、安装或导入时写明确类型。未配置和显式清空保持免费，不从历史根字段重建价格。
+旧 STT `pricing: { unitPrice }` 在统一 Schema 中解释为 duration，固定每 60 秒，单价数值不变。读取不写回 Mongo；下次保存、安装或导入时写明确类型。未配置和显式清空保持免费，不从历史根字段重建价格。
 
 因此，新运行期接收到的已定价 STT 配置具有明确类型，同时无需扫描模型集合。此兼容只针对旧价格数据，不允许客户端时长成为用量来源。
 
@@ -76,7 +76,7 @@ usage: { type: 'tokens', totalTokens: number }
 
 ### 升级边界
 
-FastGPT 与 Pro 共同升级。旧版本只认识每 60 秒，无法正确解释 Tokens 或自定义 N；应在所有计费入口升级后启用新模式。回退旧版本前须先把使用中的 STT 价格恢复为旧版本支持的每 60 秒配置，不能仅忽略新字段。
+FastGPT 与 Pro 共同升级。旧版本只认识每 60 秒，无法正确解释 Tokens 计价；应在所有计费入口升级后启用新模式。回退旧版本前须先把使用中的 STT 价格恢复为旧版本支持的每 60 秒配置，不能仅忽略新字段。
 
 已有历史价格单位迁移的规则仍以 [模型计价统一为百万单位](./model-token-price-unit.md) 为准；本设计不重新注册或修改已发布迁移。
 
@@ -84,7 +84,7 @@ FastGPT 与 Pro 共同升级。旧版本只认识每 60 秒，无法正确解释
 
 局部验证以下行为，不运行全仓测试：
 
-- 两种计价模式、N 秒分母、亚秒级时长、显式免费和团队免费。
+- 两种计价模式、固定 60 秒和百万 Tokens 分母、亚秒级时长、显式免费和团队免费。
 - 上游同时返回 seconds 与 total_tokens，价格配置只选择对应字段。
 - 缺少用量、非法数字、duration 兼容 Tokens 字段均不误扣费。
 - 伪造或省略客户端 duration 不影响接口成功及实际费用。

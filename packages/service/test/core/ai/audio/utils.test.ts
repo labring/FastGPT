@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { getSTTBillableUsage } from '@fastgpt/service/core/ai/audio/utils';
 
 describe('getSTTBillableUsage', () => {
-  it.each([undefined, {}, { unitPrice: 0.2 }, { type: 'duration' as const, secondsPerUnit: 30 }])(
+  it.each([undefined, {}, { unitPrice: 0.2 }, { type: 'duration' as const }])(
     'uses only upstream seconds for duration pricing %j',
     (pricing) => {
       expect(

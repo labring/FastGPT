@@ -68,7 +68,7 @@ beforeEach(async () => {
 
 describe('model lifecycle', () => {
   it.each([
-    { type: 'duration' as const, unitPrice: 0.2, secondsPerUnit: 30 },
+    { type: 'duration' as const, unitPrice: 0.2 },
     { type: 'tokens' as const, unitPrice: 10 }
   ])('round-trips STT $type pricing through Mongo and the runtime catalog', async (pricing) => {
     const created = await createModel({
@@ -84,7 +84,7 @@ describe('model lifecycle', () => {
     ).toEqual(pricing);
     const changed =
       pricing.type === 'tokens'
-        ? { type: 'duration' as const, secondsPerUnit: 15, unitPrice: 0.2 }
+        ? { type: 'duration' as const, unitPrice: 0.2 }
         : { type: 'tokens' as const, unitPrice: 20 };
     await updateModel({
       ...owner,
@@ -100,8 +100,7 @@ describe('model lifecycle', () => {
     const stored = await MongoAIModel.findById(insertedId).lean();
     expect(formatDbModelToRuntimeModel(stored!, { fallbackProvider: true }).pricing).toEqual({
       type: 'duration',
-      unitPrice: 0.2,
-      secondsPerUnit: 60
+      unitPrice: 0.2
     });
     expect((await MongoAIModel.findById(insertedId).lean())?.pricing).toEqual({ unitPrice: 0.2 });
   });

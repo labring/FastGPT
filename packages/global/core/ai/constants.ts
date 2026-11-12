@@ -73,7 +73,7 @@ export const defaultSTTModels: STTModelDataType[] = [
     name: 'gpt-transcribe',
     modelId: '',
     scope: ModelScopeEnum.system,
-    pricing: { type: 'duration', secondsPerUnit: 60, unitPrice: 0 },
+    pricing: { type: 'duration', unitPrice: 0 },
     config: {}
   }
 ];

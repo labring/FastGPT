@@ -1,3 +1,4 @@
+import { STT_PRICE_UNITS } from '@fastgpt/global/core/ai/audio/constants';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import type { AIModelDataType, STTModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import {
@@ -216,7 +217,7 @@ export const pushSTTUsage = async ({
           type: pricing.type,
           quantity,
           unitPrice: pricing.unitPrice ?? 0,
-          unitSize: pricing.type === 'duration' ? pricing.secondsPerUnit : 1000000
+          unitSize: STT_PRICE_UNITS[pricing.type]
         }
       }
     ]

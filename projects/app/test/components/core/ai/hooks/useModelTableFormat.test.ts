@@ -43,13 +43,13 @@ describe('model table projection', () => {
       type: ModelTypeEnum.stt,
       pricing: { type: 'tokens' as const, unitPrice: 10 },
       price: 10,
-      unit: 'M Tokens'
+      unit: '1M Tokens'
     },
     {
       type: ModelTypeEnum.stt,
-      pricing: { type: 'duration' as const, unitPrice: 0.2, secondsPerUnit: 30 },
+      pricing: { type: 'duration' as const, unitPrice: 0.2 },
       price: 0.2,
-      unit: '30common:unit.seconds'
+      unit: '60common:unit.seconds'
     },
     {
       type: ModelTypeEnum.embedding,

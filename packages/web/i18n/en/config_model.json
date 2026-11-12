@@ -352,6 +352,5 @@
   "model_deprecation.error_no_terminable_runs": "The notification plan has no runs that can be terminated.",
   "model.stt_billing_type": "Billing type",
   "model.stt_billing_duration": "By duration",
-  "model.stt_billing_tokens": "By tokens",
-  "model.stt_seconds_per_unit": "Seconds per price unit"
+  "model.stt_billing_tokens": "By tokens"
 }

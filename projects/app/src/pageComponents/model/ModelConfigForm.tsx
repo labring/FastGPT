@@ -1,3 +1,4 @@
+import { STT_PRICE_UNITS } from '@fastgpt/global/core/ai/audio/constants';
 import MyTextarea from '@/components/common/Textarea/MyTextarea';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { Box, Flex, Grid, GridItem, HStack, Input, Switch } from '@chakra-ui/react';
@@ -434,7 +435,6 @@ const ModelConfigForm = ({
   const reasoningEnabled = useWatch({ control, name: 'config.reasoning' });
   const model = useWatch({ control, name: 'model' });
   const sttPriceType = useWatch({ control, name: 'pricing.type' }) ?? 'duration';
-  const sttSecondsPerUnit = useWatch({ control, name: 'pricing.secondsPerUnit' }) ?? 60;
 
   useEffect(() => {
     onModelChange?.(model);
@@ -472,19 +472,10 @@ const ModelConfigForm = ({
     if (isTTSModel) return `/ 1M ${t('common:unit.character')}`;
     if (isSTTModel)
       return sttPriceType === 'tokens'
-        ? '/ M Tokens'
-        : `/ ${sttSecondsPerUnit} ${t('common:unit.seconds')}`;
+        ? '/ 1M Tokens'
+        : `/ ${STT_PRICE_UNITS.duration} ${t('common:unit.seconds')}`;
     return '';
-  }, [
-    isLLMModel,
-    isEmbeddingModel,
-    isTTSModel,
-    t,
-    isSTTModel,
-    isRerankModel,
-    sttPriceType,
-    sttSecondsPerUnit
-  ]);
+  }, [isLLMModel, isEmbeddingModel, isTTSModel, t, isSTTModel, isRerankModel, sttPriceType]);
 
   const { runAsync: submitModelRequest, loading: submittingModel } = useRequest(
     async (data: AIModelDocumentDataType) => {
@@ -818,28 +809,12 @@ const ModelConfigForm = ({
                           'pricing',
                           value === 'tokens'
                             ? { type: 'tokens', unitPrice }
-                            : { type: 'duration', unitPrice, secondsPerUnit: 60 },
+                            : { type: 'duration', unitPrice },
                           { shouldDirty: true }
                         );
                       }}
                     />
                   </Field>
-                  {sttPriceType === 'duration' && (
-                    <Field label={t('config_model:model.stt_seconds_per_unit')} required>
-                      <Input
-                        type="number"
-                        step={1}
-                        min={1}
-                        {...InputStyles}
-                        {...register('pricing.secondsPerUnit', {
-                          valueAsNumber: true,
-                          required: true,
-                          min: 1,
-                          validate: Number.isSafeInteger
-                        })}
-                      />
-                    </Field>
-                  )}
                 </>
               )}
               <Field

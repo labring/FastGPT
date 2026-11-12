@@ -184,7 +184,7 @@ const sttModel = {
   ...model,
   type: ModelTypeEnum.stt as const,
   config: {},
-  pricing: { type: 'duration' as const, secondsPerUnit: 60, unitPrice: 0.125 }
+  pricing: { type: 'duration' as const, unitPrice: 0.125 }
 };
 
 describe('normalizeModelPricingForRead', () => {
@@ -193,7 +193,6 @@ describe('normalizeModelPricingForRead', () => {
     expect(normalizeModelPricingForRead(tieredModel).pricing).toEqual({ tiers: roundedTiers });
     expect(normalizeModelPricingForRead(sttModel).pricing).toEqual({
       type: 'duration',
-      secondsPerUnit: 60,
       unitPrice: 0.13
     });
     expect(tieredModel.pricing.tiers[0].inputPrice).toBe(1.005);
@@ -212,23 +211,20 @@ describe('normalizeModelPricingForSave', () => {
       expect(normalizeModelPricingForSave({ ...model, pricing })).toEqual({ ...model, pricing });
     }
     expect(normalizeModelPricingForSave({ ...sttModel, pricing: undefined }).pricing).toEqual({
-      type: 'duration',
-      secondsPerUnit: 60
+      type: 'duration'
     });
     expect(
       normalizeModelPricingForSave({
         ...sttModel,
-        pricing: { type: 'duration', secondsPerUnit: 60, unitPrice: 0 }
+        pricing: { type: 'duration', unitPrice: 0 }
       }).pricing
     ).toEqual({
       type: 'duration',
-      secondsPerUnit: 60,
       unitPrice: 0
     });
     expect(normalizeModelPricingForSave(tieredModel).pricing).toEqual({ tiers: roundedTiers });
     expect(normalizeModelPricingForSave(sttModel).pricing).toEqual({
       type: 'duration',
-      secondsPerUnit: 60,
       unitPrice: 0.13
     });
   });
@@ -239,34 +235,49 @@ describe('STT pricing', () => {
   it('normalizes legacy per-minute prices without a database migration', () => {
     expect(resolveSTTPricing({ unitPrice: 0.2 })).toEqual({
       type: 'duration',
-      secondsPerUnit: 60,
       unitPrice: 0.2
     });
-    expect(resolveSTTPricing()).toEqual({ type: 'duration', secondsPerUnit: 60 });
-    expect(resolveSTTPricing({})).toEqual({ type: 'duration', secondsPerUnit: 60 });
+    expect(resolveSTTPricing()).toEqual({ type: 'duration' });
+    expect(resolveSTTPricing({})).toEqual({ type: 'duration' });
   });
   it('rejects invalid pricing instead of silently using a different meter', () => {
     for (const pricing of [
       { type: 'unknown' },
-      { type: 'duration', secondsPerUnit: 0 },
-      { type: 'duration', secondsPerUnit: 1.5 },
-      { type: 'duration', secondsPerUnit: Infinity },
+      { type: 'duration', unitPrice: -1 },
       { type: 'tokens', unitPrice: -1 }
     ]) {
       expect(STTModelPricingSchema.safeParse(pricing).success).toBe(false);
     }
-    expect(
-      STTModelPricingSchema.parse({ type: 'tokens', unitPrice: 10, secondsPerUnit: 60 })
-    ).toEqual({ type: 'tokens', unitPrice: 10 });
+    expect(STTModelPricingSchema.parse({ type: 'tokens', unitPrice: 10 })).toEqual({
+      type: 'tokens',
+      unitPrice: 10
+    });
   });
-  it('calculates fractional seconds with the configured denominator and no rounding', () => {
+  it('calculates fractional seconds per 60 seconds without rounding up', () => {
     expect(
       calculateModelPrice({
-        config: { ...config, pricing: { type: 'duration', secondsPerUnit: 30, unitPrice: 0.2 } },
+        config: { ...config, pricing: { type: 'duration', unitPrice: 0.2 } },
         sttUsage: { type: 'duration', seconds: 0.3 }
       }).totalPoints
-    ).toBeCloseTo(0.002, 12);
+    ).toBeCloseTo(0.001, 12);
   });
+  it.each([0, 15, 30, 120, Infinity])(
+    'ignores removed custom secondsPerUnit=%s in stored or imported pricing',
+    (secondsPerUnit) => {
+      const pricing = { type: 'duration' as const, unitPrice: 0.2, secondsPerUnit };
+      expect(resolveSTTPricing(pricing)).toEqual({ type: 'duration', unitPrice: 0.2 });
+      expect(normalizeModelPricingForSave({ ...sttModel, pricing }).pricing).toEqual({
+        type: 'duration',
+        unitPrice: 0.2
+      });
+      expect(
+        calculateModelPrice({
+          config: { ...config, pricing },
+          sttUsage: { type: 'duration', seconds: 30 }
+        }).totalPoints
+      ).toBeCloseTo(0.1, 12);
+    }
+  );
   it('uses total tokens with the million-token denominator', () => {
     expect(
       calculateModelPrice({

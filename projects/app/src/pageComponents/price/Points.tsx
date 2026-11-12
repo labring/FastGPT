@@ -1,3 +1,4 @@
+import { STT_PRICE_UNITS } from '@fastgpt/global/core/ai/audio/constants';
 import React from 'react';
 import { Box, Flex, Grid, Link } from '@chakra-ui/react';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
@@ -167,8 +168,8 @@ export const AiPointsTable = () => {
                 {roundModelPrice(item.pricing?.unitPrice) +
                   t('common:support.wallet.subscription.point') +
                   (item.sttPricing.type === 'tokens'
-                    ? ' / M Tokens'
-                    : ' / ' + item.sttPricing.secondsPerUnit + t('common:unit.seconds'))}
+                    ? ' / 1M Tokens'
+                    : ' / ' + STT_PRICE_UNITS.duration + t('common:unit.seconds'))}
               </Box>
             </Flex>
           ))}

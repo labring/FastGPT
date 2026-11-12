@@ -10,6 +10,7 @@ import {
   type AIModelDocumentDataType
 } from './schema';
 import type { STTBillableUsageType } from '../audio/type';
+import { STT_PRICE_UNITS } from '../audio/constants';
 
 /** 旧 STT 单价按每 60 秒解释；未配置单价保持免费，不读取任何用量字段。 */
 export const resolveSTTPricing = (pricing?: ModelPricingType) =>
@@ -61,7 +62,6 @@ export const normalizeModelPricingForSave = (
   /** 统一单价精度，不改变阶梯边界或未配置状态。 */
   const roundModelPricing = (pricing: ModelPricingType): ModelPricingType => ({
     ...(pricing.type === undefined ? {} : { type: pricing.type }),
-    ...(pricing.secondsPerUnit === undefined ? {} : { secondsPerUnit: pricing.secondsPerUnit }),
     ...(pricing.unitPrice === undefined ? {} : { unitPrice: roundModelPrice(pricing.unitPrice) }),
     ...(pricing.tiers === undefined
       ? {}
@@ -110,7 +110,7 @@ export const calculateModelPrice = ({
           ? sttUsage.seconds
           : sttUsage.totalTokens
         : 0;
-    const unitSize = pricing.type === 'duration' ? pricing.secondsPerUnit : multiple;
+    const unitSize = STT_PRICE_UNITS[pricing.type];
     const totalPoints =
       config.scope === ModelScopeEnum.system && Number.isFinite(quantity) && quantity >= 0
         ? (quantity / unitSize) * (pricing.unitPrice ?? 0)
