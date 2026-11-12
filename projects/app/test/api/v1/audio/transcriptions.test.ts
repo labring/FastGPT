@@ -160,13 +160,14 @@ describe('audio transcription API', () => {
       list: [
         {
           modelId: '65f000000000000000000072',
-          duration,
-          sttBilling: { type: 'duration', quantity: duration, unitPrice: 0.2, unitSize: 60 }
+          duration
         }
       ]
     });
     expect(bill.totalPoints).toBeCloseTo((duration / 60) * 0.2, 10);
     expect(bill.list?.[0].amount).toBeCloseTo((duration / 60) * 0.2, 10);
+    expect(bill.list?.[0]).not.toHaveProperty('totalTokens');
+    expect(bill.list?.[0]).not.toHaveProperty('sttBilling');
     expect(result).toMatchObject({ status: 200, body: { code: 200, data: '测试文本' } });
     expect(mocks.clearDiskTempFiles).toHaveBeenCalledWith([temporaryFile]);
   });
@@ -184,11 +185,9 @@ describe('audio transcription API', () => {
     await invoke({ appId: '68ad85a7463006c963799a05', chatId: 'chat' });
     const bill = createUsageHandler.mock.calls[0][0];
     expect(bill.totalPoints).toBeCloseTo((77 / 1000000) * 10, 10);
-    expect(bill.list?.[0]).toMatchObject({
-      totalTokens: 77,
-      sttBilling: { type: 'tokens', quantity: 77, unitPrice: 10, unitSize: 1000000 }
-    });
+    expect(bill.list?.[0]).toMatchObject({ totalTokens: 77 });
     expect(bill.list?.[0]).not.toHaveProperty('duration');
+    expect(bill.list?.[0]).not.toHaveProperty('sttBilling');
     expect(mocks.getDefaultModelData).toHaveBeenCalledTimes(2);
   });
 

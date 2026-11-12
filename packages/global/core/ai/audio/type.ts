@@ -7,17 +7,6 @@ export const STTBillableUsageSchema = z.discriminatedUnion('type', [
 ]);
 export type STTBillableUsageType = z.infer<typeof STTBillableUsageSchema>;
 
-export const STTBillingSnapshotSchema = z.object({
-  type: z.enum(['duration', 'tokens']).meta({ description: '本次 STT 计价类型' }),
-  quantity: z.number().nonnegative().meta({ description: '本次计费用量，单位由 type 决定' }),
-  unitPrice: z.number().nonnegative().meta({ description: '本次积分单价' }),
-  unitSize: z
-    .number()
-    .positive()
-    .meta({ description: '单价对应的数量分母，新账单时长固定为 60 秒，Tokens 固定为百万' })
-});
-export type STTBillingSnapshotType = z.infer<typeof STTBillingSnapshotSchema>;
-
 /** 上游值在计费边界按 unknown 检查，缺失和非法值均不能转换成可扣费数量。 */
 export type STTUpstreamUsageType = {
   type?: unknown;

@@ -76,8 +76,6 @@ const UsageDetail = ({ usage, onClose }: { usage: UsageListItemType; onClose: ()
     };
   }, [usage.list]);
 
-  const hasSTTBilling = usage.list.some((item) => item.sttBilling);
-
   return (
     <MyModal isOpen={true} onClose={onClose} title={t('account_usage:usage_detail')} w={'700px'}>
       <Flex alignItems={'center'} pb={4}>
@@ -121,7 +119,6 @@ const UsageDetail = ({ usage, onClose }: { usage: UsageListItemType; onClose: ()
                 {hasCharsLen && <Th>{t('account_usage:text_length')}</Th>}
                 {hasDuration && <Th>{t('account_usage:duration_seconds')}</Th>}
                 {hasPages && <Th>{t('account_usage:pages')}</Th>}
-                {hasSTTBilling && <Th>{t('account_usage:billing_type')}</Th>}
                 <Th>{t('account_usage:total_points_consumed')}</Th>
               </Tr>
             </Thead>
@@ -137,15 +134,6 @@ const UsageDetail = ({ usage, onClose }: { usage: UsageListItemType; onClose: ()
                   {hasCharsLen && <Td>{item.charsLength ?? '-'}</Td>}
                   {hasDuration && <Td>{item.duration ?? '-'}</Td>}
                   {hasPages && <Td>{item.pages ?? '-'}</Td>}
-                  {hasSTTBilling && (
-                    <Td>
-                      {item.sttBilling
-                        ? item.sttBilling.type === 'duration'
-                          ? t('account_usage:billing_duration')
-                          : t('account_usage:billing_tokens')
-                        : '-'}
-                    </Td>
-                  )}
                   <Td>{formatNumber(item.amount)}</Td>
                 </Tr>
               ))}

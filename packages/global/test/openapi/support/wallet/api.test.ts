@@ -42,19 +42,18 @@ describe('wallet OpenAPI contracts', () => {
     '/proApi/support/wallet/bill/invoice/account/updateHeader': 'post'
   } as const;
 
-  it('preserves STT quantities and the historical billing snapshot in usage responses', () => {
-    const item = UsageListItemSchema.shape.list.element;
-    const record = {
-      moduleName: 'STT',
-      amount: 0.00077,
-      totalTokens: 77,
-      sttBilling: { type: 'tokens', quantity: 77, unitPrice: 10, unitSize: 1000000 }
-    };
-    expect(item.parse(record)).toEqual(record);
-    expect(item.parse({ moduleName: 'Legacy STT', amount: 1, duration: 77 })).not.toHaveProperty(
-      'sttBilling'
-    );
-  });
+  it.each([{ totalTokens: 77 }, { totalTokens: 0 }, { duration: 3 }, { duration: 0 }])(
+    'preserves only the STT usage and charged amount: %j',
+    (quantity) => {
+      const item = UsageListItemSchema.shape.list.element;
+      const record = {
+        moduleName: 'STT',
+        amount: 0.00077,
+        ...quantity
+      };
+      expect(item.parse(record)).toEqual(record);
+    }
+  );
 
   it('registers all wallet routes with their real proApi paths and methods', () => {
     for (const [path, method] of Object.entries(routes)) {

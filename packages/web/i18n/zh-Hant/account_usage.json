@@ -72,8 +72,5 @@
   "model_unavailable": "模型已下架",
   "user_type": "類型",
   "wecom": "企業微信",
-  "wechat": "微信個人號",
-  "billing_type": "計費類型",
-  "billing_duration": "按時長",
-  "billing_tokens": "按 Tokens"
+  "wechat": "微信個人號"
 }

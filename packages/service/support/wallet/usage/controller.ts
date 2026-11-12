@@ -1,4 +1,3 @@
-import { STT_PRICE_UNITS } from '@fastgpt/global/core/ai/audio/constants';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import type { AIModelDataType, STTModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import {
@@ -177,6 +176,7 @@ export const pushChatItemUsage = ({
 /**
  * 使用本次实际模型及明确的秒数/Tokens 用量生成账单，不重新查询默认模型。
  * 价格类型与用量不一致属于内部错误；上游缺失用量应由适配器转为同口径的 0。
+ * 明细只记录本次计费用量与金额，不重复保存价格；即使数量为 0 也保留所选用量字段。
  */
 export const pushSTTUsage = async ({
   teamId,
@@ -212,13 +212,7 @@ export const pushSTTUsage = async ({
         moduleName: name,
         amount: totalPoints,
         modelId: model.modelId,
-        ...(billableUsage.type === 'duration' ? { duration: quantity } : { totalTokens: quantity }),
-        sttBilling: {
-          type: pricing.type,
-          quantity,
-          unitPrice: pricing.unitPrice ?? 0,
-          unitSize: STT_PRICE_UNITS[pricing.type]
-        }
+        ...(billableUsage.type === 'duration' ? { duration: quantity } : { totalTokens: quantity })
       }
     ]
   });

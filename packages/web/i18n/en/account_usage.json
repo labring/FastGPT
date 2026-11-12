@@ -72,8 +72,5 @@
   "model_unavailable": "Model unavailable",
   "user_type": "Type",
   "wecom": "WeCom",
-  "wechat": "WeChat Personal",
-  "billing_type": "Billing type",
-  "billing_duration": "Duration",
-  "billing_tokens": "Tokens"
+  "wechat": "WeChat Personal"
 }
