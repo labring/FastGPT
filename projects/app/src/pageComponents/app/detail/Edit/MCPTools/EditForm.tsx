@@ -1,9 +1,10 @@
-import { Box, Button, Flex, Input, ModalBody, ModalFooter } from '@chakra-ui/react';
+import { Box, Button, Flex, Input, ModalBody, ModalFooter, Text } from '@chakra-ui/react';
 import React, { useState } from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import { useTranslation } from 'next-i18next';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 import { AppContext } from '../../context';
 import { useContextSelector } from 'use-context-selector';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
@@ -16,8 +17,14 @@ import { getMCPTools } from '@/web/core/app/api/mcpTools';
 import HeaderAuthConfig from '@/components/common/secret/HeaderAuthConfig';
 import { type StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 import type { JsonSchemaPropertiesItemType } from '@fastgpt/global/core/app/jsonschema';
+import type { McpOAuthClientMode } from '@fastgpt/global/core/app/tool/mcpTool/oauth';
+import type { McpToolSetOAuthConfigType } from '@fastgpt/global/core/app/tool/mcpTool/oauthConfig';
+import type { McpOAuthStatusResponseType } from '@fastgpt/global/openapi/core/app/mcpTools/oauth';
+import McpOAuthConfig from './oauth/McpOAuthConfig';
 
 const EditForm = ({
+  appId,
+  nodeId,
   url,
   setUrl,
   toolList,
@@ -25,8 +32,24 @@ const EditForm = ({
   currentTool,
   setCurrentTool,
   headerSecret,
-  setHeaderSecret
+  setHeaderSecret,
+  authMode,
+  setAuthMode,
+  clientMode,
+  setClientMode,
+  scope,
+  setScope,
+  oauthConfig,
+  status,
+  statusLoading,
+  refreshStatus,
+  callbackErrorCode,
+  clearCallbackError,
+  onBeforeStart,
+  onBeforeParse
 }: {
+  appId: string;
+  nodeId?: string;
   url: string;
   setUrl: (url: string) => void;
   toolList: McpToolConfigType[];
@@ -35,8 +58,24 @@ const EditForm = ({
   setCurrentTool: (tool: McpToolConfigType) => void;
   headerSecret: StoreSecretValueType;
   setHeaderSecret: (headerSecret: StoreSecretValueType) => void;
+  authMode: 'headers' | 'oauth';
+  setAuthMode: (mode: 'headers' | 'oauth') => void;
+  clientMode: McpOAuthClientMode;
+  setClientMode: (mode: McpOAuthClientMode) => void;
+  scope: string;
+  setScope: (scope: string) => void;
+  oauthConfig?: McpToolSetOAuthConfigType;
+  status: McpOAuthStatusResponseType | null;
+  statusLoading: boolean;
+  refreshStatus: () => Promise<McpOAuthStatusResponseType | undefined>;
+  callbackErrorCode: string | null;
+  clearCallbackError: () => void;
+  onBeforeStart: () => Promise<void>;
+  onBeforeParse: () => Promise<void>;
 }) => {
   const { t } = useTranslation();
+  const { toast } = useToast();
+  const canManage = useContextSelector(AppContext, (v) => v.appDetail.permission.hasWritePer);
 
   const [toolDetail, setToolDetail] = useState<McpToolConfigType | null>(null);
 
@@ -51,6 +90,21 @@ const EditForm = ({
     }
   );
 
+  const onParse = async () => {
+    if (authMode === 'oauth') {
+      // oauth 模式由服务端按已保存节点解析并使用 token，先保存避免解析旧 URL。
+      try {
+        await onBeforeParse();
+      } catch {
+        toast({ title: t('mcpOAuth.save_before_start_failed'), status: 'error' });
+        return;
+      }
+      await runGetMCPTools({ appId, ...(nodeId ? { nodeId } : {}) });
+      return;
+    }
+    await runGetMCPTools({ url, headerSecret });
+  };
+
   return (
     <>
       <Box p={6}>
@@ -59,14 +113,16 @@ const EditForm = ({
           <FormLabel ml={2} flex={1}>
             {t('app:MCP_tools_url')}
           </FormLabel>
-          <HeaderAuthConfig
-            storeHeaderSecretConfig={headerSecret}
-            onUpdate={setHeaderSecret}
-            buttonProps={{
-              size: 'sm',
-              variant: 'grayGhost'
-            }}
-          />
+          {authMode === 'headers' && (
+            <HeaderAuthConfig
+              storeHeaderSecretConfig={headerSecret}
+              onUpdate={setHeaderSecret}
+              buttonProps={{
+                size: 'sm',
+                variant: 'grayGhost'
+              }}
+            />
+          )}
         </Flex>
         <Flex alignItems={'center'} gap={2} mt={3}>
           <Input
@@ -80,13 +136,35 @@ const EditForm = ({
             variant={'whitePrimary'}
             h={8}
             isLoading={isGettingTools}
-            onClick={() => {
-              runGetMCPTools({ url, headerSecret });
-            }}
+            onClick={() => void onParse()}
           >
             {t('common:Parse')}
           </Button>
         </Flex>
+        {authMode === 'oauth' && (
+          <Text mt={2} fontSize={'xs'} color={'myGray.500'}>
+            {t('mcpOAuth.auth_mode_oauth_hint')}
+          </Text>
+        )}
+
+        <McpOAuthConfig
+          appId={appId}
+          nodeId={nodeId}
+          authMode={authMode}
+          setAuthMode={setAuthMode}
+          clientMode={clientMode}
+          setClientMode={setClientMode}
+          scope={scope}
+          setScope={setScope}
+          oauthConfig={oauthConfig}
+          status={status}
+          statusLoading={statusLoading}
+          refreshStatus={refreshStatus}
+          callbackErrorCode={callbackErrorCode}
+          clearCallbackError={clearCallbackError}
+          canManage={canManage}
+          onBeforeStart={onBeforeStart}
+        />
 
         <Flex alignItems={'center'} mt={6}>
           <MyIcon name={'common/list'} w={'20px'} color={'primary.600'} />

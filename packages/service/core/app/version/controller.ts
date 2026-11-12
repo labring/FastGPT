@@ -13,6 +13,7 @@ import {
 } from '@fastgpt/global/core/workflow/node/constant';
 import { HttpToolSetRuntimeConfigSchema } from '@fastgpt/global/core/workflow/type/node';
 import { Types, type ClientSession } from '../../../common/mongo';
+import type { FilterQuery } from 'mongoose';
 import { MongoTransactionConflictError } from '../../../common/mongo/sessionRun';
 import { decodeToolSetNodesFromStorage } from '../jsonSchemaStorage';
 import { resolveStoredAppResources } from '../resource/utils';
@@ -325,12 +326,18 @@ export const updateAppPublishedVersion = async ({
   appId,
   nodes,
   resources,
-  session
+  session,
+  nodeFence
 }: {
   appId: string;
   nodes: AppVersionSchemaType['nodes'];
   resources: AppResourcesType;
   session: ClientSession;
+  /**
+   * OAuth 节点保存围栏：整图写入前确认该节点 credentialSeq 未变化。
+   * 刷新令牌会 `$inc credentialSeq`，命中失败时由事务重试重新合并，避免覆盖新 token。
+   */
+  nodeFence?: { nodeId: string; credentialSeq: number };
 }) => {
   const app = await MongoApp.findById(appId, 'publishedVersionId').session(session).lean();
   if (!app) throw AppErrEnum.unExist;
@@ -362,16 +369,37 @@ export const updateAppPublishedVersion = async ({
 
   if (!version) throw AppErrEnum.unExist;
 
+  const versionFilter: FilterQuery<AppVersionSchemaType> = {
+    _id: version._id,
+    appId
+  };
+  if (nodeFence) {
+    versionFilter.nodes = {
+      $elemMatch: {
+        nodeId: nodeFence.nodeId,
+        'toolConfig.mcpToolSet.authMode': 'oauth',
+        $and: [
+          nodeFence.credentialSeq === 0
+            ? {
+                $or: [
+                  { 'toolConfig.mcpToolSet.oauth.credentialSeq': 0 },
+                  { 'toolConfig.mcpToolSet.oauth.credentialSeq': { $exists: false } }
+                ]
+              }
+            : { 'toolConfig.mcpToolSet.oauth.credentialSeq': nodeFence.credentialSeq }
+        ]
+      }
+    };
+  }
+
   const versionUpdateResult = await MongoAppVersion.updateOne(
-    {
-      _id: version._id,
-      appId
-    },
+    versionFilter,
     {
       $set: {
         nodes,
         resources
-      }
+      },
+      ...(nodeFence ? { $inc: { nodesRevision: 1 } } : {})
     },
     { session }
   );

@@ -667,6 +667,24 @@ export async function rewriteAppWorkflowToDetail({
         }
       : {})
   });
+  /**
+   * 详情/导出不得泄漏 OAuth 凭据：token、clientSecret、注册访问令牌与租约均为秘密。
+   * 仅保留状态与发现结果（clientId、issuer、endpoint、scope 等）。
+   */
+  const stripMcpOAuthSecrets = (oauth: unknown) => {
+    if (!isRecord(oauth)) return oauth;
+    const { token, refreshLease, revokeLease, client, ...rest } = oauth;
+    const sanitizedClient = (() => {
+      if (!isRecord(client)) return client;
+      const { clientSecret, registrationAccessToken, ...clientRest } = client;
+      return clientRest;
+    })();
+    return {
+      ...rest,
+      ...(sanitizedClient ? { client: sanitizedClient } : {})
+    };
+  };
+
   const clearToolCredentials = ({
     toolConfig,
     externalNodeReference = false,
@@ -694,9 +712,13 @@ export async function rewriteAppWorkflowToDetail({
         toolConfig[key] = projectToolSetSummary(toolSet, toolId);
         return;
       }
+      // 浅克隆后仅替换副本上的 toolList/oauth；strip* 均返回新对象，持久化引用保持原样。
       const sanitizedToolSet = { ...toolSet };
       if (Array.isArray(toolSet.toolList)) {
         sanitizedToolSet.toolList = toolSet.toolList.map(encryptToolHeaderSecret);
+      }
+      if (key === 'mcpToolSet' && 'oauth' in sanitizedToolSet) {
+        sanitizedToolSet.oauth = stripMcpOAuthSecrets(toolSet.oauth);
       }
       toolConfig[key] = sanitizedToolSet;
     });

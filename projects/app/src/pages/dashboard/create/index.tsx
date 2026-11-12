@@ -146,6 +146,8 @@ const CreateAppsPage = () => {
           return postCreateMCPTools({
             ...baseParams,
             url: mcpUrl || '',
+            // 创建弹窗目前只支持 header 鉴权；OAuth 配置在工具集编辑页完成。
+            authMode: 'headers',
             headerSecret,
             toolList: mcpToolList || []
           });

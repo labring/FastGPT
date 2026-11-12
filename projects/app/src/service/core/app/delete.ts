@@ -1,5 +1,5 @@
 import type { ApiRequestProps } from '@fastgpt/next/type';
-import { AppFolderTypeList } from '@fastgpt/global/core/app/constants';
+import { AppFolderTypeList, AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { OwnerPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
@@ -9,6 +9,7 @@ import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 import { addAuditLog, getI18nAppType } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import { revokeMcpOAuthForApp } from '@fastgpt/service/core/app/mcpOAuth/runtime';
 
 /**
  * 删除单个应用或文件夹及其子树，同步停用即时任务，投递异步清理队列，并记录审计与埋点。
@@ -29,6 +30,13 @@ export const deleteApp = async ({
   });
   const deleteAppsList = await findAppAndAllChildren({ teamId, appId });
   const deleteIds = deleteAppsList.map((item) => item._id);
+
+  // OAuth 撤销是 best-effort：失败不阻塞删除，但必须在事务前尝试。
+  await Promise.all(
+    deleteAppsList
+      .filter((item) => item.type === AppTypeEnum.mcpToolSet)
+      .map((item) => revokeMcpOAuthForApp(String(item._id)).catch(() => undefined))
+  );
 
   await mongoSessionRun(async (session) => {
     await MongoApp.updateMany({ _id: deleteIds, teamId }, { deleteTime: new Date() }, { session });

@@ -174,7 +174,11 @@ describe('legacy ToolSet migration', () => {
       edges: []
     });
 
-    expect(result.nodes[0].toolConfig?.mcpToolSet).toEqual(mcpToolSet);
+    // 运行期节点必须显式携带 authMode（schema 默认值不能用来区分 headers/oauth）。
+    expect(result.nodes[0].toolConfig?.mcpToolSet).toEqual({
+      ...mcpToolSet,
+      authMode: 'headers'
+    });
   });
 
   it('strips a historical empty MCP toolId before strict runtime validation', () => {
@@ -207,7 +211,8 @@ describe('legacy ToolSet migration', () => {
     expect(result.nodes[0].toolConfig?.mcpToolSet).toEqual({
       url: mcpToolSet.url,
       headerSecret: mcpToolSet.headerSecret,
-      toolList: mcpToolSet.toolList
+      toolList: mcpToolSet.toolList,
+      authMode: 'headers'
     });
   });
 

@@ -31,6 +31,9 @@ async function handler(
     toolList,
     url,
     headerSecret = {},
+    authMode = 'headers',
+    clientMode,
+    scope,
     parentId,
     inheritPermission
   } = parseApiInput({
@@ -44,7 +47,17 @@ async function handler(
 
   await assertMCPUrlNotInternal(url);
 
-  const formatedHeaderAuth = storeSecretValue(headerSecret);
+  const formatedHeaderAuth = authMode === 'headers' ? storeSecretValue(headerSecret) : undefined;
+  const oauth =
+    authMode === 'oauth'
+      ? {
+          schemaVersion: 1 as const,
+          clientMode: clientMode ?? ('auto' as const),
+          ...(scope !== undefined ? { scope } : {}),
+          // 新节点不做迁移：首次启用 OAuth 从 seq 0 开始。
+          credentialSeq: 0
+        }
+      : undefined;
 
   const mcpToolsId = await mongoSessionRun(async (session) => {
     const toolSetRuntimeNode = getMCPToolSetRuntimeNode({
@@ -52,7 +65,9 @@ async function handler(
       toolList,
       name,
       avatar: avatar ?? undefined,
-      headerSecret: formatedHeaderAuth
+      headerSecret: formatedHeaderAuth,
+      authMode,
+      oauth
     });
     const mcpToolsId = await onCreateApp({
       name,

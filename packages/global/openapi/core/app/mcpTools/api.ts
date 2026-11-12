@@ -4,6 +4,10 @@ import { ObjectIdSchema } from '../../../../common/type/mongo';
 import { StoreSecretValueTypeApiInputSchema } from '../../../../common/secret/utils';
 import { CreateAppBodySchema } from '../common/api';
 import { McpToolConfigSchema } from '../../../../core/app/tool/mcpTool/type';
+import {
+  McpOAuthAuthModeSchema,
+  McpOAuthClientModeSchema
+} from '../../../../core/app/tool/mcpTool/oauth';
 
 // Create mcp tool
 export const CreateMcpToolsBodySchema = CreateAppBodySchema.omit({
@@ -17,28 +21,45 @@ export const CreateMcpToolsBodySchema = CreateAppBodySchema.omit({
       example: 'https://example.com/mcp',
       description: 'MCP 服务地址'
     }),
+    authMode: McpOAuthAuthModeSchema.default('headers').meta({
+      description: '鉴权模式；oauth 时运行期忽略 headerSecret'
+    }),
+    clientMode: McpOAuthClientModeSchema.optional().meta({
+      description: 'OAuth client 偏好；auto 固定 CIMD → DCR → manual'
+    }),
+    scope: z.string().max(1024).optional().meta({
+      description: 'OAuth 请求 scope；默认未设置'
+    }),
     headerSecret: StoreSecretValueTypeApiInputSchema.optional().meta({
       example: { Authorization: { value: 'token' } },
       description: '请求头密钥'
     }),
-    toolList: z.array(McpToolConfigSchema).meta({
-      example: [
-        {
-          name: 'search',
-          description: 'Search tool',
-          inputSchema: { type: 'object', properties: {} }
-        }
-      ],
-      description: 'MCP 工具列表'
-    })
+    toolList: z
+      .array(McpToolConfigSchema)
+      .default([])
+      .meta({
+        example: [
+          {
+            name: 'search',
+            description: 'Search tool',
+            inputSchema: { type: 'object', properties: {} }
+          }
+        ],
+        description: 'MCP 工具列表；oauth 模式允许为空'
+      })
   })
   .meta({
     example: {
       name: 'MCP 工具集',
       parentId: '68ad85a7463006c963799a05',
       url: 'https://example.com/mcp',
+      authMode: 'oauth',
       toolList: []
     }
+  })
+  .refine((data) => data.authMode === 'oauth' || data.toolList.length > 0, {
+    message: 'authMode=headers 时 toolList 不能为空',
+    path: ['toolList']
   });
 export type CreateMcpToolsBodyType = z.infer<typeof CreateMcpToolsBodySchema>;
 
@@ -50,8 +71,19 @@ export const UpdateMcpToolsBodySchema = z
       description: 'MCP 工具集 ID'
     }),
     url: CreateMcpToolsBodySchema.shape.url,
+    authMode: McpOAuthAuthModeSchema.optional().meta({
+      description: '鉴权模式；oauth 时运行期忽略 headerSecret'
+    }),
+    clientMode: McpOAuthClientModeSchema.optional().meta({
+      description: 'OAuth client 偏好；auto 固定 CIMD → DCR → manual'
+    }),
+    scope: z.string().max(1024).optional().meta({
+      description: 'OAuth 请求 scope；默认未设置'
+    }),
     headerSecret: CreateMcpToolsBodySchema.shape.headerSecret,
-    toolList: CreateMcpToolsBodySchema.shape.toolList
+    toolList: z.array(McpToolConfigSchema).meta({
+      description: 'MCP 工具列表'
+    })
   })
   .meta({
     example: {
@@ -60,6 +92,11 @@ export const UpdateMcpToolsBodySchema = z
       headerSecret: {},
       toolList: []
     }
+  })
+  // 与创建路径保持同一不变量；authMode 省略时由 update handler 从存量节点解析。
+  .refine((data) => data.authMode !== 'headers' || data.toolList.length > 0, {
+    message: 'authMode=headers 时 toolList 不能为空',
+    path: ['toolList']
   });
 export type UpdateMcpToolsBodyType = z.infer<typeof UpdateMcpToolsBodySchema>;
 
@@ -102,13 +139,20 @@ export type GetMcpChildrenResponseType = z.infer<typeof GetMcpChildrenResponseSc
 // Get MCP tools from remote server
 export const GetMcpToolsBodySchema = z
   .object({
-    url: z.string().meta({
+    appId: ObjectIdSchema.optional().meta({
+      example: '68ad85a7463006c963799a05',
+      description: 'MCP 工具集 App ID；存在时按节点配置解析'
+    }),
+    nodeId: z.string().min(1).max(64).optional().meta({
+      description: '工具集节点 ID；缺省时要求应用内唯一 toolSet 节点'
+    }),
+    url: z.string().optional().meta({
       example: 'https://example.com/mcp',
-      description: 'MCP 服务地址'
+      description: 'MCP 服务地址；未传 appId 时必填'
     }),
     headerSecret: StoreSecretValueTypeApiInputSchema.optional().meta({
       example: { Authorization: { value: 'token' } },
-      description: '请求头密钥'
+      description: '请求头密钥；仅在未传 appId 时生效（appId 模式由服务端配置决定）'
     })
   })
   .meta({
@@ -116,6 +160,14 @@ export const GetMcpToolsBodySchema = z
       url: 'https://example.com/mcp',
       headerSecret: {}
     }
+  })
+  .refine((data) => Boolean(data.appId) || Boolean(data.url), {
+    message: 'appId 与 url 至少提供一个',
+    path: ['url']
+  })
+  .refine((data) => !data.nodeId || Boolean(data.appId), {
+    message: 'nodeId 必须与 appId 一起使用',
+    path: ['nodeId']
   });
 export type GetMcpToolsBodyType = z.infer<typeof GetMcpToolsBodySchema>;
 
@@ -128,9 +180,16 @@ export type GetMcpToolsResponseType = z.infer<typeof GetMcpToolsResponseSchema>;
 // Run MCP tool
 export const RunMcpToolBodySchema = z
   .object({
-    url: z.string().meta({
+    appId: ObjectIdSchema.optional().meta({
+      example: '68ad85a7463006c963799a05',
+      description: 'MCP 工具集 App ID；存在时按节点配置解析'
+    }),
+    nodeId: z.string().min(1).max(64).optional().meta({
+      description: '工具集节点 ID；缺省时要求应用内唯一 toolSet 节点'
+    }),
+    url: z.string().optional().meta({
       example: 'https://example.com/mcp',
-      description: 'MCP 服务地址'
+      description: 'MCP 服务地址；未传 appId 时必填；传 appId 时必须与已存地址一致'
     }),
     toolName: z.string().meta({
       example: 'search',
@@ -138,7 +197,7 @@ export const RunMcpToolBodySchema = z
     }),
     headerSecret: StoreSecretValueTypeApiInputSchema.optional().meta({
       example: { Authorization: { value: 'token' } },
-      description: '请求头密钥'
+      description: '请求头密钥；仅在未传 appId 时生效（appId 模式由服务端配置决定）'
     }),
     params: z.record(z.string(), z.any()).meta({
       example: { query: 'hello' },
@@ -152,6 +211,14 @@ export const RunMcpToolBodySchema = z
       headerSecret: {},
       params: { query: 'hello' }
     }
+  })
+  .refine((data) => Boolean(data.appId) || Boolean(data.url), {
+    message: 'appId 与 url 至少提供一个',
+    path: ['url']
+  })
+  .refine((data) => !data.nodeId || Boolean(data.appId), {
+    message: 'nodeId 必须与 appId 一起使用',
+    path: ['nodeId']
   });
 export type RunMcpToolBodyType = z.infer<typeof RunMcpToolBodySchema>;
 
