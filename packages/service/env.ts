@@ -353,6 +353,9 @@ export const serviceEnv = createEnv({
     MCP_OAUTH_RUNTIME_ENABLED: BoolSchema.default(false).meta({
       description: '运行时允许使用 OAuth 令牌；关闭时 authMode=oauth 直接报错，不回退 headers'
     }),
+    MCP_OAUTH_ALLOW_INSECURE_HTTP: BoolSchema.default(false).meta({
+      description: '仅开发/私有化环境允许 OAuth 端点使用 http；生产必须保持 false'
+    }),
 
     //==================== 安全配置 ====================
     USE_IP_LIMIT: BoolSchema.default(false).meta({ description: '是否启用 IP 限流' }),

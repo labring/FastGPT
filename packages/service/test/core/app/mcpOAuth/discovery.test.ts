@@ -66,7 +66,6 @@ describe('mcpOAuth discovery', () => {
     expect(result.issuer).toBe('https://as.example.net/');
     expect(result.resource).toBe('https://mcp.example.com/mcp');
     expect(result.server.tokenEndpoint).toBe('https://as.example.net/token');
-    expect(result.configHash).toMatch(/^[a-f0-9]{64}$/);
   });
 
   it('falls back to the MCP origin authorization server when PRM returns 404', async () => {

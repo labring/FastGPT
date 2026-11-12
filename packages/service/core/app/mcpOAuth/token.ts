@@ -27,7 +27,14 @@ const TokenResponseSchema = z
       .min(1)
       .max(16 * 1024),
     token_type: z.string().min(1).max(64),
-    expires_in: z.number().nonnegative().max(31_536_000).optional(),
+    // RFC 6749 允许 AS 返回数字或数字字符串（`"3600"`）；非数字字符串仍交给 schema 拒绝。
+    expires_in: z.preprocess(
+      (value) =>
+        typeof value === 'string' && /^\d+(?:\.\d+)?$/.test(value.trim())
+          ? Number(value)
+          : value,
+      z.number().nonnegative().max(31_536_000).optional()
+    ),
     refresh_token: z
       .string()
       .min(1)
@@ -87,7 +94,12 @@ export const buildMcpOAuthClientAuth = ({
         message: 'Client secret is required for client_secret_basic'
       });
     }
-    const credentials = `${encodeURIComponent(clientId)}:${encodeURIComponent(clientSecret)}`;
+    // RFC 6749 §2.3.1 / Appendix B：client_id/client_secret 必须先按
+    // `application/x-www-form-urlencoded` 编码再拼接。`encodeURIComponent`
+    // 不会编码 `!'()*`，且把空格编码为 `%20` 而非 `+`，会导致 AS 解码出不同凭据。
+    const formEncode = (value: string) =>
+      new URLSearchParams({ value }).toString().slice('value='.length);
+    const credentials = `${formEncode(clientId)}:${formEncode(clientSecret)}`;
     return {
       bodyParams: {},
       headers: {
@@ -184,24 +196,31 @@ const postTokenEndpoint = async ({
  */
 const buildTokenRecord = ({
   json,
+  flavor,
   requestedScope,
   now,
   previousRefreshSecret
 }: {
   json: Record<string, unknown>;
+  flavor: Flavor;
   requestedScope?: string;
   now: number;
   previousRefreshSecret?: McpOAuthTokenType['secret']['refresh_token'];
 }): McpOAuthTokenType => {
+  const invalidResponseCode =
+    flavor === 'refresh'
+      ? McpOAuthErrorCodeEnum.refreshTransient
+      : McpOAuthErrorCodeEnum.exchangeFailed;
+
   const parsed = TokenResponseSchema.safeParse(json);
   if (!parsed.success) {
-    throw new McpOAuthApiError(McpOAuthErrorCodeEnum.exchangeFailed, {
+    throw new McpOAuthApiError(invalidResponseCode, {
       message: 'Token response is invalid'
     });
   }
 
   if (parsed.data.token_type.toLowerCase() !== 'bearer') {
-    throw new McpOAuthApiError(McpOAuthErrorCodeEnum.exchangeFailed, {
+    throw new McpOAuthApiError(invalidResponseCode, {
       message: 'Token type is not Bearer'
     });
   }
@@ -280,7 +299,7 @@ export const exchangeMcpOAuthAuthorizationCode = async ({
     timeoutMs
   });
 
-  return buildTokenRecord({ json, requestedScope, now });
+  return buildTokenRecord({ json, flavor: 'exchange', requestedScope, now });
 };
 
 /**
@@ -293,7 +312,6 @@ export const refreshMcpOAuthAccessToken = async ({
   authMethod,
   refreshToken,
   resource,
-  requestedScope,
   previousToken,
   timeoutMs,
   now = Date.now()
@@ -304,7 +322,6 @@ export const refreshMcpOAuthAccessToken = async ({
   authMethod: 'none' | 'client_secret_post' | 'client_secret_basic';
   refreshToken: string;
   resource?: string;
-  requestedScope?: string;
   previousToken?: McpOAuthTokenType;
   timeoutMs?: number;
   now?: number;
@@ -323,9 +340,11 @@ export const refreshMcpOAuthAccessToken = async ({
     timeoutMs
   });
 
+  // 刷新请求不携带 scope（RFC 6749 §6）：AS 可能返回默认/扩展 scope，均属合法；
+  // 这里只校验 granted scope 语法，不做子集判断，避免丢弃有效 refresh token。
   return buildTokenRecord({
     json,
-    requestedScope,
+    flavor: 'refresh',
     now,
     previousRefreshSecret: previousToken?.secret.refresh_token
   });
@@ -379,15 +398,24 @@ export const revokeMcpOAuthToken = async ({
 export const decryptMcpOAuthAccessToken = (token?: McpOAuthTokenType): string | undefined => {
   const value = token?.secret?.access_token;
   if (!value) return undefined;
-  const decrypted = decryptSecretValue(value);
-  return typeof decrypted === 'string' && decrypted ? decrypted : undefined;
+  try {
+    const decrypted = decryptSecretValue(value);
+    return typeof decrypted === 'string' && decrypted ? decrypted : undefined;
+  } catch {
+    // 密钥轮换 / 密文损坏时按“不可用”处理，交给上层重新授权，而不是抛出 500。
+    return undefined;
+  }
 };
 
 export const decryptMcpOAuthRefreshToken = (token?: McpOAuthTokenType): string | undefined => {
   const value = token?.secret?.refresh_token;
   if (!value) return undefined;
-  const decrypted = decryptSecretValue(value);
-  return typeof decrypted === 'string' && decrypted ? decrypted : undefined;
+  try {
+    const decrypted = decryptSecretValue(value);
+    return typeof decrypted === 'string' && decrypted ? decrypted : undefined;
+  } catch {
+    return undefined;
+  }
 };
 
 /** expiresAt=0 表示 AS 未给有效期，按“不可预判”处理：只在 401 时刷新。 */

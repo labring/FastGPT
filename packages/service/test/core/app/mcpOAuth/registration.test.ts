@@ -199,6 +199,40 @@ describe('mcpOAuth registration', () => {
     expect(error.oauthCode).toBe(McpOAuthErrorCodeEnum.registrationRejected);
   });
 
+  it('auto falls back to a manual client when DCR is rejected', async () => {
+    setMcpOAuthFetchImpl(async () => json({ error: 'invalid_redirect_uri' }, 400));
+    const result = await selectMcpOAuthClient({
+      server: server({ registrationEndpoint: 'https://example.org/register' }),
+      clientMode: 'auto',
+      redirectUri: 'https://example.com/callback',
+      cimdClientId: 'https://example.com/client-metadata.json',
+      cimdAvailable: false,
+      manualClient: {
+        clientId: 'manual-client',
+        clientSecret: 'manual-secret',
+        tokenEndpointAuthMethod: 'client_secret_post'
+      }
+    });
+    expect(result.source).toBe('manual');
+    expect(result.client.clientId).toBe('manual-client');
+    expect(decryptSecretValue(result.client.clientSecret)).toBe('manual-secret');
+  });
+
+  it('auto reuses a saved manual client when DCR is rejected', async () => {
+    setMcpOAuthFetchImpl(async () => json({ error: 'server_error' }, 500));
+    const result = await selectMcpOAuthClient({
+      server: server({ registrationEndpoint: 'https://example.org/register' }),
+      clientMode: 'auto',
+      redirectUri: 'https://example.com/callback',
+      cimdClientId: 'https://example.com/client-metadata.json',
+      cimdAvailable: false,
+      savedClient: { clientId: 'saved-manual', tokenEndpointAuthMethod: 'none' },
+      savedClientSource: 'manual'
+    });
+    expect(result.source).toBe('manual');
+    expect(result.client.clientId).toBe('saved-manual');
+  });
+
   it('deregisters with RFC 7592 credentials', async () => {
     let authorization: string | undefined;
     setMcpOAuthFetchImpl(async (_url, init) => {

@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import {
+  buildMcpOAuthClientAuth,
   decryptMcpOAuthAccessToken,
   decryptMcpOAuthRefreshToken,
   exchangeMcpOAuthAuthorizationCode,
@@ -140,7 +141,6 @@ describe('mcpOAuth token', () => {
     const token = await refreshMcpOAuthAccessToken({
       ...base,
       refreshToken: 'old-refresh',
-      requestedScope: 'read',
       previousToken: previous,
       now: 2_000_000
     });
@@ -179,6 +179,61 @@ describe('mcpOAuth token', () => {
         tokenTypeHint: 'access_token'
       })
     ).resolves.toBe(true);
+  });
+
+  it('accepts a numeric-string expires_in', async () => {
+    setMcpOAuthFetchImpl(async () =>
+      json({ access_token: 'a', token_type: 'Bearer', expires_in: '3600' })
+    );
+    const token = await exchangeMcpOAuthAuthorizationCode({
+      ...base,
+      code: 'c',
+      redirectUri: 'https://example.com/callback',
+      codeVerifier: 'v'.repeat(64),
+      now: 1_000_000
+    });
+    expect(token.expiresAt).toBe(4_600_000);
+  });
+
+  it('maps refresh responses with an invalid schema to refresh_transient', async () => {
+    setMcpOAuthFetchImpl(async () => json({ token_type: 'Bearer', expires_in: 60 }));
+    const error = await asOAuthError(refreshMcpOAuthAccessToken({ ...base, refreshToken: 'rt' }));
+    expect(error.oauthCode).toBe(McpOAuthErrorCodeEnum.refreshTransient);
+  });
+
+  it('maps non-Bearer refresh responses to refresh_transient', async () => {
+    setMcpOAuthFetchImpl(async () =>
+      json({ access_token: 'a', token_type: 'mac', expires_in: 60 })
+    );
+    const error = await asOAuthError(refreshMcpOAuthAccessToken({ ...base, refreshToken: 'rt' }));
+    expect(error.oauthCode).toBe(McpOAuthErrorCodeEnum.refreshTransient);
+  });
+
+  it('form-urlencodes Basic credentials per RFC 6749 Appendix B', () => {
+    const { headers, bodyParams } = buildMcpOAuthClientAuth({
+      clientId: 'client id!',
+      clientSecret: 's/e+c',
+      authMethod: 'client_secret_basic'
+    });
+    expect(bodyParams).toEqual({});
+    const decoded = Buffer.from(headers.authorization.slice('Basic '.length), 'base64').toString(
+      'utf8'
+    );
+    expect(decoded).toBe('client+id%21:s%2Fe%2Bc');
+  });
+
+  it('degrades tampered token ciphertext to undefined instead of throwing', () => {
+    const token: McpOAuthTokenType = {
+      secret: {
+        // 结构合法但认证标签错误的密文：decryptSecret 会抛错，解密函数必须吞掉。
+        access_token: { secret: `${'00'.repeat(16)}:${'00'.repeat(8)}:${'00'.repeat(16)}` },
+        refresh_token: { secret: `${'11'.repeat(16)}:${'11'.repeat(8)}:${'11'.repeat(16)}` }
+      },
+      expiresAt: 0,
+      obtainedAt: 0
+    };
+    expect(decryptMcpOAuthAccessToken(token)).toBeUndefined();
+    expect(decryptMcpOAuthRefreshToken(token)).toBeUndefined();
   });
 
   it('treats expiresAt=0 as usable until a 401 occurs', () => {

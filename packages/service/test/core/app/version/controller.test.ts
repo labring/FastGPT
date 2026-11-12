@@ -935,8 +935,39 @@ describe('updateAppPublishedVersion', () => {
         $set: { nodes: [], resources: [] },
         $inc: { nodesRevision: 1 }
       },
-      { session, strict: false }
+      { session }
     );
+  });
+
+  it('does not fence the first oauth enable (node has no oauth credentialSeq yet)', async () => {
+    const session = {} as ClientSession;
+    findAppByIdMock.mockReturnValue({
+      session: vi.fn().mockReturnThis(),
+      lean: vi.fn().mockResolvedValue({
+        _id: 'app-id',
+        publishedVersionId: '507f1f77bcf86cd799439011'
+      })
+    });
+    findOneMock.mockReturnValue({
+      session: vi.fn().mockReturnThis(),
+      lean: vi.fn().mockResolvedValue({ _id: '507f1f77bcf86cd799439011' })
+    });
+    updateVersionMock.mockResolvedValue({ matchedCount: 1 });
+    updateAppMock.mockResolvedValue({ matchedCount: 1 });
+
+    // 首次启用 oauth：handler 不传 nodeFence，过滤条件不得包含 nodes/authMode，
+    // 也不得 bump nodesRevision，否则存库节点尚未带 oauth 字段会永远匹配失败。
+    await updateAppPublishedVersion({
+      appId: 'app-id',
+      nodes: [],
+      resources: [],
+      session
+    });
+
+    const [filter, update, options] = updateVersionMock.mock.calls[0];
+    expect(filter).toEqual({ _id: '507f1f77bcf86cd799439011', appId: 'app-id' });
+    expect(update.$inc).toBeUndefined();
+    expect(options).toEqual({ session });
   });
 
   it('raises a transaction conflict when the node fence does not match', async () => {

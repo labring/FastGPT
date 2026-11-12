@@ -23,6 +23,7 @@ import {
   revokeMcpOAuthToken
 } from './token';
 import { MCP_OAUTH_REFRESH_LEASE_MS } from './schema';
+import { MCP_OAUTH_HTTP_TIMEOUT_MS } from './httpRuntime';
 import { getMcpOAuthChallenge } from '../mcpAuthError';
 
 /**
@@ -33,64 +34,21 @@ import { getMcpOAuthChallenge } from '../mcpAuthError';
  * - 401 只强制刷新并重试一次；403 + insufficient_scope 不刷新。
  */
 
-export const MCP_OAUTH_CLIENT_CACHE_TTL_MS = 60 * 1000;
-export const MCP_OAUTH_LEASE_WAIT_MS = 1500;
+/**
+ * 等待并发刷新者写回的预算必须覆盖一次 token 端点请求的最长耗时，
+ * 否则持有租约的一方仍在请求中，等待方会提前抛 `refresh_transient`。
+ */
+export const MCP_OAUTH_LEASE_WAIT_MARGIN_MS = 1000;
+export const MCP_OAUTH_LEASE_WAIT_MS =
+  MCP_OAUTH_HTTP_TIMEOUT_MS + MCP_OAUTH_LEASE_WAIT_MARGIN_MS;
 export const MCP_OAUTH_LEASE_POLL_MS = 100;
 
 type SingleFlight<T> = { promise: Promise<T> };
 
 const refreshFlights = new Map<string, SingleFlight<string>>();
-const clientCache = new Map<string, { expiresAt: number; server: unknown; client: unknown }>();
 
-export const getMcpOAuthClientCacheKey = ({ appId, nodeId }: { appId: string; nodeId: string }) =>
+const getMcpOAuthRuntimeKey = ({ appId, nodeId }: { appId: string; nodeId: string }) =>
   `${appId}:${nodeId}`;
-
-export const getCachedMcpOAuthClient = ({
-  appId,
-  nodeId,
-  now = Date.now()
-}: {
-  appId: string;
-  nodeId: string;
-  now?: number;
-}) => {
-  const key = getMcpOAuthClientCacheKey({ appId, nodeId });
-  const cached = clientCache.get(key);
-  if (!cached) return undefined;
-  if (cached.expiresAt <= now) {
-    clientCache.delete(key);
-    return undefined;
-  }
-  return cached;
-};
-
-export const setCachedMcpOAuthClient = ({
-  appId,
-  nodeId,
-  server,
-  client,
-  now = Date.now(),
-  ttlMs = MCP_OAUTH_CLIENT_CACHE_TTL_MS
-}: {
-  appId: string;
-  nodeId: string;
-  server: unknown;
-  client: unknown;
-  now?: number;
-  ttlMs?: number;
-}) => {
-  clientCache.set(getMcpOAuthClientCacheKey({ appId, nodeId }), {
-    expiresAt: now + ttlMs,
-    server,
-    client
-  });
-};
-
-export const clearCachedMcpOAuthClient = ({ appId, nodeId }: { appId: string; nodeId: string }) => {
-  clientCache.delete(getMcpOAuthClientCacheKey({ appId, nodeId }));
-};
-
-export const clearMcpOAuthClientCache = () => clientCache.clear();
 
 type OAuthContext = {
   version: Awaited<ReturnType<typeof getMcpToolSetVersionDoc>>;
@@ -329,7 +287,6 @@ const refreshWithLease = async ({
       authMethod: client.tokenEndpointAuthMethod,
       refreshToken,
       resource: oauth.resource,
-      requestedScope: oauth.scope,
       previousToken: oauth.token
     });
 
@@ -428,7 +385,7 @@ export const ensureMcpOAuthAccessToken = async ({
   allowRefresh?: boolean;
   now?: number;
 }): Promise<string> => {
-  const key = `${getMcpOAuthClientCacheKey({ appId, nodeId })}:${forceRefresh ? 'force' : 'lazy'}`;
+  const key = `${getMcpOAuthRuntimeKey({ appId, nodeId })}:${forceRefresh ? 'force' : 'lazy'}`;
 
   return withRefreshSingleFlight(key, async () => {
     const context = await readOAuthContext({ appId, nodeId });

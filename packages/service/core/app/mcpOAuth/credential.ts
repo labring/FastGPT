@@ -2,19 +2,19 @@ import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { AppVersionSchemaType } from '@fastgpt/global/core/app/version/type';
 import type { McpOAuthStatusResponseType } from '@fastgpt/global/openapi/core/app/mcpTools/oauth';
-import type { McpOAuthStatus } from '@fastgpt/global/core/app/tool/mcpTool/oauth';
-import { McpOAuthStatusEnum } from '@fastgpt/global/core/app/tool/mcpTool/oauth';
+import {
+  McpOAuthErrorCodeEnum,
+  McpOAuthStatusEnum,
+  type McpOAuthAuthMode,
+  type McpOAuthClientMode
+} from '@fastgpt/global/core/app/tool/mcpTool/oauth';
 import type {
   McpOAuthClientType,
   McpOAuthServerMetadataType,
   McpToolSetOAuthConfigType
 } from '@fastgpt/global/core/app/tool/mcpTool/oauthConfig';
-import type {
-  McpOAuthAuthMode,
-  McpOAuthClientMode
-} from '@fastgpt/global/core/app/tool/mcpTool/oauth';
 import { McpOAuthApiError } from './errors';
-import { McpOAuthErrorCodeEnum } from '@fastgpt/global/core/app/tool/mcpTool/oauth';
+import { MCP_OAUTH_REFRESH_MARGIN_MS } from './token';
 import { MongoApp } from '../schema';
 import { MongoAppVersion } from '../version/schema';
 import { MCP_OAUTH_NODE_MAX_BYTES } from './schema';
@@ -247,7 +247,7 @@ export const deriveMcpOAuthStatus = ({
   const expiresAt = oauth?.token?.expiresAt ?? null;
   const refreshDueAt =
     oauth?.token && hasRefreshToken && oauth.token.expiresAt > 0
-      ? oauth.token.expiresAt - 30_000
+      ? oauth.token.expiresAt - MCP_OAUTH_REFRESH_MARGIN_MS
       : null;
 
   const lastError: McpOAuthStatusLastError = oauth?.lastError
@@ -329,7 +329,8 @@ export const deriveMcpOAuthStatus = ({
   }
 
   if (hasAccessToken) {
-    const usable = expiresAt === 0 || (expiresAt !== null && expiresAt - now > 30_000);
+    const usable =
+      expiresAt === 0 || (expiresAt !== null && expiresAt - now > MCP_OAUTH_REFRESH_MARGIN_MS);
     if (usable) {
       return {
         ...withActions,
@@ -340,11 +341,19 @@ export const deriveMcpOAuthStatus = ({
     }
   }
 
-  if (hasAccessToken && hasRefreshToken && expiresAt !== null && expiresAt - now <= 30_000) {
+  if (
+    hasAccessToken &&
+    hasRefreshToken &&
+    expiresAt !== null &&
+    expiresAt - now <= MCP_OAUTH_REFRESH_MARGIN_MS
+  ) {
     return { ...withActions, state: McpOAuthStatusEnum.refreshDue, authorized: true };
   }
 
-  if (!hasAccessToken || (expiresAt !== null && expiresAt - now <= 30_000 && !hasRefreshToken)) {
+  if (
+    !hasAccessToken ||
+    (expiresAt !== null && expiresAt - now <= MCP_OAUTH_REFRESH_MARGIN_MS && !hasRefreshToken)
+  ) {
     return { ...withActions, state: McpOAuthStatusEnum.reauthRequired };
   }
 
@@ -416,27 +425,23 @@ export const mergeMcpOAuthFromPublished = ({
         revokeLease,
         lastError,
         client,
-        issuer,
+        issuer: previousIssuer,
         resource,
         ...rest
       } = existingOAuth;
-      const issuerChanged =
-        nextIssuer !== undefined && existingOAuth.issuer !== undefined
-          ? nextIssuer !== existingOAuth.issuer
-          : false;
-      const keepClient = !!client && !issuerChanged;
-      // URL 变更后 resource 必然失效；若已重新发现到 issuer，则一并写回，避免留下
-      // 旧 issuer + 新 URL 的不一致记录。
-      const nextIssuerValue = nextIssuer ?? issuer;
+      // 只有“旧 issuer 已知且与新 issuer 相同”才能证明原 client 仍属于同一 AS。
+      // URL 变更且未重新发现 issuer 时无法证明，必须清 client 且不写回旧 issuer；
+      // 旧 issuer 未知、新 issuer 已知时同样无法证明，按最保守策略丢弃 client。
+      const keepClient =
+        !!client &&
+        nextIssuer !== undefined &&
+        previousIssuer !== undefined &&
+        nextIssuer === previousIssuer;
       return {
         oauth: {
           ...(rest as McpToolSetOAuthConfigType),
-          ...(nextIssuerValue !== undefined ? { issuer: nextIssuerValue } : {}),
-          ...(keepClient
-            ? {
-                client
-              }
-            : {}),
+          ...(nextIssuer !== undefined ? { issuer: nextIssuer } : {}),
+          ...(keepClient ? { client } : {}),
           ...(nextClientMode ? { clientMode: nextClientMode } : {}),
           ...(nextScope !== undefined ? { scope: nextScope } : {})
         },

@@ -1,7 +1,10 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { encryptSecret, decryptSecret } from '../../../common/secret/aes256gcm';
 import { McpOAuthApiError } from './errors';
-import { McpOAuthErrorCodeEnum } from '@fastgpt/global/core/app/tool/mcpTool/oauth';
+import {
+  MCP_OAUTH_STATE_MAX_LENGTH,
+  McpOAuthErrorCodeEnum
+} from '@fastgpt/global/core/app/tool/mcpTool/oauth';
 import { MCP_OAUTH_STATE_PURGE_MS, MCP_OAUTH_STATE_TTL_MS, MongoMcpOAuthState } from './schema';
 import {
   McpOAuthStatePayloadSchema,
@@ -19,6 +22,12 @@ export const sha256Hex = (value: string) => createHash('sha256').update(value).d
 
 export const MCP_OAUTH_BIND_COOKIE_MAX_AGE_SECONDS = 600;
 export const MCP_OAUTH_BIND_COOKIE_PATH = '/api/core/app/mcpTools/oauth';
+
+/**
+ * 加密 state 的长度上限：与全局 `McpOAuthCallbackQuerySchema` 共用同一常量，
+ * 保证「start 能生成」等价于「callback 能解析」。
+ */
+export { MCP_OAUTH_STATE_MAX_LENGTH };
 
 export const getMcpOAuthBindCookieName = (appId: string) => `mcp_oauth_bind_${appId}`;
 
@@ -71,6 +80,12 @@ export const buildMcpOAuthState = ({
 
   const encrypted = encryptSecret(JSON.stringify(payload));
   const state = Buffer.from(encrypted, 'utf8').toString('base64url');
+  if (state.length > MCP_OAUTH_STATE_MAX_LENGTH) {
+    // 理论上不可达（payload schema 已限制各字段长度）；写前兜底避免发出必然被回调拒绝的 state。
+    throw new McpOAuthApiError(McpOAuthErrorCodeEnum.stateInvalid, {
+      message: 'OAuth state exceeds the supported length'
+    });
+  }
 
   return {
     state,
@@ -85,7 +100,7 @@ export const parseMcpOAuthState = (
   state: string,
   { now = Date.now() }: { now?: number } = {}
 ): McpOAuthStatePayloadType => {
-  if (!state || state.length > 4096 || !/^[A-Za-z0-9_-]+$/.test(state)) {
+  if (!state || state.length > MCP_OAUTH_STATE_MAX_LENGTH || !/^[A-Za-z0-9_-]+$/.test(state)) {
     throw new McpOAuthApiError(McpOAuthErrorCodeEnum.stateInvalid, {
       message: 'OAuth state is malformed'
     });
@@ -179,7 +194,9 @@ export const expirePendingMcpOAuthStates = async ({
 }): Promise<void> => {
   await MongoMcpOAuthState.updateMany(
     { appId, nodeId, tmbId, consumedAt: { $exists: false } },
-    { $set: { consumedAt: new Date(now), purgeAt: new Date(now) } }
+    // 只标记已消费；保留原 purgeAt，避免 TTL 立即删除导致旧标签页回调
+    // 被误报为 state_invalid（consumedAt 过滤已能阻止复用）。
+    { $set: { consumedAt: new Date(now) } }
   );
 };
 

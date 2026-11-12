@@ -103,6 +103,36 @@ describe('mcpOAuth state', () => {
     expect(error.oauthCode).toBe(McpOAuthErrorCodeEnum.stateReplayed);
   });
 
+  it('round-trips a state larger than the old 4KB callback limit', () => {
+    const scope = Array.from({ length: 1024 }, () => 's').join('');
+    const redirectUri = `https://fastgpt.example.com/callback?payload=${'r'.repeat(1900)}`;
+    const issuer = `https://as.example.org/${'i'.repeat(2000)}`;
+    const built = build({ scope, redirectUri, issuer });
+
+    // 加密 + hex + base64url 后必然超过旧的 4096 上限，回调 query 不能再拒绝它。
+    expect(built.state.length).toBeGreaterThan(4096);
+    expect(parseMcpOAuthState(built.state)).toMatchObject({ scope, redirectUri, issuer });
+  });
+
+  it('marks previous pending states consumed without expiring purgeAt', async () => {
+    const base = ids();
+    const first = build(base);
+    const second = build(base);
+    await writeMcpOAuthState({ payload: first.payload, bindCookieHash: sha256Hex('c1') });
+    await writeMcpOAuthState({ payload: second.payload, bindCookieHash: sha256Hex('c2') });
+
+    const now = Date.now();
+    await expirePendingMcpOAuthStates({ ...base, now });
+
+    const docs = await MongoMcpOAuthState.find({ appId: base.appId }).lean();
+    expect(docs).toHaveLength(2);
+    for (const doc of docs) {
+      expect(doc.consumedAt).toBeInstanceOf(Date);
+      // 保留原 purgeAt（写入时间 + 24h），不得改成 now 让 TTL 立即清理。
+      expect(doc.purgeAt.getTime()).toBeGreaterThan(now);
+    }
+  });
+
   it('serializes and clears the binding cookie with the fixed path', () => {
     const cookie = serializeMcpOAuthBindCookie({
       appId: 'abc',

@@ -152,7 +152,7 @@ export const GetMcpToolsBodySchema = z
     }),
     headerSecret: StoreSecretValueTypeApiInputSchema.optional().meta({
       example: { Authorization: { value: 'token' } },
-      description: '请求头密钥'
+      description: '请求头密钥；仅在未传 appId 时生效（appId 模式由服务端配置决定）'
     })
   })
   .meta({
@@ -189,7 +189,7 @@ export const RunMcpToolBodySchema = z
     }),
     url: z.string().optional().meta({
       example: 'https://example.com/mcp',
-      description: 'MCP 服务地址；未传 appId 时必填'
+      description: 'MCP 服务地址；未传 appId 时必填；传 appId 时必须与已存地址一致'
     }),
     toolName: z.string().meta({
       example: 'search',
@@ -197,7 +197,7 @@ export const RunMcpToolBodySchema = z
     }),
     headerSecret: StoreSecretValueTypeApiInputSchema.optional().meta({
       example: { Authorization: { value: 'token' } },
-      description: '请求头密钥'
+      description: '请求头密钥；仅在未传 appId 时生效（appId 模式由服务端配置决定）'
     }),
     params: z.record(z.string(), z.any()).meta({
       example: { query: 'hello' },

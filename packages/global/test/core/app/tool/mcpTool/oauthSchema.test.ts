@@ -11,6 +11,11 @@ import {
   isMcpOAuthScopeSubset
 } from '@fastgpt/global/core/app/tool/mcpTool/oauth';
 import {
+  McpOAuthCallbackQuerySchema,
+  McpOAuthManualClientSchema,
+  McpOAuthStartBodySchema
+} from '@fastgpt/global/openapi/core/app/mcpTools/oauth';
+import {
   CreateMcpToolsBodySchema,
   GetMcpToolsBodySchema,
   RunMcpToolBodySchema,
@@ -193,6 +198,41 @@ describe('scope helpers', () => {
     expect(isMcpOAuthScopeSubset('read', 'read')).toBe(true);
     expect(isMcpOAuthScopeSubset('admin', 'read write')).toBe(false);
     expect(isMcpOAuthScopeSubset('read', '')).toBe(false);
+  });
+});
+
+describe('MCP OAuth route schemas', () => {
+  it('requires a secret for confidential manual clients', () => {
+    expect(McpOAuthManualClientSchema.safeParse({ clientId: 'client-1' }).success).toBe(false);
+    expect(
+      McpOAuthManualClientSchema.safeParse({ clientId: 'client-1', tokenEndpointAuthMethod: 'none' })
+        .success
+    ).toBe(true);
+    expect(
+      McpOAuthManualClientSchema.safeParse({
+        clientId: 'client-1',
+        clientSecret: 'secret',
+        tokenEndpointAuthMethod: 'client_secret_post'
+      }).success
+    ).toBe(true);
+    // start body 复用同一契约，manual 缺 secret 在入口即被拒绝。
+    expect(
+      McpOAuthStartBodySchema.safeParse({
+        appId: '68ad85a7463006c963799a05',
+        clientMode: 'manual',
+        manualClient: { clientId: 'client-1' }
+      }).success
+    ).toBe(false);
+  });
+
+  it('accepts callback state up to the shared 32KB cap', () => {
+    expect(McpOAuthCallbackQuerySchema.safeParse({ state: 'a'.repeat(8192) }).success).toBe(true);
+    expect(McpOAuthCallbackQuerySchema.safeParse({ state: 'a'.repeat(32 * 1024) }).success).toBe(
+      true
+    );
+    expect(McpOAuthCallbackQuerySchema.safeParse({ state: 'a'.repeat(32 * 1024 + 1) }).success).toBe(
+      false
+    );
   });
 });
 

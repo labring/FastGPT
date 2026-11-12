@@ -13,6 +13,7 @@ import {
 } from '@fastgpt/global/core/workflow/node/constant';
 import { HttpToolSetRuntimeConfigSchema } from '@fastgpt/global/core/workflow/type/node';
 import { Types, type ClientSession } from '../../../common/mongo';
+import type { FilterQuery } from 'mongoose';
 import { MongoTransactionConflictError } from '../../../common/mongo/sessionRun';
 import { decodeToolSetNodesFromStorage } from '../jsonSchemaStorage';
 import { resolveStoredAppResources } from '../resource/utils';
@@ -368,7 +369,7 @@ export const updateAppPublishedVersion = async ({
 
   if (!version) throw AppErrEnum.unExist;
 
-  const versionFilter: Record<string, any> = {
+  const versionFilter: FilterQuery<AppVersionSchemaType> = {
     _id: version._id,
     appId
   };

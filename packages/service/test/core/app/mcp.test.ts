@@ -752,6 +752,22 @@ describe('MCPClient', () => {
         resourceMetadata: 'https://example.com/.well-known/oauth-protected-resource'
       });
 
+      // 多挑战：按 RFC 7235 拆分，且优先返回 Bearer（Basic 在前）。
+      expect(
+        parseMcpWWWAuthenticate(
+          'Basic realm="mcp", Bearer realm="mcp", error="insufficient_scope"'
+        )
+      ).toMatchObject({ scheme: 'bearer', error: 'insufficient_scope' });
+      expect(parseMcpWWWAuthenticate('Basic realm="mcp"')).toMatchObject({ scheme: 'basic' });
+      // 引号内的逗号不得拆成新 challenge，且转义字符按 RFC 还原。
+      expect(
+        parseMcpWWWAuthenticate('Bearer error_description="a,b \\"quoted\\"", error="invalid_token"')
+      ).toMatchObject({
+        scheme: 'bearer',
+        error: 'invalid_token',
+        errorDescription: 'a,b "quoted"'
+      });
+
       const authError = new McpAuthRequiredError(401, {
         wwwAuthenticate: 'Bearer error="invalid_token"'
       });

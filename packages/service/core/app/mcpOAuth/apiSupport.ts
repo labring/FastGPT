@@ -12,8 +12,7 @@ import {
   assertMcpOAuthClientResetByAppRateLimit,
   assertMcpOAuthDisconnectByAppRateLimit,
   assertMcpOAuthStartByAppRateLimit,
-  assertMcpOAuthStartByUserRateLimit,
-  getMcpOAuthIpRateLimitSegment
+  assertMcpOAuthStartByUserRateLimit
 } from '../../../common/rateLimit/interface/mcpOAuth';
 import { buildMcpOAuthCallbackRedirect } from './state';
 import { isMcpOAuthInsecureHttpAllowed } from './httpRuntime';
@@ -36,7 +35,11 @@ export type McpOAuthRouteConfig = {
 };
 
 export const normalizeMcpOAuthBasePath = (basePath: string | undefined) => {
-  const trimmed = (basePath ?? '').trim().replace(/\/+$/, '');
+  const raw = (basePath ?? '').trim().replace(/\/+$/, '');
+  if (!raw) return '';
+  // NEXT_PUBLIC_BASE_URL 历史上允许配置为绝对 URL；拼接到 FE_DOMAIN 前只保留 pathname，
+  // 否则会生成 `/https://host/base/...` 这样的非法回调地址。
+  const trimmed = /^https?:\/\//i.test(raw) ? new URL(raw).pathname.replace(/\/+$/, '') : raw;
   if (!trimmed) return '';
   return trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
 };
@@ -164,11 +167,11 @@ const isRateLimitError = (error: unknown) =>
 type McpOAuthRateLimitParams = {
   'start-app': { appId: string };
   'start-user': { tmbId: string };
-  'callback-ip': { ip: string };
+  'callback-ip': { ip: string | undefined };
   'callback-app': { appId: string };
   'disconnect-app': { appId: string };
   'client-reset-app': { appId: string };
-  'client-metadata-ip': { ip: string };
+  'client-metadata-ip': { ip: string | undefined };
 };
 
 /** 统一把限流错误映射为 `mcp_oauth_rate_limited` + Retry-After。 */
@@ -188,11 +191,14 @@ export const assertMcpOAuthRateLimit = async <P extends McpOAuthRateLimitPolicy>
           tmbId: (params as McpOAuthRateLimitParams['start-user']).tmbId
         });
         break;
-      case 'callback-ip':
-        await assertMcpOAuthCallbackByIpRateLimit({
-          ip: (params as McpOAuthRateLimitParams['callback-ip']).ip
-        });
+      case 'callback-ip': {
+        const ip = (params as McpOAuthRateLimitParams['callback-ip']).ip;
+        // 无法解析 IP 时不把所有请求压进同一个全局桶（会误伤合法回调）；
+        // 回调仍由一次性 state 台账严格兜底。
+        if (!ip) break;
+        await assertMcpOAuthCallbackByIpRateLimit({ ip });
         break;
+      }
       case 'callback-app':
         await assertMcpOAuthCallbackByAppRateLimit({
           appId: (params as McpOAuthRateLimitParams['callback-app']).appId
@@ -208,11 +214,12 @@ export const assertMcpOAuthRateLimit = async <P extends McpOAuthRateLimitPolicy>
           appId: (params as McpOAuthRateLimitParams['client-reset-app']).appId
         });
         break;
-      case 'client-metadata-ip':
-        await assertMcpOAuthClientMetadataByIpRateLimit({
-          ip: (params as McpOAuthRateLimitParams['client-metadata-ip']).ip
-        });
+      case 'client-metadata-ip': {
+        const ip = (params as McpOAuthRateLimitParams['client-metadata-ip']).ip;
+        if (!ip) break;
+        await assertMcpOAuthClientMetadataByIpRateLimit({ ip });
         break;
+      }
     }
   } catch (error) {
     if (isRateLimitError(error)) {
@@ -225,10 +232,9 @@ export const assertMcpOAuthRateLimit = async <P extends McpOAuthRateLimitPolicy>
   }
 };
 
-export const getMcpOAuthClientIp = (req: Parameters<typeof getClientIpFromRequest>[0]) =>
-  getClientIpFromRequest(req) ?? 'unknown';
-
-export const hashMcpOAuthClientIp = (ip: string) => getMcpOAuthIpRateLimitSegment(ip);
+export const getMcpOAuthClientIp = (
+  req: Parameters<typeof getClientIpFromRequest>[0]
+): string | undefined => getClientIpFromRequest(req) ?? undefined;
 
 /** 回调 Origin（若存在）必须等于 FE_DOMAIN origin。 */
 export const assertMcpOAuthOriginAllowed = ({
