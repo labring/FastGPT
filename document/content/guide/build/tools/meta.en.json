@@ -1,5 +1,11 @@
 {
   "title": "Tools",
   "description": "MCP tools and system plugins for app building.",
-  "pages": ["mcp_tools", "system-plugins"]
+  "pages": [
+    "overview",
+    "workflow-tools",
+    "http_tools",
+    "mcp_tools",
+    "system-plugins"
+  ]
 }

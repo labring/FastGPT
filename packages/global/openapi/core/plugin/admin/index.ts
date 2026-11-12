@@ -8,9 +8,11 @@ import {
 import { DevApiTagsMap } from '../../../tag';
 import z from 'zod';
 import { AdminPluginToolPath } from './tool';
+import { AdminPluginModerationPath } from './moderation';
 
 export const PluginAdminPath: OpenAPIPath = {
   ...AdminPluginToolPath,
+  ...AdminPluginModerationPath,
 
   '/core/plugin/admin/pkg/upload': {
     post: {

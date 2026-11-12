@@ -36,7 +36,8 @@ async function handler(
     lang,
     source: 'system',
     version,
-    maskSecrets: true
+    maskSecrets: true,
+    includeDisabled: true
   });
 
   return AdminSystemToolDetailSchema.parse({

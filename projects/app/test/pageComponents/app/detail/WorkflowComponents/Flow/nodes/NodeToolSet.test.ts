@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
   reloadApp: vi.fn(),
   getMCPTools: vi.fn(),
   getApiSchemaByUrl: vi.fn(),
+  headerSecretConfigs: [] as Record<string, unknown>[],
   remoteMcpTools: [
     {
       name: 'search',
@@ -168,12 +169,20 @@ vi.mock('@fastgpt/global/core/app/tool/httpTool/utils', () => ({
 vi.mock('@/components/common/secret/HeaderAuthConfig', async () => {
   const react = await import('react');
   return {
-    default: ({ onUpdate }: { onUpdate: (value: unknown) => void }) =>
-      react.createElement(
+    default: ({
+      onUpdate,
+      storeHeaderSecretConfig
+    }: {
+      onUpdate: (value: unknown) => void;
+      storeHeaderSecretConfig?: Record<string, unknown>;
+    }) => {
+      mocks.headerSecretConfigs.push(storeHeaderSecretConfig ?? {});
+      return react.createElement(
         'button',
         { onClick: () => onUpdate({ Bearer: { value: 'token' } }) },
         'common:auth_config'
-      ),
+      );
+    },
     storeHeader2HeaderValue: (value: unknown) => value,
     headerValue2StoreHeader: (value: unknown) => value
   };
@@ -260,6 +269,7 @@ describe('NodeToolSet', () => {
     mocks.reloadApp.mockReset();
     mocks.getMCPTools.mockReset().mockResolvedValue(mocks.remoteMcpTools);
     mocks.getApiSchemaByUrl.mockReset().mockResolvedValue({ openapi: '3.0.0' });
+    mocks.headerSecretConfigs.length = 0;
     container = document.createElement('div');
     document.body.appendChild(container);
     root = createRoot(container);
@@ -310,7 +320,6 @@ describe('NodeToolSet', () => {
       );
     });
     await renderNode(initialNode);
-    await click('app:toolset_config');
     const input = container.querySelector('input');
     const parseButton = Array.from(container.querySelectorAll('button')).find(
       (button) => button.textContent === 'common:Parse'
@@ -340,7 +349,6 @@ describe('NodeToolSet', () => {
       }
     });
 
-    await click('app:toolset_config');
     const urlInput = container.querySelector('input');
     if (!urlInput) throw new Error('Missing MCP URL input');
     await setFieldValue(urlInput, 'https://tools.example/mcp');
@@ -362,41 +370,69 @@ describe('NodeToolSet', () => {
     expect(container.textContent).toContain('common:auth_config');
   });
 
-  it('unloads the MCP form when closed and starts from the current config next time', async () => {
-    const initialNode = {
+  it('syncs MCP URL and authentication when the node configuration is restored', async () => {
+    const makeNode = (url: string, token: string) => ({
       nodeId: 'node-mcp',
       toolConfig: {
         mcpToolSet: {
-          url: 'https://old.example/mcp',
-          headerSecret: {},
-          toolList: [{ name: 'search', description: 'Search' }]
-        }
-      }
-    };
-    await renderNode(initialNode);
-    mocks.onChangeNode.mockClear();
-
-    expect(container.querySelector('input')).toBeNull();
-    await click('app:toolset_config');
-    const urlInput = container.querySelector('input');
-    if (!urlInput) throw new Error('Missing MCP URL input');
-    await setFieldValue(urlInput, 'https://unsaved.example/mcp');
-    await click('common:Close');
-    expect(container.querySelector('input')).toBeNull();
-    expect(mocks.onChangeNode).not.toHaveBeenCalled();
-
-    await renderNode({
-      ...initialNode,
-      toolConfig: {
-        mcpToolSet: {
-          url: 'https://current.example/mcp',
-          headerSecret: {},
-          toolList: [{ name: 'search', description: 'Search' }]
+          url,
+          headerSecret: { Authorization: { value: token } },
+          toolList: []
         }
       }
     });
-    await click('app:toolset_config');
-    expect(container.querySelector('input')?.value).toBe('https://current.example/mcp');
+
+    await renderNode(makeNode('https://a.example/mcp', 'token-a'));
+    await renderNode(makeNode('https://b.example/mcp', 'token-b'));
+
+    expect(container.querySelector('input')?.value).toBe('https://b.example/mcp');
+    expect(mocks.headerSecretConfigs.at(-1)).toEqual({
+      Authorization: { value: 'token-b' }
+    });
+    expect(mocks.onChangeNode).not.toHaveBeenCalled();
+  });
+
+  it('drops an MCP parse result when the node configuration is restored', async () => {
+    let resolveTools: ((tools: typeof mocks.remoteMcpTools) => void) | undefined;
+    mocks.getMCPTools.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveTools = resolve;
+      })
+    );
+    const makeNode = (url: string) => ({
+      nodeId: 'node-mcp',
+      toolConfig: {
+        mcpToolSet: { url, headerSecret: {}, toolList: [] }
+      }
+    });
+
+    await renderNode(makeNode('https://a.example/mcp'));
+    await click('common:Parse');
+    await renderNode(makeNode('https://b.example/mcp'));
+    mocks.onChangeNode.mockClear();
+    await act(async () => {
+      resolveTools?.(mocks.remoteMcpTools);
+      await Promise.resolve();
+    });
+
+    expect(mocks.onChangeNode).not.toHaveBeenCalled();
+  });
+
+  it('keeps the MCP draft when only the tool list changes', async () => {
+    const makeNode = (toolList: { name: string; description: string }[]) => ({
+      nodeId: 'node-mcp',
+      toolConfig: {
+        mcpToolSet: { url: 'https://a.example/mcp', headerSecret: {}, toolList }
+      }
+    });
+
+    await renderNode(makeNode([{ name: 'search', description: 'Old' }]));
+    const input = container.querySelector('input');
+    if (!input) throw new Error('Missing MCP URL input');
+    await setFieldValue(input, 'https://draft.example/mcp');
+    await renderNode(makeNode([{ name: 'search', description: 'New' }]));
+
+    expect(container.querySelector('input')?.value).toBe('https://draft.example/mcp');
   });
 
   it.each(['url', 'authentication'] as const)(
@@ -414,7 +450,6 @@ describe('NodeToolSet', () => {
           mcpToolSet: { url: 'https://old.example/mcp', headerSecret: {}, toolList: [] }
         }
       });
-      await click('app:toolset_config');
       await click('common:Parse');
       if (changedField === 'url') {
         const input = container.querySelector('input');
@@ -434,7 +469,7 @@ describe('NodeToolSet', () => {
     }
   );
 
-  it('drops an MCP parse result that arrives after the form is closed', async () => {
+  it('drops an MCP parse result that arrives after the node unmounts', async () => {
     let resolveTools: ((tools: typeof mocks.remoteMcpTools) => void) | undefined;
     mocks.getMCPTools.mockReturnValueOnce(
       new Promise((resolve) => {
@@ -452,9 +487,8 @@ describe('NodeToolSet', () => {
       }
     });
 
-    await click('app:toolset_config');
     await click('common:Parse');
-    await click('common:Close');
+    await act(async () => root.unmount());
     await act(async () => {
       resolveTools?.(mocks.remoteMcpTools);
       await Promise.resolve();

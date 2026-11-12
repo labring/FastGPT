@@ -179,4 +179,38 @@ describe('/api/tool/getDownloadUrl', () => {
       data: ['https://cdn.example.com/tool-a.pkg', 'https://fallback.example.com/tool-b.pkg']
     });
   });
+
+  it('handles plain GET requests where Next body parser sets req.body to empty string', async () => {
+    dataMocks.getToolList.mockResolvedValue([
+      {
+        toolId: 'mod-a',
+        type: 'moderation',
+        version: '1.0.0',
+        downloadUrl: 'https://cdn.example.com/mod-a/1.0.0.pkg'
+      }
+    ]);
+
+    const { default: handler } = await import('../../../../src/pages/api/tool/getDownloadUrl');
+    const res = createResponse();
+    await handler(
+      {
+        method: 'GET',
+        query: { toolId: 'mod-a', version: '1.0.0', type: 'moderation' },
+        body: ''
+      } as any,
+      res as any
+    );
+
+    expect(dataMocks.getToolList).toHaveBeenCalledWith({
+      toolId: 'mod-a',
+      version: '1.0.0',
+      type: 'moderation'
+    });
+    expect(downloadMocks.increaseDownloadCount).toHaveBeenCalledWith('mod-a', 'moderation');
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toEqual({
+      code: 200,
+      data: 'https://cdn.example.com/mod-a/1.0.0.pkg'
+    });
+  });
 });

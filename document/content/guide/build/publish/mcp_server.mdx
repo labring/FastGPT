@@ -3,11 +3,13 @@ title: MCP 发布
 description: 快速了解 FastGPT MCP server
 ---
 
+FastGPT MCP Server 发布能力可将工作台中的一个或多个 Agent 与工作流封装为标准 Model Context Protocol（MCP）服务端点，支持通过 `Streamable HTTP`（及自部署独立 `SSE` 服务）供 Claude、Cursor 等外部 MCP 客户端直接调用。
+
 ## MCP server 介绍
 
 MCP 协议（Model Context Protocol），是由 Anthropic 在 2024 年 11 月初发布的协议。它的目的在于统一 AI 模型与外部系统之间的通信方式，从而简化 AI 模型与外部系统之间的通信问题。随着 OpenAI 官宣支持 MCP 协议，越来越多的 AI 厂商开始支持 MCP 协议。
 
-MCP 协议主要包含 Client 和 Server 两部分。简单来说，Client 是使用 AI 模型的一方，它通过 MCP Client 可以给模型提供一些调用外部系统的能能力；Server 是提供外部系统调用的一方，也就是实际运行外部系统的一方。
+MCP 协议主要包含 Client 和 Server 两部分。简单来说，Client 是使用 AI 模型的一方，它通过 MCP Client 可以给模型提供一些调用外部系统的能力；Server 是提供外部系统调用的一方，也就是实际运行外部系统的一方。
 
 FastGPT MCP Server 功能允许你选择 `多个` 在 FastGPT 上构建好的应用，以 MCP 协议对外提供调用 FastGPT 应用的能力。
 
@@ -17,23 +19,17 @@ FastGPT 支持 `Streamable HTTP` 协议；私有化部署还可以通过独立�
 
 ### 1. 创建 MCP server
 
-登录 FastGPT 后，打开 `工作台`，点击 `MCP server`，即可进入管理页面，这里可以看到你创建的所有 MCP server，以及他们管理的应用数量。
-
-![创建 MCP server](/imgs/mcp_server1.png)
+登录 FastGPT 后，打开 `工作台`，点击 `MCP 服务`，即可进入管理页面，这里可以看到你创建的所有 MCP server，以及他们管理的应用数量。
 
 可以自定义 MCP server 名称和选择关联的应用
 
-|                            |                            |
-| -------------------------- | -------------------------- |
-| ![](/imgs/mcp_server2.png) | ![](/imgs/mcp_server3.png) |
+![MCP 服务创建表单与演示应用配置](/imgs/optimized/current/mcp-create.png.webp)
+
+在“暴露的应用 → 管理”中选择应用，填写清晰的工具名和描述。本图是填写后的创建表单，实际客户端调用需完成下方验证。
 
 ### 2. 获取 MCP server 地址
 
 创建好 MCP server 后，可以直接点击 `开始使用`，即可获取 MCP server 访问地址。
-
-|                            |                            |
-| -------------------------- | -------------------------- |
-| ![](/imgs/mcp_server4.png) | ![](/imgs/mcp_server5.png) |
 
 ### 3. 使用 MCP server
 
@@ -43,16 +39,7 @@ FastGPT 支持 `Streamable HTTP` 协议；私有化部署还可以通过独立�
 
 此时返回 Cursor 的 MCP 管理页面，即可看到你创建的 MCP server，记得设成 `enabled` 状态。
 
-|                            |                            |                            |
-| -------------------------- | -------------------------- | -------------------------- |
-| ![](/imgs/mcp_server6.png) | ![](/imgs/mcp_server7.png) | ![](/imgs/mcp_server8.png) |
-
-打开 Cursor 的对话框，切换成 `Agent` 模型，只有这个模型，cursor 才会调用 MCP server。  
-发送一个关于 `fastgpt` 的问题后，可以看到，cursor 调用了一个 MCP 工具（描述为：查询 fastgpt 知识库），也就是调用 FastGPT 应用去进行处理该问题，并返回了结果。
-
-|                            |                             |
-| -------------------------- | --------------------------- |
-| ![](/imgs/mcp_server9.png) | ![](/imgs/mcp_server10.png) |
+打开 Cursor 的对话框，切换到 `Agent` 模式并选择支持工具调用的模型，按当前客户端界面启用该服务。发送一个关于 `fastgpt` 的问题后，可以看到，cursor 调用了一个 MCP 工具（描述为：查询 fastgpt 知识库），也就是调用 FastGPT 应用去进行处理该问题，并返回了结果。
 
 ## 配置身份代理
 
@@ -126,19 +113,19 @@ SSE 地址使用相同的请求头。SSE 服务会在建立连接时保存代理
 
 ### 修改 docker-compose.yml 文件
 
-在 `docker-compose.yml` 文件中，加入 `fastgpt-mcp-server` 服务:
+v4.15 版本的官方 compose 模板已内置 `fastgpt-mcp-server` 服务（端口 `3003:3000`），无需重复添加，直接配置下一步的环境变量即可。当前 `main` 分支的模板不含该服务，需要在 `docker-compose.yml` 文件中加入 `fastgpt-mcp-server` 服务（`networks` 与 `FASTGPT_ENDPOINT` 需与你的 compose 中 FastGPT 主服务所在网络和服务名一致，官方模板分别为 `app` 和 `fastgpt-app`）:
 
 ```yml
 fastgpt-mcp-server:
   container_name: fastgpt-mcp-server
   image: ghcr.io/labring/fastgpt-mcp_server:latest
   ports:
-    - 3005:3000
+    - 3003:3000
   networks:
-    - fastgpt
+    - app
   restart: always
   environment:
-    - FASTGPT_ENDPOINT=http://fastgpt:3000
+    - FASTGPT_ENDPOINT=http://fastgpt-app:3000
 ```
 
 ### 修改 FastGPT 容器环境变量
@@ -152,7 +139,7 @@ environment:
 
 ### 重启 FastGPT 容器
 
-修改环境变量后，需要重启 FastGPT 服务。启动后，可以在工作台看到 MCP server 服务选项。
+修改环境变量后，需要重启 FastGPT 服务。工作台侧栏的 **MCP 服务** 入口始终显示；该变量只影响 **开始使用** 弹窗中的 SSE 接入地址。未配置时 SSE 方式显示“系统未配置 SSE 接入服务”，`Streamable HTTP` 方式照常可用。
 
 ```bash
 docker-compose down

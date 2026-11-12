@@ -5,5 +5,6 @@ export type SideTabItemType = {
   runningTime?: number;
   moduleType: string;
   id: string;
+  hasError?: boolean;
   children: SideTabItemType[];
 };

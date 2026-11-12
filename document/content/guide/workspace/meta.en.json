@@ -1,8 +1,10 @@
 {
-  "title": "Workspace",
+  "title": "Teams and Account",
   "root": false,
   "pages": [
     "team",
-    "customDomain"
+    "usage-and-billing",
+    "customDomain",
+    "models"
   ]
 }

@@ -1,0 +1,92 @@
+{
+  "type": "sequence",
+  "title": "Remote debugging: invoke and return",
+  "participants": [
+    {
+      "id": "app",
+      "label": "FastGPT",
+      "kind": "backend",
+      "focal": true,
+      "illustration": "core"
+    },
+    {
+      "id": "plugin",
+      "label": "Plugin service",
+      "kind": "backend",
+      "focal": false,
+      "illustration": "plugin"
+    },
+    {
+      "id": "gateway",
+      "label": "Gateway",
+      "kind": "external",
+      "focal": false,
+      "illustration": "gateway"
+    },
+    {
+      "id": "cli",
+      "label": "Local CLI",
+      "kind": "external",
+      "focal": false,
+      "illustration": "code"
+    }
+  ],
+  "messages": [
+    [
+      "app",
+      "plugin",
+      "Run debug plugin",
+      "primary"
+    ],
+    [
+      "plugin",
+      "gateway",
+      "plugin-debug.run",
+      "primary"
+    ],
+    [
+      "gateway",
+      "cli",
+      "Forward request",
+      "primary"
+    ],
+    [
+      "cli",
+      "gateway",
+      "Execution result",
+      "reply"
+    ],
+    [
+      "gateway",
+      "plugin",
+      "Stream result",
+      "reply"
+    ],
+    [
+      "plugin",
+      "app",
+      "Stream result",
+      "reply"
+    ]
+  ],
+  "numbered": true,
+  "evidence": [
+    {
+      "id": "app",
+      "file": "packages/service/thirdProvider/fastgptPlugin/index.ts",
+      "line": 115
+    },
+    {
+      "id": "plugin",
+      "file": "document/content/self-host/config/remote-debug-suite.mdx",
+      "line": 36
+    }
+  ],
+  "lang": "en",
+  "eyebrow": "",
+  "legend": false,
+  "motion": "trace",
+  "fonts": "system",
+  "watermark": false,
+  "skin": "light"
+}

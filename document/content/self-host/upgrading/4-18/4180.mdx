@@ -8,9 +8,16 @@ sidebarTag: 进行中
 
 ### 配置变更
 
-本轮无环境变量或系统配置变更，从 V4.17.3 升级无需额外调整配置。
+官方 Docker Compose 部署模板默认对象存储由 MinIO 切换为 RustFS（`fastgpt-rustfs`）。已有 MinIO 部署可参考[Docker Compose 从 MinIO 迁移到 RustFS](/zh-CN/self-host/docker_minio_to_rustfs)完成原地迁移，或保留原有 MinIO 配置继续运行。其余环境变量与系统配置从 V4.17.3 升级保持一致。
+
+- **内容审核（Moderation）插件化迁移**：旧版商业版内置的百度文本审核（`censor.BAIDU_TEXT_CENSOR_CLIENTID` / `censor.BAIDU_TEXT_CENSOR_CLIENTSECRET`）、自定义审核地址（`censor.customCensorURL`）以及单模型配置中的 `censor` 开关已废弃，统一升级为由 `fastgpt-plugin` 托管的 `moderation` 插件体系。
+  - 原百度审核用户请前往 **管理后台 > 内容审核 > 审核策略配置**，配置并启用官方「百度内容安全（`baidu`）」插件。
+  - 原自定义审核 URL（`customCensorURL`）用户可直接安装官方「旧版自定义审核兼容（`legacy-custom-censor`）」插件零代码迁移现有 HTTP 服务，或基于 `@fastgpt-plugin/sdk-factory` 开发原生 `moderation` 插件。
+  - 详细的新旧版本对比、配置映射与开发步骤见 [内容审核升级与迁移指南](/self-host/migration/content-moderation)。
 
 ### 镜像更新
+
+本版本仍在开发中，镜像 tag 在正式发布时补充。
 
 ### 升级脚本
 
