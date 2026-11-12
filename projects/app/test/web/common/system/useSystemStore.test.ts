@@ -246,6 +246,27 @@ describe('initStaticData through the real initialization pipeline', () => {
       'https://docs.example.com/en/guide/version/cloud/privacy'
     );
     useSystemStore.setState((state) => {
+      state.feConfigs.docUrl = 'https://doc.tryfastgpt.ai/zh-CN';
+    });
+    expect(getDocPath('/guide/build/chat-agent')).toBe(
+      'https://doc.tryfastgpt.ai/zh-CN/guide/build/chat-agent'
+    );
+    expect(getDocPath('/en/guide/build/chat-agent')).toBe(
+      'https://doc.tryfastgpt.ai/en/guide/build/chat-agent'
+    );
+    useSystemStore.setState((state) => {
+      state.feConfigs.docUrl = 'https://doc.fastgpt.io/zh-CN';
+    });
+    expect(getDocPath('/guide/build/chat-agent')).toBe(
+      'https://doc.fastgpt.io/zh-CN/guide/build/chat-agent'
+    );
+    useSystemStore.setState((state) => {
+      state.feConfigs.docUrl = 'https://doc.fastgpt.cn/en';
+    });
+    expect(getDocPath('/guide/build/chat-agent')).toBe(
+      'https://doc.fastgpt.cn/en/guide/build/chat-agent'
+    );
+    useSystemStore.setState((state) => {
       state.feConfigs.docUrl = 'https://docs.example.com';
     });
 

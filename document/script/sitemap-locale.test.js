@@ -9,6 +9,10 @@ const ts = require('typescript');
 const { NextResponse } = require('next/server');
 const { getFastGPTDocsLocaleFromHomeOrigin } = require('../lib/docs-locale');
 
+/** Split a Vary header into lowercase tokens so `Accept-Encoding` never satisfies an `Accept` check. */
+const varyTokens = (response) =>
+  (response.headers.get('vary') ?? '').split(',').map((token) => token.trim().toLowerCase());
+
 /** Execute the actual TypeScript modules with isolated build settings and fixture data. */
 function loadModule(file, { imports, env = {} }) {
   const filename = path.join(__dirname, file);
@@ -613,7 +617,7 @@ test('middleware resolves section landings, language roots, and historical paths
     anonPass.headers.get('cache-control'),
     'public, max-age=0, must-revalidate'
   );
-  assert.match(anonPass.headers.get('vary') ?? '', /\bAccept\b/i);
+  assert.ok(varyTokens(anonPass).includes('accept'));
   assert.equal(anonPass.headers.get('set-cookie'), null);
 
   const markdownNegotiated = middleware(
@@ -622,7 +626,7 @@ test('middleware resolves section landings, language roots, and historical paths
     })
   );
   assert.equal(markdownNegotiated.status, 200);
-  assert.match(markdownNegotiated.headers.get('vary') ?? '', /\bAccept\b/i);
+  assert.ok(varyTokens(markdownNegotiated).includes('accept'));
 
   const localizedPricing = middleware(new NextRequest('http://localhost:3210/en/pricing.md?src=agent'));
   assert.equal(localizedPricing.status, 301);

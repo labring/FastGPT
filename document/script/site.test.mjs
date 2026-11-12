@@ -5,6 +5,10 @@ import { readFile } from 'node:fs/promises';
 
 const origin = process.env.DOCS_TEST_ORIGIN ?? 'http://localhost:3210';
 
+/** Split a Vary header into lowercase tokens so `Accept-Encoding` never satisfies an `Accept` check. */
+const varyTokens = (response) =>
+  (response.headers.get('vary') ?? '').split(',').map((token) => token.trim().toLowerCase());
+
 test('tutorial downloads preserve their bytes for both language preferences', async () => {
   for (const filename of ['sales.csv', 'civil-code-lease.txt', 'content-review-workflow.json', 'content-review-workflow.en.json']) {
     const expected = await readFile(new URL(`../public/examples/${filename}`, import.meta.url), 'utf8');
@@ -100,7 +104,7 @@ test('root machine-readable endpoints and single-page Markdown negotiation respo
   });
   assert.equal(negotiated.status, 200);
   assert.match(negotiated.headers.get('content-type') ?? '', /text\/markdown/);
-  assert.match(negotiated.headers.get('vary') ?? '', /\bAccept\b/i);
+  assert.ok(varyTokens(negotiated).includes('accept'));
   assert.ok((await negotiated.text()).includes('Source: https://doc.fastgpt.io/en/openapi/intro'));
 
   const htmlNegotiated = await fetch(`${origin}/en/openapi/intro`, {
@@ -109,8 +113,7 @@ test('root machine-readable endpoints and single-page Markdown negotiation respo
   });
   assert.equal(htmlNegotiated.status, 200);
   assert.equal(htmlNegotiated.headers.get('cache-control'), 'public, max-age=0, must-revalidate');
-  assert.match(htmlNegotiated.headers.get('vary') ?? '', /\bAccept\b/i);
-  assert.match(htmlNegotiated.headers.get('vary') ?? '', /\bRSC\b/i);
+  assert.ok(varyTokens(htmlNegotiated).includes('rsc'));
 });
 
 test('legacy archive screenshot zoom targets resolve to HTTP 200 assets', async () => {
