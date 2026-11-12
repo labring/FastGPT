@@ -324,4 +324,30 @@ describe('cleanupInstanceConfigDeprecatedFields (integration)', () => {
     expect(doc?.overrides).toEqual({ checkInternalIp: true });
     expect((await verifyInstanceConfigDeprecatedFields()).remainingDocuments).toEqual([]);
   });
+
+  it('cleans deprecated entries from explicitDefaultPaths while preserving valid default markers', async () => {
+    await MongoSystemInstanceConfig.collection.insertOne({
+      domain: 'security',
+      schemaVersion: 1,
+      revision: 1,
+      overrides: { checkInternalIp: true },
+      explicitDefaultPaths: [
+        'useIpLimit',
+        'censor.baiduClientId',
+        'censor.customCensorUrl',
+        'checkExternalFile'
+      ]
+    } as any);
+
+    const beforeVerify = await verifyInstanceConfigDeprecatedFields();
+    expect(beforeVerify.remainingDocuments).toEqual(['security']);
+
+    const result = await cleanupInstanceConfigDeprecatedFields({ logger });
+    expect(result.updatedDomains).toEqual(['security']);
+    expect(result.removedFieldCount).toBe(3);
+
+    const doc = await MongoSystemInstanceConfig.findOne({ domain: 'security' }).lean();
+    expect(doc?.explicitDefaultPaths).toEqual(['checkExternalFile']);
+    expect((await verifyInstanceConfigDeprecatedFields()).remainingDocuments).toEqual([]);
+  });
 });

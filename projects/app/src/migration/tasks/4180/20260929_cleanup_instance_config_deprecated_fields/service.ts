@@ -126,6 +126,58 @@ export const hasDeprecatedOverrides = (
   });
 };
 
+/** 判断 explicitDefaultPaths 中是否仍存在任一废弃路径或其子路径。 */
+export const hasDeprecatedExplicitDefaultPaths = (
+  domain: SystemInstanceConfigDomainKey,
+  explicitDefaultPaths: unknown
+): boolean => {
+  const paths = deprecatedOverridePaths[domain];
+  if (!paths || !Array.isArray(explicitDefaultPaths)) return false;
+
+  const prefixes = paths.map((path) => path.join('.'));
+  return explicitDefaultPaths.some(
+    (entry) =>
+      typeof entry === 'string' &&
+      prefixes.some((prefix) => entry === prefix || entry.startsWith(`${prefix}.`))
+  );
+};
+
+/** 剔除 explicitDefaultPaths 中已废弃的路径标记，保留其余显式默认意图。 */
+export const stripDeprecatedExplicitDefaultPaths = (
+  domain: SystemInstanceConfigDomainKey,
+  explicitDefaultPaths: unknown
+): { explicitDefaultPaths: string[] | undefined; removedPathCount: number } => {
+  if (!Array.isArray(explicitDefaultPaths)) {
+    return { explicitDefaultPaths: undefined, removedPathCount: 0 };
+  }
+
+  const paths = deprecatedOverridePaths[domain];
+  if (!paths) {
+    return {
+      explicitDefaultPaths: explicitDefaultPaths.filter(
+        (entry): entry is string => typeof entry === 'string'
+      ),
+      removedPathCount: 0
+    };
+  }
+
+  const prefixes = paths.map((path) => path.join('.'));
+  let removedPathCount = 0;
+  const kept = explicitDefaultPaths.filter((entry): entry is string => {
+    if (typeof entry !== 'string') return false;
+    const isDeprecated = prefixes.some(
+      (prefix) => entry === prefix || entry.startsWith(`${prefix}.`)
+    );
+    if (isDeprecated) {
+      removedPathCount += 1;
+      return false;
+    }
+    return true;
+  });
+
+  return { explicitDefaultPaths: kept, removedPathCount };
+};
+
 /**
  * 返回剔除废弃字段后的 overrides 副本。
  * 不修改入参，便于调用方在写入前先完成校验。
@@ -170,10 +222,13 @@ export const cleanupInstanceConfigDeprecatedFields = async ({
     const domain = ((doc as any).domain ?? doc._id) as SystemInstanceConfigDomainKey;
     if (!SYSTEM_INSTANCE_CONFIG_DOMAINS.includes(domain)) continue;
 
-    const { overrides, removedFieldCount: removed } = stripDeprecatedOverrides(
+    const { overrides, removedFieldCount: removedOverrides } = stripDeprecatedOverrides(
       domain,
       doc.overrides
     );
+    const { explicitDefaultPaths, removedPathCount: removedMarkers } =
+      stripDeprecatedExplicitDefaultPaths(domain, doc.explicitDefaultPaths);
+    const removed = removedOverrides + removedMarkers;
     if (removed === 0) continue;
 
     // 写回前先按新 Schema 终审，确保清理结果可被运行时解析。
@@ -190,7 +245,14 @@ export const cleanupInstanceConfigDeprecatedFields = async ({
 
     const updated = await MongoSystemInstanceConfig.collection.findOneAndUpdate(
       { _id: doc._id, revision: doc.revision },
-      { $set: { overrides, updatedAt: new Date() }, $inc: { revision: 1 } },
+      {
+        $set: {
+          overrides,
+          ...(explicitDefaultPaths !== undefined ? { explicitDefaultPaths } : {}),
+          updatedAt: new Date()
+        },
+        $inc: { revision: 1 }
+      },
       { returnDocument: 'after' }
     );
 
@@ -205,7 +267,11 @@ export const cleanupInstanceConfigDeprecatedFields = async ({
       const retry = latest
         ? stripDeprecatedOverrides(domain, latest.overrides)
         : { overrides: undefined, removedFieldCount: 0 };
-      if (retry.removedFieldCount > 0 && retry.overrides) {
+      const retryMarkers = latest
+        ? stripDeprecatedExplicitDefaultPaths(domain, latest.explicitDefaultPaths)
+        : { explicitDefaultPaths: undefined, removedPathCount: 0 };
+      const retryRemoved = retry.removedFieldCount + retryMarkers.removedPathCount;
+      if (retryRemoved > 0 && retry.overrides) {
         // 与首次路径一致：写回前按新 Schema 终审，避免清理结果运行时不可解析
         try {
           resolveDomainEffectiveConfig({ domain, overrides: retry.overrides });
@@ -218,7 +284,16 @@ export const cleanupInstanceConfigDeprecatedFields = async ({
         }
         const retried = await MongoSystemInstanceConfig.collection.findOneAndUpdate(
           { _id: doc._id, revision: latest!.revision },
-          { $set: { overrides: retry.overrides, updatedAt: new Date() }, $inc: { revision: 1 } },
+          {
+            $set: {
+              overrides: retry.overrides,
+              ...(retryMarkers.explicitDefaultPaths !== undefined
+                ? { explicitDefaultPaths: retryMarkers.explicitDefaultPaths }
+                : {}),
+              updatedAt: new Date()
+            },
+            $inc: { revision: 1 }
+          },
           { returnDocument: 'after' }
         );
         if (!retried) {
@@ -228,7 +303,7 @@ export const cleanupInstanceConfigDeprecatedFields = async ({
           );
         }
         updatedDomains.push(domain);
-        removedFieldCount += retry.removedFieldCount;
+        removedFieldCount += retryRemoved;
       }
       continue;
     }
@@ -259,7 +334,10 @@ export const verifyInstanceConfigDeprecatedFields = async () => {
     const domain = ((doc as any).domain ?? doc._id) as SystemInstanceConfigDomainKey;
     if (!SYSTEM_INSTANCE_CONFIG_DOMAINS.includes(domain)) continue;
 
-    if (hasDeprecatedOverrides(domain, doc.overrides)) {
+    if (
+      hasDeprecatedOverrides(domain, doc.overrides) ||
+      hasDeprecatedExplicitDefaultPaths(domain, doc.explicitDefaultPaths)
+    ) {
       remainingDocuments.push(domain);
       continue;
     }

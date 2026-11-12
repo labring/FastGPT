@@ -1201,7 +1201,7 @@ export const applyInstanceConfigMigration = async ({
                       ...missingExplicitPaths,
                       ...unresolvable
                     ])
-                  ).slice(0, 200),
+                  ),
                   updatedAt: new Date()
                 },
                 $inc: { revision: 1 }
@@ -1235,7 +1235,7 @@ export const applyInstanceConfigMigration = async ({
       const skippedPaths = Array.from(new Set([...skippedConflictPaths, ...autoSkipped]));
       const nextExplicitDefaultPaths = Array.from(
         new Set([...existingExplicitDefaultPaths, ...missingExplicitPaths, ...skippedPaths])
-      ).slice(0, 200);
+      );
 
       const updated = await MongoSystemInstanceConfig.updateOne(
         { domain, revision: doc.revision },

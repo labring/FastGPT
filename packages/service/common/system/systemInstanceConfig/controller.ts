@@ -177,9 +177,6 @@ export type UpdateDomainConfigParams<T extends SystemInstanceConfigDomainKey> = 
   actor: SystemInstanceConfigUpdatedByType;
 };
 
-/** 「显式默认值」路径数量上限：防御异常输入把文档撑大。 */
-const MAX_EXPLICIT_DEFAULT_PATHS = 200;
-
 /**
  * 计算保存后要持久化的「显式默认值」路径集合。
  *
@@ -188,7 +185,8 @@ const MAX_EXPLICIT_DEFAULT_PATHS = 200;
  * 因此必须把被剪掉的叶子路径单独记下来，迁移回填才能跳过使用方已经表达过意图的字段。
  *
  * - 提交了非默认值的路径：已回到 overrides，从集合中移除；
- * - 本次未提交的路径：保留原有意图，避免部分提交误删别人的记录。
+ * - 本次未提交的路径：保留原有意图，避免部分提交误删别人的记录；
+ * - 新增路径已受严格域 Schema 约束（单域叶子数固定有限），不做头部截断，防止历史标记占满后丢弃新意图。
  */
 const resolveExplicitDefaultPaths = ({
   previousPaths,
@@ -208,7 +206,7 @@ const resolveExplicitDefaultPaths = ({
     next.add(path);
   }
 
-  return [...next].slice(0, MAX_EXPLICIT_DEFAULT_PATHS);
+  return [...next];
 };
 
 const readExplicitDefaultPaths = (

@@ -753,5 +753,29 @@ describe('systemInstanceConfig controller', () => {
         expect(latestPlan?.value?.subPlans?.extraDatasetSize).toEqual({ price: 7 });
       });
     });
+
+    it('preserves newly saved explicit default markers even when existing explicitDefaultPaths has 200+ entries', async () => {
+      const legacyMarkers = Array.from({ length: 205 }, (_, i) => `legacy.marker.${i}`);
+      await MongoSystemInstanceConfig.create({
+        domain: 'site',
+        schemaVersion: 1,
+        revision: 1,
+        overrides: { description: 'custom' },
+        explicitDefaultPaths: legacyMarkers,
+        updatedBy: { actor: 'system' }
+      });
+
+      await updateDomainConfig({
+        domain: 'site',
+        expectedRevision: 1,
+        submittedOverrides: { description: '' },
+        actor: { actor: 'admin' }
+      });
+
+      const siteDoc = await MongoSystemInstanceConfig.findOne({ domain: 'site' }).lean();
+      expect(siteDoc?.overrides).toEqual({});
+      expect(siteDoc?.explicitDefaultPaths).toHaveLength(206);
+      expect(siteDoc?.explicitDefaultPaths).toContain('description');
+    });
   });
 });

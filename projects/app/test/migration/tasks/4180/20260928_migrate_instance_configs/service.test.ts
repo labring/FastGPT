@@ -480,4 +480,45 @@ describe('applyInstanceConfigMigration (field-level backfill)', () => {
     expect(afterSecond?.revision).toBe(afterFirst?.revision);
     expect(afterSecond?.overrides).toEqual(afterFirst?.overrides);
   });
+
+  it('does not truncate newly added explicit default or skipped conflict markers past 200 existing entries', async () => {
+    const legacyMarkers = Array.from({ length: 205 }, (_, i) => `legacy.marker.${i}`);
+    await MongoSystemInstanceConfig.create({
+      domain: 'performance',
+      schemaVersion: 1,
+      revision: 1,
+      overrides: { workflow: { parallelMaxConcurrency: 100 } },
+      explicitDefaultPaths: legacyMarkers
+    });
+
+    await applyInstanceConfigMigration({
+      overrides: {
+        performance: {
+          workflow: { maxLoopTimes: 20 }
+        }
+      },
+      explicitDefaultPaths: {
+        performance: ['dataset.parseMaxProcess']
+      },
+      logger
+    });
+
+    const doc = await MongoSystemInstanceConfig.findOne({ domain: 'performance' }).lean();
+    expect(doc?.explicitDefaultPaths).toContain('workflow.maxLoopTimes');
+    expect(doc?.explicitDefaultPaths).toContain('dataset.parseMaxProcess');
+    expect(doc?.explicitDefaultPaths).toHaveLength(207);
+
+    const inspect = await inspectInstanceConfigMigration({
+      overrides: {
+        performance: {
+          workflow: { maxLoopTimes: 20 }
+        }
+      },
+      explicitDefaultPaths: {
+        performance: ['dataset.parseMaxProcess']
+      }
+    });
+    expect(inspect.pendingBackfillDomainCount).toBe(0);
+    expect(inspect.pendingBackfillPaths).toEqual([]);
+  });
 });
