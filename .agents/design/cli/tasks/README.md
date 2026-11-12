@@ -37,7 +37,7 @@ Phase 1（P0 收尾 & P1 高频域，全员可并行）                      Pha
 |---|---|---|---|---|---|---|---|---|
 | **T00** | `PKG-00` | `PRD-00.2` 公共运行时扩展 (`reczz28YDq8uUbAc`) | `FR-004`~`FR-006` | 运行时底座 | **P0（阻塞）** | **开发中** | Phase 0 | [T00-shared-runtime-extensions.md](./T00-shared-runtime-extensions.md) |
 | **T01** | `PKG-01` | `PRD-01.1` (`reczz28YDq8uU4ot`)、`PRD-01.2` (`reczz28Yb9VZy6Gh`) | `FR-101`~`FR-104` | `api` 通用逃生口 | **P0** | 待前置 T00 | T00 | [T01-api-escape-hatch.md](./T01-api-escape-hatch.md) |
-| **T02** | `PKG-02` | `PRD-02.1` (`reczz28YDq8uS2GJ`)、`PRD-02.2` (`reczz28Yb9VZxWTm`)、`PRD-02.3` (`reczz28Yb9VZyQJb`) | `FR-201`~`FR-207` | `dataset` 知识库域 | **P1** | 待前置 T00 | T00 | [T02-domain-dataset.md](./T02-domain-dataset.md) |
+| **T02** | `PKG-02` | `PRD-02.1` (`reczz28YDq8uS2GJ`)、`PRD-02.2` (`reczz28Yb9VZxWTm`)、`PRD-02.3` (`reczz28Yb9VZyQJb`) | `FR-201`~`FR-207` | `dataset` 知识库域 | **P1** | **开发中 (PRD-02.1)** | T00 | [T02-domain-dataset.md](./T02-domain-dataset.md) |
 | **T03** | `PKG-04` | `PRD-04.1` (`reczz28YDq8uVFMC`)、`PRD-04.2` (`reczz28Yb9VZvjGm`) | `FR-401`~`FR-404` | `chat` 对话与历史域 | **P1** | 待前置 T00 | T00 | [T03-domain-chat.md](./T03-domain-chat.md) |
 | **T04** | `PKG-03` | `PRD-03.1` (`reczz28YDq8uSoiE`)、`PRD-03.2` (`reczz28Yb9VZvO3d`)、`PRD-03.3` (`reczz28Yb9VZvwlh`) | `FR-301`~`FR-306` | `app` 应用与发布域 | **P1** | 待前置 T00 | T00 | [T04-domain-app.md](./T04-domain-app.md) |
 | **T05** | `PKG-04` | `PRD-04.3` (`reczz28YDq8uVwHs`) | `FR-405`~`FR-406` | `model` 模型域 | **P1** | 待前置 T00 | T00 | [T05-domain-model.md](./T05-domain-model.md) |

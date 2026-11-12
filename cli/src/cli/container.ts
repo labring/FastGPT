@@ -19,6 +19,7 @@ import {
   createServerConnectivityCheck
 } from '../domain/doctor/checks/doctor-check';
 import { createDoctorService, type DoctorService } from '../domain/doctor/doctor-service';
+import { createDatasetService, type DatasetService } from '../domain/dataset/dataset-service';
 import { createProfileService, type ProfileService } from '../domain/profile/profile-service';
 import {
   createFileConfigRepository,
@@ -58,6 +59,7 @@ export type CliContainer = {
   readonly authService: AuthService;
   readonly profileService: ProfileService;
   readonly doctorService: DoctorService;
+  readonly datasetService: DatasetService;
   readonly stdout: (value: string) => void;
   readonly stderr: (value: string) => void;
 };
@@ -157,6 +159,8 @@ export function createCliContainer(deps: CliRuntimeDeps): CliContainer {
     probeHandlers
   });
 
+  const datasetService = createDatasetService();
+
   return {
     env: deps.env,
     configRepo,
@@ -166,6 +170,7 @@ export function createCliContainer(deps: CliRuntimeDeps): CliContainer {
     authService,
     profileService,
     doctorService,
+    datasetService,
     stdout: deps.stdout,
     stderr: deps.stderr
   };

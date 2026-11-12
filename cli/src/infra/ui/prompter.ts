@@ -15,6 +15,7 @@ export type Prompter = {
     placeholder?: string;
   }) => Promise<string>;
   secret: (params: { message: string }) => Promise<string>;
+  confirm: (params: { message: string; initialValue?: boolean }) => Promise<boolean>;
   select: <T extends string>(params: {
     message: string;
     options: readonly SelectOption<T>[];
@@ -65,6 +66,18 @@ export function createClackPrompter(): Prompter {
         output: process.stderr
       });
       return unwrapPromptSecret(value);
+    },
+    confirm: async ({ message, initialValue = false }) => {
+      const value = await clack.confirm({
+        message,
+        initialValue,
+        output: process.stderr
+      });
+      if (clack.isCancel(value) || typeof value === 'symbol') {
+        clack.cancel('Operation cancelled.', { output: process.stderr });
+        throw new CliArgumentError('Operation cancelled by user.');
+      }
+      return Boolean(value);
     },
     select: async <T extends string>({
       message,
@@ -124,6 +137,7 @@ export function createNonTtyPrompter(reason?: string): Prompter {
     isInteractive: false,
     text: rejectPrompt,
     secret: rejectPrompt,
+    confirm: async () => false,
     select: rejectPrompt,
     note: () => {},
     spinner: () => ({

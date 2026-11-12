@@ -11,6 +11,7 @@ function createMockContainer(isInteractive = false): CliContainer {
     isInteractive,
     text: async () => '',
     secret: async () => '',
+    confirm: async () => false,
     select: async <T extends string>() => '' as T,
     note: () => {},
     spinner: () => ({ start: () => {}, stop: () => {} })
@@ -39,6 +40,7 @@ function createMockContainer(isInteractive = false): CliContainer {
     authService: {} as any,
     profileService: {} as any,
     doctorService: {} as any,
+    datasetService: {} as any,
     stdout: () => {},
     stderr: () => {}
   };

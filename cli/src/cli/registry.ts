@@ -2,6 +2,7 @@ import type { CliAuthModeRequirement, CliRiskLevel, CommandMeta } from '../share
 import { createAuthCommandSpecs } from './commands/auth';
 import { createCommandsManifestCommandSpec } from './commands/commands';
 import { createConfigCommandSpecs } from './commands/config';
+import { createDatasetCommandSpecs } from './commands/dataset';
 import { createDoctorCommandSpec } from './commands/doctor';
 import { createLoginCommandSpec } from './commands/login';
 import { createLogoutCommandSpec } from './commands/logout';
@@ -26,6 +27,7 @@ export function getCliCommandSpecs(): CliCommandSpec[] {
     createWhoamiCommandSpec(),
     ...createAuthCommandSpecs(),
     ...createConfigCommandSpecs(),
+    ...createDatasetCommandSpecs(),
     createDoctorCommandSpec(),
     createCommandsManifestCommandSpec()
   ];

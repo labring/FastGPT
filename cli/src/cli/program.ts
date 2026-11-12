@@ -5,7 +5,8 @@ import { executeCommandWithPipeline, type CliCommandSpec } from './pipeline';
 
 const GROUP_DESCRIPTIONS: Record<string, string> = {
   auth: 'Manage profiles, auth status, and active team sessions',
-  config: 'Inspect and update CLI configuration values'
+  config: 'Inspect and update CLI configuration values',
+  dataset: 'Manage datasets and search knowledge chunks'
 };
 
 function attachCommandSpec({

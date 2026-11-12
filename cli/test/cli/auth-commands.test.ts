@@ -78,6 +78,7 @@ function createTestPrompter({
     isInteractive: true,
     text: async () => texts.shift() ?? '',
     secret: async () => secrets.shift() ?? '',
+    confirm: async () => true,
     select: async <T extends string>({
       message,
       options

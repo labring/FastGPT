@@ -6,7 +6,7 @@
   - `PRD-02.2`（`T02b`）集合导入与本地文件上传（Record: `reczz28Yb9VZxWTm` · `FR-203`~`FR-204`）
   - `PRD-02.3`（`T02c`）分块数据、训练监控与标签同义词（Record: `reczz28Yb9VZyQJb` · `FR-205`~`FR-207`）
 - **阶段 / 优先级**：Phase 1 · P1（高频主力域）
-- **状态**：待前置 T00（[飞书任务看板](https://fael3z0zfze.feishu.cn/base/L8MsbBBOiaVIzdsfwa1cF78UnGc)）
+- **状态**：**PRD-02.1 开发中**（[飞书任务看板](https://fael3z0zfze.feishu.cn/base/L8MsbBBOiaVIzdsfwa1cF78UnGc)）
 - **前置依赖**：T00（需要 multipart 上传、文件下载、确认门禁、`--dry-run`、分页与文本列表渲染）
 - **开发红线**：必读 [engineering-standards.md](../engineering-standards.md) · 总览 [design.md](../design.md) · 索引 [index.md](../index.md)
 - **可并行性**：T00 合入后与 T01、T03 ~ T10 完全并行
