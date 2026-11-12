@@ -68,28 +68,29 @@ EOF
 
 <Tabs items={['Python SDK', 'Node.js SDK']}>
   <Tab value="Python SDK">
+
 ```python
 import os
 from openai import OpenAI
 
 client = OpenAI(
-api_key=os.environ["FASTGPT_API_KEY"],
-base_url=f"{os.environ['FASTGPT_ORIGIN'].rstrip('/')}/api/v2"
+    api_key=os.environ["FASTGPT_API_KEY"],
+    base_url=f"{os.environ['FASTGPT_ORIGIN'].rstrip('/')}/api/v2"
 )
 
 response = client.chat.completions.create(
-model="fastgpt", # The published application selects the model.
-messages=[{"role": "user", "content": "Introduce yourself"}],
-stream=False,
-extra_body={"appId": os.environ["FASTGPT_APP_ID"]}
+    model="fastgpt",  # The published application selects the model.
+    messages=[{"role": "user", "content": "Introduce yourself"}],
+    stream=False,
+    extra_body={"appId": os.environ["FASTGPT_APP_ID"]}
 )
 
 print(response.choices[0].message.content)
-
-````
+```
 
   </Tab>
   <Tab value="Node.js SDK">
+
 ```typescript
 import OpenAI from 'openai';
 
@@ -112,7 +113,7 @@ async function main() {
 }
 
 main().catch(console.error);
-````
+```
 
   </Tab>
 </Tabs>
