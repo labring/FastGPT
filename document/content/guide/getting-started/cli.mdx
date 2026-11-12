@@ -5,7 +5,6 @@ description: 通过官方命令行工具（fastgpt）与 AI Agent 快速在终�
 ---
 
 import { Alert } from '@/components/docs/Alert';
-import { CurrentOriginCodeBlockUpdater } from '@/components/docs/CurrentOriginCodeBlockUpdater';
 
 FastGPT CLI（`fastgpt`）是 FastGPT 官方推出的终端命令行工具，旨在为开发者、DevOps 工程师以及 AI 编程助手（如 **Codex**、**Claude Code**、**Cursor**、**Windsurf** 等）提供稳定、安全、可编程的终端管理能力。
 
@@ -20,18 +19,8 @@ FastGPT CLI（`fastgpt`）是 FastGPT 官方推出的终端命令行工具，旨
 <Alert context="info">在 Codex / Claude Code 对话框中直接发送以下提示词：</Alert>
 
 ```text
-请帮我安装并配置 FastGPT CLI。请先读取官方 Skill 规范 https://doc.fastgpt.cn/skill.md ，严格按照其中的步骤完成 CLI 安装、引导登录、健康度体检，并最终输出当前环境的 CLI 能力列表。
+帮我根据 https://doc.fastgpt.cn/skill.md 安装 FastGPT CLI 并完成引导。
 ```
-
-<CurrentOriginCodeBlockUpdater />
-
-> 你也可以通过终端命令将该 Skill 规范直接下载到本地技能目录：
->
-> ```bash
-> curl -fsSL https://doc.fastgpt.cn/skill.md -o skill.md
-> ```
->
-> <CurrentOriginCodeBlockUpdater />
 
 ---
 
