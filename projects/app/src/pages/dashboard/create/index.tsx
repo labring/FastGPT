@@ -35,8 +35,10 @@ import {
 import { createAppTypeMap } from '@/pageComponents/app/constants';
 import MyImage from '@fastgpt/web/components/common/Image/MyImage';
 import LeftRadio from '@fastgpt/web/components/common/Radio/LeftRadio';
+import RadioGroup from '@fastgpt/web/components/common/Radio/RadioGroup';
 import HeaderAuthForm from '@/components/common/secret/HeaderAuthForm';
 import type { HeaderSecretConfigType } from '@/components/common/secret/HeaderAuthConfig';
+import type { McpOAuthClientMode } from '@fastgpt/global/core/app/tool/mcpTool/oauth';
 import { postCreateHttpTools } from '@/web/core/app/api/httpTools';
 import { getMCPTools, postCreateMCPTools } from '@/web/core/app/api/mcpTools';
 import { headerValue2StoreHeader } from '@/components/common/secret/HeaderAuthConfig';
@@ -58,7 +60,10 @@ type FormType = {
   createType?: HttpToolType;
   // mcp
   mcpUrl?: string;
+  mcpAuthMode?: 'headers' | 'oauth';
   mcpHeaderSecret?: HeaderSecretConfigType;
+  mcpClientMode?: McpOAuthClientMode;
+  mcpScope?: string;
   mcpToolList?: McpToolConfigType[];
 };
 
@@ -97,14 +102,20 @@ const CreateAppsPage = () => {
       name: '',
       createType: HttpToolTypeEnum.batch,
       mcpUrl: '',
+      mcpAuthMode: 'headers',
       mcpHeaderSecret: {},
+      mcpClientMode: 'auto',
+      mcpScope: '',
       mcpToolList: []
     }
   });
   const avatar = watch('avatar');
   const createType = watch('createType');
   const mcpUrl = watch('mcpUrl');
+  const mcpAuthMode = watch('mcpAuthMode') || 'headers';
   const mcpHeaderSecret = watch('mcpHeaderSecret');
+  const mcpClientMode = watch('mcpClientMode') || 'auto';
+  const mcpScope = watch('mcpScope') || '';
   const mcpToolList = watch('mcpToolList');
 
   const { Component: AvatarUploader, handleFileSelectorOpen: handleAvatarSelectorOpen } =
@@ -126,7 +137,17 @@ const CreateAppsPage = () => {
 
   const { runAsync: onClickCreate, loading: isCreating } = useRequest(
     async (
-      { avatar, name, createType, mcpUrl, mcpHeaderSecret, mcpToolList }: FormType,
+      {
+        avatar,
+        name,
+        createType,
+        mcpUrl,
+        mcpAuthMode,
+        mcpHeaderSecret,
+        mcpClientMode,
+        mcpScope,
+        mcpToolList
+      }: FormType,
       templateId?: string
     ): Promise<{ appId: string; appType: CreateAppType }> => {
       if (templateId) {
@@ -142,11 +163,23 @@ const CreateAppsPage = () => {
 
       const appId = await (async () => {
         if (appType === AppTypeEnum.mcpToolSet) {
+          if ((mcpAuthMode || 'headers') === 'oauth') {
+            // OAuth 模式不使用 header 密钥；允许未解析工具（toolList=[]）直接创建，
+            // 创建后到工具集详情页继续授权。
+            return postCreateMCPTools({
+              ...baseParams,
+              url: mcpUrl || '',
+              authMode: 'oauth',
+              clientMode: mcpClientMode || 'auto',
+              ...(mcpScope?.trim() ? { scope: mcpScope.trim() } : {}),
+              toolList: mcpToolList || []
+            });
+          }
+
           const headerSecret = headerValue2StoreHeader(mcpHeaderSecret || {});
           return postCreateMCPTools({
             ...baseParams,
             url: mcpUrl || '',
-            // 创建弹窗目前只支持 header 鉴权；OAuth 配置在工具集编辑页完成。
             authMode: 'headers',
             headerSecret,
             toolList: mcpToolList || []
@@ -413,14 +446,71 @@ const CreateAppsPage = () => {
           {selectedAppType === AppTypeEnum.mcpToolSet && (
             <>
               <Box mb={5}>
-                <HeaderAuthForm
-                  headerSecretValue={mcpHeaderSecret || {}}
-                  onChange={(data) => {
-                    setValue('mcpHeaderSecret', data);
-                  }}
-                  bg={'white'}
-                />
+                <Flex alignItems={'center'} mb={2.5}>
+                  <Box color={'myGray.900'} fontWeight={'medium'}>
+                    {t('common:mcpOAuth.auth_mode')}
+                  </Box>
+                  <RadioGroup
+                    ml={5}
+                    list={[
+                      { title: 'mcpOAuth.auth_mode_headers', value: 'headers' },
+                      { title: 'mcpOAuth.auth_mode_oauth', value: 'oauth' }
+                    ]}
+                    value={mcpAuthMode}
+                    onChange={(value) => setValue('mcpAuthMode', value as 'headers' | 'oauth')}
+                  />
+                </Flex>
               </Box>
+
+              {mcpAuthMode === 'oauth' ? (
+                <Box mb={5} px={4} py={4} bg={'myGray.50'} borderRadius={'md'}>
+                  <Box fontSize={'xs'} color={'myGray.500'} mb={3}>
+                    {t('common:mcpOAuth.auth_mode_oauth_hint')}
+                  </Box>
+                  <Flex alignItems={'center'} wrap={'wrap'} gap={2}>
+                    <Box fontSize={'sm'} color={'myGray.700'} fontWeight={'medium'}>
+                      {t('common:mcpOAuth.client_mode')}
+                    </Box>
+                    <RadioGroup
+                      list={[
+                        { title: 'mcpOAuth.client_mode_auto', value: 'auto' },
+                        { title: 'mcpOAuth.client_mode_cimd', value: 'cimd' },
+                        { title: 'mcpOAuth.client_mode_dcr', value: 'dcr' },
+                        { title: 'mcpOAuth.client_mode_manual', value: 'manual' }
+                      ]}
+                      value={mcpClientMode}
+                      onChange={(value) =>
+                        setValue('mcpClientMode', value as McpOAuthClientMode)
+                      }
+                    />
+                  </Flex>
+                  <Box mt={4}>
+                    <Box fontSize={'sm'} color={'myGray.700'} fontWeight={'medium'} mb={2}>
+                      {t('common:mcpOAuth.scope')}
+                    </Box>
+                    <Input
+                      h={8}
+                      fontSize={'sm'}
+                      bg={'white'}
+                      placeholder={t('common:mcpOAuth.scope_placeholder')}
+                      {...register('mcpScope')}
+                    />
+                    <Box mt={2} fontSize={'xs'} color={'myGray.500'}>
+                      {t('common:mcpOAuth.scope_default_hint')}
+                    </Box>
+                  </Box>
+                </Box>
+              ) : (
+                <Box mb={5}>
+                  <HeaderAuthForm
+                    headerSecretValue={mcpHeaderSecret || {}}
+                    onChange={(data) => {
+                      setValue('mcpHeaderSecret', data);
+                    }}
+                    bg={'white'}
+                  />
+                </Box>
+              )}
 
               <Box mb={5}>
                 <Box color={'myGray.900'} fontWeight={'medium'} mb={2.5}>
@@ -441,7 +531,10 @@ const CreateAppsPage = () => {
                     h={8}
                     isLoading={isGettingMCPTools}
                     onClick={() => {
-                      const headerSecret = headerValue2StoreHeader(mcpHeaderSecret || {});
+                      const headerSecret =
+                        mcpAuthMode === 'oauth'
+                          ? {}
+                          : headerValue2StoreHeader(mcpHeaderSecret || {});
                       runGetMCPTools({
                         url: mcpUrl || '',
                         headerSecret
@@ -526,7 +619,9 @@ const CreateAppsPage = () => {
               <Flex justifyContent={'end'}>
                 <Button
                   isLoading={isCreating}
-                  isDisabled={!mcpToolList || mcpToolList.length === 0}
+                  isDisabled={
+                    mcpAuthMode !== 'oauth' && (!mcpToolList || mcpToolList.length === 0)
+                  }
                   onClick={handleSubmit((data) => onClickCreate(data))}
                   w={20}
                 >
