@@ -31,6 +31,10 @@ import {
   shouldInheritResourcePermission,
   toInheritedPermissionValue
 } from '../resourcePermissionPolicy';
+import {
+  isDisableSuperAdmin,
+  isPermissionSyncDataset
+} from '@fastgpt/global/core/dataset/apiDataset/utils';
 import type { AuthModeType } from '../type';
 
 export type CollectionMoveAuthItem = { collectionId: string; targetParentId: string | null };
@@ -94,8 +98,15 @@ export const authDatasetCollectionMoves = async ({
     getTmbInfoByTmbId({ tmbId })
   ]);
   if (!dataset) throw DatasetErrEnum.unExist;
-  if (!isRoot && String(tmbInfo.teamId) !== teamId) throw DatasetErrEnum.unAuthDataset;
-  const isTeamOwner = String(tmbInfo.teamId) === teamId && tmbInfo.permission.isOwner;
+  // 外部权限同步可要求连超管也遵守文件 ACL；root 与团队 owner 的旁路同时关闭。
+  const disableSuperAdmin = isDisableSuperAdmin(dataset.apiDatasetServer);
+  const effectiveIsRoot = isRoot && !disableSuperAdmin;
+  const permissionSync = isPermissionSyncDataset(dataset.apiDatasetServer);
+  if (!effectiveIsRoot && String(tmbInfo.teamId) !== teamId) {
+    throw DatasetErrEnum.unAuthDataset;
+  }
+  const isTeamOwner =
+    !disableSuperAdmin && String(tmbInfo.teamId) === teamId && tmbInfo.permission.isOwner;
 
   // 将所有检查归并成资源所需权限；显式移动即使父级相同，也保持普通移动的 manage 契约。
   const requirements = new Map<string, PermissionValueType>();
@@ -128,7 +139,7 @@ export const authDatasetCollectionMoves = async ({
 
   // 个人 ACL 为 0 也必须保留；列表的 readable 查询不能用于变更鉴权。
   const [groupIds, orgIds] =
-    isRoot || isTeamOwner
+    effectiveIsRoot || isTeamOwner
       ? [[], []]
       : await Promise.all([
           getGroupsByTmbId({ teamId, tmbId }).then((groups) =>
@@ -144,7 +155,7 @@ export const authDatasetCollectionMoves = async ({
       ? String(dataset.parentId)
       : undefined;
   const datasetPermissions =
-    isRoot || isTeamOwner
+    effectiveIsRoot || isTeamOwner
       ? new Map<string, number>()
       : await getTmbPermissionMap({
           ...context,
@@ -158,7 +169,7 @@ export const authDatasetCollectionMoves = async ({
     dataset,
     teamId,
     tmbId,
-    isRoot,
+    isRoot: effectiveIsRoot,
     isTeamOwner,
     // 父级 owner 在子级只能是 manage：不能用父目录的原始 owner role 通过 owner 级校验。
     role:
@@ -170,15 +181,20 @@ export const authDatasetCollectionMoves = async ({
       ) ?? 0,
     per: creationParentIds.includes(null) ? WritePermissionVal : ReadPermissionVal
   });
-  if (requiresRootMove && !isRoot && !tmbInfo.permission.checkPer(TeamDatasetCreatePermissionVal)) {
+  if (
+    requiresRootMove &&
+    !effectiveIsRoot &&
+    !tmbInfo.permission.checkPer(TeamDatasetCreatePermissionVal)
+  ) {
     throw TeamErrEnum.unAuthTeam;
   }
 
+  // 托管模式下创建者身份不是授权来源，必须把创建者也送进 ACL 查询。
   const aclIds = [...requirements.keys()].filter(
-    (id) => String(collections.get(id)!.tmbId) !== tmbId
+    (id) => permissionSync || String(collections.get(id)!.tmbId) !== tmbId
   );
   const roles =
-    dataset.collectionPermissionEnabled === true && !isRoot && !isTeamOwner
+    dataset.collectionPermissionEnabled === true && !effectiveIsRoot && !isTeamOwner
       ? await getTmbPermissionMap({
           ...context,
           resourceType: PerResourceTypeEnum.collection,
@@ -186,7 +202,8 @@ export const authDatasetCollectionMoves = async ({
         })
       : new Map<string, number>();
   for (const [id, per] of requirements) {
-    const isOwner = isRoot || isTeamOwner || String(collections.get(id)!.tmbId) === tmbId;
+    const isOwner =
+      effectiveIsRoot || isTeamOwner || (!permissionSync && String(collections.get(id)!.tmbId) === tmbId);
     const role =
       dataset.collectionPermissionEnabled === true
         ? (roles.get(id) ?? 0)

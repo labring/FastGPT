@@ -1411,5 +1411,6 @@
   "core.workflow.check.node_missing": "節點 {{nodeId}} 已不存在，請刪除殘留連線",
   "core.workflow.check.option_keys_invalid": "選項或分類的鍵名缺少或重複，請檢查設定",
   "core.workflow.check.form_configuration_invalid": "表單欄位的鍵名或對應輸出設定不完整：{{fieldKeys}}",
-  "Version": "版本"
+  "Version": "版本",
+  "core.dataset.error.permissionSyncManaged": "該知識庫的檔案權限由外部 API 檔案庫同步維護，無法在此修改"
 }

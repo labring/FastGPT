@@ -11,7 +11,7 @@ import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
-import { getFakeUsers } from '@test/datas/users';
+import { getFakeUsers, getUser } from '@test/datas/users';
 import { StreamCall, Call } from '@test/utils/request';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -25,13 +25,15 @@ const createDataset = async ({
   owner,
   type = DatasetTypeEnum.dataset,
   parentId,
-  collectionPermissionEnabled
+  collectionPermissionEnabled,
+  apiDatasetServer
 }: {
   name: string;
   owner: TestUser;
   type?: DatasetTypeEnum;
   parentId?: string;
   collectionPermissionEnabled?: boolean;
+  apiDatasetServer?: Record<string, unknown>;
 }) =>
   MongoDataset.create({
     name,
@@ -40,6 +42,7 @@ const createDataset = async ({
     tmbId: owner.tmbId,
     parentId,
     collectionPermissionEnabled,
+    apiDatasetServer,
     vectorModel: 'test',
     agentModel: 'test'
   });
@@ -203,6 +206,62 @@ describe('export dataset respects collection permission', () => {
 
     expect(res.code).toBe(200);
     expect(res.raw).toContain('owner-file-q');
+  });
+
+  it('filters collections for the team owner when disableSuperAdmin is on', async () => {
+    const users = await getFakeUsers(1);
+    const teamOwner = users.owner;
+    const member = users.members[0];
+    const dataset = await createDataset({
+      name: 'disable-super-admin-dataset',
+      owner: member,
+      collectionPermissionEnabled: true,
+      apiDatasetServer: {
+        apiServer: { baseUrl: 'https://example.com' },
+        disableSuperAdmin: true
+      }
+    });
+    // 导出要求 dataset write，disableSuperAdmin 又关掉了团队 owner 旁路，必须显式授予。
+    await grantDataset({
+      datasetId: String(dataset._id),
+      user: teamOwner,
+      permission: WriteRoleVal
+    });
+    // 文件作者是 member：owner 行只属于 member，团队 owner 没有 collection ACL
+    await createFileCollection({
+      name: 'member-file',
+      owner: member,
+      datasetId: String(dataset._id)
+    });
+
+    const res = await StreamCall(handler, {
+      auth: teamOwner,
+      query: { datasetId: String(dataset._id) }
+    });
+
+    expect(res.code).toBe(200);
+    expect(res.raw).not.toContain('member-file-q');
+  });
+
+  it('exports all collections for a cross-team root user', async () => {
+    const users = await getFakeUsers(1);
+    const owner = users.owner;
+    const foreignRoot = await getUser('cross-team-root');
+    const dataset = await createDataset({
+      name: 'root-dataset',
+      owner,
+      collectionPermissionEnabled: true
+    });
+    await createFileCollection({ name: 'root-file', owner, datasetId: String(dataset._id) });
+
+    // root 可以跨团队：导出范围必须按 dataset 归属查，且 root 不需要文件 ACL。
+    const res = await StreamCall(handler, {
+      auth: { ...foreignRoot, isRoot: true },
+      query: { datasetId: String(dataset._id) }
+    });
+
+    expect(res.code).toBe(200);
+    expect(res.raw).toContain('root-file-q');
   });
 
   it('rejects exporting a folder', async () => {

@@ -119,12 +119,40 @@ export const classifyApiDatasetError = (
   return toApiDatasetError({ code: 'UNKNOWN_ERROR', message: msg || '未知错误', status });
 };
 
+/** 外部文件权限同步是否开启。字段缺失（旧数据）视为关闭。 */
+export const isPermissionSyncDataset = (apiDatasetServer?: ApiDatasetServerType) =>
+  apiDatasetServer?.permissionSync === true;
+
+/**
+ * 是否关闭超管（root / 团队 owner）在**知识库管理侧**的权限旁路。
+ *
+ * 作用范围只有本地 Dataset / Collection 鉴权（authDatasetByTmbId、authDatasetCollection、
+ * listV2、exportAll 等）。检索 / RAG 召回**不读取**该开关：工作流检索、Agent 知识库仍按
+ * 团队 owner 短路。这是产品取舍——该开关用来让管理员在管理界面上也遵守外部文件权限，
+ * 不是用来限制检索范围。
+ */
+export const isDisableSuperAdmin = (apiDatasetServer?: ApiDatasetServerType) =>
+  apiDatasetServer?.disableSuperAdmin === true;
+
 export const filterApiDatasetServerPublicData = (apiDatasetServer?: ApiDatasetServerType) => {
   if (!apiDatasetServer) return undefined;
 
-  const { apiServer, yuqueServer, feishuServer, dingtalkServer } = apiDatasetServer;
+  const {
+    apiServer,
+    yuqueServer,
+    feishuServer,
+    dingtalkServer,
+    permissionSync,
+    disableSuperAdmin,
+    syncAllFiles
+  } = apiDatasetServer;
 
   return {
+    // 白名单重建：新增开关必须同时加在这里，否则详情接口会静默丢掉字段，
+    // 前端开关永远显示 false，且下次保存时把真实配置覆盖掉。
+    permissionSync: permissionSync === true,
+    disableSuperAdmin: disableSuperAdmin === true,
+    syncAllFiles: syncAllFiles === true,
     apiServer: apiServer
       ? {
           baseUrl: apiServer.baseUrl,

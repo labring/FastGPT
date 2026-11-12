@@ -239,6 +239,46 @@ describe('authDatasetCollectionMoves', () => {
       })
     ).resolves.toBeDefined();
   });
+  it('托管模式下创建者身份不能旁路 collection ACL', async () => {
+    const { auth, move, datasetId, actor, file, source, target, grant } = await fixture();
+    await MongoDataset.updateOne(
+      { _id: datasetId },
+      {
+        apiDatasetServer: {
+          apiServer: { baseUrl: 'https://example.com' },
+          permissionSync: true
+        }
+      }
+    );
+    // 全部由当前用户创建；源目录 manage、文件 read、目标目录只有 read
+    await MongoDatasetCollection.updateMany({ datasetId }, { tmbId: actor.tmbId });
+    await grant(String(source._id), ManageRoleVal);
+    await grant(String(file._id), ReadRoleVal);
+    await grant(String(target._id), ReadRoleVal);
+
+    await expect(authDatasetCollectionMoves({ ...auth, moves: [move] })).rejects.toBe(
+      DatasetErrEnum.unAuthDatasetCollection
+    );
+  });
+  it('disableSuperAdmin 关闭移动鉴权里的团队 owner 旁路', async () => {
+    const { auth, move, datasetId, owner } = await fixture();
+    await MongoDataset.updateOne(
+      { _id: datasetId },
+      {
+        // 创建者身份仍算 dataset owner（见 assertDatasetPermission），这里把创建者换掉，
+        // 让团队 owner 只剩下「超管旁路」这一条路径
+        tmbId: new Types.ObjectId(),
+        apiDatasetServer: {
+          apiServer: { baseUrl: 'https://example.com' },
+          disableSuperAdmin: true
+        }
+      }
+    );
+
+    await expect(
+      authDatasetCollectionMoves({ ...auth, req: { auth: owner } as any, moves: [move] })
+    ).rejects.toBe(DatasetErrEnum.unAuthDataset);
+  });
   it.each(['source-root', 'target-root'])('根级移动 %s 仍要求团队创建权限', async (mode) => {
     const { auth, move, file, owner } = await fixture();
     if (mode === 'source-root')
