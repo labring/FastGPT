@@ -4,7 +4,7 @@ import { normalizeModelPricingForSave } from '@fastgpt/global/core/ai/model/pric
 import { type ParsedSystemModelsWithJsonBody } from '@fastgpt/global/openapi/core/ai/model/api';
 import { runModelTransaction } from './catalog/transaction';
 import { deleteModelRecords } from './cleanup';
-import { reserveLeadingModelRanks } from './order';
+import { reserveLeadingModelRanks } from './entity';
 import { MongoAIModel } from './schema';
 import { updatedReloadSystemModel } from './catalog/service';
 import { getModelConfigUpdate } from './utils';

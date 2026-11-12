@@ -13,6 +13,7 @@ import {
 } from '@fastgpt/service/core/ai/model/catalog/cache';
 import { readModelCatalogRevision } from '@fastgpt/service/core/ai/model/catalog/entity';
 import { MongoAIModelCatalog } from '@fastgpt/service/core/ai/model/catalog/schema';
+import { reserveLeadingModelRanks } from '@fastgpt/service/core/ai/model/entity';
 import { MongoAIModel } from '@fastgpt/service/core/ai/model/schema';
 import {
   createModel,
@@ -167,6 +168,37 @@ describe('model lifecycle', () => {
       { model: 'json-b', sortOrder: 2 },
       { model: 'newest', sortOrder: 5 },
       { model: 'original', sortOrder: 6 }
+    ]);
+  });
+
+  it('compacts ranks near MAX_SAFE_INTEGER and supports standalone sessionless reservation', async () => {
+    await MongoAIModel.create([
+      { ...draft, model: 'near-max', sortOrder: Number.MAX_SAFE_INTEGER - 1 },
+      { ...draft, model: 'at-max', sortOrder: Number.MAX_SAFE_INTEGER },
+      { ...draft, model: 'legacy' }
+    ]);
+
+    await createModel({ ...owner, modelData: { ...draft, model: 'top' } });
+
+    const systemModels = sortModelOrderItems(getCachedSystemModelHandle()?.getSystemModels() ?? []);
+    expect(systemModels.map(({ model, sortOrder }) => ({ model, sortOrder }))).toEqual([
+      { model: 'top', sortOrder: 1 },
+      { model: 'near-max', sortOrder: 2 },
+      { model: 'at-max', sortOrder: 3 },
+      { model: 'legacy', sortOrder: undefined }
+    ]);
+
+    await MongoAIModel.updateOne({ model: 'top' }, { $set: { sortOrder: 0 } });
+    await reserveLeadingModelRanks({ filter: { scope: ModelScopeEnum.system }, count: 2 });
+
+    const shifted = sortModelOrderItems(
+      await MongoAIModel.find({ scope: ModelScopeEnum.system }).sort({ _id: -1 }).lean()
+    );
+    expect(shifted.map(({ model, sortOrder }) => ({ model, sortOrder }))).toEqual([
+      { model: 'top', sortOrder: 3 },
+      { model: 'near-max', sortOrder: 5 },
+      { model: 'at-max', sortOrder: 6 },
+      { model: 'legacy', sortOrder: undefined }
     ]);
   });
 

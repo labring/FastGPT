@@ -21,8 +21,8 @@ import {
   updateModelChannelBindings
 } from './channel/binding';
 import { deleteModelRecords } from './cleanup';
+import { reserveLeadingModelRanks } from './entity';
 import { importSystemModels as importSystemModelRecords } from './import';
-import { reserveLeadingModelRanks } from './order';
 import { MongoAIModel } from './schema';
 import { refreshModelTemplates } from './template';
 import {
