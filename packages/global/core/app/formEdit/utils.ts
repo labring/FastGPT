@@ -552,6 +552,20 @@ export const initToolInputsTypeByDefaultMode = <T extends FlowNodeInputItemType>
   options?: ToolInputDefaultModeOptions
 ): T[] => inputs.map((input) => initToolInputTypeByDefaultMode(input, options));
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+/** 仅过滤 ref 的配置值；对象和数组递归检查，空值不参与配置判定。 */
+const hasConfiguredValue = (value: unknown): boolean => {
+  if (value === undefined || value === null || value === '') return false;
+  if (isRecord(value)) {
+    if ('ref' in value) return false;
+    return Object.values(value).some(hasConfiguredValue);
+  }
+  if (Array.isArray(value)) return value.some(hasConfiguredValue);
+  return true;
+};
+
 /**
  * 判断开发者手动配置的工具入参是否已有有效值。
  * 节点上未显式覆盖时，工作流/工作流工具会在运行时使用 defaultValue，
@@ -562,10 +576,24 @@ export const isToolInputValueConfigured = ({
   input,
   value = input.value
 }: {
-  input: Pick<FlowNodeInputItemType, 'renderTypeList' | 'selectedType' | 'value' | 'defaultValue'>;
+  input: Pick<
+    FlowNodeInputItemType,
+    'key' | 'renderTypeList' | 'selectedType' | 'value' | 'defaultValue'
+  >;
   value?: FlowNodeInputItemType['value'];
 }) => {
   const configuredValue = value ?? input.defaultValue;
+  const configValue =
+    input.key === NodeInputKeyEnum.systemInputConfig && isRecord(configuredValue)
+      ? configuredValue.value
+      : undefined;
+  if (isRecord(configValue)) {
+    return hasConfiguredValue(configValue);
+  }
+  // 手工配置无 value 表时仅系统托管模式算已配置；value 表只含 ref 时由上面的检查判未配置。
+  if (input.key === NodeInputKeyEnum.systemInputConfig && isRecord(configuredValue)) {
+    return configuredValue.type === 'system';
+  }
   // 候选控件中包含 password 不代表当前在手动密码模式；普通引用仍保存原始 tuple。
   if (getSelectedInputRenderType(input) === FlowNodeInputTypeEnum.password) {
     return isSecretValueConfigured(

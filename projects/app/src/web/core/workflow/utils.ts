@@ -433,33 +433,58 @@ export const storeNode2FlowNode = ({
 };
 
 export const filterSensitiveNodesData = (nodes: StoreNodeItemType[]) => {
-  // 只清理 MCP/HTTP 工具配置的鉴权字段，不递归处理普通 value/defaultValue。
+  // 只清理已确认的凭据容器，避免误删普通业务字段中的 value/defaultValue。
   const cloneNodes = JSON.parse(JSON.stringify(nodes)) as StoreNodeItemType[];
   const isRecord = (value: unknown): value is Record<string, unknown> =>
     typeof value === 'object' && value !== null && !Array.isArray(value);
-  const stripHeaderSecret = (value: unknown) => {
-    if (!isRecord(value) || !('headerSecret' in value)) return value;
-    const sanitized = { ...value };
-    delete sanitized.headerSecret;
-    return sanitized;
+  const keepSecretRef = (value: unknown) => isRecord(value) && 'ref' in value;
+  const clearHeaderSecret = (value: unknown) => {
+    if (!isRecord(value)) return;
+    const references = Object.entries(value).filter(([, item]) => keepSecretRef(item));
+    return references.length > 0 ? Object.fromEntries(references) : undefined;
+  };
+  const clearHeaderSecretField = (value: Record<string, unknown>) => {
+    const headerSecret = clearHeaderSecret(value.headerSecret);
+    if (headerSecret) {
+      value.headerSecret = headerSecret;
+    } else {
+      delete value.headerSecret;
+    }
+    return value;
+  };
+  const clearSystemInputConfig = (input: StoreNodeItemType['inputs'][number]) => {
+    const secretKeys = new Set(
+      (input.inputList ?? []).filter((item) => item.inputType === 'secret').map((item) => item.key)
+    );
+    if (secretKeys.size === 0 || !isRecord(input.value)) return;
+
+    const configValue = input.value.value;
+    if (!isRecord(configValue)) return;
+    input.value.value = Object.fromEntries(
+      Object.entries(configValue).filter(
+        ([key, value]) => secretKeys.has(key) && keepSecretRef(value)
+      )
+    );
   };
   const clearToolCredentials = (toolConfig: unknown) => {
     if (!isRecord(toolConfig)) return;
 
     (['mcpTool', 'httpTool'] as const).forEach((key) => {
       const tool = toolConfig[key];
-      if (isRecord(tool)) toolConfig[key] = stripHeaderSecret(tool);
+      if (isRecord(tool) && 'headerSecret' in tool) {
+        toolConfig[key] = clearHeaderSecretField(tool);
+      }
     });
 
     (['mcpToolSet', 'httpToolSet'] as const).forEach((key) => {
       const toolSet = toolConfig[key];
       if (!isRecord(toolSet)) return;
-      const sanitizedToolSet = stripHeaderSecret(toolSet);
-      if (!isRecord(sanitizedToolSet)) return;
+      clearHeaderSecretField(toolSet);
       if (Array.isArray(toolSet.toolList)) {
-        sanitizedToolSet.toolList = toolSet.toolList.map(stripHeaderSecret);
+        toolSet.toolList = toolSet.toolList.map((tool) =>
+          isRecord(tool) && 'headerSecret' in tool ? clearHeaderSecretField(tool) : tool
+        );
       }
-      toolConfig[key] = sanitizedToolSet;
     });
   };
 
@@ -513,6 +538,20 @@ export const filterSensitiveNodesData = (nodes: StoreNodeItemType[]) => {
 
     for (const input of node.inputs) {
       if (input.key === NodeInputKeyEnum.systemInputConfig) {
+        clearSystemInputConfig(input);
+      }
+      if (input.key === NodeInputKeyEnum.headerSecret) {
+        const headerSecret = clearHeaderSecret(input.value);
+        if (headerSecret) {
+          input.value = headerSecret;
+        } else {
+          delete input.value;
+        }
+      }
+      if (
+        input.renderTypeList?.includes(FlowNodeInputTypeEnum.password) &&
+        !keepSecretRef(input.value)
+      ) {
         input.value = undefined;
       }
     }

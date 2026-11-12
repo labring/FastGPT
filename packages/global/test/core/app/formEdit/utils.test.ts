@@ -424,6 +424,42 @@ describe('checkNeedsUserConfiguration', () => {
 });
 
 describe('isToolInputValueConfigured', () => {
+  it.each([
+    [{ type: 'manual', value: { token: { ref: ['node', 'token'] } } }, false],
+    [{ type: 'manual', value: {} }, false],
+    [
+      {
+        type: 'manual',
+        value: { token: { ref: ['node', 'token'] }, count: { value: 1 } }
+      },
+      true
+    ],
+    [
+      {
+        type: 'manual',
+        value: {
+          smtpHost: { value: '23' },
+          smtpPort: { value: '12313' },
+          SSL: { value: true },
+          smtpUser: { ref: ['448745', 'userChatInput'] },
+          smtpPass: { secret: 'cipher' }
+        }
+      },
+      true
+    ],
+    [{ type: 'system' }, true]
+  ])('ignores refs when checking system config: %j', (value, expected) => {
+    expect(
+      isToolInputValueConfigured({
+        input: {
+          key: NodeInputKeyEnum.systemInputConfig,
+          renderTypeList: [FlowNodeInputTypeEnum.custom],
+          value
+        }
+      })
+    ).toBe(expected);
+  });
+
   it('checks the selected mode when password inputs also support references', () => {
     const input = createMockInput({
       renderTypeList: [FlowNodeInputTypeEnum.password, FlowNodeInputTypeEnum.reference],
