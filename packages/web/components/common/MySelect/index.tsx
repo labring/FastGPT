@@ -54,6 +54,8 @@ export type SelectProps<T = any> = Omit<ButtonProps, 'onChange' | 'value'> & {
     searchText?: string;
   }[];
   isLoading?: boolean;
+  /** 远程分页或搜索初始化加载态；与触发器切换态 isLoading 分离，不会关闭已展开菜单。 */
+  isListLoading?: boolean;
   onChange?: (val: T) => any | Promise<any>;
   ScrollData?: ReturnType<typeof useScrollPagination>['ScrollData'];
   customOnOpen?: () => void;
@@ -92,6 +94,7 @@ const MySelect = <T = any,>(
     list = [],
     onChange,
     isLoading = false,
+    isListLoading = false,
     ScrollData,
     customOnOpen,
     customOnClose,
@@ -133,11 +136,12 @@ const MySelect = <T = any,>(
   useCloseOnFlowNodeDragAreaPointerDown(MenuRef, onClose, isOpen);
 
   const filterList = useMemo(() => {
-    if (!isSearch || !search) {
+    // 传入 onSearchChange 时由远程分页/搜索接口作为唯一过滤源，避免前端二次过滤抢数据。
+    if (!isSearch || !search || onSearchChange) {
       return list;
     }
     return filterSelectOptionsBySearch(list, search);
-  }, [list, search, isSearch]);
+  }, [list, onSearchChange, search, isSearch]);
 
   useImperativeHandle(ref, () => ({
     focus() {
@@ -147,12 +151,12 @@ const MySelect = <T = any,>(
 
   // Auto scroll
   useEffect(() => {
-    if (isOpen && MenuListRef.current && SelectedItemRef.current) {
+    if (isOpen && !ScrollData && MenuListRef.current && SelectedItemRef.current) {
       const menu = MenuListRef.current;
       const selectedItem = SelectedItemRef.current;
       menu.scrollTop = selectedItem.offsetTop - menu.offsetTop - 100;
     }
-  }, [isOpen]);
+  }, [ScrollData, isOpen]);
 
   const { runAsync: onClickChange, loading } = useRequest((val: T) => onChange?.(val));
 
@@ -199,12 +203,16 @@ const MySelect = <T = any,>(
               {item.showBorder && <MyDivider my={2} />}
             </Box>
           ))
+        ) : isListLoading ? (
+          <Flex justifyContent={'center'} py={2}>
+            <MyIcon name={'common/loading'} w={'1rem'} />
+          </Flex>
         ) : (
           <EmptyTip py={0} />
         )}
       </>
     );
-  }, [filterList, onClickChange, value]);
+  }, [filterList, isListLoading, onClickChange, value]);
 
   const isSelecting = loading || isLoading;
   return (
@@ -299,13 +307,15 @@ const MySelect = <T = any,>(
           }
           zIndex={99}
           maxH={'45vh'}
-          overflowY={'auto'}
+          display={ScrollData ? 'flex' : undefined}
+          flexDirection={ScrollData ? 'column' : undefined}
+          overflowY={ScrollData ? 'hidden' : 'auto'}
           onClick={(e) => {
             e.stopPropagation();
           }}
         >
           {isSearch && (
-            <Box mb={1}>
+            <Box mb={1} flexShrink={0}>
               <FilterSearchInput
                 ref={searchInputRef}
                 value={search}
@@ -317,7 +327,19 @@ const MySelect = <T = any,>(
               />
             </Box>
           )}
-          {ScrollData ? <ScrollData>{ListRender}</ScrollData> : ListRender}
+          {ScrollData ? (
+            <ScrollData
+              flex={'1 1 auto'}
+              minH={0}
+              h={'auto'}
+              overflowY={'auto'}
+              overflowX={'hidden'}
+            >
+              {ListRender}
+            </ScrollData>
+          ) : (
+            ListRender
+          )}
         </MenuList>
       </Menu>
     </Box>

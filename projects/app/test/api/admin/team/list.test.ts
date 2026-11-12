@@ -17,6 +17,7 @@ describe('GET /api/admin/team/list', () => {
   let normalUser: any;
   let rootTeam: any;
   let alphaTeam: any;
+  let betaTeam: any;
   let normalTmb: any;
 
   beforeEach(async () => {
@@ -35,6 +36,11 @@ describe('GET /api/admin/team/list', () => {
       ownerId: normalUser._id,
       createTime: new Date('2026-01-01T00:00:00Z')
     });
+    betaTeam = await MongoTeam.create({
+      name: 'Beta Staging Team',
+      ownerId: normalUser._id,
+      createTime: new Date('2026-06-01T00:00:00Z')
+    });
     await MongoTeam.create({
       name: 'Deleted Legacy Team',
       ownerId: normalUser._id,
@@ -50,7 +56,7 @@ describe('GET /api/admin/team/list', () => {
     });
   });
 
-  it('lists all active teams, filters safely with special regex chars and prepends active team when truncated', async () => {
+  it('paginates all active teams without duplicates or skips while pinning current team first', async () => {
     const rootAuth = {
       userId: String(rootUser._id),
       teamId: String(rootTeam._id),
@@ -65,10 +71,33 @@ describe('GET /api/admin/team/list', () => {
       auth: rootAuth
     });
     expect(allRes.code).toBe(200);
+    expect(allRes.data.total).toBe(3);
     expect(allRes.data.list.map((t: any) => t.teamName)).toEqual([
-      'Alpha [Prod] Team',
-      'Root Base Team'
+      'Root Base Team',
+      'Beta Staging Team',
+      'Alpha [Prod] Team'
     ]);
+
+    // 分页滚动：pageSize=1 连续按 offset=0,1,2 拉取全部 3 页，当前所在团队置顶且无遗漏、无重复
+    const page1 = await Call(listTeamsApi.default, {
+      method: 'GET',
+      query: { offset: '0', pageSize: '1' },
+      auth: rootAuth
+    });
+    const page2 = await Call(listTeamsApi.default, {
+      method: 'GET',
+      query: { offset: '1', pageSize: '1' },
+      auth: rootAuth
+    });
+    const page3 = await Call(listTeamsApi.default, {
+      method: 'GET',
+      query: { pageNum: '3', pageSize: '1' },
+      auth: rootAuth
+    });
+    expect(page1.data.total).toBe(3);
+    expect(page1.data.list.map((t: any) => t.teamId)).toEqual([String(rootTeam._id)]);
+    expect(page2.data.list.map((t: any) => t.teamId)).toEqual([String(betaTeam._id)]);
+    expect(page3.data.list.map((t: any) => t.teamId)).toEqual([String(alphaTeam._id)]);
 
     const searchRes = await Call(listTeamsApi.default, {
       method: 'GET',
@@ -76,18 +105,9 @@ describe('GET /api/admin/team/list', () => {
       auth: rootAuth
     });
     expect(searchRes.code).toBe(200);
+    expect(searchRes.data.total).toBe(1);
     expect(searchRes.data.list).toHaveLength(1);
     expect(searchRes.data.list[0].teamId).toBe(String(alphaTeam._id));
-
-    // limit=1 时最新是 Alpha Team，但当前所在团队是 Root Base Team，应置顶保留当前团队
-    const truncatedRes = await Call(listTeamsApi.default, {
-      method: 'GET',
-      query: { limit: '1' },
-      auth: rootAuth
-    });
-    expect(truncatedRes.code).toBe(200);
-    expect(truncatedRes.data.list).toHaveLength(1);
-    expect(truncatedRes.data.list[0].teamId).toBe(String(rootTeam._id));
   });
 
   it('rejects non-root callers and non-GET methods', async () => {

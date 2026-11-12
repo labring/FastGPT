@@ -69,12 +69,26 @@ describe('Admin team schemas', () => {
     });
     expect(parsedSwitchRes.teamId).toBe('68ad85a7463006c963799a06');
 
-    const parsedQuery = AdminTeamSelectorQuerySchema.parse({ search: '  Alpha  ' });
-    expect(parsedQuery).toEqual({ search: 'Alpha', limit: 100 });
+    const parsedQuery = AdminTeamSelectorQuerySchema.parse({
+      search: '  Alpha  ',
+      offset: '20',
+      pageSize: '30'
+    });
+    expect(parsedQuery).toEqual({
+      search: 'Alpha',
+      offset: 20,
+      pageNum: 1,
+      pageSize: 30
+    });
+
+    const defaultQuery = AdminTeamSelectorQuerySchema.parse({});
+    expect(defaultQuery).toEqual({ pageNum: 1, pageSize: 20 });
 
     const parsedListRes = AdminTeamSelectorResponseSchema.parse({
+      total: 1,
       list: [{ teamId: '68ad85a7463006c963799a06', teamName: 'Alpha Team', avatar: null }]
     });
+    expect(parsedListRes.total).toBe(1);
     expect(parsedListRes.list[0].teamName).toBe('Alpha Team');
   });
 });

@@ -16,6 +16,11 @@ const mocks = vi.hoisted(() => ({
   getAdminTeamSelectorList: vi.fn(),
   putAdminSwitchTeam: vi.fn(),
   teamsData: [] as any[],
+  adminTeamsData: [] as any[],
+  adminScrollData: (({ children }: { children: React.ReactNode }) =>
+    React.createElement('div', { 'data-testid': 'admin-scroll-data' }, children)) as any,
+  isAdminInitialLoading: false,
+  lastScrollPaginationArgs: undefined as any,
   lastMySelectProps: undefined as any
 }));
 
@@ -51,6 +56,19 @@ vi.mock('@fastgpt/web/hooks/useRequest', () => ({
     };
   }
 }));
+vi.mock('@fastgpt/web/hooks/useScrollPagination', () => ({
+  useScrollPagination: (api: any, options: any) => {
+    mocks.lastScrollPaginationArgs = { api, options };
+    return {
+      data: mocks.adminTeamsData,
+      ScrollData: mocks.adminScrollData,
+      isInitialLoading: mocks.isAdminInitialLoading
+    };
+  }
+}));
+vi.mock('@fastgpt/web/components/common/Avatar', () => ({
+  default: (props: any) => React.createElement('img', { src: props.src })
+}));
 vi.mock('@fastgpt/web/components/common/MySelect', () => ({
   default: (props: any) => {
     mocks.lastMySelectProps = props;
@@ -64,6 +82,10 @@ describe('TeamSelector', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.lastMySelectProps = undefined;
+    mocks.lastScrollPaginationArgs = undefined;
+    mocks.teamsData = [];
+    mocks.adminTeamsData = [];
+    mocks.isAdminInitialLoading = false;
     mocks.router.pathname = '/account/info';
   });
 
@@ -80,8 +102,10 @@ describe('TeamSelector', () => {
 
     renderToStaticMarkup(React.createElement(TeamSelector));
 
+    expect(mocks.lastScrollPaginationArgs.options.disabled).toBe(true);
     expect(mocks.lastMySelectProps.isSearch).toBe(true);
     expect(mocks.lastMySelectProps.onSearchChange).toBeUndefined();
+    expect(mocks.lastMySelectProps.ScrollData).toBeUndefined();
     expect(mocks.lastMySelectProps.list).toEqual([
       { icon: '/a.png', iconSize: '1.25rem', label: 'Alice Team', value: 't-1' },
       { icon: '/b.png', iconSize: '1.25rem', label: 'Shared Team', value: 't-2' }
@@ -95,25 +119,28 @@ describe('TeamSelector', () => {
     expect(mocks.router.reload).toHaveBeenCalledTimes(1);
   });
 
-  it('wires server-backed search and admin switch endpoint for root user without cancellation redirect', async () => {
+  it('wires scroll pagination, server-backed search and admin switch endpoint for root user', async () => {
     mocks.userInfo = {
       _id: 'root-id',
       username: 'root',
       team: { teamId: 'root-team', teamName: 'Root Team', avatar: '/r.png' }
     };
-    mocks.teamsData = [
+    mocks.adminTeamsData = [
       {
         teamId: 'tenant-1',
         teamName: 'Tenant One',
-        avatar: '/t1.png',
-        accountCancellation: { status: 'pending' }
+        avatar: '/t1.png'
       }
     ];
 
     renderToStaticMarkup(React.createElement(TeamSelector));
 
+    expect(mocks.lastScrollPaginationArgs.api).toBe(mocks.getAdminTeamSelectorList);
+    expect(mocks.lastScrollPaginationArgs.options.disabled).toBe(false);
+    expect(mocks.lastScrollPaginationArgs.options.pageSize).toBe(30);
     expect(mocks.lastMySelectProps.isSearch).toBe(true);
     expect(typeof mocks.lastMySelectProps.onSearchChange).toBe('function');
+    expect(mocks.lastMySelectProps.ScrollData).toBe(mocks.adminScrollData);
     // 当前团队不在列表切片中时应自动保留回显，且仅展示纯团队名
     expect(mocks.lastMySelectProps.list.map((item: any) => item.label)).toEqual([
       'Root Team',

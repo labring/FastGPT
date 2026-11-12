@@ -1,7 +1,11 @@
 import z from 'zod';
 import { ObjectIdSchema } from '../../../common/type/mongo';
 import { IntSchema } from '../../../common/zod';
-import { PaginationResponseSchema, createPaginationSchema } from '../../api';
+import {
+  PaginationPageSizeSchema,
+  PaginationResponseSchema,
+  createPaginationSchema
+} from '../../api';
 
 /* ============================================================================
  * API: 获取团队列表
@@ -94,10 +98,10 @@ export const AdminSwitchTeamResponseSchema = z.object({
 export type AdminSwitchTeamResponseType = z.infer<typeof AdminSwitchTeamResponseSchema>;
 
 /* ============================================================================
- * API: 系统管理员检索全站可切换团队列表
+ * API: 系统管理员分页检索全站可切换团队列表
  * Route: GET /api/admin/team/list
  * Method: GET
- * Description: 供系统超级管理员（root）在团队切换器中按团队名检索全站可用团队列表，并确保包含当前所处团队
+ * Description: 供系统超级管理员（root）在团队切换器中分页及按团队名检索全站可用团队列表，无搜索词时置顶当前所处团队
  * Tags: ['Admin', 'Teams', 'Read']
  * ============================================================================ */
 
@@ -118,20 +122,23 @@ export const AdminTeamSelectorItemSchema = z.object({
 export type AdminTeamSelectorItemType = z.infer<typeof AdminTeamSelectorItemSchema>;
 
 export const AdminTeamSelectorQuerySchema = z.object({
+  offset: IntSchema.optional().meta({
+    example: 0,
+    description: '分页偏移量，从 0 开始；传入时优先于 pageNum'
+  }),
+  pageNum: IntSchema.positive().optional().default(1).meta({
+    example: 1,
+    description: '页码，从 1 开始；传入 offset 时忽略'
+  }),
+  pageSize: PaginationPageSizeSchema.optional(),
   search: z.string().trim().max(100).optional().meta({
     example: 'My Team',
     description: '按团队名称模糊搜索关键词'
-  }),
-  limit: IntSchema.min(1).max(200).optional().default(100).meta({
-    example: 100,
-    description: '单次返回的最大团队数量（1-200，默认 100）'
   })
 });
 export type AdminTeamSelectorQueryType = z.infer<typeof AdminTeamSelectorQuerySchema>;
 
-export const AdminTeamSelectorResponseSchema = z.object({
-  list: z.array(AdminTeamSelectorItemSchema).meta({
-    description: '匹配的团队列表'
-  })
-});
+export const AdminTeamSelectorResponseSchema = PaginationResponseSchema(
+  AdminTeamSelectorItemSchema
+);
 export type AdminTeamSelectorResponseType = z.infer<typeof AdminTeamSelectorResponseSchema>;

@@ -85,8 +85,9 @@ export const AdminTeamsPath: OpenAPIPath = {
   },
   '/admin/team/list': {
     get: {
-      summary: '系统管理员检索全站可切换团队列表',
-      description: '按团队名称搜索全站未删除团队列表，供 root 用户在团队切换器中检索和切换',
+      summary: '系统管理员分页检索全站可切换团队列表',
+      description:
+        '分页并支持按团队名称搜索全站未删除团队列表，供 root 用户在团队切换器中滚动加载和检索切换',
       tags: [DevApiTagsMap.adminTeams],
       requestParams: {
         query: AdminTeamSelectorQuerySchema

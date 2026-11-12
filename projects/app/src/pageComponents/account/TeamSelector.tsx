@@ -7,6 +7,8 @@ import { getTeamList, putSwitchTeam } from '@/web/support/user/team/api';
 import { getAdminTeamSelectorList, putAdminSwitchTeam } from '@/web/admin/team/api';
 import { TeamMemberStatusEnum } from '@fastgpt/global/support/user/team/constant';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
+import Avatar from '@fastgpt/web/components/common/Avatar';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useRouter } from 'next/router';
@@ -34,20 +36,21 @@ const TeamSelector = ({
     setSearchKeyword(val);
   }, []);
 
-  const { data: myTeams = [] } = useRequest(
+  const {
+    data: adminTeams,
+    ScrollData: AdminScrollData,
+    isInitialLoading: isAdminInitialLoading
+  } = useScrollPagination(getAdminTeamSelectorList, {
+    pageSize: 30,
+    params: debouncedSearch ? { search: debouncedSearch } : {},
+    disabled: !userInfo || !isRoot,
+    showNoMoreTip: false,
+    refreshDeps: [userInfo?._id, userInfo?.team?.teamId, isRoot, debouncedSearch]
+  });
+
+  const { data: memberTeams = [] } = useRequest(
     async () => {
-      if (!userInfo) return [];
-      if (isRoot) {
-        const res = await getAdminTeamSelectorList({
-          ...(debouncedSearch ? { search: debouncedSearch } : {})
-        });
-        return res.list.map((team) => ({
-          teamId: team.teamId,
-          teamName: team.teamName,
-          avatar: team.avatar ?? undefined,
-          accountCancellation: undefined
-        }));
-      }
+      if (!userInfo || isRoot) return [];
       const teams = await getTeamList(TeamMemberStatusEnum.active);
       return teams.map((team) => ({
         teamId: team.teamId,
@@ -58,8 +61,21 @@ const TeamSelector = ({
     },
     {
       manual: false,
-      refreshDeps: [userInfo?._id, userInfo?.team?.teamId, isRoot, debouncedSearch]
+      refreshDeps: [userInfo?._id, userInfo?.team?.teamId, isRoot]
     }
+  );
+
+  const myTeams = useMemo(
+    () =>
+      isRoot
+        ? adminTeams.map((team) => ({
+            teamId: team.teamId,
+            teamName: team.teamName,
+            avatar: team.avatar ?? undefined,
+            accountCancellation: undefined
+          }))
+        : memberTeams,
+    [adminTeams, isRoot, memberTeams]
   );
 
   const { runAsync: onSwitchTeam } = useRequest(
@@ -126,13 +142,30 @@ const TeamSelector = ({
     return items;
   }, [currentTeamAvatar, currentTeamId, currentTeamName, myTeams, searchKeyword, showAvatar]);
 
+  const currentValueLabel = useMemo(() => {
+    if (!currentTeamId || teamList.some((item) => item.value === currentTeamId)) {
+      return undefined;
+    }
+    return (
+      <>
+        {showAvatar && currentTeamAvatar && (
+          <Avatar mr={2} src={currentTeamAvatar as any} w={'1.25rem'} />
+        )}
+        <Box noOfLines={1}>{currentTeamName}</Box>
+      </>
+    );
+  }, [currentTeamAvatar, currentTeamId, currentTeamName, showAvatar, teamList]);
+
   return (
     <Box w={'100%'}>
       <MySelect
         {...props}
         isSearch
         onSearchChange={isRoot ? handleSearchChange : undefined}
+        ScrollData={isRoot ? AdminScrollData : undefined}
+        isListLoading={isRoot ? isAdminInitialLoading : false}
         value={userInfo?.team?.teamId}
+        valueLabel={currentValueLabel}
         list={teamList}
         onChange={onSwitchTeam}
       />

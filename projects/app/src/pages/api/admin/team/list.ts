@@ -9,13 +9,14 @@ import {
   type AdminTeamSelectorResponseType
 } from '@fastgpt/global/openapi/admin/team/api';
 import { Types } from '@fastgpt/service/common/mongo';
+import { normalizePagination } from '@fastgpt/service/common/api/pagination';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
 import { MongoTeam } from '@fastgpt/service/support/user/team/teamSchema';
 
 /**
- * 供系统超级管理员（root）在全局团队切换器中检索全站可用团队。
- * 无搜索词时默认确保当前所处团队包含在返回列表中，保证下拉触发器始终能准确回显当前团队。
+ * 供系统超级管理员（root）在全局团队切换器中分页检索全站可用团队。
+ * 无搜索词时通过确定性排序将当前所处团队置顶，保证跨页滚动时不丢项、不重项且回显准确。
  */
 async function handler(
   req: ApiRequestProps<Record<string, never>, AdminTeamSelectorQueryType>
@@ -24,53 +25,50 @@ async function handler(
     return Promise.reject(CommonErrEnum.invalidParams);
   }
 
-  // 1. 校验 root 管理员权限与检索参数。
+  // 1. 校验 root 管理员权限并归一化分页与检索参数。
   const { query } = parseApiInput({
     req,
     querySchema: AdminTeamSelectorQuerySchema
   });
   const { teamId: currentTeamId } = await authSystemAdmin({ req });
-  const { search, limit } = query;
+  const { search } = query;
+  const { offset, pageSize } = normalizePagination(query);
 
-  // 2. 按团队名称模糊查询未软删除的全站团队。
-  const activeFilter = {
-    $or: [{ deleteTime: { $exists: false } }, { deleteTime: null }]
+  // 2. 按团队名称模糊查询未软删除的全站团队，无搜索词时将当前团队排在全局首位。
+  const filter = {
+    $or: [{ deleteTime: { $exists: false } }, { deleteTime: null }],
+    ...(search ? { name: { $regex: new RegExp(replaceRegChars(search), 'i') } } : {})
   };
-  const teams = await MongoTeam.find(
-    {
-      ...activeFilter,
-      ...(search ? { name: { $regex: new RegExp(replaceRegChars(search), 'i') } } : {})
-    },
-    { _id: 1, name: 1, avatar: 1 }
-  )
-    .sort({ createTime: -1, _id: -1 })
-    .limit(limit)
-    .lean();
+  const currentTeamObjectId =
+    !search && currentTeamId && Types.ObjectId.isValid(currentTeamId)
+      ? new Types.ObjectId(currentTeamId)
+      : null;
 
-  // 3. 未输入搜索词且当前团队未落在前 N 条时，置顶补齐当前团队以便选择器正常展示。
-  const finalTeams = await (async () => {
-    if (
-      search ||
-      !currentTeamId ||
-      !Types.ObjectId.isValid(currentTeamId) ||
-      teams.some((item) => String(item._id) === String(currentTeamId))
-    ) {
-      return teams;
-    }
-
-    const currentTeam = await MongoTeam.findOne(
-      {
-        _id: new Types.ObjectId(currentTeamId),
-        ...activeFilter
-      },
-      { _id: 1, name: 1, avatar: 1 }
-    ).lean();
-
-    return currentTeam ? [currentTeam, ...teams.slice(0, Math.max(0, limit - 1))] : teams;
-  })();
+  const [teams, total] = await Promise.all([
+    currentTeamObjectId
+      ? MongoTeam.aggregate<{ _id: Types.ObjectId; name: string; avatar?: string }>([
+          { $match: filter },
+          {
+            $addFields: {
+              isCurrentTeam: { $cond: [{ $eq: ['$_id', currentTeamObjectId] }, 1, 0] }
+            }
+          },
+          { $sort: { isCurrentTeam: -1, createTime: -1, _id: -1 } },
+          { $skip: offset },
+          { $limit: pageSize },
+          { $project: { _id: 1, name: 1, avatar: 1 } }
+        ])
+      : MongoTeam.find(filter, { _id: 1, name: 1, avatar: 1 })
+          .sort({ createTime: -1, _id: -1 })
+          .skip(offset)
+          .limit(pageSize)
+          .lean(),
+    MongoTeam.countDocuments(filter)
+  ]);
 
   return AdminTeamSelectorResponseSchema.parse({
-    list: finalTeams.map((team) => ({
+    total,
+    list: teams.map((team) => ({
       teamId: String(team._id),
       teamName: team.name,
       avatar: team.avatar
