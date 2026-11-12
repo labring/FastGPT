@@ -12,6 +12,7 @@ import { getWorkflowResourceContext } from '@fastgpt/service/core/workflow/utils
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { UserConfigError } from '@fastgpt/global/common/error/utils';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
+import { withMcpOAuthRetry } from '@fastgpt/service/core/app/mcpOAuth/runtime';
 
 const {
   authAppByTmbIdMock,
@@ -65,6 +66,10 @@ vi.mock('@fastgpt/service/core/app/mcp', () => ({
   MCPClient: vi.fn(function () {
     return { toolCall: mcpToolCallMock };
   })
+}));
+
+vi.mock('@fastgpt/service/core/app/mcpOAuth/runtime', () => ({
+  withMcpOAuthRetry: vi.fn(async ({ run }: any) => run({ Authorization: 'Bearer test-token' }))
 }));
 
 vi.mock('@fastgpt/service/common/logger', () => {

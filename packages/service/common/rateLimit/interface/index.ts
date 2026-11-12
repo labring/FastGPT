@@ -16,3 +16,13 @@ export { assertOutLinkRateLimit } from './outLink';
 export { assertUploadRateLimit } from './upload';
 export { assertMemberRateLimit, MemberRateLimitPolicy } from './member';
 export { consumeTeamChatRateLimit } from './team';
+export {
+  assertMcpOAuthCallbackByAppRateLimit,
+  assertMcpOAuthCallbackByIpRateLimit,
+  assertMcpOAuthClientMetadataByIpRateLimit,
+  assertMcpOAuthClientResetByAppRateLimit,
+  assertMcpOAuthDisconnectByAppRateLimit,
+  assertMcpOAuthStartByAppRateLimit,
+  assertMcpOAuthStartByUserRateLimit,
+  getMcpOAuthIpRateLimitSegment
+} from './mcpOAuth';

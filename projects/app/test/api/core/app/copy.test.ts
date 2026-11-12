@@ -24,6 +24,7 @@ import {
   WritePermissionVal
 } from '@fastgpt/global/support/permission/constant';
 import { TeamAppCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
+import { storeSecretValue } from '@fastgpt/service/common/secret/utils';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { getCachedSystemModelHandle } from '@fastgpt/service/core/ai/model/catalog/cache';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
@@ -349,6 +350,56 @@ describe('Copy', () => {
       expect(await MongoApp.countDocuments({ teamId: owner.teamId, type })).toBe(1000);
     }
   );
+
+  it('retains OAuth credentials for a same-team MCP toolset copy', async () => {
+    const { owner } = await getFakeUsers(1);
+    const tokenSecret = {
+      access_token: storeSecretValue({ value: 'copy-access-token' }),
+      refresh_token: storeSecretValue({ value: 'copy-refresh-token' })
+    };
+    const clientSecret = storeSecretValue({ value: 'copy-client-secret' });
+    const sourceId = await createapi.onCreateApp({
+      teamId: owner.teamId,
+      tmbId: owner.tmbId,
+      name: 'oauth toolset',
+      type: AppTypeEnum.mcpToolSet,
+      nodes: [
+        getMCPToolSetRuntimeNode({
+          url: 'https://mcp.example.com',
+          toolList: [],
+          authMode: 'oauth',
+          oauth: {
+            schemaVersion: 1,
+            clientMode: 'auto',
+            credentialSeq: 4,
+            token: { secret: tokenSecret, expiresAt: 0, obtainedAt: 1 },
+            client: {
+              clientId: 'client-id',
+              tokenEndpointAuthMethod: 'client_secret_post',
+              clientSecret
+            }
+          }
+        })
+      ]
+    });
+
+    const copied = await Call<CopyAppBodyType, Record<string, never>, CopyAppResponseType>(
+      copyapi.default,
+      { auth: owner, body: { appId: sourceId } }
+    );
+    expect(copied.code).toBe(200);
+
+    const copiedVersion = await MongoAppVersion.findOne({
+      appId: copied.data?.appId,
+      isPublish: true
+    }).lean();
+    expect(copiedVersion?.nodes[0].toolConfig?.mcpToolSet?.oauth).toMatchObject({
+      schemaVersion: 1,
+      credentialSeq: 4,
+      token: { secret: tokenSecret },
+      client: { clientId: 'client-id', clientSecret }
+    });
+  });
 
   it.each([AppTypeEnum.folder, AppTypeEnum.toolFolder])(
     'uses the folder quota when copying %s even when the Agent quota is full',

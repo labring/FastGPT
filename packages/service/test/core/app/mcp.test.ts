@@ -19,10 +19,13 @@ import { StreamableHTTPError } from '@modelcontextprotocol/sdk/client/streamable
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 import {
   MCPClient,
+  McpAuthRequiredError,
   assertMCPUrlNotInternal,
   createMcpSseFetch,
   createMcpSafeFetch,
-  getMCPChildren
+  getMCPChildren,
+  parseMcpWWWAuthenticate,
+  shouldFallbackToSSE
 } from '../../../core/app/mcp';
 import type { AppSchemaType } from '@fastgpt/global/core/app/type';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
@@ -124,6 +127,16 @@ describe('MCPClient', () => {
       expect((client as any).url).toBe(config.url);
       expect((client as any).headers).toEqual(config.headers);
     });
+
+    it('accepts an async header provider for OAuth tokens', async () => {
+      const provider = vi.fn(async () => ({ Authorization: 'Bearer token' }));
+      const client = new MCPClient({ url: config.url, headers: provider });
+
+      await expect((client as any).resolveHeaders()).resolves.toEqual({
+        Authorization: 'Bearer token'
+      });
+      expect(provider).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe('closeConnection', () => {
@@ -204,7 +217,7 @@ describe('MCPClient', () => {
       await expect(mcpClient.getTools()).rejects.toThrow('Get tools response is not an array');
     });
 
-    it('preserves configuration errors for the centralized logger', async () => {
+    it('preserves authentication errors with status for the OAuth runtime', async () => {
       const mcpClient = new MCPClient(config);
       const client = stubConnection(mcpClient);
       const logger = getLogger(LogCategories.MODULE.APP.MCP_TOOLS);
@@ -213,7 +226,9 @@ describe('MCPClient', () => {
       client.listTools.mockRejectedValue(new StreamableHTTPError(401, 'Invalid MCP credentials'));
 
       await expect(mcpClient.getTools()).rejects.toMatchObject({
-        name: 'UserConfigError'
+        name: 'McpAuthRequiredError',
+        code: 401,
+        status: 401
       });
 
       expect(errorLog).not.toHaveBeenCalled();
@@ -222,8 +237,8 @@ describe('MCPClient', () => {
         expect.objectContaining({
           urlHost: 'example.com',
           error: expect.objectContaining({
-            name: 'UserConfigError',
-            cause: expect.objectContaining({ code: 401 })
+            name: 'McpAuthRequiredError',
+            code: 401
           })
         })
       );
@@ -701,6 +716,49 @@ describe('MCPClient', () => {
       expect(client.connect).toHaveBeenCalledTimes(1);
     });
 
+    it.each([401, 403])(
+      'should not fall back to SSE for Streamable HTTP %s and preserve the auth status',
+      async (status) => {
+        const mcpClient = new MCPClient(config);
+        const client = getPrivateClient(mcpClient);
+        client.connect = vi
+          .fn()
+          .mockRejectedValueOnce(new StreamableHTTPError(status, 'Unauthorized'))
+          .mockRejectedValueOnce(new StreamableHTTPError(404, 'Not Found'));
+
+        await expect((mcpClient as any).getConnection()).rejects.toMatchObject({
+          name: 'McpAuthRequiredError',
+          code: status,
+          status
+        });
+        expect(client.connect).toHaveBeenCalledTimes(1);
+      }
+    );
+
+    it('exposes fallback decisions and WWW-Authenticate parsing for the OAuth runtime', () => {
+      expect(shouldFallbackToSSE(new StreamableHTTPError(404, 'Not Found'))).toBe(true);
+      expect(shouldFallbackToSSE(new StreamableHTTPError(405, 'Method Not Allowed'))).toBe(true);
+      expect(shouldFallbackToSSE(new StreamableHTTPError(401, 'Unauthorized'))).toBe(false);
+      expect(shouldFallbackToSSE(new StreamableHTTPError(403, 'Forbidden'))).toBe(false);
+      expect(shouldFallbackToSSE(new StreamableHTTPError(429, 'Too Many Requests'))).toBe(false);
+
+      const challenge = parseMcpWWWAuthenticate(
+        'Bearer realm="mcp", error="insufficient_scope", scope="read write", resource_metadata="https://example.com/.well-known/oauth-protected-resource"'
+      );
+      expect(challenge).toMatchObject({
+        scheme: 'bearer',
+        error: 'insufficient_scope',
+        scope: 'read write',
+        resourceMetadata: 'https://example.com/.well-known/oauth-protected-resource'
+      });
+
+      const authError = new McpAuthRequiredError(401, {
+        wwwAuthenticate: 'Bearer error="invalid_token"'
+      });
+      expect(authError.code).toBe(401);
+      expect(authError.challenge?.error).toBe('invalid_token');
+    });
+
     it('surfaces both errors as user config error when SSE fallback also fails with handshake error', async () => {
       const mcpClient = new MCPClient(config);
       const client = getPrivateClient(mcpClient);
@@ -884,6 +942,55 @@ describe('MCPClient', () => {
         message: 'MCP server returned invalid response',
         cause: zodError
       });
+      expect(client.connect).toHaveBeenCalledTimes(2);
+    });
+
+    it('reconnects after a 401 instead of reusing the rejected connection promise', async () => {
+      const headers = vi
+        .fn()
+        .mockResolvedValueOnce({ Authorization: 'Bearer stale' })
+        .mockResolvedValueOnce({ Authorization: 'Bearer fresh' });
+      const mcpClient = new MCPClient({ url: config.url, headers });
+      const client = getPrivateClient(mcpClient);
+      client.close = vi.fn().mockResolvedValue(undefined);
+      client.connect = vi
+        .fn()
+        .mockRejectedValueOnce(new StreamableHTTPError(401, 'Token expired'))
+        .mockResolvedValueOnce(undefined);
+
+      await expect((mcpClient as any).getConnection()).rejects.toMatchObject({
+        name: 'McpAuthRequiredError',
+        code: 401
+      });
+      expect((mcpClient as any).connectionPromise).toBeNull();
+
+      // OAuth 刷新后重试必须重新建连并重新解析 header，而不是命中缓存的 rejected promise。
+      await expect((mcpClient as any).getConnection()).resolves.toBe(client);
+      expect(client.connect).toHaveBeenCalledTimes(2);
+      expect(headers).toHaveBeenCalledTimes(2);
+    });
+
+    it('drops the cached connection when a tool call returns 401', async () => {
+      const mcpClient = new MCPClient({
+        url: config.url,
+        headers: { Authorization: 'Bearer stale' }
+      });
+      const client = getPrivateClient(mcpClient);
+      client.close = vi.fn().mockResolvedValue(undefined);
+      client.connect = vi.fn().mockResolvedValue(undefined);
+      client.callTool = vi
+        .fn()
+        .mockRejectedValueOnce(new StreamableHTTPError(401, 'Token expired'))
+        .mockResolvedValueOnce({ content: [{ type: 'text', text: 'ok' }] });
+
+      await expect(
+        mcpClient.toolCall({ toolName: 'test', params: {}, closeConnection: false })
+      ).rejects.toMatchObject({ code: 401 });
+      expect((mcpClient as any).connectionPromise).toBeNull();
+
+      await expect(
+        mcpClient.toolCall({ toolName: 'test', params: {}, closeConnection: false })
+      ).resolves.toEqual({ content: [{ type: 'text', text: 'ok' }] });
       expect(client.connect).toHaveBeenCalledTimes(2);
     });
   });

@@ -23,6 +23,7 @@ import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { getFakeUsers, getUser } from '@test/datas/users';
 import { getModelTestDefaults } from '@test/modelCache';
 import { Call } from '@test/utils/request';
+import { storeSecretValue } from '@fastgpt/service/common/secret/utils';
 import { describe, expect, it } from 'vitest';
 
 describe('get app detail api', () => {
@@ -165,6 +166,83 @@ describe('get app detail api', () => {
       ]);
     }
   );
+
+  it('strips OAuth credentials from MCP toolset detail', async () => {
+    const owner = await getUser(`detail-oauth-owner-${getNanoid(6)}`);
+    const appId = await onCreateApp({
+      name: 'oauth toolset detail',
+      type: AppTypeEnum.mcpToolSet,
+      teamId: owner.teamId,
+      tmbId: owner.tmbId,
+      nodes: [
+        {
+          nodeId: 'mcp-node',
+          flowNodeType: FlowNodeTypeEnum.toolSet,
+          name: 'MCP',
+          toolConfig: {
+            mcpToolSet: {
+              url: 'https://example.com/mcp',
+              authMode: 'oauth',
+              toolList: [],
+              oauth: {
+                schemaVersion: 1,
+                clientMode: 'auto',
+                credentialSeq: 2,
+                token: {
+                  secret: {
+                    access_token: storeSecretValue({ value: 'access-token-value' }),
+                    refresh_token: storeSecretValue({ value: 'refresh-token-value' })
+                  },
+                  expiresAt: 0,
+                  obtainedAt: 1
+                },
+                client: {
+                  clientId: 'client-id',
+                  tokenEndpointAuthMethod: 'none',
+                  clientSecret: storeSecretValue({ value: 'client-secret-value' }),
+                  registrationAccessToken: storeSecretValue({
+                    value: 'registration-access-token-value'
+                  })
+                }
+              }
+            }
+          },
+          inputs: [],
+          outputs: []
+        }
+      ]
+    });
+
+    const res = await Call<Record<string, never>, GetAppDetailQueryType, GetAppDetailResponseType>(
+      handler,
+      { auth: owner, headers: {}, query: { appId } }
+    );
+    expect(res.code).toBe(200);
+
+    const serialized = JSON.stringify(res.data);
+    expect(serialized).not.toContain('access-token-value');
+    expect(serialized).not.toContain('refresh-token-value');
+    expect(serialized).not.toContain('client-secret-value');
+    expect(serialized).not.toContain('registration-access-token-value');
+    expect(serialized).not.toContain('"token"');
+    expect(serialized).not.toContain('clientSecret');
+    expect(serialized).not.toContain('registrationAccessToken');
+
+    const mcpToolSet = (res.data.nodes[0]?.toolConfig as any)?.mcpToolSet;
+    expect(mcpToolSet?.oauth).toMatchObject({
+      schemaVersion: 1,
+      credentialSeq: 2,
+      client: { clientId: 'client-id' }
+    });
+
+    // 脱敏只作用于响应副本；持久化的凭据（含 token/client secret/registration token）必须原样保留。
+    const storedVersion = await MongoAppVersion.findOne({ appId }).lean();
+    const storedOAuth = (storedVersion?.nodes[0]?.toolConfig as any)?.mcpToolSet?.oauth;
+    expect(storedOAuth?.token?.secret?.access_token).toBeDefined();
+    expect(storedOAuth?.token?.secret?.refresh_token).toBeDefined();
+    expect(storedOAuth?.client?.clientSecret).toBeDefined();
+    expect(storedOAuth?.client?.registrationAccessToken).toBeDefined();
+  });
 
   it('does not expose workflow configuration to a read-only collaborator', async () => {
     const owner = await getUser(`detail-owner-${getNanoid(6)}`);

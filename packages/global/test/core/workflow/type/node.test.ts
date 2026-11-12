@@ -46,4 +46,65 @@ describe('node-local toolset config', () => {
       }).success
     ).toBe(true);
   });
+
+  it('keeps OAuth fields out of inline node config (strict regression guard)', () => {
+    const base = { url: 'https://mcp.example.com/mcp', toolList: [] };
+
+    expect(McpToolSetNodeConfigSchema.safeParse({ ...base, authMode: 'oauth' }).success).toBe(
+      false
+    );
+    expect(
+      McpToolSetNodeConfigSchema.safeParse({
+        ...base,
+        oauth: { schemaVersion: 1, clientMode: 'auto', credentialSeq: 0 }
+      }).success
+    ).toBe(false);
+    // 上游摘要语义保持不变：合法字段仍可通过。
+    expect(McpToolSetNodeConfigSchema.safeParse(base).success).toBe(true);
+  });
+
+  it('accepts and preserves authMode/oauth on runtime config only', () => {
+    // 设计 §2.1 护栏：RuntimeConfig.strict() 必须接受 OAuth 根配置。
+    expect(
+      McpToolSetRuntimeConfigSchema.strict().safeParse({
+        url: 'https://mcp.example.com/mcp',
+        toolList: [],
+        authMode: 'oauth',
+        oauth: {}
+      }).success
+    ).toBe(true);
+
+    const runtime = McpToolSetRuntimeConfigSchema.strict().parse({
+      url: 'https://mcp.example.com/mcp',
+      headerSecret: { Authorization: { value: 'token' } },
+      toolList: [],
+      authMode: 'oauth',
+      oauth: {
+        schemaVersion: 1,
+        clientMode: 'manual',
+        scope: 'mcp.read',
+        credentialSeq: 0
+      }
+    });
+
+    expect(runtime.authMode).toBe('oauth');
+    expect(runtime.oauth).toMatchObject({
+      schemaVersion: 1,
+      clientMode: 'manual',
+      scope: 'mcp.read',
+      credentialSeq: 0
+    });
+    expect(McpToolSetRuntimeConfigSchema.parse({ url: 'https://mcp.example.com', toolList: [] }))
+      .toMatchObject({ authMode: 'headers' });
+  });
+
+  it('rejects undeclared OAuth aliases on runtime config', () => {
+    expect(
+      McpToolSetRuntimeConfigSchema.strict().safeParse({
+        url: 'https://mcp.example.com/mcp',
+        toolList: [],
+        mode: 'oauth'
+      }).success
+    ).toBe(false);
+  });
 });

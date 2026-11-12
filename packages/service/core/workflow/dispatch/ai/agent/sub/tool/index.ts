@@ -21,6 +21,7 @@ import { pushTrack } from '../../../../../../../common/middle/tracks/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { getMCPToolErrorText } from '@fastgpt/global/core/app/tool/mcpTool/utils';
 import { assertMCPUrlNotInternal, getMCPChildren, MCPClient } from '../../../../../../app/mcp';
+import { withMcpOAuthRetry } from '../../../../../../app/mcpOAuth/runtime';
 import { getHTTPToolList, runHTTPTool } from '../../../../../../app/http';
 import { getAppVersionById } from '../../../../../../app/version/controller';
 import {
@@ -304,18 +305,31 @@ export const dispatchTool = async ({
 
       await assertMCPUrlNotInternal(url);
 
-      const mcpClient = new MCPClient({
-        url,
-        headers: getSecretValue({
-          storeSecret: headerSecret ?? undefined,
-          resolveReference
-        })
-      });
+      const oauthNodeId = mcpToolSet.authMode === 'oauth' ? workflow.nodes[0]?.nodeId : undefined;
+      if (mcpToolSet.authMode === 'oauth' && !oauthNodeId) {
+        // OAuth 模式没有节点上下文会退化成无鉴权请求，必须 fail fast。
+        return Promise.reject('MCP OAuth tool set is missing the workflow node context (nodeId)');
+      }
 
-      const result = await mcpClient.toolCall({
-        toolName,
-        params
-      });
+      const result = oauthNodeId
+        ? await withMcpOAuthRetry({
+            appId: parentId,
+            nodeId: String(oauthNodeId),
+            run: async (headers) => {
+              const mcpClient = new MCPClient({ url, headers });
+              return mcpClient.toolCall({ toolName, params });
+            }
+          })
+        : await new MCPClient({
+            url,
+            headers: getSecretValue({
+              storeSecret: headerSecret ?? undefined,
+              resolveReference
+            })
+          }).toolCall({
+            toolName,
+            params
+          });
       const errorMessage = getMCPToolErrorText(result);
       return {
         response: JSON.stringify(result),

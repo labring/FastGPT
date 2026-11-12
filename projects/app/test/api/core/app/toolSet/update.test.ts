@@ -10,8 +10,20 @@ const mocks = vi.hoisted(() => ({
   updateAppPublishedVersion: vi.fn(),
   beforeUpdateAppFormat: vi.fn(),
   updateParentFoldersUpdateTime: vi.fn(),
-  assertMCPUrlNotInternal: vi.fn()
+  assertMCPUrlNotInternal: vi.fn(),
+  getMcpToolSetVersionDoc: vi.fn(),
+  mergeMcpOAuthFromPublished: vi.fn()
 }));
+
+const createVersionDoc = (mcpToolSet: Record<string, any>) => ({
+  nodes: [
+    {
+      nodeId: 'node-1',
+      flowNodeType: 'toolSet',
+      toolConfig: { mcpToolSet }
+    }
+  ]
+});
 
 vi.mock('@/service/middleware/entry', () => ({
   NextAPI: (handler: unknown) => handler
@@ -42,6 +54,13 @@ vi.mock('@fastgpt/service/core/app/mcp', () => ({
   assertMCPUrlNotInternal: mocks.assertMCPUrlNotInternal
 }));
 
+vi.mock('@fastgpt/service/core/app/mcpOAuth/credential', () => ({
+  getMcpToolSetVersionDoc: mocks.getMcpToolSetVersionDoc,
+  resolveMcpOAuthNode: (version: any) => version.nodes[0],
+  getNodeMcpToolSet: (node: any) => node.toolConfig.mcpToolSet,
+  mergeMcpOAuthFromPublished: mocks.mergeMcpOAuthFromPublished
+}));
+
 import updateHttpTools from '@/pages/api/core/app/httpTools/update';
 import updateMcpTools from '@/pages/api/core/app/mcpTools/update';
 
@@ -67,6 +86,17 @@ describe('tool set update handlers', () => {
       fn('session')
     );
     mocks.updateAppPublishedVersion.mockRejectedValue(AppErrEnum.unExist);
+    mocks.getMcpToolSetVersionDoc.mockResolvedValue(
+      createVersionDoc({
+        url: 'https://example.com/mcp',
+        authMode: 'headers',
+        headerSecret: {}
+      })
+    );
+    mocks.mergeMcpOAuthFromPublished.mockReturnValue({
+      oauth: undefined,
+      credentialSeqDelta: 0
+    });
   });
 
   it.each([
@@ -91,5 +121,81 @@ describe('tool set update handlers', () => {
       })
     );
     expect(mocks.updateParentFoldersUpdateTime).not.toHaveBeenCalled();
+  });
+
+  it('reuses the existing nodeId and fences oauth writes by credentialSeq', async () => {
+    mocks.getMcpToolSetVersionDoc.mockResolvedValue(
+      createVersionDoc({
+        url: 'https://old.example.com/mcp',
+        authMode: 'oauth',
+        oauth: { schemaVersion: 1, credentialSeq: 3, clientMode: 'auto' }
+      })
+    );
+    mocks.mergeMcpOAuthFromPublished.mockReturnValue({
+      oauth: { schemaVersion: 1, clientMode: 'auto' },
+      credentialSeqDelta: 1
+    });
+    mocks.updateAppPublishedVersion.mockResolvedValue(undefined);
+
+    await updateMcpTools({
+      body: {
+        appId,
+        url: 'https://new.example.com/mcp',
+        toolList: [],
+        authMode: 'oauth'
+      }
+    } as ApiRequestProps<any>);
+
+    expect(mocks.mergeMcpOAuthFromPublished).toHaveBeenCalledWith(
+      expect.objectContaining({
+        previousAuthMode: 'oauth',
+        nextAuthMode: 'oauth',
+        urlChanged: true,
+        existingOAuth: expect.objectContaining({ credentialSeq: 3 })
+      })
+    );
+    const formattedNode = mocks.beforeUpdateAppFormat.mock.calls[0][0].nodes[0];
+    expect(formattedNode.nodeId).toBe('node-1');
+    expect(formattedNode.toolConfig.mcpToolSet.oauth.credentialSeq).toBe(4);
+    expect(mocks.updateAppPublishedVersion).toHaveBeenCalledWith(
+      expect.objectContaining({
+        nodeFence: { nodeId: 'node-1', credentialSeq: 3 }
+      })
+    );
+  });
+
+  it('switches back to headers and keeps the node identity', async () => {
+    mocks.getMcpToolSetVersionDoc.mockResolvedValue(
+      createVersionDoc({
+        url: 'https://example.com/mcp',
+        authMode: 'oauth',
+        oauth: { schemaVersion: 1, credentialSeq: 5 }
+      })
+    );
+    mocks.mergeMcpOAuthFromPublished.mockReturnValue({
+      oauth: { schemaVersion: 1, clientMode: 'auto' },
+      credentialSeqDelta: 1
+    });
+    mocks.updateAppPublishedVersion.mockResolvedValue(undefined);
+
+    await updateMcpTools({
+      body: {
+        appId,
+        url: 'https://example.com/mcp',
+        toolList: [],
+        authMode: 'headers'
+      }
+    } as ApiRequestProps<any>);
+
+    expect(mocks.mergeMcpOAuthFromPublished).toHaveBeenCalledWith(
+      expect.objectContaining({
+        previousAuthMode: 'oauth',
+        nextAuthMode: 'headers',
+        urlChanged: false
+      })
+    );
+    const formattedNode = mocks.beforeUpdateAppFormat.mock.calls[0][0].nodes[0];
+    expect(formattedNode.nodeId).toBe('node-1');
+    expect(formattedNode.toolConfig.mcpToolSet.authMode).toBe('headers');
   });
 });

@@ -346,6 +346,14 @@ export const serviceEnv = createEnv({
     }),
     NEXT_PUBLIC_BASE_URL: z.string().default(''),
 
+    // ==================== MCP OAuth ====================
+    MCP_OAUTH_ENABLED: BoolSchema.default(false).meta({
+      description: '启用 MCP OAuth API 与前端入口'
+    }),
+    MCP_OAUTH_RUNTIME_ENABLED: BoolSchema.default(false).meta({
+      description: '运行时允许使用 OAuth 令牌；关闭时 authMode=oauth 直接报错，不回退 headers'
+    }),
+
     //==================== 安全配置 ====================
     USE_IP_LIMIT: BoolSchema.default(false).meta({ description: '是否启用 IP 限流' }),
     CHECK_INTERNAL_IP: BoolSchema.default(false).meta({ description: '是否启用内网 IP 检查' }),

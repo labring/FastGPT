@@ -70,6 +70,16 @@ vi.mock('@fastgpt/service/common/file/image/controller', () => ({
   removeImageByPath: vi.fn().mockResolvedValue(undefined)
 }));
 
+const { revokeMcpOAuthForAppMock } = vi.hoisted(() => ({
+  // 删除路径会直接 `.catch()` 撤销结果，mock 必须返回 Promise；
+  // 未显式覆盖时视为撤销成功。
+  revokeMcpOAuthForAppMock: vi.fn(async () => undefined)
+}));
+
+vi.mock('@fastgpt/service/core/app/mcpOAuth/runtime', () => ({
+  revokeMcpOAuthForApp: revokeMcpOAuthForAppMock
+}));
+
 // Import mocked modules for type access
 import { bullMQ, QueueNames } from '@fastgpt/dal/redis/bullmq';
 
@@ -255,6 +265,56 @@ describe('App Delete API Integration', () => {
     // Cleanup
     await MongoApp.deleteOne({ _id: testApp._id });
     await MongoMcpKey.deleteOne({ _id: mcpKey._id });
+  });
+
+  it('revokes MCP OAuth credentials before deleting a toolset', async () => {
+    const toolset = await MongoApp.create({
+      name: 'OAuth toolset for deletion',
+      teamId: rootUser.teamId,
+      tmbId: rootUser.tmbId,
+      type: AppTypeEnum.mcpToolSet
+    });
+
+    const mockQueue = {
+      add: vi.fn().mockResolvedValue({ id: 'job-oauth' })
+    };
+    mockGetQueue.mockReturnValue(mockQueue as any);
+
+    const result = await Call(handler, {
+      auth: rootUser,
+      query: { appId: String(toolset._id) }
+    });
+
+    expect(result.code).toBe(200);
+    expect(revokeMcpOAuthForAppMock).toHaveBeenCalledWith(String(toolset._id));
+
+    await MongoApp.deleteOne({ _id: toolset._id });
+  });
+
+  it('still deletes when OAuth revocation fails', async () => {
+    const toolset = await MongoApp.create({
+      name: 'OAuth revoke failure toolset',
+      teamId: rootUser.teamId,
+      tmbId: rootUser.tmbId,
+      type: AppTypeEnum.mcpToolSet
+    });
+    revokeMcpOAuthForAppMock.mockRejectedValueOnce(new Error('revoke network failure'));
+
+    const mockQueue = {
+      add: vi.fn().mockResolvedValue({ id: 'job-oauth-failed' })
+    };
+    mockGetQueue.mockReturnValue(mockQueue as any);
+
+    const result = await Call(handler, {
+      auth: rootUser,
+      query: { appId: String(toolset._id) }
+    });
+
+    expect(result.code).toBe(200);
+    const deleted = await MongoApp.findOne({ _id: toolset._id });
+    expect(deleted?.deleteTime).not.toBeNull();
+
+    await MongoApp.deleteOne({ _id: toolset._id });
   });
 
   it('should handle folder deletion correctly', async () => {

@@ -56,6 +56,10 @@ vi.mock('@fastgpt/service/core/app/mcp', () => ({
   })
 }));
 
+vi.mock('@fastgpt/service/core/app/mcpOAuth/runtime', () => ({
+  withMcpOAuthRetry: vi.fn(async ({ run }: any) => run({ Authorization: 'Bearer test-token' }))
+}));
+
 vi.mock('@fastgpt/service/common/logger', async () => {
   const actual = await vi.importActual<typeof import('@fastgpt/service/common/logger')>(
     '@fastgpt/service/common/logger'

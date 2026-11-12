@@ -459,6 +459,10 @@ export const filterSensitiveNodesData = (nodes: StoreNodeItemType[]) => {
       if (Array.isArray(toolSet.toolList)) {
         sanitizedToolSet.toolList = toolSet.toolList.map(stripHeaderSecret);
       }
+      // 跨团队复制/导出不携带任何 OAuth 状态，接收方必须重新授权。
+      if (key === 'mcpToolSet' && 'oauth' in sanitizedToolSet) {
+        delete sanitizedToolSet.oauth;
+      }
       toolConfig[key] = sanitizedToolSet;
     });
   };

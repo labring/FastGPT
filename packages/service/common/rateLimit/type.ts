@@ -7,7 +7,8 @@ export const RateLimitSceneEnum = {
   OutLink: 'out-link',
   Upload: 'upload',
   Member: 'member',
-  Team: 'team'
+  Team: 'team',
+  McpOAuth: 'mcp-oauth'
 } as const;
 
 export type RateLimitScene = (typeof RateLimitSceneEnum)[keyof typeof RateLimitSceneEnum];

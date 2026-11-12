@@ -13,6 +13,8 @@ import {
   RunMcpToolResponseSchema
 } from './api';
 
+export * from './oauth';
+
 export const McpToolsPath: OpenAPIPath = {
   '/core/app/mcpTools/getTools': {
     post: {

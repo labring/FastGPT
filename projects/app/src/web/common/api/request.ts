@@ -29,6 +29,11 @@ type ConfigType = {
   maxQuantity?: number; // The maximum number of simultaneous requests, usually used to cancel old requests
   withCredentials?: boolean;
   dataAsBody?: boolean;
+  /**
+   * 跳过 `{code,data}` 解包，直接返回响应体（如 MCP OAuth 路由的裸 schema 响应）。
+   * 错误响应仍走统一错误处理。
+   */
+  rawResponse?: boolean;
   // 仅复用内容相同的进行中请求；请求结束后不会缓存结果。
   deduplicate?: boolean;
 };
@@ -263,7 +268,15 @@ instance.interceptors.response.use(responseSuccess, (err) => Promise.reject(err)
 function request(
   url: string,
   data: any,
-  { cancelToken, maxQuantity, withCredentials, dataAsBody, deduplicate, ...config }: ConfigType,
+  {
+    cancelToken,
+    maxQuantity,
+    withCredentials,
+    dataAsBody,
+    deduplicate,
+    rawResponse,
+    ...config
+  }: ConfigType,
   method: Method
 ): any {
   // 只归一化普通参数对象和数组，避免改写 File、Blob 等原始请求体的只读属性。
@@ -310,7 +323,7 @@ function request(
       withCredentials,
       ...config // 用户自定义配置，可以覆盖前面的配置
     })
-    .then((res) => checkRes(res.data))
+    .then((res) => (rawResponse ? res.data : checkRes(res.data)))
     .catch((err) => responseError(err))
     .finally(() => {
       requestFinish({ signId, url });

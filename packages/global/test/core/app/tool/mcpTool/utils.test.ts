@@ -89,6 +89,33 @@ describe('mcpTool utils', () => {
         key: 'Authorization'
       });
     });
+
+    it('derives authMode from oauth and clones oauth instead of sharing the persisted object', () => {
+      const oauth = { schemaVersion: 1 as const, clientMode: 'auto' as const, credentialSeq: 0 };
+
+      const result = getMCPToolSetRuntimeNode({
+        url: 'https://mcp.example.com/api',
+        toolList: [],
+        oauth
+      });
+
+      const runtimeOAuth = result.toolConfig?.mcpToolSet?.oauth;
+      expect(result.toolConfig?.mcpToolSet?.authMode).toBe('oauth');
+      expect(runtimeOAuth).toEqual(oauth);
+      expect(runtimeOAuth).not.toBe(oauth);
+
+      // runtime 节点被下游脱敏/改写时，不得影响调用方持有的持久化对象。
+      runtimeOAuth!.credentialSeq = 99;
+      expect(oauth.credentialSeq).toBe(0);
+
+      const explicitHeaders = getMCPToolSetRuntimeNode({
+        url: 'https://mcp.example.com/api',
+        toolList: [],
+        authMode: 'headers',
+        oauth
+      });
+      expect(explicitHeaders.toolConfig?.mcpToolSet?.authMode).toBe('headers');
+    });
   });
 
   describe('getMCPToolRuntimeNode', () => {

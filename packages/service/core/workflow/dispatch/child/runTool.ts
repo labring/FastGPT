@@ -42,6 +42,7 @@ import { computedSystemToolUsage } from '../../../app/tool/runtime/utils';
 import { InvokeProcessor } from '../../../../support/invoke/invoke';
 import { getLogger, LogCategories } from '../../../../common/logger';
 import { getWorkflowAppId } from '../utils/source';
+import { withMcpOAuthRetry } from '../../../app/mcpOAuth/runtime';
 import {
   assertTeamPluginSourceAccess,
   getRawPluginIdFromSystemToolId
@@ -114,13 +115,30 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
   const callMcpTool = async ({
     toolName,
     url,
-    headerSecret
+    headerSecret,
+    oauth
   }: {
     toolName: string;
     url: string;
     headerSecret?: StoreSecretValueType | null;
+    oauth?: { appId: string; nodeId: string };
   }) => {
     await assertMCPUrlNotInternal(url);
+
+    toolInput = params;
+
+    if (oauth) {
+      // OAuth：401 强制刷新并重试一次；每次尝试使用新 Bearer 新建连接，避免复用旧请求头。
+      return withMcpOAuthRetry({
+        appId: oauth.appId,
+        nodeId: oauth.nodeId,
+        run: async (headers) => {
+          const mcpClient = new MCPClient({ url, headers });
+          // OAuth 分支每次尝试都是临时 client（未进入 mcpClientMemory），调用后必须关闭传输。
+          return mcpClient.toolCall({ toolName, params, closeConnection: true });
+        }
+      });
+    }
 
     const context = getWorkflowContext();
     const headers = getSecretValue({ storeSecret: headerSecret ?? undefined, resolveReference });
@@ -134,7 +152,6 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
     const mcpClient = context.mcpClientMemory?.[cacheKey] ?? new MCPClient({ url, headers });
     context.mcpClientMemory[cacheKey] = mcpClient;
 
-    toolInput = params;
     return mcpClient.toolCall({ toolName, params, closeConnection: false });
   };
 
@@ -410,7 +427,11 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
         const url = mcpToolSet.url ?? referencedTool.url;
         const headerSecret = mcpToolSet.headerSecret ?? referencedTool.headerSecret;
         if (!url) throw new Error('MCP tool set URL is missing');
-        return getMcpResponse(await callMcpTool({ toolName, url, headerSecret }));
+        const oauth =
+          mcpToolSet.authMode === 'oauth' && workflow.nodes[0]?.nodeId
+            ? { appId: parentId, nodeId: String(workflow.nodes[0].nodeId) }
+            : undefined;
+        return getMcpResponse(await callMcpTool({ toolName, url, headerSecret, oauth }));
       }
 
       if (!mcpTool.url) throw new Error('MCP tool set URL is missing');
