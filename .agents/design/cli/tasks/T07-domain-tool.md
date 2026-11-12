@@ -1,9 +1,10 @@
 # T07：`tool` 工具集、HTTP 工具与团队插件域
 
-- **所属需求包**：`PKG-04` 工作流 GitOps 与工具生态（Record: `reczz28YGuG6RMRm`）
-- **覆盖 FR**：`FR-403` 系统工具与 HTTP 工具、`FR-404` 团队插件与两阶段安装包
+- **所属需求包**：`PKG-06` 工具与 MCP（Tool & MCP）（Record: `reczz28YGuG6RmrU`）
+- **对应 PRD**：`PRD-06.1` 系统工具、HTTP 工具集与团队插件（Record: `reczz28YDq8uYkYY` · [飞书任务看板](https://fael3z0zfze.feishu.cn/base/L8MsbBBOiaVIzdsfwa1cF78UnGc)）
+- **覆盖 FR**：`FR-601` 系统工具与 HTTP 工具、`FR-602` 团队插件与两阶段安装包
 - **阶段 / 优先级**：Phase 2 · P2
-- **状态**：待前置 T00（PRD Record: `reczz28YDq8uYkYY` · [飞书任务看板](https://fael3z0zfze.feishu.cn/base/L8MsbBBOiaVIzdsfwa1cF78UnGc)）
+- **状态**：待前置 T00
 - **前置依赖**：T00（需要 multipart 上传、`--file`、`--dry-run`、破坏性确认）
 - **开发红线**：必读 [engineering-standards.md](../engineering-standards.md) · 总览 [design.md](../design.md) · 索引 [index.md](../index.md)
 - **可并行性**：T00 合入后与 T06、T08 ~ T10 并行

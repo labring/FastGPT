@@ -1,4 +1,4 @@
-> 状态：正式设计基线 v1.0 · 2026-11-11（已冻结架构与命令面，可作为协同开发正式参考）
+> 状态：正式设计基线 v1.2 · 2026-11-12（已冻结架构、命令面与 9 需求包 × 24 细粒度 PRD 拆解，可作为协同开发正式参考）
 > 索引入口：[index.md](./index.md) · 研发规范：[engineering-standards.md](./engineering-standards.md) · 任务拆解：[tasks/README.md](./tasks/README.md)
 > 飞书同步：[设计方案文档](https://fael3z0zfze.feishu.cn/docx/GK3LdwUfEon2T8xTC9kcADohn6d) · [任务分配多维表格](https://fael3z0zfze.feishu.cn/base/L8MsbBBOiaVIzdsfwa1cF78UnGc)
 
@@ -491,3 +491,4 @@ CLI 不能假设所有部署实例都已升级到包含 `whoami` 的版本，因
 - v0.8（2026-11-11）：确定第 5 节按业务领域拆分的顶层命令树（`workflow` 与 `mcp` 独立一级、`skill` 平台 vs `skills` Agent 包护栏）；补充 [engineering-standards.md](./engineering-standards.md) 与 [tasks/README.md](./tasks/README.md) 拆解多人并行任务。
 - v1.0（2026-11-11）：移除草稿状态，升级为协同开发正式参考基线；新增 [index.md](./index.md) 索引与飞书任务分配多维表格联动。
 - v1.1（2026-11-11）：将 `@fastgpt/cli` 从 `packages/cli/` 迁至仓库根目录 `cli/`（与 `projects/`、`packages/` 平级），彻底隔离主应用 Docker 构建与全局 `tsconfig` 扫描。
+- v1.2（2026-11-12）：重构飞书多维表格与任务映射为 **9 业务需求包（`PKG-00`~`PKG-08`）× 44 原子 FR × 24 细粒度可并行 PRD**，默认视图均配置按彩色需求包可折叠分组。

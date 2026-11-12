@@ -1,9 +1,10 @@
 # T00：公共运行时扩展（HTTP 流式/上传/下载 + 安全护栏 + 输入输出基础件）
 
-- **所属需求包**：`PKG-00` 认证底座与公共运行时（Record: `reczz28YGuG6P2j0`）
+- **所属需求包**：`PKG-00` 认证与公共运行时底座（Record: `reczz28YGuG6P2j0`）
+- **对应 PRD**：`PRD-00.2` 公共运行时扩展与安全确认门禁（Record: `reczz28YDq8uUbAc` · [飞书任务看板](https://fael3z0zfze.feishu.cn/base/L8MsbBBOiaVIzdsfwa1cF78UnGc)）
 - **覆盖 FR**：`FR-004` HTTP 客户端扩展、`FR-005` 统一确认与 dry-run 门禁、`FR-006` 大载荷读取与分页渲染
 - **阶段 / 优先级**：Phase 0.5 · P0（所有后续业务 Task 的前置阻塞项）
-- **状态**：待认领（PRD Record: `reczz28YDq8uUbAc` · [飞书任务看板](https://fael3z0zfze.feishu.cn/base/L8MsbBBOiaVIzdsfwa1cF78UnGc)）
+- **状态**：**开发中**（负责人：吴贤权）
 - **前置依赖**：Phase 0 认证底座（已完成，见 [labring/FastGPT#8334](https://github.com/labring/FastGPT/pull/8334)）
 - **开发红线**：必读 [engineering-standards.md](../engineering-standards.md) · 总览 [design.md](../design.md) · 索引 [index.md](../index.md)
 - **可并行性**：建议优先由 1 人快速落地并合入；其余业务域基于此分支开展，避免各自重复实现文件上传、SSE、`--dry-run` 与二次确认。

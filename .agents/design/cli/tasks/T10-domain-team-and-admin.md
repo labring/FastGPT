@@ -1,9 +1,12 @@
 # T10：`team`（团队、API Key、账单）与 `admin`（系统管理员隔离域）
 
-- **所属需求包**：`PKG-06` 团队治理、管理后台与 Agent 赋能（Record: `reczz28YGuG6RmrU`）
-- **覆盖 FR**：`FR-601` 团队治理与账单用量、`FR-602` `team apikey` 自助管理与脱敏、`FR-603` `admin` 高危隔离域
+- **所属需求包**：`PKG-08` 团队与后台治理（Team & Admin）（Record: `reczz28Yb8uAOz6D`）
+- **细粒度 PRD（可按子 PRD 隔离文件并行认领）**：
+  - `PRD-08.1`（`T10a`）团队治理、成员组织与用量账单（Record: `reczz28YDq8uXEJb` · `FR-801`）
+  - `PRD-08.2`（`T10b`）团队 API Key 自助管理与脱敏保护（Record: `reczz28Yb9VZxMy3` · `FR-802`）
+  - `PRD-08.3`（`T10c`）系统管理员高危隔离命名空间 `admin`（Record: `reczz28Yb9VZy9ZQ` · `FR-803`）
 - **阶段 / 优先级**：Phase 3 · P3
-- **状态**：待前置 T00（PRD Record: `reczz28YDq8uXEJb` · [飞书任务看板](https://fael3z0zfze.feishu.cn/base/L8MsbBBOiaVIzdsfwa1cF78UnGc)）
+- **状态**：待前置 T00（[飞书任务看板](https://fael3z0zfze.feishu.cn/base/L8MsbBBOiaVIzdsfwa1cF78UnGc)）
 - **前置依赖**：T00（需要确认门禁、`--dry-run`、脱敏输出、分页列表）
 - **开发红线**：必读 [engineering-standards.md](../engineering-standards.md) · 总览 [design.md](../design.md) · 索引 [index.md](../index.md)
 - **可并行性**：T00 合入后与 T06 ~ T09、T11 并行
