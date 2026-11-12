@@ -1,4 +1,4 @@
-import type { CliResult } from './types';
+import type { CliResult, CliRiskLevel } from './types';
 
 /**
  * 构造普通成功响应（无实体变更，如查询类命令）。
@@ -37,20 +37,22 @@ export function createChangedResult<T>(params: {
 }
 
 /**
- * 构造 `--dry-run` 预览响应，统一将 changed 标记为 false 并携带结构化预览数据。
+ * 构造 `--dry-run` 预览响应，统一将 changed 标记为 false 并携带结构化预览数据与 risk 风险等级。
  */
 export function createDryRunResult<T extends Record<string, unknown>>(params: {
   operation: string;
   preview: T;
+  risk?: CliRiskLevel;
   message?: string;
   warnings?: string[];
-}): CliResult<T & { dryRun: true; operation: string }> {
+}): CliResult<T & { dryRun: true; operation: string; risk?: CliRiskLevel }> {
   return {
     changed: false,
     message: params.message ?? `[DRY-RUN] Preview for operation "${params.operation}"`,
     data: {
       dryRun: true,
       operation: params.operation,
+      ...(params.risk !== undefined ? { risk: params.risk } : {}),
       ...params.preview
     },
     ...(params.warnings !== undefined ? { warnings: params.warnings } : {})

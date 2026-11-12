@@ -273,4 +273,43 @@ describe('FastGptHttpClient (ky) & OutputRenderer (picocolors)', () => {
 
     expect(foreignReqHeaders).toBeUndefined();
   });
+
+  it('follows same-origin 307 redirect preserving method and payload (R1)', async () => {
+    let canonicalRequestReceived = false;
+    let canonicalMethod: string | undefined;
+    let canonicalBody: unknown;
+
+    const client = createFastGptHttpClient({
+      baseUrl: 'http://127.0.0.1:3000/api',
+      cliVersion: '0.1.0',
+      fetchFn: async (input) => {
+        const req = input instanceof Request ? input : new Request(input);
+        const url = req.url;
+        if (url.includes('/api/core/dataset/delete')) {
+          return new Response(null, {
+            status: 307,
+            headers: { location: 'http://127.0.0.1:3000/api/canonical/delete' }
+          });
+        }
+        if (url.includes('/api/canonical/delete')) {
+          canonicalRequestReceived = true;
+          canonicalMethod = req.method;
+          canonicalBody = await req.json();
+          return jsonResponse({ code: 200, data: { deleted: true } });
+        }
+        return jsonResponse({}, 404);
+      }
+    });
+
+    const res = await client.request({
+      method: 'DELETE',
+      path: '/core/dataset/delete',
+      body: { id: '68ad85a7463006c963799a05' }
+    });
+
+    expect(canonicalRequestReceived).toBe(true);
+    expect(canonicalMethod).toBe('DELETE');
+    expect(canonicalBody).toEqual({ id: '68ad85a7463006c963799a05' });
+    expect(res).toEqual({ deleted: true });
+  });
 });

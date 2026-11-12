@@ -1,5 +1,21 @@
+import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { CliArgumentError } from '../../shared/errors';
 import type { CliCommandSpec } from '../pipeline';
+
+/**
+ * 将命令行参数传入的 parentId 规整化；若传入 "null"、空串或 "root" 显式转为真正的 null（表示根目录）。
+ */
+function parseParentIdOption(raw: unknown): string | null | undefined {
+  if (raw === undefined) return undefined;
+  if (typeof raw === 'string') {
+    const trimmed = raw.trim();
+    if (trimmed === 'null' || trimmed === '' || trimmed === 'root' || trimmed === '/') {
+      return null;
+    }
+    return trimmed;
+  }
+  return null;
+}
 
 export function createDatasetCommandSpecs(): CliCommandSpec[] {
   return [
@@ -60,7 +76,7 @@ export function createDatasetCommandSpecs(): CliCommandSpec[] {
           client,
           input: {
             searchKey: typeof options.search === 'string' ? options.search : undefined,
-            parentId: typeof options.parentId === 'string' ? options.parentId : undefined,
+            parentId: parseParentIdOption(options.parentId),
             type: typeof options.type === 'string' ? options.type : undefined,
             page: typeof options.page === 'string' ? Number(options.page) : undefined,
             pageSize: typeof options.pageSize === 'string' ? Number(options.pageSize) : undefined
@@ -218,7 +234,7 @@ export function createDatasetCommandSpecs(): CliCommandSpec[] {
             vectorModelId:
               typeof options.vectorModel === 'string' ? options.vectorModel : undefined,
             agentModelId: typeof options.agentModel === 'string' ? options.agentModel : undefined,
-            parentId: typeof options.parentId === 'string' ? options.parentId : undefined
+            parentId: parseParentIdOption(options.parentId)
           },
           dryRun: options.dryRun === true
         });
@@ -314,7 +330,7 @@ export function createDatasetCommandSpecs(): CliCommandSpec[] {
             name: typeof options.name === 'string' ? options.name : undefined,
             intro: typeof options.intro === 'string' ? options.intro : undefined,
             agentModelId: typeof options.agentModel === 'string' ? options.agentModel : undefined,
-            parentId: typeof options.parentId === 'string' ? options.parentId : undefined
+            parentId: parseParentIdOption(options.parentId)
           },
           dryRun: options.dryRun === true
         });
@@ -514,14 +530,13 @@ export function createDatasetCommandSpecs(): CliCommandSpec[] {
         }
 
         const searchMode = (() => {
-          if (
-            options.mode === 'embedding' ||
-            options.mode === 'fullTextRecall' ||
-            options.mode === 'mixedRecall'
-          ) {
-            return options.mode;
+          if (options.mode === DatasetSearchModeEnum.embedding) {
+            return DatasetSearchModeEnum.embedding;
           }
-          return 'mixedRecall' as const;
+          if (options.mode === DatasetSearchModeEnum.fullTextRecall) {
+            return DatasetSearchModeEnum.fullTextRecall;
+          }
+          return DatasetSearchModeEnum.mixedRecall;
         })();
 
         const usingReRank = (() => {

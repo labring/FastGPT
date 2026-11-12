@@ -5,9 +5,12 @@ import {
   GetDatasetListV2BodySchema,
   SearchDatasetTestBodySchema,
   UpdateDatasetBodySchema,
+  type CreateDatasetBody,
   type GetDatasetDetailResponse,
   type GetDatasetListV2Response,
-  type SearchDatasetTestResponse
+  type SearchDatasetTestBody,
+  type SearchDatasetTestResponse,
+  type UpdateDatasetBody
 } from '@fastgpt/global/openapi/core/dataset/api';
 import type { FastGptHttpClient } from '../../infra/http/fastgpt-http-client';
 import { createChangedResult, createDryRunResult, createSuccessResult } from '../../shared/result';
@@ -21,32 +24,17 @@ export type DatasetListParams = {
   pageSize?: number;
 };
 
-export type DatasetCreateParams = {
-  name: string;
-  intro?: string;
-  type?: string;
-  vectorModelId?: string;
-  agentModelId?: string;
-  parentId?: string | null;
-  avatar?: string;
-};
+export type DatasetCreateParams = Pick<CreateDatasetBody, 'name'> &
+  Partial<Omit<CreateDatasetBody, 'name' | 'type'>> & {
+    type?: string;
+  };
 
-export type DatasetUpdateParams = {
-  name?: string;
-  intro?: string;
-  agentModelId?: string;
-  avatar?: string;
-  parentId?: string | null;
-};
+export type DatasetUpdateParams = Partial<Omit<UpdateDatasetBody, 'id'>>;
 
 export type DatasetSearchParams = {
   datasetId: string;
   text: string;
-  limit?: number;
-  similarity?: number;
-  searchMode?: 'embedding' | 'fullTextRecall' | 'mixedRecall';
-  usingReRank?: boolean;
-};
+} & Partial<Omit<Extract<SearchDatasetTestBody, { text?: unknown }>, 'datasetId' | 'text'>>;
 
 export type DatasetService = {
   list: (params: {
@@ -81,7 +69,7 @@ export type DatasetService = {
 
 /**
  * 知识库领域服务：封装知识库的查询、创建、更新、删除及召回检索测试。
- * 所有请求载荷均复用 @fastgpt/global/openapi 中的共享 Zod 契约做真实校验，保证 dryRun 与实际执行一致。
+ * 所有请求载荷与数据模型均从 @fastgpt/global/openapi 中的共享契约直接推导复用，保证 dryRun 与实际执行一致。
  */
 export function createDatasetService(): DatasetService {
   return {
@@ -105,12 +93,23 @@ export function createDatasetService(): DatasetService {
         body: validatedBody
       });
 
+      const actualPage =
+        'pageNum' in validatedBody && typeof validatedBody.pageNum === 'number'
+          ? validatedBody.pageNum
+          : 1;
+      const actualPageSize =
+        'pageSize' in validatedBody && typeof validatedBody.pageSize === 'number'
+          ? validatedBody.pageSize
+          : 20;
+      const hasMore = actualPage * actualPageSize < res.total;
+
       return createSuccessResult({
         data: res,
         meta: {
           total: res.total,
-          pageNum,
-          pageSize,
+          page: actualPage,
+          pageSize: actualPageSize,
+          hasMore,
           count: res.list.length
         }
       });
@@ -144,6 +143,7 @@ export function createDatasetService(): DatasetService {
       if (dryRun) {
         return createDryRunResult({
           operation: 'dataset create',
+          risk: 'write',
           preview: {
             method: 'POST',
             path: '/core/dataset/create',
@@ -179,6 +179,7 @@ export function createDatasetService(): DatasetService {
       if (dryRun) {
         return createDryRunResult({
           operation: 'dataset update',
+          risk: 'write',
           preview: {
             method: 'POST',
             path: '/core/dataset/update',
@@ -205,6 +206,7 @@ export function createDatasetService(): DatasetService {
       if (dryRun) {
         return createDryRunResult({
           operation: 'dataset delete',
+          risk: 'destructive',
           preview: {
             method: 'DELETE',
             path: '/core/dataset/delete',

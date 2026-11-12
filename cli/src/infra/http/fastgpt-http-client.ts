@@ -190,16 +190,10 @@ function unpackFastGptResponse<T>({
 
   if (response.status >= 300 && response.status < 400) {
     const location = response.headers?.get?.('location');
-    if (location) {
-      const baseOrigin = new URL(displayUrl).origin;
-      const targetOrigin = new URL(location, displayUrl).origin;
-      if (targetOrigin !== baseOrigin) {
-        throw new CliNetworkError(
-          `Cross-origin redirect to "${redactText(location)}" blocked to prevent credential leakage.`,
-          'Verify FASTGPT_BASE_URL and check for unintended external redirects.'
-        );
-      }
-    }
+    throw new CliNetworkError(
+      `Unhandled HTTP ${response.status} redirect${location ? ` to "${redactText(location)}"` : ''}.`,
+      'Ensure FASTGPT_BASE_URL points directly to the canonical API endpoint.'
+    );
   }
 
   let parsed: unknown = undefined;
@@ -420,6 +414,112 @@ export function createFastGptHttpClient({
     });
   }
 
+  const executeWithRedirects = async ({
+    client,
+    initialPath,
+    method: initialMethod,
+    searchParams,
+    jsonBody,
+    rawBody,
+    formData,
+    signal
+  }: {
+    client: any;
+    initialPath: string;
+    method: 'GET' | 'POST' | 'PUT' | 'DELETE';
+    searchParams?: Record<string, string | number | boolean>;
+    jsonBody?: unknown;
+    rawBody?: BodyInit | null;
+    formData?: FormData;
+    signal?: AbortSignal;
+  }): Promise<{ response: Response; finalUrl: string }> => {
+    let currentPath = initialPath;
+    let currentMethod = initialMethod;
+    let currentJson = jsonBody;
+    let currentRawBody = rawBody;
+    let currentFormData = formData;
+    let currentSearchParams = searchParams;
+    let currentDisplayUrl = `${normalizedBaseUrl}/${initialPath}`;
+
+    for (let hop = 0; hop <= 5; hop += 1) {
+      let response: Response;
+      try {
+        response = await client(currentPath, {
+          method: currentMethod,
+          ...(signal ? { signal } : {}),
+          ...(currentSearchParams ? { searchParams: currentSearchParams } : {}),
+          ...(currentJson !== undefined ? { json: currentJson } : {}),
+          ...(currentRawBody !== undefined && currentRawBody !== null
+            ? { body: currentRawBody }
+            : {}),
+          ...(currentFormData !== undefined ? { body: currentFormData } : {})
+        });
+      } catch (error) {
+        if (error instanceof CliNetworkError) throw error;
+        const msg = redactText(error instanceof Error ? error.message : String(error));
+        const isTls = /cert|tls|ssl|self[- ]signed|unable to verify/i.test(msg);
+        throw new CliNetworkError(
+          `Network request failed for ${redactText(currentDisplayUrl)}: ${msg}`,
+          isTls
+            ? 'Verify your TLS certificate, or pass --ca-cert <pem> (or --insecure for debugging).'
+            : 'Check FASTGPT_BASE_URL and confirm the FastGPT server is reachable.',
+          { url: redactText(currentDisplayUrl) }
+        );
+      }
+
+      if (response.status >= 300 && response.status < 400) {
+        if (hop === 5) {
+          throw new CliNetworkError(
+            `Too many redirects (exceeded maximum of 5 hops).`,
+            'Verify server redirect configuration.'
+          );
+        }
+
+        const location = response.headers.get('location');
+        if (!location) {
+          throw new CliNetworkError(
+            `Server returned HTTP ${response.status} redirect without a Location header.`,
+            'Verify server routing configuration.'
+          );
+        }
+
+        const targetUrl = new URL(location, currentDisplayUrl);
+        if (targetUrl.origin !== baseOrigin) {
+          throw new CliNetworkError(
+            `Cross-origin redirect to "${redactText(location)}" blocked to prevent credential leakage.`,
+            'Verify FASTGPT_BASE_URL and check for unintended external redirects.'
+          );
+        }
+
+        // 计算相对于 normalizedBaseUrl 的相对路径
+        const basePrefix = new URL(normalizedBaseUrl).pathname.replace(/\/+$/, '');
+        const targetPathname = targetUrl.pathname;
+        const relativeTarget = targetPathname.startsWith(basePrefix)
+          ? targetPathname.slice(basePrefix.length).replace(/^\/+/, '')
+          : targetPathname.replace(/^\/+/, '');
+        currentPath = relativeTarget + targetUrl.search;
+        currentDisplayUrl = targetUrl.toString();
+        currentSearchParams = undefined;
+
+        // 301 / 302 / 303 按 HTTP 规范对非幂等请求重写为 GET
+        if (response.status === 301 || response.status === 302 || response.status === 303) {
+          if (currentMethod !== 'GET') {
+            currentMethod = 'GET';
+            currentJson = undefined;
+            currentRawBody = null;
+            currentFormData = undefined;
+          }
+        }
+        // 307 与 308 保留原始 HTTP 方法与请求载荷
+        continue;
+      }
+
+      return { response, finalUrl: currentDisplayUrl };
+    }
+
+    throw new CliNetworkError('Too many redirects.');
+  };
+
   return {
     baseUrl: normalizedBaseUrl,
     request: async <T = unknown>({
@@ -443,29 +543,21 @@ export function createFastGptHttpClient({
       const searchParams = filterQuery(query);
       const client = await buildKyClient({ timeout: requestTimeout, auth, extraHeaders });
 
-      const displayUrl = `${normalizedBaseUrl}/${relativePath}`;
-      let response: Response;
-      try {
-        response = await client(relativePath, {
-          method,
-          ...(searchParams ? { searchParams } : {}),
-          ...(body !== undefined ? { json: body } : {})
-        });
-      } catch (error) {
-        if (error instanceof CliNetworkError) throw error;
-        const msg = redactText(error instanceof Error ? error.message : String(error));
-        const isTls = /cert|tls|ssl|self[- ]signed|unable to verify/i.test(msg);
-        throw new CliNetworkError(
-          `Network request failed for ${redactText(displayUrl)}: ${msg}`,
-          isTls
-            ? 'Verify your TLS certificate, or pass --ca-cert <pem> (or --insecure for debugging).'
-            : 'Check FASTGPT_BASE_URL and confirm the FastGPT server is reachable.',
-          { url: redactText(displayUrl) }
-        );
-      }
+      const { response, finalUrl } = await executeWithRedirects({
+        client,
+        initialPath: relativePath,
+        method,
+        searchParams,
+        jsonBody: body
+      });
 
       const rawText = await response.text();
-      return unpackFastGptResponse<T>({ response, rawText, displayUrl, onSessionRenewed });
+      return unpackFastGptResponse<T>({
+        response,
+        rawText,
+        displayUrl: finalUrl,
+        onSessionRenewed
+      });
     },
 
     requestRaw: async ({
@@ -481,39 +573,20 @@ export function createFastGptHttpClient({
       const searchParams = filterQuery(query);
       const client = await buildKyClient({ timeout: requestTimeout, auth, extraHeaders });
 
-      const displayUrl = `${normalizedBaseUrl}/${relativePath}`;
-      let response: Response;
-      try {
-        response = await client(relativePath, {
-          method,
-          ...(searchParams ? { searchParams } : {}),
-          ...(body !== undefined && body !== null ? { body } : {})
-        });
-      } catch (error) {
-        if (error instanceof CliNetworkError) throw error;
-        const msg = redactText(error instanceof Error ? error.message : String(error));
-        throw new CliNetworkError(`Raw request failed for ${redactText(displayUrl)}: ${msg}`);
-      }
-
-      if (response.status >= 300 && response.status < 400) {
-        const location = response.headers.get('location');
-        if (location) {
-          const targetOrigin = new URL(location, displayUrl).origin;
-          if (targetOrigin !== baseOrigin) {
-            throw new CliNetworkError(
-              `Cross-origin redirect to "${redactText(location)}" blocked to prevent credential leakage.`,
-              'Verify FASTGPT_BASE_URL and check for unintended external redirects.'
-            );
-          }
-        }
-      }
+      const { response, finalUrl } = await executeWithRedirects({
+        client,
+        initialPath: relativePath,
+        method,
+        searchParams,
+        rawBody: body
+      });
 
       if (response.status >= 400) {
         const rawText = await response.text();
         throw mapServerError({
           httpStatus: response.status,
           message: rawText.slice(0, 300) || `HTTP ${response.status}`,
-          url: displayUrl
+          url: finalUrl
         });
       }
 
@@ -549,21 +622,21 @@ export function createFastGptHttpClient({
         stripAccept: true
       });
 
-      const displayUrl = `${normalizedBaseUrl}/${relativePath}`;
-      let response: Response;
-      try {
-        response = await client(relativePath, {
-          method: 'POST',
-          body: formData,
-          ...(searchParams ? { searchParams } : {})
-        });
-      } catch (error) {
-        const msg = redactText(error instanceof Error ? error.message : String(error));
-        throw new CliNetworkError(`Multipart upload failed for ${redactText(displayUrl)}: ${msg}`);
-      }
+      const { response, finalUrl } = await executeWithRedirects({
+        client,
+        initialPath: relativePath,
+        method: 'POST',
+        searchParams,
+        formData
+      });
 
       const rawText = await response.text();
-      return unpackFastGptResponse<T>({ response, rawText, displayUrl, onSessionRenewed });
+      return unpackFastGptResponse<T>({
+        response,
+        rawText,
+        displayUrl: finalUrl,
+        onSessionRenewed
+      });
     },
 
     streamSse: async function* ({
@@ -587,42 +660,21 @@ export function createFastGptHttpClient({
         }
       });
 
-      const displayUrl = `${normalizedBaseUrl}/${relativePath}`;
-      let response: Response;
-      try {
-        response = await client(relativePath, {
-          method,
-          signal,
-          ...(searchParams ? { searchParams } : {}),
-          ...(body !== undefined ? { json: body } : {})
-        });
-      } catch (error) {
-        if (error instanceof CliNetworkError) throw error;
-        const msg = redactText(error instanceof Error ? error.message : String(error));
-        throw new CliNetworkError(
-          `SSE stream connection failed for ${redactText(displayUrl)}: ${msg}`
-        );
-      }
-
-      if (response.status >= 300 && response.status < 400) {
-        const location = response.headers.get('location');
-        if (location) {
-          const targetOrigin = new URL(location, displayUrl).origin;
-          if (targetOrigin !== baseOrigin) {
-            throw new CliNetworkError(
-              `Cross-origin redirect to "${redactText(location)}" blocked to prevent credential leakage.`,
-              'Verify FASTGPT_BASE_URL and check for unintended external redirects.'
-            );
-          }
-        }
-      }
+      const { response, finalUrl } = await executeWithRedirects({
+        client,
+        initialPath: relativePath,
+        method,
+        searchParams,
+        jsonBody: body,
+        signal
+      });
 
       if (response.status >= 400) {
         const rawText = await response.text();
         throw mapServerError({
           httpStatus: response.status,
           message: rawText.slice(0, 300) || `HTTP ${response.status}`,
-          url: displayUrl
+          url: finalUrl
         });
       }
 

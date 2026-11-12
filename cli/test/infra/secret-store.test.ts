@@ -293,5 +293,9 @@ describe('SecretStore strategies', () => {
     expect(await store.getBackendName('staging')).toBe('file');
     // 读取过程中顺带清理掉了已失效的 Keychain 项 A
     expect(keychainMap.has('profile:staging')).toBe(false);
+
+    // 4. 若元数据文件损坏，绝不静默按主存储返回旧值，必须向外报错（R2）
+    await writeFile(join(dir, '.secret-backends.json'), '{ invalid-json-corrupt');
+    await expect(store.getSecret('staging')).rejects.toThrow();
   });
 });

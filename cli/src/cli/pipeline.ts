@@ -267,10 +267,25 @@ export async function executeCommandWithPipeline({
     throw error;
   }
 
-  // 自动在 meta 注入执行耗时（若未显式指定）
+  // 自动在 meta 注入执行耗时（若未显式指定），并在 dry-run 数据中统一补充 risk 风险等级
   const durationMs = Date.now() - startTime;
+  const enrichedData = (() => {
+    if (!result.data || typeof result.data !== 'object' || Array.isArray(result.data)) {
+      return result.data;
+    }
+    const dataObj = result.data as Record<string, unknown>;
+    if (dataObj.dryRun === true && dataObj.risk === undefined) {
+      return {
+        risk: spec.risk,
+        ...dataObj
+      };
+    }
+    return result.data;
+  })();
+
   const enrichedResult: CliResult = {
     ...result,
+    data: enrichedData,
     meta: {
       durationMs,
       ...(result.meta ?? {})

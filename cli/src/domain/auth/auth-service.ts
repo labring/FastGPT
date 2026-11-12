@@ -567,27 +567,29 @@ export function createAuthService({
         auth: { authType: 'token', secret: nextToken }
       });
 
-      let storageMode = resolved.profile?.storageMode;
-      if (resolved.credential!.source === 'profile') {
-        const { config } = await configRepo.read();
-        const saved = await secretStore.setSecret(resolved.profileName, nextToken);
-        storageMode = saved.backend;
-        const nextProfile = buildProfileFromProbe({
-          existing: resolved.profile,
-          baseUrl: resolved.baseUrl,
-          allowInsecureHttp: resolved.allowInsecureHttp,
-          secret: nextToken,
-          probe,
-          storageMode
-        });
-        const nextConfig = upsertProfileInConfig({
-          config,
-          profileName: resolved.profileName,
-          profile: nextProfile,
-          setAsCurrent: false
-        });
-        await configRepo.write(nextConfig);
-      }
+      const storageMode = await (async () => {
+        if (resolved.credential!.source === 'profile') {
+          const { config } = await configRepo.read();
+          const saved = await secretStore.setSecret(resolved.profileName, nextToken);
+          const nextProfile = buildProfileFromProbe({
+            existing: resolved.profile,
+            baseUrl: resolved.baseUrl,
+            allowInsecureHttp: resolved.allowInsecureHttp,
+            secret: nextToken,
+            probe,
+            storageMode: saved.backend
+          });
+          const nextConfig = upsertProfileInConfig({
+            config,
+            profileName: resolved.profileName,
+            profile: nextProfile,
+            setAsCurrent: false
+          });
+          await configRepo.write(nextConfig);
+          return saved.backend;
+        }
+        return resolved.profile?.storageMode;
+      })();
 
       return {
         changed: true,

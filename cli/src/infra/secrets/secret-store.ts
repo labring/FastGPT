@@ -1,6 +1,7 @@
-import { chmod, readFile, writeFile } from 'node:fs/promises';
+import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { SecretStoreBackend } from '../../shared/types';
+import { ensureSecureDir, writeSecureJsonFile } from '../config/config-repository';
 import { execSystemCommand, type ExecCommandFn } from './exec-command';
 import { createFileSecretStore } from './file-secret-store';
 import { createLinuxSecretToolStore } from './linux-secret-tool-store';
@@ -34,11 +35,15 @@ async function loadAuthoritativeBackends(
   try {
     const raw = await readFile(join(configDir, META_BACKENDS_FILE), 'utf8');
     const parsed = JSON.parse(raw);
-    return parsed && typeof parsed === 'object'
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
       ? (parsed as Record<string, SecretStoreBackend>)
       : {};
-  } catch {
-    return {};
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      return {};
+    }
+    // 关键元数据损坏或不可读时向外抛出异常，绝不静默返回空对象导致回退按主存储取旧凭据
+    throw error;
   }
 }
 
@@ -52,6 +57,7 @@ async function saveAuthoritativeBackend({
   backend?: SecretStoreBackend;
 }): Promise<void> {
   if (!configDir) return;
+  await ensureSecureDir(configDir);
   const current = await loadAuthoritativeBackends(configDir);
   if (backend) {
     current[profileName] = backend;
@@ -59,10 +65,7 @@ async function saveAuthoritativeBackend({
     delete current[profileName];
   }
   const metaPath = join(configDir, META_BACKENDS_FILE);
-  await writeFile(metaPath, JSON.stringify(current, null, 2), { mode: 0o600 });
-  if (process.platform !== 'win32') {
-    await chmod(metaPath, 0o600).catch(() => {});
-  }
+  await writeSecureJsonFile(metaPath, current);
 }
 
 /**

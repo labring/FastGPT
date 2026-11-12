@@ -48,7 +48,21 @@ describe('DatasetService (cli/src/domain/dataset/dataset-service.ts)', () => {
     });
     expect(res.changed).toBe(false);
     expect(res.data?.list).toHaveLength(1);
-    expect(res.meta?.total).toBe(1);
+    expect(res.meta).toEqual({
+      total: 1,
+      page: 2,
+      pageSize: 10,
+      hasMore: false,
+      count: 1
+    });
+
+    // 分页超上限参数（如 1000）被 Schema 截断为 500 时，meta.pageSize 必须如实反映 500（R4）
+    const clampRes = await service.list({
+      client,
+      input: { page: 1, pageSize: 1000 }
+    });
+    expect(capturedBody.pageSize).toBe(500);
+    expect(clampRes.meta?.pageSize).toBe(500);
   });
 
   it('fetches dataset detail and validates required datasetId', async () => {
@@ -86,6 +100,7 @@ describe('DatasetService (cli/src/domain/dataset/dataset-service.ts)', () => {
     expect(requestMade).toBe(false);
     expect(dryRunRes.changed).toBe(false);
     expect(dryRunRes.data).toHaveProperty('dryRun', true);
+    expect(dryRunRes.data).toHaveProperty('risk', 'write');
 
     const realRes = await service.create({
       client,
@@ -107,22 +122,24 @@ describe('DatasetService (cli/src/domain/dataset/dataset-service.ts)', () => {
     const dryRes = await service.update({
       client,
       datasetId: validId,
-      input: { name: 'Renamed' },
+      input: { name: 'Renamed', parentId: null },
       dryRun: true
     });
     expect(dryRes.changed).toBe(false);
     expect(dryRes.data).toHaveProperty('dryRun', true);
+    expect(dryRes.data).toHaveProperty('risk', 'write');
 
     const realRes = await service.update({
       client,
       datasetId: validId,
-      input: { name: 'Renamed', intro: 'New intro' }
+      input: { name: 'Renamed', intro: 'New intro', parentId: null }
     });
     expect(realRes.changed).toBe(true);
     expect(capturedBody).toEqual({
       id: validId,
       name: 'Renamed',
-      intro: 'New intro'
+      intro: 'New intro',
+      parentId: null
     });
   });
 
@@ -141,6 +158,7 @@ describe('DatasetService (cli/src/domain/dataset/dataset-service.ts)', () => {
     expect(deleteCalled).toBe(false);
     expect(dryRes.changed).toBe(false);
     expect(dryRes.data).toHaveProperty('dryRun', true);
+    expect(dryRes.data).toHaveProperty('risk', 'destructive');
 
     const res = await service.delete({ client, datasetId: validId });
     expect(deleteCalled).toBe(true);

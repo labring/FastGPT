@@ -165,6 +165,9 @@ describe('Dataset CLI Commands integration (cli/src/cli/commands/dataset.ts)', (
     const listJson = JSON.parse(listRes.stdout);
     expect(listJson.ok).toBe(true);
     expect(listJson.data.list[0].name).toBe('SDK Handbook');
+    expect(listJson.meta.page).toBe(1);
+    expect(listJson.meta.pageSize).toBe(20);
+    expect(listJson.meta.hasMore).toBe(false);
 
     // 2. dataset get
     const getRes = await execCli({
@@ -183,6 +186,7 @@ describe('Dataset CLI Commands integration (cli/src/cli/commands/dataset.ts)', (
     });
     expect(dryCreate.exitCode).toBe(0);
     expect(JSON.parse(dryCreate.stdout).data.dryRun).toBe(true);
+    expect(JSON.parse(dryCreate.stdout).data.risk).toBe('write');
 
     // 4. dataset create real
     const realCreate = await execCli({
@@ -211,6 +215,27 @@ describe('Dataset CLI Commands integration (cli/src/cli/commands/dataset.ts)', (
     });
     expect(updateRes.exitCode).toBe(0);
     expect(JSON.parse(updateRes.stdout).data.datasetId).toBe(OBJECT_ID_DATASET);
+
+    // 5b. dataset update --parent-id null (R3: move to root preview)
+    const updateMoveRootDry = await execCli({
+      argv: [
+        'dataset',
+        'update',
+        OBJECT_ID_DATASET,
+        '--parent-id',
+        'null',
+        '--dry-run',
+        '--format',
+        'json'
+      ],
+      configDir,
+      fetchFn: mockFetch
+    });
+    expect(updateMoveRootDry.exitCode).toBe(0);
+    const updateMoveRootJson = JSON.parse(updateMoveRootDry.stdout);
+    expect(updateMoveRootJson.data.dryRun).toBe(true);
+    expect(updateMoveRootJson.data.risk).toBe('write');
+    expect(updateMoveRootJson.data.payload.parentId).toBeNull();
 
     // 6. dataset search
     const searchRes = await execCli({
@@ -274,6 +299,7 @@ describe('Dataset CLI Commands integration (cli/src/cli/commands/dataset.ts)', (
     expect(deleteDryRun.exitCode).toBe(0);
     const deleteDryJson = JSON.parse(deleteDryRun.stdout);
     expect(deleteDryJson.data.dryRun).toBe(true);
+    expect(deleteDryJson.data.risk).toBe('destructive');
     expect(deleteDryJson.data.operation).toBe('dataset delete');
 
     // 7b. dataset delete in non-interactive/JSON mode without --yes -> must be blocked with exit code 2!
