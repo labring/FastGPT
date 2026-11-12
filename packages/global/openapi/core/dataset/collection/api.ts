@@ -183,13 +183,20 @@ const DeleteCollectionByApiFileIdsBodySchema = z
 /**
  * 三种定位方式互斥，按 body 分支表达。各分支使用 strictObject：
  * 混用其他定位字段或夹带不完整外部参数时没有任何分支能匹配，请求在数据变更前被拒绝，
- * 而不是按分支顺序静默丢弃多余字段；也不提供空对象分支，避免空请求被当作合法定位。
+ * 而不是按分支顺序静默丢弃多余字段。缺失 body 或严格空对象仅用于兼容旧版 query.id，
+ * 是否提供了有效定位参数由路由统一判断；空对象分支不能清洗非法字段后放行。
  */
-export const DeleteCollectionBodySchema = z.union([
-  DeleteCollectionByIdBodySchema,
-  DeleteCollectionByCollectionIdsBodySchema,
-  DeleteCollectionByApiFileIdsBodySchema
-]);
+export const DeleteCollectionBodySchema = z
+  .union([
+    DeleteCollectionByIdBodySchema,
+    DeleteCollectionByCollectionIdsBodySchema,
+    DeleteCollectionByApiFileIdsBodySchema,
+    z.strictObject({}).meta({
+      title: '旧版 query.id 兼容',
+      description: '仅通过旧版 query.id 定位时允许空请求体；未提供任何定位参数时拒绝请求'
+    })
+  ])
+  .optional();
 export type DeleteCollectionBodyType = z.infer<typeof DeleteCollectionBodySchema>;
 
 // ============= Get Collection Detail =============

@@ -324,27 +324,81 @@ describe('delete collection by body locating mode', () => {
     await expect(MongoDatasetCollection.findById(child._id).lean()).resolves.toBeNull();
   });
 
-  it('still deletes by the deprecated query.id without a body', async () => {
+  it.each([undefined, {}])(
+    'still deletes by the deprecated query.id with body %j',
+    async (body) => {
+      const { member, collection, child } = await fixture();
+
+      // Call 默认将缺失 body 补成 {}，此处显式透传以覆盖真实的 undefined 请求体。
+      const response = await Call((req, res) => deleteHandler({ ...req, body }, res), {
+        auth: member,
+        query: { id: String(collection._id) }
+      });
+
+      expect(response.code).toBe(200);
+      await expect(MongoDatasetCollection.findById(collection._id).lean()).resolves.toBeNull();
+      await expect(MongoDatasetCollection.findById(child._id).lean()).resolves.toBeNull();
+    }
+  );
+
+  it.each(['id', 'collectionIds', 'apiFileIds'] as const)(
+    'keeps query.id priority over the valid body %s branch',
+    async (mode) => {
+      const { member, dataset, collection } = await fixture();
+      const other = await MongoDatasetCollection.create({
+        name: 'kept',
+        type: DatasetCollectionTypeEnum.apiFile,
+        teamId: member.teamId,
+        tmbId: member.tmbId,
+        datasetId: dataset._id,
+        apiFileId: 'external-kept'
+      });
+      const body = (() => {
+        if (mode === 'id') return { id: String(other._id) };
+        if (mode === 'collectionIds') return { collectionIds: [String(other._id)] };
+        return { datasetId: String(dataset._id), apiFileIds: ['external-kept'] };
+      })();
+
+      const response = await Call(deleteHandler, {
+        auth: member,
+        query: { id: String(collection._id) },
+        body
+      });
+
+      expect(response.code).toBe(200);
+      await expect(MongoDatasetCollection.findById(collection._id).lean()).resolves.toBeNull();
+      await expect(MongoDatasetCollection.findById(other._id).lean()).resolves.not.toBeNull();
+    }
+  );
+
+  it.each([null, { collectionIds: 123 }, { apiFileIds: ['external'] }, { unexpected: true }])(
+    'rejects an invalid body even with a valid query.id: %j',
+    async (body) => {
+      const { member, collection, child } = await fixture();
+
+      const response = await Call(deleteHandler, {
+        auth: member,
+        query: { id: String(collection._id) },
+        body
+      });
+
+      expect(response.error).toBeInstanceOf(ApiRequestInputParseError);
+      await expect(MongoDatasetCollection.findById(collection._id).lean()).resolves.not.toBeNull();
+      await expect(MongoDatasetCollection.findById(child._id).lean()).resolves.not.toBeNull();
+    }
+  );
+
+  it.each([undefined, {}])('rejects missing locating fields with body %j', async (body) => {
     const { member, collection, child } = await fixture();
 
-    const response = await Call(deleteHandler, {
-      auth: member,
-      query: { id: String(collection._id) }
+    const response = await Call((req, res) => deleteHandler({ ...req, body }, res), {
+      auth: member
     });
 
-    expect(response.code).toBe(200);
-    await expect(MongoDatasetCollection.findById(collection._id).lean()).resolves.toBeNull();
-    await expect(MongoDatasetCollection.findById(child._id).lean()).resolves.toBeNull();
-  });
-
-  it('rejects a body without any locating field', async () => {
-    const { member, collection } = await fixture();
-
-    const response = await Call(deleteHandler, { auth: member, body: {} });
-
     expect(response.code).not.toBe(200);
-    expect(response.error).toBeInstanceOf(ApiRequestInputParseError);
+    expect(response.error).toBe(CommonErrEnum.missingParams);
     await expect(MongoDatasetCollection.findById(collection._id).lean()).resolves.not.toBeNull();
+    await expect(MongoDatasetCollection.findById(child._id).lean()).resolves.not.toBeNull();
   });
 
   it.each([

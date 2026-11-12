@@ -17,6 +17,7 @@ import { CreateCollectionByFileIdBodySchema } from '../../../openapi/core/datase
 import {
   ChangeCollectionOwnerBodySchema,
   ChangeCollectionOwnerResponseSchema,
+  DeleteCollectionBodySchema,
   GetCollectionCollaboratorListQuerySchema,
   GetCollectionCollaboratorListResponseSchema,
   ResumeCollectionInheritPermissionBodySchema,
@@ -175,33 +176,49 @@ describe('Dataset OpenAPI contracts', () => {
     ).toBeUndefined();
   });
 
-  it('documents delete collection as exclusive body branches and deprecates query.id', () => {
-    const operation = openAPIDocument.paths?.['/core/dataset/collection/delete']?.post;
+  it.each([undefined, {}])('accepts a legacy empty delete collection body: %j', (body) => {
+    expect(DeleteCollectionBodySchema.safeParse(body).success).toBe(true);
+  });
+
+  it.each([
+    ['DevAPI', openAPIDocument],
+    ['System OpenAPI', apiDocOpenAPIDocument]
+  ] as const)('documents delete collection branches and legacy query.id in %s', (_, document) => {
+    const operation = document.paths?.['/core/dataset/collection/delete']?.post;
     expect(operation?.['x-required-parameter-alternatives']).toEqual([
       [{ in: 'body', name: 'id' }],
       [{ in: 'body', name: 'collectionIds' }],
       [
         { in: 'body', name: 'datasetId' },
         { in: 'body', name: 'apiFileIds' }
-      ]
+      ],
+      [{ in: 'query', name: 'id' }]
     ]);
 
     const body = operation?.requestBody;
     if (!body || '$ref' in body) throw new Error('Unexpected body reference');
+    expect(body.required).toBe(false);
     const media = body.content['application/json'];
     const schema = media.schema;
     if (!schema || '$ref' in schema) throw new Error('Unexpected body schema reference');
 
-    expect(schema.anyOf?.map((branch) => branch.title)).toEqual([
+    const branches = schema.anyOf?.map((branch) => {
+      if ('$ref' in branch) throw new Error('Unexpected body branch reference');
+      return branch;
+    });
+    expect(branches?.map((branch) => branch.title)).toEqual([
       '按集合 ID 删除',
       '按集合 ID 列表删除',
-      '按 API 文件 ID 删除'
+      '按 API 文件 ID 删除',
+      '旧版 query.id 兼容'
     ]);
-    expect(schema.anyOf?.map((branch) => branch.required)).toEqual([
+    expect(branches?.map((branch) => branch.required)).toEqual([
       ['id'],
       ['collectionIds'],
-      ['datasetId', 'apiFileIds']
+      ['datasetId', 'apiFileIds'],
+      undefined
     ]);
+    expect(branches?.[3]).toMatchObject({ properties: {}, additionalProperties: false });
     expect(media.example).toEqual({ id: objectId });
 
     const queryId = (operation?.parameters ?? []).find(
