@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React from 'react';
 import MultipleRowSelect from './MultipleRowSelect';
 import { useTranslation } from 'next-i18next';
 import { type MultipleSelectProps } from './type';
@@ -186,30 +186,6 @@ const CronSelector = ({
 
   const formatLabel = cronString2Label(cronString ?? '', t);
 
-  const cronConfig2cronString = useCallback(
-    (e: CronFieldType) => {
-      // 级联选择器切换分组时会保留上一组的数值；等用户选定有效分钟数后再保存。
-      if (e[0] === CronJobTypeEnum.minuteInterval && !minuteIntervals.includes(e[1])) return;
-      const str = (() => {
-        if (e[0] === CronJobTypeEnum.month) {
-          return `0 ${e[2]} ${e[1]} * *`;
-        } else if (e[0] === CronJobTypeEnum.week) {
-          return `0 ${e[2]} * * ${e[1]}`;
-        } else if (e[0] === CronJobTypeEnum.day) {
-          return `0 ${e[1]} * * *`;
-        } else if (e[0] === CronJobTypeEnum.interval) {
-          return `0 */${e[1]} * * *`;
-        } else if (e[0] === CronJobTypeEnum.minuteInterval) {
-          return `*/${e[1]} * * * *`;
-        } else {
-          return '';
-        }
-      })();
-      onChange(str);
-    },
-    [onChange]
-  );
-
   const cronSelectList: MultipleSelectProps['list'] = [
     {
       label: `${t('app:cron.interval')} (${t('common:minute')})`,
@@ -241,6 +217,39 @@ const CronSelector = ({
     }
   ];
 
+  /** 仅保存当前选项树中的完整叶子路径；忽略父级点击、取消选择和遗留的无效子级。 */
+  const cronConfig2cronString = (e: CronFieldType) => {
+    let options = cronSelectList;
+    let completePath = false;
+    for (const value of e) {
+      const option = options.find((item) => item.value === value);
+      if (!option) return;
+      if (!option.children?.length) {
+        completePath = true;
+        break;
+      }
+      options = option.children;
+    }
+    if (!completePath) return;
+
+    const str = (() => {
+      if (e[0] === CronJobTypeEnum.month) {
+        return `0 ${e[2]} ${e[1]} * *`;
+      } else if (e[0] === CronJobTypeEnum.week) {
+        return `0 ${e[2]} * * ${e[1]}`;
+      } else if (e[0] === CronJobTypeEnum.day) {
+        return `0 ${e[1]} * * *`;
+      } else if (e[0] === CronJobTypeEnum.interval) {
+        return `0 */${e[1]} * * *`;
+      } else if (e[0] === CronJobTypeEnum.minuteInterval) {
+        return `*/${e[1]} * * * *`;
+      } else {
+        return '';
+      }
+    })();
+    onChange(str);
+  };
+
   return (
     <MultipleRowSelect
       label={formatLabel}
@@ -249,7 +258,7 @@ const CronSelector = ({
       onSelect={(e) => {
         cronConfig2cronString(e as CronFieldType);
       }}
-      changeOnEverySelect
+      clearChildrenOnChange
     />
   );
 };

@@ -1,17 +1,23 @@
 ---
-title: App Building FAQ
-description: Common FastGPT app building questions, including simple apps, workflows, and plugins
+title: App, Chat, and Plugin FAQ
+description: Common questions and troubleshooting for FastGPT app building, chat interface, and team plugin management
 ---
 
-## Multi-Turn Classification
+## App Building and Orchestration
+
+<span id="multi-turn-classification" />
+
+### How do I improve Question Classification accuracy in multi-turn chats?
 
 The Question Classification node has access to conversation context. When two consecutive questions are closely related, the model can usually classify them accurately based on their connection. For example, if a user asks "How do I use this feature?" followed by "What are the limitations?", the model uses that context to interpret the follow-up.
 
-However, when consecutive questions have little relation to each other, classification accuracy may drop. To handle this, you can use a global variable to store the classification result. In subsequent classification steps, check the global variable first — if a result exists, reuse it; otherwise, let the model classify on its own.
+When consecutive questions have little relation to each other, add a global variable (such as `category`) under **System Settings → Global Variables**: after the first pass through **Question Classification**, use a **Variable Update** node to store the category value; place an **If/Else** node right after **Start** to check that global variable so populated sessions go directly to the target branch while empty sessions enter **Question Classification**.
 
 Tip: Build batch test scripts to evaluate your question classification accuracy.
 
-## Scheduled Execution Timing
+<span id="scheduled-execution-timing" />
+
+### When does scheduled execution trigger for an app?
 
 If a user opens a shared link and stays on the page, scheduled execution still works as expected — it takes effect after the app is published and runs in the background.
 
@@ -19,41 +25,120 @@ Interval schedules support every 1, 5, 10, 15, 20, or 30 minutes, aligned to the
 
 Only one instance can claim a given due occurrence. Different occurrences may overlap, so workflows that take longer than their interval must support concurrent execution. Missed time slots are not replayed individually after downtime. A process exit after claiming can also lose that occurrence; critical workflows should use idempotent operations and verify execution results.
 
-## Changes Not Applied
+<span id="changes-not-applied" />
 
-After changing an app, click **Publish**. Chat and published channels only use the updated app configuration after publishing.
+### Why do my app changes fail to appear in chat or published channels?
 
-## Disable Markdown Formatting
+After changing an app, click **Save → Save and Publish**. Chat and published channels only use the updated app configuration after publishing.
 
-Edit the Dataset default prompt. The built-in standard template instructs the model to use Markdown. You can remove that requirement:
+<span id="disable-markdown-formatting" />
 
-|                         |                         |
-| ----------------------- | ----------------------- |
-| ![Dataset response prompt settings](/imgs/image-83.png) | ![Edit the default response-formatting instruction](/imgs/image-84.png) |
+### How do I disable Markdown formatting in app responses?
 
-## Inconsistent App Results
+Open the application editor and inspect formatting rules in the prompt. For workflow apps, also open **Citation prompt** on the AI Chat node and inspect the **Citation Template Prompt**. Remove the Markdown instruction, test the same question in preview, then publish and repeat through the shared link:
+
+![AI Chat node configuration interface](/imgs/optimized/current/node-ai-chat.png.webp)
+
+![Inspect Citation Template Prompt in Citation prompt settings](/imgs/optimized/current/citation-prompt-settings.png.webp)
+
+Without a custom **Citation Template Prompt**, the default template is used, and it asks the model to format answers in Markdown. Customize the template to remove that instruction.
+
+<span id="inconsistent-app-results" />
+
+### Why does an app return different results across debug, published channels, and the API?
 
 Q: The app produces different results in debug mode vs. production, or when called via API.
 
-A: This is usually caused by differences in context. Check the chat logs, find the relevant entry, and compare the run details side by side.
+A: Open conversation logs and locate both executions by conversation and request time. Compare published version, input, history, variables, retrieved passages, model settings, and tool results in run details. Repeat with fixed inputs; see [log troubleshooting](/en/guide/build/logs).
 
-|                         |                         |                         |
-| ----------------------- | ----------------------- | ----------------------- |
-| ![Open the relevant chat log](/imgs/image-85.png) | ![Inspect the app run details](/imgs/image-86.png) | ![Compare the context passed to the app](/imgs/image-87.png) |
+![Locate session records in conversation logs](/imgs/optimized/current/feedback-log.png.webp)
 
-The Dataset response settings require a custom prompt. Without one, the default prompt (which includes Markdown formatting instructions) is used.
+![Compare full model request and response payloads in run details](/imgs/optimized/current/model-request-response.png.webp)
 
-## Skip Classification for Follow-Ups
+<span id="skip-classification-for-follow-ups" />
+
+### How do I skip Question Classification for follow-up questions?
 
 Scenario: A workflow starts with a Question Classification node that routes to different branches, each with its own Dataset and AI Chat. After the first AI response, you want subsequent questions to skip classification and go straight to the Dataset with chat history as context.
 
-Solution: Add a condition check — if it's the first message (history count is 0), route through Question Classification. Otherwise, go directly to the Dataset and AI Chat.
+Solution: Add an **If/Else** node after **Start** and bind the condition variable to `Start > Chat history`: when its length is `0` (first turn), route through **Question Classification**; when greater than `0`, connect directly to **Dataset Search** and **AI Chat**.
 
-## Formula Rendering Issues
+<span id="formula-rendering-issues" />
 
-Add a prompt to guide the model to output formulas in LaTeX/Markdown format:
+### How do I fix math formulas failing to render in chat responses?
+
+Add formatting instructions in the application's **Prompt** (or the **Prompt** field on the AI Chat node) to guide the model to output formulas in LaTeX/Markdown syntax:
 
 ```bash
 Latex inline: \(x^2\)
 Latex block: $$e=mc^2$$
 ```
+
+## Chat Interface and Interaction
+
+<span id="browser-does-not-support-voice-input" />
+
+### Why does the chat interface say my browser does not support voice input?
+
+1. Verify that microphone permissions are enabled in both the browser and operating system settings.
+2. Confirm the site is permitted to access the microphone and the active input device is selected.
+3. Serve the site over HTTPS (SSL certificate), as modern browsers restrict microphone access to secure contexts.
+
+<span id="model-thinking-process-is-hidden-in-chat-before-v415" />
+
+### Why is the model thinking process hidden in chat (before v4.15)?
+
+Applies to v4.9.1–v4.14.x. FastGPT recognizes the upstream `reasoning_content` field or text wrapped in `<think></think>` tags (when "Supports thinking output" is enabled in the model settings).
+
+Add the upstream relay's thinking toggle to the model's "Additional Body parameters" (such as `{"enable_thinking": true}` or `{"chat_template_kwargs": {"enable_thinking": true}}`), save, and start a new chat.
+
+<span id="tapping-open-the-original-text-in-a-citation-does-nothing-on-ios" />
+
+### Why does tapping "Open the original text" in a citation do nothing on iOS?
+
+Applies up to v4.17.0. iOS Safari (including WeCom's built-in browser) blocks new windows opened asynchronously after fetching a source URL.
+
+Workaround: tap "…" in the upper-right corner to open in the system browser, or allow pop-ups in the browser settings.
+
+## Team Plugin Installation and Management
+
+### Why is the + Install Tool button missing?
+
+The button appears only when two conditions are met: your account is a team administrator or team owner, and the system administrator has enabled **Allow teams to upload plugins** under **Admin → System Config → Feature Flags** (commercial edition only; when disabled, the entire button is hidden). Regular team members can use already installed plugins in workflows and Agents.
+
+### Why is Install from Marketplace missing?
+
+When the install button is visible, **Install from local** is always available; if **Install from Marketplace** is absent, the deployment has disabled the marketplace (`DISABLE_MARKETPLACE`).
+
+### Why is an uploaded plugin unavailable?
+
+Complete the installation confirmation step after package parsing, and configure any required secrets or runtime parameters before calling the plugin.
+
+### Does removing a team plugin affect the system plugin?
+
+Team installations and system installations use separate sources. Removing a team plugin only deletes the current team's installation record.
+
+### Does a team plugin inherit system plugin secrets?
+
+Team plugins are isolated from system plugins and require their own runtime parameters and secrets.
+
+### Why is "+ New Tool → Install from local" missing on the System Tools page?
+
+Uploading and deleting system-wide tools require the `root` administrator account. Sign in as `root` to manage system tool packages; see [Upload System Tools](/en/guide/build/tools/system-plugins/upload_system_tool).
+
+## Third-Party Channel Integration
+
+### Why does a Lark, WeCom, DingTalk, or WeChat Official Account bot fail to reply?
+
+1. Verify that the callback URL, trusted domain, `Token`, `Encoding-AESKey`, or `Client Secret` in the third-party developer console match the FastGPT publishing channel configuration.
+2. Open the application's **Conversation Logs** in FastGPT to check whether the incoming message was recorded.
+3. When a log record exists without a client reply, confirm that message-read and message-send permissions are enabled and that the latest app version is published in the third-party console.
+4. When no log record appears, test with a minimal Q&A application first to rule out required global variables, file inputs, or image inputs.
+
+### How do I reset conversation history in Lark, DingTalk, WeChat Official Account, or WeChat Personal channels?
+
+Send `Reset` (case-sensitive; WeChat Personal also accepts `/reset`) to the bot to start a fresh conversation session. In Lark, `chatId` is scoped per direct chat, per topic thread, or per `group ID + user ID` pair.
+
+### Why is the WeChat ClawBot entry missing in WeChat Personal integration?
+
+The WeChat Personal integration path requires iOS and the latest WeChat client release, and entry visibility depends on client version and account rollout status.

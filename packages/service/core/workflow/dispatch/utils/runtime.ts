@@ -1,3 +1,4 @@
+import type { ModerationRuntimeContext } from '@fastgpt/global/core/plugin/moderation/type';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   FlowNodeInputTypeEnum,
@@ -177,3 +178,24 @@ export const getWorkflowNodeRunParams = ({
 
   return params;
 };
+
+/**
+ * 从节点调度参数中提取内容审查运行时上下文 (ModerationRuntimeContext)
+ *
+ * 统一收敛各节点调度器对 teamId、tmbId、appId、chatId、nodeId 等元数据的重复拼装
+ */
+export const getDispatchModerationContext = (props: {
+  runningUserInfo?: { teamId?: string; tmbId?: string };
+  runningAppInfo?: { sourceId?: string };
+  chatId?: string;
+  responseChatItemId?: string;
+  node?: { nodeId?: string; name?: string };
+}): ModerationRuntimeContext => ({
+  teamId: props.runningUserInfo?.teamId,
+  tmbId: props.runningUserInfo?.tmbId,
+  appId: props.runningAppInfo?.sourceId,
+  chatId: props.chatId,
+  responseChatItemId: props.responseChatItemId,
+  nodeId: props.node?.nodeId,
+  nodeName: props.node?.name
+});

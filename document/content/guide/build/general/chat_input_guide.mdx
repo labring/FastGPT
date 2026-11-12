@@ -1,27 +1,33 @@
 ---
-title: 对话问题引导
-description: FastGPT 对话问题引导
+title: 输入引导
+description: "在 FastGPT 对话应用中配置输入框问题补全与词库引导，帮助终端用户快速发起高质量提问。"
 ---
 
-![](/imgs/questionGuide.png)
+<span id="什么是自定义问题引导" />
+<span id="自定义词库接口" />
 
-## 什么是自定义问题引导
+![输入引导：界面示例](/imgs/optimized/current/input-guide-suggestions.png.webp)
+
+## 什么是输入引导
 
 你可以为你的应用提前预设一些问题，用户在输入时，会根据输入的内容，动态搜索这些问题作为提示，从而引导用户更快的进行提问。
 
-你可以直接在 FastGPT 中配置词库，或者提供自定义词库接口。
+## 配置入口
 
-## 自定义词库接口
+1. 打开对话 Agent 或工作流编排页面，在左侧配置面板（工作流位于左上角“系统配置”）中找到 **输入引导** 配置项并开启开关。
+2. 点击 **配置词库** 可直接在弹窗中录入或批量导入预设问题；点击 **自定义词库地址** 可填入外部检索接口 URL。
 
-需要保证这个接口可以被用户浏览器访问，需要注意允许跨域。
+## 自定义词库地址接口规范
+
+需要保证这个接口可以被用户浏览器访问，需要注意允许跨域。配置自定义接口地址后，用户输入时浏览器会对该地址发起 GET 请求；输入超过 20 个字符时不发起请求。
 
 **请求：**
 
 ```bash
-curl --location --request GET 'http://localhost:3000/api/core/chat/inputGuide/query?appId=663c75302caf8315b1c00194&searchKey=你'
+curl --location --request GET 'https://your-domain.com/api/input-guide?sourceType=app&sourceId=663c75302caf8315b1c00194&searchKey=你'
 ```
 
-其中 `appId` 为应用 ID，`searchKey` 为搜索关键字，最多是 50 个字符。
+其中 `sourceType` 为对话来源类型（应用对话为 `app`），`sourceId` 为应用 ID，`searchKey` 为搜索关键字。通过免登录窗口访问时，请求还会附带 `outLinkAuthData`（分享鉴权信息的 JSON 字符串）。
 
 **响应**
 
@@ -30,13 +36,15 @@ curl --location --request GET 'http://localhost:3000/api/core/chat/inputGuide/qu
   "code": 200,
   "statusText": "",
   "message": "",
-  "data": ["是你", "你是谁呀", "你好好呀", "你好呀", "你是谁！", "你好"]
+  "data": ["是你", "你是谁呀", "你好好呀", "你好呀", "你好"]
 }
 ```
 
-data 是一个数组，包含了搜索到的问题，最多只需要返回 5 个问题。
+data 是一个数组，包含了搜索到的问题，返回数量由自建接口自行约定（FastGPT 内置词库最多返回 6 个）。
 
 **参数说明：**
 
-- appId - 应用 ID
+- sourceType - 对话来源类型，应用对话为 `app`
+- sourceId - 应用 ID
 - searchKey - 搜索关键字
+- outLinkAuthData - 仅免登录窗口场景附带，分享鉴权信息的 JSON 字符串

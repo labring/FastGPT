@@ -26,6 +26,7 @@ type RenderListProps = {
   onSelect: (val: (string | undefined)[]) => void;
   onClose: () => void;
   changeOnEverySelect: boolean;
+  clearChildrenOnChange: boolean;
   emptyTip?: string;
   maxH: number;
   rowMinWidth: string;
@@ -42,6 +43,7 @@ const RenderList = React.memo(function RenderList({
   onSelect,
   onClose,
   changeOnEverySelect,
+  clearChildrenOnChange,
   emptyTip,
   maxH,
   rowMinWidth,
@@ -117,6 +119,7 @@ const RenderList = React.memo(function RenderList({
                   onSelect(newValue);
                 } else {
                   newValue[index] = item.value;
+                  if (clearChildrenOnChange) newValue.splice(index + 1);
                   setCloneValue(newValue);
 
                   if (changeOnEverySelect || !hasChildren) {
@@ -153,6 +156,7 @@ const RenderList = React.memo(function RenderList({
           onSelect={onSelect}
           onClose={onClose}
           changeOnEverySelect={changeOnEverySelect}
+          clearChildrenOnChange={clearChildrenOnChange}
           emptyTip={emptyTip}
           maxH={maxH}
           rowMinWidth={rowMinWidth}
@@ -177,6 +181,7 @@ export const MultipleRowSelect = ({
   onOpenFunc,
   onCloseFunc,
   changeOnEverySelect = false,
+  clearChildrenOnChange = false,
   rowMinWidth = 'auto'
 }: MultipleSelectProps & {
   rowMinWidth?: string;
@@ -309,6 +314,7 @@ export const MultipleRowSelect = ({
               onSelect={onSelect}
               onClose={onClose}
               changeOnEverySelect={changeOnEverySelect}
+              clearChildrenOnChange={clearChildrenOnChange}
               emptyTip={emptyTip}
               maxH={maxH}
               rowMinWidth={rowMinWidth}

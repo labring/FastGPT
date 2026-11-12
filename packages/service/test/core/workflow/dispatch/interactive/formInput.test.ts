@@ -381,4 +381,67 @@ describe('dispatchFormInput', () => {
     expect(result.data?.upload).toEqual(['https://external.example.com/1.pdf']);
     expect(registerInputFile).toHaveBeenCalledTimes(1);
   });
+
+  it('blocks the node when formItem description or value violates output moderation', async () => {
+    const outputMod = await import('@fastgpt/service/core/plugin/moderation/output');
+    const spy = vi
+      .spyOn(outputMod, 'checkOutputTextModeration')
+      .mockImplementation(async ({ text, targetField }) => {
+        if (text === 'toxic-desc' || text === 'toxic-val') {
+          return {
+            isPass: false,
+            action: 'block' as any,
+            text,
+            blockErrorMessage: `blocked: ${targetField}`
+          };
+        }
+        return { isPass: true, action: 'pass' as any, text };
+      });
+
+    // Case 1: toxic description in formItem
+    const resultWithToxicDesc = await runWithContext({ mcpClientMemory: {} }, () =>
+      dispatchFormInput({
+        histories: [{ obj: 'Human', value: [] }],
+        node: { isEntry: true },
+        params: {
+          [NodeInputKeyEnum.description]: 'normal description',
+          [NodeInputKeyEnum.userInputForms]: [
+            {
+              key: 'input1',
+              label: 'normal label',
+              description: 'toxic-desc',
+              type: FlowNodeInputTypeEnum.input,
+              valueType: WorkflowIOValueTypeEnum.string,
+              required: false
+            }
+          ]
+        }
+      } as any)
+    );
+    expect(resultWithToxicDesc[DispatchNodeResponseKeyEnum.nodeDispatchResult]).toBeUndefined();
+
+    // Case 2: toxic value in formItem
+    const resultWithToxicVal = await runWithContext({ mcpClientMemory: {} }, () =>
+      dispatchFormInput({
+        histories: [{ obj: 'Human', value: [] }],
+        node: { isEntry: true },
+        params: {
+          [NodeInputKeyEnum.description]: 'normal description',
+          [NodeInputKeyEnum.userInputForms]: [
+            {
+              key: 'input2',
+              label: 'normal label',
+              value: 'toxic-val',
+              type: FlowNodeInputTypeEnum.input,
+              valueType: WorkflowIOValueTypeEnum.string,
+              required: false
+            }
+          ]
+        }
+      } as any)
+    );
+    expect(resultWithToxicVal[DispatchNodeResponseKeyEnum.nodeDispatchResult]).toBeUndefined();
+
+    spy.mockRestore();
+  });
 });

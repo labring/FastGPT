@@ -8,7 +8,7 @@ import {
 import { LanguageSchema } from '@fastgpt/global/common/i18n/type';
 
 export const MarketplaceToolIndexZodSchema = z.object({
-  type: z.literal('tool'),
+  type: z.enum(['tool', 'moderation']),
   pluginId: z.string(),
   version: z.string(),
   etag: z.string(),
@@ -35,7 +35,7 @@ export type MarketplaceToolManifestSchemaType = z.infer<typeof MarketplaceToolMa
 
 const marketplaceToolSchema = new Schema(
   {
-    type: { type: String, required: true, enum: ['tool'] },
+    type: { type: String, required: true, enum: ['tool', 'moderation'] },
     pluginId: { type: String, required: true },
     version: { type: String, required: true },
     etag: { type: String, required: true },
@@ -54,6 +54,9 @@ defineIndex(marketplaceToolSchema, {
   options: { unique: true }
 });
 defineIndex(marketplaceToolSchema, { key: { pluginId: 1, updateTime: -1 } });
+defineIndex(marketplaceToolSchema, {
+  key: { type: 1, pluginId: 1, updateTime: -1 }
+});
 defineIndex(marketplaceToolSchema, {
   key: { source: 1, pluginId: 1, updateTime: -1 }
 });

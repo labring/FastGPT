@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
 
-import React, { act } from 'react';
+import React, { act, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { ChakraProvider } from '@chakra-ui/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import CronSelector from '../../../../components/common/MySelect/CronSelector';
+import { cronParser2Fields } from '@fastgpt/global/common/string/time';
 
 vi.mock('next-i18next', () => ({
   useTranslation: () => ({
@@ -18,15 +19,26 @@ describe('CronSelector interaction', () => {
   let root: ReturnType<typeof createRoot>;
   const onChange = vi.fn();
 
-  const render = async (cronString: string) => {
+  const ControlledSelector = ({ initialValue }: { initialValue: string }) => {
+    const [value, setValue] = useState(initialValue);
+    return React.createElement(CronSelector, {
+      cronString: value,
+      onChange: (next) => {
+        onChange(next);
+        setValue(next);
+      }
+    });
+  };
+
+  const render = async (cronString: string, revision = 0) => {
     await act(async () => {
       root.render(
         React.createElement(
           ChakraProvider,
           null,
-          React.createElement(CronSelector, {
-            cronString,
-            onChange
+          React.createElement(ControlledSelector, {
+            initialValue: cronString,
+            key: `${cronString}-${revision}`
           })
         )
       );
@@ -70,4 +82,40 @@ describe('CronSelector interaction', () => {
     );
     expect(selected).toBeDefined();
   });
+
+  it.each([
+    [30, 'app:cron.every_day', ['09:00'], '0 9 * * *'],
+    [1, 'app:cron.every_day', ['01:00'], '0 1 * * *'],
+    [10, 'app:cron.every_week', ['app:week.Monday', '00:00'], '0 0 * * 1'],
+    [5, 'app:cron.every_week', ['app:week.Friday', '00:00'], '0 0 * * 5'],
+    [15, 'app:cron.every_month', ['20app:month.unit', '00:00'], '0 0 20 * *'],
+    [20, 'app:cron.interval', ['app:interval.2_hours'], '0 */2 * * *']
+  ])(
+    'saves a complete target path from every-%i-minute to %s',
+    async (minutes, group, options, expected) => {
+      const original = `*/${minutes} * * * *`;
+      await render(original);
+      await act(async () => container.querySelector<HTMLButtonElement>('button')!.click());
+      await clickOption(group as string);
+      expect(onChange).not.toHaveBeenCalled();
+
+      // 关闭并重新加载时应仍保留原配置；再完成目标分组的叶子选择。
+      await act(async () => container.querySelector<HTMLButtonElement>('button')!.click());
+      await render(original, 1);
+      expect(container.querySelector('button')?.textContent).toContain(`Every ${minutes} minutes`);
+      await act(async () => container.querySelector<HTMLButtonElement>('button')!.click());
+      await clickOption(group as string);
+      for (const [index, option] of (options as string[]).entries()) {
+        await clickOption(option);
+        if (index < options.length - 1) expect(onChange).not.toHaveBeenCalled();
+      }
+      expect(onChange).toHaveBeenCalledExactlyOnceWith(expected);
+      expect(cronParser2Fields(expected as string)).not.toBeNull();
+      await render(expected as string, 2);
+      expect(container.querySelector('button')?.textContent).not.toContain(
+        `Every ${minutes} minutes`
+      );
+      expect(onChange.mock.calls.every(([value]) => cronParser2Fields(value) !== null)).toBe(true);
+    }
+  );
 });

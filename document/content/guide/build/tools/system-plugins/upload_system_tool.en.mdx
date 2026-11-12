@@ -1,6 +1,6 @@
 ---
-title: Upload System Tools Online
-description: FastGPT System Tool Online Upload Guide
+title: Configure System Tools
+description: "Upload, install, and update packaged custom system tool plugins in the FastGPT admin console for platform-wide team access."
 ---
 
 > Starting from FastGPT 4.14.0, system admins can upload and update system tools directly through the web interface for hot reloading.
@@ -13,31 +13,30 @@ description: FastGPT System Tool Online Upload Guide
 
 ## Supported File Formats
 
-- **File type**: `.pkg` files
-- **File size**: Maximum 100 MB
-- **File count**: Up to 15 files per upload
+- **File type**: `.pkg` files, or `.zip` files containing multiple `.pkg` files
+- **File size**: Controlled by the `UPLOAD_FILE_MAX_SIZE` environment variable, 1000 MB by default
+- **File count**: Controlled by the `UPLOAD_FILE_MAX_AMOUNT` environment variable, up to 1000 files per upload by default
 
 ## Upload Steps
 
 ### 1. Access the Configuration Page
 
-Log in as `root` and open **Configuration** in the left sidebar to display the resource library and tool management controls.
+Log in as `root`, open **Admin → System Resources → System Tools**, click **+ New Tool** in the upper-right corner, and select **Install from local** from the dropdown menu (which also provides **Install from Plugin Marketplace**).
 
-
-![Configuration entry and resource library controls](/imgs/plugins/entry.png)
+![Configuration resource library and Add Resource entry](/imgs/optimized/plugins/entry.png.webp)
 
 ### 2. Prepare Tool Files
 
-Before uploading, make sure your `.pkg` files are from the `dist/pkgs` folder, built by running `bun run build:pkg` in the fastgpt-plugin project.
+Prepare a `.pkg` file from a trusted author and confirm compatibility with the target environment. For custom tools, follow [build, check, and pack](/en/plugin/debugging-and-publishing#build-check-pack). See the [package and SDK reference](/en/plugin/package-reference) for artifact details.
 
-![Packaged system tools in the dist/pkgs directory](/imgs/plugins/files.png)
+![Packaged system tools in the dist/pkgs directory](/imgs/optimized/plugins/files.png.webp)
 
 ### 3. Upload
 
-1. Click the **"Import/Update"** button
-2. In the dialog that appears, click the file selection area
-3. Select your prepared `.pkg` tool files
-4. After confirming the file details, click **"Confirm Import"**
+1. Click **+ New Tool → Install from local** in the upper-right corner
+2. In the **Import/update Plugin** drawer that opens, click the file selection area
+3. Select your prepared `.pkg` or `.zip` tool files
+4. After confirming the file details, click **Confirm import** at the bottom
 
 ### 4. Upload Process
 
@@ -48,14 +47,20 @@ Before uploading, make sure your `.pkg` files are from the `dist/pkgs` folder, b
 
 ### Tool Management
 
-- **View tools**: All users can view installed system tools
+- **View tools**: Users see available system tools according to their status and permissions
 - **Upload tools**: Only root users can upload new tools or update existing ones
 - **Delete tools**: Only root users can delete uploaded tools
 
-## FAQ
+## Configuration after installation
 
-### Q: Can't see the "Import/Update" button
+Root administrators can manage status, system secrets, and [runtime parameters](/en/plugin/runtime) in the tool configuration page. Verify a call in a test App after installation or an update.
 
-**Reason:** The current user is not a root user
+| Status | New tool selection | Existing calls |
+| --- | --- | --- |
+| Normal | Available | Continue |
+| Hidden | Hidden from selectors | Continue |
+| Pending offline (`SoonOffline`) | Hidden from selectors | Continue |
+| Uninstalled (`Offline`) | Unavailable | Rejected |
 
-**Solution:** Log in again with the root account
+Root administrators configure system secrets centrally. The FastGPT server stores them and reads them when a call selects system secrets. [Team installations](/en/plugin/team-installation) keep their own configuration and secrets.
+For missing installation entries or parameter troubleshooting, see [App, Chat, and Plugin FAQ](/en/guide/build/faq).

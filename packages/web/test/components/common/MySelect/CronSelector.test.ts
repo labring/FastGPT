@@ -61,6 +61,26 @@ describe('minute interval configuration', () => {
   });
 
   it.each([
+    [],
+    ['day'],
+    ['day', undefined],
+    ['day', 30],
+    ['week', 10, 0],
+    ['week', 1],
+    ['week', 1, undefined],
+    ['month', 0, 0],
+    ['month', 29, 0],
+    ['month', 20],
+    ['interval', 20],
+    ['interval', undefined]
+  ])('rejects an incomplete or unsupported target path %j', (...path) => {
+    const onChange = vi.fn();
+    const props = render('*/30 * * * *', onChange);
+    props.onSelect(path);
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it.each([
     ['0 */2 * * *', ['interval', 2, 0]],
     ['0 9 * * *', ['day', 9, 0]],
     ['0 9 * * 1', ['week', 1, 9]],

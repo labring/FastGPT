@@ -1,0 +1,163 @@
+{
+  "type": "flowchart",
+  "title": "ToolCall 节点执行循环",
+  "nodes": [
+    {
+      "id": "start",
+      "label": "触发并组装上下文",
+      "row": 0,
+      "col": 0,
+      "kind": "backend",
+      "illustration": "document"
+    },
+    {
+      "id": "model",
+      "label": "请求模型",
+      "row": 1,
+      "col": 0,
+      "kind": "backend",
+      "focal": true,
+      "illustration": "model"
+    },
+    {
+      "id": "calls",
+      "label": "有工具调用？",
+      "row": 2,
+      "col": 0,
+      "kind": "backend",
+      "shape": "decision",
+      "illustration": "workflow"
+    },
+    {
+      "id": "tools",
+      "label": "逐个执行工具",
+      "row": 3,
+      "col": 0,
+      "kind": "backend",
+      "sub": "普通错误回传模型",
+      "illustration": "plugin"
+    },
+    {
+      "id": "result",
+      "label": "检查执行结果",
+      "row": 4,
+      "col": 0,
+      "kind": "backend",
+      "shape": "decision",
+      "illustration": "check"
+    },
+    {
+      "id": "append",
+      "label": "追加工具结果",
+      "row": 3,
+      "col": 1,
+      "kind": "backend",
+      "illustration": "files"
+    },
+    {
+      "id": "pause",
+      "label": "暂停等待输入",
+      "row": 5,
+      "col": 1,
+      "kind": "optional",
+      "shape": "terminal",
+      "illustration": "pause"
+    },
+    {
+      "id": "end",
+      "label": "结束",
+      "row": 5,
+      "col": 0,
+      "kind": "backend",
+      "shape": "terminal",
+      "illustration": "ready"
+    }
+  ],
+  "edges": [
+    [
+      "start",
+      "model",
+      "",
+      "primary"
+    ],
+    [
+      "model",
+      "calls",
+      "",
+      "primary"
+    ],
+    [
+      "calls",
+      "tools",
+      "有",
+      "primary"
+    ],
+    [
+      "calls",
+      "end",
+      "无",
+      "default"
+    ],
+    [
+      "tools",
+      "result",
+      "",
+      "primary"
+    ],
+    [
+      "result",
+      "append",
+      "继续",
+      "default"
+    ],
+    [
+      "append",
+      "model",
+      "下一轮",
+      "async"
+    ],
+    [
+      "result",
+      "pause",
+      "需交互",
+      "default"
+    ],
+    [
+      "result",
+      "end",
+      "终止",
+      "default"
+    ],
+    [
+      "model",
+      "end",
+      "请求错误",
+      "async"
+    ]
+  ],
+  "evidence": [
+    {
+      "id": "tools",
+      "file": "packages/service/core/workflow/dispatch/ai/toolcall/toolCall.ts",
+      "line": 174
+    },
+    {
+      "id": "model",
+      "file": "packages/service/core/workflow/dispatch/ai/toolcall/toolCall.ts",
+      "line": 166
+    },
+    {
+      "id": "result",
+      "file": "packages/service/core/ai/llm/agentLoop/provider/fastAgent/loop/base.ts",
+      "line": 640
+    }
+  ],
+  "dir": "TB",
+  "lang": "zh-CN",
+  "eyebrow": "",
+  "legend": false,
+  "motion": "trace",
+  "fonts": "system",
+  "watermark": false,
+  "skin": "light"
+}

@@ -17,6 +17,8 @@ export type MultipleSelectProps = {
   onSelect: (val: any[]) => void;
   popDirection?: 'top' | 'bottom';
   changeOnEverySelect?: boolean;
+  /** 切换父级选项时清空其子级选择，要求重新选择完整路径。 */
+  clearChildrenOnChange?: boolean;
   ButtonProps?: ButtonProps;
   onOpenFunc?: () => void;
   onCloseFunc?: () => void;

@@ -1,0 +1,155 @@
+{
+  "type": "architecture",
+  "title": "FastGPT 核心部署拓扑",
+  "nodes": [
+    {
+      "id": "client",
+      "label": "客户端",
+      "row": 0,
+      "col": 0,
+      "kind": "external",
+      "illustration": "browser"
+    },
+    {
+      "id": "gateway",
+      "label": "访问入口",
+      "row": 0,
+      "col": 1,
+      "kind": "backend",
+      "sub": "按部署配置",
+      "illustration": "gateway"
+    },
+    {
+      "id": "app",
+      "label": "FastGPT",
+      "row": 0,
+      "col": 2,
+      "kind": "backend",
+      "focal": true,
+      "illustration": "core"
+    },
+    {
+      "id": "mongo",
+      "label": "MongoDB",
+      "row": 1,
+      "col": 0.5,
+      "kind": "store",
+      "sub": "业务与知识数据",
+      "illustration": "database"
+    },
+    {
+      "id": "redis",
+      "label": "Redis",
+      "row": 1,
+      "col": 1.5,
+      "kind": "store",
+      "sub": "缓存 / 队列",
+      "illustration": "cache"
+    },
+    {
+      "id": "vector",
+      "label": "向量数据库",
+      "row": 1,
+      "col": 2.5,
+      "kind": "store",
+      "sub": "选择一种后端",
+      "illustration": "vector"
+    },
+    {
+      "id": "s3",
+      "label": "S3 对象存储",
+      "row": 1,
+      "col": 3.5,
+      "kind": "store",
+      "sub": "文件与对象",
+      "illustration": "files"
+    },
+    {
+      "id": "proxy",
+      "label": "AI Proxy",
+      "row": 0,
+      "col": 3,
+      "kind": "backend",
+      "illustration": "router"
+    },
+    {
+      "id": "model",
+      "label": "模型服务",
+      "row": 0,
+      "col": 4,
+      "kind": "external",
+      "sub": "云端或自托管",
+      "illustration": "model"
+    }
+  ],
+  "edges": [
+    [
+      "client",
+      "gateway",
+      "",
+      "primary"
+    ],
+    [
+      "gateway",
+      "app",
+      "",
+      "primary"
+    ],
+    [
+      "app",
+      "mongo",
+      "",
+      "default"
+    ],
+    [
+      "app",
+      "redis",
+      "",
+      "default"
+    ],
+    [
+      "app",
+      "vector",
+      "",
+      "default"
+    ],
+    [
+      "app",
+      "s3",
+      "",
+      "default"
+    ],
+    [
+      "app",
+      "proxy",
+      "",
+      "primary"
+    ],
+    [
+      "proxy",
+      "model",
+      "",
+      "primary"
+    ]
+  ],
+  "evidence": [
+    {
+      "id": "app",
+      "file": "deploy/version/main/docker-compose.template.yml",
+      "line": 27
+    },
+    {
+      "id": "proxy",
+      "file": "packages/service/core/ai/config.ts",
+      "line": 9
+    }
+  ],
+  "dir": "TB",
+  "lang": "zh-CN",
+  "eyebrow": "",
+  "legend": false,
+  "motion": "trace",
+  "fonts": "system",
+  "watermark": false,
+  "skin": "light"
+}

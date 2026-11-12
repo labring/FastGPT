@@ -1,96 +1,102 @@
 ---
 title: General Troubleshooting
-description: FastGPT Self-Hosting General Troubleshooting
+description: Troubleshoot common self-hosted FastGPT issues including port conflicts, vector database setup, HTTPS uploads, and model timeouts.
 ---
 
-### Frontend Page Crash
+<span id="if-deployed-via-sealos-are-there-no-limitations-of-local-deployment" />
+<span id="database-port-3306-is-occupied-service-startup-failed" />
+<span id="page-crash" />
+<span id="after-enabling-content-completion-the-response-speed-becomes-slow" />
 
-1. The troubleshooting guidance attributes 90% of cases to model configuration. Enable at least one model in each category, then check parameters that expect arrays or objects. Use an empty array or object where an empty value is required.
-2. Older browsers may lack support for JavaScript features used by FastGPT. Include the steps to reproduce the crash and browser console errors in a GitHub issue.
-3. Disable the browser's automatic translation, which can interfere with the page.
+<span id="frontend-page-crash" />
 
----
+### How do I troubleshoot a frontend page crash or URI malformed error?
 
-### If deployed via sealos, are there no limitations of local deployment?
-
-![](../../../public/imgs/faq1.png)
-The screenshot shows an embedding model input-length limit. This limit applies to every deployment method. Each embedding model has its own settings, which you can adjust in the admin panel.
-
----
-
-### How to mount the Mini Program configuration file
-
-Mount the verification file to the specified location: /app/projects/app/public/xxxx.txt
-
-Then restart. For example:
-
-![](../../../public/imgs/faq2.png)
+1. Record reproduction steps, FastGPT version, console errors, and failed requests.
+2. Check Admin model configuration, service initialization logs, and network requests.
+3. Reproduce in a current stable browser with translation and relevant extensions disabled. Remove secrets and personal data before filing an issue.
+4. For `URI malformed`, record the affected URL and action, then inspect URL encoding. If configuration fails to load, resolve the related server error before refreshing.
 
 ---
 
-### Database port 3306 is occupied, service startup failed
+### What limits the maximum chunk size in a Dataset?
 
-![](../../../public/imgs/faq3.png)
-
-Change the port mapping to 3307 or similar, for example 3307:3306.
-
----
-
-### Can it run purely locally?
-
-Yes. You need to prepare the vector model and LLM model.
+![What limits the maximum chunk size in a Dataset? — interface example](/imgs/optimized/faq1.png.webp)
+This limit is determined by the single-chunk token limit of the Dataset's selected Embedding model and applies across all deployment methods. Different Embedding models have different limits; you can edit the model's chunk parameters under **Admin → System Resources → System Models → Model configuration**.
 
 ---
 
-### Other models cannot perform question classification/content extraction
+<span id="how-to-mount-the-mini-program-configuration-file" />
 
-1. Check the logs for errors such as `JSON invalid` or `not support tool`. For a model without tool or function calling support, set `toolChoice=false` and `functionCall=false` to use prompt mode. The built-in prompts have been tested with commercial model APIs; question classification generally works, while content extraction remains limited.
-2. If the configuration is correct and the logs show no errors, adapt the classification prompt to the model using `customCQPrompt`.
+### How do I mount a WeChat Mini Program verification file into the container?
 
----
+Mount the verification file to `/app/projects/app/public/xxxx.txt` inside the container and restart the service:
 
-### Page Crash
+- **Docker Compose**: Add `- ./xxxx.txt:/app/projects/app/public/xxxx.txt` under `volumes` for the `fastgpt-app` service in `docker-compose.yml`, then run `docker compose up -d`.
+- **Sealos**: Open the app update page in Sealos **App Management**, click **Add Configuration File** under **Configuration Files**, set the file path to `/app/projects/app/public/xxxx.txt`, paste the file content, and apply the changes:
 
-1. Disable automatic browser translation.
-2. Check that the configuration file loaded successfully. Missing system settings can cause null-reference errors during some operations.
-
-- The troubleshooting guidance attributes 95% of these cases to configuration errors, often reported as `xxx undefined`.
-- For `URI malformed`, report the affected page and steps in a GitHub issue. This error indicates a problem decoding an encoded string.
-
-3. Check for API compatibility issues, which are a less common cause.
+![How to mount the Mini Program configuration file — interface example](/imgs/optimized/faq2.png.webp)
 
 ---
 
-### After enabling content completion, the response speed becomes slow
+<span id="host-port-is-occupied-service-startup-failed" />
 
-1. Query rewriting requires an additional model call.
-2. It also performs 3–5 search queries, so database performance can significantly affect response time.
+### How do I fix service startup failures caused by an occupied host port?
 
----
-
-### Normal reply in the page, API error
-
-The chat page uses `stream=true`. Test the API with the same setting using `curl`, because some model APIs have limited support for non-streaming requests.
+Check the `ports` mapping of the failing service in `docker-compose.yml` and change the host port on the left side of the colon to an available port (for example, change `3000:3000` to `3001:3000`) while keeping the container port on the right unchanged, then run `docker compose up -d`.
 
 ---
 
-### Dataset indexing has no progress/indexing is very slow
+<span id="can-it-run-purely-locally" />
 
-Check the error logs and identify the matching case:
+### Can FastGPT run purely locally or offline?
 
-1. Chat works but indexing stalls: check that an embedding model is configured in `vectorModels`.
-2. Both chat and indexing fail: model API requests may be failing. Check connectivity to OneAPI or OpenAI.
-3. Indexing progresses slowly: check the API key's rate limits. The historical example in this guide cites free OpenAI account limits of 3 or 60 requests per minute and 200 per day; verify the limits that apply to your current account.
+Yes. Prepare local language and Embedding models together with the databases, object storage, AI Proxy, and plugin services required by the deployment template. Offline installations also need image archives, model files, and plugin packages prepared in advance. Verify each request path.
+
+---
+
+<span id="other-models-cannot-perform-question-classificationcontent-extraction" />
+
+### Why do some models fail at Question Classification or Content Extraction?
+
+Inspect Run Details and the model response. Confirm that the model and channel support the tool calling or structured output required by the node. JSON parsing errors can also result from response formatting, truncation, or prompts. Test the model in Admin, reproduce the node with a small input, and adjust model capabilities and prompts accordingly. See [Model Troubleshooting](/en/self-host/troubleshooting/model-errors).
+
+---
+
+<span id="response-slows-down-after-enabling-query-optimization" />
+
+### Why does response latency increase after enabling Query Optimization?
+
+Enabling **Query Optimization** adds an LLM call and may generate multiple retrieval queries. Inspect the timing of query optimization, recall, and reranking in Run Details, then adjust the optimization model, retrieval settings, and concurrency. Actual query counts depend on configuration and runtime results.
+
+---
+
+<span id="normal-reply-in-the-page-api-error" />
+
+### Why does chat work in the web UI while API requests fail?
+
+Compare the app, identity, request body, and `stream` value in both calls. Test streaming and non-streaming separately and record HTTP status, error body, and server requestId. Trace the request through FastGPT, AI Proxy, and the upstream model. See [Chat API](/en/openapi/chat).
+
+---
+
+<span id="dataset-indexing-has-no-progressindexing-is-very-slow" />
+
+### How do I troubleshoot stalled or slow Dataset indexing?
+
+1. Inspect Collection processing status and parsing/indexing errors.
+2. Test the Dataset’s Embedding model and channel in Admin.
+3. Check provider rate limits, balance, request latency, and parsing/vector queue concurrency.
+4. Resolve the error and use the available retry action. See [Dataset FAQ](/en/guide/dataset/faq).
 
 ---
 
 ### Connection error
 
-Check connectivity from the FastGPT server to the model API. A server in mainland China may be unable to reach OpenAI. For OneAPI, also check that its container and FastGPT can communicate on the same network.
+From the FastGPT service network, check the AI Proxy address, port, DNS, TLS, and proxy configuration. Then check AI Proxy connectivity to the model upstream. For containers on a shared network, use service names and container ports; for host services, use a host address reachable from the container.
 
 ---
 
-### Changes to vectorModels have no effect
+### Changes to vectorModels do not take effect
 
 1. Enable the new Embedding model in the admin panel's **Model Configuration**, then refresh the page. For older versions that configure models through `vectorModels` in `config.json`, restart the service after editing the file.
 2. Existing Datasets do not automatically switch models. As the Dataset owner, open its **Configuration** page, select the new **Embedding model**, and confirm reindexing. You do not need to delete the Dataset.
@@ -100,7 +106,7 @@ Check connectivity from the FastGPT server to the model API. A server in mainlan
 
 ### How to change the root password
 
-- **Web UI**: Sign in as `root` and update your password in **Account Info** under the top-right avatar menu.
+- **Web UI**: Sign in as `root`, open **Account → Personal information** in the left navigation, and click **Change** on the **Password** row under **General information**.
 - **CLI Reset (Forgotten Password)**: Run `docker compose exec fastgpt-app node /app/scripts/reset-root-password.cjs 'your_new_password'` inside the application container to reset the password immediately without restarting.
 - **Legacy versions (v4.17.2 and earlier)**: Modify the `DEFAULT_ROOT_PSW` environment variable and restart FastGPT.
 
@@ -110,7 +116,7 @@ For detailed steps, see [Modify and Reset Root Password](/en/self-host/config/ro
 
 ### Does FastGPT support OpenAI's Responses API (/v1/responses)?
 
-No (up to 4.17.0); requests return 404. Use `POST /api/v1/chat/completions` to call an app instead; it is compatible with the OpenAI Chat Completions format.
+No (up to 4.17.3); requests return 404. Use `POST /api/v1/chat/completions` to call an app instead; it is compatible with the OpenAI Chat Completions format.
 
 ---
 
@@ -136,7 +142,7 @@ Note: running the one-click script again in a directory that is already deployed
 
 ### Parallel Run reports parallel_task_not_reach_end, or runs only one task
 
-Applies to: verified against 4.17.0. Parallel Run starts one task per element of the input array. A whole block of multi-line text (for example, one URL per line) is treated as an array with a single element, so only one task runs. `parallel_task_not_reach_end` means the sub-workflow of a task did not reach the End node; if the sub-workflow has a more specific error, that error is shown instead.
+Applies to: verified against 4.17.3. Parallel Run starts one task per element of the input array. A whole block of multi-line text (for example, one URL per line) is treated as an array with a single element, so only one task runs. `parallel_task_not_reach_end` means the sub-workflow of a task did not reach the End node; if the sub-workflow has a more specific error, that error is shown instead.
 
 What to do: add a Code run node before Parallel Run that splits the text into an array by newline, for example returning `text.split('\n').map(s => s.trim()).filter(Boolean)`, and have the Parallel Run array input reference its result. If it still fails, open the failing task's Run Details and check whether the sub-workflow reached the End node.
 
@@ -144,9 +150,9 @@ What to do: add a Code run node before Parallel Run that splits the text into an
 
 ### Uploading files over HTTPS fails with "s3 upload network error"
 
-Applies to: verified against 4.17.0. The address the browser uploads files to comes from `FILE_DOMAIN`, or from `FE_DOMAIN` if it is not set. If the page uses HTTPS but this address is `http://`, the browser blocks the request as mixed content and it never reaches the server.
+Applies to: verified against 4.17.3. The address the browser uploads files to comes from `FILE_DOMAIN`, or from `FE_DOMAIN` if it is not set. If the page uses HTTPS but this address is `http://`, the browser blocks the request as mixed content and it never reaches the server.
 
-What to do: change the matching setting to a reachable https address (`FILE_DOMAIN` if it is set, otherwise `FE_DOMAIN`) and restart. You can confirm in the browser console whether there is a Mixed Content error.
+What to do: change the matching setting to a reachable HTTPS address (`FILE_DOMAIN` if it is set, otherwise `FE_DOMAIN`) and restart. You can confirm in the browser console whether there is a Mixed Content error.
 
 ---
 
@@ -162,7 +168,7 @@ What to do: in Docker Desktop (version 4.34 or later, signed in), go to Settings
 
 Applies to: 4.15.2 and later. `MULTIPLE_DATA_TO_BASE64` defaults to `true` in 4.15.2 and to `false` from 4.15.3. When it is `false`, FastGPT passes file download short links that start with `http(s)://` to the model provider, which downloads them itself. The short link prefix is the first one set among `FILE_DOWNLOAD_PUBLIC_URL_PREFIX`, `FILE_DOMAIN`, and `FE_DOMAIN`. If it is an internal address, the provider cannot reach it and the download times out (it may return `Download multimodal file timed out`).
 
-What to do (either one): set `MULTIPLE_DATA_TO_BASE64=true` so FastGPT converts the file to base64 before sending it (larger requests); or set `FILE_DOMAIN` to a FastGPT address the provider can reach from the public internet, rather than changing `FE_DOMAIN`, which is the address your users use to access FastGPT.
+Solutions: either set `MULTIPLE_DATA_TO_BASE64=true` so FastGPT transmits base64 data payloads directly; or set `FILE_DOMAIN` to a public FastGPT endpoint reachable by the upstream model provider, keeping `FE_DOMAIN` for user browser access.
 
 ---
 
@@ -201,24 +207,40 @@ The Loop Node added in 4.15.0 keeps only the value of the last iteration in its 
 
 ---
 
-### The sandbox fails to start with "Sandbox work directory is not writable: /workspace", but the volume permissions are correct
+### Docker Compose Component Compatibility and Environment Inspection
 
-When you use OpenSandbox in 4.15.2 and later, the sandbox checks after it starts whether `/workspace` is writable, and exits with this error if it is not. If the owner and permissions of `/workspace` in the volume are already correct and the error persists, the default seccomp profile of the host's Docker may be blocking the sandbox container.
+- **Component image versions**: Use the component image tags defined in the official Compose template for your target FastGPT version, and review [Upgrade Instructions](/en/self-host/upgrading/upgrade-instruction) before upgrading.
+- **AI Proxy configuration (v4.17.0+)**: Configure `AIPROXY_API_ENDPOINT` (root URL such as `http://fastgpt-aiproxy:3000`) and `AIPROXY_API_TOKEN` on `fastgpt-app` (and commercial Admin services sharing app config), then run `docker compose up -d`.
+- **Verify loaded environment variables**: Run `docker exec -it fastgpt-app sh` and execute `env` inside the container.
+- **Connect to local model containers**: Attach the model container to the FastGPT Docker network and reference `http://service-name:container-port`.
 
-Run the command below with the sandbox image (`<volume-name>` is the volume the sandbox container mounts at `/workspace`; find it with `docker inspect <sandbox-container-name>`). If it prints fail and then ok, seccomp is the cause:
+---
+
+### Common Database and Object Storage Errors in Docker Deployments
+
+- **Mongo replica set initialization failure / `Operation auth_codes.findOne() buffering timed out` / `root` shown as unregistered on first login**: Inspect `docker compose ps` and MongoDB logs to verify replica-set name, internal hostname, credentials, key-file permissions, and volume ownership; for a brand-new uninitialized replica set, check `rs.status()` in the Mongo shell before running `rs.initiate()`.
+- **`Illegal instruction`**: Verify host CPU instruction set support (such as AVX) against the MongoDB image requirements and choose a compatible host/image combination.
+- **`relation "modeldata" does not exist`**: PostgreSQL is unreachable or missing the `vector` extension; inspect PG logs and ensure `pgvector` is installed.
+- **S3 / Object Storage connection errors**: Verify the storage endpoint reachable from FastGPT and signing host headers; see [Object Storage Configuration](/en/self-host/config/object-storage) and [Migrate Docker Compose from MinIO to RustFS](/en/self-host/docker_minio_to_rustfs).
+
+---
+
+### The sandbox fails to start with "Sandbox work directory is not writable: /workspace", even though volume permissions are correct
+
+When using OpenSandbox in 4.15.2 and later, the sandbox checks whether `/workspace` is writable at startup and exits with this error when the check fails. If the owner and permissions of `/workspace` in the volume are already valid, the host Docker daemon's default seccomp profile may be blocking the sandbox container.
+
+Run the command below with the sandbox image (`<volume-name>` is the volume mounted at `/workspace`, visible via `docker inspect <sandbox-container-name>`). Outputting `fail` followed by `ok` confirms seccomp as the cause:
 
 ```bash
 for o in "" "--security-opt seccomp=unconfined"; do docker run --rm $o -v <volume-name>:/workspace --entrypoint bash <sandbox-image> -c '[ -w /workspace ] && echo ok || echo fail'; done
 ```
 
-To fix it, add `seccomp_profile = "unconfined"` under `[docker]` in `opensandbox-config` in your compose file, run `docker compose up -d --force-recreate fastgpt-opensandbox-server`, and click "Retry" on the page. This loosens the system call restrictions of the sandbox containers, so use it only after you have confirmed that seccomp is the cause.
+To resolve it, add `seccomp_profile = "unconfined"` under `[docker]` in `opensandbox-config` in your Compose file, run `docker compose up -d --force-recreate fastgpt-opensandbox-server`, and click **Retry** on the page. Apply this setting after confirming seccomp as the root cause, as it relaxes system call filtering on sandbox containers.
 
 ---
 
 ### What should I do when a tool reports "Invoke upload file failed" and /api/invoke/fileUpload returns 401?
 
-When you deploy 4.15.0 to 4.17.4 with the official `main` docker-compose (the one used by the official deployment page and by `install.sh` by default), `fastgpt-plugin` does not set `FASTGPT_BASE_URL` (the `v4.15` compose sets it from 4.15.2). After a tool of the plugin (for example the basic chart tool) generates a file, it uploads the file by calling `/api/invoke/fileUpload` of FastGPT through this variable. It defaults to `http://localhost:3000`, which points to the plugin container itself. The plugin's own authentication rejects the request (401), and the tool reports "Invoke upload file failed".
+When deploying 4.15.0 through 4.17.4 with the official `main` Docker Compose template (used by default on the deployment page and in `install.sh`), `fastgpt-plugin` leaves `FASTGPT_BASE_URL` unset (the `v4.15` / `v4.16` template sets it starting from 4.15.2). When a plugin tool such as the basic chart tool generates a file, it calls `/api/invoke/fileUpload` via `FASTGPT_BASE_URL`; the default `http://localhost:3000` points back to the plugin container itself and returns 401 (`HTTP Exception: Unauthorized`), causing "Invoke upload file failed".
 
-If the 401 log is printed by `fastgpt-plugin` (it contains `HTTP Exception: Unauthorized`), add `FASTGPT_BASE_URL: http://fastgpt-app:3000` to its environment variables (use the service name of the main FastGPT service in your compose file), run `docker compose up -d fastgpt-plugin` to recreate the container, and run the tool again.
-
----
+Add `FASTGPT_BASE_URL: http://fastgpt-app:3000` to the `fastgpt-plugin` environment variables (matching the main FastGPT service name in your Compose file), recreate the container with `docker compose up -d fastgpt-plugin`, and run the tool again.

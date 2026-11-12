@@ -5,20 +5,24 @@ description: 通过 API 访问 FastGPT 应用
 
 import { Alert } from '@/components/docs/Alert';
 
-**FastGPT 4.18.0 及以上支持应用 Key。** 发布渠道里的「API 访问」可切换「应用 Key」和「个人密钥」：
+**FastGPT 4.18.0 及以上支持应用 Key。** 发布渠道里的 **API 访问** 可切换 **应用 Key** 和 **个人密钥**：
 
-- **应用 Key**：绑定当前应用，仅用于该应用的对话与对话管理。只有应用管理员可查看、创建和管理；不同管理员可以操作其他管理员创建的 Key。调用授权来自 Key 本身，不依赖归属成员是否仍有该应用的访问权限。
-- **个人密钥**：以当前成员身份访问开放接口，权限随该成员的权限变化；仅展示和管理本人的密钥。
+- **应用 Key**：绑定当前应用，专用于该应用的对话与对话管理接口。应用管理员可查看、创建和管理当前应用下的全部应用 Key（含其他管理员创建的 Key）。调用授权来自 Key 本身，独立于归属成员后续的应用访问权限。
+- **个人密钥**：以当前成员身份访问开放接口，权限随该成员的团队与资源权限变化，仅展示和管理本人创建的密钥。
 
-应用 Key 调用支持的对话接口时无需传 `appId` 或 `sourceType`，服务端使用绑定应用和固定的 `sourceType=app`。请求中的 `appId` 或 `apiKey-appId` 后缀不会覆盖绑定。个人密钥调用 `chat/completions` 时推荐传 `body.appId`，也可使用 `apiKey-appId` 兼容格式。
+使用应用 Key 调用支持的对话与对话管理接口时无需传 `appId` 或 `sourceType`，服务端固定使用绑定应用与 `sourceType=app`（请求中的 `appId` 或 `apiKey-appId` 后缀均保持绑定应用不变）。使用个人密钥调用 `chat/completions` 时推荐传入 `body.appId`，也可使用 `apiKey-appId` 兼容格式。
 
-获取会话列表时，应用 Key 固定查询 API 来源，不能传 `source` 切换来源。分页参数及请求示例见 [OpenAPI 介绍](../../../openapi/intro.mdx)。
+调用会话列表接口时，应用 Key 固定查询 API 来源会话；分页参数与请求示例见 [OpenAPI 介绍](/zh-CN/openapi/intro)。
+
+![API 发布渠道中的 APIKey 列表与新建入口](/imgs/optimized/current/publish-api.png.webp)
+
+图中展示空密钥列表。界面服务根地址以 `/api` 结尾；OpenAI 兼容 SDK 的 base URL 使用下文的 `/api/v1` 或 `/api/v2`。
 
 ## 对接自己的用户系统
 
 **版本要求：FastGPT 4.18.0 及以上。**
 
-APIKey 由接入方后端保管。后端完成用户认证后，可通过 `customUid` 传入自己的使用者 ID。以下使用应用 Key，无需传 `appId`：
+APIKey 由接入方后端保管。后端完成用户认证后，可通过 `customUid` 传入业务侧使用者 ID。以下示例使用应用 Key，省略 `appId`：
 
 ```json
 {
@@ -27,35 +31,31 @@ APIKey 由接入方后端保管。后端完成用户认证后，可通过 `custo
 }
 ```
 
-`customUid` 最长 1024 字符，原值传递给工作流的 `userId`，并记录为对话日志的使用者；未传、`null` 或空字符串时使用默认成员身份。它不改变 APIKey 的鉴权成员或授权范围。个人密钥支持的 `authProxy` 与 `customUid` 互斥，同时提供会返回参数错误；应用 Key 不支持 `authProxy`。
+`customUid` 最长 `1024` 字符，原值传递给工作流的 `userId`，并记录为对话日志中的使用者；未传、`null` 或空字符串时使用默认成员身份，同时保持 APIKey 的鉴权成员与授权范围不变。个人密钥支持的 `authProxy` 与 `customUid` 互斥（同时传入返回参数错误）；应用 Key 仅使用 `customUid` 标识外部用户。
 
-对话日志默认展示使用者；可在列设置中开启默认隐藏的“鉴权者”。CSV 按所选列导出。此参数用于身份标记，接入方后端仍需管理用户认证和可访问的会话。
+对话日志默认展示使用者，可在列设置中开启默认隐藏的 **鉴权者** 列；CSV 按所选列导出。接入方后端负责业务用户认证与会话归属校验。
 
 ## 获取 APIKey
 
-依次选择应用 ->「发布渠道」->「API 访问」，切换密钥类型后点击新建。创建应用 Key 只需应用管理员权限，不要求团队的「创建 API Key」权限；个人密钥仍遵循团队权限限制。
+依次选择应用 -> **发布渠道** -> **API 访问**，切换密钥类型后点击右上角 **新建** 生成密钥。创建应用 Key 仅需当前应用的管理员权限；创建个人密钥遵循团队的 **创建 API 密钥** 权限设置。
 
-<Alert context="warning">
+<Alert icon="⚠️" context="warning">
   请在业务后端保管密钥，避免暴露到浏览器或客户端。如需再次复制，可在 API 列表中点击复制按钮。
 </Alert>
 
-![](/imgs/fastgpt-api1.jpg)
-
 <Alert icon="🍅" context="success">
-  Tips: 安全起见，你可以设置一个额度或者过期时间，防止 key 被滥用。
+  额度与过期时间取决于商业能力配置，具体条件见 [API 入门](/zh-CN/openapi/intro)。将密钥保存在可信服务端，并在泄漏后及时撤销。
 </Alert>
 
 ## 替换三方应用的变量
 
-```bash
-OPENAI_API_BASE_URL: http://localhost:3000/api (改成自己部署的域名)
-OPENAI_API_KEY = 上一步获取到的密钥（应用 Key 直接使用原值；个人密钥推荐在请求体传 appId，也可使用 apiKey-appId 兼容格式）
+OpenAI 兼容客户端使用实例地址加 `/api/v1` 作为 SDK base URL，请求路径为 `/chat/completions`。例如：
+
+```text
+Base URL: https://YOUR_FASTGPT_HOST/api/v1
+API key: YOUR_APP_API_KEY（应用 Key 直接填原值；个人密钥可在请求体传 appId 或填 YOUR_PERSONAL_KEY-YOUR_APP_ID）
 ```
 
-**[ChatGPT Next Web](https://github.com/Yidadaa/ChatGPT-Next-Web) 示例：**
+部分客户端接收服务根地址并自行追加 `/api/v1`。按客户端版本说明配置，并检查实际请求地址。发送一条简短消息，确认回答来自已发布应用；凭证保存在可信服务端配置中。
 
-![](/imgs/chatgptnext.png)
-
-**[ChatGPT Web](https://github.com/Chanzhaoyu/chatgpt-web) 示例：**
-
-![](/imgs/chatgptweb.png)
+[ChatGPT Next Web](https://github.com/Yidadaa/ChatGPT-Next-Web) 和 [ChatGPT Web](https://github.com/Chanzhaoyu/chatgpt-web) 的具体变量名以各客户端当前配置指南为准。

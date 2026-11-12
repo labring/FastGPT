@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { Check, ChevronDown } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import {
@@ -42,13 +43,11 @@ export function SwitcherDropdown({
   keepSidebarOpenOnSelect = false
 }: SwitcherDropdownProps) {
   const [open, setOpen] = useState(false);
+  const pathname = usePathname();
   const closeOnRedirect = useSidebar().closeOnRedirect as { current: boolean };
   const selected = options.find((item) => item.active) ?? options[0];
 
   const selectItem = (item: SwitcherDropdownOption) => {
-    if (keepSidebarOpenOnSelect) {
-      closeOnRedirect.current = false;
-    }
     item.onSelect?.();
     setOpen(false);
   };
@@ -100,6 +99,12 @@ export function SwitcherDropdown({
         <Link
           key={item.key}
           href={item.href}
+          onNavigate={() => {
+            // Next calls this only for same-tab navigation, preserving modified-click behavior.
+            if (keepSidebarOpenOnSelect && item.href !== pathname) {
+              closeOnRedirect.current = false;
+            }
+          }}
           onClick={() => selectItem(item)}
           className={className}
           role="option"

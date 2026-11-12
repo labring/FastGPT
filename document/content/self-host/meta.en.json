@@ -1,22 +1,27 @@
 {
-  "title": "Self-Hosting",
+  "title": "Deploy and Operate",
   "description": "FastGPT self-hosting guide",
   "root": true,
   "pages": [
-    "---Getting Started---",
+    "index",
+    "---Start Deploying---",
     "...deploy",
     "dev",
-    "---Configuration---",
+    "---System Configuration---",
     "...config",
-    "---Troubleshooting---",
-    "...troubleshooting",
-    "---Version Upgrades---",
-    "...upgrading",
-    "---Other---",
-    "docker_minio_to_rustfs",
+    "../plugin/runtime",
     "milvus-bm25",
-    "migration",
     "custom-models",
-    "design"
+    "---Platform Administration---",
+    "../guide/admin/platform-console",
+    "../guide/admin/sso",
+    "../guide/admin/teamMode",
+    "---Operations and Troubleshooting---",
+    "...troubleshooting",
+    "docker_minio_to_rustfs",
+    "migration",
+    "---Architecture and Design---",
+    "...design",
+    "!upgrading"
   ]
 }

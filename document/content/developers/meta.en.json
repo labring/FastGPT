@@ -1,0 +1,26 @@
+{
+  "title": "Developers",
+  "root": true,
+  "pages": [
+    "index",
+    "---API Getting Started---",
+    "../openapi/intro",
+    "../openapi/identity-proxy",
+    "../openapi/interactive-and-variables",
+    "---Integration Tasks---",
+    "../openapi/best-practices",
+    "../openapi/app",
+    "../openapi/chat",
+    "../openapi/dataset",
+    "../guide/dataset/third-party/third_dataset",
+    "---Plugin System---",
+    "../plugin/intro",
+    "../plugin/quick-start",
+    "../plugin/system-tool-development",
+    "../plugin/model-presets",
+    "../plugin/debugging-and-publishing",
+    "../plugin/package-reference",
+    "---Historical references---",
+    "../openapi/legacy"
+  ]
+}

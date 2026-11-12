@@ -1,3 +1,7 @@
+import {
+  listRetainedTools,
+  getRetainedToolDetail
+} from '../../../../thirdProvider/fastgptPlugin/lifecycle';
 import { PluginErrEnum } from '@fastgpt/global/common/error/code/plugin';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import type { LangEnum } from '@fastgpt/global/common/i18n/type';
@@ -305,8 +309,10 @@ export class SystemToolRepo {
     op,
     sources,
     tags,
-    lang
+    lang,
+    includeDisabled
   }: {
+    includeDisabled?: boolean;
     tags?: string[];
     op?: PluginListParamsType['op'];
     sources?: PluginListParamsType['sources'];
@@ -315,11 +321,13 @@ export class SystemToolRepo {
     // 1. get all tools from plugin by sources
     const filteredTags = tags ? filterPluginTags(tags) : undefined;
     const tools = await withPluginClientLocale(lang, () =>
-      pluginClient.listTools({
-        op,
-        sources,
-        tags: filteredTags
-      })
+      includeDisabled
+        ? listRetainedTools()
+        : pluginClient.listTools({
+            op,
+            sources,
+            tags: filteredTags
+          })
     );
 
     // 2. 加载数据库中的插件配置，将所有插件 normalize
@@ -337,7 +345,10 @@ export class SystemToolRepo {
       return {
         ...item,
         status: getVisiblePluginStatus({
-          status: item.status,
+          status:
+            'installationStatus' in tool && tool.installationStatus === 'disabled'
+              ? PluginStatusEnum.Offline
+              : item.status,
           source: tool.source
         })
       };
@@ -366,7 +377,8 @@ export class SystemToolRepo {
     source: toolSource = 'system',
     lang,
     fallbackLatestVersion = false,
-    maskSecrets = false
+    maskSecrets = false,
+    includeDisabled = false
   }: {
     pluginId: string;
     version?: string;
@@ -374,6 +386,7 @@ export class SystemToolRepo {
     lang?: `${LangEnum}`;
     fallbackLatestVersion?: boolean;
     maskSecrets?: boolean;
+    includeDisabled?: boolean;
   }): Promise<SystemToolDetailType> => {
     const isIsolatedSource = isIsolatedPluginSource(toolSource);
     const { pluginId: rawPluginId, source: idSource } = parseSystemToolId({
@@ -442,12 +455,14 @@ export class SystemToolRepo {
     // System tool
     const pluginSource = getPluginClientSource({ idSource, runtimeSource: toolSource });
     const tool: SDKToolDetailType = await withPluginClientLocale(lang, () =>
-      pluginClient.getTool({
-        pluginId: parentPluginId,
-        version,
-        source: pluginSource,
-        ...(fallbackLatestVersion ? { fallbackLatestVersion: true } : {})
-      })
+      includeDisabled
+        ? getRetainedToolDetail(parentPluginId, version)
+        : pluginClient.getTool({
+            pluginId: parentPluginId,
+            version,
+            source: pluginSource,
+            ...(fallbackLatestVersion ? { fallbackLatestVersion: true } : {})
+          })
     );
 
     const getToolParent = tool.isToolset && !getChildToolDetail;

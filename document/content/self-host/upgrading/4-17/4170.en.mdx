@@ -1,9 +1,10 @@
 ---
 title: 'V4.17.0'
-description: 'FastGPT V4.17.0 release notes'
+description: "FastGPT V4.17.0 release notes covering container image updates, upgrade steps, and feature changes."
 releaseTime: '2026-09-11'
 upgradeTags:
   - CONFIG
+  - MIGRATION
 ---
 
 ## Upgrade notes
@@ -18,7 +19,7 @@ Migration tasks process `100` records per batch by default. For larger deploymen
 
 Starting with V4.17.0, you must deploy or connect to AI Proxy. Configure these variables for FastGPT App and any commercial Admin service that shares App/Service configuration:
 
-- `AIPROXY_API_ENDPOINT`: A reachable AI Proxy service root URL, such as `http://aiproxy:3000`. Do not append `/v1`.
+- `AIPROXY_API_ENDPOINT`: A reachable AI Proxy service root URL, such as `http://fastgpt-aiproxy:3000`. Do not append `/v1`.
 - `AIPROXY_API_TOKEN`: A nonempty administrator token matching the AI Proxy server configuration.
 
 **As of V4.17.0, `OPENAI_BASE_URL` and `CHAT_API_KEY` are deprecated and removed. These settings no longer take effect.** Remove them from your deployment environment and use the AI Proxy settings above. Manage model provider endpoints and keys in Admin. The legacy `systemEnv.oneapiUrl/chatApiKey` overrides also no longer take effect.

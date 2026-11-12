@@ -6,7 +6,8 @@ export enum SystemConfigsTypeEnum {
   operationalAd = 'operationalAd',
   activityAd = 'activityAd',
   instanceId = 'instanceId',
-  modelStatusProbe = 'modelStatusProbe'
+  modelStatusProbe = 'modelStatusProbe',
+  moderationPolicy = 'moderationPolicy'
 }
 
 export const SystemConfigsTypeMap = {
@@ -33,5 +34,8 @@ export const SystemConfigsTypeMap = {
   },
   [SystemConfigsTypeEnum.modelStatusProbe]: {
     label: '模型状态探测'
+  },
+  [SystemConfigsTypeEnum.moderationPolicy]: {
+    label: '内容审核策略'
   }
 };

@@ -151,12 +151,13 @@ describe('loadSystemModels', () => {
     expect(getCachedSystemModelHandle()?.getActiveModels()).toEqual([]);
   });
 
-  it('keeps the MongoDB newest-first order and derives the active list', async () => {
+  it('keeps MongoDB _id order and active defaults independent from management ranks', async () => {
     const installedModels = [
       {
         type: ModelTypeEnum.llm,
         provider: 'OpenAI',
         model: 'plugin-first',
+        sortOrder: 1,
         name: 'Plugin first',
         isActive: true,
         config: { maxContext: 128000, maxResponse: 32000, quoteMaxToken: 100000 }
@@ -165,6 +166,7 @@ describe('loadSystemModels', () => {
         type: ModelTypeEnum.llm,
         provider: 'OpenAI',
         model: 'plugin-second',
+        sortOrder: 0,
         name: 'Plugin second',
         isActive: false,
         config: { maxContext: 128000, maxResponse: 32000, quoteMaxToken: 100000 }
@@ -173,6 +175,7 @@ describe('loadSystemModels', () => {
         type: ModelTypeEnum.llm,
         provider: 'OpenAI',
         model: 'plugin-third',
+        sortOrder: 2,
         name: 'Plugin third',
         isActive: true,
         config: { maxContext: 128000, maxResponse: 32000, quoteMaxToken: 100000 }
@@ -185,6 +188,7 @@ describe('loadSystemModels', () => {
       {
         ...installedModels[0],
         model: 'custom-model',
+        sortOrder: 3,
         name: 'Custom model',
         scope: 'system'
       }
@@ -202,6 +206,7 @@ describe('loadSystemModels', () => {
         ?.getActiveModels()
         .map((model) => model.model)
     ).toEqual(['custom-model', 'plugin-third', 'plugin-first']);
+    expect(getModelTestDefaults().llm?.model).toBe('custom-model');
   });
 
   it('loads configured system defaults from ai_default_models', async () => {

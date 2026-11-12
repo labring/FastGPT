@@ -779,4 +779,148 @@ describe('runFastAgentLoop', () => {
       content: 'Tool error: resume failed'
     });
   });
+
+  it('continues fastAgent loop and hides sensitive tool values and error banners when tool params or results hit moderation', async () => {
+    const { MODERATION_BLOCKED_REPLACE_TEXT } =
+      await import('@fastgpt/global/core/plugin/moderation/constants');
+    const modelInputMod = await import('@fastgpt/service/core/plugin/moderation/modelInput');
+    vi.spyOn(modelInputMod, 'checkToolResultModeration').mockImplementation(async ({ response }) =>
+      response?.includes('sensitive_secret_payload')
+        ? MODERATION_BLOCKED_REPLACE_TEXT
+        : (response ?? '')
+    );
+
+    const events: any[] = [];
+    const executeTool = vi.fn(async () => ({
+      response: 'sensitive_secret_payload',
+      errorMessage: 'sensitive_secret_payload',
+      assistantMessages: [],
+      usages: [],
+      metadata: {
+        id: 'call_result_mod',
+        nodeId: 'call_result_mod',
+        moduleType: FlowNodeTypeEnum.tool,
+        moduleName: 'Search Tool',
+        toolRes: { secret: 'sensitive_secret_payload' },
+        httpResult: { secret: 'sensitive_secret_payload' },
+        errorText: 'sensitive_secret_payload'
+      }
+    }));
+
+    let callCount = 0;
+    createLLMResponseMock.mockImplementation(async () => {
+      callCount++;
+      if (callCount === 1) {
+        const calls = [
+          {
+            id: 'call_param_mod',
+            type: 'function' as const,
+            function: { name: 'search', arguments: '{}' }
+          },
+          {
+            id: 'call_result_mod',
+            type: 'function' as const,
+            function: { name: 'search', arguments: '{"q":"normal"}' }
+          }
+        ];
+        return {
+          requestId: 'req_1',
+          isStreamResponse: false,
+          answerText: '',
+          reasoningText: '',
+          toolCalls: calls,
+          moderatedToolCallIds: ['call_param_mod'],
+          finish_reason: 'tool_calls',
+          usage: { inputTokens: 10, outputTokens: 10, usedUserOpenAIKey: false },
+          requestMessages: [],
+          assistantMessage: {
+            role: ChatCompletionRequestMessageRoleEnum.Assistant,
+            tool_calls: calls
+          },
+          completeMessages: []
+        };
+      }
+      return {
+        requestId: 'req_2',
+        isStreamResponse: false,
+        answerText: 'Agent recovered and finished cleanly',
+        reasoningText: '',
+        toolCalls: [],
+        finish_reason: 'stop',
+        usage: { inputTokens: 20, outputTokens: 15, usedUserOpenAIKey: false },
+        requestMessages: [],
+        assistantMessage: {
+          role: ChatCompletionRequestMessageRoleEnum.Assistant,
+          content: 'Agent recovered and finished cleanly'
+        },
+        completeMessages: []
+      };
+    });
+
+    const result = await runFastAgentLoop({
+      input: {
+        messages: [
+          {
+            role: ChatCompletionRequestMessageRoleEnum.User,
+            content: 'help me search'
+          }
+        ]
+      },
+      runtime: createRuntime({
+        toolCatalog: {
+          runtimeTools: [
+            {
+              type: 'function',
+              function: {
+                name: 'search',
+                description: 'Search',
+                parameters: { type: 'object', properties: {} }
+              }
+            }
+          ]
+        },
+        executeTool,
+        emitEvent: (event) => events.push(event)
+      })
+    });
+
+    expect(result.status).toBe('done');
+    // Only the clean-param tool call was actually executed; the moderated-param call was skipped
+    expect(executeTool).toHaveBeenCalledTimes(1);
+    expect(executeTool).toHaveBeenCalledWith(
+      expect.objectContaining({
+        call: expect.objectContaining({ id: 'call_result_mod' })
+      })
+    );
+
+    const toolEndEvents = events.filter((e) => e.type === 'tool_run_end');
+    expect(toolEndEvents).toHaveLength(2);
+    for (const endEvent of toolEndEvents) {
+      expect(endEvent.response).toBe(MODERATION_BLOCKED_REPLACE_TEXT);
+      expect(endEvent.errorMessage).toBeUndefined();
+    }
+    const resultModEnd = toolEndEvents.find((e) => e.call.id === 'call_result_mod');
+    expect(resultModEnd?.metadata).toMatchObject({
+      toolRes: MODERATION_BLOCKED_REPLACE_TEXT
+    });
+    expect(resultModEnd?.metadata?.httpResult).toBeUndefined();
+    expect(resultModEnd?.metadata?.errorText).toBeUndefined();
+
+    // Turn 2 received both unified moderated tool results so the agent loop could decide next step
+    const secondTurnMessages = createLLMResponseMock.mock.calls[1][0].body.messages;
+    expect(secondTurnMessages).toEqual(
+      expect.arrayContaining([
+        {
+          role: 'tool',
+          tool_call_id: 'call_param_mod',
+          content: MODERATION_BLOCKED_REPLACE_TEXT
+        },
+        {
+          role: 'tool',
+          tool_call_id: 'call_result_mod',
+          content: MODERATION_BLOCKED_REPLACE_TEXT
+        }
+      ])
+    );
+  });
 });
