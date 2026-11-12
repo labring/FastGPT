@@ -8,6 +8,7 @@ import {
 } from '../../workflow/node';
 import { AppResourcesSchema } from '../../../../core/app/type';
 import { StoreEdgeItemTypeSchema } from '../../../../core/workflow/type/edge';
+import { WorkflowReferenceSnapshotSchema } from '../../../../core/workflow/type/io';
 import { AppChatConfigInputSchema, OpenAPIAppChatConfigSchema } from '../common/api';
 import { BoolSchema, NumSchema } from '../../../../common/zod';
 import {
@@ -40,6 +41,7 @@ const AppVersionChatConfigSchema = OpenAPIAppChatConfigSchema.default({}).meta({
 const AppVersionChatConfigInputSchema = AppChatConfigInputSchema.default({}).meta({
   description: '本次写入的应用对话配置'
 });
+const PublishAppReferenceSnapshotsInputSchema = z.array(WorkflowReferenceSnapshotSchema);
 
 const PublishAppBodyCommonShape = {
   edges: AppVersionEdgesSchema.optional().meta({
@@ -47,6 +49,10 @@ const PublishAppBodyCommonShape = {
   }),
   chatConfig: AppVersionChatConfigInputSchema.optional().meta({
     description: '本次保存的应用对话配置'
+  }),
+  referenceSnapshots: PublishAppReferenceSnapshotsInputSchema.optional().meta({
+    description:
+      '本次保存的已删除引用来源历史展示元数据；未传时继承当前草稿中仍被引用且来源节点或输出不可解析的快照，传入空数组时清空'
   }),
   isPublish: BoolSchema.optional().meta({
     example: true,
@@ -123,6 +129,13 @@ const createPublishToolSetAppBodySchema = (type: AppTypeEnum) => {
 const AppVersionResourcesSchema = AppResourcesSchema.meta({
   description: '该版本引用的资源集合'
 });
+
+const AppVersionReferenceSnapshotsSchema = z
+  .array(WorkflowReferenceSnapshotSchema)
+  .default([])
+  .meta({
+    description: '该版本内已删除引用来源的历史展示元数据'
+  });
 
 const OpenAPIVersionListItemSchema = VersionListItemSchema.extend({
   _id: ObjectIdSchema.meta({
@@ -269,6 +282,7 @@ export const GetAppVersionDetailResponseSchema = z.object({
     example: '正式发布版',
     description: '版本名称'
   }),
+  referenceSnapshots: AppVersionReferenceSnapshotsSchema,
   resources: AppVersionResourcesSchema
 });
 
@@ -307,6 +321,7 @@ export const GetLatestAppVersionResponseSchema = z.object({
   }),
   edges: AppVersionEdgesSchema,
   chatConfig: AppVersionChatConfigSchema,
+  referenceSnapshots: AppVersionReferenceSnapshotsSchema,
   resources: AppVersionResourcesSchema
 });
 

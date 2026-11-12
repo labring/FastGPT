@@ -8,10 +8,8 @@ import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/consta
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
 
-import {
-  getReferenceVariableValue,
-  valueTypeFormat
-} from '@fastgpt/global/core/workflow/runtime/utils';
+import { getReferenceVariableValue } from '@fastgpt/global/common/workflow/runtime';
+import { valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
 import { type TUpdateListItem } from '@fastgpt/global/core/workflow/template/system/variableUpdate/type';
 import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/runtime';
 import { isValidReferenceValue } from '@fastgpt/global/common/workflow/reference';

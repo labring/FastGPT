@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { NodeOutputKeyEnum, NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { getReferenceVariableValue } from '@fastgpt/global/core/workflow/runtime/utils';
+import { getReferenceVariableValue } from '@fastgpt/global/common/workflow/runtime';
 import { jsonSchema2SecretInput } from '@fastgpt/global/core/app/jsonschema';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
@@ -397,7 +397,11 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
           throw new Error(`Invalid MCP tool id: ${mcpTool.toolId}`);
         }
         const app = await authRuntimeToolset(parentId, toolName);
-        const workflow = await getAppVersionById({ appId: parentId, app });
+        const workflow = await getAppVersionById({
+          appId: parentId,
+          versionId: version,
+          app
+        });
         const mcpToolSet = McpToolSetRuntimeConfigSchema.safeParse(
           workflow.nodes[0]?.toolConfig?.mcpToolSet
         ).data;
@@ -412,7 +416,6 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
         if (!url) throw new Error('MCP tool set URL is missing');
         return getMcpResponse(await callMcpTool({ toolName, url, headerSecret }));
       }
-
       if (!mcpTool.url) throw new Error('MCP tool set URL is missing');
       return getMcpResponse(
         await callMcpTool({

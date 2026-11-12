@@ -1,15 +1,19 @@
-import { getNodeAllSource } from '@/web/core/workflow/utils';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
-import { storeNodes2RuntimeNodes } from '@fastgpt/global/core/workflow/runtime/utils';
-import type { RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
-import { cloneDeep } from 'lodash-es';
+import { storeNodes2RuntimeNodes } from '@fastgpt/global/common/workflow/runtime';
+import type {
+  RuntimeEdgeItemType,
+  StoreEdgeItemType
+} from '@fastgpt/global/core/workflow/type/edge';
+import { type StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { getGlobalVariableNode } from '@/web/core/workflow/adapt';
 
 import LabelAndFormRender from '@/components/core/app/formRender/LabelAndForm';
 import { variableInputTypeToInputType } from '@/components/core/app/formRender/utils';
 import { WorkflowRuntimeContext } from '@/components/core/chat/ChatContainer/context/workflowRuntimeContext';
 import { Box, Button, Flex, useToast } from '@chakra-ui/react';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
+import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
@@ -22,10 +26,13 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import dynamic from 'next/dynamic';
 import { type FieldErrors, useForm, useWatch } from 'react-hook-form';
 import { useContextSelector } from 'use-context-selector';
-import { AppContext } from '../../../context';
-import { WorkflowDebugContext } from '../../context/workflowDebugContext';
-import { WorkflowBufferDataContext } from '../../context/workflowInitContext';
-import { WorkflowUtilsContext } from '../../context/workflowUtilsContext';
+import { useWorkflowPersistence } from '@/web/core/workflow/editor/session/workflowSession';
+import {
+  useDocumentGetNodeById,
+  useGraphQueries,
+  useWorkflowSnapshotGetter
+} from '../nodes/render/useWorkflowDocument';
+import { useWorkflowDebugValue } from '../../debug/workflowDebugSession';
 import { getUserFileAmountLimit } from '@fastgpt/global/core/workflow/fileLimit';
 import { useFileUploadLimits } from '@/web/common/file/hooks/useFileUploadLimits';
 import type { FileSelectorValueItemType } from '@/components/core/app/FileSelector/type';
@@ -79,42 +86,26 @@ export const useDebug = () => {
   const { t } = useSafeTranslation();
   const { t: workflowT } = useTranslation();
   const toast = useToast();
-
-  const setNodes = useContextSelector(WorkflowBufferDataContext, (v) => v.setNodes);
-  const edges = useContextSelector(WorkflowBufferDataContext, (v) => v.edges);
-  const getNodeById = useContextSelector(WorkflowBufferDataContext, (v) => v.getNodeById);
-  const childrenNodeIdListMap = useContextSelector(
-    WorkflowBufferDataContext,
-    (v) => v.childrenNodeIdListMap
-  );
-  const flowData2StoreDataAndCheck = useContextSelector(
-    WorkflowUtilsContext,
-    (v) => v.flowData2StoreDataAndCheck
-  );
-  const onStartNodeDebug = useContextSelector(WorkflowDebugContext, (v) => v.onStartNodeDebug);
-  const setDebugChatId = useContextSelector(WorkflowDebugContext, (v) => v.setDebugChatId);
-
-  const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
   const { maxUploadFileCount } = useFileUploadLimits();
   const debugFileMaxAmount = getUserFileAmountLimit({
     systemMaxFileAmount: maxUploadFileCount
   });
-  const { filteredVar, customVar, internalVar, variables } = useMemo(() => {
-    const variables = appDetail.chatConfig?.variables || [];
-    return {
-      filteredVar:
-        variables.filter(
-          (item) =>
-            item.type !== VariableInputEnum.custom && item.type !== VariableInputEnum.internal
-        ) || [],
-      customVar: variables.filter((item) => item.type === VariableInputEnum.custom) || [],
-      internalVar: variables.filter((item) => item.type === VariableInputEnum.internal) || [],
-      variables
-    };
-  }, [appDetail.chatConfig?.variables]);
 
-  const [defaultGlobalVariables, setDefaultGlobalVariables] = useState<Record<string, any>>(
-    variables.reduce(
+  // 可引用来源要按 id 查任意节点并展开容器子节点：语义快照提供 edges，
+  // 节点查询走 port 的 getNode，子节点走 Runtime 图查询，app 侧不再自建索引。
+  // 三者都是非订阅读取：useDebug 挂在每个节点的 MenuRender 上，订阅语义快照会让
+  // 任意一笔字段提交带动全部节点菜单重渲染，而来源列表只在抽屉打开后才需要。
+  const getWorkflow = useWorkflowSnapshotGetter();
+  const getNodeById = useDocumentGetNodeById();
+  const graph = useGraphQueries();
+  const onStartNodeDebug = useWorkflowDebugValue((v) => v.onStartNodeDebug);
+  const setDebugChatId = useWorkflowDebugValue((v) => v.setDebugChatId);
+  const onOpenNodeDebug = useWorkflowDebugValue((v) => v.onOpenNodeDebug);
+  // 调试直接读取 Runtime canonical 序列化；发布校验不应阻止调试输入打开。
+  const { serializeWorkflow } = useWorkflowPersistence();
+
+  const [defaultGlobalVariables, setDefaultGlobalVariables] = useState<Record<string, any>>(() =>
+    (getWorkflow()?.chatConfig?.variables ?? []).reduce(
       (acc, item) => {
         acc[item.key] = item.defaultValue;
         return acc;
@@ -129,25 +120,15 @@ export const useDebug = () => {
 
   const openDebugNode = useCallback(
     async ({ entryNodeId }: { entryNodeId: string }) => {
-      // 调试入口在节点悬浮菜单里，鼠标移开后菜单会被隐藏；此时抽屉关闭时 focus-lock 无法把焦点还给菜单按钮，
-      // 会退回到卡片内第一个可聚焦元素（示意图 tooltip 的 span[tabindex=0]），导致示意图自动展开。先主动失焦。
-      (document.activeElement as HTMLElement | null)?.blur();
-
       // 每次打开调试弹窗生成独立的会话 chatId，文件上传与调试运行共用，保证文件归属校验通过
       setDebugChatId(getNanoid());
 
-      setNodes((state) =>
-        state.map((node) => ({
-          ...node,
-          data: {
-            ...node.data,
-            debugResult: undefined
-          }
-        }))
-      );
-      const storeData = await flowData2StoreDataAndCheck();
-      if (!storeData) return;
-      const { nodes, edges } = cloneDeep(storeData);
+      // 只清上一轮 debug session 写过 overlay 的节点，不再对整份画布做全量清除
+      onOpenNodeDebug();
+      const serialized = serializeWorkflow();
+      if (!serialized) return;
+      const { nodes, edges }: { nodes: StoreNodeItemType[]; edges: StoreEdgeItemType[] } =
+        serialized;
 
       const runtimeNodes = storeNodes2RuntimeNodes(nodes, [entryNodeId]);
       const runtimeEdges: RuntimeEdgeItemType[] = edges.map((edge) =>
@@ -166,7 +147,7 @@ export const useDebug = () => {
       setRuntimeNodes(runtimeNodes);
       setRuntimeEdges(runtimeEdges);
     },
-    [flowData2StoreDataAndCheck, setNodes, setDebugChatId]
+    [serializeWorkflow, onOpenNodeDebug, setDebugChatId]
   );
 
   const DebugInputModal = useCallback(() => {
@@ -247,25 +228,36 @@ export const useDebug = () => {
       });
     }, [runtimeNode, isToolSet, toolIndex, currentToolSetDebugData, toolPreview, toolPreviewId]);
 
-    const referenceSourceNodes = useMemo(
-      () =>
-        runtimeNode
-          ? getNodeAllSource({
-              nodeId: runtimeNode.nodeId,
-              getNodeById,
-              edges,
-              chatConfig: appDetail.chatConfig,
-              t: workflowT,
-              childrenNodeIdListMap
-            })
-          : [],
-      [runtimeNode]
-    );
+    const referenceSourceNodes = useMemo(() => {
+      if (!runtimeNode) return [];
+      return [
+        ...(graph?.getSourceNodeIds({ nodeId: runtimeNode.nodeId, includeChildren: true }) ?? [])
+          .map((sourceNodeId) => getNodeById(sourceNodeId))
+          .filter((sourceNode): sourceNode is NonNullable<typeof sourceNode> => !!sourceNode)
+          .map((sourceNode) => ({
+            nodeId: sourceNode.nodeId,
+            sourceLabel: sourceNode.name,
+            icon: sourceNode.avatar,
+            outputs: sourceNode.outputs.map((output) => ({ ...output })),
+            catchError: sourceNode.catchError
+          })),
+        getGlobalVariableNode({
+          chatConfig: getWorkflow()?.chatConfig as AppChatConfigType,
+          t: workflowT
+        })
+      ];
+    }, [runtimeNode, graph, getNodeById, getWorkflow, workflowT]);
     const renderInputs = useMemo(() => {
       if (!runtimeNode) return [];
+      const fileSelectConfig = getWorkflow()?.chatConfig?.fileSelectConfig;
       const workflowStartFileInput = getWorkflowStartDebugFileInput({
         flowNodeType: runtimeNode.flowNodeType,
-        fileSelectConfig: appDetail.chatConfig?.fileSelectConfig
+        fileSelectConfig: fileSelectConfig
+          ? {
+              ...fileSelectConfig,
+              customFileExtensionList: fileSelectConfig.customFileExtensionList?.map((item) => item)
+            }
+          : undefined
       });
       return [
         ...(debugNode?.inputs ?? []).filter((input) =>
@@ -276,10 +268,37 @@ export const useDebug = () => {
         ),
         ...(workflowStartFileInput ? [workflowStartFileInput] : [])
       ];
-    }, [runtimeNode, debugNode, isToolSet, referenceSourceNodes]);
+    }, [runtimeNode, debugNode, isToolSet, referenceSourceNodes, getWorkflow]);
 
     if (!runtimeNode) return <></>;
-
+    const workflow = getWorkflow();
+    const chatConfig = workflow?.chatConfig;
+    const variables = chatConfig?.variables ?? [];
+    const getFormVariable = (item: (typeof variables)[number]) =>
+      getDebugGlobalVariableFormProps({
+        ...item,
+        list: item.list?.map((option) => ({ ...option })),
+        enums: item.enums?.map((option) => ({ ...option })),
+        markList: item.markList?.map((option) => ({ ...option })),
+        customFileExtensionList: item.customFileExtensionList?.map((item) => item),
+        datasetOptions: item.datasetOptions?.map((dataset) => ({
+          ...dataset,
+          vectorModel: { ...dataset.vectorModel }
+        })),
+        customInputConfig: item.customInputConfig
+          ? {
+              ...item.customInputConfig,
+              selectValueTypeList: item.customInputConfig.selectValueTypeList
+                ? [...item.customInputConfig.selectValueTypeList]
+                : undefined
+            }
+          : undefined
+      });
+    const filteredVar = variables.filter(
+      (item) => item.type !== VariableInputEnum.custom && item.type !== VariableInputEnum.internal
+    );
+    const customVar = variables.filter((item) => item.type === VariableInputEnum.custom);
+    const internalVar = variables.filter((item) => item.type === VariableInputEnum.internal);
     const variablesForm = useForm<Record<string, any>>({
       defaultValues: {
         nodeVariables: renderInputs.reduce((acc: Record<string, any>, input) => {
@@ -363,7 +382,8 @@ export const useDebug = () => {
           nodeVariables
         };
       }
-      void onStartNodeDebug({
+
+      onStartNodeDebug({
         entryNodeId: runtimeNode.nodeId,
         runtimeNodes: isToolSet
           ? [
@@ -493,7 +513,7 @@ export const useDebug = () => {
           <Box display={currentTab === TabEnum.global ? 'block' : 'none'}>
             {customVar.map((item) => (
               <LabelAndFormRender
-                {...item}
+                {...getFormVariable(item)}
                 key={item.key}
                 label={item.label}
                 required={item.required}
@@ -506,7 +526,7 @@ export const useDebug = () => {
             ))}
             {internalVar.map((item) => (
               <LabelAndFormRender
-                {...item}
+                {...getFormVariable(item)}
                 key={item.key}
                 label={item.label}
                 required={item.required}
@@ -519,7 +539,7 @@ export const useDebug = () => {
             ))}
             {filteredVar.map((item) => (
               <LabelAndFormRender
-                {...getDebugGlobalVariableFormProps(item)}
+                {...getFormVariable(item)}
                 key={item.key}
                 label={item.label}
                 required={item.required}
@@ -550,17 +570,12 @@ export const useDebug = () => {
     defaultGlobalVariables,
     t,
     workflowT,
-    variables.length,
-    customVar,
-    internalVar,
-    filteredVar,
     runtimeNodeId,
     onStartNodeDebug,
+    getWorkflow,
     getNodeById,
-    edges,
-    appDetail.chatConfig,
+    graph,
     debugFileMaxAmount,
-    childrenNodeIdListMap,
     toast
   ]);
 
@@ -569,7 +584,3 @@ export const useDebug = () => {
     openDebugNode
   };
 };
-
-export default function Dom() {
-  return <></>;
-}

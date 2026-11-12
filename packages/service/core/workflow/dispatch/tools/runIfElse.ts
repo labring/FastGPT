@@ -20,7 +20,7 @@ import type {
   WorkflowVariableStateLike
 } from '../../types/runtime';
 import { getHandleId } from '@fastgpt/global/common/workflow/reference';
-import { getReferenceVariableValue } from '@fastgpt/global/core/workflow/runtime/utils';
+import { getReferenceVariableValue } from '@fastgpt/global/common/workflow/runtime';
 import type { ReferenceItemValueType } from '@fastgpt/global/core/workflow/type/io';
 
 type Props = ModuleDispatchProps<{

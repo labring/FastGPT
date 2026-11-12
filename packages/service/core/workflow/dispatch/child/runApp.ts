@@ -7,9 +7,9 @@ import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
 import {
   getWorkflowEntryNodeIds,
   storeEdges2RuntimeEdges,
-  rewriteNodeOutputByHistories,
-  storeNodes2RuntimeNodes
+  rewriteNodeOutputByHistories
 } from '@fastgpt/global/core/workflow/runtime/utils';
+import { storeNodes2RuntimeNodes } from '@fastgpt/global/common/workflow/runtime';
 import { type NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { filterWorkflowToolInputVariables } from '@fastgpt/global/core/app/tool/workflowTool/utils';
 import { appData2FlowNodeIO } from '@fastgpt/global/common/app/workflow';

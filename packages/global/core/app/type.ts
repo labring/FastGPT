@@ -388,6 +388,7 @@ export type AppDetailType = AppSchemaType & {
   nodes: AppVersionSchemaType['nodes'];
   edges: AppVersionSchemaType['edges'];
   chatConfig: AppVersionSchemaType['chatConfig'];
+  referenceSnapshots?: AppVersionSchemaType['referenceSnapshots'];
   permission: AppPermission;
 };
 

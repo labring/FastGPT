@@ -10,6 +10,7 @@ import { IfElseResultEnum } from '@fastgpt/global/core/workflow/template/system/
 import { USER_SELECT_REFERENCE_HANDLE_KEY } from '@fastgpt/global/core/workflow/template/system/interactive/userSelect';
 import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { getFoldedSourceHandleIds } from '@/pageComponents/app/detail/WorkflowComponents/Flow/nodes/render/Handle/utils';
+import { canRenderSourceHandle } from '@/pageComponents/app/detail/WorkflowComponents/Flow/nodes/render/Handle/ConnectionHandle';
 
 const node: FlowNodeItemType = {
   id: 'node',
@@ -24,6 +25,13 @@ const node: FlowNodeItemType = {
 const ids = (...keys: string[]) => keys.map((key) => getHandleId(node.nodeId, 'source', key));
 
 describe('getFoldedSourceHandleIds', () => {
+  it('keeps the catch handle available when the right target handle is occupied', () => {
+    expect(canRenderSourceHandle({ sourceType: 'source_catch', rightTargetConnected: true })).toBe(
+      true
+    );
+    expect(canRenderSourceHandle({ sourceType: 'source', rightTargetConnected: true })).toBe(false);
+  });
+
   it('retains every if/else branch, including legacy branch IDs and the else branch', () => {
     expect(
       getFoldedSourceHandleIds({
@@ -93,5 +101,15 @@ describe('getFoldedSourceHandleIds', () => {
         ]
       })
     ).toEqual([...ids('right', 'branch'), getHandleId('node', 'source_catch', 'right')]);
+  });
+
+  it('keeps the default source handle when the template flag is present', () => {
+    expect(
+      getFoldedSourceHandleIds({
+        ...node,
+        flowNodeType: FlowNodeTypeEnum.textEditor,
+        showSourceHandle: true
+      } as FlowNodeItemType)
+    ).toEqual([getHandleId(node.nodeId, 'source', 'right')]);
   });
 });

@@ -2,9 +2,14 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import {
   FlowNodeInputTypeEnum,
+  FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
-import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  NodeInputKeyEnum,
+  NodeOutputKeyEnum,
+  WorkflowIOValueTypeEnum
+} from '@fastgpt/global/core/workflow/constants';
 import {
   graphNode,
   graphEdge,
@@ -159,7 +164,15 @@ describe('interactive workflow output propagation', () => {
         id: 'form',
         type,
         catchError,
-        outputs: [NodeOutputKeyEnum.errorText],
+        outputs: [
+          {
+            id: NodeOutputKeyEnum.errorText,
+            key: NodeOutputKeyEnum.errorText,
+            label: 'errorText',
+            type: FlowNodeOutputTypeEnum.error,
+            valueType: WorkflowIOValueTypeEnum.any
+          }
+        ],
         ...(type === FlowNodeTypeEnum.userSelect
           ? {
               inputs: [

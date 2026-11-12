@@ -6,7 +6,12 @@
  * 导出入口绑定到编辑沙盒的就绪状态。
  */
 export type SkillExportSandboxState =
-  'idle' | 'loading' | 'ready' | 'failed' | 'upgradeRequired' | 'upgrading';
+  | 'idle'
+  | 'loading'
+  | 'ready'
+  | 'failed'
+  | 'upgradeRequired'
+  | 'upgrading';
 
 export const isSkillExportDisabled = ({
   hasWritePer,

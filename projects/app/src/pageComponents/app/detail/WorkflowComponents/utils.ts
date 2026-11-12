@@ -1,3 +1,6 @@
+import { getNodeAllSource } from '@/web/core/workflow/utils';
+import { getGlobalVariableNode } from '@/web/core/workflow/adapt';
+import { workflowSystemVariables } from '@/web/core/app/utils';
 import type { AgentToolType } from '@fastgpt/global/core/app/tool/type';
 import {
   DYNAMIC_OPTION_EXCLUDED_VALUE_TYPES,
@@ -5,9 +8,8 @@ import {
   getSelectedInputRenderType,
   nodeInputIsReference
 } from '@fastgpt/global/common/workflow/reference';
-import { getNodeAllSource } from '@/web/core/workflow/utils';
-import { workflowSystemVariables } from '@fastgpt/global/core/workflow/node/constant';
-import { type AppChatConfigType, type AppDetailType } from '@fastgpt/global/core/app/type';
+import { type AppChatConfigType } from '@fastgpt/global/core/app/type';
+import type { DeepReadonly } from '@fastgpt/global/core/workflow/editor/types';
 import {
   NodeInputKeyEnum,
   NodeOutputKeyEnum,
@@ -17,15 +19,13 @@ import {
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
+import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
+import type { FlowNodeItemType, StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { isReferenceOptionFormItem } from '@fastgpt/global/core/workflow/template/system/interactive/constants';
 import type { UserInputFormItemType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
-import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
-import {
-  type FlowNodeItemType,
-  type StoreNodeItemType
-} from '@fastgpt/global/core/workflow/type/node';
 import type {
   FlowNodeInputItemType,
+  FlowNodeOutputItemType,
   ReferenceItemValueType,
   ReferenceValueType
 } from '@fastgpt/global/core/workflow/type/io';
@@ -35,7 +35,18 @@ import {
 } from '@fastgpt/global/core/app/formEdit/utils';
 import type { SelectedToolItemType } from '@fastgpt/global/core/app/formEdit/type';
 import { type TFunction } from 'i18next';
-import { type Edge, type Node } from 'reactflow';
+import type { Edge, Node } from '@xyflow/react';
+
+type EditorVariableNode = {
+  nodeId: string;
+  name: string;
+  avatar?: string;
+  catchError?: boolean;
+  inputs: readonly DeepReadonly<Pick<FlowNodeInputItemType, 'key' | 'label' | 'canEdit'>>[];
+  outputs: readonly DeepReadonly<
+    Pick<FlowNodeOutputItemType, 'id' | 'label' | 'type' | 'invalid'>
+  >[];
+};
 
 const normalizeStoreNodeInput = (input: StoreNodeItemType['inputs'][number], isTool: boolean) => {
   const inputWithSelectedType = normalizeFlowNodeInputType(input, { isTool });
@@ -297,15 +308,16 @@ export const filterExportModules = (modules: StoreNodeItemType[]) => {
 export const getEditorVariables = ({
   nodeId,
   getNodeById,
-  edges,
-  appDetail,
-  t
+  chatConfig,
+  t,
+  getSourceNodeIds
 }: {
   nodeId: string;
-  getNodeById: (nodeId: string | null | undefined) => FlowNodeItemType | undefined;
-  edges: Edge<any>[];
-  appDetail: AppDetailType;
+  getNodeById: (nodeId: string | null | undefined) => EditorVariableNode | undefined;
+  chatConfig: DeepReadonly<AppChatConfigType>;
   t: TFunction;
+  /** Runtime 唯一来源查询；UI 只负责把来源节点映射成变量展示项。 */
+  getSourceNodeIds: (nodeId: string) => readonly string[];
 }) => {
   const currentNode = getNodeById(nodeId);
   if (!currentNode) return [];
@@ -322,13 +334,15 @@ export const getEditorVariables = ({
       }
     }));
 
-  const sourceNodes = getNodeAllSource({
-    nodeId,
-    getNodeById,
-    edges,
-    chatConfig: appDetail.chatConfig,
-    t
-  });
+  const sourceNodes = [
+    ...getSourceNodeIds(nodeId)
+      .map((sourceNodeId) => getNodeById(sourceNodeId))
+      .filter((sourceNode): sourceNode is EditorVariableNode => !!sourceNode),
+    getGlobalVariableNode({
+      chatConfig: chatConfig as AppChatConfigType,
+      t
+    })
+  ];
 
   const sourceNodeVariables = !sourceNodes
     ? []

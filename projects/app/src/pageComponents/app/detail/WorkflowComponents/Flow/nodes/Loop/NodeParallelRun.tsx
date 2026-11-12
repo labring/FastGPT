@@ -5,9 +5,8 @@
   the rectangular width, height, and position of the childNodes,
   thereby further updating the width and height properties of this node.
 */
-import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import React, { useMemo } from 'react';
-import { type NodeProps } from 'reactflow';
+import type { CanvasNodeProps } from '@/web/core/workflow/editor/canvas/canvasTypes';
 import NodeCard from '../render/NodeCard';
 import Container from '../../components/Container';
 import IOTitle from '../../components/IOTitle';
@@ -19,13 +18,24 @@ import RenderOutput from '../render/RenderOutput';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useNestedNode } from '../../hooks/useNestedNode';
+import type { WorkflowNodeData } from '@fastgpt/global/core/workflow/editor/types';
+import { useNode } from '@/web/core/workflow/editor/react/useNode';
 
-const NodeParallelRun = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
+const emptyInputs: WorkflowNodeData['inputs'] = [];
+
+const NodeParallelRun = ({ data, selected }: CanvasNodeProps) => {
   const { t } = useTranslation();
-  const { nodeId, inputs, outputs, isFolded } = data;
+  const { nodeId } = data;
+  const node = useNode<WorkflowNodeData>(nodeId, { raw: true });
+  const inputs = node?.data.inputs ?? emptyInputs;
+  const outputs = node?.data.outputs ?? [];
+  const isFolded = node?.view.isFolded ?? false;
   const { feConfigs } = useSystemStore();
 
-  const { nodeWidth, nodeHeight, inputBoxRef } = useNestedNode({ nodeId, inputs });
+  const { nodeWidth, nodeHeight, inputBoxRef } = useNestedNode({
+    nodeId,
+    inputs
+  });
 
   // Inject max into parallelRunMaxConcurrency input from feConfigs.
   // Fall back to 10 (backend default) when feConfigs is not yet available,
@@ -40,7 +50,7 @@ const NodeParallelRun = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   }, [inputs, concurrencyMax]);
 
   return (
-    <NodeCard selected={selected} maxW="full" menuForbid={{ copy: true }} {...data}>
+    <NodeCard selected={selected} w="max-content" maxW="none" menuForbid={{ copy: true }} {...data}>
       <Container position={'relative'} flex={1}>
         <IOTitle text={t('common:Input')} />
 
@@ -55,12 +65,14 @@ const NodeParallelRun = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
           <Box
             flex={1}
             position={'relative'}
+            data-workflow-container-content="true"
             border={'base'}
             bg={'myGray.100'}
             rounded={'8px'}
             {...(!isFolded && {
-              minW: nodeWidth,
-              minH: nodeHeight
+              w: `${nodeWidth}px`,
+              minH: nodeHeight,
+              flexShrink: 0
             })}
           />
         </>

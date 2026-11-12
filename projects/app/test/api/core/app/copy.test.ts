@@ -27,6 +27,7 @@ import { TeamAppCreatePermissionVal } from '@fastgpt/global/support/permission/u
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { getCachedSystemModelHandle } from '@fastgpt/service/core/ai/model/catalog/cache';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
+import { getAppDraftVersion } from '@fastgpt/service/core/app/version/controller';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { serviceEnv } from '@fastgpt/service/env';
@@ -79,6 +80,13 @@ describe('Copy', () => {
     expect(res2.error).toBeUndefined();
     expect(res2.code).toBe(200);
     const appId = res2.data as string;
+    const referenceSnapshots = [
+      {
+        reference: ['deleted-node', 'output'] as [string, string],
+        sourceLabel: 'Deleted node'
+      }
+    ];
+    await MongoApp.updateOne({ _id: appId }, { type: AppTypeEnum.workflow });
     const [readableDataset, privateDataset] = await MongoDataset.create([
       {
         name: 'readable-dataset',
@@ -137,10 +145,35 @@ describe('Copy', () => {
               ],
               outputs: []
             }
-          ]
+          ],
+          referenceSnapshots
         }
       }
     );
+    await MongoAppVersion.create({
+      appId,
+      tmbId: users.members[0].tmbId,
+      nodes: [
+        {
+          nodeId: 'autosave-chat-node',
+          flowNodeType: FlowNodeTypeEnum.chatNode,
+          name: 'AutoSave Chat',
+          inputs: [
+            {
+              key: NodeInputKeyEnum.aiModel,
+              value: 'autosave-copy-model',
+              selectedType: FlowNodeInputTypeEnum.selectLLMModel,
+              renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
+            }
+          ],
+          outputs: []
+        }
+      ],
+      edges: [],
+      chatConfig: {},
+      referenceSnapshots,
+      isAutoSave: true
+    });
 
     const res3 = await Call<CopyAppBodyType, Record<string, never>, CopyAppResponseType>(
       copyapi.default,
@@ -189,25 +222,21 @@ describe('Copy', () => {
     );
     expect(res4.error).toBeUndefined();
     expect(res4.code).toBe(200);
-    const copiedVersion = await MongoAppVersion.findOne({
-      appId: res4.data?.appId,
-      isPublish: true
-    }).lean();
+    const copiedVersion = await getAppDraftVersion(res4.data?.appId);
     const expectedFallbackModelId =
       getModelTestDefaults().llm?.modelId ??
       getCachedSystemModelHandle()
         ?.getActiveModels()
         .find((model) => model.type === ModelTypeEnum.llm)?.modelId;
+    expect(copiedVersion?.referenceSnapshots).toEqual(referenceSnapshots);
+    expect(copiedVersion?.nodes[0].nodeId).toBe('autosave-chat-node');
     expect(copiedVersion?.nodes[0].inputs).toEqual([
       expect.objectContaining({
         key: NodeInputKeyEnum.aiModelId,
         value: expectedFallbackModelId
       })
     ]);
-    expect(copiedVersion?.resources).toEqual([
-      { type: 'dataset', id: String(readableDataset._id) },
-      { type: 'model', id: expectedFallbackModelId }
-    ]);
+    expect(copiedVersion?.resources).toEqual([{ type: 'model', id: expectedFallbackModelId }]);
   });
 
   it.each([AppTypeEnum.simple, AppTypeEnum.chatAgent, AppTypeEnum.workflow])(

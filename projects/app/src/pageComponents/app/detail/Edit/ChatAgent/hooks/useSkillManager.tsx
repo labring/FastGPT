@@ -334,7 +334,8 @@ export const useSkillManager = ({
         skillId: targetSkill._id,
         name: targetSkill.name,
         description: targetSkill.description,
-        avatar: targetSkill.avatar
+        avatar: targetSkill.avatar,
+        isDeleted: false
       };
       if (!lastOnAddAgentSkill.current?.(selectedSkill)) return;
       const skill = toAgentSkillLabelItem(selectedSkill);

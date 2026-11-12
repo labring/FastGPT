@@ -67,12 +67,12 @@ declare function require(module: 'qs'): any;
 declare function require(module: string): any;
 `;
 
-let monacoInstance: Monaco | null = null;
+const registeredMonacoInstances = new WeakSet<Monaco>();
 
 const useJSCompletion = () => {
   return useCallback((monaco: Monaco) => {
-    if (monacoInstance === monaco) return;
-    monacoInstance = monaco;
+    if (registeredMonacoInstances.has(monaco)) return;
+    registeredMonacoInstances.add(monaco);
 
     const compilerOptions = {
       target: monaco.languages.typescript.ScriptTarget.ESNext,

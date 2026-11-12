@@ -1,6 +1,6 @@
 import React, { useCallback, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Handle, Position, useStoreApi, useUpdateNodeInternals } from 'reactflow';
+import { Handle, Position, useStoreApi, useUpdateNodeInternals } from '@xyflow/react';
 import { getHandleId } from '@fastgpt/global/common/workflow/reference';
 
 type DraggingHandle = {

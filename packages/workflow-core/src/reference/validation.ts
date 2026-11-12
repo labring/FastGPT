@@ -2,6 +2,7 @@ import { WorkflowDiagnosticCodeEnum } from '@fastgpt/global/core/workflow/diagno
 import { VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
 import type { WorkflowDocument } from '@fastgpt/global/core/workflow/type/document';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
+import { FlowNodeOutputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import {
   areWorkflowValueTypesCompatible,
   filterSelectableWorkflowNodeOutputs,
@@ -12,6 +13,7 @@ import type { WorkflowDiagnostic } from '../domain/diagnostic';
 import { hasConfiguredValue } from '../template/defaultValue';
 import {
   getInputReferenceSourceNodes,
+  isWorkflowReferenceOutputUpstream,
   getWorkflowReferenceValues,
   isWorkflowReferenceValue
 } from './service';
@@ -92,7 +94,16 @@ export const getWorkflowInputReferenceDiagnostics = ({
     if (sourceNodeId === VARIABLE_NODE_ID) continue;
 
     sourceNodes ??= getInputReferenceSourceNodes({ document, nodeId, input });
-    if (!sourceNodes.some((source) => source.nodeId === sourceNodeId)) {
+    const sourceIsUpstream = sourceNodes.some((source) => source.nodeId === sourceNodeId);
+    if (
+      !sourceIsUpstream ||
+      !isWorkflowReferenceOutputUpstream({
+        document,
+        nodeId,
+        sourceNodeId,
+        isErrorOutput: 'type' in sourceOutput && sourceOutput.type === FlowNodeOutputTypeEnum.error
+      })
+    ) {
       diagnostics.push({
         code: WorkflowDiagnosticCodeEnum.referenceSourceNotUpstream,
         severity: 'error',
@@ -116,8 +127,8 @@ export const getWorkflowInputReferenceDiagnostics = ({
 };
 
 /**
- * 按检查场景生成有效值快照：AI 保留失效引用报错，客户端将其视为未引用，多引用只保留有效项。
- * 仅处理引用选择器（含知识库引用），不解析文本中的双括号表达式。
+ * 按检查场景生成有效值快照：AI 保留失效引用报错，客户端将普通引用视为未引用，多引用只保留有效项。
+ * 仅处理引用选择器（含知识库引用），不解析文本中的双括号表达式；结构化 Secret 引用原样保留。
  * 调用方必须显式传入策略，避免共享入口因遗漏场景而使用错误语义。
  * 清空失效默认引用时同时移除 defaultValue，避免后续必填、模型和资源检查再次回退到旧值。
  * 父容器输入影响子节点的引用作用域，逐轮剔除直到稳定；每轮只移除引用，因此一定有限收敛。

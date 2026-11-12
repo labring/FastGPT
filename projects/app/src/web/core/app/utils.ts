@@ -1,9 +1,11 @@
+import { type AppDetailType, type AppSchemaType } from '@fastgpt/global/core/app/type';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { getDefaultAppForm } from '@fastgpt/global/core/app/utils';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { isSystemModel } from '@fastgpt/global/core/ai/model/utils';
+import { workflowSystemVariables as globalWorkflowSystemVariables } from '@fastgpt/global/core/workflow/node/constant';
 import type { MyModelItemType } from '@fastgpt/global/openapi/core/ai/model/api';
 import { addModelNamesToWorkflow } from '@fastgpt/global/common/workflow/model';
 
@@ -85,3 +87,9 @@ export function addModelNamesToAppForm({
 
   return appForm;
 }
+export const workflowSystemVariables = globalWorkflowSystemVariables;
+
+export const getAppQGuideCustomURL = (appDetail: AppDetailType | AppSchemaType): string => {
+  if (!('chatConfig' in appDetail)) return '';
+  return appDetail.chatConfig?.chatInputGuide?.customUrl ?? '';
+};

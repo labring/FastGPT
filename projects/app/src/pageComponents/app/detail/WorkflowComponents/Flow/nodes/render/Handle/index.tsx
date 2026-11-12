@@ -1,17 +1,16 @@
-import React, { useMemo } from 'react';
-import { Handle, Position } from 'reactflow';
+import React, { useContext, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { Handle, Position, useUpdateNodeInternals } from '@xyflow/react';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { useContextSelector } from 'use-context-selector';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import {
-  WorkflowBufferDataContext,
-  WorkflowNodeDataContext
-} from '../../../../context/workflowInitContext';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
 import { Box, Flex } from '@chakra-ui/react';
-import { WorkflowActionsContext } from '../../../../context/workflowActionsContext';
-import { WorkflowUIContext } from '../../../../context/workflowUIContext';
+import { useWorkflowUIValue } from '../../../canvas/canvasState';
+import { useWorkflowCanvasValue } from '../../../canvas/workflowCanvasContext';
+import { useWorkflowSelectionValue } from '../../../context/workflowSelectionContext';
+import { useWorkflow } from '@/web/core/workflow/editor/react/useWorkflow';
+import { WorkflowHandleRenderContext } from './handleRenderContext';
 
 const handleSizeConnected = 24;
 const handleSizeConnecting = 32;
@@ -43,7 +42,7 @@ const handleHighLightStyle = {
   zIndex: 15
 };
 
-// 两种视觉状态共用同一个测量区域，放大内部图形不会改变连线端点。
+// 保持 ReactFlow 实际端口尺寸稳定，避免视觉高亮改变连线坐标。
 const handleBaseStyle: React.CSSProperties = {
   width: handleSizeConnected,
   height: handleSizeConnected,
@@ -61,6 +60,10 @@ type Props = {
   position: Position;
   translate?: [number, number];
   showHandle?: boolean;
+  anchor?: { left?: number; top?: number; right?: number };
+  portalTarget?: HTMLElement;
+  /** 动态业务端口等首帧后挂到卡片右边缘；首帧保留局部内容供测量。 */
+  nodeAnchored?: boolean;
 };
 
 export const MySourceHandle = React.memo(function MySourceHandle({
@@ -68,43 +71,82 @@ export const MySourceHandle = React.memo(function MySourceHandle({
   translate,
   handleId,
   position,
-  showHandle = true
+  showHandle = true,
+  anchor,
+  portalTarget,
+  nodeAnchored = false
 }: Props) {
   const { t } = useTranslation();
-  const connectingEdge = useContextSelector(WorkflowActionsContext, (ctx) => ctx.connectingEdge);
-
-  const node = useContextSelector(WorkflowBufferDataContext, (v) => v.getNodeById(nodeId));
-  const selected = useContextSelector(WorkflowNodeDataContext, (v) => v.selectedNodesMap[nodeId]);
-  const hoverNodeId = useContextSelector(WorkflowUIContext, (v) => v.hoverNodeId);
-
-  const edgesData = useContextSelector(WorkflowBufferDataContext, (v) => {
-    return {
-      connected: v.edges.some((edge) => edge.sourceHandle === handleId)
-    };
-  });
-  const connected = edgesData.connected;
-
-  const nodeIsHover = hoverNodeId === nodeId;
-  const active = useMemo(
-    () => nodeIsHover || selected || connectingEdge?.handleId === handleId,
-    [nodeIsHover, selected, connectingEdge, handleId]
+  const updateNodeInternals = useUpdateNodeInternals();
+  const renderHandle = useContext(WorkflowHandleRenderContext);
+  const cachedHandleCenter = useWorkflowCanvasValue((value) =>
+    value.nodeDimensions.get(nodeId)?.sourceHandleCenters?.get(handleId)
   );
+  const connected = useWorkflow((_structure, graph) =>
+    graph.isHandleConnected({ nodeId, handleId, direction: 'source' })
+  );
+  const selected = useWorkflowSelectionValue((value) => value.selectedNodesMap[nodeId]);
+  const isConnectingSelf = useWorkflowUIValue(
+    (value) => value.connectingEdge?.handleId === handleId
+  );
+  const isConnectingTool = useWorkflowUIValue(
+    (value) => value.connectingEdge?.handleId === NodeOutputKeyEnum.selectedTools
+  );
+  const isConnecting = useWorkflowUIValue((value) => !!value.connectingEdge);
+  const isConnectingNode = useWorkflowUIValue((value) => value.connectingEdge?.nodeId === nodeId);
+  const nodeIsHover = useWorkflowUIValue((value) => value.hoverNodeId === nodeId);
+  const active = nodeIsHover || !!selected || isConnectingSelf;
+  const visible =
+    showHandle && (!isConnecting || isConnectingNode) && !isConnectingTool && (active || connected);
 
   const translateStr = useMemo(() => {
     if (!translate) return '';
-    if (position === Position.Right) {
-      return `${translate[0] + 5}px, -50%`;
-    }
+    if (position === Position.Right) return `${translate[0] + 5}px, -50%`;
   }, [position, translate]);
+  const measureRef = useRef<HTMLSpanElement>(null);
+  const [nodeAnchor, setNodeAnchor] = useState<{
+    card: HTMLElement;
+    left: number;
+    top: number;
+  }>();
 
-  if (!node) return null;
-  const visible =
-    showHandle &&
-    (!connectingEdge || connectingEdge.nodeId === nodeId) &&
-    connectingEdge?.handleId !== NodeOutputKeyEnum.selectedTools &&
-    (active || connected);
+  useLayoutEffect(() => {
+    if (!nodeAnchored || typeof document === 'undefined') return;
+    const measure = measureRef.current;
+    const row = measure?.parentElement;
+    if (!measure || !row) return;
 
-  return (
+    const update = () => {
+      const node = measure.closest<HTMLElement>('.react-flow__node');
+      if (!node) return;
+      const measureRect = row.getBoundingClientRect();
+      const nodeRect = node.getBoundingClientRect();
+      const scale = node.offsetHeight > 0 ? nodeRect.height / node.offsetHeight : 1;
+      setNodeAnchor({
+        card: node,
+        left: node.offsetWidth,
+        top:
+          cachedHandleCenter?.y ?? (measureRect.top + measureRect.height / 2 - nodeRect.top) / scale
+      });
+    };
+
+    update();
+    const resizeObserver =
+      typeof ResizeObserver === 'function' ? new ResizeObserver(update) : undefined;
+    resizeObserver?.observe(measure);
+    return () => resizeObserver?.disconnect();
+  }, [cachedHandleCenter, nodeAnchored]);
+
+  useLayoutEffect(() => {
+    if (nodeAnchored && nodeAnchor) updateNodeInternals(nodeId);
+  }, [nodeAnchored, nodeAnchor, nodeId, updateNodeInternals]);
+
+  if (!renderHandle) return null;
+
+  const resolvedAnchor =
+    nodeAnchor && nodeAnchored ? { left: nodeAnchor.left, top: nodeAnchor.top } : anchor;
+  const resolvedPortalTarget = nodeAnchored ? nodeAnchor?.card : portalTarget;
+  const handle = (
     <MyTooltip
       label={
         <Box>
@@ -120,66 +162,88 @@ export const MySourceHandle = React.memo(function MySourceHandle({
       }
       shouldWrapChildren={false}
     >
-      <Handle
-        // 实际端口的中心和尺寸固定，高亮只放大内部图形，避免测量覆盖已有连线坐标。
-        style={{
-          ...handleBaseStyle,
-          transform: translateStr ? `translate(${translateStr})` : undefined,
-          visibility: visible ? 'visible' : 'hidden'
-        }}
-        type="source"
-        id={handleId}
-        position={position}
-        isConnectableEnd={false}
-        isConnectableStart={showHandle}
+      <Box
+        data-workflow-node-anchored={nodeAnchored && resolvedPortalTarget ? 'true' : undefined}
+        position="absolute"
+        right={resolvedAnchor?.right ?? (resolvedAnchor?.left === undefined ? 0 : undefined)}
+        left={resolvedAnchor?.left}
+        top={resolvedAnchor?.top === undefined ? '50%' : `${resolvedAnchor.top}px`}
+        w="0px"
+        h="0px"
       >
-        <Box
-          style={active ? handleHighLightStyle : handleConnectedStyle}
-          flexShrink={0}
-          pointerEvents={'none'}
+        <Handle
+          style={{
+            ...handleBaseStyle,
+            transform: translateStr ? `translate(${translateStr})` : undefined,
+            visibility: visible ? 'visible' : 'hidden'
+          }}
+          type="source"
+          id={handleId}
+          data-workflow-source-handle-id={handleId}
+          position={position}
+          isConnectableEnd={false}
+          isConnectableStart={showHandle}
         >
-          {active && (
-            <MyIcon
-              name={'edgeAdd'}
-              color={'primary.500'}
-              pointerEvents={'none'}
-              w={`${handleAddIconSize}px`}
-              h={`${handleAddIconSize}px`}
-            />
-          )}
-        </Box>
-      </Handle>
+          <Box
+            style={active ? handleHighLightStyle : handleConnectedStyle}
+            flexShrink={0}
+            pointerEvents={'none'}
+          >
+            {active && (
+              <MyIcon
+                name={'edgeAdd'}
+                color={'primary.500'}
+                pointerEvents={'none'}
+                w={`${handleAddIconSize}px`}
+                h={`${handleAddIconSize}px`}
+              />
+            )}
+          </Box>
+        </Handle>
+      </Box>
     </MyTooltip>
+  );
+  return resolvedPortalTarget && nodeAnchored ? (
+    <>
+      <span ref={measureRef} style={{ display: 'none' }} />
+      {createPortal(handle, resolvedPortalTarget)}
+    </>
+  ) : nodeAnchored ? (
+    <>
+      <span ref={measureRef} style={{ display: 'none' }} />
+      {handle}
+    </>
+  ) : (
+    handle
   );
 });
 
 export const MyTargetHandle = React.memo(function MyTargetHandle({
+  nodeId,
   handleId,
   position,
   translate,
   showHandle
-}: Props & {
-  showHandle: boolean;
-}) {
-  const connectingEdge = useContextSelector(WorkflowActionsContext, (ctx) => ctx.connectingEdge);
-  const connected = useContextSelector(WorkflowBufferDataContext, (v) =>
-    v.edges.some((edge) => edge.targetHandle === handleId)
+}: Props & { showHandle: boolean }) {
+  const renderHandle = useContext(WorkflowHandleRenderContext);
+  const connected = useWorkflow((_structure, graph) =>
+    graph.isHandleConnected({ nodeId, handleId, direction: 'target' })
   );
+  const isConnecting = useWorkflowUIValue((value) => !!value.connectingEdge);
 
   const translateStr = useMemo(() => {
     if (!translate) return '';
-
-    if (position === Position.Left) {
-      return `${translate[0] - 5}px, -50%`;
-    }
+    if (position === Position.Left) return `${translate[0] - 5}px, -50%`;
   }, [position, translate]);
+
+  if (!renderHandle) return null;
 
   return (
     <Handle
       style={{
         ...handleBaseStyle,
         transform: translateStr ? `translate(${translateStr})` : undefined,
-        visibility: (connectingEdge || connected) && showHandle ? 'visible' : 'hidden'
+        visibility: (isConnecting || connected) && showHandle ? 'visible' : 'hidden'
       }}
       isConnectableEnd={showHandle}
       isConnectableStart={false}
@@ -188,14 +252,10 @@ export const MyTargetHandle = React.memo(function MyTargetHandle({
       position={position}
     >
       <Box
-        style={connectingEdge ? handleHighLightStyle : handleConnectedStyle}
+        style={isConnecting ? handleHighLightStyle : handleConnectedStyle}
         flexShrink={0}
         pointerEvents={'none'}
       />
     </Handle>
   );
 });
-
-export default function Dom() {
-  return <></>;
-}

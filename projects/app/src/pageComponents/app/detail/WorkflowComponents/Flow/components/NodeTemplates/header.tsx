@@ -4,7 +4,6 @@ import { Box, Flex, IconButton, Input, InputGroup, InputLeftElement } from '@cha
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useRouter } from 'next/router';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getAppToolPaths } from '@/web/core/app/api/tool';
@@ -52,7 +51,6 @@ const NodeTemplateListHeader = ({
   toolTags
 }: NodeTemplateListHeaderProps) => {
   const { t } = useTranslation();
-  const { feConfigs } = useSystemStore();
   const router = useRouter();
 
   // Get paths

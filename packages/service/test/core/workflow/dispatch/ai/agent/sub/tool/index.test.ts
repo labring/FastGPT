@@ -89,12 +89,14 @@ vi.mock('@fastgpt/service/core/app/tool/systemTool/systemTool.repo', () => ({
 
 const createDispatchToolProps = (
   toolConfig: Record<string, any>,
-  params: Record<string, any> = { keyword: 'fastgpt' }
+  params: Record<string, any> = { keyword: 'fastgpt' },
+  version?: string
 ) =>
   ({
     tool: {
       name: 'Agent tool',
       avatar: '',
+      version,
       toolConfig
     },
     params,
@@ -423,6 +425,49 @@ describe('dispatchTool runtime toolset auth', () => {
       });
     }
   );
+
+  it('loads MCP tools from the requested Version', async () => {
+    const app = { _id: 'victim-toolset' };
+    const workflow = {
+      nodes: [
+        {
+          toolConfig: {
+            mcpToolSet: {
+              url: 'https://version.example.com/mcp',
+              toolList: [{ name: 'search', description: 'Search' }]
+            }
+          }
+        }
+      ]
+    };
+    authAppByTmbIdMock.mockResolvedValue({ app });
+    getAppVersionByIdMock.mockResolvedValue(workflow);
+    getMCPChildrenMock.mockResolvedValue([
+      {
+        name: 'search',
+        description: 'Search',
+        inputSchema: { type: 'object', properties: {} },
+        url: 'https://version.example.com/mcp'
+      }
+    ]);
+    mcpToolCallMock.mockResolvedValue({ ok: true });
+
+    const result = await dispatchTool(
+      createDispatchToolProps(
+        { mcpTool: { toolId: 'mcp-victim-toolset/search' } },
+        {},
+        'version-id'
+      )
+    );
+
+    expect(result.errorMessage).toBeUndefined();
+    expect(getAppVersionByIdMock).toHaveBeenCalledWith({
+      appId: 'victim-toolset',
+      versionId: 'version-id',
+      app
+    });
+    expect(getMCPChildrenMock).toHaveBeenCalledWith(app, workflow);
+  });
 
   beforeEach(() => {
     vi.clearAllMocks();

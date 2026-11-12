@@ -112,6 +112,7 @@ const cases: DataCase[] = [
   },
   {
     type: FlowNodeTypeEnum.userSelect,
+    handle: 'yes',
     params: { userSelectOptions: [{ key: 'yes', value: 'yes' }] },
     expectedData: { selectResult: 'yes' },
     prepare: (props) => {

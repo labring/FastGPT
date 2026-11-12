@@ -329,6 +329,7 @@
   "var_update_boolean_negate": "取反",
   "variable_description": "變數描述",
   "variable_picker_tips": "可以輸入節點名稱或變數名稱搜尋",
+  "variable_change_affects_references": "已影響 {{count}} 處下游引用，請檢查相關節點",
   "variable_update": "變數更新",
   "workflow.My edit": "我的編輯",
   "workflow.Switch_success": "切換成功",

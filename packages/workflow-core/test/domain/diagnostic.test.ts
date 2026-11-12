@@ -3,6 +3,7 @@ import {
   WorkflowCheckIssueCodeEnum,
   WorkflowDiagnosticCodeEnum
 } from '@fastgpt/global/core/workflow/diagnostic/constants';
+import type { WorkflowIssueCode } from '@fastgpt/global/core/workflow/editor/issueCode';
 import {
   WorkflowCheckIssueSchema,
   type WorkflowCheckIssue
@@ -18,7 +19,7 @@ describe('workflow diagnostic codes', () => {
   it('requires enum members in TypeScript while preserving the serialized protocol value', () => {
     expectTypeOf<WorkflowDiagnostic['code']>().toEqualTypeOf<WorkflowDiagnosticCodeEnum>();
     expectTypeOf<WorkflowCheckIssue['code']>().toEqualTypeOf<
-      WorkflowDiagnosticCodeEnum | WorkflowCheckIssueCodeEnum
+      WorkflowIssueCode | WorkflowDiagnosticCodeEnum | WorkflowCheckIssueCodeEnum
     >();
     expectTypeOf<'WORKFLOW_REFERENCE_TYPE_MISMATCH'>().not.toMatchTypeOf<
       WorkflowDiagnostic['code']

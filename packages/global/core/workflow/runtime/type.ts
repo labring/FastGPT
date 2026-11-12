@@ -17,6 +17,8 @@ const AgentPlanNodeStatusSchema = z.enum(['set_plan', 'update_plan', 'ask_questi
 /* node props */
 export type RuntimeNodeItemType = {
   nodeId: StoreNodeItemType['nodeId'];
+  /** 容器归属用于在运行态解析祖先容器输入引用和其上游来源。 */
+  parentNodeId?: string;
   name: StoreNodeItemType['name'];
   avatar?: StoreNodeItemType['avatar'];
   intro?: StoreNodeItemType['intro'];

@@ -62,6 +62,7 @@ async function handler(req: ApiRequestProps<CreateAppBodyType>) {
     nodes,
     edges,
     chatConfig,
+    referenceSnapshots,
     templateId,
     utmParams,
     inheritPermission
@@ -99,6 +100,7 @@ async function handler(req: ApiRequestProps<CreateAppBodyType>) {
     nodes,
     edges,
     chatConfig,
+    referenceSnapshots,
     teamId,
     tmbId,
     userAvatar: tmb?.avatar,
@@ -136,6 +138,7 @@ const formatAppWorkflowForSave = async ({
   nodes,
   edges,
   chatConfig,
+  referenceSnapshots,
   teamId,
   tmbId,
   isRoot,
@@ -145,6 +148,7 @@ const formatAppWorkflowForSave = async ({
   nodes?: unknown[];
   edges?: AppVersionSchemaType['edges'];
   chatConfig?: AppVersionSchemaType['chatConfig'];
+  referenceSnapshots?: AppVersionSchemaType['referenceSnapshots'];
   teamId: string;
   tmbId: string;
   isRoot?: boolean;
@@ -153,7 +157,8 @@ const formatAppWorkflowForSave = async ({
     {
       nodes: nodes ?? [],
       edges: edges ?? [],
-      chatConfig
+      chatConfig,
+      referenceSnapshots
     },
     appType
   );
@@ -189,6 +194,7 @@ export const onCreateApp = async ({
   storageNodes,
   edges,
   chatConfig,
+  referenceSnapshots,
   teamId,
   tmbId,
   pluginData,
@@ -207,6 +213,7 @@ export const onCreateApp = async ({
   storageNodes?: AppVersionSchemaType['nodes'];
   edges?: AppVersionSchemaType['edges'];
   chatConfig?: AppVersionSchemaType['chatConfig'];
+  referenceSnapshots?: AppVersionSchemaType['referenceSnapshots'];
   intro?: string;
   teamId: string;
   tmbId: string;
@@ -251,6 +258,7 @@ export const onCreateApp = async ({
           nodes,
           edges,
           chatConfig,
+          referenceSnapshots,
           teamId,
           tmbId,
           isRoot
@@ -331,6 +339,7 @@ export const onCreateApp = async ({
             nodes: storageNodes ?? preparedVersion.workflow.nodes,
             edges: preparedVersion.workflow.edges,
             chatConfig: preparedVersion.workflow.chatConfig,
+            referenceSnapshots: preparedVersion.workflow.referenceSnapshots,
             versionName: name,
             username,
             avatar: userAvatar,
@@ -399,6 +408,7 @@ export const onUpdateAppWorkflow = async ({
   nodes,
   edges,
   chatConfig,
+  referenceSnapshots,
   resources,
   teamId,
   tmbId,
@@ -409,6 +419,7 @@ export const onUpdateAppWorkflow = async ({
   nodes?: AppVersionSchemaType['nodes'];
   edges?: AppVersionSchemaType['edges'];
   chatConfig?: AppVersionSchemaType['chatConfig'];
+  referenceSnapshots?: AppVersionSchemaType['referenceSnapshots'];
   resources: AppResourcesType;
   teamId: string;
   tmbId: string;
@@ -419,6 +430,7 @@ export const onUpdateAppWorkflow = async ({
     nodes,
     edges,
     chatConfig,
+    referenceSnapshots,
     teamId,
     tmbId,
     isRoot
@@ -433,6 +445,7 @@ export const onUpdateAppWorkflow = async ({
       nodes: workflow.nodes,
       edges: workflow.edges,
       chatConfig: workflow.chatConfig,
+      referenceSnapshots: workflow.referenceSnapshots,
       time: new Date(),
       resources
     },

@@ -73,6 +73,7 @@ async function handler(req: ApiRequestProps<CopyAppBodyType>): Promise<CopyAppRe
       storageNodes,
       edges: draftWorkflow.edges,
       chatConfig: draftWorkflow.chatConfig,
+      referenceSnapshots: draftWorkflow.referenceSnapshots,
       teamId,
       tmbId,
       isRoot,

@@ -1,9 +1,7 @@
 import { VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
-import {
-  formatVariableValByType,
-  getReferenceVariableValue
-} from '@fastgpt/global/core/workflow/runtime/utils';
+import { getReferenceVariableValue } from '@fastgpt/global/common/workflow/runtime';
+import { nodeInputIsReference } from '@fastgpt/global/common/workflow/reference';
 import {
   checkStrOversize,
   logOversizeString,
@@ -75,17 +73,18 @@ export function replaceEditorVariable({
         if (!node) return;
 
         const output = node.outputs.find((output) => output.id === id);
-        if (output) return formatVariableValByType(output.value, output.valueType);
+        if (output) return output.value;
 
         // Use the node's input as the variable value(Example: HTTP data will reference its own dynamic input)
         const input = node.inputs.find((input) => input.key === id);
-        if (input) {
+        if (input && nodeInputIsReference(input)) {
           return getReferenceVariableValue({
             value: input.value,
             nodesMap,
             variables
           });
         }
+        return input?.value;
       })();
 
       // 直接自引用保持原占位符，交给最大深度保护兜底更复杂的环。

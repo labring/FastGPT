@@ -2,73 +2,75 @@ import { Box, Button, Flex, Input } from '@chakra-ui/react';
 import { getMCPTools } from '@/web/core/app/api/mcpTools';
 import HeaderAuthConfig from '@/components/common/secret/HeaderAuthConfig';
 import type { StoreSecretValueType } from '@fastgpt/global/common/secret/type';
+import type { WorkflowNodeData } from '@fastgpt/global/core/workflow/editor/types';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import {
   HttpToolSetNodeConfigSchema,
   McpToolSetNodeConfigSchema,
-  type FlowNodeItemType,
   type HttpToolSetNodeConfigType,
   type McpToolSetNodeConfigType
 } from '@fastgpt/global/core/workflow/type/node';
 import { useTranslation } from 'next-i18next';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { type NodeProps } from 'reactflow';
-import { useContextSelector } from 'use-context-selector';
-import { WorkflowActionsContext } from '../../context/workflowActionsContext';
+import type { CanvasNodeProps } from '@/web/core/workflow/editor/canvas/canvasTypes';
+import { useNode, useNodeActions } from '@/web/core/workflow/editor/react/useNode';
+import SchemaConfigModal from '@/pageComponents/app/detail/Edit/HTTPTools/SchemaConfigModal';
+import NodeCard from './render/NodeCard';
 import Container from '../components/Container';
 import IOTitle from '../components/IOTitle';
-import SchemaConfigModal from '@/pageComponents/app/detail/Edit/HTTPTools/SchemaConfigModal';
 import ToolSetList, { getNodeToolSetList } from './components/ToolSetList';
-import NodeCard from './render/NodeCard';
 
-const NodeToolSet = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
+const NodeToolSet = ({ data, selected }: CanvasNodeProps) => {
   const { t } = useTranslation();
-  const toolList = getNodeToolSetList(data);
-  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
+  const node = useNode<WorkflowNodeData>(data.nodeId, (current) => current?.data);
+  const nodeActions = useNodeActions(data.nodeId);
+  const inputs = node?.inputs ?? [];
+  const toolConfig = node?.toolConfig ?? data.toolConfig;
+  const toolList = getNodeToolSetList({ toolConfig });
   const [editingToolSet, setEditingToolSet] = useState<'mcp' | 'http'>();
-  const localMcpToolSet = data.pluginId
+  const localMcpToolSet = node?.pluginId
     ? undefined
-    : McpToolSetNodeConfigSchema.safeParse(data.toolConfig?.mcpToolSet).data;
-  const localHttpToolSet = data.pluginId
+    : McpToolSetNodeConfigSchema.safeParse(toolConfig?.mcpToolSet).data;
+  const localHttpToolSet = node?.pluginId
     ? undefined
-    : HttpToolSetNodeConfigSchema.safeParse(data.toolConfig?.httpToolSet).data;
+    : HttpToolSetNodeConfigSchema.safeParse(toolConfig?.httpToolSet).data;
 
   const updateToolConfig = useCallback(
-    (toolConfig: FlowNodeItemType['toolConfig']) => {
-      if (!toolConfig) return;
-      onChangeNode({
-        nodeId: data.nodeId,
-        type: 'attr',
-        key: 'toolConfig',
-        value: {
-          ...data.toolConfig,
-          ...toolConfig
+    (patch: Partial<NonNullable<WorkflowNodeData['toolConfig']>>) => {
+      nodeActions?.updateNode((current) => ({
+        toolConfig: {
+          ...current.toolConfig,
+          ...patch
         }
-      });
+      }));
     },
-    [data.nodeId, data.toolConfig, onChangeNode]
+    [nodeActions]
   );
   const onSaveDescription = useCallback(
     (index: number, description: string) => {
-      const toolSetKey = (['mcpToolSet', 'httpToolSet', 'systemToolSet'] as const).find(
-        (key) => data.toolConfig?.[key]
-      );
-      if (!toolSetKey || !data.toolConfig) return;
+      nodeActions?.updateNode((current) => {
+        const currentToolConfig = current.toolConfig;
+        const toolSetKey = (['mcpToolSet', 'httpToolSet', 'systemToolSet'] as const).find(
+          (key) => currentToolConfig?.[key]
+        );
+        const toolSet = toolSetKey ? currentToolConfig?.[toolSetKey] : undefined;
+        if (!currentToolConfig || !toolSetKey || !toolSet) return {};
 
-      const toolSet = data.toolConfig[toolSetKey];
-      if (!toolSet) return;
-
-      updateToolConfig({
-        [toolSetKey]: {
-          ...toolSet,
-          toolList: (toolSet.toolList ?? []).map((tool, toolIndex) =>
-            toolIndex === index ? { ...tool, description } : tool
-          )
-        }
+        return {
+          toolConfig: {
+            ...currentToolConfig,
+            [toolSetKey]: {
+              ...toolSet,
+              toolList: (toolSet.toolList ?? []).map((tool, toolIndex) =>
+                toolIndex === index ? { ...tool, description } : tool
+              )
+            }
+          }
+        };
       });
     },
-    [data.toolConfig, updateToolConfig]
+    [nodeActions]
   );
   const onSaveMcpToolSet = useCallback(
     (config: McpToolSetNodeConfigType) => updateToolConfig({ mcpToolSet: config }),
@@ -84,7 +86,7 @@ const NodeToolSet = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
       <IOTitle
         text={t('app:MCP_tools_list')}
         nodeId={data.nodeId}
-        inputs={data.inputs}
+        inputs={inputs}
         mb={0}
         minW={0}
       />
@@ -121,15 +123,13 @@ const NodeToolSet = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
             </Button>
           </Flex>
         ) : (
-          <>
-            <ToolSetList
-              toolList={toolList}
-              onSaveDescription={onSaveDescription}
-              emptyText={localMcpToolSet ? t('app:MCP_tools_empty') : undefined}
-              emptyMinH={localMcpToolSet ? '160px' : undefined}
-              title={title}
-            />
-          </>
+          <ToolSetList
+            toolList={toolList}
+            onSaveDescription={onSaveDescription}
+            emptyText={localMcpToolSet ? t('app:MCP_tools_empty') : undefined}
+            emptyMinH={localMcpToolSet ? '160px' : undefined}
+            title={title}
+          />
         )}
       </Container>
       {editingToolSet === 'mcp' && localMcpToolSet && (

@@ -23,6 +23,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock('react', async (importOriginal) => ({
   ...(await importOriginal<typeof import('react')>()),
   useMemo: (fn: () => unknown) => fn(),
+  useCallback: (fn: unknown) => fn,
   useEffect: (fn: () => void) => {
     mocks.effects.push(fn);
   }
@@ -33,7 +34,8 @@ vi.mock('@fastgpt/web/hooks/useMemoEnhance', () => ({
 vi.mock('next-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key })
 }));
-vi.mock('use-context-selector', () => ({
+vi.mock('use-context-selector', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
   useContextSelector: (_: unknown, select: (data: any) => unknown) =>
     select({
       onChangeNode: mocks.onChangeNode,
@@ -52,6 +54,26 @@ vi.mock('@/pageComponents/app/detail/WorkflowComponents/context/workflowInitCont
 }));
 vi.mock('@/pageComponents/app/detail/context', () => ({
   AppContext: {}
+}));
+vi.mock('@/web/core/workflow/editor/react/useNode', () => ({
+  useNode: (nodeId: string, selector: (node: unknown) => unknown) =>
+    selector(mocks.nodesMap.has(nodeId) ? { data: mocks.nodesMap.get(nodeId) } : undefined),
+  useNodeActions: (nodeId: string) => ({
+    updateNode: (patch: (node: FlowNodeItemType) => { outputs?: FlowNodeItemType['outputs'] }) => {
+      const current = mocks.nodesMap.get(nodeId);
+      if (!current) return;
+      const result = patch(current);
+      if (result.outputs) {
+        mocks.nodesMap.set(nodeId, { ...current, outputs: result.outputs });
+      }
+    }
+  })
+}));
+vi.mock('@/web/core/workflow/editor/session/workflowSession', () => ({
+  useWorkflowRuntime: () => ({
+    isDisposed: () => false,
+    getNode: (nodeId: string) => mocks.nodesMap.get(nodeId)
+  })
 }));
 vi.mock('@/pageComponents/app/detail/WorkflowComponents/Flow/nodes/render/NodeCard', () => ({
   default: ({ children }: { children?: unknown }) => children
@@ -100,6 +122,7 @@ const createParentNode = ({
 };
 
 const renderLoopEnd = (data: FlowNodeItemType) => {
+  mocks.nodesMap.set(data.nodeId, data);
   const Component = (NodeLoopEnd as any).type;
   const element = Component({ data, selected: false });
   mocks.effects.forEach((effect) => effect());
@@ -215,15 +238,10 @@ describe('NodeLoopEnd', () => {
 
       renderLoopEnd(data);
 
-      expect(mocks.onChangeNode).toHaveBeenCalledWith({
-        nodeId: parentNode.nodeId,
-        type: 'updateOutput',
-        key: outputKey,
-        value: expect.objectContaining({
-          key: outputKey,
-          valueType: WorkflowIOValueTypeEnum.arrayAny
-        })
-      });
+      expect(
+        mocks.nodesMap.get(parentNode.nodeId)?.outputs.find((output) => output.key === outputKey)
+          ?.valueType
+      ).toBe(WorkflowIOValueTypeEnum.arrayAny);
     }
   );
 
@@ -277,16 +295,19 @@ describe('NodeLoopEnd', () => {
       renderLoopEnd(data);
 
       if (expectedArrayType === WorkflowIOValueTypeEnum.arrayBoolean) {
-        expect(mocks.onChangeNode).not.toHaveBeenCalled();
+        expect(
+          mocks.nodesMap
+            .get(parentNode.nodeId)
+            ?.outputs.find((output) => output.key === NodeOutputKeyEnum.parallelSuccessResults)
+            ?.valueType
+        ).toBe(WorkflowIOValueTypeEnum.arrayBoolean);
       } else {
-        expect(mocks.onChangeNode).toHaveBeenCalledWith({
-          nodeId: parentNode.nodeId,
-          type: 'updateOutput',
-          key: NodeOutputKeyEnum.parallelSuccessResults,
-          value: expect.objectContaining({
-            valueType: expectedArrayType
-          })
-        });
+        expect(
+          mocks.nodesMap
+            .get(parentNode.nodeId)
+            ?.outputs.find((output) => output.key === NodeOutputKeyEnum.parallelSuccessResults)
+            ?.valueType
+        ).toBe(expectedArrayType);
       }
     }
   );
@@ -326,13 +347,11 @@ describe('NodeLoopEnd', () => {
 
     renderLoopEnd(data);
 
-    expect(mocks.onChangeNode).toHaveBeenCalledWith({
-      nodeId: parentNode.nodeId,
-      type: 'updateOutput',
-      key: NodeOutputKeyEnum.parallelSuccessResults,
-      value: expect.objectContaining({
-        valueType: WorkflowIOValueTypeEnum.arrayNumber
-      })
-    });
+    expect(
+      mocks.nodesMap
+        .get(parentNode.nodeId)
+        ?.outputs.find((output) => output.key === NodeOutputKeyEnum.parallelSuccessResults)
+        ?.valueType
+    ).toBe(WorkflowIOValueTypeEnum.arrayNumber);
   });
 });

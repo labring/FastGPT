@@ -1,6 +1,7 @@
 import { WorkflowDiagnosticCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
 import { describe, expect, it } from 'vitest';
 import {
+  NodeInputKeyEnum,
   VARIABLE_NODE_ID,
   VariableInputEnum,
   WorkflowIOValueTypeEnum
@@ -12,10 +13,13 @@ import {
 } from '@fastgpt/global/core/workflow/node/constant';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { createWorkflowDocument } from '../../src/domain/document';
+import { TextEditorNode } from '@fastgpt/global/core/workflow/template/system/textEditor';
 import {
   getWorkflowInputReferenceDiagnostics,
   resolveWorkflowReferenceDocument
 } from '../../src/reference/validation';
+import { getAvailableInputReferences } from '../../src/reference/query';
+import { createWorkflowErrorBranchIndex } from '../../src/reference/service';
 import { validateWorkflow } from '../../src/validation/index';
 
 /** 最小连通图同时提供稳定 key 和历史 id，用真实引用规则检查两种策略。 */
@@ -77,6 +81,66 @@ const makeDocument = (input: Partial<FlowNodeInputItemType> = {}) =>
   });
 
 describe('getWorkflowInputReferenceDiagnostics', () => {
+  it('ignores removed dynamic source handles in the error branch index', () => {
+    const document = makeDocument();
+    document.nodes[1] = {
+      ...document.nodes[1],
+      flowNodeType: FlowNodeTypeEnum.userSelect,
+      inputs: [
+        {
+          key: NodeInputKeyEnum.userSelectOptions,
+          label: 'Options',
+          renderTypeList: [],
+          value: [{ key: 'removed' }]
+        }
+      ]
+    };
+    document.executionEdges = [
+      {
+        source: { kind: 'branch', nodeId: 'target', branchKey: 'removed' },
+        target: { kind: 'target', nodeId: 'start' }
+      }
+    ];
+
+    expect(createWorkflowErrorBranchIndex(document).sourcesByTarget.get('start')).toContain(
+      'target'
+    );
+
+    document.nodes[1].inputs[0] = { ...document.nodes[1].inputs[0], value: [] };
+    expect(createWorkflowErrorBranchIndex(document).sourcesByTarget.get('start')).toBeUndefined();
+  });
+
+  it('only accepts string references for a selected reference input', () => {
+    const document = makeDocument();
+    document.nodes[1].flowNodeType = FlowNodeTypeEnum.textEditor;
+    document.nodes[1].inputs[0] = {
+      ...TextEditorNode.inputs[0],
+      key: NodeInputKeyEnum.textareaInput,
+      value: [VARIABLE_NODE_ID, 'count'],
+      renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
+      selectedType: FlowNodeInputTypeEnum.reference
+    };
+    document.chatConfig.variables = [
+      {
+        key: 'count',
+        label: 'Count',
+        description: '',
+        type: VariableInputEnum.numberInput,
+        valueType: WorkflowIOValueTypeEnum.number
+      }
+    ];
+
+    expect(
+      getWorkflowInputReferenceDiagnostics({
+        document,
+        nodeId: 'target',
+        input: document.nodes[1].inputs[0]
+      })
+    ).toEqual([
+      expect.objectContaining({ code: WorkflowDiagnosticCodeEnum.referenceTypeMismatch })
+    ]);
+  });
+
   it.each([
     { value: ['start'], code: WorkflowDiagnosticCodeEnum.referenceFormatInvalid },
     { value: ['deleted', 'text'], code: WorkflowDiagnosticCodeEnum.referenceOutputNotFound },
@@ -113,7 +177,195 @@ describe('getWorkflowInputReferenceDiagnostics', () => {
     ];
     document.nodes[0].catchError = true;
     input.value = ['start', 'error'];
+    expect(
+      getWorkflowInputReferenceDiagnostics({ document, nodeId: 'target', input }).map(
+        (item) => item.code
+      )
+    ).toEqual([WorkflowDiagnosticCodeEnum.referenceSourceNotUpstream]);
+    expect(
+      getAvailableInputReferences({ document, nodeId: 'target', inputKey: input.key })
+    ).not.toContainEqual(expect.objectContaining({ ref: { nodeId: 'start', outputKey: 'error' } }));
+
+    document.executionEdges = [
+      { source: { kind: 'catch', nodeId: 'start' }, target: { kind: 'target', nodeId: 'target' } }
+    ];
     expect(getWorkflowInputReferenceDiagnostics({ document, nodeId: 'target', input })).toEqual([]);
+    expect(
+      getAvailableInputReferences({ document, nodeId: 'target', inputKey: input.key })
+    ).toContainEqual(expect.objectContaining({ ref: { nodeId: 'start', outputKey: 'error' } }));
+
+    input.value = ['start', 'text'];
+    expect(getWorkflowInputReferenceDiagnostics({ document, nodeId: 'target', input })).toEqual([]);
+
+    document.executionEdges = [
+      { source: { kind: 'catch', nodeId: 'start' }, target: { kind: 'target', nodeId: 'middle' } },
+      { source: { kind: 'next', nodeId: 'middle' }, target: { kind: 'target', nodeId: 'target' } }
+    ];
+    document.nodes.splice(1, 0, {
+      nodeId: 'middle',
+      name: 'Middle',
+      flowNodeType: FlowNodeTypeEnum.code,
+      inputs: [],
+      outputs: []
+    });
+    input.value = ['start', 'error'];
+    expect(getWorkflowInputReferenceDiagnostics({ document, nodeId: 'target', input })).toEqual([]);
+
+    document.executionEdges = [
+      { source: { kind: 'next', nodeId: 'start' }, target: { kind: 'target', nodeId: 'middle' } },
+      { source: { kind: 'next', nodeId: 'middle' }, target: { kind: 'target', nodeId: 'target' } }
+    ];
+    expect(
+      getWorkflowInputReferenceDiagnostics({ document, nodeId: 'target', input }).map(
+        (item) => item.code
+      )
+    ).toEqual([WorkflowDiagnosticCodeEnum.referenceSourceNotUpstream]);
+  });
+});
+
+describe('Secret reference validation', () => {
+  it.each([
+    {
+      flowNodeType: FlowNodeTypeEnum.httpRequest468,
+      key: NodeInputKeyEnum.headerSecret,
+      value: { Authorization: { ref: ['start', 'text'] } }
+    },
+    {
+      flowNodeType: FlowNodeTypeEnum.tool,
+      key: NodeInputKeyEnum.systemInputConfig,
+      inputList: [
+        { key: 'token', label: 'Token', inputType: 'secret' as const },
+        { key: 'count', label: 'Count', inputType: 'numberInput' as const }
+      ],
+      value: {
+        type: 'manual',
+        value: {
+          token: { ref: ['start', 'text'] },
+          count: { ref: ['start', 'count'] }
+        }
+      }
+    }
+  ])('accepts $flowNodeType secret references', (fixture) => {
+    const document = createWorkflowDocument({
+      nodes: [
+        {
+          nodeId: 'start',
+          name: 'Start',
+          flowNodeType: FlowNodeTypeEnum.workflowStart,
+          inputs: [],
+          outputs: [
+            {
+              id: 'text',
+              key: 'text',
+              type: FlowNodeOutputTypeEnum.static,
+              valueType: WorkflowIOValueTypeEnum.string
+            },
+            {
+              id: 'count',
+              key: 'count',
+              type: FlowNodeOutputTypeEnum.static,
+              valueType: WorkflowIOValueTypeEnum.number
+            }
+          ]
+        },
+        {
+          nodeId: 'target',
+          name: 'Target',
+          flowNodeType: fixture.flowNodeType,
+          inputs: [
+            ...(fixture.flowNodeType === FlowNodeTypeEnum.httpRequest468
+              ? [
+                  {
+                    key: NodeInputKeyEnum.httpReqUrl,
+                    label: 'URL',
+                    renderTypeList: [FlowNodeInputTypeEnum.hidden],
+                    valueType: WorkflowIOValueTypeEnum.string,
+                    value: 'https://example.com'
+                  }
+                ]
+              : []),
+            {
+              key: fixture.key,
+              label: 'Secret',
+              renderTypeList: [FlowNodeInputTypeEnum.hidden],
+              valueType: WorkflowIOValueTypeEnum.object,
+              inputList: fixture.inputList,
+              value: fixture.value
+            }
+          ],
+          outputs: []
+        }
+      ],
+      executionEdges: [
+        { source: { kind: 'next', nodeId: 'start' }, target: { kind: 'target', nodeId: 'target' } }
+      ]
+    });
+
+    expect(validateWorkflow(document, { invalidReferencePolicy: 'error' })).toEqual([]);
+  });
+
+  it('preserves invalid secret references in the validation snapshot', () => {
+    const document = createWorkflowDocument({
+      nodes: [
+        {
+          nodeId: 'start',
+          name: 'Start',
+          flowNodeType: FlowNodeTypeEnum.workflowStart,
+          inputs: [],
+          outputs: [
+            {
+              id: 'text',
+              key: 'text',
+              type: FlowNodeOutputTypeEnum.static,
+              valueType: WorkflowIOValueTypeEnum.string
+            }
+          ]
+        },
+        {
+          nodeId: 'target',
+          name: 'Target',
+          flowNodeType: FlowNodeTypeEnum.tool,
+          inputs: [
+            {
+              key: NodeInputKeyEnum.systemInputConfig,
+              label: 'Secret',
+              renderTypeList: [FlowNodeInputTypeEnum.hidden],
+              valueType: WorkflowIOValueTypeEnum.object,
+              inputList: [
+                { key: 'token', label: 'Token', inputType: 'secret' },
+                { key: 'other', label: 'Other', inputType: 'secret' }
+              ],
+              value: {
+                type: 'manual',
+                value: {
+                  token: { ref: ['deleted', 'text'] },
+                  other: { value: 'keep' }
+                }
+              }
+            }
+          ],
+          outputs: []
+        }
+      ],
+      executionEdges: [
+        { source: { kind: 'next', nodeId: 'start' }, target: { kind: 'target', nodeId: 'target' } }
+      ]
+    });
+    const before = structuredClone(document);
+    const resolved = resolveWorkflowReferenceDocument({
+      document,
+      invalidReferencePolicy: 'asEmpty'
+    });
+
+    expect(resolved).toBe(document);
+    expect(validateWorkflow(document, { invalidReferencePolicy: 'error' })).toContainEqual(
+      expect.objectContaining({
+        code: WorkflowDiagnosticCodeEnum.referenceOutputNotFound,
+        nodeId: 'target',
+        inputKey: NodeInputKeyEnum.systemInputConfig
+      })
+    );
+    expect(document).toEqual(before);
   });
 });
 
@@ -290,7 +542,7 @@ describe('node and global reference coverage', () => {
       client: [WorkflowDiagnosticCodeEnum.requiredInputMissing]
     },
     {
-      name: 'user global type mismatch',
+      name: 'user global reference type mismatch',
       value: [VARIABLE_NODE_ID, 'count'],
       required: true,
       strict: [WorkflowDiagnosticCodeEnum.referenceTypeMismatch],

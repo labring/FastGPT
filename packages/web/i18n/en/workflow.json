@@ -329,6 +329,7 @@
   "var_update_boolean_negate": "Negate",
   "variable_description": "Variable description",
   "variable_picker_tips": "Type node name or variable name to search",
+  "variable_change_affects_references": "{{count}} downstream references were affected. Check the related nodes.",
   "variable_update": "Variable Update",
   "workflow.My edit": "My Edit",
   "workflow.Switch_success": "Switch Successful",

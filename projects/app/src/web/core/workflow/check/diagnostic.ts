@@ -35,7 +35,6 @@ const legacyIssueCodes: Partial<Record<WorkflowDiagnosticCodeEnum, WorkflowCheck
   [WorkflowDiagnosticCodeEnum.referenceOutputNotFound]: WorkflowCheckIssueCodeEnum.invalidReference,
   [WorkflowDiagnosticCodeEnum.referenceSourceNotUpstream]:
     WorkflowCheckIssueCodeEnum.invalidReference,
-  [WorkflowDiagnosticCodeEnum.referenceTypeMismatch]: WorkflowCheckIssueCodeEnum.invalidReference,
   [WorkflowDiagnosticCodeEnum.modelRequired]: WorkflowCheckIssueCodeEnum.modelRequired,
   [WorkflowDiagnosticCodeEnum.modelUnavailable]: WorkflowCheckIssueCodeEnum.modelUnavailable
 };
@@ -276,6 +275,13 @@ export const formatWorkflowDiagnostic = ({
       targetHandle: edge?.targetHandle,
       path: diagnostic.path?.join('.')
     };
+    if (diagnostic.code === WorkflowDiagnosticCodeEnum.referenceTypeMismatch) {
+      issue.params = Object.fromEntries(
+        Object.entries(values).filter((entry): entry is [string, string] => {
+          return typeof entry[1] === 'string';
+        })
+      );
+    }
     issue.message = t ? t(messageKey, values) : messageKey;
   } else if (
     !legacyIssueCodes[diagnostic.code] &&

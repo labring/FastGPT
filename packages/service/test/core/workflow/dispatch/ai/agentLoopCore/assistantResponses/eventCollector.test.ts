@@ -1,6 +1,5 @@
 import { createAgentLoopCoreAssistantEventCollector } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/adapter/assistantResponses/eventCollector';
 import { describe, expect, it } from 'vitest';
-import { WORKFLOW_BUILDER_PREVIEW_TOOL_NAME } from '@fastgpt/global/core/workflow/builder/constants';
 import { AIChatItemValueSchema } from '@fastgpt/global/core/chat/type';
 
 const call = (id: string, name = 'search', args = '{}') => ({
@@ -53,7 +52,7 @@ describe('createAgentLoopCoreAssistantEventCollector', () => {
       collector.emitEvent({
         type: 'tool_interactive',
         call: {
-          id: id,
+          id,
           type: 'function',
           function: {
             name: 'ask_user',
@@ -118,6 +117,22 @@ describe('createAgentLoopCoreAssistantEventCollector', () => {
         ]
       }
     ]);
+  });
+
+  it('appends repeated streaming parameter fragments', () => {
+    const collector = createAgentLoopCoreAssistantEventCollector();
+    collector.emitEvent({ type: 'tool_call', call: call('streamed', 'search', '') });
+    collector.emitEvent({
+      type: 'tool_params',
+      callId: 'streamed',
+      argsDelta: 'a'
+    });
+    collector.emitEvent({
+      type: 'tool_params',
+      callId: 'streamed',
+      argsDelta: 'a'
+    });
+    expect(collector.assistantResponses[0].tools?.[0].params).toBe('aa');
   });
 
   it.each([true, false])(
@@ -207,50 +222,47 @@ describe('createAgentLoopCoreAssistantEventCollector', () => {
     ]);
   });
 
-  it.each([false, true])(
-    'stores raw Ask arguments once, with explicit event params: %s',
-    (explicitParams) => {
-      const collector = createAgentLoopCoreAssistantEventCollector();
-      const ask = {
-        reason: 'Need input',
-        blockerType: 'ambiguous_goal',
-        questions: [
-          {
-            question: 'Which?',
-            options: [
-              { summary: 'A', value: 'A' },
-              { summary: 'B', value: 'B' }
-            ]
-          }
-        ]
-      } as const;
-      const argumentsText = JSON.stringify(ask, null, 2);
-      const originalCall = call('ask', 'ask_user');
-      originalCall.function.arguments = argumentsText;
-      collector.emitEvent(end('ask-response', [originalCall]));
-      collector.emitEvent({
-        type: 'tool_interactive',
-        call: {
-          id: 'ask',
-          type: 'function',
-          function: { name: 'ask_user', arguments: argumentsText }
-        },
-        interactive: { type: 'agentAsk', params: { toolCallId: 'ask', arguments: argumentsText } }
-      });
-      collector.emitEvent({
-        type: 'tool_run_end',
-        call: call('ask', 'ask_user'),
-        response: 'Waiting',
-        seconds: 0
-      });
-      expect(collector.assistantResponses).toHaveLength(1);
-      expect(collector.assistantResponses[0]).toMatchObject({
-        interactive: { type: 'agentAsk', params: { toolCallId: 'ask', arguments: argumentsText } }
-      });
-      expect(collector.assistantResponses[0]).not.toHaveProperty('tools');
-      expect(collector.assistantResponses[0]).not.toHaveProperty('agentAsk');
-    }
-  );
+  it('stores raw Ask arguments once for tool interactive events', () => {
+    const collector = createAgentLoopCoreAssistantEventCollector();
+    const ask = {
+      reason: 'Need input',
+      blockerType: 'ambiguous_goal',
+      questions: [
+        {
+          question: 'Which?',
+          options: [
+            { summary: 'A', value: 'A' },
+            { summary: 'B', value: 'B' }
+          ]
+        }
+      ]
+    } as const;
+    const argumentsText = JSON.stringify(ask, null, 2);
+    const originalCall = call('ask', 'ask_user');
+    originalCall.function.arguments = argumentsText;
+    collector.emitEvent(end('ask-response', [originalCall]));
+    collector.emitEvent({
+      type: 'tool_interactive',
+      call: {
+        id: 'ask',
+        type: 'function',
+        function: { name: 'ask_user', arguments: argumentsText }
+      },
+      interactive: { type: 'agentAsk', params: { toolCallId: 'ask', arguments: argumentsText } }
+    });
+    collector.emitEvent({
+      type: 'tool_run_end',
+      call: call('ask', 'ask_user'),
+      response: 'Waiting',
+      seconds: 0
+    });
+    expect(collector.assistantResponses).toHaveLength(1);
+    expect(collector.assistantResponses[0]).toMatchObject({
+      interactive: { type: 'agentAsk', params: { toolCallId: 'ask', arguments: argumentsText } }
+    });
+    expect(collector.assistantResponses[0]).not.toHaveProperty('tools');
+    expect(collector.assistantResponses[0]).not.toHaveProperty('agentAsk');
+  });
 
   it('deduplicates checkpoints and separates the next response from compressed history', () => {
     const collector = createAgentLoopCoreAssistantEventCollector();

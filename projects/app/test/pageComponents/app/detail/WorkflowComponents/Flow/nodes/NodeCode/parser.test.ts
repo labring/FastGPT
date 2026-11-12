@@ -52,13 +52,13 @@ function main({ question }) {
     ]);
   });
 
-  it('does not infer undocumented inputs or outputs from code', () => {
+  it('infers undocumented IO from the actual code using any as the unknown type', () => {
     expect(
       extractCodeFromMarkdown('function main({ question }) { return { result: 1 }; }')
     ).toEqual({
       code: 'function main({ question }) { return { result: 1 }; }',
-      inputs: [],
-      outputs: []
+      inputs: [{ key: 'question', type: 'any', reference: undefined }],
+      outputs: [{ key: 'result', type: 'any' }]
     });
   });
 
@@ -76,5 +76,23 @@ def main(amount):
       inputs: [{ key: 'amount', type: 'number', reference: undefined }],
       outputs: [{ key: 'total', type: 'number' }]
     });
+  });
+  it('takes output keys from return expressions while retaining JSDoc types', () => {
+    const result = extractCodeFromMarkdown(`
+      /** @property {number} staleOutput - An obsolete output name */
+      function main() { return { total: 1 }; }
+    `);
+    expect(result.outputs).toEqual([{ key: 'total', type: 'number' }]);
+  });
+
+  it('ignores commented and stringified returns when discovering real outputs', () => {
+    const result = extractCodeFromMarkdown(`
+      function main({ question }) {
+        // return { obsolete: 1 };
+        const example = "return { phantom: 1 }";
+        return { result: question };
+      }
+    `);
+    expect(result.outputs).toEqual([{ key: 'result', type: 'any' }]);
   });
 });

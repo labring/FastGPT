@@ -17,13 +17,16 @@ export type WorkflowLocalDraftRestoreResult =
     }
   | {
       status: 'mismatched-team' | 'not-found';
+    }
+  | {
+      status: 'restore-failed';
     };
 
 /**
  * 把本地工作流草稿补保存到远端自动保存版本。
  *
  * 这里的失败只影响本地草稿恢复，不应该阻断登录后的页面跳转，也不需要给用户提示。
- * 因此内部静默重试固定次数：临时网络抖动有机会恢复；重试耗尽后由调用方删除本地草稿并继续跳转。
+ * 因此内部静默重试固定次数：临时网络抖动有机会恢复；重试耗尽后返回失败并保留本地草稿。
  */
 const saveWorkflowDraftWithRetry = async ({
   draft,
@@ -39,11 +42,13 @@ const saveWorkflowDraftWithRetry = async ({
         isPublish: false,
         autoSave: true
       });
-      return;
+      return true;
     } catch {
       // 失败时静默进入下一次重试；重试耗尽后由调用方继续跳转。
     }
   }
+
+  return false;
 };
 
 /**
@@ -53,7 +58,7 @@ const saveWorkflowDraftWithRetry = async ({
  * A 标签页正在编辑工作流，B 标签页切换团队并登出后，A 标签页本地草稿仍应以
  * 保存草稿时写入的 tmbId 为准，而不是被 B 标签页更新后的全局登录状态污染。
  *
- * 恢复请求最多重试 3 次；仍失败时丢弃本地草稿并返回恢复成功路由。
+ * 恢复请求最多重试 3 次；成功后清理本地草稿，失败保留本地副本供下次恢复。
  * 普通 lastRoute fallback 和跨团队默认跳转由登录跳转协调层处理。
  */
 export const restoreWorkflowLocalDraftAfterLogin = async ({
@@ -77,14 +82,17 @@ export const restoreWorkflowLocalDraftAfterLogin = async ({
     return { status: 'mismatched-team' };
   }
 
-  await saveWorkflowDraftWithRetry({
+  const restored = await saveWorkflowDraftWithRetry({
     draft: draftResult.draft,
     saveDraft
   });
+  if (!restored) {
+    return { status: 'restore-failed' };
+  }
 
   removeWorkflowLocalDraft();
 
-  // 草稿恢复成功或重试耗尽后，都固定回到草稿所属 app 的详情页。
+  // 草稿恢复成功后固定回到草稿所属 app 的详情页。
   return {
     status: 'restored',
     route: draftResult.route
