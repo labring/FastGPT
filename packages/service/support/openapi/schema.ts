@@ -37,7 +37,7 @@ const OpenApiSchema = new Schema(
       type: Date
     },
     appId: {
-      type: String,
+      type: Schema.Types.ObjectId,
       required: false
     },
     appName: {

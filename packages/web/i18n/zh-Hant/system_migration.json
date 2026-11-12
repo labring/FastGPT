@@ -50,7 +50,7 @@
   "migrations.20261104_backfill_chat_publish_source.chatLogs": "統計桶來源",
   "migrations.20261104_backfill_chat_publish_source.validation": "驗證回填結果",
   "migrations.20261104_backfill_openapi_key_type.name": "回填 API Key 類型",
-  "migrations.20261104_backfill_openapi_key_type.description": "背景獨立回填個人密鑰與應用 Key 類型，保留原綁定、憑證及所有舊欄位。",
+  "migrations.20261104_backfill_openapi_key_type.description": "背景獨立分批掃描全部 API Key，缺少類型時補為個人密鑰，將有效應用 ID 統一為 BSON ObjectId，保留預設目標語義、憑證及權限。",
   "migrations.20261104_backfill_openapi_key_type.result": "已掃描 {{keys}} 個密鑰",
   "migrations.20261104_backfill_openapi_key_type.keys": "密鑰類型",
   "migrations.20261104_backfill_openapi_key_type.validation": "驗證回填結果"

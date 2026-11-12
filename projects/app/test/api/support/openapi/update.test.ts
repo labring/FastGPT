@@ -9,6 +9,29 @@ import { Call } from '@test/utils/request';
 import { describe, expect, it } from 'vitest';
 
 describe('support/openapi/update', () => {
+  it('owner cannot enable proxy on a historical personal key with a default app', async () => {
+    const { owner } = await getFakeUsers(1);
+    const app = await MongoApp.create({
+      name: 'default app',
+      type: 'simple',
+      tmbId: owner.tmbId,
+      teamId: owner.teamId
+    });
+    const key = await MongoOpenApi.create({
+      type: 'personal',
+      teamId: owner.teamId,
+      tmbId: owner.tmbId,
+      apiKey: 'default-app-proxy',
+      appId: String(app._id)
+    });
+    const result = await Call(handler, {
+      auth: owner,
+      body: { _id: String(key._id), authProxy: true }
+    });
+    expect(result.error).toBeDefined();
+    expect((await MongoOpenApi.findById(key._id).lean())?.authProxy).toBe(false);
+  });
+
   it('member can update their own APIKey base fields', async () => {
     const { members } = await getFakeUsers(1);
     const [member] = members;

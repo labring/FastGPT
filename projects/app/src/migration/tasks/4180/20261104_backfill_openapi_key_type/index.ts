@@ -9,24 +9,35 @@ import { systemMigrationBatchSize } from '@/migration/constants';
 import type { SystemMigrationContext } from '@/migration/registry';
 import { backfillOpenApiKeyTypeRecord } from './service';
 import { ApiKeyTypeEnum } from '@fastgpt/global/support/openapi/constants';
+import { resolveApiKeyScope } from '@fastgpt/service/support/openapi/utils';
 
 const CheckpointSchema = z.object({
   endId: ObjectIdSchema.nullable(),
   lastId: ObjectIdSchema.nullable(),
-  scanned: IntSchema
+  scanned: IntSchema,
+  appIdStorageVersion: z.literal(1).optional()
 });
 
 /**
- * 独立自动回填旧 Key 类型，以固定上界和 _id 游标断点续跑。
- * 错误快照先于 checkpoint 持久化，重试先处理已跳过的坏数据；不删除或转换旧字段。
- * 完成校验要求扫描范围内 type 均为有效枚举，校验阶段的新异常也保留 ID 供断点后重试。
+ * 独立分批遍历全部 Key，补齐个人类型并将已有应用 ID 统一为 BSON ObjectId。
+ * 固定上界和 _id 游标支持幂等断点续跑；旧版仅补类型的断点从同一范围起点重扫一次。
+ * 错误快照先于 checkpoint 持久化；完成校验覆盖类型、绑定语义和 ID 存储类型。
  */
 export const backfillOpenApiKeyType = async (context: SystemMigrationContext) => {
   const collection = MongoOpenApi.collection;
   let checkpoint = await context.getCheckpoint(CheckpointSchema);
   if (!checkpoint) {
     const last = await collection.findOne({}, { projection: { _id: 1 }, sort: { _id: -1 } });
-    checkpoint = { endId: last ? String(last._id) : null, lastId: null, scanned: 0 };
+    checkpoint = {
+      endId: last ? String(last._id) : null,
+      lastId: null,
+      scanned: 0,
+      appIdStorageVersion: 1
+    };
+    await context.saveCheckpoint(checkpoint);
+  } else if (checkpoint.appIdStorageVersion !== 1) {
+    // 旧断点前的记录可能仍是字符串；不能只转换游标之后的 Key 就宣告完成。
+    checkpoint = { ...checkpoint, lastId: null, scanned: 0, appIdStorageVersion: 1 };
     await context.saveCheckpoint(checkpoint);
   }
   const failures = new Map<string, SystemMigrationFailedRecord>();
@@ -104,19 +115,33 @@ export const backfillOpenApiKeyType = async (context: SystemMigrationContext) =>
   });
   await context.reportProgress({ key: 'validation', status: SystemMigrationStatusEnum.running });
   await context.assertActive();
-  const invalid = checkpoint.endId
-    ? await collection
-        .find(
-          {
-            _id: { $lte: new Types.ObjectId(checkpoint.endId) },
-            type: { $nin: Object.values(ApiKeyTypeEnum) }
-          },
-          { projection: { _id: 1 } }
-        )
-        .sort({ _id: 1 })
-        .limit(systemMigrationBatchSize)
-        .toArray()
-    : [];
+  const invalid: { _id: Types.ObjectId }[] = [];
+  if (checkpoint.endId) {
+    const cursor = collection
+      .find(
+        { _id: { $lte: new Types.ObjectId(checkpoint.endId) } },
+        { projection: { _id: 1, type: 1, appId: 1 } }
+      )
+      .sort({ _id: 1 })
+      .batchSize(systemMigrationBatchSize);
+    // 和运行期复用同一语义校验，避免 Mongo 查询对数组字段的匹配规则漏过异常绑定。
+    for await (const record of cursor) {
+      context.signal.throwIfAborted();
+      await context.assertActive();
+      try {
+        if (!Object.values(ApiKeyTypeEnum).includes(record.type)) throw new Error('Missing type');
+        resolveApiKeyScope({ type: record.type, appId: record.appId });
+        if (record.appId !== undefined && record.appId !== null && record.appId !== '') {
+          if (!(record.appId instanceof Types.ObjectId)) {
+            throw new Error('API Key application ID is not stored as ObjectId');
+          }
+        }
+      } catch {
+        invalid.push({ _id: record._id });
+        if (invalid.length >= systemMigrationBatchSize) break;
+      }
+    }
+  }
   if (invalid.length)
     await context.fail({
       message: 'API Key type backfill is incomplete',
@@ -124,7 +149,10 @@ export const backfillOpenApiKeyType = async (context: SystemMigrationContext) =>
       failedRecords: invalid.map(({ _id }) => ({
         stageKey: 'validation',
         data: { id: String(_id) },
-        reason: { message: 'API Key type is missing or invalid; repair before retrying' }
+        reason: {
+          message:
+            'API Key type, application target or ID storage is invalid; repair before retrying'
+        }
       }))
     });
   await context.reportProgress({ key: 'validation', status: SystemMigrationStatusEnum.succeeded });
