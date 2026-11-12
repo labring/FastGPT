@@ -2,6 +2,7 @@ import z from 'zod';
 import { BoolSchema, IntSchema } from '../../../common/zod';
 import { ChatIdSchema } from '../../chat/schema';
 import {
+  DEFAULT_MODERATION_STREAM_INTERVAL,
   ModerationActionEnum,
   ModerationExceptionActionEnum,
   ModerationRiskActionEnum,
@@ -87,12 +88,14 @@ export const SystemModerationPolicySchema = z.object({
   /** 审核生效环节 */
   hooks: z.object({
     userInput: BoolSchema.default(true).meta({ description: '用户输入' }),
-    modelInput: BoolSchema.default(false).meta({ description: '模型输入' }),
+    modelInput: BoolSchema.default(true).meta({ description: '模型输入' }),
     finalOutput: BoolSchema.default(true).meta({ description: '最终输出' })
   }),
   /** 处理策略 */
   strategy: z.object({
-    streamInterval: IntSchema.min(1).default(50).meta({ description: '流式审核间隔（字符/次）' }),
+    streamInterval: IntSchema.min(1)
+      .default(DEFAULT_MODERATION_STREAM_INTERVAL)
+      .meta({ description: '流式审核间隔（字符/次）' }),
     suspectedRiskAction: z
       .enum([ModerationRiskActionEnum.blockAndLog, ModerationRiskActionEnum.passAndLog])
       .default(ModerationRiskActionEnum.blockAndLog)
@@ -110,11 +113,11 @@ export const DefaultSystemModerationPolicy: SystemModerationPolicyType = {
   activePluginId: undefined,
   hooks: {
     userInput: true,
-    modelInput: false,
+    modelInput: true,
     finalOutput: true
   },
   strategy: {
-    streamInterval: 50,
+    streamInterval: DEFAULT_MODERATION_STREAM_INTERVAL,
     suspectedRiskAction: ModerationRiskActionEnum.blockAndLog,
     serviceExceptionAction: ModerationExceptionActionEnum.pass
   }

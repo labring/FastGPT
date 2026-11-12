@@ -4,7 +4,8 @@ import { Call } from '@test/utils/request';
 const mocks = vi.hoisted(() => ({
   authSystemAdmin: vi.fn(),
   confirmPlugin: vi.fn(),
-  restoreModerationConfigs: vi.fn()
+  restoreModerationConfigs: vi.fn(),
+  recordInstalledModerationPluginsAudit: vi.fn()
 }));
 
 vi.mock('@fastgpt/service/support/permission/user/auth', () => ({
@@ -21,6 +22,10 @@ vi.mock('@fastgpt/service/core/plugin/restoreLocalConfigs', () => ({
   restoreLocalPluginConfigs: mocks.restoreModerationConfigs
 }));
 
+vi.mock('@fastgpt/service/core/plugin/moderation/audit', () => ({
+  recordInstalledModerationPluginsAudit: mocks.recordInstalledModerationPluginsAudit
+}));
+
 import handler from '@/pages/api/core/plugin/admin/pkg/confirm';
 
 const tool = {
@@ -32,7 +37,8 @@ const tool = {
 describe('confirm system plugin package handler', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.authSystemAdmin.mockResolvedValue(undefined);
+    mocks.authSystemAdmin.mockResolvedValue({ teamId: 'team-1', tmbId: 'tmb-1' });
+    mocks.recordInstalledModerationPluginsAudit.mockResolvedValue(undefined);
     mocks.confirmPlugin.mockResolvedValue({
       confirmed: [{ ...tool, pluginId: 'weather' }],
       failed: []
@@ -44,6 +50,11 @@ describe('confirm system plugin package handler', () => {
 
     expect(res.code).toBe(200);
     expect(mocks.restoreModerationConfigs).toHaveBeenCalledWith({ pluginIds: ['weather'] });
+    expect(mocks.recordInstalledModerationPluginsAudit).toHaveBeenCalledWith({
+      operator: { teamId: 'team-1', tmbId: 'tmb-1' },
+      pluginIds: ['weather'],
+      lang: undefined
+    });
     expect(mocks.confirmPlugin).toHaveBeenCalledWith([{ ...tool, pluginId: 'weather' }]);
   });
 
@@ -72,5 +83,6 @@ describe('confirm system plugin package handler', () => {
 
     expect(res.code).not.toBe(200);
     expect(mocks.restoreModerationConfigs).not.toHaveBeenCalled();
+    expect(mocks.recordInstalledModerationPluginsAudit).not.toHaveBeenCalled();
   });
 });

@@ -101,7 +101,9 @@ describe('moderation plugin deletion and filtering', () => {
 
     await expect(
       deleteModerationPlugin({ pluginId: 'new-plugin', source: 'system' })
-    ).resolves.toBeUndefined();
+    ).resolves.toEqual({
+      auditSnapshot: { wasEnabled: false }
+    });
     expect(deleteConfigSpy).toHaveBeenCalledWith({ pluginId: 'new-plugin', source: 'system' });
   });
 
@@ -272,7 +274,9 @@ describe('moderation plugin deletion and filtering', () => {
 
     await expect(
       deleteModerationPlugin({ pluginId: 'last-active-plugin', source: 'system' })
-    ).resolves.toBeUndefined();
+    ).resolves.toEqual({
+      auditSnapshot: { wasEnabled: true }
+    });
 
     const deletedRecord = await MongoSystemModerationPlugin.findOne({
       pluginId: 'last-active-plugin'

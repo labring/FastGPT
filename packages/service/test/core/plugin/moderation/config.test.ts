@@ -52,7 +52,7 @@ describe('moderation configuration save and reload', () => {
       { pluginId: detail.pluginId, secretsVal: { enablePolitics: true } },
       { pluginId: detail.pluginId, source: 'system', enabled: false }
     ]);
-    const saved = await saveModerationConfig({
+    const { item: saved } = await saveModerationConfig({
       pluginId: detail.pluginId,
       secretsVal: { enableDefaultDict: true }
     });
@@ -84,7 +84,7 @@ describe('moderation configuration save and reload', () => {
           pluginId: detail.pluginId,
           secretsVal: { enableDefaultDict: false }
         })
-      ).resolves.toMatchObject({ hasConfiguredSecrets: true });
+      ).resolves.toMatchObject({ item: { hasConfiguredSecrets: true } });
       expect(remote.checkModerationContent).toHaveBeenCalledOnce();
     }
   );
@@ -173,7 +173,7 @@ describe('moderation configuration save and reload', () => {
   it('remains configured after saving an empty optional configuration and reloading the list', async () => {
     vi.spyOn(remote, 'getModerationPluginDetail').mockResolvedValue(detail);
     vi.spyOn(remote, 'listModerationPlugins').mockResolvedValue([detail]);
-    const saved = await saveModerationConfig({
+    const { item: saved } = await saveModerationConfig({
       pluginId: detail.pluginId,
       secretsVal: { customKeywords: '' }
     });
@@ -185,7 +185,7 @@ describe('moderation configuration save and reload', () => {
 
   it('enables plugin via real MongoSystemConfigs upsert without operator path conflicts', async () => {
     vi.spyOn(remote, 'getModerationPluginDetail').mockResolvedValue(detail);
-    const saved = await saveModerationConfig({
+    const { item: saved } = await saveModerationConfig({
       pluginId: detail.pluginId,
       secretsVal: { enableDefaultDict: true },
       enabled: true

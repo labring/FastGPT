@@ -24,7 +24,8 @@ export type ModerationConfigRecord = {
 
 /** 按插件标识读取本地配置记录。source 为空时按 system 处理（与安装时的默认来源一致） */
 export const findModerationConfig = (
-  query: ModerationConfigQuery
+  query: ModerationConfigQuery,
+  session?: ClientSession
 ): Promise<ModerationConfigRecord | null> =>
   MongoSystemModerationPlugin.findOne({
     pluginId: query.pluginId,
@@ -33,6 +34,7 @@ export const findModerationConfig = (
       : { $or: [{ source: 'system' }, { source: null }] })
   })
     .sort({ updateTime: -1, _id: -1 })
+    .session(session ?? null)
     .lean<ModerationConfigRecord>();
 
 /** 读取所有插件配置记录 */
@@ -42,12 +44,15 @@ export const findAllModerationConfigs = (): Promise<ModerationConfigRecord[]> =>
     .lean<ModerationConfigRecord[]>();
 
 /** 读取当前唯一启用的记录 */
-export const findEnabledModerationConfig = (): Promise<ModerationConfigRecord | null> =>
+export const findEnabledModerationConfig = (
+  session?: ClientSession
+): Promise<ModerationConfigRecord | null> =>
   MongoSystemModerationPlugin.findOne({
     enabled: true,
     deleted: { $ne: true }
   })
     .sort({ updateTime: -1 })
+    .session(session ?? null)
     .lean<ModerationConfigRecord>();
 
 /**

@@ -425,5 +425,17 @@
   "enterprise_auth_cancel": "Cancel",
   "enterprise_auth_start": "Start verification",
   "enterprise_auth_verify_with_remaining": "Verify ({{count}} attempts left)",
-  "move_skill": "Move skill"
+  "move_skill": "Move skill",
+  "admin_enable_moderation_plugin": "Enable moderation plugin",
+  "admin_disable_moderation_plugin": "Disable moderation plugin",
+  "admin_install_moderation_plugin": "Install moderation plugin",
+  "admin_uninstall_moderation_plugin": "Uninstall moderation plugin",
+  "admin_update_moderation_plugin_config": "Update moderation plugin config",
+  "admin_update_moderation_policy": "Update moderation policy",
+  "log_admin_enable_moderation_plugin": "[{{name}}] enabled content moderation plugin [{{pluginName}}]",
+  "log_admin_disable_moderation_plugin": "[{{name}}] disabled content moderation plugin [{{pluginName}}]",
+  "log_admin_install_moderation_plugin": "[{{name}}] installed content moderation plugin [{{pluginName}}]",
+  "log_admin_uninstall_moderation_plugin": "[{{name}}] uninstalled content moderation plugin [{{pluginName}}]",
+  "log_admin_update_moderation_plugin_config": "[{{name}}] updated configuration for content moderation plugin [{{pluginName}}]",
+  "log_admin_update_moderation_policy": "[{{name}}] updated content moderation policy"
 }
