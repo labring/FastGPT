@@ -346,6 +346,56 @@ describe('delete collection by body locating mode', () => {
     expect(response.error).toBeInstanceOf(ApiRequestInputParseError);
     await expect(MongoDatasetCollection.findById(collection._id).lean()).resolves.not.toBeNull();
   });
+
+  it.each([
+    [
+      'mixed complete branches',
+      ({ collectionId, otherId }: any) => ({
+        id: collectionId,
+        collectionIds: [otherId]
+      })
+    ],
+    [
+      'complete external branch mixed with collectionIds',
+      ({ collectionId, externalFileId }: any) => ({
+        collectionIds: [collectionId],
+        datasetId: '68ad85a7463006c963799a05',
+        apiFileIds: [externalFileId]
+      })
+    ],
+    [
+      'incomplete external params mixed with collectionIds',
+      ({ collectionId }: any) => ({
+        collectionIds: [collectionId],
+        apiFileIds: ['external-doc']
+      })
+    ]
+  ])('rejects locating params %s before deleting anything', async (_, buildBody) => {
+    const { member, dataset, collection, child } = await fixture();
+    const other = await MongoDatasetCollection.create({
+      name: 'other',
+      type: DatasetCollectionTypeEnum.file,
+      teamId: member.teamId,
+      tmbId: member.tmbId,
+      datasetId: dataset._id
+    });
+
+    const response = await Call(deleteHandler, {
+      auth: member,
+      body: buildBody({
+        collectionId: String(collection._id),
+        otherId: String(other._id),
+        externalFileId: 'external-doc'
+      })
+    });
+
+    // 拒绝必须发生在任何数据变更前：两个集合和子文档都保留
+    expect(response.code).not.toBe(200);
+    expect(response.error).toBeInstanceOf(ApiRequestInputParseError);
+    await expect(MongoDatasetCollection.findById(collection._id).lean()).resolves.not.toBeNull();
+    await expect(MongoDatasetCollection.findById(child._id).lean()).resolves.not.toBeNull();
+    await expect(MongoDatasetCollection.findById(other._id).lean()).resolves.not.toBeNull();
+  });
 });
 
 describe('delete collection by apiFileId', () => {

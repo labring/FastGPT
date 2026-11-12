@@ -134,7 +134,7 @@ export const DeleteCollectionQuerySchema = z.object({
 export type DeleteCollectionQueryType = z.infer<typeof DeleteCollectionQuerySchema>;
 
 const DeleteCollectionByIdBodySchema = z
-  .object({
+  .strictObject({
     id: z.string().min(1).meta({
       example: '68ad85a7463006c963799a05',
       description: '集合 ID，删除该集合及其全部子集合'
@@ -146,7 +146,7 @@ const DeleteCollectionByIdBodySchema = z
   });
 
 const DeleteCollectionByCollectionIdsBodySchema = z
-  .object({
+  .strictObject({
     collectionIds: z
       .array(z.string().min(1))
       .min(1)
@@ -161,7 +161,7 @@ const DeleteCollectionByCollectionIdsBodySchema = z
   });
 
 const DeleteCollectionByApiFileIdsBodySchema = z
-  .object({
+  .strictObject({
     datasetId: z.string().min(1).meta({
       example: '68ad85a7463006c963799a05',
       description: 'API 文件库对应的知识库 ID'
@@ -180,7 +180,11 @@ const DeleteCollectionByApiFileIdsBodySchema = z
       '外部集成只知道外部文件 ID 时使用：在指定知识库内按 apiFileId 定位集合，删除命中的集合及其全部子集合'
   });
 
-/** 三种定位方式互斥，按 body 分支表达；不提供空对象分支，避免不完整参数被静默忽略。 */
+/**
+ * 三种定位方式互斥，按 body 分支表达。各分支使用 strictObject：
+ * 混用其他定位字段或夹带不完整外部参数时没有任何分支能匹配，请求在数据变更前被拒绝，
+ * 而不是按分支顺序静默丢弃多余字段；也不提供空对象分支，避免空请求被当作合法定位。
+ */
 export const DeleteCollectionBodySchema = z.union([
   DeleteCollectionByIdBodySchema,
   DeleteCollectionByCollectionIdsBodySchema,
