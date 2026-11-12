@@ -75,7 +75,11 @@ export function createDatasetCommandSpecs(): CliCommandSpec[] {
       risk: 'read',
       authModes: ['token', 'personalKey'],
       positionalArgs: [
-        { name: 'datasetId', required: true, description: 'Target dataset ObjectId' }
+        {
+          name: 'datasetId',
+          required: false,
+          description: 'Target dataset ObjectId (or use --id)'
+        }
       ],
       options: [
         {
@@ -89,6 +93,10 @@ export function createDatasetCommandSpecs(): CliCommandSpec[] {
         {
           description: 'Inspect dataset configuration',
           args: ['dataset', 'get', '68ad85a7463006c963799a05']
+        },
+        {
+          description: 'Inspect dataset configuration using --id flag',
+          args: ['dataset', 'get', '--id', '68ad85a7463006c963799a05']
         }
       ],
       execute: async ({ positional, options, client, container }) => {
@@ -101,7 +109,7 @@ export function createDatasetCommandSpecs(): CliCommandSpec[] {
           throw new CliArgumentError(
             'Dataset ID is required.',
             undefined,
-            'Usage: fastgpt dataset get <datasetId>'
+            'Usage: fastgpt dataset get <datasetId> or fastgpt dataset get --id <datasetId>'
           );
         }
 
@@ -184,10 +192,15 @@ export function createDatasetCommandSpecs(): CliCommandSpec[] {
           throw new CliArgumentError('Active HTTP client required for dataset create.');
         }
 
-        let name = typeof options.name === 'string' ? options.name.trim() : '';
-        if (!name && container.prompter.isInteractive && options.format !== 'json') {
-          name = (await container.prompter.text({ message: 'Enter dataset name:' })).trim();
-        }
+        const name = await (async () => {
+          const direct = typeof options.name === 'string' ? options.name.trim() : '';
+          if (direct) return direct;
+          if (container.prompter.isInteractive && options.format !== 'json') {
+            return (await container.prompter.text({ message: 'Enter dataset name:' })).trim();
+          }
+          return '';
+        })();
+
         if (!name) {
           throw new CliArgumentError(
             'Dataset name is required.',
@@ -201,10 +214,7 @@ export function createDatasetCommandSpecs(): CliCommandSpec[] {
           input: {
             name,
             intro: typeof options.intro === 'string' ? options.intro : undefined,
-            type:
-              options.type === 'folder' || options.type === 'websiteDataset'
-                ? options.type
-                : 'dataset',
+            type: typeof options.type === 'string' ? options.type : undefined,
             vectorModelId:
               typeof options.vectorModel === 'string' ? options.vectorModel : undefined,
             agentModelId: typeof options.agentModel === 'string' ? options.agentModel : undefined,
@@ -221,7 +231,11 @@ export function createDatasetCommandSpecs(): CliCommandSpec[] {
       risk: 'write',
       authModes: ['token', 'personalKey'],
       positionalArgs: [
-        { name: 'datasetId', required: true, description: 'Target dataset ObjectId' }
+        {
+          name: 'datasetId',
+          required: false,
+          description: 'Target dataset ObjectId (or use --id)'
+        }
       ],
       options: [
         {
@@ -249,6 +263,12 @@ export function createDatasetCommandSpecs(): CliCommandSpec[] {
           description: 'New agent model ID'
         },
         {
+          name: 'parentId',
+          flags: '--parent-id <id>',
+          takesValue: true,
+          description: 'New parent folder ID (null to move to root)'
+        },
+        {
           name: 'dryRun',
           flags: '--dry-run',
           takesValue: false,
@@ -259,6 +279,18 @@ export function createDatasetCommandSpecs(): CliCommandSpec[] {
         {
           description: 'Update dataset name and intro',
           args: ['dataset', 'update', '68ad85a7463006c963799a05', '--name', 'New Name']
+        },
+        {
+          description: 'Update dataset using --id flag and preview changes',
+          args: [
+            'dataset',
+            'update',
+            '--id',
+            '68ad85a7463006c963799a05',
+            '--name',
+            'New Name',
+            '--dry-run'
+          ]
         }
       ],
       execute: async ({ positional, options, client, container }) => {
@@ -281,7 +313,8 @@ export function createDatasetCommandSpecs(): CliCommandSpec[] {
           input: {
             name: typeof options.name === 'string' ? options.name : undefined,
             intro: typeof options.intro === 'string' ? options.intro : undefined,
-            agentModelId: typeof options.agentModel === 'string' ? options.agentModel : undefined
+            agentModelId: typeof options.agentModel === 'string' ? options.agentModel : undefined,
+            parentId: typeof options.parentId === 'string' ? options.parentId : undefined
           },
           dryRun: options.dryRun === true
         });
@@ -294,7 +327,11 @@ export function createDatasetCommandSpecs(): CliCommandSpec[] {
       risk: 'destructive',
       authModes: ['token', 'personalKey'],
       positionalArgs: [
-        { name: 'datasetId', required: true, description: 'Target dataset ObjectId' }
+        {
+          name: 'datasetId',
+          required: false,
+          description: 'Target dataset ObjectId (or use --id)'
+        }
       ],
       options: [
         {
@@ -302,6 +339,12 @@ export function createDatasetCommandSpecs(): CliCommandSpec[] {
           flags: '--id <datasetId>',
           takesValue: true,
           description: 'Dataset ObjectId (alternative to positional argument)'
+        },
+        {
+          name: 'dryRun',
+          flags: '--dry-run',
+          takesValue: false,
+          description: 'Preview deletion payload without deleting'
         },
         {
           name: 'yes',
@@ -314,6 +357,10 @@ export function createDatasetCommandSpecs(): CliCommandSpec[] {
         {
           description: 'Delete a dataset with confirmation',
           args: ['dataset', 'delete', '68ad85a7463006c963799a05']
+        },
+        {
+          description: 'Preview dataset deletion without deleting',
+          args: ['dataset', 'delete', '68ad85a7463006c963799a05', '--dry-run']
         },
         {
           description: 'Non-interactive deletion for CI / Agent',
@@ -330,11 +377,16 @@ export function createDatasetCommandSpecs(): CliCommandSpec[] {
           throw new CliArgumentError(
             'Dataset ID is required.',
             undefined,
-            'Usage: fastgpt dataset delete <datasetId>'
+            'Usage: fastgpt dataset delete <datasetId> or fastgpt dataset delete --id <datasetId>'
           );
         }
 
-        if (container.prompter.isInteractive && options.format !== 'json' && options.yes !== true) {
+        if (
+          options.dryRun !== true &&
+          container.prompter.isInteractive &&
+          options.format !== 'json' &&
+          options.yes !== true
+        ) {
           const confirmed = await container.prompter.confirm?.({
             message: `Are you sure you want to permanently delete dataset "${datasetId.trim()}"?`
           });
@@ -345,7 +397,8 @@ export function createDatasetCommandSpecs(): CliCommandSpec[] {
 
         return container.datasetService.delete({
           client,
-          datasetId: datasetId.trim()
+          datasetId: datasetId.trim(),
+          dryRun: options.dryRun === true
         });
       }
     },
@@ -356,8 +409,12 @@ export function createDatasetCommandSpecs(): CliCommandSpec[] {
       risk: 'read',
       authModes: ['token', 'personalKey'],
       positionalArgs: [
-        { name: 'datasetId', required: true, description: 'Target dataset ObjectId' },
-        { name: 'text', required: false, description: 'Search query text' }
+        {
+          name: 'datasetId',
+          required: false,
+          description: 'Target dataset ObjectId (or use --id)'
+        },
+        { name: 'text', required: false, description: 'Search query text (or use --text)' }
       ],
       options: [
         {
@@ -410,10 +467,11 @@ export function createDatasetCommandSpecs(): CliCommandSpec[] {
           args: ['dataset', 'search', '68ad85a7463006c963799a05', 'What is FastGPT?']
         },
         {
-          description: 'Hybrid search with similarity threshold as JSON',
+          description: 'Hybrid search using --id and --text flags',
           args: [
             'dataset',
             'search',
+            '--id',
             '68ad85a7463006c963799a05',
             '--text',
             'API authentication',
@@ -434,15 +492,20 @@ export function createDatasetCommandSpecs(): CliCommandSpec[] {
           throw new CliArgumentError(
             'Dataset ID is required.',
             undefined,
-            'Usage: fastgpt dataset search <datasetId> <query>'
+            'Usage: fastgpt dataset search <datasetId> <query> or fastgpt dataset search --id <datasetId> --text <query>'
           );
         }
 
-        let searchText = positional[1] ?? (typeof options.text === 'string' ? options.text : '');
-        if (!searchText && container.prompter.isInteractive && options.format !== 'json') {
-          searchText = (await container.prompter.text({ message: 'Enter search query:' })).trim();
-        }
-        if (!searchText.trim()) {
+        const searchText = await (async () => {
+          const direct = positional[1] ?? (typeof options.text === 'string' ? options.text : '');
+          if (direct.trim()) return direct.trim();
+          if (container.prompter.isInteractive && options.format !== 'json') {
+            return (await container.prompter.text({ message: 'Enter search query:' })).trim();
+          }
+          return '';
+        })();
+
+        if (!searchText) {
           throw new CliArgumentError(
             'Search query text is required.',
             undefined,
@@ -471,7 +534,7 @@ export function createDatasetCommandSpecs(): CliCommandSpec[] {
           client,
           input: {
             datasetId: datasetId.trim(),
-            text: searchText.trim(),
+            text: searchText,
             limit: typeof options.limit === 'string' ? Number(options.limit) : undefined,
             similarity:
               typeof options.similarity === 'string' ? Number(options.similarity) : undefined,

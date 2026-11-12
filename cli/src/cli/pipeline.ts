@@ -100,7 +100,7 @@ function createBoundHttpClient({
 
   const baseClient = container.createHttpClient({
     baseUrl: resolvedAuth.baseUrl,
-    insecure: resolvedAuth.allowInsecureHttp || global.insecure,
+    insecure: global.insecure,
     caCertPath: global.caCert,
     onSessionRenewed: (expiresAt) => {
       if (resolvedAuth.credential && resolvedAuth.credential.authType === 'token') {
@@ -182,8 +182,8 @@ export async function executeCommandWithPipeline({
       }
     },
     info: (msg) => {
-      if (!global.quiet && global.format === 'text') {
-        container.stdout(msg);
+      if (!global.quiet) {
+        container.stderr(msg);
       }
     },
     warn: (msg) => {
@@ -192,24 +192,29 @@ export async function executeCommandWithPipeline({
       }
     },
     error: (msg) => {
-      container.stderr(`Error: ${msg}`);
+      if (!global.quiet) {
+        container.stderr(`Error: ${msg}`);
+      }
     }
   };
 
-  let resolvedAuth: ResolvedAuthContext | undefined;
-  if (!spec.authModes.includes('none')) {
-    resolvedAuth = await resolveEffectiveAuth({
+  const resolvedAuth: ResolvedAuthContext | undefined = await (async () => {
+    if (spec.authModes.includes('none')) {
+      return undefined;
+    }
+    const resolved = await resolveEffectiveAuth({
       options: global,
       env: container.env,
       configRepo: container.configRepo,
       secretStore: container.secretStore
     });
     assertAuthAllowed({
-      resolved: resolvedAuth,
+      resolved,
       authModes: spec.authModes,
       commandName
     });
-  }
+    return resolved;
+  })();
 
   // 破坏性操作安全中间件：在非交互环境（如脚本、CI、--format json）未显式传 --yes 时阻断执行
   if (spec.risk === 'destructive' && rawOptions.dryRun !== true) {
@@ -225,10 +230,12 @@ export async function executeCommandWithPipeline({
 
   const client = createBoundHttpClient({ container, global, resolvedAuth, logger });
 
-  let effectiveOptions = rawOptions;
-  if (spec.inputSchema) {
+  const effectiveOptions = (() => {
+    if (!spec.inputSchema) {
+      return rawOptions;
+    }
     try {
-      effectiveOptions = spec.inputSchema.parse(rawOptions) as Record<string, unknown>;
+      return spec.inputSchema.parse(rawOptions) as Record<string, unknown>;
     } catch (error) {
       if (error instanceof ZodError) {
         throw new CliArgumentError(`Invalid options for "${commandName}".`, {
@@ -237,7 +244,7 @@ export async function executeCommandWithPipeline({
       }
       throw error;
     }
-  }
+  })();
 
   let result: CliResult;
   try {

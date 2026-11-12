@@ -100,7 +100,13 @@ export const touchUserSession = async ({
     return await sessionCache.touchSession({ sessionId, minIntervalSeconds });
   } catch (error) {
     const userId = sessionId.split(':')[0] ?? 'unknown';
-    logger.warn('Failed to touch user session TTL', { userId, error });
+    const message = error instanceof Error ? error.message : String(error);
+    const code = (error as { code?: string })?.code;
+    logger.warn('Failed to touch user session TTL', {
+      userId,
+      errorMessage: message,
+      ...(code ? { errorCode: code } : {})
+    });
     return undefined;
   }
 };

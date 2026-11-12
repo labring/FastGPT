@@ -52,20 +52,16 @@ async function saveAuthoritativeBackend({
   backend?: SecretStoreBackend;
 }): Promise<void> {
   if (!configDir) return;
-  try {
-    const current = await loadAuthoritativeBackends(configDir);
-    if (backend) {
-      current[profileName] = backend;
-    } else {
-      delete current[profileName];
-    }
-    const metaPath = join(configDir, META_BACKENDS_FILE);
-    await writeFile(metaPath, JSON.stringify(current, null, 2), { mode: 0o600 });
-    if (process.platform !== 'win32') {
-      await chmod(metaPath, 0o600).catch(() => {});
-    }
-  } catch {
-    // 忽略元数据保存异常，不阻断主流程
+  const current = await loadAuthoritativeBackends(configDir);
+  if (backend) {
+    current[profileName] = backend;
+  } else {
+    delete current[profileName];
+  }
+  const metaPath = join(configDir, META_BACKENDS_FILE);
+  await writeFile(metaPath, JSON.stringify(current, null, 2), { mode: 0o600 });
+  if (process.platform !== 'win32') {
+    await chmod(metaPath, 0o600).catch(() => {});
   }
 }
 

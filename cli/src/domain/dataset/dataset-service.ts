@@ -1,10 +1,15 @@
-import type {
-  GetDatasetDetailResponse,
-  GetDatasetListV2Response,
-  SearchDatasetTestResponse
+import {
+  CreateDatasetBodySchema,
+  DeleteDatasetQuerySchema,
+  GetDatasetDetailQuerySchema,
+  GetDatasetListV2BodySchema,
+  SearchDatasetTestBodySchema,
+  UpdateDatasetBodySchema,
+  type GetDatasetDetailResponse,
+  type GetDatasetListV2Response,
+  type SearchDatasetTestResponse
 } from '@fastgpt/global/openapi/core/dataset/api';
 import type { FastGptHttpClient } from '../../infra/http/fastgpt-http-client';
-import { CliArgumentError } from '../../shared/errors';
 import { createChangedResult, createDryRunResult, createSuccessResult } from '../../shared/result';
 import type { CliResult } from '../../shared/types';
 
@@ -19,7 +24,7 @@ export type DatasetListParams = {
 export type DatasetCreateParams = {
   name: string;
   intro?: string;
-  type?: 'dataset' | 'folder' | 'websiteDataset';
+  type?: string;
   vectorModelId?: string;
   agentModelId?: string;
   parentId?: string | null;
@@ -63,7 +68,11 @@ export type DatasetService = {
     input: DatasetUpdateParams;
     dryRun?: boolean;
   }) => Promise<CliResult>;
-  delete: (params: { client: FastGptHttpClient; datasetId: string }) => Promise<CliResult>;
+  delete: (params: {
+    client: FastGptHttpClient;
+    datasetId: string;
+    dryRun?: boolean;
+  }) => Promise<CliResult>;
   search: (params: {
     client: FastGptHttpClient;
     input: DatasetSearchParams;
@@ -72,6 +81,7 @@ export type DatasetService = {
 
 /**
  * 知识库领域服务：封装知识库的查询、创建、更新、删除及召回检索测试。
+ * 所有请求载荷均复用 @fastgpt/global/openapi 中的共享 Zod 契约做真实校验，保证 dryRun 与实际执行一致。
  */
 export function createDatasetService(): DatasetService {
   return {
@@ -87,10 +97,12 @@ export function createDatasetService(): DatasetService {
         ...(input.type ? { type: input.type as any } : {})
       };
 
+      const validatedBody = GetDatasetListV2BodySchema.parse(body);
+
       const res = await client.request<GetDatasetListV2Response>({
         method: 'POST',
         path: '/core/dataset/listV2',
-        body
+        body: validatedBody
       });
 
       return createSuccessResult({
@@ -105,33 +117,29 @@ export function createDatasetService(): DatasetService {
     },
 
     getDetail: async ({ client, datasetId }) => {
-      if (!datasetId.trim()) {
-        throw new CliArgumentError('Dataset ID is required.');
-      }
+      const validatedQuery = GetDatasetDetailQuerySchema.parse({ id: datasetId?.trim() });
 
       const res = await client.request<GetDatasetDetailResponse>({
         method: 'GET',
         path: '/core/dataset/detail',
-        query: { id: datasetId.trim() }
+        query: { id: validatedQuery.id }
       });
 
       return createSuccessResult({ data: res });
     },
 
     create: async ({ client, input, dryRun }) => {
-      if (!input.name.trim()) {
-        throw new CliArgumentError('Dataset name is required.');
-      }
-
       const payload = {
-        name: input.name.trim(),
+        name: input.name?.trim(),
         intro: input.intro ?? '',
-        type: (input.type ?? 'dataset') as any,
-        parentId: input.parentId ?? null,
+        type: input.type ?? 'dataset',
+        parentId: input.parentId === undefined ? null : input.parentId,
         ...(input.vectorModelId ? { vectorModelId: input.vectorModelId } : {}),
         ...(input.agentModelId ? { agentModelId: input.agentModelId } : {}),
         ...(input.avatar ? { avatar: input.avatar } : {})
       };
+
+      const validatedBody = CreateDatasetBodySchema.parse(payload);
 
       if (dryRun) {
         return createDryRunResult({
@@ -139,7 +147,7 @@ export function createDatasetService(): DatasetService {
           preview: {
             method: 'POST',
             path: '/core/dataset/create',
-            payload
+            payload: validatedBody
           }
         });
       }
@@ -147,28 +155,26 @@ export function createDatasetService(): DatasetService {
       const datasetId = await client.request<string>({
         method: 'POST',
         path: '/core/dataset/create',
-        body: payload
+        body: validatedBody
       });
 
       return createChangedResult({
-        data: { datasetId, name: input.name },
-        message: `Dataset "${input.name}" created successfully (ID: ${datasetId}).`
+        data: { datasetId, name: validatedBody.name },
+        message: `Dataset "${validatedBody.name}" created successfully (ID: ${datasetId}).`
       });
     },
 
     update: async ({ client, datasetId, input, dryRun }) => {
-      if (!datasetId.trim()) {
-        throw new CliArgumentError('Dataset ID is required.');
-      }
-
       const payload = {
-        id: datasetId.trim(),
-        ...(input.name ? { name: input.name.trim() } : {}),
+        id: datasetId?.trim(),
+        ...(input.name !== undefined ? { name: input.name.trim() } : {}),
         ...(input.intro !== undefined ? { intro: input.intro } : {}),
-        ...(input.agentModelId ? { agentModelId: input.agentModelId } : {}),
-        ...(input.avatar ? { avatar: input.avatar } : {}),
+        ...(input.agentModelId !== undefined ? { agentModelId: input.agentModelId } : {}),
+        ...(input.avatar !== undefined ? { avatar: input.avatar } : {}),
         ...(input.parentId !== undefined ? { parentId: input.parentId } : {})
       };
+
+      const validatedBody = UpdateDatasetBodySchema.parse(payload);
 
       if (dryRun) {
         return createDryRunResult({
@@ -176,7 +182,7 @@ export function createDatasetService(): DatasetService {
           preview: {
             method: 'POST',
             path: '/core/dataset/update',
-            payload
+            payload: validatedBody
           }
         });
       }
@@ -184,53 +190,57 @@ export function createDatasetService(): DatasetService {
       await client.request({
         method: 'POST',
         path: '/core/dataset/update',
-        body: payload
+        body: validatedBody
       });
 
       return createChangedResult({
-        data: { datasetId: datasetId.trim() },
-        message: `Dataset "${datasetId.trim()}" updated successfully.`
+        data: { datasetId: validatedBody.id },
+        message: `Dataset "${validatedBody.id}" updated successfully.`
       });
     },
 
-    delete: async ({ client, datasetId }) => {
-      if (!datasetId.trim()) {
-        throw new CliArgumentError('Dataset ID is required.');
+    delete: async ({ client, datasetId, dryRun }) => {
+      const validatedQuery = DeleteDatasetQuerySchema.parse({ id: datasetId?.trim() });
+
+      if (dryRun) {
+        return createDryRunResult({
+          operation: 'dataset delete',
+          preview: {
+            method: 'DELETE',
+            path: '/core/dataset/delete',
+            query: { id: validatedQuery.id }
+          }
+        });
       }
 
       await client.request({
         method: 'DELETE',
         path: '/core/dataset/delete',
-        query: { id: datasetId.trim() }
+        query: { id: validatedQuery.id }
       });
 
       return createChangedResult({
-        data: { datasetId: datasetId.trim(), deleted: true },
-        message: `Dataset "${datasetId.trim()}" deleted successfully.`
+        data: { datasetId: validatedQuery.id, deleted: true },
+        message: `Dataset "${validatedQuery.id}" deleted successfully.`
       });
     },
 
     search: async ({ client, input }) => {
-      if (!input.datasetId.trim()) {
-        throw new CliArgumentError('Dataset ID is required.');
-      }
-      if (!input.text.trim()) {
-        throw new CliArgumentError('Search query text is required.');
-      }
-
-      const body = {
-        datasetId: input.datasetId.trim(),
-        text: input.text.trim(),
+      const payload = {
+        datasetId: input.datasetId?.trim(),
+        text: input.text?.trim(),
         limit: input.limit ?? 5000,
         similarity: input.similarity ?? 0,
         searchMode: input.searchMode ?? 'mixedRecall',
         usingReRank: input.usingReRank ?? false
       };
 
+      const validatedBody = SearchDatasetTestBodySchema.parse(payload);
+
       const res = await client.request<SearchDatasetTestResponse>({
         method: 'POST',
         path: '/core/dataset/searchTest',
-        body
+        body: validatedBody
       });
 
       return createSuccessResult({

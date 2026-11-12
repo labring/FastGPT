@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createDatasetService } from '../../src/domain/dataset/dataset-service';
 import type { FastGptHttpClient } from '../../src/infra/http/fastgpt-http-client';
-import { CliArgumentError } from '../../src/shared/errors';
 
 function createMockHttpClient(handler: (params: any) => Promise<any>): FastGptHttpClient {
   return {
@@ -53,21 +52,22 @@ describe('DatasetService (cli/src/domain/dataset/dataset-service.ts)', () => {
   });
 
   it('fetches dataset detail and validates required datasetId', async () => {
+    const validId = '68ad85a7463006c963799a05';
     const client = createMockHttpClient(async ({ method, path, query }) => {
       expect(method).toBe('GET');
       expect(path).toBe('/core/dataset/detail');
-      expect(query.id).toBe('d-123');
+      expect(query.id).toBe(validId);
       return {
-        _id: 'd-123',
+        _id: validId,
         name: 'Technical Specs',
         type: 'dataset'
       };
     });
 
-    await expect(service.getDetail({ client, datasetId: '' })).rejects.toThrow(CliArgumentError);
+    await expect(service.getDetail({ client, datasetId: '' })).rejects.toThrow();
 
-    const res = await service.getDetail({ client, datasetId: 'd-123' });
-    expect(res.data?._id).toBe('d-123');
+    const res = await service.getDetail({ client, datasetId: validId });
+    expect(res.data?._id).toBe(validId);
   });
 
   it('creates dataset with dryRun and real execution', async () => {
@@ -97,6 +97,7 @@ describe('DatasetService (cli/src/domain/dataset/dataset-service.ts)', () => {
   });
 
   it('updates dataset properties with dryRun and execution', async () => {
+    const validId = '68ad85a7463006c963799a05';
     let capturedBody: any;
     const client = createMockHttpClient(async ({ body }) => {
       capturedBody = body;
@@ -105,7 +106,7 @@ describe('DatasetService (cli/src/domain/dataset/dataset-service.ts)', () => {
 
     const dryRes = await service.update({
       client,
-      datasetId: 'd-123',
+      datasetId: validId,
       input: { name: 'Renamed' },
       dryRun: true
     });
@@ -114,34 +115,41 @@ describe('DatasetService (cli/src/domain/dataset/dataset-service.ts)', () => {
 
     const realRes = await service.update({
       client,
-      datasetId: 'd-123',
+      datasetId: validId,
       input: { name: 'Renamed', intro: 'New intro' }
     });
     expect(realRes.changed).toBe(true);
     expect(capturedBody).toEqual({
-      id: 'd-123',
+      id: validId,
       name: 'Renamed',
       intro: 'New intro'
     });
   });
 
-  it('deletes a dataset via DELETE method', async () => {
+  it('deletes a dataset via DELETE method and supports dryRun preview', async () => {
+    const validId = '68ad85a7463006c963799a05';
     let deleteCalled = false;
     const client = createMockHttpClient(async ({ method, path, query }) => {
       expect(method).toBe('DELETE');
       expect(path).toBe('/core/dataset/delete');
-      expect(query.id).toBe('d-del');
+      expect(query.id).toBe(validId);
       deleteCalled = true;
       return {};
     });
 
-    const res = await service.delete({ client, datasetId: 'd-del' });
+    const dryRes = await service.delete({ client, datasetId: validId, dryRun: true });
+    expect(deleteCalled).toBe(false);
+    expect(dryRes.changed).toBe(false);
+    expect(dryRes.data).toHaveProperty('dryRun', true);
+
+    const res = await service.delete({ client, datasetId: validId });
     expect(deleteCalled).toBe(true);
     expect(res.changed).toBe(true);
-    expect(res.data).toEqual({ datasetId: 'd-del', deleted: true });
+    expect(res.data).toEqual({ datasetId: validId, deleted: true });
   });
 
   it('executes recall test search against dataset', async () => {
+    const validId = '68ad85a7463006c963799a05';
     let capturedBody: any;
     const client = createMockHttpClient(async ({ method, path, body }) => {
       expect(method).toBe('POST');
@@ -170,20 +178,20 @@ describe('DatasetService (cli/src/domain/dataset/dataset-service.ts)', () => {
         client,
         input: { datasetId: '', text: 'query' }
       })
-    ).rejects.toThrow(CliArgumentError);
+    ).rejects.toThrow();
 
     const res = await service.search({
       client,
       input: {
-        datasetId: 'd-target',
+        datasetId: validId,
         text: 'What is FastGPT?',
         similarity: 0.5,
         usingReRank: true
       }
     });
 
-    expect(capturedBody).toEqual({
-      datasetId: 'd-target',
+    expect(capturedBody).toMatchObject({
+      datasetId: validId,
       text: 'What is FastGPT?',
       limit: 5000,
       similarity: 0.5,
@@ -192,5 +200,37 @@ describe('DatasetService (cli/src/domain/dataset/dataset-service.ts)', () => {
     });
     expect(res.data?.list).toHaveLength(1);
     expect(res.message).toContain('Retrieved 1 chunks');
+  });
+
+  it('enforces shared OpenAPI schema validation on invalid inputs (R5)', async () => {
+    const client = createMockHttpClient(async () => ({}));
+
+    // Invalid dataset type
+    await expect(
+      service.create({
+        client,
+        input: { name: 'Test', type: 'invalidType' as any },
+        dryRun: true
+      })
+    ).rejects.toThrow();
+
+    // Invalid parentId format (not an ObjectId or null)
+    await expect(
+      service.create({
+        client,
+        input: { name: 'Test', parentId: 'invalid-object-id' },
+        dryRun: true
+      })
+    ).rejects.toThrow();
+
+    // Invalid datasetId format on update
+    await expect(
+      service.update({
+        client,
+        datasetId: 'invalid-id',
+        input: { name: 'Test' },
+        dryRun: true
+      })
+    ).rejects.toThrow();
   });
 });

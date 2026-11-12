@@ -394,6 +394,7 @@ export function createFastGptHttpClient({
       timeout,
       retry: 0,
       throwHttpErrors: false,
+      redirect: 'manual',
       fetch: activeFetch,
       hooks: {
         beforeRequest: [
@@ -494,6 +495,19 @@ export function createFastGptHttpClient({
         throw new CliNetworkError(`Raw request failed for ${redactText(displayUrl)}: ${msg}`);
       }
 
+      if (response.status >= 300 && response.status < 400) {
+        const location = response.headers.get('location');
+        if (location) {
+          const targetOrigin = new URL(location, displayUrl).origin;
+          if (targetOrigin !== baseOrigin) {
+            throw new CliNetworkError(
+              `Cross-origin redirect to "${redactText(location)}" blocked to prevent credential leakage.`,
+              'Verify FASTGPT_BASE_URL and check for unintended external redirects.'
+            );
+          }
+        }
+      }
+
       if (response.status >= 400) {
         const rawText = await response.text();
         throw mapServerError({
@@ -588,6 +602,19 @@ export function createFastGptHttpClient({
         throw new CliNetworkError(
           `SSE stream connection failed for ${redactText(displayUrl)}: ${msg}`
         );
+      }
+
+      if (response.status >= 300 && response.status < 400) {
+        const location = response.headers.get('location');
+        if (location) {
+          const targetOrigin = new URL(location, displayUrl).origin;
+          if (targetOrigin !== baseOrigin) {
+            throw new CliNetworkError(
+              `Cross-origin redirect to "${redactText(location)}" blocked to prevent credential leakage.`,
+              'Verify FASTGPT_BASE_URL and check for unintended external redirects.'
+            );
+          }
+        }
       }
 
       if (response.status >= 400) {

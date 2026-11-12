@@ -223,7 +223,60 @@ describe('Dataset CLI Commands integration (cli/src/cli/commands/dataset.ts)', (
     expect(searchJson.ok).toBe(true);
     expect(searchJson.data.list[0].q).toBe('What is FastGPT CLI?');
 
-    // 7. dataset delete in non-interactive/JSON mode without --yes -> must be blocked with exit code 2!
+    // 6b. dataset get, update, search via alternative --id flag (R6)
+    const getByIdRes = await execCli({
+      argv: ['dataset', 'get', '--id', OBJECT_ID_DATASET, '--format', 'json'],
+      configDir,
+      fetchFn: mockFetch
+    });
+    expect(getByIdRes.exitCode).toBe(0);
+    expect(JSON.parse(getByIdRes.stdout).data._id).toBe(OBJECT_ID_DATASET);
+
+    const updateByIdRes = await execCli({
+      argv: [
+        'dataset',
+        'update',
+        '--id',
+        OBJECT_ID_DATASET,
+        '--name',
+        'Flag Updated',
+        '--format',
+        'json'
+      ],
+      configDir,
+      fetchFn: mockFetch
+    });
+    expect(updateByIdRes.exitCode).toBe(0);
+
+    const searchByIdRes = await execCli({
+      argv: [
+        'dataset',
+        'search',
+        '--id',
+        OBJECT_ID_DATASET,
+        '--text',
+        'Alternative flag search',
+        '--format',
+        'json'
+      ],
+      configDir,
+      fetchFn: mockFetch
+    });
+    expect(searchByIdRes.exitCode).toBe(0);
+
+    // 7. dataset delete with --dry-run (R7: preview without prompt or deleting)
+    const deleteDryRun = await execCli({
+      argv: ['dataset', 'delete', OBJECT_ID_DATASET, '--dry-run', '--format', 'json'],
+      configDir,
+      isTTY: false,
+      fetchFn: mockFetch
+    });
+    expect(deleteDryRun.exitCode).toBe(0);
+    const deleteDryJson = JSON.parse(deleteDryRun.stdout);
+    expect(deleteDryJson.data.dryRun).toBe(true);
+    expect(deleteDryJson.data.operation).toBe('dataset delete');
+
+    // 7b. dataset delete in non-interactive/JSON mode without --yes -> must be blocked with exit code 2!
     const deleteBlocked = await execCli({
       argv: ['dataset', 'delete', OBJECT_ID_DATASET, '--format', 'json'],
       configDir,
@@ -242,6 +295,16 @@ describe('Dataset CLI Commands integration (cli/src/cli/commands/dataset.ts)', (
     });
     expect(deleteConfirmed.exitCode).toBe(0);
     expect(JSON.parse(deleteConfirmed.stdout).data.deleted).toBe(true);
+
+    // 8b. dataset delete using --id and --yes
+    const deleteByIdConfirmed = await execCli({
+      argv: ['dataset', 'delete', '--id', OBJECT_ID_DATASET, '--yes', '--format', 'json'],
+      configDir,
+      isTTY: false,
+      fetchFn: mockFetch
+    });
+    expect(deleteByIdConfirmed.exitCode).toBe(0);
+    expect(JSON.parse(deleteByIdConfirmed.stdout).data.deleted).toBe(true);
   });
 
   it('blocks appKey with AUTH_MODE_UNSUPPORTED (exit code 3) on dataset commands', async () => {
@@ -286,5 +349,51 @@ describe('Dataset CLI Commands integration (cli/src/cli/commands/dataset.ts)', (
     const errJson = JSON.parse(res.stderr);
     expect(errJson.error.code).toBe('AUTH_MODE_UNSUPPORTED');
     expect(errJson.error.message).toContain('cannot use an app-scoped API Key');
+  });
+
+  it('rejects invalid parameters with exit code 2 and structured validation issues (R5)', async () => {
+    const configDir = await makeConfigDir();
+
+    await writeFile(
+      join(configDir, 'config.json'),
+      JSON.stringify({
+        schemaVersion: 1,
+        currentProfile: 'default',
+        profiles: {
+          default: {
+            baseUrl: 'https://cloud.fastgpt.cn/api',
+            authType: 'apikey',
+            apiKeyType: 'personal',
+            updatedAt: Date.now()
+          }
+        }
+      })
+    );
+    await writeFile(join(configDir, 'credentials.json'), JSON.stringify({ default: RAW_KEY }), {
+      mode: 0o600
+    });
+    if (process.platform !== 'win32') {
+      await chmod(join(configDir, 'credentials.json'), 0o600).catch(() => {});
+    }
+
+    // Invalid type passed to create --dry-run
+    const res = await execCli({
+      argv: [
+        'dataset',
+        'create',
+        '--name',
+        'Invalid Dataset',
+        '--type',
+        'not-a-valid-type',
+        '--dry-run',
+        '--format',
+        'json'
+      ],
+      configDir
+    });
+
+    expect(res.exitCode).toBe(2);
+    const errJson = JSON.parse(res.stderr);
+    expect(errJson.error.code).toBe('CLI_ARGUMENT_INVALID');
   });
 });
