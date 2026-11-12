@@ -22,11 +22,13 @@ export type McpOAuthClientSource = z.infer<typeof McpOAuthClientSourceSchema>;
 /**
  * 加密 state 的长度上限（base64url 字符）。
  *
- * 构建、解析与回调 query 校验共用同一常量：payload 中较长的请求字段（scope、
- * redirectUri）经 AES-GCM 加密 + hex + base64url 后最坏约 15KB，32KB 留出余量，
- * 避免 `/oauth/start` 能生成但回调被 query 校验拒绝的合法 state。
+ * 构建、解析与回调 query 校验共用同一常量。该值同时受 HTTP 层约束：Node 默认
+ * `--max-http-header-size` 为 16KB，常见 nginx `large_client_header_buffers` 为 8KB，
+ * 超限 state 会在回调时直接得到 431，根本进不到 query 校验。因此取 8KB 作为头安全值；
+ * `buildMcpOAuthState` 在加密前按 payload 最坏长度预校验，宁可让 `/oauth/start`
+ * 返回可读错误，也不生成回调必然投递失败的 state。
  */
-export const MCP_OAUTH_STATE_MAX_LENGTH = 32 * 1024;
+export const MCP_OAUTH_STATE_MAX_LENGTH = 8 * 1024;
 
 /** status 投影的 8 种状态（v2.4 §8.2），命中优先级由服务层派生。 */
 export const McpOAuthStatusEnum = {

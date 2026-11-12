@@ -15,7 +15,10 @@ vi.mock('@fastgpt/service/common/rateLimit/interface/mcpOAuth', () => ({
   assertMcpOAuthClientMetadataByIpRateLimit: mocks.clientMetadataIp
 }));
 
-import { assertMcpOAuthRateLimit, normalizeMcpOAuthBasePath } from '@fastgpt/service/core/app/mcpOAuth';
+import {
+  assertMcpOAuthRateLimit,
+  normalizeMcpOAuthBasePath
+} from '@fastgpt/service/core/app/mcpOAuth';
 
 describe('mcpOAuth apiSupport', () => {
   beforeEach(() => {
@@ -30,11 +33,19 @@ describe('mcpOAuth apiSupport', () => {
     // 只有 origin 的绝对 URL 不能拼出 `/https:/...` 或空路径段。
     expect(normalizeMcpOAuthBasePath('https://fastgpt.example.com')).toBe('');
     expect(normalizeMcpOAuthBasePath('https://fastgpt.example.com/')).toBe('');
+    // 非法绝对 URL 不能抛异常扩散成所有 OAuth 路由的 500，按“无 base path”降级。
+    expect(() => normalizeMcpOAuthBasePath('https://')).not.toThrow();
+    expect(normalizeMcpOAuthBasePath('https://')).toBe('');
+    expect(() => normalizeMcpOAuthBasePath('http://[')).not.toThrow();
+    expect(normalizeMcpOAuthBasePath('http://[')).toBe('');
+    expect(normalizeMcpOAuthBasePath('http://a b/')).toBe('');
   });
 
   it('skips IP rate limits when the client IP cannot be resolved', async () => {
     // 空 IP 不能落进同一个全局桶，否则会误伤所有合法回调/文档请求。
-    await expect(assertMcpOAuthRateLimit('callback-ip', { ip: undefined })).resolves.toBeUndefined();
+    await expect(
+      assertMcpOAuthRateLimit('callback-ip', { ip: undefined })
+    ).resolves.toBeUndefined();
     await expect(
       assertMcpOAuthRateLimit('client-metadata-ip', { ip: undefined })
     ).resolves.toBeUndefined();

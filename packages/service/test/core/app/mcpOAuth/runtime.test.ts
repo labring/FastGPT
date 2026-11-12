@@ -11,6 +11,7 @@ import { McpOAuthApiError } from '@fastgpt/service/core/app/mcpOAuth/errors';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import { encryptSecretValue } from '@fastgpt/service/common/secret/utils';
+import { McpAuthRequiredError } from '@fastgpt/service/core/app/mcpAuthError';
 import { McpOAuthErrorCodeEnum } from '@fastgpt/global/core/app/tool/mcpTool/oauth';
 
 const appIds: Types.ObjectId[] = [];
@@ -113,8 +114,15 @@ const asOAuthError = async (promise: Promise<unknown>) => {
   throw new Error('Expected promise to reject');
 };
 
-const httpError = (status: number, message = 'request failed') =>
-  Object.assign(new Error(message), { status });
+// 真实调用链里 `mcp.ts` 会把 transport 401/403 归一化成 `McpAuthRequiredError`，
+// runtime 只认这个 transport 语义（普通对象上的 status 不再触发刷新）。
+const httpError = (status: 401 | 403, message = 'request failed') =>
+  new McpAuthRequiredError(status, {
+    message,
+    ...(message.includes('insufficient_scope')
+      ? { wwwAuthenticate: 'Bearer error="insufficient_scope"' }
+      : {})
+  });
 
 describe('mcpOAuth runtime', () => {
   afterEach(async () => {
@@ -247,7 +255,9 @@ describe('mcpOAuth runtime', () => {
 
   it('gives up after a second 401 without looping', async () => {
     const { appId } = await createFixture({});
-    setMcpOAuthFetchImpl(async () => json({ access_token: 'a', token_type: 'Bearer', expires_in: 600 }));
+    setMcpOAuthFetchImpl(async () =>
+      json({ access_token: 'a', token_type: 'Bearer', expires_in: 600 })
+    );
 
     let runs = 0;
     const error = await asOAuthError(
@@ -262,6 +272,38 @@ describe('mcpOAuth runtime', () => {
     );
     expect(runs).toBe(2);
     expect(error.oauthCode).toBe(McpOAuthErrorCodeEnum.reauthRequired);
+  });
+
+  it('does not refresh on a tool-level error that merely carries status 401', async () => {
+    const { appId } = await createFixture({
+      token: {
+        secret: { access_token: encryptSecretValue({ value: 'valid' }) },
+        expiresAt: Date.now() + 60_000,
+        obtainedAt: Date.now()
+      }
+    });
+    let refreshCalls = 0;
+    setMcpOAuthFetchImpl(async () => {
+      refreshCalls += 1;
+      return json({ access_token: 'x', token_type: 'Bearer', expires_in: 600 });
+    });
+
+    let runs = 0;
+    const toolError = Object.assign(new Error('tool execution failed'), { status: 401 });
+    await expect(
+      withMcpOAuthRetry({
+        appId,
+        nodeId: 'node-1',
+        run: async () => {
+          runs += 1;
+          throw toolError;
+        }
+      })
+    ).rejects.toBe(toolError);
+
+    // 工具级 401 原样抛出：不刷新、不重试，也不误报 reauthRequired。
+    expect(runs).toBe(1);
+    expect(refreshCalls).toBe(0);
   });
 
   it('does not refresh on insufficient_scope', async () => {

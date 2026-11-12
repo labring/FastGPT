@@ -5,6 +5,9 @@
  * `core/app/mcpOAuth/runtime.ts` 判定，避免两处重复实现 401/403 语义。
  */
 
+import { SseError } from '@modelcontextprotocol/sdk/client/sse.js';
+import { StreamableHTTPError } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
+
 export type McpOAuthChallenge = {
   scheme: string;
   /** RFC 6750 `error`，例如 `insufficient_scope`。 */
@@ -16,7 +19,10 @@ export type McpOAuthChallenge = {
   params: Record<string, string>;
 };
 
+/** 单个 challenge 的解析上限；超长时只截断当前 challenge，不影响后续挑战。 */
 const MCP_WWW_AUTHENTICATE_MAX_LENGTH = 4096;
+/** 整条 header 的保留上限（Node 默认 header 上限 16KB，超出会被运行时拒绝）。 */
+export const MCP_WWW_AUTHENTICATE_MAX_HEADER_LENGTH = 16 * 1024;
 
 const WWW_AUTHENTICATE_PARAM_PATTERN =
   /([A-Za-z0-9!#$%&'*+.^_`|~-]+)\s*=\s*("((?:[^"\\]|\\.)*)"|[^,\s]+)/g;
@@ -94,7 +100,7 @@ const parseWwwAuthenticateChallenge = (challenge: string): McpOAuthChallenge | u
  */
 export const parseMcpWWWAuthenticate = (header?: string | null): McpOAuthChallenge | undefined => {
   if (typeof header !== 'string') return undefined;
-  const value = header.trim().slice(0, MCP_WWW_AUTHENTICATE_MAX_LENGTH);
+  const value = header.trim().slice(0, MCP_WWW_AUTHENTICATE_MAX_HEADER_LENGTH);
   if (!value) return undefined;
 
   const challenges: string[] = [];
@@ -112,7 +118,10 @@ export const parseMcpWWWAuthenticate = (header?: string | null): McpOAuthChallen
   if (current) challenges.push(current);
 
   const parsed = challenges
-    .map(parseWwwAuthenticateChallenge)
+    // 先拆分再逐个截断：超长的非 Bearer 挑战不能挤掉后面的 Bearer 参数。
+    .map((challenge) =>
+      parseWwwAuthenticateChallenge(challenge.slice(0, MCP_WWW_AUTHENTICATE_MAX_LENGTH))
+    )
     .filter((challenge): challenge is McpOAuthChallenge => challenge !== undefined);
   return parsed.find((challenge) => challenge.scheme === 'bearer') ?? parsed[0];
 };
@@ -141,7 +150,11 @@ export class McpAuthRequiredError extends Error {
     this.code = code;
     this.status = code;
     if (options.wwwAuthenticate) {
-      this.wwwAuthenticate = options.wwwAuthenticate.slice(0, MCP_WWW_AUTHENTICATE_MAX_LENGTH);
+      // 整条 header 先保留到 Node 的 header 上限；截断交给解析器按挑战逐个处理。
+      this.wwwAuthenticate = options.wwwAuthenticate.slice(
+        0,
+        MCP_WWW_AUTHENTICATE_MAX_HEADER_LENGTH
+      );
       this.challenge = parseMcpWWWAuthenticate(this.wwwAuthenticate);
       this.resourceMetadataUrl = this.challenge?.resourceMetadata;
     }
@@ -150,6 +163,62 @@ export class McpAuthRequiredError extends Error {
     }
   }
 }
+
+/**
+ * 保留 SSE transport 内部丢弃的 HTTP 状态码（POST 非 2xx 时由 fetch 包装层抛出）。
+ * 与 `McpAuthRequiredError` 同属 transport 层，runtime 的鉴权判定只认这些错误类。
+ */
+export class McpHttpStatusError extends Error {
+  constructor(
+    readonly code: number,
+    statusText?: string,
+    readonly responseBody?: string
+  ) {
+    super(
+      `MCP HTTP request failed: ${code}${statusText ? ` ${statusText}` : ''}${
+        responseBody ? `: ${responseBody}` : ''
+      }`
+    );
+    this.name = 'McpHttpStatusError';
+  }
+}
+
+const MCP_TRANSPORT_ERROR_CLASSES = [
+  McpAuthRequiredError,
+  McpHttpStatusError,
+  StreamableHTTPError,
+  SseError
+] as const;
+
+/**
+ * 仅提取 transport 层错误的 HTTP 状态码（含 cause 链）。
+ *
+ * 工具级错误即使恰好带 `code`/`status: 401` 也只是业务错误：这里刻意不读取任意对象上的
+ * 状态字段，保证 `mcp.ts` 的错误归一化与 `mcpOAuth/runtime.ts` 的刷新/重授权判定使用同一
+ * 语义——只有 transport 的 401/403 才触发 OAuth 刷新。
+ */
+export const getMcpTransportHttpStatus = (
+  error: unknown,
+  visited = new Set<unknown>()
+): number | undefined => {
+  if (typeof error !== 'object' || error === null || visited.has(error)) return undefined;
+  visited.add(error);
+
+  for (const ErrorClass of MCP_TRANSPORT_ERROR_CLASSES) {
+    if (error instanceof ErrorClass) {
+      const code = (error as { code?: unknown }).code;
+      return typeof code === 'number' ? code : undefined;
+    }
+  }
+  if ('cause' in error) {
+    return getMcpTransportHttpStatus(error.cause, visited);
+  }
+  return undefined;
+};
+
+/** 仅 transport 层的 401（401/403 用 `getMcpTransportHttpStatus` 自行比较）。 */
+export const isMcpTransportUnauthorizedError = (error: unknown) =>
+  getMcpTransportHttpStatus(error) === 401;
 
 /** 读取错误上暴露的 HTTP 状态码（`code`/`status`/`statusCode`），供鉴权判定共用。 */
 export const getMcpErrorStatusCode = (error: unknown): number | undefined => {

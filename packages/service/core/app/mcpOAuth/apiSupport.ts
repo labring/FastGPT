@@ -35,11 +35,22 @@ export type McpOAuthRouteConfig = {
 };
 
 export const normalizeMcpOAuthBasePath = (basePath: string | undefined) => {
-  const raw = (basePath ?? '').trim().replace(/\/+$/, '');
+  const raw = (basePath ?? '').trim();
   if (!raw) return '';
   // NEXT_PUBLIC_BASE_URL 历史上允许配置为绝对 URL；拼接到 FE_DOMAIN 前只保留 pathname，
   // 否则会生成 `/https://host/base/...` 这样的非法回调地址。
-  const trimmed = /^https?:\/\//i.test(raw) ? new URL(raw).pathname.replace(/\/+$/, '') : raw;
+  // 配置成 `https://`、`http://[` 等非法绝对 URL 时按“无 base path”降级：
+  // 解析异常不能扩散到所有 OAuth 路由（start/callback/client-metadata）变成 500。
+  // 注意先按完整 URL 解析再裁尾斜杠，否则 `https://` 会被裁成 `https:` 后绕过绝对 URL 分支。
+  let pathname = raw;
+  if (/^https?:\/\//i.test(raw)) {
+    try {
+      pathname = new URL(raw).pathname;
+    } catch {
+      pathname = '';
+    }
+  }
+  const trimmed = pathname.replace(/\/+$/, '');
   if (!trimmed) return '';
   return trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
 };

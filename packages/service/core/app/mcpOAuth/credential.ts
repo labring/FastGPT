@@ -425,6 +425,7 @@ export const mergeMcpOAuthFromPublished = ({
         revokeLease,
         lastError,
         client,
+        clientSource,
         issuer: previousIssuer,
         resource,
         ...rest
@@ -437,11 +438,15 @@ export const mergeMcpOAuthFromPublished = ({
         nextIssuer !== undefined &&
         previousIssuer !== undefined &&
         nextIssuer === previousIssuer;
+      // client 被丢弃时 clientSource 必须同步清空，避免持久化出“来源已声明但无 client”
+      // 的不一致记录（status 投影与 selectMcpOAuthClient 都会据此误判）。
+      const nextClientSource = keepClient ? clientSource : undefined;
       return {
         oauth: {
           ...(rest as McpToolSetOAuthConfigType),
           ...(nextIssuer !== undefined ? { issuer: nextIssuer } : {}),
           ...(keepClient ? { client } : {}),
+          ...(nextClientSource !== undefined ? { clientSource: nextClientSource } : {}),
           ...(nextClientMode ? { clientMode: nextClientMode } : {}),
           ...(nextScope !== undefined ? { scope: nextScope } : {})
         },

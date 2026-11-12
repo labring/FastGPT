@@ -16,7 +16,10 @@ import {
 } from '@fastgpt/service/core/app/mcpOAuth';
 import { McpOAuthApiError } from '@fastgpt/service/core/app/mcpOAuth/errors';
 import { MongoMcpOAuthState } from '@fastgpt/service/core/app/mcpOAuth/schema';
-import { McpOAuthErrorCodeEnum } from '@fastgpt/global/core/app/tool/mcpTool/oauth';
+import {
+  MCP_OAUTH_STATE_MAX_LENGTH,
+  McpOAuthErrorCodeEnum
+} from '@fastgpt/global/core/app/tool/mcpTool/oauth';
 
 const ids = () => ({
   appId: new Types.ObjectId().toString(),
@@ -84,7 +87,9 @@ describe('mcpOAuth state', () => {
     ]);
 
     expect(results.filter((result) => result.status === 'fulfilled')).toHaveLength(1);
-    const rejected = results.find((result) => result.status === 'rejected') as PromiseRejectedResult;
+    const rejected = results.find(
+      (result) => result.status === 'rejected'
+    ) as PromiseRejectedResult;
     expect((rejected.reason as McpOAuthApiError).oauthCode).toBe(
       McpOAuthErrorCodeEnum.stateReplayed
     );
@@ -103,15 +108,34 @@ describe('mcpOAuth state', () => {
     expect(error.oauthCode).toBe(McpOAuthErrorCodeEnum.stateReplayed);
   });
 
-  it('round-trips a state larger than the old 4KB callback limit', () => {
-    const scope = Array.from({ length: 1024 }, () => 's').join('');
-    const redirectUri = `https://fastgpt.example.com/callback?payload=${'r'.repeat(1900)}`;
-    const issuer = `https://as.example.org/${'i'.repeat(2000)}`;
+  it('round-trips the largest state that fits the HTTP header safe cap', () => {
+    const scope = Array.from({ length: 500 }, () => 's').join('');
+    const redirectUri = `https://fastgpt.example.com/callback?payload=${'r'.repeat(1000)}`;
+    const issuer = `https://as.example.org/${'i'.repeat(600)}`;
     const built = build({ scope, redirectUri, issuer });
 
-    // 加密 + hex + base64url 后必然超过旧的 4096 上限，回调 query 不能再拒绝它。
+    // 必须大于旧的 4KB 回调上限，同时不超过 HTTP 头安全值（nginx 默认 8KB）。
     expect(built.state.length).toBeGreaterThan(4096);
+    expect(built.state.length).toBeLessThanOrEqual(MCP_OAUTH_STATE_MAX_LENGTH);
     expect(parseMcpOAuthState(built.state)).toMatchObject({ scope, redirectUri, issuer });
+  });
+
+  it('rejects a schema-max payload whose worst-case state exceeds the header safe cap', () => {
+    let error: McpOAuthApiError | undefined;
+    try {
+      build({
+        scope: 's'.repeat(1024),
+        redirectUri: `https://fastgpt.example.com/callback?payload=${'r'.repeat(2048)}`,
+        issuer: `https://as.example.org/${'i'.repeat(2048)}`,
+        resource: `https://mcp.example.org/${'x'.repeat(2048)}`
+      });
+    } catch (caught) {
+      error = caught as McpOAuthApiError;
+    }
+
+    // 预校验必须给出可读错误，而不是先加密/写库再发现回调无法投递。
+    expect(error?.oauthCode).toBe(McpOAuthErrorCodeEnum.stateInvalid);
+    expect(error?.message).toMatch(/HTTP header safe limit/);
   });
 
   it('marks previous pending states consumed without expiring purgeAt', async () => {
@@ -142,9 +166,9 @@ describe('mcpOAuth state', () => {
     expect(cookie).toBe(
       'mcp_oauth_bind_abc=binding; Path=/api/core/app/mcpTools/oauth; Max-Age=600; HttpOnly; SameSite=Lax; Secure'
     );
-    expect(clearMcpOAuthBindCookie({ appId: 'abc', feDomain: 'http://localhost:3000' })).not.toContain(
-      'Secure'
-    );
+    expect(
+      clearMcpOAuthBindCookie({ appId: 'abc', feDomain: 'http://localhost:3000' })
+    ).not.toContain('Secure');
     expect(readCookie(cookie, getMcpOAuthBindCookieName('abc'))).toBe('binding');
   });
 
