@@ -124,4 +124,14 @@ describe('syncSiteAvatarLifecycle', () => {
     expect(mocks.refreshAvatar).toHaveBeenCalledWith(newAvatar);
     expect(mocks.scheduleAvatarDeletion).not.toHaveBeenCalled();
   });
+
+  it('tracks auth.sso.icon alongside site avatars for retention and delayed deletion', async () => {
+    await syncSiteAvatarLifecycle({
+      previous: { sso: { icon: oldAvatar } },
+      next: { sso: { icon: newAvatar } }
+    });
+
+    expect(mocks.refreshAvatar).toHaveBeenCalledWith(newAvatar);
+    expect(mocks.scheduleAvatarDeletion).toHaveBeenCalledWith({ avatar: oldAvatar });
+  });
 });

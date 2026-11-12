@@ -8,12 +8,13 @@ import {
 type SiteAvatarFields = {
   favicon?: string;
   navbarItems?: { avatar?: string }[];
+  sso?: { icon?: string };
 };
 
 /**
- * 维护站点图片生命周期。
- * 先按 favicon 与导航项的全部引用去重：新图取消临时 TTL，失去引用的旧图写延迟删除 TTL。
- * 删除前读取最新站点配置，旧保存的异步清理即使晚于新保存执行，也不能删除已被重新引用的图片。
+ * 维护系统配置图片生命周期（site.favicon、site.navbarItems 与 auth.sso.icon）。
+ * 先按全部引用去重：新图取消临时 TTL，失去引用的旧图写延迟删除 TTL。
+ * 删除前读取最新系统配置，旧保存的异步清理即使晚于新保存执行，也不能删除已被重新引用的图片。
  * 仅处理本服务上传的 avatar/ 图片，外部 URL 与内置图标不参与清理。
  * 调用发生在配置保存后，失败由调用方记录，不把已提交的配置报告为保存失败。
  */
@@ -25,11 +26,13 @@ export const syncSiteAvatarLifecycle = async ({
   next: SiteAvatarFields;
 }) => {
   const source = getS3AvatarSource();
-  const getRefs = (site: SiteAvatarFields) =>
+  const getRefs = (fields: SiteAvatarFields) =>
     new Set(
-      [site.favicon, ...(site.navbarItems ?? []).map((item) => item.avatar)].filter(
-        (avatar): avatar is string => avatar?.startsWith(`${imageBaseUrl}avatar/`) === true
-      )
+      [
+        fields.favicon,
+        ...(fields.navbarItems ?? []).map((item) => item.avatar),
+        fields.sso?.icon
+      ].filter((avatar): avatar is string => avatar?.startsWith(`${imageBaseUrl}avatar/`) === true)
     );
   const previousRefs = getRefs(previous);
   const nextRefs = getRefs(next);

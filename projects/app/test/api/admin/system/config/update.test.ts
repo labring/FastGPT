@@ -319,4 +319,32 @@ describe('instance config update API', () => {
       global.getSsoConfiguredHandler = originalSsoHandler;
     }
   });
+
+  it('copies a newly uploaded auth.sso.icon and triggers avatar lifecycle sync', async () => {
+    const uploadedIcon = '/api/system/img/avatar/team/sso-uploaded.png';
+    const copiedIcon = '/api/system/img/avatar/site/file/sso-copied.png';
+    mocks.copyForSiteReference.mockResolvedValueOnce(copiedIcon);
+
+    const response = await handler({
+      body: {
+        items: [
+          {
+            domain: 'auth',
+            expectedRevision: 0,
+            overrides: { sso: { icon: uploadedIcon } }
+          }
+        ]
+      }
+    } as any);
+
+    expect(mocks.copyForSiteReference).toHaveBeenCalledWith({ avatar: uploadedIcon });
+    expect(response.results[0].overrides).toMatchObject({ sso: { icon: copiedIcon } });
+    expect(mocks.syncSiteAvatarLifecycle).toHaveBeenCalledWith(
+      expect.objectContaining({
+        next: expect.objectContaining({
+          sso: expect.objectContaining({ icon: copiedIcon })
+        })
+      })
+    );
+  });
 });

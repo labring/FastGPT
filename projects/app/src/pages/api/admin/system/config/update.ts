@@ -43,8 +43,10 @@ import { AdminAuditEventEnum } from '@fastgpt/global/support/user/audit/constant
 const logger = getLogger(LogCategories.SYSTEM);
 
 const isSiteAvatarUrl = (avatar: string) => avatar.startsWith(`${imageBaseUrl}avatar/`);
+const isPlainObject = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
 
-/** 将站点 overrides 中本次新引用的头像替换为独立复制对象。 */
+/** 将站点或登录 overrides 中本次新引用的头像替换为独立复制对象。 */
 const rewriteSiteAvatarOverrides = ({
   overrides,
   replacements
@@ -67,6 +69,12 @@ const rewriteSiteAvatarOverrides = ({
         ? { ...navbarItem, avatar: rewrite(navbarItem.avatar) }
         : navbarItem;
     });
+  }
+  if (isPlainObject(next.sso) && typeof next.sso.icon === 'string') {
+    next.sso = {
+      ...next.sso,
+      icon: rewrite(next.sso.icon)
+    };
   }
 
   return next;
@@ -141,10 +149,12 @@ async function handler(
     }
   }
 
-  // 2. site 域涉及头像资源：先校验本次提交形状，再取旧值做生命周期对比。
-  // parseApiInput 的外壳 Schema 不校验 overrides 叶子，后续 getSiteAvatarRefs 会直接访问
-  // favicon/navbarItems，因此必须在复制/枚举前复用域 override Schema，避免非法值变成 500。
+  // 2. site 域（favicon/navbarItems）与 auth.sso.icon 涉及头像资源：
+  // 先校验本次提交形状，再按实际触及的域读取旧值做生命周期对比，避免无关域额外读库。
   const siteItem = items.find((item) => item.domain === 'site');
+  const authAvatarItem = items.find(
+    (item) => item.domain === 'auth' && isPlainObject(item.overrides) && 'sso' in item.overrides
+  );
   if (siteItem) {
     try {
       parseDomainOverrides({ domain: 'site', overrides: siteItem.overrides });
@@ -155,16 +165,46 @@ async function handler(
       throw error;
     }
   }
+  if (authAvatarItem) {
+    try {
+      parseDomainOverrides({ domain: 'auth', overrides: authAvatarItem.overrides });
+    } catch (error) {
+      if (error instanceof ZodError) {
+        throw new ApiRequestInputParseError(error, { inputSource: 'body' });
+      }
+      throw error;
+    }
+  }
   const previousSiteConfig = siteItem ? (await getDomainConfig('site')).effectiveConfig : undefined;
+  const previousAuthConfig = authAvatarItem
+    ? (await getDomainConfig('auth')).effectiveConfig
+    : undefined;
 
-  // 3. 新引用的站点头像先复制为独立对象并改写本次 overrides。
+  // 3. 新引用的站点头像与 SSO 图标先复制为独立对象并改写本次 overrides。
   // 旧删除任务可能已经领取/正在删除原对象；新配置只引用复制件，避免与旧任务共享同一 key。
   // 复制件带 24h 临时 TTL，保存成功后由生命周期同步移除；保存失败则由 TTL 回收。
   let itemsToSave = items;
-  if (siteItem && previousSiteConfig) {
-    const previousRefs = getSiteAvatarRefs(previousSiteConfig);
-    const nextSite = deepMergeConfig(previousSiteConfig, siteItem.overrides) as SiteAvatarFields;
-    const newRefs = [...getSiteAvatarRefs(nextSite)].filter(
+  if ((siteItem && previousSiteConfig) || (authAvatarItem && previousAuthConfig)) {
+    const previousAvatarFields: SiteAvatarFields = {
+      ...(previousSiteConfig ?? {}),
+      ...(previousAuthConfig ? { sso: previousAuthConfig.sso } : {})
+    };
+    const nextSitePart =
+      siteItem && previousSiteConfig
+        ? (deepMergeConfig(previousSiteConfig, siteItem.overrides) as SiteAvatarFields)
+        : {};
+    const nextAuthPart =
+      authAvatarItem && previousAuthConfig
+        ? (deepMergeConfig(previousAuthConfig, authAvatarItem.overrides) as {
+            sso?: { icon?: string };
+          })
+        : {};
+    const nextAvatarFields: SiteAvatarFields = {
+      ...nextSitePart,
+      ...(nextAuthPart.sso ? { sso: nextAuthPart.sso } : {})
+    };
+    const previousRefs = getSiteAvatarRefs(previousAvatarFields);
+    const newRefs = [...getSiteAvatarRefs(nextAvatarFields)].filter(
       (avatar) => !previousRefs.has(avatar) && isSiteAvatarUrl(avatar)
     );
     const replacements = new Map<string, string>();
@@ -182,7 +222,7 @@ async function handler(
 
     if (replacements.size > 0) {
       itemsToSave = items.map((item) =>
-        item.domain === 'site'
+        item.domain === 'site' || (item.domain === 'auth' && authAvatarItem !== undefined)
           ? {
               ...item,
               overrides: rewriteSiteAvatarOverrides({
@@ -220,16 +260,28 @@ async function handler(
     logger.error('Failed to apply instance config after save', { error });
   });
 
-  // 6. 站点头像生命周期同步是保存后的清理动作，失败不影响保存结果
-  if (siteItem && previousSiteConfig) {
+  // 6. 站点头像与 SSO 图标生命周期同步是保存后的清理动作，失败不影响保存结果
+  if ((siteItem && previousSiteConfig) || (authAvatarItem && previousAuthConfig)) {
     const currentSite = savedConfigs.find((result) => result.domain === 'site');
-    if (currentSite)
-      void syncSiteAvatarLifecycle({
-        previous: previousSiteConfig,
-        next: currentSite.effectiveConfig as typeof previousSiteConfig
-      }).catch((error) => {
-        logger.error('Failed to sync site avatar lifecycle after config update', { error });
-      });
+    const currentAuth = savedConfigs.find((result) => result.domain === 'auth');
+    const nextSiteFields = (currentSite?.effectiveConfig ??
+      previousSiteConfig ??
+      {}) as SiteAvatarFields;
+    const nextAuthSso =
+      (currentAuth?.effectiveConfig as { sso?: { icon?: string } } | undefined)?.sso ??
+      previousAuthConfig?.sso;
+    void syncSiteAvatarLifecycle({
+      previous: {
+        ...(previousSiteConfig ?? {}),
+        ...(previousAuthConfig ? { sso: previousAuthConfig.sso } : {})
+      },
+      next: {
+        ...nextSiteFields,
+        ...(nextAuthSso ? { sso: nextAuthSso } : {})
+      }
+    }).catch((error) => {
+      logger.error('Failed to sync site avatar lifecycle after config update', { error });
+    });
   }
 
   // 7. 只投影本次提交结果，不再读库：后续刷新异常或并发保存不能改变这次保存的响应。

@@ -19,34 +19,50 @@ export const toSiteAvatarKey = (avatar: string): string =>
 export type SiteAvatarFields = {
   favicon?: string;
   navbarItems?: { avatar?: string }[];
+  sso?: { icon?: string };
 };
 
-/** 提取站点配置中所有头像引用（favicon 与 navbarItems），保持原始 URL 形态。 */
-export const getSiteAvatarRefs = (site: SiteAvatarFields): Set<string> => {
-  const list = [site.favicon, ...(site.navbarItems ?? []).map((item) => item.avatar)].filter(
-    Boolean
-  ) as string[];
+/** 提取系统配置中所有头像引用（site.favicon、site.navbarItems 与 auth.sso.icon），保持原始 URL 形态。 */
+export const getSiteAvatarRefs = (fields: SiteAvatarFields): Set<string> => {
+  const list = [
+    fields.favicon,
+    ...(fields.navbarItems ?? []).map((item) => item.avatar),
+    fields.sso?.icon
+  ].filter(Boolean) as string[];
   return new Set(list);
 };
 
 /**
- * 读取当前站点配置中仍被引用的头像 key 集合。
+ * 读取当前系统配置（site + auth）中仍被引用的头像 key 集合。
  *
  * 头像清理不能再仅依赖某次保存时的 previous/next 快照：旧保存的后台清理可能在新保存
- * 重新引用图片之后才恢复执行。删除前读取最新配置，可避免按过期快照执行破坏性删除。
+ * 重新引用图片之后才恢复执行，且 site 与 auth.sso.icon 可能共用同一张头像。
+ * 删除前读取最新配置，可避免按过期快照执行破坏性删除。
  * 读取失败返回 undefined，调用方应保留对象/TTL 并等待下一轮重试。
  */
 export const getCurrentSiteAvatarKeys = async (): Promise<Set<string> | undefined> => {
   try {
-    const doc = await MongoSystemInstanceConfig.findOne({ domain: 'site' }).lean();
+    const docs = await MongoSystemInstanceConfig.find({
+      domain: { $in: ['site', 'auth'] }
+    }).lean();
+    const siteDoc = docs.find((item) => item.domain === 'site');
+    const authDoc = docs.find((item) => item.domain === 'auth');
+
     const site = resolveDomainEffectiveConfig({
       domain: 'site',
-      overrides: doc?.overrides ?? {},
+      overrides: siteDoc?.overrides ?? {},
       options: { strict: false }
     });
-    const avatars = [site.favicon, ...site.navbarItems.map((item) => item.avatar)].filter(
-      Boolean
-    ) as string[];
+    const auth = resolveDomainEffectiveConfig({
+      domain: 'auth',
+      overrides: authDoc?.overrides ?? {},
+      options: { strict: false }
+    });
+    const avatars = [
+      site.favicon,
+      ...site.navbarItems.map((item) => item.avatar),
+      auth.sso.icon
+    ].filter(Boolean) as string[];
 
     return new Set(
       avatars
