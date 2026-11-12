@@ -20,7 +20,15 @@ export default defineConfig({
   use: {
     browserName: 'chromium',
     headless: process.env.FASTGPT_TEST_HEADED !== '1',
-    launchOptions: { slowMo: Number(process.env.FASTGPT_TEST_SLOW_MO ?? 0) },
+    // 真实栈使用自签 HTTPS（203.0.113.10）；仅测试进程按需忽略证书错误。
+    ignoreHTTPSErrors: process.env.FASTGPT_TEST_IGNORE_HTTPS === '1',
+    launchOptions: {
+      // 优先复用系统 chromium（/usr/bin/chromium），不下载浏览器。
+      ...(process.env.FASTGPT_TEST_CHROMIUM_PATH
+        ? { executablePath: process.env.FASTGPT_TEST_CHROMIUM_PATH }
+        : {}),
+      slowMo: Number(process.env.FASTGPT_TEST_SLOW_MO ?? 0)
+    },
     baseURL: process.env.FASTGPT_TEST_BASE_URL,
     storageState: process.env.FASTGPT_TEST_STORAGE_STATE,
     viewport: { width: 1600, height: 1000 },

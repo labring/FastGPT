@@ -2,6 +2,8 @@ import { NodeOutputKeyEnum, WorkflowIOValueTypeEnum } from '../../../workflow/co
 import { i18nT } from '../../../../common/i18n/utils';
 import { FlowNodeOutputTypeEnum, FlowNodeTypeEnum } from '../../../workflow/node/constant';
 import { type McpToolConfigType } from '../../tool/mcpTool/type';
+import { type McpOAuthAuthMode } from './oauth';
+import { type McpToolSetOAuthConfigType } from './oauthConfig';
 import { type RuntimeNodeItemType } from '../../../workflow/runtime/type';
 import { type StoreSecretValueType } from '../../../../common/secret/type';
 import { jsonSchema2NodeInput } from '../../jsonschema';
@@ -29,17 +31,24 @@ export const getMCPToolSetRuntimeNode = ({
   url,
   toolList,
   headerSecret,
+  authMode,
+  oauth,
+  nodeId,
   name,
   avatar
 }: {
   url: string;
   toolList: McpToolConfigType[];
   headerSecret?: StoreSecretValueType;
+  authMode?: McpOAuthAuthMode;
+  oauth?: McpToolSetOAuthConfigType;
+  /** 保存时必须传入旧 nodeId，避免 OAuth 配置写到孤立节点。 */
+  nodeId?: string;
   name?: string;
   avatar?: string;
 }): RuntimeNodeItemType => {
   return {
-    nodeId: getNanoid(16),
+    nodeId: nodeId ?? getNanoid(16),
     flowNodeType: FlowNodeTypeEnum.toolSet,
     avatar,
     intro: 'MCP Tools',
@@ -47,6 +56,10 @@ export const getMCPToolSetRuntimeNode = ({
       mcpToolSet: {
         toolList,
         headerSecret,
+        // 运行期节点必须显式携带模式：schema 默认 headers 会让仅含 oauth 的旧配置被误读。
+        authMode: authMode ?? (oauth ? 'oauth' : 'headers'),
+        // 克隆 oauth，避免调用方持有的持久化对象与 runtime 节点共享引用。
+        ...(oauth ? { oauth: structuredClone(oauth) } : {}),
         url
       }
     },

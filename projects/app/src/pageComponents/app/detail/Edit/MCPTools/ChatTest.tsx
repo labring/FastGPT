@@ -23,11 +23,17 @@ import { valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
 const ChatTest = ({
   currentTool,
   url,
-  headerSecret
+  headerSecret,
+  appId,
+  nodeId,
+  authMode = 'headers'
 }: {
   currentTool?: McpToolConfigType;
   url: string;
   headerSecret: StoreSecretValueType;
+  appId?: string;
+  nodeId?: string;
+  authMode?: 'headers' | 'oauth';
 }) => {
   const { t } = useTranslation();
 
@@ -57,6 +63,16 @@ const ChatTest = ({
           }
         }
       );
+
+      // oauth 模式由服务端按已保存节点注入/刷新 token，不传 headerSecret。
+      if (authMode === 'oauth' && appId) {
+        return await postRunMCPTool({
+          params: data,
+          appId,
+          ...(nodeId ? { nodeId } : {}),
+          toolName: currentTool.name
+        });
+      }
 
       return await postRunMCPTool({
         params: data,
@@ -163,11 +179,17 @@ const ChatTest = ({
 const Render = ({
   currentTool,
   url,
-  headerSecret
+  headerSecret,
+  appId,
+  nodeId,
+  authMode = 'headers'
 }: {
   currentTool?: McpToolConfigType;
   url: string;
   headerSecret: StoreSecretValueType;
+  appId?: string;
+  nodeId?: string;
+  authMode?: 'headers' | 'oauth';
 }) => {
   const { chatId } = useChatStore();
   const { appDetail } = useContextSelector(AppContext, (v) => v);
@@ -191,7 +213,14 @@ const Render = ({
       showWholeResponse={true}
     >
       <ChatRecordContextProvider params={chatRecordProviderParams}>
-        <ChatTest currentTool={currentTool} url={url} headerSecret={headerSecret} />
+        <ChatTest
+          currentTool={currentTool}
+          url={url}
+          headerSecret={headerSecret}
+          appId={appId}
+          nodeId={nodeId}
+          authMode={authMode}
+        />
       </ChatRecordContextProvider>
     </ChatItemContextProvider>
   );

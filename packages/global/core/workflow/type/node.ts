@@ -4,6 +4,8 @@ import { FlowNodeInputItemTypeSchema, FlowNodeOutputItemTypeSchema } from './io'
 import { FlowNodeTemplateOutputItemTypeSchema } from '../template/output';
 import { HttpToolConfigTypeSchema } from '../../app/tool/httpTool/type';
 import { McpToolConfigSchema } from '../../app/tool/mcpTool/type';
+import { McpToolSetOAuthConfigSchema } from '../../app/tool/mcpTool/oauthConfig';
+import { McpOAuthAuthModeSchema } from '../../app/tool/mcpTool/oauth';
 import { ToolSetToolSummarySchema } from '../../app/tool/toolSet/type';
 import { ParentIdSchema } from '../../../common/parentFolder/type';
 import { InteractiveNodeResponseTypeSchema } from '../template/system/interactive/type';
@@ -18,8 +20,14 @@ export const McpToolSetRuntimeConfigSchema = z.object({
   url: z.string().meta({
     description: 'MCP 服务地址'
   }),
+  authMode: McpOAuthAuthModeSchema.default('headers').meta({
+    description: '鉴权模式；oauth 时运行期忽略 headerSecret'
+  }),
   headerSecret: StoreSecretValueTypeSchema.nullish().meta({
     description: 'MCP 服务请求头密钥配置'
+  }),
+  oauth: McpToolSetOAuthConfigSchema.optional().meta({
+    description: 'OAuth 授权配置与凭证（仅工具集 App 根完整配置）'
   }),
   toolList: z.array(McpToolConfigSchema).meta({
     description: 'MCP 工具集包含的工具列表'
