@@ -10,7 +10,6 @@ import type {
   UpdateModelOrderBody
 } from '@fastgpt/global/openapi/core/ai/model/api';
 import { getLogger, LogCategories } from '../../../common/logger';
-import { Types } from '../../../common/mongo';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
 import { invalidateTeamModelCatalog } from './catalog/cache';
 import { incrementModelCatalogRevision, type ModelCatalogScope } from './catalog/entity';
@@ -206,7 +205,7 @@ export const updateModelOrder = async ({
 
 /**
  * 创建时覆盖归属、忽略入参 rank 并将新建模型写入置顶位 `0`；
- * 手动排序固定使用 `1..N`，因此新建模型无需修改存量记录即可排在首位，多次新增之间按 `_id: -1` 保序。
+ * 手动排序固定使用 `1..N`，因此新建模型无需修改存量记录即可排在首位，多个 `0` 之间沿用快照原有的 `_id: -1` 顺序。
  */
 export const createModel = async ({
   modelData,
@@ -285,12 +284,9 @@ export const createModelsFromTemplates = async ({
   const models =
     missing.length === 0
       ? []
-      : await runModelTransaction(context, (session) => {
-          // 同批新建统一写置顶位 `0`；逆序分配递增 ObjectId 使 `_id: -1` 下仍保持勾选顺序且排在历史 `0` 之前。
-          const newIds = missing.map(() => new Types.ObjectId()).reverse();
-          return MongoAIModel.insertMany(
-            missing.map((template, index) => ({
-              _id: newIds[index],
+      : await runModelTransaction(context, (session) =>
+          MongoAIModel.insertMany(
+            missing.map((template) => ({
               ...(context.scope === ModelScopeEnum.team
                 ? sanitizeTeamModelData(template)
                 : template),
@@ -299,8 +295,8 @@ export const createModelsFromTemplates = async ({
               isActive: false
             })),
             { session }
-          );
-        });
+          )
+        );
   if (models.length > 0) await refreshMutationCatalog(context);
   await bindCreatedModelsToChannels({
     models: templates.map(({ model }) => model),

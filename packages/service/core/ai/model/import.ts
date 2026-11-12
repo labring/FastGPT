@@ -3,7 +3,6 @@ import { ModelScopeEnum } from '@fastgpt/global/core/ai/constants';
 import { NEW_MODEL_SORT_ORDER } from '@fastgpt/global/core/ai/model/order';
 import { normalizeModelPricingForSave } from '@fastgpt/global/core/ai/model/pricing';
 import { type ParsedSystemModelsWithJsonBody } from '@fastgpt/global/openapi/core/ai/model/api';
-import { Types } from '../../../common/mongo';
 import { runModelTransaction } from './catalog/transaction';
 import { deleteModelRecords } from './cleanup';
 import { MongoAIModel } from './schema';
@@ -109,14 +108,7 @@ export const importSystemModels = async ({ config }: ParsedSystemModelsWithJsonB
       .map(({ _id }) => _id);
     await deleteModelRecords(removedModelIds.map(String), session);
 
-    if (resolvedModels.length > 0) {
-      // 由本进程统一分配并逆序绑定新建模型 ObjectId，保证与普通创建同序列递增且在 `_id: -1` 下保持导入顺序。
-      const newIds = resolvedModels
-        .filter((model) => !model.isExistingModel)
-        .map(() => new Types.ObjectId())
-        .reverse();
-      let newIndex = 0;
-
+    if (resolvedModels.length > 0)
       await MongoAIModel.bulkWrite(
         resolvedModels.map(({ modelId, model, modelData, isExistingModel }) => ({
           updateOne: {
@@ -125,16 +117,12 @@ export const importSystemModels = async ({ config }: ParsedSystemModelsWithJsonB
               : { scope: ModelScopeEnum.system, model },
             update: isExistingModel
               ? getModelConfigUpdate(modelData)
-              : {
-                  $set: { ...modelData, sortOrder: NEW_MODEL_SORT_ORDER },
-                  $setOnInsert: { _id: newIds[newIndex++] }
-                },
+              : { $set: { ...modelData, sortOrder: NEW_MODEL_SORT_ORDER } },
             upsert: !isExistingModel
           }
         })),
         { session }
       );
-    }
     return {
       renamedModels: resolvedModels.flatMap((model) => {
         const oldModel = existingModelMap.get(model.modelId)?.model;

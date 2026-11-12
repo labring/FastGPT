@@ -112,7 +112,7 @@ describe('model lifecycle', () => {
     // 模拟历史未设置 sortOrder 的存量模型，应始终保留在末尾兜底。
     await MongoAIModel.create({ ...draft, model: 'legacy-unranked' });
 
-    const newer = await createModel({ ...owner, modelData: { ...draft, model: 'newer' } });
+    await createModel({ ...owner, modelData: { ...draft, model: 'newer' } });
     const newest = await createModel({ ...owner, modelData: { ...draft, model: 'newest' } });
     const afterSingleCreate = sortModelOrderItems(
       await MongoAIModel.find({ scope: ModelScopeEnum.system }).sort({ _id: -1 }).lean()
@@ -144,8 +144,8 @@ describe('model lifecycle', () => {
       await MongoAIModel.find({ scope: ModelScopeEnum.system }).sort({ _id: -1 }).lean()
     );
     expect(afterTemplateCreate.map(({ model, sortOrder }) => ({ model, sortOrder }))).toEqual([
-      { model: 'tpl-a', sortOrder: 0 },
       { model: 'tpl-b', sortOrder: 0 },
+      { model: 'tpl-a', sortOrder: 0 },
       { model: 'newest', sortOrder: 0 },
       { model: 'newer', sortOrder: 0 },
       { model: 'original', sortOrder: 1 },
@@ -153,13 +153,18 @@ describe('model lifecycle', () => {
       { model: 'legacy-unranked', sortOrder: undefined }
     ]);
 
+    // 手动保存完整顺序后，所有置顶 `0` 与缺省值会被统一归一化为连续的 1..N。
+    await updateModelOrder({
+      ...owner,
+      modelIds: afterTemplateCreate.map(({ _id }) => String(_id))
+    });
+
     await importSystemModels({
       config: [
         { ...draft, modelId: newest.modelId, model: 'newest' },
         { ...draft, modelId: 'external-json-a', model: 'json-a' },
         { ...draft, modelId: first.modelId, model: 'original' },
-        { ...draft, modelId: 'external-json-b', model: 'json-b' },
-        { ...draft, modelId: newer.modelId, model: 'newer' }
+        { ...draft, modelId: 'external-json-b', model: 'json-b' }
       ]
     });
 
@@ -167,28 +172,18 @@ describe('model lifecycle', () => {
       await MongoAIModel.find({ scope: ModelScopeEnum.system }).sort({ _id: -1 }).lean()
     );
     expect(afterJsonImport.map(({ model, sortOrder }) => ({ model, sortOrder }))).toEqual([
-      { model: 'json-a', sortOrder: 0 },
       { model: 'json-b', sortOrder: 0 },
-      { model: 'newest', sortOrder: 0 },
-      { model: 'newer', sortOrder: 0 },
-      { model: 'original', sortOrder: 1 }
-    ]);
-
-    // 下次手动保存完整顺序时，所有置顶 `0` 会被统一归一化为连续的 1..N。
-    await updateModelOrder({
-      ...owner,
-      modelIds: afterJsonImport.map(({ _id }) => String(_id))
-    });
-    const afterNormalize = sortModelOrderItems(
-      await MongoAIModel.find({ scope: ModelScopeEnum.system }).sort({ _id: -1 }).lean()
-    );
-    expect(afterNormalize.map(({ model, sortOrder }) => ({ model, sortOrder }))).toEqual([
-      { model: 'json-a', sortOrder: 1 },
-      { model: 'json-b', sortOrder: 2 },
+      { model: 'json-a', sortOrder: 0 },
       { model: 'newest', sortOrder: 3 },
-      { model: 'newer', sortOrder: 4 },
       { model: 'original', sortOrder: 5 }
     ]);
+    // 不干预底层 ObjectId 分配，未显式配置默认模型时保持原有 `_id DESC` 回退顺序。
+    expect(
+      getCachedSystemModelHandle()
+        ?.getSystemModels()
+        .find((item) => item.modelId === getCachedSystemModelHandle()?.getDefaultModelIds().llm)
+        ?.model
+    ).toBe('json-b');
   });
 
   it('preserves stable identity and synchronizes an edited upstream identifier', async () => {
