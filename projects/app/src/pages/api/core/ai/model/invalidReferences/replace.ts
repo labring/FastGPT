@@ -19,7 +19,7 @@ import { getTmbInfoByTmbId } from '@fastgpt/service/support/user/team/controller
 import { getAuthorizedModelIds } from '@fastgpt/service/support/permission/model/auth';
 import { replaceInvalidModelReferences } from '@/service/core/ai/model/invalidReferences/service';
 
-/** 只允许当前团队的实际 owner 发起同步替换；每批写入前复查权限和目标目录。 */
+/** 只允许当前团队的实际 owner 或系统超级管理员（root）发起同步替换；每批写入前复查权限和目标目录。 */
 export async function handler(
   req: ApiRequestProps<ReplaceInvalidModelReferencesBody>
 ): Promise<ReplaceInvalidModelReferencesResponse> {
@@ -30,7 +30,11 @@ export async function handler(
   }).body;
 
   const { tmb, teamId, tmbId, isRoot } = await authUserPer({ req, authToken: true });
-  if (tmb.role !== TeamMemberRoleEnum.owner || tmb.status !== TeamMemberStatusEnum.active) {
+  // root 跨团队代管时不持久化 role='owner'，以运行时 owner 身份放行并仍校验活跃成员锚点。
+  const hasOwnerAccess = (member: { role?: string | null; permission?: { isOwner?: boolean } }) =>
+    Boolean(isRoot || member.permission?.isOwner || member.role === TeamMemberRoleEnum.owner);
+
+  if (!hasOwnerAccess(tmb) || tmb.status !== TeamMemberStatusEnum.active) {
     throw TeamErrEnum.unAuthTeam;
   }
 
@@ -40,7 +44,7 @@ export async function handler(
     const currentTmb = await getTmbInfoByTmbId({ tmbId });
     if (
       currentTmb.teamId !== teamId ||
-      currentTmb.role !== TeamMemberRoleEnum.owner ||
+      !hasOwnerAccess(currentTmb) ||
       currentTmb.status !== TeamMemberStatusEnum.active
     ) {
       throw TeamErrEnum.unAuthTeam;

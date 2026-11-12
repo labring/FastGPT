@@ -51,7 +51,8 @@ const teamErr = [
   },
   {
     statusText: TeamErrEnum.unPermission,
-    message: i18nT('common:error_un_permission')
+    message: i18nT('common:error_un_permission'),
+    httpStatus: 403
   },
   {
     statusText: TeamErrEnum.accountCancellationPending,

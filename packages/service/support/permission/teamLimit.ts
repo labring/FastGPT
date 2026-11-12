@@ -5,8 +5,7 @@ import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { SystemErrEnum } from '@fastgpt/global/common/error/code/system';
 import { AppTypeList, ToolTypeList, AppFolderTypeList } from '@fastgpt/global/core/app/constants';
-import { MongoTeamMember } from '../user/team/teamMemberSchema';
-import { TeamMemberStatusEnum } from '@fastgpt/global/support/user/team/constant';
+import { countEffectiveTeamMembers } from '../user/team/controller';
 import { getVectorCountByTeamId } from '../../common/vectorDB/controller';
 import { ReadPreference } from '../../common/mongo';
 import { serviceEnv } from '../../env';
@@ -33,10 +32,7 @@ export const checkTeamMemberLimit = async (teamId: string, newCount: number) => 
       // 成员上限属于强一致的权限校验，不能接受从库复制延迟导致放行超额成员。
       readPreference: ReadPreference.PRIMARY
     }),
-    MongoTeamMember.countDocuments({
-      teamId,
-      status: { $ne: TeamMemberStatusEnum.leave }
-    })
+    countEffectiveTeamMembers(teamId)
   ]);
 
   if (standard?.maxTeamMember && newCount + memberCount > standard.maxTeamMember) {
