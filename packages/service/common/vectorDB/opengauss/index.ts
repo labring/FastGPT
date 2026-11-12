@@ -5,11 +5,9 @@ import type { VectorControllerType } from '../type';
 import dayjs from 'dayjs';
 import { getLogger, LogCategories } from '../../logger';
 import { SQL_FULL_TEXT_COLUMN, SQL_FULL_TEXT_INDEX } from '../fullText/utils';
-import { toSqlFullTextTokens } from '../fullText/analyzer';
+import { insertPostgresVectorFullTextRows } from '../fullText/postgres';
 
 const logger = getLogger(LogCategories.INFRA.VECTOR);
-// 单条 INSERT 最多绑定 500 行（2500 个参数），避免大批量写入触及协议参数数量上限。
-const FULL_TEXT_INSERT_BATCH_SIZE = 500;
 
 export class OpenGaussVectorCtrl implements VectorControllerType {
   constructor() {}
@@ -47,13 +45,20 @@ export class OpenGaussVectorCtrl implements VectorControllerType {
       await OgClient.query(
         `CREATE INDEX CONCURRENTLY IF NOT EXISTS create_time_index ON ${DatasetVectorTableName} USING btree(createtime);`
       );
-      const fullTextIndex = await OgClient.query(
-        `SELECT 1 FROM pg_class c WHERE c.relname=$1 AND c.relnamespace=(SELECT relnamespace FROM pg_class WHERE oid='${DatasetVectorTableName}'::regclass)`,
-        [SQL_FULL_TEXT_INDEX]
-      );
-      if (!fullTextIndex.rows.length) {
-        await OgClient.query(
-          `CREATE INDEX ${SQL_FULL_TEXT_INDEX} ON ${DatasetVectorTableName} USING bm25(${SQL_FULL_TEXT_COLUMN});`
+      try {
+        const fullTextIndex = await OgClient.query(
+          `SELECT 1 FROM pg_class c WHERE c.relname=$1 AND c.relnamespace=(SELECT relnamespace FROM pg_class WHERE oid='${DatasetVectorTableName}'::regclass)`,
+          [SQL_FULL_TEXT_INDEX]
+        );
+        if (!fullTextIndex.rows.length) {
+          await OgClient.query(
+            `CREATE INDEX ${SQL_FULL_TEXT_INDEX} ON ${DatasetVectorTableName} USING bm25(${SQL_FULL_TEXT_COLUMN});`
+          );
+        }
+      } catch (error) {
+        logger.warn(
+          'openGauss full-text index initialization skipped; native full-text requires DataVec BM25 and migration readiness',
+          { error }
         );
       }
 
@@ -62,62 +67,13 @@ export class OpenGaussVectorCtrl implements VectorControllerType {
       logger.error('openGauss DataVec vector initialization failed', { error });
     }
   };
-  insert: VectorControllerType['insert'] = async (props) => {
-    const { teamId, datasetId, collectionId, vectors } = props;
-
-    // 原文先经外置分析器转成词串，与向量同一条/同一事务 INSERT 写入，数据库不保存原文。
-    if (props.texts?.length !== vectors.length) {
-      throw new Error('Full-text inputs must match vector inputs');
-    }
-    if (!vectors.length) return { insertIds: [] };
-    const tokens = await Promise.all(props.texts.map(toSqlFullTextTokens));
-
-    const buildBatchInsert = (start: number, end: number) => {
-      const slice = vectors.slice(start, end);
-      const values = slice.flatMap((vector, offset) => [
-        `[${vector.join(',')}]`,
-        String(teamId),
-        String(datasetId),
-        String(collectionId),
-        tokens[start + offset]
-      ]);
-      const tuples = slice
-        .map((_, offset) => {
-          const n = offset * 5;
-          return `($${n + 1},$${n + 2},$${n + 3},$${n + 4},$${n + 5})`;
-        })
-        .join(',');
-      return {
-        sql: `INSERT INTO ${DatasetVectorTableName}(vector,team_id,dataset_id,collection_id,${SQL_FULL_TEXT_COLUMN})
-         VALUES ${tuples} RETURNING id::text`,
-        values
-      };
-    };
-
-    if (vectors.length <= FULL_TEXT_INSERT_BATCH_SIZE) {
-      const { sql, values } = buildBatchInsert(0, vectors.length);
-      const { rows } = await OgClient.query<{ id: string }>(sql, values);
-      return { insertIds: rows.map((row) => row.id) };
-    }
-
-    const client = await (await connectOg()).connect();
-    try {
-      await client.query('BEGIN');
-      const insertIds: string[] = [];
-      for (let start = 0; start < vectors.length; start += FULL_TEXT_INSERT_BATCH_SIZE) {
-        const { sql, values } = buildBatchInsert(start, start + FULL_TEXT_INSERT_BATCH_SIZE);
-        const { rows } = await client.query<{ id: string }>(sql, values);
-        insertIds.push(...rows.map((row) => row.id));
-      }
-      await client.query('COMMIT');
-      return { insertIds };
-    } catch (error) {
-      await client.query('ROLLBACK');
-      throw error;
-    } finally {
-      client.release();
-    }
-  };
+  insert: VectorControllerType['insert'] = (props) =>
+    insertPostgresVectorFullTextRows({
+      props,
+      query: OgClient.query.bind(OgClient),
+      connect: async () => (await connectOg()).connect(),
+      missingTextsErrorMessage: 'Full-text inputs must match vector inputs'
+    });
   /** 仅刷新当前团队指定的旧向量，保留内容；缺失 ID 视为已经清理。 */
   refreshCreateTime: VectorControllerType['refreshCreateTime'] = async ({ teamId, idList }) => {
     if (idList.length === 0) return;

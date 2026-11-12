@@ -5,6 +5,7 @@ import {
   getVectorDataByTime
 } from '@fastgpt/service/common/vectorDB/controller';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
+import { getFullTextStore } from '@fastgpt/service/core/dataset/data/textStore';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 const logger = getLogger(LogCategories.MODULE.DATASET.QUEUES);
@@ -63,11 +64,18 @@ export async function checkInvalidDatasetData(start: Date, end: Date) {
             collectionId: item.collectionId
           });
 
-          await deleteDatasetDataVector({
-            teamId: item.teamId,
-            datasetIds: [item.datasetId],
-            collectionIds: [item.collectionId]
-          });
+          await Promise.all([
+            getFullTextStore().deleteByCollectionIds({
+              teamId: item.teamId,
+              datasetIds: [item.datasetId],
+              collectionIds: [item.collectionId]
+            }),
+            deleteDatasetDataVector({
+              teamId: item.teamId,
+              datasetIds: [item.datasetId],
+              collectionIds: [item.collectionId]
+            })
+          ]);
 
           await MongoDatasetData.deleteMany({
             teamId: item.teamId,

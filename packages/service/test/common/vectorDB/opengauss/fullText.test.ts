@@ -70,6 +70,7 @@ describe('OpenGauss native BM25', () => {
 
   it.each([
     '(openGauss 7.0.0-RC2 build test)',
+    '(openGauss-lite 7.0.0-RC2 build c04cae45)',
     '(openGauss 7.0.0 build test)',
     'openGauss 7.0.1 LTS'
   ])('accepts a supported product release %s', (version) =>

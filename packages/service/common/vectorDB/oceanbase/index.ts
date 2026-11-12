@@ -49,17 +49,27 @@ export class ObVectorCtrl implements VectorControllerType {
       await this.obClient.query(
         `CREATE INDEX IF NOT EXISTS create_time_index ON ${DatasetVectorTableName}(createtime);`
       );
-      const [indexes] = await this.obClient.query<RowDataPacket[]>(
-        `SHOW INDEX FROM ${DatasetVectorTableName}`
-      );
-      if (
-        !Array.isArray(indexes) ||
-        !indexes.some(
-          (row) => row.Key_name === SQL_FULL_TEXT_INDEX || row.key_name === SQL_FULL_TEXT_INDEX
-        )
-      ) {
-        await this.obClient.query(
-          `CREATE FULLTEXT INDEX ${SQL_FULL_TEXT_INDEX} ON ${DatasetVectorTableName}(${SQL_FULL_TEXT_COLUMN}) WITH PARSER SPACE PARSER_PROPERTIES=(min_token_size=1);`
+      try {
+        const [indexes] = await this.obClient.query<RowDataPacket[]>(
+          `SHOW INDEX FROM ${DatasetVectorTableName}`
+        );
+        if (
+          !Array.isArray(indexes) ||
+          !indexes.some(
+            (row) => row.Key_name === SQL_FULL_TEXT_INDEX || row.key_name === SQL_FULL_TEXT_INDEX
+          )
+        ) {
+          await this.obClient.query(
+            `CREATE FULLTEXT INDEX ${SQL_FULL_TEXT_INDEX} ON ${DatasetVectorTableName}(${SQL_FULL_TEXT_COLUMN}) WITH PARSER SPACE PARSER_PROPERTIES=(min_token_size=1);`
+          );
+        }
+      } catch (error) {
+        logger.warn(
+          'Full-text index initialization skipped; native full-text requires supported parser capability and migration readiness',
+          {
+            provider: this.controllerType,
+            error
+          }
         );
       }
 

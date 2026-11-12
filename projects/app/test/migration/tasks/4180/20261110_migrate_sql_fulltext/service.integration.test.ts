@@ -203,7 +203,7 @@ describe.skipIf(!target)('PG full-text real migration', () => {
     await admin.end();
   });
 
-  it('runs the registered automatic migration through the real Runner, preserves originals and cleans legacy Mongo text rows', async () => {
+  it('runs the registered automatic migration through the real Runner, preserves originals and retains legacy Mongo text rows', async () => {
     const cases = [
       ['南京市长江大桥通行指南', '长江大桥'],
       ['FastGPT API authentication token', 'authentication'],
@@ -231,8 +231,7 @@ describe.skipIf(!target)('PG full-text real migration', () => {
           provider: 'pg',
           prechecked: 4,
           scanned: 4,
-          validated: 4,
-          deletedLegacyCount: 4
+          validated: 4
         }
       });
       for (const fixture of fixtures) {
@@ -240,13 +239,13 @@ describe.skipIf(!target)('PG full-text real migration', () => {
       }
       expect(await snapshot()).toEqual(original);
       expect(await MongoDatasetData.find().sort({ _id: 1 }).lean()).toEqual(source);
-      expect(await MongoDatasetDataText.countDocuments()).toBe(0);
+      expect(await MongoDatasetDataText.countDocuments()).toBe(4);
     } finally {
       runner.stop();
     }
   });
 
-  it('fails the real Runner on an active missing vector without backfilling or cleaning legacy rows until repaired', async () => {
+  it('fails the real Runner on an active missing vector without backfilling or cutting over reads until repaired', async () => {
     const fixture = await seed('缺失向量 missingvectorproof');
     await pool.query('DELETE FROM modeldata WHERE id=$1', [fixture.insertIds[0]]);
     const healthy = await seed('正常向量 healthyvectorproof');
@@ -285,7 +284,7 @@ describe.skipIf(!target)('PG full-text real migration', () => {
         await MongoSystemMigrationState.findById('20261110_migrate_sql_fulltext').lean()
       ).toMatchObject({
         status: 'succeeded',
-        result: { prechecked: 2, scanned: 2, validated: 2, deletedLegacyCount: 2 }
+        result: { prechecked: 2, scanned: 2, validated: 2 }
       });
       expect(await getMigrationFailedRecords('20261110_migrate_sql_fulltext')).toEqual([]);
       expect(
@@ -296,7 +295,7 @@ describe.skipIf(!target)('PG full-text real migration', () => {
         ).rows[0].text
       ).toBe(await toSqlFullTextTokens('缺失向量 missingvectorproof'));
       expect(await MongoDatasetData.find().sort({ _id: 1 }).lean()).toEqual(original);
-      expect(await MongoDatasetDataText.countDocuments()).toBe(0);
+      expect(await MongoDatasetDataText.countDocuments()).toBe(2);
     } finally {
       runner.stop();
     }
@@ -353,10 +352,9 @@ describe.skipIf(!target)('PG full-text real migration', () => {
     expect(await migrateSqlFullTextMigration(state.context)).toMatchObject({
       prechecked: 5,
       scanned: 5,
-      validated: 5,
-      deletedLegacyCount: 5
+      validated: 5
     });
-    expect(await MongoDatasetDataText.countDocuments()).toBe(0);
+    expect(await MongoDatasetDataText.countDocuments()).toBe(5);
   });
 
   it('cancels read-only preflight without filling and starts preflight from the beginning on resume', async () => {
@@ -394,8 +392,7 @@ describe.skipIf(!target)('PG full-text real migration', () => {
     expect(await migrateSqlFullTextMigration(state.context)).toMatchObject({
       prechecked: 5,
       scanned: 5,
-      validated: 5,
-      deletedLegacyCount: 5
+      validated: 5
     });
   });
 
@@ -458,8 +455,7 @@ describe.skipIf(!target)('PG full-text real migration', () => {
     state.context.saveCheckpoint.mockImplementation(save);
     expect(await migrateSqlFullTextMigration(state.context)).toMatchObject({
       scanned: 5,
-      validated: 5,
-      deletedLegacyCount: 5
+      validated: 5
     });
     expect(await snapshot()).toEqual(original);
     const order = state.context.reportFailedRecords.mock.invocationCallOrder;
@@ -521,10 +517,9 @@ describe.skipIf(!target)('PG full-text real migration', () => {
     state.context.saveCheckpoint.mockImplementation(save);
     expect(await migrateSqlFullTextMigration(state.context)).toMatchObject({
       scanned: 5,
-      validated: 5,
-      deletedLegacyCount: 5
+      validated: 5
     });
-    expect(await MongoDatasetDataText.countDocuments()).toBe(0);
+    expect(await MongoDatasetDataText.countDocuments()).toBe(5);
   });
 
   it('retries validation failures behind the validation cursor instead of stopping in the scan stage', async () => {
@@ -549,11 +544,10 @@ describe.skipIf(!target)('PG full-text real migration', () => {
       fixture.insertIds[0]
     ]);
     expect(await migrateSqlFullTextMigration(state.context)).toMatchObject({
-      validated: 2,
-      deletedLegacyCount: 2
+      validated: 2
     });
     expect(state.failures()).toEqual([]);
-    expect(await MongoDatasetDataText.countDocuments()).toBe(0);
+    expect(await MongoDatasetDataText.countDocuments()).toBe(2);
   });
 
   it('handles concurrent replacement, deletion and post-boundary inserts without resurrecting old IDs', async () => {
@@ -744,8 +738,10 @@ describe.skipIf(!target)('PG full-text real migration', () => {
     await expect(preparePgFullText()).rejects.toThrow('supported configuration');
   });
 
-  it('writes, updates and deletes through the real business path using single-table SQL full-text', async () => {
+  it('writes, updates and deletes through the real business path with compatibility dual-writes', async () => {
     await ctrl.init();
+    const state = createContext();
+    await migrateSqlFullTextMigration(state.context);
     const model = {
       modelId: '68ad85a7463006c963799a05',
       model: 'text-embedding-3-small',
@@ -766,7 +762,7 @@ describe.skipIf(!target)('PG full-text real migration', () => {
       a: '',
       embeddingModel: model
     });
-    expect(await MongoDatasetDataText.countDocuments()).toBe(0);
+    expect(await MongoDatasetDataText.countDocuments()).toBe(1);
     expect((await searchSqlFullText(props('createproof')))[0]?.dataId).toBe(created.insertId);
     expect((await getFullTextStore().search(props('createproof')))[0]?.dataId).toBe(
       created.insertId
@@ -795,13 +791,12 @@ describe.skipIf(!target)('PG full-text real migration', () => {
     expect(await MongoDatasetDataText.countDocuments()).toBe(0);
     expect((await pool.query('SELECT count(*)::int AS n FROM modeldata')).rows[0].n).toBe(0);
     const calls = mockGetVectors.mock.calls.length;
-    const state = createContext();
     await migrateSqlFullTextMigration(state.context);
     expect(mockGetVectors.mock.calls.length).toBe(calls);
   });
 
   it.skipIf(!process.env.FASTGPT_FULLTEXT_SNAPSHOT_PATH)(
-    'migrates a read-only snapshot of local legacy data, preserves vectors and cleans legacy Mongo text table',
+    'migrates a read-only snapshot of local legacy data, preserves vectors and retains legacy Mongo text table',
     async () => {
       const snapshotData = mongo.BSON.EJSON.parse(
         readFileSync(process.env.FASTGPT_FULLTEXT_SNAPSHOT_PATH!, 'utf8')
@@ -820,12 +815,11 @@ describe.skipIf(!target)('PG full-text real migration', () => {
       const state = createContext();
       expect(await migrateSqlFullTextMigration(state.context)).toMatchObject({
         scanned: snapshotData.documents.length,
-        validated: snapshotData.documents.length,
-        deletedLegacyCount: snapshotData.textDocs.length
+        validated: snapshotData.documents.length
       });
       expect(await snapshot()).toEqual(original);
       expect(await MongoDatasetData.find().sort({ _id: 1 }).lean()).toEqual(originalDocs);
-      expect(await MongoDatasetDataText.countDocuments()).toBe(0);
+      expect(await MongoDatasetDataText.countDocuments()).toBe(snapshotData.textDocs.length);
       expect(
         (
           await pool.query(

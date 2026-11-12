@@ -64,7 +64,7 @@ describe('validateSystemMigrationRegistry', () => {
     ]);
   });
 
-  it('appends SQL full-text migration as an automatic background task with legacy cleanup', () => {
+  it('appends SQL full-text migration as an automatic background task with smooth cutover', () => {
     const task = systemMigrations.at(-1);
     expect(task).toMatchObject({
       id: '20261110_migrate_sql_fulltext',
@@ -78,8 +78,7 @@ describe('validateSystemMigrationRegistry', () => {
       'prepare',
       'preflight',
       'scan',
-      'validation',
-      'cleanup'
+      'validation'
     ]);
   });
 

@@ -55,11 +55,10 @@
   "migrations.20261104_backfill_openapi_key_type.keys": "Key types",
   "migrations.20261104_backfill_openapi_key_type.validation": "Validate backfill",
   "migrations.20261110_migrate_sql_fulltext.name": "Migrate SQL vector full-text search",
-  "migrations.20261110_migrate_sql_fulltext.description": "Prepare and verify full-text indexes in the configured SQL vector database, run a full read-only preflight, backfill historical tokenized indexes with checkpoint recovery, and clean up the legacy Mongo full-text table after validation.",
-  "migrations.20261110_migrate_sql_fulltext.result": "Prechecked {{prechecked}} records, backfilled {{scanned}} records, validated {{validated}} records, and removed {{deletedLegacyCount}} legacy full-text rows",
+  "migrations.20261110_migrate_sql_fulltext.description": "Prepare and verify full-text indexes in the configured SQL vector database, run a full read-only preflight, backfill historical tokenized indexes with checkpoint recovery, and switch reads to native SQL full-text search after validation while retaining legacy Mongo full-text data.",
+  "migrations.20261110_migrate_sql_fulltext.result": "Prechecked {{prechecked}} records, backfilled {{scanned}} records, and validated {{validated}} records",
   "migrations.20261110_migrate_sql_fulltext.prepare": "Prepare full-text schema and index",
   "migrations.20261110_migrate_sql_fulltext.preflight": "Run full read-only preflight",
   "migrations.20261110_migrate_sql_fulltext.scan": "Backfill historical tokenized indexes",
-  "migrations.20261110_migrate_sql_fulltext.validation": "Verify active index coverage",
-  "migrations.20261110_migrate_sql_fulltext.cleanup": "Clean up legacy Mongo full-text table"
+  "migrations.20261110_migrate_sql_fulltext.validation": "Verify active index coverage"
 }

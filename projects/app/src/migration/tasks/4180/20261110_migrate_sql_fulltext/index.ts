@@ -14,14 +14,18 @@ import {
 import { getVectorType } from '@fastgpt/service/common/vectorDB/constants';
 import { getSqlFullTextAdapter } from '@fastgpt/service/common/vectorDB/fullText/controller';
 import {
-  clearLegacyMongoFullText,
+  activateSqlFullTextTarget,
+  clearSqlFullTextTargetReady
+} from '@fastgpt/service/core/dataset/fullText/sql/store';
+import {
+  SqlFullTextMigrationRecordError,
   getLatestDatasetDataId,
   listDatasetDataBatchIds,
   migrateSqlFullTextRecord,
   preflightSqlFullTextRecord
 } from './service';
 
-const STAGE_KEYS = ['prepare', 'preflight', 'scan', 'validation', 'cleanup'] as const;
+const STAGE_KEYS = ['prepare', 'preflight', 'scan', 'validation'] as const;
 
 const CheckpointSchema = z.object({
   provider: SqlFullTextProviderSchema,
@@ -30,7 +34,7 @@ const CheckpointSchema = z.object({
   endId: ObjectIdSchema.nullable(),
   lastId: ObjectIdSchema.nullable(),
   scanned: z.number().int().nonnegative(),
-  stage: z.enum(['scan', 'validation', 'cleanup']),
+  stage: z.enum(['scan', 'validation']),
   validationEndId: ObjectIdSchema.nullable(),
   validationLastId: ObjectIdSchema.nullable(),
   validated: z.number().int().nonnegative()
@@ -43,11 +47,10 @@ const CheckpointSchema = z.object({
  * 条件补齐 fulltext_tokens 与完整性验收，避免单次大事务阻塞业务写入或超出租约时长。
  *
  * 流程：
- * 1. prepare：准备并核验当前 SQL 检索库的词串列、全文索引与物理目标元数据；
+ * 1. prepare：准备并核验当前 SQL 检索库的词串列、全文索引与物理目标元数据，迁移未完成前保持旧 Mongo 兼容读取；
  * 2. preflight：每次执行重新全量只读预检，发现异常先阻断写入；
- * 3. scan：按 _id 游标幂等回填 NULL 词串，保留已有向量与业务主数据；
- * 4. validation：全量分批校验所有有效索引词串已完整一致；
- * 5. cleanup：验收全部通过后清空旧 Mongo dataset_data_texts 表。
+ * 3. scan：按 _id 游标幂等回填 NULL 词串，保留已有向量、业务主数据与旧 Mongo 全文表；
+ * 4. validation：全量分批校验所有有效索引词串已完整一致后，标记当前物理 SQL 目标就绪并平滑切换读取。
  */
 export const migrateSqlFullTextMigration = async (
   context: SystemMigrationContext
@@ -63,8 +66,7 @@ export const migrateSqlFullTextMigration = async (
       applicable: false,
       prechecked: 0,
       scanned: 0,
-      validated: 0,
-      deletedLegacyCount: 0
+      validated: 0
     };
   }
 
@@ -73,10 +75,11 @@ export const migrateSqlFullTextMigration = async (
     await context.assertActive();
   };
 
-  // 1. 准备结构并核验目标库全文能力与持久身份。
+  // 1. 准备结构并核验目标库全文能力与持久身份；验收完成前清除就绪标记以保持 Mongo 兼容读取。
   await assertActive();
   await context.reportProgress({ key: 'prepare', status: SystemMigrationStatusEnum.running });
   const adapter = getSqlFullTextAdapter();
+  await clearSqlFullTextTargetReady(adapter.provider);
   const metadata = await adapter.prepare();
   await adapter.assertCapability();
   await context.reportProgress({ key: 'prepare', status: SystemMigrationStatusEnum.succeeded });
@@ -112,25 +115,36 @@ export const migrateSqlFullTextMigration = async (
     failures.set(`${record.stageKey}:${record.data.id}`, record);
   }
 
-  /** 错误只暴露业务 ID 与固定原因；有界快照先于 checkpoint 持久化。 */
-  const processRecord = async (
-    id: string,
-    stage: 'preflight' | 'scan' | 'validation',
+  /** 仅捕获可预期单记录数据错误并记录有界原因，底层数据库异常直接上抛给 Runner。 */
+  const processRecord = async ({
+    id,
+    stage,
     validateOnly = stage === 'validation'
-  ) => {
+  }: {
+    id: string;
+    stage: 'preflight' | 'scan' | 'validation';
+    validateOnly?: boolean;
+  }) => {
     const key = `${stage}:${id}`;
     try {
       if (stage === 'preflight') await preflightSqlFullTextRecord(id);
       else await migrateSqlFullTextRecord(id, validateOnly);
       failures.delete(key);
-    } catch {
+    } catch (error) {
       context.signal.throwIfAborted();
+      if (!(error instanceof SqlFullTextMigrationRecordError)) {
+        throw error;
+      }
+      const message = error.message.slice(0, 200);
+      context.logger.warn('SQL full-text migration record validation failed', {
+        stageKey: stage,
+        id,
+        message
+      });
       failures.set(key, {
         stageKey: stage,
         data: { id },
-        reason: {
-          message: 'Full-text row, ownership, input or synonym snapshot requires repair'
-        }
+        reason: { message }
       });
       if (failures.size >= 1000) {
         await context.fail({
@@ -162,7 +176,7 @@ export const migrateSqlFullTextMigration = async (
     // 优先重放该阶段上次记录的失败项；validation 失败项若已被置回 NULL 允许一并补齐再校验。
     for (const failure of [...failures.values()]) {
       if (failure.stageKey === stage) {
-        await processRecord(String(failure.data.id), stage, false);
+        await processRecord({ id: String(failure.data.id), stage, validateOnly: false });
       }
     }
     await context.reportFailedRecords([...failures.values()]);
@@ -202,7 +216,7 @@ export const migrateSqlFullTextMigration = async (
       if (ids.length === 0) break;
 
       for (const id of ids) {
-        await processRecord(id, stage);
+        await processRecord({ id, stage });
       }
       await assertActive();
       await context.reportFailedRecords([...failures.values()]);
@@ -255,10 +269,10 @@ export const migrateSqlFullTextMigration = async (
       }
       await assertActive();
       await adapter.assertCapability();
-      if (checkpoint.stage !== 'cleanup') {
-        checkpoint = { ...checkpoint, stage: 'cleanup' };
-        await context.saveCheckpoint(checkpoint);
-      }
+      await activateSqlFullTextTarget({
+        provider: adapter.provider,
+        ...metadata
+      });
     }
 
     await context.reportProgress({
@@ -268,16 +282,6 @@ export const migrateSqlFullTextMigration = async (
     });
   }
 
-  // 4. 全量校验通过后清空已废弃的旧 Mongo dataset_data_texts 表。
-  await assertActive();
-  await context.reportProgress({ key: 'cleanup', status: SystemMigrationStatusEnum.running });
-  const deletedLegacyCount = await clearLegacyMongoFullText();
-  await context.reportProgress({
-    key: 'cleanup',
-    status: SystemMigrationStatusEnum.succeeded,
-    current: deletedLegacyCount
-  });
-
   return {
     applicable: true,
     provider: adapter.provider,
@@ -285,7 +289,6 @@ export const migrateSqlFullTextMigration = async (
     targetId: metadata.targetId,
     prechecked,
     scanned: checkpoint.scanned,
-    validated: checkpoint.validated,
-    deletedLegacyCount
+    validated: checkpoint.validated
   };
 };

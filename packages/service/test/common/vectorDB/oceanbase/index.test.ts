@@ -34,6 +34,14 @@ describe.each(['oceanbase', 'seekdb'] as const)('ObVectorCtrl (%s)', (type) => {
         'CREATE FULLTEXT INDEX modeldata_fulltext ON modeldata(fulltext_tokens) WITH PARSER SPACE PARSER_PROPERTIES=(min_token_size=1)'
       )
     );
+
+    query.mockReset().mockImplementation(async (sql: string) => {
+      if (sql.includes('CREATE FULLTEXT INDEX')) {
+        throw new Error('fulltext parser unsupported');
+      }
+      return [[]];
+    });
+    await expect(new ObVectorCtrl({ type }).init()).resolves.toBeUndefined();
   });
 
   it.each([undefined, 100])('applies search width %j', async (configured) => {

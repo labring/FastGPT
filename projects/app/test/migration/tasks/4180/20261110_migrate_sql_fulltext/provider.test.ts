@@ -87,7 +87,7 @@ describe.each(['pg', 'oceanbase', 'seekdb', 'opengauss'] as const)(
       driver.search.mockReset().mockResolvedValue([]);
     });
 
-    it('prepares, preflights, backfills, validates, cleans legacy Mongo rows and serves native search', async () => {
+    it('prepares, preflights, backfills, validates, retains legacy Mongo rows and cuts over reads to native SQL search', async () => {
       const teamId = new Types.ObjectId().toString();
       const datasetId = new Types.ObjectId().toString();
       const collectionId = new Types.ObjectId().toString();
@@ -107,6 +107,19 @@ describe.each(['pg', 'oceanbase', 'seekdb', 'opengauss'] as const)(
         fullTextToken: '查询 内容'
       });
 
+      const queryProps = {
+        teamId,
+        datasetIds: [datasetId],
+        query: '内容',
+        limit: 10,
+        forbidCollectionIdList: []
+      };
+      // 迁移完成前，读取保持在旧 Mongo $text 路径，不触发未回填的 SQL 索引查询。
+      expect(await getFullTextStore().search(queryProps)).toEqual([
+        { dataId: String(doc._id), collectionId, score: expect.any(Number) }
+      ]);
+      expect(driver.search).not.toHaveBeenCalled();
+
       const state = createContext();
       const result = await migrateSqlFullTextMigration(state.context);
       expect(result).toEqual({
@@ -116,10 +129,9 @@ describe.each(['pg', 'oceanbase', 'seekdb', 'opengauss'] as const)(
         targetId: metadata.targetId,
         prechecked: 1,
         scanned: 1,
-        validated: 1,
-        deletedLegacyCount: 1
+        validated: 1
       });
-      expect(await MongoDatasetDataText.countDocuments()).toBe(0);
+      expect(await MongoDatasetDataText.countDocuments()).toBe(1);
       expect(driver.prepare).toHaveBeenCalledOnce();
       expect(driver.preflight).toHaveBeenCalledWith([
         { vectorId: '1', teamId, datasetId, collectionId, text: '查询内容' }
@@ -139,29 +151,23 @@ describe.each(['pg', 'oceanbase', 'seekdb', 'opengauss'] as const)(
         provider,
         targetId: metadata.targetId,
         analyzerVersion: signatures[provider],
-        stage: 'cleanup'
+        stage: 'validation'
       });
 
       driver.search.mockResolvedValue([
         { vectorId: '1', collectionId, score: 2.5 },
         { vectorId: '999', collectionId, score: 1 }
       ]);
-      const queryProps = {
-        teamId,
-        datasetIds: [datasetId],
-        query: '内容',
-        limit: 10,
-        forbidCollectionIdList: []
-      };
       expect(await searchSqlFullText(queryProps)).toEqual([
         { dataId: String(doc._id), collectionId, score: 2.5 }
       ]);
       expect(await getFullTextStore().search(queryProps)).toEqual([
         { dataId: String(doc._id), collectionId, score: 2.5 }
       ]);
+      expect(driver.search).toHaveBeenCalledTimes(2);
     });
 
-    it('blocks fill and legacy cleanup when preflight fails and repeats preflight on retry', async () => {
+    it('blocks fill and read cutover when preflight fails, logs original reason and repeats preflight on retry', async () => {
       const teamId = new Types.ObjectId();
       const datasetId = new Types.ObjectId();
       const collectionId = new Types.ObjectId();
@@ -188,20 +194,55 @@ describe.each(['pg', 'oceanbase', 'seekdb', 'opengauss'] as const)(
       expect(await MongoDatasetDataText.countDocuments()).toBe(1);
       expect(state.checkpoint()).toMatchObject({ lastId: null, scanned: 0, validated: 0 });
       expect(await state.context.getFailedRecords()).toMatchObject([
-        { stageKey: 'preflight', data: { id: String(doc._id) } }
+        {
+          stageKey: 'preflight',
+          data: {
+            id: String(doc._id)
+          },
+          reason: {
+            message: expect.stringContaining(
+              'Active vector row is missing, has wrong ownership, or has conflicting full text'
+            )
+          }
+        }
       ]);
+      expect(state.context.logger.warn).toHaveBeenCalledWith(
+        'SQL full-text migration record validation failed',
+        expect.objectContaining({
+          stageKey: 'preflight',
+          id: String(doc._id)
+        })
+      );
 
       driver.preflight.mockClear().mockResolvedValue([]);
       expect(await migrateSqlFullTextMigration(state.context)).toMatchObject({
         prechecked: 1,
         scanned: 1,
-        validated: 1,
-        deletedLegacyCount: 1
+        validated: 1
       });
-      // 先重试原错误，再从起点检查完整范围，验收通过后才清理旧表。
+      // 先重试原错误，再从起点检查完整范围，验收通过后切换读取并保留旧表数据。
       expect(driver.preflight).toHaveBeenCalledTimes(2);
       expect(await state.context.getFailedRecords()).toEqual([]);
-      expect(await MongoDatasetDataText.countDocuments()).toBe(0);
+      expect(await MongoDatasetDataText.countDocuments()).toBe(1);
+    });
+
+    it('propagates unexpected database errors immediately instead of recording them as dirty records', async () => {
+      const doc = await MongoDatasetData.create({
+        teamId: new Types.ObjectId(),
+        datasetId: new Types.ObjectId(),
+        collectionId: new Types.ObjectId(),
+        tmbId: new Types.ObjectId(),
+        synonymVersion: 0,
+        indexes: [{ dataId: '1', text: '连接中断测试', type: 'custom' }]
+      });
+      const state = createContext();
+      driver.preflight.mockRejectedValueOnce(new Error('ECONNRESET database connection lost'));
+      await expect(migrateSqlFullTextMigration(state.context)).rejects.toThrow(
+        'ECONNRESET database connection lost'
+      );
+      expect(await state.context.getFailedRecords()).toEqual([]);
+      expect(state.context.logger.warn).not.toHaveBeenCalled();
+      expect(doc._id).toBeDefined();
     });
 
     it('rejects resuming a checkpoint bound to a different physical target', async () => {

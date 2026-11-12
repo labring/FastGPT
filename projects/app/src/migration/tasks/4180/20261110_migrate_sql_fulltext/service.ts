@@ -1,9 +1,60 @@
-import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
-import { MongoDatasetDataText } from '@fastgpt/service/core/dataset/data/dataTextSchema';
-import { getSqlFullTextAdapter } from '@fastgpt/service/common/vectorDB/fullText/controller';
-import { buildSqlFullTextRows } from '@fastgpt/service/core/dataset/fullText/sql/service';
-import { Types } from '@fastgpt/service/common/mongo';
+import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
 import type { DatasetDataSchemaType } from '@fastgpt/global/core/dataset/type';
+import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
+import {
+  getDatasetSynonymConfig,
+  getDatasetSynonymMatcher
+} from '@fastgpt/service/core/dataset/synonym/entity';
+import { getSqlFullTextAdapter } from '@fastgpt/service/common/vectorDB/fullText/controller';
+import type { SqlFullTextRow } from '@fastgpt/service/common/vectorDB/fullText/type';
+import { Types } from '@fastgpt/service/common/mongo';
+
+/**
+ * 标记单条业务记录的数据完整性、归属或历史同义词快照错误。
+ * 仅此类可预期数据错误记入 failedRecords；数据库连接、超时或 SQL 驱动异常原样上抛给 Runner。
+ */
+export class SqlFullTextMigrationRecordError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'SqlFullTextMigrationRecordError';
+  }
+}
+
+/** 按索引记录的历史同义词版本重建输入，图片全文为空；不能用当前词表猜测历史。 */
+export const buildSqlFullTextRows = async (
+  data: DatasetDataSchemaType
+): Promise<SqlFullTextRow[]> => {
+  const teamId = String(data.teamId);
+  const datasetId = String(data.datasetId);
+  const version = data.synonymVersion ?? 0;
+  // 图片没有全文输入，明确的版本 0 也不依赖词表；迁移不能额外要求这些历史快照。
+  const needsHistory =
+    data.indexes.some((index) => index.type !== DatasetDataIndexTypeEnum.imageEmbedding) &&
+    (data.synonymVersion === undefined || version > 0);
+  const config = needsHistory ? await getDatasetSynonymConfig({ teamId, datasetId }) : null;
+  if (data.synonymVersion === undefined && config && config.version > 0) {
+    throw new SqlFullTextMigrationRecordError(
+      'Historical synonym version is missing; rebuild this data before migrating'
+    );
+  }
+  const matcher =
+    needsHistory && version > 0 && !(config?.version === version && !config.enabled)
+      ? await getDatasetSynonymMatcher({ teamId, datasetId, fileVersion: version })
+      : undefined;
+  if (matcher && !matcher.hasMappings) {
+    throw new SqlFullTextMigrationRecordError('Historical synonym snapshot is unavailable');
+  }
+  return data.indexes.map((index) => ({
+    vectorId: index.dataId,
+    teamId,
+    datasetId,
+    collectionId: String(data.collectionId),
+    text:
+      index.type === DatasetDataIndexTypeEnum.imageEmbedding
+        ? ''
+        : (matcher?.transform(index.text).transformedText ?? index.text)
+  }));
+};
 
 /** 读取当前 dataset_datas 主库最大 _id 作为分批扫描或校验的固定上界。 */
 export const getLatestDatasetDataId = async (): Promise<string | null> => {
@@ -67,7 +118,7 @@ const processSqlFullTextRecord = async (id: string, mode: 'preflight' | 'fill' |
       active.datasetId !== row.datasetId ||
       active.collectionId !== row.collectionId
     ) {
-      throw new Error(
+      throw new SqlFullTextMigrationRecordError(
         'Active vector row is missing, has wrong ownership, or has conflicting full text'
       );
     }
@@ -81,16 +132,3 @@ export const preflightSqlFullTextRecord = (id: string) => processSqlFullTextReco
 /** 回填或验收单条业务块；并发变化后只对仍有效的索引判定失败。 */
 export const migrateSqlFullTextRecord = (id: string, validateOnly = false) =>
   processSqlFullTextRecord(id, validateOnly ? 'validate' : 'fill');
-
-/**
- * 全量验收通过后清空旧的 Mongo dataset_data_texts 表并核验归零。
- * 新写入已直接随向量行写入原生全文，旧表不再承担读写与兜底职责。
- */
-export const clearLegacyMongoFullText = async (): Promise<number> => {
-  const { deletedCount } = await MongoDatasetDataText.deleteMany({});
-  const remaining = await MongoDatasetDataText.countDocuments({}).read('primary');
-  if (remaining !== 0) {
-    throw new Error(`Legacy dataset_data_texts cleanup incomplete: ${remaining} remaining`);
-  }
-  return deletedCount ?? 0;
-};

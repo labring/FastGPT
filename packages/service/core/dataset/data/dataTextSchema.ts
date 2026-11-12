@@ -37,16 +37,13 @@ defineIndex(DatasetDataTextSchema, {
   options: {
     name: 'teamId_1_fullTextToken_text',
     default_language: 'none'
-  },
-  deprecated: true
+  }
 });
 defineIndex(DatasetDataTextSchema, {
-  key: { teamId: 1, datasetId: 1, collectionId: 1 },
-  deprecated: true
+  key: { teamId: 1, datasetId: 1, collectionId: 1 }
 });
 defineIndex(DatasetDataTextSchema, {
-  key: { dataId: 'hashed' },
-  deprecated: true
+  key: { dataId: 'hashed' }
 });
 
 export const MongoDatasetDataText = getMongoModel<DatasetDataTextSchemaType>(

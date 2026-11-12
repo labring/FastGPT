@@ -187,10 +187,6 @@ export const systemMigrations = [
       {
         key: 'validation',
         labelKey: i18nT('system_migration:migrations.20261110_migrate_sql_fulltext.validation')
-      },
-      {
-        key: 'cleanup',
-        labelKey: i18nT('system_migration:migrations.20261110_migrate_sql_fulltext.cleanup')
       }
     ],
     run: migrateSqlFullTextMigration

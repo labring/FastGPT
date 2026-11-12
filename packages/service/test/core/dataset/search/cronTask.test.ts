@@ -13,6 +13,9 @@ vi.mock('@fastgpt/service/core/dataset/data/schema', () => ({
   DatasetDataCollectionName: 'dataset_datas',
   MongoDatasetData: { countDocuments: mockCountDocuments }
 }));
+vi.mock('@fastgpt/service/core/dataset/data/dataTextSchema', () => ({
+  MongoDatasetDataText: {}
+}));
 
 import { checkInvalidVector } from '@/service/common/system/cronTask';
 

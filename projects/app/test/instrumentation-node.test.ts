@@ -121,6 +121,10 @@ describe('registerNodeInstrumentation', () => {
       {
         _id: '20261022_initialize_dataset_vector_indexes',
         status: SystemMigrationStatusEnum.succeeded
+      },
+      {
+        _id: '20261110_migrate_sql_fulltext',
+        status: SystemMigrationStatusEnum.succeeded
       }
     ]);
     const legacyState = await MongoSystemMigrationState.findById(legacyMigrationId).lean();

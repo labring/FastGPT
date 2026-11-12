@@ -1,4 +1,5 @@
 import z from 'zod';
+import type { ClientSession } from '../mongo';
 import { DatasetVectorSearchDataSchema } from '@fastgpt/global/core/dataset/vectorData/type';
 
 // Embedding recall item schema
@@ -159,10 +160,29 @@ export type FullTextSearchItem = {
   score: number;
 };
 
-/**
- * 全文检索统一只读查询接口。
- * 所有支持的检索库（Milvus 与各 SQL 向量库）均采用单表方案，全文词项/文本随向量行同写同删。
- */
-export type FullTextStore = {
-  search(props: FullTextSearchProps): Promise<FullTextSearchItem[]>;
+export type FullTextWriteProps = {
+  dataId: string;
+  teamId: string;
+  datasetId: string;
+  collectionId: string;
+  fullText: string;
 };
+
+/**
+ * 全文检索统一接口。
+ * 兼容窗口内 SQL 向量库除在向量行同写 fulltext_tokens 外，继续同步维护旧 Mongo dataset_data_texts，
+ * 且仅在当前物理 SQL 目标通过全量回填与验收后切换 search 读取；Milvus 实现写/删为空操作。
+ */
+export interface FullTextStore {
+  search(props: FullTextSearchProps): Promise<FullTextSearchItem[]>;
+  write(props: FullTextWriteProps[], session?: ClientSession): Promise<void>;
+  deleteByDataId(dataId: string, session?: ClientSession): Promise<void>;
+  deleteByDatasetIds(
+    props: { teamId: string; datasetIds: string[] },
+    session?: ClientSession
+  ): Promise<void>;
+  deleteByCollectionIds(
+    props: { teamId: string; datasetIds: string[]; collectionIds: string[] },
+    session?: ClientSession
+  ): Promise<void>;
+}

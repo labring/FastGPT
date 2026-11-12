@@ -146,7 +146,7 @@ describe.skipIf(!target)('selected SQL database real full-text migration', () =>
     await pgAdmin?.end();
   });
 
-  it('automatically migrates legacy rows, cleans legacy Mongo full-text table and writes new rows natively', async () => {
+  it('automatically migrates legacy rows, retains legacy Mongo full-text table, cuts over reads and writes new rows natively', async () => {
     const examples = [
       ['南京市长江大桥通行指南', '长江大桥'],
       ['FastGPT authentication token', 'authentication'],
@@ -191,13 +191,12 @@ describe.skipIf(!target)('selected SQL database real full-text migration', () =>
         provider: target!.provider,
         prechecked: 3,
         scanned: 3,
-        validated: 3,
-        deletedLegacyCount: 3
+        validated: 3
       }
     });
     expect(await snapshot()).toEqual(before);
     expect(await MongoDatasetData.find().sort({ _id: 1 }).lean()).toEqual(source);
-    expect(await MongoDatasetDataText.countDocuments()).toBe(0);
+    expect(await MongoDatasetDataText.countDocuments()).toBe(3);
 
     for (const fixture of fixtures) {
       expect((await getFullTextStore().search(props(fixture.search)))[0]?.dataId).toBe(fixture.id);

@@ -31,15 +31,14 @@ describe('SQL full-text migration provider boundary', () => {
       applicable: false,
       prechecked: 0,
       scanned: 0,
-      validated: 0,
-      deletedLegacyCount: 0
+      validated: 0
     });
     expect(
       context.reportProgress.mock.calls
         .map(([value]) => value)
         .filter((value) => value.status === 'succeeded')
     ).toEqual(
-      ['prepare', 'preflight', 'scan', 'validation', 'cleanup'].map((key) => ({
+      ['prepare', 'preflight', 'scan', 'validation'].map((key) => ({
         key,
         status: 'succeeded'
       }))

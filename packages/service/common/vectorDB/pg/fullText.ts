@@ -125,15 +125,19 @@ export const preparePgFullText = async (): Promise<PgFullTextMetadata> => {
  * 返回逐行校验结果，调用方再次核对 Mongo 当前引用后决定失效引用还是迁移失败。
  */
 export const fillPgFullText = (rows: SqlFullTextRow[], validateOnly = false) =>
-  executePostgresFullTextRows(
-    PgClient.query.bind(PgClient),
+  executePostgresFullTextRows({
+    query: PgClient.query.bind(PgClient),
     rows,
-    validateOnly ? 'validate' : 'fill'
-  );
+    mode: validateOnly ? 'validate' : 'fill'
+  });
 
 /** 回填前只读核对目标行，NULL 词串属于正常待回填状态。 */
 export const preflightPgFullText = (rows: SqlFullTextRow[]) =>
-  executePostgresFullTextRows(PgClient.query.bind(PgClient), rows, 'preflight');
+  executePostgresFullTextRows({
+    query: PgClient.query.bind(PgClient),
+    rows,
+    mode: 'preflight'
+  });
 
 /**
  * 查询先经外置分析器切成去重后的词数组，按词精确匹配（不再由数据库分词），业务范围在 Top-K 前过滤。

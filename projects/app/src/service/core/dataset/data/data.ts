@@ -9,6 +9,7 @@ import type {
 import type { EmbeddingModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { type ClientSession } from '@fastgpt/service/common/mongo';
+import { getFullTextStore } from '@fastgpt/service/core/dataset/data/textStore';
 import { isS3ObjectKey, removeS3TTL } from '@fastgpt/service/common/s3/utils';
 import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 import { isAuthorizedDatasetFileS3Key } from '@fastgpt/service/common/s3/sources/dataset/key';
@@ -102,6 +103,7 @@ type RebuildDatasetDataIndexesProps = {
  *
  * 这个类负责协调一条 dataset data 相关的多份存储：
  * - MongoDatasetData：主数据、Q/A、indexes、历史记录
+ * - MongoDatasetDataText：兼容窗口内的全文检索 token
  * - 向量库：每个 index 对应的向量与全文检索词项记录
  * - S3：图片数据的生命周期或删除
  *
@@ -275,6 +277,20 @@ export class DatasetDataOperation {
           );
           insertId = String(_id);
 
+          await getFullTextStore().write(
+            [
+              {
+                teamId,
+                datasetId,
+                collectionId,
+                dataId: String(_id),
+                fullText:
+                  synonymContext?.transformText(`${indexQ}\n${a}`.trim()) ??
+                  `${indexQ}\n${a}`.trim()
+              }
+            ],
+            mongoSession
+          );
           await assertSynonymContextCurrent();
 
           if (
@@ -444,6 +460,21 @@ export class DatasetDataOperation {
             throw new Error('数据已变化，请重试索引更新');
           }
 
+          await getFullTextStore().write(
+            [
+              {
+                teamId: String(mongoData.teamId),
+                datasetId: String(mongoData.datasetId),
+                collectionId: String(mongoData.collectionId),
+                dataId: String(mongoData._id),
+                fullText:
+                  synonymContext?.transformText(`${nextQ}\n${nextA}`.trim()) ??
+                  `${nextQ}\n${nextA}`.trim()
+              }
+            ],
+            mongoSession
+          );
+
           if (!commit && isFailed) {
             await MongoDatasetTraining.deleteMany(
               {
@@ -593,6 +624,23 @@ export class DatasetDataOperation {
             { session }
           );
           if (result.matchedCount !== 1) throw new Error('数据已变化，请重试索引更新');
+
+          const fullText = indexes
+            .filter((index) => index.type !== DatasetDataIndexTypeEnum.imageEmbedding)
+            .map((index) => index.text)
+            .join('\n');
+          await getFullTextStore().write(
+            [
+              {
+                teamId: String(mongoData.teamId),
+                datasetId: String(mongoData.datasetId),
+                collectionId: String(mongoData.collectionId),
+                dataId: String(mongoData._id),
+                fullText: synonymContext?.transformText(fullText) ?? fullText
+              }
+            ],
+            session
+          );
         }
       });
     } catch (error) {
@@ -773,6 +821,21 @@ export class DatasetDataOperation {
           throw new Error('数据已变化，请重试索引更新');
         }
 
+        await getFullTextStore().write(
+          [
+            {
+              teamId: String(mongoData.teamId),
+              datasetId: String(mongoData.datasetId),
+              collectionId: String(mongoData.collectionId),
+              dataId: String(mongoData._id),
+              fullText:
+                synonymContext?.transformText(`${nextQ}\n${nextA}`.trim()) ??
+                `${nextQ}\n${nextA}`.trim()
+            }
+          ],
+          session
+        );
+
         if (isFailed) {
           await MongoDatasetTraining.deleteMany(
             {
@@ -826,6 +889,7 @@ export class DatasetDataOperation {
       fn: async (session) => {
         await MongoDatasetData.deleteOne({ _id: data.id }, { session });
         await MongoDatasetTraining.deleteMany({ dataId: data.id }, { session });
+        await getFullTextStore().deleteByDataId(data.id, session);
 
         // 主数据删除后清理图片对象，避免孤儿文件继续占用存储。
         // 仅删除归属于该数据块 dataset 的 key，避免脏数据里的外库 key 触发跨库物理删除。

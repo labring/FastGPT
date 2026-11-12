@@ -295,11 +295,10 @@ describe.skipIf(!target).each(qualityDatasets)(
           result: {
             prechecked: corpus.length,
             scanned: corpus.length,
-            validated: corpus.length,
-            deletedLegacyCount: corpus.length
+            validated: corpus.length
           }
         });
-        expect(await MongoDatasetDataText.countDocuments()).toBe(0);
+        expect(await MongoDatasetDataText.countDocuments()).toBe(corpus.length);
         const after = await snapshot();
         expect(after).toEqual(before);
         expect(

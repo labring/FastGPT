@@ -26,6 +26,16 @@ describe('OpenGaussVectorCtrl.init', () => {
         'CREATE INDEX modeldata_fulltext ON modeldata USING bm25(fulltext_tokens);'
       )
     );
+
+    vi.mocked(OgClient.query)
+      .mockReset()
+      .mockImplementation(async (sql) => {
+        if (String(sql).includes('USING bm25')) {
+          throw new Error('bm25 access method unsupported');
+        }
+        return { rows: [] } as any;
+      });
+    await expect(new OpenGaussVectorCtrl().init()).resolves.toBeUndefined();
   });
 });
 

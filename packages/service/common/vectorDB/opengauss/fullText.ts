@@ -25,9 +25,9 @@ const metadataTable = 'fastgpt_fulltext_metadata';
 const indexName = SQL_FULL_TEXT_INDEX;
 const column = SQL_FULL_TEXT_COLUMN;
 
-/** DataVec BM25 自 7.0.0 RC2 引入，RC1 与未知大版本不能误判为兼容。 */
+/** DataVec BM25 自 7.0.0 RC2 引入，RC1 与未知大版本不能误判为兼容（支持标准版及 openGauss-lite 镜像）。 */
 export const assertOpenGaussFullTextVersion = (version: string) => {
-  const match = version.match(/openGauss\s+7\.0\.\d+(?:[-\s]+RC(\d+))?/i);
+  const match = version.match(/openGauss(?:-[a-z]+)?[-\s]+7\.0\.\d+(?:[-\s]+RC(\d+))?/i);
   if (!match || (match[1] !== undefined && Number(match[1]) < 2)) {
     throw new Error('OpenGauss full text requires 7.0.x with DataVec BM25 (RC2 or later)');
   }
@@ -153,15 +153,19 @@ export const prepareOpenGaussFullText = async () => {
 
 /** 复用 PG 协议的条件 UPDATE 与写后比较，保留原有向量和 ID。 */
 export const fillOpenGaussFullText = (rows: SqlFullTextRow[], validateOnly = false) =>
-  executePostgresFullTextRows(
-    OgClient.query.bind(OgClient),
+  executePostgresFullTextRows({
+    query: OgClient.query.bind(OgClient),
     rows,
-    validateOnly ? 'validate' : 'fill'
-  );
+    mode: validateOnly ? 'validate' : 'fill'
+  });
 
 /** 只读核对有效引用及已有词串，允许尚未填充的 NULL。 */
 export const preflightOpenGaussFullText = (rows: SqlFullTextRow[]) =>
-  executePostgresFullTextRows(OgClient.query.bind(OgClient), rows, 'preflight');
+  executePostgresFullTextRows({
+    query: OgClient.query.bind(OgClient),
+    rows,
+    mode: 'preflight'
+  });
 
 /**
  * OpenGauss 的 <&> 必须配合 BM25 索引降序排序；过滤先于 LIMIT。

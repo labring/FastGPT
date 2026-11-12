@@ -264,6 +264,12 @@ export class MilvusFullTextStore implements FullTextStore {
       .map(([dataId, { collectionId, score }]) => ({ dataId, collectionId, score }))
       .slice(0, limit);
   }
+
+  // 写/删由向量 insert/update/delete 通道承载(单表方案全文行即向量行),milvus 实现为空操作
+  async write(): Promise<void> {}
+  async deleteByDataId(): Promise<void> {}
+  async deleteByDatasetIds(): Promise<void> {}
+  async deleteByCollectionIds(): Promise<void> {}
 }
 
 let milvusFullTextStore: MilvusFullTextStore | undefined;

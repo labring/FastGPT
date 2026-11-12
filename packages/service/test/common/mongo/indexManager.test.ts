@@ -727,44 +727,13 @@ describe('sandbox quota index migration', () => {
   });
 });
 
-describe('dataset legacy full-text index deprecation', () => {
-  it('removes all three deprecated dataset_data_texts indexes while preserving customer indexes', async () => {
-    expect(MongoDatasetDataText.schema.indexes()).toEqual([]);
-    const deprecated = getSchemaDeprecatedMongoIndexes(MongoDatasetDataText.schema);
-    expect(deprecated.map((item) => item.indexName)).toEqual([
-      'teamId_1_fullTextToken_text',
-      'teamId_1_datasetId_1_collectionId_1',
-      'dataId_hashed'
+describe('dataset legacy full-text index retention', () => {
+  it('retains all three dataset_data_texts active indexes without deprecation during compatibility window', () => {
+    expect(MongoDatasetDataText.schema.indexes()).toEqual([
+      [{ teamId: 1, fullTextToken: 'text' }, expect.objectContaining({ default_language: 'none' })],
+      [{ teamId: 1, datasetId: 1, collectionId: 1 }, expect.any(Object)],
+      [{ dataId: 'hashed' }, expect.any(Object)]
     ]);
-
-    const schema = new Schema(
-      {
-        teamId: String,
-        datasetId: String,
-        collectionId: String,
-        dataId: String,
-        fullTextToken: String,
-        customerField: String
-      },
-      { autoIndex: false }
-    );
-    defineDeprecatedTestIndexes(schema, deprecated);
-    const model = createModel({ schema, prefix: 'DatasetDataTextDeprecatedIndex' });
-    await model.collection.createIndex(
-      { teamId: 1, fullTextToken: 'text' },
-      { name: 'teamId_1_fullTextToken_text', default_language: 'none' }
-    );
-    await model.collection.createIndex({ teamId: 1, datasetId: 1, collectionId: 1 });
-    await model.collection.createIndex({ dataId: 'hashed' });
-    await model.collection.createIndex({ customerField: 1 }, { name: 'customer_text_lookup' });
-
-    const result = await MongoIndexManager.syncModelIndexes({ model, logger });
-    const names = await getIndexNames(model);
-
-    expect(result.cleanupReport.items.filter(({ action }) => action === 'drop')).toHaveLength(3);
-    expect(names).not.toContain('teamId_1_fullTextToken_text');
-    expect(names).not.toContain('teamId_1_datasetId_1_collectionId_1');
-    expect(names).not.toContain('dataId_hashed');
-    expect(names).toContain('customer_text_lookup');
+    expect(getSchemaDeprecatedMongoIndexes(MongoDatasetDataText.schema)).toEqual([]);
   });
 });

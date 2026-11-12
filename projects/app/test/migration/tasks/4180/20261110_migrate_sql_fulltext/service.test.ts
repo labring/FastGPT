@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Types } from '@fastgpt/service/common/mongo';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
-import { buildSqlFullTextRows } from '@fastgpt/service/core/dataset/fullText/sql/service';
+import { buildSqlFullTextRows } from '@/migration/tasks/4180/20261110_migrate_sql_fulltext/service';
 
 const synonyms = vi.hoisted(() => ({ config: vi.fn(), matcher: vi.fn() }));
 vi.mock('@fastgpt/service/core/dataset/synonym/entity', () => ({
