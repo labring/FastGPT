@@ -55,6 +55,7 @@ function createSource(
         path: `guide/${name}${suffix}.mdx`,
         data: {
           title: `${name}-${lang}`,
+          _file: { path: `guide/${name}${suffix}.mdx` },
           ...(name === 'draft' ? { draft: draftStates[lang] } : draft === undefined ? {} : { draft })
         }
       }))
@@ -68,6 +69,7 @@ function createSource(
     './i18n': {
       i18n: { defaultLanguage: 'zh-CN', languages: ['zh-CN', 'en'], hideLocale: 'never' }
     },
+    './page-tree': loadModule('../lib/page-tree.ts', {}),
     'lucide-react': { icons: {} },
     react: {
       createElement() {
@@ -176,6 +178,9 @@ test('page tree removes empty folders and sections, retaining index pages and ex
 
 test('static search export uses the filtered source', async () => {
   const { GET } = loadModule('../app/static.json/route.ts', {
+    '@/lib/i18n': {
+      i18n: { defaultLanguage: 'zh-CN', languages: ['zh-CN', 'en'], hideLocale: 'never' }
+    },
     '@/lib/source': { source: createSource(true) },
     'next/server': { NextResponse }
   });
@@ -183,6 +188,8 @@ test('static search export uses the filtered source', async () => {
   assert.equal(response.status, 200);
   const records = await response.json();
   assert.deepEqual(records.map((record) => record._id).sort(), [
+    '/en/guide/default',
+    '/en/guide/published',
     '/zh-CN/guide/default',
     '/zh-CN/guide/published'
   ]);

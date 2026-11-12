@@ -16,9 +16,11 @@ The Code Run node executes JavaScript and Python code in a secure sandbox for da
 
 **Important Notes**
 
-- Self-hosted users need to deploy the `fastgpt-sandbox` image. Starting with V4.18.0, enable the service under **Admin → Subservice configuration → Code Sandbox** and enter its URL and token. The token must match the sandbox process’s `SANDBOX_TOKEN`; you can test the connection on the page. The Code Run entry point is hidden when the service is disabled or required configuration is missing.
+- Self-hosted users need to deploy the `fastgpt-code-sandbox` image and configure the `CODE_SANDBOX_URL` and `CODE_SANDBOX_TOKEN` environment variables.
 - The sandbox has a default maximum runtime of 60s (configurable).
 - Code runs in isolated process pools with no access to the file system or internal network.
+
+![Code Run node configuration](/imgs/optimized/current/code-sandbox-node.png.webp)
 
 ## Variable Input
 
@@ -89,8 +91,8 @@ def main(url):
 
 **Limitations:**
 - Maximum 30 requests per execution
-- Single request timeout: 60s
-- Maximum response body: 2MB
+- Single request timeout: 60s by default (`SANDBOX_REQUEST_TIMEOUT`, in milliseconds)
+- Maximum response body: 10 MB by default (`SANDBOX_REQUEST_MAX_RESPONSE_MB`)
 - Only http/https protocols allowed
 - Internal IPs automatically blocked (127.0.0.0/8, 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, etc.)
 
@@ -108,8 +110,10 @@ The following npm modules are available via `require()`:
 | `crypto-js` | Encryption library | `const CryptoJS = require('crypto-js')` |
 | `uuid` | UUID generation | `const { v4 } = require('uuid')` |
 | `qs` | Query string parsing | `const qs = require('qs')` |
+| `url` | URL parsing and formatting | `const url = require('url')` |
+| `querystring` | Query string encoding and decoding | `const querystring = require('querystring')` |
 
-Other modules (such as `fs`, `child_process`, `net`, etc.) are prohibited.
+You can customize the JS module whitelist with the `SANDBOX_JS_ALLOWED_MODULES` environment variable on the code-sandbox service. Unlisted modules (such as `fs`, `child_process`, `net`, etc.) are prohibited.
 
 ### Python Whitelist
 
@@ -208,7 +212,7 @@ The following Python standard library and third-party modules can be imported di
 | `pandas` | Data analysis |
 | `matplotlib` | Data visualization |
 
-**Prohibited modules:** `os`, `sys`, `subprocess`, `socket`, `urllib`, `http`, `requests`, and any modules involving system calls, network access, or file system operations.
+**Module configuration:** You can customize the Python module whitelist with the `SANDBOX_PYTHON_ALLOWED_MODULES` environment variable on the code-sandbox service. Modules such as `os`, `sys`, `subprocess`, `socket`, `urllib`, `http`, `requests`, and any modules involving system calls, network access, or file system operations are prohibited by default.
 
 ## Security Restrictions
 

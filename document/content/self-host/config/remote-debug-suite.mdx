@@ -33,28 +33,11 @@ import { Alert } from '@/components/docs/Alert';
 
 主路径如下：
 
-```mermaid
-sequenceDiagram
-    participant User as Developer
-    participant FastGPT as FastGPT
-    participant Plugin as Plugin Server
-    participant Gateway as Connection Gateway
-    participant CLI as fastgpt-plugin dev
+![远程调试：建立连接](/imgs/diagrams/remote-debug-connect.zh-CN.light.svg)
 
-    User->>FastGPT: 开启调试通道
-    FastGPT->>Plugin: 创建 debug channel
-    Plugin-->>FastGPT: connectionKey / connectionUrl / source
-    User->>CLI: fastgpt-plugin dev --connect <connectionUrl>
-    CLI->>FastGPT: 兑换 connectionKey
-    FastGPT->>Plugin: 转发 connectionKey exchange
-    Plugin-->>CLI: gatewayUrl / connectToken / source
-    CLI->>Gateway: WebSocket bind
-    FastGPT->>Plugin: 调用 debug source 下的插件
-    Plugin->>Gateway: 发送 plugin-debug.run
-    Gateway->>CLI: 转发调试请求
-    CLI-->>Gateway: 返回执行结果
-    Gateway-->>Plugin: 流式返回结果
-```
+![远程调试：调用与返回](/imgs/diagrams/remote-debug-call.zh-CN.light.svg)
+
+连接信息经 FastGPT 兑换并返回 CLI；执行结果沿 Gateway、Plugin Server、FastGPT 逐层返回。图中 Gateway 与 CLI 的交互依据远程调试接口契约。
 
 ## 部署前提
 
@@ -94,16 +77,16 @@ services:
       CONNECTION_GATEWAY_WS_PORT: 3001
       CONNECTION_GATEWAY_WS_PATH: /connection-gateway/v1
     ports:
-      - '3010:3000'
-      - '3011:3001'
+      - '3020:3000'
+      - '3021:3001'
 ```
 
 端口说明：
 
 | 端口   | 用途                                                                             | 暴露要求                                                                |
 | ------ | -------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
-| `3010` | Gateway HTTP API，对应容器内 `3000`，包含 `/health`、`/internal/*`、`/metrics`。 | 不需要公网暴露，Plugin Server 可通过内网访问即可。                      |
-| `3011` | Gateway WebSocket，对应容器内 `3001`，默认路径 `/connection-gateway/v1`。        | 需要让开发者本地 CLI 可访问，通常通过反向代理暴露为公网 `wss://` 地址。 |
+| `3020` | Gateway HTTP API，对应容器内 `3000`，包含 `/health`、`/internal/*`、`/metrics`。 | 不需要公网暴露，Plugin Server 可通过内网访问即可（避开本地开发 AI Proxy 占用的 `3010`）。 |
+| `3021` | Gateway WebSocket，对应容器内 `3001`，默认路径 `/connection-gateway/v1`。        | 需要让开发者本地 CLI 可访问，通常通过反向代理暴露为公网 `wss://` 地址。 |
 | Redis  | Gateway session、source owner 和 mailbox 存储。                                  | 不需要公网暴露；Redis 版本必须支持 Stream。                             |
 
 ## 配置 Plugin Server
@@ -133,10 +116,9 @@ FastGPT 主服务继续使用常规插件配置：
 ```dotenv
 PLUGIN_BASE_URL=http://fastgpt-plugin:3000
 PLUGIN_TOKEN=replace-with-the-same-value-as-plugin-auth-token
-NEXT_PUBLIC_BASE_URL=https://fastgpt.example.com
 ```
 
-`NEXT_PUBLIC_BASE_URL` 会影响调试连接链接的生成。公网用户访问 FastGPT 时，应配置为浏览器可访问的 FastGPT 地址。
+调试连接链接的地址取自请求头 `Host`、`X-Forwarded-Host` 和 `X-Forwarded-Proto`，缺失时回退到 `FE_DOMAIN`。当请求未携带 `X-Forwarded-Proto` 且 `Host` 为非 `localhost`/`127.0.0.1` 地址时，服务端默认按 `https` 协议生成链接；若通过 HTTP 在局域网或反向代理后访问，请确保代理显式传递 `X-Forwarded-Proto: http`。`NEXT_PUBLIC_BASE_URL` 只用于子路径部署（例如 `/fastgpt`），会拼接在链接路径前，只填写路径前缀。
 
 ## 配置反向代理
 
@@ -159,7 +141,7 @@ location /connection-gateway/v1 {
 
 ## 开发者连接
 
-1. 在 FastGPT 插件调试入口开启调试通道，复制页面返回的连接链接。
+1. 在 FastGPT「工作台 → 系统工具」页面点击「本地调试」，在弹窗中点击「生成链接」开启调试通道，复制「调试链接」。
 2. 在本地插件目录运行：
 
 ```bash
@@ -174,10 +156,10 @@ debug:tmbId:{tmbId}
 
 ## 验证
 
-1. 访问 Gateway 健康检查：
+1. 访问 Gateway 健康检查（在同 Compose 网络容器内访问 `connection-gateway:3000`，或在宿主机访问映射端口 `localhost:3020`）：
 
 ```bash
-curl http://connection-gateway:3000/health
+curl http://localhost:3020/health
 ```
 
 2. 在 FastGPT 页面开启调试通道，确认状态从 `enabled` 变为 `connected`。
@@ -192,11 +174,11 @@ curl http://connection-gateway:3000/health
 - 调试 source 命中后按远程调试路径处理，断连或 session 不存在时会失败，不会回退到生产插件运行时。
 - 多副本 Gateway 部署需要保证 session 删除请求能路由到持有 WebSocket 的节点，或接受 Redis session 删除后后续调用失败。
 
-## 常见问题
+## 连接与调用排障
 
 ### 页面可以开启调试，但 CLI 连接失败
 
-检查 `CONNECTION_GATEWAY_PUBLIC_URL` 是否为开发者本地可访问地址。浏览器和 CLI 在开发者电脑上运行，不能使用 Docker 内网域名。
+检查 `CONNECTION_GATEWAY_PUBLIC_URL` 是否为开发者本地可访问地址。浏览器和 CLI 在开发者电脑上运行，必须配置宿主机 IP 或公网域名。
 
 ### CLI 已连接，但 FastGPT 显示 disconnected
 

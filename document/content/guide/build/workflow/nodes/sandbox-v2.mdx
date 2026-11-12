@@ -16,9 +16,11 @@ description: FastGPT 代码运行节点介绍（适用于 4.14.8 及以上版本
 
 **注意事项**
 
-- 私有化用户需要部署 `fastgpt-sandbox` 镜像。V4.18.0 起，在管理员「子服务配置 → Code Sandbox」中启用服务并填写地址和 Token；Token 须与沙箱进程的 `SANDBOX_TOKEN` 一致，可在页面测试连通性。关闭或必要配置缺失时，代码运行入口不展示。
+- 私有化用户需要部署 `fastgpt-code-sandbox` 镜像，并配置 `CODE_SANDBOX_URL` 与 `CODE_SANDBOX_TOKEN` 环境变量。
 - 沙盒默认最大运行 60s，可通过配置调整。
 - 代码运行在隔离的进程池中，无法访问文件系统和内网。
+
+![代码运行节点配置](/imgs/optimized/current/code-sandbox-node.png.webp)
 
 ## 变量输入
 
@@ -89,8 +91,8 @@ def main(url):
 
 **限制：**
 - 每次执行最多 30 个请求
-- 单次请求超时 60s
-- 响应体最大 2MB
+- 单次请求默认超时 60s（`SANDBOX_REQUEST_TIMEOUT`，单位为毫秒）
+- 响应体默认最大 10 MB（`SANDBOX_REQUEST_MAX_RESPONSE_MB`）
 - 仅允许 http/https 协议
 - 自动拦截内网 IP（127.0.0.0/8, 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 等）
 
@@ -108,8 +110,10 @@ def main(url):
 | `crypto-js` | 加密库 | `const CryptoJS = require('crypto-js')` |
 | `uuid` | UUID 生成 | `const { v4 } = require('uuid')` |
 | `qs` | 查询字符串解析 | `const qs = require('qs')` |
+| `url` | URL 解析与格式化 | `const url = require('url')` |
+| `querystring` | 查询字符串编解码 | `const querystring = require('querystring')` |
 
-其他模块（如 `fs`, `child_process`, `net` 等）被禁止使用。
+可通过代码沙盒服务的 `SANDBOX_JS_ALLOWED_MODULES` 环境变量调整 JS 模块白名单。未列入白名单的模块（如 `fs`, `child_process`, `net` 等）被禁止使用。
 
 ### Python 白名单模块
 
@@ -208,7 +212,7 @@ def main(url):
 | `pandas` | 数据分析 |
 | `matplotlib` | 数据可视化 |
 
-**禁止使用的模块：** `os`, `sys`, `subprocess`, `socket`, `urllib`, `http`, `requests` 等涉及系统调用、网络访问、文件系统的模块。
+**模块控制：** 可通过代码沙盒服务的 `SANDBOX_PYTHON_ALLOWED_MODULES` 环境变量调整 Python 模块白名单。`os`, `sys`, `subprocess`, `socket`, `urllib`, `http`, `requests` 等涉及系统调用、网络访问、文件系统的模块默认禁止使用。
 
 ## 安全限制
 

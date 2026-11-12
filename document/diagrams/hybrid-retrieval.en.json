@@ -1,0 +1,154 @@
+{
+  "type": "architecture",
+  "title": "Text hybrid retrieval",
+  "nodes": [
+    {
+      "id": "query",
+      "label": "Text query",
+      "row": 0,
+      "col": 0,
+      "kind": "input",
+      "illustration": "chat"
+    },
+    {
+      "id": "vector",
+      "label": "Vector recall",
+      "row": 1,
+      "col": 0,
+      "kind": "backend",
+      "illustration": "vector"
+    },
+    {
+      "id": "text",
+      "label": "Full-text recall",
+      "row": 1,
+      "col": 1,
+      "kind": "backend",
+      "illustration": "search"
+    },
+    {
+      "id": "fusion",
+      "label": "Weighted fusion",
+      "row": 2,
+      "col": 0,
+      "kind": "backend",
+      "focal": true,
+      "illustration": "fusion"
+    },
+    {
+      "id": "rerank",
+      "label": "Optional rerank",
+      "row": 3,
+      "col": 0,
+      "kind": "backend",
+      "sub": "Fallback on failure",
+      "illustration": "sort"
+    },
+    {
+      "id": "filter",
+      "label": "Dedupe and filter",
+      "row": 4,
+      "col": 0,
+      "kind": "backend",
+      "sub": "Supported score types",
+      "illustration": "filter"
+    },
+    {
+      "id": "tokens",
+      "label": "Token budget",
+      "row": 5,
+      "col": 0,
+      "kind": "backend",
+      "sub": "Keep complete chunks",
+      "illustration": "gauge"
+    },
+    {
+      "id": "context",
+      "label": "Retrieved context",
+      "row": 6,
+      "col": 0,
+      "kind": "store",
+      "illustration": "document"
+    }
+  ],
+  "edges": [
+    [
+      "query",
+      "vector",
+      "",
+      "primary"
+    ],
+    [
+      "query",
+      "text",
+      "",
+      "default"
+    ],
+    [
+      "vector",
+      "fusion",
+      "",
+      "primary"
+    ],
+    [
+      "text",
+      "fusion",
+      "",
+      "default"
+    ],
+    [
+      "fusion",
+      "rerank",
+      "",
+      "primary"
+    ],
+    [
+      "rerank",
+      "filter",
+      "",
+      "primary"
+    ],
+    [
+      "filter",
+      "tokens",
+      "",
+      "primary"
+    ],
+    [
+      "tokens",
+      "context",
+      "",
+      "primary"
+    ]
+  ],
+  "evidence": [
+    {
+      "id": "fusion",
+      "file": "packages/service/core/dataset/search/defaultRecall/index.ts",
+      "line": 113
+    },
+    {
+      "id": "rerank",
+      "file": "packages/service/core/dataset/search/defaultRecall/rerank.ts",
+      "line": 72
+    },
+    {
+      "id": "filter",
+      "file": "packages/service/core/dataset/search/defaultRecall/result.ts",
+      "line": 88
+    },
+    {
+      "id": "tokens",
+      "file": "packages/service/core/dataset/search/defaultRecall/utils.ts",
+      "line": 53
+    }
+  ],
+  "dir": "TB",
+  "lang": "en",
+  "eyebrow": "",
+  "legend": false,
+  "motion": "trace",
+  "fonts": "system",
+  "watermark": false,
+  "skin": "light"
+}

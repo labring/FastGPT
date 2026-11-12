@@ -1,4 +1,7 @@
-import { getFastGPTDocsLocaleFromHomeOrigin } from './docs-locale';
+import {
+  getFastGPTDocsLocaleFromHomeOrigin,
+  getFastGPTDocsOriginForLocale as getFixedFastGPTDocsOriginForLocale
+} from './docs-locale';
 
 const DEFAULT_FASTGPT_HOME_ORIGIN = 'https://fastgpt.io';
 
@@ -11,6 +14,7 @@ export const DOCS_UTM_CAMPAIGNS = {
 
 export type DocsUtmCampaign = (typeof DOCS_UTM_CAMPAIGNS)[keyof typeof DOCS_UTM_CAMPAIGNS];
 export type FastGPTSite = 'configured' | 'cn' | 'io';
+export type FastGPTDocsLocale = 'zh-CN' | 'en';
 
 const normalizeOrigin = (value?: string): string => {
   try {
@@ -31,8 +35,17 @@ export const getFastGPTDocsOrigin = (): string => {
   return homeUrl.origin;
 };
 
-export const getFastGPTDocsLocale = (): 'zh-CN' | 'en' =>
+export const getFastGPTDocsLocale = (): FastGPTDocsLocale =>
   getFastGPTDocsLocaleFromHomeOrigin(getFastGPTHomeOrigin());
+
+/**
+ * Resolve the docs origin that owns a locale while keeping the configured image host for its
+ * primary locale. Cross-host alternates always point at the corresponding production owner.
+ */
+export const getFastGPTDocsOriginForLocale = (locale: FastGPTDocsLocale): string =>
+  locale === getFastGPTDocsLocale()
+    ? getFastGPTDocsOrigin()
+    : getFixedFastGPTDocsOriginForLocale(locale);
 
 export const buildFastGPTHomeUrl = ({
   campaign,

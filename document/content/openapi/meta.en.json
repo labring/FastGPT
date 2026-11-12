@@ -1,5 +1,14 @@
 {
   "root": true,
   "title": "OpenAPI Documentation",
-  "pages": ["intro", "best-practices", "app", "chat", "dataset"]
+  "pages": [
+    "intro",
+    "best-practices",
+    "interactive-and-variables",
+    "app",
+    "chat",
+    "dataset",
+    "identity-proxy",
+    "legacy"
+  ]
 }

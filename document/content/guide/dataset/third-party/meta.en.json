@@ -6,6 +6,6 @@
     "lark_dataset",
     "yuque_dataset",
     "dingtalk_dataset",
-    "third_dataset"
+    "!third_dataset"
   ]
 }

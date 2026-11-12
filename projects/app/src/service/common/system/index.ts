@@ -48,6 +48,10 @@ import {
 
 const logger = getLogger(LogCategories.SYSTEM);
 const pluginFeaturesProbeTimeoutMs = 3000;
+const defaultOpenSourceLoginGuideDocUrl =
+  'https://doc.fastgpt.cn/zh-CN/guide/version/cloud/faq#%E8%B4%A6%E5%8F%B7%E7%99%BB%E5%BD%95%E9%97%AE%E9%A2%98';
+const defaultSiteLoginGuideDocUrl =
+  'https://doc.fastgpt.io/zh-CN/guide/version/cloud/faq#%E8%B4%A6%E5%8F%B7%E7%99%BB%E5%BD%95%E9%97%AE%E9%A2%98';
 
 /* Init global variables */
 export function initGlobalVariables() {
@@ -109,7 +113,7 @@ export async function getInitConfig({
 const defaultFeConfigs: FastGPTFeConfigsType = {
   show_git: true,
   docUrl: 'https://doc.fastgpt.io',
-  openAPIDocUrl: 'https://doc.fastgpt.io/openapi/intro',
+  openAPIDocUrl: 'https://doc.fastgpt.io/en/openapi/intro',
   enable_team_plugin_upload: false,
   enable_team_model: false,
   appTemplateCourse:
@@ -311,6 +315,12 @@ async function doInitSystemConfig({
     }),
     subPlans: fastgptConfig.subPlans
   };
+
+  // 社区版默认使用官方中文登录指引；仅当站点仍使用 Schema 默认值时覆盖，
+  // 管理员在实例配置中显式设置的登录引导地址必须保留。
+  if (!isPlus && instanceConfig.site.loginGuideDocUrl === defaultSiteLoginGuideDocUrl) {
+    config.feConfigs.loginGuideDocUrl = defaultOpenSourceLoginGuideDocUrl;
+  }
 
   // set config
   initFastGPTConfig(config);

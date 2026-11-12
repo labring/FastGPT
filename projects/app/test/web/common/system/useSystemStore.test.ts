@@ -210,6 +210,73 @@ describe('initStaticData through the real initialization pipeline', () => {
     expect(getDocPath('/guide/version/cloud/privacy')).toBe(
       'https://docs.example.com/guide/version/cloud/privacy'
     );
+    useSystemStore.setState((state) => {
+      state.feConfigs.docUrl = 'https://doc.fastgpt.cn';
+    });
+    expect(getDocPath('/guide/version/cloud/privacy')).toBe(
+      'https://doc.fastgpt.cn/zh-CN/guide/version/cloud/privacy'
+    );
+    expect(getDocPath('/en/guide/build/chat-agent')).toBe(
+      'https://doc.fastgpt.cn/en/guide/build/chat-agent'
+    );
+    useSystemStore.setState((state) => {
+      state.feConfigs.docUrl = 'https://doc.fastgpt.io';
+    });
+    expect(getDocPath('/guide/version/cloud/privacy')).toBe(
+      'https://doc.fastgpt.io/en/guide/version/cloud/privacy'
+    );
+    useSystemStore.setState((state) => {
+      state.feConfigs.docUrl = 'https://doc.fastgpt.io/en';
+    });
+    expect(getDocPath('/guide/build/chat-agent')).toBe(
+      'https://doc.fastgpt.io/en/guide/build/chat-agent'
+    );
+    expect(getDocPath('/en/guide/build/chat-agent')).toBe(
+      'https://doc.fastgpt.io/en/guide/build/chat-agent'
+    );
+    expect(getDocPath('/examples/sales.csv')).toBe('https://doc.fastgpt.io/examples/sales.csv');
+    useSystemStore.setState((state) => {
+      state.feConfigs.docUrl = 'https://doc.fastgpt.cn/zh-CN';
+    });
+    expect(getDocPath('/guide/dataset/websync#selector')).toBe(
+      'https://doc.fastgpt.cn/zh-CN/guide/dataset/websync#selector'
+    );
+    useSystemStore.setState((state) => {
+      state.feConfigs.docUrl = 'https://doc.fastgpt.cn/zh';
+    });
+    expect(getDocPath('/guide/build/chat-agent')).toBe(
+      'https://doc.fastgpt.cn/zh-CN/guide/build/chat-agent'
+    );
+    useSystemStore.setState((state) => {
+      state.feConfigs.docUrl = 'https://docs.example.com/en';
+    });
+    expect(getDocPath('/guide/version/cloud/privacy')).toBe(
+      'https://docs.example.com/en/guide/version/cloud/privacy'
+    );
+    useSystemStore.setState((state) => {
+      state.feConfigs.docUrl = 'https://doc.tryfastgpt.ai/zh-CN';
+    });
+    expect(getDocPath('/guide/build/chat-agent')).toBe(
+      'https://doc.tryfastgpt.ai/zh-CN/guide/build/chat-agent'
+    );
+    expect(getDocPath('/en/guide/build/chat-agent')).toBe(
+      'https://doc.tryfastgpt.ai/en/guide/build/chat-agent'
+    );
+    useSystemStore.setState((state) => {
+      state.feConfigs.docUrl = 'https://doc.fastgpt.io/zh-CN';
+    });
+    expect(getDocPath('/guide/build/chat-agent')).toBe(
+      'https://doc.fastgpt.io/zh-CN/guide/build/chat-agent'
+    );
+    useSystemStore.setState((state) => {
+      state.feConfigs.docUrl = 'https://doc.fastgpt.cn/en';
+    });
+    expect(getDocPath('/guide/build/chat-agent')).toBe(
+      'https://doc.fastgpt.cn/en/guide/build/chat-agent'
+    );
+    useSystemStore.setState((state) => {
+      state.feConfigs.docUrl = 'https://docs.example.com';
+    });
 
     global.subPlans = { extraDatasetSize: { price: 8 } };
     mocks.referer = '';

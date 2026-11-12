@@ -21,10 +21,10 @@ FastGPT adalah platform pembangunan AI Agent yang menyediakan kemampuan siap pak
   <a href="https://fastgpt.io/?source=github&utm_source=github&utm_medium=referral&utm_campaign=github_home&utm_content=cloud_badge">
     <img height="21" src="https://img.shields.io/badge/Penggunaan_Online-d4eaf7?style=flat-square&logo=spoj&logoColor=7d09f1" alt="cloud">
   </a>
-  <a href="https://doc.fastgpt.io/guide/getting-started">
+  <a href="https://doc.fastgpt.io/en/guide/getting-started">
     <img height="21" src="https://img.shields.io/badge/Dokumentasi-7d09f1?style=flat-square" alt="document">
   </a>
-  <a href="https://doc.fastgpt.io/self-host/dev">
+  <a href="https://doc.fastgpt.io/en/self-host/dev">
     <img height="21" src="https://img.shields.io/badge/Pengembangan_Lokal-%23d4eaf7?style=flat-square&logo=xcode&logoColor=7d09f1" alt="development">
   </a>
   <a href="#-proyek--tautan-kami">
@@ -47,7 +47,7 @@ docker compose up -d
 
 Setelah sepenuhnya aktif, Anda dapat mengakses FastGPT di `http://localhost:3000`. Akun default adalah `root` dan kata sandinya adalah `1234`.
 
-Jika Anda menghadapi masalah, Anda dapat [melihat tutorial penyebaran Docker lengkap](https://doc.fastgpt.io/self-host/deploy/docker)
+Jika Anda menghadapi masalah, Anda dapat [melihat tutorial penyebaran Docker lengkap](https://doc.fastgpt.io/en/self-host/deploy/docker)
 
 ## 🛸 Cara Penggunaan
 
@@ -55,10 +55,10 @@ Jika Anda menghadapi masalah, Anda dapat [melihat tutorial penyebaran Docker len
   Jika Anda tidak memerlukan penyebaran privat, Anda dapat langsung menggunakan layanan cloud kami di: [fastgpt.io](https://fastgpt.io/?source=github&utm_source=github&utm_medium=referral&utm_campaign=github_home&utm_content=cloud_service_link)
 
 - **Versi Self-Hosted Komunitas**  
-  Anda dapat menyebarkan dengan cepat menggunakan [Docker](https://doc.fastgpt.io/self-host/deploy/docker) atau menggunakan [Sealos Cloud](https://doc.fastgpt.io/self-host/deploy/sealos) untuk menyebarkan FastGPT dengan satu klik.
+  Anda dapat menyebarkan dengan cepat menggunakan [Docker](https://doc.fastgpt.io/en/self-host/deploy/docker) atau menggunakan [Sealos Cloud](https://doc.fastgpt.io/en/self-host/deploy/sealos) untuk menyebarkan FastGPT dengan satu klik.
 
 - **Versi Komersial**  
-  Jika Anda membutuhkan fitur yang lebih lengkap atau dukungan layanan mendalam, Anda dapat memilih [Versi Komersial](https://doc.fastgpt.io/guide/version/commercial). Selain menyediakan perangkat lunak lengkap, kami juga menyediakan panduan implementasi untuk skenario tertentu. Anda dapat mengirimkan [konsultasi komersial](https://fastgpt.cn/en/contact?source=github&utm_source=github&utm_medium=referral&utm_campaign=github_home&utm_content=commercial_consultation).
+  Jika Anda membutuhkan fitur yang lebih lengkap atau dukungan layanan mendalam, Anda dapat memilih [Versi Komersial](https://doc.fastgpt.io/en/guide/version/commercial). Selain menyediakan perangkat lunak lengkap, kami juga menyediakan panduan implementasi untuk skenario tertentu. Anda dapat mengirimkan [konsultasi komersial](https://fastgpt.cn/en/contact?source=github&utm_source=github&utm_medium=referral&utm_campaign=github_home&utm_content=commercial_consultation).
 
 ## 💡 Fitur Inti
 
@@ -109,7 +109,7 @@ Jika Anda menghadapi masalah, Anda dapat [melihat tutorial penyebaran Docker len
 
 ## 💪 Proyek & Tautan Kami
 
-- [Mulai Cepat Pengembangan Lokal](https://doc.fastgpt.io/self-host/dev/)
+- [Mulai Cepat Pengembangan Lokal](https://doc.fastgpt.io/en/self-host/dev)
 - [Dokumentasi OpenAPI](https://cloud.fastgpt.io/apidoc/systemopenapi)
 - [FastGPT-plugin](https://github.com/labring/fastgpt-plugin)
 - [AI Proxy: Layanan Load Balancing Agregasi Model](https://github.com/labring/aiproxy)
@@ -196,4 +196,4 @@ Repositori ini mengikuti [FastGPT Open Source License](./LICENSE).
 1. Penggunaan komersial sebagai layanan backend diperbolehkan, tetapi layanan SaaS tidak diperbolehkan.
 2. Setiap layanan komersial tanpa otorisasi komersial harus mempertahankan informasi hak cipta yang relevan.
 3. Silakan lihat [FastGPT Open Source License](./LICENSE) untuk detail lengkap.
-4. Kontak: Dennis@sealos.io, [Lihat Harga Komersial](https://doc.fastgpt.io/guide/version/commercial)
+4. Kontak: Dennis@sealos.io, [Lihat Harga Komersial](https://doc.fastgpt.io/en/guide/version/commercial)

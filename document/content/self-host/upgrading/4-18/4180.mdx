@@ -8,14 +8,15 @@ sidebarTag: 进行中
 
 ### 配置变更
 
-- **Code Sandbox 与 MCP SSE 服务**：连接配置移至管理员的「子服务配置」，社区版和商业版均可使用。Code Sandbox 需启用并填写地址、Token；Token 须与沙箱进程的 `SANDBOX_TOKEN` 一致，页面支持连通测试。MCP SSE 服务需启用并填写客户端可访问的代理地址。无旧配置时默认关闭，关闭或必要配置缺失时不展示对应业务入口。
-- **AI Proxy 与 Plugin**：AI Proxy 继续使用环境变量 `AIPROXY_API_ENDPOINT` 和 `AIPROXY_API_TOKEN`，两项均有效时才使用代理；缺一时不使用代理。Plugin 远程调试由 Plugin 服务配置控制。
+官方 Docker Compose 部署模板默认对象存储由 MinIO 切换为 RustFS（`fastgpt-rustfs`）。已有 MinIO 部署可参考[Docker Compose 从 MinIO 迁移到 RustFS](/zh-CN/self-host/docker_minio_to_rustfs)完成原地迁移，或保留原有 MinIO 配置继续运行。其余环境变量与系统配置从 V4.17.3 升级保持一致。
 
 ### 镜像更新
 
+本版本仍在开发中，镜像 tag 在正式发布时补充。
+
 ### 升级脚本
 
-新增一次性启动迁移，从旧配置回填 Code Sandbox 连接和 MCP SSE 开关，保留管理员已有值与显式清空。`CODE_SANDBOX_URL`、`CODE_SANDBOX_TOKEN` 和 `SSE_MCP_SERVER_PROXY_ENDPOINT` 仅用于兼容迁移，之后不再作为运行期配置；请在迁移成功后检查管理页面配置。
+本轮无新增或调整的自动升级脚本。
 
 ### 兼容说明
 

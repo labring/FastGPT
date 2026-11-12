@@ -1,12 +1,12 @@
 ---
 title: Sealos Devbox Sandbox Configuration
-description: Use Sealos Devbox as the FastGPT sandbox
+description: Configure Sealos Devbox as the remote code execution sandbox provider for FastGPT workflows and agents.
 ---
 
 import { Alert } from '@/components/docs/Alert';
 
 <Alert icon="⚠️" context="warning">
-  This feature is available only to commercial edition users. Contact support to request a key.
+  This feature is available only to commercial edition users. Contact [Commercial Support](/en/guide/version/commercial) to request a key.
   Billing is usage-based and deducted from your Sealos balance.
 </Alert>
 
@@ -51,13 +51,17 @@ AGENT_SANDBOX_APT_MIRROR=https://mirrors.tuna.tsinghua.edu.cn/debian
 For root Agent sandboxes, FastGPT generates and overwrites the standard Ubuntu or Debian `.sources` file for the detected distribution, creating a `.copy` backup before overwriting an existing file. When the variable is removed, files with a `.copy` backup are restored and files without a backup are skipped. Initialization does not run `apt-get update`.
 For arm64 runtime images, configure a mirror URL that provides the corresponding architecture packages.
 
-## FAQ
+## Configuration and Connection Troubleshooting
 
-### AGENT_SANDBOX_PROXY_URL or AGENT_SANDBOX_PREVIEW_PROXY_URL is required
+<span id="agent_sandbox_proxy_url-or-agent_sandbox_preview_proxy_url-is-required" />
+
+### Invalid Agent Sandbox proxy environment variables: AGENT_SANDBOX_PROXY_SECRET, AGENT_SANDBOX_PROXY_URL, AGENT_SANDBOX_PREVIEW_PROXY_URL are required when AGENT_SANDBOX_PROVIDER is sealosdevbox
 
 After `AGENT_SANDBOX_PROVIDER=sealosdevbox` is enabled, `fastgpt-app` requires `AGENT_SANDBOX_PROXY_SECRET`, `AGENT_SANDBOX_PROXY_URL`, and `AGENT_SANDBOX_PREVIEW_PROXY_URL`, while `fastgpt-pro` requires `AGENT_SANDBOX_PREVIEW_PROXY_URL`. The proxy secret must match the value configured for `fastgpt-agent-sandbox-proxy` and contain at least 32 characters.
 
-### AGENT_SANDBOX_SEALOS_IMAGE is required
+<span id="agent_sandbox_sealos_image-is-required" />
+
+### Invalid Agent Sandbox environment variables: AGENT_SANDBOX_SEALOS_IMAGE are required when AGENT_SANDBOX_PROVIDER is sealosdevbox
 
 The `sealosdevbox` provider requires `AGENT_SANDBOX_SEALOS_IMAGE`. Use the Agent Sandbox runtime image provided by support or the image that matches your current FastGPT version.
 
