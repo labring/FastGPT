@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
-import { chmod, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -544,71 +544,6 @@ describe('CLI auth command integration', () => {
     const cmdsRes = await execCli({ argv: ['commands', '--format', 'json'], configDir });
     expect(cmdsRes.exitCode).toBe(0);
     expect(JSON.parse(cmdsRes.stdout).data.commands.length).toBeGreaterThanOrEqual(11);
-  });
-
-  it('automatically updates local config sessionExpiresAt when server sends x-fastgpt-session-expires', async () => {
-    const configDir = await makeConfigDir();
-    const token = 'user-1:tok-1234';
-    const now = Date.now();
-    const originalExpiresAt = now + 86_400_000;
-    const renewedExpiresAt = now + 7 * 86_400_000;
-
-    await writeFile(
-      join(configDir, 'config.json'),
-      JSON.stringify({
-        schemaVersion: 1,
-        currentProfile: 'default',
-        profiles: {
-          default: {
-            baseUrl: 'https://cloud.fastgpt.cn/api',
-            authType: 'token',
-            sessionExpiresAt: originalExpiresAt,
-            updatedAt: now
-          }
-        }
-      })
-    );
-    await writeFile(join(configDir, 'credentials.json'), JSON.stringify({ default: token }), {
-      mode: 0o600
-    });
-    if (process.platform !== 'win32') {
-      await chmod(join(configDir, 'credentials.json'), 0o600).catch(() => {});
-    }
-
-    const res = await execCli({
-      argv: ['whoami'],
-      configDir,
-      fetchFn: async () =>
-        new Response(
-          JSON.stringify({
-            code: 200,
-            data: {
-              authType: 'token',
-              user: { userId: OBJECT_ID_USER, username: 'alice' },
-              team: {
-                teamId: OBJECT_ID_TEAM,
-                teamName: 'Core',
-                tmbId: OBJECT_ID_TMB,
-                role: 'owner',
-                permission: fullPermission
-              },
-              isRoot: false,
-              session: { createdAt: now, expiresAt: renewedExpiresAt }
-            }
-          }),
-          {
-            headers: {
-              'content-type': 'application/json',
-              'x-fastgpt-session-expires': String(renewedExpiresAt)
-            }
-          }
-        )
-    });
-
-    expect(res.stderr).toBe('');
-    expect(res.exitCode).toBe(0);
-    const updatedCfg = JSON.parse(await readFile(join(configDir, 'config.json'), 'utf8'));
-    expect(updatedCfg.profiles.default.sessionExpiresAt).toBe(renewedExpiresAt);
   });
 
   it('does not leak token from options as command name in error envelopes (F1 regression)', async () => {

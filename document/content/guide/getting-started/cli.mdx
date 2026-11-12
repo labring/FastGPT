@@ -67,7 +67,7 @@ echo "<PASSWORD>" | fastgpt login --username <USERNAME> --password-stdin
 fastgpt whoami
 ```
 
-> **会话持久化与自动滑动续期**：> 凭据优先存储在系统安全密钥环（macOS Keychain / Linux Secret Service）中。每次在终端执行有效操作，服务端会自动执行 24 小时防抖的滑动续期（7 天 TTL），活跃使用无需频繁重复登录。
+> **凭据存储与会话有效期**：凭据优先存储在系统安全密钥环（macOS Keychain / Linux Secret Service）中。Session 自创建起 7 天后到期，到期后请执行 `fastgpt login` 重新登录。
 
 ### 3. 环境体检（Doctor）
 

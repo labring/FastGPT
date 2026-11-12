@@ -94,19 +94,13 @@ export function createCliContainer(deps: CliRuntimeDeps): CliContainer {
             : undefined
         ));
 
-  const createHttpClient: HttpClientFactory = ({
-    baseUrl,
-    insecure,
-    caCertPath,
-    onSessionRenewed
-  }) =>
+  const createHttpClient: HttpClientFactory = ({ baseUrl, insecure, caCertPath }) =>
     createFastGptHttpClient({
       baseUrl,
       cliVersion,
       fetchFn: deps.fetchFn,
       insecure,
-      caCertPath,
-      onSessionRenewed
+      caCertPath
     });
 
   const probeHandlers = [

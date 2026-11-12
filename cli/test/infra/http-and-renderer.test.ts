@@ -219,27 +219,6 @@ describe('FastGptHttpClient (ky) & OutputRenderer (picocolors)', () => {
     expect(await rawRes.text()).toBe('file-content-raw');
   });
 
-  it('triggers onSessionRenewed when server returns x-fastgpt-session-expires header', async () => {
-    let renewedExpiresAt: number | undefined;
-    const client = createFastGptHttpClient({
-      baseUrl: 'http://127.0.0.1:3000/api',
-      cliVersion: '0.1.0',
-      onSessionRenewed: (ts) => {
-        renewedExpiresAt = ts;
-      },
-      fetchFn: async () =>
-        new Response(JSON.stringify({ code: 200, data: 'ok' }), {
-          headers: {
-            'content-type': 'application/json',
-            'x-fastgpt-session-expires': '1765000000000'
-          }
-        })
-    });
-
-    await client.request({ method: 'GET', path: '/test-renew' });
-    expect(renewedExpiresAt).toBe(1765000000000);
-  });
-
   it('blocks cross-origin redirects in beforeRequest and prevents credential leakage', async () => {
     let foreignReqHeaders: Headers | undefined;
     const client = createFastGptHttpClient({

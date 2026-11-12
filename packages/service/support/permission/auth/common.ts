@@ -4,7 +4,7 @@ import { SERVICE_LOCAL_HOST } from '../../../common/system/tools';
 import type { NodeHttpRequest, NodeHttpResponse } from '../../../types/http';
 import Cookie from 'cookie';
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
-import { authUserSession, touchUserSession } from '../../../support/user/session';
+import { authUserSession } from '../../../support/user/session';
 import { authOpenApiKey } from '../../../support/openapi/auth';
 import { assertCancellation } from '../../../support/user/account/cancellation/guard';
 import { getUserIdByTmbId } from '../../../support/user/team/utils';
@@ -31,7 +31,6 @@ export const authRequestFromLocal = ({ req }: { req: NodeHttpRequest }) => {
 
 export async function parseHeaderCert({
   req,
-  res,
   authToken = false,
   authRoot = false,
   authApiKey = false,
@@ -115,7 +114,6 @@ export async function parseHeaderCert({
     sourceName,
     sessionId,
     sessionCreatedAt,
-    sessionExpiresAt,
     legacyAppId,
     parsedAppId,
     apiKeyAuthProxy,
@@ -146,23 +144,6 @@ export async function parseHeaderCert({
       // user token(from fastgpt web)
       const sessionData = await authCookieToken(cookie, token);
 
-      // 触发防抖滑动续期（默认 24 小时防抖，成功则将 Redis TTL 刷新为 7 天）
-      const refreshedExpiresAt = await touchUserSession({ sessionId: sessionData.sessionId });
-      const sessionExpiresAt =
-        refreshedExpiresAt ?? (sessionData.updatedAt ?? sessionData.createdAt) + 604_800_000;
-
-      // 只要传入了响应对象，向响应头写入最新过期时间；并在会话延期或已使用满 1 天时同步浏览器 Cookie
-      if (res) {
-        res.setHeader('x-fastgpt-session-expires', String(sessionExpiresAt));
-        const shouldSyncCookie =
-          Boolean(refreshedExpiresAt) ||
-          sessionData.updatedAt !== undefined ||
-          Date.now() - sessionData.createdAt >= 86_400_000;
-        if (shouldSyncCookie) {
-          setCookie(res, sessionData.sessionId);
-        }
-      }
-
       return {
         uid: sessionData.userId,
         teamId: sessionData.teamId,
@@ -172,8 +153,7 @@ export async function parseHeaderCert({
         authType: AuthUserTypeEnum.token,
         isRoot: sessionData.isRoot,
         sessionId: sessionData.sessionId,
-        sessionCreatedAt: sessionData.createdAt,
-        sessionExpiresAt
+        sessionCreatedAt: sessionData.createdAt
       };
     }
     if (authRoot && rootkey) {
@@ -224,8 +204,7 @@ export async function parseHeaderCert({
     apikey: openApiKey,
     isRoot: !!isRoot,
     sessionId,
-    sessionCreatedAt,
-    sessionExpiresAt
+    sessionCreatedAt
   };
 }
 

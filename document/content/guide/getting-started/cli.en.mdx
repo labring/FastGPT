@@ -69,8 +69,8 @@ Check your active identity and team workspace anytime:
 fastgpt whoami
 ```
 
-> **Credential Persistence & Sliding Session Renewal**:
-> Credentials are automatically saved to your system keychain (macOS Keychain / Linux Secret Service). Each active command triggers a debounced sliding renewal (7-day TTL), so active development requires no frequent re-authentication.
+> **Credential storage and session expiration**:
+> Credentials are stored in your system keychain (macOS Keychain / Linux Secret Service) when available. Sessions expire 7 days after creation. Run `fastgpt login` to sign in again when your session expires.
 
 ### 3. Run Environment Diagnostics (Doctor)
 

@@ -77,7 +77,7 @@ fastgpt commands --format json
 ```
 
 整理并向用户展示 CLI 的核心能力矩阵：
-- **认证与会话 (`auth` / `login` / `logout` / `whoami`)**：支持 24 小时防抖的 7 天滑动会话续期、多 Profile 环境隔离、团队空间一键切换（`fastgpt auth switch-team --team-id <id>`）。
+- **认证与会话 (`auth` / `login` / `logout` / `whoami`)**：支持多 Profile 环境隔离、团队空间一键切换（`fastgpt auth switch-team --team-id <id>`）。
 - **知识库管理 (`dataset`)**：知识库全生命周期 CRUD、根目录与层级目录移动、`--dry-run` 请求预览、破坏性删除二次确认、混合检索召回测试。
 - **本地配置 (`config`)**：查看所有配置项（`fastgpt config list`）与修改参数。
 - **环境诊断 (`doctor`)**：环境体检与连通性诊断。

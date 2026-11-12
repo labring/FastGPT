@@ -16,8 +16,7 @@ describe('SessionCache', () => {
     deleteMany: vi.fn(),
     getHashAll: vi.fn(),
     iterateByPrefix: vi.fn(),
-    setHashWithTtl: vi.fn(),
-    touchHashFieldWithTtl: vi.fn()
+    setHashWithTtl: vi.fn()
   };
 
   beforeEach(() => {
@@ -34,7 +33,6 @@ describe('SessionCache', () => {
     });
     redis.iterateByPrefix.mockReturnValue(createKeyBatches([]));
     redis.setHashWithTtl.mockResolvedValue(undefined);
-    redis.touchHashFieldWithTtl.mockResolvedValue(true);
   });
 
   it('decodes a legacy session hash', async () => {
@@ -240,50 +238,6 @@ describe('SessionCache', () => {
     expect(redis.iterateByPrefix).toHaveBeenCalledWith({ prefix: 'session:user-1' });
     expect(redis.delete).toHaveBeenCalledWith('session:user-1:token-2');
   });
-
-  it('debounces sliding session touch within minIntervalSeconds', async () => {
-    const cache = new SessionCache({ redis: redis as any, logger });
-    const now = 1000 + 3600 * 1000; // 1 hour after createdAt (default minInterval is 24h)
-
-    const result = await cache.touchSession({
-      sessionId: 'user-1:token-1',
-      now
-    });
-
-    expect(result).toBeUndefined();
-    expect(redis.touchHashFieldWithTtl).not.toHaveBeenCalled();
-  });
-
-  it('touches Redis and renews session TTL when minIntervalSeconds is reached', async () => {
-    const cache = new SessionCache({ redis: redis as any, logger });
-    const now = 1000 + 25 * 3600 * 1000; // 25 hours after createdAt
-
-    const result = await cache.touchSession({
-      sessionId: 'user-1:token-1',
-      now
-    });
-
-    expect(result).toBe(now + SESSION_TTL_SECONDS * 1000);
-    expect(redis.touchHashFieldWithTtl).toHaveBeenCalledWith({
-      key: 'session:user-1:token-1',
-      field: 'updatedAt',
-      value: String(now),
-      ttlSeconds: SESSION_TTL_SECONDS
-    });
-  });
-
-  it('returns undefined if session is not found in Redis', async () => {
-    redis.getHashAll.mockResolvedValue({});
-    const cache = new SessionCache({ redis: redis as any, logger });
-
-    const result = await cache.touchSession({
-      sessionId: 'user-1:missing-token',
-      now: Date.now()
-    });
-
-    expect(result).toBeUndefined();
-    expect(redis.touchHashFieldWithTtl).not.toHaveBeenCalled();
-  });
 });
 
 describe('SessionCache adapter integration', () => {
@@ -319,6 +273,7 @@ describe('SessionCache adapter integration', () => {
     });
 
     await expect(cache.get('user-1:token-1')).resolves.toMatchObject({ userId: 'user-1' });
+    expect(commandClient.multi).not.toHaveBeenCalled();
     await cache.set({
       sessionId: 'user-1:token-1',
       data: {

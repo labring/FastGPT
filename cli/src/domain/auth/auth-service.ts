@@ -22,7 +22,6 @@ export type HttpClientFactory = (params: {
   baseUrl: string;
   insecure: boolean;
   caCertPath?: string;
-  onSessionRenewed?: (expiresAt: number) => void;
 }) => FastGptHttpClient;
 
 export type AuthService = {

@@ -693,29 +693,6 @@ describe('RedisCacheAdapter', () => {
     ).rejects.toMatchObject({ code: 'REDIS_INVALID_RESPONSE', operation: 'hash.setWithTtl' });
   });
 
-  it('touches an existing hash field and renews TTL via Lua script', async () => {
-    client.eval.mockResolvedValue(1);
-    const adapter = new RedisCacheAdapter({ getCommandClient: () => client as any });
-
-    await expect(
-      adapter.touchHashFieldWithTtl({
-        key: asRedisLogicalKey('session:user-1'),
-        field: 'updatedAt',
-        value: '2000',
-        ttlSeconds: 604_800
-      })
-    ).resolves.toBe(true);
-
-    expect(client.eval).toHaveBeenCalledWith(
-      expect.stringContaining('redis.call("hset"'),
-      1,
-      'fastgpt:session:user-1',
-      'updatedAt',
-      '2000',
-      '604800'
-    );
-  });
-
   it('atomically returns either the initialized value or the existing value', async () => {
     client.set.mockResolvedValueOnce(null).mockResolvedValueOnce('existing-value');
     const adapter = new RedisCacheAdapter({ getCommandClient: () => client as any });

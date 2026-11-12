@@ -172,22 +172,12 @@ function mapServerError({
 function unpackFastGptResponse<T>({
   response,
   rawText,
-  displayUrl,
-  onSessionRenewed
+  displayUrl
 }: {
   response: Response;
   rawText: string;
   displayUrl: string;
-  onSessionRenewed?: (expiresAt: number) => void;
 }): T {
-  const sessionExpiresHeader = response.headers?.get?.('x-fastgpt-session-expires');
-  if (sessionExpiresHeader) {
-    const expiresAt = Number(sessionExpiresHeader);
-    if (Number.isFinite(expiresAt) && expiresAt > 0) {
-      onSessionRenewed?.(expiresAt);
-    }
-  }
-
   if (response.status >= 300 && response.status < 400) {
     const location = response.headers?.get?.('location');
     throw new CliNetworkError(
@@ -332,8 +322,7 @@ export function createFastGptHttpClient({
   fetchFn = globalThis.fetch,
   insecure = false,
   caCertPath,
-  timeoutMs = DEFAULT_TIMEOUT_MS,
-  onSessionRenewed
+  timeoutMs = DEFAULT_TIMEOUT_MS
 }: {
   baseUrl: string;
   cliVersion: string;
@@ -341,7 +330,6 @@ export function createFastGptHttpClient({
   insecure?: boolean;
   caCertPath?: string;
   timeoutMs?: number;
-  onSessionRenewed?: (expiresAt: number) => void;
 }): FastGptHttpClient {
   const normalizedBaseUrl = baseUrl.replace(/\/+$/, '');
   const baseOrigin = new URL(normalizedBaseUrl).origin;
@@ -559,8 +547,7 @@ export function createFastGptHttpClient({
       return unpackFastGptResponse<T>({
         response,
         rawText,
-        displayUrl: finalUrl,
-        onSessionRenewed
+        displayUrl: finalUrl
       });
     },
 
@@ -638,8 +625,7 @@ export function createFastGptHttpClient({
       return unpackFastGptResponse<T>({
         response,
         rawText,
-        displayUrl: finalUrl,
-        onSessionRenewed
+        displayUrl: finalUrl
       });
     },
 
