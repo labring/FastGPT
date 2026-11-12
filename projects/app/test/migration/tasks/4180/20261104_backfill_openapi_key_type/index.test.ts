@@ -8,6 +8,11 @@ import type {
   SystemMigrationFailedRecord,
   SystemMigrationFailureInput
 } from '@fastgpt/global/migration/schema';
+import { ApiKeyTypeEnum } from '@fastgpt/global/support/openapi/constants';
+import { getOpenApiTypeFilter } from '@fastgpt/service/support/openapi/utils';
+import listKeys from '@/pages/api/support/openapi/list';
+import { getFakeUsers } from '@test/datas/users';
+import { Call } from '@test/utils/request';
 vi.mock('@/migration/constants', () => ({ systemMigrationBatchSize: 2 }));
 /** 仅模拟升级框架的持久恢复状态；业务记录读写使用真实隔离 Mongo。 */
 const createContext = () => {
@@ -49,6 +54,53 @@ const seed = async (overrides: Record<string, unknown> = {}) => {
   return record;
 };
 describe('backfillOpenApiKeyType', () => {
+  it.each([false, true])(
+    'keeps old-version writes after the fixed checkpoint visible and counted (initial keys: %s)',
+    async (hasInitialKeys) => {
+      const {
+        owner,
+        members: [member]
+      } = await getFakeUsers(1);
+      if (hasInitialKeys) await seed();
+      const state = createContext();
+      const save = state.context.saveCheckpoint.getMockImplementation()!;
+      const defaultAppId = new Types.ObjectId().toString().toUpperCase();
+      const lateIds: string[] = [];
+      state.context.saveCheckpoint.mockImplementationOnce(async (value) => {
+        await save(value);
+        // 模拟旧实例在首次 checkpoint 固定上界之后写入，不能依靠迁移将其补齐。
+        for (const appId of [undefined, defaultAppId]) {
+          const key = await seed({
+            teamId: new Types.ObjectId(owner.teamId),
+            tmbId: new Types.ObjectId(owner.tmbId),
+            name: 'late legacy key',
+            createTime: new Date(),
+            ...(appId ? { appId } : {})
+          });
+          lateIds.push(String(key._id));
+        }
+      });
+
+      expect(await backfillOpenApiKeyType(state.context)).toEqual({ keys: hasInitialKeys ? 1 : 0 });
+      expect(await MongoOpenApi.collection.countDocuments({ type: { $exists: false } })).toBe(2);
+      expect(
+        await MongoOpenApi.countDocuments({
+          teamId: owner.teamId,
+          tmbId: owner.tmbId,
+          ...getOpenApiTypeFilter(ApiKeyTypeEnum.personal)
+        })
+      ).toBe(2);
+      const ownList = await Call(listKeys, { auth: owner });
+      expect(ownList.error).toBeUndefined();
+      expect(ownList.data.map((key: { _id: string }) => key._id).sort()).toEqual(lateIds.sort());
+      expect(ownList.data.every((key: { type: string }) => key.type === 'personal')).toBe(true);
+      expect(
+        ownList.data.find((key: { defaultAppId?: string }) => key.defaultAppId)?.defaultAppId
+      ).toBe(defaultAppId.toLowerCase());
+      expect((await Call(listKeys, { auth: member })).data).toEqual([]);
+    }
+  );
+
   it('validates binding structure after backfill and preserves repaired explicit application keys', async () => {
     const key = await seed({ appId: new Types.ObjectId().toString() });
     const state = createContext();

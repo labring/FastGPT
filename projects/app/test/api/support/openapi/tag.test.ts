@@ -1,4 +1,5 @@
 import { ApiKeyTypeEnum } from '@fastgpt/global/support/openapi/constants';
+import { Types } from '@fastgpt/service/common/mongo';
 import createHandler from '@/pages/api/support/openapi/tag/create';
 import deleteHandler from '@/pages/api/support/openapi/tag/delete';
 import listHandler from '@/pages/api/support/openapi/tag/list';
@@ -254,7 +255,7 @@ describe('support/openapi/tag', () => {
     expect((memberKey?.tagIds || []).map(String)).toEqual([memberTag.data._id]);
   });
 
-  it('returns key count when requested', async () => {
+  it.each([false, true])('counts and unbinds legacy/personal tags (%s)', async (migrated) => {
     const user = await getRootUser();
     const tag = await Call(createHandler, {
       auth: user,
@@ -262,13 +263,13 @@ describe('support/openapi/tag', () => {
         name: '统计'
       }
     });
-    await MongoOpenApi.create({
-      type: ApiKeyTypeEnum.personal,
-      teamId: user.teamId,
-      tmbId: user.tmbId,
+    const { insertedId } = await MongoOpenApi.collection.insertOne({
+      ...(migrated ? { type: ApiKeyTypeEnum.personal } : {}),
+      teamId: new Types.ObjectId(user.teamId),
+      tmbId: new Types.ObjectId(user.tmbId),
       apiKey: 'fastgpt-count-tagged',
       name: 'count tagged',
-      tagIds: [tag.data._id]
+      tagIds: [new Types.ObjectId(tag.data._id)]
     });
 
     const list = await Call(listHandler, {
@@ -280,5 +281,9 @@ describe('support/openapi/tag', () => {
 
     const countedTag = list.data.find((item) => item._id === tag.data._id);
     expect(countedTag?.keyCount).toBe(1);
+    expect(
+      (await Call(deleteHandler, { auth: user, query: { tagId: tag.data._id } })).error
+    ).toBeUndefined();
+    expect((await MongoOpenApi.findById(insertedId).lean())?.tagIds).toEqual([]);
   });
 });

@@ -150,7 +150,7 @@ describe('application API key boundaries', () => {
     }
     expect(await MongoOpenApi.countDocuments({ apiKey: 'missing-type-key' })).toBe(0);
   });
-  it('parses legacy defaults while queries require normalized explicit types', async () => {
+  it('includes missing-type personal keys without downgrading explicit app or invalid types', async () => {
     const id = new Types.ObjectId().toString();
     for (const appId of [undefined, null, ''])
       expect(resolveApiKeyScope({ appId })).toEqual({ type: 'personal' });
@@ -161,6 +161,7 @@ describe('application API key boundaries', () => {
     }
     for (const raw of [
       { type: 'bad' },
+      { type: null },
       { type: 'personal', appId: 'invalid' },
       { type: 'app' },
       { appId: 'invalid' },
@@ -190,6 +191,12 @@ describe('application API key boundaries', () => {
       {
         teamId: new Types.ObjectId(owner.teamId),
         tmbId: new Types.ObjectId(owner.tmbId),
+        apiKey: 'null-type',
+        type: null
+      },
+      {
+        teamId: new Types.ObjectId(owner.teamId),
+        tmbId: new Types.ObjectId(owner.tmbId),
         apiKey: 'normalized-personal-default',
         type: 'personal',
         appId: new Types.ObjectId(id)
@@ -199,7 +206,7 @@ describe('application API key boundaries', () => {
       (await MongoOpenApi.find(getOpenApiTypeFilter(ApiKeyTypeEnum.personal)).lean())
         .map((k) => k.apiKey)
         .sort()
-    ).toEqual(['fixture-personal', 'normalized-personal-default']);
+    ).toEqual(['fixture-personal', 'legacy-bound', 'legacy-empty', 'normalized-personal-default']);
     expect(
       (await MongoOpenApi.find(getOpenApiTypeFilter(ApiKeyTypeEnum.app)).lean())
         .map((k) => k.apiKey)

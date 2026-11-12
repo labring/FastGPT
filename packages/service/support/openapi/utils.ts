@@ -27,10 +27,12 @@ export const resolveApiKeyScope = (record: { type?: unknown; appId?: unknown }):
   return scope.defaultAppId ? { ...scope, defaultAppId: scope.defaultAppId.toLowerCase() } : scope;
 };
 
-/** 迁移补齐类型后，列表、限额、标签和清理统一按显式类型查询。 */
-export const getOpenApiTypeFilter = (type: ApiKeyTypeEnum): FilterQuery<OpenApiSchema> => ({
-  type
-});
+/**
+ * 后台迁移只覆盖固定范围，滚动升级中的旧实例仍可能新增无 type 的个人 Key。
+ * 列表、限额和标签持续兼容这些记录；显式应用类型与异常类型不能降级为个人 Key。
+ */
+export const getOpenApiTypeFilter = (type: ApiKeyTypeEnum): FilterQuery<OpenApiSchema> =>
+  type === ApiKeyTypeEnum.personal ? { $or: [{ type }, { type: { $exists: false } }] } : { type };
 
 /** 迁移已将有效应用 ID 统一为 BSON ObjectId，直接匹配字段以利用应用索引。 */
 export const getOpenApiAppIdFilter = (appIds: string[]): FilterQuery<OpenApiSchema> => ({
