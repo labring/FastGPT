@@ -103,10 +103,33 @@ describe('structured dataset search OpenAPI', () => {
           ])
         },
         queryExtension: { default: { enabled: false } },
-        result: { properties: { maxTokens: { minimum: 1, maximum: 20000 } } }
+        result: {
+          anyOf: [
+            {
+              required: expect.arrayContaining(['topk']),
+              properties: { topk: { minimum: 1, maximum: 100 } }
+            },
+            {
+              properties: {
+                maxTokens: { minimum: 1, maximum: Number.MAX_SAFE_INTEGER, default: 5000 }
+              }
+            }
+          ]
+        }
       }
     });
     expect(SearchDatasetBodySchema.safeParse(media.example).success).toBe(true);
+    for (const field of ['topk', 'maxTokens', 'similarity', 'searchMode']) {
+      expect(operation.responses![200]).not.toHaveProperty([
+        'content',
+        'application/json',
+        'schema',
+        'properties',
+        'meta',
+        'properties',
+        field
+      ]);
+    }
     expect(operation.responses![200]).toMatchObject({
       content: {
         'application/json': {

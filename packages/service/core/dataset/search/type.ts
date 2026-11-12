@@ -106,6 +106,8 @@ export type SearchDatasetDataProps = {
 
   [NodeInputKeyEnum.datasetSimilarity]?: number; // min distance
   [NodeInputKeyEnum.datasetMaxTokens]: number; // max Token limit
+  /** 按条数截断时优先使用 topk，不执行 token 计数或预算过滤；旧入口不传。 */
+  topk?: number;
   [NodeInputKeyEnum.datasetSearchMode]?: DatasetSearchModeEnum;
   [NodeInputKeyEnum.datasetSearchEmbeddingWeight]?: number;
 

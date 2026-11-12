@@ -84,7 +84,7 @@ export const useDatasetSearchTest = ({
         result: { maxTokens: searchParams.limit, similarity: searchParams.similarity }
       }),
     {
-      onSuccess(res: SearchDatasetResponse) {
+      onSuccess(res: SearchDatasetResponse, [submitted]: [SearchTestFormType]) {
         if (!res || res.list.length === 0) {
           return toast({
             status: 'warning',
@@ -95,15 +95,15 @@ export const useDatasetSearchTest = ({
         const testItem: SearchTestStoreItemType = {
           id: getNanoid(),
           datasetId,
-          text: getValues('inputText').trim(),
+          text: submitted.inputText.trim(),
           time: new Date(),
           results: res.list,
           queryImageRefs: queryImageRefs.length > 0 ? queryImageRefs : undefined,
           duration: `${(res.meta.durationMs / 1000).toFixed(3)}s`,
-          searchMode: res.meta.searchMode,
+          searchMode: submitted.searchParams.searchMode,
           usingReRank: res.meta.usingReRank,
-          limit: res.meta.maxTokens,
-          similarity: res.meta.similarity,
+          limit: submitted.searchParams.limit ?? 5000,
+          similarity: submitted.searchParams.similarity ?? 0,
           queryExtensionModel: res.meta.queryExtensionModelId
         };
 

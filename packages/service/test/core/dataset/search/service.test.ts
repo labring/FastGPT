@@ -110,6 +110,22 @@ beforeEach(() => {
 });
 
 describe('member knowledge search orchestration', () => {
+  it.each([{ topk: 1 }, { topk: 100, maxTokens: 1 }])(
+    'gives topk priority over token filtering: %j',
+    async (budget) => {
+      await run({ scope: { datasetIds: ids }, query: { text: 'q' }, result: budget }).promise;
+      expect(mocks.recall).toHaveBeenCalledWith(
+        expect.objectContaining({ topk: budget.topk, limit: Infinity })
+      );
+    }
+  );
+
+  it('passes a large token-only budget through without applying a topk cap', async () => {
+    await run({ scope: { datasetIds: ids }, query: { text: 'q' }, result: { maxTokens: 25000 } })
+      .promise;
+    expect(mocks.recall.mock.calls[0][0].limit).toBe(25000);
+    expect(mocks.recall.mock.calls[0][0]).not.toHaveProperty('topk');
+  });
   it('keeps normalized legacy numeric options independent from the new HTTP contract', async () => {
     const params = DatasetSearchParamsSchema.parse({
       scope: { datasetIds: ids },

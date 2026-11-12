@@ -108,6 +108,7 @@ export const search = async ({
         : undefined
     });
   };
+  const topk = 'topk' in input.result ? input.result.topk : undefined;
   const result = await deps.recall({
     teamId: actor.teamId,
     tmbId: actor.tmbId,
@@ -120,7 +121,8 @@ export const search = async ({
     vlmModel,
     searchMode: input.retrieval.mode,
     embeddingWeight: input.retrieval.embeddingWeight,
-    limit: input.result.maxTokens,
+    limit: topk === undefined ? (input.result.maxTokens ?? 5000) : Infinity,
+    ...(topk === undefined ? {} : { topk }),
     similarity: input.result.similarity,
     usingReRank: rerank.enabled,
     rerankModel,

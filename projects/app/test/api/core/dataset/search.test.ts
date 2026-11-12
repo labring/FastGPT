@@ -51,6 +51,11 @@ describe('structured knowledge search HTTP boundary', () => {
       usageAppName: 'account_usage:dataset_search'
     });
     expect(result.list).toEqual([]);
+    expect(result.meta).toEqual({
+      durationMs: 10,
+      usingSimilarityFilter: true,
+      usingReRank: false
+    });
   });
 
   it('maps the search test billing scene without passing it into retrieval parameters', async () => {
@@ -69,6 +74,14 @@ describe('structured knowledge search HTTP boundary', () => {
     expect(mocks.search.mock.calls[0][0].params).not.toHaveProperty('usageScene');
   });
 
+  it.each([{ topk: 1 }, { topk: 100, maxTokens: 1 }, { maxTokens: 25000 }])(
+    'passes a selected budget to the shared search service: %j',
+    async (budget) => {
+      await handler(request({ scope: { datasetIds: [id] }, query: { text: 'q' }, result: budget }));
+      expect(mocks.search.mock.calls[0][0].params.result).toEqual({ ...budget, similarity: 0 });
+    }
+  );
+
   it.each([
     { scope: { datasetIds: [] }, query: { text: 'q' } },
     { scope: { datasetIds: [id] }, query: { text: ' ' } },
@@ -80,7 +93,12 @@ describe('structured knowledge search HTTP boundary', () => {
       rerank: { enabled: false, modelId: 'unexpected' }
     },
     { scope: { datasetIds: [id] }, query: { text: 'q' }, result: { maxTokens: 0 } },
-    { scope: { datasetIds: [id] }, query: { text: 'q' }, result: { maxTokens: 20001 } },
+    { scope: { datasetIds: [id] }, query: { text: 'q' }, result: { maxTokens: 0.5 } },
+    ...[0, 101, 1.5, '10'].map((topk) => ({
+      scope: { datasetIds: [id] },
+      query: { text: 'q' },
+      result: { topk, maxTokens: 5000 }
+    })),
     { scope: { datasetIds: [id] }, query: { text: 'q' }, retrieval: { embeddingWeight: 1.1 } },
     { scope: { datasetIds: [id] }, query: { text: 'q' }, retrieval: { embeddingWeight: '0.5' } },
     { scope: { datasetIds: [id] }, query: { text: 'q' }, rerank: { enabled: 'false' } },

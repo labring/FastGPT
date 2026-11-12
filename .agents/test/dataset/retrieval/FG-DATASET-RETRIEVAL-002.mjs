@@ -141,7 +141,7 @@ const modern = (old) => ({
   result: { maxTokens: Math.min(old.limit ?? 5000, 20000), similarity: old.similarity ?? 0 }
 });
 /** Ignore elapsed time and access signatures; retain order, contents, scores and effective options. */
-function normalize(result) {
+function normalize(result, input) {
   const meta = result.meta ?? result;
   return {
     list: result.list.map((item) => ({
@@ -151,9 +151,9 @@ function normalize(result) {
         value: Math.round(score.value * 1e10) / 1e10
       }))
     })),
-    limit: meta.maxTokens ?? meta.limit,
-    searchMode: meta.searchMode,
-    similarity: meta.similarity,
+    limit: meta.maxTokens ?? meta.limit ?? input?.result?.maxTokens,
+    searchMode: meta.searchMode ?? input?.retrieval?.mode,
+    similarity: meta.similarity ?? input?.result?.similarity,
     usingReRank: meta.usingReRank
   };
 }
@@ -191,10 +191,11 @@ async function parity(body, { includeModern = true, actor = owner, session = fal
   );
   let unified;
   if (includeModern) {
+    const unifiedInput = modern(body);
     const unifiedRequest = await request({
       base: f.baseUrl,
       route: 'core/dataset/search',
-      body: modern(body),
+      body: unifiedInput,
       actor,
       session
     });
@@ -205,7 +206,7 @@ async function parity(body, { includeModern = true, actor = owner, session = fal
       label: 'Structured search'
     });
     assert.deepEqual(
-      normalize(unified),
+      normalize(unified, unifiedInput),
       normalize(before),
       'Structured single-dataset search differs'
     );
@@ -378,7 +379,51 @@ const handlers = {
       if (options.limit === 25000) assert.equal(pair.after.limit, 20000);
       if (options.limit === 0.5) assert.equal(pair.after.list.length, 1);
     }
-    return 'Legacy defaults, 20000-token cap, fractional budget and historical numeric ranges are unchanged';
+    // 新接口的条数与 token 预算是两条分支；不会反向改变旧协议的 20000 token 截断。
+    const body = modern(legacy());
+    await gateway('record', true);
+    const allRequest = await request({
+      base: f.baseUrl,
+      route: 'core/dataset/search',
+      body: { ...body, result: { topk: 100 } }
+    });
+    const all = success(allRequest);
+    assert.ok(
+      all.list.length > 1 && all.list.length <= 100,
+      'Topk fixture must have multiple hits'
+    );
+    await gateway('replay');
+    const oneRequest = await request({
+      base: f.baseUrl,
+      route: 'core/dataset/search',
+      body: { ...body, result: { topk: 1, maxTokens: 1 } }
+    });
+    const one = success(oneRequest);
+    assert.deepEqual(
+      normalize(one).list,
+      normalize(all).list.slice(0, 1),
+      'Topk must take priority over token budget'
+    );
+    assertModelCallParity({
+      baseline: allRequest.modelCalls,
+      current: oneRequest.modelCalls,
+      label: 'Topk priority'
+    });
+    const largeRequest = await request({
+      base: f.baseUrl,
+      route: 'core/dataset/search',
+      body: { ...body, result: { maxTokens: 25000 } }
+    });
+    const large = success(largeRequest);
+    assert.ok(large.list.length, 'Large token budget must be accepted');
+    for (const field of ['topk', 'maxTokens', 'searchMode', 'similarity'])
+      assert.ok(!(field in large.meta), 'Response must not echo result inputs');
+    assertModelCallParity({
+      baseline: allRequest.modelCalls,
+      current: largeRequest.modelCalls,
+      label: 'Large token budget'
+    });
+    return 'Legacy budgets remain unchanged; structured topk limits the ordered prefix, wins over maxTokens, and token-only budgets above 20000 are accepted';
   },
   C3: async () => {
     for (const options of [

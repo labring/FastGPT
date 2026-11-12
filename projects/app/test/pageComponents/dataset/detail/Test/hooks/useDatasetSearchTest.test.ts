@@ -44,9 +44,9 @@ vi.mock('react-hook-form', () => ({
 vi.mock('@fastgpt/web/hooks/useRequest', () => ({
   useRequest: (
     request: (data: SearchTestFormType) => Promise<SearchDatasetResponse>,
-    options: { onSuccess: (response: SearchDatasetResponse) => void }
+    options: { onSuccess: (response: SearchDatasetResponse, params: [SearchTestFormType]) => void }
   ) => ({
-    runAsync: async (data: SearchTestFormType) => options.onSuccess(await request(data)),
+    runAsync: async (data: SearchTestFormType) => options.onSuccess(await request(data), [data]),
     loading: false
   })
 }));
@@ -72,9 +72,6 @@ const response: SearchDatasetResponse = {
   ],
   meta: {
     durationMs: 1234,
-    searchMode: DatasetSearchModeEnum.embedding,
-    maxTokens: 5000,
-    similarity: 0,
     usingReRank: false,
     usingSimilarityFilter: true
   }
@@ -143,8 +140,6 @@ describe('useDatasetSearchTest unified search migration', () => {
       ...response,
       meta: {
         ...response.meta,
-        maxTokens: 100,
-        searchMode: 'mixedRecall',
         usingReRank: false,
         queryExtensionModelId: 'actual-extension-model-id'
       }
@@ -229,5 +224,28 @@ describe('useDatasetSearchTest unified search migration', () => {
       useDatasetSearchTest({ datasetId: 'other-dataset', queryImageRefs: [] })
         .currentDatasetTestItem
     ).toBeUndefined();
+  });
+
+  it('builds history from the submitted parameters even if the form changes during the request', async () => {
+    const hook = useDatasetSearchTest({ datasetId, queryImageRefs: [] });
+    mocks.form!.inputText = 'submitted question';
+    mocks.post.mockImplementation(async () => {
+      mocks.form = {
+        inputText: 'edited question',
+        searchParams: {
+          searchMode: DatasetSearchModeEnum.mixedRecall,
+          limit: 10000,
+          similarity: 0.9
+        }
+      };
+      return response;
+    });
+    await hook.onSubmit();
+    expect(mocks.pushHistory.mock.calls[0][0]).toMatchObject({
+      text: 'submitted question',
+      searchMode: 'embedding',
+      limit: 5000,
+      similarity: 0
+    });
   });
 });

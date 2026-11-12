@@ -143,6 +143,15 @@ const QueryImageKeysSchema = z
     example: ['temp/teamId/search-image.png']
   });
 
+const MaxTokensSchema = z.number().int().min(1).meta({
+  description: '结果总 token 预算，无业务上限；保留完整数据块，最后一块可能使预算超出',
+  example: 25000
+});
+const ResultSimilaritySchema = WeightSchema.default(0).meta({
+  description: '沿用检索分数阈值语义；是否生效以 usingSimilarityFilter 为准',
+  example: 0
+});
+
 /** 结构化 JSON 协议严格校验数值和布尔类型，拒绝字符串等隐式转换及未知配置。 */
 export const DatasetSearchParamsSchema = z.strictObject({
   scope: z
@@ -222,18 +231,26 @@ export const DatasetSearchParamsSchema = z.strictObject({
     .default({ enabled: false })
     .meta({ description: '查询扩展配置', example: { enabled: false } }),
   result: z
-    .strictObject({
-      maxTokens: z.number().int().min(1).max(20000).default(5000).meta({
-        description: '结果总 token 预算；保留完整数据块，最后一块可能使预算超出',
-        example: 5000
+    .union([
+      z.strictObject({
+        topk: z.number().int().min(1).max(100).meta({
+          description:
+            '返回排序后的前 k 条，范围 1–100；与 maxTokens 同时传入时优先，不做 token 过滤',
+          example: 20
+        }),
+        maxTokens: MaxTokensSchema.optional(),
+        similarity: ResultSimilaritySchema
       }),
-      similarity: WeightSchema.default(0).meta({
-        description: '沿用检索分数阈值语义；是否生效以 usingSimilarityFilter 为准',
-        example: 0
+      z.strictObject({
+        maxTokens: MaxTokensSchema.default(5000),
+        similarity: ResultSimilaritySchema
       })
-    })
+    ])
     .prefault({})
-    .meta({ description: '结果预算与过滤阈值', example: { maxTokens: 5000, similarity: 0 } })
+    .meta({
+      description: '按条数或 token 预算过滤，topk 优先；未指定时默认 5000 tokens',
+      example: { topk: 20, similarity: 0 }
+    })
 });
 export type DatasetSearchInput = z.input<typeof DatasetSearchParamsSchema>;
 export type DatasetSearchParams = z.output<typeof DatasetSearchParamsSchema>;

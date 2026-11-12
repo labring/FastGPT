@@ -19,7 +19,14 @@ export const SearchDatasetBodySchema = DatasetSearchParamsSchema.extend({
   })
 }).meta({ description: '结构化多知识库检索参数；身份由 Authorization API Key 或登录态解析' });
 export type SearchDatasetBody = z.input<typeof SearchDatasetBodySchema>;
-export const SearchDatasetResponseSchema = DatasetSearchResultSchema.meta({
+// HTTP 只返回实际执行信息；内部预算及入参回显保留给旧 searchTest 适配，不对外重复输出。
+export const SearchDatasetResponseSchema = DatasetSearchResultSchema.extend({
+  meta: DatasetSearchResultSchema.shape.meta.omit({
+    searchMode: true,
+    maxTokens: true,
+    similarity: true
+  })
+}).meta({
   description: '合并排序后的命中片段及实际搜索配置'
 });
 export type SearchDatasetResponse = z.infer<typeof SearchDatasetResponseSchema>;
