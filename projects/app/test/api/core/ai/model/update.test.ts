@@ -143,7 +143,7 @@ describe('admin settings model create/update api', () => {
       });
       expect(result.code).toBe(200);
       const stored = await MongoAIModel.findById(result.data.modelId).lean();
-      expect(stored).not.toHaveProperty('sortOrder');
+      expect(stored?.sortOrder).toBe(0);
       expect(stored).not.toHaveProperty('inputPrice');
       expect(stored).not.toHaveProperty('pricing.unitPrice');
       expect(stored).not.toHaveProperty('pricing.extra');
