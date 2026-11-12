@@ -60,8 +60,9 @@ const gateway = async (mode, reset = false) => {
   return response.json();
 };
 const gatewayState = async () => (await fetch(f.gatewayUrl + '/__control')).json();
-/** Use the real HTTP entry; status and business envelope are checked independently. */
-async function request(base, route, body, actor = owner, session = false) {
+/** Use the real HTTP entry and capture only this serial request's model calls. */
+async function request({ base, route, body, actor = owner, session = false }) {
+  const priorCalls = (await gatewayState()).calls.length;
   const response = await fetch(base + '/api/' + route, {
     method: 'POST',
     headers: {
@@ -82,9 +83,24 @@ async function request(base, route, body, actor = owner, session = false) {
   } catch {
     throw Error(`Non-JSON HTTP response: ${route}, status ${response.status}`);
   }
-  const result = { status: response.status, envelope };
+  const modelCalls = (await gatewayState()).calls.slice(priorCalls);
+  const result = { status: response.status, envelope, modelCalls };
   observations.push({ base, route, body: redact(body), ...redact(result) });
   return result;
+}
+/** Compare request-hash multisets, preserving duplicate calls but allowing concurrent completion order. */
+function assertModelCallParity({ baseline, current, label }) {
+  const signature = (calls) =>
+    calls
+      .map((call) => {
+        assert.ok(
+          !call.cacheMiss && call.status === 200 && typeof call.requestHash === 'string',
+          'Model call failed or request differs from baseline'
+        );
+        return call.requestHash;
+      })
+      .sort();
+  assert.deepEqual(signature(current), signature(baseline), label + ': model calls changed');
 }
 function success(result) {
   assert.equal(result.status, 200, 'Expected HTTP success');
@@ -144,12 +160,29 @@ function normalize(result) {
 /** Record a real model execution, then replay only the external response for exact A/B comparison. */
 async function parity(body, { includeModern = true, actor = owner, session = false } = {}) {
   await gateway('record', true);
-  const before = success(
-    await request(f.baselineUrl, 'core/dataset/searchTest', body, actor, session)
-  );
+  const baselineRequest = await request({
+    base: f.baselineUrl,
+    route: 'core/dataset/searchTest',
+    body,
+    actor,
+    session
+  });
+  const before = success(baselineRequest);
   assert.ok(before.list.length, 'Baseline must recall known data');
   await gateway('replay');
-  const after = success(await request(f.baseUrl, 'core/dataset/searchTest', body, actor, session));
+  const legacyRequest = await request({
+    base: f.baseUrl,
+    route: 'core/dataset/searchTest',
+    body,
+    actor,
+    session
+  });
+  const after = success(legacyRequest);
+  assertModelCallParity({
+    baseline: baselineRequest.modelCalls,
+    current: legacyRequest.modelCalls,
+    label: 'Legacy search'
+  });
   assert.deepEqual(normalize(after), normalize(before), 'Legacy search changed after migration');
   assert.equal(
     after.queryExtensionModel,
@@ -158,9 +191,19 @@ async function parity(body, { includeModern = true, actor = owner, session = fal
   );
   let unified;
   if (includeModern) {
-    unified = success(
-      await request(f.baseUrl, 'core/dataset/search', modern(body), actor, session)
-    );
+    const unifiedRequest = await request({
+      base: f.baseUrl,
+      route: 'core/dataset/search',
+      body: modern(body),
+      actor,
+      session
+    });
+    unified = success(unifiedRequest);
+    assertModelCallParity({
+      baseline: baselineRequest.modelCalls,
+      current: unifiedRequest.modelCalls,
+      label: 'Structured search'
+    });
     assert.deepEqual(
       normalize(unified),
       normalize(before),
@@ -169,10 +212,6 @@ async function parity(body, { includeModern = true, actor = owner, session = fal
   }
   const state = await gatewayState();
   observations.push({ gatewayComparison: state });
-  assert.ok(
-    state.calls.every((call) => !call.cacheMiss && call.status === 200),
-    'Model call failed or request differs from baseline'
-  );
   observations.push({
     comparison: 'exact normalized A/B',
     baseline: normalize(before),
@@ -196,13 +235,17 @@ async function setup() {
     ]) {
       if (f.datasets[key]) continue;
       f.datasets[key] = success(
-        await request(f.baseUrl, 'core/dataset/create', {
-          name: f.run + '-' + key,
-          type: 'dataset',
-          intro: 'Isolated retrieval regression fixture',
-          vectorModelId: model.id,
-          agentModelId: models.llm.id,
-          vlmModelId: models.llm.id
+        await request({
+          base: f.baseUrl,
+          route: 'core/dataset/create',
+          body: {
+            name: f.run + '-' + key,
+            type: 'dataset',
+            intro: 'Isolated retrieval regression fixture',
+            vectorModelId: model.id,
+            agentModelId: models.llm.id,
+            vlmModelId: models.llm.id
+          }
         })
       );
       await saveFixture();
@@ -221,10 +264,10 @@ async function setup() {
   }
   if (!f.datasets.foreign) {
     f.datasets.foreign = success(
-      await request(
-        f.baseUrl,
-        'core/dataset/create',
-        {
+      await request({
+        base: f.baseUrl,
+        route: 'core/dataset/create',
+        body: {
           name: f.run + '-foreign',
           type: 'dataset',
           intro: 'Foreign test scope',
@@ -232,8 +275,8 @@ async function setup() {
           agentModelId: models.llm.id,
           vlmModelId: models.llm.id
         },
-        f.members.foreign
-      )
+        actor: f.members.foreign
+      })
     );
     await saveFixture();
   }
@@ -246,11 +289,15 @@ async function setup() {
   ]) {
     if (!f.collections[key]) {
       f.collections[key] = success(
-        await request(f.baseUrl, 'core/dataset/collection/create', {
-          datasetId: f.datasets[dataset],
-          name: f.run + '-' + key,
-          type: 'virtual',
-          tags: [{ tag: 'department', value: key === 'visible' ? 'support' : 'sales' }]
+        await request({
+          base: f.baseUrl,
+          route: 'core/dataset/collection/create',
+          body: {
+            datasetId: f.datasets[dataset],
+            name: f.run + '-' + key,
+            type: 'virtual',
+            tags: [{ tag: 'department', value: key === 'visible' ? 'support' : 'sales' }]
+          }
         })
       );
       await saveFixture();
@@ -262,10 +309,14 @@ async function setup() {
     const collection =
       i < 12 ? (i < 6 ? f.collections.visible : f.collections.hidden) : f.collections.second;
     const result = success(
-      await request(f.baseUrl, 'core/dataset/data/insertData', {
-        collectionId: collection,
-        q: `FastGPT red square knowledge base retrieval permissions case ${i}`,
-        a: `Case ${i}: a red square image and FastGPT dataset permissions. ${'Knowledge retrieval uses authorized collections and relevant documents. '.repeat(i + 1)}`
+      await request({
+        base: f.baseUrl,
+        route: 'core/dataset/data/insertData',
+        body: {
+          collectionId: collection,
+          q: `FastGPT red square knowledge base retrieval permissions case ${i}`,
+          a: `Case ${i}: a red square image and FastGPT dataset permissions. ${'Knowledge retrieval uses authorized collections and relevant documents. '.repeat(i + 1)}`
+        }
       })
     );
     f.data.push(result.insertId ?? result);
@@ -362,7 +413,9 @@ const handlers = {
     assert.ok(pair.after.queryExtensionModel, 'Query extension did not execute');
     assert.equal(pair.unified.meta.queryExtensionModelId, models.llm.id);
     await gateway('live', true);
-    const live = success(await request(f.baseUrl, 'core/dataset/search', modern(body)));
+    const live = success(
+      await request({ base: f.baseUrl, route: 'core/dataset/search', body: modern(body) })
+    );
     assert.ok(
       live.list.length && live.meta.queryExtensionModelId,
       'Live query extension must work'
@@ -385,34 +438,51 @@ const handlers = {
     await gateway('live', true);
     const body = modern(legacy());
     body.scope.datasetIds = [f.datasets.k1, f.datasets.k2];
-    const a = success(await request(f.baseUrl, 'core/dataset/search', body));
+    const a = success(await request({ base: f.baseUrl, route: 'core/dataset/search', body }));
     assert.deepEqual(new Set(a.list.map((item) => item.datasetId)), new Set(body.scope.datasetIds));
     await gateway('record', true);
-    const first = success(await request(f.baseUrl, 'core/dataset/search', body));
+    const firstRequest = await request({ base: f.baseUrl, route: 'core/dataset/search', body });
+    const first = success(firstRequest);
     await gateway('replay');
-    const duplicate = success(
-      await request(f.baseUrl, 'core/dataset/search', {
+    const duplicateRequest = await request({
+      base: f.baseUrl,
+      route: 'core/dataset/search',
+      body: {
         ...body,
         scope: { datasetIds: [f.datasets.k1, f.datasets.k1, f.datasets.k2] }
-      })
-    );
+      }
+    });
+    const duplicate = success(duplicateRequest);
+    assertModelCallParity({
+      baseline: firstRequest.modelCalls,
+      current: duplicateRequest.modelCalls,
+      label: 'Duplicate targets'
+    });
     assert.deepEqual(normalize(first), normalize(duplicate));
     for (const mode of ['embedding', 'mixedRecall']) {
       await gateway('live', true);
       rejected(
-        await request(f.baseUrl, 'core/dataset/search', {
-          ...body,
-          scope: { datasetIds: [f.datasets.k1, f.datasets.k3] },
-          retrieval: { mode }
+        await request({
+          base: f.baseUrl,
+          route: 'core/dataset/search',
+          body: {
+            ...body,
+            scope: { datasetIds: [f.datasets.k1, f.datasets.k3] },
+            retrieval: { mode }
+          }
         })
       );
       assert.equal((await gatewayState()).calls.length, 0);
     }
     const text = success(
-      await request(f.baseUrl, 'core/dataset/search', {
-        ...body,
-        scope: { datasetIds: [f.datasets.k1, f.datasets.k3] },
-        retrieval: { mode: 'fullTextRecall' }
+      await request({
+        base: f.baseUrl,
+        route: 'core/dataset/search',
+        body: {
+          ...body,
+          scope: { datasetIds: [f.datasets.k1, f.datasets.k3] },
+          retrieval: { mode: 'fullTextRecall' }
+        }
       })
     );
     assert.ok(text.list.length);
@@ -453,7 +523,9 @@ const handlers = {
         const body = modern(legacy({ searchMode }));
         body.scope.datasetIds.push(f.datasets.k2);
         await gateway('live', true);
-        const joint = success(await request(f.baseUrl, 'core/dataset/search', body, member));
+        const joint = success(
+          await request({ base: f.baseUrl, route: 'core/dataset/search', body, actor: member })
+        );
         assert.ok(
           joint.list.length &&
             joint.list.every((item) => item.collectionId === f.collections.visible)
@@ -462,19 +534,21 @@ const handlers = {
       await db.collection('resource_permissions').deleteOne(grant);
       for (const searchMode of modes) {
         const body = modern(legacy({ searchMode }));
-        const empty = success(await request(f.baseUrl, 'core/dataset/search', body, member));
+        const empty = success(
+          await request({ base: f.baseUrl, route: 'core/dataset/search', body, actor: member })
+        );
         assert.deepEqual(empty.list, []);
       }
       await gateway('live', true);
       const target = f.datasets.foreign ?? String(new ObjectId());
       for (const denied of [target, '000000000000000000000088'])
         rejected(
-          await request(
-            f.baseUrl,
-            'core/dataset/search',
-            { ...modern(legacy()), scope: { datasetIds: [f.datasets.k1, denied] } },
-            member
-          )
+          await request({
+            base: f.baseUrl,
+            route: 'core/dataset/search',
+            body: { ...modern(legacy()), scope: { datasetIds: [f.datasets.k1, denied] } },
+            actor: member
+          })
         );
       assert.equal((await gatewayState()).calls.length, 0);
     } finally {
@@ -494,9 +568,13 @@ const handlers = {
     ]) {
       await gateway('live', true);
       const result = success(
-        await request(f.baseUrl, 'core/dataset/search', {
-          ...body,
-          scope: { ...body.scope, filter }
+        await request({
+          base: f.baseUrl,
+          route: 'core/dataset/search',
+          body: {
+            ...body,
+            scope: { ...body.scope, filter }
+          }
         })
       );
       assert.ok(result.list.length);
@@ -504,9 +582,13 @@ const handlers = {
         assert.ok(result.list.every((item) => item.collectionId === f.collections.visible));
     }
     const none = success(
-      await request(f.baseUrl, 'core/dataset/search', {
-        ...body,
-        scope: { ...body.scope, filter: { createTime: { gte: '2099-01-01T00:00:00Z' } } }
+      await request({
+        base: f.baseUrl,
+        route: 'core/dataset/search',
+        body: {
+          ...body,
+          scope: { ...body.scope, filter: { createTime: { gte: '2099-01-01T00:00:00Z' } } }
+        }
       })
     );
     assert.deepEqual(none.list, []);
@@ -527,12 +609,15 @@ const handlers = {
       .updateOne(grant, { $set: { permission: 4 } }, { upsert: true });
     try {
       const result = success(
-        await request(
-          f.baseUrl,
-          'core/dataset/search',
-          { ...body, scope: { ...body.scope, filter: { collectionIds: [f.collections.hidden] } } },
-          member
-        )
+        await request({
+          base: f.baseUrl,
+          route: 'core/dataset/search',
+          body: {
+            ...body,
+            scope: { ...body.scope, filter: { collectionIds: [f.collections.hidden] } }
+          },
+          actor: member
+        })
       );
       assert.deepEqual(result.list, []);
     } finally {
@@ -554,9 +639,13 @@ const handlers = {
         .updateOne({ _id: license._id }, { $set: { 'value.data.expiredTime': '2000-01-01' } });
       await waitForEdition(false);
       rejected(
-        await request(f.baseUrl, 'core/dataset/search', {
-          ...body,
-          scope: { ...body.scope, filter: { collectionIds: [f.collections.visible] } }
+        await request({
+          base: f.baseUrl,
+          route: 'core/dataset/search',
+          body: {
+            ...body,
+            scope: { ...body.scope, filter: { collectionIds: [f.collections.visible] } }
+          }
         })
       );
     } finally {
@@ -574,9 +663,9 @@ const handlers = {
       await gateway('live', true);
       const old = legacy(options);
       const results = [
-        await request(f.baselineUrl, 'core/dataset/searchTest', old, actor),
-        await request(f.baseUrl, 'core/dataset/searchTest', old, actor),
-        await request(f.baseUrl, 'core/dataset/search', modern(old), actor)
+        await request({ base: f.baselineUrl, route: 'core/dataset/searchTest', body: old, actor }),
+        await request({ base: f.baseUrl, route: 'core/dataset/searchTest', body: old, actor }),
+        await request({ base: f.baseUrl, route: 'core/dataset/search', body: modern(old), actor })
       ];
       results.forEach(rejected);
       assert.equal(results[0].envelope.code, results[1].envelope.code);
@@ -628,8 +717,15 @@ const handlers = {
   C10: async () => {
     const body = modern(legacy());
     await gateway('live', true);
-    rejected(await request(f.baseUrl, 'core/dataset/search', body, null));
-    rejected(await request(f.baseUrl, 'core/dataset/search', body, { apiKey: 'invalid' }));
+    rejected(await request({ base: f.baseUrl, route: 'core/dataset/search', body, actor: null }));
+    rejected(
+      await request({
+        base: f.baseUrl,
+        route: 'core/dataset/search',
+        body,
+        actor: { apiKey: 'invalid' }
+      })
+    );
     for (const invalid of [
       { ...body, scope: { datasetIds: [] } },
       { ...body, query: { text: ' ' } },
@@ -639,7 +735,9 @@ const handlers = {
       { ...body, query: { imageKeys: ['temp/' + f.members.foreign.teamId + '/foreign.png'] } },
       { ...body, query: { imageKeys: ['dataset/' + owner.teamId + '/not-temp.png'] } }
     ]) {
-      const error = rejected(await request(f.baseUrl, 'core/dataset/search', invalid));
+      const error = rejected(
+        await request({ base: f.baseUrl, route: 'core/dataset/search', body: invalid })
+      );
       if (invalid.query?.imageKeys)
         assert.ok(
           !/[\p{Script=Han}]/u.test(error.message ?? error.statusText ?? ''),
@@ -673,8 +771,15 @@ const handlers = {
         if (snapshots.length) await gateway('replay');
         const prior = await usageSnapshot();
         const beforeObservation = await observationCounts();
-        const result = success(await request(base, route, params, owner, session));
+        const response = await request({ base, route, body: params, actor: owner, session });
+        const result = success(response);
         assert.ok(result.list.length);
+        if (snapshots.length)
+          assertModelCallParity({
+            baseline: snapshots[0].modelCalls,
+            current: response.modelCalls,
+            label: name + ' billing'
+          });
         const after = await waitForUsage(prior);
         const observationsAfter = await waitForObservation(beforeObservation);
         const delta = after.points - prior.points;
@@ -692,6 +797,7 @@ const handlers = {
           'API key increment must equal billed points'
         );
         snapshots.push({
+          modelCalls: response.modelCalls,
           delta,
           usage: redact(usage),
           items: redact(items),
@@ -726,7 +832,15 @@ const handlers = {
     await gateway('live', true);
     const prior = await usageSnapshot();
     const counts = await observationCounts();
-    success(await request(f.baseUrl, 'core/dataset/search', modern(legacy()), owner, true));
+    success(
+      await request({
+        base: f.baseUrl,
+        route: 'core/dataset/search',
+        body: modern(legacy()),
+        actor: owner,
+        session: true
+      })
+    );
     const after = await waitForUsage(prior);
     await waitForObservation(counts);
     const usage = after.usages.filter((item) => !prior.ids.includes(String(item._id)));
@@ -736,9 +850,13 @@ const handlers = {
     const refused = await usageSnapshot();
     await gateway('live', true);
     rejected(
-      await request(f.baseUrl, 'core/dataset/search', {
-        ...modern(legacy()),
-        query: { imageKeys: ['temp/foreign/no.png'] }
+      await request({
+        base: f.baseUrl,
+        route: 'core/dataset/search',
+        body: {
+          ...modern(legacy()),
+          query: { imageKeys: ['temp/foreign/no.png'] }
+        }
       })
     );
     const afterRefusal = await usageSnapshot();
@@ -755,12 +873,14 @@ const handlers = {
   C12: async () => {
     const workflowRunner = path.join(import.meta.dirname, 'FG-DATASET-RETRIEVAL-002.runner.mts');
     const outputs = [];
+    const modelCalls = [];
     await gateway('record', true);
     for (const [label, root] of [
       ['baseline', f.baselineRoot],
       ['current', repo]
     ]) {
       if (label === 'current') await gateway('replay');
+      const priorCalls = (await gatewayState()).calls.length;
       const output = path.join(directory, label + '-workflow.json');
       const config = path.join(directory, label + '-workflow-tsconfig.json');
       await writeFile(
@@ -794,11 +914,18 @@ const handlers = {
           maxBuffer: 1024 * 1024
         }
       );
+      modelCalls.push((await gatewayState()).calls.slice(priorCalls));
+      observations.push({ workflowEntry: label, modelCalls: modelCalls.at(-1) });
       assert.equal(run.status, 0, 'Real workflow integration process failed: ' + label);
       const value = JSON.parse(await readFile(output, 'utf8'));
       assert.ok(!value.error, value.error);
       outputs.push(value);
     }
+    assertModelCallParity({
+      baseline: modelCalls[0],
+      current: modelCalls[1],
+      label: 'Workflow dispatchers'
+    });
     assert.deepEqual(outputs[1], outputs[0], 'Workflow dispatcher retrieval changed');
     observations.push({ workflow: outputs, gateway: await gatewayState() });
     return 'Both real workflow dispatchers preserve ordered citations and actual usage, including rerank and metadata filters';
