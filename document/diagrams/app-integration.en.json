@@ -1,0 +1,63 @@
+{
+  "type": "architecture",
+  "title": "Call FastGPT through your trusted backend",
+  "nodes": [
+    {
+      "id": "frontend",
+      "label": "Your frontend",
+      "sub": "Login and chat interface",
+      "row": 0,
+      "col": 0,
+      "kind": "external",
+      "illustration": "browser"
+    },
+    {
+      "id": "backend",
+      "label": "Your backend",
+      "sub": "Check users and session ownership; keep the app key",
+      "row": 0,
+      "col": 1,
+      "kind": "backend",
+      "illustration": "runtime",
+      "focal": true
+    },
+    {
+      "id": "app",
+      "label": "FastGPT app",
+      "sub": "Chat generation and history",
+      "row": 0,
+      "col": 2,
+      "kind": "backend",
+      "illustration": "core"
+    }
+  ],
+  "edges": [
+    [
+      "frontend",
+      "backend",
+      "User request",
+      "primary"
+    ],
+    [
+      "backend",
+      "app",
+      "API request",
+      "primary"
+    ]
+  ],
+  "evidence": [
+    {
+      "id": "app",
+      "file": "projects/app/src/pages/api/v1/chat/completions.ts",
+      "line": 174
+    }
+  ],
+  "dir": "LR",
+  "lang": "en",
+  "eyebrow": "",
+  "legend": false,
+  "motion": "trace",
+  "fonts": "system",
+  "watermark": false,
+  "skin": "light"
+}

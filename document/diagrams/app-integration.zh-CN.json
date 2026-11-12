@@ -1,0 +1,63 @@
+{
+  "type": "architecture",
+  "title": "业务系统通过可信后端调用 FastGPT",
+  "nodes": [
+    {
+      "id": "frontend",
+      "label": "你的前端",
+      "sub": "登录与消息展示",
+      "row": 0,
+      "col": 0,
+      "kind": "external",
+      "illustration": "browser"
+    },
+    {
+      "id": "backend",
+      "label": "业务后端",
+      "sub": "用户鉴权、会话与密钥管理",
+      "row": 0,
+      "col": 1,
+      "kind": "backend",
+      "illustration": "runtime",
+      "focal": true
+    },
+    {
+      "id": "app",
+      "label": "FastGPT 应用",
+      "sub": "对话生成与历史记录",
+      "row": 0,
+      "col": 2,
+      "kind": "backend",
+      "illustration": "core"
+    }
+  ],
+  "edges": [
+    [
+      "frontend",
+      "backend",
+      "业务请求",
+      "primary"
+    ],
+    [
+      "backend",
+      "app",
+      "API 请求",
+      "primary"
+    ]
+  ],
+  "evidence": [
+    {
+      "id": "app",
+      "file": "projects/app/src/pages/api/v1/chat/completions.ts",
+      "line": 174
+    }
+  ],
+  "dir": "LR",
+  "lang": "zh-CN",
+  "eyebrow": "",
+  "legend": false,
+  "motion": "trace",
+  "fonts": "system",
+  "watermark": false,
+  "skin": "light"
+}

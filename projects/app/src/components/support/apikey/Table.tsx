@@ -693,7 +693,7 @@ const ApiKeyTable = ({
             <Tbody fontSize={'sm'}>
               {!isGetting && apiKeys.length === 0 && (
                 <Tr>
-                  <Td colSpan={tableColumns.length} p={0}>
+                  <Td colSpan={tableColumns.length} p={0} borderBottom={0}>
                     <EmptyTip text={isAppKey ? t('apikey:app_key_empty') : undefined} />
                   </Td>
                 </Tr>

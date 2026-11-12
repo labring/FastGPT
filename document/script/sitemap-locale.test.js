@@ -237,6 +237,7 @@ test('llms.txt emits an llmstxt.org Markdown index with canonical links and excl
       'remark-stringify': require('remark-stringify'),
       'fumadocs-mdx/config': { remarkInclude: () => () => {} },
       '@/lib/source': mockSource,
+      '@/lib/api-reference-notice': loadModule('../lib/api-reference-notice.ts', { imports: {} }),
       '@/lib/fastgpt-home-url': routing
     }
   });
@@ -294,6 +295,18 @@ test('llms.txt emits an llmstxt.org Markdown index with canonical links and excl
   assert.ok(cleaned.includes('#### Docker'));
   assert.ok(cleaned.includes('```mermaid\ngraph TD; A-->B;\n```'));
   assert.ok(cleaned.includes('[Contact Sales](https://fastgpt.io/contact)'));
+
+  for (const [component, title] of [
+    ['<ApiReferenceNotice />', '在线 API 文档'],
+    ['<ApiReferenceNotice language="en" />', 'Online API Reference']
+  ]) {
+    const notice = await llmsMarkdown.renderCleanMdxBody('./content/sample.mdx', component);
+    assert.ok(notice.includes(`> **${title}**`));
+    assert.ok(notice.includes('https://cloud.fastgpt.cn/apidoc/systemopenapi'));
+    assert.ok(notice.includes('https://cloud.fastgpt.io/apidoc/systemopenapi'));
+    assert.ok(notice.includes('`<instance>/apidoc/systemopenapi`'));
+    assert.ok(!notice.includes('<ApiReferenceNotice'));
+  }
 });
 
 test('schema helpers expand search titles and emit rich-result compliant JSON-LD', () => {
@@ -491,9 +504,9 @@ test('middleware resolves section landings, language roots, and historical paths
     ['/zh-CN/use-cases/external-integration/iframe_integration', '/zh-CN/guide/build/publish/link'],
     ['/zh-CN/use-cases/external-integration/onwechat', '/zh-CN/guide/build/publish/wechat'],
     ['/zh-CN/introduction/openapi/intro', '/zh-CN/openapi/intro'],
-    ['/zh-CN/introduction/openapi/chat', '/zh-CN/openapi/chat'],
+    ['/zh-CN/introduction/openapi/chat', '/zh-CN/openapi/best-practices/app-integration'],
     ['/zh-CN/introduction/openapi/dataset', '/zh-CN/openapi/dataset'],
-    ['/zh-CN/introduction/openapi/app', '/zh-CN/openapi/app'],
+    ['/zh-CN/introduction/openapi/app', '/zh-CN/openapi/best-practices/app-integration'],
     ['/zh-CN/introduction/openapi/share', '/zh-CN/guide/build/publish/link'],
     ['/zh-CN/introduction/openapi/swagger', '/zh-CN/openapi/intro'],
     ['/zh-CN/introduction/development/openapi/swagger', '/zh-CN/openapi/intro'],

@@ -216,6 +216,9 @@ const exactMap: Record<string, string> = {
   '/guide': defaultHomePath,
   '/use-cases': defaultHomePath,
   '/openapi': '/openapi/intro',
+  // 应用调用与会话教程改由最佳实践承接，保留旧书签的直达入口。
+  '/openapi/app': '/openapi/best-practices/app-integration',
+  '/openapi/chat': '/openapi/best-practices/app-integration',
   '/openapi/best-practices': '/openapi/intro',
   '/openapi/swagger': '/openapi/intro',
   '/openapi/share': '/guide/build/publish/link',

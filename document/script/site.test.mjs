@@ -262,7 +262,7 @@ for (const [locale, host] of [['zh-CN', 'doc.fastgpt.cn'], ['en', 'doc.fastgpt.i
 
 test('legacy prefix redirects match path segments and retain encoded query values', async () => {
   for (const [legacy, target] of [
-    ['/en/docs/introduction/development/openapi/chat', '/en/openapi/chat'],
+    ['/en/docs/introduction/development/openapi/chat', '/en/openapi/best-practices/app-integration'],
     ['/zh-CN/FAQ', '/zh-CN/faq/chat'],
     ['/en/plugin', '/en/plugin/intro'],
     ['/zh-CN/faq/app', '/zh-CN/guide/build/faq'],
