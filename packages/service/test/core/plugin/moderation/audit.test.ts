@@ -1,3 +1,5 @@
+vi.unmock(import('@fastgpt/service/common/mongo/sessionRun'));
+
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AdminAuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import {
@@ -14,8 +16,6 @@ import * as lifecycle from '@fastgpt/service/thirdProvider/fastgptPlugin/lifecyc
 import * as moderationEntity from '@fastgpt/service/core/plugin/moderation/entity';
 import * as moderationService from '@fastgpt/service/core/plugin/moderation/service';
 import {
-  captureModerationConfigAuditSnapshot,
-  captureModerationPolicyAuditSnapshot,
   captureModerationUninstallAuditSnapshot,
   hasModerationPolicyConfigChanged,
   recordInstalledModerationPluginsAudit,
@@ -150,24 +150,14 @@ describe('moderation admin audit helpers', () => {
     });
   });
 
-  describe('captureModerationPolicyAuditSnapshot & recordModerationPolicyAudit', () => {
-    it('skips snapshot and write when operator lacks teamId or tmbId', async () => {
-      expect(await captureModerationPolicyAuditSnapshot(undefined)).toBeUndefined();
-      expect(await captureModerationPolicyAuditSnapshot({ tmbId: operator.tmbId })).toBeUndefined();
-
+  describe('recordModerationPolicyAudit', () => {
+    it('skips writes when operator lacks teamId or tmbId', async () => {
       await recordModerationPolicyAudit({
         operator: undefined,
         snapshot: { prevPolicy: DefaultSystemModerationPolicy },
         nextPolicy: DefaultSystemModerationPolicy
       });
       expect(await MongoTeamAudit.countDocuments({})).toBe(0);
-    });
-
-    it('returns undefined gracefully when snapshot query throws', async () => {
-      vi.spyOn(moderationService, 'getModerationPolicy').mockRejectedValueOnce(
-        new Error('db unavailable')
-      );
-      await expect(captureModerationPolicyAuditSnapshot(operator)).resolves.toBeUndefined();
     });
 
     it('logs only plugin enablement when turning moderation on without changing hooks or strategy', async () => {
@@ -181,16 +171,13 @@ describe('moderation admin audit helpers', () => {
         secretSchema: {}
       });
 
-      const snapshot = await captureModerationPolicyAuditSnapshot(operator);
-      await recordModerationPolicyAudit({
-        operator,
-        snapshot,
-        nextPolicy: {
+      const { policy: nextPolicy, auditSnapshot: snapshot } =
+        await moderationService.updateModerationPolicy({
           ...DefaultSystemModerationPolicy,
           enabled: true,
           activePluginId: 'baidu-moderation'
-        }
-      });
+        });
+      await recordModerationPolicyAudit({ operator, snapshot, nextPolicy });
 
       const logs = await MongoTeamAudit.find({}).sort({ _id: 1 }).lean();
       expect(logs).toHaveLength(1);
@@ -227,11 +214,8 @@ describe('moderation admin audit helpers', () => {
         })
       );
 
-      const snapshot = await captureModerationPolicyAuditSnapshot(operator);
-      await recordModerationPolicyAudit({
-        operator,
-        snapshot,
-        nextPolicy: {
+      const { policy: nextPolicy, auditSnapshot: snapshot } =
+        await moderationService.updateModerationPolicy({
           enabled: true,
           activePluginId: 'aliyun-moderation',
           hooks: {
@@ -239,8 +223,8 @@ describe('moderation admin audit helpers', () => {
             modelInput: !DefaultSystemModerationPolicy.hooks.modelInput
           },
           strategy: DefaultSystemModerationPolicy.strategy
-        }
-      });
+        });
+      await recordModerationPolicyAudit({ operator, snapshot, nextPolicy });
 
       const logs = await MongoTeamAudit.find({}).sort({ _id: 1 }).lean();
       expect(logs.map((item) => ({ event: item.event, metadata: item.metadata }))).toEqual([
@@ -275,15 +259,12 @@ describe('moderation admin audit helpers', () => {
         secretSchema: {}
       });
 
-      const snapshot = await captureModerationPolicyAuditSnapshot(operator);
-      await recordModerationPolicyAudit({
-        operator,
-        snapshot,
-        nextPolicy: {
+      const { policy: nextPolicy, auditSnapshot: snapshot } =
+        await moderationService.updateModerationPolicy({
           ...DefaultSystemModerationPolicy,
           enabled: false
-        }
-      });
+        });
+      await recordModerationPolicyAudit({ operator, snapshot, nextPolicy });
 
       const logs = await MongoTeamAudit.find({}).lean();
       expect(logs).toHaveLength(1);
@@ -294,7 +275,7 @@ describe('moderation admin audit helpers', () => {
     });
   });
 
-  describe('captureModerationConfigAuditSnapshot & recordModerationConfigAudit', () => {
+  describe('recordModerationConfigAudit', () => {
     it('logs config modification without exposing any secret values and handles enable/disable transitions', async () => {
       await MongoSystemModerationPlugin.create({
         pluginId: 'old-active',
@@ -311,10 +292,7 @@ describe('moderation admin audit helpers', () => {
         secretSchema: {}
       });
 
-      const snapshot = await captureModerationConfigAuditSnapshot({
-        operator,
-        pluginId: 'new-active'
-      });
+      const snapshot = { prevTargetEnabled: false, prevActivePluginId: 'old-active' };
       await recordModerationConfigAudit({
         operator,
         snapshot,
@@ -343,17 +321,14 @@ describe('moderation admin audit helpers', () => {
       expect(JSON.stringify(logs)).not.toContain('apiKey');
     });
 
-    it('logs disablement when nextEnabled is false on a previously enabled plugin and handles snapshot errors', async () => {
+    it('logs disablement and resolves names without exposing credentials', async () => {
       await MongoSystemModerationPlugin.create({
         pluginId: 'active-plugin',
         source: 'system',
         enabled: true
       });
 
-      const snapshot = await captureModerationConfigAuditSnapshot({
-        operator,
-        pluginId: 'active-plugin'
-      });
+      const snapshot = { prevTargetEnabled: true, prevActivePluginId: 'active-plugin' };
       await recordModerationConfigAudit({
         operator,
         snapshot,
@@ -369,13 +344,6 @@ describe('moderation admin audit helpers', () => {
         event: AdminAuditEventEnum.ADMIN_DISABLE_MODERATION_PLUGIN,
         metadata: { pluginName: '生效插件' }
       });
-
-      expect(
-        await captureModerationConfigAuditSnapshot({
-          operator: undefined,
-          pluginId: 'active-plugin'
-        })
-      ).toBeUndefined();
 
       await recordModerationConfigAudit({
         operator: undefined,
@@ -401,12 +369,120 @@ describe('moderation admin audit helpers', () => {
       }).lean();
       expect(updatedLogs).toHaveLength(1);
       expect(updatedLogs[0].metadata).toEqual({ pluginName: '远程解析名称' });
-
-      vi.spyOn(moderationEntity, 'findModerationConfig').mockRejectedValueOnce(new Error('boom'));
-      await expect(
-        captureModerationConfigAuditSnapshot({ operator, pluginId: 'active-plugin' })
-      ).resolves.toBeUndefined();
     });
+  });
+
+  describe('committed mutation audit snapshots', () => {
+    it.each(['policy', 'config'] as const)(
+      'records both A→B→A transitions after concurrent %s transactions read A',
+      async (entry) => {
+        const originalPolicy = {
+          ...DefaultSystemModerationPolicy,
+          enabled: true,
+          activePluginId: 'A'
+        };
+        await MongoSystemConfigs.create({
+          type: SystemConfigsTypeEnum.moderationPolicy,
+          value: originalPolicy
+        });
+        await MongoSystemModerationPlugin.create([
+          { pluginId: 'A', source: 'system', enabled: true },
+          { pluginId: 'B', source: 'system', enabled: false }
+        ]);
+        vi.spyOn(remoteModeration, 'getModerationPluginDetail').mockImplementation(
+          async ({ pluginId }) => ({
+            pluginId,
+            source: 'system',
+            version: '1.0.0',
+            type: 'moderation',
+            name: pluginId,
+            meta: { provider: 'test' },
+            secretSchema: {}
+          })
+        );
+        vi.spyOn(remoteModeration, 'checkModerationContent').mockResolvedValue({
+          verdict: 'pass',
+          provider: 'test',
+          hits: [],
+          keywords: []
+        });
+
+        const firstRead = Promise.withResolvers<void>();
+        const bothRead = Promise.withResolvers<void>();
+        const firstCommitted = Promise.withResolvers<void>();
+        const findEnabled = moderationEntity.findEnabledModerationConfig;
+        let reads = 0;
+        // 两个事务先读到 A，再放行 B 的提交；A 的旧事务必须发生写冲突并重新读取 B。
+        vi.spyOn(moderationEntity, 'findEnabledModerationConfig').mockImplementation(
+          async (session) => {
+            const config = await findEnabled(session);
+            const read = ++reads;
+            if (read <= 2) {
+              expect(session?.inTransaction()).toBe(true);
+              expect(config?.pluginId).toBe('A');
+              if (read === 1) {
+                firstRead.resolve();
+                await bothRead.promise;
+              } else {
+                bothRead.resolve();
+                await firstCommitted.promise;
+              }
+            }
+            return config;
+          }
+        );
+
+        // 使用真实事务与审计库，只替换远端插件元数据及配置探测。
+        const mutateAndAudit = async (pluginId: string) => {
+          if (entry === 'policy') {
+            const { policy, auditSnapshot } = await moderationService.updateModerationPolicy({
+              ...originalPolicy,
+              activePluginId: pluginId,
+              hooks: { ...originalPolicy.hooks, modelInput: pluginId === 'A' }
+            });
+            await recordModerationPolicyAudit({
+              operator,
+              snapshot: auditSnapshot,
+              nextPolicy: policy
+            });
+          } else {
+            const { item, auditSnapshot } = await moderationService.saveModerationConfig({
+              pluginId,
+              enabled: true
+            });
+            await recordModerationConfigAudit({
+              operator,
+              snapshot: auditSnapshot,
+              pluginId,
+              pluginName: item.name,
+              secretsUpdated: false,
+              nextEnabled: true
+            });
+          }
+        };
+        const first = mutateAndAudit('B').finally(() => firstCommitted.resolve());
+        await firstRead.promise;
+        await Promise.all([first, mutateAndAudit('A')]);
+
+        expect(reads).toBeGreaterThanOrEqual(3);
+        expect(await moderationService.getModerationPolicy()).toEqual(originalPolicy);
+        expect(await MongoSystemModerationPlugin.find({ enabled: true }).lean()).toMatchObject([
+          { pluginId: 'A' }
+        ]);
+        const disable = AdminAuditEventEnum.ADMIN_DISABLE_MODERATION_PLUGIN;
+        const enable = AdminAuditEventEnum.ADMIN_ENABLE_MODERATION_PLUGIN;
+        const policyUpdate = AdminAuditEventEnum.ADMIN_UPDATE_MODERATION_POLICY;
+        const logs = await MongoTeamAudit.find({}).sort({ _id: 1 }).lean();
+        expect(logs.map(({ event, metadata }) => ({ event, metadata }))).toEqual([
+          { event: disable, metadata: { pluginName: 'A' } },
+          { event: enable, metadata: { pluginName: 'B' } },
+          ...(entry === 'policy' ? [{ event: policyUpdate, metadata: undefined }] : []),
+          { event: disable, metadata: { pluginName: 'B' } },
+          { event: enable, metadata: { pluginName: 'A' } },
+          ...(entry === 'policy' ? [{ event: policyUpdate, metadata: undefined }] : [])
+        ]);
+      }
+    );
   });
 
   describe('captureModerationUninstallAuditSnapshot & recordModerationUninstallAudit', () => {

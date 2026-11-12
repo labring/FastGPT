@@ -13,10 +13,7 @@ import {
   getModerationPolicy,
   updateModerationPolicy
 } from '@fastgpt/service/core/plugin/moderation/service';
-import {
-  captureModerationPolicyAuditSnapshot,
-  recordModerationPolicyAudit
-} from '@fastgpt/service/core/plugin/moderation/audit';
+import { recordModerationPolicyAudit } from '@fastgpt/service/core/plugin/moderation/audit';
 
 export type AdminModerationPolicyQuery = Record<string, never>;
 export type AdminModerationPolicyBody = UpdateModerationPolicyBodyType;
@@ -47,8 +44,7 @@ export async function handler(
   });
 
   const lang = req.headers ? getLocale(req) : undefined;
-  const auditSnapshot = await captureModerationPolicyAuditSnapshot(authResult);
-  const updated = await updateModerationPolicy(body);
+  const { policy: updated, auditSnapshot } = await updateModerationPolicy(body);
   await recordModerationPolicyAudit({
     operator: authResult,
     snapshot: auditSnapshot,

@@ -9,24 +9,14 @@ import {
   listModerationPlugins
 } from '../../../thirdProvider/fastgptPlugin/moderation';
 import { getRetainedModerationDetail } from '../../../thirdProvider/fastgptPlugin/lifecycle';
-import { findEnabledModerationConfig, findModerationConfig } from './entity';
-import { getModerationPolicy } from './service';
+import { findModerationConfig } from './entity';
+import type { ModerationPolicyAuditSnapshot, ModerationConfigAuditSnapshot } from './service';
 
 const logger = getLogger(LogCategories.MODULE.PLUGIN.ADMIN);
 
 export type ModerationAuditOperator = {
   teamId?: string;
   tmbId?: string;
-};
-
-export type ModerationPolicyAuditSnapshot = {
-  prevPolicy: SystemModerationPolicyType;
-  prevEnabledPluginId?: string;
-};
-
-export type ModerationConfigAuditSnapshot = {
-  prevTargetEnabled: boolean;
-  prevActivePluginId?: string;
 };
 
 export type ModerationUninstallAuditSnapshot = {
@@ -90,33 +80,6 @@ export const hasModerationPolicyConfigChanged = ({
   prevPolicy.strategy.serviceExceptionAction !== nextPolicy.strategy.serviceExceptionAction;
 
 /**
- * Capture the persisted moderation policy and enabled plugin state before a policy update.
- * Returns `undefined` when operator identity is incomplete so callers skip unnecessary reads.
- */
-export const captureModerationPolicyAuditSnapshot = async (
-  operator?: ModerationAuditOperator
-): Promise<ModerationPolicyAuditSnapshot | undefined> => {
-  if (!isValidAuditOperator(operator)) return undefined;
-
-  try {
-    const [prevPolicy, enabledConfig] = await Promise.all([
-      getModerationPolicy(),
-      findEnabledModerationConfig()
-    ]);
-    const prevEnabledPluginId =
-      enabledConfig?.pluginId ?? (prevPolicy.enabled ? prevPolicy.activePluginId : undefined);
-
-    return {
-      prevPolicy,
-      prevEnabledPluginId
-    };
-  } catch (error) {
-    logger.warn('Failed to capture moderation policy audit snapshot', { error });
-    return undefined;
-  }
-};
-
-/**
  * Record admin audit logs after `updateModerationPolicy` succeeds.
  *
  * Emits plugin disable/enable events when the active moderation plugin changes,
@@ -177,36 +140,6 @@ export const recordModerationPolicyAudit = async ({
   }
 
   await addAuditLogs(logs);
-};
-
-/**
- * Capture target and active plugin enablement state before `saveModerationConfig` mutates the DB.
- */
-export const captureModerationConfigAuditSnapshot = async ({
-  operator,
-  pluginId,
-  source
-}: {
-  operator?: ModerationAuditOperator;
-  pluginId: string;
-  source?: string;
-}): Promise<ModerationConfigAuditSnapshot | undefined> => {
-  if (!isValidAuditOperator(operator)) return undefined;
-
-  try {
-    const [existing, activeConfig] = await Promise.all([
-      findModerationConfig({ pluginId, source }),
-      findEnabledModerationConfig()
-    ]);
-
-    return {
-      prevTargetEnabled: Boolean(existing?.enabled),
-      prevActivePluginId: activeConfig?.pluginId
-    };
-  } catch (error) {
-    logger.warn('Failed to capture moderation config audit snapshot', { error, pluginId });
-    return undefined;
-  }
 };
 
 /**
@@ -402,15 +335,18 @@ export const recordInstalledModerationPluginsAudit = async ({
 }): Promise<void> => {
   if (!isValidAuditOperator(operator)) return;
 
+  // 1. 安装入口只传入成功的 ID；去重后避免同一插件重复记账。
   const uniquePluginIds = Array.from(new Set(pluginIds.filter(Boolean)));
   if (uniquePluginIds.length === 0) return;
 
   try {
+    // 2. 读取审核插件类型列表，避免把同批安装的工具或模型插件记为审核插件。
     const moderationPlugins = await listModerationPlugins({ lang });
     const moderationByPluginId = new Map(
       moderationPlugins.map((plugin) => [plugin.pluginId, plugin])
     );
 
+    // 3. 仅记录成功安装集合与审核类型的交集，名称缺失时使用插件 ID 兜底。
     const logs: AuditLogInput[] = uniquePluginIds
       .filter((pluginId) => moderationByPluginId.has(pluginId))
       .map((pluginId) => {
@@ -427,6 +363,7 @@ export const recordInstalledModerationPluginsAudit = async ({
         };
       });
 
+    // 4. 批量写入审计；列表读取或记账失败只告警，不能将已成功的安装变成接口失败。
     await addAuditLogs(logs);
   } catch (error) {
     logger.warn('Failed to record installed moderation plugins audit', {

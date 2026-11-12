@@ -43,6 +43,19 @@ import {
   getModerationPluginDetail,
   listModerationPlugins
 } from '../../../thirdProvider/fastgptPlugin/moderation';
+
+/** 与成功提交的策略变更对应的前态，不包含操作者或外部插件元数据。 */
+export type ModerationPolicyAuditSnapshot = {
+  prevPolicy: SystemModerationPolicyType;
+  prevEnabledPluginId?: string;
+};
+
+/** 配置保存事务实际覆盖的启用状态，不包含凭据。 */
+export type ModerationConfigAuditSnapshot = {
+  prevTargetEnabled: boolean;
+  prevActivePluginId?: string;
+};
+
 /**
  * 把插件详情、本地配置合并成管理列表项。
  *
@@ -256,6 +269,7 @@ const syncPolicyContentionRecord = async ({
  * 启用是全局互斥的：传 `enabled: true` 会先把其他插件置为停用。
  * Saving synchronously probes the resolved configuration before any writes or enablement.
  * A block/suspected verdict is a healthy response; provider errors and runtime failures reject the save.
+ * 返回脱敏配置与同一事务内的审计前态；只有提交成功后调用方才可记录审计。
  */
 export const saveModerationConfig = async ({
   pluginId,
@@ -271,7 +285,10 @@ export const saveModerationConfig = async ({
   secretsVal?: Record<string, unknown> | null;
   enabled?: boolean;
   lang?: `${LangEnum}`;
-}): Promise<AdminModerationPluginItemType> => {
+}): Promise<{
+  item: AdminModerationPluginItemType;
+  auditSnapshot: ModerationConfigAuditSnapshot;
+}> => {
   // 1. 读取插件详情：拿 secretSchema 判断哪些字段要加密，同时验证插件真实存在
   const detail = await getModerationPluginDetail({ pluginId, source, version, lang });
 
@@ -323,7 +340,15 @@ export const saveModerationConfig = async ({
   };
 
   // 3. 写入。启用时在同一事务内停用其他插件，避免出现两个同时启用的窗口
-  const saved = await mongoSessionRun(async (session) => {
+  const { saved, auditSnapshot } = await mongoSessionRun(async (session) => {
+    // 前态必须与写入共享 session；写冲突重试时重新读取，不能复用事务外的旧快照。
+    const prevTarget = await findModerationConfig({ pluginId, source: detail.source }, session);
+    const prevActive = await findEnabledModerationConfig(session);
+    const auditSnapshot: ModerationConfigAuditSnapshot = {
+      prevTargetEnabled: Boolean(prevTarget?.enabled),
+      prevActivePluginId: prevActive?.pluginId
+    };
+
     if (enabled === true) {
       await syncPolicyContentionRecord({ session, activePluginId: pluginId });
     }
@@ -339,10 +364,10 @@ export const saveModerationConfig = async ({
       await disableOtherModerationConfigs({ exceptPluginId: pluginId, session });
     }
 
-    return record;
+    return { saved: record, auditSnapshot };
   });
 
-  return buildAdminItem({ detail, config: saved, lang });
+  return { item: buildAdminItem({ detail, config: saved, lang }), auditSnapshot };
 };
 
 /**
@@ -525,20 +550,20 @@ export const checkModerationForTest = async ({
 };
 
 /**
- * 获取全局内容审核策略配置。
+ * 读取全局策略及实际启用插件，供查询与事务内审计共同使用。
  *
  * 从 MongoSystemConfigs 读取，若不存在或校验失败则回退到默认值，
  * 优先使用数据库中实际启用的审查插件作为 activePluginId。
  */
-export const getModerationPolicy = async (): Promise<SystemModerationPolicyType> => {
-  const [configRecord, enabledPlugin] = await Promise.all([
-    MongoSystemConfigs.findOne({
-      type: SystemConfigsTypeEnum.moderationPolicy
-    })
-      .sort({ createTime: -1, _id: -1 })
-      .lean(),
-    findEnabledModerationConfig()
-  ]);
+const readModerationPolicyState = async (session?: ClientSession) => {
+  // 同一 session 内顺序查询，确保前态与后续写入处于同一事务快照。
+  const configRecord = await MongoSystemConfigs.findOne({
+    type: SystemConfigsTypeEnum.moderationPolicy
+  })
+    .sort({ createTime: -1, _id: -1 })
+    .session(session ?? null)
+    .lean();
+  const enabledPlugin = await findEnabledModerationConfig(session);
 
   const rawConfigValue =
     configRecord?.value && typeof configRecord.value === 'object' ? configRecord.value : {};
@@ -557,9 +582,15 @@ export const getModerationPolicy = async (): Promise<SystemModerationPolicyType>
   const activePluginId = enabledPlugin?.pluginId ?? basePolicy.activePluginId;
 
   return {
-    ...basePolicy,
-    activePluginId
+    policy: { ...basePolicy, activePluginId },
+    enabledPluginId: enabledPlugin?.pluginId
   };
+};
+
+/** 获取全局内容审核策略，以实际启用的插件校正生效插件，缺失或无效配置回退到默认值。 */
+export const getModerationPolicy = async (): Promise<SystemModerationPolicyType> => {
+  const { policy } = await readModerationPolicyState();
+  return policy;
 };
 
 /**
@@ -567,10 +598,14 @@ export const getModerationPolicy = async (): Promise<SystemModerationPolicyType>
  *
  * 保存策略（生效环节、处理策略等）到 MongoSystemConfigs，
  * 并同步更新 system_moderation_plugins 的启用状态（保持全局互斥）。
+ * 返回策略和提交事务实际覆盖的前态，审计写入由调用方在提交成功后执行。
  */
 export const updateModerationPolicy = async (
   input: SystemModerationPolicyType
-): Promise<SystemModerationPolicyType> => {
+): Promise<{
+  policy: SystemModerationPolicyType;
+  auditSnapshot: ModerationPolicyAuditSnapshot;
+}> => {
   const validated = SystemModerationPolicySchema.parse(input);
 
   // Reject incomplete enabled policies before changing plugin state or persisting configuration.
@@ -578,8 +613,16 @@ export const updateModerationPolicy = async (
     throw new Error('请选择一个审核插件后再保存');
   }
 
-  // 1. 同步插件启用状态并保存全局策略记录（在同一事务内争用权威记录，避免并发双启用）
   return await mongoSessionRun(async (session) => {
+    // 1. 在更新事务内读取前态，冲突重试时重新生成，避免并发切换或策略恢复漏记日志。
+    const { policy: prevPolicy, enabledPluginId } = await readModerationPolicyState(session);
+    const auditSnapshot: ModerationPolicyAuditSnapshot = {
+      prevPolicy,
+      prevEnabledPluginId:
+        enabledPluginId ?? (prevPolicy.enabled ? prevPolicy.activePluginId : undefined)
+    };
+
+    // 2. 争用权威记录并同步插件启用状态，保证前态与实际覆盖的状态一致。
     await syncPolicyContentionRecord({ session, policy: validated });
 
     if (validated.enabled && validated.activePluginId) {
@@ -588,6 +631,6 @@ export const updateModerationPolicy = async (
       await disableAllModerationConfigs({ session });
     }
 
-    return validated;
+    return { policy: validated, auditSnapshot };
   });
 };

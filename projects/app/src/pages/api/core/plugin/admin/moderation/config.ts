@@ -10,10 +10,7 @@ import {
   type SaveModerationConfigResponseType
 } from '@fastgpt/global/openapi/core/plugin/admin/moderation/api';
 import { saveModerationConfig } from '@fastgpt/service/core/plugin/moderation/service';
-import {
-  captureModerationConfigAuditSnapshot,
-  recordModerationConfigAudit
-} from '@fastgpt/service/core/plugin/moderation/audit';
+import { recordModerationConfigAudit } from '@fastgpt/service/core/plugin/moderation/audit';
 
 export type AdminModerationConfigQuery = Record<string, never>;
 export type AdminModerationConfigBody = SaveModerationConfigBodyType;
@@ -37,11 +34,7 @@ export async function handler(
   }).body;
 
   const lang = getLocale(req);
-  const auditSnapshot = await captureModerationConfigAuditSnapshot({
-    operator: authResult,
-    pluginId
-  });
-  const result = await saveModerationConfig({
+  const { item: result, auditSnapshot } = await saveModerationConfig({
     pluginId,
     version,
     secretsVal,
