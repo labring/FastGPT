@@ -9,7 +9,6 @@ import type {
 import type { RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import type {
   AIChatItemValueItemType,
-  ChatFileStoreValue,
   ChatItemMiniType,
   ToolRunResponseItemType,
   UserChatItemValueItemType
@@ -17,17 +16,14 @@ import type {
 import type { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import type { OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
-import type { NodeHttpResponse } from '../../../types/http';
 import type { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import type { WorkflowResponseType } from '@fastgpt/global/core/workflow/runtime/sse';
 import type {
   DispatchNodeResponseType,
   RuntimeNodeItemType
 } from '@fastgpt/global/core/workflow/runtime/type';
 import type { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import type { WorkflowNodeResponseSinkLike } from '../dispatch/nodeResponseSink';
-import type { WorkflowMemoryState } from '../memory/state';
 import type { WorkflowRuntimeSummaryFields } from './summary';
+import type { AgentSandboxPrepareAction } from '../dispatch/ai/agent/sub/sandbox/prepare';
 
 /*
   1. 输入线分类：普通线(实际上就是从 start 直接过来的分支）和递归线（可以追溯到自身的分支）
@@ -45,25 +41,10 @@ export type ExternalProviderType = {
   externalWorkflowVariables?: Record<string, string>;
 };
 
-export type WorkflowVariableStateLike = {
-  get: (key: string) => unknown;
-  set: (key: string, value: unknown) => Promise<unknown>;
-  getStoreValue: (key: string) => unknown;
-  getFileStoreValueByRuntimeUrl: (url: string) => ChatFileStoreValue | undefined;
-  toRuntimeRecord: () => Record<string, unknown>;
-  toStoreRecord: () => Record<string, unknown>;
-  clone: () => WorkflowVariableStateLike;
-};
-
 /* workflow props */
-export type ChatDispatchProps = {
-  res?: NodeHttpResponse;
-  checkIsStopping: () => boolean;
+export type WorkflowDispatchProps = {
   lang?: localeType;
   requestOrigin?: string;
-  /** Workflow 服务端读取单个输入文件的最大字节数；缺省使用系统文件大小限制。 */
-  maxBytesPerFile?: number;
-  mode: 'test' | 'chat' | 'debug';
   timezone: string;
   externalProvider: ExternalProviderType;
 
@@ -91,32 +72,21 @@ export type ChatDispatchProps = {
   /** 当前 AI 回复 chat item 的 dataId；workflow 运行期必须有值，外部入口缺省时由 dispatchWorkFlow 补齐。 */
   responseChatItemId: string;
   histories: ChatItemMiniType[];
-  variableState: WorkflowVariableStateLike; // global variable state
-  memoryState?: WorkflowMemoryState; // workflow node memories state
   query: UserChatItemValueItemType[]; // trigger query
   chatConfig?: AppChatConfigType;
   lastInteractive?: WorkflowInteractiveResponseType; // last interactive response
   stream: boolean;
   retainDatasetCite?: boolean;
-  showSkillReferences?: boolean;
-  maxRunTimes: number;
-  isToolCall?: boolean;
-  workflowStreamResponse?: WorkflowResponseType;
-  apiVersion?: 'v1' | 'v2';
 
-  workflowDispatchDeep: number;
-
-  responseAllData?: boolean;
-  responseDetail?: boolean;
   nodeResponseParentId?: string; // 传递给 child，用于设置 nodeResponse 的 parentId
-  /** 当前 workflow 的 response scope；child 创建独立 scope 并共享底层 output。 */
-  nodeResponseSink?: WorkflowNodeResponseSinkLike;
 
   // TODO: 移除
   usageId?: string;
 };
 
-export type ModuleDispatchProps<T> = ChatDispatchProps & {
+export type ModuleDispatchProps<T> = WorkflowDispatchProps & {
+  /** 入口提供的 Agent 沙盒准备动作；属于显式业务输入，不是 Queue 控制能力。 */
+  agentSandboxPrepareActions?: AgentSandboxPrepareAction[];
   node: RuntimeNodeItemType;
   runtimeNodes: RuntimeNodeItemType[];
   runtimeNodesMap: Map<string, RuntimeNodeItemType>;

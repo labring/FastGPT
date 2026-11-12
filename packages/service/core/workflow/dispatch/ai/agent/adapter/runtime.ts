@@ -5,7 +5,6 @@ import type {
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import type { AgentLoopRuntime } from '../../../../../ai/llm/agentLoop/interface';
 import { getExecuteTool, type ToolDispatchContext } from '../sub/utils';
-import type { WorkflowResponseType } from '@fastgpt/global/core/workflow/runtime/sse';
 import { createWorkflowAgentLoopToolCatalog } from './toolCatalog';
 import type { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { SandboxClient } from '../../../../../ai/sandbox/application/runtime/client';
@@ -17,7 +16,7 @@ import {
 } from '../../agentLoopCore/interface';
 import { createWorkflowAgentToolProvider } from '../toolProvider';
 import type { AgentLoopCoreToolRunResult } from '../../agentLoopCore/interface';
-import { getWorkflowFileContext } from '../../../../utils/context';
+import { getWorkflowContext, getWorkflowFileContext } from '../../../context';
 
 type WorkflowAgentLoopRuntimeContext = ToolDispatchContext & {
   node: {
@@ -49,7 +48,6 @@ type WorkflowAgentLoopRuntimeArtifacts = {
 export const createWorkflowAgentLoopRuntime = ({
   context,
   usagePush,
-  workflowStreamResponse,
   assistantResponses = [],
   nodeResponses = [],
   appendNodeResponse,
@@ -58,7 +56,6 @@ export const createWorkflowAgentLoopRuntime = ({
 }: {
   context: WorkflowAgentLoopRuntimeContext;
   usagePush: (usages: ChatNodeUsageType[]) => void;
-  workflowStreamResponse?: WorkflowResponseType;
   assistantResponses?: AIChatItemValueItemType[];
   nodeResponses?: ChatHistoryItemResType[];
   appendNodeResponse?: (nodeResponse: ChatHistoryItemResType) => void;
@@ -116,7 +113,7 @@ export const createWorkflowAgentLoopRuntime = ({
       fileContext: getWorkflowFileContext(),
       environment: {
         node: context.node,
-        workflowStreamResponse,
+        workflowStreamResponse: getWorkflowContext().workflowStreamResponse,
         streamAnswer: context.params.isResponseAnswerText !== false,
         streamReasoning:
           context.params.isResponseAnswerText !== false && context.params.aiChatReasoning !== false,
@@ -159,7 +156,7 @@ export const createWorkflowAgentLoopRuntime = ({
             }
           : undefined
       },
-      checkIsStopping: context.checkIsStopping,
+      checkIsStopping: getWorkflowContext().checkIsStopping,
       toolRuntime: {
         toolProvider,
         batchToolSize: 5,

@@ -1,6 +1,10 @@
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { getRunningSandboxId } from '@fastgpt/service/core/ai/sandbox/utils/id';
-import { ensureWorkflowSandboxReadyForUse } from '@fastgpt/service/core/workflow/dispatch/ai/sandbox';
+import { ensureWorkflowSandboxReadyForUse as ensureWorkflowSandboxReadyForUseWithoutContext } from '@fastgpt/service/core/workflow/dispatch/ai/sandbox';
+import { createTestWorkflowDispatch } from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
+const ensureWorkflowSandboxReadyForUse = createTestWorkflowDispatch(
+  ensureWorkflowSandboxReadyForUseWithoutContext
+);
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { ensureAppSandboxRuntimeReadyMock, markChatSandboxEnabledMock } = vi.hoisted(() => ({

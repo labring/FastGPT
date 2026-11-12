@@ -35,15 +35,13 @@ import {
   getWorkflowFileInputsFromValue,
   getWorkflowFileVariableInputs,
   WorkflowVariableState
-} from '../utils/variables';
+} from '../context/variables';
 import { SystemToolRepo } from '../../../app/tool/systemTool/systemTool.repo';
-import { getWorkflowRuntimeSummary } from '../utils/summary';
-import { runWithDerivedWorkflowFileContext } from '../../utils/context';
-import { createSystemToolResourceContext } from '../../resource/context';
+import { createWorkflowRuntimeSummary, getWorkflowRuntimeSummary } from '../utils/summary';
+import { runWithDerivedWorkflowFileContext, getWorkflowContext, runWithContext } from '../context';
+import { createSystemToolResourceContext } from '../context/resource';
 import { loadChildWorkflowWithResource } from '../../resource/service';
 import type { WorkflowResourceContext } from '@fastgpt/global/core/workflow/runtime/type';
-import { withWorkflowNodeResponseOutputPolicy } from '../nodeResponseSink';
-import { WorkflowMemoryState } from '../../memory/state';
 
 type RunPluginProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.forbidStream]?: boolean;
@@ -66,6 +64,7 @@ type RunPluginResponse = DispatchNodeResultType<
  * 子流程未捕获错误和商业工具业务错误均交给父节点错误分支，原始异常仅在产生处记录。
  */
 export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPluginResponse> => {
+  const parentVariableContext = getWorkflowContext().variableContext;
   const {
     node: { pluginId, version },
     runningAppInfo,
@@ -77,7 +76,7 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
   }
 
   let workflowTool: AppToolRuntimeType | undefined;
-  // 个人工具切换到自身 Version 快照，系统工具使用 trusted 上下文；两个分支都必须赋值。
+  // 个人工具切换到自身 Version 快照，系统工具使用内部资源快照上下文；两个分支都必须赋值。
   let workflowToolResourceContext: WorkflowResourceContext;
 
   try {
@@ -284,45 +283,53 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
           variablesConfig: childWorkflowTool.chatConfig?.variables ?? [],
           inputVariables: {},
           externalVariables: externalProvider?.externalWorkflowVariables,
-          sourceVariableState: props.variableState,
+          sourceVariableState: parentVariableContext,
           resolveInputFile
         });
         const runtimeVariables = childVariableState.toRuntimeRecord();
-        const childMemoryState = WorkflowMemoryState.fromWorkflow(props).fork(
+        const childMemoryContext = getWorkflowContext().memoryContext.fork(
           props.node?.nodeId ? `node:${props.node.nodeId}` : undefined
         );
 
-        return runWorkflow({
-          ...props,
-          memoryState: childMemoryState,
-          // 系统级 workflow tool 只保留工具节点自身的响应，不展开保存其内部 workflow 详情。
-          nodeResponseSink: withWorkflowNodeResponseOutputPolicy({
-            sink: props.nodeResponseSink,
-            record: shouldStoreChildNodeResponses,
-            emit: shouldStoreChildNodeResponses
-          }),
-          // Rewrite stream mode
-          ...(system_forbid_stream
-            ? {
-                stream: false,
-                workflowStreamResponse: undefined
-              }
+        // 隐藏的系统工具只收紧当前 child 的响应策略，不修改 parent 或并行兄弟的 Scope。
+        const childNodeResponseScope = getWorkflowContext().nodeResponseSink.getChildContext({
+          workflowRuntimeSummary: createWorkflowRuntimeSummary(),
+          ...(props.nodeResponseParentId !== undefined
+            ? { defaultParentId: props.nodeResponseParentId }
             : {}),
-          runningAppInfo: childRunningAppInfo,
-          variableState: childVariableState,
-          histories: childHistories,
-          query: serverGetWorkflowToolRunUserQuery({
-            pluginInputs,
-            variables: {
-              ...runtimeVariables,
-              ...workflowToolVariables
-            },
-            files: filterFiles(files)
-          }).value,
-          chatConfig: childWorkflowTool.chatConfig ?? {},
-          runtimeNodes: childRuntimeNodes,
-          runtimeEdges: storeEdges2RuntimeEdges(childWorkflowTool.edges)
+          record: shouldStoreChildNodeResponses,
+          emit: shouldStoreChildNodeResponses
         });
+        const childContext = getWorkflowContext().getChildContext({
+          ...(system_forbid_stream ? { workflowStreamResponse: undefined } : {}),
+          memoryContext: childMemoryContext,
+          variableContext: childVariableState,
+          nodeResponseSink: childNodeResponseScope
+        });
+        return runWithContext(childContext, () =>
+          runWorkflow({
+            ...props,
+            // Rewrite stream mode
+            ...(system_forbid_stream
+              ? {
+                  stream: false
+                }
+              : {}),
+            runningAppInfo: childRunningAppInfo,
+            histories: childHistories,
+            query: serverGetWorkflowToolRunUserQuery({
+              pluginInputs,
+              variables: {
+                ...runtimeVariables,
+                ...workflowToolVariables
+              },
+              files: filterFiles(files)
+            }).value,
+            chatConfig: childWorkflowTool.chatConfig ?? {},
+            runtimeNodes: childRuntimeNodes,
+            runtimeEdges: storeEdges2RuntimeEdges(childWorkflowTool.edges)
+          })
+        );
       }
     });
     const runtimeSummary = getWorkflowRuntimeSummary({

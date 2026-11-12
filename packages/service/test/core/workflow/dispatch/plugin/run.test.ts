@@ -1,3 +1,8 @@
+import {
+  createTestWorkflowDispatch,
+  captureTestWorkflowContext,
+  getCapturedTestWorkflowContext
+} from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import {
   FlowNodeInputTypeEnum,
@@ -10,24 +15,22 @@ import {
   VariableInputEnum,
   WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
-import { WorkflowVariableState } from '@fastgpt/service/core/workflow/dispatch/utils/variables';
+import { WorkflowVariableState } from '@fastgpt/service/core/workflow/dispatch/context/variables';
 import {
   createNodeSummary,
   summarizeRuntimeNodeResponses
 } from '@fastgpt/service/core/workflow/dispatch/utils/summary';
 import { ChatFileTypeEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
-import { prepareWorkflowFileContext } from '@fastgpt/service/core/workflow/utils/fileContext';
-import {
-  getWorkflowFileContext,
-  runWithContext
-} from '@fastgpt/service/core/workflow/utils/context';
+import { prepareWorkflowFileContext } from '@fastgpt/service/core/workflow/dispatch/context/file';
+import { getWorkflowFileContext } from '@fastgpt/service/core/workflow/dispatch/context';
+import { runWithTestWorkflowContext as runWithContext } from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
 
 const runWorkflowMock = vi.fn();
 const getSystemToolWorkflowRuntimeMock = vi.fn();
 const computedAppToolUsageMock = vi.hoisted(() => vi.fn());
 
 vi.mock('@fastgpt/service/core/workflow/dispatch', () => ({
-  runWorkflow: (args: any) => runWorkflowMock(args)
+  runWorkflow: (args: any) => runWorkflowMock(captureTestWorkflowContext(args))
 }));
 
 vi.mock('@fastgpt/service/core/app/tool/systemTool/systemTool.repo', () => ({
@@ -51,7 +54,9 @@ vi.mock('@fastgpt/service/core/app/tool/workflowTool/utils', () => ({
   serverGetWorkflowToolRunUserQuery: vi.fn().mockReturnValue({ value: [{ text: { content: '' } }] })
 }));
 
-import { dispatchRunPlugin } from '@fastgpt/service/core/workflow/dispatch/plugin/run';
+import { dispatchRunPlugin as dispatchRunPluginWithoutContext } from '@fastgpt/service/core/workflow/dispatch/plugin/run';
+
+const dispatchRunPlugin = createTestWorkflowDispatch(dispatchRunPluginWithoutContext);
 import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
 
 const createVariableState = () =>
@@ -113,7 +118,7 @@ describe('dispatchRunPlugin', () => {
         currentCost: 0
       });
       runWorkflowMock.mockImplementation(async (props) => {
-        if (props.stream) props.workflowStreamResponse?.(event);
+        if (props.stream) getCapturedTestWorkflowContext(props).workflowStreamResponse?.(event);
         return {
           flowUsages: [],
           assistantResponses: [{ text: { content: 'child chunk' } }],
@@ -143,7 +148,7 @@ describe('dispatchRunPlugin', () => {
         uid: 'user',
         chatId: 'chat',
         responseChatItemId: 'response',
-        variableState: await createVariableState(),
+        variableContext: await createVariableState(),
         usagePush: vi.fn(),
         runtimeNodes: [],
         runtimeNodesMap: new Map(),
@@ -159,12 +164,14 @@ describe('dispatchRunPlugin', () => {
       expect(result.responseData).not.toHaveProperty('inputTokens');
       expect(runWorkflowMock).toHaveBeenCalledWith(
         expect.objectContaining({
-          stream: expectedStream,
-          workflowStreamResponse: expectedStream ? workflowStreamResponse : undefined
+          stream: expectedStream
         })
       );
       if (expectedStream) expect(workflowStreamResponse).toHaveBeenCalledWith(event);
       else expect(workflowStreamResponse).not.toHaveBeenCalled();
+      expect(
+        getCapturedTestWorkflowContext(runWorkflowMock.mock.calls[0][0]).workflowStreamResponse
+      ).toBe(expectedStream ? workflowStreamResponse : undefined);
     }
   );
 
@@ -219,7 +226,7 @@ describe('dispatchRunPlugin', () => {
         uid: 'user',
         chatId: 'chat',
         responseChatItemId: 'response',
-        variableState: await createVariableState(),
+        variableContext: await createVariableState(),
         usagePush: vi.fn(),
         runtimeNodes: [],
         runtimeNodesMap: new Map(),
@@ -287,7 +294,7 @@ describe('dispatchRunPlugin', () => {
       uid: 'user',
       chatId: 'chat',
       responseChatItemId: 'response',
-      variableState: await createVariableState(),
+      variableContext: await createVariableState(),
       usagePush: vi.fn(),
       runtimeNodes: [],
       runtimeNodesMap: new Map(),
@@ -308,7 +315,7 @@ describe('dispatchRunPlugin', () => {
     });
   });
 
-  it('系统级 workflow tool 不把外层 nodeResponseSink 传给 child workflow', async () => {
+  it('系统级 workflow tool 在 Context 中收紧 child 响应策略，不通过 props 传递 sink', async () => {
     getSystemToolWorkflowRuntimeMock.mockResolvedValue({
       id: 'commercial-system-workflow',
       name: 'System Workflow',
@@ -406,7 +413,7 @@ describe('dispatchRunPlugin', () => {
       uid: 'user',
       chatId: 'chat',
       responseChatItemId: 'response',
-      variableState: await createVariableState(),
+      variableContext: await createVariableState(),
       nodeResponseSink,
       usagePush: vi.fn(),
       runtimeNodes: [],
@@ -417,17 +424,22 @@ describe('dispatchRunPlugin', () => {
 
     expect(runWorkflowMock).toHaveBeenCalledTimes(1);
     const childWorkflowProps = runWorkflowMock.mock.calls[0][0];
-    expect(childWorkflowProps.nodeResponseSink).toEqual(
+    expect(childWorkflowProps).not.toHaveProperty('nodeResponseSink');
+    expect(getCapturedTestWorkflowContext(childWorkflowProps).nodeResponseSink).toEqual(
       expect.objectContaining({ publish: expect.any(Function) })
     );
-    expect(childWorkflowProps.nodeResponseSink).not.toBe(nodeResponseSink);
+    expect(getCapturedTestWorkflowContext(childWorkflowProps).nodeResponseSink).not.toBe(
+      nodeResponseSink
+    );
     expect(childWorkflowProps.runtimeNodes[0].inputs).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ key: 'internal', value: 'internal default' })
       ])
     );
     expect(childWorkflowProps.chatConfig.variables).toHaveLength(1);
-    expect(childWorkflowProps.variableState.get('counter')).toBe(0);
+    expect(getCapturedTestWorkflowContext(childWorkflowProps).variableContext.get('counter')).toBe(
+      0
+    );
     expect(result[DispatchNodeResponseKeyEnum.nodeResponse]).toMatchObject({
       moduleLogo: 'system-avatar',
       childResponseCount: 1
@@ -473,7 +485,7 @@ describe('dispatchRunPlugin', () => {
         url: ''
       }
     };
-    const { fileContext, fileRegistrar } = await prepareWorkflowFileContext({
+    const { fileContext } = await prepareWorkflowFileContext({
       query: [selectedFile, defaultFile, unselectedFile],
       histories: [],
       scope: {
@@ -550,9 +562,11 @@ describe('dispatchRunPlugin', () => {
         objectKey: defaultKey
       });
       expect(childContext?.resolve(unselectedUrl)).toBeUndefined();
-      expect(runWorkflowMock.mock.calls[0]?.[0].variableState.get('defaultFiles')).toEqual([
-        defaultUrl
-      ]);
+      expect(
+        getCapturedTestWorkflowContext(runWorkflowMock.mock.calls[0]?.[0]).variableContext.get(
+          'defaultFiles'
+        )
+      ).toEqual([defaultUrl]);
 
       return {
         flowUsages: [],
@@ -573,42 +587,36 @@ describe('dispatchRunPlugin', () => {
 
     const variableState = await createVariableState();
 
-    await runWithContext(
-      {
-        mcpClientMemory: {},
-        fileContext,
-        fileRegistrar
-      },
-      () =>
-        dispatchRunPlugin({
-          node: {
-            nodeId: 'toolNode',
-            name: 'Tool',
-            avatar: '',
-            flowNodeType: FlowNodeTypeEnum.pluginModule,
-            pluginId: 'workflow-tool',
-            inputs: [],
-            outputs: []
-          },
-          runningAppInfo: {
-            id: 'app-1',
-            name: 'app',
-            teamId: 'team',
-            tmbId: 'member'
-          },
-          query: [],
-          params: { upload: [selectedUrl] },
-          histories: [],
-          timezone: 'Asia/Shanghai',
-          uid: 'user-1',
-          chatId: 'chat-1',
-          responseChatItemId: 'response',
-          variableState,
-          usagePush: vi.fn(),
-          runtimeNodes: [],
-          runtimeNodesMap: new Map(),
-          runtimeEdges: []
-        } as any)
+    await runWithContext({ checkIsStopping: () => false, mcpClientMemory: {}, fileContext }, () =>
+      dispatchRunPlugin({
+        node: {
+          nodeId: 'toolNode',
+          name: 'Tool',
+          avatar: '',
+          flowNodeType: FlowNodeTypeEnum.pluginModule,
+          pluginId: 'workflow-tool',
+          inputs: [],
+          outputs: []
+        },
+        runningAppInfo: {
+          id: 'app-1',
+          name: 'app',
+          teamId: 'team',
+          tmbId: 'member'
+        },
+        query: [],
+        params: { upload: [selectedUrl] },
+        histories: [],
+        timezone: 'Asia/Shanghai',
+        uid: 'user-1',
+        chatId: 'chat-1',
+        responseChatItemId: 'response',
+        variableContext: variableState,
+        usagePush: vi.fn(),
+        runtimeNodes: [],
+        runtimeNodesMap: new Map(),
+        runtimeEdges: []
+      } as any)
     );
 
     expect(getPreviewUrl).toHaveBeenCalledTimes(3);

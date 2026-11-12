@@ -15,12 +15,12 @@ import {
 import { VariableConditionEnum } from '@fastgpt/global/core/workflow/template/system/ifElse/constant';
 import { codeSandbox } from '@fastgpt/service/thirdProvider/codeSandbox';
 import { UserConfigError } from '@fastgpt/global/common/error/utils';
+import { findFailedResponseNode } from '@fastgpt/global/core/chat/utils';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import * as workflowMetrics from '@fastgpt/service/core/workflow/metrics';
-import {
-  internalRuntimeNodeType,
-  internalRuntimeNodeRunnerKey
-} from '@fastgpt/service/core/workflow/dispatch/internal/runtimeNode';
+import { callbackMap } from '@fastgpt/service/core/workflow/dispatch/constants';
+import { getWorkflowContext } from '@fastgpt/service/core/workflow/dispatch/context';
+import { WorkflowMemoryContext } from '@fastgpt/service/core/workflow/dispatch/context/memory';
 import {
   graphNode,
   graphEdge,
@@ -78,24 +78,55 @@ beforeEach(() => {
 });
 afterEach(() => vi.restoreAllMocks());
 
-// 这些场景直接运行完整生产调度，外部请求边界被替换；不覆盖 callbackMap，也不回放节点结果。
+// 首例用受控 callback 验证双分支返回契约；其余场景执行真实节点，只替换外部请求边界。
 describe('workflow data transfer through real nodes', () => {
+  it.each([false, true])(
+    'Queue shares current memory without props and returns the correct snapshot: forked=%s',
+    async (forked) => {
+      const root = WorkflowMemoryContext.fromRecord({ untouched: { value: 'baseline' } });
+      const memoryContext = forked ? root.fork('node:child') : root;
+      const visited: string[] = [];
+      vi.spyOn(callbackMap, FlowNodeTypeEnum.code).mockImplementation(async (props) => {
+        expect(props).not.toHaveProperty('memoryContext');
+        expect(getWorkflowContext().memoryContext).toBe(memoryContext);
+        visited.push(props.node.nodeId);
+        if (props.node.nodeId === 'write') return { system_memories: { progress: { value: 42 } } };
+        expect(memoryContext.toRecord().progress).toEqual({ value: 42 });
+        return {};
+      });
+      const { result } = await runGraph({
+        nodes: [
+          graphNode({ id: 'write', type: FlowNodeTypeEnum.code, isEntry: true }),
+          graphNode({ id: 'read', type: FlowNodeTypeEnum.code })
+        ],
+        edges: [graphEdge({ source: 'write', target: 'read' })],
+        overrides: { memoryContext }
+      });
+      expect(visited).toEqual(['write', 'read']);
+      expect(result.system_memories).toEqual(
+        forked
+          ? { progress: { value: 42 } }
+          : { untouched: { value: 'baseline' }, progress: { value: 42 } }
+      );
+      if (forked) expect(root.toRecord()).toEqual({ untouched: { value: 'baseline' } });
+    }
+  );
+
   it('passes both output records through an intentional error branch without logging a fault', async () => {
     const stepObservation = vi.spyOn(workflowMetrics, 'observeWorkflowStep');
     const warn = vi.spyOn(getLogger(LogCategories.MODULE.WORKFLOW.DISPATCH), 'warn');
     warn.mockClear();
+    // 同时返回 data/error 只验证 Queue 的合并与路由，不恢复已删除的生产内部节点入口。
+    vi.spyOn(callbackMap, FlowNodeTypeEnum.code).mockResolvedValue({
+      data: { value: 0, shared: 'normal', nullable: null },
+      error: { reason: 'chosen branch', shared: false, message: '' },
+      responseData: { codeLog: 'intentional branch' }
+    });
     const source = graphNode({
       id: 'source',
-      type: internalRuntimeNodeType as FlowNodeTypeEnum,
+      type: FlowNodeTypeEnum.code,
       isEntry: true,
       catchError: true,
-      params: {
-        [internalRuntimeNodeRunnerKey]: () => ({
-          data: { value: 0, shared: 'normal', nullable: null },
-          error: { reason: 'chosen branch', shared: false, message: '' },
-          responseData: { codeLog: 'intentional branch' }
-        })
-      },
       outputs: ['value', 'shared', 'nullable', 'reason', 'message', 'rawError', 'stack']
     });
     source.outputs[0].id = 'value-output-id';
@@ -136,7 +167,7 @@ describe('workflow data transfer through real nodes', () => {
     expect(responses.find((response) => response.nodeId === 'source')?.errorCaptured).toBe(true);
     expect(warn).not.toHaveBeenCalled();
     const observationIndex = stepObservation.mock.calls.findIndex(
-      ([options]) => options.nodeType === internalRuntimeNodeType
+      ([options]) => options.nodeType === FlowNodeTypeEnum.code
     );
     expect(observationIndex).toBeGreaterThanOrEqual(0);
     const observed = await stepObservation.mock.results[observationIndex].value;
@@ -429,6 +460,7 @@ describe('real code and HTTP node error routes', () => {
           'flag',
           NodeOutputKeyEnum.errorText,
           'privateErrorField',
+          'rawError',
           'cause',
           'stack',
           {
@@ -455,6 +487,7 @@ describe('real code and HTTP node error routes', () => {
             NodeOutputKeyEnum.errorText,
             'error',
             'privateErrorField',
+            'rawError',
             'cause',
             'stack',
             'default'
@@ -479,6 +512,7 @@ describe('real code and HTTP node error routes', () => {
           system_error_text: 'sandbox failed',
           error: 'sandbox failed',
           privateErrorField: undefined,
+          rawError: undefined,
           cause: undefined,
           stack: undefined,
           default: undefined
@@ -763,9 +797,14 @@ describe('real container child workflows', () => {
     }
   );
 
-  it.each(['success', 'error', 'omitted'] as const)(
-    'loopRun forwards the last snapshot and never reuses skipped outputs after %s',
-    async (scenario) => {
+  it.each([
+    { scenario: 'success', catchError: true },
+    { scenario: 'omitted', catchError: true },
+    { scenario: 'error', catchError: true },
+    { scenario: 'error', catchError: false }
+  ] as const)(
+    'loopRun forwards the last snapshot after $scenario with catchError=$catchError',
+    async ({ scenario, catchError }) => {
       const fails = scenario === 'error';
       const omitted = scenario === 'omitted';
       const { start, body } = containerNodes(FlowNodeTypeEnum.loopRun);
@@ -801,13 +840,13 @@ describe('real container child workflows', () => {
           NodeOutputKeyEnum.errorText
         ],
         isEntry: true,
-        catchError: true
+        catchError
       });
       const target = consumer('target', {
         value: ['container', 'value'],
         errorText: ['container', NodeOutputKeyEnum.errorText]
       });
-      const { responses } = await runGraph({
+      const { result, responses } = await runGraph({
         nodes: [source, start, body, target],
         edges: [
           graphEdge({ source: 'container', target: 'target', error: fails }),
@@ -816,13 +855,24 @@ describe('real container child workflows', () => {
       });
       expect(graphValues(target)).toEqual({
         value: fails || omitted ? undefined : '',
-        errorText: fails ? failure.message : undefined
+        errorText: fails && catchError ? failure.message : undefined
       });
       const history = responses.find((response) => response.nodeId === 'container')?.loopRunHistory;
       expect(history?.map((item) => item.customOutputs.value)).toEqual(
         fails || omitted ? [0, undefined] : [0, false, '']
       );
       expect(codeSandbox.runCode).toHaveBeenCalledTimes(fails || omitted ? 2 : 3);
+      expect(result.workflowRuntimeSummary.errorCount).toBe(fails && !catchError ? 1 : 0);
+      expect(findFailedResponseNode(responses)?.nodeId).toBe(
+        fails && !catchError ? 'container' : undefined
+      );
+      if (fails) {
+        const iteration = responses.find((response) => response.error === failure.message);
+        expect(iteration).toMatchObject({ errorCaptured: true });
+        expect(responses.find((response) => response.nodeId === 'container')?.errorCaptured).toBe(
+          catchError ? true : undefined
+        );
+      }
       expect(warn).toHaveBeenCalledTimes(fails ? 1 : 0);
       if (fails)
         expect(warn).toHaveBeenCalledWith('Workflow node returned error', { error: failure });
@@ -856,7 +906,7 @@ describe('real container child workflows', () => {
       'target',
       Object.fromEntries(keys.map((key) => [key, ['container', key] as [string, string]]))
     );
-    const { result } = await runGraph({
+    const { result, responses } = await runGraph({
       nodes: [source, start, body, end, target],
       edges: [
         graphEdge({ source: 'container', target: 'target' }),
@@ -874,6 +924,10 @@ describe('real container child workflows', () => {
       ParallelRunStatusEnum.success
     );
     expect(Object.hasOwn(result, 'rawError')).toBe(false);
+    expect(result.workflowRuntimeSummary.errorCount).toBe(1);
+    const failedAttempt = responses.find((response) => response.error === 'failed task');
+    expect(failedAttempt).toBeDefined();
+    expect(failedAttempt?.errorCaptured).toBeUndefined();
   });
   it('loopRunBreak stops later iterations while preserving the current output', async () => {
     const { start, body } = containerNodes(FlowNodeTypeEnum.loopRun);
@@ -940,7 +994,7 @@ describe('real container child workflows', () => {
       values: ['container', NodeOutputKeyEnum.parallelSuccessResults],
       status: ['container', NodeOutputKeyEnum.parallelStatus]
     });
-    await runGraph({
+    const { result, responses } = await runGraph({
       nodes: [source, start, body, end, target],
       edges: [
         graphEdge({ source: 'container', target: 'target' }),
@@ -953,5 +1007,10 @@ describe('real container child workflows', () => {
       status: ParallelRunStatusEnum.success
     });
     expect(codeSandbox.runCode).toHaveBeenCalledTimes(3);
+    expect(result.workflowRuntimeSummary.errorCount).toBe(0);
+    expect(result.workflowRuntimeSummary.errorText).toBeUndefined();
+    expect(responses.find((response) => response.error === 'retry once')).toMatchObject({
+      errorCaptured: true
+    });
   });
 });

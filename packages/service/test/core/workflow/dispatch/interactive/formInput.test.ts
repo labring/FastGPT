@@ -7,8 +7,9 @@ import {
 } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { dispatchFormInput } from '@fastgpt/service/core/workflow/dispatch/interactive/formInput';
-import { runWithContext } from '@fastgpt/service/core/workflow/utils/context';
+import { createTestWorkflowDispatch } from '../context/fixtures';
+import { dispatchFormInput as dispatchFormInputWithoutContext } from '@fastgpt/service/core/workflow/dispatch/interactive/formInput';
+import { runWithTestWorkflowContext as runWithContext } from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
 import {
   UserInputInteractiveSchema,
   type UserInputFormItemType
@@ -35,6 +36,8 @@ vi.mock('@fastgpt/service/common/s3/sources/chat', () => ({
     return url;
   }
 }));
+
+const dispatchFormInput = createTestWorkflowDispatch(dispatchFormInputWithoutContext);
 
 describe('dispatchFormInput', () => {
   beforeEach(() => {
@@ -111,7 +114,7 @@ describe('dispatchFormInput', () => {
       histories: [],
       node: { isEntry: false },
       params: { description: 'Fill form', userInputForms: [formItem] },
-      variableState: { toRuntimeRecord: () => ({ cities: sourceValue }) },
+      variableContext: { toRuntimeRecord: () => ({ cities: sourceValue }) },
       query: []
     } as any);
   };
@@ -156,37 +159,52 @@ describe('dispatchFormInput', () => {
       url: 'https://preview.example.com/upload.png'
     });
 
-    const result = await dispatchFormInput({
-      histories: [{ obj: 'Human', value: [] }],
-      node: { isEntry: true },
-      params: {
-        [NodeInputKeyEnum.description]: 'upload',
-        [NodeInputKeyEnum.userInputForms]: [
-          {
-            key: 'upload',
-            label: 'upload',
-            type: FlowNodeInputTypeEnum.fileSelect,
-            value: [],
-            valueType: WorkflowIOValueTypeEnum.arrayString,
-            required: false
-          }
-        ]
-      },
-      query: [
-        {
-          text: {
-            content: JSON.stringify({
-              upload: [
-                { key: 'chat/files/upload.png', name: 'upload.png' },
-                { url: 'https://external.example.com/file.pdf' },
-                'https://legacy.example.com/file.txt'
-              ]
-            })
-          }
-        }
-      ],
-      lastInteractive: { type: 'userInput' }
-    } as any);
+    const { fileContext } = await prepareWorkflowFileContext({
+      query: [],
+      histories: [],
+      maxFileAmount: 5,
+      scope: {
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: 'app-1',
+        uid: 'user-1',
+        chatId: 'chat-1'
+      }
+    });
+    const result = await runWithContext(
+      { checkIsStopping: () => false, mcpClientMemory: {}, fileContext },
+      () =>
+        dispatchFormInput({
+          histories: [{ obj: 'Human', value: [] }],
+          node: { isEntry: true },
+          params: {
+            [NodeInputKeyEnum.description]: 'upload',
+            [NodeInputKeyEnum.userInputForms]: [
+              {
+                key: 'upload',
+                label: 'upload',
+                type: FlowNodeInputTypeEnum.fileSelect,
+                value: [],
+                valueType: WorkflowIOValueTypeEnum.arrayString,
+                required: false
+              }
+            ]
+          },
+          query: [
+            {
+              text: {
+                content: JSON.stringify({
+                  upload: [
+                    { key: 'chat/app/app-1/user-1/chat-1/upload.png', name: 'upload.png' },
+                    { url: 'https://external.example.com/file.pdf' },
+                    'https://legacy.example.com/file.txt'
+                  ]
+                })
+              }
+            }
+          ],
+          lastInteractive: { type: 'userInput' }
+        } as any)
+    );
 
     expect(result.data?.upload).toEqual([
       'https://preview.example.com/upload.png',
@@ -208,9 +226,9 @@ describe('dispatchFormInput', () => {
       ]
     });
     expect(mockCreateGetChatFileURL).toHaveBeenCalledWith({
-      key: 'chat/files/upload.png',
+      key: 'chat/app/app-1/user-1/chat-1/upload.png',
       external: true,
-      expiredHours: 1
+      expiredHours: 2
     });
   });
 
@@ -224,8 +242,12 @@ describe('dispatchFormInput', () => {
 
     const result = await runWithContext(
       {
+        checkIsStopping: () => false,
         mcpClientMemory: {},
-        fileRegistrar: { registerInputFile } as any
+        fileContext: {
+          limits: { maxFileAmount: 5, maxBytesPerFile: 1024 },
+          register: registerInputFile
+        } as any
       },
       () =>
         dispatchFormInput({
@@ -288,8 +310,12 @@ describe('dispatchFormInput', () => {
 
     const result = await runWithContext(
       {
+        checkIsStopping: () => false,
         mcpClientMemory: {},
-        fileRegistrar: { registerInputFile } as any
+        fileContext: {
+          limits: { maxFileAmount: 5, maxBytesPerFile: 1024 },
+          register: registerInputFile
+        } as any
       },
       () =>
         dispatchFormInput({
@@ -340,9 +366,12 @@ describe('dispatchFormInput', () => {
 
     const result = await runWithContext(
       {
+        checkIsStopping: () => false,
         mcpClientMemory: {},
-        fileContext: { limits: { maxFileAmount: 1 } } as any,
-        fileRegistrar: { registerInputFile } as any
+        fileContext: {
+          limits: { maxFileAmount: 1, maxBytesPerFile: 1024 },
+          register: registerInputFile
+        } as any
       },
       () =>
         dispatchFormInput({
@@ -382,3 +411,6 @@ describe('dispatchFormInput', () => {
     expect(registerInputFile).toHaveBeenCalledTimes(1);
   });
 });
+
+import { prepareWorkflowFileContext } from '@fastgpt/service/core/workflow/dispatch/context/file';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';

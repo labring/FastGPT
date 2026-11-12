@@ -122,9 +122,12 @@ vi.mock('@fastgpt/service/support/permission/model/auth', () => ({
   getAuthorizedModelIds: vi.fn(async () => new Set())
 }));
 
-import { dispatchAgentDatasetSearch } from '../../../../../../../core/workflow/dispatch/ai/agent/sub/dataset';
-import { serviceEnv } from '../../../../../../../env';
-import { getDatasetSearchToolResponsePrompt } from '@fastgpt/global/core/ai/prompt/dataset.const';
+import { dispatchAgentDatasetSearch as dispatchAgentDatasetSearchWithoutContext } from '../../../../../../../core/workflow/dispatch/ai/agent/sub/dataset';
+import { createTestWorkflowDispatch } from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
+
+const dispatchAgentDatasetSearch = createTestWorkflowDispatch(
+  dispatchAgentDatasetSearchWithoutContext
+);
 
 const llmModelData = (model: string) =>
   ({
@@ -691,3 +694,6 @@ describe('dispatchAgentDatasetSearch', () => {
     );
   });
 });
+
+import { serviceEnv } from '../../../../../../../env';
+import { getDatasetSearchToolResponsePrompt } from '@fastgpt/global/core/ai/prompt/dataset.const';

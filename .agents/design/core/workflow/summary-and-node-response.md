@@ -60,7 +60,7 @@ response 属于 child workflow，并通过 child scope 直接写入请求级 out
 
 ### 2.2 每个 workflow 层只有一份完整 summary
 
-每次 `runWorkflow` 创建一份独立的 `workflowRuntimeSummary`，当前层的 queue 和 sink scope 共享
+每次调用 `runWorkflow` 前由上层创建一份独立的 `workflowRuntimeSummary`，当前层的 queue 和 sink scope 共享
 这一份对象。child workflow 也创建自己的 summary，并在结束时通过 `DispatchFlowResponse` 返回。
 
 queue 不解析 `nodeResponse`。所有当前层 response 都必须经过当前 sink scope，由 scope 更新这份
@@ -176,7 +176,9 @@ type NodeSummaryCollector = Omit<NodeSummary, 'llmInputTokens' | 'llmOutputToken
 
 ### 3.4 Response scope、请求级 output 与 `WorkflowNodeResponseWriter`
 
-`createWorkflowNodeResponseScope` 为每次 `runWorkflow` 创建独立 scope，负责：
+根入口使用 `createWorkflowEntryNodeResponseSink` 构建响应 Context；子流程调用前使用
+`parent.nodeResponseSink.getChildContext({ workflowRuntimeSummary: createWorkflowRuntimeSummary(), ... })`
+创建独立 scope。`runWorkflow` 只消费上层已经准备好的 Context。scope 负责：
 
 - 用 `response.parentId ?? input.parentId ?? scope.defaultParentId` 规范化父级；
 - 对当前 sink scope 的 response 更新对应的 `workflowRuntimeSummary`。
@@ -184,6 +186,16 @@ type NodeSummaryCollector = Omit<NodeSummary, 'llmInputTokens' | 'llmOutputToken
 底层请求级 `WorkflowNodeResponseSink` 是所有 scope 共享的 output，负责把完整 response 交给 writer，
 并按 API 版本和可见性过滤后发送 SSE；它不拥有任何 workflow summary。child scope 直接调用这个
 共享 output，不经过 parent scope 转发，因此 parent summary 不会重复统计 child response。
+
+SSE writer 不保存在共享 output 上。根入口把 `responseWrite` 注入
+`WorkflowContext.workflowStreamResponse`，普通节点和 output 发布时都使用当前作用域的通道。
+output 在本次发布开始时捕获 writer，后续异步写库完成后仍使用同一通道；没有 Context 或 writer 时
+可继续保存和统计，但不发送 SSE，也不能回退根 writer。发送详情要求 Scope 和单次输入的 `emit`
+都允许、当前 writer 存在，并继续遵守 V2 与可见字段过滤。`record` 独立控制持久化。
+
+子流程默认继承 writer；禁流时以 `getChildContext({ workflowStreamResponse: undefined })` 显式覆盖，
+过滤事件时注入包装函数。HTTP/SSE 初始化、错误响应、心跳、续传 flush 与 writer 关闭仍由入口负责。
+Pro Builder 的最终详情在其 `runWithContext` 回调返回前统一 publish，外部不再手动重复发送详情。
 
 `WorkflowNodeResponseWriter` 只负责：
 
@@ -203,9 +215,10 @@ scope 还持有两类只影响输出、不影响 summary 的上下文：
 - `record/emit`：分别控制 writer 和 SSE，child 只能与 parent 策略做 AND，不能重新开启已经关闭的
   输出。系统级 workflow tool 使用该策略隐藏所有后代详情，但 child summary 仍正常计算。
 
-每次节点 callback 还会绑定独立 `WorkflowNodeResponseActivity`。callback 直接 publish 的 response
-以及它启动的 child workflow 都继承这个 activity，用来判断当前父 response 是否应抑制重复 SSE。
-兄弟并发节点不共享 activity，因此其他节点的 publish 不会误判为当前节点的 child response。
+Queue 不绑定或读取 activity 计数。共享 output 通过 `(id, parentId)` 记录已经发布的节点，
+移除后续父响应里重复嵌入的 child；不以请求级发布数量判断当前节点是否有子响应。
+Scope 仍保留可选的 `WorkflowNodeResponseActivity` 计数能力，但目前没有生产调用方，不能将其
+描述为 Queue 的 SSE 去重机制，也不应为接回旧链路新增调用。
 
 ### 3.5 `Chat.summary`
 
@@ -254,8 +267,8 @@ flowchart LR
 
 实际时序如下：
 
-1. `runWorkflow` 创建当前层 `workflowRuntimeSummary`。
-2. `runWorkflow` 基于该对象创建当前层 `nodeResponseSink` scope，并把 queue 和 scope 指向同一
+1. 入口或子流程调用方创建当前层 `workflowRuntimeSummary`。
+2. 调用方基于该对象准备当前层 `nodeResponseSink` scope 并注入 Context，`runWorkflow` 把 queue 和 scope 指向同一
    summary。
 3. `WorkflowQueue` 为每个节点创建独立的 `NodeSummaryCollector`，通过 `ModuleDispatchProps` 传给
    callback。
@@ -338,33 +351,31 @@ props.nodeSummary.mergeNodeSummary({
 
 ### 5.4 Sink scope 与 queue 的关系
 
-每个 `runWorkflow` scope 都拥有自己的 summary：
+每次调用 `runWorkflow` 前，由调用方显式准备独立响应 summary，并注入本层 WorkflowContext：
 
 ```ts
-const workflowRuntimeSummary = createWorkflowRuntimeSummary();
-const nodeResponseSink = createWorkflowNodeResponseScope({
-  sink: parentSink,
-  workflowRuntimeSummary,
-  defaultParentId: nodeResponseParentId
+const parentContext = getWorkflowContext();
+const childContext = parentContext.getChildContext({
+  // 变量、记忆、文件等能力按具体子运行的共享/隔离规则提前准备。
+  nodeResponseSink: parentContext.nodeResponseSink.getChildContext({
+    workflowRuntimeSummary: createWorkflowRuntimeSummary(),
+    ...(nodeResponseParentId !== undefined ? { defaultParentId: nodeResponseParentId } : {})
+  })
 });
+await runWithContext(childContext, () => runWorkflow(childWorkflowProps));
 ```
 
 scope 只统计自己收到的同层 response，并直接调用共享 output。child scope 从 parent scope 取得同一个
 output，但不会以 parent scope 为下游，所以 parent summary 不会重复统计 child response。共享 writer
 不等于共享 summary，`parentId` 也不等于 child summary 层级。
 
-queue 为当前 callback 创建独立 activity view：
+根入口通过 `createWorkflowEntryNodeResponseSink` 创建完整响应 Context，并负责关闭存储 writer。
+`runWorkflow` 不再额外初始化 scope 或 summary；Queue 与当前 scope 共享这一层的 summary。
 
-```ts
-const activity = createWorkflowNodeResponseActivity();
-dispatchData.nodeResponseSink = bindWorkflowNodeResponseActivity({
-  sink: nodeResponseSink,
-  activity
-});
-```
-
-callback 和它启动的 child workflow 发布完成后，queue 只读取该 activity 的发布数。这个计数只解决
-父 response 的 SSE 去重，不参与 summary 统计，也不能做成请求级全局计数。
+节点从 `getWorkflowContext().nodeResponseSink` 获取响应能力，不通过 dispatch Props 注入。
+output 在 publish 时、异步写入前捕获当前 Context 的 `workflowStreamResponse`；只有 scope / input
+均允许 emit 且当前 writer 存在时，才在 V2 和详情可见性策略允许下发送 SSE。禁流子 Context 不回退到
+根 writer，持久化和 summary 仍按各自策略工作。
 
 ## 6. Token 归属矩阵
 
@@ -432,8 +443,7 @@ token transfer，不能再从 parent 详情递归提取。
 `variableUpdate`、`code`、`textEditor`、`customFeedback`、`readFiles`、`userSelect`、
 `formInput`、`stopTool`、`toolParams`、`loopRunStart`、`loopRunBreak`、`nestedStart`、
 `nestedEnd`、`emptyNode`、`globalVariable`、`comment`、`toolSet`、`pluginInput`、
-`pluginOutput`、`internalRuntimeNode`（除非 runner 明确返回 token）以及不执行 child workflow
-的 `tool`。
+`pluginOutput` 以及不执行 child workflow 的 `tool`。
 
 `pluginOutput`、`loopRunBreak`、`nestedEnd`、`stopTool` 仍需要分别更新业务控制字段，不能因为
 没有 LLM token 就丢失运行信号。
@@ -643,8 +653,9 @@ id = `${loopRunNodeResponseId}:iter:${iteration}`;
 | `packages/service/core/workflow/types/runtime.ts` | `NodeSummary`、`NodeSummaryCollector`、节点 callback 类型 |
 | `packages/service/core/workflow/dispatch/type.ts` | `WorkflowRuntimeSummaryType`、dispatch 返回协议 |
 | `packages/service/core/workflow/dispatch/utils/summary.ts` | 创建、提取、去重、转换和合并 summary |
-| `packages/service/core/workflow/dispatch/index.ts` | WorkflowQueue、scope 初始化和 callback collector 合并 |
-| `packages/service/core/workflow/dispatch/nodeResponseSink.ts` | 独立 summary scope、共享 output 和 SSE 过滤 |
+| `packages/service/core/workflow/dispatch/index.ts` | 入口 Context 初始化和 workflow 执行生命周期 |
+| `packages/service/core/workflow/dispatch/queue.ts` | WorkflowQueue 节点调度和 callback collector 合并 |
+| `packages/service/core/workflow/dispatch/context/nodeResponse.ts` | 独立 summary scope、共享持久化 output、当前 Context writer 和 SSE 过滤 |
 | `packages/service/core/chat/nodeResponseStorage.ts` | append-only row 写入和 child count 规范化 |
 | `packages/service/core/chat/saveChat.ts` | 使用根 workflow summary 更新 Chat.summary |
 
@@ -685,7 +696,7 @@ response token，wrapper 节点断言 child summary，mixed 节点同时断言�
 | response-owned | `chatNode`、`classifyQuestion`、`contentExtract`、`queryExtension`、`datasetSearchNode` |
 | child wrapper | `appModule`、`pluginModule`、`runApp`、`loop`、`loopRun`、`parallelRun`、`tool` |
 | mixed | `agent`、`toolCall` |
-| control/empty | `workflowStart`、`pluginInput`、`pluginOutput`、`answerNode`、`datasetConcatNode`、`httpRequest468`、`ifElseNode`、`variableUpdate`、`code`、`readFiles`、`textEditor`、`customFeedback`、`userSelect`、`formInput`、`stopTool`、`toolParams`、`loopRunStart`、`loopRunBreak`、`nestedStart`、`nestedEnd`、`emptyNode`、`globalVariable`、`comment`、`toolSet`、`internalRuntimeNode` |
+| control/empty | `workflowStart`、`pluginInput`、`pluginOutput`、`answerNode`、`datasetConcatNode`、`httpRequest468`、`ifElseNode`、`variableUpdate`、`code`、`readFiles`、`textEditor`、`customFeedback`、`userSelect`、`formInput`、`stopTool`、`toolParams`、`loopRunStart`、`loopRunBreak`、`nestedStart`、`nestedEnd`、`emptyNode`、`globalVariable`、`comment`、`toolSet` |
 
 ### 13.3 Wrapper、mixed 和嵌套场景
 
@@ -718,7 +729,7 @@ response token，wrapper 节点断言 child summary，mixed 节点同时断言�
 | K10 | interactive/ToolCall 嵌套恢复 | 各层复用自己的 nodeResponseId |
 | K11 | LoopRun resume | wrapper 只写本次片段，读取不双算 |
 | K12 | append-only 索引回归 | 不存在 `data.id` unique index |
-| K13 | 两个节点 activity scope 并发 publish | activity 互不污染，父 SSE 抑制归属正确 |
+| K13 | 并发 child Context 使用不同 writer 或显式禁流 | 异步写入不串通道，禁流不回退父 writer，记录与 summary 不受影响 |
 | K14 | system workflow 多层嵌套 | 后代不能重新开启 writer/SSE，各层 summary 仍独立统计 |
 | K15 | child workflow 内 Agent 直接 publish | 缺省 parentId 使用 child scope 的 defaultParentId |
 

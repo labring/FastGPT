@@ -1,3 +1,8 @@
+import {
+  createTestWorkflowDispatch,
+  captureTestWorkflowContext,
+  getCapturedTestWorkflowContext
+} from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   FlowNodeOutputTypeEnum,
@@ -7,9 +12,10 @@ import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workfl
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { LoopRunModeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
-import type { WorkflowVariableStateLike } from '@fastgpt/service/core/workflow/types/runtime';
+import type { WorkflowVariableStateLike } from '@fastgpt/service/core/workflow/dispatch/context/variables';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import type { DispatchFlowResponse } from '@fastgpt/service/core/workflow/dispatch/type';
 import {
   createNodeSummary,
@@ -20,7 +26,7 @@ import {
 const runWorkflowMock = vi.fn();
 
 vi.mock('@fastgpt/service/core/workflow/dispatch', () => ({
-  runWorkflow: (args: any) => runWorkflowMock(args)
+  runWorkflow: (args: any) => runWorkflowMock(captureTestWorkflowContext(args))
 }));
 
 // Shrink max iterations so overflow tests run fast.
@@ -30,7 +36,10 @@ vi.mock('@fastgpt/service/env', async (importOriginal) => {
 });
 
 // Import after mocks so runLoopRun pulls the mocked modules.
-import { dispatchLoopRun } from '@fastgpt/service/core/workflow/dispatch/loopRun/runLoopRun';
+import { dispatchLoopRun as dispatchLoopRunWithoutContext } from '@fastgpt/service/core/workflow/dispatch/loopRun/runLoopRun';
+import { createTestWorkflowFileContext, runWithTestWorkflowContext } from '../context/fixtures';
+
+const dispatchLoopRun = createTestWorkflowDispatch(dispatchLoopRunWithoutContext);
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -201,11 +210,10 @@ const makeProps = (
     runtimeNodes,
     runtimeNodesMap: new Map(runtimeNodes.map((n) => [n.nodeId, n])),
     runtimeEdges: [],
-    variableState: makeVariableState(),
+    variableContext: makeVariableState(),
     usagePush: vi.fn(),
     nodeSummary: createNodeSummary(),
-    lastInteractive: undefined,
-    checkIsStopping: () => false
+    lastInteractive: undefined
   } as any;
 };
 
@@ -218,6 +226,28 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+  });
+
+  it('从 WorkflowContext 读取停止检查，不执行后续循环', async () => {
+    let stopping = false;
+    const checkIsStopping = vi.fn(() => stopping);
+    const fileContext = await createTestWorkflowFileContext();
+    runWorkflowMock.mockImplementation(async () => {
+      stopping = true;
+      return makeDispatchFlowResponse();
+    });
+    const props = makeProps({
+      [NodeInputKeyEnum.loopRunMode]: LoopRunModeEnum.array,
+      [NodeInputKeyEnum.loopRunInputArray]: ['a', 'b']
+    });
+
+    await runWithTestWorkflowContext({ checkIsStopping, mcpClientMemory: {}, fileContext }, () =>
+      dispatchLoopRunWithoutContext(props)
+    );
+
+    expect(runWorkflowMock).toHaveBeenCalledTimes(1);
+    expect(checkIsStopping).toHaveReturnedWith(true);
+    expect(props).not.toHaveProperty('checkIsStopping');
   });
 
   it('array mode 数组正常跑完 → loopHistory 全 success, data 含最后一轮快照', async () => {
@@ -259,11 +289,10 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
       runtimeNodes,
       runtimeNodesMap: new Map(runtimeNodes.map((n) => [n.nodeId, n])),
       runtimeEdges: [],
-      variableState: makeVariableState(),
+      variableContext: makeVariableState(),
       usagePush: vi.fn(),
       nodeSummary: createNodeSummary(),
-      lastInteractive: undefined,
-      checkIsStopping: () => false
+      lastInteractive: undefined
     } as any;
 
     const result: any = await dispatchLoopRun(props);
@@ -284,7 +313,7 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
 
   it('子运行返回的 newVariables 不再透出到 loopRun 节点结果', async () => {
     runWorkflowMock.mockImplementation((args: any) => {
-      void args.variableState.set('runtimeOnly', 'runtime-value');
+      void getCapturedTestWorkflowContext(args).variableContext.set('runtimeOnly', 'runtime-value');
       return Promise.resolve(
         makeDispatchFlowResponse({
           [DispatchNodeResponseKeyEnum.newVariables]: {
@@ -312,13 +341,13 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
 
     runWorkflowMock.mockImplementation(async (args: any) => {
       iteration++;
-      expect(args.variableState).not.toBe(parentVariableState);
+      expect(getCapturedTestWorkflowContext(args).variableContext).not.toBe(parentVariableState);
       if (iteration === 1) {
-        expect(args.variableState.get('count')).toBe(0);
-        await args.variableState.set('count', 1);
+        expect(getCapturedTestWorkflowContext(args).variableContext.get('count')).toBe(0);
+        await getCapturedTestWorkflowContext(args).variableContext.set('count', 1);
       } else {
-        expect(args.variableState.get('count')).toBe(1);
-        await args.variableState.set('count', 2);
+        expect(getCapturedTestWorkflowContext(args).variableContext.get('count')).toBe(1);
+        await getCapturedTestWorkflowContext(args).variableContext.set('count', 2);
       }
 
       return makeDispatchFlowResponse({
@@ -330,7 +359,7 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
       [NodeInputKeyEnum.loopRunMode]: LoopRunModeEnum.array,
       [NodeInputKeyEnum.loopRunInputArray]: ['first', 'second']
     });
-    props.variableState = parentVariableState;
+    props.variableContext = parentVariableState;
 
     await dispatchLoopRun(props);
 
@@ -461,7 +490,7 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
     runWorkflowMock.mockImplementation(async (args: any) => {
       const externalNode = args.runtimeNodes.find((node: any) => node.nodeId === 'externalText');
       externalNode.outputs[0].value = 'failed-update';
-      await args.variableState.set('count', 1);
+      await getCapturedTestWorkflowContext(args).variableContext.set('count', 1);
 
       return makeDispatchFlowResponse({
         nodeResponses: [makeResponseItem('startNode', { error: 'boom' })]
@@ -472,7 +501,7 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
       [NodeInputKeyEnum.loopRunMode]: LoopRunModeEnum.array,
       [NodeInputKeyEnum.loopRunInputArray]: ['first']
     });
-    props.variableState = parentVariableState;
+    props.variableContext = parentVariableState;
     props.params[NodeInputKeyEnum.childrenNodeIdList] = [
       'startNode',
       'chatNode',
@@ -554,11 +583,10 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
       runtimeNodes,
       runtimeNodesMap: new Map(runtimeNodes.map((n) => [n.nodeId, n])),
       runtimeEdges: [],
-      variableState: makeVariableState(),
+      variableContext: makeVariableState(),
       usagePush: vi.fn(),
       nodeSummary: createNodeSummary(),
-      lastInteractive: undefined,
-      checkIsStopping: () => false
+      lastInteractive: undefined
     } as any;
 
     const result: any = await dispatchLoopRun(props);
@@ -863,7 +891,7 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
       runtimeNodes,
       runtimeNodesMap: new Map(runtimeNodes.map((n) => [n.nodeId, n])),
       runtimeEdges: [],
-      variableState: makeVariableState(),
+      variableContext: makeVariableState(),
       usagePush: vi.fn(),
       nodeSummary: createNodeSummary(),
       lastInteractive: {
@@ -873,8 +901,7 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
           iteration: 2,
           childrenResponse: { entryNodeIds: ['userSelectNode'] }
         }
-      },
-      checkIsStopping: () => false
+      }
     } as any;
 
     const result: any = await dispatchLoopRun(props);
@@ -931,7 +958,7 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
       runtimeNodes,
       runtimeNodesMap: new Map(runtimeNodes.map((n) => [n.nodeId, n])),
       runtimeEdges: [],
-      variableState: makeVariableState(),
+      variableContext: makeVariableState(),
       usagePush: vi.fn(),
       nodeSummary: createNodeSummary(),
       lastInteractive: {
@@ -944,8 +971,7 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
         }
       },
       nodeResponseSink,
-      nodeResponseParentId: 'loop-parent-response',
-      checkIsStopping: () => false
+      nodeResponseParentId: 'loop-parent-response'
     } as any;
 
     const result: any = await dispatchLoopRun(props);
@@ -996,7 +1022,7 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
       runtimeNodes,
       runtimeNodesMap: new Map(runtimeNodes.map((n) => [n.nodeId, n])),
       runtimeEdges: [],
-      variableState: makeVariableState(),
+      variableContext: makeVariableState(),
       usagePush: vi.fn(),
       nodeSummary: createNodeSummary(),
       lastInteractive: {
@@ -1006,8 +1032,7 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
           iteration: 2,
           childrenResponse: interactivePayload
         }
-      },
-      checkIsStopping: () => false
+      }
     } as any;
 
     await dispatchLoopRun(props);
@@ -1083,11 +1108,10 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
       runtimeNodes,
       runtimeNodesMap: new Map(runtimeNodes.map((n) => [n.nodeId, n])),
       runtimeEdges: [],
-      variableState: makeVariableState(),
+      variableContext: makeVariableState(),
       usagePush: vi.fn(),
       nodeSummary: createNodeSummary(),
-      lastInteractive: undefined,
-      checkIsStopping: () => false
+      lastInteractive: undefined
     } as any;
 
     const result: any = await dispatchLoopRun(props);
@@ -1154,7 +1178,9 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
       'loop-parent-response:iter:1'
     );
     expect(nodeResponseSink.publish).toHaveBeenCalledTimes(1);
-    expect(nodeResponseSink.publish.mock.calls[0][0][0].parentId).toBe('loop-parent-response');
+    expect(nodeResponseSink.publish.mock.calls[0][0][0].response.parentId).toBe(
+      'loop-parent-response'
+    );
     expect(nodeResponseSink.publish.mock.calls[0][0][0].response).toMatchObject({
       id: 'loop-parent-response:iter:1',
       childResponseCount: 2
@@ -1264,7 +1290,9 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
     expect(nodeResponse.loopRunDetail).toBeUndefined();
     expect(nodeResponse.childResponseCount).toBe(2);
     expect(nodeResponseSink.publish).toHaveBeenCalledTimes(1);
-    expect(nodeResponseSink.publish.mock.calls[0][0][0].parentId).toBe('loop-parent-response');
+    expect(nodeResponseSink.publish.mock.calls[0][0][0].response.parentId).toBe(
+      'loop-parent-response'
+    );
     expect(nodeResponseSink.publish.mock.calls[0][0][0].response).toMatchObject({
       id: 'loop-parent-response:iter:1',
       childResponseCount: 1
@@ -1327,10 +1355,10 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
       runtimeNodes,
       runtimeNodesMap: new Map(runtimeNodes.map((n) => [n.nodeId, n])),
       runtimeEdges: [],
-      variableState: makeVariableState(),
+      variableContext: makeVariableState(),
       usagePush: vi.fn(),
       nodeSummary: createNodeSummary(),
-      checkIsStopping: () => false,
+
       lastInteractive: {
         type: 'loopRunInteractive',
         params: {
@@ -1353,13 +1381,13 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
 
     runWorkflowMock.mockImplementation((args: any) => {
       iter++;
-      const key = args.memoryState.getNodeMemoryKey({
-        runningAppInfo: { sourceType: 'app', sourceId: 'app_1' },
+      const key = getCapturedTestWorkflowContext(args).memoryContext.getNodeMemoryKey({
+        runningAppInfo: { sourceType: ChatSourceTypeEnum.app, sourceId: 'app_1' },
         nodeId: 'extract1'
       });
       seenMemoriesPerIter.push(
-        args.memoryState.readNodeMemory({
-          runningAppInfo: { sourceType: 'app', sourceId: 'app_1' },
+        getCapturedTestWorkflowContext(args).memoryContext.readNodeMemory({
+          runningAppInfo: { sourceType: ChatSourceTypeEnum.app, sourceId: 'app_1' },
           nodeId: 'extract1'
         })
       );

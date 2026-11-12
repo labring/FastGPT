@@ -1,4 +1,5 @@
 import { createWorkflowToolInteractive } from '../../agentLoopCore/adapter/interactive/child';
+import { createWorkflowRuntimeSummary } from '../../../utils/summary';
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import type { AgentLoopInteractiveToolExecuteParams } from '../../../../../ai/llm/agentLoop/interface';
 import type { DispatchToolModuleProps } from '../type';
@@ -13,11 +14,15 @@ import {
 } from '../../agentLoopCore/interface';
 import { runWorkflow } from '../../../index';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import {
+  DispatchNodeResponseKeyEnum,
+  SseResponseEventEnum
+} from '@fastgpt/global/core/workflow/runtime/constants';
+import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
 import { dispatchWorkflowReadFiles } from '../../readFiles';
-import { getWorkflowFileMaxAmount } from '../../../../utils/context';
+import { getWorkflowContext, runWithContext } from '../../../context';
 import type { DispatchFlowResponse } from '../../../type';
-import { WorkflowMemoryState } from '../../../../memory/state';
+import { WorkflowRunStateSnapshot } from '../../../utils/containerRunState';
 
 type CacheToolFlowResponse = (args: {
   callId: string;
@@ -55,7 +60,7 @@ export const createToolCallToolProvider = async ({
   cacheToolFlowResponse: CacheToolFlowResponse;
   onWorkflowRuntimeSummary?: (summary?: DispatchFlowResponse['workflowRuntimeSummary']) => void;
 }): Promise<ToolCallToolProvider> => {
-  const memoryState = WorkflowMemoryState.fromWorkflow(workflowProps);
+  const memoryContext = getWorkflowContext().memoryContext;
   const { finalMessages, tools, getToolInfo } = await useToolCatalog({
     messages,
     toolNodes,
@@ -65,22 +70,70 @@ export const createToolCallToolProvider = async ({
   const datasetSearchNodeIds = toolNodes
     .filter((toolNode) => toolNode.flowNodeType === FlowNodeTypeEnum.datasetSearchNode)
     .map((toolNode) => toolNode.nodeId);
+  const parentContext = getWorkflowContext();
+  const parentVariableContext = parentContext.variableContext;
+
+  /**
+   * 每次工具调用使用独立变量快照；正常完成或交互暂停时提交已完成节点的变量增量。
+   * 暂停快照不包含变量副本，提交后下一轮才能从父级恢复且无需重跑暂停前节点。
+   * 完成后立即提交，不等待更早发起的调用；同名变量按实际写回顺序覆盖。
+   */
   const runWorkflowTool: CreateAgentLoopCoreWorkflowToolRunnerParams<WorkflowInteractiveResponseType>['runWorkflowTool'] =
     async ({ runtimeNodes, runtimeEdges, lastInteractive }) => {
-      const result = await runWorkflow({
-        ...workflowProps,
-        memoryState: memoryState.fork(),
-        // 继承父流程的流式能力；是否禁流由子节点的 forbidStream 控制。
-        // 简易应用在表单转换时强制禁流，不能在共用 ToolCall 层关闭所有工作流的输出。
-        ...(lastInteractive ? { lastInteractive } : {}),
-        runtimeNodes,
-        runtimeEdges,
-        isToolCall: true,
-        // 工具调用自身不再生成 wrapper，子工作流节点直接挂到外层 ToolCall 节点。
-        nodeResponseParentId: workflowProps.nodeResponseParentId
+      let hasVariableUpdate = false;
+      const stateSnapshot = new WorkflowRunStateSnapshot({
+        variableContext: parentVariableContext
       });
-      memoryState.merge(result[DispatchNodeResponseKeyEnum.memories]);
+      const childContext = parentContext.getChildContext({
+        // 子副本不能发送全量变量；其他事件（包括节点详情）沿当前父通道输出。
+        workflowStreamResponse: parentContext.workflowStreamResponse
+          ? (event) => {
+              if (event.event === SseResponseEventEnum.updateVariables) {
+                hasVariableUpdate = true;
+              } else {
+                parentContext.workflowStreamResponse?.(event);
+              }
+            }
+          : undefined,
+        memoryContext: memoryContext.fork(),
+        runtimeControl: { isToolCall: true },
+        variableContext: stateSnapshot.variableContext,
+        nodeResponseSink: parentContext.nodeResponseSink.getChildContext({
+          workflowRuntimeSummary: createWorkflowRuntimeSummary(),
+          ...(workflowProps.nodeResponseParentId !== undefined
+            ? { defaultParentId: workflowProps.nodeResponseParentId }
+            : {})
+        })
+      });
+      const result = await runWithContext(childContext, () =>
+        runWorkflow({
+          ...workflowProps,
+          // 继承父流程的流式能力；是否禁流由子节点的 forbidStream 控制。
+          // 简易应用在表单转换时强制禁流，不能在共用 ToolCall 层关闭所有工作流的输出。
+          ...(lastInteractive ? { lastInteractive } : {}),
+          runtimeNodes,
+          runtimeEdges,
+          // 工具调用自身不再生成 wrapper，子工作流节点直接挂到外层 ToolCall 节点。
+          nodeResponseParentId: workflowProps.nodeResponseParentId
+        })
+      );
+      memoryContext.merge(result[DispatchNodeResponseKeyEnum.memories]);
       onWorkflowRuntimeSummary?.(result.workflowRuntimeSummary);
+
+      if (!result.workflowRuntimeSummary.errorCount && !parentContext.checkIsStopping()) {
+        // 在父 Context 中提交变量差量；节点输出仍由 tool runner 独立提交。
+        await runWithContext(parentContext, async () => {
+          await stateSnapshot.commit();
+          // 每个调用按完成顺序发布合并后的父级记录，包含先完成兄弟已提交的无关变量。
+          if (hasVariableUpdate) {
+            parentContext.workflowStreamResponse?.(
+              workflowSseEvent.updateVariables(parentVariableContext.toStoreRecord())
+            );
+          }
+        });
+      } else {
+        stateSnapshot.discard();
+      }
 
       return {
         flowResponses: result.flatNodeResponses ?? [],
@@ -99,7 +152,8 @@ export const createToolCallToolProvider = async ({
     runWorkflowTool,
     cacheToolFlowResponse
   });
-  const readFileMaxFileAmount = getWorkflowFileMaxAmount();
+  const { fileContext } = getWorkflowContext();
+  const readFileMaxFileAmount = fileContext.limits.maxFileAmount;
   const readFileExecutor = createAgentLoopCoreReadFileExecutor({
     enabled: true,
     execute: async ({ files }) =>

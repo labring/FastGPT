@@ -1,0 +1,251 @@
+{
+  "nodes": [
+    {
+      "id": "workflowStart",
+      "templateType": "systemInput",
+      "flowNodeType": "workflowStart",
+      "showSourceHandle": true,
+      "showTargetHandle": false,
+      "avatar": "core/workflow/template/workflowStart",
+      "avatarLinear": "core/workflow/template/workflowStartLinear",
+      "colorSchema": "blue",
+      "name": "Start",
+      "intro": "",
+      "forbidDelete": true,
+      "unique": true,
+      "inputs": [
+        {
+          "key": "userChatInput",
+          "renderTypeList": ["reference", "textarea"],
+          "valueType": "string",
+          "label": "workflow:user_question",
+          "toolDescription": "workflow:user_question",
+          "required": true,
+          "defaultToAgentGenerated": true
+        }
+      ],
+      "outputs": [
+        {
+          "id": "userChatInput",
+          "key": "userChatInput",
+          "label": "common:core.module.input.label.user question",
+          "type": "static",
+          "valueType": "string"
+        }
+      ],
+      "nodeId": "Start",
+      "position": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "app",
+      "templateType": "tools",
+      "flowNodeType": "app",
+      "showSourceHandle": true,
+      "showTargetHandle": true,
+      "avatar": "core/workflow/template/runApp",
+      "name": "Old",
+      "intro": "workflow:select_another_application_to_call",
+      "showStatus": true,
+      "isTool": true,
+      "inputs": [
+        {
+          "key": "app",
+          "renderTypeList": ["selectApp", "reference"],
+          "valueType": "selectApp",
+          "label": "workflow:select_an_application",
+          "description": "workflow:choose_another_application_to_call",
+          "required": true,
+          "value": {
+            "id": "__CHILD_APP_ID__"
+          }
+        },
+        {
+          "key": "history",
+          "renderTypeList": ["numberInput", "reference"],
+          "valueType": "chatHistory",
+          "label": "common:core.module.input.label.chat history",
+          "description": "workflow:max_dialog_rounds",
+          "required": true,
+          "min": 0,
+          "max": 50,
+          "value": 0
+        },
+        {
+          "key": "userChatInput",
+          "renderTypeList": ["reference", "textarea"],
+          "valueType": "string",
+          "label": "workflow:user_question",
+          "toolDescription": "workflow:user_question",
+          "required": true,
+          "defaultToAgentGenerated": true,
+          "value": ["Start", "userChatInput"]
+        }
+      ],
+      "outputs": [
+        {
+          "id": "history",
+          "key": "history",
+          "label": "workflow:new_context",
+          "description": "workflow:append_application_reply_to_history_as_new_context",
+          "valueType": "chatHistory",
+          "valueDesc": "{\n  obj: System | Human | AI;\n  value: string;\n}[]",
+          "required": true,
+          "type": "static"
+        },
+        {
+          "id": "answerText",
+          "key": "answerText",
+          "label": "workflow:reply_text",
+          "description": "workflow:trigger_after_application_completion",
+          "valueType": "string",
+          "type": "static"
+        }
+      ],
+      "nodeId": "Old",
+      "position": {
+        "x": 300,
+        "y": 0
+      }
+    },
+    {
+      "id": "code",
+      "templateType": "tools",
+      "flowNodeType": "code",
+      "showSourceHandle": true,
+      "showTargetHandle": true,
+      "avatar": "core/workflow/template/codeRun",
+      "avatarLinear": "core/workflow/template/codeRunLinear",
+      "colorSchema": "lime",
+      "name": "Check",
+      "intro": "workflow:code_sandbox_intro",
+      "showStatus": true,
+      "isTool": true,
+      "hasToolInput": true,
+      "catchError": false,
+      "courseUrl": "/guide/build/workflow/nodes/sandbox-v2",
+      "inputs": [
+        {
+          "key": "system_addInputParam",
+          "renderTypeList": ["addInputParam"],
+          "valueType": "dynamic",
+          "label": "",
+          "required": false
+        },
+        {
+          "key": "codeType",
+          "renderTypeList": ["hidden"],
+          "label": "",
+          "valueType": "string",
+          "value": "js"
+        },
+        {
+          "key": "code",
+          "renderTypeList": ["custom"],
+          "label": "",
+          "valueType": "string",
+          "value": "function main(inputs) { return { result: inputs }; }"
+        },
+        {
+          "key": "history",
+          "label": "history",
+          "canEdit": true,
+          "value": ["Old", "history"],
+          "valueType": "any",
+          "renderTypeList": ["reference"]
+        },
+        {
+          "key": "answer",
+          "label": "answer",
+          "canEdit": true,
+          "value": ["Old", "answerText"],
+          "valueType": "any",
+          "renderTypeList": ["reference"]
+        }
+      ],
+      "outputs": [
+        {
+          "id": "result",
+          "key": "result",
+          "label": "result",
+          "type": "dynamic",
+          "valueType": "object"
+        }
+      ],
+      "nodeId": "Check",
+      "position": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "answerNode",
+      "templateType": "tools",
+      "flowNodeType": "answerNode",
+      "showSourceHandle": true,
+      "showTargetHandle": true,
+      "avatar": "core/workflow/template/reply",
+      "avatarLinear": "core/workflow/template/replyLinear",
+      "colorSchema": "blue",
+      "name": "Reply",
+      "intro": "workflow:intro_assigned_reply",
+      "courseUrl": "/guide/build/workflow/nodes/reply",
+      "isTool": true,
+      "inputs": [
+        {
+          "key": "text",
+          "renderTypeList": ["textarea", "reference"],
+          "valueType": "any",
+          "required": true,
+          "isRichText": false,
+          "maxLength": 100000,
+          "label": "common:core.module.input.label.Response content",
+          "description": "common:core.module.input.description.Response content",
+          "placeholder": "common:core.module.input.description.Response content",
+          "value": "PARENT:{{$VARIABLE_NODE_ID.a$}}|{{$Old.answerText$}}"
+        }
+      ],
+      "outputs": [],
+      "nodeId": "Reply",
+      "position": {
+        "x": 0,
+        "y": 0
+      }
+    }
+  ],
+  "edges": [
+    {
+      "source": "Start",
+      "target": "Old",
+      "sourceHandle": "Start-source-right",
+      "targetHandle": "Old-target-left"
+    },
+    {
+      "source": "Old",
+      "target": "Check",
+      "sourceHandle": "Old-source-right",
+      "targetHandle": "Check-target-left"
+    },
+    {
+      "source": "Check",
+      "target": "Reply",
+      "sourceHandle": "Check-source-right",
+      "targetHandle": "Reply-target-left"
+    }
+  ],
+  "chatConfig": {
+    "variables": [
+      {
+        "key": "a",
+        "label": "a",
+        "description": "",
+        "type": "input",
+        "valueType": "string",
+        "defaultValue": "PARENT-BASE",
+        "required": false
+      }
+    ]
+  }
+}

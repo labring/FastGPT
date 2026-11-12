@@ -25,7 +25,7 @@ const restoreGraph = (paused: Awaited<ReturnType<typeof runGraph>>) => {
       isEntry: interactive.entryNodeIds.includes(node.nodeId)
     })),
     edges: interactive.memoryEdges,
-    overrides: { variableState: paused.variableState, lastInteractive: interactive }
+    overrides: { variableContext: paused.variableState, lastInteractive: interactive }
   };
 };
 
@@ -82,6 +82,7 @@ describe('interactive workflow output propagation', () => {
       ...restored,
       overrides: { ...restored.overrides, query: [{ text: { content: 'yes' } }] }
     });
+    expect(resumed.variableState).toBe(paused.variableState);
     expect(graphValues(restored.nodes.find((node) => node.nodeId === 'yes')!)).toEqual({
       selected: 'yes',
       upstream: 0

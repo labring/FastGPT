@@ -1,21 +1,25 @@
+import {
+  createTestWorkflowDispatch,
+  captureTestWorkflowContext,
+  getCapturedTestWorkflowContext
+} from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import {
   VariableInputEnum,
   WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
-import { WorkflowVariableState } from '@fastgpt/service/core/workflow/dispatch/utils/variables';
+import { WorkflowVariableState } from '@fastgpt/service/core/workflow/dispatch/context/variables';
 import { summarizeRuntimeNodeResponses } from '@fastgpt/service/core/workflow/dispatch/utils/summary';
 import {
   ChatFileTypeEnum,
   ChatRoleEnum,
   ChatSourceTypeEnum
 } from '@fastgpt/global/core/chat/constants';
-import { prepareWorkflowFileContext } from '@fastgpt/service/core/workflow/utils/fileContext';
-import {
-  getWorkflowFileContext,
-  runWithContext
-} from '@fastgpt/service/core/workflow/utils/context';
+import { prepareWorkflowFileContext } from '@fastgpt/service/core/workflow/dispatch/context/file';
+import { getWorkflowFileContext } from '@fastgpt/service/core/workflow/dispatch/context';
+import { WorkflowMemoryContext } from '@fastgpt/service/core/workflow/dispatch/context/memory';
+import { runWithTestWorkflowContext as runWithContext } from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
 
 const mocks = vi.hoisted(() => ({
   runWorkflow: vi.fn(),
@@ -26,7 +30,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('@fastgpt/service/core/workflow/dispatch', () => ({
-  runWorkflow: (args: any) => mocks.runWorkflow(args)
+  runWorkflow: (args: any) => mocks.runWorkflow(captureTestWorkflowContext(args))
 }));
 
 vi.mock('@fastgpt/service/support/permission/app/auth', () => ({
@@ -55,9 +59,12 @@ vi.mock('@fastgpt/service/core/app/tool/systemTool/systemTool.repo', () => ({
 }));
 
 import {
-  dispatchApp,
-  dispatchPlugin
+  dispatchApp as dispatchAppWithoutContext,
+  dispatchPlugin as dispatchPluginWithoutContext
 } from '@fastgpt/service/core/workflow/dispatch/ai/agent/sub/app';
+
+const dispatchApp = createTestWorkflowDispatch(dispatchAppWithoutContext);
+const dispatchPlugin = createTestWorkflowDispatch(dispatchPluginWithoutContext);
 
 const createVariableState = () =>
   WorkflowVariableState.create({
@@ -119,8 +126,8 @@ describe('agent sub app dispatchPlugin', () => {
       chatId: 'chat',
       responseChatItemId: 'response',
       histories: [],
-      variableState: await createVariableState(),
-      checkIsStopping: vi.fn(() => false),
+      variableContext: await createVariableState(),
+
       maxRunTimes: 20,
       workflowDispatchDeep: 0,
       stream: true
@@ -137,12 +144,23 @@ describe('agent sub app dispatchPlugin', () => {
       currentCost: 0
     });
     await dispatchSystemWorkflow();
+    const childProps = mocks.runWorkflow.mock.calls[0][0];
+    expect(getCapturedTestWorkflowContext(childProps).runtimeControl).toMatchObject({
+      mode: 'test',
+      maxRunTimes: 20,
+      workflowDispatchDeep: 0,
+      isToolCall: true
+    });
+    for (const key of ['mode', 'maxRunTimes', 'workflowDispatchDeep', 'isToolCall']) {
+      expect(childProps).not.toHaveProperty(key);
+    }
     expect(mocks.runWorkflow).toHaveBeenCalledWith(
       expect.objectContaining({
-        stream: false,
-        workflowStreamResponse: undefined
+        stream: false
       })
     );
+    expect(childProps).not.toHaveProperty('workflowStreamResponse');
+    expect(getCapturedTestWorkflowContext(childProps).workflowStreamResponse).toBeUndefined();
   });
 
   it('does not expose system workflow LLM tokens to the parent agent summary', async () => {
@@ -249,8 +267,8 @@ describe('agent sub app dispatchPlugin', () => {
       chatId: 'chat',
       responseChatItemId: 'response',
       histories: [],
-      variableState: await createVariableState(),
-      checkIsStopping: vi.fn(() => false),
+      variableContext: await createVariableState(),
+
       maxRunTimes: 20,
       workflowDispatchDeep: 0
     } as any);
@@ -262,7 +280,11 @@ describe('agent sub app dispatchPlugin', () => {
         versionId: 'plugin-fixed-version'
       })
     );
-    expect(mocks.runWorkflow.mock.calls[0][0].variableState.get('counter')).toBe(0);
+    expect(
+      getCapturedTestWorkflowContext(mocks.runWorkflow.mock.calls[0][0]).variableContext.get(
+        'counter'
+      )
+    ).toBe(0);
     expect(mocks.serverGetWorkflowToolRunUserQuery).toHaveBeenCalledWith(
       expect.objectContaining({
         variables: expect.objectContaining({
@@ -420,7 +442,7 @@ describe('agent sub app dispatchPlugin', () => {
       name: 'default.pdf',
       type: ChatFileTypeEnum.file
     };
-    const { fileContext, fileRegistrar } = await prepareWorkflowFileContext({
+    const { fileContext } = await prepareWorkflowFileContext({
       query: [{ file: { ...defaultFile, url: '' } }],
       histories: [],
       scope: {
@@ -477,7 +499,9 @@ describe('agent sub app dispatchPlugin', () => {
         type: 'chatObject',
         objectKey: defaultKey
       });
-      expect(props.variableState.get('defaultFiles')).toEqual([defaultUrl]);
+      expect(getCapturedTestWorkflowContext(props).variableContext.get('defaultFiles')).toEqual([
+        defaultUrl
+      ]);
       return {
         flowUsages: [],
         workflowRuntimeSummary: summarizeRuntimeNodeResponses(undefined, [
@@ -493,39 +517,39 @@ describe('agent sub app dispatchPlugin', () => {
     });
     const variableState = await createVariableState();
 
-    await runWithContext(
-      {
-        mcpClientMemory: {},
-        fileContext,
-        fileRegistrar
-      },
-      () =>
-        dispatchPlugin({
-          app: { id: 'child-app', name: 'Child Workflow Tool' },
-          runningAppInfo: {
-            sourceType: 'app',
-            sourceId: 'parent-app',
-            teamId: 'team',
-            tmbId: 'member',
-            name: 'parent'
-          },
-          runningUserInfo: { teamId: 'team', tmbId: 'member' },
-          customAppVariables: {},
-          userChatInput: '',
-          timezone: 'Asia/Shanghai',
-          uid: 'user',
-          chatId: 'chat',
-          responseChatItemId: 'response',
-          histories: [],
-          variableState,
-          checkIsStopping: vi.fn(() => false),
-          maxRunTimes: 20,
-          workflowDispatchDeep: 0
-        } as any)
+    await runWithContext({ checkIsStopping: () => false, mcpClientMemory: {}, fileContext }, () =>
+      dispatchPlugin({
+        app: { id: 'child-app', name: 'Child Workflow Tool' },
+        runningAppInfo: {
+          sourceType: 'app',
+          sourceId: 'parent-app',
+          teamId: 'team',
+          tmbId: 'member',
+          name: 'parent'
+        },
+        runningUserInfo: { teamId: 'team', tmbId: 'member' },
+        customAppVariables: {},
+        userChatInput: '',
+        timezone: 'Asia/Shanghai',
+        uid: 'user',
+        chatId: 'chat',
+        responseChatItemId: 'response',
+        histories: [],
+        variableContext: variableState,
+
+        maxRunTimes: 20,
+        workflowDispatchDeep: 0
+      } as any)
     );
   });
 
   it('returns plugin child interactive state and forwards lastInteractive on resume', async () => {
+    const memoryContext = WorkflowMemoryContext.fromRecord();
+    const source = { sourceType: ChatSourceTypeEnum.app, sourceId: 'child-plugin' };
+    const childMemory = memoryContext.fork('app:child-plugin');
+    memoryContext.merge(
+      childMemory.createVariableCheckpoint({ runningAppInfo: source, variables: { counter: 41 } })
+    );
     const previousInteractive = {
       type: 'userSelect',
       entryNodeIds: ['select_1'],
@@ -558,13 +582,27 @@ describe('agent sub app dispatchPlugin', () => {
       edges: [
         { source: 'before', sourceHandle: 'output', target: 'select_1', targetHandle: 'input' }
       ],
-      chatConfig: { variables: [] }
+      chatConfig: {
+        variables: [
+          {
+            key: 'counter',
+            type: VariableInputEnum.numberInput,
+            valueType: WorkflowIOValueTypeEnum.number,
+            defaultValue: 0
+          }
+        ]
+      }
     });
-    mocks.runWorkflow.mockResolvedValue({
-      assistantResponses: [{ text: { content: 'waiting for plugin input' } }],
-      flowUsages: [],
-      workflowRuntimeSummary: undefined,
-      workflowInteractiveResponse: nextInteractive
+    mocks.runWorkflow.mockImplementationOnce(async (args: any) => {
+      const state = getCapturedTestWorkflowContext(args).variableContext;
+      expect(state.get('counter')).toBe(41);
+      await state.set('counter', 42);
+      return {
+        assistantResponses: [{ text: { content: 'waiting for plugin input' } }],
+        flowUsages: [],
+        workflowRuntimeSummary: undefined,
+        workflowInteractiveResponse: nextInteractive
+      };
     });
 
     const result = await dispatchPlugin({
@@ -589,11 +627,12 @@ describe('agent sub app dispatchPlugin', () => {
       uid: 'user',
       chatId: 'chat',
       responseChatItemId: 'response',
-      variableState: await createVariableState(),
-      checkIsStopping: vi.fn(() => false),
+      variableContext: await createVariableState(),
+
       maxRunTimes: 20,
       workflowDispatchDeep: 0,
       lastInteractive: previousInteractive,
+      memoryContext,
       query: [{ text: { content: '{"selection":"Confirm"}' } }]
     } as any);
 
@@ -616,6 +655,9 @@ describe('agent sub app dispatchPlugin', () => {
       interactive: nextInteractive
     });
     expect(result.assistantMessages).toBeUndefined();
+    expect(
+      memoryContext.fork('app:child-plugin').readVariableCheckpoint({ runningAppInfo: source })
+    ).toEqual({ counter: 42 });
   });
 });
 
@@ -711,8 +753,8 @@ describe('agent sub app dispatchApp', () => {
       uid: 'user',
       chatId: 'chat',
       responseChatItemId: 'response',
-      variableState: await createVariableState(),
-      checkIsStopping: vi.fn(() => false),
+      variableContext: await createVariableState(),
+
       maxRunTimes: 20,
       workflowDispatchDeep: 0,
       lastInteractive: previousInteractive,
@@ -795,15 +837,17 @@ describe('agent sub app dispatchApp', () => {
       uid: 'user',
       chatId: 'chat',
       responseChatItemId: 'response',
-      variableState: await createVariableState(),
-      checkIsStopping: vi.fn(() => false),
+      variableContext: await createVariableState(),
+
       maxRunTimes: 20,
       workflowDispatchDeep: 0
     } as any);
 
-    expect(mocks.runWorkflow.mock.calls[0][0].variableState.get('internal')).toBe(
-      'internal default'
-    );
+    expect(
+      getCapturedTestWorkflowContext(mocks.runWorkflow.mock.calls[0][0]).variableContext.get(
+        'internal'
+      )
+    ).toBe('internal default');
   });
 
   it('forwards fileUrlList into child query and propagates sandbox usage', async () => {
@@ -861,9 +905,10 @@ describe('Agent nested workflow memory isolation', () => {
   it.each(['app', 'plugin'] as const)(
     'isolates the shared descendant of two cloned %s tools across calls and reloads',
     async (type) => {
-      const { WorkflowMemoryState } = await import('@fastgpt/service/core/workflow/memory/state');
+      const { WorkflowMemoryContext } =
+        await import('@fastgpt/service/core/workflow/dispatch/context/memory');
       const rootSource = { sourceType: ChatSourceTypeEnum.app, sourceId: 'parent-app' };
-      let rootState = WorkflowMemoryState.fromRecord({}, { rootSource });
+      let rootState = WorkflowMemoryContext.fromRecord({}, { rootSource });
       let agentState = rootState.fork('node:agent1');
       const descendantSource = { sourceType: ChatSourceTypeEnum.app, sourceId: 'shared-plugin' };
       const seen: Array<{ appId: string; previous: unknown; key: string }> = [];
@@ -879,7 +924,8 @@ describe('Agent nested workflow memory isolation', () => {
       });
       mocks.serverGetWorkflowToolRunUserQuery.mockReturnValue({ value: [] });
       mocks.runWorkflow.mockImplementation(async (args: any) => {
-        const descendantState = args.memoryState.fork('node:shared_plugin_node');
+        const descendantState =
+          getCapturedTestWorkflowContext(args).memoryContext.fork('node:shared_plugin_node');
         const key = descendantState.getNodeMemoryKey({
           runningAppInfo: descendantSource,
           nodeId: 'extract_1'
@@ -913,7 +959,7 @@ describe('Agent nested workflow memory isolation', () => {
       const callTool = async (id: string) => {
         const props = {
           app: { id, name: id },
-          memoryState: agentState,
+          memoryContext: agentState,
           runningAppInfo: { ...rootSource, teamId: 'team', tmbId: 'member', name: 'Parent' },
           runningUserInfo: {
             teamId: 'team',
@@ -946,7 +992,7 @@ describe('Agent nested workflow memory isolation', () => {
       expect(Object.keys(agentState.getDelta())).toHaveLength(2);
 
       rootState.merge(agentState.getDelta());
-      rootState = WorkflowMemoryState.fromHistories(
+      rootState = WorkflowMemoryContext.fromHistories(
         [{ obj: ChatRoleEnum.AI, value: [], memories: rootState.toRecord() }],
         { rootSource }
       );

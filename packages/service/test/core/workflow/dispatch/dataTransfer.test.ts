@@ -1,12 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 import { FlowNodeTypeEnum, LoopRunModeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import type { RunWorkflowProps } from '@fastgpt/service/core/workflow/dispatch';
+import type { RunWorkflowProps } from '@fastgpt/service/core/workflow/dispatch/type';
 import { callbackMap } from '@fastgpt/service/core/workflow/dispatch/constants';
-import {
-  internalRuntimeNodeType,
-  internalRuntimeNodeRunnerKey
-} from '@fastgpt/service/core/workflow/dispatch/internal/runtimeNode';
 import {
   graphNode,
   graphEdge,
@@ -162,11 +158,6 @@ const cases: DataCase[] = [
   },
   { type: FlowNodeTypeEnum.loopRunBreak, expectedData: {} },
   {
-    type: internalRuntimeNodeType,
-    params: { [internalRuntimeNodeRunnerKey]: () => ({ data: { value: { nested: [1, false] } } }) },
-    expectedData: { value: { nested: [1, false] } }
-  },
-  {
     type: FlowNodeTypeEnum.loop,
     params: { loopInputArray: [], childrenNodeIdList: [] },
     expectedData: { [NodeOutputKeyEnum.nestedArrayResult]: [] }
@@ -208,34 +199,6 @@ describe('registered node data transfer', () => {
     expect([...new Set(covered)].sort()).toEqual(Object.keys(callbackMap).sort());
     expect(covered.length).toBe(Object.keys(callbackMap).length);
     for (const type of placeholders) expect(await callbackMap[type]()).toBeUndefined();
-  });
-
-  it('internal runtime failures expose error outputs without leaking the original exception', async () => {
-    const keys = [NodeOutputKeyEnum.errorText, 'rawError', 'stack', 'cause'];
-    const source = graphNode({
-      id: 'source',
-      type: internalRuntimeNodeType as FlowNodeTypeEnum,
-      isEntry: true,
-      catchError: true,
-      outputs: keys
-    });
-    const target = graphNode({
-      id: 'target',
-      type: FlowNodeTypeEnum.toolParams,
-      inputs: keys.map((key) => graphReference({ key, from: ['source', key] })),
-      outputs: keys
-    });
-    const { result } = await runGraph({
-      nodes: [source, target],
-      edges: [graphEdge({ source: 'source', target: 'target', error: true })]
-    });
-    expect(graphValues(target)).toEqual({
-      [NodeOutputKeyEnum.errorText]: 'Internal runtime node runner is missing',
-      rawError: undefined,
-      stack: undefined,
-      cause: undefined
-    });
-    expect(result.workflowRuntimeSummary.errorCount).toBe(0);
   });
 
   it.each(cases)(

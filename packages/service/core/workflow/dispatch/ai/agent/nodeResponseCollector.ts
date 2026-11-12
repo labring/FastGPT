@@ -1,5 +1,5 @@
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
-import type { WorkflowNodeResponseSinkLike } from '../../nodeResponseSink';
+import type { WorkflowNodeResponseContext } from '../../context/nodeResponse';
 import type { WorkflowRuntimeSummaryType } from '../../type';
 import { createWorkflowRuntimeSummary, summarizeRuntimeNodeResponses } from '../../utils/summary';
 
@@ -16,7 +16,7 @@ export const createAgentNodeResponseCollector = ({
   nodeResponseParentId,
   onNodeResponseSummary
 }: {
-  nodeResponseSink?: WorkflowNodeResponseSinkLike;
+  nodeResponseSink?: WorkflowNodeResponseContext;
   nodeResponses: ChatHistoryItemResType[];
   nodeResponseParentId?: string;
   onNodeResponseSummary?: (summary: WorkflowRuntimeSummaryType) => void;

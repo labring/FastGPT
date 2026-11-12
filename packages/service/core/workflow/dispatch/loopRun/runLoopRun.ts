@@ -1,3 +1,4 @@
+import { createWorkflowRuntimeSummary } from '../utils/summary';
 import { cloneDeep } from 'lodash-es';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
@@ -33,8 +34,8 @@ import {
   pickCustomOutputInputs,
   readCustomOutputSnapshot
 } from './service';
-import { createContainerRunStateSnapshot, syncContainerRunState } from '../utils/containerRunState';
-import { WorkflowMemoryState } from '../../memory/state';
+import { WorkflowRunStateSnapshot } from '../utils/containerRunState';
+import { getWorkflowContext, runWithContext } from '../context';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.loopRunMode]: LoopRunModeEnum;
@@ -49,7 +50,12 @@ type Response = DispatchNodeResultType<Record<string, any>>;
  * 恢复时累计历史统计，但失败判断只读取本轮结果，避免旧错误污染后续运行。
  */
 export const dispatchLoopRun = async (props: Props): Promise<Response> => {
-  const { params, runtimeNodes, runtimeEdges, node, lastInteractive, checkIsStopping } = props;
+  const {
+    checkIsStopping,
+    variableContext: parentVariableContext,
+    nodeResponseSink
+  } = getWorkflowContext();
+  const { params, runtimeNodes, runtimeEdges, node, lastInteractive } = props;
   const { name } = node;
   const mode = params[NodeInputKeyEnum.loopRunMode] ?? LoopRunModeEnum.array;
   const childrenNodeIdList = params[NodeInputKeyEnum.childrenNodeIdList] ?? [];
@@ -143,7 +149,7 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
   const resumeIteration = interactiveData?.iteration;
   let iteration = resumeIteration ?? 1;
   let iterationHistories = props.histories;
-  const loopMemoryState = WorkflowMemoryState.fromWorkflow(props).fork();
+  const loopMemoryContext = getWorkflowContext().memoryContext.fork();
   while (true) {
     if (checkIsStopping()) {
       break;
@@ -189,25 +195,36 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
       });
     }
 
-    const iterationVariableState = props.variableState.clone();
-    const iterationMemoryState = loopMemoryState.fork();
-    const iterationStateSnapshot = createContainerRunStateSnapshot({
-      nodes: isolatedNodes,
-      childrenNodeIdList,
-      variableState: iterationVariableState
+    const iterationMemoryContext = loopMemoryContext.fork();
+    const iterationStateSnapshot = new WorkflowRunStateSnapshot({
+      variableContext: parentVariableContext,
+      nodeOutputs: {
+        sourceNodes: isolatedNodes,
+        targetNodes: runtimeNodes,
+        childrenNodeIdList
+      }
     });
-    const response = await runWorkflow({
-      ...props,
-      histories: iterationHistories,
-      variableState: iterationVariableState,
-      memoryState: iterationMemoryState,
-      lastInteractive: interactiveData?.childrenResponse,
-      nodeResponseParentId: iterationResponseId,
-      runtimeNodes: isolatedNodes,
-      runtimeEdges: cloneDeep(
-        storeEdges2RuntimeEdges(isolatedEdges, interactiveData?.childrenResponse)
-      )
+    const iterationVariableState = iterationStateSnapshot.variableContext;
+    const iterationContext = getWorkflowContext().getChildContext({
+      memoryContext: iterationMemoryContext,
+      variableContext: iterationVariableState,
+      nodeResponseSink: getWorkflowContext().nodeResponseSink.getChildContext({
+        workflowRuntimeSummary: createWorkflowRuntimeSummary(),
+        defaultParentId: iterationResponseId
+      })
     });
+    const response = await runWithContext(iterationContext, () =>
+      runWorkflow({
+        ...props,
+        histories: iterationHistories,
+        lastInteractive: interactiveData?.childrenResponse,
+        nodeResponseParentId: iterationResponseId,
+        runtimeNodes: isolatedNodes,
+        runtimeEdges: cloneDeep(
+          storeEdges2RuntimeEdges(isolatedEdges, interactiveData?.childrenResponse)
+        )
+      })
+    );
     // Merge pre-interrupt runtime summary so resumed iteration still sees the full
     // set of finished nodes and stats without keeping full child nodeResponse data.
     const { fullSummary: iterationSummary, wrapperSummary } = getWrapperSummary({
@@ -258,17 +275,17 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
         loopInputValue: mode === LoopRunModeEnum.array ? currentItem : undefined,
         loopOutputValue: customOutputs,
         error: opts.error,
+        // 迭代错误只是详情；循环节点自身响应负责上报或被 catch 分支捕获，避免父级重复计数。
+        ...(opts.error !== undefined ? { errorCaptured: true } : {}),
         childResponseCount: iterationChildResponseCount
       };
       childResponseCount += 1 + (wrapper.childResponseCount || 0);
-      if (props.nodeResponseSink) {
-        await props.nodeResponseSink.publish([
-          {
-            response: wrapper,
-            parentId: props.nodeResponseParentId
-          }
-        ]);
-      }
+      await nodeResponseSink.publish([
+        {
+          response: wrapper,
+          parentId: props.nodeResponseParentId
+        }
+      ]);
     };
 
     // Pause: stash accumulated children so the next resume still sees pre-interrupt
@@ -278,22 +295,16 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
     if (response.workflowInteractiveResponse) {
       interactiveResponse = response.workflowInteractiveResponse;
       pendingIterationSummary = iterationSummary;
-      loopMemoryState.merge(response[DispatchNodeResponseKeyEnum.memories]);
+      loopMemoryContext.merge(response[DispatchNodeResponseKeyEnum.memories]);
       // 交互暂停是可恢复 checkpoint，需要保留暂停前已完成节点的变量和外部 output 变更。
-      await syncContainerRunState({
-        sourceNodes: isolatedNodes,
-        targetNodes: runtimeNodes,
-        childrenNodeIdList,
-        stateSnapshot: iterationStateSnapshot,
-        childVariableState: iterationVariableState,
-        parentVariableState: props.variableState
-      });
+      await iterationStateSnapshot.commit();
       await pushIterationDetail({});
       break;
     }
 
-    // 子流程只传递本轮失败状态和输出；原始异常已经由出错节点上报。
+    // 子流程仅透传失败状态，保留原始节点的错误上报归属。
     if (childRuntimeSummary.errorCount) {
+      iterationStateSnapshot.discard();
       const errText = getErrText(childRuntimeSummary.errorText);
       loopFailure = { text: errText };
       await pushIterationDetail({ error: errText });
@@ -308,15 +319,8 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
 
     await pushIterationDetail({});
     loopHistory.push({ iteration, customOutputs, success: true });
-    loopMemoryState.merge(response[DispatchNodeResponseKeyEnum.memories]);
-    await syncContainerRunState({
-      sourceNodes: isolatedNodes,
-      targetNodes: runtimeNodes,
-      childrenNodeIdList,
-      stateSnapshot: iterationStateSnapshot,
-      childVariableState: iterationVariableState,
-      parentVariableState: props.variableState
-    });
+    loopMemoryContext.merge(response[DispatchNodeResponseKeyEnum.memories]);
+    await iterationStateSnapshot.commit();
 
     if (iterationSummary.hasLoopRunBreak) break;
 
@@ -345,7 +349,7 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
   };
 
   const errorText = loopFailure?.text;
-  const loopMemories = loopMemoryState.getDelta();
+  const loopMemories = loopMemoryContext.getDelta();
   const result = {
     data,
     // 循环失败时不产出 toolResponse，交给工具运行器的 errorMessage 兜底，避免用空快照挡住错误信息
