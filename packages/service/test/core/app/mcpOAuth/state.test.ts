@@ -8,6 +8,7 @@ import {
   expirePendingMcpOAuthStates,
   getMcpOAuthBindCookieName,
   isMcpOAuthCallbackRedirectAllowed,
+  normalizeMcpOAuthBasePath,
   parseMcpOAuthState,
   readCookie,
   serializeMcpOAuthBindCookie,
@@ -195,5 +196,81 @@ describe('mcpOAuth state', () => {
         'https://fastgpt.example.com'
       )
     ).toBe(false);
+  });
+
+  it('keeps the Next basePath in the callback redirect and whitelist (no prefix)', () => {
+    const appId = new Types.ObjectId().toString();
+    const url = buildMcpOAuthCallbackRedirect({
+      feDomain: 'https://fastgpt.example.com',
+      appId,
+      success: true
+    });
+    expect(url.startsWith('https://fastgpt.example.com/app/detail?')).toBe(true);
+    expect(new URL(url).pathname).toBe('/app/detail');
+    expect(isMcpOAuthCallbackRedirectAllowed(url, 'https://fastgpt.example.com')).toBe(true);
+  });
+
+  it('keeps the Next basePath in the callback redirect and whitelist (with prefix)', () => {
+    const appId = new Types.ObjectId().toString();
+    const basePath = '/sandbox/nebula-6417/p/3000';
+    const url = buildMcpOAuthCallbackRedirect({
+      feDomain: 'https://fastgpt.example.com',
+      basePath,
+      appId,
+      success: false,
+      code: McpOAuthErrorCodeEnum.accessDenied
+    });
+    expect(url.startsWith(`https://fastgpt.example.com${basePath}/app/detail?`)).toBe(true);
+    expect(new URL(url).pathname).toBe(`${basePath}/app/detail`);
+    expect(isMcpOAuthCallbackRedirectAllowed(url, 'https://fastgpt.example.com', basePath)).toBe(
+      true
+    );
+    // 少了前缀的旧地址必须被拒绝（正是 K1 观察到的 404 地址）。
+    expect(
+      isMcpOAuthCallbackRedirectAllowed(url, 'https://fastgpt.example.com')
+    ).toBe(false);
+    // 前缀不同同样拒绝。
+    expect(
+      isMcpOAuthCallbackRedirectAllowed(url, 'https://fastgpt.example.com', '/other/base')
+    ).toBe(false);
+    // 尾部斜杠归一化：`/base/` 与 `/base` 等价。
+    expect(
+      isMcpOAuthCallbackRedirectAllowed(
+        url,
+        'https://fastgpt.example.com',
+        '/sandbox/nebula-6417/p/3000/'
+      )
+    ).toBe(true);
+    // 参数白名单仍只允许 appId / oauth / code。
+    expect(
+      isMcpOAuthCallbackRedirectAllowed(
+        `https://fastgpt.example.com${basePath}/app/detail?appId=x&next=https://evil.example.com`,
+        'https://fastgpt.example.com',
+        basePath
+      )
+    ).toBe(false);
+    expect(
+      isMcpOAuthCallbackRedirectAllowed(
+        `https://fastgpt.example.com${basePath}/evil?appId=x`,
+        'https://fastgpt.example.com',
+        basePath
+      )
+    ).toBe(false);
+  });
+
+  it('normalizes absolute-URL basePath input before it reaches the redirect builder', () => {
+    // `NEXT_PUBLIC_BASE_URL` 历史上允许绝对 URL；apiSupport.normalizeMcpOAuthBasePath 只保留 pathname。
+    const basePath = normalizeMcpOAuthBasePath('https://fastgpt.example.com/sandbox/nebula-6417/');
+    expect(basePath).toBe('/sandbox/nebula-6417');
+    const url = buildMcpOAuthCallbackRedirect({
+      feDomain: 'https://fastgpt.example.com',
+      basePath,
+      appId: 'x',
+      success: true
+    });
+    expect(url).toBe('https://fastgpt.example.com/sandbox/nebula-6417/app/detail?appId=x&oauth=success');
+    // 非法绝对 URL 降级为无前缀，不抛错。
+    expect(normalizeMcpOAuthBasePath('https://')).toBe('');
+    expect(normalizeMcpOAuthBasePath('http://[')).toBe('');
   });
 });

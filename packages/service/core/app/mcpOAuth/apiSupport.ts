@@ -309,7 +309,14 @@ export const logMcpOAuthAuditEvent = (
   logger.info(`MCP OAuth ${event}`, redactMcpOAuthForAudit(details));
 };
 
-/** 供回调路由复用；统一从 state 的 appId 构造，禁止使用请求中的任意 URL。 */
+/**
+ * 供回调路由复用；统一从 state 的 appId 构造，禁止使用请求中的任意 URL。
+ * basePath 默认取路由配置（Next basePath），保证跳转不丢部署前缀。
+ */
 export const getMcpOAuthCallbackRedirectFromState = (
   args: Parameters<typeof buildMcpOAuthCallbackRedirect>[0]
-) => buildMcpOAuthCallbackRedirect(args);
+) =>
+  buildMcpOAuthCallbackRedirect({
+    basePath: getMcpOAuthRouteConfig().basePath,
+    ...args
+  });

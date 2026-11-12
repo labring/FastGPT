@@ -215,7 +215,9 @@ const registerMcpOAuthClientDcr = async ({
     });
   }
 
-  const authMethod = pickMcpOAuthDcrAuthMethod(server.tokenEndpointAuthMethodsSupported);
+  const authMethod = pickMcpOAuthDcrAuthMethod(
+    server.tokenEndpointAuthMethodsSupported ?? undefined
+  );
   const response = await requestMcpOAuthHttp({
     url: server.registrationEndpoint,
     method: 'POST',

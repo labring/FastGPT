@@ -5,6 +5,8 @@ import {
   McpToolSetNodeConfigSchema,
   McpToolSetRuntimeConfigSchema
 } from '@fastgpt/global/core/workflow/type/node';
+import { LegacyStoreNodeItemSchema } from '@fastgpt/global/core/workflow/migration/legacy/schema';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 
 const toolList = [{ name: 'search', description: 'Search' }];
 
@@ -106,5 +108,54 @@ describe('node-local toolset config', () => {
         mode: 'oauth'
       }).success
     ).toBe(false);
+  });
+
+  it('parses a persisted OAuth toolset node whose server metadata contains null optionals', () => {
+    // 回归（Stage K3）：Mongo 中 `oauth.server.clientIdMetadataDocumentSupported = null`
+    // 曾使 LegacyStoreNodeItemSchema 拒绝整节点，detail 返回 500。
+    const parsed = LegacyStoreNodeItemSchema.parse({
+      nodeId: 'oauth-toolset-node',
+      flowNodeType: FlowNodeTypeEnum.toolSet,
+      name: 'OAuth tool set',
+      inputs: [],
+      outputs: [],
+      toolConfig: {
+        mcpToolSet: {
+          url: 'https://mcp.example.com/mcp',
+          authMode: 'oauth',
+          toolList: [],
+          oauth: {
+            schemaVersion: 1,
+            clientMode: 'dcr',
+            credentialSeq: 7,
+            issuer: 'https://as.example.org/',
+            resource: 'https://mcp.example.com/mcp',
+            server: {
+              issuer: 'https://as.example.org/',
+              authorizationEndpoint: 'https://as.example.org/authorize',
+              tokenEndpoint: 'https://as.example.org/token',
+              registrationEndpoint: null,
+              revocationEndpoint: null,
+              tokenEndpointAuthMethodsSupported: null,
+              codeChallengeMethodsSupported: null,
+              clientIdMetadataDocumentSupported: null,
+              scopesSupported: null,
+              source: 'discovered',
+              fetchedAt: 1
+            },
+            refreshLease: null
+          }
+        }
+      }
+    });
+
+    const mcpToolSet = parsed.toolConfig?.mcpToolSet as {
+      authMode?: string;
+      oauth?: { server?: Record<string, unknown> };
+    };
+    expect(mcpToolSet.authMode).toBe('oauth');
+    // 读侧容忍 null（不报错）；写路径由 discovery 归一，历史数据原样保留。
+    expect(mcpToolSet.oauth?.server?.clientIdMetadataDocumentSupported).toBeNull();
+    expect(mcpToolSet.oauth?.server?.issuer).toBe('https://as.example.org/');
   });
 });

@@ -117,6 +117,67 @@ describe('McpToolSetOAuthConfigSchema', () => {
     ).toBe(true);
   });
 
+  it('tolerates null optional server metadata fields from persisted data', () => {
+    // 回归：AS 可能返回 `client_id_metadata_document_supported: null`，旧版本 discovery
+    // 原样落库后导致 detail/迁移解析失败（nodes[0].toolConfig.mcpToolSet）。
+    const parsed = parseOAuth({
+      schemaVersion: 1,
+      clientMode: 'dcr',
+      server: {
+        issuer: 'https://as.example.org/',
+        authorizationEndpoint: 'https://as.example.org/authorize',
+        tokenEndpoint: 'https://as.example.org/token',
+        registrationEndpoint: null,
+        revocationEndpoint: null,
+        tokenEndpointAuthMethodsSupported: null,
+        codeChallengeMethodsSupported: null,
+        clientIdMetadataDocumentSupported: null,
+        scopesSupported: null,
+        source: 'discovered',
+        fetchedAt: 1
+      }
+    });
+
+    expect(parsed.server).toMatchObject({
+      issuer: 'https://as.example.org/',
+      authorizationEndpoint: 'https://as.example.org/authorize',
+      tokenEndpoint: 'https://as.example.org/token',
+      source: 'discovered',
+      fetchedAt: 1
+    });
+    // 读侧只放宽、不改写：null 被接受并保留；写路径由 discovery 归一为 undefined。
+    expect(parsed.server?.clientIdMetadataDocumentSupported).toBeNull();
+    expect(parsed.server?.registrationEndpoint).toBeNull();
+    expect(parsed.server?.revocationEndpoint).toBeNull();
+    expect(parsed.server?.tokenEndpointAuthMethodsSupported).toBeNull();
+    expect(parsed.server?.codeChallengeMethodsSupported).toBeNull();
+    expect(parsed.server?.scopesSupported).toBeNull();
+    // 非空值仍原样保留。
+    expect(
+      parseOAuth({
+        server: {
+          issuer: 'https://as.example.org/',
+          authorizationEndpoint: 'https://as.example.org/authorize',
+          tokenEndpoint: 'https://as.example.org/token',
+          clientIdMetadataDocumentSupported: false,
+          fetchedAt: 1
+        }
+      }).server?.clientIdMetadataDocumentSupported
+    ).toBe(false);
+    // 类型错误仍然被拒绝（null 兼容不等于放宽校验）。
+    expect(
+      McpToolSetOAuthConfigSchema.safeParse({
+        server: {
+          issuer: 'https://as.example.org/',
+          authorizationEndpoint: 'https://as.example.org/authorize',
+          tokenEndpoint: 'https://as.example.org/token',
+          clientIdMetadataDocumentSupported: 'yes',
+          fetchedAt: 1
+        }
+      }).success
+    ).toBe(false);
+  });
+
   it('accepts encrypted token and client credentials', () => {
     const parsed = parseOAuth({
       schemaVersion: 1,

@@ -314,21 +314,30 @@ export const assertMcpOAuthBindCookie = ({
 };
 
 /**
- * 回调后的浏览器跳转只允许 `${FE_DOMAIN}/app/detail`，参数只允许
+ * 回调后的浏览器跳转只允许 `${FE_DOMAIN}${basePath}/app/detail`，参数只允许
  * `appId` / `oauth` / `code`；`appId` 来自已解密 state。
+ *
+ * `basePath` 必须来自 `getMcpOAuthRouteConfig().basePath`（已由
+ * `normalizeMcpOAuthBasePath` 归一化为以 `/` 开头的相对路径）；否则部署在 Next
+ * basePath 之后时，跳转会丢失前缀落到平台根 404。
  */
+export const buildMcpOAuthCallbackPath = (basePath: string | undefined) =>
+  `${(basePath ?? '').replace(/\/$/, '')}/app/detail`;
+
 export const buildMcpOAuthCallbackRedirect = ({
   feDomain,
+  basePath = '',
   appId,
   success,
   code
 }: {
   feDomain: string;
+  basePath?: string;
   appId: string;
   success: boolean;
   code?: string;
 }) => {
-  const url = new URL('/app/detail', feDomain);
+  const url = new URL(buildMcpOAuthCallbackPath(basePath), feDomain);
   url.searchParams.set('appId', appId);
   if (success) {
     url.searchParams.set('oauth', 'success');
@@ -341,10 +350,14 @@ export const buildMcpOAuthCallbackRedirect = ({
   return url.toString();
 };
 
-export const isMcpOAuthCallbackRedirectAllowed = (url: string, feDomain: string): boolean => {
+export const isMcpOAuthCallbackRedirectAllowed = (
+  url: string,
+  feDomain: string,
+  basePath = ''
+): boolean => {
   try {
     const target = new URL(url);
-    const expected = new URL('/app/detail', feDomain);
+    const expected = new URL(buildMcpOAuthCallbackPath(basePath), feDomain);
     if (target.origin !== expected.origin || target.pathname !== expected.pathname) return false;
     const allowedParams = new Set(['appId', 'oauth', 'code']);
     for (const key of target.searchParams.keys()) {

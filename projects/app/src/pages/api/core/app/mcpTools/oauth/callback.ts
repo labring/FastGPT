@@ -228,6 +228,7 @@ function finishRedirect({
   const config = getMcpOAuthRouteConfig();
   const location = buildMcpOAuthCallbackRedirect({
     feDomain: config.feDomain,
+    basePath: config.basePath,
     appId: payload.appId,
     success,
     code
