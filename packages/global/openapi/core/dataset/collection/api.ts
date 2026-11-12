@@ -171,13 +171,13 @@ const DeleteCollectionByApiFileIdsBodySchema = z
       .min(1)
       .meta({
         example: ['6893c04c0a1c3e0012a3b4c5'],
-        description: 'API 文件库的外部文件 ID 列表；全部未命中时返回集合不存在'
+        description: 'API 文件库的外部文件或目录 ID 列表；全部未命中时返回集合不存在'
       })
   })
   .meta({
     title: '按 API 文件 ID 删除',
     description:
-      '外部集成只知道外部文件 ID 时使用：在指定知识库内按 apiFileId 定位集合，删除命中的集合及其全部子集合'
+      '外部集成只知道外部文件或目录 ID 时使用：在指定知识库内按 apiFileId 定位集合，删除命中的集合及其全部子集合'
   });
 
 /**

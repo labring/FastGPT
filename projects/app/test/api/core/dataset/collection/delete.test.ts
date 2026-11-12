@@ -731,7 +731,7 @@ describe('delete collection by apiFileId', () => {
     ).toBe(3);
   });
 
-  it('ignores matched nodes covered by a matched ancestor through inner folders', async () => {
+  it('batches ancestor reads by depth and deletes both subtrees through inner folders', async () => {
     const users = await getFakeUsers(2);
     const dirOwner = users.members[0];
     const bodyOwner = users.members[1];
@@ -740,41 +740,82 @@ describe('delete collection by apiFileId', () => {
       datasetTmbId: dirOwner.tmbId,
       collectionTmbId: dirOwner.tmbId
     });
-    const { idByApiFileId } = await insertApiFileLayout({
-      teamId: users.owner.teamId,
-      tmbId: dirOwner.tmbId,
-      bodyTmbId: bodyOwner.tmbId,
-      datasetId: String(dataset._id),
-      fileId: 'doc',
-      childId: 'child'
+    const subtreeIds: string[] = [];
+    for (const fileId of ['first', 'second']) {
+      const { idByApiFileId } = await insertApiFileLayout({
+        teamId: users.owner.teamId,
+        tmbId: dirOwner.tmbId,
+        bodyTmbId: bodyOwner.tmbId,
+        datasetId: String(dataset._id),
+        fileId,
+        childId: `${fileId}-child`
+      });
+      subtreeIds.push(...idByApiFileId.values());
+      // 两棵子树各插入两层无外部身份的目录，正文 owner 与目录 owner 不同。
+      let parentId = idByApiFileId.get(`${fileId}#dir`)!;
+      for (let depth = 0; depth < 2; depth++) {
+        const innerFolder = await MongoDatasetCollection.create({
+          name: `${fileId}-inner-${depth}`,
+          type: DatasetCollectionTypeEnum.folder,
+          teamId: users.owner.teamId,
+          tmbId: dirOwner.tmbId,
+          datasetId: dataset._id,
+          parentId
+        });
+        parentId = String(innerFolder._id);
+        subtreeIds.push(parentId);
+      }
+      await MongoDatasetCollection.updateOne(
+        { _id: idByApiFileId.get(fileId) },
+        { $set: { parentId } }
+      );
+    }
+
+    const findSpy = vi.spyOn(MongoDatasetCollection, 'find');
+    try {
+      const response = await Call(deleteHandler, {
+        auth: dirOwner,
+        body: { datasetId: String(dataset._id), apiFileIds: ['first', 'second'] }
+      });
+
+      expect(response.code).toBe(200);
+      // 性能约束：四个待补齐目录只需两轮读取，每层一次，查询轮次不随目标数增长。
+      const ancestorQuery = expect.objectContaining({ _id: { $in: expect.any(Array) } });
+      const ancestorReads = findSpy.mock.calls.filter(
+        (args: unknown[]) => args[1] === '_id parentId' && ancestorQuery.asymmetricMatch(args[0])
+      );
+      expect(ancestorReads).toHaveLength(2);
+      await expect(
+        MongoDatasetCollection.countDocuments({ _id: { $in: subtreeIds } })
+      ).resolves.toBe(0);
+    } finally {
+      findSpy.mockRestore();
+    }
+  });
+
+  it('keeps independent delete roots when an unmatched parent is missing', async () => {
+    const { member, dataset, collection, createCollection } = await fixture();
+    const orphan = await createCollection({
+      name: 'orphan',
+      type: DatasetCollectionTypeEnum.apiFile,
+      apiFileId: 'orphan',
+      parentId: '507f1f77bcf86cd799439099'
     });
-    // 正文被移入派生目录内的自建文件夹：该文件夹没有外部身份，不在命中集合里
-    const innerFolder = await MongoDatasetCollection.create({
-      name: 'inner',
-      type: DatasetCollectionTypeEnum.folder,
-      teamId: users.owner.teamId,
-      tmbId: dirOwner.tmbId,
-      datasetId: dataset._id,
-      parentId: idByApiFileId.get('doc#dir')
+    const root = await createCollection({
+      name: 'independent',
+      type: DatasetCollectionTypeEnum.apiFile,
+      apiFileId: 'independent'
     });
-    await MongoDatasetCollection.updateOne(
-      { _id: idByApiFileId.get('doc') },
-      { $set: { parentId: innerFolder._id } }
-    );
 
     const response = await Call(deleteHandler, {
-      auth: dirOwner,
-      body: { datasetId: String(dataset._id), apiFileIds: ['doc'] }
+      auth: member,
+      body: { datasetId: String(dataset._id), apiFileIds: ['orphan', 'independent'] }
     });
 
     expect(response.code).toBe(200);
-    expect(
-      await MongoDatasetCollection.countDocuments({
-        datasetId: dataset._id,
-        apiFileId: { $in: ['doc', 'doc#dir', 'child'] }
-      })
-    ).toBe(0);
-    await expect(MongoDatasetCollection.findById(innerFolder._id).lean()).resolves.toBeNull();
+    await expect(MongoDatasetCollection.findById(orphan._id).lean()).resolves.toBeNull();
+    await expect(MongoDatasetCollection.findById(root._id).lean()).resolves.toBeNull();
+    await expect(MongoDatasetCollection.findById(collection._id).lean()).resolves.not.toBeNull();
   });
 
   it('still requires owner when the body was moved outside the derived folder', async () => {

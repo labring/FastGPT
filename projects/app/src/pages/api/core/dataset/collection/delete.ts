@@ -42,8 +42,8 @@ async function handler(req: ApiRequestProps) {
       return Promise.reject(CommonErrEnum.invalidParams);
     }
     const { teamId } = await parseHeaderCert({ req, authToken: true, authApiKey: true });
-    // 带子文档的文件会拆成「派生目录 + 正文」两条记录，子文档挂在目录下且有 apiFileSourceId 来源标记；
-    // 只按 apiFileId 命中正文会残留目录和子文档，必须同时按来源标记取出派生目录。
+    // apiFileId 可以标识远端文件或目录。带子文档的文件会生成「派生目录 + 正文」，
+    // 派生目录用 metadata.apiFileSourceId 关联远端 ID，必须一起命中才能删除完整子树。
     const matched = await MongoDatasetCollection.find(
       {
         teamId,
@@ -59,41 +59,49 @@ async function handler(req: ApiRequestProps) {
     if (matched.length === 0) {
       return Promise.reject(DatasetErrEnum.unExistCollection);
     }
-    // 集合所有权可以单独转移到正文而不转移父目录。只要有命中祖先负责删除整棵子树，
-    // 该节点就不再作为独立根要求 owner，否则目录 owner 无法按外部 ID 清理整棵树。
-    // 祖先链中间可能夹着无外部身份的自建目录，必须沿 parentId 向上补齐而不是只看直接父级；
-    // 正文真正移出命中子树时仍以正文自身为根，单有正文的调用者依旧会被拒绝。
     const matchedIds = new Set(matched.map((item) => String(item._id)));
-    const parentOf = new Map<string, string | null>(
+    if (matchedIds.size === 1) return [...matchedIds];
+
+    // 按本地 parentId 判断子树覆盖关系，不能使用移动后仍可能保留的远端 apiFileParentId。
+    // 每层批量补齐未命中的祖先，避免多个删除目标逐节点串行查库；已读和缺失父级均缓存。
+    const parentById = new Map<string, string | null>(
       matched.map((item) => [String(item._id), item.parentId ? String(item.parentId) : null])
     );
-    const isCoveredByMatchedAncestor = async (id: string) => {
-      // visited 防御异常 parentId 环，避免补齐祖先链时死循环或把节点误判为被自身覆盖
-      const visited = new Set([id]);
-      let parentId = parentOf.get(id) ?? null;
-      while (parentId) {
-        if (visited.has(parentId)) return false;
-        visited.add(parentId);
-        if (matchedIds.has(parentId)) return true;
-        if (!parentOf.has(parentId)) {
-          const ancestor = await MongoDatasetCollection.findOne(
-            { _id: parentId, teamId, datasetId },
-            'parentId'
-          ).lean();
-          parentOf.set(parentId, ancestor?.parentId ? String(ancestor.parentId) : null);
-        }
-        parentId = parentOf.get(parentId) ?? null;
+    let pendingIds = new Set(
+      [...parentById.values()].filter((id): id is string => id !== null && !parentById.has(id))
+    );
+    while (pendingIds.size > 0) {
+      const ancestors = await MongoDatasetCollection.find(
+        { _id: { $in: [...pendingIds] }, teamId, datasetId },
+        '_id parentId'
+      ).lean();
+      // 不存在或不属于当前知识库的父级视为断链，不能沿它继续查找其他团队或知识库。
+      for (const id of pendingIds) parentById.set(id, null);
+      for (const ancestor of ancestors) {
+        parentById.set(String(ancestor._id), ancestor.parentId ? String(ancestor.parentId) : null);
       }
-      return false;
-    };
-
-    const roots: string[] = [];
-    for (const item of matched) {
-      const id = String(item._id);
-      if (!(await isCoveredByMatchedAncestor(id))) roots.push(id);
+      pendingIds = new Set(
+        ancestors.flatMap((ancestor) => {
+          const parentId = ancestor.parentId ? String(ancestor.parentId) : null;
+          return parentId && !parentById.has(parentId) ? [parentId] : [];
+        })
+      );
     }
+
+    // 仅保留没有命中祖先的删除入口：目录 owner 可以删除整棵子树，无需重复校验子文件 owner；
+    // 正文已移出该子树时仍保留为独立入口，后续必须通过它自己的 owner 校验。
+    const roots = [...matchedIds].filter((id) => {
+      const visited = new Set([id]);
+      let parentId = parentById.get(id);
+      while (parentId && !visited.has(parentId)) {
+        if (matchedIds.has(parentId)) return false;
+        visited.add(parentId);
+        parentId = parentById.get(parentId);
+      }
+      return true;
+    });
     // 异常父子环会让所有命中项互相覆盖，退回全部命中项，宁可多重鉴权也不误删
-    return roots.length ? roots : matched.map((item) => String(item._id));
+    return roots.length ? roots : [...matchedIds];
   })();
 
   // 删除是 owner 专属操作：仅集合所有者（collection.tmbId）可删，持有 manage/write 的协作者不可删。
