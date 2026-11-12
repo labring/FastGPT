@@ -165,8 +165,25 @@ const McpToolSetForm = ({
   const [headerSecret, setHeaderSecret] = useState<StoreSecretValueType>(
     initialConfig.headerSecret ?? {}
   );
+  const lastConfigKeyRef = useRef(
+    JSON.stringify({ url: initialConfig.url, headerSecret: initialConfig.headerSecret })
+  );
   const isMountedRef = useRef(true);
   const parseGenerationRef = useRef(0);
+
+  useEffect(() => {
+    const configKey = JSON.stringify({
+      url: initialConfig.url,
+      headerSecret: initialConfig.headerSecret
+    });
+    if (configKey === lastConfigKeyRef.current) return;
+
+    lastConfigKeyRef.current = configKey;
+    parseGenerationRef.current += 1;
+    setUrl(initialConfig.url);
+    setHeaderSecret(initialConfig.headerSecret ?? {});
+  }, [initialConfig]);
+
   useEffect(() => {
     isMountedRef.current = true;
 
@@ -186,6 +203,10 @@ const McpToolSetForm = ({
         // 表单保持挂载；URL 或鉴权变更后，旧请求不得覆盖当前配置。
         if (!isMountedRef.current || generation !== parseGenerationRef.current) return;
 
+        lastConfigKeyRef.current = JSON.stringify({
+          url: url.trim(),
+          headerSecret
+        });
         const savedDescriptions = new Map(
           initialConfig.toolList.map((tool) => [tool.name, tool.description])
         );
