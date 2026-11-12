@@ -1,4 +1,5 @@
 import { JSDOM } from 'jsdom';
+import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import React, { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -36,6 +37,10 @@ vi.mock('@fastgpt/web/hooks/useToast', () => ({ useToast: () => ({ toast: mocks.
 vi.mock('@fastgpt/web/hooks/useSafeTranslation', () => ({
   useSafeTranslation: () => ({ t: mocks.t })
 }));
+
+vi.mock('next/router', () => ({ useRouter: () => ({ query: {}, replace: vi.fn() }) }));
+vi.mock('next-i18next', () => ({ useTranslation: () => ({ t: mocks.t }) }));
+vi.mock('@fastgpt/web/hooks/useSystem', () => ({ useSystem: () => ({ isPc: true }) }));
 
 const team = '100000000000000000000001',
   a = '200000000000000000000001',
@@ -104,7 +109,10 @@ describe('useUsageFilterController', () => {
   };
 
   beforeEach(async () => {
-    dom = new JSDOM('<!doctype html><div id="host"></div>', { url: 'http://localhost' });
+    dom = new JSDOM('<!doctype html><div id="host"></div>', {
+      url: 'http://localhost',
+      pretendToBeVisual: true
+    });
     vi.stubGlobal('window', dom.window);
     vi.stubGlobal('document', dom.window.document);
     vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
@@ -599,5 +607,58 @@ describe('useUsageFilterController', () => {
       status: 'error',
       title: 'CSV stream broken'
     });
+  });
+  it('keeps newest table rows when an old selection request finishes last', async () => {
+    let pagination: Pick<
+      ReturnType<typeof usePagination>,
+      'data' | 'total' | 'pageNum' | 'isLoading' | 'error'
+    >;
+    const Combined = () => {
+      controller = useUsageFilterController({ teamId: team, canManage: true, filters });
+      pagination = usePagination(controller.fetchUsages, {
+        params: controller.requestParams,
+        refreshDeps: [controller.queryKey]
+      });
+      return null;
+    };
+    let resolveOld!: (value: unknown) => void;
+    let resolveNew!: (value: unknown) => void;
+    mocks.getUserUsages.mockImplementationOnce(
+      () =>
+        new Promise((r) => {
+          resolveOld = r;
+        })
+    );
+    await act(async () => root.render(React.createElement(Combined)));
+    await flush();
+    expect(resolveOld).toBeTypeOf('function');
+    mocks.getUserUsages.mockImplementationOnce(
+      () =>
+        new Promise((r) => {
+          resolveNew = r;
+        })
+    );
+    await act(async () =>
+      controller.toggleItem({ id: b, name: 'Member B', status: TeamMemberStatusEnum.active })
+    );
+    await act(async () => {
+      await vi.waitFor(() => expect(resolveNew).toBeTypeOf('function'));
+    });
+    await act(async () => {
+      resolveNew({
+        list: [{ id: 'new-B' }],
+        total: 1,
+        context: contextFor({ type: 'member', ids: [b] })
+      });
+    });
+    await flush();
+    expect(pagination!.data).toEqual([{ id: 'new-B' }]);
+    await act(async () => {
+      resolveOld({ list: [{ id: 'old-all' }], total: 5, context: contextFor() });
+    });
+    await flush();
+    expect(controller.subjectFilter).toEqual({ type: 'member', ids: [b] });
+    expect(pagination!.data).toEqual([{ id: 'new-B' }]);
+    expect(pagination!).toMatchObject({ total: 1, pageNum: 1, isLoading: false, error: null });
   });
 });
