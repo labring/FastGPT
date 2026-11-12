@@ -1,3 +1,4 @@
+import { Types } from '../../../common/mongo';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { ModelScopeEnum } from '@fastgpt/global/core/ai/constants';
 import { NEW_MODEL_SORT_ORDER } from '@fastgpt/global/core/ai/model/order';
@@ -117,7 +118,10 @@ export const importSystemModels = async ({ config }: ParsedSystemModelsWithJsonB
               : { scope: ModelScopeEnum.system, model },
             update: isExistingModel
               ? getModelConfigUpdate(modelData)
-              : { $set: { ...modelData, sortOrder: NEW_MODEL_SORT_ORDER } },
+              : {
+                  $set: { ...modelData, sortOrder: NEW_MODEL_SORT_ORDER },
+                  $setOnInsert: { _id: new Types.ObjectId() }
+                },
             upsert: !isExistingModel
           }
         })),
