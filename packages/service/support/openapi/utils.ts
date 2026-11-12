@@ -30,7 +30,7 @@ export const resolveApiKeyScope = (record: { type?: unknown; appId?: unknown }):
 /**
  * 管理查询只面向已迁移的显式类型，不兼容迁移期间或滚动升级中旧实例写入的旧格式。
  * 迁移固定扫描上界之后新增的无 type 记录也不会自动补迁，需另行规范化后才能参与查询。
- * 这是有意保留的升级边界，运行期不承担多格式查询兼容。
+ * 本次需求已确认豁免自动迁移规范中的滚动升级查询兼容要求，运行期不承担多格式查询兼容。
  */
 export const getOpenApiTypeFilter = (type: ApiKeyTypeEnum): FilterQuery<OpenApiSchema> => ({
   type

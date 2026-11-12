@@ -17,7 +17,7 @@ upgradeTags:
 - 新增 `SHOW_OUTLINK_BRAND`：未配置 `PRO_URL` 时固定为 `true`；接入 Pro 后默认 `false`，可设为 `true` 启用品牌展示。前端 `show_outlink_brand` 由服务端环境派生，覆盖 `config.json` 中的同名配置。
 - 商业版新增模型下架提醒短信模板 `auth.sms.MODEL_DEPRECATION`；当前短信统一使用该中文模板，不按用户语言选择，`auth.sms.MODEL_DEPRECATION_EN` 配置暂不生效。启用短信提醒前需在管理台配置中文模板 ID。
 - **插件服务部署**：Docker Compose 模板补齐 `fastgpt-plugin` 的 `FASTGPT_BASE_URL=http://fastgpt-app:3000`，将 `MONGODB_URI` 指向独立的 `fastgpt-plugin` 数据库，并显式设置 `DB_MAX_LINK=100`，避免与主库集合混用；自定义部署应填写插件容器可访问的主服务地址；若插件容器日志出现反向上传文件 `401`，优先核对该地址，修正后重建插件容器并重试工具。已有部署替换模板前应核对原插件库，保留已使用的独立库连接；若需切换数据库，先备份并迁移既有插件数据。
-- 默认部署的对象存储改为 RustFS，已有部署可继续使用原存储，如需切换请参考 [MinIO 迁移到 RustFS](/self-host/docker_minio_to_rustfs)。
+- 默认部署的对象存储改为 RustFS，已有部署可继续使用原存储，如需切换请参考 [MinIO 迁移到 RustFS](/zh-CN/self-host/docker_minio_to_rustfs)。
 
 - **内容审核（Moderation）插件化迁移**：旧版商业版内置的百度文本审核（`censor.BAIDU_TEXT_CENSOR_CLIENTID` / `censor.BAIDU_TEXT_CENSOR_CLIENTSECRET`）、自定义审核地址（`censor.customCensorURL`）以及单模型配置中的 `censor` 开关已废弃，统一升级为由 `fastgpt-plugin` 托管的 `moderation` 插件体系。
   - 原百度审核用户请前往 **管理后台 > 内容审核 > 审核策略配置**，配置并启用官方「百度内容安全（`baidu`）」插件。
@@ -25,6 +25,8 @@ upgradeTags:
   - 详细的新旧版本对比、配置映射与开发步骤见 [内容审核升级与迁移指南](/self-host/migration/content-moderation)。
 
 ### 镜像更新
+
+本版本仍在开发中，镜像 tag 在正式发布时补充。
 
 ### 升级脚本
 

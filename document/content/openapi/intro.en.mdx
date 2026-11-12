@@ -1,13 +1,15 @@
 ---
-title: "API getting started: make your first request"
+title: 'API getting started: make your first request'
 description: Configure a service address, member API key, and application ID, then call a published application.
 ---
 
 {/* Preserve incoming bookmarks for reorganized sections. */}
+
 <span id="api-reference-addresses" />
 <span id="next-steps" />
 
 {/* Preserve incoming bookmarks for reorganized sections. */}
+
 <span id="api-documentation-url" />
 <span id="cloud-api-documentation-url" />
 <span id="usage-notes" />
@@ -25,10 +27,12 @@ Prepare a debugged, published application and available model quota, then create
 1. **Account → API Keys**: manage personal keys for the current member (visible to members granted the **Create API Keys** permission under **Account → Team management → Permissions**).
 2. **Studio → Target App → Publish Channels → API Access**: switch between **App keys** (FastGPT 4.18.0 or later) and **Personal keys**.
 
-| Type | Scope | Management |
-| --- | --- | --- |
-| App key | Chat and chat management endpoints for its bound app, including chat logs, chat files, and Sandbox files | App administrators view, create, and manage all keys on the same app |
-| Personal key | Team resources accessible to the owning member on endpoints that accept API keys | Members manage their own keys |
+Legacy keys that store an `appId` remain personal keys. That ID is only the default App for `chat/completions`; the request body or SDK suffix can override it, and the owning member’s permissions still apply. Only explicitly created App keys enforce the App binding described below.
+
+| Type         | Scope                                                                                                    | Management                                                           |
+| ------------ | -------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| App key      | Chat and chat management endpoints for its bound app, including chat logs, chat files, and Sandbox files | App administrators view, create, and manage all keys on the same app |
+| Personal key | Team resources accessible to the owning member on endpoints that accept API keys                         | Members manage their own keys                                        |
 
 An app key grants access independently of its owning member's app permissions as long as the key, member, team, and bound app remain valid. Personal keys support `authProxy` when enabled by the team owner (FastGPT >= v4.15.0; see [identity proxy](/en/openapi/identity-proxy)), while app keys identify external users via `customUid`. When the team has an active subscription usage plan, you can configure **Max usage points** and **Expiration time** when creating or editing a key. Store keys on a trusted server or in a secret manager.
 
@@ -52,12 +56,12 @@ EOF
 
 A successful call returns JSON. Plain-text output is in `choices[0].message.content`, and `id` identifies the conversation. Content depends on the published application; parse multimodal or detailed results according to the current generated contract. Inspect `error` and the business result. Use usage records for billing information.
 
-| Symptom | Check |
-| --- | --- |
-| Authentication or permission error | Key, team, member status, and resource permissions |
-| Invalid application ID | Complete `appId` and access to the selected resource |
-| 404 | FastGPT instance address and `/api/v2/chat/completions` path |
-| Model or quota failure | Application model settings, service status, and available quota |
+| Symptom                            | Check                                                           |
+| ---------------------------------- | --------------------------------------------------------------- |
+| Authentication or permission error | Key, team, member status, and resource permissions              |
+| Invalid application ID             | Complete `appId` and access to the selected resource            |
+| 404                                | FastGPT instance address and `/api/v2/chat/completions` path    |
+| Model or quota failure             | Application model settings, service status, and available quota |
 
 ## Application selection and SDKs
 
@@ -70,19 +74,20 @@ import os
 from openai import OpenAI
 
 client = OpenAI(
-    api_key=os.environ["FASTGPT_API_KEY"],
-    base_url=f"{os.environ['FASTGPT_ORIGIN'].rstrip('/')}/api/v2"
+api_key=os.environ["FASTGPT_API_KEY"],
+base_url=f"{os.environ['FASTGPT_ORIGIN'].rstrip('/')}/api/v2"
 )
 
 response = client.chat.completions.create(
-    model="fastgpt",  # The published application selects the model.
-    messages=[{"role": "user", "content": "Introduce yourself"}],
-    stream=False,
-    extra_body={"appId": os.environ["FASTGPT_APP_ID"]}
+model="fastgpt", # The published application selects the model.
+messages=[{"role": "user", "content": "Introduce yourself"}],
+stream=False,
+extra_body={"appId": os.environ["FASTGPT_APP_ID"]}
 )
 
 print(response.choices[0].message.content)
-```
+
+````
 
   </Tab>
   <Tab value="Node.js SDK">
@@ -108,12 +113,12 @@ async function main() {
 }
 
 main().catch(console.error);
-```
+````
 
   </Tab>
 </Tabs>
 
-With an app key, omit `appId` and `sourceType` on supported chat and chat management endpoints (the server uses the bound app and fixes `sourceType` to `app`; select **app API key (no appId required)** in the generated API reference to inspect its parameters). With a personal key in third-party tools that accept only a single API key string, use the `<apiKey>-<appId>` composite format; FastGPT resolves target applications in order of request body `body.appId` -> Bearer header suffix -> legacy key-bound application.
+With an app key, omit `appId` and `sourceType` on supported chat and chat management endpoints (the server uses the bound app and fixes `sourceType` to `app`; select **app API key (no appId required)** in the generated API reference to inspect its parameters). With a personal key in third-party tools that accept only a single API key string, use the `<apiKey>-<appId>` composite format; FastGPT resolves target applications in order of request body `body.appId` -> Bearer header suffix -> default application saved on a legacy personal key.
 
 ### List sessions with an app key
 
