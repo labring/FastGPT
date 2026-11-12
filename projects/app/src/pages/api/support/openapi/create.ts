@@ -83,7 +83,12 @@ export async function handler(
     }
 
     const nanoid = getNanoid(Math.floor(Math.random() * 14) + 52);
-    const apiKey = `${global.systemEnv?.openapiPrefix || 'fastgpt'}-${nanoid}`;
+    const configuredPrefix = getSystemInstanceConfig().site.openApiPrefix.trim();
+    logInstanceConfigRead({
+      callsite: 'runtime.app.openapi.create',
+      fields: [{ path: 'site.openApiPrefix', value: configuredPrefix }]
+    });
+    const apiKey = `${configuredPrefix || 'fastgpt'}-${nanoid}`;
     const tagIds = tags
       ? await validateOpenApiTags({
           teamId,

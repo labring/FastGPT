@@ -8,7 +8,7 @@ import type {
 } from '@fastgpt/global/core/chat/type';
 import { getS3RawTextSource } from '../../common/s3/sources/rawText';
 import { isInternalAddress, PRIVATE_URL_TEXT } from '../../common/system/utils';
-import { S3Buckets, getStorageFileUrlExpiredDays } from '../../common/s3/config/constants';
+import { S3Buckets, getStorageFileUrlExpiredTime } from '../../common/s3/config/constants';
 import { S3Sources } from '../../common/s3/contracts/type';
 import path from 'path';
 import { getFileS3Key } from '../../common/s3/utils';
@@ -559,10 +559,7 @@ export const getFileContentByUrl = async ({
     onPdfParseUsage
   });
 
-  const replacedText = await replaceS3KeyToPreviewUrl(
-    rawText,
-    addDays(new Date(), getStorageFileUrlExpiredDays())
-  );
+  const replacedText = await replaceS3KeyToPreviewUrl(rawText, getStorageFileUrlExpiredTime());
   const resolvedFilename = sourceMetadata?.filename || filename;
 
   // Add to buffer

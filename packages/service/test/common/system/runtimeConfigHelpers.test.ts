@@ -8,6 +8,7 @@ import { describe, expect, it, vi } from 'vitest';
 type HelperModule = {
   getWorkflowMaxRunTimes: () => number;
   getStorageFileUrlExpiredDays: () => number;
+  getStorageFileUrlExpiredTime: (now?: Date) => Date;
   getServiceRequestMaxContentLength: () => number;
   getSystemMaxStringLength: () => number;
 };
@@ -23,6 +24,7 @@ const loadHelpersWithSnapshot = async (snapshot: Record<string, any>): Promise<H
   return {
     getWorkflowMaxRunTimes: workflow.getWorkflowMaxRunTimes,
     getStorageFileUrlExpiredDays: s3.getStorageFileUrlExpiredDays,
+    getStorageFileUrlExpiredTime: s3.getStorageFileUrlExpiredTime,
     getServiceRequestMaxContentLength: sys.getServiceRequestMaxContentLength,
     getSystemMaxStringLength: str.getSystemMaxStringLength
   };
@@ -84,5 +86,20 @@ describe('runtime config helpers (instance config only)', () => {
     // 0 是合法的"禁用/不限"取值（见 performance schema 注释），helper 不得用 || 吃掉
     const helpers = await loadHelpersWithSnapshot(makeSnapshot({ maxRunTimes: 0 }));
     expect(helpers.getWorkflowMaxRunTimes()).toBe(0);
+  });
+
+  it('computes file expiration in milliseconds so fractional days are not truncated to zero', async () => {
+    const base = new Date('2026-11-12T00:00:00.000Z');
+    const halfDayHelpers = await loadHelpersWithSnapshot(makeSnapshot({ fileUrlExpiredDays: 0.5 }));
+    expect(halfDayHelpers.getStorageFileUrlExpiredTime(base).toISOString()).toBe(
+      '2026-11-12T12:00:00.000Z'
+    );
+
+    const ninetyDayHelpers = await loadHelpersWithSnapshot(
+      makeSnapshot({ fileUrlExpiredDays: 90 })
+    );
+    expect(ninetyDayHelpers.getStorageFileUrlExpiredTime(base).getTime() - base.getTime()).toBe(
+      90 * 24 * 60 * 60 * 1000
+    );
   });
 });

@@ -18,6 +18,8 @@ export const S3Buckets = {
 /** 系统上传大小上限，单位 MB；0 表示未配置，与客户端使用相同的 1000MB 默认值。 */
 export const getSystemMaxFileSize = () => global.feConfigs.limit?.uploadFileMaxSize || 1000;
 
+const DAY_IN_MS = 24 * 60 * 60 * 1000;
+
 /** 文件短链有效期只读实例配置；启动加载前由 Schema 提供默认值。 */
 export const getStorageFileUrlExpiredDays = () => {
   const value = getSystemInstanceConfig().storage.fileUrlExpiredDays;
@@ -27,6 +29,13 @@ export const getStorageFileUrlExpiredDays = () => {
   });
   return value;
 };
+
+/**
+ * 按毫秒精度计算文件短链过期时间。
+ * `fileUrlExpiredDays` 允许配置小数天数（如 0.5 天 = 12 小时），不能使用 `addDays`（内部 `setDate` 会截断小数导致 0ms 立即过期）。
+ */
+export const getStorageFileUrlExpiredTime = (now: Date = new Date()): Date =>
+  new Date(now.getTime() + Math.round(getStorageFileUrlExpiredDays() * DAY_IN_MS));
 
 /** short-redirect 302 预签名地址临时有效期（秒）：请求期读快照，Admin 保存即生效。 */
 export const getStorageRedirectTtlSeconds = () => {
