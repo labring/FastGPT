@@ -3,6 +3,7 @@ import { ModelScopeEnum } from '@fastgpt/global/core/ai/constants';
 import { NEW_MODEL_SORT_ORDER } from '@fastgpt/global/core/ai/model/order';
 import { normalizeModelPricingForSave } from '@fastgpt/global/core/ai/model/pricing';
 import { type ParsedSystemModelsWithJsonBody } from '@fastgpt/global/openapi/core/ai/model/api';
+import { Types } from '../../../common/mongo';
 import { runModelTransaction } from './catalog/transaction';
 import { deleteModelRecords } from './cleanup';
 import { MongoAIModel } from './schema';
@@ -117,7 +118,11 @@ export const importSystemModels = async ({ config }: ParsedSystemModelsWithJsonB
               : { scope: ModelScopeEnum.system, model },
             update: isExistingModel
               ? getModelConfigUpdate(modelData)
-              : { $set: { ...modelData, sortOrder: NEW_MODEL_SORT_ORDER } },
+              : {
+                  $set: { ...modelData, sortOrder: NEW_MODEL_SORT_ORDER },
+                  // 与 create/insertMany 共用本进程 ObjectId 序列，避免同一秒内与 mongod 进程随机前缀混排导致 _id DESC 次序反转。
+                  $setOnInsert: { _id: String(new Types.ObjectId()) }
+                },
             upsert: !isExistingModel
           }
         })),
