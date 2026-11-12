@@ -140,11 +140,9 @@ const UsageDetail = ({ usage, onClose }: { usage: UsageListItemType; onClose: ()
                   {hasSTTBilling && (
                     <Td>
                       {item.sttBilling
-                        ? t(
-                            item.sttBilling.type === 'duration'
-                              ? 'account_usage:billing_duration'
-                              : 'account_usage:billing_tokens'
-                          )
+                        ? item.sttBilling.type === 'duration'
+                          ? t('account_usage:billing_duration')
+                          : t('account_usage:billing_tokens')
                         : '-'}
                     </Td>
                   )}

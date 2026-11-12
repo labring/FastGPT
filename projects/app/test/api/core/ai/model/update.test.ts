@@ -121,6 +121,34 @@ describe('admin settings model create/update api', () => {
     clearTeamModelCatalogCache();
   });
 
+  it.each([{}, { unitPrice: 0.2 }])(
+    'rejects untyped STT prices on create and update despite database read compatibility: %j',
+    async (pricing) => {
+      const modelData = {
+        ...buildLlmDocument(),
+        type: ModelTypeEnum.stt,
+        config: {},
+        pricing: { type: 'duration', unitPrice: 0.2 }
+      };
+      const existing = await insertSystemModel(modelData);
+      const create = await callApi({
+        handler: createModelApi,
+        body: { modelData: { ...modelData, model: 'invalid-stt', pricing } }
+      });
+      expect(create.error).toBeDefined();
+      const update = await callApi({
+        handler: updateModelApi,
+        body: { modelId: String(existing._id), modelData: { ...modelData, pricing } }
+      });
+      expect(update.error).toBeDefined();
+      expect(await MongoAIModel.countDocuments({})).toBe(1);
+      expect((await MongoAIModel.findById(existing._id).lean())?.pricing).toMatchObject({
+        type: 'duration',
+        unitPrice: 0.2
+      });
+    }
+  );
+
   it.each([
     {
       pricing: {

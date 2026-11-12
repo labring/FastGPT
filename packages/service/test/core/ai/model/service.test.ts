@@ -95,11 +95,14 @@ describe('model lifecycle', () => {
     expect((await MongoAIModel.findById(created.modelId).lean())?.pricing).toMatchObject(changed);
   });
 
-  it('rejects legacy STT pricing until the startup migration adds its type', async () => {
+  it('reads legacy STT database pricing without writing it back', async () => {
     const raw = { ...draft, type: ModelTypeEnum.stt, config: {}, pricing: { unitPrice: 0.2 } };
     const { insertedId } = await MongoAIModel.collection.insertOne(raw);
     const stored = await MongoAIModel.findById(insertedId).lean();
-    expect(() => formatDbModelToRuntimeModel(stored!, { fallbackProvider: true })).toThrow();
+    expect(formatDbModelToRuntimeModel(stored!, { fallbackProvider: true }).pricing).toEqual({
+      type: 'duration',
+      unitPrice: 0.2
+    });
     expect((await MongoAIModel.findById(insertedId).lean())?.pricing).toEqual({ unitPrice: 0.2 });
   });
 
@@ -213,13 +216,19 @@ describe('model lifecycle', () => {
       { model: 'newest', sortOrder: 3 },
       { model: 'original', sortOrder: 5 }
     ]);
-    // 不干预底层 ObjectId 分配，未显式配置默认模型时保持原有 `_id DESC` 回退顺序。
+    // Mongoose 与 bulk upsert 分配的 ObjectId 不保证按调用时间递增，以数据库真实排序为准。
+    const runtimeOrder = await MongoAIModel.find({ scope: ModelScopeEnum.system })
+      .sort({ _id: -1 })
+      .select({ _id: 1 })
+      .lean();
     expect(
       getCachedSystemModelHandle()
         ?.getSystemModels()
-        .find((item) => item.modelId === getCachedSystemModelHandle()?.getDefaultModelIds().llm)
-        ?.model
-    ).toBe('json-b');
+        .map(({ modelId }) => modelId)
+    ).toEqual(runtimeOrder.map(({ _id }) => String(_id)));
+    expect(getCachedSystemModelHandle()?.getDefaultModelIds().llm).toBe(
+      String(runtimeOrder[0]._id)
+    );
   });
 
   it('preserves stable identity and synchronizes an edited upstream identifier', async () => {
