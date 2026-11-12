@@ -177,9 +177,11 @@ export async function parseHeaderCert({
     return Promise.reject(ERROR_ENUM.unAuthorization);
   }
 
+  // 系统 root 代管进入处于注销冷静期的租户团队时需允许正常排查与管理，不受租户注销门禁阻断。
   const shouldAssertCancellation =
-    authType === AuthUserTypeEnum.apikey ||
-    (authType === AuthUserTypeEnum.token && !allowAccountCancellation);
+    !isRoot &&
+    (authType === AuthUserTypeEnum.apikey ||
+      (authType === AuthUserTypeEnum.token && !allowAccountCancellation));
   if (shouldAssertCancellation) {
     await assertCancellation({
       teamId: String(teamId),

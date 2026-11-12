@@ -10,23 +10,52 @@ import {
   Td,
   Flex,
   Box,
+  Button,
+  HStack,
   InputGroup,
   Input,
   InputLeftElement
 } from '@chakra-ui/react';
 import dayjs from 'dayjs';
+import { useRouter } from 'next/router';
+import { useQueryClient } from '@tanstack/react-query';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import DetailTeamModal from './components/DetailTeamModal';
-import { getTeams } from '@/web/admin/team/api';
+import { getTeams, putAdminSwitchTeam } from '@/web/admin/team/api';
 import BoxPageRoot from '@/components/admin/BoxContainer/PageRoot';
 import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import { accountTitleTextStyles } from '@/pageComponents/account/styles';
+import { useChatStore } from '@/web/core/chat/context/useChatStore';
+import { useUserStore } from '@/web/support/user/useUserStore';
 
 const TeamTable = () => {
   const { t } = useSafeTranslation();
+  const router = useRouter();
+  const queryClient = useQueryClient();
+  const { resetChatCache } = useChatStore();
+  const { initUserInfo } = useUserStore();
   const [search, setSearch] = useState<string>();
+  const [switchingTeamId, setSwitchingTeamId] = useState<string>();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  const { runAsync: onEnterTeam } = useRequest(
+    async (teamId: string) => {
+      setSwitchingTeamId(teamId);
+      await putAdminSwitchTeam({ teamId });
+      resetChatCache();
+      queryClient.clear();
+      await initUserInfo();
+      await router.push('/dashboard/agent');
+    },
+    {
+      onFinally: () => {
+        setSwitchingTeamId(undefined);
+      },
+      errorToast: t('common:user.team.Switch Team Failed')
+    }
+  );
 
   const {
     data: teams,
@@ -107,7 +136,18 @@ const TeamTable = () => {
                   {item.createTime ? dayjs(item.createTime).format('YYYY/MM/DD HH:mm:ss') : '-'}
                 </Td>
                 <Td>
-                  <DetailTeamModal teamId={item.id} />
+                  <HStack spacing={2}>
+                    <DetailTeamModal teamId={item.id} />
+                    <Button
+                      variant={'whitePrimary'}
+                      size={'sm'}
+                      isLoading={switchingTeamId === item.id}
+                      isDisabled={Boolean(switchingTeamId) && switchingTeamId !== item.id}
+                      onClick={() => onEnterTeam(item.id)}
+                    >
+                      {t('account_team:enter_team')}
+                    </Button>
+                  </HStack>
                 </Td>
               </Tr>
             ))}

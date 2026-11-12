@@ -90,3 +90,9 @@ export const authUserSession = async (key: string): Promise<SessionType> => {
   if (!data) return Promise.reject(ERROR_ENUM.unAuthorization);
   return data;
 };
+
+/** 删除单个登录会话，供团队切换等场景替换旧令牌时清理无用会话。 */
+export const delUserSession = async (sessionId?: string) => {
+  if (!sessionId) return;
+  await sessionCache.delete(sessionId);
+};

@@ -39,6 +39,17 @@ export const adminAuditLogMap = {
     typeLabel: i18nT('account_team:admin_update_team'),
     params: {} as { name?: string; teamName: string; newTeamName: string; newBalance: string }
   },
+  [AdminAuditEventEnum.ADMIN_SWITCH_TEAM]: {
+    content: i18nT('account_team:log_admin_switch_team'),
+    typeLabel: i18nT('account_team:admin_switch_team'),
+    params: {} as {
+      name?: string;
+      sourceTeamId: string;
+      targetTeamId: string;
+      targetTeamName: string;
+      ip?: string | null;
+    }
+  },
   [AdminAuditEventEnum.ADMIN_ADD_PLAN]: {
     content: i18nT('account_team:log_admin_add_plan'),
     typeLabel: i18nT('account_team:admin_add_plan'),
