@@ -50,7 +50,7 @@ export const createAgentLoopCoreRuntime = <TChildrenResponse = unknown>({
 
   return {
     ...runtime,
-    systemTools: createAgentLoopCoreSystemTools(systemTools),
+    systemTools: createAgentLoopCoreSystemTools(systemTools, toolRuntime.context),
     ...createAgentLoopCoreToolRuntime(toolRuntime),
     usagePush: pushUsages,
     emitEvent

@@ -330,6 +330,61 @@ describe('stream resume api', () => {
     expect(res.writableEnded).toBe(true);
   });
 
+  it('strips moderationRecords from flowNodeResponse when reader has no write permission', async () => {
+    vi.mocked(getChatGenerationStatuses).mockResolvedValue(
+      new Map([[chatId, ChatGenerateStatusEnum.generating]])
+    );
+    vi.mocked(MongoChat.findOne).mockReturnValue(
+      createFindOneResult({
+        hasBeenRead: false,
+        chatGenerateStatus: ChatGenerateStatusEnum.generating
+      })
+    );
+    vi.mocked(authChatTargetCrud).mockResolvedValue({
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: appId,
+      teamId,
+      tmbId: 'tmb-reader',
+      canWrite: false,
+      showCite: true
+    } as any);
+
+    const historyItems = [
+      createStreamEntry(
+        '1-0',
+        `event: flowNodeResponse\ndata: ${JSON.stringify({
+          nodeId: 'node-1',
+          moderationRecords: [{ verdict: 'block', content: 'toxic raw content' }],
+          moduleName: 'AI Chat'
+        })}\n\n`
+      ),
+      createStreamEntry('2-0', 'event: done\ndata: [DONE]\n\n')
+    ];
+
+    const { redis, call, blockingRedis } = setupRedisStreamMock({
+      historyItems,
+      liveResponses: []
+    });
+
+    const { chunks } = await invokeStreamingHandler(
+      {
+        teamId,
+        appId,
+        chatId
+      },
+      {
+        headers: {
+          accept: 'text/event-stream'
+        }
+      }
+    );
+
+    const joined = chunks.join('');
+    expect(joined).not.toContain('toxic raw content');
+    expect(joined).not.toContain('moderationRecords');
+    expect(joined).toContain('"nodeId":"node-1"');
+  });
+
   it('ends an existing resume connection when the lease disappears without a terminal stream event', async () => {
     vi.mocked(getChatGenerationStatuses)
       .mockResolvedValue(new Map([[chatId, ChatGenerateStatusEnum.done]]))

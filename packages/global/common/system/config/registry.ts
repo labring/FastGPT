@@ -188,25 +188,6 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
     ],
     options: { edition: 'all', secret: false, applyMode: 'live' }
   }),
-  // 内容审核只在 Pro 实现，社区版不展示相关凭据入口
-  ...createEntries({
-    section: 'security',
-    keys: ['censor.baiduClientId', 'censor.customCensorUrl'],
-    options: {
-      edition: 'pro',
-      secret: false,
-      applyMode: 'live'
-    }
-  }),
-  ...createEntries({
-    section: 'security',
-    keys: ['censor.baiduClientSecret'],
-    options: {
-      edition: 'pro',
-      secret: true,
-      applyMode: 'live'
-    }
-  }),
   ...createEntries({
     section: 'feature',
     keys: [

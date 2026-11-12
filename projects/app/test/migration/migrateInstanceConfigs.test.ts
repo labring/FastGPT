@@ -72,9 +72,8 @@ describe('migration buildLegacyDomainOverrides', () => {
     });
   });
 
-  it('maps legacy censor from fastgptPro document into security', () => {
-    // censor 的权威来源是 legacyPro 文档（SystemEnvSchema 从未定义过 censor），
-    // 迁移必须从 proConfig.censor 读取，而不是 systemEnv
+  it('ignores retired legacy censor from fastgptPro document while keeping security env fields', () => {
+    // 旧版内置 censor 已由内容审核插件策略取代，不再迁入 security 域
     const pro = buildLegacyProOverrides({
       censor: {
         BAIDU_TEXT_CENSOR_CLIENTID: 'bid',
@@ -83,15 +82,8 @@ describe('migration buildLegacyDomainOverrides', () => {
       }
     });
 
-    expect(pro.security).toMatchObject({
-      censor: {
-        baiduClientId: 'bid',
-        baiduClientSecret: 'bsecret',
-        customCensorUrl: 'https://censor.example.com'
-      }
-    });
+    expect(pro.security).toBeUndefined();
 
-    // 合并链路：pro 侧 censor 与开源侧 env 类 security 字段共存不互吞
     const sparse = buildSparseLegacyOverrides({
       feConfigs: {},
       systemEnv: { fileUrlWhitelist: ['https://cdn.example.com'] },
@@ -99,8 +91,8 @@ describe('migration buildLegacyDomainOverrides', () => {
         censor: { BAIDU_TEXT_CENSOR_CLIENTID: 'bid' }
       }
     });
-    expect(sparse.security).toMatchObject({
-      censor: { baiduClientId: 'bid' },
+    expect(sparse.security).toEqual({
+      checkExternalFile: true,
       fileUrlWhitelist: ['https://cdn.example.com']
     });
   });

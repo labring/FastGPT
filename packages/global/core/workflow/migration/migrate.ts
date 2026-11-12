@@ -86,7 +86,7 @@ export const migrateWorkflowToCurrent = (input: LegacyWorkflowDataInput): Canoni
             : Object.entries(config).map(([key, value]) => ({
                 key,
                 mode: isToolInputValueConfigured({
-                  input: { renderTypeList: [], value, defaultValue: undefined }
+                  input: { key, renderTypeList: [], value, defaultValue: undefined }
                 })
                   ? AgentToolInputModeEnum.manual
                   : AgentToolInputModeEnum.agentGenerated

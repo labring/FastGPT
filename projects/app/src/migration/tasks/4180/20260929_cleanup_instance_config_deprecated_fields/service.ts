@@ -17,8 +17,8 @@ export const deprecatedOverridePaths: Partial<
   Record<SystemInstanceConfigDomainKey, readonly (readonly string[])[]>
 > = {
   site: [['chineseRedirectUrl'], ['systemTitle']],
-  // 接口注册 IP 限流即强制执行，废弃实例级关闭开关。
-  security: [['useIpLimit']],
+  // 接口注册 IP 限流即强制执行，废弃实例级关闭开关；旧版内置文本审查已迁移为内容审核插件策略。
+  security: [['useIpLimit'], ['censor']],
   performance: [
     // 流式恢复采用固定系统策略，清理整个旧配置分支。
     ['streamResume'],

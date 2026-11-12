@@ -12,11 +12,6 @@ import type { SendInform2UserProps } from '@fastgpt/global/support/user/inform/t
 import { POST, plusRequest } from './plusRequest';
 import type { ProHealthResponse } from '@fastgpt/global/openapi/common/system/api';
 
-export type FastGPTProCensorResponse = {
-  code: number;
-  message?: string;
-};
-
 export type FastGPTProOutLinkRequest = {
   token: string;
   method?: string;
@@ -28,9 +23,6 @@ export type FastGPTProOutLinkRequest = {
 export type CreateParagraphTitleRequest = Omit<AdminLlmParagraphBody, 'modelId'> & {
   modelId?: string;
 };
-
-export const postCheckCensor = (data: { text: string }) =>
-  POST<FastGPTProCensorResponse>('/common/censor/check', data);
 
 export const postCreateUsage = (data: CreateUsageProps) =>
   POST<string>('/support/wallet/usage/createUsage', data);

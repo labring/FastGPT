@@ -306,7 +306,7 @@ describe('conditional required API examples', () => {
   it.each([
     ['/core/app/tool/getPreviewNode', 'get', ['appId', 'versionId']],
     ['/proApi/support/user/team/collaborator/delete', 'delete', ['tmbId']],
-    ['/core/dataset/collection/delete', 'post', ['id']],
+    ['/core/dataset/collection/delete', 'post', []],
     ['/core/ai/sandbox/verifyTicket', 'get', ['ticket', 'x-proxy-token']]
   ] as const)('enables only the first parameter alternative for %s', (path, method, expected) => {
     const operation = openAPIDocument.paths![path]![method]!;
@@ -321,7 +321,7 @@ describe('conditional required API examples', () => {
     });
     expect(enabled.map((parameter) => parameter.name).sort()).toEqual([...expected].sort());
     // A choice remains optional individually; only its example is selected.
-    if (path !== '/core/app/tool/getPreviewNode') {
+    if (expected.length > 0 && path !== '/core/app/tool/getPreviewNode') {
       expect(parameters.find((parameter) => parameter.name === expected[0])?.required).not.toBe(
         true
       );

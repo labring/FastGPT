@@ -84,6 +84,8 @@ const ADMIN_MENU_I18N_KEYS = {
   menu_setting_security: 'admin:menu_setting_security',
   menu_setting_limits: 'admin:menu_setting_limits',
   menu_setting_providers: 'admin:menu_setting_providers',
+  menu_moderation: 'admin:menu_moderation',
+  menu_moderation_policy: 'admin:menu_moderation_policy',
   menu_audit_log: 'admin:menu_audit_log'
 } as const;
 
@@ -257,6 +259,18 @@ export const getAdminMenuList = (params: GetAdminMenuListParams): AdminMenuItem[
         {
           label: lbl('menu_setting_providers', '外部提供商'),
           value: '/admin/settings/providers'
+        }
+      ]
+    },
+    {
+      icon: 'support/bill/payRecordLight',
+      label: lbl('menu_moderation', '内容审核'),
+      value: '/admin/moderation/policy',
+      isProOnly: true,
+      children: [
+        {
+          label: lbl('menu_moderation_policy', '审核策略配置'),
+          value: '/admin/moderation/policy'
         }
       ]
     },

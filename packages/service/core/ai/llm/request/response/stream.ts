@@ -49,7 +49,7 @@ export const createStreamResponse = async ({
 
   /** 统一读取、取消和异常捕获；各模式按原有顺序消费解析后的正文、思考和工具增量。 */
   const consumeStream = async (
-    onPart: (data: ReturnType<typeof parsePart>, part: ChatCompletionChunk) => void
+    onPart: (data: ReturnType<typeof parsePart>, part: ChatCompletionChunk) => void | Promise<void>
   ) => {
     try {
       for await (const part of readStream()) {
@@ -60,7 +60,10 @@ export const createStreamResponse = async ({
           break;
         }
 
-        onPart(parsePart({ part, parseThinkTag: model.config.reasoning, retainDatasetCite }), part);
+        await onPart(
+          parsePart({ part, parseThinkTag: model.config.reasoning, retainDatasetCite }),
+          part
+        );
       }
     } catch (error: any) {
       // 包含读取和消费回调异常，先保留 parser 状态，再由上层决定是否抛出。
@@ -82,12 +85,12 @@ export const createStreamResponse = async ({
       const toolNames = new Set(tools.map((tool) => tool.function.name));
       let toolCallError: Error | undefined;
 
-      await consumeStream(({ reasoningContent, responseContent }, part) => {
+      await consumeStream(async ({ reasoningContent, responseContent }, part) => {
         if (reasoningContent) {
-          onReasoning?.({ text: reasoningContent });
+          await onReasoning?.({ text: reasoningContent });
         }
         if (responseContent) {
-          onStreaming?.({ text: responseContent });
+          await onStreaming?.({ text: responseContent });
         }
 
         const responseChoice = part.choices?.[0]?.delta;
@@ -177,17 +180,17 @@ export const createStreamResponse = async ({
       let startResponseWrite = false;
       let answer = '';
 
-      await consumeStream(({ reasoningContent, content, responseContent }) => {
+      await consumeStream(async ({ reasoningContent, content, responseContent }) => {
         answer += content;
 
         if (reasoningContent) {
-          onReasoning?.({ text: reasoningContent });
+          await onReasoning?.({ text: reasoningContent });
         }
 
         if (content) {
           if (startResponseWrite) {
             if (responseContent) {
-              onStreaming?.({ text: responseContent });
+              await onStreaming?.({ text: responseContent });
             }
           } else if (answer.length >= 3) {
             answer = answer.trimStart();
@@ -200,13 +203,13 @@ export const createStreamResponse = async ({
                 answer.indexOf('0:') !== -1 ? answer.indexOf('0:') : answer.indexOf('0：');
               answer = answer.substring(firstIndex + 2).trim();
 
-              onStreaming?.({ text: answer });
+              await onStreaming?.({ text: answer });
             } else if (/1(:|：)/.test(answer)) {
               // 1 表示工具调用，工具协议内容不应作为可见回答提前输出。
             } else {
               // 兼容模型未按 0/1 前缀输出时，当作普通文本直接展示。
               startResponseWrite = true;
-              onStreaming?.({ text: answer });
+              await onStreaming?.({ text: answer });
             }
           }
         }
@@ -217,7 +220,7 @@ export const createStreamResponse = async ({
       const { answer: llmAnswer, streamAnswer, toolCalls } = parsePromptToolCall(content);
 
       if (streamAnswer) {
-        onStreaming?.({ text: streamAnswer });
+        await onStreaming?.({ text: streamAnswer });
       }
 
       toolCalls?.forEach((call) => {
@@ -234,12 +237,12 @@ export const createStreamResponse = async ({
       };
     }
   } else {
-    await consumeStream(({ reasoningContent, responseContent }) => {
+    await consumeStream(async ({ reasoningContent, responseContent }) => {
       if (reasoningContent) {
-        onReasoning?.({ text: reasoningContent });
+        await onReasoning?.({ text: reasoningContent });
       }
       if (responseContent) {
-        onStreaming?.({ text: responseContent });
+        await onStreaming?.({ text: responseContent });
       }
     });
 

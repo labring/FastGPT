@@ -85,7 +85,7 @@ describe('marketplace web api', () => {
   it('fetches download URL for the selected version', async () => {
     fetchMock.mockResolvedValueOnce(mockJsonResponse('https://cdn.example.com/pkg.pkg'));
 
-    await expect(getDownloadURL('tool-a', '1.0.1')).resolves.toBe(
+    await expect(getDownloadURL({ toolId: 'tool-a', version: '1.0.1' })).resolves.toBe(
       'https://cdn.example.com/pkg.pkg'
     );
 

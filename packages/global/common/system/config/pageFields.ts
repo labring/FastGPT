@@ -108,11 +108,8 @@ export const adminConfigPageFieldsMap: Record<string, readonly string[]> = {
     'security.allowedOrigins',
     'security.skipFileTypeCheck',
     'security.checkExternalFile',
-    'security.censor.baiduClientId',
-    'security.censor.customCensorUrl',
     'security.workflowHttpNode.ignoreHttpsCertificate',
-    'security.fileUrlWhitelist',
-    'security.censor.baiduClientSecret'
+    'security.fileUrlWhitelist'
   ],
   '/admin/settings/limits': [
     'auth.openApiKeyMaxCount',

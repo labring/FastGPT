@@ -88,6 +88,7 @@
   "confirm_delete_chats": "{{n}}개의 대화 기록을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.",
   "confirm_delete_folder_tip": "이 폴더를 삭제하면 그 안의 모든 앱과 관련 대화 기록도 삭제됩니다.",
   "confirm_delete_tool": "이 도구를 삭제하시겠습니까?",
+  "confirm_uninstall_moderation": "이 콘텐츠 심사 플러그인을 제거해도 저장된 설정은 유지되며 마켓플레이스에서 다시 설치하여 복원할 수 있습니다. 제거하시겠습니까?",
   "confirm_uninstall_tool": "이 플러그인을 제거하면 이에 의존하는 앱이 정상적으로 작동하지 않을 수 있습니다. 신중하게 진행해 주세요.",
   "copilot_config_message": "현재 노드 설정 정보: \n코드 유형: {{codeType}} \n현재 코드: \\\\`\\\\`\\\\`{{codeType}} \n{{code}} \\\\`\\\\`\\\\` \n입력 파라미터: {{inputs}} \n출력 파라미터: {{outputs}}",
   "copilot_confirm_message": "원본 설정을 받아 현재 코드 구조와 입출력 파라미터를 파악했습니다. 최적화 요구사항을 설명해 주세요.",

@@ -59,11 +59,15 @@ describe('getAdminMenuList', () => {
 
     const menuLabels = menus.map((item) => item.label);
 
-    // 商业版必须包含商业化与子服务
+    // 商业版必须包含商业化、内容审核与子服务
     expect(menuLabels).toContain('商业化');
+    expect(menuLabels).toContain('内容审核');
     expect(menuLabels).toContain('子服务');
     expect(menuLabels).toContain('数据面板');
     expect(menuLabels).toContain('系统配置');
+
+    const moderationMenu = menus.find((item) => item.label === '内容审核');
+    expect(moderationMenu?.children?.map((c) => c.value)).toEqual(['/admin/moderation/policy']);
 
     // 验证商业化子菜单
     const commercialMenu = menus.find((item) => item.label === '商业化');

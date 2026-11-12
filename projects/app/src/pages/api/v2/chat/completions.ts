@@ -39,7 +39,8 @@ import { getUsageSourceByAuthType } from '@fastgpt/global/support/wallet/usage/t
 import {
   concatHistories,
   removeAIResponseCite,
-  removeEmptyUserInput
+  removeEmptyUserInput,
+  stripModerationRecordsFromNodeResponses
 } from '@fastgpt/global/core/chat/utils';
 import { updateApiKeyUsage } from '@fastgpt/service/support/openapi/tools';
 import { getRunningUserInfoByTmbId } from '@fastgpt/service/support/user/team/utils';
@@ -81,6 +82,7 @@ import {
 } from '@/service/core/workflow/nodeResponse';
 import { formatCompletionResponseContent } from '@/service/core/chat/utils';
 import {
+  createModerationFilteredWorkflowResponse,
   createWorkflowStreamResponseContext,
   type WorkflowStreamResponseContext
 } from '@fastgpt/service/core/workflow/utils/streamResponseContext';
@@ -145,6 +147,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       publishSource,
       apikey,
       responseAllData,
+      canReadModerationRecords,
       outLinkUserId = customUid,
       showRunningStatus,
       showSkillReferences: authShowSkillReferences
@@ -284,6 +287,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
     // Get runtimeNodes
     let runtimeNodes = storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes, interactive));
+    const entryVariables = variables;
     if (isPlugin) {
       // Assign values to runtimeNodes using variables
       runtimeNodes = updateWorkflowToolInputByVariables(runtimeNodes, variables);
@@ -327,6 +331,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       sourceName: sourceName || '',
       outLinkUid: outLinkUserId,
       userContent: workflowUserQuestion,
+      variables: entryVariables,
+      requestId:
+        typeof req.headers['x-request-id'] === 'string' ? req.headers['x-request-id'] : undefined,
       responseChatItemId: roundState.responseChatItemId,
       interactive,
       fixedTitle: pluginFixedTitle,
@@ -416,7 +423,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       retainDatasetCite: workflowRetainDatasetCite,
       showSkillReferences: finalShowSkillReferences,
       maxRunTimes: getWorkflowMaxRunTimes(),
-      workflowStreamResponse: streamResponseContext.responseWrite,
+      workflowStreamResponse: createModerationFilteredWorkflowResponse({
+        responseWrite: streamResponseContext.responseWrite,
+        canReadModerationRecords
+      }),
       responseAllData,
       responseDetail: showCite,
       nodeResponseWriteConfig: {
@@ -487,7 +497,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const feResponseData = filterWorkflowFinalResponseData({
       responseData: finalResponseData,
       responseAllData,
-      responseDetail: showCite
+      responseDetail: showCite,
+      canReadModerationRecords
     });
 
     if (stream) {
@@ -541,7 +552,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         outLinkUid,
         shareId,
         appName: app.name,
-        flowResponses: finalResponseData,
+        flowResponses: stripModerationRecordsFromNodeResponses(finalResponseData),
         chatId: saveChatId
       });
       addOutLinkUsage({
@@ -646,6 +657,7 @@ const authShareChat = async ({
     app,
     apikey: '',
     authType,
+    canReadModerationRecords: false,
     // 工作流工具的分享运行需要把完整节点链路返回给运行面板；普通对话仍按公开字段过滤。
     responseAllData: app.type === AppTypeEnum.workflowTool,
     showCite,

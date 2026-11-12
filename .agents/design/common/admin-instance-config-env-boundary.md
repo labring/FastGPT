@@ -1076,7 +1076,7 @@ Server、Agent Sandbox Proxy 和 IDE Agent 的运行时变量。为了避免“�
 
 ### 13.6 逐字段版本、表单与页面映射
 
-本表逐项覆盖注册表的 **200 个配置叶子**，不使用通配符或虚构的聚合字段。字段定义与默认值以 `schemas/*.ts` 为准，版本、敏感项和 SaaS 显示条件以 `registry.ts` 为准；页面归属与 `pageFields.ts`、实际表单保持一致。支付宝仅使用 V2 gateway，未被支付、查询和退款调用的 V3 endpoint 已移除，历史覆盖项由可重入清理迁移删除。
+本表逐项覆盖注册表的 **197 个配置叶子**，不使用通配符或虚构的聚合字段。字段定义与默认值以 `schemas/*.ts` 为准，版本、敏感项和 SaaS 显示条件以 `registry.ts` 为准；页面归属与 `pageFields.ts`、实际表单保持一致。支付宝仅使用 V2 gateway，未被支付、查询和退款调用的 V3 endpoint 已移除；旧版商业内置文本审查（`security.censor.*`）已由内容审核插件策略体系（`/admin/moderation/policy`）取代，历史覆盖项由可重入清理迁移删除。
 
 - 社区版／商业版的勾选表示配置 API 的读写权限；商业版按是否配置 `PRO_URL` 判定，不依赖 License 是否激活。
 - “仅 SaaS 显示”表示 `ENABLE_SAAS_ADMIN_CONFIG=true` 才显示对应控件，**不收紧商业版 API 权限**。标为“仅 API”的字段当前没有新表单，开启显示开关也不会产生控件。
@@ -1172,12 +1172,9 @@ Server、Agent Sandbox Proxy 和 IDE Agent 的运行时变量。为了避免“�
 | `security.maxLoginSession` | 最大登录会话数 (Max Sessions) | ✅ | ✅ | — | — | 可编辑：`/admin/settings/auth` |
 | `security.allowedOrigins` | 允许的跨域来源 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/security` |
 | `security.skipFileTypeCheck` | 上传文件类型检查 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/security` |
-| `security.censor.baiduClientId` | 百度内容审查 ClientId | — | ✅ | — | — | 可编辑：`/admin/settings/security` |
-| `security.censor.customCensorUrl` | 自定义内容审查服务地址 | — | ✅ | — | — | 可编辑：`/admin/settings/security` |
 | `security.workflowHttpNode.ignoreHttpsCertificate` | HTTP 节点忽略 HTTPS 证书校验 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/security` |
 | `security.checkExternalFile` | 检查外部文件（关闭时保留名单） | ✅ | ✅ | — | — | 可编辑：`/admin/settings/security` |
 | `security.fileUrlWhitelist` | 聊天及工作流输入文件域名白名单（开关开启时显示） | ✅ | ✅ | — | — | 可编辑：`/admin/settings/security` |
-| `security.censor.baiduClientSecret` | 百度内容审查 ClientSecret | — | ✅ | — | ✅ | 可编辑：`/admin/settings/security` |
 
 #### 功能（feature）
 

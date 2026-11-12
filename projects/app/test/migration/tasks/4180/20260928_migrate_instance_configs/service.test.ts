@@ -350,32 +350,35 @@ describe('applyInstanceConfigMigration (field-level backfill)', () => {
 
   it('backfills nested missing leaves and treats arrays as atomic values', async () => {
     await MongoSystemInstanceConfig.create({
-      domain: 'security',
+      domain: 'auth',
       schemaVersion: 1,
       revision: 1,
-      overrides: { censor: { baiduClientId: 'admin-id' }, fileUrlWhitelist: [] }
+      overrides: {
+        sso: { title: 'Admin SSO' },
+        fastLogin: []
+      }
     });
 
     await applyInstanceConfigMigration({
       overrides: {
-        security: {
-          censor: { baiduClientId: 'env-id', customCensorUrl: 'https://censor.example.com' },
-          fileUrlWhitelist: ['https://cdn.example.com'],
-          skipFileTypeCheck: true
+        auth: {
+          sso: { title: 'Env SSO', autoLogin: true },
+          fastLogin: [{ key: 'sso', authUrl: 'https://sso.example.com' }],
+          wecomLoginAutoRedirect: true
         }
       },
       logger
     });
 
-    const doc = await MongoSystemInstanceConfig.findOne({ domain: 'security' }).lean();
+    const doc = await MongoSystemInstanceConfig.findOne({ domain: 'auth' }).lean();
     // 嵌套对象逐叶子补缺：已有叶子保持原值，缺失叶子补写
-    expect(doc?.overrides.censor).toEqual({
-      baiduClientId: 'admin-id',
-      customCensorUrl: 'https://censor.example.com'
+    expect(doc?.overrides.sso).toEqual({
+      title: 'Admin SSO',
+      autoLogin: true
     });
     // 数组按原子值处理：管理员显式清空后不会被迁移重新填回
-    expect(doc?.overrides.fileUrlWhitelist).toEqual([]);
-    expect(doc?.overrides.skipFileTypeCheck).toBe(true);
+    expect(doc?.overrides.fastLogin).toEqual([]);
+    expect(doc?.overrides.wecomLoginAutoRedirect).toBe(true);
   });
 
   it('does not touch a domain when nothing is missing (no revision bump)', async () => {

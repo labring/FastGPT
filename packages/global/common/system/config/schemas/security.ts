@@ -1,11 +1,5 @@
 import z from 'zod';
-import { positiveInteger, textWithDefault, urlWithDefault } from './primitives';
-
-const CensorConfigSchema = z.strictObject({
-  baiduClientId: textWithDefault(),
-  baiduClientSecret: textWithDefault(),
-  customCensorUrl: urlWithDefault()
-});
+import { positiveInteger } from './primitives';
 
 const WorkflowHttpNodeSecuritySchema = z.strictObject({
   ignoreHttpsCertificate: z.boolean().default(false)
@@ -20,7 +14,6 @@ export const SecurityConfigSchema = z.strictObject({
   allowedOrigins: z.array(z.string().min(1).max(2048)).default([]),
   skipFileTypeCheck: z.boolean().default(false),
   checkExternalFile: z.boolean().default(false),
-  censor: CensorConfigSchema.prefault({}),
   workflowHttpNode: WorkflowHttpNodeSecuritySchema.prefault({}),
   // 旧名单没有条数上限；限制条数会让迁移净化器删除整个名单并关闭外链校验。
   // 保留逐项格式校验，避免升级后丢失既有访问限制。

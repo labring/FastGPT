@@ -301,4 +301,27 @@ describe('cleanupInstanceConfigDeprecatedFields (integration)', () => {
     const verification = await verifyInstanceConfigDeprecatedFields();
     expect(verification.remainingDocuments).toEqual([]);
   });
+
+  it('removes retired security.censor subtree while preserving valid security overrides', async () => {
+    await seedDirtyDoc({
+      domain: 'security',
+      revision: 1,
+      overrides: {
+        checkInternalIp: true,
+        censor: {
+          baiduClientId: 'legacy-id',
+          baiduClientSecret: 'legacy-secret',
+          customCensorUrl: 'https://censor.example.com'
+        }
+      }
+    });
+
+    const result = await cleanupInstanceConfigDeprecatedFields({ logger });
+    expect(result.updatedDomains).toEqual(['security']);
+    expect(result.removedFieldCount).toBe(1);
+
+    const doc = await MongoSystemInstanceConfig.findOne({ domain: 'security' }).lean();
+    expect(doc?.overrides).toEqual({ checkInternalIp: true });
+    expect((await verifyInstanceConfigDeprecatedFields()).remainingDocuments).toEqual([]);
+  });
 });

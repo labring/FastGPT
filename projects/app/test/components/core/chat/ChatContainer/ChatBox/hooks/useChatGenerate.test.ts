@@ -30,6 +30,11 @@ import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/cons
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import type { UserChatSelectType } from '@fastgpt/global/core/chat/input/type';
 import { AuxiliaryGenerationEventEnum } from '@fastgpt/global/core/ai/auxiliaryGeneration/constants';
+import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
+import {
+  MODERATION_BLOCKED_ERROR_MESSAGE,
+  MODERATION_ERROR_BLOCKED_MESSAGE
+} from '@fastgpt/global/core/plugin/moderation/constants';
 import { ChatAgentConfigFormDataSchema } from '@fastgpt/global/core/ai/auxiliaryGeneration/type';
 import type { generatingMessageProps } from '@/components/core/chat/ChatContainer/type';
 import { createStreamFetchError, type streamResumeFetch } from '@/web/common/api/fetch';
@@ -1114,4 +1119,64 @@ describe('useChatGenerate.sendPrompt', () => {
       expect(readChatInputDraft(identity)?.text).toBe('submitted');
     }
   );
+
+  it.each([MODERATION_BLOCKED_ERROR_MESSAGE, MODERATION_ERROR_BLOCKED_MESSAGE])(
+    'shows a warning toast, rolls back optimistic messages, and restores input when entry moderation blocks: %s',
+    async (moderationMessage) => {
+      mocks.start.mockRejectedValueOnce(
+        createStreamFetchError({
+          error: {
+            statusText: ChatErrEnum.chatEntryModerationBlocked,
+            message: moderationMessage
+          },
+          fallbackMessage: 'Error',
+          responseText: ''
+        })
+      );
+
+      await render();
+      await edit('甲基苯丙胺', [file]);
+      await send({ text: '甲基苯丙胺' });
+
+      expect(mocks.start).toHaveBeenCalledOnce();
+      expect(mocks.toast).toHaveBeenCalledWith({
+        title: moderationMessage,
+        status: 'warning'
+      });
+      expect(records).toEqual([]);
+      expect(input.chatForm.getValues('input')).toBe('甲基苯丙胺');
+      expect(input.chatForm.getValues('files')[0].key).toBe(file.key);
+      expect(readChatInputDraft(identity)?.text).toBe('甲基苯丙胺');
+      expect(mocks.finishStatus).toHaveBeenCalledWith(
+        expect.objectContaining({
+          status: ChatGenerateStatusEnum.done,
+          finishedInActiveChat: true
+        })
+      );
+    }
+  );
+
+  it('preserves persisted chat round and sets errorMsg when post-persistence moderation fails with empty responseText', async () => {
+    mocks.start.mockRejectedValueOnce(
+      createStreamFetchError({
+        error: {
+          statusText: 'error',
+          message: MODERATION_BLOCKED_ERROR_MESSAGE
+        },
+        fallbackMessage: 'Error',
+        responseText: ''
+      })
+    );
+
+    await render();
+    await edit('build a workflow', [file]);
+    await send({ text: 'build a workflow' });
+
+    expect(mocks.start).toHaveBeenCalledOnce();
+    expect(records).toHaveLength(2);
+    expect(records[1]).toMatchObject({
+      status: 'finish',
+      errorMsg: MODERATION_BLOCKED_ERROR_MESSAGE
+    });
+  });
 });

@@ -9,9 +9,17 @@ import { SandboxErrEnum } from '@fastgpt/global/common/error/code/sandbox';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { EventEmitter } from 'node:events';
-import { ChatGeneratingConflictError } from '@fastgpt/global/core/chat/error';
+import {
+  ChatEntryModerationError,
+  ChatGeneratingConflictError,
+  isChatEntryModerationError
+} from '@fastgpt/global/core/chat/error';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 import { S3ErrEnum } from '@fastgpt/global/common/error/code/s3';
+import {
+  MODERATION_BLOCKED_ERROR_MESSAGE,
+  MODERATION_ERROR_BLOCKED_MESSAGE
+} from '@fastgpt/global/core/plugin/moderation/constants';
 
 vi.unmock('@fastgpt/service/common/response');
 
@@ -69,6 +77,34 @@ describe('chat generating conflict recovery target', () => {
       }).data
     ).toBeNull();
   });
+
+  it.each([MODERATION_BLOCKED_ERROR_MESSAGE, MODERATION_ERROR_BLOCKED_MESSAGE])(
+    'marks ChatEntryModerationError with chatEntryModerationBlocked in JSON and SSE while keeping ordinary moderation errors distinct: %s',
+    (moderationMessage) => {
+      const entryError = new ChatEntryModerationError(moderationMessage);
+      const res = { status: vi.fn().mockReturnThis(), json: vi.fn() };
+      jsonRes(res as unknown as Parameters<typeof jsonRes>[0], { code: 500, error: entryError });
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          statusText: ChatErrEnum.chatEntryModerationBlocked,
+          message: moderationMessage
+        })
+      );
+
+      const ssePayload = JSON.parse(getSseErrorResponse(entryError).data);
+      expect(ssePayload).toMatchObject({
+        statusText: ChatErrEnum.chatEntryModerationBlocked,
+        message: moderationMessage
+      });
+      expect(isChatEntryModerationError(ssePayload)).toBe(true);
+
+      const postPersistError = new UserError(moderationMessage);
+      const postPersistSsePayload = JSON.parse(getSseErrorResponse(postPersistError).data);
+      expect(postPersistSsePayload).toEqual({ message: moderationMessage });
+      expect(isChatEntryModerationError(postPersistSsePayload)).toBe(false);
+    }
+  );
 });
 
 function buildZodError() {
