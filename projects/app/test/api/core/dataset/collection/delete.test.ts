@@ -286,6 +286,68 @@ describe('delete collection permission', () => {
   });
 });
 
+describe('delete collection by body locating mode', () => {
+  beforeEach(() => {
+    mockDeleteDatasetFilesByKeys.mockReset();
+    mockDeleteDatasetFilesByKeys.mockResolvedValue(undefined);
+  });
+
+  const fixture = async () => {
+    const users = await getFakeUsers(1);
+    const member = users.members[0];
+    const { dataset, collection } = await createDatasetWithCollection({
+      teamId: users.owner.teamId,
+      datasetTmbId: member.tmbId,
+      collectionTmbId: member.tmbId
+    });
+    const child = await MongoDatasetCollection.create({
+      name: 'child',
+      type: DatasetCollectionTypeEnum.file,
+      teamId: users.owner.teamId,
+      tmbId: member.tmbId,
+      datasetId: dataset._id,
+      parentId: collection._id
+    });
+    return { member, dataset, collection, child };
+  };
+
+  it('deletes a single collection and its subtree by body.id', async () => {
+    const { member, collection, child } = await fixture();
+
+    const response = await Call(deleteHandler, {
+      auth: member,
+      body: { id: String(collection._id) }
+    });
+
+    expect(response.code).toBe(200);
+    await expect(MongoDatasetCollection.findById(collection._id).lean()).resolves.toBeNull();
+    await expect(MongoDatasetCollection.findById(child._id).lean()).resolves.toBeNull();
+  });
+
+  it('still deletes by the deprecated query.id without a body', async () => {
+    const { member, collection, child } = await fixture();
+
+    const response = await Call(deleteHandler, {
+      auth: member,
+      query: { id: String(collection._id) }
+    });
+
+    expect(response.code).toBe(200);
+    await expect(MongoDatasetCollection.findById(collection._id).lean()).resolves.toBeNull();
+    await expect(MongoDatasetCollection.findById(child._id).lean()).resolves.toBeNull();
+  });
+
+  it('rejects a body without any locating field', async () => {
+    const { member, collection } = await fixture();
+
+    const response = await Call(deleteHandler, { auth: member, body: {} });
+
+    expect(response.code).not.toBe(200);
+    expect(response.error).toBeInstanceOf(ApiRequestInputParseError);
+    await expect(MongoDatasetCollection.findById(collection._id).lean()).resolves.not.toBeNull();
+  });
+});
+
 describe('delete collection by apiFileId', () => {
   beforeEach(() => {
     mockDeleteDatasetFilesByKeys.mockReset();

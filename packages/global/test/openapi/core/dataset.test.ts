@@ -175,6 +175,42 @@ describe('Dataset OpenAPI contracts', () => {
     ).toBeUndefined();
   });
 
+  it('documents delete collection as exclusive body branches and deprecates query.id', () => {
+    const operation = openAPIDocument.paths?.['/core/dataset/collection/delete']?.post;
+    expect(operation?.['x-required-parameter-alternatives']).toEqual([
+      [{ in: 'body', name: 'id' }],
+      [{ in: 'body', name: 'collectionIds' }],
+      [
+        { in: 'body', name: 'datasetId' },
+        { in: 'body', name: 'apiFileIds' }
+      ]
+    ]);
+
+    const body = operation?.requestBody;
+    if (!body || '$ref' in body) throw new Error('Unexpected body reference');
+    const media = body.content['application/json'];
+    const schema = media.schema;
+    if (!schema || '$ref' in schema) throw new Error('Unexpected body schema reference');
+
+    expect(schema.anyOf?.map((branch) => branch.title)).toEqual([
+      '按集合 ID 删除',
+      '按集合 ID 列表删除',
+      '按 API 文件 ID 删除'
+    ]);
+    expect(schema.anyOf?.map((branch) => branch.required)).toEqual([
+      ['id'],
+      ['collectionIds'],
+      ['datasetId', 'apiFileIds']
+    ]);
+    expect(media.example).toEqual({ id: objectId });
+
+    const queryId = (operation?.parameters ?? []).find(
+      (parameter) => !('$ref' in parameter) && parameter.in === 'query' && parameter.name === 'id'
+    );
+    if (!queryId || '$ref' in queryId) throw new Error('Unexpected query id parameter');
+    expect(queryId.schema).toMatchObject({ deprecated: true });
+  });
+
   it.each([undefined, null])('defaults a missing or null dataset avatar (%s)', (avatar) => {
     expect(DatasetItemSchema.shape.avatar.parse(avatar)).toBe('/icon/logo.svg');
     expect(DatasetListItemSchema.shape.avatar.parse(avatar)).toBe('/icon/logo.svg');

@@ -20,18 +20,21 @@ import {
 } from '@fastgpt/global/openapi/core/dataset/collection/api';
 
 async function handler(req: ApiRequestProps) {
-  const { id } = parseApiInput({ req, querySchema: DeleteCollectionQuerySchema }).query;
-  const { collectionIds, apiFileIds, datasetId } = parseApiInput({
+  const { id: legacyQueryId } = parseApiInput({
     req,
+    querySchema: DeleteCollectionQuerySchema
+  }).query;
+  // 旧版通过 query.id 定位且允许空 body；在边界归一化成合法的 body.id 分支，删除逻辑只面向 body
+  const body = parseApiInput({
+    req: legacyQueryId ? { ...req, body: { id: legacyQueryId } } : req,
     bodySchema: DeleteCollectionBodySchema
   }).body;
 
   const deletedIds = await (async (): Promise<string[]> => {
-    if (id) return [id];
-    if (collectionIds?.length) return collectionIds;
-    if (!apiFileIds?.length || !datasetId) {
-      return Promise.reject(CommonErrEnum.missingParams);
-    }
+    if ('id' in body) return [body.id];
+    if ('collectionIds' in body) return body.collectionIds;
+
+    const { datasetId, apiFileIds } = body;
     // 外部集成只知道 API 文件身份：用请求头 teamId + datasetId 定位内部 _id，后续复用原有删除流程
     if (apiFileIds.includes(RootCollectionId)) {
       return Promise.reject(CommonErrEnum.invalidParams);

@@ -123,40 +123,69 @@ export type ExportCollectionBodyType = z.infer<typeof ExportCollectionBodyRawSch
 export type ExportCollectionRuntimeBodyType = z.infer<typeof ExportCollectionBodySchema>;
 
 // ============= Delete Collection =============
+/** 已弃用：仅为兼容旧调用方保留，新调用方应使用 body.id。 */
 export const DeleteCollectionQuerySchema = z.object({
   id: z.string().optional().meta({
     example: '68ad85a7463006c963799a05',
-    description: '单个集合 ID（与 body.collectionIds 二选一）'
+    description: '旧版用于指定单个集合 ID，已弃用，请改用 body.id',
+    deprecated: true
   })
 });
 export type DeleteCollectionQueryType = z.infer<typeof DeleteCollectionQuerySchema>;
 
-export const DeleteCollectionBodySchema = z
+const DeleteCollectionByIdBodySchema = z
   .object({
-    collectionIds: z.array(z.string()).optional().meta({ description: '集合 ID 列表' }),
-    apiFileIds: z
-      .array(z.string())
-      .optional()
-      .meta({
-        example: ['6893c04c0a1c3e0012a3b4c5'],
-        description: 'API 文件库的外部文件 ID 列表（需配合 datasetId 使用）'
-      }),
-    datasetId: z.string().optional().meta({
+    id: z.string().min(1).meta({
       example: '68ad85a7463006c963799a05',
-      description: '数据集 ID（配合 apiFileIds 使用）'
+      description: '集合 ID，删除该集合及其全部子集合'
     })
   })
-  .superRefine((data, ctx) => {
-    // 外部定位必须成对出现；query.id 请求允许空 body，所以不能用必选分支表达。
-    // 不做成 union：不完整的单字段会被空对象分支清洗掉，反而静默忽略外部参数。
-    if (Boolean(data.datasetId) !== Boolean(data.apiFileIds?.length)) {
-      ctx.addIssue({
-        code: 'custom',
-        path: [data.datasetId ? 'apiFileIds' : 'datasetId'],
-        message: 'datasetId 与 apiFileIds 必须同时提供'
-      });
-    }
+  .meta({
+    title: '按集合 ID 删除',
+    description: '删除单个集合及其全部子集合'
   });
+
+const DeleteCollectionByCollectionIdsBodySchema = z
+  .object({
+    collectionIds: z
+      .array(z.string().min(1))
+      .min(1)
+      .meta({
+        example: ['68ad85a7463006c963799a05'],
+        description: '集合 ID 列表，删除每个集合及其全部子集合'
+      })
+  })
+  .meta({
+    title: '按集合 ID 列表删除',
+    description: '批量删除多个集合及其全部子集合'
+  });
+
+const DeleteCollectionByApiFileIdsBodySchema = z
+  .object({
+    datasetId: z.string().min(1).meta({
+      example: '68ad85a7463006c963799a05',
+      description: 'API 文件库对应的知识库 ID'
+    }),
+    apiFileIds: z
+      .array(z.string().min(1))
+      .min(1)
+      .meta({
+        example: ['6893c04c0a1c3e0012a3b4c5'],
+        description: 'API 文件库的外部文件 ID 列表；全部未命中时返回集合不存在'
+      })
+  })
+  .meta({
+    title: '按 API 文件 ID 删除',
+    description:
+      '外部集成只知道外部文件 ID 时使用：在指定知识库内按 apiFileId 定位集合，删除命中的集合及其全部子集合'
+  });
+
+/** 三种定位方式互斥，按 body 分支表达；不提供空对象分支，避免不完整参数被静默忽略。 */
+export const DeleteCollectionBodySchema = z.union([
+  DeleteCollectionByIdBodySchema,
+  DeleteCollectionByCollectionIdsBodySchema,
+  DeleteCollectionByApiFileIdsBodySchema
+]);
 export type DeleteCollectionBodyType = z.infer<typeof DeleteCollectionBodySchema>;
 
 // ============= Get Collection Detail =============
