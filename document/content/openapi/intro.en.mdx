@@ -22,6 +22,8 @@ description: Configure a service address, member API key, and application ID, th
 
 ## Prerequisites
 
+Find the current endpoint contracts and documentation links on [API reference addresses](/en/openapi/api-reference).
+
 Prepare a debugged, published application and available model quota, then create or manage API keys in either location:
 
 1. **Account → API Keys**: manage personal keys for the current member (visible to members granted the **Create API Keys** permission under **Account → Team management → Permissions**).
@@ -140,14 +142,6 @@ EOF
 - Page pagination: omit `offset` and pass `pageNum` starting at `1` (for example `{"pageNum": 2, "pageSize": 20}`); `offset` takes precedence when both are provided.
 - `pageSize` defaults to `20` and caps at `500` (larger values clamp to `500`); omitting pagination parameters returns the first page.
 - Filter time ranges optionally with `startCreateTime`, `endCreateTime`, `startUpdateTime`, and `endUpdateTime`.
-
-## API reference addresses
-
-Following the documentation transition in 4.15.0, generated references maintain current endpoint contracts. System OpenAPI covers operations explicitly accessible with API keys. Dev API covers internal development interfaces; follow each operation's authentication requirements.
-
-- Self-hosted: `<instance>/apidoc/systemopenapi` and `<instance>/apidoc/devapi`.
-- Mainland China cloud: [System OpenAPI](https://cloud.fastgpt.cn/apidoc/systemopenapi) and [Dev API](https://cloud.fastgpt.cn/apidoc/devapi).
-- International cloud: [System OpenAPI](https://cloud.fastgpt.io/apidoc/systemopenapi) and [Dev API](https://cloud.fastgpt.io/apidoc/devapi).
 
 ## Next steps
 

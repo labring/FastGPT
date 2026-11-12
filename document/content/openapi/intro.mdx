@@ -21,6 +21,8 @@ description: 配置服务地址、成员密钥和应用 ID，调用已发布应�
 
 ## 前置准备
 
+当前接口契约及在线文档入口见 [API 文档地址](/zh-CN/openapi/api-reference)。
+
 准备一个已调试并发布的应用及可用模型额度，并在以下位置创建或管理 API 密钥：
 
 1. **账号 → API 密钥**：管理当前成员的个人密钥（仅对具备“创建 API 密钥”权限的成员显示；可在**账号 → 团队管理 → 权限**中勾选**创建 API 密钥**开启）。
@@ -139,14 +141,6 @@ EOF
 - 按页码分页：省略 `offset`，传 `pageNum`（从 `1` 开始，例如 `{"pageNum": 2, "pageSize": 20}`）；同时传入时以 `offset` 为准。
 - `pageSize` 默认 `20`，最大 `500`（超出上限按 `500` 处理）；省略分页参数时返回第一页。
 - 可选传入 `startCreateTime`、`endCreateTime`、`startUpdateTime`、`endUpdateTime` 筛选时间范围。
-
-## API 文档地址
-
-自 4.15.0 的文档体系迁移后，当前端点参考通过生成文档维护。System OpenAPI 覆盖明确开放给 API Key 的契约；Dev API 面向内部开发接口，各自的鉴权条件以操作声明为准。
-
-- 自部署：`<instance>/apidoc/systemopenapi`、`<instance>/apidoc/devapi`。
-- 中国大陆云：[System OpenAPI](https://cloud.fastgpt.cn/apidoc/systemopenapi)、[Dev API](https://cloud.fastgpt.cn/apidoc/devapi)。
-- 国际云：[System OpenAPI](https://cloud.fastgpt.io/apidoc/systemopenapi)、[Dev API](https://cloud.fastgpt.io/apidoc/devapi)。
 
 ## 下一步
 

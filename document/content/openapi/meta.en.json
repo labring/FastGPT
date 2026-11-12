@@ -2,6 +2,7 @@
   "root": true,
   "title": "OpenAPI Documentation",
   "pages": [
+    "api-reference",
     "intro",
     "best-practices",
     "interactive-and-variables",
