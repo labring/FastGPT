@@ -70,6 +70,7 @@ describe('structured dataset search OpenAPI', () => {
     expect(media.schema).toMatchObject({
       required: expect.arrayContaining(['scope', 'query']),
       properties: {
+        usageScene: { enum: ['search', 'searchTest'], default: 'search' },
         scope: {
           required: ['datasetIds'],
           properties: { datasetIds: { minItems: 1, maxItems: 100 } }
@@ -203,49 +204,8 @@ describe('SearchDatasetTestBodySchema', () => {
   it.each([
     ['DevAPI', openAPIDocument],
     ['System OpenAPI', apiDocOpenAPIDocument]
-  ] as const)('documents named search input choices and response fields in %s', (_, document) => {
-    const operation = document.paths!['/core/dataset/searchTest']!.post!;
-    const body = operation.requestBody!;
-    if ('$ref' in body) throw new Error('Unexpected body reference');
-    const media = body.content['application/json'];
-    const schema = media.schema!;
-    if ('$ref' in schema) throw new Error('Unexpected body schema reference');
-    expect(schema.anyOf?.map((branch) => branch.title)).toEqual(['文本检索', '图片检索']);
-    const [text, images] = schema.anyOf!;
-    expect(Object.keys(text.properties!)[0]).toBe('text');
-    expect(text.required).toEqual(expect.arrayContaining(['text', 'datasetId']));
-    expect(text.required).not.toContain('queryImageUrls');
-    expect(text.properties!.queryImageUrls).toMatchObject({ default: [], maxItems: 10 });
-    expect(Object.keys(images.properties!)[0]).toBe('queryImageUrls');
-    expect(images.required).toEqual(expect.arrayContaining(['queryImageUrls', 'datasetId']));
-    expect(images.required).not.toContain('text');
-    expect(images.properties!.queryImageUrls).toMatchObject({ minItems: 1, maxItems: 10 });
-    expect(images.properties!.text).toMatchObject({ default: '' });
-    for (const branch of [text, images]) {
-      expect(branch.properties!.rerankCandidateNum).toMatchObject({
-        type: 'integer',
-        minimum: 10,
-        maximum: 100,
-        default: 100
-      });
-      expect(branch.required).not.toContain('rerankCandidateNum');
-    }
-    expect(media.example).toEqual({ text: 'FastGPT 是什么', datasetId: objectId });
-    expect(media.examples).toBeUndefined();
-    expect(SearchDatasetTestBodySchema.safeParse(media.example).success).toBe(true);
-    expect(operation.responses![200]).toMatchObject({
-      content: {
-        'application/json': {
-          schema: {
-            properties: {
-              list: { type: 'array' },
-              duration: { type: 'string' },
-              limit: { type: 'number' }
-            }
-          }
-        }
-      }
-    });
+  ] as const)('hides the callable legacy searchTest route from %s', (_, document) => {
+    expect(document.paths).not.toHaveProperty('/core/dataset/searchTest');
   });
 });
 

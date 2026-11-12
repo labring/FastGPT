@@ -47,15 +47,33 @@ describe('structured knowledge search HTTP boundary', () => {
         queryExtension: { enabled: false },
         result: { maxTokens: 5000, similarity: 0 }
       },
-      auth: expect.objectContaining({ teamId: id, apikey: 'test-key' })
+      auth: expect.objectContaining({ teamId: id, apikey: 'test-key' }),
+      usageAppName: 'account_usage:dataset_search'
     });
     expect(result.list).toEqual([]);
+  });
+
+  it('maps the search test billing scene without passing it into retrieval parameters', async () => {
+    await handler(
+      request({
+        scope: { datasetIds: [id] },
+        query: { text: 'question' },
+        usageScene: 'searchTest'
+      })
+    );
+    expect(mocks.search).toHaveBeenCalledWith(
+      expect.objectContaining({
+        usageAppName: 'account_usage:search_test'
+      })
+    );
+    expect(mocks.search.mock.calls[0][0].params).not.toHaveProperty('usageScene');
   });
 
   it.each([
     { scope: { datasetIds: [] }, query: { text: 'q' } },
     { scope: { datasetIds: [id] }, query: { text: ' ' } },
     { scope: { datasetIds: [id] }, query: { text: 'q' }, actor: { isRoot: true } },
+    { scope: { datasetIds: [id] }, query: { text: 'q' }, usageScene: 'custom-name' },
     {
       scope: { datasetIds: [id] },
       query: { text: 'q' },

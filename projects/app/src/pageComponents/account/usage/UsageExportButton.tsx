@@ -36,6 +36,7 @@ const UsageExportButton = ({
             [i18nT('account_usage:embedding_index')]: t('account_usage:embedding_index'),
             [i18nT('account_usage:qa')]: t('account_usage:qa'),
             [i18nT('account_usage:dataset_search')]: t('account_usage:dataset_search'),
+            [i18nT('account_usage:search_test')]: t('account_usage:search_test'),
             ['core.dataset.training.Auto mode']: t('common:core.dataset.training.Auto mode'),
             [i18nT('common:core.module.template.ai_chat')]: t('common:core.module.template.ai_chat')
           },

@@ -1,4 +1,4 @@
-import { postSearchText } from '@/web/core/dataset/api';
+import { postDatasetSearch } from '@/web/core/dataset/api';
 import {
   useSearchTestStore,
   type SearchTestStoreItemType
@@ -6,7 +6,8 @@ import {
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { rerankCandidateNumRange } from '@fastgpt/global/core/dataset/search/utils';
-import type { SearchDatasetTestResponse } from '@fastgpt/global/openapi/core/dataset/api';
+import type { SearchDatasetResponse } from '@fastgpt/global/openapi/core/dataset/search/api';
+import { isEmptyModelValue } from '@fastgpt/global/core/ai/model/reference';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useTranslation } from 'next-i18next';
@@ -14,6 +15,7 @@ import { useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import type { SearchTestFormType, SearchTestImageRef } from '../type';
 
+/** 将页面表单映射为统一搜索请求，结果继续沿用已有的本地历史记录格式。 */
 export const useDatasetSearchTest = ({
   datasetId,
   queryImageRefs
@@ -48,15 +50,41 @@ export const useDatasetSearchTest = ({
 
   const { runAsync: onTextTest, loading: textTestIsLoading } = useRequest(
     ({ inputText, searchParams }: SearchTestFormType) =>
-      postSearchText({
-        datasetId,
-        text: inputText.trim(),
-        // The backend resolves uploaded images by object key; previews stay client-side only.
-        queryImageUrls: queryImageRefs.map((item) => item.key),
-        ...searchParams
+      postDatasetSearch({
+        usageScene: 'searchTest',
+        scope: { datasetIds: [datasetId] },
+        query: {
+          text: inputText.trim(),
+          // 只传已上传图片的对象 key，预览地址保留在客户端。
+          imageKeys: queryImageRefs.map((item) => item.key)
+        },
+        retrieval: {
+          mode: searchParams.searchMode,
+          embeddingWeight: searchParams.embeddingWeight
+        },
+        rerank: searchParams.usingReRank
+          ? {
+              enabled: true,
+              modelId: isEmptyModelValue(searchParams.rerankModelId)
+                ? undefined
+                : searchParams.rerankModelId,
+              weight: searchParams.rerankWeight,
+              candidateNum: searchParams.rerankCandidateNum
+            }
+          : { enabled: false },
+        queryExtension: searchParams.datasetSearchUsingExtensionQuery
+          ? {
+              enabled: true,
+              modelId: isEmptyModelValue(searchParams.datasetSearchExtensionModelId)
+                ? undefined
+                : searchParams.datasetSearchExtensionModelId,
+              background: searchParams.datasetSearchExtensionBg
+            }
+          : { enabled: false },
+        result: { maxTokens: searchParams.limit, similarity: searchParams.similarity }
       }),
     {
-      onSuccess(res: SearchDatasetTestResponse) {
+      onSuccess(res: SearchDatasetResponse) {
         if (!res || res.list.length === 0) {
           return toast({
             status: 'warning',
@@ -71,12 +99,12 @@ export const useDatasetSearchTest = ({
           time: new Date(),
           results: res.list,
           queryImageRefs: queryImageRefs.length > 0 ? queryImageRefs : undefined,
-          duration: res.duration,
-          searchMode: res.searchMode,
-          usingReRank: res.usingReRank,
-          limit: res.limit,
-          similarity: res.similarity,
-          queryExtensionModel: res.queryExtensionModel
+          duration: `${(res.meta.durationMs / 1000).toFixed(3)}s`,
+          searchMode: res.meta.searchMode,
+          usingReRank: res.meta.usingReRank,
+          limit: res.meta.maxTokens,
+          similarity: res.meta.similarity,
+          queryExtensionModel: res.meta.queryExtensionModelId
         };
 
         pushDatasetTestItem(testItem);
