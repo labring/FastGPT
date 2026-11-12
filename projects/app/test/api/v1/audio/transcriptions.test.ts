@@ -88,7 +88,7 @@ describe('audio transcription API', () => {
       provider: 'alibaba',
       type: ModelTypeEnum.stt,
       scope: ModelScopeEnum.system,
-      pricing: { unitPrice: 0.2 },
+      pricing: { type: 'duration', unitPrice: 0.2 },
       config: {}
     });
     mocks.authChatTargetCrud.mockResolvedValue({ teamId: 'team', tmbId: 'member' });

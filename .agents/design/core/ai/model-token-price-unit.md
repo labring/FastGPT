@@ -13,7 +13,7 @@ pricing: {
 }
 ```
 
-LLM、Embedding、Rerank 固定为百万 Tokens，TTS 固定为百万字符；这些类型不存单位切换标记。STT 的旧单价表示每 60 秒，新计价类型及 N 秒分母见本文末尾的 STT 扩展设计。单价保存及显示最多两位小数，不补零；单次费用与监控累计保留精度。STT 迁移复制历史单价，不因单位迁移改变其金额。
+LLM、Embedding、Rerank 固定为百万 Tokens，TTS 固定为百万字符；这些类型不存单位切换标记。STT 的旧单价表示每 60 秒，新计价类型及固定单位见本文末尾的 STT 扩展设计。单价保存及显示最多两位小数，不补零；单次费用与监控累计保留精度。STT 迁移复制历史单价，不因单位迁移改变其金额。
 
 计价 Schema 使用普通 `z.object`，按默认行为剥离未知字段，不使用 `.strict()`；已声明字段仍校验数值、范围和必填约束。旧价格声明只保留在迁移专用 Schema，并通过 `.meta({ deprecated: true })` 标记弃用。
 
@@ -48,4 +48,4 @@ LLM、Embedding、Rerank 固定为百万 Tokens，TTS 固定为百万字符；�
 
 ## STT 后续扩展
 
-STT 新增按 Tokens 或按 N 秒计价，兼容本设计形成的旧 `pricing.unitPrice`。具体规则与无批量迁移方案见 [STT 用量与计费](./stt-usage-billing.md)。其他模型的百万单位及历史迁移规则不变。
+STT 新增按每百万 Tokens 或每 60 秒计价，通过后续启动迁移为本设计形成的旧 `pricing.unitPrice` 补齐 duration 类型。具体规则见 [STT 用量与计费](./stt-usage-billing.md)。其他模型的百万单位及历史迁移规则不变。

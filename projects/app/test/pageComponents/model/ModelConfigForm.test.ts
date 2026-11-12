@@ -125,7 +125,7 @@ const render = async ({
             name: 'Price model',
             scope: channelType === 'team' ? ModelScopeEnum.team : ModelScopeEnum.system,
             config,
-            pricing: { unitPrice },
+            pricing: type === ModelTypeEnum.stt ? { type: 'duration', unitPrice } : { unitPrice },
             ...(isUpcomingDeprecation !== undefined && { isUpcomingDeprecation })
           } as AIModelDocumentDataType,
           providers: [],

@@ -53,5 +53,10 @@
   "migrations.20261104_backfill_openapi_key_type.description": "기존 연결, 인증 정보 및 필드를 유지하면서 개인 키와 앱 키 유형을 백그라운드에서 보완합니다.",
   "migrations.20261104_backfill_openapi_key_type.result": "키 {{keys}}개 검색 완료",
   "migrations.20261104_backfill_openapi_key_type.keys": "키 유형",
-  "migrations.20261104_backfill_openapi_key_type.validation": "결과 검증"
+  "migrations.20261104_backfill_openapi_key_type.validation": "결과 검증",
+  "migrations.20261112_backfill_stt_pricing_type.name": "STT 과금 유형 채우기",
+  "migrations.20261112_backfill_stt_pricing_type.description": "시작 전에 기존 STT 가격을 시간 기준으로 표시하며 단가와 기존 토큰 과금 설정은 유지합니다.",
+  "migrations.20261112_backfill_stt_pricing_type.result": "STT 모델 {{models}}개 검사 완료",
+  "migrations.20261112_backfill_stt_pricing_type.models": "모델 과금 유형",
+  "migrations.20261112_backfill_stt_pricing_type.validation": "결과 검증"
 }

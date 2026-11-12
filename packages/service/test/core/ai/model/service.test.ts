@@ -94,14 +94,11 @@ describe('model lifecycle', () => {
     expect((await MongoAIModel.findById(created.modelId).lean())?.pricing).toMatchObject(changed);
   });
 
-  it('reads legacy STT pricing without rewriting its stored document', async () => {
+  it('rejects legacy STT pricing until the startup migration adds its type', async () => {
     const raw = { ...draft, type: ModelTypeEnum.stt, config: {}, pricing: { unitPrice: 0.2 } };
     const { insertedId } = await MongoAIModel.collection.insertOne(raw);
     const stored = await MongoAIModel.findById(insertedId).lean();
-    expect(formatDbModelToRuntimeModel(stored!, { fallbackProvider: true }).pricing).toEqual({
-      type: 'duration',
-      unitPrice: 0.2
-    });
+    expect(() => formatDbModelToRuntimeModel(stored!, { fallbackProvider: true })).toThrow();
     expect((await MongoAIModel.findById(insertedId).lean())?.pricing).toEqual({ unitPrice: 0.2 });
   });
 

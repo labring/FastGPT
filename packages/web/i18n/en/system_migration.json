@@ -53,5 +53,10 @@
   "migrations.20261104_backfill_openapi_key_type.description": "Backfill personal and app key types in the background, preserving bindings, credentials, and legacy fields.",
   "migrations.20261104_backfill_openapi_key_type.result": "Scanned {{keys}} keys",
   "migrations.20261104_backfill_openapi_key_type.keys": "Key types",
-  "migrations.20261104_backfill_openapi_key_type.validation": "Validate backfill"
+  "migrations.20261104_backfill_openapi_key_type.validation": "Validate backfill",
+  "migrations.20261112_backfill_stt_pricing_type.name": "Backfill STT pricing types",
+  "migrations.20261112_backfill_stt_pricing_type.description": "Mark legacy STT prices as duration-based before startup, preserving rates and existing token pricing.",
+  "migrations.20261112_backfill_stt_pricing_type.result": "Scanned {{models}} STT models",
+  "migrations.20261112_backfill_stt_pricing_type.models": "Model pricing types",
+  "migrations.20261112_backfill_stt_pricing_type.validation": "Validate backfill"
 }

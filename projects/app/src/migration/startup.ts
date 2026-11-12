@@ -17,7 +17,7 @@ export const startBusinessAfterSystemMigrations = async ({
   startBusinessServices: () => Promise<void>;
 }) => {
   await runner.waitForBlockingMigrations();
-  if (runner.hasBlockingMigrations) await reloadModels();
+  await reloadModels();
   await startBusinessServices();
   runner.startBackgroundMigrations();
 };

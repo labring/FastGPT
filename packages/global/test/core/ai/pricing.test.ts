@@ -123,7 +123,9 @@ describe('calculateModelPrice', () => {
     'fixes %s denominator by type and preserves per-call precision',
     (type) => {
       const inputTokens = type === ModelTypeEnum.stt ? 60 : 1000000;
-      const config = { type, scope: ModelScopeEnum.system, pricing: { unitPrice: 2 } };
+      const pricing =
+        type === ModelTypeEnum.stt ? { type: 'duration' as const, unitPrice: 2 } : { unitPrice: 2 };
+      const config = { type, scope: ModelScopeEnum.system, pricing };
       expect(
         calculateModelPrice({
           config,
@@ -232,13 +234,10 @@ describe('normalizeModelPricingForSave', () => {
 
 describe('STT pricing', () => {
   const config = { type: ModelTypeEnum.stt, scope: ModelScopeEnum.system };
-  it('normalizes legacy per-minute prices without a database migration', () => {
-    expect(resolveSTTPricing({ unitPrice: 0.2 })).toEqual({
-      type: 'duration',
-      unitPrice: 0.2
-    });
+  it('requires an explicit type on configured prices; only an absent price defaults to free', () => {
+    expect(() => resolveSTTPricing({ unitPrice: 0.2 })).toThrow();
+    expect(() => resolveSTTPricing({})).toThrow();
     expect(resolveSTTPricing()).toEqual({ type: 'duration' });
-    expect(resolveSTTPricing({})).toEqual({ type: 'duration' });
   });
   it('rejects invalid pricing instead of silently using a different meter', () => {
     for (const pricing of [
@@ -288,8 +287,10 @@ describe('STT pricing', () => {
   });
   it('does not use inputTokens or a mismatching meter to bill STT', () => {
     expect(
-      calculateModelPrice({ config: { ...config, pricing: { unitPrice: 2 } }, inputTokens: 77 })
-        .totalPoints
+      calculateModelPrice({
+        config: { ...config, pricing: { type: 'duration', unitPrice: 2 } },
+        inputTokens: 77
+      }).totalPoints
     ).toBe(0);
     expect(
       calculateModelPrice({
@@ -299,7 +300,7 @@ describe('STT pricing', () => {
     ).toBe(0);
     expect(
       calculateModelPrice({
-        config: { ...config, pricing: { unitPrice: 2 } },
+        config: { ...config, pricing: { type: 'duration', unitPrice: 2 } },
         sttUsage: { type: 'duration', seconds: NaN }
       }).totalPoints
     ).toBe(0);

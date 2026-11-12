@@ -39,19 +39,13 @@ describe('startBusinessAfterSystemMigrations', () => {
       });
       expect(events).toEqual([]);
       finishMigration();
-      if (blocking) {
-        await vi.waitFor(() => expect(reloadModels).toHaveBeenCalledTimes(1));
-        expect(startBusinessServices).not.toHaveBeenCalled();
-        expect(runner.startBackgroundMigrations).not.toHaveBeenCalled();
-      }
+      await vi.waitFor(() => expect(reloadModels).toHaveBeenCalledTimes(1));
+      expect(startBusinessServices).not.toHaveBeenCalled();
+      expect(runner.startBackgroundMigrations).not.toHaveBeenCalled();
       finishReload();
       await initialization;
-      expect(events).toEqual(
-        blocking
-          ? ['migrated', 'reloading', 'reloaded', 'business', 'background']
-          : ['migrated', 'business', 'background']
-      );
-      expect(reloadModels).toHaveBeenCalledTimes(blocking ? 1 : 0);
+      expect(events).toEqual(['migrated', 'reloading', 'reloaded', 'business', 'background']);
+      expect(reloadModels).toHaveBeenCalledTimes(1);
     }
   );
 

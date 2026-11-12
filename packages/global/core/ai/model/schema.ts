@@ -36,11 +36,10 @@ export const UnitModelPricingSchema = ModelPricingSchema.omit({
   tiers: true,
   type: true
 });
-/** 旧 STT 单价始终表示每 60 秒；只兼容价格，不推断上游用量或读取旧根字段。 */
+/** STT 价格必须明确声明口径；旧数据由启动迁移补齐。 */
 export const STTModelPricingSchema = z.union([
   z.object({
-    // 默认值只兼容旧价格对象；保留可生成完整 OpenAPI 的对象输入结构。
-    type: z.literal('duration').default('duration'),
+    type: z.literal('duration'),
     unitPrice: UnitModelPricingSchema.shape.unitPrice.meta({
       description: '每 60 秒的积分单价',
       example: 0.2

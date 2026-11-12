@@ -77,7 +77,7 @@ describe('model table projection', () => {
     },
     {
       type: ModelTypeEnum.stt,
-      pricing: { unitPrice: 0.125 },
+      pricing: { type: 'duration' as const, unitPrice: 0.125 },
       price: 0.13,
       unit: '60common:unit.seconds'
     }

@@ -17,14 +17,17 @@ describe('validateSystemMigrationRegistry', () => {
     expect(systemMigrations.map(({ id }) => id)).toEqual([
       '20261022_initialize_dataset_vector_indexes',
       '20261104_backfill_chat_publish_source',
-      '20261104_backfill_openapi_key_type'
+      '20261104_backfill_openapi_key_type',
+      '20261112_backfill_stt_pricing_type'
     ]);
     expect(
       systemMigrations.filter(
         (task: SystemMigration) =>
           task.blockStartup || task.manual || task.delay || task.dependsOn?.length
       )
-    ).toEqual([]);
+    ).toEqual([
+      expect.objectContaining({ id: '20261112_backfill_stt_pricing_type', blockStartup: true })
+    ]);
     expect(() => validateSystemMigrationRegistry(systemMigrations)).not.toThrow();
   });
 
@@ -45,7 +48,7 @@ describe('validateSystemMigrationRegistry', () => {
   });
 
   it('在4.18.0末尾登记独立自动 Key 类型回填，保持启动非阻塞且无依赖', () => {
-    const task = systemMigrations.at(-1);
+    const task = systemMigrations.find(({ id }) => id === '20261104_backfill_openapi_key_type');
     expect(task).toMatchObject({
       id: '20261104_backfill_openapi_key_type',
       version: '4.18.0',
@@ -56,6 +59,17 @@ describe('validateSystemMigrationRegistry', () => {
     expect(task).not.toHaveProperty('dependsOn');
     expect(task).not.toHaveProperty('manual');
     expect(task).not.toHaveProperty('delay');
+  });
+
+  it('appends STT pricing backfill as the only startup requirement', () => {
+    expect(systemMigrations.at(-1)).toMatchObject({
+      id: '20261112_backfill_stt_pricing_type',
+      version: '4.18.0',
+      blockStartup: true,
+      progressSteps: [{ key: 'models' }, { key: 'validation' }]
+    });
+    expect(systemMigrations.at(-1)).not.toHaveProperty('dependsOn');
+    expect(systemMigrations.at(-1)).not.toHaveProperty('independent');
   });
 
   it('runs only the selected production tasks independently', () => {

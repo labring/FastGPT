@@ -12,9 +12,9 @@ import {
 import type { STTBillableUsageType } from '../audio/type';
 import { STT_PRICE_UNITS } from '../audio/constants';
 
-/** 旧 STT 单价按每 60 秒解释；未配置单价保持免费，不读取任何用量字段。 */
+/** 解析明确的 STT 价格类型；未配置价格按免费时长模式展示，不兼容缺少类型的旧价格。 */
 export const resolveSTTPricing = (pricing?: ModelPricingType) =>
-  STTModelPricingSchema.parse(pricing ?? {});
+  STTModelPricingSchema.parse(pricing ?? { type: 'duration' });
 
 export const MAX_MODEL_PRICE_TIERS = 5;
 
@@ -76,7 +76,11 @@ export const normalizeModelPricingForSave = (
 
   // 清空价格仍保留已编辑状态；STT 同时保留所选计价口径，不恢复历史根字段。
   const pricing = roundModelPricing(model.pricing ?? {});
-  if (model.type === ModelTypeEnum.stt) return { ...model, pricing: resolveSTTPricing(pricing) };
+  if (model.type === ModelTypeEnum.stt)
+    return {
+      ...model,
+      pricing: resolveSTTPricing(model.pricing === undefined ? undefined : pricing)
+    };
   if (model.type === ModelTypeEnum.llm)
     return {
       ...model,

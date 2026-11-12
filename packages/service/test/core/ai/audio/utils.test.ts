@@ -2,14 +2,15 @@ import { describe, expect, it } from 'vitest';
 import { getSTTBillableUsage } from '@fastgpt/service/core/ai/audio/utils';
 
 describe('getSTTBillableUsage', () => {
-  it.each([undefined, {}, { unitPrice: 0.2 }, { type: 'duration' as const }])(
-    'uses only upstream seconds for duration pricing %j',
-    (pricing) => {
-      expect(
-        getSTTBillableUsage({ pricing, usage: { type: 'tokens', seconds: 3, total_tokens: 77 } })
-      ).toEqual({ type: 'duration', seconds: 3 });
-    }
-  );
+  it.each([
+    undefined,
+    { type: 'duration' as const },
+    { type: 'duration' as const, unitPrice: 0.2 }
+  ])('uses only upstream seconds for duration pricing %j', (pricing) => {
+    expect(
+      getSTTBillableUsage({ pricing, usage: { type: 'tokens', seconds: 3, total_tokens: 77 } })
+    ).toEqual({ type: 'duration', seconds: 3 });
+  });
   it.each([undefined, null, -1, NaN, Infinity, -Infinity, '77'])(
     'treats invalid seconds %s as zero',
     (seconds) => {

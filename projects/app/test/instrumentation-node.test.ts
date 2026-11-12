@@ -92,6 +92,8 @@ vi.mock('@fastgpt/service/common/metrics', () => ({
 
 import { SystemMigrationStatusEnum } from '@fastgpt/global/migration/constants';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
+import { MongoAIModel } from '@fastgpt/service/core/ai/model/schema';
+import { formatDbModelToRuntimeModel } from '@fastgpt/service/core/ai/model/runtime';
 import { Types } from '@fastgpt/service/common/mongo';
 import { redisCacheAdapter } from '@fastgpt/dal/redis/adapter';
 import { registerNodeInstrumentation } from '@/instrumentation-node';
@@ -108,7 +110,29 @@ afterEach(async () => {
 describe('registerNodeInstrumentation', () => {
   it('ignores retired migration failures and starts business while current background work runs', async () => {
     vi.clearAllMocks();
-    mocks.postHealth.mockResolvedValue({ auth: true, data: 'success' });
+    const { insertedId: modelId } = await MongoAIModel.collection.insertOne({
+      model: 'legacy-stt',
+      name: 'STT',
+      provider: 'openai',
+      scope: 'system',
+      type: 'stt',
+      config: {},
+      pricing: { unitPrice: 0.2 }
+    } as any);
+    mocks.reloadModels.mockImplementation(async () => {
+      const model = await MongoAIModel.findById(modelId).lean();
+      expect(formatDbModelToRuntimeModel(model!, { fallbackProvider: true }).pricing).toEqual({
+        type: 'duration',
+        unitPrice: 0.2
+      });
+    });
+    mocks.postHealth.mockImplementation(async () => {
+      expect(await MongoAIModel.findById(modelId).lean()).toMatchObject({
+        pricing: { type: 'duration' }
+      });
+      expect(mocks.reloadModels).toHaveBeenCalledTimes(1);
+      return { auth: true, data: 'success' };
+    });
     global.feConfigs = { ...global.feConfigs, isPlus: true };
     const migrationId = '20261104_backfill_chat_publish_source';
     const legacyMigrationId = '20260903_migrate_legacy_system_models';
@@ -146,7 +170,7 @@ describe('registerNodeInstrumentation', () => {
     const registration = registerNodeInstrumentation();
     try {
       await registration;
-      expect(global.systemMigrationRunner!.hasBlockingMigrations).toBe(false);
+      expect(global.systemMigrationRunner!.hasBlockingMigrations).toBe(true);
       for (const consumer of [mocks.watch, mocks.workers, mocks.cron, mocks.training, mocks.tracks])
         expect(consumer).toHaveBeenCalledTimes(1);
       await vi.waitFor(() => expect(write).toHaveBeenCalledTimes(1), { timeout: 10000 });
