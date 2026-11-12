@@ -4,9 +4,11 @@ import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { createModelHandle } from '../../../../core/ai/model/catalog/handle';
+import { TeamPermission } from '@fastgpt/global/support/permission/user/controller';
 
 const mocks = vi.hoisted(() => ({
   auth: vi.fn(),
+  getTmbInfo: vi.fn(),
   indexModels: vi.fn(),
   readable: vi.fn(),
   authorized: vi.fn(),
@@ -22,6 +24,9 @@ vi.mock('@fastgpt/service/core/dataset/entity', () => ({
 }));
 vi.mock('@fastgpt/service/support/permission/dataset/auth', () => ({
   authDatasetByTmbId: mocks.auth
+}));
+vi.mock('@fastgpt/service/support/user/team/controller', () => ({
+  getTmbInfoByTmbId: mocks.getTmbInfo
 }));
 vi.mock('@fastgpt/service/support/permission/collection/auth', () => ({
   resolveReadableCollectionIds: mocks.readable
@@ -41,6 +46,7 @@ vi.mock('@fastgpt/service/core/dataset/search', () => ({ defaultSearchDatasetDat
 import { createDatasetSearchRuntime } from '../../../../core/dataset/search/runtime';
 
 const actor = { teamId: 'team', tmbId: 'member', isRoot: false };
+const tmbInfo = { teamId: actor.teamId, permission: new TeamPermission({ role: 0 }) };
 const dataset = {
   _id: 'dataset',
   teamId: 'team',
@@ -56,7 +62,11 @@ const handle = {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mocks.auth.mockResolvedValue({ dataset });
+  mocks.getTmbInfo.mockReset().mockResolvedValue(tmbInfo);
+  mocks.auth.mockImplementation(async ({ tmbInfo }) => {
+    await tmbInfo;
+    return { dataset };
+  });
   mocks.indexModels.mockResolvedValue([dataset]);
   mocks.readable.mockResolvedValue(['readable']);
   mocks.authorized.mockResolvedValue(new Set(['rerank', 'llm']));
@@ -79,12 +89,18 @@ describe('createDatasetSearchRuntime', () => {
     expect(mocks.auth).toHaveBeenCalledExactlyOnceWith({
       ...actor,
       datasetId: 'dataset',
-      per: ReadPermissionVal
+      per: ReadPermissionVal,
+      tmbInfo: expect.any(Promise)
     });
     expect(
       await runtime.permissions.resolveReadableCollectionIds({ actor, datasetIds: ['dataset'] })
     ).toEqual(['readable']);
-    expect(mocks.readable).toHaveBeenCalledExactlyOnceWith({ ...actor, datasetIds: ['dataset'] });
+    expect(mocks.readable).toHaveBeenCalledExactlyOnceWith({
+      ...actor,
+      datasetIds: ['dataset'],
+      tmbInfo
+    });
+    expect(mocks.getTmbInfo).toHaveBeenCalledExactlyOnceWith({ tmbId: actor.tmbId });
   });
 
   it('uses one supplied catalog snapshot for model resolution and authorization', async () => {
@@ -108,7 +124,7 @@ describe('createDatasetSearchRuntime', () => {
     );
     expect(result.imageCaption?.modelId).toBe('vision');
     expect(mocks.assertModels).toHaveBeenCalledExactlyOnceWith({
-      actor,
+      actor: { ...actor, teamPermission: tmbInfo.permission },
       handle,
       modelIds: ['rerank', 'llm'],
       action: 'use'
@@ -136,7 +152,7 @@ describe('createDatasetSearchRuntime', () => {
     });
     expect(mocks.getHandle).toHaveBeenCalledExactlyOnceWith({ teamId: actor.teamId });
     expect(mocks.assertModels).toHaveBeenLastCalledWith({
-      actor,
+      actor: { ...actor, teamPermission: tmbInfo.permission },
       handle,
       modelIds: [],
       action: 'use'
@@ -225,5 +241,102 @@ describe('createDatasetSearchRuntime', () => {
       expiredHours: 1
     });
     expect(runtime.recall).toBe(mocks.recall);
+    expect(mocks.getTmbInfo).not.toHaveBeenCalled();
+  });
+
+  it('shares one pending member read across 100 concurrent datasets, collections and model authorization', async () => {
+    let complete!: (value: typeof tmbInfo) => void;
+    const pending = new Promise<typeof tmbInfo>((resolve) => {
+      complete = resolve;
+    });
+    mocks.getTmbInfo.mockReturnValue(pending);
+    const runtime = createDatasetSearchRuntime({ modelHandle: handle });
+    const datasetIds = Array.from({ length: 100 }, (_, i) => `dataset-${i}`);
+    const requests = datasetIds.map((datasetId) =>
+      runtime.permissions.loadReadableDataset({ actor, datasetId })
+    );
+    expect(mocks.getTmbInfo).toHaveBeenCalledOnce();
+    expect(mocks.auth.mock.calls.map(([props]) => props.datasetId)).toEqual(datasetIds);
+    expect(
+      mocks.auth.mock.calls.every(
+        ([props]) => props.tmbInfo === pending && props.per === ReadPermissionVal
+      )
+    ).toBe(true);
+    complete(tmbInfo);
+    await Promise.all(requests);
+    await runtime.permissions.resolveReadableCollectionIds({ actor, datasetIds });
+    await runtime.resolveModels({
+      actor,
+      datasets: [dataset],
+      rerank: { enabled: true, weight: 0.5 },
+      queryExtension: { enabled: false }
+    });
+    expect(mocks.getTmbInfo).toHaveBeenCalledOnce();
+    expect(mocks.readable).toHaveBeenLastCalledWith({ ...actor, datasetIds, tmbInfo });
+    const modelActor = { ...actor, teamPermission: tmbInfo.permission };
+    expect(mocks.authorized).toHaveBeenLastCalledWith({ actor: modelActor, handle });
+    expect(mocks.assertModels).toHaveBeenLastCalledWith(
+      expect.objectContaining({ actor: modelActor })
+    );
+  });
+
+  it('isolates different members, teams and runtime instances', async () => {
+    const runtime = createDatasetSearchRuntime();
+    for (const identity of [
+      actor,
+      { ...actor, tmbId: 'other-member' },
+      { ...actor, teamId: 'other-team' }
+    ]) {
+      await runtime.permissions.loadReadableDataset({ actor: identity, datasetId: 'dataset' });
+    }
+    expect(mocks.getTmbInfo).toHaveBeenCalledTimes(3);
+    const nextInfo = { ...tmbInfo, permission: new TeamPermission({ isOwner: true }) };
+    mocks.getTmbInfo.mockResolvedValueOnce(nextInfo);
+    await createDatasetSearchRuntime().permissions.loadReadableDataset({
+      actor,
+      datasetId: 'dataset'
+    });
+    expect(mocks.getTmbInfo).toHaveBeenCalledTimes(4);
+    await expect(mocks.auth.mock.calls.at(-1)![0].tmbInfo).resolves.toBe(nextInfo);
+  });
+
+  it('retains member failures within a request and still propagates individual dataset refusals', async () => {
+    const runtime = createDatasetSearchRuntime();
+    const unavailable = new Error('Member unavailable');
+    mocks.getTmbInfo.mockRejectedValueOnce(unavailable);
+    const results = await Promise.allSettled(
+      ['first', 'second'].map((datasetId) =>
+        runtime.permissions.loadReadableDataset({ actor, datasetId })
+      )
+    );
+    expect(results).toEqual([
+      { status: 'rejected', reason: unavailable },
+      { status: 'rejected', reason: unavailable }
+    ]);
+    await expect(
+      runtime.permissions.resolveReadableCollectionIds({ actor, datasetIds: ['dataset'] })
+    ).rejects.toBe(unavailable);
+    expect(mocks.getTmbInfo).toHaveBeenCalledOnce();
+    expect(mocks.readable).not.toHaveBeenCalled();
+    const denied = new Error('Dataset forbidden');
+    mocks.auth.mockRejectedValueOnce(denied);
+    await expect(
+      createDatasetSearchRuntime().permissions.loadReadableDataset({ actor, datasetId: 'denied' })
+    ).rejects.toBe(denied);
+  });
+
+  it('keeps empty collection scopes and root model authorization lazy', async () => {
+    const runtime = createDatasetSearchRuntime({ modelHandle: handle });
+    await runtime.permissions.resolveReadableCollectionIds({ actor, datasetIds: [] });
+    expect(mocks.readable).toHaveBeenCalledExactlyOnceWith({ ...actor, datasetIds: [] });
+    const root = { ...actor, isRoot: true };
+    await runtime.resolveModels({
+      actor: root,
+      datasets: [dataset],
+      rerank: { enabled: false },
+      queryExtension: { enabled: false }
+    });
+    expect(mocks.authorized).toHaveBeenCalledExactlyOnceWith({ actor: root, handle });
+    expect(mocks.getTmbInfo).not.toHaveBeenCalled();
   });
 });
