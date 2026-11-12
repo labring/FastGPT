@@ -19,6 +19,15 @@ export type McpOAuthClientMode = z.infer<typeof McpOAuthClientModeSchema>;
 export const McpOAuthClientSourceSchema = z.enum(['cimd', 'dcr', 'manual']);
 export type McpOAuthClientSource = z.infer<typeof McpOAuthClientSourceSchema>;
 
+/**
+ * 加密 state 的长度上限（base64url 字符）。
+ *
+ * 构建、解析与回调 query 校验共用同一常量：payload 中较长的请求字段（scope、
+ * redirectUri）经 AES-GCM 加密 + hex + base64url 后最坏约 15KB，32KB 留出余量，
+ * 避免 `/oauth/start` 能生成但回调被 query 校验拒绝的合法 state。
+ */
+export const MCP_OAUTH_STATE_MAX_LENGTH = 32 * 1024;
+
 /** status 投影的 8 种状态（v2.4 §8.2），命中优先级由服务层派生。 */
 export const McpOAuthStatusEnum = {
   headers: 'headers',

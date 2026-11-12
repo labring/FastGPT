@@ -1,10 +1,6 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Types } from '@fastgpt/service/common/mongo';
-import {
-  clearMcpOAuthClientCache,
-  resetMcpOAuthFetchImpl,
-  setMcpOAuthFetchImpl
-} from '@fastgpt/service/core/app/mcpOAuth';
+import { resetMcpOAuthFetchImpl, setMcpOAuthFetchImpl } from '@fastgpt/service/core/app/mcpOAuth';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import { MongoMcpOAuthState } from '@fastgpt/service/core/app/mcpOAuth/schema';
@@ -77,10 +73,6 @@ const mockDiscovery = (issuer = 'https://example.org') => {
 };
 
 describe('POST /api/core/app/mcpTools/oauth/start', () => {
-  beforeEach(() => {
-    clearMcpOAuthClientCache();
-  });
-
   afterEach(async () => {
     resetMcpOAuthFetchImpl();
     await MongoMcpOAuthState.deleteMany({});

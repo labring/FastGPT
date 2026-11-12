@@ -1,5 +1,6 @@
 import { getProxyForUrl } from 'proxy-from-env';
 import { assertMCPUrlNotInternal, createMcpSafeFetch } from '../mcp';
+import { serviceEnv } from '../../../env';
 import { McpOAuthApiError } from './errors';
 import {
   McpOAuthErrorCodeEnum,
@@ -47,8 +48,7 @@ export const setMcpOAuthFetchImpl = (fetchImpl: McpOAuthFetchImpl | null) => {
 export const resetMcpOAuthFetchImpl = () => setMcpOAuthFetchImpl(null);
 
 /** 开发开关：仅显式设置 `MCP_OAUTH_ALLOW_INSECURE_HTTP=true` 时允许 http。 */
-export const isMcpOAuthInsecureHttpAllowed = () =>
-  process.env.MCP_OAUTH_ALLOW_INSECURE_HTTP === 'true';
+export const isMcpOAuthInsecureHttpAllowed = () => serviceEnv.MCP_OAUTH_ALLOW_INSECURE_HTTP;
 
 const getSafeFetch = () => {
   safeFetch ??= createMcpSafeFetch({ maxRedirects: 0 });

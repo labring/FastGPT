@@ -35,7 +35,7 @@ import { decodeMcpToolSetNodesFromStorage } from './jsonSchemaStorage';
 import { McpToolSetRuntimeConfigSchema } from '@fastgpt/global/core/workflow/type/node';
 import { getAppLatestVersion, type AppPublishedWorkflow } from './version/controller';
 import { profileStage } from '../../common/profiling';
-import { McpAuthRequiredError, getMcpErrorStatusCode } from './mcpAuthError';
+import { McpAuthRequiredError } from './mcpAuthError';
 
 export {
   McpAuthRequiredError,
@@ -390,7 +390,6 @@ export const shouldFallbackToSSE = (error: unknown): boolean => {
 };
 
 type McpAuthChallengeState = {
-  status?: number;
   wwwAuthenticate?: string;
 };
 
@@ -405,7 +404,6 @@ const createMcpAuthChallengeCapture = (
   const wrappedFetch = (async (url, init) => {
     const response = await fetchImpl(url, init);
     if (response.status === 401 || response.status === 403) {
-      state.status = response.status;
       const header = response.headers.get('www-authenticate');
       // 挑战是逐响应的：没有 header 时必须清空，避免下一次 401 复用陈旧 scope/resource_metadata。
       state.wwwAuthenticate = header ? header.slice(0, 4096) : undefined;
@@ -421,8 +419,9 @@ const toMcpAuthRequiredError = (
   state?: McpAuthChallengeState
 ): McpAuthRequiredError | undefined => {
   if (error instanceof McpAuthRequiredError) return error;
-  // 与 `isMcpAuthRequiredError` 共用状态码提取，兼容只暴露 status/statusCode 的 transport 包装。
-  const status = getMcpHttpStatus(error) ?? getMcpErrorStatusCode(error);
+  // 只认 transport 层的 401/403。工具级错误即使恰好带 `status: 401` 也只是业务错误，
+  // 不能触发 OAuth 强制刷新（与 `normalizeMcpClientError` 的约定保持一致）。
+  const status = getMcpHttpStatus(error);
   if (status !== 401 && status !== 403) return undefined;
   return new McpAuthRequiredError(status, {
     message: getErrorMessage(error),

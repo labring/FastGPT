@@ -15,7 +15,6 @@ import {
   McpOAuthErrorCodeEnum,
   assertMcpOAuthEnabled,
   assertMcpOAuthRateLimit,
-  clearCachedMcpOAuthClient,
   createMcpOAuthApiHandler,
   decryptMcpOAuthAccessToken,
   decryptMcpOAuthRefreshToken,
@@ -65,7 +64,6 @@ async function handler(req: ApiRequestProps<McpOAuthDisconnectBodyType>, res: Ne
 
   const oauth = toolSet.oauth;
   const token = oauth?.token;
-  clearCachedMcpOAuthClient({ appId, nodeId: node.nodeId });
 
   if (!token) {
     return sendMcpOAuthJson({

@@ -2,6 +2,7 @@ import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { ManagePermissionVal } from '@fastgpt/global/support/permission/constant';
+import { UserError } from '@fastgpt/global/common/error/utils';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 
 import { getMCPToolSetRuntimeNode } from '@fastgpt/global/core/app/tool/mcpTool/utils';
@@ -54,6 +55,11 @@ async function handler(
     const currentToolSet = getNodeMcpToolSet(currentNode);
     const previousAuthMode = currentToolSet?.authMode ?? 'headers';
     const effectiveAuthMode = authMode ?? previousAuthMode;
+    // 请求省略 authMode 时只能在这里拿到真实模式：存量 headers 节点仍须满足
+    // 「headers 模式 toolList 非空」的不变量，否则保存后节点与运行期都无工具可用。
+    if (effectiveAuthMode !== 'oauth' && toolList.length === 0) {
+      throw new UserError('authMode=headers 时 toolList 不能为空');
+    }
     const expectedCredentialSeq = currentToolSet?.oauth?.credentialSeq ?? 0;
     const merged = mergeMcpOAuthFromPublished({
       existingOAuth: currentToolSet?.oauth,

@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto';
 import z from 'zod';
 import type { McpOAuthServerMetadataType } from '@fastgpt/global/core/app/tool/mcpTool/oauthConfig';
 import { isValidMcpOAuthScope } from '@fastgpt/global/core/app/tool/mcpTool/oauth';
@@ -6,7 +5,6 @@ import { McpOAuthApiError } from './errors';
 import { McpOAuthErrorCodeEnum } from '@fastgpt/global/core/app/tool/mcpTool/oauth';
 import type { McpOAuthDiscoveryResult } from './types';
 import {
-  MCP_OAUTH_MAX_RESPONSE_BYTES,
   isMcpOAuthInsecureHttpAllowed,
   assertMcpOAuthUrlSafe,
   requestMcpOAuthHttp
@@ -27,34 +25,6 @@ export const normalizeMcpResource = (resource: string) => {
   url.hash = '';
   return url.toString().replace(/\/$/, '');
 };
-
-const canonicalJson = (value: unknown): string => {
-  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(',')}]`;
-  if (value && typeof value === 'object') {
-    return `{${Object.entries(value as Record<string, unknown>)
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([key, item]) => `${JSON.stringify(key)}:${canonicalJson(item)}`)
-      .join(',')}}`;
-  }
-  return JSON.stringify(value);
-};
-
-export const hashMcpOAuthServerMetadata = (server: McpOAuthServerMetadataType) =>
-  createHash('sha256')
-    .update(
-      canonicalJson({
-        issuer: server.issuer,
-        authorizationEndpoint: server.authorizationEndpoint,
-        tokenEndpoint: server.tokenEndpoint,
-        registrationEndpoint: server.registrationEndpoint,
-        revocationEndpoint: server.revocationEndpoint,
-        tokenEndpointAuthMethodsSupported: server.tokenEndpointAuthMethodsSupported,
-        codeChallengeMethodsSupported: server.codeChallengeMethodsSupported,
-        clientIdMetadataDocumentSupported: server.clientIdMetadataDocumentSupported,
-        scopesSupported: server.scopesSupported
-      })
-    )
-    .digest('hex');
 
 const parseBearerResourceMetadata = (header: string | null): string | undefined => {
   if (!header) return undefined;
@@ -356,11 +326,6 @@ export const discoverAuthorizationServerMetadata = async ({
   });
 };
 
-export type McpOAuthDiscoveryOutput = McpOAuthDiscoveryResult & {
-  /** 仅用于内存比较，不写回 `oauth.server`（v2.4 明确删除 server.configHash）。 */
-  configHash: string;
-};
-
 /**
  * 完整发现流程。
  *
@@ -377,7 +342,7 @@ export const discoverMcpOAuth = async ({
   previousIssuer?: string;
   allowInsecureHttp?: boolean;
   timeoutMs?: number;
-}): Promise<McpOAuthDiscoveryOutput> => {
+}): Promise<McpOAuthDiscoveryResult> => {
   await assertMcpOAuthUrlSafe(mcpUrl, { allowInsecureHttp });
 
   const probe = await probeMcpInitialize({ mcpUrl, timeoutMs });
@@ -441,8 +406,7 @@ export const discoverMcpOAuth = async ({
   return {
     server,
     issuer: server.issuer,
-    resource,
-    configHash: hashMcpOAuthServerMetadata(server)
+    resource
   };
 };
 
@@ -455,5 +419,3 @@ export const assertMcpOAuthDiscoveredScope = (scope?: string) => {
   }
   return scope;
 };
-
-export const MCP_OAUTH_DISCOVERY_MAX_BYTES = MCP_OAUTH_MAX_RESPONSE_BYTES;

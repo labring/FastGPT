@@ -1,6 +1,7 @@
 import z from 'zod';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
 import {
+  MCP_OAUTH_STATE_MAX_LENGTH,
   McpOAuthAuthModeSchema,
   McpOAuthClientModeSchema,
   McpOAuthClientSourceSchema,
@@ -16,13 +17,25 @@ import {
  */
 
 /** clientMode=manual 时由用户提供的 client 信息；secret 只提交给后端，不回显。 */
-export const McpOAuthManualClientSchema = z.object({
-  clientId: z.string().min(1).max(2048),
-  clientSecret: z.string().min(1).max(4096).optional(),
-  tokenEndpointAuthMethod: z
-    .enum(['none', 'client_secret_post', 'client_secret_basic'])
-    .default('client_secret_basic')
-});
+export const McpOAuthManualClientSchema = z
+  .object({
+    clientId: z.string().min(1).max(2048),
+    clientSecret: z.string().min(1).max(4096).optional(),
+    tokenEndpointAuthMethod: z
+      .enum(['none', 'client_secret_post', 'client_secret_basic'])
+      .default('client_secret_basic')
+  })
+  // 只有 public client（none）可以没有 secret；其余认证方式缺少 secret 时无法换取 token，
+  // 必须在入口拦截，避免把必然失败的配置写入节点后再在运行时暴露为 transient 错误。
+  .superRefine((value, ctx) => {
+    if (value.tokenEndpointAuthMethod !== 'none' && !value.clientSecret) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['clientSecret'],
+        message: 'clientSecret is required unless tokenEndpointAuthMethod is none'
+      });
+    }
+  });
 export type McpOAuthManualClientType = z.infer<typeof McpOAuthManualClientSchema>;
 
 export const McpOAuthStartBodySchema = z.object({
@@ -49,7 +62,7 @@ export type McpOAuthStartResponseType = z.infer<typeof McpOAuthStartResponseSche
 
 /** 授权服务器 302 回调参数；`error` 与 `code` 互斥，由路由按 AS 响应判定。 */
 export const McpOAuthCallbackQuerySchema = z.object({
-  state: z.string().min(1).max(4096),
+  state: z.string().min(1).max(MCP_OAUTH_STATE_MAX_LENGTH),
   code: z.string().min(1).max(4096).optional(),
   error: z.string().max(256).optional(),
   error_description: z.string().max(1024).optional(),
@@ -144,3 +157,15 @@ export const McpOAuthErrorResponseSchema = z.object({
   data: McpOAuthErrorDataSchema
 });
 export type McpOAuthErrorResponseType = z.infer<typeof McpOAuthErrorResponseSchema>;
+
+/** 公开 CIMD 文档（v2.4 §5.4）；由服务端常量构造，`client_id` 即文档自身 URL。 */
+export const McpOAuthCimdDocumentSchema = z.object({
+  client_id: z.string(),
+  client_name: z.string(),
+  redirect_uris: z.array(z.string()),
+  grant_types: z.array(z.string()),
+  response_types: z.array(z.string()),
+  token_endpoint_auth_method: z.literal('none'),
+  code_challenge_method: z.literal('S256')
+});
+export type McpOAuthCimdDocumentType = z.infer<typeof McpOAuthCimdDocumentSchema>;

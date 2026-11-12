@@ -18,13 +18,49 @@ export type McpOAuthChallenge = {
 
 const MCP_WWW_AUTHENTICATE_MAX_LENGTH = 4096;
 
-/**
- * 解析 `Bearer realm="...", error="insufficient_scope", resource_metadata="..."`。
- * 多挑战场景只取第一个 scheme；非法/超长输入返回 undefined，绝不抛出。
- */
-export const parseMcpWWWAuthenticate = (header?: string | null): McpOAuthChallenge | undefined => {
-  if (typeof header !== 'string') return undefined;
-  const value = header.trim().slice(0, MCP_WWW_AUTHENTICATE_MAX_LENGTH);
+const WWW_AUTHENTICATE_PARAM_PATTERN =
+  /([A-Za-z0-9!#$%&'*+.^_`|~-]+)\s*=\s*("((?:[^"\\]|\\.)*)"|[^,\s]+)/g;
+
+/** 按 RFC 7235 拆分多个 challenge；逗号仅在引号外生效，保留 `error_description="a,b"`。 */
+const splitWwwAuthenticateChallenges = (value: string): string[] => {
+  const challenges: string[] = [];
+  let current = '';
+  let inQuotes = false;
+  let escaped = false;
+
+  for (const char of value) {
+    if (escaped) {
+      current += char;
+      escaped = false;
+      continue;
+    }
+    if (char === '\\' && inQuotes) {
+      current += char;
+      escaped = true;
+      continue;
+    }
+    if (char === '"') {
+      inQuotes = !inQuotes;
+      current += char;
+      continue;
+    }
+    if (char === ',' && !inQuotes) {
+      challenges.push(current);
+      current = '';
+      continue;
+    }
+    current += char;
+  }
+  challenges.push(current);
+  return challenges;
+};
+
+/** 以 `token=` 开头的片段属于上一个 challenge 的参数，否则是一个新的 scheme。 */
+const isWwwAuthenticateParam = (segment: string) =>
+  /^[A-Za-z0-9!#$%&'*+.^_`|~-]+\s*=/.test(segment.trim());
+
+const parseWwwAuthenticateChallenge = (challenge: string): McpOAuthChallenge | undefined => {
+  const value = challenge.trim();
   if (!value) return undefined;
 
   const schemeMatch = /^([^\s,]+)(?:\s+|$)/.exec(value);
@@ -33,9 +69,9 @@ export const parseMcpWWWAuthenticate = (header?: string | null): McpOAuthChallen
 
   const params: Record<string, string> = {};
   const paramSource = value.slice(schemeMatch[0].length);
-  const paramPattern = /([A-Za-z0-9!#$%&'*+.^_`|~-]+)\s*=\s*("((?:[^"\\]|\\.)*)"|[^,\s]+)/g;
   let match: RegExpExecArray | null;
-  while ((match = paramPattern.exec(paramSource))) {
+  WWW_AUTHENTICATE_PARAM_PATTERN.lastIndex = 0;
+  while ((match = WWW_AUTHENTICATE_PARAM_PATTERN.exec(paramSource))) {
     const key = match[1].toLowerCase();
     const rawValue = match[3] !== undefined ? match[3].replace(/\\(.)/g, '$1') : match[2];
     if (!(key in params)) params[key] = rawValue;
@@ -49,6 +85,36 @@ export const parseMcpWWWAuthenticate = (header?: string | null): McpOAuthChallen
     ...(params.resource_metadata ? { resourceMetadata: params.resource_metadata } : {}),
     params
   };
+};
+
+/**
+ * 解析 `Bearer realm="...", error="insufficient_scope", resource_metadata="..."`。
+ * 多挑战响应按 RFC 7235 拆分，优先返回 Bearer challenge（如
+ * `Basic realm="x", Bearer error="insufficient_scope"`）；非法/超长输入返回 undefined，绝不抛出。
+ */
+export const parseMcpWWWAuthenticate = (header?: string | null): McpOAuthChallenge | undefined => {
+  if (typeof header !== 'string') return undefined;
+  const value = header.trim().slice(0, MCP_WWW_AUTHENTICATE_MAX_LENGTH);
+  if (!value) return undefined;
+
+  const challenges: string[] = [];
+  let current = '';
+  for (const segment of splitWwwAuthenticateChallenges(value)) {
+    if (!current) {
+      current = segment;
+    } else if (isWwwAuthenticateParam(segment)) {
+      current += `,${segment}`;
+    } else {
+      challenges.push(current);
+      current = segment;
+    }
+  }
+  if (current) challenges.push(current);
+
+  const parsed = challenges
+    .map(parseWwwAuthenticateChallenge)
+    .filter((challenge): challenge is McpOAuthChallenge => challenge !== undefined);
+  return parsed.find((challenge) => challenge.scheme === 'bearer') ?? parsed[0];
 };
 
 export type McpAuthRequiredErrorOptions = {

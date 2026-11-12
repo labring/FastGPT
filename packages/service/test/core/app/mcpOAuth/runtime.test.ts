@@ -1,13 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { Types } from '@fastgpt/service/common/mongo';
 import {
-  clearMcpOAuthClientCache,
   ensureMcpOAuthAccessToken,
-  getCachedMcpOAuthClient,
-  MCP_OAUTH_CLIENT_CACHE_TTL_MS,
   resetMcpOAuthFetchImpl,
   resolveMcpToolSetHeaders,
-  setCachedMcpOAuthClient,
   setMcpOAuthFetchImpl,
   withMcpOAuthRetry
 } from '@fastgpt/service/core/app/mcpOAuth';
@@ -121,7 +117,6 @@ const httpError = (status: number, message = 'request failed') =>
   Object.assign(new Error(message), { status });
 
 describe('mcpOAuth runtime', () => {
-  beforeEach(() => clearMcpOAuthClientCache());
   afterEach(async () => {
     resetMcpOAuthFetchImpl();
     await MongoAppVersion.deleteMany({});
@@ -299,6 +294,81 @@ describe('mcpOAuth runtime', () => {
     expect(fetchCalls).toBe(0);
   });
 
+  it('waits longer than 1.5s for a concurrent refresh to publish its token', async () => {
+    const { appId, versionId } = await createFixture({});
+    // 另一个实例持有未过期租约：本实例必须等待其写回，而不是重复刷新。
+    await MongoAppVersion.collection.updateOne(
+      { _id: versionId },
+      {
+        $set: {
+          'nodes.0.toolConfig.mcpToolSet.oauth.refreshLease': {
+            owner: 'other-instance',
+            expiresAt: Date.now() + 60_000
+          }
+        }
+      }
+    );
+
+    let fetchCalls = 0;
+    setMcpOAuthFetchImpl(async () => {
+      fetchCalls += 1;
+      return json({}, 500);
+    });
+
+    const winner = new Promise<void>((resolve, reject) => {
+      setTimeout(() => {
+        MongoAppVersion.collection
+          .updateOne(
+            { _id: versionId },
+            {
+              $set: {
+                'nodes.0.toolConfig.mcpToolSet.oauth.token': {
+                  secret: { access_token: encryptSecretValue({ value: 'winner-access' }) },
+                  expiresAt: Date.now() + 60_000,
+                  obtainedAt: Date.now()
+                },
+                'nodes.0.toolConfig.mcpToolSet.oauth.credentialSeq': 1,
+                'nodes.0.toolConfig.mcpToolSet.oauth.refreshLease': null
+              }
+            }
+          )
+          .then(() => resolve(), reject);
+      }, 1_600);
+    });
+
+    const startedAt = Date.now();
+    const access = await ensureMcpOAuthAccessToken({ appId, nodeId: 'node-1' });
+    const elapsed = Date.now() - startedAt;
+    await winner;
+
+    expect(access).toBe('winner-access');
+    expect(elapsed).toBeGreaterThan(1_500);
+    expect(fetchCalls).toBe(0);
+  });
+
+  it('degrades an undecryptable refresh token to reauth_required', async () => {
+    const { appId } = await createFixture({
+      token: {
+        secret: {
+          access_token: { secret: `${'00'.repeat(16)}:${'00'.repeat(8)}:${'00'.repeat(16)}` },
+          refresh_token: { secret: `${'11'.repeat(16)}:${'11'.repeat(8)}:${'11'.repeat(16)}` }
+        },
+        expiresAt: 0,
+        obtainedAt: 0
+      }
+    });
+
+    let fetchCalls = 0;
+    setMcpOAuthFetchImpl(async () => {
+      fetchCalls += 1;
+      return json({ access_token: 'x', token_type: 'Bearer', expires_in: 60 });
+    });
+
+    const error = await asOAuthError(ensureMcpOAuthAccessToken({ appId, nodeId: 'node-1' }));
+    expect(error.oauthCode).toBe(McpOAuthErrorCodeEnum.reauthRequired);
+    expect(fetchCalls).toBe(0);
+  });
+
   it('keeps headers mode untouched (no Bearer injection)', async () => {
     await expect(
       resolveMcpToolSetHeaders({
@@ -310,24 +380,5 @@ describe('mcpOAuth runtime', () => {
         }
       })
     ).resolves.toMatchObject({ Authorization: 'plain-header' });
-  });
-
-  it('expires cached clients after the fixed TTL', () => {
-    const appId = new Types.ObjectId().toString();
-    setCachedMcpOAuthClient({
-      appId,
-      nodeId: 'node-1',
-      server: { issuer: 'https://as.example.org/' },
-      client: { clientId: 'c' },
-      now: 1_000
-    });
-    expect(getCachedMcpOAuthClient({ appId, nodeId: 'node-1', now: 1_000 })).toBeTruthy();
-    expect(
-      getCachedMcpOAuthClient({
-        appId,
-        nodeId: 'node-1',
-        now: 1_000 + MCP_OAUTH_CLIENT_CACHE_TTL_MS
-      })
-    ).toBeUndefined();
   });
 });

@@ -310,7 +310,10 @@ describe('mcpOAuth credential', () => {
     });
     expect(merged.credentialSeqDelta).toBe(1);
     expect(merged.oauth?.token).toBeUndefined();
-    expect(merged.oauth?.client?.clientId).toBe('client-1');
+    // URL 变更但未重新发现 issuer：旧 client 可能绑定在旧 issuer 上，不能复用；
+    // 也不得把旧 issuer 写回，等下一次 start 重新发现。
+    expect(merged.oauth?.client).toBeUndefined();
+    expect(merged.oauth?.issuer).toBeUndefined();
 
     // URL 变更 + 重新发现到新 issuer：写回 nextIssuer、丢弃旧 client 与已失效 resource。
     const mergedWithIssuer = mergeMcpOAuthFromPublished({

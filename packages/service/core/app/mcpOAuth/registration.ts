@@ -143,11 +143,16 @@ export const buildMcpOAuthAuthorizationUrl = ({
   return url.toString();
 };
 
-const MCP_OAUTH_CLIENT_AUTH_METHODS = new Set<McpOAuthClientType['tokenEndpointAuthMethod']>([
+const MCP_OAUTH_CLIENT_AUTH_METHODS: ReadonlySet<string> = new Set([
   'none',
   'client_secret_post',
   'client_secret_basic'
 ]);
+
+const isMcpOAuthClientAuthMethod = (
+  value: unknown
+): value is McpOAuthClientType['tokenEndpointAuthMethod'] =>
+  typeof value === 'string' && MCP_OAUTH_CLIENT_AUTH_METHODS.has(value);
 
 /**
  * DCR 认证方式：优先 none，其次 client_secret_post / client_secret_basic；
@@ -257,13 +262,13 @@ const registerMcpOAuthClientDcr = async ({
     typeof json.token_endpoint_auth_method === 'string'
       ? json.token_endpoint_auth_method
       : authMethod;
-  if (!MCP_OAUTH_CLIENT_AUTH_METHODS.has(returnedMethod as never)) {
+  if (!isMcpOAuthClientAuthMethod(returnedMethod)) {
     throw new McpOAuthApiError(McpOAuthErrorCodeEnum.registrationRejected, {
       message: 'Registration response has unsupported auth method'
     });
   }
 
-  const tokenEndpointAuthMethod = returnedMethod as McpOAuthClientType['tokenEndpointAuthMethod'];
+  const tokenEndpointAuthMethod = returnedMethod;
   const clientSecret =
     typeof json.client_secret === 'string' && json.client_secret.length > 0
       ? json.client_secret
@@ -395,7 +400,18 @@ export const selectMcpOAuthClient = async ({
 
   // auto：严格 CIMD → DCR → manual，只有“不支持/不可用”才进入下一步。
   if (cimdAvailable) return selectCimd();
-  if (server.registrationEndpoint) return selectDcr();
+  if (server.registrationEndpoint) {
+    try {
+      return await selectDcr();
+    } catch (error) {
+      // AS 宣称支持 DCR 但实际拒绝/失败时，已配置 manual client 的用户应继续走 manual，
+      // 而不是让每次重新授权都硬失败（设计 §5.4：auto 依次尝试三种来源）。
+      if (manualClient || (savedClient && savedClientSource === 'manual')) {
+        return selectManual();
+      }
+      throw error;
+    }
+  }
   if (manualClient || (savedClient && savedClientSource === 'manual')) return selectManual();
 
   throw new McpOAuthApiError(McpOAuthErrorCodeEnum.clientMissing, {

@@ -64,6 +64,8 @@ vi.mock('@fastgpt/service/core/app/mcpOAuth/credential', () => ({
 import updateHttpTools from '@/pages/api/core/app/httpTools/update';
 import updateMcpTools from '@/pages/api/core/app/mcpTools/update';
 
+const tool = { name: 'search', description: 'Search tool' };
+
 const appId = '65f000000000000000000071';
 const versionId = '65f000000000000000000072';
 
@@ -108,7 +110,11 @@ describe('tool set update handlers', () => {
     {
       name: 'MCP',
       handler: updateMcpTools,
-      body: { appId, url: 'https://example.com/mcp', toolList: [] } as UpdateMcpToolsBodyType
+      body: {
+        appId,
+        url: 'https://example.com/mcp',
+        toolList: [tool]
+      } as UpdateMcpToolsBodyType
     }
   ])('propagates a $name published-version update failure', async ({ handler, body }) => {
     await expect(handler({ body } as ApiRequestProps<any>)).rejects.toBe(AppErrEnum.unExist);
@@ -164,6 +170,29 @@ describe('tool set update handlers', () => {
     );
   });
 
+  it('does not take a credential fence on the first oauth enable', async () => {
+    // 存量节点仍是 headers：此时存库节点没有 oauth.credentialSeq，带围栏必然匹配失败。
+    mocks.mergeMcpOAuthFromPublished.mockReturnValue({
+      oauth: { schemaVersion: 1, clientMode: 'auto', credentialSeq: 0 },
+      credentialSeqDelta: 0
+    });
+    mocks.updateAppPublishedVersion.mockResolvedValue(undefined);
+
+    await updateMcpTools({
+      body: {
+        appId,
+        url: 'https://example.com/mcp',
+        toolList: [tool],
+        authMode: 'oauth',
+        clientMode: 'auto'
+      }
+    } as ApiRequestProps<any>);
+
+    const call = mocks.updateAppPublishedVersion.mock.calls[0][0];
+    expect(call).not.toHaveProperty('nodeFence');
+    expect(call.nodes).toHaveLength(1);
+  });
+
   it('switches back to headers and keeps the node identity', async () => {
     mocks.getMcpToolSetVersionDoc.mockResolvedValue(
       createVersionDoc({
@@ -182,7 +211,7 @@ describe('tool set update handlers', () => {
       body: {
         appId,
         url: 'https://example.com/mcp',
-        toolList: [],
+        toolList: [tool],
         authMode: 'headers'
       }
     } as ApiRequestProps<any>);
@@ -197,5 +226,29 @@ describe('tool set update handlers', () => {
     const formattedNode = mocks.beforeUpdateAppFormat.mock.calls[0][0].nodes[0];
     expect(formattedNode.nodeId).toBe('node-1');
     expect(formattedNode.toolConfig.mcpToolSet.authMode).toBe('headers');
+  });
+
+  it('rejects an omitted authMode that resolves to headers with an empty toolList', async () => {
+    // 存量节点是 headers；请求省略 authMode 且 toolList 为空时，schema 的 refine
+    // 看不到真实模式，必须由 handler 按解析后的模式兜底拒绝。
+    mocks.getMcpToolSetVersionDoc.mockResolvedValue(
+      createVersionDoc({
+        url: 'https://example.com/mcp',
+        authMode: 'headers',
+        headerSecret: {}
+      })
+    );
+
+    await expect(
+      updateMcpTools({
+        body: {
+          appId,
+          url: 'https://example.com/mcp',
+          toolList: []
+        }
+      } as ApiRequestProps<any>)
+    ).rejects.toThrow('authMode=headers');
+
+    expect(mocks.updateAppPublishedVersion).not.toHaveBeenCalled();
   });
 });
