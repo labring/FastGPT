@@ -425,8 +425,7 @@ describe('checkNeedsUserConfiguration', () => {
 
 describe('isToolInputValueConfigured', () => {
   it.each([
-    [{ type: 'manual', value: { token: { ref: ['node', 'token'] } } }, false],
-    [{ type: 'manual', value: {} }, false],
+    [{ type: 'manual', value: { token: { ref: ['node', 'token'] } } }, true],
     [
       {
         type: 'manual',
@@ -447,13 +446,62 @@ describe('isToolInputValueConfigured', () => {
       },
       true
     ],
-    [{ type: 'system' }, true]
+    [{ type: 'system' }, true],
+    [{ type: 'system', value: { token: { value: '' } } }, true]
   ])('ignores refs when checking system config: %j', (value, expected) => {
     expect(
       isToolInputValueConfigured({
         input: {
           key: NodeInputKeyEnum.systemInputConfig,
           renderTypeList: [FlowNodeInputTypeEnum.custom],
+          value
+        }
+      })
+    ).toBe(expected);
+  });
+
+  it.each([
+    [{ value: { type: 'manual', value: {} } }, false],
+    [{ value: { type: 'manual', value: { token: { ref: ['node', 'token'] } } } }, true],
+    [{ value: { type: 'manual', value: { token: { ref: [] } } } }, false],
+    [
+      {
+        value: { type: 'manual', value: { optional: { value: '' } } },
+        inputList: [{ key: 'optional', label: 'Optional', inputType: 'input', required: false }]
+      },
+      true
+    ],
+    [
+      {
+        value: { type: 'manual', value: {} },
+        inputList: [{ key: 'required', label: 'Required', inputType: 'input', required: true }]
+      },
+      false
+    ],
+    [
+      {
+        value: { type: 'manual', value: { optional: { value: 1 } } },
+        inputList: [
+          { key: 'optional', label: 'Optional', inputType: 'input', required: false },
+          { key: 'required', label: 'Required', inputType: 'input', required: true }
+        ]
+      },
+      false
+    ],
+    [
+      {
+        value: { type: 'manual', value: { required: { ref: ['node', 'value'] } } },
+        inputList: [{ key: 'required', label: 'Required', inputType: 'input', required: true }]
+      },
+      true
+    ]
+  ])('checks required system input entries: %j', ({ value, inputList }, expected) => {
+    expect(
+      isToolInputValueConfigured({
+        input: {
+          key: NodeInputKeyEnum.systemInputConfig,
+          renderTypeList: [FlowNodeInputTypeEnum.custom],
+          inputList,
           value
         }
       })

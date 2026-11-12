@@ -35,6 +35,7 @@ import {
   getSelectedInputRenderType,
   getWorkflowReferenceSourceNodes,
   getWorkflowReferenceVariables,
+  isValidReferenceValueFormat,
   nodeInputIsReference
 } from '@fastgpt/global/common/workflow/reference';
 import { isWorkflowSystemModelInput } from '@fastgpt/global/common/workflow/model';
@@ -453,13 +454,13 @@ export const filterSensitiveNodesData = (nodes: StoreNodeItemType[]) => {
     return value;
   };
   const clearSystemInputConfig = (input: StoreNodeItemType['inputs'][number]) => {
+    if (!isRecord(input.value)) return;
+    const configValue = input.value.value;
+    if (!isRecord(configValue)) return;
+
     const secretKeys = new Set(
       (input.inputList ?? []).filter((item) => item.inputType === 'secret').map((item) => item.key)
     );
-    if (secretKeys.size === 0 || !isRecord(input.value)) return;
-
-    const configValue = input.value.value;
-    if (!isRecord(configValue)) return;
     input.value.value = Object.fromEntries(
       Object.entries(configValue).filter(
         ([key, value]) => secretKeys.has(key) && keepSecretRef(value)
@@ -550,7 +551,9 @@ export const filterSensitiveNodesData = (nodes: StoreNodeItemType[]) => {
       }
       if (
         input.renderTypeList?.includes(FlowNodeInputTypeEnum.password) &&
-        !keepSecretRef(input.value)
+        !nodeInputIsReference(input) &&
+        !keepSecretRef(input.value) &&
+        !isValidReferenceValueFormat(input.value)
       ) {
         input.value = undefined;
       }

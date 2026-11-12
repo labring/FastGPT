@@ -92,7 +92,14 @@ describe('filterSensitiveNodesData', () => {
           {
             key: 'passwordRef',
             renderTypeList: [FlowNodeInputTypeEnum.password],
+            selectedType: FlowNodeInputTypeEnum.reference,
             value: { ref: ['start', 'password'] }
+          },
+          {
+            key: 'passwordTuple',
+            renderTypeList: [FlowNodeInputTypeEnum.password, FlowNodeInputTypeEnum.reference],
+            selectedType: FlowNodeInputTypeEnum.reference,
+            value: ['start', 'password']
           },
           {
             key: 'ordinary',
@@ -121,7 +128,14 @@ describe('filterSensitiveNodesData', () => {
       {
         key: 'passwordRef',
         renderTypeList: [FlowNodeInputTypeEnum.password],
+        selectedType: FlowNodeInputTypeEnum.reference,
         value: { ref: ['start', 'password'] }
+      },
+      {
+        key: 'passwordTuple',
+        renderTypeList: [FlowNodeInputTypeEnum.password, FlowNodeInputTypeEnum.reference],
+        selectedType: FlowNodeInputTypeEnum.reference,
+        value: ['start', 'password']
       },
       {
         key: 'ordinary',
@@ -165,9 +179,31 @@ describe('filterSensitiveNodesData', () => {
       type: 'manual',
       value: {}
     });
-    expect(isToolInputValueConfigured({ input: filtered[0].inputs[0] })).toBe(false);
+    expect(isToolInputValueConfigured({ input: filtered[0].inputs[0] })).toBe(true);
     expect(JSON.stringify(filtered)).not.toContain('plain-token');
     expect(nodes[0].inputs[0].value.value.token).toEqual({ value: 'plain-token' });
+  });
+
+  it('clears system input values when the template has no secret inputs', () => {
+    const nodes = [
+      {
+        nodeId: 'tool',
+        flowNodeType: FlowNodeTypeEnum.code,
+        inputs: [
+          {
+            key: NodeInputKeyEnum.systemInputConfig,
+            inputList: [{ key: 'apiKey', label: 'API key', inputType: 'input' }],
+            value: { type: 'manual', value: { apiKey: { value: 'plain-token' } } }
+          }
+        ],
+        outputs: []
+      }
+    ] as any;
+
+    const filtered = filterSensitiveNodesData(nodes);
+
+    expect(filtered[0].inputs[0].value).toEqual({ type: 'manual', value: {} });
+    expect(JSON.stringify(filtered)).not.toContain('plain-token');
   });
 
   it('keeps a fully configured system input configured before export', () => {
@@ -233,10 +269,10 @@ describe('filterSensitiveNodesData', () => {
         token: { ref: ['start', 'token'] }
       }
     });
-    expect(isToolInputValueConfigured({ input: filtered[0].inputs[0] })).toBe(false);
+    expect(isToolInputValueConfigured({ input: filtered[0].inputs[0] })).toBe(true);
   });
 
-  it('treats system input config with only refs as unconfigured', () => {
+  it('treats a valid system input reference as configured', () => {
     const nodes = [
       {
         nodeId: 'tool',
@@ -261,7 +297,7 @@ describe('filterSensitiveNodesData', () => {
       type: 'manual',
       value: { token: { ref: ['start', 'token'] } }
     });
-    expect(isToolInputValueConfigured({ input: filtered[0].inputs[0] })).toBe(false);
+    expect(isToolInputValueConfigured({ input: filtered[0].inputs[0] })).toBe(true);
   });
 
   it('keeps system input config without a value shape unchanged', () => {
