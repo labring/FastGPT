@@ -137,7 +137,7 @@
   "model.upcoming_deprecation": "即将下架",
   "model.censor": "启用敏感校验",
   "model.censor_tip": "如果需要进行敏感校验，则开启该开关",
-  "model.unitPrice": "模型综合价格",
+  "model.unitPrice": "模型价格（积分）",
   "model.unitPrice_tip": "Token 模型按 M Tokens、TTS 按 1M 字符、STT 按 60 秒计价。",
   "model.defaultConfig": "额外 Body 参数",
   "model.defaultConfig_tip": "每次请求时候，都会携带该额外 Body 参数",

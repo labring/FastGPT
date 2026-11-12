@@ -137,7 +137,7 @@
   "model.upcoming_deprecation": "Upcoming deprecation",
   "model.censor": "Censor check",
   "model.censor_tip": "If sensitive verification is required, turn on this switch",
-  "model.unitPrice": "Model price",
+  "model.unitPrice": "Model price (credits)",
   "model.unitPrice_tip": "Token models are priced per M Tokens, TTS per 1M characters, and STT per 60 seconds.",
   "model.defaultConfig": "Additional Body parameters",
   "model.defaultConfig_tip": "Each request will carry this additional Body parameter.",
