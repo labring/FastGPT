@@ -100,7 +100,32 @@ test('root machine-readable endpoints and single-page Markdown negotiation respo
   });
   assert.equal(negotiated.status, 200);
   assert.match(negotiated.headers.get('content-type') ?? '', /text\/markdown/);
+  assert.match(negotiated.headers.get('vary') ?? '', /\bAccept\b/i);
   assert.ok((await negotiated.text()).includes('Source: https://doc.fastgpt.io/en/openapi/intro'));
+
+  const htmlNegotiated = await fetch(`${origin}/en/openapi/intro`, {
+    redirect: 'manual',
+    headers: { accept: 'text/html' }
+  });
+  assert.equal(htmlNegotiated.status, 200);
+  assert.equal(htmlNegotiated.headers.get('cache-control'), 'public, max-age=0, must-revalidate');
+  assert.match(htmlNegotiated.headers.get('vary') ?? '', /\bAccept\b/i);
+  assert.match(htmlNegotiated.headers.get('vary') ?? '', /\bRSC\b/i);
+});
+
+test('legacy archive screenshot zoom targets resolve to HTTP 200 assets', async () => {
+  const pageRes = await fetch(`${origin}/en/self-host/custom-models/legacy/bge-rerank`);
+  assert.equal(pageRes.status, 200);
+  const html = await pageRes.text();
+  assert.ok(!html.includes('/imgs/rerank1.png'), 'Missing original /imgs/rerank1.png must not appear as zoom target');
+  const imgMatches = new Set(
+    [...html.matchAll(/\/imgs\/[A-Za-z0-9_./-]+\.(?:png|jpg|jpeg|webp|svg)/g)].map((m) => m[0])
+  );
+  assert.ok(imgMatches.has('/imgs/optimized/rerank1.png.webp'));
+  for (const imgPath of imgMatches) {
+    const assetRes = await fetch(`${origin}${imgPath}`);
+    assert.equal(assetRes.status, 200, imgPath);
+  }
 });
 
 test('legacy paths resolve directly and preserve the query', async () => {

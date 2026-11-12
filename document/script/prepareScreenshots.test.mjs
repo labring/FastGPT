@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { mkdir, mkdtemp, readFile, rm } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
+import { mkdir, mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { createRequire } from 'node:module';
@@ -107,38 +108,73 @@ test('regenerated images stay within 200,000 bytes even for detailed content', a
   }
 });
 
-test('MDX static imports retain original zoom URLs while badges and icons stay unframed', async () => {
-  const content = [
-    '![screen](/imgs/optimized/current/example.png.webp)',
-    '<img src="/imgs/optimized/current/explicit.png.webp" width="200" height="100" />',
-    '![icon](/imgs/sso15.png)',
-    '![badge](https://example.com/badge.svg)'
-  ].join('\n\n');
-  const processor = remark()
-    .use(remarkMdx)
-    .use(remarkImage, { external: false })
-    .use(remarkScreenshots);
-  const tree = await processor.run(processor.parse(content));
-  const originals = [];
-  function visit(node) {
-    const original = node.attributes?.find((attribute) => attribute.name === 'data-original-src');
-    if (original) originals.push(original.value);
-    node.children?.forEach(visit);
+test('MDX static imports retain original zoom URLs when present and fall back to optimized assets when absent', async () => {
+  const publicDir = await mkdtemp(path.join(tmpdir(), 'screenshot-local-'));
+  try {
+    for (const rel of [
+      'imgs/current/example.png',
+      'imgs/optimized/current/example.png.webp',
+      'imgs/current/explicit.png',
+      'imgs/optimized/current/explicit.png.webp',
+      'imgs/optimized/legacy-only.png.webp',
+      'imgs/sso15.png'
+    ]) {
+      const full = path.join(publicDir, rel);
+      await mkdir(path.dirname(full), { recursive: true });
+      const img = sharp({ create: { width: 200, height: 100, channels: 3, background: '#fff' } });
+      if (rel.endsWith('.webp')) await img.webp().toFile(full);
+      else await img.png().toFile(full);
+    }
+    const content = [
+      '![screen](/imgs/optimized/current/example.png.webp)',
+      '<img src="/imgs/optimized/current/explicit.png.webp" width="200" height="100" />',
+      '![legacy](/imgs/optimized/legacy-only.png.webp)',
+      '![icon](/imgs/sso15.png)',
+      '![badge](https://example.com/badge.svg)'
+    ].join('\n\n');
+    const processor = remark()
+      .use(remarkMdx)
+      .use(remarkImage, { external: false, publicDir })
+      .use(remarkScreenshots, { publicDir });
+    const tree = await processor.run(processor.parse(content));
+    const originals = [];
+    function visit(node) {
+      const original = node.attributes?.find((attribute) => attribute.name === 'data-original-src');
+      if (original) originals.push(original.value);
+      node.children?.forEach(visit);
+    }
+    visit(tree);
+    assert.deepEqual(originals, [
+      '/imgs/current/example.png',
+      '/imgs/current/explicit.png',
+      '/imgs/optimized/legacy-only.png.webp'
+    ]);
+  } finally {
+    await rm(publicDir, { recursive: true, force: true });
   }
-  visit(tree);
-  assert.deepEqual(originals, ['/imgs/current/example.png', '/imgs/current/explicit.png']);
 });
 
 test('CDN rewrites retain screenshot framing, dimensions, and original zoom URLs', async () => {
   const publicDir = await mkdtemp(path.join(tmpdir(), 'screenshot-cdn-'));
   try {
     const asset = path.join(publicDir, 'imgs/optimized/current/example.png.webp');
+    const origAsset = path.join(publicDir, 'imgs/current/example.png');
+    const legacyAsset = path.join(publicDir, 'imgs/optimized/legacy.png.webp');
     await mkdir(path.dirname(asset), { recursive: true });
+    await mkdir(path.dirname(origAsset), { recursive: true });
     await sharp({ create: { width: 200, height: 100, channels: 3, background: '#fff' } })
       .webp()
       .toFile(asset);
-    const content =
-      '![screen](https://cdn.jsdelivr.net/gh/labring/fastgpt-img@main/optimized/current/example.png.webp)';
+    await sharp({ create: { width: 200, height: 100, channels: 3, background: '#fff' } })
+      .png()
+      .toFile(origAsset);
+    await sharp({ create: { width: 160, height: 90, channels: 3, background: '#fff' } })
+      .webp()
+      .toFile(legacyAsset);
+    const content = [
+      '![screen](https://cdn.jsdelivr.net/gh/labring/fastgpt-img@main/optimized/current/example.png.webp)',
+      '![legacy](https://cdn.jsdelivr.net/gh/labring/fastgpt-img@main/optimized/legacy.png.webp)'
+    ].join('\n\n');
     const processor = remark()
       .use(remarkMdx)
       .use(remarkImage, { external: false })
@@ -150,8 +186,60 @@ test('CDN rewrites retain screenshot framing, dimensions, and original zoom URLs
       width: 200,
       height: 100
     });
+    assert.deepEqual(tree.children[1].children[0].data.hProperties, {
+      'data-original-src':
+        'https://cdn.jsdelivr.net/gh/labring/fastgpt-img@main/optimized/legacy.png.webp',
+      width: 160,
+      height: 90
+    });
   } finally {
     await rm(publicDir, { recursive: true, force: true });
+  }
+});
+
+test('all derived screenshot zoom targets across content/ resolve to existing public files', async () => {
+  const docRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+  const contentDir = path.join(docRoot, 'content');
+  const publicDir = path.join(docRoot, 'public');
+
+  async function walk(dir) {
+    const entries = await readdir(dir, { withFileTypes: true });
+    const files = [];
+    for (const entry of entries) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) files.push(...(await walk(full)));
+      else if (entry.name.endsWith('.mdx')) files.push(full);
+    }
+    return files;
+  }
+
+  const optimizedRefs = new Set();
+  for (const file of await walk(contentDir)) {
+    const text = await readFile(file, 'utf8');
+    for (const match of text.matchAll(/\/imgs\/optimized\/[^)"'\s]+\.webp/g)) {
+      optimizedRefs.add(match[0]);
+    }
+  }
+  assert.ok(optimizedRefs.size > 0);
+
+  const snippet = [...optimizedRefs].map((url) => `![img](${url})`).join('\n\n');
+  const processor = remark()
+    .use(remarkMdx)
+    .use(remarkImage, { external: false, publicDir })
+    .use(remarkScreenshots, { publicDir });
+  const tree = await processor.run(processor.parse(snippet));
+
+  const targets = [];
+  function visit(node) {
+    const attr = node.attributes?.find((item) => item.name === 'data-original-src');
+    if (attr) targets.push(attr.value);
+    node.children?.forEach(visit);
+  }
+  visit(tree);
+
+  assert.equal(targets.length, optimizedRefs.size);
+  for (const target of targets) {
+    assert.ok(existsSync(path.join(publicDir, target)), `Missing derived zoom target: ${target}`);
   }
 });
 

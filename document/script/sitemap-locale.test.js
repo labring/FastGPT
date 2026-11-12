@@ -611,9 +611,18 @@ test('middleware resolves section landings, language roots, and historical paths
   assert.equal(anonPass.status, 200);
   assert.equal(
     anonPass.headers.get('cache-control'),
-    'public, max-age=0, s-maxage=60, stale-while-revalidate=600'
+    'public, max-age=0, must-revalidate'
   );
+  assert.match(anonPass.headers.get('vary') ?? '', /\bAccept\b/i);
   assert.equal(anonPass.headers.get('set-cookie'), null);
+
+  const markdownNegotiated = middleware(
+    new NextRequest('http://localhost:3210/en/openapi/intro', {
+      headers: { accept: 'text/markdown' }
+    })
+  );
+  assert.equal(markdownNegotiated.status, 200);
+  assert.match(markdownNegotiated.headers.get('vary') ?? '', /\bAccept\b/i);
 
   const localizedPricing = middleware(new NextRequest('http://localhost:3210/en/pricing.md?src=agent'));
   assert.equal(localizedPricing.status, 301);

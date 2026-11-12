@@ -118,7 +118,8 @@ FastGPT defines assignable permission scopes by **resource category** (Team, App
       </td>
       <td>Read permission</td>
       <td>
-        Can view this file/folder's content. Requires collection permissions enabled on the Dataset (see <a href="/en/guide/dataset/collection_permission">Collection Permissions</a>)
+        Can view this file/folder's content. Requires collection permissions enabled on the Dataset
+        (see <a href="/en/guide/dataset/collection_permission">Collection Permissions</a>)
       </td>
     </tr>
     <tr>
@@ -127,7 +128,10 @@ FastGPT defines assignable permission scopes by **resource category** (Team, App
     </tr>
     <tr>
       <td>Administrator</td>
-      <td>Modify file/folder metadata (rename, tags, disabled state), add or remove collaborators; deletion is Owner-only</td>
+      <td>
+        Modify file/folder metadata (rename, tags, disabled state), add or remove collaborators;
+        deletion is Owner-only
+      </td>
     </tr>
   </tbody>
 </table>
@@ -143,11 +147,11 @@ Before assigning permissions to members, departments, or groups, add them as **c
 
 The table below clarifies how the three privileged roles (Admin, Owner, and Root) are assigned and how to identify your current role in the interface:
 
-| Role | Definition and Assignment | How to Verify in the UI |
-| --- | --- | --- |
-| **Root (System Super Admin)** | Built-in system administrator account in self-hosted deployments with username `root` (initial password configured via `DEFAULT_ROOT_PSW`). FastGPT Cloud is operated by the official platform team and does not expose a tenant `root` account. | Check whether the **Admin** (Platform Administration Console) entry appears at the bottom of the left navigation bar, or verify whether the username under **Account → Profile** is `root`. |
-| **Owner (Creator)** | **Team Owner**: The account that created the team (`root` by default in single-team mode, or the registering user in cloud and multi-team modes).<br />**Resource Owner (Creator)**: The member who created the specific App, Dataset, or Collection. | **Team Owner**: Open **Account → Team management → Members** and check whether the **Transfer team ownership** button is visible in the upper-right corner, or inspect the **Owner** column of the default team group under the **Groups** tab.<br />**Resource Owner**: Open the resource's **Collaborators** dialog and check for the **Owner** (Creator) role badge. |
-| **Admin (Administrator)** | **Team Admin**: A member, department, or group granted the **Admin** permission by the Team Owner.<br />**Resource Admin**: A collaborator granted **Administrator** access on a specific App, Dataset, or Collection by its Owner. | **Team Admin**: Open **Account → Team management → Permissions** and check whether the **Admin** column is enabled for your account.<br />**Resource Admin**: Open the resource's **Collaborators** dialog and check whether your permission level is **Administrator**. |
+| Role                          | Definition and Assignment                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | How to Verify in the UI                                                                                                                                                                                                                                                                                                                                                 |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Root (System Super Admin)** | Built-in system administrator account in self-hosted deployments with username `root`. In `v4.17.3+`, newly created instances start in `inactive` status with the fixed initial password `123456` and require setting a new password on first login, while upgraded accounts retain their existing password (`v4.17.2` and earlier configured the password via `DEFAULT_ROOT_PSW`); see [Modify and Reset Root Password](/en/self-host/config/root-password). FastGPT Cloud is operated by the official platform team without a tenant `root` account. | Check whether the **Admin** (Platform Administration Console) entry appears at the bottom of the left navigation bar, or verify whether the username under **Account → Profile** is `root`.                                                                                                                                                                             |
+| **Owner (Creator)**           | **Team Owner**: The account that created the team (`root` by default in single-team mode, or the registering user in cloud and multi-team modes).<br />**Resource Owner (Creator)**: The member who created the specific App, Dataset, or Collection.                                                                                                                                                                                                                                                                                                  | **Team Owner**: Open **Account → Team management → Members** and check whether the **Transfer team ownership** button is visible in the upper-right corner, or inspect the **Owner** column of the default team group under the **Groups** tab.<br />**Resource Owner**: Open the resource's **Collaborators** dialog and check for the **Owner** (Creator) role badge. |
+| **Admin (Administrator)**     | **Team Admin**: A member, department, or group granted the **Admin** permission by the Team Owner.<br />**Resource Admin**: A collaborator granted **Administrator** access on a specific App, Dataset, or Collection in its **Collaborators** dialog by an effective Owner of that resource (the resource creator, the Team Owner, or self-hosted `root`; Apps created by built-in `AGENT_USERS` accounts require the creator).                                                                                                                       | **Team Admin**: Open **Account → Team management → Permissions** and check whether the **Admin** column is enabled for your account.<br />**Resource Admin**: Open the resource's **Collaborators** dialog and check whether your permission level is **Administrator**.                                                                                                |
 
 ### Admin Permissions
 
@@ -155,7 +159,7 @@ Team Admins manage member invitations, removals, departments, groups, and team p
 
 - Cannot modify or remove their own Admin permissions.
 - Cannot modify or remove the permissions of other peer Admins.
-- Cannot grant Admin permissions to other collaborators (Team Admins can only be appointed by the Team Owner on the Permissions tab; Resource Admins are appointed by the resource Owner or Team Admin).
+- Cannot grant Admin permissions to other collaborators (Team Admins are appointed only by the Team Owner on the Permissions tab; Resource Admins are appointed only by accounts holding effective Owner authority on that resource — the resource creator, the Team Owner, or self-hosted `root` outside built-in `AGENT_USERS` Apps).
 
 ### Owner Permissions
 

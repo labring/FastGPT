@@ -25,13 +25,13 @@ Open **Account → Usage Records** to switch between **Usage Details** and **Das
 
 From the plan card in **Account → Profile** or by clicking **Plan Usage** in the top-right corner of **Account → Usage Records**, you can inspect your team's active plan tier, resource quotas, and upgrade options:
 
-| Resource Category | Included Capabilities | Scaling and Activation Rules |
-| --- | --- | --- |
-| **Standard Plans (Monthly / Yearly)** | Team member cap, application limit, knowledge base dataset capacity, included AI points, and sandbox concurrency quotas | Plan upgrades take effect immediately; exact tier quotas follow your environment's pricing page |
-| **Extra AI Point Packs** | Standalone top-up packs of AI compute points | AI points are deducted from the earliest-expiring resource pack first, with selectable quantity and validity period |
-| **Extra Knowledge Index Packs** | Additional vector index capacity for knowledge bases | Stacks onto your team's total dataset index quota during the pack's validity window |
+| Resource Category                     | Included Capabilities                                                                                                   | Scaling and Activation Rules                                                                                        |
+| ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| **Standard Plans (Monthly / Yearly)** | Team member cap, application limit, knowledge base dataset capacity, included AI points, and sandbox concurrency quotas | Plan upgrades take effect immediately; exact tier quotas follow your environment's pricing page                     |
+| **Extra AI Point Packs**              | Standalone top-up packs of AI compute points                                                                            | AI points are deducted from the earliest-expiring resource pack first, with selectable quantity and validity period |
+| **Extra Knowledge Index Packs**       | Additional vector index capacity for knowledge bases                                                                    | Stacks onto your team's total dataset index quota during the pack's validity window                                 |
 
-The **AI Point Pricing Table** at the bottom of the pricing page lists point rates per million tokens (M Tokens) across language models, embedding models, rerankers, speech models, and enhanced PDF parsing.
+The **AI Points** table at the bottom of the subscription page supports filtering by model provider, model type, and model name, listing system model point rates by category: language, embedding, and rerank models are priced per million tokens (`M Tokens`), text-to-speech (TTS) models per million characters (`1M characters`), and speech-to-text (STT) models per 60 seconds.
 
 ## 3. Bills and Invoice Management
 
@@ -45,15 +45,15 @@ Team Owners and Team Admins can open **Account → Bills & Invoices** (when paym
 
 ## 4. Personal Profile, Security, and Preferences
 
-| Section | Capabilities |
-| --- | --- |
-| **Account → Profile** | Update avatar, display name, phone/email, and password; inspect team plan usage; use a **Redemption code**; and complete **Delete Account** |
-| **Account → Team** | Manage team members, departments, groups, and team permissions (available in Commercial Edition and Cloud) |
-| **Account → Usage Records** | View AI point consumption details, dashboard trends, and export CSV files (available in Commercial Edition and Cloud) |
-| **Account → Custom Domain** | Configure custom domain bindings for your team (available in Commercial Edition and Cloud when `customDomain` is enabled) |
-| **Account → Model Providers** | Inspect available models, pricing rates, and team model channels (available in Commercial Edition and Cloud) |
-| **Account → API Keys** | Create, edit, set point/expiration limits, and revoke team OpenAPI keys (visible only to members granted the **Create API Keys** team permission); see [Access App via API](/en/guide/build/publish/openapi) |
-| **Account → Notifications** | Configure notification bindings and receive quota alerts, billing reminders, and system announcements (available in Commercial Edition and Cloud) |
-| **Account → Language and time zone** | Switch UI language (Simplified Chinese, Traditional Chinese, English, Korean) and default timezone |
+| Section                              | Capabilities                                                                                                                                                                                                 |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Account → Profile**                | Update avatar, display name, phone/email, and password; inspect team plan usage; use a **Redemption code**; and complete **Delete Account**                                                                  |
+| **Account → Team**                   | Manage team members, departments, groups, and team permissions (available in Commercial Edition and Cloud)                                                                                                   |
+| **Account → Usage Records**          | View AI point consumption details, dashboard trends, and export CSV files (available in Commercial Edition and Cloud)                                                                                        |
+| **Account → Custom Domain**          | Configure custom domain bindings for your team (available in Commercial Edition and Cloud when `customDomain` is enabled)                                                                                    |
+| **Account → Model Providers**        | Inspect available models, pricing rates, and team model channels (available in Commercial Edition and Cloud)                                                                                                 |
+| **Account → API Keys**               | Create, edit, set point/expiration limits, and revoke team OpenAPI keys (visible only to members granted the **Create API Keys** team permission); see [Access App via API](/en/guide/build/publish/openapi) |
+| **Account → Notifications**          | Configure notification bindings and receive quota alerts, billing reminders, and system announcements (available in Commercial Edition and Cloud)                                                            |
+| **Account → Language and time zone** | Switch UI language (Simplified Chinese, Traditional Chinese, English, Korean) and default timezone                                                                                                           |
 
 Next: Configure team organization in [Team Roles and Permissions](/en/guide/workspace/team/team_roles_permissions) or inspect [Available Team Models](/en/guide/workspace/models).

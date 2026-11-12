@@ -1,8 +1,20 @@
+import fs from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 
 const require = createRequire(import.meta.url);
 const sharp = createRequire(require.resolve('next'))('sharp');
+
+/** Resolve the full-resolution zoom target when its source asset exists locally, falling back to the optimized image. */
+export function resolveScreenshotZoomSrc({ source, prefix, publicDir }) {
+  const originalCandidate = source
+    .replace(`${prefix}optimized/`, prefix)
+    .slice(0, -'.webp'.length);
+  const originalSubpath = originalCandidate.slice(prefix.length);
+  return fs.existsSync(path.join(publicDir, 'imgs', originalSubpath))
+    ? originalCandidate
+    : source;
+}
 
 /** Keep original URLs alongside Fumadocs static imports for framing and full-resolution zoom. */
 export function remarkScreenshots({ publicDir = path.join(process.cwd(), 'public') } = {}) {
@@ -19,7 +31,7 @@ export function remarkScreenshots({ publicDir = path.join(process.cwd(), 'public
         prefix &&
         source.endsWith('.webp')
       ) {
-        const original = source.replace(`${prefix}optimized/`, prefix).slice(0, -'.webp'.length);
+        const original = resolveScreenshotZoomSrc({ source, prefix, publicDir });
         if (node.type === 'image') {
           // The international build rewrites URLs to CDN paths; read dimensions from its local asset.
           const { width, height } = await sharp(

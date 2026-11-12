@@ -99,7 +99,8 @@ function extractRefs(content) {
 
   const imgRe = /!\[[^\]]*\]\(\s*<?([^)\s>]+)>?(?:\s+"[^"]*")?\s*\)/g;
   const linkRe = /(^|[^!])\[(?:[^\]]*?)\]\(\s*<?([^)\s>]+)>?(?:\s+"[^"]*")?\s*\)/g;
-  const attrRe = /\b(?:src|href|to)\s*=\s*(?:"([^"]+)"|'([^']+)'|\{\s*["']([^"']+)["']\s*\})/g;
+  const attrRe =
+    /\b(?:src|href|to|data-original-src|data-dark-src)\s*=\s*(?:"([^"]+)"|'([^']+)'|\{\s*["']([^"']+)["']\s*\})/g;
 
   let m;
   while ((m = imgRe.exec(stripped))) push(m[1], 'image', m.index);
@@ -123,7 +124,12 @@ function isValidRef(url, mdxPath) {
     if (isSkippedAttachment(target)) return { ok: true };
     if (target.startsWith('/imgs/')) {
       const p = path.join(PUBLIC_DIR, target);
-      return fileExists(p) ? { ok: true } : { ok: false, expected: p };
+      if (!fileExists(p)) return { ok: false, expected: p };
+      if (/^\/imgs\/diagrams\/.+\.light\.svg$/i.test(target)) {
+        const darkPath = path.join(PUBLIC_DIR, target.replace(/\.light\.svg$/i, '.dark.svg'));
+        if (!fileExists(darkPath)) return { ok: false, expected: darkPath };
+      }
+      return { ok: true };
     }
     const ext = path.extname(target).toLowerCase();
     if (ext && !MDX_EXTS.includes(ext)) {

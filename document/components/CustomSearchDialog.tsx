@@ -33,11 +33,15 @@ function loadStaticRecords(): Promise<DocumentRecord[]> {
 }
 
 /** Filter cached `/static.json` records by locale and query terms into grouped `SortedResult` items. */
-function searchStaticRecords(
-  records: DocumentRecord[],
-  rawQuery: string,
-  locale?: string
-): SortedResult[] {
+function searchStaticRecords({
+  records,
+  rawQuery,
+  locale
+}: {
+  records: DocumentRecord[];
+  rawQuery: string;
+  locale?: string;
+}): SortedResult[] {
   const terms = rawQuery.trim().toLowerCase().split(/\s+/).filter(Boolean);
   if (terms.length === 0) return [];
 
@@ -140,7 +144,7 @@ export default function CustomSearchDialog(props: SharedProps) {
       return query.data !== 'empty' ? query.data : null;
     }
     if (!search.trim() || staticRecords === null) return null;
-    return searchStaticRecords(staticRecords, search, locale);
+    return searchStaticRecords({ records: staticRecords, rawQuery: search, locale });
   }, [locale, query.data, query.error, search, staticRecords]);
 
   return (

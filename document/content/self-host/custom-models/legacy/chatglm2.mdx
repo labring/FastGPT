@@ -6,7 +6,6 @@ description: ' 将 FastGPT 接入私有化模型 ChatGLM2-6B'
 
 本页保留社区模型服务示例及历史 OneAPI/config.json 接入配置。当前部署请通过[模型配置](/zh-CN/self-host/config/model/intro)登记可访问的模型服务，并核对所用版本的模型类型、接口地址、权限和兼容性。
 
-
 import { Alert } from '@/components/docs/Alert';
 
 ## 前言
@@ -20,7 +19,8 @@ FastGPT 允许你使用自己的 OpenAI API KEY 来快速调用 OpenAI 接口，
 ChatGLM2-6B 是开源中英双语对话模型 ChatGLM-6B 的第二代版本，具体介绍可参阅 [ChatGLM2-6B 项目主页](https://github.com/THUDM/ChatGLM2-6B)。
 
 <Alert context="warning">
-注意，ChatGLM2-6B 权重对学术研究完全开放，在获得官方的书面许可后，亦允许商业使用。本教程只是介绍了一种用法，无权给予任何授权！
+  注意，ChatGLM2-6B
+  权重对学术研究完全开放，在获得官方的书面许可后，亦允许商业使用。本教程只是介绍了一种用法，无权给予任何授权！
 </Alert>
 
 ## 推荐配置
@@ -29,13 +29,11 @@ ChatGLM2-6B 是开源中英双语对话模型 ChatGLM-6B 的第二代版本，�
 
 因此推荐配置如下：
 
-
-| 类型 | 内存 | 显存 | 硬盘空间 | 启动命令 |
-|------|---------|---------|----------|--------------------------|
-| fp16 | >=16GB | >=16GB | >=25GB | python openai_api.py --model_name 16 |
-| int8 | >=16GB | >=9GB | >=25GB | python openai_api.py --model_name 8 |
-| int4 | >=16GB | >=6GB | >=25GB | python openai_api.py --model_name 4 |
-
+| 类型 | 内存   | 显存   | 硬盘空间 | 启动命令                             |
+| ---- | ------ | ------ | -------- | ------------------------------------ |
+| fp16 | >=16GB | >=16GB | >=25GB   | python openai_api.py --model_name 16 |
+| int8 | >=16GB | >=9GB  | >=25GB   | python openai_api.py --model_name 8  |
+| int4 | >=16GB | >=6GB  | >=25GB   | python openai_api.py --model_name 4  |
 
 ## 部署
 
@@ -65,9 +63,9 @@ ChatGLM2-6B 是开源中英双语对话模型 ChatGLM-6B 的第二代版本，�
 
 **镜像和端口**
 
-+ 镜像名: `stawky/chatglm2:latest`  
-+ 国内镜像名: `registry.cn-hangzhou.aliyuncs.com/fastgpt_docker/chatglm2:latest`
-+ 端口号: 6006
+- 镜像名: `stawky/chatglm2:latest`
+- 国内镜像名: `registry.cn-hangzhou.aliyuncs.com/fastgpt_docker/chatglm2:latest`
+- 端口号: 6006
 
 ```
 # 设置安全凭证（即oneapi中的渠道密钥）
@@ -113,7 +111,7 @@ Authorization 为 sk-aaabbbcccdddeeefffggghhhiiijjjkkk。model 为刚刚在 One 
     "maxResponse": 4000,
     "quoteMaxToken": 2000,
     "maxTemperature": 1,
-    "vision": false, 
+    "vision": false,
     "defaultSystemChatPrompt": ""
   }
 ]

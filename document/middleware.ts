@@ -298,7 +298,7 @@ for (const rawKey of Object.keys(docLastModifiedData)) {
 }
 
 const i18nMiddleware = createI18nMiddleware(i18n);
-const documentCacheControl = 'public, max-age=0, s-maxage=60, stale-while-revalidate=600';
+const documentCacheControl = 'public, max-age=0, must-revalidate';
 const PRODUCTION_HOST_LOCALES: Record<string, 'zh-CN' | 'en'> = {
   'doc.fastgpt.cn': 'zh-CN',
   'doc.fastgpt.in': 'zh-CN',
@@ -375,7 +375,15 @@ function createRedirectUrl(target: string, request: NextRequest, lang: string) {
   return url;
 }
 
-function createRootRedirectUrl(pathname: string, request: NextRequest, lang: string) {
+function createRootRedirectUrl({
+  pathname,
+  request,
+  lang
+}: {
+  pathname: string;
+  request: NextRequest;
+  lang: string;
+}) {
   const host = request.headers.get('host')?.split(':')[0]?.toLowerCase();
   const origin = host && host in PRODUCTION_HOST_LOCALES
     ? getFastGPTDocsOriginForLocale(lang === 'en' ? 'en' : 'zh-CN')
@@ -440,7 +448,10 @@ export default function middleware(request: NextRequest) {
     const strippedBase = hasDocsPrefix ? normalizePath(rawBase).slice('/docs'.length) : rawBase;
     const normalizedBase = normalizePath(strippedBase);
     if (normalizedBase.toLowerCase() === '/pricing') {
-      return NextResponse.redirect(createRootRedirectUrl('/pricing.md', request, lang), 301);
+      return NextResponse.redirect(
+        createRootRedirectUrl({ pathname: '/pricing.md', request, lang }),
+        301
+      );
     }
     if (retiredTopicPaths.has(normalizedBase.toLowerCase())) {
       return createGoneResponse(lang);
@@ -497,9 +508,11 @@ export default function middleware(request: NextRequest) {
       !acceptHeader.includes('text/html') &&
       normalizedPath.length > 1
     ) {
-      return NextResponse.rewrite(
+      const rewriteResponse = NextResponse.rewrite(
         new URL(`/api/doc-markdown/${lang}${normalizedPath}`, request.url)
       );
+      rewriteResponse.headers.append('Vary', 'Accept');
+      return rewriteResponse;
     }
 
     // Pass through with x-pathname; only rewrite FD_LOCALE cookie if an existing cookie disagrees,
@@ -508,6 +521,7 @@ export default function middleware(request: NextRequest) {
     // Static HTML references build-hashed chunks. Reusing HTML across image rollouts can
     // point the browser at chunks that only exist in the previous deployment.
     response.headers.set('Cache-Control', documentCacheControl);
+    response.headers.append('Vary', 'Accept');
     const currentCookie = request.cookies.get('FD_LOCALE')?.value;
     if (currentCookie !== undefined && currentCookie !== lang) {
       response.cookies.set('FD_LOCALE', lang, {

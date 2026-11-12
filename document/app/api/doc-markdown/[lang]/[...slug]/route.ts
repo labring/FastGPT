@@ -25,7 +25,8 @@ export async function GET(
     headers: {
       'Content-Type': 'text/markdown; charset=utf-8',
       Link: `<${canonicalUrl}>; rel="canonical"`,
-      'Cache-Control': 'public, max-age=0, s-maxage=300, stale-while-revalidate=600'
+      'Cache-Control': 'public, max-age=0, s-maxage=300, stale-while-revalidate=600',
+      Vary: 'Accept'
     }
   });
 }

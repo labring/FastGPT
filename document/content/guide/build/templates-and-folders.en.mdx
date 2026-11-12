@@ -18,14 +18,14 @@ As your team scales its Chat Agents, Agent V2 apps, and Workflows, use the Templ
 
 1. **Filter and sort**: Go to **Studio → Agents**, where the upper-left corner displays the **Agent** heading. Filter by App type (Chat Agent, Chat Agent V2, Workflow), search by name, or change the sort order; the upper-right toolbar provides **Batch Manage**, **+ Folder**, and **Import**.
 2. **Create folders**: Click **+ Folder** in the upper-right corner, enter a name and description, and choose whether to follow parent folder permissions to organize Apps by department, project, or lifecycle stage.
-3. **Permission inheritance and parent owner boundary**: Collaborator roles (Can Use, Can Edit, Can Manage) assigned to a folder are inherited by child folders and resources inside it; a parent folder's Owner inherits **Can Manage (`manage`)** permission on child resources while each child resource retains its own single Owner.
+3. **Permission inheritance and parent owner boundary**: Child folders and resources with permission inheritance enabled (the default) inherit collaborator roles (Can Use, Can Edit, Can Manage) from their parent folder, whereas standalone resources (`inheritPermission=false`) retain their own collaborator ACLs; a parent folder's Owner inherits **Can Manage (`manage`)** permission on inheriting child resources while each child resource retains its own single Owner.
 4. **Ancestor path navigation**: When a member has access only to a descendant application, tool, skill, or dataset inside a folder hierarchy, ancestor folders appear as read-only navigation entries (hiding folder metadata and management menus and disabling drag-and-drop), allowing the member to follow breadcrumbs into the authorized subtree and search within it. See [Team Roles and Permissions](/en/guide/workspace/team/team_roles_permissions).
 
 ## Batch Move and Batch Delete
 
 1. Click **Batch Manage** in the top-right corner of the application list to enter multi-select mode.
 2. Select one or more applications or folders.
-3. **Batch move**: Click **Batch Move** and choose the destination folder or root directory. Moved resources inherit the destination folder's collaborator permissions.
+3. **Batch move**: Click **Batch Move** and choose the destination folder or root directory. Resources with permission inheritance enabled synchronize to inherit the destination folder's collaborator permissions; standalone resources (`inheritPermission=false`) update only their folder location and ancestor path while preserving their existing collaborator ACLs, so verify collaborators after moving resources into restricted folders.
 4. **Batch delete**: Click **Batch Delete**, verify the listed resources in the confirmation dialog, and enter the confirmation text to submit: the resource name when only one deletable resource is selected, or **Confirm Delete** when two or more are selected. Deleting an application removes its conversation history, evaluation tasks, and share links; export critical configurations beforehand.
 
 ![Batch application management and folder move](/imgs/optimized/current/app-batch-move.png.webp)

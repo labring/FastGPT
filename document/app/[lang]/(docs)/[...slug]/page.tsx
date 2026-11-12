@@ -29,9 +29,8 @@ export default async function Page({
 }: {
   params: Promise<{ lang: string; slug?: string[] }>;
 }) {
-  // 1. Resolve target page and optional upgrade timeline items.
+  // 1. 解析目标文档页与版本升级时间线数据；source.getPage 已排除 draft 页面，此处同时校验物理语言文件后缀一致。
   const { lang, slug } = await params;
-  // source.getPage excludes draft pages; enforce locale file suffix parity as well.
   const page = source.getPage(slug, lang);
   if (!page?.data || page.data._file.path.endsWith('.en.mdx') !== (lang === 'en')) notFound();
 
@@ -55,8 +54,7 @@ export default async function Page({
         }))
     : [];
 
-  // 2. Resolve file metadata and canonical page URL.
-  // Use the physical locale file; the route path omits the language suffix.
+  // 2. 读取物理语言文件对应的最后修改时间，并按当前语言所属域名拼接规范 URL。
   const filePath = `content/${page.data._file.path}`;
   const lastModifiedData = docLastModifiedData as Record<string, string>;
   const lastModified = lastModifiedData[filePath] ?? page.data.lastModified;
@@ -64,12 +62,11 @@ export default async function Page({
   const domain = getFastGPTDocsOriginForLocale(lang === 'en' ? 'en' : 'zh-CN');
   const url = `${domain}${page.url}`;
 
-  // 3. Build deduplicated breadcrumb items for JSON-LD.
+  // 3. 推导并去重面包屑路径；无索引页的目录回退至首个子页面 URL，保留中间层级结构。
   const tree = source.pageTree[lang];
   const section = searchPath(tree.children, page.url)?.find(
     (node) => node.type === 'folder' && node.root
   );
-  // Folders without an index page fall back to their first child page URL so intermediate hierarchy levels stay in BreadcrumbList.
   const findFirstPageUrl = (node: (typeof tree.children)[number]): string | undefined => {
     if (node.type === 'page') return node.url;
     if (node.type === 'folder') {
@@ -108,7 +105,7 @@ export default async function Page({
   }
   const breadcrumbItems = [...breadcrumbByUrl.values()];
 
-  // 4. Generate structured data (Article, BreadcrumbList, and FAQPage).
+  // 4. 生成结构化数据（TechArticle、BreadcrumbList、FAQPage 与首页 WebSite）；归档与目录页标记 noindex 并跳过输出。
   const shouldNoIndex =
     Boolean(page.data.deprecated) || /^toc(?:\.en)?\.mdx$/.test(page.data._file.path);
   const isDocsHome = page.url === `/${lang}/guide/getting-started`;

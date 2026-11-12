@@ -14,6 +14,31 @@ export function SidebarScrollRestoreScript() {
   return <script dangerouslySetInnerHTML={{ __html: RESTORE_SIDEBAR_SCROLL_SCRIPT }} />;
 }
 
+/** Restore the saved desktop sidebar scroll position onto the viewport element when valid. */
+export function restoreSidebarViewportScroll(viewport: HTMLElement): void {
+  try {
+    const raw = sessionStorage.getItem(SIDEBAR_SCROLL_STORAGE_KEY);
+    if (raw !== null) {
+      const saved = Number(raw);
+      if (Number.isFinite(saved) && saved >= 0 && Math.abs(viewport.scrollTop - saved) > 1) {
+        viewport.style.overflowY = 'scroll';
+        viewport.scrollTop = saved;
+      }
+    }
+  } catch {
+    // Ignore storage errors in restricted browsing contexts.
+  }
+}
+
+/** Persist the current desktop sidebar viewport scroll offset to sessionStorage. */
+export function persistSidebarViewportScroll(viewport: HTMLElement): void {
+  try {
+    sessionStorage.setItem(SIDEBAR_SCROLL_STORAGE_KEY, String(viewport.scrollTop));
+  } catch {
+    // Ignore storage errors in restricted browsing contexts.
+  }
+}
+
 /**
  * Keeps sidebar wheel focus responsive and persists the desktop sidebar scroll
  * position across document navigations.
@@ -33,11 +58,7 @@ export function SidebarScrollFix() {
 
     const saveScrollTop = () => {
       if (!viewport) return;
-      try {
-        sessionStorage.setItem(SIDEBAR_SCROLL_STORAGE_KEY, String(viewport.scrollTop));
-      } catch {
-        // Ignore storage errors in restricted browsing contexts.
-      }
+      persistSidebarViewportScroll(viewport);
     };
 
     if (sidebar) {
@@ -46,18 +67,7 @@ export function SidebarScrollFix() {
     }
 
     if (viewport) {
-      try {
-        const raw = sessionStorage.getItem(SIDEBAR_SCROLL_STORAGE_KEY);
-        if (raw !== null) {
-          const saved = Number(raw);
-          if (Number.isFinite(saved) && saved >= 0 && Math.abs(viewport.scrollTop - saved) > 1) {
-            viewport.style.overflowY = 'scroll';
-            viewport.scrollTop = saved;
-          }
-        }
-      } catch {
-        // Ignore storage errors in restricted browsing contexts.
-      }
+      restoreSidebarViewportScroll(viewport);
       viewport.addEventListener('scroll', saveScrollTop, { passive: true });
       viewport.addEventListener('pointerdown', saveScrollTop, { passive: true });
       viewport.addEventListener('click', saveScrollTop, { passive: true });

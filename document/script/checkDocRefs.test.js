@@ -20,6 +20,23 @@ test('reference checker accepts locale routes and exclusions while rejecting mis
     assert.equal(valid.status, 0, valid.stderr);
     fs.writeFileSync(path.join(root, 'content/index.mdx'), '[Missing](/zh-CN/missing)');
     assert.equal(run().status, 1);
+
+    fs.mkdirSync(path.join(root, 'public/imgs/diagrams'), { recursive: true });
+    fs.writeFileSync(path.join(root, 'public/imgs/diagrams/flow.light.svg'), '<svg />');
+    fs.writeFileSync(
+      path.join(root, 'content/index.mdx'),
+      '![Diagram](/imgs/diagrams/flow.light.svg)'
+    );
+    assert.equal(run().status, 1, 'Missing paired .dark.svg diagram variant should fail');
+
+    fs.writeFileSync(path.join(root, 'public/imgs/diagrams/flow.dark.svg'), '<svg />');
+    assert.equal(run().status, 0);
+
+    fs.writeFileSync(
+      path.join(root, 'content/index.mdx'),
+      '<img src="/imgs/diagrams/flow.light.svg" data-original-src="/imgs/missing-original.png" />'
+    );
+    assert.equal(run().status, 1, 'Missing explicit data-original-src should fail');
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }

@@ -19,7 +19,10 @@ import { type SidebarComponents } from 'fumadocs-ui/components/layout/sidebar';
 import { type PageTree } from 'fumadocs-core/server';
 import { ExternalLink } from 'lucide-react';
 import { cn } from '@/lib/cn';
-import { SIDEBAR_SCROLL_STORAGE_KEY } from '@/components/sidebarScrollFix';
+import {
+  persistSidebarViewportScroll,
+  restoreSidebarViewportScroll
+} from '@/components/sidebarScrollFix';
 
 const VIRTUAL_SECTION_ID_SUFFIX = '#virtual-section';
 
@@ -69,18 +72,7 @@ const CustomItem: FC<{ item: PageTree.Item }> = ({ item }) => {
     const anchor = viewport?.querySelector<HTMLElement>(`a[href='${item.url}']`);
     if (!viewport || !anchor) return;
 
-    try {
-      const raw = sessionStorage.getItem(SIDEBAR_SCROLL_STORAGE_KEY);
-      if (raw !== null) {
-        const saved = Number(raw);
-        if (Number.isFinite(saved) && saved >= 0 && Math.abs(viewport.scrollTop - saved) > 1) {
-          viewport.style.overflowY = 'scroll';
-          viewport.scrollTop = saved;
-        }
-      }
-    } catch {
-      // Ignore storage errors in restricted browsing contexts.
-    }
+    restoreSidebarViewportScroll(viewport);
 
     const viewportRect = viewport.getBoundingClientRect();
     const anchorRect = anchor.getBoundingClientRect();
@@ -89,11 +81,7 @@ const CustomItem: FC<{ item: PageTree.Item }> = ({ item }) => {
     if (anchorRect.top < viewportRect.top || anchorRect.bottom > viewportRect.bottom) {
       viewport.scrollTop +=
         anchorRect.top - viewportRect.top - viewportRect.height / 2 + anchorRect.height / 2;
-      try {
-        sessionStorage.setItem(SIDEBAR_SCROLL_STORAGE_KEY, String(viewport.scrollTop));
-      } catch {
-        // Ignore storage errors in restricted browsing contexts.
-      }
+      persistSidebarViewportScroll(viewport);
     }
   }, [isActive, item.url]);
 

@@ -1,7 +1,7 @@
 ---
 title: 接入 bge-rerank 重排模型（历史归档）
 deprecated: true
-description: "使用 Docker 本地部署 bge-rerank 重排模型并接入 FastGPT，提升知识库混合检索结果的排序精度。"
+description: '使用 Docker 本地部署 bge-rerank 重排模型并接入 FastGPT，提升知识库混合检索结果的排序精度。'
 ---
 
 本页归档历史接入方案。当前模型服务登记、渠道和权限配置请阅读[模型配置](/zh-CN/self-host/config/model/intro)，并按部署版本核对接口兼容性。
@@ -10,13 +10,11 @@ description: "使用 Docker 本地部署 bge-rerank 重排模型并接入 FastGP
 
 推荐配置如下：
 
-
-| 模型名 | 内存 | 显存 | 硬盘空间 | 启动命令 |
-|------|---------|---------|----------|--------------------------|
-| bge-reranker-base | >=4GB | >=4GB | >=8GB | python app.py |
-| bge-reranker-large | >=8GB | >=8GB | >=8GB | python app.py |
-| bge-reranker-v2-m3 | >=8GB | >=8GB | >=8GB | python app.py |
-
+| 模型名             | 内存  | 显存  | 硬盘空间 | 启动命令      |
+| ------------------ | ----- | ----- | -------- | ------------- |
+| bge-reranker-base  | >=4GB | >=4GB | >=8GB    | python app.py |
+| bge-reranker-large | >=8GB | >=8GB | >=8GB    | python app.py |
+| bge-reranker-v2-m3 | >=8GB | >=8GB | >=8GB    | python app.py |
 
 ## 源码部署
 
@@ -42,7 +40,7 @@ pip install -r requirements.txt
 
 ### 4. 下载模型
 
-3个模型的 huggingface 仓库地址如下：
+3 个模型的 huggingface 仓库地址如下：
 
 1. [https://huggingface.co/BAAI/bge-reranker-base](https://huggingface.co/BAAI/bge-reranker-base)
 2. [https://huggingface.co/BAAI/bge-reranker-large](https://huggingface.co/BAAI/bge-reranker-large)
@@ -94,7 +92,8 @@ ACCESS_TOKEN=访问安全凭证，请求时，Authorization: Bearer ${ACCESS_TOK
 docker run -d --name reranker -p 6006:6006 -e ACCESS_TOKEN=mytoken --gpus all registry.cn-hangzhou.aliyuncs.com/fastgpt/bge-rerank-base:v0.1
 ```
 
-**docker-compose.yml示例**
+**docker-compose.yml 示例**
+
 ```
 version: "3"
 services:
@@ -115,22 +114,23 @@ services:
       - ACCESS_TOKEN=mytoken
 
 ```
+
 ## 接入 FastGPT
 
 1. 打开 FastGPT 模型配置，新增一个重排模型。
-2. 填写模型配置表单：模型 ID 为`bge-reranker-base`，地址填写`{{host}}/v1/rerank`，host 为你部署的域名/IP:Port。
+2. 填写模型配置表单：模型 ID 为 `bge-reranker-base`，地址填写 `{{host}}/v1/rerank`，host 为你部署的域名/IP:Port。
 
 ![接入 FastGPT：界面示例](/imgs/optimized/image-102.png.webp)
 
 ## 启动与调用排障
 
-### 403报错
+### 403 报错
 
-FastGPT中，自定义请求 Token 和环境变量的 ACCESS_TOKEN 不一致。 
+FastGPT 中，自定义请求 Token 和环境变量的 ACCESS_TOKEN 不一致。
 
 ### Docker 运行提示 `Bus error (core dumped)`
 
-尝试增加 `docker-compose.yml` 配置项 `shm_size` ，以增加容器中的共享内存目录大小。
+尝试增加 `docker-compose.yml` 配置项 `shm_size`，以增加容器中的共享内存目录大小。
 
 ```
 ...
