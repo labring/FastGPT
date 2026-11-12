@@ -14,6 +14,7 @@ import { serviceEnv } from '@fastgpt/service/env';
 import { postHealth } from '@fastgpt/service/thirdProvider/fastgptPro/api';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { getSsoConfigured } from '@fastgpt/service/common/system/sso';
+import { resolveEffectiveTeamMode } from '@fastgpt/global/common/system/config/teamMode';
 
 const logger = getLogger(LogCategories.SYSTEM);
 
@@ -70,11 +71,13 @@ async function handler(
    */
   const filterFeConfigs = (): GetSystemInitDataResponse['feConfigs'] => {
     // 存量库残留 sync 但 Pro 明确未配置外部用户系统地址时，与 Pro 保持一致降级为 single。
-    const shouldDowngradeSyncTeamMode =
-      runtimeSnapshot.feConfigs?.teamMode === 'sync' && ssoConfigured === false;
-    const effectiveTeamMode = shouldDowngradeSyncTeamMode
-      ? 'single'
-      : runtimeSnapshot.feConfigs?.teamMode;
+    const configuredTeamMode = runtimeSnapshot.feConfigs?.teamMode ?? 'single';
+    const effectiveTeamMode = resolveEffectiveTeamMode({
+      teamMode: configuredTeamMode,
+      // 探测结果未知时不擅自降级；Pro 不可用时业务请求本身会失败。
+      externalUserSystemConfigured: ssoConfigured !== false
+    });
+    const shouldDowngradeSyncTeamMode = effectiveTeamMode !== configuredTeamMode;
     const effectiveRegisterMethod = shouldDowngradeSyncTeamMode
       ? runtimeSnapshot.feConfigs?.register_method?.filter((method) => method !== 'sync')
       : runtimeSnapshot.feConfigs?.register_method;
