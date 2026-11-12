@@ -9,7 +9,6 @@ import type {
 import type { EmbeddingModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { type ClientSession } from '@fastgpt/service/common/mongo';
-import { getFullTextStore } from '@fastgpt/service/core/dataset/data/textStore';
 import { isS3ObjectKey, removeS3TTL } from '@fastgpt/service/common/s3/utils';
 import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 import { isAuthorizedDatasetFileS3Key } from '@fastgpt/service/common/s3/sources/dataset/key';
@@ -103,8 +102,7 @@ type RebuildDatasetDataIndexesProps = {
  *
  * 这个类负责协调一条 dataset data 相关的多份存储：
  * - MongoDatasetData：主数据、Q/A、indexes、历史记录
- * - MongoDatasetDataText：全文检索 token
- * - 向量库：每个 index 对应的向量记录
+ * - 向量库：每个 index 对应的向量与全文检索词项记录
  * - S3：图片数据的生命周期或删除
  *
  * 修改这些流程时要特别注意写入顺序，避免 Mongo 中的 index dataId 和向量库记录不一致。
@@ -277,20 +275,6 @@ export class DatasetDataOperation {
           );
           insertId = String(_id);
 
-          await getFullTextStore().write(
-            [
-              {
-                teamId,
-                datasetId,
-                collectionId,
-                dataId: String(_id),
-                fullText:
-                  synonymContext?.transformText(`${indexQ}\n${a}`.trim()) ??
-                  `${indexQ}\n${a}`.trim()
-              }
-            ],
-            mongoSession
-          );
           await assertSynonymContextCurrent();
 
           if (
@@ -460,22 +444,6 @@ export class DatasetDataOperation {
             throw new Error('数据已变化，请重试索引更新');
           }
 
-          // Q/A 变化会影响全文检索结果,需要和主数据一并更新(milvus 下为 no-op,全文随向量 upsert 覆盖)。
-          await getFullTextStore().write(
-            [
-              {
-                teamId: String(mongoData.teamId),
-                datasetId: String(mongoData.datasetId),
-                collectionId: String(mongoData.collectionId),
-                dataId: String(mongoData._id),
-                fullText:
-                  synonymContext?.transformText(`${nextQ}\n${nextA}`.trim()) ??
-                  `${nextQ}\n${nextA}`.trim()
-              }
-            ],
-            mongoSession
-          );
-
           if (!commit && isFailed) {
             await MongoDatasetTraining.deleteMany(
               {
@@ -625,24 +593,6 @@ export class DatasetDataOperation {
             { session }
           );
           if (result.matchedCount !== 1) throw new Error('数据已变化，请重试索引更新');
-
-          // 历史全文可能来自 q/a；从已存非图片索引派生目标全文并同步覆盖。
-          const fullText = indexes
-            .filter((index) => index.type !== DatasetDataIndexTypeEnum.imageEmbedding)
-            .map((index) => index.text)
-            .join('\n');
-          await getFullTextStore().write(
-            [
-              {
-                teamId: String(mongoData.teamId),
-                datasetId: String(mongoData.datasetId),
-                collectionId: String(mongoData.collectionId),
-                dataId: String(mongoData._id),
-                fullText: synonymContext?.transformText(fullText) ?? fullText
-              }
-            ],
-            session
-          );
         }
       });
     } catch (error) {
@@ -823,22 +773,6 @@ export class DatasetDataOperation {
           throw new Error('数据已变化，请重试索引更新');
         }
 
-        // Q/A 变化会影响全文检索结果(milvus 下为 no-op,全文随向量 upsert 覆盖)。
-        await getFullTextStore().write(
-          [
-            {
-              teamId: String(mongoData.teamId),
-              datasetId: String(mongoData.datasetId),
-              collectionId: String(mongoData.collectionId),
-              dataId: String(mongoData._id),
-              fullText:
-                synonymContext?.transformText(`${nextQ}\n${nextA}`.trim()) ??
-                `${nextQ}\n${nextA}`.trim()
-            }
-          ],
-          session
-        );
-
         if (isFailed) {
           await MongoDatasetTraining.deleteMany(
             {
@@ -883,7 +817,7 @@ export class DatasetDataOperation {
   /**
    * 删除一条 dataset data 以及所有派生资源。
    *
-   * 删除范围包含主数据、全文检索 token、图片文件和向量记录。图片 key 需要先校验，
+   * 删除范围包含主数据、图片文件和向量记录（含同行全文索引）。图片 key 需要先校验，
    * 防止误删非 dataset 来源的 S3 对象。
    */
   async delete(data: DeleteDatasetDataProps, session?: ClientSession) {
@@ -892,8 +826,6 @@ export class DatasetDataOperation {
       fn: async (session) => {
         await MongoDatasetData.deleteOne({ _id: data.id }, { session });
         await MongoDatasetTraining.deleteMany({ dataId: data.id }, { session });
-        // getFullTextStore() 按引擎分发:mongo 删除 dataset_data_texts;milvus 为 no-op(全文行随向量删除清理)。
-        await getFullTextStore().deleteByDataId(data.id, session);
 
         // 主数据删除后清理图片对象，避免孤儿文件继续占用存储。
         // 仅删除归属于该数据块 dataset 的 key，避免脏数据里的外库 key 触发跨库物理删除。

@@ -1,13 +1,46 @@
 import { Jieba } from '@node-rs/jieba';
 
-let jieba: Jieba | undefined;
-
-(async () => {
+/**
+ * 词典异步加载一次，所有分词入口都等待同一个实例。
+ * 词典未生效时 jieba 只能靠 HMM 猜词，结果明显变差却不会报错；因此加载后用关闭 HMM 的切词做自检，
+ * 失败直接拒绝，避免 SQL 全文写入和检索在劣化的分词上静默运行。
+ */
+const jiebaReady: Promise<Jieba> = (async () => {
   const dictData = await import('./dict.json');
   // @ts-ignore
   const dictBuffer = Buffer.from(dictData.dict?.replace(/\\n/g, '\n'), 'utf-8');
-  jieba = Jieba.withDict(dictBuffer);
+  const instance = Jieba.withDict(dictBuffer);
+  if (instance.cut('镇静定义', false).join(' ') !== '镇静 定义') {
+    throw new Error('Jieba dictionary did not load; refusing to tokenize');
+  }
+  return instance;
 })();
+// 加载失败时由各调用方的 await 抛出，这里只避免启动阶段出现未处理的 rejection。
+jiebaReady.catch(() => {});
+
+/**
+ * 网址内部允许的普通字符：排除空白、包裹分隔符（尖括号、引号、反引号、括号、竖线、反斜杠、脱字符）、
+ * Unicode 通用标点（弯引号、破折号、省略号等）以及中日韩文字、全角字符与中文标点，
+ * 避免把含网址的无空格中文整段删空，或吞掉闭合符号后紧贴的英文与数字。
+ */
+const URL_SAFE_CHAR =
+  '[^\\s<>"\'`()\\[\\]{}|\\\\^\\u2000-\\u206f\\u3000-\\u303f\\u3040-\\u30ff\\u3400-\\u4dbf\\u4e00-\\u9fff\\uac00-\\ud7af\\uff00-\\uffef]';
+
+/**
+ * 匹配 http(s):// 开头的网址（兼容 IPv6 主机与网址内部成对的一层圆括号，如百科链接），
+ * 不吞掉 Markdown `[文本](https://...)v4.18` 的外层右括号与后续内容，也不误删“使用http协议”等普通词。
+ */
+const URL_PATTERN = new RegExp(
+  `https?:\\/\\/(?:\\[[0-9a-f:.]+\\])?${URL_SAFE_CHAR}*(?:\\(${URL_SAFE_CHAR}*\\)${URL_SAFE_CHAR}*)*`,
+  'gi'
+);
+
+/** jiebaSplit 与 SQL 全文外置分词共用的预处理：去掉网址本身与 Markdown 标记符号。 */
+const stripMarkdownAndUrl = (text: string) =>
+  text
+    .replace(URL_PATTERN, ' ')
+    .replace(/[#*`_~>[\](){}|]/g, '')
+    .trim();
 
 const stopWords = new Set([
   '\n',
@@ -1519,14 +1552,36 @@ const stopWords = new Set([
   ]
 ]);
 
+/** 去掉全角标点并修剪空白；jiebaSplit 与 SQL 全文外置分词共用。 */
+const stripFullWidthPunctuation = (item: string) =>
+  item.replace(/[\u3000-\u303f\uff00-\uffef]/g, '').trim();
+
+/** Mongo 旧全文分词：普通模式切词，保留原始大小写，结果以空格连接。 */
 export async function jiebaSplit({ text }: { text: string }) {
-  text = text.replace(/[#*`_~>[\](){}|]|\S*https?\S*/g, '').trim();
-  const tokens = (await jieba!.cutAsync(text, true)) as string[];
+  const jieba = await jiebaReady;
+  const tokens = (await jieba.cutAsync(stripMarkdownAndUrl(text), true)) as string[];
 
   return (
     tokens
-      .map((item) => item.replace(/[\u3000-\u303f\uff00-\uffef]/g, '').trim())
+      .map(stripFullWidthPunctuation)
       .filter((item) => item && !stopWords.has(item))
       .join(' ') || ''
   );
+}
+
+/**
+ * SQL 全文外置分词：预处理与停用词沿用 jiebaSplit，切词改为搜索模式并统一转小写。
+ * 搜索模式会同时输出重叠词（如“复旦”“大学”“复旦大学”），保证文档写简称、查询写全称（或反之）都能匹配；
+ * 转小写后再过滤停用词，英文停用词不受大小写影响。
+ * 写入、回填核对与检索必须共用本函数，否则两侧词项对不上会静默漏检。
+ */
+export async function jiebaSearchTokens({ text }: { text: string }): Promise<string[]> {
+  const jieba = await jiebaReady;
+  const cleaned = stripMarkdownAndUrl(text);
+  if (!cleaned) return [];
+
+  return jieba
+    .cutForSearch(cleaned, true)
+    .map((item) => stripFullWidthPunctuation(item).toLowerCase())
+    .filter((item) => item && !stopWords.has(item));
 }

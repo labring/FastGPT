@@ -50,6 +50,7 @@ export class ObClass {
 
     global.obClient = mysql.createPool({
       uri: address,
+      charset: 'utf8mb4',
       waitForConnections: true,
       connectionLimit: serviceEnv.DB_MAX_LINK,
       connectTimeout: 20000,
@@ -63,14 +64,12 @@ export class ObClass {
       // Test the connection with a simple query instead of calling connect()
       await global.obClient.query('SELECT 1');
       logger.info('Vector DB connected', {
-        provider: this.controllerType,
-        address
+        provider: this.controllerType
       });
       return global.obClient;
     } catch (error) {
       logger.error('Vector DB connection failed', {
         provider: this.controllerType,
-        address,
         error
       });
 
@@ -79,8 +78,7 @@ export class ObClass {
 
       await delay(1000);
       logger.info('Vector DB reconnecting', {
-        provider: this.controllerType,
-        address
+        provider: this.controllerType
       });
 
       return this.getClient();
@@ -258,5 +256,39 @@ export class ObClass {
 
       return res;
     });
+  }
+
+  /**
+   * 原生全文使用绑定参数保留原文，逐行取得同一连接的精确自增 ID。
+   * 不推算连续 ID，兼容自增步长、多副本及超过 JS 安全整数范围的 ID；整批 DML 原子提交。
+   */
+  async insertBoundRows(table: string, props: InsertProps) {
+    if (!props.values.length) return { rowCount: 0, insertIds: [] as string[] };
+    const fields = props.values[0].map((item) => item.key);
+    const connection = await (await this.getClient()).getConnection();
+    const insertIds: string[] = [];
+    try {
+      await connection.beginTransaction();
+      for (const row of props.values) {
+        const [result] = await connection.query<ResultSetHeader>(
+          `INSERT INTO ${table} (${fields.join(',')}) VALUES (${fields.map(() => '?').join(',')})`,
+          row.map((item) => item.value)
+        );
+        if (result.affectedRows !== 1)
+          throw new Error('Native full-text vector row was not inserted');
+        const [ids] = await connection.query<({ id: string } & RowDataPacket)[]>(
+          'SELECT CAST(LAST_INSERT_ID() AS CHAR) AS id'
+        );
+        if (!/^[1-9]\d*$/.test(ids[0]?.id)) throw new Error('Native vector ID was not returned');
+        insertIds.push(ids[0].id);
+      }
+      await connection.commit();
+      return { rowCount: insertIds.length, insertIds };
+    } catch (error) {
+      await connection.rollback();
+      throw error;
+    } finally {
+      connection.release();
+    }
   }
 }

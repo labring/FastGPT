@@ -13,10 +13,8 @@ import type {
   UpdateTrainingDataResponse
 } from '@fastgpt/global/openapi/core/dataset/training/api';
 import { Types } from '@fastgpt/service/common/mongo';
-import { jiebaSplit } from '@fastgpt/service/common/string/jieba/index';
 import * as modelService from '@fastgpt/service/core/ai/model/catalog/service';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
-import { MongoDatasetDataText } from '@fastgpt/service/core/dataset/data/dataTextSchema';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import {
@@ -311,7 +309,6 @@ describe('pre-created data queue routing', () => {
       indexStatus: DatasetDataIndexStatusEnum.indexing,
       indexes: []
     });
-    expect(await MongoDatasetDataText.countDocuments({ dataId: data._id })).toBe(0);
     expect(await MongoDatasetTraining.findById(task._id).lean()).toMatchObject({
       retryCount: 4,
       errorMsg: 'completion failed'
@@ -451,7 +448,6 @@ describe('pre-created data queue routing', () => {
       indexStatus: DatasetDataIndexStatusEnum.indexing,
       indexes: []
     });
-    expect(await MongoDatasetDataText.countDocuments({ dataId: data._id })).toBe(0);
     const retainedTask = await MongoDatasetTraining.findById(task._id).lean();
     expect(retainedTask).toMatchObject({ retryCount: 5, lockTime: replacementLock });
     expect(retainedTask?.errorMsg).toBeUndefined();
@@ -465,7 +461,7 @@ describe('pre-created data queue routing', () => {
       indexStatus: DatasetDataIndexStatusEnum.indexing
     });
     mockGetVectors.mockImplementation(async ({ inputs }) => {
-      // 向量生成期间保持 indexing，完成后才与全文记录一起提交 indexed。
+      // 向量生成期间保持 indexing，完成后才提交 indexed。
       expect((await MongoDatasetData.findById(data._id).lean())?.indexStatus).toBe(
         DatasetDataIndexStatusEnum.indexing
       );
@@ -481,8 +477,10 @@ describe('pre-created data queue routing', () => {
     expect(updated!.indexes.every((index) => Boolean(index.dataId))).toBe(true);
     expect(updated?.history ?? []).toHaveLength(0);
     expect(mockGetVectors).toHaveBeenCalled();
+    expect(mockVectorInsert).toHaveBeenCalledWith(
+      expect.objectContaining({ texts: ['chunk content'] })
+    );
     expect(await MongoDatasetData.countDocuments({ collectionId: data.collectionId })).toBe(1);
-    expect(await MongoDatasetDataText.countDocuments({ dataId: data._id })).toBe(1);
     expect(await MongoDatasetTraining.findById(task._id)).toBeNull();
     expect(await MongoDatasetTraining.countDocuments({ datasetId: dataset._id })).toBe(0);
   });
@@ -565,8 +563,9 @@ describe('pre-created data queue routing', () => {
       history: [{ a: answer }]
     });
     expect(updated!.indexes.map((index) => index.text)).not.toContain(answer);
-    const fullText = await MongoDatasetDataText.findOne({ dataId: data._id }).lean();
-    expect(fullText?.fullTextToken).toBe(await jiebaSplit({ text: 'chunk content' }));
+    expect(mockVectorInsert).toHaveBeenLastCalledWith(
+      expect.objectContaining({ texts: ['chunk content'] })
+    );
     expect(await MongoDatasetTraining.findById(task._id).lean()).toBeNull();
   });
 

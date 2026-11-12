@@ -729,6 +729,19 @@ describe('DatasetDataIndexOperation', () => {
   });
 
   describe('buildPatch', () => {
+    it('rebuilds the vector ID when identical text changes between image and text indexes', () => {
+      const operation = new DatasetDataIndexOperation(embeddingModel);
+      const text = 'dataset/private/image.png';
+      expect(
+        operation
+          .buildPatch({
+            currentIndexes: [{ type: DatasetDataIndexTypeEnum.custom, text, dataId: 'old_id' }],
+            nextIndexes: [{ type: DatasetDataIndexTypeEnum.imageEmbedding, text, dataId: 'old_id' }]
+          })
+          .map(({ type }) => type)
+      ).toEqual(['update']);
+    });
+
     it('should build create, update, delete and unchanged patch items', () => {
       const operation = new DatasetDataIndexOperation(embeddingModel);
 

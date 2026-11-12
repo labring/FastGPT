@@ -17,13 +17,11 @@ describe('validateSystemMigrationRegistry', () => {
     expect(systemMigrations.map(({ id }) => id)).toEqual([
       '20261022_initialize_dataset_vector_indexes',
       '20261104_backfill_chat_publish_source',
-      '20261104_backfill_openapi_key_type'
+      '20261104_backfill_openapi_key_type',
+      '20261110_migrate_sql_fulltext'
     ]);
     expect(
-      systemMigrations.filter(
-        (task: SystemMigration) =>
-          task.blockStartup || task.manual || task.delay || task.dependsOn?.length
-      )
+      systemMigrations.filter((task: SystemMigration) => task.blockStartup || task.delay)
     ).toEqual([]);
     expect(() => validateSystemMigrationRegistry(systemMigrations)).not.toThrow();
   });
@@ -45,7 +43,7 @@ describe('validateSystemMigrationRegistry', () => {
   });
 
   it('在4.18.0末尾登记独立自动 Key 类型回填，保持启动非阻塞且无依赖', () => {
-    const task = systemMigrations.at(-1);
+    const task = systemMigrations.find(({ id }) => id === '20261104_backfill_openapi_key_type');
     expect(task).toMatchObject({
       id: '20261104_backfill_openapi_key_type',
       version: '4.18.0',
@@ -63,6 +61,25 @@ describe('validateSystemMigrationRegistry', () => {
     expect(independentTasks.map((task) => task.id)).toEqual([
       '20261104_backfill_chat_publish_source',
       '20261104_backfill_openapi_key_type'
+    ]);
+  });
+
+  it('appends SQL full-text migration as an automatic background task with legacy cleanup', () => {
+    const task = systemMigrations.at(-1);
+    expect(task).toMatchObject({
+      id: '20261110_migrate_sql_fulltext',
+      version: '4.18.0'
+    });
+    expect(task).not.toHaveProperty('manual');
+    expect(task).not.toHaveProperty('dependsOn');
+    expect(task).not.toHaveProperty('blockStartup');
+    expect(task).not.toHaveProperty('independent');
+    expect(task?.progressSteps.map(({ key }) => key)).toEqual([
+      'prepare',
+      'preflight',
+      'scan',
+      'validation',
+      'cleanup'
     ]);
   });
 

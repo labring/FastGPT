@@ -9,7 +9,6 @@ import {
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
-import { MongoDatasetDataText } from '@fastgpt/service/core/dataset/data/dataTextSchema';
 import { mockVectorDelete, resetVectorMocks } from '@test/mocks/common/vector';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoTeamAudit } from '@fastgpt/service/support/user/audit/schema';
@@ -187,13 +186,6 @@ describe('delete training data test', () => {
         dataId: data._id
       });
 
-      await MongoDatasetDataText.create({
-        teamId: root.teamId,
-        datasetId: dataset._id,
-        collectionId: collection._id,
-        dataId: data._id,
-        fullTextToken: 'saved index'
-      });
       // 清理失败时 Mongo 事务回滚，保留任务和数据供用户再次处理。
       mockVectorDelete.mockRejectedValue(new Error('vector cleanup failed'));
       const failed = await Call(handler, {
@@ -203,7 +195,6 @@ describe('delete training data test', () => {
       expect(failed.code).not.toBe(200);
       expect(await MongoDatasetTraining.findById(training._id)).not.toBeNull();
       expect(await MongoDatasetData.findById(data._id)).not.toBeNull();
-      expect(await MongoDatasetDataText.findOne({ dataId: data._id })).not.toBeNull();
       expect(mockVectorDelete).toHaveBeenCalled();
       mockVectorDelete.mockResolvedValue(undefined);
       resetVectorMocks();
@@ -220,7 +211,6 @@ describe('delete training data test', () => {
       expect(res.code).toBe(200);
       await expect(MongoDatasetTraining.findById(training._id)).resolves.toBeNull();
       await expect(MongoDatasetData.findById(data._id)).resolves.toBeNull();
-      await expect(MongoDatasetDataText.findOne({ dataId: data._id })).resolves.toBeNull();
       expect(mockVectorDelete).toHaveBeenCalledWith({
         teamId: String(root.teamId),
         idList: ['old-vector']

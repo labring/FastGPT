@@ -1,0 +1,186 @@
+[
+  {
+    "id": "nano-zh",
+    "name": "NanoMIRACL 中文",
+    "language": "zh",
+    "scope": "published-small-subset",
+    "format": "parquet",
+    "counts": {
+      "corpus": 1700,
+      "queries": 200,
+      "judgments": 200
+    },
+    "inputs": {
+      "corpus.jsonl": "d9ee889ab727f72cc8b858d195f2868e1151df8992e572641594819e357c15ac",
+      "queries.jsonl": "95d6f28d6677ed8441e1876adb5ac34961049055c3aa0992930ee20ee552a7e0",
+      "qrels/test.tsv": "10ad6cbee2996a5911c02770c3189107d912904085fb1eabc73b88c4c720bbee"
+    },
+    "downloads": [
+      {
+        "part": "corpus",
+        "url": "https://huggingface.co/datasets/hotchpotch/NanoMIRACL/resolve/6e98c995a5be54ef41d3a016a2f30314dd625619/corpus/zh-00000-of-00001.parquet?download=true",
+        "sha256": "5701436014a4b1114aff3d1cb2785629392772c876c16870278776fedc3affc3"
+      },
+      {
+        "part": "queries",
+        "url": "https://huggingface.co/datasets/hotchpotch/NanoMIRACL/resolve/6e98c995a5be54ef41d3a016a2f30314dd625619/queries/zh-00000-of-00001.parquet?download=true",
+        "sha256": "3660c897cd414ccd815c313362cfc105942160095ca71cc1f64ab12ba4dfda86"
+      },
+      {
+        "part": "qrels",
+        "url": "https://huggingface.co/datasets/hotchpotch/NanoMIRACL/resolve/6e98c995a5be54ef41d3a016a2f30314dd625619/qrels/zh-00000-of-00001.parquet?download=true",
+        "sha256": "b25ffbb254767ba7a12d7d2f77dceaf9fc4974c1ef8a416101bd81e94bc3dc9d"
+      }
+    ]
+  },
+  {
+    "id": "nano-en",
+    "name": "NanoMIRACL 英文",
+    "language": "en",
+    "scope": "published-small-subset",
+    "format": "parquet",
+    "counts": {
+      "corpus": 1657,
+      "queries": 200,
+      "judgments": 200
+    },
+    "inputs": {
+      "corpus.jsonl": "93a4d7082a02091ea0a7a4fc00e9b76f62aa665cc77a82c4d5190c3e29f7c7b2",
+      "queries.jsonl": "76c68043d59ab23f9a246bdf0ad3706ed04a085402786d8489548b6ae8d4a0b4",
+      "qrels/test.tsv": "d687514cf8f4adcbd62435bd26295be36110ccb311f08e93d8a335d39ca42ff8"
+    },
+    "downloads": [
+      {
+        "part": "corpus",
+        "url": "https://huggingface.co/datasets/hotchpotch/NanoMIRACL/resolve/6e98c995a5be54ef41d3a016a2f30314dd625619/corpus/en-00000-of-00001.parquet?download=true",
+        "sha256": "648e643eaaf9f7803f834326e7511aabdd7739228f5eb75c3ddd0bcea90dd40e"
+      },
+      {
+        "part": "queries",
+        "url": "https://huggingface.co/datasets/hotchpotch/NanoMIRACL/resolve/6e98c995a5be54ef41d3a016a2f30314dd625619/queries/en-00000-of-00001.parquet?download=true",
+        "sha256": "8dfdc4be7543a52d98eba1e8eb2ae00c20c297344a88f72ddfd15057cb1a28f5"
+      },
+      {
+        "part": "qrels",
+        "url": "https://huggingface.co/datasets/hotchpotch/NanoMIRACL/resolve/6e98c995a5be54ef41d3a016a2f30314dd625619/qrels/en-00000-of-00001.parquet?download=true",
+        "sha256": "e580a5cb3d5ebb4a42e01d86df534778f83ea0fbf793c021336baa5502893cdd"
+      }
+    ]
+  },
+  {
+    "id": "nano-ja",
+    "name": "NanoMIRACL 日文",
+    "language": "ja",
+    "scope": "published-small-subset",
+    "format": "parquet",
+    "counts": {
+      "corpus": 1846,
+      "queries": 200,
+      "judgments": 200
+    },
+    "inputs": {
+      "corpus.jsonl": "b12152c9074283efd1e3a2de3a6d4792b39033265a2c4efa11b344342fad7f8e",
+      "queries.jsonl": "27592e6ab897946c08062bfd33dfb6383e5cccb315e6a0165adf2e7130692865",
+      "qrels/test.tsv": "cf353409a288f932b63bed825754789a62f5d2c215d17afccab8977fdd4f387e"
+    },
+    "downloads": [
+      {
+        "part": "corpus",
+        "url": "https://huggingface.co/datasets/hotchpotch/NanoMIRACL/resolve/6e98c995a5be54ef41d3a016a2f30314dd625619/corpus/ja-00000-of-00001.parquet?download=true",
+        "sha256": "873e9284456b7973f0087c8aa9118d1102af7b6abfa8a7a3df1ab62686296192"
+      },
+      {
+        "part": "queries",
+        "url": "https://huggingface.co/datasets/hotchpotch/NanoMIRACL/resolve/6e98c995a5be54ef41d3a016a2f30314dd625619/queries/ja-00000-of-00001.parquet?download=true",
+        "sha256": "dde7e06edb27e1ebebbcbfc18f0b2ebb55685739e5fb3186eb36fdd30dbbb55a"
+      },
+      {
+        "part": "qrels",
+        "url": "https://huggingface.co/datasets/hotchpotch/NanoMIRACL/resolve/6e98c995a5be54ef41d3a016a2f30314dd625619/qrels/ja-00000-of-00001.parquet?download=true",
+        "sha256": "eb0137a310d795caa62ac8c8523a0cd96fb095e101b84cc8a6f3e0aa58685d30"
+      }
+    ]
+  },
+  {
+    "id": "scifact",
+    "name": "BEIR SciFact",
+    "language": "en",
+    "scope": "full-published-corpus",
+    "format": "beir-zip",
+    "counts": {
+      "corpus": 5183,
+      "queries": 300,
+      "judgments": 339
+    },
+    "inputs": {
+      "corpus.jsonl": "dec31c8182f3d744c7d2c09423756fd1d17cbef75808db13ba01cc0aab4d1ac6",
+      "queries.jsonl": "8ff84a7c903f722981cd8d595c022660140c51867b27608a6d4910db86080313",
+      "qrels/test.tsv": "0864bb985e0ca2367ba217977e72004d549054b2b06666ed9d4825ac7c21284c"
+    },
+    "downloads": [
+      {
+        "part": "archive",
+        "url": "https://public.ukp.informatik.tu-darmstadt.de/thakur/BEIR/datasets/scifact.zip",
+        "sha256": "536e14446a0ba56ed1398ab1055f39fe852686ecad24a6306c80c490fa8e0165"
+      }
+    ]
+  },
+  {
+    "id": "nfcorpus",
+    "name": "BEIR NFCorpus",
+    "language": "en",
+    "scope": "full-published-corpus",
+    "format": "beir-zip",
+    "counts": {
+      "corpus": 3633,
+      "queries": 323,
+      "judgments": 12334
+    },
+    "inputs": {
+      "corpus.jsonl": "10cc83ef1826b1425e6a87090b5140b39b27755d5a27e48215a88611c899991f",
+      "queries.jsonl": "d024e6621b84925d485ae473d316a0c3af31c62c8068a59fb29d22f7613aef2a",
+      "qrels/test.tsv": "f8fba6ef3d4dd9c3a242a8ba4ae38276fc3622fce7dcbae764766d564542fd2a"
+    },
+    "downloads": [
+      {
+        "part": "archive",
+        "url": "https://public.ukp.informatik.tu-darmstadt.de/thakur/BEIR/datasets/nfcorpus.zip",
+        "sha256": "efe5be03f8c5b86a5870102d0599d227c8c6e2484328e68c6522560385671b0b"
+      }
+    ]
+  },
+  {
+    "id": "covid",
+    "name": "C-MTEB CovidRetrieval",
+    "language": "zh",
+    "scope": "full-published-corpus",
+    "format": "parquet",
+    "counts": {
+      "corpus": 100001,
+      "queries": 949,
+      "judgments": 959
+    },
+    "inputs": {
+      "corpus.jsonl": "a2505bc09dec86e7b1e27e80a78139eb4b02a1ec6b8df269e98256140dded55e",
+      "queries.jsonl": "555b5f41f94bed835158696adf3b657a52014de129bb3c2c0834d4553179571c",
+      "qrels/test.tsv": "ca5a2f451ff4e34280f757ca5659731c0b546cb2445f9f84407d058cb94764cf"
+    },
+    "downloads": [
+      {
+        "part": "corpus",
+        "url": "https://huggingface.co/datasets/C-MTEB/CovidRetrieval/resolve/1271c7809071a13532e05f25fb53511ffce77117/data/corpus-00000-of-00001-c6672bba0449b139.parquet?download=true",
+        "sha256": "cf12a40059c94e2068f29e53d2dcc7c2f7c5ff5051a1dfe691c8033e5c25f516"
+      },
+      {
+        "part": "queries",
+        "url": "https://huggingface.co/datasets/C-MTEB/CovidRetrieval/resolve/1271c7809071a13532e05f25fb53511ffce77117/data/queries-00000-of-00001-2b1399da56079d94.parquet?download=true",
+        "sha256": "a45bc638f0494489bf0de5abd8e5f07618c60afa7504a1e3fa5531ae3c8edbd7"
+      },
+      {
+        "part": "qrels",
+        "url": "https://huggingface.co/datasets/C-MTEB/CovidRetrieval-qrels/resolve/a9f41b7cdf24785531d12417ce0d1157ed4b39ca/data/dev-00000-of-00001-94f5bc4c0377691e.parquet?download=true",
+        "sha256": "413599870545907d2d61ec3576db6a77df5162c2fdde09778fffb0fccab7138e"
+      }
+    ]
+  }
+]

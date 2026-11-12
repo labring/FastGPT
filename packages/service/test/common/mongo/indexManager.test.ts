@@ -9,6 +9,7 @@ import {
 import type { DeprecatedMongoIndexDefinition } from '@fastgpt/service/common/mongo/schemaIndexes';
 import { MongoIndexManager } from '@fastgpt/service/common/mongo/indexManager';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
+import { MongoDatasetDataText } from '@fastgpt/service/core/dataset/data/dataTextSchema';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import {
@@ -723,5 +724,47 @@ describe('sandbox quota index migration', () => {
     expect(names).toContain('status_1_lastActiveAt_1');
     expect(names).toContain('sourceType_1_sourceId_1_userId_1');
     expect(names).toContain('customer_sandbox_source');
+  });
+});
+
+describe('dataset legacy full-text index deprecation', () => {
+  it('removes all three deprecated dataset_data_texts indexes while preserving customer indexes', async () => {
+    expect(MongoDatasetDataText.schema.indexes()).toEqual([]);
+    const deprecated = getSchemaDeprecatedMongoIndexes(MongoDatasetDataText.schema);
+    expect(deprecated.map((item) => item.indexName)).toEqual([
+      'teamId_1_fullTextToken_text',
+      'teamId_1_datasetId_1_collectionId_1',
+      'dataId_hashed'
+    ]);
+
+    const schema = new Schema(
+      {
+        teamId: String,
+        datasetId: String,
+        collectionId: String,
+        dataId: String,
+        fullTextToken: String,
+        customerField: String
+      },
+      { autoIndex: false }
+    );
+    defineDeprecatedTestIndexes(schema, deprecated);
+    const model = createModel({ schema, prefix: 'DatasetDataTextDeprecatedIndex' });
+    await model.collection.createIndex(
+      { teamId: 1, fullTextToken: 'text' },
+      { name: 'teamId_1_fullTextToken_text', default_language: 'none' }
+    );
+    await model.collection.createIndex({ teamId: 1, datasetId: 1, collectionId: 1 });
+    await model.collection.createIndex({ dataId: 'hashed' });
+    await model.collection.createIndex({ customerField: 1 }, { name: 'customer_text_lookup' });
+
+    const result = await MongoIndexManager.syncModelIndexes({ model, logger });
+    const names = await getIndexNames(model);
+
+    expect(result.cleanupReport.items.filter(({ action }) => action === 'drop')).toHaveLength(3);
+    expect(names).not.toContain('teamId_1_fullTextToken_text');
+    expect(names).not.toContain('teamId_1_datasetId_1_collectionId_1');
+    expect(names).not.toContain('dataId_hashed');
+    expect(names).toContain('customer_text_lookup');
   });
 });

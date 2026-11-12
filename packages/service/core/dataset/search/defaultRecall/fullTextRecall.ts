@@ -8,7 +8,8 @@ import { readFromSecondary } from '../../../../common/mongo/utils';
 import { getLogger, LogCategories } from '../../../../common/logger';
 import { MongoDatasetCollection } from '../../collection/schema';
 import { MongoDatasetData } from '../../data/schema';
-import { getFullTextStore, type FullTextSearchItem } from '../../data/textStore';
+import { getFullTextStore } from '../../data/textStore';
+import type { FullTextSearchItem } from '../../../../common/vectorDB/type';
 import { datasetCollectionSelectField, datasetDataSelectField } from './constant';
 import { buildSearchResultItem, concatRecallLists } from './result';
 
@@ -168,8 +169,7 @@ const buildResultsFromRecallItems = async ({
 
 /**
  * 执行 full-text 召回并按 query 来源分组返回。
- * 底层引擎跟随实际向量库 provider(milvus -> BM25;其他向量库 -> Mongo $text),
- * 统一走 getFullTextStore().search,结果归一化为 { dataId, collectionId, score }。
+ * Milvus 与各 SQL 向量库统一走各自原生全文检索，经 getFullTextStore().search 归一化为 { dataId, collectionId, score }。
  */
 export const fullTextRecall = async ({
   teamId,

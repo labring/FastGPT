@@ -2,19 +2,29 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { OgClient } from '@fastgpt/service/common/vectorDB/opengauss/controller';
 import { OpenGaussVectorCtrl } from '@fastgpt/service/common/vectorDB/opengauss';
 
+const txClient = vi.hoisted(() => ({ query: vi.fn(), release: vi.fn() }));
 vi.mock('@fastgpt/service/common/vectorDB/opengauss/controller', () => ({
-  connectOg: vi.fn(),
+  connectOg: vi.fn(async () => ({ connect: async () => txClient })),
   OgClient: { query: vi.fn() }
 }));
 
 describe('OpenGaussVectorCtrl.init', () => {
-  it('creates the vector index with the agreed HNSW build parameters', async () => {
+  it('creates the vector and BM25 full-text schema and indexes on init', async () => {
     vi.mocked(OgClient.query)
       .mockReset()
       .mockResolvedValue({ rows: [] } as any);
     await new OpenGaussVectorCtrl().init();
     expect(OgClient.query).toHaveBeenCalledWith(
       expect.stringContaining('WITH (m = 32, ef_construction = 256)')
+    );
+    expect(OgClient.query).toHaveBeenCalledWith(expect.stringContaining('storage_type=ASTORE'));
+    expect(OgClient.query).toHaveBeenCalledWith(
+      expect.stringContaining('ALTER TABLE modeldata ADD COLUMN fulltext_tokens TEXT;')
+    );
+    expect(OgClient.query).toHaveBeenCalledWith(
+      expect.stringContaining(
+        'CREATE INDEX modeldata_fulltext ON modeldata USING bm25(fulltext_tokens);'
+      )
     );
   });
 });
@@ -72,5 +82,64 @@ describe('OpenGaussVectorCtrl.refreshCreateTime', () => {
     await expect(ctrl.refreshCreateTime({ teamId: 'team', idList: ['1'] })).rejects.toThrow(
       'offline'
     );
+  });
+});
+
+describe('OpenGaussVectorCtrl native text writes', () => {
+  it('writes analyzed tokens and vector in the same bound insert with stable ID order', async () => {
+    vi.mocked(OgClient.query)
+      .mockReset()
+      .mockResolvedValue({
+        rows: [{ id: '1' }, { id: '2' }],
+        rowCount: 2,
+        command: 'INSERT',
+        oid: 0,
+        fields: []
+      });
+    const props = {
+      teamId: 't',
+      datasetId: 'd',
+      collectionId: 'c',
+      vectors: [
+        [1, 0],
+        [0, 1]
+      ],
+      texts: ["O'Reilly 中文", '']
+    };
+    expect(await new OpenGaussVectorCtrl().insert(props)).toEqual({ insertIds: ['1', '2'] });
+    const [sql, values] = vi.mocked(OgClient.query).mock.calls[0];
+    expect(sql).not.toContain(props.texts[0]);
+    expect(sql).toContain('(vector,team_id,dataset_id,collection_id,fulltext_tokens)');
+    // 外置分析器输出：jieba 搜索模式 + 小写 + 停用词过滤
+    expect(values).toEqual(['[1,0]', 't', 'd', 'c', "o ' reilly 中文", '[0,1]', 't', 'd', 'c', '']);
+    await expect(new OpenGaussVectorCtrl().insert({ ...props, texts: [] })).rejects.toThrow(
+      'match vector'
+    );
+    expect(await new OpenGaussVectorCtrl().insert({ ...props, texts: [], vectors: [] })).toEqual({
+      insertIds: []
+    });
+
+    let nextId = 1;
+    txClient.release.mockReset();
+    txClient.query.mockReset().mockImplementation(async (sql: string) => {
+      if (sql.includes('INSERT INTO')) {
+        const tupleCount = sql.split('VALUES')[1].split('($').length - 1;
+        return {
+          rows: Array.from({ length: tupleCount }, () => ({ id: String(nextId++) }))
+        };
+      }
+      return { rows: [] };
+    });
+    const batchResult = await new OpenGaussVectorCtrl().insert({
+      teamId: 't',
+      datasetId: 'd',
+      collectionId: 'c',
+      vectors: Array.from({ length: 502 }, () => [1, 0]),
+      texts: Array.from({ length: 502 }, () => '')
+    });
+    expect(batchResult.insertIds).toHaveLength(502);
+    expect(txClient.query.mock.calls.map(([sql]) => String(sql))[0]).toBe('BEGIN');
+    expect(txClient.query.mock.calls.map(([sql]) => String(sql)).at(-1)).toBe('COMMIT');
+    expect(txClient.release).toHaveBeenCalledOnce();
   });
 });

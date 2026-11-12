@@ -5,6 +5,8 @@ import { type RowDataPacket } from 'mysql2/promise';
 import type { VectorControllerType } from '../type';
 import dayjs from 'dayjs';
 import { getLogger, LogCategories } from '../../logger';
+import { SQL_FULL_TEXT_COLUMN, SQL_FULL_TEXT_INDEX } from '../fullText/utils';
+import { toSqlFullTextTokens } from '../fullText/analyzer';
 
 const logger = getLogger(LogCategories.INFRA.VECTOR);
 
@@ -24,9 +26,20 @@ export class ObVectorCtrl implements VectorControllerType {
             team_id VARCHAR(50) NOT NULL,
             dataset_id VARCHAR(50) NOT NULL,
             collection_id VARCHAR(50) NOT NULL,
+            ${SQL_FULL_TEXT_COLUMN} LONGTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL,
             createtime TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
       `);
+      // MySQL 兼容协议不保证支持 ADD COLUMN / CREATE FULLTEXT INDEX 的 IF NOT EXISTS，先按元数据判存。
+      const [columns] = await this.obClient.query<RowDataPacket[]>(
+        'SELECT 1 FROM information_schema.columns WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=? AND COLUMN_NAME=?',
+        [DatasetVectorTableName, SQL_FULL_TEXT_COLUMN]
+      );
+      if (!Array.isArray(columns) || columns.length === 0) {
+        await this.obClient.query(
+          `ALTER TABLE ${DatasetVectorTableName} ADD COLUMN ${SQL_FULL_TEXT_COLUMN} LONGTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL;`
+        );
+      }
       await this.obClient.query(
         `CREATE VECTOR INDEX IF NOT EXISTS vector_index ON ${DatasetVectorTableName}(vector) WITH (distance=${OceanBaseIndexConfig.distance}, type=${OceanBaseIndexConfig.type}, m=32, ef_construction=256);`
       );
@@ -36,6 +49,19 @@ export class ObVectorCtrl implements VectorControllerType {
       await this.obClient.query(
         `CREATE INDEX IF NOT EXISTS create_time_index ON ${DatasetVectorTableName}(createtime);`
       );
+      const [indexes] = await this.obClient.query<RowDataPacket[]>(
+        `SHOW INDEX FROM ${DatasetVectorTableName}`
+      );
+      if (
+        !Array.isArray(indexes) ||
+        !indexes.some(
+          (row) => row.Key_name === SQL_FULL_TEXT_INDEX || row.key_name === SQL_FULL_TEXT_INDEX
+        )
+      ) {
+        await this.obClient.query(
+          `CREATE FULLTEXT INDEX ${SQL_FULL_TEXT_INDEX} ON ${DatasetVectorTableName}(${SQL_FULL_TEXT_COLUMN}) WITH PARSER SPACE PARSER_PROPERTIES=(min_token_size=1);`
+        );
+      }
 
       logger.info('Vector DB initialization completed', {
         provider: this.controllerType
@@ -51,24 +77,21 @@ export class ObVectorCtrl implements VectorControllerType {
   insert: VectorControllerType['insert'] = async (props) => {
     const { teamId, datasetId, collectionId, vectors } = props;
 
-    const values = vectors.map((vector) => [
-      { key: 'vector', value: `[${vector}]` },
-      { key: 'team_id', value: String(teamId) },
-      { key: 'dataset_id', value: String(datasetId) },
-      { key: 'collection_id', value: String(collectionId) }
-    ]);
-
-    const { rowCount, insertIds } = await this.obClient.insert(DatasetVectorTableName, {
-      values
-    });
-
-    if (rowCount === 0) {
-      return Promise.reject('insertDatasetData: no insert');
+    // 原文先经外置分析器转成词串，与向量同一事务写入，数据库不保存原文。
+    if (props.texts?.length !== vectors.length) {
+      throw new Error('Full-text inputs must match vector inputs');
     }
-
-    return {
-      insertIds
-    };
+    const tokens = await Promise.all(props.texts.map(toSqlFullTextTokens));
+    const result = await this.obClient.insertBoundRows(DatasetVectorTableName, {
+      values: vectors.map((vector, index) => [
+        { key: 'vector', value: `[${vector.join(',')}]` },
+        { key: 'team_id', value: String(teamId) },
+        { key: 'dataset_id', value: String(datasetId) },
+        { key: 'collection_id', value: String(collectionId) },
+        { key: SQL_FULL_TEXT_COLUMN, value: tokens[index] }
+      ])
+    });
+    return { insertIds: result.insertIds };
   };
   /** OceanBase/SeekDB 共用：只更新当前团队旧向量的时间，不修改向量和归属字段。 */
   refreshCreateTime: VectorControllerType['refreshCreateTime'] = async ({ teamId, idList }) => {

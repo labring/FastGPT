@@ -1,11 +1,9 @@
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Types } from '@fastgpt/service/common/mongo';
-import { jiebaSplit } from '@fastgpt/service/common/string/jieba/index';
 import { MongoS3TTL } from '@fastgpt/service/common/s3/models/ttl';
 import { S3Buckets } from '@fastgpt/service/common/s3/config/constants';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
-import { MongoDatasetDataText } from '@fastgpt/service/core/dataset/data/dataTextSchema';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { retryFailedTrainingTasks } from '@fastgpt/service/core/dataset/training/service';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
@@ -143,13 +141,6 @@ const createMongoData = async ({
         dataId: 'default_old'
       }
     ]
-  });
-  await MongoDatasetDataText.create({
-    teamId: root.teamId,
-    datasetId: dataset._id,
-    collectionId: collection._id,
-    dataId: data._id,
-    fullTextToken: 'old token'
   });
 
   return { root, dataset, collection, data };
@@ -303,10 +294,12 @@ describe('Dataset data service', () => {
         teamId: data.teamId,
         idList: ['custom_old', 'default_old']
       });
+      expect(mockVectorInsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          texts: ['old custom index', 'old question']
+        })
+      );
       expect(await MongoDatasetTraining.findById(training._id)).toBeNull();
-      expect(await MongoDatasetDataText.findOne({ dataId: data._id }).lean()).toMatchObject({
-        fullTextToken: await jiebaSplit({ text: 'old question' })
-      });
       // 已清理的失败任务不会再恢复旧答案或重新进入训练。
       await retryFailedTrainingTasks({ teamId: data.teamId, datasetId: data.datasetId });
       expect(await MongoDatasetData.findById(data._id).lean()).toMatchObject({
@@ -623,7 +616,6 @@ describe('Dataset data service', () => {
       );
 
       const data = await MongoDatasetData.findById(result.insertId).lean();
-      const dataText = await MongoDatasetDataText.findOne({ dataId: result.insertId }).lean();
       const ttl = await MongoS3TTL.findOne({ minioKey: imageId }).lean();
 
       expect(result.tokens).toBeGreaterThan(0);
@@ -653,8 +645,11 @@ describe('Dataset data service', () => {
           })
         ])
       );
-      expect(dataText?.fullTextToken).toContain('question');
-      expect(dataText?.fullTextToken).toContain('answer');
+      expect(mockVectorInsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          texts: expect.arrayContaining(['manual index', 'prefix\nquestion', 'prefix\nanswer'])
+        })
+      );
       expect(ttl).toBeNull();
     });
 
@@ -818,8 +813,6 @@ describe('Dataset data service', () => {
       });
 
       const updatedData = await MongoDatasetData.findById(data._id).lean();
-      const updatedText = await MongoDatasetDataText.findOne({ dataId: data._id }).lean();
-      const expectedFullTextToken = await jiebaSplit({ text: 'new question\nnew answer' });
 
       expect(result.tokens).toBeGreaterThan(0);
       expect(updatedData?.q).toBe('new question');
@@ -849,8 +842,11 @@ describe('Dataset data service', () => {
         ])
       );
       expect(updatedData?.indexes).toHaveLength(3);
-      expect(updatedText?.dataId.toString()).toBe(String(data._id));
-      expect(updatedText?.fullTextToken).toBe(expectedFullTextToken);
+      expect(mockVectorInsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          texts: expect.arrayContaining(['new custom index', 'new question', 'new answer'])
+        })
+      );
       const deleteCall = mockVectorDelete.mock.calls[0]?.[0];
       expect(String(deleteCall?.teamId)).toBe(String(data.teamId));
       expect(deleteCall?.idList).toEqual(
@@ -1018,13 +1014,6 @@ describe('Dataset data service', () => {
           }
         ]
       });
-      await MongoDatasetDataText.create({
-        teamId: root.teamId,
-        datasetId: dataset._id,
-        collectionId: collection._id,
-        dataId: data._id,
-        fullTextToken: 'old token'
-      });
 
       await updateDatasetDataByIndexes({
         dataId: String(data._id),
@@ -1187,11 +1176,6 @@ describe('Dataset data service', () => {
         data.indexes.map(({ text }) => text)
       );
       expect(updated?.indexes[2].dataId).toBe('old_image');
-      expect((await MongoDatasetDataText.findOne({ dataId: data._id }).lean())?.fullTextToken).toBe(
-        await jiebaSplit({
-          text: `${options.enabled === false ? '退钱' : (options.currentTerm ?? '退款')}\n稳定文本`
-        })
-      );
       if (expected.length === 0) {
         expect(result.tokens).toBe(0);
         expect(updated?.indexes.map(({ dataId }) => dataId)).toEqual([
@@ -1202,6 +1186,9 @@ describe('Dataset data service', () => {
         expect(mockVectorInsert).not.toHaveBeenCalled();
         expect(mockVectorDelete).not.toHaveBeenCalled();
       } else {
+        expect(mockVectorInsert).toHaveBeenCalledExactlyOnceWith(
+          expect.objectContaining({ texts: expected })
+        );
         expect(updated?.indexes[0].dataId).toBe('id_1');
         expect(updated?.indexes[1].dataId).toBe(expected.length === 1 ? 'old_stable' : 'id_2');
         expect(mockVectorDelete).toHaveBeenCalledExactlyOnceWith(
@@ -1212,41 +1199,21 @@ describe('Dataset data service', () => {
       }
     });
 
-    it.each([
-      { name: 'existing legacy body tokens', storedText: 'old question\nold answer' },
-      { name: 'missing record', storedText: undefined }
-    ])('upserts full-text storage during synonym rebuild: $name', async ({ storedText }) => {
+    it('passes transformed full-text rows only for updated indexes during synonym rebuild', async () => {
       const { data } = await createSynonymRebuildData({ previousVersion: 1 });
-      if (storedText !== undefined) {
-        await MongoDatasetDataText.updateOne(
-          { dataId: data._id },
-          {
-            $set: { fullTextToken: await jiebaSplit({ text: storedText }) }
-          }
-        );
-      } else {
-        await MongoDatasetDataText.deleteMany({ dataId: data._id });
-      }
       await rebuildDatasetDataIndexes({
         dataId: String(data._id),
         model: visionEmbeddingModel,
         diffSynonym: true
       });
-      expect((await MongoDatasetDataText.findOne({ dataId: data._id }).lean())?.fullTextToken).toBe(
-        await jiebaSplit({ text: '退款\n稳定文本' })
+      expect(mockVectorInsert).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({ texts: ['退款'] })
       );
       expect((await MongoDatasetData.findById(data._id).lean())?.synonymVersion).toBe(2);
     });
 
-    it('rolls back full-text changes together with the synonym version', async () => {
+    it('rolls back newly inserted vectors together with the synonym version on commit failure', async () => {
       const { data } = await createSynonymRebuildData({ previousVersion: 1 });
-      const oldTokens = await jiebaSplit({ text: 'legacy body' });
-      await MongoDatasetDataText.updateOne(
-        { dataId: data._id },
-        {
-          $set: { fullTextToken: oldTokens }
-        }
-      );
       await expect(
         rebuildDatasetDataIndexes({
           dataId: String(data._id),
@@ -1259,8 +1226,8 @@ describe('Dataset data service', () => {
             })
         })
       ).rejects.toThrow('abort after full-text write');
-      expect((await MongoDatasetDataText.findOne({ dataId: data._id }).lean())?.fullTextToken).toBe(
-        oldTokens
+      expect(mockVectorDelete).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({ idList: ['id_1'] })
       );
       expect((await MongoDatasetData.findById(data._id).lean())?.synonymVersion).toBe(1);
     });
@@ -1328,9 +1295,6 @@ describe('Dataset data service', () => {
         'old_stable',
         'old_image'
       ]);
-      expect((await MongoDatasetDataText.findOne({ dataId: data._id }).lean())?.fullTextToken).toBe(
-        'old token'
-      );
     });
 
     it.each([true, false])('uses only the stored image index with vision=%s', async (vision) => {
@@ -1359,13 +1323,14 @@ describe('Dataset data service', () => {
           expect(
             mockGetVectors.mock.calls.flatMap(([props]) => props.inputs.map((input) => input.input))
           ).toEqual([source]);
+          expect(mockVectorInsert).toHaveBeenCalledExactlyOnceWith(
+            expect.objectContaining({ texts: [''] })
+          );
         } else {
           expect(updated?.indexes).toEqual([]);
           expect(mockGetVectors).not.toHaveBeenCalled();
+          expect(mockVectorInsert).not.toHaveBeenCalled();
         }
-        expect(
-          (await MongoDatasetDataText.findOne({ dataId: data._id }).lean())?.fullTextToken
-        ).toBe('');
       } finally {
         Object.assign(serviceEnv, { MULTIPLE_DATA_TO_BASE64: previousBase64 });
       }
@@ -1397,8 +1362,9 @@ describe('Dataset data service', () => {
         mockGetVectors.mock.calls.flatMap(([props]) => props.inputs.map((input) => input.input))
       ).toEqual(storedIndexes.map((index) => index.text));
       expect(mockCountPromptTokens).not.toHaveBeenCalled();
-      const fullText = await MongoDatasetDataText.findOne({ dataId: data._id }).lean();
-      expect(fullText?.fullTextToken).toBe(await jiebaSplit({ text: 'saved text\nsaved custom' }));
+      expect(mockVectorInsert).toHaveBeenCalledWith(
+        expect.objectContaining({ texts: ['saved text', 'saved custom'] })
+      );
     });
 
     it('does not generate indexes from a body when the stored indexes are empty', async () => {
@@ -1485,9 +1451,7 @@ describe('Dataset data service', () => {
       expect(await MongoDatasetData.findById(data._id).lean()).not.toHaveProperty(
         'synonymRebuildingVersion'
       );
-      expect((await MongoDatasetDataText.findOne({ dataId: data._id }).lean())?.fullTextToken).toBe(
-        await jiebaSplit({ text: '退款' })
-      );
+      expect(mockVectorInsert).toHaveBeenCalledWith(expect.objectContaining({ texts: ['退款'] }));
     });
 
     it('rolls back rebuilt indexes when the synonym snapshot changes during embedding', async () => {
@@ -1836,7 +1800,6 @@ describe('Dataset data service', () => {
       await deleteDatasetData(dataItem);
 
       expect(await MongoDatasetData.findById(data._id).lean()).toBeNull();
-      expect(await MongoDatasetDataText.findOne({ dataId: data._id }).lean()).toBeNull();
       expect(mockDeleteDatasetFileByKey).toHaveBeenCalledWith(data.imageId);
       expect(mockVectorDelete).toHaveBeenCalledWith({
         teamId: String(data.teamId),

@@ -53,5 +53,13 @@
   "migrations.20261104_backfill_openapi_key_type.description": "背景獨立回填個人密鑰與應用 Key 類型，保留原綁定、憑證及所有舊欄位。",
   "migrations.20261104_backfill_openapi_key_type.result": "已掃描 {{keys}} 個密鑰",
   "migrations.20261104_backfill_openapi_key_type.keys": "密鑰類型",
-  "migrations.20261104_backfill_openapi_key_type.validation": "驗證回填結果"
+  "migrations.20261104_backfill_openapi_key_type.validation": "驗證回填結果",
+  "migrations.20261110_migrate_sql_fulltext.name": "遷移 SQL 向量庫全文檢索",
+  "migrations.20261110_migrate_sql_fulltext.description": "準備並驗證目前 SQL 向量庫全文索引，全量唯讀預檢後依斷點分批回填歷史分詞詞串，驗收完成後清理舊 Mongo 全文表。",
+  "migrations.20261110_migrate_sql_fulltext.result": "已預檢 {{prechecked}} 筆，回填 {{scanned}} 筆，驗證 {{validated}} 筆，清理舊全文 {{deletedLegacyCount}} 筆",
+  "migrations.20261110_migrate_sql_fulltext.prepare": "準備全文結構與索引",
+  "migrations.20261110_migrate_sql_fulltext.preflight": "全量唯讀預檢",
+  "migrations.20261110_migrate_sql_fulltext.scan": "回填歷史分詞索引",
+  "migrations.20261110_migrate_sql_fulltext.validation": "驗證有效索引完整性",
+  "migrations.20261110_migrate_sql_fulltext.cleanup": "清理舊 Mongo 全文表"
 }

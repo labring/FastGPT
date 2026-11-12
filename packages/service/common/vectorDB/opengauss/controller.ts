@@ -38,7 +38,8 @@ export const connectOg = async (): Promise<Pool> => {
   });
 
   try {
-    await global.pgClient.connect();
+    const client = await global.pgClient.connect();
+    client.release();
     return global.pgClient;
   } catch (error) {
     logger.error('openGauss connection failed', { error });

@@ -32,8 +32,13 @@ describe('PgVectorCtrl.init', () => {
       expect(statements[0]).toContain(
         `vector ${vectorVQ === 16 ? 'HALFVEC' : 'VECTOR'}(1536) NOT NULL`
       );
+      expect(statements[0]).toContain('CREATE EXTENSION IF NOT EXISTS pg_search;');
+      expect(statements[0]).toContain('fulltext_tokens TEXT');
+      expect(statements[3]).toContain(
+        'CREATE INDEX IF NOT EXISTS modeldata_fulltext ON modeldata USING paradedb'
+      );
       expect(statements.some((sql) => /USING hnsw/i.test(sql))).toBe(false);
-      expect(statements).toHaveLength(3);
+      expect(statements).toHaveLength(4);
     }
   );
 });

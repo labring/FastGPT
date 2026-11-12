@@ -50,7 +50,6 @@ import {
   moveCollectionPermissionsBatch,
   syncMovedCollectionPermissionDescendants
 } from '../../../support/permission/collection/controller';
-import { getFullTextStore } from '../data/textStore';
 import {
   preCreateDatasetDataAndPushToTrainingQueue,
   pushDataListToTrainingQueue,
@@ -1120,7 +1119,6 @@ export async function delCollection({
       { teamId, datasetId: { $in: datasetIds }, collectionId: { $in: collectionIds } },
       { session }
     );
-    await getFullTextStore().deleteByCollectionIds({ teamId, datasetIds, collectionIds }, session);
     await MongoDatasetData.deleteMany(
       { teamId, datasetId: { $in: datasetIds }, collectionId: { $in: collectionIds } },
       { session }

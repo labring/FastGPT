@@ -13,7 +13,6 @@ import {
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
-import { MongoDatasetDataText } from '@fastgpt/service/core/dataset/data/dataTextSchema';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import {
   MongoDatasetSynonym,
@@ -22,7 +21,6 @@ import {
 import { retryFailedTrainingTasks } from '@fastgpt/service/core/dataset/training/service';
 import { mockVectorInsert, mockVectorDelete, resetVectorMocks } from '@test/mocks/common/vector';
 import { mockGetVectors, createMockVectorsResponse } from '@test/mocks/core/ai/embedding';
-import { jiebaSplit } from '@fastgpt/service/common/string/jieba/index';
 import * as synonymQueue from '@/service/core/dataset/queues/rebuildSynonym';
 import { generateRebuildSynonym } from '@/service/core/dataset/queues/generateRebuildSynonym';
 import { generateRebuildIndex } from '@/service/core/dataset/queues/generateRebuildIndex';
@@ -141,8 +139,9 @@ describe('generateRebuildSynonym', () => {
       indexes: [{ text: '我要退钱 0', dataId: 'new-0' }]
     });
     expect(await MongoDatasetTraining.findById(task._id)).toBeNull();
-    const text = await MongoDatasetDataText.findOne({ dataId: datas[0]._id }).lean();
-    expect(text?.fullTextToken).toBe(await jiebaSplit({ text: '我要退款 0' }));
+    expect(mockVectorInsert).toHaveBeenCalledWith(
+      expect.objectContaining({ texts: ['我要退款 0'] })
+    );
     expect(mockVectorDelete).toHaveBeenCalledWith(expect.objectContaining({ idList: ['old-0'] }));
   });
 

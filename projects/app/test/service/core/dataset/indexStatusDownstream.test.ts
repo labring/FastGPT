@@ -3,7 +3,6 @@ import { preCreateDatasetDataAndPushToTrainingQueue } from '@fastgpt/service/cor
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
-import { MongoDatasetDataText } from '@fastgpt/service/core/dataset/data/dataTextSchema';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { createDatasetCollectionFixture } from '@test/datas/dataset';
@@ -34,12 +33,10 @@ const createContext = async () => {
 
   const createData = async ({
     indexStatus,
-    text,
-    withFullText = false
+    text
   }: {
     indexStatus?: DatasetDataIndexStatusEnum;
     text: string;
-    withFullText?: boolean;
   }) => {
     const data = await MongoDatasetData.create({
       teamId: root.teamId,
@@ -50,15 +47,6 @@ const createContext = async () => {
       indexes: [],
       ...(indexStatus && { indexStatus })
     });
-    if (withFullText) {
-      await MongoDatasetDataText.create({
-        teamId: root.teamId,
-        datasetId: dataset._id,
-        collectionId: collection._id,
-        dataId: data._id,
-        fullTextToken: text
-      });
-    }
     return data;
   };
 
@@ -111,7 +99,6 @@ describe('indexStatus downstream contracts', () => {
     expect(
       await MongoDatasetTraining.countDocuments({ dataId: result.dataIds[0], mode: 'index' })
     ).toBe(1);
-    expect(await MongoDatasetDataText.countDocuments({ dataId: result.dataIds[0] })).toBe(0);
   });
 
   /** DS-18 / CP-10：集合删除按 collectionId 清理，不做状态筛选。 */
@@ -119,8 +106,7 @@ describe('indexStatus downstream contracts', () => {
     const { root, dataset, collection, createData } = await createContext();
     const indexing = await createData({
       text: 'pending chunk',
-      indexStatus: DatasetDataIndexStatusEnum.indexing,
-      withFullText: true
+      indexStatus: DatasetDataIndexStatusEnum.indexing
     });
     await MongoDatasetTraining.create({
       teamId: root.teamId,
@@ -145,6 +131,5 @@ describe('indexStatus downstream contracts', () => {
 
     expect(await MongoDatasetData.countDocuments({ collectionId: collection._id })).toBe(0);
     expect(await MongoDatasetTraining.countDocuments({ collectionId: collection._id })).toBe(0);
-    expect(await MongoDatasetDataText.countDocuments({ collectionId: collection._id })).toBe(0);
   });
 });

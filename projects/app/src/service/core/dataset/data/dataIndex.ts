@@ -459,7 +459,12 @@ export class DatasetDataIndexOperation {
       const index = currentIndexes.find((index) => index.dataId === item.dataId);
       if (!index) continue;
 
-      if ((isSameIndex ?? ((current, next) => current.text === next.text))(index, item)) {
+      if (
+        (
+          isSameIndex ??
+          ((current, next) => current.text === next.text && current.type === next.type)
+        )(index, item)
+      ) {
         patchResult.push({
           type: 'unChange',
           index: {
@@ -553,8 +558,8 @@ export class DatasetDataIndexOperation {
     const insertResult = vectorInputItems.length
       ? await insertDatasetDataVector({
           inputs: vectorInputItems.map((item) => item.input),
-          // 全文文本与向量一一对应(provider=milvus 时写 modeldata_v2 的 text)。
-          // imageEmbedding 只写稠密向量,BM25 文本必须为空串(不写图片 URL/S3 key),与迁移行为保持一致。
+          // 全文原文与向量一一对应：Milvus 写入 modeldata_v2，各 SQL 向量库经外置分词后写入 fulltext_tokens。
+          // imageEmbedding 只写稠密向量，全文文本必须为空串（不写图片 URL/S3 key），与迁移行为保持一致。
           texts: vectorInputItems.map((item) => (typeof item.input === 'string' ? item.input : '')),
           model: embModel,
           teamId,

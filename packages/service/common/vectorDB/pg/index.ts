@@ -5,11 +5,15 @@ import type { VectorControllerType } from '../type';
 import dayjs from 'dayjs';
 import { getLogger, LogCategories } from '../../logger';
 import { buildPgVectorRecallQuery } from './utils';
+import { SQL_FULL_TEXT_COLUMN, SQL_FULL_TEXT_INDEX } from '../fullText/utils';
+import { toSqlFullTextTokens } from '../fullText/analyzer';
 
 const logger = getLogger(LogCategories.INFRA.POSTGRES);
 
 // 客户端等待必须长于服务端 statement_timeout（90 秒），避免 SQL 仍执行时释放并发额度。
 const RECALL_QUERY_TIMEOUT_MS = 120_000;
+// 单条 INSERT 最多绑定 500 行（2500 个参数），避免大批量写入触及 PG 协议参数数量上限。
+const FULL_TEXT_INSERT_BATCH_SIZE = 500;
 
 export class PgVectorCtrl implements VectorControllerType {
   constructor() {}
@@ -20,14 +24,17 @@ export class PgVectorCtrl implements VectorControllerType {
       await connectPg();
       await PgClient.query(`
         CREATE EXTENSION IF NOT EXISTS vector;
+        CREATE EXTENSION IF NOT EXISTS pg_search;
         CREATE TABLE IF NOT EXISTS ${DatasetVectorTableName} (
             id BIGSERIAL PRIMARY KEY,
             vector ${isHalfVec ? 'HALFVEC(1536)' : 'VECTOR(1536)'} NOT NULL,
             team_id VARCHAR(50) NOT NULL,
             dataset_id VARCHAR(50) NOT NULL,
             collection_id VARCHAR(50) NOT NULL,
+            ${SQL_FULL_TEXT_COLUMN} TEXT,
             createtime TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
+        ALTER TABLE ${DatasetVectorTableName} ADD COLUMN IF NOT EXISTS ${SQL_FULL_TEXT_COLUMN} TEXT;
       `);
 
       await PgClient.query(
@@ -35,6 +42,9 @@ export class PgVectorCtrl implements VectorControllerType {
       );
       await PgClient.query(
         `CREATE INDEX CONCURRENTLY IF NOT EXISTS create_time_index ON ${DatasetVectorTableName} USING btree(createtime);`
+      );
+      await PgClient.query(
+        `CREATE INDEX IF NOT EXISTS ${SQL_FULL_TEXT_INDEX} ON ${DatasetVectorTableName} USING paradedb (id, (${SQL_FULL_TEXT_COLUMN}::pdb.whitespace), (team_id::pdb.literal), (dataset_id::pdb.literal), (collection_id::pdb.literal));`
       );
       // 10w rows
       // await PgClient.query(`
@@ -66,24 +76,58 @@ export class PgVectorCtrl implements VectorControllerType {
   insert: VectorControllerType['insert'] = async (props) => {
     const { teamId, datasetId, collectionId, vectors } = props;
 
-    const values = vectors.map((vector) => [
-      { key: 'vector', value: `[${vector}]` },
-      { key: 'team_id', value: String(teamId) },
-      { key: 'dataset_id', value: String(datasetId) },
-      { key: 'collection_id', value: String(collectionId) }
-    ]);
+    // 原文先经外置分析器转成词串，与向量同一条/同一事务 INSERT 写入，数据库不保存原文。
+    if (props.texts?.length !== vectors.length) {
+      throw new Error('PG full-text inputs must match vector inputs');
+    }
+    if (!vectors.length) return { insertIds: [] };
+    const tokens = await Promise.all(props.texts.map(toSqlFullTextTokens));
 
-    const { rowCount, rows } = await PgClient.insert(DatasetVectorTableName, {
-      values
-    });
+    const buildBatchInsert = (start: number, end: number) => {
+      const slice = vectors.slice(start, end);
+      const values = slice.flatMap((vector, offset) => [
+        `[${vector.join(',')}]`,
+        String(teamId),
+        String(datasetId),
+        String(collectionId),
+        tokens[start + offset]
+      ]);
+      const tuples = slice
+        .map((_, offset) => {
+          const n = offset * 5;
+          return `($${n + 1},$${n + 2},$${n + 3},$${n + 4},$${n + 5})`;
+        })
+        .join(',');
+      return {
+        sql: `INSERT INTO ${DatasetVectorTableName} (vector,team_id,dataset_id,collection_id,${SQL_FULL_TEXT_COLUMN})
+         VALUES ${tuples} RETURNING id::text`,
+        values
+      };
+    };
 
-    if (rowCount === 0) {
-      return Promise.reject('insertDatasetData: no insert');
+    if (vectors.length <= FULL_TEXT_INSERT_BATCH_SIZE) {
+      const { sql, values } = buildBatchInsert(0, vectors.length);
+      const { rows } = await PgClient.query<{ id: string }>(sql, values);
+      return { insertIds: rows.map(({ id }) => id) };
     }
 
-    return {
-      insertIds: rows.map((row) => row.id)
-    };
+    const client = await (await connectPg()).connect();
+    try {
+      await client.query('BEGIN');
+      const insertIds: string[] = [];
+      for (let start = 0; start < vectors.length; start += FULL_TEXT_INSERT_BATCH_SIZE) {
+        const { sql, values } = buildBatchInsert(start, start + FULL_TEXT_INSERT_BATCH_SIZE);
+        const { rows } = await client.query<{ id: string }>(sql, values);
+        insertIds.push(...rows.map(({ id }) => id));
+      }
+      await client.query('COMMIT');
+      return { insertIds };
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
   };
   /** 仅刷新当前团队指定的旧向量，保留内容；缺失 ID 视为已经清理。 */
   refreshCreateTime: VectorControllerType['refreshCreateTime'] = async ({ teamId, idList }) => {
