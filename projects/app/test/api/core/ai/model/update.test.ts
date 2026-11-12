@@ -260,7 +260,10 @@ describe('admin settings model create/update api', () => {
         ...buildLlmDocument(),
         type,
         config: type === ModelTypeEnum.tts ? { voices: [] } : {},
-        pricing: { unitPrice: 0.125 }
+        pricing:
+          type === ModelTypeEnum.stt
+            ? { type: 'duration' as const, unitPrice: 0.125 }
+            : { unitPrice: 0.125 }
       };
       const created = await callApi({ handler: createModelApi, body: { modelData: doc } });
       expect(created.code).toBe(200);
@@ -271,7 +274,10 @@ describe('admin settings model create/update api', () => {
       const { model: _model, ...modelData } = doc;
       const updated = await callApi({
         handler: updateModelApi,
-        body: { modelId, modelData: { ...modelData, pricing: { unitPrice: 1.005 } } }
+        body: {
+          modelId,
+          modelData: { ...modelData, pricing: { ...doc.pricing, unitPrice: 1.005 } }
+        }
       });
       expect(updated.code).toBe(200);
       const stored = await MongoAIModel.findById(modelId).lean();

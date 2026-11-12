@@ -168,7 +168,10 @@ describe('admin settings model updateWithJson api', () => {
       scope: 'system',
       isActive: true,
       config,
-      pricing: { unitPrice: 0.125 }
+      pricing:
+        type === ModelTypeEnum.stt
+          ? { type: 'duration' as const, unitPrice: 0.125 }
+          : { unitPrice: 0.125 }
     }));
     expect((await callUpdateWithJson(JSON.stringify(entries))).code).toBe(200);
     const first = await MongoAIModel.find({}).lean();
