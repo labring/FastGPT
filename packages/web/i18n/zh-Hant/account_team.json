@@ -422,5 +422,17 @@
   "enterprise_auth_cancel": "取消",
   "enterprise_auth_start": "開始認證",
   "enterprise_auth_verify_with_remaining": "驗證（剩餘{{count}}次）",
-  "move_skill": "移動技能"
+  "move_skill": "移動技能",
+  "admin_enable_moderation_plugin": "開啟審核插件",
+  "admin_disable_moderation_plugin": "關閉審核插件",
+  "admin_install_moderation_plugin": "安裝審核插件",
+  "admin_uninstall_moderation_plugin": "解除安裝審核插件",
+  "admin_update_moderation_plugin_config": "修改審核插件配置",
+  "admin_update_moderation_policy": "修改審核策略配置",
+  "log_admin_enable_moderation_plugin": "【{{name}}】開啟了內容審核插件【{{pluginName}}】",
+  "log_admin_disable_moderation_plugin": "【{{name}}】關閉了內容審核插件【{{pluginName}}】",
+  "log_admin_install_moderation_plugin": "【{{name}}】安裝了內容審核插件【{{pluginName}}】",
+  "log_admin_uninstall_moderation_plugin": "【{{name}}】解除安裝了內容審核插件【{{pluginName}}】",
+  "log_admin_update_moderation_plugin_config": "【{{name}}】更新了內容審核插件【{{pluginName}}】的配置",
+  "log_admin_update_moderation_policy": "【{{name}}】更新了內容審核策略配置"
 }

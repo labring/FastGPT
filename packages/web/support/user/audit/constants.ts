@@ -135,6 +135,38 @@ export const adminAuditLogMap = {
     content: i18nT('account_team:log_admin_update_operational_ad'),
     typeLabel: i18nT('account_team:admin_update_operational_ad'),
     params: {}
+  },
+
+  // Moderation
+  [AdminAuditEventEnum.ADMIN_ENABLE_MODERATION_PLUGIN]: {
+    content: i18nT('account_team:log_admin_enable_moderation_plugin'),
+    typeLabel: i18nT('account_team:admin_enable_moderation_plugin'),
+    params: {} as { name?: string; pluginName: string }
+  },
+  [AdminAuditEventEnum.ADMIN_DISABLE_MODERATION_PLUGIN]: {
+    content: i18nT('account_team:log_admin_disable_moderation_plugin'),
+    typeLabel: i18nT('account_team:admin_disable_moderation_plugin'),
+    params: {} as { name?: string; pluginName: string }
+  },
+  [AdminAuditEventEnum.ADMIN_INSTALL_MODERATION_PLUGIN]: {
+    content: i18nT('account_team:log_admin_install_moderation_plugin'),
+    typeLabel: i18nT('account_team:admin_install_moderation_plugin'),
+    params: {} as { name?: string; pluginName: string }
+  },
+  [AdminAuditEventEnum.ADMIN_UNINSTALL_MODERATION_PLUGIN]: {
+    content: i18nT('account_team:log_admin_uninstall_moderation_plugin'),
+    typeLabel: i18nT('account_team:admin_uninstall_moderation_plugin'),
+    params: {} as { name?: string; pluginName: string }
+  },
+  [AdminAuditEventEnum.ADMIN_UPDATE_MODERATION_PLUGIN_CONFIG]: {
+    content: i18nT('account_team:log_admin_update_moderation_plugin_config'),
+    typeLabel: i18nT('account_team:admin_update_moderation_plugin_config'),
+    params: {} as { name?: string; pluginName: string }
+  },
+  [AdminAuditEventEnum.ADMIN_UPDATE_MODERATION_POLICY]: {
+    content: i18nT('account_team:log_admin_update_moderation_policy'),
+    typeLabel: i18nT('account_team:admin_update_moderation_policy'),
+    params: {} as { name?: string }
   }
 };
 

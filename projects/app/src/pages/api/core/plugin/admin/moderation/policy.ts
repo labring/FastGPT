@@ -1,6 +1,7 @@
 import { NextAPI } from '@/service/middleware/entry';
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/type';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
+import { getLocale } from '@fastgpt/service/common/middle/i18n';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { SystemModerationPolicySchema } from '@fastgpt/global/core/plugin/moderation/type';
 import type {
@@ -12,6 +13,10 @@ import {
   getModerationPolicy,
   updateModerationPolicy
 } from '@fastgpt/service/core/plugin/moderation/service';
+import {
+  captureModerationPolicyAuditSnapshot,
+  recordModerationPolicyAudit
+} from '@fastgpt/service/core/plugin/moderation/audit';
 
 export type AdminModerationPolicyQuery = Record<string, never>;
 export type AdminModerationPolicyBody = UpdateModerationPolicyBodyType;
@@ -29,7 +34,7 @@ export async function handler(
   req: ApiRequestProps<AdminModerationPolicyBody, AdminModerationPolicyQuery>,
   _res: ApiResponseType<any>
 ): Promise<AdminModerationPolicyResponse> {
-  await authSystemAdmin({ req });
+  const authResult = await authSystemAdmin({ req });
 
   if (req.method === 'GET') {
     const policy = await getModerationPolicy();
@@ -41,7 +46,16 @@ export async function handler(
     bodySchema: SystemModerationPolicySchema
   });
 
+  const lang = req.headers ? getLocale(req) : undefined;
+  const auditSnapshot = await captureModerationPolicyAuditSnapshot(authResult);
   const updated = await updateModerationPolicy(body);
+  await recordModerationPolicyAudit({
+    operator: authResult,
+    snapshot: auditSnapshot,
+    nextPolicy: updated,
+    lang
+  });
+
   return SystemModerationPolicySchema.parse(updated);
 }
 
