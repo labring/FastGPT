@@ -24,7 +24,7 @@ import {
 } from './token';
 import { MCP_OAUTH_REFRESH_LEASE_MS } from './schema';
 import { MCP_OAUTH_HTTP_TIMEOUT_MS } from './httpRuntime';
-import { getMcpOAuthChallenge } from '../mcpAuthError';
+import { getMcpOAuthChallenge, getMcpTransportHttpStatus } from '../mcpAuthError';
 
 /**
  * 运行期令牌解析（v2.4 §6.2–§6.4）。
@@ -39,9 +39,13 @@ import { getMcpOAuthChallenge } from '../mcpAuthError';
  * 否则持有租约的一方仍在请求中，等待方会提前抛 `refresh_transient`。
  */
 export const MCP_OAUTH_LEASE_WAIT_MARGIN_MS = 1000;
-export const MCP_OAUTH_LEASE_WAIT_MS =
-  MCP_OAUTH_HTTP_TIMEOUT_MS + MCP_OAUTH_LEASE_WAIT_MARGIN_MS;
+export const MCP_OAUTH_LEASE_WAIT_MS = MCP_OAUTH_HTTP_TIMEOUT_MS + MCP_OAUTH_LEASE_WAIT_MARGIN_MS;
 export const MCP_OAUTH_LEASE_POLL_MS = 100;
+/**
+ * 并发刷新等待的轮询上限：从 100ms 起指数退避到 1s，避免 11s 预算内产生上百次
+ * Mongo 读取（100ms 固定间隔最坏约 110 次）。
+ */
+export const MCP_OAUTH_LEASE_POLL_MAX_MS = 1000;
 
 type SingleFlight<T> = { promise: Promise<T> };
 
@@ -258,10 +262,13 @@ const refreshWithLease = async ({
   });
 
   if (!acquired) {
-    // 其它实例正在刷新：短轮询等待胜出者写回，不重复刷新。
+    // 其它实例正在刷新：按指数退避轮询等待胜出者写回，不重复刷新。
+    // 100ms → 200ms → 400ms → 800ms → 1s，11s 预算内最多约 15 次读取。
     const deadline = now + MCP_OAUTH_LEASE_WAIT_MS;
+    let pollDelay = MCP_OAUTH_LEASE_POLL_MS;
     while (Date.now() < deadline) {
-      await wait(MCP_OAUTH_LEASE_POLL_MS);
+      await wait(Math.min(pollDelay, Math.max(0, deadline - Date.now())));
+      pollDelay = Math.min(pollDelay * 2, MCP_OAUTH_LEASE_POLL_MAX_MS);
       const latest = await readOAuthContext({ appId, nodeId });
       const latestToken = latest.oauth?.token;
       if (
@@ -406,19 +413,18 @@ export const ensureMcpOAuthAccessToken = async ({
   });
 };
 
-const getErrorStatus = (error: unknown): number | undefined => {
-  if (!error || typeof error !== 'object') return undefined;
-  const candidate = error as { code?: unknown; status?: unknown; statusCode?: unknown };
-  for (const value of [candidate.code, candidate.status, candidate.statusCode]) {
-    if (typeof value === 'number') return value;
-  }
-  return undefined;
-};
-
-export const isMcpOAuthUnauthorizedError = (error: unknown) => getErrorStatus(error) === 401;
+/**
+ * 只有 transport 层的 401 才触发强制刷新/重授权。
+ *
+ * 工具级错误即使带 `{ status: 401 }` 也仍是业务错误：与 `mcp.ts` 的
+ * `toMcpAuthRequiredError` / `normalizeMcpClientError` 共用同一判定，避免把一次
+ * 工具失败放大成一次无谓的 token 刷新并最终误报 `reauthRequired`。
+ */
+export const isMcpOAuthUnauthorizedError = (error: unknown) =>
+  getMcpTransportHttpStatus(error) === 401;
 
 export const isMcpOAuthInsufficientScopeError = (error: unknown) => {
-  if (getErrorStatus(error) !== 403) return false;
+  if (getMcpTransportHttpStatus(error) !== 403) return false;
   // 优先读取 RFC 6750 挑战；无 header 时兼容错误文案。
   if (getMcpOAuthChallenge(error)?.error === 'insufficient_scope') return true;
   return `${error instanceof Error ? error.message : error}`

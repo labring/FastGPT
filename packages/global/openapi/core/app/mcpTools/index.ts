@@ -311,6 +311,18 @@ export const McpToolsPath: OpenAPIPath = {
         304: {
           description: 'ETag 匹配，未修改'
         },
+        404: {
+          description: 'Host 与 FE_DOMAIN 不匹配（空响应体）'
+        },
+        405: {
+          description: '仅支持 GET/HEAD（空响应体，带 Allow 头）',
+          headers: {
+            Allow: {
+              description: '允许的 HTTP 方法',
+              schema: { type: 'string' }
+            }
+          }
+        },
         default: {
           description: 'OAuth 错误 envelope',
           content: {

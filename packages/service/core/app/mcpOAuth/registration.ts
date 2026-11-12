@@ -8,7 +8,10 @@ import type {
   McpOAuthClientMode,
   McpOAuthClientSource
 } from '@fastgpt/global/core/app/tool/mcpTool/oauth';
-import type { McpOAuthManualClientType } from '@fastgpt/global/openapi/core/app/mcpTools/oauth';
+import type {
+  McpOAuthCimdDocumentType,
+  McpOAuthManualClientType
+} from '@fastgpt/global/openapi/core/app/mcpTools/oauth';
 import { encryptSecretValue, decryptSecretValue } from '../../../common/secret/utils';
 import { McpOAuthApiError } from './errors';
 import { McpOAuthErrorCodeEnum } from '@fastgpt/global/core/app/tool/mcpTool/oauth';
@@ -24,23 +27,27 @@ import { assertMcpOAuthUrlSafe, requestMcpOAuthHttp } from './httpRuntime';
 
 export const MCP_OAUTH_CIMD_CLIENT_NAME = 'FastGPT';
 
+/**
+ * 公开 CIMD 文档。返回类型直接取自 OpenAPI schema（单一来源）：
+ * 字段重命名/删除会同时让 builder 与路由的类型检查失败，避免已发布契约静默漂移。
+ */
 export const buildMcpOAuthCimdDocument = ({
   clientId,
   redirectUri
 }: {
   clientId: string;
   redirectUri: string;
-}) => ({
+}): McpOAuthCimdDocumentType => ({
   client_id: clientId,
   client_name: MCP_OAUTH_CIMD_CLIENT_NAME,
   redirect_uris: [redirectUri],
   grant_types: ['authorization_code', 'refresh_token'],
   response_types: ['code'],
-  token_endpoint_auth_method: 'none' as const,
-  code_challenge_method: 'S256' as const
+  token_endpoint_auth_method: 'none',
+  code_challenge_method: 'S256'
 });
 
-export type McpOAuthCimdDocument = ReturnType<typeof buildMcpOAuthCimdDocument>;
+export type McpOAuthCimdDocument = McpOAuthCimdDocumentType;
 
 /** ETag 基于稳定序列化；文档由服务端常量构造，键顺序固定。 */
 export const getMcpOAuthCimdEtag = (document: McpOAuthCimdDocument) =>

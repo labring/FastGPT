@@ -41,6 +41,16 @@ export type McpOAuthStateBuildResult = {
 };
 
 /**
+ * 加密后 state 的长度上界。
+ *
+ * `encryptSecret` 输出 `iv:encrypted:tag` 的十六进制串（密文 2x），再整体 base64url
+ * （4/3x），另有 iv/tag 各 32 hex 与两个分隔符。用 payload 的 UTF-8 JSON 长度估算，
+ * 可在加密/写库前就判断 state 是否会超过 HTTP 头安全上限。
+ */
+export const estimateMcpOAuthStateLength = (payload: McpOAuthStatePayloadType) =>
+  Math.ceil(((Buffer.byteLength(JSON.stringify(payload), 'utf8') * 2 + 66) * 4) / 3);
+
+/**
  * 加密 state：AES-256-GCM 密文（`iv:encrypted:tag`）→ base64url。
  * `exp` 使用 epoch ms，与台账 `expiresAt` 同源。
  */
@@ -78,12 +88,19 @@ export const buildMcpOAuthState = ({
     exp: now + ttlMs
   };
 
+  // 先按最坏加密膨胀估算；超限时立即返回可读错误，不生成回调必然 431 的 state。
+  if (estimateMcpOAuthStateLength(payload) > MCP_OAUTH_STATE_MAX_LENGTH) {
+    throw new McpOAuthApiError(McpOAuthErrorCodeEnum.stateInvalid, {
+      message: `OAuth state payload exceeds the HTTP header safe limit of ${MCP_OAUTH_STATE_MAX_LENGTH} bytes; shorten the requested scope or redirect URI`
+    });
+  }
+
   const encrypted = encryptSecret(JSON.stringify(payload));
   const state = Buffer.from(encrypted, 'utf8').toString('base64url');
   if (state.length > MCP_OAUTH_STATE_MAX_LENGTH) {
-    // 理论上不可达（payload schema 已限制各字段长度）；写前兜底避免发出必然被回调拒绝的 state。
+    // 估算为精确上界时不可达；保留写前兜底，避免编码实现变化后发出必然被回调拒绝的 state。
     throw new McpOAuthApiError(McpOAuthErrorCodeEnum.stateInvalid, {
-      message: 'OAuth state exceeds the supported length'
+      message: `OAuth state exceeds the HTTP header safe limit of ${MCP_OAUTH_STATE_MAX_LENGTH} bytes`
     });
   }
 

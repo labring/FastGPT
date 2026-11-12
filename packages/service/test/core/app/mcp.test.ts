@@ -244,6 +244,17 @@ describe('MCPClient', () => {
       );
     });
 
+    it('does not turn a tool-level status 401 into a transport auth error', async () => {
+      const mcpClient = new MCPClient(config);
+      const client = stubConnection(mcpClient);
+      const toolError = Object.assign(new Error('tool returned 401 payload'), { status: 401 });
+      client.listTools.mockRejectedValue(toolError);
+
+      // 普通对象上的 status 只是业务错误：不能归一化成 McpAuthRequiredError，
+      // 否则 runtime 会误判为 transport 401 并强制刷新/重授权。
+      await expect(mcpClient.getTools()).rejects.toBe(toolError);
+    });
+
     it('should fallback to original schema when dereference fails', async () => {
       const mcpClient = new MCPClient(config);
       const client = stubConnection(mcpClient);
@@ -754,14 +765,24 @@ describe('MCPClient', () => {
 
       // 多挑战：按 RFC 7235 拆分，且优先返回 Bearer（Basic 在前）。
       expect(
-        parseMcpWWWAuthenticate(
-          'Basic realm="mcp", Bearer realm="mcp", error="insufficient_scope"'
-        )
+        parseMcpWWWAuthenticate('Basic realm="mcp", Bearer realm="mcp", error="insufficient_scope"')
       ).toMatchObject({ scheme: 'bearer', error: 'insufficient_scope' });
       expect(parseMcpWWWAuthenticate('Basic realm="mcp"')).toMatchObject({ scheme: 'basic' });
+      // 超长非 Bearer 挑战不能挤掉后面的 Bearer：先拆分挑战，再按挑战逐个截断。
+      expect(
+        parseMcpWWWAuthenticate(
+          `Basic realm="${'b'.repeat(5000)}", Bearer realm="mcp", error="insufficient_scope", resource_metadata="https://example.com/.well-known/oauth-protected-resource"`
+        )
+      ).toMatchObject({
+        scheme: 'bearer',
+        error: 'insufficient_scope',
+        resourceMetadata: 'https://example.com/.well-known/oauth-protected-resource'
+      });
       // 引号内的逗号不得拆成新 challenge，且转义字符按 RFC 还原。
       expect(
-        parseMcpWWWAuthenticate('Bearer error_description="a,b \\"quoted\\"", error="invalid_token"')
+        parseMcpWWWAuthenticate(
+          'Bearer error_description="a,b \\"quoted\\"", error="invalid_token"'
+        )
       ).toMatchObject({
         scheme: 'bearer',
         error: 'invalid_token',

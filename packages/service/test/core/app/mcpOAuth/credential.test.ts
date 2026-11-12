@@ -301,6 +301,7 @@ describe('mcpOAuth credential', () => {
         clientMode: 'auto',
         credentialSeq: 3,
         client: { clientId: 'client-1', tokenEndpointAuthMethod: 'none' },
+        clientSource: 'dcr',
         token: {
           secret: { access_token: encryptSecretValue({ value: 'a' }) },
           expiresAt: 0,
@@ -314,6 +315,8 @@ describe('mcpOAuth credential', () => {
     // 也不得把旧 issuer 写回，等下一次 start 重新发现。
     expect(merged.oauth?.client).toBeUndefined();
     expect(merged.oauth?.issuer).toBeUndefined();
+    // client 被丢弃时来源必须一起清空，不能留下“clientSource 已声明但 client 为空”。
+    expect(merged.oauth?.clientSource).toBeUndefined();
 
     // URL 变更 + 重新发现到新 issuer：写回 nextIssuer、丢弃旧 client 与已失效 resource。
     const mergedWithIssuer = mergeMcpOAuthFromPublished({
@@ -327,12 +330,32 @@ describe('mcpOAuth credential', () => {
         credentialSeq: 3,
         issuer: 'https://as1.example.org/',
         resource: 'https://old.example.org/mcp',
-        client: { clientId: 'client-1', tokenEndpointAuthMethod: 'none' }
+        client: { clientId: 'client-1', tokenEndpointAuthMethod: 'none' },
+        clientSource: 'manual'
       }
     });
     expect(mergedWithIssuer.oauth?.issuer).toBe('https://as2.example.org/');
     expect(mergedWithIssuer.oauth?.resource).toBeUndefined();
     expect(mergedWithIssuer.oauth?.client).toBeUndefined();
+    expect(mergedWithIssuer.oauth?.clientSource).toBeUndefined();
+
+    // URL 变更但 issuer 未变：client 仍属于同一 AS，client 与 clientSource 都要保留。
+    const mergedSameIssuer = mergeMcpOAuthFromPublished({
+      previousAuthMode: 'oauth',
+      nextAuthMode: 'oauth',
+      urlChanged: true,
+      nextIssuer: 'https://as1.example.org/',
+      existingOAuth: {
+        schemaVersion: 1,
+        clientMode: 'auto',
+        credentialSeq: 3,
+        issuer: 'https://as1.example.org/',
+        client: { clientId: 'client-1', tokenEndpointAuthMethod: 'none' },
+        clientSource: 'cimd'
+      }
+    });
+    expect(mergedSameIssuer.oauth?.client?.clientId).toBe('client-1');
+    expect(mergedSameIssuer.oauth?.clientSource).toBe('cimd');
 
     const toHeaders = mergeMcpOAuthFromPublished({
       previousAuthMode: 'oauth',

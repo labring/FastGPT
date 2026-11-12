@@ -205,8 +205,10 @@ describe('MCP OAuth route schemas', () => {
   it('requires a secret for confidential manual clients', () => {
     expect(McpOAuthManualClientSchema.safeParse({ clientId: 'client-1' }).success).toBe(false);
     expect(
-      McpOAuthManualClientSchema.safeParse({ clientId: 'client-1', tokenEndpointAuthMethod: 'none' })
-        .success
+      McpOAuthManualClientSchema.safeParse({
+        clientId: 'client-1',
+        tokenEndpointAuthMethod: 'none'
+      }).success
     ).toBe(true);
     expect(
       McpOAuthManualClientSchema.safeParse({
@@ -225,12 +227,12 @@ describe('MCP OAuth route schemas', () => {
     ).toBe(false);
   });
 
-  it('accepts callback state up to the shared 32KB cap', () => {
+  it('accepts callback state up to the shared HTTP header safe cap', () => {
     expect(McpOAuthCallbackQuerySchema.safeParse({ state: 'a'.repeat(8192) }).success).toBe(true);
-    expect(McpOAuthCallbackQuerySchema.safeParse({ state: 'a'.repeat(32 * 1024) }).success).toBe(
+    expect(McpOAuthCallbackQuerySchema.safeParse({ state: 'a'.repeat(8 * 1024) }).success).toBe(
       true
     );
-    expect(McpOAuthCallbackQuerySchema.safeParse({ state: 'a'.repeat(32 * 1024 + 1) }).success).toBe(
+    expect(McpOAuthCallbackQuerySchema.safeParse({ state: 'a'.repeat(8 * 1024 + 1) }).success).toBe(
       false
     );
   });

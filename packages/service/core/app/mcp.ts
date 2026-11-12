@@ -1,5 +1,5 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { SSEClientTransport, SseError } from '@modelcontextprotocol/sdk/client/sse.js';
+import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 import {
   StreamableHTTPClientTransport,
   StreamableHTTPError
@@ -35,10 +35,16 @@ import { decodeMcpToolSetNodesFromStorage } from './jsonSchemaStorage';
 import { McpToolSetRuntimeConfigSchema } from '@fastgpt/global/core/workflow/type/node';
 import { getAppLatestVersion, type AppPublishedWorkflow } from './version/controller';
 import { profileStage } from '../../common/profiling';
-import { McpAuthRequiredError } from './mcpAuthError';
+import {
+  getMcpTransportHttpStatus,
+  McpAuthRequiredError,
+  McpHttpStatusError,
+  MCP_WWW_AUTHENTICATE_MAX_HEADER_LENGTH
+} from './mcpAuthError';
 
 export {
   McpAuthRequiredError,
+  McpHttpStatusError,
   isMcpAuthRequiredError,
   parseMcpWWWAuthenticate,
   getMcpOAuthChallenge
@@ -406,7 +412,10 @@ const createMcpAuthChallengeCapture = (
     if (response.status === 401 || response.status === 403) {
       const header = response.headers.get('www-authenticate');
       // 挑战是逐响应的：没有 header 时必须清空，避免下一次 401 复用陈旧 scope/resource_metadata。
-      state.wwwAuthenticate = header ? header.slice(0, 4096) : undefined;
+      // 先保留整条 header（到 Node 的 header 上限），由解析器按挑战拆分后再逐个截断。
+      state.wwwAuthenticate = header
+        ? header.slice(0, MCP_WWW_AUTHENTICATE_MAX_HEADER_LENGTH)
+        : undefined;
     }
     return response;
   }) as McpSafeFetch;
@@ -420,8 +429,8 @@ const toMcpAuthRequiredError = (
 ): McpAuthRequiredError | undefined => {
   if (error instanceof McpAuthRequiredError) return error;
   // 只认 transport 层的 401/403。工具级错误即使恰好带 `status: 401` 也只是业务错误，
-  // 不能触发 OAuth 强制刷新（与 `normalizeMcpClientError` 的约定保持一致）。
-  const status = getMcpHttpStatus(error);
+  // 不能触发 OAuth 强制刷新（与 `normalizeMcpClientError` 使用同一 transport 判定）。
+  const status = getMcpTransportHttpStatus(error);
   if (status !== 401 && status !== 403) return undefined;
   return new McpAuthRequiredError(status, {
     message: getErrorMessage(error),
@@ -437,22 +446,6 @@ const getErrorMessage = (error: unknown) => {
 
   return String(error);
 };
-
-/** 保留 SSE transport 内部丢弃的 HTTP 状态码，供 MCP 错误分类统一读取。 */
-class McpHttpStatusError extends Error {
-  constructor(
-    readonly code: number,
-    statusText?: string,
-    readonly responseBody?: string
-  ) {
-    super(
-      `MCP HTTP request failed: ${code}${statusText ? ` ${statusText}` : ''}${
-        responseBody ? `: ${responseBody}` : ''
-      }`
-    );
-    this.name = 'McpHttpStatusError';
-  }
-}
 
 /**
  * SSE transport 在 send() 中会把非 2xx POST 转成无状态码的普通 Error。
@@ -472,29 +465,6 @@ export const createMcpSseFetch = (fetchImpl: McpFetch): McpFetch => {
 
     return response;
   };
-};
-
-/**
- * 提取 MCP transport 暴露的 HTTP 状态码。
- * MCP 工具请求的目标地址由用户配置，上游返回任何 4xx/5xx 都属于外部服务问题。
- */
-const getMcpHttpStatus = (error: unknown, visited = new Set<unknown>()): number | undefined => {
-  if (typeof error !== 'object' || error === null || visited.has(error)) {
-    return;
-  }
-  visited.add(error);
-
-  if (
-    (error instanceof StreamableHTTPError ||
-      error instanceof McpHttpStatusError ||
-      error instanceof SseError) &&
-    typeof error.code === 'number'
-  ) {
-    return error.code;
-  }
-  if ('cause' in error) {
-    return getMcpHttpStatus(error.cause, visited);
-  }
 };
 
 /**
@@ -586,7 +556,7 @@ const isMcpExternalFailure = (error: unknown): boolean => {
   if (isUserConfigError(error)) return true;
   if (isMcpJsonRpcError(error)) return true;
   if (isMcpResponseFormatError(error)) return true;
-  if ((getMcpHttpStatus(error) ?? 0) >= 400) return true;
+  if ((getMcpTransportHttpStatus(error) ?? 0) >= 400) return true;
   if (isMcpNetworkFailure(error)) return true;
   return false;
 };
@@ -606,7 +576,7 @@ const normalizeMcpClientError = (error: unknown) => {
   if (error instanceof McpAuthRequiredError) {
     return error;
   }
-  const transportStatus = getMcpHttpStatus(error);
+  const transportStatus = getMcpTransportHttpStatus(error);
   if (transportStatus === 401 || transportStatus === 403) {
     return error;
   }
