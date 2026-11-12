@@ -1,6 +1,6 @@
 ---
 name: fastgpt-cli-setup
-description: Install FastGPT CLI, guide the user through service selection and login, verify their identity, and summarize available capabilities.
+description: Install FastGPT CLI, sign in on the user's behalf with their credentials and chosen service, verify their identity, and summarize available capabilities.
 ---
 
 # FastGPT CLI 初始化引导
@@ -20,7 +20,7 @@ fastgpt --version
 
 ## 2. 登录并确认身份
 
-先运行 `fastgpt whoami --format json`。已有有效登录且服务符合用户要求时直接复用，否则引导用户登录。
+先运行 `fastgpt whoami --format json`。已有有效登录且服务符合用户要求时直接复用，否则由 AI 代执行登录，不默认要求用户自行在终端操作。缺少信息时，一次询问账号、密码和目标服务；用户已提供的信息不重复询问。
 
 服务尚未明确时，向用户提供两个云服务选项：
 
@@ -29,9 +29,17 @@ fastgpt --version
 | FastGPT 中国大陆云 | `https://cloud.fastgpt.cn` |
 | FastGPT 国际云     | `https://cloud.fastgpt.io` |
 
-其他版本或自建部署需要用户输入 Base URL；用户已提供地址时直接使用。
+其他版本或自建部署需要用户输入 Base URL；用户已提供地址时直接使用。Base URL 是 FastGPT 实例地址，不是本 Skill 所在的文档站点地址。
 
-根据用户选择的认证方式执行 `fastgpt login --base-url <baseURL>`，所需认证参数按 `fastgpt login --help` 获取。凭据由用户提供或通过 CLI 交互输入，不回显密码或密钥。
+使用用户提供的账号和密码，由 AI 执行：
+
+```bash
+fastgpt login --base-url <baseURL> --username <username> --password-stdin --format json
+```
+
+通过子进程标准输入发送密码，不将密码拼入 shell 命令或回显。用户已提供 API Key 或 Session Token 时，按 `fastgpt login --help` 使用对应的标准输入参数代执行登录。
+
+遇到验证码或二次验证时，由 AI 控制交互终端继续执行，仅请用户补充必要的验证码；交互模式不加 `--format json`。当前环境无法继续时，说明具体阻碍。
 
 登录后运行 `fastgpt whoami --format json` 验证，并读取实际服务地址、用户和团队信息；缺失的信息如实说明。
 
