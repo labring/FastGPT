@@ -96,7 +96,7 @@ describe('support/openapi/create', () => {
     expect(legacyInputKey?.type).toBe('app');
   });
 
-  it.each([false, true])('counts personal quota before/after migration (%s)', async (migrated) => {
+  it('counts legacy default-app keys as personal quota and keeps explicit app quotas independent', async () => {
     const { owner, members } = await getFakeUsers(1);
     const [app, otherApp] = await MongoApp.create(
       ['quota app', 'other app'].map((name) => ({
@@ -119,8 +119,8 @@ describe('support/openapi/create', () => {
     await MongoOpenApi.collection.insertOne({
       teamId: app.teamId,
       tmbId: app.tmbId,
-      ...(migrated ? { type: 'personal' } : {}),
-      appId: migrated ? new Types.ObjectId(appId) : appId,
+      type: 'personal',
+      appId: new Types.ObjectId(appId),
       apiKey: 'migrated-default-app-quota'
     });
     mockAppEnv.OPENAPI_KEY_MAX_COUNT = 2;
@@ -144,7 +144,7 @@ describe('support/openapi/create', () => {
       await MongoOpenApi.collection.countDocuments({
         appId: new Types.ObjectId(appId)
       })
-    ).toBe(migrated ? 101 : 100);
+    ).toBe(101);
 
     const other = await Call(createapi.default, {
       auth: owner,
@@ -156,9 +156,7 @@ describe('support/openapi/create', () => {
       body: { name: 'personal quota includes the historical key' }
     });
     expect(extraPersonal.error).toBe(OpenApiErrEnum.exceedLimit);
-    expect(await MongoOpenApi.countDocuments({ tmbId: owner.tmbId, type: 'personal' })).toBe(
-      migrated ? 2 : 1
-    );
+    expect(await MongoOpenApi.countDocuments({ tmbId: owner.tmbId, type: 'personal' })).toBe(2);
   });
 
   it('rechecks membership inside the team lease after a completed handover', async () => {

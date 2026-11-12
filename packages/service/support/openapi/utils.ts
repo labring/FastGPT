@@ -28,13 +28,15 @@ export const resolveApiKeyScope = (record: { type?: unknown; appId?: unknown }):
 };
 
 /**
- * 后台迁移只覆盖固定范围，滚动升级中的旧实例仍可能新增无 type 的个人 Key。
- * 列表、限额和标签持续兼容这些记录；显式应用类型与异常类型不能降级为个人 Key。
+ * 管理查询只面向已迁移的显式类型，不兼容迁移期间或滚动升级中旧实例写入的旧格式。
+ * 迁移固定扫描上界之后新增的无 type 记录也不会自动补迁，需另行规范化后才能参与查询。
+ * 这是有意保留的升级边界，运行期不承担多格式查询兼容。
  */
-export const getOpenApiTypeFilter = (type: ApiKeyTypeEnum): FilterQuery<OpenApiSchema> =>
-  type === ApiKeyTypeEnum.personal ? { $or: [{ type }, { type: { $exists: false } }] } : { type };
+export const getOpenApiTypeFilter = (type: ApiKeyTypeEnum): FilterQuery<OpenApiSchema> => ({
+  type
+});
 
-/** 迁移已将有效应用 ID 统一为 BSON ObjectId，直接匹配字段以利用应用索引。 */
+/** 应用查询只匹配规范化后的 BSON ObjectId，以利用索引；不兼容尚未迁移的字符串 ID。 */
 export const getOpenApiAppIdFilter = (appIds: string[]): FilterQuery<OpenApiSchema> => ({
   appId: { $in: appIds.map((id) => new Types.ObjectId(id)) }
 });

@@ -21,6 +21,7 @@ const CheckpointSchema = z.object({
 /**
  * 独立分批遍历全部 Key，补齐个人类型并将已有应用 ID 统一为 BSON ObjectId。
  * 固定上界和 _id 游标支持幂等断点续跑；旧版仅补类型的断点从同一范围起点重扫一次。
+ * 上界之后由旧实例写入的旧格式记录不在本次扫描范围内，运行期管理查询也不承担兼容。
  * 错误快照先于 checkpoint 持久化；完成校验覆盖类型、绑定语义和 ID 存储类型。
  */
 export const backfillOpenApiKeyType = async (context: SystemMigrationContext) => {
