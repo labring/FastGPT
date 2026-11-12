@@ -193,13 +193,19 @@ const MCP_TRANSPORT_ERROR_CLASSES = [
 /**
  * 仅提取 transport 层错误的 HTTP 状态码（含 cause 链）。
  *
- * 工具级错误即使恰好带 `code`/`status: 401` 也只是业务错误：这里刻意不读取任意对象上的
+ * 工具级错误即使恰好带 `code`/`status: 401` 也只是业务错误：顶层对象刻意不读取任意
  * 状态字段，保证 `mcp.ts` 的错误归一化与 `mcpOAuth/runtime.ts` 的刷新/重授权判定使用同一
  * 语义——只有 transport 的 401/403 才触发 OAuth 刷新。
+ *
+ * 命中的已知 transport 错误类若 `code` 不是数字（如 SDK 的 `SseError.code` 可为
+ * `undefined`），不能立即放弃，而是继续沿 `cause` 链查找（保留原 `getMcpHttpStatus`
+ * 语义）。`inTransportChain` 标记当前 cause 处于已知 transport 错误之下：此时读取下层
+ * 包装对象的 `code`/`status`/`statusCode` 仍属于 transport 语义；顶层工具错误不受影响。
  */
 export const getMcpTransportHttpStatus = (
   error: unknown,
-  visited = new Set<unknown>()
+  visited = new Set<unknown>(),
+  inTransportChain = false
 ): number | undefined => {
   if (typeof error !== 'object' || error === null || visited.has(error)) return undefined;
   visited.add(error);
@@ -207,18 +213,30 @@ export const getMcpTransportHttpStatus = (
   for (const ErrorClass of MCP_TRANSPORT_ERROR_CLASSES) {
     if (error instanceof ErrorClass) {
       const code = (error as { code?: unknown }).code;
-      return typeof code === 'number' ? code : undefined;
+      if (typeof code === 'number') return code;
+      // 已知 transport 错误但无数字 code：继续沿 cause 链查找，避免丢状态。
+      if (!('cause' in error)) return undefined;
+      return getMcpTransportHttpStatus((error as { cause?: unknown }).cause, visited, true);
     }
   }
+
+  const nestedStatus = (candidate: unknown): number | undefined => {
+    if (!inTransportChain || typeof candidate !== 'object' || candidate === null) return undefined;
+    const status = candidate as { code?: unknown; status?: unknown; statusCode?: unknown };
+    for (const value of [status.code, status.status, status.statusCode]) {
+      if (typeof value === 'number') return value;
+    }
+    return undefined;
+  };
+
+  const nested = nestedStatus(error);
+  if (nested !== undefined) return nested;
+
   if ('cause' in error) {
-    return getMcpTransportHttpStatus(error.cause, visited);
+    return getMcpTransportHttpStatus(error.cause, visited, inTransportChain);
   }
   return undefined;
 };
-
-/** 仅 transport 层的 401（401/403 用 `getMcpTransportHttpStatus` 自行比较）。 */
-export const isMcpTransportUnauthorizedError = (error: unknown) =>
-  getMcpTransportHttpStatus(error) === 401;
 
 /** 读取错误上暴露的 HTTP 状态码（`code`/`status`/`statusCode`），供鉴权判定共用。 */
 export const getMcpErrorStatusCode = (error: unknown): number | undefined => {
