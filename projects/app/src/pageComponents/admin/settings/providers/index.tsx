@@ -20,9 +20,12 @@ import AdminFormItem from '@/pageComponents/admin/settings/AdminFormItem';
 import ConnectivityTestInput from '@/pageComponents/admin/settings/ConnectivityTestInput';
 import type { SettingTOCItem } from '@/pageComponents/admin/settings/AdminSettingTOC';
 import ThirdPartyVariables from '@/pageComponents/admin/config/components/FormField/ThirdPartyVariables';
+import { isHttpUrl } from '@fastgpt/global/common/string/url';
 import type { SystemInstanceConfigDomainMap } from '@fastgpt/global/common/system/config/schema';
 
 type ProvidersConfigForm = SystemInstanceConfigDomainMap['providers'];
+
+const isValidOptionalUrl = (url?: string) => !url || isHttpUrl(url.trim());
 
 const ProvidersSettingComponent = () => {
   const { t } = useSafeTranslation();
@@ -55,7 +58,33 @@ const ProvidersSettingComponent = () => {
   });
 
   const onSave = handleSubmit(async (formData) => {
-    await patchConfig(filterConfigData('providers', formData) as Record<string, unknown>);
+    const activeProvider = formData.documentParse.provider;
+    const isCustomActive = activeProvider === 'customPdf' || activeProvider === 'custom';
+    const isSangforActive = activeProvider === 'sangfor';
+    const rawPrice = Number(formData.documentParse.customPdf.price);
+    const sanitizedFormData: ProvidersConfigForm = {
+      ...formData,
+      documentParse: {
+        ...formData.documentParse,
+        customPdf: {
+          ...formData.documentParse.customPdf,
+          price: Number.isFinite(rawPrice) && rawPrice >= 0 ? rawPrice : 0,
+          // 非当前选中的 Provider 隐藏区域如果残留未写完的草稿 URL，回退到已持久化值，不阻断切换或关闭。
+          url:
+            isCustomActive || isValidOptionalUrl(formData.documentParse.customPdf.url)
+              ? formData.documentParse.customPdf.url
+              : (effectiveConfig.documentParse?.customPdf?.url ?? '')
+        },
+        sangfor: {
+          ...formData.documentParse.sangfor,
+          url:
+            isSangforActive || isValidOptionalUrl(formData.documentParse.sangfor.url)
+              ? formData.documentParse.sangfor.url
+              : (effectiveConfig.documentParse?.sangfor?.url ?? '')
+        }
+      }
+    };
+    await patchConfig(filterConfigData('providers', sanitizedFormData) as Record<string, unknown>);
   });
 
   return (
@@ -213,25 +242,12 @@ const ProvidersSettingComponent = () => {
             <AdminFormItem
               label={t('admin:custom_parser_auth_key')}
               tooltip={t('admin:bearer_token_used_when_calling_the_custom_parsing_service')}
+              mb={0}
             >
               <Input
                 type="password"
                 {...register('documentParse.customPdf.key')}
                 placeholder="******"
-              />
-            </AdminFormItem>
-
-            <AdminFormItem
-              label={t('admin:custom_pdf_parse_price')}
-              tooltip={t('admin:custom_pdf_parse_price_tip')}
-              mb={0}
-            >
-              <Input
-                type="number"
-                step="0.01"
-                min={0}
-                {...register('documentParse.customPdf.price', { valueAsNumber: true })}
-                placeholder="0"
               />
             </AdminFormItem>
           </Box>
@@ -311,6 +327,30 @@ const ProvidersSettingComponent = () => {
               />
             </AdminFormItem>
           </Box>
+        )}
+
+        {/* 后端对全部启用的 PDF Provider 统一按 customPdf.price 计费，不能只在 customPdf 下展示 */}
+        {Boolean(documentParseProvider) && documentParseProvider !== 'none' && (
+          <AdminFormItem
+            label={t('admin:custom_pdf_parse_price')}
+            tooltip={t('admin:custom_pdf_parse_price_tip')}
+            mb={0}
+          >
+            <Input
+              maxW={'400px'}
+              type="number"
+              step="0.01"
+              min={0}
+              {...register('documentParse.customPdf.price', {
+                setValueAs: (val) => {
+                  if (val === '' || val === null || val === undefined) return 0;
+                  const parsed = Number(val);
+                  return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
+                }
+              })}
+              placeholder="0"
+            />
+          </AdminFormItem>
         )}
       </AdminSettingSection>
 

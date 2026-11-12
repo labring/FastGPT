@@ -5,7 +5,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useState } from 'react';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 import type { ReactNode } from 'react';
@@ -86,7 +86,7 @@ const ThirdPartyVariables = ({
 
       <Flex mt={2} gap={1} flexDirection={'column'}>
         {variableList.map((item) => (
-          <Flex key={item.name} alignItems={'center'} fontSize={'sm'}>
+          <Flex key={item.key} alignItems={'center'} fontSize={'sm'}>
             <Box w={2 / 10} display={'flex'} alignItems={'center'} pl={4}>
               <MyIcon name={'common/variable'} width={'18px'} mr={1.5} />
               {item.name}
@@ -192,13 +192,15 @@ const ThirdPartyVariableItemModal = ({
   onSubmit: (data: ExternalProviderWorkflowVarType) => void;
 }) => {
   const { t } = useSafeTranslation();
-  const { register, setValue, handleSubmit } = useForm({
+  const { register, setValue, control, handleSubmit } = useForm({
     defaultValues: currentThirdPartyVariable
   });
+  const isOpen = useWatch({ control, name: 'isOpen' });
 
   return (
     <MyModal
       title={'自定义工作流变量'}
+      onClose={onClose}
       footer={
         <>
           <Button onClick={onClose} variant={'whiteBase'}>
@@ -227,7 +229,7 @@ const ThirdPartyVariableItemModal = ({
           {t('admin:enable')}
         </Box>
         <Switch
-          {...register('isOpen')}
+          isChecked={Boolean(isOpen)}
           size={'sm'}
           onChange={(e) => setValue('isOpen', e.target.checked)}
         />

@@ -127,6 +127,11 @@ const CoreSettingComponent = () => {
 
   const { runAsync: onSave, loading: isSaving } = useAdminConfigSaveRequest(
     async (formData: CoreConfigForm) => {
+      // 存量库残留 sync 但管理员本次并未改动团队模式时，不重提 sync，避免缺少外部用户系统时误阻断 SMTP/存储等无关项保存。
+      const persistedTeamMode = auth.effectiveConfig?.teamMode;
+      const shouldSubmitTeamMode =
+        showTeamMode && !(formData.teamMode === 'sync' && persistedTeamMode === 'sync');
+
       // 跨域原子提交：auth、feature、storage、site 四个域合并为单个事务请求，避免多域分步提交留下半写
       await updateDomainConfigApi({
         items: [
@@ -136,7 +141,7 @@ const CoreSettingComponent = () => {
             overrides: deepMergeConfig(
               filterConfigDataByEdition('auth', auth.overrides) as Record<string, unknown>,
               filterConfigData('auth', {
-                ...(showTeamMode ? { teamMode: formData.teamMode } : {}),
+                ...(shouldSubmitTeamMode ? { teamMode: formData.teamMode } : {}),
                 loginProviders: {
                   // 核心页只保存 SMTP 字段，邮箱注册由账号与登录页维护。
                   email: {
@@ -187,16 +192,11 @@ const CoreSettingComponent = () => {
           }
         ]
       });
+      await Promise.all([auth.refetch(), feature.refetch(), storage.refetch(), site.refetch()]);
     },
     {
       successToast: 'admin:settings_saved',
-      errorToast: 'admin:failed_to_save_settings',
-      onSuccess: () => {
-        void auth.refetch();
-        void feature.refetch();
-        void storage.refetch();
-        void site.refetch();
-      }
+      errorToast: 'admin:failed_to_save_settings'
     }
   );
 
@@ -307,7 +307,7 @@ const CoreSettingComponent = () => {
           label={t('admin:download_link_mode')}
           tooltip={t('admin:short_proxy_streamed_proxy_download_via_the_main_site_hides')}
           isRequired
-          mb={downloadMode === 'short-redirect' ? 4 : 0}
+          mb={4}
         >
           <Controller
             name="downloadMode"
@@ -329,22 +329,23 @@ const CoreSettingComponent = () => {
           />
         </AdminFormItem>
 
-        {downloadMode === 'short-redirect' && (
-          <SimpleGrid columns={[1, 3]} spacing={5} mt={4}>
-            <AdminFormItem
-              label={t('admin:storage_external_endpoint')}
-              tooltip={t('admin:storage_external_endpoint_tip')}
-              mb={0}
-            >
-              <Input {...register('externalEndpoint')} placeholder="https://files.example.com" />
-            </AdminFormItem>
-            <AdminFormItem
-              label={t('admin:storage_cdn_endpoint')}
-              tooltip={t('admin:storage_cdn_endpoint_tip')}
-              mb={0}
-            >
-              <Input {...register('cdnEndpoint')} placeholder="https://cdn.example.com" />
-            </AdminFormItem>
+        {/* 公开桶（如站点头像）在 short-proxy 模式下同样消费 externalEndpoint 与 cdnEndpoint，始终展示；仅 302 有效期随模式显隐 */}
+        <SimpleGrid columns={[1, downloadMode === 'short-redirect' ? 3 : 2]} spacing={5} mt={4}>
+          <AdminFormItem
+            label={t('admin:storage_external_endpoint')}
+            tooltip={t('admin:storage_external_endpoint_tip')}
+            mb={0}
+          >
+            <Input {...register('externalEndpoint')} placeholder="https://files.example.com" />
+          </AdminFormItem>
+          <AdminFormItem
+            label={t('admin:storage_cdn_endpoint')}
+            tooltip={t('admin:storage_cdn_endpoint_tip')}
+            mb={0}
+          >
+            <Input {...register('cdnEndpoint')} placeholder="https://cdn.example.com" />
+          </AdminFormItem>
+          {downloadMode === 'short-redirect' && (
             <AdminFormItem
               label={t('admin:storage_redirect_ttl_seconds')}
               tooltip={t('admin:storage_redirect_ttl_seconds_tip')}
@@ -370,8 +371,8 @@ const CoreSettingComponent = () => {
                 )}
               />
             </AdminFormItem>
-          </SimpleGrid>
-        )}
+          )}
+        </SimpleGrid>
       </AdminSettingSection>
 
       {/* 5. 开放接口 */}

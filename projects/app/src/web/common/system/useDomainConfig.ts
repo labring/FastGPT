@@ -37,6 +37,9 @@ export const updateDomainConfigApi = (
   return POST<UpdateDomainConfigResponse>('/admin/system/config/update', data);
 };
 
+const EMPTY_OBJECT: Record<string, never> = {};
+const EMPTY_SECRET_KEYS: string[] = [];
+
 /**
  * 前端配置页面专用的 React Hook：
  * 自动查询对应 Domain 的生效配置与 revision，并提供带乐观锁防冲突的更新函数。
@@ -79,6 +82,8 @@ export const useDomainConfig = <T extends SystemInstanceConfigDomainKey>(domain:
           }
         ]
       });
+      // 等待最新 revision 落入缓存再结束本次保存，避免连续二次保存仍携带旧 revision 触发假 409。
+      await refetch();
       return { res, silent };
     },
     {
@@ -90,14 +95,15 @@ export const useDomainConfig = <T extends SystemInstanceConfigDomainKey>(domain:
             title: 'admin:settings_saved'
           });
         }
-        void refetch();
       },
       errorToast: 'admin:failed_to_save_settings'
     }
   );
 
   const revision = data?.revision ?? 0;
-  const overrides = (data?.overrides ?? {}) as DeepPartial<SystemInstanceConfigDomainMap[T]>;
+  const overrides = (data?.overrides ?? EMPTY_OBJECT) as DeepPartial<
+    SystemInstanceConfigDomainMap[T]
+  >;
 
   /**
    * 局部提交：先与库中现有 overrides 深合并再提交。
@@ -119,9 +125,9 @@ export const useDomainConfig = <T extends SystemInstanceConfigDomainKey>(domain:
   return {
     domain,
     revision,
-    effectiveConfig: (data?.effectiveConfig ?? {}) as SystemInstanceConfigDomainMap[T],
+    effectiveConfig: (data?.effectiveConfig ?? EMPTY_OBJECT) as SystemInstanceConfigDomainMap[T],
     overrides,
-    secretKeys: data?.secretKeys ?? [],
+    secretKeys: data?.secretKeys ?? EMPTY_SECRET_KEYS,
     updatedAt: data?.updatedAt,
     updatedBy: data?.updatedBy,
     isLoading,

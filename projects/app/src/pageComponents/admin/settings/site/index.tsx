@@ -38,7 +38,7 @@ const SiteSettingComponent = () => {
     defaultValues: effectiveConfig
   });
 
-  const [scriptsText, setScriptsText] = useState('');
+  const [scriptsText, setScriptsText] = useState<string | null>(null);
   const navbarItems = useWatch({ control, name: 'navbarItems' });
   const customDomainEnabled = useWatch({ control, name: 'customDomain.enable' });
 
@@ -53,8 +53,9 @@ const SiteSettingComponent = () => {
 
   const onSave = handleSubmit(async (formData) => {
     let scripts: unknown;
+    const rawScripts = (scriptsText ?? '').trim();
     try {
-      scripts = JSON.parse(scriptsText || '[]');
+      scripts = rawScripts ? JSON.parse(rawScripts) : [];
     } catch {
       toast({ status: 'error', title: t('admin:site_scripts_must_be_valid_json_array') });
       return;
@@ -201,7 +202,7 @@ const SiteSettingComponent = () => {
             control={control}
             render={({ field }) => (
               <JsonEditor
-                value={scriptsText || JSON.stringify(field.value ?? [], null, 2)}
+                value={scriptsText ?? JSON.stringify(field.value ?? [], null, 2)}
                 onChange={setScriptsText}
                 defaultHeight={220}
                 resize

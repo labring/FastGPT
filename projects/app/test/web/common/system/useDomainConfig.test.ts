@@ -154,4 +154,18 @@ describe('useDomainConfig', () => {
       status: 'success'
     });
   });
+
+  it('keeps empty fallback object references stable across re-renders before data loads', async () => {
+    mocks.get.mockImplementation(() => new Promise(() => {}));
+    await act(async () => {
+      root.render(React.createElement(QueryClientProvider, { client }, React.createElement(Form)));
+    });
+    const firstEffective = config.effectiveConfig;
+    const firstOverrides = config.overrides;
+    await act(async () => {
+      root.render(React.createElement(QueryClientProvider, { client }, React.createElement(Form)));
+    });
+    expect(config.effectiveConfig).toBe(firstEffective);
+    expect(config.overrides).toBe(firstOverrides);
+  });
 });

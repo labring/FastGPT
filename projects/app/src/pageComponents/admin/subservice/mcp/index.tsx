@@ -39,7 +39,14 @@ const McpSubserviceComponent = () => {
   }, [effectiveConfig, reset]);
 
   const onSave = handleSubmit(async (formData) => {
-    await patchConfig({ mcp: formData.mcp });
+    // 关闭开关后若隐藏地址框残留未填完的非法草稿，回落到已持久化地址，不阻断关闭操作。
+    const sseProxyUrl =
+      formData.mcp.enabled ||
+      !formData.mcp.sseProxyUrl ||
+      isValidServiceBaseUrl(formData.mcp.sseProxyUrl)
+        ? formData.mcp.sseProxyUrl
+        : (effectiveConfig.mcp?.sseProxyUrl ?? '');
+    await patchConfig({ mcp: { ...formData.mcp, sseProxyUrl } });
   });
 
   return (

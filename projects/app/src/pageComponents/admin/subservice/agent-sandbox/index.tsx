@@ -16,12 +16,16 @@ import { useDomainConfig } from '@/web/common/system/useDomainConfig';
 import AdminSettingPage from '@/pageComponents/admin/settings/AdminSettingPage';
 import AdminSettingSection from '@/pageComponents/admin/settings/AdminSettingSection';
 import AdminFormItem from '@/pageComponents/admin/settings/AdminFormItem';
+import AdminNumberInput from '@/pageComponents/admin/settings/AdminNumberInput';
 import AdminSwitchRow from '@/pageComponents/admin/settings/AdminSwitchRow';
 import ConnectivityTestInput from '@/pageComponents/admin/settings/ConnectivityTestInput';
 import type { SettingTOCItem } from '@/pageComponents/admin/settings/AdminSettingTOC';
+import { isHttpUrl } from '@fastgpt/global/common/string/url';
 import type { SystemInstanceConfigDomainMap } from '@fastgpt/global/common/system/config/schema';
 
 type SubserviceConfigForm = SystemInstanceConfigDomainMap['subservice'];
+
+const isValidOptionalUrl = (url?: string) => !url || isHttpUrl(url.trim());
 
 const AgentSandboxSubserviceComponent = () => {
   const { t } = useSafeTranslation();
@@ -51,8 +55,33 @@ const AgentSandboxSubserviceComponent = () => {
   });
 
   const onSave = handleSubmit(async (formData) => {
-    // 代理部署地址已从配置 Schema 移除，表单只提交沙箱运行参数。
-    await patchConfig({ agentSandbox: formData.agentSandbox });
+    const provider = formData.agentSandbox.provider;
+    const isSealosActive = provider === 'sealosdevbox';
+    const isOpenSandboxActive = provider === 'opensandbox';
+    // 非当前激活 Provider 的隐藏分支若残留未填完的草稿 URL，回落到已持久化地址，不阻断切换或关闭。
+    const sanitizedAgentSandbox: SubserviceConfigForm['agentSandbox'] = {
+      ...formData.agentSandbox,
+      sealosdevbox: {
+        ...formData.agentSandbox.sealosdevbox,
+        baseUrl:
+          isSealosActive || isValidOptionalUrl(formData.agentSandbox.sealosdevbox.baseUrl)
+            ? formData.agentSandbox.sealosdevbox.baseUrl
+            : (effectiveConfig.agentSandbox?.sealosdevbox?.baseUrl ?? '')
+      },
+      opensandbox: {
+        ...formData.agentSandbox.opensandbox,
+        baseUrl:
+          isOpenSandboxActive || isValidOptionalUrl(formData.agentSandbox.opensandbox.baseUrl)
+            ? formData.agentSandbox.opensandbox.baseUrl
+            : (effectiveConfig.agentSandbox?.opensandbox?.baseUrl ?? ''),
+        volumeManagerUrl:
+          isOpenSandboxActive ||
+          isValidOptionalUrl(formData.agentSandbox.opensandbox.volumeManagerUrl)
+            ? formData.agentSandbox.opensandbox.volumeManagerUrl
+            : (effectiveConfig.agentSandbox?.opensandbox?.volumeManagerUrl ?? '')
+      }
+    };
+    await patchConfig({ agentSandbox: sanitizedAgentSandbox });
   });
 
   return (
@@ -316,20 +345,14 @@ const AgentSandboxSubserviceComponent = () => {
               name="agentSandbox.common.cpuCount"
               control={control}
               render={({ field }) => (
-                <NumberInput
-                  variant={'whiteOutline'}
+                <AdminNumberInput
                   min={0.5}
                   max={32}
                   step={0.5}
-                  value={field.value ?? 1}
-                  onChange={(_, val) => field.onChange(val || 1)}
-                >
-                  <NumberInputField />
-                  <NumberInputStepper>
-                    <NumberIncrementStepper />
-                    <NumberDecrementStepper />
-                  </NumberInputStepper>
-                </NumberInput>
+                  value={field.value}
+                  fallbackValue={1}
+                  onChange={field.onChange}
+                />
               )}
             />
           </AdminFormItem>
@@ -453,19 +476,14 @@ const AgentSandboxSubserviceComponent = () => {
               name="agentSandbox.common.maxEditDebug"
               control={control}
               render={({ field }) => (
-                <NumberInput
-                  variant={'whiteOutline'}
-                  min={1}
+                <AdminNumberInput
+                  min={0}
                   max={500}
-                  value={field.value ?? 100}
-                  onChange={(_, val) => field.onChange(val || 100)}
-                >
-                  <NumberInputField />
-                  <NumberInputStepper>
-                    <NumberIncrementStepper />
-                    <NumberDecrementStepper />
-                  </NumberInputStepper>
-                </NumberInput>
+                  precision={0}
+                  value={field.value}
+                  fallbackValue={100}
+                  onChange={field.onChange}
+                />
               )}
             />
           </AdminFormItem>
@@ -482,9 +500,11 @@ const AgentSandboxSubserviceComponent = () => {
                   variant={'whiteOutline'}
                   min={1}
                   max={100000}
+                  precision={0}
                   value={field.value ?? ''}
                   onChange={(valueAsString, val) =>
-                    field.onChange(valueAsString === '' ? undefined : val)
+                    // 清空时必须显式写入 null（不限制），undefined 会被深合并忽略而无法清除旧配额
+                    field.onChange(valueAsString.trim() === '' || Number.isNaN(val) ? null : val)
                   }
                 >
                   <NumberInputField placeholder={t('admin:unlimited')} />

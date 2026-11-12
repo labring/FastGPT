@@ -16,6 +16,7 @@ import { useAdminPermission } from '@/pageComponents/admin/useAdminPermission';
 import AdminSettingPage from '@/pageComponents/admin/settings/AdminSettingPage';
 import AdminSettingSection from '@/pageComponents/admin/settings/AdminSettingSection';
 import AdminFormItem from '@/pageComponents/admin/settings/AdminFormItem';
+import AdminNumberInput from '@/pageComponents/admin/settings/AdminNumberInput';
 import AdminReadonlyInput from '@/pageComponents/admin/settings/AdminReadonlyInput';
 import type { SettingTOCItem } from '@/pageComponents/admin/settings/AdminSettingTOC';
 import type { SystemInstanceConfigDomainMap } from '@fastgpt/global/common/system/config/schema';
@@ -139,7 +140,12 @@ const LimitsSettingComponent = () => {
               datasetFolderMaxAmount: Number(formData.datasetFolderMaxAmount ?? 1000),
               uploadFileMaxSize: Number(formData.uploadFileMaxSize) || 1000,
               uploadFileMaxAmount: Number(formData.uploadFileMaxAmount) || 1000,
-              datasetArchive: formData.datasetArchive,
+              datasetArchive: {
+                maxFiles: Number(formData.datasetArchive?.maxFiles) || 1000,
+                maxSourceSizeMiB: Number(formData.datasetArchive?.maxSourceSizeMiB) || 1024,
+                maxConcurrency: Number(formData.datasetArchive?.maxConcurrency) || 2,
+                prepareTimeoutSeconds: Number(formData.datasetArchive?.prepareTimeoutSeconds) || 60
+              },
               exportDatasetLimitMinutes: Number(formData.exportDatasetLimitMinutes) || 0,
               websiteSyncLimitMinuted: Number(formData.websiteSyncLimitMinuted) || 0
             }
@@ -173,7 +179,8 @@ const LimitsSettingComponent = () => {
                 string,
                 unknown
               >),
-              fileUrlExpiredDays: Number(formData.fileUrlExpiredDays) || 90
+              fileUrlExpiredDays:
+                Number(formData.fileUrlExpiredDays) > 0 ? Number(formData.fileUrlExpiredDays) : 90
             }
           },
           {
@@ -189,17 +196,17 @@ const LimitsSettingComponent = () => {
           }
         ]
       });
+      await Promise.all([
+        resource.refetch(),
+        performance.refetch(),
+        auth.refetch(),
+        storage.refetch(),
+        vector.refetch()
+      ]);
     },
     {
       successToast: 'admin:settings_saved',
-      errorToast: 'admin:failed_to_save_settings',
-      onSuccess: () => {
-        void resource.refetch();
-        void performance.refetch();
-        void auth.refetch();
-        void storage.refetch();
-        void vector.refetch();
-      }
+      errorToast: 'admin:failed_to_save_settings'
     }
   );
 
@@ -448,19 +455,15 @@ const LimitsSettingComponent = () => {
               name="fileUrlExpiredDays"
               control={control}
               render={({ field }) => (
-                <NumberInput
-                  {...numberInputProps}
-                  min={1}
+                <AdminNumberInput
+                  maxW={'400px'}
+                  min={0.01}
                   max={3650}
-                  value={field.value ?? 90}
-                  onChange={(_, val) => field.onChange(val || 90)}
-                >
-                  <NumberInputField />
-                  <NumberInputStepper>
-                    <NumberIncrementStepper />
-                    <NumberDecrementStepper />
-                  </NumberInputStepper>
-                </NumberInput>
+                  step={0.5}
+                  value={field.value}
+                  fallbackValue={90}
+                  onChange={field.onChange}
+                />
               )}
             />
           </AdminFormItem>
@@ -509,7 +512,11 @@ const LimitsSettingComponent = () => {
                     min={1}
                     precision={0}
                     value={field.value ?? ''}
-                    onChange={(_, value) => field.onChange(value)}
+                    onChange={(valueAsString, value) =>
+                      field.onChange(
+                        valueAsString.trim() === '' || Number.isNaN(value) ? undefined : value
+                      )
+                    }
                   >
                     <NumberInputField />
                     <NumberInputStepper>

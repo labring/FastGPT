@@ -57,7 +57,13 @@ const CodeSandboxSubserviceComponent = () => {
   }, [effectiveConfig, reset]);
 
   const onSave = handleSubmit(async (formData) => {
-    await patchConfig({ codeSandbox: formData.codeSandbox });
+    const url =
+      formData.codeSandbox.enabled ||
+      !formData.codeSandbox.url ||
+      isValidServiceBaseUrl(formData.codeSandbox.url)
+        ? formData.codeSandbox.url
+        : (effectiveConfig.codeSandbox?.url ?? '');
+    await patchConfig({ codeSandbox: { ...formData.codeSandbox, url } });
   });
 
   return (

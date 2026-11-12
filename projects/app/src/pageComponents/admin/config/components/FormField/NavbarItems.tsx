@@ -7,7 +7,7 @@ import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import DndDrag, { Draggable } from '@fastgpt/web/components/common/DndDrag';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import Avatar from '@fastgpt/web/components/common/Avatar';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import type { NavbarItemType } from '@fastgpt/global/common/system/types';
@@ -99,110 +99,113 @@ const NavbarItems = ({
               {...provided.droppableProps}
               ref={provided.innerRef}
             >
-              {navbarList.map((item, index) => (
-                <Draggable key={item.name} draggableId={item.name} index={index}>
-                  {(provided, snapshot) => (
-                    <MyBox
-                      display={'flex'}
-                      ref={provided.innerRef}
-                      {...provided.draggableProps}
-                      style={{
-                        ...provided.draggableProps.style,
-                        opacity: snapshot.isDragging ? 0.8 : 1
-                      }}
-                      alignItems={'center'}
-                      h={12}
-                      _hover={{
-                        bg: 'primary.50'
-                      }}
-                    >
-                      <Box display={'flex'} alignItems={'center'} w={3 / 10} pr={6}>
-                        <Flex
-                          h={'full'}
-                          rounded={'xs'}
-                          ml={2}
-                          mr={2.5}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                          }}
-                          _hover={{ bg: 'myGray.05' }}
-                          {...provided.dragHandleProps}
-                        >
-                          <MyIcon name="drag" w={'14px'} color={'myGray.500'} cursor={'grab'} />
-                        </Flex>
-                        <Avatar src={item.avatar} borderRadius={'xs'} w={'20px'} />
+              {navbarList.map((item, index) => {
+                const itemKey = item.id || `${item.name}-${index}`;
+                return (
+                  <Draggable key={itemKey} draggableId={itemKey} index={index}>
+                    {(provided, snapshot) => (
+                      <MyBox
+                        display={'flex'}
+                        ref={provided.innerRef}
+                        {...provided.draggableProps}
+                        style={{
+                          ...provided.draggableProps.style,
+                          opacity: snapshot.isDragging ? 0.8 : 1
+                        }}
+                        alignItems={'center'}
+                        h={12}
+                        _hover={{
+                          bg: 'primary.50'
+                        }}
+                      >
+                        <Box display={'flex'} alignItems={'center'} w={3 / 10} pr={6}>
+                          <Flex
+                            h={'full'}
+                            rounded={'xs'}
+                            ml={2}
+                            mr={2.5}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                            }}
+                            _hover={{ bg: 'myGray.05' }}
+                            {...provided.dragHandleProps}
+                          >
+                            <MyIcon name="drag" w={'14px'} color={'myGray.500'} cursor={'grab'} />
+                          </Flex>
+                          <Avatar src={item.avatar} borderRadius={'xs'} w={'20px'} />
+                          <Box
+                            pl={1.5}
+                            fontWeight={'medium'}
+                            whiteSpace={'nowrap'}
+                            overflow={'hidden'}
+                            textOverflow={'ellipsis'}
+                          >
+                            {item.name}
+                          </Box>
+                        </Box>
+                        <Box w={1 / 10} pl={9}>
+                          <Box as={'span'}>
+                            <Switch
+                              isChecked={item.isActive}
+                              size={'sm'}
+                              onChange={(e) => {
+                                const newNavbarItems = navbarList.map((currentItem) => ({
+                                  ...currentItem,
+                                  isActive:
+                                    currentItem.id === item.id
+                                      ? e.target.checked
+                                      : currentItem.isActive
+                                }));
+                                onChange(newNavbarItems);
+                              }}
+                            />
+                          </Box>
+                        </Box>
                         <Box
-                          pl={1.5}
-                          fontWeight={'medium'}
-                          whiteSpace={'nowrap'}
+                          w={4 / 10}
                           overflow={'hidden'}
                           textOverflow={'ellipsis'}
+                          whiteSpace={'nowrap'}
+                          pl={5}
+                          color={'myGray.600'}
+                          fontSize={'sm'}
                         >
-                          {item.name}
+                          {item?.url}
                         </Box>
-                      </Box>
-                      <Box w={1 / 10} pl={9}>
-                        <Box as={'span'}>
-                          <Switch
-                            isChecked={item.isActive}
-                            size={'sm'}
-                            onChange={(e) => {
-                              const newNavbarItems = navbarList.map((currentItem) => ({
-                                ...currentItem,
-                                isActive:
-                                  currentItem.id === item.id
-                                    ? e.target.checked
-                                    : currentItem.isActive
-                              }));
+                        <Box w={2 / 10} pl={2} display={'flex'} gap={4}>
+                          <Flex
+                            color={'myGray.500'}
+                            _hover={{ bg: 'myGray.05', color: 'primary.600' }}
+                            rounded={'xs'}
+                            p={1}
+                            cursor={'pointer'}
+                            onClick={() => {
+                              setCurrentNavbarItem(item);
+                            }}
+                          >
+                            <MyIcon name={'edit'} w={'16px'} />
+                          </Flex>
+                          <Flex
+                            color={'myGray.500'}
+                            _hover={{ bg: 'myGray.05', color: 'red.500' }}
+                            rounded={'xs'}
+                            p={1}
+                            cursor={'pointer'}
+                            onClick={() => {
+                              const newNavbarItems = navbarList.filter(
+                                (currentItem) => currentItem.id !== item.id
+                              );
                               onChange(newNavbarItems);
                             }}
-                          />
+                          >
+                            <MyIcon name={'delete'} w={'16px'} />
+                          </Flex>
                         </Box>
-                      </Box>
-                      <Box
-                        w={4 / 10}
-                        overflow={'hidden'}
-                        textOverflow={'ellipsis'}
-                        whiteSpace={'nowrap'}
-                        pl={5}
-                        color={'myGray.600'}
-                        fontSize={'sm'}
-                      >
-                        {item?.url}
-                      </Box>
-                      <Box w={2 / 10} pl={2} display={'flex'} gap={4}>
-                        <Flex
-                          color={'myGray.500'}
-                          _hover={{ bg: 'myGray.05', color: 'primary.600' }}
-                          rounded={'xs'}
-                          p={1}
-                          cursor={'pointer'}
-                          onClick={() => {
-                            setCurrentNavbarItem(item);
-                          }}
-                        >
-                          <MyIcon name={'edit'} w={'16px'} />
-                        </Flex>
-                        <Flex
-                          color={'myGray.500'}
-                          _hover={{ bg: 'myGray.05', color: 'red.500' }}
-                          rounded={'xs'}
-                          p={1}
-                          cursor={'pointer'}
-                          onClick={() => {
-                            const newNavbarItems = navbarList.filter(
-                              (currentItem) => currentItem.id !== item.id
-                            );
-                            onChange(newNavbarItems);
-                          }}
-                        >
-                          <MyIcon name={'delete'} w={'16px'} />
-                        </Flex>
-                      </Box>
-                    </MyBox>
-                  )}
-                </Draggable>
-              ))}
+                      </MyBox>
+                    )}
+                  </Draggable>
+                );
+              })}
             </Flex>
           )}
         </DndDrag>
@@ -230,11 +233,11 @@ const NavbarItemModal = ({
   onSubmit: (data: NavbarItemType) => void;
 }) => {
   const { t } = useSafeTranslation();
-  const { register, setValue, watch, handleSubmit } = useForm({
+  const { register, setValue, control, handleSubmit } = useForm({
     defaultValues: currentNavbarItem
   });
 
-  const avatar = watch('avatar');
+  const avatar = useWatch({ control, name: 'avatar' });
 
   const afterUploadAvatar = useCallback(
     (avatar: string) => {
@@ -252,6 +255,7 @@ const NavbarItemModal = ({
   return (
     <MyModal
       title={t('admin:add_sidebar_item')}
+      onClose={onClose}
       footer={
         <>
           <Button variant={'whiteBase'} onClick={onClose}>

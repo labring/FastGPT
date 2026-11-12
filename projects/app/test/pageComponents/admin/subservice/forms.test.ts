@@ -199,4 +199,30 @@ describe('subservice settings forms', () => {
     expect(mocks.patch, field).not.toHaveBeenCalled();
     expect(container.textContent).toContain('admin:invalid_subservice_base_url');
   });
+
+  it('allows disabling MCP SSE even when a hidden invalid draft URL was left in the input', async () => {
+    mocks.effectiveConfig = resolveDomainEffectiveConfig({ domain: 'subservice', overrides: {} });
+    await act(async () => root.render(React.createElement(Mcp)));
+
+    await clickSwitch('enable_mcp_sse');
+    const urlInput = container.querySelector<HTMLInputElement>('[data-service="mcpSse"]')!;
+    await act(async () => {
+      const setter = Object.getOwnPropertyDescriptor(
+        dom.window.HTMLInputElement.prototype,
+        'value'
+      )?.set;
+      setter?.call(urlInput, 'not-a-valid-url');
+      urlInput.dispatchEvent(new dom.window.Event('input', { bubbles: true }));
+      urlInput.dispatchEvent(new dom.window.Event('change', { bubbles: true }));
+    });
+
+    await clickSwitch('enable_mcp_sse');
+    await act(async () => {
+      await mocks.save!();
+    });
+
+    expect(mocks.patch).toHaveBeenCalledWith({
+      mcp: { enabled: false, sseProxyUrl: '' }
+    });
+  });
 });
