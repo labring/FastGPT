@@ -115,6 +115,10 @@ export const AdminTeamSelectorItemSchema = z.object({
   avatar: z.string().nullish().meta({
     example: '/icon/logo.svg',
     description: '团队头像'
+  }),
+  isOwner: z.boolean().optional().default(false).meta({
+    example: true,
+    description: '当前管理员是否为该团队所有者'
   })
 });
 export type AdminTeamSelectorItemType = z.infer<typeof AdminTeamSelectorItemSchema>;

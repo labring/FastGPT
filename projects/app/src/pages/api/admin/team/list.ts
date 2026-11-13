@@ -16,7 +16,7 @@ import { MongoTeam } from '@fastgpt/service/support/user/team/teamSchema';
 
 /**
  * 供系统超级管理员（root）在全局团队切换器中分页检索全站可用团队。
- * 无搜索词时通过确定性排序将当前所处团队置顶，保证跨页滚动时不丢项、不重项且回显准确。
+ * 自己作为 Owner 的团队始终置顶；无搜索词时再将当前所处团队排在其后，保证跨页滚动时不丢项、不重项。
  */
 async function handler(
   req: ApiRequestProps<Record<string, never>, AdminTeamSelectorQueryType>
@@ -30,39 +30,47 @@ async function handler(
     req,
     querySchema: AdminTeamSelectorQuerySchema
   });
-  const { teamId: currentTeamId } = await authSystemAdmin({ req });
+  const { userId: currentUserId, teamId: currentTeamId } = await authSystemAdmin({ req });
   const { search } = query;
   const { offset, pageSize } = normalizePagination(query);
 
-  // 2. 按团队名称模糊查询未软删除的全站团队，无搜索词时将当前团队排在全局首位。
+  // 2. 按团队名称模糊查询未软删除的全站团队，始终置顶当前管理员拥有的团队。
   const filter = {
     $or: [{ deleteTime: { $exists: false } }, { deleteTime: null }],
     ...(search ? { name: { $regex: new RegExp(replaceRegChars(search), 'i') } } : {})
   };
+  const currentUserObjectId = new Types.ObjectId(currentUserId);
   const currentTeamObjectId =
     !search && currentTeamId && Types.ObjectId.isValid(currentTeamId)
       ? new Types.ObjectId(currentTeamId)
       : null;
 
   const [teams, total] = await Promise.all([
-    currentTeamObjectId
-      ? MongoTeam.aggregate<{ _id: Types.ObjectId; name: string; avatar?: string }>([
-          { $match: filter },
-          {
-            $addFields: {
-              isCurrentTeam: { $cond: [{ $eq: ['$_id', currentTeamObjectId] }, 1, 0] }
-            }
-          },
-          { $sort: { isCurrentTeam: -1, createTime: -1, _id: -1 } },
-          { $skip: offset },
-          { $limit: pageSize },
-          { $project: { _id: 1, name: 1, avatar: 1 } }
-        ])
-      : MongoTeam.find(filter, { _id: 1, name: 1, avatar: 1 })
-          .sort({ createTime: -1, _id: -1 })
-          .skip(offset)
-          .limit(pageSize)
-          .lean(),
+    MongoTeam.aggregate<{
+      _id: Types.ObjectId;
+      name: string;
+      avatar?: string;
+      isOwner: boolean;
+    }>([
+      { $match: filter },
+      {
+        $addFields: {
+          isOwner: { $eq: ['$ownerId', currentUserObjectId] },
+          ...(currentTeamObjectId ? { isCurrentTeam: { $eq: ['$_id', currentTeamObjectId] } } : {})
+        }
+      },
+      {
+        $sort: {
+          isOwner: -1,
+          ...(currentTeamObjectId ? { isCurrentTeam: -1 } : {}),
+          createTime: -1,
+          _id: -1
+        }
+      },
+      { $skip: offset },
+      { $limit: pageSize },
+      { $project: { _id: 1, name: 1, avatar: 1, isOwner: 1 } }
+    ]),
     MongoTeam.countDocuments(filter)
   ]);
 
@@ -71,7 +79,8 @@ async function handler(
     list: teams.map((team) => ({
       teamId: String(team._id),
       teamName: team.name,
-      avatar: team.avatar
+      avatar: team.avatar,
+      isOwner: Boolean(team.isOwner)
     }))
   });
 }

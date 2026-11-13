@@ -437,5 +437,6 @@
   "log_admin_install_moderation_plugin": "[{{name}}]님이 콘텐츠 검수 플러그인 [{{pluginName}}]을(를) 설치했습니다",
   "log_admin_uninstall_moderation_plugin": "[{{name}}]님이 콘텐츠 검수 플러그인 [{{pluginName}}]을(를) 제거했습니다",
   "log_admin_update_moderation_plugin_config": "[{{name}}]님이 콘텐츠 검수 플러그인 [{{pluginName}}]의 설정을 업데이트했습니다",
-  "log_admin_update_moderation_policy": "[{{name}}]님이 콘텐츠 검수 정책 설정을 업데이트했습니다"
+  "log_admin_update_moderation_policy": "[{{name}}]님이 콘텐츠 검수 정책 설정을 업데이트했습니다",
+  "my_team": "내 팀"
 }

@@ -1,15 +1,19 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { Box, type ButtonProps } from '@chakra-ui/react';
+import { Box, Flex, type ButtonProps } from '@chakra-ui/react';
 import { useDebounce } from 'ahooks';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { getTeamList, putSwitchTeam } from '@/web/support/user/team/api';
 import { getAdminTeamSelectorList, putAdminSwitchTeam } from '@/web/admin/team/api';
-import { TeamMemberStatusEnum } from '@fastgpt/global/support/user/team/constant';
+import {
+  TeamMemberRoleEnum,
+  TeamMemberStatusEnum
+} from '@fastgpt/global/support/user/team/constant';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MySelect from '@fastgpt/web/components/common/MySelect';
+import MyTag from '@fastgpt/web/components/common/Tag';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useRouter } from 'next/router';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
@@ -51,13 +55,7 @@ const TeamSelector = ({
   const { data: memberTeams = [] } = useRequest(
     async () => {
       if (!userInfo || isRoot) return [];
-      const teams = await getTeamList(TeamMemberStatusEnum.active);
-      return teams.map((team) => ({
-        teamId: team.teamId,
-        teamName: team.teamName,
-        avatar: team.avatar ?? undefined,
-        accountCancellation: team.accountCancellation
-      }));
+      return getTeamList(TeamMemberStatusEnum.active);
     },
     {
       manual: false,
@@ -65,18 +63,27 @@ const TeamSelector = ({
     }
   );
 
-  const myTeams = useMemo(
-    () =>
-      isRoot
-        ? adminTeams.map((team) => ({
-            teamId: team.teamId,
-            teamName: team.teamName,
-            avatar: team.avatar ?? undefined,
-            accountCancellation: undefined
-          }))
-        : memberTeams,
-    [adminTeams, isRoot, memberTeams]
-  );
+  const myTeams = useMemo(() => {
+    if (isRoot) {
+      return adminTeams.map((team) => ({
+        teamId: team.teamId,
+        teamName: team.teamName,
+        avatar: team.avatar ?? undefined,
+        accountCancellation: undefined,
+        isOwner: Boolean(team.isOwner)
+      }));
+    }
+
+    return memberTeams
+      .map((team) => ({
+        teamId: team.teamId,
+        teamName: team.teamName,
+        avatar: team.avatar ?? undefined,
+        accountCancellation: team.accountCancellation,
+        isOwner: team.role === TeamMemberRoleEnum.owner || Boolean(team.permission?.isOwner)
+      }))
+      .sort((a, b) => Number(b.isOwner) - Number(a.isOwner));
+  }, [adminTeams, isRoot, memberTeams]);
 
   const { runAsync: onSwitchTeam } = useRequest(
     async (teamId: string) => {
@@ -117,33 +124,77 @@ const TeamSelector = ({
   const currentTeamId = userInfo?.team?.teamId;
   const currentTeamName = userInfo?.team?.teamName ?? '';
   const currentTeamAvatar = userInfo?.team?.avatar;
+  const isCurrentTeamOwner = userInfo?.team?.role === TeamMemberRoleEnum.owner;
+  const myTeamTagLabel = t('account_team:my_team');
 
   const teamList = useMemo(() => {
-    const items = myTeams.map((team) => ({
+    const buildTeamItem = (team: {
+      teamId: string;
+      teamName: string;
+      avatar?: string;
+      isOwner: boolean;
+    }) => ({
       ...(showAvatar && team.avatar ? { icon: team.avatar } : {}),
       iconSize: '1.25rem',
-      label: team.teamName,
+      searchText: team.teamName,
+      label: team.isOwner ? (
+        <Flex alignItems={'center'} justifyContent={'space-between'} flex={1} minW={0} gap={2}>
+          <Box noOfLines={1}>{team.teamName}</Box>
+          <MyTag
+            colorSchema={'blue'}
+            type={'fill'}
+            px={2}
+            py={'2px'}
+            fontSize={'mini'}
+            flexShrink={0}
+          >
+            {myTeamTagLabel}
+          </MyTag>
+        </Flex>
+      ) : (
+        team.teamName
+      ),
       value: team.teamId
-    }));
+    });
 
-    // 确保搜索筛选返回前或超分页边界时，当前激活团队仍能回显纯团队名。
+    const items = myTeams.map(buildTeamItem);
+
+    // 确保搜索筛选返回前或超分页边界时，当前激活团队仍能回显。
     if (currentTeamId && !searchKeyword && !items.some((item) => item.value === currentTeamId)) {
+      const currentItem = buildTeamItem({
+        teamId: currentTeamId,
+        teamName: currentTeamName,
+        avatar: currentTeamAvatar ?? undefined,
+        isOwner: isCurrentTeamOwner
+      });
+      if (isCurrentTeamOwner) {
+        return [currentItem, ...items];
+      }
+      const firstNonOwnerIndex = myTeams.findIndex((team) => !team.isOwner);
+      if (firstNonOwnerIndex === -1) {
+        return [...items, currentItem];
+      }
       return [
-        {
-          ...(showAvatar && currentTeamAvatar ? { icon: currentTeamAvatar } : {}),
-          iconSize: '1.25rem',
-          label: currentTeamName,
-          value: currentTeamId
-        },
-        ...items
+        ...items.slice(0, firstNonOwnerIndex),
+        currentItem,
+        ...items.slice(firstNonOwnerIndex)
       ];
     }
 
     return items;
-  }, [currentTeamAvatar, currentTeamId, currentTeamName, myTeams, searchKeyword, showAvatar]);
+  }, [
+    currentTeamAvatar,
+    currentTeamId,
+    currentTeamName,
+    isCurrentTeamOwner,
+    myTeamTagLabel,
+    myTeams,
+    searchKeyword,
+    showAvatar
+  ]);
 
   const currentValueLabel = useMemo(() => {
-    if (!currentTeamId || teamList.some((item) => item.value === currentTeamId)) {
+    if (!currentTeamId) {
       return undefined;
     }
     return (
@@ -152,7 +203,7 @@ const TeamSelector = ({
         <Box noOfLines={1}>{currentTeamName}</Box>
       </>
     );
-  }, [currentTeamAvatar, currentTeamId, currentTeamName, showAvatar, teamList]);
+  }, [currentTeamAvatar, currentTeamId, currentTeamName, showAvatar]);
 
   return (
     <Box w={'100%'}>
