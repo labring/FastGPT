@@ -1,3 +1,4 @@
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { jsonRes } from '../response';
 import type { NodeApiRequest, NodeApiResponse } from '../../types/http';
 import { getLogger, LogCategories, withContext } from '../logger';
@@ -217,7 +218,7 @@ export const createApiEntry = <
                   span.setAttribute('http.response.status_code', 400);
                   return jsonRes(res, {
                     code: 400,
-                    message: 'common:api_error.validation_error',
+                    message: i18nT('common:api_error.validation_error'),
                     error,
                     url: logUrl
                   });

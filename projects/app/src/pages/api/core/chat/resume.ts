@@ -1,3 +1,4 @@
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { getChatGenerationStatuses } from '@fastgpt/service/core/chat/generationLease';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import {
@@ -36,7 +37,7 @@ const completedChatPageSize = 10;
 const resumeUnavailablePollIntervalMs = 3000;
 const resumeUnavailableMaxWaitMs = STREAM_RESUME_TTL_SECONDS * 1000;
 type CurrentChatState = Pick<StreamNoNeedToBeResumeType, 'chatGenerateStatus' | 'hasBeenRead'>;
-const resumeGeneratingRequiresSseMessage = 'common:api_error.resume_requires_sse';
+const resumeGeneratingRequiresSseMessage = i18nT('common:api_error.resume_requires_sse');
 
 const isResponseClosed = (res: NextApiResponse) =>
   !!(res.closed || res.writableEnded || res.destroyed);

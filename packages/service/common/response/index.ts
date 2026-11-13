@@ -1,3 +1,4 @@
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import type { NodeApiResponse, NodeHttpResponse } from '../../types/http';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { proxyError, ERROR_RESPONSE, ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
@@ -146,9 +147,9 @@ export function processError(params: {
 
   // 2. 提取通用错误消息
   // 上游响应体的具体原因优先于 statusText；保留既有网络错误提示和业务码语义。
-  let msg = getErrorMessage(error, 'common:api_error.request_failed');
+  let msg = getErrorMessage(error, i18nT('common:api_error.request_failed'));
   if (typeof error !== 'string' && proxyError[error?.code]) {
-    msg = 'common:api_error.network_error';
+    msg = i18nT('common:api_error.network_error');
   }
 
   // 3. 根据错误类型记录不同级别的日志
