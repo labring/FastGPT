@@ -643,5 +643,93 @@ describe('Dataset CLI Commands integration (cli/src/cli/commands/dataset.ts)', (
     expect(badColErr.hint).toContain(
       'fastgpt commands --command "dataset collection update" --format json'
     );
+
+    // - dataset search --file preserves OpenAPI topk-first normalization and rejects invalid JSON fields strictly
+    let capturedSearchBody: any;
+    const searchCaptureFetch: CliFetchFn = async (input, init) => {
+      const rawBody =
+        input instanceof Request ? await input.clone().text() : String(init?.body ?? '');
+      capturedSearchBody = JSON.parse(rawBody);
+      return jsonResp({
+        list: [],
+        meta: { durationMs: 12, usingSimilarityFilter: false, usingReRank: false }
+      });
+    };
+
+    const dualBudgetJson = join(configDir, 'search-dual-budget.json');
+    await writeFile(
+      dualBudgetJson,
+      JSON.stringify({
+        scope: { datasetIds: [OBJECT_ID_DATASET] },
+        query: { text: 'budget priority' },
+        result: { topk: 10, maxTokens: 1000, similarity: 0.5 }
+      })
+    );
+    const dualBudgetRes = await execCli({
+      argv: ['dataset', 'search', '--file', dualBudgetJson, '--format', 'json'],
+      configDir,
+      fetchFn: searchCaptureFetch
+    });
+    expect(dualBudgetRes.exitCode).toBe(0);
+    expect(capturedSearchBody.result).toEqual({ topk: 10, similarity: 0.5 });
+    expect(capturedSearchBody.result.maxTokens).toBeUndefined();
+
+    // - explicit dual CLI flags --topk and --max-tokens must be rejected with exit code 2
+    let dualFlagsHttpCalled = false;
+    const dualFlagsRes = await execCli({
+      argv: [
+        'dataset',
+        'search',
+        OBJECT_ID_DATASET,
+        'hello',
+        '--topk',
+        '10',
+        '--max-tokens',
+        '1000',
+        '--format',
+        'json'
+      ],
+      configDir,
+      fetchFn: async () => {
+        dualFlagsHttpCalled = true;
+        return jsonResp({});
+      }
+    });
+    expect(dualFlagsRes.exitCode).toBe(2);
+    expect(dualFlagsHttpCalled).toBe(false);
+
+    // - invalid similarity type ("0.9"), invalid rerank.enabled ("true"), and unknown fields must fail schema validation (exit code 2)
+    for (const badPayload of [
+      {
+        scope: { datasetIds: [OBJECT_ID_DATASET] },
+        query: { text: 'bad sim' },
+        result: { similarity: '0.9' }
+      },
+      {
+        scope: { datasetIds: [OBJECT_ID_DATASET] },
+        query: { text: 'bad rerank' },
+        rerank: { enabled: 'true', modelId: 'rerank-model' }
+      },
+      {
+        scope: { datasetIds: [OBJECT_ID_DATASET] },
+        query: { text: 'unknown field' },
+        result: { topk: 5, extraField: 123 }
+      }
+    ]) {
+      const badPath = join(configDir, 'bad-search.json');
+      await writeFile(badPath, JSON.stringify(badPayload));
+      let badHttpCalled = false;
+      const badRes = await execCli({
+        argv: ['dataset', 'search', '--file', badPath, '--format', 'json'],
+        configDir,
+        fetchFn: async () => {
+          badHttpCalled = true;
+          return jsonResp({});
+        }
+      });
+      expect(badRes.exitCode).toBe(2);
+      expect(badHttpCalled).toBe(false);
+      expect(JSON.parse(badRes.stderr).error.code).toBe('CLI_ARGUMENT_INVALID');
+    }
   });
 });

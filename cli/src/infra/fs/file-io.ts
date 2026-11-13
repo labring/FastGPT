@@ -1,9 +1,5 @@
-import { createWriteStream } from 'node:fs';
-import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
-import { basename, dirname, extname, resolve } from 'node:path';
-import { Readable } from 'node:stream';
-import { pipeline } from 'node:stream/promises';
-import type { ReadableStream as NodeReadableStream } from 'node:stream/web';
+import { readFile } from 'node:fs/promises';
+import { basename, extname, resolve } from 'node:path';
 import { CliArgumentError } from '../../shared/errors';
 
 export type LoadedBinaryFile = {
@@ -17,11 +13,6 @@ export type FileIoAdapter = {
   resolvePath: (targetPath: string) => string;
   readTextFile: (filePath: string) => Promise<string>;
   readBinaryFile: (filePath: string) => Promise<LoadedBinaryFile>;
-  writeOutputFile: (filePath: string, data: Uint8Array | string) => Promise<string>;
-  writeStreamFile?: (
-    filePath: string,
-    stream: ReadableStream<Uint8Array>
-  ) => Promise<{ path: string; bytes: number }>;
 };
 
 const MIME_BY_EXT: Record<string, string> = {
@@ -52,7 +43,7 @@ export function inferMimeType(filename: string): string {
 }
 
 /**
- * 基于工作目录解析、读写文本与二进制文件的适配器，避免 domain 层直接耦合 `node:fs`。
+ * 基于工作目录解析并读取文本与二进制文件的适配器，避免 domain 层直接耦合 `node:fs`。
  */
 export function createNodeFileIoAdapter({ cwd }: { cwd: string }): FileIoAdapter {
   const resolvePath = (targetPath: string): string => resolve(cwd, targetPath);
@@ -82,30 +73,6 @@ export function createNodeFileIoAdapter({ cwd }: { cwd: string }): FileIoAdapter
       } catch (error) {
         const msg = error instanceof Error ? error.message : String(error);
         throw new CliArgumentError(`Failed to read file "${filePath}": ${msg}`);
-      }
-    },
-    writeOutputFile: async (filePath, data) => {
-      const fullPath = resolvePath(filePath);
-      try {
-        await mkdir(dirname(fullPath), { recursive: true });
-        await writeFile(fullPath, data);
-        return fullPath;
-      } catch (error) {
-        const msg = error instanceof Error ? error.message : String(error);
-        throw new CliArgumentError(`Failed to write file "${filePath}": ${msg}`);
-      }
-    },
-    writeStreamFile: async (filePath, stream) => {
-      const fullPath = resolvePath(filePath);
-      try {
-        await mkdir(dirname(fullPath), { recursive: true });
-        const readable = Readable.fromWeb(stream as unknown as NodeReadableStream);
-        await pipeline(readable, createWriteStream(fullPath));
-        const fileStat = await stat(fullPath);
-        return { path: fullPath, bytes: fileStat.size };
-      } catch (error) {
-        const msg = error instanceof Error ? error.message : String(error);
-        throw new CliArgumentError(`Failed to write stream to file "${filePath}": ${msg}`);
       }
     }
   };

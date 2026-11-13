@@ -1,5 +1,4 @@
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
-import z from 'zod';
 import { CliArgumentError } from '../../../shared/errors';
 import {
   isPlainObject,
@@ -499,6 +498,7 @@ export function createDatasetRootCommandSpecs(): CliCommandSpec[] {
       execute: async ({ positional, options, client, container }) => {
         const activeClient = requireActiveClient(client, 'dataset search');
 
+        // 1. 解析结构化 JSON 文件/标准输入载荷（保留原始字段以便共享 OpenAPI Schema 严格校验）
         const filePayload = await resolveJsonObjectPayload({
           filePath: typeof options.file === 'string' ? options.file : undefined,
           useStdin: options.stdin === true,
@@ -507,57 +507,86 @@ export function createDatasetRootCommandSpecs(): CliCommandSpec[] {
           fieldLabel: 'dataset search payload'
         });
 
+        // 2. 合并搜索范围与查询内容（仅在显式传入 CLI 参数时覆盖，否则保留文件载荷原值）
         const flagIds = parseIdListOption(options.datasetIds);
         const singleId =
           positional[0]?.trim() || (typeof options.id === 'string' ? options.id.trim() : '');
-        const scopeObj = isPlainObject(filePayload?.scope) ? filePayload.scope : undefined;
-        const fileDatasetIds = Array.isArray(scopeObj?.datasetIds)
-          ? scopeObj.datasetIds.map((id) => String(id).trim()).filter(Boolean)
-          : undefined;
-        const datasetIds = flagIds ?? (singleId ? [singleId] : fileDatasetIds);
+        const hasExplicitIds = Boolean((flagIds && flagIds.length > 0) || singleId);
 
-        if (!datasetIds || datasetIds.length === 0) {
+        const scope = (() => {
+          if (hasExplicitIds) {
+            const datasetIds = flagIds && flagIds.length > 0 ? flagIds : [singleId];
+            return {
+              ...(isPlainObject(filePayload?.scope) ? filePayload.scope : {}),
+              datasetIds
+            };
+          }
+          if (filePayload && 'scope' in filePayload) {
+            return filePayload.scope;
+          }
           throw new CliArgumentError(
             'Dataset ID is required.',
             undefined,
             'Usage: fastgpt dataset search <datasetId> "search text" or --dataset-ids <id1>,<id2>'
           );
-        }
-
-        const queryObj = isPlainObject(filePayload?.query) ? filePayload.query : undefined;
-        const searchText = await (async () => {
-          const direct =
-            positional[1] ??
-            (typeof options.text === 'string' ? options.text : undefined) ??
-            (typeof queryObj?.text === 'string' ? queryObj.text : '');
-          if (direct.trim()) return direct.trim();
-          if (container.prompter.isInteractive && options.format !== 'json' && !filePayload) {
-            return (await container.prompter.text({ message: 'Enter search query:' })).trim();
-          }
-          return '';
         })();
 
-        const fileImageKeys = Array.isArray(queryObj?.imageKeys) ? queryObj.imageKeys : undefined;
-        if (!searchText && (!fileImageKeys || fileImageKeys.length === 0)) {
+        const explicitText =
+          positional[1] !== undefined
+            ? positional[1]
+            : typeof options.text === 'string'
+              ? options.text
+              : undefined;
+
+        const query = await (async () => {
+          if (explicitText !== undefined) {
+            const trimmed = explicitText.trim();
+            if (!trimmed) {
+              throw new CliArgumentError(
+                'Search query text cannot be empty.',
+                undefined,
+                'Usage: fastgpt dataset search <datasetId> "search text"'
+              );
+            }
+            return {
+              ...(isPlainObject(filePayload?.query) ? filePayload.query : {}),
+              text: trimmed
+            };
+          }
+          if (filePayload && 'query' in filePayload) {
+            return filePayload.query;
+          }
+          if (container.prompter.isInteractive && options.format !== 'json') {
+            const prompted = (
+              await container.prompter.text({ message: 'Enter search query:' })
+            ).trim();
+            if (prompted) {
+              return { text: prompted };
+            }
+          }
           throw new CliArgumentError(
             'Search query text is required.',
             undefined,
             'Usage: fastgpt dataset search <datasetId> "search text"'
           );
-        }
+        })();
 
-        const searchMode =
-          options.mode !== undefined
-            ? z.enum(DatasetSearchModeEnum).parse(options.mode)
-            : isPlainObject(filePayload?.retrieval) &&
-                typeof filePayload.retrieval.mode === 'string'
-              ? z.enum(DatasetSearchModeEnum).parse(filePayload.retrieval.mode)
-              : DatasetSearchModeEnum.mixedRecall;
-
+        // 3. 合并召回、重排与查询扩展配置（未传对应 flag 时保留文件原始字段，不静默降级非法值）
         const embeddingWeight = parseOptionalNumber(options.embeddingWeight);
-        const topk = parseOptionalNumber(options.topk);
-        const maxTokens = parseOptionalNumber(options.maxTokens);
-        const similarity = parseOptionalNumber(options.similarity);
+        const hasRetrievalFlags = options.mode !== undefined || embeddingWeight !== undefined;
+        const retrieval = (() => {
+          if (hasRetrievalFlags) {
+            return {
+              ...(isPlainObject(filePayload?.retrieval) ? filePayload.retrieval : {}),
+              ...(options.mode !== undefined ? { mode: options.mode } : {}),
+              ...(embeddingWeight !== undefined ? { embeddingWeight } : {})
+            };
+          }
+          if (filePayload && 'retrieval' in filePayload) {
+            return filePayload.retrieval;
+          }
+          return { mode: DatasetSearchModeEnum.mixedRecall };
+        })();
 
         const usingReRank = parseOptionalBooleanFlag({
           positive: options.rerank,
@@ -567,85 +596,99 @@ export function createDatasetRootCommandSpecs(): CliCommandSpec[] {
           typeof options.rerankModel === 'string' ? options.rerankModel.trim() : undefined;
         const rerankWeight = parseOptionalNumber(options.rerankWeight);
         const rerankCandidateNum = parseOptionalNumber(options.rerankCandidateNum);
+        const hasRerankFlags =
+          usingReRank !== undefined ||
+          rerankModelId !== undefined ||
+          rerankWeight !== undefined ||
+          rerankCandidateNum !== undefined;
 
-        const fileRerank = isPlainObject(filePayload?.rerank) ? filePayload.rerank : undefined;
-        const rerankEnabled =
-          usingReRank ?? (typeof fileRerank?.enabled === 'boolean' ? fileRerank.enabled : false);
-
-        const rerank = rerankEnabled
-          ? {
-              ...(fileRerank ?? {}),
-              enabled: true as const,
-              ...(rerankModelId ? { modelId: rerankModelId } : {}),
+        const rerank = (() => {
+          if (usingReRank === false) {
+            return { enabled: false as const };
+          }
+          if (hasRerankFlags) {
+            return {
+              ...(isPlainObject(filePayload?.rerank) ? filePayload.rerank : {}),
+              ...(usingReRank === true ? { enabled: true as const } : {}),
+              ...(rerankModelId !== undefined ? { modelId: rerankModelId } : {}),
               ...(rerankWeight !== undefined ? { weight: rerankWeight } : {}),
               ...(rerankCandidateNum !== undefined ? { candidateNum: rerankCandidateNum } : {})
-            }
-          : { enabled: false as const };
+            };
+          }
+          if (filePayload && 'rerank' in filePayload) {
+            return filePayload.rerank;
+          }
+          return undefined;
+        })();
 
-        const fileExt = isPlainObject(filePayload?.queryExtension)
-          ? filePayload.queryExtension
-          : undefined;
         const extensionModelId =
           typeof options.extensionModel === 'string' ? options.extensionModel.trim() : undefined;
         const extensionBg =
           typeof options.extensionBg === 'string' ? options.extensionBg : undefined;
-        const extEnabled =
-          options.extensionQuery === true ||
-          (options.extensionQuery === undefined && fileExt?.enabled === true);
+        const hasExtFlags =
+          options.extensionQuery !== undefined ||
+          extensionModelId !== undefined ||
+          extensionBg !== undefined;
 
-        const queryExtension = extEnabled
-          ? {
-              ...(fileExt ?? {}),
-              enabled: true as const,
-              ...(extensionModelId ? { modelId: extensionModelId } : {}),
+        const queryExtension = (() => {
+          if (hasExtFlags) {
+            return {
+              ...(isPlainObject(filePayload?.queryExtension) ? filePayload.queryExtension : {}),
+              ...(options.extensionQuery === true ? { enabled: true as const } : {}),
+              ...(extensionModelId !== undefined ? { modelId: extensionModelId } : {}),
               ...(extensionBg !== undefined ? { background: extensionBg } : {})
-            }
-          : { enabled: false as const };
-
-        const fileResult = isPlainObject(filePayload?.result) ? filePayload.result : undefined;
-        const result = (() => {
-          const baseSim =
-            similarity !== undefined
-              ? { similarity }
-              : typeof fileResult?.similarity === 'number'
-                ? { similarity: fileResult.similarity }
-                : {};
-          if (maxTokens !== undefined) {
-            return { ...baseSim, maxTokens };
+            };
           }
-          if (topk !== undefined) {
-            return { ...baseSim, topk };
+          if (filePayload && 'queryExtension' in filePayload) {
+            return filePayload.queryExtension;
           }
-          if (fileResult && 'maxTokens' in fileResult && fileResult.maxTokens !== undefined) {
-            return { ...baseSim, maxTokens: fileResult.maxTokens as number };
-          }
-          if (fileResult && 'topk' in fileResult && fileResult.topk !== undefined) {
-            return { ...baseSim, topk: fileResult.topk as number };
-          }
-          return baseSim;
+          return undefined;
         })();
 
-        const fileRetrieval = isPlainObject(filePayload?.retrieval)
-          ? filePayload.retrieval
-          : undefined;
+        // 4. 合并结果预算（显式同时传入 --topk 与 --max-tokens 直接报错；文件双传交由共享 Schema 优先 topk）
+        const topk = parseOptionalNumber(options.topk);
+        const maxTokens = parseOptionalNumber(options.maxTokens);
+        const similarity = parseOptionalNumber(options.similarity);
 
+        if (topk !== undefined && maxTokens !== undefined) {
+          throw new CliArgumentError(
+            'Cannot pass both --topk and --max-tokens at the same time.',
+            undefined,
+            'Specify either --topk <n> or --max-tokens <n>.'
+          );
+        }
+
+        const hasResultFlags =
+          topk !== undefined || maxTokens !== undefined || similarity !== undefined;
+        const result = (() => {
+          if (!hasResultFlags) {
+            return filePayload && 'result' in filePayload ? filePayload.result : undefined;
+          }
+          const baseResult: Record<string, unknown> = isPlainObject(filePayload?.result)
+            ? { ...filePayload.result }
+            : {};
+          if (similarity !== undefined) {
+            baseResult.similarity = similarity;
+          }
+          if (topk !== undefined) {
+            delete baseResult.maxTokens;
+            baseResult.topk = topk;
+          } else if (maxTokens !== undefined) {
+            delete baseResult.topk;
+            baseResult.maxTokens = maxTokens;
+          }
+          return baseResult;
+        })();
+
+        // 5. 组装最终载荷并交由领域服务执行 SearchDatasetRequestBodySchema 校验与请求
         const payload = {
           ...(filePayload ?? {}),
-          scope: {
-            ...(scopeObj ?? {}),
-            datasetIds
-          },
-          query: searchText
-            ? { ...(queryObj ?? {}), text: searchText }
-            : { ...(queryObj ?? {}), imageKeys: fileImageKeys ?? [] },
-          retrieval: {
-            ...(fileRetrieval ?? {}),
-            mode: searchMode,
-            ...(embeddingWeight !== undefined ? { embeddingWeight } : {})
-          },
-          rerank,
-          queryExtension,
-          result
+          scope,
+          query,
+          retrieval,
+          ...(rerank !== undefined ? { rerank } : {}),
+          ...(queryExtension !== undefined ? { queryExtension } : {}),
+          ...(result !== undefined ? { result } : {})
         };
 
         return container.datasetService.search({
