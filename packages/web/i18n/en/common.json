@@ -1411,5 +1411,9 @@
   "core.workflow.check.node_missing": "Node {{nodeId}} no longer exists; remove its stale connection",
   "core.workflow.check.option_keys_invalid": "Option or classification keys are missing or duplicated",
   "core.workflow.check.form_configuration_invalid": "Form field keys or matching outputs are incomplete: {{fieldKeys}}",
-  "Version": "Version"
+  "Version": "Version",
+  "api_error.request_failed": "Request failed",
+  "api_error.network_error": "Network connection error",
+  "api_error.validation_error": "Data validation error",
+  "api_error.resume_requires_sse": "This chat is still generating. Retry /api/core/chat/resume with Accept: text/event-stream."
 }

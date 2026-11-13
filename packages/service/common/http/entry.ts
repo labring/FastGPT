@@ -8,6 +8,7 @@ import { getClientIpFromRequest } from '../security/clientIp';
 import { ApiRequestInputParseError, getZodParseErrorInputSource } from '../zod/requestParseError';
 import { withHttpRequestProfile } from './requestProfile';
 import { markProfileError } from '../profiling';
+import type { ApiI18n } from '../i18n/request';
 
 export type ApiHandler<
   T = any,
@@ -80,13 +81,15 @@ export const createApiEntry = <
   Response extends NodeApiResponse = NodeApiResponse
 >({
   beforeCallback = [],
-  redactQueryParams = []
+  redactQueryParams = [],
+  requestI18n
 }: {
   beforeCallback?: ((req: Request, res: Response) => Promise<unknown>)[];
   redactQueryParams?: string[];
+  requestI18n?: ApiI18n;
 }) => {
   return (...args: ApiHandler<any, Request, Response>[]): ApiHandler<any, Request, Response> => {
-    return async function api(
+    const api = async function api(
       req: Omit<Request, 'body' | 'query'> & NodeApiRequest,
       res: Response
     ) {
@@ -214,7 +217,7 @@ export const createApiEntry = <
                   span.setAttribute('http.response.status_code', 400);
                   return jsonRes(res, {
                     code: 400,
-                    message: 'Data validation error',
+                    message: 'common:api_error.validation_error',
                     error,
                     url: logUrl
                   });
@@ -242,5 +245,8 @@ export const createApiEntry = <
         )
       );
     };
+
+    return (req, res) =>
+      requestI18n ? requestI18n({ req, res }, () => api(req, res)) : api(req, res);
   };
 };

@@ -1,3 +1,4 @@
+import { withApiI18n } from '@/service/middleware/i18n';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { multer } from '@fastgpt/service/common/file/multer';
@@ -98,4 +99,4 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   }
 }
 
-export default handler;
+export default withApiI18n(handler);

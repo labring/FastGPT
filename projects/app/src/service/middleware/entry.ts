@@ -3,6 +3,7 @@ import { parseAllowedOrigins, withNextCors } from '@fastgpt/next/middle/cors';
 import type { NextApiRequest, NextApiResponse } from '@fastgpt/next/type';
 import { createApiEntry, type ApiHandler } from '@fastgpt/service/common/http/entry';
 import { serviceEnv } from '@fastgpt/service/env';
+import { apiI18n } from './i18n';
 
 type NextAPIOptions = {
   csrf?: boolean;
@@ -35,6 +36,7 @@ export const NextAPI = (
   };
 
   return createApiEntry<NextApiRequest, NextApiResponse>({
+    requestI18n: apiI18n,
     beforeCallback: [beforeRequest],
     redactQueryParams: options.redactQueryParams
   })(...handlers);

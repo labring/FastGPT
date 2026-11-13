@@ -53,6 +53,7 @@ describe('getSpeech model resource permission', () => {
   it('rejects a model that is not declared by the published App version', async () => {
     await handler(
       {
+        headers: {},
         body: {
           appId: '65f000000000000000000071',
           ttsConfig: { type: 'model', modelId: 'model-id', voice: 'voice-id' },
@@ -83,6 +84,7 @@ describe('getSpeech model resource permission', () => {
   it('enforces model resource check when only legacy model is configured', async () => {
     await handler(
       {
+        headers: {},
         body: {
           appId: '65f000000000000000000071',
           ttsConfig: { type: 'model', model: 'legacy-tts', voice: 'voice-id' },

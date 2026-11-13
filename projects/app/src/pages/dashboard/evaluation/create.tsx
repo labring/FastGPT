@@ -10,7 +10,7 @@ import { getAppDetailById } from '@/web/core/app/api';
 import { postCreateEvaluation } from '@/web/core/app/api/evaluation';
 import { Box, Button, Flex, Input, VStack } from '@chakra-ui/react';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
-import { getErrText } from '@fastgpt/global/common/error/utils';
+import { getErrResponse, getErrText } from '@fastgpt/global/common/error/utils';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { evaluationFileErrors } from '@fastgpt/global/core/app/evaluation/constants';
@@ -103,10 +103,14 @@ const EvaluationCreating = () => {
       },
       errorToast: '',
       onError: (error) => {
-        if (error.message === evaluationFileErrors) {
-          setError(error.message);
-        } else if (error.message === TeamErrEnum.aiPointsNotEnough) {
-          useSystemStore.getState().setNotSufficientModalType(error.message);
+        // 评测文件校验目前仅提供文案，兼容旧版 key 和服务端已翻译的提示。
+        if ([evaluationFileErrors, t(evaluationFileErrors)].includes(error.message)) {
+          setError(evaluationFileErrors);
+        } else if (
+          getErrResponse(error)?.statusText === TeamErrEnum.aiPointsNotEnough ||
+          error.message === TeamErrEnum.aiPointsNotEnough
+        ) {
+          useSystemStore.getState().setNotSufficientModalType(TeamErrEnum.aiPointsNotEnough);
         } else {
           toast({
             title: t(getErrText(error)),

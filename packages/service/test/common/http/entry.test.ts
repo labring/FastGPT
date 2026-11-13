@@ -14,6 +14,10 @@ vi.unmock('@fastgpt/service/common/logger');
 import { createApiEntry, redactRequestUrl } from '@fastgpt/service/common/http/entry';
 import { isProfiling, profileStage } from '@fastgpt/service/common/profiling';
 import { REQUEST_PROFILE_HEADER } from '@fastgpt/service/common/http/requestProfile';
+import { createApiI18n } from '@fastgpt/service/common/i18n/request';
+import { generatedLoaders } from '@fastgpt/web/i18n/resourceLoaders.generated';
+import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
+import { jsonRes } from '@fastgpt/service/common/response';
 
 describe('redactRequestUrl', () => {
   it('redacts every declared query value while preserving non-sensitive parameters', () => {
@@ -68,6 +72,32 @@ describe('createApiEntry response lifecycle', () => {
       data: { value: 1 }
     });
   });
+
+  it.each(['beforeCallback', 'handler', 'explicitResponse'])(
+    'localizes the complete request pipeline, including %s',
+    async (source) => {
+      const { req, res } = createHttpObjects();
+      req.headers['x-fastgpt-language'] = 'zh-CN';
+      const handler = createApiEntry({
+        requestI18n: createApiI18n(generatedLoaders),
+        beforeCallback: [
+          async () => {
+            if (source === 'beforeCallback') throw ERROR_ENUM.unAuthorization;
+          }
+        ]
+      })(async () => {
+        if (source === 'explicitResponse')
+          return jsonRes(res, { error: ERROR_ENUM.unAuthorization });
+        throw ERROR_ENUM.unAuthorization;
+      });
+      await handler(req, res);
+      expect(res.statusCode).toBe(401);
+      expect(res.json).toHaveBeenCalledOnce();
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ message: '凭证错误', code: 401 })
+      );
+    }
+  );
 
   it.each([undefined, '1'])(
     '请求入口按 header 创建上下文，覆盖前置中间件和异步业务：%s',
@@ -160,7 +190,7 @@ describe('createApiEntry response lifecycle', () => {
 
     expect(res.statusCode).toBe(400);
     expect(res.json).toHaveBeenCalledWith(
-      expect.objectContaining({ code: 400, message: 'Data validation error' })
+      expect.objectContaining({ code: 400, message: 'common:api_error.validation_error' })
     );
   });
 

@@ -1,3 +1,4 @@
+import { withApiI18n } from '@/service/middleware/i18n';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/catalog/service';
 import type { NextApiResponse } from 'next';
@@ -138,4 +139,4 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
 }
 
 // 不能使用 NextApiResponse
-export default handler;
+export default withApiI18n(handler);
