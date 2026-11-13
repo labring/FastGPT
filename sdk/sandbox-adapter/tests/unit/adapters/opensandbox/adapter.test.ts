@@ -3,7 +3,6 @@ import {
   Sandbox,
   SandboxApiException,
   SandboxManager,
-  type ContentReplaceResult,
   type SandboxInfo as SdkSandboxInfo,
   type ServerStreamEvent,
   type WriteEntry
@@ -38,6 +37,7 @@ const createSdkSandbox = (
   props: {
     id?: string;
     info?: Array<SdkSandboxInfo | Error>;
+    files?: Map<string, string>;
   } = {}
 ) => {
   const id = props.id ?? 'sandbox-1';
@@ -60,10 +60,20 @@ const createSdkSandbox = (
     yield new TextEncoder().encode('stream');
   });
   const writeFiles = vi.fn(async (_entries: WriteEntry[]) => undefined);
+  const files = props.files ?? new Map<string, string>();
   const replaceContentsDetailed = vi.fn(
-    async (
-      entries: Array<{ path: string; oldContent: string; newContent: string }>
-    ): Promise<ContentReplaceResult[]> => entries.map(({ path }) => ({ path, replacedCount: 1 }))
+    async (entries: Parameters<Sandbox['files']['replaceContentsDetailed']>[0]) => {
+      // 模拟 SDK 的路径键请求体：同一请求中重复路径只保留最后一条编辑。
+      const editsByPath = new Map(entries.map((entry) => [entry.path, entry]));
+      return [...editsByPath.values()]
+        .map(({ path, oldContent, newContent }) => {
+          const parts = (files.get(path) ?? '').split(oldContent);
+          const replacedCount = parts.length - 1;
+          if (replacedCount > 0) files.set(path, parts.join(newContent));
+          return { path, replacedCount };
+        })
+        .reverse();
+    }
   );
   const getFileInfo = vi.fn(async () => ({}));
   const commandInterrupt = vi.fn(async (_sessionId: string) => undefined);
@@ -383,39 +393,78 @@ describe('OpenSandboxAdapter', () => {
     expect(bound.readBytes).toHaveBeenCalledTimes(1);
   });
 
-  it('applies every edit when one call edits the same file more than once', async () => {
+  it.each([
+    { oldContent: 'use(x)', replacedCount: 1, expectedUse: 'use(y)' },
+    { oldContent: 'missing', replacedCount: 0, expectedUse: 'use(x)' }
+  ])(
+    'keeps per-entry counts when a later edit replaces $replacedCount occurrences',
+    async ({ oldContent, replacedCount, expectedUse }) => {
+      const adapter = new OpenSandboxAdapter(CONNECTION);
+      const files = new Map([
+        ['/workspace/app.py', 'import x\nuse(x)\nimport x\n'],
+        ['/workspace/util.py', 'a = 1\n']
+      ]);
+      const bound = createSdkSandbox({ files });
+      bindSandbox(adapter, bound.sandbox);
+
+      await expect(
+        adapter.replaceContent([
+          { path: 'app.py', oldContent: 'import x', newContent: 'import y' },
+          { path: '/workspace/app.py', oldContent, newContent: 'use(y)' },
+          { path: 'util.py', oldContent: 'a = 1', newContent: 'a = 2' }
+        ])
+      ).resolves.toEqual([
+        { path: 'app.py', replacedCount: 2, error: null },
+        { path: '/workspace/app.py', replacedCount, error: null },
+        { path: 'util.py', replacedCount: 1, error: null }
+      ]);
+
+      expect(files.get('/workspace/app.py')).toBe(`import y\n${expectedUse}\nimport y\n`);
+      expect(files.get('/workspace/util.py')).toBe('a = 2\n');
+      expect(bound.replaceContentsDetailed).toHaveBeenCalledTimes(2);
+    }
+  );
+
+  it.each([false, true])(
+    'keeps missing counts unknown after edits land (partial response: %s)',
+    async (partial) => {
+      const adapter = new OpenSandboxAdapter(CONNECTION);
+      const files = new Map([
+        ['/workspace/app.py', 'old'],
+        ['/workspace/util.py', 'old']
+      ]);
+      const bound = createSdkSandbox({ files });
+      const replace = bound.replaceContentsDetailed.getMockImplementation()!;
+      bound.replaceContentsDetailed.mockImplementation(async (entries) => {
+        const results = await replace(entries);
+        return partial ? results.filter((result) => result.path === '/workspace/util.py') : [];
+      });
+      bindSandbox(adapter, bound.sandbox);
+
+      await expect(
+        adapter.replaceContent([
+          { path: 'app.py', oldContent: 'old', newContent: 'new' },
+          { path: 'util.py', oldContent: 'old', newContent: 'new' },
+          { path: '/workspace/app.py', oldContent: 'new', newContent: 'final' }
+        ])
+      ).resolves.toEqual([
+        { path: 'app.py', replacedCount: null, error: null },
+        { path: 'util.py', replacedCount: partial ? 1 : null, error: null },
+        { path: '/workspace/app.py', replacedCount: null, error: null }
+      ]);
+
+      expect(files.get('/workspace/app.py')).toBe('final');
+      expect(files.get('/workspace/util.py')).toBe('new');
+    }
+  );
+
+  it('returns no results and sends no request for no edits', async () => {
     const adapter = new OpenSandboxAdapter(CONNECTION);
     const bound = createSdkSandbox();
-    const files = new Map([
-      ['/workspace/app.py', 'import x\nuse(x)\n'],
-      ['/workspace/util.py', 'a = 1\n']
-    ]);
-    // Same as the SDK: the /files/replace body is keyed by path, so a later entry for a path
-    // overwrites an earlier one in the same request.
-    const applyEdits = (
-      entries: Array<{ path: string; oldContent: string; newContent: string }>
-    ) => {
-      const body: Record<string, { old: string; new: string }> = {};
-      for (const entry of entries) {
-        body[entry.path] = { old: entry.oldContent, new: entry.newContent };
-      }
-      return Object.entries(body).map(([path, edit]) => {
-        const content = files.get(path) ?? '';
-        files.set(path, content.split(edit.old).join(edit.new));
-        return { path, replacedCount: content.split(edit.old).length - 1 };
-      });
-    };
-    bound.replaceContentsDetailed.mockImplementation(async (entries) => applyEdits(entries));
     bindSandbox(adapter, bound.sandbox);
 
-    await adapter.replaceContent([
-      { path: 'app.py', oldContent: 'import x', newContent: 'import y' },
-      { path: 'util.py', oldContent: 'a = 1', newContent: 'a = 2' },
-      { path: '/workspace/app.py', oldContent: 'use(x)', newContent: 'use(y)' }
-    ]);
-
-    expect(files.get('/workspace/app.py')).toBe('import y\nuse(y)\n');
-    expect(files.get('/workspace/util.py')).toBe('a = 2\n');
+    await expect(adapter.replaceContent([])).resolves.toEqual([]);
+    expect(bound.replaceContentsDetailed).not.toHaveBeenCalled();
   });
 
   it('reports unmatched edits even when another file in the batch was edited', async () => {
@@ -434,11 +483,11 @@ describe('OpenSandboxAdapter', () => {
       { path: 'c.txt', oldContent: 'missing', newContent: 'new' }
     ]);
 
-    await expect(result).rejects.toBeInstanceOf(FileOperationError);
-    await expect(result).rejects.toMatchObject({
-      path: '/workspace/b.txt',
-      message: expect.stringContaining('/workspace/b.txt, /workspace/c.txt')
-    });
+    await expect(result).resolves.toEqual([
+      { path: 'a.txt', replacedCount: 2, error: null },
+      { path: 'b.txt', replacedCount: 0, error: null },
+      { path: 'c.txt', replacedCount: 0, error: null }
+    ]);
     expect(bound.replaceContentsDetailed).toHaveBeenCalledWith([
       { path: '/workspace/a.txt', oldContent: 'old', newContent: 'new' },
       { path: '/workspace/b.txt', oldContent: 'missing', newContent: 'new' },
@@ -467,10 +516,7 @@ describe('OpenSandboxAdapter', () => {
 
     await expect(
       adapter.replaceContent([{ path: 'a.txt', oldContent: 'missing', newContent: 'new' }])
-    ).rejects.toMatchObject({
-      name: 'FileOperationError',
-      path: '/workspace/a.txt'
-    });
+    ).resolves.toEqual([{ path: 'a.txt', replacedCount: 0, error: null }]);
 
     expect(requests).toHaveLength(1);
     const [request] = requests;
@@ -481,21 +527,35 @@ describe('OpenSandboxAdapter', () => {
     expect(body).toStrictEqual({ '/workspace/a.txt': { old: 'missing', new: 'new' } });
   });
 
-  it('stops later edits to the same file after an unmatched edit', async () => {
+  it('stops later batches and reports skipped entries after an unmatched edit', async () => {
     const adapter = new OpenSandboxAdapter(CONNECTION);
-    const bound = createSdkSandbox();
+    const files = new Map([['/workspace/a.txt', 'new']]);
+    const bound = createSdkSandbox({ files });
+    // 同批次 b 的计数缺失，只表示未知，不能和后续尚未执行的条目混淆。
     bound.replaceContentsDetailed.mockResolvedValue([
       { path: '/workspace/a.txt', replacedCount: 0 }
     ]);
     bindSandbox(adapter, bound.sandbox);
 
-    await expect(
-      adapter.replaceContent([
-        { path: 'a.txt', oldContent: 'missing', newContent: 'new' },
-        { path: '/workspace/a.txt', oldContent: 'new', newContent: 'later' }
-      ])
-    ).rejects.toBeInstanceOf(FileOperationError);
+    const results = await adapter.replaceContent([
+      { path: 'a.txt', oldContent: 'missing', newContent: 'new' },
+      { path: 'b.txt', oldContent: 'old', newContent: 'new' },
+      { path: '/workspace/a.txt', oldContent: 'new', newContent: 'later' },
+      { path: 'a.txt', oldContent: 'later', newContent: 'final' }
+    ]);
 
+    expect(results.slice(0, 2)).toEqual([
+      { path: 'a.txt', replacedCount: 0, error: null },
+      { path: 'b.txt', replacedCount: null, error: null }
+    ]);
+    expect(results.slice(2)).toEqual([
+      { path: '/workspace/a.txt', replacedCount: null, error: expect.any(FileOperationError) },
+      { path: 'a.txt', replacedCount: null, error: expect.any(FileOperationError) }
+    ]);
+    for (const result of results.slice(2)) {
+      expect(result.error?.message).toContain('not executed');
+    }
+    expect(files.get('/workspace/a.txt')).toBe('new');
     expect(bound.replaceContentsDetailed).toHaveBeenCalledTimes(1);
   });
 
@@ -510,7 +570,10 @@ describe('OpenSandboxAdapter', () => {
         { path: 'a.txt', oldContent: 'old', newContent: 'new' },
         { path: '/workspace/a.txt', oldContent: 'new', newContent: 'later' }
       ])
-    ).resolves.toBeUndefined();
+    ).resolves.toEqual([
+      { path: 'a.txt', replacedCount: null, error: null },
+      { path: '/workspace/a.txt', replacedCount: null, error: null }
+    ]);
 
     expect(bound.replaceContentsDetailed).toHaveBeenCalledTimes(2);
   });

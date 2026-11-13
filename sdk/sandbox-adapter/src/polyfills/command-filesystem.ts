@@ -1,6 +1,7 @@
 import { CommandExecutionError, FileOperationError } from '../errors';
 import type { ICommandExecution } from '../contracts';
-import type { ContentReplaceResult, DirectoryEntry, FileInfo, SearchResult } from '../types';
+import type { DirectoryEntry, FileInfo, SearchResult } from '../types';
+import type { ContentReplaceResult } from '../types/filesystem';
 import { base64ToBytes, bytesToBase64 } from '../utils/base64';
 
 /**
@@ -503,16 +504,14 @@ export class CommandFilesystemPolyfill {
       } catch {
         throw new FileOperationError('File is not valid UTF-8 text', path, 'TRANSFER_ERROR');
       }
-      const occurrences = content.split(oldContent).length - 1;
+      const parts = content.split(oldContent);
+      const occurrences = parts.length - 1;
       if (occurrences === 0) {
         results.push({ path, replacedCount: 0, error: null });
         continue;
       }
 
-      await this.replaceFileContents(
-        path,
-        new TextEncoder().encode(content.split(oldContent).join(newContent))
-      );
+      await this.replaceFileContents(path, new TextEncoder().encode(parts.join(newContent)));
       results.push({ path, replacedCount: occurrences, error: null });
     }
     return results;

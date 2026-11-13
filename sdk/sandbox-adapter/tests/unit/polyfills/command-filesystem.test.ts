@@ -529,8 +529,14 @@ MemAvailable:   6144000 kB`)
         'function a() {\n  return 1;\n}\nfunction a() {\n  return 1;\n}\nend\n'
       );
       try {
-        await polyfill.replaceContent([
-          { path, oldContent: '{\n  return 1;\n}', newContent: '{\n  return 2;\n}' }
+        await expect(
+          polyfill.replaceContent([
+            { path, oldContent: '{\n  return 1;\n}', newContent: '{\n  return 2;\n}' },
+            { path, oldContent: 'missing', newContent: 'unused' }
+          ])
+        ).resolves.toEqual([
+          { path, replacedCount: 2, error: null },
+          { path, replacedCount: 0, error: null }
         ]);
 
         await expect(read()).resolves.toBe(

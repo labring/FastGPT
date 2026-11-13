@@ -1,6 +1,5 @@
 import type {
   ContentReplaceEntry,
-  ContentReplaceResult,
   DirectoryEntry,
   FileDeleteResult,
   FileInfo,
@@ -11,6 +10,7 @@ import type {
   PermissionEntry,
   SearchResult
 } from '../types';
+import type { ContentReplaceResult } from '../types/filesystem';
 
 /** Filesystem contract. Batch result order always matches input order. */
 export type IFileSystem = {

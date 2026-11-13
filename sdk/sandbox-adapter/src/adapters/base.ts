@@ -3,7 +3,6 @@ import type { ISandbox } from '../contracts';
 import type { CommandFilesystemPolyfill } from '../polyfills/command-filesystem';
 import type {
   ContentReplaceEntry,
-  ContentReplaceResult,
   DirectoryEntry,
   Endpoint,
   ExecuteOptions,
@@ -25,6 +24,7 @@ import type {
   SandboxStatus,
   SearchResult
 } from '../types';
+import type { ContentReplaceResult } from '../types/filesystem';
 
 /**
  * Abstract base class for all sandbox adapters.

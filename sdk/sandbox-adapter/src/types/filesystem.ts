@@ -110,13 +110,14 @@ export type ContentReplaceEntry = {
 };
 
 /**
- * Result of replacing content in one file.
+ * 单条内容替换的结果，与输入条目一一对应。
  *
- * `replacedCount` is 0 when `oldContent` did not occur in the file, which is how a
- * caller tells "nothing to replace" from "replaced".
+ * `replacedCount` 为 0 表示明确未命中，null 表示没有可用计数。
+ * error 非空时说明编辑失败或未执行；否则 null 表示后端未返回计数，修改可能已经生效。
+ * 未知结果不能当作未修改，调用方应读取文件确认后再决定是否重试。
  */
 export type ContentReplaceResult = {
   path: string;
-  replacedCount: number;
+  replacedCount: number | null;
   error: Error | null;
 };

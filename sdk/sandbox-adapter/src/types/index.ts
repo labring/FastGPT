@@ -10,7 +10,6 @@ export type {
 // Re-export from filesystem
 export type {
   ContentReplaceEntry,
-  ContentReplaceResult,
   DirectoryEntry,
   FileDeleteResult,
   FileInfo,

@@ -1,6 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
 import { sandboxEditFileTool } from '@fastgpt/service/core/ai/sandbox/application/toolCall/editFile.tool';
-import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 
 const createSandboxInstance = () =>
   ({
@@ -19,10 +18,6 @@ describe('sandboxEditFileTool', () => {
 
     await expect(
       sandboxEditFileTool.execute({
-        sourceType: ChatSourceTypeEnum.app,
-        sourceId: 'app',
-        userId: 'user',
-        chatId: 'chat',
         sandboxInstance: sandbox,
         params: {
           entries: [{ path: '/workspace/a.txt', oldContent: 'old', newContent: 'new' }]
@@ -36,25 +31,57 @@ describe('sandboxEditFileTool', () => {
     ]);
   });
 
-  it('reports a path whose oldContent matched nothing instead of claiming success', async () => {
+  it.each([
+    {
+      counts: [0],
+      response: 'Edit 1 not applied (oldContent not found): /workspace/a.txt'
+    },
+    {
+      counts: [null],
+      response:
+        'Edit 1 result unknown (replacement count unavailable): /workspace/a.txt. Read the file to verify before retrying.'
+    },
+    {
+      counts: [1, 0, null],
+      response: [
+        'Edit 1 applied (replacement count: 1): /workspace/a.txt',
+        'Edit 2 not applied (oldContent not found): /workspace/a.txt',
+        'Edit 3 result unknown (replacement count unavailable): /workspace/a.txt. Read the file to verify before retrying.'
+      ].join('\n')
+    }
+  ])('reports each entry accurately for counts $counts', async ({ counts, response }) => {
     const sandbox = createSandboxInstance();
-    sandbox.provider.replaceContent = vi.fn(async (entries: { path: string }[]) =>
-      entries.map((entry) => ({ path: entry.path, replacedCount: 0, error: null }))
+    sandbox.provider.replaceContent = vi.fn(async () =>
+      counts.map((replacedCount) => ({ path: '/workspace/a.txt', replacedCount, error: null }))
     );
 
     await expect(
       sandboxEditFileTool.execute({
-        sourceType: ChatSourceTypeEnum.app,
-        sourceId: 'app',
-        userId: 'user',
-        chatId: 'chat',
         sandboxInstance: sandbox,
         params: {
-          entries: [{ path: '/workspace/a.txt', oldContent: 'missing', newContent: 'new' }]
+          entries: counts.map(() => ({
+            path: '/workspace/a.txt',
+            oldContent: 'old',
+            newContent: 'new'
+          }))
         }
       })
-    ).resolves.toEqual({
-      response: 'Files not edited (oldContent not found): /workspace/a.txt'
-    });
+    ).resolves.toEqual({ response });
+  });
+
+  it('reports a provider entry error instead of claiming success', async () => {
+    const sandbox = createSandboxInstance();
+    sandbox.provider.replaceContent = vi.fn(async () => [
+      { path: '/workspace/a.txt', replacedCount: null, error: new Error('permission denied') }
+    ]);
+
+    await expect(
+      sandboxEditFileTool.execute({
+        sandboxInstance: sandbox,
+        params: {
+          entries: [{ path: '/workspace/a.txt', oldContent: 'old', newContent: 'new' }]
+        }
+      })
+    ).resolves.toEqual({ response: 'Edit 1 failed: /workspace/a.txt: permission denied' });
   });
 });
