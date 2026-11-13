@@ -27,6 +27,7 @@ export const getModelSummary = async (options: {
   if (model)
     return {
       modelId: model.modelId,
+      isUpcomingDeprecation: model.isUpcomingDeprecation,
       name: model.name,
       avatar: model.avatar,
       status: 'active' as const
@@ -45,6 +46,7 @@ export const getModelSummary = async (options: {
   return current
     ? {
         modelId: current.modelId,
+        isUpcomingDeprecation: current.isUpcomingDeprecation,
         name: current.name,
         avatar: current.avatar,
         status: 'active' as const
@@ -84,12 +86,13 @@ export const useModelSummary = ({
   }, [identity, modelId, appId, setRevision]);
   /** 只接收刚通过候选目录确认的模型；缓存先写入，再由调用方更新选中的 ID。 */
   const setFromCatalog = useCallback(
-    (model: Pick<MyModelItemType, 'modelId' | 'name' | 'avatar'>) => {
+    (model: Pick<MyModelItemType, 'modelId' | 'name' | 'avatar' | 'isUpcomingDeprecation'>) => {
       if (!identity) return;
       loadDetail.prime({
         identity,
         detail: {
           modelId: model.modelId,
+          isUpcomingDeprecation: model.isUpcomingDeprecation,
           name: model.name,
           avatar: model.avatar,
           status: 'active'
@@ -125,6 +128,7 @@ export const useModelSummary = ({
   const summary: ModelSummary | undefined = catalogModel
     ? {
         modelId: catalogModel.modelId,
+        isUpcomingDeprecation: catalogModel.isUpcomingDeprecation,
         name: catalogModel.name,
         avatar: catalogModel.avatar,
         status: 'active'

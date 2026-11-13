@@ -9,7 +9,9 @@ const {
   mockCollectionTagsToTagLabel,
   mockAddAuditLog,
   mockGetCollectionCollaborators,
-  mockCarryOverCollectionPermission
+  mockCarryOverCollectionPermission,
+  mockGetDatasetModelAuthContext,
+  modelAuthContext
 } = vi.hoisted(() => ({
   mockAuthDatasetCollection: vi.fn(),
   mockCreateCollectionAndInsertData: vi.fn(),
@@ -18,7 +20,9 @@ const {
   mockCollectionTagsToTagLabel: vi.fn(),
   mockAddAuditLog: vi.fn(),
   mockGetCollectionCollaborators: vi.fn(),
-  mockCarryOverCollectionPermission: vi.fn()
+  mockCarryOverCollectionPermission: vi.fn(),
+  mockGetDatasetModelAuthContext: vi.fn(),
+  modelAuthContext: { modelHandle: {}, authorizedIds: new Set<string>() }
 }));
 
 vi.mock('@/service/middleware/entry', () => ({
@@ -27,6 +31,10 @@ vi.mock('@/service/middleware/entry', () => ({
 
 vi.mock('@fastgpt/service/support/permission/dataset/auth', () => ({
   authDatasetCollection: mockAuthDatasetCollection
+}));
+
+vi.mock('@fastgpt/service/core/dataset/model', () => ({
+  getDatasetModelAuthContext: mockGetDatasetModelAuthContext
 }));
 
 vi.mock('@fastgpt/service/core/dataset/collection/controller', () => ({
@@ -91,10 +99,12 @@ describe('reTrainingCollection', () => {
       collectionId: newCollectionId,
       results: { insertLen: 0 }
     });
+    mockGetDatasetModelAuthContext.mockResolvedValue(modelAuthContext);
     mockAuthDatasetCollection.mockResolvedValue({
       collection: sourceCollection,
       teamId: 'team-b',
-      tmbId: 'tmb-b'
+      tmbId: 'tmb-b',
+      isRoot: false
     });
   });
 
@@ -113,6 +123,7 @@ describe('reTrainingCollection', () => {
     expect(mockCreateCollectionAndInsertData).toHaveBeenCalledWith(
       expect.objectContaining({
         dataset: sourceCollection.dataset,
+        modelAuthContext,
         createCollectionParams: expect.objectContaining({
           datasetId: sourceDatasetId,
           teamId: 'team-b',
@@ -138,6 +149,7 @@ describe('reTrainingCollection', () => {
     expect(mockCreateCollectionAndInsertData).toHaveBeenCalledWith(
       expect.objectContaining({
         dataset: sourceCollection.dataset,
+        modelAuthContext,
         createCollectionParams: expect.objectContaining({
           datasetId: sourceDatasetId,
           teamId: 'team-b',
@@ -145,5 +157,20 @@ describe('reTrainingCollection', () => {
         })
       })
     );
+  });
+
+  it('denies unauthorized embedding before opening the retrain transaction', async () => {
+    const error = new Error('embedding model is not authorized');
+    mockGetDatasetModelAuthContext.mockRejectedValueOnce(error);
+
+    await expect(
+      handler(
+        { body: { collectionId: sourceCollectionId } } as any,
+        {} as Parameters<typeof handler>[1]
+      )
+    ).rejects.toBe(error);
+
+    expect(mockMongoSessionRun).not.toHaveBeenCalled();
+    expect(mockDelCollection).not.toHaveBeenCalled();
   });
 });

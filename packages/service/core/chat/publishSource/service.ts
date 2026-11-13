@@ -4,6 +4,7 @@ import {
   getChatPublishSourceType
 } from '@fastgpt/global/common/chat/publishSource';
 import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatSourceSchema } from '@fastgpt/global/core/chat/schema';
 import type {
   ChatPublishSourceType,
   ChatPublishSourceResponseType
@@ -99,7 +100,7 @@ export const updateChatPublishSource = async (
   throw ChatErrEnum.unAuthChat;
 };
 
-/** 分页或固定导出批次之后扩展渠道名，兼容旧响应名称，不把展示兜底写入业务数据。 */
+/** 分页或固定导出批次之后统一归类未知来源并扩展渠道名，列表与 CSV 共用，不回写业务数据。 */
 export const extendChatPublishSources = async <
   T extends {
     publishSource?: Partial<ChatPublishSourceType> | null;
@@ -122,8 +123,17 @@ export const extendChatPublishSources = async <
   });
   return list.map((item) => {
     const source = item.publishSource;
+    const type = (() => {
+      if (source?.type !== undefined && source?.type !== null) {
+        return ChatSourceSchema.parse(source.type);
+      }
+      // 合法旧分类只用于兼容查询；无法识别的旧值则明确展示“未知”，不推断真实渠道。
+      if (ChatSourceSchema.parse(item.source) === ChatSourceEnum.unknown) {
+        return ChatSourceEnum.unknown;
+      }
+    })();
     const name = getChatPublishSourceName({
-      type: getChatPublishSourceType(item),
+      type: type ?? getChatPublishSourceType(item),
       name: source?.id ? names.get(`${source.type}:${source.id}`) : undefined,
       sourceName: item.sourceName
     });
@@ -131,9 +141,9 @@ export const extendChatPublishSources = async <
       ...item,
       sourceName: name,
       publishSource:
-        source || name
+        source || name || type
           ? {
-              ...(source?.type ? { type: source.type } : {}),
+              ...(type ? { type } : {}),
               ...(source?.id ? { id: String(source.id) } : {}),
               ...(name ? { name } : {})
             }

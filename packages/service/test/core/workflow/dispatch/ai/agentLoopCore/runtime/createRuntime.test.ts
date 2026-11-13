@@ -67,7 +67,7 @@ describe('createAgentLoopCoreRuntime', () => {
       readFile: {
         enabled: true,
         maxFileAmount: 4,
-        execute: readFileExecute
+        execute: expect.any(Function)
       }
     });
     expect(runtime.toolCatalog.batchToolSize).toBe(2);

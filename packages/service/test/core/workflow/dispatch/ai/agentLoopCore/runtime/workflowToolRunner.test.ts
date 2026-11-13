@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createAgentLoopCoreWorkflowToolRunner } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/application/runtime/workflowToolRunner';
 import { dispatchUpdateVariable } from '@fastgpt/service/core/workflow/dispatch/tools/runUpdateVar';
+import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 
 const createCall = ({
   id = 'call_1',
@@ -537,7 +538,16 @@ describe('createAgentLoopCoreWorkflowToolRunner', () => {
     const runtimeNodes = [
       { nodeId: 'search', inputs: [], outputs: [{ id: 'result', key: 'result', value: 'parent' }] }
     ];
-    const runtimeEdges = [{ source: 'before', target: 'search', status: 'waiting' }];
+    const runtimeEdges = [
+      { source: 'before', target: 'search', status: 'waiting' },
+      {
+        source: 'tool-call',
+        sourceHandle: NodeOutputKeyEnum.selectedTools,
+        target: 'tool-set',
+        targetHandle: NodeOutputKeyEnum.selectedTools,
+        status: 'waiting'
+      }
+    ];
     let received: any;
     const { runInteractiveTool } = createRunner({
       runtimeNodes,
@@ -559,7 +569,14 @@ describe('createAgentLoopCoreWorkflowToolRunner', () => {
     } as any);
 
     expect(received.runtimeEdges).toEqual([
-      { source: 'before', target: 'search', status: 'active' }
+      { source: 'before', target: 'search', status: 'active' },
+      {
+        source: 'tool-call',
+        sourceHandle: NodeOutputKeyEnum.selectedTools,
+        target: 'tool-set',
+        targetHandle: NodeOutputKeyEnum.selectedTools,
+        status: 'waiting'
+      }
     ]);
     expect(received.runtimeNodes[0].outputs[0].value).toBe(false);
     expect(runtimeEdges[0].status).toBe('waiting');

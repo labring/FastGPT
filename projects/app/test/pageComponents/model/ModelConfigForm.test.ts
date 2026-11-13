@@ -80,7 +80,17 @@ afterAll(() => {
 });
 
 /** 通过完整配置表单验证真实综合价控件，不单独复制控件参数或舍入逻辑。 */
-const render = async (type: ModelTypeEnum, unitPrice = 0) => {
+const render = async ({
+  type,
+  unitPrice = 0,
+  channelType,
+  isUpcomingDeprecation
+}: {
+  type: ModelTypeEnum;
+  unitPrice?: number;
+  channelType?: 'system' | 'team';
+  isUpcomingDeprecation?: boolean;
+}) => {
   container = document.createElement('div');
   document.body.appendChild(container);
   root = createRoot(container);
@@ -103,12 +113,14 @@ const render = async (type: ModelTypeEnum, unitPrice = 0) => {
             provider: 'openai',
             model: 'price-model',
             name: 'Price model',
-            scope: ModelScopeEnum.system,
+            scope: channelType === 'team' ? ModelScopeEnum.team : ModelScopeEnum.system,
             config,
-            pricing: { unitPrice }
+            pricing: { unitPrice },
+            ...(isUpcomingDeprecation !== undefined && { isUpcomingDeprecation })
           } as AIModelDocumentDataType,
           providers: [],
           formId: 'price-form',
+          channelType,
           onSubmit: save
         })
       )
@@ -135,7 +147,7 @@ describe('ModelConfigForm comprehensive price', () => {
   ] as const)(
     'keeps %s price display and submission consistent at a decimal midpoint',
     async (type, source, expected, unit) => {
-      const field = await render(type);
+      const field = await render({ type });
       await fillAndBlur(field, source);
       expect(field.value).toBe(String(expected));
       expect(field.checkValidity()).toBe(true);
@@ -147,7 +159,7 @@ describe('ModelConfigForm comprehensive price', () => {
   );
 
   it('preserves explicit free prices and omitted prices after clearing the input', async () => {
-    const field = await render(ModelTypeEnum.stt, 0.125);
+    const field = await render({ type: ModelTypeEnum.stt, unitPrice: 0.125 });
     expect(field.value).toBe('0.13');
     expect(field.checkValidity()).toBe(true);
     await fillAndBlur(field, '0');
@@ -160,5 +172,35 @@ describe('ModelConfigForm comprehensive price', () => {
     await act(async () => container.querySelector('form')!.requestSubmit());
     await vi.waitFor(() => expect(save).toHaveBeenCalledOnce());
     expect(save.mock.calls[0][0]).not.toHaveProperty('pricing.unitPrice');
+  });
+
+  it('submits the upcoming deprecation switch for system models', async () => {
+    await render({ type: ModelTypeEnum.embedding, channelType: 'system' });
+    const testModeField = container.querySelector<HTMLInputElement>('input[name="testMode"]')!;
+    const switchField = container.querySelector<HTMLInputElement>(
+      'input[name="isUpcomingDeprecation"]'
+    );
+    expect(switchField).not.toBeNull();
+    expect(testModeField.parentElement?.parentElement?.nextElementSibling).toBe(
+      switchField!.parentElement?.parentElement
+    );
+    await act(async () => switchField!.click());
+    await act(async () => container.querySelector('form')!.requestSubmit());
+    await vi.waitFor(() => expect(save).toHaveBeenCalledOnce());
+    expect(save.mock.calls[0][0].isUpcomingDeprecation).toBe(true);
+  });
+
+  it('hides and strips the upcoming deprecation flag for team models', async () => {
+    await render({
+      type: ModelTypeEnum.embedding,
+      channelType: 'team',
+      isUpcomingDeprecation: true
+    });
+    expect(
+      container.querySelector<HTMLInputElement>('input[name="isUpcomingDeprecation"]')
+    ).toBeNull();
+    await act(async () => container.querySelector('form')!.requestSubmit());
+    await vi.waitFor(() => expect(save).toHaveBeenCalledOnce());
+    expect(save.mock.calls[0][0]).not.toHaveProperty('isUpcomingDeprecation');
   });
 });

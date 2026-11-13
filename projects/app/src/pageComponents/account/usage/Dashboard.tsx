@@ -1,47 +1,30 @@
-import { formatToISOWithTimezone } from '@fastgpt/global/common/string/time';
-import { getDashboardData } from '@/web/support/wallet/usage/api';
 import { Box, Flex } from '@chakra-ui/react';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import React, { useMemo } from 'react';
-import { type UsageFilterParams } from './type';
-import { toMultiSelectFilterQuery } from '@fastgpt/web/components/common/TagFilter';
-import dayjs from 'dayjs';
 import dynamic from 'next/dynamic';
 import { accountContentScrollStyles } from '@/pageComponents/account/styles';
+import type { UsageFilterController } from './useUsageFilterController';
+import UsageExportButton from './UsageExportButton';
 
 const DashboardChart = dynamic(() => import('./DashboardChart'), {
   ssr: false
 });
 
 const UsageDashboard = ({
-  filterParams,
+  controller,
   Tabs,
   Selectors
 }: {
-  filterParams: UsageFilterParams;
+  controller: UsageFilterController;
   Tabs: React.ReactNode;
   Selectors: React.ReactNode;
 }) => {
-  const { dateRange, memberFilter, sourceFilter, unit } = filterParams;
-
   const { data: totalPoints = [], loading: totalPointsLoading } = useRequest(
-    () =>
-      getDashboardData({
-        dateStart: formatToISOWithTimezone(dateRange.from),
-        dateEnd: formatToISOWithTimezone(dateRange.to),
-        sources: toMultiSelectFilterQuery(sourceFilter),
-        teamMemberIds: toMultiSelectFilterQuery(memberFilter),
-        unit
-      }).then((res) =>
-        res.map((item) => ({
-          ...item,
-          date: dayjs(item.date).format('YYYY-MM-DD')
-        }))
-      ),
+    controller.fetchDashboard,
     {
       manual: false,
-      refreshDeps: [filterParams]
+      refreshDeps: [controller.queryKey]
     }
   );
 
@@ -61,9 +44,10 @@ const UsageDashboard = ({
         gap={[4, 6]}
       >
         <Box flexShrink={0}>{Tabs}</Box>
-        <Box flex={'0 0 auto'} minW={0}>
+        <Flex flex={'0 0 auto'} minW={0} gap={3} flexWrap={'wrap'} justifyContent={'flex-end'}>
           {Selectors}
-        </Box>
+          <UsageExportButton controller={controller} />
+        </Flex>
       </Flex>
       <MyBox {...accountContentScrollStyles} px={[3, 6]} isLoading={totalPointsLoading}>
         <DashboardChart totalPoints={totalPoints} totalUsage={totalUsage} />

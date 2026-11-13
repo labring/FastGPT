@@ -30,6 +30,7 @@ import { batchRun } from '@fastgpt/global/common/system/utils';
 import { normalizeToolResponseContent } from '@fastgpt/global/core/ai/llm/utils';
 import type { AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
+import { MODERATION_BLOCKED_REPLACE_TEXT } from '@fastgpt/global/core/plugin/moderation/constants';
 import {
   createFileClassificationContext,
   type FileClassificationContext
@@ -457,6 +458,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
       answerText: answer,
       reasoningText: reasoning,
       toolCalls = [],
+      moderatedToolCallIds = [],
       usage,
       responseEmptyTip,
       assistantMessage: llmAssistantMessage,
@@ -567,6 +569,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
     }
 
     if (toolCalls.length) {
+      const moderatedToolCallIdSet = new Set(moderatedToolCallIds);
       // 3. Call tools
       const continuationMessages: string[] = [];
       type ToolRunResult = {
@@ -583,6 +586,25 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
       }: {
         tool: ChatCompletionMessageToolCall;
       }): Promise<ToolRunResult> => {
+        if (moderatedToolCallIdSet.has(tool.id)) {
+          onToolRunEnd?.({
+            call: tool,
+            response: MODERATION_BLOCKED_REPLACE_TEXT,
+            assistantMessages: [],
+            seconds: 0,
+            usages: []
+          });
+          return {
+            tool,
+            toolMessage: {
+              tool_call_id: tool.id,
+              role: ChatCompletionRequestMessageRoleEnum.Tool,
+              content: MODERATION_BLOCKED_REPLACE_TEXT
+            } as ChatCompletionMessageParam,
+            toolAssistantMessages: []
+          };
+        }
+
         const toolStartTime = Date.now();
         let toolErrorMessage: string | undefined;
         onToolRunStart?.({

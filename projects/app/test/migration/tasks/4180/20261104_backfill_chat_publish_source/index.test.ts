@@ -63,6 +63,39 @@ const seed = async (overrides: Record<string, unknown> = {}) => {
 afterEach(() => vi.restoreAllMocks());
 
 describe('backfillChatPublishSource', () => {
+  it('从两库已扫描断点重试来源枚举错误，未知来源通过完成校验且不计为渠道 ID 缺失', async () => {
+    const chat = await seed({ source: '1111', shareId: 'legacy-share' });
+    const log = { _id: oid(), teamId: oid(), appId: oid(), source: '网页读取', totalPoints: 4 };
+    await MongoAppChatLog.collection.insertOne(log as any);
+    const cursors = {
+      chats: { endId: String(chat._id), lastId: String(chat._id), scanned: 1, total: 1 },
+      chatLogs: { endId: String(log._id), lastId: String(log._id), scanned: 1 }
+    };
+    const { context, failures, checkpoint } = createContext(cursors, [
+      { stageKey: 'chats', data: { id: String(chat._id) }, reason: { message: 'Invalid source' } },
+      { stageKey: 'chatLogs', data: { id: String(log._id) }, reason: { message: 'Invalid source' } }
+    ]);
+
+    for (let attempt = 0; attempt < 2; attempt++) {
+      expect(await backfillChatPublishSource(context)).toEqual({
+        chats: 1,
+        chatLogs: 1,
+        missingChannelIds: 0
+      });
+      expect(failures()).toEqual([]);
+      expect(checkpoint()).toEqual(cursors);
+      expect(await MongoChat.collection.findOne({ _id: chat._id })).toEqual({
+        ...chat,
+        publishSource: { type: 'unknown' }
+      });
+      expect(await MongoAppChatLog.collection.findOne({ _id: log._id })).toEqual({
+        ...log,
+        publishSource: { type: 'unknown' }
+      });
+    }
+    expect(context.reportProgress).toHaveBeenCalledWith({ key: 'validation', status: 'succeeded' });
+  });
+
   it('从已扫描断点重试旧资源类型错误，无需修改旧数据或重置进度', async () => {
     const records = [];
     for (const sourceType of [null, '', 'legacy-resource']) {
@@ -281,7 +314,7 @@ describe('backfillChatPublishSource', () => {
   });
 
   it('错误快照在断点前保存，重试优先修复已跳过记录', async () => {
-    const bad = await seed({ source: 'unknown', shareId: 'keep-until-repaired' });
+    const bad = await seed({ teamId: null, shareId: 'keep-until-repaired' });
     await seed();
     const state = createContext();
     await expect(backfillChatPublishSource(state.context)).rejects.toThrow('require repair');
@@ -295,7 +328,7 @@ describe('backfillChatPublishSource', () => {
     expect(
       state.context.reportFailedRecords.mock.invocationCallOrder.some((n) => n < checkpointOrder)
     ).toBe(true);
-    await MongoChat.collection.updateOne({ _id: bad._id }, { $set: { source: 'api' } });
+    await MongoChat.collection.updateOne({ _id: bad._id }, { $set: { teamId: oid() } });
     expect(await backfillChatPublishSource(state.context)).toEqual({
       chats: 2,
       chatLogs: 0,
@@ -346,11 +379,11 @@ describe('backfillChatPublishSource', () => {
   });
 
   it('历史错误也按批重试，不逐条提交写入', async () => {
-    for (let i = 0; i < 3; i++) await seed({ source: 'unknown' });
+    for (let i = 0; i < 3; i++) await seed({ teamId: null });
     const { context, failures } = createContext();
     await expect(backfillChatPublishSource(context)).rejects.toThrow('require repair');
     expect(failures()).toHaveLength(3);
-    await MongoChat.collection.updateMany({}, { $set: { source: 'api' } });
+    await MongoChat.collection.updateMany({}, { $set: { teamId: oid() } });
     const write = vi.spyOn(MongoChat.collection, 'bulkWrite');
     try {
       expect(await backfillChatPublishSource(context)).toEqual({

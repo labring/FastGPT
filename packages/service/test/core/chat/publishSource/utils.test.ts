@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
+import { ChatPublishSourceSchema } from '@fastgpt/global/core/chat/publishSource/type';
 import {
   assertChatPublishSource,
   resolveCurrentChatPublishSource
@@ -29,8 +30,17 @@ describe('resolveCurrentChatPublishSource', () => {
       expect(() => resolveCurrentChatPublishSource({ source: type })).toThrow('ID is missing');
     }
   );
-  it('拒绝无效类型和 ID', () => {
-    expect(() => resolveCurrentChatPublishSource({ source: 'future' })).toThrow();
+  it('无法识别的来源归为 unknown，不保留无法确认归属的渠道 ID', () => {
+    expect(resolveCurrentChatPublishSource({ source: 'future' })).toEqual({ type: 'unknown' });
+    expect(
+      resolveCurrentChatPublishSource({
+        source: 'future',
+        publishSource: ChatPublishSourceSchema.parse({ type: 'future', id: a })
+      })
+    ).toEqual({ type: 'unknown' });
+  });
+
+  it('来源兜底不吞掉无效 ID 的校验错误', () => {
     expect(() =>
       resolveCurrentChatPublishSource({
         source: 'api',

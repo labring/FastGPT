@@ -46,7 +46,7 @@ export const MarketplaceToolDetailChildSchema = MarketplaceToolChildSchema.exten
 export type MarketplaceToolDetailChildType = z.infer<typeof MarketplaceToolDetailChildSchema>;
 
 export const MarketplaceToolBaseSchema = z.object({
-  type: z.literal('tool').meta({ example: 'tool', description: '插件类型' }),
+  type: z.enum(['tool', 'moderation']).meta({ example: 'tool', description: '插件类型' }),
   id: z.string().meta({ example: 'fastgpt-web-search', description: '市场工具记录 ID' }),
   toolId: z.string().meta({ example: 'fastgpt-web-search', description: '市场工具 ID' }),
   pluginId: z.string().meta({ example: 'fastgpt-web-search', description: '插件 ID' }),
@@ -76,7 +76,7 @@ export const MarketplaceToolBaseSchema = z.object({
     description: '插件源码仓库地址'
   }),
   tutorialUrl: z.string().optional().meta({
-    example: 'https://doc.fastgpt.io/docs/plugin',
+    example: 'https://doc.fastgpt.io/en/plugin/intro',
     description: '插件教程地址'
   }),
   readmeUrl: z.string().optional().meta({
@@ -178,6 +178,10 @@ export const MarketplaceToolDetailSchema = z.object({
  * ============================================================================ */
 
 export const GetMarketplaceToolsBodySchema = createPaginationSchema({
+  type: z.enum(['tool', 'moderation']).optional().meta({
+    example: 'tool',
+    description: '插件类型：系统工具 (tool) 或内容审核 (moderation)'
+  }),
   searchKey: z.string().optional().meta({
     example: 'search',
     description: '按工具名称、简介或 ID 搜索'
@@ -214,6 +218,10 @@ export const GetMarketplaceToolDetailQuerySchema = z.object({
   version: z.string().trim().min(1).optional().meta({
     example: '1.0.0',
     description: '指定插件版本；为空时使用最新版本'
+  }),
+  type: z.enum(['tool', 'moderation']).optional().meta({
+    example: 'tool',
+    description: '插件类型 (tool 或 moderation)'
   })
 });
 export type GetMarketplaceToolDetailQueryType = z.infer<typeof GetMarketplaceToolDetailQuerySchema>;
@@ -230,7 +238,8 @@ export type GetMarketplaceToolDetailResponseType = z.infer<typeof MarketplaceToo
 
 export const GetMarketplaceDownloadUrlQuerySchema = GetMarketplaceToolDetailQuerySchema.pick({
   toolId: true,
-  version: true
+  version: true,
+  type: true
 });
 export type GetMarketplaceDownloadUrlQueryType = z.infer<
   typeof GetMarketplaceDownloadUrlQuerySchema
@@ -315,6 +324,10 @@ export const DeleteMarketplacePkgBodySchema = z.object({
   source: MarketplacePkgSourceSchema.optional().default(MarketplaceOfficialSource).meta({
     example: MarketplaceOfficialSource,
     description: '插件来源, 默认 official'
+  }),
+  type: z.enum(['tool', 'moderation']).optional().meta({
+    example: 'tool',
+    description: '插件类型 (tool 或 moderation)'
   })
 });
 export type DeleteMarketplacePkgBodyType = z.infer<typeof DeleteMarketplacePkgBodySchema>;
@@ -364,12 +377,20 @@ export const GetMarketplaceToolVersionsQuerySchema = z.object({
   toolId: z.string().trim().min(1).optional().meta({
     example: 'fastgpt-web-search',
     description: '工具 ID；为空时返回全部工具版本'
+  }),
+  type: z.enum(['tool', 'moderation']).optional().meta({
+    example: 'tool',
+    description: '插件类型 (tool 或 moderation)'
   })
 });
 export type GetMarketplaceToolVersionsQueryType = z.infer<
   typeof GetMarketplaceToolVersionsQuerySchema
 >;
 export const MarketplaceToolVersionSchema = z.object({
+  type: z.enum(['tool', 'moderation']).optional().meta({
+    example: 'tool',
+    description: '插件类型'
+  }),
   toolId: z.string().meta({ example: 'fastgpt-web-search', description: '工具 ID' }),
   version: z.string().meta({ example: '1.0.0', description: '插件版本' }),
   etag: z.string().optional().meta({

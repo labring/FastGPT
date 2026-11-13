@@ -1,5 +1,7 @@
 import { defineConfig, defineDocs, frontmatterSchema, metaSchema } from 'fumadocs-mdx/config';
 import { z } from 'zod';
+import { remarkScreenshots } from './lib/remark-screenshots.mjs';
+import { remarkDiagrams } from './lib/remark-diagrams.mjs';
 
 type MdxAstNode = {
   type: string;
@@ -21,6 +23,7 @@ export const docs = defineDocs({
   docs: {
     schema: frontmatterSchema.extend({
       title: z.string().optional().default('Untitled'),
+      seoTitle: z.string().optional(),
       draft: z.boolean().default(false),
       releaseTime: z.iso.date().optional(),
       deprecated: z.boolean().optional(),
@@ -66,7 +69,7 @@ function remarkMermaid() {
 export default defineConfig({
   lastModifiedTime: 'git',
   mdxOptions: {
-    remarkPlugins: (plugins) => [...plugins, remarkMermaid],
+    remarkPlugins: (plugins) => [...plugins, remarkScreenshots, remarkDiagrams, remarkMermaid],
     remarkImageOptions: {
       external: false
     }

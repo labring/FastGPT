@@ -48,6 +48,7 @@ const MyModelBaseSchema = z.object({
   }),
   avatar: z.string().optional().meta({ description: '模型图标' }),
   isActive: z.boolean().optional().meta({ description: '模型是否启用' }),
+  isUpcomingDeprecation: LLMModelDocumentSchema.shape.isUpcomingDeprecation,
   testMode: z.boolean().optional().meta({ description: '是否为测试模式' }),
   pricing: ModelPricingSchema.optional().meta({ description: '模型计价配置；缺失时免费' })
 });

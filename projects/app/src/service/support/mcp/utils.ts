@@ -269,6 +269,7 @@ export const callMcpServerTool = async ({ key, toolName, inputs, authProxy }: to
     })();
 
     let runtimeNodes = storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes));
+    const entryVariables = { ...variables };
     if (isPlugin) {
       // Assign values to runtimeNodes using variables
       runtimeNodes = updateWorkflowToolInputByVariables(runtimeNodes, variables);
@@ -277,6 +278,8 @@ export const callMcpServerTool = async ({ key, toolName, inputs, authProxy }: to
     } else {
       delete variables.question;
       delete variables.fileUrlList;
+      delete entryVariables.question;
+      delete entryVariables.fileUrlList;
     }
 
     const chatId = getNanoid();
@@ -310,6 +313,7 @@ export const callMcpServerTool = async ({ key, toolName, inputs, authProxy }: to
         publishSource,
         sourceName,
         userContent: workflowUserQuestion,
+        variables: entryVariables,
         responseChatItemId,
         fixedTitle: pluginFixedTitle
       })

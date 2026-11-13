@@ -17,6 +17,7 @@ export type ToolDetailVersionType = {
 };
 
 export type ToolDetailExtendedType = {
+  type?: 'tool' | 'moderation';
   pluginId: string;
   id?: string;
   toolId?: string;

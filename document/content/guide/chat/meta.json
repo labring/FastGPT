@@ -3,7 +3,7 @@
   "root": false,
   "pages": [
     "html",
-    "htmlRendering",
+    "!htmlRendering",
     "quoteList"
   ]
 }

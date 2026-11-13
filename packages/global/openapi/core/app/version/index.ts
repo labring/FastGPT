@@ -7,7 +7,7 @@ import {
   GetAppVersionDetailResponseSchema,
   GetLatestAppVersionQuerySchema,
   GetLatestAppVersionResponseSchema,
-  PublishAppBodySchema,
+  PublishAppRequestBodySchema,
   PublishAppQuerySchema,
   PublishAppResponseSchema,
   UpdateAppVersionBodySchema,
@@ -26,7 +26,7 @@ export const AppVersionPath: OpenAPIPath = {
       requestBody: {
         content: {
           'application/json': {
-            schema: PublishAppBodySchema
+            schema: PublishAppRequestBodySchema
           }
         }
       },

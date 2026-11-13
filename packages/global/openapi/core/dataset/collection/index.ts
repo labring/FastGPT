@@ -80,17 +80,23 @@ export const DatasetCollectionPath: OpenAPIPath = {
   '/core/dataset/collection/delete': {
     post: {
       'x-required-parameter-alternatives': [
-        [{ in: 'query', name: 'id' }],
-        [{ in: 'body', name: 'collectionIds' }]
+        [{ in: 'body', name: 'id' }],
+        [{ in: 'body', name: 'collectionIds' }],
+        [
+          { in: 'body', name: 'datasetId' },
+          { in: 'body', name: 'apiFileIds' }
+        ],
+        [{ in: 'query', name: 'id' }]
       ],
       summary: '删除集合',
       description:
-        '删除一个或多个集合及其子集合，支持通过 query.id 或 body.collectionIds 指定。仅集合所有者（owner）可删除；持有 manage/write 权限的协作者不可删除',
+        '删除一个或多个集合及其子集合。请求体三选一：body.id（单个集合）、body.collectionIds（集合列表）、body.datasetId + body.apiFileIds（API 文件库外部文件或目录 ID）。仅集合所有者（owner）可删除；持有 manage/write 权限的协作者不可删除。按 apiFileIds 定位时全部未命中会返回集合不存在错误。旧版 query.id 仍兼容但已弃用，请改用 body.id；使用 query.id 时请求体可缺失或为 {}，同时提供合法请求体时 query.id 优先，非法请求体仍会被拒绝。未提供任何定位参数时拒绝请求',
       tags: [DevApiTagsMap.datasetCollection, SystemOpenApiTagMap.datasetCollection],
       requestParams: {
         query: DeleteCollectionQuerySchema
       },
       requestBody: {
+        required: false,
         content: {
           'application/json': {
             schema: DeleteCollectionBodySchema

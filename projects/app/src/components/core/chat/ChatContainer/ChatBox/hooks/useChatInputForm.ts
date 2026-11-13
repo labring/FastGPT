@@ -1,4 +1,4 @@
-import { useMemo, type MutableRefObject } from 'react';
+import { useEffect, useMemo, useRef, type MutableRefObject } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { useMemoizedFn } from 'ahooks';
 import type { VariableItemType } from '@fastgpt/global/core/app/variable/type';
@@ -36,22 +36,53 @@ export const useChatInputForm = ({
   });
   const { setValue } = chatForm;
   const chatStartedWatch = useWatch({ control: chatForm.control, name: 'chatStarted' });
+  const resizeObserverRef = useRef<ResizeObserver | null>(null);
+  const lastTextareaWidthRef = useRef<number>(0);
+
+  const syncTextareaHeight = useMemoizedFn((textarea: HTMLTextAreaElement, text: string) => {
+    const maxHeight = 128;
+    textarea.style.height = textareaMinH;
+    if (text) textarea.style.height = `${Math.min(textarea.scrollHeight, maxHeight)}px`;
+    textarea.style.overflowY = text && textarea.scrollHeight > maxHeight ? 'auto' : 'hidden';
+  });
+
   const resizeTextarea = useMemoizedFn((text: string) => {
     requestAnimationFrame(() => {
       if (textareaDomRef.current) {
-        const textarea = textareaDomRef.current;
-        const maxHeight = 128;
-        textarea.style.height = textareaMinH;
-        if (text) textarea.style.height = `${Math.min(textarea.scrollHeight, maxHeight)}px`;
-        textarea.style.overflowY = text && textarea.scrollHeight > maxHeight ? 'auto' : 'hidden';
+        syncTextareaHeight(textareaDomRef.current, text);
       }
     });
   });
-  // 会话初始化和变量填写可能让 textarea 晚于草稿恢复挂载，挂载时补算已有内容高度。
+
+  // 会话初始化、变量填写或侧边面板宽度动画结束都可能晚于草稿恢复，挂载与宽度变化时补算高度。
   const textareaRef = useMemoizedFn((textarea: HTMLTextAreaElement | null) => {
+    resizeObserverRef.current?.disconnect();
+    resizeObserverRef.current = null;
     textareaDomRef.current = textarea;
-    if (textarea) resizeTextarea(chatForm.getValues('input'));
+    if (!textarea) return;
+
+    lastTextareaWidthRef.current = textarea.clientWidth;
+    resizeTextarea(chatForm.getValues('input'));
+
+    if (typeof ResizeObserver !== 'undefined') {
+      const observer = new ResizeObserver((entries) => {
+        const currentWidth = entries[0]?.contentRect?.width ?? textarea.clientWidth;
+        if (currentWidth !== lastTextareaWidthRef.current) {
+          lastTextareaWidthRef.current = currentWidth;
+          syncTextareaHeight(textarea, chatForm.getValues('input'));
+        }
+      });
+      observer.observe(textarea);
+      resizeObserverRef.current = observer;
+    }
   });
+
+  useEffect(() => {
+    return () => {
+      resizeObserverRef.current?.disconnect();
+      resizeObserverRef.current = null;
+    };
+  }, []);
 
   const inputDraft = useChatInputDraft({
     chatForm,

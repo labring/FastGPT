@@ -30,7 +30,7 @@ INVOKE_TOKEN_SECRET=
 
 ##### 新增环境变量
 
-**必须新增的变量**
+**按需新增的变量**
 
 ```dotenv
 # SSE mcp server 服务地址，如果不需要 SSE 的话，可以不配置
@@ -220,6 +220,11 @@ OpenSandbox 的完整配置请参考 [4.15 部署 yml](https://github.com/labrin
 
 可以直接按新的 OpenSandbox 模板进行覆盖部署即可。
 
+从 4.14.x 升级且启用 OpenSandbox 时，`fastgpt-app` 和 `fastgpt-pro` 需完成以下修改：
+
+- `AGENT_SANDBOX_VOLUME_MANAGER_URL`、`AGENT_SANDBOX_VOLUME_MANAGER_TOKEN` 改名为 `AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL`、`AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN`，且变为必填。
+- 新增 `AGENT_SANDBOX_PROXY_SECRET`（32 位以上，与 `fastgpt-agent-sandbox-proxy` 的同名变量一致）和 `AGENT_SANDBOX_PROXY_URL`（浏览器可访问的 agent-sandbox-proxy WebSocket 地址）。
+
 ### 3. 镜像变更
 
 - 更新 fastgpt-app(fastgpt 主服务) 镜像 tag: v4.15.0
@@ -230,8 +235,9 @@ OpenSandbox 的完整配置请参考 [4.15 部署 yml](https://github.com/labrin
 
 如果启用 `opensandbox`，需同步更新下面镜像:
 
-更新 fastgpt-agent-sandbox-proxy 镜像 tag: v0.2.0
-更新 fastgpt-agent-sandbox 镜像 tag: v0.2.0
+- 更新 fastgpt-agent-sandbox-proxy 镜像 tag: v0.2.0
+- 更新 fastgpt-agent-sandbox 镜像 tag: v0.2.0
+- 更新 fastgpt-agent-volume-manager 镜像 tag: v0.2.0
 
 ### 4. 启动服务
 
@@ -241,8 +247,8 @@ OpenSandbox 的完整配置请参考 [4.15 部署 yml](https://github.com/labrin
 
 插件服务升级后，需要重装旧的所有系统工具：
 
-1. 下载所有系统工具的 [zip 包](<https://github.com/labring/fastgpt-img/raw/refs/heads/main/fastgpt-official-plugins(1).zip>)。
-2. 打开 `fastgpt` 网页 - 点击 `管理员` navbar - 点击添加插件 - 点击 `导入/更新插件` - 上传 zip - 确认。
+1. 下载所有系统工具的 [zip 包](https://github.com/labring/fastgpt-img/raw/refs/heads/main/fastgpt-official-plugins%281%29.zip)。
+2. 打开 `fastgpt` 网页 - 进入 `管理员 → 系统资源 → 系统工具` - 点击 `+ 安装工具`（旧版界面为 `添加插件`）- 点击 `导入/更新插件` - 上传 zip - 点击 `确认导入`。
 
 也可以打开插件市场逐个下载安装，插件市场地址为: [https://v2.marketplace.fastgpt.cn](https://v2.marketplace.fastgpt.cn)，环境变量默认值已变成该地址，不设置相关环境变量即可。
 
@@ -364,7 +370,7 @@ curl -X POST 'https://{{host}}/api/admin/dataClean/initSandboxArchive' \
 
 ## 一些大的影响
 
-1. ApiKey 功能调整，不再区分应用 key 和系统 key，只保留系统 key，如需兼容 openai sdk 用法，可使用 `apikey-appId` 的方式传递 Token。已有的 apikey 保持兼容，不影响使用。具体和查阅 [FastGPT API 文档说明](../../../openapi/intro)
+1. ApiKey 功能调整，不再区分应用 key 和系统 key，只保留系统 key，如需兼容 openai sdk 用法，可使用 `apikey-appId` 的方式传递 Token。已有的 apikey 保持兼容，不影响使用。具体和查阅 [FastGPT API 文档说明](/zh-CN/openapi/intro)
 2. 部分 API 增加了更为严格的数据格式校验，如过遇到报错: `zod parse error` 可提交 issue 反馈，可能因一些旧数据或者自定义数据结构与声明不一致。
 3. LLM 请求追踪记录新增团队隔离：`llm_request_records` 写入 `teamId`，`GET /api/core/ai/record/getRecord` 按 `{ requestId, teamId }` 查询，唯一索引调整为 `{ teamId, requestId }`。升级前没有 `teamId` 的旧追踪记录将无法继续查询，页面会提示追踪记录已过期；如需排查历史调用详情，请在升级前导出相关日志或保留原始请求信息。自托管环境如关闭了 `SYNC_INDEX`，升级后需要执行一次索引同步，确保旧的 `requestId_1` 唯一索引被移除。
 

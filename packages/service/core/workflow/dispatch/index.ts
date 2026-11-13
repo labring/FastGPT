@@ -26,7 +26,8 @@ import { getErrText, isUserConfigError, UserError } from '@fastgpt/global/common
 import {
   filterWorkflowEdges,
   valueTypeFormat,
-  appendWorkflowInteractiveValue
+  appendWorkflowInteractiveValue,
+  getReferenceVariableValue
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import type {
   InteractiveNodeResponseType,
@@ -41,7 +42,12 @@ import type {
   WorkflowRuntimeSummaryType,
   WorkflowDebugResponse
 } from './type';
-import { rewriteRuntimeWorkFlow, filterOrphanEdges } from './utils/index';
+import {
+  rewriteRuntimeWorkFlow,
+  filterOrphanEdges,
+  filterToolNodeIdByEdges,
+  getInlineMcpToolSetRuntimeNodes
+} from './utils/index';
 import {
   createWorkflowRuntimeSummary,
   createNodeSummary,
@@ -85,12 +91,24 @@ import {
   shouldTraceWorkflowStep,
   type WorkflowObservedStepResult
 } from './utils/trace';
-import { getWorkflowNodeRunParams } from './utils/runtime';
+import { getDispatchModerationContext, getWorkflowNodeRunParams } from './utils/runtime';
 import type { AgentSandboxPrepareAction } from './ai/agent/sub/sandbox';
 import { getWorkflowSource } from './utils/source';
 import { WorkflowMemoryState } from '../memory/state';
 import { prepareWorkflowFileContext } from '../utils/fileContext';
 import { markProfileError, profileStage } from '../../../common/profiling';
+import { checkEntryModeration, consumeEntryModerationChecked } from '../../plugin/moderation/entry';
+import { runWithNodeModerationContext } from '../../plugin/moderation/collector';
+import {
+  checkToolResultModeration,
+  sanitizeModeratedToolNodeResponse
+} from '../../plugin/moderation/modelInput';
+import {
+  isModerationBlockErrorMessage,
+  MODERATION_BLOCKED_REPLACE_TEXT,
+  ModerationActionEnum
+} from '@fastgpt/global/core/plugin/moderation/constants';
+import type { NodeModerationRecordType } from '@fastgpt/global/core/plugin/moderation/type';
 
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.DISPATCH);
 
@@ -147,17 +165,8 @@ export async function dispatchWorkFlow({
   concatUsage,
   ...data
 }: Props & WorkflowUsageProps): Promise<DispatchFlowResponse> {
-  const {
-    res,
-    stream,
-    runningUserInfo,
-    runningAppInfo,
-    lastInteractive,
-    histories,
-    query,
-    chatId,
-    apiVersion
-  } = data;
+  const { res, stream, runningUserInfo, runningAppInfo, histories, query, chatId, apiVersion } =
+    data;
   const responseChatItemId = data.responseChatItemId;
   if (stream && res && !isWorkflowSseResponseInitialized(res)) {
     // HTTP SSE 响应必须由调用入口提前初始化，dispatch 只执行 workflow，不隐式管理响应协议。
@@ -175,6 +184,29 @@ export async function dispatchWorkFlow({
     clientAbortTracker?.isClientAborted() ?? stopController?.checkIsStopping() ?? false;
 
   try {
+    // 锚点 1：信息接入平台（Entry Guard）- 校验用户输入与全局变量/表单输入，违规直接阻断且不写入节点响应
+    const entryChecked = consumeEntryModerationChecked({ chatId, responseChatItemId });
+    if (!entryChecked.queryChecked || (!entryChecked.variablesChecked && data.variables)) {
+      const entryNode = data.runtimeNodes?.find((item) => item.isEntry) || data.runtimeNodes?.[0];
+      await checkEntryModeration({
+        query: entryChecked.queryChecked ? undefined : query,
+        variables: entryChecked.variablesChecked ? undefined : data.variables,
+        context: {
+          teamId: runningUserInfo.teamId,
+          tmbId: runningUserInfo.tmbId,
+          appId: runningAppInfo.sourceId,
+          chatId,
+          responseChatItemId,
+          nodeId: entryNode?.nodeId,
+          nodeName: entryNode?.name,
+          requestId:
+            typeof data.req?.headers?.['x-request-id'] === 'string'
+              ? data.req.headers['x-request-id']
+              : undefined
+        }
+      });
+    }
+
     /* Init function */
     // Check point
     await profileStage({ event: 'wf.points.check' }, () =>
@@ -221,8 +253,8 @@ export async function dispatchWorkFlow({
               }
             : getUserChatInfo(runningUserInfo.tmbId),
           (() => {
-            if (lastInteractive?.usageId) {
-              return lastInteractive.usageId;
+            if (data.lastInteractive?.usageId) {
+              return data.lastInteractive.usageId;
             }
             if (usageSource) {
               return createChatUsageRecord({
@@ -375,6 +407,7 @@ export class WorkflowQueue {
   private data: RunWorkflowProps;
   isRootRuntime: boolean;
   private runtimeNodesMap: Map<string, RuntimeNodeItemType>;
+  private inlineMcpExpansions = new Map<string, Promise<void>>();
   // Workflow variables
   workflowRunTimes = 0;
   workflowRuntimeSummary: WorkflowRuntimeSummaryType;
@@ -823,6 +856,63 @@ export class WorkflowQueue {
   }
 
   /* ===== runtime ===== */
+  /** 内联 MCP 到 ToolCall 可运行时才发现工具；共享工具集的并发入口复用同一次展开。 */
+  private async prepareInlineMcpToolSets(nodeId: string) {
+    const toolNodeIds = filterToolNodeIdByEdges({ nodeId, edges: this.data.runtimeEdges });
+    await Promise.all(
+      toolNodeIds.map(async (toolSetId) => {
+        const toolSetNode = this.runtimeNodesMap.get(toolSetId);
+        if (
+          toolSetNode?.flowNodeType !== FlowNodeTypeEnum.toolSet ||
+          toolSetNode.pluginId ||
+          !toolSetNode.toolConfig?.mcpToolSet
+        ) {
+          return;
+        }
+
+        let expansion = this.inlineMcpExpansions.get(toolSetId);
+        if (!expansion) {
+          expansion = (async () => {
+            const incomingEdges = this.data.runtimeEdges.filter(
+              (edge) => edge.target === toolSetId
+            );
+            const nodes = await getInlineMcpToolSetRuntimeNodes({
+              toolSetNode,
+              resolveReference: (reference) =>
+                getReferenceVariableValue({
+                  value: reference,
+                  nodesMap: this.runtimeNodesMap,
+                  variables: this.data.variableState.toRuntimeRecord()
+                })
+            });
+
+            // 只替换 selectedTools 子图；普通调度边未变化，保留已构建的队列索引。
+            const index = this.data.runtimeNodes.indexOf(toolSetNode);
+            this.data.runtimeNodes.splice(index, 1, ...nodes);
+            this.runtimeNodesMap.delete(toolSetId);
+            nodes.forEach((node) => this.runtimeNodesMap.set(node.nodeId, node));
+            for (let i = this.data.runtimeEdges.length - 1; i >= 0; i--) {
+              if (this.data.runtimeEdges[i].target === toolSetId) {
+                this.data.runtimeEdges.splice(i, 1);
+              }
+            }
+            this.data.runtimeEdges.push(
+              ...incomingEdges.flatMap((edge) =>
+                nodes.map((node) => ({
+                  ...edge,
+                  target: node.nodeId,
+                  targetHandle: NodeOutputKeyEnum.selectedTools
+                }))
+              )
+            );
+          })();
+          this.inlineMcpExpansions.set(toolSetId, expansion);
+        }
+        await expansion;
+      })
+    );
+  }
+
   private async nodeRunWithActive(node: RuntimeNodeItemType): Promise<{
     node: RuntimeNodeItemType;
     runStatus: 'run';
@@ -885,13 +975,20 @@ export class WorkflowQueue {
       };
 
       // run module
+      const collectedModerationRecords: NodeModerationRecordType[] = [];
       const dispatchRes: NodeResponseType = await (async () => {
         if (callbackMap[node.flowNodeType]) {
           const targetEdges = this.edgeIndex.bySource.get(node.nodeId) || [];
           const errorHandleId = getHandleId(node.nodeId, 'source_catch', 'right');
 
           try {
-            const result = (await callbackMap[node.flowNodeType](dispatchData)) as NodeResponseType;
+            if (node.flowNodeType === FlowNodeTypeEnum.toolCall) {
+              await this.prepareInlineMcpToolSets(node.nodeId);
+            }
+            const result = await runWithNodeModerationContext(
+              collectedModerationRecords,
+              async () => (await callbackMap[node.flowNodeType](dispatchData)) as NodeResponseType
+            );
             // 原始异常缺少故障详情时补展示文本；错误分支的数据不参与异常判定。
             if (
               Object.hasOwn(result, 'rawError') &&
@@ -973,7 +1070,92 @@ export class WorkflowQueue {
         return {};
       })();
 
-      const nodeResponse = dispatchRes[DispatchNodeResponseKeyEnum.nodeResponse];
+      // 工具调用子流程内若节点命中内容审核或产出敏感工具返回值，不将其作为工作流错误上报，
+      // 而是隐藏原始敏感值并转为统一工具审核占位文本交由上层 Agent Loop 继续推理。
+      if (this.data.isToolCall) {
+        const preCheckNodeResponse = dispatchRes[DispatchNodeResponseKeyEnum.nodeResponse];
+        const nodeErrorCandidate = getErrText(
+          dispatchRes.rawError ??
+            dispatchRes.error?.[NodeOutputKeyEnum.errorText] ??
+            preCheckNodeResponse?.errorText ??
+            preCheckNodeResponse?.error,
+          ''
+        );
+        const hasUncapturedModerationBlock =
+          !node.catchError &&
+          (isModerationBlockErrorMessage(nodeErrorCandidate) ||
+            collectedModerationRecords.some(
+              (item) => item.actionTaken === ModerationActionEnum.block
+            ));
+
+        if (hasUncapturedModerationBlock) {
+          delete dispatchRes.rawError;
+          delete dispatchRes.error;
+          dispatchRes[DispatchNodeResponseKeyEnum.toolResponse] = MODERATION_BLOCKED_REPLACE_TEXT;
+          dispatchRes[DispatchNodeResponseKeyEnum.assistantResponses] = undefined;
+          dispatchRes[DispatchNodeResponseKeyEnum.answerText] = undefined;
+          dispatchRes[DispatchNodeResponseKeyEnum.reasoningText] = undefined;
+          dispatchRes[DispatchNodeResponseKeyEnum.nodeResponse] = sanitizeModeratedToolNodeResponse(
+            (preCheckNodeResponse ?? {}) as ChatHistoryItemResType
+          );
+          nodeSummary.mergeNodeSummary({
+            hasModerationBlock: true,
+            hasToolResultModerated: true
+          });
+        } else if (!dispatchRes.error && !nodeSummary.hasToolResultModerated) {
+          const rawToolOut =
+            dispatchRes[DispatchNodeResponseKeyEnum.toolResponse] ??
+            (node.flowNodeType === FlowNodeTypeEnum.pluginOutput
+              ? preCheckNodeResponse?.pluginOutput
+              : undefined);
+          const hasNonEmptyToolOut =
+            rawToolOut !== undefined &&
+            rawToolOut !== null &&
+            rawToolOut !== '' &&
+            (!Array.isArray(rawToolOut) || rawToolOut.length > 0) &&
+            (typeof rawToolOut !== 'object' ||
+              Array.isArray(rawToolOut) ||
+              Object.keys(rawToolOut).length > 0);
+
+          if (hasNonEmptyToolOut) {
+            const candidateText =
+              typeof rawToolOut === 'string' ? rawToolOut : JSON.stringify(rawToolOut);
+            const moderatedText = await runWithNodeModerationContext(
+              collectedModerationRecords,
+              () =>
+                checkToolResultModeration({
+                  response: candidateText,
+                  context: getDispatchModerationContext(dispatchData)
+                })
+            );
+            nodeSummary.mergeNodeSummary({
+              hasToolResultModerated: true
+            });
+            if (moderatedText !== candidateText) {
+              dispatchRes[DispatchNodeResponseKeyEnum.toolResponse] =
+                MODERATION_BLOCKED_REPLACE_TEXT;
+              dispatchRes[DispatchNodeResponseKeyEnum.assistantResponses] = undefined;
+              dispatchRes[DispatchNodeResponseKeyEnum.answerText] = undefined;
+              dispatchRes[DispatchNodeResponseKeyEnum.reasoningText] = undefined;
+              dispatchRes[DispatchNodeResponseKeyEnum.nodeResponse] =
+                sanitizeModeratedToolNodeResponse(
+                  (preCheckNodeResponse ?? {}) as ChatHistoryItemResType
+                );
+              nodeSummary.mergeNodeSummary({
+                hasModerationBlock: true
+              });
+            }
+          }
+        }
+      }
+
+      const rawNodeResponse = dispatchRes[DispatchNodeResponseKeyEnum.nodeResponse];
+      const nodeResponse =
+        !rawNodeResponse && collectedModerationRecords.length > 0 ? {} : rawNodeResponse;
+      const mergedModerationRecords = [
+        ...(nodeResponse?.moderationRecords ?? []),
+        ...collectedModerationRecords
+      ];
       const nodeResponsesForWrite: ChatHistoryItemResType[] = [];
       const currentNodeChildResponseCount = getNodeResponseChildResponseCount(
         nodeResponse?.childrenResponses as ChatHistoryItemResType[] | undefined
@@ -990,6 +1172,9 @@ export class WorkflowQueue {
           ...(node.flowNodeType === FlowNodeTypeEnum.tool ||
           node.flowNodeType === FlowNodeTypeEnum.toolSet
             ? { isToolCall: this.data.isToolCall === true }
+            : {}),
+          ...(mergedModerationRecords.length > 0
+            ? { moderationRecords: mergedModerationRecords }
             : {}),
           ...(nodeResponse?.childResponseCount === undefined &&
           currentNodeChildResponseCount !== undefined
@@ -1634,9 +1819,8 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
               edges: data.runtimeEdges,
               lang: data.lang
             });
-            // ToolSet 会在运行态展开为临时 Tool 节点；交互暂停保存的 memoryEdges 也会指向这些
-            // 临时节点。孤儿边过滤必须等展开完成后执行，否则续跑时会先删除 ToolCall -> Tool 的
-            // selectedTools 边，导致 ToolCall 拿不到已挂载的 MCP/HTTP ToolSet 子工具。
+            // 外部工具集和 HTTP 已展开；内联 MCP 的旧暂停边先还原为聚合连接，
+            // 待 ToolCall 可运行后再读取当前鉴权，避免启动阶段消费尚未产生的上游输出。
             data.runtimeEdges = filterOrphanEdges({
               edges: data.runtimeEdges,
               nodes: data.runtimeNodes,
