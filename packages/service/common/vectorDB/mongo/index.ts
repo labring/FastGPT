@@ -5,6 +5,9 @@ import { MongoDatasetDataEmbedding } from './schema';
 import { initEmbeddingMongo, MongoEmbeddingSearchIndexName } from './controller';
 import { assertMongoEmbeddingVector } from './utils';
 
+// 以完整预过滤命中的向量规模选择查询方式；阈值是初始策略，不依据返回条数建删索引。
+const EXACT_SEARCH_MAX_ROWS = 10_000;
+
 /** MongoDB 向量 provider：保留字符串向量 ID，使用 1536 维 dotProduct + INT8 标量索引。 */
 export class MongoVectorCtrl implements VectorControllerType {
   constructor(private readonly model: Model<DatasetDataEmbedding> = MongoDatasetDataEmbedding) {}
@@ -61,6 +64,7 @@ export class MongoVectorCtrl implements VectorControllerType {
     );
   };
 
+  /** 共用全局 HNSW，按完整过滤后的规模自动选择 ENN / ANN，再统一返回原始内积分数。 */
   embRecall: VectorControllerType['embRecall'] = async ({
     teamId,
     datasetIds,
@@ -78,6 +82,25 @@ export class MongoVectorCtrl implements VectorControllerType {
     }
     assertMongoEmbeddingVector(vector);
     await this.init();
+
+    // 计数与检索复用同一过滤条件，避免大知识库中的小可读集合被误判成大范围查询。
+    const filter = {
+      teamId,
+      datasetId: { $in: datasetIds },
+      ...((forbidCollectionIdList.length > 0 || filterCollectionIdList !== undefined) && {
+        collectionId: {
+          ...(filterCollectionIdList !== undefined && { $in: filterCollectionIdList }),
+          ...(forbidCollectionIdList.length > 0 && { $nin: forbidCollectionIdList })
+        }
+      })
+    };
+    // 只需区分是否超过阈值，不为大范围查询统计全部匹配行；计数不代替权限过滤。
+    const rows = await this.model.countDocuments(filter).limit(EXACT_SEARCH_MAX_ROWS + 1);
+    if (rows === 0) return { results: [] };
+
+    // 正常业务 limit <= 100；超出 ANN 候选上限的内部调用仍保留精确检索兼容行为。
+    const exact = rows <= EXACT_SEARCH_MAX_ROWS || limit > 10_000;
+    const recallLimit = exact ? limit : Math.min(10_000, limit * 2);
     const results = await this.model.aggregate<{
       _id: string;
       collectionId: string;
@@ -88,22 +111,12 @@ export class MongoVectorCtrl implements VectorControllerType {
           index: MongoEmbeddingSearchIndexName,
           path: 'vector',
           queryVector: vector,
-          // MongoDB 上限 10000；请求大结果集时使用精确检索，避免无效 numCandidates。
-          ...(limit > 10000
+          ...(exact
             ? { exact: true }
-            : { numCandidates: Math.min(10000, Math.max(100, limit * 20)) }),
-          // 量化分数会有截断误差，扩大候选后用源向量精排，保持业务内积阈值稳定。
-          limit: limit > 10000 ? limit : Math.min(10000, limit * 2),
-          filter: {
-            teamId,
-            datasetId: { $in: datasetIds },
-            ...((forbidCollectionIdList.length > 0 || filterCollectionIdList !== undefined) && {
-              collectionId: {
-                ...(filterCollectionIdList !== undefined && { $in: filterCollectionIdList }),
-                ...(forbidCollectionIdList.length > 0 && { $nin: forbidCollectionIdList })
-              }
-            })
-          }
+            : { numCandidates: Math.min(10_000, Math.max(100, recallLimit * 20)) }),
+          // ANN 扩大候选后使用源向量精排；ENN 已按原始精度检索，无需扩大候选。
+          limit: recallLimit,
+          filter
         }
       },
       {
