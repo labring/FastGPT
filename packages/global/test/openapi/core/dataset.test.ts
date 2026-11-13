@@ -343,6 +343,20 @@ describe('SearchDatasetTestBodySchema', () => {
 });
 
 describe('Dataset OpenAPI contracts', () => {
+  it('keeps dataset search separate from management and hides unused index navigation', () => {
+    expect(apiDocOpenAPIDocument.paths?.['/core/dataset/search']?.post).toMatchObject({
+      summary: '知识库搜索',
+      tags: ['知识库搜索']
+    });
+    const group = apiDocOpenAPIDocument['x-tagGroups'].find(
+      (group: { name: string }) => group.name === '知识库'
+    );
+    expect(group.tags).toEqual(['知识库管理', '集合管理', '集合创建', '数据管理', '知识库搜索']);
+    for (const action of ['create', 'update', 'delete']) {
+      expect(apiDocOpenAPIDocument.paths).not.toHaveProperty(`/core/dataset/data/index/${action}`);
+    }
+  });
+
   it('keeps ancestor paths in storage types only and documents folder access modes', () => {
     expect(DatasetSchema.shape.ancestorIds).toBeDefined();
     expect(DatasetItemSchema.shape).not.toHaveProperty('ancestorIds');

@@ -5,7 +5,7 @@ import {
 } from '../../../../core/dataset/search/type';
 
 /* ============================================================================
- * API: 联合搜索知识库
+ * API: 知识库搜索
  * Route: POST /api/core/dataset/search
  * Method: POST
  * Description: 按调用成员权限联合搜索多个知识库，统一召回、重排与结果预算
