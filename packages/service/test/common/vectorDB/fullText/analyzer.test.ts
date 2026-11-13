@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { jiebaSearchTokens, jiebaSplit } from '@fastgpt/service/common/string/jieba/index';
 import {
   SQL_FULL_TEXT_EXTERNAL_ANALYZER,
@@ -17,6 +17,8 @@ import { OceanBaseFullTextAdapter } from '@fastgpt/service/common/vectorDB/ocean
 
 describe('SQL full-text external analyzer', () => {
   it('uses jieba search mode so abbreviations and full names share terms', async () => {
+    expect(await jiebaSplit({ text: '' })).toBe('');
+    expect(await jiebaSplit({ text: 'https://fastgpt.cn/docs' })).toBe('');
     expect(await jiebaSearchTokens({ text: '复旦大学在哪个城市？' })).toEqual([
       '复旦',
       '大学',
@@ -131,5 +133,41 @@ describe('SQL full-text external analyzer', () => {
     );
     for (const version of versions)
       expect(version.endsWith(SQL_FULL_TEXT_EXTERNAL_ANALYZER)).toBe(true);
+  });
+
+  it('lazily initializes native Jieba only when tokenizing non-empty cleaned text', async () => {
+    vi.resetModules();
+    const withDictCalls = vi.fn();
+    vi.doMock('@node-rs/jieba', async () => {
+      const actual = await vi.importActual<typeof import('@node-rs/jieba')>('@node-rs/jieba');
+      return {
+        ...actual,
+        Jieba: {
+          withDict: (dict: Uint8Array) => {
+            withDictCalls();
+            return actual.Jieba.withDict(dict);
+          }
+        }
+      };
+    });
+    try {
+      const freshModule = await import('@fastgpt/service/common/string/jieba/index');
+      expect(withDictCalls).not.toHaveBeenCalled();
+
+      expect(await freshModule.jiebaSplit({ text: '   ' })).toBe('');
+      expect(await freshModule.jiebaSearchTokens({ text: 'https://fastgpt.cn/docs' })).toEqual([]);
+      expect(withDictCalls).not.toHaveBeenCalled();
+
+      expect(await freshModule.jiebaSearchTokens({ text: '复旦大学' })).toEqual([
+        '复旦',
+        '大学',
+        '复旦大学'
+      ]);
+      expect(await freshModule.jiebaSplit({ text: '复旦大学' })).toBe('复旦大学');
+      expect(withDictCalls).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.doUnmock('@node-rs/jieba');
+      vi.resetModules();
+    }
   });
 });

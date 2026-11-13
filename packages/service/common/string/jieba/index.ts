@@ -1,22 +1,32 @@
 import { Jieba } from '@node-rs/jieba';
 
+let jiebaReady: Promise<Jieba> | undefined;
+
 /**
- * 词典异步加载一次，所有分词入口都等待同一个实例。
+ * 词典按需异步加载一次，所有分词入口共享同一个实例。
+ * 延迟到首次真正执行非空分词时才加载词典并构建原生前缀树，避免仅因模块被传递引用
+ * 就在每个测试隔离上下文或未启用全文分词的路径中重复分配原生内存及悬空异步任务。
  * 词典未生效时 jieba 只能靠 HMM 猜词，结果明显变差却不会报错；因此加载后用关闭 HMM 的切词做自检，
- * 失败直接拒绝，避免 SQL 全文写入和检索在劣化的分词上静默运行。
+ * 失败时重置缓存并拒绝，避免 SQL 全文写入和检索在劣化的分词上静默运行。
  */
-const jiebaReady: Promise<Jieba> = (async () => {
-  const dictData = await import('./dict.json');
-  // @ts-ignore
-  const dictBuffer = Buffer.from(dictData.dict?.replace(/\\n/g, '\n'), 'utf-8');
-  const instance = Jieba.withDict(dictBuffer);
-  if (instance.cut('镇静定义', false).join(' ') !== '镇静 定义') {
-    throw new Error('Jieba dictionary did not load; refusing to tokenize');
+const getJieba = (): Promise<Jieba> => {
+  if (!jiebaReady) {
+    jiebaReady = (async () => {
+      const dictData = await import('./dict.json');
+      // @ts-ignore
+      const dictBuffer = Buffer.from(dictData.dict?.replace(/\\n/g, '\n'), 'utf-8');
+      const instance = Jieba.withDict(dictBuffer);
+      if (instance.cut('镇静定义', false).join(' ') !== '镇静 定义') {
+        throw new Error('Jieba dictionary did not load; refusing to tokenize');
+      }
+      return instance;
+    })().catch((error) => {
+      jiebaReady = undefined;
+      throw error;
+    });
   }
-  return instance;
-})();
-// 加载失败时由各调用方的 await 抛出，这里只避免启动阶段出现未处理的 rejection。
-jiebaReady.catch(() => {});
+  return jiebaReady;
+};
 
 /**
  * 网址内部允许的普通字符：排除空白、包裹分隔符（尖括号、引号、反引号、括号、竖线、反斜杠、脱字符）、
@@ -1558,8 +1568,11 @@ const stripFullWidthPunctuation = (item: string) =>
 
 /** Mongo 旧全文分词：普通模式切词，保留原始大小写，结果以空格连接。 */
 export async function jiebaSplit({ text }: { text: string }) {
-  const jieba = await jiebaReady;
-  const tokens = (await jieba.cutAsync(stripMarkdownAndUrl(text), true)) as string[];
+  const cleaned = stripMarkdownAndUrl(text);
+  if (!cleaned) return '';
+
+  const jieba = await getJieba();
+  const tokens = (await jieba.cutAsync(cleaned, true)) as string[];
 
   return (
     tokens
@@ -1576,10 +1589,10 @@ export async function jiebaSplit({ text }: { text: string }) {
  * 写入、回填核对与检索必须共用本函数，否则两侧词项对不上会静默漏检。
  */
 export async function jiebaSearchTokens({ text }: { text: string }): Promise<string[]> {
-  const jieba = await jiebaReady;
   const cleaned = stripMarkdownAndUrl(text);
   if (!cleaned) return [];
 
+  const jieba = await getJieba();
   return jieba
     .cutForSearch(cleaned, true)
     .map((item) => stripFullWidthPunctuation(item).toLowerCase())
