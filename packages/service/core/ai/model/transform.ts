@@ -46,7 +46,7 @@ const configKeysMap: Record<ModelTypeEnum, string[]> = {
 
 /**
  * 统一数据库模型的读取契约，供运行目录与管理员 JSON 导出复用，保留配置及凭证字段。
- * 历史 STT 价格缺少类型时按时长读取，避免后台回填完成前阻断目录或 JSON 配置。
+ * 历史 STT 价格缺少类型时按时长读取，null 价格保持免费，避免回填前阻断目录或 JSON。
  * 仅读取默认值，不回写数据库；新 API/JSON 写入仍要求明确类型。
  */
 export const formatDbModelToDocumentData = (
@@ -54,6 +54,7 @@ export const formatDbModelToDocumentData = (
 ): AIModelDocumentDataType => {
   const pricing = (() => {
     const { pricing } = dbModel;
+    if (dbModel.type === ModelTypeEnum.stt && pricing === null) return undefined;
     if (
       dbModel.type === ModelTypeEnum.stt &&
       typeof pricing === 'object' &&

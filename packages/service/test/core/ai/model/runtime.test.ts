@@ -31,7 +31,6 @@ describe('formatDbModelToRuntimeModel', () => {
   });
 
   it.each([
-    null,
     [],
     '0.2',
     { type: null, unitPrice: 0.2 },
@@ -43,8 +42,11 @@ describe('formatDbModelToRuntimeModel', () => {
     expect(() => formatDbModelToRuntimeModel({ ...document, pricing })).toThrow();
   });
 
-  it('keeps omitted prices free and leaves other model price units unchanged', () => {
-    expect(formatDbModelToRuntimeModel(document).pricing).toBeUndefined();
+  it.each([undefined, null])('keeps unconfigured STT prices free: %j', (pricing) => {
+    expect(formatDbModelToRuntimeModel({ ...document, pricing }).pricing).toBeUndefined();
+  });
+
+  it('leaves other model price units unchanged', () => {
     expect(
       formatDbModelToRuntimeModel({
         ...document,

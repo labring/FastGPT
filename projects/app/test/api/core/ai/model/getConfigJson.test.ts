@@ -7,6 +7,7 @@ import getConfigJsonApi from '@/pages/api/core/ai/model/getConfigJson';
 
 describe('GET /api/core/ai/model/getConfigJson', () => {
   it.each([
+    { pricing: null, expected: undefined },
     { pricing: {}, expected: { type: 'duration' } },
     { pricing: { unitPrice: 0 }, expected: { type: 'duration', unitPrice: 0 } },
     { pricing: { unitPrice: 0.4 }, expected: { type: 'duration', unitPrice: 0.4 } },
@@ -30,8 +31,13 @@ describe('GET /api/core/ai/model/getConfigJson', () => {
       const before = await MongoAIModel.collection.findOne({ _id: insertedId });
       const response = await Call<string>(getConfigJsonApi, { auth: root });
       expect(response.code).toBe(200);
+      const { pricing: _pricing, ...fields } = raw;
       expect(JSON.parse(response.data)).toEqual([
-        { ...raw, pricing: expected, modelId: String(insertedId) }
+        {
+          ...fields,
+          ...(expected !== undefined && { pricing: expected }),
+          modelId: String(insertedId)
+        }
       ]);
       expect(await MongoAIModel.collection.findOne({ _id: insertedId })).toEqual(before);
     }

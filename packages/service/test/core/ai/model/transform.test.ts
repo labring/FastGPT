@@ -38,7 +38,6 @@ describe('formatDbModelToDocumentData', () => {
   });
 
   it.each([
-    null,
     [],
     '0.4',
     { type: null, unitPrice: 0.4 },
@@ -49,8 +48,11 @@ describe('formatDbModelToDocumentData', () => {
     expect(() => formatDbModelToDocumentData({ ...document, pricing })).toThrow();
   });
 
-  it('keeps missing prices free and leaves other model units unchanged', () => {
-    expect(formatDbModelToDocumentData(document).pricing).toBeUndefined();
+  it.each([undefined, null])('keeps unconfigured STT prices free: %j', (pricing) => {
+    expect(formatDbModelToDocumentData({ ...document, pricing }).pricing).toBeUndefined();
+  });
+
+  it('leaves other model units unchanged', () => {
     expect(
       formatDbModelToDocumentData({
         ...document,
