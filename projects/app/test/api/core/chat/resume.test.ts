@@ -1,3 +1,4 @@
+import { apiI18n } from '@/service/middleware/i18n';
 import { getChatGenerationStatuses } from '@fastgpt/service/core/chat/generationLease';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Call } from '@test/utils/request';
@@ -170,7 +171,7 @@ const invokeStreamingHandler = async (
 
   const req = {
     query,
-    headers: reqHeaders,
+    headers: reqHeaders ?? {},
     on: vi.fn((event: string, callback: () => void) => {
       if (event === 'close') {
         closeHandler = callback;
@@ -209,7 +210,7 @@ const invokeStreamingHandler = async (
     destroyed: false
   } as any;
 
-  const result = await handler(req, res);
+  const result = await apiI18n({ req, res }, () => handler(req, res));
 
   if (closeHandler && !res.writableEnded) {
     closeHandler();
