@@ -17,8 +17,7 @@ const ApiKeyTagNameMap: Record<string, string> = {
   [SystemOpenApiTagMap.datasetCollection]: '集合管理',
   [SystemOpenApiTagMap.datasetCollectionCreate]: '集合创建',
   [SystemOpenApiTagMap.datasetData]: '数据管理',
-  [SystemOpenApiTagMap.datasetDataIndex]: '索引管理',
-  [SystemOpenApiTagMap.datasetOther]: '其他',
+  [SystemOpenApiTagMap.datasetSearch]: '知识库搜索',
 
   [SystemOpenApiTagMap.model]: '模型管理'
 };
@@ -48,8 +47,7 @@ export const tagGroups = [
       ApiKeyTagNameMap[SystemOpenApiTagMap.datasetCollection],
       ApiKeyTagNameMap[SystemOpenApiTagMap.datasetCollectionCreate],
       ApiKeyTagNameMap[SystemOpenApiTagMap.datasetData],
-      ApiKeyTagNameMap[SystemOpenApiTagMap.datasetDataIndex],
-      ApiKeyTagNameMap[SystemOpenApiTagMap.datasetOther]
+      ApiKeyTagNameMap[SystemOpenApiTagMap.datasetSearch]
     ]
   }
 ];

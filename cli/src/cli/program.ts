@@ -6,7 +6,10 @@ import { executeCommandWithPipeline, type CliCommandSpec } from './pipeline';
 const GROUP_DESCRIPTIONS: Record<string, string> = {
   auth: 'Manage profiles, auth status, and active team sessions',
   config: 'Inspect and update CLI configuration values',
-  dataset: 'Manage datasets and search knowledge chunks',
+  dataset: 'Manage datasets, collections, chunks, and OpenAPI search',
+  'dataset collection': 'Manage dataset collections and text/link/file imports',
+  'dataset data': 'List, inspect, push, update, and delete dataset chunks',
+  model: 'List models available to the current member',
   chat: 'Run App conversations and manage their history and messages',
   'chat history': 'Manage App conversations and their status',
   'chat record': 'Read App messages and detailed responses'
@@ -106,6 +109,9 @@ export function buildCommanderProgram({
     .option('--insecure', 'Skip TLS certificate verification')
     .option('--ca-cert <path>', 'Path to custom CA PEM bundle')
     .option('--format <format>', 'Output format: text or json (defaults to json when not a TTY)')
+    .option('--fields <fields>', 'Select comma-separated output fields (e.g. _id,name)')
+    .option('--pick <path>', 'Extract a dot-path value from output (e.g. data.datasetId)')
+    .option('--raw', 'Output un-enveloped data or extracted --pick value directly')
     .option('--no-color', 'Disable ANSI color')
     .option('--quiet', 'Suppress banners and warnings')
     .showHelpAfterError(false)
@@ -136,7 +142,9 @@ export function buildCommanderProgram({
       if (!group) {
         group = current
           .command(seg)
-          .description(GROUP_DESCRIPTIONS[key] ?? `Manage ${seg} resources`);
+          .description(
+            GROUP_DESCRIPTIONS[key] ?? GROUP_DESCRIPTIONS[seg] ?? `Manage ${seg} resources`
+          );
         groups.set(key, group);
       }
       current = group;

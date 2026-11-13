@@ -291,7 +291,7 @@ export const DatasetPath: OpenAPIPath = {
     put: {
       summary: '更新知识库',
       description: '更新知识库信息、配置或移动知识库到其他目录',
-      tags: [DevApiTagsMap.datasetCommon],
+      tags: [DevApiTagsMap.datasetCommon, SystemOpenApiTagMap.dataset],
       requestBody: {
         content: {
           'application/json': {

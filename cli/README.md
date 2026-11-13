@@ -67,6 +67,8 @@ App 对话命令仅对接 OpenAPI。应用 API Key 可省略 `--appId`，使用�
 
 **优先级**：命令行选项 > 环境变量 > 当前 Profile。同时设置 `FASTGPT_TOKEN` 与 `FASTGPT_API_KEY` 会报冲突错误。
 
+**JSON 配置覆盖**：显式命令行参数覆盖 `--file` / `--stdin` 中的对应字段，未指定字段保留文件配置。搜索筛选按子字段合并；`--no-rerank` 和 `--no-queryExtension` 会覆盖该功能的整块配置，同次命令中与关闭状态矛盾的子参数仍会报错。
+
 - **常用全局选项**：`--profile <name>`、`--base-url <url>`、`--token <token>`、`--api-key <key>`、`--allow-insecure-http`、`--insecure`、`--ca-cert <path>`、`--format <text|json>`、`--no-color`、`--quiet`
 - **环境变量**：`FASTGPT_BASE_URL`、`FASTGPT_API_KEY`、`FASTGPT_TOKEN`、`FASTGPT_PROFILE`、`FASTGPT_CONFIG_DIR`、`FASTGPT_SECRET_STORE=file`、`FASTGPT_FORMAT`
 - **凭据存储**：元数据保存在 `~/.config/fastgpt/config.json`（`0600`，Windows 为 `%APPDATA%\fastgpt`）；密钥优先写入系统 Keychain（macOS `security` / Linux `secret-tool`），无桌面环境自动降级为 `0600` 权限的 `credentials.json`。

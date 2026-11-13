@@ -452,6 +452,9 @@ export type PostDatasetSyncParams = z.infer<typeof PostDatasetSyncBodySchema>;
 /* ============================================================================
  * API: 更新知识库
  * Route: PUT /api/core/dataset/update
+ * Method: PUT
+ * Description: 更新知识库信息或配置；显式传入 parentId 时执行移动，省略的字段保持不变，并校验相应资源权限。
+ * Tags: ['Dataset', 'Write']
  * ============================================================================ */
 export const UpdateDatasetBodySchema = z.object({
   id: ObjectIdSchema.meta({
