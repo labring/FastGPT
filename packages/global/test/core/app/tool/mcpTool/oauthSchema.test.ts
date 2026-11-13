@@ -178,6 +178,42 @@ describe('McpToolSetOAuthConfigSchema', () => {
     ).toBe(false);
   });
 
+  it('tolerates null optional oauth fields from persisted data', () => {
+    // 回归（Stage K10）：旧版 client reset 把 `clientSource` 写成 null，schema 只允许
+    // cimd|dcr|manual，导致 LegacyMcpToolSetRuntimeConfigSchema 解析失败、detail 500。
+    const parsed = parseOAuth({
+      schemaVersion: 1,
+      clientMode: 'manual',
+      clientSource: null,
+      issuer: null,
+      resource: null,
+      scope: null,
+      server: null,
+      client: null,
+      token: null,
+      authorizedAt: null,
+      authorizedBy: null,
+      lastError: null
+    });
+
+    expect(parsed.clientSource).toBeNull();
+    expect(parsed.issuer).toBeNull();
+    expect(parsed.resource).toBeNull();
+    expect(parsed.scope).toBeNull();
+    expect(parsed.client).toBeNull();
+    expect(parsed.token).toBeNull();
+    expect(parsed.authorizedAt).toBeNull();
+    expect(parsed.authorizedBy).toBeNull();
+    // 默认值字段保持原行为。
+    expect(parsed.schemaVersion).toBe(1);
+    expect(parsed.clientMode).toBe('manual');
+    expect(parsed.credentialSeq).toBe(0);
+
+    // null 兼容不等于放宽校验：未知来源仍被拒绝。
+    expect(McpToolSetOAuthConfigSchema.safeParse({ clientSource: 'bogus' }).success).toBe(false);
+    expect(McpToolSetOAuthConfigSchema.safeParse({ resource: 'not-a-url' }).success).toBe(false);
+  });
+
   it('accepts encrypted token and client credentials', () => {
     const parsed = parseOAuth({
       schemaVersion: 1,

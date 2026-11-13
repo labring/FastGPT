@@ -36,10 +36,14 @@ export const McpOAuthUrlSchema = z
 
 /**
  * 可选字段读侧兼容：历史/第三方数据可能把可选字段写成 `null`（典型来源是 AS metadata
- * 中的 `client_id_metadata_document_supported: null`），而旧契约只允许 `undefined` 或值本身。
+ * 中的 `client_id_metadata_document_supported: null`；Stage K10 另见持久化节点里的
+ * `oauth.clientSource: null`），而旧契约只允许 `undefined` 或值本身。
  *
  * 这里只放宽读侧（`.nullish()`），不引入 transform：该 schema 参与 OpenAPI 响应文档生成，
- * transform 会被 zod-openapi 拒绝。写路径（discovery）负责把 null 归一为 undefined。
+ * transform 会被 zod-openapi 拒绝。写路径负责把 null 归一为 undefined / `$unset`。
+ *
+ * 注意：带 `.default()` 的必填字段（schemaVersion/clientMode/credentialSeq、metadata.source）
+ * 不接受 null——它们从不由可选写入路径产生，保持 fail-closed。
  */
 export const McpOAuthServerMetadataSchema = z.object({
   issuer: McpOAuthUrlSchema,
@@ -59,22 +63,22 @@ export type McpOAuthServerMetadataType = z.infer<typeof McpOAuthServerMetadataSc
 export const McpOAuthClientSchema = z.object({
   clientId: z.string().min(1).max(2048),
   /** 加密保存；manual 或 DCR 的 client secret。 */
-  clientSecret: SecretValueTypeSchema.optional(),
+  clientSecret: SecretValueTypeSchema.nullish(),
   tokenEndpointAuthMethod: z.enum(['none', 'client_secret_post', 'client_secret_basic']),
-  registeredAt: z.number().optional(),
+  registeredAt: z.number().nullish(),
   /** RFC 7592 注册客户端管理地址。 */
-  registrationClientUri: McpOAuthUrlSchema.optional(),
+  registrationClientUri: McpOAuthUrlSchema.nullish(),
   /** RFC 7592 注册访问令牌，加密保存。 */
-  registrationAccessToken: SecretValueTypeSchema.optional()
+  registrationAccessToken: SecretValueTypeSchema.nullish()
 });
 export type McpOAuthClientType = z.infer<typeof McpOAuthClientSchema>;
 
 export const McpOAuthTokenSchema = z.object({
   /** { access_token: { secret }, refresh_token?: { secret } } */
   secret: StoreSecretValueTypeSchema,
-  tokenType: z.string().max(32).optional(),
+  tokenType: z.string().max(32).nullish(),
   /** AS 实际授予的 scope。 */
-  scope: z.string().max(1024).optional(),
+  scope: z.string().max(1024).nullish(),
   /** epoch ms；0 表示 AS 未给 expires_in。 */
   expiresAt: z.number(),
   obtainedAt: z.number()
@@ -85,7 +89,7 @@ export const McpOAuthLastErrorSchema = z.object({
   code: McpOAuthErrorCodeSchema,
   at: z.number(),
   retryable: z.boolean(),
-  retryAfterMs: z.number().min(0).max(86_400_000).optional()
+  retryAfterMs: z.number().min(0).max(86_400_000).nullish()
 });
 export type McpOAuthLastErrorType = z.infer<typeof McpOAuthLastErrorSchema>;
 
@@ -98,25 +102,25 @@ export type McpOAuthLeaseType = z.infer<typeof McpOAuthLeaseSchema>;
 export const McpToolSetOAuthConfigSchema = z.object({
   schemaVersion: z.literal(1).default(1),
   clientMode: McpOAuthClientModeSchema.default('auto'),
-  clientSource: McpOAuthClientSourceSchema.optional(),
-  issuer: McpOAuthUrlSchema.optional(),
-  resource: McpOAuthUrlSchema.optional(),
+  clientSource: McpOAuthClientSourceSchema.nullish(),
+  issuer: McpOAuthUrlSchema.nullish(),
+  resource: McpOAuthUrlSchema.nullish(),
   /** 请求值；默认未设置。 */
   scope: z
     .string()
     .max(1024)
     .refine(isValidMcpOAuthScope, { message: 'mcp_oauth_scope_invalid' })
-    .optional(),
+    .nullish(),
   /** 发现结果缓存（端点与能力），非密。 */
-  server: McpOAuthServerMetadataSchema.optional(),
-  client: McpOAuthClientSchema.optional(),
-  token: McpOAuthTokenSchema.optional(),
+  server: McpOAuthServerMetadataSchema.nullish(),
+  client: McpOAuthClientSchema.nullish(),
+  token: McpOAuthTokenSchema.nullish(),
   /** 唯一 fencing token；每次凭证变更 +1；缺省 0。 */
   credentialSeq: z.number().int().nonnegative().default(0),
   refreshLease: McpOAuthLeaseSchema.nullish(),
   revokeLease: McpOAuthLeaseSchema.nullish(),
   lastError: McpOAuthLastErrorSchema.nullish(),
-  authorizedAt: z.number().optional(),
-  authorizedBy: z.string().max(64).optional()
+  authorizedAt: z.number().nullish(),
+  authorizedBy: z.string().max(64).nullish()
 });
 export type McpToolSetOAuthConfigType = z.infer<typeof McpToolSetOAuthConfigSchema>;

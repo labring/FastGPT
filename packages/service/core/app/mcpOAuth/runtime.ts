@@ -293,7 +293,7 @@ const refreshWithLease = async ({
       clientSecret: typeof clientSecret === 'string' ? clientSecret : undefined,
       authMethod: client.tokenEndpointAuthMethod,
       refreshToken,
-      resource: oauth.resource,
+      resource: oauth.resource ?? undefined,
       previousToken: oauth.token
     });
 

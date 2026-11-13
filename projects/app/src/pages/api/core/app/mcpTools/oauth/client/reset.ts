@@ -90,8 +90,17 @@ async function handler(
     appId,
     nodeId: node.nodeId,
     expectedCredentialSeq: expectedSeq,
-    set: { clientSource: null },
-    unset: ['client', 'token', 'server', 'lastError', 'refreshLease', 'revokeLease'],
+    // clientSource 随 client 一起移除（$unset），不得写 null：schema 只允许
+    // `cimd|dcr|manual`，null 会让 detail 的 legacy 校验整体失败（Stage K10）。
+    unset: [
+      'client',
+      'clientSource',
+      'token',
+      'server',
+      'lastError',
+      'refreshLease',
+      'revokeLease'
+    ],
     incrementSeq: true
   });
 
@@ -107,7 +116,7 @@ async function handler(
 
   let deregistered = false;
   try {
-    deregistered = await deregisterMcpOAuthClient(client);
+    deregistered = await deregisterMcpOAuthClient(client ?? undefined);
   } catch {
     deregistered = false;
   }

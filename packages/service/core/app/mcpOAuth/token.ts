@@ -322,7 +322,7 @@ export const refreshMcpOAuthAccessToken = async ({
   authMethod: 'none' | 'client_secret_post' | 'client_secret_basic';
   refreshToken: string;
   resource?: string;
-  previousToken?: McpOAuthTokenType;
+  previousToken?: McpOAuthTokenType | null;
   timeoutMs?: number;
   now?: number;
 }): Promise<McpOAuthTokenType> => {
@@ -395,7 +395,9 @@ export const revokeMcpOAuthToken = async ({
   }
 };
 
-export const decryptMcpOAuthAccessToken = (token?: McpOAuthTokenType): string | undefined => {
+export const decryptMcpOAuthAccessToken = (
+  token?: McpOAuthTokenType | null
+): string | undefined => {
   const value = token?.secret?.access_token;
   if (!value) return undefined;
   try {
@@ -407,7 +409,9 @@ export const decryptMcpOAuthAccessToken = (token?: McpOAuthTokenType): string | 
   }
 };
 
-export const decryptMcpOAuthRefreshToken = (token?: McpOAuthTokenType): string | undefined => {
+export const decryptMcpOAuthRefreshToken = (
+  token?: McpOAuthTokenType | null
+): string | undefined => {
   const value = token?.secret?.refresh_token;
   if (!value) return undefined;
   try {
@@ -420,7 +424,7 @@ export const decryptMcpOAuthRefreshToken = (token?: McpOAuthTokenType): string |
 
 /** expiresAt=0 表示 AS 未给有效期，按“不可预判”处理：只在 401 时刷新。 */
 export const isMcpOAuthAccessTokenUsable = (
-  token: McpOAuthTokenType | undefined,
+  token: McpOAuthTokenType | null | undefined,
   {
     now = Date.now(),
     marginMs = MCP_OAUTH_REFRESH_MARGIN_MS

@@ -139,7 +139,7 @@ const MCPTools = () => {
         setClientMode={setClientMode}
         scope={scope}
         setScope={setScope}
-        oauthConfig={runtimeToolSet?.oauth}
+        oauthConfig={runtimeToolSet?.oauth ?? undefined}
         status={status}
         statusLoading={statusLoading}
         refreshStatus={refreshStatus}
