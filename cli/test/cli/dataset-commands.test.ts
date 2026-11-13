@@ -719,7 +719,7 @@ describe('Dataset CLI Commands integration (cli/src/cli/commands/dataset.ts)', (
     expect(pickRaw.stdout).toBe(OBJECT_ID_COL);
 
     // 9. OCR regression guards:
-    // - train wait --no-fail-on-error exits 0 even when hasError is true
+    // - train wait --no-fail-on-error exits 0 even when hasError is true (including when server reports hasTrainingTask: true for retained final errors)
     const waitNoFail = await execCli({
       argv: [
         'dataset',
@@ -734,10 +734,24 @@ describe('Dataset CLI Commands integration (cli/src/cli/commands/dataset.ts)', (
       fetchFn: async (input) => {
         const url = input instanceof Request ? input.url : String(input);
         if (url.includes('getDatasetTrainingQueue')) {
-          return jsonResp({ hasTrainingTask: false });
+          return jsonResp({ hasTrainingTask: true });
         }
         if (url.includes('hasDatasetTrainingError')) {
           return jsonResp({ hasError: true });
+        }
+        if (url.includes('collection/listV2')) {
+          return jsonResp({
+            total: 1,
+            list: [
+              {
+                _id: OBJECT_ID_COL,
+                type: 'file',
+                activeTrainingAmount: 0,
+                finalErrorAmount: 1,
+                hasError: true
+              }
+            ]
+          });
         }
         return jsonResp({});
       }
@@ -823,5 +837,30 @@ describe('Dataset CLI Commands integration (cli/src/cli/commands/dataset.ts)', (
     });
     expect(exportFail.exitCode).toBe(2);
     expect(JSON.parse(exportFail.stderr).error.code).toBe('CLI_ARGUMENT_INVALID');
+
+    // - dataset update --file with non-string field {"name":42} returns exit code 2 (Zod validation, not TypeError)
+    const badUpdateJson = join(configDir, 'bad-update.json');
+    await writeFile(badUpdateJson, JSON.stringify({ name: 42 }));
+    const badUpdateRes = await execCli({
+      argv: [
+        'dataset',
+        'update',
+        OBJECT_ID_DATASET,
+        '--file',
+        badUpdateJson,
+        '--dry-run',
+        '--format',
+        'json'
+      ],
+      configDir,
+      fetchFn: mockFetch
+    });
+    expect(badUpdateRes.exitCode).toBe(2);
+    const badUpdateErr = JSON.parse(badUpdateRes.stderr).error;
+    expect(badUpdateErr.code).toBe('CLI_ARGUMENT_INVALID');
+    expect(badUpdateErr.hint).not.toContain('\\"');
+    expect(badUpdateErr.hint).toContain(
+      'fastgpt commands --command "dataset update" --format json'
+    );
   });
 });

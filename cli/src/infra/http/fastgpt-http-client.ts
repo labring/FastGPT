@@ -48,13 +48,15 @@ export type FastGptHttpClient = {
     timeoutMs?: number;
   }) => Promise<RawHttpResponse>;
   /**
-   * 复用 CLI 配置的 TLS 传输层（支持 --insecure / --ca-cert）直传外部预签名 URL，
-   * 严格不附带任何 FastGPT token / Authorization 凭据头。
+   * 复用 CLI 配置的 TLS 传输层（支持 --insecure / --ca-cert）直接请求完整 URL（如预签名 S3、子路径/独立域名文件上传），
+   * 严格不附带任何 FastGPT token / Authorization / cookie 凭据头，并支持外部 AbortSignal 取消。
    */
-  putExternal?: (params: {
+  requestExternal?: (params: {
+    method: 'GET' | 'POST' | 'PUT' | 'DELETE';
     url: string;
     headers?: Record<string, string>;
-    body: BodyInit;
+    body?: BodyInit | null;
+    signal?: AbortSignal;
     timeoutMs?: number;
   }) => Promise<Response>;
   uploadMultipart: <T = unknown>(params: {
@@ -602,10 +604,12 @@ export function createFastGptHttpClient({
       };
     },
 
-    putExternal: async ({
+    requestExternal: async ({
+      method,
       url,
       headers = {},
       body,
+      signal,
       timeoutMs: reqTimeout = LONG_OPERATION_TIMEOUT_MS
     }) => {
       const activeFetch = await resolveTransportFetch();
@@ -616,19 +620,28 @@ export function createFastGptHttpClient({
         })
       );
       const controller = new AbortController();
+      const onExternalAbort = () => controller.abort(signal?.reason);
+      if (signal) {
+        if (signal.aborted) {
+          controller.abort(signal.reason);
+        } else {
+          signal.addEventListener('abort', onExternalAbort, { once: true });
+        }
+      }
       const timer = setTimeout(() => controller.abort(), reqTimeout);
       try {
         return await activeFetch(url, {
-          method: 'PUT',
+          method,
           headers: sanitizedHeaders,
-          body,
+          ...(body !== undefined && body !== null ? { body } : {}),
           signal: controller.signal
         });
       } catch (error) {
         const msg = redactText(error instanceof Error ? error.message : String(error));
-        throw new CliNetworkError(`Direct external PUT failed for ${redactText(url)}: ${msg}`);
+        throw new CliNetworkError(`Direct ${method} request failed for ${redactText(url)}: ${msg}`);
       } finally {
         clearTimeout(timer);
+        signal?.removeEventListener('abort', onExternalAbort);
       }
     },
 

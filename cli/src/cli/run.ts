@@ -185,8 +185,8 @@ export async function runCli({
       const cleanMessage = error.message.replace(/^error:\s*/i, '').trim();
       const hint =
         safeCommandName !== 'fastgpt' && specs.some((s) => s.path.join(' ') === safeCommandName)
-          ? `Run "fastgpt commands --command \\"${safeCommandName}\\" --format json" to inspect valid parameters.`
-          : 'Run "fastgpt commands --compact --format json" to list all available commands.';
+          ? `Run: fastgpt commands --command "${safeCommandName}" --format json`
+          : 'Run: fastgpt commands --compact --format json';
       const argError = new CliArgumentError(cleanMessage, undefined, hint);
       stderr(renderer.renderError({ command: safeCommandName, error: argError }));
       return argError.exitCode;

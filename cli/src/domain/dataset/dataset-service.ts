@@ -32,7 +32,7 @@ import {
   LONG_OPERATION_TIMEOUT_MS,
   type FastGptHttpClient
 } from '../../infra/http/fastgpt-http-client';
-import { buildPaginationMeta } from '../../shared/input';
+import { buildPaginationMeta, trimIfString } from '../../shared/input';
 import { createChangedResult, createDryRunResult, createSuccessResult } from '../../shared/result';
 import type { CliResult } from '../../shared/types';
 
@@ -201,7 +201,7 @@ export function createDatasetService(): DatasetService {
     create: async ({ client, input, dryRun }) => {
       const payload = {
         ...input,
-        name: input.name?.trim(),
+        name: trimIfString(input.name),
         intro: input.intro ?? '',
         type: input.type ?? 'dataset',
         parentId: input.parentId === undefined ? null : input.parentId
@@ -236,8 +236,8 @@ export function createDatasetService(): DatasetService {
     update: async ({ client, datasetId, input, dryRun }) => {
       const payload = {
         ...input,
-        id: datasetId?.trim(),
-        ...(input.name !== undefined ? { name: input.name.trim() } : {})
+        id: trimIfString(datasetId),
+        ...(input.name !== undefined ? { name: trimIfString(input.name) } : {})
       };
 
       const validatedBody = UpdateDatasetBodySchema.parse(payload);
@@ -296,8 +296,8 @@ export function createDatasetService(): DatasetService {
     search: async ({ client, input }) => {
       const payload = {
         ...input,
-        datasetId: input.datasetId?.trim(),
-        ...(input.text !== undefined ? { text: input.text.trim() } : {}),
+        datasetId: trimIfString(input.datasetId),
+        ...(input.text !== undefined ? { text: trimIfString(input.text) } : {}),
         limit: input.limit ?? 5000,
         similarity: input.similarity ?? 0,
         searchMode: input.searchMode ?? 'mixedRecall',

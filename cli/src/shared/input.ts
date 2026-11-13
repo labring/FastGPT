@@ -90,9 +90,23 @@ export async function resolveTextInput({
 }
 
 /**
- * 统一解析 JSON 载荷输入：支持 `--file <path>`（支持 `-` 表示 stdin）、`--stdin` 或内联 JSON 字符串。
+ * 仅在值为字符串时执行 trim；非字符串值原样保留，交由 Zod schema 在字段校验阶段报错，防止触发 TypeError。
  */
-export async function resolveJsonPayload<T = Record<string, unknown>>({
+export function trimIfString<T>(value: T): T {
+  return (typeof value === 'string' ? value.trim() : value) as T;
+}
+
+/**
+ * 运行时类型守卫：判断值是否为普通对象（非 null 且非数组）。
+ */
+export function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+/**
+ * 统一解析 JSON 载荷输入，返回未收窄的 `unknown` 类型，避免泛型断言绕过运行时类型校验。
+ */
+export async function resolveJsonPayload({
   inlineJson,
   filePath,
   useStdin,
@@ -106,7 +120,7 @@ export async function resolveJsonPayload<T = Record<string, unknown>>({
   readTextFile: (path: string) => Promise<string>;
   readStdin: () => Promise<string>;
   fieldLabel?: string;
-}): Promise<T | undefined> {
+}): Promise<unknown> {
   const raw = await resolveTextInput({
     directText: inlineJson,
     filePath,
@@ -123,11 +137,32 @@ export async function resolveJsonPayload<T = Record<string, unknown>>({
     throw new CliArgumentError(`${fieldLabel} cannot be empty.`);
   }
   try {
-    return JSON.parse(trimmed) as T;
+    return JSON.parse(trimmed) as unknown;
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
     throw new CliArgumentError(`Invalid JSON in ${fieldLabel}: ${msg}`);
   }
+}
+
+/**
+ * 解析 JSON 对象载荷输入，确保顶层必须为普通对象（非数组或原始值）。
+ */
+export async function resolveJsonObjectPayload(params: {
+  inlineJson?: string;
+  filePath?: string;
+  useStdin?: boolean;
+  readTextFile: (path: string) => Promise<string>;
+  readStdin: () => Promise<string>;
+  fieldLabel?: string;
+}): Promise<Record<string, unknown> | undefined> {
+  const parsed = await resolveJsonPayload(params);
+  if (parsed === undefined) {
+    return undefined;
+  }
+  if (!isPlainObject(parsed)) {
+    throw new CliArgumentError(`${params.fieldLabel ?? 'JSON payload'} must be a JSON object.`);
+  }
+  return parsed;
 }
 
 const DEFAULT_PAGE_NUM = PaginationPageNumSchema.parse(undefined) ?? 1;

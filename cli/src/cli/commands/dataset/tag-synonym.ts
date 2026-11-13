@@ -9,7 +9,12 @@ import {
 } from '@fastgpt/global/openapi/core/dataset/synonym/api';
 import z from 'zod';
 import { CliArgumentError } from '../../../shared/errors';
-import { parseIdListOption, resolveJsonPayload } from '../../../shared/input';
+import {
+  isPlainObject,
+  parseIdListOption,
+  resolveJsonObjectPayload,
+  resolveJsonPayload
+} from '../../../shared/input';
 import type { CliCommandSpec } from '../../pipeline';
 import {
   confirmDestructiveAction,
@@ -175,7 +180,7 @@ export function createDatasetTagSynonymCommandSpecs(): CliCommandSpec[] {
           throw new CliArgumentError('--dataset-id, --tag-id, and --tag are required.');
         }
 
-        const filePayload = await resolveJsonPayload<Record<string, unknown>>({
+        const filePayload = await resolveJsonObjectPayload({
           filePath: typeof options.file === 'string' ? options.file : undefined,
           readTextFile: container.fileIo.readTextFile,
           readStdin: container.readStdin,
@@ -332,7 +337,7 @@ export function createDatasetTagSynonymCommandSpecs(): CliCommandSpec[] {
           );
         }
 
-        const parsed = await resolveJsonPayload<unknown>({
+        const parsed = await resolveJsonPayload({
           filePath: typeof options.file === 'string' ? options.file : undefined,
           useStdin: options.stdin === true,
           readTextFile: container.fileIo.readTextFile,
@@ -340,9 +345,11 @@ export function createDatasetTagSynonymCommandSpecs(): CliCommandSpec[] {
           fieldLabel: 'tag bind payload'
         });
 
-        const tags = Array.isArray(parsed)
-          ? parsed
-          : ((parsed as Record<string, unknown> | undefined)?.tags as unknown[] | undefined);
+        const tags = (() => {
+          if (Array.isArray(parsed)) return parsed;
+          if (isPlainObject(parsed) && Array.isArray(parsed.tags)) return parsed.tags;
+          return undefined;
+        })();
         if (!Array.isArray(tags)) {
           throw new CliArgumentError('Tags array is required via --file or --stdin.');
         }
@@ -526,15 +533,17 @@ export function createDatasetTagSynonymCommandSpecs(): CliCommandSpec[] {
         }
 
         if (filePath.toLowerCase().endsWith('.json')) {
-          const parsed = await resolveJsonPayload<unknown>({
+          const parsed = await resolveJsonPayload({
             filePath,
             readTextFile: container.fileIo.readTextFile,
             readStdin: container.readStdin,
             fieldLabel: 'synonym JSON mappings'
           });
-          const mappings = Array.isArray(parsed)
-            ? parsed
-            : (parsed as Record<string, unknown> | undefined)?.mappings;
+          const mappings = (() => {
+            if (Array.isArray(parsed)) return parsed;
+            if (isPlainObject(parsed) && Array.isArray(parsed.mappings)) return parsed.mappings;
+            return undefined;
+          })();
           if (!Array.isArray(mappings)) {
             throw new CliArgumentError(
               'Synonym JSON file must contain a mappings array.',
@@ -636,15 +645,17 @@ export function createDatasetTagSynonymCommandSpecs(): CliCommandSpec[] {
         }
 
         if (filePath.toLowerCase().endsWith('.json')) {
-          const parsed = await resolveJsonPayload<unknown>({
+          const parsed = await resolveJsonPayload({
             filePath,
             readTextFile: container.fileIo.readTextFile,
             readStdin: container.readStdin,
             fieldLabel: 'synonym JSON mappings'
           });
-          const mappings = Array.isArray(parsed)
-            ? parsed
-            : (parsed as Record<string, unknown> | undefined)?.mappings;
+          const mappings = (() => {
+            if (Array.isArray(parsed)) return parsed;
+            if (isPlainObject(parsed) && Array.isArray(parsed.mappings)) return parsed.mappings;
+            return undefined;
+          })();
           if (!Array.isArray(mappings)) {
             throw new CliArgumentError(
               'Synonym JSON file must contain a mappings array.',

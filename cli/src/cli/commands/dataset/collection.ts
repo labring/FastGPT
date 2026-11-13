@@ -8,7 +8,7 @@ import { CliArgumentError } from '../../../shared/errors';
 import {
   parseIdListOption,
   parseParentIdOption,
-  resolveJsonPayload,
+  resolveJsonObjectPayload,
   resolveTextInput
 } from '../../../shared/input';
 import type { CliCommandSpec } from '../../pipeline';
@@ -363,7 +363,7 @@ export function createDatasetCollectionCommandSpecs(): CliCommandSpec[] {
           );
         }
 
-        const extraConfig = await resolveJsonPayload<Record<string, unknown>>({
+        const extraConfig = await resolveJsonObjectPayload({
           filePath: typeof options.configFile === 'string' ? options.configFile : undefined,
           readTextFile: container.fileIo.readTextFile,
           readStdin: container.readStdin,
@@ -586,7 +586,7 @@ export function createDatasetCollectionCommandSpecs(): CliCommandSpec[] {
         });
 
         const file = await container.fileIo.readBinaryFile(filePath);
-        const extraConfig = await resolveJsonPayload<Record<string, unknown>>({
+        const extraConfig = await resolveJsonObjectPayload({
           filePath: typeof options.configFile === 'string' ? options.configFile : undefined,
           readTextFile: container.fileIo.readTextFile,
           readStdin: container.readStdin,
@@ -777,7 +777,7 @@ export function createDatasetCollectionCommandSpecs(): CliCommandSpec[] {
       execute: async ({ positional, options, client, container }) => {
         const activeClient = requireActiveClient(client, 'dataset collection update');
         const id = positional[0] ?? (typeof options.id === 'string' ? options.id : undefined);
-        const filePayload = await resolveJsonPayload<Record<string, unknown>>({
+        const filePayload = await resolveJsonObjectPayload({
           filePath: typeof options.file === 'string' ? options.file : undefined,
           readTextFile: container.fileIo.readTextFile,
           readStdin: container.readStdin,
@@ -1096,7 +1096,7 @@ export function createDatasetCollectionCommandSpecs(): CliCommandSpec[] {
           usage: 'fastgpt dataset collection retrain <collectionId>'
         });
 
-        const filePayload = await resolveJsonPayload<Record<string, unknown>>({
+        const filePayload = await resolveJsonObjectPayload({
           filePath: typeof options.file === 'string' ? options.file : undefined,
           readTextFile: container.fileIo.readTextFile,
           readStdin: container.readStdin,

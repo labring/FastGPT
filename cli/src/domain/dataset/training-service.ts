@@ -1,3 +1,8 @@
+import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import type {
+  GetCollectionTrainingDetailResponseType,
+  ListCollectionV2ResponseType
+} from '@fastgpt/global/openapi/core/dataset/collection/api';
 import {
   DeleteTrainingDataBodySchema,
   GetDatasetTrainingErrorBodySchema,
@@ -21,7 +26,7 @@ import {
 } from '@fastgpt/global/openapi/core/dataset/training/api';
 import type { FastGptHttpClient } from '../../infra/http/fastgpt-http-client';
 import { CliApiError, CliArgumentError } from '../../shared/errors';
-import { buildPaginationMeta } from '../../shared/input';
+import { buildPaginationMeta, trimIfString } from '../../shared/input';
 import { createChangedResult, createDryRunResult, createSuccessResult } from '../../shared/result';
 import type { CliResult } from '../../shared/types';
 
@@ -74,6 +79,7 @@ export type DatasetTrainingService = {
   wait: (params: {
     client: FastGptHttpClient;
     datasetId: string;
+    collectionId?: string;
     intervalMs?: number;
     timeoutMs?: number;
     failOnError?: boolean;
@@ -83,6 +89,144 @@ export type DatasetTrainingService = {
 };
 
 const defaultSleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+const sumValues = (record: Record<string, number> | undefined): number =>
+  record
+    ? Object.values(record).reduce((sum, val) => sum + (Number.isFinite(val) ? val : 0), 0)
+    : 0;
+
+/**
+ * 通过集合树统计知识库当前的活跃训练数与最终失败数，区分「仍在运行」与「仅剩最终失败记录」。
+ * （因服务端 `getDatasetTrainingQueue` 将最终失败任务与失败重建均计入 `hasTrainingTask: true`）
+ */
+async function inspectDatasetTrainingState({
+  client,
+  datasetId,
+  collectionId
+}: {
+  client: FastGptHttpClient;
+  datasetId: string;
+  collectionId?: string;
+}): Promise<{
+  isActive: boolean;
+  hasError: boolean;
+  activeCount: number;
+  errorCount: number;
+}> {
+  if (collectionId) {
+    const detail = await client.request<GetCollectionTrainingDetailResponseType>({
+      method: 'GET',
+      path: '/core/dataset/collection/trainingDetail',
+      query: { collectionId }
+    });
+    const activeCount = sumValues(detail.queuedCounts) + sumValues(detail.trainingCounts);
+    const errorCount = sumValues(detail.errorCounts);
+    return {
+      isActive: activeCount > 0,
+      hasError: errorCount > 0,
+      activeCount,
+      errorCount
+    };
+  }
+
+  const queueRes = await client.request<GetDatasetTrainingQueueResponse>({
+    method: 'GET',
+    path: '/core/dataset/training/getDatasetTrainingQueue',
+    query: { datasetId }
+  });
+
+  if (!queueRes.hasTrainingTask) {
+    const errStatus = await client.request<HasDatasetTrainingErrorResponse>({
+      method: 'GET',
+      path: '/core/dataset/training/hasDatasetTrainingError',
+      query: { datasetId }
+    });
+    return {
+      isActive: false,
+      hasError: errStatus.hasError,
+      activeCount: 0,
+      errorCount: errStatus.hasError ? 1 : 0
+    };
+  }
+
+  // `hasTrainingTask` 为 true 时，并行检查最终错误标志与集合级活跃/失败统计以区分卡住的最终失败
+  const [errStatus, rootPage] = await Promise.all([
+    client.request<HasDatasetTrainingErrorResponse>({
+      method: 'GET',
+      path: '/core/dataset/training/hasDatasetTrainingError',
+      query: { datasetId }
+    }),
+    client
+      .request<ListCollectionV2ResponseType>({
+        method: 'POST',
+        path: '/core/dataset/collection/listV2',
+        body: { datasetId, parentId: null, pageNum: 1, pageSize: 100, simple: false }
+      })
+      .catch(() => undefined)
+  ]);
+
+  if (rootPage && Array.isArray(rootPage.list) && rootPage.list.length > 0) {
+    const allItems = [...rootPage.list];
+    const folderQueue: string[] = rootPage.list
+      .filter((item) => item.type === DatasetCollectionTypeEnum.folder)
+      .map((item) => item._id);
+
+    // 若根目录未覆盖全部分页，继续拉取剩余根目录页
+    for (let pageNum = 2; allItems.length < rootPage.total && pageNum <= 20; pageNum += 1) {
+      const nextPage = await client
+        .request<ListCollectionV2ResponseType>({
+          method: 'POST',
+          path: '/core/dataset/collection/listV2',
+          body: { datasetId, parentId: null, pageNum, pageSize: 100, simple: false }
+        })
+        .catch(() => undefined);
+      if (!nextPage || nextPage.list.length === 0) break;
+      allItems.push(...nextPage.list);
+      for (const item of nextPage.list) {
+        if (item.type === DatasetCollectionTypeEnum.folder) {
+          folderQueue.push(item._id);
+        }
+      }
+    }
+
+    // 遍历子文件夹中的集合（带安全上限防止深树过载）
+    const visitedFolders = new Set<string>();
+    while (folderQueue.length > 0 && visitedFolders.size < 50) {
+      const folderId = folderQueue.shift()!;
+      if (visitedFolders.has(folderId)) continue;
+      visitedFolders.add(folderId);
+      const subPage = await client
+        .request<ListCollectionV2ResponseType>({
+          method: 'POST',
+          path: '/core/dataset/collection/listV2',
+          body: { datasetId, parentId: folderId, pageNum: 1, pageSize: 100, simple: false }
+        })
+        .catch(() => undefined);
+      if (!subPage) continue;
+      allItems.push(...subPage.list);
+      for (const item of subPage.list) {
+        if (item.type === DatasetCollectionTypeEnum.folder && !visitedFolders.has(item._id)) {
+          folderQueue.push(item._id);
+        }
+      }
+    }
+
+    const activeCount = allItems.reduce((sum, item) => sum + (item.activeTrainingAmount ?? 0), 0);
+    const errorCount = allItems.reduce((sum, item) => sum + (item.finalErrorAmount ?? 0), 0);
+    return {
+      isActive: activeCount > 0,
+      hasError: errStatus.hasError || errorCount > 0,
+      activeCount,
+      errorCount
+    };
+  }
+
+  // 若列表为空（如测试 mock 未提供 collection/listV2），依据 hasError 区分最终失败与活跃任务
+  if (errStatus.hasError) {
+    return { isActive: false, hasError: true, activeCount: 0, errorCount: 1 };
+  }
+  return { isActive: true, hasError: false, activeCount: 1, errorCount: 0 };
+}
 
 /**
  * 知识库训练队列监控、重试与等待编排服务（PRD-02.3）。
@@ -276,6 +420,7 @@ export function createDatasetTrainingService(): DatasetTrainingService {
     wait: async ({
       client,
       datasetId,
+      collectionId,
       intervalMs = 2000,
       timeoutMs = 300_000,
       failOnError = true,
@@ -283,8 +428,9 @@ export function createDatasetTrainingService(): DatasetTrainingService {
       onProgress
     }) => {
       const validatedQuery = GetDatasetTrainingQueueQuerySchema.parse({
-        datasetId: datasetId?.trim()
+        datasetId: trimIfString(datasetId)
       });
+      const trimmedCollectionId = trimIfString(collectionId);
 
       if (!Number.isFinite(intervalMs) || intervalMs <= 0) {
         throw new CliArgumentError(
@@ -301,35 +447,31 @@ export function createDatasetTrainingService(): DatasetTrainingService {
 
       while (true) {
         polls += 1;
-        const queueRes = await client.request<GetDatasetTrainingQueueResponse>({
-          method: 'GET',
-          path: '/core/dataset/training/getDatasetTrainingQueue',
-          query: validatedQuery
+        const state = await inspectDatasetTrainingState({
+          client,
+          datasetId: validatedQuery.datasetId,
+          collectionId: trimmedCollectionId
         });
 
-        if (queueRes.hasTrainingTask !== lastState) {
-          lastState = queueRes.hasTrainingTask;
+        if (state.isActive !== lastState) {
+          lastState = state.isActive;
           onProgress?.(
-            queueRes.hasTrainingTask
-              ? `Dataset "${validatedQuery.datasetId}" training in progress (poll #${polls})...`
-              : `Dataset "${validatedQuery.datasetId}" training queue is now empty.`
+            state.isActive
+              ? `Dataset "${validatedQuery.datasetId}" training in progress (poll #${polls}, active=${state.activeCount})...`
+              : `Dataset "${validatedQuery.datasetId}" active training queue is now empty.`
           );
         }
 
-        if (!queueRes.hasTrainingTask) {
-          const errStatus = await client.request<HasDatasetTrainingErrorResponse>({
-            method: 'GET',
-            path: '/core/dataset/training/hasDatasetTrainingError',
-            query: validatedQuery
-          });
-
-          if (errStatus.hasError && failOnError) {
+        if (!state.isActive) {
+          if (state.hasError && failOnError) {
             throw new CliApiError({
-              message: `Training queue completed, but dataset "${validatedQuery.datasetId}" has training errors.`,
+              message: `Training completed with errors for dataset "${validatedQuery.datasetId}" (errorCount=${state.errorCount}).`,
               httpStatus: 500,
               details: {
                 datasetId: validatedQuery.datasetId,
+                ...(trimmedCollectionId ? { collectionId: trimmedCollectionId } : {}),
                 hasError: true,
+                errorCount: state.errorCount,
                 polls
               }
             });
@@ -338,12 +480,14 @@ export function createDatasetTrainingService(): DatasetTrainingService {
           return createSuccessResult({
             data: {
               datasetId: validatedQuery.datasetId,
+              ...(trimmedCollectionId ? { collectionId: trimmedCollectionId } : {}),
               completed: true,
-              hasError: errStatus.hasError,
+              hasError: state.hasError,
+              errorCount: state.errorCount,
               polls,
               elapsedMs: Date.now() - startAt
             },
-            message: errStatus.hasError
+            message: state.hasError
               ? `Training completed with errors for dataset "${validatedQuery.datasetId}".`
               : `Training completed cleanly for dataset "${validatedQuery.datasetId}".`
           });

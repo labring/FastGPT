@@ -1,7 +1,7 @@
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
 import z from 'zod';
 import { CliArgumentError } from '../../../shared/errors';
-import { resolveJsonPayload } from '../../../shared/input';
+import { isPlainObject, resolveJsonObjectPayload, resolveJsonPayload } from '../../../shared/input';
 import type { CliCommandSpec } from '../../pipeline';
 import {
   confirmDestructiveAction,
@@ -220,7 +220,7 @@ export function createDatasetDataCommandSpecs(): CliCommandSpec[] {
           usage: 'fastgpt dataset data insert <collectionId> --q "question" --a "answer"'
         });
 
-        const filePayload = await resolveJsonPayload<Record<string, unknown>>({
+        const filePayload = await resolveJsonObjectPayload({
           filePath: typeof options.file === 'string' ? options.file : undefined,
           useStdin: options.stdin === true,
           readTextFile: container.fileIo.readTextFile,
@@ -308,7 +308,7 @@ export function createDatasetDataCommandSpecs(): CliCommandSpec[] {
           usage: 'fastgpt dataset data push <collectionId> --file chunks.json'
         });
 
-        const parsed = await resolveJsonPayload<unknown>({
+        const parsed = await resolveJsonPayload({
           filePath: typeof options.file === 'string' ? options.file : undefined,
           useStdin: options.stdin === true,
           readTextFile: container.fileIo.readTextFile,
@@ -319,9 +319,15 @@ export function createDatasetDataCommandSpecs(): CliCommandSpec[] {
           throw new CliArgumentError('Payload is required via --file <path> or --stdin.');
         }
 
-        const body = Array.isArray(parsed)
-          ? { collectionId, data: parsed }
-          : { ...(parsed as Record<string, unknown>), collectionId };
+        const body = (() => {
+          if (Array.isArray(parsed)) {
+            return { collectionId, data: parsed };
+          }
+          if (isPlainObject(parsed)) {
+            return { ...parsed, collectionId };
+          }
+          throw new CliArgumentError('Data push payload must be a JSON array or object.');
+        })();
 
         return container.datasetDataService.push({
           client: activeClient,
@@ -379,7 +385,7 @@ export function createDatasetDataCommandSpecs(): CliCommandSpec[] {
           usage: 'fastgpt dataset data update <dataId> --q "..."'
         });
 
-        const filePayload = await resolveJsonPayload<Record<string, unknown>>({
+        const filePayload = await resolveJsonObjectPayload({
           filePath: typeof options.file === 'string' ? options.file : undefined,
           readTextFile: container.fileIo.readTextFile,
           readStdin: container.readStdin,

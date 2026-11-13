@@ -344,51 +344,57 @@ describe('Dataset Subdomain Services (Collection, Data, Training, Tag & Synonym)
     expect(delRes.changed).toBe(true);
   });
 
-  it('handles multipart presigned upload with bounded concurrency and per-part retries, and validates wait bounds', async () => {
+  it('handles multipart presigned upload with bounded concurrency, subpath URL preservation, failure cancellation/abort, and wait active-vs-error distinction', async () => {
+    // 1. Subpath deployment URL & bounded concurrency + per-part retry
     let part2Attempts = 0;
+    const requestedUrls: string[] = [];
     let completedParts: Array<{ partNumber: number; etag: string }> = [];
 
     const client: FastGptHttpClient = {
-      baseUrl: 'https://cloud.fastgpt.cn/api',
-      request: vi.fn(async ({ path, body }): Promise<any> => {
+      baseUrl: 'https://app.example/fastgpt/api',
+      request: vi.fn(async ({ path }): Promise<any> => {
         if (path === '/core/dataset/file/presignDatasetFilePostUrl') {
           return {
             uploadMode: 'multipart',
-            url: 'https://cloud.fastgpt.cn/api/system/file/u/tok-1/part',
-            completeUrl: 'https://cloud.fastgpt.cn/api/system/file/u/tok-1/complete',
-            abortUrl: 'https://cloud.fastgpt.cn/api/system/file/u/tok-1/abort',
+            url: 'https://app.example/fastgpt/api/system/file/u/tok-1',
+            completeUrl: 'https://app.example/fastgpt/api/system/file/u/tok-1/complete',
+            abortUrl: 'https://app.example/fastgpt/api/system/file/u/tok-1/abort',
             key: 'dataset/team/large.bin',
             headers: {},
-            previewUrl: 'https://cloud.fastgpt.cn/preview',
+            previewUrl: 'https://app.example/fastgpt/preview',
             partSize: 4,
             concurrency: 2,
             maxRetry: 2
           };
-        }
-        if (path.includes('/complete')) {
-          completedParts = (body as any).parts;
-          return { key: 'dataset/team/large.bin' };
         }
         if (path === '/core/dataset/collection/create/fileId') {
           return { collectionId: VALID_COLLECTION_ID, results: { insertLen: 1 } };
         }
         return {};
       }),
-      requestRaw: vi.fn(async ({ path }) => {
-        const match = path.match(/partNumber=(\d+)/);
+      requestRaw: vi.fn(),
+      requestExternal: vi.fn(async ({ method, url, headers, body }) => {
+        requestedUrls.push(`${method} ${url}`);
+        // Must never attach FastGPT credentials to external/file URLs
+        expect(headers?.token).toBeUndefined();
+        expect(headers?.authorization).toBeUndefined();
+        if (url.includes('/complete')) {
+          completedParts = JSON.parse(String(body)).parts;
+          return new Response(JSON.stringify({ data: { key: 'dataset/team/large.bin' } }), {
+            status: 200
+          });
+        }
+        const match = url.match(/partNumber=(\d+)/);
         const partNumber = Number(match?.[1]);
         if (partNumber === 2) {
           part2Attempts += 1;
           if (part2Attempts === 1) {
-            throw new CliApiError({ message: 'transient network glitch', httpStatus: 502 });
+            return new Response('bad gateway', { status: 502 });
           }
         }
-        return {
-          status: 200,
-          headers: new Headers(),
-          text: async () => JSON.stringify({ data: { etag: `"etag-${partNumber}"` } }),
-          arrayBuffer: async () => new ArrayBuffer(0)
-        };
+        return new Response(JSON.stringify({ data: { etag: `"etag-${partNumber}"` } }), {
+          status: 200
+        });
       }),
       uploadMultipart: vi.fn(),
       streamSse: vi.fn()
@@ -407,11 +413,126 @@ describe('Dataset Subdomain Services (Collection, Data, Training, Tag & Synonym)
     });
     expect(res.changed).toBe(true);
     expect(part2Attempts).toBe(2);
+    // Verify subpath /fastgpt/api is preserved without duplication
+    expect(requestedUrls).toContain(
+      'PUT https://app.example/fastgpt/api/system/file/u/tok-1?partNumber=1'
+    );
+    expect(requestedUrls).toContain(
+      'POST https://app.example/fastgpt/api/system/file/u/tok-1/complete'
+    );
     expect(completedParts).toEqual([
       { partNumber: 1, etag: '"etag-1"' },
       { partNumber: 2, etag: '"etag-2"' },
       { partNumber: 3, etag: '"etag-3"' }
     ]);
+
+    // 2. Permanent part failure stops scheduling remaining parts and calls abortUrl
+    const abortTestUrls: string[] = [];
+    let abortCalled = false;
+    const failClient: FastGptHttpClient = {
+      ...client,
+      request: vi.fn(async ({ path }): Promise<any> => {
+        if (path === '/core/dataset/file/presignDatasetFilePostUrl') {
+          return {
+            uploadMode: 'multipart',
+            url: 'https://files.example/u/tok-fail',
+            completeUrl: 'https://files.example/u/tok-fail/complete',
+            abortUrl: 'https://files.example/u/tok-fail/abort',
+            key: 'dataset/team/fail.bin',
+            headers: {},
+            previewUrl: 'https://files.example/preview',
+            partSize: 2,
+            concurrency: 2,
+            maxRetry: 0
+          };
+        }
+        return {};
+      }),
+      requestExternal: vi.fn(async ({ method, url }) => {
+        abortTestUrls.push(`${method} ${url}`);
+        if (url.endsWith('/abort')) {
+          abortCalled = true;
+          return new Response(null, { status: 200 });
+        }
+        const match = url.match(/partNumber=(\d+)/);
+        const partNumber = Number(match?.[1]);
+        if (partNumber === 1) {
+          return new Response('bad part', { status: 400 });
+        }
+        return new Response(JSON.stringify({ data: { etag: `"etag-${partNumber}"` } }), {
+          status: 200
+        });
+      })
+    };
+
+    await expect(
+      collectionService.createByPresignedFile({
+        client: failClient,
+        fetchFn: globalThis.fetch,
+        file: {
+          filename: 'fail.bin',
+          size: 10, // 5 parts (size 2 each)
+          mimeType: 'application/octet-stream',
+          data: new Uint8Array(10)
+        },
+        input: { datasetId: VALID_DATASET_ID }
+      })
+    ).rejects.toBeInstanceOf(CliApiError);
+    expect(abortCalled).toBe(true);
+    expect(abortTestUrls.some((u) => u.includes('partNumber=4'))).toBe(false);
+    expect(abortTestUrls.some((u) => u.includes('partNumber=5'))).toBe(false);
+
+    // 3. train wait: when queue=true (final errors kept on server) and activeTrainingAmount=0, exits immediately
+    const errorOnlyClient: FastGptHttpClient = {
+      baseUrl: 'https://cloud.fastgpt.cn/api',
+      request: vi.fn(async ({ path }): Promise<any> => {
+        if (path === '/core/dataset/training/getDatasetTrainingQueue') {
+          return { hasTrainingTask: true }; // Real server keeps returning true when final errors exist
+        }
+        if (path === '/core/dataset/training/hasDatasetTrainingError') {
+          return { hasError: true };
+        }
+        if (path === '/core/dataset/collection/listV2') {
+          return {
+            total: 1,
+            list: [
+              {
+                _id: VALID_COLLECTION_ID,
+                type: 'file',
+                activeTrainingAmount: 0,
+                finalErrorAmount: 2,
+                hasError: true
+              }
+            ]
+          };
+        }
+        return {};
+      }),
+      requestRaw: vi.fn(),
+      uploadMultipart: vi.fn(),
+      streamSse: vi.fn()
+    };
+
+    await expect(
+      trainingService.wait({
+        client: errorOnlyClient,
+        datasetId: VALID_DATASET_ID,
+        intervalMs: 100,
+        timeoutMs: 5000,
+        failOnError: true
+      })
+    ).rejects.toBeInstanceOf(CliApiError);
+
+    const noFailRes = await trainingService.wait({
+      client: errorOnlyClient,
+      datasetId: VALID_DATASET_ID,
+      intervalMs: 100,
+      timeoutMs: 5000,
+      failOnError: false
+    });
+    expect((noFailRes.data as any).completed).toBe(true);
+    expect((noFailRes.data as any).hasError).toBe(true);
+    expect((noFailRes.data as any).errorCount).toBe(2);
 
     await expect(
       trainingService.wait({

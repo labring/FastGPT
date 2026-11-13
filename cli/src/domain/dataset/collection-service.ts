@@ -45,7 +45,7 @@ import {
   type FastGptHttpClient
 } from '../../infra/http/fastgpt-http-client';
 import { CliApiError, CliNetworkError } from '../../shared/errors';
-import { buildPaginationMeta } from '../../shared/input';
+import { buildPaginationMeta, trimIfString } from '../../shared/input';
 import { redactText } from '../../shared/redact';
 import { createChangedResult, createDryRunResult, createSuccessResult } from '../../shared/result';
 import type { CliFetchFn, CliResult } from '../../shared/types';
@@ -234,8 +234,8 @@ export function createDatasetCollectionService(): DatasetCollectionService {
     createText: async ({ client, input, dryRun }) => {
       const validatedBody = CreateTextCollectionBodySchema.parse({
         ...input,
-        datasetId: input.datasetId?.trim(),
-        name: input.name?.trim()
+        datasetId: trimIfString(input.datasetId),
+        name: trimIfString(input.name)
       });
 
       if (dryRun) {
@@ -302,7 +302,7 @@ export function createDatasetCollectionService(): DatasetCollectionService {
     createLocalFile: async ({ client, file, input, dryRun }) => {
       const validatedBody = CreateCollectionByLocalFileBodySchema.parse({
         ...input,
-        datasetId: input.datasetId?.trim()
+        datasetId: trimIfString(input.datasetId)
       });
 
       if (dryRun) {
@@ -385,45 +385,75 @@ export function createDatasetCollectionService(): DatasetCollectionService {
         body: presignBody
       });
 
-      if (presigned.uploadMode === 'single') {
-        // 2. 直传预签名 URL：优先复用 client.putExternal 继承 TLS 参数（--insecure/--ca-cert），且严格剥离 FastGPT 凭据头
-        const putHeaders = {
-          ...presigned.headers,
-          'content-type': presigned.headers['content-type'] ?? file.mimeType
-        };
-        const putBody = Buffer.from(file.data);
-        let putResp: Response;
-        if (client.putExternal) {
-          putResp = await client.putExternal({
-            url: presigned.url,
-            headers: putHeaders,
-            body: putBody,
-            timeoutMs: LONG_OPERATION_TIMEOUT_MS
-          });
-        } else {
+      const baseWithSlash = client.baseUrl.endsWith('/') ? client.baseUrl : `${client.baseUrl}/`;
+      const sendPresignRequest = async ({
+        method,
+        targetUrl,
+        headers = {},
+        body,
+        signal
+      }: {
+        method: 'POST' | 'PUT';
+        targetUrl: string;
+        headers?: Record<string, string>;
+        body?: BodyInit | null;
+        signal?: AbortSignal;
+      }): Promise<Response> => {
+        const fullUrl = new URL(targetUrl, baseWithSlash).toString();
+        const resp = await (async (): Promise<Response> => {
+          if (client.requestExternal) {
+            return client.requestExternal({
+              method,
+              url: fullUrl,
+              headers,
+              body,
+              signal,
+              timeoutMs: LONG_OPERATION_TIMEOUT_MS
+            });
+          }
           try {
-            putResp = await fetchFn(presigned.url, {
-              method: 'PUT',
-              headers: putHeaders,
-              body: putBody
+            return await fetchFn(fullUrl, {
+              method,
+              headers,
+              ...(body !== undefined && body !== null ? { body } : {}),
+              ...(signal ? { signal } : {})
             });
           } catch (error) {
             const msg = redactText(error instanceof Error ? error.message : String(error));
-            throw new CliNetworkError(`Direct S3 upload failed for "${file.filename}": ${msg}`);
+            throw new CliNetworkError(
+              `Direct ${method} upload failed for "${file.filename}": ${msg}`
+            );
           }
-        }
-        if (!putResp.ok) {
+        })();
+
+        if (!resp.ok) {
+          const errText = await resp.text().catch(() => '');
           throw new CliApiError({
-            message: `Direct S3 upload failed with HTTP ${putResp.status}`,
-            httpStatus: putResp.status
+            message: `Direct ${method} request failed with HTTP ${resp.status}${errText ? `: ${redactText(errText.slice(0, 200))}` : ''}`,
+            httpStatus: resp.status
           });
         }
+        return resp;
+      };
+
+      if (presigned.uploadMode === 'single') {
+        // 2. 直传预签名 URL：使用完整 URL + 共享 TLS 传输层，严格剥离 FastGPT 凭据头
+        await sendPresignRequest({
+          method: 'PUT',
+          targetUrl: presigned.url,
+          headers: {
+            ...presigned.headers,
+            'content-type': presigned.headers['content-type'] ?? file.mimeType
+          },
+          body: Buffer.from(file.data)
+        });
       } else {
-        // Multipart 分片上传：按服务端推荐并发数与最大重试次数受限并发上传
+        // Multipart 分片上传：使用完整返回 URL（保留部署子路径与独立文件域）、受限并发、失败立即中止其他分片并最佳努力 abort 会话
         const partSize = presigned.partSize;
         const totalParts = Math.max(1, Math.ceil(file.data.byteLength / partSize));
         const concurrency = Math.max(1, Math.min(presigned.concurrency || 3, totalParts));
         const maxRetry = Math.max(0, presigned.maxRetry ?? 3);
+        const abortController = new AbortController();
 
         const uploadSinglePart = async (
           partNumber: number
@@ -432,18 +462,21 @@ export function createDatasetCollectionService(): DatasetCollectionService {
           const end = Math.min(start + partSize, file.data.byteLength);
           const chunk = file.data.slice(start, end);
 
-          const partUrl = new URL(presigned.url, client.baseUrl);
+          const partUrl = new URL(presigned.url, baseWithSlash);
           partUrl.searchParams.set('partNumber', String(partNumber));
-          const partPath = partUrl.pathname.replace(/^\/api/, '') + partUrl.search;
 
           let lastError: unknown;
           for (let attempt = 0; attempt <= maxRetry; attempt += 1) {
+            if (abortController.signal.aborted) {
+              throw lastError ?? new CliNetworkError(`Upload aborted before part ${partNumber}.`);
+            }
             try {
-              const partRes = await client.requestRaw({
+              const partRes = await sendPresignRequest({
                 method: 'PUT',
-                path: partPath,
+                targetUrl: partUrl.toString(),
+                headers: presigned.headers,
                 body: Buffer.from(chunk),
-                timeoutMs: LONG_OPERATION_TIMEOUT_MS
+                signal: abortController.signal
               });
               const partJson = JSON.parse(await partRes.text()) as {
                 data?: { etag?: string };
@@ -459,6 +492,9 @@ export function createDatasetCollectionService(): DatasetCollectionService {
               return { partNumber, etag };
             } catch (error) {
               lastError = error;
+              if (abortController.signal.aborted) {
+                break;
+              }
             }
           }
           throw lastError;
@@ -466,23 +502,42 @@ export function createDatasetCollectionService(): DatasetCollectionService {
 
         const results: Array<{ partNumber: number; etag: string }> = new Array(totalParts);
         let nextPart = 1;
+        let firstFailure: unknown;
         const worker = async () => {
-          while (nextPart <= totalParts) {
+          while (!firstFailure && nextPart <= totalParts) {
             const current = nextPart;
             nextPart += 1;
-            results[current - 1] = await uploadSinglePart(current);
+            try {
+              results[current - 1] = await uploadSinglePart(current);
+            } catch (error) {
+              if (!firstFailure) {
+                firstFailure = error;
+                abortController.abort(error);
+              }
+              break;
+            }
           }
         };
         await Promise.all(Array.from({ length: concurrency }, () => worker()));
 
-        const completePath = new URL(presigned.completeUrl, client.baseUrl).pathname.replace(
-          /^\/api/,
-          ''
-        );
-        await client.request({
+        if (firstFailure) {
+          // 最佳努力清理远端 Multipart 会话，保留原始错误抛出
+          await sendPresignRequest({
+            method: 'POST',
+            targetUrl: presigned.abortUrl,
+            headers: presigned.headers
+          }).catch(() => {});
+          throw firstFailure;
+        }
+
+        await sendPresignRequest({
           method: 'POST',
-          path: completePath,
-          body: { parts: results }
+          targetUrl: presigned.completeUrl,
+          headers: {
+            ...presigned.headers,
+            'content-type': 'application/json'
+          },
+          body: JSON.stringify({ parts: results })
         });
       }
 
@@ -508,8 +563,8 @@ export function createDatasetCollectionService(): DatasetCollectionService {
     createByFileId: async ({ client, input, dryRun }) => {
       const validatedBody = CreateCollectionByFileIdBodySchema.parse({
         ...input,
-        datasetId: input.datasetId?.trim(),
-        fileId: input.fileId?.trim()
+        datasetId: trimIfString(input.datasetId),
+        fileId: trimIfString(input.fileId)
       });
 
       if (dryRun) {

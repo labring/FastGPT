@@ -1,6 +1,10 @@
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { CliArgumentError } from '../../../shared/errors';
-import { parseIdListOption, parseParentIdOption, resolveJsonPayload } from '../../../shared/input';
+import {
+  parseIdListOption,
+  parseParentIdOption,
+  resolveJsonObjectPayload
+} from '../../../shared/input';
 import type { CliCommandSpec } from '../../pipeline';
 import {
   confirmDestructiveAction,
@@ -229,7 +233,7 @@ export function createDatasetRootCommandSpecs(): CliCommandSpec[] {
       execute: async ({ options, client, container }) => {
         const activeClient = requireActiveClient(client, 'dataset create');
 
-        const filePayload = await resolveJsonPayload<Record<string, unknown>>({
+        const filePayload = await resolveJsonObjectPayload({
           filePath: typeof options.file === 'string' ? options.file : undefined,
           useStdin: options.stdin === true,
           readTextFile: container.fileIo.readTextFile,
@@ -386,7 +390,7 @@ export function createDatasetRootCommandSpecs(): CliCommandSpec[] {
           usage: 'fastgpt dataset update <datasetId> --name "New Name"'
         });
 
-        const filePayload = await resolveJsonPayload<Record<string, unknown>>({
+        const filePayload = await resolveJsonObjectPayload({
           filePath: typeof options.file === 'string' ? options.file : undefined,
           useStdin: options.stdin === true,
           readTextFile: container.fileIo.readTextFile,

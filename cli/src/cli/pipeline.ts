@@ -97,7 +97,7 @@ function formatZodValidationError(commandName: string, error: ZodError): CliArgu
   return new CliArgumentError(
     `Invalid options for "${commandName}": ${summaryIssues}`,
     { issues: error.issues },
-    `Run "fastgpt commands --command \\"${commandName}\\" --format json" to inspect valid parameters.`
+    `Run: fastgpt commands --command "${commandName}" --format json`
   );
 }
 
@@ -132,7 +132,7 @@ function createBoundHttpClient({
     baseUrl: baseClient.baseUrl,
     request: (params) => baseClient.request({ auth: authPayload, ...params }),
     requestRaw: (params) => baseClient.requestRaw({ auth: authPayload, ...params }),
-    putExternal: baseClient.putExternal,
+    requestExternal: baseClient.requestExternal,
     uploadMultipart: (params) => baseClient.uploadMultipart({ auth: authPayload, ...params }),
     streamSse: (params) => baseClient.streamSse({ auth: authPayload, ...params })
   };

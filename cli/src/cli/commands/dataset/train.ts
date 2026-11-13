@@ -446,6 +446,12 @@ export function createDatasetTrainCommandSpecs(): CliCommandSpec[] {
           description: 'Dataset ObjectId'
         },
         {
+          name: 'collectionId',
+          flags: '--collection-id <id>',
+          takesValue: true,
+          description: 'Optional collection ObjectId to wait on specifically'
+        },
+        {
           name: 'interval',
           flags: '--interval <ms>',
           takesValue: true,
@@ -482,6 +488,7 @@ export function createDatasetTrainCommandSpecs(): CliCommandSpec[] {
         return container.datasetTrainingService.wait({
           client: activeClient,
           datasetId,
+          collectionId: typeof options.collectionId === 'string' ? options.collectionId : undefined,
           intervalMs: parseOptionalNumber(options.interval) ?? 2000,
           timeoutMs: parseOptionalNumber(options.timeout) ?? 300_000,
           failOnError: options.failOnError !== false,
