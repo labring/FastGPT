@@ -1,28 +1,28 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
-import { SandboxNotFoundError, SandboxStateError } from '@fastgpt-sdk/sandbox-adapter';
+import {
+  SandboxNotFoundError,
+  SandboxStateError
+} from '@fastgpt/service/core/ai/sandbox/infrastructure/opensandbox';
 import { MongoSandboxInstance } from '@fastgpt/service/core/ai/sandbox/infrastructure/instance/schema';
 import * as repository from '@fastgpt/service/core/ai/sandbox/infrastructure/instance/repository';
-import {
-  ensureSandboxRuntime,
-  ensureSandboxRuntimeConfiguration,
-  connectRunningSandbox
-} from '@fastgpt/service/core/ai/sandbox/application/runtime/service';
+import { ensureSandboxRuntime } from '@fastgpt/service/core/ai/sandbox/application/runtime/service';
 import { buildVolumeConfig } from '@fastgpt/service/core/ai/sandbox/infrastructure/volume/service';
+
+const DEPLOYMENT_ID = '0123456789abcdef0123456789abcdef';
+vi.mock('@fastgpt/service/common/system/config/instanceId', () => ({
+  getInstanceId: async () => DEPLOYMENT_ID
+}));
 
 const mocks = vi.hoisted(() => ({
   source: vi.fn(),
   active: vi.fn(),
   volume: vi.fn(),
   deleteVolume: vi.fn(),
+  unmountVolume: vi.fn(),
   configuration: vi.fn(),
-  adapter: vi.fn(),
-  connect: vi.fn(),
+  client: vi.fn(),
   lifecycle: vi.fn(),
-  sourceLease: vi.fn(),
-  download: vi.fn(),
-  upload: vi.fn(),
-  deleteArchive: vi.fn(),
   execute: vi.fn(),
   write: vi.fn(),
   ensure: vi.fn(),
@@ -34,26 +34,22 @@ vi.mock('@fastgpt/service/core/ai/sandbox/application/sourceGuard', () => ({
   assertSandboxSourceActive: mocks.active
 }));
 vi.mock('@fastgpt/service/core/ai/sandbox/application/lease', () => ({
-  withSandboxLifecycleLease: mocks.lifecycle,
-  withSandboxSourceMutationLease: mocks.sourceLease
+  withSandboxLifecycleLease: mocks.lifecycle
 }));
-vi.mock('@fastgpt/service/core/ai/sandbox/infrastructure/provider/config', () => ({
-  getConfiguredSandboxProvider: () => 'opensandbox',
-  getSandboxAdapterConfig: mocks.configuration
+vi.mock('@fastgpt/service/core/ai/sandbox/infrastructure/opensandbox/config', () => ({
+  getOpenSandboxClientConfig: () => ({ baseUrl: 'http://opensandbox.local', apiKey: 'key' }),
+  getOpenSandboxRuntimeConfig: mocks.configuration
 }));
-vi.mock('@fastgpt/service/core/ai/sandbox/infrastructure/provider/runtimeProfile', () => ({
+vi.mock('@fastgpt/service/core/ai/sandbox/infrastructure/opensandbox/runtimeProfile', () => ({
   getSandboxRuntimeProfile: () => ({
     workDirectory: '/workspace',
-    defaultImage: { repository: 'target', tag: 'v2' }
+    homeDirectory: '/home/sandbox',
+    defaultImage: 'target:v2'
   })
 }));
-vi.mock('@fastgpt/service/core/ai/sandbox/infrastructure/provider/adapter', () => ({
-  buildRuntimeSandboxAdapter: mocks.adapter,
-  buildSandboxResourceAdapter: mocks.adapter
-}));
-vi.mock('@fastgpt/service/core/ai/sandbox/infrastructure/provider/lifecycle', () => ({
-  connectToSandbox: mocks.connect,
-  disconnectSandbox: (adapter: { close: () => Promise<void> }) => adapter.close()
+vi.mock('@fastgpt/service/core/ai/sandbox/infrastructure/opensandbox/opensandbox', () => ({
+  createRuntimeOpenSandboxClient: mocks.client,
+  createOpenSandboxResourceClient: mocks.client
 }));
 vi.mock('@fastgpt/service/core/ai/sandbox/infrastructure/volume/config', () => ({
   getVolumeManagerEnvConfig: () => ({ volumeNamePrefix: 'test' })
@@ -64,21 +60,14 @@ vi.mock(
     ...(await importOriginal<
       typeof import('@fastgpt/service/core/ai/sandbox/infrastructure/volume/service')
     >()),
-    getSessionVolumeConfig: mocks.volume,
-    deleteSessionVolume: mocks.deleteVolume
+    ensureSessionVolume: mocks.volume,
+    deleteSessionVolume: mocks.deleteVolume,
+    unmountSessionVolume: mocks.unmountVolume
   })
 );
 vi.mock('@fastgpt/service/core/ai/sandbox/config', () => ({
   getAgentSandboxMax: () => 100,
-  getAgentSandboxMaxPerTeam: () => 1,
-  getAgentSandboxArchiveMaxBytes: () => 1024 * 1024
-}));
-vi.mock('@fastgpt/service/common/s3/sources/sandbox', () => ({
-  getS3SandboxSource: () => ({
-    downloadWorkspaceArchive: mocks.download,
-    uploadWorkspaceArchive: mocks.upload,
-    deleteWorkspaceArchiveNow: mocks.deleteArchive
-  })
+  getAgentSandboxMaxPerTeam: () => 1
 }));
 vi.mock('@fastgpt/service/common/logger', () => ({
   getLogger: () => mocks.log,
@@ -94,27 +83,24 @@ const query = {
 const teamId = 'runtime-orchestration-team';
 const storage = buildVolumeConfig('test-existing-generation').storage;
 const lease = { signal: new AbortController().signal, assertValid: vi.fn() };
-const remotes = new Map<string, boolean>();
+let remoteRunning = false;
 const events: string[] = [];
 let leaseDepth = 0;
 const read = () => repository.findSandboxInstanceBySandboxId({ sandboxId: query.sandboxId });
-const create = async (
-  status: 'running' | 'stopped' | 'archived' | 'provisioning' | 'restoring',
-  provider: 'opensandbox' | 'sealosdevbox' = 'opensandbox'
-) => {
+const create = async (status: 'running' | 'stopped' | 'provisioning', image = 'target:v2') => {
   await MongoSandboxInstance.create({
     ...query,
     teamId,
-    provider,
     status,
+    ...(status === 'running' ? { instanceId: 'existing-instance-1' } : {}),
     storage,
-    image: { repository: 'target', tag: 'v2' },
+    image,
     lastActiveAt: new Date(),
-    ...(status === 'provisioning' || status === 'restoring'
+    ...(status === 'provisioning'
       ? {
           operation: {
             id: 'old-operation',
-            type: status === 'restoring' ? 'restore' : 'provision',
+            type: 'provision',
             phase: 'claimed',
             startedAt: new Date(0),
             heartbeatAt: new Date(0),
@@ -133,12 +119,12 @@ beforeEach(async () => {
   vi.clearAllMocks();
   await MongoSandboxInstance.deleteMany({ teamId });
   lease.assertValid.mockReset();
-  remotes.clear();
+  remoteRunning = false;
   events.length = 0;
   leaseDepth = 0;
-  mocks.configuration.mockImplementation(({ provider }) => ({
-    providerConfig: { provider },
-    createConfig: { image: { repository: 'target', tag: 'v2' } }
+  mocks.configuration.mockImplementation(() => ({
+    clientConfig: { baseUrl: 'http://opensandbox.local', apiKey: 'key' },
+    createConfig: { image: 'target:v2' }
   }));
   mocks.source.mockResolvedValue(teamId);
   mocks.active.mockResolvedValue(undefined);
@@ -150,82 +136,83 @@ beforeEach(async () => {
       leaseDepth--;
     }
   });
-  mocks.sourceLease.mockImplementation(async ({ fn }) => fn(lease));
   mocks.volume.mockImplementation(async (claimName) => {
     events.push(`volume:${claimName}`);
-    return buildVolumeConfig(claimName);
+    return claimName;
   });
   mocks.deleteVolume.mockImplementation(async (claimName) => {
     events.push(`delete-volume:${claimName}`);
   });
-  mocks.ensure.mockImplementation(async (provider, options) => {
-    if (!remotes.get(provider) && options?.allowCreate === false)
-      throw new SandboxNotFoundError('missing');
-    if (!remotes.get(provider)) {
+  mocks.unmountVolume.mockResolvedValue(undefined);
+  mocks.ensure.mockImplementation(async () => {
+    if (!remoteRunning) {
       expect(leaseDepth).toBe(1);
-      events.push(`create:${provider}`);
-      remotes.set(provider, true);
+      events.push('create:opensandbox');
+      remoteRunning = true;
     }
   });
-  mocks.adapter.mockImplementation((providerOrResource) => {
-    const provider =
-      typeof providerOrResource === 'string' ? providerOrResource : providerOrResource.provider;
-    return {
-      provider,
-      connectRunning: async () => {
-        if (!remotes.get(provider)) throw new SandboxNotFoundError('missing');
-      },
-      ensureRunning: (options: unknown) => mocks.ensure(provider, options),
-      close: mocks.close,
-      execute: mocks.execute,
-      stop: async () => {
-        events.push(`stop:${provider}`);
-        remotes.delete(provider);
-      },
-      delete: async () => {
-        events.push(`delete:${provider}`);
-        remotes.delete(provider);
-      },
-      getInfo: async () => (remotes.get(provider) ? { status: { state: 'Running' } } : null),
-      writeFiles: mocks.write,
-      deleteFiles: vi.fn(async () => []),
-      readFiles: vi.fn(async () => [{ content: Buffer.from('archive') }])
-    };
-  });
-  mocks.connect.mockImplementation(async ({ provider }) => {
-    const adapter = mocks.adapter(provider);
-    await adapter.ensureRunning();
-    return adapter;
-  });
-  mocks.execute.mockImplementation(async (command: string) => ({
+  mocks.client.mockImplementation(() => ({
+    id: 'remote-instance-1',
+    connectRunning: async () => {
+      if (!remoteRunning) throw new SandboxNotFoundError('missing');
+    },
+    ensureRunning: () => mocks.ensure(),
+    close: mocks.close,
+    execute: mocks.execute,
+    delete: async () => {
+      events.push('delete:opensandbox');
+      remoteRunning = false;
+    },
+    getInfo: async () =>
+      remoteRunning ? { id: 'remote-instance-1', status: { state: 'Running' } } : null,
+    writeFiles: mocks.write,
+    deleteFiles: vi.fn(async () => undefined),
+    readFiles: vi.fn(async () => [])
+  }));
+  mocks.execute.mockImplementation(async () => ({
     exitCode: 0,
     stderr: '',
-    stdout: command.includes('wc -l') ? '1' : '0'
+    stdout: '0'
   }));
-  mocks.write.mockResolvedValue([{}]);
+  mocks.write.mockResolvedValue(undefined);
   mocks.close.mockResolvedValue(undefined);
-  mocks.download.mockResolvedValue(
-    Buffer.from('504b0506000000000000000000000000000000000000', 'hex')
-  );
 });
 
 describe('ensureSandboxRuntime', () => {
-  it('creates one owned record before provider side effects', async () => {
-    mocks.ensure.mockImplementationOnce(async (provider) => {
+  it('creates one owned record inside per-sandbox Lifecycle Lease without cross-user Source Lease', async () => {
+    mocks.ensure.mockImplementationOnce(async () => {
       const current = (await read())!;
       expect(current.status).toBe('provisioning');
       expect(current.teamId).toBe(teamId);
       expect(current.storage?.volumes?.[0].claimName).toBeTruthy();
-      remotes.set(provider, true);
+      remoteRunning = true;
     });
     const result = await ensureSandboxRuntime({ query });
     expect(result.resource.status).toBe('running');
     expect(result.resource.operation).toBeUndefined();
-    expect(mocks.sourceLease).toHaveBeenCalledTimes(1);
+    expect(mocks.lifecycle).toHaveBeenCalledTimes(1);
   });
+
+  it('uses the persisted deployment identity instead of caller-supplied ownership metadata', async () => {
+    await ensureSandboxRuntime({
+      query,
+      options: { createConfig: { metadata: { deploymentId: 'f'.repeat(32), teamId } } }
+    });
+
+    expect(mocks.client).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sandboxId: query.sandboxId,
+        deploymentId: DEPLOYMENT_ID,
+        createConfig: expect.objectContaining({
+          metadata: expect.objectContaining({ teamId })
+        })
+      })
+    );
+  });
+
   it('uses one instance read on the running fast path without acquiring a lease or rechecking quota', async () => {
     await create('running');
-    remotes.set('opensandbox', true);
+    remoteRunning = true;
     const find = vi.spyOn(repository, 'findSandboxInstanceBySource');
     const count = vi.spyOn(repository, 'countActiveSandboxInstances');
     const result = await ensureSandboxRuntime({ query });
@@ -234,52 +221,105 @@ describe('ensureSandboxRuntime', () => {
     expect(count).not.toHaveBeenCalled();
     expect(mocks.lifecycle).not.toHaveBeenCalled();
   });
+
   it('reuses a connection with source and generation CAS checks, without repeated instance reads', async () => {
     await create('running');
-    remotes.set('opensandbox', true);
+    remoteRunning = true;
     const connection = await ensureSandboxRuntime({ query });
     const find = vi.spyOn(repository, 'findSandboxInstanceBySource');
     const result = await ensureSandboxRuntime({ query, connection });
-    expect(result.adapter).toBe(connection.adapter);
+    expect(result.opensandbox).toBe(connection.opensandbox);
     expect(find).not.toHaveBeenCalled();
     expect(mocks.active).toHaveBeenCalledWith(query);
   });
-  it('never starts an inactive remote on the connect-only path', async () => {
+
+  it('repairs a missing running container directly inside the Lifecycle Lease', async () => {
     await create('running');
-    mocks.adapter.mockReturnValueOnce({
-      connectRunning: vi.fn(async () => {
-        throw new SandboxStateError('stopped', 'Stopped', 'Running');
-      }),
-      close: mocks.close
-    });
-    await expect(connectRunningSandbox({ query })).rejects.toThrow('is not running');
-    expect(mocks.ensure).not.toHaveBeenCalled();
-    expect(mocks.lifecycle).not.toHaveBeenCalled();
-  });
-  it('activates a remotely stopped running record only under the lifecycle lease', async () => {
-    await create('running');
-    mocks.adapter.mockReturnValueOnce({
-      connectRunning: vi.fn(async () => {
-        throw new SandboxStateError('stopped', 'Stopped', 'Running');
-      }),
-      close: mocks.close
-    });
     const result = await ensureSandboxRuntime({ query });
     expect(result.resource.status).toBe('running');
     expect(mocks.lifecycle).toHaveBeenCalledTimes(1);
     expect(events).toContain('create:opensandbox');
   });
 
-  it('rejects invalid target configuration before archiving the old provider', async () => {
-    await create('running', 'sealosdevbox');
+  it('reuses a running container activated by a preceding queued caller without recreating', async () => {
+    await create('stopped');
+    mocks.lifecycle.mockImplementationOnce(async ({ fn }) => {
+      await MongoSandboxInstance.updateOne(
+        { sandboxId: query.sandboxId },
+        { $set: { status: 'running', instanceId: 'queued-container' } }
+      );
+      remoteRunning = true;
+      return fn(lease);
+    });
+
+    const result = await ensureSandboxRuntime({ query });
+    expect(result.resource.status).toBe('running');
+    expect(events).toEqual([]);
+  });
+
+  it('stops outdated running container and recreates with new image on the same volume', async () => {
+    await create('running', 'target:v1');
+    remoteRunning = true;
+    const count = vi.spyOn(repository, 'countActiveSandboxInstances');
+    const onUpgrade = vi.fn();
+    const result = await ensureSandboxRuntime({ query, options: { onUpgrade } });
+    expect(onUpgrade).toHaveBeenCalledOnce();
+    expect(count).not.toHaveBeenCalled();
+    expect(events).toEqual([
+      'delete:opensandbox',
+      'volume:test-existing-generation',
+      'create:opensandbox'
+    ]);
+    expect(result.resource.status).toBe('running');
+    expect(result.resource.image).toBe('target:v2');
+  });
+
+  it('deletes an unhealthy running container before remounting the volume and recreating', async () => {
+    await create('running');
+    mocks.client.mockImplementationOnce(() => ({
+      connectRunning: async () => {
+        throw new SandboxStateError('workspace unhealthy', {
+          currentState: 'Error',
+          requiredState: 'Running'
+        });
+      },
+      close: mocks.close
+    }));
+    mocks.client.mockImplementationOnce(() => ({
+      id: 'repaired-remote-id',
+      connectRunning: async () => {
+        throw new SandboxStateError('workspace unhealthy', {
+          currentState: 'Error',
+          requiredState: 'Running'
+        });
+      },
+      delete: async () => {
+        events.push('delete:opensandbox');
+      },
+      ensureRunning: () => mocks.ensure(),
+      getInfo: async () => ({ id: 'repaired-remote-id', status: { state: 'Running' } }),
+      close: mocks.close
+    }));
+
+    const result = await ensureSandboxRuntime({ query });
+    expect(events).toEqual([
+      'delete:opensandbox',
+      'volume:test-existing-generation',
+      'create:opensandbox'
+    ]);
+    expect(result.resource.status).toBe('running');
+    expect(result.resource.instanceId).toBe('repaired-remote-id');
+  });
+
+  it('rejects invalid target configuration before modifying the existing instance', async () => {
+    await create('running');
     mocks.configuration.mockImplementationOnce(() => {
       throw new Error('target credentials missing');
     });
     await expect(ensureSandboxRuntime({ query })).rejects.toThrow('target credentials missing');
-    expect(mocks.upload).not.toHaveBeenCalled();
-    expect((await read())?.provider).toBe('sealosdevbox');
     expect((await read())?.status).toBe('running');
   });
+
   it('checks admission again after rollback releases an active slot', async () => {
     await create('provisioning');
     await MongoSandboxInstance.create({
@@ -287,7 +327,7 @@ describe('ensureSandboxRuntime', () => {
       sandboxId: 'competing-runtime',
       sourceId: 'competing-app',
       teamId,
-      provider: 'opensandbox',
+      instanceId: 'competing-instance-1',
       status: 'running',
       lastActiveAt: new Date()
     });
@@ -296,62 +336,42 @@ describe('ensureSandboxRuntime', () => {
     expect(mocks.ensure).not.toHaveBeenCalled();
   });
 
-  it('recovers an old-provider failed activation, migrates and restores within one lease', async () => {
-    await create('restoring', 'sealosdevbox');
-    remotes.set('sealosdevbox', true);
-    const result = await ensureSandboxRuntime({ query });
-    expect(result.resource.provider).toBe('opensandbox');
-    expect(result.resource.status).toBe('running');
-    expect(events.indexOf('delete:sealosdevbox')).toBeLessThan(
-      events.indexOf('create:opensandbox')
-    );
-    expect(mocks.lifecycle).toHaveBeenCalledTimes(1);
-  });
-  it('uses the provider re-read inside the lease instead of the initial snapshot', async () => {
-    await create('archived');
-    mocks.lifecycle.mockImplementationOnce(async ({ fn }) => {
-      await MongoSandboxInstance.updateOne(
-        { sandboxId: query.sandboxId },
-        { $set: { provider: 'sealosdevbox' } }
-      );
-      leaseDepth++;
-      try {
-        return await fn(lease);
-      } finally {
-        leaseDepth--;
-      }
-    });
-    const result = await ensureSandboxRuntime({ query });
-    expect(result.resource.provider).toBe('opensandbox');
-    expect(events).toContain('create:opensandbox');
-    expect(events).not.toContain('create:sealosdevbox');
-  });
-  it('does not execute restore writes when the lease is lost during a successful download', async () => {
-    await create('archived');
-    mocks.download.mockImplementationOnce(async () => {
-      lease.assertValid.mockImplementation(() => {
-        throw new Error('lease lost');
-      });
-      return Buffer.alloc(0);
-    });
-    await expect(ensureSandboxRuntime({ query })).rejects.toThrow('lease lost');
-    expect(mocks.write).not.toHaveBeenCalled();
-    expect((await read())?.operation?.error).toBeUndefined();
-  });
-  it('rejects activation after source deletion before any provider action', async () => {
+  it('rejects activation after source deletion before any remote action', async () => {
     mocks.active.mockRejectedValueOnce(new Error('source deleted'));
     await expect(ensureSandboxRuntime({ query })).rejects.toThrow('source deleted');
     expect(mocks.ensure).not.toHaveBeenCalled();
     expect(await read()).toBeNull();
   });
-});
 
-describe('ensureSandboxRuntimeConfiguration', () => {
-  it('configuration preparation recovers old-provider provisioning instead of failing before migration', async () => {
-    await create('provisioning', 'sealosdevbox');
-    await ensureSandboxRuntimeConfiguration({ query });
-    expect((await read())?.provider).toBe('opensandbox');
-    expect((await read())?.status).toBe('archived');
-    expect(mocks.download).not.toHaveBeenCalled();
+  it('rolls back unprovisioned record via Store-Load barrier when source is deleted concurrently during record creation', async () => {
+    mocks.active
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(new Error('source deleted concurrently'));
+
+    await expect(ensureSandboxRuntime({ query })).rejects.toThrow('source deleted concurrently');
+    expect(mocks.volume).not.toHaveBeenCalled();
+    expect(mocks.ensure).not.toHaveBeenCalled();
+    expect(await read()).toBeNull();
+  });
+
+  it('rejects activation instead of committing running when OpenSandbox returns no instanceId', async () => {
+    mocks.client.mockImplementationOnce(() => ({
+      id: undefined,
+      ensureRunning: () => mocks.ensure(),
+      getInfo: async () => ({ id: '', status: { state: 'Running' } }),
+      close: mocks.close
+    }));
+
+    await expect(
+      ensureSandboxRuntime({
+        query,
+        options: { resourceLimits: { cpuCount: 2, memoryMiB: 2048 } }
+      })
+    ).rejects.toThrow('without returning instanceId');
+
+    const failed = (await read())!;
+    expect(failed.status).toBe('provisioning');
+    expect(failed.resourceLimits).toEqual({ cpuCount: 2, memoryMiB: 2048 });
+    expect(failed.operation?.error).toContain('without returning instanceId');
   });
 });

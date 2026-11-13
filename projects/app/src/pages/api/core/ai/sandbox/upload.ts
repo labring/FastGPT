@@ -1,7 +1,10 @@
+import type { NextApiResponse } from 'next';
 import { NextAPI } from '@/service/middleware/entry';
-import { type ApiRequestProps } from '@fastgpt/next/type';
-import { authSandboxRuntimeSession } from '@/service/core/sandbox/access';
+import type { ApiRequestProps } from '@fastgpt/next/type';
+import { withAuthorizedSandboxClient } from '@/service/core/sandbox/client';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
+import { UserError } from '@fastgpt/global/common/error/utils';
+import { jsonRes } from '@fastgpt/service/common/response';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   SandboxUploadQuerySchema,
@@ -10,16 +13,27 @@ import {
   type SandboxUploadResponse
 } from '@fastgpt/global/openapi/core/ai/sandbox/api';
 import { getAgentSandboxMaxFileBytes } from '@fastgpt/service/core/ai/sandbox/config';
-import { buildSandboxClientQueryFromChatSource } from '@fastgpt/service/core/ai/sandbox/interface/runtime';
-import { getSandboxClient } from '@fastgpt/service/core/ai/sandbox/application/runtime/client';
-import { prepareSandboxFileParentDirectories } from '@fastgpt/service/core/ai/sandbox/application/file';
-import { Readable } from 'node:stream';
-import { createSizeLimitedStream } from '@fastgpt/service/common/file/stream';
+import {
+  SandboxFileConflictError,
+  writeSandboxSessionFile
+} from '@fastgpt/service/core/ai/sandbox/application/file';
 
+/**
+ * 流式上传或保存沙盒会话文件（关闭 Next.js 默认 `bodyParser`）。
+ *
+ * 在鉴权前先拦截超限的 `Content-Length`，写入过程中由 `writeSandboxSessionFile` 校验实际流式字节数与可选 `oldEtag` 乐观锁；
+ * 当发生乐观并发冲突（`SandboxFileConflictError`）时按 `409` 用户侧冲突返回，避免记为 500 系统异常。
+ */
 async function handler(
-  req: ApiRequestProps<unknown, SandboxUploadQuery>
-): Promise<SandboxUploadResponse> {
-  const { customUid, authProxy, sourceType, sourceId, chatId, path, outLinkAuthData } =
+  req: ApiRequestProps<unknown, SandboxUploadQuery>,
+  res: NextApiResponse
+): Promise<SandboxUploadResponse | void> {
+  if (req.method !== 'POST') {
+    res.setHeader('Allow', 'POST');
+    return jsonRes(res, { code: 405, message: 'Method Not Allowed' });
+  }
+
+  const { customUid, authProxy, sourceType, sourceId, chatId, path, oldEtag, outLinkAuthData } =
     parseApiInput({
       req,
       querySchema: SandboxUploadQuerySchema
@@ -28,59 +42,45 @@ async function handler(
   const maxFileBytes = getAgentSandboxMaxFileBytes();
   const contentLengthHeader = req.headers['content-length'];
   const contentLength = contentLengthHeader ? Number(contentLengthHeader) : undefined;
-  const createFileTooLargeError = (size: number) =>
-    new Error(`File is too large (${size} bytes > ${maxFileBytes} bytes)`);
-
   if (contentLength !== undefined && contentLength > maxFileBytes) {
-    throw createFileTooLargeError(contentLength);
+    throw new Error(`File is too large (${contentLength} bytes > ${maxFileBytes} bytes)`);
   }
 
-  const {
-    uid,
-    sourceType: resolvedSourceType,
-    sourceId: resolvedSourceId
-  } = await authSandboxRuntimeSession({
-    customUid,
-    authProxy,
-    req,
-    sourceType,
-    sourceId,
-    chatId,
-    outLinkAuthData,
-    per: WritePermissionVal
-  });
-
-  const sandbox = await getSandboxClient(
-    buildSandboxClientQueryFromChatSource({
-      sourceType: resolvedSourceType,
-      sourceId: resolvedSourceId,
-      userId: uid,
-      chatId
-    })
-  );
-
-  const providerPath = sandbox.resolveRuntimePath(path, { allowAbsolutePath: true });
-  await prepareSandboxFileParentDirectories(sandbox.provider, [providerPath]);
-
-  const boundedStream = createSizeLimitedStream({
-    stream: req,
-    maxBytes: maxFileBytes,
-    createExceededError: createFileTooLargeError
-  });
-  const [writeResult] = await sandbox.provider.writeFiles([
+  return withAuthorizedSandboxClient(
     {
-      path: providerPath,
-      data: Readable.toWeb(boundedStream) as ReadableStream<Uint8Array>
+      customUid,
+      authProxy,
+      req,
+      sourceType,
+      sourceId,
+      chatId,
+      outLinkAuthData,
+      per: WritePermissionVal
+    },
+    async ({ sandbox }) => {
+      const controller = new AbortController();
+      const onAborted = () => controller.abort(new Error('Sandbox file upload aborted'));
+      req.once('aborted', onAborted);
+      if (req.aborted) onAborted();
+      try {
+        const result = await writeSandboxSessionFile(sandbox, {
+          path,
+          stream: req,
+          oldEtag,
+          maxFileBytes,
+          signal: controller.signal
+        });
+        return SandboxUploadResponseSchema.parse({ path, ...result });
+      } catch (error) {
+        if (error instanceof SandboxFileConflictError) {
+          return jsonRes(res, { code: 409, error: new UserError(error.message) });
+        }
+        throw error;
+      } finally {
+        req.off('aborted', onAborted);
+      }
     }
-  ]);
-  if (!writeResult || writeResult.error) {
-    throw writeResult?.error ?? new Error('Sandbox did not return a file write result');
-  }
-
-  return SandboxUploadResponseSchema.parse({
-    path,
-    bytesWritten: writeResult.bytesWritten
-  });
+  );
 }
 
 export default NextAPI(handler);

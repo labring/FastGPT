@@ -13,35 +13,31 @@ import {
   SANDBOX_INIT_LEASE_RETRY_INTERVAL_MS
 } from '../../constants';
 
-import type { ISandbox } from '@fastgpt-sdk/sandbox-adapter';
+import { OPEN_SANDBOX_DEFAULT_ROOT_PATH } from '@fastgpt/global/core/ai/sandbox/constants';
+import type { OpenSandboxClient } from '../../infrastructure/opensandbox/opensandbox';
 import { shellQuote } from '@fastgpt/global/common/string/utils';
-import {
-  LeaseCache,
-  RedisLeaseUnavailableError,
-  isRedisLeaseError
-} from '@fastgpt/dal/redis/caches';
+import { isRedisLeaseError } from '@fastgpt/dal/redis/caches';
 import { getLogger, LogCategories } from '../../../../../common/logger';
 import { serviceEnv } from '../../../../../env';
 import { createAgentSandboxInitializingError } from '../../error';
+import { acquireSandboxRedisLease } from '../lease';
 import type { SandboxPrepareContext, SandboxPrepareStep } from './prepare';
 import { buildRuntimeHash } from '../../utils';
 import {
   getRuntimeStateValue,
-  readSandboxRuntimeState,
+  readSandboxWorkspaceRuntimeState,
   setRuntimeStateValue,
   writeSandboxRuntimeState
 } from './state';
 
-const logger = getLogger(LogCategories.MODULE.AI.AGENT);
-const leaseCache = new LeaseCache();
+const logger = getLogger(LogCategories.MODULE.AI.SANDBOX);
 
 /**
- * 保护同一个 sandbox 的运行态初始化流程。
+ * 保护同一个 sandbox 的运行态内容初始化流程（App/ToolCall 与 Skill Edit 共用）。
  *
- * 同一个 sandbox 内并发初始化时（如父 Agent 并发调用多个启用沙盒的子应用工具），
- * 如果文件部署、entrypoint 和扫描交错，可能互相污染。
- * 锁被占用时按重试间隔有界等待，超时或租约异常再转为标准 initializing 错误。
- * 锁只存在于服务端 Redis，不写入 sandbox 文件系统。
+ * 同一个 sandbox 内并发初始化时（如父 Agent 并发调用多个启用沙盒的子应用工具，或重复打开技能编辑页），
+ * 如果文件部署、清空目录、entrypoint 和扫描交错，可能互相污染。
+ * 锁采用短 TTL（30s）+ 自动续租（5s），被占用时按重试间隔有界等待，超时或租约异常再转为标准 initializing 错误。
  */
 export const withAgentSandboxInitLease = async <T>({
   sandboxId,
@@ -54,43 +50,29 @@ export const withAgentSandboxInitLease = async <T>({
   retryIntervalMs?: number;
   fn: () => Promise<T>;
 }): Promise<T> => {
-  const deadline = Date.now() + waitTimeoutMs;
-
-  while (true) {
-    let entered = false;
-    try {
-      return await leaseCache.withLease({
-        key: `agent-sandbox:init:${sandboxId}`,
-        label: 'agent-sandbox-init',
-        ttlMs: SANDBOX_INIT_LEASE_TTL_MS,
-        renewIntervalMs: SANDBOX_INIT_LEASE_RENEW_INTERVAL_MS,
-        fn: async () => {
-          entered = true;
-          return await fn();
-        }
-      });
-    } catch (error) {
-      if (!entered && error instanceof RedisLeaseUnavailableError) {
-        const remainingMs = deadline - Date.now();
-        if (remainingMs > 0) {
-          await new Promise<void>((resolve) =>
-            setTimeout(resolve, Math.min(retryIntervalMs, remainingMs))
-          );
-          continue;
-        }
-      }
-      if (isRedisLeaseError(error)) {
-        throw createAgentSandboxInitializingError();
-      }
-      throw error;
+  try {
+    return await acquireSandboxRedisLease({
+      key: `agent-sandbox:init:${sandboxId}`,
+      label: 'agent-sandbox-init',
+      ttlMs: SANDBOX_INIT_LEASE_TTL_MS,
+      renewIntervalMs: SANDBOX_INIT_LEASE_RENEW_INTERVAL_MS,
+      waitTimeoutMs,
+      retryIntervalMs,
+      fn: async () => await fn()
+    });
+  } catch (error) {
+    if (isRedisLeaseError(error)) {
+      throw createAgentSandboxInitializingError();
     }
+    throw error;
   }
 };
 
 /**
  * 执行 runtime sandbox entrypoint。
  *
- * 状态只写入 sandbox 用户 HOME，确保“是否执行过”跟具体 sandbox 实例绑定。
+ * 状态写入持久化工作区 `.fastgpt/runtime/state.json` 并绑定容器镜像标识，
+ * 确保容器空闲回收后再次唤醒时无需重复执行未变更脚本，而底层镜像升级后会自动失效重跑。
  * 脚本失败、超时或状态读写失败都不会阻断主流程。
  * scope 必须显式区分应用/节点，只读取该作用域下的成功标记。
  */
@@ -100,7 +82,7 @@ export const runAgentSandboxEntrypoint = async ({
   workDirectory,
   scope
 }: {
-  sandbox: ISandbox;
+  sandbox: OpenSandboxClient;
   sandboxEntrypoint?: string;
   workDirectory?: string;
   scope: string;
@@ -108,14 +90,18 @@ export const runAgentSandboxEntrypoint = async ({
   const script = sandboxEntrypoint?.trim();
   if (!script) return;
 
-  const stateContext = await readSandboxRuntimeState({ sandbox });
+  const stateContext = await readSandboxWorkspaceRuntimeState({
+    sandbox,
+    workspaceDirectory: workDirectory ?? OPEN_SANDBOX_DEFAULT_ROOT_PATH
+  });
   const stateKey = `${SANDBOX_ENTRYPOINT_STATE_HASH_KEY}:${scope}`;
   const scriptHash = buildRuntimeHash(script);
   if (getRuntimeStateValue(stateContext.state, stateKey) === scriptHash) {
     return;
   }
 
-  const command = buildBashScriptCommand(script);
+  const encoded = Buffer.from(script, 'utf-8').toString('base64');
+  const command = `printf %s ${shellQuote(encoded)} | base64 -d | /bin/bash`;
   const result = await executeEntrypointCommand({
     sandbox,
     command,
@@ -148,18 +134,30 @@ export const runSandboxEntrypoint =
     return context;
   };
 
+/**
+ * 在 sandbox 内执行 entrypoint 命令并记录结构化日志。
+ *
+ * 超时时间限制在 `[1, 600]` 秒区间，输出截断至 `MAX_ENTRYPOINT_OUTPUT_BYTES`；
+ * 任何非 0 退出码或命令异常均返回 `false`，不向调用方抛错阻断会话初始化。
+ */
 export const executeEntrypointCommand = async ({
   sandbox,
   command,
   label,
   workingDirectory
 }: {
-  sandbox: ISandbox;
+  sandbox: OpenSandboxClient;
   command: string;
   label: string;
   workingDirectory?: string;
 }): Promise<boolean> => {
-  const timeoutSeconds = getEntrypointTimeoutSeconds();
+  const timeoutSeconds = Math.min(
+    Math.max(serviceEnv.AGENT_SANDBOX_ENTRYPOINT_TIMEOUT_SECONDS, 1),
+    600
+  );
+  const truncateOutput = (value: string): string =>
+    value.length > MAX_LOG_OUTPUT_LENGTH ? `${value.slice(0, MAX_LOG_OUTPUT_LENGTH)}...` : value;
+
   const result = await sandbox
     .execute(command, {
       timeoutMs: timeoutSeconds * 1000,
@@ -196,19 +194,3 @@ export const executeEntrypointCommand = async ({
 
   return true;
 };
-
-export const buildLimitedOutputShellCommand = (scriptCommand: string): string =>
-  `/bin/bash -c ${shellQuote(
-    `${scriptCommand} > >(tail -c ${MAX_ENTRYPOINT_OUTPUT_BYTES}) 2> >(tail -c ${MAX_ENTRYPOINT_OUTPUT_BYTES} >&2)`
-  )}`;
-
-const buildBashScriptCommand = (script: string): string => {
-  const encoded = Buffer.from(script, 'utf-8').toString('base64');
-  return buildLimitedOutputShellCommand(`printf %s ${shellQuote(encoded)} | base64 -d | /bin/bash`);
-};
-
-const getEntrypointTimeoutSeconds = (): number =>
-  Math.min(Math.max(serviceEnv.AGENT_SANDBOX_ENTRYPOINT_TIMEOUT_SECONDS, 1), 600);
-
-const truncateOutput = (value: string): string =>
-  value.length > MAX_LOG_OUTPUT_LENGTH ? `${value.slice(0, MAX_LOG_OUTPUT_LENGTH)}...` : value;

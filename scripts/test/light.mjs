@@ -5,6 +5,7 @@ import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 
 const repositoryRoot = resolve(import.meta.dirname, '../..');
+const bunProjectRoots = [resolve(repositoryRoot, 'projects/opensandbox-proxy')];
 const configNames = [
   'vitest.config.ts',
   'vitest.config.mts',
@@ -48,7 +49,7 @@ export const findVitestConfig = (testPath) => {
   throw new Error(`No Vitest config found for: ${relative(repositoryRoot, testPath)}`);
 };
 
-/** Group paths by config to avoid unit and integration runs overwriting each other. */
+/** Group paths by runner/config to avoid unit and integration runs overwriting each other. */
 export const groupTestsByConfig = (testPaths) => {
   const configTests = new Map();
 
@@ -66,9 +67,27 @@ export const groupTestsByConfig = (testPaths) => {
       throw new Error(`Test path does not exist: ${inputPath}`);
     }
 
+    const bunRoot = bunProjectRoots.find(
+      (root) => absolutePath === root || absolutePath.startsWith(`${root}${sep}`)
+    );
+    if (bunRoot) {
+      const groupKey = `bun:${bunRoot}`;
+      const group = configTests.get(groupKey) ?? {
+        runner: 'bun',
+        workspaceRoot: bunRoot,
+        configPath: null,
+        testPaths: []
+      };
+      const rel = relative(bunRoot, absolutePath);
+      if (rel) group.testPaths.push(rel);
+      configTests.set(groupKey, group);
+      continue;
+    }
+
     const configPath = findVitestConfig(absolutePath);
     const workspaceRoot = dirname(configPath);
     const configGroup = configTests.get(configPath) ?? {
+      runner: 'vitest',
       workspaceRoot,
       configPath,
       testPaths: []
@@ -80,28 +99,30 @@ export const groupTestsByConfig = (testPaths) => {
   return [...configTests.values()];
 };
 
-const runWorkspaceTests = ({ workspaceRoot, configPath, testPaths, vitestArgs }) =>
+const runWorkspaceTests = ({ runner, workspaceRoot, configPath, testPaths, vitestArgs }) =>
   new Promise((resolvePromise, rejectPromise) => {
-    const child = spawn(
-      'pnpm',
-      [
-        'exec',
-        'vitest',
-        'run',
-        '--config',
-        basename(configPath),
-        '--coverage.enabled=false',
-        '--maxWorkers=1',
-        '--no-fileParallelism',
-        ...testPaths,
-        ...vitestArgs
-      ],
-      {
-        cwd: workspaceRoot,
-        env: process.env,
-        stdio: 'inherit'
-      }
-    );
+    const command = runner === 'bun' ? 'bun' : 'pnpm';
+    const args =
+      runner === 'bun'
+        ? ['test', ...testPaths, ...vitestArgs]
+        : [
+            'exec',
+            'vitest',
+            'run',
+            '--config',
+            basename(configPath),
+            '--coverage.enabled=false',
+            '--maxWorkers=1',
+            '--no-fileParallelism',
+            ...testPaths,
+            ...vitestArgs
+          ];
+
+    const child = spawn(command, args, {
+      cwd: workspaceRoot,
+      env: process.env,
+      stdio: 'inherit'
+    });
 
     child.once('error', rejectPromise);
     child.once('exit', (code, signal) => {
@@ -110,9 +131,12 @@ const runWorkspaceTests = ({ workspaceRoot, configPath, testPaths, vitestArgs })
         return;
       }
 
+      const runnerLabel = runner === 'bun' ? 'Bun test' : 'Vitest';
       rejectPromise(
         new Error(
-          signal ? `Vitest terminated by signal ${signal}` : `Vitest exited with code ${code ?? 1}`
+          signal
+            ? `${runnerLabel} terminated by signal ${signal}`
+            : `${runnerLabel} exited with code ${code ?? 1}`
         )
       );
     });

@@ -1,55 +1,99 @@
 /**
- * Sandbox 生命周期锁分层。
+ * Sandbox 分布式租约分层。
  *
- * 统一锁顺序为 Source Mutation Lease -> Sandbox Lifecycle Lease；调用方不得反向嵌套。
+ * 所有租约均收敛到单个逻辑 `sandboxId` 粒度，采用「短 TTL（30s）+ 自动续租（5s）」策略：
+ * 活跃任务执行期间自动续期，Pod 崩溃后最多 30s 释放锁。
+ * 统一锁顺序为 `Agent Sandbox Init Lease -> Sandbox Lifecycle Lease`；生命周期操作严禁反向等待 `Init Lease`。
  */
 import {
-  SANDBOX_SOURCE_MUTATION_LEASE_TTL_MS,
   SANDBOX_LIFECYCLE_LEASE_TTL_MS,
-  LEGACY_MIGRATION_JOB_LEASE_TTL_MS
+  SANDBOX_LIFECYCLE_LEASE_RENEW_INTERVAL_MS,
+  SANDBOX_LIFECYCLE_LEASE_WAIT_TIMEOUT_MS,
+  SANDBOX_LIFECYCLE_LEASE_RETRY_INTERVAL_MS
 } from '../constants';
-import type { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
-import { LeaseCache } from '@fastgpt/dal/redis/caches';
-import type { RedisLeaseContext } from '@fastgpt/dal/redis/caches';
+import {
+  LeaseCache,
+  RedisLeaseUnavailableError,
+  type RedisLeaseContext
+} from '@fastgpt/dal/redis/caches';
+import { RedisLeaseWaitTimeoutError } from '@fastgpt/dal/redis/caches/lease';
+
 const leaseCache = new LeaseCache();
 
-type LeaseTask<T> = (context: RedisLeaseContext) => Promise<T>;
+export type SandboxLeaseTask<T> = (context: RedisLeaseContext) => Promise<T>;
 
-/** 串行化同一 source 的首次创建、Legacy migration 和业务删除。 */
-export const withSandboxSourceMutationLease = <T>(params: {
-  sourceType: ChatSourceTypeEnum;
-  sourceId: string;
+/**
+ * 基于统一 Redis 互斥锁执行带可选有界等待的租约任务。
+ *
+ * - `waitTimeoutMs === 0`（后台 cron / GC 非阻塞模式）：单次尝试获取锁，已被占用时立即抛出 `RedisLeaseUnavailableError`。
+ * - `waitTimeoutMs > 0`（前台请求排队模式）：锁被占用时按带随机抖动的重试间隔有界等待，超时抛出 `RedisLeaseWaitTimeoutError`。
+ * - 无论阻塞与否均共享同一把物理 Redis key，确保前台请求与后台 cron 严格互斥。
+ */
+export const acquireSandboxRedisLease = async <T>(params: {
+  key: string;
   label: string;
-  fn: LeaseTask<T>;
-}) =>
-  leaseCache.withLease({
-    key: `agent-sandbox:source:${params.sourceType}:${params.sourceId}`,
-    label: params.label,
-    ttlMs: SANDBOX_SOURCE_MUTATION_LEASE_TTL_MS,
-    fn: params.fn
-  });
+  ttlMs: number;
+  renewIntervalMs: number;
+  waitTimeoutMs: number;
+  retryIntervalMs: number;
+  fn: SandboxLeaseTask<T>;
+}): Promise<T> => {
+  const { key, label, ttlMs, renewIntervalMs, waitTimeoutMs, retryIntervalMs, fn } = params;
+  const deadline = Date.now() + Math.max(0, waitTimeoutMs);
 
-/** 串行化同一稳定 sandboxId 在任意 provider 上的远端生命周期操作。 */
+  while (true) {
+    let entered = false;
+    try {
+      return await leaseCache.withLease({
+        key,
+        label,
+        ttlMs,
+        renewIntervalMs,
+        fn: async (context) => {
+          entered = true;
+          return await fn(context);
+        }
+      });
+    } catch (error) {
+      // 进入临界区后业务内部抛出的同名异常不能当作抢锁失败重放。
+      if (entered || !(error instanceof RedisLeaseUnavailableError)) {
+        throw error;
+      }
+      if (waitTimeoutMs <= 0) {
+        throw error;
+      }
+
+      const remainingMs = deadline - Date.now();
+      if (remainingMs <= 0) {
+        throw new RedisLeaseWaitTimeoutError({ key, label });
+      }
+
+      const jitterMs = Math.floor(Math.random() * Math.max(1, Math.floor(retryIntervalMs / 2)));
+      const delayMs = Math.min(retryIntervalMs + jitterMs, remainingMs);
+      await new Promise<void>((resolve) => setTimeout(resolve, delayMs));
+    }
+  }
+};
+
+/**
+ * 串行化同一稳定 `sandboxId` 的远端生命周期操作（创建、唤醒、镜像升级、停止、删除与孤儿容器对账）。
+ *
+ * 前台路径默认有界等待（60s），使并发唤醒或停止过渡窗口的请求平滑排队并复用最新状态；
+ * 后台 cron 与反向 GC 显式传入 `waitTimeoutMs: 0`，遇到在途活跃请求时立即跳过。
+ */
 export const withSandboxLifecycleLease = <T>(params: {
   sandboxId: string;
   label: string;
-  fn: LeaseTask<T>;
+  waitTimeoutMs?: number;
+  retryIntervalMs?: number;
+  fn: SandboxLeaseTask<T>;
 }) =>
-  leaseCache.withLease({
+  acquireSandboxRedisLease({
     key: `agent-sandbox:lifecycle:${params.sandboxId}`,
     label: params.label,
     ttlMs: SANDBOX_LIFECYCLE_LEASE_TTL_MS,
-    fn: params.fn
-  });
-
-/** 只防止管理员重复调度全量 migration，不承担单条资源正确性。 */
-export const withLegacySandboxMigrationJobLease = <T>(params: {
-  label: string;
-  fn: LeaseTask<T>;
-}) =>
-  leaseCache.withLease({
-    key: 'agent-sandbox:legacy-migration-job',
-    label: params.label,
-    ttlMs: LEGACY_MIGRATION_JOB_LEASE_TTL_MS,
+    renewIntervalMs: SANDBOX_LIFECYCLE_LEASE_RENEW_INTERVAL_MS,
+    waitTimeoutMs: params.waitTimeoutMs ?? SANDBOX_LIFECYCLE_LEASE_WAIT_TIMEOUT_MS,
+    retryIntervalMs: params.retryIntervalMs ?? SANDBOX_LIFECYCLE_LEASE_RETRY_INTERVAL_MS,
     fn: params.fn
   });

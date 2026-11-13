@@ -1,12 +1,12 @@
 /**
  * 沙盒模块错误工厂。
  *
- * 统一把 sandbox 业务错误转换成 UserError，不承载 provider 或数据库逻辑。
+ * 统一把 sandbox 业务错误转换成 UserError，不承载 OpenSandbox 或数据库逻辑。
  */
 import { SandboxErrEnum } from '@fastgpt/global/common/error/code/sandbox';
-import { getErrText, UserError } from '@fastgpt/global/common/error/utils';
+import { UserError } from '@fastgpt/global/common/error/utils';
 
-/** 表示 keepalive 等禁止创建的路径没有可继续使用的 running sandbox。 */
+/** 表示只连接已有运行实例的快路径未命中 running sandbox。 */
 export class SandboxRuntimeNotRunningError extends Error {
   constructor(readonly sandboxId: string) {
     super('Sandbox runtime instance is not running');
@@ -18,7 +18,7 @@ export class SandboxRuntimeNotRunningError extends Error {
  * 生成 Agent 虚拟机权限错误。
  *
  * 该错误表示团队套餐或管理员配置不允许当前应用使用虚拟机，属于业务权限拒绝，
- * 需要和 provider 内部文件权限、命令权限等通用 PERMISSION_DENIED 区分。
+ * 需要和容器内文件权限、命令权限等通用 PERMISSION_DENIED 区分。
  */
 export const createAgentSandboxPermissionDeniedError = () =>
   new UserError(SandboxErrEnum.agentSandboxPermissionDenied);
@@ -32,14 +32,10 @@ export const createAgentSandboxPermissionDeniedError = () =>
 export const createAgentSandboxInitializingError = () =>
   new UserError(SandboxErrEnum.agentSandboxInitializing);
 
-/** 将底层迁移异常转换为可展示且经过敏感信息替换的用户错误。 */
-export const createSandboxRuntimeUpgradeFailedError = (error: unknown) =>
-  new UserError(getErrText(error, SandboxErrEnum.runtimeUpgradeFailed));
-
 /**
  * 生成沙箱活跃实例系统总上限拒绝错误。
  *
- * 表示平台级 Quota 已满（app 会话与技能编辑共用计数池），需要等待其他沙箱停止/归档后重试。
+ * 表示平台级 Quota 已满（app 会话与技能编辑共用计数池），需要等待其他沙箱停止或释放后重试。
  */
 export const createAgentSandboxLimitReachedError = () =>
   new UserError(SandboxErrEnum.agentSandboxLimitReached);

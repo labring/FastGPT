@@ -102,10 +102,18 @@ const cases: [string, z.ZodType, Record<string, unknown>][] = [
   ['/core/ai/sandbox/download', sandbox.SandboxDownloadBodySchema, chat],
   ['/core/ai/sandbox/upload', sandbox.SandboxUploadQuerySchema, { ...chat, path: 'file.txt' }],
   ['/core/ai/sandbox/checkExist', sandbox.SandboxCheckExistBodySchema, chat],
-  ['/core/ai/sandbox/getTicket', sandbox.SandboxGetTicketBodySchema, { ...chat, channel: 'fs' }],
+  ['/core/ai/sandbox/fs/list', sandbox.SandboxFsListBodySchema, chat],
+  ['/core/ai/sandbox/fs/mkdir', sandbox.SandboxFsMkdirBodySchema, { ...chat, path: 'dir' }],
   [
-    '/core/ai/sandbox/getHtmlPreviewLink',
-    sandbox.SandboxGetHtmlPreviewLinkBodySchema,
+    '/core/ai/sandbox/fs/move',
+    sandbox.SandboxFsMoveBodySchema,
+    { ...chat, from: 'a.txt', to: 'b.txt' }
+  ],
+  ['/core/ai/sandbox/fs/delete', sandbox.SandboxFsDeleteBodySchema, { ...chat, path: 'file.txt' }],
+  ['/core/ai/sandbox/fs/exec', sandbox.SandboxFsExecBodySchema, { ...chat, command: 'pwd' }],
+  [
+    '/core/ai/sandbox/getFilePreviewLink',
+    sandbox.SandboxGetFilePreviewLinkBodySchema,
     { ...chat, filePath: 'index.html' }
   ],
   ['/core/ai/agent/v2/createQuestionGuide', CreateQuestionGuideV2BodySchema, chat],

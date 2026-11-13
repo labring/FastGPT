@@ -1,5 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+const DEPLOYMENT_ID = '0123456789abcdef0123456789abcdef';
+
+vi.mock('@fastgpt/service/common/system/config/instanceId', () => ({
+  getInstanceId: async () => DEPLOYMENT_ID
+}));
+
 const volumeConfigMock = vi.hoisted(() => ({
   config: {
     enable: true,
@@ -10,23 +16,36 @@ const volumeConfigMock = vi.hoisted(() => ({
   }
 }));
 
+const redisMocks = vi.hoisted(() => ({
+  delete: vi.fn(async () => true)
+}));
+
+vi.mock('@fastgpt/dal/redis/adapter', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fastgpt/dal/redis/adapter')>()),
+  redisCacheAdapter: {
+    delete: redisMocks.delete
+  }
+}));
+
 vi.mock('@fastgpt/service/core/ai/sandbox/infrastructure/volume/config', () => ({
   getVolumeManagerEnvConfig: () => volumeConfigMock.config
 }));
 
 import {
   buildVolumeConfig,
-  createLegacySessionVolumeClaimName,
   createSessionVolumeClaimName,
   deleteSessionVolume,
   ensureSessionVolume,
+  getOrphanVolumeMarkerKey,
   getSessionVolumeClaimName,
-  getSessionVolumeConfig
+  listSessionVolumes
 } from '@fastgpt/service/core/ai/sandbox/infrastructure/volume/service';
 
 describe('sandbox volume service', () => {
   beforeEach(() => {
     vi.unstubAllGlobals();
+    redisMocks.delete.mockReset();
+    redisMocks.delete.mockResolvedValue(true);
     volumeConfigMock.config = {
       enable: true,
       url: 'http://volume-manager.local',
@@ -50,8 +69,7 @@ describe('sandbox volume service', () => {
         }
       ],
       storage: {
-        volumes: [{ name: 'workspace', claimName: 'claim-1', mountPath: '/workspace' }],
-        mountPath: '/workspace'
+        volumes: [{ name: 'workspace', claimName: 'claim-1', mountPath: '/workspace' }]
       }
     });
   });
@@ -80,12 +98,6 @@ describe('sandbox volume service', () => {
     );
   });
 
-  it('reconstructs the pre-generation deterministic volume name', () => {
-    volumeConfigMock.config.volumeNamePrefix = 'legacy-prefix';
-
-    expect(createLegacySessionVolumeClaimName('ABC123')).toBe('legacy-prefix-abc123');
-  });
-
   it('ensures an exact claimName with auth header', async () => {
     const fetchMock = vi.fn(async () => ({
       ok: true,
@@ -94,13 +106,18 @@ describe('sandbox volume service', () => {
     vi.stubGlobal('fetch', fetchMock);
 
     await expect(ensureSessionVolume('claim-1')).resolves.toBe('claim-1');
+    expect(redisMocks.delete).toHaveBeenCalledWith(getOrphanVolumeMarkerKey('claim-1'));
     expect(fetchMock).toHaveBeenCalledWith('http://volume-manager.local/v1/volumes/ensure', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: 'Bearer volume-token'
       },
-      body: JSON.stringify({ claimName: 'claim-1', storageSize: '1Gi' })
+      body: JSON.stringify({
+        claimName: 'claim-1',
+        deploymentId: DEPLOYMENT_ID,
+        storageSize: '1Gi'
+      })
     });
   });
 
@@ -124,15 +141,33 @@ describe('sandbox volume service', () => {
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ claimName: 'claim-1', storageSize: '1Gi' })
+        body: JSON.stringify({
+          claimName: 'claim-1',
+          deploymentId: DEPLOYMENT_ID,
+          storageSize: '1Gi'
+        })
       })
     );
     expect(fetchMock).toHaveBeenNthCalledWith(
       2,
-      'http://volume-manager.local/v1/volumes/fastgpt-session-claim-1',
+      `http://volume-manager.local/v1/volumes/fastgpt-session-claim-1?deploymentId=${DEPLOYMENT_ID}`,
       expect.objectContaining({
         headers: {}
       })
+    );
+  });
+
+  it('lists volumes for the persisted deployment with authentication', async () => {
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      json: async () => ({ items: ['fastgpt-session-owned', 'another-prefix-volume'] })
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(listSessionVolumes()).resolves.toEqual(['fastgpt-session-owned']);
+    expect(fetchMock).toHaveBeenCalledWith(
+      `http://volume-manager.local/v1/volumes?deploymentId=${DEPLOYMENT_ID}`,
+      { method: 'GET', headers: { Authorization: 'Bearer volume-token' } }
     );
   });
 
@@ -155,7 +190,7 @@ describe('sandbox volume service', () => {
 
     await expect(deleteSessionVolume('fastgpt-session-a')).resolves.toBeUndefined();
     expect(fetchMock).toHaveBeenCalledWith(
-      'http://volume-manager.local/v1/volumes/fastgpt-session-a',
+      `http://volume-manager.local/v1/volumes/fastgpt-session-a?deploymentId=${DEPLOYMENT_ID}`,
       {
         method: 'DELETE',
         headers: { Authorization: 'Bearer volume-token' }
@@ -169,15 +204,12 @@ describe('sandbox volume service', () => {
     fetchMock.mockResolvedValueOnce({ ok: true, status: 204, text: async () => '' });
     await expect(deleteSessionVolume('legacy-prefix-a')).resolves.toBeUndefined();
     expect(fetchMock).toHaveBeenLastCalledWith(
-      'http://volume-manager.local/v1/volumes/legacy-prefix-a',
+      `http://volume-manager.local/v1/volumes/legacy-prefix-a?deploymentId=${DEPLOYMENT_ID}`,
       {
         method: 'DELETE',
         headers: { Authorization: 'Bearer volume-token' }
       }
     );
-
-    volumeConfigMock.config.enable = false;
-    await expect(deleteSessionVolume('disabled')).resolves.toBeUndefined();
   });
 
   it('throws volume-manager response text on delete failure', async () => {
@@ -193,18 +225,6 @@ describe('sandbox volume service', () => {
     await expect(deleteSessionVolume('fastgpt-session-claim-1')).rejects.toThrow(
       'volume-manager error: 503 unavailable'
     );
-  });
-
-  it('returns session volume config when enabled', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(async () => ({
-        ok: true,
-        json: async () => ({ claimName: 'claim-1', created: false })
-      }))
-    );
-
-    await expect(getSessionVolumeConfig('claim-1')).resolves.toEqual(buildVolumeConfig('claim-1'));
   });
 
   it('rejects a different claimName returned by volume-manager', async () => {

@@ -5,8 +5,7 @@
  * 停留在 failed。导出接口本身按读权限放行并在服务端准备沙盒，因此不能把只读协作者的
  * 导出入口绑定到编辑沙盒的就绪状态。
  */
-export type SkillExportSandboxState =
-  'idle' | 'loading' | 'ready' | 'failed' | 'upgradeRequired' | 'upgrading';
+export type SkillExportSandboxState = 'idle' | 'loading' | 'ready' | 'failed';
 
 export const isSkillExportDisabled = ({
   hasWritePer,

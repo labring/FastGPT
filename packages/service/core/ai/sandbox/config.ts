@@ -6,28 +6,23 @@
  */
 import { MB_BYTES, RESERVED_DISK_MB } from './constants';
 import { serviceEnv } from '../../../env';
+import {
+  resolveAgentSandboxPreviewProxyBaseUrl,
+  resolveAgentSandboxTerminalProxyUrl
+} from '../../../env.util';
 
-/** 获取 Agent sandbox 磁盘基准字节数，按存储容量换算并预留 150MB。 */
+/** 获取 Agent sandbox 磁盘基准字节数，按存储容量换算并预留 150MB（JuiceFS 随写随落 S3，无需 2x 归档预留）。 */
 export const getAgentSandboxDiskBytes = () => {
   const storageMB = serviceEnv.AGENT_SANDBOX_STORAGE_SIZE_GI * 1024;
-  const diskMB = Math.round(storageMB / 2 - RESERVED_DISK_MB);
+  const diskMB = Math.round(storageMB - RESERVED_DISK_MB);
   if (diskMB <= 0) {
-    throw new Error(
-      `AGENT_SANDBOX_STORAGE_SIZE_GI must be greater than ${RESERVED_DISK_MB * 2}MiB`
-    );
+    throw new Error(`AGENT_SANDBOX_STORAGE_SIZE_GI must be greater than ${RESERVED_DISK_MB}MiB`);
   }
   return diskMB * MB_BYTES;
 };
 
-/** 获取 sandbox 冷归档包大小上限，等于磁盘基准。 */
-export const getAgentSandboxArchiveMaxBytes = getAgentSandboxDiskBytes;
-
 /** 获取运行中 sandbox 自动暂停前允许的未活跃分钟数。 */
 export const getAgentSandboxSuspendMinutes = () => serviceEnv.AGENT_SANDBOX_SUSPEND_MINUTES;
-
-/** 获取已暂停 sandbox 自动归档前允许的未活跃天数。 */
-export const getAgentSandboxArchiveInactiveDays = () =>
-  serviceEnv.AGENT_SANDBOX_ARCHIVE_INACTIVE_DAYS;
 
 /** 获取 Skill 包大小上限，等于磁盘基准。 */
 export const getAgentSandboxSkillMaxBytes = getAgentSandboxDiskBytes;
@@ -47,3 +42,14 @@ export const getAgentSandboxMax = (): number | undefined =>
  */
 export const getAgentSandboxMaxPerTeam = (): number | undefined =>
   global.systemEnv?.agentSandboxMaxPerTeam ?? serviceEnv.AGENT_SANDBOX_MAX_PER_TEAM;
+
+/** 获取面向浏览器的 opensandbox-proxy `/terminal` WebSocket 地址。 */
+export const getAgentSandboxTerminalProxyUrl = (): string =>
+  resolveAgentSandboxTerminalProxyUrl(serviceEnv.AGENT_SANDBOX_PROXY_URL);
+
+/** 获取面向浏览器的 opensandbox-proxy 静态文件预览 HTTP 基地址（优先使用显式覆盖，默认回退主地址）。 */
+export const getAgentSandboxPreviewProxyBaseUrl = (): string =>
+  resolveAgentSandboxPreviewProxyBaseUrl({
+    previewProxyUrl: serviceEnv.AGENT_SANDBOX_PREVIEW_PROXY_URL,
+    proxyUrl: serviceEnv.AGENT_SANDBOX_PROXY_URL
+  });

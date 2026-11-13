@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { SandboxErrEnum } from '@fastgpt/global/common/error/code/sandbox';
 import { generateSandboxId } from '@fastgpt/global/core/ai/sandbox/constants';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { serviceEnv } from '@fastgpt/service/env';
@@ -17,10 +18,13 @@ import {
   buildSandboxPreviewFileUrl,
   createSandboxPreviewFileUrl,
   createSandboxPreviewSession,
-  resolveSandboxPreviewPath,
+  resolveSandboxPreviewFiles,
   resolveSandboxPreviewSession,
+  SandboxPreviewFileNotFoundError,
+  SandboxPreviewPathAccessError,
   SandboxPreviewSessionLimitError
 } from '@fastgpt/service/core/ai/sandbox/application/preview';
+import { resolveSandboxRuntimePath } from '@fastgpt/service/core/ai/sandbox/utils';
 import {
   SANDBOX_PREVIEW_SESSION_MAX_PER_SANDBOX,
   SANDBOX_PREVIEW_SESSION_TTL_SECONDS
@@ -29,7 +33,8 @@ import {
 const originalEnv = {
   AGENT_SANDBOX_PROXY_URL: serviceEnv.AGENT_SANDBOX_PROXY_URL,
   AGENT_SANDBOX_PREVIEW_PROXY_URL: serviceEnv.AGENT_SANDBOX_PREVIEW_PROXY_URL,
-  AGENT_SANDBOX_PROVIDER: serviceEnv.AGENT_SANDBOX_PROVIDER
+  AGENT_SANDBOX_OPENSANDBOX_BASEURL: serviceEnv.AGENT_SANDBOX_OPENSANDBOX_BASEURL,
+  FE_DOMAIN: serviceEnv.FE_DOMAIN
 };
 const sandboxId = generateSandboxId({
   sourceType: ChatSourceTypeEnum.app,
@@ -44,12 +49,26 @@ const sessionContext = {
   chatId: 'chat-1'
 };
 
+const createMockSandbox = (fileInfoEntries: Array<[string, { type?: string }]> = []) =>
+  ({
+    resolveRuntimePath: (inputPath: string, options?: { allowAbsolutePath?: boolean }) =>
+      resolveSandboxRuntimePath(
+        inputPath,
+        { sessionWorkDirectory: '/workspace/sessions/chat-1' },
+        options
+      ),
+    opensandbox: {
+      getFileInfo: vi.fn(async () => new Map(fileInfoEntries))
+    }
+  }) as any;
+
 describe('sandbox preview application', () => {
   beforeEach(() => {
     Object.assign(serviceEnv, {
-      AGENT_SANDBOX_PROXY_URL: 'wss://agent-proxy.example.com/base/',
+      AGENT_SANDBOX_PROXY_URL: 'ws://localhost:1006',
       AGENT_SANDBOX_PREVIEW_PROXY_URL: 'https://agent-preview.example.com:3007/base/',
-      AGENT_SANDBOX_PROVIDER: 'opensandbox'
+      AGENT_SANDBOX_OPENSANDBOX_BASEURL: 'http://opensandbox.local',
+      FE_DOMAIN: 'https://app.example.com'
     });
     vi.resetAllMocks();
     redisMock.evalScript.mockResolvedValue(1);
@@ -91,7 +110,7 @@ describe('sandbox preview application', () => {
       };
       const url = await createSandboxPreviewFileUrl({
         context,
-        filePath: '/workspace/dist/index.html'
+        relativePath: 'dist/index.html'
       });
       const [scriptOptions] = redisMock.evalScript.mock.calls[0];
       const sessionId = String(scriptOptions.args[4]);
@@ -120,40 +139,62 @@ describe('sandbox preview application', () => {
     const sessionId = 'a12345678901234567890123';
     await expect(resolveSandboxPreviewSession(sessionId)).resolves.toEqual(sessionContext);
     await expect(resolveSandboxPreviewSession(sessionId)).rejects.toThrow(
-      'Invalid or expired sandbox preview session'
+      SandboxErrEnum.agentSandboxPermissionDenied
     );
   });
 
-  it.each(['app', 'skilledit'])(
-    'resolves legacy %s sessions from their original Redis key',
-    async (prefix) => {
-      const legacySandboxId = `${prefix}-0123456789abcdef`;
-      const context = {
-        ...sessionContext,
-        sandboxId: legacySandboxId,
-        sourceType: prefix === 'app' ? ChatSourceTypeEnum.app : ChatSourceTypeEnum.skillEdit
-      };
-      const sessionId = 'a12345678901234567890123';
-      redisMock.get.mockResolvedValueOnce(JSON.stringify(context)).mockResolvedValue(null);
-
-      await expect(
-        resolveSandboxPreviewSession(`${legacySandboxId}:${sessionId}`)
-      ).resolves.toEqual(context);
-      expect(redisMock.get).toHaveBeenCalledWith(`sandbox:preview:${legacySandboxId}:${sessionId}`);
-      await expect(resolveSandboxPreviewSession(`${legacySandboxId}:${sessionId}`)).rejects.toThrow(
-        'Invalid or expired sandbox preview session'
-      );
-      expect(redisMock.get).toHaveBeenCalledTimes(2);
-      expect(redisMock.evalScript).not.toHaveBeenCalled();
-    }
-  );
-
-  it('rejects legacy sessions whose stored sandbox does not match the credential', async () => {
-    redisMock.get.mockResolvedValueOnce(JSON.stringify(sessionContext));
+  it('resolves allowed workspace files and rejects outside-workspace, traversal, and missing files', async () => {
+    const sandbox = createMockSandbox([
+      ['/workspace/dist/index.html', { type: 'file' }],
+      ['/workspace/sessions/chat-1/dist/index.html', { type: 'file' }],
+      ['/workspace/sessions/chat-2/dist/index.html', { type: 'file' }],
+      ['/workspace/sessions/chat-1/dir', { type: 'directory' }]
+    ]);
 
     await expect(
-      resolveSandboxPreviewSession('app-0123456789abcdef:a12345678901234567890123')
-    ).rejects.toThrow('Invalid sandbox preview session');
+      resolveSandboxPreviewFiles({
+        sandbox,
+        paths: [
+          '/workspace/dist/index.html',
+          'dist/index.html',
+          '/workspace/sessions/chat-2/dist/index.html'
+        ]
+      })
+    ).resolves.toEqual([
+      { providerPath: '/workspace/dist/index.html', relativePath: 'dist/index.html' },
+      {
+        providerPath: '/workspace/sessions/chat-1/dist/index.html',
+        relativePath: 'sessions/chat-1/dist/index.html'
+      },
+      {
+        providerPath: '/workspace/sessions/chat-2/dist/index.html',
+        relativePath: 'sessions/chat-2/dist/index.html'
+      }
+    ]);
+
+    for (const forbidden of [
+      '/etc/passwd',
+      '../../../etc/passwd',
+      '/workspace',
+      '/workspace/.fastgpt/bun/bin/bun',
+      'dir\\file.txt'
+    ]) {
+      await expect(
+        resolveSandboxPreviewFiles({
+          sandbox,
+          paths: [forbidden]
+        })
+      ).rejects.toBeInstanceOf(SandboxPreviewPathAccessError);
+    }
+
+    for (const notFile of ['missing.txt', 'dir']) {
+      await expect(
+        resolveSandboxPreviewFiles({
+          sandbox,
+          paths: [notFile]
+        })
+      ).rejects.toBeInstanceOf(SandboxPreviewFileNotFoundError);
+    }
   });
 
   it.each([
@@ -166,59 +207,41 @@ describe('sandbox preview application', () => {
     'a1234567890123456789012_',
     'a1234567890123456789012é',
     'a1234567890123456789012\n',
-    'other-0123456789abcdef:a12345678901234567890123',
-    'app-0123456789abcdeG:a12345678901234567890123',
-    'app-0123456789abcde:a12345678901234567890123',
-    'app-0123456789abcdef0:a12345678901234567890123',
-    'app-0123456789abcdef:',
-    'app-0123456789abcdef:A12345678901234567890123',
-    'app-0123456789abcdef:a1234567890123456789012-',
-    'app-0123456789abcdef:a12345678901234567890123:extra'
+    'app-0123456789abcdef:a12345678901234567890123'
   ])('rejects malformed preview tokens before querying Redis: %s', async (sessionId) => {
     await expect(resolveSandboxPreviewSession(sessionId)).rejects.toThrow();
     expect(redisMock.get).not.toHaveBeenCalled();
   });
 
-  it('builds a URL from the dedicated preview proxy and encodes each path segment', () => {
+  it('falls back to AGENT_SANDBOX_PROXY_URL when AGENT_SANDBOX_PREVIEW_PROXY_URL is unset', () => {
+    Object.assign(serviceEnv, {
+      AGENT_SANDBOX_PREVIEW_PROXY_URL: undefined,
+      AGENT_SANDBOX_PROXY_URL: 'ws://localhost:1006/terminal'
+    });
+
     expect(
       buildSandboxPreviewFileUrl({
         sessionId: 'a12345678901234567890123',
-        filePath: '/workspace/test dir/预览.html'
+        relativePath: 'test dir/预览.html'
       })
     ).toBe(
-      'https://agent-preview.example.com:3007/base/preview/a12345678901234567890123/test%20dir/%E9%A2%84%E8%A7%88.html'
+      'http://localhost:1006/preview/a12345678901234567890123/test%20dir/%E9%A2%84%E8%A7%88.html'
     );
   });
 
-  it('requires a dedicated HTTP preview proxy URL', () => {
-    Object.assign(serviceEnv, { AGENT_SANDBOX_PREVIEW_PROXY_URL: undefined });
+  it('throws when both AGENT_SANDBOX_PREVIEW_PROXY_URL and AGENT_SANDBOX_PROXY_URL are missing', () => {
+    Object.assign(serviceEnv, {
+      AGENT_SANDBOX_PREVIEW_PROXY_URL: undefined,
+      AGENT_SANDBOX_PROXY_URL: undefined
+    });
 
     expect(() =>
       buildSandboxPreviewFileUrl({
         sessionId: 'a12345678901234567890123',
-        filePath: '/workspace/index.html'
+        relativePath: 'index.html'
       })
-    ).toThrow('AGENT_SANDBOX_PREVIEW_PROXY_URL environment variable is missing');
-  });
-
-  it('normalizes relative and workspace absolute paths', () => {
-    expect(resolveSandboxPreviewPath('./dir/file.txt')).toEqual({
-      providerPath: '/workspace/dir/file.txt',
-      relativePath: 'dir/file.txt'
-    });
-    expect(resolveSandboxPreviewPath('/workspace/dir/file.txt')).toEqual({
-      providerPath: '/workspace/dir/file.txt',
-      relativePath: 'dir/file.txt'
-    });
-  });
-
-  it('rejects workspace roots, traversal, outside absolute paths and noncanonical segments', () => {
-    expect(() => resolveSandboxPreviewPath('.')).toThrow('Invalid sandbox preview path');
-    expect(() => resolveSandboxPreviewPath('../secret')).toThrow('Path traversal detected');
-    expect(() => resolveSandboxPreviewPath('/etc/passwd')).toThrow(
-      'Sandbox path is outside workspace'
+    ).toThrow(
+      'AGENT_SANDBOX_PREVIEW_PROXY_URL or AGENT_SANDBOX_PROXY_URL environment variable is missing'
     );
-    expect(() => resolveSandboxPreviewPath('dir//file')).toThrow('Invalid sandbox preview path');
-    expect(() => resolveSandboxPreviewPath('dir\\file')).toThrow('Invalid sandbox preview path');
   });
 });

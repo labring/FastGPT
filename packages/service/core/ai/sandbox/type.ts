@@ -1,31 +1,21 @@
 /**
  * 沙盒模块共享类型。
  *
- * 只定义 sandbox 实例、provider 和生命周期 operation，不访问服务端资源。
+ * 只定义 OpenSandbox 实例与生命周期 operation，不访问服务端资源。
  */
 import z from 'zod';
-import {
-  agentSandboxProviderList,
-  SandboxStatusEnum
-} from '@fastgpt/global/core/ai/sandbox/constants';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import type { sandboxStableStatusList } from './constants';
 import {
   sandboxInstanceStatusList,
-  sandboxStableStatusList,
   sandboxActiveStatusList,
-  sandboxOperationTypeList,
-  expectedOperationByStatus
+  sandboxOperationTypeList
 } from './constants';
 
 // ---- 沙盒实例 DB 类型 ----
-export const SandboxProviderSchema = z.enum(agentSandboxProviderList);
-export type SandboxProviderType = z.infer<typeof SandboxProviderSchema>;
-export const SharedSandboxStatusSchema = z.enum(SandboxStatusEnum);
-export type SharedSandboxStatusType = z.infer<typeof SharedSandboxStatusSchema>;
 export const SandboxInstanceStatusSchema = z.enum(sandboxInstanceStatusList);
 export type SandboxInstanceStatusType = z.infer<typeof SandboxInstanceStatusSchema>;
-export const SandboxStableStatusSchema = z.enum(sandboxStableStatusList);
-export type SandboxStableStatusType = z.infer<typeof SandboxStableStatusSchema>;
+export type SandboxStableStatusType = (typeof sandboxStableStatusList)[number];
 
 /** 判断实例是否处于计入 Quota 的活跃状态。 */
 export const isSandboxActiveStatus = (status: SandboxInstanceStatusType) =>
@@ -39,79 +29,58 @@ export const SandboxSourceTypeSchema = z.enum([
 ]);
 export type SandboxSourceType = z.infer<typeof SandboxSourceTypeSchema>;
 
-export const SandboxLimitSchema = z.object({
-  cpuCount: z.number(),
-  memoryMiB: z.number(),
-  storageSize: z.string()
+export const SandboxResourceLimitsSchema = z.object({
+  cpuCount: z.number().optional(),
+  memoryMiB: z.number().optional(),
+  ephemeralStorageSize: z.string().optional()
 });
+export type SandboxResourceLimitsType = z.infer<typeof SandboxResourceLimitsSchema>;
 
 export const SandboxVolumeSchema = z.object({
-  name: z.string(),
-  claimName: z.string().optional(),
-  mountPath: z.string(),
-  subPath: z.string().optional()
+  name: z.string().min(1),
+  claimName: z.string().min(1),
+  mountPath: z.string().min(1),
+  readOnly: z.boolean().optional()
 });
+export type SandboxVolumeType = z.infer<typeof SandboxVolumeSchema>;
 
 export const SandboxStorageSchema = z.object({
-  volumes: z.array(SandboxVolumeSchema).optional(),
-  mountPath: z.string().optional()
+  volumes: z.array(SandboxVolumeSchema).optional()
 });
 export type SandboxStorageType = z.infer<typeof SandboxStorageSchema>;
 
-export const SandboxImageSchema = z.object({
-  repository: z.string(),
-  tag: z.string().optional()
+export const SandboxContextSchema = z.object({
+  skillVersionId: z.string().min(1).optional()
 });
+export type SandboxContextType = z.infer<typeof SandboxContextSchema>;
 
-export const SandboxOperationSchema = z.object({
+const SandboxImageSchema = z.string().min(1);
+
+const SandboxOperationSchema = z.object({
   id: z.string().min(1),
   type: SandboxOperationTypeSchema,
   phase: z.string().min(1),
-  previousStatus: SandboxStableStatusSchema.optional(),
   startedAt: z.coerce.date(),
   heartbeatAt: z.coerce.date(),
   failedAt: z.coerce.date().optional(),
-  retryAfter: z.coerce.date().optional(),
   error: z.string().optional()
 });
-export type SandboxOperationTypeSchemaType = z.infer<typeof SandboxOperationSchema>;
 
-export const SandboxInstanceZodSchema = z
-  .object({
-    _id: z.string(),
-    sandboxId: z.string(),
-    sourceType: SandboxSourceTypeSchema,
-    sourceId: z.string(),
-    userId: z.string(),
-    status: SandboxInstanceStatusSchema,
-    lastActiveAt: z.coerce.date(),
-    createdAt: z.coerce.date(),
-    limit: SandboxLimitSchema.nullish(),
-    provider: SandboxProviderSchema,
-    storage: SandboxStorageSchema.nullish(),
-    teamId: z.string().optional(),
-    image: SandboxImageSchema.optional(),
-    versionId: z.string().optional(),
-    operation: SandboxOperationSchema.optional()
-  })
-  .superRefine((instance, ctx) => {
-    const expectedOperation = expectedOperationByStatus[instance.status];
-    const operation = instance.operation;
-
-    if (!expectedOperation && operation) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['operation'],
-        message: `Stable status ${instance.status} must not keep an operation`
-      });
-      return;
-    }
-    if (expectedOperation && operation?.type !== expectedOperation) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['operation'],
-        message: `Status ${instance.status} requires ${expectedOperation} operation`
-      });
-    }
-  });
+export const SandboxInstanceZodSchema = z.object({
+  _id: z.string(),
+  sandboxId: z.string(),
+  sourceType: SandboxSourceTypeSchema,
+  sourceId: z.string(),
+  userId: z.string(),
+  teamId: z.string().min(1),
+  instanceId: z.string().min(1).optional(),
+  image: SandboxImageSchema.optional(),
+  resourceLimits: SandboxResourceLimitsSchema.nullish(),
+  storage: SandboxStorageSchema.nullish(),
+  context: SandboxContextSchema.nullish(),
+  status: SandboxInstanceStatusSchema,
+  operation: SandboxOperationSchema.optional(),
+  lastActiveAt: z.coerce.date(),
+  createdAt: z.coerce.date()
+});
 export type SandboxInstanceSchemaType = z.infer<typeof SandboxInstanceZodSchema>;

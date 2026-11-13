@@ -1,4 +1,3 @@
-import { ChatIdSchema } from '../../chat/schema';
 import z from 'zod';
 import { BoolSchema, IntSchema } from '../../../common/zod';
 import {
@@ -7,12 +6,7 @@ import {
   AgentSkillTypeEnum,
   AgentSkillCreationStatusEnum
 } from './constants';
-import { SandboxStatusEnum, SandboxTypeEnum } from '../sandbox/constants';
-import { SandboxImageConfigSchema } from '../sandbox/type';
-export { SandboxImageConfigSchema };
-export type { SandboxImageConfigType } from '../sandbox/type';
 
-const LooseObjectSchema = z.object({}).catchall(z.any());
 const BufferSchema = z.custom<Buffer>(
   (value) => typeof Buffer !== 'undefined' && Buffer.isBuffer(value),
   'Expected Buffer'
@@ -22,11 +16,6 @@ export const AgentSkillSourceSchema = z.enum(AgentSkillSourceEnum);
 export const AgentSkillCategorySchema = z.enum(AgentSkillCategoryEnum);
 export const AgentSkillTypeSchema = z.enum(AgentSkillTypeEnum);
 export const AgentSkillCreationStatusSchema = z.enum(AgentSkillCreationStatusEnum);
-export const SandboxTypeSchema = z.enum(SandboxTypeEnum);
-export const SandboxStatusSchema = z.enum([
-  SandboxStatusEnum.running,
-  SandboxStatusEnum.stopped
-] as const);
 
 export const RuntimeSkillMetadataSchema = z.object({
   name: z.string(),
@@ -140,44 +129,3 @@ export const ExtractedSkillPackageSchema = z.object({
   totalSize: z.number()
 });
 export type ExtractedSkillPackage = z.infer<typeof ExtractedSkillPackageSchema>;
-
-export const SandboxProviderStatusSchema = z.object({
-  state: z.string(),
-  message: z.string().optional(),
-  reason: z.string().optional()
-});
-
-export const SandboxStorageSchema = z.object({
-  key: z.string(),
-  uploadedAt: z.coerce.date()
-});
-
-export const SandboxInstanceDetailSchema = z.object({
-  type: SandboxTypeSchema.optional().meta({
-    deprecated: true,
-    description: '旧版 sandbox 场景字段；业务归属统一使用 sourceType/sourceId。'
-  }),
-  teamId: z.string(),
-  tmbId: z.string(),
-  skillId: z.string().optional(),
-  sessionId: z.string().optional(),
-  skillIds: z.array(z.string()).optional(),
-  provider: z.string(),
-  image: SandboxImageConfigSchema,
-  providerCreatedAt: z.coerce.date(),
-  storage: SandboxStorageSchema.optional(),
-  metadata: z.union([z.map(z.string(), z.any()), LooseObjectSchema]).optional()
-});
-
-export const SandboxInstanceSchema = z.object({
-  _id: z.string(),
-  sandboxId: z.string(),
-  appId: z.string(),
-  userId: z.string(),
-  chatId: ChatIdSchema,
-  status: SandboxStatusSchema,
-  lastActiveAt: z.coerce.date(),
-  createdAt: z.coerce.date(),
-  detail: SandboxInstanceDetailSchema
-});
-export type SandboxInstanceSchemaType = z.infer<typeof SandboxInstanceSchema>;

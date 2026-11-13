@@ -10,11 +10,18 @@ const workspaceFilters = {
   global: '@fastgpt/global',
   service: '@fastgpt/service',
   web: '@fastgpt/web',
+  'opensandbox-proxy': '@fastgpt/opensandbox-proxy',
+  'volume-manager': '@fastgpt/volume-manager',
   'workflow-core': '@fastgpt/workflow-core',
   'workflow-cli': '@fastgpt/workflow-cli'
 };
 const workspaceScopes = Object.keys(workspaceFilters);
-const optionalWorkspaceScopes = new Set(['workflow-core', 'workflow-cli']);
+const optionalWorkspacePaths = {
+  admin: ['pro', 'admin', 'package.json'],
+  'workflow-core': ['packages', 'workflow-core', 'package.json'],
+  'workflow-cli': ['packages', 'workflow-cli', 'package.json']
+};
+const mongoWorkspaceScopes = new Set(['app', 'admin', 'service']);
 const supportedModes = ['unit', 'integration', 'sandbox', 'all'];
 
 const parseUnitScopes = (scopeValue) => {
@@ -101,28 +108,28 @@ export const resolveTestPlan = ({ args = [], modeValue, scopeValue } = {}) => {
   }
 
   const unitScopes = parseUnitScopes(mode === 'all' ? 'workspace' : scopeValue);
-  const selectedWorkspaces = unitScopes.filter(
-    (scope) =>
-      scope in workspaceFilters &&
-      (!optionalWorkspaceScopes.has(scope) ||
-        existsSync(resolve(process.cwd(), 'packages', scope, 'package.json')))
-  );
+  const selectedWorkspaces = unitScopes.filter((scope) => {
+    if (!(scope in workspaceFilters)) return false;
+    const optionalPath = optionalWorkspacePaths[scope];
+    return !optionalPath || existsSync(resolve(process.cwd(), ...optionalPath));
+  });
   const plan = [];
 
   if (selectedWorkspaces.length > 0) {
-    plan.push({
-      command: 'node',
-      args: [
-        './scripts/test/withMongo.mjs',
-        'pnpm',
-        'exec',
-        'turbo',
-        'run',
-        'test',
-        '--concurrency=1',
-        ...selectedWorkspaces.map((scope) => `--filter=${workspaceFilters[scope]}`)
-      ]
-    });
+    const turboArgs = [
+      'exec',
+      'turbo',
+      'run',
+      'test',
+      '--concurrency=1',
+      ...selectedWorkspaces.map((scope) => `--filter=${workspaceFilters[scope]}`)
+    ];
+    const needsMongo = selectedWorkspaces.some((scope) => mongoWorkspaceScopes.has(scope));
+    plan.push(
+      needsMongo
+        ? { command: 'node', args: ['./scripts/test/withMongo.mjs', 'pnpm', ...turboArgs] }
+        : { command: 'pnpm', args: turboArgs }
+    );
   }
 
   if (unitScopes.includes('repo')) {

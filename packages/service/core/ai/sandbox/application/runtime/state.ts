@@ -1,21 +1,29 @@
 /**
- * 沙盒业务层：读写 sandbox HOME 下的 FastGPT runtime 状态文件。
+ * 沙盒业务层：读写 sandbox HOME 或持久化工作区下的 FastGPT runtime 状态文件。
  *
- * 只记录轻量执行标记，不承担数据库状态或 provider 生命周期管理。
+ * 按目标产物存储介质区分两类状态生命周期：
+ * - 容器根文件系统级（如镜像源、系统内置技能）：保存在 `$HOME/.fastgpt/runtime/state.json`，容器销毁重建后自动重跑；
+ * - 持久化工作区级（如 `sandboxEntrypoint`、`skillEntrypoints`）：保存在 `/workspace/.fastgpt/runtime/state.json`，
+ *   并绑定容器 `image` 标识，在相同镜像唤醒时跳过重复执行，镜像升级后自动失效重跑。
  */
-import type { ISandbox } from '@fastgpt-sdk/sandbox-adapter';
+import {
+  OPEN_SANDBOX_DEFAULT_HOME_PATH,
+  OPEN_SANDBOX_DEFAULT_ROOT_PATH
+} from '@fastgpt/global/core/ai/sandbox/constants';
+import type { OpenSandboxClient } from '../../infrastructure/opensandbox/opensandbox';
 import { posix } from 'node:path';
 import { getLogger, LogCategories } from '../../../../../common/logger';
-import { resolveSandboxHome } from './home';
+import { serviceEnv } from '../../../../../env';
 import { joinSandboxPath } from '../../utils';
 import { z } from 'zod';
 
-const logger = getLogger(LogCategories.MODULE.AI.AGENT);
+const logger = getLogger(LogCategories.MODULE.AI.SANDBOX);
 
 const RUNTIME_STATE_DIR_RELATIVE_PATH = '.fastgpt/runtime';
 const RUNTIME_STATE_FILE_NAME = 'state.json';
 
 const SandboxRuntimeStateSchema = z.object({
+  image: z.string().optional(),
   values: z.record(z.string(), z.union([z.string(), z.array(z.string())])).optional()
 });
 export type SandboxRuntimeState = z.infer<typeof SandboxRuntimeStateSchema>;
@@ -26,26 +34,15 @@ export type SandboxRuntimeStateContext = {
   state: SandboxRuntimeState;
 };
 
-/**
- * 读取 sandbox HOME 下的 FastGPT runtime 状态文件。
- *
- * 该文件只记录“某段 runtime 逻辑是否已经针对当前 sandbox 成功执行过”的轻量状态，
- * 例如 entrypoint hash、内置文件 etag、skill version marker。读写或解析失败时返回空状态，
- * 让上层逻辑按未执行处理，避免阻断 Agent 主流程。
- */
-export const readSandboxRuntimeState = async ({
+const readStateFileAtBaseDir = async ({
   sandbox,
-  homeDirectory
+  baseDirectory
 }: {
-  sandbox: ISandbox;
-  homeDirectory?: string;
+  sandbox: OpenSandboxClient;
+  baseDirectory: string;
 }): Promise<SandboxRuntimeStateContext> => {
-  const homeDir = homeDirectory ?? (await resolveSandboxHome(sandbox));
-  if (!homeDir) {
-    return { state: {} };
-  }
   const statePath = joinSandboxPath(
-    homeDir,
+    baseDirectory,
     RUNTIME_STATE_DIR_RELATIVE_PATH,
     RUNTIME_STATE_FILE_NAME
   );
@@ -72,31 +69,81 @@ export const readSandboxRuntimeState = async ({
 };
 
 /**
+ * 读取 sandbox HOME 下的容器级 runtime 状态文件（随容器销毁清空）。
+ *
+ * 用于产物落在容器根文件系统（如 `/home/sandbox` 或 `/etc/apt`）的步骤，确保新容器唤醒后重新同步。
+ */
+export const readSandboxRuntimeState = async ({
+  sandbox,
+  homeDirectory = OPEN_SANDBOX_DEFAULT_HOME_PATH
+}: {
+  sandbox: OpenSandboxClient;
+  homeDirectory?: string;
+}): Promise<SandboxRuntimeStateContext> => {
+  return readStateFileAtBaseDir({ sandbox, baseDirectory: homeDirectory });
+};
+
+/**
+ * 读取持久化工作区（默认 `/workspace/.fastgpt/runtime/state.json`）下的工作区级 runtime 状态文件。
+ *
+ * 当传入或环境变量配置了当前容器镜像标识 `expectedImage` 时，若历史状态记录的 `image` 与之不一致，
+ * 自动清空旧 `values` 并将 `state.image` 更新为最新镜像，保证底层镜像升级后初始化脚本自动重跑。
+ */
+export const readSandboxWorkspaceRuntimeState = async ({
+  sandbox,
+  workspaceDirectory = OPEN_SANDBOX_DEFAULT_ROOT_PATH,
+  currentImage
+}: {
+  sandbox: OpenSandboxClient;
+  workspaceDirectory?: string;
+  currentImage?: string;
+}): Promise<SandboxRuntimeStateContext> => {
+  const expectedImage =
+    currentImage?.trim() || serviceEnv.AGENT_SANDBOX_OPENSANDBOX_IMAGE?.trim() || undefined;
+  const { statePath, state } = await readStateFileAtBaseDir({
+    sandbox,
+    baseDirectory: workspaceDirectory
+  });
+
+  if (expectedImage && state.image !== expectedImage) {
+    return {
+      statePath,
+      state: { image: expectedImage }
+    };
+  }
+
+  return {
+    statePath,
+    state: expectedImage ? { ...state, image: expectedImage } : state
+  };
+};
+
+/**
  * 写回 sandbox runtime 状态文件。
  *
  * 调用方应只在对应 runtime 动作成功后更新状态；写入失败只记录日志，
  * 下次运行会按未执行重新尝试。
  */
 export const writeSandboxRuntimeState = async (
-  sandbox: ISandbox,
+  sandbox: OpenSandboxClient,
   { statePath, state }: SandboxRuntimeStateContext
 ): Promise<void> => {
   if (!statePath) return;
 
   try {
     await sandbox.createDirectories([posix.dirname(statePath)]);
-    const [result] = await sandbox.writeFiles([
+    await sandbox.writeFiles([
       {
         path: statePath,
         data: JSON.stringify(state, null, 2)
       }
     ]);
-    if (result?.error) throw result.error;
   } catch (error) {
     logger.warn('[Sandbox Runtime] Failed to write runtime state file', { statePath, error });
   }
 };
 
+/** 读取指定键的 runtime 状态值；未命中时返回空字符串。 */
 export const getRuntimeStateValue = (state: SandboxRuntimeState, key: string): RuntimeStateValue =>
   state.values?.[key] ?? '';
 

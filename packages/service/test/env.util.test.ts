@@ -3,6 +3,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   getRuntimeEnv,
   getAgentSandboxMissingRequiredEnvKeys,
+  resolveAgentSandboxPreviewProxyBaseUrl,
+  resolveAgentSandboxTerminalProxyUrl,
   validateAgentSandboxPreviewProxyEnv,
   validateAgentSandboxProxyEnv,
   validateS3Env
@@ -150,10 +152,9 @@ describe('validateS3Env', () => {
 });
 
 describe('env util', () => {
-  it('requires opensandbox image and volume manager env when opensandbox provider is enabled', () => {
+  it('requires opensandbox image and volume manager env when AGENT_SANDBOX_OPENSANDBOX_BASEURL is configured', () => {
     expect(
       getAgentSandboxMissingRequiredEnvKeys({
-        AGENT_SANDBOX_PROVIDER: 'opensandbox',
         AGENT_SANDBOX_OPENSANDBOX_BASEURL: 'http://opensandbox.local',
         AGENT_SANDBOX_OPENSANDBOX_API_KEY: 'opensandbox-key'
       } as NodeJS.ProcessEnv)
@@ -167,7 +168,6 @@ describe('env util', () => {
   it('requires the new opensandbox image even when legacy image variables are set', () => {
     expect(
       getAgentSandboxMissingRequiredEnvKeys({
-        AGENT_SANDBOX_PROVIDER: 'opensandbox',
         AGENT_SANDBOX_OPENSANDBOX_BASEURL: 'http://opensandbox.local',
         AGENT_SANDBOX_OPENSANDBOX_API_KEY: 'opensandbox-key',
         AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO: 'legacy/runtime',
@@ -178,62 +178,88 @@ describe('env util', () => {
     ).toEqual(['AGENT_SANDBOX_OPENSANDBOX_IMAGE']);
   });
 
-  it('does not require sandbox env for an unsupported provider', () => {
-    expect(
-      getAgentSandboxMissingRequiredEnvKeys({
-        AGENT_SANDBOX_PROVIDER: 'unsupported'
-      } as NodeJS.ProcessEnv)
-    ).toEqual([]);
+  it('does not require sandbox env when AGENT_SANDBOX_OPENSANDBOX_BASEURL is empty', () => {
+    expect(getAgentSandboxMissingRequiredEnvKeys({} as NodeJS.ProcessEnv)).toEqual([]);
   });
 });
 
-describe('validateAgentSandboxProxyEnv', () => {
+describe('sandbox proxy URL normalization and validation', () => {
   afterEach(() => {
     vi.unstubAllEnvs();
   });
 
-  it('requires separate WebSocket and Preview proxy URLs', () => {
-    vi.stubEnv('AGENT_SANDBOX_PROVIDER', 'opensandbox');
-    vi.stubEnv('AGENT_SANDBOX_PROXY_SECRET', 'test-secret');
-    vi.stubEnv('AGENT_SANDBOX_PROXY_URL', 'ws://proxy.example.com');
-    vi.stubEnv('AGENT_SANDBOX_PREVIEW_PROXY_URL', '');
-
-    expect(() => validateAgentSandboxProxyEnv()).toThrow(
-      'AGENT_SANDBOX_PREVIEW_PROXY_URL are required'
+  it('derives ws(s) /terminal and http(s) preview base URLs from AGENT_SANDBOX_PROXY_URL', () => {
+    expect(resolveAgentSandboxTerminalProxyUrl('http://localhost:1006')).toBe(
+      'ws://localhost:1006/terminal'
+    );
+    expect(resolveAgentSandboxTerminalProxyUrl('https://sandbox.example.com/edge/')).toBe(
+      'wss://sandbox.example.com/edge/terminal'
+    );
+    expect(resolveAgentSandboxTerminalProxyUrl('wss://sandbox.example.com/terminal')).toBe(
+      'wss://sandbox.example.com/terminal'
     );
 
-    vi.stubEnv('AGENT_SANDBOX_PREVIEW_PROXY_URL', 'https://preview.example.com');
-    expect(() => validateAgentSandboxProxyEnv()).not.toThrow();
+    expect(
+      resolveAgentSandboxPreviewProxyBaseUrl({
+        proxyUrl: 'ws://localhost:1006/terminal'
+      })
+    ).toBe('http://localhost:1006');
+    expect(
+      resolveAgentSandboxPreviewProxyBaseUrl({
+        proxyUrl: 'https://sandbox.example.com/edge/'
+      })
+    ).toBe('https://sandbox.example.com/edge');
+    expect(
+      resolveAgentSandboxPreviewProxyBaseUrl({
+        proxyUrl: 'http://localhost:1006',
+        previewProxyUrl: 'http://localhost:1007/'
+      })
+    ).toBe('http://localhost:1007');
   });
-});
 
-describe('validateAgentSandboxPreviewProxyEnv', () => {
-  afterEach(() => {
-    vi.unstubAllEnvs();
-  });
-
-  it('does not require a preview proxy URL when Agent Sandbox is disabled', () => {
-    vi.stubEnv('AGENT_SANDBOX_PROVIDER', '');
+  it('skips validation when Agent Sandbox is disabled', () => {
+    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_BASEURL', '');
+    vi.stubEnv('AGENT_SANDBOX_PROXY_URL', '');
+    vi.stubEnv('AGENT_SANDBOX_PROXY_SECRET', '');
     vi.stubEnv('AGENT_SANDBOX_PREVIEW_PROXY_URL', '');
 
+    expect(() => validateAgentSandboxProxyEnv()).not.toThrow();
     expect(() => validateAgentSandboxPreviewProxyEnv()).not.toThrow();
   });
 
-  it('only requires the preview proxy URL when Agent Sandbox is enabled', () => {
-    vi.stubEnv('AGENT_SANDBOX_PROVIDER', 'opensandbox');
-    vi.stubEnv('AGENT_SANDBOX_PROXY_SECRET', '');
+  it('validates AGENT_SANDBOX_PROXY_URL and AGENT_SANDBOX_PROXY_SECRET for fastgpt-app', () => {
+    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_BASEURL', 'http://opensandbox.local');
     vi.stubEnv('AGENT_SANDBOX_PROXY_URL', '');
-    vi.stubEnv('AGENT_SANDBOX_PREVIEW_PROXY_URL', 'https://preview.example.com');
+    vi.stubEnv('AGENT_SANDBOX_PROXY_SECRET', '');
 
-    expect(() => validateAgentSandboxPreviewProxyEnv()).not.toThrow();
+    expect(() => validateAgentSandboxProxyEnv()).toThrow(
+      'AGENT_SANDBOX_PROXY_URL, AGENT_SANDBOX_PROXY_SECRET are required'
+    );
+
+    vi.stubEnv('AGENT_SANDBOX_PROXY_URL', 'http://localhost:1006');
+    vi.stubEnv('AGENT_SANDBOX_PROXY_SECRET', 'proxy-secret');
+    expect(() => validateAgentSandboxProxyEnv()).not.toThrow();
+
+    vi.stubEnv('AGENT_SANDBOX_PREVIEW_PROXY_URL', 'ws://invalid-preview:1007');
+    expect(() => validateAgentSandboxProxyEnv()).toThrow(
+      'AGENT_SANDBOX_PREVIEW_PROXY_URL must start with http:// or https://'
+    );
   });
 
-  it('rejects a missing preview proxy URL when Agent Sandbox is enabled', () => {
-    vi.stubEnv('AGENT_SANDBOX_PROVIDER', 'opensandbox');
+  it('allows validateAgentSandboxPreviewProxyEnv to accept either AGENT_SANDBOX_PROXY_URL or AGENT_SANDBOX_PREVIEW_PROXY_URL', () => {
+    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_BASEURL', 'http://opensandbox.local');
+    vi.stubEnv('AGENT_SANDBOX_PROXY_URL', '');
     vi.stubEnv('AGENT_SANDBOX_PREVIEW_PROXY_URL', '');
 
     expect(() => validateAgentSandboxPreviewProxyEnv()).toThrow(
-      'AGENT_SANDBOX_PREVIEW_PROXY_URL is required'
+      'AGENT_SANDBOX_PROXY_URL or AGENT_SANDBOX_PREVIEW_PROXY_URL is required'
     );
+
+    vi.stubEnv('AGENT_SANDBOX_PROXY_URL', 'ws://localhost:1006');
+    expect(() => validateAgentSandboxPreviewProxyEnv()).not.toThrow();
+
+    vi.stubEnv('AGENT_SANDBOX_PROXY_URL', '');
+    vi.stubEnv('AGENT_SANDBOX_PREVIEW_PROXY_URL', 'https://preview.example.com');
+    expect(() => validateAgentSandboxPreviewProxyEnv()).not.toThrow();
   });
 });

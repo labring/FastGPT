@@ -9,7 +9,7 @@ import { defineTool } from './type';
 import {
   buildSandboxPreviewFileUrl,
   createSandboxPreviewSession,
-  resolveSandboxPreviewPath
+  resolveSandboxPreviewFiles
 } from '../preview';
 
 const SandboxGetFileUrlToolSchema = z.object({
@@ -30,27 +30,12 @@ export const sandboxGetFileUrlTool = defineTool({
       return { response: 'Sandbox file preview context is not available.' };
     }
 
-    await sandboxInstance.ensureAvailable();
-
-    const files = params.paths.map((inputPath) => {
-      const filePath = sandboxInstance.resolveRuntimePath(inputPath, {
-        allowAbsolutePath: true
-      });
-      return {
-        filePath,
-        ...resolveSandboxPreviewPath(filePath)
-      };
-    });
-    const fileInfoMap = await sandboxInstance.provider.getFileInfo(
-      files.map(({ providerPath }) => providerPath)
+    const files = await sandboxInstance.runWithRecovery(() =>
+      resolveSandboxPreviewFiles({
+        sandbox: sandboxInstance,
+        paths: params.paths
+      })
     );
-    for (const { providerPath } of files) {
-      const fileInfo = fileInfoMap.get(providerPath);
-      if (!fileInfo || fileInfo.isDirectory) {
-        throw new Error(`Sandbox preview file not found: ${providerPath}`);
-      }
-    }
-
     const sessionId = await createSandboxPreviewSession({
       sandboxId,
       sourceType,
@@ -58,10 +43,10 @@ export const sandboxGetFileUrlTool = defineTool({
       userId,
       chatId
     });
-    const result = files.map(({ filePath, relativePath }) => ({
+    const result = files.map(({ relativePath }) => ({
       fileUrl: buildSandboxPreviewFileUrl({
         sessionId,
-        filePath
+        relativePath
       }),
       filename: path.posix.basename(relativePath)
     }));

@@ -95,12 +95,12 @@ export default SkillHistoriesPopover;
 
 const HistoryList = ({ onClose }: { onClose: () => void }) => {
   const { t } = useSafeTranslation();
-  const { skillId, refreshSkillDetail, restartSandbox } = useContextSelector(
+  const { skillId, refreshSkillDetail, startSandbox } = useContextSelector(
     SkillDetailContext,
     (v) => ({
       skillId: v.skillId,
       refreshSkillDetail: v.refreshSkillDetail,
-      restartSandbox: v.restartSandbox
+      startSandbox: v.startSandbox
     })
   );
 
@@ -122,7 +122,7 @@ const HistoryList = ({ onClose }: { onClose: () => void }) => {
     if (item.isCurrent) return;
     await postSwitchSkillVersion({ skillId, versionId: item._id });
     refreshSkillDetail();
-    restartSandbox();
+    startSandbox();
     onClose();
   };
 

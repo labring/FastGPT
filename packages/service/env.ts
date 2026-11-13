@@ -3,14 +3,13 @@ import z from 'zod';
 import { isPhaseProductionBuild } from '@fastgpt/global/common/system/constants';
 import { DEFAULT_MAX_FOLDER_DEPTH } from '@fastgpt/global/common/parentFolder/depth';
 import { BoolSchema, IntSchema, NumSchema, UrlSchema } from '@fastgpt/global/common/zod';
-import { agentSandboxProviderList } from '@fastgpt/global/core/ai/sandbox/constants';
 import { SandboxVolumeNameSchema } from '@fastgpt/global/core/ai/sandbox/volume';
 import {
   AgentSandboxPreviewProxyUrlSchema,
   AgentSandboxProxyUrlSchema,
   getAgentSandboxMissingRequiredEnvKeys,
   getRuntimeEnv,
-  isAgentSandboxProvider,
+  hasOpenSandboxEnvConfig,
   validateS3Env,
   validateAgentUsersEnv
 } from './env.util';
@@ -71,41 +70,22 @@ export const serviceEnv = createEnv({
     CRM_API_URL: UrlSchema.optional(),
     CRM_API_KEY: z.string().optional(),
 
-    // Agent sandbox proxy
-    AGENT_SANDBOX_PROXY_SECRET: z
-      .string()
-      .min(32, 'AGENT_SANDBOX_PROXY_SECRET must be at least 32 characters')
-      .optional()
-      .meta({
-        description:
-          'agent-sandbox-proxy 与 FastGPT 主服务共用的 HMAC 密钥；启用 Agent Sandbox 时必填，至少 32 个字符'
-      }),
+    // Agent sandbox proxy：默认仅需配置 AGENT_SANDBOX_PROXY_URL（自动归一化派生 WS /terminal 与 HTTP /preview），
+    // 双端口隔离部署时可额外通过 AGENT_SANDBOX_PREVIEW_PROXY_URL 覆盖 HTTP 预览基地址。
     AGENT_SANDBOX_PROXY_URL: AgentSandboxProxyUrlSchema.optional().meta({
-      description: '浏览器访问 agent-sandbox-proxy 的 WebSocket 地址，必须以 ws:// 或 wss:// 开头'
+      description:
+        '浏览器访问 opensandbox-proxy 的基地址（支持 http(s):// 或 ws(s)://，自动归一化派生终端 WS 与静态文件预览 HTTP 地址）'
     }),
     AGENT_SANDBOX_PREVIEW_PROXY_URL: AgentSandboxPreviewProxyUrlSchema.optional().meta({
       description:
-        '浏览器访问 Agent Sandbox 文件预览代理的 HTTP(S) 地址，必须以 http:// 或 https:// 开头'
+        '可选覆盖浏览器访问沙盒静态文件预览的 HTTP(S) 基地址（默认回退 AGENT_SANDBOX_PROXY_URL）'
+    }),
+    AGENT_SANDBOX_PROXY_SECRET: z.string().min(1).optional().meta({
+      description: 'fastgpt-app 与 opensandbox-proxy 共享的内部鉴权与 Ticket 签发密钥'
     }),
     // Agent sandbox
-    AGENT_SANDBOX_PROVIDER: z.enum(agentSandboxProviderList).optional().meta({
-      description: 'Agent 沙箱提供方，可选 sealosdevbox 或 opensandbox；为空时不启用沙箱'
-    }),
     AGENT_SANDBOX_SHOW_FREE_TIP: BoolSchema.default(false).meta({
       description: '是否展示虚拟机“限时免费”标签；默认为 false，为空或未配置时不展示'
-    }),
-    // Sealos配置
-    AGENT_SANDBOX_SEALOS_BASEURL: UrlSchema.optional().meta({
-      description: 'Sealos Devbox 服务地址'
-    }),
-    AGENT_SANDBOX_SEALOS_TOKEN: z.string().optional().meta({
-      description: 'Sealos Devbox 访问 Token'
-    }),
-    AGENT_SANDBOX_SEALOS_WORK_DIRECTORY: z.string().default('/home/devbox/workspace').meta({
-      description: 'Sealos Devbox 沙箱内工作目录'
-    }),
-    AGENT_SANDBOX_SEALOS_IMAGE: z.string().optional().meta({
-      description: 'Sealos Devbox 使用的运行态镜像；启用 sealosdevbox 时必填'
     }),
     AGENT_SANDBOX_CPU_COUNT: NumSchema.positive().default(1).meta({
       description: 'Agent Sandbox 实例的 CPU 核数上限'
@@ -114,7 +94,8 @@ export const serviceEnv = createEnv({
       description: 'Agent Sandbox 实例的内存上限（MiB）'
     }),
     AGENT_SANDBOX_STORAGE_SIZE_GI: NumSchema.min(1).default(1).meta({
-      description: 'Agent Sandbox 存储容量，单位 Gi'
+      description:
+        'Agent Sandbox 工作区存储容量，单位 Gi；在 kubernetes 运行态下同时自动将容器可写层（ephemeral-storage）上限设为该值 + 0.5（单位 Gi）'
     }),
     AGENT_SANDBOX_CPU_OVERCOMMIT_FACTOR: NumSchema.min(1).default(1).meta({
       description:
@@ -131,7 +112,6 @@ export const serviceEnv = createEnv({
     AGENT_SANDBOX_OPENSANDBOX_IMAGE: z.string().optional().meta({
       description: 'OpenSandbox 使用的运行态镜像；启用 opensandbox 时必填'
     }),
-    AGENT_SANDBOX_OPENSANDBOX_USE_SERVER_PROXY: BoolSchema.default(true),
     AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL: UrlSchema.optional(),
     AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN: z.string().optional(),
     AGENT_SANDBOX_OPENSANDBOX_VOLUME_NAME_PREFIX: SandboxVolumeNameSchema.default(
@@ -139,9 +119,6 @@ export const serviceEnv = createEnv({
     ).meta({ description: 'OpenSandbox persistent volume claimName prefix' }),
     AGENT_SANDBOX_SUSPEND_MINUTES: IntSchema.min(1).default(60).meta({
       description: 'Agent sandbox 持续未活跃多少分钟后自动暂停'
-    }),
-    AGENT_SANDBOX_ARCHIVE_INACTIVE_DAYS: IntSchema.min(1).default(7).meta({
-      description: '已暂停的 Agent sandbox 持续未活跃多少天后自动归档'
     }),
     AGENT_SANDBOX_MAX: IntSchema.min(1).default(100).meta({
       description:
@@ -153,18 +130,6 @@ export const serviceEnv = createEnv({
     AGENT_SANDBOX_ENTRYPOINT_TIMEOUT_SECONDS: IntSchema.min(1).max(600).default(30).meta({
       description: 'Agent sandbox entrypoint 执行超时时间（秒）'
     }),
-    AGENT_SANDBOX_WS_MAX_MESSAGE_BYTES: IntSchema.min(1)
-      .default(64 * 1024 * 1024)
-      .meta({
-        description:
-          'Agent sandbox WebSocket 单消息上限（字节），由 FastGPT app 统一下发给 proxy/IDE Agent'
-      }),
-    AGENT_SANDBOX_WS_MAX_FRAME_BYTES: IntSchema.min(1)
-      .default(16 * 1024 * 1024)
-      .meta({
-        description:
-          'Agent sandbox WebSocket 单帧上限（字节），由 FastGPT app 统一下发给 proxy/IDE Agent'
-      }),
     AGENT_SANDBOX_NPM_REGISTRY: z.string().optional(),
     AGENT_SANDBOX_PYPI_INDEX_URL: z.string().optional(),
     AGENT_SANDBOX_APT_MIRROR: z.string().optional().meta({
@@ -527,14 +492,14 @@ if (!isPhaseProductionBuild) {
     );
   }
 
-  // 共享 serviceEnv 会被 pro/admin 等项目导入，这里只校验 provider 运行态必填环境变量。
-  // 主站浏览器直连 agent-sandbox-proxy 的配置由 projects/app 启动流程单独校验。
+  // 共享 serviceEnv 会被 pro/admin 等项目导入，这里只校验 OpenSandbox 运行态必填环境变量。
+  // 沙盒文件预览代理地址由服务启动流程单独校验。
   const missingAgentSandboxEnvKeys = getAgentSandboxMissingRequiredEnvKeys(process.env);
   if (missingAgentSandboxEnvKeys.length > 0) {
     throw new Error(
       `Invalid Agent Sandbox environment variables: ${missingAgentSandboxEnvKeys.join(
         ', '
-      )} are required when AGENT_SANDBOX_PROVIDER is ${serviceEnv.AGENT_SANDBOX_PROVIDER}.`
+      )} are required when AGENT_SANDBOX_OPENSANDBOX_BASEURL is configured.`
     );
   }
 }
@@ -543,8 +508,6 @@ export const SYSTEM_MAX_STRING_LENGTH =
   serviceEnv.SYSTEM_MAX_STRING_LENGTH_M * SYSTEM_STRING_LENGTH_UNIT;
 
 /**
- * 判断系统是否显式配置了 Agent 虚拟机 provider。
- * 启动阶段会先校验 provider 配套 env，避免前端拿到半配置的沙盒能力。
+ * 判断系统是否启用了 Agent 沙箱（以 AGENT_SANDBOX_OPENSANDBOX_BASEURL 非空为唯一开关）。
  */
-export const hasAgentSandboxConfig = (): boolean =>
-  isAgentSandboxProvider(process.env.AGENT_SANDBOX_PROVIDER);
+export const hasAgentSandboxConfig = (): boolean => hasOpenSandboxEnvConfig(process.env);

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ChatFileTypeEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { getRunningSandboxId } from '@fastgpt/service/core/ai/sandbox/utils/id';
+import { OPEN_SANDBOX_DEFAULT_HOME_PATH } from '@fastgpt/global/core/ai/sandbox/constants';
 
 const {
   prepareAgentSandboxRuntimeMock,
@@ -8,7 +9,6 @@ const {
   injectInputFilesToSandboxMock,
   prepareSandboxRuntimeMirrorsMock,
   runAgentSandboxEntrypointMock,
-  resolveSandboxHomeMock,
   injectAgentSkillFilesToSandboxMock,
   loadWorkflowSkillResourcesMock,
   syncBuiltinSkillsToSandboxMock,
@@ -22,7 +22,6 @@ const {
   injectInputFilesToSandboxMock: vi.fn(),
   prepareSandboxRuntimeMirrorsMock: vi.fn(),
   runAgentSandboxEntrypointMock: vi.fn(),
-  resolveSandboxHomeMock: vi.fn(),
   injectAgentSkillFilesToSandboxMock: vi.fn(),
   loadWorkflowSkillResourcesMock: vi.fn(),
   syncBuiltinSkillsToSandboxMock: vi.fn(),
@@ -30,12 +29,13 @@ const {
   getAgentSkillInfosMock: vi.fn(),
   sandboxProviderMock: {},
   sandboxClientMock: {
-    provider: {},
-    getSandboxId: vi.fn(() => 'sandbox_1')
+    opensandbox: {},
+    getSandboxId: vi.fn(() => 'sandbox_1'),
+    retryOnRecoverableError: vi.fn(async (fn: () => Promise<unknown>) => fn())
   }
 }));
 
-sandboxClientMock.provider = sandboxProviderMock;
+sandboxClientMock.opensandbox = sandboxProviderMock;
 vi.mock('@fastgpt/service/core/workflow/resource/service', () => ({
   loadWorkflowSkillResources: loadWorkflowSkillResourcesMock
 }));
@@ -82,12 +82,6 @@ vi.mock(
     withAgentSandboxInitLease: withAgentSandboxInitLeaseMock
   })
 );
-vi.mock('@fastgpt/service/core/ai/sandbox/application/runtime/home', async (importOriginal) => ({
-  ...(await importOriginal<
-    typeof import('@fastgpt/service/core/ai/sandbox/application/runtime/home')
-  >()),
-  resolveSandboxHome: resolveSandboxHomeMock
-}));
 vi.mock(
   '@fastgpt/service/core/ai/sandbox/application/runtime/skill/core',
   async (importOriginal) => ({
@@ -135,7 +129,6 @@ describe('ensureAgentSandboxRuntime', () => {
       workDirectory: '/workspace'
     });
     loadWorkflowSkillResourcesMock.mockResolvedValue([{ _id: 'skill_1' }]);
-    resolveSandboxHomeMock.mockResolvedValue('/home/sandbox');
     injectAgentSkillFilesToSandboxMock.mockResolvedValue([
       {
         versionId: 'version_1',
@@ -225,7 +218,8 @@ describe('ensureAgentSandboxRuntime', () => {
           versionId: 'version_1',
           targetDir: '/workspace/skills/version_1'
         }
-      ]
+      ],
+      workspaceDirectory: '/workspace'
     });
     expect(prepareAction).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -376,10 +370,9 @@ describe('ensureAgentSandboxRuntime', () => {
     });
 
     expect(getSources).toHaveBeenCalledTimes(1);
-    expect(resolveSandboxHomeMock).toHaveBeenCalledWith(sandboxProviderMock);
     expect(syncBuiltinSkillsToSandboxMock).toHaveBeenCalledWith({
       sandbox: sandboxProviderMock,
-      homeDirectory: '/home/sandbox',
+      homeDirectory: OPEN_SANDBOX_DEFAULT_HOME_PATH,
       sources: builtinSkillSources
     });
     expect(result.skillScanDirectories).toEqual(['/home/sandbox/.fastgpt/skills/skill-creator']);

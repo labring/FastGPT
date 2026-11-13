@@ -15,7 +15,7 @@ export enum TimerIdEnum {
   chatHistoryCleanup = 'chatHistoryCleanup',
   datasetSyncSchedulerReconcile = 'datasetSyncSchedulerReconcile',
   stopInactiveSandboxes = 'stopInactiveSandboxes',
-  archiveInactiveSandboxes = 'archiveInactiveSandboxes',
+  reconcileOrphanSandboxResources = 'reconcileOrphanSandboxResources',
   recoverStaleSandboxOperations = 'recoverStaleSandboxOperations',
   enterpriseAuthTaskCleanup = 'enterpriseAuthTaskCleanup',
   accountCancellationReminder = 'accountCancellationReminder',

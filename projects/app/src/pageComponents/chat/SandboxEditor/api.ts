@@ -2,16 +2,25 @@ import type {
   SandboxDownloadBody,
   SandboxCheckExistBody,
   SandboxCheckExistResponse,
-  SandboxGetTicketBody,
-  SandboxGetTicketResponse,
-  SandboxGetHtmlPreviewLinkBody,
-  SandboxGetHtmlPreviewLinkResponse,
+  SandboxGetFilePreviewLinkBody,
+  SandboxGetFilePreviewLinkResponse,
   SandboxUploadQuery,
-  SandboxUploadResponse
+  SandboxUploadResponse,
+  SandboxFsListBody,
+  SandboxFsListResponse,
+  SandboxFsMkdirBody,
+  SandboxFsMoveBody,
+  SandboxFsDeleteBody,
+  SandboxFsExecBody,
+  SandboxGetTicketBody,
+  SandboxGetTicketResponse
 } from '@fastgpt/global/openapi/core/ai/sandbox/api';
+import type { ExecuteResult } from '@fastgpt/global/core/ai/sandbox/type';
 import { parseContentDispositionFilename } from '@fastgpt/global/common/file/tools';
 import { POST, POSTRawFile } from '@/web/common/api/request';
 import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
+import { getLanguageRequestHeaders } from '@fastgpt/web/i18n/utils';
+import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 
 type SandboxRawTargetRequest = {
   appId?: unknown;
@@ -24,9 +33,14 @@ type SandboxClientBody<T> = Omit<T, 'outLinkAuthData'> & {
 };
 type SandboxDownloadClientBody = SandboxClientBody<SandboxDownloadBody>;
 type SandboxCheckExistClientBody = SandboxClientBody<SandboxCheckExistBody>;
-type SandboxGetTicketClientBody = SandboxClientBody<SandboxGetTicketBody>;
-type SandboxGetHtmlPreviewLinkClientBody = SandboxClientBody<SandboxGetHtmlPreviewLinkBody>;
+type SandboxGetFilePreviewLinkClientBody = SandboxClientBody<SandboxGetFilePreviewLinkBody>;
 type SandboxUploadClientQuery = SandboxClientBody<SandboxUploadQuery>;
+type SandboxFsListClientBody = SandboxClientBody<SandboxFsListBody>;
+type SandboxFsMkdirClientBody = SandboxClientBody<SandboxFsMkdirBody>;
+type SandboxFsMoveClientBody = SandboxClientBody<SandboxFsMoveBody>;
+type SandboxFsDeleteClientBody = SandboxClientBody<SandboxFsDeleteBody>;
+type SandboxFsExecClientBody = SandboxClientBody<SandboxFsExecBody>;
+type SandboxGetTicketClientBody = SandboxClientBody<SandboxGetTicketBody>;
 
 /**
  * share 模式下后端 schema 要求只传 outLinkAuthData，真实 appId 由鉴权解析。
@@ -42,21 +56,41 @@ const normalizeSandboxRequest = <T extends SandboxRawTargetRequest>(data: T): T 
   return { ...data, appId: undefined } as T;
 };
 
+type SandboxResponseError = Error & {
+  status: number;
+};
+
 /**
- * 下载文件或目录（强制下载）
+ * 从非 2xx 原始响应中提取服务端错误文案，并附带 HTTP status 供上层区分 404 与瞬态故障。
  */
+const createSandboxResponseError = async (
+  response: Response,
+  fallbackMessage: string
+): Promise<SandboxResponseError> => {
+  const errorBody = (await response.json().catch(() => null)) as { message?: unknown } | null;
+  const serverMessage = typeof errorBody?.message === 'string' ? errorBody.message.trim() : '';
+  const message = serverMessage ? serverMessage : fallbackMessage;
+  return Object.assign(new Error(message), { status: response.status });
+};
+
 const fetchSandboxDownloadResponse = (data: SandboxDownloadClientBody) =>
-  fetch('/api/core/ai/sandbox/download', {
+  fetch(getWebReqUrl('/api/core/ai/sandbox/download'), {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...getLanguageRequestHeaders()
+    },
     body: JSON.stringify(normalizeSandboxRequest(data))
   });
 
+/**
+ * 下载文件或目录并触发浏览器本地保存。
+ */
 export const downloadSandbox = async (data: SandboxDownloadClientBody) => {
   const response = await fetchSandboxDownloadResponse(data);
 
   if (!response.ok) {
-    throw new Error('Download failed');
+    throw await createSandboxResponseError(response, 'Download failed');
   }
 
   const blob = await response.blob();
@@ -65,8 +99,8 @@ export const downloadSandbox = async (data: SandboxDownloadClientBody) => {
   a.href = url;
 
   const contentDisposition = response.headers.get('Content-Disposition');
-  const fileName =
-    parseContentDispositionFilename(contentDisposition || '') || `download-${Date.now()}.zip`;
+  const parsedFileName = parseContentDispositionFilename(contentDisposition ?? '');
+  const fileName = parsedFileName ? parsedFileName : `download-${Date.now()}.zip`;
 
   a.download = fileName;
   document.body.appendChild(a);
@@ -76,16 +110,19 @@ export const downloadSandbox = async (data: SandboxDownloadClientBody) => {
 };
 
 /**
- * 读取沙盒文件原始字节，供大文件绕过 ide-agent WebSocket JSON RPC 读取。
+ * 读取沙盒文件原始字节和并发版本；size 使用实际收到的字节数，避免依赖目录缓存或响应头。
  */
-export const readSandboxFile = async (data: SandboxDownloadClientBody) => {
+export const readSandboxFile = async (
+  data: SandboxDownloadClientBody
+): Promise<{ bytes: Uint8Array; etag?: string; size: number }> => {
   const response = await fetchSandboxDownloadResponse(data);
 
   if (!response.ok) {
-    throw new Error('Read failed');
+    throw await createSandboxResponseError(response, 'Read failed');
   }
 
-  return new Uint8Array(await response.arrayBuffer());
+  const bytes = new Uint8Array(await response.arrayBuffer());
+  return { bytes, etag: response.headers.get('ETag') ?? undefined, size: bytes.byteLength };
 };
 
 /**
@@ -94,25 +131,50 @@ export const readSandboxFile = async (data: SandboxDownloadClientBody) => {
 export const checkSandboxExist = async (data: SandboxCheckExistClientBody) =>
   POST<SandboxCheckExistResponse>('/core/ai/sandbox/checkExist', normalizeSandboxRequest(data));
 
-/**
- * 获取 HTML 预览链接（agent-proxy 直连 sandbox workspace）
- */
-export const getHtmlPreviewLink = (data: SandboxGetHtmlPreviewLinkClientBody) =>
-  POST<SandboxGetHtmlPreviewLinkResponse>(
-    '/core/ai/sandbox/getHtmlPreviewLink',
+/** 获取文件预览代理链接及过期时间，供媒体内嵌预览和 HTML 独立窗口使用。 */
+export const getFilePreviewLink = (data: SandboxGetFilePreviewLinkClientBody) =>
+  POST<SandboxGetFilePreviewLinkResponse>(
+    '/core/ai/sandbox/getFilePreviewLink',
     normalizeSandboxRequest(data)
   );
 
-export const getSandboxTicket = async (data: SandboxGetTicketClientBody) =>
-  POST<SandboxGetTicketResponse>('/core/ai/sandbox/getTicket', normalizeSandboxRequest(data));
+/**
+ * 单层列出沙盒目录（depth=1 懒加载）
+ */
+export const listSandboxDirectory = (data: SandboxFsListClientBody) =>
+  POST<SandboxFsListResponse>('/core/ai/sandbox/fs/list', normalizeSandboxRequest(data));
 
 /**
- * 将文件作为原始请求体流式写入 sandbox，避免 WebSocket base64 和主站临时文件。
+ * 创建沙盒目录
+ */
+export const mkdirSandboxDirectory = (data: SandboxFsMkdirClientBody) =>
+  POST<void>('/core/ai/sandbox/fs/mkdir', normalizeSandboxRequest(data));
+
+/**
+ * 移动或重命名沙盒文件/目录
+ */
+export const moveSandboxEntry = (data: SandboxFsMoveClientBody) =>
+  POST<void>('/core/ai/sandbox/fs/move', normalizeSandboxRequest(data));
+
+/**
+ * 删除沙盒文件/目录
+ */
+export const deleteSandboxEntry = (data: SandboxFsDeleteClientBody) =>
+  POST<void>('/core/ai/sandbox/fs/delete', normalizeSandboxRequest(data));
+
+/**
+ * 在当前沙盒会话目录内执行命令
+ */
+export const execSandboxCommand = (data: SandboxFsExecClientBody) =>
+  POST<ExecuteResult>('/core/ai/sandbox/fs/exec', normalizeSandboxRequest(data));
+
+/**
+ * 将 Blob 或 File 作为原始请求体写入 sandbox；编辑保存可传 oldEtag 校验并发修改。
  */
 export const uploadSandboxFile = async ({
   file,
   ...data
-}: SandboxUploadClientQuery & { file: File }) => {
+}: SandboxUploadClientQuery & { file: Blob }) => {
   return POSTRawFile<SandboxUploadResponse>({
     url: '/core/ai/sandbox/upload',
     file,
@@ -122,3 +184,9 @@ export const uploadSandboxFile = async ({
     }
   });
 };
+
+/**
+ * 签发连接 `opensandbox-proxy` 的短期交互式终端票据与 WebSocket 地址。
+ */
+export const getSandboxTerminalTicket = (data: SandboxGetTicketClientBody) =>
+  POST<SandboxGetTicketResponse>('/core/ai/sandbox/getTicket', normalizeSandboxRequest(data));

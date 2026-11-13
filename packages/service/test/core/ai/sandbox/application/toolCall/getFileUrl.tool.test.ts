@@ -2,16 +2,22 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 
 const previewMock = vi.hoisted(() => ({
-  resolveSandboxPreviewPath: vi.fn(),
   createSandboxPreviewSession: vi.fn(),
   buildSandboxPreviewFileUrl: vi.fn()
 }));
 
-vi.mock('@fastgpt/service/core/ai/sandbox/application/preview', () => previewMock);
+vi.mock('@fastgpt/service/core/ai/sandbox/application/preview', async (importOriginal) => ({
+  ...(await importOriginal<
+    typeof import('@fastgpt/service/core/ai/sandbox/application/preview')
+  >()),
+  createSandboxPreviewSession: previewMock.createSandboxPreviewSession,
+  buildSandboxPreviewFileUrl: previewMock.buildSandboxPreviewFileUrl
+}));
 
 import { sandboxGetFileUrlTool } from '@fastgpt/service/core/ai/sandbox/application/toolCall/getFileUrl.tool';
 
 const getFileInfo = vi.fn();
+const execute = vi.fn();
 const ensureAvailable = vi.fn(async () => undefined);
 const resolveRuntimePath = vi.fn((filePath: string) =>
   filePath.startsWith('/') ? filePath : `/workspace/sessions/chat-1/${filePath}`
@@ -24,11 +30,21 @@ const createSandboxInstance = () =>
       sourceType: ChatSourceTypeEnum.app,
       sourceId: 'app',
       userId: 'user',
-      chatId: 'chat'
+      chatId: 'chat-1'
+    }),
+    getRuntimePaths: () => ({
+      workspaceRoot: '/workspace',
+      runtimeSkillsRoot: '/workspace/projects',
+      sessionWorkDirectory: '/workspace/sessions/chat-1'
     }),
     resolveRuntimePath,
     ensureAvailable,
-    provider: {
+    runWithRecovery: vi.fn(async (fn: () => Promise<unknown>) => {
+      await ensureAvailable();
+      return fn();
+    }),
+    opensandbox: {
+      execute,
       getFileInfo
     }
   }) as any;
@@ -36,24 +52,17 @@ const createSandboxInstance = () =>
 describe('sandboxGetFileUrlTool', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    previewMock.resolveSandboxPreviewPath.mockImplementation((filePath: string) => {
-      const relativePath = filePath.replace(/^\/workspace\//, '');
-      return {
-        providerPath: `/workspace/${relativePath}`,
-        relativePath
-      };
-    });
     previewMock.createSandboxPreviewSession.mockResolvedValue('a12345678901234567890123');
     previewMock.buildSandboxPreviewFileUrl.mockImplementation(
-      ({ filePath }: { filePath: string }) => `preview:${filePath}`
+      ({ relativePath }: { relativePath: string }) => `preview:${relativePath}`
     );
   });
 
   it('returns direct preview urls for existing workspace files', async () => {
     getFileInfo.mockResolvedValue(
       new Map([
-        ['/workspace/file.txt', { isDirectory: false }],
-        ['/workspace/sessions/chat-1/report/data.csv', { isDirectory: false }]
+        ['/workspace/file.txt', { type: 'file' }],
+        ['/workspace/sessions/chat-1/report/data.csv', { type: 'file' }]
       ])
     );
 
@@ -63,9 +72,9 @@ describe('sandboxGetFileUrlTool', () => {
     });
 
     expect(JSON.parse(result.response)).toEqual([
-      { fileUrl: 'preview:/workspace/file.txt', filename: 'file.txt' },
+      { fileUrl: 'preview:file.txt', filename: 'file.txt' },
       {
-        fileUrl: 'preview:/workspace/sessions/chat-1/report/data.csv',
+        fileUrl: 'preview:sessions/chat-1/report/data.csv',
         filename: 'data.csv'
       }
     ]);
@@ -84,15 +93,15 @@ describe('sandboxGetFileUrlTool', () => {
       sourceType: ChatSourceTypeEnum.app,
       sourceId: 'app',
       userId: 'user',
-      chatId: 'chat'
+      chatId: 'chat-1'
     });
     expect(previewMock.buildSandboxPreviewFileUrl).toHaveBeenNthCalledWith(1, {
       sessionId: 'a12345678901234567890123',
-      filePath: '/workspace/file.txt'
+      relativePath: 'file.txt'
     });
     expect(previewMock.buildSandboxPreviewFileUrl).toHaveBeenNthCalledWith(2, {
       sessionId: 'a12345678901234567890123',
-      filePath: '/workspace/sessions/chat-1/report/data.csv'
+      relativePath: 'sessions/chat-1/report/data.csv'
     });
   });
 
@@ -117,6 +126,24 @@ describe('sandboxGetFileUrlTool', () => {
         params: { paths: ['missing.txt'] }
       })
     ).rejects.toThrow('Sandbox preview file not found');
+    expect(previewMock.createSandboxPreviewSession).not.toHaveBeenCalled();
+  });
+
+  it('rejects paths outside the workspace before issuing a preview session', async () => {
+    await expect(
+      sandboxGetFileUrlTool.execute({
+        sandboxInstance: createSandboxInstance(),
+        params: { paths: ['/home/sandbox/secret.txt'] }
+      })
+    ).rejects.toThrow('outside the allowed directory');
+
+    await expect(
+      sandboxGetFileUrlTool.execute({
+        sandboxInstance: createSandboxInstance(),
+        params: { paths: ['/workspace'] }
+      })
+    ).rejects.toThrow('outside the allowed directory');
+
     expect(previewMock.createSandboxPreviewSession).not.toHaveBeenCalled();
   });
 });

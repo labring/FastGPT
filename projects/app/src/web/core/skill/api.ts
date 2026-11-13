@@ -31,7 +31,6 @@ import type {
   UpdateSkillVersionBody,
   ImportSkillQuery
 } from '@fastgpt/global/openapi/core/ai/skill/api';
-import type { SandboxRuntimeStatusResponse } from '@fastgpt/global/core/ai/sandbox/type';
 import type { StartChatFnProps } from '@/components/core/chat/ChatContainer/type';
 import type {
   BatchResourceActionResponse,
@@ -84,14 +83,6 @@ export const importSkill = ({
 /** 从 Sandbox 打包并发布新版本 */
 export const postSaveDeploySkill = (data: SaveDeploySkillBody) =>
   POST<SaveDeploySkillResponse>('/core/ai/skill/save-deploy', data);
-
-/** 获取 Skill Edit runtime 状态 */
-export const getSkillRuntimeStatus = (data: SkillRuntimeBody, cancelToken?: AbortController) =>
-  POST<SandboxRuntimeStatusResponse>('/core/ai/skill/runtime/getStatus', data, { cancelToken });
-
-/** 触发 Skill Edit runtime 升级归档 */
-export const postUpgradeSkillRuntime = (data: SkillRuntimeBody, cancelToken?: AbortController) =>
-  POST<SandboxRuntimeStatusResponse>('/core/ai/skill/runtime/upgrade', data, { cancelToken });
 
 /** 初始化 Skill Edit runtime sandbox — SSE 流式版本，逐阶段回调 */
 export const streamInitSkillRuntime = ({

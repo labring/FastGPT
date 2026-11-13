@@ -17,7 +17,7 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { shellQuote } from '@fastgpt/global/common/string/utils';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
-import type { ExecuteResult } from '@fastgpt-sdk/sandbox-adapter';
+import type { ExecuteResult, SandboxSessionDirEntry } from '@fastgpt/global/core/ai/sandbox/type';
 import {
   DndContext,
   useSensor,
@@ -43,6 +43,7 @@ import {
 } from '../utils';
 import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import type { ChatTargetInputType } from '@fastgpt/global/openapi/core/chat/api';
+import type { CreateSandboxNodeParams } from '../types';
 
 // 自定义碰撞检测算法，实现根目录和空白区拖放
 const customCollisionDetection: CollisionDetection = (args) => {
@@ -71,13 +72,7 @@ const customCollisionDetection: CollisionDetection = (args) => {
 import { downloadSandbox } from '../api';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 
-export type FileItem = {
-  name: string;
-  path: string;
-  type: 'file' | 'directory';
-  size?: number;
-  mtime?: number;
-};
+export type FileItem = SandboxSessionDirEntry;
 
 export type TreeNode = FileItem & {
   children?: TreeNode[];
@@ -86,7 +81,7 @@ export type TreeNode = FileItem & {
 };
 
 type Props = {
-  width?: number;
+  sessionWorkDirectory?: string;
   filteredTree: TreeNode[];
   searchQuery: string;
   setSearchQuery: (query: string) => void;
@@ -97,7 +92,7 @@ type Props = {
   setSelectedPath: (path: string) => void;
   openFile: (path: string) => void;
   toggleDirectory: (node: TreeNode) => Promise<void> | void;
-  onCreateNode: (parentPath: string, name: string, type: 'file' | 'directory') => Promise<void>;
+  onCreateNode: (params: CreateSandboxNodeParams) => Promise<void>;
   onRenameComplete: (oldPath: string, newName: string) => Promise<void>;
   onMoveFiles: (
     operations: SandboxMoveOperation[],
@@ -132,20 +127,6 @@ const FileTreeSkeleton = () => {
       <Skeleton h="16px" w="50%" borderRadius="4px" />
     </VStack>
   );
-};
-
-const buildResolveAbsolutePathsCommand = (paths: string[]) => {
-  const quotedPaths = paths.map((path) => shellQuote(getSafeSandboxCommandPath(path))).join(' ');
-  return [
-    'workspace_root=$(pwd -P)',
-    `for path in ${quotedPaths}; do`,
-    '  if [ "$path" = "." ]; then',
-    '    printf \'%s\\n\' "$workspace_root"',
-    '  else',
-    '    printf \'%s/%s\\n\' "$workspace_root" "${path#./}"',
-    '  fi',
-    'done'
-  ].join('\n');
 };
 
 const getIsZipFile = (node: TreeNode) => node.type === 'file' && /\.zip$/i.test(node.name);
@@ -221,6 +202,7 @@ const DroppableRootBox = ({
 };
 
 const FileTree = ({
+  sessionWorkDirectory = '',
   filteredTree,
   searchQuery,
   setSearchQuery,
@@ -391,7 +373,7 @@ const FileTree = ({
     const { parentPath, type } = creatingNode;
     setCreatingNode(null);
     try {
-      await onCreateNode(parentPath, name, type);
+      await onCreateNode({ parentPath, name, type });
     } catch (error) {
       toast({
         title: t('chat:sandbox_create_failed'),
@@ -718,16 +700,14 @@ const FileTree = ({
     setContextMenu(null);
 
     try {
-      const result = await onExecCommand(buildResolveAbsolutePathsCommand(selectedPaths), 5000);
-      if (result.exitCode !== 0) {
-        throw new Error(result.stderr || result.stdout || t('chat:sandbox_copy_path_failed'));
-      }
-
-      const stdout = result.stdout.replace(/\r?\n$/, '');
-      const absolutePaths = stdout ? stdout.split(/\r?\n/) : [];
-      if (absolutePaths.length !== selectedPaths.length) {
+      const baseDir = sessionWorkDirectory.replace(/\/+$/, '');
+      if (!baseDir) {
         throw new Error(t('chat:sandbox_copy_path_failed'));
       }
+      const absolutePaths = selectedPaths.map((path) => {
+        const safeRel = getSafeSandboxCommandPath(path).replace(/^\.\//, '');
+        return safeRel === '.' ? baseDir : `${baseDir}/${safeRel}`;
+      });
 
       await navigator.clipboard.writeText(absolutePaths.join('\n'));
       toast({

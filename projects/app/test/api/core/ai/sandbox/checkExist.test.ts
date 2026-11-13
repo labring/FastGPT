@@ -25,7 +25,7 @@ vi.mock('@fastgpt/service/core/ai/sandbox/interface/session', () => ({
   checkSandboxSessionExist: mocks.checkSandboxSessionExist
 }));
 
-vi.mock('@fastgpt/service/core/ai/sandbox/interface/runtime', () => ({
+vi.mock('@fastgpt/service/core/ai/sandbox/application/runtime', () => ({
   buildSandboxClientQueryFromChatSource: mocks.buildSandboxClientQueryFromChatSource
 }));
 

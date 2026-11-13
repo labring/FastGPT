@@ -7,11 +7,7 @@ import {
   runSandboxLifecycleDeletion,
   type SandboxLifecycleDefinition
 } from '@fastgpt/service/core/ai/sandbox/application/lifecycle/runner';
-import {
-  SandboxOperationSettledError,
-  SandboxOperationConflictError
-} from '@fastgpt/service/core/ai/sandbox/application/lifecycle/error';
-import { canResumeSandboxOperation } from '@fastgpt/service/core/ai/sandbox/application/lifecycle/utils';
+import { SandboxOperationConflictError } from '@fastgpt/service/core/ai/sandbox/application/lifecycle/error';
 
 const sandboxId = 'runner-contract-test';
 const lease = { signal: new AbortController().signal, assertValid: vi.fn() };
@@ -23,7 +19,7 @@ const create = async () => {
     sourceType: ChatSourceTypeEnum.app,
     sourceId: sandboxId,
     userId: 'user',
-    provider: 'sealosdevbox',
+    instanceId: 'runner-instance-1',
     status: 'running',
     lastActiveAt: new Date()
   });
@@ -58,13 +54,13 @@ describe('runSandboxLifecycleOperation', () => {
           {
             fromPhase: 'claimed',
             toPhase: 'prepared',
-            run: async () => ({ versionId: 'checkpoint-version' })
+            run: async () => ({ context: { skillVersionId: 'checkpoint-version' } })
           },
           {
             fromPhase: 'prepared',
             toPhase: 'providerStopped',
             run: async ({ resource }) => {
-              expect(resource.versionId).toBe('checkpoint-version');
+              expect(resource.context?.skillVersionId).toBe('checkpoint-version');
               expect((await read())?.operation?.phase).toBe('prepared');
             }
           }
@@ -72,20 +68,21 @@ describe('runSandboxLifecycleOperation', () => {
         finish: {
           type: 'complete',
           status: 'stopped',
-          set: ({ resource }) => ({ versionId: resource.versionId })
+          set: ({ resource }) => ({
+            context: { skillVersionId: resource.context?.skillVersionId }
+          })
         }
       }
     });
     expect(result.status).toBe('stopped');
     expect(result.operation).toBeUndefined();
-    expect(result.versionId).toBe('checkpoint-version');
+    expect(result.instanceId).toBeUndefined();
+    expect(result.context?.skillVersionId).toBe('checkpoint-version');
   });
 
-  it.each([true, false])('persists safe retry eligibility for settled=%s', async (settled) => {
+  it('persists failure diagnostics without imposing an isolation lockout window', async () => {
     const resource = await create();
-    const error = settled
-      ? new SandboxOperationSettledError('command exited')
-      : new Error('connection interrupted');
+    const error = new Error('connection interrupted');
     await expect(
       runSandboxLifecycleOperation({
         resource,
@@ -98,8 +95,7 @@ describe('runSandboxLifecycleOperation', () => {
     const failed = (await read())!;
     expect(failed.status).toBe('stopping');
     expect(failed.operation?.error).toBe(error.message);
-    expect(canResumeSandboxOperation(failed)).toBe(settled);
-    expect(failed.operation?.retryAfter).toBeInstanceOf(Date);
+    expect(failed.operation?.failedAt).toBeInstanceOf(Date);
   });
 
   it('resumes checkpoints without repeating prior steps and clears failure metadata', async () => {
@@ -141,8 +137,7 @@ describe('runSandboxLifecycleOperation', () => {
       teamId: 'runner-team',
       sourceType: ChatSourceTypeEnum.app,
       sourceId: sandboxId,
-      userId: 'user',
-      provider: 'sealosdevbox'
+      userId: 'user'
     });
     const token = initial.instance!.operation!.id;
     await runSandboxLifecycleOperation({
@@ -157,13 +152,17 @@ describe('runSandboxLifecycleOperation', () => {
             toPhase: 'providerEnsured',
             run: async ({ operationId }) => {
               expect(operationId).toBe(token);
+              return { instanceId: 'provisioned-instance-1' };
             }
           }
         ],
         finish: { type: 'complete', status: 'running' }
       }
     });
-    expect((await read())?.status).toBe('running');
+    expect(await read()).toMatchObject({
+      status: 'running',
+      instanceId: 'provisioned-instance-1'
+    });
   });
 
   it('does not commit or mark failure after losing execution ownership', async () => {

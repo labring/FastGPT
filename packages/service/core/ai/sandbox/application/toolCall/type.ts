@@ -37,9 +37,7 @@ export type ToolRunResult =
       response: string;
     };
 
-/**
- * 保留工具定义的泛型推导。
- */
+/** 保留工具定义的泛型推导。 */
 export const defineTool = <S extends z.ZodType<Record<string, unknown>>>(
   def: ToolDefinition<S>
 ): ToolDefinition<S> => def;

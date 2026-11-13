@@ -2,22 +2,34 @@ import { describe, expect, it, vi } from 'vitest';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { sandboxLsTool } from '@fastgpt/service/core/ai/sandbox/application/toolCall/ls.tool';
 
-const createSandboxInstance = () =>
-  ({
-    ensureAvailable: vi.fn(async () => undefined),
+const createSandboxInstance = () => {
+  const ensureAvailable = vi.fn(async () => undefined);
+  return {
+    ensureAvailable,
+    runWithRecovery: vi.fn(async (fn: () => Promise<unknown>) => {
+      await ensureAvailable();
+      return fn();
+    }),
+    getRuntimePaths: vi.fn(() => ({
+      workspaceRoot: '/workspace',
+      runtimeSkillsRoot: '/workspace/projects',
+      sessionWorkDirectory: '/workspace/sessions/chat'
+    })),
     resolveRuntimePath: vi.fn((path?: string) => {
       if (!path || path === '.') return '/workspace/sessions/chat';
       if (path.startsWith('/')) return path;
       return `/workspace/sessions/chat/${path}`;
     }),
-    provider: {
+    opensandbox: {
       listDirectory: vi.fn(async () => [
-        { name: 'src', isDirectory: true },
-        { name: '.env', isDirectory: false },
-        { name: 'README.md', isDirectory: false }
+        { path: '/workspace/.fastgpt', type: 'directory' },
+        { path: '/workspace/src', type: 'directory' },
+        { path: '/workspace/.env', type: 'file' },
+        { path: '/workspace/README.md', type: 'file' }
       ])
     }
-  }) as any;
+  } as any;
+};
 
 describe('sandboxLsTool', () => {
   it('sorts entries, preserves dotfiles, and marks directories', async () => {
@@ -37,12 +49,12 @@ describe('sandboxLsTool', () => {
     expect(sandbox.resolveRuntimePath).toHaveBeenCalledWith('/workspace', {
       allowAbsolutePath: true
     });
-    expect(sandbox.provider.listDirectory).toHaveBeenCalledWith('/workspace');
+    expect(sandbox.opensandbox.listDirectory).toHaveBeenCalledWith('/workspace');
   });
 
   it('returns a stable empty directory result', async () => {
     const sandbox = createSandboxInstance();
-    sandbox.provider.listDirectory.mockResolvedValueOnce([]);
+    sandbox.opensandbox.listDirectory.mockResolvedValueOnce([]);
 
     await expect(
       sandboxLsTool.execute({
@@ -57,7 +69,7 @@ describe('sandboxLsTool', () => {
     expect(sandbox.resolveRuntimePath).toHaveBeenCalledWith(undefined, {
       allowAbsolutePath: true
     });
-    expect(sandbox.provider.listDirectory).toHaveBeenCalledWith('/workspace/sessions/chat');
+    expect(sandbox.opensandbox.listDirectory).toHaveBeenCalledWith('/workspace/sessions/chat');
   });
 
   it('reports when the entry limit is reached', async () => {

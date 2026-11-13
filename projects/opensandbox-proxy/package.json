@@ -1,0 +1,27 @@
+{
+  "name": "@fastgpt/opensandbox-proxy",
+  "version": "0.1.0",
+  "description": "FastGPT OpenSandbox edge WebSocket terminal & HTTP file preview proxy powered by Bun",
+  "private": true,
+  "license": "UNLICENSED",
+  "type": "module",
+  "scripts": {
+    "dev": "bun --watch run src/index.ts",
+    "build": "sh build.sh",
+    "start": "bun run dist/index.js",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@fastgpt-sdk/otel": "workspace:*",
+    "@fastgpt/global": "workspace:*",
+    "jsonwebtoken": "catalog:",
+    "mime": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@types/bun": "catalog:",
+    "@types/jsonwebtoken": "catalog:",
+    "typescript": "catalog:"
+  }
+}

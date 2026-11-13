@@ -1,14 +1,8 @@
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
-import { serviceEnv } from '@fastgpt/service/env';
-import {
-  AGENT_SANDBOX_PROXY_HEADER,
-  authAgentSandboxProxy,
-  authSandboxSession
-} from '@/service/core/sandbox/auth';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { authSandboxSession } from '@/service/core/sandbox/auth';
 import { authChatTargetCrud } from '@fastgpt/service/core/chat/auth';
 
 vi.mock('@fastgpt/service/core/chat/auth', () => ({
@@ -18,39 +12,6 @@ vi.mock('@fastgpt/service/core/chat/auth', () => ({
 vi.mock('@fastgpt/service/support/permission/app/auth', () => ({
   authApp: vi.fn()
 }));
-
-const originalSecret = serviceEnv.AGENT_SANDBOX_PROXY_SECRET;
-
-describe('authAgentSandboxProxy', () => {
-  beforeEach(() => {
-    serviceEnv.AGENT_SANDBOX_PROXY_SECRET = 'proxy-secret';
-  });
-
-  afterEach(() => {
-    serviceEnv.AGENT_SANDBOX_PROXY_SECRET = originalSecret;
-  });
-
-  it('returns proxy secret when header token matches', () => {
-    const result = authAgentSandboxProxy({
-      headers: {
-        [AGENT_SANDBOX_PROXY_HEADER]: 'proxy-secret'
-      }
-    } as any);
-
-    expect(result).toBe('proxy-secret');
-  });
-
-  it('throws authorization error when header token is missing or invalid', () => {
-    expect(() => authAgentSandboxProxy({ headers: {} } as any)).toThrow(ERROR_ENUM.unAuthorization);
-    expect(() =>
-      authAgentSandboxProxy({
-        headers: {
-          [AGENT_SANDBOX_PROXY_HEADER]: 'wrong-secret'
-        }
-      } as any)
-    ).toThrow(ERROR_ENUM.unAuthorization);
-  });
-});
 
 describe('authSandboxSession', () => {
   beforeEach(() => {
@@ -125,5 +86,18 @@ describe('authSandboxSession', () => {
         chatId: 'chat-1'
       })
     );
+  });
+
+  it('rejects skillEdit API sandbox sessions with non-edit-debug chatId', async () => {
+    await expect(
+      authSandboxSession({
+        req: {} as any,
+        sourceType: ChatSourceTypeEnum.skillEdit,
+        sourceId: 'skill-1',
+        chatId: 'debug-session-123'
+      })
+    ).rejects.toThrow('Skill edit sandbox only supports edit-debug chat');
+
+    expect(authChatTargetCrud).not.toHaveBeenCalled();
   });
 });

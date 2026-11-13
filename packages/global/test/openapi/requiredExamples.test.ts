@@ -322,8 +322,7 @@ describe('conditional required API examples', () => {
   it.each([
     ['/core/app/tool/getPreviewNode', 'get', ['appId', 'versionId']],
     ['/proApi/support/user/team/collaborator/delete', 'delete', ['tmbId']],
-    ['/core/dataset/collection/delete', 'post', []],
-    ['/core/ai/sandbox/verifyTicket', 'get', ['ticket', 'x-proxy-token']]
+    ['/core/dataset/collection/delete', 'post', []]
   ] as const)('enables only the first parameter alternative for %s', (path, method, expected) => {
     const operation = openAPIDocument.paths![path]![method]!;
     const parameters = operation.parameters!.map((parameter) => {

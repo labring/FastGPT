@@ -26,7 +26,8 @@ import { sandboxLsTool } from './ls.tool';
 import { sandboxReadFileTool } from './readFile.tool';
 import { sandboxShellTool } from './shell.tool';
 import { sandboxWriteFileTool } from './writeFile.tool';
-import { getSandboxClient, type SandboxClient } from '../runtime/client';
+import { type SandboxClient } from '../runtime/client';
+import { prepareAgentSandboxRuntime } from '../runtime';
 import { parseJsonArgs } from '../../../utils';
 import { writeUrlFilesToSandbox, type SandboxInputFileReader } from '../file';
 import { preparePackageMirrors, prepareSandbox } from '../runtime/prepare';
@@ -36,7 +37,7 @@ import {
   getSandboxInputFileNameAllocation,
   getSafeSandboxInputFilename
 } from '../../utils';
-import { getRunningSandboxId, getSandboxUserId } from '../../utils/id';
+import { getSandboxUserId } from '../../utils/id';
 import { createToolRunner, type SandboxToolCallValidator } from './type';
 
 const ToolMap = {
@@ -123,7 +124,8 @@ export const runSandboxTools = async ({
 /**
  * 准备 ToolCall 使用的运行态 sandbox。
  *
- * 该入口会获取当前会话 sandbox client，并把本轮用户输入文件写入 provider 文件系统。
+ * 该入口会获取当前会话 sandbox client，并把本轮用户输入文件写入容器文件系统；
+ * 若乐观快路径首次读写遇到容器消失或 FUSE 断连，自动走慢路径自愈重建并重试一次。
  * 即使没有文件也会返回 sandbox client，供 sandbox entrypoint 和后续工具调用复用。
  */
 export const prepareSandboxToolRuntime = async ({
@@ -132,7 +134,8 @@ export const prepareSandboxToolRuntime = async ({
   userId,
   chatId,
   files,
-  readInputFile
+  readInputFile,
+  onUpgrade
 }: {
   sourceType: ChatSourceTypeEnum;
   sourceId: string;
@@ -140,45 +143,45 @@ export const prepareSandboxToolRuntime = async ({
   chatId: string;
   files: { path: string; url: string }[];
   readInputFile?: SandboxInputFileReader;
+  onUpgrade?: () => void;
 }) => {
-  const sandboxUserId = getSandboxUserId({ sourceType, userId });
-  const sandboxId = getRunningSandboxId({
+  const {
+    sandboxClient: instance,
+    workspaceRoot,
+    workDirectory
+  } = await prepareAgentSandboxRuntime({
     sourceType,
     sourceId,
-    userId: sandboxUserId
+    userId,
+    chatId,
+    onUpgrade
   });
-  const instance = await getSandboxClient({
-    sandboxId,
-    sourceType,
-    sourceId,
-    userId: sandboxUserId,
-    chatId
-  });
-  const runtimePaths = instance.getRuntimePaths();
-  await prepareSandbox(
-    {
-      sandbox: instance.provider,
-      sandboxClient: instance,
-      workDirectory: runtimePaths.sessionWorkDirectory,
-      workspaceRoot: runtimePaths.workspaceRoot
-    },
-    preparePackageMirrors()
-  );
-  const allocation = getSandboxInputFileNameAllocation({
-    scopeKey: buildSandboxInputFileScopeKey({
-      sourceType,
-      sourceId,
-      userId: sandboxUserId,
-      chatId
-    }),
-    sandbox: instance.provider,
-    workDirectory: runtimePaths.sessionWorkDirectory
-  });
-  const usedNames = new Map<string, number>();
-  const batchUsedFilenames = new Set<string>();
-  await writeUrlFilesToSandbox(
-    instance.provider,
-    files.map((file, index) => {
+
+  await instance.retryOnRecoverableError(async () => {
+    await prepareSandbox(
+      {
+        sandbox: instance.opensandbox,
+        sandboxClient: instance,
+        workDirectory,
+        workspaceRoot
+      },
+      preparePackageMirrors()
+    );
+    const sandboxUserId = getSandboxUserId({ sourceType, userId });
+    const allocation = getSandboxInputFileNameAllocation({
+      scopeKey: buildSandboxInputFileScopeKey({
+        sourceType,
+        sourceId,
+        userId: sandboxUserId,
+        chatId
+      }),
+      sandbox: instance.opensandbox,
+      workDirectory
+    });
+    const usedNames = new Map<string, number>();
+    const batchUsedFilenames = new Set<string>();
+    const resolvedRelativePaths = new Map<number, string>();
+    const writeEntries = files.map((file, index) => {
       const normalizedPath = file.path.replace(/^\.\//, '');
       if (normalizedPath.startsWith(SANDBOX_USER_FILES_PATH)) {
         const rawFilename = normalizedPath.slice(SANDBOX_USER_FILES_PATH.length);
@@ -188,7 +191,7 @@ export const prepareSandboxToolRuntime = async ({
           batchUsedFilenames
         });
         const relativePath = `${SANDBOX_USER_FILES_PATH}${filename}`;
-        file.path = relativePath;
+        resolvedRelativePaths.set(index, relativePath);
         return {
           ...file,
           path: instance.resolveRuntimePath(relativePath, { allowAbsolutePath: true })
@@ -199,9 +202,16 @@ export const prepareSandboxToolRuntime = async ({
         ...file,
         path: instance.resolveRuntimePath(file.path, { allowAbsolutePath: true })
       };
-    }),
-    readInputFile
-  );
+    });
+    await writeUrlFilesToSandbox({
+      sandbox: instance.opensandbox,
+      files: writeEntries,
+      readInputFile
+    });
+    for (const [index, relativePath] of resolvedRelativePaths.entries()) {
+      files[index].path = relativePath;
+    }
+  });
   return instance;
 };
 

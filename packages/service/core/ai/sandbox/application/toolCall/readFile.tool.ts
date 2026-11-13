@@ -24,15 +24,18 @@ const decodeFileContent = (content: unknown) => {
 export const sandboxReadFileTool = defineTool({
   zodSchema: SandboxReadFileToolSchema,
   execute: async ({ sandboxInstance, params }) => {
-    await sandboxInstance.ensureAvailable();
-
-    const providerPath = sandboxInstance.resolveRuntimePath(params.path, {
-      allowAbsolutePath: true
+    const file = await sandboxInstance.runWithRecovery(async () => {
+      const targetPath = sandboxInstance.resolveRuntimePath(params.path, {
+        allowAbsolutePath: true
+      });
+      const [readResult] = await sandboxInstance.opensandbox.readFiles([targetPath]);
+      if (!readResult || readResult.error) {
+        throw new Error(`Failed to read file: ${readResult?.error?.message || params.path}`, {
+          cause: readResult?.error
+        });
+      }
+      return readResult;
     });
-    const [file] = await sandboxInstance.provider.readFiles([providerPath]);
-    if (!file || file.error) {
-      throw new Error(`Failed to read file: ${file?.error?.message || params.path}`);
-    }
 
     const content = decodeFileContent(file.content);
     const lines = content.split(/\r\n|\n|\r/);

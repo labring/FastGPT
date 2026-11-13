@@ -37,7 +37,6 @@ import {
   UpdateSkillCollaboratorBodySchema,
   UpdateSkillCollaboratorResponseSchema
 } from './api';
-import { SandboxRuntimeStatusResponseSchema } from '../../../../core/ai/sandbox/type';
 import { SkillBatchPath } from './batch';
 
 export const SkillPath: OpenAPIPath = {
@@ -349,54 +348,6 @@ export const SkillPath: OpenAPIPath = {
           content: {
             'application/json': {
               schema: GetSkillFolderPathResponseSchema
-            }
-          }
-        }
-      }
-    }
-  },
-  '/core/ai/skill/runtime/getStatus': {
-    post: {
-      summary: '获取技能编辑沙盒 runtime 状态',
-      description: '检查 Skill Edit runtime 是否可直接初始化、需要升级或正在升级',
-      tags: [DevApiTagsMap.skillEdit],
-      requestBody: {
-        content: {
-          'application/json': {
-            schema: SkillRuntimeBodySchema
-          }
-        }
-      },
-      responses: {
-        200: {
-          description: '成功返回 runtime 状态',
-          content: {
-            'application/json': {
-              schema: SandboxRuntimeStatusResponseSchema
-            }
-          }
-        }
-      }
-    }
-  },
-  '/core/ai/skill/runtime/upgrade': {
-    post: {
-      summary: '触发技能编辑沙盒 runtime 升级',
-      description: '触发旧 runtime 工作区归档，客户端随后通过 getStatus 轮询结果',
-      tags: [DevApiTagsMap.skillEdit],
-      requestBody: {
-        content: {
-          'application/json': {
-            schema: SkillRuntimeBodySchema
-          }
-        }
-      },
-      responses: {
-        200: {
-          description: '成功返回触发后的 runtime 状态',
-          content: {
-            'application/json': {
-              schema: SandboxRuntimeStatusResponseSchema
             }
           }
         }

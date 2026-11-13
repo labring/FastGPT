@@ -10,6 +10,7 @@ import ChatItemContextProvider, { ChatItemContext } from '@/web/core/chat/contex
 import ChatRecordContextProvider from '@/web/core/chat/context/chatRecordContext';
 import { getSkillEditChatSourceKey } from '@/web/core/chat/utils';
 import { streamSkillDebugChat } from '@/web/core/skill/api';
+import { dispatchSandboxWorkspaceRefresh } from '@/pageComponents/chat/SandboxEditor/utils';
 import { Box } from '@chakra-ui/react';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import {
@@ -163,6 +164,8 @@ const SkillPreview = () => {
         },
         onMessage: generatingMessage,
         abortCtrl: controller
+      }).finally(() => {
+        dispatchSandboxWorkspaceRefresh();
       });
 
       return { responseText };

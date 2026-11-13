@@ -7,50 +7,34 @@ import {
   deleteSandboxResourcesBySource,
   deleteSkillEditSandboxes as deleteCurrentSkillSandboxes
 } from '../../application/resource';
-import { withSandboxSourceMutationLease } from '../../application/lease';
 import { assertSandboxSourceDeleted } from '../../application/sourceGuard';
 
 const logger = getLogger(LogCategories.MODULE.AI.SANDBOX);
 
 /**
- * 分别在 App、Builder 的 Source lease 内确认 App 已删除，再查询、清理对应资源。
+ * 清理已软删除 App 关联的全部用户沙盒与调试沙盒资源。
  *
- * 删除标记阻止后续创建；各自的 Source lease 确保查询不会漏掉正在创建的记录。
- * 按固定顺序逐个取得并释放 Source lease，内部保持 Source -> Lifecycle 的锁顺序。
+ * 与创建端通过 MongoDB Store-Load 屏障无锁协同（无需跨用户 Source 锁）：
+ * - 删除端：先由主事务写入 `MongoApp.deleteTime != null`（`assertSandboxSourceDeleted` 校验），再扫描 `MongoSandboxInstance`，并逐实例有界等待 `Lifecycle Lease` 完成彻底删除。
+ * - 创建端：在 `Lifecycle Lease` 内先插入 `provisioning` 占位，再复检 `deleteTime === null`；若已删除则原子回撤占位记录并拒绝分配远端资源。
  */
 export async function deleteAppSandboxes(appId: string): Promise<void> {
   for (const sourceType of [ChatSourceTypeEnum.app, ChatSourceTypeEnum.workflowBuilder] as const) {
-    await withSandboxSourceMutationLease({
-      sourceType,
-      sourceId: appId,
-      label: `delete-app-sandboxes:${sourceType}:${appId}`,
-      fn: async ({ assertValid }) => {
-        await assertSandboxSourceDeleted({ sourceType, sourceId: appId });
-        assertValid();
-        await deleteSandboxResourcesBySource({ sourceType, sourceId: appId });
-      }
-    });
+    await assertSandboxSourceDeleted({ sourceType, sourceId: appId });
+    await deleteSandboxResourcesBySource({ sourceType, sourceId: appId });
   }
 }
 
-/** 按 Skill source 独立持有 lease，清理所有已删除 Skill 的 Sandbox 资源。 */
+/** 校验各 Skill 已持久化软删除标记后，并发清理其关联的全部 Skill Edit 沙盒资源。 */
 export async function deleteSkillEditSandboxes(skillIds: string[]): Promise<void> {
   const results = await batchRunSettled(
     skillIds,
     async (skillId) => {
-      await withSandboxSourceMutationLease({
+      await assertSandboxSourceDeleted({
         sourceType: ChatSourceTypeEnum.skillEdit,
-        sourceId: skillId,
-        label: `delete-skill-sandbox:${skillId}`,
-        fn: async ({ assertValid }) => {
-          await assertSandboxSourceDeleted({
-            sourceType: ChatSourceTypeEnum.skillEdit,
-            sourceId: skillId
-          });
-          assertValid();
-          await deleteCurrentSkillSandboxes([skillId]);
-        }
+        sourceId: skillId
       });
+      await deleteCurrentSkillSandboxes([skillId]);
     },
     SOURCE_DELETE_CONCURRENCY
   );

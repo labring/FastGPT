@@ -5,6 +5,9 @@
 export const DEFAULT_GITIGNORE_CONTENT = `# Skill ignore patterns
 # These patterns define files/folders that should not be packaged when deploying/exporting.
 
+# FastGPT runtime state & persisted user-space packages
+.fastgpt/
+
 # Node.js dependencies
 node_modules/
 .npm/

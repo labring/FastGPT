@@ -2,147 +2,115 @@ import type { NextApiResponse } from 'next';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { NextAPI } from '@/service/middleware/entry';
-import { type ApiRequestProps } from '@fastgpt/next/type';
-import { authSandboxRuntimeSession } from '@/service/core/sandbox/access';
-import { buildSandboxClientQueryFromChatSource } from '@fastgpt/service/core/ai/sandbox/interface/runtime';
-import {
-  getSandboxClient,
-  type SandboxClient
-} from '@fastgpt/service/core/ai/sandbox/application/runtime/client';
-import archiver from 'archiver';
+import type { ApiRequestProps } from '@fastgpt/next/type';
+import { withAuthorizedSandboxClient } from '@/service/core/sandbox/client';
+import type { SandboxClient } from '@fastgpt/service/core/ai/sandbox/application/runtime/client';
 import { SandboxDownloadBodySchema } from '@fastgpt/global/openapi/core/ai/sandbox/api';
+import { UserError } from '@fastgpt/global/common/error/utils';
+import { jsonRes } from '@fastgpt/service/common/response';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   isSandboxPathDirectory,
-  addDirectoryToArchive
+  readSandboxSessionDirectoryArchive,
+  readSandboxSessionFile,
+  SandboxFileNotFoundError
 } from '@fastgpt/service/core/ai/sandbox/application/file';
-
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 
-export const writeDirectoryArchiveResponse = async ({
-  sandbox,
-  archive,
-  res,
-  path
-}: {
-  sandbox: SandboxClient;
-  archive: archiver.Archiver;
-  res: NextApiResponse;
-  path: string;
-}) => {
-  let onArchiveError: ((err: Error) => void) | undefined;
-  let archiveError: Error | undefined;
-  const archiveErrorPromise = new Promise<never>((_, reject) => {
-    onArchiveError = (err: Error) => {
-      archiveError = err;
-      reject(err);
-    };
-    archive.once('error', onArchiveError);
-  });
-  void archiveErrorPromise.catch(() => undefined);
-
-  archive.pipe(res);
-  try {
-    await addDirectoryToArchive(sandbox, archive, path, '');
-    if (archiveError) {
-      throw archiveError;
-    }
-    await Promise.race([Promise.resolve(archive.finalize()), archiveErrorPromise]);
-  } catch (error) {
-    archive.destroy();
-    throw error;
-  } finally {
-    if (onArchiveError) {
-      archive.off('error', onArchiveError);
-    }
-  }
-};
-
-const writeFileStreamResponse = async ({
-  sandbox,
-  res,
-  path
-}: {
-  sandbox: SandboxClient;
-  res: NextApiResponse;
-  path: string;
-}) => {
-  const providerPath = sandbox.resolveRuntimePath(path, { allowAbsolutePath: true });
-  const fileInfoMap = await sandbox.provider.getFileInfo([providerPath]).catch(() => undefined);
-  const fileInfo = fileInfoMap?.get(providerPath);
-
-  if (fileInfo?.isDirectory) {
-    return Promise.reject('Cannot read a directory as a file');
-  }
-
-  const fileName = providerPath.split('/').pop() || 'file';
-  const encodedFileName = encodeURIComponent(fileName);
-
-  res.setHeader('Content-Type', 'application/octet-stream');
-  res.setHeader(
-    'Content-Disposition',
-    `attachment; filename="${encodedFileName}"; filename*=UTF-8''${encodedFileName}`
-  );
-  if (typeof fileInfo?.size === 'number') {
-    res.setHeader('Content-Length', String(fileInfo.size));
-  }
-
-  await pipeline(Readable.from(sandbox.provider.readFileStream(providerPath)), res);
-};
-
+/**
+ * 下载沙盒会话工作目录内的单个文件或目录：
+ * - 目录：在容器内打包为 `.zip` 后流式返回；
+ * - 单文件：直接返回原始字节流，并携带弱 `ETag` 供前端编辑器乐观锁并发校验使用。
+ */
 async function handler(req: ApiRequestProps, res: NextApiResponse): Promise<void> {
+  if (req.method !== 'POST') {
+    res.setHeader('Allow', 'POST');
+    return jsonRes(res, { code: 405, message: 'Method Not Allowed' });
+  }
+
+  const writeDirectoryArchiveResponse = async ({
+    sandbox,
+    path
+  }: {
+    sandbox: SandboxClient;
+    path: string;
+  }) => {
+    const { stream, size, cleanup } = await readSandboxSessionDirectoryArchive(sandbox, path);
+    const isRoot = path === '.' || path === '';
+    const rawFileName = isRoot ? 'workspace' : path.split('/').filter(Boolean).pop() || 'workspace';
+    const fileName = encodeURIComponent(`${rawFileName}-${Date.now()}.zip`);
+
+    res.setHeader('Content-Type', 'application/zip');
+    res.setHeader('Cache-Control', 'no-store');
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="${fileName}"; filename*=UTF-8''${fileName}`
+    );
+    if (typeof size === 'number') res.setHeader('Content-Length', String(size));
+
+    try {
+      await pipeline(Readable.from(stream), res);
+    } finally {
+      await cleanup();
+    }
+  };
+
+  const writeFileStreamResponse = async ({
+    sandbox,
+    path
+  }: {
+    sandbox: SandboxClient;
+    path: string;
+  }) => {
+    const { stream, fileName, etag, size } = await readSandboxSessionFile(sandbox, path);
+    const encodedFileName = encodeURIComponent(fileName);
+
+    res.setHeader('Content-Type', 'application/octet-stream');
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="${encodedFileName}"; filename*=UTF-8''${encodedFileName}`
+    );
+    res.setHeader('Cache-Control', 'no-store');
+    if (etag) res.setHeader('ETag', etag);
+    if (typeof size === 'number') res.setHeader('Content-Length', String(size));
+
+    await pipeline(Readable.from(stream), res);
+  };
+
   const { customUid, authProxy, sourceType, sourceId, chatId, path, outLinkAuthData } =
     parseApiInput({
       req,
       bodySchema: SandboxDownloadBodySchema
     }).body;
 
-  const {
-    uid,
-    sourceType: resolvedSourceType,
-    sourceId: resolvedSourceId
-  } = await authSandboxRuntimeSession({
-    customUid,
-    authProxy,
-    req,
-    sourceType,
-    sourceId,
-    chatId,
-    outLinkAuthData,
-    per: ReadPermissionVal
-  });
-
-  const sandbox = await getSandboxClient(
-    buildSandboxClientQueryFromChatSource({
-      sourceType: resolvedSourceType,
-      sourceId: resolvedSourceId,
-      userId: uid,
-      chatId
-    })
+  await withAuthorizedSandboxClient(
+    {
+      customUid,
+      authProxy,
+      req,
+      sourceType,
+      sourceId,
+      chatId,
+      outLinkAuthData,
+      per: ReadPermissionVal,
+      canRetry: () => !res.headersSent
+    },
+    async ({ sandbox }) => {
+      try {
+        const isDirectory = await isSandboxPathDirectory(sandbox, path);
+        if (isDirectory) {
+          await writeDirectoryArchiveResponse({ sandbox, path });
+        } else {
+          await writeFileStreamResponse({ sandbox, path });
+        }
+      } catch (error) {
+        if (error instanceof SandboxFileNotFoundError && !res.headersSent) {
+          return jsonRes(res, { code: 404, error: new UserError(error.message) });
+        }
+        throw error;
+      }
+    }
   );
-
-  const isDirectory = await isSandboxPathDirectory(sandbox, path);
-
-  if (isDirectory) {
-    const isRoot = path === '.' || path === '';
-    const rawFileName = isRoot ? 'workspace' : path.split('/').filter(Boolean).pop() || 'workspace';
-    const fileName = encodeURIComponent(`${rawFileName}-${Date.now()}.zip`);
-
-    res.setHeader('Content-Type', 'application/zip');
-    res.setHeader(
-      'Content-Disposition',
-      `attachment; filename="${fileName}"; filename*=UTF-8''${fileName}`
-    );
-
-    await writeDirectoryArchiveResponse({
-      sandbox,
-      archive: archiver('zip', { zlib: { level: 9 } }),
-      res,
-      path
-    });
-  } else {
-    await writeFileStreamResponse({ sandbox, res, path });
-  }
 }
 
 export default NextAPI(handler);

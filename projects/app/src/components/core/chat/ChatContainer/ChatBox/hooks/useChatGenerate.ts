@@ -49,6 +49,7 @@ import { cloneDeep } from 'lodash-es';
 import type { ResolvedChatAuthTargetInput } from '@/web/core/chat/type';
 import { useChatAuthApiTarget } from '@/web/core/chat/utils';
 import { getChatItemErrorText } from '@/global/core/chat/utils';
+import { dispatchSandboxWorkspaceRefresh } from '@/pageComponents/chat/SandboxEditor/utils';
 import {
   isChatGeneratingError,
   getChatGeneratingConflictData,
@@ -614,6 +615,10 @@ export const useChatGenerate = ({
   const generatingMessage = useMemoizedFn(
     (message: generatingMessageProps & { autoTTSResponse?: boolean }) => {
       onGeneratingMessage?.(message);
+      // 工具响应到达即刷新，不能等整轮 Agent 推理结束才同步工作区。
+      if (message.event === SseResponseEventEnum.toolResponse) {
+        dispatchSandboxWorkspaceRefresh();
+      }
 
       if (message.event === SseResponseEventEnum.chatTitle && message.title) {
         setChatBoxData((state) =>

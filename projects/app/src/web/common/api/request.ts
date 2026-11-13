@@ -344,7 +344,7 @@ export function POST<T = undefined>(url: string, data = {}, config: ConfigType =
   return request(url, data, config, 'POST');
 }
 
-/** 将 File 作为原始请求体上传，对象类型 query 参数按 JSON 序列化。 */
+/** 将 Blob（包括 File）作为原始请求体上传，对象类型 query 参数按 JSON 序列化。 */
 export function POSTRawFile<T = undefined>({
   url,
   file,
@@ -352,7 +352,7 @@ export function POSTRawFile<T = undefined>({
   config = {}
 }: {
   url: string;
-  file: File;
+  file: Blob;
   query: Record<string, unknown>;
   config?: ConfigType;
 }): Promise<T> {

@@ -1,12 +1,27 @@
 import { hashStr } from '../../../common/string/tools';
-import type { SandboxProviderType } from '@fastgpt-sdk/sandbox-adapter';
 import type { ChatSourceTypeEnum } from '../../chat/constants';
 
-// ---- 沙盒提供方 ----
-export const agentSandboxProviderList = [
-  'sealosdevbox',
-  'opensandbox'
-] as const satisfies readonly SandboxProviderType[];
+export const OPEN_SANDBOX_DEFAULT_ROOT_PATH = '/workspace';
+export const OPEN_SANDBOX_DEFAULT_HOME_PATH = '/home/sandbox';
+
+/** 持久化工作区根下存放运行态元数据与用户级包安装前缀（python/npm/bun）的系统隐藏目录名。 */
+export const SANDBOX_INTERNAL_RUNTIME_DIR_NAME = '.fastgpt';
+
+// ---- opensandbox-proxy 与主站共享协议常量 ----
+/** `opensandbox-proxy` 回调主站内部接口（`verifyTicket` / `keepalive`）时携带的共享密钥请求头。 */
+export const AGENT_SANDBOX_PROXY_SECRET_HEADER = 'x-agent-sandbox-proxy-secret';
+/** 预览会话随机 ID 固定长度（`getNanoid(24)` 生成，首字符固定小写字母，后续 23 位字母数字）。 */
+export const SANDBOX_PREVIEW_SESSION_ID_LENGTH = 24;
+/** 预览会话随机 ID 词法校验正则，供主站签发解析与边缘代理快速预检共用。 */
+export const SANDBOX_PREVIEW_SESSION_ID_REGEX = /^[a-z][a-zA-Z0-9]{23}$/;
+/** `opensandbox-proxy` 单次向主站批量续期活跃沙盒的最大 ID 数量。 */
+export const SANDBOX_KEEPALIVE_MAX_BATCH_SIZE = 200;
+
+// ---- 沙盒命令执行超时边界 ----
+/** `fs/exec` 单条非交互式命令未显式传入 `timeoutMs` 时的默认超时时间（30 秒）。 */
+export const SANDBOX_FS_EXEC_DEFAULT_TIMEOUT_MS = 30_000;
+/** `fs/exec` 单条非交互式命令允许设置的最大超时时间（10 分钟）。 */
+export const SANDBOX_FS_EXEC_MAX_TIMEOUT_MS = 600_000;
 
 // ---- 沙盒状态 ----
 export const SandboxStatusEnum = {
@@ -23,17 +38,9 @@ export enum SandboxUnavailableReasonEnum {
 
 /** Chat Test 保存本轮实际 Sandbox 开关的 metadata key。 */
 export const APP_SANDBOX_ENABLED_CHAT_METADATA_KEY = 'appSandboxEnabled';
-export type SandboxStatusType = (typeof SandboxStatusEnum)[keyof typeof SandboxStatusEnum];
-
-// ---- 沙盒实例类型 ----
-/** @deprecated sandbox 实例归属统一使用 sourceType/sourceId；该枚举仅用于历史数据迁移。 */
-export enum SandboxTypeEnum {
-  editDebug = 'edit-debug',
-  sessionRuntime = 'session-runtime'
-}
 
 // ---- sandboxId 生成 ----
-/** 为 v2 Sandbox 生成带 sourceType 前缀的稳定物理资源 ID。 */
+/** 为 Sandbox 生成带 sourceType 前缀的稳定物理资源 ID。 */
 export const generateSandboxId = ({
   sourceType,
   sourceId,
@@ -48,7 +55,7 @@ export const generateSandboxId = ({
 export const SANDBOX_USER_FILES_PATH = 'user_files/';
 export const SANDBOX_ENTRYPOINT_MAX_LENGTH = 16 * 1024;
 export const SANDBOX_SYSTEM_PROMPT = `<sandbox_capability>
-你拥有一个独立的 Linux 沙盒环境（Ubuntu 22.04），可通过 sandbox 工具操作文件和执行命令。
+你拥有一个独立的 Linux 沙盒环境（Ubuntu 24.04），可通过 sandbox 工具操作文件和执行命令。
 - 系统预装：bash / python3 / node / bun / git / curl
 - 用户对话上传的文件存储在 ${SANDBOX_USER_FILES_PATH} 目录下
 - 文件操作优先使用对应的专用工具，具体用途、参数和限制见各工具 description

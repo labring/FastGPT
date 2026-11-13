@@ -5,12 +5,12 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import Editor from '@monaco-editor/react';
 import { useTranslation } from 'next-i18next';
 import { useLatest } from 'ahooks';
-import type { OpenedFile } from './FileTabs';
+import type { OpenedFile } from '../types';
 import Markdown from '@fastgpt/web/components/common/Markdown';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import MyPhotoView from '@fastgpt/web/components/common/Image/PhotoView';
-import { getHtmlPreviewLink } from '../api';
+import { getFilePreviewLink } from '../api';
 import { getSupportsPreviewToggle, parseMarkdownFrontmatter } from '../utils';
 import MarkdownMetadataCard from './MarkdownMetadataCard';
 import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
@@ -67,7 +67,7 @@ const EditorContent = ({
 
     try {
       setGeneratingLink(true);
-      const url = await getHtmlPreviewLink({
+      const { url } = await getFilePreviewLink({
         ...sandboxTarget,
         chatId,
         filePath: activeFile.path,
@@ -100,11 +100,12 @@ const EditorContent = ({
       );
     }
 
-    // 二二进制文件预览 (图片/音频/视频)
+    // 媒体仅接受 Blob 或 HTTP(S) 来源；代理端负责文件范围校验及响应安全策略。
     if (activeFile.isBinary) {
       const { language, content, name } = activeFile;
+      const isMediaSource = /^(?:blob:|https?:\/\/)/i.test(content);
 
-      if (content.startsWith('blob:') && language === 'image') {
+      if (isMediaSource && language === 'image') {
         return (
           <Box h="full" overflow="auto" p={4}>
             <MyPhotoView src={content} alt={name} maxW="100%" objectFit="contain" />
@@ -112,7 +113,7 @@ const EditorContent = ({
         );
       }
 
-      if (content.startsWith('blob:') && language === 'audio') {
+      if (isMediaSource && language === 'audio') {
         return (
           <Center h="full">
             <audio controls src={content}>
@@ -122,7 +123,7 @@ const EditorContent = ({
         );
       }
 
-      if (content.startsWith('blob:') && language === 'video') {
+      if (isMediaSource && language === 'video') {
         return (
           <Center h="full">
             <video controls src={content} style={{ maxWidth: '100%', maxHeight: '100%' }}>
@@ -226,11 +227,13 @@ const EditorContent = ({
           }}
           onChange={(value) => {
             if (editorReadOnly) return;
-            // 更新当前文件内容
+            // 更新当前文件内容，并清理上次保存失败状态以重新启用防抖保存
             if (activeFilePath && value !== undefined && value !== activeFile?.content) {
               setOpenedFiles((prev) =>
                 prev.map((f) =>
-                  f.path === activeFilePath ? { ...f, content: value, isDirty: true } : f
+                  f.path === activeFilePath
+                    ? { ...f, content: value, isDirty: true, hasSaveError: false }
+                    : f
                 )
               );
             }
@@ -245,17 +248,21 @@ const EditorContent = ({
       <Flex align="center" justify="space-between" px="16px" h={'44px'}>
         <Flex align="center" gap={2}>
           <Box fontSize="14px" fontWeight={'semibold'} color={'myGray.800'}>
-            {activeFile?.name || ''}
+            {activeFile?.name ?? ''}
           </Box>
           {activeFile && (
             <Flex alignItems={'center'} h={'20px'}>
               {activeFile.isLoading ? (
                 <MyIcon name={'common/loading'} w={'12px'} color={'myGray.500'} />
-              ) : activeFile.isDirty ? (
+              ) : activeFile.isSaving || (activeFile.isDirty && !activeFile.hasSaveError) ? (
                 <Flex alignItems={'center'} gap={1} color={'myGray.500'} fontSize={'xs'}>
                   <MyIcon name={'common/loading'} w={'12px'} />
                   <Box>{t('common:core.app.saving')}</Box>
                 </Flex>
+              ) : activeFile.hasSaveError ? (
+                <MyTag py={0} px={1.5} showDot bg={'transparent'} colorSchema={'adora'}>
+                  {t('chat:sandbox_save_failed')}
+                </MyTag>
               ) : (
                 <MyTag py={0} px={1.5} showDot bg={'transparent'} colorSchema={'green'}>
                   {t('common:core.app.have_saved')}

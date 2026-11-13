@@ -1,4 +1,4 @@
-/** 当前生命周期尚未收敛，调用方应等待后重试，不能绕过 operation 执行远端动作。 */
+/** 当前生命周期尚未收敛（例如正在 deleting），调用方应等待或放弃，不能绕过 operation 执行远端动作。 */
 export class SandboxLifecycleStateError extends Error {
   constructor(
     readonly state: string,
@@ -6,14 +6,6 @@ export class SandboxLifecycleStateError extends Error {
   ) {
     super(message);
     this.name = 'SandboxLifecycleStateError';
-  }
-}
-
-/** 已收到明确的执行终态；当前阶段允许立即幂等重试，不用于网络中断或超时。 */
-export class SandboxOperationSettledError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = 'SandboxOperationSettledError';
   }
 }
 

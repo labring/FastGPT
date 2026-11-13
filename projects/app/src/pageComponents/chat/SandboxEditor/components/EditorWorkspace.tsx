@@ -3,7 +3,7 @@ import { Box, Center, Flex, Text, IconButton } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import FileTabs, { type OpenedFile } from './FileTabs';
+import FileTabs from './FileTabs';
 import EditorContent from './EditorContent';
 import InteractiveTerminal from './InteractiveTerminal';
 import MyBox from '@fastgpt/web/components/common/MyBox';
@@ -12,7 +12,7 @@ import type { ChatTargetInputType } from '@fastgpt/global/openapi/core/chat/api'
 import DotLoading from '@fastgpt/web/components/common/MyLoading/DotLoading';
 import RandomGridBackground from './RandomGridBackground';
 import type { TreeNode } from './FileTree';
-import type { SandboxEditorInstance } from '../types';
+import type { OpenedFile, SandboxEditorInstance } from '../types';
 
 type Props = {
   sandboxTarget: ChatTargetInputType;
@@ -35,7 +35,7 @@ type Props = {
   canWrite?: boolean;
   headerRight?: React.ReactNode;
   isPreparing?: boolean;
-  isWsConnected?: boolean;
+  isWorkspaceLoaded?: boolean;
   loadingRoot?: boolean;
   hasFiles: boolean;
 };
@@ -61,7 +61,7 @@ const EditorWorkspace = ({
   canWrite = true,
   headerRight,
   isPreparing = false,
-  isWsConnected = false,
+  isWorkspaceLoaded = false,
   loadingRoot = false,
   hasFiles
 }: Props) => {
@@ -134,7 +134,7 @@ const EditorWorkspace = ({
   const loadingLines = useMemo(() => {
     const lines: string[] = [];
     const isStage1 = isPreparing;
-    const isStage2 = !isStage1 && (!isWsConnected || loadingRoot) && filteredTree.length === 0;
+    const isStage2 = !isStage1 && (!isWorkspaceLoaded || loadingRoot) && filteredTree.length === 0;
 
     if (isStage1 || isStage2) {
       lines.push(t('chat:sandbox_starting'));
@@ -143,7 +143,7 @@ const EditorWorkspace = ({
       lines.push(t('chat:sandbox_file_loading'));
     }
     return lines;
-  }, [isPreparing, isWsConnected, loadingRoot, filteredTree.length, t]);
+  }, [isPreparing, isWorkspaceLoaded, loadingRoot, filteredTree.length, t]);
 
   const canUseTerminal = showTerminalBtn && canWrite && loadingLines.length === 0;
   const showWorkspaceHeader = openedFiles.length > 0 || !!headerRight;
@@ -307,7 +307,7 @@ const EditorWorkspace = ({
             >
               <Flex alignItems="center">
                 <Text fontSize="14px" fontWeight="semibold" color="myGray.600" lineHeight="20px">
-                  {t('chat:sandbox_terminal', '终端')}
+                  {t('chat:sandbox_terminal')}
                 </Text>
               </Flex>
               <Flex alignItems="center" gap={2}>

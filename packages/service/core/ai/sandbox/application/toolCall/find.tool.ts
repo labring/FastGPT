@@ -24,7 +24,7 @@ export const sandboxFindTool = defineTool({
     const searchPath = params.path ?? '.';
     const command = [
       `cd ${shellQuote(searchPath)}`,
-      `rg --files --hidden --glob ${shellQuote(params.pattern)} -- . | head -n ${limit + 1}`
+      `rg --files --hidden --glob ${shellQuote(params.pattern)} --glob '!.fastgpt/**' -- . | head -n ${limit + 1}`
     ].join(' && ');
     const result = await sandboxInstance.exec(command);
     const paths = result.stdout
