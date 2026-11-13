@@ -123,6 +123,35 @@ describe('DatasetService (cli/src/domain/dataset/dataset-service.ts)', () => {
     expect(realRes.data).toEqual({ datasetId: 'new-dataset-id-456', name: 'Finance' });
   });
 
+  it('updates only supplied fields via PUT, preserves clearing values, and validates before requests', async () => {
+    const id = '68ad85a7463006c963799a05';
+    const client = createMockHttpClient(async () => undefined);
+
+    const dryRun = await service.update({ client, input: { id, name: ' Renamed ' }, dryRun: true });
+    expect(client.request).not.toHaveBeenCalled();
+    expect(dryRun.data).toMatchObject({
+      dryRun: true,
+      method: 'PUT',
+      path: '/core/dataset/update',
+      payload: { id, name: 'Renamed' }
+    });
+    expect(dryRun.data).not.toHaveProperty('payload.parentId');
+
+    const input = { id, intro: '', parentId: null, vlmModelId: null, autoSync: false };
+    const result = await service.update({ client, input });
+    expect(client.request).toHaveBeenCalledExactlyOnceWith({
+      method: 'PUT',
+      path: '/core/dataset/update',
+      body: input
+    });
+    expect(result).toMatchObject({ changed: true, data: { datasetId: id } });
+
+    for (const invalid of [{ id: 'invalid' }, { id, name: 42 }, { id, agentModelId: '' }]) {
+      await expect(service.update({ client, input: invalid })).rejects.toThrow();
+    }
+    expect(client.request).toHaveBeenCalledTimes(1);
+  });
+
   it('deletes a dataset via DELETE method and supports dryRun preview', async () => {
     const validId = '68ad85a7463006c963799a05';
     let deleteCalled = false;

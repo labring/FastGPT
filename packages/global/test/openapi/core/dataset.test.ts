@@ -36,6 +36,28 @@ import {
 
 const objectId = '68ad85a7463006c963799a05';
 
+it.each([
+  ['DevAPI', openAPIDocument],
+  ['System OpenAPI', apiDocOpenAPIDocument]
+] as const)('exposes dataset updates through PUT in %s', (_, document) => {
+  const operation = document.paths?.['/core/dataset/update']?.put;
+  expect(operation?.requestBody).toMatchObject({
+    content: {
+      'application/json': {
+        schema: {
+          required: ['id'],
+          properties: {
+            name: { type: 'string' },
+            autoSync: { type: 'boolean' }
+          }
+        }
+      }
+    }
+  });
+  expect(operation?.responses?.[200]).toBeDefined();
+  expect(document.paths?.['/core/dataset/update']?.post).toBeUndefined();
+});
+
 describe('structured dataset search OpenAPI', () => {
   it('rejects both budgets in the canonical input contract', () => {
     expectTypeOf<{ topk: number; maxTokens: number }>().not.toMatchTypeOf<

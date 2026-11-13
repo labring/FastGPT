@@ -8,6 +8,7 @@ import {
   DeleteDatasetQuerySchema,
   GetDatasetDetailQuerySchema,
   GetDatasetListV2BodySchema,
+  UpdateDatasetBodySchema,
   type CreateDatasetBody,
   type GetDatasetDetailResponse,
   type GetDatasetListV2Response
@@ -69,6 +70,11 @@ export type DatasetService = {
     input: DatasetCreateParams;
     dryRun?: boolean;
   }) => Promise<CliResult>;
+  update: (params: {
+    client: FastGptHttpClient;
+    input: Record<string, unknown>;
+    dryRun?: boolean;
+  }) => Promise<CliResult>;
   delete: (params: {
     client: FastGptHttpClient;
     datasetId: string;
@@ -92,7 +98,7 @@ export type DatasetService = {
 };
 
 /**
- * 知识库主资源领域服务：仅封装 System OpenAPI 标准接口（列表、详情、创建、删除、联合检索、批量移动/删除）。
+ * 知识库主资源领域服务：仅封装 System OpenAPI 标准接口（列表、详情、创建、更新、删除、联合检索、批量移动/删除）。
  * 所有入参均复用 @fastgpt/global/openapi 中的共享 Zod 契约校验，保证 dryRun 与真实请求一致。
  */
 export function createDatasetService(): DatasetService {
@@ -183,6 +189,38 @@ export function createDatasetService(): DatasetService {
       return createChangedResult({
         data: { datasetId, name: validatedBody.name },
         message: `Dataset "${validatedBody.name}" created successfully (ID: ${datasetId}).`
+      });
+    },
+
+    /** 更新字段按共享契约校验；不补 parentId 等默认值，避免普通编辑触发移动或清空配置。 */
+    update: async ({ client, input, dryRun }) => {
+      const validatedBody = UpdateDatasetBodySchema.parse({
+        ...input,
+        id: trimIfString(input.id),
+        ...(input.name !== undefined ? { name: trimIfString(input.name) } : {})
+      });
+
+      if (dryRun) {
+        return createDryRunResult({
+          operation: 'dataset update',
+          risk: 'write',
+          preview: {
+            method: 'PUT',
+            path: '/core/dataset/update',
+            payload: validatedBody
+          }
+        });
+      }
+
+      await client.request({
+        method: 'PUT',
+        path: '/core/dataset/update',
+        body: validatedBody
+      });
+
+      return createChangedResult({
+        data: { datasetId: validatedBody.id },
+        message: `Dataset "${validatedBody.id}" updated successfully.`
       });
     },
 

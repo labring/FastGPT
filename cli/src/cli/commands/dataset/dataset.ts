@@ -16,7 +16,7 @@ import {
 } from './shared';
 
 /**
- * 知识库主资源命令组（System OpenAPI）：list / get / create / delete / search / batch-move / batch-delete。
+ * 知识库主资源命令组（System OpenAPI）：list / get / create / update / delete / search / batch-move / batch-delete。
  */
 export function createDatasetRootCommandSpecs(): CliCommandSpec[] {
   return [
@@ -279,6 +279,129 @@ export function createDatasetRootCommandSpecs(): CliCommandSpec[] {
         return container.datasetService.create({
           client: activeClient,
           input: mergedInput,
+          dryRun: options.dryRun === true
+        });
+      }
+    },
+
+    {
+      path: ['dataset', 'update'],
+      summary: 'Update dataset information, model settings, or parent folder',
+      risk: 'write',
+      authModes: ['token', 'personalKey'],
+      positionalArgs: [
+        { name: 'datasetId', required: false, description: 'Dataset ObjectId (or use --id)' }
+      ],
+      options: [
+        {
+          name: 'id',
+          flags: '--id <datasetId>',
+          takesValue: true,
+          description: 'Dataset ObjectId'
+        },
+        { name: 'name', flags: '--name <name>', takesValue: true, description: 'New dataset name' },
+        {
+          name: 'intro',
+          flags: '--intro <text>',
+          takesValue: true,
+          description: 'New description'
+        },
+        {
+          name: 'avatar',
+          flags: '--avatar <path>',
+          takesValue: true,
+          description: 'New avatar path'
+        },
+        {
+          name: 'agentModel',
+          flags: '--agent-model <modelId>',
+          takesValue: true,
+          description: 'Agent / QA model ID; cannot be empty'
+        },
+        {
+          name: 'vlmModel',
+          flags: '--vlm-model <modelId>',
+          takesValue: true,
+          description: 'Vision-language model ID; pass an empty string to clear'
+        },
+        {
+          name: 'parentId',
+          flags: '--parent-id <id>',
+          takesValue: true,
+          description: 'Move to this folder; null for root, omitted to keep the current folder'
+        },
+        {
+          name: 'autoSync',
+          flags: '--auto-sync',
+          takesValue: false,
+          description: 'Enable automatic synchronization'
+        },
+        {
+          name: 'noAutoSync',
+          flags: '--no-auto-sync',
+          takesValue: false,
+          description: 'Disable automatic synchronization'
+        },
+        {
+          name: 'file',
+          flags: '--file <path>',
+          takesValue: true,
+          description: 'Read update JSON, including advanced settings, from a file ("-" for stdin)'
+        },
+        {
+          name: 'stdin',
+          flags: '--stdin',
+          takesValue: false,
+          description: 'Read update JSON from stdin'
+        },
+        {
+          name: 'dryRun',
+          flags: '--dry-run',
+          takesValue: false,
+          description: 'Validate and preview the update without applying it'
+        }
+      ],
+      examples: [
+        {
+          description: 'Rename a dataset',
+          args: ['dataset', 'update', '68ad85a7463006c963799a05', '--name', 'Product Docs']
+        },
+        {
+          description: 'Preview an update from JSON',
+          args: ['dataset', 'update', '--file', 'dataset-update.json', '--dry-run']
+        }
+      ],
+      execute: async ({ positional, options, client, container }) => {
+        const activeClient = requireActiveClient(client, 'dataset update');
+        const filePayload = await resolveJsonObjectPayload({
+          filePath: typeof options.file === 'string' ? options.file : undefined,
+          useStdin: options.stdin === true,
+          readTextFile: container.fileIo.readTextFile,
+          readStdin: container.readStdin,
+          fieldLabel: 'dataset update payload'
+        });
+        const id = positional[0] ?? (typeof options.id === 'string' ? options.id : undefined);
+        const autoSync = parseOptionalBooleanFlag({
+          positive: options.autoSync,
+          negative: options.noAutoSync
+        });
+
+        // 命令行字段覆盖 JSON；未传字段不写入，保留 null、false 和空字符串的显式更新语义。
+        return container.datasetService.update({
+          client: activeClient,
+          input: {
+            ...(filePayload ?? {}),
+            ...(id !== undefined ? { id } : {}),
+            ...(typeof options.name === 'string' ? { name: options.name } : {}),
+            ...(typeof options.intro === 'string' ? { intro: options.intro } : {}),
+            ...(typeof options.avatar === 'string' ? { avatar: options.avatar } : {}),
+            ...(typeof options.agentModel === 'string' ? { agentModelId: options.agentModel } : {}),
+            ...(typeof options.vlmModel === 'string' ? { vlmModelId: options.vlmModel } : {}),
+            ...(options.parentId !== undefined
+              ? { parentId: parseParentIdOption(options.parentId) }
+              : {}),
+            ...(autoSync !== undefined ? { autoSync } : {})
+          },
           dryRun: options.dryRun === true
         });
       }

@@ -35,13 +35,15 @@ async function execCli({
   configDir,
   isTTY = false,
   fetchFn,
-  prompter
+  prompter,
+  readStdin
 }: {
   argv: string[];
   configDir: string;
   isTTY?: boolean;
   fetchFn?: CliFetchFn;
   prompter?: Prompter;
+  readStdin?: () => Promise<string>;
 }) {
   const stdoutLines: string[] = [];
   const stderrLines: string[] = [];
@@ -55,6 +57,7 @@ async function execCli({
     isTTY,
     fetchFn,
     prompter,
+    readStdin,
     stdout: (line) => stdoutLines.push(line),
     stderr: (line) => stderrLines.push(line)
   });
@@ -69,8 +72,105 @@ async function execCli({
 describe('Dataset CLI Commands integration (cli/src/cli/commands/dataset.ts)', () => {
   it('registers only OpenAPI-compatible dataset commands with personalKey support', () => {
     const datasetSpecs = getCliCommandSpecs().filter((spec) => spec.path[0] === 'dataset');
-    expect(datasetSpecs.length).toBe(20);
+    expect(datasetSpecs.length).toBe(21);
     expect(datasetSpecs.every((spec) => spec.authModes.includes('personalKey'))).toBe(true);
+  });
+
+  it('updates from file or stdin with flag precedence and rejects malformed fields before HTTP', async () => {
+    const configDir = await makeConfigDir();
+    const file = join(configDir, 'update.json');
+    const payload = {
+      id: '68ad85a7463006c963799a05',
+      name: 'File name',
+      autoSync: true,
+      vlmModelId: null,
+      websiteConfig: { url: 'https://example.com/docs', selector: 'main' }
+    };
+    await writeFile(file, JSON.stringify(payload));
+    const auth = [
+      '--token',
+      'test-session',
+      '--base-url',
+      'https://cloud.fastgpt.cn',
+      '--format',
+      'json'
+    ];
+    let requests = 0;
+    const fetchFn: CliFetchFn = async (input, init) => {
+      requests += 1;
+      const url = input instanceof Request ? input.url : String(input);
+      const method = input instanceof Request ? input.method : init?.method;
+      const body =
+        input instanceof Request ? await input.clone().json() : JSON.parse(String(init?.body));
+      expect(method).toBe('PUT');
+      expect(url).toBe('https://cloud.fastgpt.cn/api/core/dataset/update');
+      expect(body).toEqual(payload);
+      return jsonResp(null);
+    };
+
+    const preview = await execCli({
+      argv: [
+        'dataset',
+        'update',
+        '--id',
+        OBJECT_ID_DATASET,
+        '--file',
+        file,
+        '--name',
+        ' Flag name ',
+        '--no-auto-sync',
+        '--parent-id',
+        'null',
+        '--avatar',
+        '/imgs/dataset/avatar.png',
+        '--agent-model',
+        'qa-model',
+        '--vlm-model',
+        '',
+        '--dry-run',
+        ...auth
+      ],
+      configDir,
+      fetchFn
+    });
+    expect(preview.exitCode).toBe(0);
+    expect(requests).toBe(0);
+    expect(JSON.parse(preview.stdout).data).toMatchObject({
+      method: 'PUT',
+      payload: {
+        ...payload,
+        id: OBJECT_ID_DATASET,
+        name: 'Flag name',
+        autoSync: false,
+        parentId: null,
+        avatar: '/imgs/dataset/avatar.png',
+        agentModelId: 'qa-model',
+        vlmModelId: ''
+      }
+    });
+
+    const real = await execCli({
+      argv: ['dataset', 'update', '--stdin', ...auth],
+      configDir,
+      readStdin: async () => JSON.stringify(payload),
+      fetchFn
+    });
+    expect(real.exitCode).toBe(0);
+    expect(JSON.parse(real.stdout)).toMatchObject({
+      changed: true,
+      data: { datasetId: payload.id }
+    });
+    expect(requests).toBe(1);
+
+    await writeFile(file, JSON.stringify({ name: 42 }));
+    const invalid = await execCli({
+      argv: ['dataset', 'update', OBJECT_ID_DATASET, '--file', file, '--dry-run', ...auth],
+      configDir,
+      fetchFn
+    });
+    expect(invalid.exitCode).toBe(2);
+    expect(invalid.stderr).not.toContain('CLI_INTERNAL_ERROR');
+    expect(requests).toBe(1);
   });
 
   it('maps filtering, retrieval, rerank and query extension options to the search contract', async () => {
