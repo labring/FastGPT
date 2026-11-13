@@ -4,7 +4,9 @@ import docLastModifiedData from '@/data/doc-last-modified.json';
 import {
   getFastGPTDocsLocale,
   getFastGPTDocsOrigin,
-  getFastGPTDocsOriginForLocale
+  getFastGPTDocsOriginForLocale,
+  isPreviewDocsSite,
+  stripDocsLocalePrefix
 } from '@/lib/fastgpt-home-url';
 
 export const dynamic = 'force-static';
@@ -12,8 +14,18 @@ export const dynamic = 'force-static';
 const isLocaleFileMatch = (filePath: string, targetLocale: 'zh-CN' | 'en') =>
   filePath.endsWith('.en.mdx') === (targetLocale === 'en');
 
-/** Generate a localized XML sitemap with reciprocal language and x-default alternates. */
+/** Generate an unprefixed XML sitemap with reciprocal language and x-default alternates. */
 export function GET() {
+  if (isPreviewDocsSite()) {
+    const emptyXml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">\n</urlset>`;
+    return new NextResponse(emptyXml, {
+      headers: {
+        'Content-Type': 'application/xml; charset=utf-8',
+        'X-Robots-Tag': 'noindex, nofollow'
+      }
+    });
+  }
+
   const domain = getFastGPTDocsOrigin();
   const locale = getFastGPTDocsLocale();
   const zhOrigin = getFastGPTDocsOriginForLocale('zh-CN');
@@ -39,12 +51,12 @@ export function GET() {
           : rawLastModified
             ? new Date(rawLastModified).toISOString()
             : undefined;
-      const routePath = page.url.replace(/^\/(?:zh-CN|en)/, '');
+      const routePath = stripDocsLocalePrefix(page.url).pathname;
       const hasPublishedLocale = (targetLocale: 'zh-CN' | 'en') => {
         if (targetLocale === locale) return true;
         const altPage = source.getPage(page.slugs, targetLocale);
         return Boolean(
-          altPage &&
+          altPage !== undefined &&
             !altPage.data.deprecated &&
             isLocaleFileMatch(altPage.data._file.path, targetLocale)
         );
@@ -52,11 +64,11 @@ export function GET() {
       const alternateLinks: string[] = [];
       if (hasPublishedLocale('zh-CN')) {
         alternateLinks.push(
-          `    <xhtml:link rel="alternate" hreflang="zh-CN" href="${zhOrigin}/zh-CN${routePath}" />`
+          `    <xhtml:link rel="alternate" hreflang="zh-CN" href="${zhOrigin}${routePath}" />`
         );
       }
       if (hasPublishedLocale('en')) {
-        const enUrl = `${enOrigin}/en${routePath}`;
+        const enUrl = `${enOrigin}${routePath}`;
         alternateLinks.push(`    <xhtml:link rel="alternate" hreflang="en" href="${enUrl}" />`);
         alternateLinks.push(
           `    <xhtml:link rel="alternate" hreflang="x-default" href="${enUrl}" />`
@@ -64,7 +76,7 @@ export function GET() {
       }
 
       return `  <url>
-    <loc>${domain}${page.url}</loc>${lastModified ? `
+    <loc>${domain}${routePath}</loc>${lastModified ? `
     <lastmod>${lastModified}</lastmod>` : ''}
 ${alternateLinks.join('\n')}
   </url>`;

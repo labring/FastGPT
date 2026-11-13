@@ -1,10 +1,12 @@
-import { i18n } from '@/lib/i18n';
+import { getSearchableLanguages, i18n } from '@/lib/i18n';
 import { buildLlmsIndexText } from '@/lib/llms-markdown';
 
 export const revalidate = false;
 
 export function generateStaticParams() {
-  return i18n.languages.map((lang) => ({ lang }));
+  const languages =
+    typeof getSearchableLanguages === 'function' ? getSearchableLanguages() : i18n.languages;
+  return languages.map((lang) => ({ lang }));
 }
 
 /** Export an llmstxt.org-compliant Markdown index of active documentation pages with canonical URLs. */

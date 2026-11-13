@@ -7,7 +7,12 @@ const vm = require('node:vm');
 const matter = require('gray-matter');
 const ts = require('typescript');
 const { NextResponse } = require('next/server');
-const { getFastGPTDocsLocaleFromHomeOrigin } = require('../lib/docs-locale');
+const {
+  getFastGPTDocsLocaleFromHomeOrigin,
+  getProductionDocsUrl,
+  resolveDocsSiteVariant,
+  stripDocsLocalePrefix
+} = require('../lib/docs-locale');
 
 /** Split a Vary header into lowercase tokens so `Accept-Encoding` never satisfies an `Accept` check. */
 const varyTokens = (response) =>
@@ -38,18 +43,32 @@ test('docs locale follows the configured build host', () => {
   assert.equal(getFastGPTDocsLocaleFromHomeOrigin('https://fastgpt.cn'), 'zh-CN');
   assert.equal(getFastGPTDocsLocaleFromHomeOrigin('https://fastgpt.io'), 'en');
   assert.equal(getFastGPTDocsLocaleFromHomeOrigin('https://preview.example.com'), 'en');
+  assert.equal(resolveDocsSiteVariant({ siteVariant: 'cn' }), 'cn');
+  assert.equal(resolveDocsSiteVariant({ siteVariant: 'io' }), 'io');
+  assert.equal(resolveDocsSiteVariant({ siteVariant: 'preview' }), 'preview');
+  assert.equal(resolveDocsSiteVariant({ homeOrigin: 'https://fastgpt.cn' }), 'cn');
+  assert.equal(resolveDocsSiteVariant({ homeOrigin: 'https://fastgpt.io' }), 'io');
+  assert.deepEqual(stripDocsLocalePrefix('/zh-CN/guide/getting-started?tab=1#top'), {
+    locale: 'zh-CN',
+    pathname: '/guide/getting-started',
+    path: '/guide/getting-started?tab=1#top'
+  });
+  assert.equal(
+    getProductionDocsUrl('en', '/en/openapi/intro?source=docs'),
+    'https://doc.fastgpt.io/openapi/intro?source=docs'
+  );
 });
 
 for (const [locale, homeOrigin, timestamp] of [
   ['zh-CN', 'https://fastgpt.cn', '2026-10-12T08:00:00+08:00'],
   ['en', 'https://fastgpt.io', '2026-10-13T17:01:00+08:00']
 ]) {
-  test(`${locale} sitemap emits its own URLs and physical-file modification dates`, async () => {
+  test(`${locale} sitemap emits unprefixed URLs, dynamic alternates, and physical-file modification dates`, async () => {
     const pages = ['zh-CN', 'en'].flatMap((language) => [
       {
         locale: language,
         slugs: ['guide'],
-        url: `/${language}/guide`,
+        url: '/guide',
         file: { path: 'guide.mdx' },
         data: {
           _file: { path: language === 'en' ? 'guide.en.mdx' : 'guide.mdx' },
@@ -65,19 +84,29 @@ for (const [locale, homeOrigin, timestamp] of [
       {
         locale: language,
         slugs: ['undated'],
-        url: `/${language}/undated`,
+        url: '/undated',
         data: { _file: { path: `undated.${language}.mdx` } }
       },
+      ...(language === locale
+        ? [
+            {
+              locale: language,
+              slugs: ['single-locale'],
+              url: '/single-locale',
+              data: { _file: { path: language === 'en' ? 'single-locale.en.mdx' : 'single-locale.mdx' } }
+            }
+          ]
+        : []),
       {
         locale: language,
         slugs: ['toc'],
-        url: `/${language}/toc`,
+        url: '/toc',
         data: { _file: { path: language === 'en' ? 'toc.en.mdx' : 'toc.mdx' } }
       },
       {
         locale: language,
         slugs: ['legacy-page'],
-        url: `/${language}/legacy-page`,
+        url: '/legacy-page',
         data: {
           deprecated: true,
           _file: { path: language === 'en' ? 'legacy-page.en.mdx' : 'legacy-page.mdx' },
@@ -112,31 +141,68 @@ for (const [locale, homeOrigin, timestamp] of [
     const response = GET();
     assert.equal(response.status, 200);
     assert.equal(response.headers.get('Content-Type'), 'application/xml; charset=utf-8');
+    const docsOrigin = homeOrigin.replace('https://', 'https://doc.');
+    const singleLocaleAlternates =
+      locale === 'zh-CN'
+        ? '    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://doc.fastgpt.cn/single-locale" />'
+        : [
+            '    <xhtml:link rel="alternate" hreflang="en" href="https://doc.fastgpt.io/single-locale" />',
+            '    <xhtml:link rel="alternate" hreflang="x-default" href="https://doc.fastgpt.io/single-locale" />'
+          ].join('\n');
     assert.equal(await response.text(), `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
-    <loc>${homeOrigin.replace('https://', 'https://doc.')}/${locale}/guide</loc>
+    <loc>${docsOrigin}/guide</loc>
     <lastmod>${timestamp}</lastmod>
-    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://doc.fastgpt.cn/zh-CN/guide" />
-    <xhtml:link rel="alternate" hreflang="en" href="https://doc.fastgpt.io/en/guide" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://doc.fastgpt.io/en/guide" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://doc.fastgpt.cn/guide" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://doc.fastgpt.io/guide" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://doc.fastgpt.io/guide" />
   </url>
   <url>
-    <loc>${homeOrigin.replace('https://', 'https://doc.')}/${locale}/fallback</loc>
+    <loc>${docsOrigin}/fallback</loc>
     <lastmod>2026-10-01T00:00:00Z</lastmod>
-    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://doc.fastgpt.cn/zh-CN/fallback" />
-    <xhtml:link rel="alternate" hreflang="en" href="https://doc.fastgpt.io/en/fallback" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://doc.fastgpt.io/en/fallback" />
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://doc.fastgpt.cn/fallback" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://doc.fastgpt.io/fallback" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://doc.fastgpt.io/fallback" />
   </url>
   <url>
-    <loc>${homeOrigin.replace('https://', 'https://doc.')}/${locale}/undated</loc>
-    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://doc.fastgpt.cn/zh-CN/undated" />
-    <xhtml:link rel="alternate" hreflang="en" href="https://doc.fastgpt.io/en/undated" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://doc.fastgpt.io/en/undated" />
+    <loc>${docsOrigin}/undated</loc>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://doc.fastgpt.cn/undated" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://doc.fastgpt.io/undated" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://doc.fastgpt.io/undated" />
+  </url>
+  <url>
+    <loc>${docsOrigin}/single-locale</loc>
+${singleLocaleAlternates}
   </url>
 </urlset>`);
   });
 }
+
+test('preview robots.txt and sitemap.xml block indexing', async () => {
+  const routing = loadModule('../lib/fastgpt-home-url.ts', {
+    imports: { './docs-locale': require('../lib/docs-locale') },
+    env: { DOCS_SITE_VARIANT: 'preview', FASTGPT_HOME_DOMAIN: 'https://fastgpt.io' }
+  });
+  const { GET: getRobots } = loadModule('../app/robots.txt/route.ts', {
+    imports: { 'next/server': { NextResponse }, '@/lib/fastgpt-home-url': routing }
+  });
+  const robotsRes = getRobots();
+  assert.equal(robotsRes.headers.get('x-robots-tag'), 'noindex, nofollow');
+  assert.equal(await robotsRes.text(), 'User-agent: *\nDisallow: /\n');
+
+  const { GET: getSitemap } = loadModule('../app/sitemap.xml/route.ts', {
+    imports: {
+      '@/lib/source': { source: { getPages: () => [] } },
+      'next/server': { NextResponse },
+      '@/lib/fastgpt-home-url': routing,
+      '@/data/doc-last-modified.json': {}
+    }
+  });
+  const sitemapRes = getSitemap();
+  assert.equal(sitemapRes.headers.get('x-robots-tag'), 'noindex, nofollow');
+  assert.ok(!(await sitemapRes.text()).includes('<loc>'));
+});
 
 for (const [homeOrigin, docsOrigin] of [
   ['https://fastgpt.cn', 'https://doc.fastgpt.cn'],
@@ -244,7 +310,10 @@ test('llms.txt emits an llmstxt.org Markdown index with canonical links and excl
   const { GET } = loadModule('../app/[lang]/llms.txt/route.ts', {
     imports: {
       '@/lib/llms-markdown': llmsMarkdown,
-      '@/lib/i18n': { i18n: { languages: ['zh-CN', 'en'] } }
+      '@/lib/i18n': {
+        i18n: { languages: ['zh-CN', 'en'] },
+        getSearchableLanguages: () => ['en']
+      }
     }
   });
 
@@ -254,16 +323,16 @@ test('llms.txt emits an llmstxt.org Markdown index with canonical links and excl
   assert.equal(response.status, 200);
   const body = await response.text();
   assert.ok(body.startsWith('# FastGPT Documentation\n'));
-  assert.ok(body.includes('https://doc.fastgpt.io/en/llms-full.txt'));
-  assert.ok(body.includes('https://doc.fastgpt.io/en/llms-guide.txt'));
-  assert.ok(body.includes('https://doc.fastgpt.io/en/llms-openapi.txt'));
-  assert.ok(body.includes('https://doc.fastgpt.io/en/llms-self-host.txt'));
+  assert.ok(body.includes('https://doc.fastgpt.io/llms-full.txt'));
+  assert.ok(body.includes('https://doc.fastgpt.io/llms-guide.txt'));
+  assert.ok(body.includes('https://doc.fastgpt.io/llms-openapi.txt'));
+  assert.ok(body.includes('https://doc.fastgpt.io/llms-self-host.txt'));
   assert.ok(body.includes('https://doc.fastgpt.io/pricing.md'));
-  assert.ok(body.includes('- [Getting Started](https://doc.fastgpt.io/en/guide/getting-started): Build your first FastGPT agent.'));
-  assert.ok(body.includes('- [OpenAPI Intro](https://doc.fastgpt.io/en/openapi/intro): Authenticate and call FastGPT APIs.'));
-  assert.ok(body.includes('- [Self-Host Overview](https://doc.fastgpt.io/en/self-host): Deploy and operate FastGPT.'));
-  assert.ok(!body.includes('/en/openapi/legacy/app'));
-  assert.ok(!body.includes('/en/self-host/upgrading/outdated/48'));
+  assert.ok(body.includes('- [Getting Started](https://doc.fastgpt.io/guide/getting-started): Build your first FastGPT agent.'));
+  assert.ok(body.includes('- [OpenAPI Intro](https://doc.fastgpt.io/openapi/intro): Authenticate and call FastGPT APIs.'));
+  assert.ok(body.includes('- [Self-Host Overview](https://doc.fastgpt.io/self-host): Deploy and operate FastGPT.'));
+  assert.ok(!body.includes('/openapi/legacy/app'));
+  assert.ok(!body.includes('/self-host/upgrading/outdated/48'));
 
   const cleaned = await llmsMarkdown.renderCleanMdxBody(
     './content/sample.en.mdx',
@@ -273,8 +342,10 @@ test('llms.txt emits an llmstxt.org Markdown index with canonical links and excl
       '<span id="anchor" />',
       '',
       '<Alert context="info">',
-      '  Important deployment tip.',
+      '  Important deployment tip. See [OpenAPI](/en/openapi/intro).',
       '</Alert>',
+      '',
+      '<Card title="RAG Guide" href="/en/guide/dataset/rag" />',
       '',
       '<Tabs items={["Docker"]}>',
       '  <Tab value="Docker">',
@@ -291,7 +362,8 @@ test('llms.txt emits an llmstxt.org Markdown index with canonical links and excl
   assert.ok(!cleaned.includes('<Alert'));
   assert.ok(!cleaned.includes('<Tabs'));
   assert.ok(!cleaned.includes('<span'));
-  assert.ok(cleaned.includes('> Important deployment tip.'));
+  assert.ok(cleaned.includes('> Important deployment tip. See [OpenAPI](/openapi/intro).'));
+  assert.ok(cleaned.includes('[RAG Guide](/guide/dataset/rag)'));
   assert.ok(cleaned.includes('#### Docker'));
   assert.ok(cleaned.includes('```mermaid\ngraph TD; A-->B;\n```'));
   assert.ok(cleaned.includes('[Contact Sales](https://fastgpt.io/contact)'));
@@ -317,6 +389,22 @@ test('schema helpers expand search titles and emit rich-result compliant JSON-LD
     generateFaqSchema
   } = loadModule('../lib/schema.ts', { imports: {} });
 
+  assert.equal(
+    resolvePageSeoTitle({
+      path: 'guide/getting-started',
+      title: '使用 FastGPT',
+      lang: 'zh-CN'
+    }),
+    'FastGPT 官方文档 - AI Agent、知识库 RAG 与可视化工作流构建指南'
+  );
+  assert.equal(
+    resolvePageSeoTitle({
+      path: 'guide/getting-started',
+      title: 'Use FastGPT',
+      lang: 'en'
+    }),
+    'FastGPT Documentation - AI Agent, RAG Knowledge Base & Workflow Guide'
+  );
   assert.equal(
     resolvePageSeoTitle({
       path: 'guide/build/workflow/nodes/ai_chat.mdx',
@@ -386,7 +474,7 @@ test('schema helpers expand search titles and emit rich-result compliant JSON-LD
   const schema = generateArticleSchema({
     title: 'Quick Start',
     description: 'Build your first FastGPT agent.',
-    url: 'https://doc.fastgpt.cn/zh-CN/guide/getting-started/quick-start',
+    url: 'https://doc.fastgpt.cn/guide/getting-started/quick-start',
     dateModified: modifiedDate,
     lang: 'zh-CN'
   });
@@ -397,12 +485,14 @@ test('schema helpers expand search titles and emit rich-result compliant JSON-LD
   assert.equal(schema.dateModified, '2026-10-20T00:00:00.000Z');
 
   const siteSchema = generateWebSiteSchema({
-    url: 'https://doc.fastgpt.io/en/guide/getting-started',
+    url: 'https://doc.fastgpt.io/guide/getting-started',
     lang: 'en'
   });
   assert.equal(siteSchema['@graph'].length, 2);
   assert.equal(siteSchema['@graph'][0]['@type'], 'Organization');
+  assert.equal(siteSchema['@graph'][0]['@id'], 'https://fastgpt.io/#organization');
   assert.equal(siteSchema['@graph'][1]['@type'], 'WebSite');
+  assert.equal(siteSchema['@graph'][1].url, 'https://doc.fastgpt.io/guide/getting-started');
 
   const faqSchema = generateFaqSchema({
     headings: [
@@ -637,6 +727,8 @@ test('middleware resolves section landings, language roots, and historical paths
     anonPass.headers.get('cache-control'),
     'public, max-age=0, must-revalidate'
   );
+  assert.equal(anonPass.headers.get('content-language'), 'en');
+  assert.equal(anonPass.headers.get('x-robots-tag'), 'noindex, nofollow');
   assert.ok(varyTokens(anonPass).includes('accept'));
   assert.equal(anonPass.headers.get('set-cookie'), null);
 
@@ -660,7 +752,7 @@ test('middleware resolves section landings, language roots, and historical paths
   assert.equal(legacyCnDomain.status, 301);
   assert.equal(
     legacyCnDomain.headers.get('location'),
-    'https://doc.fastgpt.cn/zh-CN/guide/dataset/websync'
+    'https://doc.fastgpt.cn/guide/dataset/websync'
   );
 
   const legacyEnDomain = middleware(
@@ -671,8 +763,96 @@ test('middleware resolves section landings, language roots, and historical paths
   assert.equal(legacyEnDomain.status, 301);
   assert.equal(
     legacyEnDomain.headers.get('location'),
-    'https://doc.fastgpt.io/en/openapi/intro'
+    'https://doc.fastgpt.io/openapi/intro'
   );
+
+  for (const [variant, host, ownerLocale, crossLocale, crossHost] of [
+    ['cn', 'doc.fastgpt.cn', 'zh-CN', 'en', 'doc.fastgpt.io'],
+    ['io', 'doc.fastgpt.io', 'en', 'zh-CN', 'doc.fastgpt.cn']
+  ]) {
+    const { default: ownerMiddleware } = loadModule('../middleware.ts', {
+      env: { DOCS_SITE_VARIANT: variant },
+      imports: {
+        'fumadocs-core/i18n': { createI18nMiddleware: () => () => NextResponse.next() },
+        '@/lib/i18n': {
+          defaultHomePath: '/guide/getting-started',
+          i18n: { defaultLanguage: 'zh-CN', languages: ['zh-CN', 'en'] }
+        },
+        '@/lib/docs-locale': require('../lib/docs-locale'),
+        '@/data/doc-last-modified.json': require('../data/doc-last-modified.json'),
+        'next/server': { NextResponse }
+      }
+    });
+
+    const ownerHit = ownerMiddleware(
+      new NextRequest(`https://${host}/openapi/intro?tab=auth`, { headers: { host } })
+    );
+    assert.equal(ownerHit.status, 200);
+    assert.equal(
+      ownerHit.headers.get('x-middleware-rewrite'),
+      `https://${host}/${ownerLocale}/openapi/intro?tab=auth`
+    );
+    assert.equal(ownerHit.headers.get('content-language'), ownerLocale);
+    assert.equal(ownerHit.headers.get('x-robots-tag'), null);
+    assert.equal(ownerHit.headers.get('set-cookie'), null);
+
+    const sameHostPrefixed = ownerMiddleware(
+      new NextRequest(`https://${host}/${ownerLocale}/openapi/intro?tab=auth`, {
+        headers: { host }
+      })
+    );
+    assert.equal(sameHostPrefixed.status, 301);
+    assert.equal(
+      sameHostPrefixed.headers.get('location'),
+      `https://${host}/openapi/intro?tab=auth`
+    );
+
+    const crossHostPrefixed = ownerMiddleware(
+      new NextRequest(`https://${host}/${crossLocale}/openapi/intro?tab=auth`, {
+        headers: { host }
+      })
+    );
+    assert.equal(crossHostPrefixed.status, 301);
+    assert.equal(
+      crossHostPrefixed.headers.get('location'),
+      `https://${crossHost}/openapi/intro?tab=auth`
+    );
+
+    const rootHit = ownerMiddleware(
+      new NextRequest(`https://${host}/?utm_source=home`, { headers: { host } })
+    );
+    assert.equal(rootHit.status, 301);
+    assert.equal(
+      rootHit.headers.get('location'),
+      `https://${host}/guide/getting-started?utm_source=home`
+    );
+
+    const prefixedLlms = ownerMiddleware(
+      new NextRequest(`https://${host}/${crossLocale}/llms-full.txt?v=1`, { headers: { host } })
+    );
+    assert.equal(prefixedLlms.status, 301);
+    assert.equal(prefixedLlms.headers.get('location'), `https://${crossHost}/llms-full.txt?v=1`);
+
+    const unprefixedMd = ownerMiddleware(
+      new NextRequest(`https://${host}/openapi/intro.md`, { headers: { host } })
+    );
+    assert.equal(unprefixedMd.status, 200);
+    assert.equal(
+      unprefixedMd.headers.get('x-middleware-rewrite'),
+      `https://${host}/api/doc-markdown/${ownerLocale}/openapi/intro`
+    );
+
+    const prefixedMd = ownerMiddleware(
+      new NextRequest(`https://${host}/${ownerLocale}/openapi/intro.md?raw=1`, {
+        headers: { host }
+      })
+    );
+    assert.equal(prefixedMd.status, 301);
+    assert.equal(
+      prefixedMd.headers.get('location'),
+      `https://${host}/openapi/intro.md?raw=1`
+    );
+  }
 
   const staleCookiePass = middleware(
     new NextRequest('http://localhost:3210/en/openapi/intro', {

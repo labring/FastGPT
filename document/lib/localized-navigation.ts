@@ -1,24 +1,28 @@
 'use client';
 
-import { useRouter, usePathname } from 'next/navigation';
+import { useParams, usePathname, useRouter } from 'next/navigation';
+import { getFastGPTDocsLocale } from './fastgpt-home-url';
 import { i18n, getLocalizedPath } from './i18n';
 
 /**
- * Get current language from pathname
+ * Resolve the active documentation locale from route params, URL prefix, or build host locale.
  */
 export function useCurrentLang(): string {
+  const params = useParams<{ lang?: string }>();
   const pathname = usePathname();
-  
-  // Extract language from pathname (e.g., /zh-CN/docs/... -> zh-CN)
+
+  if (typeof params?.lang === 'string' && i18n.languages.includes(params.lang)) {
+    return params.lang;
+  }
+
   const segments = pathname.split('/').filter(Boolean);
   const firstSegment = segments[0];
-  
-  // Check if first segment is a valid language
-  if (i18n.languages.includes(firstSegment)) {
+
+  if (firstSegment !== undefined && i18n.languages.includes(firstSegment)) {
     return firstSegment;
   }
-  
-  return i18n.defaultLanguage;
+
+  return getFastGPTDocsLocale();
 }
 
 /**
