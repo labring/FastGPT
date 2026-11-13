@@ -83,7 +83,7 @@ describe('backfillChatPublishSource', () => {
         missingChannelIds: 0
       });
       expect(failures()).toEqual([]);
-      expect(checkpoint()).toEqual(cursors);
+      expect(checkpoint()).toMatchObject(cursors);
       expect(await MongoChat.collection.findOne({ _id: chat._id })).toEqual({
         ...chat,
         publishSource: { type: 'unknown' }
@@ -93,7 +93,11 @@ describe('backfillChatPublishSource', () => {
         publishSource: { type: 'unknown' }
       });
     }
-    expect(context.reportProgress).toHaveBeenCalledWith({ key: 'validation', status: 'succeeded' });
+    expect(context.reportProgress).toHaveBeenCalledWith({
+      key: 'validation',
+      status: 'succeeded',
+      current: 2
+    });
   });
 
   it('从已扫描断点重试旧资源类型错误，无需修改旧数据或重置进度', async () => {
@@ -239,10 +243,8 @@ describe('backfillChatPublishSource', () => {
     expect((await MongoChat.collection.findOne({ _id: id(5) }))?.publishSource).toBeUndefined();
 
     await backfillChatPublishSource(context);
-    // 只有补算进度时使用纯 _id 范围计数；完成校验的计数均带有来源条件。
-    expect(
-      count.mock.calls.filter(([filter]) => Object.keys(filter ?? {}).length === 1)
-    ).toHaveLength(1);
+    // 完成校验不再发起全范围计数，唯一一次 count 仅用于补算旧回填进度。
+    expect(count).toHaveBeenCalledTimes(1);
   });
 
   it.each(['delete', 'insert'] as const)(
@@ -396,5 +398,205 @@ describe('backfillChatPublishSource', () => {
       write.mockRestore();
     }
     expect(failures()).toEqual([]);
+  });
+
+  it.each(['checkpoint', 'chats', 'chatLogs'] as const)(
+    '校验在%s处中断后从已提交批次恢复，累计数量不重不漏且不重新回填',
+    async (interruption) => {
+      const chats = [];
+      for (let i = 0; i < 3; i++) {
+        chats.push(await seed({ publishSource: { type: 'api' } }));
+      }
+      const logs = [];
+      for (let i = 0; i < 3; i++) {
+        const log = {
+          _id: oid(),
+          teamId: oid(),
+          appId: oid(),
+          publishSource: { type: 'share' }
+        };
+        await MongoAppChatLog.collection.insertOne(log as any);
+        logs.push(log);
+      }
+      // 上界之后的数据不属于本次迁移，不能被校验或计入结果。
+      await seed({ publishSource: { type: 'invalid' } });
+      const state = createContext({
+        chats: {
+          endId: String(chats[2]._id),
+          lastId: String(chats[2]._id),
+          scanned: 3,
+          total: 3
+        },
+        chatLogs: { endId: String(logs[2]._id), lastId: String(logs[2]._id), scanned: 3 }
+      });
+      const save = state.context.saveCheckpoint.getMockImplementation()!;
+      state.context.saveCheckpoint.mockImplementation(async (value) => {
+        if (interruption === 'checkpoint') throw new Error('connection timed out');
+        await save(value);
+      });
+      const interruptedCollection =
+        interruption === 'chats' ? MongoChat.collection : MongoAppChatLog.collection;
+      const originalFind = interruptedCollection.find.bind(interruptedCollection);
+      const interruptedRead = vi
+        .spyOn(interruptedCollection, 'find')
+        .mockImplementation((...args) => {
+          if (Object.hasOwn(args[1]?.projection ?? {}, 'publishSource.type') && args[0]?._id?.$gt) {
+            throw new Error('connection timed out');
+          }
+          return originalFind(...args);
+        });
+      const chatWrites = vi.spyOn(MongoChat.collection, 'bulkWrite');
+      const logWrites = vi.spyOn(MongoAppChatLog.collection, 'bulkWrite');
+      const chatCount = vi.spyOn(MongoChat.collection, 'countDocuments');
+      const logCount = vi.spyOn(MongoAppChatLog.collection, 'countDocuments');
+      await expect(backfillChatPublishSource(state.context)).rejects.toThrow(
+        'connection timed out'
+      );
+      const savedValidation = state.checkpoint()?.validation;
+      if (interruption === 'checkpoint') {
+        expect(savedValidation).toBeUndefined();
+      } else {
+        expect(savedValidation).toMatchObject({
+          chats: { scanned: interruption === 'chats' ? 2 : 3 },
+          chatLogs: { scanned: interruption === 'chatLogs' ? 2 : 0 }
+        });
+      }
+
+      interruptedRead.mockRestore();
+      state.context.saveCheckpoint.mockImplementation(save);
+      state.context.reportProgress.mockImplementation(async (progress) => {
+        SystemMigrationProgressInputSchema.parse(progress);
+      });
+      const chatReads = vi.spyOn(MongoChat.collection, 'find');
+      const logReads = vi.spyOn(MongoAppChatLog.collection, 'find');
+      expect(await backfillChatPublishSource(state.context)).toEqual({
+        chats: 3,
+        chatLogs: 3,
+        missingChannelIds: 6
+      });
+      for (const [stage, reads] of [
+        ['chats', chatReads],
+        ['chatLogs', logReads]
+      ] as const) {
+        const validationReads = reads.mock.calls.filter(([, options]) =>
+          Object.hasOwn(options?.projection ?? {}, 'publishSource.type')
+        );
+        const cursor = (() => {
+          if (interruption === 'checkpoint') return;
+          if (stage === 'chats') {
+            return String(chats[interruption === 'chats' ? 1 : 2]._id);
+          }
+          if (interruption === 'chatLogs') return String(logs[1]._id);
+        })();
+        expect(validationReads[0][0]).toMatchObject({
+          _id: {
+            $lte: stage === 'chats' ? chats[2]._id : logs[2]._id,
+            ...(cursor ? { $gt: new Types.ObjectId(cursor) } : {})
+          }
+        });
+      }
+      expect(chatWrites).not.toHaveBeenCalled();
+      expect(logWrites).not.toHaveBeenCalled();
+      expect(chatCount).not.toHaveBeenCalled();
+      expect(logCount).not.toHaveBeenCalled();
+      expect(state.checkpoint()).toMatchObject({
+        validation: {
+          chats: { scanned: 3, missingChannelIds: 3 },
+          chatLogs: { scanned: 3, missingChannelIds: 3 }
+        }
+      });
+      expect(state.context.reportProgress).toHaveBeenLastCalledWith({
+        key: 'validation',
+        status: 'succeeded',
+        current: 6
+      });
+    }
+  );
+
+  it('校验异常按集合和 ID 定位，失败批次不保存计数，修复后重读且保留已有来源', async () => {
+    const records = [];
+    for (const publishSource of [
+      { type: 'api', id: null },
+      { type: 'share', id: oid() },
+      { type: 'invalid' },
+      { type: 'mcp' }
+    ]) {
+      records.push(await seed({ publishSource }));
+    }
+    const endId = String(records[3]._id);
+    const state = createContext({
+      chats: { endId, lastId: endId, scanned: 4, total: 4 },
+      chatLogs: { endId: null, lastId: null, scanned: 0 }
+    });
+    await expect(backfillChatPublishSource(state.context)).rejects.toThrow('valid publish source');
+    expect(state.failures()).toEqual([
+      expect.objectContaining({
+        stageKey: 'validation',
+        data: { collection: 'chats', id: String(records[2]._id) }
+      })
+    ]);
+    expect(state.checkpoint()).toMatchObject({
+      validation: {
+        chats: { lastId: String(records[1]._id), scanned: 2, missingChannelIds: 1 }
+      }
+    });
+    const previousFailures = state.failures();
+    const find = MongoChat.collection.find.bind(MongoChat.collection);
+    const unavailable = vi.spyOn(MongoChat.collection, 'find').mockImplementation((...args) => {
+      if (Object.hasOwn(args[1]?.projection ?? {}, 'publishSource.type')) {
+        throw new Error('connection timed out');
+      }
+      return find(...args);
+    });
+    await expect(backfillChatPublishSource(state.context)).rejects.toThrow('connection timed out');
+    expect(state.failures()).toEqual(previousFailures);
+    unavailable.mockRestore();
+
+    await MongoChat.collection.updateOne(
+      { _id: records[2]._id },
+      { $set: { publishSource: { type: 'unknown' } } }
+    );
+    expect(await backfillChatPublishSource(state.context)).toEqual({
+      chats: 4,
+      chatLogs: 0,
+      missingChannelIds: 2
+    });
+    expect(state.failures()).toEqual([]);
+    expect((await MongoChat.collection.findOne({ _id: records[0]._id }))?.publishSource).toEqual({
+      type: 'api',
+      id: null
+    });
+  });
+
+  it.each(['lease', 'abort'] as const)('校验期间%s失效后不开始下一批或标记成功', async (mode) => {
+    const records = [];
+    for (let i = 0; i < 3; i++) records.push(await seed({ publishSource: { type: 'api' } }));
+    const endId = String(records[2]._id);
+    const { context, checkpoint } = createContext({
+      chats: { endId, lastId: endId, scanned: 3, total: 3 },
+      chatLogs: { endId: null, lastId: null, scanned: 0 }
+    });
+    const controller = new AbortController();
+    context.signal = controller.signal;
+    context.reportProgress.mockImplementation(async (progress) => {
+      if (progress.key === 'validation' && progress.current === 2) {
+        if (mode === 'lease') {
+          context.assertActive.mockRejectedValueOnce(new Error('lease lost'));
+        } else {
+          controller.abort(new Error('runner stopped'));
+        }
+      }
+    });
+    await expect(backfillChatPublishSource(context)).rejects.toThrow(
+      mode === 'lease' ? 'lease lost' : 'runner stopped'
+    );
+    expect(checkpoint()).toMatchObject({
+      validation: { chats: { lastId: String(records[1]._id), scanned: 2 } }
+    });
+    expect(
+      context.reportProgress.mock.calls.some(
+        ([progress]) => progress.key === 'validation' && progress.status === 'succeeded'
+      )
+    ).toBe(false);
   });
 });

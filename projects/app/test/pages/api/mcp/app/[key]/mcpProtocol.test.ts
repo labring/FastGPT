@@ -1,6 +1,7 @@
 import { createServer, type Server as HttpServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 
 /**
  * 使用真实 MCP SDK + 真实 Node HTTP 验证协议层行为。
@@ -70,6 +71,16 @@ beforeAll(async () => {
   handler = (await import('@/pages/api/mcp/app/[key]/mcp')).default as ApiHandler;
 
   httpServer = createServer(async (req, res) => {
+    Object.assign(res, {
+      status(code: number) {
+        res.statusCode = code;
+        return res;
+      },
+      json(body: unknown) {
+        res.setHeader('Content-Type', 'application/json');
+        res.end(JSON.stringify(body));
+      }
+    });
     const chunks: Buffer[] = [];
     for await (const chunk of req) chunks.push(chunk as Buffer);
     const raw = Buffer.concat(chunks).toString('utf8');
@@ -96,6 +107,52 @@ describe('mcp app handler with the real MCP SDK', () => {
     vi.clearAllMocks();
     mocks.getMcpAuthProxyFromHeaders.mockReturnValue({});
     mocks.getMcpServerTools.mockResolvedValue([]);
+  });
+
+  it.each([
+    ['zh-CN', '无效的资源'],
+    ['en', 'Invalid resources']
+  ])(
+    'localizes native JSON-RPC errors in %s without another response or profile wrapper',
+    async (locale, message) => {
+      mocks.getMcpServerTools.mockRejectedValue(CommonErrEnum.invalidResource);
+      const response = await postJsonRpc(
+        { jsonrpc: '2.0', id: 7, method: 'tools/list', params: {} },
+        {
+          accept: 'application/json, text/event-stream',
+          'x-fastgpt-profile': '1',
+          'x-fastgpt-language': locale
+        }
+      );
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({
+        jsonrpc: '2.0',
+        id: 7,
+        error: { code: -32000, message }
+      });
+      expect(getProfilePayloads()).toEqual([expect.objectContaining({ kind: 'mcp', ok: false })]);
+    }
+  );
+
+  it('localizes tool failure content while preserving the SDK result and one profile', async () => {
+    mocks.callMcpServerTool.mockRejectedValue(CommonErrEnum.invalidResource);
+    const response = await postJsonRpc(
+      { jsonrpc: '2.0', id: 8, method: 'tools/call', params: { name: 'search', arguments: {} } },
+      {
+        accept: 'application/json, text/event-stream',
+        'x-fastgpt-profile': '1',
+        'x-fastgpt-language': 'zh-CN'
+      }
+    );
+    expect(response.status).toBe(200);
+    const frame = (await response.text()).split('\n').find((line) => line.startsWith('data: '));
+    expect(frame).toBeDefined();
+    expect(JSON.parse(frame!.slice(6))).toMatchObject({
+      jsonrpc: '2.0',
+      id: 8,
+      result: { isError: true, content: [{ type: 'text', text: '无效的资源' }] }
+    });
+    expect(getProfilePayloads()).toEqual([expect.objectContaining({ kind: 'mcp', ok: false })]);
   });
 
   it('marks the profile as failed for the SDK-generated 406 response', async () => {

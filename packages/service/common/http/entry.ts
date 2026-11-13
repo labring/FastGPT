@@ -1,3 +1,4 @@
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { jsonRes } from '../response';
 import type { NodeApiRequest, NodeApiResponse } from '../../types/http';
 import { getLogger, LogCategories, withContext } from '../logger';
@@ -9,6 +10,7 @@ import { ApiRequestInputParseError, getZodParseErrorInputSource } from '../zod/r
 import { withHttpRequestProfile } from './requestProfile';
 import { markProfileError } from '../profiling';
 import { ApiHttpError } from './apiError';
+import type { ApiI18n } from '../i18n/request';
 
 export type ApiHandler<
   T = any,
@@ -74,6 +76,7 @@ export function redactRequestUrl(url: string, redactQueryParams: string[]) {
 /**
  * 创建与 Web 框架无关的 API handler 管线，统一处理日志、追踪、错误和默认 JSON 响应。
  * 框架适配器通过 beforeCallback 注入 CORS 等运行时能力。
+ * 应用必须注入 requestI18n，确保所有请求在进入管线前建立翻译上下文。
  * handler 自行写回包时，以响应生命周期为准，不向已开始或已关闭的响应追加 JSON。
  */
 export const createApiEntry = <
@@ -81,13 +84,15 @@ export const createApiEntry = <
   Response extends NodeApiResponse = NodeApiResponse
 >({
   beforeCallback = [],
-  redactQueryParams = []
+  redactQueryParams = [],
+  requestI18n
 }: {
   beforeCallback?: ((req: Request, res: Response) => Promise<unknown>)[];
   redactQueryParams?: string[];
+  requestI18n: ApiI18n;
 }) => {
   return (...args: ApiHandler<any, Request, Response>[]): ApiHandler<any, Request, Response> => {
-    return async function api(
+    const api = async function api(
       req: Omit<Request, 'body' | 'query'> & NodeApiRequest,
       res: Response
     ) {
@@ -224,7 +229,7 @@ export const createApiEntry = <
                   span.setAttribute('http.response.status_code', 400);
                   return jsonRes(res, {
                     code: 400,
-                    message: 'Data validation error',
+                    message: i18nT('common:api_error.validation_error'),
                     error,
                     url: logUrl
                   });
@@ -252,5 +257,7 @@ export const createApiEntry = <
         )
       );
     };
+
+    return (req, res) => requestI18n({ req, res }, () => api(req, res));
   };
 };

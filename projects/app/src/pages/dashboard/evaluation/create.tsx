@@ -10,7 +10,8 @@ import { getAppDetailById } from '@/web/core/app/api';
 import { postCreateEvaluation } from '@/web/core/app/api/evaluation';
 import { Box, Button, Flex, Input, VStack } from '@chakra-ui/react';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
-import { getErrText } from '@fastgpt/global/common/error/utils';
+import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
+import { getErrResponse, getErrText } from '@fastgpt/global/common/error/utils';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { evaluationFileErrors } from '@fastgpt/global/core/app/evaluation/constants';
@@ -103,10 +104,11 @@ const EvaluationCreating = () => {
       },
       errorToast: '',
       onError: (error) => {
-        if (error.message === evaluationFileErrors) {
-          setError(error.message);
-        } else if (error.message === TeamErrEnum.aiPointsNotEnough) {
-          useSystemStore.getState().setNotSufficientModalType(error.message);
+        const statusText = getErrResponse(error)?.statusText;
+        if (statusText === AppErrEnum.invalidEvaluationFile) {
+          setError(evaluationFileErrors);
+        } else if (statusText === TeamErrEnum.aiPointsNotEnough) {
+          useSystemStore.getState().setNotSufficientModalType(statusText);
         } else {
           toast({
             title: t(getErrText(error)),
