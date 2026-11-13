@@ -55,18 +55,34 @@ it('returns only task existence, using data for rebuilds and excluding stale or 
   ]);
   const res = await Call(handler, { auth: root, query: { datasetId: dataset._id } });
   expect(res.code).toBe(200);
-  expect(res.data).toEqual({ hasTrainingTask: true });
+  expect(res.data).toMatchObject({ hasTrainingTask: true, canSwitchEmbeddingModel: false });
 
-  // 普通训练存在时仍保持 true；清理后，只剩已就绪 data 和残留重建 training，不应阻塞。
+  // 普通训练存在时仍保持 true；清理后，只剩已就绪 data 和残留重建 training，
+  // hasTrainingTask 回到 false，但仍有 active rebuild 任务会阻塞模型切换。
   await MongoDatasetData.updateMany(
     { teamId: root.teamId, datasetId: dataset._id },
     { $set: { indexStatus: DatasetDataIndexStatusEnum.indexed } }
   );
-  expect((await Call(handler, { auth: root, query: { datasetId: dataset._id } })).data).toEqual({
-    hasTrainingTask: true
+  expect(
+    (await Call(handler, { auth: root, query: { datasetId: dataset._id } })).data
+  ).toMatchObject({
+    hasTrainingTask: true,
+    canSwitchEmbeddingModel: false
   });
   await MongoDatasetTraining.deleteMany({ datasetId: dataset._id, mode: TrainingModeEnum.qa });
+  expect(
+    (await Call(handler, { auth: root, query: { datasetId: dataset._id } })).data
+  ).toMatchObject({
+    hasTrainingTask: false,
+    canSwitchEmbeddingModel: false
+  });
+
+  await MongoDatasetTraining.deleteMany({
+    datasetId: dataset._id,
+    mode: { $in: [TrainingModeEnum.rebuildIndex, TrainingModeEnum.rebuildSynonym] }
+  });
   expect((await Call(handler, { auth: root, query: { datasetId: dataset._id } })).data).toEqual({
-    hasTrainingTask: false
+    hasTrainingTask: false,
+    canSwitchEmbeddingModel: true
   });
 });

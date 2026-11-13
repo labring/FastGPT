@@ -8,7 +8,10 @@ import {
   DatasetCollectionTypeEnum,
   TrainingModeEnum
 } from '@fastgpt/global/core/dataset/constants';
-import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
+import {
+  DatasetDataIndexStatusEnum,
+  DatasetDataIndexTypeEnum
+} from '@fastgpt/global/core/dataset/data/constants';
 import { connectionMongo } from '@fastgpt/service/common/mongo';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import * as modelCatalogService from '@fastgpt/service/core/ai/model/catalog/service';
@@ -289,7 +292,725 @@ describe('POST /api/core/dataset/training/rebuildEmbedding', () => {
     await expect(MongoDatasetTraining.countDocuments({ datasetId: dataset._id })).resolves.toBe(0);
   });
 
-  it('should keep the committed model switch and rebuild markers when seed creation fails', async () => {
+  it('should ignore final-error training records when switching the embedding model', async () => {
+    const { root, dataset, collection } = await createDatasetContext();
+    await MongoDatasetData.create({
+      teamId: root.teamId,
+      tmbId: root.tmbId,
+      datasetId: dataset._id,
+      collectionId: collection._id,
+      q: 'failed',
+      indexes: [],
+      indexStatus: 'error'
+    });
+    await MongoDatasetTraining.create({
+      teamId: root.teamId,
+      tmbId: root.tmbId,
+      datasetId: dataset._id,
+      collectionId: collection._id,
+      billId: 'bill',
+      mode: TrainingModeEnum.index,
+      retryCount: 0,
+      lockTime: new Date(),
+      errorMsg: '404 The model does not exist'
+    });
+
+    const res = await Call(handler, {
+      auth: root,
+      body: {
+        datasetId: String(dataset._id),
+        vectorModelId: visionEmbeddingModel.modelId
+      }
+    });
+
+    expect(res.error).toBeUndefined();
+    expect(res.code).toBe(200);
+  });
+
+  it('keeps first-index failed data and its final-error task unchanged', async () => {
+    const { root, dataset, collection } = await createDatasetContext();
+    const failedData = await MongoDatasetData.create({
+      teamId: root.teamId,
+      tmbId: root.tmbId,
+      datasetId: dataset._id,
+      collectionId: collection._id,
+      q: '',
+      indexes: [],
+      indexStatus: 'error',
+      indexErrorMsg: '404 old model does not exist'
+    });
+    const indexedData = await MongoDatasetData.create({
+      teamId: root.teamId,
+      tmbId: root.tmbId,
+      datasetId: dataset._id,
+      collectionId: collection._id,
+      q: 'indexed content',
+      indexes: [],
+      indexStatus: 'indexed'
+    });
+    const failedTask = await MongoDatasetTraining.create({
+      teamId: root.teamId,
+      tmbId: root.tmbId,
+      datasetId: dataset._id,
+      collectionId: collection._id,
+      billId: 'old-bill',
+      mode: TrainingModeEnum.index,
+      dataId: failedData._id,
+      retryCount: 0,
+      lockTime: new Date(),
+      errorMsg: '404 old model does not exist',
+      q: 'OCR parsed text',
+      a: '',
+      indexSize: 768,
+      indexes: [
+        { type: 'custom', text: 'user custom index', dataId: 'custom-1' },
+        { type: 'summary', text: 'draft summary', dataId: 'summary-1' }
+      ],
+      imageDescMap: { 'dataset/team/a.png': '图片描述' }
+    });
+
+    const res = await Call(handler, {
+      auth: root,
+      body: {
+        datasetId: String(dataset._id),
+        vectorModelId: visionEmbeddingModel.modelId
+      }
+    });
+
+    expect(res.code).toBe(200);
+
+    // 失败数据保持 error，final-error index 任务作为重试入口原样保留
+    const failedAfter = await MongoDatasetData.findById(failedData._id).lean();
+    expect(failedAfter).toMatchObject({
+      indexStatus: 'error',
+      indexErrorMsg: '404 old model does not exist'
+    });
+    const failedTaskAfter = await MongoDatasetTraining.findById(failedTask._id).lean();
+    expect(failedTaskAfter).toMatchObject({
+      retryCount: 0,
+      q: 'OCR parsed text',
+      indexSize: 768,
+      imageDescMap: { 'dataset/team/a.png': '图片描述' }
+    });
+    expect(failedTaskAfter?.indexes).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ type: 'custom', text: 'user custom index' }),
+        expect.objectContaining({ type: 'summary', text: 'draft summary' })
+      ])
+    );
+    // 不为失败数据创建新的 index 任务
+    await expect(
+      MongoDatasetTraining.countDocuments({
+        dataId: failedData._id,
+        mode: TrainingModeEnum.index,
+        _id: { $ne: failedTask._id }
+      })
+    ).resolves.toBe(0);
+
+    // 已索引数据进入重建队列
+    const indexedAfter = await MongoDatasetData.findById(indexedData._id).lean();
+    expect(['rebuildIndexPending', 'rebuildIndexRunning']).toContain(indexedAfter?.indexStatus);
+    await expect(
+      MongoDatasetTraining.countDocuments({
+        dataId: indexedData._id,
+        mode: TrainingModeEnum.rebuildIndex
+      })
+    ).resolves.toBeGreaterThan(0);
+  });
+
+  it('rejects switching while a paused synonym rebuild can still resume', async () => {
+    const { root, dataset, collection } = await createDatasetContext();
+    await MongoDatasetTraining.create({
+      teamId: root.teamId,
+      tmbId: root.tmbId,
+      datasetId: dataset._id,
+      collectionId: collection._id,
+      billId: 'synonym-bill',
+      mode: TrainingModeEnum.rebuildSynonym,
+      retryCount: 3,
+      lockTime: new Date('2050-01-01'),
+      errorMsg: 'AI points not enough'
+    });
+
+    const res = await Call(handler, {
+      auth: root,
+      body: {
+        datasetId: String(dataset._id),
+        vectorModelId: visionEmbeddingModel.modelId
+      }
+    });
+
+    expect(res.code).toBe(500);
+    expect(String(res.error)).toContain('暂停或可恢复的训练任务');
+  });
+
+  it('replaces a final-error synonym rebuild with the full rebuild', async () => {
+    const { root, dataset, collection } = await createDatasetContext();
+    const data = await MongoDatasetData.create({
+      teamId: root.teamId,
+      tmbId: root.tmbId,
+      datasetId: dataset._id,
+      collectionId: collection._id,
+      q: 'synonym failed data',
+      indexes: [],
+      indexStatus: 'rebuildSynonymFailed',
+      indexErrorMsg: 'synonym rebuild failed'
+    });
+    await MongoDatasetTraining.create({
+      teamId: root.teamId,
+      tmbId: root.tmbId,
+      datasetId: dataset._id,
+      collectionId: collection._id,
+      billId: 'synonym-bill',
+      mode: TrainingModeEnum.rebuildSynonym,
+      dataId: data._id,
+      retryCount: 0,
+      lockTime: new Date(),
+      errorMsg: 'synonym rebuild failed',
+      expireAt: null
+    });
+
+    const res = await Call(handler, {
+      auth: root,
+      body: {
+        datasetId: String(dataset._id),
+        vectorModelId: visionEmbeddingModel.modelId
+      }
+    });
+
+    expect(res.error).toBeUndefined();
+    expect(res.code).toBe(200);
+    await expect(
+      MongoDatasetTraining.countDocuments({
+        datasetId: dataset._id,
+        mode: TrainingModeEnum.rebuildSynonym
+      })
+    ).resolves.toBe(0);
+    const updatedData = await MongoDatasetData.findById(data._id).lean();
+    expect(['rebuildIndexPending', 'rebuildIndexRunning']).toContain(updatedData?.indexStatus);
+    await expect(
+      MongoDatasetTraining.countDocuments({
+        datasetId: dataset._id,
+        mode: TrainingModeEnum.rebuildIndex
+      })
+    ).resolves.toBe(1);
+  });
+
+  it('removes inert rebuild tasks that cannot be matched as final-error', async () => {
+    const { root, dataset, collection } = await createDatasetContext();
+    const data = await MongoDatasetData.create({
+      teamId: root.teamId,
+      tmbId: root.tmbId,
+      datasetId: dataset._id,
+      collectionId: collection._id,
+      q: 'inert rebuild data',
+      indexes: [],
+      indexStatus: 'rebuildIndexFailed'
+    });
+    // retryCount=0 且没有 errorMsg：不满足 finalErrorTrainingMatch，但同样是死任务。
+    const inertTask = await MongoDatasetTraining.create({
+      teamId: root.teamId,
+      tmbId: root.tmbId,
+      datasetId: dataset._id,
+      collectionId: collection._id,
+      billId: 'inert-bill',
+      mode: TrainingModeEnum.rebuildIndex,
+      dataId: data._id,
+      retryCount: 0,
+      lockTime: new Date(),
+      expireAt: null
+    });
+
+    const res = await Call(handler, {
+      auth: root,
+      body: {
+        datasetId: String(dataset._id),
+        vectorModelId: visionEmbeddingModel.modelId
+      }
+    });
+
+    expect(res.error).toBeUndefined();
+    expect(res.code).toBe(200);
+    await expect(MongoDatasetTraining.countDocuments({ _id: inertTask._id })).resolves.toBe(0);
+    await expect(
+      MongoDatasetTraining.countDocuments({
+        dataId: data._id,
+        mode: TrainingModeEnum.rebuildIndex
+      })
+    ).resolves.toBe(1);
+  });
+
+  it('rechecks training state inside the rebuild transaction', async () => {
+    const { root, dataset } = await createDatasetContext();
+    const runMock = vi.mocked(mongoSessionRun);
+    const run = runMock.getMockImplementation();
+    if (!run) throw new Error('mongoSessionRun mock is not initialized');
+    let callCount = 0;
+    runMock.mockImplementation(async (fn) => {
+      callCount++;
+      // 第一次是 createTrainingUsage，第二次是切换事务；
+      // 在切换事务开始前提交一条 active 任务，模拟两次检查之间的并发提交。
+      if (callCount === 2) {
+        await MongoDatasetTraining.create({
+          teamId: root.teamId,
+          tmbId: root.tmbId,
+          datasetId: dataset._id,
+          collectionId: dataset._id,
+          billId: 'race-bill',
+          mode: TrainingModeEnum.index,
+          retryCount: 3,
+          lockTime: new Date('2000-01-01')
+        });
+      }
+      return run(fn);
+    });
+    onTestFinished(() => runMock.mockImplementation(run));
+
+    const res = await Call(handler, {
+      auth: root,
+      body: {
+        datasetId: String(dataset._id),
+        vectorModelId: visionEmbeddingModel.modelId
+      }
+    });
+
+    expect(res.code).toBe(500);
+    expect(String(res.error)).toContain('正在训练或者重建中');
+    await expect(MongoDataset.findById(dataset._id).lean()).resolves.toMatchObject({
+      vectorModelId: textOnlyEmbeddingModel.modelId
+    });
+  });
+
+  it('rejects switching when a first-index task is retried concurrently', async () => {
+    const { root, dataset, collection } = await createDatasetContext();
+    const data = await MongoDatasetData.create({
+      teamId: root.teamId,
+      tmbId: root.tmbId,
+      datasetId: dataset._id,
+      collectionId: collection._id,
+      q: 'failed data',
+      indexes: [],
+      indexStatus: 'error'
+    });
+    // 用户在切换前恢复了失败任务；切换必须等它结束，不能与它并发写同一批 data。
+    const retriedTask = await MongoDatasetTraining.create({
+      teamId: root.teamId,
+      tmbId: root.tmbId,
+      datasetId: dataset._id,
+      collectionId: collection._id,
+      billId: 'retry-bill',
+      mode: TrainingModeEnum.index,
+      dataId: data._id,
+      retryCount: 3,
+      lockTime: new Date('2000-01-01'),
+      q: 'failed data',
+      indexes: []
+    });
+
+    const res = await Call(handler, {
+      auth: root,
+      body: {
+        datasetId: String(dataset._id),
+        vectorModelId: visionEmbeddingModel.modelId
+      }
+    });
+
+    expect(res.code).toBe(500);
+    expect(String(res.error)).toContain('正在训练或者重建中');
+    await expect(MongoDatasetTraining.exists({ _id: retriedTask._id })).resolves.toBeTruthy();
+    await expect(MongoDataset.findById(dataset._id).lean()).resolves.toMatchObject({
+      vectorModelId: textOnlyEmbeddingModel.modelId
+    });
+  });
+
+  it('rebuilds a final-error data when its retry completes after the transaction snapshot', async () => {
+    const { root, dataset, collection } = await createDatasetContext();
+    const data = await MongoDatasetData.create({
+      teamId: root.teamId,
+      tmbId: root.tmbId,
+      datasetId: dataset._id,
+      collectionId: collection._id,
+      q: 'failed data',
+      indexes: [],
+      indexStatus: DatasetDataIndexStatusEnum.error
+    });
+    const errorTask = await MongoDatasetTraining.create({
+      teamId: root.teamId,
+      tmbId: root.tmbId,
+      datasetId: dataset._id,
+      collectionId: collection._id,
+      billId: 'retry-bill',
+      mode: TrainingModeEnum.index,
+      dataId: data._id,
+      retryCount: 0,
+      lockTime: new Date('2000-01-01'),
+      q: 'failed data',
+      indexes: [],
+      errorMsg: 'embedding failed'
+    });
+
+    const mongoSessionRunMock = vi.mocked(mongoSessionRun);
+    const runWithoutTransaction = mongoSessionRunMock.getMockImplementation();
+    if (!runWithoutTransaction) throw new Error('mongoSessionRun mock is not initialized');
+    mongoSessionRunMock
+      // createTrainingUsage 会先占用一次调用，后续重建事务使用真实 session。
+      .mockImplementationOnce(runWithoutTransaction)
+      .mockImplementation(async (fn) => {
+        const session = await connectionMongo.startSession();
+        try {
+          return await session.withTransaction(() => fn(session));
+        } finally {
+          await session.endSession();
+        }
+      });
+
+    const originalUpdateMany = MongoDatasetData.updateMany.bind(MongoDatasetData);
+    let workerCompleted = false;
+    const updateManySpy = vi.spyOn(MongoDatasetData, 'updateMany').mockImplementation((async (
+      filter: any,
+      update: any,
+      options: any
+    ) => {
+      // 在切换事务完成 recheck、准备标记可重建数据时，模拟另一请求重试的
+      // final-error task 已经由 worker 用旧模型完成：写入 indexed 并删除任务。
+      if (
+        !workerCompleted &&
+        update?.$set?.indexStatus === DatasetDataIndexStatusEnum.rebuildIndexPending
+      ) {
+        workerCompleted = true;
+        const workerSession = await connectionMongo.startSession();
+        try {
+          await workerSession.withTransaction(async () => {
+            await MongoDatasetData.updateOne(
+              { _id: data._id },
+              {
+                $set: {
+                  indexStatus: DatasetDataIndexStatusEnum.indexed,
+                  indexes: [
+                    {
+                      type: DatasetDataIndexTypeEnum.default,
+                      dataId: 'old-model-vector',
+                      text: 'failed data'
+                    }
+                  ]
+                }
+              },
+              { session: workerSession }
+            );
+            await MongoDatasetTraining.deleteOne(
+              { _id: errorTask._id },
+              { session: workerSession }
+            );
+          });
+        } finally {
+          await workerSession.endSession();
+        }
+      }
+      return originalUpdateMany(filter, update, options);
+    }) as any);
+
+    onTestFinished(() => {
+      updateManySpy.mockRestore();
+      mongoSessionRunMock.mockImplementation(runWithoutTransaction);
+    });
+
+    const res = await Call(handler, {
+      auth: root,
+      body: {
+        datasetId: String(dataset._id),
+        vectorModelId: visionEmbeddingModel.modelId
+      }
+    });
+
+    expect(res.code).toBe(200);
+    expect(workerCompleted).toBe(true);
+    await expect(MongoDataset.findById(dataset._id).lean()).resolves.toMatchObject({
+      vectorModelId: visionEmbeddingModel.modelId
+    });
+    const switchedData = await MongoDatasetData.findById(data._id).lean();
+    expect([
+      DatasetDataIndexStatusEnum.rebuildIndexPending,
+      DatasetDataIndexStatusEnum.rebuildIndexRunning
+    ]).toContain(switchedData?.indexStatus);
+    // 旧模型的 indexed 结果必须进入新的重建任务，不能成为无后续任务的终态。
+    await expect(MongoDatasetTraining.exists({ _id: errorTask._id })).resolves.toBeFalsy();
+    await expect(
+      MongoDatasetTraining.countDocuments({
+        datasetId: dataset._id,
+        dataId: data._id,
+        mode: TrainingModeEnum.rebuildIndex
+      })
+    ).resolves.toBe(1);
+  });
+
+  it('rejects switching while a paused index task can still resume', async () => {
+    const { root, dataset, collection } = await createDatasetContext();
+    const data = await MongoDatasetData.create({
+      teamId: root.teamId,
+      tmbId: root.tmbId,
+      datasetId: dataset._id,
+      collectionId: collection._id,
+      q: 'paused content',
+      indexes: [],
+      indexStatus: 'indexing'
+    });
+    const pausedTask = await MongoDatasetTraining.create({
+      teamId: root.teamId,
+      tmbId: root.tmbId,
+      datasetId: dataset._id,
+      collectionId: collection._id,
+      billId: 'paused-bill',
+      mode: TrainingModeEnum.index,
+      dataId: data._id,
+      retryCount: 3,
+      lockTime: new Date('2050-01-01'),
+      q: 'paused content',
+      errorMsg: 'AI points not enough'
+    });
+
+    const res = await Call(handler, {
+      auth: root,
+      body: {
+        datasetId: String(dataset._id),
+        vectorModelId: visionEmbeddingModel.modelId
+      }
+    });
+
+    expect(res.code).toBe(500);
+    expect(String(res.error)).toContain('暂停或可恢复的训练任务');
+    await expect(MongoDatasetTraining.exists({ _id: pausedTask._id })).resolves.toBeTruthy();
+    await expect(MongoDataset.findById(dataset._id).lean()).resolves.toMatchObject({
+      vectorModelId: textOnlyEmbeddingModel.modelId
+    });
+  });
+
+  it('rejects switching while a paused enhancement task exists', async () => {
+    const { root, dataset, collection } = await createDatasetContext();
+    const data = await MongoDatasetData.create({
+      teamId: root.teamId,
+      tmbId: root.tmbId,
+      datasetId: dataset._id,
+      collectionId: collection._id,
+      q: 'paused auto content',
+      indexes: [],
+      indexStatus: 'indexing'
+    });
+    await MongoDatasetTraining.create({
+      teamId: root.teamId,
+      tmbId: root.tmbId,
+      datasetId: dataset._id,
+      collectionId: collection._id,
+      billId: 'auto-bill',
+      mode: TrainingModeEnum.auto,
+      dataId: data._id,
+      retryCount: 3,
+      lockTime: new Date('2050-01-01'),
+      q: 'paused auto content',
+      errorMsg: 'AI points not enough'
+    });
+
+    const res = await Call(handler, {
+      auth: root,
+      body: {
+        datasetId: String(dataset._id),
+        vectorModelId: visionEmbeddingModel.modelId
+      }
+    });
+
+    expect(res.code).toBe(500);
+    expect(String(res.error)).toContain('暂停或可恢复的训练任务');
+  });
+
+  it('rejects switching while a failed enhancement task exists', async () => {
+    const { root, dataset, collection } = await createDatasetContext();
+    await MongoDatasetTraining.create({
+      teamId: root.teamId,
+      tmbId: root.tmbId,
+      datasetId: dataset._id,
+      collectionId: collection._id,
+      billId: 'parse-bill',
+      mode: TrainingModeEnum.parse,
+      retryCount: 0,
+      lockTime: new Date(),
+      errorMsg: 'parse failed'
+    });
+
+    const res = await Call(handler, {
+      auth: root,
+      body: {
+        datasetId: String(dataset._id),
+        vectorModelId: visionEmbeddingModel.modelId
+      }
+    });
+
+    expect(res.code).toBe(500);
+    expect(String(res.error)).toContain('未完成的解析或增强任务');
+  });
+
+  it('rejects switching while data is still indexing', async () => {
+    const { root, dataset, collection } = await createDatasetContext();
+    await MongoDatasetData.create({
+      teamId: root.teamId,
+      tmbId: root.tmbId,
+      datasetId: dataset._id,
+      collectionId: collection._id,
+      q: 'indexing content',
+      indexes: [],
+      indexStatus: 'indexing'
+    });
+
+    const res = await Call(handler, {
+      auth: root,
+      body: {
+        datasetId: String(dataset._id),
+        vectorModelId: visionEmbeddingModel.modelId
+      }
+    });
+
+    expect(res.code).toBe(500);
+    expect(String(res.error)).toContain('未完成的索引数据');
+  });
+
+  it('deletes stale final-error index tasks for indexed data', async () => {
+    const { root, dataset, collection } = await createDatasetContext();
+    const data = await MongoDatasetData.create({
+      teamId: root.teamId,
+      tmbId: root.tmbId,
+      datasetId: dataset._id,
+      collectionId: collection._id,
+      q: 'indexed content',
+      indexes: [{ type: 'default', text: 'indexed content', dataId: 'vec-1' }],
+      indexStatus: 'indexed'
+    });
+    await MongoDatasetTraining.create({
+      teamId: root.teamId,
+      tmbId: root.tmbId,
+      datasetId: dataset._id,
+      collectionId: collection._id,
+      billId: 'stale-bill',
+      mode: TrainingModeEnum.index,
+      dataId: data._id,
+      retryCount: 0,
+      lockTime: new Date(),
+      errorMsg: 'stale failure',
+      q: 'indexed content',
+      indexes: []
+    });
+
+    const res = await Call(handler, {
+      auth: root,
+      body: {
+        datasetId: String(dataset._id),
+        vectorModelId: visionEmbeddingModel.modelId
+      }
+    });
+
+    expect(res.code).toBe(200);
+    // 残留 index 任务不能保留，否则用户手动重试会与新的 rebuildIndex 双写同一 data
+    await expect(
+      MongoDatasetTraining.countDocuments({
+        dataId: data._id,
+        mode: TrainingModeEnum.index
+      })
+    ).resolves.toBe(0);
+    await expect(
+      MongoDatasetTraining.countDocuments({
+        dataId: data._id,
+        mode: TrainingModeEnum.rebuildIndex
+      })
+    ).resolves.toBeGreaterThan(0);
+  });
+
+  it('keeps the failed task payload when empty content cannot be re-queued', async () => {
+    const { root, dataset, collection } = await createDatasetContext();
+    const data = await MongoDatasetData.create({
+      teamId: root.teamId,
+      tmbId: root.tmbId,
+      datasetId: dataset._id,
+      collectionId: collection._id,
+      q: '',
+      indexes: [],
+      indexStatus: 'error',
+      indexErrorMsg: '404 old model does not exist'
+    });
+    // 用户清空 q/a，但 custom 草稿只保存在旧任务里；队列过滤后不能删掉唯一输入副本。
+    const failedTask = await MongoDatasetTraining.create({
+      teamId: root.teamId,
+      tmbId: root.tmbId,
+      datasetId: dataset._id,
+      collectionId: collection._id,
+      billId: 'empty-bill',
+      mode: TrainingModeEnum.index,
+      dataId: data._id,
+      retryCount: 0,
+      lockTime: new Date(),
+      q: '',
+      a: '',
+      indexes: [{ type: 'custom', text: 'custom draft', dataId: 'draft-1' }],
+      errorMsg: '404 old model does not exist'
+    });
+
+    const res = await Call(handler, {
+      auth: root,
+      body: {
+        datasetId: String(dataset._id),
+        vectorModelId: visionEmbeddingModel.modelId
+      }
+    });
+
+    expect(res.code).toBe(200);
+    // 没有替代任务：data 回到 error，并保留原错误信息
+    const dataAfter = await MongoDatasetData.findById(data._id).lean();
+    expect(dataAfter?.indexStatus).toBe('error');
+    expect(dataAfter?.indexErrorMsg).toBe('404 old model does not exist');
+    // 旧任务及其完整输入保留，作为可编辑的重试入口
+    const taskAfter = await MongoDatasetTraining.findById(failedTask._id).lean();
+    expect(taskAfter).toEqual(
+      expect.objectContaining({
+        retryCount: 0,
+        q: '',
+        a: '',
+        errorMsg: '404 old model does not exist'
+      })
+    );
+    expect(taskAfter?.indexes).toEqual(
+      expect.arrayContaining([expect.objectContaining({ text: 'custom draft' })])
+    );
+    await expect(
+      MongoDatasetTraining.countDocuments({
+        datasetId: dataset._id,
+        dataId: data._id,
+        mode: TrainingModeEnum.index
+      })
+    ).resolves.toBe(1);
+  });
+
+  it('should reject model rebuilding while an active training task exists', async () => {
+    const { root, dataset, collection } = await createDatasetContext();
+    await MongoDatasetTraining.create({
+      teamId: root.teamId,
+      tmbId: root.tmbId,
+      datasetId: dataset._id,
+      collectionId: collection._id,
+      billId: 'bill',
+      mode: TrainingModeEnum.index,
+      retryCount: 3,
+      lockTime: new Date('2000-01-01')
+    });
+
+    const res = await Call(handler, {
+      auth: root,
+      body: {
+        datasetId: String(dataset._id),
+        vectorModelId: visionEmbeddingModel.modelId
+      }
+    });
+
+    expect(res.code).toBe(500);
+    expect(String(res.error)).toContain('正在训练或者重建中');
+  });
+
+  it('rolls back the model switch when seed creation fails', async () => {
     const { root, dataset, collection } = await createDatasetContext();
     const data = await MongoDatasetData.create({
       teamId: root.teamId,
@@ -328,13 +1049,14 @@ describe('POST /api/core/dataset/training/rebuildEmbedding', () => {
     createTrainingSpy.mockRestore();
     mongoSessionRunMock.mockImplementation(runWithoutTransaction);
 
-    expect(res.code).toBe(200);
+    // seed 与待重建标记同事务：seed 失败时整个切换回滚
+    expect(res.code).toBe(500);
     await expect(MongoDataset.findById(dataset._id).lean()).resolves.toMatchObject({
-      vectorModelId: visionEmbeddingModel.modelId
+      vectorModelId: textOnlyEmbeddingModel.modelId
     });
-    await expect(MongoDatasetData.findById(data._id).lean()).resolves.toMatchObject({
-      indexStatus: 'rebuildIndexPending'
-    });
+    await expect(MongoDatasetData.findById(data._id).lean()).resolves.not.toHaveProperty(
+      'indexStatus'
+    );
     await expect(MongoDatasetTraining.countDocuments({ datasetId: dataset._id })).resolves.toBe(0);
   });
 

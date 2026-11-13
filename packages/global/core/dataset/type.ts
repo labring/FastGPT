@@ -457,6 +457,10 @@ export const DatasetItemSchema = DatasetSchema.omit({
     description: '是否存在普通训练任务或待处理、处理中、失败的索引/同义词重建数据',
     example: false
   }),
+  canSwitchEmbeddingModel: z.boolean().optional().meta({
+    description: '训练任务与索引数据是否允许切换 embedding 模型（不含权限判断）',
+    example: true
+  }),
   errorMsg: z.string().optional().meta({ description: '错误信息' }),
   vectorModel: EmbeddingModelDataSchema.optional().meta({
     description: '向量模型；模型已删除时为空，已停用模型仍返回展示数据'

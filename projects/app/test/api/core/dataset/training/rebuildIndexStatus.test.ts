@@ -89,8 +89,8 @@ describe('rebuild paths skip pending index data', () => {
     [currentModel, nextModel].forEach((model) => addModelTestModel(model));
   });
 
-  /** CP-08：索引进行中切换向量模型，待索引数据不被标记 rebuilding、不产生第二条任务。 */
-  it('marks only indexed data as rebuilding and leaves pending data alone', async () => {
+  /** CP-08：索引进行中禁止切换，待索引数据保持原状，不会产生重建任务。 */
+  it('rejects switching while index data is pending', async () => {
     const { root, dataset, collection } = await createContext();
     const indexingPending = await createData({
       root,
@@ -104,7 +104,7 @@ describe('rebuild paths skip pending index data', () => {
       collection,
       indexStatus: DatasetDataIndexStatusEnum.indexed
     });
-    const legacy = await createData({ root, dataset, collection });
+    await createData({ root, dataset, collection });
 
     const res = await Call(handler, {
       auth: root,
@@ -113,19 +113,18 @@ describe('rebuild paths skip pending index data', () => {
         vectorModelId: nextModel.modelId
       }
     });
-    expect(res.error).toBeUndefined();
-    expect(res.code).toBe(200);
+    expect(res.code).toBe(500);
+    expect(String(res.error)).toContain('未完成的索引数据');
 
-    // 重建种子任务只覆盖已索引数据与历史数据，且每条数据只有一条任务。
-    const tasks = await MongoDatasetTraining.find({ datasetId: dataset._id }).lean();
-    expect(tasks.map((task) => String(task.dataId)).sort()).toEqual(
-      [String(indexed._id), String(legacy._id)].sort()
-    );
-    expect(tasks.every((task) => task.mode === TrainingModeEnum.rebuildIndex)).toBe(true);
+    // 模型未切换，也没有产生任何重建任务。
+    expect(await MongoDatasetTraining.countDocuments({ datasetId: dataset._id })).toBe(0);
 
-    // 待索引数据不被选中，也没有重建标记残留。
+    // 待索引数据保持原状，已索引数据也不会被提前标记。
     expect(await MongoDatasetData.findById(indexingPending._id).lean()).toMatchObject({
       indexStatus: DatasetDataIndexStatusEnum.indexing
+    });
+    expect(await MongoDatasetData.findById(indexed._id).lean()).toMatchObject({
+      indexStatus: DatasetDataIndexStatusEnum.indexed
     });
   });
 

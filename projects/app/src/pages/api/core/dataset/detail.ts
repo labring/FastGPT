@@ -12,7 +12,10 @@ import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/catalog/servi
 import { desensitizeModel } from '@fastgpt/service/core/ai/model/transform';
 import { getDatasetSyncDatasetStatus } from '@fastgpt/service/core/dataset/datasetSync';
 import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
-import { hasDatasetTrainingTask } from '@fastgpt/service/core/dataset/training/entity';
+import {
+  hasDatasetTrainingTask,
+  canSwitchEmbeddingModel as checkCanSwitchEmbeddingModel
+} from '@fastgpt/service/core/dataset/training/entity';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 
 async function handler(req: ApiRequestProps): Promise<GetDatasetDetailResponse> {
@@ -27,9 +30,10 @@ async function handler(req: ApiRequestProps): Promise<GetDatasetDetailResponse> 
     per: ReadPermissionVal
   });
 
-  const [{ status, errorMsg }, hasTrainingTask] = await Promise.all([
+  const [{ status, errorMsg }, hasTrainingTask, canSwitchEmbeddingModel] = await Promise.all([
     getDatasetSyncDatasetStatus(datasetId),
-    hasDatasetTrainingTask({ teamId: dataset.teamId, datasetId })
+    hasDatasetTrainingTask({ teamId: dataset.teamId, datasetId }),
+    checkCanSwitchEmbeddingModel({ teamId: dataset.teamId, datasetId })
   ]);
   const modelHandle = await getTeamModelHandle({ teamId: String(dataset.teamId) });
   const vectorModel = modelHandle.findModelData(getDatasetModelReference(dataset, 'embedding'), {
@@ -47,6 +51,7 @@ async function handler(req: ApiRequestProps): Promise<GetDatasetDetailResponse> 
     ...dataset,
     status,
     hasTrainingTask,
+    canSwitchEmbeddingModel,
     errorMsg,
     permission,
     vectorModel: vectorModel ? desensitizeModel(vectorModel) : undefined,

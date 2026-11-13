@@ -38,11 +38,13 @@ type DatasetPageContextType = {
   collectionFolderAccessMode?: FolderAccessMode;
 
   hasTrainingTask: boolean;
+  canSwitchEmbeddingModel: boolean;
   refetchDatasetTraining: () => void;
 };
 
 export const DatasetPageContext = createContext<DatasetPageContextType>({
   hasTrainingTask: false,
+  canSwitchEmbeddingModel: true,
   refetchDatasetTraining: function (): void {
     throw new Error('Function not implemented.');
   },
@@ -130,7 +132,10 @@ export const DatasetPageContextProvider = ({
 
   // 只刷新是否还有任务，不拉取任务数量；详情首次加载也提供同一字段。
   const {
-    data: { hasTrainingTask = datasetDetail.hasTrainingTask } = {},
+    data: {
+      hasTrainingTask = datasetDetail.hasTrainingTask,
+      canSwitchEmbeddingModel = datasetDetail.canSwitchEmbeddingModel ?? !hasTrainingTask
+    } = {},
     run: refetchDatasetTraining
   } = useDatasetStatusPolling(() => getDatasetTrainingQueue(datasetId), {
     ready: !!datasetId,
@@ -187,6 +192,7 @@ export const DatasetPageContextProvider = ({
     collectionFolderAccessMode,
 
     hasTrainingTask,
+    canSwitchEmbeddingModel,
     refetchDatasetTraining,
 
     allDatasetTags,
