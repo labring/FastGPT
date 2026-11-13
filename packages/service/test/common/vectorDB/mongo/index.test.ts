@@ -183,9 +183,9 @@ describe('MongoVectorCtrl.embRecall', () => {
   });
 
   it.each([
-    { rows: 10000, limit: 100, expected: { exact: true, limit: 100 } },
-    { rows: 10001, limit: 100, expected: { numCandidates: 4000, limit: 200 } },
-    { rows: 10001, limit: 10001, expected: { exact: true, limit: 10001 } }
+    { rows: 200000, limit: 100, expected: { exact: true, limit: 100 } },
+    { rows: 200001, limit: 100, expected: { numCandidates: 4000, limit: 200 } },
+    { rows: 200001, limit: 10001, expected: { exact: true, limit: 10001 } }
   ])(
     'selects ENN or ANN by the filtered scope (rows=$rows, limit=$limit)',
     async ({ rows, limit, expected }) => {
@@ -210,7 +210,7 @@ describe('MongoVectorCtrl.embRecall', () => {
         collectionId: { $in: ['allowed', 'blocked'], $nin: ['blocked'] }
       };
       expect(count).toHaveBeenCalledExactlyOnceWith(filter);
-      expect(countQuery.getOptions().limit).toBe(10001);
+      expect(countQuery.getOptions().limit).toBe(200001);
       const stage = aggregate.mock.calls[0][0]?.[0];
       expect(stage).toMatchObject({ $vectorSearch: { ...expected, filter } });
       expect(stage).not.toHaveProperty(

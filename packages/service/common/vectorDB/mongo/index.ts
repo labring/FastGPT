@@ -6,7 +6,7 @@ import { initEmbeddingMongo, MongoEmbeddingSearchIndexName } from './controller'
 import { assertMongoEmbeddingVector } from './utils';
 
 // 以完整预过滤命中的向量规模选择查询方式；阈值是初始策略，不依据返回条数建删索引。
-const EXACT_SEARCH_MAX_ROWS = 10_000;
+const EXACT_SEARCH_MAX_ROWS = 200_000;
 
 /** MongoDB 向量 provider：保留字符串向量 ID，使用 1536 维 dotProduct + INT8 标量索引。 */
 export class MongoVectorCtrl implements VectorControllerType {
