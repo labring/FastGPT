@@ -529,7 +529,8 @@ const CreateAppsPage = () => {
                     size={'sm'}
                     variant={'whitePrimary'}
                     h={8}
-                    isLoading={isGettingMCPTools}
+                    isDisabled={mcpAuthMode === 'oauth'}
+                    isLoading={mcpAuthMode !== 'oauth' && isGettingMCPTools}
                     onClick={() => {
                       const headerSecret =
                         mcpAuthMode === 'oauth'
@@ -544,6 +545,11 @@ const CreateAppsPage = () => {
                     {t('common:Parse')}
                   </Button>
                 </Flex>
+                {mcpAuthMode === 'oauth' && (
+                  <Box mt={2} fontSize={'xs'} color={'myGray.500'}>
+                    {t('common:mcpOAuth.parse_requires_authorization')}
+                  </Box>
+                )}
               </Box>
 
               <Box mb={5}>
