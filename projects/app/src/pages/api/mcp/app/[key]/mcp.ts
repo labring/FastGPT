@@ -1,5 +1,5 @@
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/type';
-import { withApiI18n } from '@fastgpt/next/middle/i18n';
+import { withApiI18n } from '@/service/middleware/i18n';
 import { translateApiMessage } from '@fastgpt/service/common/i18n/request';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
