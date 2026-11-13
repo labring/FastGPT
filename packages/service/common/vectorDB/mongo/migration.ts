@@ -179,8 +179,8 @@ export const migratePgEmbeddings = async ({
 /** CLI 入口持有连接生命周期，迁移完成或失败后统一关闭独立连接。 */
 export const runPgEmbeddingMigration = async (args: string[]): Promise<void> => {
   const options = parsePgEmbeddingMigrationOptions(args);
-  if (!process.env.PG_URL || !process.env.EMBEDDING_MONGO_URL)
-    throw new Error('PG_URL and EMBEDDING_MONGO_URL are required');
+  if (!process.env.PG_URL || !process.env.SEARCH_MONGO_URL)
+    throw new Error('PG_URL and SEARCH_MONGO_URL are required');
   const source = new pg.Client({
     connectionString: process.env.PG_URL,
     statement_timeout: 120_000

@@ -242,8 +242,10 @@ export const serviceEnv = createEnv({
     }),
 
     // VectorDB
-    EMBEDDING_MONGO_URL: z.string().optional().meta({
-      description: 'MongoDB 向量库连接参数；配置后优先启用 MongoDB，使用 INT8 标量量化索引'
+    SEARCH_MONGO_URL: z.string().optional().meta({
+      description:
+        '独立 MongoDB 检索库连接参数，默认库名 fastgpt_search；配置后优先启用 MongoDB INT8 向量检索，不复用业务主库连接',
+      example: 'mongodb://localhost:27017/fastgpt_search'
     }),
     VECTOR_VQ_LEVEL: IntSchema.default(32).meta({
       description: '向量量化等级'

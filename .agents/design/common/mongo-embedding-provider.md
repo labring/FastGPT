@@ -2,7 +2,8 @@
 
 ## 连接与存储
 
-- `EMBEDDING_MONGO_URL` 单独指定向量数据库，优先级高于现有 vector provider；留空保持原选择逻辑。
+- `SEARCH_MONGO_URL` 单独指定向量数据库，优先级高于现有 vector provider；留空保持原选择逻辑。
+- 示例：`SEARCH_MONGO_URL=mongodb://user:password@mongo:27017/fastgpt_search?authSource=admin`。URI 未指定库名时默认使用 `fastgpt_search`，显式库名仍按 URI 使用；连接不回退到业务主库 `MONGODB_URI`（`MONGO_URL`）。
 - 集合固定为 `dataset_data_embeddings`，普通索引通过 `defineIndex` 声明。这是新集合，没有已确认需要废弃的 FastGPT 历史索引。
 - `_id` 为字符串，与业务库 `dataset_datas.indexes.dataId` 保持一致。PG 迁移保留十进制主键，新向量使用 24 位 ObjectId 字符串，避免与旧 ID 冲突。
 - `teamId`、`datasetId`、`collectionId` 使用字符串，与统一 vector provider 契约及现有 PG 字段一致。
@@ -26,7 +27,7 @@ pnpm migrate:pg-to-mongo-embeddings -- --dry-run
 pnpm migrate:pg-to-mongo-embeddings -- --execute
 ```
 
-需要 `PG_URL`、`EMBEDDING_MONGO_URL`。命令自动加载 App 的 `.env.local`、`.env`；外部环境变量优先。
+需要 `PG_URL`、`SEARCH_MONGO_URL`。命令自动加载 App 的 `.env.local`、`.env`；外部环境变量优先。
 
 - 本次为显式切换存储的一次性迁移，不注册为所有部署自动执行的系统升级任务。
 - 停止本地 dev 写入后执行迁移；PG 使用 repeatable-read 快照和 SHARE 锁阻止复制期间的源表变更。

@@ -3,7 +3,7 @@ import { serviceEnv } from '../../env';
 export const DatasetVectorDbName = 'fastgpt';
 export const DatasetVectorTableName = 'modeldata';
 export const DatasetEmbeddingCollectionName = 'dataset_data_embeddings';
-export const EMBEDDING_MONGO_ADDRESS = serviceEnv.EMBEDDING_MONGO_URL;
+export const SEARCH_MONGO_ADDRESS = serviceEnv.SEARCH_MONGO_URL;
 
 export const PG_ADDRESS = serviceEnv.PG_URL;
 export const OPENGAUSS_ADDRESS = serviceEnv.OPENGAUSS_URL;
@@ -95,7 +95,7 @@ export const FULL_TEXT_WRITE_BATCH_SIZE = 50;
 export type VectorType = 'mongo' | 'seekdb' | 'oceanbase' | 'pg' | 'milvus' | 'opengauss';
 
 export const getVectorType = (): VectorType => {
-  if (EMBEDDING_MONGO_ADDRESS) return 'mongo';
+  if (SEARCH_MONGO_ADDRESS) return 'mongo';
   if (SEEKDB_ADDRESS) return 'seekdb';
   if (OCEANBASE_ADDRESS) return 'oceanbase';
   if (PG_ADDRESS) return 'pg';
