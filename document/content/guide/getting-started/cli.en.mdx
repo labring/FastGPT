@@ -20,16 +20,10 @@ If you use an AI coding assistant such as **Codex** or **Claude Code**, send it 
 <Alert context="info">Send this prompt in your Codex or Claude Code chat:</Alert>
 
 ```text
-Please help me install and configure the FastGPT CLI. First, fetch and follow the official Skill guide at https://doc.fastgpt.io/cli/skills/fastgpt-cli-setup/SKILL.md to complete CLI installation, guide me through login, run doctor diagnostics, and output the available CLI capabilities.
+Help me install FastGPT CLI and complete setup using https://doc.fastgpt.io/cli/skill.md.
 ```
 
 <CurrentOriginCodeBlockUpdater fallbackOrigin="https://doc.fastgpt.io" />
-
-> You can also download the official Skill directly to your local skills directory:
->
-> ```bash
-> mkdir -p ~/.agents/skills/fastgpt-cli-setup && curl -fsSL https://doc.fastgpt.io/cli/skills/fastgpt-cli-setup/SKILL.md -o ~/.agents/skills/fastgpt-cli-setup/SKILL.md
-> ```
 
 ---
 
@@ -58,11 +52,11 @@ Run the login command to authenticate:
 fastgpt login
 # For self-hosted instances: fastgpt login --base-url https://your-domain.com/api
 
-# Option B: API Key login via stdin (Recommended for CI / container / Agent environments)
-printf '%s' "$FASTGPT_API_KEY" | fastgpt login --api-key-stdin
+# Option B: Sign in with an API Key (for CI, containers, or Agent scripts)
+fastgpt login --api-key <FASTGPT_API_KEY>
 
-# Option C: Username and password via stdin
-printf '%s' "$FASTGPT_PASSWORD" | fastgpt login --username <USERNAME> --password-stdin
+# Option C: Pass a password through standard input
+echo "<PASSWORD>" | fastgpt login --username <USERNAME> --password-stdin
 ```
 
 After signing in, check your current identity and team at any time:
@@ -92,8 +86,8 @@ FastGPT CLI uses domain-driven design (DDD) and a concise command structure:
 | :--------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Identity and teams** | `fastgpt whoami`<br/>`fastgpt auth switch-team --team-id <id>`                                                                                               | View the current user and team, or switch teams                                                                                              |
 | **Dataset search**     | `fastgpt dataset list`<br/>`fastgpt dataset search <id1,id2> "query"`                                                                                        | List Datasets with pagination, or search one or more Datasets; returns the top 20 results by default                                         |
-| **Dataset management** | `fastgpt dataset create --name "Docs"`<br/>`fastgpt dataset collection create-file <id> ./doc.pdf`<br/>`fastgpt dataset data list <collectionId>`            | System OpenAPI dataset CRUD, file/text/link collection imports, and chunk management                                                         |
-| **Configuration**      | `fastgpt config list`<br/>`fastgpt commands --compact --format json`                                                                                         | View local client configuration, or discover compact machine-readable command schemas                                                        |
+| **Dataset management** | `fastgpt dataset create --name "Docs"`<br/>`fastgpt dataset update <id> --parent-id null`<br/>`fastgpt dataset delete <id> --dry-run`                        | Create, read, update, and delete Datasets; move them to the root folder and preview changes with `--dry-run`                                 |
+| **Configuration**      | `fastgpt config list`<br/>`fastgpt commands --format json`                                                                                                   | View local client configuration or discover complete, machine-readable command metadata                                                      |
 | **App conversations**  | `fastgpt chat run --appId <id> --text "Hello"`<br/>`fastgpt chat init --appId <id> --chatId <chatId>`<br/>`fastgpt chat stop --appId <id> --chatId <chatId>` | Run an App and get a JSON response, read its configuration and status, or send a stop signal                                                 |
 | **App chat history**   | `fastgpt chat history list --appId <id>`<br/>`fastgpt chat record list --appId <id> --chatId <chatId>`                                                       | List, update, and soft-delete App conversations, check status in batches, mark conversations as read, and read messages and response details |
 
@@ -111,6 +105,5 @@ Use `dataId` for message operations such as reading response details. A message'
 
 ## Automation and scripting guidelines
 
-- **Agent & Automation Pipelines**: Pass `--format json` to get structured JSON envelopes (logs route to `stderr`, keeping `stdout` clean).
-- **Low-Token Discovery & Chaining**: Use `commands --compact` and `--command "<cmd>"` to discover schemas on demand; pass `--fields _id,name` to trim list payloads, or `--pick data.datasetId --raw` to extract scalar IDs directly into shell variables.
-- **Destructive Operation Safety**: Write/delete actions support `--dry-run` validation previews; non-interactive scripts and CI pipelines mandate `--yes` for destructive execution.
+- **Automation and AI Agents**: Add `--format json` for consistent, structured JSON envelopes. Logs go to `stderr`, leaving `stdout` ready for piping.
+- **Destructive operations**: Use `--dry-run` to preview deletions such as `dataset delete`. In non-interactive scripts or CI, explicitly pass `--yes` to confirm destructive operations.
