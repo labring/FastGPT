@@ -133,9 +133,12 @@ describe('GET /api/core/dataset/detail', () => {
       expect(result.data.status).toBe('active');
       expect(result.data).not.toHaveProperty('rebuildingCount');
       expect(result.data).not.toHaveProperty('trainingCount');
-      return result.data.hasTrainingTask;
+      return result.data;
     };
-    expect(await read()).toBe(false);
+    expect(await read()).toMatchObject({
+      hasTrainingTask: false,
+      canSwitchEmbeddingModel: true
+    });
     const training = await MongoDatasetTraining.create({
       ...scope,
       billId: 'test',
@@ -143,10 +146,19 @@ describe('GET /api/core/dataset/detail', () => {
       retryCount: 0,
       errorMsg: 'manual retry required'
     });
-    expect(await read()).toBe(true);
+    expect(await read()).toMatchObject({
+      hasTrainingTask: true,
+      canSwitchEmbeddingModel: true
+    });
     await MongoDatasetTraining.deleteOne({ _id: training._id });
 
     const data = await MongoDatasetData.create({ ...scope, q: 'saved' });
+    const unfinishedStatuses = [
+      DatasetDataIndexStatusEnum.rebuildIndexPending,
+      DatasetDataIndexStatusEnum.rebuildIndexRunning,
+      DatasetDataIndexStatusEnum.rebuildSynonymPending,
+      DatasetDataIndexStatusEnum.rebuildSynonymRunning
+    ];
     for (const indexStatus of [
       DatasetDataIndexStatusEnum.rebuildIndexPending,
       DatasetDataIndexStatusEnum.rebuildIndexRunning,
@@ -156,12 +168,17 @@ describe('GET /api/core/dataset/detail', () => {
       DatasetDataIndexStatusEnum.rebuildSynonymFailed
     ]) {
       await MongoDatasetData.updateOne({ _id: data._id }, { $set: { indexStatus } });
-      expect(await read()).toBe(true);
+      const detail = await read();
+      expect(detail.hasTrainingTask).toBe(true);
+      expect(detail.canSwitchEmbeddingModel).toBe(!unfinishedStatuses.includes(indexStatus));
     }
     await MongoDatasetData.updateOne(
       { _id: data._id },
       { $set: { indexStatus: DatasetDataIndexStatusEnum.indexed } }
     );
-    expect(await read()).toBe(false);
+    expect(await read()).toMatchObject({
+      hasTrainingTask: false,
+      canSwitchEmbeddingModel: true
+    });
   });
 });

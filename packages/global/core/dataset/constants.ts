@@ -1,4 +1,5 @@
 import { i18nT } from '../../common/i18n/utils';
+import { DatasetDataIndexStatusEnum } from './data/constants';
 
 /* ------------ dataset -------------- */
 export enum DatasetTypeEnum {
@@ -406,6 +407,22 @@ export enum TrainingModeEnum {
   image = 'image',
   imageParse = 'imageParse'
 }
+
+/** 切换 embedding 模型时允许保留的训练任务类型；其余 mode（前置解析/增强/图片等）一律阻塞。 */
+export const datasetSwitchableTrainingModes: TrainingModeEnum[] = [
+  TrainingModeEnum.index,
+  TrainingModeEnum.rebuildIndex,
+  TrainingModeEnum.rebuildSynonym
+];
+
+/** 会阻塞 embedding 模型切换的 data 状态；两类重建的 failed 状态不阻塞。 */
+export const datasetSwitchBlockedIndexStatuses: DatasetDataIndexStatusEnum[] = [
+  DatasetDataIndexStatusEnum.indexing,
+  DatasetDataIndexStatusEnum.rebuildIndexPending,
+  DatasetDataIndexStatusEnum.rebuildIndexRunning,
+  DatasetDataIndexStatusEnum.rebuildSynonymPending,
+  DatasetDataIndexStatusEnum.rebuildSynonymRunning
+];
 
 export const DatasetSynonymCollectionName = 'dataset_synonyms';
 export const DatasetSynonymMappingCollectionName = 'dataset_synonym_mappings';
