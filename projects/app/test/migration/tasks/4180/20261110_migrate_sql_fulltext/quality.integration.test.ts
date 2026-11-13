@@ -420,15 +420,16 @@ describe.skipIf(!target).each(qualityDatasets)(
         const results = [];
         for (const [index, id] of selected.entries()) {
           const query = queries.get(id)!.text;
-          let mongo: Retrieval;
-          let pg: Retrieval;
-          if (index % 2 === 0) {
-            mongo = await retrieve(query, 'mongo');
-            pg = await retrieve(query, 'pg');
-          } else {
-            pg = await retrieve(query, 'pg');
-            mongo = await retrieve(query, 'mongo');
-          }
+          const { mongo, pg } = await (async () => {
+            if (index % 2 === 0) {
+              const mongo = await retrieve(query, 'mongo');
+              const pg = await retrieve(query, 'pg');
+              return { mongo, pg };
+            }
+            const pg = await retrieve(query, 'pg');
+            const mongo = await retrieve(query, 'mongo');
+            return { mongo, pg };
+          })();
           expect(mongo.ids.every(Boolean) && pg.ids.every(Boolean)).toBe(true);
           results.push({
             queryId: id,
