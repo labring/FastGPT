@@ -11,6 +11,8 @@
     "pnpm": "10.x"
   },
   "dependencies": {
+    "@fastgpt/service": "workspace:*",
+    "@fastgpt/web": "workspace:*",
     "next": "catalog:",
     "nextjs-cors": "2.2.1"
   }

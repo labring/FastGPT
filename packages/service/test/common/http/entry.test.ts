@@ -5,6 +5,8 @@ import { z } from 'zod';
 import type { NodeApiRequest, NodeApiResponse } from '@fastgpt/service/types/http';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { UserConfigError } from '@fastgpt/global/common/error/utils';
+import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
+import { validateEvaluationFile } from '@fastgpt/service/core/app/evaluation/utils';
 
 // 必须运行真实入口和 JSON 响应，才能验证 end/finish/close 之间的边界。
 vi.unmock('@fastgpt/service/common/http/entry');
@@ -38,6 +40,8 @@ describe('redactRequestUrl', () => {
 });
 
 describe('createApiEntry response lifecycle', () => {
+  const requestI18n = createApiI18n(generatedLoaders);
+
   /** 不绑定 socket，让真实 ServerResponse 保持 end 已调用但 finish 尚未发生的状态。 */
   const createHttpObjects = () => {
     const req: NodeApiRequest = Object.assign(new IncomingMessage(new Socket()), {
@@ -63,7 +67,7 @@ describe('createApiEntry response lifecycle', () => {
   it('keeps the default JSON envelope for handlers returning business data', async () => {
     const { req, res } = createHttpObjects();
 
-    await createApiEntry({})(async () => ({ value: 1 }))(req, res);
+    await createApiEntry({ requestI18n })(async () => ({ value: 1 }))(req, res);
 
     expect(res.json).toHaveBeenCalledWith({
       code: 200,
@@ -106,6 +110,7 @@ describe('createApiEntry response lifecycle', () => {
       req.headers[REQUEST_PROFILE_HEADER] = header;
       const active = header === '1';
       const handler = createApiEntry({
+        requestI18n,
         beforeCallback: [
           async () => {
             expect(isProfiling()).toBe(active);
@@ -129,7 +134,7 @@ describe('createApiEntry response lifecycle', () => {
     const { req, res } = createHttpObjects();
     const nextHandler = vi.fn();
 
-    await createApiEntry({})(async () => {
+    await createApiEntry({ requestI18n })(async () => {
       res.end('success');
       expect(res.writableFinished).toBe(false);
     }, nextHandler)(req, res);
@@ -143,6 +148,7 @@ describe('createApiEntry response lifecycle', () => {
     const handler = vi.fn();
 
     await createApiEntry({
+      requestI18n,
       beforeCallback: [async () => res.destroy()]
     })(handler)(req, res);
 
@@ -153,7 +159,7 @@ describe('createApiEntry response lifecycle', () => {
   it('does not append JSON after a handler destroys the response', async () => {
     const { req, res } = createHttpObjects();
 
-    await createApiEntry({})(async () => res.destroy())(req, res);
+    await createApiEntry({ requestI18n })(async () => res.destroy())(req, res);
 
     expect(res.json).not.toHaveBeenCalled();
   });
@@ -161,7 +167,7 @@ describe('createApiEntry response lifecycle', () => {
   it('does not append default JSON to a started raw response without Content-Type', async () => {
     const { req, res } = createHttpObjects();
 
-    await createApiEntry({})(async () => res.write('partial'))(req, res);
+    await createApiEntry({ requestI18n })(async () => res.write('partial'))(req, res);
 
     expect(res.headersSent).toBe(true);
     expect(res.json).not.toHaveBeenCalled();
@@ -173,7 +179,7 @@ describe('createApiEntry response lifecycle', () => {
   ])('returns the response mapper status before streaming: $status', async ({ error, status }) => {
     const { req, res } = createHttpObjects();
 
-    await createApiEntry({})(async () => {
+    await createApiEntry({ requestI18n })(async () => {
       throw error;
     })(req, res);
 
@@ -181,23 +187,48 @@ describe('createApiEntry response lifecycle', () => {
     expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ message: error.message }));
   });
 
+  it.each([
+    ['en', 'Evaluation file validation failed'],
+    ['zh-CN', '评测文件校验失败']
+  ])(
+    'keeps the evaluation error identifier stable while localizing to %s',
+    async (locale, message) => {
+      const { req, res } = createHttpObjects();
+      req.headers['x-fastgpt-language'] = locale;
+
+      await createApiEntry({ requestI18n })(async () => validateEvaluationFile('invalid'))(
+        req,
+        res
+      );
+
+      expect(res.statusCode).toBe(400);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          code: 502008,
+          statusText: AppErrEnum.invalidEvaluationFile,
+          message
+        })
+      );
+    }
+  );
+
   it('preserves the 400 response for invalid API input before response streaming', async () => {
     const { req, res } = createHttpObjects();
 
-    await createApiEntry({})(async () => {
+    await createApiEntry({ requestI18n })(async () => {
       parseApiInput({ req, bodySchema: z.object({ value: z.string() }) });
     })(req, res);
 
     expect(res.statusCode).toBe(400);
     expect(res.json).toHaveBeenCalledWith(
-      expect.objectContaining({ code: 400, message: 'common:api_error.validation_error' })
+      expect.objectContaining({ code: 400, message: 'Data validation error' })
     );
   });
 
   it('preserves the 500 response for internal validation failures before response streaming', async () => {
     const { req, res } = createHttpObjects();
 
-    await createApiEntry({})(async () => z.string().parse(undefined))(req, res);
+    await createApiEntry({ requestI18n })(async () => z.string().parse(undefined))(req, res);
 
     expect(res.statusCode).toBe(500);
     expect(res.json).toHaveBeenCalledOnce();
@@ -206,7 +237,7 @@ describe('createApiEntry response lifecycle', () => {
   it('destroys a partial response instead of appending a JSON error', async () => {
     const { req, res } = createHttpObjects();
 
-    await createApiEntry({})(async () => {
+    await createApiEntry({ requestI18n })(async () => {
       res.write('partial');
       throw new Error('Stream failed');
     })(req, res);
@@ -220,7 +251,7 @@ describe('createApiEntry response lifecycle', () => {
     async (state) => {
       const { req, res } = createHttpObjects();
 
-      await createApiEntry({})(async () => {
+      await createApiEntry({ requestI18n })(async () => {
         if (state === 'ended') res.end('success');
         else res.destroy();
         throw new Error('Response already closed');

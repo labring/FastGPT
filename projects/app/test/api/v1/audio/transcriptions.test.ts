@@ -22,7 +22,7 @@ vi.unmock('@fastgpt/service/common/logger');
 // 使用真实 HTTP 错误入口，省略与音频入参无关的 Next CORS/CSRF 适配。
 vi.mock('@/service/middleware/entry', async () => {
   const { createApiEntry } = await import('@fastgpt/service/common/http/entry');
-  const { apiI18n } = await import('@/service/middleware/i18n');
+  const { apiI18n } = await import('@fastgpt/next/middle/i18n');
   return { NextAPI: createApiEntry({ requestI18n: apiI18n }) };
 });
 vi.mock('@fastgpt/service/common/file/multer', () => ({

@@ -1,4 +1,4 @@
-import { withApiI18n } from '@/service/middleware/i18n';
+import { withApiI18n } from '@fastgpt/next/middle/i18n';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { S3Buckets } from '@fastgpt/service/common/s3/config/constants';

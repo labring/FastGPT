@@ -629,6 +629,12 @@ importers:
 
   packages/next:
     dependencies:
+      '@fastgpt/service':
+        specifier: workspace:*
+        version: link:../service
+      '@fastgpt/web':
+        specifier: workspace:*
+        version: link:../web
       next:
         specifier: 'catalog:'
         version: 16.3.6(@babel/core@7.26.10)(@opentelemetry/api@1.9.0)(@playwright/test@1.64.1)(@types/node@24.13.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1)

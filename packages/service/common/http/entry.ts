@@ -75,6 +75,7 @@ export function redactRequestUrl(url: string, redactQueryParams: string[]) {
 /**
  * 创建与 Web 框架无关的 API handler 管线，统一处理日志、追踪、错误和默认 JSON 响应。
  * 框架适配器通过 beforeCallback 注入 CORS 等运行时能力。
+ * 应用必须注入 requestI18n，确保所有请求在进入管线前建立翻译上下文。
  * handler 自行写回包时，以响应生命周期为准，不向已开始或已关闭的响应追加 JSON。
  */
 export const createApiEntry = <
@@ -87,7 +88,7 @@ export const createApiEntry = <
 }: {
   beforeCallback?: ((req: Request, res: Response) => Promise<unknown>)[];
   redactQueryParams?: string[];
-  requestI18n?: ApiI18n;
+  requestI18n: ApiI18n;
 }) => {
   return (...args: ApiHandler<any, Request, Response>[]): ApiHandler<any, Request, Response> => {
     const api = async function api(
@@ -247,7 +248,6 @@ export const createApiEntry = <
       );
     };
 
-    return (req, res) =>
-      requestI18n ? requestI18n({ req, res }, () => api(req, res)) : api(req, res);
+    return (req, res) => requestI18n({ req, res }, () => api(req, res));
   };
 };

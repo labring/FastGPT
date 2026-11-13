@@ -188,7 +188,8 @@ describe('getSpeech model resource permission', () => {
         });
       });
 
-      await createApiEntry({})(handler as any)(req, res as any);
+      const { apiI18n } = await import('@fastgpt/next/middle/i18n');
+      await createApiEntry({ requestI18n: apiI18n })(handler as any)(req, res as any);
 
       expect(res.getHeader('Content-Type')).toBe('audio/mpeg');
       expect(mocks.jsonRes).not.toHaveBeenCalled();

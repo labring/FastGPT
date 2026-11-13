@@ -1,4 +1,4 @@
-import { apiI18n } from '@/service/middleware/i18n';
+import { apiI18n } from '@fastgpt/next/middle/i18n';
 import { getChatGenerationStatuses } from '@fastgpt/service/core/chat/generationLease';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Call } from '@test/utils/request';
