@@ -1,6 +1,6 @@
 ---
 title: Upgrade Guide
-description: "Follow the standard FastGPT self-hosted upgrade procedure covering image tag conventions, startup migrations, background migrations, and version steps."
+description: 'Follow the standard FastGPT self-hosted upgrade procedure covering image tag conventions, startup migrations, background migrations, and version steps.'
 ---
 
 ## Version Policy
@@ -33,7 +33,8 @@ If you use FastGPT's bundled MongoDB 5.x and want to move to 8.x, see [Migrate M
 - AI Proxy image: ghcr.io/labring/aiproxy
 - Agent Sandbox Volume Manager image: ghcr.io/labring/fastgpt-agent-volume-manager
 - Agent Sandbox image: ghcr.io/labring/fastgpt-agent-sandbox
-- Agent Sandbox Proxy image: ghcr.io/labring/fastgpt-agent-sandbox-proxy
+- OpenSandbox Proxy image: ghcr.io/labring/fastgpt-opensandbox-proxy
+- Agent Sandbox Proxy image (v4.17 and earlier): ghcr.io/labring/fastgpt-agent-sandbox-proxy
 - Commercial edition image: ghcr.io/c121914yu/fastgpt-pro
 
 **Alibaba Cloud**
@@ -44,7 +45,8 @@ If you use FastGPT's bundled MongoDB 5.x and want to move to 8.x, see [Migrate M
 - AI Proxy image: registry.cn-hangzhou.aliyuncs.com/labring/aiproxy
 - Agent Sandbox Volume Manager image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-volume-manager
 - Agent Sandbox image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-sandbox
-- Agent Sandbox Proxy image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-sandbox-proxy
+- OpenSandbox Proxy image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-opensandbox-proxy
+- Agent Sandbox Proxy image (v4.17 and earlier): registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-sandbox-proxy
 - Commercial edition image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-pro
 
 Pin each service to the image tag specified in the target release deployment template. Companion services may use different version tags; record the complete image set and configuration before upgrading.

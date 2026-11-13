@@ -1,6 +1,6 @@
 ---
 title: 本地开发
-description: "搭建 FastGPT 本地源码开发与调试环境，配置 Node.js、pnpm、数据库依赖、环境变量与插件服务。"
+description: '搭建 FastGPT 本地源码开发与调试环境，配置 Node.js、pnpm、数据库依赖、环境变量与插件服务。'
 ---
 
 import { Alert } from '@/components/docs/Alert';
@@ -45,8 +45,10 @@ docker compose up -d
 ```
 
 <Alert context="warning">
-  1. 如果无法获取镜像，可以选择国内镜像版本的 `docker-compose.cn.yml` 文件：`docker compose -f docker-compose.cn.yml up -d`。
-  2. 连接本地副本集模式的 MongoDB 时，需在连接地址中增加 `directConnection=true` 参数。
+
+- 如果无法获取镜像，可以选择国内镜像版本的 `docker-compose.cn.yml` 文件：`docker compose -f docker-compose.cn.yml up -d`。
+- 连接本地副本集模式的 MongoDB 时，需在连接地址中增加 `directConnection=true` 参数。
+
 </Alert>
 
 ### 4. 初始配置
@@ -172,7 +174,7 @@ FastGPT 使用了 Next.js 的 Pages Router 作为框架。为了区分前后端�
 
 FastGPT 采用 pnpm workspace 方式构建 monorepo 项目，主要分为两个部分：
 
-- projects/ - 应用项目，`app` 为 FastGPT 主项目，另有 code-sandbox、agent-sandbox、agent-sandbox-proxy、volume-manager、mcp_server、marketplace 等服务
+- projects/ - 应用项目，`app` 为 FastGPT 主项目，另有 code-sandbox、agent-sandbox、opensandbox-proxy、volume-manager、mcp_server、marketplace 等服务
 - packages/ - 子模块
   - global - 共用代码，通常是放一些前后端都能执行的函数、类型声明、常量。
   - service - 服务端代码
@@ -194,7 +196,7 @@ FastGPT 在代码模块划分时，按 DDD 的思想进行划分，主要分为�
 .
 ├── .github                      // github 相关配置
 ├── .husky                       // 格式化配置
-├── deploy                       // 部署模板源文件（docker-compose、k8s 等）
+├── deploy                       // 部署模板源文件（docker-compose 等）
 ├── document                     // 文档
 ├── packages                     // 子包
 │   ├── dal
@@ -207,11 +209,11 @@ FastGPT 在代码模块划分时，按 DDD 的思想进行划分，主要分为�
 ├── projects
 │   ├── app                      // FastGPT 主项目
 │   ├── agent-sandbox            // Agent 沙盒镜像
-│   ├── agent-sandbox-proxy      // Agent 沙盒代理
 │   ├── code-sandbox             // 代码运行沙盒
 │   ├── fastgpt-ide-agent
 │   ├── marketplace              // 插件市场
 │   ├── mcp_server               // MCP Server
+│   ├── opensandbox-proxy        // OpenSandbox 终端与预览代理
 │   └── volume-manager           // OpenSandbox 持久卷管理
 ├── sdk                          // otel、sandbox-adapter、storage 等 SDK
 ├── scripts                      // 一些自动化脚本

@@ -1,118 +1,133 @@
 ---
 title: OpenSandbox 配置
-description: FastGPT OpenSandbox 与 Agent Sandbox Proxy 配置
+description: FastGPT OpenSandbox 与持久化工作空间配置
 ---
 
 import { Alert } from '@/components/docs/Alert';
 
 <Alert icon="⚠️" context="warning">
-  OpenSandbox 方案默认未做网络隔离。如有安全隔离要求，请自行补充网络隔离策略。
+  OpenSandbox 方案默认依赖内置 DNS/nftables egress
+  控制，未对业务集群内网做完整网络隔离。如有严格安全隔离要求，请结合容器网络策略或防火墙补充隔离规则。
 </Alert>
 
-OpenSandbox 适合需要自托管 Agent/Skill 沙盒运行环境的场景。FastGPT 通过 OpenSandbox Server 创建沙盒，并通过 Agent Sandbox Proxy 为浏览器提供文件、终端和预览访问能力。
+OpenSandbox 适合自托管 Agent Sandbox 与 Skill 编辑运行环境的场景。FastGPT 主服务直接调用 OpenSandbox Server 管理沙盒生命周期与命令/文件执行，由 Volume Manager 提供持久化工作空间挂载，并通过轻量边缘网关 `fastgpt-opensandbox-proxy`（容器监听 `1006` 端口，Docker Compose 默认宿主机映射 `3006:1006`）对外提供交互式终端 WebSocket（`/terminal`）与静态文件预览（`/preview/*`）。
 
 ## Docker Compose 配置
 
-最新版 Docker Compose 已经包含 OpenSandbox Server、Volume Manager、Agent Sandbox Proxy 和沙盒运行时镜像配置，无需再单独合并其他 YAML 文件。
+最新版 Docker Compose 已经内置 OpenSandbox Server、OpenSandbox Proxy（`fastgpt-opensandbox-proxy`）、Volume Manager、JuiceFS 独立元数据库（`fastgpt-sandbox-pg`）、独立对象存储（`fastgpt-sandbox-rustfs`）以及沙盒运行态预拉取镜像配置，无需再单独合并其他 YAML 文件。
 
 [查看最新版 docker-compose.yml（PgVector，中国大陆镜像源）](/deploy/docker/main/cn/docker-compose.pg.yml)
 
 其他向量数据库和全球镜像源版本见 [Docker Compose 部署](/zh-CN/self-host/deploy/docker)。
 
-## 环境变量配置
+## 环境变量与组件配置
 
-Docker Compose YAML 文件中已包含默认值，下文说明各变量的含义。本文对应最新配置，旧版配置请对照对应版本的 YAML 文件。
+Docker Compose YAML 文件中均已内置默认锚点，下面说明各项核心配置。该文档始终对应最新架构；旧版本的配置如有差异，请以对应版本的 YAML 文件为准。
 
-### OpenSandbox 服务
+### OpenSandbox Server、OpenSandbox Proxy 与 Volume Manager
 
 根据实际部署环境检查 Compose 文件中的以下配置：
 
-| 配置                          | 说明                                                                                                             |
-| ----------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `x-volume-manager-auth-token` | Volume Manager 的认证 Token，需要与 FastGPT 的 `AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN` 一致。           |
-| `[server].api_key`            | OpenSandbox Server API Key，需要与 FastGPT 的 `AGENT_SANDBOX_OPENSANDBOX_API_KEY` 一致。                         |
-| `[docker].host_ip`            | 沙盒端点对 Proxy 可访问的宿主机地址，通常使用宿主机内网 IP 或 `host.docker.internal`。                           |
-| Docker socket 挂载            | Docker runtime 需要挂载宿主机 Docker socket，默认是 `/var/run/docker.sock`；OrbStack 等环境需替换为实际 socket。 |
+| 配置                                         | 说明                                                                                                                                                                                                                                                                                                                            |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `x-agent-sandbox-proxy-url`                  | 浏览器访问 `fastgpt-opensandbox-proxy` 的基地址（支持 `http(s)://` 或 `ws(s)://`），用于同时派生交互式终端 `/terminal` 与静态文件预览 `/preview/*`；Docker Compose 默认将宿主机 `3006` 映射到容器 `1006`，公网部署时反向代理需将该域名转发到宿主机 `3006`（或容器内网 `fastgpt-opensandbox-proxy:1006`）并开启 WebSocket 转发。 |
+| `x-agent-sandbox-proxy-secret`               | `fastgpt-app` 与 `fastgpt-opensandbox-proxy` 共享的内部鉴权密钥，生产环境请替换为强随机密钥。                                                                                                                                                                                                                                   |
+| `x-volume-manager-auth-token`                | Volume Manager 认证 Token，必须与 FastGPT 的 `AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN` 一致。                                                                                                                                                                                                                            |
+| `[server].api_key`                           | `opensandbox-config` 中的 OpenSandbox Server API Key，必须与 FastGPT 的 `AGENT_SANDBOX_OPENSANDBOX_API_KEY` 一致。                                                                                                                                                                                                              |
+| `[docker].host_ip`                           | OpenSandbox 在 Docker 模式下访问沙盒端点的宿主机地址，默认使用 `host.docker.internal`（也可填写宿主机内网 IP）。                                                                                                                                                                                                                |
+| `x-juicefs-meta-url` 与 `fastgpt-sandbox-pg` | Docker 模式下 Volume Manager 使用的独立 PostgreSQL 元数据库连接串，密码需与 `fastgpt-sandbox-pg` 的 `POSTGRES_PASSWORD` 一致。                                                                                                                                                                                                  |
+| `fastgpt-sandbox-rustfs` 与访问密钥          | Docker 模式下专用于沙盒 JuiceFS 的独立 RustFS 对象存储及 `x-sandbox-rustfs-access-key` / `x-sandbox-rustfs-secret-key` 凭证（默认连接 `http://fastgpt-sandbox-rustfs:9000/fastgpt-sandbox`，外接云对象存储时可通过 `VM_JUICEFS_STORAGE` / `VM_JUICEFS_BUCKET` 覆盖）。                                                          |
+| Docker socket 与共享挂载                     | Docker 模式下需挂载宿主机 `/var/run/docker.sock`（OrbStack 等环境替换为实际 socket），并为 Volume Manager 保持 `/var/lib/fastgpt/sandbox-mounts:... :rshared` 传播模式。                                                                                                                                                        |
 
-如果服务器配置了 `HTTP_PROXY` / `HTTPS_PROXY`，建议给 OpenSandbox Server 和 Volume Manager 显式配置 `NO_PROXY` / `no_proxy`。至少包含 `localhost,127.0.0.1,127.0.0.0/8,fastgpt-app,fastgpt-opensandbox-server,fastgpt-volume-manager,fastgpt-agent-sandbox-proxy,host.docker.internal`，避免内部服务调用经过代理。
+Docker 模式下，`fastgpt-volume-manager` 通过环境变量向 JuiceFS 注入数据库与对象存储密钥，并以 `--hide-internal --prefix-internal` 挂载每个会话的持久化子目录，既避免宿主机进程参数泄露密钥，也允许沙盒内正常创建 `/workspace/.config` 等目录。Kubernetes 模式下，`volume-manager` 通过 PVC 动态申请持久卷，必须通过 `VM_K8S_PVC_STORAGE_CLASS` 显式指定集群中的 JuiceFS CSI StorageClass（如 `juicefs-sc`），不支持回退到集群默认 StorageClass。
 
-### Agent Sandbox Proxy 服务
+如果宿主机配置了 `HTTP_PROXY` / `HTTPS_PROXY`，请保留 `x-no-proxy-config` 中的 `NO_PROXY` / `no_proxy`，至少包含 `localhost,127.0.0.1,::1,fastgpt-app,fastgpt-opensandbox-server,fastgpt-opensandbox-proxy,fastgpt-volume-manager,fastgpt-sandbox-pg,fastgpt-sandbox-rustfs,host.docker.internal`，避免内部服务请求被代理劫持。
 
-| 变量                               | 默认值                                   | 说明                                                                                                    |
-| ---------------------------------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| `PORT`                             | `1006`                                   | Proxy 容器监听端口，默认映射到宿主机 `3006`。                                                           |
-| `PREVIEW_PORT`                     | 与 `PORT` 相同                           | 自 4.16 起可单独指定 HTTP 预览监听端口；修改后需同步调整宿主机端口映射和 `AGENT_SANDBOX_PREVIEW_PROXY_URL`。 |
-| `AGENT_SANDBOX_PROXY_SECRET`       | 无                                       | 与 FastGPT 主服务共用的密钥，至少 32 位。                                                               |
-| `FASTGPT_APP_URL`                  | `http://localhost:3000`                  | Proxy 回源 FastGPT 主服务的内网地址；官方 Compose 模板设置为 `http://fastgpt-app:3000`。                |
-| `FASTGPT_APP_REQUEST_TIMEOUT_SECS` | `10`                                     | Proxy 回源请求超时时间，单位秒；官方 Compose 模板设置为 `60`，沙盒冷启动较慢时可适当调大。              |
-| `RUST_LOG`                         | `info,fastgpt_agent_sandbox_proxy=debug` | Proxy 服务日志级别。                                                                                    |
+### OpenSandbox Proxy 服务
 
-自 4.16 起默认使用同一个端口提供 WebSocket 和 HTTP 预览。如果网关不支持同端口转发，可设置 `PREVIEW_PORT` 为其他容器端口（例如 `1007`），并将 Compose 端口映射改为 `3007:1007`，同时把 `AGENT_SANDBOX_PREVIEW_PROXY_URL` 指向新的 3007 端口。
+`fastgpt-opensandbox-proxy` 的运行配置如下：
+
+| 变量                               | 默认值         | 说明                                                                                                                                             |
+| ---------------------------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `PORT`                             | `1006`         | Proxy 容器内主监听端口（Docker Compose 默认宿主机映射 `3006:1006`），同时承载交互式终端 WebSocket（`/terminal`）与静态文件预览（`/preview/*`）。 |
+| `PREVIEW_PORT`                     | 与 `PORT` 相同 | 可选，仅在需要双端口隔离时设置独立 HTTP 预览监听端口（需与 `PORT` 不同），同时需开放该端口并配置 `AGENT_SANDBOX_PREVIEW_PROXY_URL`。             |
+| `AGENT_SANDBOX_PROXY_SECRET`       | 无，**必填**   | 与 `fastgpt-app` 共享的内部鉴权密钥，两端必须完全一致。                                                                                          |
+| `FASTGPT_APP_URL`                  | 无，**必填**   | Proxy 回源校验 Ticket 与保活的 FastGPT 主服务内网地址；官方 Compose 模板设置为 `http://fastgpt-app:3000`。                                       |
+| `AGENT_SANDBOX_PROXY_REWRITE_HOST` | 空             | 可选，转发到沙盒或回源请求时覆盖 `Host` 请求头。                                                                                                 |
+| `KEEPALIVE_INTERVAL_MS`            | `60000`        | 活跃交互式终端连接向 FastGPT 主站批量续期保活的时间间隔，单位毫秒。                                                                              |
+| `PREVIEW_CACHE_TTL_MS`             | `30000`        | 静态文件预览会话解析结果的内存缓存过期时间，单位毫秒。                                                                                           |
+| `PREVIEW_CACHE_MAX_ENTRIES`        | `5000`         | 静态文件预览会话缓存的最大条目数上限。                                                                                                           |
 
 ### fastgpt-app 服务
 
-在 Compose 文件的 `x-agent-sandbox-config` 中配置以下变量，使 `fastgpt-app` 和 `fastgpt-pro` 共用 OpenSandbox 配置：
+在 Compose 文件的 `x-agent-sandbox-config` 中配置以下变量：
 
 ```dotenv
-AGENT_SANDBOX_PROVIDER=opensandbox
+# 配置 AGENT_SANDBOX_OPENSANDBOX_BASEURL 即启用 Agent Sandbox
+# 浏览器访问 fastgpt-opensandbox-proxy 的基地址（支持 http(s):// 或 ws(s)://，公网反向代理转发至宿主机 3006 或容器 fastgpt-opensandbox-proxy:1006）
+AGENT_SANDBOX_PROXY_URL=https://sandbox.example.com
+# 可选：仅在 fastgpt-opensandbox-proxy 开启 PREVIEW_PORT 双端口隔离时覆盖静态文件预览 HTTP(S) 基地址
+AGENT_SANDBOX_PREVIEW_PROXY_URL=
+# 主站与 fastgpt-opensandbox-proxy 共享鉴权密钥
+AGENT_SANDBOX_PROXY_SECRET=replace_with_proxy_secret
 
 # FastGPT 访问 OpenSandbox Server 的内网地址和密钥
 AGENT_SANDBOX_OPENSANDBOX_BASEURL=http://fastgpt-opensandbox-server:8090
 AGENT_SANDBOX_OPENSANDBOX_API_KEY=replace_with_opensandbox_api_key
 AGENT_SANDBOX_OPENSANDBOX_RUNTIME=docker
 AGENT_SANDBOX_OPENSANDBOX_IMAGE=registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-sandbox:v0.4.0
-AGENT_SANDBOX_OPENSANDBOX_USE_SERVER_PROXY=true
 
 # Volume Manager 地址、Token 和持久卷名称前缀
 AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL=http://fastgpt-volume-manager:3000
 AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN=replace_with_volume_manager_token
 AGENT_SANDBOX_OPENSANDBOX_VOLUME_NAME_PREFIX=fastgpt-session
 
-# Agent Sandbox Proxy 配置
-AGENT_SANDBOX_PROXY_SECRET=replace_with_32_chars_random_secret
-AGENT_SANDBOX_PROXY_URL=wss://sandbox-proxy.example.com
-AGENT_SANDBOX_PREVIEW_PROXY_URL=https://sandbox-proxy.example.com
-
-# 单个沙盒的资源限制
+# 单个沙盒的资源与生命周期限制
 AGENT_SANDBOX_CPU_COUNT=1
 AGENT_SANDBOX_MEMORY_MIB=2048
 AGENT_SANDBOX_STORAGE_SIZE_GI=1
-# Kubernetes 运行态超卖倍数（CPU / 内存独立）：requests = limits / 对应值（1 = 该维度不超卖）
+AGENT_SANDBOX_SUSPEND_MINUTES=60
+# Kubernetes 运行态可选配置：超卖倍数（requests = limits / 对应值，1 = 不超卖）
 AGENT_SANDBOX_CPU_OVERCOMMIT_FACTOR=1
 AGENT_SANDBOX_MEMORY_OVERCOMMIT_FACTOR=1
 ```
 
+### OpenSandbox Proxy 与预览源隔离建议
+
+<Alert icon="⚠️" context="warning">
+  沙盒内的 HTML 文件可能包含不可信脚本。生产环境强烈建议为
+  `AGENT_SANDBOX_PROXY_URL`（或双端口模式下的 `AGENT_SANDBOX_PREVIEW_PROXY_URL`）使用与 `FE_DOMAIN`
+  不同的独立访问源（Origin，例如独立子域名
+  `https://sandbox.example.com`、独立主域名或不同端口），避免不可信脚本与 FastGPT
+  主站处于同一浏览器同源边界内。
+</Alert>
+
+- **单端口模式（默认推荐）**：`fastgpt-opensandbox-proxy` 在容器 `PORT=1006` 单一端口上同时提供 `/terminal`（WebSocket）和 `/preview/*`（HTTP），Docker Compose 默认映射到宿主机 `3006` 端口。只需将独立域名（如 `https://sandbox.example.com`）反向代理至宿主机 `3006`（或容器内网 `fastgpt-opensandbox-proxy:1006`），并在 `fastgpt-app` 中设置 `AGENT_SANDBOX_PROXY_URL=https://sandbox.example.com`，`AGENT_SANDBOX_PREVIEW_PROXY_URL` 留空即可。
+- **双端口模式（可选）**：如需将终端 WebSocket 与静态文件预览拆分到不同端口或不同域名，可在 `fastgpt-opensandbox-proxy` 中配置 `PREVIEW_PORT`（如 `1007`），并在 `fastgpt-app` 中将 `AGENT_SANDBOX_PREVIEW_PROXY_URL` 指向预览端口对应的 `http(s)://` 地址。
+- **本机开发调试**：默认配置 `FE_DOMAIN=http://localhost:3000` 搭配 `AGENT_SANDBOX_PROXY_URL=http://localhost:3006` 即可直接使用（不同端口天然属于不同 Origin，`install.sh` 部署本机地址时会自动填充）。
+
+预览链接是短期只读凭证（capability URL）。在链接有效期内，持有链接的用户可通过修改 URL 路径读取同一沙盒工作空间中的其他文件，请勿将预览链接分享给无权访问该工作空间的用户。
+
+如需自定义持久卷 `claimName` 前缀，可通过 `AGENT_SANDBOX_OPENSANDBOX_VOLUME_NAME_PREFIX` 配置（默认 `fastgpt-session`）；升级迁移历史沙盒数据时，若旧卷曾使用其他前缀，还需按升级指南在 `fastgpt-volume-manager` 中配置 `VM_LEGACY_VOLUME_PREFIXES` 以便识别和清理历史持久卷。
+
 ### 运行态镜像与 CPU 架构
 
-`AGENT_SANDBOX_OPENSANDBOX_IMAGE` 是 OpenSandbox 创建 Agent Sandbox 时使用的完整运行态镜像地址。普通 `fastgpt-agent-sandbox` 镜像以非 root 用户运行，适合默认场景；需要修改 `/etc/apt` 或安装 apt 依赖时，必须使用 `fastgpt-agent-sandbox-root` 镜像，并同时配置 `AGENT_SANDBOX_APT_MIRROR`。
+`AGENT_SANDBOX_OPENSANDBOX_IMAGE` 是 OpenSandbox 创建 Agent Sandbox 时使用的完整运行态镜像地址。默认 `fastgpt-agent-sandbox` 镜像以非 root 用户（uid `10001`）运行；需要修改 `/etc/apt` 或安装 apt 依赖时，请切换为 `fastgpt-agent-sandbox-root` 镜像，并按需配置 `AGENT_SANDBOX_APT_MIRROR`。
 
-官方镜像的同一 tag 同时包含 `amd64` 和 `arm64` 架构，两个架构使用相同的环境变量配置，Docker 会根据 OpenSandbox Server 所在宿主机的架构自动选择镜像：
+官方镜像同一 tag 同时包含 `amd64` 和 `arm64` 架构，容器运行时会根据宿主机架构自动选择匹配变体：
 
 | 用途    | 镜像                                                                          |
 | ------- | ----------------------------------------------------------------------------- |
 | 非 root | `registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-sandbox:v0.4.0`      |
 | root    | `registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-sandbox-root:v0.4.0` |
 
-全球镜像源将 `registry.cn-hangzhou.aliyuncs.com/fastgpt` 替换为 `ghcr.io/labring`。如果使用私有镜像仓库，请确保镜像 tag 保留 `amd64` 和 `arm64` manifest；如果仓库只提供单架构镜像，请将 `AGENT_SANDBOX_OPENSANDBOX_IMAGE` 配置为与 OpenSandbox Server 宿主机架构匹配的镜像地址。
-
-`AGENT_SANDBOX_OPENSANDBOX_API_KEY` 必须与 `[server].api_key` 一致，`AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN` 必须与 `x-volume-manager-auth-token` 一致，`AGENT_SANDBOX_PROXY_SECRET` 必须与 Agent Sandbox Proxy 中的同名变量一致。
-
-`fastgpt-pro` 不提供 Sandbox Editor 和 WebSocket Proxy 链路，因此不要求 `AGENT_SANDBOX_PROXY_SECRET` 和 `AGENT_SANDBOX_PROXY_URL`，但必须配置 `AGENT_SANDBOX_PREVIEW_PROXY_URL`。
-
-<Alert icon="⚠️" context="warning">
-  预览代理应部署在与 FastGPT 主站不同的 origin（协议、域名或端口至少一项不同）。Sandbox 中的 HTML
-  可能包含用户生成的脚本；如果预览地址与主站同源，脚本可能访问主站凭证或接口。
-</Alert>
-
-预览链接是短期只读 bearer capability。获得链接的人可以在链接有效期内通过修改 URL 路径读取同一 Sandbox Workspace 中的其他文件，请勿将链接分享给无权访问该 Workspace 的用户。
-
-从旧版 Volume Manager 升级时，请将原 `VM_VOLUME_NAME_PREFIX` 的值配置到 `AGENT_SANDBOX_OPENSANDBOX_VOLUME_NAME_PREFIX`，避免历史持久卷无法按原名称清理。
+全球镜像源可将 `registry.cn-hangzhou.aliyuncs.com/fastgpt` 替换为 `ghcr.io/labring`。若使用私有镜像仓库，请确保镜像保留多架构 manifest，或将 `AGENT_SANDBOX_OPENSANDBOX_IMAGE` 指定为与 OpenSandbox 节点架构一致的镜像。
 
 ## 更多配置
 
 ### 自定义依赖源
 
-如果沙盒内需要安装 npm、Python 或 apt 依赖，可以在 `fastgpt-app` 和 `fastgpt-pro` 中配置依赖源：
+如果沙盒内需要安装 npm、Python 或 apt 依赖，可在 `fastgpt-app` 中配置依赖源：
 
 ```dotenv
 AGENT_SANDBOX_NPM_REGISTRY=https://registry.npmmirror.com
@@ -121,9 +136,9 @@ AGENT_SANDBOX_PYPI_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple
 AGENT_SANDBOX_APT_MIRROR=https://mirrors.tuna.tsinghua.edu.cn/ubuntu
 ```
 
-`AGENT_SANDBOX_NPM_REGISTRY` 和 `AGENT_SANDBOX_PYPI_INDEX_URL` 适用于所有运行态镜像。`AGENT_SANDBOX_APT_MIRROR` 仅对 root 权限的 Agent 沙箱有效，并且必须配置为 apt 仓库根地址，不要填写到 `dists` 或具体版本目录。
+`AGENT_SANDBOX_NPM_REGISTRY` 和 `AGENT_SANDBOX_PYPI_INDEX_URL` 适用于所有运行态镜像。`AGENT_SANDBOX_APT_MIRROR` 仅对 root 权限的 Agent 沙箱生效，且必须填写到 apt 仓库根路径（不要包含 `dists` 或具体发行版子目录）。
 
-apt 镜像地址不会根据运行态镜像架构自动切换。Ubuntu 需要按架构选择对应的仓库路径：
+Ubuntu 需要根据运行态架构选择对应仓库路径：
 
 ```dotenv
 # Ubuntu amd64 / x86_64
@@ -133,56 +148,75 @@ AGENT_SANDBOX_APT_MIRROR=https://mirrors.tuna.tsinghua.edu.cn/ubuntu
 AGENT_SANDBOX_APT_MIRROR=https://mirrors.tuna.tsinghua.edu.cn/ubuntu-ports
 ```
 
-清华镜像站的 [Ubuntu 镜像帮助](https://mirrors.tuna.tsinghua.edu.cn/help/ubuntu/) 和 [Ubuntu Ports 镜像帮助](https://mirrors.tuna.tsinghua.edu.cn/help/ubuntu-ports/) 可用于确认其他 Ubuntu 版本的路径。使用其他镜像站时，同样选择该镜像站提供的 Ubuntu 普通仓库或 Ports 仓库路径。
-
-配置后，FastGPT 会读取沙盒的 `/etc/os-release`，根据 Ubuntu 版本和 codename 生成并覆盖 `/etc/apt/sources.list.d/ubuntu.sources`，写入主仓库、updates、backports 和 security。修改配置前，已有 sources 文件会备份为 `.copy`；删除环境变量后，有备份的文件会恢复，没有备份的文件保持不变。初始化阶段不会执行 `apt-get update`。
+可参考清华镜像站的 [Ubuntu 镜像帮助](https://mirrors.tuna.tsinghua.edu.cn/help/ubuntu/) 与 [Ubuntu Ports 镜像帮助](https://mirrors.tuna.tsinghua.edu.cn/help/ubuntu-ports/) 确认路径。配置后，FastGPT 会读取沙盒内 `/etc/os-release` 生成并覆盖 `/etc/apt/sources.list.d/ubuntu.sources`（Debian 镜像写入 `/etc/apt/sources.list.d/debian.sources`；覆盖前自动备份 `.copy`，移除变量后自动恢复），初始化阶段不会主动执行 `apt-get update`。
 
 ### 资源与生命周期
 
-超卖配置仅在 `AGENT_SANDBOX_PROVIDER=opensandbox`、`AGENT_SANDBOX_OPENSANDBOX_RUNTIME=kubernetes` 且 OpenSandbox Server 版本不低于 `v0.2.1` 时生效。CPU 和内存倍率必须为不小于 `1` 的有限数值；CPU requests 向下取整到毫核，最低为 `1m`，内存 requests 向下取整到 MiB，最低为 `1Mi`，limits 保持不变。
+超卖与容器可写层（`ephemeral-storage`）资源上限仅在 `AGENT_SANDBOX_OPENSANDBOX_RUNTIME=kubernetes` 时生效。其中容器可写层上限自动复用 `AGENT_SANDBOX_STORAGE_SIZE_GI + 0.5` Gi，无需单独配置。CPU 和内存超卖倍率必须为不小于 `1` 的有限数值；CPU requests 向下取整到毫核（最低 `1m`），内存 requests 向下取整到 MiB（最低 `1Mi`），limits 保持不变。修改倍率后，运行中或已暂停的沙盒保持原配置，仅对新创建或删除后重建的沙盒生效。
 
-修改倍率后，已启动的沙盒保持原资源配置；后续创建的沙盒会自动使用当前倍率，包括删除或归档后重新创建的沙盒。连接或恢复已有沙盒不会重新应用倍率。
+| 变量                                       | 默认值 | 说明                                                                                                                |
+| ------------------------------------------ | ------ | ------------------------------------------------------------------------------------------------------------------- |
+| `AGENT_SANDBOX_CPU_COUNT`                  | `1`    | 单个 Agent Sandbox 的 CPU 核数上限。                                                                                |
+| `AGENT_SANDBOX_MEMORY_MIB`                 | `2048` | 单个 Agent Sandbox 的内存上限，单位 MiB。                                                                           |
+| `AGENT_SANDBOX_STORAGE_SIZE_GI`            | `1`    | 沙盒持久化工作空间容量，单位 Gi；在 `kubernetes` 运行态下容器 `ephemeral-storage` 上限自动按 `该值 + 0.5` Gi 下发。 |
+| `AGENT_SANDBOX_CPU_OVERCOMMIT_FACTOR`      | `1`    | Kubernetes 运行态 CPU 超卖倍数：`CPU requests = limits / 该值`；大于 `1` 时创建 Burstable QoS Pod。                 |
+| `AGENT_SANDBOX_MEMORY_OVERCOMMIT_FACTOR`   | `1`    | Kubernetes 运行态内存超卖倍数：`内存 requests = limits / 该值`；大于 `1` 时创建 Burstable QoS Pod。                 |
+| `AGENT_SANDBOX_SUSPEND_MINUTES`            | `60`   | 运行中的沙盒持续未活跃多少分钟后自动暂停。                                                                          |
+| `AGENT_SANDBOX_ENTRYPOINT_TIMEOUT_SECONDS` | `30`   | 沙盒初始化入口脚本执行超时时间，单位秒（范围 `1` 到 `600`）。                                                       |
+| `AGENT_SANDBOX_MAX`                        | `100`  | 系统活跃沙盒实例总上限（应用会话与技能编辑共享配额池）。                                                            |
+| `AGENT_SANDBOX_MAX_PER_TEAM`               | 空     | 单团队活跃沙盒实例配额；留空表示不限制。                                                                            |
 
-| 变量                                     | 默认值     | 说明                                                                                                                          |
-| ---------------------------------------- | ---------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| `AGENT_SANDBOX_CPU_COUNT`                | `1`        | 单个 Agent Sandbox 的 CPU 核数上限。                                                                                          |
-| `AGENT_SANDBOX_MEMORY_MIB`               | `2048`     | 单个 Agent Sandbox 的内存上限，单位 MiB。                                                                                     |
-| `AGENT_SANDBOX_STORAGE_SIZE_GI`          | `1`        | 沙盒存储容量，单位 Gi。                                                                                                       |
-| `AGENT_SANDBOX_CPU_OVERCOMMIT_FACTOR`    | `1`        | Kubernetes 运行态 CPU 超卖倍数：CPU requests = limits / 该值；大于 1 时创建 Burstable QoS Pod。仅 opensandbox provider 生效。 |
-| `AGENT_SANDBOX_MEMORY_OVERCOMMIT_FACTOR` | `1`        | Kubernetes 运行态内存超卖倍数：内存 requests = limits / 该值；大于 1 时创建 Burstable QoS Pod。仅 opensandbox provider 生效。 |
-| `AGENT_SANDBOX_WS_MAX_MESSAGE_BYTES`     | `67108864` | IDE Agent WebSocket 单消息大小上限。                                                                                          |
-| `AGENT_SANDBOX_WS_MAX_FRAME_BYTES`       | `16777216` | IDE Agent WebSocket 单帧大小上限。                                                                                            |
-| `AGENT_SANDBOX_SUSPEND_MINUTES`          | `60`       | 运行中的沙盒持续未活跃多少分钟后自动暂停。                                                                                    |
-| `AGENT_SANDBOX_ARCHIVE_INACTIVE_DAYS`    | `7`        | 已暂停的沙盒持续未活跃多少天后自动归档。                                                                                      |
+## JuiceFS 外接元数据库与对象存储配置
+
+### 外接元数据库兼容矩阵
+
+`fastgpt-volume-manager` 基于 JuiceFS 社区版 `v1.4.2`。在 Docker Compose 模板中默认使用内置的 `fastgpt-sandbox-pg`，也可以通过 `VM_JUICEFS_META_URL` 替换为外接元数据库：
+
+| 数据库 / 引擎                                  | 支持情况              | `VM_JUICEFS_META_URL` / CSI `metaurl` 格式               | 注意事项                                                                                                                                                                                                                                                                            |
+| ---------------------------------------------- | --------------------- | -------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **PostgreSQL**（默认推荐）                     | ✅ 首选               | `postgres://user:pass@host:5432/juicefs?sslmode=disable` | 仅支持 `postgres` 驱动名（Docker 下 `volume-manager` 会自动将 `postgresql://` 归一为 `postgres://`）；内网无 TLS 需显式加 `?sslmode=disable`；建议同地域同可用区内网 RTT < 2ms，切勿与主站 pgvector 高负载库混用同库（多套环境共用库可用 `?search_path=` 或 `?table_prefix=` 隔离） |
+| **MySQL / MariaDB**                            | ✅ 原生支持           | `mysql://user:pass@(host:3306)/juicefs`                  | JuiceFS 原生要求 Go MySQL DSN 括号语法；Docker 下 `volume-manager` 支持 `mariadb:// -> mysql://` 归一与标准 URL `mysql://user:pass@host:3306/juicefs` 自动转换为 `@tcp(host:port)`；Kubernetes CSI `juicefs-secret` 需直接写成 Go DSN 括号格式                                      |
+| **OceanBase / SeekDB（MySQL 模式）**           | ✅ 原生支持           | `mysql://root@tenant#cluster:pass@(host:2881)/juicefs`   | 仅支持 **MySQL 租户模式**（不支持 Oracle 租户）；Docker 下 `volume-manager` 已兼容含 `@`、`#` 的租户用户名及复杂密码并将密码剥离到 `META_PASSWORD`                                                                                                                                  |
+| **Redis / Valkey**                             | ⚠️ 可选               | `redis://:pass@host:6379/1` 或 `rediss://...`            | **严禁使用带淘汰策略的普通缓存实例**：必须开启 `appendonly yes`（AOF 持久化）且设置 `maxmemory-policy noeviction`，不支持 Redis Cluster 多分片；切勿追加 `max_open_conns` 等 SQL 查询参数                                                                                           |
+| **TiKV**                                       | ✅ 原生支持           | `tikv://pd1:2379,pd2:2379/fastgpt-sandbox`               | 适合超大规模集群；无需密码剥离与 SQL 连接池参数                                                                                                                                                                                                                                     |
+| **openGauss / 人大金仓（KingbaseES PG 模式）** | ⚠️ 协议兼容（需实测） | `postgres://user:pass@host:5432/juicefs?sslmode=disable` | 底层复用 `pgx` 驱动：openGauss 需开启 PG 兼容模式并将客户端认证由私有 `sha256` 调整为 `md5`，上线前需实测 `npm install / git` 等高频元数据负载                                                                                                                                      |
+| **达梦（DM8）/ MongoDB**                       | ❌ 不支持             | —                                                        | JuiceFS 社区版 `v1.4.2` 不提供 `dm://` 与 `mongodb://` 元数据驱动                                                                                                                                                                                                                   |
+
+> **Kubernetes `juicefs-secret` 连接池与 Docker 差异提示**：每个活跃沙箱都会挂载独立的 `--subdir` FUSE 客户端。Docker 模式下 `fastgpt-volume-manager` 已自动为 PostgreSQL/MySQL `VM_JUICEFS_META_URL` 追加缺省连接池上限（`max_open_conns=4&max_idle_conns=1&max_idle_time=60`，用户显式配置时不覆盖），并将密码剥离至子进程 `META_PASSWORD`；Kubernetes 模式下由 JuiceFS CSI Mount Pod 直接读取 `kube-system/juicefs-secret`，保持 `storageClassShareMount: false` 时建议在 `metaurl` 中手动追加 `?max_open_conns=4&max_idle_conns=1&max_idle_time=60`，同时在 `StorageClass` `mountOptions` 中启用 `- prefix-internal`（配合 `hide-internal`、`buffer-size=64`、`cache-size=0`）。
+
+### 外接对象存储兼容矩阵
+
+Docker 模式下通过 `VM_JUICEFS_STORAGE`、`VM_JUICEFS_BUCKET`、`VM_JUICEFS_ACCESS_KEY`、`VM_JUICEFS_SECRET_KEY` 配置对象存储后端；Kubernetes 模式下在 `juicefs-secret` 中配置对应 `storage`、`bucket`、`access-key`、`secret-key`：
+
+| 存储后端                                            | `VM_JUICEFS_STORAGE`                          | `VM_JUICEFS_BUCKET` 格式示例                                     | 注意事项                                                                                                                                                             |
+| --------------------------------------------------- | --------------------------------------------- | ---------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **RustFS / MinIO / Sealos S3**（默认）              | `minio`                                       | `http://fastgpt-sandbox-rustfs:9000/fastgpt-sandbox`             | **Path-Style** 必填完整 `http(s)://endpoint/bucket`（仅填桶名会访问 AWS 公网）；自签 HTTPS 证书可加 `?tls-insecure-skip-verify=true`；默认内置服务强制要求配置 AK/SK |
+| **AWS S3**                                          | `s3`                                          | `https://<bucket>.s3.<region>.amazonaws.com`                     | Virtual-Hosted 风格；支持成对配置静态 AK/SK，或同时留空复用 EC2 IAM Role / IRSA                                                                                      |
+| **阿里云 OSS**                                      | `oss`                                         | `https://<bucket>.oss-<region>-internal.aliyuncs.com`            | 生产强烈建议使用同地域 `-internal` 内网 Endpoint（免流量费且低延迟）；支持静态 AK/SK 或同时留空复用 ECS RAM 角色                                                     |
+| **腾讯云 COS**                                      | `cos`                                         | `https://<bucket>-<APPID>.cos.<region>.myqcloud.com`             | 桶名**必须携带 `-<APPID>` 后缀**                                                                                                                                     |
+| **华为云 OBS / 火山引擎 TOS / 百度 BOS / 金山 KS3** | `obs` / `tos` / `bos` / `ks3`                 | `https://<bucket>.obs.<region>.myhuaweicloud.com` 等对应地域域名 | 使用原生驱动名，性能和兼容性优于通用 `s3` 兼容层                                                                                                                     |
+| **Ceph RGW / 通用 S3 兼容私有云**                   | Path-Style 用 `minio`；Virtual-Hosted 用 `s3` | `http(s)://endpoint/bucket` 或 `https://bucket.endpoint`         | 如使用 Cloudflare R2（`s3`），需注意其 `ListObjects` 字典序差异可能影响 `juicefs gc / fsck`                                                                          |
+
+> **对象存储安全与运维红线**：
+>
+> 1. **独立私有桶（Private Bucket）**：沙箱对象存储桶严禁与 FastGPT 主业务 `fastgpt-public` 公开桶混用，且**严禁在该桶上配置 Lifecycle 自动过期删除策略**（JuiceFS 按 4MiB 切片写入，底层切片过期会导致工作区文件静默损坏）。
+> 2. **最小权限 IAM 账号需提前建空桶**：`juicefs format` 在桶不存在时会尝试 `CreateBucket`；若云厂商子账号仅授予单桶读写删权限（`GetObject / PutObject / DeleteObject / ListBucket`），请在控制台**提前手动创建好空 Bucket**。
+> 3. **凭证规则**：默认 `minio` / 内置 `fastgpt-sandbox-rustfs` 强制填写静态 `VM_JUICEFS_ACCESS_KEY` 与 `VM_JUICEFS_SECRET_KEY`；切换至外接云对象存储时，支持成对填写静态 AK/SK 或**同时留空**以使用云主机 IAM Role / RAM 角色（禁止只配其一）。
 
 ## 配置与连接排障
 
-### 提示 Sandbox provider apiKey is required for opensandbox
+### 提示 AGENT_SANDBOX_OPENSANDBOX_API_KEY is required for OpenSandbox
 
-检查 `AGENT_SANDBOX_OPENSANDBOX_API_KEY` 是否已配置，并确认它与 `opensandbox-config` 中的 `[server].api_key` 一致。
+检查 `AGENT_SANDBOX_OPENSANDBOX_API_KEY` 是否已配置，并确认它与 `opensandbox-config` 中的 `[server].api_key` 完全一致。
 
 ### 提示 AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL is required
 
-检查 `AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL` 和 `AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN`，并确认 Volume Manager 服务正常运行。
+检查 `AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL` 和 `AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN`，确认与 `fastgpt-volume-manager` 的 `VM_AUTH_TOKEN` 一致且服务健康检查通过。
 
-<span id="提示-agent_sandbox_proxy_url-或-agent_sandbox_preview_proxy_url-is-required" />
+### 终端无法连接或文件预览报错（AGENT_SANDBOX_PROXY_URL / AGENT_SANDBOX_PROXY_SECRET）
 
-### 提示 Invalid Agent Sandbox proxy environment variables: AGENT_SANDBOX_PROXY_SECRET, AGENT_SANDBOX_PROXY_URL, AGENT_SANDBOX_PREVIEW_PROXY_URL are required when AGENT_SANDBOX_PROVIDER is opensandbox
+确认 `AGENT_SANDBOX_PROXY_URL`（以及双端口模式下的 `AGENT_SANDBOX_PREVIEW_PROXY_URL`）已配置为浏览器可直接访问的地址，反向代理已将 HTTP 请求和 WebSocket Upgrade 请求转发到 `fastgpt-opensandbox-proxy`（Docker Compose 默认宿主机 `3006` 映射容器 `1006` 端口），并确认 `fastgpt-app` 与 `fastgpt-opensandbox-proxy` 的 `AGENT_SANDBOX_PROXY_SECRET` 完全一致。
 
-`fastgpt-app` 必须配置 `AGENT_SANDBOX_PROXY_SECRET`、`AGENT_SANDBOX_PROXY_URL` 和 `AGENT_SANDBOX_PREVIEW_PROXY_URL`；`fastgpt-pro` 必须配置 `AGENT_SANDBOX_PREVIEW_PROXY_URL`。
+### Docker 模式下持久卷挂载失败
 
-### 浏览器 WebSocket 连接失败
-
-检查 Proxy 是否可从浏览器访问，并确认反向代理支持 WebSocket Upgrade。如果 FastGPT 使用 HTTPS，`AGENT_SANDBOX_PROXY_URL` 也应使用 `wss://`。
-
-### Proxy 校验失败或返回 401
-
-确认 FastGPT 主服务和 Agent Sandbox Proxy 中的 `AGENT_SANDBOX_PROXY_SECRET` 完全一致，且长度不少于 32 位。
-
-### 沙盒创建成功，但文件树或终端连接失败
-
-确认 `AGENT_SANDBOX_PROXY_URL` 是浏览器可访问的 `ws://` 或 `wss://` 地址，并检查宿主机 `3006` 端口或对应域名是否已开放。
-
-### Proxy 无法连接沙盒 endpoint
-
-检查 `opensandbox-config` 的 `[docker].host_ip`。沙盒 endpoint 中的 `localhost` 或 `127.0.0.1` 对 Proxy 容器不可达，通常应改为宿主机内网 IP 或 `host.docker.internal`。
+检查 `fastgpt-volume-manager` 容器是否具备 `/dev/fuse` 设备、`SYS_ADMIN` 能力与 `:rshared` 挂载传播配置，并确认 `fastgpt-sandbox-pg` 与 `fastgpt-sandbox-rustfs` 健康状态正常、凭证与 `x-juicefs-meta-url` 及 `x-sandbox-rustfs-*` 一致。

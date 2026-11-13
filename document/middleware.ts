@@ -79,6 +79,7 @@ const exactMap: Record<string, string> = {
   '/self-host/signoz': '/self-host/config/signoz',
   '/self-host/config/json': '/self-host/config/env',
   '/self-host/config/sandbox/common': '/self-host/config/sandbox/opensandbox',
+  '/self-host/config/sandbox/sealosdevbox': '/self-host/config/sandbox/opensandbox',
   '/self-host/config/model/ai-proxy': '/self-host/config/model/intro',
   '/self-host/config/model/one-api': '/self-host/config/model/intro',
   '/development/one-api': '/self-host/config/model/intro',

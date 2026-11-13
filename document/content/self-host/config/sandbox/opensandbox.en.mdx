@@ -1,131 +1,145 @@
 ---
 title: OpenSandbox Configuration
-description: Deploy and configure OpenSandbox and Agent Sandbox Proxy for isolated code execution in FastGPT.
+description: Configure OpenSandbox and persistent sandbox workspaces for FastGPT
 ---
 
 import { Alert } from '@/components/docs/Alert';
 
 <Alert icon="⚠️" context="warning">
-  OpenSandbox does not provide network isolation by default. Add your own network isolation policy
-  if your environment requires it.
+  OpenSandbox relies on built-in DNS/nftables egress controls by default and does not enforce full
+  private-network isolation for your internal infrastructure. Add container network policies or
+  firewall rules if your environment requires strict network isolation.
 </Alert>
 
-OpenSandbox is designed for self-hosted Agent and Skill sandbox runtimes. FastGPT creates sandboxes through OpenSandbox Server, while Agent Sandbox Proxy provides browser access to files, terminals, and previews.
+OpenSandbox provides self-hosted execution environments for Agent Sandbox and Skill editing. FastGPT calls OpenSandbox Server directly for Sandbox lifecycle, command execution, and file operations, uses Volume Manager to mount persistent workspaces, and exposes interactive terminal WebSockets (`/terminal`) and static file previews (`/preview/*`) through the lightweight `fastgpt-opensandbox-proxy` edge gateway (listening on container port `1006`, mapped to host port `3006` by default in Docker Compose).
 
 ## Docker Compose Configuration
 
-The latest Docker Compose file already includes OpenSandbox Server, Volume Manager, Agent Sandbox Proxy, and the sandbox runtime images. You do not need to merge any additional YAML files.
+The latest Docker Compose file includes OpenSandbox Server, OpenSandbox Proxy (`fastgpt-opensandbox-proxy`), Volume Manager, dedicated JuiceFS metadata PostgreSQL (`fastgpt-sandbox-pg`), dedicated RustFS object storage (`fastgpt-sandbox-rustfs`), and runtime image prepull profiles out of the box. You do not need to merge any additional YAML files.
 
 [View the latest docker-compose.yml (PgVector, global registries)](/deploy/docker/main/global/docker-compose.pg.yml)
 
 See [Deploy with Docker Compose](/en/self-host/deploy/docker) for other vector databases and China Mainland registries.
 
-## Environment Variables
+## Environment Variables and Service Settings
 
-The Docker Compose YAML files include default values. This section documents each variable. This page tracks the latest configuration; older releases may differ, so check the YAML for the corresponding older release when needed.
+The Docker Compose YAML files include default anchors and values. This page tracks the latest architecture; if you are maintaining an older release, check the YAML file distributed with that version.
 
-### OpenSandbox Service
+### OpenSandbox Server, OpenSandbox Proxy, and Volume Manager
 
 Review these settings in the Compose file for your environment:
 
-| Setting                       | Description                                                                                                                  |
-| ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| `x-volume-manager-auth-token` | Volume Manager token. It must match `AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN` in FastGPT.                             |
-| `[server].api_key`            | OpenSandbox Server API key. It must match `AGENT_SANDBOX_OPENSANDBOX_API_KEY` in FastGPT.                                    |
-| `[docker].host_ip`            | Host address that sandbox endpoints expose to the proxy. Use the host's internal IP or `host.docker.internal`.               |
-| Docker socket mount           | The Docker runtime requires the host Docker socket. The default is `/var/run/docker.sock`; use the actual path if different. |
+| Setting                                       | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| --------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `x-agent-sandbox-proxy-url`                   | Browser-accessible base URL for `fastgpt-opensandbox-proxy` (accepts `http(s)://` or `ws(s)://`), used to derive both interactive terminal (`/terminal`) and static file preview (`/preview/*`) endpoints. Docker Compose maps host port `3006` to container port `1006`; in production, route this domain through your reverse proxy to host port `3006` (or `fastgpt-opensandbox-proxy:1006` inside the container network) with WebSocket upgrade support enabled. |
+| `x-agent-sandbox-proxy-secret`                | Shared authentication secret between `fastgpt-app` and `fastgpt-opensandbox-proxy`. Replace with a strong random secret in production.                                                                                                                                                                                                                                                                                                                               |
+| `x-volume-manager-auth-token`                 | Volume Manager authentication token. Must match `AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN` in FastGPT.                                                                                                                                                                                                                                                                                                                                                         |
+| `[server].api_key`                            | OpenSandbox Server API key in `opensandbox-config`. Must match `AGENT_SANDBOX_OPENSANDBOX_API_KEY` in FastGPT.                                                                                                                                                                                                                                                                                                                                                       |
+| `[docker].host_ip`                            | Host address OpenSandbox uses to reach sandbox endpoints in Docker mode. Defaults to `host.docker.internal` (or set to the host internal IP).                                                                                                                                                                                                                                                                                                                        |
+| `x-juicefs-meta-url` and `fastgpt-sandbox-pg` | Dedicated PostgreSQL DSN used by Volume Manager for JuiceFS metadata in Docker mode. Its password must match `POSTGRES_PASSWORD` on `fastgpt-sandbox-pg`.                                                                                                                                                                                                                                                                                                            |
+| `fastgpt-sandbox-rustfs` and credentials      | Dedicated RustFS object storage and `x-sandbox-rustfs-access-key` / `x-sandbox-rustfs-secret-key` credentials for sandbox JuiceFS in Docker mode (defaults to `http://fastgpt-sandbox-rustfs:9000/fastgpt-sandbox`; override via `VM_JUICEFS_STORAGE` / `VM_JUICEFS_BUCKET` when using external cloud storage).                                                                                                                                                      |
+| Docker socket and shared mount propagation    | Docker mode requires mounting the host `/var/run/docker.sock` (use the actual socket path on OrbStack or rootless Docker) and keeping `/var/lib/fastgpt/sandbox-mounts:...:rshared`.                                                                                                                                                                                                                                                                                 |
 
-If the host uses `HTTP_PROXY` or `HTTPS_PROXY`, explicitly set `NO_PROXY` and `no_proxy` for OpenSandbox Server and Volume Manager. Include at least `localhost,127.0.0.1,127.0.0.0/8,fastgpt-app,fastgpt-opensandbox-server,fastgpt-volume-manager,fastgpt-agent-sandbox-proxy,host.docker.internal` so internal requests do not go through the proxy.
+In Docker mode, `fastgpt-volume-manager` passes database and object-storage credentials to JuiceFS via environment variables and mounts each session subdirectory with `--hide-internal --prefix-internal`. This keeps secrets out of host process arguments and lets sandbox processes create directories such as `/workspace/.config`. In Kubernetes mode, `volume-manager` dynamically provisions PVCs and requires `VM_K8S_PVC_STORAGE_CLASS` to point explicitly to a JuiceFS CSI StorageClass (for example, `juicefs-sc`); falling back to the cluster's default StorageClass is not supported.
 
-### Agent Sandbox Proxy Service
+If the host configures `HTTP_PROXY` or `HTTPS_PROXY`, preserve `NO_PROXY` and `no_proxy` in `x-no-proxy-config` with at least `localhost,127.0.0.1,::1,fastgpt-app,fastgpt-opensandbox-server,fastgpt-opensandbox-proxy,fastgpt-volume-manager,fastgpt-sandbox-pg,fastgpt-sandbox-rustfs,host.docker.internal` so internal service traffic bypasses the proxy.
 
-| Variable                           | Default                                  | Description                                                                                                                     |
-| ---------------------------------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| `PORT`                             | `1006`                                   | Proxy container port, mapped to port `3006` on the host by default.                                                             |
-| `PREVIEW_PORT`                     | Same as `PORT`                           | Starting in 4.16, sets a separate HTTP preview listener; update the host port mapping and `AGENT_SANDBOX_PREVIEW_PROXY_URL` accordingly. |
-| `AGENT_SANDBOX_PROXY_SECRET`       | None                                     | Secret shared with the FastGPT main service. Must be at least 32 characters.                                                    |
-| `FASTGPT_APP_URL`                  | `http://localhost:3000`                  | Internal FastGPT URL used by the proxy. The official Compose template sets it to `http://fastgpt-app:3000`.                     |
-| `FASTGPT_APP_REQUEST_TIMEOUT_SECS` | `10`                                     | Timeout for proxy requests to FastGPT, in seconds. The official Compose template sets it to `60`. Increase for slow cold starts. |
-| `RUST_LOG`                         | `info,fastgpt_agent_sandbox_proxy=debug` | Proxy service log level.                                                                                                        |
+### OpenSandbox Proxy Service
 
-Starting in 4.16, WebSocket and HTTP preview traffic use the same port by default. If your gateway cannot route both protocols on one port, set `PREVIEW_PORT` to another container port (for example, `1007`), change the Compose mapping to `3007:1007`, and point `AGENT_SANDBOX_PREVIEW_PROXY_URL` to port 3007.
+`fastgpt-opensandbox-proxy` supports these configuration variables:
+
+| Variable                           | Default            | Description                                                                                                                                                                                    |
+| ---------------------------------- | ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `PORT`                             | `1006`             | Primary container listening port serving both interactive terminal WebSockets (`/terminal`) and static file previews (`/preview/*`) (mapped to host port `3006` by default in Docker Compose). |
+| `PREVIEW_PORT`                     | Same as `PORT`     | Optional separate HTTP port for dual-port static preview isolation (must differ from `PORT`); expose this port and set `AGENT_SANDBOX_PREVIEW_PROXY_URL`.                                      |
+| `AGENT_SANDBOX_PROXY_SECRET`       | None, **required** | Shared internal authentication secret with `fastgpt-app`. Must match on both services.                                                                                                         |
+| `FASTGPT_APP_URL`                  | None, **required** | Internal FastGPT main service URL used for ticket verification and keepalive calls. Compose defaults to `http://fastgpt-app:3000`.                                                             |
+| `AGENT_SANDBOX_PROXY_REWRITE_HOST` | Empty              | Optional `Host` header override applied when proxying requests to Sandbox endpoints or `fastgpt-app`.                                                                                          |
+| `KEEPALIVE_INTERVAL_MS`            | `60000`            | Interval in milliseconds for batch keepalive reports from active terminal connections to `fastgpt-app`.                                                                                        |
+| `PREVIEW_CACHE_TTL_MS`             | `30000`            | In-memory TTL in milliseconds for resolved static preview session metadata.                                                                                                                    |
+| `PREVIEW_CACHE_MAX_ENTRIES`        | `5000`             | Maximum number of entries cached for static preview session resolution.                                                                                                                        |
 
 ### fastgpt-app Service
 
-Configure these variables in the Compose file's `x-agent-sandbox-config` anchor so `fastgpt-app` and `fastgpt-pro` share the OpenSandbox settings:
+Configure these variables under `x-agent-sandbox-config` in your Compose file:
 
 ```dotenv
-AGENT_SANDBOX_PROVIDER=opensandbox
+# Configuring AGENT_SANDBOX_OPENSANDBOX_BASEURL enables Agent Sandbox directly
+# Browser-accessible base URL for fastgpt-opensandbox-proxy (http(s):// or ws(s)://, reverse-proxied to host 3006 or container fastgpt-opensandbox-proxy:1006)
+AGENT_SANDBOX_PROXY_URL=https://sandbox.example.com
+# Optional: override the HTTP(S) base URL for static file previews only when PREVIEW_PORT dual-port isolation is enabled on fastgpt-opensandbox-proxy
+AGENT_SANDBOX_PREVIEW_PROXY_URL=
+# Shared authentication secret between fastgpt-app and fastgpt-opensandbox-proxy
+AGENT_SANDBOX_PROXY_SECRET=replace_with_proxy_secret
 
 # Internal OpenSandbox Server URL and API key
 AGENT_SANDBOX_OPENSANDBOX_BASEURL=http://fastgpt-opensandbox-server:8090
 AGENT_SANDBOX_OPENSANDBOX_API_KEY=replace_with_opensandbox_api_key
 AGENT_SANDBOX_OPENSANDBOX_RUNTIME=docker
 AGENT_SANDBOX_OPENSANDBOX_IMAGE=ghcr.io/labring/fastgpt-agent-sandbox:v0.4.0
-AGENT_SANDBOX_OPENSANDBOX_USE_SERVER_PROXY=true
 
 # Volume Manager URL, token, and persistent volume name prefix
 AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL=http://fastgpt-volume-manager:3000
 AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN=replace_with_volume_manager_token
 AGENT_SANDBOX_OPENSANDBOX_VOLUME_NAME_PREFIX=fastgpt-session
 
-# Agent Sandbox Proxy settings
-AGENT_SANDBOX_PROXY_SECRET=replace_with_32_chars_random_secret
-AGENT_SANDBOX_PROXY_URL=wss://sandbox-proxy.example.com
-AGENT_SANDBOX_PREVIEW_PROXY_URL=https://sandbox-proxy.example.com
-
-# Per-sandbox resource limits
+# Per-sandbox resource and lifecycle limits
 AGENT_SANDBOX_CPU_COUNT=1
 AGENT_SANDBOX_MEMORY_MIB=2048
 AGENT_SANDBOX_STORAGE_SIZE_GI=1
-# Kubernetes runtime overcommit factors (cpu / memory): requests = limits / factor (1 = no overcommit)
+AGENT_SANDBOX_SUSPEND_MINUTES=60
+# Optional Kubernetes runtime settings: overcommit factors (1 = no overcommit)
 AGENT_SANDBOX_CPU_OVERCOMMIT_FACTOR=1
 AGENT_SANDBOX_MEMORY_OVERCOMMIT_FACTOR=1
 ```
 
+### OpenSandbox Proxy and Preview Origin Isolation
+
+<Alert icon="⚠️" context="warning">
+  HTML files inside a Sandbox can execute untrusted scripts. In production, we strongly recommend
+  exposing `AGENT_SANDBOX_PROXY_URL` (or `AGENT_SANDBOX_PREVIEW_PROXY_URL` in dual-port mode) on a
+  separate origin from `FE_DOMAIN` — such as a dedicated subdomain (`https://sandbox.example.com`),
+  a separate domain, or a distinct port — so untrusted preview scripts do not share the main FastGPT
+  origin boundary.
+</Alert>
+
+- **Single-port mode (recommended default)**: `fastgpt-opensandbox-proxy` serves both `/terminal` (WebSocket) and `/preview/*` (HTTP) on container `PORT=1006` (mapped to host port `3006` by default in Docker Compose). Route a dedicated origin (for example, `https://sandbox.example.com`) through your reverse proxy to host port `3006` (or `fastgpt-opensandbox-proxy:1006` inside the container network), set `AGENT_SANDBOX_PROXY_URL=https://sandbox.example.com` on `fastgpt-app`, and leave `AGENT_SANDBOX_PREVIEW_PROXY_URL` empty.
+- **Dual-port mode (optional)**: To split interactive terminal WebSockets and static file previews across separate ports or domains, set `PREVIEW_PORT` (for example, `1007`) on `fastgpt-opensandbox-proxy` and set `AGENT_SANDBOX_PREVIEW_PROXY_URL` on `fastgpt-app` to the `http(s)://` URL mapped to that preview port.
+- **Local development**: Pair `FE_DOMAIN=http://localhost:3000` with the default `AGENT_SANDBOX_PROXY_URL=http://localhost:3006` (distinct ports already form distinct browser origins, and `install.sh` configures this automatically for local installs).
+
+Preview URLs act as short-lived, read-only bearer capabilities. While a preview URL remains valid, anyone holding it can modify its URL path to read other files in the same sandbox Workspace. Do not share preview URLs with users who should not have access to that Workspace.
+
+Set `AGENT_SANDBOX_OPENSANDBOX_VOLUME_NAME_PREFIX` if you want a custom prefix for generated `claimName` values (defaults to `fastgpt-session`). During an upgrade migration, if legacy volumes used another prefix, also configure `VM_LEGACY_VOLUME_PREFIXES` on `fastgpt-volume-manager` as described in the upgrade guide so those legacy volumes can be detected and cleaned up.
+
 ### Runtime Images and CPU Architectures
 
-`AGENT_SANDBOX_OPENSANDBOX_IMAGE` is the full runtime image reference used when OpenSandbox creates an Agent Sandbox. The standard `fastgpt-agent-sandbox` image runs as a non-root user and is suitable for the default case. When a sandbox must modify `/etc/apt` or install apt packages, use the `fastgpt-agent-sandbox-root` image and configure `AGENT_SANDBOX_APT_MIRROR` as well.
+`AGENT_SANDBOX_OPENSANDBOX_IMAGE` specifies the full runtime image used when OpenSandbox creates an Agent Sandbox. The default `fastgpt-agent-sandbox` image runs as a non-root user (UID `10001`). When a sandbox needs to modify `/etc/apt` or install apt packages, use `fastgpt-agent-sandbox-root` and configure `AGENT_SANDBOX_APT_MIRROR` as needed.
 
-Each official image tag includes both `amd64` and `arm64` variants. Both architectures use the same environment variable configuration, and Docker selects the matching variant based on the architecture of the host running OpenSandbox Server:
+Each official image tag publishes both `amd64` and `arm64` manifests, and the container runtime selects the matching architecture automatically:
 
 | Use case | Image                                               |
 | -------- | --------------------------------------------------- |
 | Non-root | `ghcr.io/labring/fastgpt-agent-sandbox:v0.4.0`      |
 | Root     | `ghcr.io/labring/fastgpt-agent-sandbox-root:v0.4.0` |
 
-For China Mainland registries, replace `ghcr.io/labring` with `registry.cn-hangzhou.aliyuncs.com/fastgpt`. If you use a private registry, make sure each tag preserves both the `amd64` and `arm64` manifests. If the registry provides only a single-architecture image, set `AGENT_SANDBOX_OPENSANDBOX_IMAGE` to an image matching the architecture of the OpenSandbox Server host.
-
-`AGENT_SANDBOX_OPENSANDBOX_API_KEY` must match `[server].api_key`, `AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN` must match `x-volume-manager-auth-token`, and `AGENT_SANDBOX_PROXY_SECRET` must match the same variable in Agent Sandbox Proxy.
-
-`fastgpt-pro` does not provide the Sandbox Editor or WebSocket proxy path, so it does not require `AGENT_SANDBOX_PROXY_SECRET` or `AGENT_SANDBOX_PROXY_URL`. It still requires `AGENT_SANDBOX_PREVIEW_PROXY_URL`.
-
-<Alert icon="⚠️" context="warning">
-  Host the preview proxy on an origin separate from the FastGPT application, using a different
-  scheme, host, or port. Sandbox HTML may contain user-generated scripts. If previews share the
-  application origin, those scripts may be able to access application credentials or APIs.
-</Alert>
-
-Preview URLs are temporary, read-only bearer capabilities. Anyone with a URL can change its path to read other files in the same Sandbox Workspace while the URL remains valid. Do not share preview URLs with users who should not have access to that Workspace.
-
-When upgrading from an earlier Volume Manager release, set `AGENT_SANDBOX_OPENSANDBOX_VOLUME_NAME_PREFIX` to the previous `VM_VOLUME_NAME_PREFIX` value so existing persistent volumes can still be cleaned up by their original names.
+For China Mainland registries, replace `ghcr.io/labring` with `registry.cn-hangzhou.aliyuncs.com/fastgpt`. If you mirror images into a private registry, preserve the multi-architecture manifest list or set `AGENT_SANDBOX_OPENSANDBOX_IMAGE` to the architecture matching your OpenSandbox nodes.
 
 ## Additional Configuration
 
 ### Custom Package Registries
 
-Configure package registries in both `fastgpt-app` and `fastgpt-pro` when sandboxes need to install npm, Python, or apt dependencies:
+Configure custom package registries on `fastgpt-app` when sandboxes need to install npm, Python, or apt dependencies through a mirror:
 
 ```dotenv
 AGENT_SANDBOX_NPM_REGISTRY=https://registry.npmmirror.com
 AGENT_SANDBOX_PYPI_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple
-# Ubuntu amd64 example; use ubuntu-ports for Ubuntu arm64 as described below
+# Ubuntu amd64 example; use ubuntu-ports for Ubuntu arm64 as shown below
 AGENT_SANDBOX_APT_MIRROR=https://mirrors.tuna.tsinghua.edu.cn/ubuntu
 ```
 
-`AGENT_SANDBOX_NPM_REGISTRY` and `AGENT_SANDBOX_PYPI_INDEX_URL` apply to all runtime images. `AGENT_SANDBOX_APT_MIRROR` is effective only for root Agent sandboxes and must point directly to the apt repository root.
+`AGENT_SANDBOX_NPM_REGISTRY` and `AGENT_SANDBOX_PYPI_INDEX_URL` apply to all runtime images. `AGENT_SANDBOX_APT_MIRROR` applies only to root Agent sandboxes and must point to the apt repository root rather than a `dists` path or release subdirectory.
 
-The apt mirror URL is not selected automatically based on the runtime image architecture. Select the corresponding Ubuntu repository path:
+Select the Ubuntu repository path that matches the runtime architecture:
 
 ```dotenv
 # Ubuntu amd64 / x86_64
@@ -135,56 +149,75 @@ AGENT_SANDBOX_APT_MIRROR=https://mirrors.tuna.tsinghua.edu.cn/ubuntu
 AGENT_SANDBOX_APT_MIRROR=https://mirrors.tuna.tsinghua.edu.cn/ubuntu-ports
 ```
 
-Use the [Ubuntu mirror guide](https://mirrors.tuna.tsinghua.edu.cn/help/ubuntu/) and [Ubuntu Ports mirror guide](https://mirrors.tuna.tsinghua.edu.cn/help/ubuntu-ports/) to confirm paths for other Ubuntu releases. With another mirror provider, use its standard Ubuntu or Ubuntu Ports repository path for the target architecture.
-
-FastGPT reads `/etc/os-release` and generates or overwrites `/etc/apt/sources.list.d/ubuntu.sources` based on the Ubuntu version and codename. The file includes the main repository, updates, backports, and security. Before overwriting an existing sources file, FastGPT creates a `.copy` backup. When the variable is removed, files with a backup are restored and files without a backup are left unchanged. Initialization does not run `apt-get update`.
+Refer to the [Ubuntu mirror guide](https://mirrors.tuna.tsinghua.edu.cn/help/ubuntu/) and [Ubuntu Ports mirror guide](https://mirrors.tuna.tsinghua.edu.cn/help/ubuntu-ports/) to verify paths for your mirror provider. FastGPT inspects `/etc/os-release` inside the sandbox and writes `/etc/apt/sources.list.d/ubuntu.sources` (or `/etc/apt/sources.list.d/debian.sources` for Debian images, creating a `.copy` backup before overwriting and restoring it if the variable is removed). Initialization does not run `apt-get update` automatically.
 
 ### Resource and Lifecycle Settings
 
-Overcommit settings apply only when `AGENT_SANDBOX_PROVIDER=opensandbox`, `AGENT_SANDBOX_OPENSANDBOX_RUNTIME=kubernetes`, and OpenSandbox Server is `v0.2.1` or later. CPU and memory factors must be finite numbers greater than or equal to `1`. CPU requests are rounded down to millicores with a minimum of `1m`; memory requests are rounded down to MiB with a minimum of `1Mi`. Limits stay unchanged.
+Overcommit factors and `ephemeral-storage` caps apply only when `AGENT_SANDBOX_OPENSANDBOX_RUNTIME=kubernetes`. In this mode, the writable container layer (`ephemeral-storage`) cap automatically defaults to `AGENT_SANDBOX_STORAGE_SIZE_GI + 0.5` Gi without requiring a separate setting. CPU and memory overcommit factors must be finite numbers greater than or equal to `1`. CPU requests round down to millicores (minimum `1m`) and memory requests round down to MiB (minimum `1Mi`), while limits remain unchanged. Updating these factors does not alter existing running or paused sandboxes; new values take effect when sandboxes are newly created or recreated.
 
-After you change the factors, running sandboxes keep their existing resource settings. Newly created sandboxes automatically use the current factors, including sandboxes recreated after deletion or archival. Connecting to or resuming an existing sandbox does not reapply the factors.
+| Variable                                   | Default | Description                                                                                                                          |
+| ------------------------------------------ | ------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `AGENT_SANDBOX_CPU_COUNT`                  | `1`     | Maximum CPU cores per Agent Sandbox instance.                                                                                        |
+| `AGENT_SANDBOX_MEMORY_MIB`                 | `2048`  | Maximum memory per Agent Sandbox instance, in MiB.                                                                                   |
+| `AGENT_SANDBOX_STORAGE_SIZE_GI`            | `1`     | Persistent sandbox Workspace storage capacity, in Gi. In `kubernetes` runtime, container `ephemeral-storage` defaults to `+ 0.5` Gi. |
+| `AGENT_SANDBOX_CPU_OVERCOMMIT_FACTOR`      | `1`     | Kubernetes CPU overcommit factor (`CPU requests = limits / factor`). Values above `1` create Burstable QoS Pods.                     |
+| `AGENT_SANDBOX_MEMORY_OVERCOMMIT_FACTOR`   | `1`     | Kubernetes memory overcommit factor (`memory requests = limits / factor`). Values above `1` create Burstable QoS Pods.               |
+| `AGENT_SANDBOX_SUSPEND_MINUTES`            | `60`    | Inactive minutes before a running sandbox is automatically suspended.                                                                |
+| `AGENT_SANDBOX_ENTRYPOINT_TIMEOUT_SECONDS` | `30`    | Timeout for the sandbox initialization entrypoint script, in seconds (`1` to `600`).                                                 |
+| `AGENT_SANDBOX_MAX`                        | `100`   | System-wide cap on active Agent Sandbox instances (shared across app chat and Skill editing).                                        |
+| `AGENT_SANDBOX_MAX_PER_TEAM`               | Empty   | Per-team cap on active Agent Sandbox instances. Empty means unlimited.                                                               |
 
-| Variable                                 | Default    | Description                                                                                                                                                                |
-| ---------------------------------------- | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `AGENT_SANDBOX_CPU_COUNT`                | `1`        | Maximum CPU count for each Agent Sandbox.                                                                                                                                  |
-| `AGENT_SANDBOX_MEMORY_MIB`               | `2048`     | Maximum memory for each Agent Sandbox, in MiB.                                                                                                                             |
-| `AGENT_SANDBOX_STORAGE_SIZE_GI`          | `1`        | Sandbox storage capacity, in Gi.                                                                                                                                           |
-| `AGENT_SANDBOX_CPU_OVERCOMMIT_FACTOR`    | `1`        | Kubernetes runtime CPU overcommit factor: cpu requests = limits / factor. Values greater than 1 create Burstable QoS pods. Only applies to the opensandbox provider.       |
-| `AGENT_SANDBOX_MEMORY_OVERCOMMIT_FACTOR` | `1`        | Kubernetes runtime memory overcommit factor: memory requests = limits / factor. Values greater than 1 create Burstable QoS pods. Only applies to the opensandbox provider. |
-| `AGENT_SANDBOX_WS_MAX_MESSAGE_BYTES`     | `67108864` | Maximum IDE Agent WebSocket message size.                                                                                                                                  |
-| `AGENT_SANDBOX_WS_MAX_FRAME_BYTES`       | `16777216` | Maximum IDE Agent WebSocket frame size.                                                                                                                                    |
-| `AGENT_SANDBOX_SUSPEND_MINUTES`          | `60`       | Inactive minutes before a running sandbox is suspended.                                                                                                                    |
-| `AGENT_SANDBOX_ARCHIVE_INACTIVE_DAYS`    | `7`        | Inactive days before a suspended sandbox is archived.                                                                                                                      |
+## External JuiceFS Metadata Databases and Object Storage
 
-## Configuration and Connection Troubleshooting
+### Metadata Engine Compatibility Matrix
 
-### Sandbox provider apiKey is required for opensandbox
+`fastgpt-volume-manager` bundles JuiceFS Community Edition `v1.4.2`. The Docker Compose templates include a dedicated `fastgpt-sandbox-pg` database by default, which you can replace via `VM_JUICEFS_META_URL`:
 
-Check `AGENT_SANDBOX_OPENSANDBOX_API_KEY` and make sure it matches `[server].api_key` in `opensandbox-config`.
+| Database / Engine                    | Support                                | `VM_JUICEFS_META_URL` / CSI `metaurl` Format             | Notes                                                                                                                                                                                                                                                                                                                                                      |
+| ------------------------------------ | -------------------------------------- | -------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **PostgreSQL** (recommended)         | ✅ Primary                             | `postgres://user:pass@host:5432/juicefs?sslmode=disable` | JuiceFS only registers the `postgres` scheme (`volume-manager` normalizes `postgresql://` to `postgres://` in Docker mode). Add `?sslmode=disable` if internal TLS is not enabled. Keep same-region/AZ latency `< 2ms` and never share the primary `pgvector` database (use `?search_path=` or `?table_prefix=` if sharing a cluster across environments). |
+| **MySQL / MariaDB**                  | ✅ Native                              | `mysql://user:pass@(host:3306)/juicefs`                  | JuiceFS natively expects Go MySQL DSN parentheses syntax. In Docker mode, `volume-manager` normalizes `mariadb:// -> mysql://` and standard `mysql://user:pass@host:3306/juicefs` URLs to `@tcp(host:port)`; in Kubernetes CSI `juicefs-secret`, provide the Go DSN parenthesis format directly.                                                           |
+| **OceanBase / SeekDB (MySQL mode)**  | ✅ Native                              | `mysql://root@tenant#cluster:pass@(host:2881)/juicefs`   | **MySQL tenant mode** only (Oracle tenant mode is not supported). In Docker mode, `volume-manager` handles `@`/`#` in tenant usernames and special characters in passwords, stripping secrets into `META_PASSWORD`.                                                                                                                                        |
+| **Redis / Valkey**                   | ⚠️ Optional                            | `redis://:pass@host:6379/1` or `rediss://...`            | **Never use an evicting cache instance**: enable `appendonly yes` (AOF persistence) and `maxmemory-policy noeviction`. Redis Cluster is not supported. Do not append SQL pool query params such as `max_open_conns`.                                                                                                                                       |
+| **TiKV**                             | ✅ Native                              | `tikv://pd1:2379,pd2:2379/fastgpt-sandbox`               | Suitable for very large clusters; does not require credential stripping or SQL pool parameters.                                                                                                                                                                                                                                                            |
+| **openGauss / KingbaseES (PG mode)** | ⚠️ Wire-compatible (verify in cluster) | `postgres://user:pass@host:5432/juicefs?sslmode=disable` | Uses the underlying `pgx` driver: openGauss requires PG-compatible mode and `md5` client auth instead of proprietary `sha256`. Benchmark under `npm install` / `git` workloads before production rollout.                                                                                                                                                  |
+| **Dameng (DM8) / MongoDB**           | ❌ Unsupported                         | —                                                        | JuiceFS Community `v1.4.2` does not provide `dm://` or `mongodb://` metadata drivers.                                                                                                                                                                                                                                                                      |
+
+> **Kubernetes `juicefs-secret` Connection Pool vs. Docker**: Each active sandbox runs its own `--subdir` FUSE client. In Docker mode, `fastgpt-volume-manager` automatically injects default SQL pool limits (`max_open_conns=4&max_idle_conns=1&max_idle_time=60`) into PostgreSQL/MySQL `VM_JUICEFS_META_URL` values unless you override them explicitly, and strips credentials into child-process `META_PASSWORD`. In Kubernetes mode, JuiceFS CSI Mount Pods read `kube-system/juicefs-secret` directly, so when keeping `storageClassShareMount: false`, append `?max_open_conns=4&max_idle_conns=1&max_idle_time=60` to `metaurl` and enable `- prefix-internal` (alongside `hide-internal`, `buffer-size=64`, and `cache-size=0`) in your `StorageClass` `mountOptions`.
+
+### Object Storage Compatibility Matrix
+
+Configure the object storage backend via `VM_JUICEFS_STORAGE`, `VM_JUICEFS_BUCKET`, `VM_JUICEFS_ACCESS_KEY`, and `VM_JUICEFS_SECRET_KEY` in Docker mode, or `storage`, `bucket`, `access-key`, and `secret-key` in Kubernetes `juicefs-secret`:
+
+| Storage Backend                                            | `VM_JUICEFS_STORAGE`                          | `VM_JUICEFS_BUCKET` Example                                                       | Notes                                                                                                                                                                                                                                                          |
+| ---------------------------------------------------------- | --------------------------------------------- | --------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **RustFS / MinIO / Sealos S3** (default)                   | `minio`                                       | `http://fastgpt-sandbox-rustfs:9000/fastgpt-sandbox`                              | **Path-Style** endpoints require the full `http(s)://endpoint/bucket` URL (a bare bucket name tries AWS public endpoints). Append `?tls-insecure-skip-verify=true` for self-signed HTTPS certificates. Static AK/SK are required for default built-in storage. |
+| **AWS S3**                                                 | `s3`                                          | `https://<bucket>.s3.<region>.amazonaws.com`                                      | Virtual-Hosted URL; supports paired static AK/SK or leaving both empty to reuse EC2 IAM Role / IRSA.                                                                                                                                                           |
+| **Alibaba Cloud OSS**                                      | `oss`                                         | `https://<bucket>.oss-<region>-internal.aliyuncs.com`                             | Prefer the same-region `-internal` VPC endpoint in production for zero traffic fees and lower latency; supports static AK/SK or leaving both empty for ECS RAM Role.                                                                                           |
+| **Tencent Cloud COS**                                      | `cos`                                         | `https://<bucket>-<APPID>.cos.<region>.myqcloud.com`                              | The bucket URL **must include the `-<APPID>` suffix**.                                                                                                                                                                                                         |
+| **Huawei OBS / Volcengine TOS / Baidu BOS / Kingsoft KS3** | `obs` / `tos` / `bos` / `ks3`                 | `https://<bucket>.obs.<region>.myhuaweicloud.com` (corresponding region endpoint) | Native driver names offer better performance and compatibility than generic `s3`.                                                                                                                                                                              |
+| **Ceph RGW / Generic S3-compatible**                       | `minio` (Path-Style) or `s3` (Virtual-Hosted) | `http(s)://endpoint/bucket` or `https://bucket.endpoint`                          | If using Cloudflare R2 (`s3`), note that `ListObjects` lexicographical differences can affect `juicefs gc` / `fsck`.                                                                                                                                           |
+
+> **Object Storage Security & Operations Requirements**:
+>
+> 1. **Dedicated private bucket**: Never share FastGPT's `fastgpt-public` bucket, and **never enable bucket Lifecycle expiration rules** (JuiceFS stores 4 MiB chunks; expiring chunks causes silent workspace data corruption).
+> 2. **Pre-create empty bucket for least-privilege IAM**: `juicefs format` attempts `CreateBucket` if the bucket does not exist. If your IAM/RAM sub-account only holds bucket-level `GetObject / PutObject / DeleteObject / ListBucket` permissions, create the empty bucket manually beforehand.
+> 3. **Credential rules**: Built-in `minio` / `fastgpt-sandbox-rustfs` requires both static `VM_JUICEFS_ACCESS_KEY` and `VM_JUICEFS_SECRET_KEY`. External cloud object storage accepts either both static keys or both left empty for IAM Role / RAM Role authentication (never set only one of the pair).
+
+## Troubleshooting
+
+### AGENT_SANDBOX_OPENSANDBOX_API_KEY is required for OpenSandbox
+
+Verify that `AGENT_SANDBOX_OPENSANDBOX_API_KEY` is set and matches `[server].api_key` in `opensandbox-config`.
 
 ### AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL is required
 
-Check `AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL` and `AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN`, and make sure Volume Manager is running.
+Verify `AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL` and `AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN`, confirm the token matches `VM_AUTH_TOKEN` on `fastgpt-volume-manager`, and check that Volume Manager passes its health check.
 
-<span id="agent_sandbox_proxy_url-or-agent_sandbox_preview_proxy_url-is-required" />
+### Terminal connection fails or file previews return an error (`AGENT_SANDBOX_PROXY_URL` / `AGENT_SANDBOX_PROXY_SECRET`)
 
-### Invalid Agent Sandbox proxy environment variables: AGENT_SANDBOX_PROXY_SECRET, AGENT_SANDBOX_PROXY_URL, AGENT_SANDBOX_PREVIEW_PROXY_URL are required when AGENT_SANDBOX_PROVIDER is opensandbox
+Make sure `AGENT_SANDBOX_PROXY_URL` (and `AGENT_SANDBOX_PREVIEW_PROXY_URL` in dual-port mode) is reachable from the browser, your reverse proxy forwards both HTTP requests and WebSocket upgrades to `fastgpt-opensandbox-proxy` (Docker Compose host port `3006` mapped to container port `1006`), and `AGENT_SANDBOX_PROXY_SECRET` matches on both `fastgpt-app` and `fastgpt-opensandbox-proxy`.
 
-`fastgpt-app` requires `AGENT_SANDBOX_PROXY_SECRET`, `AGENT_SANDBOX_PROXY_URL`, and `AGENT_SANDBOX_PREVIEW_PROXY_URL`. `fastgpt-pro` requires `AGENT_SANDBOX_PREVIEW_PROXY_URL`.
+### Persistent volume mount fails in Docker mode
 
-### Browser WebSocket connection fails
-
-Check that the proxy is reachable from the browser and that your reverse proxy supports WebSocket Upgrade. If FastGPT uses HTTPS, `AGENT_SANDBOX_PROXY_URL` should use `wss://`.
-
-### Proxy validation fails or returns 401
-
-Make sure `AGENT_SANDBOX_PROXY_SECRET` is identical in FastGPT and Agent Sandbox Proxy and contains at least 32 characters.
-
-### The sandbox is created, but the file tree or terminal does not connect
-
-Make sure `AGENT_SANDBOX_PROXY_URL` is a browser-accessible `ws://` or `wss://` URL, and verify that host port `3006` or the corresponding domain is accessible.
-
-### Proxy cannot connect to the sandbox endpoint
-
-Check `[docker].host_ip` in `opensandbox-config`. Sandbox endpoints that use `localhost` or `127.0.0.1` are not reachable from the proxy container. Use the host's internal IP or `host.docker.internal`.
+Confirm that `fastgpt-volume-manager` has `/dev/fuse`, `SYS_ADMIN`, and `:rshared` mount propagation configured, and that `fastgpt-sandbox-pg` and `fastgpt-sandbox-rustfs` are healthy with credentials matching `x-juicefs-meta-url` and `x-sandbox-rustfs-*`.
