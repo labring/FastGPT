@@ -9,7 +9,7 @@ import { CurrentOriginCodeBlockUpdater } from '@/components/docs/CurrentOriginCo
 
 FastGPT CLI（`fastgpt`）是 FastGPT 官方推出的终端命令行工具，旨在为开发者、DevOps 工程师以及 AI 编程助手（如 **Codex**、**Claude Code**、**Cursor**、**Windsurf** 等）提供稳定、安全、可编程的终端管理能力。
 
-无论是通过人类终端直接操作，还是让 AI Agent 协助自动化执行，你都可以无需打开浏览器，直接在终端中完成身份认证、团队切换、知识库管理及效果测试。
+无论是通过人类终端直接操作，还是让 AI Agent 协助自动化执行，你都可以无需打开浏览器，直接在终端中完成身份认证、团队切换、知识库管理、效果测试及 App 对话管理。
 
 ---
 
@@ -81,12 +81,24 @@ fastgpt doctor
 
 FastGPT CLI 采用领域驱动（DDD）设计，命令结构精炼清晰：
 
-| 功能分类       | 常用命令示例                                                                                                                            | 说明                                                             |
-| :------------- | :-------------------------------------------------------------------------------------------------------------------------------------- | :--------------------------------------------------------------- |
-| **身份与团队** | `fastgpt whoami`<br/>`fastgpt auth switch-team --team-id <id>`                                                                          | 查看当前用户身份及团队空间，或快速切换工作团队                   |
-| **知识库检索** | `fastgpt dataset list`<br/>`fastgpt dataset search <id1,id2> "关键词"`                                                                  | 分页查询知识库列表，或统一搜索一个或多个知识库，默认返回前 20 条 |
-| **知识库管理** | `fastgpt dataset create --name "文档库"`<br/>`fastgpt dataset update <id> --parent-id null`<br/>`fastgpt dataset delete <id> --dry-run` | 知识库全生命周期 CRUD，支持移至根目录及 `--dry-run` 安全预览     |
-| **系统配置**   | `fastgpt config list`<br/>`fastgpt commands --format json`                                                                              | 查看客户端本地配置，或探测获取完整的可编程命令元数据             |
+| 功能分类         | 常用命令示例                                                                                                                                                | 说明                                                                    |
+| :--------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------- | :---------------------------------------------------------------------- |
+| **身份与团队**   | `fastgpt whoami`<br/>`fastgpt auth switch-team --team-id <id>`                                                                                              | 查看当前用户身份及团队空间，或快速切换工作团队                          |
+| **知识库检索**   | `fastgpt dataset list`<br/>`fastgpt dataset search <id1,id2> "关键词"`                                                                                      | 分页查询知识库列表，或统一搜索一个或多个知识库，默认返回前 20 条        |
+| **知识库管理**   | `fastgpt dataset create --name "文档库"`<br/>`fastgpt dataset update <id> --parent-id null`<br/>`fastgpt dataset delete <id> --dry-run`                     | 知识库全生命周期 CRUD，支持移至根目录及 `--dry-run` 安全预览            |
+| **系统配置**     | `fastgpt config list`<br/>`fastgpt commands --format json`                                                                                                  | 查看客户端本地配置，或探测获取完整的可编程命令元数据                    |
+| **App 对话**     | `fastgpt chat run --appId <id> --text "你好"`<br/>`fastgpt chat init --appId <id> --chatId <chatId>`<br/>`fastgpt chat stop --appId <id> --chatId <chatId>` | 调用 App 并返回 JSON，读取配置与状态，或发送停止信号                    |
+| **App 对话记录** | `fastgpt chat history list --appId <id>`<br/>`fastgpt chat record list --appId <id> --chatId <chatId>`                                                      | 查询、更新和软删除 App 对话，批量查状态、标记已读，并读取消息及响应详情 |
+
+App 对话命令仅对接 OpenAPI。应用 API Key 可省略 `--appId`；个人 API Key 和登录态需指定 App。`chat run` 支持 `--file <path>` 或 `--stdin` 读取 JSON 请求，写操作均支持 `--dry-run`。
+
+`chat record list` 默认读取最新一页，消息按时间正序返回，每次只查询一页。将 `meta.prevCursor` 传给 `--prevId` 读取更早的轮次，或将 `meta.nextCursor` 传给 `--nextId` 读取更新的轮次；`--initialId` 定位指定 `dataId` 的 AI 回复附近。三个 ID 参数互斥，角色由服务端按方向确定。`--pageSize` 是参考消息条数，为补齐轮次边界，实际返回条数可能略超。
+
+接口直接返回 `prevCursor`、`nextCursor`，CLI 原样放入 `meta`；无对应方向的下一页时为 `null`。
+
+消息详情等业务操作使用 `dataId`；消息中的 `id` 是已弃用的兼容别名。
+
+`chat run` 默认 HTTP 超时为 300000 毫秒，可通过 `--timeoutMs` 调整；超时不会自动停止 App，生成失败也不会自动重试。`chat stop` 写入停止信号后立即返回，不等待后台收尾。完整参数通过各命令的 `--help` 查看。
 
 ---
 

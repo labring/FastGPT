@@ -179,12 +179,10 @@ const PluginRunContextProvider = ({
             pluginInputs,
             variables
           }),
-          id: humanChatItemId,
           dataId: humanChatItemId,
           status: 'finish'
         },
         {
-          id: responseChatItemId,
           dataId: responseChatItemId,
           obj: ChatRoleEnum.AI,
           value: [

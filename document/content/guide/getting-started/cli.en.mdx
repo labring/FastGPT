@@ -9,7 +9,7 @@ import { CurrentOriginCodeBlockUpdater } from '@/components/docs/CurrentOriginCo
 
 FastGPT CLI (`fastgpt`) is the official command-line tool for FastGPT. It gives developers, DevOps engineers, and AI coding assistants such as **Codex**, **Claude Code**, **Cursor**, and **Windsurf** reliable, secure, and programmable access to FastGPT resources.
 
-Use the terminal directly or work with an AI Agent to authenticate, switch teams, manage Datasets, and test retrieval without opening a browser.
+Use the terminal directly or work with an AI Agent to authenticate, switch teams, manage Datasets, test retrieval, and manage App conversations without opening a browser.
 
 ---
 
@@ -82,12 +82,24 @@ fastgpt doctor
 
 FastGPT CLI uses domain-driven design (DDD) and a concise command structure:
 
-| Category               | Example commands                                                                                                                      | Description                                                                                                  |
-| :--------------------- | :------------------------------------------------------------------------------------------------------------------------------------ | :----------------------------------------------------------------------------------------------------------- |
-| **Identity and teams** | `fastgpt whoami`<br/>`fastgpt auth switch-team --team-id <id>`                                                                        | View the current user and team, or switch teams                                                              |
-| **Dataset search**     | `fastgpt dataset list`<br/>`fastgpt dataset search <id1,id2> "query"`                                                                 | List Datasets with pagination, or search one or more Datasets; returns the top 20 results by default         |
-| **Dataset management** | `fastgpt dataset create --name "Docs"`<br/>`fastgpt dataset update <id> --parent-id null`<br/>`fastgpt dataset delete <id> --dry-run` | Create, read, update, and delete Datasets; move them to the root folder and preview changes with `--dry-run` |
-| **Configuration**      | `fastgpt config list`<br/>`fastgpt commands --format json`                                                                            | View local client configuration or discover complete, machine-readable command metadata                      |
+| Category               | Example commands                                                                                                                                             | Description                                                                                                                                  |
+| :--------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Identity and teams** | `fastgpt whoami`<br/>`fastgpt auth switch-team --team-id <id>`                                                                                               | View the current user and team, or switch teams                                                                                              |
+| **Dataset search**     | `fastgpt dataset list`<br/>`fastgpt dataset search <id1,id2> "query"`                                                                                        | List Datasets with pagination, or search one or more Datasets; returns the top 20 results by default                                         |
+| **Dataset management** | `fastgpt dataset create --name "Docs"`<br/>`fastgpt dataset update <id> --parent-id null`<br/>`fastgpt dataset delete <id> --dry-run`                        | Create, read, update, and delete Datasets; move them to the root folder and preview changes with `--dry-run`                                 |
+| **Configuration**      | `fastgpt config list`<br/>`fastgpt commands --format json`                                                                                                   | View local client configuration or discover complete, machine-readable command metadata                                                      |
+| **App conversations**  | `fastgpt chat run --appId <id> --text "Hello"`<br/>`fastgpt chat init --appId <id> --chatId <chatId>`<br/>`fastgpt chat stop --appId <id> --chatId <chatId>` | Run an App and get a JSON response, read its configuration and status, or send a stop signal                                                 |
+| **App chat history**   | `fastgpt chat history list --appId <id>`<br/>`fastgpt chat record list --appId <id> --chatId <chatId>`                                                       | List, update, and soft-delete App conversations, check status in batches, mark conversations as read, and read messages and response details |
+
+App chat commands use OpenAPI endpoints only. App API Keys can omit `--appId`; personal API Keys and user sessions must specify an App. Use `--file <path>` or `--stdin` with `chat run` to load a JSON request. All write operations support `--dry-run`.
+
+`chat record list` fetches the latest page by default and returns messages in chronological order. Each command fetches one page. Pass `meta.prevCursor` as `--prevId` to fetch older rounds, or `meta.nextCursor` as `--nextId` to fetch newer rounds. `--initialId` loads rounds around the AI reply with the specified `dataId`. Use only one of these three ID flags. The server determines the anchor role from the pagination direction. `--pageSize` is a target message count; the server may return extra messages to keep round boundaries intact.
+
+The API returns `prevCursor` and `nextCursor`, which the CLI copies unchanged into `meta`. A cursor is `null` when there is no next page in that direction.
+
+Use `dataId` for message operations such as reading response details. A message's `id` is a deprecated compatibility alias.
+
+`chat run` has a default HTTP timeout of 300000 milliseconds, configurable with `--timeoutMs`. A timeout does not stop the App, and failed generation requests are not retried automatically. `chat stop` returns as soon as the stop signal is written, without waiting for background cleanup. Use each command's `--help` for its full parameter list.
 
 ---
 

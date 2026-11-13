@@ -217,7 +217,6 @@ describe('useChatGenerate.sendPrompt', () => {
       resume
         ? [
             {
-              id: 'resumed-ai',
               dataId: 'resumed-ai',
               obj: ChatRoleEnum.AI,
               status: ChatStatusEnum.loading,
@@ -425,6 +424,7 @@ describe('useChatGenerate.sendPrompt', () => {
       expect(mocks.resume).toHaveBeenCalledTimes(2);
       expect(records).toHaveLength(1);
       expect(records[0].dataId).toBe('resumed-ai');
+      if (mode === 'completed') expect(Object.hasOwn(records[0], 'id')).toBe(false);
       expect(JSON.stringify(records[0].value)).toContain('original A answer');
       expect(JSON.stringify(records)).not.toContain('rejected B text');
     }
@@ -465,6 +465,7 @@ describe('useChatGenerate.sendPrompt', () => {
         expect.objectContaining(event)
       );
       expect(records.at(-1)?.value).toEqual(expect.arrayContaining([{ chatAgentBuilderVersion }]));
+      expect(records.every((item) => !Object.hasOwn(item, 'id'))).toBe(true);
       expect(mode === 'resume' ? mocks.resume : mocks.start).toHaveBeenCalledOnce();
       expect(mode === 'resume' ? mocks.start : mocks.resume).not.toHaveBeenCalled();
     }

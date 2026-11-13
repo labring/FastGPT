@@ -5,6 +5,7 @@ export type CliErrorCode =
   | 'CLI_ARGUMENT_INVALID'
   | 'AUTH_REQUIRED'
   | 'AUTH_INVALID'
+  | 'AUTH_FORBIDDEN'
   | 'AUTH_EXPIRED'
   | 'AUTH_QUOTA_EXCEEDED'
   | 'AUTH_MODE_UNSUPPORTED'
@@ -66,6 +67,7 @@ export class CliAuthError extends CliError {
       CliErrorCode,
       | 'AUTH_REQUIRED'
       | 'AUTH_INVALID'
+      | 'AUTH_FORBIDDEN'
       | 'AUTH_EXPIRED'
       | 'AUTH_QUOTA_EXCEEDED'
       | 'AUTH_MODE_UNSUPPORTED'

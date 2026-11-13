@@ -3,7 +3,11 @@ import z from 'zod';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
 import { OpenObjectOpenApiMeta } from '../../../../common/zod/openapi';
 import { DatasetCiteItemSchema } from '../../../../core/dataset/type';
-import { LinkedListResponseSchema, LinkedPaginationSchema } from '../../../api';
+import {
+  LinkedListResponseSchema,
+  LinkedPaginationSchema,
+  PaginationPageSizeSchema
+} from '../../../api';
 import { ChatItemMiniSchema } from '../../../../core/chat/type';
 import { AppTTSConfigInputSchema } from '../../app/common/api';
 import { GetChatTypeEnum } from '../../../../core/chat/constants';
@@ -188,18 +192,57 @@ export type GetPaginationRecordsResponseType = z.infer<typeof GetPaginationRecor
  * Method: POST
  * Description: 获取对话（v2）
  * ============================================================================ */
-export const GetRecordsV2BodyRawSchema = createOutLinkChatTargetInputSchema({
-  ...LinkedPaginationSchema().shape,
+const GetRecordsV2TargetBodySchema = createOutLinkChatTargetInputSchema({
+  role: z.never().optional(),
   ...GetRecordPropsSchema
+});
+
+export const GetRecordsV2BodyRawSchema = GetRecordsV2TargetBodySchema.and(
+  LinkedPaginationSchema({
+    pageSize: PaginationPageSizeSchema.meta({
+      description: '每页参考消息条数，默认 20，最多 500；为补齐轮次边界，实际返回条数可能略超'
+    })
+  })
+).meta({
+  // role 属于服务端推导字段，公开请求与 OpenAPI 都不允许客户端覆盖。
+  not: { required: ['role'] }
 });
 export const GetRecordsV2BodySchema = GetRecordsV2BodyRawSchema.transform(
   transformChatAuthTargetInput
 );
 export type GetRecordsV2BodyType = z.input<typeof GetRecordsV2BodyRawSchema>;
 export type GetRecordsV2BodyRuntimeType = z.infer<typeof GetRecordsV2BodySchema>;
-export const GetRecordsV2ResponseSchema = LinkedListResponseSchema(ChatItemMiniSchema).extend({
-  total: z.int()
-});
+const ChatRecordListItemSchema = ChatItemMiniSchema.and(
+  // 历史接口还返回 time、_id 等消息展示字段，校验已知字段并保留现有元数据。
+  z.looseObject({
+    _id: ObjectIdSchema.optional(),
+    dataId: z
+      .string()
+      .meta({ description: '聊天业务标识，用于消息详情、反馈及轮次关联，推荐使用此字段' }),
+    id: z
+      .string()
+      .optional()
+      .meta({ deprecated: true, description: '兼容旧客户端的 dataId 别名；已弃用，请使用 dataId' }),
+    time: z.coerce.date().optional()
+  })
+);
+
+export const GetRecordsV2ResponseSchema = LinkedListResponseSchema(ChatItemMiniSchema)
+  .omit({ list: true })
+  .extend({
+    list: z
+      .array(ChatRecordListItemSchema)
+      .meta({ description: '聊天记录列表，业务标识使用 dataId' }),
+    total: z.int(),
+    prevCursor: z.string().nullable().meta({
+      description:
+        '向前翻页的 dataId，直接传入 prevId，服务端以 Human 定位轮次起点；无前页或当前列表为空时为 null'
+    }),
+    nextCursor: z.string().nullable().meta({
+      description:
+        '向后翻页的 dataId，直接传入 nextId，服务端以 AI 定位轮次终点；无后页或当前列表为空时为 null'
+    })
+  });
 export type GetRecordsV2ResponseType = z.infer<typeof GetRecordsV2ResponseSchema>;
 
 /* ============================================================================

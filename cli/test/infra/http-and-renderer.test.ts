@@ -15,6 +15,28 @@ function jsonResponse(body: unknown, status = 200) {
 }
 
 describe('FastGptHttpClient (ky) & OutputRenderer (picocolors)', () => {
+  it.each([
+    { code: 504000, statusText: 'unAuthChat' },
+    { code: 504000 },
+    { code: 500, statusText: 'unAuthChat' }
+  ])(
+    'classifies conversation permission refusal without a session-expiry hint: %j',
+    async (error) => {
+      const client = createFastGptHttpClient({
+        baseUrl: 'http://localhost:3000/api',
+        cliVersion: '0.1.0',
+        fetchFn: async () =>
+          jsonResponse({ ...error, message: 'Conversation identity mismatch' }, 500)
+      });
+      await expect(
+        client.request({ method: 'POST', path: '/v2/chat/completions', body: {} })
+      ).rejects.toMatchObject({
+        code: 'AUTH_FORBIDDEN',
+        exitCode: 3,
+        hint: expect.stringContaining('customUid')
+      });
+    }
+  );
   it('builds token header without Cookie and Bearer header for API Keys', () => {
     const tokenHeaders = buildAuthHeaders({
       auth: { authType: 'token', secret: 'u1:sess' },

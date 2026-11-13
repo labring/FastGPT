@@ -128,6 +128,24 @@ describe('getRecords_v2 skill edit target', () => {
       id: keepId,
       dataId: keepId
     });
+    expect(res.data.prevCursor).toBeNull();
+    expect(res.data.nextCursor).toBeNull();
+  });
+
+  it('returns null cursors when no conversation is selected', async () => {
+    const res = await Call<GetRecordsV2BodyType, any, GetRecordsV2ResponseType>(handler, {
+      auth: testUser,
+      body: { skillId }
+    });
+    expect(res.code).toBe(200);
+    expect(res.data).toEqual({
+      list: [],
+      total: 0,
+      hasMorePrev: false,
+      hasMoreNext: false,
+      prevCursor: null,
+      nextCursor: null
+    });
   });
 
   it('should support linked pagination for skill edit records', async () => {
@@ -150,6 +168,8 @@ describe('getRecords_v2 skill edit target', () => {
     expect(res.data.total).toBe(5);
     expect(res.data.list.length).toBeLessThanOrEqual(3);
     expect(res.data.hasMorePrev).toBe(true);
+    expect(res.data.prevCursor).toBe(res.data.list[0].dataId);
+    expect(res.data.nextCursor).toBeNull();
   });
 
   it('should read chatAgentHelper records through generic records api', async () => {
@@ -209,5 +229,25 @@ describe('getRecords_v2 skill edit target', () => {
     expect(res.data.total).toBe(2);
     expect(res.data.list.map((item) => item.id)).toEqual([humanItem.dataId, aiItem.dataId]);
     expect(res.data.list.map((item) => item.dataId)).toEqual(['helper-round-1', 'helper-round-1']);
+
+    // 锚点角色由方向决定，pageSize=1 也需返回完整轮次。
+    for (const direction of ['nextId', 'prevId', 'initialId'] as const) {
+      const page = await Call<GetRecordsV2BodyType, any, GetRecordsV2ResponseType>(handler, {
+        auth: testUser,
+        body: {
+          appId: String(app._id),
+          sourceType: ChatSourceTypeEnum.chatAgentHelper,
+          chatId: helperChatId,
+          pageSize: 1,
+          [direction]: 'helper-round-1'
+        }
+      });
+      expect(page.code).toBe(200);
+      expect(page.data.list.map((item) => item.obj)).toEqual(
+        direction === 'initialId' ? [ChatRoleEnum.Human, ChatRoleEnum.AI] : []
+      );
+      expect(page.data.prevCursor).toBeNull();
+      expect(page.data.nextCursor).toBeNull();
+    }
   });
 });
