@@ -137,8 +137,7 @@
   "model.upcoming_deprecation": "即將下架",
   "model.censor": "啟用敏感校驗",
   "model.censor_tip": "如果需要進行敏感校驗，則開啟該開關",
-  "model.unitPrice": "模型綜合價格",
-  "model.unitPrice_tip": "Token 模型按 M Tokens、TTS 按 1M 字元、STT 按 60 秒計價。",
+  "model.unitPrice": "模型價格（積分）",
   "model.defaultConfig": "額外 Body 參數",
   "model.defaultConfig_tip": "每次請求時候，都會攜帶該額外 Body 參數",
   "model.default_config": "Body 額外欄位",
@@ -349,5 +348,8 @@
   "model_deprecation.error_plan_changed": "通知計畫狀態已變更，請重新整理後再試",
   "model_deprecation.error_recover_requires_incomplete": "只有失敗或中斷輪次可以恢復",
   "model_deprecation.error_plan_not_found": "通知計畫不存在",
-  "model_deprecation.error_no_terminable_runs": "通知計畫目前沒有可終止的輪次"
+  "model_deprecation.error_no_terminable_runs": "通知計畫目前沒有可終止的輪次",
+  "model.stt_billing_type": "計費類型",
+  "model.stt_billing_duration": "按時長",
+  "model.stt_billing_tokens": "按 Tokens"
 }

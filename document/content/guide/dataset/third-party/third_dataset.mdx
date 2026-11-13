@@ -1,23 +1,27 @@
 ---
 title: 第三方知识库开发
 description: 本节详细介绍如何在FastGPT上自己接入第三方知识库
-sidebarTag: DEV
 ---
 
 import { Alert } from '@/components/docs/Alert';
 
 <Alert icon="📖" context="info">
-  **在线 API 文档**：知识库集合创建与同步接口的最新参数说明以在线 API 文档为准（中国大陆云：[System OpenAPI](https://cloud.fastgpt.cn/apidoc/systemopenapi)、国际云：[System OpenAPI](https://cloud.fastgpt.io/apidoc/systemopenapi)、私有化自部署：`<instance>/apidoc/systemopenapi`）。
+
+**在线 API 文档**：知识库集合创建与同步接口的最新参数说明以在线 API 文档为准：
+
+- 中国大陆云服务：[System OpenAPI](https://cloud.fastgpt.cn/apidoc/systemopenapi)
+- 国际云服务：[System OpenAPI](https://cloud.fastgpt.io/apidoc/systemopenapi)
+- 私有化自部署：`<instance>/apidoc/systemopenapi`
+
 </Alert>
 
 目前，互联网上拥有各种各样的文档库，例如飞书、语雀、钉钉等。FastGPT 内置了飞书、语雀、钉钉知识库（以及通用 API 文件库），如果需要接入其他文档库，可以参考本节内容。
-
 
 ## 统一的接口规范
 
 为了实现对不同文档库的统一接入，FastGPT 对第三方文档库进行了接口的规范，共包含 4 个接口内容，可以[查看 API 文件库接口](/zh-CN/guide/dataset/third-party/api_dataset)。
 
-所有内置的文档库，都是基于标准的 API 文件库进行扩展。可以参考`FastGPT/packages/service/core/dataset/apiDataset/yuqueDataset/api.ts`中的代码，进行其他文档库的扩展。一共需要完成 4 个接口开发：
+所有内置的文档库，都是基于标准的 API 文件库进行扩展。可以参考 `FastGPT/packages/service/core/dataset/apiDataset/yuqueDataset/api.ts` 中的代码，进行其他文档库的扩展。一共需要完成 4 个接口开发：
 
 1. 获取文件列表
 2. 获取文件内容/文件链接
@@ -30,7 +34,7 @@ import { Alert } from '@/components/docs/Alert';
 
 ### 1. 添加第三方文档库参数
 
-首先，要进入 FastGPT 项目路径下的`FastGPT\packages\global\core\dataset\apiDataset\type.ts`文件，添加第三方文档库配置的 Zod schema 并推导 TypeScript 类型，同时在 `ApiDatasetServerSchema` 中注册。知识库类型的字段由自己设计，主要是自己需要那些内容。例如，语雀知识库中，需要提供`userId`、`token`两个字段作为鉴权信息。
+首先，要进入 FastGPT 项目路径下的 `FastGPT\packages\global\core\dataset\apiDataset\type.ts` 文件，添加第三方文档库配置的 Zod schema 并推导 TypeScript 类型，同时在 `ApiDatasetServerSchema` 中注册。知识库类型的字段由自己设计，主要是自己需要那些内容。例如，语雀知识库中，需要提供 `userId`、`token` 两个字段作为鉴权信息。
 
 ```ts
 export const YuqueServerSchema = z.object({
@@ -43,7 +47,7 @@ export type YuqueServerType = z.infer<typeof YuqueServerSchema>;
 
 <Alert icon="🤖" context="success">
 
-如果文档库有`根目录`选择的功能，需要设置添加一个字段`basePath`[点击查看`根目录`功能](/zh-CN/guide/dataset/third-party/third_dataset#添加配置表单)
+如果文档库有 `根目录` 选择的功能，需要设置添加一个字段 `basePath` [点击查看 `根目录` 功能](/zh-CN/guide/dataset/third-party/third_dataset#添加配置表单)
 
 </Alert>
 
@@ -53,8 +57,8 @@ export type YuqueServerType = z.infer<typeof YuqueServerSchema>;
 
 每个第三方文档库都会采用适配器方式实现一套 API 接口维护，包含 4 个核心方法（以及可选的 `getFileRawId` 方法）。
 
-- 在`FastGPT\packages\service\core\dataset\apiDataset\`下创建一个文档库的文件夹，然后在文件夹下创建一个`api.ts`文件
-- 在`api.ts`文件中，需要完成 4 个方法的定义，分别是：
+- 在 `FastGPT\packages\service\core\dataset\apiDataset\` 下创建一个文档库的文件夹，然后在文件夹下创建一个 `api.ts` 文件
+- 在 `api.ts` 文件中，需要完成 4 个方法的定义，分别是：
   - `listFiles`：获取文件列表
   - `getFileContent`：获取文件内容/文件链接
   - `getFileDetail`：获取文件详情信息
@@ -62,7 +66,7 @@ export type YuqueServerType = z.infer<typeof YuqueServerSchema>;
 
 ### 3. 添加知识库类型
 
-在`FastGPT\packages\global\core\dataset\type.ts`文件中，导入自己创建的知识库类型。
+在 `FastGPT\packages\global\core\dataset\type.ts` 文件中，导入自己创建的知识库类型。
 
 ![3. 添加知识库类型：界面示例](/imgs/optimized/thirddataset-2.png.webp)
 
@@ -84,7 +88,7 @@ export type YuqueServerType = z.infer<typeof YuqueServerSchema>;
 
 ![添加前端：界面示例](/imgs/optimized/thirddataset-5.png.webp)
 
-`FastGPT\packages\service\support\user/audit\util.ts`文件下添加如下内容，以支持获取 I18n 翻译。
+`FastGPT\packages\service\support\user/audit\util.ts` 文件下添加如下内容，以支持获取 I18n 翻译。
 
 ![添加前端：界面示例](/imgs/optimized/thirddataset-6.png.webp)
 
@@ -94,70 +98,66 @@ export type YuqueServerType = z.infer<typeof YuqueServerSchema>;
 
 </Alert>
 
-`FastGPT\packages\web\components\common\Icon\icons\core\dataset\`添加自己的知识库图标，一共是两个，分为`Outline`和`Color`，分别是有颜色的和无色的，具体看如下图片。
+`FastGPT\packages\web\components\common\Icon\icons\core\dataset\` 添加自己的知识库图标，一共是两个，分为 `Outline` 和 `Color`，分别是有颜色的和无色的，具体看如下图片。
 
 ![添加前端：界面示例](/imgs/optimized/thirddataset-7.png.webp)
 
-
-在`FastGPT\packages\web\components\common\Icon\constants.ts`文件中，添加自己的图标。 `import` 是图标的存放路径。
+在 `FastGPT\packages\web\components\common\Icon\constants.ts` 文件中，添加自己的图标。`import` 是图标的存放路径。
 
 ![添加前端：界面示例](/imgs/optimized/thirddataset-8.png.webp)
 
-在`FastGPT\packages\global\core\dataset\constants.ts`中，添加自己的知识库类型,分别要在`DatasetTypeEnum`和`ApiDatasetTypeMap`中添加内容。
+在 `FastGPT\packages\global\core\dataset\constants.ts` 中，添加自己的知识库类型,分别要在 `DatasetTypeEnum` 和 `ApiDatasetTypeMap` 中添加内容。
 
-| | |
-| --- | --- | 
+|                                                                |                                                                 |
+| -------------------------------------------------------------- | --------------------------------------------------------------- |
 | ![添加前端：界面示例](/imgs/optimized/thirddataset-9.png.webp) | ![添加前端：界面示例](/imgs/optimized/thirddataset-10.png.webp) |
 
 <Alert icon="🤖" context="success">
 
-`courseUrl`字段是相应的文档说明，如果有的话，可以添加。
-文档存放在 `document/content/guide/dataset/third-party/`，同步提供中英文正文与导航入口。
-`label`内容是自己之前通过 i18n 翻译添加的知识库名称的。
-`icon`和`avatar`是自己之前添加的两个图标 
+`courseUrl` 字段是相应的文档说明，如果有的话，可以添加。文档存放在 `document/content/guide/dataset/third-party/`，同步提供中英文正文与导航入口。`label` 内容是自己之前通过 i18n 翻译添加的知识库名称的。`icon` 和 `avatar` 是自己之前添加的两个图标
 
 </Alert>
 
-在`FastGPT\projects\app\src\pages\dataset\list\index.tsx`文件下，添加如下内容。这个文件负责的是知识库列表页的`新建`按钮点击后的菜单，只有在该文件添加知识库后，才能创建知识库。
+在 `FastGPT\projects\app\src\pages\dataset\list\index.tsx` 文件下，添加如下内容。这个文件负责的是知识库列表页的 `新建` 按钮点击后的菜单，只有在该文件添加知识库后，才能创建知识库。
 
 ![添加前端：界面示例](/imgs/optimized/thirddataset-11.png.webp)
 
-在`FastGPT\projects\app\src\pageComponents\dataset\detail\Info\index.tsx`文件下，添加如下内容。此处配置对应ui界面的如下。
+在 `FastGPT\projects\app\src\pageComponents\dataset\detail\Info\index.tsx` 文件下，添加如下内容。此处配置对应 ui 界面的如下。
 
-| | |
-| --- | --- |
-![添加前端：界面示例](/imgs/optimized/thirddataset-12.png.webp)|![添加前端：界面示例](/imgs/optimized/thirddataset-13.png.webp)
+|                                                                 |                                                                 |
+| --------------------------------------------------------------- | --------------------------------------------------------------- |
+| ![添加前端：界面示例](/imgs/optimized/thirddataset-12.png.webp) | ![添加前端：界面示例](/imgs/optimized/thirddataset-13.png.webp) |
 
 ## 添加配置表单
 
-在`FastGPT\projects\app\src\pageComponents\dataset\ApiDatasetForm.tsx`文件下，添加自己如下内容。这个文件负责的是创建知识库页的字段填写。
+在 `FastGPT\projects\app\src\pageComponents\dataset\ApiDatasetForm.tsx` 文件下，添加自己如下内容。这个文件负责的是创建知识库页的字段填写。
 
-| | | |
-| --- | --- | --- |
+|                                                                     |                                                                     |                                                                     |
+| ------------------------------------------------------------------- | ------------------------------------------------------------------- | ------------------------------------------------------------------- |
 | ![添加配置表单：界面示例](/imgs/optimized/thirddataset-14.png.webp) | ![添加配置表单：界面示例](/imgs/optimized/thirddataset-15.png.webp) | ![添加配置表单：界面示例](/imgs/optimized/thirddataset-16.png.webp) |
 
-代码中添加的两个组件是对根目录选择的渲染，对应设计的 api 的 getfiledetail 方法，如果你的知识库不支持，你可以不引用。
+代码中添加的两个组件是对根目录选择的渲染，对应设计的 API 的 getfiledetail 方法，如果你的知识库不支持，你可以不引用。
 
 ```
 {renderBaseUrlSelector()} // 渲染根目录（basePath）选择器（界面标签为 Base URL）
 {renderDirectoryModal()} //点击`选择`后出现的`选择根目录`窗口，见图
 ```
 
-| | |
-| --- | --- | 
-| ![添加配置表单：界面示例](/imgs/optimized/thirddataset-17.png.webp) |  |
+|                                                                     |     |
+| ------------------------------------------------------------------- | --- |
+| ![添加配置表单：界面示例](/imgs/optimized/thirddataset-17.png.webp) |     |
 
-如果知识库需要支持根目录，还需要在`ApiDatasetForm`文件中添加如下内容。
+如果知识库需要支持根目录，还需要在 `ApiDatasetForm` 文件中添加如下内容。
 
 ### 1. 解析知识库类型
 
-需要从`apiDatasetServer`解析出自己的知识库类型，如图：
+需要从 `apiDatasetServer` 解析出自己的知识库类型，如图：
 
 ![1. 解析知识库类型：界面示例](/imgs/optimized/thirddataset-19.png.webp)
 
-### 2. 添加选择根目录逻辑和`parentId`赋值逻辑
+### 2. 添加选择根目录逻辑和 `parentId` 赋值逻辑
 
-需要添加根目录选择逻辑，来确保用户已经填写了调动的 api 方法所必需的字段，比如 Token 之类的。
+需要添加根目录选择逻辑，来确保用户已经填写了调动的 API 方法所必需的字段，比如 Token 之类的。
 
 ![2. 添加选择根目录逻辑和parentId赋值逻辑：界面示例](/imgs/optimized/thirddataset-20.png.webp)
 
@@ -169,4 +169,4 @@ export type YuqueServerType = z.infer<typeof YuqueServerSchema>;
 
 ## 提示
 
-建议知识库创建完成后，完整测试一遍知识库的功能，以确定有无漏洞，如果你的知识库添加有问题，且无法在文档找到对应的文件解决，一定是杂项没有添加完全，建议重复一次全局搜索`YuqueServer`和`yuqueServer`,检查是否有地方没有加上自己的类型。
+建议知识库创建完成后，完整测试一遍知识库的功能，以确定有无漏洞，如果你的知识库添加有问题，且无法在文档找到对应的文件解决，一定是杂项没有添加完全，建议重复一次全局搜索 `YuqueServer` 和 `yuqueServer` ,检查是否有地方没有加上自己的类型。

@@ -137,8 +137,7 @@
   "model.upcoming_deprecation": "곧 단종",
   "model.censor": "검열 확인",
   "model.censor_tip": "민감어 검증이 필요한 경우 이 스위치를 켜세요",
-  "model.unitPrice": "문자당 가격",
-  "model.unitPrice_tip": "토큰 모델은 M Tokens당, TTS는 1M 문자당, STT는 60초당 가격을 책정합니다.",
+  "model.unitPrice": "모델 가격(크레딧)",
   "model.defaultConfig": "추가 Body 파라미터",
   "model.defaultConfig_tip": "모든 요청에 이 추가 Body 파라미터가 포함됩니다.",
   "model.default_config": "Body 추가 필드",
@@ -349,5 +348,8 @@
   "model_deprecation.error_plan_changed": "알림 계획 상태가 변경되었습니다. 새로고침 후 다시 시도하세요.",
   "model_deprecation.error_recover_requires_incomplete": "실패하거나 중단된 실행만 복구할 수 있습니다.",
   "model_deprecation.error_plan_not_found": "알림 계획이 없습니다.",
-  "model_deprecation.error_no_terminable_runs": "알림 계획에 종료할 수 있는 실행이 없습니다."
+  "model_deprecation.error_no_terminable_runs": "알림 계획에 종료할 수 있는 실행이 없습니다.",
+  "model.stt_billing_type": "과금 유형",
+  "model.stt_billing_duration": "시간 기준",
+  "model.stt_billing_tokens": "토큰 기준"
 }

@@ -26,13 +26,18 @@ export const getMongoModel = <T extends Schema>(name: string, schema: T) => {
 
   const model = connectionMongo.model(name, schema);
 
-  syncMongoIndex(model);
+  ensureMongoIndexes(model);
 
   return model;
 };
 
-const syncMongoIndex = async (model: Model<any>) => {
-  if (process.env.NODE_ENV === 'test' || !marketplaceEnv.SYNC_INDEX || !MONGO_URL) {
+/** 启动时固定复用共享索引管理器；测试、构建阶段及未配置数据库时跳过。 */
+const ensureMongoIndexes = async (model: Model<any>) => {
+  if (
+    process.env.NODE_ENV === 'test' ||
+    process.env.NEXT_PHASE === 'phase-production-build' ||
+    !MONGO_URL
+  ) {
     return;
   }
 
@@ -51,7 +56,6 @@ const syncMongoIndex = async (model: Model<any>) => {
 };
 
 export const ReadPreference = connectionMongo.mongo.ReadPreference;
-export { defineIndex } from '@fastgpt/service/common/mongo/schemaIndexes';
 
 export async function connectMongo(db: Mongoose, url: string): Promise<Mongoose> {
   if (db.connection.readyState !== 0) {

@@ -46,6 +46,8 @@ function createMockContainer(isInteractive = false): CliContainer {
     datasetService: {} as any,
     datasetCollectionService: {} as any,
     datasetDataService: {} as any,
+    chatService: {} as any,
+    readJsonInput: async () => ({}),
     stdout: () => {},
     stderr: () => {}
   };

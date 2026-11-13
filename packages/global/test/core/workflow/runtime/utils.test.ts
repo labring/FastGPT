@@ -27,7 +27,10 @@ import {
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
-import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import {
+  WorkflowInteractiveResponseTypeSchema,
+  type WorkflowInteractiveResponseType
+} from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import type {
   RuntimeEdgeItemType,
@@ -1869,29 +1872,32 @@ describe('rewriteNodeOutputByHistories', () => {
     expect(result).toBe(nodes);
   });
 
-  it('should rewrite node outputs from lastInteractive', () => {
-    const nodes: RuntimeNodeItemType[] = [
-      {
-        nodeId: 'node1',
-        name: 'test',
-        flowNodeType: FlowNodeTypeEnum.chatNode,
-        inputs: [],
-        outputs: [
-          { id: 'out1', key: 'output1', type: FlowNodeOutputTypeEnum.static, value: 'original' }
-        ]
-      }
-    ];
-    const lastInteractive = {
-      type: 'userSelect',
-      entryNodeIds: ['node1'],
-      memoryEdges: [],
-      nodeOutputs: [{ nodeId: 'node1', key: 'output1' as any, value: 'newValue' }],
-      params: { description: '', userSelectOptions: [] }
-    } as WorkflowInteractiveResponseType;
+  it.each(['newValue', 0, false, '', null])(
+    'restores custom output values from a validated interactive snapshot: %j',
+    (value) => {
+      const nodes: RuntimeNodeItemType[] = [
+        {
+          nodeId: 'node1',
+          name: 'test',
+          flowNodeType: FlowNodeTypeEnum.chatNode,
+          inputs: [],
+          outputs: [
+            { id: 'out1', key: 'output1', type: FlowNodeOutputTypeEnum.static, value: 'original' }
+          ]
+        }
+      ];
+      const lastInteractive = WorkflowInteractiveResponseTypeSchema.parse({
+        type: 'userSelect',
+        entryNodeIds: ['node1'],
+        memoryEdges: [],
+        nodeOutputs: [{ nodeId: 'node1', key: 'output1', value }],
+        params: { description: '', userSelectOptions: [] }
+      });
 
-    const result = rewriteNodeOutputByHistories(nodes, lastInteractive);
-    expect(result[0].outputs[0].value).toBe('newValue');
-  });
+      const result = rewriteNodeOutputByHistories(nodes, lastInteractive);
+      expect(result[0].outputs[0].value).toBe(value);
+    }
+  );
 
   it('should keep original value when no matching nodeOutput', () => {
     const nodes: RuntimeNodeItemType[] = [

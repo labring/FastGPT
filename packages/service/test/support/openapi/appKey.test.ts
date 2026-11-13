@@ -15,6 +15,9 @@ import { transferAppApiKeys } from '@fastgpt/service/support/openapi/service';
 import { getAppByApiKey } from '@fastgpt/service/support/openapi/auth';
 import { getFakeUsers } from '@test/datas/users';
 import { Types } from '@fastgpt/service/common/mongo';
+import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
+import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
+import { authChatCompletionHeaderRequest } from '@/service/support/permission/auth/chatCompletion';
 
 const { parseHeaderCert } = await vi.importActual<
   typeof import('@fastgpt/service/support/permission/auth/common')
@@ -47,6 +50,93 @@ const fixture = async () => {
 };
 
 describe('application API key boundaries', () => {
+  it.each([undefined, 'personal'])(
+    'legacy default app is a fallback, with member ACLs and dataset access before/after backfill (%s)',
+    async (type) => {
+      const { owner, member, appId } = await fixture();
+      const otherApp = await MongoApp.create({
+        teamId: owner.teamId,
+        tmbId: member.tmbId,
+        name: 'member app',
+        type: AppTypeEnum.simple
+      });
+      const alternateApp = await MongoApp.create({
+        teamId: owner.teamId,
+        tmbId: member.tmbId,
+        name: 'another permitted app',
+        type: AppTypeEnum.simple
+      });
+      const dataset = await MongoDataset.create({
+        teamId: owner.teamId,
+        tmbId: member.tmbId,
+        name: 'member dataset',
+        type: 'dataset'
+      });
+      await MongoOpenApi.collection.insertOne({
+        teamId: new Types.ObjectId(owner.teamId),
+        tmbId: new Types.ObjectId(member.tmbId),
+        apiKey: 'legacy-personal',
+        appId: String(otherApp._id).toUpperCase(),
+        ...(type ? { type } : {})
+      });
+      const credential = await parseHeaderCert({
+        req: { headers: { authorization: 'Bearer legacy-personal' } } as any,
+        authApiKey: true
+      });
+      expect(credential).toMatchObject({
+        apiKeyType: 'personal',
+        legacyAppId: String(otherApp._id)
+      });
+      expect(credential.boundAppId).toBeUndefined();
+      const req = { auth: credential } as any;
+      expect(String((await authChatCompletionHeaderRequest({ req })).app._id)).toBe(
+        String(otherApp._id)
+      );
+      // 默认应用不授予其他应用或知识库权限，也不会阻断原有知识库接口。
+      await expect(authChatCompletionHeaderRequest({ req, appId })).rejects.toBeDefined();
+      const sdkRequest = { auth: { ...credential, parsedAppId: String(alternateApp._id) } } as any;
+      expect(String((await authChatCompletionHeaderRequest({ req: sdkRequest })).app._id)).toBe(
+        String(alternateApp._id)
+      );
+      await expect(
+        authDataset({
+          req,
+          datasetId: String(dataset._id),
+          authApiKey: true,
+          per: ReadPermissionVal
+        })
+      ).resolves.toMatchObject({ dataset: { name: 'member dataset' } });
+      await MongoDataset.updateOne({ _id: dataset._id }, { $set: { tmbId: owner.tmbId } });
+      await expect(
+        authDataset({
+          req,
+          datasetId: String(dataset._id),
+          authApiKey: true,
+          per: ReadPermissionVal
+        })
+      ).rejects.toBeDefined();
+      for (const parsedAppId of [appId, String(otherApp._id)]) {
+        const overridden = { auth: { ...credential, parsedAppId } } as any;
+        if (parsedAppId === appId) {
+          await expect(authChatCompletionHeaderRequest({ req: overridden })).rejects.toBeDefined();
+        }
+        expect(
+          String(
+            (
+              await authChatCompletionHeaderRequest({
+                req: overridden,
+                appId: String(alternateApp._id)
+              })
+            ).app._id
+          )
+        ).toBe(String(alternateApp._id));
+      }
+      await expect(
+        authChatCompletionHeaderRequest({ req, authProxy: { tmbId: owner.tmbId } })
+      ).rejects.toBeDefined();
+    }
+  );
+
   it('new keys require an explicit type instead of defaulting a bound key to personal', async () => {
     for (const appId of [undefined, new Types.ObjectId().toString()]) {
       await expect(
@@ -60,17 +150,21 @@ describe('application API key boundaries', () => {
     }
     expect(await MongoOpenApi.countDocuments({ apiKey: 'missing-type-key' })).toBe(0);
   });
-  it('legacy classification is shared by queries and authorization, with no fallback for conflicting records', async () => {
+  it('parses legacy defaults while queries require normalized explicit types', async () => {
     const id = new Types.ObjectId().toString();
     for (const appId of [undefined, null, ''])
       expect(resolveApiKeyScope({ appId })).toEqual({ type: 'personal' });
-    expect(resolveApiKeyScope({ appId: id })).toEqual({ type: 'app', appId: id });
+    for (const type of [undefined, 'personal']) {
+      for (const appId of [id, new Types.ObjectId(id)]) {
+        expect(resolveApiKeyScope({ type, appId })).toEqual({ type: 'personal', defaultAppId: id });
+      }
+    }
     for (const raw of [
       { type: 'bad' },
-      { type: 'personal', appId: id },
+      { type: 'personal', appId: 'invalid' },
       { type: 'app' },
       { appId: 'invalid' },
-      { appId: new Types.ObjectId() }
+      { appId: [id] }
     ])
       expect(() => resolveApiKeyScope(raw)).toThrow();
     const { owner } = await fixture();
@@ -92,18 +186,25 @@ describe('application API key boundaries', () => {
         tmbId: new Types.ObjectId(owner.tmbId),
         apiKey: 'unknown-type',
         type: 'unknown'
+      },
+      {
+        teamId: new Types.ObjectId(owner.teamId),
+        tmbId: new Types.ObjectId(owner.tmbId),
+        apiKey: 'normalized-personal-default',
+        type: 'personal',
+        appId: new Types.ObjectId(id)
       }
     ] as any);
     expect(
       (await MongoOpenApi.find(getOpenApiTypeFilter(ApiKeyTypeEnum.personal)).lean())
         .map((k) => k.apiKey)
         .sort()
-    ).toEqual(['fixture-personal', 'legacy-empty']);
+    ).toEqual(['fixture-personal', 'normalized-personal-default']);
     expect(
       (await MongoOpenApi.find(getOpenApiTypeFilter(ApiKeyTypeEnum.app)).lean())
         .map((k) => k.apiKey)
         .sort()
-    ).toEqual(['fixture-app', 'legacy-bound']);
+    ).toEqual(['fixture-app']);
   });
   it('server flags independently accept each key type; app Key ignores creator ACL but uses only its bound application', async () => {
     const { member, appId } = await fixture();
@@ -213,16 +314,13 @@ describe('application API key boundaries', () => {
       })
     ).toEqual({ sourceType: ChatSourceTypeEnum.skillEdit, sourceId: appId });
   });
-  it('legacy uppercase bindings keep ObjectId semantics through query, handover and deletion', async () => {
+  it('matches normalized ObjectId bindings with uppercase input through query, handover and deletion', async () => {
     const { owner, member, appId, appKey } = await fixture();
-    const stored = appId.toUpperCase();
-    await MongoOpenApi.updateOne({ _id: appKey._id }, { $set: { appId: stored } });
-    expect(resolveApiKeyScope({ appId: stored })).toEqual({ type: 'app', appId });
     expect(
       await MongoOpenApi.countDocuments({
         teamId: owner.teamId,
         ...getOpenApiTypeFilter(ApiKeyTypeEnum.app),
-        appId: getOpenApiAppIdFilter([appId])
+        ...getOpenApiAppIdFilter([appId.toUpperCase()])
       })
     ).toBe(1);
     const changes = await transferAppApiKeys({
@@ -232,7 +330,9 @@ describe('application API key boundaries', () => {
       session: undefined as any
     });
     expect(changes[0]).toMatchObject({ appId, toTmbId: owner.tmbId });
-    expect((await MongoOpenApi.findById(appKey._id).lean())?.appId).toBe(stored);
+    expect((await MongoOpenApi.collection.findOne({ _id: appKey._id }))?.appId).toEqual(
+      new Types.ObjectId(appId)
+    );
     const { cleanupAppDirectRefs } = await import('@fastgpt/service/core/app/controller');
     await cleanupAppDirectRefs({ teamId: owner.teamId, appIds: [appId] });
     expect(await MongoOpenApi.exists({ _id: appKey._id })).toBeNull();
@@ -241,6 +341,13 @@ describe('application API key boundaries', () => {
   it('handover changes only ownership for selected apps and skips other members keys', async () => {
     const { owner, member, appId, appKey } = await fixture();
     const before = await MongoOpenApi.findById(appKey._id).lean();
+    const legacy = await MongoOpenApi.collection.insertOne({
+      teamId: new Types.ObjectId(owner.teamId),
+      tmbId: new Types.ObjectId(member.tmbId),
+      apiKey: 'legacy-handover-personal',
+      type: 'personal',
+      appId: new Types.ObjectId(appId)
+    });
     const changes = await transferAppApiKeys({
       teamId: owner.teamId,
       fromTmbIds: [member.tmbId],
@@ -258,6 +365,17 @@ describe('application API key boundaries', () => {
     const after = await MongoOpenApi.findById(appKey._id).lean();
     expect({ ...after, tmbId: undefined }).toEqual({ ...before, tmbId: undefined });
     expect(String(after?.tmbId)).toBe(owner.tmbId);
+    expect(String((await MongoOpenApi.findById(legacy.insertedId).lean())?.tmbId)).toBe(
+      member.tmbId
+    );
+    const { cleanupAppDirectRefs } = await import('@fastgpt/service/core/app/controller');
+    await cleanupAppDirectRefs({ teamId: owner.teamId, appIds: [appId] });
+    const remaining = await MongoOpenApi.collection.findOne({ _id: legacy.insertedId });
+    expect(remaining).toMatchObject({
+      apiKey: 'legacy-handover-personal',
+      tmbId: new Types.ObjectId(member.tmbId)
+    });
+    expect(remaining).not.toHaveProperty('appId');
     expect(
       await transferAppApiKeys({
         teamId: owner.teamId,

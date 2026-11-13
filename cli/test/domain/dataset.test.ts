@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { createDatasetService } from '../../src/domain/dataset/dataset-service';
 import type { FastGptHttpClient } from '../../src/infra/http/fastgpt-http-client';
 
@@ -145,40 +146,130 @@ describe('DatasetService (cli/src/domain/dataset/dataset-service.ts)', () => {
     expect(res.data).toEqual({ datasetId: validId, deleted: true });
   });
 
-  it('executes System OpenAPI /core/dataset/search across one or more datasets', async () => {
-    const validId = '68ad85a7463006c963799a05';
-    let capturedBody: any;
-    const client = createMockHttpClient(async ({ method, path, body }) => {
-      expect(method).toBe('POST');
-      expect(path).toBe('/core/dataset/search');
-      capturedBody = body;
-      return {
-        list: [
-          {
-            id: 'c-1',
-            q: 'FastGPT introduction',
-            a: 'Platform for LLM knowledge bases',
-            score: [{ type: 'reRank', value: 0.91, index: 0 }],
-            sourceName: 'readme.md'
-          }
-        ],
-        meta: {
-          durationMs: 412,
-          usingSimilarityFilter: true,
-          usingReRank: true
-        }
-      };
-    });
+  it.each([
+    {
+      options: {},
+      expected: { budget: { topk: 20 }, similarity: 0, mode: 'embedding', enabled: false }
+    },
+    {
+      options: {
+        maxTokens: 25000,
+        similarity: 0.5,
+        mode: DatasetSearchModeEnum.fullTextRecall,
+        rerank: { enabled: true }
+      },
+      expected: {
+        budget: { maxTokens: 25000 },
+        similarity: 0.5,
+        mode: 'fullTextRecall',
+        enabled: true
+      }
+    },
+    {
+      options: { topk: 5, maxTokens: 0, similarity: 0, rerank: { enabled: false } },
+      expected: { budget: { topk: 5 }, similarity: 0, mode: 'embedding', enabled: false }
+    }
+  ] as const)(
+    'maps CLI search options to the unified search API: $options',
+    async ({ options, expected }) => {
+      const validId = '68ad85a7463006c963799a05';
+      let capturedBody: any;
+      const client = createMockHttpClient(async ({ method, path, body }) => {
+        expect(method).toBe('POST');
+        expect(path).toBe('/core/dataset/search');
+        capturedBody = body;
+        return {
+          list: [
+            {
+              id: 'c-1',
+              q: 'FastGPT introduction',
+              a: 'Platform for LLM knowledge bases',
+              score: [{ type: 'reRank', value: 0.91, index: 0 }],
+              sourceName: 'readme.md'
+            }
+          ],
+          meta: { durationMs: 412, usingReRank: expected.enabled, usingSimilarityFilter: true }
+        };
+      });
 
+      const res = await service.search({
+        client,
+        input: {
+          datasetIds: ` ${validId} `,
+          text: ' What is FastGPT? ',
+          ...options
+        }
+      });
+
+      expect(capturedBody).toEqual({
+        scope: { datasetIds: [validId] },
+        query: { text: 'What is FastGPT?', imageKeys: [] },
+        retrieval: { mode: expected.mode, embeddingWeight: 0.5 },
+        rerank: expected.enabled ? { enabled: true, weight: 0.5 } : { enabled: false },
+        queryExtension: { enabled: false },
+        result: { ...expected.budget, similarity: expected.similarity },
+        usageScene: 'search'
+      });
+      expect(res.data?.list).toHaveLength(1);
+      expect(res.data?.meta.durationMs).toBe(412);
+      expect(res.message).toBe(`Retrieved 1 chunks (412ms) using mode "${expected.mode}"`);
+    }
+  );
+
+  it.each([
+    { datasetIds: ' 68ad85a7463006c963799a05, 68ad85a7463006c963799a10 ' },
+    { datasetIds: [' 68ad85a7463006c963799a05 ', '68ad85a7463006c963799a10'] }
+  ])(
+    'normalizes multiple dataset IDs before one unified search request',
+    async ({ datasetIds }) => {
+      const client = createMockHttpClient(async () => ({ list: [], meta: { durationMs: 0 } }));
+      await service.search({ client, input: { datasetIds, text: 'query' } });
+      expect(client.request).toHaveBeenCalledExactlyOnceWith({
+        method: 'POST',
+        path: '/core/dataset/search',
+        body: expect.objectContaining({
+          scope: { datasetIds: ['68ad85a7463006c963799a05', '68ad85a7463006c963799a10'] },
+          result: { topk: 20, similarity: 0 }
+        })
+      });
+    }
+  );
+
+  it.each([
+    { datasetIds: '' },
+    { datasetIds: [] },
+    { datasetIds: '68ad85a7463006c963799a05,' },
+    { datasetIds: ['68ad85a7463006c963799a05', 'invalid-id'] },
+    { datasetIds: Array.from({ length: 101 }, () => '68ad85a7463006c963799a05') },
+    { maxTokens: 0 },
+    { maxTokens: 1.5 },
+    { topk: 0 },
+    { topk: 101 },
+    { topk: 1.5 },
+    { similarity: 1.1 },
+    { text: ' ' },
+    { text: 'q'.repeat(10001) }
+  ])('rejects invalid unified search parameters before sending a request', async (options) => {
+    const client = createMockHttpClient(async () => ({}));
     await expect(
       service.search({
         client,
-        input: {
-          scope: { datasetIds: [] },
-          query: { text: 'query', imageKeys: [] }
-        } as any
+        input: { datasetIds: '68ad85a7463006c963799a05', text: 'query', ...options }
       })
     ).rejects.toThrow();
+    expect(client.request).not.toHaveBeenCalled();
+  });
+
+  it('executes structured System OpenAPI /core/dataset/search input directly', async () => {
+    const validId = '68ad85a7463006c963799a05';
+    let capturedBody: any;
+    const client = createMockHttpClient(async ({ body }) => {
+      capturedBody = body;
+      return {
+        list: [{ id: 'c-1', q: 'FastGPT', a: 'KB', score: [], sourceName: 'doc.md' }],
+        meta: { durationMs: 55, usingSimilarityFilter: true, usingReRank: true }
+      };
+    });
 
     const res = await service.search({
       client,
@@ -267,10 +358,10 @@ describe('DatasetService (cli/src/domain/dataset/dataset-service.ts)', () => {
       service.search({
         client,
         input: {
-          scope: { datasetIds: ['68ad85a7463006c963799a05'] },
-          query: { text: 'query', imageKeys: [] },
-          retrieval: { mode: 'typo' as any, embeddingWeight: 0.5 }
-        } as any
+          datasetIds: '68ad85a7463006c963799a05',
+          text: 'query',
+          mode: 'typo' as any
+        }
       })
     ).rejects.toThrow();
   });

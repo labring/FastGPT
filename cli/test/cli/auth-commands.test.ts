@@ -145,6 +145,33 @@ async function execCli({
 }
 
 describe('CLI auth command integration', () => {
+  it.each([404, 200])(
+    'reports an unsupported CLI server when whoami returns code 404 with HTTP %i',
+    async (status) => {
+      const configDir = await makeConfigDir();
+      const requests: string[] = [];
+      const res = await execCli({
+        argv: ['whoami', '--token', 'test-session', '--format', 'json'],
+        configDir,
+        fetchFn: async (input) => {
+          requests.push(input instanceof Request ? input.url : String(input));
+          return new Response(JSON.stringify({ code: 404, message: 'Not Found', data: null }), {
+            status,
+            headers: { 'content-type': 'application/json' }
+          });
+        }
+      });
+      expect(res.exitCode).toBe(4);
+      expect(res.stdout).toBe('');
+      const error = JSON.parse(res.stderr).error;
+      expect(error.code).toBe('SERVER_CLI_UNSUPPORTED');
+      expect(error.message).toContain('does not support the CLI yet');
+      expect(error.hint).toContain('--base-url');
+      expect(error.details).toMatchObject({ httpStatus: status, serverCode: 404 });
+      expect(requests).toEqual(['https://cloud.fastgpt.cn/api/support/user/account/whoami']);
+    }
+  );
+
   it('runs login --api-key-stdin, whoami, doctor, auth list/switch, config, and logout', async () => {
     const configDir = await makeConfigDir();
     const rawKey = 'fastgpt-personal-key-1234567890abcdef123456';

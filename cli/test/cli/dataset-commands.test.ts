@@ -73,6 +73,257 @@ describe('Dataset CLI Commands integration (cli/src/cli/commands/dataset.ts)', (
     expect(datasetSpecs.every((spec) => spec.authModes.includes('personalKey'))).toBe(true);
   });
 
+  it('maps filtering, retrieval, rerank and query extension options to the search contract', async () => {
+    const configDir = await makeConfigDir();
+    const tagsAnd = [{ tag: 'department', op: '$eq', value: 'support' }];
+    const tagsOr = [{ tag: 'priority', op: '$gte', value: 2 }];
+    let calls = 0;
+    const res = await execCli({
+      argv: [
+        'dataset',
+        'search',
+        OBJECT_ID_DATASET,
+        'query',
+        '--collectionIds',
+        ` ${OBJECT_ID_DATASET},68ad85a7463006c963799a05 `,
+        '--createTimeGte',
+        '2026-01-01T00:00:00Z',
+        '--createTimeLte',
+        '2026-12-31T23:59:59Z',
+        '--tagsAnd',
+        JSON.stringify(tagsAnd),
+        '--tagsOr',
+        JSON.stringify(tagsOr),
+        '--mode',
+        'mixedRecall',
+        '--usageScene',
+        'searchTest',
+        '--embeddingWeight',
+        '0',
+        '--similarity',
+        '0.3',
+        '--rerank',
+        '--rerankModelId',
+        ' rerank-model ',
+        '--rerankCandidateNum',
+        '10',
+        '--rerankWeight',
+        '0',
+        '--queryExtension',
+        '--queryExtensionModelId',
+        ' extension-model ',
+        '--queryExtensionBackground',
+        'FastGPT documentation',
+        '--token',
+        'test-session',
+        '--format',
+        'json'
+      ],
+      configDir,
+      fetchFn: async (input, init) => {
+        calls++;
+        const url = input instanceof Request ? input.url : String(input);
+        expect(url.endsWith('/core/dataset/search')).toBe(true);
+        const body =
+          input instanceof Request ? await input.clone().json() : JSON.parse(String(init?.body));
+        expect(body).toEqual({
+          scope: {
+            datasetIds: [OBJECT_ID_DATASET],
+            filter: {
+              collectionIds: [OBJECT_ID_DATASET, '68ad85a7463006c963799a05'],
+              createTime: { gte: '2026-01-01T00:00:00Z', lte: '2026-12-31T23:59:59Z' },
+              tags: { and: tagsAnd, or: tagsOr }
+            }
+          },
+          query: { text: 'query', imageKeys: [] },
+          retrieval: { mode: 'mixedRecall', embeddingWeight: 0 },
+          rerank: { enabled: true, modelId: 'rerank-model', candidateNum: 10, weight: 0 },
+          queryExtension: {
+            enabled: true,
+            modelId: 'extension-model',
+            background: 'FastGPT documentation'
+          },
+          result: { topk: 20, similarity: 0.3 },
+          usageScene: 'searchTest'
+        });
+        return jsonResp({
+          list: [],
+          meta: { durationMs: 1, usingReRank: true, usingSimilarityFilter: false }
+        });
+      }
+    });
+    expect(res.exitCode).toBe(0);
+    expect(calls).toBe(1);
+  });
+
+  it.each([
+    {
+      flags: ['--rerank', '--queryExtension'],
+      rerank: { enabled: true, weight: 0.5 },
+      queryExtension: { enabled: true, background: '' }
+    },
+    {
+      flags: ['--no-rerank', '--no-queryExtension'],
+      rerank: { enabled: false },
+      queryExtension: { enabled: false }
+    }
+  ])(
+    'uses shared defaults when toggling search features: $flags',
+    async ({ flags, rerank, queryExtension }) => {
+      const configDir = await makeConfigDir();
+      let calls = 0;
+      const res = await execCli({
+        argv: [
+          'dataset',
+          'search',
+          OBJECT_ID_DATASET,
+          'query',
+          ...flags,
+          '--token',
+          'test-session',
+          '--format',
+          'json'
+        ],
+        configDir,
+        fetchFn: async (input, init) => {
+          calls++;
+          const body =
+            input instanceof Request ? await input.clone().json() : JSON.parse(String(init?.body));
+          expect(body.rerank).toEqual(rerank);
+          expect(body.queryExtension).toEqual(queryExtension);
+          return jsonResp({
+            list: [],
+            meta: { durationMs: 0, usingReRank: false, usingSimilarityFilter: true }
+          });
+        }
+      });
+      expect(res.exitCode).toBe(0);
+      expect(calls).toBe(1);
+    }
+  );
+
+  it.each(
+    [
+      ['--tagsAnd', '{'],
+      ['--tagsOr', '{}'],
+      ['--tagsAnd', '[]'],
+      ['--tagsOr', '[{"tag":"x","op":"$where","value":"unsafe"}]'],
+      ['--collectionIds', 'invalid-id'],
+      ['--createTimeGte', 'not-a-date'],
+      ['--createTimeGte', '2026-12-01T00:00:00Z', '--createTimeLte', '2026-01-01T00:00:00Z'],
+      ['--embeddingWeight', '1.1'],
+      ['--usageScene', 'unknown'],
+      ['--rerank', '--rerankCandidateNum', '9'],
+      ['--rerank', '--rerankWeight', '-0.1'],
+      ['--rerank', '--rerankModelId', ' '],
+      ['--rerankModelId', 'model'],
+      ['--no-rerank', '--rerankWeight', '0.5'],
+      ['--queryExtensionModelId', 'model'],
+      ['--no-queryExtension', '--queryExtensionBackground', 'background'],
+      ['--queryExtension', '--queryExtensionModelId', ' '],
+      ['--imageKeys', 'temp/team/image.png'],
+      ['--limit', '5000']
+    ].map((flags) => ({ flags }))
+  )('rejects invalid search options before HTTP: $flags', async ({ flags }) => {
+    const configDir = await makeConfigDir();
+    let calls = 0;
+    const res = await execCli({
+      argv: [
+        'dataset',
+        'search',
+        OBJECT_ID_DATASET,
+        'query',
+        ...flags,
+        '--token',
+        'test-session',
+        '--format',
+        'json'
+      ],
+      configDir,
+      fetchFn: async () => {
+        calls++;
+        return jsonResp({});
+      }
+    });
+    expect(res.exitCode).toBe(2);
+    expect(calls).toBe(0);
+    expect(JSON.parse(res.stderr).error.code).toBe('CLI_ARGUMENT_INVALID');
+  });
+
+  it.each([false, true])(
+    'searches multiple datasets in one call, using --id: %s',
+    async (viaFlag) => {
+      const configDir = await makeConfigDir();
+      const ids = `${OBJECT_ID_DATASET}, 68ad85a7463006c963799a05`;
+      let calls = 0;
+      const res = await execCli({
+        argv: [
+          'dataset',
+          'search',
+          ...(viaFlag ? ['--id', ids, '--text', 'query'] : [ids, 'query']),
+          '--token',
+          'test-session',
+          '--format',
+          'json'
+        ],
+        configDir,
+        fetchFn: async (input, init) => {
+          calls++;
+          const url = input instanceof Request ? input.url : String(input);
+          expect(url.endsWith('/core/dataset/search')).toBe(true);
+          const body =
+            input instanceof Request ? await input.clone().json() : JSON.parse(String(init?.body));
+          expect(body.scope.datasetIds).toEqual([OBJECT_ID_DATASET, '68ad85a7463006c963799a05']);
+          expect(body.result).toEqual({ topk: 20, similarity: 0 });
+          return jsonResp({
+            list: [],
+            meta: { durationMs: 0, usingReRank: false, usingSimilarityFilter: true }
+          });
+        }
+      });
+      expect(res.exitCode).toBe(0);
+      expect(calls).toBe(1);
+    }
+  );
+
+  it.each([
+    { flags: ['--topk', '5'], budget: { topk: 5 } },
+    { flags: ['--maxTokens', '25000'], budget: { maxTokens: 25000 } },
+    { flags: ['--topk', '5', '--maxTokens', '0'], budget: { topk: 5 } }
+  ])('passes the explicit search budget to the API: $flags', async ({ flags, budget }) => {
+    const configDir = await makeConfigDir();
+    let calls = 0;
+    const res = await execCli({
+      argv: [
+        'dataset',
+        'search',
+        OBJECT_ID_DATASET,
+        'query',
+        ...flags,
+        '--token',
+        'test-session',
+        '--format',
+        'json'
+      ],
+      configDir,
+      fetchFn: async (input, init) => {
+        calls++;
+        const url = input instanceof Request ? input.url : String(input);
+        expect(url.endsWith('/core/dataset/search')).toBe(true);
+        const body =
+          input instanceof Request ? await input.clone().json() : JSON.parse(String(init?.body));
+        expect(body.result).toEqual({ ...budget, similarity: 0 });
+        expect(body.retrieval.mode).toBe('embedding');
+        return jsonResp({
+          list: [],
+          meta: { durationMs: 0, usingReRank: false, usingSimilarityFilter: true }
+        });
+      }
+    });
+    expect(res.exitCode).toBe(0);
+    expect(calls).toBe(1);
+  });
+
   it('manages dataset lifecycle via System OpenAPI: list, get, create, search, and delete with safety guards', async () => {
     const configDir = await makeConfigDir();
 
@@ -134,7 +385,10 @@ describe('Dataset CLI Commands integration (cli/src/cli/commands/dataset.ts)', (
         return jsonResp({});
       }
 
-      if (url.includes('/core/dataset/search') && method === 'POST') {
+      if (url.endsWith('/core/dataset/search') && method === 'POST') {
+        const body =
+          input instanceof Request ? await input.clone().json() : JSON.parse(String(init?.body));
+        expect(body.scope.datasetIds).toEqual([OBJECT_ID_DATASET]);
         return jsonResp({
           list: [
             {
@@ -145,11 +399,7 @@ describe('Dataset CLI Commands integration (cli/src/cli/commands/dataset.ts)', (
               sourceName: 'cli-manual.md'
             }
           ],
-          meta: {
-            durationMs: 345,
-            usingSimilarityFilter: true,
-            usingReRank: true
-          }
+          meta: { durationMs: 345, usingReRank: false, usingSimilarityFilter: true }
         });
       }
 
@@ -208,6 +458,7 @@ describe('Dataset CLI Commands integration (cli/src/cli/commands/dataset.ts)', (
     const searchJson = JSON.parse(searchRes.stdout);
     expect(searchJson.ok).toBe(true);
     expect(searchJson.data.list[0].q).toBe('What is FastGPT CLI?');
+    expect(searchJson.data.meta.durationMs).toBe(345);
 
     // 4b. dataset get & search via alternative --id / --dataset-ids flags
     const getByIdRes = await execCli({
@@ -674,8 +925,7 @@ describe('Dataset CLI Commands integration (cli/src/cli/commands/dataset.ts)', (
     expect(capturedSearchBody.result).toEqual({ topk: 10, similarity: 0.5 });
     expect(capturedSearchBody.result.maxTokens).toBeUndefined();
 
-    // - explicit dual CLI flags --topk and --max-tokens must be rejected with exit code 2
-    let dualFlagsHttpCalled = false;
+    // - explicit dual CLI flags --topk and --max-tokens follow OpenAPI topk-first normalization
     const dualFlagsRes = await execCli({
       argv: [
         'dataset',
@@ -690,13 +940,11 @@ describe('Dataset CLI Commands integration (cli/src/cli/commands/dataset.ts)', (
         'json'
       ],
       configDir,
-      fetchFn: async () => {
-        dualFlagsHttpCalled = true;
-        return jsonResp({});
-      }
+      fetchFn: searchCaptureFetch
     });
-    expect(dualFlagsRes.exitCode).toBe(2);
-    expect(dualFlagsHttpCalled).toBe(false);
+    expect(dualFlagsRes.exitCode).toBe(0);
+    expect(capturedSearchBody.result).toEqual({ topk: 10, similarity: 0 });
+    expect(capturedSearchBody.result.maxTokens).toBeUndefined();
 
     // - invalid similarity type ("0.9"), invalid rerank.enabled ("true"), and unknown fields must fail schema validation (exit code 2)
     for (const badPayload of [

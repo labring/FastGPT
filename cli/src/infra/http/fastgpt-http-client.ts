@@ -120,6 +120,16 @@ function mapServerError({
   const safeMessage = redactText(message);
   const safeUrl = redactText(url);
 
+  // 会话身份/权限拒绝是业务码 504000，HTTP 可能是 500；不能误导用户重试生成或重新登录。
+  if (statusText === 'unAuthChat' || serverCode === 504000) {
+    return new CliAuthError({
+      code: 'AUTH_FORBIDDEN',
+      message: safeMessage,
+      hint: 'Check App access and keep customUid or authProxy consistent with the original conversation.',
+      details: { httpStatus, serverCode, statusText, url: safeUrl }
+    });
+  }
+
   if (/API Key is expired/i.test(safeMessage)) {
     return new CliAuthError({
       code: 'AUTH_EXPIRED',

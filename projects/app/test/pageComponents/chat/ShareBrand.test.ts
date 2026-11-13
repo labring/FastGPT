@@ -153,9 +153,9 @@ describe('ShareBrand visible analytics', () => {
     await hostMessage('null', { handshake: true });
     expect(mocks.track).not.toHaveBeenCalled();
   });
-  it('records clicks only on the brand link, and uses the chat origin', async () => {
+  it('records clicks only on the brand link', async () => {
     await render();
-    expect(container.querySelector('a')?.href).toBe('https://chat.example.com/');
+    expect(container.querySelector('a')?.href).toBe('https://fastgpt.io/');
     await act(async () =>
       container
         .querySelector('a')!
@@ -171,17 +171,22 @@ describe('ShareBrand visible analytics', () => {
     expect(mocks.dismiss).toHaveBeenCalledOnce();
     expect(mocks.track).not.toHaveBeenCalled();
   });
-  it.each(['', '/fastgpt', '/tools/fastgpt'])(
-    'uses the application home path for both layouts with base path "%s"',
-    async (basePath) => {
-      const homePath = `${basePath}/`;
-      mocks.getWebReqUrl.mockReturnValue(homePath);
+  it.each([
+    { hostname: 'fastgpt.cn', expected: 'https://fastgpt.cn' },
+    { hostname: 'cloud.fastgpt.cn', expected: 'https://fastgpt.cn' },
+    { hostname: 'fastgpt.cn.example.com', expected: 'https://fastgpt.cn' },
+    { hostname: 'fastgpt.io', expected: 'https://fastgpt.io' },
+    { hostname: 'chat.example.com', expected: 'https://fastgpt.io' },
+    { hostname: 'localhost', expected: 'https://fastgpt.io' }
+  ])(
+    'links both layouts to $expected on $hostname regardless of application base path',
+    async ({ hostname, expected }) => {
+      dom.reconfigure({ url: `https://${hostname}:8443/fastgpt/chat/share?source=fastgpt.cn` });
+      mocks.getWebReqUrl.mockImplementation((url: string) => `/fastgpt${url}`);
       for (const narrow of [false, true]) {
         await render(narrow);
         const link = container.querySelector('a')!;
-        expect(mocks.getWebReqUrl).toHaveBeenCalledWith('/');
-        expect(link.getAttribute('href')).toBe(homePath);
-        expect(link.href).toBe(`https://chat.example.com${homePath}`);
+        expect(link.getAttribute('href')).toBe(expected);
         expect(link.target).toBe('_blank');
         expect(link.rel).toBe('noopener noreferrer');
       }

@@ -4,10 +4,12 @@ description: 配置服务地址、成员密钥和应用 ID，调用已发布应�
 ---
 
 {/* Preserve incoming bookmarks for reorganized sections. */}
+
 <span id="api-文档地址" />
 <span id="下一步" />
 
 {/* Preserve incoming bookmarks for reorganized sections. */}
+
 <span id="云服务-api-文档地址" />
 <span id="使用说明" />
 <span id="如何获取-api-key" />
@@ -19,15 +21,19 @@ description: 配置服务地址、成员密钥和应用 ID，调用已发布应�
 
 ## 前置准备
 
+当前接口契约及在线文档入口见 [API 文档地址](/zh-CN/openapi/api-reference)。
+
 准备一个已调试并发布的应用及可用模型额度，并在以下位置创建或管理 API 密钥：
 
 1. **账号 → API 密钥**：管理当前成员的个人密钥（仅对具备“创建 API 密钥”权限的成员显示；可在**账号 → 团队管理 → 权限**中勾选**创建 API 密钥**开启）。
 2. **工作台 → 目标应用 → 发布渠道 → API 访问**：切换管理 **应用 Key**（FastGPT 4.18.0 及以上）与 **个人密钥**。
 
-| 类型 | 授权范围 | 管理方式 |
-| --- | --- | --- |
+历史上保存了 `appId` 的 Key 仍属于个人密钥，原 `appId` 仅作为 `chat/completions` 的默认应用；请求体或 SDK 后缀可覆盖该默认值，访问权限仍由归属成员决定。只有显式新建的应用 Key 才具有下表中的应用绑定边界。
+
+| 类型     | 授权范围                                                               | 管理方式                                             |
+| -------- | ---------------------------------------------------------------------- | ---------------------------------------------------- |
 | 应用 Key | 绑定单个应用的对话与对话管理接口（含对话日志、对话文件与沙盒文件接口） | 应用管理员可查看、创建和管理同一应用下的全部应用 Key |
-| 个人密钥 | 以成员身份访问当前团队中有权限且开放 API Key 鉴权的资源 | 创建成员管理本人的密钥 |
+| 个人密钥 | 以成员身份访问当前团队中有权限且开放 API Key 鉴权的资源                | 创建成员管理本人的密钥                               |
 
 应用 Key 的调用授权来自 Key 本身：只要 Key、归属成员、团队和绑定应用有效，归属成员权限变更后仍可继续调用。个人密钥支持由团队所有者开启 `authProxy` 代理团队成员身份（FastGPT >= v4.15.0，见[身份代理](/zh-CN/openapi/identity-proxy)）；应用 Key 通过 `customUid` 标记外部使用者。当团队开通套餐用量计划后，可在创建或编辑密钥时设置**积分上限**与**过期时间**。请将密钥保存在可信服务端或密钥管理系统。
 
@@ -51,12 +57,12 @@ EOF
 
 成功时返回 JSON，普通文本回复位于 `choices[0].message.content`，`id` 标识会话。具体内容由应用的发布配置决定；多模态或详细结果按当前生成契约解析。检查响应中的 `error` 及业务结果，计费信息以用量记录为准。
 
-| 现象 | 检查 |
-| --- | --- |
-| 认证或权限错误 | 密钥、所属团队、成员状态及目标资源权限 |
-| 应用标识错误 | `appId` 是否复制完整且属于当前可访问资源 |
-| 404 | 地址是否为 FastGPT 实例，路径是否为 `/api/v2/chat/completions` |
-| 模型或额度错误 | 应用模型配置、服务状态及可用额度 |
+| 现象           | 检查                                                           |
+| -------------- | -------------------------------------------------------------- |
+| 认证或权限错误 | 密钥、所属团队、成员状态及目标资源权限                         |
+| 应用标识错误   | `appId` 是否复制完整且属于当前可访问资源                       |
+| 404            | 地址是否为 FastGPT 实例，路径是否为 `/api/v2/chat/completions` |
+| 模型或额度错误 | 应用模型配置、服务状态及可用额度                               |
 
 ## 应用选择与 SDK
 
@@ -64,6 +70,7 @@ EOF
 
 <Tabs items={['Python SDK', 'Node.js SDK']}>
   <Tab value="Python SDK">
+
 ```python
 import os
 from openai import OpenAI
@@ -85,6 +92,7 @@ print(response.choices[0].message.content)
 
   </Tab>
   <Tab value="Node.js SDK">
+
 ```typescript
 import OpenAI from 'openai';
 
@@ -112,7 +120,7 @@ main().catch(console.error);
   </Tab>
 </Tabs>
 
-使用应用 Key 时，所有支持应用 Key 的对话与对话管理接口均可省略 `appId` 与 `sourceType`（服务端固定使用绑定应用与 `sourceType=app`，在在线接口文档中可选择“应用 API Key（无需 appId）”查看对应入参）。使用个人密钥且第三方客户端只支持配置单个 API Key 时，可使用 `<apiKey>-<appId>` 组合格式，解析优先级为：请求体 `body.appId` → Authorization 请求头后缀 → 密钥历史绑定的单一应用。
+使用应用 Key 时，所有支持应用 Key 的对话与对话管理接口均可省略 `appId` 与 `sourceType`（服务端固定使用绑定应用与 `sourceType=app`，在在线接口文档中可选择“应用 API Key（无需 appId）”查看对应入参）。使用个人密钥且第三方客户端只支持配置单个 API Key 时，可使用 `<apiKey>-<appId>` 组合格式，解析优先级为：请求体 `body.appId` → Authorization 请求头后缀 → 历史个人密钥保存的默认应用。
 
 ### 使用应用 Key 获取会话列表
 
@@ -134,14 +142,8 @@ EOF
 - `pageSize` 默认 `20`，最大 `500`（超出上限按 `500` 处理）；省略分页参数时返回第一页。
 - 可选传入 `startCreateTime`、`endCreateTime`、`startUpdateTime`、`endUpdateTime` 筛选时间范围。
 
-## API 文档地址
-
-自 4.15.0 的文档体系迁移后，当前端点参考通过生成文档维护。System OpenAPI 覆盖明确开放给 API Key 的契约；Dev API 面向内部开发接口，各自的鉴权条件以操作声明为准。
-
-- 自部署：`<instance>/apidoc/systemopenapi`、`<instance>/apidoc/devapi`。
-- 中国大陆云：[System OpenAPI](https://cloud.fastgpt.cn/apidoc/systemopenapi)、[Dev API](https://cloud.fastgpt.cn/apidoc/devapi)。
-- 国际云：[System OpenAPI](https://cloud.fastgpt.io/apidoc/systemopenapi)、[Dev API](https://cloud.fastgpt.io/apidoc/devapi)。
-
 ## 下一步
 
-[应用集成](/zh-CN/openapi/app)、[会话与流式响应](/zh-CN/openapi/chat)、[知识库集成](/zh-CN/openapi/dataset)、[身份代理](/zh-CN/openapi/identity-proxy)。历史手写参数保存在[归档](/zh-CN/openapi/legacy)。
+[业务系统集成应用](/zh-CN/openapi/best-practices/app-integration)：通过应用 Key 和 OpenAI SDK 接入自己的系统，对接 `customUid` 并管理聊天记录。
+
+[知识库集成](/zh-CN/openapi/dataset)、[身份代理](/zh-CN/openapi/identity-proxy)。历史手写参数保存在[归档](/zh-CN/openapi/legacy)。

@@ -9,6 +9,7 @@ import type {
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import type { ZodType } from 'zod';
 import { initializeDatasetVectorIndexes } from './tasks/4180/20261022_initialize_dataset_vector_indexes';
+import { backfillSTTPricingType } from './tasks/4180/20261112_backfill_stt_pricing_type';
 
 export type SystemMigrationLogger = {
   info: (message: string, metadata?: Record<string, unknown>) => void;
@@ -163,6 +164,28 @@ export const systemMigrations = [
       }
     ],
     run: backfillOpenApiKeyType
+  },
+  {
+    id: '20261112_backfill_stt_pricing_type',
+    version: '4.18.0',
+    // 价格类型在后台回填，升级期间不为 STT 计费准确性阻塞业务启动。
+    blockStartup: false,
+    nameKey: i18nT('system_migration:migrations.20261112_backfill_stt_pricing_type.name'),
+    descriptionKey: i18nT(
+      'system_migration:migrations.20261112_backfill_stt_pricing_type.description'
+    ),
+    resultKey: i18nT('system_migration:migrations.20261112_backfill_stt_pricing_type.result'),
+    progressSteps: [
+      {
+        key: 'models',
+        labelKey: i18nT('system_migration:migrations.20261112_backfill_stt_pricing_type.models')
+      },
+      {
+        key: 'validation',
+        labelKey: i18nT('system_migration:migrations.20261112_backfill_stt_pricing_type.validation')
+      }
+    ],
+    run: backfillSTTPricingType
   }
 ] as const satisfies readonly SystemMigration[];
 

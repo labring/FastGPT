@@ -44,7 +44,8 @@ export const ChatRecordPath: OpenAPIPath = {
   '/core/chat/record/getRecords_v2': {
     post: {
       summary: '根据锚点获取对话',
-      description: '根据锚点获取指定会话的对话，支持多种鉴权模式',
+      description:
+        '默认读取最新消息，按时间正序返回。prevId、nextId、initialId 三选一，也可均不传；角色由方向确定，prevId 定位 Human，nextId 和 initialId 定位 AI。将 prevCursor/nextCursor 直接传入 prevId/nextId；无对应方向的下一页时为 null。为补齐轮次边界，返回条数可能略超 pageSize。支持多种鉴权模式。',
       tags: [DevApiTagsMap.chatRecord, SystemOpenApiTagMap.chat],
       requestBody: {
         content: {

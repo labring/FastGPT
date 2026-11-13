@@ -25,6 +25,7 @@ import {
 } from '../domain/dataset/collection-service';
 import { createDatasetDataService, type DatasetDataService } from '../domain/dataset/data-service';
 import { createDatasetService, type DatasetService } from '../domain/dataset/dataset-service';
+import { createChatService, type ChatService } from '../domain/chat/chat-service';
 import { createProfileService, type ProfileService } from '../domain/profile/profile-service';
 import {
   createFileConfigRepository,
@@ -33,6 +34,7 @@ import {
 } from '../infra/config/config-repository';
 import { createNodeFileIoAdapter, type FileIoAdapter } from '../infra/fs/file-io';
 import { createFastGptHttpClient } from '../infra/http/fastgpt-http-client';
+import { readJsonInput } from '../infra/input/json-input';
 import { createDefaultSecretStore, type SecretStore } from '../infra/secrets/secret-store';
 import { createTempFileCaptchaPreviewer } from '../infra/ui/captcha-preview';
 import { openExternalFile } from '../infra/ui/external-opener';
@@ -71,6 +73,8 @@ export type CliContainer = {
   readonly datasetService: DatasetService;
   readonly datasetCollectionService: DatasetCollectionService;
   readonly datasetDataService: DatasetDataService;
+  readonly chatService: ChatService;
+  readonly readJsonInput: (params: { file?: string; stdin?: boolean }) => Promise<unknown>;
   readonly stdout: (value: string) => void;
   readonly stderr: (value: string) => void;
 };
@@ -185,6 +189,9 @@ export function createCliContainer(deps: CliRuntimeDeps): CliContainer {
     datasetService,
     datasetCollectionService,
     datasetDataService,
+    chatService: createChatService(),
+    readJsonInput: (params) =>
+      readJsonInput({ ...params, cwd: deps.cwd, readStdin: deps.readStdin }),
     stdout: deps.stdout,
     stderr: deps.stderr
   };

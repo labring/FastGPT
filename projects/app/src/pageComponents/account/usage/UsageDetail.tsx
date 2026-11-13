@@ -41,7 +41,7 @@ const UsageDetail = ({ usage, onClose }: { usage: UsageListItemType; onClose: ()
         hasModel = true;
       }
 
-      if (typeof item.tokens === 'number') {
+      if (typeof item.totalTokens === 'number' || typeof item.tokens === 'number') {
         hasToken = true;
       }
       if (typeof item.inputTokens === 'number') {
@@ -127,7 +127,7 @@ const UsageDetail = ({ usage, onClose }: { usage: UsageListItemType; onClose: ()
                 <Tr key={i}>
                   <Td>{t(item.moduleName as any)}</Td>
                   {hasModel && <Td>{item.model ?? '-'}</Td>}
-                  {hasToken && <Td>{item.tokens ?? '-'}</Td>}
+                  {hasToken && <Td>{item.totalTokens ?? item.tokens ?? '-'}</Td>}
                   {hasInputToken && <Td>{item.inputTokens ?? '-'}</Td>}
                   {hasOutputToken && <Td>{item.outputTokens ?? '-'}</Td>}
                   {hasCount && <Td>{item.count ?? '-'}</Td>}

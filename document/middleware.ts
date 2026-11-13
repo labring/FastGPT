@@ -216,6 +216,9 @@ const exactMap: Record<string, string> = {
   '/guide': defaultHomePath,
   '/use-cases': defaultHomePath,
   '/openapi': '/openapi/intro',
+  // 应用调用与会话教程改由最佳实践承接，保留旧书签的直达入口。
+  '/openapi/app': '/openapi/best-practices/app-integration',
+  '/openapi/chat': '/openapi/best-practices/app-integration',
   '/openapi/best-practices': '/openapi/intro',
   '/openapi/swagger': '/openapi/intro',
   '/openapi/share': '/guide/build/publish/link',
@@ -415,7 +418,7 @@ function createGoneResponse(lang: string): NextResponse {
 export default function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // 公开静态技能规范（/cli/skills/... 等）直接放行，不参与文档路由重写与语言前缀重定向
+  // 公开静态技能规范（/cli/skill.md、/cli/skills/... 等）直接放行，不参与文档路由重写与语言前缀重定向
   if (pathname.startsWith('/cli/')) {
     return NextResponse.next();
   }

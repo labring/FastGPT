@@ -137,8 +137,7 @@
   "model.upcoming_deprecation": "即将下架",
   "model.censor": "启用敏感校验",
   "model.censor_tip": "如果需要进行敏感校验，则开启该开关",
-  "model.unitPrice": "模型综合价格",
-  "model.unitPrice_tip": "Token 模型按 M Tokens、TTS 按 1M 字符、STT 按 60 秒计价。",
+  "model.unitPrice": "模型价格（积分）",
   "model.defaultConfig": "额外 Body 参数",
   "model.defaultConfig_tip": "每次请求时候，都会携带该额外 Body 参数",
   "model.default_config": "Body 额外字段",
@@ -349,5 +348,8 @@
   "model_deprecation.error_plan_changed": "通知计划状态已变化，请刷新后重试",
   "model_deprecation.error_recover_requires_incomplete": "只有失败或中断轮次可以恢复",
   "model_deprecation.error_plan_not_found": "通知计划不存在",
-  "model_deprecation.error_no_terminable_runs": "通知计划当前没有可终止的轮次"
+  "model_deprecation.error_no_terminable_runs": "通知计划当前没有可终止的轮次",
+  "model.stt_billing_type": "计费类型",
+  "model.stt_billing_duration": "按时长",
+  "model.stt_billing_tokens": "按 Tokens"
 }

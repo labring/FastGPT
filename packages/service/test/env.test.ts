@@ -192,20 +192,14 @@ describe('serviceEnv', () => {
     });
   });
 
-  it('enables MongoDB index synchronization by default and supports disabling it', async () => {
+  it.each([undefined, 'false', 'invalid'])('ignores retired SYNC_INDEX=%s', async (value) => {
     vi.stubEnv('FILE_TOKEN_KEY', 'filetokenkey');
     vi.stubEnv('AES256_SECRET_KEY', 'fastgptsecret');
     vi.stubEnv('INVOKE_TOKEN_SECRET', validInvokeTokenSecret);
 
-    vi.stubEnv('SYNC_INDEX', undefined);
-    await expect(importServiceEnv()).resolves.toMatchObject({
-      serviceEnv: { SYNC_INDEX: true }
-    });
-
-    vi.stubEnv('SYNC_INDEX', 'false');
-    await expect(importServiceEnv()).resolves.toMatchObject({
-      serviceEnv: { SYNC_INDEX: false }
-    });
+    vi.stubEnv('SYNC_INDEX', value);
+    const { serviceEnv } = await importServiceEnv();
+    expect('SYNC_INDEX' in serviceEnv).toBe(false);
   });
 
   it('validates the persisted file URL expiration in days', async () => {

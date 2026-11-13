@@ -39,7 +39,21 @@ export type DatasetCreateParams = Pick<CreateDatasetBody, 'name'> &
     type?: string;
   };
 
-export type DatasetSearchParams = SearchDatasetBody;
+export type DatasetFlatSearchParams = {
+  datasetIds: string | string[];
+  text: string;
+  topk?: NonNullable<SearchDatasetBody['result']>['topk'];
+  maxTokens?: NonNullable<SearchDatasetBody['result']>['maxTokens'];
+  similarity?: NonNullable<SearchDatasetBody['result']>['similarity'];
+  mode?: NonNullable<SearchDatasetBody['retrieval']>['mode'];
+  embeddingWeight?: NonNullable<SearchDatasetBody['retrieval']>['embeddingWeight'];
+  filter?: SearchDatasetBody['scope']['filter'];
+  rerank?: SearchDatasetBody['rerank'];
+  queryExtension?: SearchDatasetBody['queryExtension'];
+  usageScene?: SearchDatasetBody['usageScene'];
+};
+
+export type DatasetSearchParams = SearchDatasetBody | DatasetFlatSearchParams;
 
 export type DatasetService = {
   list: (params: {
@@ -200,7 +214,37 @@ export function createDatasetService(): DatasetService {
     },
 
     search: async ({ client, input }) => {
-      const validatedBody = SearchDatasetRequestBodySchema.parse(input);
+      // 兼容结构化 SearchDatasetBody（来自 --file/--stdin）与扁平化 DatasetFlatSearchParams
+      const payload = (() => {
+        if ('scope' in input) {
+          return input;
+        }
+        // 单个 ID、逗号分隔输入和 ID 数组统一适配；空项保留给共享 Schema 拒绝，避免静默缩小范围。
+        const datasetIds = (
+          Array.isArray(input.datasetIds) ? input.datasetIds : input.datasetIds.split(',')
+        ).map((id) => trimIfString(id));
+
+        return {
+          scope: { datasetIds, ...(input.filter !== undefined ? { filter: input.filter } : {}) },
+          query: { text: trimIfString(input.text) },
+          retrieval: {
+            ...(input.mode !== undefined ? { mode: input.mode } : {}),
+            ...(input.embeddingWeight !== undefined
+              ? { embeddingWeight: input.embeddingWeight }
+              : {})
+          },
+          ...(input.rerank !== undefined ? { rerank: input.rerank } : {}),
+          ...(input.queryExtension !== undefined ? { queryExtension: input.queryExtension } : {}),
+          ...(input.usageScene !== undefined ? { usageScene: input.usageScene } : {}),
+          result: {
+            ...(input.topk !== undefined ? { topk: input.topk } : {}),
+            ...(input.maxTokens !== undefined ? { maxTokens: input.maxTokens } : {}),
+            ...(input.similarity !== undefined ? { similarity: input.similarity } : {})
+          }
+        };
+      })();
+
+      const validatedBody = SearchDatasetRequestBodySchema.parse(payload);
 
       const res = await client.request<SearchDatasetResponse>({
         method: 'POST',
@@ -210,7 +254,7 @@ export function createDatasetService(): DatasetService {
 
       return createSuccessResult({
         data: res,
-        message: `Retrieved ${res.list.length} chunks (${res.meta.durationMs}ms)`
+        message: `Retrieved ${res.list.length} chunks (${res.meta.durationMs}ms) using mode "${validatedBody.retrieval.mode}"`
       });
     },
 
