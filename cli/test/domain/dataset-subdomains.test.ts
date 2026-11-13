@@ -1,55 +1,45 @@
-import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { describe, expect, it, vi } from 'vitest';
 import { createDatasetCollectionService } from '../../src/domain/dataset/collection-service';
 import { createDatasetDataService } from '../../src/domain/dataset/data-service';
-import { createDatasetTagSynonymService } from '../../src/domain/dataset/tag-synonym-service';
-import { createDatasetTrainingService } from '../../src/domain/dataset/training-service';
 import type { FastGptHttpClient } from '../../src/infra/http/fastgpt-http-client';
-import { CliApiError } from '../../src/shared/errors';
 
 const VALID_DATASET_ID = '68ad85a7463006c963799a05';
 const VALID_COLLECTION_ID = '68ad85a7463006c963799a06';
 const VALID_DATA_ID = '68ad85a7463006c963799a07';
-const VALID_TAG_ID = '68ad85a7463006c963799a08';
-const VALID_SYNONYM_ID = '68ad85a7463006c963799a09';
 
 function createMockHttpClient(overrides?: {
   request?: (params: any) => Promise<any>;
-  requestRaw?: (params: any) => Promise<any>;
   uploadMultipart?: (params: any) => Promise<any>;
 }): FastGptHttpClient {
   return {
     baseUrl: 'https://cloud.fastgpt.cn/api',
     request: vi.fn(overrides?.request ?? (async () => ({}))),
-    requestRaw: vi.fn(
-      overrides?.requestRaw ??
-        (async () => ({
-          status: 200,
-          headers: new Headers(),
-          text: async () => '',
-          arrayBuffer: async () => new TextEncoder().encode('q,a\nfoo,bar').buffer
-        }))
-    ),
+    requestRaw: vi.fn(),
     uploadMultipart: vi.fn(overrides?.uploadMultipart ?? (async () => ({}))),
     streamSse: vi.fn()
   };
 }
 
-describe('Dataset Subdomain Services (Collection, Data, Training, Tag & Synonym)', () => {
+describe('Dataset Subdomain Services (Collection & Data OpenAPI)', () => {
   const collectionService = createDatasetCollectionService();
   const dataService = createDatasetDataService();
-  const trainingService = createDatasetTrainingService();
-  const tagSynonymService = createDatasetTagSynonymService();
 
-  it('DatasetCollectionService handles list, createText, createLink, localFile multipart, presign S3 PUT (no auth header leak), export, sync, retrain, delete', async () => {
+  it('DatasetCollectionService handles list, getDetail, create, createText, createLink, localFile multipart, update, and delete', async () => {
     let uploadedFormData: FormData | undefined;
-    let presignedPutHeaders: Record<string, string> | undefined;
 
     const client = createMockHttpClient({
       request: async ({ method, path, body }) => {
         if (path === '/core/dataset/collection/listV2') {
           expect(method).toBe('POST');
           return { total: 1, list: [{ _id: VALID_COLLECTION_ID, name: 'doc.md' }] };
+        }
+        if (path === '/core/dataset/collection/detail') {
+          expect(method).toBe('GET');
+          return { _id: VALID_COLLECTION_ID, name: 'doc.md' };
+        }
+        if (path === '/core/dataset/collection/create') {
+          expect(body.name).toBe('Manual');
+          return VALID_COLLECTION_ID;
         }
         if (path === '/core/dataset/collection/create/text') {
           expect(body.name).toBe('Notes');
@@ -59,24 +49,9 @@ describe('Dataset Subdomain Services (Collection, Data, Training, Tag & Synonym)
           expect(body.link).toBe('https://doc.fastgpt.cn');
           return { collectionId: VALID_COLLECTION_ID, results: { insertLen: 5 } };
         }
-        if (path === '/core/dataset/file/presignDatasetFilePostUrl') {
-          return {
-            uploadMode: 'single',
-            url: 'https://s3.example.com/bucket/doc.pdf?sig=xyz',
-            key: 'dataset/team/doc.pdf',
-            headers: { 'x-amz-acl': 'private' },
-            previewUrl: 'https://s3.example.com/preview'
-          };
-        }
-        if (path === '/core/dataset/collection/create/fileId') {
-          expect(body.fileId).toBe('dataset/team/doc.pdf');
-          return { collectionId: VALID_COLLECTION_ID, results: { insertLen: 2 } };
-        }
-        if (path === '/core/dataset/collection/sync') {
-          return 'success';
-        }
-        if (path === '/core/dataset/collection/create/reTrainingCollection') {
-          return { collectionId: VALID_COLLECTION_ID };
+        if (path === '/core/dataset/collection/update') {
+          expect(body.name).toBe('Renamed');
+          return {};
         }
         return {};
       },
@@ -92,6 +67,18 @@ describe('Dataset Subdomain Services (Collection, Data, Training, Tag & Synonym)
       input: { datasetId: VALID_DATASET_ID, page: 1, pageSize: 10 }
     });
     expect(listRes.meta).toMatchObject({ total: 1, page: 1, pageSize: 10, hasMore: false });
+
+    const detailRes = await collectionService.getDetail({
+      client,
+      collectionId: VALID_COLLECTION_ID
+    });
+    expect(detailRes.data?._id).toBe(VALID_COLLECTION_ID);
+
+    const createRes = await collectionService.create({
+      client,
+      input: { datasetId: VALID_DATASET_ID, name: 'Manual', type: 'virtual' as any }
+    });
+    expect(createRes.changed).toBe(true);
 
     const textRes = await collectionService.createText({
       client,
@@ -127,34 +114,11 @@ describe('Dataset Subdomain Services (Collection, Data, Training, Tag & Synonym)
     expect(localRes.changed).toBe(true);
     expect(uploadedFormData?.get('data')).toContain(VALID_DATASET_ID);
 
-    // S3 presign PUT must NOT leak FastGPT token or Authorization headers
-    const presignRes = await collectionService.createByPresignedFile({
+    const updateRes = await collectionService.update({
       client,
-      fetchFn: async (_url, init) => {
-        presignedPutHeaders = init?.headers as Record<string, string>;
-        return new Response(null, { status: 200 });
-      },
-      file: { ...filePayload, filename: 'big.pdf', mimeType: 'application/pdf' },
-      input: { datasetId: VALID_DATASET_ID }
+      input: { id: VALID_COLLECTION_ID, name: 'Renamed' }
     });
-    expect(presignRes.changed).toBe(true);
-    expect(presignedPutHeaders?.token).toBeUndefined();
-    expect(presignedPutHeaders?.authorization).toBeUndefined();
-
-    const exportRes = await collectionService.exportData({
-      client,
-      collectionId: VALID_COLLECTION_ID
-    });
-    expect((exportRes.data as any).csv).toContain('foo,bar');
-
-    const syncRes = await collectionService.sync({ client, collectionId: VALID_COLLECTION_ID });
-    expect((syncRes.data as any).syncStatus).toBe('success');
-
-    const retrainRes = await collectionService.retrain({
-      client,
-      input: { collectionId: VALID_COLLECTION_ID, chunkSize: 512 }
-    });
-    expect(retrainRes.changed).toBe(true);
+    expect(updateRes.changed).toBe(true);
 
     const delDry = await collectionService.delete({
       client,
@@ -164,14 +128,14 @@ describe('Dataset Subdomain Services (Collection, Data, Training, Tag & Synonym)
     expect(delDry.data).toMatchObject({ dryRun: true, risk: 'destructive' });
   });
 
-  it('DatasetDataService handles list, insert, push, update, delete, and custom indexes', async () => {
+  it('DatasetDataService handles list, getDetail, push, update, and delete', async () => {
     const client = createMockHttpClient({
       request: async ({ path, method }) => {
         if (path === '/core/dataset/data/v2/list') {
           return { total: 1, list: [{ _id: VALID_DATA_ID, q: 'Q1', a: 'A1' }] };
         }
-        if (path === '/core/dataset/data/insertData') {
-          return { dataIds: [VALID_DATA_ID] };
+        if (path === '/core/dataset/data/detail') {
+          return { id: VALID_DATA_ID, q: 'Q1', a: 'A1' };
         }
         if (path === '/core/dataset/data/pushData') {
           return { insertLen: 2, dataIds: [VALID_DATA_ID] };
@@ -179,9 +143,6 @@ describe('Dataset Subdomain Services (Collection, Data, Training, Tag & Synonym)
         if (path === '/core/dataset/data/update') {
           expect(method).toBe('PUT');
           return { q: 'Q2', a: 'A2' };
-        }
-        if (path === '/core/dataset/data/index/create') {
-          return { index: { type: 'custom', text: 'alias', dataId: 'idx-1' } };
         }
         return {};
       }
@@ -193,11 +154,11 @@ describe('Dataset Subdomain Services (Collection, Data, Training, Tag & Synonym)
     });
     expect(listRes.meta?.total).toBe(1);
 
-    const insertRes = await dataService.insert({
+    const detailRes = await dataService.getDetail({
       client,
-      input: { collectionId: VALID_COLLECTION_ID, q: 'Q1', a: 'A1' }
+      dataId: VALID_DATA_ID
     });
-    expect(insertRes.changed).toBe(true);
+    expect((detailRes.data as any).id).toBe(VALID_DATA_ID);
 
     const pushRes = await dataService.push({
       client,
@@ -216,330 +177,5 @@ describe('Dataset Subdomain Services (Collection, Data, Training, Tag & Synonym)
 
     const delDry = await dataService.delete({ client, dataId: VALID_DATA_ID, dryRun: true });
     expect(delDry.data).toMatchObject({ dryRun: true, risk: 'destructive' });
-
-    const idxRes = await dataService.createIndex({
-      client,
-      input: { dataId: VALID_DATA_ID, type: DatasetDataIndexTypeEnum.custom, text: 'alias' }
-    });
-    expect(idxRes.changed).toBe(true);
-  });
-
-  it('DatasetTrainingService polls queue until drained and throws on training errors when failOnError=true', async () => {
-    let pollCount = 0;
-    let hasError = false;
-
-    const client = createMockHttpClient({
-      request: async ({ path }) => {
-        if (path === '/core/dataset/training/getDatasetTrainingQueue') {
-          pollCount += 1;
-          return { hasTrainingTask: pollCount < 2 };
-        }
-        if (path === '/core/dataset/training/hasDatasetTrainingError') {
-          return { hasError };
-        }
-        if (path === '/core/dataset/training/getDatasetTrainingError') {
-          return { total: 0, list: [] };
-        }
-        return {};
-      }
-    });
-
-    const progressLogs: string[] = [];
-    const waitOk = await trainingService.wait({
-      client,
-      datasetId: VALID_DATASET_ID,
-      intervalMs: 1,
-      sleepFn: async () => {},
-      onProgress: (msg) => progressLogs.push(msg)
-    });
-    expect((waitOk.data as any).completed).toBe(true);
-    expect((waitOk.data as any).polls).toBe(2);
-    expect(progressLogs).toHaveLength(2);
-
-    pollCount = 0;
-    hasError = true;
-    await expect(
-      trainingService.wait({
-        client,
-        datasetId: VALID_DATASET_ID,
-        intervalMs: 1,
-        sleepFn: async () => {}
-      })
-    ).rejects.toBeInstanceOf(CliApiError);
-  });
-
-  it('DatasetTagSynonymService handles Pro tags and synonym upload/list/download/delete', async () => {
-    const client = createMockHttpClient({
-      request: async ({ path }) => {
-        if (path === '/proApi/core/dataset/tag/getAllTags') {
-          return [{ _id: VALID_TAG_ID, tag: 'PRD' }];
-        }
-        if (path === '/proApi/core/dataset/tag/create') {
-          return { _id: VALID_TAG_ID, tag: 'PRD' };
-        }
-        if (path === '/core/dataset/synonym/detail') {
-          return { rebuilding: false };
-        }
-        if (path === '/core/dataset/synonym/mappings') {
-          return { total: 1, list: [{ standard: 'AI', synonyms: ['人工智能'] }] };
-        }
-        if (path === '/core/dataset/synonym/upload') {
-          return {
-            synonymId: VALID_SYNONYM_ID,
-            fileName: 'synonyms.csv',
-            size: 20,
-            uploadTime: new Date().toISOString(),
-            fileVersion: 1,
-            affectedDataCount: 5
-          };
-        }
-        if (path === '/core/dataset/synonym/delete') {
-          return {
-            synonymId: VALID_SYNONYM_ID,
-            fileVersion: 2,
-            affectedDataCount: 5
-          };
-        }
-        return {};
-      }
-    });
-
-    const tags = await tagSynonymService.listTags({ client, datasetId: VALID_DATASET_ID });
-    expect(tags.data).toHaveLength(1);
-
-    const createTagDry = await tagSynonymService.createTag({
-      client,
-      input: { datasetId: VALID_DATASET_ID, tag: 'PRD' },
-      dryRun: true
-    });
-    expect(createTagDry.data).toMatchObject({ dryRun: true, risk: 'write' });
-
-    const mappings = await tagSynonymService.searchSynonymMappings({
-      client,
-      datasetId: VALID_DATASET_ID,
-      search: 'AI'
-    });
-    expect(mappings.data?.total).toBe(1);
-
-    const uploadRes = await tagSynonymService.uploadSynonymMappings({
-      client,
-      input: {
-        datasetId: VALID_DATASET_ID,
-        mappings: [{ standardizedTerm: 'AI', synonymTerms: ['人工智能'] }]
-      }
-    });
-    expect((uploadRes.data as any).fileVersion).toBe(1);
-
-    const dlRes = await tagSynonymService.downloadSynonym({
-      client,
-      synonymId: VALID_SYNONYM_ID
-    });
-    expect((dlRes.data as any).csv).toContain('foo,bar');
-
-    const delRes = await tagSynonymService.deleteSynonym({
-      client,
-      synonymId: VALID_SYNONYM_ID,
-      oldFileVersion: 1
-    });
-    expect(delRes.changed).toBe(true);
-  });
-
-  it('handles multipart presigned upload with bounded concurrency, subpath URL preservation, failure cancellation/abort, and wait active-vs-error distinction', async () => {
-    // 1. Subpath deployment URL & bounded concurrency + per-part retry
-    let part2Attempts = 0;
-    const requestedUrls: string[] = [];
-    let completedParts: Array<{ partNumber: number; etag: string }> = [];
-
-    const client: FastGptHttpClient = {
-      baseUrl: 'https://app.example/fastgpt/api',
-      request: vi.fn(async ({ path }): Promise<any> => {
-        if (path === '/core/dataset/file/presignDatasetFilePostUrl') {
-          return {
-            uploadMode: 'multipart',
-            url: 'https://app.example/fastgpt/api/system/file/u/tok-1',
-            completeUrl: 'https://app.example/fastgpt/api/system/file/u/tok-1/complete',
-            abortUrl: 'https://app.example/fastgpt/api/system/file/u/tok-1/abort',
-            key: 'dataset/team/large.bin',
-            headers: {},
-            previewUrl: 'https://app.example/fastgpt/preview',
-            partSize: 4,
-            concurrency: 2,
-            maxRetry: 2
-          };
-        }
-        if (path === '/core/dataset/collection/create/fileId') {
-          return { collectionId: VALID_COLLECTION_ID, results: { insertLen: 1 } };
-        }
-        return {};
-      }),
-      requestRaw: vi.fn(),
-      requestExternal: vi.fn(async ({ method, url, headers, body }) => {
-        requestedUrls.push(`${method} ${url}`);
-        // Must never attach FastGPT credentials to external/file URLs
-        expect(headers?.token).toBeUndefined();
-        expect(headers?.authorization).toBeUndefined();
-        if (url.includes('/complete')) {
-          completedParts = JSON.parse(String(body)).parts;
-          return new Response(JSON.stringify({ data: { key: 'dataset/team/large.bin' } }), {
-            status: 200
-          });
-        }
-        const match = url.match(/partNumber=(\d+)/);
-        const partNumber = Number(match?.[1]);
-        if (partNumber === 2) {
-          part2Attempts += 1;
-          if (part2Attempts === 1) {
-            return new Response('bad gateway', { status: 502 });
-          }
-        }
-        return new Response(JSON.stringify({ data: { etag: `"etag-${partNumber}"` } }), {
-          status: 200
-        });
-      }),
-      uploadMultipart: vi.fn(),
-      streamSse: vi.fn()
-    };
-
-    const res = await collectionService.createByPresignedFile({
-      client,
-      fetchFn: globalThis.fetch,
-      file: {
-        filename: 'large.bin',
-        size: 10,
-        mimeType: 'application/octet-stream',
-        data: new Uint8Array(10)
-      },
-      input: { datasetId: VALID_DATASET_ID }
-    });
-    expect(res.changed).toBe(true);
-    expect(part2Attempts).toBe(2);
-    // Verify subpath /fastgpt/api is preserved without duplication
-    expect(requestedUrls).toContain(
-      'PUT https://app.example/fastgpt/api/system/file/u/tok-1?partNumber=1'
-    );
-    expect(requestedUrls).toContain(
-      'POST https://app.example/fastgpt/api/system/file/u/tok-1/complete'
-    );
-    expect(completedParts).toEqual([
-      { partNumber: 1, etag: '"etag-1"' },
-      { partNumber: 2, etag: '"etag-2"' },
-      { partNumber: 3, etag: '"etag-3"' }
-    ]);
-
-    // 2. Permanent part failure stops scheduling remaining parts and calls abortUrl
-    const abortTestUrls: string[] = [];
-    let abortCalled = false;
-    const failClient: FastGptHttpClient = {
-      ...client,
-      request: vi.fn(async ({ path }): Promise<any> => {
-        if (path === '/core/dataset/file/presignDatasetFilePostUrl') {
-          return {
-            uploadMode: 'multipart',
-            url: 'https://files.example/u/tok-fail',
-            completeUrl: 'https://files.example/u/tok-fail/complete',
-            abortUrl: 'https://files.example/u/tok-fail/abort',
-            key: 'dataset/team/fail.bin',
-            headers: {},
-            previewUrl: 'https://files.example/preview',
-            partSize: 2,
-            concurrency: 2,
-            maxRetry: 0
-          };
-        }
-        return {};
-      }),
-      requestExternal: vi.fn(async ({ method, url }) => {
-        abortTestUrls.push(`${method} ${url}`);
-        if (url.endsWith('/abort')) {
-          abortCalled = true;
-          return new Response(null, { status: 200 });
-        }
-        const match = url.match(/partNumber=(\d+)/);
-        const partNumber = Number(match?.[1]);
-        if (partNumber === 1) {
-          return new Response('bad part', { status: 400 });
-        }
-        return new Response(JSON.stringify({ data: { etag: `"etag-${partNumber}"` } }), {
-          status: 200
-        });
-      })
-    };
-
-    await expect(
-      collectionService.createByPresignedFile({
-        client: failClient,
-        fetchFn: globalThis.fetch,
-        file: {
-          filename: 'fail.bin',
-          size: 10, // 5 parts (size 2 each)
-          mimeType: 'application/octet-stream',
-          data: new Uint8Array(10)
-        },
-        input: { datasetId: VALID_DATASET_ID }
-      })
-    ).rejects.toBeInstanceOf(CliApiError);
-    expect(abortCalled).toBe(true);
-    expect(abortTestUrls.some((u) => u.includes('partNumber=4'))).toBe(false);
-    expect(abortTestUrls.some((u) => u.includes('partNumber=5'))).toBe(false);
-
-    // 3. train wait: when queue=true (final errors kept on server) and activeTrainingAmount=0, exits immediately
-    const errorOnlyClient: FastGptHttpClient = {
-      baseUrl: 'https://cloud.fastgpt.cn/api',
-      request: vi.fn(async ({ path }): Promise<any> => {
-        if (path === '/core/dataset/training/getDatasetTrainingQueue') {
-          return { hasTrainingTask: true }; // Real server keeps returning true when final errors exist
-        }
-        if (path === '/core/dataset/training/hasDatasetTrainingError') {
-          return { hasError: true };
-        }
-        if (path === '/core/dataset/collection/listV2') {
-          return {
-            total: 1,
-            list: [
-              {
-                _id: VALID_COLLECTION_ID,
-                type: 'file',
-                activeTrainingAmount: 0,
-                finalErrorAmount: 2,
-                hasError: true
-              }
-            ]
-          };
-        }
-        return {};
-      }),
-      requestRaw: vi.fn(),
-      uploadMultipart: vi.fn(),
-      streamSse: vi.fn()
-    };
-
-    await expect(
-      trainingService.wait({
-        client: errorOnlyClient,
-        datasetId: VALID_DATASET_ID,
-        intervalMs: 100,
-        timeoutMs: 5000,
-        failOnError: true
-      })
-    ).rejects.toBeInstanceOf(CliApiError);
-
-    const noFailRes = await trainingService.wait({
-      client: errorOnlyClient,
-      datasetId: VALID_DATASET_ID,
-      intervalMs: 100,
-      timeoutMs: 5000,
-      failOnError: false
-    });
-    expect((noFailRes.data as any).completed).toBe(true);
-    expect((noFailRes.data as any).hasError).toBe(true);
-    expect((noFailRes.data as any).errorCount).toBe(2);
-
-    await expect(
-      trainingService.wait({
-        client,
-        datasetId: VALID_DATASET_ID,
-        intervalMs: Number.NaN
-      })
-    ).rejects.toThrow('--interval must be a positive finite number');
   });
 });

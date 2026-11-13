@@ -1,6 +1,8 @@
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
+import z from 'zod';
 import { CliArgumentError } from '../../../shared/errors';
 import {
+  isPlainObject,
   parseIdListOption,
   parseParentIdOption,
   resolveJsonObjectPayload
@@ -15,7 +17,7 @@ import {
 } from './shared';
 
 /**
- * 知识库主资源命令组（PRD-02.1）：CRUD、召回测试、全量导出、同步、路径与权限治理。
+ * 知识库主资源命令组（System OpenAPI）：list / get / create / delete / search / batch-move / batch-delete。
  */
 export function createDatasetRootCommandSpecs(): CliCommandSpec[] {
   return [
@@ -284,145 +286,6 @@ export function createDatasetRootCommandSpecs(): CliCommandSpec[] {
     },
 
     {
-      path: ['dataset', 'update'],
-      summary: 'Update dataset properties, metadata, chunk settings, or models',
-      risk: 'write',
-      authModes: ['token', 'personalKey'],
-      positionalArgs: [
-        {
-          name: 'datasetId',
-          required: false,
-          description: 'Target dataset ObjectId (or use --id)'
-        }
-      ],
-      options: [
-        {
-          name: 'id',
-          flags: '--id <datasetId>',
-          takesValue: true,
-          description: 'Dataset ObjectId (alternative to positional argument)'
-        },
-        {
-          name: 'name',
-          flags: '--name <name>',
-          takesValue: true,
-          description: 'New dataset name'
-        },
-        {
-          name: 'intro',
-          flags: '--intro <text>',
-          takesValue: true,
-          description: 'New dataset intro'
-        },
-        {
-          name: 'agentModel',
-          flags: '--agent-model <modelId>',
-          takesValue: true,
-          description: 'New agent model ID'
-        },
-        {
-          name: 'vlmModel',
-          flags: '--vlm-model <modelId>',
-          takesValue: true,
-          description: 'New VLM model ID (empty string to clear)'
-        },
-        {
-          name: 'autoSync',
-          flags: '--auto-sync',
-          takesValue: false,
-          description: 'Enable automatic dataset sync'
-        },
-        {
-          name: 'noAutoSync',
-          flags: '--no-auto-sync',
-          takesValue: false,
-          description: 'Disable automatic dataset sync'
-        },
-        {
-          name: 'parentId',
-          flags: '--parent-id <id>',
-          takesValue: true,
-          description: 'New parent folder ID (null to move to root)'
-        },
-        {
-          name: 'file',
-          flags: '--file <path>',
-          takesValue: true,
-          description: 'Read update JSON payload (e.g. chunkSettings) from file ("-" for stdin)'
-        },
-        {
-          name: 'stdin',
-          flags: '--stdin',
-          takesValue: false,
-          description: 'Read update JSON payload from stdin'
-        },
-        {
-          name: 'dryRun',
-          flags: '--dry-run',
-          takesValue: false,
-          description: 'Preview changes without applying'
-        }
-      ],
-      examples: [
-        {
-          description: 'Update dataset name and intro',
-          args: ['dataset', 'update', '68ad85a7463006c963799a05', '--name', 'New Name']
-        },
-        {
-          description: 'Move dataset to root folder and preview',
-          args: [
-            'dataset',
-            'update',
-            '--id',
-            '68ad85a7463006c963799a05',
-            '--parent-id',
-            'null',
-            '--dry-run'
-          ]
-        }
-      ],
-      execute: async ({ positional, options, client, container }) => {
-        const activeClient = requireActiveClient(client, 'dataset update');
-        const datasetId = resolveIdArg({
-          positional: positional[0],
-          flagValue: options.id,
-          label: 'Dataset ID',
-          usage: 'fastgpt dataset update <datasetId> --name "New Name"'
-        });
-
-        const filePayload = await resolveJsonObjectPayload({
-          filePath: typeof options.file === 'string' ? options.file : undefined,
-          useStdin: options.stdin === true,
-          readTextFile: container.fileIo.readTextFile,
-          readStdin: container.readStdin,
-          fieldLabel: 'dataset update payload'
-        });
-
-        const autoSync = parseOptionalBooleanFlag({
-          positive: options.autoSync,
-          negative: options.noAutoSync
-        });
-
-        return container.datasetService.update({
-          client: activeClient,
-          datasetId,
-          input: {
-            ...(filePayload ?? {}),
-            ...(typeof options.name === 'string' ? { name: options.name } : {}),
-            ...(typeof options.intro === 'string' ? { intro: options.intro } : {}),
-            ...(typeof options.agentModel === 'string' ? { agentModelId: options.agentModel } : {}),
-            ...(typeof options.vlmModel === 'string' ? { vlmModelId: options.vlmModel } : {}),
-            ...(autoSync !== undefined ? { autoSync } : {}),
-            ...(options.parentId !== undefined
-              ? { parentId: parseParentIdOption(options.parentId) }
-              : {})
-          },
-          dryRun: options.dryRun === true
-        });
-      }
-    },
-
-    {
       path: ['dataset', 'delete'],
       summary: 'Delete a knowledge base dataset and all its collections and chunks',
       risk: 'destructive',
@@ -488,14 +351,14 @@ export function createDatasetRootCommandSpecs(): CliCommandSpec[] {
 
     {
       path: ['dataset', 'search'],
-      summary: 'Test knowledge recall, chunk scoring, extension query, and reranking',
+      summary: 'Search one or more datasets using the OpenAPI retrieval endpoint',
       risk: 'read',
       authModes: ['token', 'personalKey'],
       positionalArgs: [
         {
           name: 'datasetId',
           required: false,
-          description: 'Target dataset ObjectId (or use --id)'
+          description: 'Target dataset ObjectId (or use --id / --dataset-ids)'
         },
         { name: 'text', required: false, description: 'Search query text (or use --text)' }
       ],
@@ -507,16 +370,29 @@ export function createDatasetRootCommandSpecs(): CliCommandSpec[] {
           description: 'Dataset ObjectId (alternative to positional argument)'
         },
         {
+          name: 'datasetIds',
+          flags: '--dataset-ids <ids>',
+          takesValue: true,
+          description: 'Comma-separated dataset ObjectIds for multi-dataset search'
+        },
+        {
           name: 'text',
           flags: '--text <query>',
           takesValue: true,
           description: 'Search query text'
         },
         {
-          name: 'limit',
-          flags: '--limit <tokens>',
+          name: 'topk',
+          flags: '--topk <n>',
           takesValue: true,
-          description: 'Maximum token budget for recalled chunks (default 5000, max 20000)'
+          description:
+            'Top-K chunks to return (1-100, default 20; mutually exclusive with --max-tokens)'
+        },
+        {
+          name: 'maxTokens',
+          flags: '--max-tokens <n>',
+          takesValue: true,
+          description: 'Maximum token budget for recalled chunks (mutually exclusive with --topk)'
         },
         {
           name: 'similarity',
@@ -584,24 +460,36 @@ export function createDatasetRootCommandSpecs(): CliCommandSpec[] {
           flags: '--extension-bg <text>',
           takesValue: true,
           description: 'Background context for query extension'
+        },
+        {
+          name: 'file',
+          flags: '--file <path>',
+          takesValue: true,
+          description: 'Read structured /core/dataset/search JSON payload from file ("-" for stdin)'
+        },
+        {
+          name: 'stdin',
+          flags: '--stdin',
+          takesValue: false,
+          description: 'Read structured /core/dataset/search JSON payload from stdin'
         }
       ],
       examples: [
         {
-          description: 'Test recall with query text',
+          description: 'Search a dataset with query text',
           args: ['dataset', 'search', '68ad85a7463006c963799a05', 'What is FastGPT?']
         },
         {
-          description: 'Hybrid search with custom weights and rerank',
+          description: 'Multi-dataset hybrid search with rerank',
           args: [
             'dataset',
             'search',
-            '--id',
-            '68ad85a7463006c963799a05',
+            '--dataset-ids',
+            '68ad85a7463006c963799a05,68ad85a7463006c963799a06',
             '--text',
             'API authentication',
-            '--embedding-weight',
-            '0.6',
+            '--topk',
+            '10',
             '--rerank',
             '--format',
             'json'
@@ -610,24 +498,47 @@ export function createDatasetRootCommandSpecs(): CliCommandSpec[] {
       ],
       execute: async ({ positional, options, client, container }) => {
         const activeClient = requireActiveClient(client, 'dataset search');
-        const datasetId = resolveIdArg({
-          positional: positional[0],
-          flagValue: options.id,
-          label: 'Dataset ID',
-          usage:
-            'fastgpt dataset search <datasetId> <query> or fastgpt dataset search --id <datasetId> --text <query>'
+
+        const filePayload = await resolveJsonObjectPayload({
+          filePath: typeof options.file === 'string' ? options.file : undefined,
+          useStdin: options.stdin === true,
+          readTextFile: container.fileIo.readTextFile,
+          readStdin: container.readStdin,
+          fieldLabel: 'dataset search payload'
         });
 
+        const flagIds = parseIdListOption(options.datasetIds);
+        const singleId =
+          positional[0]?.trim() || (typeof options.id === 'string' ? options.id.trim() : '');
+        const scopeObj = isPlainObject(filePayload?.scope) ? filePayload.scope : undefined;
+        const fileDatasetIds = Array.isArray(scopeObj?.datasetIds)
+          ? scopeObj.datasetIds.map((id) => String(id).trim()).filter(Boolean)
+          : undefined;
+        const datasetIds = flagIds ?? (singleId ? [singleId] : fileDatasetIds);
+
+        if (!datasetIds || datasetIds.length === 0) {
+          throw new CliArgumentError(
+            'Dataset ID is required.',
+            undefined,
+            'Usage: fastgpt dataset search <datasetId> "search text" or --dataset-ids <id1>,<id2>'
+          );
+        }
+
+        const queryObj = isPlainObject(filePayload?.query) ? filePayload.query : undefined;
         const searchText = await (async () => {
-          const direct = positional[1] ?? (typeof options.text === 'string' ? options.text : '');
+          const direct =
+            positional[1] ??
+            (typeof options.text === 'string' ? options.text : undefined) ??
+            (typeof queryObj?.text === 'string' ? queryObj.text : '');
           if (direct.trim()) return direct.trim();
-          if (container.prompter.isInteractive && options.format !== 'json') {
+          if (container.prompter.isInteractive && options.format !== 'json' && !filePayload) {
             return (await container.prompter.text({ message: 'Enter search query:' })).trim();
           }
           return '';
         })();
 
-        if (!searchText) {
+        const fileImageKeys = Array.isArray(queryObj?.imageKeys) ? queryObj.imageKeys : undefined;
+        if (!searchText && (!fileImageKeys || fileImageKeys.length === 0)) {
           throw new CliArgumentError(
             'Search query text is required.',
             undefined,
@@ -636,210 +547,110 @@ export function createDatasetRootCommandSpecs(): CliCommandSpec[] {
         }
 
         const searchMode =
-          options.mode === undefined ? DatasetSearchModeEnum.mixedRecall : (options.mode as any);
+          options.mode !== undefined
+            ? z.enum(DatasetSearchModeEnum).parse(options.mode)
+            : isPlainObject(filePayload?.retrieval) &&
+                typeof filePayload.retrieval.mode === 'string'
+              ? z.enum(DatasetSearchModeEnum).parse(filePayload.retrieval.mode)
+              : DatasetSearchModeEnum.mixedRecall;
+
+        const embeddingWeight = parseOptionalNumber(options.embeddingWeight);
+        const topk = parseOptionalNumber(options.topk);
+        const maxTokens = parseOptionalNumber(options.maxTokens);
+        const similarity = parseOptionalNumber(options.similarity);
+
         const usingReRank = parseOptionalBooleanFlag({
           positive: options.rerank,
           negative: options.noRerank
         });
+        const rerankModelId =
+          typeof options.rerankModel === 'string' ? options.rerankModel.trim() : undefined;
+        const rerankWeight = parseOptionalNumber(options.rerankWeight);
+        const rerankCandidateNum = parseOptionalNumber(options.rerankCandidateNum);
+
+        const fileRerank = isPlainObject(filePayload?.rerank) ? filePayload.rerank : undefined;
+        const rerankEnabled =
+          usingReRank ?? (typeof fileRerank?.enabled === 'boolean' ? fileRerank.enabled : false);
+
+        const rerank = rerankEnabled
+          ? {
+              ...(fileRerank ?? {}),
+              enabled: true as const,
+              ...(rerankModelId ? { modelId: rerankModelId } : {}),
+              ...(rerankWeight !== undefined ? { weight: rerankWeight } : {}),
+              ...(rerankCandidateNum !== undefined ? { candidateNum: rerankCandidateNum } : {})
+            }
+          : { enabled: false as const };
+
+        const fileExt = isPlainObject(filePayload?.queryExtension)
+          ? filePayload.queryExtension
+          : undefined;
+        const extensionModelId =
+          typeof options.extensionModel === 'string' ? options.extensionModel.trim() : undefined;
+        const extensionBg =
+          typeof options.extensionBg === 'string' ? options.extensionBg : undefined;
+        const extEnabled =
+          options.extensionQuery === true ||
+          (options.extensionQuery === undefined && fileExt?.enabled === true);
+
+        const queryExtension = extEnabled
+          ? {
+              ...(fileExt ?? {}),
+              enabled: true as const,
+              ...(extensionModelId ? { modelId: extensionModelId } : {}),
+              ...(extensionBg !== undefined ? { background: extensionBg } : {})
+            }
+          : { enabled: false as const };
+
+        const fileResult = isPlainObject(filePayload?.result) ? filePayload.result : undefined;
+        const result = (() => {
+          const baseSim =
+            similarity !== undefined
+              ? { similarity }
+              : typeof fileResult?.similarity === 'number'
+                ? { similarity: fileResult.similarity }
+                : {};
+          if (maxTokens !== undefined) {
+            return { ...baseSim, maxTokens };
+          }
+          if (topk !== undefined) {
+            return { ...baseSim, topk };
+          }
+          if (fileResult && 'maxTokens' in fileResult && fileResult.maxTokens !== undefined) {
+            return { ...baseSim, maxTokens: fileResult.maxTokens as number };
+          }
+          if (fileResult && 'topk' in fileResult && fileResult.topk !== undefined) {
+            return { ...baseSim, topk: fileResult.topk as number };
+          }
+          return baseSim;
+        })();
+
+        const fileRetrieval = isPlainObject(filePayload?.retrieval)
+          ? filePayload.retrieval
+          : undefined;
+
+        const payload = {
+          ...(filePayload ?? {}),
+          scope: {
+            ...(scopeObj ?? {}),
+            datasetIds
+          },
+          query: searchText
+            ? { ...(queryObj ?? {}), text: searchText }
+            : { ...(queryObj ?? {}), imageKeys: fileImageKeys ?? [] },
+          retrieval: {
+            ...(fileRetrieval ?? {}),
+            mode: searchMode,
+            ...(embeddingWeight !== undefined ? { embeddingWeight } : {})
+          },
+          rerank,
+          queryExtension,
+          result
+        };
 
         return container.datasetService.search({
           client: activeClient,
-          input: {
-            datasetId,
-            text: searchText,
-            limit: parseOptionalNumber(options.limit),
-            similarity: parseOptionalNumber(options.similarity),
-            searchMode,
-            embeddingWeight: parseOptionalNumber(options.embeddingWeight),
-            usingReRank,
-            rerankModelId:
-              typeof options.rerankModel === 'string' ? options.rerankModel : undefined,
-            rerankWeight: parseOptionalNumber(options.rerankWeight),
-            rerankCandidateNum: parseOptionalNumber(options.rerankCandidateNum),
-            datasetSearchUsingExtensionQuery: options.extensionQuery === true ? true : undefined,
-            datasetSearchExtensionModelId:
-              typeof options.extensionModel === 'string' ? options.extensionModel : undefined,
-            datasetSearchExtensionBg:
-              typeof options.extensionBg === 'string' ? options.extensionBg : undefined
-          }
-        });
-      }
-    },
-
-    {
-      path: ['dataset', 'export'],
-      summary: 'Export all chunks of a dataset as CSV (streamed to file or output)',
-      risk: 'read',
-      authModes: ['token'],
-      positionalArgs: [
-        { name: 'datasetId', required: false, description: 'Target dataset ObjectId (or --id)' }
-      ],
-      options: [
-        {
-          name: 'id',
-          flags: '--id <datasetId>',
-          takesValue: true,
-          description: 'Dataset ObjectId'
-        },
-        {
-          name: 'output',
-          flags: '--output <path>',
-          takesValue: true,
-          description: 'Write exported CSV to file path'
-        }
-      ],
-      examples: [
-        {
-          description: 'Export dataset CSV to local file',
-          args: ['dataset', 'export', '68ad85a7463006c963799a05', '--output', 'backup.csv']
-        }
-      ],
-      execute: async ({ positional, options, client, container }) => {
-        const activeClient = requireActiveClient(client, 'dataset export');
-        const datasetId = resolveIdArg({
-          positional: positional[0],
-          flagValue: options.id,
-          label: 'Dataset ID',
-          usage: 'fastgpt dataset export <datasetId> --output <file.csv>'
-        });
-
-        const outputPath = typeof options.output === 'string' ? options.output : undefined;
-        return container.datasetService.exportAll({
-          client: activeClient,
-          datasetId,
-          writeOutput: outputPath
-            ? (bytes) => container.fileIo.writeOutputFile(outputPath, bytes)
-            : undefined,
-          writeStreamOutput:
-            outputPath && container.fileIo.writeStreamFile
-              ? (stream) => container.fileIo.writeStreamFile!(outputPath, stream)
-              : undefined
-        });
-      }
-    },
-
-    {
-      path: ['dataset', 'sync'],
-      summary: 'Trigger full sync for an external/API/website dataset (Pro edition)',
-      risk: 'write',
-      authModes: ['token'],
-      positionalArgs: [
-        { name: 'datasetId', required: false, description: 'Target dataset ObjectId (or --id)' }
-      ],
-      options: [
-        {
-          name: 'id',
-          flags: '--id <datasetId>',
-          takesValue: true,
-          description: 'Dataset ObjectId'
-        },
-        {
-          name: 'dryRun',
-          flags: '--dry-run',
-          takesValue: false,
-          description: 'Preview sync request without triggering'
-        }
-      ],
-      examples: [
-        {
-          description: 'Trigger dataset sync',
-          args: ['dataset', 'sync', '68ad85a7463006c963799a05']
-        }
-      ],
-      execute: async ({ positional, options, client, container }) => {
-        const activeClient = requireActiveClient(client, 'dataset sync');
-        const datasetId = resolveIdArg({
-          positional: positional[0],
-          flagValue: options.id,
-          label: 'Dataset ID',
-          usage: 'fastgpt dataset sync <datasetId>'
-        });
-
-        return container.datasetService.sync({
-          client: activeClient,
-          datasetId,
-          dryRun: options.dryRun === true
-        });
-      }
-    },
-
-    {
-      path: ['dataset', 'paths'],
-      summary: 'Get breadcrumb path chain of a dataset or folder',
-      risk: 'read',
-      authModes: ['token'],
-      positionalArgs: [
-        { name: 'datasetId', required: false, description: 'Dataset or folder ObjectId' }
-      ],
-      options: [
-        {
-          name: 'id',
-          flags: '--id <datasetId>',
-          takesValue: true,
-          description: 'Dataset ObjectId'
-        },
-        {
-          name: 'type',
-          flags: '--type <type>',
-          takesValue: true,
-          description: 'Path type: current (default) or parent'
-        }
-      ],
-      examples: [
-        {
-          description: 'Get dataset breadcrumb paths',
-          args: ['dataset', 'paths', '68ad85a7463006c963799a05']
-        }
-      ],
-      execute: async ({ positional, options, client, container }) => {
-        const activeClient = requireActiveClient(client, 'dataset paths');
-        const sourceId = positional[0] ?? (typeof options.id === 'string' ? options.id : undefined);
-        const rawType = options.type;
-        if (rawType !== undefined && rawType !== 'current' && rawType !== 'parent') {
-          throw new CliArgumentError('--type must be "current" or "parent".');
-        }
-        const type = rawType === 'parent' ? 'parent' : 'current';
-
-        return container.datasetService.paths({
-          client: activeClient,
-          sourceId,
-          type
-        });
-      }
-    },
-
-    {
-      path: ['dataset', 'permission'],
-      summary: 'Check current user read/write permissions on a dataset',
-      risk: 'read',
-      authModes: ['token', 'personalKey'],
-      positionalArgs: [{ name: 'datasetId', required: false, description: 'Dataset ObjectId' }],
-      options: [
-        {
-          name: 'id',
-          flags: '--id <datasetId>',
-          takesValue: true,
-          description: 'Dataset ObjectId'
-        }
-      ],
-      examples: [
-        {
-          description: 'Check dataset permissions',
-          args: ['dataset', 'permission', '68ad85a7463006c963799a05']
-        }
-      ],
-      execute: async ({ positional, options, client, container }) => {
-        const activeClient = requireActiveClient(client, 'dataset permission');
-        const datasetId = resolveIdArg({
-          positional: positional[0],
-          flagValue: options.id,
-          label: 'Dataset ID',
-          usage: 'fastgpt dataset permission <datasetId>'
-        });
-
-        return container.datasetService.getPermission({
-          client: activeClient,
-          datasetId
+          input: payload as any
         });
       }
     },
@@ -871,14 +682,14 @@ export function createDatasetRootCommandSpecs(): CliCommandSpec[] {
       ],
       examples: [
         {
-          description: 'Move two datasets to root folder',
+          description: 'Move two datasets to a folder',
           args: [
             'dataset',
             'batch-move',
             '--ids',
             '68ad85a7463006c963799a05,68ad85a7463006c963799a06',
             '--parent-id',
-            'null'
+            '68ad85a7463006c963799a10'
           ]
         }
       ],
@@ -967,151 +778,6 @@ export function createDatasetRootCommandSpecs(): CliCommandSpec[] {
           client: activeClient,
           ids,
           dryRun: ctx.options.dryRun === true
-        });
-      }
-    },
-
-    {
-      path: ['dataset', 'enable-collection-permission'],
-      summary: 'Enable file/collection-level permissions for a dataset',
-      risk: 'write',
-      authModes: ['token'],
-      positionalArgs: [{ name: 'datasetId', required: false, description: 'Dataset ObjectId' }],
-      options: [
-        {
-          name: 'id',
-          flags: '--id <datasetId>',
-          takesValue: true,
-          description: 'Dataset ObjectId'
-        },
-        {
-          name: 'dryRun',
-          flags: '--dry-run',
-          takesValue: false,
-          description: 'Preview without applying'
-        }
-      ],
-      examples: [
-        {
-          description: 'Enable collection-level permissions',
-          args: ['dataset', 'enable-collection-permission', '68ad85a7463006c963799a05']
-        }
-      ],
-      execute: async ({ positional, options, client, container }) => {
-        const activeClient = requireActiveClient(client, 'dataset enable-collection-permission');
-        const datasetId = resolveIdArg({
-          positional: positional[0],
-          flagValue: options.id,
-          label: 'Dataset ID',
-          usage: 'fastgpt dataset enable-collection-permission <datasetId>'
-        });
-
-        return container.datasetService.setCollectionPermission({
-          client: activeClient,
-          datasetId,
-          enabled: true,
-          dryRun: options.dryRun === true
-        });
-      }
-    },
-
-    {
-      path: ['dataset', 'disable-collection-permission'],
-      summary: 'Disable file/collection-level permissions and reset all collections to inherit',
-      risk: 'destructive',
-      authModes: ['token'],
-      positionalArgs: [{ name: 'datasetId', required: false, description: 'Dataset ObjectId' }],
-      options: [
-        {
-          name: 'id',
-          flags: '--id <datasetId>',
-          takesValue: true,
-          description: 'Dataset ObjectId'
-        },
-        {
-          name: 'dryRun',
-          flags: '--dry-run',
-          takesValue: false,
-          description: 'Preview without applying'
-        },
-        {
-          name: 'yes',
-          flags: '--yes',
-          takesValue: false,
-          description: 'Confirm disabling permissions'
-        }
-      ],
-      examples: [
-        {
-          description: 'Disable collection-level permissions',
-          args: ['dataset', 'disable-collection-permission', '68ad85a7463006c963799a05', '--yes']
-        }
-      ],
-      execute: async (ctx) => {
-        const activeClient = requireActiveClient(
-          ctx.client,
-          'dataset disable-collection-permission'
-        );
-        const datasetId = resolveIdArg({
-          positional: ctx.positional[0],
-          flagValue: ctx.options.id,
-          label: 'Dataset ID',
-          usage: 'fastgpt dataset disable-collection-permission <datasetId> --yes'
-        });
-
-        await confirmDestructiveAction({
-          ctx,
-          message: `Disable collection-level permissions and clear custom collection collaborators on dataset "${datasetId}"?`
-        });
-
-        return ctx.container.datasetService.setCollectionPermission({
-          client: activeClient,
-          datasetId,
-          enabled: false,
-          dryRun: ctx.options.dryRun === true
-        });
-      }
-    },
-
-    {
-      path: ['dataset', 'resume-inherit-permission'],
-      summary: 'Resume inherited permissions from parent folder for a dataset',
-      risk: 'write',
-      authModes: ['token'],
-      positionalArgs: [{ name: 'datasetId', required: false, description: 'Dataset ObjectId' }],
-      options: [
-        {
-          name: 'id',
-          flags: '--id <datasetId>',
-          takesValue: true,
-          description: 'Dataset ObjectId'
-        },
-        {
-          name: 'dryRun',
-          flags: '--dry-run',
-          takesValue: false,
-          description: 'Preview without applying'
-        }
-      ],
-      examples: [
-        {
-          description: 'Resume inherited permissions',
-          args: ['dataset', 'resume-inherit-permission', '68ad85a7463006c963799a05']
-        }
-      ],
-      execute: async ({ positional, options, client, container }) => {
-        const activeClient = requireActiveClient(client, 'dataset resume-inherit-permission');
-        const datasetId = resolveIdArg({
-          positional: positional[0],
-          flagValue: options.id,
-          label: 'Dataset ID',
-          usage: 'fastgpt dataset resume-inherit-permission <datasetId>'
-        });
-
-        return container.datasetService.resumeInheritPermission({
-          client: activeClient,
-          datasetId,
-          dryRun: options.dryRun === true
         });
       }
     }

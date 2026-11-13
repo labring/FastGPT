@@ -69,7 +69,7 @@ fastgpt whoami --format json
      printf '%s' "$FASTGPT_API_KEY" | fastgpt login --api-key-stdin --format json
      # 私有化部署追加：--base-url https://your-domain.com/api
      ```
-  2. **Session Token 登录（需使用 `dataset export` / `dataset tag` 等 `token`-only 管理能力时）**：
+  2. **Session Token 登录（需使用 `auth switch-team` 等 `token`-only 管理能力时）**：
      ```bash
      printf '%s' "$FASTGPT_TOKEN" | fastgpt login --token-stdin --format json
      ```
@@ -97,7 +97,7 @@ fastgpt doctor --format json
 fastgpt commands --compact --format json
 ```
 
-解析 `data.commands[]`，按领域分组汇总输出给用户（`auth` / `whoami` / `config` / `doctor` / `dataset` / `dataset collection` / `dataset data` / `dataset train` / `dataset tag` / `dataset synonym`）。
+解析 `data.commands[]`，按领域分组汇总输出给用户（`auth` / `whoami` / `config` / `doctor` / `dataset` / `dataset collection` / `dataset data`）。
 
 ---
 
@@ -115,9 +115,8 @@ fastgpt commands --compact --format json
 | 命令域 | 命令数 | 代表能力 |
 | :--- | :--- | :--- |
 | `auth` / `whoami` | ... | 身份查看、Profile 与团队切换 |
-| `dataset` | ... | 知识库 CRUD、召回检索、导出、同步与权限治理 |
-| `dataset collection` | ... | 文本/链接/本地文件/S3 预签名导入、重训与导出 |
-| `dataset data` / `train` | ... | 分块 CRUD/批量推送、自定义索引与训练队列等待 |
-| `dataset tag` / `synonym` | ... | 集合打标（Pro）与同义词词表维护 |
+| `dataset` | ... | 知识库 CRUD、OpenAPI 联合检索、批量移动/删除 |
+| `dataset collection` | ... | 集合 CRUD、文本/链接/本地文件直传导入 |
+| `dataset data` | ... | 分块查询、详情、批量推送、更新与删除 |
 | `config` / `doctor` | ... | 本地配置读取与运行时体检 |
 ```

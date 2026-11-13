@@ -6,12 +6,9 @@ import { executeCommandWithPipeline, type CliCommandSpec } from './pipeline';
 const GROUP_DESCRIPTIONS: Record<string, string> = {
   auth: 'Manage profiles, auth status, and active team sessions',
   config: 'Inspect and update CLI configuration values',
-  dataset: 'Manage datasets, collections, chunks, training, tags, and synonyms',
-  'dataset collection': 'Manage dataset collections, uploads, syncing, and exports',
-  'dataset data': 'Inspect, insert, update, delete chunks and custom vector indexes',
-  'dataset train': 'Monitor training queues, inspect errors, retry, and wait',
-  'dataset tag': 'Manage dataset collection tags (Pro edition)',
-  'dataset synonym': 'Manage dataset synonym mappings and CSV files'
+  dataset: 'Manage datasets, collections, chunks, and OpenAPI search',
+  'dataset collection': 'Manage dataset collections and text/link/file imports',
+  'dataset data': 'List, inspect, push, update, and delete dataset chunks'
 };
 
 function attachCommandSpec({

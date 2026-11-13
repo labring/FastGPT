@@ -25,14 +25,6 @@ import {
 } from '../domain/dataset/collection-service';
 import { createDatasetDataService, type DatasetDataService } from '../domain/dataset/data-service';
 import { createDatasetService, type DatasetService } from '../domain/dataset/dataset-service';
-import {
-  createDatasetTagSynonymService,
-  type DatasetTagSynonymService
-} from '../domain/dataset/tag-synonym-service';
-import {
-  createDatasetTrainingService,
-  type DatasetTrainingService
-} from '../domain/dataset/training-service';
 import { createProfileService, type ProfileService } from '../domain/profile/profile-service';
 import {
   createFileConfigRepository,
@@ -79,8 +71,6 @@ export type CliContainer = {
   readonly datasetService: DatasetService;
   readonly datasetCollectionService: DatasetCollectionService;
   readonly datasetDataService: DatasetDataService;
-  readonly datasetTrainingService: DatasetTrainingService;
-  readonly datasetTagSynonymService: DatasetTagSynonymService;
   readonly stdout: (value: string) => void;
   readonly stderr: (value: string) => void;
 };
@@ -179,8 +169,6 @@ export function createCliContainer(deps: CliRuntimeDeps): CliContainer {
   const datasetService = createDatasetService();
   const datasetCollectionService = createDatasetCollectionService();
   const datasetDataService = createDatasetDataService();
-  const datasetTrainingService = createDatasetTrainingService();
-  const datasetTagSynonymService = createDatasetTagSynonymService();
 
   return {
     env: deps.env,
@@ -197,8 +185,6 @@ export function createCliContainer(deps: CliRuntimeDeps): CliContainer {
     datasetService,
     datasetCollectionService,
     datasetDataService,
-    datasetTrainingService,
-    datasetTagSynonymService,
     stdout: deps.stdout,
     stderr: deps.stderr
   };

@@ -84,12 +84,12 @@ fastgpt doctor
 
 FastGPT CLI 采用领域驱动（DDD）设计，命令结构精炼清晰：
 
-| 功能分类       | 常用命令示例                                                                                                                               | 说明                                                                  |
-| :------------- | :----------------------------------------------------------------------------------------------------------------------------------------- | :-------------------------------------------------------------------- |
-| **身份与团队** | `fastgpt whoami`<br/>`fastgpt auth switch-team --team-id <id>`                                                                             | 查看当前用户身份及团队空间，或快速切换工作团队                        |
-| **知识库检索** | `fastgpt dataset list`<br/>`fastgpt dataset search <id> "关键词"`                                                                          | 分页检索知识库列表，或对指定知识库执行混合召回效果测试                |
-| **知识库管理** | `fastgpt dataset create --name "文档库"`<br/>`fastgpt dataset collection create-file <id> ./doc.pdf`<br/>`fastgpt dataset train wait <id>` | 知识库 CRUD、文件/文本/链接导入、分块索引、训练监控、标签与同义词管理 |
-| **系统配置**   | `fastgpt config list`<br/>`fastgpt commands --compact --format json`                                                                       | 查看客户端本地配置，或以精简格式探测可编程命令元数据                  |
+| 功能分类       | 常用命令示例                                                                                                                                        | 说明                                                                |
+| :------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------ |
+| **身份与团队** | `fastgpt whoami`<br/>`fastgpt auth switch-team --team-id <id>`                                                                                      | 查看当前用户身份及团队空间，或快速切换工作团队                      |
+| **知识库检索** | `fastgpt dataset list`<br/>`fastgpt dataset search <id> "关键词"`                                                                                   | 分页检索知识库列表，或对指定知识库执行混合召回效果测试              |
+| **知识库管理** | `fastgpt dataset create --name "文档库"`<br/>`fastgpt dataset collection create-file <id> ./doc.pdf`<br/>`fastgpt dataset data list <collectionId>` | 基于 System OpenAPI 的知识库 CRUD、文件/文本/链接导入与分块数据管理 |
+| **系统配置**   | `fastgpt config list`<br/>`fastgpt commands --compact --format json`                                                                                | 查看客户端本地配置，或以精简格式探测可编程命令元数据                |
 
 ---
 

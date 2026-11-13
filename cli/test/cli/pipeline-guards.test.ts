@@ -46,8 +46,6 @@ function createMockContainer(isInteractive = false): CliContainer {
     datasetService: {} as any,
     datasetCollectionService: {} as any,
     datasetDataService: {} as any,
-    datasetTrainingService: {} as any,
-    datasetTagSynonymService: {} as any,
     stdout: () => {},
     stderr: () => {}
   };

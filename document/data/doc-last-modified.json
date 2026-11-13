@@ -177,8 +177,8 @@
   "content/guide/dataset/websync.mdx": "2026-11-12T14:01:38+08:00",
   "content/guide/getting-started/application-types.en.mdx": "2026-11-12T14:01:38+08:00",
   "content/guide/getting-started/application-types.mdx": "2026-11-12T14:01:38+08:00",
-  "content/guide/getting-started/cli.en.mdx": "2026-11-12T21:18:30+08:00",
-  "content/guide/getting-started/cli.mdx": "2026-11-12T21:18:30+08:00",
+  "content/guide/getting-started/cli.en.mdx": "2026-11-13T11:13:12+08:00",
+  "content/guide/getting-started/cli.mdx": "2026-11-13T11:13:12+08:00",
   "content/guide/getting-started/concepts.en.mdx": "2026-11-12T14:01:38+08:00",
   "content/guide/getting-started/concepts.mdx": "2026-11-12T14:01:38+08:00",
   "content/guide/getting-started/examples/civil-code-qa.en.mdx": "2026-11-12T14:01:38+08:00",
@@ -315,8 +315,8 @@
   "content/self-host/docker_minio_to_rustfs.mdx": "2026-11-03T10:58:34+08:00",
   "content/self-host/index.en.mdx": "2026-11-12T14:01:38+08:00",
   "content/self-host/index.mdx": "2026-11-12T14:01:38+08:00",
-  "content/self-host/migration/content-moderation.en.mdx": "2026-11-12T15:40:09+08:00",
-  "content/self-host/migration/content-moderation.mdx": "2026-11-12T15:40:09+08:00",
+  "content/self-host/migration/content-moderation.en.mdx": "2026-11-12T23:06:55+08:00",
+  "content/self-host/migration/content-moderation.mdx": "2026-11-12T23:06:55+08:00",
   "content/self-host/migration/docker_db.en.mdx": "2026-11-12T14:01:38+08:00",
   "content/self-host/migration/docker_db.mdx": "2026-11-12T14:01:38+08:00",
   "content/self-host/migration/docker_mongo.en.mdx": "2026-11-12T14:01:38+08:00",
@@ -615,6 +615,6 @@
   "content/self-host/upgrading/upgrade-instruction.mdx": "2026-11-12T14:01:38+08:00",
   "content/self-host/upgrading/version-timeline.en.mdx": "2026-11-12T14:01:38+08:00",
   "content/self-host/upgrading/version-timeline.mdx": "2026-11-03T10:58:34+08:00",
-  "content/toc.en.mdx": "2026-11-12T21:18:30+08:00",
-  "content/toc.mdx": "2026-11-12T21:18:30+08:00"
+  "content/toc.en.mdx": "2026-11-12T15:40:09+08:00",
+  "content/toc.mdx": "2026-11-12T15:40:09+08:00"
 }

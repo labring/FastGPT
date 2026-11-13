@@ -87,12 +87,12 @@ fastgpt doctor
 
 FastGPT CLI is organized around Domain-Driven Design (DDD) with clean, intuitive command namespaces:
 
-| Category               | Example Commands                                                                                                                         | Description                                                                      |
-| :--------------------- | :--------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------- |
-| **Auth & Team**        | `fastgpt whoami`<br/>`fastgpt auth switch-team --team-id <id>`                                                                           | View user identity and team spaces, or switch active teams                       |
-| **Dataset Recall**     | `fastgpt dataset list`<br/>`fastgpt dataset search <id> "query"`                                                                         | Search dataset lists with pagination, or test hybrid recall chunks               |
-| **Dataset Management** | `fastgpt dataset create --name "Docs"`<br/>`fastgpt dataset collection create-file <id> ./doc.pdf`<br/>`fastgpt dataset train wait <id>` | Dataset CRUD, collection imports/uploads, chunks, training wait, tags & synonyms |
-| **Configuration**      | `fastgpt config list`<br/>`fastgpt commands --compact --format json`                                                                     | Inspect local config, or discover compact machine-readable command schemas       |
+| Category               | Example Commands                                                                                                                                  | Description                                                                          |
+| :--------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------ | :----------------------------------------------------------------------------------- |
+| **Auth & Team**        | `fastgpt whoami`<br/>`fastgpt auth switch-team --team-id <id>`                                                                                    | View user identity and team spaces, or switch active teams                           |
+| **Dataset Recall**     | `fastgpt dataset list`<br/>`fastgpt dataset search <id> "query"`                                                                                  | Search dataset lists with pagination, or test hybrid recall chunks                   |
+| **Dataset Management** | `fastgpt dataset create --name "Docs"`<br/>`fastgpt dataset collection create-file <id> ./doc.pdf`<br/>`fastgpt dataset data list <collectionId>` | System OpenAPI dataset CRUD, file/text/link collection imports, and chunk management |
+| **Configuration**      | `fastgpt config list`<br/>`fastgpt commands --compact --format json`                                                                              | Inspect local config, or discover compact machine-readable command schemas           |
 
 ---
 

@@ -61,7 +61,7 @@ describe('CommandRegistry (src/cli/registry.ts)', () => {
     expect(parsed.ok).toBe(true);
     expect(parsed.data.cliVersion).toBeTruthy();
     expect(parsed.meta.total).toBe(parsed.data.commands.length);
-    expect(parsed.data.commands.length).toBeGreaterThan(10);
+    expect(parsed.data.commands.length).toBe(7);
     expect(
       parsed.data.commands.every(
         (cmd: { command: string; risk: string }) =>

@@ -21,7 +21,7 @@ import {
 } from './shared';
 
 /**
- * 知识库集合命令组（PRD-02.2）：集合 CRUD、文本/网页/本地文件/S3 预签名上传、导出、同步与重训。
+ * 知识库集合命令组（System OpenAPI）：list / get / create / create-text / create-link / create-file / update / delete。
  */
 export function createDatasetCollectionCommandSpecs(): CliCommandSpec[] {
   return [
@@ -138,7 +138,7 @@ export function createDatasetCollectionCommandSpecs(): CliCommandSpec[] {
 
     {
       path: ['dataset', 'collection', 'get'],
-      summary: 'Get details, chunk settings, and metadata of a collection',
+      summary: 'Get details, chunk settings, training status, and metadata of a collection',
       risk: 'read',
       authModes: ['token', 'personalKey'],
       positionalArgs: [
@@ -489,7 +489,7 @@ export function createDatasetCollectionCommandSpecs(): CliCommandSpec[] {
 
     {
       path: ['dataset', 'collection', 'create-file'],
-      summary: 'Upload a local file (multipart or presigned S3) to create a collection',
+      summary: 'Upload a local file via multipart/form-data to create a collection',
       risk: 'write',
       authModes: ['token', 'personalKey'],
       positionalArgs: [
@@ -534,12 +534,6 @@ export function createDatasetCollectionCommandSpecs(): CliCommandSpec[] {
           description: 'Enable custom PDF parsing'
         },
         {
-          name: 'presign',
-          flags: '--presign',
-          takesValue: false,
-          description: 'Use presigned S3 upload flow instead of direct multipart upload'
-        },
-        {
           name: 'configFile',
           flags: '--config-file <path>',
           takesValue: true,
@@ -556,18 +550,6 @@ export function createDatasetCollectionCommandSpecs(): CliCommandSpec[] {
         {
           description: 'Upload local PDF to dataset',
           args: ['dataset', 'collection', 'create-file', '68ad85a7463006c963799a05', './manual.pdf']
-        },
-        {
-          description: 'Upload large file via S3 presigned URL',
-          args: [
-            'dataset',
-            'collection',
-            'create-file',
-            '68ad85a7463006c963799a05',
-            '--file',
-            './big-guide.pdf',
-            '--presign'
-          ]
         }
       ],
       execute: async ({ positional, options, client, container }) => {
@@ -611,99 +593,10 @@ export function createDatasetCollectionCommandSpecs(): CliCommandSpec[] {
           ...(options.customPdfParse === true ? { customPdfParse: true } : {})
         };
 
-        if (options.presign === true) {
-          return container.datasetCollectionService.createByPresignedFile({
-            client: activeClient,
-            fetchFn: container.fetchFn,
-            file,
-            input,
-            dryRun: options.dryRun === true
-          });
-        }
-
         return container.datasetCollectionService.createLocalFile({
           client: activeClient,
           file,
           input,
-          dryRun: options.dryRun === true
-        });
-      }
-    },
-
-    {
-      path: ['dataset', 'collection', 'create-file-id'],
-      summary: 'Create a collection from an already-uploaded dataset S3 fileId key',
-      risk: 'write',
-      authModes: ['token', 'personalKey'],
-      positionalArgs: [{ name: 'datasetId', required: false, description: 'Dataset ObjectId' }],
-      options: [
-        {
-          name: 'datasetId',
-          flags: '--dataset-id <id>',
-          takesValue: true,
-          description: 'Dataset ObjectId'
-        },
-        {
-          name: 'fileId',
-          flags: '--file-id <key>',
-          takesValue: true,
-          description: 'S3 file object key'
-        },
-        {
-          name: 'parentId',
-          flags: '--parent-id <id>',
-          takesValue: true,
-          description: 'Parent folder ID'
-        },
-        {
-          name: 'customPdfParse',
-          flags: '--custom-pdf-parse',
-          takesValue: false,
-          description: 'Enable custom PDF parse'
-        },
-        {
-          name: 'dryRun',
-          flags: '--dry-run',
-          takesValue: false,
-          description: 'Preview without creating'
-        }
-      ],
-      examples: [
-        {
-          description: 'Create collection from existing S3 fileId',
-          args: [
-            'dataset',
-            'collection',
-            'create-file-id',
-            '68ad85a7463006c963799a05',
-            '--file-id',
-            'dataset/teamId/doc.pdf'
-          ]
-        }
-      ],
-      execute: async ({ positional, options, client, container }) => {
-        const activeClient = requireActiveClient(client, 'dataset collection create-file-id');
-        const datasetId = resolveIdArg({
-          positional: positional[0],
-          flagValue: options.datasetId,
-          label: 'Dataset ID',
-          usage: 'fastgpt dataset collection create-file-id <datasetId> --file-id <key>'
-        });
-        const fileId = typeof options.fileId === 'string' ? options.fileId.trim() : '';
-        if (!fileId) {
-          throw new CliArgumentError('--file-id is required.');
-        }
-
-        return container.datasetCollectionService.createByFileId({
-          client: activeClient,
-          input: {
-            datasetId,
-            fileId,
-            ...(options.parentId !== undefined
-              ? { parentId: parseParentIdOption(options.parentId) }
-              : {}),
-            ...(options.customPdfParse === true ? { customPdfParse: true } : {})
-          },
           dryRun: options.dryRun === true
         });
       }
@@ -888,356 +781,6 @@ export function createDatasetCollectionCommandSpecs(): CliCommandSpec[] {
           client: activeClient,
           target,
           dryRun: ctx.options.dryRun === true
-        });
-      }
-    },
-
-    {
-      path: ['dataset', 'collection', 'read'],
-      summary: 'Get source file URL or link for a collection',
-      risk: 'read',
-      authModes: ['token', 'personalKey'],
-      positionalArgs: [
-        { name: 'collectionId', required: false, description: 'Collection ObjectId' }
-      ],
-      options: [
-        {
-          name: 'id',
-          flags: '--id <collectionId>',
-          takesValue: true,
-          description: 'Collection ObjectId'
-        }
-      ],
-      examples: [
-        {
-          description: 'Read source link for a collection',
-          args: ['dataset', 'collection', 'read', '68ad85a7463006c963799a06']
-        }
-      ],
-      execute: async ({ positional, options, client, container }) => {
-        const activeClient = requireActiveClient(client, 'dataset collection read');
-        const collectionId = resolveIdArg({
-          positional: positional[0],
-          flagValue: options.id,
-          label: 'Collection ID',
-          usage: 'fastgpt dataset collection read <collectionId>'
-        });
-
-        return container.datasetCollectionService.readSource({
-          client: activeClient,
-          collectionId
-        });
-      }
-    },
-
-    {
-      path: ['dataset', 'collection', 'export'],
-      summary: 'Export all chunks of a collection as CSV',
-      risk: 'read',
-      authModes: ['token', 'personalKey'],
-      positionalArgs: [
-        { name: 'collectionId', required: false, description: 'Collection ObjectId' }
-      ],
-      options: [
-        {
-          name: 'id',
-          flags: '--id <collectionId>',
-          takesValue: true,
-          description: 'Collection ObjectId'
-        },
-        {
-          name: 'output',
-          flags: '--output <path>',
-          takesValue: true,
-          description: 'Save CSV to local file path'
-        }
-      ],
-      examples: [
-        {
-          description: 'Export collection chunks to CSV file',
-          args: [
-            'dataset',
-            'collection',
-            'export',
-            '68ad85a7463006c963799a06',
-            '--output',
-            'collection.csv'
-          ]
-        }
-      ],
-      execute: async ({ positional, options, client, container }) => {
-        const activeClient = requireActiveClient(client, 'dataset collection export');
-        const collectionId = resolveIdArg({
-          positional: positional[0],
-          flagValue: options.id,
-          label: 'Collection ID',
-          usage: 'fastgpt dataset collection export <collectionId> --output <file.csv>'
-        });
-
-        const outputPath = typeof options.output === 'string' ? options.output : undefined;
-        return container.datasetCollectionService.exportData({
-          client: activeClient,
-          collectionId,
-          writeOutput: outputPath
-            ? (bytes) => container.fileIo.writeOutputFile(outputPath, bytes)
-            : undefined,
-          writeStreamOutput:
-            outputPath && container.fileIo.writeStreamFile
-              ? (stream) => container.fileIo.writeStreamFile!(outputPath, stream)
-              : undefined
-        });
-      }
-    },
-
-    {
-      path: ['dataset', 'collection', 'sync'],
-      summary: 'Re-sync an external link or API dataset collection',
-      risk: 'write',
-      authModes: ['token', 'personalKey'],
-      positionalArgs: [
-        { name: 'collectionId', required: false, description: 'Collection ObjectId' }
-      ],
-      options: [
-        {
-          name: 'id',
-          flags: '--id <collectionId>',
-          takesValue: true,
-          description: 'Collection ObjectId'
-        },
-        {
-          name: 'dryRun',
-          flags: '--dry-run',
-          takesValue: false,
-          description: 'Preview without executing'
-        }
-      ],
-      examples: [
-        {
-          description: 'Re-sync link collection',
-          args: ['dataset', 'collection', 'sync', '68ad85a7463006c963799a06']
-        }
-      ],
-      execute: async ({ positional, options, client, container }) => {
-        const activeClient = requireActiveClient(client, 'dataset collection sync');
-        const collectionId = resolveIdArg({
-          positional: positional[0],
-          flagValue: options.id,
-          label: 'Collection ID',
-          usage: 'fastgpt dataset collection sync <collectionId>'
-        });
-
-        return container.datasetCollectionService.sync({
-          client: activeClient,
-          collectionId,
-          dryRun: options.dryRun === true
-        });
-      }
-    },
-
-    {
-      path: ['dataset', 'collection', 'retrain'],
-      summary: 'Retrain an existing collection with updated chunking parameters',
-      risk: 'write',
-      authModes: ['token', 'personalKey'],
-      positionalArgs: [
-        { name: 'collectionId', required: false, description: 'Collection ObjectId' }
-      ],
-      options: [
-        {
-          name: 'id',
-          flags: '--id <collectionId>',
-          takesValue: true,
-          description: 'Collection ObjectId'
-        },
-        {
-          name: 'trainingType',
-          flags: '--training-type <mode>',
-          takesValue: true,
-          description: 'Training mode'
-        },
-        {
-          name: 'chunkSize',
-          flags: '--chunk-size <n>',
-          takesValue: true,
-          description: 'Chunk token size'
-        },
-        {
-          name: 'file',
-          flags: '--file <path>',
-          takesValue: true,
-          description: 'Read chunk settings JSON from file'
-        },
-        {
-          name: 'dryRun',
-          flags: '--dry-run',
-          takesValue: false,
-          description: 'Preview without executing'
-        }
-      ],
-      examples: [
-        {
-          description: 'Retrain collection with new chunk size',
-          args: [
-            'dataset',
-            'collection',
-            'retrain',
-            '68ad85a7463006c963799a06',
-            '--chunk-size',
-            '800'
-          ]
-        }
-      ],
-      execute: async ({ positional, options, client, container }) => {
-        const activeClient = requireActiveClient(client, 'dataset collection retrain');
-        const collectionId = resolveIdArg({
-          positional: positional[0],
-          flagValue: options.id,
-          label: 'Collection ID',
-          usage: 'fastgpt dataset collection retrain <collectionId>'
-        });
-
-        const filePayload = await resolveJsonObjectPayload({
-          filePath: typeof options.file === 'string' ? options.file : undefined,
-          readTextFile: container.fileIo.readTextFile,
-          readStdin: container.readStdin,
-          fieldLabel: 'collection retrain payload'
-        });
-
-        const trainingType =
-          typeof options.trainingType === 'string'
-            ? z.enum(DatasetCollectionDataProcessModeEnum).parse(options.trainingType)
-            : undefined;
-
-        return container.datasetCollectionService.retrain({
-          client: activeClient,
-          input: {
-            ...(filePayload ?? {}),
-            collectionId,
-            ...(trainingType !== undefined ? { trainingType } : {}),
-            ...(options.chunkSize !== undefined
-              ? { chunkSize: parseOptionalNumber(options.chunkSize) }
-              : {})
-          },
-          dryRun: options.dryRun === true
-        });
-      }
-    },
-
-    {
-      path: ['dataset', 'collection', 'paths'],
-      summary: 'Get breadcrumb path chain of a collection or folder',
-      risk: 'read',
-      authModes: ['token'],
-      positionalArgs: [
-        { name: 'collectionId', required: false, description: 'Collection ObjectId' }
-      ],
-      options: [
-        {
-          name: 'id',
-          flags: '--id <collectionId>',
-          takesValue: true,
-          description: 'Collection ObjectId'
-        },
-        {
-          name: 'type',
-          flags: '--type <type>',
-          takesValue: true,
-          description: 'current (default) or parent'
-        }
-      ],
-      examples: [
-        {
-          description: 'Get collection breadcrumb paths',
-          args: ['dataset', 'collection', 'paths', '68ad85a7463006c963799a06']
-        }
-      ],
-      execute: async ({ positional, options, client, container }) => {
-        const activeClient = requireActiveClient(client, 'dataset collection paths');
-        const sourceId = positional[0] ?? (typeof options.id === 'string' ? options.id : undefined);
-        const rawType = options.type;
-        if (rawType !== undefined && rawType !== 'current' && rawType !== 'parent') {
-          throw new CliArgumentError('--type must be "current" or "parent".');
-        }
-        const type = rawType === 'parent' ? 'parent' : 'current';
-
-        return container.datasetCollectionService.paths({
-          client: activeClient,
-          sourceId,
-          type
-        });
-      }
-    },
-
-    {
-      path: ['dataset', 'collection', 'training-detail'],
-      summary: 'Get detailed training queue/error counts for a collection',
-      risk: 'read',
-      authModes: ['token', 'personalKey'],
-      positionalArgs: [
-        { name: 'collectionId', required: false, description: 'Collection ObjectId' }
-      ],
-      options: [
-        {
-          name: 'id',
-          flags: '--id <collectionId>',
-          takesValue: true,
-          description: 'Collection ObjectId'
-        }
-      ],
-      examples: [
-        {
-          description: 'Inspect collection training counts',
-          args: ['dataset', 'collection', 'training-detail', '68ad85a7463006c963799a06']
-        }
-      ],
-      execute: async ({ positional, options, client, container }) => {
-        const activeClient = requireActiveClient(client, 'dataset collection training-detail');
-        const collectionId = resolveIdArg({
-          positional: positional[0],
-          flagValue: options.id,
-          label: 'Collection ID',
-          usage: 'fastgpt dataset collection training-detail <collectionId>'
-        });
-
-        return container.datasetCollectionService.trainingDetail({
-          client: activeClient,
-          collectionId
-        });
-      }
-    },
-
-    {
-      path: ['dataset', 'collection', 'tag-filter-options'],
-      summary: 'List used collection tag filter options in a dataset',
-      risk: 'read',
-      authModes: ['token', 'personalKey'],
-      positionalArgs: [{ name: 'datasetId', required: false, description: 'Dataset ObjectId' }],
-      options: [
-        {
-          name: 'datasetId',
-          flags: '--dataset-id <id>',
-          takesValue: true,
-          description: 'Dataset ObjectId'
-        }
-      ],
-      examples: [
-        {
-          description: 'List active tag filter values',
-          args: ['dataset', 'collection', 'tag-filter-options', '68ad85a7463006c963799a05']
-        }
-      ],
-      execute: async ({ positional, options, client, container }) => {
-        const activeClient = requireActiveClient(client, 'dataset collection tag-filter-options');
-        const datasetId = resolveIdArg({
-          positional: positional[0],
-          flagValue: options.datasetId,
-          label: 'Dataset ID',
-          usage: 'fastgpt dataset collection tag-filter-options <datasetId>'
-        });
-
-        return container.datasetCollectionService.tagFilterOptions({
-          client: activeClient,
-          datasetId
         });
       }
     }

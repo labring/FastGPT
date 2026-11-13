@@ -2,6 +2,7 @@ import { chmod, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import { getCliCommandSpecs } from '../../src/cli/registry';
 import { runCli } from '../../src/cli/run';
 import type { Prompter } from '../../src/infra/ui/prompter';
 import type { CliFetchFn } from '../../src/shared/types';
@@ -66,10 +67,15 @@ async function execCli({
 }
 
 describe('Dataset CLI Commands integration (cli/src/cli/commands/dataset.ts)', () => {
-  it('manages dataset lifecycle: list, get, create, update, search, and delete with safety guards', async () => {
+  it('registers only OpenAPI-compatible dataset commands with personalKey support', () => {
+    const datasetSpecs = getCliCommandSpecs().filter((spec) => spec.path[0] === 'dataset');
+    expect(datasetSpecs.length).toBe(20);
+    expect(datasetSpecs.every((spec) => spec.authModes.includes('personalKey'))).toBe(true);
+  });
+
+  it('manages dataset lifecycle via System OpenAPI: list, get, create, search, and delete with safety guards', async () => {
     const configDir = await makeConfigDir();
 
-    // 预先写入 personal API key 凭据
     await writeFile(
       join(configDir, 'config.json'),
       JSON.stringify({
@@ -124,15 +130,11 @@ describe('Dataset CLI Commands integration (cli/src/cli/commands/dataset.ts)', (
         return jsonResp(OBJECT_ID_DATASET);
       }
 
-      if (url.includes('/core/dataset/update') && method === 'PUT') {
-        return jsonResp({});
-      }
-
       if (url.includes('/core/dataset/delete') && method === 'DELETE') {
         return jsonResp({});
       }
 
-      if (url.includes('/core/dataset/searchTest') && method === 'POST') {
+      if (url.includes('/core/dataset/search') && method === 'POST') {
         return jsonResp({
           list: [
             {
@@ -143,11 +145,11 @@ describe('Dataset CLI Commands integration (cli/src/cli/commands/dataset.ts)', (
               sourceName: 'cli-manual.md'
             }
           ],
-          duration: '0.345s',
-          limit: 5000,
-          searchMode: 'mixedRecall',
-          usingReRank: true,
-          similarity: 0.5
+          meta: {
+            durationMs: 345,
+            usingSimilarityFilter: true,
+            usingReRank: true
+          }
         });
       }
 
@@ -178,7 +180,7 @@ describe('Dataset CLI Commands integration (cli/src/cli/commands/dataset.ts)', (
     expect(getRes.exitCode).toBe(0);
     expect(JSON.parse(getRes.stdout).data._id).toBe(OBJECT_ID_DATASET);
 
-    // 3. dataset create --dry-run
+    // 3. dataset create --dry-run & real
     const dryCreate = await execCli({
       argv: ['dataset', 'create', '--name', 'New Lib', '--dry-run', '--format', 'json'],
       configDir,
@@ -188,7 +190,6 @@ describe('Dataset CLI Commands integration (cli/src/cli/commands/dataset.ts)', (
     expect(JSON.parse(dryCreate.stdout).data.dryRun).toBe(true);
     expect(JSON.parse(dryCreate.stdout).data.risk).toBe('write');
 
-    // 4. dataset create real
     const realCreate = await execCli({
       argv: ['dataset', 'create', '--name', 'New Lib', '--format', 'json'],
       configDir,
@@ -197,47 +198,7 @@ describe('Dataset CLI Commands integration (cli/src/cli/commands/dataset.ts)', (
     expect(realCreate.exitCode).toBe(0);
     expect(JSON.parse(realCreate.stdout).data.datasetId).toBe(OBJECT_ID_DATASET);
 
-    // 5. dataset update
-    const updateRes = await execCli({
-      argv: [
-        'dataset',
-        'update',
-        OBJECT_ID_DATASET,
-        '--name',
-        'Updated Lib',
-        '--intro',
-        'Fresh docs',
-        '--format',
-        'json'
-      ],
-      configDir,
-      fetchFn: mockFetch
-    });
-    expect(updateRes.exitCode).toBe(0);
-    expect(JSON.parse(updateRes.stdout).data.datasetId).toBe(OBJECT_ID_DATASET);
-
-    // 5b. dataset update --parent-id null (R3: move to root preview)
-    const updateMoveRootDry = await execCli({
-      argv: [
-        'dataset',
-        'update',
-        OBJECT_ID_DATASET,
-        '--parent-id',
-        'null',
-        '--dry-run',
-        '--format',
-        'json'
-      ],
-      configDir,
-      fetchFn: mockFetch
-    });
-    expect(updateMoveRootDry.exitCode).toBe(0);
-    const updateMoveRootJson = JSON.parse(updateMoveRootDry.stdout);
-    expect(updateMoveRootJson.data.dryRun).toBe(true);
-    expect(updateMoveRootJson.data.risk).toBe('write');
-    expect(updateMoveRootJson.data.payload.parentId).toBeNull();
-
-    // 6. dataset search
+    // 4. dataset search (System OpenAPI /core/dataset/search)
     const searchRes = await execCli({
       argv: ['dataset', 'search', OBJECT_ID_DATASET, 'What is FastGPT CLI?', '--format', 'json'],
       configDir,
@@ -248,7 +209,7 @@ describe('Dataset CLI Commands integration (cli/src/cli/commands/dataset.ts)', (
     expect(searchJson.ok).toBe(true);
     expect(searchJson.data.list[0].q).toBe('What is FastGPT CLI?');
 
-    // 6b. dataset get, update, search via alternative --id flag (R6)
+    // 4b. dataset get & search via alternative --id / --dataset-ids flags
     const getByIdRes = await execCli({
       argv: ['dataset', 'get', '--id', OBJECT_ID_DATASET, '--format', 'json'],
       configDir,
@@ -257,30 +218,16 @@ describe('Dataset CLI Commands integration (cli/src/cli/commands/dataset.ts)', (
     expect(getByIdRes.exitCode).toBe(0);
     expect(JSON.parse(getByIdRes.stdout).data._id).toBe(OBJECT_ID_DATASET);
 
-    const updateByIdRes = await execCli({
-      argv: [
-        'dataset',
-        'update',
-        '--id',
-        OBJECT_ID_DATASET,
-        '--name',
-        'Flag Updated',
-        '--format',
-        'json'
-      ],
-      configDir,
-      fetchFn: mockFetch
-    });
-    expect(updateByIdRes.exitCode).toBe(0);
-
     const searchByIdRes = await execCli({
       argv: [
         'dataset',
         'search',
-        '--id',
+        '--dataset-ids',
         OBJECT_ID_DATASET,
         '--text',
         'Alternative flag search',
+        '--topk',
+        '5',
         '--format',
         'json'
       ],
@@ -289,7 +236,7 @@ describe('Dataset CLI Commands integration (cli/src/cli/commands/dataset.ts)', (
     });
     expect(searchByIdRes.exitCode).toBe(0);
 
-    // 7. dataset delete with --dry-run (R7: preview without prompt or deleting)
+    // 5. dataset delete with --dry-run, blocked without --yes, confirmed with --yes
     const deleteDryRun = await execCli({
       argv: ['dataset', 'delete', OBJECT_ID_DATASET, '--dry-run', '--format', 'json'],
       configDir,
@@ -300,9 +247,7 @@ describe('Dataset CLI Commands integration (cli/src/cli/commands/dataset.ts)', (
     const deleteDryJson = JSON.parse(deleteDryRun.stdout);
     expect(deleteDryJson.data.dryRun).toBe(true);
     expect(deleteDryJson.data.risk).toBe('destructive');
-    expect(deleteDryJson.data.operation).toBe('dataset delete');
 
-    // 7b. dataset delete in non-interactive/JSON mode without --yes -> must be blocked with exit code 2!
     const deleteBlocked = await execCli({
       argv: ['dataset', 'delete', OBJECT_ID_DATASET, '--format', 'json'],
       configDir,
@@ -312,7 +257,6 @@ describe('Dataset CLI Commands integration (cli/src/cli/commands/dataset.ts)', (
     expect(deleteBlocked.exitCode).toBe(2);
     expect(JSON.parse(deleteBlocked.stderr).error.code).toBe('CLI_ARGUMENT_INVALID');
 
-    // 8. dataset delete with --yes -> succeeds!
     const deleteConfirmed = await execCli({
       argv: ['dataset', 'delete', OBJECT_ID_DATASET, '--yes', '--format', 'json'],
       configDir,
@@ -321,22 +265,11 @@ describe('Dataset CLI Commands integration (cli/src/cli/commands/dataset.ts)', (
     });
     expect(deleteConfirmed.exitCode).toBe(0);
     expect(JSON.parse(deleteConfirmed.stdout).data.deleted).toBe(true);
-
-    // 8b. dataset delete using --id and --yes
-    const deleteByIdConfirmed = await execCli({
-      argv: ['dataset', 'delete', '--id', OBJECT_ID_DATASET, '--yes', '--format', 'json'],
-      configDir,
-      isTTY: false,
-      fetchFn: mockFetch
-    });
-    expect(deleteByIdConfirmed.exitCode).toBe(0);
-    expect(JSON.parse(deleteByIdConfirmed.stdout).data.deleted).toBe(true);
   });
 
   it('blocks appKey with AUTH_MODE_UNSUPPORTED (exit code 3) on dataset commands', async () => {
     const configDir = await makeConfigDir();
 
-    // 写入 app-scoped API key 凭据
     await writeFile(
       join(configDir, 'config.json'),
       JSON.stringify({
@@ -377,7 +310,7 @@ describe('Dataset CLI Commands integration (cli/src/cli/commands/dataset.ts)', (
     expect(errJson.error.message).toContain('cannot use an app-scoped API Key');
   });
 
-  it('rejects invalid parameters with exit code 2 and structured validation issues (R5)', async () => {
+  it('rejects invalid parameters with exit code 2 and structured validation issues', async () => {
     const configDir = await makeConfigDir();
 
     await writeFile(
@@ -402,7 +335,6 @@ describe('Dataset CLI Commands integration (cli/src/cli/commands/dataset.ts)', (
       await chmod(join(configDir, 'credentials.json'), 0o600).catch(() => {});
     }
 
-    // Invalid type passed to create --dry-run
     const res = await execCli({
       argv: [
         'dataset',
@@ -419,10 +351,8 @@ describe('Dataset CLI Commands integration (cli/src/cli/commands/dataset.ts)', (
     });
 
     expect(res.exitCode).toBe(2);
-    const errJson = JSON.parse(res.stderr);
-    expect(errJson.error.code).toBe('CLI_ARGUMENT_INVALID');
+    expect(JSON.parse(res.stderr).error.code).toBe('CLI_ARGUMENT_INVALID');
 
-    // 显式传入非法页码 --page typo，必须返回退出码 2，且未发出 HTTP 请求（R3）
     let httpCalled = false;
     const pageTypoRes = await execCli({
       argv: ['dataset', 'list', '--page', 'typo', '--format', 'json'],
@@ -436,19 +366,6 @@ describe('Dataset CLI Commands integration (cli/src/cli/commands/dataset.ts)', (
     expect(httpCalled).toBe(false);
     expect(JSON.parse(pageTypoRes.stderr).error.code).toBe('CLI_ARGUMENT_INVALID');
 
-    // 显式传入非法页码 --page 0，必须返回退出码 2，且未发出 HTTP 请求（R3）
-    const pageZeroRes = await execCli({
-      argv: ['dataset', 'list', '--page', '0', '--format', 'json'],
-      configDir,
-      fetchFn: async () => {
-        httpCalled = true;
-        return jsonResp({});
-      }
-    });
-    expect(pageZeroRes.exitCode).toBe(2);
-    expect(httpCalled).toBe(false);
-
-    // 显式传入非法检索模式 --mode typo，必须返回退出码 2，且未发出 HTTP 请求（R3）
     const modeTypoRes = await execCli({
       argv: [
         'dataset',
@@ -471,11 +388,10 @@ describe('Dataset CLI Commands integration (cli/src/cli/commands/dataset.ts)', (
     expect(JSON.parse(modeTypoRes.stderr).error.code).toBe('CLI_ARGUMENT_INVALID');
   });
 
-  it('executes collection, data, train, synonym, and batch commands end-to-end and enforces token-only guards', async () => {
+  it('executes collection, data, batch, output flags, and validation guards end-to-end with personalKey', async () => {
     const configDir = await makeConfigDir();
     const OBJECT_ID_COL = '68ad85a7463006c963799a11';
     const OBJECT_ID_DATA = '68ad85a7463006c963799a12';
-    const OBJECT_ID_SYN = '68ad85a7463006c963799a13';
 
     await writeFile(
       join(configDir, 'config.json'),
@@ -485,11 +401,6 @@ describe('Dataset CLI Commands integration (cli/src/cli/commands/dataset.ts)', (
         profiles: {
           default: {
             baseUrl: 'https://cloud.fastgpt.cn/api',
-            authType: 'token',
-            updatedAt: Date.now()
-          },
-          personal: {
-            baseUrl: 'https://cloud.fastgpt.cn/api',
             authType: 'apikey',
             apiKeyType: 'personal',
             updatedAt: Date.now()
@@ -497,11 +408,9 @@ describe('Dataset CLI Commands integration (cli/src/cli/commands/dataset.ts)', (
         }
       })
     );
-    await writeFile(
-      join(configDir, 'credentials.json'),
-      JSON.stringify({ default: 'u1:session-secret-token-123456', personal: RAW_KEY }),
-      { mode: 0o600 }
-    );
+    await writeFile(join(configDir, 'credentials.json'), JSON.stringify({ default: RAW_KEY }), {
+      mode: 0o600
+    });
     if (process.platform !== 'win32') {
       await chmod(join(configDir, 'credentials.json'), 0o600).catch(() => {});
     }
@@ -510,12 +419,14 @@ describe('Dataset CLI Commands integration (cli/src/cli/commands/dataset.ts)', (
     await writeFile(sampleFile, '# FastGPT CLI Guide\nHello world');
     const chunksJson = join(configDir, 'chunks.json');
     await writeFile(chunksJson, JSON.stringify([{ q: 'Chunk 1', a: 'Answer 1' }]));
-    const exportCsv = join(configDir, 'exported.csv');
 
     const mockFetch: CliFetchFn = async (input) => {
       const url = input instanceof Request ? input.url : String(input);
       if (url.includes('/core/dataset/collection/listV2')) {
         return jsonResp({ total: 1, list: [{ _id: OBJECT_ID_COL, name: 'notes.md' }] });
+      }
+      if (url.includes('/core/dataset/collection/detail')) {
+        return jsonResp({ _id: OBJECT_ID_COL, name: 'notes.md' });
       }
       if (url.includes('/core/dataset/collection/create/localFile')) {
         return jsonResp({ collectionId: OBJECT_ID_COL, results: { insertLen: 1 } });
@@ -523,35 +434,26 @@ describe('Dataset CLI Commands integration (cli/src/cli/commands/dataset.ts)', (
       if (url.includes('/core/dataset/collection/create/text')) {
         return jsonResp({ collectionId: OBJECT_ID_COL, results: { insertLen: 1 } });
       }
+      if (url.includes('/core/dataset/collection/update')) {
+        return jsonResp({});
+      }
       if (url.includes('/core/dataset/collection/delete')) {
         return jsonResp({});
       }
       if (url.includes('/core/dataset/data/v2/list')) {
         return jsonResp({ total: 1, list: [{ _id: OBJECT_ID_DATA, q: 'Q', a: 'A' }] });
       }
+      if (url.includes('/core/dataset/data/detail')) {
+        return jsonResp({ id: OBJECT_ID_DATA, q: 'Q', a: 'A' });
+      }
       if (url.includes('/core/dataset/data/pushData')) {
         return jsonResp({ insertLen: 1, dataIds: [OBJECT_ID_DATA] });
       }
+      if (url.includes('/core/dataset/data/update')) {
+        return jsonResp({ q: 'Q2' });
+      }
       if (url.includes('/core/dataset/data/delete')) {
         return jsonResp({});
-      }
-      if (url.includes('/core/dataset/training/getDatasetTrainingQueue')) {
-        return jsonResp({ hasTrainingTask: false });
-      }
-      if (url.includes('/core/dataset/training/hasDatasetTrainingError')) {
-        return jsonResp({ hasError: false });
-      }
-      if (url.includes('/core/dataset/exportAll')) {
-        return new Response('q,a\nfoo,bar', { status: 200 });
-      }
-      if (url.includes('/proApi/core/dataset/tag/getAllTags')) {
-        return jsonResp([{ _id: '68ad85a7463006c963799a14', tag: 'Docs' }]);
-      }
-      if (url.includes('/core/dataset/synonym/detail')) {
-        return jsonResp({ rebuilding: false });
-      }
-      if (url.includes('/core/dataset/synonym/download')) {
-        return new Response('standard,synonyms\nAI,人工智能', { status: 200 });
       }
       if (url.includes('/core/dataset/batch/delete')) {
         return jsonResp({
@@ -563,7 +465,7 @@ describe('Dataset CLI Commands integration (cli/src/cli/commands/dataset.ts)', (
       throw new Error(`Unexpected URL: ${url}`);
     };
 
-    // 1. collection create-file & list & delete guard
+    // 1. collection create-file (direct multipart only) & get & update & delete guard
     const uploadRes = await execCli({
       argv: [
         'dataset',
@@ -580,6 +482,29 @@ describe('Dataset CLI Commands integration (cli/src/cli/commands/dataset.ts)', (
     expect(uploadRes.exitCode).toBe(0);
     expect(JSON.parse(uploadRes.stdout).data.collectionId).toBe(OBJECT_ID_COL);
 
+    const colGetRes = await execCli({
+      argv: ['dataset', 'collection', 'get', OBJECT_ID_COL, '--format', 'json'],
+      configDir,
+      fetchFn: mockFetch
+    });
+    expect(colGetRes.exitCode).toBe(0);
+
+    const colUpdateRes = await execCli({
+      argv: [
+        'dataset',
+        'collection',
+        'update',
+        OBJECT_ID_COL,
+        '--name',
+        'Renamed',
+        '--format',
+        'json'
+      ],
+      configDir,
+      fetchFn: mockFetch
+    });
+    expect(colUpdateRes.exitCode).toBe(0);
+
     const colDelGuard = await execCli({
       argv: ['dataset', 'collection', 'delete', OBJECT_ID_COL, '--format', 'json'],
       configDir,
@@ -594,7 +519,7 @@ describe('Dataset CLI Commands integration (cli/src/cli/commands/dataset.ts)', (
     });
     expect(colDelOk.exitCode).toBe(0);
 
-    // 2. data push --file & list & delete guard
+    // 2. data push --file & list & get & update & delete guard
     const pushRes = await execCli({
       argv: ['dataset', 'data', 'push', OBJECT_ID_COL, '--file', chunksJson, '--format', 'json'],
       configDir,
@@ -603,6 +528,13 @@ describe('Dataset CLI Commands integration (cli/src/cli/commands/dataset.ts)', (
     expect(pushRes.exitCode).toBe(0);
     expect(JSON.parse(pushRes.stdout).data.insertLen).toBe(1);
 
+    const dataGetRes = await execCli({
+      argv: ['dataset', 'data', 'get', OBJECT_ID_DATA, '--format', 'json'],
+      configDir,
+      fetchFn: mockFetch
+    });
+    expect(dataGetRes.exitCode).toBe(0);
+
     const dataDelGuard = await execCli({
       argv: ['dataset', 'data', 'delete', OBJECT_ID_DATA, '--format', 'json'],
       configDir,
@@ -610,66 +542,7 @@ describe('Dataset CLI Commands integration (cli/src/cli/commands/dataset.ts)', (
     });
     expect(dataDelGuard.exitCode).toBe(2);
 
-    // 3. train wait
-    const trainWaitRes = await execCli({
-      argv: ['dataset', 'train', 'wait', OBJECT_ID_DATASET, '--format', 'json'],
-      configDir,
-      fetchFn: mockFetch
-    });
-    expect(trainWaitRes.exitCode).toBe(0);
-    expect(JSON.parse(trainWaitRes.stdout).data.completed).toBe(true);
-
-    // 4. export --output
-    const exportRes = await execCli({
-      argv: ['dataset', 'export', OBJECT_ID_DATASET, '--output', exportCsv, '--format', 'json'],
-      configDir,
-      fetchFn: mockFetch
-    });
-    expect(exportRes.exitCode).toBe(0);
-    expect(JSON.parse(exportRes.stdout).data.outputPath).toBe(exportCsv);
-
-    // 5. token-only enforcement on personalKey for dataset tag list & dataset export
-    const tagWithPersonalKey = await execCli({
-      argv: [
-        'dataset',
-        'tag',
-        'list',
-        OBJECT_ID_DATASET,
-        '--profile',
-        'personal',
-        '--format',
-        'json'
-      ],
-      configDir,
-      fetchFn: mockFetch
-    });
-    expect(tagWithPersonalKey.exitCode).toBe(3);
-    expect(JSON.parse(tagWithPersonalKey.stderr).error.code).toBe('AUTH_MODE_UNSUPPORTED');
-
-    const tagWithToken = await execCli({
-      argv: ['dataset', 'tag', 'list', OBJECT_ID_DATASET, '--format', 'json'],
-      configDir,
-      fetchFn: mockFetch
-    });
-    expect(tagWithToken.exitCode).toBe(0);
-
-    // 6. synonym detail & download
-    const synDetail = await execCli({
-      argv: ['dataset', 'synonym', 'detail', OBJECT_ID_DATASET, '--format', 'json'],
-      configDir,
-      fetchFn: mockFetch
-    });
-    expect(synDetail.exitCode).toBe(0);
-
-    const synDl = await execCli({
-      argv: ['dataset', 'synonym', 'download', OBJECT_ID_SYN, '--format', 'json'],
-      configDir,
-      fetchFn: mockFetch
-    });
-    expect(synDl.exitCode).toBe(0);
-    expect(JSON.parse(synDl.stdout).data.csv).toContain('standard,synonyms');
-
-    // 7. batch-delete non-TTY guard & execution
+    // 3. batch-delete execution
     const batchDelOk = await execCli({
       argv: ['dataset', 'batch-delete', '--ids', OBJECT_ID_DATASET, '--yes', '--format', 'json'],
       configDir,
@@ -678,7 +551,7 @@ describe('Dataset CLI Commands integration (cli/src/cli/commands/dataset.ts)', (
     expect(batchDelOk.exitCode).toBe(0);
     expect(JSON.parse(batchDelOk.stdout).data.successIds).toEqual([OBJECT_ID_DATASET]);
 
-    // 8. agent output efficiency flags: --fields projection & --pick --raw extraction
+    // 4. agent output efficiency flags: --fields projection & --pick --raw extraction
     const fieldsList = await execCli({
       argv: [
         'dataset',
@@ -718,64 +591,7 @@ describe('Dataset CLI Commands integration (cli/src/cli/commands/dataset.ts)', (
     expect(pickRaw.exitCode).toBe(0);
     expect(pickRaw.stdout).toBe(OBJECT_ID_COL);
 
-    // 9. OCR regression guards:
-    // - train wait --no-fail-on-error exits 0 even when hasError is true (including when server reports hasTrainingTask: true for retained final errors)
-    const waitNoFail = await execCli({
-      argv: [
-        'dataset',
-        'train',
-        'wait',
-        OBJECT_ID_DATASET,
-        '--no-fail-on-error',
-        '--format',
-        'json'
-      ],
-      configDir,
-      fetchFn: async (input) => {
-        const url = input instanceof Request ? input.url : String(input);
-        if (url.includes('getDatasetTrainingQueue')) {
-          return jsonResp({ hasTrainingTask: true });
-        }
-        if (url.includes('hasDatasetTrainingError')) {
-          return jsonResp({ hasError: true });
-        }
-        if (url.includes('collection/listV2')) {
-          return jsonResp({
-            total: 1,
-            list: [
-              {
-                _id: OBJECT_ID_COL,
-                type: 'file',
-                activeTrainingAmount: 0,
-                finalErrorAmount: 1,
-                hasError: true
-              }
-            ]
-          });
-        }
-        return jsonResp({});
-      }
-    });
-    expect(waitNoFail.exitCode).toBe(0);
-    expect(JSON.parse(waitNoFail.stdout).data.hasError).toBe(true);
-
-    // - train wait --interval abc rejects NaN with exit code 2 (no infinite loop)
-    const waitBadInterval = await execCli({
-      argv: [
-        'dataset',
-        'train',
-        'wait',
-        OBJECT_ID_DATASET,
-        '--interval',
-        'abc',
-        '--format',
-        'json'
-      ],
-      configDir,
-      fetchFn: mockFetch
-    });
-    expect(waitBadInterval.exitCode).toBe(2);
-
+    // 5. regression guards:
     // - batch-move missing --parent-id fails with exit code 2 instead of moving to root
     const batchMoveMissingParent = await execCli({
       argv: ['dataset', 'batch-move', '--ids', OBJECT_ID_DATASET, '--format', 'json'],
@@ -783,33 +599,6 @@ describe('Dataset CLI Commands integration (cli/src/cli/commands/dataset.ts)', (
       fetchFn: mockFetch
     });
     expect(batchMoveMissingParent.exitCode).toBe(2);
-
-    // - tag bind --mode rm fails strictly with exit code 2
-    const tagsJsonPath = join(configDir, 'tags.json');
-    await writeFile(
-      tagsJsonPath,
-      JSON.stringify([{ tagId: '68ad85a7463006c963799a14', value: 'v' }])
-    );
-    const badTagMode = await execCli({
-      argv: [
-        'dataset',
-        'tag',
-        'bind',
-        '--dataset-id',
-        OBJECT_ID_DATASET,
-        '--collection-ids',
-        OBJECT_ID_COL,
-        '--mode',
-        'rm',
-        '--file',
-        tagsJsonPath,
-        '--format',
-        'json'
-      ],
-      configDir,
-      fetchFn: mockFetch
-    });
-    expect(badTagMode.exitCode).toBe(2);
 
     // - dataset data update without --q fails cleanly with exit code 2
     const dataUpdateNoQ = await execCli({
@@ -819,35 +608,27 @@ describe('Dataset CLI Commands integration (cli/src/cli/commands/dataset.ts)', (
     });
     expect(dataUpdateNoQ.exitCode).toBe(2);
 
-    // - dataset export to unwritable path returns exit code 2 (CliArgumentError)
-    const badExportDir = join(configDir, 'not-a-dir');
-    await writeFile(badExportDir, 'file-blocking-dir');
-    const exportFail = await execCli({
-      argv: [
-        'dataset',
-        'export',
-        OBJECT_ID_DATASET,
-        '--output',
-        join(badExportDir, 'out.csv'),
-        '--format',
-        'json'
-      ],
+    // - dataset create --file with non-string field {"name":42} returns exit code 2 (Zod validation, not TypeError)
+    const badCreateJson = join(configDir, 'bad-create.json');
+    await writeFile(badCreateJson, JSON.stringify({ name: 42 }));
+    const badCreateRes = await execCli({
+      argv: ['dataset', 'create', '--file', badCreateJson, '--dry-run', '--format', 'json'],
       configDir,
       fetchFn: mockFetch
     });
-    expect(exportFail.exitCode).toBe(2);
-    expect(JSON.parse(exportFail.stderr).error.code).toBe('CLI_ARGUMENT_INVALID');
+    expect(badCreateRes.exitCode).toBe(2);
 
-    // - dataset update --file with non-string field {"name":42} returns exit code 2 (Zod validation, not TypeError)
-    const badUpdateJson = join(configDir, 'bad-update.json');
-    await writeFile(badUpdateJson, JSON.stringify({ name: 42 }));
-    const badUpdateRes = await execCli({
+    // - collection update --file with non-string name {"name":42} returns exit code 2 with plain-quote hint
+    const badColUpdateJson = join(configDir, 'bad-col-update.json');
+    await writeFile(badColUpdateJson, JSON.stringify({ name: 42 }));
+    const badColUpdateRes = await execCli({
       argv: [
         'dataset',
+        'collection',
         'update',
-        OBJECT_ID_DATASET,
+        OBJECT_ID_COL,
         '--file',
-        badUpdateJson,
+        badColUpdateJson,
         '--dry-run',
         '--format',
         'json'
@@ -855,12 +636,12 @@ describe('Dataset CLI Commands integration (cli/src/cli/commands/dataset.ts)', (
       configDir,
       fetchFn: mockFetch
     });
-    expect(badUpdateRes.exitCode).toBe(2);
-    const badUpdateErr = JSON.parse(badUpdateRes.stderr).error;
-    expect(badUpdateErr.code).toBe('CLI_ARGUMENT_INVALID');
-    expect(badUpdateErr.hint).not.toContain('\\"');
-    expect(badUpdateErr.hint).toContain(
-      'fastgpt commands --command "dataset update" --format json'
+    expect(badColUpdateRes.exitCode).toBe(2);
+    const badColErr = JSON.parse(badColUpdateRes.stderr).error;
+    expect(badColErr.code).toBe('CLI_ARGUMENT_INVALID');
+    expect(badColErr.hint).not.toContain('\\"');
+    expect(badColErr.hint).toContain(
+      'fastgpt commands --command "dataset collection update" --format json'
     );
   });
 });
