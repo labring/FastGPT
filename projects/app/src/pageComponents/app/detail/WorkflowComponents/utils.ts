@@ -34,7 +34,7 @@ import {
   serializeAgentTool
 } from '@fastgpt/global/core/app/formEdit/utils';
 import type { SelectedToolItemType } from '@fastgpt/global/core/app/formEdit/type';
-import { normalizeAgentToolInputs } from '@fastgpt/global/core/workflow/migration';
+import { normalizeAgentToolInputs } from '@fastgpt/global/core/workflow/migration/agentToolInput';
 import { type TFunction } from 'i18next';
 import { type Edge, type Node } from 'reactflow';
 
