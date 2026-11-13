@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { sandboxEditFileTool } from '@fastgpt/service/core/ai/sandbox/application/toolCall/editFile.tool';
+import { createToolRunner } from '@fastgpt/service/core/ai/sandbox/application/toolCall/type';
 
 const createSandboxInstance = () =>
   ({
@@ -7,7 +8,7 @@ const createSandboxInstance = () =>
     resolveRuntimePath: vi.fn((path: string) => path),
     provider: {
       replaceContent: vi.fn(async (entries: { path: string }[]) =>
-        entries.map((entry) => ({ path: entry.path, replacedCount: 1, error: null }))
+        entries.map((entry) => ({ path: entry.path, status: 'replaced', replacedCount: 1 }))
       )
     }
   }) as any;
@@ -33,55 +34,60 @@ describe('sandboxEditFileTool', () => {
 
   it.each([
     {
-      counts: [0],
-      response: 'Edit 1 not applied (oldContent not found): /workspace/a.txt'
+      results: [{ path: '/workspace/a.txt', status: 'unmatched' }],
+      lines: ['Edit 1 not applied (oldContent not found): /workspace/a.txt']
     },
     {
-      counts: [null],
-      response:
-        'Edit 1 result unknown (replacement count unavailable): /workspace/a.txt. Read the file to verify before retrying.'
+      results: [{ path: '/workspace/a.txt', status: 'unknown' }],
+      lines: ['Edit 1 result unknown (replacement count unavailable): /workspace/a.txt']
     },
     {
-      counts: [1, 0, null],
-      response: [
+      results: [
+        { path: '/workspace/a.txt', status: 'replaced', replacedCount: 1 },
+        { path: '/workspace/b.txt', status: 'unknown' },
+        { path: '/workspace/a.txt', status: 'unmatched' },
+        { path: '/workspace/a.txt', status: 'skipped' }
+      ],
+      lines: [
         'Edit 1 applied (replacement count: 1): /workspace/a.txt',
-        'Edit 2 not applied (oldContent not found): /workspace/a.txt',
-        'Edit 3 result unknown (replacement count unavailable): /workspace/a.txt. Read the file to verify before retrying.'
-      ].join('\n')
+        'Edit 2 result unknown (replacement count unavailable): /workspace/b.txt',
+        'Edit 3 not applied (oldContent not found): /workspace/a.txt',
+        'Edit 4 skipped (an earlier edit did not match): /workspace/a.txt'
+      ]
     }
-  ])('reports each entry accurately for counts $counts', async ({ counts, response }) => {
+  ])('returns business outcomes as ordinary tool responses: $lines', async ({ results, lines }) => {
     const sandbox = createSandboxInstance();
-    sandbox.provider.replaceContent = vi.fn(async () =>
-      counts.map((replacedCount) => ({ path: '/workspace/a.txt', replacedCount, error: null }))
-    );
+    sandbox.provider.replaceContent = vi.fn(async () => results);
+    const input = {
+      entries: results.map(({ path }) => ({ path, oldContent: 'old', newContent: 'new' }))
+    };
 
     await expect(
-      sandboxEditFileTool.execute({
+      createToolRunner(sandboxEditFileTool)({
         sandboxInstance: sandbox,
-        params: {
-          entries: counts.map(() => ({
-            path: '/workspace/a.txt',
-            oldContent: 'old',
-            newContent: 'new'
-          }))
-        }
+        input
       })
-    ).resolves.toEqual({ response });
+    ).resolves.toEqual({
+      success: true,
+      input,
+      response: [...lines, 'Read the files to verify their current contents before retrying.'].join(
+        '\n'
+      )
+    });
   });
 
-  it('reports a provider entry error instead of claiming success', async () => {
+  it('propagates real provider exceptions to the Agent error handling', async () => {
     const sandbox = createSandboxInstance();
-    sandbox.provider.replaceContent = vi.fn(async () => [
-      { path: '/workspace/a.txt', replacedCount: null, error: new Error('permission denied') }
-    ]);
+    const error = new Error('permission denied');
+    sandbox.provider.replaceContent.mockRejectedValueOnce(error);
 
     await expect(
-      sandboxEditFileTool.execute({
+      createToolRunner(sandboxEditFileTool)({
         sandboxInstance: sandbox,
-        params: {
+        input: {
           entries: [{ path: '/workspace/a.txt', oldContent: 'old', newContent: 'new' }]
         }
       })
-    ).resolves.toEqual({ response: 'Edit 1 failed: /workspace/a.txt: permission denied' });
+    ).rejects.toBe(error);
   });
 });

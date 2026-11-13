@@ -1,7 +1,7 @@
 import { CommandExecutionError, FileOperationError } from '../errors';
 import type { ICommandExecution } from '../contracts';
 import type { DirectoryEntry, FileInfo, SearchResult } from '../types';
-import type { ContentReplaceResult } from '../types/filesystem';
+import type { ContentReplaceEntry, ContentReplaceResult } from '../types/filesystem';
 import { base64ToBytes, bytesToBase64 } from '../utils/base64';
 
 /**
@@ -478,19 +478,17 @@ export class CommandFilesystemPolyfill {
   }
 
   /**
-   * Replace every literal occurrence of `oldContent` with `newContent`.
+   * 按字面量替换 UTF-8 文件内容，保留正则字符、换行、BOM 和文件权限。
    *
-   * The text is matched as a plain string, not as a sed regex: content from
-   * an edit usually holds `.`, `*`, `[`, `$`, backslashes and newlines, which
-   * sed would treat as pattern syntax or reject. The file is read, replaced
-   * in memory and written back with `replaceFileContents`. A file without a
-   * match is left untouched.
+   * 读取后通过临时文件原子写回；明确未命中时保持文件不变，并停止后续请求。
+   * 返回结果与输入一一对应，未发送条目保留 skipped；参数、读取和写入异常向上抛出。
    */
-  async replaceContent(
-    entries: { path: string; oldContent: string; newContent: string }[]
-  ): Promise<ContentReplaceResult[]> {
-    const results: ContentReplaceResult[] = [];
-    for (const { path, oldContent, newContent } of entries) {
+  async replaceContent(entries: ContentReplaceEntry[]): Promise<ContentReplaceResult[]> {
+    const results: ContentReplaceResult[] = entries.map(({ path }) => ({
+      path,
+      status: 'skipped'
+    }));
+    for (const [index, { path, oldContent, newContent }] of entries.entries()) {
       if (!oldContent) {
         throw new FileOperationError('Content to replace must not be empty', path, 'INVALID_PATH');
       }
@@ -507,12 +505,12 @@ export class CommandFilesystemPolyfill {
       const parts = content.split(oldContent);
       const occurrences = parts.length - 1;
       if (occurrences === 0) {
-        results.push({ path, replacedCount: 0, error: null });
-        continue;
+        results[index] = { path, status: 'unmatched' };
+        break;
       }
 
       await this.replaceFileContents(path, new TextEncoder().encode(parts.join(newContent)));
-      results.push({ path, replacedCount: occurrences, error: null });
+      results[index] = { path, status: 'replaced', replacedCount: occurrences };
     }
     return results;
   }

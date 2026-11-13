@@ -9,7 +9,7 @@ import {
 } from '@alibaba-group/opensandbox';
 import { createExecdClient, FilesystemAdapter } from '@alibaba-group/opensandbox/internal';
 import { OpenSandboxAdapter, type OpenSandboxConnectionConfig } from '@/adapters/opensandbox';
-import { FileOperationError, SandboxNotFoundError, SandboxStateError } from '@/errors';
+import { SandboxNotFoundError, SandboxStateError } from '@/errors';
 
 const CONNECTION: OpenSandboxConnectionConfig = {
   sessionId: 'session-1',
@@ -414,9 +414,12 @@ describe('OpenSandboxAdapter', () => {
           { path: 'util.py', oldContent: 'a = 1', newContent: 'a = 2' }
         ])
       ).resolves.toEqual([
-        { path: 'app.py', replacedCount: 2, error: null },
-        { path: '/workspace/app.py', replacedCount, error: null },
-        { path: 'util.py', replacedCount: 1, error: null }
+        { path: '/workspace/app.py', status: 'replaced', replacedCount: 2 },
+        {
+          path: '/workspace/app.py',
+          ...(replacedCount === 0 ? { status: 'unmatched' } : { status: 'replaced', replacedCount })
+        },
+        { path: '/workspace/util.py', status: 'replaced', replacedCount: 1 }
       ]);
 
       expect(files.get('/workspace/app.py')).toBe(`import y\n${expectedUse}\nimport y\n`);
@@ -448,9 +451,12 @@ describe('OpenSandboxAdapter', () => {
           { path: '/workspace/app.py', oldContent: 'new', newContent: 'final' }
         ])
       ).resolves.toEqual([
-        { path: 'app.py', replacedCount: null, error: null },
-        { path: 'util.py', replacedCount: partial ? 1 : null, error: null },
-        { path: '/workspace/app.py', replacedCount: null, error: null }
+        { path: '/workspace/app.py', status: 'unknown' },
+        {
+          path: '/workspace/util.py',
+          ...(partial ? { status: 'replaced', replacedCount: 1 } : { status: 'unknown' })
+        },
+        { path: '/workspace/app.py', status: 'unknown' }
       ]);
 
       expect(files.get('/workspace/app.py')).toBe('final');
@@ -484,9 +490,9 @@ describe('OpenSandboxAdapter', () => {
     ]);
 
     await expect(result).resolves.toEqual([
-      { path: 'a.txt', replacedCount: 2, error: null },
-      { path: 'b.txt', replacedCount: 0, error: null },
-      { path: 'c.txt', replacedCount: 0, error: null }
+      { path: '/workspace/a.txt', status: 'replaced', replacedCount: 2 },
+      { path: '/workspace/b.txt', status: 'unmatched' },
+      { path: '/workspace/c.txt', status: 'unmatched' }
     ]);
     expect(bound.replaceContentsDetailed).toHaveBeenCalledWith([
       { path: '/workspace/a.txt', oldContent: 'old', newContent: 'new' },
@@ -516,7 +522,7 @@ describe('OpenSandboxAdapter', () => {
 
     await expect(
       adapter.replaceContent([{ path: 'a.txt', oldContent: 'missing', newContent: 'new' }])
-    ).resolves.toEqual([{ path: 'a.txt', replacedCount: 0, error: null }]);
+    ).resolves.toEqual([{ path: '/workspace/a.txt', status: 'unmatched' }]);
 
     expect(requests).toHaveLength(1);
     const [request] = requests;
@@ -545,16 +551,13 @@ describe('OpenSandboxAdapter', () => {
     ]);
 
     expect(results.slice(0, 2)).toEqual([
-      { path: 'a.txt', replacedCount: 0, error: null },
-      { path: 'b.txt', replacedCount: null, error: null }
+      { path: '/workspace/a.txt', status: 'unmatched' },
+      { path: '/workspace/b.txt', status: 'unknown' }
     ]);
     expect(results.slice(2)).toEqual([
-      { path: '/workspace/a.txt', replacedCount: null, error: expect.any(FileOperationError) },
-      { path: 'a.txt', replacedCount: null, error: expect.any(FileOperationError) }
+      { path: '/workspace/a.txt', status: 'skipped' },
+      { path: '/workspace/a.txt', status: 'skipped' }
     ]);
-    for (const result of results.slice(2)) {
-      expect(result.error?.message).toContain('not executed');
-    }
     expect(files.get('/workspace/a.txt')).toBe('new');
     expect(bound.replaceContentsDetailed).toHaveBeenCalledTimes(1);
   });
@@ -571,8 +574,8 @@ describe('OpenSandboxAdapter', () => {
         { path: '/workspace/a.txt', oldContent: 'new', newContent: 'later' }
       ])
     ).resolves.toEqual([
-      { path: 'a.txt', replacedCount: null, error: null },
-      { path: '/workspace/a.txt', replacedCount: null, error: null }
+      { path: '/workspace/a.txt', status: 'unknown' },
+      { path: '/workspace/a.txt', status: 'unknown' }
     ]);
 
     expect(bound.replaceContentsDetailed).toHaveBeenCalledTimes(2);
