@@ -83,9 +83,13 @@ export const migratePgEmbeddings = async ({
   onProgress?: (progress: { scanned: number; total: number; cursor: string }) => void;
 }) => {
   const target = MongoDatasetDataEmbedding;
+
+  // 1. 建立一致性快照；执行模式先锁定源表，核对完成前阻止源数据增删改。
   await source.query('BEGIN ISOLATION LEVEL REPEATABLE READ');
   try {
     if (execute) await source.query('LOCK TABLE public.modeldata IN SHARE MODE');
+
+    // 2. 在同一快照读取源数量、时区及旧表字段，保持分页映射和最终校验口径一致。
     const {
       rows: [summary]
     } = await source.query<{ total: string; timezone: string }>(
@@ -100,6 +104,8 @@ export const migratePgEmbeddings = async ({
     let scanned = 0;
     let inserted = 0;
     let cursor = '0';
+
+    // 3. 按 bigint 主键稳定分页；每批先完整校验，dry-run 只扫描、不写目标。
     while (true) {
       const { rows } = await source.query(
         `SELECT id::text, team_id AS "teamId", dataset_id AS "datasetId", collection_id AS "collectionId",
@@ -109,9 +115,11 @@ export const migratePgEmbeddings = async ({
         [cursor, batchSize]
       );
       if (rows.length === 0) break;
+
       // 整个批次先完成校验，避免单个坏向量造成批次内部分写入。
       const documents = rows.map(mapPgEmbeddingRow);
       if (execute) {
+        // 4. 仅插入缺失 ID，重跑依靠 $setOnInsert 复用已提交批次，不覆盖既有内容。
         const result = await target.bulkWrite(
           documents.map((document) => ({
             updateOne: {
@@ -122,6 +130,8 @@ export const migratePgEmbeddings = async ({
           }))
         );
         inserted += result.upsertedCount;
+
+        // 5. 回读实际持久化内容逐条核对；已有 ID 内容冲突必须失败，不能静默跳过。
         const copied = await target.find({ _id: { $in: documents.map(({ _id }) => _id) } }).lean();
         const byId = new Map(
           copied.map((raw) => {
@@ -135,10 +145,13 @@ export const migratePgEmbeddings = async ({
           assertPgEmbeddingCopy({ source: document, target: targetDocument });
         }
       }
+
       scanned += documents.length;
       cursor = documents[documents.length - 1]._id;
       onProgress({ scanned, total, cursor });
     }
+
+    // 6. 逐条内容和源、目标总量都一致后，才允许提交 PG 事务并释放源锁。
     if (scanned !== total)
       throw new Error('PostgreSQL source count differs from scanned embeddings');
     const targetCount = execute
@@ -146,6 +159,7 @@ export const migratePgEmbeddings = async ({
       : undefined;
     if (execute && targetCount !== total)
       throw new Error('MongoDB migrated embedding count differs from PostgreSQL');
+
     await source.query('COMMIT');
     return {
       mode: execute ? 'execute' : 'dry-run',
@@ -156,6 +170,7 @@ export const migratePgEmbeddings = async ({
       sourceTimezone: summary.timezone
     };
   } catch (error) {
+    // PG 回滚只释放源事务，不撤销 MongoDB 已写批次；修复失败原因后可幂等重跑。
     await source.query('ROLLBACK');
     throw error;
   }

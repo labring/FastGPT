@@ -127,25 +127,52 @@ describe('MongoVectorCtrl CRUD', () => {
 describe('MongoVectorCtrl.embRecall', () => {
   beforeEach(() => vi.restoreAllMocks());
 
-  it('pre-filters tenant, datasets and allow/deny intersection and returns exact rescored values', async () => {
+  it('pre-filters scopes and rescores, orders and truncates candidates by exact dot product', async () => {
     const controller = createCtrl();
+    const queryVector = [0.6, 0.8, ...Array(1534).fill(0)];
+    // 保留 Schema 外的模拟近似分数，确保未执行精排时无法误通过断言。
+    await model.insertMany(
+      [
+        { _id: 'low', vector: [0, -1, ...Array(1534).fill(0)], score: 0.99 },
+        { _id: 'tie-z', vector, score: 0.98 },
+        { _id: 'tie-a', vector, score: 0.97 },
+        { _id: 'best', vector: queryVector, score: 0.96 }
+      ].map((candidate) => ({
+        ...candidate,
+        teamId: 'team',
+        datasetId: 'dataset',
+        collectionId: 'allowed',
+        createTime: new Date()
+      })),
+      { lean: true }
+    );
+
+    // 只替代依赖 mongot 的首阶段；候选按近似分数逆序排列，后续生产聚合交给真实 MongoDB。
+    const aggregateCandidates = model.aggregate.bind(model);
     const aggregate = vi
       .spyOn(model, 'aggregate')
-      .mockResolvedValue([{ _id: '414', collectionId: 'allowed', score: 0.5 }]);
+      .mockImplementation((pipeline = []) =>
+        aggregateCandidates([{ $sort: { score: -1 } }, ...pipeline.slice(1)])
+      );
     const result = await controller.embRecall({
       teamId: 'team',
       datasetIds: ['dataset'],
-      vector,
-      limit: 10,
+      vector: queryVector,
+      limit: 3,
       forbidCollectionIdList: ['denied'],
       filterCollectionIdList: ['allowed', 'denied']
     });
-    expect(result.results).toEqual([{ id: '414', collectionId: 'allowed', score: 0.5 }]);
+    expect(result.results).toEqual([
+      { id: 'best', collectionId: 'allowed', score: 1 },
+      { id: 'tie-a', collectionId: 'allowed', score: 0.6 },
+      { id: 'tie-z', collectionId: 'allowed', score: 0.6 }
+    ]);
     const pipeline = aggregate.mock.calls[0][0];
     expect(pipeline?.[0]).toMatchObject({
       $vectorSearch: {
-        numCandidates: 200,
-        limit: 20,
+        queryVector,
+        numCandidates: 100,
+        limit: 6,
         filter: {
           teamId: 'team',
           datasetId: { $in: ['dataset'] },
