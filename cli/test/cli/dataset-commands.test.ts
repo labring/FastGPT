@@ -70,6 +70,39 @@ async function execCli({
 }
 
 describe('Dataset CLI Commands integration (cli/src/cli/commands/dataset.ts)', () => {
+  it.each(['batch-move', 'batch-delete'])(
+    '%s exits with a business error when every resource fails',
+    async (operation) => {
+      const configDir = await makeConfigDir();
+      const failed = { successIds: [], failedIds: [OBJECT_ID_DATASET], affectedIds: [] };
+      const result = await execCli({
+        configDir,
+        argv: [
+          'dataset',
+          operation,
+          '--ids',
+          OBJECT_ID_DATASET,
+          ...(operation === 'batch-move' ? ['--parent-id', 'null'] : ['--yes']),
+          '--token',
+          'test-session',
+          '--base-url',
+          'https://cloud.fastgpt.cn',
+          '--format',
+          'json'
+        ],
+        fetchFn: async () => jsonResp(failed)
+      });
+
+      expect(result.exitCode).toBe(4);
+      expect(result.stdout).toBe('');
+      expect(JSON.parse(result.stderr)).toMatchObject({
+        ok: false,
+        changed: false,
+        error: { code: 'API_ERROR', details: failed }
+      });
+    }
+  );
+
   it('registers only OpenAPI-compatible dataset commands with personalKey support', () => {
     const datasetSpecs = getCliCommandSpecs().filter((spec) => spec.path[0] === 'dataset');
     expect(datasetSpecs.length).toBe(21);
@@ -255,6 +288,170 @@ describe('Dataset CLI Commands integration (cli/src/cli/commands/dataset.ts)', (
     expect(res.exitCode).toBe(0);
     expect(calls).toBe(1);
   });
+
+  it.each([
+    { flag: '--collectionIds', value: '68ad85a7463006c963799a11', field: 'collectionIds' },
+    { flag: '--createTimeGte', value: '2026-02-01T00:00:00Z', field: 'gte' },
+    { flag: '--createTimeLte', value: '2026-11-30T23:59:59Z', field: 'lte' },
+    { flag: '--tagsAnd', value: '[{"tag":"new","op":"$eq","value":"and"}]', field: 'and' },
+    { flag: '--tagsOr', value: '[{"tag":"new","op":"$eq","value":"or"}]', field: 'or' }
+  ])(
+    'overrides only the explicit filter field from JSON: $flag',
+    async ({ flag, value, field }) => {
+      const configDir = await makeConfigDir();
+      const file = join(configDir, 'search.json');
+      const filter = {
+        collectionIds: [OBJECT_ID_DATASET],
+        createTime: { gte: '2026-01-01T00:00:00Z', lte: '2026-12-31T23:59:59Z' },
+        tags: {
+          and: [{ tag: 'department', op: '$eq', value: 'support' }],
+          or: [{ tag: 'priority', op: '$gte', value: 2 }]
+        }
+      };
+      const expected = structuredClone(filter);
+      if (field === 'collectionIds') expected.collectionIds = [value];
+      if (field === 'gte' || field === 'lte') expected.createTime[field] = value;
+      if (field === 'and' || field === 'or') expected.tags[field] = JSON.parse(value);
+      await writeFile(
+        file,
+        JSON.stringify({
+          scope: { datasetIds: [OBJECT_ID_DATASET], filter },
+          query: { text: 'query' }
+        })
+      );
+
+      let sentFilter: unknown;
+      const result = await execCli({
+        configDir,
+        argv: [
+          'dataset',
+          'search',
+          '--file',
+          file,
+          flag,
+          value,
+          '--token',
+          'test-session',
+          '--format',
+          'json'
+        ],
+        fetchFn: async (input, init) => {
+          const body =
+            input instanceof Request ? await input.clone().json() : JSON.parse(String(init?.body));
+          sentFilter = body.scope.filter;
+          return jsonResp({ list: [], meta: { durationMs: 0 } });
+        }
+      });
+
+      expect(result.exitCode).toBe(0);
+      expect(sentFilter).toEqual(expected);
+    }
+  );
+
+  it.each([
+    { filter: 'invalid', flags: ['--collectionIds', OBJECT_ID_DATASET] },
+    { filter: { createTime: 'invalid' }, flags: ['--createTimeGte', '2026-02-01T00:00:00Z'] },
+    { filter: { tags: [] }, flags: ['--tagsAnd', '[{"tag":"x","op":"$empty"}]'] },
+    { filter: { unknown: true }, flags: ['--collectionIds', OBJECT_ID_DATASET] },
+    {
+      filter: { createTime: { unknown: true } },
+      flags: ['--createTimeGte', '2026-02-01T00:00:00Z']
+    }
+  ])(
+    'rejects invalid inherited filters instead of dropping them: $filter',
+    async ({ filter, flags }) => {
+      const configDir = await makeConfigDir();
+      let calls = 0;
+      const result = await execCli({
+        configDir,
+        argv: [
+          'dataset',
+          'search',
+          '--stdin',
+          ...flags,
+          '--token',
+          'test-session',
+          '--format',
+          'json'
+        ],
+        readStdin: async () =>
+          JSON.stringify({
+            scope: { datasetIds: [OBJECT_ID_DATASET], filter },
+            query: { text: 'query' }
+          }),
+        fetchFn: async () => {
+          calls++;
+          return jsonResp({});
+        }
+      });
+
+      expect(result.exitCode).toBe(2);
+      expect(JSON.parse(result.stderr).error.code).toBe('CLI_ARGUMENT_INVALID');
+      expect(calls).toBe(0);
+    }
+  );
+
+  it.each([
+    { flags: ['--no-rerank'], disabled: ['rerank'], exitCode: 0 },
+    { flags: ['--no-queryExtension'], disabled: ['queryExtension'], exitCode: 0 },
+    {
+      flags: ['--no-rerank', '--no-queryExtension'],
+      disabled: ['rerank', 'queryExtension'],
+      exitCode: 0
+    },
+    { flags: ['--no-rerank', '--rerankWeight', '0.2'], disabled: [], exitCode: 2 },
+    {
+      flags: ['--no-queryExtension', '--queryExtensionModelId', 'model'],
+      disabled: [],
+      exitCode: 2
+    }
+  ])(
+    'disables inherited features but rejects explicit conflicting flags: $flags',
+    async ({ flags, disabled, exitCode }) => {
+      const configDir = await makeConfigDir();
+      const file = join(configDir, 'search.json');
+      const features = {
+        rerank: { enabled: true, modelId: 'rerank-model', weight: 0.7, candidateNum: 20 },
+        queryExtension: { enabled: true, modelId: 'extension-model', background: 'FastGPT' }
+      };
+      await writeFile(
+        file,
+        JSON.stringify({
+          scope: { datasetIds: [OBJECT_ID_DATASET] },
+          query: { text: 'query' },
+          ...features
+        })
+      );
+      let calls = 0;
+      const result = await execCli({
+        configDir,
+        argv: [
+          'dataset',
+          'search',
+          '--file',
+          file,
+          ...flags,
+          '--token',
+          'test-session',
+          '--format',
+          'json'
+        ],
+        fetchFn: async (input, init) => {
+          calls++;
+          const body =
+            input instanceof Request ? await input.clone().json() : JSON.parse(String(init?.body));
+          for (const key of ['rerank', 'queryExtension'] as const) {
+            expect(body[key]).toEqual(disabled.includes(key) ? { enabled: false } : features[key]);
+          }
+          return jsonResp({ list: [], meta: { durationMs: 0 } });
+        }
+      });
+
+      expect(result.exitCode).toBe(exitCode);
+      expect(calls).toBe(exitCode === 0 ? 1 : 0);
+      if (exitCode !== 0) expect(JSON.parse(result.stderr).error.code).toBe('CLI_ARGUMENT_INVALID');
+    }
+  );
 
   it.each([
     {

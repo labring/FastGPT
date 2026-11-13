@@ -707,21 +707,42 @@ export function createDatasetRootCommandSpecs(): CliCommandSpec[] {
           'tagsAnd',
           'tagsOr'
         ].some((name) => options[name] !== undefined);
-        const cliFilter = hasFilterFlags
-          ? DatasetSearchFilterSchema.parse({
-              collectionIds: readString('collectionIds')
-                ?.split(',')
-                .map((id) => id.trim()),
-              createTime:
-                options.createTimeGte !== undefined || options.createTimeLte !== undefined
-                  ? { gte: readString('createTimeGte'), lte: readString('createTimeLte') }
-                  : undefined,
-              tags:
-                options.tagsAnd !== undefined || options.tagsOr !== undefined
-                  ? { and: readJson('tagsAnd'), or: readJson('tagsOr') }
-                  : undefined
-            })
-          : undefined;
+        const cliFilter = (() => {
+          if (!hasFilterFlags) return undefined;
+
+          /** 只合并对象，避免局部 flag 静默丢弃文件中类型错误的配置。 */
+          const readFilterObject = (value: unknown, field: string): Record<string, unknown> => {
+            if (value === undefined) return {};
+            if (!isPlainObject(value)) {
+              throw new CliArgumentError(`${field} must be an object.`);
+            }
+            return value;
+          };
+          const fileScope = isPlainObject(filePayload?.scope) ? filePayload.scope : undefined;
+          const filter = { ...readFilterObject(fileScope?.filter, 'scope.filter') };
+
+          // 仅覆盖显式筛选项，保留文件中的其他限制，以及时间/标签的另一侧条件。
+          if (options.collectionIds !== undefined) {
+            filter.collectionIds = readString('collectionIds')
+              ?.split(',')
+              .map((id) => id.trim());
+          }
+          if (options.createTimeGte !== undefined || options.createTimeLte !== undefined) {
+            filter.createTime = {
+              ...readFilterObject(filter.createTime, 'scope.filter.createTime'),
+              ...(options.createTimeGte !== undefined ? { gte: readString('createTimeGte') } : {}),
+              ...(options.createTimeLte !== undefined ? { lte: readString('createTimeLte') } : {})
+            };
+          }
+          if (options.tagsAnd !== undefined || options.tagsOr !== undefined) {
+            filter.tags = {
+              ...readFilterObject(filter.tags, 'scope.filter.tags'),
+              ...(options.tagsAnd !== undefined ? { and: readJson('tagsAnd') } : {}),
+              ...(options.tagsOr !== undefined ? { or: readJson('tagsOr') } : {})
+            };
+          }
+          return DatasetSearchFilterSchema.parse(filter);
+        })();
 
         const scope = (() => {
           if (rawIdsInput !== undefined || cliFilter !== undefined) {
@@ -801,7 +822,7 @@ export function createDatasetRootCommandSpecs(): CliCommandSpec[] {
           );
         })();
 
-        // 4. 合并召回、重排与查询扩展配置（未传 flag 时保留文件原值；禁用态附带子参数交由共享 Schema 拒绝）
+        // 4. 未传 flag 时保留文件原值；显式关闭清除继承配置，同次传入的矛盾子参数仍由 Schema 拒绝。
         const embeddingWeight = parseOptionalNumber(options.embeddingWeight);
         const hasRetrievalFlags = options.mode !== undefined || embeddingWeight !== undefined;
         const retrieval = (() => {
@@ -836,14 +857,9 @@ export function createDatasetRootCommandSpecs(): CliCommandSpec[] {
         const rerank = (() => {
           if (hasRerankFlags) {
             const fileRerank = isPlainObject(filePayload?.rerank) ? filePayload.rerank : undefined;
-            const enabled =
-              usingReRank !== undefined
-                ? usingReRank
-                : typeof fileRerank?.enabled === 'boolean'
-                  ? fileRerank.enabled
-                  : false;
+            const enabled = usingReRank ?? fileRerank?.enabled ?? false;
             return {
-              ...(fileRerank ?? {}),
+              ...(usingReRank === false ? {} : (fileRerank ?? {})),
               enabled,
               ...(rerankModelId !== undefined ? { modelId: rerankModelId } : {}),
               ...(rerankCandidateNum !== undefined ? { candidateNum: rerankCandidateNum } : {}),
@@ -879,14 +895,9 @@ export function createDatasetRootCommandSpecs(): CliCommandSpec[] {
             const fileExt = isPlainObject(filePayload?.queryExtension)
               ? filePayload.queryExtension
               : undefined;
-            const enabled =
-              usingQueryExt !== undefined
-                ? usingQueryExt
-                : typeof fileExt?.enabled === 'boolean'
-                  ? fileExt.enabled
-                  : false;
+            const enabled = usingQueryExt ?? fileExt?.enabled ?? false;
             return {
-              ...(fileExt ?? {}),
+              ...(usingQueryExt === false ? {} : (fileExt ?? {})),
               enabled,
               ...(extensionModelId !== undefined ? { modelId: extensionModelId } : {}),
               ...(extensionBg !== undefined ? { background: extensionBg } : {})

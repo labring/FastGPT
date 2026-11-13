@@ -21,6 +21,7 @@ import {
 import type { FastGptHttpClient } from '../../infra/http/fastgpt-http-client';
 import { buildPaginationMeta, trimIfString } from '../../shared/input';
 import { createChangedResult, createDryRunResult, createSuccessResult } from '../../shared/result';
+import { CliApiError } from '../../shared/errors';
 import type { CliResult } from '../../shared/types';
 
 export type DatasetListParams = {
@@ -102,6 +103,25 @@ export type DatasetService = {
  * 所有入参均复用 @fastgpt/global/openapi 中的共享 Zod 契约校验，保证 dryRun 与真实请求一致。
  */
 export function createDatasetService(): DatasetService {
+  /** 全部失败作为业务错误；部分成功保留结果与警告，changed 以实际受影响资源为准。 */
+  const createBatchResult = (res: BatchResourceActionResponse, operation: 'moved' | 'deleted') => {
+    const message = `Batch ${operation} ${res.successIds.length} dataset(s) (${res.failedIds.length} failed).`;
+    if (res.successIds.length === 0 && res.failedIds.length > 0) {
+      throw new CliApiError({ message, details: res });
+    }
+
+    return {
+      ...createSuccessResult({
+        data: res,
+        message,
+        ...(res.failedIds.length > 0
+          ? { warnings: ['Some datasets failed. Inspect failedIds before retrying.'] }
+          : {})
+      }),
+      changed: res.affectedIds.length > 0
+    };
+  };
+
   return {
     list: async ({ client, input }) => {
       const body = (() => {
@@ -317,10 +337,7 @@ export function createDatasetService(): DatasetService {
         body: validatedBody
       });
 
-      return createChangedResult({
-        data: res,
-        message: `Batch moved ${res.successIds.length} dataset(s) (${res.failedIds.length} failed).`
-      });
+      return createBatchResult(res, 'moved');
     },
 
     batchDelete: async ({ client, ids, dryRun }) => {
@@ -344,10 +361,7 @@ export function createDatasetService(): DatasetService {
         body: validatedBody
       });
 
-      return createChangedResult({
-        data: res,
-        message: `Batch deleted ${res.successIds.length} dataset(s) (${res.failedIds.length} failed).`
-      });
+      return createBatchResult(res, 'deleted');
     }
   };
 }

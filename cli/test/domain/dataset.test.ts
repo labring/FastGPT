@@ -350,6 +350,51 @@ describe('DatasetService (cli/src/domain/dataset/dataset-service.ts)', () => {
     expect(delRes.changed).toBe(true);
   });
 
+  describe.each(['batchMove', 'batchDelete'] as const)('%s result semantics', (operation) => {
+    const successId = '68ad85a7463006c963799a05';
+    const failedId = '68ad85a7463006c963799a06';
+
+    it('rejects complete failure with a business error and preserves failed IDs', async () => {
+      const response = { successIds: [], failedIds: [failedId], affectedIds: [] };
+      const client = createMockHttpClient(async () => response);
+
+      await expect(
+        service[operation]({ client, ids: [failedId], parentId: null })
+      ).rejects.toMatchObject({ code: 'API_ERROR', exitCode: 4, details: response });
+    });
+
+    it('preserves partial success and warns callers to inspect failed IDs', async () => {
+      const response = {
+        successIds: [successId],
+        failedIds: [failedId],
+        affectedIds: [successId]
+      };
+      const client = createMockHttpClient(async () => response);
+
+      const result = await service[operation]({
+        client,
+        ids: [successId, failedId],
+        parentId: null
+      });
+
+      expect(result).toMatchObject({ changed: true, data: response });
+      expect(result.warnings).toEqual([expect.stringContaining('failedIds')]);
+    });
+
+    it('does not report a change when no resources were affected', async () => {
+      const client = createMockHttpClient(async () => ({
+        successIds: [successId],
+        failedIds: [],
+        affectedIds: []
+      }));
+
+      const result = await service[operation]({ client, ids: [successId], parentId: null });
+
+      expect(result.changed).toBe(false);
+      expect(result.warnings).toBeUndefined();
+    });
+  });
+
   it('enforces shared OpenAPI schema validation on invalid inputs', async () => {
     const client = createMockHttpClient(async () => ({}));
 
