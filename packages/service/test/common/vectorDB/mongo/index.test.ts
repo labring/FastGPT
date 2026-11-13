@@ -171,8 +171,8 @@ describe('MongoVectorCtrl.embRecall', () => {
     expect(pipeline?.[0]).toMatchObject({
       $vectorSearch: {
         queryVector,
-        numCandidates: 100,
-        limit: 6,
+        exact: true,
+        limit: 3,
         filter: {
           teamId: 'team',
           datasetId: { $in: ['dataset'] },
@@ -182,20 +182,74 @@ describe('MongoVectorCtrl.embRecall', () => {
     });
   });
 
-  it('uses exact search beyond the ANN candidate limit and omits unrequested collection filters', async () => {
+  it.each([
+    { rows: 10000, limit: 100, expected: { exact: true, limit: 100 } },
+    { rows: 10001, limit: 100, expected: { numCandidates: 4000, limit: 200 } },
+    { rows: 10001, limit: 10001, expected: { exact: true, limit: 10001 } }
+  ])(
+    'selects ENN or ANN by the filtered scope (rows=$rows, limit=$limit)',
+    async ({ rows, limit, expected }) => {
+      const controller = createCtrl();
+      // 只替代规模探测结果，保留真实 Query 以核对传给 MongoDB 的计数上限。
+      const countQuery = model.countDocuments();
+      vi.spyOn(countQuery, 'exec').mockResolvedValue(rows);
+      const count = vi.spyOn(model, 'countDocuments').mockReturnValue(countQuery);
+      const aggregate = vi.spyOn(model, 'aggregate').mockResolvedValue([]);
+      await controller.embRecall({
+        teamId: 'a',
+        datasetIds: ['d'],
+        vector,
+        limit,
+        forbidCollectionIdList: ['blocked'],
+        filterCollectionIdList: ['allowed', 'blocked']
+      });
+
+      const filter = {
+        teamId: 'a',
+        datasetId: { $in: ['d'] },
+        collectionId: { $in: ['allowed', 'blocked'], $nin: ['blocked'] }
+      };
+      expect(count).toHaveBeenCalledExactlyOnceWith(filter);
+      expect(countQuery.getOptions().limit).toBe(10001);
+      const stage = aggregate.mock.calls[0][0]?.[0];
+      expect(stage).toMatchObject({ $vectorSearch: { ...expected, filter } });
+      expect(stage).not.toHaveProperty(
+        'exact' in expected ? '$vectorSearch.numCandidates' : '$vectorSearch.exact'
+      );
+    }
+  );
+
+  it('does not query the search index when the filtered scope has no stored vectors', async () => {
     const controller = createCtrl();
-    const aggregate = vi.spyOn(model, 'aggregate').mockResolvedValue([]);
-    await controller.embRecall({
-      teamId: 'a',
-      datasetIds: ['d'],
-      vector,
-      limit: 10001,
-      forbidCollectionIdList: []
-    });
-    const query = aggregate.mock.calls[0][0]?.[0] as { $vectorSearch: Record<string, unknown> };
-    expect(query.$vectorSearch.exact).toBe(true);
-    expect(query.$vectorSearch.numCandidates).toBeUndefined();
-    expect(query.$vectorSearch.filter).toEqual({ teamId: 'a', datasetId: { $in: ['d'] } });
+    const aggregate = vi.spyOn(model, 'aggregate');
+    await expect(
+      controller.embRecall({
+        teamId: 'a',
+        datasetIds: ['d'],
+        vector,
+        limit: 100,
+        forbidCollectionIdList: []
+      })
+    ).resolves.toEqual({ results: [] });
+    expect(aggregate).not.toHaveBeenCalled();
+  });
+
+  it('propagates scope counting failures without running a search with a guessed scope', async () => {
+    const controller = createCtrl();
+    const countQuery = model.countDocuments();
+    vi.spyOn(countQuery, 'exec').mockRejectedValue(new Error('count unavailable'));
+    vi.spyOn(model, 'countDocuments').mockReturnValue(countQuery);
+    const aggregate = vi.spyOn(model, 'aggregate');
+    await expect(
+      controller.embRecall({
+        teamId: 'a',
+        datasetIds: ['d'],
+        vector,
+        limit: 100,
+        forbidCollectionIdList: []
+      })
+    ).rejects.toThrow('count unavailable');
+    expect(aggregate).not.toHaveBeenCalled();
   });
 
   it.each([
@@ -206,6 +260,7 @@ describe('MongoVectorCtrl.embRecall', () => {
   ])('never queries an empty readable scope', async (props) => {
     const controller = createCtrl();
     const aggregate = vi.spyOn(model, 'aggregate');
+    const count = vi.spyOn(model, 'countDocuments');
     expect(
       await controller.embRecall({
         teamId: 'a',
@@ -215,5 +270,6 @@ describe('MongoVectorCtrl.embRecall', () => {
       })
     ).toEqual({ results: [] });
     expect(aggregate).not.toHaveBeenCalled();
+    expect(count).not.toHaveBeenCalled();
   });
 });
