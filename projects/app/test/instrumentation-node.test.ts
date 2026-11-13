@@ -112,7 +112,9 @@ describe('registerNodeInstrumentation', () => {
   it.each([
     { pricing: { unitPrice: 0.2 }, expected: { type: 'duration', unitPrice: 0.2 } },
     { pricing: {}, expected: { type: 'duration' } },
-    { pricing: null, expected: undefined }
+    { pricing: null, expected: undefined },
+    { pricing: { type: 'unknown', unitPrice: 0.2 }, expected: undefined },
+    { pricing: { unitPrice: -1 }, expected: undefined }
   ])(
     'starts business with failed STT backfill and legacy pricing $pricing',
     async ({ pricing, expected }) => {

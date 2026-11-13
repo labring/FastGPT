@@ -2,6 +2,7 @@ import { UserError } from '@fastgpt/global/common/error/utils';
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import {
   AIModelDocumentDataSchema,
+  STTModelPricingSchema,
   type AIModelDataType,
   type AIModelDocumentDataType
 } from '@fastgpt/global/core/ai/model/schema';
@@ -46,25 +47,24 @@ const configKeysMap: Record<ModelTypeEnum, string[]> = {
 
 /**
  * 统一数据库模型的读取契约，供运行目录与管理员 JSON 导出复用，保留配置及凭证字段。
- * 历史 STT 价格缺少类型时按时长读取，null 价格保持免费，避免回填前阻断目录或 JSON。
- * 仅读取默认值，不回写数据库；新 API/JSON 写入仍要求明确类型。
+ * 历史 STT 价格缺少类型时按时长读取；无法识别的价格按免费处理，避免阻断业务。
+ * 不回写数据库；后台迁移记录坏数据，新 API/JSON 写入仍严格校验。
  */
 export const formatDbModelToDocumentData = (
   dbModel: Record<string, unknown>
 ): AIModelDocumentDataType => {
   const pricing = (() => {
     const { pricing } = dbModel;
-    if (dbModel.type === ModelTypeEnum.stt && pricing === null) return undefined;
-    if (
-      dbModel.type === ModelTypeEnum.stt &&
+    if (dbModel.type !== ModelTypeEnum.stt) return pricing;
+    const missingType =
       typeof pricing === 'object' &&
       pricing !== null &&
       !Array.isArray(pricing) &&
-      !('type' in pricing)
-    ) {
-      return { ...pricing, type: 'duration' };
-    }
-    return pricing;
+      !('type' in pricing);
+    const result = STTModelPricingSchema.safeParse(
+      missingType ? { ...pricing, type: 'duration' } : pricing
+    );
+    return result.success ? result.data : undefined;
   })();
   return AIModelDocumentDataSchema.parse({ ...dbModel, pricing });
 };

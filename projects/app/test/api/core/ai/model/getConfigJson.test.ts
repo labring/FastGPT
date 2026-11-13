@@ -43,7 +43,7 @@ describe('GET /api/core/ai/model/getConfigJson', () => {
     }
   );
 
-  it('rejects unknown explicit STT price types on export without changing stored data', async () => {
+  it('exports unknown STT price types as free without changing stored data', async () => {
     const root = await getRootUser();
     const { insertedId } = await MongoAIModel.collection.insertOne({
       model: 'invalid-stt',
@@ -56,8 +56,8 @@ describe('GET /api/core/ai/model/getConfigJson', () => {
     });
     const before = await MongoAIModel.collection.findOne({ _id: insertedId });
     const response = await Call<string>(getConfigJsonApi, { auth: root });
-    expect(response.code).not.toBe(200);
-    expect(response.data).toBeUndefined();
+    expect(response.code).toBe(200);
+    expect(JSON.parse(response.data)[0]).not.toHaveProperty('pricing');
     expect(await MongoAIModel.collection.findOne({ _id: insertedId })).toEqual(before);
   });
 

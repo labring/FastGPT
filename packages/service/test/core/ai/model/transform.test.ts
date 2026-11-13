@@ -44,8 +44,8 @@ describe('formatDbModelToDocumentData', () => {
     { type: 'unknown', unitPrice: 0.4 },
     { unitPrice: -1 },
     { unitPrice: '0.4' }
-  ])('rejects malformed database prices instead of inferring valid data: %j', (pricing) => {
-    expect(() => formatDbModelToDocumentData({ ...document, pricing })).toThrow();
+  ])('reads malformed database prices as unconfigured without blocking: %j', (pricing) => {
+    expect(formatDbModelToDocumentData({ ...document, pricing }).pricing).toBeUndefined();
   });
 
   it.each([undefined, null])('keeps unconfigured STT prices free: %j', (pricing) => {

@@ -121,8 +121,8 @@ describe('admin settings model create/update api', () => {
     clearTeamModelCatalogCache();
   });
 
-  it.each([{}, { unitPrice: 0.2 }])(
-    'rejects untyped STT prices on create and update despite database read compatibility: %j',
+  it.each([{}, { unitPrice: 0.2 }, null, { type: 'unknown', unitPrice: 0.2 }])(
+    'rejects invalid STT prices on create and update despite permissive database reads: %j',
     async (pricing) => {
       const modelData = {
         ...buildLlmDocument(),

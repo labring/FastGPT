@@ -38,8 +38,8 @@ describe('formatDbModelToRuntimeModel', () => {
     { unitPrice: -1 },
     { unitPrice: '0.2' },
     { unitPrice: Infinity }
-  ])('rejects malformed database pricing instead of inferring a valid price: %j', (pricing) => {
-    expect(() => formatDbModelToRuntimeModel({ ...document, pricing })).toThrow();
+  ])('keeps malformed STT database prices free without blocking model loading: %j', (pricing) => {
+    expect(formatDbModelToRuntimeModel({ ...document, pricing }).pricing).toBeUndefined();
   });
 
   it.each([undefined, null])('keeps unconfigured STT prices free: %j', (pricing) => {
