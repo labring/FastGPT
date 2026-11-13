@@ -20,4 +20,7 @@ export {
 
 export { migrateWorkflowToCurrent, isLegacyV1Workflow } from './migrate';
 
+// ? Not so related to data migration. It's more about normalizing editor value to storage value.
+export { normalizeAgentToolInputs } from './agentToolInput';
+
 // [TODO] add an explicit version field and dispatch migrations by version.

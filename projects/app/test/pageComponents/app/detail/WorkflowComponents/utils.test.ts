@@ -232,6 +232,86 @@ describe('WorkflowComponents utils', () => {
       ]);
     });
 
+    it('normalizes full NodeIO Agent tools without requiring flowNodeType', () => {
+      const nodes = [
+        {
+          data: {
+            nodeId: 'agent',
+            name: 'Agent',
+            flowNodeType: FlowNodeTypeEnum.agent,
+            inputs: [
+              {
+                key: NodeInputKeyEnum.selectedTools,
+                label: '',
+                renderTypeList: [],
+                value: [
+                  {
+                    id: 'systemTool-delay',
+                    name: 'Delay',
+                    version: '1.0',
+                    inputs: [
+                      {
+                        key: 'ms',
+                        renderTypeList: [
+                          FlowNodeInputTypeEnum.agentGenerated,
+                          FlowNodeInputTypeEnum.numberInput
+                        ],
+                        selectedType: FlowNodeInputTypeEnum.numberInput,
+                        value: 1000
+                      }
+                    ],
+                    config: {}
+                  }
+                ]
+              }
+            ],
+            outputs: []
+          },
+          position: { x: 0, y: 0 }
+        }
+      ];
+
+      const value = uiWorkflow2StoreWorkflow({ nodes, edges: [] }).nodes[0].inputs[0].value as any;
+
+      expect(value[0]).toMatchObject({
+        id: 'systemTool-delay',
+        inputs: [{ key: 'ms', mode: 'manual' }],
+        config: { ms: 1000 }
+      });
+      expect(value[0]).not.toHaveProperty('flowNodeType');
+    });
+
+    it('keeps the missing-inputs Agent tool marker unchanged', () => {
+      const nodes = [
+        {
+          data: {
+            nodeId: 'agent',
+            name: 'Agent',
+            flowNodeType: FlowNodeTypeEnum.agent,
+            inputs: [
+              {
+                key: NodeInputKeyEnum.selectedTools,
+                label: '',
+                renderTypeList: [],
+                value: [
+                  {
+                    id: 'legacy-tool',
+                    config: { query: 'saved' }
+                  }
+                ]
+              }
+            ],
+            outputs: []
+          },
+          position: { x: 0, y: 0 }
+        }
+      ];
+
+      const value = uiWorkflow2StoreWorkflow({ nodes, edges: [] }).nodes[0].inputs[0].value as any;
+
+      expect(value).toEqual([{ id: 'legacy-tool', config: { query: 'saved' } }]);
+    });
+
     it('should keep valid edges when ReactFlow handles have not mounted yet', () => {
       const mockQuerySelector = vi.fn().mockReturnValue({
         querySelectorAll: () => []

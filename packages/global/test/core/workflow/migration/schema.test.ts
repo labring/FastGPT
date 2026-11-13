@@ -5,7 +5,7 @@ import {
   migrateWorkflowToCurrent,
   isLegacyV1Workflow
 } from '@fastgpt/global/core/workflow/migration';
-import { normalizeAgentToolInputs } from '@fastgpt/global/core/workflow/migration/migrate';
+import { normalizeAgentToolInputs } from '@fastgpt/global/core/workflow/migration/agentToolInput';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import {
   NodeInputKeyEnum,
@@ -1901,142 +1901,143 @@ describe('workflow migration boundary', () => {
     });
   });
 
-describe('normalizeAgentToolInputs', () => {
-  const explicitTypes = [FlowNodeInputTypeEnum.agentGenerated, FlowNodeInputTypeEnum.input];
+  describe('normalizeAgentToolInputs', () => {
+    const explicitTypes = [FlowNodeInputTypeEnum.agentGenerated, FlowNodeInputTypeEnum.input];
 
-  it('keeps an explicit manual selection when config already holds the saved value', () => {
-    const result = normalizeAgentToolInputs({
-      rawInputs: [{ key: 'query', renderTypeList: explicitTypes, selectedType: FlowNodeInputTypeEnum.input }],
-      rawConfig: { query: 'saved value' }
+    it('keeps an explicit manual selection when config already holds the saved value', () => {
+      const result = normalizeAgentToolInputs({
+        rawInputs: [
+          { key: 'query', renderTypeList: explicitTypes, selectedType: FlowNodeInputTypeEnum.input }
+        ],
+        rawConfig: { query: 'saved value' }
+      });
+
+      expect(result.inputs).toEqual([{ key: 'query', mode: 'manual' }]);
+      expect(result.config).toEqual({ query: 'saved value' });
     });
 
-    expect(result.inputs).toEqual([{ key: 'query', mode: 'manual' }]);
-    expect(result.config).toEqual({ query: 'saved value' });
-  });
+    it('keeps an explicit manual selection with an empty value and carries it into config', () => {
+      const result = normalizeAgentToolInputs({
+        rawInputs: [
+          {
+            key: 'query',
+            renderTypeList: explicitTypes,
+            selectedType: FlowNodeInputTypeEnum.input,
+            value: ''
+          }
+        ],
+        rawConfig: {}
+      });
 
-  it('keeps an explicit manual selection with an empty value and carries it into config', () => {
-    const result = normalizeAgentToolInputs({
-      rawInputs: [
-        {
-          key: 'query',
-          renderTypeList: explicitTypes,
-          selectedType: FlowNodeInputTypeEnum.input,
-          value: ''
-        }
-      ],
-      rawConfig: {}
+      expect(result.inputs).toEqual([{ key: 'query', mode: 'manual' }]);
+      expect(result.config).toEqual({ query: '' });
     });
 
-    expect(result.inputs).toEqual([{ key: 'query', mode: 'manual' }]);
-    expect(result.config).toEqual({ query: '' });
-  });
+    it('treats an explicit agentGenerated selection as model generated', () => {
+      const result = normalizeAgentToolInputs({
+        rawInputs: [
+          {
+            key: 'query',
+            renderTypeList: explicitTypes,
+            selectedType: FlowNodeInputTypeEnum.agentGenerated,
+            value: 'ignored for mode'
+          }
+        ],
+        rawConfig: {}
+      });
 
-  it('treats an explicit agentGenerated selection as model generated', () => {
-    const result = normalizeAgentToolInputs({
-      rawInputs: [
-        {
-          key: 'query',
-          renderTypeList: explicitTypes,
-          selectedType: FlowNodeInputTypeEnum.agentGenerated,
-          value: 'ignored for mode'
-        }
-      ],
-      rawConfig: {}
+      expect(result.inputs).toEqual([{ key: 'query', mode: 'agentGenerated' }]);
+      expect(result.config).toEqual({});
     });
 
-    expect(result.inputs).toEqual([{ key: 'query', mode: 'agentGenerated' }]);
-    expect(result.config).toEqual({});
-  });
+    it('falls back to the saved config only when the snapshot has no source type', () => {
+      const result = normalizeAgentToolInputs({
+        rawInputs: [{ key: 'query' }],
+        rawConfig: { query: 'from config' }
+      });
 
-  it('falls back to the saved config only when the snapshot has no source type', () => {
-    const result = normalizeAgentToolInputs({
-      rawInputs: [{ key: 'query' }],
-      rawConfig: { query: 'from config' }
+      expect(result.inputs).toEqual([{ key: 'query', mode: 'manual' }]);
+      expect(result.config).toEqual({ query: 'from config' });
     });
 
-    expect(result.inputs).toEqual([{ key: 'query', mode: 'manual' }]);
-    expect(result.config).toEqual({ query: 'from config' });
-  });
+    it('narrows unknown NodeIO fields instead of trusting dirty values', () => {
+      const result = normalizeAgentToolInputs({
+        rawInputs: [
+          {
+            key: 'query',
+            mode: 'bogus',
+            renderTypeList: ['not-a-type', FlowNodeInputTypeEnum.input],
+            selectedType: 'nope'
+          }
+        ],
+        rawConfig: {}
+      });
 
-  it('narrows unknown NodeIO fields instead of trusting dirty values', () => {
-    const result = normalizeAgentToolInputs({
-      rawInputs: [
-        {
-          key: 'query',
-          mode: 'bogus',
-          renderTypeList: ['not-a-type', FlowNodeInputTypeEnum.input],
-          selectedType: 'nope'
-        }
-      ],
-      rawConfig: {}
+      expect(result.inputs).toEqual([{ key: 'query', mode: 'manual' }]);
     });
 
-    expect(result.inputs).toEqual([{ key: 'query', mode: 'manual' }]);
-  });
+    it('is idempotent for canonical input', () => {
+      const first = normalizeAgentToolInputs({
+        rawInputs: [{ key: 'query', mode: 'manual' }],
+        rawConfig: { query: '' }
+      });
+      const second = normalizeAgentToolInputs({ rawInputs: first.inputs, rawConfig: first.config });
 
-  it('is idempotent for canonical input', () => {
-    const first = normalizeAgentToolInputs({
-      rawInputs: [{ key: 'query', mode: 'manual' }],
-      rawConfig: { query: '' }
+      expect(second).toEqual(first);
     });
-    const second = normalizeAgentToolInputs({ rawInputs: first.inputs, rawConfig: first.config });
-
-    expect(second).toEqual(first);
-  });
-});
-
-
-describe('normalizeAgentToolInputs null config fallback', () => {
-  it('falls back to the legacy input value when config[key] is null', () => {
-    const result = normalizeAgentToolInputs({
-      rawInputs: [{ key: 'query', value: 'saved fixed value' }],
-      rawConfig: { query: null }
-    });
-
-    expect(result.inputs).toEqual([{ key: 'query', mode: 'manual' }]);
-    expect(result.config).toEqual({ query: 'saved fixed value' });
   });
 
-  it('keeps the empty-config baseline for the same input', () => {
-    const result = normalizeAgentToolInputs({
-      rawInputs: [{ key: 'query', value: 'saved fixed value' }],
-      rawConfig: {}
+  describe('normalizeAgentToolInputs null config fallback', () => {
+    it('falls back to the legacy input value when config[key] is null', () => {
+      const result = normalizeAgentToolInputs({
+        rawInputs: [{ key: 'query', value: 'saved fixed value' }],
+        rawConfig: { query: null }
+      });
+
+      expect(result.inputs).toEqual([{ key: 'query', mode: 'manual' }]);
+      expect(result.config).toEqual({ query: 'saved fixed value' });
     });
 
-    expect(result.inputs).toEqual([{ key: 'query', mode: 'manual' }]);
-    expect(result.config).toEqual({ query: 'saved fixed value' });
-  });
-});
+    it('keeps the empty-config baseline for the same input', () => {
+      const result = normalizeAgentToolInputs({
+        rawInputs: [{ key: 'query', value: 'saved fixed value' }],
+        rawConfig: {}
+      });
 
-describe('normalizeAgentToolInputs own-property semantics', () => {
-  it('carries a fixed value for a param named toString even though Object.prototype has one', () => {
-    const result = normalizeAgentToolInputs({
-      rawInputs: [{ key: 'toString', value: 'saved fixed value' }],
-      rawConfig: {}
+      expect(result.inputs).toEqual([{ key: 'query', mode: 'manual' }]);
+      expect(result.config).toEqual({ query: 'saved fixed value' });
+    });
+  });
+
+  describe('normalizeAgentToolInputs own-property semantics', () => {
+    it('carries a fixed value for a param named toString even though Object.prototype has one', () => {
+      const result = normalizeAgentToolInputs({
+        rawInputs: [{ key: 'toString', value: 'saved fixed value' }],
+        rawConfig: {}
+      });
+
+      expect(result.inputs).toEqual([{ key: 'toString', mode: 'manual' }]);
+      expect(Object.hasOwn(result.config, 'toString')).toBe(true);
+      expect(result.config.toString).toBe('saved fixed value');
     });
 
-    expect(result.inputs).toEqual([{ key: 'toString', mode: 'manual' }]);
-    expect(Object.hasOwn(result.config, 'toString')).toBe(true);
-    expect(result.config.toString).toBe('saved fixed value');
-  });
+    it('does not treat the inherited toString as a saved config value', () => {
+      const result = normalizeAgentToolInputs({
+        rawInputs: [{ key: 'toString' }],
+        rawConfig: {}
+      });
 
-  it('does not treat the inherited toString as a saved config value', () => {
-    const result = normalizeAgentToolInputs({
-      rawInputs: [{ key: 'toString' }],
-      rawConfig: {}
+      // 没有来源信息、也没有自有配置值 => 视为模型生成，而不是“已配置”。
+      expect(result.inputs).toEqual([{ key: 'toString', mode: 'agentGenerated' }]);
     });
 
-    // 没有来源信息、也没有自有配置值 => 视为模型生成，而不是“已配置”。
-    expect(result.inputs).toEqual([{ key: 'toString', mode: 'agentGenerated' }]);
-  });
+    it('keeps an explicitly stored own toString value untouched', () => {
+      const result = normalizeAgentToolInputs({
+        rawInputs: [{ key: 'toString', value: 'legacy value' }],
+        rawConfig: { toString: 'saved fixed value' }
+      });
 
-  it('keeps an explicitly stored own toString value untouched', () => {
-    const result = normalizeAgentToolInputs({
-      rawInputs: [{ key: 'toString', value: 'legacy value' }],
-      rawConfig: { toString: 'saved fixed value' }
+      expect(result.config.toString).toBe('saved fixed value');
     });
-
-    expect(result.config.toString).toBe('saved fixed value');
   });
-});
 });
