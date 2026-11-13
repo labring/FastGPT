@@ -5,6 +5,7 @@ import { CliArgumentError } from '../../src/shared/errors';
 import { createSuccessResult } from '../../src/shared/result';
 import type { CliContainer } from '../../src/cli/container';
 import type { Prompter } from '../../src/infra/ui/prompter';
+import { createModelService } from '../../src/domain/model/model-service';
 
 function createMockContainer(isInteractive = false): CliContainer {
   const dummyPrompter: Prompter = {
@@ -47,6 +48,7 @@ function createMockContainer(isInteractive = false): CliContainer {
     datasetCollectionService: {} as any,
     datasetDataService: {} as any,
     chatService: {} as any,
+    modelService: createModelService(),
     readJsonInput: async () => ({}),
     stdout: () => {},
     stderr: () => {}

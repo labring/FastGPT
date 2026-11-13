@@ -9,6 +9,7 @@ const GROUP_DESCRIPTIONS: Record<string, string> = {
   dataset: 'Manage datasets, collections, chunks, and OpenAPI search',
   'dataset collection': 'Manage dataset collections and text/link/file imports',
   'dataset data': 'List, inspect, push, update, and delete dataset chunks',
+  model: 'List models available to the current member',
   chat: 'Run App conversations and manage their history and messages',
   'chat history': 'Manage App conversations and their status',
   'chat record': 'Read App messages and detailed responses'

@@ -26,6 +26,7 @@ import {
 import { createDatasetDataService, type DatasetDataService } from '../domain/dataset/data-service';
 import { createDatasetService, type DatasetService } from '../domain/dataset/dataset-service';
 import { createChatService, type ChatService } from '../domain/chat/chat-service';
+import { createModelService, type ModelService } from '../domain/model/model-service';
 import { createProfileService, type ProfileService } from '../domain/profile/profile-service';
 import {
   createFileConfigRepository,
@@ -74,6 +75,7 @@ export type CliContainer = {
   readonly datasetCollectionService: DatasetCollectionService;
   readonly datasetDataService: DatasetDataService;
   readonly chatService: ChatService;
+  readonly modelService: ModelService;
   readonly readJsonInput: (params: { file?: string; stdin?: boolean }) => Promise<unknown>;
   readonly stdout: (value: string) => void;
   readonly stderr: (value: string) => void;
@@ -190,6 +192,7 @@ export function createCliContainer(deps: CliRuntimeDeps): CliContainer {
     datasetCollectionService,
     datasetDataService,
     chatService: createChatService(),
+    modelService: createModelService(),
     readJsonInput: (params) =>
       readJsonInput({ ...params, cwd: deps.cwd, readStdin: deps.readStdin }),
     stdout: deps.stdout,
