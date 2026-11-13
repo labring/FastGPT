@@ -67,6 +67,8 @@ const DatasetTable = () => {
           options={datasetSearchOptions}
           field={searchField}
           value={inputValue}
+          triggerW={'112px'}
+          w={['100%', '311px']}
           isInvalid={isInvalid}
           onFieldChange={onFieldChange}
           onValueChange={onInputChange}

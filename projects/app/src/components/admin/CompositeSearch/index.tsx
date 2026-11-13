@@ -101,6 +101,7 @@ type AdminCompositeSearchProps<TField extends string> = Omit<FlexProps, 'onChang
   options: readonly AdminSearchOption<TField>[];
   field: TField;
   value: string;
+  triggerW?: string;
   isInvalid?: boolean;
   invalidTip?: string;
   onFieldChange: (field: TField) => void;
@@ -108,17 +109,18 @@ type AdminCompositeSearchProps<TField extends string> = Omit<FlexProps, 'onChang
 };
 
 /**
- * 管理员后台组合搜索框：左侧下拉切换搜索字段，右侧输入实时防抖搜索（不响应回车提交）。
+ * 管理员后台组合搜索框：左侧固定宽度下拉切换搜索字段，右侧输入实时防抖搜索（不响应回车提交）。
  */
 const AdminCompositeSearch = <TField extends string>({
   options,
   field,
   value,
+  triggerW = '96px',
   isInvalid = false,
   invalidTip = '请输入有效的 24 位 ID',
   onFieldChange,
   onValueChange,
-  w = ['100%', '300px'],
+  w = ['100%', '295px'],
   ...props
 }: AdminCompositeSearchProps<TField>) => {
   const { isOpen, onOpen, onClose } = useDisclosure();
@@ -137,38 +139,54 @@ const AdminCompositeSearch = <TField extends string>({
         onClose={onClose}
         strategy={'fixed'}
         placement={'bottom-start'}
+        gutter={4}
       >
         <MenuButton
           as={Button}
           variant={'whitePrimaryOutline'}
+          w={triggerW}
+          minW={triggerW}
           h={'full'}
           px={3}
           flexShrink={0}
           bg={'white'}
           fontSize={'sm'}
           fontWeight={'normal'}
-          color={isOpen ? 'primary.700' : 'myGray.900'}
+          textAlign={'left'}
+          color={'myGray.900'}
           borderLeftRadius={'sm'}
           borderRightRadius={0}
           borderColor={isOpen ? 'primary.600' : 'myGray.200'}
-          boxShadow={isOpen ? '0px 0px 0px 2.4px rgba(51, 112, 255, 0.15)' : 'none'}
+          boxShadow={isOpen ? 'focus' : 'none'}
           zIndex={isOpen ? 2 : 0}
           _hover={{
             borderColor: isOpen ? 'primary.600' : 'primary.300',
+            color: 'myGray.900',
             zIndex: 1
           }}
           _active={{ transform: 'none' }}
           rightIcon={<MyIcon name={'core/chat/chevronDown'} w={4} color={'myGray.500'} />}
+          sx={{
+            '& > span': {
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              w: '100%'
+            }
+          }}
         >
-          {activeOption?.label}
+          <Box whiteSpace={'nowrap'}>{activeOption?.label}</Box>
         </MenuButton>
         <MenuList
-          minW={'140px'}
-          w={'max-content'}
+          minW={triggerW}
+          w={triggerW}
           p={'6px'}
-          border={'1px solid #fff'}
-          borderRadius={'md'}
-          boxShadow={'0px 2px 4px rgba(161, 167, 179, 0.25), 0px 0px 1px rgba(121, 141, 159, 0.25)'}
+          display={'flex'}
+          flexDirection={'column'}
+          gap={'4px'}
+          border={'none'}
+          borderRadius={'sm'}
+          boxShadow={'3.5'}
           zIndex={99}
         >
           {options.map((option) => {
@@ -176,15 +194,19 @@ const AdminCompositeSearch = <TField extends string>({
             return (
               <MenuItem
                 key={option.value}
+                m={0}
+                h={'28px'}
                 borderRadius={'xs'}
-                px={2.5}
+                px={1}
                 py={'6px'}
-                fontSize={'sm'}
-                fontWeight={isActive ? 'medium' : 'normal'}
-                bg={isActive ? 'primary.50' : 'transparent'}
-                color={isActive ? 'primary.600' : 'myGray.900'}
-                _hover={{ bg: isActive ? 'primary.50' : 'myGray.05' }}
-                _focus={{ bg: isActive ? 'primary.50' : 'myGray.05' }}
+                fontSize={'mini'}
+                lineHeight={'16px'}
+                letterSpacing={'0.5px'}
+                fontWeight={'medium'}
+                bg={isActive ? 'myGray.05' : 'transparent'}
+                color={isActive ? 'primary.700' : 'myGray.600'}
+                _hover={{ bg: 'myGray.05' }}
+                _focus={{ bg: 'myGray.05' }}
                 onClick={() => {
                   onFieldChange(option.value);
                   onClose();
@@ -204,19 +226,21 @@ const AdminCompositeSearch = <TField extends string>({
         shouldWrapChildren={false}
       >
         <InputGroup flex={1} h={'full'} ml={'-1px'}>
-          <InputLeftElement h={'full'} pointerEvents={'none'}>
-            <MyIcon name="common/searchLight" w={4} color={'myGray.400'} />
+          <InputLeftElement w={'36px'} h={'full'} pointerEvents={'none'}>
+            <MyIcon name="common/searchLight" w={4} color={'myGray.500'} />
           </InputLeftElement>
           <Input
             h={'full'}
             bg={'white'}
             fontSize={'sm'}
+            color={'myGray.900'}
             borderLeftRadius={0}
             borderRightRadius={'sm'}
-            pl={9}
+            pl={'36px'}
             pr={value ? 8 : 3}
             value={value}
             placeholder={activeOption?.placeholder ?? `搜索${activeOption?.label ?? ''}`}
+            _placeholder={{ color: 'myGray.500', fontSize: 'sm' }}
             isInvalid={isInvalid}
             borderColor={isInvalid ? 'red.500' : 'myGray.200'}
             zIndex={isInvalid ? 1 : 0}
@@ -225,7 +249,7 @@ const AdminCompositeSearch = <TField extends string>({
               zIndex: 1
             }}
             _focus={{
-              borderColor: isInvalid ? 'red.500' : 'primary.500',
+              borderColor: isInvalid ? 'red.500' : 'primary.600',
               boxShadow: isInvalid ? '0px 0px 0px 2.4px rgba(240, 68, 56, 0.15)' : 'focus',
               bg: 'white',
               zIndex: 2
