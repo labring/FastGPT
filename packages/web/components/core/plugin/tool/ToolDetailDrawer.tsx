@@ -271,6 +271,7 @@ const ToolDetailDrawer = ({
           ) : (
             <ToolDetailBody
               parentTool={parentTool}
+              pluginType={selectedTool.type ?? parentTool?.type}
               isToolSet={isToolSet}
               subTools={subTools}
               readmeContent={readmeContent}

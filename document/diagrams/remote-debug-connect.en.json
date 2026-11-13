@@ -1,0 +1,123 @@
+{
+  "type": "sequence",
+  "title": "Remote debugging: connect",
+  "participants": [
+    {
+      "id": "user",
+      "label": "Developer",
+      "kind": "external",
+      "focal": false,
+      "illustration": "user"
+    },
+    {
+      "id": "app",
+      "label": "FastGPT",
+      "kind": "backend",
+      "focal": true,
+      "illustration": "core"
+    },
+    {
+      "id": "plugin",
+      "label": "Plugin service",
+      "kind": "backend",
+      "focal": false,
+      "illustration": "plugin"
+    },
+    {
+      "id": "cli",
+      "label": "Local CLI",
+      "kind": "external",
+      "focal": false,
+      "illustration": "code"
+    },
+    {
+      "id": "gateway",
+      "label": "Gateway",
+      "kind": "external",
+      "focal": false,
+      "illustration": "gateway"
+    }
+  ],
+  "messages": [
+    [
+      "user",
+      "app",
+      "Enable debug",
+      "primary"
+    ],
+    [
+      "app",
+      "plugin",
+      "Create session",
+      "sync"
+    ],
+    [
+      "plugin",
+      "app",
+      "Connection key",
+      "reply"
+    ],
+    [
+      "app",
+      "user",
+      "Connection URL",
+      "reply"
+    ],
+    [
+      "user",
+      "cli",
+      "dev --connect",
+      "sync"
+    ],
+    [
+      "cli",
+      "app",
+      "GET connection URL",
+      "primary"
+    ],
+    [
+      "app",
+      "plugin",
+      "Exchange connectionKey",
+      "sync"
+    ],
+    [
+      "plugin",
+      "app",
+      "Gateway and token",
+      "reply"
+    ],
+    [
+      "app",
+      "cli",
+      "Connection details",
+      "reply"
+    ],
+    [
+      "cli",
+      "gateway",
+      "Bind WebSocket",
+      "primary"
+    ]
+  ],
+  "numbered": true,
+  "evidence": [
+    {
+      "id": "app",
+      "file": "projects/app/src/pages/api/plugin/debug-channel/connection-key/exchange.ts",
+      "line": 22
+    },
+    {
+      "id": "plugin",
+      "file": "packages/global/openapi/core/plugin/debug/api.ts",
+      "line": 237
+    }
+  ],
+  "lang": "en",
+  "eyebrow": "",
+  "legend": false,
+  "motion": "trace",
+  "fonts": "system",
+  "watermark": false,
+  "skin": "light"
+}

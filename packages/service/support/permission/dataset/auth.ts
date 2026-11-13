@@ -44,6 +44,7 @@ import {
 import { assertDatasetPermission } from './utils';
 import type { TeamTmbItemType } from '@fastgpt/global/support/user/team/type';
 
+/** 逐库校验归属和资源权限；可复用已解析成员或其 Promise，保持成员与知识库读取并行。 */
 export const authDatasetByTmbId = async ({
   tmbId,
   datasetId,
@@ -55,7 +56,9 @@ export const authDatasetByTmbId = async ({
   datasetId: string;
   per: PermissionValueType;
   isRoot?: boolean;
-  tmbInfo?: Pick<TeamTmbItemType, 'teamId' | 'permission'>;
+  tmbInfo?:
+    | Pick<TeamTmbItemType, 'teamId' | 'permission'>
+    | Promise<Pick<TeamTmbItemType, 'teamId' | 'permission'>>;
 }): Promise<{
   dataset: DatasetSchemaType & {
     permission: DatasetPermission;

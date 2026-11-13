@@ -14,7 +14,6 @@ import {
   withAgentSandboxInitLease
 } from '../../../../ai/sandbox/application/runtime/entrypoint';
 import { prepareSandboxToolRuntime } from '../../../../ai/sandbox/application/toolCall';
-import { postTextCensor } from '../../../../chat/postTextCensor';
 import { readWorkflowFileBuffer, getWorkflowSandboxContext } from '../../../utils/context';
 import { loadWorkflowModelResource } from '../../../resource/service';
 import {
@@ -22,6 +21,7 @@ import {
   getNodeErrResponse,
   removeUnfinishedInteractiveHistories
 } from '../../utils';
+import { getDispatchModerationContext } from '../../utils/runtime';
 import { WorkflowMemoryState } from '../../../memory/state';
 import { buildAgentLoopCoreRequestMessages } from '../agentLoopCore/application/context/messages';
 import { createAgentLoopCoreChildInteractiveParams } from '../agentLoopCore/adapter/interactive/child';
@@ -33,6 +33,8 @@ import { useToolMessages } from './hooks/useToolMessages';
 import { useToolNodeList } from './hooks/useToolNodeList';
 import { runToolCall } from './toolCall';
 import { type DispatchToolModuleProps } from './type';
+import { checkModelContextModeration } from '../../../../plugin/moderation/modelInput';
+import { MODERATION_BLOCKED_ERROR_MESSAGE } from '@fastgpt/global/core/plugin/moderation/constants';
 
 type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.answerText]: string;
@@ -138,6 +140,23 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       useSandbox
     });
 
+    const adaptMessages = buildAgentLoopCoreRequestMessages({
+      messages,
+      removeSystemMessages: false
+    });
+
+    // 锚点 2：对发给 AI 的本轮初始上下文（跳过历史消息）进行一次统一拦截，违规直接节点报错
+    const contextCheck = await checkModelContextModeration({
+      messages: adaptMessages,
+      includeLastUserMessage: !(!!lastInteractive && !!isEntry),
+      context: getDispatchModerationContext(props)
+    });
+    if (contextCheck.isBlocked) {
+      return getNodeErrResponse({
+        error: contextCheck.blockErrorMessage || MODERATION_BLOCKED_ERROR_MESSAGE
+      });
+    }
+
     // 初始化沙盒
     const sandboxClient = useSandbox
       ? await ensureWorkflowSandboxReadyForUse({
@@ -184,15 +203,6 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       props.nodeSummary?.mergeNodeSummary({ hasAgentSandbox: true });
     }
 
-    // 未配置独立模型密钥时，沿用系统文本审核逻辑。
-    if (toolModel.config.censor && !externalProvider.openaiAccount?.key) {
-      await postTextCensor({
-        text: `${systemPrompt}
-          ${userChatInput}
-        `
-      });
-    }
-
     const toolCallMemoryState = WorkflowMemoryState.fromWorkflow(props).fork(`node:${nodeId}`, {
       history,
       histories: chatHistories,
@@ -211,27 +221,20 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       error,
       requestIds,
       firstTokenTime
-    } = await (async () => {
-      const adaptMessages = buildAgentLoopCoreRequestMessages({
-        messages,
-        removeSystemMessages: false
-      });
-
-      return runToolCall({
-        ...props,
-        memoryState: toolCallMemoryState,
-        currentInputFiles,
-        sandboxClient,
-        runtimeNodes,
-        runtimeEdges,
-        toolNodes,
-        toolModel,
-        messages: adaptMessages,
-        childrenInteractiveParams: createAgentLoopCoreChildInteractiveParams({
-          lastInteractive
-        })
-      });
-    })();
+    } = await runToolCall({
+      ...props,
+      memoryState: toolCallMemoryState,
+      currentInputFiles,
+      sandboxClient,
+      runtimeNodes,
+      runtimeEdges,
+      toolNodes,
+      toolModel,
+      messages: adaptMessages,
+      childrenInteractiveParams: createAgentLoopCoreChildInteractiveParams({
+        lastInteractive
+      })
+    });
     const toolMemories = toolCallMemoryState.getDelta();
     const systemMemories = Object.keys(toolMemories).length > 0 ? toolMemories : undefined;
     const { runTimes, toolDetail } =

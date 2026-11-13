@@ -9,7 +9,11 @@ import {
 } from '@fastgpt/dal/redis/lease/chat/streamResume';
 import type { NodeHttpResponse } from '../../types/http';
 import type { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
-import { StreamResumeUnavailableReasonEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import {
+  StreamResumeUnavailableReasonEnum,
+  SseResponseEventEnum
+} from '@fastgpt/global/core/workflow/runtime/constants';
+import { stripModerationRecordsFromNodeResponses } from '@fastgpt/global/core/chat/utils';
 
 const logger = getLogger(LogCategories.MODULE.CHAT.RESUME);
 
@@ -246,17 +250,47 @@ const isTerminalRedisStreamFields = (fields: RedisStreamFields) => {
   return false;
 };
 
+const filterRawNodeResponse = (raw: string): string => {
+  if (!raw.includes('flowNodeResponse')) return raw;
+  try {
+    const eventMatch = raw.match(/^event:\s*flowNodeResponse\r?\n/m);
+    if (!eventMatch) return raw;
+    const dataMatch = raw.match(/\ndata:\s*(.+?)(?:\r?\n\r?\n|$)/s);
+    if (dataMatch && dataMatch[1]) {
+      const data = JSON.parse(dataMatch[1]);
+      const stripped = stripModerationRecordsFromNodeResponses([data])[0];
+      return `event: flowNodeResponse\ndata: ${JSON.stringify(stripped)}\n\n`;
+    }
+  } catch (err) {
+    // If parse fails, return raw
+  }
+  return raw;
+};
+
+const filterFieldNodeResponse = (dataStr: string): string => {
+  try {
+    const data = JSON.parse(dataStr);
+    const stripped = stripModerationRecordsFromNodeResponses([data])[0];
+    return JSON.stringify(stripped);
+  } catch {
+    return dataStr;
+  }
+};
+
 const writeRedisStreamFields = ({
   res,
-  fields
+  fields,
+  canReadModerationRecords = true
 }: {
   res: NodeHttpResponse;
   fields: RedisStreamFields;
+  canReadModerationRecords?: boolean;
 }) => {
   if (isResponseClosed(res)) return;
 
   if (fields.raw !== undefined) {
-    res.write(fields.raw);
+    const payload = canReadModerationRecords ? fields.raw : filterRawNodeResponse(fields.raw);
+    res.write(payload);
     return;
   }
 
@@ -264,12 +298,19 @@ const writeRedisStreamFields = ({
   if (fields.event) {
     chunk += `event: ${fields.event}\n`;
   }
-  chunk += `data: ${fields.data ?? ''}\n\n`;
+  const data =
+    !canReadModerationRecords &&
+    fields.event === SseResponseEventEnum.flowNodeResponse &&
+    fields.data
+      ? filterFieldNodeResponse(fields.data)
+      : (fields.data ?? '');
+  chunk += `data: ${data}\n\n`;
   res.write(chunk);
 };
 
 type ResumeBaseParams = StreamResumeRedisKeysParams & {
   res: NodeHttpResponse;
+  canReadModerationRecords?: boolean;
 };
 
 /**
@@ -303,7 +344,8 @@ export const catchUpAllHistoryItems = async ({
 
       writeRedisStreamFields({
         res,
-        fields
+        fields,
+        canReadModerationRecords: params.canReadModerationRecords
       });
 
       if (isResponseClosed(res)) {
@@ -365,7 +407,8 @@ export const _resume = async ({
 
           writeRedisStreamFields({
             res,
-            fields
+            fields,
+            canReadModerationRecords: params.canReadModerationRecords
           });
 
           if (isTerminalRedisStreamFields(fields) || isResponseClosed(res)) {

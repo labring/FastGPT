@@ -1,13 +1,28 @@
 ---
-title: 介绍
-description: FastGPT 云服务介绍
+title: FastGPT 云服务介绍
+description: 了解 FastGPT 官方云服务的核心优势、多模型接入、在线知识库问答、版本更新策略与账号权益说明。
 ---
 
 import FastGPTLink from '@/components/docs/linkFastGPT';
 
-## 服务地址
+FastGPT 官方云服务是由官方团队运维的全托管 SaaS 平台，提供中国站（`fastgpt.cn`）与国际站（`fastgpt.io`）双独立站点，开箱集成主流大语言模型、向量与重排模型、增强 PDF 解析、第三方知识库定时同步及 Agent 虚拟机沙箱。
 
-- 中国大陆版：<FastGPTLink campaign="docs_cloud_intro" content="cloud_entry_cn" site="cn">{'https://fastgpt.cn'}</FastGPTLink>
-- 国际版：<FastGPTLink campaign="docs_cloud_intro" content="cloud_entry_io" site="io">{'https://fastgpt.io'}</FastGPTLink>
+## 云服务核心优势与适用场景
 
-请按需注册，两个版本账号不互通。
+FastGPT 官方云服务提供免运维的全托管企业级 AI 基础设施，注册登录即可使用预置的主流对话模型、向量模型、重排模型、PDF 增强解析服务与 Agent 虚拟机沙箱。
+
+| 对比维度           | FastGPT 官方云服务                                                                                                               | 私有化自部署（社区版 / 商业版）                                                                       |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| **基础设施与运维** | 官方团队全托管运维，提供高可用保障、弹性扩容与版本平滑升级                                                                       | 部署在自有服务器或私有云，需自行维护 MongoDB、向量库、S3、沙箱及版本升级                              |
+| **模型与算力接入** | 预置主流大语言模型、向量模型、重排模型与增强文档解析，按 AI 积分即用即付                                                         | 由运维团队通过 [AIProxy / OneAPI](/zh-CN/self-host/config/model/intro) 或本地 Ollama 自行接入模型服务 |
+| **功能完整性**     | 包含企业级应用编排、第三方知识库同步、应用评测、日志看板与团队权限能力（SSO 与自定义版权除外；检索重排、网站知识库等需付费套餐） | 社区版提供核心编排与知识库能力；企业级能力按[商业版授权](/zh-CN/guide/version/commercial)开通         |
+| **计费与账单管理** | 按团队套餐与资源包弹性订阅，支持在线用量统计与账单管理；详见[用量与账单](/zh-CN/guide/workspace/usage-and-billing)               | 社区版免费开源；商业版按部署规模与授权周期订阅                                                        |
+
+## 访问入口与区域站点
+
+云服务按基础设施所在区域提供两个独立站点，站点间账号、团队与业务数据相互隔离，请根据业务所在地与合规要求选择对应入口：
+
+| 站点名称   | 访问入口                                                                                                         | 支持登录方式                     | 结算与发票服务                                   |
+| ---------- | ---------------------------------------------------------------------------------------------------------------- | -------------------------------- | ------------------------------------------------ |
+| **中国站** | <FastGPTLink campaign="docs_cloud_intro" content="cloud_entry_cn" site="cn">{'https://fastgpt.cn'}</FastGPTLink> | 微信扫码、手机号验证码、账号密码 | 人民币支付，支持在线申请增值税普通发票与专用发票 |
+| **国际站** | <FastGPTLink campaign="docs_cloud_intro" content="cloud_entry_io" site="io">{'https://fastgpt.io'}</FastGPTLink> | 邮箱、Google、GitHub 账号        | 国际主流支付方式结算，支持下载电子账单凭证       |

@@ -1,0 +1,5 @@
+product,channel,units,revenue,ad_cost
+A,Search,10,1000,200
+B,Search,5,750,150
+A,Social,8,800,400
+B,Social,12,1800,600

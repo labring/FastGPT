@@ -1,10 +1,12 @@
 ---
 title: Deploy with Docker Compose
-description: Quickly deploy FastGPT using Docker Compose
+description: Deploy and configure FastGPT with PostgreSQL pgvector or Milvus using Docker Compose.
 ---
 
 import { Alert } from '@/components/docs/Alert';
 import { CurrentOriginCodeBlockUpdater } from '@/components/docs/CurrentOriginCodeBlockUpdater';
+
+FastGPT supports single-host self-hosted deployment via Docker Compose on Linux, macOS, and Windows, provisioning the core web app, plugin runtime, AI Proxy model gateway, MongoDB, RustFS object storage, and your choice of pgvector, Milvus, Zilliz, OceanBase, SeekDB, or OpenGauss vector database.
 
 ## Prerequisites
 
@@ -13,21 +15,31 @@ import { CurrentOriginCodeBlockUpdater } from '@/components/docs/CurrentOriginCo
 
 ## Deployment Architecture
 
-![](../../../public/imgs/sealos-fastgpt.webp)
+![FastGPT core deployment](/imgs/diagrams/deployment-core.en.light.svg)
 
 <Alert icon="🤖" context="success">
 
-- MongoDB: Stores all data except vectors
-- PostgreSQL/Milvus/Oceanbase/SeekDB: Stores vector data
+- MongoDB: Stores business metadata, Collections, and chunks; object storage holds source files and other assets.
+- PostgreSQL/Milvus/OceanBase/SeekDB/OpenGauss: Stores vector data
 - AI Proxy: Required for proxying model requests and managing providers in the Admin interface.
 
 </Alert>
 
 ## Recommended Specs
 
+### Vector Database Selection Matrix
+
+| Vector Store           | Architecture & Protocol                             | Hybrid Retrieval                   | Ops Complexity         | Best-Fit Workload                                                         |
+| ---------------------- | --------------------------------------------------- | ---------------------------------- | ---------------------- | ------------------------------------------------------------------------- |
+| **PgVector**           | Single-container PostgreSQL extension (`pg`)        | Vector search + MongoDB full-text  | Low (simple backups)   | Default choice for PoCs and small-to-medium production up to ~5M vectors  |
+| **Milvus**             | Dedicated vector engine (requires ≥ 2.5.16)         | Vector search + native Milvus BM25 | Medium–High            | High-concurrency or 10M+ vector workloads needing independent scaling     |
+| **Zilliz Cloud**       | Fully managed cloud Milvus service                  | Vector search + managed full-text  | Minimal (managed SaaS) | Teams offloading vector index memory and cluster maintenance to the cloud |
+| **OceanBase / SeekDB** | Distributed DB / MySQL-compatible protocol          | Vector search + hybrid recall      | Medium                 | Enterprises standardized on OceanBase or MySQL operational tooling        |
+| **OpenGauss**          | Enterprise relational database with vector indexing | Vector search + hybrid recall      | Medium                 | Regulated on-premises environments standardized on OpenGauss              |
+
 ### PgVector Version
 
-Very lightweight, suitable for a Dataset index capacity below 50 million.
+The following are historical sizing estimates. Actual requirements depend on vector dimensions, index settings, document size, concurrency, and other services on the host. Benchmark representative data and reserve capacity for backups and growth.
 
 | Environment                        | Minimum (Single Node) | Recommended  |
 | ---------------------------------- | --------------------- | ------------ |
@@ -37,7 +49,9 @@ Very lightweight, suitable for a Dataset index capacity below 50 million.
 
 ### Milvus Version
 
-Better performance for 100M+ vectors.
+Use Milvus when your deployment needs a separately managed vector-search service. Validate capacity and performance with a representative benchmark.
+
+**Milvus must be version 2.5.16 or later.** FastGPT uses BM25 full-text search in `modeldata_v2` with Milvus; startup rejects older Milvus versions.
 
 [View Milvus official recommended specs](https://milvus.io/docs/prerequisite-docker.md)
 
@@ -49,13 +63,13 @@ Better performance for 100M+ vectors.
 
 ### Zilliz Cloud Version
 
-Zilliz Cloud is built by the Milvus team — a fully managed SaaS vector database with better performance than Milvus and SLA guarantees. [Try Zilliz Cloud](https://zilliz.com.cn/).
+[Zilliz Cloud](https://zilliz.com.cn/) provides a managed vector database. Capacity, connectivity, SLA, and pricing depend on the selected plan.
 
-Since the vector database runs in the cloud, no local resources are needed.
+The vector service runs in the cloud. FastGPT, MongoDB, object storage, and other local components still need resources.
 
 ### SeekDB Version
 
-SeekDB is a high-performance vector database based on MySQL protocol, fully compatible with OceanBase, supporting efficient vector retrieval.
+SeekDB uses the MySQL protocol and has a FastGPT vector-store adapter. Treat the table as sizing estimates; verify the database version, model dimensions, and actual workload.
 
 | Environment                        | Minimum (Single Node) | Recommended  |
 | ---------------------------------- | --------------------- | ------------ |
@@ -65,9 +79,9 @@ SeekDB is a high-performance vector database based on MySQL protocol, fully comp
 
 <Alert icon="🤖" context="success">
 
-SeekDB uses MySQL protocol, fully compatible with OceanBase:
+The FastGPT SeekDB adapter provides the following capabilities, subject to the selected database version and model configuration:
 
-- Supports 1536-dimensional vector retrieval
+- Vector indexes configured for the model dimensions
 - Built-in HNSW index algorithm
 - Batch insertion and query optimization
 - Automatic retry and connection pool management
@@ -81,17 +95,14 @@ SeekDB uses MySQL protocol, fully compatible with OceanBase:
 <Tabs items={['Linux','MacOS','Windows']}>
   <Tab value="Linux">
 ```bash
-# Install Docker
+# Install Docker (includes the Docker Compose V2 plugin)
 curl -fsSL https://get.docker.com | bash -s docker --mirror Aliyun
 systemctl enable --now docker
-# Install docker-compose
-curl -L https://github.com/docker/compose/releases/download/v2.20.3/docker-compose-`uname -s`-`uname -m` -o /usr/local/bin/docker-compose
-chmod +x /usr/local/bin/docker-compose
 # Verify installation
 docker -v
-docker compose -v
-# If it fails, search online for solutions
+docker compose version
 ```
+If installation fails, refer to the [official Docker installation guide](https://docs.docker.com/engine/install/).
   </Tab>
   <Tab value="MacOS">
 We recommend [Orbstack](https://orbstack.dev/). Install via Homebrew:
@@ -104,7 +115,7 @@ Or [download the installer](https://orbstack.dev/download) directly.
 
   </Tab>
   <Tab value="Windows">
-We recommend storing source code and data in the Linux filesystem when binding to Linux containers, not the Windows filesystem.
+We recommend storing source code and data in the WSL 2 Linux filesystem when binding to Linux containers to maintain optimal I/O throughput and correct file permissions.
 
 You can [install Docker Desktop with WSL 2 backend on Windows](https://docs.docker.com/desktop/wsl/).
 
@@ -122,31 +133,27 @@ Or [install the command-line version of Docker directly in WSL 2](https://nickja
 Copy the following content to your Coding Agent:
 
 ```text
-Refer to https://doc.fastgpt.cn/deploy/SKILL.md and deploy FastGPT with Docker for me.
+Refer to https://doc.fastgpt.io/deploy/SKILL.md and deploy FastGPT with Docker for me.
 ```
 
 <CurrentOriginCodeBlockUpdater />
 
 #### Method 2: Interactive Script Deployment
 
-Run in Linux/MacOS/Windows WSL. The script guides you through selecting deployment environment, vector database version, IP address, etc.
+Run in Linux/MacOS/Windows WSL. The script prompts for the deployment version, image registry, vector database, and whether to generate credentials automatically, then asks for the FastGPT access URL, the Sandbox WebSocket / preview URLs, and host ports before the final confirmation.
 
 ```bash
-FASTGPT_DEPLOY_BASE_URL=https://doc.fastgpt.cn bash <(curl -fsSL https://doc.fastgpt.cn/deploy/install.sh)
+FASTGPT_DEPLOY_BASE_URL=https://doc.fastgpt.io bash <(curl -fsSL https://doc.fastgpt.io/deploy/install.sh)
 ```
 
 <CurrentOriginCodeBlockUpdater />
 
-If the documentation site uses a custom domain, an internal domain, or a local address, set `FASTGPT_DEPLOY_BASE_URL` to choose the download source. You can provide either the site root or a URL ending in `/deploy`; the script downloads YAML and `config.json` from that source:
+If the documentation site uses a custom domain, an internal domain, or a local address, set `FASTGPT_DEPLOY_BASE_URL` to choose the download source. You can provide either the site root or a URL ending in `/deploy`; the script downloads `docker-compose.yml` from that source, as in the command above. When an older compose file still mounts `config.json`, the script downloads that file too.
 
-```bash
-FASTGPT_DEPLOY_BASE_URL=https://doc.fastgpt.cn bash <(curl -fsSL https://doc.fastgpt.cn/deploy/install.sh)
-```
+Set `FASTGPT_NON_INTERACTIVE=true` to run in non-interactive mode. The script skips the prompts and reads options from variables such as `FASTGPT_DEPLOY_VERSION`, `FASTGPT_REGION`, `FASTGPT_VECTOR`, and `FASTGPT_AUTO_GENERATE_CREDENTIALS`; unset options default to `main`, `cn`, `pg`, and automatic credential generation. If the script cannot detect the image version, set `FASTGPT_IMAGE_TAG` or `FASTGPT_ROOT_ACTIVATION`.
 
-<CurrentOriginCodeBlockUpdater />
-
-Non-interactive mode also requires `FASTGPT_FE_DOMAIN`, the full URL users use to access FastGPT, such as `https://fastgpt.example.com`.  
-Versions with Agent/Skill Sandbox also require `FASTGPT_SANDBOX_PROXY_URL`, the Sandbox WebSocket URL, such as `wss://sandbox-proxy.example.com`;  
+Non-interactive mode also requires `FASTGPT_FE_DOMAIN`, the full URL users use to access FastGPT, such as `https://fastgpt.example.com`.
+Versions with Agent/Skill Sandbox also require `FASTGPT_SANDBOX_PROXY_URL`, the Sandbox WebSocket URL, such as `wss://sandbox-proxy.example.com`;
 Versions 4.16 and later also require `FASTGPT_SANDBOX_PREVIEW_PROXY_URL` for the HTTP preview URL.
 
 Access URLs and host ports are configured independently. For direct access, set `FASTGPT_PORT` for the FastGPT host port (default `3000`) and `FASTGPT_SANDBOX_PROXY_PORT` for the Sandbox Proxy host port (default `3006`); the container ports remain `3000` and `1006`. With a reverse proxy, public ports in `FASTGPT_FE_DOMAIN`, `FASTGPT_SANDBOX_PROXY_URL`, and the preview URL (for example, `443`) are not treated as host ports, so the script keeps the default Compose mappings.
@@ -154,28 +161,28 @@ Access URLs and host ports are configured independently. For direct access, set 
 **The script automatically performs the following actions**:
 
 - Downloads `docker-compose.yml`.
-- Guides you through selecting externally accessible S3 and MCP addresses, then writes them into the config files.
-- Generates a random `root` login password, service tokens, app keys, and component passwords, then writes them into `docker-compose.yml`.
+- When deploying v4.14, or when the local compose file contains `STORAGE_EXTERNAL_ENDPOINT`, prompts for the externally accessible S3 address and writes it into the config files.
+- Generates random service tokens, app keys, and component passwords, then writes them into `docker-compose.yml`. For v4.17.2 and earlier, it also generates a random `root` login password.
 - Detects the host Docker socket path and updates the mount path in `docker-compose.yml` when needed.
 
-After the script finishes, the terminal prints the generated `root` login password. Keep the generated `docker-compose.yml` safe. For future upgrades, start from this file so you do not lose the generated passwords and keys.
+After the script finishes, the terminal prints the `root` login details: for v4.17.3 and later, the initial password is fixed at `123456` and you set a new password through first-login account activation; for earlier versions, it prints the randomly generated password. Keep the generated `docker-compose.yml` safe. For future upgrades, start from this file so you do not lose the generated passwords and keys.
 
 To use an existing local `docker-compose.yml` file, for example when testing a version that has not been published to the docs site yet, choose `Local docker-compose.yml` in the deployment version step and enter the local file path. You can also pass the path with an environment variable:
 
 ```bash
-FASTGPT_LOCAL_COMPOSE_PATH=/path/to/docker-compose.yml bash <(curl -fsSL https://doc.fastgpt.cn/deploy/install.sh)
+FASTGPT_LOCAL_COMPOSE_PATH=/path/to/docker-compose.yml bash <(curl -fsSL https://doc.fastgpt.io/deploy/install.sh)
 ```
 
 <CurrentOriginCodeBlockUpdater />
 
 #### Method 3: Manual Download
 
-If you need to pin deployment to a specific `docker-compose.yml` file, we recommend downloading both `docker-compose.yml` and `install.sh`, then using the script's local compose mode to generate the final config. This keeps the script's random credential generation, S3/MCP address updates, and Docker socket detection.
+If you need to pin deployment to a specific `docker-compose.yml` file, we recommend downloading both `docker-compose.yml` and `install.sh`, then using the script's local compose mode to generate the final config. This keeps the script's random credential generation, S3 address updates, and Docker socket detection.
 
 1. Download the required `docker-compose.yml` file to the server, for example:
 
 ```bash
-curl -fsSL https://doc.fastgpt.cn/deploy/docker/main/cn/docker-compose.pg.yml -o docker-compose.source.yml
+curl -fsSL https://doc.fastgpt.io/deploy/docker/main/global/docker-compose.pg.yml -o docker-compose.source.yml
 ```
 
 <CurrentOriginCodeBlockUpdater />
@@ -198,13 +205,16 @@ curl -fsSL https://doc.fastgpt.cn/deploy/docker/main/cn/docker-compose.pg.yml -o
 - **SeekDB**
   - China mirror (Alibaba Cloud): [docker-compose.seekdb.yml](/deploy/docker/main/cn/docker-compose.seekdb.yml)
   - Global mirror (dockerhub, ghcr): [docker-compose.seekdb.yml](/deploy/docker/main/global/docker-compose.seekdb.yml)
+- **OpenGauss**
+  - China mirror (Alibaba Cloud): [docker-compose.opengauss.yml](/deploy/docker/main/cn/docker-compose.opengauss.yml)
+  - Global mirror (dockerhub, ghcr): [docker-compose.opengauss.yml](/deploy/docker/main/global/docker-compose.opengauss.yml)
 
 </details>
 
 2. Download `install.sh` to the server:
 
 ```bash
-curl -fsSL https://doc.fastgpt.cn/deploy/install.sh -o install.sh
+curl -fsSL https://doc.fastgpt.io/deploy/install.sh -o install.sh
 ```
 
 <CurrentOriginCodeBlockUpdater />
@@ -215,9 +225,9 @@ curl -fsSL https://doc.fastgpt.cn/deploy/install.sh -o install.sh
 FASTGPT_LOCAL_COMPOSE_PATH=./docker-compose.source.yml bash install.sh
 ```
 
-The script copies this compose file to the final `docker-compose.yml`, then generates login passwords and credentials, and writes the S3/MCP addresses. After generation, log in with the root password printed in the terminal.
+The script copies this compose file to the final `docker-compose.yml`, then generates credentials and writes the S3 address when needed. After generation, log in with the root login details printed in the terminal.
 
-For a fully offline environment, prepare `docker-compose.yml` and `install.sh` in advance. If the script cannot run, manually update `DEFAULT_ROOT_PSW`, service tokens, database passwords, and S3/MCP addresses.
+For a fully offline environment, prepare `docker-compose.yml` and `install.sh` in advance. If the script cannot run, manually update service tokens, database passwords, and S3 addresses (`v4.17.3+` initializes with `123456` and requires changing the password in the first-login activation modal; `v4.17.2` and earlier use `DEFAULT_ROOT_PSW`).
 
 #### Deploy with a Custom Image Registry
 
@@ -231,25 +241,24 @@ If Agent/Skill Sandbox is enabled, also replace the sandbox-related images in th
 
 ### 2. Modify Environment Variables
 
-You must set `FE_DOMAIN` in `fastgpt-app` to the full URL users use to access FastGPT, such as `https://fastgpt.example.com`. It must include a scheme, host, and optional port; do not leave it empty or use an internal container address.
+You must set `FE_DOMAIN` in `fastgpt-app` to the complete external URL accessible to client browsers, such as `https://fastgpt.example.com`. It includes a scheme, host, and optional port.
 
 When Agent/Skill Sandbox is enabled, also configure:
 
 - `AGENT_SANDBOX_PROXY_URL`: the browser-accessible Sandbox Proxy WebSocket URL using `ws://` or `wss://`, such as `wss://sandbox-proxy.example.com`, which must be forwarded to the Sandbox Proxy host port (default `3006`).
-- Version 4.16 additionally requires `AGENT_SANDBOX_PREVIEW_PROXY_URL`: the browser-accessible HTTP(S) URL for sandbox file previews, such as `https://sandbox-proxy.example.com`, forwarded to the same host port.
+- Version 4.16 and later additionally require `AGENT_SANDBOX_PREVIEW_PROXY_URL`: the browser-accessible HTTP(S) URL for sandbox file previews, such as `https://sandbox-proxy.example.com`, forwarded to the same host port.
 
 The interactive install script prompts for these addresses before the final confirmation.
 
-For `Zilliz version`, you also need credentials — see [Deploy Zilliz Version: Get Account and Credentials](#deploy-zilliz-version-get-account-and-credentials). Other versions can skip to the next step.
+For `Zilliz version`, you also need credentials — see [Obtain Zilliz Cloud Credentials](#8-obtain-zilliz-cloud-credentials-for-zilliz-compose-templates). Other versions can skip to the next step.
 
 ### 3. Open External Ports / Configure Domain
 
 The following services must be reachable. For direct access, open the host ports printed by the script; with a reverse proxy, the proxy owns the public ports:
 
 1. Port 3000 by default (FastGPT main service; change the host port with `FASTGPT_PORT`)
-2. Port 9000 (S3 service)
+2. Port 9000 (S3 object storage service; in default `short-proxy` mode FastGPT proxies private files, while `short-redirect` mode or direct browser access to public bucket assets such as plugin logos requires configuring `STORAGE_EXTERNAL_ENDPOINT` in Compose and opening port 9000)
 3. Port 3006 by default (FastGPT Agent Sandbox Proxy service; change the host port with `FASTGPT_SANDBOX_PROXY_PORT`)
-4. Port 3003 (FastGPT SSE MCP server service; you can leave this port closed if you don't need it.)
 
 ### 4. Start Containers
 
@@ -267,226 +276,38 @@ docker compose up -d
 
 Access FastGPT via the port/domain opened in step 3. The login username is `root`:
 
-- **Version v4.17.3 and later**: The initial password is fixed at `123456`. An activation modal requires setting a new password upon first login. If forgotten, reset the password using the built-in CLI script. See [Modify and Reset Root Password](/en/self-host/config/root-password).
+- **Version v4.17.3 and later**: The initial password is fixed at `123456`. An activation modal requires setting a new password upon first login (any residual `DEFAULT_ROOT_PSW` variable in `v4.17.3+` Compose templates is ignored). If forgotten, reset the password using the built-in CLI script. See [Modify and Reset Root Password](/en/self-host/config/root-password).
 - **Legacy versions (v4.17.2 and earlier)**: The password is set via `DEFAULT_ROOT_PSW` in `docker-compose.yml`. When deploying with the interactive script, a random password is generated and displayed upon completion. Each container restart updates the password to this value.
 
 ### 6. Configure Models
 
-- After first login, the system prompts that `Language Model` and `Embedding model` are not configured and automatically redirects to the model configuration page. At least these two model types are required.
-- If the redirect doesn't happen, go to `Admin - Model provider` to configure models. [View tutorial](/en/self-host/config/model/intro)
+- After first login, if models are not yet configured, the system prompts that related models or embedding models are not configured and guides you to the model configuration page. At least a language model and an embedding model are required.
+- If the redirect doesn't happen, go to **Admin → System Resources → System Models** to configure models. [View tutorial](/en/self-host/config/model/intro)
 - Known issue: after first entering the system, the browser tab may become unresponsive. Close the tab and reopen it.
 
 ### 7. Install System Plugins as Needed
 
-Starting from V4.14.0, the fastgpt-plugin image only provides the runtime environment without pre-installed system plugins. All FastGPT systems must manually install system plugins.
+Starting from V4.14.0, the `fastgpt-plugin` image provides the runtime environment, and administrators can install system plugins on demand under **Admin → (Commercial Edition: System Resources →) System Tools**:
 
 - Install via the plugin marketplace — by default it fetches from the public FastGPT Marketplace.
 - If your FastGPT can't access the marketplace, visit [FastGPT Plugin Marketplace](https://marketplace.fastgpt.cn/), download .pkg files, and import them via file upload.
 - You can also sort tools, set default installations, and manage tags.
 
-![alt text](../../../public/imgs/image-121.png)
+![7. Install System Plugins as Needed — interface example](/imgs/optimized/image-121.png.webp)
 
-## FAQ
-
-### FastGPT and FastGPT-plugin Version Compatibility
-
-| FastGPT-plugin Version | FastGPT Main Service |
-| ---------------------- | -------------------- |
-| 1.x                    | 4.15.x               |
-| 0.6.x                  | >= 4.14.11, < 4.15.0 |
-| 0.5.x                  | >= 4.14.6, < 4.14.11 |
-| < 0.5.0                | < 4.14.6             |
-
-### S3 Connection Issues
-
-Check the `STORAGE_EXTERNAL_ENDPOINT` variable — it must be accessible by both the client and FastGPT service.
-
-**Important:**
-
-> Don't use `127.0.0.1` or `localhost` or other loopback addresses. Use the host machine's local IP when deploying with Docker, but set it to a static IP; or use a fixed domain name. This prevents 403 errors caused by URL mismatches when signing object storage URLs.
->
-> See [Object Storage Configuration & Common Issues](/en/self-host/config/object-storage)
-
-### Browser Unresponsive After Login
-
-Can't click anything, refresh doesn't help. Close the tab and reopen it.
-
-### Mongo Replica Set Auto-Initialization Failed
-
-The latest docker-compose examples have fully automated Mongo replica set initialization. Tested on Ubuntu 20/22, CentOS 7, WSL2, macOS, and Windows. If it still won't start, the CPU likely doesn't support AVX instructions — switch to Mongo 4.x.
-
-To manually initialize the replica set:
-
-1. Create a mongo key in the terminal:
-
-```bash
-openssl rand -base64 756 > ./mongodb.key
-chmod 600 ./mongodb.key
-# Change key permissions — some systems use admin, others use root
-chown 999:root ./mongodb.key
-```
-
-2. Modify docker-compose.yml to mount the key:
-
-```yml
-mongo:
-  #  image: mongo:5.0.18
-  # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/mongo:5.0.18 # Alibaba Cloud
-  container_name: mongo
-  ports:
-    - 27017:27017
-  networks:
-    - fastgpt
-  command: mongod --keyFile /data/mongodb.key --replSet rs0
-  environment:
-    # Default username and password, only effective on first run
-    - MONGO_INITDB_ROOT_USERNAME=myusername
-    - MONGO_INITDB_ROOT_PASSWORD=mypassword
-  volumes:
-    - ./mongo/data:/data/db
-    - ./mongodb.key:/data/mongodb.key
-```
-
-3. Restart services:
-
-```bash
-docker compose down
-docker compose up -d
-```
-
-4. Enter the container and initialize the replica set:
-
-```bash
-# Check if mongo container is running
-docker ps
-# Enter container
-docker exec -it mongo bash
-
-# Connect to database (use your Mongo username and password)
-mongo -u myusername -p mypassword --authenticationDatabase admin
-
-# Initialize replica set. For external access, add directConnection=true to the Mongo connection parameters
-rs.initiate({
-  _id: "rs0",
-  members: [
-    { _id: 0, host: "mongo:27017" }
-  ]
-})
-# Check status — if it shows rs0 status, it's running successfully
-rs.status()
-```
-
-### How to Change API Address and Key
-
-Starting with V4.17.0, **you must deploy or connect to AI Proxy** and set these environment variables in the FastGPT container:
-
-- `AIPROXY_API_ENDPOINT`: The AI Proxy service root URL reachable from FastGPT, such as `http://aiproxy:3000`. Do not append `/v1`; FastGPT adds the path required by each API.
-- `AIPROXY_API_TOKEN`: A nonempty AI Proxy administrator token that matches the administrator credentials configured on the AI Proxy server.
-
-Startup validation fails if either setting is missing. `OPENAI_BASE_URL` and `CHAT_API_KEY` do not replace these required settings. AI Proxy is still required when a model uses `requestUrl/requestAuth`. Configure model service endpoints and keys in the Admin provider settings.
-
-To update the AI Proxy connection, edit the FastGPT container's environment variables in `docker-compose.yml`. Commercial Admin services that share App/Service configuration also need both variables.
-
-After modifying, restart:
-
-```bash
-docker compose down
-docker compose up -d
-```
-
-### How to Update Versions?
-
-1. Check the [update documentation](/en/self-host/upgrading/upgrade-instruction) to confirm the target version — avoid skipping versions.
-2. Change the image tag to the target version
-3. Run these commands to pull and restart:
-
-   ```bash
-   docker compose up -d
-   ```
-
-4. Run initialization scripts (if any)
-5. If you also need to migrate the bundled MongoDB 5.x to 8.x, see [Migrate MongoDB 5.x to 8.x (Dump/Restore)](/en/self-host/upgrading/mongodb-8).
-
-### How to Customize Environment Variables?
-
-Edit the `environment` section of `fastgpt-app` in `docker-compose.yml`, then run `docker compose up -d` to restart the container. For details, see [Environment Variables](/en/self-host/config/env).
-
-### How to Check if Environment Variables Loaded
-
-1. `docker exec -it fastgpt sh` to enter the container.
-2. Run `env` to view all environment variables.
-
-### Why Can't I Connect to Local Model Images
-
-`docker-compose.yml` uses bridge mode to create the `fastgpt` network. To access other images via 0.0.0.0 or image name, add those images to the same network.
-
-### How to Resolve Port Conflicts?
-
-Docker-compose port format: `mapped_port:running_port`.
-
-In bridge mode, container running ports don't conflict, but mapped ports can. Change the mapped port to a different value.
-
-If `container1` needs to connect to `container2`, use `container2:running_port`.
-
-(Brush up on Docker basics as needed)
-
-### relation "modeldata" does not exist
-
-PG database not connected or initialization failed — check logs. FastGPT initializes tables on each PG connection. Errors will appear in the logs.
-
-1. Check if the database container started normally
-2. For non-Docker deployments, manually install the pg vector extension
-3. Check fastgpt logs for related errors
-
-### Illegal instruction
-
-Possible causes:
-
-1. ARM architecture — use the official Mongo image: mongo:5.0.18
-2. CPU doesn't support AVX — switch to mongo4.x. Change the mongo image to: mongo:4.4.29
-
-### Operation `auth_codes.findOne()` buffering timed out after 10000ms
-
-Mongo connection failed — check mongo's running status and **logs**.
-
-Possible causes:
-
-1. Mongo service didn't start (some CPUs don't support AVX — switch to mongo4.x, find the latest 4.x on Docker Hub, update the image version, and rerun)
-2. Database connection environment variables are wrong (username/password, check host and port — for non-container network connections, use public IP and add directConnection=true)
-3. Replica set startup failed, causing the container to keep restarting
-4. `Illegal instruction.... Waiting for MongoDB to start`: CPU doesn't support AVX — switch to mongo4.x
-
-### First Deployment: Root User Shows Unregistered
-
-Logs will show error messages. Most likely Mongo replica set mode wasn't started.
-
-### Can't Export Dataset / Can't Use Voice Input or Playback
-
-SSL certificate not configured — some features require it.
-
-### Login Shows Network Error
-
-Caused by service initialization errors triggering a restart.
-
-- 90% of cases: incorrect config file causing JSON parsing errors
-- The rest: usually because the vector database can't connect
-
-### How to Change Password
-
-- **Web UI**: Log in as `root`, navigate to **Account Info** from the top right avatar, and update your password in the security settings.
-- **CLI Reset (Forgotten Password)**: Run `docker compose exec fastgpt-app node /app/scripts/reset-root-password.cjs 'your_new_password'` inside the application container to reset the password without restarting.
-- **Legacy versions (v4.17.2 and earlier)**: Update `DEFAULT_ROOT_PSW` in `docker-compose.yml` and restart the container.
-
-For more details, see [Modify and Reset Root Password](/en/self-host/config/root-password).
-
-### Deploy Zilliz Version: Get Account and Credentials
+### 8. Obtain Zilliz Cloud Credentials (For Zilliz Compose Templates)
 
 Open [Zilliz Cloud](https://zilliz.com.cn/), create an instance, and get the credentials.
 
-![zilliz_key](../../../public/imgs/zilliz_key.png)
+![zilliz_key](/imgs/optimized/zilliz_key.png.webp)
 
 <Alert icon="🤖" context="success">
 
 1. Set `MILVUS_ADDRESS` and `MILVUS_TOKEN` to match Zilliz's `Public Endpoint` and `Api key`. Remember to add your IP to the whitelist.
 
 </Alert>
+
+## Post-Deployment Operations and Troubleshooting
+
+- **Routine Operations**: See [Environment Variables](/en/self-host/config/env) to customize container variables, [Modify and Reset Root Password](/en/self-host/config/root-password) to update administrator credentials, [Upgrade Instructions](/en/self-host/upgrading/upgrade-instruction) before upgrading across releases, and [Migrate MongoDB 5.x to 8.x (Dump/Restore)](/en/self-host/upgrading/mongodb-8) when migrating the bundled MongoDB 5.x container.
+- **Troubleshooting**: For component version compatibility, S3 connection errors, MongoDB replica set initialization, `relation "modeldata" does not exist`, `Illegal instruction`, or port conflicts, see [General Troubleshooting](/en/self-host/troubleshooting/faq).

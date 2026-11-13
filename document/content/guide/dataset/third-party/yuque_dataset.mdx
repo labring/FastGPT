@@ -1,19 +1,15 @@
 ---
-title: 语雀文件库
-description: FastGPT 语雀文件库功能介绍和使用方式
+title: 语雀知识库
+description: FastGPT 语雀知识库功能介绍和使用方式
 ---
 
-| | |
-| --- | --- |
-| ![alt text](/imgs/image-31.png) | ![alt text](/imgs/image-32.png) |
+![语雀知识库：界面示例](/imgs/optimized/image-32.png.webp)
 
-FastGPT v4.8.16 版本开始，商业版用户支持语雀文件库导入，用户可以通过配置语雀的 token 和 uid 来导入语雀文档库。目前处于测试阶段，部分交互有待优化。
+FastGPT v4.8.16 版本起，商业版支持语雀知识库导入，可通过配置语雀的 User ID 和 Token 导入语雀文档库。
 
 ## 1. 获取语雀的 token 和 uid
 
 在语雀首页 - 个人头像 - 设置，可找到对应参数。
-
-![alt text](/imgs/image-36.png)
 
 参考下图获取 Token 和 User ID，注意给 Token 赋值权限：
 
@@ -21,26 +17,24 @@ FastGPT v4.8.16 版本开始，商业版用户支持语雀文件库导入，用�
 
 | 获取 Token | 增加权限 | 获取 User ID |
 | --- | --- | --- |
-| ![alt text](/imgs/image-33.png) | ![alt text](/imgs/image-34.png) | ![alt text](/imgs/image-35.png) |
+| ![1. 获取语雀的 token 和 uid：界面示例](/imgs/optimized/image-33.png.webp) | ![1. 获取语雀的 token 和 uid：界面示例](/imgs/optimized/image-34.png.webp) | ![1. 获取语雀的 token 和 uid：界面示例](/imgs/optimized/image-35.png.webp) |
 
 **企业版**：
 
 | 获取 Token | 获取 User ID |
 | --- | --- |
-| ![alt text](/imgs/image-109.png) | ![alt text](/imgs/image-108.png) |
+| ![1. 获取语雀的 token 和 uid：界面示例](/imgs/optimized/image-109.png.webp) | ![1. 获取语雀的 token 和 uid：界面示例](/imgs/optimized/image-108.png.webp) |
 
 ## 2. 创建知识库
 
-使用上一步获取的 token 和 uid，创建知识库，选择语雀文件库类型，然后填入对应的参数，点击创建。
+使用上一步获取的 User ID 和 Token，进入 **知识库 → 新建 → 第三方知识库 → 语雀知识库**，填入对应参数并点击创建。
 
-![alt text](/imgs/image-37.png)
-
-![alt text](/imgs/image-31.png)
+![2. 创建知识库：界面示例](/imgs/optimized/current/yuque-dataset-create.png.webp)
 
 ## 3. 导入文档
 
 创建完知识库后，点击`添加文件`即可导入语雀的文档库，跟随引导即可。
 
-语雀知识库支持定时同步功能，每天会不定时的扫描一次，如果文档有更新，则会进行同步，也可以进行手动同步。
+语雀知识库支持定时同步与手动同步：可在知识库右侧信息栏手动打开“定时同步”开关（商业版，默认关闭），开启后系统每天自动扫描并同步已存在的集合；也可在集合操作菜单中点击“立即同步”手动触发更新。
 
-![alt text](/imgs/image-38.png)
+![3. 导入文档：界面示例](/imgs/optimized/image-38.png.webp)

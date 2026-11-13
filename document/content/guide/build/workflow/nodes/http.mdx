@@ -1,6 +1,6 @@
 ---
 title: HTTP 请求
-description: FastGPT HTTP 模块介绍
+description: "在 FastGPT 工作流中配置 HTTP 请求节点，调用外部业务 API、传递鉴权请求头并解析响应数据。"
 ---
 
 import { Alert } from '@/components/docs/Alert';
@@ -10,38 +10,36 @@ import { Alert } from '@/components/docs/Alert';
 - 可重复添加
 - 手动配置
 - 触发执行
-- 核中核模块
+- 核心模块
 
-![](/imgs/http1.jpg)
+![特点：界面示例](/imgs/optimized/current/node-http.png.webp)
 
 ## 介绍
 
-HTTP 模块会向对应的地址发送一个 `HTTP` 请求，实际操作与 Postman 和 ApiFox 这类直流工具使用差不多。
+HTTP 模块会向对应的地址发送一个 `HTTP` 请求，实际操作与 Postman、Apifox 等主流接口调试工具的用法一致。
 
-- Params 为路径请求参数，GET 请求中用的居多。
+- Params 为 URL 查询参数（Query），GET 请求中较为常用；路径参数直接写在请求 URL 中。
 - Body 为请求体，POST/PUT 请求中用的居多。
 - Headers 为请求头，用于传递一些特殊的信息。
-- 自定义变量中可以接收前方节点的输出作为变量
-- 3 种数据中均可以通过 `{{}}` 来引用变量。
-- URL 也可以通过 `{{}}` 来引用变量。
-- 变量来自于 `全局变量`、`系统变量`、`前方节点输出`
+- 在 URL、Params、Body 与 Headers 输入框中输入 `/` 或 `{` 即可唤起变量选择器（插入 `{{变量}}`），直接引用**全局变量**、**系统变量**与**上游节点输出**。
 
 ## 参数结构
 
 ### 系统变量说明
 
-你可以将鼠标放置在 `请求参数` 旁边的问号中，里面会提示你可用的变量。
+可在请求地址、请求头、Params 与 Body 中引用以下运行时系统变量：
 
+- userId: 当前触发会话的使用者 ID
 - appId: 应用的 ID
-- chatId: 当前对话的 ID，测试模式下不存在。
-- responseChatItemId: 当前对话中，响应的消息 ID，测试模式下不存在。
+- chatId: 当前对话的 ID（正式会话与调试预览均会生成）
+- responseChatItemId: 当前对话中 AI 回复的消息 ID（正式会话与调试预览均会生成）
 - variables: 当前对话的全局变量。
 - cTime: 当前时间。
 - histories: 历史记录（默认最多取 10 条，无法修改长度）
 
 ### Params, Headers
 
-不多描述，使用方法和 Postman, ApiFox 基本一致。
+使用方法与 Postman、Apifox 一致。
 
 可通过 `{{key}}` 来引入变量。例如：
 
@@ -112,7 +110,7 @@ HTTP 模块会向对应的地址发送一个 `HTTP` 请求，实际操作与 Pos
 
 ### 如何获取返回值
 
-从图中可以看出，FastGPT 可以添加多个返回值，这个返回值并不代表接口的返回值，而是代表 `如何解析接口返回值`，可以通过 `JSON path` 的语法，来 `提取` 接口响应的值。
+FastGPT 支持添加多个自定义返回值。这些返回值定义了如何解析接口响应，通过 `JSON path` 语法精准提取接口返回数据中的目标字段。
 
 语法可以参考: https://github.com/JSONPath-Plus/JSONPath?tab=readme-ov-file
 
@@ -166,13 +164,22 @@ HTTP 模块会向对应的地址发送一个 `HTTP` 请求，实际操作与 Pos
 
 1. 获取 `message` 的内容，那么你可以配置 `message` 的 `key` 为 `message`，这样就可以获取到 `message` 的内容。
 2. 获取 `user的name`，则 `key` 可以为：`data.user.name`。
-3. 获取 list 中第二个元素，则 `key` 可以为：`data.list[1]`，然后输出类型选择字符串，则获自动获取到 `[ { "test": 22 } ]` 的 `json` 字符串。
+3. 获取 list 中第二个元素，则 `key` 可以为：`data.list[1]`，然后输出类型选择字符串，则会自动获取到 `[ { "test": 22 } ]` 的 `json` 字符串。
+
+### 节点输出端口
+
+- **原始响应**（`httpRawResponse`，`Any`）：接口返回的完整原始响应体，默认自带且无需手动添加。
+- **自定义提取字段**：按上方 JSONPath 规则添加的自定义输出端口。
+- **错误信息**（`error`，`String`）：开启**报错捕获**后显示，输出请求失败原因。
+- **完整错误**（`system_httpRawError`，`Object`）：开启**报错捕获**后显示，输出结构化的错误详情对象。
+
+### 错误响应与排查
+
+当 HTTP 请求节点收到非 2xx 响应时，若响应体未包含 `message` 或 `msg` 字段，节点错误文本中会附加该响应体的截断片段（最多 2000 个字符），便于排查接口失败原因。
 
 ### 自动格式化输出
 
-FastGPT v4.6.8 后，加入了出参格式化功能，主要以 `json` 格式化成 `字符串` 为主。如果你的输出类型选择了 `字符串`，则会将 `HTTP` 对应 `key` 的值，转成 `json` 字符串进行输出。因此，未来你可以直接从 `HTTP` 接口输出内容至 `文本加工` 中，然后拼接适当的提示词，最终输入给 `AI对话`。
-
-<Alert context="warning">HTTP 模块非常强大，你可以对接一些公开的 API，来提高编排的功能。</Alert>
+FastGPT v4.6.8 后，加入了出参格式化功能，主要以 `json` 格式化成 `字符串` 为主。如果你的输出类型选择了 `字符串`，则会将 `HTTP` 对应 `key` 的值，转成 `json` 字符串进行输出。因此，未来你可以直接从 `HTTP` 接口输出内容至 `文本拼接` 中，然后拼接适当的提示词，最终输入给 `AI对话`。
 
 ## HTTP 对接业务服务示例
 

@@ -73,8 +73,10 @@ describe('token auth cancellation access', () => {
       userId: 'user-1',
       teamId: 'team-1',
       tmbId: 'tmb-1',
-      sessionId: 'user-1:token-1'
+      sessionId: 'user-1:token-1',
+      sessionCreatedAt: session.createdAt
     });
+    expect(mocks.authUserSession).toHaveBeenCalledExactlyOnceWith('user-1:token-1');
     expect(mocks.assertCancellation).not.toHaveBeenCalled();
   });
 });

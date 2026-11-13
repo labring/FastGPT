@@ -2,6 +2,7 @@ import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
+import { TeamPermission } from '@fastgpt/global/support/permission/user/controller';
 import {
   ManagePermissionVal,
   ManageRoleVal,
@@ -251,6 +252,45 @@ describe('authDatasetCollection', () => {
         }
       })
     ).resolves.toMatchObject({ dataset: { permission: { isOwner: true } } });
+    expect(mockGetTmbInfoByTmbId).not.toHaveBeenCalled();
+  });
+
+  it('reads the dataset while shared member info is pending and still checks its own ACL', async () => {
+    const tmbInfo = { teamId: 'team-a', permission: new TeamPermission({ role: 0 }) };
+    let complete!: (value: typeof tmbInfo) => void;
+    const pending = new Promise<typeof tmbInfo>((resolve) => {
+      complete = resolve;
+    });
+    mockDatasetQuery({
+      _id: datasetId,
+      teamId: 'team-a',
+      tmbId: 'dataset-owner',
+      inheritPermission: false
+    });
+    mockGetTmbPermission.mockResolvedValue(ReadPermissionVal);
+
+    const result = authDatasetByTmbId({
+      tmbId: 'tmb-a',
+      datasetId,
+      per: ReadPermissionVal,
+      tmbInfo: pending
+    });
+    expect(mockFindDataset).toHaveBeenCalledExactlyOnceWith({ _id: datasetId, deleteTime: null });
+    expect(mockGetTmbInfoByTmbId).not.toHaveBeenCalled();
+    expect(mockGetTmbPermission).not.toHaveBeenCalled();
+
+    complete(tmbInfo);
+    await expect(result).resolves.toMatchObject({
+      dataset: { permission: { hasReadPer: true, isOwner: false } }
+    });
+    expect(mockGetTmbPermission).toHaveBeenCalledOnce();
+
+    // 同一成员快照不复用知识库 ACL；下一次资源鉴权仍可被拒绝。
+    mockGetTmbPermission.mockResolvedValue(0);
+    await expect(
+      authDatasetByTmbId({ tmbId: 'tmb-a', datasetId, per: ReadPermissionVal, tmbInfo: pending })
+    ).rejects.toBe(DatasetErrEnum.unAuthDataset);
+    expect(mockGetTmbPermission).toHaveBeenCalledTimes(2);
     expect(mockGetTmbInfoByTmbId).not.toHaveBeenCalled();
   });
 

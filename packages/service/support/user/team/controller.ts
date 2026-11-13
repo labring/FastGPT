@@ -29,6 +29,9 @@ import {
   getActiveAccountCancellationsByTeamIds
 } from '../account/cancellation';
 import { createTeamDefaultGroup } from '../../permission/memberGroup/teamDefaultGroup';
+import { MongoUser } from '../schema';
+import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
+import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 
 const logger = getLogger(LogCategories.MODULE.USER.TEAM);
 
@@ -50,15 +53,23 @@ async function getTeamMember(
     return Promise.reject('member not exist');
   }
 
-  const [cancellation] = await getActiveAccountCancellationsByTeamIds([String(tmb.teamId)]);
-
-  const role =
-    (await getTmbPermission({
+  const [[cancellation], roleResult, memberUser] = await Promise.all([
+    getActiveAccountCancellationsByTeamIds([String(tmb.teamId)]),
+    getTmbPermission({
       resourceType: PerResourceTypeEnum.team,
       teamId: tmb.teamId,
       tmbId: tmb._id,
       session
-    })) ?? TeamDefaultRoleVal;
+    }),
+    MongoUser.findById(tmb.userId, 'username')
+      .session(session ?? null)
+      .lean()
+  ]);
+
+  const role = roleResult ?? TeamDefaultRoleVal;
+  // root 代管租户团队时不写入持久化 role='owner' 以免污染团队真实 owner 查询，但在运行时权限中始终具备团队最高所有权。
+  const isRootUser = memberUser?.username === 'root';
+  const isOwner = tmb.role === TeamMemberRoleEnum.owner || isRootUser;
 
   return {
     userId: String(tmb.userId),
@@ -74,7 +85,7 @@ async function getTeamMember(
     status: tmb.status,
     permission: new TeamPermission({
       role,
-      isOwner: tmb.role === TeamMemberRoleEnum.owner
+      isOwner
     }),
     notificationAccount: tmb.team.notificationAccount,
 
@@ -354,4 +365,177 @@ export async function updateTeam({
       await getS3AvatarSource().refreshAvatar(avatar, team?.avatar, session);
     }
   });
+}
+
+/**
+ * 为系统 root 用户在目标团队中按需（JIT）确保存在有效活跃成员记录。
+ *
+ * 设计约束：
+ * 1. 仅当目标团队本身归 root 所有时保留 `role: 'owner'`；跨团队代管时不写 `role` 字段，
+ *    避免污染 `getTeamOwner` 查询及破坏成员角色迁移约束。
+ * 2. 直接跳过团队最大成员数（`maxTeamMember`）配额校验，且记录持久保留以维持历史资源外键完整性。
+ * 3. 通过唯一索引 `{ userId: 1, teamId: 1 }` 配合并发冲突重试保证幂等。
+ */
+export async function ensureRootTeamMember({
+  targetTeamId,
+  rootUserId,
+  session
+}: {
+  targetTeamId: string;
+  rootUserId: string;
+  session?: ClientSession;
+}) {
+  // 1. 校验目标团队存在且未被软删除。
+  const teamQuery = MongoTeam.findOne(
+    {
+      _id: new Types.ObjectId(String(targetTeamId)),
+      $or: [{ deleteTime: { $exists: false } }, { deleteTime: null }]
+    },
+    { _id: 1, name: 1, ownerId: 1, avatar: 1 }
+  );
+  if (session) teamQuery.session(session);
+  const targetTeam = await teamQuery.lean();
+  if (!targetTeam) {
+    return Promise.reject(CommonErrEnum.invalidResource);
+  }
+
+  // 2. 原子 upsert root 在该团队的活跃成员锚点；并发首次插入命中 11000 时回退更新。
+  const isOwnTeam = String(targetTeam.ownerId) === String(rootUserId);
+  const filter = {
+    teamId: targetTeam._id,
+    userId: new Types.ObjectId(String(rootUserId))
+  };
+  const updateSet = {
+    status: TeamMemberStatusEnum.active,
+    ...(isOwnTeam ? { role: TeamMemberRoleEnum.owner } : {})
+  };
+
+  const tmb = await (async () => {
+    try {
+      return await MongoTeamMember.findOneAndUpdate(
+        filter,
+        {
+          $set: updateSet,
+          $setOnInsert: {
+            name: 'root',
+            avatar: LOGO_ICON,
+            isSetMemberName: true,
+            createTime: new Date()
+          }
+        },
+        {
+          upsert: true,
+          new: true,
+          ...(session ? { session } : {})
+        }
+      ).lean();
+    } catch (error: any) {
+      if (error?.code === 11000) {
+        return MongoTeamMember.findOneAndUpdate(
+          filter,
+          { $set: updateSet },
+          {
+            new: true,
+            ...(session ? { session } : {})
+          }
+        ).lean();
+      }
+      throw error;
+    }
+  })();
+
+  if (!tmb) {
+    return Promise.reject(CommonErrEnum.invalidResource);
+  }
+
+  return {
+    team: targetTeam,
+    tmb
+  };
+}
+
+/**
+ * 统计团队实际占用的有效成员席位数。
+ * 当 root 用户并非该团队真实所有者时，排除其跨团队代管产生的 JIT 成员记录，避免占用租户席位。
+ */
+export async function countEffectiveTeamMembers(teamId: string): Promise<number> {
+  const [team, rootUser] = await Promise.all([
+    MongoTeam.findById(teamId, 'ownerId').lean(),
+    MongoUser.findOne({ username: 'root' }, '_id').lean()
+  ]);
+
+  const shouldExcludeRoot =
+    Boolean(rootUser?._id) && String(team?.ownerId) !== String(rootUser?._id);
+
+  return MongoTeamMember.countDocuments({
+    teamId,
+    status: { $ne: TeamMemberStatusEnum.leave },
+    ...(shouldExcludeRoot ? { userId: { $ne: rootUser!._id } } : {})
+  });
+}
+
+/**
+ * 查询非 root 所属租户团队中的 root 代管成员信息，用于对普通租户成员隐藏 root 记录。
+ * 若当前团队本就归 root 所有，返回 `null`（不隐藏）。
+ */
+export async function getForeignRootMemberInfo(teamId: string): Promise<{
+  rootUserId: string;
+  rootTmbId?: string;
+  rootStatus?: string;
+} | null> {
+  const [team, rootUser] = await Promise.all([
+    MongoTeam.findById(teamId, 'ownerId').lean(),
+    MongoUser.findOne({ username: 'root' }, '_id').lean()
+  ]);
+
+  if (!rootUser?._id || String(team?.ownerId) === String(rootUser._id)) {
+    return null;
+  }
+
+  const rootTmb = await MongoTeamMember.findOne(
+    {
+      teamId,
+      userId: rootUser._id
+    },
+    '_id status'
+  ).lean();
+
+  return {
+    rootUserId: String(rootUser._id),
+    ...(rootTmb ? { rootTmbId: String(rootTmb._id), rootStatus: rootTmb.status } : {})
+  };
+}
+
+/**
+ * 校验待变更或删除的目标成员不包含系统 root 账号。
+ * 租户任何成员（含租户原 Owner）均无权修改、降级、移除或将团队所有权强制变更给 root 成员。
+ */
+export async function assertTargetMemberNotRoot({
+  tmbIds = [],
+  userIds = []
+}: {
+  tmbIds?: string[];
+  userIds?: string[];
+}): Promise<void> {
+  const validTmbIds = tmbIds.filter((id) => Types.ObjectId.isValid(id));
+  const validUserIds = userIds.filter((id) => Types.ObjectId.isValid(id));
+  if (validTmbIds.length === 0 && validUserIds.length === 0) return;
+
+  const rootUser = await MongoUser.findOne({ username: 'root' }, '_id').lean();
+  if (!rootUser?._id) return;
+
+  const rootUserIdStr = String(rootUser._id);
+  if (validUserIds.some((uid) => String(uid) === rootUserIdStr)) {
+    return Promise.reject(TeamErrEnum.unPermission);
+  }
+
+  if (validTmbIds.length > 0) {
+    const matchedRootMember = await MongoTeamMember.exists({
+      _id: { $in: validTmbIds.map((id) => new Types.ObjectId(id)) },
+      userId: rootUser._id
+    });
+    if (matchedRootMember) {
+      return Promise.reject(TeamErrEnum.unPermission);
+    }
+  }
 }

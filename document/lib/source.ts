@@ -1,6 +1,7 @@
 import { docs } from '@/.source';
 import { loader } from 'fumadocs-core/source';
 import { i18n } from './i18n';
+import { normalizePageTreeSections } from './page-tree';
 import { icons } from 'lucide-react';
 import { createElement } from 'react';
 import type { PageTree } from 'fumadocs-core/server';
@@ -10,7 +11,7 @@ const contentSource = loader({
   i18n,
   // it assigns a URL to your pages
   baseUrl: '/',
-  // 先保留所有语言文件完成索引，避免删除默认语言草稿时连带丢失已发布翻译。
+  // Index all locale files first so draft default-locale pages keep published translations intact.
   source: docs.toFumadocsSource(),
   pageTree: {
     attachFile(node, file) {
@@ -29,11 +30,11 @@ const contentSource = loader({
   }
 });
 
-/** 按最终解析到的语言页面判断发布状态；缺少翻译仍可回退，显式草稿不能回退。 */
+/** Evaluate publication per resolved locale page; missing translations fall back while explicit drafts stay hidden. */
 const isPublished = (page: ReturnType<typeof contentSource.getPage>) =>
   page !== undefined && page.data.draft !== true;
 
-/** 删除草稿导航及空目录；手工配置的外部链接继续保留。 */
+/** Remove draft items and empty folders from the page tree while preserving external links. */
 const filterPageTree = (tree: PageTree.Root, language: string): PageTree.Root => {
   const draftUrls = new Set(
     contentSource.getPages(language).filter((page) => !isPublished(page)).map((page) => page.url)
@@ -56,13 +57,13 @@ const filterPageTree = (tree: PageTree.Root, language: string): PageTree.Root =>
   return { ...tree, children: filterNodes(tree.children) };
 };
 
-/** 在语言索引之后统一隐藏草稿，所有查询、发现入口和静态参数共用发布状态。 */
+/** Hide drafts after locale indexing and normalize virtual sections across sidebar, breadcrumbs, and discovery. */
 export const source: typeof contentSource = {
   ...contentSource,
   pageTree: Object.fromEntries(
     Object.entries(contentSource.pageTree).map(([language, tree]) => [
       language,
-      filterPageTree(tree, language)
+      normalizePageTreeSections(filterPageTree(tree, language))
     ])
   ),
   getPage(...args) {

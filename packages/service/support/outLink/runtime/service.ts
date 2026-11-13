@@ -386,6 +386,7 @@ export async function runOutlinkRuntime<T extends OutlinkAppType>({
       sourceName: outLinkConfig.name,
       outLinkUid: chatUserId,
       userContent,
+      variables,
       responseChatItemId: messageId
     });
     roundState.preparedRound = preparedRound;
