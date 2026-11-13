@@ -18,6 +18,9 @@ import {
   loadInstalledModels
 } from '@fastgpt/service/core/ai/model/catalog/service';
 import { runModelTransaction } from '@fastgpt/service/core/ai/model/catalog/transaction';
+import getConfigJsonApi from '@/pages/api/core/ai/model/getConfigJson';
+import { getRootUser } from '@test/datas/users';
+import { Call } from '@test/utils/request';
 import type {
   SystemMigrationFailedRecord,
   SystemMigrationFailureInput
@@ -73,7 +76,7 @@ const seed = async (overrides: Record<string, unknown> = {}) => {
 };
 
 describe('backfillSTTPricingType', () => {
-  it('refreshes and cold-starts after an old node replaces pricing following migration success', async () => {
+  it('refreshes, exports JSON and cold-starts after an old node replaces pricing following migration success', async () => {
     const raw = await seed({ isActive: true, pricing: { unitPrice: 0.2 } });
     const registered = systemMigrations.find(
       ({ id }) => id === '20261112_backfill_stt_pricing_type'
@@ -108,6 +111,17 @@ describe('backfillSTTPricingType', () => {
         name: 'Edited by old node',
         pricing: { type: 'duration', unitPrice: 0.4 }
       });
+
+      const exported = await Call<string>(getConfigJsonApi, { auth: await getRootUser() });
+      expect(exported.code).toBe(200);
+      expect(JSON.parse(exported.data)).toEqual([
+        expect.objectContaining({
+          modelId: String(raw._id),
+          name: 'Edited by old node',
+          requestAuth: 'fixture-secret',
+          pricing: { type: 'duration', unitPrice: 0.4 }
+        })
+      ]);
 
       // 新节点必须依赖已成功的迁移状态启动，不能靠重跑迁移再次修复旧写入。
       publishSystemModelHandle(undefined);

@@ -44,6 +44,30 @@ const configKeysMap: Record<ModelTypeEnum, string[]> = {
   [ModelTypeEnum.stt]: []
 };
 
+/**
+ * 统一数据库模型的读取契约，供运行目录与管理员 JSON 导出复用，保留配置及凭证字段。
+ * 旧节点可能在迁移成功后写回无类型的 STT 价格，仅在读取时按每 60 秒解释；
+ * 不修改输入或数据库，不放宽 API/JSON 新写入校验，非法价格和未知显式类型仍报错。
+ */
+export const formatDbModelToDocumentData = (
+  dbModel: Record<string, unknown>
+): AIModelDocumentDataType => {
+  const pricing = (() => {
+    const { pricing } = dbModel;
+    if (
+      dbModel.type === ModelTypeEnum.stt &&
+      typeof pricing === 'object' &&
+      pricing !== null &&
+      !Array.isArray(pricing) &&
+      !('type' in pricing)
+    ) {
+      return { ...pricing, type: 'duration' };
+    }
+    return pricing;
+  })();
+  return AIModelDocumentDataSchema.parse({ ...dbModel, pricing });
+};
+
 /** 将插件扁平模型协议转换为 `ai_models` 使用的 canonical 文档。 */
 export const flatModelToDocumentData = (input: Record<string, any>): AIModelDocumentDataType => {
   const normalized = { ...input };
