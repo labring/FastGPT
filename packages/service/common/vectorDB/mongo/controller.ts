@@ -26,12 +26,16 @@ export const MongoEmbeddingSearchDefinition = {
   ]
 };
 
-/** 连接独立的向量库；失败会清除连接 promise，后续显式重试不会永久复用失败结果。 */
+/** 仅使用独立检索库配置，缺省库名为 fastgpt_search；连接失败后允许显式重试。 */
 export const connectEmbeddingMongo = async (): Promise<void> => {
-  if (!serviceEnv.EMBEDDING_MONGO_URL) throw new Error('EMBEDDING_MONGO_URL is required');
+  if (!serviceEnv.SEARCH_MONGO_URL) throw new Error('SEARCH_MONGO_URL is required');
   if (embeddingMongo.connection.readyState === 1) return;
+
+  // URI 未指定数据库时覆盖驱动的 test 默认库；兼容多主机及 SRV，保留显式库名。
+  const hasDatabase = /^mongodb(?:\+srv)?:\/\/[^/?]+\/[^?]+/.test(serviceEnv.SEARCH_MONGO_URL);
   const connecting = (global.embeddingMongoConnecting ??= embeddingMongo
-    .connect(serviceEnv.EMBEDDING_MONGO_URL, {
+    .connect(serviceEnv.SEARCH_MONGO_URL, {
+      ...(!hasDatabase && { dbName: 'fastgpt_search' }),
       maxPoolSize: serviceEnv.DB_MAX_LINK,
       minPoolSize: 0,
       serverSelectionTimeoutMS: 10_000,

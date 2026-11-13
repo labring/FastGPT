@@ -8,7 +8,11 @@ import {
 import { MongoIndexManager } from '@fastgpt/service/common/mongo/indexManager';
 
 const mocks = vi.hoisted(() => ({
-  env: { EMBEDDING_MONGO_URL: 'mongodb://test/embeddings', DB_MAX_LINK: 10 },
+  env: {
+    SEARCH_MONGO_URL: 'mongodb://search/fastgpt_search',
+    MONGODB_URI: 'mongodb://business/fastgpt',
+    DB_MAX_LINK: 10
+  },
   connection: { readyState: 0 },
   connect: vi.fn(),
   list: vi.fn(),
@@ -33,7 +37,7 @@ const ready = () => ({
 describe('Mongo embedding initialization', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
-    mocks.env.EMBEDDING_MONGO_URL = 'mongodb://test/embeddings';
+    mocks.env.SEARCH_MONGO_URL = 'mongodb://search/fastgpt_search';
     mocks.connection.readyState = 0;
     global.embeddingMongoConnecting = undefined;
     mocks.connect.mockReset().mockResolvedValue(undefined);
@@ -42,9 +46,9 @@ describe('Mongo embedding initialization', () => {
   });
 
   it('requires a dedicated URL and reuses an established connection', async () => {
-    mocks.env.EMBEDDING_MONGO_URL = '';
-    await expect(connectEmbeddingMongo()).rejects.toThrow('EMBEDDING_MONGO_URL');
-    mocks.env.EMBEDDING_MONGO_URL = 'mongodb://test/embeddings';
+    mocks.env.SEARCH_MONGO_URL = '';
+    await expect(connectEmbeddingMongo()).rejects.toThrow('SEARCH_MONGO_URL');
+    mocks.env.SEARCH_MONGO_URL = 'mongodb://search/fastgpt_search';
     mocks.connection.readyState = 1;
     await connectEmbeddingMongo();
     expect(mocks.connect).not.toHaveBeenCalled();
@@ -55,8 +59,31 @@ describe('Mongo embedding initialization', () => {
     await expect(connectEmbeddingMongo()).rejects.toThrow('offline');
     await Promise.all([connectEmbeddingMongo(), connectEmbeddingMongo()]);
     expect(mocks.connect).toHaveBeenCalledTimes(2);
+    expect(mocks.connect).toHaveBeenCalledWith(
+      'mongodb://search/fastgpt_search',
+      expect.objectContaining({ maxPoolSize: 10 })
+    );
     expect(global.embeddingMongoConnecting).toBeUndefined();
   });
+
+  it.each([
+    { uri: 'mongodb://search:27017', dbName: 'fastgpt_search' },
+    { uri: 'mongodb://user:pass@search:27017/?authSource=admin', dbName: 'fastgpt_search' },
+    { uri: 'mongodb://search-1:27017,search-2:27017/?replicaSet=rs0', dbName: 'fastgpt_search' },
+    {
+      uri: 'mongodb+srv://user:pass@search.example.com/?retryWrites=true',
+      dbName: 'fastgpt_search'
+    },
+    { uri: 'mongodb://search:27017/custom_search?authSource=admin', dbName: undefined }
+  ])(
+    'uses the default search database only when the URI omits it ($uri)',
+    async ({ uri, dbName }) => {
+      mocks.env.SEARCH_MONGO_URL = uri;
+      await connectEmbeddingMongo();
+      expect(mocks.connect).toHaveBeenCalledWith(uri, expect.any(Object));
+      expect(mocks.connect.mock.calls[0][1].dbName).toBe(dbName);
+    }
+  );
 
   it('creates scalar/INT8 and tenant filter fields only when the managed index is absent', async () => {
     mocks.list.mockResolvedValueOnce([]);
@@ -90,7 +117,7 @@ describe('Mongo embedding initialization', () => {
 
   it('accepts the server default HNSW but rejects flat or non-INT8 definitions', async () => {
     const fields = MongoEmbeddingSearchDefinition.fields.map((field) => {
-      if (field.type !== 'vector') return field;
+      if (!('indexingMethod' in field)) return field;
       const { indexingMethod: _method, ...rest } = field;
       return rest;
     });
