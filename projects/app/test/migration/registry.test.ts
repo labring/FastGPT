@@ -25,9 +25,7 @@ describe('validateSystemMigrationRegistry', () => {
         (task: SystemMigration) =>
           task.blockStartup || task.manual || task.delay || task.dependsOn?.length
       )
-    ).toEqual([
-      expect.objectContaining({ id: '20261112_backfill_stt_pricing_type', blockStartup: true })
-    ]);
+    ).toEqual([]);
     expect(() => validateSystemMigrationRegistry(systemMigrations)).not.toThrow();
   });
 
@@ -61,11 +59,11 @@ describe('validateSystemMigrationRegistry', () => {
     expect(task).not.toHaveProperty('delay');
   });
 
-  it('appends STT pricing backfill as the only startup requirement', () => {
+  it('appends STT pricing backfill as non-blocking background work', () => {
     expect(systemMigrations.at(-1)).toMatchObject({
       id: '20261112_backfill_stt_pricing_type',
       version: '4.18.0',
-      blockStartup: true,
+      blockStartup: false,
       progressSteps: [{ key: 'models' }, { key: 'validation' }]
     });
     expect(systemMigrations.at(-1)).not.toHaveProperty('dependsOn');

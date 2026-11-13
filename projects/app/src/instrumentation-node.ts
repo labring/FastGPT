@@ -23,7 +23,7 @@ export async function registerNodeInstrumentation() {
       { startCron },
       { startTrainingQueue },
       { preLoadWorker },
-      { loadInstalledModels },
+      { loadInstalledModels, loadSystemModels },
       { trackTimerProcess },
       { initBullMQWorkers },
       { initS3Buckets },
@@ -40,8 +40,7 @@ export async function registerNodeInstrumentation() {
       { getReadableSystemResourceInfo },
       { startSystemMigrationRunner },
       { startBusinessAfterSystemMigrations },
-      { onDatasetVectorCounted },
-      { preloadModelProviders }
+      { onDatasetVectorCounted }
     ] = await Promise.all([
       import('@fastgpt/service/common/mongo/init'),
       import('@fastgpt/service/common/mongo/index'),
@@ -70,8 +69,7 @@ export async function registerNodeInstrumentation() {
       import('@fastgpt/service/common/system/resource'),
       import('@/migration/runner'),
       import('@/migration/startup'),
-      import('@fastgpt/service/core/dataset/vectorData/mq'),
-      import('@fastgpt/service/core/ai/model/provider/controller')
+      import('@fastgpt/service/core/dataset/vectorData/mq')
     ]);
 
     console.log('System resources detected', getReadableSystemResourceInfo());
@@ -173,6 +171,14 @@ export async function registerNodeInstrumentation() {
       getErrText
     });
 
+    // 系统可用性验证
+    await runInitializationStep({
+      step: 'instrumentation-check',
+      action: () => instrumentationCheck(),
+      logger,
+      getErrText
+    });
+
     // 初始化系统用户
     await runInitializationStep({
       step: 'init-system-user',
@@ -217,11 +223,11 @@ export async function registerNodeInstrumentation() {
       getErrText
     });
 
-    // 迁移前只准备 Provider；旧价格尚未回填，不能提前按新 Schema 加载模型。
+    // 升级脚本可以依赖完整的模型 Provider、模板和运行时缓存。
     await runInitializationStep({
-      step: 'preload-model-providers',
+      step: 'load-system-models',
       stage: InitialErrorEnum.PLUGIN_ERROR,
-      action: () => preloadModelProviders(),
+      action: () => loadSystemModels(),
       logger,
       getErrText
     });
@@ -238,13 +244,6 @@ export async function registerNodeInstrumentation() {
      * 无关后台迁移延后执行，避免其耗时或 Redis 名额阻塞关键启动路径。
      */
     const startBusinessServices = async () => {
-      // Pro 也会读取严格的模型 Schema，先完成迁移再检查它，避免并行升级互相等待。
-      await runInitializationStep({
-        step: 'instrumentation-check',
-        action: () => instrumentationCheck(),
-        logger,
-        getErrText
-      });
       await Promise.all([
         runInitializationStep({
           step: 'start-mongo-watch',

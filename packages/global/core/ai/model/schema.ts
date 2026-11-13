@@ -36,7 +36,7 @@ export const UnitModelPricingSchema = ModelPricingSchema.omit({
   tiers: true,
   type: true
 });
-/** STT 价格必须明确声明口径；旧数据由启动迁移补齐。 */
+/** STT 价格必须明确声明口径；旧数据由后台迁移补齐。 */
 export const STTModelPricingSchema = z.union([
   z.object({
     type: z.literal('duration'),

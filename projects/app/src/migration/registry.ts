@@ -168,8 +168,8 @@ export const systemMigrations = [
   {
     id: '20261112_backfill_stt_pricing_type',
     version: '4.18.0',
-    // 业务 Schema 不再推断旧价格类型，必须先回填，再加载模型和放行业务。
-    blockStartup: true,
+    // 价格类型在后台回填，升级期间不为 STT 计费准确性阻塞业务启动。
+    blockStartup: false,
     nameKey: i18nT('system_migration:migrations.20261112_backfill_stt_pricing_type.name'),
     descriptionKey: i18nT(
       'system_migration:migrations.20261112_backfill_stt_pricing_type.description'

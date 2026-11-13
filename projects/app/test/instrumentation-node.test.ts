@@ -10,7 +10,8 @@ const mocks = vi.hoisted(() => ({
   cron: vi.fn(),
   training: vi.fn(),
   tracks: vi.fn(),
-  reloadModels: vi.fn()
+  reloadModels: vi.fn(),
+  loadModels: vi.fn()
 }));
 
 // 隔离外部依赖和消费者；启动编排、迁移 runner 与 MongoDB 事务使用实际实现。
@@ -41,7 +42,7 @@ vi.mock('@fastgpt/service/common/vectorDB/controller', async (importOriginal) =>
 vi.mock('@fastgpt/service/support/user/systemUser', () => ({ initSystemUser: vi.fn() }));
 vi.mock('@fastgpt/service/core/ai/model/catalog/service', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@fastgpt/service/core/ai/model/catalog/service')>()),
-  loadSystemModels: vi.fn(),
+  loadSystemModels: mocks.loadModels,
   loadInstalledModels: mocks.reloadModels
 }));
 vi.mock('@fastgpt/service/core/ai/model/template', async (importOriginal) => ({
@@ -108,7 +109,7 @@ afterEach(async () => {
 });
 
 describe('registerNodeInstrumentation', () => {
-  it('ignores retired migration failures and starts business while current background work runs', async () => {
+  it('starts business with a failed STT backfill while independent background work is still running', async () => {
     vi.clearAllMocks();
     const { insertedId: modelId } = await MongoAIModel.collection.insertOne({
       model: 'legacy-stt',
@@ -118,21 +119,15 @@ describe('registerNodeInstrumentation', () => {
       type: 'stt',
       config: {},
       pricing: { unitPrice: 0.2 }
-    } as any);
-    mocks.reloadModels.mockImplementation(async () => {
+    });
+    mocks.loadModels.mockImplementation(async () => {
       const model = await MongoAIModel.findById(modelId).lean();
       expect(formatDbModelToRuntimeModel(model!, { fallbackProvider: true }).pricing).toEqual({
         type: 'duration',
         unitPrice: 0.2
       });
     });
-    mocks.postHealth.mockImplementation(async () => {
-      expect(await MongoAIModel.findById(modelId).lean()).toMatchObject({
-        pricing: { type: 'duration' }
-      });
-      expect(mocks.reloadModels).toHaveBeenCalledTimes(1);
-      return { auth: true, data: 'success' };
-    });
+    mocks.postHealth.mockResolvedValue({ auth: true, data: 'success' });
     global.feConfigs = { ...global.feConfigs, isPlus: true };
     const migrationId = '20261104_backfill_chat_publish_source';
     const legacyMigrationId = '20260903_migrate_legacy_system_models';
@@ -145,6 +140,10 @@ describe('registerNodeInstrumentation', () => {
       {
         _id: '20261022_initialize_dataset_vector_indexes',
         status: SystemMigrationStatusEnum.succeeded
+      },
+      {
+        _id: '20261112_backfill_stt_pricing_type',
+        status: SystemMigrationStatusEnum.failed
       }
     ]);
     const legacyState = await MongoSystemMigrationState.findById(legacyMigrationId).lean();
@@ -170,7 +169,14 @@ describe('registerNodeInstrumentation', () => {
     const registration = registerNodeInstrumentation();
     try {
       await registration;
-      expect(global.systemMigrationRunner!.hasBlockingMigrations).toBe(true);
+      expect(global.systemMigrationRunner!.hasBlockingMigrations).toBe(false);
+      expect(mocks.loadModels).toHaveBeenCalledTimes(1);
+      expect(mocks.reloadModels).not.toHaveBeenCalled();
+      expect(
+        (await MongoSystemMigrationState.findById('20261112_backfill_stt_pricing_type').lean())
+          ?.status
+      ).toBe(SystemMigrationStatusEnum.failed);
+      expect((await MongoAIModel.findById(modelId).lean())?.pricing).toEqual({ unitPrice: 0.2 });
       for (const consumer of [mocks.watch, mocks.workers, mocks.cron, mocks.training, mocks.tracks])
         expect(consumer).toHaveBeenCalledTimes(1);
       await vi.waitFor(() => expect(write).toHaveBeenCalledTimes(1), { timeout: 10000 });

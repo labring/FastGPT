@@ -55,7 +55,7 @@
   "migrations.20261104_backfill_openapi_key_type.keys": "密钥类型",
   "migrations.20261104_backfill_openapi_key_type.validation": "校验回填结果",
   "migrations.20261112_backfill_stt_pricing_type.name": "回填 STT 计价类型",
-  "migrations.20261112_backfill_stt_pricing_type.description": "启动前将旧 STT 价格标记为按时长计费，保留原单价及已有 Tokens 配置。",
+  "migrations.20261112_backfill_stt_pricing_type.description": "在后台将旧 STT 价格标记为按时长计费，保留原单价及已有 Tokens 配置，不阻塞业务启动。",
   "migrations.20261112_backfill_stt_pricing_type.result": "已扫描 {{models}} 个 STT 模型",
   "migrations.20261112_backfill_stt_pricing_type.models": "模型计价类型",
   "migrations.20261112_backfill_stt_pricing_type.validation": "校验回填结果"

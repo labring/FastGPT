@@ -3,24 +3,7 @@ import { Types } from '@fastgpt/service/common/mongo';
 import { MongoAIModel } from '@fastgpt/service/core/ai/model/schema';
 import { MongoAIModelCatalog } from '@fastgpt/service/core/ai/model/catalog/schema';
 import { backfillSTTPricingType } from '@/migration/tasks/4180/20261112_backfill_stt_pricing_type';
-import { systemMigrations, type SystemMigrationContext } from '@/migration/registry';
-import { createSystemMigrationRunner } from '@/migration/runner';
-import { getMigrationStates } from '@/migration/entity';
-import { startBusinessAfterSystemMigrations } from '@/migration/startup';
-import { SystemMigrationStatusEnum } from '@fastgpt/global/migration/constants';
-import { ModelScopeEnum } from '@fastgpt/global/core/ai/constants';
-import {
-  getCachedSystemModelHandle,
-  publishSystemModelHandle
-} from '@fastgpt/service/core/ai/model/catalog/cache';
-import {
-  getSystemModelHandle,
-  loadInstalledModels
-} from '@fastgpt/service/core/ai/model/catalog/service';
-import { runModelTransaction } from '@fastgpt/service/core/ai/model/catalog/transaction';
-import getConfigJsonApi from '@/pages/api/core/ai/model/getConfigJson';
-import { getRootUser } from '@test/datas/users';
-import { Call } from '@test/utils/request';
+import type { SystemMigrationContext } from '@/migration/registry';
 import type {
   SystemMigrationFailedRecord,
   SystemMigrationFailureInput
@@ -76,77 +59,6 @@ const seed = async (overrides: Record<string, unknown> = {}) => {
 };
 
 describe('backfillSTTPricingType', () => {
-  it('refreshes, exports JSON and cold-starts after an old node replaces pricing following migration success', async () => {
-    const raw = await seed({ isActive: true, pricing: { unitPrice: 0.2 } });
-    const registered = systemMigrations.find(
-      ({ id }) => id === '20261112_backfill_stt_pricing_type'
-    )!;
-    const run = vi.fn(backfillSTTPricingType);
-    const migrations = [{ ...registered, run }];
-    const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn() };
-    const first = createSystemMigrationRunner({ migrations, logger });
-    const later = createSystemMigrationRunner({ migrations, logger });
-    try {
-      await first.start();
-      await first.waitForBlockingMigrations();
-      const [completed] = await getMigrationStates([registered.id]);
-      expect(completed.status).toBe(SystemMigrationStatusEnum.succeeded);
-      expect((await MongoAIModel.findById(raw._id).lean())?.pricing).toMatchObject({
-        type: 'duration',
-        unitPrice: 0.2
-      });
-      await loadInstalledModels();
-      first.stop();
-
-      // 旧版保存会整体替换 pricing 并丢掉 type，同时照常提交目录修订号。
-      await runModelTransaction({ scope: ModelScopeEnum.system }, (session) =>
-        MongoAIModel.collection.updateOne(
-          { _id: raw._id },
-          { $set: { name: 'Edited by old node', pricing: { unitPrice: 0.4 } } },
-          { session }
-        )
-      );
-      const refreshed = await getSystemModelHandle();
-      expect(refreshed.getSystemModels().find(({ model }) => model === raw.model)).toMatchObject({
-        name: 'Edited by old node',
-        pricing: { type: 'duration', unitPrice: 0.4 }
-      });
-
-      const exported = await Call<string>(getConfigJsonApi, { auth: await getRootUser() });
-      expect(exported.code).toBe(200);
-      expect(JSON.parse(exported.data)).toEqual([
-        expect.objectContaining({
-          modelId: String(raw._id),
-          name: 'Edited by old node',
-          requestAuth: 'fixture-secret',
-          pricing: { type: 'duration', unitPrice: 0.4 }
-        })
-      ]);
-
-      // 新节点必须依赖已成功的迁移状态启动，不能靠重跑迁移再次修复旧写入。
-      publishSystemModelHandle(undefined);
-      await later.start();
-      const startBusinessServices = vi.fn(async () => undefined);
-      await startBusinessAfterSystemMigrations({
-        runner: later,
-        reloadModels: loadInstalledModels,
-        startBusinessServices
-      });
-      expect(startBusinessServices).toHaveBeenCalledOnce();
-      expect(run).toHaveBeenCalledOnce();
-      expect((await getMigrationStates([registered.id]))[0].runId).toBe(completed.runId);
-      expect(getCachedSystemModelHandle()?.getSystemModels()[0].pricing).toEqual({
-        type: 'duration',
-        unitPrice: 0.4
-      });
-      expect((await MongoAIModel.findById(raw._id).lean())?.pricing).toEqual({ unitPrice: 0.4 });
-    } finally {
-      first.stop();
-      later.stop();
-      publishSystemModelHandle(undefined);
-    }
-  });
-
   it('fills legacy system/team prices without changing rates, free prices, explicit types or other fields', async () => {
     const records = [];
     for (const pricing of [

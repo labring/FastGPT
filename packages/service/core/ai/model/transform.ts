@@ -46,8 +46,8 @@ const configKeysMap: Record<ModelTypeEnum, string[]> = {
 
 /**
  * 统一数据库模型的读取契约，供运行目录与管理员 JSON 导出复用，保留配置及凭证字段。
- * 旧节点可能在迁移成功后写回无类型的 STT 价格，仅在读取时按每 60 秒解释；
- * 不修改输入或数据库，不放宽 API/JSON 新写入校验，非法价格和未知显式类型仍报错。
+ * 历史 STT 价格缺少类型时按时长读取，避免后台回填完成前阻断目录或 JSON 配置。
+ * 仅读取默认值，不回写数据库；新 API/JSON 写入仍要求明确类型。
  */
 export const formatDbModelToDocumentData = (
   dbModel: Record<string, unknown>
