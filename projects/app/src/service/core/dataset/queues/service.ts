@@ -4,8 +4,6 @@ import { delay, retryFn } from '@fastgpt/global/common/system/utils';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import type { DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
-import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/catalog/service';
-import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
 import { cleanupUnusedDatasetSynonymMappings } from '@fastgpt/service/core/dataset/synonym/controller';
 import {
   claimTrainingTask,
@@ -97,14 +95,8 @@ export const runDatasetRebuildQueue = async ({
             await lease.complete();
             continue;
           }
-          const modelHandle = await getTeamModelHandle({ teamId: String(data.teamId) });
-          const model = modelHandle.getModelData(
-            getDatasetModelReference(data.dataset, 'embedding'),
-            { type: 'embedding' }
-          );
-          const { tokens } = await rebuildDatasetDataIndexes({
+          const { tokens, model: usedModel } = await rebuildDatasetDataIndexes({
             dataId: String(data.data._id),
-            model,
             diffSynonym: mode === TrainingModeEnum.rebuildSynonym,
             commit: lease.complete
           });
@@ -112,7 +104,7 @@ export const runDatasetRebuildQueue = async ({
             teamId: data.teamId,
             tmbId: data.tmbId,
             inputTokens: tokens,
-            model,
+            model: usedModel,
             usageId: data.billId
           });
           logger.info('Rebuild queue task finished', {

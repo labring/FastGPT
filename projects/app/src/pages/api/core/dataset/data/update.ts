@@ -16,8 +16,6 @@ import { type ApiRequestProps } from '@fastgpt/next/type';
 import { createDatasetFileS3KeyFilter } from '@fastgpt/service/common/s3/sources/dataset/key';
 import { replaceS3KeysToPreviewUrls } from '@fastgpt/service/common/s3/utils/preview';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/catalog/service';
-import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
 import { authDatasetData } from '@fastgpt/service/support/permission/dataset/auth';
 import { addAuditLog, getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
 import { addHours } from 'date-fns';
@@ -45,11 +43,6 @@ async function handler(req: ApiRequestProps): Promise<UpdateDatasetDataResponse>
     assertWritable: true
   });
 
-  const dataset = collection.dataset;
-  const modelHandle = await getTeamModelHandle({ teamId });
-  const vectorModel = modelHandle.getModelData(getDatasetModelReference(dataset, 'embedding'), {
-    type: 'embedding'
-  });
   const nextQ = q ?? datasetData.q ?? '';
   const nextA = a ?? datasetData.a ?? '';
   const pushUpdateDataAuditLog = () => {
@@ -71,14 +64,13 @@ async function handler(req: ApiRequestProps): Promise<UpdateDatasetDataResponse>
     const manualIndexes = indexes?.filter(
       (index) => index.type !== DatasetDataIndexTypeEnum.imageEmbedding
     );
-    const { tokens } = await updateDatasetDataByIndexes({
+    const { tokens, model: usedModel } = await updateDatasetDataByIndexes({
       dataId,
       q: nextQ,
       a: nextA,
       imageId: datasetData.imageId,
       imageIndex: !!collection.imageIndex,
       indexes: manualIndexes || [],
-      model: vectorModel,
       indexSize: collection.indexSize,
       indexPrefix: indexPrefixTitle ? `# ${name}` : undefined
     });
@@ -88,17 +80,16 @@ async function handler(req: ApiRequestProps): Promise<UpdateDatasetDataResponse>
         teamId,
         tmbId,
         inputTokens: tokens,
-        model: vectorModel
+        model: usedModel
       });
     }
   } else {
-    const { tokens } = await updateDatasetDataSystemIndexes({
+    const { tokens, model: usedModel } = await updateDatasetDataSystemIndexes({
       dataId,
       q: nextQ,
       a: nextA,
       imageId: datasetData.imageId,
       imageIndex: !!collection.imageIndex,
-      model: vectorModel,
       indexSize: collection.indexSize,
       indexPrefix: indexPrefixTitle ? `# ${name}` : undefined
     });
@@ -108,7 +99,7 @@ async function handler(req: ApiRequestProps): Promise<UpdateDatasetDataResponse>
         teamId,
         tmbId,
         inputTokens: tokens,
-        model: vectorModel
+        model: usedModel
       });
     }
   }

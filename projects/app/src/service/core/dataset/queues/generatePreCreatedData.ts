@@ -121,16 +121,16 @@ export async function generatePreCreatedData(): Promise<any> {
         });
 
         try {
-          const { tokens } = await updatePreCreatedData({ trainingData: data, lease });
+          const { tokens, model: usedModel } = await updatePreCreatedData({
+            trainingData: data,
+            lease
+          });
 
-          const modelHandle = await getTeamModelHandle({ teamId: String(data.teamId) });
           pushGenerateVectorUsage({
             teamId: data.teamId,
             tmbId: data.tmbId,
             inputTokens: tokens,
-            model: modelHandle.getModelData(getDatasetModelReference(data.dataset, 'embedding'), {
-              type: 'embedding'
-            }),
+            model: usedModel,
             usageId: data.billId
           });
 
@@ -181,16 +181,15 @@ const updatePreCreatedData = async ({
   );
   const indexTrainingInput = await getIndexTrainingUpdateInput(trainingData);
 
-  const { tokens } = await updateDatasetDataByIndexes({
+  const { tokens, model } = await updateDatasetDataByIndexes({
     dataId: String(datasetData._id),
     ...indexTrainingInput,
     imageIndex: !!trainingData.collection.imageIndex,
-    model: embModel,
     indexSize: trainingData.indexSize || getMaxIndexSize(embModel),
     indexPrefix: trainingData.collection.indexPrefixTitle
       ? `# ${trainingData.collection.name}`
       : undefined,
     commit: lease.complete
   });
-  return { tokens };
+  return { tokens, model };
 };

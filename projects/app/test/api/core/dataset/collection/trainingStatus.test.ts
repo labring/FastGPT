@@ -133,7 +133,7 @@ describe('collection training status api', () => {
           errorCounts: { [mode]: 1, [otherMode]: 0, index: 0 },
           trainedCount: 2
         });
-        expect(status.queue).toEqual({ hasTrainingTask: true });
+        expect(status.queue).toMatchObject({ hasTrainingTask: true });
       };
       await check(3, 2);
       await enqueue({ ...scope, datasetId: String(dataset._id), billId: 'test' });

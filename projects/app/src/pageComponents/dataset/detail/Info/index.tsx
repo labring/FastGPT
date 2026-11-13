@@ -42,7 +42,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
     datasetDetail,
     loadDatasetDetail,
     updateDataset,
-    hasTrainingTask,
+    canSwitchEmbeddingModel,
     refreshCollectionList
   } = useContextSelector(DatasetPageContext, (v) => v);
   const { feConfigs } = useSystemStore();
@@ -137,7 +137,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
     reset(datasetDetail);
   }, [datasetDetail, datasetDetail._id, reset]);
 
-  const isTraining = hasTrainingTask;
+  const isTraining = !canSwitchEmbeddingModel;
 
   if (datasetDetail._id !== datasetId) {
     return (

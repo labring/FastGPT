@@ -269,6 +269,10 @@ export const GetDatasetTrainingQueueQuerySchema = z.object({
 export type GetDatasetTrainingQueueQuery = z.infer<typeof GetDatasetTrainingQueueQuerySchema>;
 
 export const GetDatasetTrainingQueueResponseSchema = z.object({
-  hasTrainingTask: DatasetItemSchema.shape.hasTrainingTask
+  hasTrainingTask: DatasetItemSchema.shape.hasTrainingTask,
+  canSwitchEmbeddingModel: z.boolean().meta({
+    description: '训练任务与索引数据是否允许切换 embedding 模型（不含权限判断）',
+    example: true
+  })
 });
 export type GetDatasetTrainingQueueResponse = z.infer<typeof GetDatasetTrainingQueueResponseSchema>;

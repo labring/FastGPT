@@ -161,9 +161,14 @@ const buildEmbeddingSafeIndexTexts = async ({
  * 这些步骤需要放在一起维护，因为 Mongo 索引里的 `dataId` 必须和向量库 id 保持一致。
  */
 export class DatasetDataIndexOperation {
-  private readonly model?: EmbeddingModelDataType;
+  private model?: EmbeddingModelDataType;
 
   constructor(model?: EmbeddingModelDataType) {
+    this.model = model;
+  }
+
+  /** 在读取 data 快照后刷新当前 embedding 模型，避免沿用请求入口捕获的旧模型。 */
+  setModel(model: EmbeddingModelDataType) {
     this.model = model;
   }
 

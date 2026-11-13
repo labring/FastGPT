@@ -1,5 +1,8 @@
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
+import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
+import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/catalog/service';
+import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
 import { pushCollectionUpdateJob } from '@fastgpt/service/core/dataset/collection/mq';
 import type {
   UpdateDatasetDataPropsType,
@@ -58,7 +61,6 @@ type UpdateDatasetDataByIndexesProps = Omit<UpdateDatasetDataPropsType, 'indexes
   indexes?: NonNullable<UpdateDatasetDataPropsType['indexes']>;
   /** 首次训练产生的派生图片描述，与 indexes 在同一次 CAS 中写回。 */
   imageDescMap?: Record<string, string>;
-  model: EmbeddingModelDataType;
   indexSize?: number;
   imageIndex?: boolean;
   /** 重建索引时忽略文本相同判断，确保切换 embedding model 后重新生成向量。 */
@@ -76,7 +78,6 @@ type UpdateDatasetDataSystemIndexesProps = Omit<
 
 type RebuildDatasetDataIndexesProps = {
   dataId: string;
-  model: EmbeddingModelDataType;
   commit?: CommitDatasetData;
   /** 仅同义词重建允许复用输入未变化的向量；模型切换必须全量生成。 */
   diffSynonym?: boolean;
@@ -150,6 +151,25 @@ export class DatasetDataOperation {
     if (commit) return commit(fn);
     if (session) return fn(session);
     return mongoSessionRun(fn);
+  }
+
+  /** 读取 data 快照后重新解析 dataset 当前 embedding 模型，避免沿用请求入口捕获的旧模型。 */
+  private async getCurrentEmbeddingModel({
+    teamId,
+    datasetId
+  }: {
+    teamId: string;
+    datasetId: string;
+  }): Promise<EmbeddingModelDataType> {
+    const dataset = await MongoDataset.findById(datasetId)
+      .select('vectorModelId vectorModel')
+      .lean();
+    if (!dataset) return Promise.reject('Dataset not found');
+
+    const modelHandle = await getTeamModelHandle({ teamId });
+    return modelHandle.getModelData(getDatasetModelReference(dataset, 'embedding'), {
+      type: 'embedding'
+    });
   }
 
   /** 已提交的新索引不能因旧向量清理失败被补偿删除；清理失败记录原始 ID 以便排查。 */
@@ -334,7 +354,6 @@ export class DatasetDataOperation {
     a,
     imageId,
     indexes,
-    model,
     indexSize = 512,
     indexPrefix,
     imageIndex,
@@ -343,15 +362,16 @@ export class DatasetDataOperation {
     imageDescMap,
     commit
   }: UpdateDatasetDataByIndexesProps) {
-    const embModel = model;
-
-    if (!embModel) {
-      return Promise.reject('Embedding model not found');
-    }
     if (!Array.isArray(indexes)) return Promise.reject('indexes is required');
 
     const mongoData = await MongoDatasetData.findById(dataId);
     if (!mongoData) return Promise.reject('Data not found');
+    // 读取 data 快照后再解析模型：请求入口捕获的模型可能已被切换掉。
+    const embModel = await this.getCurrentEmbeddingModel({
+      teamId: String(mongoData.teamId),
+      datasetId: String(mongoData.datasetId)
+    });
+    this.indexOperation.setModel(embModel);
     // API 鉴权后可能已被重试接管；Worker 自带租约提交边界，不走手动编辑写保护。
     if (!commit) await assertDatasetDataWritable(mongoData.indexStatus);
 
@@ -420,12 +440,14 @@ export class DatasetDataOperation {
           if (synonymContext?.isCurrent && !(await synonymContext.isCurrent())) {
             throw new Error('同义词配置已变化，请重试索引更新');
           }
-          // 重试只改变状态、不更新 updateTime；失败修复还需校验状态，不能覆盖已恢复的任务。
+          // 提交时校验 data 快照状态：切换模型会把状态改为 pending，旧模型写入必须失败重试。
           const updateResult = await MongoDatasetData.updateOne(
             {
               _id: mongoData._id,
               ...((synonymContext || isFailed) && { updateTime }),
-              ...(isFailed && { indexStatus: mongoData.indexStatus })
+              ...(mongoData.indexStatus
+                ? { indexStatus: mongoData.indexStatus }
+                : { indexStatus: { $exists: false } })
             },
             {
               $set: {
@@ -456,7 +478,7 @@ export class DatasetDataOperation {
             },
             { session: mongoSession }
           );
-          if ((synonymContext || isFailed) && updateResult.modifiedCount !== 1) {
+          if (updateResult.modifiedCount !== 1) {
             throw new Error('数据已变化，请重试索引更新');
           }
 
@@ -515,7 +537,8 @@ export class DatasetDataOperation {
     });
 
     return {
-      tokens
+      tokens,
+      model: embModel
     };
   }
 
@@ -530,6 +553,13 @@ export class DatasetDataOperation {
       .select('_id teamId datasetId collectionId indexes updateTime synonymVersion')
       .lean();
     if (!mongoData) return Promise.reject('Data not found');
+
+    // 读取 data 快照后重新解析当前模型，避免沿用请求入口捕获的旧模型。
+    const embModel = await this.getCurrentEmbeddingModel({
+      teamId: String(mongoData.teamId),
+      datasetId: String(mongoData.datasetId)
+    });
+    this.indexOperation.setModel(embModel);
 
     // 2. 获取本次向量化使用的词表快照；功能关闭时不查询同义词配置。
     const synonymContext = serviceEnv.DATASET_SYNONYM_ENABLED
@@ -668,7 +698,7 @@ export class DatasetDataOperation {
       collectionId: mongoData.collectionId
     });
 
-    return { tokens };
+    return { tokens, model: embModel };
   }
 
   /**
@@ -684,17 +714,20 @@ export class DatasetDataOperation {
     q,
     a,
     imageId,
-    model,
     indexSize = 512,
     indexPrefix,
     imageIndex
   }: UpdateDatasetDataSystemIndexesProps) {
     const mongoData = await MongoDatasetData.findById(dataId);
     if (!mongoData) return Promise.reject('Data not found');
+    const embModel = await this.getCurrentEmbeddingModel({
+      teamId: String(mongoData.teamId),
+      datasetId: String(mongoData.datasetId)
+    });
+    this.indexOperation.setModel(embModel);
     await assertDatasetDataWritable(mongoData.indexStatus);
 
     const isFailed = isDatasetDataFailed(mongoData.indexStatus);
-    const embModel = model;
     const nextQ = q ?? mongoData.q ?? '';
     const nextA = a ?? mongoData.a ?? '';
     const nextImageId = imageId ?? mongoData.imageId;
@@ -770,7 +803,9 @@ export class DatasetDataOperation {
           {
             _id: mongoData._id,
             ...((synonymContext || isFailed) && { updateTime }),
-            ...(isFailed && { indexStatus: mongoData.indexStatus })
+            ...(mongoData.indexStatus
+              ? { indexStatus: mongoData.indexStatus }
+              : { indexStatus: { $exists: false } })
           },
           [
             {
@@ -819,7 +854,7 @@ export class DatasetDataOperation {
           ],
           { session }
         );
-        if ((synonymContext || isFailed) && updateResult.modifiedCount !== 1) {
+        if (updateResult.modifiedCount !== 1) {
           throw new Error('数据已变化，请重试索引更新');
         }
 
@@ -876,7 +911,8 @@ export class DatasetDataOperation {
     });
 
     return {
-      tokens
+      tokens,
+      model: embModel
     };
   }
 
@@ -943,12 +979,12 @@ export const createDatasetData = async (
  * 适用于调用方显式提交整组索引的场景。
  */
 export const updateDatasetDataByIndexes = async (props: UpdateDatasetDataByIndexesProps) => {
-  return new DatasetDataOperation(props.model).updateByIndexes(props);
+  return new DatasetDataOperation().updateByIndexes(props);
 };
 
 /** 重新向量化 data 中已存的 indexes；正文和索引生成策略不参与 rebuild。 */
 export const rebuildDatasetDataIndexes = async (props: RebuildDatasetDataIndexesProps) => {
-  return new DatasetDataOperation(props.model).rebuildIndexes(props);
+  return new DatasetDataOperation().rebuildIndexes(props);
 };
 
 /**
@@ -958,7 +994,7 @@ export const rebuildDatasetDataIndexes = async (props: RebuildDatasetDataIndexes
 export const updateDatasetDataSystemIndexes = async (
   props: UpdateDatasetDataSystemIndexesProps
 ) => {
-  return new DatasetDataOperation(props.model).updateSystemIndexes(props);
+  return new DatasetDataOperation().updateSystemIndexes(props);
 };
 
 /**

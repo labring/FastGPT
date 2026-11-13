@@ -28,6 +28,7 @@ import type {
   DatasetDataItemType
 } from '@fastgpt/global/core/dataset/type';
 import { getRootUser } from '@test/datas/users';
+import { addModelTestModel } from '@test/modelCache';
 import { createMockVectorsResponse, mockGetVectors } from '@test/mocks/core/ai/embedding';
 import { mockVectorDelete, mockVectorInsert, resetVectorMocks } from '@test/mocks/common/vector';
 import {
@@ -84,8 +85,14 @@ const embeddingModel = {
 } as any;
 const visionEmbeddingModel = {
   ...embeddingModel,
+  modelId: '68ad85a7463006c963799a06',
   config: { ...embeddingModel.config, vision: true }
 };
+
+beforeEach(() => {
+  addModelTestModel(embeddingModel);
+  addModelTestModel(visionEmbeddingModel);
+});
 
 const createDatasetContext = async () => {
   const root = await getRootUser();
@@ -95,6 +102,7 @@ const createDatasetContext = async () => {
     tmbId: root.tmbId,
     type: DatasetTypeEnum.dataset,
     vectorModel: 'text-embedding-3-small',
+    vectorModelId: embeddingModel.modelId,
     agentModel: 'gpt-4o-mini'
   });
   const collection = await MongoDatasetCollection.create({
@@ -106,6 +114,13 @@ const createDatasetContext = async () => {
   });
 
   return { root, dataset, collection };
+};
+
+const useVisionModel = async (datasetId: Types.ObjectId | string) => {
+  await MongoDataset.updateOne(
+    { _id: datasetId },
+    { $set: { vectorModelId: visionEmbeddingModel.modelId } }
+  );
 };
 
 const createMongoData = async ({
@@ -264,7 +279,7 @@ describe('Dataset data service', () => {
           schemaVersion: DatasetSynonymSchemaVersion
         });
       }
-      const props = { dataId: String(data._id), q: data.q, a: '', model: embeddingModel };
+      const props = { dataId: String(data._id), q: data.q, a: '' };
       await (item.kind === 'full'
         ? updateDatasetDataByIndexes({
             ...props,
@@ -328,13 +343,11 @@ describe('Dataset data service', () => {
               ? updateDatasetDataByIndexes({
                   dataId: String(data._id),
                   indexes: [],
-                  a: '',
-                  model: embeddingModel
+                  a: ''
                 })
               : updateDatasetDataSystemIndexes({
                   dataId: String(data._id),
-                  a: '',
-                  model: embeddingModel
+                  a: ''
                 })
           ).rejects.toThrow('task removal failed');
           expect(await MongoDatasetData.findById(data._id).lean()).toMatchObject({
@@ -366,8 +379,7 @@ describe('Dataset data service', () => {
       const props = {
         dataId: String(data._id),
         q: 'edited question',
-        a: '',
-        model: embeddingModel
+        a: ''
       };
       await expect(
         item.kind === 'full'
@@ -399,8 +411,7 @@ describe('Dataset data service', () => {
       const props = {
         dataId: String(data._id),
         q: 'edited question',
-        a: '',
-        model: embeddingModel
+        a: ''
       };
       const repair =
         kind === 'full'
@@ -767,7 +778,6 @@ describe('Dataset data service', () => {
           dataId: String(data._id),
           q: 'requested question',
           indexes: [{ type: DatasetDataIndexTypeEnum.custom, text: 'requested index' }],
-          model: embeddingModel,
           forceRebuild: true
         })
       ).resolves.toEqual(expect.objectContaining({ tokens: expect.any(Number) }));
@@ -813,7 +823,6 @@ describe('Dataset data service', () => {
             text: 'new custom index'
           }
         ],
-        model: embeddingModel,
         indexSize: 50
       });
 
@@ -892,7 +901,6 @@ describe('Dataset data service', () => {
             dataId: 'custom_old'
           }
         ],
-        model: embeddingModel,
         indexSize: 50,
         forceRebuild: true
       });
@@ -947,7 +955,6 @@ describe('Dataset data service', () => {
         updateDatasetDataByIndexes({
           dataId: String(data._id),
           indexes: data.indexes,
-          model: embeddingModel,
           forceRebuild: true
         })
       ).rejects.toThrow('数据已变化');
@@ -967,8 +974,7 @@ describe('Dataset data service', () => {
         updateDatasetDataByIndexes({
           dataId: String(data._id),
           q: 'question',
-          indexes: undefined as any,
-          model: embeddingModel
+          indexes: undefined as any
         })
       ).rejects.toBe('indexes is required');
 
@@ -976,8 +982,7 @@ describe('Dataset data service', () => {
         updateDatasetDataByIndexes({
           dataId: String(new Types.ObjectId()),
           q: 'question',
-          indexes: [],
-          model: embeddingModel
+          indexes: []
         })
       ).rejects.toBe('Data not found');
     });
@@ -1026,6 +1031,7 @@ describe('Dataset data service', () => {
         fullTextToken: 'old token'
       });
 
+      await useVisionModel(dataset._id);
       await updateDatasetDataByIndexes({
         dataId: String(data._id),
         q: `new question ![new](${newMarkdownImage})`,
@@ -1038,7 +1044,6 @@ describe('Dataset data service', () => {
             text: 'new custom index'
           }
         ],
-        model: visionEmbeddingModel,
         indexSize: 50
       });
 
@@ -1166,9 +1171,9 @@ describe('Dataset data service', () => {
       { name: 'unrecorded version', previousVersion: undefined, expected: ['退款', '稳定文本'] }
     ])('diffs synonym rebuilds with $name', async ({ expected, ...options }) => {
       const { data } = await createSynonymRebuildData(options);
+      await useVisionModel(data.datasetId);
       const result = await rebuildDatasetDataIndexes({
         dataId: String(data._id),
-        model: visionEmbeddingModel,
         diffSynonym: true
       });
       expect(
@@ -1227,9 +1232,9 @@ describe('Dataset data service', () => {
       } else {
         await MongoDatasetDataText.deleteMany({ dataId: data._id });
       }
+      await useVisionModel(data.datasetId);
       await rebuildDatasetDataIndexes({
         dataId: String(data._id),
-        model: visionEmbeddingModel,
         diffSynonym: true
       });
       expect((await MongoDatasetDataText.findOne({ dataId: data._id }).lean())?.fullTextToken).toBe(
@@ -1247,10 +1252,10 @@ describe('Dataset data service', () => {
           $set: { fullTextToken: oldTokens }
         }
       );
+      await useVisionModel(data.datasetId);
       await expect(
         rebuildDatasetDataIndexes({
           dataId: String(data._id),
-          model: visionEmbeddingModel,
           diffSynonym: true,
           commit: (write) =>
             mongoSessionRun(async (session) => {
@@ -1279,7 +1284,6 @@ describe('Dataset data service', () => {
         try {
           await rebuildDatasetDataIndexes({
             dataId: String(data._id),
-            model: embeddingModel,
             diffSynonym: !enabled
           });
           expect(buildPatch).not.toHaveBeenCalled();
@@ -1303,10 +1307,10 @@ describe('Dataset data service', () => {
 
     it('rolls back only newly generated vectors when a differential rebuild cannot commit', async () => {
       const { data } = await createSynonymRebuildData({ previousVersion: 1 });
+      await useVisionModel(data.datasetId);
       await expect(
         rebuildDatasetDataIndexes({
           dataId: String(data._id),
-          model: visionEmbeddingModel,
           diffSynonym: true,
           commit: (write) =>
             mongoSessionRun(async (session) => {
@@ -1345,9 +1349,9 @@ describe('Dataset data service', () => {
             { type: DatasetDataIndexTypeEnum.imageEmbedding, text: source, dataId: 'old_image' }
           ]
         });
+        if (vision) await useVisionModel(data.datasetId);
         await rebuildDatasetDataIndexes({
-          dataId: String(data._id),
-          model: vision ? visionEmbeddingModel : embeddingModel
+          dataId: String(data._id)
         });
         const updated = await MongoDatasetData.findById(data._id).lean();
         expect(updated?.q).toBe(data.q);
@@ -1383,7 +1387,7 @@ describe('Dataset data service', () => {
         indexes: storedIndexes,
         history: [{ q: 'previous', a: 'previous answer', updateTime: new Date(0) }]
       });
-      await rebuildDatasetDataIndexes({ dataId: String(data._id), model: embeddingModel });
+      await rebuildDatasetDataIndexes({ dataId: String(data._id) });
       const updated = await MongoDatasetData.findById(data._id).lean();
       expect(updated).toMatchObject({
         q: data.q,
@@ -1404,8 +1408,7 @@ describe('Dataset data service', () => {
     it('does not generate indexes from a body when the stored indexes are empty', async () => {
       const { data } = await createMongoData({ indexes: [] });
       const result = await rebuildDatasetDataIndexes({
-        dataId: String(data._id),
-        model: embeddingModel
+        dataId: String(data._id)
       });
       expect(result.tokens).toBe(0);
       expect(mockGetVectors).not.toHaveBeenCalled();
@@ -1431,9 +1434,9 @@ describe('Dataset data service', () => {
         );
         return createMockVectorsResponse(inputs.map((input) => input.input));
       });
-      await expect(
-        rebuildDatasetDataIndexes({ dataId: String(data._id), model: embeddingModel })
-      ).rejects.toThrow('数据已变化');
+      await expect(rebuildDatasetDataIndexes({ dataId: String(data._id) })).rejects.toThrow(
+        '数据已变化'
+      );
       const updated = await MongoDatasetData.findById(data._id).lean();
       expect(updated?.indexes).toMatchObject(replacement);
       expect(mockVectorDelete).toHaveBeenCalledWith(
@@ -1473,7 +1476,7 @@ describe('Dataset data service', () => {
         { _id: data._id },
         { $set: { synonymRebuildingVersion: 1 } }
       );
-      await rebuildDatasetDataIndexes({ dataId: String(data._id), model: embeddingModel });
+      await rebuildDatasetDataIndexes({ dataId: String(data._id) });
       expect(
         mockGetVectors.mock.calls.flatMap(([props]) => props.inputs.map((input) => input.input))
       ).toEqual(['退款']);
@@ -1503,9 +1506,9 @@ describe('Dataset data service', () => {
         await MongoDatasetSynonym.updateOne({ _id: synonym._id }, { $set: { version: 2 } });
         return createMockVectorsResponse(inputs.map((input) => input.input));
       });
-      await expect(
-        rebuildDatasetDataIndexes({ dataId: String(data._id), model: embeddingModel })
-      ).rejects.toThrow('同义词配置已变化');
+      await expect(rebuildDatasetDataIndexes({ dataId: String(data._id) })).rejects.toThrow(
+        '同义词配置已变化'
+      );
       expect((await MongoDatasetData.findById(data._id).lean())?.indexes).toMatchObject(
         data.indexes.map(({ type, text, dataId }) => ({ type, text, dataId }))
       );
@@ -1537,7 +1540,6 @@ describe('Dataset data service', () => {
         dataId: String(data._id),
         q: 'new question',
         a: '',
-        model: embeddingModel,
         indexSize: 512
       });
 
@@ -1620,7 +1622,6 @@ describe('Dataset data service', () => {
         dataId: String(data._id),
         q: 'same question',
         a: 'same answer',
-        model: embeddingModel,
         indexSize: 50
       });
 
@@ -1652,8 +1653,7 @@ describe('Dataset data service', () => {
         updateDatasetDataSystemIndexes({
           dataId: String(data._id),
           q: 'requested question',
-          a: '',
-          model: embeddingModel
+          a: ''
         })
       ).rejects.toThrow('数据已变化');
 
@@ -1687,8 +1687,7 @@ describe('Dataset data service', () => {
         updateDatasetDataSystemIndexes({
           dataId: String(data._id),
           q: '我要退钱',
-          a: '',
-          model: embeddingModel
+          a: ''
         })
       ).rejects.toThrow('同义词配置已变化');
 
@@ -1706,8 +1705,7 @@ describe('Dataset data service', () => {
       await expect(
         updateDatasetDataSystemIndexes({
           dataId: String(new Types.ObjectId()),
-          q: 'question',
-          model: embeddingModel
+          q: 'question'
         })
       ).rejects.toBe('Data not found');
     });
@@ -1753,12 +1751,12 @@ describe('Dataset data service', () => {
       });
       const nextImage = `dataset/${data.datasetId}/new.png`;
 
+      await useVisionModel(data.datasetId);
       await updateDatasetDataSystemIndexes({
         dataId: String(data._id),
         q: `new question ![new](${nextImage})`,
         a: '',
         imageIndex: true,
-        model: visionEmbeddingModel,
         indexSize: 50
       });
 
@@ -1866,5 +1864,122 @@ describe('Dataset data service', () => {
       // 外库 key 不得触发物理删除
       expect(mockDeleteDatasetFileByKey).not.toHaveBeenCalled();
     });
+  });
+
+  describe('model switch consistency', () => {
+    const createFailedData = async () => {
+      const { root, dataset, collection } = await createDatasetContext();
+      const data = await MongoDatasetData.create({
+        teamId: root.teamId,
+        tmbId: root.tmbId,
+        datasetId: dataset._id,
+        collectionId: collection._id,
+        q: 'failed question',
+        a: '',
+        indexes: [],
+        indexStatus: DatasetDataIndexStatusEnum.error,
+        updateTime: new Date('2020-01-01')
+      });
+      const task = await MongoDatasetTraining.create({
+        teamId: root.teamId,
+        tmbId: root.tmbId,
+        datasetId: dataset._id,
+        collectionId: collection._id,
+        billId: 'switch-test',
+        mode: TrainingModeEnum.index,
+        dataId: data._id,
+        retryCount: 0,
+        lockTime: new Date('2000-01-01'),
+        q: 'failed question',
+        indexes: [],
+        errorMsg: 'failed',
+        expireAt: null
+      });
+      return { root, dataset, collection, data, task };
+    };
+
+    const runSave = (kind: 'full' | 'system', dataId: string) =>
+      kind === 'full'
+        ? updateDatasetDataByIndexes({
+            dataId,
+            q: 'failed question',
+            a: '',
+            indexes: []
+          })
+        : updateDatasetDataSystemIndexes({
+            dataId,
+            q: 'failed question',
+            a: ''
+          });
+
+    it.each(['full', 'system'] as const)(
+      'uses the switched model when the switch commits before the %s save',
+      async (kind) => {
+        const { dataset, data, task } = await createFailedData();
+        // 模拟切换已提交：dataset 已换成新模型，屏障已刷新 data.updateTime。
+        await MongoDataset.updateOne(
+          { _id: dataset._id },
+          { $set: { vectorModelId: visionEmbeddingModel.modelId } }
+        );
+        await MongoDatasetData.updateOne({ _id: data._id }, { $set: { updateTime: new Date() } });
+
+        const originalSetModel = DatasetDataIndexOperation.prototype.setModel;
+        const usedModelIds: string[] = [];
+        const spy = vi
+          .spyOn(DatasetDataIndexOperation.prototype, 'setModel')
+          .mockImplementation(function (this: DatasetDataIndexOperation, model) {
+            usedModelIds.push(model.modelId!);
+            return originalSetModel.call(this, model);
+          });
+        try {
+          await runSave(kind, String(data._id));
+        } finally {
+          spy.mockRestore();
+        }
+
+        expect(usedModelIds).toContain(visionEmbeddingModel.modelId);
+        await expect(MongoDatasetData.findById(data._id).lean()).resolves.toMatchObject({
+          indexStatus: DatasetDataIndexStatusEnum.indexed
+        });
+        await expect(MongoDatasetTraining.exists({ _id: task._id })).resolves.toBeFalsy();
+      }
+    );
+
+    it.each(['full', 'system'] as const)(
+      'rejects a stale %s save when the switch commits after the model is resolved',
+      async (kind) => {
+        const { dataset, data, task } = await createFailedData();
+        let switched = false;
+        const originalInsert = DatasetDataIndexOperation.prototype.insertVectorForPatch;
+        const spy = vi
+          .spyOn(DatasetDataIndexOperation.prototype, 'insertVectorForPatch')
+          .mockImplementation(async function (this: DatasetDataIndexOperation, ...args: any[]) {
+            if (!switched) {
+              switched = true;
+              // 模型已按 A 解析并开始生成向量，此时切换提交 B 并刷新屏障。
+              await MongoDataset.updateOne(
+                { _id: dataset._id },
+                { $set: { vectorModelId: visionEmbeddingModel.modelId } }
+              );
+              await MongoDatasetData.updateOne(
+                { _id: data._id },
+                { $set: { updateTime: new Date() } }
+              );
+            }
+            return (originalInsert as any).apply(this, args);
+          });
+        try {
+          await expect(runSave(kind, String(data._id))).rejects.toThrow('数据已变化');
+        } finally {
+          spy.mockRestore();
+        }
+
+        expect(switched).toBe(true);
+        await expect(MongoDatasetData.findById(data._id).lean()).resolves.toMatchObject({
+          indexStatus: DatasetDataIndexStatusEnum.error
+        });
+        await expect(MongoDatasetTraining.exists({ _id: task._id })).resolves.toBeTruthy();
+      }
+    );
   });
 });

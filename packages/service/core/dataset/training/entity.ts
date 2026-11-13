@@ -1,6 +1,10 @@
 import type { FilterQuery, PopulateOptions } from 'mongoose';
 import type { DatasetTrainingSchemaType } from '@fastgpt/global/core/dataset/type';
-import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
+import {
+  TrainingModeEnum,
+  datasetSwitchableTrainingModes,
+  datasetSwitchBlockedIndexStatuses
+} from '@fastgpt/global/core/dataset/constants';
 import { MongoDatasetTraining } from './schema';
 import { TRAINING_LEASE_TIMEOUT_MS } from '@fastgpt/global/core/dataset/training/constant';
 import { MongoDatasetData } from '../data/schema';
@@ -44,6 +48,34 @@ export const hasDatasetTrainingTask = async ({
     readFromSecondary
   ).lean();
   return !!training;
+};
+
+/**
+ * 训练任务/索引数据是否允许切换 embedding 模型。
+ * 只用于 UI 的换模型入口：final-error 的 index/rebuild 任务不阻塞；
+ * retryCount > 0（active / lockTime>=BLOCKED）与前置阶段任务阻塞。
+ * 读主库，避免副本延迟把刚结束的重建判为进行中。
+ */
+export const canSwitchEmbeddingModel = async ({
+  teamId,
+  datasetId
+}: {
+  teamId: string;
+  datasetId: string;
+}): Promise<boolean> => {
+  const blockingTraining = await MongoDatasetTraining.exists({
+    teamId,
+    datasetId,
+    $or: [{ retryCount: { $gt: 0 } }, { mode: { $nin: datasetSwitchableTrainingModes } }]
+  });
+  if (blockingTraining) return false;
+
+  const blockingData = await MongoDatasetData.exists({
+    teamId,
+    datasetId,
+    indexStatus: { $in: datasetSwitchBlockedIndexStatuses }
+  });
+  return !blockingData;
 };
 
 /** 原子领取任务，返回更新后的租约；领取不消耗业务重试次数。 */
