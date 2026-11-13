@@ -1,20 +1,10 @@
 'use client';
-import React, { useRef, useState } from 'react';
-import {
-  Table,
-  Thead,
-  Tbody,
-  Tr,
-  Th,
-  Td,
-  Flex,
-  Box,
-  InputGroup,
-  Input,
-  InputLeftElement
-} from '@chakra-ui/react';
+import React, { useRef } from 'react';
+import { Table, Thead, Tbody, Tr, Th, Td, Flex, Box } from '@chakra-ui/react';
 import dayjs from 'dayjs';
 import MyIcon from '@fastgpt/web/components/common/Icon';
+import AdminCompositeSearch, { useAdminCompositeSearch } from '@/components/admin/CompositeSearch';
+import type { AdminSearchOption } from '@/components/admin/CompositeSearch/utils';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import { getPlans } from '@/web/admin/wallet/plan/api';
 import { standardSubLevelMap } from '../pays';
@@ -57,9 +47,16 @@ export type PlanType = {
   enableSandbox?: boolean;
 };
 
+const planSearchOptions: readonly AdminSearchOption<'username' | 'teamId' | 'teamName'>[] = [
+  { value: 'username', label: '用户名', placeholder: '搜索用户名' },
+  { value: 'teamId', label: '团队 ID', placeholder: '搜索团队 ID', exactObjectId: true },
+  { value: 'teamName', label: '团队名', placeholder: '搜索团队名' }
+];
+
 const PlanTable = () => {
-  const [search, setSearch] = useState<string>();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const { searchField, inputValue, isInvalid, searchParams, onFieldChange, onInputChange } =
+    useAdminCompositeSearch({ options: planSearchOptions });
 
   const {
     data: plans,
@@ -71,10 +68,8 @@ const PlanTable = () => {
   } = usePagination(getPlans, {
     defaultPageSize: 20,
     pageSizeCacheKey: 'users-plans-list',
-    params: {
-      search
-    },
-    refreshDeps: [search],
+    params: searchParams,
+    refreshDeps: [searchParams],
     scrollContainerRef
   });
 
@@ -93,16 +88,14 @@ const PlanTable = () => {
           套餐管理
         </Box>
         <Box flexGrow={1}></Box>
-        <InputGroup w={['100%', '250px']} h={'36px'}>
-          <InputLeftElement h={'full'}>
-            <MyIcon name="common/searchLight" w={4} color={'myGray.400'} />
-          </InputLeftElement>
-          <Input
-            placeholder="请输入用户名搜索"
-            h={'36px'}
-            onChange={(e) => setSearch(e.target.value)}
-          ></Input>
-        </InputGroup>
+        <AdminCompositeSearch
+          options={planSearchOptions}
+          field={searchField}
+          value={inputValue}
+          isInvalid={isInvalid}
+          onFieldChange={onFieldChange}
+          onValueChange={onInputChange}
+        />
         <PlanAddModal
           updateData={() => {
             getData(1);

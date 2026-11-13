@@ -1,12 +1,13 @@
 import z from 'zod';
 import { ObjectIdSchema } from '../../../common/type/mongo';
+import { optionalEmptyToUndefined } from '../../../common/zod';
 import { PaginationResponseSchema, createPaginationSchema } from '../../api';
 
 /* ============================================================================
  * API: 获取团队列表
  * Route: POST /proApi/admin/team/getTeams
  * Method: POST
- * Description: 分页获取团队列表，支持按团队名称或所有者用户名搜索
+ * Description: 分页获取团队列表，支持按团队所有者用户名、团队名称模糊搜索及团队ID精确搜索
  * Tags: ['Admin', 'Teams', 'Read']
  * ============================================================================ */
 
@@ -19,12 +20,14 @@ export const TeamItemSchema = z.object({
 });
 
 export const GetTeamsBodySchema = createPaginationSchema({
-  search: z
+  username: z
     .string()
     .trim()
     .max(100)
     .optional()
-    .meta({ description: '搜索关键词（团队名称或所有者用户名）' })
+    .meta({ description: '团队所有者用户名（模糊匹配）' }),
+  teamName: z.string().trim().max(100).optional().meta({ description: '团队名称（模糊匹配）' }),
+  teamId: optionalEmptyToUndefined(ObjectIdSchema).meta({ description: '团队ID（精确匹配）' })
 });
 export type GetTeamsBodyType = z.infer<typeof GetTeamsBodySchema>;
 

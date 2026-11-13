@@ -14,7 +14,7 @@ export const AdminUsersPath: OpenAPIPath = {
     post: {
       summary: '获取用户列表',
       description:
-        '分页获取用户列表及各团队成员名、部门路径，支持按用户名搜索与活跃、待激活、禁用、注销状态过滤；注销仅按用户名推断',
+        '分页获取用户列表及各团队成员名、部门路径，支持按用户名模糊搜索、用户ID精确搜索与活跃、待激活、禁用、注销状态过滤；注销仅按用户名推断',
       tags: [DevApiTagsMap.adminUsers],
       requestBody: {
         content: {

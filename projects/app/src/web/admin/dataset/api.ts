@@ -1,5 +1,6 @@
 import { POST } from '@/web/admin/common/request';
-import type { PaginationProps, PaginationResponse } from '@fastgpt/global/openapi/api';
+import type { GetDatasetsBodyType } from '@fastgpt/global/openapi/admin/dataset/api';
+import type { PaginationResponse } from '@fastgpt/global/openapi/api';
 
 /** 知识库列表返回（原 pro/admin 的 GetDatasetsResponseData 内联） */
 export type AdminDatasetListItemType = {
@@ -12,5 +13,7 @@ export type AdminDatasetListItemType = {
   totalVectors: number;
 };
 
-export const getDatasets = (data: PaginationProps) =>
-  POST<PaginationResponse<AdminDatasetListItemType>>('/proApi/admin/dataset/getDatasets', data);
+export const getDatasets = (data: GetDatasetsBodyType) =>
+  POST<PaginationResponse<AdminDatasetListItemType>>('/proApi/admin/dataset/getDatasets', data, {
+    maxQuantity: 1
+  });

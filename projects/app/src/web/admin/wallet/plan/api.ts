@@ -1,5 +1,6 @@
 import { POST } from '@/web/admin/common/request';
-import type { PaginationProps, PaginationResponse } from '@fastgpt/global/openapi/api';
+import type { GetPlansBodyType } from '@fastgpt/global/openapi/admin/wallet/plan/api';
+import type { PaginationResponse } from '@fastgpt/global/openapi/api';
 import type {
   StandardSubLevelEnum,
   SubTypeEnum
@@ -52,7 +53,7 @@ export type AdminUpdatePlanData = Partial<AdminPlanType> & {
   price: number;
 };
 
-export const getPlans = (data: PaginationProps<{ search?: string }>) =>
+export const getPlans = (data: GetPlansBodyType) =>
   POST<PaginationResponse<AdminPlanType>>('/proApi/admin/wallet/plan/getPlans', data, {
     maxQuantity: 1
   });

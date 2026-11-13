@@ -10,7 +10,8 @@ export const AdminAppsPath: OpenAPIPath = {
   '/proApi/admin/app/getApps': {
     post: {
       summary: '获取应用列表（路由层）',
-      description: '分页获取应用列表，支持按名称和应用ID搜索。',
+      description:
+        '分页获取应用列表，支持按创建者用户名、团队名称、应用名称模糊搜索及团队ID、应用ID精确搜索。',
       tags: [DevApiTagsMap.adminApps],
       requestBody: {
         content: {

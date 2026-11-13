@@ -3,6 +3,8 @@ import React, { useRef, useState } from 'react';
 import { Table, Thead, Tbody, Tr, Th, Td, Flex, Box, HStack, Button } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
+import AdminCompositeSearch, { useAdminCompositeSearch } from '@/components/admin/CompositeSearch';
+import type { AdminSearchOption } from '@/components/admin/CompositeSearch/utils';
 import { getDatasets } from '@/web/admin/dataset/api';
 import BoxPageRoot from '@/components/admin/BoxContainer/PageRoot';
 import { useRouter } from 'next/router';
@@ -12,10 +14,22 @@ import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 import { accountTitleTextStyles } from '@/pageComponents/account/styles';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 
+const datasetSearchOptions: readonly AdminSearchOption<
+  'username' | 'teamId' | 'teamName' | 'datasetId' | 'datasetName'
+>[] = [
+  { value: 'username', label: '用户名', placeholder: '搜索用户名' },
+  { value: 'teamId', label: '团队 ID', placeholder: '搜索团队 ID', exactObjectId: true },
+  { value: 'teamName', label: '团队名', placeholder: '搜索团队名' },
+  { value: 'datasetId', label: '知识库 ID', placeholder: '搜索知识库 ID', exactObjectId: true },
+  { value: 'datasetName', label: '知识库名', placeholder: '搜索知识库名' }
+];
+
 const DatasetTable = () => {
   const [appDetail, setAppDetail] = useState();
   const router = useRouter();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const { searchField, inputValue, isInvalid, searchParams, onFieldChange, onInputChange } =
+    useAdminCompositeSearch({ options: datasetSearchOptions });
 
   const {
     data: datasets,
@@ -26,6 +40,8 @@ const DatasetTable = () => {
   } = usePagination(getDatasets, {
     defaultPageSize: 20,
     pageSizeCacheKey: 'admin-datasets-list',
+    params: searchParams,
+    refreshDeps: [searchParams],
     scrollContainerRef
   });
 
@@ -47,6 +63,14 @@ const DatasetTable = () => {
           用户知识库
         </Box>
         <Box flexGrow={1}></Box>
+        <AdminCompositeSearch
+          options={datasetSearchOptions}
+          field={searchField}
+          value={inputValue}
+          isInvalid={isInvalid}
+          onFieldChange={onFieldChange}
+          onValueChange={onInputChange}
+        />
       </Flex>
 
       <MyBox isLoading={isLoading} flex={'1 0 0'} h={0} minH={0}>

@@ -1,20 +1,9 @@
 'use client';
 import React, { useRef, useState } from 'react';
-import {
-  Button,
-  Table,
-  Thead,
-  Tbody,
-  Tr,
-  Th,
-  Td,
-  Flex,
-  Box,
-  HStack,
-  Input,
-  InputGroup
-} from '@chakra-ui/react';
+import { Button, Table, Thead, Tbody, Tr, Th, Td, Flex, Box, HStack } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
+import AdminCompositeSearch, { useAdminCompositeSearch } from '@/components/admin/CompositeSearch';
+import type { AdminSearchOption } from '@/components/admin/CompositeSearch/utils';
 import { getApps } from '@/web/admin/app/api';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import BoxPageRoot from '@/components/admin/BoxContainer/PageRoot';
@@ -24,10 +13,21 @@ import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 import { accountTitleTextStyles } from '@/pageComponents/account/styles';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 
+const appSearchOptions: readonly AdminSearchOption<
+  'username' | 'teamId' | 'teamName' | 'appId' | 'appName'
+>[] = [
+  { value: 'username', label: '用户名', placeholder: '搜索用户名' },
+  { value: 'teamId', label: '团队 ID', placeholder: '搜索团队 ID', exactObjectId: true },
+  { value: 'teamName', label: '团队名', placeholder: '搜索团队名' },
+  { value: 'appId', label: '应用 ID', placeholder: '搜索应用 ID', exactObjectId: true },
+  { value: 'appName', label: '应用名', placeholder: '搜索应用名' }
+];
+
 const AppTable = () => {
   const [appDetail, setAppDetail] = useState<any>();
-  const [searchKey, setSearchKey] = useState<string>();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const { searchField, inputValue, isInvalid, searchParams, onFieldChange, onInputChange } =
+    useAdminCompositeSearch({ options: appSearchOptions });
 
   const {
     data: apps,
@@ -38,10 +38,8 @@ const AppTable = () => {
   } = usePagination(getApps, {
     defaultPageSize: 20,
     pageSizeCacheKey: 'admin-apps-list',
-    params: {
-      searchKey
-    },
-    refreshDeps: [searchKey],
+    params: searchParams,
+    refreshDeps: [searchParams],
     scrollContainerRef
   });
 
@@ -63,13 +61,14 @@ const AppTable = () => {
           用户应用
         </Box>
         <Box flexGrow={1}></Box>
-        <InputGroup w={['100%', '250px']} h={'36px'}>
-          <Input
-            placeholder="请输入应用名或应用id搜索"
-            h={'36px'}
-            onChange={(e) => setSearchKey(e.target.value)}
-          ></Input>
-        </InputGroup>
+        <AdminCompositeSearch
+          options={appSearchOptions}
+          field={searchField}
+          value={inputValue}
+          isInvalid={isInvalid}
+          onFieldChange={onFieldChange}
+          onValueChange={onInputChange}
+        />
       </Flex>
       <MyBox isLoading={isLoading} flex={'1 0 0'} h={0} minH={0}>
         <FixedTableContainer

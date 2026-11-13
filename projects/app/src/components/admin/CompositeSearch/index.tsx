@@ -1,0 +1,260 @@
+'use client';
+
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  Box,
+  Button,
+  Flex,
+  Input,
+  InputGroup,
+  InputLeftElement,
+  InputRightElement,
+  Menu,
+  MenuButton,
+  MenuItem,
+  MenuList,
+  useDisclosure,
+  type FlexProps
+} from '@chakra-ui/react';
+import MyIcon from '@fastgpt/web/components/common/Icon';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import { evaluateAdminSearchInput, isSameAdminSearchParams, type AdminSearchOption } from './utils';
+
+const DEFAULT_SEARCH_WAIT_MS = 400;
+
+/**
+ * 管理端组合搜索状态 Hook：支持搜索维度切换清空、输入防抖限流，以及精确 ObjectId 输入校验。
+ */
+export const useAdminCompositeSearch = <TField extends string>({
+  options,
+  wait = DEFAULT_SEARCH_WAIT_MS
+}: {
+  options: readonly AdminSearchOption<TField>[];
+  wait?: number;
+}) => {
+  const [searchField, setSearchField] = useState<TField>(options[0].value);
+  const [inputValue, setInputValue] = useState('');
+  const [searchParams, setSearchParams] = useState<Partial<Record<TField, string>>>({});
+  const timerRef = useRef<ReturnType<typeof setTimeout>>();
+
+  const clearPendingTimer = useCallback(() => {
+    if (timerRef.current !== undefined) {
+      clearTimeout(timerRef.current);
+      timerRef.current = undefined;
+    }
+  }, []);
+
+  useEffect(() => clearPendingTimer, [clearPendingTimer]);
+
+  const commitParams = useCallback((nextParams: Partial<Record<TField, string>>) => {
+    setSearchParams((prev) => (isSameAdminSearchParams(prev, nextParams) ? prev : nextParams));
+  }, []);
+
+  const handleFieldChange = useCallback(
+    (nextField: TField) => {
+      if (nextField === searchField) return;
+      clearPendingTimer();
+      setSearchField(nextField);
+      setInputValue('');
+      // 切换字段时立即清空输入并恢复无条件查询，避免把旧字段输入误当新字段值发请求。
+      commitParams({});
+    },
+    [clearPendingTimer, commitParams, searchField]
+  );
+
+  const handleInputChange = useCallback(
+    (nextValue: string) => {
+      setInputValue(nextValue);
+      clearPendingTimer();
+
+      const evaluation = evaluateAdminSearchInput({
+        field: searchField,
+        value: nextValue,
+        options
+      });
+      if (!evaluation.shouldFetch) return;
+
+      timerRef.current = setTimeout(() => {
+        timerRef.current = undefined;
+        commitParams(evaluation.params);
+      }, wait);
+    },
+    [clearPendingTimer, commitParams, options, searchField, wait]
+  );
+
+  const { isInvalid } = useMemo(
+    () => evaluateAdminSearchInput({ field: searchField, value: inputValue, options }),
+    [inputValue, options, searchField]
+  );
+
+  return {
+    searchField,
+    inputValue,
+    isInvalid,
+    searchParams,
+    onFieldChange: handleFieldChange,
+    onInputChange: handleInputChange
+  };
+};
+
+type AdminCompositeSearchProps<TField extends string> = Omit<FlexProps, 'onChange'> & {
+  options: readonly AdminSearchOption<TField>[];
+  field: TField;
+  value: string;
+  isInvalid?: boolean;
+  invalidTip?: string;
+  onFieldChange: (field: TField) => void;
+  onValueChange: (value: string) => void;
+};
+
+/**
+ * 管理员后台组合搜索框：左侧下拉切换搜索字段，右侧输入实时防抖搜索（不响应回车提交）。
+ */
+const AdminCompositeSearch = <TField extends string>({
+  options,
+  field,
+  value,
+  isInvalid = false,
+  invalidTip = '请输入有效的 24 位 ID',
+  onFieldChange,
+  onValueChange,
+  w = ['100%', '300px'],
+  ...props
+}: AdminCompositeSearchProps<TField>) => {
+  const { isOpen, onOpen, onClose } = useDisclosure();
+  const [isFocused, setIsFocused] = useState(false);
+
+  const activeOption = useMemo(
+    () => options.find((item) => item.value === field) ?? options[0],
+    [field, options]
+  );
+
+  return (
+    <Flex h={'36px'} w={w} alignItems={'stretch'} flexShrink={0} {...props}>
+      <Menu
+        isOpen={isOpen}
+        onOpen={onOpen}
+        onClose={onClose}
+        strategy={'fixed'}
+        placement={'bottom-start'}
+      >
+        <MenuButton
+          as={Button}
+          variant={'whitePrimaryOutline'}
+          h={'full'}
+          px={3}
+          flexShrink={0}
+          bg={'white'}
+          fontSize={'sm'}
+          fontWeight={'normal'}
+          color={isOpen ? 'primary.700' : 'myGray.900'}
+          borderLeftRadius={'sm'}
+          borderRightRadius={0}
+          borderColor={isOpen ? 'primary.600' : 'myGray.200'}
+          boxShadow={isOpen ? '0px 0px 0px 2.4px rgba(51, 112, 255, 0.15)' : 'none'}
+          zIndex={isOpen ? 2 : 0}
+          _hover={{
+            borderColor: isOpen ? 'primary.600' : 'primary.300',
+            zIndex: 1
+          }}
+          _active={{ transform: 'none' }}
+          rightIcon={<MyIcon name={'core/chat/chevronDown'} w={4} color={'myGray.500'} />}
+        >
+          {activeOption?.label}
+        </MenuButton>
+        <MenuList
+          minW={'140px'}
+          w={'max-content'}
+          p={'6px'}
+          border={'1px solid #fff'}
+          borderRadius={'md'}
+          boxShadow={'0px 2px 4px rgba(161, 167, 179, 0.25), 0px 0px 1px rgba(121, 141, 159, 0.25)'}
+          zIndex={99}
+        >
+          {options.map((option) => {
+            const isActive = option.value === field;
+            return (
+              <MenuItem
+                key={option.value}
+                borderRadius={'xs'}
+                px={2.5}
+                py={'6px'}
+                fontSize={'sm'}
+                fontWeight={isActive ? 'medium' : 'normal'}
+                bg={isActive ? 'primary.50' : 'transparent'}
+                color={isActive ? 'primary.600' : 'myGray.900'}
+                _hover={{ bg: isActive ? 'primary.50' : 'myGray.05' }}
+                _focus={{ bg: isActive ? 'primary.50' : 'myGray.05' }}
+                onClick={() => {
+                  onFieldChange(option.value);
+                  onClose();
+                }}
+              >
+                <Box whiteSpace={'nowrap'}>{option.label}</Box>
+              </MenuItem>
+            );
+          })}
+        </MenuList>
+      </Menu>
+
+      <MyTooltip
+        label={invalidTip}
+        isDisabled={!isInvalid}
+        isOpen={isInvalid && isFocused ? true : undefined}
+        shouldWrapChildren={false}
+      >
+        <InputGroup flex={1} h={'full'} ml={'-1px'}>
+          <InputLeftElement h={'full'} pointerEvents={'none'}>
+            <MyIcon name="common/searchLight" w={4} color={'myGray.400'} />
+          </InputLeftElement>
+          <Input
+            h={'full'}
+            bg={'white'}
+            fontSize={'sm'}
+            borderLeftRadius={0}
+            borderRightRadius={'sm'}
+            pl={9}
+            pr={value ? 8 : 3}
+            value={value}
+            placeholder={activeOption?.placeholder ?? `搜索${activeOption?.label ?? ''}`}
+            isInvalid={isInvalid}
+            borderColor={isInvalid ? 'red.500' : 'myGray.200'}
+            zIndex={isInvalid ? 1 : 0}
+            _hover={{
+              borderColor: isInvalid ? 'red.400' : 'primary.300',
+              zIndex: 1
+            }}
+            _focus={{
+              borderColor: isInvalid ? 'red.500' : 'primary.500',
+              boxShadow: isInvalid ? '0px 0px 0px 2.4px rgba(240, 68, 56, 0.15)' : 'focus',
+              bg: 'white',
+              zIndex: 2
+            }}
+            onFocus={() => setIsFocused(true)}
+            onBlur={() => setIsFocused(false)}
+            onChange={(e) => onValueChange(e.target.value)}
+          />
+          {value !== '' && (
+            <InputRightElement h={'full'}>
+              <Box
+                as={'button'}
+                type={'button'}
+                aria-label={'清空搜索'}
+                display={'flex'}
+                alignItems={'center'}
+                justifyContent={'center'}
+                color={'myGray.400'}
+                _hover={{ color: 'myGray.600' }}
+                onClick={() => onValueChange('')}
+              >
+                <MyIcon name="common/closeLight" w={3.5} />
+              </Box>
+            </InputRightElement>
+          )}
+        </InputGroup>
+      </MyTooltip>
+    </Flex>
+  );
+};
+
+export default AdminCompositeSearch;

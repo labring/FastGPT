@@ -35,10 +35,20 @@ describe('Admin invoice schemas', () => {
     expect(parsed.pageNum).toBe(1);
     expect(parsed.pageSize).toBe(20);
 
-    const custom = InvoiceListBodySchema.parse({ pageNum: 2, pageSize: 30, search: 'demo' });
+    const custom = InvoiceListBodySchema.parse({
+      pageNum: 2,
+      pageSize: 30,
+      teamName: 'demo',
+      username: 'alice',
+      teamId: '68ad85a7463006c963799a06'
+    });
     expect(custom.pageNum).toBe(2);
     expect(custom.pageSize).toBe(30);
-    expect(custom.search).toBe('demo');
+    expect(custom.teamName).toBe('demo');
+    expect(custom.username).toBe('alice');
+    expect(custom.teamId).toBe('68ad85a7463006c963799a06');
+    expect(InvoiceListBodySchema.parse({ teamId: '' }).teamId).toBeUndefined();
+    expect(InvoiceListBodySchema.safeParse({ teamId: 'invalid-id' }).success).toBe(false);
   });
 
   it('validates invoice finish data and multipart form contracts', () => {

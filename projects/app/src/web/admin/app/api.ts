@@ -2,4 +2,4 @@ import type { GetAppsBodyType, GetAppsResponseType } from '@fastgpt/global/opena
 import { POST } from '@/web/admin/common/request';
 
 export const getApps = (data: GetAppsBodyType) =>
-  POST<GetAppsResponseType>('/proApi/admin/app/getApps', data);
+  POST<GetAppsResponseType>('/proApi/admin/app/getApps', data, { maxQuantity: 1 });
