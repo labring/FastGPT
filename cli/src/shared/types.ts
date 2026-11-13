@@ -34,6 +34,9 @@ export type GlobalCliOptions = {
   format: CliFormat;
   quiet: boolean;
   color: boolean;
+  fields?: readonly string[];
+  pick?: string;
+  raw: boolean;
 };
 
 export type CliResult<T = unknown> = {

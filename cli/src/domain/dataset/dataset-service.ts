@@ -1,4 +1,9 @@
 import {
+  BatchResourceDeleteBodySchema,
+  BatchResourceMoveBodySchema,
+  type BatchResourceActionResponse
+} from '@fastgpt/global/openapi/common/batch/api';
+import {
   CreateDatasetBodySchema,
   DeleteDatasetQuerySchema,
   GetDatasetDetailQuerySchema,
@@ -6,24 +11,29 @@ import {
   UpdateDatasetBodySchema,
   type CreateDatasetBody,
   type GetDatasetDetailResponse,
-  type GetDatasetListV2Response,
-  type UpdateDatasetBody
+  type GetDatasetListV2Response
 } from '@fastgpt/global/openapi/core/dataset/api';
 import {
-  SearchDatasetBodySchema,
+  SearchDatasetRequestBodySchema,
   type SearchDatasetBody,
   type SearchDatasetResponse
 } from '@fastgpt/global/openapi/core/dataset/search/api';
 import type { FastGptHttpClient } from '../../infra/http/fastgpt-http-client';
+import { buildPaginationMeta, trimIfString } from '../../shared/input';
 import { createChangedResult, createDryRunResult, createSuccessResult } from '../../shared/result';
+import { CliApiError } from '../../shared/errors';
 import type { CliResult } from '../../shared/types';
 
 export type DatasetListParams = {
   searchKey?: string;
   parentId?: string | null;
   type?: string;
+  datasetIds?: string[];
+  withAppCount?: boolean;
+  withFileCount?: boolean;
   page?: number;
   pageSize?: number;
+  offset?: number;
 };
 
 export type DatasetCreateParams = Pick<CreateDatasetBody, 'name'> &
@@ -31,9 +41,7 @@ export type DatasetCreateParams = Pick<CreateDatasetBody, 'name'> &
     type?: string;
   };
 
-export type DatasetUpdateParams = Partial<Omit<UpdateDatasetBody, 'id'>>;
-
-export type DatasetSearchParams = {
+export type DatasetFlatSearchParams = {
   datasetIds: string | string[];
   text: string;
   topk?: NonNullable<SearchDatasetBody['result']>['topk'];
@@ -46,6 +54,8 @@ export type DatasetSearchParams = {
   queryExtension?: SearchDatasetBody['queryExtension'];
   usageScene?: SearchDatasetBody['usageScene'];
 };
+
+export type DatasetSearchParams = SearchDatasetBody | DatasetFlatSearchParams;
 
 export type DatasetService = {
   list: (params: {
@@ -63,8 +73,7 @@ export type DatasetService = {
   }) => Promise<CliResult>;
   update: (params: {
     client: FastGptHttpClient;
-    datasetId: string;
-    input: DatasetUpdateParams;
+    input: Record<string, unknown>;
     dryRun?: boolean;
   }) => Promise<CliResult>;
   delete: (params: {
@@ -76,22 +85,66 @@ export type DatasetService = {
     client: FastGptHttpClient;
     input: DatasetSearchParams;
   }) => Promise<CliResult<SearchDatasetResponse>>;
+  batchMove: (params: {
+    client: FastGptHttpClient;
+    ids: string[];
+    parentId: string | null;
+    dryRun?: boolean;
+  }) => Promise<CliResult>;
+  batchDelete: (params: {
+    client: FastGptHttpClient;
+    ids: string[];
+    dryRun?: boolean;
+  }) => Promise<CliResult>;
 };
 
 /**
- * 知识库领域服务：封装知识库的查询、创建、更新、删除及统一检索。
- * 所有请求载荷与数据模型均从 @fastgpt/global/openapi 中的共享契约直接推导复用，保证 dryRun 与实际执行一致。
+ * 知识库主资源领域服务：仅封装 System OpenAPI 标准接口（列表、详情、创建、更新、删除、联合检索、批量移动/删除）。
+ * 所有入参均复用 @fastgpt/global/openapi 中的共享 Zod 契约校验，保证 dryRun 与真实请求一致。
  */
 export function createDatasetService(): DatasetService {
+  /** 全部失败作为业务错误；部分成功保留结果与警告，changed 以实际受影响资源为准。 */
+  const createBatchResult = (res: BatchResourceActionResponse, operation: 'moved' | 'deleted') => {
+    const message = `Batch ${operation} ${res.successIds.length} dataset(s) (${res.failedIds.length} failed).`;
+    if (res.successIds.length === 0 && res.failedIds.length > 0) {
+      throw new CliApiError({ message, details: res });
+    }
+
+    return {
+      ...createSuccessResult({
+        data: res,
+        message,
+        ...(res.failedIds.length > 0
+          ? { warnings: ['Some datasets failed. Inspect failedIds before retrying.'] }
+          : {})
+      }),
+      changed: res.affectedIds.length > 0
+    };
+  };
+
   return {
     list: async ({ client, input }) => {
-      const body = {
-        ...(input.page !== undefined ? { pageNum: input.page } : {}),
-        ...(input.pageSize !== undefined ? { pageSize: input.pageSize } : {}),
-        parentId: input.parentId === undefined ? null : input.parentId,
-        ...(input.searchKey ? { searchKey: input.searchKey } : {}),
-        ...(input.type ? { type: input.type as any } : {})
-      };
+      const body = (() => {
+        const common = {
+          ...(input.searchKey ? { searchKey: input.searchKey } : {}),
+          ...(input.type ? { type: input.type as any } : {}),
+          ...(input.withAppCount !== undefined ? { withAppCount: input.withAppCount } : {}),
+          ...(input.withFileCount !== undefined ? { withFileCount: input.withFileCount } : {})
+        };
+        if (input.datasetIds && input.datasetIds.length > 0) {
+          return {
+            datasetIds: input.datasetIds,
+            ...common
+          };
+        }
+        return {
+          ...(input.offset !== undefined ? { offset: input.offset } : {}),
+          ...(input.page !== undefined ? { pageNum: input.page } : {}),
+          ...(input.pageSize !== undefined ? { pageSize: input.pageSize } : {}),
+          parentId: input.parentId === undefined ? null : input.parentId,
+          ...common
+        };
+      })();
 
       const validatedBody = GetDatasetListV2BodySchema.parse(body);
 
@@ -101,30 +154,19 @@ export function createDatasetService(): DatasetService {
         body: validatedBody
       });
 
-      const actualPage =
-        'pageNum' in validatedBody && typeof validatedBody.pageNum === 'number'
-          ? validatedBody.pageNum
-          : 1;
-      const actualPageSize =
-        'pageSize' in validatedBody && typeof validatedBody.pageSize === 'number'
-          ? validatedBody.pageSize
-          : 20;
-      const hasMore = actualPage * actualPageSize < res.total;
-
       return createSuccessResult({
         data: res,
-        meta: {
+        meta: buildPaginationMeta({
+          validatedBody: validatedBody as Record<string, unknown>,
           total: res.total,
-          page: actualPage,
-          pageSize: actualPageSize,
-          hasMore,
-          count: res.list.length
-        }
+          count: res.list.length,
+          nonPaginated: Boolean(input.datasetIds && input.datasetIds.length > 0)
+        })
       });
     },
 
     getDetail: async ({ client, datasetId }) => {
-      const validatedQuery = GetDatasetDetailQuerySchema.parse({ id: datasetId?.trim() });
+      const validatedQuery = GetDatasetDetailQuerySchema.parse({ id: trimIfString(datasetId) });
 
       const res = await client.request<GetDatasetDetailResponse>({
         method: 'GET',
@@ -137,13 +179,11 @@ export function createDatasetService(): DatasetService {
 
     create: async ({ client, input, dryRun }) => {
       const payload = {
-        name: input.name?.trim(),
+        ...input,
+        name: trimIfString(input.name),
         intro: input.intro ?? '',
         type: input.type ?? 'dataset',
-        parentId: input.parentId === undefined ? null : input.parentId,
-        ...(input.vectorModelId ? { vectorModelId: input.vectorModelId } : {}),
-        ...(input.agentModelId ? { agentModelId: input.agentModelId } : {}),
-        ...(input.avatar ? { avatar: input.avatar } : {})
+        parentId: input.parentId === undefined ? null : input.parentId
       };
 
       const validatedBody = CreateDatasetBodySchema.parse(payload);
@@ -172,24 +212,20 @@ export function createDatasetService(): DatasetService {
       });
     },
 
-    update: async ({ client, datasetId, input, dryRun }) => {
-      const payload = {
-        id: datasetId?.trim(),
-        ...(input.name !== undefined ? { name: input.name.trim() } : {}),
-        ...(input.intro !== undefined ? { intro: input.intro } : {}),
-        ...(input.agentModelId !== undefined ? { agentModelId: input.agentModelId } : {}),
-        ...(input.avatar !== undefined ? { avatar: input.avatar } : {}),
-        ...(input.parentId !== undefined ? { parentId: input.parentId } : {})
-      };
-
-      const validatedBody = UpdateDatasetBodySchema.parse(payload);
+    /** 更新字段按共享契约校验；不补 parentId 等默认值，避免普通编辑触发移动或清空配置。 */
+    update: async ({ client, input, dryRun }) => {
+      const validatedBody = UpdateDatasetBodySchema.parse({
+        ...input,
+        id: trimIfString(input.id),
+        ...(input.name !== undefined ? { name: trimIfString(input.name) } : {})
+      });
 
       if (dryRun) {
         return createDryRunResult({
           operation: 'dataset update',
           risk: 'write',
           preview: {
-            method: 'POST',
+            method: 'PUT',
             path: '/core/dataset/update',
             payload: validatedBody
           }
@@ -197,7 +233,7 @@ export function createDatasetService(): DatasetService {
       }
 
       await client.request({
-        method: 'POST',
+        method: 'PUT',
         path: '/core/dataset/update',
         body: validatedBody
       });
@@ -209,7 +245,7 @@ export function createDatasetService(): DatasetService {
     },
 
     delete: async ({ client, datasetId, dryRun }) => {
-      const validatedQuery = DeleteDatasetQuerySchema.parse({ id: datasetId?.trim() });
+      const validatedQuery = DeleteDatasetQuerySchema.parse({ id: trimIfString(datasetId) });
 
       if (dryRun) {
         return createDryRunResult({
@@ -236,26 +272,37 @@ export function createDatasetService(): DatasetService {
     },
 
     search: async ({ client, input }) => {
-      // 单个 ID、逗号分隔输入和 ID 数组统一适配；空项保留给共享 Schema 拒绝，避免静默缩小范围。
-      const datasetIds = (
-        Array.isArray(input.datasetIds) ? input.datasetIds : input.datasetIds.split(',')
-      ).map((id) => id.trim());
-
-      // 默认值统一由搜索接口 Schema 补齐；双传预算时沿用接口的 topk 优先约定。
-      const payload = {
-        scope: { datasetIds, filter: input.filter },
-        query: { text: input.text?.trim() },
-        retrieval: { mode: input.mode, embeddingWeight: input.embeddingWeight },
-        rerank: input.rerank,
-        queryExtension: input.queryExtension,
-        usageScene: input.usageScene,
-        result: {
-          ...(input.topk !== undefined ? { topk: input.topk } : { maxTokens: input.maxTokens }),
-          similarity: input.similarity
+      // 兼容结构化 SearchDatasetBody（来自 --file/--stdin）与扁平化 DatasetFlatSearchParams
+      const payload = (() => {
+        if ('scope' in input) {
+          return input;
         }
-      };
+        // 单个 ID、逗号分隔输入和 ID 数组统一适配；空项保留给共享 Schema 拒绝，避免静默缩小范围。
+        const datasetIds = (
+          Array.isArray(input.datasetIds) ? input.datasetIds : input.datasetIds.split(',')
+        ).map((id) => trimIfString(id));
 
-      const validatedBody = SearchDatasetBodySchema.parse(payload);
+        return {
+          scope: { datasetIds, ...(input.filter !== undefined ? { filter: input.filter } : {}) },
+          query: { text: trimIfString(input.text) },
+          retrieval: {
+            ...(input.mode !== undefined ? { mode: input.mode } : {}),
+            ...(input.embeddingWeight !== undefined
+              ? { embeddingWeight: input.embeddingWeight }
+              : {})
+          },
+          ...(input.rerank !== undefined ? { rerank: input.rerank } : {}),
+          ...(input.queryExtension !== undefined ? { queryExtension: input.queryExtension } : {}),
+          ...(input.usageScene !== undefined ? { usageScene: input.usageScene } : {}),
+          result: {
+            ...(input.topk !== undefined ? { topk: input.topk } : {}),
+            ...(input.maxTokens !== undefined ? { maxTokens: input.maxTokens } : {}),
+            ...(input.similarity !== undefined ? { similarity: input.similarity } : {})
+          }
+        };
+      })();
+
+      const validatedBody = SearchDatasetRequestBodySchema.parse(payload);
 
       const res = await client.request<SearchDatasetResponse>({
         method: 'POST',
@@ -267,6 +314,54 @@ export function createDatasetService(): DatasetService {
         data: res,
         message: `Retrieved ${res.list.length} chunks (${res.meta.durationMs}ms) using mode "${validatedBody.retrieval.mode}"`
       });
+    },
+
+    batchMove: async ({ client, ids, parentId, dryRun }) => {
+      const validatedBody = BatchResourceMoveBodySchema.parse({ ids, parentId });
+
+      if (dryRun) {
+        return createDryRunResult({
+          operation: 'dataset batch-move',
+          risk: 'write',
+          preview: {
+            method: 'POST',
+            path: '/core/dataset/batch/move',
+            payload: validatedBody
+          }
+        });
+      }
+
+      const res = await client.request<BatchResourceActionResponse>({
+        method: 'POST',
+        path: '/core/dataset/batch/move',
+        body: validatedBody
+      });
+
+      return createBatchResult(res, 'moved');
+    },
+
+    batchDelete: async ({ client, ids, dryRun }) => {
+      const validatedBody = BatchResourceDeleteBodySchema.parse({ ids });
+
+      if (dryRun) {
+        return createDryRunResult({
+          operation: 'dataset batch-delete',
+          risk: 'destructive',
+          preview: {
+            method: 'POST',
+            path: '/core/dataset/batch/delete',
+            payload: validatedBody
+          }
+        });
+      }
+
+      const res = await client.request<BatchResourceActionResponse>({
+        method: 'POST',
+        path: '/core/dataset/batch/delete',
+        body: validatedBody
+      });
+
+      return createBatchResult(res, 'deleted');
     }
   };
 }

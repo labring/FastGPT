@@ -8,6 +8,8 @@ import {
 import type { FastGptHttpClient } from '../infra/http/fastgpt-http-client';
 import { createOutputRenderer } from '../infra/ui/renderer';
 import { CliArgumentError } from '../shared/errors';
+import { parseIdListOption } from '../shared/input';
+import { applyFieldsProjection } from '../shared/output-transform';
 import type {
   CliAuthModeRequirement,
   CliFormat,
@@ -76,8 +78,27 @@ export function extractGlobalOptions({
     caCert: typeof raw.caCert === 'string' ? raw.caCert : undefined,
     format: rawFormat ?? defaultFormat,
     quiet: raw.quiet === true,
-    color: defaultColor && raw.color !== false
+    color: defaultColor && raw.color !== false,
+    fields: parseIdListOption(raw.fields),
+    pick: typeof raw.pick === 'string' && raw.pick.trim().length > 0 ? raw.pick.trim() : undefined,
+    raw: raw.raw === true
   };
+}
+
+function formatZodValidationError(commandName: string, error: ZodError): CliArgumentError {
+  const summaryIssues = error.issues
+    .slice(0, 3)
+    .map((issue) => {
+      const path = issue.path.length > 0 ? issue.path.join('.') : 'input';
+      return `${path}: ${issue.message}`;
+    })
+    .join('; ');
+
+  return new CliArgumentError(
+    `Invalid options for "${commandName}": ${summaryIssues}`,
+    { issues: error.issues },
+    `Run: fastgpt commands --command "${commandName}" --format json`
+  );
 }
 
 /**
@@ -210,9 +231,7 @@ export async function executeCommandWithPipeline({
       return spec.inputSchema.parse(rawOptions) as Record<string, unknown>;
     } catch (error) {
       if (error instanceof ZodError) {
-        throw new CliArgumentError(`Invalid options for "${commandName}".`, {
-          issues: error.issues
-        });
+        throw formatZodValidationError(commandName, error);
       }
       throw error;
     }
@@ -232,27 +251,32 @@ export async function executeCommandWithPipeline({
     });
   } catch (error) {
     if (error instanceof ZodError) {
-      throw new CliArgumentError(`Invalid options for "${commandName}".`, {
-        issues: error.issues
-      });
+      throw formatZodValidationError(commandName, error);
     }
     throw error;
   }
 
-  // 自动在 meta 注入执行耗时（若未显式指定），并在 dry-run 数据中统一补充 risk 风险等级
+  // 自动在 meta 注入执行耗时，在 dry-run 补充 risk 等级，并应用 --fields 白名单投影
   const durationMs = Date.now() - startTime;
   const enrichedData = (() => {
-    if (!result.data || typeof result.data !== 'object' || Array.isArray(result.data)) {
+    const withRisk = (() => {
+      if (!result.data || typeof result.data !== 'object' || Array.isArray(result.data)) {
+        return result.data;
+      }
+      const dataObj = result.data as Record<string, unknown>;
+      if (dataObj.dryRun === true && dataObj.risk === undefined) {
+        return {
+          risk: spec.risk,
+          ...dataObj
+        };
+      }
       return result.data;
+    })();
+
+    if (global.fields && global.fields.length > 0) {
+      return applyFieldsProjection({ data: withRisk, fields: global.fields });
     }
-    const dataObj = result.data as Record<string, unknown>;
-    if (dataObj.dryRun === true && dataObj.risk === undefined) {
-      return {
-        risk: spec.risk,
-        ...dataObj
-      };
-    }
-    return result.data;
+    return withRisk;
   })();
 
   const enrichedResult: CliResult = {
@@ -269,6 +293,12 @@ export async function executeCommandWithPipeline({
     color: global.color
   });
   stdout(
-    renderer.renderSuccess({ command: commandName, result: enrichedResult, quiet: global.quiet })
+    renderer.renderSuccess({
+      command: commandName,
+      result: enrichedResult,
+      quiet: global.quiet,
+      pick: global.pick,
+      raw: global.raw
+    })
   );
 }
