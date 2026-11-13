@@ -17,7 +17,7 @@ import { MongoResourcePermission } from '@fastgpt/service/support/permission/sch
 import * as resourceLookup from '@fastgpt/service/core/app/resourceLookup';
 import { getFakeUsers, getUser } from '@test/datas/users';
 import { Call } from '@test/utils/request';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 describe('POST /api/core/dataset/listV2 - datasetIds', () => {
   it.each(['pagination', 'ids'] as const)(
@@ -293,5 +293,68 @@ describe('POST /api/core/dataset/listV2 - datasetIds', () => {
     // 修复前路径解析被 MAX_FOLDER_DEPTH(4) 截断，f4 被丢弃，
     // 导致根视图缺少进入该分支的入口。
     expect(response.data.list.map((item) => String(item._id))).toContain(String(chainIds[0]));
+  });
+});
+
+describe('POST /api/core/dataset/listV2 - team owner under DISABLE_SUPER_ADMIN', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it('只按 ACL 暴露 API 文件库：无 ACL 时隐藏，授权后可见且不是 owner', async () => {
+    vi.stubEnv('DISABLE_SUPER_ADMIN', 'true');
+    const { owner, members } = await getFakeUsers(1);
+    const member = members[0];
+    const [apiDataset, ordinaryDataset] = await MongoDataset.create([
+      {
+        name: 'api-dataset',
+        teamId: owner.teamId,
+        tmbId: member.tmbId,
+        apiDatasetServer: { apiServer: { baseUrl: 'https://example.com' } }
+      },
+      { name: 'ordinary-dataset', teamId: owner.teamId, tmbId: member.tmbId }
+    ]);
+    await MongoDatasetCollection.create({
+      name: 'api-file',
+      type: DatasetCollectionTypeEnum.file,
+      teamId: owner.teamId,
+      tmbId: member.tmbId,
+      datasetId: apiDataset._id
+    });
+    const list = (body: GetDatasetListV2Body) =>
+      Call<GetDatasetListV2Body, Record<string, never>, GetDatasetListV2Response>(handler, {
+        auth: owner,
+        body
+      });
+
+    // 根视图与 ID 查询都不能靠团队 owner 身份拿到 API 文件库。
+    const hidden = await list({ parentId: null, withFileCount: true });
+    expect(hidden.code).toBe(200);
+    expect(hidden.data.list.map((item) => String(item._id))).toEqual([String(ordinaryDataset._id)]);
+    expect(hidden.data.list[0].permission.isOwner).toBe(true);
+    const hiddenByIds = await list({
+      datasetIds: [String(apiDataset._id), String(ordinaryDataset._id)]
+    });
+    expect(hiddenByIds.code).toBe(200);
+    expect(hiddenByIds.data.list.map((item) => String(item._id))).toEqual([
+      String(ordinaryDataset._id)
+    ]);
+
+    await MongoResourcePermission.create({
+      resourceType: PerResourceTypeEnum.dataset,
+      teamId: owner.teamId,
+      resourceId: apiDataset._id,
+      tmbId: owner.tmbId,
+      permission: ReadPermissionVal
+    });
+
+    const visible = await list({ parentId: null, withFileCount: true });
+    expect(visible.code).toBe(200);
+    expect(visible.data.list.map((item) => String(item._id)).sort()).toEqual(
+      [String(apiDataset._id), String(ordinaryDataset._id)].sort()
+    );
+    expect(
+      visible.data.list.find((item) => String(item._id) === String(apiDataset._id))
+    ).toMatchObject({ fileCount: 1, permission: { hasReadPer: true, isOwner: false } });
   });
 });

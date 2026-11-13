@@ -27,6 +27,10 @@ import {
 import { isPrivateResourceByCollaborators, sumPer } from '@fastgpt/global/support/permission/utils';
 import { Types } from '@fastgpt/service/common/mongo';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import {
+  isDisableSuperAdmin,
+  isSuperAdminBypassDisabled
+} from '@fastgpt/global/core/dataset/apiDataset/utils';
 import { getResourcePermissionsByTeam } from '@fastgpt/service/support/permission/resourcePermissionService';
 
 async function handler(req: ApiRequestProps): Promise<GetDatasetListResponse> {
@@ -53,6 +57,9 @@ async function handler(req: ApiRequestProps): Promise<GetDatasetListResponse> {
   if (Array.isArray(tmbIds) && tmbIds.length === 0) {
     return GetDatasetListResponseSchema.parse([]);
   }
+
+  // 部署开关只收紧 API 文件库：普通知识库仍按团队 owner 旁路，API 文件库改走 ACL 可读范围。
+  const teamOwnerFullAccess = teamPer.isOwner && !isSuperAdminBypassDisabled();
 
   const [roleList, myGroupMap, myOrgSet] = await Promise.all([
     getResourcePermissionsByTeam({ resourceType: PerResourceTypeEnum.dataset, teamId }),
@@ -81,7 +88,12 @@ async function handler(req: ApiRequestProps): Promise<GetDatasetListResponse> {
 
   const findDatasetQuery = (() => {
     const idList = { _id: { $in: myRoles.map((item) => item.resourceId) } };
-    const datasetPerQuery = teamPer.isOwner ? {} : idList;
+    const datasetPerQuery = teamOwnerFullAccess
+      ? {}
+      : teamPer.isOwner
+        ? // API 文件库按 ACL 收窄，普通知识库保留团队 owner 旁路。
+          { $or: [{ apiDatasetServer: null }, idList] }
+        : idList;
     const searchMatch = searchKey
       ? {
           $or: [
@@ -133,7 +145,9 @@ async function handler(req: ApiRequestProps): Promise<GetDatasetListResponse> {
           );
           return new DatasetPermission({
             role: tmbRole ?? groupAndOrgRole,
-            isOwner: String(dataset.tmbId) === String(tmbId) || teamPer.isOwner
+            isOwner:
+              String(dataset.tmbId) === String(tmbId) ||
+              (teamPer.isOwner && !isDisableSuperAdmin(dataset.apiDatasetServer))
           });
         };
         const resourceClbs = roleListMap.get(String(dataset._id)) ?? [];

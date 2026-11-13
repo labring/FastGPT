@@ -516,6 +516,15 @@ describe('authDatasetCollection', () => {
     expect(result.dataset.permission.isOwner).toBe(true);
   });
 
+  it('只收紧 API 文件库：普通知识库的团队 owner 仍旁路', async () => {
+    vi.stubEnv('DISABLE_SUPER_ADMIN', 'true');
+    mockDatasetQuery({ _id: datasetId, teamId: 'team-a', tmbId: 'tmb-other' });
+
+    const result = await authDatasetByTmbId({ tmbId: 'tmb-a', datasetId, per: ReadPermissionVal });
+
+    expect(result.dataset.permission.isOwner).toBe(true);
+  });
+
   it('grants the team owner owner role on a collection owned by another member', async () => {
     // 团队 owner 短路为 owner：changeOwner 等 owner 专属操作不能因 cap 到 manage 被误拒
     mockGetTmbInfoByTmbId.mockResolvedValue({
@@ -649,7 +658,8 @@ describe('authDataset isRoot', () => {
       teamId: 'team-b',
       tmbId: 'owner-tmb',
       inheritPermission: false,
-      collectionPermissionEnabled: false
+      collectionPermissionEnabled: false,
+      apiDatasetServer: { apiServer: { baseUrl: 'https://example.com' } }
     });
 
     const result = await authDataset({ req: mockReq, datasetId, per: ReadPermissionVal });

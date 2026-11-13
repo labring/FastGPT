@@ -220,7 +220,8 @@ describe('export dataset respects collection permission', () => {
     const dataset = await createDataset({
       name: 'disable-super-admin-dataset',
       owner: member,
-      collectionPermissionEnabled: true
+      collectionPermissionEnabled: true,
+      apiDatasetServer: { apiServer: { baseUrl: 'https://example.com' } }
     });
     // 导出要求 dataset write，disableSuperAdmin 又关掉了团队 owner 旁路，必须显式授予。
     await grantDataset({
@@ -242,6 +243,31 @@ describe('export dataset respects collection permission', () => {
 
     expect(res.code).toBe(200);
     expect(res.raw).not.toContain('member-file-q');
+  });
+
+  it('keeps the team-owner bypass for ordinary datasets when disableSuperAdmin is on', async () => {
+    vi.stubEnv('DISABLE_SUPER_ADMIN', 'true');
+    const users = await getFakeUsers(1);
+    const teamOwner = users.owner;
+    const member = users.members[0];
+    const dataset = await createDataset({
+      name: 'ordinary-dataset',
+      owner: member,
+      collectionPermissionEnabled: true
+    });
+    await createFileCollection({
+      name: 'member-file',
+      owner: member,
+      datasetId: String(dataset._id)
+    });
+
+    const res = await StreamCall(handler, {
+      auth: teamOwner,
+      query: { datasetId: String(dataset._id) }
+    });
+
+    expect(res.code).toBe(200);
+    expect(res.raw).toContain('member-file-q');
   });
 
   it('exports all collections for a cross-team root user', async () => {

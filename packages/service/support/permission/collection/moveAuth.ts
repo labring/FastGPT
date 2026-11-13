@@ -98,8 +98,8 @@ export const authDatasetCollectionMoves = async ({
     getTmbInfoByTmbId({ tmbId })
   ]);
   if (!dataset) throw DatasetErrEnum.unExist;
-  // 全局开关 disableSuperAdmin 要求超管也遵守文件 ACL；root 与团队 owner 的旁路同时关闭。
-  const disableSuperAdmin = isDisableSuperAdmin();
+  // API 文件库在全局开关要求超管也遵守文件 ACL 时，root 与团队 owner 的旁路同时关闭。
+  const disableSuperAdmin = isDisableSuperAdmin(dataset.apiDatasetServer);
   const effectiveIsRoot = isRoot && !disableSuperAdmin;
   const permissionSync = isPermissionSyncDataset(dataset.apiDatasetServer);
   if (!effectiveIsRoot && String(tmbInfo.teamId) !== teamId) {

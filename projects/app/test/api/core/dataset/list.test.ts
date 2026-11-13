@@ -599,3 +599,49 @@ describe('POST /api/core/dataset/list', () => {
     );
   });
 });
+
+describe('POST /api/core/dataset/list - team owner under DISABLE_SUPER_ADMIN', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it('只按 ACL 暴露 API 文件库，普通知识库仍走团队 owner 旁路', async () => {
+    vi.stubEnv('DISABLE_SUPER_ADMIN', 'true');
+    const { owner, members } = await getFakeUsers(1);
+    const member = members[0];
+    const [apiDataset, ordinaryDataset] = await MongoDataset.create([
+      {
+        name: 'api-dataset',
+        teamId: owner.teamId,
+        tmbId: member.tmbId,
+        apiDatasetServer: { apiServer: { baseUrl: 'https://example.com' } }
+      },
+      { name: 'ordinary-dataset', teamId: owner.teamId, tmbId: member.tmbId }
+    ]);
+
+    const response = await Call<GetDatasetListBody, Record<string, never>, GetDatasetListResponse>(
+      handler,
+      { auth: owner, body: { parentId: null } }
+    );
+
+    expect(response.code).toBe(200);
+    expect(response.data.map((item) => String(item._id))).toEqual([String(ordinaryDataset._id)]);
+    expect(response.data[0].permission.isOwner).toBe(true);
+
+    await MongoResourcePermission.create({
+      resourceType: PerResourceTypeEnum.dataset,
+      teamId: owner.teamId,
+      resourceId: apiDataset._id,
+      tmbId: owner.tmbId,
+      permission: ReadPermissionVal
+    });
+    const granted = await Call<GetDatasetListBody, Record<string, never>, GetDatasetListResponse>(
+      handler,
+      { auth: owner, body: { parentId: null } }
+    );
+    expect(granted.code).toBe(200);
+    expect(
+      granted.data.find((item) => String(item._id) === String(apiDataset._id))?.permission
+    ).toMatchObject({ hasReadPer: true, isOwner: false });
+  });
+});

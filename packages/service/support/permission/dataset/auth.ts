@@ -74,9 +74,9 @@ export const authDatasetByTmbId = async ({
       return Promise.reject(DatasetErrEnum.unExist);
     }
 
-    // 全局开关 DISABLE_SUPER_ADMIN 打开时超管也遵守本地 ACL：root 和团队 owner 都不再旁路，
+    // 全局开关 DISABLE_SUPER_ADMIN 对 API 文件库生效时，超管也遵守本地 ACL：root 和团队 owner 都不再旁路，
     // Dataset 级权限与其他成员一样只来自 ACL 行（dataset owner 仍由 assertDatasetPermission 兜底）。
-    const disableSuperAdmin = isDisableSuperAdmin();
+    const disableSuperAdmin = isDisableSuperAdmin(dataset.apiDatasetServer);
     const effectiveIsRoot = isRoot && !disableSuperAdmin;
 
     if (effectiveIsRoot) {
@@ -158,8 +158,8 @@ export const authDataset = async ({
 
   return {
     ...result,
-    // 全局开关要求超管也遵守 ACL 时，向下游返回有效 root 语义，避免调用方拿 header 原值旁路。
-    isRoot: result.isRoot && !isDisableSuperAdmin(),
+    // 全局开关对 API 文件库要求超管也遵守 ACL 时，向下游返回有效 root 语义，避免调用方拿 header 原值旁路。
+    isRoot: result.isRoot && !isDisableSuperAdmin(dataset.apiDatasetServer),
     permission: dataset.permission,
     dataset
   };
@@ -229,9 +229,9 @@ export async function authDatasetCollection({
     return Promise.reject(DatasetErrEnum.unExist);
   }
 
-  // 全局开关要求超管也按文件权限走：root 与团队 owner 的短路全部关闭。
+  // 全局开关对 API 文件库要求超管也按文件权限走：root 与团队 owner 的短路全部关闭。
   // Dataset read 门槛保留（否则连知识库都不可见），只在 Collection 维度取消旁路。
-  const disableSuperAdmin = isDisableSuperAdmin();
+  const disableSuperAdmin = isDisableSuperAdmin(collection.dataset?.apiDatasetServer);
   const isRoot = isRootFromHeader && !disableSuperAdmin;
 
   const tmbInfo = await getTmbInfoByTmbId({ tmbId });

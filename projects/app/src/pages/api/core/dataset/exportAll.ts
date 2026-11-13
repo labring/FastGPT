@@ -73,7 +73,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
         teamId: datasetTeamId,
         datasetIds: [String(dataset._id)],
         tmbId: String(tmbId),
-        ignoreTeamOwner: isDisableSuperAdmin()
+        ignoreTeamOwner: isDisableSuperAdmin(dataset.apiDatasetServer)
       });
 
   const match = {

@@ -264,12 +264,13 @@ describe('authDatasetCollectionMoves', () => {
       DatasetErrEnum.unAuthDatasetCollection
     );
   });
-  it('disableSuperAdmin 关闭移动鉴权里的团队 owner 旁路', async () => {
+  it('disableSuperAdmin 关闭 API 文件库移动鉴权里的团队 owner 旁路', async () => {
     vi.stubEnv('DISABLE_SUPER_ADMIN', 'true');
     const { auth, move, datasetId, owner } = await fixture();
     await MongoDataset.updateOne(
       { _id: datasetId },
       {
+        apiDatasetServer: { apiServer: { baseUrl: 'https://example.com' } },
         // 创建者身份仍算 dataset owner（见 assertDatasetPermission），这里把创建者换掉，
         // 让团队 owner 只剩下「超管旁路」这一条路径
         tmbId: new Types.ObjectId()
@@ -279,6 +280,15 @@ describe('authDatasetCollectionMoves', () => {
     await expect(
       authDatasetCollectionMoves({ ...auth, req: { auth: owner } as any, moves: [move] })
     ).rejects.toBe(DatasetErrEnum.unAuthDataset);
+  });
+  it('disableSuperAdmin 不影响普通知识库的团队 owner 旁路', async () => {
+    vi.stubEnv('DISABLE_SUPER_ADMIN', 'true');
+    const { auth, move, datasetId, owner } = await fixture();
+    await MongoDataset.updateOne({ _id: datasetId }, { tmbId: new Types.ObjectId() });
+
+    await expect(
+      authDatasetCollectionMoves({ ...auth, req: { auth: owner } as any, moves: [move] })
+    ).resolves.toBeDefined();
   });
   it.each(['source-root', 'target-root'])('根级移动 %s 仍要求团队创建权限', async (mode) => {
     const { auth, move, file, owner } = await fixture();

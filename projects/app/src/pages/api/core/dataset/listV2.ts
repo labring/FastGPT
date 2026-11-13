@@ -41,6 +41,10 @@ import {
   hasReadableDatasetFolderChild
 } from '@/service/core/dataset/visibleList';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
+import {
+  isDisableSuperAdmin,
+  isSuperAdminBypassDisabled
+} from '@fastgpt/global/core/dataset/apiDataset/utils';
 import type { DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
 
 /**
@@ -74,8 +78,11 @@ async function handler(
     return GetDatasetListV2ResponseSchema.parse({ list: [], total: 0 });
   }
 
+  // 部署开关只收紧 API 文件库：普通知识库仍按团队 owner 旁路，API 文件库改走 ACL 可读范围。
+  const teamOwnerFullAccess = teamPer.isOwner && !isSuperAdminBypassDisabled();
+
   const { readableResourceIds, groupIds, orgIds } = await (async () => {
-    if (teamPer.isOwner) return { readableResourceIds: [], groupIds: [], orgIds: [] };
+    if (teamOwnerFullAccess) return { readableResourceIds: [], groupIds: [], orgIds: [] };
     const [groups, orgSet] = await Promise.all([
       getGroupsByTmbId({ tmbId, teamId }),
       getOrgIdSetWithParentByTmbId({ teamId, tmbId })
@@ -96,7 +103,7 @@ async function handler(
   })();
 
   const folderScope =
-    !isDatasetIdsQuery && (parentId || !teamPer.isOwner || searchKey)
+    !isDatasetIdsQuery && (parentId || !teamOwnerFullAccess || searchKey)
       ? await getDatasetFolderListScope({ teamId, currentFolderId })
       : { folders: [], folderIds: [] };
   if (parentId) {
@@ -112,7 +119,7 @@ async function handler(
       throw CommonErrEnum.invalidParams;
     }
     if (
-      !teamPer.isOwner &&
+      !teamOwnerFullAccess &&
       !readableResourceIds.some((id) => String(id) === parentId) &&
       !(await hasReadableDatasetFolderChild({
         teamId,
@@ -141,15 +148,20 @@ async function handler(
   const baseQuery = {
     teamId,
     deleteTime: null,
-    ...(teamPer.isOwner ? {} : { _id: { $in: readableResourceIds } }),
+    ...(teamOwnerFullAccess
+      ? {}
+      : teamPer.isOwner
+        ? // API 文件库按 ACL 收窄，普通知识库保留团队 owner 旁路。
+          { $or: [{ apiDatasetServer: null }, { _id: { $in: readableResourceIds } }] }
+        : { _id: { $in: readableResourceIds } }),
     ...(type ? (Array.isArray(type) ? { type: { $in: type } } : { type }) : {}),
     ...(tmbIds ? { tmbId: { $in: tmbIds } } : {})
   };
-  const isMergedList = !isDatasetIdsQuery && !teamPer.isOwner && !searchKey;
+  const isMergedList = !isDatasetIdsQuery && !teamOwnerFullAccess && !searchKey;
   const parentScopeQuery = (() => {
     // ID 查询不参与目录导航，保留 ACL 与请求 ID 的交集。
     if (isDatasetIdsQuery) return { _id: { $in: datasetIds } };
-    if (!searchKey && teamPer.isOwner) return parseParentIdInMongo(parentId);
+    if (!searchKey && teamOwnerFullAccess) return parseParentIdInMongo(parentId);
     if (parentId) return { parentId: { $in: folderScope.folderIds } };
     return {
       $or: [
@@ -193,7 +205,7 @@ async function handler(
     const visibleDatasets = visibleIds.length
       ? await MongoDataset.find(
           { _id: { $in: visibleIds }, teamId, deleteTime: null },
-          '_id parentId teamId avatar name intro type vectorModelId agentModelId vlmModelId vectorModel agentModel vlmModel inheritPermission tmbId createTime updateTime'
+          '_id parentId teamId avatar name intro type vectorModelId agentModelId vlmModelId vectorModel agentModel vlmModel inheritPermission tmbId createTime updateTime apiDatasetServer'
         ).lean()
       : [];
     const [sortField, direction] = Object.entries(datasetSort)[0];
@@ -259,7 +271,9 @@ async function handler(
         );
         return new DatasetPermission({
           role: tmbRole ?? groupAndOrgRole,
-          isOwner: String(dataset.tmbId) === String(tmbId) || teamPer.isOwner
+          isOwner:
+            String(dataset.tmbId) === String(tmbId) ||
+            (teamPer.isOwner && !isDisableSuperAdmin(dataset.apiDatasetServer))
         });
       };
       return {
