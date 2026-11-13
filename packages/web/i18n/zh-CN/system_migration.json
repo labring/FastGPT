@@ -94,5 +94,10 @@
   "migrations.20261111_backfill_model_deprecation_sms.description": "一次性迁移旧模型下架短信模板，保留管理员设置和显式清空。",
   "migrations.20261111_backfill_model_deprecation_sms.result": "已更新 {{updatedDocuments}} 条认证配置。",
   "migrations.20261111_backfill_model_deprecation_sms.backfill": "回填模板",
-  "migrations.20261111_backfill_model_deprecation_sms.validation": "验证模板"
+  "migrations.20261111_backfill_model_deprecation_sms.validation": "验证模板",
+  "migrations.20261112_backfill_stt_pricing_type.name": "回填 STT 计价类型",
+  "migrations.20261112_backfill_stt_pricing_type.description": "在后台将旧 STT 价格标记为按时长计费，保留原单价及已有 Tokens 配置，不阻塞业务启动。",
+  "migrations.20261112_backfill_stt_pricing_type.result": "已扫描 {{models}} 个 STT 模型",
+  "migrations.20261112_backfill_stt_pricing_type.models": "模型计价类型",
+  "migrations.20261112_backfill_stt_pricing_type.validation": "校验回填结果"
 }

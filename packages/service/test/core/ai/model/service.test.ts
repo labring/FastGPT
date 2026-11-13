@@ -1,3 +1,4 @@
+import { formatDbModelToRuntimeModel } from '@fastgpt/service/core/ai/model/runtime';
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { sortModelOrderItems } from '@fastgpt/global/core/ai/model/order';
 import {
@@ -67,6 +68,44 @@ beforeEach(async () => {
 });
 
 describe('model lifecycle', () => {
+  it.each([
+    { type: 'duration' as const, unitPrice: 0.2 },
+    { type: 'tokens' as const, unitPrice: 10 }
+  ])('round-trips STT $type pricing through Mongo and the runtime catalog', async (pricing) => {
+    const created = await createModel({
+      ...owner,
+      modelData: { ...draft, type: ModelTypeEnum.stt, config: {}, pricing }
+    });
+    const stored = await MongoAIModel.findById(created.modelId).lean();
+    expect(stored?.pricing).toMatchObject(pricing);
+    expect(
+      getCachedSystemModelHandle()
+        ?.getSystemModels()
+        .find((model) => model.modelId === created.modelId)?.pricing
+    ).toEqual(pricing);
+    const changed =
+      pricing.type === 'tokens'
+        ? { type: 'duration' as const, unitPrice: 0.2 }
+        : { type: 'tokens' as const, unitPrice: 20 };
+    await updateModel({
+      ...owner,
+      modelId: created.modelId,
+      modelData: { ...draft, type: ModelTypeEnum.stt, config: {}, pricing: changed }
+    });
+    expect((await MongoAIModel.findById(created.modelId).lean())?.pricing).toMatchObject(changed);
+  });
+
+  it('reads legacy STT database pricing without writing it back', async () => {
+    const raw = { ...draft, type: ModelTypeEnum.stt, config: {}, pricing: { unitPrice: 0.2 } };
+    const { insertedId } = await MongoAIModel.collection.insertOne(raw);
+    const stored = await MongoAIModel.findById(insertedId).lean();
+    expect(formatDbModelToRuntimeModel(stored!, { fallbackProvider: true }).pricing).toEqual({
+      type: 'duration',
+      unitPrice: 0.2
+    });
+    expect((await MongoAIModel.findById(insertedId).lean())?.pricing).toEqual({ unitPrice: 0.2 });
+  });
+
   it('rewrites complete order with consecutive ranks without changing runtime fallback order', async () => {
     const first = await createModel({ ...owner, modelData: draft });
     const second = await createModel({ ...owner, modelData: { ...draft, model: 'second' } });

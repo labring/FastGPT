@@ -6,8 +6,9 @@ import {
 } from '@fastgpt/service/common/rateLimit/interface/member';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { aiTranscriptions } from '@fastgpt/service/core/ai/audio/transcriptions';
+import { getSTTBillableUsage } from '@fastgpt/service/core/ai/audio/utils';
 import { getSystemModelHandle } from '@fastgpt/service/core/ai/model/catalog/service';
-import { pushWhisperUsage } from '@fastgpt/service/support/wallet/usage/controller';
+import { pushSTTUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import type { NextApiRequest, NextApiResponse } from 'next';
 
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
@@ -26,15 +27,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     const result = await multer.resolveFormData({ request: req });
     filepaths.push(result.fileMetadata.path);
-    const {
-      customUid,
-      authProxy,
-      sourceType,
-      sourceId,
-      chatId,
-      duration: rawDuration,
-      outLinkAuthData
-    } = parseApiInput({
+    const { customUid, authProxy, sourceType, sourceId, chatId, outLinkAuthData } = parseApiInput({
       req: { body: result.data },
       bodySchema: AudioTranscriptionsDataSchema
     }).body;
@@ -42,10 +35,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (!result.fileMetadata) {
       throw new Error('file not found');
     }
-    if (rawDuration === undefined) {
-      throw new Error('duration not found');
-    }
-    const duration = rawDuration < 1 ? 1 : rawDuration;
 
     const { teamId, tmbId } = await authChatTargetCrud({
       allowMissingChat: true,
@@ -63,16 +52,18 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       memberId: String(tmbId)
     });
     const modelHandle = await getSystemModelHandle();
+    const model = modelHandle.getDefaultModelData('stt');
     const transcriptionsResult = await aiTranscriptions({
-      model: modelHandle.getDefaultModelData('stt'),
+      model,
       fileStream: result.getReadStream(),
       filename: result.fileMetadata.originalname
     });
 
-    await pushWhisperUsage({
+    await pushSTTUsage({
       teamId,
       tmbId,
-      duration: transcriptionsResult?.usage?.total_tokens || duration,
+      model,
+      usage: getSTTBillableUsage({ pricing: model.pricing, usage: transcriptionsResult.usage }),
       source: UsageSourceEnum.fastgpt
     });
 

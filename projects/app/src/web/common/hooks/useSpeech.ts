@@ -438,15 +438,8 @@ export const useSpeech = (props?: {
             })();
 
             const blob = new Blob(chunks, options);
-            const duration = Math.round((Date.now() - startTimestamp.current) / 1000);
             formData.append('file', blob, filename);
-            formData.append(
-              'data',
-              JSON.stringify({
-                ...props,
-                duration
-              })
-            );
+            formData.append('data', JSON.stringify(props));
 
             setIsTransCription(true);
             try {

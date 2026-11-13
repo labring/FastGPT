@@ -94,5 +94,10 @@
   "migrations.20261111_backfill_model_deprecation_sms.description": "기존 모델 서비스 종료 SMS 템플릿을 한 번 이전하고 관리자 설정과 명시적으로 비운 값을 유지합니다.",
   "migrations.20261111_backfill_model_deprecation_sms.result": "인증 설정 문서 {{updatedDocuments}}개를 업데이트했습니다.",
   "migrations.20261111_backfill_model_deprecation_sms.backfill": "템플릿 채우기",
-  "migrations.20261111_backfill_model_deprecation_sms.validation": "템플릿 검증"
+  "migrations.20261111_backfill_model_deprecation_sms.validation": "템플릿 검증",
+  "migrations.20261112_backfill_stt_pricing_type.name": "STT 과금 유형 채우기",
+  "migrations.20261112_backfill_stt_pricing_type.description": "기존 STT 가격을 백그라운드에서 시간 기준으로 표시하며, 단가와 기존 토큰 과금 설정을 유지하고 서비스 시작을 차단하지 않습니다.",
+  "migrations.20261112_backfill_stt_pricing_type.result": "STT 모델 {{models}}개 검사 완료",
+  "migrations.20261112_backfill_stt_pricing_type.models": "모델 과금 유형",
+  "migrations.20261112_backfill_stt_pricing_type.validation": "결과 검증"
 }

@@ -94,5 +94,10 @@
   "migrations.20261111_backfill_model_deprecation_sms.description": "Migrate the legacy model deprecation SMS template once, preserving administrator settings and explicit clears.",
   "migrations.20261111_backfill_model_deprecation_sms.result": "Updated {{updatedDocuments}} authentication configuration documents.",
   "migrations.20261111_backfill_model_deprecation_sms.backfill": "Backfill template",
-  "migrations.20261111_backfill_model_deprecation_sms.validation": "Validate template"
+  "migrations.20261111_backfill_model_deprecation_sms.validation": "Validate template",
+  "migrations.20261112_backfill_stt_pricing_type.name": "Backfill STT pricing types",
+  "migrations.20261112_backfill_stt_pricing_type.description": "Backfill legacy STT prices as duration-based in the background, preserving rates and existing token pricing without blocking startup.",
+  "migrations.20261112_backfill_stt_pricing_type.result": "Scanned {{models}} STT models",
+  "migrations.20261112_backfill_stt_pricing_type.models": "Model pricing types",
+  "migrations.20261112_backfill_stt_pricing_type.validation": "Validate backfill"
 }

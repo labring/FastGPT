@@ -94,5 +94,10 @@
   "migrations.20261111_backfill_model_deprecation_sms.description": "一次性遷移舊模型下架簡訊範本，保留管理員設定與明確清空的值。",
   "migrations.20261111_backfill_model_deprecation_sms.result": "已更新 {{updatedDocuments}} 筆認證設定。",
   "migrations.20261111_backfill_model_deprecation_sms.backfill": "回填範本",
-  "migrations.20261111_backfill_model_deprecation_sms.validation": "驗證範本"
+  "migrations.20261111_backfill_model_deprecation_sms.validation": "驗證範本",
+  "migrations.20261112_backfill_stt_pricing_type.name": "回填 STT 計價類型",
+  "migrations.20261112_backfill_stt_pricing_type.description": "在背景將舊 STT 價格標記為按時長計費，保留原單價及既有 Tokens 設定，不阻塞業務啟動。",
+  "migrations.20261112_backfill_stt_pricing_type.result": "已掃描 {{models}} 個 STT 模型",
+  "migrations.20261112_backfill_stt_pricing_type.models": "模型計價類型",
+  "migrations.20261112_backfill_stt_pricing_type.validation": "驗證回填結果"
 }
