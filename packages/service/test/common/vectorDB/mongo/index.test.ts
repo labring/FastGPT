@@ -134,9 +134,13 @@ describe('MongoVectorCtrl.embRecall', () => {
     await model.insertMany(
       [
         { _id: 'low', vector: [0, -1, ...Array(1534).fill(0)], score: 0.99 },
-        { _id: 'tie-z', vector, score: 0.98 },
-        { _id: 'tie-a', vector, score: 0.97 },
-        { _id: 'best', vector: queryVector, score: 0.96 }
+        { _id: 'tie-a', vector, score: 0.98 },
+        { _id: 'tie-Z', vector, score: 0.97 },
+        { _id: 'tie-2', vector, score: 0.965 },
+        { _id: 'tie-10', vector, score: 0.96 },
+        { _id: 'tie-\uE000', vector, score: 0.955 },
+        { _id: 'tie-\u{10000}', vector, score: 0.95 },
+        { _id: 'best', vector: queryVector, score: 0.95 }
       ].map((candidate) => ({
         ...candidate,
         teamId: 'team',
@@ -147,7 +151,7 @@ describe('MongoVectorCtrl.embRecall', () => {
       { lean: true }
     );
 
-    // 只替代依赖 mongot 的首阶段；候选按近似分数逆序排列，后续生产聚合交给真实 MongoDB。
+    // 只替代依赖 mongot 的首阶段；原始内积、排序和截断仍交给真实 MongoDB。
     const aggregateCandidates = model.aggregate.bind(model);
     const aggregate = vi
       .spyOn(model, 'aggregate')
@@ -158,21 +162,25 @@ describe('MongoVectorCtrl.embRecall', () => {
       teamId: 'team',
       datasetIds: ['dataset'],
       vector: queryVector,
-      limit: 3,
+      limit: 7,
       forbidCollectionIdList: ['denied'],
       filterCollectionIdList: ['allowed', 'denied']
     });
     expect(result.results).toEqual([
       { id: 'best', collectionId: 'allowed', score: 1 },
+      { id: 'tie-10', collectionId: 'allowed', score: 0.6 },
+      { id: 'tie-2', collectionId: 'allowed', score: 0.6 },
+      { id: 'tie-Z', collectionId: 'allowed', score: 0.6 },
       { id: 'tie-a', collectionId: 'allowed', score: 0.6 },
-      { id: 'tie-z', collectionId: 'allowed', score: 0.6 }
+      { id: 'tie-\uE000', collectionId: 'allowed', score: 0.6 },
+      { id: 'tie-\u{10000}', collectionId: 'allowed', score: 0.6 }
     ]);
     const pipeline = aggregate.mock.calls[0][0];
     expect(pipeline?.[0]).toMatchObject({
       $vectorSearch: {
         queryVector,
         exact: true,
-        limit: 3,
+        limit: 7,
         filter: {
           teamId: 'team',
           datasetId: { $in: ['dataset'] },
@@ -180,6 +188,115 @@ describe('MongoVectorCtrl.embRecall', () => {
         }
       }
     });
+    expect(pipeline?.[1]).toEqual({
+      $project: {
+        _id: 1,
+        collectionId: 1,
+        score: { $similarityDotProduct: ['$vector', { $literal: queryVector }] }
+      }
+    });
+  });
+
+  it('keeps raw negative and near-zero dot products without score normalization', async () => {
+    const controller = createCtrl();
+    const queryVector = [Math.SQRT1_2, 1e-17, -Math.SQRT1_2, ...Array(1533).fill(0)];
+    const third = 1 / Math.sqrt(3);
+    await model.insertMany(
+      [
+        { _id: 'cancel', vector: [third, third, third, ...Array(1533).fill(0)] },
+        { _id: 'tiny', vector: [0, 1, ...Array(1534).fill(0)] },
+        { _id: 'negative', vector: queryVector.map((value) => -value) },
+        { _id: 'best', vector: queryVector }
+      ].map((candidate) => ({
+        ...candidate,
+        teamId: 'a',
+        datasetId: 'd',
+        collectionId: 'c',
+        createTime: new Date()
+      }))
+    );
+    const aggregateCandidates = model.aggregate.bind(model);
+    vi.spyOn(model, 'aggregate').mockImplementation((pipeline = []) =>
+      aggregateCandidates(pipeline.slice(1))
+    );
+    const { results } = await controller.embRecall({
+      teamId: 'a',
+      datasetIds: ['d'],
+      vector: queryVector,
+      limit: 4,
+      forbidCollectionIdList: []
+    });
+    expect(results.map(({ id }) => id)).toEqual(['best', 'tiny', 'cancel', 'negative']);
+    expect(results[1].score).toBe(1e-17);
+    expect(results[2].score).toBeCloseTo(0, 15);
+    expect(results[0].score).toBeCloseTo(1, 15);
+    expect(results[3].score).toBeCloseTo(-1, 15);
+  });
+
+  it('uses the legacy score expression only after an unsupported native operator and remembers it', async () => {
+    const controller = createCtrl();
+    await model.create({
+      _id: 'fallback',
+      teamId: 'a',
+      datasetId: 'd',
+      collectionId: 'c',
+      vector,
+      createTime: new Date()
+    });
+    const aggregateCandidates = model.aggregate.bind(model);
+    const aggregate = vi
+      .spyOn(model, 'aggregate')
+      .mockImplementationOnce(() => {
+        throw Object.assign(
+          new Error(
+            "Invalid $project :: caused by :: Unrecognized expression '$similarityDotProduct'"
+          ),
+          { code: 168 }
+        );
+      })
+      .mockImplementation((pipeline = []) => aggregateCandidates(pipeline.slice(1)));
+    const props = {
+      teamId: 'a',
+      datasetIds: ['d'],
+      vector,
+      limit: 100,
+      forbidCollectionIdList: []
+    };
+    const expected = { results: [{ id: 'fallback', collectionId: 'c', score: 1 }] };
+    await expect(controller.embRecall(props)).resolves.toEqual(expected);
+    await expect(controller.embRecall(props)).resolves.toEqual(expected);
+    expect(aggregate).toHaveBeenCalledTimes(3);
+    expect(aggregate.mock.calls[0][0]?.[1]).toHaveProperty('$project.score.$similarityDotProduct');
+    for (const call of aggregate.mock.calls.slice(1))
+      expect(call[0]?.[1]).toHaveProperty('$project.score.$sum');
+  });
+
+  it.each([
+    new Error('search timeout'),
+    { code: 168, message: "Unrecognized expression '$similarityDotProduct'" },
+    Object.assign(new Error('Unrecognized expression for a different operator'), { code: 168 }),
+    Object.assign(new Error("Unrecognized expression '$similarityDotProduct'"), { code: 123 })
+  ])('propagates other search errors without a legacy retry (%s)', async (error) => {
+    const controller = createCtrl();
+    await model.create({
+      _id: 'error',
+      teamId: 'a',
+      datasetId: 'd',
+      collectionId: 'c',
+      vector,
+      createTime: new Date()
+    });
+    const aggregate = vi.spyOn(model, 'aggregate').mockRejectedValue(error);
+    await expect(
+      controller.embRecall({
+        teamId: 'a',
+        datasetIds: ['d'],
+        vector,
+        limit: 100,
+        forbidCollectionIdList: []
+      })
+    ).rejects.toBe(error);
+    expect(aggregate).toHaveBeenCalledOnce();
   });
 
   it.each([
