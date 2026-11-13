@@ -10,9 +10,6 @@ const EXACT_SEARCH_MAX_ROWS = 200_000;
 
 /** MongoDB 向量 provider：保留字符串向量 ID，使用 1536 维 dotProduct + INT8 标量索引。 */
 export class MongoVectorCtrl implements VectorControllerType {
-  // 原生内积从 MongoDB 8.3 开始支持；旧服务端明确拒绝该表达式后，本实例复用兼容路径。
-  private useNativeDotProduct = true;
-
   constructor(private readonly model: Model<DatasetDataEmbedding> = MongoDatasetDataEmbedding) {}
 
   init = initEmbeddingMongo;
@@ -105,67 +102,35 @@ export class MongoVectorCtrl implements VectorControllerType {
     const exact = rows <= EXACT_SEARCH_MAX_ROWS || limit > 10_000;
     const recallLimit = exact ? limit : Math.min(10_000, limit * 2);
     // 原生内积避免通用数组表达式的向量展开开销，同时只将最终分数返回应用层。
-    const searchAndRescore = () =>
-      this.model.aggregate<{
-        _id: string;
-        collectionId: string;
-        score: number;
-      }>([
-        {
-          $vectorSearch: {
-            index: MongoEmbeddingSearchIndexName,
-            path: 'vector',
-            queryVector: vector,
-            ...(exact
-              ? { exact: true }
-              : { numCandidates: Math.min(10_000, Math.max(100, recallLimit * 20)) }),
-            // ANN 扩大候选后使用源向量精排；ENN 已按原始精度检索，无需扩大候选。
-            limit: recallLimit,
-            filter
-          }
-        },
-        {
-          $project: {
-            _id: 1,
-            collectionId: 1,
-            score: this.useNativeDotProduct
-              ? { $similarityDotProduct: ['$vector', { $literal: vector }] }
-              : {
-                  $sum: {
-                    $map: {
-                      input: { $zip: { inputs: ['$vector', { $literal: vector }] } },
-                      as: 'pair',
-                      in: {
-                        $multiply: [
-                          { $arrayElemAt: ['$$pair', 0] },
-                          { $arrayElemAt: ['$$pair', 1] }
-                        ]
-                      }
-                    }
-                  }
-                }
-          }
-        },
-        { $sort: { score: -1, _id: 1 } },
-        { $limit: limit }
-      ]);
-    const results = await (async () => {
-      try {
-        return await searchAndRescore();
-      } catch (error) {
-        // 只兼容不支持该算子的旧版本，查询、权限或网络错误不重试也不降级。
-        if (
-          !(error instanceof Error) ||
-          !('code' in error) ||
-          error.code !== 168 ||
-          !error.message.includes("Unrecognized expression '$similarityDotProduct'")
-        ) {
-          throw error;
+    const results = await this.model.aggregate<{
+      _id: string;
+      collectionId: string;
+      score: number;
+    }>([
+      {
+        $vectorSearch: {
+          index: MongoEmbeddingSearchIndexName,
+          path: 'vector',
+          queryVector: vector,
+          ...(exact
+            ? { exact: true }
+            : { numCandidates: Math.min(10_000, Math.max(100, recallLimit * 20)) }),
+          // ANN 扩大候选后使用源向量精排；ENN 已按原始精度检索，无需扩大候选。
+          limit: recallLimit,
+          filter
         }
-        this.useNativeDotProduct = false;
-        return searchAndRescore();
-      }
-    })();
+      },
+      {
+        $project: {
+          _id: 1,
+          collectionId: 1,
+          score: { $similarityDotProduct: ['$vector', { $literal: vector }] }
+        }
+      },
+      { $sort: { score: -1, _id: 1 } },
+      { $limit: limit }
+    ]);
+
     return {
       // 直接返回原始向量内积，不将 INT8 的近似分数用于相似度阈值判断。
       results: results.map(({ _id, collectionId, score }) => ({
