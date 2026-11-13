@@ -106,7 +106,26 @@ describe('TeamSelector', () => {
       }
     };
     mocks.teamsData = [
-      { teamId: 't-2', teamName: 'Shared Team', avatar: '/b.png', role: TeamMemberRoleEnum.member },
+      {
+        teamId: 't-4',
+        teamName: 'Never Switched Team',
+        avatar: '/d.png',
+        role: TeamMemberRoleEnum.member
+      },
+      {
+        teamId: 't-3',
+        teamName: 'Older Switched Team',
+        avatar: '/c.png',
+        role: TeamMemberRoleEnum.member,
+        lastSwitchTime: '2026-04-17T08:00:00.000Z'
+      },
+      {
+        teamId: 't-2',
+        teamName: 'Shared Team',
+        avatar: '/b.png',
+        role: TeamMemberRoleEnum.member,
+        lastSwitchTime: '2026-04-17T09:00:00.000Z'
+      },
       { teamId: 't-1', teamName: 'Alice Team', avatar: '/a.png', role: TeamMemberRoleEnum.owner }
     ];
 
@@ -116,10 +135,17 @@ describe('TeamSelector', () => {
     expect(mocks.lastMySelectProps.isSearch).toBe(true);
     expect(mocks.lastMySelectProps.onSearchChange).toBeUndefined();
     expect(mocks.lastMySelectProps.ScrollData).toBeUndefined();
-    expect(mocks.lastMySelectProps.list.map((item: any) => item.value)).toEqual(['t-1', 't-2']);
+    expect(mocks.lastMySelectProps.list.map((item: any) => item.value)).toEqual([
+      't-1',
+      't-2',
+      't-3',
+      't-4'
+    ]);
     expect(mocks.lastMySelectProps.list.map((item: any) => item.searchText)).toEqual([
       'Alice Team',
-      'Shared Team'
+      'Shared Team',
+      'Older Switched Team',
+      'Never Switched Team'
     ]);
     expect(renderToStaticMarkup(mocks.lastMySelectProps.list[0].label)).toContain('Alice Team');
     expect(renderToStaticMarkup(mocks.lastMySelectProps.list[0].label)).toContain(

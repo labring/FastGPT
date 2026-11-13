@@ -74,15 +74,25 @@ const TeamSelector = ({
       }));
     }
 
+    const getSwitchTimestamp = (value?: Date | string) => {
+      if (!value) return 0;
+      const timestamp = new Date(value).getTime();
+      return Number.isFinite(timestamp) ? timestamp : 0;
+    };
+
     return memberTeams
       .map((team) => ({
         teamId: team.teamId,
         teamName: team.teamName,
         avatar: team.avatar ?? undefined,
         accountCancellation: team.accountCancellation,
-        isOwner: team.role === TeamMemberRoleEnum.owner || Boolean(team.permission?.isOwner)
+        isOwner: team.role === TeamMemberRoleEnum.owner || Boolean(team.permission?.isOwner),
+        lastSwitchTimestamp: getSwitchTimestamp(team.lastSwitchTime)
       }))
-      .sort((a, b) => Number(b.isOwner) - Number(a.isOwner));
+      .sort((a, b) => {
+        if (a.isOwner !== b.isOwner) return Number(b.isOwner) - Number(a.isOwner);
+        return b.lastSwitchTimestamp - a.lastSwitchTimestamp;
+      });
   }, [adminTeams, isRoot, memberTeams]);
 
   const { runAsync: onSwitchTeam } = useRequest(

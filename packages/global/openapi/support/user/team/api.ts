@@ -284,6 +284,10 @@ export const TeamListItemSchema = z
       example: false,
       description: '是否为企业微信团队'
     }),
+    lastSwitchTime: TeamTmbItemSchema.shape.lastSwitchTime.meta({
+      example: '2026-04-17T08:00:00.000Z',
+      description: '最近一次切换到该团队的时间'
+    }),
     accountCancellation: TeamTmbItemSchema.shape.accountCancellation.meta({
       description: '团队账号注销状态；仅在团队处于注销流程中时返回'
     }),

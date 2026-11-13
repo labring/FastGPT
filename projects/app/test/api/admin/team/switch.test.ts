@@ -125,6 +125,9 @@ describe('PUT /api/admin/team/switch', () => {
     const updatedRoot = await MongoUser.findById(rootUser._id).lean();
     expect(String(updatedRoot?.lastLoginTmbId)).toBe(res.data.tmbId);
 
+    const switchedRootTmb = await MongoTeamMember.findById(res.data.tmbId).lean();
+    expect(switchedRootTmb?.lastSwitchTime).toBeInstanceOf(Date);
+
     expect(addAuditLog).toHaveBeenCalledWith(
       expect.objectContaining({
         tmbId: res.data.tmbId,

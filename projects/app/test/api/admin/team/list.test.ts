@@ -146,6 +146,53 @@ describe('GET /api/admin/team/list', () => {
       { teamName: 'Beta Staging Team', isOwner: false },
       { teamName: 'Alpha [Prod] Team', isOwner: false }
     ]);
+
+    // 最近切过的非自有团队应排在未切过的团队之前（即使后者 createTime 更晚），且不影响分页边界
+    const gammaTeam = await MongoTeam.create({
+      name: 'Gamma New Team',
+      ownerId: normalUser._id,
+      createTime: new Date('2026-08-01T00:00:00Z')
+    });
+    await MongoTeamMember.create([
+      {
+        teamId: alphaTeam._id,
+        userId: rootUser._id,
+        name: 'root',
+        status: TeamMemberStatusEnum.active,
+        lastSwitchTime: new Date('2026-04-17T09:00:00Z')
+      },
+      {
+        teamId: betaTeam._id,
+        userId: rootUser._id,
+        name: 'root',
+        status: TeamMemberStatusEnum.active,
+        lastSwitchTime: new Date('2026-04-17T08:00:00Z')
+      }
+    ]);
+
+    const recentRes = await Call(listTeamsApi.default, {
+      method: 'GET',
+      query: {},
+      auth: rootAuth
+    });
+    expect(recentRes.code).toBe(200);
+    expect(recentRes.data.total).toBe(4);
+    expect(recentRes.data.list.map((t: any) => t.teamName)).toEqual([
+      'Root Base Team',
+      'Alpha [Prod] Team',
+      'Beta Staging Team',
+      'Gamma New Team'
+    ]);
+
+    const recentPage2 = await Call(listTeamsApi.default, {
+      method: 'GET',
+      query: { offset: '2', pageSize: '2' },
+      auth: rootAuth
+    });
+    expect(recentPage2.data.list.map((t: any) => String(t.teamId))).toEqual([
+      String(betaTeam._id),
+      String(gammaTeam._id)
+    ]);
   });
 
   it('rejects non-root callers and non-GET methods', async () => {

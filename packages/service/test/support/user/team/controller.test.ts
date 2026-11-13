@@ -222,6 +222,7 @@ describe('root cross-team member helpers', () => {
     expect(tmb.status).toBe(TeamMemberStatusEnum.active);
     expect(tmb.name).toBe('root');
     expect(tmb.isSetMemberName).toBe(true);
+    expect(tmb.lastSwitchTime).toBeInstanceOf(Date);
     // 跨租户团队不应持久化写入 role='owner'，保证真实 owner 唯一
     expect(tmb.role).toBeUndefined();
 
