@@ -6,7 +6,12 @@ import { executeCommandWithPipeline, type CliCommandSpec } from './pipeline';
 const GROUP_DESCRIPTIONS: Record<string, string> = {
   auth: 'Manage profiles, auth status, and active team sessions',
   config: 'Inspect and update CLI configuration values',
-  dataset: 'Manage datasets and search knowledge chunks'
+  dataset: 'Manage datasets, collections, chunks, training, tags, and synonyms',
+  'dataset collection': 'Manage dataset collections, uploads, syncing, and exports',
+  'dataset data': 'Inspect, insert, update, delete chunks and custom vector indexes',
+  'dataset train': 'Monitor training queues, inspect errors, retry, and wait',
+  'dataset tag': 'Manage dataset collection tags (Pro edition)',
+  'dataset synonym': 'Manage dataset synonym mappings and CSV files'
 };
 
 function attachCommandSpec({
@@ -103,6 +108,9 @@ export function buildCommanderProgram({
     .option('--insecure', 'Skip TLS certificate verification')
     .option('--ca-cert <path>', 'Path to custom CA PEM bundle')
     .option('--format <format>', 'Output format: text or json (defaults to json when not a TTY)')
+    .option('--fields <fields>', 'Select comma-separated output fields (e.g. _id,name)')
+    .option('--pick <path>', 'Extract a dot-path value from output (e.g. data.datasetId)')
+    .option('--raw', 'Output un-enveloped data or extracted --pick value directly')
     .option('--no-color', 'Disable ANSI color')
     .option('--quiet', 'Suppress banners and warnings')
     .showHelpAfterError(false)
@@ -133,7 +141,9 @@ export function buildCommanderProgram({
       if (!group) {
         group = current
           .command(seg)
-          .description(GROUP_DESCRIPTIONS[seg] ?? `Manage ${seg} resources`);
+          .description(
+            GROUP_DESCRIPTIONS[key] ?? GROUP_DESCRIPTIONS[seg] ?? `Manage ${seg} resources`
+          );
         groups.set(key, group);
       }
       current = group;

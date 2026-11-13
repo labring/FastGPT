@@ -19,13 +19,13 @@ FastGPT CLI（`fastgpt`）是 FastGPT 官方推出的终端命令行工具，旨
 <Alert context="info">在 Codex / Claude Code 对话框中直接发送以下提示词：</Alert>
 
 ```text
-请帮我安装并配置 FastGPT CLI。请先读取官方 Skill 规范 https://doc.fastgpt.cn/skill.md ，严格按照其中的步骤完成 CLI 安装、引导登录、健康度体检，并最终输出当前环境的 CLI 能力列表。
+请帮我安装并配置 FastGPT CLI。请先读取官方 Skill 规范 https://doc.fastgpt.cn/cli/skills/fastgpt-cli-setup/SKILL.md ，严格按照其中的步骤完成 CLI 安装、引导登录、健康度体检，并最终输出当前环境的 CLI 能力列表。
 ```
 
 > 你也可以通过终端命令将该 Skill 规范直接下载到本地技能目录：
 >
 > ```bash
-> curl -fsSL https://doc.fastgpt.cn/skill.md -o skill.md
+> mkdir -p ~/.agents/skills/fastgpt-cli-setup && curl -fsSL https://doc.fastgpt.cn/cli/skills/fastgpt-cli-setup/SKILL.md -o ~/.agents/skills/fastgpt-cli-setup/SKILL.md
 > ```
 
 ---
@@ -55,11 +55,11 @@ fastgpt --version
 fastgpt login
 # 若为自建实例：fastgpt login --base-url https://your-domain.com/api
 
-# 方案 B：使用 API Key 登录（适合 CI / 容器 / Agent 脚本环境）
-fastgpt login --api-key <FASTGPT_API_KEY>
+# 方案 B：通过标准输入安全传入 API Key（推荐 CI / 容器 / Agent 脚本环境）
+printf '%s' "$FASTGPT_API_KEY" | fastgpt login --api-key-stdin
 
 # 方案 C：通过标准输入传入密码
-echo "<PASSWORD>" | fastgpt login --username <USERNAME> --password-stdin
+printf '%s' "$FASTGPT_PASSWORD" | fastgpt login --username <USERNAME> --password-stdin
 ```
 
 登录成功后，可随时查看当前认证上下文与所属团队：
@@ -84,16 +84,17 @@ fastgpt doctor
 
 FastGPT CLI 采用领域驱动（DDD）设计，命令结构精炼清晰：
 
-| 功能分类       | 常用命令示例                                                                                                                            | 说明                                                         |
-| :------------- | :-------------------------------------------------------------------------------------------------------------------------------------- | :----------------------------------------------------------- |
-| **身份与团队** | `fastgpt whoami`<br/>`fastgpt auth switch-team --team-id <id>`                                                                          | 查看当前用户身份及团队空间，或快速切换工作团队               |
-| **知识库检索** | `fastgpt dataset list`<br/>`fastgpt dataset search <id> "关键词"`                                                                       | 分页检索知识库列表，或对指定知识库执行混合召回效果测试       |
-| **知识库管理** | `fastgpt dataset create --name "文档库"`<br/>`fastgpt dataset update <id> --parent-id null`<br/>`fastgpt dataset delete <id> --dry-run` | 知识库全生命周期 CRUD，支持移至根目录及 `--dry-run` 安全预览 |
-| **系统配置**   | `fastgpt config list`<br/>`fastgpt commands --format json`                                                                              | 查看客户端本地配置，或探测获取完整的可编程命令元数据         |
+| 功能分类       | 常用命令示例                                                                                                                               | 说明                                                                  |
+| :------------- | :----------------------------------------------------------------------------------------------------------------------------------------- | :-------------------------------------------------------------------- |
+| **身份与团队** | `fastgpt whoami`<br/>`fastgpt auth switch-team --team-id <id>`                                                                             | 查看当前用户身份及团队空间，或快速切换工作团队                        |
+| **知识库检索** | `fastgpt dataset list`<br/>`fastgpt dataset search <id> "关键词"`                                                                          | 分页检索知识库列表，或对指定知识库执行混合召回效果测试                |
+| **知识库管理** | `fastgpt dataset create --name "文档库"`<br/>`fastgpt dataset collection create-file <id> ./doc.pdf`<br/>`fastgpt dataset train wait <id>` | 知识库 CRUD、文件/文本/链接导入、分块索引、训练监控、标签与同义词管理 |
+| **系统配置**   | `fastgpt config list`<br/>`fastgpt commands --compact --format json`                                                                       | 查看客户端本地配置，或以精简格式探测可编程命令元数据                  |
 
 ---
 
 ## 自动化与脚本规范建议
 
-- **机器与 Agent 调用**：附加 `--format json` 参数，命令将输出确定性的结构化 JSON 信封，日志严格走 `stderr`，确保 `stdout` 纯净便于管道解析。
-- **高危操作保护**：删除操作（如 `dataset delete`）支持 `--dry-run` 预览；在非交互式脚本或 CI 中执行破坏性操作必须显式附加 `--yes` 确认。
+- **机器与 Agent 调用**：附加 `--format json` 参数输出结构化 JSON 信封（日志走 `stderr`，保证 `stdout` 纯净）。
+- **省 Token 与管道取值**：用 `--compact` 发现命令、用 `--command "<cmd>"` 按需查单条参数；用 `--fields _id,name` 裁剪列表字段，用 `--pick data.datasetId --raw` 直接提取单值供脚本串联。
+- **高危操作保护**：写/删操作支持 `--dry-run` 预览校验；在非交互脚本中执行破坏性操作必须显式附加 `--yes` 确认。

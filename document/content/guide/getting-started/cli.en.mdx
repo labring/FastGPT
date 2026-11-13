@@ -21,13 +21,13 @@ If you are using an AI coding assistant (such as **Codex** or **Claude Code**), 
 </Alert>
 
 ```text
-Please help me install and configure the FastGPT CLI. First, fetch and follow the official Skill guide at https://doc.fastgpt.io/skill.md to complete CLI installation, guide me through login, run doctor diagnostics, and output the available CLI capabilities.
+Please help me install and configure the FastGPT CLI. First, fetch and follow the official Skill guide at https://doc.fastgpt.io/cli/skills/fastgpt-cli-setup/SKILL.md to complete CLI installation, guide me through login, run doctor diagnostics, and output the available CLI capabilities.
 ```
 
 > You can also download the official Skill directly to your local skills directory:
 >
 > ```bash
-> curl -fsSL https://doc.fastgpt.io/skill.md -o skill.md
+> mkdir -p ~/.agents/skills/fastgpt-cli-setup && curl -fsSL https://doc.fastgpt.io/cli/skills/fastgpt-cli-setup/SKILL.md -o ~/.agents/skills/fastgpt-cli-setup/SKILL.md
 > ```
 
 ---
@@ -57,11 +57,11 @@ Run the login command:
 fastgpt login
 # For self-hosted instances: fastgpt login --base-url https://your-domain.com/api
 
-# Option B: API Key login (Recommended for CI / container / script environments)
-fastgpt login --api-key <FASTGPT_API_KEY>
+# Option B: API Key login via stdin (Recommended for CI / container / Agent environments)
+printf '%s' "$FASTGPT_API_KEY" | fastgpt login --api-key-stdin
 
 # Option C: Username and password via stdin
-echo "<PASSWORD>" | fastgpt login --username <USERNAME> --password-stdin
+printf '%s' "$FASTGPT_PASSWORD" | fastgpt login --username <USERNAME> --password-stdin
 ```
 
 Check your active identity and team workspace anytime:
@@ -87,16 +87,17 @@ fastgpt doctor
 
 FastGPT CLI is organized around Domain-Driven Design (DDD) with clean, intuitive command namespaces:
 
-| Category               | Example Commands                                                                                                                      | Description                                                                 |
-| :--------------------- | :------------------------------------------------------------------------------------------------------------------------------------ | :-------------------------------------------------------------------------- |
-| **Auth & Team**        | `fastgpt whoami`<br/>`fastgpt auth switch-team --team-id <id>`                                                                        | View user identity and team spaces, or switch active teams                  |
-| **Dataset Recall**     | `fastgpt dataset list`<br/>`fastgpt dataset search <id> "query"`                                                                      | Search dataset lists with pagination, or test hybrid recall chunks          |
-| **Dataset Management** | `fastgpt dataset create --name "Docs"`<br/>`fastgpt dataset update <id> --parent-id null`<br/>`fastgpt dataset delete <id> --dry-run` | Full dataset lifecycle CRUD with root folder moves and `--dry-run` previews |
-| **Configuration**      | `fastgpt config list`<br/>`fastgpt commands --format json`                                                                            | Inspect local config, or discover all machine-readable command schemas      |
+| Category               | Example Commands                                                                                                                         | Description                                                                      |
+| :--------------------- | :--------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------- |
+| **Auth & Team**        | `fastgpt whoami`<br/>`fastgpt auth switch-team --team-id <id>`                                                                           | View user identity and team spaces, or switch active teams                       |
+| **Dataset Recall**     | `fastgpt dataset list`<br/>`fastgpt dataset search <id> "query"`                                                                         | Search dataset lists with pagination, or test hybrid recall chunks               |
+| **Dataset Management** | `fastgpt dataset create --name "Docs"`<br/>`fastgpt dataset collection create-file <id> ./doc.pdf`<br/>`fastgpt dataset train wait <id>` | Dataset CRUD, collection imports/uploads, chunks, training wait, tags & synonyms |
+| **Configuration**      | `fastgpt config list`<br/>`fastgpt commands --compact --format json`                                                                     | Inspect local config, or discover compact machine-readable command schemas       |
 
 ---
 
 ## Scripting & Automation Best Practices
 
-- **Agent & Automation Pipelines**: Pass `--format json` to get clean, structured JSON envelopes. Logs route to `stderr`, keeping `stdout` completely pure for UNIX piping.
-- **Destructive Operation Safety**: Deletions support `--dry-run` previews; non-interactive scripts and CI pipelines mandate `--yes` for destructive execution.
+- **Agent & Automation Pipelines**: Pass `--format json` to get structured JSON envelopes (logs route to `stderr`, keeping `stdout` clean).
+- **Low-Token Discovery & Chaining**: Use `commands --compact` and `--command "<cmd>"` to discover schemas on demand; pass `--fields _id,name` to trim list payloads, or `--pick data.datasetId --raw` to extract scalar IDs directly into shell variables.
+- **Destructive Operation Safety**: Write/delete actions support `--dry-run` validation previews; non-interactive scripts and CI pipelines mandate `--yes` for destructive execution.

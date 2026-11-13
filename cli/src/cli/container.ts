@@ -19,13 +19,27 @@ import {
   createServerConnectivityCheck
 } from '../domain/doctor/checks/doctor-check';
 import { createDoctorService, type DoctorService } from '../domain/doctor/doctor-service';
+import {
+  createDatasetCollectionService,
+  type DatasetCollectionService
+} from '../domain/dataset/collection-service';
+import { createDatasetDataService, type DatasetDataService } from '../domain/dataset/data-service';
 import { createDatasetService, type DatasetService } from '../domain/dataset/dataset-service';
+import {
+  createDatasetTagSynonymService,
+  type DatasetTagSynonymService
+} from '../domain/dataset/tag-synonym-service';
+import {
+  createDatasetTrainingService,
+  type DatasetTrainingService
+} from '../domain/dataset/training-service';
 import { createProfileService, type ProfileService } from '../domain/profile/profile-service';
 import {
   createFileConfigRepository,
   resolveConfigDir,
   type ConfigRepository
 } from '../infra/config/config-repository';
+import { createNodeFileIoAdapter, type FileIoAdapter } from '../infra/fs/file-io';
 import { createFastGptHttpClient } from '../infra/http/fastgpt-http-client';
 import { createDefaultSecretStore, type SecretStore } from '../infra/secrets/secret-store';
 import { createTempFileCaptchaPreviewer } from '../infra/ui/captcha-preview';
@@ -55,11 +69,18 @@ export type CliContainer = {
   readonly configRepo: ConfigRepository;
   readonly secretStore: SecretStore;
   readonly prompter: Prompter;
+  readonly fileIo: FileIoAdapter;
+  readonly readStdin: () => Promise<string>;
+  readonly fetchFn: CliFetchFn;
   readonly createHttpClient: HttpClientFactory;
   readonly authService: AuthService;
   readonly profileService: ProfileService;
   readonly doctorService: DoctorService;
   readonly datasetService: DatasetService;
+  readonly datasetCollectionService: DatasetCollectionService;
+  readonly datasetDataService: DatasetDataService;
+  readonly datasetTrainingService: DatasetTrainingService;
+  readonly datasetTagSynonymService: DatasetTagSynonymService;
   readonly stdout: (value: string) => void;
   readonly stderr: (value: string) => void;
 };
@@ -153,18 +174,31 @@ export function createCliContainer(deps: CliRuntimeDeps): CliContainer {
     probeHandlers
   });
 
+  const fileIo = createNodeFileIoAdapter({ cwd: deps.cwd });
+
   const datasetService = createDatasetService();
+  const datasetCollectionService = createDatasetCollectionService();
+  const datasetDataService = createDatasetDataService();
+  const datasetTrainingService = createDatasetTrainingService();
+  const datasetTagSynonymService = createDatasetTagSynonymService();
 
   return {
     env: deps.env,
     configRepo,
     secretStore,
     prompter,
+    fileIo,
+    readStdin: deps.readStdin,
+    fetchFn: deps.fetchFn,
     createHttpClient,
     authService,
     profileService,
     doctorService,
     datasetService,
+    datasetCollectionService,
+    datasetDataService,
+    datasetTrainingService,
+    datasetTagSynonymService,
     stdout: deps.stdout,
     stderr: deps.stderr
   };

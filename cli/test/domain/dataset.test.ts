@@ -292,4 +292,84 @@ describe('DatasetService (cli/src/domain/dataset/dataset-service.ts)', () => {
       })
     ).rejects.toThrow();
   });
+
+  it('supports exportAll, sync, paths, permission, batchMove, batchDelete, and collection-level permissions', async () => {
+    const validId = '68ad85a7463006c963799a05';
+    const validId2 = '68ad85a7463006c963799a06';
+    const client: FastGptHttpClient = {
+      baseUrl: 'https://cloud.fastgpt.cn/api',
+      request: vi.fn(async ({ path, body }): Promise<any> => {
+        if (path === '/core/dataset/listV2') {
+          return {
+            total: 2,
+            list: [
+              { _id: validId, name: 'A' },
+              { _id: validId2, name: 'B' }
+            ]
+          };
+        }
+        if (path === '/core/dataset/paths') {
+          return [{ parentId: null, parentName: 'Root' }];
+        }
+        if (path === '/core/dataset/getPermission') {
+          return { datasetName: 'A', permission: { hasWritePer: true, hasReadPer: true } };
+        }
+        if (path === '/core/dataset/batch/move' || path === '/core/dataset/batch/delete') {
+          return { successIds: body.ids, failedIds: [], affectedIds: body.ids };
+        }
+        if (
+          path === '/core/dataset/enableCollectionPermission' ||
+          path === '/core/dataset/disableCollectionPermission'
+        ) {
+          return { collectionCount: 3 };
+        }
+        return {};
+      }),
+      requestRaw: vi.fn(async () => ({
+        status: 200,
+        headers: new Headers(),
+        text: async () => '',
+        arrayBuffer: async () => new TextEncoder().encode('q,a\nhi,there').buffer
+      })),
+      uploadMultipart: vi.fn(),
+      streamSse: vi.fn()
+    };
+
+    // datasetIds exact filter & offset pagination
+    const idsRes = await service.list({ client, input: { datasetIds: [validId, validId2] } });
+    expect(idsRes.data?.list).toHaveLength(2);
+    expect(idsRes.meta).toEqual({ total: 2, count: 2, hasMore: false });
+    const offsetRes = await service.list({ client, input: { offset: 1, pageSize: 1 } });
+    expect(offsetRes.meta).toMatchObject({ offset: 1, pageSize: 1, total: 2, hasMore: false });
+
+    const expRes = await service.exportAll({ client, datasetId: validId });
+    expect((expRes.data as any).csv).toContain('hi,there');
+
+    const syncDry = await service.sync({ client, datasetId: validId, dryRun: true });
+    expect(syncDry.data).toMatchObject({ dryRun: true, risk: 'write' });
+    const syncRes = await service.sync({ client, datasetId: validId });
+    expect(syncRes.changed).toBe(true);
+
+    const pathsRes = await service.paths({ client, sourceId: validId });
+    expect(pathsRes.data).toHaveLength(1);
+
+    const permRes = await service.getPermission({ client, datasetId: validId });
+    expect(permRes.data?.permission.hasWritePer).toBe(true);
+
+    const batchMoveRes = await service.batchMove({ client, ids: [validId], parentId: null });
+    expect(batchMoveRes.changed).toBe(true);
+
+    const batchDelDry = await service.batchDelete({ client, ids: [validId], dryRun: true });
+    expect(batchDelDry.data).toMatchObject({ dryRun: true, risk: 'destructive' });
+
+    const enablePermRes = await service.setCollectionPermission({
+      client,
+      datasetId: validId,
+      enabled: true
+    });
+    expect((enablePermRes.data as any).collectionCount).toBe(3);
+
+    const resumeRes = await service.resumeInheritPermission({ client, datasetId: validId });
+    expect(resumeRes.changed).toBe(true);
+  });
 });

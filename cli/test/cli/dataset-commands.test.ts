@@ -124,7 +124,7 @@ describe('Dataset CLI Commands integration (cli/src/cli/commands/dataset.ts)', (
         return jsonResp(OBJECT_ID_DATASET);
       }
 
-      if (url.includes('/core/dataset/update') && method === 'POST') {
+      if (url.includes('/core/dataset/update') && method === 'PUT') {
         return jsonResp({});
       }
 
@@ -469,5 +469,359 @@ describe('Dataset CLI Commands integration (cli/src/cli/commands/dataset.ts)', (
     expect(modeTypoRes.exitCode).toBe(2);
     expect(httpCalled).toBe(false);
     expect(JSON.parse(modeTypoRes.stderr).error.code).toBe('CLI_ARGUMENT_INVALID');
+  });
+
+  it('executes collection, data, train, synonym, and batch commands end-to-end and enforces token-only guards', async () => {
+    const configDir = await makeConfigDir();
+    const OBJECT_ID_COL = '68ad85a7463006c963799a11';
+    const OBJECT_ID_DATA = '68ad85a7463006c963799a12';
+    const OBJECT_ID_SYN = '68ad85a7463006c963799a13';
+
+    await writeFile(
+      join(configDir, 'config.json'),
+      JSON.stringify({
+        schemaVersion: 1,
+        currentProfile: 'default',
+        profiles: {
+          default: {
+            baseUrl: 'https://cloud.fastgpt.cn/api',
+            authType: 'token',
+            updatedAt: Date.now()
+          },
+          personal: {
+            baseUrl: 'https://cloud.fastgpt.cn/api',
+            authType: 'apikey',
+            apiKeyType: 'personal',
+            updatedAt: Date.now()
+          }
+        }
+      })
+    );
+    await writeFile(
+      join(configDir, 'credentials.json'),
+      JSON.stringify({ default: 'u1:session-secret-token-123456', personal: RAW_KEY }),
+      { mode: 0o600 }
+    );
+    if (process.platform !== 'win32') {
+      await chmod(join(configDir, 'credentials.json'), 0o600).catch(() => {});
+    }
+
+    const sampleFile = join(configDir, 'notes.md');
+    await writeFile(sampleFile, '# FastGPT CLI Guide\nHello world');
+    const chunksJson = join(configDir, 'chunks.json');
+    await writeFile(chunksJson, JSON.stringify([{ q: 'Chunk 1', a: 'Answer 1' }]));
+    const exportCsv = join(configDir, 'exported.csv');
+
+    const mockFetch: CliFetchFn = async (input) => {
+      const url = input instanceof Request ? input.url : String(input);
+      if (url.includes('/core/dataset/collection/listV2')) {
+        return jsonResp({ total: 1, list: [{ _id: OBJECT_ID_COL, name: 'notes.md' }] });
+      }
+      if (url.includes('/core/dataset/collection/create/localFile')) {
+        return jsonResp({ collectionId: OBJECT_ID_COL, results: { insertLen: 1 } });
+      }
+      if (url.includes('/core/dataset/collection/create/text')) {
+        return jsonResp({ collectionId: OBJECT_ID_COL, results: { insertLen: 1 } });
+      }
+      if (url.includes('/core/dataset/collection/delete')) {
+        return jsonResp({});
+      }
+      if (url.includes('/core/dataset/data/v2/list')) {
+        return jsonResp({ total: 1, list: [{ _id: OBJECT_ID_DATA, q: 'Q', a: 'A' }] });
+      }
+      if (url.includes('/core/dataset/data/pushData')) {
+        return jsonResp({ insertLen: 1, dataIds: [OBJECT_ID_DATA] });
+      }
+      if (url.includes('/core/dataset/data/delete')) {
+        return jsonResp({});
+      }
+      if (url.includes('/core/dataset/training/getDatasetTrainingQueue')) {
+        return jsonResp({ hasTrainingTask: false });
+      }
+      if (url.includes('/core/dataset/training/hasDatasetTrainingError')) {
+        return jsonResp({ hasError: false });
+      }
+      if (url.includes('/core/dataset/exportAll')) {
+        return new Response('q,a\nfoo,bar', { status: 200 });
+      }
+      if (url.includes('/proApi/core/dataset/tag/getAllTags')) {
+        return jsonResp([{ _id: '68ad85a7463006c963799a14', tag: 'Docs' }]);
+      }
+      if (url.includes('/core/dataset/synonym/detail')) {
+        return jsonResp({ rebuilding: false });
+      }
+      if (url.includes('/core/dataset/synonym/download')) {
+        return new Response('standard,synonyms\nAI,人工智能', { status: 200 });
+      }
+      if (url.includes('/core/dataset/batch/delete')) {
+        return jsonResp({
+          successIds: [OBJECT_ID_DATASET],
+          failedIds: [],
+          affectedIds: [OBJECT_ID_DATASET]
+        });
+      }
+      throw new Error(`Unexpected URL: ${url}`);
+    };
+
+    // 1. collection create-file & list & delete guard
+    const uploadRes = await execCli({
+      argv: [
+        'dataset',
+        'collection',
+        'create-file',
+        OBJECT_ID_DATASET,
+        sampleFile,
+        '--format',
+        'json'
+      ],
+      configDir,
+      fetchFn: mockFetch
+    });
+    expect(uploadRes.exitCode).toBe(0);
+    expect(JSON.parse(uploadRes.stdout).data.collectionId).toBe(OBJECT_ID_COL);
+
+    const colDelGuard = await execCli({
+      argv: ['dataset', 'collection', 'delete', OBJECT_ID_COL, '--format', 'json'],
+      configDir,
+      fetchFn: mockFetch
+    });
+    expect(colDelGuard.exitCode).toBe(2);
+
+    const colDelOk = await execCli({
+      argv: ['dataset', 'collection', 'delete', OBJECT_ID_COL, '--yes', '--format', 'json'],
+      configDir,
+      fetchFn: mockFetch
+    });
+    expect(colDelOk.exitCode).toBe(0);
+
+    // 2. data push --file & list & delete guard
+    const pushRes = await execCli({
+      argv: ['dataset', 'data', 'push', OBJECT_ID_COL, '--file', chunksJson, '--format', 'json'],
+      configDir,
+      fetchFn: mockFetch
+    });
+    expect(pushRes.exitCode).toBe(0);
+    expect(JSON.parse(pushRes.stdout).data.insertLen).toBe(1);
+
+    const dataDelGuard = await execCli({
+      argv: ['dataset', 'data', 'delete', OBJECT_ID_DATA, '--format', 'json'],
+      configDir,
+      fetchFn: mockFetch
+    });
+    expect(dataDelGuard.exitCode).toBe(2);
+
+    // 3. train wait
+    const trainWaitRes = await execCli({
+      argv: ['dataset', 'train', 'wait', OBJECT_ID_DATASET, '--format', 'json'],
+      configDir,
+      fetchFn: mockFetch
+    });
+    expect(trainWaitRes.exitCode).toBe(0);
+    expect(JSON.parse(trainWaitRes.stdout).data.completed).toBe(true);
+
+    // 4. export --output
+    const exportRes = await execCli({
+      argv: ['dataset', 'export', OBJECT_ID_DATASET, '--output', exportCsv, '--format', 'json'],
+      configDir,
+      fetchFn: mockFetch
+    });
+    expect(exportRes.exitCode).toBe(0);
+    expect(JSON.parse(exportRes.stdout).data.outputPath).toBe(exportCsv);
+
+    // 5. token-only enforcement on personalKey for dataset tag list & dataset export
+    const tagWithPersonalKey = await execCli({
+      argv: [
+        'dataset',
+        'tag',
+        'list',
+        OBJECT_ID_DATASET,
+        '--profile',
+        'personal',
+        '--format',
+        'json'
+      ],
+      configDir,
+      fetchFn: mockFetch
+    });
+    expect(tagWithPersonalKey.exitCode).toBe(3);
+    expect(JSON.parse(tagWithPersonalKey.stderr).error.code).toBe('AUTH_MODE_UNSUPPORTED');
+
+    const tagWithToken = await execCli({
+      argv: ['dataset', 'tag', 'list', OBJECT_ID_DATASET, '--format', 'json'],
+      configDir,
+      fetchFn: mockFetch
+    });
+    expect(tagWithToken.exitCode).toBe(0);
+
+    // 6. synonym detail & download
+    const synDetail = await execCli({
+      argv: ['dataset', 'synonym', 'detail', OBJECT_ID_DATASET, '--format', 'json'],
+      configDir,
+      fetchFn: mockFetch
+    });
+    expect(synDetail.exitCode).toBe(0);
+
+    const synDl = await execCli({
+      argv: ['dataset', 'synonym', 'download', OBJECT_ID_SYN, '--format', 'json'],
+      configDir,
+      fetchFn: mockFetch
+    });
+    expect(synDl.exitCode).toBe(0);
+    expect(JSON.parse(synDl.stdout).data.csv).toContain('standard,synonyms');
+
+    // 7. batch-delete non-TTY guard & execution
+    const batchDelOk = await execCli({
+      argv: ['dataset', 'batch-delete', '--ids', OBJECT_ID_DATASET, '--yes', '--format', 'json'],
+      configDir,
+      fetchFn: mockFetch
+    });
+    expect(batchDelOk.exitCode).toBe(0);
+    expect(JSON.parse(batchDelOk.stdout).data.successIds).toEqual([OBJECT_ID_DATASET]);
+
+    // 8. agent output efficiency flags: --fields projection & --pick --raw extraction
+    const fieldsList = await execCli({
+      argv: [
+        'dataset',
+        'collection',
+        'list',
+        OBJECT_ID_DATASET,
+        '--fields',
+        '_id',
+        '--format',
+        'json'
+      ],
+      configDir,
+      fetchFn: mockFetch
+    });
+    expect(fieldsList.exitCode).toBe(0);
+    const fieldsJson = JSON.parse(fieldsList.stdout);
+    expect(fieldsJson.warnings).toBeUndefined();
+    expect(fieldsJson.data.list[0]).toEqual({ _id: OBJECT_ID_COL });
+
+    const pickRaw = await execCli({
+      argv: [
+        'dataset',
+        'collection',
+        'create-text',
+        OBJECT_ID_DATASET,
+        '--name',
+        'Quick',
+        '--text',
+        'Body',
+        '--pick',
+        'data.collectionId',
+        '--raw'
+      ],
+      configDir,
+      fetchFn: mockFetch
+    });
+    expect(pickRaw.exitCode).toBe(0);
+    expect(pickRaw.stdout).toBe(OBJECT_ID_COL);
+
+    // 9. OCR regression guards:
+    // - train wait --no-fail-on-error exits 0 even when hasError is true
+    const waitNoFail = await execCli({
+      argv: [
+        'dataset',
+        'train',
+        'wait',
+        OBJECT_ID_DATASET,
+        '--no-fail-on-error',
+        '--format',
+        'json'
+      ],
+      configDir,
+      fetchFn: async (input) => {
+        const url = input instanceof Request ? input.url : String(input);
+        if (url.includes('getDatasetTrainingQueue')) {
+          return jsonResp({ hasTrainingTask: false });
+        }
+        if (url.includes('hasDatasetTrainingError')) {
+          return jsonResp({ hasError: true });
+        }
+        return jsonResp({});
+      }
+    });
+    expect(waitNoFail.exitCode).toBe(0);
+    expect(JSON.parse(waitNoFail.stdout).data.hasError).toBe(true);
+
+    // - train wait --interval abc rejects NaN with exit code 2 (no infinite loop)
+    const waitBadInterval = await execCli({
+      argv: [
+        'dataset',
+        'train',
+        'wait',
+        OBJECT_ID_DATASET,
+        '--interval',
+        'abc',
+        '--format',
+        'json'
+      ],
+      configDir,
+      fetchFn: mockFetch
+    });
+    expect(waitBadInterval.exitCode).toBe(2);
+
+    // - batch-move missing --parent-id fails with exit code 2 instead of moving to root
+    const batchMoveMissingParent = await execCli({
+      argv: ['dataset', 'batch-move', '--ids', OBJECT_ID_DATASET, '--format', 'json'],
+      configDir,
+      fetchFn: mockFetch
+    });
+    expect(batchMoveMissingParent.exitCode).toBe(2);
+
+    // - tag bind --mode rm fails strictly with exit code 2
+    const tagsJsonPath = join(configDir, 'tags.json');
+    await writeFile(
+      tagsJsonPath,
+      JSON.stringify([{ tagId: '68ad85a7463006c963799a14', value: 'v' }])
+    );
+    const badTagMode = await execCli({
+      argv: [
+        'dataset',
+        'tag',
+        'bind',
+        '--dataset-id',
+        OBJECT_ID_DATASET,
+        '--collection-ids',
+        OBJECT_ID_COL,
+        '--mode',
+        'rm',
+        '--file',
+        tagsJsonPath,
+        '--format',
+        'json'
+      ],
+      configDir,
+      fetchFn: mockFetch
+    });
+    expect(badTagMode.exitCode).toBe(2);
+
+    // - dataset data update without --q fails cleanly with exit code 2
+    const dataUpdateNoQ = await execCli({
+      argv: ['dataset', 'data', 'update', OBJECT_ID_DATA, '--a', 'Only answer', '--format', 'json'],
+      configDir,
+      fetchFn: mockFetch
+    });
+    expect(dataUpdateNoQ.exitCode).toBe(2);
+
+    // - dataset export to unwritable path returns exit code 2 (CliArgumentError)
+    const badExportDir = join(configDir, 'not-a-dir');
+    await writeFile(badExportDir, 'file-blocking-dir');
+    const exportFail = await execCli({
+      argv: [
+        'dataset',
+        'export',
+        OBJECT_ID_DATASET,
+        '--output',
+        join(badExportDir, 'out.csv'),
+        '--format',
+        'json'
+      ],
+      configDir,
+      fetchFn: mockFetch
+    });
+    expect(exportFail.exitCode).toBe(2);
+    expect(JSON.parse(exportFail.stderr).error.code).toBe('CLI_ARGUMENT_INVALID');
   });
 });

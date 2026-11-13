@@ -6,6 +6,7 @@ import type { CliFetchFn } from '../../shared/types';
 import { createNodeTlsFetch } from './tls-fetch';
 
 export const DEFAULT_TIMEOUT_MS = 15_000;
+export const LONG_OPERATION_TIMEOUT_MS = 120_000;
 
 export type HttpRequestAuth = {
   authType: 'token' | 'apikey';
@@ -21,6 +22,7 @@ export type SseEvent = {
 export type RawHttpResponse = {
   status: number;
   headers: Headers;
+  body?: ReadableStream<Uint8Array> | null;
   text: () => Promise<string>;
   arrayBuffer: () => Promise<ArrayBuffer>;
 };
@@ -45,6 +47,16 @@ export type FastGptHttpClient = {
     headers?: Record<string, string>;
     timeoutMs?: number;
   }) => Promise<RawHttpResponse>;
+  /**
+   * 复用 CLI 配置的 TLS 传输层（支持 --insecure / --ca-cert）直传外部预签名 URL，
+   * 严格不附带任何 FastGPT token / Authorization 凭据头。
+   */
+  putExternal?: (params: {
+    url: string;
+    headers?: Record<string, string>;
+    body: BodyInit;
+    timeoutMs?: number;
+  }) => Promise<Response>;
   uploadMultipart: <T = unknown>(params: {
     path: string;
     formData: FormData;
@@ -584,9 +596,40 @@ export function createFastGptHttpClient({
       return {
         status: response.status,
         headers: response.headers,
+        body: response.body,
         text: () => response.text(),
         arrayBuffer: () => response.arrayBuffer()
       };
+    },
+
+    putExternal: async ({
+      url,
+      headers = {},
+      body,
+      timeoutMs: reqTimeout = LONG_OPERATION_TIMEOUT_MS
+    }) => {
+      const activeFetch = await resolveTransportFetch();
+      const sanitizedHeaders = Object.fromEntries(
+        Object.entries(headers).filter(([k]) => {
+          const lower = k.toLowerCase();
+          return lower !== 'token' && lower !== 'authorization' && lower !== 'cookie';
+        })
+      );
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), reqTimeout);
+      try {
+        return await activeFetch(url, {
+          method: 'PUT',
+          headers: sanitizedHeaders,
+          body,
+          signal: controller.signal
+        });
+      } catch (error) {
+        const msg = redactText(error instanceof Error ? error.message : String(error));
+        throw new CliNetworkError(`Direct external PUT failed for ${redactText(url)}: ${msg}`);
+      } finally {
+        clearTimeout(timer);
+      }
     },
 
     uploadMultipart: async <T = unknown>({

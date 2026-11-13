@@ -26,15 +26,22 @@ function resolveSafeCommandName({
   specs: readonly CliCommandSpec[];
 }): string {
   const knownRoots = new Set(specs.map((s) => s.path[0]));
+  const maxDepth = specs.reduce((max, s) => Math.max(max, s.path.length), 1);
+  const commandDepths = Array.from(
+    { length: Math.max(0, maxDepth - 1) },
+    (_, idx) => maxDepth - idx
+  );
+
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
     if (knownRoots.has(arg)) {
-      const nextArg = argv[i + 1];
-      if (nextArg && !nextArg.startsWith('-')) {
-        const potentialSub = `${arg} ${nextArg}`;
-        const matched = specs.find((s) => s.path.join(' ') === potentialSub);
-        if (matched) {
-          return potentialSub;
+      for (const depth of commandDepths) {
+        const slice = argv.slice(i, i + depth);
+        if (slice.length === depth && slice.every((part) => !part.startsWith('-'))) {
+          const candidate = slice.join(' ');
+          if (specs.some((s) => s.path.join(' ') === candidate)) {
+            return candidate;
+          }
         }
       }
       return arg;
@@ -176,7 +183,11 @@ export async function runCli({
       }
 
       const cleanMessage = error.message.replace(/^error:\s*/i, '').trim();
-      const argError = new CliArgumentError(cleanMessage);
+      const hint =
+        safeCommandName !== 'fastgpt' && specs.some((s) => s.path.join(' ') === safeCommandName)
+          ? `Run "fastgpt commands --command \\"${safeCommandName}\\" --format json" to inspect valid parameters.`
+          : 'Run "fastgpt commands --compact --format json" to list all available commands.';
+      const argError = new CliArgumentError(cleanMessage, undefined, hint);
       stderr(renderer.renderError({ command: safeCommandName, error: argError }));
       return argError.exitCode;
     }

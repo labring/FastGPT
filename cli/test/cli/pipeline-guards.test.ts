@@ -36,11 +36,18 @@ function createMockContainer(isInteractive = false): CliContainer {
       deleteSecret: async () => {}
     },
     prompter: dummyPrompter,
+    fileIo: {} as any,
+    readStdin: async () => '',
+    fetchFn: globalThis.fetch,
     createHttpClient: () => ({}) as any,
     authService: {} as any,
     profileService: {} as any,
     doctorService: {} as any,
     datasetService: {} as any,
+    datasetCollectionService: {} as any,
+    datasetDataService: {} as any,
+    datasetTrainingService: {} as any,
+    datasetTagSynonymService: {} as any,
     stdout: () => {},
     stderr: () => {}
   };
