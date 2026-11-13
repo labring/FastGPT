@@ -4,6 +4,7 @@ import { PassThrough } from 'node:stream';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createApiEntry } from '@fastgpt/service/common/http/entry';
 import { resolveSystemInstanceConfig } from '@fastgpt/global/common/system/config/schema';
+import { apiI18n } from '@/service/middleware/i18n';
 
 vi.unmock('@fastgpt/service/common/http/entry');
 vi.unmock('@fastgpt/service/common/response');
@@ -63,7 +64,7 @@ describe('Marketplace response lifecycle', () => {
             new Response(body, { status, headers: { 'Content-Type': 'application/json' } })
           )
       );
-      const wrapped = createApiEntry({})(handler);
+      const wrapped = createApiEntry({ requestI18n: apiI18n })(handler);
       const server = createServer((req, res) => {
         const apiRes = Object.assign(res, {
           status: (value: number) => {
