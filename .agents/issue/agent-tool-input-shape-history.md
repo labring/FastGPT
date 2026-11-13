@@ -230,14 +230,14 @@ if (parsed.success) serializedTools.push(serializeAgentTool({ tool: parsed.data 
 
 #### PR #8346 后
 
-画布保存判断没有改变，变化发生在服务端迁移边界。`normalizeAgentToolInputs` 不再把已有 `inputs` 数组原样透传，而是逐项投影：
+画布保存先保留完整编辑态的原有序列化：带 `flowNodeType` 的工具继续走 `serializeAgentTool`，保留当前输入值优先级、空参 `config: {}` 和不可用工具恢复。缺少 `flowNodeType` 的混合形状再回退到 `normalizeAgentToolInputs`，逐项投影：
 
 - 完整 NodeIO 的 `selectedType` 转为 `mode`；
 - 手动 `value` 搬入 `config`；
 - `flowNodeType`、`renderTypeList`、`valueType`、`outputs` 等展示/定义字段从持久化工具中移除；
 - canonical `{ key, mode }` 记录保持幂等。
 
-因此 PR 后持久化对象仍不带 `flowNodeType`。再次读取详情时，`rewriteAppWorkflowToDetail` 根据工具 `id/version/source` 加载当前定义，重新生成完整 NodeIO，包括新的 `flowNodeType`。`flowNodeType` 是读取时补回的领域信息，不是持久化输入协议的一部分。
+服务端迁移边界也使用同一个 `normalizeAgentToolInputs`，因此绕过画布直接进入 publish/read 的历史快照仍会被归一。PR 后持久化对象不带 `flowNodeType`。再次读取详情时，`rewriteAppWorkflowToDetail` 根据工具 `id/version/source` 加载当前定义，重新生成完整 NodeIO，包括新的 `flowNodeType`。`flowNodeType` 是读取时补回的领域信息，不是持久化输入协议的一部分。
 
 ## 历史演变
 

@@ -20,7 +20,15 @@ const readRenderTypeList = (value: unknown): FlowNodeInputTypeEnum[] =>
   Array.isArray(value) ? value.filter(isFlowNodeInputType) : [];
 
 /** 写入自有属性；直接赋值会把 `__proto__` 写进原型链而不是 config 自身。 */
-const setOwnConfigValue = (target: Record<string, unknown>, key: string, value: unknown) => {
+const setOwnConfigValue = ({
+  target,
+  key,
+  value
+}: {
+  target: Record<string, unknown>;
+  key: string;
+  value: unknown;
+}) => {
   Object.defineProperty(target, key, {
     value,
     enumerable: true,
@@ -105,7 +113,7 @@ export const normalizeAgentToolInputs = ({
       rawInput.value !== undefined &&
       !hasOwnConfigValue
     ) {
-      setOwnConfigValue(config, key, rawInput.value);
+      setOwnConfigValue({ target: config, key, value: rawInput.value });
     }
 
     inputs.push({ key, mode });
