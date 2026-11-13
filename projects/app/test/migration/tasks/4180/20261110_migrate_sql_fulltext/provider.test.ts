@@ -7,11 +7,19 @@ import { MongoDatasetDataText } from '@fastgpt/service/core/dataset/data/dataTex
 import { migrateSqlFullTextMigration } from '@/migration/tasks/4180/20261110_migrate_sql_fulltext';
 import { getFullTextStore } from '@fastgpt/service/core/dataset/data/textStore';
 import { searchSqlFullText } from '@fastgpt/service/core/dataset/fullText/sql/store';
-import type { SystemMigrationContext } from '@/migration/registry';
+import { systemMigrations, type SystemMigrationContext } from '@/migration/registry';
+import { createSystemMigrationRunner } from '@/migration/runner';
+import { enqueueManualMigration, ensureMigrationStates } from '@/migration/entity';
+import { MongoSystemMigrationState } from '@/migration/mongoSchema';
 import type {
   SystemMigrationFailedRecord,
   SystemMigrationFailureInput
 } from '@fastgpt/global/migration/schema';
+
+vi.mock('@/migration/constants', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  systemMigrationBatchSize: 2
+}));
 
 // 仅隔离物理驱动；Mongo 权威引用、断点、查询归一化与旧表清理执行真实代码。
 const driver = vi.hoisted(() => ({
@@ -266,6 +274,185 @@ describe.each(['pg', 'oceanbase', 'seekdb', 'opengauss'] as const)(
       await expect(migrateSqlFullTextMigration(state.context)).rejects.toThrow(
         'another SQL target or analyzer version'
       );
+    });
+
+    it('stays waiting on Mongo fallback until manually enqueued after legacy writers drain', async () => {
+      const teamId = new Types.ObjectId().toString();
+      const datasetId = new Types.ObjectId().toString();
+      const collectionId = new Types.ObjectId().toString();
+      const doc = await MongoDatasetData.create({
+        teamId,
+        datasetId,
+        collectionId,
+        tmbId: new Types.ObjectId(),
+        synonymVersion: 0,
+        indexes: [{ dataId: '1', text: '滚动升级期间写入', type: 'custom' }]
+      });
+      await MongoDatasetDataText.create({
+        teamId,
+        datasetId,
+        collectionId,
+        dataId: doc._id,
+        fullTextToken: '滚动 升级 期间 写入'
+      });
+
+      const migrations = systemMigrations.filter(
+        (item) => item.id === '20261110_migrate_sql_fulltext'
+      );
+      const runner = createSystemMigrationRunner({ migrations });
+      try {
+        await ensureMigrationStates(migrations);
+        await runner.tick();
+        expect(
+          await MongoSystemMigrationState.findById('20261110_migrate_sql_fulltext').lean()
+        ).toMatchObject({ status: 'waiting' });
+        expect(driver.prepare).not.toHaveBeenCalled();
+        expect(
+          await getFullTextStore().search({
+            teamId,
+            datasetIds: [datasetId],
+            query: '升级',
+            limit: 10,
+            forbidCollectionIdList: []
+          })
+        ).toEqual([{ dataId: String(doc._id), collectionId, score: expect.any(Number) }]);
+        expect(driver.search).not.toHaveBeenCalled();
+
+        expect(await enqueueManualMigration('20261110_migrate_sql_fulltext')).toBe(true);
+        await runner.tick();
+        expect(
+          await MongoSystemMigrationState.findById('20261110_migrate_sql_fulltext').lean()
+        ).toMatchObject({ status: 'succeeded' });
+        driver.search.mockResolvedValue([{ vectorId: '1', collectionId, score: 3.1 }]);
+        expect(
+          await getFullTextStore().search({
+            teamId,
+            datasetIds: [datasetId],
+            query: '升级',
+            limit: 10,
+            forbidCollectionIdList: []
+          })
+        ).toEqual([{ dataId: String(doc._id), collectionId, score: 3.1 }]);
+      } finally {
+        runner.stop();
+      }
+    });
+
+    it('re-validates behind a resumed validation cursor and refills rows reset to NULL before cutover', async () => {
+      const teamId = new Types.ObjectId().toString();
+      const datasetId = new Types.ObjectId().toString();
+      const collectionId = new Types.ObjectId().toString();
+      const docs = [];
+      for (let i = 1; i <= 3; i++) {
+        docs.push(
+          await MongoDatasetData.create({
+            teamId,
+            datasetId,
+            collectionId,
+            tmbId: new Types.ObjectId(),
+            synonymVersion: 0,
+            indexes: [{ dataId: String(i), text: `验收断点记录 ${i}`, type: 'custom' }]
+          })
+        );
+      }
+
+      const nullVectorIds = new Set<string>(['1', '2', '3']);
+      driver.fill.mockImplementation(
+        async (rows: { vectorId: string }[], validateOnly?: boolean) => {
+          if (!validateOnly) {
+            for (const row of rows) {
+              nullVectorIds.delete(row.vectorId);
+            }
+          }
+          return rows.filter((row) => nullVectorIds.has(row.vectorId)).map((row) => row.vectorId);
+        }
+      );
+
+      const state = createContext();
+      const abortFirstValidation = new AbortController();
+      state.context.signal = abortFirstValidation.signal;
+      const baseSave = state.context.saveCheckpoint.getMockImplementation()!;
+      state.context.saveCheckpoint.mockImplementation(async (value) => {
+        await baseSave(value);
+        if (value.stage === 'validation' && value.validated === 2) {
+          abortFirstValidation.abort();
+        }
+      });
+
+      await expect(migrateSqlFullTextMigration(state.context)).rejects.toThrow();
+      expect(state.checkpoint()).toMatchObject({
+        stage: 'validation',
+        validationLastId: String(docs[1]._id),
+        validated: 2
+      });
+
+      // 模拟首批已验收记录在中断恢复前被置回 NULL。
+      nullVectorIds.add('1');
+      state.context.signal = new AbortController().signal;
+      state.context.saveCheckpoint.mockImplementation(baseSave);
+
+      const resumedResult = await migrateSqlFullTextMigration(state.context);
+      expect(resumedResult).toMatchObject({
+        prechecked: 3,
+        scanned: 3,
+        validated: 3
+      });
+      expect(nullVectorIds.size).toBe(0);
+    });
+
+    it('records invalid historical vector IDs and illegal text inputs in failedRecords without halting batch scan', async () => {
+      const teamId = new Types.ObjectId();
+      const datasetId = new Types.ObjectId();
+      const collectionId = new Types.ObjectId();
+      const badVectorDoc = await MongoDatasetData.create({
+        teamId,
+        datasetId,
+        collectionId,
+        tmbId: new Types.ObjectId(),
+        synonymVersion: 0,
+        indexes: [{ dataId: 'invalid-vector-id', text: '正常文本', type: 'custom' }]
+      });
+      const badTextDoc = await MongoDatasetData.create({
+        teamId,
+        datasetId,
+        collectionId,
+        tmbId: new Types.ObjectId(),
+        synonymVersion: 0,
+        indexes: [{ dataId: '2', text: '包含空字符\0的脏数据', type: 'custom' }]
+      });
+      const healthyDoc = await MongoDatasetData.create({
+        teamId,
+        datasetId,
+        collectionId,
+        tmbId: new Types.ObjectId(),
+        synonymVersion: 0,
+        indexes: [{ dataId: '3', text: '健康可迁移数据', type: 'custom' }]
+      });
+
+      const state = createContext();
+      await expect(migrateSqlFullTextMigration(state.context)).rejects.toThrow('unresolved');
+      expect(driver.preflight).toHaveBeenCalledWith([
+        {
+          vectorId: '3',
+          teamId: String(teamId),
+          datasetId: String(datasetId),
+          collectionId: String(collectionId),
+          text: '健康可迁移数据'
+        }
+      ]);
+      expect(await state.context.getFailedRecords()).toEqual([
+        {
+          stageKey: 'preflight',
+          data: { id: String(badVectorDoc._id) },
+          reason: { message: 'Full-text vector ID must be a positive signed bigint' }
+        },
+        {
+          stageKey: 'preflight',
+          data: { id: String(badTextDoc._id) },
+          reason: { message: 'Full-text input exceeds 1 MiB or contains a null character' }
+        }
+      ]);
+      expect(healthyDoc._id).toBeDefined();
     });
   }
 );

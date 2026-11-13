@@ -1,71 +1,9 @@
-import type { z } from 'zod';
-import {
-  SqlFullTextMetadataSchema,
-  SqlFullTextProviderSchema,
-  type SqlFullTextMetadata,
-  type SqlFullTextProvider
-} from '@fastgpt/global/core/dataset/fullText/schema';
-import { connectionMongo, getMongoModel } from '../../../../common/mongo';
 import { getVectorType } from '../../../../common/vectorDB/constants';
 import type { FullTextSearchProps, FullTextSearchItem } from '../../../../common/vectorDB/type';
 import { getSqlFullTextAdapter } from '../../../../common/vectorDB/fullText/controller';
 import { MongoDatasetData } from '../../data/schema';
-
-const SqlFullTextTargetSchema = SqlFullTextMetadataSchema.extend({
-  _id: SqlFullTextProviderSchema
-});
-export type SqlFullTextTarget = z.infer<typeof SqlFullTextTargetSchema>;
-
-/**
- * 记录已完成全量回填与一致性验收的 SQL 物理全文目标。
- * 以 provider 作为 _id 主键精确定位，不额外声明二级索引。
- */
-const SqlFullTextTargetMongoSchema = new connectionMongo.Schema<SqlFullTextTarget>({
-  _id: {
-    type: String,
-    required: true,
-    enum: ['pg', 'oceanbase', 'seekdb', 'opengauss']
-  },
-  targetId: { type: String, required: true },
-  schemaVersion: { type: Number, required: true },
-  analyzerVersion: { type: String, required: true }
-});
-
-export const MongoSqlFullTextTarget = getMongoModel<SqlFullTextTarget>(
-  'dataset_sql_fulltext_targets',
-  SqlFullTextTargetMongoSchema
-);
-
-/**
- * 标记当前 provider 对应的物理 SQL 目标已完成历史回填和全量验收，允许切换原生全文读取。
- */
-export const activateSqlFullTextTarget = async ({
-  provider,
-  targetId,
-  schemaVersion,
-  analyzerVersion
-}: {
-  provider: SqlFullTextProvider;
-} & SqlFullTextMetadata) => {
-  await MongoSqlFullTextTarget.updateOne(
-    { _id: provider },
-    {
-      $set: {
-        targetId,
-        schemaVersion,
-        analyzerVersion
-      }
-    },
-    { upsert: true }
-  );
-};
-
-/**
- * 清理指定 provider 的全文切读就绪标记；重跑预检/回填期间回退至兼容读取。
- */
-export const clearSqlFullTextTargetReady = async (provider: SqlFullTextProvider) => {
-  await MongoSqlFullTextTarget.deleteOne({ _id: provider });
-};
+import { findSqlFullTextTargetById } from './entity';
+import { SqlFullTextTargetSchema } from './schema';
 
 /**
  * 核验当前 SQL 目标是否已通过回填与验收：既要求 Mongo 侧登记了该目标，
@@ -75,7 +13,7 @@ export const isSqlFullTextTargetReady = async (): Promise<boolean> => {
   const provider = getVectorType();
   if (provider === 'milvus') return false;
   try {
-    const record = await MongoSqlFullTextTarget.findById(provider).read('primary').lean();
+    const record = await findSqlFullTextTargetById(provider);
     if (!record) return false;
     const target = SqlFullTextTargetSchema.parse(record);
     const adapter = getSqlFullTextAdapter(provider);

@@ -55,7 +55,7 @@
   "migrations.20261104_backfill_openapi_key_type.keys": "密钥类型",
   "migrations.20261104_backfill_openapi_key_type.validation": "校验回填结果",
   "migrations.20261110_migrate_sql_fulltext.name": "迁移 SQL 向量库全文检索",
-  "migrations.20261110_migrate_sql_fulltext.description": "准备并校验当前 SQL 向量库全文索引，全量只读预检后按断点分批回填历史分词词串，验收通过后切换至 SQL 原生全文检索并保留旧 Mongo 全文兼容数据。",
+  "migrations.20261110_migrate_sql_fulltext.description": "请确认所有 App/Pro 节点已完成升级、旧训练任务已排空并已启用当前 SQL 向量库全文能力后再手动执行。全量只读预检后按断点分批回填历史分词词串，验收通过后切换至 SQL 原生全文检索并保留旧 Mongo 全文兼容数据。",
   "migrations.20261110_migrate_sql_fulltext.result": "已预检 {{prechecked}} 条，回填 {{scanned}} 条，校验 {{validated}} 条",
   "migrations.20261110_migrate_sql_fulltext.prepare": "准备全文结构与索引",
   "migrations.20261110_migrate_sql_fulltext.preflight": "全量只读预检",

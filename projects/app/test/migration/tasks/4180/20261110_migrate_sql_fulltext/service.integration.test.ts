@@ -49,6 +49,7 @@ import type { SystemMigrationContext } from '@/migration/registry';
 import { systemMigrations } from '@/migration/registry';
 import { createSystemMigrationRunner } from '@/migration/runner';
 import {
+  enqueueManualMigration,
   ensureMigrationStates,
   getMigrationFailedRecords,
   resetFailedMigration
@@ -221,6 +222,11 @@ describe.skipIf(!target)('PG full-text real migration', () => {
     try {
       await ensureMigrationStates(migrations);
       await runner.tick();
+      expect(
+        await MongoSystemMigrationState.findById('20261110_migrate_sql_fulltext').lean()
+      ).toMatchObject({ status: 'waiting' });
+      expect(await enqueueManualMigration('20261110_migrate_sql_fulltext')).toBe(true);
+      await runner.tick();
       const state = await MongoSystemMigrationState.findById(
         '20261110_migrate_sql_fulltext'
       ).lean();
@@ -255,6 +261,7 @@ describe.skipIf(!target)('PG full-text real migration', () => {
     const runner = createSystemMigrationRunner({ migrations });
     try {
       await ensureMigrationStates(migrations);
+      await enqueueManualMigration('20261110_migrate_sql_fulltext');
       await runner.tick();
       expect(
         await MongoSystemMigrationState.findById('20261110_migrate_sql_fulltext').lean()

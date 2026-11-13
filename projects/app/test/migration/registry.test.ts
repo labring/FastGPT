@@ -64,16 +64,17 @@ describe('validateSystemMigrationRegistry', () => {
     ]);
   });
 
-  it('appends SQL full-text migration as an automatic background task with smooth cutover', () => {
+  it('appends SQL full-text migration as a manual task gated on cluster upgrade completion', () => {
     const task = systemMigrations.at(-1);
     expect(task).toMatchObject({
       id: '20261110_migrate_sql_fulltext',
-      version: '4.18.0'
+      version: '4.18.0',
+      manual: true
     });
-    expect(task).not.toHaveProperty('manual');
     expect(task).not.toHaveProperty('dependsOn');
     expect(task).not.toHaveProperty('blockStartup');
     expect(task).not.toHaveProperty('independent');
+    expect(task).not.toHaveProperty('delay');
     expect(task?.progressSteps.map(({ key }) => key)).toEqual([
       'prepare',
       'preflight',

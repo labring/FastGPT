@@ -58,7 +58,7 @@ import { getFullTextStore } from '@fastgpt/service/core/dataset/data/textStore';
 import { getSqlFullTextAdapter } from '@fastgpt/service/common/vectorDB/fullText/controller';
 import { systemMigrations } from '@/migration/registry';
 import { createSystemMigrationRunner } from '@/migration/runner';
-import { ensureMigrationStates } from '@/migration/entity';
+import { enqueueManualMigration, ensureMigrationStates } from '@/migration/entity';
 import { MongoSystemMigrationState } from '@/migration/mongoSchema';
 
 describe.skipIf(!target)('selected SQL database real full-text migration', () => {
@@ -181,6 +181,7 @@ describe.skipIf(!target)('selected SQL database real full-text migration', () =>
     await ensureMigrationStates(
       systemMigrations.filter((m) => m.id === '20261110_migrate_sql_fulltext')
     );
+    await enqueueManualMigration('20261110_migrate_sql_fulltext');
     await runner.tick();
     expect(
       await MongoSystemMigrationState.findById('20261110_migrate_sql_fulltext').lean()

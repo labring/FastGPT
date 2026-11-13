@@ -1,6 +1,6 @@
 # PG、OceanBase、SeekDB、OpenGauss 原生全文检索适配与数据迁移方案
 
-> 状态：四种 SQL 检索库统一适配各自原生全文检索并接入平滑切读与兼容期双写保留；新装与升级由各向量控制器 `init()` 自动建齐基础表、`fulltext_tokens` 列和向量索引（全文索引/扩展创建置于非阻塞 `try / catch`，避免旧镜像缺扩展阻断启动），存量升级由单个自动后台任务 `20261110_migrate_sql_fulltext` 顺序完成结构核验、只读预检、分批回填与完整性校验，校验通过后写入 `dataset_sql_fulltext_targets` 标记并将 `SqlFullTextStore` 读取从旧 Mongo `$text` 平滑切换至 SQL 原生全文检索，兼容期内继续维护 `dataset_data_texts` 双写/双删及其索引。PG、SeekDB、OceanBase、openGauss 均已完成真实数据库集成验证，PG 还已完成 100 万条吞吐评测及中英日六组公开语料精度回归。更新日期：2026-11-12。
+> 状态：四种 SQL 检索库统一适配各自原生全文检索并接入平滑切读与兼容期双写保留；新装与升级由各向量控制器 `init()` 自动建齐基础表、`fulltext_tokens` 列和向量索引（全文索引/扩展创建置于非阻塞 `try / catch`，避免旧镜像缺扩展阻断启动），存量升级由手动确认触发的升级任务 `20261110_migrate_sql_fulltext`（`manual: true`）在集群旧节点全部升级排空后顺序完成结构核验、只读预检、分批回填与全量完整性校验，校验通过后写入 `dataset_sql_fulltext_targets` 标记并将 `SqlFullTextStore` 读取从旧 Mongo `$text` 平滑切换至 SQL 原生全文检索，兼容期内继续维护 `dataset_data_texts` 双写/双删及其索引。更新日期：2026-11-13。
 >
 > 源码基线：`upstream/main`；工作分支：`yyh/dataset-unified-search`。
 >
@@ -13,7 +13,7 @@
 确定采用以下路径：
 
 ```text
-开机 init() 建齐基础表与 fulltext_tokens 列（非阻塞尝试建全文索引） → 新写入同行写向量与词串并保持 Mongo 旧全文双写 → 自动升级任务 20261110_migrate_sql_fulltext（结构核验 → 全量只读预检 → 分批回填 → 完整性校验 → 激活目标就绪标记切读）
+开机 init() 建齐基础表与 fulltext_tokens 列（非阻塞尝试建全文索引） → 新写入同行写向量与词串并保持 Mongo 旧全文双写 → 管理员确认节点升级排空后手动执行 20261110_migrate_sql_fulltext（结构核验 → 全量只读预检 → 分批回填 → 全量完整性校验 → 激活目标就绪标记切读）
 ```
 
 核心约定：
@@ -183,11 +183,11 @@ SQL 原生召回流程：
 | `packages/service/common/vectorDB/oceanbase`、`seekdb` | OB/SeekDB 兼容的基础实现及真实差异分支 |
 | `packages/service/common/vectorDB/opengauss` | OpenGauss 文本同写、BM25 查询及版本/索引校验 |
 | `packages/service/core/dataset/data/textStore.ts` | 分离具体 Store 与阶段路由；保留 Milvus 原有分支 |
-| `packages/service/core/dataset/fullText` 下的路由子模块 | 新建 SQL 全文目标身份、阶段、验证记录及服务；不改既有 Milvus 迁移的执行语义 |
+| `packages/service/core/dataset/fullText/sql` | 拆分 `schema.ts`、`entity.ts`、`store.ts`，管理 SQL 全文就绪目标持久化与原生召回 |
 | `projects/app/src/service/core/dataset/data/data.ts`、`dataIndex.ts` | 写计划、兼容期旧全文维护、复用 ID 补齐、回滚补偿 |
 | `packages/service/core/dataset/search/defaultRecall` | SQL 原生命中映射、过滤、去重与正文组装；保持对外响应 |
 | dataset/collection 删除、App cron | 按阶段维护旧全文，原生全文随向量行清理 |
-| `projects/app/src/migration/registry.ts` 与 `tasks/<version>/...` | 注册自动升级任务 `20261110_migrate_sql_fulltext`，编排准备、预检、回填、验收与旧表清理 |
+| `projects/app/src/migration/registry.ts` 与 `tasks/<version>/...` | 注册手动触发升级任务 `20261110_migrate_sql_fulltext`（`manual: true`），编排准备、预检、回填、全量验收与切读激活 |
 | global 业务契约与多语言 i18n | SQL 全文 provider / 元数据契约与升级任务多语言文案 |
 
 新装与升级启动时各 SQL 向量控制器 `init()` 优先幂等补齐基础表、`fulltext_tokens` 列与向量索引，并在非阻塞 `try / catch` 中尝试创建全文扩展与全文索引，写入始终同行写向量与外置分词词串，同时在兼容期内继续维护 `dataset_data_texts` 双写/双删；只用于升级迁移的历史文本生成、扫描与恢复编排留在 App migration 目录。兼容期继续保留 `dataset_data_texts` 活动索引。
@@ -202,13 +202,13 @@ SQL 原生召回流程：
 
 ## 7. 系统迁移任务如何共用
 
-复用现有迁移框架，注册单个自动后台任务，目录使用 `tasks/4180/20261110_migrate_sql_fulltext/`：
+复用现有迁移框架，注册单个手动确认触发任务，目录使用 `tasks/4180/20261110_migrate_sql_fulltext/`：
 
 | 任务 ID | 模式 | 阶段 | 职责 |
 |---|---|---|---|
-| `20261110_migrate_sql_fulltext` | 普通自动后台任务 | `prepare → preflight → scan → validation` | 校验并准备目标 SQL 全文结构、全量只读预检、按游标幂等回填历史词串、全量校验通过后激活目标就绪标记平滑切读 |
+| `20261110_migrate_sql_fulltext` | 手动触发任务（`manual: true`） | `prepare → preflight → scan → validation` | 待旧写入方排空后校验并准备目标 SQL 全文结构、全量只读预检、按游标幂等回填历史词串、全量校验通过后激活目标就绪标记平滑切读 |
 
-任务不设 `manual`、`blockStartup` 或 `independent`，随系统升级队列自动执行，支持租约续期与分批断点续跑。
+任务声明 `manual: true`（不设 `blockStartup` 或 `independent`），初始为 `waiting`，待管理员确认集群所有旧版节点和训练消费者升级排空后入队执行，支持租约续期与分批断点续跑；恢复重跑时重新校验完整范围并安全补齐旧游标前重新出现的 `NULL` 行。
 
 每个任务入口只分发当前 SQL provider：共用扫描、错误、checkpoint 与阶段逻辑，调用对应数据库的底层函数。Milvus / Zilliz 等不适用部署只按框架完成不适用说明，不执行目标 DDL、回填或旧数据清理；以后换 provider 必须另走明确的迁移代次，不重置已成功任务。
 
@@ -364,14 +364,14 @@ cleanup 是独立手动任务。首期通过**短暂暂停知识库写入并排�
 
 | Provider | 全文代码 | 向量与全文同写 | 迁移编排 | 真实迁移效果 |
 |---|---|---|---|---|
-| PG | 外置分词词串、pg_search 0.26.6 `pdb.whitespace`、BM25 | 已接入（始终同行写入） | 共用自动任务 `20261110_migrate_sql_fulltext` | 真实 PG 迁移/恢复、本地业务库 6,097 条迁移校验、100 万条检索与中英日六组语料准确率已实测（见 4.4、12.6） |
+| PG | 外置分词词串、pg_search 0.26.6 `pdb.whitespace`、BM25 | 已接入（始终同行写入） | 共用手动触发任务 `20261110_migrate_sql_fulltext` | 真实 PG 迁移/恢复、本地业务库 6,097 条迁移校验、100 万条检索与中英日六组语料准确率已实测（见 4.4、12.6） |
 | OceanBase | 外置分词词串、FULLTEXT SPACE 解析器、自然语言匹配 | 已接入 | 同上 | 已完成 OceanBase 4.3.5.5 真实容器迁移与检索集成验证 |
 | SeekDB | 复用 OceanBase 实现，独立版本/分词签名 | 已接入 | 同上 | 已完成 SeekDB 1.0.1.0 真实容器迁移与检索集成验证 |
 | OpenGauss | 外置分词词串、DataVec BM25、原生排序算子 | 已接入 | 同上 | 已完成 openGauss 7.0.0-RC2 真实容器迁移与检索集成验证 |
 
 Milvus/Zilliz 保留原生全文路径，不进入 SQL 迁移。Mongo 仍是业务原文和当前有效索引引用的权威来源。
 
-统一自动后台任务为 `20261110_migrate_sql_fulltext`，登记于 4.18.0（阶段：`prepare → preflight → scan → validation`）。`getFullTextStore()` 在非 Milvus 下返回 `SqlFullTextStore`（继承 `MongoFullTextStore`）：迁移完成并写入 `dataset_sql_fulltext_targets` 前回退 `MongoFullTextStore.search()`，完成后平滑切读至 `searchSqlFullText()`。checkpoint 绑定 provider、物理目标 UUID 与 `analyzerVersion`。
+统一升级任务为 `20261110_migrate_sql_fulltext`（`manual: true`），登记于 4.18.0（阶段：`prepare → preflight → scan → validation`）。`getFullTextStore()` 在非 Milvus 下返回 `SqlFullTextStore`（继承 `MongoFullTextStore`）：迁移完成并写入 `dataset_sql_fulltext_targets` 前回退 `MongoFullTextStore.search()`，完成后平滑切读至 `searchSqlFullText()`。checkpoint 绑定 provider、物理目标 UUID 与 `analyzerVersion`。
 
 四库共用历史文本规则、断点恢复、失败重试和业务 ID 映射。MySQL 协议写入使用绑定参数及 utf8mb4，逐行获取精确自增 ID，不推算连续 ID，也不改写正文中的引号。运行期业务写删在同行维护 SQL `fulltext_tokens` 的同时，兼容期内继续维护 `dataset_data_texts` 双写/双删及其索引，保障升级回退与共享/未切换目标的平滑检索。
 
@@ -396,7 +396,7 @@ OceanBase IK 及分词属性的 4.3.5 BP1 前提见 [官方 CREATE INDEX 说明]
 
 Milvus/Zilliz 沿用既有原生全文路径，不进入 SQL 迁移；现有 Milvus 实现的代码门槛为 2.5.16+，仍需满足 BM25/analyzer 等能力，本次不调整其版本或迁移方案，不将其列为本轮已复测。
 
-兼容性校验的实际顺序为：`20261110_migrate_sql_fulltext` 的 `prepare` 阶段先检查数据库版本与必需扩展/构建，再准备字段和索引并核对实际能力；版本或能力不满足时任务直接失败，不开始历史回填，也不执行最终的旧 `dataset_data_texts` 表清理。准备阶段已成功执行的追加 DDL 可能保留，不能把“任务失败”理解为各库所有 DDL 都会自动回滚。
+兼容性校验的实际顺序为：`20261110_migrate_sql_fulltext` 的 `prepare` 阶段先清除当前 provider 就绪标记，检查数据库版本与必需扩展/构建，再准备字段和索引并核对实际能力；版本或能力不满足时任务直接失败，不开始历史回填，也不激活切读，继续保持 Mongo `$text` 兼容读取。准备阶段已成功执行的追加 DDL 可能保留，不能把“任务失败”理解为各库所有 DDL 都会自动回滚。
 
 `schemaVersion` 表示 FastGPT 全文元数据结构版本，`analyzerVersion` 表示文本与分词规则，均不是数据库产品版本。目标 UUID 用于升级任务 checkpoint 的物理目标身份绑定；数据库版本及其扩展版本由 `prepare` / `assertCapability` 单独核验，不能混用。
 
@@ -416,7 +416,7 @@ Milvus/Zilliz 沿用既有原生全文路径，不进入 SQL 迁移；现有 Mil
 
 ### 12.4 统一真实数据库演练入口
 
-入口为 `projects/app/test/migration/tasks/4180/20261110_migrate_sql_fulltext/database.integration.test.ts`。设置 `FASTGPT_SQL_FULLTEXT_TEST_PROVIDER` 与 `FASTGPT_SQL_FULLTEXT_TEST_URL`，同一套用例依次执行旧数据入库、真实 Runner 自动迁移、快照比较、旧 Mongo 全文表清空校验、已知查询与增量同写校验。
+入口为 `projects/app/test/migration/tasks/4180/20261110_migrate_sql_fulltext/database.integration.test.ts`。设置 `FASTGPT_SQL_FULLTEXT_TEST_PROVIDER` 与 `FASTGPT_SQL_FULLTEXT_TEST_URL`，同一套用例依次执行旧数据入库、手动入队触发真实 Runner 迁移、快照比较、旧 Mongo 全文兼容保留校验、已知查询与增量同写校验。
 
 ```bash
 FASTGPT_SQL_FULLTEXT_TEST_PROVIDER=pg FASTGPT_SQL_FULLTEXT_TEST_URL=postgresql://fulltext_test:fulltext_local_test@127.0.0.1:15433/fulltext_test pnpm test projects/app/test/migration/tasks/4180/20261110_migrate_sql_fulltext/database.integration.test.ts
@@ -428,15 +428,15 @@ provider 可选 `pg/oceanbase/seekdb/opengauss`；PG/OpenGauss 使用 PostgreSQL
 
 PG 的专项恢复用例仍保留在同目录 `service.integration.test.ts`，使用 `FASTGPT_PG_FULLTEXT_TEST_URL`。测试镜像可用 `packages/service/test/integrations/vectorDB/pg/Dockerfile.fulltext` 构建；不会替换业务部署镜像。正式验收还需补齐真实问题标注、目标规模性能及各库故障恢复矩阵。
 
-### 12.5 升级与清理行为
+### 12.5 升级切读与兼容期行为
 
-1. 服务启动时，所选 SQL 向量库控制器 `init()` 自动确保 `fulltext_tokens` 列及对应全文索引存在；升级后的所有新向量写入直接携带分词词串。
-2. 启动链完成后，系统升级 Runner 自动执行 `20261110_migrate_sql_fulltext`：先执行 `prepare` 与 `assertCapability` 校验数据库版本、扩展和索引定义，再全量只读预检，分批回填历史 `NULL` 词串，完成全量一致性校验后清空 `dataset_data_texts` 表。
-3. 若数据库版本/扩展不满足或存在脏引用，任务在 `prepare` 或 `preflight` 阶段结构化报错阻断，管理员修复后通过标准升级页面重试。
+1. 服务启动时，所选 SQL 向量库控制器 `init()` 自动确保基础表、`fulltext_tokens` 列及向量索引存在，并以非阻塞方式尝试创建全文扩展和全文索引；升级后的新向量写入同行携带分词词串，同时在兼容期内继续维护 Mongo `dataset_data_texts` 双写/双删。
+2. `20261110_migrate_sql_fulltext` 初始处于 `waiting`（待手动执行），期间检索继续走旧 Mongo `$text`。待管理员确认集群所有旧版节点与训练消费者已升级排空后点击执行，任务先通过 `prepare` 与 `assertCapability` 校验数据库版本、扩展和索引定义，再执行全量只读预检、分批回填历史 `NULL` 词串与全量一致性校验，全部通过后写入 `dataset_sql_fulltext_targets` 平滑切读；旧 `dataset_data_texts` 表与索引留待后续版本独立任务退役清理。
+3. 若数据库版本/扩展不满足或存在脏引用/非法向量 ID/非法文本，任务在对应阶段阻断切读并记录可定位 `dataset_datas._id` 的失败明细，管理员修复后通过标准升级页面重试。
 
 ### 12.6 PG 专项迁移与中英日六组公开语料回归验证
 
-仓库内固定回归入口为 `projects/app/test/migration/tasks/4180/20261110_migrate_sql_fulltext/quality.integration.test.ts`，数据清单与输入 SHA-256 固定在同目录 `quality.datasets.json`，下载与规范化脚本为 `prepare_quality_data.py`。覆盖中文、英文、日语共 6 组公开数据集（114,020 条文档行、2,172 条标注查询），依次执行真实迁移 Runner（准备、全量只读预检、回填、全量后验、旧表清理）、数据完整性指纹校验、`VACUUM (ANALYZE)` 维护及检索准确率评测。
+仓库内固定回归入口为 `projects/app/test/migration/tasks/4180/20261110_migrate_sql_fulltext/quality.integration.test.ts`，数据清单与输入 SHA-256 固定在同目录 `quality.datasets.json`，下载与规范化脚本为 `prepare_quality_data.py`。覆盖中文、英文、日语共 6 组公开数据集（114,020 条文档行、2,172 条标注查询），依次执行真实迁移 Runner（准备、全量只读预检、回填、全量后验与切读激活）、数据完整性指纹校验、`VACUUM (ANALYZE)` 维护及检索准确率评测。
 
 | 语言 / 数据集 | 文档 / 标注查询 | Hit@10：Mongo → PG | Hit@10 变化 | MRR@10：Mongo → PG | nDCG@10：Mongo → PG |
 |---|---:|---:|---:|---:|---:|

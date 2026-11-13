@@ -33,7 +33,7 @@ import { searchSqlFullText } from '@fastgpt/service/core/dataset/fullText/sql/st
 import { getSqlFullTextAdapter } from '@fastgpt/service/common/vectorDB/fullText/controller';
 import { systemMigrations } from '@/migration/registry';
 import { createSystemMigrationRunner } from '@/migration/runner';
-import { ensureMigrationStates } from '@/migration/entity';
+import { enqueueManualMigration, ensureMigrationStates } from '@/migration/entity';
 import { MongoSystemMigrationState } from '@/migration/mongoSchema';
 
 type CorpusDocument = { _id: string; title: string; text: string };
@@ -285,6 +285,7 @@ describe.skipIf(!target).each(qualityDatasets)(
         const before = await snapshot();
         const migrations = systemMigrations.filter((m) => m.id === '20261110_migrate_sql_fulltext');
         await ensureMigrationStates(migrations);
+        await enqueueManualMigration('20261110_migrate_sql_fulltext');
         const started = performance.now();
         await runner.tick();
         const migration = await MongoSystemMigrationState.findById(

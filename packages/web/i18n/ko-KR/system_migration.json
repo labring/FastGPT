@@ -55,7 +55,7 @@
   "migrations.20261104_backfill_openapi_key_type.keys": "키 유형",
   "migrations.20261104_backfill_openapi_key_type.validation": "결과 검증",
   "migrations.20261110_migrate_sql_fulltext.name": "SQL 벡터 전문 검색 마이그레이션",
-  "migrations.20261110_migrate_sql_fulltext.description": "현재 SQL 벡터 데이터베이스의 전문 인덱스를 준비 및 검증하고 전체 읽기 전용 사전 검사 후 기존 토크나이징 인덱스를 배치로 보충한 뒤, 검증 완료 후 기존 Mongo 전문 데이터를 유지하면서 SQL 네이티브 전문 검색으로 전환합니다.",
+  "migrations.20261110_migrate_sql_fulltext.description": "모든 App/Pro 노드가 업그레이드되고 기존 학습 작업이 모두 종료되었으며 현재 SQL 벡터 데이터베이스의 전문 검색 기능이 활성화되었는지 확인한 뒤 수동으로 실행하세요. 전체 읽기 전용 사전 검사 후 기존 토크나이징 인덱스를 배치로 보충하고, 검증 완료 후 기존 Mongo 전문 데이터를 유지하면서 SQL 네이티브 전문 검색으로 전환합니다.",
   "migrations.20261110_migrate_sql_fulltext.result": "{{prechecked}}개 사전 검사, {{scanned}}개 보충, {{validated}}개 검증",
   "migrations.20261110_migrate_sql_fulltext.prepare": "전문 구조 및 인덱스 준비",
   "migrations.20261110_migrate_sql_fulltext.preflight": "전체 읽기 전용 사전 검사",

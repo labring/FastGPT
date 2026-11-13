@@ -11,6 +11,24 @@ export const SQL_FULL_TEXT_COLUMN = 'fulltext_tokens';
 /** 各 SQL provider 统一的原生全文索引名。 */
 export const SQL_FULL_TEXT_INDEX = 'modeldata_fulltext';
 
+/**
+ * 单条全文记录的向量 ID 或文本内容契约错误。
+ * 继承 Error 保持调用方兼容，同时供迁移层识别并归入可定位业务 ID 的单记录失败。
+ */
+export class SqlFullTextDataError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'SqlFullTextDataError';
+  }
+}
+
+/** 校验 SQL 向量主键为合法的正有符号 64 位整数。 */
+export const assertSqlFullTextVectorId = (vectorId: string) => {
+  if (!/^[1-9]\d*$/.test(vectorId) || BigInt(vectorId) > 9223372036854775807n) {
+    throw new SqlFullTextDataError('Full-text vector ID must be a positive signed bigint');
+  }
+};
+
 /** Mongo 文档中的 ObjectId 在内部调用中可能仍为对象，进入 SQL 前统一使用规范字符串。 */
 export const normalizeSqlFullTextScope = (props: FullTextSearchProps): FullTextSearchProps => ({
   ...props,
@@ -23,14 +41,16 @@ export const normalizeSqlFullTextScope = (props: FullTextSearchProps): FullTextS
 /** 业务原文统一输入契约：超过 1 MiB 或含空字符时报告失败，禁止静默截断。 */
 export const assertSqlFullText = (text: string) => {
   if (Buffer.byteLength(text, 'utf8') > SQL_FULL_TEXT_MAX_BYTES || text.includes('\0')) {
-    throw new Error('Full-text input exceeds 1 MiB or contains a null character');
+    throw new SqlFullTextDataError('Full-text input exceeds 1 MiB or contains a null character');
   }
 };
 
 /** 词串输出契约：禁止空字符并限制在列安全容量内，允许合法原文经重叠分词后超过 1 MiB。 */
 export const assertSqlFullTextTokens = (tokens: string) => {
   if (Buffer.byteLength(tokens, 'utf8') > SQL_FULL_TEXT_MAX_TOKEN_BYTES || tokens.includes('\0')) {
-    throw new Error('Full-text token string exceeds 16 MiB or contains a null character');
+    throw new SqlFullTextDataError(
+      'Full-text token string exceeds 16 MiB or contains a null character'
+    );
   }
 };
 
@@ -39,9 +59,7 @@ export function* splitSqlFullTextRows(rows: SqlFullTextTokenRow[]) {
   let chunk: SqlFullTextTokenRow[] = [];
   let bytes = 0;
   for (const row of rows) {
-    if (!/^[1-9]\d*$/.test(row.vectorId) || BigInt(row.vectorId) > 9223372036854775807n) {
-      throw new Error('Full-text vector ID must be a positive signed bigint');
-    }
+    assertSqlFullTextVectorId(row.vectorId);
     assertSqlFullTextTokens(row.tokens);
     const size = Buffer.byteLength(row.tokens, 'utf8');
     if (chunk.length && (chunk.length === 50 || bytes + size > SQL_FULL_TEXT_MAX_BYTES)) {
