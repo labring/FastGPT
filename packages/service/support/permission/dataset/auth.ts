@@ -71,9 +71,9 @@ export const authDatasetByTmbId = async ({
       return Promise.reject(DatasetErrEnum.unExist);
     }
 
-    // 外部权限同步可以要求连超管也遵守本地 ACL：此时 root 和团队 owner 都不再旁路，
+    // 全局开关 DISABLE_SUPER_ADMIN 打开时超管也遵守本地 ACL：root 和团队 owner 都不再旁路，
     // Dataset 级权限与其他成员一样只来自 ACL 行（dataset owner 仍由 assertDatasetPermission 兜底）。
-    const disableSuperAdmin = isDisableSuperAdmin(dataset.apiDatasetServer);
+    const disableSuperAdmin = isDisableSuperAdmin();
     const effectiveIsRoot = isRoot && !disableSuperAdmin;
 
     if (effectiveIsRoot) {
@@ -155,8 +155,8 @@ export const authDataset = async ({
 
   return {
     ...result,
-    // 外部权限同步要求超管也遵守 ACL 时，向下游返回有效 root 语义，避免调用方拿 header 原值旁路。
-    isRoot: result.isRoot && !isDisableSuperAdmin(dataset.apiDatasetServer),
+    // 全局开关要求超管也遵守 ACL 时，向下游返回有效 root 语义，避免调用方拿 header 原值旁路。
+    isRoot: result.isRoot && !isDisableSuperAdmin(),
     permission: dataset.permission,
     dataset
   };
@@ -226,9 +226,9 @@ export async function authDatasetCollection({
     return Promise.reject(DatasetErrEnum.unExist);
   }
 
-  // 外部权限同步可以要求连超管也按文件权限走：root 与团队 owner 的短路全部关闭。
+  // 全局开关要求超管也按文件权限走：root 与团队 owner 的短路全部关闭。
   // Dataset read 门槛保留（否则连知识库都不可见），只在 Collection 维度取消旁路。
-  const disableSuperAdmin = isDisableSuperAdmin(collection.dataset?.apiDatasetServer);
+  const disableSuperAdmin = isDisableSuperAdmin();
   const isRoot = isRootFromHeader && !disableSuperAdmin;
 
   const tmbInfo = await getTmbInfoByTmbId({ tmbId });
@@ -265,7 +265,7 @@ export async function authDatasetCollection({
   //    视为 owner（含 owner 专属操作），与 listV2/RAG 短路保持一致。
   //    团队管理员（hasManagePer）不在此列：团队级 manage 只覆盖团队自身资源（成员组/组织），
   //    Dataset / Collection 等业务资源仍以各自 ACL 为准，与 authDatasetByTmbId、dataset list 一致。
-  //    disableSuperAdmin 时同样关闭：这是「外部权限连管理员也必须遵守」的唯一实现点。
+  //    全局开关 disableSuperAdmin 时同样关闭：这是「外部权限连管理员也必须遵守」的唯一实现点。
   const isTeamOwner =
     !disableSuperAdmin && String(tmbInfo.teamId) === String(teamId) && tmbInfo.permission.isOwner;
 

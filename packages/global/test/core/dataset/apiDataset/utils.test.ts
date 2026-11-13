@@ -1,6 +1,7 @@
-import { describe, it, expect } from 'vitest';
+import { afterEach, describe, it, expect, vi } from 'vitest';
 import {
   filterApiDatasetServerPublicData,
+  isDisableSuperAdmin,
   toApiDatasetSuccess,
   toApiDatasetError,
   classifyApiDatasetError
@@ -9,9 +10,22 @@ import type { ApiDatasetServerType } from '@fastgpt/global/core/dataset/apiDatas
 
 const defaultSwitches = {
   permissionSync: false,
-  disableSuperAdmin: false,
   syncAllFiles: false
 };
+
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
+
+describe('isDisableSuperAdmin', () => {
+  it('reads the global switch from DISABLE_SUPER_ADMIN and defaults to off', () => {
+    vi.stubEnv('DISABLE_SUPER_ADMIN', '');
+    expect(isDisableSuperAdmin()).toBe(false);
+
+    vi.stubEnv('DISABLE_SUPER_ADMIN', 'true');
+    expect(isDisableSuperAdmin()).toBe(true);
+  });
+});
 
 describe('filterApiDatasetServerPublicData', () => {
   it('should return undefined when apiDatasetServer is undefined', () => {
@@ -36,13 +50,11 @@ describe('filterApiDatasetServerPublicData', () => {
     const result = filterApiDatasetServerPublicData({
       apiServer: { baseUrl: 'https://api.example.com' },
       permissionSync: true,
-      disableSuperAdmin: true,
       syncAllFiles: true
     });
 
     expect(result).toMatchObject({
       permissionSync: true,
-      disableSuperAdmin: true,
       syncAllFiles: true
     });
   });

@@ -98,8 +98,8 @@ export const authDatasetCollectionMoves = async ({
     getTmbInfoByTmbId({ tmbId })
   ]);
   if (!dataset) throw DatasetErrEnum.unExist;
-  // 外部权限同步可要求连超管也遵守文件 ACL；root 与团队 owner 的旁路同时关闭。
-  const disableSuperAdmin = isDisableSuperAdmin(dataset.apiDatasetServer);
+  // 全局开关 disableSuperAdmin 要求超管也遵守文件 ACL；root 与团队 owner 的旁路同时关闭。
+  const disableSuperAdmin = isDisableSuperAdmin();
   const effectiveIsRoot = isRoot && !disableSuperAdmin;
   const permissionSync = isPermissionSyncDataset(dataset.apiDatasetServer);
   if (!effectiveIsRoot && String(tmbInfo.teamId) !== teamId) {
@@ -203,7 +203,9 @@ export const authDatasetCollectionMoves = async ({
       : new Map<string, number>();
   for (const [id, per] of requirements) {
     const isOwner =
-      effectiveIsRoot || isTeamOwner || (!permissionSync && String(collections.get(id)!.tmbId) === tmbId);
+      effectiveIsRoot ||
+      isTeamOwner ||
+      (!permissionSync && String(collections.get(id)!.tmbId) === tmbId);
     const role =
       dataset.collectionPermissionEnabled === true
         ? (roles.get(id) ?? 0)

@@ -13,7 +13,7 @@ import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { getFakeUsers, getUser } from '@test/datas/users';
 import { StreamCall, Call } from '@test/utils/request';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 // 全局 mock 把 responseWriteController 变成了返回 undefined 的空函数，流式导出需要真实实现。
 vi.unmock('@fastgpt/service/common/response');
@@ -116,6 +116,10 @@ const grantCollection = async ({
     permission
   });
 
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
+
 describe('export dataset respects collection permission', () => {
   it('exports only collections readable by the collaborator', async () => {
     const users = await getFakeUsers(1);
@@ -209,17 +213,14 @@ describe('export dataset respects collection permission', () => {
   });
 
   it('filters collections for the team owner when disableSuperAdmin is on', async () => {
+    vi.stubEnv('DISABLE_SUPER_ADMIN', 'true');
     const users = await getFakeUsers(1);
     const teamOwner = users.owner;
     const member = users.members[0];
     const dataset = await createDataset({
       name: 'disable-super-admin-dataset',
       owner: member,
-      collectionPermissionEnabled: true,
-      apiDatasetServer: {
-        apiServer: { baseUrl: 'https://example.com' },
-        disableSuperAdmin: true
-      }
+      collectionPermissionEnabled: true
     });
     // 导出要求 dataset write，disableSuperAdmin 又关掉了团队 owner 旁路，必须显式授予。
     await grantDataset({

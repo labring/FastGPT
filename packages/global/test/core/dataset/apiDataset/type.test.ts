@@ -79,7 +79,7 @@ describe('dataset create/update contracts', () => {
 });
 
 describe('apiDataset permission sync switches', () => {
-  it('keeps the three switches optional so existing exact-equality contracts hold', () => {
+  it('keeps the switches optional so existing exact-equality contracts hold', () => {
     expect(
       ApiDatasetServerSchema.parse({ apiServer: { baseUrl: 'https://api.example.com' } })
     ).toEqual({ apiServer: { baseUrl: 'https://api.example.com' } });
@@ -90,7 +90,6 @@ describe('apiDataset permission sync switches', () => {
       ApiDatasetServerSchema.safeParse({
         apiServer: { baseUrl: 'https://api.example.com' },
         permissionSync: true,
-        disableSuperAdmin: true,
         syncAllFiles: true
       }).success
     ).toBe(true);
@@ -99,11 +98,10 @@ describe('apiDataset permission sync switches', () => {
     expect(result.success).toBe(false);
     expect(result.error?.issues[0]?.path).toEqual(['permissionSync']);
 
-    // 非 custom provider 只开另外两个开关是合法的
+    // 非 custom provider 只开 syncAllFiles 是合法的
     expect(
       ApiDatasetServerSchema.safeParse({
         feishuServer: { appId: 'app', folderToken: 'folder' },
-        disableSuperAdmin: true,
         syncAllFiles: true
       }).success
     ).toBe(true);

@@ -70,7 +70,7 @@ async function handler(
               datasetId: String(dataset._id),
               tmbId: String(tmbId),
               isRoot,
-              ignoreTeamOwner: isDisableSuperAdmin(dataset.apiDatasetServer),
+              ignoreTeamOwner: isDisableSuperAdmin(),
               collectionIds: archiveCollectionIds
             })
         });

@@ -47,7 +47,7 @@ export const assertDatasetArchiveCollectionsReadable = async ({
   teamId: string;
   datasetId: string;
   tmbId: string;
-  /** 必须是有效 root（已应用 `disableSuperAdmin`），header 原值会在托管库上错误放行。 */
+  /** 必须是有效 root（已应用全局开关 `DISABLE_SUPER_ADMIN`），header 原值会在托管库上错误放行。 */
   isRoot: boolean;
   /** 托管库要求团队 owner 同样遵守文件 ACL。 */
   ignoreTeamOwner?: boolean;

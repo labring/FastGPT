@@ -97,7 +97,6 @@ const CreateDatasetBodyObjectSchema = z.object({
     example: {
       apiServer: { baseUrl: 'https://example.com', authorization: 'Bearer token' },
       permissionSync: true,
-      disableSuperAdmin: false,
       syncAllFiles: true
     }
   }),

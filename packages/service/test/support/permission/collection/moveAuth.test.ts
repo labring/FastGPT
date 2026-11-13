@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { DatasetCollectionTypeEnum, DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
@@ -82,6 +82,10 @@ const fixture = async (enabled = true) => {
   const move = { collectionId: String(file._id), targetParentId: String(target._id) };
   return { auth, move, actor, owner: users.owner, teamId, datasetId, file, source, target, grant };
 };
+
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
 
 describe('authDatasetCollectionMoves', () => {
   it('2001 次移动只解析一次身份，父级与 ACL 按唯一 ID 分批，单条返回完整源节点', async () => {
@@ -261,17 +265,14 @@ describe('authDatasetCollectionMoves', () => {
     );
   });
   it('disableSuperAdmin 关闭移动鉴权里的团队 owner 旁路', async () => {
+    vi.stubEnv('DISABLE_SUPER_ADMIN', 'true');
     const { auth, move, datasetId, owner } = await fixture();
     await MongoDataset.updateOne(
       { _id: datasetId },
       {
         // 创建者身份仍算 dataset owner（见 assertDatasetPermission），这里把创建者换掉，
         // 让团队 owner 只剩下「超管旁路」这一条路径
-        tmbId: new Types.ObjectId(),
-        apiDatasetServer: {
-          apiServer: { baseUrl: 'https://example.com' },
-          disableSuperAdmin: true
-        }
+        tmbId: new Types.ObjectId()
       }
     );
 

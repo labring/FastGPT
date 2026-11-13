@@ -1,5 +1,5 @@
 import { EventEmitter } from 'node:events';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
@@ -45,6 +45,10 @@ const manifest = { directories: [], files: [] };
 
 const createRequest = (body = { datasetId, collectionIds }) =>
   Object.assign(new EventEmitter(), { body });
+
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
 
 describe('POST /core/dataset/collection/getDownloadTicket', () => {
   beforeEach(() => {
@@ -121,14 +125,14 @@ describe('POST /core/dataset/collection/getDownloadTicket', () => {
   });
 
   it('forwards the effective root flag and disableSuperAdmin to the readability check', async () => {
+    vi.stubEnv('DISABLE_SUPER_ADMIN', 'true');
     mocks.authDataset.mockResolvedValueOnce({
       dataset: {
         _id: datasetId,
         name: 'Managed',
         type: DatasetTypeEnum.dataset,
         apiDatasetServer: {
-          apiServer: { baseUrl: 'https://example.com' },
-          disableSuperAdmin: true
+          apiServer: { baseUrl: 'https://example.com' }
         }
       },
       teamId: 'team-1',

@@ -228,8 +228,8 @@ async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseTy
   let orgIds: string[] = [];
   // 复用同一次 tmb 查询：短路判定与逐 Collection 返回权限都依赖是否团队 owner。
   const tmbInfo = await getTmbInfoByTmbId({ tmbId });
-  // 外部权限同步可以要求超管同样遵守文件 ACL：root 与团队 owner 的旁路全部关闭。
-  const disableSuperAdmin = isDisableSuperAdmin(dataset.apiDatasetServer);
+  // 全局开关 DISABLE_SUPER_ADMIN 要求超管同样遵守文件 ACL：root 与团队 owner 的旁路全部关闭。
+  const disableSuperAdmin = isDisableSuperAdmin();
   const permissionSync = isPermissionSyncDataset(dataset.apiDatasetServer);
   const isTeamOwner =
     !disableSuperAdmin && String(tmbInfo.teamId) === String(teamId) && tmbInfo.permission.isOwner;
