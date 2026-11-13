@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/type';
+import { DefaultSystemModerationPolicy } from '@fastgpt/global/core/plugin/moderation/type';
 
 const mocks = vi.hoisted(() => ({
   authSystemAdmin: vi.fn(),
@@ -8,7 +9,11 @@ const mocks = vi.hoisted(() => ({
   saveModerationConfig: vi.fn(),
   deleteModerationPlugin: vi.fn(),
   restoreModerationPlugin: vi.fn(),
-  checkModerationForTest: vi.fn()
+  checkModerationForTest: vi.fn(),
+  recordModerationPolicyAudit: vi.fn(),
+  recordModerationConfigAudit: vi.fn(),
+  recordModerationUninstallAudit: vi.fn(),
+  recordModerationRestoreAudit: vi.fn()
 }));
 
 vi.mock('@fastgpt/service/support/permission/user/auth', () => ({
@@ -31,6 +36,13 @@ vi.mock('@fastgpt/service/core/plugin/moderation/service', () => ({
 
 vi.mock('@fastgpt/service/core/plugin/moderation/record/entity', () => ({
   findModerationRecords: vi.fn()
+}));
+
+vi.mock('@fastgpt/service/core/plugin/moderation/audit', () => ({
+  recordModerationPolicyAudit: mocks.recordModerationPolicyAudit,
+  recordModerationConfigAudit: mocks.recordModerationConfigAudit,
+  recordModerationUninstallAudit: mocks.recordModerationUninstallAudit,
+  recordModerationRestoreAudit: mocks.recordModerationRestoreAudit
 }));
 
 import { handler as listHandler } from '@/pages/api/core/plugin/admin/moderation/list';
@@ -111,15 +123,13 @@ describe('admin moderation config handler', () => {
     mocks.authSystemAdmin.mockResolvedValue({ tmbId: 'tmb-1', userId: 'user-1' });
     mocks.getLocale.mockReturnValue('zh-CN');
     mocks.saveModerationConfig.mockResolvedValue({
-      pluginId: 'x',
-      source: 'system',
-      name: 'X Moderation',
-      provider: 'x'
+      item: { pluginId: 'x', source: 'system', name: 'X Moderation', provider: 'x' },
+      auditSnapshot: { prevTargetEnabled: false, prevActivePluginId: 'old-plugin' }
     });
   });
 
   it('forwards config fields to the service', async () => {
-    await configHandler(
+    const result = await configHandler(
       makeReq({
         body: {
           pluginId: 'baidu-moderation',
@@ -130,6 +140,7 @@ describe('admin moderation config handler', () => {
       res
     );
 
+    expect(result).not.toHaveProperty('auditSnapshot');
     expect(mocks.saveModerationConfig).toHaveBeenCalledWith({
       pluginId: 'baidu-moderation',
       version: undefined,
@@ -137,6 +148,23 @@ describe('admin moderation config handler', () => {
       enabled: true,
       lang: 'zh-CN'
     });
+    expect(mocks.recordModerationConfigAudit).toHaveBeenCalledWith({
+      operator: { tmbId: 'tmb-1', userId: 'user-1' },
+      snapshot: { prevTargetEnabled: false, prevActivePluginId: 'old-plugin' },
+      pluginId: 'baidu-moderation',
+      pluginName: 'X Moderation',
+      secretsUpdated: true,
+      nextEnabled: true,
+      lang: 'zh-CN'
+    });
+  });
+
+  it('does not audit a failed config transaction', async () => {
+    mocks.saveModerationConfig.mockRejectedValueOnce(new Error('transaction aborted'));
+    await expect(
+      configHandler(makeReq({ body: { pluginId: 'test-plugin', enabled: true } }), res)
+    ).rejects.toThrow('transaction aborted');
+    expect(mocks.recordModerationConfigAudit).not.toHaveBeenCalled();
   });
 
   it('rejects a body without pluginId', async () => {
@@ -149,12 +177,17 @@ describe('admin moderation delete handler', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.authSystemAdmin.mockResolvedValue({ tmbId: 'tmb-1', userId: 'user-1' });
-    mocks.deleteModerationPlugin.mockResolvedValue(undefined);
+    mocks.getLocale.mockReturnValue('zh-CN');
+    mocks.deleteModerationPlugin.mockResolvedValue({
+      auditSnapshot: { wasEnabled: true }
+    });
   });
 
-  it('deletes by pluginId and source', async () => {
+  it('deletes by pluginId and source and forwards committed snapshot to audit without leaking it', async () => {
     const result = await deleteHandler(
-      makeReq({ body: { pluginId: 'baidu-moderation', source: 'local' } }),
+      makeReq({
+        body: { pluginId: 'baidu-moderation', source: 'local' }
+      }),
       res
     );
 
@@ -162,10 +195,17 @@ describe('admin moderation delete handler', () => {
       pluginId: 'baidu-moderation',
       source: 'local'
     });
+    expect(mocks.recordModerationUninstallAudit).toHaveBeenCalledWith({
+      operator: { tmbId: 'tmb-1', userId: 'user-1' },
+      pluginId: 'baidu-moderation',
+      source: 'local',
+      snapshot: { wasEnabled: true },
+      lang: undefined
+    });
     expect(result).toBeUndefined();
   });
 
-  it('propagates the service refusal for an enabled plugin', async () => {
+  it('propagates the service refusal for an enabled plugin without recording uninstall audit', async () => {
     mocks.deleteModerationPlugin.mockRejectedValueOnce(
       'Disable the moderation plugin before deleting it'
     );
@@ -173,6 +213,7 @@ describe('admin moderation delete handler', () => {
     await expect(
       deleteHandler(makeReq({ body: { pluginId: 'baidu-moderation' } }), res)
     ).rejects.toBe('Disable the moderation plugin before deleting it');
+    expect(mocks.recordModerationUninstallAudit).not.toHaveBeenCalled();
   });
 });
 
@@ -187,6 +228,12 @@ describe('admin moderation restore handler', () => {
     expect(mocks.restoreModerationPlugin).toHaveBeenCalledWith({
       pluginId: 'keyword',
       source: 'system'
+    });
+    expect(mocks.recordModerationRestoreAudit).toHaveBeenCalledWith({
+      operator: { tmbId: 'tmb-1' },
+      pluginId: 'keyword',
+      source: 'system',
+      lang: undefined
     });
   });
 
@@ -289,15 +336,19 @@ describe('admin moderation policy handler', () => {
   });
 
   it('handles POST request and updates policy', async () => {
-    const updateSpy = vi.spyOn(moderationService, 'updateModerationPolicy').mockResolvedValueOnce({
+    const policy = {
       enabled: false,
       activePluginId: undefined,
       hooks: { userInput: true, modelInput: false, finalOutput: true },
       strategy: {
-        streamInterval: 50,
-        suspectedRiskAction: 'blockAndLog' as any,
-        serviceExceptionAction: 'pass' as any
+        ...DefaultSystemModerationPolicy.strategy,
+        streamInterval: 50
       }
+    };
+    const auditSnapshot = { prevPolicy: policy, prevEnabledPluginId: 'old-plugin' };
+    const updateSpy = vi.spyOn(moderationService, 'updateModerationPolicy').mockResolvedValueOnce({
+      policy,
+      auditSnapshot
     });
 
     const result = await policyHandler(
@@ -318,7 +369,23 @@ describe('admin moderation policy handler', () => {
     );
 
     expect(updateSpy).toHaveBeenCalled();
-    expect(result.enabled).toBe(false);
+    expect(mocks.recordModerationPolicyAudit).toHaveBeenCalledWith({
+      operator: { tmbId: 'tmb-1', userId: 'user-1' },
+      snapshot: auditSnapshot,
+      nextPolicy: expect.objectContaining({ enabled: false }),
+      lang: undefined
+    });
+    expect(result).toEqual(policy);
+  });
+
+  it('does not audit a failed policy transaction', async () => {
+    vi.mocked(moderationService.updateModerationPolicy).mockRejectedValueOnce(
+      new Error('transaction aborted')
+    );
+    await expect(
+      policyHandler({ method: 'POST', body: DefaultSystemModerationPolicy, query: {} } as any, res)
+    ).rejects.toThrow('transaction aborted');
+    expect(mocks.recordModerationPolicyAudit).not.toHaveBeenCalled();
   });
 });
 

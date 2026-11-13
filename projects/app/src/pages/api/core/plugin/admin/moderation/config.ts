@@ -10,6 +10,7 @@ import {
   type SaveModerationConfigResponseType
 } from '@fastgpt/global/openapi/core/plugin/admin/moderation/api';
 import { saveModerationConfig } from '@fastgpt/service/core/plugin/moderation/service';
+import { recordModerationConfigAudit } from '@fastgpt/service/core/plugin/moderation/audit';
 
 export type AdminModerationConfigQuery = Record<string, never>;
 export type AdminModerationConfigBody = SaveModerationConfigBodyType;
@@ -25,19 +26,29 @@ export async function handler(
   req: ApiRequestProps<AdminModerationConfigBody, AdminModerationConfigQuery>,
   _res: ApiResponseType<any>
 ): Promise<AdminModerationConfigResponse> {
-  await authSystemAdmin({ req });
+  const authResult = await authSystemAdmin({ req });
 
   const { pluginId, version, secretsVal, enabled } = parseApiInput({
     req,
     bodySchema: SaveModerationConfigBodySchema
   }).body;
 
-  const result = await saveModerationConfig({
+  const lang = getLocale(req);
+  const { item: result, auditSnapshot } = await saveModerationConfig({
     pluginId,
     version,
     secretsVal,
     enabled,
-    lang: getLocale(req)
+    lang
+  });
+  await recordModerationConfigAudit({
+    operator: authResult,
+    snapshot: auditSnapshot,
+    pluginId,
+    pluginName: result.name,
+    secretsUpdated: secretsVal !== undefined,
+    nextEnabled: enabled,
+    lang
   });
 
   return AdminModerationPluginItemSchema.parse(result);

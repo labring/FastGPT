@@ -39,11 +39,13 @@ export type AuthResponseType<T extends Permission = Permission> = {
   legacyAppId?: string;
   parsedAppId?: string;
   apikey?: string;
+  apiKeyId?: string;
   apiKeyAuthProxy?: boolean;
   apiKeyType?: ApiKeyTypeEnum;
   boundAppId?: string;
   sourceName?: string;
   sessionId?: string;
+  sessionCreatedAt?: number;
   isRoot: boolean;
   permission: T;
 };

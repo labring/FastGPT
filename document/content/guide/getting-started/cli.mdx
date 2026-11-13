@@ -1,0 +1,99 @@
+---
+title: '实操指南：使用 CLI 操作 FastGPT'
+draft: true
+description: 通过官方命令行工具（fastgpt）与 AI Agent 快速在终端管理 FastGPT 资源。
+---
+
+import { Alert } from '@/components/docs/Alert';
+
+FastGPT CLI（`fastgpt`）是 FastGPT 官方推出的终端命令行工具，旨在为开发者、DevOps 工程师以及 AI 编程助手（如 **Codex**、**Claude Code**、**Cursor**、**Windsurf** 等）提供稳定、安全、可编程的终端管理能力。
+
+无论是通过人类终端直接操作，还是让 AI Agent 协助自动化执行，你都可以无需打开浏览器，直接在终端中完成身份认证、团队切换、知识库管理及效果测试。
+
+---
+
+## AI Agent 一键接入引导
+
+如果你正在使用 AI 编程助手（如 **Codex** 或 **Claude Code**），无需手动执行安装命令，直接将以下引导指令发送给你的 Agent。Agent 将自动获取官方 Skill 规范，并全自动完成 CLI 安装、登录引导、环境诊断与能力发现：
+
+<Alert context="info">在 Codex / Claude Code 对话框中直接发送以下提示词：</Alert>
+
+```text
+请帮我安装并配置 FastGPT CLI。请先读取官方 Skill 规范 https://doc.fastgpt.cn/skill.md ，严格按照其中的步骤完成 CLI 安装、引导登录、健康度体检，并最终输出当前环境的 CLI 能力列表。
+```
+
+> 你也可以通过终端命令将该 Skill 规范直接下载到本地技能目录：
+>
+> ```bash
+> curl -fsSL https://doc.fastgpt.cn/skill.md -o skill.md
+> ```
+
+---
+
+## ⚡ 开发者快速上手（3 步初始化）
+
+如果你习惯在终端手动操作，只需 3 步即可完成就绪：
+
+### 1. 安装 CLI
+
+需要 Node.js `>= 20.12.0` 环境，执行全局安装：
+
+```bash
+npm install -g @fastgpt/cli
+# 或使用 pnpm: pnpm add -g @fastgpt/cli
+
+# 确认安装就绪
+fastgpt --version
+```
+
+### 2. 身份认证与登录
+
+运行登录命令完成身份鉴权：
+
+```bash
+# 方案 A：在交互终端中执行交互式登录（公有云或私有化部署）
+fastgpt login
+# 若为自建实例：fastgpt login --base-url https://your-domain.com/api
+
+# 方案 B：使用 API Key 登录（适合 CI / 容器 / Agent 脚本环境）
+fastgpt login --api-key <FASTGPT_API_KEY>
+
+# 方案 C：通过标准输入传入密码
+echo "<PASSWORD>" | fastgpt login --username <USERNAME> --password-stdin
+```
+
+登录成功后，可随时查看当前认证上下文与所属团队：
+
+```bash
+fastgpt whoami
+```
+
+> **凭据存储与会话有效期**：凭据优先存储在系统安全密钥环（macOS Keychain / Linux Secret Service）中。Session 自创建起 7 天后到期，到期后请执行 `fastgpt login` 重新登录。
+
+### 3. 环境体检（Doctor）
+
+执行一键自检，诊断本地环境、配置文件权限及服务端连通性：
+
+```bash
+fastgpt doctor
+```
+
+---
+
+## 核心操作能力概览
+
+FastGPT CLI 采用领域驱动（DDD）设计，命令结构精炼清晰：
+
+| 功能分类       | 常用命令示例                                                                                                                            | 说明                                                         |
+| :------------- | :-------------------------------------------------------------------------------------------------------------------------------------- | :----------------------------------------------------------- |
+| **身份与团队** | `fastgpt whoami`<br/>`fastgpt auth switch-team --team-id <id>`                                                                          | 查看当前用户身份及团队空间，或快速切换工作团队               |
+| **知识库检索** | `fastgpt dataset list`<br/>`fastgpt dataset search <id> "关键词"`                                                                       | 分页检索知识库列表，或对指定知识库执行混合召回效果测试       |
+| **知识库管理** | `fastgpt dataset create --name "文档库"`<br/>`fastgpt dataset update <id> --parent-id null`<br/>`fastgpt dataset delete <id> --dry-run` | 知识库全生命周期 CRUD，支持移至根目录及 `--dry-run` 安全预览 |
+| **系统配置**   | `fastgpt config list`<br/>`fastgpt commands --format json`                                                                              | 查看客户端本地配置，或探测获取完整的可编程命令元数据         |
+
+---
+
+## 自动化与脚本规范建议
+
+- **机器与 Agent 调用**：附加 `--format json` 参数，命令将输出确定性的结构化 JSON 信封，日志严格走 `stderr`，确保 `stdout` 纯净便于管道解析。
+- **高危操作保护**：删除操作（如 `dataset delete`）支持 `--dry-run` 预览；在非交互式脚本或 CI 中执行破坏性操作必须显式附加 `--yes` 确认。

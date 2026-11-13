@@ -415,6 +415,11 @@ function createGoneResponse(lang: string): NextResponse {
 export default function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  // 公开静态技能规范 /skill.md 直接放行，不参与文档路由重写与语言前缀重定向
+  if (pathname === '/skill.md') {
+    return NextResponse.next();
+  }
+
   // Extract language from pathname
   const host = request.headers.get('host')?.split(':')[0]?.toLowerCase();
   const hostLocale = host ? PRODUCTION_HOST_LOCALES[host] : undefined;
@@ -439,6 +444,13 @@ export default function middleware(request: NextRequest) {
       pathWithoutLang = legacyLocaleMatch[2];
       hasLegacyLocalePrefix = true;
     }
+  }
+
+  // 语言前缀下的 /zh-CN/skill.md 或 /en/skill.md 统一重定向到静态单源 /skill.md
+  if (pathWithoutLang === '/skill.md') {
+    const url = new URL('/skill.md', request.url);
+    url.search = request.nextUrl.search;
+    return NextResponse.redirect(url, 301);
   }
 
   // Standalone single-page Markdown endpoint (`/{lang}/{...slug}.md`).
@@ -552,6 +564,6 @@ export default function middleware(request: NextRequest) {
 // Keep static search index, sitemaps, and public assets unprefixed without locale redirects.
 export const config = {
   matcher: [
-    '/((?!api|_next/static|_next/image|favicon(?:\\.ico|/)|robots\\.txt|llms(?:-(?:full|guide|openapi|self-host))?\\.txt|pricing\\.md|static\\.json(?:$|/)|sitemap.*\\.xml|.*\\.(?:svg|png|jpe?g|webp)|deploy/.*|examples/.*).*)'
+    '/((?!api|_next/static|_next/image|favicon(?:\\.ico|/)|robots\\.txt|llms(?:-(?:full|guide|openapi|self-host))?\\.txt|pricing\\.md|skill\\.md|static\\.json(?:$|/)|sitemap.*\\.xml|.*\\.(?:svg|png|jpe?g|webp)|deploy/.*|examples/.*).*)'
   ]
 };
