@@ -580,9 +580,9 @@ async function writableTaskFile({ context, h, app, files }) {
   );
   const owner = { sourceType, sourceId: app.appId, userId: h.c.actor('owner').tmbId };
   const instance = await (await h.c.database())
-    .collection('agent_sandbox_instances_v2')
+    .collection('agent_sandbox_instances_v3')
     .findOne(owner);
-  assert.ok(instance && instance.provider === 'opensandbox');
+  assert.ok(instance && instance.sandboxId);
   if (instance.teamId) assert.equal(instance.teamId, context.fixture.teamId);
   const filename =
     '/workspace/sessions/' + encodeURIComponent(app.chatId) + '/' + files.entry.path + '/task.json';
@@ -596,7 +596,7 @@ async function writableTaskFile({ context, h, app, files }) {
   const connectionConfig = new ConnectionConfig({
     domain: process.env.AGENT_SANDBOX_OPENSANDBOX_BASEURL,
     apiKey,
-    useServerProxy: process.env.AGENT_SANDBOX_OPENSANDBOX_USE_SERVER_PROXY === 'true',
+    useServerProxy: true,
     requestTimeoutSeconds: 30
   });
   const manager = SandboxManager.create({ connectionConfig });

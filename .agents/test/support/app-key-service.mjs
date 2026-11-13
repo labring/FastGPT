@@ -33,9 +33,6 @@ if (['lifecycle', 'cleanup-owned-sandbox-app'].includes(input.operation)) {
       )
     )
   ];
-  paths['@fastgpt-sdk/sandbox-adapter'] = [
-    fileURLToPath(new URL('../../../sdk/sandbox-adapter/src/index.ts', import.meta.url))
-  ];
   temporaryConfig = path.join(
     path.dirname(input.environmentFile),
     'service-tsconfig-' + process.pid + '.json'
@@ -157,32 +154,15 @@ try {
       sourceId: input.appId
     });
     assert.equal(remaining, 0);
-    // SDK 仅导出 ESM；只读探测不走 CJS 业务 loader，也不执行 ensureRunning/create。
-    const { createSandbox } = await import('../../../sdk/sandbox-adapter/dist/index.js');
+    const { createOpenSandboxResourceClient } = load(
+      'packages/service/core/ai/sandbox/infrastructure/opensandbox/opensandbox.ts'
+    );
     for (const resource of input.resources) {
       assert.equal(resource.sourceId, input.appId);
-      assert.ok(['opensandbox', 'sealosdevbox'].includes(resource.provider));
-      const adapter = createSandbox(
-        resource.provider === 'opensandbox'
-          ? {
-              provider: 'opensandbox',
-              connectionConfig: {
-                baseUrl: env.AGENT_SANDBOX_OPENSANDBOX_BASEURL,
-                apiKey: env.AGENT_SANDBOX_OPENSANDBOX_API_KEY,
-                runtime: env.AGENT_SANDBOX_OPENSANDBOX_RUNTIME,
-                useServerProxy: env.AGENT_SANDBOX_OPENSANDBOX_USE_SERVER_PROXY === 'true',
-                sessionId: resource.sandboxId
-              }
-            }
-          : {
-              provider: 'sealosdevbox',
-              connectionConfig: {
-                baseUrl: env.AGENT_SANDBOX_SEALOS_BASEURL,
-                token: env.AGENT_SANDBOX_SEALOS_TOKEN,
-                sandboxId: resource.sandboxId
-              }
-            }
-      );
+      const adapter = await createOpenSandboxResourceClient({
+        sandboxId: resource.sandboxId,
+        instanceId: resource.instanceId
+      });
       try {
         assert.equal(await adapter.getInfo(), null, '远端 Sandbox 应已删除');
       } finally {

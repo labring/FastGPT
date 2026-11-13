@@ -28,8 +28,10 @@ export default defineConfig({
         process.env.SANDBOX_INTEGRATION_REDIS_URL ??
         process.env.REDIS_URL ??
         'redis://default:mypassword@localhost:6379/15',
-      AGENT_SANDBOX_PREVIEW_PROXY_URL:
-        process.env.AGENT_SANDBOX_PREVIEW_PROXY_URL ?? 'http://localhost:3006'
+      AGENT_SANDBOX_PROXY_URL: process.env.AGENT_SANDBOX_PROXY_URL ?? 'http://localhost:3006',
+      AGENT_SANDBOX_PROXY_SECRET:
+        process.env.AGENT_SANDBOX_PROXY_SECRET ?? 'fastgpt-test-sandbox-proxy-secret',
+      AGENT_SANDBOX_PREVIEW_PROXY_URL: process.env.AGENT_SANDBOX_PREVIEW_PROXY_URL ?? ''
     },
     coverage: { enabled: false },
     outputFile: 'test-results.sandbox-integration.json',
