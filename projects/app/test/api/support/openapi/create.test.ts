@@ -1,3 +1,4 @@
+import { Types } from '@fastgpt/service/common/mongo';
 import type { EditApiKeyProps } from '@/global/support/openapi/api';
 import * as createapi from '@/pages/api/support/openapi/create';
 import { TeamApikeyCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
@@ -80,11 +81,15 @@ describe('support/openapi/create', () => {
       tmbId: users.members[1].tmbId,
       name: 'legacy appId input key'
     }).lean();
-    expect(legacyInputKey?.appId).toBe(String(app._id));
+    const storedKey = await MongoOpenApi.collection.findOne({
+      _id: new Types.ObjectId(String(legacyInputKey?._id))
+    });
+    expect(storedKey?.appId).toBeInstanceOf(Types.ObjectId);
+    expect(String(legacyInputKey?.appId)).toBe(String(app._id));
     expect(legacyInputKey?.type).toBe('app');
   });
 
-  it('limits each app to 100 keys across members and legacy bindings, independently of personal quota', async () => {
+  it('counts legacy default-app keys as personal quota and keeps explicit app quotas independent', async () => {
     const { owner, members } = await getFakeUsers(1);
     const [app, otherApp] = await MongoApp.create(
       ['quota app', 'other app'].map((name) => ({
@@ -96,7 +101,7 @@ describe('support/openapi/create', () => {
     );
     const appId = String(app._id);
     await MongoOpenApi.create(
-      Array.from({ length: 98 }, (_, index) => ({
+      Array.from({ length: 99 }, (_, index) => ({
         teamId: owner.teamId,
         tmbId: members[0].tmbId,
         type: 'app',
@@ -107,14 +112,15 @@ describe('support/openapi/create', () => {
     await MongoOpenApi.collection.insertOne({
       teamId: app.teamId,
       tmbId: app.tmbId,
-      appId: appId.toUpperCase(),
-      apiKey: 'legacy-uppercase-quota'
+      type: 'personal',
+      appId: new Types.ObjectId(appId),
+      apiKey: 'migrated-default-app-quota'
     });
-    global.systemInstanceConfig!.auth.openApiKeyMaxCount = 1;
+    global.systemInstanceConfig!.auth.openApiKeyMaxCount = 2;
 
     const personal = await Call(createapi.default, {
       auth: owner,
-      body: { name: 'personal independent of 99 app keys' }
+      body: { name: 'personal alongside one legacy default-app key' }
     });
     expect(personal.error).toBeUndefined();
     const last = await Call(createapi.default, {
@@ -128,8 +134,10 @@ describe('support/openapi/create', () => {
     });
     expect(result.error).toBe(OpenApiErrEnum.exceedLimit);
     expect(
-      await MongoOpenApi.countDocuments({ appId: { $in: [appId, appId.toUpperCase()] } })
-    ).toBe(100);
+      await MongoOpenApi.collection.countDocuments({
+        appId: new Types.ObjectId(appId)
+      })
+    ).toBe(101);
 
     const other = await Call(createapi.default, {
       auth: owner,
@@ -138,10 +146,10 @@ describe('support/openapi/create', () => {
     expect(other.error).toBeUndefined();
     const extraPersonal = await Call(createapi.default, {
       auth: owner,
-      body: { name: 'personal remains limited to one' }
+      body: { name: 'personal quota includes the historical key' }
     });
     expect(extraPersonal.error).toBe(OpenApiErrEnum.exceedLimit);
-    expect(await MongoOpenApi.countDocuments({ tmbId: owner.tmbId, type: 'personal' })).toBe(1);
+    expect(await MongoOpenApi.countDocuments({ tmbId: owner.tmbId, type: 'personal' })).toBe(2);
   });
 
   it('rechecks membership inside the team lease after a completed handover', async () => {

@@ -41,6 +41,8 @@ function createMockContainer(isInteractive = false): CliContainer {
     profileService: {} as any,
     doctorService: {} as any,
     datasetService: {} as any,
+    chatService: {} as any,
+    readJsonInput: async () => ({}),
     stdout: () => {},
     stderr: () => {}
   };

@@ -1,6 +1,7 @@
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import {
+  DEFAULT_MODERATION_STREAM_INTERVAL,
   getModerationBlockErrorMessage,
   MODERATION_BLOCKED_ERROR_MESSAGE,
   ModerationActionEnum,
@@ -171,7 +172,7 @@ export type StreamModerationBufferOptions = {
 /**
  * 流式审查缓冲器（StreamModerationBuffer）
  *
- * 按 strategy.streamInterval（默认 50 字符/次）触发窗口审查，
+ * 按 strategy.streamInterval（默认 100 字符/次）触发窗口审查，
  * 每次送审累积的完整内容以防止跨分块边界敏感词被截断漏检，并复用同一 sessionId 标记 partial。
  * 一旦命中拦截：立即停止向客户端发送后续 token，向客户端发送拦截中断事件，
  * 并立即调用 abortController.abort() 终止模型生成，丢弃未展示内容。
@@ -191,7 +192,7 @@ export class StreamModerationBuffer {
   private abortController?: AbortController;
 
   constructor({
-    streamInterval = 50,
+    streamInterval = DEFAULT_MODERATION_STREAM_INTERVAL,
     isEnabled = true,
     context,
     policy,
@@ -339,7 +340,7 @@ export const createStreamModerationBuffer = async ({
 }): Promise<StreamModerationBuffer> => {
   const policy = inputPolicy ?? (await getModerationPolicy());
   const isEnabled = isModerationHookEnabled({ stage: ModerationStageEnum.output, policy });
-  const streamInterval = policy.strategy?.streamInterval ?? 50;
+  const streamInterval = policy.strategy?.streamInterval ?? DEFAULT_MODERATION_STREAM_INTERVAL;
 
   return new StreamModerationBuffer({
     streamInterval,

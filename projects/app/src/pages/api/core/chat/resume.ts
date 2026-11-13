@@ -148,6 +148,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const list = transformPreviewHistories(histories, showCite).map((item) => {
       const chatItem = {
         ...item,
+        // 已弃用的兼容别名；客户端聊天业务统一使用 dataId。
         id: item.dataId!
       };
       if (!canReadModerationRecords && chatItem.obj === ChatRoleEnum.AI && chatItem.responseData) {

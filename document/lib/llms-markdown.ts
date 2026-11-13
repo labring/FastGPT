@@ -9,6 +9,7 @@ import remarkStringify from 'remark-stringify';
 import { remarkInclude } from 'fumadocs-mdx/config';
 import { source } from '@/lib/source';
 import { getFastGPTDocsOriginForLocale, type FastGPTDocsLocale } from '@/lib/fastgpt-home-url';
+import { getApiReferenceNotice } from '@/lib/api-reference-notice';
 
 type AstAttribute = {
   type?: string;
@@ -147,6 +148,18 @@ function remarkCleanLlmsMdx() {
         if (tagName === 'Alert') {
           const blockChildren = ensureBlockChildren(children);
           return blockChildren.length > 0 ? [{ type: 'blockquote', children: blockChildren }] : [];
+        }
+
+        if (tagName === 'ApiReferenceNotice') {
+          const notice = getApiReferenceNotice(getAttrString(node, 'language'));
+          const markdown = [
+            `**${notice.title}**${notice.separator}${notice.description}`,
+            '',
+            ...notice.links.map(({ label, url }) => `- ${label}${notice.separator}[System OpenAPI](${url})`),
+            `- ${notice.selfHosted}${notice.separator}\`${notice.selfHostedPath}\``
+          ].join('\n');
+          const content = remark().use(remarkGfm).parse(markdown);
+          return [{ type: 'blockquote', children: content.children as AstNode[] }];
         }
 
         if (tagName === 'Tab' || tagName === 'Accordion') {

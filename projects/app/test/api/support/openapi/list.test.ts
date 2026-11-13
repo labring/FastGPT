@@ -99,21 +99,24 @@ describe('support/openapi/list', () => {
           createTime: new Date('2024-01-01T00:00:00.000Z'),
           appId: String(app._id).toUpperCase(),
           apiKey: 'fastgpt-app-secret',
-          name: 'legacy app key'
+          name: 'legacy app key',
+          type: 'app'
         },
         {
           teamId: owner.teamId,
           tmbId: owner.tmbId,
           createTime: new Date('2025-01-01T00:00:00.000Z'),
           apiKey: 'fastgpt-new-global-secret',
-          name: 'new global key'
+          name: 'new global key',
+          type: 'personal'
         },
         {
           teamId: member.teamId,
           tmbId: member.tmbId,
           appId: String(app._id),
           apiKey: 'fastgpt-member-app-secret',
-          name: 'member legacy app key'
+          name: 'member legacy app key',
+          type: 'app'
         }
       ].map((record) => new MongoOpenApi(record).toObject({ getters: false }))
     );

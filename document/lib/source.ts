@@ -17,6 +17,7 @@ const contentSource = loader({
     attachFile(node, file) {
       return {
         ...node,
+        draft: file?.data.draft === true,
         deprecated: file?.data.deprecated,
         sidebarTag: file?.data.sidebarTag,
         upgradeTags: file?.data.upgradeTags
@@ -30,14 +31,17 @@ const contentSource = loader({
   }
 });
 
-/** Evaluate publication per resolved locale page; missing translations fall back while explicit drafts stay hidden. */
-const isPublished = (page: ReturnType<typeof contentSource.getPage>) =>
-  page !== undefined && page.data.draft !== true;
+/** 按解析后的语言页面判断可见性；仅生产环境隐藏草稿，开发预览保留真实草稿状态。 */
+const isVisible = (page: ReturnType<typeof contentSource.getPage>) =>
+  page !== undefined && (process.env.NODE_ENV !== 'production' || page.data.draft !== true);
 
 /** Remove draft items and empty folders from the page tree while preserving external links. */
 const filterPageTree = (tree: PageTree.Root, language: string): PageTree.Root => {
   const draftUrls = new Set(
-    contentSource.getPages(language).filter((page) => !isPublished(page)).map((page) => page.url)
+    contentSource
+      .getPages(language)
+      .filter((page) => !isVisible(page))
+      .map((page) => page.url)
   );
   const filterPage = (node: PageTree.Item) =>
     draftUrls.has(node.url.split('#', 1)[0]) ? undefined : node;
@@ -57,7 +61,7 @@ const filterPageTree = (tree: PageTree.Root, language: string): PageTree.Root =>
   return { ...tree, children: filterNodes(tree.children) };
 };
 
-/** Hide drafts after locale indexing and normalize virtual sections across sidebar, breadcrumbs, and discovery. */
+/** 按环境统一控制路由、导航与发现入口的草稿可见性，并规范化虚拟目录分组。 */
 export const source: typeof contentSource = {
   ...contentSource,
   pageTree: Object.fromEntries(
@@ -68,17 +72,17 @@ export const source: typeof contentSource = {
   ),
   getPage(...args) {
     const page = contentSource.getPage(...args);
-    return isPublished(page) ? page : undefined;
+    return isVisible(page) ? page : undefined;
   },
   getPages(language) {
-    return contentSource.getPages(language).filter(isPublished);
+    return contentSource.getPages(language).filter(isVisible);
   },
   getNodePage(...args) {
     const page = contentSource.getNodePage(...args);
-    return isPublished(page) ? page : undefined;
+    return isVisible(page) ? page : undefined;
   },
   getPageByHref(...args) {
     const result = contentSource.getPageByHref.call(this, ...args);
-    return result && isPublished(result.page) ? result : undefined;
+    return result && isVisible(result.page) ? result : undefined;
   }
 };

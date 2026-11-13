@@ -77,6 +77,17 @@ describe('serviceEnv bootstrap configuration', () => {
       serviceEnv: { DB_MAX_LINK: 1000 }
     });
   });
+
+  it.each([undefined, 'false', 'invalid'])('ignores retired SYNC_INDEX=%s', async (value) => {
+    vi.stubEnv('FILE_TOKEN_KEY', 'filetokenkey');
+    vi.stubEnv('AES256_SECRET_KEY', 'fastgptsecret');
+    vi.stubEnv('INVOKE_TOKEN_SECRET', validInvokeTokenSecret);
+
+    vi.stubEnv('SYNC_INDEX', value);
+    const { serviceEnv } = await importServiceEnv();
+    expect('SYNC_INDEX' in serviceEnv).toBe(false);
+  });
+
   it('validates the system migration batch size during service env init', async () => {
     vi.stubEnv('FILE_TOKEN_KEY', 'filetokenkey');
     vi.stubEnv('AES256_SECRET_KEY', 'fastgptsecret');

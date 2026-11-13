@@ -2,13 +2,7 @@
 
 import { useCurrentLang } from '@/lib/localized-navigation';
 import { usePathname } from 'next/navigation';
-import {
-  createContext,
-  useContext,
-  useEffect,
-  type FC,
-  type ReactNode
-} from 'react';
+import { createContext, useContext, useEffect, type FC, type ReactNode } from 'react';
 import {
   SidebarItem,
   SidebarFolder,
@@ -29,6 +23,7 @@ const VIRTUAL_SECTION_ID_SUFFIX = '#virtual-section';
 const NestingLevelContext = createContext(0);
 
 type TaggedPageTreeItem = PageTree.Item & {
+  draft?: boolean;
   deprecated?: boolean;
   sidebarTag?: string;
   upgradeTags?: string[];
@@ -98,7 +93,14 @@ const CustomItem: FC<{ item: PageTree.Item }> = ({ item }) => {
     >
       {item.icon}
       <span className="inline-flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
-        <span className={cn('min-w-0 break-words leading-5', deprecated && 'line-through')}>{item.name}</span>
+        <span className={cn('min-w-0 break-words leading-5', deprecated && 'line-through')}>
+          {item.name}
+        </span>
+        {(item as TaggedPageTreeItem).draft && (
+          <span className="shrink-0 rounded-md bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800 dark:bg-amber-400/15 dark:text-amber-300">
+            {lang === 'en' ? 'Draft' : '草稿'}
+          </span>
+        )}
         {tags.length > 0 && (
           <span className="inline-flex shrink-0 items-center gap-1">
             {tags.map((tag) => (
@@ -160,9 +162,7 @@ const CustomFolder: FC<{ item: PageTree.Folder; level: number; children: ReactNo
             {item.name}
           </div>
         ) : (
-          <SidebarFolderTrigger
-            className="min-h-8 min-w-0 max-w-full rounded-lg px-2 text-sm text-fd-muted-foreground hover:cursor-pointer hover:text-fd-accent-foreground data-[state=open]:text-fd-foreground [&>svg[data-icon]]:shrink-0"
-          >
+          <SidebarFolderTrigger className="min-h-8 min-w-0 max-w-full rounded-lg px-2 text-sm text-fd-muted-foreground hover:cursor-pointer hover:text-fd-accent-foreground data-[state=open]:text-fd-foreground [&>svg[data-icon]]:shrink-0">
             <span className="min-w-0 flex-1 break-words text-left leading-5">{item.name}</span>
           </SidebarFolderTrigger>
         )}

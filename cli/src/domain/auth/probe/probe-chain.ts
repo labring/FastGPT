@@ -41,15 +41,18 @@ export function isNotFoundError(error: unknown): boolean {
 /**
  * 责任链调度器：按优先级依次尝试探测处理器；
  * 仅当某级返回 404（服务端未升级）时向下一级回退，认证/业务/网络异常立即中断上报。
+ * 显式查询身份时可要求 whoami 支持，避免旧接口探活成功被误认为服务已支持 CLI。
  */
 export async function runWhoamiProbeChain({
   handlers,
   client,
-  auth
+  auth,
+  requireWhoami = false
 }: {
   handlers: readonly WhoamiProbeHandler[];
   client: FastGptHttpClient;
   auth: HttpRequestAuth;
+  requireWhoami?: boolean;
 }): Promise<WhoamiProbeResult> {
   let lastNotFoundError: unknown;
 
@@ -62,6 +65,17 @@ export async function runWhoamiProbeChain({
       return await handler.probe({ client, auth });
     } catch (error) {
       if (isNotFoundError(error)) {
+        if (requireWhoami && handler.name === 'whoami' && error instanceof CliApiError) {
+          throw new CliApiError({
+            code: 'SERVER_CLI_UNSUPPORTED',
+            message: 'This FastGPT server does not support the CLI yet (whoami returned 404).',
+            hint: 'Upgrade to a CLI-compatible FastGPT server version and verify that --base-url points to the FastGPT API, not the documentation site.',
+            httpStatus: error.httpStatus,
+            serverCode: error.serverCode,
+            statusText: error.statusText,
+            details: error.details
+          });
+        }
         lastNotFoundError = error;
         continue;
       }

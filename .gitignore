@@ -55,3 +55,4 @@ pro/admin/worker/
 .claude/
 .zcodeignore
 projects/code-sandbox/src/isolated/fastgpt_js_launcher
+/tasks/

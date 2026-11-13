@@ -216,6 +216,9 @@ const exactMap: Record<string, string> = {
   '/guide': defaultHomePath,
   '/use-cases': defaultHomePath,
   '/openapi': '/openapi/intro',
+  // 应用调用与会话教程改由最佳实践承接，保留旧书签的直达入口。
+  '/openapi/app': '/openapi/best-practices/app-integration',
+  '/openapi/chat': '/openapi/best-practices/app-integration',
   '/openapi/best-practices': '/openapi/intro',
   '/openapi/swagger': '/openapi/intro',
   '/openapi/share': '/guide/build/publish/link',
@@ -415,8 +418,8 @@ function createGoneResponse(lang: string): NextResponse {
 export default function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // 公开静态技能规范 /skill.md 直接放行，不参与文档路由重写与语言前缀重定向
-  if (pathname === '/skill.md') {
+  // CLI 静态技能规范直接放行，不参与文档路由重写与语言前缀重定向。
+  if (pathname === '/cli/skill.md') {
     return NextResponse.next();
   }
 
@@ -444,13 +447,6 @@ export default function middleware(request: NextRequest) {
       pathWithoutLang = legacyLocaleMatch[2];
       hasLegacyLocalePrefix = true;
     }
-  }
-
-  // 语言前缀下的 /zh-CN/skill.md 或 /en/skill.md 统一重定向到静态单源 /skill.md
-  if (pathWithoutLang === '/skill.md') {
-    const url = new URL('/skill.md', request.url);
-    url.search = request.nextUrl.search;
-    return NextResponse.redirect(url, 301);
   }
 
   // Standalone single-page Markdown endpoint (`/{lang}/{...slug}.md`).
@@ -564,6 +560,6 @@ export default function middleware(request: NextRequest) {
 // Keep static search index, sitemaps, and public assets unprefixed without locale redirects.
 export const config = {
   matcher: [
-    '/((?!api|_next/static|_next/image|favicon(?:\\.ico|/)|robots\\.txt|llms(?:-(?:full|guide|openapi|self-host))?\\.txt|pricing\\.md|skill\\.md|static\\.json(?:$|/)|sitemap.*\\.xml|.*\\.(?:svg|png|jpe?g|webp)|deploy/.*|examples/.*).*)'
+    '/((?!api|_next/static|_next/image|favicon(?:\\.ico|/)|robots\\.txt|llms(?:-(?:full|guide|openapi|self-host))?\\.txt|pricing\\.md|cli/skill\\.md$|static\\.json(?:$|/)|sitemap.*\\.xml|.*\\.(?:svg|png|jpe?g|webp)|deploy/.*|examples/.*).*)'
   ]
 };

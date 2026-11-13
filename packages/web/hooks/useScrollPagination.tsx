@@ -32,6 +32,7 @@ export type ScrollListType = ({
  * ID 同步等待当前分页请求完成，连续保存合并待刷新 ID，不取消 list 或其他 ID 请求。
  * 分页错误通过 error 暴露并暂停自动加载；ID 同步错误通过 refreshError 暴露，不阻断分页。
  * ScrollData 只渲染单层滚动容器和分页文字，不决定遮罩或骨架屏。
+ * 向下分页在数据提交及容器尺寸变化后主动检查触底，首屏未填满时逐页补齐。
  * isInitialLoading 与 isLoadingMore 区分初始化和追加请求，加载效果由外层布局控制。
  */
 export function useScrollPagination<
@@ -118,7 +119,7 @@ export function useScrollPagination<
       const offset = init ? 0 : dataRef.current.length;
 
       // 请求完成到 React 提交列表更新之间，滚动监听可能再次读到旧 data.length。
-      // 用同步游标拦截相同 offset，避免同一页在这个时间窗口被重复请求。
+      // 用同步游标拦截相同 offset，也防止接口返回空页但 total 未更新时循环补页。
       if (!init && requestedOffsetRef.current === offset) return Promise.resolve();
 
       if (init) {
@@ -235,21 +236,30 @@ export function useScrollPagination<
   }, []);
 
   const ScrollRef = useRef<HTMLDivElement>(null);
+  const mountedScrollRefs = useRef(new Set<RefObject<HTMLDivElement>>());
   // 放在外层 hook，确保消费方通过 selector/memo 跳过 ScrollData 重渲染时仍读取最新分页与错误状态。
-  const { run: checkScrollPosition } = useThrottleFn(
-    (ref: RefObject<HTMLDivElement>) => {
-      if (!ref?.current || noMore || isLoading || error || data.length === 0) return;
-      const { scrollTop, scrollHeight, clientHeight } = ref.current;
+  const checkScrollPosition = useMemoizedFn((ref: RefObject<HTMLDivElement>) => {
+    if (!ref.current || disabled || noMore || isLoading || error || data.length === 0) return;
+    const { scrollTop, scrollHeight, clientHeight } = ref.current;
+    // 隐藏或尚未完成布局的容器不能用于判断是否需要补页。
+    if (clientHeight <= 0) return;
 
-      if (
-        (scrollLoadType === 'bottom' && scrollTop + clientHeight >= scrollHeight - thresholdVal) ||
-        (scrollLoadType === 'top' && scrollTop < thresholdVal)
-      ) {
-        loadData({ init: false, ScrollContainerRef: ref });
-      }
-    },
-    { wait: 50 }
-  );
+    if (
+      (scrollLoadType === 'bottom' && scrollTop + clientHeight >= scrollHeight - thresholdVal) ||
+      (scrollLoadType === 'top' && scrollTop < thresholdVal)
+    ) {
+      void loadData({ init: false, ScrollContainerRef: ref });
+    }
+  });
+  const { run: onScroll } = useThrottleFn(checkScrollPosition, { wait: 50 });
+  const checkAutoLoad = useMemoizedFn((ref: RefObject<HTMLDivElement>) => {
+    // 向上加载通常用于历史记录，继续由用户滚动触发，避免初始化时拉取全部历史。
+    if (scrollLoadType === 'bottom') checkScrollPosition(ref);
+  });
+
+  useEffect(() => {
+    mountedScrollRefs.current.forEach(checkAutoLoad);
+  }, [checkAutoLoad, data, disabled, error, isLoading, scrollLoadType, total]);
 
   const ScrollData = useMemoizedFn(
     ({
@@ -269,10 +279,27 @@ export function useScrollPagination<
       })();
 
       // Watch scroll position
-      useEventListener('scroll', () => checkScrollPosition(ref), {
+      useEventListener('scroll', () => onScroll(ref), {
         target: ref,
         passive: true
       });
+
+      useEffect(() => {
+        const mountedRefs = mountedScrollRefs.current;
+        mountedRefs.add(ref);
+        checkAutoLoad(ref);
+
+        const observer =
+          typeof ResizeObserver === 'undefined'
+            ? undefined
+            : new ResizeObserver(() => checkAutoLoad(ref));
+        if (ref.current) observer?.observe(ref.current);
+
+        return () => {
+          mountedRefs.delete(ref);
+          observer?.disconnect();
+        };
+      }, [ref]);
 
       return (
         <Box

@@ -101,6 +101,19 @@ describe('moderation admin OpenAPI contracts', () => {
   });
 
   it('validates moderation policy schema and defaults', () => {
+    expect(DefaultSystemModerationPolicy.hooks).toEqual({
+      userInput: true,
+      modelInput: true,
+      finalOutput: true
+    });
+    expect(DefaultSystemModerationPolicy.strategy.streamInterval).toBe(100);
+    const parsedDefault = SystemModerationPolicySchema.parse({ hooks: {}, strategy: {} });
+    expect(parsedDefault.hooks).toEqual({
+      userInput: true,
+      modelInput: true,
+      finalOutput: true
+    });
+    expect(parsedDefault.strategy.streamInterval).toBe(100);
     expect(SystemModerationPolicySchema.safeParse(DefaultSystemModerationPolicy).success).toBe(
       true
     );

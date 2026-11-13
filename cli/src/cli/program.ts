@@ -6,7 +6,10 @@ import { executeCommandWithPipeline, type CliCommandSpec } from './pipeline';
 const GROUP_DESCRIPTIONS: Record<string, string> = {
   auth: 'Manage profiles, auth status, and active team sessions',
   config: 'Inspect and update CLI configuration values',
-  dataset: 'Manage datasets and search knowledge chunks'
+  dataset: 'Manage datasets and search knowledge chunks',
+  chat: 'Run App conversations and manage their history and messages',
+  'chat history': 'Manage App conversations and their status',
+  'chat record': 'Read App messages and detailed responses'
 };
 
 function attachCommandSpec({
@@ -133,7 +136,7 @@ export function buildCommanderProgram({
       if (!group) {
         group = current
           .command(seg)
-          .description(GROUP_DESCRIPTIONS[seg] ?? `Manage ${seg} resources`);
+          .description(GROUP_DESCRIPTIONS[key] ?? `Manage ${seg} resources`);
         groups.set(key, group);
       }
       current = group;

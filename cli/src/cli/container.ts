@@ -20,6 +20,7 @@ import {
 } from '../domain/doctor/checks/doctor-check';
 import { createDoctorService, type DoctorService } from '../domain/doctor/doctor-service';
 import { createDatasetService, type DatasetService } from '../domain/dataset/dataset-service';
+import { createChatService, type ChatService } from '../domain/chat/chat-service';
 import { createProfileService, type ProfileService } from '../domain/profile/profile-service';
 import {
   createFileConfigRepository,
@@ -27,6 +28,7 @@ import {
   type ConfigRepository
 } from '../infra/config/config-repository';
 import { createFastGptHttpClient } from '../infra/http/fastgpt-http-client';
+import { readJsonInput } from '../infra/input/json-input';
 import { createDefaultSecretStore, type SecretStore } from '../infra/secrets/secret-store';
 import { createTempFileCaptchaPreviewer } from '../infra/ui/captcha-preview';
 import { openExternalFile } from '../infra/ui/external-opener';
@@ -60,6 +62,8 @@ export type CliContainer = {
   readonly profileService: ProfileService;
   readonly doctorService: DoctorService;
   readonly datasetService: DatasetService;
+  readonly chatService: ChatService;
+  readonly readJsonInput: (params: { file?: string; stdin?: boolean }) => Promise<unknown>;
   readonly stdout: (value: string) => void;
   readonly stderr: (value: string) => void;
 };
@@ -165,6 +169,9 @@ export function createCliContainer(deps: CliRuntimeDeps): CliContainer {
     profileService,
     doctorService,
     datasetService,
+    chatService: createChatService(),
+    readJsonInput: (params) =>
+      readJsonInput({ ...params, cwd: deps.cwd, readStdin: deps.readStdin }),
     stdout: deps.stdout,
     stderr: deps.stderr
   };

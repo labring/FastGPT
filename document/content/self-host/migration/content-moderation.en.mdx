@@ -42,7 +42,7 @@ Map the two fields under `censor` in your legacy commercial configuration to the
    - Save the configuration. FastGPT automatically runs a connectivity check against Baidu's API before saving.
 3. **Select the active service**: Select the radio button next to **Baidu Content Security** to set it as the **Current active service**.
 4. **Configure checkpoints and handling policies**:
-   - **Moderation checkpoints**: **User input** and **Final output** are enabled by default. To match legacy input-only behavior, enable **User input** (and optionally **Model input**). If you keep **Final output** enabled, adjust **Streaming check interval** (default `50` characters/check) to balance latency and API usage.
+   - **Moderation checkpoints**: All three checkpoints (**User input**, **Model input**, and **Final output**) are enabled by default. To match legacy input-only behavior, turn off **Final output** (and adjust **User input** and **Model input** as needed). If you keep **Final output** enabled, adjust **Streaming check interval** (default `100` characters/check) to balance latency and API usage.
    - **Suspected risk**: The new Baidu Plugin maps `conclusionType = 3` (suspected) to `suspected`, which defaults to **Block and log**. Switch to **Pass and log** if you prefer not to block suspected content.
    - **Service exception**: Defaults to **Allow unmoderated content**, matching the legacy fail-open behavior.
 5. **Test and save**: Enter sample text in **Moderation test** at the bottom of the page, click **Start test** to verify pass and block behavior, then save the policy.

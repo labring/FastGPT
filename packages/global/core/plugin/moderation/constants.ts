@@ -34,6 +34,9 @@ export enum ModerationExceptionActionEnum {
 /** 全局策略记录默认唯一 ID，用于无既有记录时的首次并发竞争 */
 export const DEFAULT_MODERATION_POLICY_CONFIG_ID = '000000000000000000000021';
 
+/** 流式输出审核默认窗口大小（字符/次） */
+export const DEFAULT_MODERATION_STREAM_INTERVAL = 100;
+
 /** 审查插件凭据脱敏占位符 */
 export const ModerationSecretMaskedValue = '__fastgpt_masked_secret__';
 

@@ -219,6 +219,22 @@ describe('setRequiredRequestExamples', () => {
     ).toEqual({ left: 'left', right: 1 });
   });
 
+  it('preserves the selected branch from each independent union in an intersection', () => {
+    const schema = z.intersection(
+      z.union([
+        z.object({ appId: z.string().meta({ example: 'app' }) }),
+        z.object({ skillId: z.string().meta({ example: 'skill' }) })
+      ]),
+      z.union([
+        z.object({ prevId: z.string().meta({ example: 'before' }) }),
+        z.object({ nextId: z.string().meta({ example: 'after' }) })
+      ])
+    );
+    const example = build(schema);
+    expect(example).toEqual({ appId: 'app', prevId: 'before' });
+    expect(schema.safeParse(example).success).toBe(true);
+  });
+
   it('keeps an empty body when every field is optional', () => {
     expect(build(z.object({ optional: z.string().default('omit') }))).toEqual({});
   });

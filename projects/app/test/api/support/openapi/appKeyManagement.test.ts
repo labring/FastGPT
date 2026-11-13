@@ -3,6 +3,7 @@ import createKey from '@/pages/api/support/openapi/create';
 import listKeys from '@/pages/api/support/openapi/list';
 import copyKey from '@/pages/api/support/openapi/copy';
 import updateKey from '@/pages/api/support/openapi/update';
+import { backfillOpenApiKeyTypeRecord } from '@/migration/tasks/4180/20261104_backfill_openapi_key_type/service';
 import deleteKey from '@/pages/api/support/openapi/delete';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoOpenApi } from '@fastgpt/service/support/openapi/schema';
@@ -47,6 +48,47 @@ beforeEach(async () => {
 });
 
 describe('application administrators share key management', () => {
+  it.each([undefined, 'personal'])(
+    'keeps migrated historical default-app keys private to their member (%s)',
+    async (type) => {
+      const [member, otherAdmin] = admins;
+      const key = new MongoOpenApi({
+        teamId: member.teamId,
+        tmbId: member.tmbId,
+        apiKey: 'legacy-default-app-secret',
+        name: 'historical personal key',
+        appId: appId.toUpperCase(),
+        ...(type ? { type } : {})
+      });
+      await MongoOpenApi.collection.insertOne(key.toObject({ getters: false }));
+      await MongoResourcePermission.deleteMany({ resourceId: appId, tmbId: member.tmbId });
+      const id = String(key._id);
+      await backfillOpenApiKeyTypeRecord(id);
+      const ownList = await Call(listKeys, { auth: member });
+      expect(ownList.error).toBeUndefined();
+      expect(ownList.data).toEqual([
+        expect.objectContaining({
+          _id: id,
+          type: 'personal',
+          defaultAppId: appId,
+          authProxy: false
+        })
+      ]);
+      expect(ownList.data[0].appId).toBeUndefined();
+      const appList = await Call(listKeys, { auth: otherAdmin, query: { type: 'app', appId } });
+      expect(appList.data).toEqual([]);
+      expect((await Call(copyKey, { auth: member, body: { id } })).data).toBe(
+        'legacy-default-app-secret'
+      );
+      expect((await Call(copyKey, { auth: otherAdmin, body: { id } })).error).toBeDefined();
+      const updated = await Call(updateKey, { auth: member, body: { _id: id, name: 'updated' } });
+      expect(updated.error).toBeUndefined();
+      expect(String((await MongoOpenApi.findById(id).lean())?.appId)).toBe(appId);
+      expect((await Call(deleteKey, { auth: otherAdmin, query: { id } })).error).toBeDefined();
+      expect((await Call(deleteKey, { auth: member, query: { id } })).error).toBeUndefined();
+    }
+  );
+
   it('lets each administrator view, copy, edit and delete the other administrator’s application key', async () => {
     for (const [index, admin] of admins.entries()) {
       const result = await Call(createKey, {

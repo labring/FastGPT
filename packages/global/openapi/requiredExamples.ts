@@ -33,18 +33,30 @@ export const setRequiredRequestExamples = (
     const branches =
       schema.allOf ?? (schema.oneOf?.[0] ? [schema.oneOf[0]] : schema.anyOf?.slice(0, 1));
     if (branches?.length) {
-      const { allOf, oneOf, anyOf, ...base } = schema;
-      const merged = branches.reduce<oas31.SchemaObject>((result, branch) => {
-        const item = resolve<oas31.SchemaObject>(branch);
-        return {
-          ...result,
-          ...item,
-          ...((result.properties || item?.properties) && {
-            properties: { ...result.properties, ...item?.properties }
-          }),
-          required: [...new Set([...(result.required ?? []), ...(item?.required ?? [])])]
-        };
-      }, base);
+      /** 先分别选择每个组合内的分支，避免两个独立 union 的 anyOf 在合并时互相覆盖。 */
+      const selectBranches = (
+        input: oas31.SchemaObject | oas31.ReferenceObject,
+        visited = new Set<object>()
+      ): oas31.SchemaObject => {
+        const current = resolve<oas31.SchemaObject>(input);
+        if (!current || visited.has(current)) return {};
+        const trail = new Set(visited).add(current);
+        const children =
+          current.allOf ?? (current.oneOf?.[0] ? [current.oneOf[0]] : current.anyOf?.slice(0, 1));
+        const { allOf, oneOf, anyOf, ...base } = current;
+        return (children ?? []).reduce<oas31.SchemaObject>((result, branch) => {
+          const item = selectBranches(branch, trail);
+          return {
+            ...result,
+            ...item,
+            ...((result.properties || item.properties) && {
+              properties: { ...result.properties, ...item.properties }
+            }),
+            required: [...new Set([...(result.required ?? []), ...(item.required ?? [])])]
+          };
+        }, base);
+      };
+      const merged = selectBranches(schema);
       return sample(merged, seed, next);
     }
     const value = seed ?? schema.example ?? schema.examples?.[0] ?? schema.default;

@@ -218,7 +218,7 @@ export const getMongoModel = <T>(name: string, schema: mongoose.Schema): Model<T
 
   const model = connectionMongo.model(name, schema) as Model<T>;
 
-  syncMongoIndex(model);
+  ensureMongoIndexes(model);
 
   return model;
 };
@@ -229,12 +229,13 @@ export const getMongoLogModel = <T>(name: string, schema: mongoose.Schema): Mode
 
   const model = connectionLogMongo.model(name, schema) as Model<T>;
 
-  syncMongoIndex(model);
+  ensureMongoIndexes(model);
 
   return model;
 };
 
-const syncMongoIndex = (model: Model<any>) => {
+/** 启动时固定维护 Schema 索引；测试、构建阶段及未配置数据库时跳过。 */
+const ensureMongoIndexes = (model: Model<any>) => {
   if (
     process.env.NODE_ENV === 'test' ||
     process.env.NEXT_PHASE === 'phase-production-build' ||

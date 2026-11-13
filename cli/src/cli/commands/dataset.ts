@@ -1,5 +1,6 @@
-import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { CliArgumentError } from '../../shared/errors';
+import { DatasetSearchFilterSchema } from '@fastgpt/global/core/dataset/search/type';
+import type { DatasetSearchParams } from '../../domain/dataset/dataset-service';
 import type { CliCommandSpec } from '../pipeline';
 
 /**
@@ -421,23 +422,24 @@ export function createDatasetCommandSpecs(): CliCommandSpec[] {
 
     {
       path: ['dataset', 'search'],
-      summary: 'Test knowledge recall, chunk scoring, and reranking against a dataset',
+      summary: 'Search one or more datasets with unified recall, scoring, and reranking',
       risk: 'read',
       authModes: ['token', 'personalKey'],
       positionalArgs: [
         {
-          name: 'datasetId',
+          name: 'datasetIds',
           required: false,
-          description: 'Target dataset ObjectId (or use --id)'
+          description: 'One or more comma-separated dataset ObjectIds, up to 100 (or use --id)'
         },
         { name: 'text', required: false, description: 'Search query text (or use --text)' }
       ],
       options: [
         {
           name: 'id',
-          flags: '--id <datasetId>',
+          flags: '--id <datasetIds>',
           takesValue: true,
-          description: 'Dataset ObjectId (alternative to positional argument)'
+          description:
+            'One or more comma-separated dataset ObjectIds (alternative to positional argument)'
         },
         {
           name: 'text',
@@ -446,10 +448,16 @@ export function createDatasetCommandSpecs(): CliCommandSpec[] {
           description: 'Search query text'
         },
         {
-          name: 'limit',
-          flags: '--limit <tokens>',
+          name: 'topk',
+          flags: '--topk <count>',
           takesValue: true,
-          description: 'Maximum token budget for recalled chunks (default 5000, max 20000)'
+          description: 'Return the top 1–100 chunks (default 20); takes precedence over --maxTokens'
+        },
+        {
+          name: 'maxTokens',
+          flags: '--maxTokens <tokens>',
+          takesValue: true,
+          description: 'Use a token budget instead of topk (positive integer)'
         },
         {
           name: 'similarity',
@@ -461,8 +469,51 @@ export function createDatasetCommandSpecs(): CliCommandSpec[] {
           name: 'mode',
           flags: '--mode <mode>',
           takesValue: true,
+          description: 'Recall mode: embedding, fullTextRecall, or mixedRecall (default embedding)'
+        },
+        {
+          name: 'usageScene',
+          flags: '--usageScene <scene>',
+          takesValue: true,
           description:
-            'Recall mode: embedding, fullTextRecall, or mixedRecall (default mixedRecall)'
+            'Billing label only: search or searchTest (default search); does not affect retrieval'
+        },
+        {
+          name: 'embeddingWeight',
+          flags: '--embeddingWeight <weight>',
+          takesValue: true,
+          description: 'Embedding fusion weight for mixedRecall (0–1, default 0.5)'
+        },
+        {
+          name: 'collectionIds',
+          flags: '--collectionIds <ids>',
+          takesValue: true,
+          description: 'Restrict to comma-separated collection or folder IDs (up to 500)'
+        },
+        {
+          name: 'createTimeGte',
+          flags: '--createTimeGte <datetime>',
+          takesValue: true,
+          description: 'Inclusive collection creation time lower bound (ISO 8601 with timezone)'
+        },
+        {
+          name: 'createTimeLte',
+          flags: '--createTimeLte <datetime>',
+          takesValue: true,
+          description: 'Inclusive collection creation time upper bound (ISO 8601 with timezone)'
+        },
+        {
+          name: 'tagsAnd',
+          flags: '--tagsAnd <json>',
+          takesValue: true,
+          description: 'JSON array of tag conditions that must all match (1–50 conditions)'
+        },
+        {
+          name: 'tagsOr',
+          flags: '--tagsOr <json>',
+          takesValue: true,
+          description:
+            'JSON array of tag conditions of which at least one must match (1–50 conditions)'
         },
         {
           name: 'rerank',
@@ -474,13 +525,68 @@ export function createDatasetCommandSpecs(): CliCommandSpec[] {
           name: 'noRerank',
           flags: '--no-rerank',
           takesValue: false,
-          description: 'Disable rerank model scoring'
+          description: 'Disable rerank model scoring (default)'
+        },
+        {
+          name: 'rerankModelId',
+          flags: '--rerankModelId <id>',
+          takesValue: true,
+          description: 'Rerank model ID; requires --rerank (default: authorized default model)'
+        },
+        {
+          name: 'rerankCandidateNum',
+          flags: '--rerankCandidateNum <count>',
+          takesValue: true,
+          description: 'Rerank candidate count (10–100, default 100); requires --rerank'
+        },
+        {
+          name: 'rerankWeight',
+          flags: '--rerankWeight <weight>',
+          takesValue: true,
+          description: 'Rerank fusion weight (0–1, default 0.5); requires --rerank'
+        },
+        {
+          name: 'queryExtension',
+          flags: '--queryExtension',
+          takesValue: false,
+          description: 'Enable query extension'
+        },
+        {
+          name: 'noQueryExtension',
+          flags: '--no-queryExtension',
+          takesValue: false,
+          description: 'Disable query extension (default)'
+        },
+        {
+          name: 'queryExtensionModelId',
+          flags: '--queryExtensionModelId <id>',
+          takesValue: true,
+          description:
+            'Query extension model ID; requires --queryExtension (default: authorized default model)'
+        },
+        {
+          name: 'queryExtensionBackground',
+          flags: '--queryExtensionBackground <text>',
+          takesValue: true,
+          description:
+            'Query extension background (up to 100000 characters); requires --queryExtension'
         }
       ],
       examples: [
         {
-          description: 'Test recall with query text',
+          description: 'Search with query text',
           args: ['dataset', 'search', '68ad85a7463006c963799a05', 'What is FastGPT?']
+        },
+        {
+          description: 'Search multiple datasets together with a shared topk budget',
+          args: [
+            'dataset',
+            'search',
+            '68ad85a7463006c963799a05,68ad85a7463006c963799a10',
+            'What is FastGPT?',
+            '--topk',
+            '10'
+          ]
         },
         {
           description: 'Hybrid search using --id and --text flags',
@@ -491,6 +597,8 @@ export function createDatasetCommandSpecs(): CliCommandSpec[] {
             '68ad85a7463006c963799a05',
             '--text',
             'API authentication',
+            '--mode',
+            'mixedRecall',
             '--similarity',
             '0.6',
             '--format',
@@ -503,12 +611,12 @@ export function createDatasetCommandSpecs(): CliCommandSpec[] {
           throw new CliArgumentError('Active HTTP client required for dataset search.');
         }
 
-        const datasetId = positional[0] ?? (typeof options.id === 'string' ? options.id : '');
-        if (!datasetId.trim()) {
+        const datasetIds = positional[0] ?? (typeof options.id === 'string' ? options.id : '');
+        if (!datasetIds.trim()) {
           throw new CliArgumentError(
-            'Dataset ID is required.',
+            'At least one dataset ID is required.',
             undefined,
-            'Usage: fastgpt dataset search <datasetId> <query> or fastgpt dataset search --id <datasetId> --text <query>'
+            'Usage: fastgpt dataset search <id1,id2,...> <query> or fastgpt dataset search --id <id1,id2,...> --text <query>'
           );
         }
 
@@ -525,33 +633,93 @@ export function createDatasetCommandSpecs(): CliCommandSpec[] {
           throw new CliArgumentError(
             'Search query text is required.',
             undefined,
-            'Usage: fastgpt dataset search <datasetId> "search text"'
+            'Usage: fastgpt dataset search <id1,id2,...> "search text"'
           );
         }
 
-        const searchMode = (() => {
-          if (options.mode === undefined) {
-            return DatasetSearchModeEnum.mixedRecall;
+        const readString = (name: string) =>
+          typeof options[name] === 'string' ? options[name] : undefined;
+        const readNumber = (name: string) => {
+          const value = readString(name);
+          return value === undefined ? undefined : Number(value);
+        };
+        /** JSON 语法错误归为命令参数错误；标签操作符及值类型继续由共享 Schema 校验。 */
+        const readJson = (name: string): unknown => {
+          const value = readString(name);
+          if (value === undefined) return undefined;
+          try {
+            return JSON.parse(value);
+          } catch {
+            throw new CliArgumentError(`--${name} must be valid JSON.`);
           }
-          return options.mode as any;
-        })();
+        };
 
-        const usingReRank = (() => {
-          if (options.rerank === true) return true;
-          if (options.noRerank === true || options.rerank === false) return false;
-          return undefined;
-        })();
+        const hasFilter = [
+          'collectionIds',
+          'createTimeGte',
+          'createTimeLte',
+          'tagsAnd',
+          'tagsOr'
+        ].some((name) => options[name] !== undefined);
+        const filter = hasFilter
+          ? DatasetSearchFilterSchema.parse({
+              collectionIds: readString('collectionIds')
+                ?.split(',')
+                .map((id) => id.trim()),
+              createTime:
+                options.createTimeGte !== undefined || options.createTimeLte !== undefined
+                  ? { gte: readString('createTimeGte'), lte: readString('createTimeLte') }
+                  : undefined,
+              tags:
+                options.tagsAnd !== undefined || options.tagsOr !== undefined
+                  ? { and: readJson('tagsAnd'), or: readJson('tagsOr') }
+                  : undefined
+            })
+          : undefined;
+
+        // 附加配置只在显式提供时写入；关闭功能时传附加配置交由共享契约拒绝，避免静默忽略。
+        const rerank = {
+          enabled: options.rerank === true,
+          ...(options.rerankModelId !== undefined ? { modelId: readString('rerankModelId') } : {}),
+          ...(options.rerankCandidateNum !== undefined
+            ? { candidateNum: readNumber('rerankCandidateNum') }
+            : {}),
+          ...(options.rerankWeight !== undefined ? { weight: readNumber('rerankWeight') } : {})
+        };
+        const queryExtension = {
+          enabled: options.queryExtension === true,
+          ...(options.queryExtensionModelId !== undefined
+            ? { modelId: readString('queryExtensionModelId') }
+            : {}),
+          ...(options.queryExtensionBackground !== undefined
+            ? { background: readString('queryExtensionBackground') }
+            : {})
+        };
 
         return container.datasetService.search({
           client,
           input: {
-            datasetId: datasetId.trim(),
+            datasetIds,
             text: searchText,
-            limit: typeof options.limit === 'string' ? Number(options.limit) : undefined,
-            similarity:
-              typeof options.similarity === 'string' ? Number(options.similarity) : undefined,
-            searchMode,
-            usingReRank
+            topk: readNumber('topk'),
+            maxTokens: readNumber('maxTokens'),
+            similarity: readNumber('similarity'),
+            mode: readString('mode') as DatasetSearchParams['mode'],
+            embeddingWeight: readNumber('embeddingWeight'),
+            usageScene: readString('usageScene') as DatasetSearchParams['usageScene'],
+            filter,
+            rerank: ['rerank', 'rerankModelId', 'rerankCandidateNum', 'rerankWeight'].some(
+              (name) => options[name] !== undefined
+            )
+              ? rerank
+              : undefined,
+            queryExtension: [
+              'queryExtension',
+              'queryExtensionModelId',
+              'queryExtensionBackground'
+            ].some((name) => options[name] !== undefined)
+              ? queryExtension
+              : undefined
           }
         });
       }
