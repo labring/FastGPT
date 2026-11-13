@@ -103,7 +103,8 @@ describe('POST /api/core/app/mcpTools/oauth/client/reset', () => {
     expect(oauth?.token).toBeUndefined();
     expect(oauth?.server).toBeUndefined();
     expect(oauth?.lastError).toBeUndefined();
-    expect(oauth?.clientSource).toBeNull();
+    // Stage K10：clientSource 随 client 一起 $unset，绝不写 null（schema 只允许 cimd|dcr|manual）。
+    expect(oauth?.clientSource).toBeUndefined();
     expect(oauth?.credentialSeq).toBe(6);
   });
 

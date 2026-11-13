@@ -440,7 +440,8 @@ export const mergeMcpOAuthFromPublished = ({
         nextIssuer === previousIssuer;
       // client 被丢弃时 clientSource 必须同步清空，避免持久化出“来源已声明但无 client”
       // 的不一致记录（status 投影与 selectMcpOAuthClient 都会据此误判）。
-      const nextClientSource = keepClient ? clientSource : undefined;
+      // 历史数据里的 null 同样视为“未确定”：写回时省略该键，绝不落 null。
+      const nextClientSource = keepClient && clientSource ? clientSource : undefined;
       return {
         oauth: {
           ...(rest as McpToolSetOAuthConfigType),
@@ -454,9 +455,13 @@ export const mergeMcpOAuthFromPublished = ({
       };
     }
 
+    // 未变更认证模式：原样保留 OAuth 配置。历史记录可能含 `clientSource: null`，
+    // 读侧已容忍；写回时剔除该键，避免把 null 继续持久化。
+    const { clientSource: existingClientSource, ...existingRest } = existingOAuth;
     return {
       oauth: {
-        ...existingOAuth,
+        ...existingRest,
+        ...(existingClientSource ? { clientSource: existingClientSource } : {}),
         ...(nextClientMode ? { clientMode: nextClientMode } : {}),
         ...(nextScope !== undefined ? { scope: nextScope } : {})
       },
@@ -478,10 +483,19 @@ export const mergeMcpOAuthFromPublished = ({
   }
 
   // 切到 headers：清 token / secret / 租约 / lastError，保留 clientId 与发现结果。
-  const { token, refreshLease, revokeLease, lastError, client, ...rest } = existingOAuth ?? {};
+  const {
+    token,
+    refreshLease,
+    revokeLease,
+    lastError,
+    client,
+    clientSource: previousClientSource,
+    ...rest
+  } = existingOAuth ?? {};
   return {
     oauth: {
       ...(rest as McpToolSetOAuthConfigType),
+      ...(previousClientSource ? { clientSource: previousClientSource } : {}),
       ...(client
         ? {
             client: {

@@ -78,12 +78,12 @@ async function handler(req: ApiRequestProps<McpOAuthStartBodyType>, res: NextApi
 
   const discovery = await discoverMcpOAuth({
     mcpUrl: toolSet.url!,
-    previousIssuer: oauth?.issuer,
+    previousIssuer: oauth?.issuer ?? undefined,
     allowInsecureHttp: config.allowInsecureHttp
   });
   assertMcpOAuthPkceSupported(discovery.server);
 
-  const scope = normalizeMcpOAuthRequestedScope(requestedScope ?? oauth?.scope);
+  const scope = normalizeMcpOAuthRequestedScope(requestedScope ?? oauth?.scope ?? undefined);
   const redirectUri = getMcpOAuthRedirectUri();
   const cimdClientId = getMcpOAuthCimdClientId();
   const cimdAvailable = await isMcpOAuthCimdAvailable({
@@ -97,8 +97,8 @@ async function handler(req: ApiRequestProps<McpOAuthStartBodyType>, res: NextApi
     redirectUri,
     cimdClientId,
     cimdAvailable,
-    savedClient: oauth?.client,
-    savedClientSource: oauth?.clientSource,
+    savedClient: oauth?.client ?? undefined,
+    savedClientSource: oauth?.clientSource ?? undefined,
     manualClient
   });
 

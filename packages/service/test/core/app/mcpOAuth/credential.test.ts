@@ -357,6 +357,26 @@ describe('mcpOAuth credential', () => {
     expect(mergedSameIssuer.oauth?.client?.clientId).toBe('client-1');
     expect(mergedSameIssuer.oauth?.clientSource).toBe('cimd');
 
+    // 历史 null（Stage K10）：未变更认证模式时读入后写回必须剔除 clientSource，
+    // 不能把 null 继续持久化（schema 只允许 cimd|dcr|manual）。
+    const mergedNullSource = mergeMcpOAuthFromPublished({
+      previousAuthMode: 'oauth',
+      nextAuthMode: 'oauth',
+      urlChanged: false,
+      existingOAuth: {
+        schemaVersion: 1,
+        clientMode: 'manual',
+        credentialSeq: 4,
+        clientSource: null,
+        resource: 'https://mcp.example.org/mcp',
+        authorizedAt: 1,
+        authorizedBy: 'tmb'
+      }
+    });
+    expect(mergedNullSource.oauth).not.toHaveProperty('clientSource');
+    expect(mergedNullSource.oauth?.resource).toBe('https://mcp.example.org/mcp');
+    expect(mergedNullSource.credentialSeqDelta).toBe(0);
+
     const toHeaders = mergeMcpOAuthFromPublished({
       previousAuthMode: 'oauth',
       nextAuthMode: 'headers',

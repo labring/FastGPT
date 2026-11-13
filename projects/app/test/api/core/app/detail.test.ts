@@ -309,6 +309,65 @@ describe('get app detail api', () => {
     expect(mcpToolSet?.oauth?.server?.registrationEndpoint).toBeNull();
   });
 
+  it('returns OAuth toolset detail when persisted optional oauth fields are null', async () => {
+    // 回归（Stage K10）：旧版 client reset 把 `oauth.clientSource` 写成 null，
+    // 导致 rootToolSet 解析失败并落入 legacy 摘要校验，detail 返回 500。
+    const owner = await getUser(`detail-oauth-client-source-null-${getNanoid(6)}`);
+    const appId = await onCreateApp({
+      name: 'oauth toolset detail with null clientSource',
+      type: AppTypeEnum.mcpToolSet,
+      teamId: owner.teamId,
+      tmbId: owner.tmbId,
+      nodes: [
+        {
+          nodeId: 'mcp-node',
+          flowNodeType: FlowNodeTypeEnum.toolSet,
+          name: 'MCP',
+          toolConfig: {
+            mcpToolSet: {
+              url: 'https://example.com/mcp',
+              authMode: 'oauth',
+              toolList: [
+                { name: 'whoami', description: 'Who am I', inputSchema: { type: 'object' } }
+              ],
+              oauth: {
+                schemaVersion: 1,
+                clientMode: 'manual',
+                credentialSeq: 4,
+                clientSource: null,
+                issuer: null,
+                resource: 'https://example.com/mcp',
+                scope: null,
+                authorizedAt: null,
+                authorizedBy: null,
+                server: null,
+                client: null,
+                token: null,
+                lastError: null,
+                refreshLease: null
+              }
+            }
+          },
+          inputs: [],
+          outputs: []
+        }
+      ]
+    });
+
+    const res = await Call<Record<string, never>, GetAppDetailQueryType, GetAppDetailResponseType>(
+      handler,
+      { auth: owner, headers: {}, query: { appId } }
+    );
+
+    expect(res.code).toBe(200);
+    const mcpToolSet = (res.data.nodes[0]?.toolConfig as any)?.mcpToolSet;
+    expect(mcpToolSet?.authMode).toBe('oauth');
+    expect(mcpToolSet?.toolList).toHaveLength(1);
+    // null 读侧被容忍并原样保留；写路径不会再产生 null。
+    expect(mcpToolSet?.oauth?.clientSource).toBeNull();
+    expect(mcpToolSet?.oauth?.resource).toBe('https://example.com/mcp');
+  });
+
   it('does not expose workflow configuration to a read-only collaborator', async () => {
     const owner = await getUser(`detail-owner-${getNanoid(6)}`);
     const reader = await getUser(`detail-reader-${getNanoid(6)}`, owner.teamId);

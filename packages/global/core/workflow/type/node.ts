@@ -26,7 +26,7 @@ export const McpToolSetRuntimeConfigSchema = z.object({
   headerSecret: StoreSecretValueTypeSchema.nullish().meta({
     description: 'MCP 服务请求头密钥配置'
   }),
-  oauth: McpToolSetOAuthConfigSchema.optional().meta({
+  oauth: McpToolSetOAuthConfigSchema.nullish().meta({
     description: 'OAuth 授权配置与凭证（仅工具集 App 根完整配置）'
   }),
   toolList: z.array(McpToolConfigSchema).meta({
