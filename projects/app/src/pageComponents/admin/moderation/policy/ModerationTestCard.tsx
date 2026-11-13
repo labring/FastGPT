@@ -108,87 +108,54 @@ const ModerationTestCard: React.FC<ModerationTestCardProps> = ({ activePlugin })
   }, [testResult, testedContent, t]);
 
   const renderVerdictTag = (verdict?: string) => {
-    if (verdict === 'pass') {
-      return (
-        <Flex
-          alignItems={'center'}
-          px={3}
-          h={'36px'}
-          borderRadius={'md'}
-          bg={'green.50'}
-          border={'1px solid'}
-          borderColor={'green.200'}
-          color={'green.600'}
-          fontSize={'xs'}
-          fontWeight={'medium'}
-          gap={1.5}
-        >
-          <MyIcon name="checkCircle" w={'14px'} color={'green.600'} />
-          <Text>{t('admin:moderation.verdict_pass')}</Text>
-        </Flex>
-      );
-    }
-    if (verdict === 'block') {
-      return (
-        <Flex
-          alignItems={'center'}
-          px={3}
-          h={'36px'}
-          borderRadius={'md'}
-          bg={'red.50'}
-          border={'1px solid'}
-          borderColor={'red.200'}
-          color={'red.600'}
-          fontSize={'xs'}
-          fontWeight={'medium'}
-          gap={1.5}
-        >
-          <MyIcon name="common/errorFill" w={'14px'} color={'red.600'} />
-          <Text>{t('admin:moderation.verdict_block')}</Text>
-        </Flex>
-      );
-    }
-    if (verdict === 'suspected') {
-      return (
-        <Flex
-          alignItems={'center'}
-          px={3}
-          h={'36px'}
-          borderRadius={'md'}
-          bg={'yellow.50'}
-          border={'1px solid'}
-          borderColor={'yellow.200'}
-          color={'yellow.700'}
-          fontSize={'xs'}
-          fontWeight={'medium'}
-          gap={1.5}
-        >
-          <MyIcon name="common/errorFill" w={'14px'} color={'yellow.600'} />
-          <Text>{t('admin:moderation.verdict_suspected')}</Text>
-        </Flex>
-      );
-    }
-    if (verdict === 'error') {
-      return (
-        <Flex
-          alignItems={'center'}
-          px={3}
-          h={'36px'}
-          borderRadius={'md'}
-          bg={'myGray.100'}
-          border={'1px solid'}
-          borderColor={'myGray.300'}
-          color={'myGray.700'}
-          fontSize={'xs'}
-          fontWeight={'medium'}
-          gap={1.5}
-        >
-          <MyIcon name="common/errorFill" w={'14px'} color={'myGray.600'} />
-          <Text>{t('admin:moderation.verdict_error')}</Text>
-        </Flex>
-      );
-    }
-    return null;
+    const tagConfig = (() => {
+      switch (verdict) {
+        case 'pass':
+          return {
+            bg: 'green.50',
+            color: 'green.600',
+            label: t('admin:moderation.verdict_pass')
+          };
+        case 'block':
+          return {
+            bg: 'red.50',
+            color: 'red.500',
+            label: t('admin:moderation.verdict_block')
+          };
+        case 'suspected':
+          return {
+            bg: 'red.50',
+            color: 'red.500',
+            label: t('admin:moderation.verdict_suspected')
+          };
+        case 'error':
+          return {
+            bg: 'myGray.100',
+            color: 'myGray.700',
+            label: t('admin:moderation.verdict_error')
+          };
+        default:
+          return null;
+      }
+    })();
+
+    if (!tagConfig) return null;
+
+    return (
+      <Flex
+        display={'inline-flex'}
+        alignItems={'center'}
+        px={3}
+        h={'36px'}
+        borderRadius={'sm'}
+        bg={tagConfig.bg}
+        color={tagConfig.color}
+        fontSize={'xs'}
+        fontWeight={'medium'}
+      >
+        <Text lineHeight={'16px'}>{tagConfig.label}</Text>
+      </Flex>
+    );
   };
 
   return (
@@ -222,7 +189,7 @@ const ModerationTestCard: React.FC<ModerationTestCardProps> = ({ activePlugin })
               size={'md'}
               h={'36px'}
               minW={'57px'}
-              px={3}
+              px={'14px'}
               variant={'whiteBase'}
               onClick={handleClear}
               isDisabled={runningTest || (!content && !testResult)}
@@ -233,7 +200,8 @@ const ModerationTestCard: React.FC<ModerationTestCardProps> = ({ activePlugin })
               size={'md'}
               h={'36px'}
               minW={'85px'}
-              px={3}
+              px={'14px'}
+              variant={'primaryOutline'}
               onClick={handleRunTest}
               isLoading={runningTest}
               isDisabled={!activePlugin || !content.trim()}
@@ -247,33 +215,32 @@ const ModerationTestCard: React.FC<ModerationTestCardProps> = ({ activePlugin })
         {testResult && testResult.verdict !== 'pass' && !isDetailCardClosed && flatDetail && (
           <Box
             w={'100%'}
-            p={3.5}
-            borderRadius={'md'}
-            border={'1px solid'}
-            borderColor={'myGray.200'}
-            bg={'myGray.50'}
+            p={3}
+            borderRadius={'sm'}
+            bg={'white'}
+            boxShadow={'1.5'}
             position={'relative'}
-            mt={3}
+            mt={2}
           >
             {/* 右上角关闭按钮 */}
             <Box
               position={'absolute'}
-              top={3}
-              right={3}
+              top={'6px'}
+              right={'6px'}
               cursor={'pointer'}
               color={'myGray.500'}
               _hover={{ color: 'myGray.800' }}
               onClick={() => setIsDetailCardClosed(true)}
               title={t('admin:moderation.close_detail')}
             >
-              <MyIcon name="common/closeLight" w={'14px'} />
+              <MyIcon name="common/closeLight" w={'16px'} />
             </Box>
 
-            <Flex flexDirection={'column'} gap={2.5} pr={6}>
+            <Flex flexDirection={'column'} gap={2} pr={6}>
               {/* 命中标签 */}
               {flatDetail.hitLabels.length > 0 && (
                 <Flex fontSize={'xs'} lineHeight={'1.5'}>
-                  <Text w={'80px'} color={'myGray.600'} flexShrink={0} fontWeight={'medium'}>
+                  <Text w={'80px'} color={'myGray.500'} flexShrink={0} fontWeight={'medium'}>
                     {t('admin:moderation.hit_labels')}
                   </Text>
                   <Text color={'myGray.900'}>{flatDetail.hitLabels.join('、')}</Text>
@@ -283,7 +250,7 @@ const ModerationTestCard: React.FC<ModerationTestCardProps> = ({ activePlugin })
               {/* 关键词 */}
               {flatDetail.allKeywords.length > 0 && (
                 <Flex fontSize={'xs'} lineHeight={'1.5'}>
-                  <Text w={'80px'} color={'myGray.600'} flexShrink={0} fontWeight={'medium'}>
+                  <Text w={'80px'} color={'myGray.500'} flexShrink={0} fontWeight={'medium'}>
                     {t('admin:moderation.keywords')}
                   </Text>
                   <Text color={'myGray.900'}>{flatDetail.allKeywords.join('、')}</Text>
@@ -293,7 +260,7 @@ const ModerationTestCard: React.FC<ModerationTestCardProps> = ({ activePlugin })
               {/* 内容详情 */}
               {testedContent && (
                 <Flex fontSize={'xs'} lineHeight={'1.6'}>
-                  <Text w={'80px'} color={'myGray.600'} flexShrink={0} fontWeight={'medium'}>
+                  <Text w={'80px'} color={'myGray.500'} flexShrink={0} fontWeight={'medium'}>
                     {t('admin:moderation.content_detail')}
                   </Text>
                   <Box
@@ -313,10 +280,10 @@ const ModerationTestCard: React.FC<ModerationTestCardProps> = ({ activePlugin })
               {/* 异常信息 */}
               {flatDetail.errorMessage && (
                 <Flex fontSize={'xs'} lineHeight={'1.5'}>
-                  <Text w={'80px'} color={'red.600'} flexShrink={0} fontWeight={'medium'}>
+                  <Text w={'80px'} color={'red.500'} flexShrink={0} fontWeight={'medium'}>
                     {t('admin:moderation.error_message')}
                   </Text>
-                  <Text color={'red.600'}>{flatDetail.errorMessage}</Text>
+                  <Text color={'red.500'}>{flatDetail.errorMessage}</Text>
                 </Flex>
               )}
             </Flex>
