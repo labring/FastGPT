@@ -233,50 +233,7 @@ describe('MongoVectorCtrl.embRecall', () => {
     expect(results[3].score).toBeCloseTo(-1, 15);
   });
 
-  it('uses the legacy score expression only after an unsupported native operator and remembers it', async () => {
-    const controller = createCtrl();
-    await model.create({
-      _id: 'fallback',
-      teamId: 'a',
-      datasetId: 'd',
-      collectionId: 'c',
-      vector,
-      createTime: new Date()
-    });
-    const aggregateCandidates = model.aggregate.bind(model);
-    const aggregate = vi
-      .spyOn(model, 'aggregate')
-      .mockImplementationOnce(() => {
-        throw Object.assign(
-          new Error(
-            "Invalid $project :: caused by :: Unrecognized expression '$similarityDotProduct'"
-          ),
-          { code: 168 }
-        );
-      })
-      .mockImplementation((pipeline = []) => aggregateCandidates(pipeline.slice(1)));
-    const props = {
-      teamId: 'a',
-      datasetIds: ['d'],
-      vector,
-      limit: 100,
-      forbidCollectionIdList: []
-    };
-    const expected = { results: [{ id: 'fallback', collectionId: 'c', score: 1 }] };
-    await expect(controller.embRecall(props)).resolves.toEqual(expected);
-    await expect(controller.embRecall(props)).resolves.toEqual(expected);
-    expect(aggregate).toHaveBeenCalledTimes(3);
-    expect(aggregate.mock.calls[0][0]?.[1]).toHaveProperty('$project.score.$similarityDotProduct');
-    for (const call of aggregate.mock.calls.slice(1))
-      expect(call[0]?.[1]).toHaveProperty('$project.score.$sum');
-  });
-
-  it.each([
-    new Error('search timeout'),
-    { code: 168, message: "Unrecognized expression '$similarityDotProduct'" },
-    Object.assign(new Error('Unrecognized expression for a different operator'), { code: 168 }),
-    Object.assign(new Error("Unrecognized expression '$similarityDotProduct'"), { code: 123 })
-  ])('propagates other search errors without a legacy retry (%s)', async (error) => {
+  it('propagates search failures without retrying the query', async () => {
     const controller = createCtrl();
     await model.create({
       _id: 'error',
@@ -286,6 +243,7 @@ describe('MongoVectorCtrl.embRecall', () => {
       vector,
       createTime: new Date()
     });
+    const error = new Error('search timeout');
     const aggregate = vi.spyOn(model, 'aggregate').mockRejectedValue(error);
     await expect(
       controller.embRecall({
