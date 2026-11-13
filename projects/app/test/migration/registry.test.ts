@@ -18,13 +18,12 @@ describe('validateSystemMigrationRegistry', () => {
       '20261022_initialize_dataset_vector_indexes',
       '20261104_backfill_chat_publish_source',
       '20261104_backfill_openapi_key_type',
-      '20261112_backfill_stt_pricing_type'
+      '20261112_backfill_stt_pricing_type',
+      '20261111_migrate_sandbox_to_juicefs',
+      '20261111_cleanup_legacy_sandbox_resources'
     ]);
     expect(
-      systemMigrations.filter(
-        (task: SystemMigration) =>
-          task.blockStartup || task.manual || task.delay || task.dependsOn?.length
-      )
+      systemMigrations.filter((task: SystemMigration) => task.blockStartup || task.delay)
     ).toEqual([]);
     expect(() => validateSystemMigrationRegistry(systemMigrations)).not.toThrow();
   });
@@ -45,7 +44,7 @@ describe('validateSystemMigrationRegistry', () => {
     expect(task).not.toHaveProperty('onFailure');
   });
 
-  it('在4.18.0末尾登记独立自动 Key 类型回填，保持启动非阻塞且无依赖', () => {
+  it('在4.18.0登记独立自动 Key 类型回填，保持启动非阻塞且无依赖', () => {
     const task = systemMigrations.find(({ id }) => id === '20261104_backfill_openapi_key_type');
     expect(task).toMatchObject({
       id: '20261104_backfill_openapi_key_type',
@@ -60,14 +59,40 @@ describe('validateSystemMigrationRegistry', () => {
   });
 
   it('appends STT pricing backfill as non-blocking background work', () => {
-    expect(systemMigrations.at(-1)).toMatchObject({
+    const task = systemMigrations.find(({ id }) => id === '20261112_backfill_stt_pricing_type');
+    expect(task).toMatchObject({
       id: '20261112_backfill_stt_pricing_type',
       version: '4.18.0',
       blockStartup: false,
       progressSteps: [{ key: 'models' }, { key: 'validation' }]
     });
-    expect(systemMigrations.at(-1)).not.toHaveProperty('dependsOn');
-    expect(systemMigrations.at(-1)).not.toHaveProperty('independent');
+    expect(task).not.toHaveProperty('dependsOn');
+    expect(task).not.toHaveProperty('independent');
+  });
+
+  it('registers two chained manual sandbox v2->v3 migration tasks at the end of 4.18.0', () => {
+    const migrateTask = systemMigrations.find(
+      ({ id }) => id === '20261111_migrate_sandbox_to_juicefs'
+    );
+    const cleanupTask = systemMigrations.find(
+      ({ id }) => id === '20261111_cleanup_legacy_sandbox_resources'
+    );
+
+    expect(migrateTask).toMatchObject({
+      id: '20261111_migrate_sandbox_to_juicefs',
+      version: '4.18.0',
+      manual: true,
+      progressSteps: [{ key: 'preflight' }, { key: 'instances' }, { key: 'validation' }]
+    });
+    expect(migrateTask).not.toHaveProperty('dependsOn');
+
+    expect(cleanupTask).toMatchObject({
+      id: '20261111_cleanup_legacy_sandbox_resources',
+      version: '4.18.0',
+      manual: true,
+      dependsOn: ['20261111_migrate_sandbox_to_juicefs'],
+      progressSteps: [{ key: 'preflight' }, { key: 'cleanup' }, { key: 'validation' }]
+    });
   });
 
   it('runs only the selected production tasks independently', () => {

@@ -83,7 +83,7 @@
 
 `dependsOn` 是成功前提，不是额外的执行模式。任务可以声明多个更早注册的任务 ID，只有它们全部 succeeded 才能执行。前置为 waiting、pending、running、failed 或状态缺失时都不能越过；后台前置修复并重试成功后，等待的自动任务会继续执行；启动链前置失败则需修复并重启 owner。
 
-当前 4.18.0 任务均未声明前置依赖。
+4.18.0 中，`20261111_cleanup_legacy_sandbox_resources`（回收旧版沙箱物理资源与 `v2` 记录）通过 `dependsOn: ['20261111_migrate_sandbox_to_juicefs']` 显式依赖沙箱 JuiceFS 迁移任务成功；其余任务未声明前置依赖。
 
 ## STT 价格类型后台迁移
 

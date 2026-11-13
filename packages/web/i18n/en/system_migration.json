@@ -58,5 +58,17 @@
   "migrations.20261112_backfill_stt_pricing_type.description": "Backfill legacy STT prices as duration-based in the background, preserving rates and existing token pricing without blocking startup.",
   "migrations.20261112_backfill_stt_pricing_type.result": "Scanned {{models}} STT models",
   "migrations.20261112_backfill_stt_pricing_type.models": "Model pricing types",
-  "migrations.20261112_backfill_stt_pricing_type.validation": "Validate backfill"
+  "migrations.20261112_backfill_stt_pricing_type.validation": "Validate backfill",
+  "migrations.20261111_migrate_sandbox_to_juicefs.name": "Migrate Agent sandbox workspaces to JuiceFS (v3)",
+  "migrations.20261111_migrate_sandbox_to_juicefs.description": "Migrate legacy v2 sandbox workspaces (including legacy K8s PVCs, Docker named volumes, S3 archive packages, and remote Sealos Devbox instances) into JuiceFS and write v3 instance records. All legacy storage and v2 records are preserved for rollback until cleanup is triggered. Deployments without sandboxes complete immediately.",
+  "migrations.20261111_migrate_sandbox_to_juicefs.result": "Migrated {{migratedCount}} sandbox workspaces; skipped {{skippedCount}} obsolete records",
+  "migrations.20261111_migrate_sandbox_to_juicefs.preflight": "Check sandbox environment and connectivity",
+  "migrations.20261111_migrate_sandbox_to_juicefs.instances": "Migrate workspaces and metadata",
+  "migrations.20261111_migrate_sandbox_to_juicefs.validation": "Validate v3 migration completeness",
+  "migrations.20261111_cleanup_legacy_sandbox_resources.name": "Clean up legacy v2 sandbox storage and instances",
+  "migrations.20261111_cleanup_legacy_sandbox_resources.description": "Run manually after verifying the JuiceFS v3 sandbox upgrade and confirming rollback is no longer needed. Permanently removes legacy containers, unlabeled volumes, S3 archive packages, Sealos Devbox instances, and legacy v2 collection records.",
+  "migrations.20261111_cleanup_legacy_sandbox_resources.result": "Cleaned up {{cleanedCount}} legacy sandbox resource records",
+  "migrations.20261111_cleanup_legacy_sandbox_resources.preflight": "Verify cleanup credentials and connectivity",
+  "migrations.20261111_cleanup_legacy_sandbox_resources.cleanup": "Reclaim legacy storage and v2 records",
+  "migrations.20261111_cleanup_legacy_sandbox_resources.validation": "Verify legacy collection is empty"
 }

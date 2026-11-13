@@ -58,5 +58,17 @@
   "migrations.20261112_backfill_stt_pricing_type.description": "기존 STT 가격을 백그라운드에서 시간 기준으로 표시하며, 단가와 기존 토큰 과금 설정을 유지하고 서비스 시작을 차단하지 않습니다.",
   "migrations.20261112_backfill_stt_pricing_type.result": "STT 모델 {{models}}개 검사 완료",
   "migrations.20261112_backfill_stt_pricing_type.models": "모델 과금 유형",
-  "migrations.20261112_backfill_stt_pricing_type.validation": "결과 검증"
+  "migrations.20261112_backfill_stt_pricing_type.validation": "결과 검증",
+  "migrations.20261111_migrate_sandbox_to_juicefs.name": "Agent 샌드박스 작업 공간을 JuiceFS(v3)로 마이그레이션",
+  "migrations.20261111_migrate_sandbox_to_juicefs.description": "기존 v2 샌드박스 작업 공간(구형 K8s PVC, Docker 명명 볼륨, S3 아카이브 패키지, 원격 Sealos Devbox 인스턴스 포함)을 JuiceFS로 무손실 마이그레이션하고 v3 인스턴스 테이블에 기록합니다. 롤백을 지원하기 위해 모든 기존 스토리지와 v2 레코드는 보존됩니다. 샌드박스를 사용하지 않는 환경에서는 즉시 완료됩니다.",
+  "migrations.20261111_migrate_sandbox_to_juicefs.result": "{{migratedCount}}개 샌드박스 작업 공간 마이그레이션 완료, {{skippedCount}}개 만료 레코드 건너뜀",
+  "migrations.20261111_migrate_sandbox_to_juicefs.preflight": "샌드박스 환경 및 연결 상태 확인",
+  "migrations.20261111_migrate_sandbox_to_juicefs.instances": "작업 공간 및 메타데이터 마이그레이션",
+  "migrations.20261111_migrate_sandbox_to_juicefs.validation": "v3 마이그레이션 무결성 검증",
+  "migrations.20261111_cleanup_legacy_sandbox_resources.name": "기존 v2 샌드박스 스토리지 및 인스턴스 리소스 정리",
+  "migrations.20261111_cleanup_legacy_sandbox_resources.description": "JuiceFS v3 샌드박스 마이그레이션 검증이 완료되고 롤백이 필요하지 않음을 확인한 후 수동으로 실행합니다. 기존 컨테이너, 무라벨 볼륨, S3 아카이브 패키지, Sealos Devbox 인스턴스 및 기존 v2 레코드를 영구 삭제합니다.",
+  "migrations.20261111_cleanup_legacy_sandbox_resources.result": "{{cleanedCount}}개 기존 샌드박스 리소스 레코드 정리 완료",
+  "migrations.20261111_cleanup_legacy_sandbox_resources.preflight": "외부 정리 자격 증명 및 연결 확인",
+  "migrations.20261111_cleanup_legacy_sandbox_resources.cleanup": "기존 스토리지 및 v2 레코드 회수",
+  "migrations.20261111_cleanup_legacy_sandbox_resources.validation": "기존 컬렉션 비우기 검증"
 }
