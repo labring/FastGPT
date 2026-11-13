@@ -306,6 +306,14 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
       break;
     }
 
+    // 停止信号生效时保留本轮已收集的部分对话输出与子响应包装，不再写回父状态或进入下一轮。
+    if (checkIsStopping?.() || props.stopSignal?.aborted) {
+      if ((iterationChildResponseCount ?? 0) > 0 || response.assistantResponses.length > 0) {
+        await pushIterationDetail({});
+      }
+      break;
+    }
+
     await pushIterationDetail({});
     loopHistory.push({ iteration, customOutputs, success: true });
     loopMemoryState.merge(response[DispatchNodeResponseKeyEnum.memories]);

@@ -79,6 +79,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     chatId: undefined as string | undefined,
     responseChatItemId: responseChatItemIdFromBody ?? getNanoid(24)
   };
+  let leaseReleased = false;
+  const releaseGenerationLeaseOnce = async () => {
+    if (leaseReleased) return;
+    await roundState.preparedRound?.releaseGenerationLease?.();
+    leaseReleased = true;
+  };
   let { variables = {} } = chatTestProps;
   const source = ChatSourceEnum.test;
   const originIp = getIpFromRequest(req);
@@ -296,9 +302,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       resourceContext
     });
 
-    streamResponseContext.responseWrite(workflowSseEvent.answerStop());
-    streamResponseContext.responseWrite(workflowSseEvent.done(SseResponseEventEnum.answer));
-
     const aiResponse: AIChatItemType & { dataId?: string } = {
       dataId: responseChatItemId,
       obj: ChatRoleEnum.AI,
@@ -336,6 +339,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     } else if (preparedRound.shouldFinalizePreparedRound) {
       await finalizeChatRound(params);
     }
+    await releaseGenerationLeaseOnce();
+
+    streamResponseContext.responseWrite(workflowSseEvent.answerStop());
+    streamResponseContext.responseWrite(workflowSseEvent.done(SseResponseEventEnum.answer));
   } catch (err: any) {
     const { preparedRound } = roundState;
     if (preparedRound?.shouldPersistChatRound && roundState.sourceId && roundState.chatId) {
@@ -349,6 +356,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         });
       }
     }
+    await releaseGenerationLeaseOnce();
     res.status(500);
     if (streamResponseContext) {
       streamResponseContext.writeStreamError(err);
@@ -357,11 +365,14 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     }
   } finally {
     try {
-      // 错误状态写入再次失败时，也要等待续流缓存收尾后再关闭响应。
-      await streamResponseContext?.flushResume();
-      res.end();
+      try {
+        // 错误状态写入再次失败时，也要等待续流缓存收尾并释放生成租约后再关闭响应。
+        await streamResponseContext?.flushResume();
+      } finally {
+        await releaseGenerationLeaseOnce();
+      }
     } finally {
-      await roundState.preparedRound?.releaseGenerationLease?.();
+      res.end();
     }
   }
 }

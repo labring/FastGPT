@@ -7,7 +7,9 @@ import {
   delAgentRuntimeStopSign,
   shouldWorkflowStop,
   waitForWorkflowComplete,
-  getRuntimeStatusKey
+  getRuntimeStatusKey,
+  getNestedStopGraceMs,
+  getRemainingStopGraceMs
 } from '@fastgpt/service/core/chat/stop';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 
@@ -82,6 +84,62 @@ describe('createChatStopController', () => {
     expect(WorkflowStopSignalCache.prototype.clear).toHaveBeenCalledOnce();
     expect(read).toHaveBeenCalledTimes(2);
     expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('aborts stopSignal immediately in the same process when setAgentRuntimeStop is called', async () => {
+    vi.spyOn(WorkflowStopSignalCache.prototype, 'set').mockResolvedValue(undefined);
+    const controller = await createChatStopController(params);
+    controllers.push(controller);
+
+    expect(controller.checkIsStopping()).toBe(false);
+    expect(controller.stopSignal.aborted).toBe(false);
+
+    const abortListener = vi.fn();
+    controller.stopSignal.addEventListener('abort', abortListener);
+
+    await setAgentRuntimeStop(params);
+
+    expect(controller.checkIsStopping()).toBe(true);
+    expect(controller.stopSignal.aborted).toBe(true);
+    expect(abortListener).toHaveBeenCalledTimes(1);
+  });
+
+  it('records stopDeadlineAt once when stop is triggered and computes remaining grace budget', async () => {
+    vi.spyOn(WorkflowStopSignalCache.prototype, 'set').mockResolvedValue(undefined);
+    vi.setSystemTime(new Date('2026-11-13T10:00:00.000Z'));
+    const controller = await createChatStopController({ ...params, graceMs: 1200 });
+    controllers.push(controller);
+
+    expect(controller.getStopDeadlineAt()).toBeUndefined();
+    expect(
+      getRemainingStopGraceMs({
+        stopDeadlineAt: controller.getStopDeadlineAt(),
+        fallbackGraceMs: 2500,
+        reserveMs: 250
+      })
+    ).toBe(2500);
+
+    await setAgentRuntimeStop(params);
+    const deadlineAt = controller.getStopDeadlineAt();
+    expect(deadlineAt).toBe(Date.now() + 1200);
+
+    vi.advanceTimersByTime(400);
+    expect(
+      getRemainingStopGraceMs({
+        stopDeadlineAt: deadlineAt,
+        fallbackGraceMs: 2500,
+        reserveMs: 250
+      })
+    ).toBe(550);
+
+    vi.advanceTimersByTime(600);
+    expect(
+      getRemainingStopGraceMs({
+        stopDeadlineAt: deadlineAt,
+        fallbackGraceMs: 2500,
+        reserveMs: 250
+      })
+    ).toBe(0);
   });
 });
 
@@ -231,5 +289,31 @@ describe('getErrText upgraded logic', () => {
       }
     };
     expect(getErrText(errorObj)).toBe('Nested VM initialization failed');
+  });
+});
+
+describe('getNestedStopGraceMs', () => {
+  it('computes strictly decreasing grace budgets across nested workflow and tool depths', () => {
+    const root = 3000;
+    const childLevel1 = getNestedStopGraceMs(root);
+    const agentTool = Math.min(2500, childLevel1);
+    const agentChildWorkflow = getNestedStopGraceMs(agentTool);
+    const agentGrandchildWorkflow = getNestedStopGraceMs(agentChildWorkflow);
+
+    expect(childLevel1).toBe(2750);
+    expect(agentTool).toBe(2500);
+    expect(agentChildWorkflow).toBe(2250);
+    expect(agentGrandchildWorkflow).toBe(2000);
+    expect(root).toBeGreaterThan(childLevel1);
+    expect(childLevel1).toBeGreaterThan(agentChildWorkflow);
+    expect(agentChildWorkflow).toBeGreaterThan(agentGrandchildWorkflow);
+
+    // 小毫秒测试预算下同样保持严格单调递减。
+    const fastRoot = 120;
+    const fastChild1 = getNestedStopGraceMs(fastRoot);
+    const fastChild2 = getNestedStopGraceMs(fastChild1);
+    expect(fastRoot).toBeGreaterThan(fastChild1);
+    expect(fastChild1).toBeGreaterThan(fastChild2);
+    expect(fastChild2).toBeGreaterThan(0);
   });
 });

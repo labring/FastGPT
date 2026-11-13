@@ -1,5 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { ChatCompletionTool } from '@fastgpt/global/core/ai/llm/type';
+import { UserError } from '@fastgpt/global/common/error/utils';
+import {
+  MODERATION_BLOCKED_ERROR_MESSAGE,
+  MODERATION_BLOCKED_REPLACE_TEXT
+} from '@fastgpt/global/core/plugin/moderation/constants';
+import { STOPPED_TOOL_RESPONSE_TEXT } from '@fastgpt/service/core/ai/llm/agentLoop/domain/stopGrace';
 import { buildPiAgentTools } from '@fastgpt/service/core/ai/llm/agentLoop/provider/piAgent/tool/build';
 
 const createRuntime = (runtimeTools: ChatCompletionTool[]) =>
@@ -98,6 +104,90 @@ describe('piAgent tool schema normalization', () => {
     expect(tools[0].parameters).not.toHaveProperty('properties.query.x-tool-description');
     expect(tools[0].parameters).not.toHaveProperty('properties.query.isSecret');
     expect(tools[0].parameters).not.toHaveProperty('properties.mode.x-fastgpt-node-input');
+  });
+
+  it('settles a hung runtime tool after toolStopGraceMs when stopSignal aborts', async () => {
+    const stopController = new AbortController();
+    const onToolResult = vi.fn();
+    const tools = await buildPiAgentTools({
+      runtime: {
+        toolCatalog: {
+          runtimeTools: [
+            {
+              type: 'function',
+              function: {
+                name: 'hung_tool',
+                description: 'hung tool',
+                parameters: { type: 'object', properties: {} }
+              }
+            }
+          ]
+        },
+        stopSignal: stopController.signal,
+        checkIsStopping: () => stopController.signal.aborted,
+        toolStopGraceMs: 25,
+        executeTool: vi.fn(async () => {
+          stopController.abort(new Error('Chat stopped'));
+          return new Promise<never>(() => {});
+        })
+      } as any,
+      getActivePlan: () => undefined,
+      setActivePlan: vi.fn(),
+      setPendingAsk: vi.fn(),
+      getMessages: () => [],
+      onToolCall: vi.fn(),
+      onToolResult
+    });
+
+    const result = await tools[0].execute('call_pi_hung', {});
+
+    expect(result).toEqual({
+      content: [{ type: 'text', text: STOPPED_TOOL_RESPONSE_TEXT }],
+      details: {}
+    });
+    expect(onToolResult).toHaveBeenCalledWith(
+      expect.objectContaining({
+        call: expect.objectContaining({ id: 'call_pi_hung' }),
+        response: STOPPED_TOOL_RESPONSE_TEXT
+      })
+    );
+  });
+
+  it('preserves moderation replacement instead of stopped text when a tool hits moderation while stopping', async () => {
+    const stopController = new AbortController();
+    const onToolResult = vi.fn();
+    const tools = await buildPiAgentTools({
+      runtime: {
+        ...createRuntime([
+          { type: 'function', function: { name: 'search', parameters: { type: 'object' } } }
+        ]),
+        stopSignal: stopController.signal,
+        checkIsStopping: () => stopController.signal.aborted,
+        executeTool: vi.fn(async () => {
+          stopController.abort(new Error('Chat stopped'));
+          throw new UserError(MODERATION_BLOCKED_ERROR_MESSAGE);
+        })
+      } as any,
+      getActivePlan: () => undefined,
+      setActivePlan: vi.fn(),
+      setPendingAsk: vi.fn(),
+      getMessages: () => [],
+      onToolCall: vi.fn(),
+      onToolResult
+    });
+
+    const result = await tools[0].execute('call_pi_mod_stop', {});
+
+    expect(result).toEqual({
+      content: [{ type: 'text', text: MODERATION_BLOCKED_REPLACE_TEXT }],
+      details: {}
+    });
+    expect(onToolResult).toHaveBeenCalledWith(
+      expect.objectContaining({
+        call: expect.objectContaining({ id: 'call_pi_mod_stop' }),
+        response: MODERATION_BLOCKED_REPLACE_TEXT
+      })
+    );
   });
 });
 

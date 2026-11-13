@@ -13,7 +13,10 @@ export const SandboxWriteFileToolSchema = z.object({
 
 export const sandboxWriteFileTool = defineTool({
   zodSchema: SandboxWriteFileToolSchema,
-  execute: async ({ sandboxInstance, params }) => {
+  execute: async ({ sandboxInstance, params, signal }) => {
+    if (signal?.aborted) {
+      throw new Error('Tool execution was stopped by user.');
+    }
     await sandboxInstance.ensureAvailable();
     const providerPath = sandboxInstance.resolveRuntimePath(params.path, {
       allowAbsolutePath: true

@@ -223,7 +223,8 @@ export const dispatchDatasetSearch = async (
       rerankCandidateNum,
       collectionFilterMatch,
       metadataFilterEnabled: Boolean(global.feConfigs.isPlus),
-      readableCollectionIdList
+      readableCollectionIdList,
+      stopSignal: props.stopSignal
     };
     const {
       searchRes,

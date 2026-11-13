@@ -129,4 +129,38 @@ describe('multiQueryRecall collection filter routing', () => {
       expect.objectContaining({ filterCollectionIdList: undefined })
     );
   });
+
+  it('passes stopSignal to embeddingRecall and fullTextRecall', async () => {
+    filterCollectionByMetadataMock.mockResolvedValue(undefined);
+    const stopController = new AbortController();
+
+    await multiQueryRecall({ ...baseParams, stopSignal: stopController.signal });
+
+    expect(embeddingRecallMock).toHaveBeenCalledWith(
+      expect.objectContaining({ stopSignal: stopController.signal })
+    );
+    expect(fullTextRecallMock).toHaveBeenCalledWith(
+      expect.objectContaining({ stopSignal: stopController.signal })
+    );
+  });
+
+  it('skips filter queries and recall engines when stopSignal is already aborted', async () => {
+    const stopController = new AbortController();
+    stopController.abort();
+
+    const result = await multiQueryRecall({ ...baseParams, stopSignal: stopController.signal });
+
+    expect(result).toEqual({
+      tokens: 0,
+      textEmbeddingRecallResults: [],
+      imageCaptionEmbeddingRecallResults: [],
+      imageVectorRecallResults: [],
+      textFullTextRecallResults: [],
+      imageCaptionFullTextRecallResults: []
+    });
+    expect(getForbidCollectionIdListMock).not.toHaveBeenCalled();
+    expect(filterCollectionByMetadataMock).not.toHaveBeenCalled();
+    expect(embeddingRecallMock).not.toHaveBeenCalled();
+    expect(fullTextRecallMock).not.toHaveBeenCalled();
+  });
 });

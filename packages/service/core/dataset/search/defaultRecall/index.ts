@@ -54,13 +54,36 @@ export async function searchDatasetData(
     datasetIds = [],
     collectionFilterMatch,
     metadataFilterEnabled,
-    readableCollectionIdList
+    readableCollectionIdList,
+    stopSignal
   } = props;
 
   const searchMode = DatasetSearchModeMap[inputSearchMode]
     ? inputSearchMode
     : DatasetSearchModeEnum.embedding;
   const usingReRank = inputUsingReRank && !!reRankQuery && !!rerankModel;
+  const buildAbortedSearchResponse = ({
+    embeddingTokens = 0,
+    reRankInputTokens = 0,
+    imageCaptionResult
+  }: {
+    embeddingTokens?: number;
+    reRankInputTokens?: number;
+    imageCaptionResult?: SearchDatasetDataResponse['imageCaptionResult'];
+  } = {}): SearchDatasetDataResponse => ({
+    searchRes: [],
+    embeddingTokens,
+    reRankInputTokens,
+    searchMode,
+    limit: maxTokens,
+    similarity,
+    usingReRank: false,
+    usingSimilarityFilter: false,
+    imageCaptionResult
+  });
+  if (stopSignal?.aborted) {
+    return buildAbortedSearchResponse();
+  }
 
   // Step 1: 图片先尝试转成文本描述。caption 会作为普通文本 query 参与后续召回，
   // 这样即使 embedding 模型不支持图片，也能通过 VLM 描述获得一条文本检索路径。
@@ -68,7 +91,8 @@ export async function searchDatasetData(
     vlmModel,
     imageQueries,
     userKey,
-    teamId
+    teamId,
+    stopSignal
   });
 
   // caption 结果需要回传给工作流计费与响应详情；没有生成出有效描述时不输出该段。
@@ -86,6 +110,9 @@ export async function searchDatasetData(
           queries: imageCaptionQueries.queries
         }
       : undefined;
+  if (stopSignal?.aborted) {
+    return buildAbortedSearchResponse({ imageCaptionResult });
+  }
 
   // Step 2: 根据搜索模式决定两条召回链路各自取多少候选。
   // embedding/full-text/mixed 三种模式最终都走同一个 multiQueryRecall，便于统一过滤集合范围。
@@ -108,8 +135,12 @@ export async function searchDatasetData(
     embeddingLimit,
     fullTextLimit,
     textQueries,
-    imageCaptionQueries: imageCaptionQueries.queries
+    imageCaptionQueries: imageCaptionQueries.queries,
+    stopSignal
   });
+  if (stopSignal?.aborted) {
+    return buildAbortedSearchResponse({ embeddingTokens, imageCaptionResult });
+  }
 
   // Step 3: 先在同一语义来源内融合。
   // 用户文本召回由 text embedding 与 text full-text 融合；图片描述同理，
@@ -149,8 +180,16 @@ export async function searchDatasetData(
     rerankModel,
     query: reRankQuery,
     rerankWeight,
-    rerankCandidateNum
+    rerankCandidateNum,
+    stopSignal
   });
+  if (stopSignal?.aborted) {
+    return buildAbortedSearchResponse({
+      embeddingTokens,
+      reRankInputTokens,
+      imageCaptionResult
+    });
+  }
 
   const hasTextQuery = textQueries.some((item) => item.trim());
   // Step 5: 合并图片侧结果。caption 是图片的文本解释，权重低于原始图片向量；
@@ -193,6 +232,13 @@ export async function searchDatasetData(
     topk === undefined
       ? await filterDatasetDataByMaxTokens(scoreFilter, maxTokens)
       : scoreFilter.slice(0, topk);
+  if (stopSignal?.aborted) {
+    return buildAbortedSearchResponse({
+      embeddingTokens,
+      reRankInputTokens,
+      imageCaptionResult
+    });
+  }
   // 同义词只装饰最终入选结果：被前面过滤掉的候选不会产生 alias 查询。
   const decoratedFinal = await attachSynonymMappingsToSearchResults({
     teamId,

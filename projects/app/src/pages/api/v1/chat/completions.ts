@@ -127,6 +127,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     chatId: undefined as string | undefined,
     responseChatItemId
   };
+  let leaseReleased = false;
+  const releaseGenerationLeaseOnce = async () => {
+    if (leaseReleased) return;
+    await roundState.preparedRound?.releaseGenerationLease?.();
+    leaseReleased = true;
+  };
 
   try {
     if (!Array.isArray(messages)) {
@@ -385,7 +391,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       system_memories,
       customFeedbacks,
       workflowRuntimeSummary,
-      flatNodeResponses
+      flatNodeResponses,
+      stopped
     } = await dispatchWorkFlow({
       apiVersion: 'v1',
       req,
@@ -500,8 +507,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       responseDetail: showCite
     });
     if (stream) {
-      await titleSender.send();
+      if (!stopped) {
+        await titleSender.send();
+      }
       titleSender.close();
+      await releaseGenerationLeaseOnce();
 
       workflowResponseWrite(workflowSseEvent.answerStop());
       // 特殊输配(data 不是{})
@@ -518,13 +528,20 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         workflowSseEvent.done(detail ? SseResponseEventEnum.answer : undefined)
       );
     } else {
-      const generatedTitle = await titleSender.send();
+      const generatedTitle = await (async () => {
+        if (stopped) {
+          titleSender.close();
+          return;
+        }
+        return titleSender.send();
+      })();
       const formatResponseContent = removeAIResponseCite(assistantResponses, jsonRetainDatasetCite);
       const formattdResponse = formatCompletionResponseContent({
         responseContent: formatResponseContent,
         detail,
         includeLegacyType: true
       });
+      await releaseGenerationLeaseOnce();
 
       res.json({
         ...(detail ? { responseData: feResponseData, newVariables } : {}),
@@ -586,6 +603,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         });
       }
     }
+    await releaseGenerationLeaseOnce();
     if (stream) {
       titleSender?.close();
       if (streamResponseContext) {
@@ -601,11 +619,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     }
   } finally {
     try {
+      await releaseGenerationLeaseOnce();
+    } finally {
       if (stream) {
         res.end();
       }
-    } finally {
-      await roundState.preparedRound?.releaseGenerationLease?.();
     }
   }
 }

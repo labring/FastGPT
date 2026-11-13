@@ -85,6 +85,9 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
       extractModel,
       lastMemory
     });
+    if (props.checkIsStopping?.() || props.stopSignal?.aborted) {
+      return {};
+    }
     // remove invalid key
     for (const key in arg) {
       const item = extractKeys.find((item) => item.key === key);
@@ -216,13 +219,16 @@ const completions = async (props: ActionProps) => {
     answerText: answer,
     usage: { inputTokens, outputTokens, usedUserOpenAIKey }
   } = await createLLMResponse({
+    throwError: false,
     body: {
       model: extractModel,
       messages: chats2GPTMessages({ messages, reserveId: false, reserveReason: false }),
       stream: true
     },
     userKey: externalProvider.openaiAccount,
-    teamId: props.runningUserInfo.teamId
+    teamId: props.runningUserInfo.teamId,
+    isAborted: props.checkIsStopping,
+    signal: props.stopSignal
   });
 
   // parse response

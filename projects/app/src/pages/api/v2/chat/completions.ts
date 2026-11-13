@@ -126,6 +126,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     chatId: undefined as string | undefined,
     responseChatItemId: responseChatItemId || getNanoid(24)
   };
+  let leaseReleased = false;
+  const releaseGenerationLeaseOnce = async () => {
+    if (leaseReleased) return;
+    await roundState.preparedRound?.releaseGenerationLease?.();
+    leaseReleased = true;
+  };
 
   try {
     if (!Array.isArray(messages)) {
@@ -386,7 +392,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       system_memories,
       customFeedbacks,
       workflowRuntimeSummary,
-      flatNodeResponses
+      flatNodeResponses,
+      stopped
     } = await dispatchWorkFlow({
       apiVersion: 'v2',
       res,
@@ -503,8 +510,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     });
 
     if (stream) {
-      await titleSender.send();
+      if (!stopped) {
+        await titleSender.send();
+      }
       titleSender.close();
+      await releaseGenerationLeaseOnce();
 
       streamResponseContext.responseWrite(workflowSseEvent.answerStop());
 
@@ -512,13 +522,20 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         workflowSseEvent.done(detail ? SseResponseEventEnum.answer : undefined)
       );
     } else {
-      const generatedTitle = await titleSender.send();
+      const generatedTitle = await (async () => {
+        if (stopped) {
+          titleSender.close();
+          return;
+        }
+        return titleSender.send();
+      })();
       const formatResponseContent = removeAIResponseCite(assistantResponses, jsonRetainDatasetCite);
       const formattdResponse = formatCompletionResponseContent({
         responseContent: formatResponseContent,
         detail,
         includeLegacyType: false
       });
+      await releaseGenerationLeaseOnce();
 
       res.json({
         ...(detail ? { responseData: feResponseData, newVariables } : {}),
@@ -583,6 +600,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         });
       }
     }
+    await releaseGenerationLeaseOnce();
     if (stream) {
       titleSender?.close();
       if (streamResponseContext) {
@@ -599,13 +617,18 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     }
   } finally {
     try {
-      if (stream) {
-        // 失败状态写入再次报错时，也必须等待续流缓存收尾后再关闭响应。
-        await streamResponseContext?.flushResume();
-        res.end();
+      try {
+        if (stream) {
+          // 失败状态写入再次报错时，也必须等待续流缓存收尾并释放生成租约后再关闭响应。
+          await streamResponseContext?.flushResume();
+        }
+      } finally {
+        await releaseGenerationLeaseOnce();
       }
     } finally {
-      await roundState.preparedRound?.releaseGenerationLease?.();
+      if (stream) {
+        res.end();
+      }
     }
   }
 }

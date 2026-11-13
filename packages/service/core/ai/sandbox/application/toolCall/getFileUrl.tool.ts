@@ -18,9 +18,12 @@ const SandboxGetFileUrlToolSchema = z.object({
 
 export const sandboxGetFileUrlTool = defineTool({
   zodSchema: SandboxGetFileUrlToolSchema,
-  execute: async ({ sandboxInstance, params }) => {
+  execute: async ({ sandboxInstance, params, signal }) => {
     if (params.paths.length === 0) {
       return { response: '[]' };
+    }
+    if (signal?.aborted) {
+      throw new Error('Tool execution was stopped by user.');
     }
 
     const sandboxId = sandboxInstance.getSandboxId();

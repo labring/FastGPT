@@ -29,7 +29,8 @@ export const defaultSearchDatasetData = async ({
         histories: props.histories,
         datasetIds: props.datasetIds,
         userKey,
-        teamId: props.teamId
+        teamId: props.teamId,
+        stopSignal: props.stopSignal
       })
     : {
         searchQueries: [],

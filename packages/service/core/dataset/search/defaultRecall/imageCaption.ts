@@ -35,14 +35,16 @@ export const getImageCaptionQueries = async ({
   vlmModel,
   imageQueries,
   userKey,
-  teamId
+  teamId,
+  stopSignal
 }: {
   vlmModel?: LLMModelDataType;
   imageQueries: string[];
   userKey?: OpenaiAccountType;
   teamId: string;
+  stopSignal?: AbortSignal;
 }): Promise<ImageCaptionQueries> => {
-  if (!vlmModel || imageQueries.length === 0) {
+  if (!vlmModel || imageQueries.length === 0 || stopSignal?.aborted) {
     return emptyImageCaptionQueries();
   }
 
@@ -50,6 +52,16 @@ export const getImageCaptionQueries = async ({
 
   const results = await Promise.all(
     imageQueries.map(async (url, index) => {
+      if (stopSignal?.aborted) {
+        return {
+          query: '',
+          requestId: '',
+          inputTokens: 0,
+          outputTokens: 0,
+          seconds: 0,
+          usedUserOpenAIKey: false
+        };
+      }
       try {
         const llmStartTime = Date.now();
         const {
@@ -59,6 +71,8 @@ export const getImageCaptionQueries = async ({
         } = await createLLMResponse({
           userKey,
           teamId,
+          signal: stopSignal,
+          isAborted: () => Boolean(stopSignal?.aborted),
           saveLLMResponseRecord: false,
           body: {
             model: vlmModelData,

@@ -43,6 +43,7 @@ import { runSandboxTools } from '../../../../../sandbox/application/toolCall';
 import { createToolCall, normalizeToolArgs, stringifyJson } from '../message';
 import { getPiAgentRuntimeTools } from './catalog';
 import { sanitizeToolParametersForModel } from '@fastgpt/global/common/jsonSchema/utils';
+import { raceToolWithStopGrace, STOPPED_TOOL_RESPONSE_TEXT } from '../../../domain/stopGrace';
 
 type PlanOperationEvent = Extract<AgentLoopEvent, { type: 'plan_operation' }>;
 
@@ -123,10 +124,12 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
   /** 保证每个普通工具 start 都对应 end，并将异常变成可回填模型的工具结果。 */
   const executeOrdinaryTool = async ({
     call,
-    execute
+    execute,
+    signal
   }: {
     call: ChatCompletionMessageToolCall;
-    execute: () => Promise<{
+    signal?: AbortSignal;
+    execute: (effectiveSignal?: AbortSignal) => Promise<{
       response: string;
       assistantMessages?: ChatCompletionMessageParam[];
       assistantResponses?: AgentLoopAssistantResponse[];
@@ -171,17 +174,45 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
     }
 
     const startedAt = Date.now();
+    const isStopping = () =>
+      Boolean(runtime.checkIsStopping?.() || runtime.stopSignal?.aborted || signal?.aborted);
+    const effectiveSignal =
+      runtime.stopSignal && signal
+        ? AbortSignal.any([runtime.stopSignal, signal])
+        : (runtime.stopSignal ?? signal);
     onToolCall(call);
     runtime.emitEvent?.({ type: 'tool_run_start', call });
 
     const result = await (async () => {
       try {
-        return await execute();
+        const toolRace = await raceToolWithStopGrace({
+          execute: () => execute(effectiveSignal),
+          stopSignal: effectiveSignal,
+          checkIsStopping: runtime.checkIsStopping,
+          graceMs: runtime.toolStopGraceMs,
+          getStopDeadlineAt: runtime.getStopDeadlineAt
+        });
+        if (toolRace.status === 'stopped') {
+          return {
+            response: STOPPED_TOOL_RESPONSE_TEXT,
+            assistantMessages: [],
+            usages: []
+          };
+        }
+        return toolRace.value;
       } catch (error) {
         const errText = getErrText(error);
+        // 内容审核阻断优先级高于用户停止，避免并发取消掩盖敏感内容替换。
         if (isModerationBlockErrorMessage(errText)) {
           return {
             response: MODERATION_BLOCKED_REPLACE_TEXT,
+            assistantMessages: [],
+            usages: []
+          };
+        }
+        if (isStopping()) {
+          return {
+            response: STOPPED_TOOL_RESPONSE_TEXT,
             assistantMessages: [],
             usages: []
           };
@@ -191,6 +222,7 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
       }
     })();
 
+    let hitToolModeration = false;
     if (!isToolResultModerated(result)) {
       const originalResponse = result.response;
       const moderatedResponse = originalResponse
@@ -203,6 +235,7 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
         moderatedResponse !== originalResponse ||
         isModerationBlockErrorMessage(result.errorMessage);
       if (hitModeration) {
+        hitToolModeration = true;
         result.response = MODERATION_BLOCKED_REPLACE_TEXT;
         result.errorMessage = undefined;
         result.assistantMessages = [];
@@ -210,6 +243,17 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
         result.metadata = sanitizeModeratedToolNodeResponse(result.metadata);
       }
       markToolResultModerated(result);
+    }
+    if (
+      !hitToolModeration &&
+      isStopping() &&
+      result.errorMessage &&
+      !isModerationBlockErrorMessage(result.errorMessage)
+    ) {
+      result.response = result.assistantResponses?.length
+        ? result.response
+        : STOPPED_TOOL_RESPONSE_TEXT;
+      result.errorMessage = undefined;
     }
     const normalizedResponse = normalizeToolResponseContent(result.response);
     const assistantMessages = result.assistantMessages ?? [];
@@ -248,10 +292,11 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
       parameters: tool.function.parameters
         ? toPiToolParameters(tool.function.parameters)
         : Type.Object({}, { additionalProperties: false }),
-      execute: async (callId: string, args: unknown) => {
+      execute: async (callId: string, args: unknown, signal?: AbortSignal) => {
         const call = createToolCall({ id: callId, name: toolName, args: normalizeToolArgs(args) });
         const result = await executeOrdinaryTool({
           call,
+          signal,
           execute: () => runtime.executeTool({ call, messages: [...getMessages()] })
         });
         if (result.interactive) {
@@ -414,7 +459,7 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
         label: agentLoopToolName,
         description: sandboxTool.function.description || '',
         parameters: toPiToolParameters(sandboxTool.function.parameters),
-        execute: async (callId: string, args: unknown) => {
+        execute: async (callId: string, args: unknown, signal?: AbortSignal) => {
           const call = createToolCall({
             id: callId,
             name: agentLoopToolName,
@@ -422,12 +467,14 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
           });
           const result = await executeOrdinaryTool({
             call,
-            execute: async () => {
+            signal,
+            execute: async (effectiveSignal) => {
               const sandboxResult = await runSandboxTools({
                 toolName: sandboxToolName,
                 args: call.function.arguments ?? '',
                 sandboxClient: sandbox.client,
-                validate: sandbox.validate
+                validate: sandbox.validate,
+                signal: effectiveSignal
               });
               return {
                 response: sandboxResult.response,
@@ -452,7 +499,7 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
       label: readFileTool.function.name,
       description: readFileTool.function.description || '',
       parameters: toPiToolParameters(readFileTool.function.parameters),
-      execute: async (callId: string, args: unknown) => {
+      execute: async (callId: string, args: unknown, signal?: AbortSignal) => {
         const call = createToolCall({
           id: callId,
           name: readFileTool.function.name,
@@ -460,6 +507,7 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
         });
         const result = await executeOrdinaryTool({
           call,
+          signal,
           execute: async () => {
             const readFileResult = await runtime.systemTools!.readFile!.execute({
               call,
@@ -486,7 +534,7 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
       label: datasetSearchTool.function.name,
       description: datasetSearchTool.function.description || '',
       parameters: toPiToolParameters(datasetSearchTool.function.parameters),
-      execute: async (callId: string, args: unknown) => {
+      execute: async (callId: string, args: unknown, signal?: AbortSignal) => {
         const patchedArgs = patchDatasetSearchParams({
           args: stringifyJson(normalizeToolArgs(args)),
           currentInputFiles: runtime.systemTools?.datasetSearch?.currentInputFiles
@@ -498,6 +546,7 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
         });
         const result = await executeOrdinaryTool({
           call,
+          signal,
           execute: async () => {
             const executeDatasetSearch = runtime.systemTools?.datasetSearch?.execute;
             if (!executeDatasetSearch) {

@@ -30,6 +30,7 @@ export type AuxiliaryGenerationProcessorParams<T = unknown> = {
   maxFiles?: number;
   customPdfParse?: boolean;
   checkIsStopping?: () => boolean;
+  stopSignal?: AbortSignal;
   usageSink?: (usages: ChatNodeUsageType[]) => void;
   user: AuxiliaryGenerationUser;
 };

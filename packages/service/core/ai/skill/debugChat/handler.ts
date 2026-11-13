@@ -106,6 +106,12 @@ export async function runSkillDebugChat({
     responseChatItemId: '',
     finalized: false
   };
+  let leaseReleased = false;
+  const releaseGenerationLeaseOnce = async () => {
+    if (leaseReleased) return;
+    await roundState.preparedRound?.releaseGenerationLease?.();
+    leaseReleased = true;
+  };
 
   try {
     const {
@@ -346,6 +352,7 @@ export async function runSkillDebugChat({
       await finalizeChatRound(saveParams);
     }
     roundState.finalized = true;
+    await releaseGenerationLeaseOnce();
 
     streamResponseContext.responseWrite(workflowSseEvent.done(SseResponseEventEnum.answer));
   } catch (err: any) {
@@ -367,6 +374,7 @@ export async function runSkillDebugChat({
         });
       }
     }
+    await releaseGenerationLeaseOnce();
 
     if (!streamResponseContext) throw err;
 
@@ -376,7 +384,7 @@ export async function runSkillDebugChat({
       // runner 统一等待缓存收尾，HTTP 响应仍由调用方关闭。
       await streamResponseContext?.flushResume();
     } finally {
-      await roundState.preparedRound?.releaseGenerationLease?.();
+      await releaseGenerationLeaseOnce();
     }
   }
 }

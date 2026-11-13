@@ -68,12 +68,14 @@ export const runSandboxTools = async ({
   toolName,
   args,
   sandboxClient,
-  validate
+  validate,
+  signal
 }: {
   toolName: string;
   args: string;
   sandboxClient: SandboxClient;
   validate?: SandboxToolCallValidator;
+  signal?: AbortSignal;
 }): Promise<SandboxToolCallResult> => {
   const startTime = Date.now();
   const getDuration = () => +((Date.now() - startTime) / 1000).toFixed(2);
@@ -99,10 +101,40 @@ export const runSandboxTools = async ({
     };
   }
 
-  const result = await tool({
-    sandboxInstance: sandboxClient,
-    input: parseJsonArgs<Record<string, unknown>>(args)
-  });
+  if (signal?.aborted) {
+    return {
+      success: false,
+      input: {},
+      response: 'Tool execution was stopped by user.',
+      durationSeconds: getDuration()
+    };
+  }
+
+  const result = await (async () => {
+    try {
+      return await tool({
+        sandboxInstance: sandboxClient,
+        input: parseJsonArgs<Record<string, unknown>>(args),
+        signal
+      });
+    } catch (error) {
+      if (signal?.aborted) {
+        return {
+          success: false as const,
+          error: 'Tool execution was stopped by user.'
+        };
+      }
+      throw error;
+    }
+  })();
+  if (signal?.aborted) {
+    return {
+      success: false,
+      input: result.success ? result.input : {},
+      response: 'Tool execution was stopped by user.',
+      durationSeconds: getDuration()
+    };
+  }
   if (!result.success) {
     return {
       success: false,

@@ -25,6 +25,7 @@ export const createStreamResponse = async ({
   response,
   requestMeta,
   isAborted,
+  signal,
   onStreaming,
   onReasoning,
   onToolCall,
@@ -33,8 +34,10 @@ export const createStreamResponse = async ({
   response: StreamResponseType;
   requestMeta?: AIApiRequestMeta;
   isAborted?: CreateLLMResponseProps<ChatCompletionCreateParams>['isAborted'];
+  signal?: AbortSignal;
 }): Promise<CompleteResponse> => {
   const { retainDatasetCite = true, tools, toolCallMode = 'toolChoice', model } = body;
+  const isUserAborted = () => Boolean(isAborted?.() || signal?.aborted);
 
   const { parsePart, getResponseData, updateFinishReason, updateError } = parseLLMStreamResponse();
 
@@ -53,7 +56,7 @@ export const createStreamResponse = async ({
   ) => {
     try {
       for await (const part of readStream()) {
-        if (isAborted?.()) {
+        if (isUserAborted()) {
           // 用户中断是正常关闭，保留已经收到的内容。
           response.controller?.abort();
           updateFinishReason('close');
@@ -66,6 +69,11 @@ export const createStreamResponse = async ({
         );
       }
     } catch (error: any) {
+      if (isUserAborted()) {
+        response.controller?.abort();
+        updateFinishReason('close');
+        return;
+      }
       // 包含读取和消费回调异常，先保留 parser 状态，再由上层决定是否抛出。
       updateError(error?.error || error);
     }
@@ -216,6 +224,16 @@ export const createStreamResponse = async ({
       });
 
       const { reasoningContent, content, finish_reason, usage, error } = getResponseData();
+      if (isUserAborted()) {
+        const { answer: llmAnswer } = parsePromptToolCall(content);
+        return {
+          error,
+          answerText: llmAnswer,
+          reasoningText: reasoningContent,
+          finish_reason: 'close',
+          usage
+        };
+      }
       // prompt tool 模式结束后用完整文本解析最终回答和工具调用。
       const { answer: llmAnswer, streamAnswer, toolCalls } = parsePromptToolCall(content);
 

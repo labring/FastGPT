@@ -11,7 +11,10 @@ const mocks = vi.hoisted(() => ({
   updateInteractiveChat: vi.fn(),
   responseWrite: vi.fn(),
   writeStreamError: vi.fn(),
-  flushResume: vi.fn()
+  flushResume: vi.fn(),
+  titleSend: vi.fn(),
+  titleClose: vi.fn(),
+  releaseGenerationLease: vi.fn()
 }));
 
 vi.mock('@/service/middleware/entry', () => ({ NextAPI: (handler: unknown) => handler }));
@@ -59,8 +62,8 @@ vi.mock('@fastgpt/service/core/workflow/dispatch', () => ({
 vi.mock('@fastgpt/service/core/chat/title', () => ({
   createGeneratedChatTitleSender: () => ({
     start: vi.fn(async () => undefined),
-    send: vi.fn(async () => ''),
-    close: vi.fn()
+    send: mocks.titleSend,
+    close: mocks.titleClose
   })
 }));
 vi.mock('@fastgpt/service/core/workflow/utils/streamResponseContext', async (importOriginal) => ({
@@ -86,7 +89,8 @@ describe.each([
     chatId: 'chat-1',
     responseChatItemId: 'response-1',
     shouldPersistChatRound: true,
-    shouldFinalizePreparedRound: true
+    shouldFinalizePreparedRound: true,
+    releaseGenerationLease: mocks.releaseGenerationLease
   };
 
   const runRequest = (stream = true) => {
@@ -129,6 +133,8 @@ describe.each([
       flatNodeResponses: []
     });
     mocks.flushResume.mockResolvedValue(undefined);
+    mocks.titleSend.mockResolvedValue('');
+    mocks.releaseGenerationLease.mockResolvedValue(undefined);
   });
 
   it('waits for queued stream events before ending a successful response', async () => {
@@ -148,6 +154,13 @@ describe.each([
     expect(mocks.finalizeChatRound).toHaveBeenCalledOnce();
     expect(mocks.flushResume).toHaveBeenCalledOnce();
     expect(response.end).toHaveBeenCalledOnce();
+    expect(mocks.releaseGenerationLease).toHaveBeenCalledOnce();
+    expect(mocks.releaseGenerationLease.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.responseWrite.mock.invocationCallOrder[0]
+    );
+    expect(mocks.releaseGenerationLease.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.flushResume.mock.invocationCallOrder[0]
+    );
   });
 
   it('flushes once after reporting a workflow error', async () => {
@@ -160,7 +173,35 @@ describe.each([
     expect(mocks.writeStreamError).toHaveBeenCalledWith(error);
     expect(mocks.flushResume).toHaveBeenCalledOnce();
     expect(response.end).toHaveBeenCalledOnce();
+    expect(mocks.releaseGenerationLease).toHaveBeenCalledOnce();
+    expect(mocks.releaseGenerationLease.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.writeStreamError.mock.invocationCallOrder[0]
+    );
   });
+
+  if (supportsNonStream) {
+    it('skips title generation and releases lease before done when stopped', async () => {
+      mocks.dispatchWorkFlow.mockResolvedValueOnce({
+        flowUsages: [],
+        assistantResponses: [],
+        newVariables: {},
+        durationSeconds: 1,
+        flatNodeResponses: [],
+        stopped: true
+      });
+
+      const { response, result } = runRequest();
+      await result;
+
+      expect(mocks.titleSend).not.toHaveBeenCalled();
+      expect(mocks.titleClose).toHaveBeenCalledOnce();
+      expect(mocks.releaseGenerationLease).toHaveBeenCalledOnce();
+      expect(mocks.releaseGenerationLease.mock.invocationCallOrder[0]).toBeLessThan(
+        mocks.responseWrite.mock.invocationCallOrder[0]
+      );
+      expect(response.end).toHaveBeenCalledOnce();
+    });
+  }
 
   it('cleans up and preserves errors after round persistence fails', async () => {
     const persistenceError = new Error('Failure persistence failed');

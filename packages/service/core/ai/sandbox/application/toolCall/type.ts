@@ -15,6 +15,7 @@ export type SandboxToolCallValidator = (params: {
 type ToolExecuteContext<P> = {
   sandboxInstance: SandboxClient;
   params: P;
+  signal?: AbortSignal;
 };
 
 /**
@@ -50,13 +51,15 @@ export const createToolRunner =
   async (params: {
     sandboxInstance: SandboxClient;
     input: Record<string, unknown> | undefined;
+    signal?: AbortSignal;
   }): Promise<ToolRunResult> => {
     const parsed = definition.zodSchema.safeParse(params.input);
     if (!parsed.success) return { success: false, error: parsed.error.message };
 
     const result = await definition.execute({
       sandboxInstance: params.sandboxInstance,
-      params: parsed.data
+      params: parsed.data,
+      signal: params.signal
     });
     return {
       success: true,

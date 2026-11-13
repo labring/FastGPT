@@ -23,7 +23,10 @@ const decodeFileContent = (content: unknown) => {
 
 export const sandboxReadFileTool = defineTool({
   zodSchema: SandboxReadFileToolSchema,
-  execute: async ({ sandboxInstance, params }) => {
+  execute: async ({ sandboxInstance, params, signal }) => {
+    if (signal?.aborted) {
+      throw new Error('Tool execution was stopped by user.');
+    }
     await sandboxInstance.ensureAvailable();
 
     const providerPath = sandboxInstance.resolveRuntimePath(params.path, {

@@ -126,7 +126,8 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       maxFileAmount: getWorkflowFileMaxAmount(),
       customPdfParse: chatConfig?.fileSelectConfig?.customPdfParse,
       usageId,
-      runningUserInfo
+      runningUserInfo,
+      stopSignal: props.stopSignal
     });
 
     // 锚点 2：对最终发给 AI 的本轮上下文（系统提示词 + 本轮用户消息，跳过历史消息）进行一次统一拦截，违规直接节点报错
@@ -178,12 +179,15 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       userKey: externalProvider.openaiAccount,
       teamId: runningUserInfo.teamId,
       isAborted: checkIsStopping,
+      signal: props.stopSignal,
       onReasoning({ text }) {
+        if (checkIsStopping?.() || props.stopSignal?.aborted) return;
         firstTokenTime ??= Date.now();
         if (!aiChatReasoning) return;
         workflowStreamResponse?.(workflowSseEvent.reasoningDelta(text));
       },
       onStreaming({ text }) {
+        if (checkIsStopping?.() || props.stopSignal?.aborted) return;
         firstTokenTime ??= Date.now();
         if (!isResponseAnswerText) return;
         workflowStreamResponse?.(workflowSseEvent.answerDelta(text));

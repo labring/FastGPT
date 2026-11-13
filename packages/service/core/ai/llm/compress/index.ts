@@ -538,6 +538,7 @@ export const compressRequestMessages = async ({
   activePlan,
   getCheckpointContext,
   checkIsStopping,
+  signal,
   messageTokens: cachedMessageTokens,
   messages,
   model,
@@ -549,6 +550,7 @@ export const compressRequestMessages = async ({
   activePlan?: AgentPlanType;
   getCheckpointContext?: () => Promise<string>;
   checkIsStopping?: CreateLLMResponseProps['isAborted'];
+  signal?: AbortSignal;
   messageTokens?: number;
   messages: ChatCompletionMessageParam[];
   model: LLMModelDataType;
@@ -609,6 +611,12 @@ export const compressRequestMessages = async ({
       messageTokens
     };
   }
+  if (checkIsStopping?.() || signal?.aborted) {
+    return {
+      messages,
+      messageTokens
+    };
+  }
 
   const checkpointTargetTokenLimit = getRequestCheckpointOutputTargetTokens(
     model.config.maxContext
@@ -636,6 +644,7 @@ export const compressRequestMessages = async ({
     const { answerText, usage, requestId, finish_reason } = await createLLMResponse({
       throwError: false,
       isAborted: checkIsStopping,
+      signal,
       userKey,
       teamId,
       body: {

@@ -41,6 +41,9 @@ import { MODERATION_BLOCKED_REPLACE_TEXT } from '@fastgpt/global/core/plugin/mod
 type Props = Pick<
   RunWorkflowProps,
   | 'checkIsStopping'
+  | 'stopSignal'
+  | 'getStopDeadlineAt'
+  | 'stopGraceTimeoutMs'
   | 'lang'
   | 'requestOrigin'
   | 'mode'

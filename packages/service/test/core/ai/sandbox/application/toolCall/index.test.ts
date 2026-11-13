@@ -165,6 +165,53 @@ describe('sandbox toolCall index', () => {
     );
   });
 
+  it('returns stopped failure without touching sandbox when signal is already aborted', async () => {
+    const sandbox = createSandboxInstance();
+    const controller = new AbortController();
+    controller.abort();
+
+    await expect(
+      runSandboxTools({
+        toolName: SANDBOX_SHELL_TOOL_NAME,
+        args: JSON.stringify({ command: 'pwd' }),
+        sandboxClient: sandbox,
+        signal: controller.signal
+      })
+    ).resolves.toMatchObject({
+      success: false,
+      input: {},
+      response: 'Tool execution was stopped by user.'
+    });
+    expect(sandbox.exec).not.toHaveBeenCalled();
+    expect(sandbox.ensureAvailable).not.toHaveBeenCalled();
+  });
+
+  it('forwards signal to sandbox tool and marks mid-run abort as failure', async () => {
+    const sandbox = createSandboxInstance();
+    const controller = new AbortController();
+    sandbox.exec.mockImplementationOnce(async () => {
+      controller.abort();
+      return { stdout: '', stderr: 'Command execution aborted', exitCode: -1 };
+    });
+
+    await expect(
+      runSandboxTools({
+        toolName: SANDBOX_SHELL_TOOL_NAME,
+        args: JSON.stringify({ command: 'sleep 5' }),
+        sandboxClient: sandbox,
+        signal: controller.signal
+      })
+    ).resolves.toMatchObject({
+      success: false,
+      input: { command: 'sleep 5' },
+      response: 'Tool execution was stopped by user.'
+    });
+    expect(sandbox.exec).toHaveBeenCalledWith(expect.any(String), {
+      timeout: undefined,
+      signal: controller.signal
+    });
+  });
+
   it('injects sandbox files into the session sandbox', async () => {
     const sandbox = createSandboxInstance();
     runtimeMock.getSandboxClient.mockResolvedValueOnce(sandbox);

@@ -111,4 +111,38 @@ describe('rerankDatasetWithSynonyms', () => {
     await rerankDatasetWithSynonyms({ teamId: 't1', query: 'alias', documents });
     expect(mocks.reRankRecall).toHaveBeenCalledTimes(2);
   });
+
+  it('returns empty results immediately when stopSignal is already aborted', async () => {
+    const stopController = new AbortController();
+    stopController.abort();
+
+    const result = await rerankDatasetWithSynonyms({
+      teamId: 't1',
+      query: 'alias',
+      documents,
+      stopSignal: stopController.signal
+    });
+
+    expect(result).toEqual({ results: [], inputTokens: 0 });
+    expect(mocks.reRankRecall).not.toHaveBeenCalled();
+  });
+
+  it('passes stopSignal to reRankRecall and skips second pass when aborted during baseline', async () => {
+    const stopController = new AbortController();
+    mocks.reRankRecall.mockImplementationOnce(async ({ signal }: { signal?: AbortSignal }) => {
+      expect(signal).toBe(stopController.signal);
+      stopController.abort();
+      return { results: [{ id: 'a', score: 0.4 }], inputTokens: 6 };
+    });
+
+    const result = await rerankDatasetWithSynonyms({
+      teamId: 't1',
+      query: 'alias',
+      documents,
+      stopSignal: stopController.signal
+    });
+
+    expect(result).toEqual({ results: [{ id: 'a', score: 0.4 }], inputTokens: 6 });
+    expect(mocks.reRankRecall).toHaveBeenCalledTimes(1);
+  });
 });

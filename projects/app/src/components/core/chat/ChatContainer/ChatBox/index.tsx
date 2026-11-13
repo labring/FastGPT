@@ -387,7 +387,13 @@ const ChatBox = ({
   const [chatGeneratingConflict, setChatGeneratingConflict] =
     useState<ChatGeneratingConflictRecovery>();
 
-  const { abortRequest, flushGeneratingMessages, generatingMessage, sendPrompt } = useChatGenerate({
+  const {
+    abortRequest,
+    waitForChatStreamSettle,
+    flushGeneratingMessages,
+    generatingMessage,
+    sendPrompt
+  } = useChatGenerate({
     onStartChat,
     onGeneratingMessage,
     isRoundPending,
@@ -410,16 +416,6 @@ const ChatBox = ({
     notifyChatGenerateStatusChange,
     finishChatGenerateStatus,
     onChatGeneratingConflict: resolvedFeatures.autoResume ? setChatGeneratingConflict : undefined
-  });
-  const requestStopChat = useMemoizedFn(async () => {
-    await requestStopAndAbortClient({
-      requestStop: () =>
-        postStopV2Chat({
-          ...chatAuthTarget,
-          chatId
-        }),
-      abortClientRequest: () => abortRequest('stop')
-    });
   });
   const sendPromptWithDisabledGuard = useMemoizedFn((input: ChatBoxInputType) => {
     if (disabledSendTip) {
@@ -484,7 +480,7 @@ const ChatBox = ({
     });
   });
 
-  const { recoverChatGeneratingConflict } = useChatResume({
+  const { recoverChatGeneratingConflict, waitForResumeStreamSettle } = useChatResume({
     enableAutoResume: resolvedFeatures.autoResume,
     isReady,
     resumeTargetAiDataId,
@@ -497,6 +493,18 @@ const ChatBox = ({
     scrollToBottom: autoScrollToBottom,
     finishChatGenerateStatus,
     onChatGeneratingConflictRecovered
+  });
+  const requestStopChat = useMemoizedFn(async () => {
+    await requestStopAndAbortClient({
+      requestStop: () =>
+        postStopV2Chat({
+          ...chatAuthTarget,
+          chatId
+        }),
+      waitForStreamSettle: () =>
+        Promise.all([waitForChatStreamSettle(), waitForResumeStreamSettle()]),
+      abortClientRequest: () => abortRequest('stop')
+    });
   });
 
   useEffect(() => {

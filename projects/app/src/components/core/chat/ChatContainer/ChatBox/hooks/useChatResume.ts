@@ -130,6 +130,7 @@ export const useChatResume = ({
   const isChattingRef = useLatest(isChatting);
   const documentVisibility = useDocumentVisibility();
   const resumeStatusCheckingRef = useRef(false);
+  const activeResumePromiseRef = useRef<Promise<void>>();
   const resumeRecordsRefreshRef = useRef<{
     sourceKey: string;
     chatId: string;
@@ -402,7 +403,26 @@ export const useChatResume = ({
       });
     };
 
-    (async () => {
+    /**
+     * 恢复流被中止时统一处理收尾：生命周期切换静默退出；
+     * 用户主动停止则落盘已收到的缓冲输出并清理不可恢复占位。
+     */
+    const settleUserStopAbort = (responseText = '') => {
+      if (
+        !isResumeLifecycleAbort(controller.signal.reason) &&
+        isActiveResumeTarget({ sourceKey: resumeForSourceKey, chatId: resumeForChatId })
+      ) {
+        resumeFinalStatus = ChatGenerateStatusEnum.done;
+        flushGeneratingMessages();
+        finishResumeAiRecord({
+          responseText,
+          removablePlaceholderText: getResumeUnavailablePlaceholderText()
+        });
+        scrollToBottom('auto');
+      }
+    };
+
+    const resumeStreamPromise = (async () => {
       try {
         if (shouldRefreshRecords && recordsRefreshRequest) {
           const refreshedRecords = recordsRefreshRequest.conflictRecovery
@@ -485,6 +505,11 @@ export const useChatResume = ({
           }
         });
 
+        if (controller.signal.aborted) {
+          settleUserStopAbort(responseText);
+          return;
+        }
+
         if (!isActiveResumeTarget({ sourceKey: resumeForSourceKey, chatId: resumeForChatId }))
           return;
 
@@ -523,13 +548,7 @@ export const useChatResume = ({
         scrollToBottom('auto');
       } catch (error) {
         if (controller.signal.aborted) {
-          // 离开页面或被新恢复流替换时不再提交旧流数据；用户主动停止仍需落下最后一个 buffer。
-          if (
-            !isResumeLifecycleAbort(controller.signal.reason) &&
-            isActiveResumeTarget({ sourceKey: resumeForSourceKey, chatId: resumeForChatId })
-          ) {
-            flushGeneratingMessages();
-          }
+          settleUserStopAbort();
           return;
         }
         if (!isActiveResumeTarget({ sourceKey: resumeForSourceKey, chatId: resumeForChatId }))
@@ -585,6 +604,12 @@ export const useChatResume = ({
         });
       }
     })();
+    activeResumePromiseRef.current = resumeStreamPromise;
+    void resumeStreamPromise.finally(() => {
+      if (activeResumePromiseRef.current === resumeStreamPromise) {
+        activeResumePromiseRef.current = undefined;
+      }
+    });
   }, [
     enableAutoResume,
     isReady,
@@ -613,7 +638,13 @@ export const useChatResume = ({
     resumeRequestVersion
   ]);
 
+  /** 等待当前正在执行的恢复流自然收尾。 */
+  const waitForResumeStreamSettle = useMemoizedFn(async () => {
+    await activeResumePromiseRef.current;
+  });
+
   return {
-    recoverChatGeneratingConflict
+    recoverChatGeneratingConflict,
+    waitForResumeStreamSettle
   };
 };

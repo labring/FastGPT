@@ -73,7 +73,11 @@ import {
   onWorkflowNodeStart,
   onWorkflowStart
 } from '../../../common/langfuse/workflow';
-import { createChatStopController } from '../../chat/stop';
+import {
+  createChatStopController,
+  getNestedStopGraceMs,
+  getRemainingStopGraceMs
+} from '../../chat/stop';
 import { runWithContext } from '../utils/context';
 import { createClientAbortTracker } from './utils/clientAbort';
 import type { IncomingMessage } from 'node:http';
@@ -111,10 +115,15 @@ import {
 import type { NodeModerationRecordType } from '@fastgpt/global/core/plugin/moderation/type';
 
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.DISPATCH);
+// 根工作流收到停止信号后的最大等待宽限期；子工作流略早收敛，以便将已有部分输出回传给父流程。
+export const WORKFLOW_STOP_GRACE_MS = 3000;
+const CHILD_WORKFLOW_STOP_GRACE_MS = 2800;
 
 type Props = Omit<
   ChatDispatchProps,
   | 'checkIsStopping'
+  | 'stopSignal'
+  | 'getStopDeadlineAt'
   | 'workflowDispatchDeep'
   | 'timezone'
   | 'externalProvider'
@@ -180,8 +189,25 @@ export async function dispatchWorkFlow({
   // 主动停止与 HTTP 协议版本解耦：MCP、定时触发等无 SSE 入口也监听同一信号。
   const stopController =
     apiVersion === 'v1' ? undefined : await createChatStopController({ ...chatSource, chatId });
+  const stopSignal = clientAbortTracker?.stopSignal ?? stopController?.stopSignal;
+  let fallbackStopDeadlineAt: number | undefined;
+  if (stopSignal && !stopController) {
+    if (stopSignal.aborted) {
+      fallbackStopDeadlineAt = Date.now() + WORKFLOW_STOP_GRACE_MS;
+    } else {
+      stopSignal.addEventListener(
+        'abort',
+        () => {
+          fallbackStopDeadlineAt ??= Date.now() + WORKFLOW_STOP_GRACE_MS;
+        },
+        { once: true }
+      );
+    }
+  }
+  const getStopDeadlineAt = () => stopController?.getStopDeadlineAt() ?? fallbackStopDeadlineAt;
   const checkIsStopping = () =>
-    clientAbortTracker?.isClientAborted() ?? stopController?.checkIsStopping() ?? false;
+    Boolean(stopSignal?.aborted) ||
+    (clientAbortTracker?.isClientAborted() ?? stopController?.checkIsStopping() ?? false);
 
   try {
     // 锚点 1：信息接入平台（Entry Guard）- 校验用户输入与全局变量/表单输入，违规直接阻断且不写入节点响应
@@ -306,6 +332,16 @@ export async function dispatchWorkFlow({
       })
     );
 
+    // 为本次工作流执行建立独立的流输出闸门：脱钩或结束后阻断孤儿节点继续写 SSE，同时不影响入口写收尾事件。
+    let workflowStreamClosed = false;
+    const gatedWorkflowStreamResponse: ChatDispatchProps['workflowStreamResponse'] =
+      data.workflowStreamResponse
+        ? (eventParams) => {
+            if (workflowStreamClosed) return;
+            data.workflowStreamResponse?.(eventParams);
+          }
+        : undefined;
+
     const nodeResponseSink = await profileStage({ event: 'wf.sink.create' }, () =>
       createWorkflowEntryNodeResponseSink({
         teamId: data.runningAppInfo.teamId,
@@ -317,7 +353,7 @@ export async function dispatchWorkFlow({
         apiVersion: data.apiVersion,
         responseAllData: data.responseAllData,
         responseDetail: data.responseDetail,
-        workflowStreamResponse: data.workflowStreamResponse
+        workflowStreamResponse: gatedWorkflowStreamResponse
       })
     );
 
@@ -339,9 +375,12 @@ export async function dispatchWorkFlow({
         try {
           const result = await runWorkflow({
             ...data,
+            workflowStreamResponse: gatedWorkflowStreamResponse,
             responseChatItemId,
             nodeResponseSink,
             checkIsStopping,
+            stopSignal,
+            getStopDeadlineAt,
             query: runtimeQuery,
             histories: runtimeHistories,
             timezone,
@@ -351,6 +390,8 @@ export async function dispatchWorkFlow({
             usageId: newUsageId,
             concatUsage
           });
+          workflowStreamClosed = true;
+          variableState.close();
           await nodeResponseSink.close();
           // HTTP 200/SSE 正常收尾也可能包含根运行错误；只按最终摘要判断，避免子层错误误报。
           const { errorText, errorCount } = result.workflowRuntimeSummary;
@@ -358,12 +399,15 @@ export async function dispatchWorkFlow({
 
           return {
             ...result,
+            ...(checkIsStopping() ? { stopped: true } : {}),
             // 子工作流只消费 summary；完整详情由共享 writer 持久化。
             ...(data.nodeResponseWriteConfig.retainInMemory
               ? { flatNodeResponses: nodeResponseSink.getFlatNodeResponses() }
               : {})
           };
         } catch (error) {
+          workflowStreamClosed = true;
+          variableState.close();
           await nodeResponseSink.close();
           throw error;
         } finally {
@@ -437,8 +481,11 @@ export class WorkflowQueue {
     { node: RuntimeNodeItemType; skippedNodeIdList: Set<string> }
   >();
   private maxConcurrency: number;
+  private graceTimeoutMs: number;
   private resolve: (e: WorkflowQueue) => void;
   private processingActive = false; // 标记是否正在处理队列
+  private detached = false; // 停止宽限期超时后强制脱钩标记
+  private closed = false; // 队列收尾后封锁迟到副作用标记
 
   // Buffer
   // 可以根据 nodeId 获取所有的 source 边和 target 边
@@ -465,6 +512,9 @@ export class WorkflowQueue {
     this.data = data;
     this.isRootRuntime = data.workflowDispatchDeep === 1;
     this.maxConcurrency = maxConcurrency;
+    this.graceTimeoutMs =
+      data.stopGraceTimeoutMs ??
+      (this.isRootRuntime ? WORKFLOW_STOP_GRACE_MS : CHILD_WORKFLOW_STOP_GRACE_MS);
     this.resolve = resolve;
     this.workflowRuntimeSummary = workflowRuntimeSummary;
     this.memoryState = WorkflowMemoryState.fromWorkflow(data);
@@ -727,6 +777,7 @@ export class WorkflowQueue {
   };
 
   private usagePush(usages: ChatNodeUsageType[]) {
+    if (this.closed || this.detached) return;
     // 暂时只有 root runtime 需要 push usage，child 的统一给到 root 去推送
     if (this.isRootRuntime) {
       if (this.data.usageId) {
@@ -747,7 +798,7 @@ export class WorkflowQueue {
   /* ===== life circle ===== */
   // Add active node to queue (if already in the queue, it will not be added again)
   addActiveNode(nodeId: string) {
-    if (this.activeRunQueue.has(nodeId)) {
+    if (this.closed || this.detached || this.activeRunQueue.has(nodeId)) {
       return;
     }
     this.activeRunQueue.add(nodeId);
@@ -766,12 +817,86 @@ export class WorkflowQueue {
     }
 
     this.processingActive = true;
+    const graceTimeoutMs = this.graceTimeoutMs;
+    let graceDeadlinePassed = false;
+    let graceTimer: ReturnType<typeof setTimeout> | undefined;
+    let gracePromise: Promise<'grace_timeout'> | undefined;
+    let cleanupStopListener: (() => void) | undefined;
+
+    const ensureGraceTimer = () => {
+      if (!gracePromise) {
+        const effectiveGraceTimeoutMs = getRemainingStopGraceMs({
+          stopDeadlineAt: this.data.getStopDeadlineAt?.(),
+          fallbackGraceMs: graceTimeoutMs,
+          reserveMs: this.isRootRuntime ? 0 : 200
+        });
+        if (effectiveGraceTimeoutMs <= 0) {
+          graceDeadlinePassed = true;
+          gracePromise = Promise.resolve('grace_timeout');
+        } else {
+          gracePromise = new Promise<'grace_timeout'>((resolveGrace) => {
+            graceTimer = setTimeout(() => {
+              graceDeadlinePassed = true;
+              resolveGrace('grace_timeout');
+            }, effectiveGraceTimeoutMs);
+            graceTimer.unref?.();
+          });
+        }
+      }
+      return gracePromise;
+    };
+
+    const stopAbortPromise = new Promise<'stop_aborted'>((resolveAbort) => {
+      if (this.data.checkIsStopping() || this.data.stopSignal?.aborted) {
+        resolveAbort('stop_aborted');
+        return;
+      }
+      const stopSignal = this.data.stopSignal;
+      if (!stopSignal) return;
+      const onAbort = () => resolveAbort('stop_aborted');
+      stopSignal.addEventListener('abort', onAbort, { once: true });
+      cleanupStopListener = () => stopSignal.removeEventListener('abort', onAbort);
+    });
 
     try {
       const runningNodePromises = new Set<Promise<unknown>>();
 
       // 迭代循环替代递归
       while (true) {
+        // 1. 收到停止信号后立即清空待运行与待跳过队列，正在运行的节点最多等待宽限期后强制脱钩。
+        if (this.data.checkIsStopping() || this.data.stopSignal?.aborted) {
+          this.activeRunQueue.clear();
+          this.skipNodeQueue.clear();
+          if (runningNodePromises.size === 0) {
+            break;
+          }
+
+          const graceRace = await Promise.race([
+            Promise.race(runningNodePromises).then(
+              () => 'node_settled' as const,
+              (error) => {
+                if (error instanceof Error) {
+                  logger.error('Workflow race error', { chatId: this.data.chatId, error });
+                }
+                return 'node_settled' as const;
+              }
+            ),
+            ensureGraceTimer()
+          ]);
+
+          if (graceRace === 'grace_timeout' || graceDeadlinePassed) {
+            this.detached = true;
+            logger.warn('Workflow stop grace timeout reached, detaching running nodes', {
+              ...getWorkflowSource(this.data.runningAppInfo),
+              chatId: this.data.chatId,
+              runningNodeCount: runningNodePromises.size,
+              graceTimeoutMs
+            });
+            break;
+          }
+          continue;
+        }
+
         // 检查结束条件
         if (this.activeRunQueue.size === 0 && runningNodePromises.size === 0) {
           if (this.isDebugMode) {
@@ -796,12 +921,15 @@ export class WorkflowQueue {
         // 检查并发限制
         if (this.activeRunQueue.size === 0 || runningNodePromises.size >= this.maxConcurrency) {
           if (runningNodePromises.size > 0) {
-            // 当上一个节点运行结束时，立即运行下一轮
-            await Promise.race(runningNodePromises).catch((error) => {
-              if (error instanceof Error) {
-                logger.error('Workflow race error', { chatId: this.data.chatId, error });
-              }
-            });
+            // 当上一个节点运行结束或收到停止信号时，立即进入下一轮检查。
+            await Promise.race([
+              Promise.race(runningNodePromises).catch((error) => {
+                if (error instanceof Error) {
+                  logger.error('Workflow race error', { chatId: this.data.chatId, error });
+                }
+              }),
+              stopAbortPromise
+            ]);
           } else {
             // 理论上不应出现此情况，防御性退回到让出进程
             await surrenderProcess();
@@ -826,6 +954,9 @@ export class WorkflowQueue {
         }
       }
     } finally {
+      if (graceTimer) clearTimeout(graceTimer);
+      cleanupStopListener?.();
+      this.closed = true;
       this.resolve(this);
       this.processingActive = false;
     }
@@ -950,6 +1081,8 @@ export class WorkflowQueue {
       const nodeUsage = { inputTokens: 0, outputTokens: 0 };
       const dispatchData: ModuleDispatchProps<Record<string, any>> = {
         ...this.data,
+        // 子流程或节点内部工具必须在当前队列大限前脱钩，避免父层抢先丢弃已完成子结果。
+        stopGraceTimeoutMs: getNestedStopGraceMs(this.graceTimeoutMs),
         memoryState: this.memoryState,
         usagePush: (usages) => {
           usages.forEach((item) => {
@@ -1070,6 +1203,16 @@ export class WorkflowQueue {
         return {};
       })();
 
+      // 宽限期超时脱钩后，孤儿节点即使迟到完成也不再发布响应或汇总指标。
+      if (this.closed || this.detached) {
+        return {
+          node,
+          runStatus: 'run',
+          nodeResponseId,
+          result: {}
+        };
+      }
+
       // 工具调用子流程内若节点命中内容审核或产出敏感工具返回值，不将其作为工作流错误上报，
       // 而是隐藏原始敏感值并转为统一工具审核占位文本交由上层 Agent Loop 继续推理。
       if (this.data.isToolCall) {
@@ -1146,6 +1289,47 @@ export class WorkflowQueue {
               });
             }
           }
+        }
+      }
+
+      if (this.closed || this.detached) {
+        return {
+          node,
+          runStatus: 'run',
+          nodeResponseId,
+          result: {}
+        };
+      }
+
+      // 出口统一裁决：先保证前序内容审核阻断不被停止掩盖，再清理用户停止引发的中断错误与分支标记。
+      const isStoppingNow = this.data.checkIsStopping() || Boolean(this.data.stopSignal?.aborted);
+      const postModerationErrorCandidate = getErrText(
+        dispatchRes.rawError ??
+          dispatchRes.error?.[NodeOutputKeyEnum.errorText] ??
+          dispatchRes[DispatchNodeResponseKeyEnum.nodeResponse]?.errorText ??
+          dispatchRes[DispatchNodeResponseKeyEnum.nodeResponse]?.error,
+        ''
+      );
+      const hasModerationBlockError =
+        nodeSummary.hasModerationBlock ||
+        collectedModerationRecords.some(
+          (item) => item.actionTaken === ModerationActionEnum.block
+        ) ||
+        isModerationBlockErrorMessage(postModerationErrorCandidate);
+
+      if (isStoppingNow && !hasModerationBlockError) {
+        delete dispatchRes.rawError;
+        delete dispatchRes.error;
+        delete dispatchRes[DispatchNodeResponseKeyEnum.skipHandleId];
+        const stoppingNodeResponse = dispatchRes[DispatchNodeResponseKeyEnum.nodeResponse];
+        if (stoppingNodeResponse) {
+          const {
+            error: _err,
+            errorText: _errText,
+            errorCaptured: _captured,
+            ...restNodeResponse
+          } = stoppingNodeResponse;
+          dispatchRes[DispatchNodeResponseKeyEnum.nodeResponse] = restNodeResponse;
         }
       }
 
@@ -1229,7 +1413,13 @@ export class WorkflowQueue {
       const shouldDropPersistedNodeResponses = this.data.nodeResponseSink?.hasOutput ?? false;
 
       // 仅成功节点补齐默认值；商业插件等业务失败可能只有错误详情，没有原始异常。
-      if (dispatchRes.data && !dispatchRes.error && currentNodeError === undefined) {
+      if (
+        dispatchRes.data &&
+        !dispatchRes.error &&
+        currentNodeError === undefined &&
+        !this.data.checkIsStopping() &&
+        !this.data.stopSignal?.aborted
+      ) {
         node.outputs.forEach((item) => {
           if (!item.required) return;
           if (dispatchRes.data?.[item.key] !== undefined) return;
@@ -1586,7 +1776,13 @@ export class WorkflowQueue {
       }
     })();
 
-    if (!nodeRunResult) return;
+    if (!nodeRunResult || this.closed || this.detached) return;
+
+    // 停止信号生效后，仅保留已完成/截断节点产生的对话输出与统计，不再激活任何后续连线、交互或跳过分支。
+    if (this.data.checkIsStopping() || this.data.stopSignal?.aborted) {
+      pushStore(nodeRunResult.result);
+      return;
+    }
 
     // Store debug data
     if (this.isDebugMode) {
@@ -1748,6 +1944,25 @@ export class WorkflowQueue {
 
 /** 执行当前层工作流，维护独立摘要，并在返回或抛出前完成本层错误上报。 */
 export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowResponse> => {
+  // 兼容仅传入 checkIsStopping 的单测或内部调用，统一桥接为可监听的 AbortSignal。
+  let stopSignalBridgeTimer: ReturnType<typeof setInterval> | undefined;
+  if (!data.stopSignal) {
+    const bridgeController = new AbortController();
+    if (data.checkIsStopping?.()) {
+      bridgeController.abort();
+    } else {
+      stopSignalBridgeTimer = setInterval(() => {
+        if (data.checkIsStopping?.()) {
+          clearInterval(stopSignalBridgeTimer);
+          stopSignalBridgeTimer = undefined;
+          bridgeController.abort();
+        }
+      }, 50);
+      stopSignalBridgeTimer.unref?.();
+    }
+    data.stopSignal = bridgeController.signal;
+  }
+
   // 每个 workflow 层拥有独立 summary；底层 sink/writer 可以由 parent/child 共享。
   const workflowRuntimeSummary = createWorkflowRuntimeSummary();
   data.nodeResponseSink = createWorkflowNodeResponseScope({
@@ -1761,6 +1976,7 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
   data.workflowDispatchDeep = currentWorkflowDispatchDeep;
   const isRootRuntime = currentWorkflowDispatchDeep === 1;
   if (currentWorkflowDispatchDeep > 20) {
+    if (stopSignalBridgeTimer) clearInterval(stopSignalBridgeTimer);
     data.workflowDispatchDeep = previousWorkflowDispatchDeep;
     return {
       flowUsages: [],
@@ -1925,6 +2141,7 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
               durationSeconds
             };
           } finally {
+            if (stopSignalBridgeTimer) clearInterval(stopSignalBridgeTimer);
             data.workflowDispatchDeep = previousWorkflowDispatchDeep;
           }
         }

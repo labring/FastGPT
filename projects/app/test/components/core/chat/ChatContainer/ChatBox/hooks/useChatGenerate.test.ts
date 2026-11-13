@@ -1103,6 +1103,38 @@ describe('useChatGenerate.sendPrompt', () => {
     );
   });
 
+  it('settles active resumed conversation when streamResumeFetch resolves after an explicit stop', async () => {
+    mocks.resume.mockImplementationOnce(
+      ({ controller, onmessage }: Parameters<typeof streamResumeFetch>[0]) =>
+        new Promise((resolve) => {
+          controller.signal.addEventListener(
+            'abort',
+            () => {
+              onmessage({
+                event: SseResponseEventEnum.answer,
+                text: 'partial resumed text'
+              });
+              resolve({ responseText: 'partial resumed text' });
+            },
+            { once: true }
+          );
+        })
+    );
+
+    await render({ resume: true });
+    await act(async () => generate.abortRequest('stop'));
+
+    expect(mocks.finishStatus).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: ChatGenerateStatusEnum.done,
+        targetChatId: 'A',
+        finishedInActiveChat: true
+      })
+    );
+    expect(records.at(-1)?.status).toBe(ChatStatusEnum.finish);
+    expect(JSON.stringify(records.at(-1)?.value)).toContain('partial resumed text');
+  });
+
   it.each([{ chatId: 'B' }, { tmbId: 'other member' }])(
     'releases prepared audio and preserves both drafts when ownership changes during initialization: %o',
     async (owner) => {

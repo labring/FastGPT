@@ -60,6 +60,10 @@ export type AgentLoopRuntime<TChildrenResponse = unknown> = {
   /** 真正压缩时读取业务恢复入口，结果随 checkpoint 固化。 */
   getCheckpointContext?: () => Promise<string>;
   checkIsStopping?: () => boolean;
+  stopSignal?: AbortSignal;
+  getStopDeadlineAt?: () => number | undefined;
+  /** 可选覆盖单次工具取消宽限期（毫秒），缺省使用 2500ms。 */
+  toolStopGraceMs?: number;
   toolCatalog: AgentLoopToolCatalog;
   executeTool: (
     params: AgentLoopToolExecuteParams

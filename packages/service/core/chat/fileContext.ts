@@ -67,6 +67,7 @@ type GetFileProps = {
   tmbId: string;
   usageId?: string;
   fileContext?: FileReadContext;
+  signal?: AbortSignal;
 };
 
 /** 从下载 API 或公开短路径提取 signed alias；访问权限仍由后续签名校验或 HTTP 读取判断。 */
@@ -506,7 +507,8 @@ export const getFileContentByUrl = async ({
   usageId,
   fileContext,
   validateExternalUrlDomain,
-  onPdfParseUsage
+  onPdfParseUsage,
+  signal
 }: {
   url: string;
   teamId: string;
@@ -518,7 +520,11 @@ export const getFileContentByUrl = async ({
   onPdfParseUsage?: (usage: ChatNodeUsageType) => void;
   /** 动态工具 URL 可跳过上传文件域名白名单，底层仍执行 HTTP(S)、SSRF 和大小校验。 */
   validateExternalUrlDomain?: boolean;
+  signal?: AbortSignal;
 }) => {
+  if (signal?.aborted) {
+    throw signal.reason ?? new Error('File read aborted');
+  }
   const sourceId = await getAuthorizedFileCacheSourceId({
     url,
     fileContext,
@@ -557,8 +563,13 @@ export const getFileContentByUrl = async ({
         }
       : undefined,
     usageId,
-    onPdfParseUsage
+    onPdfParseUsage,
+    signal
   });
+
+  if (signal?.aborted) {
+    throw signal.reason ?? new Error('File read aborted');
+  }
 
   const replacedText = await replaceS3KeyToPreviewUrl(
     rawText,
@@ -587,7 +598,8 @@ export const parseFileContentFromUrls = async ({
   tmbId,
   customPdfParse,
   usageId,
-  fileContext
+  fileContext,
+  signal
 }: GetFileProps & {
   urls: string[];
 }): Promise<
@@ -608,6 +620,7 @@ export const parseFileContentFromUrls = async ({
   const readFilesResult = await batchRun(
     candidateUrls,
     async (inputUrl) => {
+      if (signal?.aborted) return;
       try {
         const url = await normalizeReadableFileUrl({ url: inputUrl, fileContext });
         if (!url) return;
@@ -617,11 +630,13 @@ export const parseFileContentFromUrls = async ({
           tmbId,
           customPdfParse,
           usageId,
-          fileContext
+          fileContext,
+          signal
         });
 
         return { success: true, name, url, content };
       } catch (error) {
+        if (signal?.aborted) return;
         return {
           success: false,
           name: '',

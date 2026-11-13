@@ -21,6 +21,7 @@ type DispatchWorkflowReadFilesParams = {
   maxFileAmount: number;
   /** 业务入口可在解析及缓存读取前追加文件归属校验，失败按单文件错误返回。 */
   validateFile?: (file: WorkflowReadFileItem) => Promise<void>;
+  signal?: AbortSignal;
 };
 
 /**
@@ -38,12 +39,21 @@ export const dispatchWorkflowReadFiles = async ({
   customPdfParse,
   usageId,
   maxFileAmount,
-  validateFile
+  validateFile,
+  signal
 }: DispatchWorkflowReadFilesParams) => {
   const usages: ChatNodeUsageType[] = [];
   const readFilesResult = await batchRun(
     files.slice(0, maxFileAmount),
     async ({ url, name: inputName }) => {
+      if (signal?.aborted) {
+        return {
+          url,
+          name: inputName ?? url,
+          content: '',
+          error: 'File read stopped by user'
+        };
+      }
       try {
         await validateFile?.({ url, name: inputName });
         const { name, content } = await getFileContentByUrl({
@@ -55,7 +65,8 @@ export const dispatchWorkflowReadFiles = async ({
           fileContext: getWorkflowFileContext(),
           validateExternalUrlDomain: false,
           // 只收集并返回给运行时，统一由 read_files 节点落账，避免底层解析器重复收费。
-          onPdfParseUsage: (usage) => usages.push(usage)
+          onPdfParseUsage: (usage) => usages.push(usage),
+          signal
         });
 
         const resolvedName = inputName ?? name;

@@ -90,7 +90,8 @@ export const readFileContentBySource = async ({
   getFormatText = true,
   imageKeyOptions,
   onPdfParseUsage,
-  forceSystemParse
+  forceSystemParse,
+  signal
 }: {
   teamId: string;
   tmbId: string;
@@ -106,6 +107,7 @@ export const readFileContentBySource = async ({
   onPdfParseUsage?: (usage: ChatNodeUsageType) => void;
   /** 置 true 时忽略 sangfor 外部解析路由（结构化导入等需要内置解析产物的链路使用）。 */
   forceSystemParse?: boolean;
+  signal?: AbortSignal;
 }): Promise<Pick<ReadFileResponse, 'rawText' | 'tableInfo' | 'sourceMetadata'>> =>
   readFileContent({
     teamId,
@@ -119,7 +121,8 @@ export const readFileContentBySource = async ({
     getFormatText,
     imageKeyOptions,
     onPdfParseUsage,
-    forceSystemParse
+    forceSystemParse,
+    signal
   });
 
 const readFileContent = async ({
@@ -135,7 +138,8 @@ const readFileContent = async ({
   getFormatText,
   imageKeyOptions,
   onPdfParseUsage,
-  forceSystemParse
+  forceSystemParse,
+  signal
 }: {
   teamId: string;
   tmbId: string;
@@ -153,9 +157,13 @@ const readFileContent = async ({
   };
   onPdfParseUsage?: (usage: ChatNodeUsageType) => void;
   forceSystemParse?: boolean;
+  signal?: AbortSignal;
 }): Promise<Pick<ReadFileResponse, 'rawText' | 'tableInfo' | 'sourceMetadata'>> => {
   if (!initialBuffer && !source) {
     throw new Error('File content or source is required');
+  }
+  if (signal?.aborted) {
+    throw signal.reason ?? new Error('File read aborted');
   }
 
   // 归一化扩展名为小写，避免大写/混合大小写后缀（如 .PDF）无法匹配解析器（#6996）
@@ -172,14 +180,14 @@ const readFileContent = async ({
     if (!materializedPromise) {
       materializedPromise = initialBuffer
         ? Promise.resolve({ buffer: initialBuffer, extension, encoding: initialEncoding })
-        : materializeFileSource(source!, { signal: new AbortController().signal }).then(
-            (materialized) => ({
-              buffer: materialized.buffer,
-              extension: resolveFileSourceExtension(materialized),
-              encoding: resolveFileSourceEncoding(materialized),
-              metadata: materialized.metadata
-            })
-          );
+        : materializeFileSource(source!, {
+            signal: signal ?? new AbortController().signal
+          }).then((materialized) => ({
+            buffer: materialized.buffer,
+            extension: resolveFileSourceExtension(materialized),
+            encoding: resolveFileSourceEncoding(materialized),
+            metadata: materialized.metadata
+          }));
     }
     return materializedPromise;
   };
@@ -272,6 +280,7 @@ const readFileContent = async ({
       error?: object | string;
     }>(url, data, {
       timeout: getBackendFileOperationTimeoutMs(),
+      signal,
       headers: {
         ...data.getHeaders(),
         Authorization: token ? `Bearer ${token}` : undefined

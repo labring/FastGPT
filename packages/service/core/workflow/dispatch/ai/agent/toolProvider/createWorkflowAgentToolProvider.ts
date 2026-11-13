@@ -43,7 +43,8 @@ export const createWorkflowAgentToolProvider = ({
           teamId: context.runningUserInfo.teamId,
           tmbId: context.runningUserInfo.tmbId,
           llmModel: context.modelData,
-          userKey: context.externalProvider.openaiAccount
+          userKey: context.externalProvider.openaiAccount,
+          stopSignal: context.stopSignal
         });
         onToolResult?.({ response: result.response, nodeSummary: result.nodeSummary });
         const usages = result.usages ?? [];
@@ -73,7 +74,8 @@ export const createWorkflowAgentToolProvider = ({
         tmbId: context.runningUserInfo.tmbId,
         customPdfParse: context.chatConfig?.fileSelectConfig?.customPdfParse,
         usageId: context.usageId,
-        maxFileAmount: readFileMaxFileAmount
+        maxFileAmount: readFileMaxFileAmount,
+        signal: context.stopSignal
       })
   });
 

@@ -18,7 +18,10 @@ export const SandboxEditFileToolSchema = z.object({
 
 export const sandboxEditFileTool = defineTool({
   zodSchema: SandboxEditFileToolSchema,
-  execute: async ({ sandboxInstance, params }) => {
+  execute: async ({ sandboxInstance, params, signal }) => {
+    if (signal?.aborted) {
+      throw new Error('Tool execution was stopped by user.');
+    }
     await sandboxInstance.ensureAvailable();
     await sandboxInstance.provider.replaceContent(
       params.entries.map((entry) => ({

@@ -22,6 +22,7 @@ import { createToolCallToolProvider } from './toolProvider';
 import { runtimeSummaryToNodeSummary, stripNodeSummaryErrorFields } from '../../utils/summary';
 import { getDispatchModerationContext } from '../../utils/runtime';
 import { getWorkflowFileContext } from '../../../utils/context';
+import { AGENT_TOOL_STOP_GRACE_MS } from '../../../../ai/llm/agentLoop/domain/stopGrace';
 
 type ResponseType = {
   requestIds: string[];
@@ -111,6 +112,10 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
   const loopMessages = toolProvider.finalMessages.filter(
     (message) => message.role !== ChatCompletionRequestMessageRoleEnum.System
   );
+  const toolStopGraceMs = Math.min(
+    AGENT_TOOL_STOP_GRACE_MS,
+    workflowProps.stopGraceTimeoutMs ?? AGENT_TOOL_STOP_GRACE_MS
+  );
 
   const { result: coreResult, summary: outputSummary } =
     await runAgentLoopCoreWithSummary<WorkflowInteractiveResponseType>({
@@ -167,6 +172,9 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
         },
         maxRunAgentTimes: 50,
         checkIsStopping,
+        stopSignal: workflowProps.stopSignal,
+        getStopDeadlineAt: workflowProps.getStopDeadlineAt,
+        toolStopGraceMs,
         toolRuntime: {
           toolProvider,
           context: getDispatchModerationContext(workflowProps),

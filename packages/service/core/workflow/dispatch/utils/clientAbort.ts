@@ -25,6 +25,7 @@ export const createClientAbortTracker = ({
   let responseCompleted = !!(res?.writableEnded || res?.writableFinished);
   let responseError = !!res?.errored;
   let serverSocketError = false;
+  const abortController = new AbortController();
 
   /**
    * v1 工作流只在客户端主动断开当前响应时停止。
@@ -40,6 +41,11 @@ export const createClientAbortTracker = ({
   const canAcceptRequestAbort = () => !responseFinished() && !responseErrored();
   const isRequestAbortedSnapshot = () =>
     (requestAborted || !!req?.aborted) && canAcceptRequestAbort();
+  const triggerAbort = () => {
+    if (!abortController.signal.aborted) {
+      abortController.abort();
+    }
+  };
   const markResponseCompleted = () => {
     responseCompleted = true;
   };
@@ -55,13 +61,19 @@ export const createClientAbortTracker = ({
     requestAborted = true;
     if (canAcceptRequestAbort()) {
       clientAborted = true;
+      triggerAbort();
     }
   };
   const markResponseClosed = () => {
     if (canAcceptRequestAbort()) {
       clientAborted = true;
+      triggerAbort();
     }
   };
+
+  if (isRequestAbortedSnapshot()) {
+    triggerAbort();
+  }
 
   req?.on('aborted', markClientAborted);
   req?.socket?.on('error', markSocketError);
@@ -71,6 +83,7 @@ export const createClientAbortTracker = ({
 
   return {
     isClientAborted: () => canAcceptRequestAbort() && (clientAborted || isRequestAbortedSnapshot()),
+    stopSignal: abortController.signal,
     cleanup: () => {
       req?.off('aborted', markClientAborted);
       req?.socket?.off('error', markSocketError);

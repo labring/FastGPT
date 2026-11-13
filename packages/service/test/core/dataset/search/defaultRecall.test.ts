@@ -980,4 +980,85 @@ describe('reRankSearchResults rerank candidate limit', () => {
       Array.from({ length: 20 }, (_, index) => `data-${index}`)
     );
   });
+
+  it('已中止时不触发重排请求直接退回召回列表', async () => {
+    const stopController = new AbortController();
+    stopController.abort();
+
+    const result = await reRankSearchResults({
+      usingReRank: true,
+      textRecallResults: candidates.slice(0, 5) as any,
+      rerankModel,
+      query: 'query',
+      rerankWeight: 0.5,
+      teamId: 'team-1',
+      stopSignal: stopController.signal
+    });
+
+    expect(result).toEqual({
+      results: candidates.slice(0, 5),
+      inputTokens: 0,
+      usingReRank: false
+    });
+    expect(mockReRankRecall).not.toHaveBeenCalled();
+  });
+
+  it('searchDatasetData 将 stopSignal 透传给 getVectors 和 reRankRecall', async () => {
+    const stopController = new AbortController();
+    mockGetVectors.mockResolvedValueOnce({ tokens: 5, vectors: [[0.1, 0.2]] });
+    mockRecallFromVectorStore.mockResolvedValueOnce({
+      results: [{ id: 'index-a', collectionId: 'collection-1', score: 0.9 }]
+    });
+    mockMongoDatasetCollectionFind.mockImplementation((query: Record<string, any>) => {
+      if (query?.forbid) return { lean: vi.fn().mockResolvedValue([]) };
+      return { lean: vi.fn().mockResolvedValue([{ _id: 'collection-1', name: 'Source' }]) };
+    });
+    mockMongoDatasetDataFind.mockReturnValue({
+      lean: vi.fn().mockResolvedValue([
+        {
+          _id: 'data-a',
+          teamId: 'team-1',
+          datasetId: 'dataset-1',
+          collectionId: 'collection-1',
+          updateTime: new Date('2026-01-01'),
+          q: 'A',
+          a: 'alpha',
+          chunkIndex: 0,
+          indexes: [{ dataId: 'index-a' }]
+        }
+      ])
+    });
+    mockReRankRecall.mockResolvedValueOnce({
+      results: [{ id: 'data-a', score: 0.95 }],
+      inputTokens: 4
+    });
+
+    const result = await searchDatasetData({
+      metadataFilterEnabled: false,
+      histories: [],
+      teamId: 'team-1',
+      model: {
+        model: 'mock-embedding',
+        config: { maxToken: 512, defaultConfig: {} }
+      } as any,
+      datasetIds: ['dataset-1'],
+      reRankQuery: 'query',
+      textQueries: ['query'],
+      limit: 5000,
+      searchMode: DatasetSearchModeEnum.embedding,
+      embeddingWeight: 1,
+      usingReRank: true,
+      rerankModel,
+      rerankWeight: 1,
+      stopSignal: stopController.signal
+    });
+
+    expect(result.usingReRank).toBe(true);
+    expect(mockGetVectors).toHaveBeenCalledWith(
+      expect.objectContaining({ signal: stopController.signal })
+    );
+    expect(mockReRankRecall).toHaveBeenCalledWith(
+      expect.objectContaining({ signal: stopController.signal })
+    );
+  });
 });

@@ -29,7 +29,8 @@ export const getChatMessages = async ({
   maxFileAmount,
   customPdfParse,
   usageId,
-  runningUserInfo
+  runningUserInfo,
+  stopSignal
 }: {
   model: LLMModelDataType;
   maxTokens?: number;
@@ -46,6 +47,7 @@ export const getChatMessages = async ({
   customPdfParse?: boolean;
   usageId?: string;
   runningUserInfo: ChatDispatchProps['runningUserInfo'];
+  stopSignal?: AbortSignal;
 }) => {
   const concatenateSystemPrompt = [
     model.config.defaultSystemChatPrompt,
@@ -80,7 +82,8 @@ export const getChatMessages = async ({
         tmbId: runningUserInfo.tmbId,
         customPdfParse,
         usageId,
-        fileContext: getWorkflowFileContext()
+        fileContext: getWorkflowFileContext(),
+        signal: stopSignal
       });
 
       return files.map((file) => ({

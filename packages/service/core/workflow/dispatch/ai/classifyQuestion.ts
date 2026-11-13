@@ -73,6 +73,9 @@ export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse
     histories: chatHistories,
     cqModel
   });
+  if (props.checkIsStopping?.() || props.stopSignal?.aborted) {
+    return {};
+  }
   const result = agents.find((item) => item.key === arg?.type) || agents[agents.length - 1];
 
   const { totalPoints } = formatModelChars2Points({
@@ -120,6 +123,8 @@ const completions = async ({
   runningUserInfo,
   histories,
   lastMemory,
+  checkIsStopping,
+  stopSignal,
   params: { agents, systemPrompt = '', userChatInput }
 }: ActionProps) => {
   const messages: ChatItemMiniType[] = [
@@ -156,13 +161,16 @@ const completions = async ({
     answerText: answer,
     usage: { inputTokens, outputTokens, usedUserOpenAIKey }
   } = await createLLMResponse({
+    throwError: false,
     body: {
       model: cqModel,
       messages: chats2GPTMessages({ messages, reserveId: false, reserveReason: false }),
       stream: true
     },
     userKey: externalProvider.openaiAccount,
-    teamId: runningUserInfo.teamId
+    teamId: runningUserInfo.teamId,
+    isAborted: checkIsStopping,
+    signal: stopSignal
   });
 
   // console.log(JSON.stringify(chats2GPTMessages({ messages, reserveId: false }), null, 2));

@@ -20,6 +20,7 @@ type RunAuxiliaryGenerationAgentLoopParams = {
   useVideo?: boolean;
   streamWriter?: AuxiliaryGenerationStreamWriter;
   checkIsStopping?: () => boolean;
+  stopSignal?: AbortSignal;
   usageSink?: (usages: ChatNodeUsageType[]) => void;
   userAnswer?: string;
   runtimeTools?: ChatCompletionTool[];
@@ -44,6 +45,7 @@ export async function runAuxiliaryGenerationAgentLoop({
   useVideo,
   streamWriter,
   checkIsStopping,
+  stopSignal,
   usageSink,
   userAnswer,
   runtimeTools = [],
@@ -72,6 +74,7 @@ export async function runAuxiliaryGenerationAgentLoop({
           throw new Error('Auxiliary generation runtime tool executor is not configured');
         }),
       checkIsStopping,
+      stopSignal,
       recordEvent: onEvent,
       emitEvent: (event) => {
         if (event.type === 'reasoning_delta') {

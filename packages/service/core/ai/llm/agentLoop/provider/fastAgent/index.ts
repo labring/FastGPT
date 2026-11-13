@@ -80,6 +80,9 @@ export const runFastAgentLoop = async <TChildrenResponse = unknown>({
     getCheckpointContext: runtime.getCheckpointContext,
     batchToolSize: runtime.toolCatalog.batchToolSize,
     checkIsStopping: runtime.checkIsStopping,
+    stopSignal: runtime.stopSignal,
+    getStopDeadlineAt: runtime.getStopDeadlineAt,
+    toolStopGraceMs: runtime.toolStopGraceMs,
     systemTools: runtime.systemTools,
     toolCatalog: {
       runtimeTools: runtime.toolCatalog.runtimeTools,

@@ -177,7 +177,8 @@ export const fullTextRecall = async ({
   queryGroups,
   limit,
   filterCollectionIdList,
-  forbidCollectionIdList
+  forbidCollectionIdList,
+  stopSignal
 }: {
   teamId: string;
   datasetIds: string[];
@@ -188,6 +189,7 @@ export const fullTextRecall = async ({
   limit: number;
   filterCollectionIdList?: string[];
   forbidCollectionIdList: string[];
+  stopSignal?: AbortSignal;
 }): Promise<{
   textFullTextRecallResults: SearchDataResponseItemType[];
   imageCaptionFullTextRecallResults: SearchDataResponseItemType[];
@@ -199,7 +201,7 @@ export const fullTextRecall = async ({
       .map((query) => ({ source: group.source, query }))
   );
 
-  if (limit === 0 || queryTasks.length === 0) {
+  if (limit === 0 || queryTasks.length === 0 || stopSignal?.aborted) {
     return {
       textFullTextRecallResults: [],
       imageCaptionFullTextRecallResults: []
@@ -220,6 +222,13 @@ export const fullTextRecall = async ({
       return { source, items };
     })
   );
+
+  if (stopSignal?.aborted) {
+    return {
+      textFullTextRecallResults: [],
+      imageCaptionFullTextRecallResults: []
+    };
+  }
 
   return buildResultsFromRecallItems({ taskItems, limit });
 };

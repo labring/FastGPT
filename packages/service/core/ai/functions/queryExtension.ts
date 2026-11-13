@@ -116,7 +116,8 @@ export const queryExtension = async ({
   embeddingModel,
   userKey,
   teamId,
-  generateCount = 10 // 生成优化问题集的数量，默认为10个
+  generateCount = 10, // 生成优化问题集的数量，默认为10个
+  signal
 }: {
   chatBg?: string;
   query: string;
@@ -126,6 +127,7 @@ export const queryExtension = async ({
   userKey?: OpenaiAccountType;
   teamId: string;
   generateCount?: number;
+  signal?: AbortSignal;
 }): Promise<{
   rawQuery: string;
   extensionQueries: string[];
@@ -183,6 +185,8 @@ export const queryExtension = async ({
   } = await createLLMResponse({
     userKey,
     teamId,
+    signal,
+    isAborted: () => Boolean(signal?.aborted),
     body: {
       stream: true,
       model: llmModel,
@@ -191,7 +195,7 @@ export const queryExtension = async ({
     }
   });
 
-  if (!answer) {
+  if (!answer || signal?.aborted) {
     return {
       rawQuery: query,
       extensionQueries: [],

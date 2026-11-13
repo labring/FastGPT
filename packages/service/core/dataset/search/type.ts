@@ -137,6 +137,7 @@ export type SearchDatasetDataProps = {
   // undefined = 无需 collection 级过滤（短路 / 全部可读）；空数组 = 无可读集合（直接空结果）。
   // 由检索入口经 resolveReadableCollectionIds 解析后传入，与 metadata 过滤条件取交集。
   readableCollectionIdList?: string[];
+  stopSignal?: AbortSignal;
 };
 
 export type SearchDatasetDataResponse = {

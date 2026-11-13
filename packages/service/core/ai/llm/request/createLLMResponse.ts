@@ -91,32 +91,79 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
   };
   let hasSavedLLMRequestRecord = false;
   const moderatedToolCallIdSet = new Set<string>();
+  const isUserAborted = () => Boolean(args.isAborted?.() || args.signal?.aborted);
+  const resolveUsedUserOpenAIKey = () => aiRequestMeta.usedUserOpenAIKey || Boolean(userKey?.key);
+  // 首轮请求尚未获得上游响应就被用户停止时，不估算 prompt token、不写入请求详情，并保留用户自定义 Key 标记。
+  const buildUnstartedAbortedResponse = (): LLMResponse => {
+    const { assistantMessage, answerText, reasoningText, isStreamResponse } =
+      accumulator.getResponse();
+    return {
+      requestId,
+      isStreamResponse,
+      answerText,
+      reasoningText,
+      finish_reason: 'close',
+      usage: {
+        inputTokens: 0,
+        outputTokens: 0,
+        usedUserOpenAIKey: resolveUsedUserOpenAIKey()
+      },
+      requestMessages: initialRequestMessages,
+      assistantMessage,
+      completeMessages: [...initialRequestMessages, assistantMessage]
+    };
+  };
 
   try {
     // 自带“继续”的循环：finish_reason=length 时追加已生成内容后继续请求。
     while (continuationCount < maxContinuations) {
-      const {
-        response,
-        isStreamResponse: currentIsStreamResponse,
-        requestMeta
-      } = await createChatCompletion({
-        body: {
-          ...requestBody,
-          messages: currentMessages as typeof requestBody.messages
-        },
-        modelData,
-        userKey,
-        timeout,
-        onRequestStart: args.onRequestStart,
-        options: {
-          headers: {
-            Accept: 'application/json, text/plain, */*',
-            ...custonHeaders
-          },
-          signal: args.signal,
-          maxRetries: args.maxRetries
+      if (isUserAborted()) {
+        if (continuationCount === 0) {
+          return buildUnstartedAbortedResponse();
         }
-      });
+        accumulator.appendResponse({
+          answerText: '',
+          reasoningText: '',
+          finish_reason: 'close'
+        });
+        break;
+      }
+
+      let completionResult: Awaited<ReturnType<typeof createChatCompletion>>;
+      try {
+        completionResult = await createChatCompletion({
+          body: {
+            ...requestBody,
+            messages: currentMessages as typeof requestBody.messages
+          },
+          modelData,
+          userKey,
+          timeout,
+          onRequestStart: args.onRequestStart,
+          options: {
+            headers: {
+              Accept: 'application/json, text/plain, */*',
+              ...custonHeaders
+            },
+            signal: args.signal,
+            maxRetries: args.maxRetries
+          }
+        });
+      } catch (completionError) {
+        if (isUserAborted()) {
+          if (continuationCount === 0) {
+            return buildUnstartedAbortedResponse();
+          }
+          accumulator.appendResponse({
+            answerText: '',
+            reasoningText: '',
+            finish_reason: 'close'
+          });
+          break;
+        }
+        throw completionError;
+      }
+      const { response, isStreamResponse: currentIsStreamResponse, requestMeta } = completionResult;
       aiRequestMeta = requestMeta;
       accumulator.setFirstResponseType(currentIsStreamResponse);
       const parsedResponse = await (async () => {
@@ -156,6 +203,7 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
               args.isAborted?.() ||
               streamModerationBuffer.blocked ||
               Boolean(reasoningModerationBuffer?.blocked),
+            signal: args.signal,
             onStreaming: async ({ text }) => {
               await streamModerationBuffer.push(text);
             },
@@ -306,7 +354,7 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
 
       accumulator.appendResponse(parsedResponse);
 
-      if (accumulator.shouldContinue()) {
+      if (!isUserAborted() && accumulator.shouldContinue()) {
         // 继续输出时，用原始 requestBody.messages 做基础，避免把 rewrite 前 messages 混回上下文。
         currentMessages = mergeAssistantFieldMessages(
           accumulator.buildContinuationMessages({
@@ -435,7 +483,7 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
       usage: {
         inputTokens,
         outputTokens,
-        usedUserOpenAIKey: aiRequestMeta.usedUserOpenAIKey
+        usedUserOpenAIKey: resolveUsedUserOpenAIKey()
       },
       rawUsage: usage,
       requestId,
@@ -445,6 +493,29 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
       completeMessages: [...initialRequestMessages, assistantMessage]
     };
   } catch (error) {
+    if (isUserAborted()) {
+      if (continuationCount === 0) {
+        return buildUnstartedAbortedResponse();
+      }
+      const { assistantMessage, answerText, reasoningText, isStreamResponse, usage } =
+        accumulator.getResponse();
+      return {
+        requestId,
+        isStreamResponse,
+        answerText,
+        reasoningText,
+        finish_reason: 'close',
+        usage: {
+          inputTokens: usage?.prompt_tokens ?? 0,
+          outputTokens: usage?.completion_tokens ?? 0,
+          usedUserOpenAIKey: resolveUsedUserOpenAIKey()
+        },
+        rawUsage: usage,
+        requestMessages: initialRequestMessages,
+        assistantMessage,
+        completeMessages: [...initialRequestMessages, assistantMessage]
+      };
+    }
     // createChatCompletion 抛错或解析阶段抛错都会落到这里，保证 requestId 对应的错误详情被保存。
     // 如果已拿到模型响应并保存过包含 error 的详情，throwError 再抛出时不重复写同一个 requestId。
     if (saveLLMResponseRecord && teamId && !hasSavedLLMRequestRecord) {

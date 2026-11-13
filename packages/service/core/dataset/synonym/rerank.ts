@@ -13,17 +13,24 @@ export const rerankDatasetWithSynonyms = async ({
   model,
   teamId,
   query,
-  documents
+  documents,
+  stopSignal
 }: {
   model?: RerankModelDataType;
   teamId: string;
   query: string;
   documents: RerankDocument[];
+  stopSignal?: AbortSignal;
 }) => {
+  if (stopSignal?.aborted) {
+    return { results: [], inputTokens: 0 };
+  }
+
   const baselinePromise = reRankRecall({
     model,
     query,
-    documents: documents.map(({ id, text }) => ({ id, text }))
+    documents: documents.map(({ id, text }) => ({ id, text })),
+    signal: stopSignal
   });
   if (!serviceEnv.DATASET_SYNONYM_ENABLED || documents.length === 0) return baselinePromise;
 
@@ -70,9 +77,15 @@ export const rerankDatasetWithSynonyms = async ({
 
   // 1. 准备阶段只读配置并构造临时文本，与基线 rerank 并行执行，避免串行叠加延迟。
   const groupsPromise = prepareRerankGroups().catch(() => undefined);
-  const baseline = await baselinePromise;
+  const baseline = await baselinePromise.catch((error) => {
+    if (stopSignal?.aborted) {
+      return { results: [], inputTokens: 0 };
+    }
+    throw error;
+  });
+  if (stopSignal?.aborted) return baseline;
   const groups = await groupsPromise;
-  if (!groups) return baseline;
+  if (!groups || stopSignal?.aborted) return baseline;
 
   // 2. 筛选出转换后 query 或分块文本发生变化的分组（query 命中同义词时该组全部候选重打分）。
   const originalTexts = new Map(documents.map(({ id, text }) => [id, text]));
@@ -93,7 +106,8 @@ export const rerankDatasetWithSynonyms = async ({
         return await reRankRecall({
           model,
           query,
-          documents: documents.map(({ id, text }) => ({ id, text }))
+          documents: documents.map(({ id, text }) => ({ id, text })),
+          signal: stopSignal
         });
       } catch {
         return { results: [], inputTokens: 0 };

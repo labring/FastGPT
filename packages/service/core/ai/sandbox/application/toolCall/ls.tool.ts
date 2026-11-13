@@ -13,7 +13,10 @@ export const SandboxLsToolSchema = z.object({
 
 export const sandboxLsTool = defineTool({
   zodSchema: SandboxLsToolSchema,
-  execute: async ({ sandboxInstance, params }) => {
+  execute: async ({ sandboxInstance, params, signal }) => {
+    if (signal?.aborted) {
+      throw new Error('Tool execution was stopped by user.');
+    }
     await sandboxInstance.ensureAvailable();
     const limit = params.limit ?? DEFAULT_LS_LIMIT;
     const providerPath = sandboxInstance.resolveRuntimePath(params.path, {

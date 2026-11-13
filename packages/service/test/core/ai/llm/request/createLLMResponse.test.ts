@@ -2429,4 +2429,93 @@ describe('createLLMResponse', () => {
       expect(result.completeMessages).toEqual(result.requestMessages);
     });
   });
+
+  describe('User abort before response vs continuation rounds', () => {
+    it('returns zero tokens, preserves userKey flag, and skips record persistence when round 0 aborts before response', async () => {
+      const abortController = new AbortController();
+      const mockAI = {
+        chat: {
+          completions: {
+            create: vi.fn().mockImplementation(async () => {
+              abortController.abort();
+              throw new Error('Request was aborted.');
+            })
+          }
+        }
+      };
+      mockGetAIApi.mockReturnValue(
+        createMockAIApiResult(mockAI, {
+          usedUserOpenAIKey: true,
+          baseUrl: 'https://user.example.com/v1'
+        })
+      );
+
+      const result = await createLLMResponse({
+        signal: abortController.signal,
+        userKey: { key: 'sk-user-owned' },
+        body: {
+          model: createMockModelData(),
+          messages: [{ role: ChatCompletionRequestMessageRoleEnum.User, content: 'long prompt' }],
+          stream: true
+        }
+      });
+
+      expect(result.finish_reason).toBe('close');
+      expect(result.error).toBeUndefined();
+      expect(result.usage).toEqual({
+        inputTokens: 0,
+        outputTokens: 0,
+        usedUserOpenAIKey: true
+      });
+      expect(mockCountGptMessagesTokens).not.toHaveBeenCalled();
+      expect(mockSaveLLMRequestRecord).not.toHaveBeenCalled();
+    });
+
+    it('preserves accumulated round-0 output and token usage when continuation round is aborted', async () => {
+      const abortController = new AbortController();
+      let round = 0;
+      const mockAI = {
+        chat: {
+          completions: {
+            create: vi.fn().mockImplementation(async () => {
+              round += 1;
+              if (round === 1) {
+                return {
+                  choices: [
+                    {
+                      message: { role: 'assistant', content: 'Part 1 ' },
+                      finish_reason: 'length'
+                    }
+                  ],
+                  usage: { prompt_tokens: 12, completion_tokens: 8, total_tokens: 20 }
+                };
+              }
+              abortController.abort();
+              throw new Error('Request was aborted.');
+            })
+          }
+        }
+      };
+      mockGetAIApi.mockReturnValue(createMockAIApiResult(mockAI));
+
+      const result = await createLLMResponse({
+        signal: abortController.signal,
+        maxContinuations: 2,
+        body: {
+          model: createMockModelData(),
+          messages: [{ role: ChatCompletionRequestMessageRoleEnum.User, content: 'continue me' }],
+          stream: false
+        }
+      });
+
+      expect(result.finish_reason).toBe('close');
+      expect(result.answerText).toBe('Part 1 ');
+      expect(result.error).toBeUndefined();
+      expect(result.usage).toEqual({
+        inputTokens: 12,
+        outputTokens: 8,
+        usedUserOpenAIKey: false
+      });
+    });
+  });
 });

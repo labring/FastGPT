@@ -71,6 +71,7 @@ export const runAuxiliaryGeneration = async <T>({
       requestOrigin: req.headers.origin,
       streamWriter: streamContext.write,
       checkIsStopping: stopController.checkIsStopping,
+      stopSignal: stopController.stopSignal,
       usageSink: usageContext.pushUsage,
       maxFiles,
       customPdfParse,
@@ -82,8 +83,6 @@ export const runAuxiliaryGeneration = async <T>({
         lang
       }
     });
-
-    streamContext.writeDone();
 
     return {
       ...result,

@@ -42,16 +42,25 @@ const buildVectorRecallTasks = async ({
   model,
   textQueries,
   imageCaptionQueries,
-  imageQueries
+  imageQueries,
+  stopSignal
 }: {
   model: EmbeddingModelDataType;
   textQueries: string[];
   imageCaptionQueries: string[];
   imageQueries: string[];
+  stopSignal?: AbortSignal;
 }): Promise<{
   tasks: VectorRecallTask[];
   tokens: number;
 }> => {
+  if (stopSignal?.aborted) {
+    return {
+      tasks: [],
+      tokens: 0
+    };
+  }
+
   const embeddingModel = model;
   const textTasks = [
     ...textQueries.map((query) => ({ source: 'text' as const, query })),
@@ -105,27 +114,38 @@ const buildVectorRecallTasks = async ({
     vectorInputs.push(...imageInputs);
   }
 
-  if (vectorInputs.length === 0) {
+  if (vectorInputs.length === 0 || stopSignal?.aborted) {
     return {
       tasks: [],
       tokens: 0
     };
   }
 
-  const { tokens, vectors } = await getVectors({
-    model: embeddingModel,
-    inputs: vectorInputs.map((item) => item.input),
-    type: 'query'
-  });
-  const tasks = vectors.map((vector, index) => ({
-    source: vectorInputs[index].source,
-    vector
-  }));
+  try {
+    const { tokens, vectors } = await getVectors({
+      model: embeddingModel,
+      inputs: vectorInputs.map((item) => item.input),
+      type: 'query',
+      signal: stopSignal
+    });
+    const tasks = vectors.map((vector, index) => ({
+      source: vectorInputs[index].source,
+      vector
+    }));
 
-  return {
-    tasks,
-    tokens
-  };
+    return {
+      tasks,
+      tokens
+    };
+  } catch (error) {
+    if (stopSignal?.aborted) {
+      return {
+        tasks: [],
+        tokens: 0
+      };
+    }
+    throw error;
+  }
 };
 
 /**
@@ -142,7 +162,8 @@ export const embeddingRecall = async ({
   imageCaptionQueries,
   limit,
   forbidCollectionIdList,
-  filterCollectionIdList
+  filterCollectionIdList,
+  stopSignal
 }: {
   teamId: string;
   datasetIds: string[];
@@ -153,12 +174,13 @@ export const embeddingRecall = async ({
   limit: number;
   forbidCollectionIdList: string[];
   filterCollectionIdList?: string[];
+  stopSignal?: AbortSignal;
 }): Promise<
   ReturnType<typeof emptyEmbeddingRecallResult> & {
     tokens: number;
   }
 > => {
-  if (limit === 0) {
+  if (limit === 0 || stopSignal?.aborted) {
     return {
       ...emptyEmbeddingRecallResult(),
       tokens: 0
@@ -169,10 +191,11 @@ export const embeddingRecall = async ({
     model,
     textQueries,
     imageCaptionQueries,
-    imageQueries
+    imageQueries,
+    stopSignal
   });
 
-  if (tasks.length === 0) {
+  if (tasks.length === 0 || stopSignal?.aborted) {
     return {
       ...emptyEmbeddingRecallResult(),
       tokens
@@ -181,6 +204,12 @@ export const embeddingRecall = async ({
 
   // 多个文本/图片 query 共用路由快照，避免每个向量都重复查询计数及索引状态。
   const datasetVectorData = await getDatasetVectorSearchData({ teamId, datasetIds });
+  if (stopSignal?.aborted) {
+    return {
+      ...emptyEmbeddingRecallResult(),
+      tokens
+    };
+  }
   const recallResults = await Promise.all(
     tasks.map(async ({ vector }) => {
       return await recallFromVectorStore({
@@ -194,6 +223,12 @@ export const embeddingRecall = async ({
       });
     })
   );
+  if (stopSignal?.aborted) {
+    return {
+      ...emptyEmbeddingRecallResult(),
+      tokens
+    };
+  }
 
   const collectionIdList = Array.from(
     new Set(recallResults.map((item) => item.results.map((item) => item.collectionId)).flat())

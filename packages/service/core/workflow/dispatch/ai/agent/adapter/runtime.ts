@@ -19,6 +19,7 @@ import { createWorkflowAgentToolProvider } from '../toolProvider';
 import type { AgentLoopCoreToolRunResult } from '../../agentLoopCore/interface';
 import { getDispatchModerationContext } from '../../../utils/runtime';
 import { getWorkflowFileContext } from '../../../../utils/context';
+import { AGENT_TOOL_STOP_GRACE_MS } from '../../../../../ai/llm/agentLoop/domain/stopGrace';
 
 type WorkflowAgentLoopRuntimeContext = ToolDispatchContext & {
   node: {
@@ -109,6 +110,10 @@ export const createWorkflowAgentLoopRuntime = ({
     onToolResult,
     executeToolFactory
   });
+  const toolStopGraceMs = Math.min(
+    AGENT_TOOL_STOP_GRACE_MS,
+    context.stopGraceTimeoutMs ?? AGENT_TOOL_STOP_GRACE_MS
+  );
 
   return {
     artifacts,
@@ -161,6 +166,9 @@ export const createWorkflowAgentLoopRuntime = ({
           : undefined
       },
       checkIsStopping: context.checkIsStopping,
+      stopSignal: context.stopSignal,
+      getStopDeadlineAt: context.getStopDeadlineAt,
+      toolStopGraceMs,
       toolRuntime: {
         toolProvider,
         context: getDispatchModerationContext(context),

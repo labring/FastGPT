@@ -51,6 +51,7 @@ import { buildPiAgentTools } from './tool/build';
 import { getPiAgentNormalizationTools } from './tool/catalog';
 import type { PiAgentProviderState } from './type';
 import { compressRequestMessages } from '../../../compress';
+import { raceToolWithStopGrace, STOPPED_TOOL_RESPONSE_TEXT } from '../../domain/stopGrace';
 import {
   convertChatMessagesToPiAgentMessages,
   convertPiAgentMessagesToChatMessages,
@@ -129,6 +130,7 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
   const controlToolNames = new Set([askUserToolName, setPlanToolName, updatePlanToolName]);
   const emittedToolCallIds = new Set<string>();
   const emittedToolParamIds = new Set<string>();
+  const isStopping = () => Boolean(runtime.checkIsStopping?.() || runtime.stopSignal?.aborted);
 
   /** 统一工具调用入口，兼容流式事件、非流式 message_end 和直接执行三种路径。 */
   const emitOrdinaryToolCall = (call: ChatCompletionMessageToolCall) => {
@@ -291,7 +293,7 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
   ];
   /** 同步核对取消、暂停和工具停止；终止后不能写入续跑历史或事件，不等待取消轮询。 */
   const recordContinuationMessage = (content: string): ChatCompletionMessageParam | undefined => {
-    if (pendingAsk || pendingToolChild || pendingToolStop || runtime.checkIsStopping?.()) return;
+    if (pendingAsk || pendingToolChild || pendingToolStop || isStopping()) return;
 
     const message: ChatCompletionMessageParam = {
       role: ChatCompletionRequestMessageRoleEnum.User,
@@ -356,16 +358,40 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
     const startedAt = Date.now();
     const result = await (async () => {
       try {
-        return await runtime.executeInteractiveTool!({
-          ...input.childrenInteractiveParams!,
-          call,
-          messages: input.messages
+        const interactiveRace = await raceToolWithStopGrace({
+          execute: () =>
+            runtime.executeInteractiveTool!({
+              ...input.childrenInteractiveParams!,
+              call,
+              messages: input.messages
+            }),
+          stopSignal: runtime.stopSignal,
+          checkIsStopping: runtime.checkIsStopping,
+          graceMs: runtime.toolStopGraceMs,
+          getStopDeadlineAt: runtime.getStopDeadlineAt
         });
+        if (interactiveRace.status === 'stopped') {
+          return {
+            response: STOPPED_TOOL_RESPONSE_TEXT,
+            assistantMessages: [],
+            usages: [],
+            stop: false
+          };
+        }
+        return interactiveRace.value;
       } catch (error) {
         const errText = getErrText(error);
         if (isModerationBlockErrorMessage(errText)) {
           return {
             response: MODERATION_BLOCKED_REPLACE_TEXT,
+            assistantMessages: [],
+            usages: [],
+            stop: false
+          };
+        }
+        if (isStopping()) {
+          return {
+            response: STOPPED_TOOL_RESPONSE_TEXT,
             assistantMessages: [],
             usages: [],
             stop: false
@@ -456,6 +482,18 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
         assistantMessages,
         requestIds,
         finishReason,
+        usages: normalizeAgentLoopUsages(result.usages)
+      };
+    }
+    if (isStopping()) {
+      return {
+        status: 'aborted',
+        activePlan,
+        providerState,
+        completeMessages,
+        assistantMessages,
+        requestIds,
+        finishReason: 'close',
         usages: normalizeAgentLoopUsages(result.usages)
       };
     }
@@ -565,6 +603,7 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
           activePlan,
           getCheckpointContext: runtime.getCheckpointContext,
           checkIsStopping: runtime.checkIsStopping,
+          signal: runtime.stopSignal,
           messages: standardMessages,
           model: modelData,
           reasoningEffort: runtime.llmParams.reasoningEffort,
@@ -666,6 +705,10 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
     }
 
     if (event.type === 'message_update') {
+      if (isStopping()) {
+        agent.abort();
+        return;
+      }
       const assistantEvent = event.assistantMessageEvent;
       if (assistantEvent.type === 'text_delta') {
         const request = pendingRequests[0];
@@ -851,7 +894,12 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
       };
       pushAgentLoopUsages(runtime, [usage]);
 
-      finishReason = isBlocked ? 'error' : mapStopReason(event.message.stopReason);
+      const stoppedByUser = isStopping() && !isBlocked;
+      finishReason = isBlocked
+        ? 'error'
+        : stoppedByUser
+          ? 'close'
+          : mapStopReason(event.message.stopReason);
       runtime.emitEvent?.({
         type: 'llm_request_end',
         requestIndex: request.requestIndex,
@@ -867,14 +915,14 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
           request.firstTokenAt === undefined
             ? undefined
             : +((request.firstTokenAt - request.startedAt) / 1000).toFixed(2),
-        error: isBlocked ? latestError : event.message.errorMessage
+        error: isBlocked ? latestError : stoppedByUser ? undefined : event.message.errorMessage
       });
       return;
     }
 
     if (event.type === 'turn_end') {
       const errMsg = (event.message as { errorMessage?: string }).errorMessage;
-      if (errMsg) latestError = errMsg;
+      if (errMsg && !isStopping()) latestError = errMsg;
     }
   };
   agent.subscribe((event: AgentEvent) => {
@@ -886,10 +934,19 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
   });
 
   const stopPoller = setInterval(() => {
-    if (runtime.checkIsStopping?.()) {
+    if (isStopping()) {
       agent.abort();
     }
   }, 200);
+  stopPoller.unref?.();
+  const onStopAbort = () => {
+    agent.abort();
+  };
+  if (isStopping()) {
+    agent.abort();
+  } else {
+    runtime.stopSignal?.addEventListener('abort', onStopAbort, { once: true });
+  }
 
   // 仅团队成员模型启用运行时 SSRF 防护；系统模型保持原有传输。
   const legacyEndpoint = isTeamModel(modelData) ? getLegacyModelEndpoint(modelData) : undefined;
@@ -927,7 +984,7 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
       !pendingAsk &&
       !pendingToolChild &&
       !pendingToolStop &&
-      !runtime.checkIsStopping?.() &&
+      !isStopping() &&
       !latestError &&
       !agent.state.errorMessage &&
       !reachedRunLimit
@@ -936,7 +993,7 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
         requestIndex,
         answerText: latestAnswerText
       });
-      if (decision.action === 'complete') break;
+      if (isStopping() || decision.action === 'complete') break;
       if (requestIndex >= maxRunAgentTimes) {
         reachedRunLimit = true;
         latestError = new Error(`Agent loop reached max run times: ${maxRunAgentTimes}`);
@@ -947,9 +1004,12 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
       await runAgent(() => agent.prompt(decision.message));
     }
   } catch (error) {
-    latestError = error;
+    if (!isStopping()) {
+      latestError = error;
+    }
   } finally {
     clearInterval(stopPoller);
+    runtime.stopSignal?.removeEventListener('abort', onStopAbort);
     await subscriberQueue;
   }
 
@@ -982,8 +1042,11 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
   }
 
   if (pendingRequests.length > 0) {
-    const requestError = latestError || agent.state.errorMessage || 'Agent request interrupted';
-    const requestFinishReason = runtime.checkIsStopping?.() ? 'close' : 'error';
+    const stoppedByUser = isStopping();
+    const requestError = stoppedByUser
+      ? undefined
+      : latestError || agent.state.errorMessage || 'Agent request interrupted';
+    const requestFinishReason = stoppedByUser ? 'close' : 'error';
     finishReason = requestFinishReason;
     pendingRequests.splice(0).forEach((request) => {
       runtime.emitEvent?.({
@@ -1042,6 +1105,52 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
     streamModerationBuffer.blocked ||
     reasoningModerationBuffer?.blocked ||
     (latestError instanceof UserError && latestError.message === MODERATION_BLOCKED_ERROR_MESSAGE);
+
+  // 出口裁决优先级：内容审核阻断 > 用户主动停止 > 交互暂停 > 工具显式结束。
+  if (!isModerationBlocked && isStopping()) {
+    // 取消时若同一轮 assistant 已输出多个 tool_calls，补齐尚未执行的 tool 响应保持消息成对。
+    const recordedToolIds = new Set(
+      completeMessages
+        .filter((message) => message.role === ChatCompletionRequestMessageRoleEnum.Tool)
+        .map((message) => message.tool_call_id)
+    );
+    for (const message of [...assistantMessages]) {
+      if (
+        message.role !== ChatCompletionRequestMessageRoleEnum.Assistant ||
+        !message.tool_calls?.length
+      ) {
+        continue;
+      }
+      for (const call of message.tool_calls) {
+        if (recordedToolIds.has(call.id)) continue;
+        recordedToolIds.add(call.id);
+        emitOrdinaryToolExecution(call);
+        runtime.emitEvent?.({
+          type: 'tool_run_end',
+          hideInUI: controlToolNames.has(call.function.name),
+          call,
+          response: STOPPED_TOOL_RESPONSE_TEXT,
+          seconds: 0
+        });
+        recordToolResult({
+          call,
+          response: STOPPED_TOOL_RESPONSE_TEXT
+        });
+      }
+    }
+
+    return {
+      status: 'aborted',
+      activePlan,
+      providerState: nextProviderState,
+      completeMessages,
+      assistantMessages,
+      requestIds,
+      contextCheckpoint: latestContextCheckpoint,
+      finishReason,
+      usages: resultUsages
+    };
+  }
 
   if (
     !isModerationBlocked &&
@@ -1107,20 +1216,6 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
   if (!isModerationBlocked && pendingToolStop) {
     return {
       status: 'done',
-      activePlan,
-      providerState: nextProviderState,
-      completeMessages,
-      assistantMessages,
-      requestIds,
-      contextCheckpoint: latestContextCheckpoint,
-      finishReason,
-      usages: resultUsages
-    };
-  }
-
-  if (!isModerationBlocked && runtime.checkIsStopping?.()) {
-    return {
-      status: 'aborted',
       activePlan,
       providerState: nextProviderState,
       completeMessages,
