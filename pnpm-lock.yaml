@@ -151,8 +151,8 @@ catalogs:
       specifier: 3.4.0
       version: 3.4.0
     hono:
-      specifier: 4.13.11
-      version: 4.13.11
+      specifier: 4.13.16
+      version: 4.13.16
     i18next:
       specifier: 23.16.8
       version: 23.16.8
@@ -1356,13 +1356,13 @@ importers:
         version: link:../../packages/global
       '@hono/node-server':
         specifier: 'catalog:'
-        version: 2.1.8(hono@4.13.11)
+        version: 2.1.8(hono@4.13.16)
       '@t3-oss/env-core':
         specifier: 'catalog:'
         version: 0.13.10(typescript@6.0.3)(zod@4.1.12)
       hono:
         specifier: 'catalog:'
-        version: 4.13.11
+        version: 4.13.16
       zod:
         specifier: 'catalog:'
         version: 4.1.12
@@ -1809,7 +1809,7 @@ importers:
         version: link:../../packages/global
       '@hono/node-server':
         specifier: 'catalog:'
-        version: 2.1.8(hono@4.13.11)
+        version: 2.1.8(hono@4.13.16)
       '@t3-oss/env-core':
         specifier: 'catalog:'
         version: 0.13.10(typescript@6.0.3)(zod@4.1.12)
@@ -1833,7 +1833,7 @@ importers:
         version: 17.4.2
       hono:
         specifier: 'catalog:'
-        version: 4.13.11
+        version: 4.13.16
       moment:
         specifier: ^2.30.1
         version: 2.30.1
@@ -2007,10 +2007,10 @@ importers:
         version: link:../../packages/global
       '@hono/node-server':
         specifier: 'catalog:'
-        version: 2.1.8(hono@4.13.11)
+        version: 2.1.8(hono@4.13.16)
       hono:
         specifier: 'catalog:'
-        version: 4.13.11
+        version: 4.13.16
       undici:
         specifier: 'catalog:'
         version: 7.30.1
@@ -10077,8 +10077,8 @@ packages:
   hoist-non-react-statics@3.3.2:
     resolution: {integrity: sha512-/gGivxi8JPKWNm/W0jSmzcMPpfpPLc3dY/6GxhX2hQ9iGj3aDfklV4ET7NjKpSinLpJ5vafa9iiGIEZg10SfBw==}
 
-  hono@4.13.11:
-    resolution: {integrity: sha512-/SMX/RQNJn7oNmFwH6DtwDqcrzZU2otm1FD6OJe2cWF6cfy/F8hq0XVBv7xW3FTJshRQwuBnXHDq2kNsdZnshg==}
+  hono@4.13.16:
+    resolution: {integrity: sha512-AOLOEhvrV+iH92xXCnFr/5+3KjPKcI3xP63XJtX5spAnkznPdHijlIsUTpi7/9EhWqrTCekw5c5zh1K+YsVw7A==}
     engines: {node: '>=16.9.0'}
 
   hono@4.13.5:
@@ -17925,9 +17925,9 @@ snapshots:
     dependencies:
       hono: 4.13.5
 
-  '@hono/node-server@2.1.8(hono@4.13.11)':
+  '@hono/node-server@2.1.8(hono@4.13.16)':
     dependencies:
-      hono: 4.13.11
+      hono: 4.13.16
 
   '@humanfs/core@0.19.2':
     dependencies:
@@ -25259,7 +25259,7 @@ snapshots:
     dependencies:
       react-is: 16.13.1
 
-  hono@4.13.11: {}
+  hono@4.13.16: {}
 
   hono@4.13.5: {}
 
