@@ -3,12 +3,13 @@
  *
  * 只管理 sandbox HOME 下的内置 Skill 目录，不进入用户 workspace 或发布包。
  */
-import type { FileWriteEntry, ISandbox } from '@fastgpt-sdk/sandbox-adapter';
+import type { WriteEntry } from '@alibaba-group/opensandbox';
+import { OPEN_SANDBOX_DEFAULT_HOME_PATH } from '@fastgpt/global/core/ai/sandbox/constants';
+import type { OpenSandboxClient } from '../../../infrastructure/opensandbox/opensandbox';
 import type {
   BuiltinSkillSource,
   BuiltinSkillSourceFile
 } from '@fastgpt/global/core/ai/skill/runtime/builtin';
-import { getSandboxBuiltinSkillsRootPath } from '../../../infrastructure/provider/runtimeProfile/utils';
 import { buildRuntimeHash, joinSandboxPath } from '../../../utils';
 import {
   getRuntimeStateValue,
@@ -25,8 +26,9 @@ type BuiltinSkillSyncSource = BuiltinSkillSource & {
   etag: string;
 };
 
+/** 内置 Skill 注入到 sandbox 用户主目录，不属于用户可编辑 workspace。 */
 export function getBuiltinSkillsRootPath(homeDirectory: string): string {
-  return getSandboxBuiltinSkillsRootPath(homeDirectory);
+  return joinSandboxPath(homeDirectory, '.fastgpt', 'skills');
 }
 
 /**
@@ -37,11 +39,11 @@ export function getBuiltinSkillsRootPath(homeDirectory: string): string {
  */
 export async function syncBuiltinSkillsToSandbox({
   sandbox,
-  homeDirectory,
+  homeDirectory = OPEN_SANDBOX_DEFAULT_HOME_PATH,
   sources
 }: {
-  sandbox: ISandbox;
-  homeDirectory: string;
+  sandbox: OpenSandboxClient;
+  homeDirectory?: string;
   sources: BuiltinSkillSource[];
 }): Promise<void> {
   const syncSources = sources.map(buildBuiltinSkillSyncSource);
@@ -64,19 +66,14 @@ export async function syncBuiltinSkillsToSandbox({
     const targetDirectory = joinSandboxPath(builtinSkillsRootPath, source.name);
     const stateKey = getBuiltinSkillStateHashKey(source.name);
     const existingEntry = existingEntryByPath.get(targetDirectory);
-    if (existingEntry?.isDirectory) {
+    if (existingEntry?.type === 'directory') {
       await sandbox.deleteDirectories([targetDirectory]);
     } else if (existingEntry) {
-      const [deleteResult] = await sandbox.deleteFiles([targetDirectory]);
-      if (!deleteResult?.success || deleteResult.error) {
-        throw new Error(
-          `Failed to remove builtin skill path: ${deleteResult?.error?.message ?? targetDirectory}`
-        );
-      }
+      await sandbox.deleteFiles([targetDirectory]);
     }
     await sandbox.createDirectories([targetDirectory]);
 
-    const writeEntries: FileWriteEntry[] = source.files.map((sourceFile) => ({
+    const writeEntries: WriteEntry[] = source.files.map((sourceFile) => ({
       path: joinSandboxPath(targetDirectory, sourceFile.relativePath),
       data: sourceFile.content
     }));
@@ -85,11 +82,7 @@ export async function syncBuiltinSkillsToSandbox({
       sandbox,
       writeEntries.map(({ path }) => path)
     );
-    const writeResults = await sandbox.writeFiles(writeEntries);
-    const failedWrite = writeResults.find((result) => result.error);
-    if (failedWrite) {
-      throw new Error(`Failed to write builtin skill files: ${failedWrite.error?.message}`);
-    }
+    await sandbox.writeFiles(writeEntries);
 
     setRuntimeStateValue(runtimeStateContext.state, stateKey, source.etag);
   }

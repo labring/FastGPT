@@ -62,26 +62,26 @@ describe('sandbox runtime mirrors', () => {
       pypiIndexUrl: 'https://pypi.example.com/simple'
     };
     const expectedWriteEntries = [
-      { path: '/home/test/.npmrc', data: 'registry=https://npm.example.com\n' },
-      { path: '/home/test/.yarnrc', data: 'registry "https://npm.example.com"\n' },
+      { path: '/home/sandbox/.npmrc', data: 'registry=https://npm.example.com\n' },
+      { path: '/home/sandbox/.yarnrc', data: 'registry "https://npm.example.com"\n' },
       {
-        path: '/home/test/.yarnrc.yml',
+        path: '/home/sandbox/.yarnrc.yml',
         data: 'npmRegistryServer: "https://npm.example.com"\n'
       },
       {
-        path: '/home/test/.bunfig.toml',
+        path: '/home/sandbox/.bunfig.toml',
         data: '[install]\nregistry = "https://npm.example.com"\n'
       },
       {
-        path: '/home/test/.pip/pip.conf',
+        path: '/home/sandbox/.pip/pip.conf',
         data: '[global]\nindex-url = https://pypi.example.com/simple\ntrusted-host = pypi.example.com\n'
       },
       {
-        path: '/home/test/.config/pip/pip.conf',
+        path: '/home/sandbox/.config/pip/pip.conf',
         data: '[global]\nindex-url = https://pypi.example.com/simple\ntrusted-host = pypi.example.com\n'
       },
       {
-        path: '/home/test/.config/uv/uv.toml',
+        path: '/home/sandbox/.config/uv/uv.toml',
         data: 'default-index = "https://pypi.example.com/simple"\nallow-insecure-host = ["pypi.example.com"]\n'
       }
     ];
@@ -114,10 +114,10 @@ describe('sandbox runtime mirrors', () => {
         .map(({ path }) => path)
         .slice(-4)
     ).toEqual([
-      '/home/test/.npmrc',
-      '/home/test/.yarnrc',
-      '/home/test/.yarnrc.yml',
-      '/home/test/.bunfig.toml'
+      '/home/sandbox/.npmrc',
+      '/home/sandbox/.yarnrc',
+      '/home/sandbox/.yarnrc.yml',
+      '/home/sandbox/.bunfig.toml'
     ]);
     expect(sandbox.getState()?.values).toEqual({
       npmMirror: buildRuntimeHash('https://another-npm.example.com'),

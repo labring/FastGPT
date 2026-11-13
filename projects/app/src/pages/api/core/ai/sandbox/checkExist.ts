@@ -8,7 +8,7 @@ import {
   type SandboxCheckExistResponse
 } from '@fastgpt/global/openapi/core/ai/sandbox/api';
 import { checkSandboxSessionExist } from '@fastgpt/service/core/ai/sandbox/interface/session';
-import { buildSandboxClientQueryFromChatSource } from '@fastgpt/service/core/ai/sandbox/interface/runtime';
+import { buildSandboxClientQueryFromChatSource } from '@fastgpt/service/core/ai/sandbox/application/runtime';
 import { resolveSandboxSessionAvailability } from '@/service/core/sandbox/access';
 
 async function handler(req: ApiRequestProps): Promise<SandboxCheckExistResponse> {

@@ -517,9 +517,9 @@ export const getChatCompletionResponseExamples = (version: CompletionExampleVers
         {
           label: '业务错误',
           data: {
-            code: 510003,
-            statusText: 'runtimeUpgradeInProgress',
-            message: '沙箱正在升级，请稍后重试',
+            code: 510001,
+            statusText: 'agentSandboxInitializing',
+            message: '沙盒正在初始化，请稍后重试',
             data: null,
             httpStatus: 409
           }

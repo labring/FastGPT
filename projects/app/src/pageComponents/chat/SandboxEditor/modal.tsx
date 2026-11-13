@@ -1,6 +1,5 @@
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import React from 'react';
-import { Box } from '@chakra-ui/react';
 import type { Props as EditorProps } from './Editor';
 import SandboxEditor from './Editor';
 import { useTranslation } from 'next-i18next';

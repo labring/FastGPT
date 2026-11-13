@@ -8,6 +8,8 @@ on:
       - 'packages/workflow-core/**'
       - 'packages/workflow-cli/**'
       - 'projects/app/**'
+      - 'projects/opensandbox-proxy/**'
+      - 'projects/volume-manager/**'
       - 'sdk/**'
       - 'test/**'
       - 'scripts/test/**'
@@ -42,6 +44,8 @@ jobs:
       run_service: ${{ steps.scope.outputs.run_service }}
       run_web: ${{ steps.scope.outputs.run_web }}
       run_app: ${{ steps.scope.outputs.run_app }}
+      run_opensandbox_proxy: ${{ steps.scope.outputs.run_opensandbox_proxy }}
+      run_volume_manager: ${{ steps.scope.outputs.run_volume_manager }}
       run_workflow_core: ${{ steps.scope.outputs.run_workflow_core }}
       run_workflow_cli: ${{ steps.scope.outputs.run_workflow_cli }}
       should_report: ${{ steps.scope.outputs.should_report }}
@@ -52,22 +56,50 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const setOutputs = ({ global, service, web, app, workflowCore, workflowCli }) => {
-              const shouldReport = global || service || web || app || workflowCore || workflowCli;
+            const setOutputs = ({
+              global,
+              service,
+              web,
+              app,
+              opensandboxProxy,
+              volumeManager,
+              workflowCore,
+              workflowCli
+            }) => {
+              const shouldReport =
+                global ||
+                service ||
+                web ||
+                app ||
+                opensandboxProxy ||
+                volumeManager ||
+                workflowCore ||
+                workflowCli;
               core.setOutput('run_global', global ? 'true' : 'false');
               core.setOutput('run_service', service ? 'true' : 'false');
               core.setOutput('run_web', web ? 'true' : 'false');
               core.setOutput('run_app', app ? 'true' : 'false');
+              core.setOutput('run_opensandbox_proxy', opensandboxProxy ? 'true' : 'false');
+              core.setOutput('run_volume_manager', volumeManager ? 'true' : 'false');
               core.setOutput('run_workflow_core', workflowCore ? 'true' : 'false');
               core.setOutput('run_workflow_cli', workflowCli ? 'true' : 'false');
               core.setOutput('should_report', shouldReport ? 'true' : 'false');
               core.info(
-                `Test scopes selected: global=${global}, service=${service}, web=${web}, app=${app}, workflowCore=${workflowCore}, workflowCli=${workflowCli}`
+                `Test scopes selected: global=${global}, service=${service}, web=${web}, app=${app}, opensandboxProxy=${opensandboxProxy}, volumeManager=${volumeManager}, workflowCore=${workflowCore}, workflowCli=${workflowCli}`
               );
             };
 
             if (context.eventName !== 'pull_request') {
-              setOutputs({ global: true, service: true, web: true, app: true, workflowCore: true, workflowCli: true });
+              setOutputs({
+                global: true,
+                service: true,
+                web: true,
+                app: true,
+                opensandboxProxy: true,
+                volumeManager: true,
+                workflowCore: true,
+                workflowCli: true
+              });
               return;
             }
 
@@ -108,6 +140,10 @@ jobs:
               'sdk'
             ]);
 
+            const runOpensandboxProxy =
+              affectsAll || hasPath(['projects/opensandbox-proxy']);
+            const runVolumeManager =
+              affectsAll || hasPath(['packages/global', 'sdk', 'projects/volume-manager']);
             const runWorkflowCore = affectsAll || hasPath(['packages/global', 'packages/workflow-core']);
             const runWorkflowCli = affectsAll || hasPath([
               'packages/global',
@@ -121,6 +157,8 @@ jobs:
               service: runService,
               web: runWeb,
               app: runApp,
+              opensandboxProxy: runOpensandboxProxy,
+              volumeManager: runVolumeManager,
               workflowCore: runWorkflowCore,
               workflowCli: runWorkflowCli
             });
@@ -351,6 +389,80 @@ jobs:
           name: coverage-workflow-cli
           path: packages/workflow-cli/coverage/coverage-summary.json
 
+  test-volume-manager:
+    needs: detect-changes
+    if: ${{ needs.detect-changes.outputs.run_volume_manager == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref || github.ref }}
+          repository: ${{ github.event.pull_request.head.repo.full_name ||
+            github.repository }}
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'pnpm'
+
+      - name: 'Install Deps'
+        run: pnpm install --frozen-lockfile
+
+      - name: 'Typecheck Volume Manager'
+        run: pnpm --filter @fastgpt/volume-manager typecheck
+
+      - name: 'Test Volume Manager'
+        env:
+          FASTGPT_TEST_SCOPE: volume-manager
+        run: pnpm test
+
+      - name: 'Build Volume Manager'
+        run: pnpm --filter @fastgpt/volume-manager build
+
+      - name: 'Upload Coverage (Volume Manager)'
+        if: always() && hashFiles('projects/volume-manager/coverage/coverage-summary.json') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-volume-manager
+          path: |
+            projects/volume-manager/coverage/coverage-final.json
+            projects/volume-manager/coverage/coverage-summary.json
+
+  test-opensandbox-proxy:
+    needs: detect-changes
+    if: ${{ needs.detect-changes.outputs.run_opensandbox_proxy == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref || github.ref }}
+          repository: ${{ github.event.pull_request.head.repo.full_name ||
+            github.repository }}
+          persist-credentials: false
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.4.4'
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'pnpm'
+
+      - name: 'Install Deps'
+        run: pnpm install --frozen-lockfile
+
+      - name: 'Typecheck OpenSandbox Proxy'
+        run: pnpm --dir projects/opensandbox-proxy exec tsc --noEmit
+
+      - name: 'Test OpenSandbox Proxy'
+        run: pnpm --dir projects/opensandbox-proxy test
+
   report-coverage:
     runs-on: ubuntu-latest
     needs:
@@ -360,6 +472,8 @@ jobs:
         test-service,
         test-web,
         test-app,
+        test-opensandbox-proxy,
+        test-volume-manager,
         test-workflow-core,
         test-workflow-cli
       ]
@@ -390,6 +504,7 @@ jobs:
               { name: 'Service', dir: 'coverage-service' },
               { name: 'Web', dir: 'coverage-web' },
               { name: 'App', dir: 'coverage-app' },
+              { name: 'Volume Manager', dir: 'coverage-volume-manager' },
               { name: 'Workflow Core', dir: 'coverage-workflow-core' },
               { name: 'Workflow CLI', dir: 'coverage-workflow-cli' }
             ];
@@ -478,6 +593,10 @@ jobs:
                [ "${{ needs.test-workflow-core.result }}" != "skipped" ]; } ||
              { [ "${{ needs.test-workflow-cli.result }}" != "success" ] &&
                [ "${{ needs.test-workflow-cli.result }}" != "skipped" ]; } ||
+             { [ "${{ needs.test-opensandbox-proxy.result }}" != "success" ] &&
+               [ "${{ needs.test-opensandbox-proxy.result }}" != "skipped" ]; } ||
+             { [ "${{ needs.test-volume-manager.result }}" != "success" ] &&
+               [ "${{ needs.test-volume-manager.result }}" != "skipped" ]; } ||
              { [ "${{ needs.test-app.result }}" != "success" ] &&
                [ "${{ needs.test-app.result }}" != "skipped" ]; }; then
             exit 1

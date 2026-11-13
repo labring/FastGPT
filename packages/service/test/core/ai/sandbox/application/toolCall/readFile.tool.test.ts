@@ -2,13 +2,18 @@ import { describe, expect, it, vi } from 'vitest';
 import { sandboxReadFileTool } from '@fastgpt/service/core/ai/sandbox/application/toolCall/readFile.tool';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 
-const createSandboxInstance = (content: unknown) =>
-  ({
-    ensureAvailable: vi.fn(async () => undefined),
+const createSandboxInstance = (content: unknown) => {
+  const ensureAvailable = vi.fn(async () => undefined);
+  return {
+    ensureAvailable,
+    runWithRecovery: vi.fn(async (fn: () => Promise<unknown>) => {
+      await ensureAvailable();
+      return fn();
+    }),
     resolveRuntimePath: vi.fn((path: string) =>
       path.startsWith('/') ? path : `/workspace/sessions/chat_1/${path}`
     ),
-    provider: {
+    opensandbox: {
       readFiles: vi.fn(async (paths: string[]) =>
         paths.map((path) => ({
           path,
@@ -16,16 +21,23 @@ const createSandboxInstance = (content: unknown) =>
         }))
       )
     }
-  }) as any;
+  } as any;
+};
 
-const createFailedSandboxInstance = (file: unknown) =>
-  ({
-    ensureAvailable: vi.fn(async () => undefined),
+const createFailedSandboxInstance = (file: unknown) => {
+  const ensureAvailable = vi.fn(async () => undefined);
+  return {
+    ensureAvailable,
+    runWithRecovery: vi.fn(async (fn: () => Promise<unknown>) => {
+      await ensureAvailable();
+      return fn();
+    }),
     resolveRuntimePath: vi.fn((path: string) => `/workspace/sessions/chat_1/${path}`),
-    provider: {
+    opensandbox: {
       readFiles: vi.fn(async () => [file])
     }
-  }) as any;
+  } as any;
+};
 
 describe('sandboxReadFileTool', () => {
   it('reads a whole file', async () => {
@@ -44,7 +56,7 @@ describe('sandboxReadFileTool', () => {
 
     expect(result.response).toBe('line 1\nline 2\nline 3');
     expect(sandboxInstance.ensureAvailable).toHaveBeenCalledTimes(1);
-    expect(sandboxInstance.provider.readFiles).toHaveBeenCalledWith([
+    expect(sandboxInstance.opensandbox.readFiles).toHaveBeenCalledWith([
       '/workspace/sessions/chat_1/notes.txt'
     ]);
   });
@@ -66,7 +78,7 @@ describe('sandboxReadFileTool', () => {
     expect(sandboxInstance.resolveRuntimePath).toHaveBeenCalledWith(path, {
       allowAbsolutePath: true
     });
-    expect(sandboxInstance.provider.readFiles).toHaveBeenCalledWith([path]);
+    expect(sandboxInstance.opensandbox.readFiles).toHaveBeenCalledWith([path]);
   });
 
   it('reads a line range and returns a continuation hint', async () => {
@@ -92,7 +104,7 @@ describe('sandboxReadFileTool', () => {
 
   it('decodes non-binary file content', async () => {
     const sandboxInstance = createSandboxInstance('plain text');
-    sandboxInstance.provider.readFiles.mockResolvedValueOnce([
+    sandboxInstance.opensandbox.readFiles.mockResolvedValueOnce([
       {
         path: 'notes.txt',
         content: 12345
@@ -225,5 +237,31 @@ describe('sandboxReadFileTool', () => {
         }
       })
     ).rejects.toThrow('Failed to read file: permission denied');
+  });
+
+  it('preserves file.error as cause so runWithRecovery can recover on ENOTCONN', async () => {
+    const enotconn = new Error('ENOTCONN: Transport endpoint is not connected');
+    const sandboxInstance = createSandboxInstance('recovered content');
+    sandboxInstance.opensandbox.readFiles.mockResolvedValueOnce([
+      { path: '/workspace/sessions/chat_1/notes.txt', error: enotconn }
+    ]);
+    const recover = vi.fn(async () => undefined);
+    sandboxInstance.runWithRecovery.mockImplementationOnce(async (fn: () => Promise<unknown>) => {
+      await sandboxInstance.ensureAvailable();
+      try {
+        return await fn();
+      } catch (error) {
+        expect((error as Error).cause).toBe(enotconn);
+        await recover();
+        return fn();
+      }
+    });
+
+    const result = await sandboxReadFileTool.execute({
+      sandboxInstance,
+      params: { path: 'notes.txt' }
+    });
+    expect(recover).toHaveBeenCalledOnce();
+    expect(result.response).toBe('recovered content');
   });
 });

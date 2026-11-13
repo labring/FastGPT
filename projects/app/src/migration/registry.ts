@@ -1,5 +1,7 @@
 import { backfillOpenApiKeyType } from './tasks/4180/20261104_backfill_openapi_key_type';
 import { backfillChatPublishSource } from './tasks/4180/20261104_backfill_chat_publish_source';
+import { cleanupLegacySandboxResources } from './tasks/4180/20261111_cleanup_legacy_sandbox_resources';
+import { migrateSandboxToJuicefs } from './tasks/4180/20261111_migrate_sandbox_to_juicefs';
 import type {
   SystemMigrationFailedRecord,
   SystemMigrationFailureInput,
@@ -186,6 +188,67 @@ export const systemMigrations = [
       }
     ],
     run: backfillSTTPricingType
+  },
+  {
+    id: '20261111_migrate_sandbox_to_juicefs',
+    version: '4.18.0',
+    manual: true,
+    nameKey: i18nT('system_migration:migrations.20261111_migrate_sandbox_to_juicefs.name'),
+    descriptionKey: i18nT(
+      'system_migration:migrations.20261111_migrate_sandbox_to_juicefs.description'
+    ),
+    resultKey: i18nT('system_migration:migrations.20261111_migrate_sandbox_to_juicefs.result'),
+    progressSteps: [
+      {
+        key: 'preflight',
+        labelKey: i18nT('system_migration:migrations.20261111_migrate_sandbox_to_juicefs.preflight')
+      },
+      {
+        key: 'instances',
+        labelKey: i18nT('system_migration:migrations.20261111_migrate_sandbox_to_juicefs.instances')
+      },
+      {
+        key: 'validation',
+        labelKey: i18nT(
+          'system_migration:migrations.20261111_migrate_sandbox_to_juicefs.validation'
+        )
+      }
+    ],
+    run: migrateSandboxToJuicefs
+  },
+  {
+    id: '20261111_cleanup_legacy_sandbox_resources',
+    version: '4.18.0',
+    manual: true,
+    dependsOn: ['20261111_migrate_sandbox_to_juicefs'],
+    nameKey: i18nT('system_migration:migrations.20261111_cleanup_legacy_sandbox_resources.name'),
+    descriptionKey: i18nT(
+      'system_migration:migrations.20261111_cleanup_legacy_sandbox_resources.description'
+    ),
+    resultKey: i18nT(
+      'system_migration:migrations.20261111_cleanup_legacy_sandbox_resources.result'
+    ),
+    progressSteps: [
+      {
+        key: 'preflight',
+        labelKey: i18nT(
+          'system_migration:migrations.20261111_cleanup_legacy_sandbox_resources.preflight'
+        )
+      },
+      {
+        key: 'cleanup',
+        labelKey: i18nT(
+          'system_migration:migrations.20261111_cleanup_legacy_sandbox_resources.cleanup'
+        )
+      },
+      {
+        key: 'validation',
+        labelKey: i18nT(
+          'system_migration:migrations.20261111_cleanup_legacy_sandbox_resources.validation'
+        )
+      }
+    ],
+    run: cleanupLegacySandboxResources
   }
 ] as const satisfies readonly SystemMigration[];
 

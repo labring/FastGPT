@@ -1,6 +1,6 @@
 ---
 title: Local Development Setup
-description: "Set up a local FastGPT development and debugging environment with Node.js, pnpm, database dependencies, environment variables, and plugin services."
+description: 'Set up a local FastGPT development and debugging environment with Node.js, pnpm, database dependencies, environment variables, and plugin services.'
 ---
 
 import { Alert } from '@/components/docs/Alert';
@@ -45,8 +45,9 @@ docker compose up -d
 ```
 
 <Alert context="warning">
-  1. If you cannot pull images, use the China mirror file `docker-compose.cn.yml`: `docker compose -f docker-compose.cn.yml up -d`.
-  2. For MongoDB, add the `directConnection=true` parameter to your connection string to connect to the replica set.
+  1. If you cannot pull images, use the China mirror file `docker-compose.cn.yml`: `docker compose
+  -f docker-compose.cn.yml up -d`. 2. For MongoDB, add the `directConnection=true` parameter to your
+  connection string to connect to the replica set.
 </Alert>
 
 ### 4. Initial Configuration
@@ -174,7 +175,7 @@ FastGPT uses Next.js page routing. To separate frontend and backend code, direct
 
 FastGPT uses pnpm workspace for its monorepo structure, with two main parts:
 
-- projects/ - Application projects: `app` is the FastGPT main project, alongside services such as code-sandbox, agent-sandbox, agent-sandbox-proxy, volume-manager, mcp_server, and marketplace
+- projects/ - Application projects: `app` is the FastGPT main project, alongside services such as code-sandbox, agent-sandbox, opensandbox-proxy, volume-manager, mcp_server, and marketplace
 - packages/ - Submodules
   - global - Shared code: functions, type declarations, and constants usable on both frontend and backend
   - service - Server-side code
@@ -196,7 +197,7 @@ FastGPT's code modules follow DDD principles, divided into these domains:
 .
 ├── .github                      // GitHub config
 ├── .husky                       // Formatting config
-├── deploy                       // Deployment template sources (docker-compose, k8s, etc.)
+├── deploy                       // Deployment template sources (docker-compose, etc.)
 ├── document                     // Documentation
 ├── packages                     // Subpackages
 │   ├── dal
@@ -209,11 +210,11 @@ FastGPT's code modules follow DDD principles, divided into these domains:
 ├── projects
 │   ├── app                      // FastGPT main project
 │   ├── agent-sandbox            // Agent sandbox image
-│   ├── agent-sandbox-proxy      // Agent sandbox proxy
 │   ├── code-sandbox             // Code run sandbox
 │   ├── fastgpt-ide-agent
 │   ├── marketplace              // Plugin marketplace
 │   ├── mcp_server               // MCP Server
+│   ├── opensandbox-proxy        // OpenSandbox terminal and preview proxy
 │   └── volume-manager           // OpenSandbox volume manager
 ├── sdk                          // SDKs such as otel, sandbox-adapter, and storage
 ├── scripts                      // Automation scripts

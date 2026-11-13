@@ -7,8 +7,8 @@ const cronMocks = vi.hoisted(() => ({
   findInactiveRunningSandboxResources: vi.fn(),
   stopSandboxResources: vi.fn(),
   retryStaleStoppingSandboxes: vi.fn(),
-  archiveInactiveSandboxes: vi.fn(),
-  retryStaleArchivingSandboxes: vi.fn(),
+  retryStaleDeletingSandboxes: vi.fn(),
+  reconcileOrphanSandboxResources: vi.fn(),
   getAgentSandboxSuspendMinutes: vi.fn()
 }));
 
@@ -23,8 +23,8 @@ vi.mock('@fastgpt/service/common/system/timerLock/utils', () => ({
 vi.mock('@fastgpt/service/common/system/timerLock/constants', () => ({
   TimerIdEnum: {
     stopInactiveSandboxes: 'stopInactiveSandboxes',
-    archiveInactiveSandboxes: 'archiveInactiveSandboxes',
-    recoverStaleSandboxOperations: 'recoverStaleSandboxOperations'
+    recoverStaleSandboxOperations: 'recoverStaleSandboxOperations',
+    reconcileOrphanSandboxResources: 'reconcileOrphanSandboxResources'
   }
 }));
 
@@ -34,12 +34,9 @@ vi.mock('@fastgpt/service/core/ai/sandbox/infrastructure/instance/repository', (
 
 vi.mock('@fastgpt/service/core/ai/sandbox/application/resource', () => ({
   stopSandboxResources: cronMocks.stopSandboxResources,
-  retryStaleStoppingSandboxes: cronMocks.retryStaleStoppingSandboxes
-}));
-
-vi.mock('@fastgpt/service/core/ai/sandbox/application/archive', () => ({
-  archiveInactiveSandboxes: cronMocks.archiveInactiveSandboxes,
-  retryStaleArchivingSandboxes: cronMocks.retryStaleArchivingSandboxes
+  retryStaleStoppingSandboxes: cronMocks.retryStaleStoppingSandboxes,
+  retryStaleDeletingSandboxes: cronMocks.retryStaleDeletingSandboxes,
+  reconcileOrphanSandboxResources: cronMocks.reconcileOrphanSandboxResources
 }));
 
 vi.mock('@fastgpt/service/core/ai/sandbox/application/lifecycle/service', () => ({
@@ -58,10 +55,10 @@ describe('sandbox cron application', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-06-24T01:00:00.000Z'));
     cronMocks.checkTimerLock.mockResolvedValue(true);
-    cronMocks.archiveInactiveSandboxes.mockResolvedValue(undefined);
-    cronMocks.retryStaleArchivingSandboxes.mockResolvedValue(undefined);
     cronMocks.retryStaleStoppingSandboxes.mockResolvedValue(undefined);
+    cronMocks.retryStaleDeletingSandboxes.mockResolvedValue(undefined);
     cronMocks.retryStaleSandboxActivations.mockResolvedValue(undefined);
+    cronMocks.reconcileOrphanSandboxResources.mockResolvedValue(undefined);
     cronMocks.getAgentSandboxSuspendMinutes.mockReturnValue(60);
   });
 
@@ -97,33 +94,5 @@ describe('sandbox cron application', () => {
 
     expect(cronMocks.findInactiveRunningSandboxResources).not.toHaveBeenCalled();
     expect(cronMocks.stopSandboxResources).not.toHaveBeenCalled();
-  });
-
-  it('runs archive cron under timer lock', async () => {
-    await cronJob();
-    const callback = cronMocks.setCron.mock.calls[1]?.[1];
-    await callback();
-
-    expect(cronMocks.setCron).toHaveBeenCalledWith('0 */12 * * *', expect.any(Function));
-    expect(cronMocks.checkTimerLock).toHaveBeenCalledWith({
-      timerId: 'archiveInactiveSandboxes',
-      lockMinuted: 660
-    });
-    expect(cronMocks.archiveInactiveSandboxes).toHaveBeenCalledTimes(1);
-  });
-
-  it('runs stale archiving cleanup cron under timer lock', async () => {
-    await cronJob();
-    const callback = cronMocks.setCron.mock.calls[2]?.[1];
-    await callback();
-
-    expect(cronMocks.setCron).toHaveBeenCalledWith('*/10 * * * *', expect.any(Function));
-    expect(cronMocks.checkTimerLock).toHaveBeenCalledWith({
-      timerId: 'recoverStaleSandboxOperations',
-      lockMinuted: 9
-    });
-    expect(cronMocks.retryStaleArchivingSandboxes).toHaveBeenCalledTimes(1);
-    expect(cronMocks.retryStaleStoppingSandboxes).toHaveBeenCalledTimes(1);
-    expect(cronMocks.retryStaleSandboxActivations).toHaveBeenCalledTimes(1);
   });
 });

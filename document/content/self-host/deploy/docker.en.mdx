@@ -140,7 +140,7 @@ Refer to https://doc.fastgpt.io/deploy/SKILL.md and deploy FastGPT with Docker f
 
 #### Method 2: Interactive Script Deployment
 
-Run in Linux/MacOS/Windows WSL. The script prompts for the deployment version, image registry, vector database, and whether to generate credentials automatically, then asks for the FastGPT access URL, the Sandbox WebSocket / preview URLs, and host ports before the final confirmation.
+Run in Linux/MacOS/Windows WSL. The script prompts for the deployment version, image registry, vector database, and whether to generate credentials automatically, then asks for the FastGPT access URL, the OpenSandbox Proxy URL, and host ports before the final confirmation.
 
 ```bash
 FASTGPT_DEPLOY_BASE_URL=https://doc.fastgpt.io bash <(curl -fsSL https://doc.fastgpt.io/deploy/install.sh)
@@ -152,11 +152,9 @@ If the documentation site uses a custom domain, an internal domain, or a local a
 
 Set `FASTGPT_NON_INTERACTIVE=true` to run in non-interactive mode. The script skips the prompts and reads options from variables such as `FASTGPT_DEPLOY_VERSION`, `FASTGPT_REGION`, `FASTGPT_VECTOR`, and `FASTGPT_AUTO_GENERATE_CREDENTIALS`; unset options default to `main`, `cn`, `pg`, and automatic credential generation. If the script cannot detect the image version, set `FASTGPT_IMAGE_TAG` or `FASTGPT_ROOT_ACTIVATION`.
 
-Non-interactive mode also requires `FASTGPT_FE_DOMAIN`, the full URL users use to access FastGPT, such as `https://fastgpt.example.com`.
-Versions with Agent/Skill Sandbox also require `FASTGPT_SANDBOX_PROXY_URL`, the Sandbox WebSocket URL, such as `wss://sandbox-proxy.example.com`;
-Versions 4.16 and later also require `FASTGPT_SANDBOX_PREVIEW_PROXY_URL` for the HTTP preview URL.
+Non-interactive mode also requires `FASTGPT_FE_DOMAIN`, the full URL users use to access FastGPT, such as `https://fastgpt.example.com`. When Agent/Skill Sandbox is enabled, also set `FASTGPT_SANDBOX_PROXY_URL` to the browser-accessible `fastgpt-opensandbox-proxy` URL, such as `https://sandbox.example.com` (when `FASTGPT_FE_DOMAIN` uses `localhost` or `127.0.0.1` for local debugging, the script derives the loopback proxy URL automatically if unset; legacy v4.16 templates require both `FASTGPT_SANDBOX_PROXY_URL` and `FASTGPT_SANDBOX_PREVIEW_PROXY_URL`).
 
-Access URLs and host ports are configured independently. For direct access, set `FASTGPT_PORT` for the FastGPT host port (default `3000`) and `FASTGPT_SANDBOX_PROXY_PORT` for the Sandbox Proxy host port (default `3006`); the container ports remain `3000` and `1006`. With a reverse proxy, public ports in `FASTGPT_FE_DOMAIN`, `FASTGPT_SANDBOX_PROXY_URL`, and the preview URL (for example, `443`) are not treated as host ports, so the script keeps the default Compose mappings.
+Access URLs and host ports are configured independently. For direct access, set `FASTGPT_PORT` for the FastGPT host port (default `3000`) and `FASTGPT_SANDBOX_PROXY_PORT` for the OpenSandbox Proxy host port (default `3006`, mapped to container port `1006`), while container ports remain unchanged. With a reverse proxy, public ports in `FASTGPT_FE_DOMAIN` and the sandbox proxy URL (for example, `443`) are not treated as host ports, so the script keeps the default Compose mappings.
 
 **The script automatically performs the following actions**:
 
@@ -237,7 +235,7 @@ If you use an internal Harbor, private registry, or image mirror, download `dock
 FASTGPT_LOCAL_COMPOSE_PATH=./docker-compose.yml bash install.sh
 ```
 
-If Agent/Skill Sandbox is enabled, also replace the sandbox-related images in the Compose file and update `AGENT_SANDBOX_SEALOS_IMAGE` or `AGENT_SANDBOX_OPENSANDBOX_IMAGE` so the sandbox provider can pull the matching images. See [OpenSandbox Configuration](/en/self-host/config/sandbox/opensandbox) for details.
+If Agent/Skill Sandbox is enabled, also replace the sandbox-related images in the Compose file and update `AGENT_SANDBOX_OPENSANDBOX_IMAGE` so OpenSandbox can pull the matching image. See [OpenSandbox Configuration](/en/self-host/config/sandbox/opensandbox) for details.
 
 ### 2. Modify Environment Variables
 
@@ -245,8 +243,7 @@ You must set `FE_DOMAIN` in `fastgpt-app` to the complete external URL accessibl
 
 When Agent/Skill Sandbox is enabled, also configure:
 
-- `AGENT_SANDBOX_PROXY_URL`: the browser-accessible Sandbox Proxy WebSocket URL using `ws://` or `wss://`, such as `wss://sandbox-proxy.example.com`, which must be forwarded to the Sandbox Proxy host port (default `3006`).
-- Version 4.16 and later additionally require `AGENT_SANDBOX_PREVIEW_PROXY_URL`: the browser-accessible HTTP(S) URL for sandbox file previews, such as `https://sandbox-proxy.example.com`, forwarded to the same host port.
+- `AGENT_SANDBOX_PROXY_URL`: the browser-accessible base URL (`http(s)://` or `ws(s)://`) for `fastgpt-opensandbox-proxy` (Sandbox terminal and file preview gateway), such as `https://sandbox.example.com` or `http://192.168.1.10:3006`. In production, we recommend a separate subdomain, domain, or port from `FE_DOMAIN` for origin isolation, forwarded through your reverse proxy to the `fastgpt-opensandbox-proxy` host port (default `3006` -> container `1006`, with WebSocket upgrade enabled); for local debugging, keep the default `http://localhost:3006`.
 
 The interactive install script prompts for these addresses before the final confirmation.
 
@@ -257,8 +254,8 @@ For `Zilliz version`, you also need credentials — see [Obtain Zilliz Cloud Cre
 The following services must be reachable. For direct access, open the host ports printed by the script; with a reverse proxy, the proxy owns the public ports:
 
 1. Port 3000 by default (FastGPT main service; change the host port with `FASTGPT_PORT`)
-2. Port 9000 (S3 object storage service; in default `short-proxy` mode FastGPT proxies private files, while `short-redirect` mode or direct browser access to public bucket assets such as plugin logos requires configuring `STORAGE_EXTERNAL_ENDPOINT` in Compose and opening port 9000)
-3. Port 3006 by default (FastGPT Agent Sandbox Proxy service; change the host port with `FASTGPT_SANDBOX_PROXY_PORT`)
+2. Port 3006 by default (`fastgpt-opensandbox-proxy` Sandbox terminal and file preview gateway, host `3006` -> container `1006`; open or reverse-proxy with WebSocket support when Agent/Skill Sandbox is enabled; change the host port with `FASTGPT_SANDBOX_PROXY_PORT`)
+3. Port 9000 (S3 object storage service; in default `short-proxy` mode FastGPT proxies private files, while `short-redirect` mode or direct browser access to public bucket assets such as plugin logos requires configuring `STORAGE_EXTERNAL_ENDPOINT` in Compose and opening port 9000)
 
 ### 4. Start Containers
 

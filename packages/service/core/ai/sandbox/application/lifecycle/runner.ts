@@ -9,9 +9,14 @@ import {
   markSandboxOperationFailed,
   type SandboxResourceDoc
 } from '../../infrastructure/instance/repository';
-import { type SandboxInstanceStatusType, type SandboxStableStatusType } from '../../type';
-import { expectedOperationByStatus, SANDBOX_OPERATION_ISOLATION_MS } from '../../constants';
-import { SandboxOperationSettledError, SandboxOperationConflictError } from './error';
+import {
+  type SandboxContextType,
+  type SandboxInstanceStatusType,
+  type SandboxResourceLimitsType,
+  type SandboxStableStatusType
+} from '../../type';
+import { expectedOperationByStatus } from '../../constants';
+import { SandboxOperationConflictError } from './error';
 
 type SandboxLifecycleStepContext = {
   resource: SandboxResourceDoc;
@@ -19,11 +24,12 @@ type SandboxLifecycleStepContext = {
   lease: RedisLeaseContext;
   assertValid: () => void;
 };
-type SandboxCheckpoint = Partial<Pick<SandboxResourceDoc, 'storage' | 'image' | 'versionId'>> & {
-  limit?: Partial<NonNullable<SandboxResourceDoc['limit']>>;
+type SandboxCheckpoint = Partial<Pick<SandboxResourceDoc, 'storage' | 'image' | 'instanceId'>> & {
+  context?: SandboxContextType;
+  resourceLimits?: SandboxResourceLimitsType;
 };
 
-export type SandboxLifecycleStep = {
+type SandboxLifecycleStep = {
   fromPhase: string;
   toPhase: string;
   /** 返回值与阶段原子提交；后续 step 从 context.resource 读取持久化结果。 */
@@ -53,10 +59,9 @@ type LifecycleClaim =
       type: 'claim';
       initialPhase?: string;
       set?: SandboxCheckpoint;
-      previousStatus?: SandboxStableStatusType;
       matchLastActiveAt?: boolean;
     };
-export type RunSandboxLifecycleParams = {
+type RunSandboxLifecycleParams = {
   resource: SandboxResourceDoc;
   lease: RedisLeaseContext;
   definition: SandboxLifecycleDefinition;
@@ -82,7 +87,6 @@ async function executeSandboxLifecycle<T>(
           type: operationType,
           phase: claim?.initialPhase,
           set: claim?.set,
-          previousStatus: claim?.previousStatus,
           matchLastActiveAt: claim?.matchLastActiveAt
         });
   if (!claimed) throw new SandboxOperationConflictError(resource.sandboxId);
@@ -131,19 +135,13 @@ async function executeSandboxLifecycle<T>(
     context.assertValid();
     return await finish(context);
   } catch (error) {
-    // 失去租约的旧执行者不能标记失败或补偿。未知远端结果保留隔离窗口。
+    // 失去租约的旧执行者不能写回失败记录；仍持有租约时记录错误，释放租约后允许后续请求立即按阶段恢复。
     context.assertValid();
     await markSandboxOperationFailed({
       resource: claimed,
       operationId: operation.id,
       status: definition.status,
-      error: getErrText(error),
-      retryAfter: new Date(
-        Date.now() +
-          (error instanceof SandboxOperationSettledError
-            ? 0
-            : SANDBOX_OPERATION_ISOLATION_MS[operationType])
-      )
+      error: getErrText(error)
     }).catch(() => undefined);
     throw error;
   }

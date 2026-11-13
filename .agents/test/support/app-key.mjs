@@ -383,10 +383,10 @@ export async function appKeyWorld(context) {
       try {
         const sandboxResources = context.resources.has('sandbox:' + id)
           ? await db
-              .collection('agent_sandbox_instances_v2')
+              .collection('agent_sandbox_instances_v3')
               .find(
                 { sourceType: 'app', sourceId: id },
-                { projection: { provider: 1, sandboxId: 1, sourceId: 1, _id: 0 } }
+                { projection: { sandboxId: 1, sourceId: 1, instanceId: 1, _id: 0 } }
               )
               .toArray()
           : undefined;

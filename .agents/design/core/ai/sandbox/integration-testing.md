@@ -1,5 +1,9 @@
 # FastGPT Sandbox 集成测试设计
 
+状态：已实现（已适配纯 OpenSandbox + JuiceFS 5 态架构）
+
+最后核对：2026-11-09
+
 ## 背景
 
 Sandbox 的 provider SDK 已有自己的契约测试，但它无法验证 FastGPT 在真实运行时中的行为：
@@ -18,12 +22,14 @@ Sandbox 的 provider SDK 已有自己的契约测试，但它无法验证 FastGP
 2. 覆盖 FastGPT 当前提供的全部八个 Sandbox 指令，并记录每条指令的 wall-clock 耗时。
 3. 对单条指令、超时、生命周期创建和清理分别设置可配置的性能预算。
 4. 注入参数错误、命令失败、命令超时和生命周期中断，验证 runtime 可复用或自动恢复。
-5. 使用与 dev 一致的 OpenSandbox、volume manager、egress、preview proxy、Mongo 和 Redis。
-6. 每个用例独立创建 App source，并通过 FastGPT delete lifecycle 清理所有资源。
+5. 使用与 dev 一致的 OpenSandbox、volume-manager（JuiceFS 持久卷）、egress、Mongo 和 Redis。
+6. 每个用例独立创建 App / Skill source，并通过 FastGPT delete lifecycle 清理所有资源。
 
 ## 测试入口
 
-位置：`packages/service/test/integrations/sandbox/fastgpt.integration.test.ts`
+位置：
+- `packages/service/test/integrations/sandbox/fastgpt.integration.test.ts`（App Sandbox 8 工具计时预算、5 态生命周期与 `vi.spyOn` 故障注入恢复、镜像就地升级保留卷、Init Lease、Egress 与 `apt` 镜像等；与 `.agents/test/` E2E 重叠的 HTTP 文件 CRUD/并发锁/路径边界与软链删除收敛至 `.agents/test/`）
+- `packages/service/test/integrations/sandbox/skill-import.integration.test.ts`（Skill Edit 热启动跳过对象存储重复下载、导出 `.gitignore` 过滤、App 技能部署与幂等 entrypoint 等）
 
 专用 Vitest 配置为 `packages/service/vitest.sandbox.integration.config.ts`。它不加载通用
 `test/setup.ts`，避免该 setup 中的 Redis mock 将 lifecycle lease 和 preview session 变成内存行为。
@@ -44,8 +50,7 @@ FASTGPT_TEST_MODE=sandbox pnpm test
 - OpenSandbox 使用 dev 的 server、agent image、volume manager 和 preview proxy。
 - runtime 必须由 FastGPT `buildOpenSandboxRuntimeProfile` 构造，network policy 会创建 egress
   sidecar；测试还会从 Sandbox 访问 dev 私网服务并断言被阻止。
-- `AGENT_SANDBOX_OPENSANDBOX_USE_SERVER_PROXY` 只控制 SDK 到 OpenSandbox server 的连接方式，
-  不负责创建 egress；egress 由 FastGPT runtime profile 中的 `networkPolicy` 触发。
+- OpenSandbox SDK 固定以 `useServerProxy: true` 经 OpenSandbox Server Proxy 访问容器内 `execd`；egress 由 FastGPT runtime profile 中的 `networkPolicy` 触发。
 
 ## 指令与计时
 
@@ -84,16 +89,18 @@ FASTGPT_TEST_MODE=sandbox pnpm test
 - shell 超时并中断后，同一个 OpenSandbox runtime 继续执行命令。
 - App source 已删除时拒绝运行命令，不执行用户脚本。
 - Mongo 仍为 `running` 但 provider 资源消失时，同一个 FastGPT client 在下一条指令中自动重建
-  runtime，并保留 volume 文件。
+  runtime，并保留 JuiceFS volume 文件。
+- 镜像配置变更时，同一个实例在生命周期锁内完成就地重建并完整保留 volume 数据。
 - 持久化 `provisioning` 失败操作后，再次调用 `getSandboxClient` 重放 provision。
 - 持久化 stale `stopping` 失败操作后，scheduler retry 完成 stop，再次调用时恢复 runtime。
-- delete 在 archive 阶段失败后保留 phase，再次调用从已完成阶段继续删除。
+- delete 在 `providerDeleted` 阶段后中断保留 phase，再次调用继续完成 `volumeDeleted` 与记录清理；删除后再次重建会分配新 generation 卷且不残留旧文件。
 - 完整模式下，两个 Chat 并发获取相同 source 的 client 并并发执行命令，Mongo 只保留一条实例。
+- Skill Edit 沙盒在版本未变时复用现有持久卷热启动（跳过重复解压），发布或导出时严格按 `.gitignore` 过滤忽略项。
 
 ## 清理策略
 
-删除前核对 Mongo 记录的 provider、source 和 user，避免误删共享 dev 资源。清理统一调用
-`deleteSandboxResource`，覆盖 provider runtime、egress sidecar、persistent volume、archive 和 Mongo
+删除前核对 Mongo 记录的 `instanceId`、`sourceType/sourceId` 和 `userId`，避免误删共享 dev 资源。清理统一调用
+`deleteSandboxResource`，覆盖 OpenSandbox 运行时容器、egress sidecar、JuiceFS persistent volume 和 Mongo
 阶段；可重放删除最多重试三次。suite 结束后再清除本轮 preview Redis key 和随机 Mongo 数据库。
 
 ## TODO

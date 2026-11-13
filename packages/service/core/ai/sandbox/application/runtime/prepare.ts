@@ -1,16 +1,17 @@
 /**
  * 沙盒业务层：定义运行态 sandbox 初始化步骤编排器。
  *
- * 只组合工作目录、输入文件、镜像源等 prepare step，不直接操作 Mongo 或 provider 配置。
+ * 只组合工作目录、输入文件、镜像源等 prepare step，不直接操作 Mongo 或 OpenSandbox 配置。
  */
-import type { ISandbox } from '@fastgpt-sdk/sandbox-adapter';
+import { posix } from 'node:path';
+import type { OpenSandboxClient } from '../../infrastructure/opensandbox/opensandbox';
 import { injectInputFilesToSandbox, type SandboxInputFile } from './files';
 import { type SandboxInputFileReader } from '../file';
 import { prepareSandboxRuntimeMirrors } from './mirrors';
 import type { SandboxInputFileNameAllocation } from '../../utils';
 
 export type SandboxPrepareContext = {
-  sandbox: ISandbox;
+  sandbox: OpenSandboxClient;
   workDirectory: string;
   workspaceRoot?: string;
   inputFileAllocation?: SandboxInputFileNameAllocation;
@@ -49,37 +50,23 @@ export const prepareWorkDirectory =
     return context;
   };
 
-/** 检查工作目录是否已有内容，用于 edit-debug 复用旧 sandbox 时判断是否需要重新部署包。 */
-export const inspectWorkDirectoryContent =
-  <
-    Context extends SandboxPrepareContext & { workspaceHasContent?: boolean }
-  >(): SandboxPrepareStep<Context> =>
-  async (context) => {
-    await context.sandbox.createDirectories([context.workDirectory]);
-    const entries = await context.sandbox.listDirectory(context.workDirectory);
-
-    return {
-      ...context,
-      workspaceHasContent: entries.length > 0
-    };
-  };
-
-/** 清空工作目录内容但保留目录本身，避免 volume 根目录权限和挂载点问题。 */
+/** 清空工作目录内容但保留目录本身与内部 `.fastgpt` 运行态/依赖目录，避免挂载点与依赖前缀丢失。 */
 export const emptyWorkDirectory =
   <Context extends SandboxPrepareContext>(): SandboxPrepareStep<Context> =>
   async (context) => {
-    const entries = await context.sandbox.listDirectory(context.workDirectory);
-    const filePaths = entries.filter((entry) => !entry.isDirectory).map((entry) => entry.path);
-    const directoryPaths = entries.filter((entry) => entry.isDirectory).map((entry) => entry.path);
+    const entries = (await context.sandbox.listDirectory(context.workDirectory)).filter((entry) => {
+      const name = posix.basename(entry.path);
+      return name !== '.' && name !== '..' && name !== '.fastgpt';
+    });
+    const filePaths = entries
+      .filter((entry) => entry.type !== 'directory')
+      .map((entry) => entry.path);
+    const directoryPaths = entries
+      .filter((entry) => entry.type === 'directory')
+      .map((entry) => entry.path);
 
     if (filePaths.length > 0) {
-      const deleteResults = await context.sandbox.deleteFiles(filePaths);
-      const failedDelete = deleteResults.find((result) => result.error || !result.success);
-      if (failedDelete) {
-        throw new Error(
-          `Failed to clean workspace file ${failedDelete.path}: ${failedDelete.error?.message ?? 'delete failed'}`
-        );
-      }
+      await context.sandbox.deleteFiles(filePaths);
     }
     if (directoryPaths.length > 0) {
       await context.sandbox.deleteDirectories(directoryPaths);
@@ -95,12 +82,12 @@ export const injectCurrentInputFiles =
     readInputFile?: SandboxInputFileReader
   ): SandboxPrepareStep<Context> =>
   async (context) => {
-    await injectInputFilesToSandbox(
-      context.sandbox,
-      currentFiles,
-      context.workDirectory,
+    await injectInputFilesToSandbox({
+      sandbox: context.sandbox,
+      files: currentFiles,
+      workDirectory: context.workDirectory,
       readInputFile,
-      context.inputFileAllocation
-    );
+      allocation: context.inputFileAllocation
+    });
     return context;
   };

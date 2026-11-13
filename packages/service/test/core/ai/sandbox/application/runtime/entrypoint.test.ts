@@ -1,7 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
-import { type ExecuteResult } from '@fastgpt-sdk/sandbox-adapter';
+import { type ExecuteResult } from '@fastgpt/global/core/ai/sandbox/type';
 import { LeaseCache, RedisLeaseUnavailableError } from '@fastgpt/dal/redis/caches';
 import { SandboxErrEnum } from '@fastgpt/global/common/error/code/sandbox';
+import { serviceEnv } from '@fastgpt/service/env';
 import {
   runAgentSandboxEntrypoint,
   withAgentSandboxInitLease
@@ -25,7 +26,7 @@ const createSandbox = (initialState?: Record<string, unknown>) => {
     ),
     createDirectories: vi.fn(async () => undefined),
     getFileInfo: vi.fn(
-      async (paths: string[]) => new Map(paths.map((path) => [path, { isFile: true }]))
+      async (paths: string[]) => new Map(paths.map((path) => [path, { path, type: 'file' }]))
     ),
     readFiles: vi.fn(async (paths: string[]) =>
       paths.map((path) => ({
@@ -127,6 +128,46 @@ describe('runtime entrypoint', () => {
     await runAgentSandboxEntrypoint(params);
     expect(startupCalls(sandbox)).toHaveLength(3);
     expect(sandbox.writeFiles).toHaveBeenCalledOnce();
+    expect(sandbox.writeFiles.mock.calls[0][0][0].path).toBe(
+      '/workspace/.fastgpt/runtime/state.json'
+    );
+  });
+
+  it('persists workspace entrypoint state across container wake-ups on the same image and invalidates on image upgrade', async () => {
+    const previousImage = serviceEnv.AGENT_SANDBOX_OPENSANDBOX_IMAGE;
+    try {
+      serviceEnv.AGENT_SANDBOX_OPENSANDBOX_IMAGE = 'fastgpt-agent-sandbox:v1';
+      const sandbox = createSandbox();
+
+      await runAgentSandboxEntrypoint({
+        sandbox: sandbox as any,
+        workDirectory: '/workspace',
+        scope: 'app:1',
+        sandboxEntrypoint: 'pip install pyyaml'
+      });
+      // Wake-up on same image skips re-execution
+      await runAgentSandboxEntrypoint({
+        sandbox: sandbox as any,
+        workDirectory: '/workspace',
+        scope: 'app:1',
+        sandboxEntrypoint: 'pip install pyyaml'
+      });
+      expect(startupCalls(sandbox)).toHaveLength(1);
+      expect(sandbox.getState().image).toBe('fastgpt-agent-sandbox:v1');
+
+      // Base image upgraded -> invalidates cached state and re-runs entrypoint
+      serviceEnv.AGENT_SANDBOX_OPENSANDBOX_IMAGE = 'fastgpt-agent-sandbox:v2';
+      await runAgentSandboxEntrypoint({
+        sandbox: sandbox as any,
+        workDirectory: '/workspace',
+        scope: 'app:1',
+        sandboxEntrypoint: 'pip install pyyaml'
+      });
+      expect(startupCalls(sandbox)).toHaveLength(2);
+      expect(sandbox.getState().image).toBe('fastgpt-agent-sandbox:v2');
+    } finally {
+      serviceEnv.AGENT_SANDBOX_OPENSANDBOX_IMAGE = previousImage;
+    }
   });
 
   it('serializes concurrent initializations on a shared sandboxId and times out when the lock never releases', async () => {

@@ -17,14 +17,12 @@ describe('builtin skill runtime', () => {
       createDirectories: vi.fn(async () => undefined),
       listDirectory: vi.fn(async () => [
         {
-          name: 'skill-creator',
           path: targetDirectory,
-          isDirectory: true,
-          isFile: false
+          type: 'directory'
         }
       ]),
       deleteDirectories: vi.fn(async () => undefined),
-      deleteFiles: vi.fn(),
+      deleteFiles: vi.fn(async () => undefined),
       readFiles: vi.fn(async (paths: string[]) =>
         paths.map((path) => ({
           path,
@@ -32,13 +30,7 @@ describe('builtin skill runtime', () => {
           error: new Error('not found')
         }))
       ),
-      writeFiles: vi.fn(async (entries: Array<{ path: string; data: Buffer | string }>) =>
-        entries.map((entry) => ({
-          path: entry.path,
-          bytesWritten: entry.data.length,
-          error: null
-        }))
-      )
+      writeFiles: vi.fn(async () => undefined)
     };
 
     await syncBuiltinSkillsToSandbox({

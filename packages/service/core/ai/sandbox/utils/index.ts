@@ -1,7 +1,7 @@
 /**
  * 沙盒共用工具：提供跨层复用的纯函数。
  *
- * 只放路径、hash、文件名清洗等无副作用工具，不访问数据库、provider 或业务状态。
+ * 只放路径、hash、文件名清洗等无副作用工具，不访问数据库、OpenSandbox 或业务状态。
  */
 import { createHash } from 'crypto';
 import type { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
@@ -14,7 +14,7 @@ type HashContent = string | Buffer | Uint8Array;
 export const trimSandboxPathRight = (value: string) =>
   value === '/' ? '' : value.replace(/\/+$/, '');
 
-/** 用 sandbox 语义拼接一段或多段路径，避免不同 provider 工作目录末尾斜杠导致双斜杠。 */
+/** 用 sandbox 语义拼接一段或多段路径，避免工作目录末尾斜杠导致双斜杠。 */
 export const joinSandboxPath = (basePath: string, path: string, ...paths: string[]) =>
   [path, ...paths].reduce(
     (currentPath, nextPath) => `${trimSandboxPathRight(currentPath)}/${nextPath}`,
@@ -43,10 +43,9 @@ export type SandboxRuntimePaths = {
 
 type ResolveSandboxRuntimePathOptions = {
   allowAbsolutePath?: boolean;
-  allowOutsideWorkspace?: boolean;
 };
 
-/** 根据 provider 工作目录和 Chat source 构造本轮 Sandbox 运行时路径。 */
+/** 根据工作目录和 Chat source 构造本轮 Sandbox 运行时路径。 */
 export const getSandboxRuntimePaths = ({
   sourceType,
   workDirectory,
@@ -79,17 +78,16 @@ export const getSandboxRuntimePaths = ({
 };
 
 /**
- * 将运行时文件路径解析到当前会话目录；显式允许绝对路径时默认不限制其 workspace 范围。
+ * 将运行时文件路径解析到当前会话目录。
  *
- * 相对路径始终以 sessionWorkDirectory 为基准；绝对路径直接按 sandbox 文件系统路径使用。
+ * 相对路径始终以 sessionWorkDirectory 为基准；显式允许绝对路径时直接按 sandbox 文件系统路径使用。
  */
 export const resolveSandboxRuntimePath = (
   path: string | undefined,
-  runtimePaths: Pick<SandboxRuntimePaths, 'workspaceRoot' | 'sessionWorkDirectory'>,
+  runtimePaths: Pick<SandboxRuntimePaths, 'sessionWorkDirectory'>,
   options: ResolveSandboxRuntimePathOptions = {}
 ) => {
   const rawPath = path || '.';
-  const allowOutsideWorkspace = options.allowOutsideWorkspace ?? true;
   const sessionWorkDirectory = trimSandboxPathRight(runtimePaths.sessionWorkDirectory);
 
   if (rawPath === '.' || rawPath === './' || rawPath === '') {
@@ -103,14 +101,6 @@ export const resolveSandboxRuntimePath = (
   if (rawPath.startsWith('/')) {
     if (!options.allowAbsolutePath) {
       throw new Error('Absolute sandbox paths are not allowed');
-    }
-    const workspaceRoot = trimSandboxPathRight(runtimePaths.workspaceRoot);
-    if (
-      !allowOutsideWorkspace &&
-      rawPath !== workspaceRoot &&
-      !rawPath.startsWith(`${workspaceRoot}/`)
-    ) {
-      throw new Error('Sandbox path is outside workspace');
     }
     return rawPath;
   }
@@ -128,26 +118,13 @@ export type SandboxInputFileNameAllocation = {
   filenameByUrlAndBaseName: Map<string, string>;
 };
 
-export const createSandboxInputFileNameAllocation = (): SandboxInputFileNameAllocation => ({
+const createSandboxInputFileNameAllocation = (): SandboxInputFileNameAllocation => ({
   usedNames: new Map<string, number>(),
   urlByFilename: new Map<string, string>(),
   filenameByUrlAndBaseName: new Map<string, string>()
 });
 
 const allocationsByOwner = new WeakMap<object, Map<string, SandboxInputFileNameAllocation>>();
-
-const setOwnerAllocation = (
-  owner: object,
-  key: string,
-  allocation: SandboxInputFileNameAllocation
-) => {
-  let byScope = allocationsByOwner.get(owner);
-  if (!byScope) {
-    byScope = new Map<string, SandboxInputFileNameAllocation>();
-    allocationsByOwner.set(owner, byScope);
-  }
-  byScope.set(key, allocation);
-};
 
 /** 生成单个会话沙盒工作目录的输入文件去重作用域键。 */
 export const buildSandboxInputFileScopeKey = ({
@@ -179,6 +156,23 @@ export const getSandboxInputFileNameAllocation = ({
   sandbox?: object | null;
   workDirectory?: string;
 }): SandboxInputFileNameAllocation => {
+  const setOwnerAllocation = ({
+    owner,
+    key,
+    allocation
+  }: {
+    owner: object;
+    key: string;
+    allocation: SandboxInputFileNameAllocation;
+  }) => {
+    let byScope = allocationsByOwner.get(owner);
+    if (!byScope) {
+      byScope = new Map<string, SandboxInputFileNameAllocation>();
+      allocationsByOwner.set(owner, byScope);
+    }
+    byScope.set(key, allocation);
+  };
+
   const key = scopeKey || workDirectory;
   const sandboxObject = sandbox && typeof sandbox === 'object' ? sandbox : undefined;
 
@@ -186,10 +180,10 @@ export const getSandboxInputFileNameAllocation = ({
     let allocation = allocationsByOwner.get(contextOwner)?.get(key);
     if (!allocation) {
       allocation = createSandboxInputFileNameAllocation();
-      setOwnerAllocation(contextOwner, key, allocation);
+      setOwnerAllocation({ owner: contextOwner, key, allocation });
     }
     if (sandboxObject) {
-      setOwnerAllocation(sandboxObject, key, allocation);
+      setOwnerAllocation({ owner: sandboxObject, key, allocation });
     }
     return allocation;
   }
@@ -198,7 +192,7 @@ export const getSandboxInputFileNameAllocation = ({
     let allocation = allocationsByOwner.get(sandboxObject)?.get(key);
     if (!allocation) {
       allocation = createSandboxInputFileNameAllocation();
-      setOwnerAllocation(sandboxObject, key, allocation);
+      setOwnerAllocation({ owner: sandboxObject, key, allocation });
     }
     return allocation;
   }

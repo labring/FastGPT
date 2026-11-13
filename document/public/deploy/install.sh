@@ -212,6 +212,7 @@ validate_access_url() {
 validate_fe_domain() { validate_access_url "$1" 'https?'; }
 validate_sandbox_preview_proxy_url() { validate_access_url "$1" 'https?'; }
 validate_sandbox_proxy_url() { validate_access_url "$1" 'wss?'; }
+validate_opensandbox_proxy_url() { validate_access_url "$1" '(https?|wss?)'; }
 
 get_url_host() {
     local authority="${1#*://}"
@@ -534,16 +535,105 @@ is_v415_local_deploy() {
         grep -q 'fastgpt:v4\.15' "$LOCAL_COMPOSE_PATH" 2>/dev/null
 }
 
-# 未定义该服务的本地 Compose 不需要 Sandbox Proxy 地址和端口配置。
-is_sandbox_proxy_deploy() {
-    [ "$DEPLOY_VERSION" != "$LOCAL_DEPLOY_VERSION" ] ||
-        grep -qE '^  fastgpt-agent-sandbox-proxy:[[:space:]]*(#.*)?$' "$LOCAL_COMPOSE_PATH"
+compose_has_opensandbox_proxy() {
+    local file="${1:-docker-compose.yml}"
+    [ -f "$file" ] && LC_ALL=C grep -qE '^  fastgpt-opensandbox-proxy:[[:space:]]*(#.*)?$' "$file"
+}
+
+compose_has_legacy_sandbox_proxy() {
+    local file="${1:-docker-compose.yml}"
+    [ -f "$file" ] && LC_ALL=C grep -qE '^  fastgpt-agent-sandbox-proxy:[[:space:]]*(#.*)?$' "$file"
+}
+
+compose_has_sandbox_preview_url() {
+    local file="${1:-docker-compose.yml}"
+    [ -f "$file" ] && LC_ALL=C grep -qE '^x-agent-sandbox-preview-proxy-url:|^[[:space:]]*AGENT_SANDBOX_PREVIEW_PROXY_URL:' "$file"
+}
+
+# main 及包含 fastgpt-opensandbox-proxy 的本地 Compose：单一基地址同时承载 WS /terminal 与 HTTP /preview，默认宿主端口 3006（容器内端口 1006）。
+is_opensandbox_proxy_deploy() {
+    if [ "$DEPLOY_VERSION" = "$LOCAL_DEPLOY_VERSION" ]; then
+        compose_has_opensandbox_proxy "$LOCAL_COMPOSE_PATH"
+        return
+    fi
+    ! [[ "$DEPLOY_VERSION" == "v4.16" || "$DEPLOY_VERSION" == v4.16.* ]]
+}
+
+# 包含 fastgpt-agent-sandbox-proxy 的历史版本（如 v4.16）或对应本地 Compose：分离配置 WS 地址与 HTTP 预览地址，默认宿主端口 3006。
+is_legacy_sandbox_proxy_deploy() {
+    if [ "$DEPLOY_VERSION" = "$LOCAL_DEPLOY_VERSION" ]; then
+        compose_has_legacy_sandbox_proxy "$LOCAL_COMPOSE_PATH"
+        return
+    fi
+    [[ "$DEPLOY_VERSION" == "v4.16" || "$DEPLOY_VERSION" == v4.16.* ]]
+}
+
+derive_default_loopback_opensandbox_proxy_url() {
+    local fe_url="$1"
+    local host_port="${2:-3006}"
+    local scheme="http"
+    local fe_host
+
+    [[ "$fe_url" == https://* ]] && scheme="https"
+    fe_host="$(get_url_host "$fe_url" | tr '[:upper:]' '[:lower:]')"
+    case "$fe_host" in
+        localhost | 127.0.0.1)
+            printf '%s://%s:%s\n' "$scheme" "$fe_host" "$host_port"
+            ;;
+        ::1)
+            printf '%s://[::1]:%s\n' "$scheme" "$host_port"
+            ;;
+    esac
+}
+
+request_opensandbox_proxy_url() {
+    local input=""
+    local default_proxy=""
+    local explicit_preview="${FASTGPT_SANDBOX_PREVIEW_PROXY_URL:-$FASTGPT_SANDBOX_PREVIEW_URL}"
+
+    default_proxy="$(derive_default_loopback_opensandbox_proxy_url "$FE_DOMAIN_INPUT" "${FASTGPT_SANDBOX_PROXY_PORT:-${FASTGPT_AGENT_SANDBOX_PROXY_PORT:-3006}}")"
+
+    if [ -n "$FASTGPT_SANDBOX_PROXY_URL" ]; then
+        input="$FASTGPT_SANDBOX_PROXY_URL"
+    elif [ -n "$explicit_preview" ]; then
+        input="$explicit_preview"
+        explicit_preview=""
+    elif [ "$NON_INTERACTIVE" = true ]; then
+        if [ -n "$default_proxy" ]; then
+            input="$default_proxy"
+        else
+            echo "错误: 非交互模式必须设置 FASTGPT_SANDBOX_PROXY_URL，例如 https://sandbox.example.com 或 http://192.168.1.10:3006" >&2
+            exit 1
+        fi
+    else
+        while true; do
+            if [ -n "$default_proxy" ]; then
+                read -r -p "请输入 OpenSandbox Proxy 访问地址 [$default_proxy]: " input
+                input="${input:-$default_proxy}"
+            else
+                read -r -p "请输入 OpenSandbox Proxy 访问地址 (如 http://192.168.1.10:3006 或 https://sandbox.example.com): " input
+            fi
+            if validate_opensandbox_proxy_url "$input"; then
+                break
+            fi
+        done
+    fi
+
+    validate_opensandbox_proxy_url "$input" || exit 1
+    SANDBOX_PROXY_URL_INPUT="${input%/}"
+
+    if [ -n "$explicit_preview" ]; then
+        validate_sandbox_preview_proxy_url "$explicit_preview" || exit 1
+        SANDBOX_PREVIEW_PROXY_URL_INPUT="${explicit_preview%/}"
+    fi
 }
 
 request_sandbox_preview_proxy_url() {
-    local input
+    local input=""
 
-    if [ -n "$FASTGPT_SANDBOX_PREVIEW_PROXY_URL" ]; then
+    if [ -n "$FASTGPT_SANDBOX_PREVIEW_URL" ]; then
+        input="$FASTGPT_SANDBOX_PREVIEW_URL"
+    elif [ -n "$FASTGPT_SANDBOX_PREVIEW_PROXY_URL" ]; then
         input="$FASTGPT_SANDBOX_PREVIEW_PROXY_URL"
     elif is_v415_local_deploy; then
         if [[ "$SANDBOX_PROXY_URL_INPUT" == wss://* ]]; then
@@ -598,22 +688,37 @@ configure_sandbox_proxy_urls() {
 
     escaped_preview="$(escape_sed_replacement "$preview_url")"
     escaped_proxy="$(escape_sed_replacement "$proxy_url")"
-    if LC_ALL=C grep -qE '^x-agent-sandbox-proxy-url: &x-agent-sandbox-proxy-url' docker-compose.yml; then
-        if [[ "$OSTYPE" == "darwin"* ]]; then
-            sed -i '' "s|^x-agent-sandbox-proxy-url: &x-agent-sandbox-proxy-url.*|x-agent-sandbox-proxy-url: \\&x-agent-sandbox-proxy-url '$escaped_proxy'|g" docker-compose.yml
-            sed -i '' "s|^x-agent-sandbox-preview-proxy-url: &x-agent-sandbox-preview-proxy-url.*|x-agent-sandbox-preview-proxy-url: \\&x-agent-sandbox-preview-proxy-url '$escaped_preview'|g" docker-compose.yml
-        else
-            sed -i "s|^x-agent-sandbox-proxy-url: &x-agent-sandbox-proxy-url.*|x-agent-sandbox-proxy-url: \\&x-agent-sandbox-proxy-url '$escaped_proxy'|g" docker-compose.yml
-            sed -i "s|^x-agent-sandbox-preview-proxy-url: &x-agent-sandbox-preview-proxy-url.*|x-agent-sandbox-preview-proxy-url: \\&x-agent-sandbox-preview-proxy-url '$escaped_preview'|g" docker-compose.yml
+    if [ -n "$proxy_url" ]; then
+        if LC_ALL=C grep -qE '^x-agent-sandbox-proxy-url:[[:space:]]*&[A-Za-z0-9_-]+' docker-compose.yml; then
+            if [[ "$OSTYPE" == "darwin"* ]]; then
+                sed -i '' -E "s|^(x-agent-sandbox-proxy-url:[[:space:]]*&[A-Za-z0-9_-]+).*|\\1 '$escaped_proxy'|g" docker-compose.yml
+            else
+                sed -i -E "s|^(x-agent-sandbox-proxy-url:[[:space:]]*&[A-Za-z0-9_-]+).*|\\1 '$escaped_proxy'|g" docker-compose.yml
+            fi
+        elif LC_ALL=C grep -qE '^[[:space:]]*AGENT_SANDBOX_PROXY_URL:' docker-compose.yml; then
+            if [[ "$OSTYPE" == "darwin"* ]]; then
+                sed -i '' "s|^\([[:space:]]*AGENT_SANDBOX_PROXY_URL:\).*|\1 $escaped_proxy|g" docker-compose.yml
+            else
+                sed -i "s|^\([[:space:]]*AGENT_SANDBOX_PROXY_URL:\).*|\1 $escaped_proxy|g" docker-compose.yml
+            fi
         fi
-    elif [[ "$OSTYPE" == "darwin"* ]]; then
-        sed -i '' "s|^\([[:space:]]*AGENT_SANDBOX_PREVIEW_PROXY_URL:\).*|\1 $escaped_preview|g" docker-compose.yml
-        sed -i '' "s|^\([[:space:]]*AGENT_SANDBOX_PROXY_URL:\).*|\1 $escaped_proxy|g" docker-compose.yml
-    else
-        sed -i "s|^\([[:space:]]*AGENT_SANDBOX_PREVIEW_PROXY_URL:\).*|\1 $escaped_preview|g" docker-compose.yml
-        sed -i "s|^\([[:space:]]*AGENT_SANDBOX_PROXY_URL:\).*|\1 $escaped_proxy|g" docker-compose.yml
+        echo "已更新 Sandbox Proxy 访问地址为: $proxy_url"
     fi
+
     if [ -n "$preview_url" ]; then
+        if LC_ALL=C grep -qE '^x-agent-sandbox-preview-proxy-url:[[:space:]]*&[A-Za-z0-9_-]+' docker-compose.yml; then
+            if [[ "$OSTYPE" == "darwin"* ]]; then
+                sed -i '' -E "s|^(x-agent-sandbox-preview-proxy-url:[[:space:]]*&[A-Za-z0-9_-]+).*|\\1 '$escaped_preview'|g" docker-compose.yml
+            else
+                sed -i -E "s|^(x-agent-sandbox-preview-proxy-url:[[:space:]]*&[A-Za-z0-9_-]+).*|\\1 '$escaped_preview'|g" docker-compose.yml
+            fi
+        elif LC_ALL=C grep -qE '^[[:space:]]*AGENT_SANDBOX_PREVIEW_PROXY_URL:' docker-compose.yml; then
+            if [[ "$OSTYPE" == "darwin"* ]]; then
+                sed -i '' "s|^\([[:space:]]*AGENT_SANDBOX_PREVIEW_PROXY_URL:\).*|\1 $escaped_preview|g" docker-compose.yml
+            else
+                sed -i "s|^\([[:space:]]*AGENT_SANDBOX_PREVIEW_PROXY_URL:\).*|\1 $escaped_preview|g" docker-compose.yml
+            fi
+        fi
         echo "已更新 Sandbox 预览地址为: $preview_url"
     fi
 }
@@ -836,10 +941,10 @@ ROOT_LOGIN_PASSWORD="1234"
 
 randomize_compose_credentials() {
     local system_key file_token_key aes256_secret_key invoke_token_secret
-    local plugin_token code_sandbox_token volume_manager_token agent_proxy_secret aiproxy_token
+    local plugin_token code_sandbox_token volume_manager_token agent_proxy_secret aiproxy_token opensandbox_api_key
     local root_password mongo_password redis_password minio_password
-    local rustfs_access_key rustfs_secret_key
-    local pg_password aiproxy_pg_password oceanbase_sys_password oceanbase_tenant_password seekdb_password opengauss_password
+    local rustfs_access_key rustfs_secret_key sandbox_rustfs_access_key sandbox_rustfs_secret_key
+    local pg_password sandbox_pg_password aiproxy_pg_password oceanbase_sys_password oceanbase_tenant_password seekdb_password opengauss_password
 
     if supports_root_activation docker-compose.yml; then
         ROOT_LOGIN_PASSWORD="123456"
@@ -861,6 +966,7 @@ randomize_compose_credentials() {
     plugin_token="$(random_hex 32)"
     code_sandbox_token="$(random_hex 32)"
     volume_manager_token="$(random_hex 32)"
+    opensandbox_api_key="$(random_hex 32)"
     agent_proxy_secret="$(random_hex 32)"
     aiproxy_token="$(random_hex 32)"
     mongo_password="$(random_hex 16)"
@@ -868,7 +974,10 @@ randomize_compose_credentials() {
     minio_password="$(random_hex 16)"
     rustfs_access_key="$(random_hex 10)"
     rustfs_secret_key="$(random_hex 16)"
+    sandbox_rustfs_access_key="$(random_hex 10)"
+    sandbox_rustfs_secret_key="$(random_hex 16)"
     pg_password="$(random_hex 16)"
+    sandbox_pg_password="$(random_hex 16)"
     aiproxy_pg_password="$(random_hex 16)"
     oceanbase_sys_password="$(random_hex 16)"
     oceanbase_tenant_password="$(random_hex 16)"
@@ -894,6 +1003,11 @@ randomize_compose_credentials() {
     replace_text 'x-code-sandbox-token: &x-code-sandbox-token "codesandbox"' "x-code-sandbox-token: &x-code-sandbox-token \"$code_sandbox_token\""
     replace_text "x-volume-manager-auth-token: &x-volume-manager-auth-token 'vmtoken'" "x-volume-manager-auth-token: &x-volume-manager-auth-token '$volume_manager_token'"
     replace_text 'x-volume-manager-auth-token: &x-volume-manager-auth-token "vmtoken"' "x-volume-manager-auth-token: &x-volume-manager-auth-token \"$volume_manager_token\""
+    replace_text "x-volume-manager-auth-token: &x-volume-manager-auth-token 'replace_with_volume_manager_token'" "x-volume-manager-auth-token: &x-volume-manager-auth-token '$volume_manager_token'"
+    replace_text 'x-volume-manager-auth-token: &x-volume-manager-auth-token "replace_with_volume_manager_token"' "x-volume-manager-auth-token: &x-volume-manager-auth-token \"$volume_manager_token\""
+    replace_text "fastgpt-opensandbox-api-key" "$opensandbox_api_key"
+    replace_text "x-agent-sandbox-proxy-secret: &x-agent-sandbox-proxy-secret 'fastgpt-sandbox-proxy-secret'" "x-agent-sandbox-proxy-secret: &x-agent-sandbox-proxy-secret '$agent_proxy_secret'"
+    replace_text 'x-agent-sandbox-proxy-secret: &x-agent-sandbox-proxy-secret "fastgpt-sandbox-proxy-secret"' "x-agent-sandbox-proxy-secret: &x-agent-sandbox-proxy-secret \"$agent_proxy_secret\""
     replace_text "x-agent-sandbox-proxy-secret: &x-agent-sandbox-proxy-secret 'default_fastgpt_agent_sandbox_proxy_secret'" "x-agent-sandbox-proxy-secret: &x-agent-sandbox-proxy-secret '$agent_proxy_secret'"
     replace_text 'x-agent-sandbox-proxy-secret: &x-agent-sandbox-proxy-secret "default_fastgpt_agent_sandbox_proxy_secret"' "x-agent-sandbox-proxy-secret: &x-agent-sandbox-proxy-secret \"$agent_proxy_secret\""
     replace_text "x-aiproxy-token: &x-aiproxy-token 'token'" "x-aiproxy-token: &x-aiproxy-token '$aiproxy_token'"
@@ -929,6 +1043,14 @@ randomize_compose_credentials() {
     replace_text 'x-rustfs-access-key: &x-rustfs-access-key "rustfsadmin"' "x-rustfs-access-key: &x-rustfs-access-key \"$rustfs_access_key\""
     replace_text "x-rustfs-secret-key: &x-rustfs-secret-key 'rustfsadmin'" "x-rustfs-secret-key: &x-rustfs-secret-key '$rustfs_secret_key'"
     replace_text 'x-rustfs-secret-key: &x-rustfs-secret-key "rustfsadmin"' "x-rustfs-secret-key: &x-rustfs-secret-key \"$rustfs_secret_key\""
+
+    # OpenSandbox / JuiceFS 独立 RustFS 对象块存储与独立 PostgreSQL 元数据库凭证同步随机化。
+    replace_text "x-sandbox-rustfs-access-key: &x-sandbox-rustfs-access-key 'rustfsadmin'" "x-sandbox-rustfs-access-key: &x-sandbox-rustfs-access-key '$sandbox_rustfs_access_key'"
+    replace_text 'x-sandbox-rustfs-access-key: &x-sandbox-rustfs-access-key "rustfsadmin"' "x-sandbox-rustfs-access-key: &x-sandbox-rustfs-access-key \"$sandbox_rustfs_access_key\""
+    replace_text "x-sandbox-rustfs-secret-key: &x-sandbox-rustfs-secret-key 'rustfsadmin'" "x-sandbox-rustfs-secret-key: &x-sandbox-rustfs-secret-key '$sandbox_rustfs_secret_key'"
+    replace_text 'x-sandbox-rustfs-secret-key: &x-sandbox-rustfs-secret-key "rustfsadmin"' "x-sandbox-rustfs-secret-key: &x-sandbox-rustfs-secret-key \"$sandbox_rustfs_secret_key\""
+    replace_text "postgres://postgres:password@fastgpt-sandbox-pg:5432/juicefs" "postgres://postgres:$sandbox_pg_password@fastgpt-sandbox-pg:5432/juicefs"
+    replace_text "POSTGRES_PASSWORD: password" "POSTGRES_PASSWORD: $sandbox_pg_password"
 
     # 本地 PG 向量库，仅在选择 pg 时存在。
     replace_text "PG_URL: postgresql://username:password@fastgpt-vector:5432/postgres" "PG_URL: postgresql://username:$pg_password@fastgpt-vector:5432/postgres"
@@ -968,7 +1090,7 @@ fi
 
 # 可选宿主机端口覆盖：只改变 Compose 映射左侧，容器端口和容器间访问地址不变。
 # FASTGPT_PORT 对应 fastgpt-app -> 3000，FASTGPT_SANDBOX_PROXY_PORT 对应
-# fastgpt-agent-sandbox-proxy -> 1006。未设置时使用 Compose 现有映射或官方默认值。
+# fastgpt-opensandbox-proxy（main）或 fastgpt-agent-sandbox-proxy（v4.16）（默认宿主机 3006 -> 容器 1006）。
 
 # 可选：显式控制是否支持首次登录账号激活（true/false），未设置时根据实际解析的镜像 tag 和模板自动识别。
 # FASTGPT_ROOT_ACTIVATION=""
@@ -1241,18 +1363,15 @@ if [ "$NEEDS_S3_EXTERNAL_ENDPOINT" = true ]; then
 fi
 
 # ========== 7. 输入访问地址 ==========
-SANDBOX_PROXY_EXPECTED=false
-if is_sandbox_proxy_deploy; then
-    SANDBOX_PROXY_EXPECTED=true
+OPENSANDBOX_PROXY_EXPECTED=false
+LEGACY_SANDBOX_PROXY_EXPECTED=false
+if is_opensandbox_proxy_deploy; then
+    OPENSANDBOX_PROXY_EXPECTED=true
+elif is_legacy_sandbox_proxy_deploy; then
+    LEGACY_SANDBOX_PROXY_EXPECTED=true
 fi
 
 request_fe_domain
-if [ "$SANDBOX_PROXY_EXPECTED" = true ]; then
-    request_sandbox_proxy_url
-    if ! is_v415_local_deploy; then
-        request_sandbox_preview_proxy_url
-    fi
-fi
 
 # 访问 URL 与宿主机端口是两个独立配置。仅本机直连 URL 会提供端口作为便利默认值；
 # 公网域名（包括 :443）始终保留 Compose 默认端口，避免破坏反向代理上游。
@@ -1260,13 +1379,28 @@ FASTGPT_PORT_EXPLICIT=false
 [ -n "$FASTGPT_PORT" ] && FASTGPT_PORT_EXPLICIT=true
 FASTGPT_HOST_PORT="$(request_host_port FASTGPT_PORT "FastGPT" "$FE_DOMAIN_INPUT" 3000 "$LOCAL_COMPOSE_PATH" fastgpt-app 3000)" || exit 1
 
+if [ "$OPENSANDBOX_PROXY_EXPECTED" = true ]; then
+    request_opensandbox_proxy_url
+elif [ "$LEGACY_SANDBOX_PROXY_EXPECTED" = true ]; then
+    request_sandbox_proxy_url
+    if ! is_v415_local_deploy; then
+        request_sandbox_preview_proxy_url
+    fi
+fi
+
 SANDBOX_PROXY_PORT_EXPLICIT=false
-[ -n "$FASTGPT_SANDBOX_PROXY_PORT" ] && SANDBOX_PROXY_PORT_EXPLICIT=true
+if [ -n "$FASTGPT_SANDBOX_PROXY_PORT" ] || [ -n "$FASTGPT_AGENT_SANDBOX_PROXY_PORT" ]; then
+    SANDBOX_PROXY_PORT_EXPLICIT=true
+fi
 SANDBOX_PROXY_HOST_PORT=""
-if [ "$SANDBOX_PROXY_EXPECTED" = true ]; then
+if [ "$OPENSANDBOX_PROXY_EXPECTED" = true ]; then
+    FASTGPT_SANDBOX_PROXY_PORT="${FASTGPT_SANDBOX_PROXY_PORT:-$FASTGPT_AGENT_SANDBOX_PROXY_PORT}"
+    SANDBOX_PROXY_HOST_PORT="$(request_host_port FASTGPT_SANDBOX_PROXY_PORT "OpenSandbox Proxy" "$SANDBOX_PROXY_URL_INPUT" 3006 "$LOCAL_COMPOSE_PATH" fastgpt-opensandbox-proxy 1006)" || exit 1
+elif [ "$LEGACY_SANDBOX_PROXY_EXPECTED" = true ]; then
+    FASTGPT_SANDBOX_PROXY_PORT="${FASTGPT_SANDBOX_PROXY_PORT:-$FASTGPT_AGENT_SANDBOX_PROXY_PORT}"
     SANDBOX_PROXY_HOST_PORT="$(request_host_port FASTGPT_SANDBOX_PROXY_PORT "Sandbox Proxy" "$SANDBOX_PROXY_URL_INPUT" 3006 "$LOCAL_COMPOSE_PATH" fastgpt-agent-sandbox-proxy 1006)" || exit 1
 elif [ "$SANDBOX_PROXY_PORT_EXPLICIT" = true ]; then
-    echo "错误: 当前 Compose 未定义 fastgpt-agent-sandbox-proxy，不能设置 FASTGPT_SANDBOX_PROXY_PORT" >&2
+    echo "错误: 当前 Compose 未定义 Sandbox Proxy 服务，不能设置 FASTGPT_SANDBOX_PROXY_PORT" >&2
     exit 1
 fi
 
@@ -1308,12 +1442,15 @@ if [ "$NEEDS_S3_EXTERNAL_ENDPOINT" = true ]; then
 fi
 echo "  FastGPT 地址: $FE_DOMAIN_INPUT"
 echo "  FastGPT 宿主端口: $FASTGPT_HOST_PORT -> 容器 3000"
-if [ "$SANDBOX_PROXY_EXPECTED" = true ]; then
+if [ "$OPENSANDBOX_PROXY_EXPECTED" = true ]; then
+    echo "  OpenSandbox Proxy 地址: $SANDBOX_PROXY_URL_INPUT"
+    echo "  OpenSandbox Proxy 宿主端口: $SANDBOX_PROXY_HOST_PORT -> 容器 1006"
+elif [ "$LEGACY_SANDBOX_PROXY_EXPECTED" = true ]; then
     echo "  Sandbox WebSocket 地址: $SANDBOX_PROXY_URL_INPUT"
     echo "  Sandbox Proxy 宿主端口: $SANDBOX_PROXY_HOST_PORT -> 容器 1006"
-    if ! is_v415_local_deploy; then
-        echo "  Sandbox 预览地址: $SANDBOX_PREVIEW_PROXY_URL_INPUT"
-    fi
+fi
+if [ -n "$SANDBOX_PREVIEW_PROXY_URL_INPUT" ] && ! is_v415_local_deploy; then
+    echo "  Sandbox 预览地址: $SANDBOX_PREVIEW_PROXY_URL_INPUT"
 fi
 echo "  密钥处理:     $CREDENTIALS_LABEL"
 echo "=============================="
@@ -1374,14 +1511,28 @@ else
 fi
 
 # ========== 配置 FastGPT 访问地址 ==========
+# 下载完成后基于实际 docker-compose.yml 二次确认是否存在 fastgpt-opensandbox-proxy 或历史 fastgpt-agent-sandbox-proxy 服务。
+COMPOSE_SANDBOX_PROXY_SERVICE=""
+COMPOSE_SANDBOX_PROXY_DEFAULT_PORT=""
+COMPOSE_SANDBOX_PROXY_LABEL=""
+if compose_has_opensandbox_proxy docker-compose.yml; then
+    COMPOSE_SANDBOX_PROXY_SERVICE="fastgpt-opensandbox-proxy"
+    COMPOSE_SANDBOX_PROXY_DEFAULT_PORT=3006
+    COMPOSE_SANDBOX_PROXY_LABEL="OpenSandbox Proxy"
+elif compose_has_legacy_sandbox_proxy docker-compose.yml; then
+    COMPOSE_SANDBOX_PROXY_SERVICE="fastgpt-agent-sandbox-proxy"
+    COMPOSE_SANDBOX_PROXY_DEFAULT_PORT=3006
+    COMPOSE_SANDBOX_PROXY_LABEL="Sandbox Proxy"
+fi
+
 # 端口只修改对应服务的宿主机一侧，容器间仍使用 3000/1006。
 configure_host_port docker-compose.yml fastgpt-app 3000 "$FASTGPT_HOST_PORT" 3000 "$FASTGPT_PORT_EXPLICIT" || exit 1
-if [ "$SANDBOX_PROXY_EXPECTED" = true ]; then
-    configure_host_port docker-compose.yml fastgpt-agent-sandbox-proxy 1006 "$SANDBOX_PROXY_HOST_PORT" 3006 "$SANDBOX_PROXY_PORT_EXPLICIT" || exit 1
+if [ -n "$COMPOSE_SANDBOX_PROXY_SERVICE" ] && [ -n "$SANDBOX_PROXY_HOST_PORT" ]; then
+    configure_host_port docker-compose.yml "$COMPOSE_SANDBOX_PROXY_SERVICE" 1006 "$SANDBOX_PROXY_HOST_PORT" "$COMPOSE_SANDBOX_PROXY_DEFAULT_PORT" "$SANDBOX_PROXY_PORT_EXPLICIT" || exit 1
 fi
 
 configure_fe_domain
-if [ "$SANDBOX_PROXY_EXPECTED" = true ]; then
+if [ -n "$COMPOSE_SANDBOX_PROXY_SERVICE" ] || compose_has_sandbox_preview_url docker-compose.yml; then
     configure_sandbox_proxy_urls
 fi
 
@@ -1589,12 +1740,12 @@ fi
 if LC_ALL=C grep -q "opensandbox-agent-sandbox-image" docker-compose.yml; then
     echo "  1. 预拉取镜像: docker compose --profile prepull pull"
     echo "  2. 启动服务:   docker compose up -d"
-    if [ "$NEEDS_S3_EXTERNAL_ENDPOINT" = true ] && [ "$SANDBOX_PROXY_EXPECTED" = true ]; then
-        echo "  3. 网络配置:   FastGPT、Sandbox Proxy、S3 请按上方映射配置防火墙或反向代理"
+    if [ "$NEEDS_S3_EXTERNAL_ENDPOINT" = true ] && [ -n "$COMPOSE_SANDBOX_PROXY_SERVICE" ]; then
+        echo "  3. 网络配置:   FastGPT、${COMPOSE_SANDBOX_PROXY_LABEL}、S3 请按上方映射配置防火墙或反向代理"
     elif [ "$NEEDS_S3_EXTERNAL_ENDPOINT" = true ]; then
         echo "  3. 网络配置:   FastGPT、S3 请按上方映射配置防火墙或反向代理"
-    elif [ "$SANDBOX_PROXY_EXPECTED" = true ]; then
-        echo "  3. 网络配置:   FastGPT、Sandbox Proxy 请按上方映射配置防火墙或反向代理"
+    elif [ -n "$COMPOSE_SANDBOX_PROXY_SERVICE" ]; then
+        echo "  3. 网络配置:   FastGPT、${COMPOSE_SANDBOX_PROXY_LABEL} 请按上方映射配置防火墙或反向代理"
     else
         echo "  3. 网络配置:   FastGPT 请按上方映射配置防火墙或反向代理"
     fi
@@ -1615,13 +1766,15 @@ else
 fi
 echo ""
 print_host_port docker-compose.yml fastgpt-app 3000 "FastGPT"
-if [ "$SANDBOX_PROXY_EXPECTED" = true ]; then
-    print_host_port docker-compose.yml fastgpt-agent-sandbox-proxy 1006 "Sandbox Proxy"
+if [ -n "$COMPOSE_SANDBOX_PROXY_SERVICE" ]; then
+    print_host_port docker-compose.yml "$COMPOSE_SANDBOX_PROXY_SERVICE" 1006 "$COMPOSE_SANDBOX_PROXY_LABEL"
 fi
-if [ "$SANDBOX_PROXY_EXPECTED" = true ]; then
+if [ "$COMPOSE_SANDBOX_PROXY_SERVICE" = "fastgpt-opensandbox-proxy" ]; then
+    echo "OpenSandbox Proxy 地址: $SANDBOX_PROXY_URL_INPUT"
+elif [ "$COMPOSE_SANDBOX_PROXY_SERVICE" = "fastgpt-agent-sandbox-proxy" ]; then
     echo "Sandbox WebSocket 地址: $SANDBOX_PROXY_URL_INPUT"
 fi
-if [ "$SANDBOX_PROXY_EXPECTED" = true ] && ! is_v415_local_deploy; then
+if [ -n "$SANDBOX_PREVIEW_PROXY_URL_INPUT" ] && ! is_v415_local_deploy; then
     echo "Sandbox 预览地址: $SANDBOX_PREVIEW_PROXY_URL_INPUT"
 fi
 echo "直连时按实际宿主机映射放行端口；使用反向代理时，公网端口由代理负责。"

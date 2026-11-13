@@ -189,6 +189,7 @@
   "code_error.model_error.team_model_disabled": "管理员未开启团队模型功能",
   "code_error.sandbox_error.agent_sandbox_initializing": "虚拟机正在初始化，请稍后重试。",
   "code_error.sandbox_error.agent_sandbox_limit_reached": "虚拟机数量已达系统上限，暂时无法启动新虚拟机，请稍后重试。",
+  "code_error.sandbox_error.agent_sandbox_migration_in_progress": "当前虚拟机正在执行系统升级数据迁移，请等待管理员完成升级迁移后再试。",
   "code_error.sandbox_error.agent_sandbox_permission_denied": "当前应用无权使用虚拟机，请联系管理员配置。",
   "code_error.sandbox_error.agent_sandbox_team_limit_reached": "当前团队的虚拟机数量已达配额上限，请停止闲置虚拟机或联系管理员。",
   "code_error.sandbox_error.runtime_upgrade_failed": "虚拟机运行环境升级失败，请重新尝试。",

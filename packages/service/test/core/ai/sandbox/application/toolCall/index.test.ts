@@ -30,8 +30,8 @@ vi.mock('@fastgpt/service/core/ai/sandbox/application/runtime/mirrors', () => ({
   prepareSandboxRuntimeMirrors: mirrorMock.prepareSandboxRuntimeMirrors
 }));
 
-vi.mock('@fastgpt/service/core/ai/sandbox/infrastructure/provider/runtimeProfile', () => ({
-  getSandboxRuntimeProfile: () => ({ workDirectory: '/workspace' })
+vi.mock('@fastgpt/service/core/ai/sandbox/infrastructure/opensandbox/runtimeProfile', () => ({
+  getSandboxRuntimeProfile: () => ({ workDirectory: '/workspace', homeDirectory: '/home/sandbox' })
 }));
 
 import {
@@ -43,6 +43,7 @@ import {
 const createSandboxInstance = () =>
   ({
     ensureAvailable: vi.fn(async () => undefined),
+    retryOnRecoverableError: vi.fn(async (fn: () => Promise<unknown>) => fn()),
     exec: vi.fn(async () => ({ stdout: 'out', stderr: '', exitCode: 0 })),
     getRuntimePaths: vi.fn(() => ({
       workspaceRoot: '/workspace',
@@ -52,9 +53,9 @@ const createSandboxInstance = () =>
     resolveRuntimePath: vi.fn((path: string) =>
       path.startsWith('/') ? path : `/workspace/sessions/chat/${path}`
     ),
-    provider: {
+    opensandbox: {
       readFiles: vi.fn(async () => [{ content: 'a\nb\nc' }]),
-      deleteFiles: vi.fn(async () => [])
+      deleteFiles: vi.fn(async () => undefined)
     }
   }) as any;
 
@@ -142,29 +143,6 @@ describe('sandbox toolCall index', () => {
     });
   });
 
-  it('reuses a provided sandbox client for valid tools', async () => {
-    const sandbox = createSandboxInstance();
-
-    await expect(
-      runSandboxTools({
-        ...appSource,
-        userId: 'user',
-        chatId: 'chat',
-        toolName: SANDBOX_SHELL_TOOL_NAME,
-        args: JSON.stringify({ command: 'pwd' }),
-        sandboxClient: sandbox
-      })
-    ).resolves.toMatchObject({
-      success: true
-    });
-
-    expect(runtimeMock.getSandboxClient).not.toHaveBeenCalled();
-    expect(sandbox.exec).toHaveBeenCalledWith(
-      expect.stringMatching(/^\/bin\/bash -c 'pwd' > '\/tmp\/fastgpt-bash-[^']+\.log' 2>&1/),
-      undefined
-    );
-  });
-
   it('injects sandbox files into the session sandbox', async () => {
     const sandbox = createSandboxInstance();
     runtimeMock.getSandboxClient.mockResolvedValueOnce(sandbox);
@@ -181,16 +159,16 @@ describe('sandbox toolCall index', () => {
 
     expect(sandbox.ensureAvailable).not.toHaveBeenCalled();
     expect(mirrorMock.prepareSandboxRuntimeMirrors).toHaveBeenCalledWith({
-      sandbox: sandbox.provider
+      sandbox: sandbox.opensandbox
     });
     expect(mirrorMock.prepareSandboxRuntimeMirrors.mock.invocationCallOrder[0]).toBeLessThan(
       fileApplicationMock.writeUrlFilesToSandbox.mock.invocationCallOrder[0]
     );
-    expect(fileApplicationMock.writeUrlFilesToSandbox).toHaveBeenCalledWith(
-      sandbox.provider,
+    expect(fileApplicationMock.writeUrlFilesToSandbox).toHaveBeenCalledWith({
+      sandbox: sandbox.opensandbox,
       files,
-      undefined
-    );
+      readInputFile: undefined
+    });
   });
 
   it('returns localized tool info for known sandbox tools', () => {

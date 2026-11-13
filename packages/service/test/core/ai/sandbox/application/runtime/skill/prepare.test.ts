@@ -23,10 +23,11 @@ describe('skill package streaming prepare', () => {
     vi.clearAllMocks();
   });
 
-  it('streams the S3 package into sandbox.writeFiles', async () => {
+  it('streams the S3 package into /tmp without polluting /workspace', async () => {
     const source = Readable.from([Buffer.from('chunk-1'), Buffer.from('chunk-2')]);
     mocks.downloadSkillPackageStream.mockResolvedValue(source);
     let uploaded = Buffer.alloc(0);
+    let stagedZipPath = '';
     const sandbox = {
       createDirectories: vi.fn().mockResolvedValue(undefined),
       deleteFiles: vi.fn(async (paths: string[]) =>
@@ -36,10 +37,11 @@ describe('skill package streaming prepare', () => {
       execute: vi.fn().mockResolvedValue(successResult),
       writeFiles: vi.fn(async ([entry]: Array<{ path: string; data: ReadableStream | string }>) => {
         if (entry.path === '/workspace/.gitignore') {
-          return [{ path: entry.path, bytesWritten: String(entry.data).length, error: null }];
+          return [{ path: entry.path, error: null }];
         }
 
-        expect(entry.path).toBe('/workspace/skills/package.zip');
+        expect(entry.path).toMatch(/^\/tmp\/\.fastgpt-skill-package-[^/]+\.zip$/);
+        stagedZipPath = entry.path;
         if (!(entry.data instanceof ReadableStream)) {
           throw new Error('Expected package upload to use a ReadableStream');
         }
@@ -50,7 +52,7 @@ describe('skill package streaming prepare', () => {
         }
         uploaded = Buffer.concat(chunks);
 
-        return [{ path: entry.path, bytesWritten: uploaded.length, error: null }];
+        return [{ path: entry.path, error: null }];
       })
     };
     const baseContext = {
@@ -59,18 +61,17 @@ describe('skill package streaming prepare', () => {
     };
 
     await deploySkillPackage({
-      storageKey: 'version.zip',
-      skillsRootPath: '/workspace/skills'
+      storageKey: 'version.zip'
     })(baseContext);
 
     expect(mocks.downloadSkillPackageStream).toHaveBeenCalledWith({ storageKey: 'version.zip' });
     expect(uploaded.toString()).toBe('chunk-1chunk-2');
     expect(source.destroyed).toBe(true);
-    expect(sandbox.createDirectories).toHaveBeenCalledWith(['/workspace/skills']);
+    expect(sandbox.createDirectories).not.toHaveBeenCalled();
     expect(sandbox.execute).toHaveBeenCalledWith(expect.stringContaining('unzip -Z1'), {
       workingDirectory: '/workspace'
     });
-    expect(sandbox.deleteFiles).toHaveBeenCalledWith(['/workspace/skills/package.zip']);
+    expect(sandbox.deleteFiles).toHaveBeenCalledWith([stagedZipPath]);
     expect(sandbox.getFileInfo).toHaveBeenCalledWith(['/workspace/.gitignore']);
     expect(sandbox.writeFiles).toHaveBeenLastCalledWith([
       {
@@ -80,26 +81,22 @@ describe('skill package streaming prepare', () => {
     ]);
   });
 
-  it('destroys an unconsumed S3 stream when sandbox upload fails', async () => {
+  it('destroys an unconsumed S3 stream and cleans up staged zip when upload fails', async () => {
     const source = Readable.from([Buffer.from('content')]);
     mocks.downloadSkillPackageStream.mockResolvedValue(source);
     const sandbox = {
-      createDirectories: vi.fn().mockResolvedValue(undefined),
+      deleteFiles: vi.fn().mockResolvedValue(undefined),
+      getFileInfo: vi.fn(async () => new Map()),
       execute: vi.fn().mockResolvedValue(successResult),
-      writeFiles: vi.fn().mockResolvedValue([
-        {
-          path: '/workspace/skills/package.zip',
-          bytesWritten: 0,
-          error: new Error('upload failed')
-        }
-      ])
+      writeFiles: vi.fn().mockRejectedValue(new Error('upload failed'))
     };
     await expect(
-      deploySkillPackage({ storageKey: 'version.zip', skillsRootPath: '/workspace/skills' })({
+      deploySkillPackage({ storageKey: 'version.zip' })({
         sandbox: sandbox as any,
         workDirectory: '/workspace'
       })
-    ).rejects.toThrow('Failed to write skill package ZIP');
+    ).rejects.toThrow('upload failed');
     expect(source.destroyed).toBe(true);
+    expect(sandbox.deleteFiles).toHaveBeenCalledTimes(1);
   });
 });

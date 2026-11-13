@@ -57,12 +57,10 @@ vi.mock('@fastgpt/service/env', async (importOriginal) => {
     ...actual,
     serviceEnv: {
       ...actual.serviceEnv,
-      AGENT_SANDBOX_PROVIDER: 'opensandbox',
       AGENT_SANDBOX_OPENSANDBOX_BASEURL: 'http://mock-opensandbox.local',
       AGENT_SANDBOX_OPENSANDBOX_API_KEY: 'mock-opensandbox-api-key',
       AGENT_SANDBOX_OPENSANDBOX_RUNTIME: 'docker',
-      AGENT_SANDBOX_OPENSANDBOX_IMAGE: 'runtime-image:test',
-      AGENT_SANDBOX_OPENSANDBOX_USE_SERVER_PROXY: false
+      AGENT_SANDBOX_OPENSANDBOX_IMAGE: 'runtime-image:test'
     }
   };
 });
@@ -451,14 +449,14 @@ describe('debugChat handler — parameter validation', () => {
   it('should NOT call sseErrRes with sandbox error when edit-debug sandbox exists', async () => {
     // Create sandbox instance
     await MongoSandboxInstance.create({
-      provider: 'opensandbox',
       sandboxId: getEditDebugSandboxId(skillId),
       sourceType: ChatSourceTypeEnum.skillEdit,
       sourceId: skillId,
       userId: ChatSourceTypeEnum.skillEdit,
       status: 'running',
+      instanceId: 'debug-instance-1',
       teamId: testUser.teamId,
-      image: { repository: 'test-image', tag: 'latest' }
+      image: 'test-image:latest'
     });
 
     await Call(debugChatApi.default, {
@@ -494,14 +492,14 @@ describe('debugChat handler — parameter validation', () => {
     });
 
     await MongoSandboxInstance.create({
-      provider: 'opensandbox',
       sandboxId: getEditDebugSandboxId(skillId),
       sourceType: ChatSourceTypeEnum.skillEdit,
       sourceId: skillId,
       userId: ChatSourceTypeEnum.skillEdit,
       status: 'running',
+      instanceId: 'debug-instance-1',
       teamId: testUser.teamId,
-      image: { repository: 'test-image', tag: 'latest' }
+      image: 'test-image:latest'
     });
 
     await Call(debugChatApi.default, {
@@ -529,14 +527,14 @@ describe('debugChat handler — parameter validation', () => {
 
   it('should prepare and finalize a skill debug chat round with prepared ids', async () => {
     await MongoSandboxInstance.create({
-      provider: 'opensandbox',
       sandboxId: getEditDebugSandboxId(skillId),
       sourceType: ChatSourceTypeEnum.skillEdit,
       sourceId: skillId,
       userId: ChatSourceTypeEnum.skillEdit,
       status: 'running',
+      instanceId: 'debug-instance-1',
       teamId: testUser.teamId,
-      image: { repository: 'test-image', tag: 'latest' }
+      image: 'test-image:latest'
     });
 
     await Call(debugChatApi.default, {
@@ -636,14 +634,14 @@ describe('debugChat handler — parameter validation', () => {
         });
       }
       await MongoSandboxInstance.create({
-        provider: 'opensandbox',
         sandboxId: getEditDebugSandboxId(skillId),
         sourceType: ChatSourceTypeEnum.skillEdit,
         sourceId: skillId,
         userId: ChatSourceTypeEnum.skillEdit,
         status: 'running',
+        instanceId: 'debug-instance-1',
         teamId: testUser.teamId,
-        image: { repository: 'test-image', tag: 'latest' }
+        image: 'test-image:latest'
       });
 
       await Call(debugChatApi.default, {

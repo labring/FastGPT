@@ -28,7 +28,7 @@ describe('sandboxFindTool', () => {
 
     expect(result.response).toBe('src/a.ts\nsrc/b.ts');
     expect(sandbox.exec).toHaveBeenCalledWith(
-      "cd 'src dir' && rg --files --hidden --glob '*.ts' -- . | head -n 1001"
+      "cd 'src dir' && rg --files --hidden --glob '*.ts' --glob '!.fastgpt/**' -- . | head -n 1001"
     );
   });
 

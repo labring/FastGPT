@@ -40,6 +40,30 @@ const resolveRelativeModule = (from: string, specifier: string): string | undefi
 
 const displayPath = (path: string) => relative(serviceRoot, path).split(sep).join('/');
 
+type SandboxLayer = 'interface' | 'application' | 'legacy' | 'infrastructure' | 'shared';
+
+const getSandboxLayer = (filePath: string): SandboxLayer => {
+  const rel = relative(sandboxRoot, filePath).split(sep).join('/');
+  const top = rel.split('/')[0];
+  if (
+    top === 'interface' ||
+    top === 'application' ||
+    top === 'legacy' ||
+    top === 'infrastructure'
+  ) {
+    return top;
+  }
+  return 'shared';
+};
+
+const allowedLayerDependencies: Record<SandboxLayer, ReadonlySet<SandboxLayer>> = {
+  interface: new Set(['interface', 'application', 'infrastructure', 'shared']),
+  application: new Set(['application', 'legacy', 'infrastructure', 'shared']),
+  legacy: new Set(['legacy', 'infrastructure', 'shared']),
+  infrastructure: new Set(['infrastructure', 'shared']),
+  shared: new Set(['shared'])
+};
+
 describe('sandbox architecture boundaries', () => {
   it('has no relative-import cycles inside the sandbox domain', () => {
     const files = listTypeScriptFiles(sandboxRoot);
@@ -74,5 +98,28 @@ describe('sandbox architecture boundaries', () => {
     for (const file of files) visit(file);
 
     expect(cycles).toEqual([]);
+  });
+
+  it('enforces unidirectional layer dependencies inside the sandbox domain', () => {
+    const files = listTypeScriptFiles(sandboxRoot);
+    const fileSet = new Set(files);
+    const violations: string[] = [];
+
+    for (const file of files) {
+      const fromLayer = getSandboxLayer(file);
+      const allowed = allowedLayerDependencies[fromLayer];
+      for (const specifier of getModuleSpecifiers(file)) {
+        const target = resolveRelativeModule(file, specifier);
+        if (!target || !fileSet.has(target)) continue;
+        const toLayer = getSandboxLayer(target);
+        if (!allowed.has(toLayer)) {
+          violations.push(
+            `${displayPath(file)} [${fromLayer}] -> ${displayPath(target)} [${toLayer}]`
+          );
+        }
+      }
+    }
+
+    expect(violations).toEqual([]);
   });
 });

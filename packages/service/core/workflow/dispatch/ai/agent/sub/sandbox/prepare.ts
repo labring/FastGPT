@@ -21,8 +21,8 @@ import {
   type SandboxPrepareContext,
   type SandboxPrepareStep
 } from '../../../../../../ai/sandbox/application/runtime/prepare';
+import { OPEN_SANDBOX_DEFAULT_HOME_PATH } from '@fastgpt/global/core/ai/sandbox/constants';
 import { prepareAgentSandboxRuntime } from '../../../../../../ai/sandbox/application/runtime';
-import { resolveSandboxHome } from '../../../../../../ai/sandbox/application/runtime/home';
 import { runAgentSkillVersionEntrypoints } from '../../../../../../ai/sandbox/application/runtime/skill/entrypoint';
 import {
   runSandboxEntrypoint,
@@ -60,6 +60,7 @@ type EnsureAgentSandboxRuntimeParams = {
   editSkillId?: string;
   prepareActions?: AgentSandboxPrepareAction[];
   currentFiles: AgentInputFile[];
+  onUpgrade?: () => void;
 };
 type EnsureAgentSandboxRuntimeResult = {
   sandboxClient?: SandboxClient;
@@ -86,7 +87,8 @@ export async function ensureAgentSandboxRuntime({
   selectedSkills,
   editSkillId,
   prepareActions = [],
-  currentFiles
+  currentFiles,
+  onUpgrade
 }: EnsureAgentSandboxRuntimeParams): Promise<EnsureAgentSandboxRuntimeResult> {
   if (!needSandboxRuntime) {
     return {
@@ -109,51 +111,60 @@ export async function ensureAgentSandboxRuntime({
         sourceType,
         sourceId,
         userId,
-        chatId
+        chatId,
+        onUpgrade
       });
-      const inputFileAllocation = getSandboxInputFileNameAllocation({
-        scopeKey,
-        contextOwner: workflowSandboxContext,
-        sandbox: sandboxContext.sandboxClient.provider,
-        workDirectory: sandboxContext.workDirectory
+
+      return sandboxContext.sandboxClient.retryOnRecoverableError(async () => {
+        const attemptFiles = currentFiles.map((file) => ({ ...file }));
+        const inputFileAllocation = getSandboxInputFileNameAllocation({
+          scopeKey,
+          contextOwner: workflowSandboxContext,
+          sandbox: sandboxContext.sandboxClient.opensandbox,
+          workDirectory: sandboxContext.workDirectory
+        });
+        const context = {
+          ...sandboxContext,
+          sandbox: sandboxContext.sandboxClient.opensandbox,
+          inputFileAllocation,
+          deployedSkillVersions: [],
+          skillInfos: [],
+          skillScanDirectories: []
+        };
+
+        const preparedContext = await (editSkillId
+          ? prepareSandbox(
+              context,
+              preparePackageMirrors(),
+              injectCurrentInputFiles(attemptFiles, readInputFile),
+              ...prepareActions,
+              scanEditDebugSkillInfos()
+            )
+          : prepareSandbox(
+              context,
+              preparePackageMirrors(),
+              injectSelectedSkillFiles({
+                tmbId,
+                skillIds,
+                selectedSkills
+              }),
+              injectCurrentInputFiles(attemptFiles, readInputFile),
+              ...prepareActions,
+              runSandboxEntrypoint({ sandboxEntrypoint, scope: sandboxEntrypointScope }),
+              runSelectedSkillEntrypoints(),
+              scanSelectedSkillInfos()
+            ));
+
+        attemptFiles.forEach((file, index) => {
+          Object.assign(currentFiles[index], file);
+        });
+
+        return {
+          sandboxClient: sandboxContext.sandboxClient,
+          currentWorkingDirectory: sandboxContext.workDirectory,
+          skillInfos: preparedContext.skillInfos
+        };
       });
-      const context = {
-        ...sandboxContext,
-        sandbox: sandboxContext.sandboxClient.provider,
-        inputFileAllocation,
-        deployedSkillVersions: [],
-        skillInfos: [],
-        skillScanDirectories: []
-      };
-
-      const preparedContext = await (editSkillId
-        ? prepareSandbox(
-            context,
-            preparePackageMirrors(),
-            injectCurrentInputFiles(currentFiles, readInputFile),
-            ...prepareActions,
-            scanEditDebugSkillInfos()
-          )
-        : prepareSandbox(
-            context,
-            preparePackageMirrors(),
-            injectSelectedSkillFiles({
-              tmbId,
-              skillIds,
-              selectedSkills
-            }),
-            injectCurrentInputFiles(currentFiles, readInputFile),
-            ...prepareActions,
-            runSandboxEntrypoint({ sandboxEntrypoint, scope: sandboxEntrypointScope }),
-            runSelectedSkillEntrypoints(),
-            scanSelectedSkillInfos()
-          ));
-
-      return {
-        sandboxClient: sandboxContext.sandboxClient,
-        currentWorkingDirectory: sandboxContext.workDirectory,
-        skillInfos: preparedContext.skillInfos
-      };
     }
   });
 }
@@ -176,10 +187,7 @@ export const createBuiltinSkillPrepareAction =
     const sources = await getSources();
     if (sources.length === 0) return context;
 
-    const homeDirectory = await resolveSandboxHome(context.sandbox);
-    if (!homeDirectory) {
-      throw new Error('Failed to resolve sandbox HOME for builtin skill sync');
-    }
+    const homeDirectory = OPEN_SANDBOX_DEFAULT_HOME_PATH;
 
     await injectToSandbox({
       sandbox: context.sandbox,
@@ -248,7 +256,8 @@ const runSelectedSkillEntrypoints = (): AgentSandboxPrepareStep => async (contex
   if (context.deployedSkillVersions.length > 0) {
     await runAgentSkillVersionEntrypoints({
       sandbox: context.sandbox,
-      versions: context.deployedSkillVersions
+      versions: context.deployedSkillVersions,
+      workspaceDirectory: context.workspaceRoot ?? context.workDirectory
     });
   }
   return context;

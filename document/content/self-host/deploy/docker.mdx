@@ -140,7 +140,7 @@ brew install orbstack
 
 #### 方法二：使用交互式脚本部署
 
-需要在 Linux/MacOS/Windows WSL 环境下执行。脚本依次引导选择部署版本、镜像源、向量库、是否自动生成密钥，再输入 FastGPT 访问地址、Sandbox WebSocket / 预览地址和宿主机端口，最后确认配置。
+需要在 Linux/MacOS/Windows WSL 环境下执行。脚本依次引导选择部署版本、镜像源、向量库、是否自动生成密钥，再输入 FastGPT 访问地址、OpenSandbox Proxy 地址和宿主机端口，最后确认配置。
 
 ```bash
 FASTGPT_DEPLOY_BASE_URL=https://doc.fastgpt.cn bash <(curl -fsSL https://doc.fastgpt.cn/deploy/install.sh)
@@ -152,9 +152,9 @@ FASTGPT_DEPLOY_BASE_URL=https://doc.fastgpt.cn bash <(curl -fsSL https://doc.fas
 
 设置 `FASTGPT_NON_INTERACTIVE=true` 可进入非交互模式，脚本不再逐项询问，改从 `FASTGPT_DEPLOY_VERSION`、`FASTGPT_REGION`、`FASTGPT_VECTOR`、`FASTGPT_AUTO_GENERATE_CREDENTIALS` 等变量读取选项，未设置时依次使用 `main`、`cn`、`pg` 和自动生成密钥。识别不了镜像版本时，可用 `FASTGPT_IMAGE_TAG` 或 `FASTGPT_ROOT_ACTIVATION` 指定版本能力。
 
-非交互模式还必须通过 `FASTGPT_FE_DOMAIN` 指定用户访问 FastGPT 的完整地址，例如 `https://fastgpt.example.com`。启用 Agent/Skill 沙盒的版本还需要通过 `FASTGPT_SANDBOX_PROXY_URL` 指定沙盒 WebSocket 地址，例如 `wss://sandbox-proxy.example.com`；4.16 及以上版本还需要通过 `FASTGPT_SANDBOX_PREVIEW_PROXY_URL` 指定 HTTP 预览地址。
+非交互模式还必须通过 `FASTGPT_FE_DOMAIN` 指定用户访问 FastGPT 的完整地址，例如 `https://fastgpt.example.com`；启用 Agent/Skill 沙盒时，还需要通过 `FASTGPT_SANDBOX_PROXY_URL` 指定浏览器访问 `fastgpt-opensandbox-proxy` 的地址（例如 `https://sandbox.example.com`；若主站为 `localhost` 或 `127.0.0.1` 本机调试地址，未设置时脚本会自动按宿主机端口推导回环地址；部署 v4.16 旧版模板时需同时指定 `FASTGPT_SANDBOX_PROXY_URL` 与 `FASTGPT_SANDBOX_PREVIEW_PROXY_URL`）。
 
-访问地址和宿主机端口是独立配置。需要直连时，可通过 `FASTGPT_PORT` 设置 FastGPT 宿主机端口（默认 `3000`），通过 `FASTGPT_SANDBOX_PROXY_PORT` 设置 Sandbox Proxy 宿主机端口（默认 `3006`）；容器端口仍分别为 `3000` 和 `1006`。如果使用反向代理，`FASTGPT_FE_DOMAIN`、`FASTGPT_SANDBOX_PROXY_URL` 及预览地址中的公网端口（例如 `443`）不会被当作宿主机端口，脚本会保留 Compose 中的默认映射。
+访问地址和宿主机端口是独立配置。需要直连时，可通过 `FASTGPT_PORT` 设置 FastGPT 宿主机端口（默认 `3000`），通过 `FASTGPT_SANDBOX_PROXY_PORT` 设置 OpenSandbox Proxy 宿主机端口（默认 `3006`，映射到容器 `1006`），容器端口保持不变。如果使用反向代理，`FASTGPT_FE_DOMAIN` 与沙盒代理地址中的公网端口（例如 `443`）不会被当作宿主机端口，脚本会保留 Compose 中的默认映射。
 
 **脚本会自动完成以下操作**：
 
@@ -235,7 +235,7 @@ FASTGPT_LOCAL_COMPOSE_PATH=./docker-compose.source.yml bash install.sh
 FASTGPT_LOCAL_COMPOSE_PATH=./docker-compose.yml bash install.sh
 ```
 
-如果启用 Agent/Skill 沙盒，还需要同步替换 Compose 文件中的沙盒相关镜像，以及 `AGENT_SANDBOX_SEALOS_IMAGE` 或 `AGENT_SANDBOX_OPENSANDBOX_IMAGE`，确保沙盒 provider 可以拉取对应镜像。具体配置见 [OpenSandbox 配置](/zh-CN/self-host/config/sandbox/opensandbox)。
+如果启用 Agent/Skill 沙盒，还需要同步替换 Compose 文件中的沙盒相关镜像以及 `AGENT_SANDBOX_OPENSANDBOX_IMAGE`，确保 OpenSandbox 可以拉取对应镜像。具体配置见 [OpenSandbox 配置](/zh-CN/self-host/config/sandbox/opensandbox)。
 
 ### 2. 修改环境变量
 
@@ -243,8 +243,7 @@ FASTGPT_LOCAL_COMPOSE_PATH=./docker-compose.yml bash install.sh
 
 启用 Agent/Skill 沙盒时还必须配置：
 
-- `AGENT_SANDBOX_PROXY_URL`：浏览器访问 Sandbox Proxy 的 WebSocket 地址，使用 `ws://` 或 `wss://`，例如 `wss://sandbox-proxy.example.com`，需要由反向代理转发到 Sandbox Proxy 的宿主机端口（默认 `3006`）。
-- 4.16 及以上版本额外配置 `AGENT_SANDBOX_PREVIEW_PROXY_URL`：浏览器访问沙盒文件预览的 HTTP(S) 地址，例如 `https://sandbox-proxy.example.com`，同样需要转发到该宿主机端口。
+- `AGENT_SANDBOX_PROXY_URL`：浏览器访问 `fastgpt-opensandbox-proxy`（沙盒终端与文件预览网关）的基地址，支持 `http(s)://` 或 `ws(s)://`，例如 `https://sandbox.example.com` 或 `http://192.168.1.10:3006`。生产环境建议使用与 `FE_DOMAIN` 不同的独立子域名、独立域名或独立端口实现源隔离，并由反向代理转发到 `fastgpt-opensandbox-proxy` 宿主机端口（默认 `3006`，映射到容器 `1006`，需开启 WebSocket 支持）；本机调试可直接使用默认的 `http://localhost:3006`。
 
 使用交互式安装脚本时，脚本会在确认部署前询问这些地址。
 
@@ -255,8 +254,8 @@ FASTGPT_LOCAL_COMPOSE_PATH=./docker-compose.yml bash install.sh
 以下服务需要被访问到。直连时开放脚本最终输出的宿主机端口；使用反向代理时，公网端口由代理负责：
 
 1. 默认 `3000` 端口（FastGPT 主服务；可通过 `FASTGPT_PORT` 修改宿主机端口）
-2. 9000 端口（S3 对象存储服务；默认 `short-proxy` 模式下私有文件由 FastGPT 代理下载，使用 `short-redirect` 模式或浏览器需直连公开桶加载插件 Logo 时，需在 Compose 中配置 `STORAGE_EXTERNAL_ENDPOINT` 并开放 9000 端口）
-3. 默认 `3006` 端口（FastGPT Agent Sandbox Proxy 服务；可通过 `FASTGPT_SANDBOX_PROXY_PORT` 修改宿主机端口）
+2. 默认 `3006` 端口（`fastgpt-opensandbox-proxy` 沙盒终端与文件预览网关，宿主机 `3006` 映射容器 `1006`，启用 Agent/Skill 沙盒时需开放或由反向代理转发并支持 WebSocket；可通过 `FASTGPT_SANDBOX_PROXY_PORT` 修改宿主机端口）
+3. 9000 端口（S3 对象存储服务；默认 `short-proxy` 模式下私有文件由 FastGPT 代理下载，使用 `short-redirect` 模式或浏览器需直连公开桶加载插件 Logo 时，需在 Compose 中配置 `STORAGE_EXTERNAL_ENDPOINT` 并开放 9000 端口）
 
 ### 4. 启动容器
 

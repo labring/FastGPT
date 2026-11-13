@@ -2,28 +2,19 @@ import { describe, expect, it, vi } from 'vitest';
 import { emptyWorkDirectory } from '@fastgpt/service/core/ai/sandbox/application/runtime/prepare';
 
 const file = (name: string) => ({
-  name,
   path: `/workspace/session/${name}`,
-  isDirectory: false,
-  isFile: true
+  type: 'file' as const
 });
 
 const directory = (name: string) => ({
-  name,
   path: `/workspace/session/${name}`,
-  isDirectory: true,
-  isFile: false
+  type: 'directory' as const
 });
 
 const createContext = () => {
   const sandbox = {
-    listDirectory: vi.fn(async () => [file('.env'), directory('src')]),
-    deleteFiles: vi.fn(
-      async (
-        paths: string[]
-      ): Promise<Array<{ path: string; success: boolean; error: Error | null }>> =>
-        paths.map((path) => ({ path, success: true, error: null }))
-    ),
+    listDirectory: vi.fn(async () => [file('.env'), directory('.fastgpt'), directory('src')]),
+    deleteFiles: vi.fn(async () => undefined),
     deleteDirectories: vi.fn(async () => undefined)
   };
 
@@ -48,17 +39,9 @@ describe('sandbox runtime prepare', () => {
 
   it('stops before deleting directories when a file deletion fails', async () => {
     const { sandbox, context } = createContext();
-    sandbox.deleteFiles.mockResolvedValueOnce([
-      {
-        path: '/workspace/session/.env',
-        success: false,
-        error: new Error('permission denied')
-      }
-    ]);
+    sandbox.deleteFiles.mockRejectedValueOnce(new Error('permission denied'));
 
-    await expect(emptyWorkDirectory()(context)).rejects.toThrow(
-      'Failed to clean workspace file /workspace/session/.env: permission denied'
-    );
+    await expect(emptyWorkDirectory()(context)).rejects.toThrow('permission denied');
     expect(sandbox.deleteDirectories).not.toHaveBeenCalled();
   });
 });

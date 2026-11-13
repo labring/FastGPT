@@ -10,6 +10,10 @@ import { getS3SkillSource } from '@fastgpt/service/common/s3/sources/skill';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
 import { serviceEnv } from '@fastgpt/service/env';
 import { Readable } from 'node:stream';
+import { RESERVED_DISK_MB } from '@fastgpt/service/core/ai/sandbox/constants';
+
+// 预留空间之外保留 2 MiB 配额，避免边界测试分配整个默认磁盘大小的 Buffer。
+const limitedStorageGi = (RESERVED_DISK_MB + 2) / 1024;
 
 const s3SkillSourceMocks = vi.hoisted(() => {
   const getSkillPackageKey = ({
@@ -97,9 +101,28 @@ describe('storage', () => {
       });
     });
 
+    it('accepts a package exactly at the current disk-based limit', async () => {
+      const originalAgentSandboxStorageSize = serviceEnv.AGENT_SANDBOX_STORAGE_SIZE_GI;
+      serviceEnv.AGENT_SANDBOX_STORAGE_SIZE_GI = limitedStorageGi;
+      try {
+        await expect(
+          uploadSkillPackage({
+            teamId: mockTeamId,
+            skillId: mockSkillId,
+            packageObjectId: mockVersionId,
+            zipBuffer: Buffer.alloc(2 * 1024 * 1024)
+          })
+        ).resolves.toEqual({
+          key: `agent-skills/${mockTeamId}/${mockSkillId}/${mockVersionId}.zip`
+        });
+      } finally {
+        serviceEnv.AGENT_SANDBOX_STORAGE_SIZE_GI = originalAgentSandboxStorageSize;
+      }
+    });
+
     it('should reject zip buffers larger than the upload limit before uploading to S3', async () => {
       const originalAgentSandboxStorageSize = serviceEnv.AGENT_SANDBOX_STORAGE_SIZE_GI;
-      serviceEnv.AGENT_SANDBOX_STORAGE_SIZE_GI = 0.296875;
+      serviceEnv.AGENT_SANDBOX_STORAGE_SIZE_GI = limitedStorageGi;
 
       try {
         const tooLargeBuffer = Buffer.alloc(2 * 1024 * 1024 + 1);
@@ -153,7 +176,7 @@ describe('storage', () => {
 
     it('aborts a stream whose actual bytes exceed the package limit', async () => {
       const originalAgentSandboxStorageSize = serviceEnv.AGENT_SANDBOX_STORAGE_SIZE_GI;
-      serviceEnv.AGENT_SANDBOX_STORAGE_SIZE_GI = 0.296875;
+      serviceEnv.AGENT_SANDBOX_STORAGE_SIZE_GI = limitedStorageGi;
       s3SkillSourceMocks.uploadPackageMock.mockImplementationOnce(async (params) => {
         await consumeStream(params.body);
         return { key: 'should-not-complete' };
@@ -210,7 +233,7 @@ describe('storage', () => {
 
     it('fails while consuming an object larger than the package limit', async () => {
       const originalAgentSandboxStorageSize = serviceEnv.AGENT_SANDBOX_STORAGE_SIZE_GI;
-      serviceEnv.AGENT_SANDBOX_STORAGE_SIZE_GI = 0.296875;
+      serviceEnv.AGENT_SANDBOX_STORAGE_SIZE_GI = limitedStorageGi;
       s3SkillSourceMocks.downloadObjectMock.mockResolvedValueOnce({
         body: Readable.from([Buffer.alloc(2 * 1024 * 1024), Buffer.from('x')])
       });

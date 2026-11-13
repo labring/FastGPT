@@ -1,5 +1,4 @@
-import { getAgentSandboxMissingRequiredEnvKeys, isAgentSandboxProvider } from '../../../env.util';
-import type { SandboxProviderType } from '@fastgpt-sdk/sandbox-adapter';
+import { getAgentSandboxMissingRequiredEnvKeys, hasOpenSandboxEnvConfig } from '../../../env.util';
 
 const getPositiveIntegerEnv = (
   env: NodeJS.ProcessEnv,
@@ -24,19 +23,16 @@ export type SandboxIntegrationTimingBudgets = {
 };
 
 /**
- * 只在显式启用后解析 Sandbox 集成测试 provider。
+ * 只在显式启用后校验 OpenSandbox 集成测试环境变量。
  *
- * 启用后配置不完整会立即失败，避免真实 provider 用例因环境变量缺失而静默跳过。
+ * 启用后配置不完整会立即失败，避免真实用例因环境变量缺失而静默跳过。
  */
-export const getSandboxIntegrationProvider = (
-  env: NodeJS.ProcessEnv = process.env
-): SandboxProviderType | undefined => {
-  if (env.SANDBOX_INTEGRATION?.toLowerCase() !== 'true') return;
+export const isSandboxIntegrationEnabled = (env: NodeJS.ProcessEnv = process.env): boolean => {
+  if (env.SANDBOX_INTEGRATION?.toLowerCase() !== 'true') return false;
 
-  const provider = env.AGENT_SANDBOX_PROVIDER;
-  if (!isAgentSandboxProvider(provider)) {
+  if (!hasOpenSandboxEnvConfig(env)) {
     throw new Error(
-      'AGENT_SANDBOX_PROVIDER must be opensandbox or sealosdevbox when SANDBOX_INTEGRATION=true'
+      'AGENT_SANDBOX_OPENSANDBOX_BASEURL must be configured when SANDBOX_INTEGRATION=true'
     );
   }
 
@@ -45,10 +41,10 @@ export const getSandboxIntegrationProvider = (
     throw new Error(`Missing Sandbox integration environment variables: ${missingKeys.join(', ')}`);
   }
 
-  return provider;
+  return true;
 };
 
-/** 读取本地 provider 性能预算；所有预算都是单次操作的 wall-clock 上限。 */
+/** 读取本地性能预算；所有预算都是单次操作的 wall-clock 上限。 */
 export const getSandboxIntegrationTimingBudgets = (
   env: NodeJS.ProcessEnv = process.env
 ): SandboxIntegrationTimingBudgets => ({

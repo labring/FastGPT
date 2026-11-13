@@ -3,7 +3,7 @@
  *
  * 只封装运行态文件写入辅助，不负责 workspace 打包或编辑器文件下载。
  */
-import type { FileWriteEntry, ISandbox } from '@fastgpt-sdk/sandbox-adapter';
+import type { OpenSandboxClient } from '../../infrastructure/opensandbox/opensandbox';
 import { SANDBOX_USER_FILES_PATH } from '@fastgpt/global/core/ai/sandbox/constants';
 import {
   getSandboxInputFileNameAllocation,
@@ -12,9 +12,10 @@ import {
   type SandboxInputFileNameAllocation
 } from '../../utils';
 import {
-  prepareSandboxFileParentDirectories,
   readSandboxUrlFile,
-  type SandboxInputFileReader
+  writeUrlFilesToSandbox,
+  type SandboxInputFileReader,
+  type SandboxUrlFile
 } from '../file';
 
 export type SandboxInputFile = {
@@ -29,14 +30,20 @@ export type SandboxInputFile = {
  * 路径规则和通用 toolcall 保持一致：用户文件直接写入 user_files/<文件名>。
  * 同一会话沙盒内跨子应用/节点传入同名但不同 URL 的文件时，按会话级分配表自动递增文件名并回写 sandboxPath，避免覆盖前序文件。
  */
-export const injectInputFilesToSandbox = async (
-  sandbox: ISandbox,
-  files: SandboxInputFile[],
+export const injectInputFilesToSandbox = async ({
+  sandbox,
+  files,
   workDirectory = '',
-  readInputFile: SandboxInputFileReader = readSandboxUrlFile,
-  allocation?: SandboxInputFileNameAllocation
-) => {
-  const writeFileTasks: Promise<FileWriteEntry>[] = [];
+  readInputFile = readSandboxUrlFile,
+  allocation
+}: {
+  sandbox: OpenSandboxClient;
+  files: SandboxInputFile[];
+  workDirectory?: string;
+  readInputFile?: SandboxInputFileReader;
+  allocation?: SandboxInputFileNameAllocation;
+}) => {
+  const urlFiles: SandboxUrlFile[] = [];
   const usedNames = new Map<string, number>();
   const batchUsedFilenames = new Set<string>();
   const effectiveAllocation =
@@ -52,25 +59,12 @@ export const injectInputFilesToSandbox = async (
     file.name = filename;
     file.sandboxPath = relativePath;
     const path = workDirectory ? joinSandboxPath(workDirectory, relativePath) : relativePath;
-    writeFileTasks.push(
-      readInputFile(file.url).then((data) => ({
-        path,
-        data
-      }))
-    );
+    urlFiles.push({ path, url: file.url });
   }
 
-  if (writeFileTasks.length === 0) return;
-  const writeEntries = await Promise.all(writeFileTasks);
-  await prepareSandboxFileParentDirectories(
+  await writeUrlFilesToSandbox({
     sandbox,
-    writeEntries.map(({ path }) => path)
-  );
-  const writeResults = await sandbox.writeFiles(writeEntries);
-  const failedWrite = writeResults.find((result) => result.error);
-  if (failedWrite) {
-    throw new Error(
-      `Failed to write sandbox input file ${failedWrite.path}: ${failedWrite.error?.message}`
-    );
-  }
+    files: urlFiles,
+    readInputFile
+  });
 };

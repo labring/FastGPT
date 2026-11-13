@@ -58,5 +58,17 @@
   "migrations.20261112_backfill_stt_pricing_type.description": "在背景將舊 STT 價格標記為按時長計費，保留原單價及既有 Tokens 設定，不阻塞業務啟動。",
   "migrations.20261112_backfill_stt_pricing_type.result": "已掃描 {{models}} 個 STT 模型",
   "migrations.20261112_backfill_stt_pricing_type.models": "模型計價類型",
-  "migrations.20261112_backfill_stt_pricing_type.validation": "驗證回填結果"
+  "migrations.20261112_backfill_stt_pricing_type.validation": "驗證回填結果",
+  "migrations.20261111_migrate_sandbox_to_juicefs.name": "遷移 Agent 沙箱工作區至 JuiceFS（v3）",
+  "migrations.20261111_migrate_sandbox_to_juicefs.description": "將舊版 v2 沙箱工作區（含 K8s 舊 PVC、Docker 舊命名卷、S3 歸檔壓縮包與 Sealos Devbox 遠端實例）無損遷入 JuiceFS 並寫入 v3 實例表。遷移期間保留全部舊儲存資源與舊表紀錄以支援回滾；未啟用過沙箱的環境可直接點擊完成。",
+  "migrations.20261111_migrate_sandbox_to_juicefs.result": "已遷移 {{migratedCount}} 個沙箱工作區，跳過 {{skippedCount}} 個已失效紀錄",
+  "migrations.20261111_migrate_sandbox_to_juicefs.preflight": "檢查沙箱環境與連通性",
+  "migrations.20261111_migrate_sandbox_to_juicefs.instances": "遷移沙箱工作區與元數據",
+  "migrations.20261111_migrate_sandbox_to_juicefs.validation": "驗證 v3 遷移完整性",
+  "migrations.20261111_cleanup_legacy_sandbox_resources.name": "清理舊版 v2 沙箱殘留儲存與實例資源",
+  "migrations.20261111_cleanup_legacy_sandbox_resources.description": "在沙箱 JuiceFS 遷移完成且線上驗收穩定、確認無需回滾後手動觸發：物理回收舊版容器、舊無標籤卷、S3 冷歸檔包、Sealos Devbox 實例並清空舊 v2 表紀錄。",
+  "migrations.20261111_cleanup_legacy_sandbox_resources.result": "已回收並清理 {{cleanedCount}} 筆舊版沙箱資源紀錄",
+  "migrations.20261111_cleanup_legacy_sandbox_resources.preflight": "檢查外部回收憑證與連通性",
+  "migrations.20261111_cleanup_legacy_sandbox_resources.cleanup": "回收舊儲存資源與 v2 紀錄",
+  "migrations.20261111_cleanup_legacy_sandbox_resources.validation": "驗證舊表清空結果"
 }

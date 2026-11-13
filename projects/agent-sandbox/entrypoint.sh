@@ -1,8 +1,8 @@
 #!/bin/bash
-set -euo pipefail
+set -eu
 
-# Set work directory from environment variable, default to /home/sandbox
-WORKDIR="${FASTGPT_WORKDIR:-/home/sandbox}"
+# Ensure the configured sandbox workspace directory exists and is writable before execd accepts traffic.
+WORKDIR="${FASTGPT_WORKDIR:-/workspace}"
 mkdir -p "${WORKDIR}"
 
 if [ ! -w "${WORKDIR}" ]; then
@@ -10,13 +10,5 @@ if [ ! -w "${WORKDIR}" ]; then
   exit 1
 fi
 
-if [ "${IDE_AGENT_ENABLED:-false}" = "true" ]; then
-  echo "Starting fastgpt-ide-agent..."
-  fastgpt-ide-agent > /tmp/ide-agent.log 2>&1 &
-fi
-
-# Clear FastGPT runtime vars from the long-running shell after child processes inherit them.
-unset FASTGPT_SESSION_ID FASTGPT_WORKDIR IDE_AGENT_ENABLED
-
-# Keep the sandbox running so backend can execute commands
+# Keep PID 1 alive so OpenSandbox execd serves commands, filesystem I/O, and PTY sessions.
 exec sleep infinity

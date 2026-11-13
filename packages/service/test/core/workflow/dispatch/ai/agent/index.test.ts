@@ -10,7 +10,7 @@ import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runti
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { UserConfigError } from '@fastgpt/global/common/error/utils';
 import { getRunningSandboxId } from '@fastgpt/service/core/ai/sandbox/utils/id';
-import { getSandboxRuntimeProfile } from '@fastgpt/service/core/ai/sandbox/application/runtime';
+import { getSandboxRuntimeProfile } from '@fastgpt/service/core/ai/sandbox/infrastructure/opensandbox';
 import { createNodeSummary } from '@fastgpt/service/core/workflow/dispatch/utils/summary';
 import { runWithContext as runWithWorkflowContext } from '@fastgpt/service/core/workflow/utils/context';
 import { Readable } from 'node:stream';
@@ -43,7 +43,6 @@ const {
   getAgentSkillInfosMock,
   injectAgentSkillFilesToSandboxMock,
   checkTeamSandboxPermissionMock,
-  ensureAppSandboxRuntimeReadyMock,
   markChatSandboxEnabledMock,
   authSkillByTmbIdMock,
   getLLMModelDataMock
@@ -51,11 +50,10 @@ const {
   runAgentLoopMock: vi.fn(),
   serviceEnvMock: {
     AGENT_ENGINE: 'fastAgent',
-    AGENT_SANDBOX_PROVIDER: 'opensandbox',
+    AGENT_SANDBOX_OPENSANDBOX_BASEURL: 'http://opensandbox.local',
     AGENT_SANDBOX_OPENSANDBOX_RUNTIME: 'docker',
     AGENT_SANDBOX_OPENSANDBOX_IMAGE: 'fastgpt-agent-sandbox:latest',
     AGENT_SANDBOX_MAX_SESSION_RUNTIME: 300,
-    AGENT_SANDBOX_SEALOS_WORK_DIRECTORY: '/home/devbox/workspace',
     STREAM_RESUME_TTL_SECONDS: 300,
     STREAM_RESUME_POST_COMPLETE_TTL_SECONDS: 30,
     STREAM_RESUME_REDIS_MAXMEMORY_RATIO: 0.5,
@@ -71,7 +69,6 @@ const {
   getAgentSkillInfosMock: vi.fn(),
   injectAgentSkillFilesToSandboxMock: vi.fn(),
   checkTeamSandboxPermissionMock: vi.fn(),
-  ensureAppSandboxRuntimeReadyMock: vi.fn(),
   markChatSandboxEnabledMock: vi.fn(),
   authSkillByTmbIdMock: vi.fn(),
   getLLMModelDataMock: vi.fn()
@@ -138,18 +135,10 @@ vi.mock('@fastgpt/service/core/ai/sandbox/application/runtime', async (importOri
     ...original,
     prepareAgentSandboxRuntime: vi.fn(async (params) => ({
       sandboxClient: await getSandboxClientMock(params),
-      workspaceRoot: original.getSandboxRuntimeProfile().workDirectory,
-      workDirectory: original.getSandboxRuntimeProfile().workDirectory
+      workspaceRoot: getSandboxRuntimeProfile().workDirectory,
+      workDirectory: getSandboxRuntimeProfile().workDirectory
     }))
   };
-});
-vi.mock('@fastgpt/service/core/ai/sandbox/application/runtime/upgrade', async (importOriginal) => {
-  const original =
-    await importOriginal<
-      typeof import('@fastgpt/service/core/ai/sandbox/application/runtime/upgrade')
-    >();
-
-  return { ...original, ensureAppSandboxRuntimeReady: ensureAppSandboxRuntimeReadyMock };
 });
 vi.mock(
   '@fastgpt/service/core/ai/sandbox/application/runtime/skill/core',
@@ -350,7 +339,6 @@ describe('dispatchRunAgent user context', () => {
       }
     }));
     checkTeamSandboxPermissionMock.mockResolvedValue(undefined);
-    ensureAppSandboxRuntimeReadyMock.mockResolvedValue(false);
     markChatSandboxEnabledMock.mockResolvedValue(undefined);
     serviceEnvMock.AGENT_ENGINE = 'fastAgent';
     (global as any).feConfigs = {
@@ -371,7 +359,7 @@ describe('dispatchRunAgent user context', () => {
     });
     getAgentRuntimeToolsMock.mockResolvedValue([]);
     getSandboxClientMock.mockResolvedValue({
-      provider: {
+      opensandbox: {
         createDirectories: sandboxCreateDirectoriesMock,
         writeFiles: sandboxWriteFilesMock,
         getFileInfo: sandboxGetFileInfoMock,
@@ -379,6 +367,7 @@ describe('dispatchRunAgent user context', () => {
         execute: sandboxClientExecMock
       },
       exec: sandboxClientExecMock,
+      retryOnRecoverableError: vi.fn(async (fn: () => Promise<unknown>) => fn()),
       getSandboxId: () => 'sandbox_prepared'
     });
     getAgentSkillInfosMock.mockResolvedValue([
@@ -584,7 +573,8 @@ describe('dispatchRunAgent user context', () => {
       sourceType: ChatSourceTypeEnum.app,
       sourceId: 'app_1',
       userId: 'user_1',
-      chatId: 'chat_1'
+      chatId: 'chat_1',
+      onUpgrade: expect.any(Function)
     });
     expect(sandboxReadyBeforeLoop).toBe(true);
     expect(sandboxCreateDirectoriesMock).toHaveBeenCalledWith(['/workspace/user_files']);
@@ -621,7 +611,8 @@ describe('dispatchRunAgent user context', () => {
       sourceType: ChatSourceTypeEnum.app,
       sourceId: 'app_1',
       userId: 'user_1',
-      chatId: 'chat_1'
+      chatId: 'chat_1',
+      onUpgrade: expect.any(Function)
     });
     expect(getSandboxClientMock).toHaveBeenCalledTimes(1);
   });
@@ -662,9 +653,20 @@ describe('dispatchRunAgent user context', () => {
     const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
     const props = createProps();
     props.params.useAgentSandbox = true;
-    ensureAppSandboxRuntimeReadyMock.mockImplementationOnce(async ({ onUpgrade }) => {
-      onUpgrade?.();
-      return true;
+    getSandboxClientMock.mockImplementationOnce(async (params) => {
+      params?.onUpgrade?.();
+      return {
+        opensandbox: {
+          createDirectories: sandboxCreateDirectoriesMock,
+          writeFiles: sandboxWriteFilesMock,
+          getFileInfo: sandboxGetFileInfoMock,
+          readFiles: vi.fn(async () => []),
+          execute: sandboxClientExecMock
+        },
+        exec: sandboxClientExecMock,
+        retryOnRecoverableError: vi.fn(async (fn: () => Promise<unknown>) => fn()),
+        getSandboxId: () => 'sandbox_prepared'
+      };
     });
 
     let resultPromise: Promise<any> | undefined;
@@ -682,7 +684,7 @@ describe('dispatchRunAgent user context', () => {
     );
     const result = await resultPromise!;
 
-    expect(ensureAppSandboxRuntimeReadyMock).toHaveBeenCalledOnce();
+    expect(getSandboxClientMock).toHaveBeenCalledOnce();
     const sandboxStatusEvents = props.workflowStreamResponse.mock.calls
       .map(([event]: [{ event: string; data: unknown }]) => event)
       .filter((event: { event: string }) => event.event === 'sandboxStatus');
@@ -699,7 +701,6 @@ describe('dispatchRunAgent user context', () => {
         }
       }))
     );
-    expect(getSandboxClientMock).toHaveBeenCalledOnce();
     expect(runAgentLoopMock).toHaveBeenCalledOnce();
     expect(result.error).toBeUndefined();
   });
@@ -708,7 +709,7 @@ describe('dispatchRunAgent user context', () => {
     const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
     const props = createProps();
     props.params.useAgentSandbox = true;
-    ensureAppSandboxRuntimeReadyMock.mockRejectedValueOnce(new Error('archive upload failed'));
+    getSandboxClientMock.mockRejectedValueOnce(new Error('archive upload failed'));
 
     let resultPromise: Promise<any> | undefined;
     runWithContext(
@@ -722,7 +723,6 @@ describe('dispatchRunAgent user context', () => {
     );
     const result = await resultPromise!;
 
-    expect(getSandboxClientMock).not.toHaveBeenCalled();
     expect(runAgentLoopMock).not.toHaveBeenCalled();
     expect(
       props.workflowStreamResponse.mock.calls
@@ -757,7 +757,8 @@ describe('dispatchRunAgent user context', () => {
       sourceType: ChatSourceTypeEnum.skillEdit,
       sourceId: 'edit_skill_1',
       userId: 'user_1',
-      chatId: 'chat_1'
+      chatId: 'chat_1',
+      onUpgrade: expect.any(Function)
     });
     expect(getAgentSkillInfosMock).toHaveBeenCalledWith({
       sandbox: expect.any(Object),
@@ -1872,7 +1873,8 @@ describe('dispatchRunAgent user context', () => {
       sourceType: ChatSourceTypeEnum.app,
       sourceId: 'parent_app_id',
       userId: 'user_1',
-      chatId: 'chat_1'
+      chatId: 'chat_1',
+      onUpgrade: expect.any(Function)
     });
     expect(props.nodeSummary.hasAgentSandbox).toBe(true);
     expect(markChatSandboxEnabledMock).toHaveBeenCalledWith({

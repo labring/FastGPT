@@ -135,21 +135,33 @@ export function createScenario(context) {
       secretValues.add(headers.Cookie);
       for (const cookie of state.cookies) secretValues.add(cookie.value);
     }
-    // multipart 由 fetch 生成 boundary，仍复用同一条凭证与脱敏取证链路。
+    // multipart 由 fetch 生成 boundary；原始字节流直接作为二进制请求体发送，复用同一条凭证与脱敏取证链路。
+    const isBinaryBody = Buffer.isBuffer(body) || body instanceof Uint8Array;
     if (formData) delete headers['content-type'];
+    else if (isBinaryBody) {
+      headers['content-type'] = extraHeaders['content-type'] ?? 'application/octet-stream';
+      headers['content-length'] = String(body.byteLength);
+    }
     const response = await fetch(url, {
       method,
       headers,
-      ...(formData ? { body: formData } : body === undefined ? {} : { body: JSON.stringify(body) }),
+      ...(formData
+        ? { body: formData }
+        : isBinaryBody
+          ? { body }
+          : body === undefined
+            ? {}
+            : { body: JSON.stringify(body) }),
       redirect: 'error',
       signal: signal ?? AbortSignal.timeout(120000)
     });
+    const recordedBody = isBinaryBody ? `<bytes:${body.byteLength}>` : body;
     if (raw) {
       record('HTTP 流连接', {
         method,
         route,
         role,
-        body,
+        body: recordedBody,
         http: response.status,
         contentType: response.headers.get('content-type')
       });
@@ -160,7 +172,7 @@ export function createScenario(context) {
       method,
       route,
       role,
-      body,
+      body: recordedBody,
       response: metadataOnly
         ? {
             http: result.http,

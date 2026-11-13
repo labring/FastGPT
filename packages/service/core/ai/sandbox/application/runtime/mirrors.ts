@@ -3,7 +3,8 @@
  *
  * 负责根据环境配置写入 npm/pip/uv/apt 等镜像文件，不处理 Skill 包部署。
  */
-import type { ISandbox } from '@fastgpt-sdk/sandbox-adapter';
+import { OPEN_SANDBOX_DEFAULT_HOME_PATH } from '@fastgpt/global/core/ai/sandbox/constants';
+import type { OpenSandboxClient } from '../../infrastructure/opensandbox/opensandbox';
 import { getLogger, LogCategories } from '../../../../../common/logger';
 import { serviceEnv } from '../../../../../env';
 import { buildRuntimeHash, joinSandboxPath } from '../../utils';
@@ -13,7 +14,6 @@ import {
   setRuntimeStateValue,
   writeSandboxRuntimeState
 } from './state';
-import { resolveSandboxHome } from './home';
 import { prepareSandboxFileParentDirectories } from '../file';
 
 const logger = getLogger(LogCategories.MODULE.AI.SANDBOX);
@@ -49,22 +49,28 @@ export type SandboxRuntimeMirrorsConfig = {
   aptMirror?: string;
 };
 
+/** 读取服务端环境变量中配置的沙盒包管理器镜像源（npm / pypi / apt）。 */
 export const getSandboxRuntimeMirrorsConfig = (): SandboxRuntimeMirrorsConfig => ({
   npmRegistry: serviceEnv.AGENT_SANDBOX_NPM_REGISTRY,
   pypiIndexUrl: serviceEnv.AGENT_SANDBOX_PYPI_INDEX_URL,
   aptMirror: serviceEnv.AGENT_SANDBOX_APT_MIRROR
 });
 
+/**
+ * 按当前镜像源配置同步沙盒容器内的 npm / yarn / bun / pip / uv / apt 配置文件。
+ *
+ * 每个包管理器分组独立计算配置 hash 并缓存在沙盒 HOME 下的 runtime state 文件；
+ * 首次覆盖系统或用户原文件前保留 `.copy` 备份，环境变量移除时自动恢复备份。
+ */
 export const prepareSandboxRuntimeMirrors = async ({
   sandbox,
   config = getSandboxRuntimeMirrorsConfig()
 }: {
-  sandbox: ISandbox;
+  sandbox: OpenSandboxClient;
   config?: SandboxRuntimeMirrorsConfig;
 }): Promise<void> => {
   const normalizedConfig = normalizeMirrorsConfig(config);
-  const homeDirectory = await resolveSandboxHome(sandbox);
-  if (!homeDirectory) return;
+  const homeDirectory = OPEN_SANDBOX_DEFAULT_HOME_PATH;
 
   const stateContext = await readSandboxRuntimeState({ sandbox, homeDirectory });
   if (!stateContext.statePath) return;
@@ -141,7 +147,7 @@ export const prepareSandboxRuntimeMirrors = async ({
 
 /** 读取发行版信息，用于生成对应的 APT source 文件。 */
 const resolveSandboxAptPlatform = async (
-  sandbox: ISandbox
+  sandbox: OpenSandboxClient
 ): Promise<SandboxAptPlatform | undefined> => {
   const [osRelease] = await sandbox.readFiles(['/etc/os-release']).catch((error) => {
     logger.warn('[Sandbox Runtime] Failed to read sandbox OS release', { error });
@@ -211,7 +217,7 @@ class SandboxRuntimeMirrorFileManager {
     sandbox,
     files
   }: {
-    sandbox: ISandbox;
+    sandbox: OpenSandboxClient;
     files: SandboxRuntimeMirrorFile[];
   }): Promise<boolean> {
     const activePaths = new Set(files.map(({ path }) => path));
@@ -245,24 +251,17 @@ class SandboxRuntimeMirrorFileManager {
     const writes = [...backupFiles, ...files, ...restoreFiles];
     if (writes.length === 0) return true;
 
-    const writeResults = await prepareSandboxFileParentDirectories(
-      sandbox,
-      writes.map(({ path }) => path)
-    )
-      .then(() => sandbox.writeFiles(writes))
-      .catch((error) => {
-        logger.warn('[Sandbox Runtime] Failed to write mirror config files', { error });
-        return undefined;
-      });
-    const failedWrite = writeResults?.find((result) => result.error);
-    if (!writeResults || failedWrite) {
-      logger.warn('[Sandbox Runtime] Failed to write mirror config files', {
-        path: failedWrite?.path,
-        error: failedWrite?.error
-      });
+    try {
+      await prepareSandboxFileParentDirectories(
+        sandbox,
+        writes.map(({ path }) => path)
+      );
+      await sandbox.writeFiles(writes);
+      return true;
+    } catch (error) {
+      logger.warn('[Sandbox Runtime] Failed to write mirror config files', { error });
       return false;
     }
-    return true;
   }
 
   private getCopyPath(path: string): string {
@@ -279,6 +278,9 @@ const buildSandboxRuntimeMirrorFiles = ({
   paths: ReturnType<typeof getSandboxRuntimeMirrorPaths>;
   aptPlatform?: SandboxAptPlatform;
 }): SandboxRuntimeMirrorFiles => {
+  const escapeQuotedConfigString = (value: string) =>
+    value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+
   const files: SandboxRuntimeMirrorFiles = {
     npm: [],
     pypi: [],
@@ -297,11 +299,11 @@ const buildSandboxRuntimeMirrorFiles = ({
       },
       {
         path: paths.npm[2],
-        data: `npmRegistryServer: "${escapeYamlString(config.npmRegistry)}"\n`
+        data: `npmRegistryServer: "${escapeQuotedConfigString(config.npmRegistry)}"\n`
       },
       {
         path: paths.npm[3],
-        data: `[install]\nregistry = "${escapeTomlString(config.npmRegistry)}"\n`
+        data: `[install]\nregistry = "${escapeQuotedConfigString(config.npmRegistry)}"\n`
       }
     );
   }
@@ -327,9 +329,9 @@ const buildSandboxRuntimeMirrorFiles = ({
       {
         path: paths.pypi[2],
         data: `${[
-          `default-index = "${escapeTomlString(config.pypiIndexUrl!)}"`,
+          `default-index = "${escapeQuotedConfigString(config.pypiIndexUrl!)}"`,
           ...(pypiTrustedHost
-            ? [`allow-insecure-host = ["${escapeTomlString(pypiTrustedHost)}"]`]
+            ? [`allow-insecure-host = ["${escapeQuotedConfigString(pypiTrustedHost)}"]`]
             : [])
         ].join('\n')}\n`
       }
@@ -353,6 +355,20 @@ const buildAptSourceContent = ({
   platform: SandboxAptPlatform;
   aptMirror: string;
 }): string => {
+  const resolveDebianSecurityMirror = (mirror: string): string => {
+    try {
+      const mirrorUrl = new URL(mirror);
+      const mirrorPath = mirrorUrl.pathname.replace(/\/+$/, '');
+      if (mirrorPath.endsWith('/debian')) {
+        mirrorUrl.pathname = `${mirrorPath.slice(0, -'/debian'.length)}/debian-security`;
+        return mirrorUrl.toString();
+      }
+    } catch {
+      // 保留原配置，让 apt 在执行时报告无效地址。
+    }
+    return mirror;
+  };
+
   if (platform.distribution === 'debian') {
     return [
       'Types: deb',
@@ -385,21 +401,3 @@ const buildAptSourceContent = ({
     ''
   ].join('\n');
 };
-
-const resolveDebianSecurityMirror = (aptMirror: string): string => {
-  try {
-    const mirrorUrl = new URL(aptMirror);
-    const mirrorPath = mirrorUrl.pathname.replace(/\/+$/, '');
-    if (mirrorPath.endsWith('/debian')) {
-      mirrorUrl.pathname = `${mirrorPath.slice(0, -'/debian'.length)}/debian-security`;
-      return mirrorUrl.toString();
-    }
-  } catch {
-    // 保留原配置，让 apt 在执行时报告无效地址。
-  }
-  return aptMirror;
-};
-
-const escapeTomlString = (value: string) => value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
-
-const escapeYamlString = (value: string) => value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');

@@ -2,21 +2,7 @@ import React from 'react';
 import { Box, Flex, Text } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { getIconByFilename } from '../utils';
-
-export type OpenedFile = {
-  path: string;
-  name: string;
-  content: string;
-  language: string;
-  isBinary: boolean;
-  isDirty: boolean;
-  isLoading?: boolean;
-  // 通过 HTTP stream read 打开的文件，避免编辑保存时再次走 ide-agent WebSocket。
-  readOnly?: boolean;
-  // 非媒体文件 UTF-8 解码失败时为 true，前端走「无法预览」兜底
-  isUnknown?: boolean;
-  etag?: string;
-};
+import type { OpenedFile } from '../types';
 
 type Props = {
   openedFiles: OpenedFile[];

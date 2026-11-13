@@ -81,6 +81,9 @@ catalogs:
     '@tanstack/react-table':
       specifier: ^8.21.3
       version: 8.21.3
+    '@types/bun':
+      specifier: 1.4.4
+      version: 1.4.4
     '@types/js-yaml':
       specifier: ^4.0.9
       version: 4.0.9
@@ -565,9 +568,6 @@ importers:
       '@fastgpt-plugin/sdk-client':
         specifier: 'catalog:'
         version: 1.2.0-beta.2(zod@4.1.12)
-      '@fastgpt-sdk/sandbox-adapter':
-        specifier: workspace:*
-        version: link:../../sdk/sandbox-adapter
       ajv:
         specifier: 'catalog:'
         version: 8.17.1
@@ -638,6 +638,9 @@ importers:
 
   packages/service:
     dependencies:
+      '@alibaba-group/opensandbox':
+        specifier: ^1.2.0
+        version: 1.2.0
       '@apidevtools/json-schema-ref-parser':
         specifier: ^11.7.2
         version: 11.7.2
@@ -647,9 +650,6 @@ importers:
       '@fastgpt-sdk/otel':
         specifier: workspace:*
         version: link:../../sdk/otel
-      '@fastgpt-sdk/sandbox-adapter':
-        specifier: workspace:*
-        version: link:../../sdk/sandbox-adapter
       '@fastgpt-sdk/storage':
         specifier: workspace:*
         version: link:../../sdk/storage
@@ -1109,9 +1109,6 @@ importers:
       '@fastgpt-sdk/otel':
         specifier: workspace:*
         version: link:../../sdk/otel
-      '@fastgpt-sdk/sandbox-adapter':
-        specifier: workspace:*
-        version: link:../../sdk/sandbox-adapter
       '@fastgpt-sdk/storage':
         specifier: workspace:*
         version: link:../../sdk/storage
@@ -1476,9 +1473,6 @@ importers:
       '@fastgpt-sdk/otel':
         specifier: workspace:*
         version: link:../../sdk/otel
-      '@fastgpt-sdk/sandbox-adapter':
-        specifier: workspace:*
-        version: link:../../sdk/sandbox-adapter
       '@fastgpt-sdk/storage':
         specifier: workspace:*
         version: link:../../sdk/storage
@@ -2000,8 +1994,39 @@ importers:
         specifier: ^5.0.1
         version: 5.0.1
 
+  projects/opensandbox-proxy:
+    dependencies:
+      '@fastgpt-sdk/otel':
+        specifier: workspace:*
+        version: link:../../sdk/otel
+      '@fastgpt/global':
+        specifier: workspace:*
+        version: link:../../packages/global
+      jsonwebtoken:
+        specifier: 'catalog:'
+        version: 9.0.3
+      mime:
+        specifier: 'catalog:'
+        version: 4.1.0
+      zod:
+        specifier: 'catalog:'
+        version: 4.1.12
+    devDependencies:
+      '@types/bun':
+        specifier: 'catalog:'
+        version: 1.4.4
+      '@types/jsonwebtoken':
+        specifier: 'catalog:'
+        version: 9.0.9
+      typescript:
+        specifier: 'catalog:'
+        version: 6.0.3
+
   projects/volume-manager:
     dependencies:
+      '@fastgpt-sdk/otel':
+        specifier: workspace:*
+        version: link:../../sdk/otel
       '@fastgpt/global':
         specifier: workspace:*
         version: link:../../packages/global
@@ -2091,28 +2116,6 @@ importers:
       typescript:
         specifier: 'catalog:'
         version: 6.0.3
-
-  sdk/sandbox-adapter:
-    dependencies:
-      '@alibaba-group/opensandbox':
-        specifier: ^1.2.0
-        version: 1.2.0
-    devDependencies:
-      '@types/node':
-        specifier: 'catalog:'
-        version: 24.13.3
-      '@vitest/coverage-v8':
-        specifier: 'catalog:'
-        version: 4.1.5(vitest@4.1.5)
-      tsdown:
-        specifier: 'catalog:'
-        version: 0.23.7(tsx@4.20.6)(typescript@6.0.3)(unrun@0.2.39)
-      typescript:
-        specifier: 'catalog:'
-        version: 6.0.3
-      vitest:
-        specifier: 'catalog:'
-        version: 4.1.5(@opentelemetry/api@1.9.0)(@types/node@24.13.3)(@vitest/coverage-v8@4.1.5)(jsdom@26.1.0(bufferutil@4.1.0)(canvas@3.2.3)(utf-8-validate@5.0.10))(vite@6.4.5(@types/node@24.13.3)(jiti@2.7.0)(lightningcss@1.32.0)(sass@1.85.1)(terser@5.39.0)(tsx@4.20.6)(yaml@2.8.4))
 
   sdk/storage:
     dependencies:
@@ -6779,6 +6782,9 @@ packages:
   '@types/body-parser@1.19.5':
     resolution: {integrity: sha512-fB3Zu92ucau0iQ0JMCFQE7b/dv8Ot07NI3KaZIkIUNXq82k4eBAqUaneXfleGY9JWskeS9y+u0nXMyspcuQrCg==}
 
+  '@types/bun@1.4.4':
+    resolution: {integrity: sha512-9wkRDXUXK124pEnAutE6n/l18j+i9GC5IAHK8TmX/2nlySETmky0OU6yL5U8pW1AoKh++AN9auDCr647BfurjQ==}
+
   '@types/chai@5.2.3':
     resolution: {integrity: sha512-Mw558oeA9fFbv65/y4mHtXDs9bPnFMZAL/jxdPFUpOHHIXX91mcgEHbS5Lahr+pwZFR8A7GQleRWeI6cGFC2UA==}
 
@@ -7982,6 +7988,9 @@ packages:
 
   bullmq@5.52.2:
     resolution: {integrity: sha512-fK/dKIv8ymyys4K+zeNEPA+yuYWzRPmBWUmwIMz8DvYekadl8VG19yUx94Na0n0cLAi+spdn3a/+ufkYK7CBUg==}
+
+  bun-types@1.4.4:
+    resolution: {integrity: sha512-yjrJh5oGX7mMPKGd19YXyIjmEuj4G4zNC30bs7PM9Az7NQ3ndF3j6hbeRdvJTRQEhJ/FYQwW0a2moweEi2hMxQ==}
 
   bundle-n-require@1.1.2:
     resolution: {integrity: sha512-bEk2jakVK1ytnZ9R2AAiZEeK/GxPUM8jvcRxHZXifZDMcjkI4EG/GlsJ2YGSVYT9y/p/gA9/0yDY8rCGsSU6Tg==}
@@ -21010,6 +21019,10 @@ snapshots:
       '@types/connect': 3.4.38
       '@types/node': 20.19.43
 
+  '@types/bun@1.4.4':
+    dependencies:
+      bun-types: 1.4.4
+
   '@types/chai@5.2.3':
     dependencies:
       '@types/deep-eql': 4.0.2
@@ -22500,6 +22513,11 @@ snapshots:
       uuid: 9.0.1
     transitivePeerDependencies:
       - supports-color
+
+  bun-types@1.4.4:
+    dependencies:
+      '@types/node': 20.19.43
+      undici-types: 8.3.0
 
   bundle-n-require@1.1.2:
     dependencies:

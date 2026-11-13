@@ -1,44 +1,28 @@
 import { NextAPI } from '@/service/middleware/entry';
-import { type ApiRequestProps } from '@fastgpt/next/type';
-import { keepaliveSandboxSession } from '@fastgpt/service/core/ai/sandbox/interface/session';
-import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import type { ApiRequestProps } from '@fastgpt/next/type';
 import { authAgentSandboxProxy } from '@/service/core/sandbox/auth';
-import { buildSandboxClientQueryFromChatSource } from '@fastgpt/service/core/ai/sandbox/interface/runtime';
 import {
   SandboxKeepaliveBodySchema,
-  SandboxKeepaliveResponseSchema,
-  type SandboxKeepaliveBody,
-  type SandboxKeepaliveResponse
+  type SandboxKeepaliveBody
 } from '@fastgpt/global/openapi/core/ai/sandbox/api';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { keepaliveSandboxSessionsByIds } from '@fastgpt/service/core/ai/sandbox/interface/session';
 
 /**
- * 虚拟机沙盒 Proxy 专属内网保活 API
- *
- * 职责：
- * 1. 仅限内部 Proxy（agent-sandbox-proxy）持有正确的秘钥签名时调用。
- * 2. 校验通过后，直接对指定的应用和会话沙盒实例执行 ensureAvailable()，从而刷新实例的活跃时间。
- * 3. 避免暴露给外网客户端，提供极高安全性。
+ * 面向 `opensandbox-proxy` 的内部批量保活接口。
+ * 校验共享密钥后批量刷新运行态沙盒实例的 `lastActiveAt`，不唤醒已停止实例。
  */
-async function handler(
-  req: ApiRequestProps<SandboxKeepaliveBody>
-): Promise<SandboxKeepaliveResponse> {
+async function handler(req: ApiRequestProps<SandboxKeepaliveBody>): Promise<void> {
   authAgentSandboxProxy(req);
 
-  const { sourceType, sourceId, userId, chatId } = parseApiInput({
+  const { sandboxIds } = parseApiInput({
     req,
     bodySchema: SandboxKeepaliveBodySchema
   }).body;
 
-  await keepaliveSandboxSession(
-    buildSandboxClientQueryFromChatSource({
-      sourceType,
-      sourceId,
-      userId,
-      chatId
-    })
-  );
-
-  return SandboxKeepaliveResponseSchema.parse(undefined);
+  await keepaliveSandboxSessionsByIds(sandboxIds);
 }
 
-export default NextAPI(handler);
+export default NextAPI(handler, {
+  csrf: false
+});

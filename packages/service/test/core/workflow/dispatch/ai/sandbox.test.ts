@@ -3,14 +3,10 @@ import { getRunningSandboxId } from '@fastgpt/service/core/ai/sandbox/utils/id';
 import { ensureWorkflowSandboxReadyForUse } from '@fastgpt/service/core/workflow/dispatch/ai/sandbox';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { ensureAppSandboxRuntimeReadyMock, markChatSandboxEnabledMock } = vi.hoisted(() => ({
-  ensureAppSandboxRuntimeReadyMock: vi.fn(),
+const { markChatSandboxEnabledMock } = vi.hoisted(() => ({
   markChatSandboxEnabledMock: vi.fn()
 }));
 
-vi.mock('@fastgpt/service/core/ai/sandbox/application/runtime/upgrade', () => ({
-  ensureAppSandboxRuntimeReady: ensureAppSandboxRuntimeReadyMock
-}));
 vi.mock('@fastgpt/service/core/chat/sandbox/service', () => ({
   markChatSandboxEnabled: markChatSandboxEnabledMock
 }));
@@ -27,16 +23,12 @@ describe('ensureWorkflowSandboxReadyForUse', () => {
 
   beforeEach(() => {
     vi.resetAllMocks();
-    ensureAppSandboxRuntimeReadyMock.mockResolvedValue(false);
     markChatSandboxEnabledMock.mockResolvedValue(undefined);
   });
 
   it('reports readiness only after runtime preparation and root chat persistence complete', async () => {
     const workflowStreamResponse = vi.fn();
     const preparingEvent = { event: 'sandboxStatus', data: { sandboxId, phase: 'lazyInit' } };
-    ensureAppSandboxRuntimeReadyMock.mockImplementationOnce(async () => {
-      expect(workflowStreamResponse.mock.calls).toEqual([[preparingEvent]]);
-    });
     const runtime = { client: 'prepared' };
     const prepareRuntime = vi.fn(async () => {
       expect(workflowStreamResponse.mock.calls).toEqual([[preparingEvent]]);
@@ -70,19 +62,15 @@ describe('ensureWorkflowSandboxReadyForUse', () => {
   it('deduplicates upgrade progress and returns to preparation until runtime is ready', async () => {
     const workflowStreamResponse = vi.fn();
     const getPhases = () => workflowStreamResponse.mock.calls.map(([event]) => event.data.phase);
-    ensureAppSandboxRuntimeReadyMock.mockImplementationOnce(async ({ onUpgrade }) => {
-      expect(getPhases()).toEqual(['lazyInit']);
-      onUpgrade();
-      onUpgrade();
-      expect(getPhases()).toEqual(['lazyInit', 'upgrading']);
-      return true;
-    });
 
     await ensureWorkflowSandboxReadyForUse({
       ...source,
       workflowStreamResponse,
-      prepareRuntime: async () => {
-        expect(getPhases()).toEqual(['lazyInit', 'upgrading', 'lazyInit']);
+      prepareRuntime: async ({ onUpgrade }) => {
+        expect(getPhases()).toEqual(['lazyInit']);
+        onUpgrade();
+        onUpgrade();
+        expect(getPhases()).toEqual(['lazyInit', 'upgrading']);
       }
     });
 
@@ -103,7 +91,6 @@ describe('ensureWorkflowSandboxReadyForUse', () => {
       })
     ).resolves.toBe('skill-runtime');
 
-    expect(ensureAppSandboxRuntimeReadyMock).not.toHaveBeenCalled();
     expect(markChatSandboxEnabledMock).not.toHaveBeenCalled();
     expect(prepareRuntime).toHaveBeenCalledOnce();
     expect(workflowStreamResponse.mock.calls.map(([event]) => event.data)).toEqual([
@@ -112,33 +99,29 @@ describe('ensureWorkflowSandboxReadyForUse', () => {
     ]);
   });
 
-  it.each(['configuration', 'runtime'])(
-    'does not report readiness after %s fails',
-    async (stage) => {
-      const error = new Error(`${stage} failed`);
-      const workflowStreamResponse = vi.fn();
-      const prepareRuntime = vi.fn(async () => undefined);
-      if (stage === 'configuration') {
-        ensureAppSandboxRuntimeReadyMock.mockRejectedValueOnce(error);
-      } else {
-        prepareRuntime.mockRejectedValueOnce(error);
-      }
+  it('does not report readiness after runtime preparation fails', async () => {
+    const error = new Error('runtime failed');
+    const workflowStreamResponse = vi.fn();
+    const prepareRuntime = vi.fn(async () => {
+      throw error;
+    });
 
-      await expect(
-        ensureWorkflowSandboxReadyForUse({ ...source, workflowStreamResponse, prepareRuntime })
-      ).rejects.toBe(error);
+    await expect(
+      ensureWorkflowSandboxReadyForUse({ ...source, workflowStreamResponse, prepareRuntime })
+    ).rejects.toBe(error);
 
-      expect(workflowStreamResponse.mock.calls.map(([event]) => event.data.phase)).toEqual([
-        'lazyInit'
-      ]);
-      expect(prepareRuntime).toHaveBeenCalledTimes(stage === 'configuration' ? 0 : 1);
-      expect(markChatSandboxEnabledMock).not.toHaveBeenCalled();
-    }
-  );
+    expect(workflowStreamResponse.mock.calls.map(([event]) => event.data.phase)).toEqual([
+      'lazyInit'
+    ]);
+    expect(prepareRuntime).toHaveBeenCalledTimes(1);
+    expect(markChatSandboxEnabledMock).not.toHaveBeenCalled();
+  });
 
   it('prepares the runtime without a stream callback', async () => {
-    const prepareRuntime = vi.fn(async () => 'runtime');
-    ensureAppSandboxRuntimeReadyMock.mockImplementationOnce(async ({ onUpgrade }) => onUpgrade());
+    const prepareRuntime = vi.fn(async ({ onUpgrade }) => {
+      onUpgrade();
+      return 'runtime';
+    });
 
     await expect(ensureWorkflowSandboxReadyForUse({ ...source, prepareRuntime })).resolves.toBe(
       'runtime'

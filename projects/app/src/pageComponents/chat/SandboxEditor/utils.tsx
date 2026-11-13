@@ -1,54 +1,15 @@
 import type { IconNameType } from '@fastgpt/web/components/common/Icon/type';
-import { shellQuote } from '@fastgpt/global/common/string/utils';
 
-/** 将服务端返回的 session 绝对目录换算为 IDE Agent 接受的 workspace 相对路径。 */
-export const getSandboxIdeSessionRoot = (workspaceRoot: string, sessionWorkDirectory: string) => {
-  const normalizedWorkspaceRoot = workspaceRoot.replace(/\/+$/, '');
-  const normalizedSessionRoot = sessionWorkDirectory.replace(/\/+$/, '');
+export const SANDBOX_WORKSPACE_REFRESH_EVENT = 'fastgpt:sandbox-workspace-refresh';
 
-  if (normalizedSessionRoot === normalizedWorkspaceRoot) return '.';
-  if (!normalizedSessionRoot.startsWith(`${normalizedWorkspaceRoot}/`)) {
-    throw new Error('Sandbox session directory is outside workspace');
+/** 通知已打开的 IDE 刷新工作区；放在纯工具模块，避免聊天流处理引入编辑器组件依赖。 */
+export const dispatchSandboxWorkspaceRefresh = () => {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new window.CustomEvent(SANDBOX_WORKSPACE_REFRESH_EVENT));
   }
-
-  return normalizedSessionRoot.slice(normalizedWorkspaceRoot.length + 1);
 };
 
-const joinSandboxIdePath = (root: string, path: string) => {
-  if (root === '.') return path;
-  if (!path || path === '.' || path === './') return root;
-  return `${root}/${path.replace(/^\.\//, '')}`;
-};
-
-/** 给 IDE Agent RPC 参数附加当前 Chat 的相对目录，不改变编辑器内部的相对路径模型。 */
-export const scopeSandboxIdeRpcParams = (method: string, params: unknown, sessionRoot: string) => {
-  if (sessionRoot === '.' || !params || typeof params !== 'object') return params;
-  const value = params as Record<string, unknown>;
-
-  if (method === 'fs/move') {
-    return {
-      ...value,
-      from: joinSandboxIdePath(sessionRoot, String(value.from ?? '')),
-      to: joinSandboxIdePath(sessionRoot, String(value.to ?? ''))
-    };
-  }
-  if (method === 'fs/exec') {
-    const quotedRoot = shellQuote(sessionRoot);
-    return {
-      ...value,
-      command: `mkdir -p ${quotedRoot} && cd ${quotedRoot} && ${String(value.command ?? '')}`
-    };
-  }
-  if (method.startsWith('fs/') && typeof value.path === 'string') {
-    return {
-      ...value,
-      path: joinSandboxIdePath(sessionRoot, value.path)
-    };
-  }
-
-  return params;
-};
-
+/** 校验并规整用于沙盒 shell 命令的工作区相对路径（强制以 `.` 或 `./` 开头，拒绝绝对路径与 `..` 逃逸）。 */
 export const getSafeSandboxCommandPath = (path: string) => {
   const normalizedPath = path.replace(/^\.\//, '');
   const segments = normalizedPath.split('/');
@@ -63,6 +24,7 @@ export const getSafeSandboxCommandPath = (path: string) => {
   return normalizedPath === '.' ? '.' : `./${normalizedPath}`;
 };
 
+/** 校验单个文件或目录名称，禁止路径分隔符、控制字符及 `.` / `..`。 */
 export const getSafeSandboxPathSegment = (name: string) => {
   if (!name || name === '.' || name === '..' || /[\/\\\u0000]/.test(name)) {
     throw new Error('Invalid sandbox path');
@@ -70,17 +32,20 @@ export const getSafeSandboxPathSegment = (name: string) => {
   return name;
 };
 
+/** 提取沙盒相对路径的父目录路径；顶层节点返回 `.`。 */
 export const getSandboxParentPath = (path: string) => {
   const parts = path.split('/');
   parts.pop();
   return parts.join('/') || '.';
 };
 
+/** 提取沙盒相对路径的末尾文件或目录名。 */
 export const getSandboxPathName = (path: string) => {
   const parts = path.split('/');
   return parts.pop() || '';
 };
 
+/** 拼接父目录与子节点名称，根目录 `.` 下直接返回子节点名称。 */
 export const joinSandboxPath = (parentPath: string, name: string) =>
   parentPath === '.' ? name : `${parentPath}/${name}`;
 
@@ -114,6 +79,7 @@ export type SandboxMoveOperation = {
   newPath: string;
 };
 
+/** 构建拖拽/移动操作的源路径与目标路径映射，自动过滤已在目标目录内的无变化项。 */
 export const buildSandboxMoveOperations = (
   sourcePaths: string[],
   targetDirPath: string
@@ -134,6 +100,7 @@ export const buildSandboxMoveOperations = (
     .filter((item) => item.currentParentPath !== targetDirPath);
 };
 
+/** 将批量移动路径映射同步到当前已展开目录集合，并按需展开目标目录。 */
 export const applySandboxMoveOperationsToExpandedDirs = (
   expandedDirs: Set<string>,
   operations: SandboxMoveOperation[],
@@ -156,6 +123,7 @@ export const applySandboxMoveOperationsToExpandedDirs = (
   return next;
 };
 
+/** 根据当前选中节点解析新建/上传的目标父目录（选中文件时取其父目录，选中目录时取其自身）。 */
 export const getTargetDirectoryPath = <
   T extends { type: 'file' | 'directory'; path: string; children?: T[] }
 >(
@@ -173,7 +141,7 @@ export const getTargetDirectoryPath = <
   return looksLikeFile ? getSandboxParentPath(selectedPath) : selectedPath;
 };
 
-// Get icon by filename
+/** 根据文件扩展名返回对应的沙盒文件图标名。 */
 export const getIconByFilename = (filename: string): IconNameType => {
   const ext = filename.split('.').pop()?.toLowerCase();
 
@@ -267,7 +235,7 @@ const langMap = Object.entries(extensionToLang).reduce(
   {} as Record<string, string>
 );
 
-// 获取文件语言
+/** 根据文件扩展名推断编辑器语法高亮或媒体预览语言标识。 */
 export const getLanguageByFileName = (fileName: string): string => {
   const ext = fileName.split('.').at(-1)?.toLowerCase();
   return langMap[ext || ''] ?? 'plaintext';
@@ -280,16 +248,14 @@ export const getIsBinaryByLanguage = (language: string) => {
   return ['image', 'audio', 'video'].includes(language);
 };
 
-/**
- * 支持源码/预览切换的语言列表
- */
 const previewableLanguages = ['markdown', 'svg'];
 
+/** 判断指定文件语言是否支持源码与渲染预览切换（如 Markdown、SVG）。 */
 export const getSupportsPreviewToggle = (language?: string) => {
   return !!language && previewableLanguages.includes(language);
 };
 
-// Update tree node
+/** 递归替换指定目录节点的 children 并更新其懒加载状态。 */
 export const updateTreeNode = <
   T extends {
     type: 'file' | 'directory';
@@ -315,7 +281,7 @@ export const updateTreeNode = <
   });
 };
 
-// Filter tree
+/** 按文件名关键字递归过滤目录树，保留存在匹配文件子节点的目录分支。 */
 export const filterTree = <
   T extends { type: 'file' | 'directory'; name: string; path: string; children?: T[] }
 >(
@@ -375,7 +341,7 @@ export const deleteTreeNode = <T extends { path: string; children?: T[] }>(
 };
 
 /**
- * 递归向树中指定 parentPath 添加节点，并维持文件夹优先+字母序自然排序
+ * 对同层目录树节点按“文件夹优先 + 自然字母序”排序。
  */
 export const sortTreeNodes = <T extends { type: 'file' | 'directory'; name: string }>(
   nodes: T[]
@@ -389,6 +355,9 @@ export const sortTreeNodes = <T extends { type: 'file' | 'directory'; name: stri
   });
 };
 
+/**
+ * 递归向树中指定 `parentPath` 添加或覆盖节点，并维持“文件夹优先 + 自然字母序”排序。
+ */
 export const addTreeNode = <
   T extends {
     type: 'file' | 'directory';
@@ -436,11 +405,17 @@ export const addTreeNode = <
  * 递归更新树节点路径（重命名、移动等）
  * 它需要处理被修改节点本身，以及该节点下所有子孙节点的 path 属性递归更新
  */
-export const updateDescendantsPath = <T extends { path: string; children?: T[]; level: number }>(
+const updateDescendantsPath = <T extends { path: string; children?: T[]; level: number }>(
   node: T,
-  oldPath: string,
-  newPath: string,
-  levelDiff: number
+  {
+    oldPath,
+    newPath,
+    levelDiff
+  }: {
+    oldPath: string;
+    newPath: string;
+    levelDiff: number;
+  }
 ): T => {
   const nextPath = node.path.startsWith(oldPath + '/')
     ? newPath + node.path.substring(oldPath.length)
@@ -456,7 +431,7 @@ export const updateDescendantsPath = <T extends { path: string; children?: T[]; 
       path: nextPath,
       level: nextLevel,
       children: node.children.map((child) =>
-        updateDescendantsPath(child, oldPath, newPath, levelDiff)
+        updateDescendantsPath(child, { oldPath, newPath, levelDiff })
       )
     };
   }
@@ -485,16 +460,15 @@ export const moveTreeNodeInTree = <
   if (!srcNode) return tree;
 
   // 2. 动态搜索目标节点以提取绝对准确的真实层级 level，确保缩进完美对齐
-  let targetLevel = 0;
-  if (destDirPath !== '.') {
+  const targetLevel = (() => {
+    if (destDirPath === '.') return 0;
     const destNode = findNodeByPath(tree, destDirPath);
     if (destNode) {
-      targetLevel = destNode.level + 1;
-    } else {
-      // 降级兜底方案，如果没展开或找不到，再根据物理路径算真实深度
-      targetLevel = destDirPath.split('/').length;
+      return destNode.level + 1;
     }
-  }
+    // 降级兜底方案，如果没展开或找不到，再根据物理路径算真实深度
+    return destDirPath.split('/').length;
+  })();
 
   // 3. 从原位置删除
   const cleanTree = deleteTreeNode(tree, srcPath);
@@ -506,7 +480,11 @@ export const moveTreeNodeInTree = <
   const levelDiff = targetLevel - srcNode.level;
 
   // 递归更新源节点及所有子孙节点的路径和层级
-  const updatedSrcNode = updateDescendantsPath(srcNode, srcPath, newPath, levelDiff);
+  const updatedSrcNode = updateDescendantsPath(srcNode, {
+    oldPath: srcPath,
+    newPath,
+    levelDiff
+  });
 
   // 5. 添加到新位置
   return addTreeNode(cleanTree, destDirPath, updatedSrcNode);
@@ -533,7 +511,10 @@ export const renameTreeNodeInTree = <
   const newTree = tree.map((node) => {
     if (node.path === oldPath) {
       // 递归更新子孙节点的路径
-      return updateDescendantsPath({ ...node, name: newName }, oldPath, newPath, 0) as T;
+      return updateDescendantsPath(
+        { ...node, name: newName },
+        { oldPath, newPath, levelDiff: 0 }
+      ) as T;
     }
     if (node.children) {
       return { ...node, children: renameTreeNodeInTree(node.children, oldPath, newPath, newName) };

@@ -10,13 +10,23 @@ import {
   UpdateSkillCollaboratorBodySchema,
   UpdateSkillCollaboratorResponseSchema
 } from '../../../openapi/core/ai/skill/api';
+import { SandboxFsExecBodySchema } from '../../../openapi/core/ai/sandbox/api';
 
 const objectId = '68ad85a7463006c963799a05';
 
 const expectedPaths = {
   '/core/ai/optimizePrompt': 'post',
-  '/core/ai/sandbox/keepalive': 'post',
+  '/core/ai/sandbox/download': 'post',
+  '/core/ai/sandbox/upload': 'post',
+  '/core/ai/sandbox/getFilePreviewLink': 'post',
+  '/core/ai/sandbox/fs/list': 'post',
+  '/core/ai/sandbox/fs/mkdir': 'post',
+  '/core/ai/sandbox/fs/move': 'post',
+  '/core/ai/sandbox/fs/delete': 'post',
+  '/core/ai/sandbox/fs/exec': 'post',
+  '/core/ai/sandbox/getTicket': 'post',
   '/core/ai/sandbox/verifyTicket': 'get',
+  '/core/ai/sandbox/keepalive': 'post',
   '/core/ai/model/catalog': 'get',
   '/core/ai/model/config': 'get',
   '/core/ai/model/list': 'get',
@@ -37,22 +47,6 @@ const expectedPaths = {
 describe('AI OpenAPI contracts', () => {
   it.each(Object.entries(expectedPaths))('registers %s as %s', (path, method) => {
     expect(openAPIDocument.paths?.[path]?.[method]).toBeDefined();
-  });
-
-  it('documents both sandbox ticket verification modes', () => {
-    const operation = openAPIDocument.paths?.['/core/ai/sandbox/verifyTicket']?.get;
-    const parameters = operation?.parameters ?? [];
-
-    expect(parameters).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ name: 'ticket', in: 'query' }),
-        expect.objectContaining({ name: 'x-proxy-token', in: 'header', required: true }),
-        expect.objectContaining({
-          name: 'x-sandbox-preview-session',
-          in: 'header'
-        })
-      ])
-    );
   });
 
   it('groups user model APIs under common model management', () => {
@@ -190,5 +184,23 @@ describe('AI OpenAPI contracts', () => {
     expect(openAPIDocument.paths?.['/core/chat/resume']?.get?.tags).toEqual([
       DevApiTagsMap.chatController
     ]);
+  });
+
+  it('applies bounded default timeoutMs on SandboxFsExecBodySchema', () => {
+    expect(
+      SandboxFsExecBodySchema.parse({
+        appId: objectId,
+        chatId: 'chat-1',
+        command: 'pwd'
+      }).timeoutMs
+    ).toBe(30_000);
+    expect(() =>
+      SandboxFsExecBodySchema.parse({
+        appId: objectId,
+        chatId: 'chat-1',
+        command: 'pwd',
+        timeoutMs: 600_001
+      })
+    ).toThrow();
   });
 });

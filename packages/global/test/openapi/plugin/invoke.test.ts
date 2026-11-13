@@ -16,10 +16,10 @@ describe('reverse invoke OpenAPI contracts', () => {
     expect(openAPIDocument.paths?.['/invoke/userInfo']?.post?.tags).toEqual([
       DevApiTagsMap.reverseInvokePlugin
     ]);
-    expect(openAPIDocument.paths?.['/core/ai/sandbox/keepalive']?.post?.tags).toEqual([
+    expect(openAPIDocument.paths?.['/core/ai/sandbox/verifyTicket']?.get?.tags).toEqual([
       DevApiTagsMap.reverseInvokeSandbox
     ]);
-    expect(openAPIDocument.paths?.['/core/ai/sandbox/verifyTicket']?.get?.tags).toEqual([
+    expect(openAPIDocument.paths?.['/core/ai/sandbox/keepalive']?.post?.tags).toEqual([
       DevApiTagsMap.reverseInvokeSandbox
     ]);
     expect(openAPIDocument.paths?.['/core/ai/sandbox/upload']?.post?.tags).toEqual([

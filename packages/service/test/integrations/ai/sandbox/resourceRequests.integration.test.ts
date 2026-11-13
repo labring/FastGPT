@@ -1,11 +1,11 @@
 import { randomUUID } from 'node:crypto';
 import { createServer } from 'node:http';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
-import type { SandboxCreateSpec } from '@fastgpt-sdk/sandbox-adapter';
+import type { SandboxCreateSpec } from '@fastgpt/service/core/ai/sandbox/infrastructure/opensandbox';
 
 const shouldRunKubernetes =
   process.env.SANDBOX_INTEGRATION === 'true' &&
-  process.env.AGENT_SANDBOX_PROVIDER === 'opensandbox' &&
+  Boolean(process.env.AGENT_SANDBOX_OPENSANDBOX_BASEURL?.trim()) &&
   process.env.AGENT_SANDBOX_OPENSANDBOX_RUNTIME === 'kubernetes';
 
 type ResourceRequestCase = {
@@ -78,12 +78,12 @@ describe.sequential('OpenSandbox resource requests HTTP integration', () => {
     {
       name: 'scales CPU independently and preserves memory',
       cpuFactor: '5',
-      expectedRequests: { cpu: '0.4', memory: '4096Mi' }
+      expectedRequests: { cpu: '0.4', memory: '4096Mi', 'ephemeral-storage': '1.5Gi' }
     },
     {
       name: 'scales memory independently and preserves CPU',
       memoryFactor: '2',
-      expectedRequests: { cpu: '2', memory: '2048Mi' }
+      expectedRequests: { cpu: '2', memory: '2048Mi', 'ephemeral-storage': '1.5Gi' }
     },
     {
       name: 'rounds requests from the final overridden limits without disk',
@@ -91,42 +91,42 @@ describe.sequential('OpenSandbox resource requests HTTP integration', () => {
       memoryFactor: '3',
       createConfig: { resourceLimits: { cpuCount: 4, memoryMiB: 8192 } },
       resourceLimits: { cpuCount: 1, memoryMiB: 2048 },
-      expectedLimits: { cpu: '1', memory: '2048Mi', disk: '5Gi' },
-      expectedRequests: { cpu: '0.333', memory: '682Mi' }
+      expectedLimits: { cpu: '1', memory: '2048Mi', 'ephemeral-storage': '1.5Gi' },
+      expectedRequests: { cpu: '0.333', memory: '682Mi', 'ephemeral-storage': '1.5Gi' }
     },
     {
       name: 'clamps requests to 1m CPU and 1Mi memory',
       cpuFactor: '10',
       memoryFactor: '10',
       resourceLimits: { cpuCount: 0.005, memoryMiB: 5 },
-      expectedLimits: { cpu: '0.005', memory: '5Mi', disk: '5Gi' },
-      expectedRequests: { cpu: '0.001', memory: '1Mi' }
+      expectedLimits: { cpu: '0.005', memory: '5Mi', 'ephemeral-storage': '1.5Gi' },
+      expectedRequests: { cpu: '0.001', memory: '1Mi', 'ephemeral-storage': '1.5Gi' }
     },
     {
       name: 'preserves an explicit CPU-only request override',
       cpuFactor: '5',
       memoryFactor: '5',
       createConfig: { resourceRequests: { cpuCount: 0.25 } },
-      expectedRequests: { cpu: '0.25' }
+      expectedRequests: { cpu: '0.25', 'ephemeral-storage': '1.5Gi' }
     },
     {
       name: 'preserves an explicit memory-only request override',
       cpuFactor: '5',
       memoryFactor: '5',
       createConfig: { resourceRequests: { memoryMiB: 512 } },
-      expectedRequests: { memory: '512Mi' }
+      expectedRequests: { memory: '512Mi', 'ephemeral-storage': '1.5Gi' }
     },
     {
       name: 'omits derived and explicit requests for Docker',
       runtime: 'docker',
       cpuFactor: '10',
       memoryFactor: '10',
-      createConfig: { resourceRequests: { cpuCount: 0.25, memoryMiB: 512 } }
+      createConfig: { resourceRequests: { cpuCount: 0.25, memoryMiB: 512 } },
+      expectedLimits: { cpu: '2', memory: '4096Mi' }
     }
   ];
 
   it.each(cases)('$name', async (testCase) => {
-    vi.stubEnv('AGENT_SANDBOX_PROVIDER', '');
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_BASEURL', baseUrl);
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_API_KEY', 'integration-api-key');
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_IMAGE', 'runtime:integration');
@@ -136,23 +136,29 @@ describe.sequential('OpenSandbox resource requests HTTP integration', () => {
     vi.stubEnv('AGENT_SANDBOX_CPU_OVERCOMMIT_FACTOR', testCase.cpuFactor);
     vi.stubEnv('AGENT_SANDBOX_MEMORY_OVERCOMMIT_FACTOR', testCase.memoryFactor);
     vi.resetModules();
-    const { buildRuntimeSandboxAdapter } =
-      await import('@fastgpt/service/core/ai/sandbox/infrastructure/provider/adapter');
-    const adapter = buildRuntimeSandboxAdapter('opensandbox', 'resource-requests-session', {
+    const { createRuntimeOpenSandboxClient } =
+      await import('@fastgpt/service/core/ai/sandbox/infrastructure/opensandbox');
+    const client = createRuntimeOpenSandboxClient({
+      sandboxId: 'resource-requests-session',
+      deploymentId: '0123456789abcdef0123456789abcdef',
       resourceLimits: testCase.resourceLimits,
       createConfig: {
         ...testCase.createConfig,
-        resourceLimits: { storageSize: '5Gi', ...testCase.createConfig?.resourceLimits },
+        resourceLimits: { ...testCase.createConfig?.resourceLimits },
         // 不启动 execd；保留 SDK 创建与 endpoint HTTP 请求的真实实现。
         skipHealthCheck: true
       }
     });
     try {
-      await adapter.create();
+      await client.create();
 
       expect(createRequests).toHaveLength(1);
       expect(createRequests[0]).toMatchObject({
-        resourceLimits: testCase.expectedLimits ?? { cpu: '2', memory: '4096Mi', disk: '5Gi' }
+        resourceLimits: testCase.expectedLimits ?? {
+          cpu: '2',
+          memory: '4096Mi',
+          'ephemeral-storage': '1.5Gi'
+        }
       });
       if (testCase.expectedRequests) {
         expect(createRequests[0]).toHaveProperty('resourceRequests', testCase.expectedRequests);
@@ -160,7 +166,7 @@ describe.sequential('OpenSandbox resource requests HTTP integration', () => {
         expect(createRequests[0]).not.toHaveProperty('resourceRequests');
       }
     } finally {
-      await adapter.close();
+      await client.close();
     }
   });
 });
@@ -200,14 +206,16 @@ describe.skipIf(!shouldRunKubernetes).sequential('OpenSandbox Kubernetes resourc
       vi.stubEnv('AGENT_SANDBOX_CPU_OVERCOMMIT_FACTOR', cpuFactor);
       vi.stubEnv('AGENT_SANDBOX_MEMORY_OVERCOMMIT_FACTOR', memoryFactor);
       vi.resetModules();
-      const { buildRuntimeSandboxAdapter } =
-        await import('@fastgpt/service/core/ai/sandbox/infrastructure/provider/adapter');
+      const { createRuntimeOpenSandboxClient } =
+        await import('@fastgpt/service/core/ai/sandbox/infrastructure/opensandbox');
       const { serviceEnv } = await import('@fastgpt/service/env');
       const sessionId = `overcommit-integration-${randomUUID()}`;
-      const adapter = buildRuntimeSandboxAdapter('opensandbox', sessionId, {
+      const adapter = createRuntimeOpenSandboxClient({
+        sandboxId: sessionId,
+        deploymentId: '0123456789abcdef0123456789abcdef',
         resourceLimits: { cpuCount: 1, memoryMiB: 512 },
         createConfig: {
-          // 只验证 provider 资源配置，无需业务工作区或 Volume Manager 持久卷。
+          // 只验证 OpenSandbox 资源配置，无需业务工作区或 Volume Manager 持久卷。
           entrypoint: ['tail', '-f', '/dev/null'],
           timeoutSeconds: 300,
           readyTimeoutSeconds: 60,

@@ -5,8 +5,8 @@ import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 const createSandboxInstance = () =>
   ({
     exec: vi.fn(async () => ({ stdout: 'out', stderr: '', exitCode: 0, truncated: false })),
-    provider: {
-      deleteFiles: vi.fn(async () => [])
+    opensandbox: {
+      deleteFiles: vi.fn(async () => undefined)
     }
   }) as any;
 
@@ -45,7 +45,7 @@ describe('sandboxShellTool', () => {
       ),
       3
     );
-    expect(sandbox.provider.deleteFiles).toHaveBeenCalledWith([
+    expect(sandbox.opensandbox.deleteFiles).toHaveBeenCalledWith([
       expect.stringMatching(/^\/tmp\/fastgpt-bash-[^.]+\.log$/)
     ]);
   });
@@ -88,6 +88,6 @@ describe('sandboxShellTool', () => {
     expect(result.response).toMatch(
       /\[Showing last 2000 of 2001 lines\. Full output: \/tmp\/fastgpt-bash-[^.]+\.log\]/
     );
-    expect(sandbox.provider.deleteFiles).not.toHaveBeenCalled();
+    expect(sandbox.opensandbox.deleteFiles).not.toHaveBeenCalled();
   });
 });

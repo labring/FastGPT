@@ -44,12 +44,14 @@ export const sandboxGrepTool = defineTool({
       ...(params.ignoreCase ? ['--ignore-case'] : []),
       ...(params.literal ? ['--fixed-strings'] : []),
       ...(params.glob ? ['--glob', params.glob] : []),
+      '--glob',
+      '!.fastgpt/**',
       ...(params.context !== undefined ? ['--context', String(params.context)] : []),
       '--',
       params.pattern,
       params.path ?? '.'
     ];
-    // awk 在第 N 个 match 事件后停止，避免 rg 在大量匹配时撑满 provider 输出缓冲区。
+    // awk 在第 N 个 match 事件后停止，避免 rg 在大量匹配时撑满容器输出缓冲区。
     const awkScript = `{ print } /\"type\":\"match\"/ { count++; if (count >= ${limit}) exit }`;
     const command = `${rgArgs.map(shellQuote).join(' ')} | awk ${shellQuote(awkScript)}`;
     const result = await sandboxInstance.exec(command);

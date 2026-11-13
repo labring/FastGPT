@@ -1,14 +1,15 @@
+import { createHash, timingSafeEqual } from 'crypto';
 import { authChatTargetCrud } from '@fastgpt/service/core/chat/auth';
+import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import type { ChatAuthProxy, OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
-import { serviceEnv } from '@fastgpt/service/env';
-import { timingSafeEqual } from 'crypto';
-import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { AGENT_SANDBOX_PROXY_SECRET_HEADER } from '@fastgpt/global/core/ai/sandbox/constants';
 import { EDIT_DEBUG_SANDBOX_CHAT_ID } from '@fastgpt/service/core/ai/skill/edit/config';
 import type { ChatSchemaType } from '@fastgpt/global/core/chat/type';
+import { serviceEnv } from '@fastgpt/service/env';
 
 export type AuthSandboxSessionParams = {
   req: ApiRequestProps;
@@ -83,26 +84,24 @@ export async function authSandboxSession({
   };
 }
 
-export const AGENT_SANDBOX_PROXY_HEADER = 'x-proxy-token';
-
 /**
- * 校验 agent-sandbox-proxy 调用主站内部 API 的共享密钥。
- * 这层只服务 proxy 到 Next API 的反向通道，浏览器侧访问仍走 ticket 鉴权。
+ * 校验 `opensandbox-proxy` 调用主站内部接口（`verifyTicket` / `keepalive`）的共享密钥。
+ * 采用定长 SHA-256 摘要 + `timingSafeEqual` 常量时间比对，避免密钥长度泄露。
  */
 export function authAgentSandboxProxy(req: ApiRequestProps): string {
-  const secret = serviceEnv.AGENT_SANDBOX_PROXY_SECRET;
+  const secret = serviceEnv.AGENT_SANDBOX_PROXY_SECRET?.trim();
   if (!secret) {
     throw new Error('AGENT_SANDBOX_PROXY_SECRET environment variable is missing');
   }
 
-  const proxyToken = req.headers[AGENT_SANDBOX_PROXY_HEADER];
-  if (typeof proxyToken !== 'string') {
+  const rawHeader = req.headers[AGENT_SANDBOX_PROXY_SECRET_HEADER];
+  if (typeof rawHeader !== 'string' || rawHeader.trim() === '') {
     throw new Error(ERROR_ENUM.unAuthorization);
   }
 
-  const expected = Buffer.from(secret);
-  const actual = Buffer.from(proxyToken);
-  if (actual.length !== expected.length || !timingSafeEqual(actual, expected)) {
+  const expectedDigest = createHash('sha256').update(secret).digest();
+  const actualDigest = createHash('sha256').update(rawHeader).digest();
+  if (!timingSafeEqual(actualDigest, expectedDigest)) {
     throw new Error(ERROR_ENUM.unAuthorization);
   }
 

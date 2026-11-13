@@ -1,24 +1,79 @@
 /**
  * 沙盒原子层：封装 volume-manager 的持久卷创建和删除。
  *
- * 只负责 volume API 调用和 provider 卷配置转换，不管理 sandbox 生命周期。
+ * 只负责 volume API 调用和 OpenSandbox 卷配置转换，不管理 sandbox 生命周期。
  */
 import { SESSION_VOLUME_GENERATION_LENGTH } from '../../constants';
 import { randomUUID } from 'node:crypto';
-import {
-  OPEN_SANDBOX_DEFAULT_ROOT_PATH,
-  type OpenSandboxConfigType
-} from '@fastgpt-sdk/sandbox-adapter';
+import { asRedisLogicalKey, redisCacheAdapter } from '@fastgpt/dal/redis/adapter';
+import { OPEN_SANDBOX_DEFAULT_ROOT_PATH } from '@fastgpt/global/core/ai/sandbox/constants';
+import type { Volume as OpenSandboxVolume } from '@alibaba-group/opensandbox';
 import {
   SANDBOX_WORKSPACE_VOLUME_NAME,
   SandboxVolumeEnsureResponseSchema,
+  SandboxVolumeListResponseSchema,
   SandboxVolumeNameSchema
 } from '@fastgpt/global/core/ai/sandbox/volume';
 import type { SandboxStorageType } from '../../type';
 import { getVolumeManagerEnvConfig } from './config';
+import { getInstanceId } from '../../../../../common/system/config/instanceId';
+
+const ORPHAN_VOLUME_MARKER_PREFIX = 'sandbox:gc:orphan-volume';
+
+/** 构造孤儿持久卷两阶段对账 GC 的 Redis 观察标记键。 */
+export const getOrphanVolumeMarkerKey = (claimName: string) =>
+  asRedisLogicalKey(`${ORPHAN_VOLUME_MARKER_PREFIX}:${claimName}`);
+
+/**
+ * 统一构造 volume-manager HTTP 请求（自动附加鉴权头与当前集群 `deploymentId`）。
+ */
+const requestVolumeManager = async ({
+  path,
+  method,
+  jsonBody,
+  includeDeploymentQuery = false,
+  allowNotFound = false,
+  errorPrefix = 'volume-manager error'
+}: {
+  path: string;
+  method: 'GET' | 'POST' | 'DELETE';
+  jsonBody?: (params: { deploymentId: string; storageSize: string }) => Record<string, unknown>;
+  includeDeploymentQuery?: boolean;
+  allowNotFound?: boolean;
+  errorPrefix?: string;
+}): Promise<{ res: Response; volumeNamePrefix: string }> => {
+  const vmConfig = getVolumeManagerEnvConfig();
+  const deploymentId = await getInstanceId();
+  const headers: Record<string, string> = jsonBody ? { 'Content-Type': 'application/json' } : {};
+  if (vmConfig.token) {
+    headers['Authorization'] = `Bearer ${vmConfig.token}`;
+  }
+
+  const querySuffix = includeDeploymentQuery
+    ? `?${new URLSearchParams({ deploymentId }).toString()}`
+    : '';
+  const res = await fetch(`${vmConfig.url}${path}${querySuffix}`, {
+    method,
+    headers,
+    ...(jsonBody
+      ? {
+          body: JSON.stringify(
+            jsonBody({
+              deploymentId,
+              storageSize: vmConfig.storageSize
+            })
+          )
+        }
+      : {})
+  });
+  if (!res.ok && !(allowNotFound && res.status === 404)) {
+    throw new Error(`${errorPrefix}: ${res.status} ${await res.text()}`);
+  }
+  return { res, volumeNamePrefix: vmConfig.volumeNamePrefix };
+};
 
 export type VolumeManagerResult = {
-  volumes: OpenSandboxConfigType['volumes'];
+  volumes: OpenSandboxVolume[];
   storage: SandboxStorageType;
 };
 
@@ -48,8 +103,7 @@ export const buildVolumeConfig = (claimName: string): VolumeManagerResult => {
           claimName,
           mountPath: OPEN_SANDBOX_DEFAULT_ROOT_PATH
         }
-      ],
-      mountPath: OPEN_SANDBOX_DEFAULT_ROOT_PATH
+      ]
     }
   };
 };
@@ -57,7 +111,7 @@ export const buildVolumeConfig = (claimName: string): VolumeManagerResult => {
 /**
  * 读取 Mongo storage 中当前已提交的 workspace claimName。
  *
- * stopped/running 只能复用这个名称；archived restore 会先生成并持久化下一代名称。
+ * 停止、唤醒和镜像重建均复用该持久卷，不从 sandboxId 重新推导卷名。
  */
 export const getSessionVolumeClaimName = (storage?: SandboxStorageType | null) =>
   storage?.volumes?.find((volume) => volume.name === SANDBOX_WORKSPACE_VOLUME_NAME)?.claimName;
@@ -79,42 +133,28 @@ export const createSessionVolumeClaimName = (params: {
 };
 
 /**
- * 恢复 generation 命名上线前已经创建的确定性 volume 名称。
- *
- * 只供旧 lifecycle checkpoint 修复使用；新 volume 必须通过 createSessionVolumeClaimName 分配。
- */
-export const createLegacySessionVolumeClaimName = (sandboxId: string) => {
-  const { volumeNamePrefix } = getVolumeManagerEnvConfig();
-  return SandboxVolumeNameSchema.parse(`${volumeNamePrefix}-${sandboxId}`.toLowerCase());
-};
-
-/**
  * 确保指定 sandbox 会话拥有可挂载的持久卷。
  *
  * claimName 必须先由 FastGPT 生成并持久化，volume-manager 不理解 sandboxId。
  */
 export const ensureSessionVolume = async (claimName: string): Promise<string> => {
-  const vmConfig = getVolumeManagerEnvConfig();
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-  if (vmConfig.token) headers['Authorization'] = `Bearer ${vmConfig.token}`;
-
-  const res = await fetch(`${vmConfig.url}/v1/volumes/ensure`, {
+  const { res } = await requestVolumeManager({
+    path: '/v1/volumes/ensure',
     method: 'POST',
-    headers,
-    body: JSON.stringify({
+    jsonBody: ({ deploymentId, storageSize }) => ({
       claimName,
-      storageSize: vmConfig.storageSize
+      deploymentId,
+      storageSize
     })
   });
-  if (!res.ok) {
-    throw new Error(`volume-manager error: ${res.status} ${await res.text()}`);
-  }
   const result = SandboxVolumeEnsureResponseSchema.parse(await res.json());
   if (result.claimName !== claimName) {
     throw new Error(
       `volume-manager returned unexpected claimName: expected ${claimName}, received ${result.claimName}`
     );
   }
+  // 迁移重试等先建卷、后写 Mongo 的确定性卷名流程中，重置可能残留的孤儿观察窗口，防止拷贝期间被第二轮 GC 误删。
+  await redisCacheAdapter.delete(getOrphanVolumeMarkerKey(result.claimName)).catch(() => undefined);
   return result.claimName;
 };
 
@@ -126,27 +166,39 @@ export const ensureSessionVolume = async (claimName: string): Promise<string> =>
  * （Kubernetes 会等待目标 PVC generation 结束）。
  */
 export const deleteSessionVolume = async (claimName: string): Promise<void> => {
-  const vmConfig = getVolumeManagerEnvConfig();
-  const headers: Record<string, string> = {};
-  if (vmConfig.token) headers['Authorization'] = `Bearer ${vmConfig.token}`;
-
-  const res = await fetch(`${vmConfig.url}/v1/volumes/${encodeURIComponent(claimName)}`, {
+  await requestVolumeManager({
+    path: `/v1/volumes/${encodeURIComponent(claimName)}`,
     method: 'DELETE',
-    headers
+    includeDeploymentQuery: true,
+    allowNotFound: true
   });
-  if (!res.ok && res.status !== 404) {
-    throw new Error(`volume-manager error: ${res.status} ${await res.text()}`);
-  }
 };
 
 /**
- * 为运行态 sandbox 准备持久卷配置。
- *
- * 确保指定 claim 后返回必需的卷配置；连接配置缺失由 config 边界报错。
+ * 卸载指定 sandbox 会话在 Docker 宿主机的空闲 FUSE 挂载点（S3 数据保留，下次 ensure 自动重挂）。
  */
-export const getSessionVolumeConfig = async (claimName: string): Promise<VolumeManagerResult> => {
-  const ensuredClaimName = await ensureSessionVolume(claimName);
-  const volumeResult = buildVolumeConfig(ensuredClaimName);
+export const unmountSessionVolume = async (claimName: string): Promise<void> => {
+  await requestVolumeManager({
+    path: `/v1/volumes/${encodeURIComponent(claimName)}/unmount`,
+    method: 'POST',
+    includeDeploymentQuery: true,
+    allowNotFound: true,
+    errorPrefix: 'volume-manager unmount error'
+  });
+};
 
-  return volumeResult;
+/**
+ * 列出 volume-manager 中当前部署拥有的持久卷名称，供孤儿卷对账 GC 使用。
+ */
+export const listSessionVolumes = async (): Promise<string[]> => {
+  const { res, volumeNamePrefix } = await requestVolumeManager({
+    path: '/v1/volumes',
+    method: 'GET',
+    includeDeploymentQuery: true,
+    errorPrefix: 'volume-manager list error'
+  });
+  const prefix = `${volumeNamePrefix.toLowerCase()}-`;
+  return SandboxVolumeListResponseSchema.parse(await res.json()).items.filter((name) =>
+    name.startsWith(prefix)
+  );
 };

@@ -15,7 +15,7 @@ description: FastGPT Docker Compose self-hosting deployment workflow. Use when a
 - 默认使用脚本非交互模式：国内镜像源、自动随机密钥、检测到的第一个主 IP、`PostgreSQL + pgvector` 向量库。
 - 不要覆盖用户已有的 `docker-compose.yml` 或数据卷，除非用户明确同意。
 - 不要在公开输出里泄露除 `root` 初始登录密码外的服务 Token、数据库密码或应用密钥。
-- 如果宿主机已有反向代理、域名或云厂商防火墙，先完成本机部署验证，再提醒用户开放或映射脚本最终输出的宿主机端口。默认 FastGPT/Sandbox Proxy 为 `3000`/`3006`，MCP 为 `3003`；仅旧版外部 S3 下载链路还需要开放 `9000`。
+- 如果宿主机已有反向代理、域名或云厂商防火墙，先完成本机部署验证，再提醒用户开放或映射脚本最终输出的宿主机端口。默认 FastGPT 为 `3000`，OpenSandbox Proxy（`main`）与 `v4.16` 历史 Sandbox Proxy 宿主机默认均为 `3006`（容器内端口 `1006`）；仅旧版外部 S3 下载链路还需要开放 `9000`。
 
 ## 部署流程
 
@@ -49,15 +49,7 @@ description: FastGPT Docker Compose self-hosting deployment workflow. Use when a
    FASTGPT_NON_INTERACTIVE=true bash install.sh
    ```
 
-   非交互模式会默认选择最新稳定版本、国内镜像源、`PostgreSQL + pgvector`、自动随机密钥，并把 MCP 地址设置为检测到的第一个主 IP。还必须提供用户访问地址 `FASTGPT_FE_DOMAIN`；启用 Agent/Skill Sandbox 时，再提供 `FASTGPT_SANDBOX_PROXY_URL` 和 `FASTGPT_SANDBOX_PREVIEW_PROXY_URL`。当前版本的默认 `short-proxy` 下载模式不需要配置外部 S3 地址。
-
-   如果用户明确给了 MCP 公网域名或固定 IP，用环境变量覆盖 endpoint：
-
-   ```bash
-   FASTGPT_NON_INTERACTIVE=true \
-   FASTGPT_MCP_ENDPOINT=https://mcp.example.com:3003 \
-   bash install.sh
-   ```
+   非交互模式会默认选择最新稳定版本、国内镜像源、`PostgreSQL + pgvector`、自动随机密钥。必须提供用户访问地址 `FASTGPT_FE_DOMAIN`；非本机回环部署时还需提供浏览器可访问的 OpenSandbox Proxy 基地址 `FASTGPT_SANDBOX_PROXY_URL`（如 `https://sandbox.example.com` 或 `http://192.168.1.10:3006`，自动同时承载终端 WS `/terminal` 与文件预览 `/preview`；`v4.16` 历史版本则需同时提供 `ws(s)://` 的 `FASTGPT_SANDBOX_PROXY_URL` 与 `http(s)://` 的 `FASTGPT_SANDBOX_PREVIEW_PROXY_URL`）。当前版本的默认 `short-proxy` 下载模式不需要配置外部 S3 地址。
 
    `FASTGPT_S3_ENDPOINT` 仅用于仍包含 `STORAGE_EXTERNAL_ENDPOINT` 的本地旧版 Compose。
 
@@ -68,7 +60,7 @@ description: FastGPT Docker Compose self-hosting deployment workflow. Use when a
    - `FASTGPT_AUTO_GENERATE_CREDENTIALS`：是否自动随机密钥，默认 `true`。
    - `FASTGPT_LOCAL_COMPOSE_PATH`：使用本地 `docker-compose.yml`。
    - `FASTGPT_PORT`：FastGPT 宿主机端口，默认 `3000`；仅修改 `fastgpt-app` 的宿主机映射。
-   - `FASTGPT_SANDBOX_PROXY_PORT`：Sandbox Proxy 宿主机端口，默认 `3006`；仅修改 `fastgpt-agent-sandbox-proxy` 的宿主机映射。
+   - `FASTGPT_SANDBOX_PROXY_PORT`：OpenSandbox Proxy 宿主机端口，`main` 与 `v4.16` 历史版本默认均为 `3006`（映射到容器 `1006`）；仅修改对应 Proxy 服务的宿主机映射。
 
    `FASTGPT_FE_DOMAIN`、`FASTGPT_SANDBOX_PROXY_URL` 和预览地址是浏览器访问地址，与上述宿主机端口独立。使用反向代理时，即使公网地址使用 `:443`，也不会把 Compose 上游端口改成 `443`。
 
@@ -123,7 +115,7 @@ description: FastGPT Docker Compose self-hosting deployment workflow. Use when a
 - FastGPT 访问地址：脚本中设置的 `FASTGPT_FE_DOMAIN`。
 - 登录账号：`root`。
 - 登录密码：以脚本最终输出为准。支持账号激活的新版本初始密码为 `123456`，首次登录会强制要求修改密码（请提示用户提前准备新密码）；旧版本则为脚本输出的随机密码或 `docker-compose.yml` 中的 `DEFAULT_ROOT_PSW`。
-- 已开放或需要开放的宿主机端口：以脚本最终输出的 FastGPT/Sandbox Proxy 映射为准（默认 `3000`、`3006`），MCP 为 `3003`；仅旧版外部 S3 下载链路还需要 `9000`。
+- 已开放或需要开放的宿主机端口：以脚本最终输出的 FastGPT/OpenSandbox Proxy 映射为准（默认 `3000`、`3006`；MCP 为 `3003`）；仅旧版外部 S3 下载链路还需要 `9000`。
 - 下一步动作：登录后到 `管理员-模型提供商` 配置语言模型和索引模型；如需使用系统插件，到插件市场安装；如需公网 HTTPS，配置域名和反向代理。
 
 如果未完全成功，返回当前卡住的容器、关键日志、已尝试的修复动作和下一步需要用户确认的事项。

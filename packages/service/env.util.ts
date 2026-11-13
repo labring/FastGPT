@@ -1,5 +1,3 @@
-import type { SandboxProviderType } from '@fastgpt-sdk/sandbox-adapter';
-import { agentSandboxProviderList } from '@fastgpt/global/core/ai/sandbox/constants';
 import { isHttpUrl } from '@fastgpt/global/common/string/url';
 import z from 'zod';
 import type { StorageDownloadUrlMode } from './common/s3/contracts/type';
@@ -82,96 +80,210 @@ export const validateS3Env = (env: S3Env): void => {
 };
 
 /* ===== sandbox ===== */
-export const AgentSandboxProxyUrlSchema = z.string().refine((url) => /^wss?:\/\//.test(url), {
-  message: 'AGENT_SANDBOX_PROXY_URL must start with ws:// or wss://'
-});
-export const AgentSandboxPreviewProxyUrlSchema = z.string().refine(isHttpUrl, {
-  message: 'AGENT_SANDBOX_PREVIEW_PROXY_URL must start with http:// or https://'
-});
-const agentSandboxProviderRequiredEnvKeys = {
-  sealosdevbox: [
-    'AGENT_SANDBOX_SEALOS_BASEURL',
-    'AGENT_SANDBOX_SEALOS_TOKEN',
-    'AGENT_SANDBOX_SEALOS_IMAGE'
-  ],
-  opensandbox: [
-    'AGENT_SANDBOX_OPENSANDBOX_BASEURL',
-    'AGENT_SANDBOX_OPENSANDBOX_API_KEY',
-    'AGENT_SANDBOX_OPENSANDBOX_IMAGE',
-    'AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL',
-    'AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN'
-  ]
-} satisfies Record<SandboxProviderType, readonly string[]>;
+const isHttpOrWsUrl = (value: string): boolean => {
+  try {
+    const parsed = new URL(value);
+    return (
+      (parsed.protocol === 'http:' ||
+        parsed.protocol === 'https:' ||
+        parsed.protocol === 'ws:' ||
+        parsed.protocol === 'wss:') &&
+      parsed.username === '' &&
+      parsed.password === ''
+    );
+  } catch {
+    return false;
+  }
+};
 
-export const isAgentSandboxProvider = (
-  provider: string | undefined
-): provider is SandboxProviderType =>
-  agentSandboxProviderList.includes(provider as SandboxProviderType);
+const isCleanHttpUrl = (value: string): boolean => {
+  if (!isHttpUrl(value)) {
+    return false;
+  }
+  try {
+    const parsed = new URL(value);
+    return parsed.username === '' && parsed.password === '';
+  } catch {
+    return false;
+  }
+};
+
+export const AgentSandboxProxyUrlSchema = z.string().refine(isHttpOrWsUrl, {
+  message:
+    'AGENT_SANDBOX_PROXY_URL must start with http://, https://, ws:// or wss:// without embedded credentials'
+});
+
+export const AgentSandboxPreviewProxyUrlSchema = z.string().refine(isCleanHttpUrl, {
+  message:
+    'AGENT_SANDBOX_PREVIEW_PROXY_URL must start with http:// or https:// without embedded credentials'
+});
 
 /**
- * 获取已配置 provider 缺失的运行态必填环境变量。
- * 未配置合法 provider 时不启用 Agent Sandbox，因此不要求任何 provider 配套变量。
+ * 将 `AGENT_SANDBOX_PROXY_URL` 归一化派生为面向浏览器的 `/terminal` WebSocket 连接地址。
+ * 支持运维填写 `http(s)://` 或 `ws(s)://` 基地址，并保留反向代理路径前缀。
+ */
+export const resolveAgentSandboxTerminalProxyUrl = (rawProxyUrl: string | undefined): string => {
+  const trimmed = rawProxyUrl?.trim() ?? '';
+  if (trimmed === '') {
+    throw new Error('AGENT_SANDBOX_PROXY_URL environment variable is missing');
+  }
+  if (!isHttpOrWsUrl(trimmed)) {
+    throw new Error('Invalid AGENT_SANDBOX_PROXY_URL');
+  }
+
+  const parsed = new URL(trimmed);
+  if (parsed.protocol === 'http:') {
+    parsed.protocol = 'ws:';
+  } else if (parsed.protocol === 'https:') {
+    parsed.protocol = 'wss:';
+  }
+  const basePath = parsed.pathname.replace(/\/+$/, '');
+  parsed.pathname = basePath.endsWith('/terminal') ? basePath : `${basePath}/terminal`;
+  parsed.search = '';
+  parsed.hash = '';
+  return parsed.toString();
+};
+
+/**
+ * 解析面向浏览器的静态文件预览 HTTP 基地址：
+ * 优先使用显式配置的 `AGENT_SANDBOX_PREVIEW_PROXY_URL`（双端口隔离模式），
+ * 未配置时自动将 `AGENT_SANDBOX_PROXY_URL` 归一化为 `http(s)://` 基地址。
+ */
+export const resolveAgentSandboxPreviewProxyBaseUrl = (params: {
+  previewProxyUrl?: string;
+  proxyUrl?: string;
+}): string => {
+  const explicitPreview = params.previewProxyUrl?.trim() ?? '';
+  if (explicitPreview !== '') {
+    if (!isCleanHttpUrl(explicitPreview)) {
+      throw new Error('Invalid sandbox preview proxy URL');
+    }
+    const parsed = new URL(explicitPreview);
+    parsed.search = '';
+    parsed.hash = '';
+    return parsed.toString().replace(/\/+$/, '');
+  }
+
+  const fallbackProxy = params.proxyUrl?.trim() ?? '';
+  if (fallbackProxy === '') {
+    throw new Error(
+      'AGENT_SANDBOX_PREVIEW_PROXY_URL or AGENT_SANDBOX_PROXY_URL environment variable is missing'
+    );
+  }
+  if (!isHttpOrWsUrl(fallbackProxy)) {
+    throw new Error('Invalid sandbox preview proxy URL');
+  }
+
+  const parsed = new URL(fallbackProxy);
+  if (parsed.protocol === 'ws:') {
+    parsed.protocol = 'http:';
+  } else if (parsed.protocol === 'wss:') {
+    parsed.protocol = 'https:';
+  }
+  const basePath = parsed.pathname.replace(/\/+$/, '');
+  parsed.pathname = basePath.endsWith('/terminal')
+    ? basePath.slice(0, -'/terminal'.length) || '/'
+    : basePath || '/';
+  parsed.search = '';
+  parsed.hash = '';
+  return parsed.toString().replace(/\/+$/, '');
+};
+
+const OPEN_SANDBOX_REQUIRED_ENV_KEYS = [
+  'AGENT_SANDBOX_OPENSANDBOX_API_KEY',
+  'AGENT_SANDBOX_OPENSANDBOX_IMAGE',
+  'AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL',
+  'AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN'
+] as const;
+
+/**
+ * 判断运行环境是否配置了 OpenSandbox 控制面地址（作为启用 Agent Sandbox 的唯一开关）。
+ */
+export const hasOpenSandboxEnvConfig = (env: NodeJS.ProcessEnv = process.env): boolean =>
+  Boolean(env.AGENT_SANDBOX_OPENSANDBOX_BASEURL?.trim());
+
+/**
+ * 获取启用 Agent Sandbox 时缺失的运行态必填环境变量。
+ * 未配置 `AGENT_SANDBOX_OPENSANDBOX_BASEURL` 时不启用沙盒，不要求任何配套变量。
  */
 export const getAgentSandboxMissingRequiredEnvKeys = (env: NodeJS.ProcessEnv): string[] => {
-  const provider = env.AGENT_SANDBOX_PROVIDER;
-  if (!isAgentSandboxProvider(provider)) {
+  if (!hasOpenSandboxEnvConfig(env)) {
     return [];
   }
 
-  return agentSandboxProviderRequiredEnvKeys[provider].filter((key) => {
-    const value = env[key];
-    return key === 'AGENT_SANDBOX_OPENSANDBOX_IMAGE' ? !value?.trim() : !value;
+  return OPEN_SANDBOX_REQUIRED_ENV_KEYS.filter((key) => !env[key]?.trim());
+};
+
+/** 校验已提供的沙盒代理地址协议合法性（`AGENT_SANDBOX_PROXY_URL` 支持 HTTP/WS，`AGENT_SANDBOX_PREVIEW_PROXY_URL` 仅支持 HTTP）。 */
+const assertValidSandboxProxyUrls = ({
+  proxyUrl,
+  previewProxyUrl,
+  requireProxyUrl
+}: {
+  proxyUrl: string;
+  previewProxyUrl: string;
+  requireProxyUrl: boolean;
+}): void => {
+  if (previewProxyUrl !== '' && !isCleanHttpUrl(previewProxyUrl)) {
+    throw new Error(
+      'Invalid Agent Sandbox preview proxy environment variable: AGENT_SANDBOX_PREVIEW_PROXY_URL must start with http:// or https://.'
+    );
+  }
+
+  if ((requireProxyUrl || previewProxyUrl === '') && !isHttpOrWsUrl(proxyUrl)) {
+    throw new Error(
+      'Invalid Agent Sandbox proxy environment variable: AGENT_SANDBOX_PROXY_URL must start with http://, https://, ws:// or wss://.'
+    );
+  }
+};
+
+/**
+ * 校验主站 `fastgpt-app` 连接 `opensandbox-proxy` 所需环境变量（`AGENT_SANDBOX_PROXY_URL` 与 `AGENT_SANDBOX_PROXY_SECRET`）。
+ */
+export const validateAgentSandboxProxyEnv = (env: NodeJS.ProcessEnv = process.env): void => {
+  if (!hasOpenSandboxEnvConfig(env)) {
+    return;
+  }
+
+  const missingKeys = (['AGENT_SANDBOX_PROXY_URL', 'AGENT_SANDBOX_PROXY_SECRET'] as const).filter(
+    (key) => !env[key]?.trim()
+  );
+  if (missingKeys.length > 0) {
+    throw new Error(
+      `Invalid Agent Sandbox proxy environment variables: ${missingKeys.join(
+        ', '
+      )} are required when AGENT_SANDBOX_OPENSANDBOX_BASEURL is configured.`
+    );
+  }
+
+  assertValidSandboxProxyUrls({
+    proxyUrl: env.AGENT_SANDBOX_PROXY_URL!.trim(),
+    previewProxyUrl: env.AGENT_SANDBOX_PREVIEW_PROXY_URL?.trim() ?? '',
+    requireProxyUrl: true
   });
 };
 
-/* ===== Sandbox proxy ===== */
-const agentSandboxProxyRequiredEnvKeys = [
-  'AGENT_SANDBOX_PROXY_SECRET',
-  'AGENT_SANDBOX_PROXY_URL',
-  'AGENT_SANDBOX_PREVIEW_PROXY_URL'
-] as const;
 /**
- * 校验 FastGPT app 浏览器直连 agent-sandbox-proxy 所需环境变量。
- * 该能力只属于主站 app 的 sandbox editor/proxy 链路，不能放在共享 serviceEnv 中校验，
- * 否则 pro/admin 等只复用服务端能力的项目会被不必要的 proxy 配置阻塞。
+ * 校验仅消费文件预览链接的服务（如 `pro/admin`）所需环境变量：允许配置 `AGENT_SANDBOX_PREVIEW_PROXY_URL` 或 `AGENT_SANDBOX_PROXY_URL`。
  */
-export const validateAgentSandboxProxyEnv = (): void => {
-  const provider = process.env.AGENT_SANDBOX_PROVIDER;
-  if (!agentSandboxProviderList.includes(provider as (typeof agentSandboxProviderList)[number])) {
+export const validateAgentSandboxPreviewProxyEnv = (env: NodeJS.ProcessEnv = process.env): void => {
+  if (!hasOpenSandboxEnvConfig(env)) {
     return;
   }
 
-  const missingAgentSandboxProxyEnvKeys = agentSandboxProxyRequiredEnvKeys.filter(
-    (key) => !process.env[key]
-  );
-  if (missingAgentSandboxProxyEnvKeys.length === 0) {
-    return;
+  const previewProxyUrl = env.AGENT_SANDBOX_PREVIEW_PROXY_URL?.trim() ?? '';
+  const proxyUrl = env.AGENT_SANDBOX_PROXY_URL?.trim() ?? '';
+  if (previewProxyUrl === '' && proxyUrl === '') {
+    throw new Error(
+      'Invalid Agent Sandbox preview proxy environment variable: AGENT_SANDBOX_PROXY_URL or AGENT_SANDBOX_PREVIEW_PROXY_URL is required when AGENT_SANDBOX_OPENSANDBOX_BASEURL is configured.'
+    );
   }
 
-  throw new Error(
-    `Invalid Agent Sandbox proxy environment variables: ${missingAgentSandboxProxyEnvKeys.join(
-      ', '
-    )} are required when AGENT_SANDBOX_PROVIDER is ${provider}.`
-  );
-};
-
-/**
- * 校验复用 Sandbox 文件预览能力的服务所需环境变量。
- * Pro Admin 不提供 sandbox editor/proxy 链路，因此只要求文件预览代理地址。
- */
-export const validateAgentSandboxPreviewProxyEnv = (): void => {
-  const provider = process.env.AGENT_SANDBOX_PROVIDER;
-  if (!agentSandboxProviderList.includes(provider as (typeof agentSandboxProviderList)[number])) {
-    return;
-  }
-
-  if (process.env.AGENT_SANDBOX_PREVIEW_PROXY_URL) {
-    return;
-  }
-
-  throw new Error(
-    `Invalid Agent Sandbox preview proxy environment variable: AGENT_SANDBOX_PREVIEW_PROXY_URL is required when AGENT_SANDBOX_PROVIDER is ${provider}.`
-  );
+  assertValidSandboxProxyUrls({
+    proxyUrl,
+    previewProxyUrl,
+    requireProxyUrl: false
+  });
 };
 
 /**

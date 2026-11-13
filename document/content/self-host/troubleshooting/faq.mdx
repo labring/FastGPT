@@ -133,11 +133,11 @@ description: 汇总 FastGPT 私有部署启动、端口占用、向量库切换�
 
 ---
 
-### docker-compose 部署报 AGENT_SANDBOX_OPENSANDBOX_IMAGE 没配置、AGENT_SANDBOX_PREVIEW_PROXY_URL 不对怎么办？
+### docker-compose 部署报 AGENT_SANDBOX_OPENSANDBOX_IMAGE 没配置、AGENT_SANDBOX_PROXY_URL 或 AGENT_SANDBOX_PREVIEW_PROXY_URL 不对怎么办？
 
-适用版本：4.16.0 及以后。从 4.16.0 起，沙箱镜像只用 `AGENT_SANDBOX_OPENSANDBOX_IMAGE` 这一个变量，并且必须配置 `AGENT_SANDBOX_PREVIEW_PROXY_URL`。用 4.15 或更早的 compose 模板搭配新版镜像，就会报这两个错。
+适用版本：4.16.0 及以后。从 4.16.0 起，沙箱镜像只用 `AGENT_SANDBOX_OPENSANDBOX_IMAGE` 这一个变量；4.16.0–4.17.x 必须配置 `AGENT_SANDBOX_PREVIEW_PROXY_URL`，4.18.0 起单端口模式统一配置 `AGENT_SANDBOX_PROXY_URL` 与 `AGENT_SANDBOX_PROXY_SECRET`。用旧版本的 compose 模板搭配新版镜像就会报错。
 
-怎么做：按 [Docker Compose 部署](/zh-CN/self-host/deploy/docker) 使用一键脚本，或手动下载和镜像同一版本的模板（4.17.x 使用 `main` 目录，4.16.x 使用 `v4.16` 目录）。
+怎么做：按 [Docker Compose 部署](/zh-CN/self-host/deploy/docker) 使用一键脚本，或手动下载和镜像同一版本的模板（最新版使用 `main` 目录，4.16.x 使用 `v4.16` 目录）。
 
 注意：在已经部署过的目录里重新运行一键脚本，会重新生成数据库密码和 `AES256_SECRET_KEY`，并覆盖 `docker-compose.yml`。请先备份原文件；要保留数据，就选择不自动生成密码（或设置 `FASTGPT_AUTO_GENERATE_CREDENTIALS=false`），并把原来的密码和密钥拷过去。
 

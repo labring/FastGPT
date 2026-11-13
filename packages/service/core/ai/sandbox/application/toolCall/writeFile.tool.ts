@@ -14,19 +14,17 @@ export const SandboxWriteFileToolSchema = z.object({
 export const sandboxWriteFileTool = defineTool({
   zodSchema: SandboxWriteFileToolSchema,
   execute: async ({ sandboxInstance, params }) => {
-    await sandboxInstance.ensureAvailable();
-    const providerPath = sandboxInstance.resolveRuntimePath(params.path, {
-      allowAbsolutePath: true
+    await sandboxInstance.runWithRecovery(async () => {
+      const targetPath = sandboxInstance.resolveRuntimePath(params.path, {
+        allowAbsolutePath: true
+      });
+      await sandboxInstance.opensandbox.writeFiles([
+        {
+          path: targetPath,
+          data: params.content
+        }
+      ]);
     });
-    const [file] = await sandboxInstance.provider.writeFiles([
-      {
-        path: providerPath,
-        data: params.content
-      }
-    ]);
-    if (!file || file.error) {
-      throw new Error(`Failed to write file: ${file?.error?.message || params.path}`);
-    }
 
     return {
       response: `File written successfully: ${params.path}`

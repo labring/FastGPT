@@ -371,8 +371,8 @@ async function runtimeScope(w, context) {
   for (const [name, payload, method] of [
     ['checkExist', {}, 'POST'],
     ['download', { path: '.' }, 'POST'],
-    ['getTicket', { channel: 'fs', permission: 'read' }, 'POST'],
-    ['getHtmlPreviewLink', { filePath: 'index.html' }, 'POST'],
+    ['fs/list', { path: '.' }, 'POST'],
+    ['getFilePreviewLink', { filePath: 'index.html' }, 'POST'],
     ['upload', { path: 'FG-TEST.txt' }, 'GET']
   ]) {
     // upload 的业务路由固定 POST，二进制流独立构造；错误 UID 在连接沙盒前拒绝。
@@ -495,7 +495,7 @@ async function runtimeScope(w, context) {
   assert.equal(download.status, 200);
   assert.equal(digest(Buffer.from(await download.arrayBuffer())), digest(bytes));
   const instances = await w.db
-    .collection('agent_sandbox_instances_v2')
+    .collection('agent_sandbox_instances_v3')
     .find({ sourceType: 'app', sourceId: w.W })
     .toArray();
   assert.deepEqual(

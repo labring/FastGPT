@@ -26,12 +26,6 @@ yarn-error.log*
 **/coverage
 projects/app/worker
 pro/admin/worker
-projects/volume-manager/dist
-
-# Rust build artifacts (忽略 Rust target 编译输出目录)
-**/target
-**/*.rs.bk
-Cargo.lock.bak
 
 # Env & Secrets (防止本地敏感环境配置打包进镜像)
 **/.env*.local

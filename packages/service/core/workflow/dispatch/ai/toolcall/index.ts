@@ -8,7 +8,7 @@ import {
   resolveAppSandboxAvailability
 } from '../../../../ai/sandbox/application/availability';
 import { getRunningSandboxId } from '../../../../ai/sandbox/utils/id';
-import { getSandboxRuntimeProfile } from '../../../../ai/sandbox/application/runtime';
+import { getSandboxRuntimeProfile } from '../../../../ai/sandbox/infrastructure/opensandbox/runtimeProfile';
 import {
   runAgentSandboxEntrypoint,
   withAgentSandboxInitLease
@@ -166,7 +166,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
           userId: sandboxContext.userId,
           chatId: sandboxContext.chatId,
           teamId: sandboxContext.teamId,
-          prepareRuntime: () =>
+          prepareRuntime: ({ onUpgrade }) =>
             withAgentSandboxInitLease({
               sandboxId: getRunningSandboxId({
                 sourceType: sandboxSourceType,
@@ -183,12 +183,13 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
                   files: currentInputFiles.map((file) => ({
                     path: file.sandboxPath!,
                     url: file.url
-                  }))
+                  })),
+                  onUpgrade
                 });
                 const effectiveEntrypoint = sandboxEntrypoint?.trim();
                 if (effectiveEntrypoint) {
                   await runAgentSandboxEntrypoint({
-                    sandbox: runtime.provider,
+                    sandbox: runtime.opensandbox,
                     sandboxEntrypoint: effectiveEntrypoint,
                     scope: `${runningAppInfo.sourceType}:${runningAppInfo.sourceId}:node:${nodeId}`,
                     workDirectory: getSandboxRuntimeProfile().workDirectory

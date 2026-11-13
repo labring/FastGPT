@@ -3,82 +3,174 @@ import { MongoSandboxInstance } from '@fastgpt/service/core/ai/sandbox/infrastru
 import { getSchemaDeprecatedMongoIndexes } from '@fastgpt/service/common/mongo';
 
 const baseInstance = {
-  provider: 'opensandbox',
   sandboxId: 'schema-test-sandbox',
-  sourceType: 'app',
+  sourceType: 'app' as const,
   sourceId: 'schema-test-app',
   userId: 'schema-test-user',
+  teamId: 'schema-test-team',
   lastActiveAt: new Date(),
   createdAt: new Date()
 };
 
-describe('MongoSandboxInstance schema indexes', () => {
-  it('declares physical and logical sandbox uniqueness', () => {
+describe('MongoSandboxInstance v3 schema and indexes', () => {
+  it('declares all 6 current v3 indexes and zero deprecated indexes', () => {
     const indexes = MongoSandboxInstance.schema.indexes();
-    const providerIndex = indexes.find(
-      ([keys, options]) => keys.provider === 1 && keys.sandboxId === 1 && options?.unique === true
-    );
-    const logicalIndex = indexes.find(
-      ([keys, options]) =>
-        keys.sourceType === 1 &&
-        keys.sourceId === 1 &&
-        keys.userId === 1 &&
-        options?.unique === true
-    );
+    expect(indexes).toHaveLength(6);
 
-    expect(providerIndex?.[0]).toEqual({ provider: 1, sandboxId: 1 });
-    expect(logicalIndex?.[0]).toEqual({ sourceType: 1, sourceId: 1, userId: 1 });
-
-    expect(indexes.some(([keys]) => keys.status === 1 && keys.lastActiveAt === 1)).toBe(true);
-    expect(indexes.some(([keys]) => keys.status === 1 && keys['operation.heartbeatAt'] === 1)).toBe(
-      true
-    );
-  });
-
-  it('registers the nested operation index for automatic cleanup', () => {
-    expect(getSchemaDeprecatedMongoIndexes(MongoSandboxInstance.schema)).toEqual([
-      {
-        indexName: 'sourceType_1_status_1_provider_1',
-        key: { sourceType: 1, status: 1, provider: 1 },
-        options: undefined
-      },
-      {
-        indexName: 'status_1_metadata.operation.heartbeatAt_1',
-        key: { status: 1, 'metadata.operation.heartbeatAt': 1 },
-        options: undefined
-      }
+    expect(indexes).toEqual([
+      [{ sandboxId: 1 }, { background: true, unique: true }],
+      [
+        { sourceType: 1, sourceId: 1, userId: 1 },
+        { background: true, unique: true }
+      ],
+      [{ teamId: 1, status: 1 }, { background: true }],
+      [{ status: 1, lastActiveAt: 1 }, { background: true }],
+      [{ status: 1, 'operation.heartbeatAt': 1 }, { background: true }],
+      [{ 'storage.volumes.claimName': 1 }, { background: true }]
     ]);
+
+    expect(getSchemaDeprecatedMongoIndexes(MongoSandboxInstance.schema)).toEqual([]);
   });
 
-  it('accepts stable states without operation and matching transition operations', async () => {
+  it('requires teamId and enforces instanceId invariants on running and stopped states', async () => {
     await expect(
-      new MongoSandboxInstance({ ...baseInstance, status: 'running' }).validate()
+      new MongoSandboxInstance({
+        ...baseInstance,
+        teamId: undefined,
+        status: 'stopped'
+      }).validate()
+    ).rejects.toThrow(/teamId/);
+
+    await expect(
+      new MongoSandboxInstance({
+        ...baseInstance,
+        status: 'running',
+        instanceId: 'remote-container-1'
+      }).validate()
     ).resolves.toBeUndefined();
 
     await expect(
       new MongoSandboxInstance({
         ...baseInstance,
-        status: 'archiving',
+        status: 'running'
+      }).validate()
+    ).rejects.toThrow('Running status requires a non-empty instanceId');
+
+    await expect(
+      new MongoSandboxInstance({
+        ...baseInstance,
+        status: 'running',
+        instanceId: '   '
+      }).validate()
+    ).rejects.toThrow('Running status requires a non-empty instanceId');
+
+    await expect(
+      new MongoSandboxInstance({
+        ...baseInstance,
+        status: 'stopped'
+      }).validate()
+    ).resolves.toBeUndefined();
+
+    await expect(
+      new MongoSandboxInstance({
+        ...baseInstance,
+        status: 'stopped',
+        instanceId: 'stale-container-1'
+      }).validate()
+    ).rejects.toThrow('Stopped status must not keep an instanceId');
+  });
+
+  it('validates structured resourceLimits, storage volumes, and context subdocuments strictly', async () => {
+    const doc = new MongoSandboxInstance({
+      ...baseInstance,
+      status: 'stopped',
+      resourceLimits: {
+        cpuCount: 2,
+        memoryMiB: 2048,
+        ephemeralStorageSize: '20Gi'
+      },
+      storage: {
+        volumes: [
+          {
+            name: 'workspace',
+            claimName: 'fastgpt-session-schema-test-12345678',
+            mountPath: '/workspace'
+          }
+        ]
+      },
+      context: {
+        skillVersionId: '507f1f77bcf86cd799439012'
+      }
+    });
+    await expect(doc.validate()).resolves.toBeUndefined();
+    expect(doc.toObject().storage?.volumes?.[0]?.readOnly).toBe(false);
+
+    // Volumeless instance does not auto-populate volumes: []
+    const volumeless = new MongoSandboxInstance({
+      ...baseInstance,
+      status: 'stopped'
+    });
+    await expect(volumeless.validate()).resolves.toBeUndefined();
+    expect(volumeless.toObject().storage).toBeUndefined();
+
+    // Outer redundant storage.mountPath is rejected by strict sub-schema
+    await expect(
+      (async () => {
+        const invalidStorage = new MongoSandboxInstance({
+          ...baseInstance,
+          status: 'stopped',
+          storage: {
+            volumes: [
+              {
+                name: 'workspace',
+                claimName: 'fastgpt-session-schema-test-12345678',
+                mountPath: '/workspace'
+              }
+            ],
+            mountPath: '/workspace'
+          }
+        } as unknown as Record<string, unknown>);
+        await invalidStorage.validate();
+      })()
+    ).rejects.toThrow(/mountPath/);
+
+    // Legacy top-level limit / versionId are rejected by strict root schema
+    await expect(
+      (async () => {
+        const invalidRoot = new MongoSandboxInstance({
+          ...baseInstance,
+          status: 'stopped',
+          versionId: 'legacy-version'
+        } as unknown as Record<string, unknown>);
+        await invalidRoot.validate();
+      })()
+    ).rejects.toThrow(/versionId/);
+  });
+
+  it('accepts matching transition operations and rejects missing, mismatched and stale operations', async () => {
+    await expect(
+      new MongoSandboxInstance({
+        ...baseInstance,
+        status: 'stopping',
+        instanceId: 'remote-container-1',
         operation: {
-          id: 'archive-operation',
-          type: 'archive',
+          id: 'stop-operation',
+          type: 'stop',
           phase: 'claimed',
           startedAt: new Date(),
           heartbeatAt: new Date()
         }
       }).validate()
     ).resolves.toBeUndefined();
-  });
 
-  it('rejects missing, mismatched and stale operations', async () => {
     await expect(
-      new MongoSandboxInstance({ ...baseInstance, status: 'archiving' }).validate()
-    ).rejects.toThrow('Status archiving requires archive operation');
+      new MongoSandboxInstance({ ...baseInstance, status: 'provisioning' }).validate()
+    ).rejects.toThrow('Status provisioning requires provision operation');
 
     await expect(
       new MongoSandboxInstance({
         ...baseInstance,
-        status: 'archiving',
+        status: 'provisioning',
         operation: {
           id: 'wrong-operation',
           type: 'stop',
@@ -87,12 +179,13 @@ describe('MongoSandboxInstance schema indexes', () => {
           heartbeatAt: new Date()
         }
       }).validate()
-    ).rejects.toThrow('Status archiving requires archive operation');
+    ).rejects.toThrow('Status provisioning requires provision operation');
 
     await expect(
       new MongoSandboxInstance({
         ...baseInstance,
         status: 'running',
+        instanceId: 'remote-container-1',
         operation: {
           id: 'stale-operation',
           type: 'stop',
@@ -104,27 +197,13 @@ describe('MongoSandboxInstance schema indexes', () => {
     ).rejects.toThrow('Stable status running must not keep an operation');
   });
 
-  it('rejects the removed provider migration state and operation', async () => {
+  it('rejects removed archive and legacy migration states', async () => {
     await expect(
-      new MongoSandboxInstance({ ...baseInstance, status: 'providerMigrating' }).validate()
+      new MongoSandboxInstance({ ...baseInstance, status: 'archived' }).validate()
     ).rejects.toThrow();
 
     await expect(
-      new MongoSandboxInstance({
-        ...baseInstance,
-        status: 'archiving',
-        operation: {
-          id: 'provider-migration-operation',
-          type: 'providerMigration',
-          phase: 'claimed',
-          startedAt: new Date(),
-          heartbeatAt: new Date()
-        }
-      }).validate()
+      new MongoSandboxInstance({ ...baseInstance, status: 'legacyMigrating' }).validate()
     ).rejects.toThrow();
-  });
-
-  it('does not define a metadata container in the v2 model', () => {
-    expect(MongoSandboxInstance.schema.path('metadata')).toBeUndefined();
   });
 });

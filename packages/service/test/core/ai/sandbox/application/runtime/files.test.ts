@@ -45,24 +45,27 @@ describe('sandbox runtime files', () => {
       headers: {}
     }));
 
-    await injectInputFilesToSandbox(sandbox as any, [
-      {
-        name: 'current.pdf',
-        url: 'https://files/current.pdf'
-      },
-      {
-        name: '../current.pdf',
-        url: 'https://files/unsafe-current.pdf'
-      },
-      {
-        name: 'folder/report.txt',
-        url: 'https://files/report.txt'
-      },
-      {
-        name: '..',
-        url: 'https://files/nameless'
-      }
-    ]);
+    await injectInputFilesToSandbox({
+      sandbox: sandbox as any,
+      files: [
+        {
+          name: 'current.pdf',
+          url: 'https://files/current.pdf'
+        },
+        {
+          name: '../current.pdf',
+          url: 'https://files/unsafe-current.pdf'
+        },
+        {
+          name: 'folder/report.txt',
+          url: 'https://files/report.txt'
+        },
+        {
+          name: '..',
+          url: 'https://files/nameless'
+        }
+      ]
+    });
 
     expect(sandbox.createDirectories).toHaveBeenCalledWith(['user_files']);
     expect(sandbox.writeFiles).toHaveBeenCalledWith([
@@ -95,17 +98,17 @@ describe('sandbox runtime files', () => {
     const readInputFile = vi.fn().mockResolvedValue(Buffer.from('private file'));
     axiosGetMock.mockClear();
 
-    await injectInputFilesToSandbox(
-      sandbox as any,
-      [
+    await injectInputFilesToSandbox({
+      sandbox: sandbox as any,
+      files: [
         {
           name: 'private.pdf',
           url: 'https://files.example.com/private.pdf'
         }
       ],
-      '/workspace/sessions/chat-1',
+      workDirectory: '/workspace/sessions/chat-1',
       readInputFile
-    );
+    });
 
     expect(readInputFile).toHaveBeenCalledWith('https://files.example.com/private.pdf');
     expect(axiosGetMock).not.toHaveBeenCalled();
@@ -124,24 +127,16 @@ describe('sandbox runtime files', () => {
     const { injectInputFilesToSandbox } =
       await import('@fastgpt/service/core/ai/sandbox/application/runtime/files');
     const sandbox = createSandbox();
-    sandbox.writeFiles.mockResolvedValueOnce([
-      {
-        path: '/workspace/user_files/broken.pdf',
-        bytesWritten: 0,
-        error: new Error('disk full')
-      }
-    ]);
+    sandbox.writeFiles.mockRejectedValueOnce(new Error('disk full'));
 
     await expect(
-      injectInputFilesToSandbox(
-        sandbox as any,
-        [{ name: 'broken.pdf', url: 'https://files.example.com/broken.pdf' }],
-        '/workspace',
-        async () => Buffer.from('content')
-      )
-    ).rejects.toThrow(
-      'Failed to write sandbox input file /workspace/user_files/broken.pdf: disk full'
-    );
+      injectInputFilesToSandbox({
+        sandbox: sandbox as any,
+        files: [{ name: 'broken.pdf', url: 'https://files.example.com/broken.pdf' }],
+        workDirectory: '/workspace',
+        readInputFile: async () => Buffer.from('content')
+      })
+    ).rejects.toThrow('disk full');
   });
 
   it('preserves earlier same-named files when sibling or child runs inject different URLs into a shared sandbox session', async () => {
@@ -156,12 +151,12 @@ describe('sandbox runtime files', () => {
       file: { name: string; url: string; sandboxPath?: string },
       contextOwner?: object
     ) =>
-      injectInputFilesToSandbox(
-        sandbox as any,
-        [file],
+      injectInputFilesToSandbox({
+        sandbox: sandbox as any,
+        files: [file],
         workDirectory,
         readInputFile,
-        getSandboxInputFileNameAllocation({
+        allocation: getSandboxInputFileNameAllocation({
           scopeKey: buildSandboxInputFileScopeKey({
             sourceType: ChatSourceTypeEnum.app,
             sourceId,
@@ -172,7 +167,7 @@ describe('sandbox runtime files', () => {
           sandbox,
           workDirectory
         })
-      );
+      });
 
     // 独立沙盒身份下各自写入 user_files/report.csv 互不影响
     const sandboxA = createSandbox();

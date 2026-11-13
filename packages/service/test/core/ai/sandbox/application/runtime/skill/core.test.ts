@@ -13,10 +13,6 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 
 import { getUser } from '@test/datas/users';
 
-vi.mock('@fastgpt/service/core/ai/sandbox/application/runtime/home', () => ({
-  resolveSandboxHome: async () => '/home/test'
-}));
-
 const makePackage = async (entries: Array<{ path: string; name: string; description: string }>) => {
   const zip = new JSZip();
   for (const entry of entries) {
@@ -33,12 +29,7 @@ description: ${entry.description}
   return zip.generateAsync({ type: 'nodebuffer' });
 };
 
-const makeWriteResults = (entries: Array<{ path: string; data: unknown }>) =>
-  entries.map((entry) => ({
-    path: entry.path,
-    bytesWritten: entry.data instanceof Buffer ? entry.data.length : 0,
-    error: null
-  }));
+const makeWriteResults = () => undefined;
 
 const createSkillFilesystemMocks = (directoryPaths: string[] = []) => ({
   readFiles: vi.fn(async () => []),
@@ -46,20 +37,16 @@ const createSkillFilesystemMocks = (directoryPaths: string[] = []) => ({
   createDirectories: vi.fn(async (_paths: string[]) => undefined),
   listDirectory: vi.fn(async () =>
     directoryPaths.map((path) => ({
-      name: path.split('/').pop() ?? path,
       path,
-      isDirectory: true,
-      isFile: false
+      type: 'directory'
     }))
   ),
   deleteDirectories: vi.fn(async (_paths: string[]) => undefined),
-  deleteFiles: vi.fn(async (paths: string[]) =>
-    paths.map((path) => ({ path, success: true, error: null }))
-  ),
-  moveFiles: vi.fn(async (_entries: Array<{ source: string; destination: string }>) => undefined)
+  deleteFiles: vi.fn(async (_paths: string[]) => undefined),
+  moveFiles: vi.fn(async (_entries: Array<{ src: string; dest: string }>) => undefined)
 });
 
-const WORKSPACE_SKILL_INFO_FIND_COMMAND = `find '/workspace' \\( -name 'node_modules' -o -name '.venv' -o -name 'venv' \\) -prune -o -iname "SKILL.md" -print0 2>/dev/null`;
+const WORKSPACE_SKILL_INFO_FIND_COMMAND = `find '/workspace' \\( -name 'node_modules' -o -name '.venv' -o -name 'venv' -o -name '.fastgpt' \\) -prune -o -iname "SKILL.md" -print0 2>/dev/null`;
 
 describe('runtime skill deploy and scan integration', () => {
   it('scans every recursive skill.md from every selected version directory', async () => {
@@ -215,7 +202,7 @@ description: Zeta skill
       readFiles: vi.fn(async (paths: string[]) =>
         paths.map((path) => ({
           path,
-          content: contentByPath.get(path) || ''
+          content: Buffer.from(contentByPath.get(path) || '')
         }))
       )
     };
@@ -262,12 +249,12 @@ description: Zeta skill
     expect(moveEntries).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          source: expect.stringContaining(`/workspace/projects/.tmp-${String(skill1VersionId)}`),
-          destination: skill1TargetDir
+          src: expect.stringContaining(`/workspace/projects/.tmp-${String(skill1VersionId)}`),
+          dest: skill1TargetDir
         }),
         expect.objectContaining({
-          source: expect.stringContaining(`/workspace/projects/.tmp-${String(skill2VersionId)}`),
-          destination: skill2TargetDir
+          src: expect.stringContaining(`/workspace/projects/.tmp-${String(skill2VersionId)}`),
+          dest: skill2TargetDir
         })
       ])
     );
@@ -275,8 +262,9 @@ description: Zeta skill
     const findSkillCommands = sandbox.execute.mock.calls
       .map(([command]) => command)
       .filter((command) => command.includes('-iname "SKILL.md"'));
-    expect(findSkillCommands.some((c) => c.includes(`'${skill1TargetDir}'`))).toBe(true);
-    expect(findSkillCommands.some((c) => c.includes(`'${skill2TargetDir}'`))).toBe(true);
+    expect(findSkillCommands).toHaveLength(1);
+    expect(findSkillCommands[0]).toContain(`'${skill1TargetDir}' '${skill2TargetDir}'`);
+    expect(findSkillCommands[0]).toContain(`-name '.fastgpt'`);
     expect(findSkillCommands).not.toContain(WORKSPACE_SKILL_INFO_FIND_COMMAND);
     expect(result).toHaveLength(6);
     expect(result.map((item) => item.name)).toEqual(
@@ -402,10 +390,10 @@ describe('injectAgentSkillFilesToSandbox', () => {
           : [
               {
                 path: latestSkillMdPath,
-                content: `---
+                content: Buffer.from(`---
 name: latest
 description: Latest current skill
----`
+---`)
               }
             ]
       )
@@ -432,10 +420,10 @@ description: Latest current skill
       ])
     );
     expect(sandbox.moveFiles).toHaveBeenCalledWith([
-      expect.objectContaining({ destination: latestTargetDir })
+      expect.objectContaining({ dest: latestTargetDir })
     ]);
     const movedDestinations = sandbox.moveFiles.mock.calls.flatMap(([entries]) =>
-      entries.map(({ destination }) => destination)
+      entries.map(({ dest }) => dest)
     );
     expect(movedDestinations).not.toContain(oldTargetDir);
     expect(result).toEqual([
@@ -672,13 +660,9 @@ description: Latest current skill
     const writeError = new Error('write failed');
     const sandbox = {
       ...createSkillFilesystemMocks(),
-      writeFiles: vi.fn(async (entries: Array<{ path: string; data: Buffer }>) =>
-        entries.map((entry) => ({
-          path: entry.path,
-          bytesWritten: 0,
-          error: writeError
-        }))
-      ),
+      writeFiles: vi.fn(async () => {
+        throw writeError;
+      }),
       execute: vi.fn()
     };
 
@@ -691,7 +675,7 @@ description: Latest current skill
           deleteTime: null
         }).lean()
       })
-    ).rejects.toThrow('Failed to write skill ZIP package: write failed');
+    ).rejects.toThrow('write failed');
     expect(sandbox.deleteDirectories).toHaveBeenCalledWith([
       expect.stringContaining(`/workspace/projects/.tmp-${String(skillVersionId)}`)
     ]);
@@ -751,12 +735,12 @@ describe('getAgentSkillInfos', () => {
       readFiles: vi.fn(async () => [
         {
           path: '/workspace/Report/SKILL.md',
-          content: `---
+          content: Buffer.from(`---
 name: Report
 description: Write reports
 ---
 
-# Report`
+# Report`)
         }
       ])
     };
@@ -788,12 +772,12 @@ description: Write reports
       readFiles: vi.fn(async () => [
         {
           path: '/workspace/.skills/version_1/fetch-webpage/SKILL.md',
-          content: `---
+          content: Buffer.from(`---
 name: fetch-webpage
 description: Read webpages
 ---
 
-# Fetch webpage`
+# Fetch webpage`)
         }
       ])
     };

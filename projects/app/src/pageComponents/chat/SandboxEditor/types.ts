@@ -6,6 +6,29 @@ export type SandboxEditorInstance = Parameters<
   NonNullable<Parameters<typeof Editor>[0]['onMount']>
 >[0];
 
+export type OpenedFile = {
+  path: string;
+  name: string;
+  content: string;
+  language: string;
+  isBinary: boolean;
+  isDirty: boolean;
+  isLoading?: boolean;
+  isSaving?: boolean;
+  hasSaveError?: boolean;
+  // 流式读取的预览文件只读，避免保存未完整载入的内容。
+  readOnly?: boolean;
+  // 非媒体文件 UTF-8 解码失败时为 true，前端走「无法预览」兜底
+  isUnknown?: boolean;
+  etag?: string;
+};
+
+export type CreateSandboxNodeParams = {
+  parentPath: string;
+  name: string;
+  type: 'file' | 'directory';
+};
+
 export type SandboxTargetInput = {
   appId?: string;
   chatTarget?: ChatTargetInputType;

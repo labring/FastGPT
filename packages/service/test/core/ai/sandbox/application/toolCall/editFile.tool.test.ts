@@ -2,14 +2,20 @@ import { describe, expect, it, vi } from 'vitest';
 import { sandboxEditFileTool } from '@fastgpt/service/core/ai/sandbox/application/toolCall/editFile.tool';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 
-const createSandboxInstance = () =>
-  ({
-    ensureAvailable: vi.fn(async () => undefined),
+const createSandboxInstance = () => {
+  const ensureAvailable = vi.fn(async () => undefined);
+  return {
+    ensureAvailable,
+    runWithRecovery: vi.fn(async (fn: () => Promise<unknown>) => {
+      await ensureAvailable();
+      return fn();
+    }),
     resolveRuntimePath: vi.fn((path: string) => path),
-    provider: {
+    opensandbox: {
       replaceContent: vi.fn(async () => undefined)
     }
-  }) as any;
+  } as any;
+};
 
 describe('sandboxEditFileTool', () => {
   it('edits files through the provider', async () => {
@@ -29,7 +35,7 @@ describe('sandboxEditFileTool', () => {
     ).resolves.toEqual({ response: 'Files edited successfully: /workspace/a.txt' });
 
     expect(sandbox.ensureAvailable).toHaveBeenCalledTimes(1);
-    expect(sandbox.provider.replaceContent).toHaveBeenCalledWith([
+    expect(sandbox.opensandbox.replaceContent).toHaveBeenCalledWith([
       { path: '/workspace/a.txt', oldContent: 'old', newContent: 'new' }
     ]);
   });

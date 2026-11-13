@@ -1,8 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Box, Flex } from '@chakra-ui/react';
+import { Box, Button, Flex, ModalBody, ModalFooter } from '@chakra-ui/react';
 import { SkillDetailContext } from '../../dashboard/skill/detail/context';
 import { useContextSelector } from 'use-context-selector';
+import { useTranslation } from 'next-i18next';
 import MyBox from '@fastgpt/web/components/common/MyBox';
+import MyModal from '@fastgpt/web/components/common/MyModal';
 import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 
 import FileTree from './components/FileTree';
@@ -54,21 +56,37 @@ const SandboxEditor = ({
   headerRight,
   bg
 }: Props) => {
+  const { t } = useTranslation();
   const saveAllRef = useContextSelector(SkillDetailContext, (v) => v.saveAllRef);
   const editorRef = useRef<SandboxEditorInstance>();
   const editorLayoutRef = useRef<HTMLDivElement>(null);
   const [fileTreeWidth, setFileTreeWidth] = useState(FILE_TREE_DEFAULT_WIDTH);
   const [isFileTreeResizing, setIsFileTreeResizing] = useState(false);
+  const chatTargetAppId = chatTarget?.appId;
+  const chatTargetSkillId = chatTarget?.skillId;
+  const chatTargetSourceType =
+    chatTarget && 'sourceType' in chatTarget ? chatTarget.sourceType : undefined;
   const sandboxTarget = useMemo(
-    () => resolveSandboxTarget({ appId, chatTarget }),
-    [appId, chatTarget?.appId, chatTarget?.skillId]
+    () =>
+      resolveSandboxTarget({
+        appId,
+        chatTarget: chatTargetSkillId
+          ? { skillId: chatTargetSkillId }
+          : chatTargetAppId
+            ? {
+                appId: chatTargetAppId,
+                ...(chatTargetSourceType ? { sourceType: chatTargetSourceType } : {})
+              }
+            : undefined
+      }),
+    [appId, chatTargetAppId, chatTargetSkillId, chatTargetSourceType]
   );
   const fileTreeShowDownload = showFileTreeDownload ?? showDownload;
 
   const {
     fileTree,
-    setFileTree,
-    isWsConnected,
+    sessionWorkDirectory,
+    isWorkspaceLoaded,
     openedFiles,
     setOpenedFiles,
     activeFilePath,
@@ -84,10 +102,16 @@ const SandboxEditor = ({
     setSearchQuery,
     activeFile,
     refreshWorkspace,
+    onWorkspaceFocus,
     openFile,
     closeFile,
     saveFile,
     saveAllFiles,
+    conflictFilePath,
+    isResolvingConflict,
+    onCloseConflictModal,
+    onReloadConflictFile,
+    onOverwriteConflictFile,
     downloadCurrentFile,
     onCreateNode,
     onRenameComplete,
@@ -117,16 +141,6 @@ const SandboxEditor = ({
       }
     };
   }, [saveAllFiles, saveAllRef]);
-
-  // 沙盒准备或重建时，重置文件树、标签页及选中状态，保障就绪后显示最新内容
-  useEffect(() => {
-    if (isPreparing) {
-      setFileTree([]);
-      setOpenedFiles([]);
-      setActiveFilePath('');
-      setSelectedPath('');
-    }
-  }, [isPreparing, setFileTree, setOpenedFiles, setActiveFilePath, setSelectedPath]);
 
   const filteredTree = filterTree(fileTree, searchQuery);
 
@@ -175,11 +189,11 @@ const SandboxEditor = ({
 
   const renderContent = () => {
     const isInitialLoading =
-      isPreparing || ((!isWsConnected || loadingRoot) && fileTree.length === 0);
+      isPreparing || ((!isWorkspaceLoaded || loadingRoot) && fileTree.length === 0);
 
     const fileTreeComponent = (
       <FileTree
-        width={fileTreeWidth}
+        sessionWorkDirectory={sessionWorkDirectory}
         filteredTree={filteredTree}
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
@@ -267,7 +281,7 @@ const SandboxEditor = ({
         canWrite={showFileOps}
         headerRight={headerRight}
         isPreparing={isPreparing}
-        isWsConnected={isWsConnected}
+        isWorkspaceLoaded={isWorkspaceLoaded}
         loadingRoot={loadingRoot}
         hasFiles={fileTree.length > 0}
       />
@@ -304,9 +318,49 @@ const SandboxEditor = ({
   };
 
   return (
-    <MyBox ref={editorLayoutRef} display={'flex'} h="full" w="full" bg={bg ?? 'myGray.25'}>
-      {renderContent()}
-    </MyBox>
+    <>
+      <MyBox
+        ref={editorLayoutRef}
+        onFocusCapture={onWorkspaceFocus}
+        display={'flex'}
+        h="full"
+        w="full"
+        bg={bg ?? 'myGray.25'}
+      >
+        {renderContent()}
+      </MyBox>
+      {conflictFilePath && (
+        <MyModal
+          isOpen
+          isCentered
+          onClose={isResolvingConflict ? undefined : onCloseConflictModal}
+          title={t('chat:sandbox_save_conflict_title')}
+          maxW={['90vw', '480px']}
+          closeOnOverlayClick={!isResolvingConflict}
+        >
+          <ModalBody py={4} fontSize={'sm'} color={'myGray.700'} wordBreak={'break-word'}>
+            {t('chat:sandbox_save_conflict_desc', { path: conflictFilePath })}
+          </ModalBody>
+          <ModalFooter gap={2}>
+            <Button
+              variant={'whiteBase'}
+              size={'sm'}
+              isDisabled={isResolvingConflict}
+              onClick={() => void onReloadConflictFile()}
+            >
+              {t('chat:sandbox_save_conflict_reload')}
+            </Button>
+            <Button
+              size={'sm'}
+              isLoading={isResolvingConflict}
+              onClick={() => void onOverwriteConflictFile()}
+            >
+              {t('chat:sandbox_save_conflict_overwrite')}
+            </Button>
+          </ModalFooter>
+        </MyModal>
+      )}
+    </>
   );
 };
 

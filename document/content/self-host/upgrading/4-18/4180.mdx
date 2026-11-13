@@ -22,7 +22,15 @@ upgradeTags:
 - **内容审核（Moderation）插件化迁移**：旧版商业版内置的百度文本审核（`censor.BAIDU_TEXT_CENSOR_CLIENTID` / `censor.BAIDU_TEXT_CENSOR_CLIENTSECRET`）、自定义审核地址（`censor.customCensorURL`）以及单模型配置中的 `censor` 开关已废弃，统一升级为由 `fastgpt-plugin` 托管的 `moderation` 插件体系。
   - 原百度审核用户请前往 **管理后台 > 内容审核 > 审核策略配置**，配置并启用官方「百度内容安全（`baidu`）」插件。
   - 原自定义审核 URL（`customCensorURL`）用户可直接安装官方「旧版自定义审核兼容（`legacy-custom-censor`）」插件零代码迁移现有 HTTP 服务，或基于 `@fastgpt-plugin/sdk-factory` 开发原生 `moderation` 插件。
-  - 详细的新旧版本对比、配置映射与开发步骤见 [内容审核升级与迁移指南](/self-host/migration/content-moderation)。
+  - 详细的新旧版本对比、配置映射与开发步骤见 [内容审核升级与迁移指南](/zh-CN/self-host/migration/content-moderation)。
+- **Agent 沙盒架构升级（OpenSandbox + JuiceFS）**：沙盒运行态统一收敛为 OpenSandbox（SDK `1.2.0`）配合 `fastgpt-volume-manager` 与 JuiceFS 共享存储，下线 `sealosdevbox` 运行态与主库 S3 zip 定时归档，原 `fastgpt-agent-sandbox-proxy` 升级替换为轻量边缘网关 `fastgpt-opensandbox-proxy`（容器监听 `1006` 端口，Docker Compose 默认宿主机映射 `3006:1006`）。完整部署说明见 [OpenSandbox 配置](/zh-CN/self-host/config/sandbox/opensandbox)：
+  - 已移除 `AGENT_SANDBOX_PROVIDER`，配置 `AGENT_SANDBOX_OPENSANDBOX_BASEURL` 即启用 OpenSandbox；需部署 `fastgpt-volume-manager`，并为 JuiceFS 准备独立的 PostgreSQL 等元数据库与独立的对象存储桶（切勿复用 FastGPT 主业务库与主存储桶）。Docker 模式需为 `volume-manager` 开启 `/dev/fuse` 与挂载目录 `:rshared` 共享传播；Kubernetes 模式需配置可用的 JuiceFS CSI StorageClass。
+  - 新增 `fastgpt-opensandbox-proxy` 服务统一承载交互式终端 WebSocket（`/terminal`）与静态文件预览（`/preview/*`）：在 `fastgpt-app` 与该服务中配置一致的 `AGENT_SANDBOX_PROXY_SECRET`，并将 `AGENT_SANDBOX_PROXY_URL` 指向浏览器可访问的 `fastgpt-opensandbox-proxy` 地址（建议在生产环境使用独立于 `FE_DOMAIN` 的子域名或域名实现源隔离；单端口模式下 `AGENT_SANDBOX_PREVIEW_PROXY_URL` 可留空，仅在开启 `PREVIEW_PORT` 双端口隔离时单独填写）。
+- **沙盒历史数据迁移可选环境变量**（仅在存在历史沙盒数据、需执行下方手动迁移与清理任务时按需配置）：
+  - `SYSTEM_MIGRATION_SANDBOX_CONCURRENCY`（配置在 `fastgpt-app`，默认 `5`，取值 `1` – `20`）：控制沙盒迁移与旧资源回收任务的单批并发数。
+  - `AGENT_SANDBOX_SEALOS_BASEURL`、`AGENT_SANDBOX_SEALOS_TOKEN`、`AGENT_SANDBOX_SEALOS_WORK_DIRECTORY`（配置在 `fastgpt-app`，工作目录默认 `/home/devbox/workspace`）：仅当旧库存在未归档或待回收的 `sealosdevbox` 实例时临时保留，用于迁移导出与实例销毁；任务 2 完成后可移除。
+  - `AGENT_SANDBOX_LEGACY_OPENSANDBOX_BASEURL`、`AGENT_SANDBOX_LEGACY_VOLUME_MANAGER_URL`（以及可选的 `AGENT_SANDBOX_LEGACY_OPENSANDBOX_API_KEY`、`AGENT_SANDBOX_LEGACY_OPENSANDBOX_IMAGE`、`AGENT_SANDBOX_LEGACY_OPENSANDBOX_RUNTIME`、`AGENT_SANDBOX_LEGACY_VOLUME_MANAGER_TOKEN`，配置在 `fastgpt-app`）：仅在跨运行时或跨集群迁移旧版 OpenSandbox（例如从旧 Docker OpenSandbox 迁往新 Kubernetes OpenSandbox）时成对填写，指向旧环境控制面与 `volume-manager` 以只读流式导出旧卷并在任务 2 中回收旧资源；原集群就地升级无需配置，任务 2 完成后可移除。
+  - `VM_LEGACY_VOLUME_PREFIXES`（配置在 `fastgpt-volume-manager`，逗号分隔前缀列表）：仅当历史自定义过旧版 `AGENT_SANDBOX_OPENSANDBOX_VOLUME_NAME_PREFIX` 且与当前前缀不同时配置，放行旧前缀卷的探测与回收。
 
 - **全新部署**：`main` Compose 模板默认 MongoDB 更新为 `8.0.34`，初始化和健康检查统一使用 `mongosh`，副本集主节点就绪后再放行依赖服务。
 
@@ -32,15 +40,21 @@ upgradeTags:
 
 ### 升级脚本
 
-本次脚本均为自动执行，无需手动执行。
+自动执行脚本（升级后在后台自动运行）：
 
 1. 新增 **初始化知识库向量索引**（`20261022_initialize_dataset_vector_indexes`），仅 PostgreSQL 在启动后于后台自动执行，不阻塞业务：先核验并在线删除旧全局 `vector_index`，再分批统计有效知识库并投递索引维护任务。任务成功表示统计与投递完成，实际建图由全局串行队列继续执行；清理或扫描失败时，可在升级管理页修复问题后重试，沿已保存的断点继续，同名但定义不匹配的自建索引会保留并报错。
 2. PG 局部索引要求支持 `halfvec`、固定向量维度在 `1–4000` 范围内，并具备在线创建、删除索引的权限及足够的内存、共享内存和磁盘资源。索引未就绪或失败期间继续精确检索，可能增加查询耗时；建图失败不会自动降低资源预算重试，排除故障后由下一次真实向量计数重新投递，缓存命中不会触发重试。
 3. 新增 **回填历史对话调用渠道**（`20261104_backfill_chat_publish_source`），启动后独立在后台批量读写，不阻塞业务，也不等待普通后台长任务；分别为对话与统计记录补齐 `publishSource`，不修改旧字段、身份、消息或统计计数。历史 API、MCP 及已删除渠道可能只能恢复类型，无法补齐渠道 ID；无法识别的旧来源统一归为 `unknown`，不猜测渠道归属。此前因来源枚举失败的记录可在升级管理页直接重试，无需修改旧数据或重置进度；其他引用冲突或数据异常仍会记录失败，修复后沿断点续跑。
 4. 新增 **回填 API Key 类型**（`20261104_backfill_openapi_key_type`），自动分批遍历全部密钥，将缺失的 `type` 补为 `personal`，有效 `appId` 统一保存为 BSON ObjectId；保留凭证、归属、额度及默认应用或绑定语义。运行期管理查询只支持已规范化的数据格式；迁移期间或旧实例继续写入的旧格式数据不在查询兼容范围内。首次扫描上界之后的旧格式记录不会自动补迁，需另行规范化。异常数据可在升级管理页修复后重试。
 
+手动系统升级任务（若启用了历史沙盒，可在管理台升级任务页按顺序手动执行；未启用沙盒或无历史沙盒记录的环境触发后会直接快速完成）：
+
+- **迁移沙盒工作空间至 JuiceFS**（`20261111_migrate_sandbox_to_juicefs`，手动执行）：将 `agent_sandbox_instances_v2` 中有效应用与技能的历史工作空间（旧 OpenSandbox Kubernetes PVC / Docker 命名卷、S3 `package.zip` 冷归档包及远端 Sealos Devbox 工作目录）迁入 JuiceFS 并在 `agent_sandbox_instances_v3` 写入 `stopped` 记录，同时终止旧运行容器、暂停远端 Devbox 释放算力。该阶段完整保留原 `v2` 记录与旧物理存储，便于在线验收期间随时无损回滚。
+- **清理旧版沙盒存储与实例**（`20261111_cleanup_legacy_sandbox_resources`，手动执行，依赖 `20261111_migrate_sandbox_to_juicefs`）：在线验收新沙盒确认无误且无需回滚旧版本后手动触发，幂等回收旧容器、旧 PVC / Docker 命名卷、S3 归档包及远端 Sealos Devbox 实例，并在确认外部资源清理完成后删除对应的 `v2` 记录。
+
 ### 兼容说明
 
+- **Agent 沙盒存储切换与未迁移保护**：沙盒实例集合由 `agent_sandbox_instances_v2` 切换为 `agent_sandbox_instances_v3`。若目标应用会话或技能在 `v2` 中仍有未迁入 `v3` 的记录，访问沙盒将返回 HTTP 409 并提示沙盒工作空间正在迁移，避免在执行迁移前误创建空白新卷覆盖历史文件；执行完 `20261111_migrate_sandbox_to_juicefs` 后即可按需正常唤醒。
 - **历史 API 密钥**：无需重新生成。缺少 `type` 的旧 Key 自动归为个人密钥，原 `appId` 仍作为默认对话目标，访问权限和个人管理方式不变；新建的应用 Key 则仅用于绑定应用，由应用管理员共同管理。
 - **API Key 健康检查**：由于安全问题，`GET /api/support/openapi/health` 改用 `Authorization: Bearer <apiKey>` 请求头，不再从 URL 的 `apiKey` 参数读取凭证；已有健康探针需调整传参并移除 URL 中的密钥。
 - **系统模型直连鉴权**：已有系统模型若设置了 `requestUrl` 却依赖默认 `AIPROXY_API_TOKEN` 鉴权，升级前需显式填写该端点的 `requestAuth`；未配置时，OpenAI SDK 与 Pi Agent 的直连请求不再回退默认凭证。

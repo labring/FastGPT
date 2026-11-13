@@ -3,40 +3,46 @@
  *
  * 只维护 sandbox runtime state 中的执行标记，不创建版本或修改 Skill 数据。
  */
-import type { ISandbox } from '@fastgpt-sdk/sandbox-adapter';
+import { OPEN_SANDBOX_DEFAULT_ROOT_PATH } from '@fastgpt/global/core/ai/sandbox/constants';
+import type { OpenSandboxClient } from '../../../infrastructure/opensandbox/opensandbox';
 import { shellQuote } from '@fastgpt/global/common/string/utils';
 import { getLogger, LogCategories } from '../../../../../../common/logger';
 import type { DeployedSkillVersion } from './types';
-import { buildLimitedOutputShellCommand, executeEntrypointCommand } from '../entrypoint';
+import { executeEntrypointCommand } from '../entrypoint';
 import { joinSandboxPath } from '../../../utils';
 import { SKILL_ENTRYPOINT_STATE_LIST_KEY } from '../../../constants';
 import {
   getRuntimeStateValue,
-  readSandboxRuntimeState,
+  readSandboxWorkspaceRuntimeState,
   setRuntimeStateValue,
   writeSandboxRuntimeState
 } from '../state';
 
-const logger = getLogger(LogCategories.MODULE.AI.AGENT);
+const logger = getLogger(LogCategories.MODULE.AI.SANDBOX);
 
 const ENTRYPOINT_FILE_NAME = 'entrypoint.sh';
 
 /**
  * 执行 selected skill version 根目录下的 entrypoint。
  *
- * skill 版本包以 versionId 作为部署目录，同一个 versionId 的内容正常不可变，
- * 因此成功状态只记录 versionId，不再记录脚本 hash。
+ * skill 版本包与用户态依赖都落在持久化 `/workspace` 卷上，因此成功标记写入
+ * 工作区级 `.fastgpt/runtime/state.json` 并绑定容器镜像标识，避免容器休眠唤醒后重复执行。
  */
 export const runAgentSkillVersionEntrypoints = async ({
   sandbox,
-  versions
+  versions,
+  workspaceDirectory = OPEN_SANDBOX_DEFAULT_ROOT_PATH
 }: {
-  sandbox: ISandbox;
+  sandbox: OpenSandboxClient;
   versions: DeployedSkillVersion[];
+  workspaceDirectory?: string;
 }): Promise<void> => {
   if (versions.length === 0) return;
 
-  const stateContext = await readSandboxRuntimeState({ sandbox });
+  const stateContext = await readSandboxWorkspaceRuntimeState({
+    sandbox,
+    workspaceDirectory
+  });
   const stateValue = getRuntimeStateValue(stateContext.state, SKILL_ENTRYPOINT_STATE_LIST_KEY);
   // 未被当前节点选择的版本仍可能由父级或其他会话使用，成功标记随缓存一并保留。
   const executedVersionIds = new Set(Array.isArray(stateValue) ? stateValue : []);
@@ -53,11 +59,11 @@ export const runAgentSkillVersionEntrypoints = async ({
       });
       return new Map();
     });
-    if (!entrypointInfo.get(entrypointPath)?.isFile) continue;
+    if (entrypointInfo.get(entrypointPath)?.type !== 'file') continue;
 
     const result = await executeEntrypointCommand({
       sandbox,
-      command: buildLimitedOutputShellCommand(`/bin/bash ${shellQuote(ENTRYPOINT_FILE_NAME)}`),
+      command: `/bin/bash ${shellQuote(ENTRYPOINT_FILE_NAME)}`,
       label: `skill:${version.versionId}`,
       workingDirectory: version.targetDir
     });

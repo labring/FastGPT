@@ -22,7 +22,6 @@ const originalEnv = {
   FE_DOMAIN: process.env.FE_DOMAIN,
   AGENT_SANDBOX_SUSPEND_MINUTES: process.env.AGENT_SANDBOX_SUSPEND_MINUTES,
   AGENT_SANDBOX_SHOW_FREE_TIP: process.env.AGENT_SANDBOX_SHOW_FREE_TIP,
-  AGENT_SANDBOX_ARCHIVE_INACTIVE_DAYS: process.env.AGENT_SANDBOX_ARCHIVE_INACTIVE_DAYS,
   FILE_TOKEN_KEY: process.env.FILE_TOKEN_KEY,
   FILE_URL_EXPIRED_DAYS: process.env.FILE_URL_EXPIRED_DAYS,
   FILE_DOWNLOAD_PUBLIC_URL_PREFIX: process.env.FILE_DOWNLOAD_PUBLIC_URL_PREFIX,
@@ -40,10 +39,6 @@ const originalEnv = {
   SHOW_OUTLINK_BRAND: process.env.SHOW_OUTLINK_BRAND,
   VITEST: process.env.VITEST,
   NODE_ENV: process.env.NODE_ENV,
-  AGENT_SANDBOX_PROVIDER: process.env.AGENT_SANDBOX_PROVIDER,
-  AGENT_SANDBOX_SEALOS_BASEURL: process.env.AGENT_SANDBOX_SEALOS_BASEURL,
-  AGENT_SANDBOX_SEALOS_TOKEN: process.env.AGENT_SANDBOX_SEALOS_TOKEN,
-  AGENT_SANDBOX_SEALOS_IMAGE: process.env.AGENT_SANDBOX_SEALOS_IMAGE,
   AGENT_SANDBOX_OPENSANDBOX_BASEURL: process.env.AGENT_SANDBOX_OPENSANDBOX_BASEURL,
   AGENT_SANDBOX_OPENSANDBOX_API_KEY: process.env.AGENT_SANDBOX_OPENSANDBOX_API_KEY,
   AGENT_SANDBOX_OPENSANDBOX_IMAGE: process.env.AGENT_SANDBOX_OPENSANDBOX_IMAGE,
@@ -94,10 +89,6 @@ describe('serviceEnv', () => {
     vi.stubEnv('FE_DOMAIN', originalEnv.FE_DOMAIN);
     vi.stubEnv('AGENT_SANDBOX_SUSPEND_MINUTES', originalEnv.AGENT_SANDBOX_SUSPEND_MINUTES);
     vi.stubEnv('AGENT_SANDBOX_SHOW_FREE_TIP', originalEnv.AGENT_SANDBOX_SHOW_FREE_TIP);
-    vi.stubEnv(
-      'AGENT_SANDBOX_ARCHIVE_INACTIVE_DAYS',
-      originalEnv.AGENT_SANDBOX_ARCHIVE_INACTIVE_DAYS
-    );
     vi.stubEnv('FILE_TOKEN_KEY', originalEnv.FILE_TOKEN_KEY);
     vi.stubEnv('FILE_URL_EXPIRED_DAYS', originalEnv.FILE_URL_EXPIRED_DAYS);
     vi.stubEnv('FILE_DOWNLOAD_PUBLIC_URL_PREFIX', originalEnv.FILE_DOWNLOAD_PUBLIC_URL_PREFIX);
@@ -118,10 +109,6 @@ describe('serviceEnv', () => {
     vi.stubEnv('SHOW_OUTLINK_BRAND', originalEnv.SHOW_OUTLINK_BRAND);
     vi.stubEnv('VITEST', originalEnv.VITEST);
     vi.stubEnv('NODE_ENV', originalEnv.NODE_ENV);
-    vi.stubEnv('AGENT_SANDBOX_PROVIDER', originalEnv.AGENT_SANDBOX_PROVIDER);
-    vi.stubEnv('AGENT_SANDBOX_SEALOS_BASEURL', originalEnv.AGENT_SANDBOX_SEALOS_BASEURL);
-    vi.stubEnv('AGENT_SANDBOX_SEALOS_TOKEN', originalEnv.AGENT_SANDBOX_SEALOS_TOKEN);
-    vi.stubEnv('AGENT_SANDBOX_SEALOS_IMAGE', originalEnv.AGENT_SANDBOX_SEALOS_IMAGE);
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_BASEURL', originalEnv.AGENT_SANDBOX_OPENSANDBOX_BASEURL);
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_API_KEY', originalEnv.AGENT_SANDBOX_OPENSANDBOX_API_KEY);
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_IMAGE', originalEnv.AGENT_SANDBOX_OPENSANDBOX_IMAGE);
@@ -729,59 +716,35 @@ describe('serviceEnv', () => {
     vi.stubEnv('INVOKE_TOKEN_SECRET', validInvokeTokenSecret);
 
     vi.stubEnv('AGENT_SANDBOX_SUSPEND_MINUTES', undefined);
-    vi.stubEnv('AGENT_SANDBOX_ARCHIVE_INACTIVE_DAYS', undefined);
     const defaultEnv = await importServiceEnv();
     expect(defaultEnv.serviceEnv.AGENT_SANDBOX_SUSPEND_MINUTES).toBe(60);
-    expect(defaultEnv.serviceEnv.AGENT_SANDBOX_ARCHIVE_INACTIVE_DAYS).toBe(7);
 
     vi.stubEnv('AGENT_SANDBOX_SUSPEND_MINUTES', '90');
-    vi.stubEnv('AGENT_SANDBOX_ARCHIVE_INACTIVE_DAYS', '14');
     const customEnv = await importServiceEnv();
     expect(customEnv.serviceEnv.AGENT_SANDBOX_SUSPEND_MINUTES).toBe(90);
-    expect(customEnv.serviceEnv.AGENT_SANDBOX_ARCHIVE_INACTIVE_DAYS).toBe(14);
   });
 
-  it('配置 sealosdevbox 后缺少运行镜像会阻止启动', async () => {
+  it('启用 Agent Sandbox 时不要求共享服务配置 preview proxy 环境变量', async () => {
     vi.stubEnv('FILE_TOKEN_KEY', 'filetokenkey');
     vi.stubEnv('AES256_SECRET_KEY', 'fastgptsecret');
     vi.stubEnv('INVOKE_TOKEN_SECRET', validInvokeTokenSecret);
     vi.stubEnv('VITEST', 'true');
     vi.stubEnv('NODE_ENV', 'development');
-    vi.stubEnv('AGENT_SANDBOX_PROVIDER', 'sealosdevbox');
-    vi.stubEnv('AGENT_SANDBOX_SEALOS_BASEURL', 'http://mock-sealos.local');
-    vi.stubEnv('AGENT_SANDBOX_SEALOS_TOKEN', 'mock-sealos-token');
-    vi.stubEnv('AGENT_SANDBOX_SEALOS_IMAGE', '');
-
-    await expect(importServiceEnv()).rejects.toThrow(
-      'AGENT_SANDBOX_SEALOS_IMAGE are required when AGENT_SANDBOX_PROVIDER is sealosdevbox'
-    );
-  });
-
-  it('启用 Agent Sandbox 时不要求共享服务配置 app proxy 环境变量', async () => {
-    vi.stubEnv('FILE_TOKEN_KEY', 'filetokenkey');
-    vi.stubEnv('AES256_SECRET_KEY', 'fastgptsecret');
-    vi.stubEnv('INVOKE_TOKEN_SECRET', validInvokeTokenSecret);
-    vi.stubEnv('VITEST', 'true');
-    vi.stubEnv('NODE_ENV', 'development');
-    vi.stubEnv('AGENT_SANDBOX_PROVIDER', 'opensandbox');
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_BASEURL', 'http://mock-opensandbox.local');
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_API_KEY', 'mock-opensandbox-api-key');
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_IMAGE', 'fastgpt-agent-sandbox:latest');
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL', 'http://mock-volume-manager.local');
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN', 'mock-volume-manager-token');
-    vi.stubEnv('AGENT_SANDBOX_PROXY_SECRET', '');
-    vi.stubEnv('AGENT_SANDBOX_PROXY_URL', '');
 
     await expect(importServiceEnv()).resolves.toBeDefined();
   });
 
-  it('启用 opensandbox 后未配置新运行镜像会阻止启动', async () => {
+  it('配置 OPENSANDBOX_BASEURL 后未配置运行镜像会阻止启动', async () => {
     vi.stubEnv('FILE_TOKEN_KEY', 'filetokenkey');
     vi.stubEnv('AES256_SECRET_KEY', 'fastgptsecret');
     vi.stubEnv('INVOKE_TOKEN_SECRET', validInvokeTokenSecret);
     vi.stubEnv('VITEST', 'true');
     vi.stubEnv('NODE_ENV', 'development');
-    vi.stubEnv('AGENT_SANDBOX_PROVIDER', 'opensandbox');
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_BASEURL', 'http://mock-opensandbox.local');
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_API_KEY', 'mock-opensandbox-api-key');
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_IMAGE', undefined);
@@ -789,7 +752,7 @@ describe('serviceEnv', () => {
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN', 'mock-volume-manager-token');
 
     await expect(importServiceEnv()).rejects.toThrow(
-      'AGENT_SANDBOX_OPENSANDBOX_IMAGE are required when AGENT_SANDBOX_PROVIDER is opensandbox'
+      'AGENT_SANDBOX_OPENSANDBOX_IMAGE are required when AGENT_SANDBOX_OPENSANDBOX_BASEURL is configured'
     );
   });
 
