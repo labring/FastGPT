@@ -6,20 +6,22 @@
 x-default-root-psw: &x-default-root-psw '1234'
 # FastGPT 前端访问地址，必须填写用户实际访问 FastGPT 的地址
 x-fe-domain: &x-fe-domain ''
-# Sandbox Proxy WebSocket 地址，必须填写用户实际访问地址
-x-agent-sandbox-proxy-url: &x-agent-sandbox-proxy-url ''
-# Sandbox Proxy HTTP 预览地址，必须填写用户实际访问地址
-x-agent-sandbox-preview-proxy-url: &x-agent-sandbox-preview-proxy-url ''
+# OpenSandbox Proxy 公网访问基地址（同时派生终端 WS /terminal 与静态文件预览 /preview，生产部署请替换为浏览器可访问的真实地址）
+x-agent-sandbox-proxy-url: &x-agent-sandbox-proxy-url 'http://localhost:3006'
+# OpenSandbox Proxy 与 FastGPT 主站共享密钥（生产部署请替换为强随机密钥）
+x-agent-sandbox-proxy-secret: &x-agent-sandbox-proxy-secret 'fastgpt-sandbox-proxy-secret'
 # 系统最高密钥凭证
 x-system-key: &x-system-key 'fastgpt-xxx'
 # plugin auth token
 x-plugin-auth-token: &x-plugin-auth-token 'fastgpt_plugin_auth_token_32char'
 # code sandbox token
 x-code-sandbox-token: &x-code-sandbox-token 'codesandbox'
-# agent sandbox proxy secret，必须与 FastGPT 主站环境变量保持一致，且至少 32 位
-x-agent-sandbox-proxy-secret: &x-agent-sandbox-proxy-secret 'default_fastgpt_agent_sandbox_proxy_secret'
 # volume manager token，必须与 FastGPT 主站环境变量保持一致
 x-volume-manager-auth-token: &x-volume-manager-auth-token 'vmtoken'
+# JuiceFS 独立元数据库与独立 RustFS 对象存储配置
+x-juicefs-meta-url: &x-juicefs-meta-url 'postgres://postgres:password@fastgpt-sandbox-pg:5432/juicefs?sslmode=disable'
+x-sandbox-rustfs-access-key: &x-sandbox-rustfs-access-key 'rustfsadmin'
+x-sandbox-rustfs-secret-key: &x-sandbox-rustfs-secret-key 'rustfsadmin'
 # aiproxy token
 x-aiproxy-token: &x-aiproxy-token 'token'
 x-rustfs-access-key: &x-rustfs-access-key 'rustfsadmin'
@@ -50,44 +52,34 @@ x-log-config: &x-log-config
 # 容器运行环境可能会自动注入 HTTP_PROXY/HTTPS_PROXY。
 # 明确绕过 compose 内部服务，避免内部请求被代理劫持。
 x-no-proxy-config: &x-no-proxy-config
-  NO_PROXY: localhost,127.0.0.1,::1,fastgpt-app,fastgpt-plugin,fastgpt-code-sandbox,fastgpt-agent-sandbox-proxy,fastgpt-opensandbox-server,fastgpt-volume-manager,fastgpt-aiproxy,fastgpt-aiproxy-pg,fastgpt-rustfs,fastgpt-mongo,fastgpt-redis,fastgpt-vector,host.docker.internal,*.orb.internal,*.orb.local
-  no_proxy: localhost,127.0.0.1,::1,fastgpt-app,fastgpt-plugin,fastgpt-code-sandbox,fastgpt-agent-sandbox-proxy,fastgpt-opensandbox-server,fastgpt-volume-manager,fastgpt-aiproxy,fastgpt-aiproxy-pg,fastgpt-rustfs,fastgpt-mongo,fastgpt-redis,fastgpt-vector,host.docker.internal,*.orb.internal,*.orb.local
+  NO_PROXY: localhost,127.0.0.1,::1,fastgpt-app,fastgpt-plugin,fastgpt-code-sandbox,fastgpt-opensandbox-server,fastgpt-opensandbox-proxy,fastgpt-volume-manager,fastgpt-sandbox-pg,fastgpt-sandbox-rustfs,fastgpt-aiproxy,fastgpt-aiproxy-pg,fastgpt-rustfs,fastgpt-mongo,fastgpt-redis,fastgpt-vector,host.docker.internal,*.orb.internal,*.orb.local
+  no_proxy: localhost,127.0.0.1,::1,fastgpt-app,fastgpt-plugin,fastgpt-code-sandbox,fastgpt-opensandbox-server,fastgpt-opensandbox-proxy,fastgpt-volume-manager,fastgpt-sandbox-pg,fastgpt-sandbox-rustfs,fastgpt-aiproxy,fastgpt-aiproxy-pg,fastgpt-rustfs,fastgpt-mongo,fastgpt-redis,fastgpt-vector,host.docker.internal,*.orb.internal,*.orb.local
 
 # FastGPT 主服务的 Agent Sandbox 配置
 x-agent-sandbox-config: &x-agent-sandbox-config
-  AGENT_SANDBOX_PROVIDER: opensandbox
-  AGENT_SANDBOX_PROXY_SECRET: *x-agent-sandbox-proxy-secret
-  # 浏览器访问 agent-sandbox-proxy 的 WebSocket 地址。
+  # 浏览器访问 opensandbox-proxy 的基地址（支持 http(s):// 或 ws(s)://，自动派生终端 WS 与静态文件预览地址）
   AGENT_SANDBOX_PROXY_URL: *x-agent-sandbox-proxy-url
-  # 浏览器访问 Sandbox 文件预览的 HTTP(S) 地址。
-  AGENT_SANDBOX_PREVIEW_PROXY_URL: *x-agent-sandbox-preview-proxy-url
+  # 可选：双端口隔离部署时覆盖静态文件预览 HTTP(S) 基地址（默认回退 AGENT_SANDBOX_PROXY_URL）
+  AGENT_SANDBOX_PREVIEW_PROXY_URL:
+  # 主站与 opensandbox-proxy 共享鉴权密钥
+  AGENT_SANDBOX_PROXY_SECRET: *x-agent-sandbox-proxy-secret
   # 沙盒规模大小
   AGENT_SANDBOX_CPU_COUNT: 1
   AGENT_SANDBOX_MEMORY_MIB: 2048
   AGENT_SANDBOX_STORAGE_SIZE_GI: 1
-  # 不活跃判断阈值
+  # 不活跃判断阈值（分钟）
   AGENT_SANDBOX_SUSPEND_MINUTES: 60
-  # 长期不活跃判断阈值
-  AGENT_SANDBOX_ARCHIVE_INACTIVE_DAYS: 7
-  AGENT_SANDBOX_WS_MAX_MESSAGE_BYTES: 67108864
-  AGENT_SANDBOX_WS_MAX_FRAME_BYTES: 16777216
   # 自定义 npm/pip 源
   AGENT_SANDBOX_NPM_REGISTRY:
   AGENT_SANDBOX_PYPI_INDEX_URL:
-  # Opensandox 配置
+  # OpenSandbox 配置（生产环境请同步修改此处 API_KEY 与下方 opensandbox-config 中的 api_key）
   AGENT_SANDBOX_OPENSANDBOX_BASEURL: http://fastgpt-opensandbox-server:8090
   AGENT_SANDBOX_OPENSANDBOX_API_KEY: fastgpt-opensandbox-api-key
   AGENT_SANDBOX_OPENSANDBOX_RUNTIME: docker
-  AGENT_SANDBOX_OPENSANDBOX_IMAGE: ghcr.io/labring/fastgpt-agent-sandbox:v0.3.1
-  AGENT_SANDBOX_OPENSANDBOX_USE_SERVER_PROXY: true
+  AGENT_SANDBOX_OPENSANDBOX_IMAGE: ghcr.io/labring/fastgpt-agent-sandbox:v0.4.0
   AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL: http://fastgpt-volume-manager:3000
   AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN: *x-volume-manager-auth-token
   AGENT_SANDBOX_OPENSANDBOX_VOLUME_NAME_PREFIX: fastgpt-session
-  # Sealos devbox 配置
-  AGENT_SANDBOX_SEALOS_BASEURL:
-  AGENT_SANDBOX_SEALOS_TOKEN:
-  AGENT_SANDBOX_SEALOS_WORK_DIRECTORY: /home/devbox/workspace
-  AGENT_SANDBOX_SEALOS_IMAGE:
 
 # 向量库相关配置
 x-vec-config: &x-vec-config
@@ -416,6 +408,8 @@ services:
     restart: always
     networks:
       - app
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     configs:
@@ -436,20 +430,68 @@ services:
       timeout: 5s
       retries: 5
 
+  # OpenSandbox Proxy 边缘网关：对外暴露交互式终端 WS (/terminal) 与静态文件预览 (/preview/*)，生产环境建议通过独立域名反向代理 3006 端口
+  fastgpt-opensandbox-proxy:
+    image: ghcr.io/labring/fastgpt-opensandbox-proxy:v0.4.0
+    container_name: fastgpt-opensandbox-proxy
+    restart: always
+    ports:
+      - 3006:1006
+    networks:
+      - app
+    depends_on:
+      fastgpt-opensandbox-server:
+        condition: service_healthy
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      <<: [*x-no-proxy-config]
+      PORT: 1006
+      PREVIEW_PORT:
+      FASTGPT_APP_URL: http://fastgpt-app:3000
+      AGENT_SANDBOX_PROXY_SECRET: *x-agent-sandbox-proxy-secret
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'bun',
+          '-e',
+          "fetch('http://127.0.0.1:1006/health').then((res) => { if (!res.ok) process.exit(1); }).catch(() => process.exit(1));"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   fastgpt-volume-manager:
-    image: ghcr.io/labring/fastgpt-agent-volume-manager:v0.3.0
+    image: ghcr.io/labring/fastgpt-agent-volume-manager:v0.4.0
     container_name: fastgpt-volume-manager
     restart: always
     networks:
       - app
+      - opensandbox
+    depends_on:
+      fastgpt-sandbox-pg:
+        condition: service_healthy
+      fastgpt-sandbox-rustfs:
+        condition: service_healthy
+    cap_add:
+      - SYS_ADMIN
+    devices:
+      - /dev/fuse:/dev/fuse
+    security_opt:
+      - apparmor:unconfined
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/lib/fastgpt/sandbox-mounts:/var/lib/fastgpt/sandbox-mounts:rshared
     environment:
-      <<: [*x-no-proxy-config]
+      <<: [*x-log-config, *x-no-proxy-config]
+      LOG_OTEL_SERVICE_NAME: fastgpt-volume-manager
       PORT: 3000
       VM_RUNTIME: docker
+      VM_JUICEFS_META_URL: *x-juicefs-meta-url
+      VM_JUICEFS_ACCESS_KEY: *x-sandbox-rustfs-access-key
+      VM_JUICEFS_SECRET_KEY: *x-sandbox-rustfs-secret-key
       VM_AUTH_TOKEN: *x-volume-manager-auth-token
-      VM_LOG_LEVEL: info
     healthcheck:
       test:
         [
@@ -462,9 +504,56 @@ services:
       timeout: 5s
       retries: 5
 
+  # OpenSandbox / JuiceFS 独立元数据存储 (PostgreSQL)
+  fastgpt-sandbox-pg:
+    image: pgvector/pgvector:0.8.0-pg15
+    container_name: fastgpt-sandbox-pg
+    restart: always
+    networks:
+      - opensandbox
+    environment:
+      TZ: Asia/Shanghai
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: juicefs
+    volumes:
+      - fastgpt-sandbox-pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD', 'pg_isready', '-U', 'postgres', '-d', 'juicefs']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # OpenSandbox / JuiceFS 独立对象块存储 (RustFS)
+  fastgpt-sandbox-rustfs:
+    image: rustfs/rustfs:1.0.4
+    container_name: fastgpt-sandbox-rustfs
+    restart: always
+    networks:
+      - opensandbox
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      RUSTFS_ACCESS_KEY: *x-sandbox-rustfs-access-key
+      RUSTFS_SECRET_KEY: *x-sandbox-rustfs-secret-key
+      RUSTFS_VOLUMES: /data
+      RUSTFS_ADDRESS: :9000
+      RUSTFS_CONSOLE_ADDRESS: :9001
+      RUSTFS_CONSOLE_ENABLE: "true"
+      RUSTFS_OBS_LOGGER_LEVEL: error
+      RUSTFS_OBS_LOG_DIRECTORY: /logs
+    volumes:
+      - fastgpt-sandbox-rustfs:/data
+    healthcheck:
+      test: ['CMD-SHELL', 'curl -fsS http://127.0.0.1:9000/health && curl -fsS http://127.0.0.1:9001/rustfs/console/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
   # 仅用于预拉取运行时镜像，不会随 docker compose up 启动。
   opensandbox-agent-sandbox-image:
-    image: ghcr.io/labring/fastgpt-agent-sandbox:v0.3.1
+    image: ghcr.io/labring/fastgpt-agent-sandbox:v0.4.0
     profiles:
       - prepull
   opensandbox-execd-image:
@@ -475,23 +564,6 @@ services:
     image: opensandbox/egress:release-1.2.0
     profiles:
       - prepull
-
-  # 浏览器访问 Agent Sandbox 的鉴权代理，生产环境应通过独立域名反向代理 3006 端口。
-  fastgpt-agent-sandbox-proxy:
-    image: ghcr.io/labring/fastgpt-agent-sandbox-proxy:v0.3.0
-    container_name: fastgpt-agent-sandbox-proxy
-    restart: always
-    networks:
-      - app
-    ports:
-      - 3006:1006
-    environment:
-      <<: [*x-no-proxy-config]
-      PORT: 1006
-      AGENT_SANDBOX_PROXY_SECRET: *x-agent-sandbox-proxy-secret
-      FASTGPT_APP_URL: http://fastgpt-app:3000
-      FASTGPT_APP_REQUEST_TIMEOUT_SECS: 60
-      RUST_LOG: info,fastgpt_agent_sandbox_proxy=debug
 
   # AI Proxy
   fastgpt-aiproxy:
@@ -548,6 +620,8 @@ networks:
     name: fastgpt_app
   codesandbox:
     name: fastgpt_codesandbox
+  opensandbox:
+    name: fastgpt_opensandbox
   aiproxy:
     name: fastgpt_aiproxy
 
@@ -562,6 +636,8 @@ volumes:
   fastgpt-ob-data:
   fastgpt-ob-config:
   fastgpt-seekdb-data:
+  fastgpt-sandbox-pg:
+  fastgpt-sandbox-rustfs:
   fastgpt-aiproxy_pg:
 
 configs:
@@ -570,6 +646,7 @@ configs:
       [server]
       host = "0.0.0.0"
       port = 8090
+      # 生产部署请替换为强随机密钥，并与 AGENT_SANDBOX_OPENSANDBOX_API_KEY 保持一致
       api_key = "fastgpt-opensandbox-api-key"
       log_level = "INFO"
 
@@ -579,10 +656,15 @@ configs:
 
       [egress]
       image = "opensandbox/egress:release-1.2.0"
+      mode = "dns+nft"
+      disable_ipv6 = true
 
       [docker]
       network_mode = "bridge"
       host_ip = "host.docker.internal"
+      drop_capabilities = ["AUDIT_WRITE", "MKNOD", "NET_ADMIN", "NET_RAW", "SYS_ADMIN", "SYS_MODULE", "SYS_PTRACE", "SYS_TIME", "SYS_TTY_CONFIG"]
+      no_new_privileges = true
+      pids_limit = 512
 
       [ingress]
       mode = "direct"
