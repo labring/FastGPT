@@ -10,6 +10,7 @@ import {
   Checkbox,
   Flex,
   HStack,
+  Radio,
   Table,
   Tbody,
   Td,
@@ -63,7 +64,8 @@ export const ModelChannelSelector = ({
   onCreate,
   showCurrentModel = true,
   showSelectedModelCount = false,
-  showTest = true
+  showTest = true,
+  singleSelect = false
 }: {
   models: ModelChannelModalModel[];
   channels: ModelChannelSummary[];
@@ -74,6 +76,7 @@ export const ModelChannelSelector = ({
   showCurrentModel?: boolean;
   showSelectedModelCount?: boolean;
   showTest?: boolean;
+  singleSelect?: boolean;
 }) => {
   const { t, i18n } = useSafeTranslation();
   const selectedIds = useMemo(() => new Set(selectedChannelIds), [selectedChannelIds]);
@@ -98,6 +101,11 @@ export const ModelChannelSelector = ({
   });
 
   const toggleChannel = (channelId: number) => {
+    if (singleSelect) {
+      onChange([channelId]);
+      return;
+    }
+
     const next = new Set(selectedIds);
     if (next.has(channelId)) next.delete(channelId);
     else next.add(channelId);
@@ -175,17 +183,19 @@ export const ModelChannelSelector = ({
             <Thead>
               <Tr h="40px">
                 <Th px={6}>
-                  <HStack spacing={2}>
-                    <Checkbox
-                      sx={channelCheckboxStyles}
-                      isChecked={isAllSelected}
-                      isIndeterminate={selectedChannelCount > 0 && !isAllSelected}
-                      onChange={() =>
-                        onChange(isAllSelected ? [] : channels.map((channel) => channel.id))
-                      }
-                    />
-                    <Box>{t('common:Select_all')}</Box>
-                  </HStack>
+                  {!singleSelect && (
+                    <HStack spacing={2}>
+                      <Checkbox
+                        sx={channelCheckboxStyles}
+                        isChecked={isAllSelected}
+                        isIndeterminate={selectedChannelCount > 0 && !isAllSelected}
+                        onChange={() =>
+                          onChange(isAllSelected ? [] : channels.map((channel) => channel.id))
+                        }
+                      />
+                      <Box>{t('common:Select_all')}</Box>
+                    </HStack>
+                  )}
                 </Th>
                 <Th px={6}>{t('config_model:channel_name')}</Th>
                 <Th px={6}>{t('config_model:channel_type')}</Th>
@@ -215,19 +225,30 @@ export const ModelChannelSelector = ({
                   onClick={() => toggleChannel(channel.id)}
                 >
                   <Td px={6}>
-                    {/* 仅复选框区域拦截冒泡，单元格空白仍由行处理点击。 */}
-                    <Box
-                      display="inline-flex"
-                      verticalAlign="middle"
-                      alignItems="center"
-                      onClick={(event) => event.stopPropagation()}
-                    >
-                      <Checkbox
-                        sx={channelCheckboxStyles}
+                    {singleSelect ? (
+                      <Radio
+                        name="model-channel-selector"
+                        value={String(channel.id)}
                         isChecked={selectedIds.has(channel.id)}
+                        aria-label={channel.name}
                         onChange={() => toggleChannel(channel.id)}
+                        onClick={(event) => event.stopPropagation()}
                       />
-                    </Box>
+                    ) : (
+                      /* 仅复选框区域拦截冒泡，单元格空白仍由行处理点击。 */
+                      <Box
+                        display="inline-flex"
+                        verticalAlign="middle"
+                        alignItems="center"
+                        onClick={(event) => event.stopPropagation()}
+                      >
+                        <Checkbox
+                          sx={channelCheckboxStyles}
+                          isChecked={selectedIds.has(channel.id)}
+                          onChange={() => toggleChannel(channel.id)}
+                        />
+                      </Box>
+                    )}
                   </Td>
                   <Td px={6} fontWeight="500">
                     <Box noOfLines={1}>{channel.name}</Box>

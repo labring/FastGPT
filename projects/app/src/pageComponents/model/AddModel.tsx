@@ -1,6 +1,9 @@
 import type { CreateChannelResponse } from '@fastgpt/global/openapi/core/ai/model/channel/api';
 import { useModelChannelTest } from './useModelChannelTest';
-import type { ModelChannelSummary } from '@fastgpt/global/openapi/core/ai/model/api';
+import type {
+  ModelChannelSummary,
+  ModelConfigListItem
+} from '@fastgpt/global/openapi/core/ai/model/api';
 import type { ChannelType } from '@fastgpt/global/core/ai/model/scope';
 import { getModelTemplates, postModelsFromTemplates } from '@/web/core/ai/model/api';
 import { defaultChannel } from '@fastgpt/global/core/ai/model/channel';
@@ -57,6 +60,9 @@ import ModelCapabilityTags from '@/components/core/ai/ModelCapabilityTags';
 import TestModeBetaTag from '@/components/core/ai/TestModeBetaTag';
 
 const EditChannelModal = dynamic(() => import('./Channel/EditChannelModal'), { ssr: false });
+const ImportModelFromChannelModal = dynamic(() => import('./ImportModelFromChannelModal'), {
+  ssr: false
+});
 
 /** 空白模型只使用固定默认值；数值草稿的 NaN 表示未填写，提交时再补齐引用上限。 */
 const createBlankModelData = ({
@@ -118,11 +124,13 @@ const createBlankModelData = ({
 const AddModelButton = ({
   onCreateFromBlank,
   onCreateFromTemplate,
+  onCreateFromChannel,
   buttonBoxProps,
   ...props
 }: {
   onCreateFromBlank: () => void;
   onCreateFromTemplate?: () => void;
+  onCreateFromChannel?: () => void;
   buttonBoxProps?: BoxProps;
 } & ButtonProps) => {
   const { t } = useSafeTranslation();
@@ -139,6 +147,14 @@ const AddModelButton = ({
       menuList={[
         {
           children: [
+            ...(onCreateFromChannel
+              ? [
+                  {
+                    label: t('config_model:create_from_channel'),
+                    onClick: onCreateFromChannel
+                  }
+                ]
+              : []),
             ...(onCreateFromTemplate
               ? [
                   {
@@ -904,7 +920,7 @@ const AddModel = ({
   buttonBoxProps,
   ...buttonProps
 }: {
-  installedModels: AIModelDataType[];
+  installedModels: ModelConfigListItem[];
   channels: ModelChannelSummary[];
   providers: ModelProviderItemType[];
   channelType: ChannelType;
@@ -913,6 +929,7 @@ const AddModel = ({
 } & ButtonProps) => {
   const [showBlankCreate, setShowBlankCreate] = useState(false);
   const [showTemplateCreate, setShowTemplateCreate] = useState(false);
+  const [showChannelImport, setShowChannelImport] = useState(false);
   const [templateForConfig, setTemplateForConfig] = useState<AIModelDocumentDataType | null>(null);
   const getBlankModelData = useCallback(
     (type: ModelTypeEnum) => createBlankModelData({ type, channelType }),
@@ -926,6 +943,9 @@ const AddModel = ({
         buttonBoxProps={buttonBoxProps}
         onCreateFromBlank={() => setShowBlankCreate(true)}
         onCreateFromTemplate={() => setShowTemplateCreate(true)}
+        onCreateFromChannel={
+          channelType === 'system' ? () => setShowChannelImport(true) : undefined
+        }
       />
       {showBlankCreate && (
         <BlankModelCreateModal
@@ -935,6 +955,16 @@ const AddModel = ({
           channelType={channelType}
           onClose={() => setShowBlankCreate(false)}
           onRefreshChannels={onSuccess}
+          onSuccess={onSuccess}
+        />
+      )}
+      {showChannelImport && (
+        <ImportModelFromChannelModal
+          channels={channels}
+          installedModels={installedModels}
+          providers={providers}
+          createModelData={getBlankModelData}
+          onClose={() => setShowChannelImport(false)}
           onSuccess={onSuccess}
         />
       )}

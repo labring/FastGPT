@@ -12,6 +12,7 @@ export enum ModelErrEnum {
   rootOnlyPermit = 'rootOnlyPermit',
   unAuthChannel = 'unAuthChannel',
   channelNotExist = 'channelNotExist',
+  channelCatalogUnsupported = 'modelChannelCatalogUnsupported',
   channelNameConflict = 'channelNameConflict',
   noAvailableChannel = 'modelNoAvailableChannel',
   teamModelDisabled = 'teamModelDisabled'
@@ -57,6 +58,11 @@ const modelErrList = [
     statusText: ModelErrEnum.channelNotExist,
     message: i18nT('common:code_error.model_error.channel_not_exist'),
     httpStatus: 404
+  },
+  {
+    statusText: ModelErrEnum.channelCatalogUnsupported,
+    message: i18nT('config_model:channel_import_unsupported'),
+    httpStatus: 501
   },
   {
     statusText: ModelErrEnum.channelNameConflict,

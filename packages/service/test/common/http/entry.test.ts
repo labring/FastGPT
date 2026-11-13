@@ -5,6 +5,7 @@ import { z } from 'zod';
 import type { NodeApiRequest, NodeApiResponse } from '@fastgpt/service/types/http';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { UserConfigError } from '@fastgpt/global/common/error/utils';
+import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 
 // 必须运行真实入口和 JSON 响应，才能验证 end/finish/close 之间的边界。
 vi.unmock('@fastgpt/service/common/http/entry');
@@ -171,6 +172,19 @@ describe('createApiEntry response lifecycle', () => {
 
     expect(res.statusCode).toBe(500);
     expect(res.json).toHaveBeenCalledOnce();
+  });
+
+  it('preserves 501 for an unsupported channel model catalog', async () => {
+    const { req, res } = createHttpObjects();
+
+    await createApiEntry({})(async () => {
+      throw ModelErrEnum.channelCatalogUnsupported;
+    })(req, res);
+
+    expect(res.statusCode).toBe(501);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ statusText: ModelErrEnum.channelCatalogUnsupported })
+    );
   });
 
   it('destroys a partial response instead of appending a JSON error', async () => {

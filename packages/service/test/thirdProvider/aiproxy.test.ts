@@ -27,6 +27,38 @@ describe('AIProxyClient', () => {
     client = new AIProxyClient(() => config);
   });
 
+  it.each([
+    {
+      title: 'preserves the unsupported catalog status',
+      status: 501,
+      message: 'model catalog is unsupported for this channel type',
+      expectedStatus: 501
+    },
+    {
+      title: 'does not add status to other HTTP errors',
+      status: 502,
+      message: 'upstream unavailable',
+      expectedStatus: undefined
+    }
+  ])('$title', async ({ status, message, expectedStatus }) => {
+    const error = {
+      response: { status, data: { success: false, message } }
+    };
+    mockAxiosWithoutSSRF.mockRejectedValueOnce(error);
+
+    const request = client.getSystemChannelModels(1);
+
+    if (expectedStatus === undefined) {
+      await expect(request).rejects.toBe(error);
+      return;
+    }
+
+    await expect(request).rejects.toMatchObject({
+      message,
+      status: expectedStatus
+    });
+  });
+
   describe('system.channels', () => {
     it.each([
       {
