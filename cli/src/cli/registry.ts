@@ -1,5 +1,6 @@
 import type { CliAuthModeRequirement, CliRiskLevel, CommandMeta } from '../shared/types';
 import { createAuthCommandSpecs } from './commands/auth';
+import { createChatCommandSpecs } from './commands/chat';
 import { createCommandsManifestCommandSpec } from './commands/commands';
 import { createConfigCommandSpecs } from './commands/config';
 import { createDatasetCommandSpecs } from './commands/dataset';
@@ -28,6 +29,7 @@ export function getCliCommandSpecs(): CliCommandSpec[] {
     ...createAuthCommandSpecs(),
     ...createConfigCommandSpecs(),
     ...createDatasetCommandSpecs(),
+    ...createChatCommandSpecs(),
     createDoctorCommandSpec(),
     createCommandsManifestCommandSpec()
   ];

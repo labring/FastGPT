@@ -21,17 +21,31 @@ vi.mock('@/web/core/chat/record/api', () => ({
   delChatRecordById: mocks.delete
 }));
 vi.mock('@fastgpt/web/hooks/useToast', () => ({ useToast: () => ({ toast: mocks.toast }) }));
+vi.mock('@chakra-ui/react', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@chakra-ui/react')>();
+  return {
+    ...actual,
+    Box: React.forwardRef<HTMLDivElement, React.PropsWithChildren>(function ScrollBox(
+      { children },
+      ref
+    ) {
+      return React.createElement('div', { ref }, children);
+    })
+  };
+});
 
-const params = { sourceType: ChatSourceTypeEnum.app, appId: 'app', chatId: 'chat' } as const;
+const params = {
+  sourceType: ChatSourceTypeEnum.app,
+  appId: '68ad85a7463006c963799a05',
+  chatId: 'chat'
+} as const;
 const human = (id: string): ChatSiteItemType => ({
-  id,
   dataId: id,
   obj: ChatRoleEnum.Human,
   status: ChatStatusEnum.finish,
   value: [{ text: { content: id } }]
 });
 const ai = (id: string): ChatSiteItemType => ({
-  id,
   dataId: id,
   obj: ChatRoleEnum.AI,
   status: ChatStatusEnum.finish,
@@ -50,15 +64,19 @@ describe('chat record truncation with real pagination and record actions', () =>
   let records: React.ComponentProps<typeof ChatRecordContext.Provider>['value'];
   let actions: ReturnType<typeof useChatRecordActions>;
 
-  const Harness = () => {
+  const Harness = ({ withScroll = false }: { withScroll?: boolean }) => {
     records = useContextSelector(ChatRecordContext, (value) => value);
     actions = useChatRecordActions({ sendPrompt: mocks.send });
-    return null;
+    const scrollProps = { children: null };
+    return withScroll ? React.createElement(records.ScrollData, scrollProps) : null;
   };
-  const render = async () => {
+  const render = async ({
+    feedbackRecordId,
+    withScroll = false
+  }: { feedbackRecordId?: string; withScroll?: boolean } = {}) => {
     const runtime = {
       sourceTarget: { sourceType: params.sourceType, sourceId: params.appId },
-      sourceKey: 'app:app',
+      sourceKey: `app:${params.appId}`,
       chatId: params.chatId,
       fileUploadMode: 'runtime',
       fileUploading: false,
@@ -71,7 +89,8 @@ describe('chat record truncation with real pagination and record actions', () =>
           value: runtime,
           children: React.createElement(ChatRecordContextProvider, {
             params,
-            children: React.createElement(Harness)
+            feedbackRecordId,
+            children: React.createElement(Harness, { withScroll })
           })
         })
       );
@@ -91,14 +110,31 @@ describe('chat record truncation with real pagination and record actions', () =>
       'requestAnimationFrame',
       vi.fn(() => 1)
     );
+    vi.stubGlobal('cancelAnimationFrame', vi.fn());
     vi.clearAllMocks();
+    mocks.get.mockReset();
     mocks.delete.mockResolvedValue(undefined);
     root = createRoot(document.getElementById('root')!);
   });
   afterEach(async () => {
     await act(async () => root.unmount());
     dom.window.close();
+    vi.useRealTimers();
     vi.unstubAllGlobals();
+  });
+
+  it('locates feedback and paginates complete rounds by dataId without passing roles', async () => {
+    vi.useFakeTimers();
+    mocks.get
+      .mockResolvedValueOnce(page([human('round'), ai('round')], true, true))
+      .mockResolvedValueOnce(page([], false, false))
+      .mockResolvedValueOnce(page([], false, false));
+    await render({ feedbackRecordId: 'round', withScroll: true });
+    expect(mocks.get).toHaveBeenCalledWith(expect.objectContaining({ initialId: 'round' }));
+    await act(async () => vi.advanceTimersByTimeAsync(250));
+    expect(mocks.get).toHaveBeenCalledWith(expect.objectContaining({ prevId: 'round' }));
+    expect(mocks.get).toHaveBeenCalledWith(expect.objectContaining({ nextId: 'round' }));
+    expect(mocks.get.mock.calls.every(([input]) => !Object.hasOwn(input, 'role'))).toBe(true);
   });
 
   it.each(['retry', 'edit', 'agentAsk', 'workflowBuilderPreview'] as const)(
@@ -171,6 +207,22 @@ describe('chat record truncation with real pagination and record actions', () =>
     expect(records.chatRecords).toEqual([]);
     expect(mocks.get).toHaveBeenCalledTimes(1);
     expect(mocks.send).toHaveBeenCalledWith(expect.objectContaining({ history: [] }));
+  });
+
+  it('discards the deprecated alias and uses dataId for chat actions', async () => {
+    mocks.get.mockResolvedValueOnce(
+      page([
+        { ...human('user'), id: 'legacy-user' },
+        { ...ai('answer'), id: 'legacy-answer' }
+      ])
+    );
+    await render();
+    expect(records.chatRecords.map((item) => item.dataId)).toEqual(['user', 'answer']);
+    expect(records.chatRecords.every((item) => !Object.hasOwn(item, 'id'))).toBe(true);
+    await act(async () => actions.retryInput('user')?.());
+    expect(mocks.delete).toHaveBeenCalledWith(
+      expect.objectContaining({ contentIds: ['user', 'answer'] })
+    );
   });
 
   it.each([

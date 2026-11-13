@@ -37,16 +37,13 @@ export function resolveOpenApiCredential(rawCredential: string) {
   };
 }
 
-/** 校验商业版 API Key 的有效期和用量额度。 */
+/** 校验商业版 API Key 的有效期和用量额度；缺省或 -1 表示不限，0 仍是有效上限。 */
 export function assertOpenApiLimit(openApi: OpenApiSchema) {
   if (openApi.limit?.expiredTime && new Date(openApi.limit.expiredTime).getTime() < Date.now()) {
     throw new UserError('API Key is expired');
   }
-  if (
-    openApi.limit?.maxUsagePoints &&
-    openApi.limit.maxUsagePoints > -1 &&
-    openApi.usagePoints > openApi.limit.maxUsagePoints
-  ) {
+  const maxUsagePoints = openApi.limit?.maxUsagePoints ?? -1;
+  if (maxUsagePoints > -1 && openApi.usagePoints > maxUsagePoints) {
     throw new UserError('API Key is over usage');
   }
 }
@@ -100,7 +97,7 @@ export async function authOpenApiKey({
       tmbId: String(openApi.tmbId),
       apiKeyType: scope.type,
       boundAppId: scope.type === ApiKeyTypeEnum.app ? scope.appId : undefined,
-      legacyAppId: scope.type === ApiKeyTypeEnum.app ? scope.appId : '',
+      legacyAppId: scope.type === ApiKeyTypeEnum.app ? scope.appId : (scope.defaultAppId ?? ''),
       parsedAppId,
       authProxy: scope.type === ApiKeyTypeEnum.personal && !!openApi.authProxy,
       sourceName: openApi.name

@@ -5,8 +5,7 @@ sidebarTag: 不再维护
 description: 保留生成文档迁移前的对话补全与会话历史接口手写参数；当前契约请查看部署实例的 System OpenAPI。
 ---
 
-本页保留手写参考的历史语境，部分字段、端点及模型名称属于旧版。当前任务请阅读[当前集成指南](/zh-CN/openapi/chat)，接口参数以部署实例的生成参考为准。
-
+本页保留手写参考的历史语境，部分字段、端点及模型名称属于旧版。当前任务请阅读[当前集成指南](/zh-CN/openapi/best-practices/app-integration)，接口参数以部署实例的生成参考为准。
 
 ## 如何获取 AppId
 
@@ -283,7 +282,7 @@ data: [{"moduleName":"知识库搜索","moduleType":"datasetSearchNode","running
 </Tab>
 <Tab value="event值">
 
-event 取值（仅列出历史版本事件，当前 18 种完整运行时事件见[对话与流式响应](/zh-CN/openapi/chat)）：
+event 取值（仅列出历史版本事件，当前契约以部署实例的 System OpenAPI 为准）：
 
     - answer: 返回给客户端的文本（最终会算作回答）
     - chatTitle: 根据本轮用户问题生成的对话标题
@@ -601,7 +600,7 @@ data: [{"nodeId":"fdDgXQ6SYn8v","moduleName":"AI 对话","moduleType":"chatNode"
 </Tab>
 <Tab value="输出获取">
 
-event 取值（仅列出历史版本事件，完整列表见[对话与流式响应](/zh-CN/openapi/chat)）：
+event 取值（仅列出历史版本事件，当前契约以部署实例的 System OpenAPI 为准）：
 
     - answer: 返回给客户端的文本（最终会算作回答）
     - fastAnswer: 指定回复返回给客户端的文本（最终会算作回答）

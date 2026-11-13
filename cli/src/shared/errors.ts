@@ -5,11 +5,13 @@ export type CliErrorCode =
   | 'CLI_ARGUMENT_INVALID'
   | 'AUTH_REQUIRED'
   | 'AUTH_INVALID'
+  | 'AUTH_FORBIDDEN'
   | 'AUTH_EXPIRED'
   | 'AUTH_QUOTA_EXCEEDED'
   | 'AUTH_MODE_UNSUPPORTED'
   | 'AUTH_CONFLICT'
   | 'TLS_OR_URL_INVALID'
+  | 'SERVER_CLI_UNSUPPORTED'
   | 'API_ERROR'
   | 'NETWORK_ERROR';
 
@@ -65,6 +67,7 @@ export class CliAuthError extends CliError {
       CliErrorCode,
       | 'AUTH_REQUIRED'
       | 'AUTH_INVALID'
+      | 'AUTH_FORBIDDEN'
       | 'AUTH_EXPIRED'
       | 'AUTH_QUOTA_EXCEEDED'
       | 'AUTH_MODE_UNSUPPORTED'
@@ -95,7 +98,8 @@ export class CliApiError extends CliError {
     serverCode,
     statusText,
     hint,
-    details
+    details,
+    code = 'API_ERROR'
   }: {
     message: string;
     httpStatus?: number;
@@ -103,11 +107,12 @@ export class CliApiError extends CliError {
     statusText?: string;
     hint?: string;
     details?: Record<string, unknown>;
+    code?: Extract<CliErrorCode, 'API_ERROR' | 'SERVER_CLI_UNSUPPORTED'>;
   }) {
     super({
       message,
       exitCode: CliExitCode.business,
-      code: 'API_ERROR',
+      code,
       hint,
       details: {
         ...(httpStatus !== undefined ? { httpStatus } : {}),
