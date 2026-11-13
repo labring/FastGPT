@@ -53,5 +53,12 @@
   "migrations.20261104_backfill_openapi_key_type.description": "Backfill personal and app key types in the background, preserving bindings, credentials, and legacy fields.",
   "migrations.20261104_backfill_openapi_key_type.result": "Scanned {{keys}} keys",
   "migrations.20261104_backfill_openapi_key_type.keys": "Key types",
-  "migrations.20261104_backfill_openapi_key_type.validation": "Validate backfill"
+  "migrations.20261104_backfill_openapi_key_type.validation": "Validate backfill",
+  "migrations.20261110_migrate_sql_fulltext.name": "Migrate SQL vector full-text search",
+  "migrations.20261110_migrate_sql_fulltext.description": "Confirm that all App/Pro nodes are upgraded, legacy training jobs have drained, and full-text support is enabled in the configured SQL vector database before running. Runs a full read-only preflight, backfills historical tokenized indexes with checkpoint recovery, and switches reads to native SQL full-text search after validation while retaining legacy Mongo full-text data.",
+  "migrations.20261110_migrate_sql_fulltext.result": "Prechecked {{prechecked}} records, backfilled {{scanned}} records, and validated {{validated}} records",
+  "migrations.20261110_migrate_sql_fulltext.prepare": "Prepare full-text schema and index",
+  "migrations.20261110_migrate_sql_fulltext.preflight": "Run full read-only preflight",
+  "migrations.20261110_migrate_sql_fulltext.scan": "Backfill historical tokenized indexes",
+  "migrations.20261110_migrate_sql_fulltext.validation": "Verify active index coverage"
 }

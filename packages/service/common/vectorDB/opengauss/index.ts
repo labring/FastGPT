@@ -4,6 +4,8 @@ import { OgClient, connectOg } from './controller';
 import type { VectorControllerType } from '../type';
 import dayjs from 'dayjs';
 import { getLogger, LogCategories } from '../../logger';
+import { SQL_FULL_TEXT_COLUMN, SQL_FULL_TEXT_INDEX } from '../fullText/utils';
+import { insertPostgresVectorFullTextRows } from '../fullText/postgres';
 
 const logger = getLogger(LogCategories.INFRA.VECTOR);
 
@@ -19,9 +21,20 @@ export class OpenGaussVectorCtrl implements VectorControllerType {
             team_id VARCHAR(50) NOT NULL,
             dataset_id VARCHAR(50) NOT NULL,
             collection_id VARCHAR(50) NOT NULL,
+            ${SQL_FULL_TEXT_COLUMN} TEXT,
             createtime TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
+        ) WITH (storage_type=ASTORE);
       `);
+      // openGauss 7.0.0-RC2 尚未支持 ADD COLUMN IF NOT EXISTS，通过系统表判存保证旧表幂等升级。
+      const columnInfo = await OgClient.query(
+        'SELECT 1 FROM information_schema.columns WHERE table_schema=current_schema() AND table_name=$1 AND column_name=$2',
+        [DatasetVectorTableName, SQL_FULL_TEXT_COLUMN]
+      );
+      if (!columnInfo.rows.length) {
+        await OgClient.query(
+          `ALTER TABLE ${DatasetVectorTableName} ADD COLUMN ${SQL_FULL_TEXT_COLUMN} TEXT;`
+        );
+      }
 
       await OgClient.query(
         `CREATE INDEX CONCURRENTLY IF NOT EXISTS vector_index ON ${DatasetVectorTableName} USING hnsw (vector vector_ip_ops) WITH (m = 32, ef_construction = 256);`
@@ -32,34 +45,35 @@ export class OpenGaussVectorCtrl implements VectorControllerType {
       await OgClient.query(
         `CREATE INDEX CONCURRENTLY IF NOT EXISTS create_time_index ON ${DatasetVectorTableName} USING btree(createtime);`
       );
+      try {
+        const fullTextIndex = await OgClient.query(
+          `SELECT 1 FROM pg_class c WHERE c.relname=$1 AND c.relnamespace=(SELECT relnamespace FROM pg_class WHERE oid='${DatasetVectorTableName}'::regclass)`,
+          [SQL_FULL_TEXT_INDEX]
+        );
+        if (!fullTextIndex.rows.length) {
+          await OgClient.query(
+            `CREATE INDEX ${SQL_FULL_TEXT_INDEX} ON ${DatasetVectorTableName} USING bm25(${SQL_FULL_TEXT_COLUMN});`
+          );
+        }
+      } catch (error) {
+        logger.warn(
+          'openGauss full-text index initialization skipped; native full-text requires DataVec BM25 and migration readiness',
+          { error }
+        );
+      }
 
       logger.info('openGauss DataVec vector initialization completed');
     } catch (error) {
       logger.error('openGauss DataVec vector initialization failed', { error });
     }
   };
-  insert: VectorControllerType['insert'] = async (props) => {
-    const { teamId, datasetId, collectionId, vectors } = props;
-
-    const values = vectors.map((vector) => [
-      { key: 'vector', value: `[${vector}]` },
-      { key: 'team_id', value: String(teamId) },
-      { key: 'dataset_id', value: String(datasetId) },
-      { key: 'collection_id', value: String(collectionId) }
-    ]);
-
-    const { rowCount, rows } = await OgClient.insert(DatasetVectorTableName, {
-      values
+  insert: VectorControllerType['insert'] = (props) =>
+    insertPostgresVectorFullTextRows({
+      props,
+      query: OgClient.query.bind(OgClient),
+      connect: async () => (await connectOg()).connect(),
+      missingTextsErrorMessage: 'Full-text inputs must match vector inputs'
     });
-
-    if (rowCount === 0) {
-      return Promise.reject('insertDatasetData: no insert');
-    }
-
-    return {
-      insertIds: rows.map((row) => row.id)
-    };
-  };
   /** 仅刷新当前团队指定的旧向量，保留内容；缺失 ID 视为已经清理。 */
   refreshCreateTime: VectorControllerType['refreshCreateTime'] = async ({ teamId, idList }) => {
     if (idList.length === 0) return;

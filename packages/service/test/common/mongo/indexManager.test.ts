@@ -9,6 +9,7 @@ import {
 import type { DeprecatedMongoIndexDefinition } from '@fastgpt/service/common/mongo/schemaIndexes';
 import { MongoIndexManager } from '@fastgpt/service/common/mongo/indexManager';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
+import { MongoDatasetDataText } from '@fastgpt/service/core/dataset/data/dataTextSchema';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import {
@@ -723,5 +724,16 @@ describe('sandbox quota index migration', () => {
     expect(names).toContain('status_1_lastActiveAt_1');
     expect(names).toContain('sourceType_1_sourceId_1_userId_1');
     expect(names).toContain('customer_sandbox_source');
+  });
+});
+
+describe('dataset legacy full-text index retention', () => {
+  it('retains all three dataset_data_texts active indexes without deprecation during compatibility window', () => {
+    expect(MongoDatasetDataText.schema.indexes()).toEqual([
+      [{ teamId: 1, fullTextToken: 'text' }, expect.objectContaining({ default_language: 'none' })],
+      [{ teamId: 1, datasetId: 1, collectionId: 1 }, expect.any(Object)],
+      [{ dataId: 'hashed' }, expect.any(Object)]
+    ]);
+    expect(getSchemaDeprecatedMongoIndexes(MongoDatasetDataText.schema)).toEqual([]);
   });
 });

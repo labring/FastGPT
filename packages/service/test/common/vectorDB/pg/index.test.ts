@@ -32,10 +32,30 @@ describe('PgVectorCtrl.init', () => {
       expect(statements[0]).toContain(
         `vector ${vectorVQ === 16 ? 'HALFVEC' : 'VECTOR'}(1536) NOT NULL`
       );
+      expect(statements[0]).toContain('fulltext_tokens TEXT');
+      expect(statements[0]).not.toContain('CREATE EXTENSION IF NOT EXISTS pg_search;');
+      expect(statements[3]).toContain('CREATE EXTENSION IF NOT EXISTS pg_search;');
+      expect(statements[3]).toContain(
+        'CREATE INDEX IF NOT EXISTS modeldata_fulltext ON modeldata USING paradedb'
+      );
       expect(statements.some((sql) => /USING hnsw/i.test(sql))).toBe(false);
-      expect(statements).toHaveLength(3);
+      expect(statements).toHaveLength(4);
     }
   );
+
+  it('keeps startup non-blocking when pg_search extension or BM25 index DDL fails', async () => {
+    vi.mocked(PgClient.query)
+      .mockReset()
+      .mockImplementation(async (sql) => {
+        if (String(sql).includes('pg_search')) {
+          throw new Error('extension pg_search is not available');
+        }
+        return { rows: [], rowCount: 0, command: 'CREATE', oid: 0, fields: [] };
+      });
+
+    await expect(new PgVectorCtrl().init()).resolves.toBeUndefined();
+    expect(PgClient.query).toHaveBeenCalledTimes(4);
+  });
 });
 
 describe('PgVectorCtrl.embRecall', () => {

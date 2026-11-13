@@ -9,6 +9,7 @@ import type {
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import type { ZodType } from 'zod';
 import { initializeDatasetVectorIndexes } from './tasks/4180/20261022_initialize_dataset_vector_indexes';
+import { migrateSqlFullTextMigration } from './tasks/4180/20261110_migrate_sql_fulltext';
 
 export type SystemMigrationLogger = {
   info: (message: string, metadata?: Record<string, unknown>) => void;
@@ -163,6 +164,34 @@ export const systemMigrations = [
       }
     ],
     run: backfillOpenApiKeyType
+  },
+  {
+    id: '20261110_migrate_sql_fulltext',
+    version: '4.18.0',
+    // 需待集群所有旧版 App/Pro 节点与旧训练消费者升级排空后再手动执行，防止切读后仍有旧写入方产生 NULL 词串。
+    manual: true,
+    nameKey: i18nT('system_migration:migrations.20261110_migrate_sql_fulltext.name'),
+    descriptionKey: i18nT('system_migration:migrations.20261110_migrate_sql_fulltext.description'),
+    resultKey: i18nT('system_migration:migrations.20261110_migrate_sql_fulltext.result'),
+    progressSteps: [
+      {
+        key: 'prepare',
+        labelKey: i18nT('system_migration:migrations.20261110_migrate_sql_fulltext.prepare')
+      },
+      {
+        key: 'preflight',
+        labelKey: i18nT('system_migration:migrations.20261110_migrate_sql_fulltext.preflight')
+      },
+      {
+        key: 'scan',
+        labelKey: i18nT('system_migration:migrations.20261110_migrate_sql_fulltext.scan')
+      },
+      {
+        key: 'validation',
+        labelKey: i18nT('system_migration:migrations.20261110_migrate_sql_fulltext.validation')
+      }
+    ],
+    run: migrateSqlFullTextMigration
   }
 ] as const satisfies readonly SystemMigration[];
 

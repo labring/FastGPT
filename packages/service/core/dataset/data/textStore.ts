@@ -9,9 +9,9 @@ import type {
   FullTextWriteProps
 } from '../../../common/vectorDB/type';
 import { getMilvusFullTextStore } from '../../../common/vectorDB/milvus/fullText';
+import { isSqlFullTextTargetReady, searchSqlFullText } from '../fullText/sql/store';
 import { MongoDatasetDataText } from './dataTextSchema';
 
-// re-export 共享类型(定义在 vectorDB/type.ts)
 export type {
   FullTextStore,
   FullTextSearchProps,
@@ -20,8 +20,8 @@ export type {
 
 /**
  * Mongo 全文实现。
- * 检索走 $text + jieba(基于现有 MongoDatasetDataText);写/删方法接收可选 session,
- * data 层事务内与主数据一并提交,批删/批量写同样透传 session 保持原子性。
+ * 检索走 $text + jieba（基于 MongoDatasetDataText）；写/删方法接收可选 session，
+ * 在兼容窗口内保持与主数据同事务维护，供未完成回填验收或滚动升级期间兼容读取。
  */
 export class MongoFullTextStore implements FullTextStore {
   async search({
@@ -80,8 +80,8 @@ export class MongoFullTextStore implements FullTextStore {
   }
 
   /**
-   * 批量写入全文 token,按 dataId bulkWrite upsert(幂等,重复写安全)。
-   * 支持事务内传 session,与主数据一并提交。
+   * 批量写入全文 token，按 dataId bulkWrite upsert（幂等，重复写安全）。
+   * 支持事务内传 session，与主数据一并提交。
    */
   async write(props: FullTextWriteProps[], session?: ClientSession): Promise<void> {
     const tokenized = await Promise.all(
@@ -117,7 +117,6 @@ export class MongoFullTextStore implements FullTextStore {
     { teamId, datasetIds }: { teamId: string; datasetIds: string[] },
     session?: ClientSession
   ): Promise<void> {
-    // 逐 datasetId 删除,控制单查询规模并设置超时(与 delDatasetRelevantData 一致)
     for (const datasetId of datasetIds) {
       await MongoDatasetDataText.deleteMany({ teamId, datasetId }, { session }).maxTimeMS(300000);
     }
@@ -142,12 +141,25 @@ export class MongoFullTextStore implements FullTextStore {
   }
 }
 
+/**
+ * SQL 向量库（PG / OceanBase / SeekDB / openGauss）平滑切换全文实现。
+ * 兼容窗口内继续继承维护 MongoDatasetDataText；仅当当前 SQL 物理目标已完成回填与验收时走原生 SQL 检索，
+ * 未完成迁移、预检/验收失败或目标变更时自动回退到 Mongo $text 兼容读取。
+ */
+export class SqlFullTextStore extends MongoFullTextStore {
+  override async search(props: FullTextSearchProps): Promise<FullTextSearchItem[]> {
+    if (await isSqlFullTextTargetReady()) {
+      return searchSqlFullText(props);
+    }
+    return super.search(props);
+  }
+}
+
 let fullTextStore: FullTextStore | undefined;
 
-/** 全文检索实现跟随实际向量库 provider:milvus → BM25;其他向量库 → Mongo $text */
+/** 单例按配置的检索库分发：Milvus 走 BM25，SQL 向量库走带就绪屏障的 SqlFullTextStore。 */
 export const getFullTextStore = (): FullTextStore => {
   if (fullTextStore) return fullTextStore;
-  fullTextStore =
-    getVectorType() === 'milvus' ? getMilvusFullTextStore() : new MongoFullTextStore();
+  fullTextStore = getVectorType() === 'milvus' ? getMilvusFullTextStore() : new SqlFullTextStore();
   return fullTextStore;
 };

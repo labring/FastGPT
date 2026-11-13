@@ -5,6 +5,8 @@ import type { VectorControllerType } from '../type';
 import dayjs from 'dayjs';
 import { getLogger, LogCategories } from '../../logger';
 import { buildPgVectorRecallQuery } from './utils';
+import { SQL_FULL_TEXT_COLUMN, SQL_FULL_TEXT_INDEX } from '../fullText/utils';
+import { insertPostgresVectorFullTextRows } from '../fullText/postgres';
 
 const logger = getLogger(LogCategories.INFRA.POSTGRES);
 
@@ -18,6 +20,7 @@ export class PgVectorCtrl implements VectorControllerType {
 
     try {
       await connectPg();
+      // 先创建基础向量表与标准 TEXT 词串列，避免未预装 pg_search 的镜像阻断表结构与向量写入。
       await PgClient.query(`
         CREATE EXTENSION IF NOT EXISTS vector;
         CREATE TABLE IF NOT EXISTS ${DatasetVectorTableName} (
@@ -26,8 +29,10 @@ export class PgVectorCtrl implements VectorControllerType {
             team_id VARCHAR(50) NOT NULL,
             dataset_id VARCHAR(50) NOT NULL,
             collection_id VARCHAR(50) NOT NULL,
+            ${SQL_FULL_TEXT_COLUMN} TEXT,
             createtime TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
+        ALTER TABLE ${DatasetVectorTableName} ADD COLUMN IF NOT EXISTS ${SQL_FULL_TEXT_COLUMN} TEXT;
       `);
 
       await PgClient.query(
@@ -36,6 +41,17 @@ export class PgVectorCtrl implements VectorControllerType {
       await PgClient.query(
         `CREATE INDEX CONCURRENTLY IF NOT EXISTS create_time_index ON ${DatasetVectorTableName} USING btree(createtime);`
       );
+      try {
+        await PgClient.query(`
+          CREATE EXTENSION IF NOT EXISTS pg_search;
+          CREATE INDEX IF NOT EXISTS ${SQL_FULL_TEXT_INDEX} ON ${DatasetVectorTableName} USING paradedb (id, (${SQL_FULL_TEXT_COLUMN}::pdb.whitespace), (team_id::pdb.literal), (dataset_id::pdb.literal), (collection_id::pdb.literal));
+        `);
+      } catch (error) {
+        logger.warn(
+          'Postgres full-text index initialization skipped; native full-text requires pg_search and migration readiness',
+          { error }
+        );
+      }
       // 10w rows
       // await PgClient.query(`
       //   ALTER TABLE modeldata SET (
@@ -63,28 +79,13 @@ export class PgVectorCtrl implements VectorControllerType {
       logger.error('Postgres vector initialization failed', { error });
     }
   };
-  insert: VectorControllerType['insert'] = async (props) => {
-    const { teamId, datasetId, collectionId, vectors } = props;
-
-    const values = vectors.map((vector) => [
-      { key: 'vector', value: `[${vector}]` },
-      { key: 'team_id', value: String(teamId) },
-      { key: 'dataset_id', value: String(datasetId) },
-      { key: 'collection_id', value: String(collectionId) }
-    ]);
-
-    const { rowCount, rows } = await PgClient.insert(DatasetVectorTableName, {
-      values
+  insert: VectorControllerType['insert'] = (props) =>
+    insertPostgresVectorFullTextRows({
+      props,
+      query: PgClient.query.bind(PgClient),
+      connect: async () => (await connectPg()).connect(),
+      missingTextsErrorMessage: 'PG full-text inputs must match vector inputs'
     });
-
-    if (rowCount === 0) {
-      return Promise.reject('insertDatasetData: no insert');
-    }
-
-    return {
-      insertIds: rows.map((row) => row.id)
-    };
-  };
   /** 仅刷新当前团队指定的旧向量，保留内容；缺失 ID 视为已经清理。 */
   refreshCreateTime: VectorControllerType['refreshCreateTime'] = async ({ teamId, idList }) => {
     if (idList.length === 0) return;

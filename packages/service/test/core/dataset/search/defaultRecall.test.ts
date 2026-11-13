@@ -11,10 +11,10 @@ const mockCreateLLMResponse = vi.hoisted(() => vi.fn());
 const mockReRankRecall = vi.hoisted(() => vi.fn());
 const mockMongoDatasetCollectionFind = vi.hoisted(() => vi.fn());
 const mockMongoDatasetDataFind = vi.hoisted(() => vi.fn());
-const mockMongoDatasetDataTextAggregate = vi.hoisted(() => vi.fn());
+const mockSearchSqlFullText = vi.hoisted(() => vi.fn());
 const mockGetImageBase64 = vi.hoisted(() => vi.fn());
 // ISSUE-015:getFullTextStore 为可切换 mock。mockUseMilvusStore 为独立开关(默认 false),
-// milvus 用例置 true 后经 mockFullTextStoreSearch 覆盖,不查 mongo aggregate。
+// milvus 用例置 true 后经 mockFullTextStoreSearch 覆盖,不走 SQL 原生全文检索。
 const mockFullTextStoreSearch = vi.hoisted(() => vi.fn());
 const mockUseMilvusStore = vi.hoisted(() => ({ value: false }));
 const mockCountPromptTokens = vi.hoisted(() => vi.fn(async (prompt: string) => prompt.length));
@@ -112,14 +112,13 @@ vi.mock('@fastgpt/service/core/dataset/data/schema', () => ({
   }
 }));
 
-vi.mock('@fastgpt/service/core/dataset/data/dataTextSchema', () => ({
-  MongoDatasetDataText: {
-    aggregate: mockMongoDatasetDataTextAggregate
-  }
+vi.mock('@fastgpt/service/core/dataset/fullText/sql/store', () => ({
+  searchSqlFullText: mockSearchSqlFullText,
+  isSqlFullTextTargetReady: vi.fn(async () => true)
 }));
 
 // 覆盖 test/mocks/common/vector.ts 的全局 constants mock(其缺 getVectorType 导出)。
-// textStore 经 importOriginal 委托真实 MongoFullTextStore 时需要该导出;defaultRecall 链路本身
+// textStore 经 importOriginal 委托真实 SqlFullTextStore 时需要该导出;defaultRecall 链路本身
 // 不消费 vectorDB/constants,因此补上导出不影响既有用例。
 vi.mock('@fastgpt/service/common/vectorDB/constants', async (importOriginal) => {
   const orig = await importOriginal<typeof import('@fastgpt/service/common/vectorDB/constants')>();
@@ -131,9 +130,9 @@ vi.mock('@fastgpt/service/common/vectorDB/constants', async (importOriginal) => 
 });
 
 // getFullTextStore 可切换 mock(ISSUE-015):
-// 默认(mockUseMilvusStore.value=false)委托真实 MongoFullTextStore.search —— 内部走
-// MongoDatasetDataText.aggregate,由 mockMongoDatasetDataTextAggregate 支撑,保持既有 mongo 回归用例;
-// milvus 用例置 mockUseMilvusStore.value=true 后经 mockFullTextStoreSearch 覆盖,不查 mongo aggregate。
+// 默认(mockUseMilvusStore.value=false)委托真实 SqlFullTextStore.search —— 内部走
+// searchSqlFullText,由 mockSearchSqlFullText 支撑;
+// milvus 用例置 mockUseMilvusStore.value=true 后经 mockFullTextStoreSearch 覆盖。
 vi.mock('@fastgpt/service/core/dataset/data/textStore', async (importOriginal) => {
   const orig =
     await importOriginal<typeof import('@fastgpt/service/core/dataset/data/textStore')>();
@@ -144,7 +143,7 @@ vi.mock('@fastgpt/service/core/dataset/data/textStore', async (importOriginal) =
         if (mockUseMilvusStore.value) {
           return mockFullTextStoreSearch(props);
         }
-        return new orig.MongoFullTextStore().search(props);
+        return new orig.SqlFullTextStore().search(props);
       }
     })
   };
@@ -194,7 +193,7 @@ describe('default recall dataset search', () => {
       }),
       lean: vi.fn().mockResolvedValue([])
     });
-    mockMongoDatasetDataTextAggregate.mockResolvedValue([]);
+    mockSearchSqlFullText.mockResolvedValue([]);
   });
 
   it('applies topk before formatting without counting tokens, while token-only calls keep their budget', async () => {
@@ -209,7 +208,7 @@ describe('default recall dataset search', () => {
       chunkIndex: index,
       indexes: []
     }));
-    mockMongoDatasetDataTextAggregate.mockResolvedValue(
+    mockSearchSqlFullText.mockResolvedValue(
       data.map((row, index) => ({
         dataId: row._id,
         collectionId: row.collectionId,
@@ -246,7 +245,7 @@ describe('default recall dataset search', () => {
     const tokenResult = await searchDatasetData(props);
     expect(tokenResult.searchRes.map((row) => row.id)).toEqual([data[0]._id]);
     expect(mockCountPromptTokensBatch).toHaveBeenCalledOnce();
-    mockMongoDatasetDataTextAggregate.mockResolvedValue([]);
+    mockSearchSqlFullText.mockResolvedValue([]);
     const empty = await searchDatasetData({ ...props, topk: 100 });
     expect(empty.searchRes).toEqual([]);
   });
@@ -479,7 +478,7 @@ describe('default recall dataset search', () => {
     );
   });
 
-  it('should skip blank full-text queries before Mongo text search', async () => {
+  it('should skip blank full-text queries before full-text store search', async () => {
     embeddingModel.config.vision = false;
 
     const result = await searchDatasetData({
@@ -498,7 +497,7 @@ describe('default recall dataset search', () => {
     });
 
     expect(mockGetVectors).not.toHaveBeenCalled();
-    expect(mockMongoDatasetDataTextAggregate).not.toHaveBeenCalled();
+    expect(mockSearchSqlFullText).not.toHaveBeenCalled();
     expect(result.searchRes).toEqual([]);
   });
 
@@ -740,19 +739,19 @@ describe('default recall dataset search', () => {
 
 describe('fullTextRecall engine dispatch', () => {
   beforeEach(() => {
-    // 每个用例独立:清空所有 mock 调用、重置 store 开关为 mongo 委托、aggregate 默认返回空
+    // 每个用例独立:清空所有 mock 调用、重置 store 开关为 SQL 委托、默认返回空
     vi.clearAllMocks();
     mockUseMilvusStore.value = false;
     mockFullTextStoreSearch.mockReset();
-    mockMongoDatasetDataTextAggregate.mockResolvedValue([]);
+    mockSearchSqlFullText.mockResolvedValue([]);
   });
 
-  it('TC-13.1 mongo path groups results assembled via store search', async () => {
+  it('TC-13.1 SQL path groups results assembled via store search', async () => {
     // 被测函数: fullTextRecall  等级: 3-High
-    // 正常场景(回归): getFullTextStore 默认委托真实 MongoFullTextStore.search(内部走 aggregate,
-    // 由 mockMongoDatasetDataTextAggregate 支撑),buildResultsFromRecallItems 反查 data/collection 组装;
+    // 正常场景(回归): getFullTextStore 默认委托真实 SqlFullTextStore.search(内部走 searchSqlFullText,
+    // 由 mockSearchSqlFullText 支撑),buildResultsFromRecallItems 反查 data/collection 组装;
     // 结果 id 取自 dataset_data._id。
-    mockMongoDatasetDataTextAggregate.mockResolvedValue([
+    mockSearchSqlFullText.mockResolvedValue([
       { dataId: '68ad85a7463006c963799a05', collectionId: 'col1', score: 2.5 }
     ]);
     mockMongoDatasetDataFind.mockReturnValue({
@@ -785,17 +784,17 @@ describe('fullTextRecall engine dispatch', () => {
       forbidCollectionIdList: []
     });
 
-    expect(mockMongoDatasetDataTextAggregate).toHaveBeenCalled();
+    expect(mockSearchSqlFullText).toHaveBeenCalled();
     expect(res.textFullTextRecallResults[0].id).toBe('68ad85a7463006c963799a05');
     expect(res.textFullTextRecallResults[0].score).toEqual([
       { type: SearchScoreTypeEnum.fullText, value: 2.5, index: 0 }
     ]);
   });
 
-  it('TC-13.2 milvus path assembles via store dispatch without querying mongo aggregate', async () => {
+  it('TC-13.2 milvus path assembles via store dispatch without querying SQL full-text store', async () => {
     // 被测函数: fullTextRecall  等级: 3-High
     // 正常场景: getFullTextStore 返回 milvus 实现,mockFullTextStoreSearch 返回 FullTextSearchItem[],
-    // buildResultsFromRecallItems 组装结果且不查 mongo aggregate。
+    // buildResultsFromRecallItems 组装结果且不查 SQL full-text store。
     mockUseMilvusStore.value = true;
     mockFullTextStoreSearch.mockReturnValue([
       { dataId: '68ad85a7463006c963799a05', collectionId: 'col1', score: 0.9 }
@@ -830,7 +829,7 @@ describe('fullTextRecall engine dispatch', () => {
       forbidCollectionIdList: []
     });
 
-    expect(mockMongoDatasetDataTextAggregate).not.toHaveBeenCalled();
+    expect(mockSearchSqlFullText).not.toHaveBeenCalled();
     expect(mockFullTextStoreSearch).toHaveBeenCalledWith({
       teamId: 't',
       datasetIds: ['d'],
