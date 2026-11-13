@@ -1416,6 +1416,7 @@
   "mcpOAuth.auth_mode_headers": "請求標頭",
   "mcpOAuth.auth_mode_oauth": "OAuth",
   "mcpOAuth.auth_mode_oauth_hint": "OAuth 模式下不再使用請求標頭密鑰，由伺服器自動注入並更新權杖。",
+  "mcpOAuth.parse_requires_authorization": "OAuth 模式下無法預先解析工具：請先建立應用並完成授權，授權後可在應用詳情中解析工具列表。",
   "mcpOAuth.client_mode": "用戶端模式",
   "mcpOAuth.client_mode_auto": "自動（建議）",
   "mcpOAuth.client_mode_cimd": "CIMD",

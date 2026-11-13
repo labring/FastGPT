@@ -1416,6 +1416,7 @@
   "mcpOAuth.auth_mode_headers": "请求头",
   "mcpOAuth.auth_mode_oauth": "OAuth",
   "mcpOAuth.auth_mode_oauth_hint": "OAuth 模式下不再使用请求头密钥，由服务端自动注入并刷新令牌。",
+  "mcpOAuth.parse_requires_authorization": "OAuth 模式下无法预解析工具：请先创建应用并完成授权，授权后可在应用详情中解析工具列表。",
   "mcpOAuth.client_mode": "客户端模式",
   "mcpOAuth.client_mode_auto": "自动（推荐）",
   "mcpOAuth.client_mode_cimd": "CIMD",

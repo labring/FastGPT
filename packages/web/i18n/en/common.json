@@ -1416,6 +1416,7 @@
   "mcpOAuth.auth_mode_headers": "Headers",
   "mcpOAuth.auth_mode_oauth": "OAuth",
   "mcpOAuth.auth_mode_oauth_hint": "In OAuth mode header secrets are ignored; the server injects and refreshes tokens.",
+  "mcpOAuth.parse_requires_authorization": "Tools cannot be parsed in OAuth mode. Create the app and complete authorization first, then parse the tool list from the app detail page.",
   "mcpOAuth.client_mode": "Client mode",
   "mcpOAuth.client_mode_auto": "Auto (recommended)",
   "mcpOAuth.client_mode_cimd": "CIMD",

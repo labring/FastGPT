@@ -1416,6 +1416,7 @@
   "mcpOAuth.auth_mode_headers": "헤더",
   "mcpOAuth.auth_mode_oauth": "OAuth",
   "mcpOAuth.auth_mode_oauth_hint": "OAuth 모드에서는 헤더 시크릿을 사용하지 않으며 서버가 토큰을 주입하고 갱신합니다.",
+  "mcpOAuth.parse_requires_authorization": "OAuth 모드에서는 도구를 미리 파싱할 수 없습니다. 먼저 앱을 생성하고 인증을 완료한 뒤 앱 상세 페이지에서 도구 목록을 파싱하세요.",
   "mcpOAuth.client_mode": "클라이언트 모드",
   "mcpOAuth.client_mode_auto": "자동(권장)",
   "mcpOAuth.client_mode_cimd": "CIMD",
