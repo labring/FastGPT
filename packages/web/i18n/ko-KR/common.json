@@ -1411,5 +1411,9 @@
   "core.dataset.error.tagValueInvalid": "태그 값 형식이 유형과 일치하지 않습니다",
   "core.dataset.error.tagValueDatetimeInvalid": "날짜/시간 태그 값 형식이 올바르지 않습니다",
   "core.dataset.error.arrayTagValueInvalid": "배열 태그 값이 올바르지 않습니다 (요소는 문자열, 배열 길이 ≤ 64, 요소 길이 ≤ 256)",
-  "error.operation_too_frequently": "작업이 너무 많습니다. 잠시 후 다시 시도하세요."
+  "error.operation_too_frequently": "작업이 너무 많습니다. 잠시 후 다시 시도하세요.",
+  "api_error.request_failed": "요청 실패",
+  "api_error.network_error": "네트워크 연결 오류",
+  "api_error.validation_error": "데이터 유효성 검사 오류",
+  "api_error.resume_requires_sse": "현재 대화가 아직 생성 중입니다. Accept: text/event-stream 헤더를 포함하여 /api/core/chat/resume를 다시 요청하세요."
 }

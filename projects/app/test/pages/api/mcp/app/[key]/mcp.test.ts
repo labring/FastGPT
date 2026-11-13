@@ -132,8 +132,7 @@ describe('mcp app handler', () => {
       id: 1,
       error: {
         code: -32000,
-        // getErrText 会把已知错误码翻译为 i18n 文案
-        message: 'common:code_error.account_cancellation_pending'
+        message: 'Account deletion is in progress. This account is temporarily unavailable.'
       }
     });
 
@@ -171,7 +170,7 @@ describe('mcp app handler', () => {
       id: 1,
       error: {
         code: -32000,
-        message: 'common:error_invalid_resource'
+        message: 'Invalid resources'
       }
     });
     expect(() => JSONRPCMessageSchema.parse(body)).not.toThrow();

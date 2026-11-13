@@ -84,5 +84,7 @@ export const createServerTranslator = async <Namespace extends string>({
   const t = (key: string, options?: Record<string, unknown>): string =>
     fixedT(key, { defaultValue: key, ...options });
 
-  return { t };
+  const exists = (key: string): boolean => instance.exists(key, { lng: locale });
+
+  return { t, exists };
 };
