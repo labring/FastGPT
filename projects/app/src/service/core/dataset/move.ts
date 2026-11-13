@@ -93,9 +93,11 @@ export const moveDataset = async ({
     return Promise.reject(DatasetErrEnum.unAuthDataset);
   }
   if (parentId === null || !dataset.parentId) {
+    // 根目录移动仍需校验创建权限，认证方式与前面的资源鉴权保持一致。
     await authUserPer({
       req,
       authToken: true,
+      authApiKey: true,
       per: TeamDatasetCreatePermissionVal
     });
   }

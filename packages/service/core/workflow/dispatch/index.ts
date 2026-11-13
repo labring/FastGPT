@@ -1693,7 +1693,7 @@ export class WorkflowQueue {
         if (output.value !== undefined) {
           nodeOutputs.push({
             nodeId: node.nodeId,
-            key: output.key as NodeOutputKeyEnum,
+            key: output.key,
             value: output.value
           });
         }

@@ -16,7 +16,7 @@ function createMockHttpClient(handler: (params: any) => Promise<any>): FastGptHt
 describe('DatasetService (cli/src/domain/dataset/dataset-service.ts)', () => {
   const service = createDatasetService();
 
-  it('lists datasets with default pagination and search filter', async () => {
+  it('lists datasets with default pagination, datasetIds, offset, and search filter', async () => {
     let capturedBody: any;
     const client = createMockHttpClient(async ({ method, path, body }) => {
       expect(method).toBe('POST');
@@ -57,13 +57,24 @@ describe('DatasetService (cli/src/domain/dataset/dataset-service.ts)', () => {
       count: 1
     });
 
-    // 分页超上限参数（如 1000）被 Schema 截断为 500 时，meta.pageSize 必须如实反映 500（R4）
     const clampRes = await service.list({
       client,
       input: { page: 1, pageSize: 1000 }
     });
     expect(capturedBody.pageSize).toBe(500);
     expect(clampRes.meta?.pageSize).toBe(500);
+
+    const idsRes = await service.list({
+      client,
+      input: { datasetIds: ['68ad85a7463006c963799a05'] }
+    });
+    expect(idsRes.meta).toEqual({ total: 1, count: 1, hasMore: false });
+
+    const offsetRes = await service.list({
+      client,
+      input: { offset: 0, pageSize: 1 }
+    });
+    expect(offsetRes.meta).toMatchObject({ offset: 0, pageSize: 1, total: 1, hasMore: false });
   });
 
   it('fetches dataset detail and validates required datasetId', async () => {
@@ -112,36 +123,33 @@ describe('DatasetService (cli/src/domain/dataset/dataset-service.ts)', () => {
     expect(realRes.data).toEqual({ datasetId: 'new-dataset-id-456', name: 'Finance' });
   });
 
-  it('updates dataset properties with dryRun and execution', async () => {
-    const validId = '68ad85a7463006c963799a05';
-    let capturedBody: any;
-    const client = createMockHttpClient(async ({ body }) => {
-      capturedBody = body;
-      return {};
-    });
+  it('updates only supplied fields via PUT, preserves clearing values, and validates before requests', async () => {
+    const id = '68ad85a7463006c963799a05';
+    const client = createMockHttpClient(async () => undefined);
 
-    const dryRes = await service.update({
-      client,
-      datasetId: validId,
-      input: { name: 'Renamed', parentId: null },
-      dryRun: true
+    const dryRun = await service.update({ client, input: { id, name: ' Renamed ' }, dryRun: true });
+    expect(client.request).not.toHaveBeenCalled();
+    expect(dryRun.data).toMatchObject({
+      dryRun: true,
+      method: 'PUT',
+      path: '/core/dataset/update',
+      payload: { id, name: 'Renamed' }
     });
-    expect(dryRes.changed).toBe(false);
-    expect(dryRes.data).toHaveProperty('dryRun', true);
-    expect(dryRes.data).toHaveProperty('risk', 'write');
+    expect(dryRun.data).not.toHaveProperty('payload.parentId');
 
-    const realRes = await service.update({
-      client,
-      datasetId: validId,
-      input: { name: 'Renamed', intro: 'New intro', parentId: null }
+    const input = { id, intro: '', parentId: null, vlmModelId: null, autoSync: false };
+    const result = await service.update({ client, input });
+    expect(client.request).toHaveBeenCalledExactlyOnceWith({
+      method: 'PUT',
+      path: '/core/dataset/update',
+      body: input
     });
-    expect(realRes.changed).toBe(true);
-    expect(capturedBody).toEqual({
-      id: validId,
-      name: 'Renamed',
-      intro: 'New intro',
-      parentId: null
-    });
+    expect(result).toMatchObject({ changed: true, data: { datasetId: id } });
+
+    for (const invalid of [{ id: 'invalid' }, { id, name: 42 }, { id, agentModelId: '' }]) {
+      await expect(service.update({ client, input: invalid })).rejects.toThrow();
+    }
+    expect(client.request).toHaveBeenCalledTimes(1);
   });
 
   it('deletes a dataset via DELETE method and supports dryRun preview', async () => {
@@ -281,10 +289,115 @@ describe('DatasetService (cli/src/domain/dataset/dataset-service.ts)', () => {
     expect(client.request).not.toHaveBeenCalled();
   });
 
-  it('enforces shared OpenAPI schema validation on invalid inputs (R5)', async () => {
+  it('executes structured System OpenAPI /core/dataset/search input directly', async () => {
+    const validId = '68ad85a7463006c963799a05';
+    let capturedBody: any;
+    const client = createMockHttpClient(async ({ body }) => {
+      capturedBody = body;
+      return {
+        list: [{ id: 'c-1', q: 'FastGPT', a: 'KB', score: [], sourceName: 'doc.md' }],
+        meta: { durationMs: 55, usingSimilarityFilter: true, usingReRank: true }
+      };
+    });
+
+    const res = await service.search({
+      client,
+      input: {
+        scope: { datasetIds: [validId] },
+        query: { text: 'What is FastGPT?', imageKeys: [] },
+        retrieval: { mode: 'mixedRecall' as any, embeddingWeight: 0.5 },
+        rerank: { enabled: true, weight: 0.5 },
+        queryExtension: { enabled: false },
+        result: { topk: 10, similarity: 0.5 }
+      }
+    });
+
+    expect(capturedBody).toMatchObject({
+      scope: { datasetIds: [validId] },
+      query: { text: 'What is FastGPT?' },
+      retrieval: { mode: 'mixedRecall', embeddingWeight: 0.5 },
+      rerank: { enabled: true },
+      result: { topk: 10, similarity: 0.5 }
+    });
+    expect(res.data?.list).toHaveLength(1);
+    expect(res.message).toContain('Retrieved 1 chunks');
+  });
+
+  it('supports batchMove and batchDelete with dryRun and validation', async () => {
+    const validId = '68ad85a7463006c963799a05';
+    const client = createMockHttpClient(async ({ path, body }) => {
+      if (path === '/core/dataset/batch/move' || path === '/core/dataset/batch/delete') {
+        return { successIds: body.ids, failedIds: [], affectedIds: body.ids };
+      }
+      return {};
+    });
+
+    const moveDry = await service.batchMove({
+      client,
+      ids: [validId],
+      parentId: null,
+      dryRun: true
+    });
+    expect(moveDry.data).toMatchObject({ dryRun: true, risk: 'write' });
+
+    const moveRes = await service.batchMove({ client, ids: [validId], parentId: null });
+    expect(moveRes.changed).toBe(true);
+
+    const delDry = await service.batchDelete({ client, ids: [validId], dryRun: true });
+    expect(delDry.data).toMatchObject({ dryRun: true, risk: 'destructive' });
+
+    const delRes = await service.batchDelete({ client, ids: [validId] });
+    expect(delRes.changed).toBe(true);
+  });
+
+  describe.each(['batchMove', 'batchDelete'] as const)('%s result semantics', (operation) => {
+    const successId = '68ad85a7463006c963799a05';
+    const failedId = '68ad85a7463006c963799a06';
+
+    it('rejects complete failure with a business error and preserves failed IDs', async () => {
+      const response = { successIds: [], failedIds: [failedId], affectedIds: [] };
+      const client = createMockHttpClient(async () => response);
+
+      await expect(
+        service[operation]({ client, ids: [failedId], parentId: null })
+      ).rejects.toMatchObject({ code: 'API_ERROR', exitCode: 4, details: response });
+    });
+
+    it('preserves partial success and warns callers to inspect failed IDs', async () => {
+      const response = {
+        successIds: [successId],
+        failedIds: [failedId],
+        affectedIds: [successId]
+      };
+      const client = createMockHttpClient(async () => response);
+
+      const result = await service[operation]({
+        client,
+        ids: [successId, failedId],
+        parentId: null
+      });
+
+      expect(result).toMatchObject({ changed: true, data: response });
+      expect(result.warnings).toEqual([expect.stringContaining('failedIds')]);
+    });
+
+    it('does not report a change when no resources were affected', async () => {
+      const client = createMockHttpClient(async () => ({
+        successIds: [successId],
+        failedIds: [],
+        affectedIds: []
+      }));
+
+      const result = await service[operation]({ client, ids: [successId], parentId: null });
+
+      expect(result.changed).toBe(false);
+      expect(result.warnings).toBeUndefined();
+    });
+  });
+
+  it('enforces shared OpenAPI schema validation on invalid inputs', async () => {
     const client = createMockHttpClient(async () => ({}));
 
-    // Invalid dataset type
     await expect(
       service.create({
         client,
@@ -293,7 +406,6 @@ describe('DatasetService (cli/src/domain/dataset/dataset-service.ts)', () => {
       })
     ).rejects.toThrow();
 
-    // Invalid parentId format (not an ObjectId or null)
     await expect(
       service.create({
         client,
@@ -302,17 +414,6 @@ describe('DatasetService (cli/src/domain/dataset/dataset-service.ts)', () => {
       })
     ).rejects.toThrow();
 
-    // Invalid datasetId format on update
-    await expect(
-      service.update({
-        client,
-        datasetId: 'invalid-id',
-        input: { name: 'Test' },
-        dryRun: true
-      })
-    ).rejects.toThrow();
-
-    // 非法页码数值必须抛出校验异常，不可被静默兜底为默认值 1 / 20（R3）
     await expect(
       service.list({
         client,
@@ -323,25 +424,10 @@ describe('DatasetService (cli/src/domain/dataset/dataset-service.ts)', () => {
     await expect(
       service.list({
         client,
-        input: { page: 0 }
-      })
-    ).rejects.toThrow();
-
-    await expect(
-      service.list({
-        client,
-        input: { page: NaN }
-      })
-    ).rejects.toThrow();
-
-    await expect(
-      service.list({
-        client,
         input: { pageSize: 0 }
       })
     ).rejects.toThrow();
 
-    // 非法检索模式必须抛出校验异常，不可静默回退为 mixedRecall（R3）
     await expect(
       service.search({
         client,

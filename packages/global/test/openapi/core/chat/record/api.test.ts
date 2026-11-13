@@ -3,6 +3,7 @@ import {
   GetRecordsV2BodyRawSchema,
   GetRecordsV2ResponseSchema
 } from '@fastgpt/global/openapi/core/chat/record/api';
+import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { createSchema, createDocument } from 'zod-openapi';
 import Ajv2020 from 'ajv/dist/2020';
@@ -60,6 +61,65 @@ describe('chat record pagination contracts', () => {
     });
     expect(response.prevCursor).toBeNull();
     expect(response.nextCursor).toBe('round');
+  });
+
+  it('preserves built-in and custom output keys in persisted interactive records', () => {
+    const interactive = {
+      type: 'userSelect',
+      entryNodeIds: ['select'],
+      memoryEdges: [],
+      nodeOutputs: [
+        { nodeId: 'chat', key: NodeOutputKeyEnum.answerText, value: 'answer' },
+        { nodeId: 'custom', key: 'count', value: 0 },
+        { nodeId: 'custom', key: 'enabled', value: false },
+        { nodeId: 'custom', key: '备注', value: '' }
+      ],
+      params: { description: '', userSelectOptions: [{ key: 'continue', value: 'Continue' }] }
+    };
+    const list = [
+      { dataId: 'human', obj: ChatRoleEnum.Human, value: [{ text: { content: 'Hi' } }] },
+      { dataId: 'ai', obj: ChatRoleEnum.AI, value: [{ interactive }] }
+    ];
+
+    const response = GetRecordsV2ResponseSchema.parse({
+      list,
+      total: 2,
+      hasMorePrev: false,
+      hasMoreNext: false,
+      prevCursor: null,
+      nextCursor: null
+    });
+
+    expect(response.list).toEqual(list);
+  });
+
+  it.each([undefined, null, 42, {}])('rejects non-string interactive output keys: %j', (key) => {
+    const result = GetRecordsV2ResponseSchema.safeParse({
+      list: [
+        {
+          dataId: 'ai',
+          obj: ChatRoleEnum.AI,
+          value: [
+            {
+              interactive: {
+                type: 'userSelect',
+                entryNodeIds: ['select'],
+                memoryEdges: [],
+                nodeOutputs: [{ nodeId: 'custom', key, value: 'answer' }],
+                params: { description: '', userSelectOptions: [] }
+              }
+            }
+          ]
+        }
+      ],
+      total: 1,
+      hasMorePrev: false,
+      hasMoreNext: false,
+      prevCursor: null,
+      nextCursor: null
+    });
+
+    expect(result.success).toBe(false);
   });
 
   it('documents mutually exclusive pagination modes in OpenAPI', () => {
