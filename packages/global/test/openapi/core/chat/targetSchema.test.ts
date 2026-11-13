@@ -673,12 +673,16 @@ describe('openapi/core/chat target schema', () => {
       outLinkAuthData: {
         shareId,
         outLinkUid
-      },
-      duration: 3
+      }
     });
     expect('skillId' in form.data).toBe(false);
+    expect(form.data).not.toHaveProperty('duration');
 
-    const runtimeData = AudioTranscriptionsDataSchema.parse(form.data);
+    const runtimeData = AudioTranscriptionsDataSchema.parse({
+      ...form.data,
+      duration: 'untrusted-client-value'
+    });
+    expect(runtimeData).not.toHaveProperty('duration');
     expect(runtimeData).toMatchObject({
       sourceType: ChatSourceTypeEnum.skillEdit,
       sourceId: skillId,
@@ -686,8 +690,7 @@ describe('openapi/core/chat target schema', () => {
       outLinkAuthData: {
         shareId,
         outLinkUid
-      },
-      duration: 3
+      }
     });
     expect('skillId' in runtimeData).toBe(false);
   });

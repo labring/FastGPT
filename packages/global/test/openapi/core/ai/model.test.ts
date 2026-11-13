@@ -50,6 +50,37 @@ describe('admin system model API schemas', () => {
     expect(modelData?.oneOf).toHaveLength(5);
   });
 
+  it('documents both STT price types with their actual fields', () => {
+    const operation = openAPIDocument.paths?.['/core/ai/model/create']?.post;
+    const body = operation?.requestBody as any;
+    const variants = body.content['application/json'].schema.properties.modelData.oneOf;
+    const stt = variants.find((variant: any) => variant.properties.type.const === 'stt');
+    const priceVariants = stt.properties.pricing.anyOf;
+    expect(priceVariants).toHaveLength(2);
+    expect(priceVariants[0].properties.type.const).toBe('duration');
+    expect(priceVariants[0].properties).not.toHaveProperty('secondsPerUnit');
+    expect(priceVariants[0].properties.unitPrice.description).toContain('60');
+    expect(priceVariants[1].properties.type.const).toBe('tokens');
+    expect(priceVariants[1].properties).not.toHaveProperty('secondsPerUnit');
+  });
+
+  it.each([
+    { path: '/core/ai/model/create', method: 'post' as const },
+    { path: '/core/ai/model/update', method: 'put' as const }
+  ])('documents both STT price modes in $path', ({ path, method }) => {
+    const body = openAPIDocument.paths?.[path]?.[method]?.requestBody as any;
+    const models = body?.content['application/json'].schema.properties.modelData.oneOf as any[];
+    const stt = models.find(
+      (model) =>
+        model.properties.type.const === 'stt' || model.properties.type.enum?.includes('stt')
+    );
+    const pricing = JSON.stringify(stt?.properties.pricing);
+    expect(pricing).not.toContain('secondsPerUnit');
+    expect(pricing).toContain('duration');
+    expect(pricing).toContain('tokens');
+    expect(pricing).toContain('unitPrice');
+  });
+
   it('validates unique model IDs for batch status and delete operations', () => {
     const modelIds = ['68ad85a7463006c963799a05', '68ad85a7463006c963799a06'];
 

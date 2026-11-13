@@ -1,3 +1,4 @@
+import { STT_PRICE_UNITS } from '@fastgpt/global/core/ai/audio/constants';
 import React from 'react';
 import { Box, Flex, Grid, Link } from '@chakra-ui/react';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
@@ -6,7 +7,7 @@ import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getPublicModelList } from '@/web/core/ai/model/catalogApi';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import PriceTiersLabel from '@/components/core/ai/PriceTiersLabel';
-import { roundModelPrice } from '@fastgpt/global/core/ai/model/pricing';
+import { roundModelPrice, resolveSTTPricing } from '@fastgpt/global/core/ai/model/pricing';
 
 const Points = () => {
   const { t } = useSafeTranslation();
@@ -50,7 +51,9 @@ export const AiPointsTable = () => {
   const llmModelList = modelList.filter((model) => model.type === ModelTypeEnum.llm);
   const embeddingModelList = modelList.filter((model) => model.type === ModelTypeEnum.embedding);
   const ttsModelList = modelList.filter((model) => model.type === ModelTypeEnum.tts);
-  const sttModelList = modelList.filter((model) => model.type === ModelTypeEnum.stt);
+  const sttModelList = modelList
+    .filter((model) => model.type === ModelTypeEnum.stt)
+    .map((model) => ({ ...model, sttPricing: resolveSTTPricing(model.pricing) }));
 
   return (
     <Grid gap={6} w={'100%'} color={'myGray.900'}>
@@ -164,8 +167,9 @@ export const AiPointsTable = () => {
               <Box flex={'1 0 0'}>
                 {roundModelPrice(item.pricing?.unitPrice) +
                   t('common:support.wallet.subscription.point') +
-                  ' / 60' +
-                  t('common:unit.seconds')}
+                  (item.sttPricing.type === 'tokens'
+                    ? ' / 1M Tokens'
+                    : ' / ' + STT_PRICE_UNITS.duration + t('common:unit.seconds'))}
               </Box>
             </Flex>
           ))}

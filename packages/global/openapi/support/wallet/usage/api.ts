@@ -56,8 +56,15 @@ const UsageItemSchema = z
     }),
     inputTokens: IntSchema.optional().meta({ example: 1200, description: '输入 token 数' }),
     outputTokens: IntSchema.optional().meta({ example: 800, description: '输出 token 数' }),
+    totalTokens: IntSchema.optional().meta({
+      example: 77,
+      description: 'STT 按 Tokens 计费的总用量'
+    }),
     charsLength: IntSchema.optional().meta({ example: 2400, description: '文本字符数' }),
-    duration: NumSchema.optional().meta({ example: 1.2, description: '处理耗时' }),
+    duration: NumSchema.optional().meta({
+      example: 1.2,
+      description: '时长（秒）；STT 为实际计费的音频时长'
+    }),
     pages: IntSchema.optional().meta({ example: 3, description: '处理页数' }),
     count: IntSchema.optional().meta({ example: 1, description: '处理次数' }),
     tokens: IntSchema.optional().meta({ description: '旧版 token 统计字段', deprecated: true })

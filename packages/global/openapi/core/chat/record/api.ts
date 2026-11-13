@@ -267,8 +267,7 @@ export type GetChatSpeechBodyType = z.infer<typeof GetChatSpeechBodySchema>;
  * ============================================================================ */
 
 const AudioTranscriptionsProps = {
-  chatId: ChatIdSchema.min(1).describe('会话 ID'),
-  duration: z.coerce.number().optional().describe('录音时长，单位秒')
+  chatId: ChatIdSchema.min(1).describe('会话 ID')
 };
 export const AudioTranscriptionsDataRawSchema =
   createChatSourceInputSchema(AudioTranscriptionsProps);

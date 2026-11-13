@@ -53,5 +53,10 @@
   "migrations.20261104_backfill_openapi_key_type.description": "背景獨立分批掃描全部 API Key，缺少類型時補為個人密鑰，將有效應用 ID 統一為 BSON ObjectId，保留預設目標語義、憑證及權限。",
   "migrations.20261104_backfill_openapi_key_type.result": "已掃描 {{keys}} 個密鑰",
   "migrations.20261104_backfill_openapi_key_type.keys": "密鑰類型",
-  "migrations.20261104_backfill_openapi_key_type.validation": "驗證回填結果"
+  "migrations.20261104_backfill_openapi_key_type.validation": "驗證回填結果",
+  "migrations.20261112_backfill_stt_pricing_type.name": "回填 STT 計價類型",
+  "migrations.20261112_backfill_stt_pricing_type.description": "在背景將舊 STT 價格標記為按時長計費，保留原單價及既有 Tokens 設定，不阻塞業務啟動。",
+  "migrations.20261112_backfill_stt_pricing_type.result": "已掃描 {{models}} 個 STT 模型",
+  "migrations.20261112_backfill_stt_pricing_type.models": "模型計價類型",
+  "migrations.20261112_backfill_stt_pricing_type.validation": "驗證回填結果"
 }

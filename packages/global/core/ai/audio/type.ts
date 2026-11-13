@@ -1,0 +1,17 @@
+import z from 'zod';
+
+/** 计费用量的 type 来自模型价格配置，不直接采用上游 usage.type。 */
+export const STTBillableUsageSchema = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('duration'), seconds: z.number().nonnegative() }),
+  z.object({ type: z.literal('tokens'), totalTokens: z.number().int().nonnegative() })
+]);
+export type STTBillableUsageType = z.infer<typeof STTBillableUsageSchema>;
+
+/** 上游值在计费边界按 unknown 检查，缺失和非法值均不能转换成可扣费数量。 */
+export type STTUpstreamUsageType = {
+  type?: unknown;
+  seconds?: unknown;
+  total_tokens?: unknown;
+  input_tokens?: unknown;
+  output_tokens?: unknown;
+};

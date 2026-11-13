@@ -14,22 +14,46 @@ export const ModelPriceTierSchema = z.object({
 });
 export type ModelPriceTierType = z.infer<typeof ModelPriceTierSchema>;
 
-/** 单价只存金额，计价分母由模型类型固定；空对象表示已配置但尚未填写价格。 */
+/** STT 支持独立计价口径；其他类型仍由模型类型确定分母。 */
 export const ModelPricingSchema = z.object({
+  type: z.enum(['duration', 'tokens']).optional().meta({ description: 'STT 计价类型' }),
   tiers: z
     .array(ModelPriceTierSchema)
     .max(5)
     .optional()
     .meta({ description: 'LLM 阶梯价格，下限从上一档上限推导' }),
-  unitPrice: z
-    .number()
-    .min(0)
-    .optional()
-    .meta({ description: '综合单价；Token/TTS 每百万数量，STT 每 60 秒', example: 2 })
+  unitPrice: z.number().min(0).optional().meta({
+    description: '综合单价；Token/TTS 每百万数量，STT 按类型固定为每 60 秒或每百万 Tokens',
+    example: 2
+  })
 });
 export type ModelPricingType = z.infer<typeof ModelPricingSchema>;
-export const LLMModelPricingSchema = ModelPricingSchema.omit({ unitPrice: true });
-export const UnitModelPricingSchema = ModelPricingSchema.omit({ tiers: true });
+export const LLMModelPricingSchema = ModelPricingSchema.omit({
+  unitPrice: true,
+  type: true
+});
+export const UnitModelPricingSchema = ModelPricingSchema.omit({
+  tiers: true,
+  type: true
+});
+/** STT 价格必须明确声明口径；旧数据由后台迁移补齐。 */
+export const STTModelPricingSchema = z.union([
+  z.object({
+    type: z.literal('duration'),
+    unitPrice: UnitModelPricingSchema.shape.unitPrice.meta({
+      description: '每 60 秒的积分单价',
+      example: 0.2
+    })
+  }),
+  z.object({
+    type: z.literal('tokens'),
+    unitPrice: UnitModelPricingSchema.shape.unitPrice.meta({
+      description: '每百万总 Tokens 的积分单价',
+      example: 10
+    })
+  })
+]);
+export type STTModelPricingType = z.infer<typeof STTModelPricingSchema>;
 export const PriceTypeSchema = z.object({ pricing: ModelPricingSchema.optional() });
 export type PriceType = z.infer<typeof PriceTypeSchema>;
 
@@ -145,9 +169,9 @@ export const TTSModelDocumentSchema = AIModelDocumentBaseSchema.extend({
 });
 
 export const STTModelDocumentSchema = AIModelDocumentBaseSchema.extend({
-  pricing: UnitModelPricingSchema.optional().meta({
-    description: '每固定计价单位的积分单价；缺省免费',
-    example: { unitPrice: 2 }
+  pricing: STTModelPricingSchema.optional().meta({
+    description: 'STT 固定按每 60 秒或每百万 Tokens 计价；缺省免费',
+    example: { type: 'duration', unitPrice: 2 }
   }),
   type: z.literal(ModelTypeEnum.stt),
   config: STTModelConfigSchema
