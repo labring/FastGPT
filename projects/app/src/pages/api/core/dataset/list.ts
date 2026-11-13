@@ -91,8 +91,8 @@ async function handler(req: ApiRequestProps): Promise<GetDatasetListResponse> {
     const datasetPerQuery = teamOwnerFullAccess
       ? {}
       : teamPer.isOwner
-        ? // API 文件库按 ACL 收窄，普通知识库保留团队 owner 旁路。
-          { $or: [{ apiDatasetServer: null }, idList] }
+        ? // API 文件库按 ACL 收窄，普通知识库保留团队 owner 旁路；dataset.tmbId 是库级鉴权的 owner 兜底。
+          { $or: [{ apiDatasetServer: null }, { tmbId }, idList] }
         : idList;
     const searchMatch = searchKey
       ? {

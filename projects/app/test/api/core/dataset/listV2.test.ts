@@ -357,4 +357,36 @@ describe('POST /api/core/dataset/listV2 - team owner under DISABLE_SUPER_ADMIN',
       visible.data.list.find((item) => String(item._id) === String(apiDataset._id))
     ).toMatchObject({ fileCount: 1, permission: { hasReadPer: true, isOwner: false } });
   });
+
+  it('API 文件库的 dataset 所有者即使没有 ACL 行也保留可见性和 owner 身份', async () => {
+    vi.stubEnv('DISABLE_SUPER_ADMIN', 'true');
+    const { owner, members } = await getFakeUsers(1);
+    const member = members[0];
+    const [ownedByTeamOwner, ownedByMember] = await MongoDataset.create([
+      {
+        name: 'owned-by-team-owner',
+        teamId: owner.teamId,
+        tmbId: owner.tmbId,
+        apiDatasetServer: { apiServer: { baseUrl: 'https://example.com' } }
+      },
+      {
+        name: 'owned-by-member',
+        teamId: owner.teamId,
+        tmbId: member.tmbId,
+        apiDatasetServer: { apiServer: { baseUrl: 'https://example.com' } }
+      }
+    ]);
+
+    const response = await Call<
+      GetDatasetListV2Body,
+      Record<string, never>,
+      GetDatasetListV2Response
+    >(handler, { auth: owner, body: { parentId: null } });
+
+    expect(response.code).toBe(200);
+    expect(response.data.list.map((item) => String(item._id))).toEqual([
+      String(ownedByTeamOwner._id)
+    ]);
+    expect(response.data.list[0].permission).toMatchObject({ hasReadPer: true, isOwner: true });
+  });
 });
