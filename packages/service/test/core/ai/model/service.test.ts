@@ -168,22 +168,23 @@ describe('model lifecycle', () => {
       ]
     });
 
-    const afterJsonImport = sortModelOrderItems(
-      await MongoAIModel.find({ scope: ModelScopeEnum.system }).sort({ _id: -1 }).lean()
-    );
+    const runtimeOrderedModels = await MongoAIModel.find({ scope: ModelScopeEnum.system })
+      .sort({ _id: -1 })
+      .lean();
+    const afterJsonImport = sortModelOrderItems(runtimeOrderedModels);
     expect(afterJsonImport.map(({ model, sortOrder }) => ({ model, sortOrder }))).toEqual([
       { model: 'json-b', sortOrder: 0 },
       { model: 'json-a', sortOrder: 0 },
       { model: 'newest', sortOrder: 3 },
       { model: 'original', sortOrder: 5 }
     ]);
-    // 不干预底层 ObjectId 分配，未显式配置默认模型时保持原有 `_id DESC` 回退顺序。
-    expect(
-      getCachedSystemModelHandle()
-        ?.getSystemModels()
-        .find((item) => item.modelId === getCachedSystemModelHandle()?.getDefaultModelIds().llm)
-        ?.model
-    ).toBe('json-b');
+    // create 与 upsert 的 ObjectId 可能分别由客户端和服务端生成，同秒内不能按导入先后推断大小。
+    // 管理列表继续验证 rank；运行目录和默认回退独立按数据库的 `_id DESC` 校验。
+    const handle = getCachedSystemModelHandle();
+    expect(handle?.getSystemModels().map((model) => model.modelId)).toEqual(
+      runtimeOrderedModels.map((model) => String(model._id))
+    );
+    expect(handle?.getDefaultModelIds().llm).toBe(String(runtimeOrderedModels[0]._id));
   });
 
   it('preserves stable identity and synchronizes an edited upstream identifier', async () => {

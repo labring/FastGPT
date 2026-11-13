@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, expectTypeOf, it } from 'vitest';
 import { openAPIDocument } from '../../../openapi/provider/devapi';
 import { apiDocOpenAPIDocument } from '../../../openapi/provider/systemopenapi';
 import { openAPITagGroups } from '../../../openapi/path';
@@ -14,6 +14,10 @@ import {
   SearchDatasetTestBodySchema
 } from '../../../openapi/core/dataset/api';
 import { CreateCollectionByFileIdBodySchema } from '../../../openapi/core/dataset/collection/createApi';
+import {
+  SearchDatasetBodySchema,
+  type SearchDatasetBody
+} from '../../../openapi/core/dataset/search/api';
 import {
   ChangeCollectionOwnerBodySchema,
   ChangeCollectionOwnerResponseSchema,
@@ -31,6 +35,155 @@ import {
 } from '../../../core/dataset/type';
 
 const objectId = '68ad85a7463006c963799a05';
+
+describe('structured dataset search OpenAPI', () => {
+  it('rejects both budgets in the canonical input contract', () => {
+    expectTypeOf<{ topk: number; maxTokens: number }>().not.toMatchTypeOf<
+      NonNullable<SearchDatasetBody['result']>
+    >();
+    expect(
+      SearchDatasetBodySchema.safeParse({
+        scope: { datasetIds: [objectId] },
+        query: { text: 'question' },
+        result: { topk: 20, maxTokens: 5000 }
+      }).success
+    ).toBe(false);
+  });
+
+  it.each([undefined, {}, { similarity: 0.3 }])(
+    'defaults missing result budgets to topk=20 without a token budget: %j',
+    (result) => {
+      const parsed = SearchDatasetBodySchema.parse({
+        scope: { datasetIds: [objectId] },
+        query: { text: 'question' },
+        result
+      });
+      expect(parsed.result).toEqual({ topk: 20, similarity: result?.similarity ?? 0 });
+    }
+  );
+
+  it.each([10, 100, undefined])(
+    'accepts an optional rerank candidate count: %s',
+    (candidateNum) => {
+      const result = SearchDatasetBodySchema.parse({
+        scope: { datasetIds: [objectId] },
+        query: { text: 'question' },
+        rerank: { enabled: true, candidateNum }
+      });
+      expect(result.rerank).toMatchObject({ enabled: true, weight: 0.5, candidateNum });
+    }
+  );
+
+  it.each([9, 101, 10.5, '20', null])(
+    'rejects an invalid structured candidate count: %s',
+    (candidateNum) => {
+      expect(
+        SearchDatasetBodySchema.safeParse({
+          scope: { datasetIds: [objectId] },
+          query: { text: 'question' },
+          rerank: { enabled: true, candidateNum }
+        }).success
+      ).toBe(false);
+    }
+  );
+
+  it.each([
+    ['DevAPI', openAPIDocument],
+    ['System OpenAPI', apiDocOpenAPIDocument]
+  ] as const)('documents grouped input and a valid request example in %s', (_, document) => {
+    const operation = document.paths!['/core/dataset/search']!.post!;
+    const body = operation.requestBody!;
+    if ('$ref' in body) throw new Error('Unexpected body reference');
+    const media = body.content['application/json'];
+    expect(media.schema).toMatchObject({
+      required: expect.arrayContaining(['scope', 'query']),
+      properties: {
+        usageScene: { enum: ['search', 'searchTest'], default: 'search' },
+        scope: {
+          required: ['datasetIds'],
+          properties: { datasetIds: { minItems: 1, maxItems: 100 } }
+        },
+        query: {
+          anyOf: [
+            {
+              required: ['text'],
+              properties: {
+                text: { minLength: 1, maxLength: 10000 },
+                imageKeys: { maxItems: 10, default: [] }
+              }
+            },
+            {
+              required: ['imageKeys'],
+              properties: { imageKeys: { minItems: 1 }, text: { default: '', maxLength: 10000 } }
+            }
+          ]
+        },
+        retrieval: { properties: { mode: { default: 'embedding' } } },
+        rerank: {
+          default: { enabled: false },
+          oneOf: expect.arrayContaining([
+            expect.objectContaining({
+              properties: expect.objectContaining({
+                candidateNum: expect.objectContaining({
+                  type: 'integer',
+                  minimum: 10,
+                  maximum: 100
+                })
+              })
+            })
+          ])
+        },
+        queryExtension: { default: { enabled: false } },
+        result: {
+          anyOf: [
+            {
+              required: ['maxTokens'],
+              properties: { maxTokens: { minimum: 1, maximum: Number.MAX_SAFE_INTEGER } }
+            },
+            {
+              properties: { topk: { minimum: 1, maximum: 100, default: 20 } }
+            }
+          ]
+        }
+      }
+    });
+    expect(SearchDatasetBodySchema.safeParse(media.example).success).toBe(true);
+    expect(media.schema).not.toHaveProperty([
+      'properties',
+      'result',
+      'anyOf',
+      0,
+      'properties',
+      'topk'
+    ]);
+    expect(media.schema).not.toHaveProperty([
+      'properties',
+      'result',
+      'anyOf',
+      1,
+      'properties',
+      'maxTokens'
+    ]);
+    for (const field of ['topk', 'maxTokens', 'similarity', 'searchMode']) {
+      expect(operation.responses![200]).not.toHaveProperty([
+        'content',
+        'application/json',
+        'schema',
+        'properties',
+        'meta',
+        'properties',
+        field
+      ]);
+    }
+    expect(operation.responses![200]).toMatchObject({
+      content: {
+        'application/json': {
+          schema: { properties: { list: { type: 'array' }, meta: { type: 'object' } } }
+        }
+      }
+    });
+  });
+});
 
 const expectedPaths = {
   '/proApi/core/dataset/changeOwner': 'post',
@@ -116,10 +269,8 @@ describe('SearchDatasetTestBodySchema', () => {
     );
   });
 
-  it.each([
-    ['DevAPI', openAPIDocument],
-    ['System OpenAPI', apiDocOpenAPIDocument]
-  ] as const)('documents named search input choices and response fields in %s', (_, document) => {
+  it('documents the legacy searchTest contract in DevAPI', () => {
+    const document = openAPIDocument;
     const operation = document.paths!['/core/dataset/searchTest']!.post!;
     const body = operation.requestBody!;
     if ('$ref' in body) throw new Error('Unexpected body reference');
@@ -162,6 +313,10 @@ describe('SearchDatasetTestBodySchema', () => {
         }
       }
     });
+  });
+
+  it('excludes legacy searchTest from System OpenAPI', () => {
+    expect(apiDocOpenAPIDocument.paths).not.toHaveProperty('/core/dataset/searchTest');
   });
 });
 

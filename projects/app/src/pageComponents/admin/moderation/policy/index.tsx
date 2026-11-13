@@ -20,6 +20,7 @@ import {
   postAdminUpdateModerationPolicy
 } from '@/web/core/plugin/admin/moderation/api';
 import {
+  DEFAULT_MODERATION_STREAM_INTERVAL,
   ModerationRiskActionEnum,
   ModerationExceptionActionEnum
 } from '@fastgpt/global/core/plugin/moderation/constants';
@@ -197,15 +198,21 @@ export const ModerationPolicy = () => {
     void router.push('/config/tool/marketplace?type=moderation');
   };
 
-  // SettingPage 标题列表：审核服务未开启时，下面 3 个板块全部隐藏
-  const allTitles = [
-    { mainTitle: t('admin:moderation.service_title'), subTitles: [] },
-    { mainTitle: t('admin:moderation.hooks_title'), subTitles: [] },
-    { mainTitle: t('admin:moderation.strategy_title'), subTitles: [] },
-    { mainTitle: t('admin:moderation.test_title'), subTitles: [] }
-  ];
+  const showTestSection = policy.enabled && activePlugin !== undefined;
 
-  const visibleTitles = policy.enabled ? allTitles : [allTitles[0]];
+  // SettingPage right-side anchor list: hide lower sections when moderation is disabled,
+  // and omit the test section until an active moderation service is selected.
+  const visibleTitles = (() => {
+    const serviceTitle = { mainTitle: t('admin:moderation.service_title'), subTitles: [] };
+    if (!policy.enabled) return [serviceTitle];
+
+    return [
+      serviceTitle,
+      { mainTitle: t('admin:moderation.hooks_title'), subTitles: [] },
+      { mainTitle: t('admin:moderation.strategy_title'), subTitles: [] },
+      ...(showTestSection ? [{ mainTitle: t('admin:moderation.test_title'), subTitles: [] }] : [])
+    ];
+  })();
 
   return (
     <>
@@ -517,7 +524,7 @@ export const ModerationPolicy = () => {
                       min={1}
                       precision={0}
                       w={'160px'}
-                      bg={'white'}
+                      variant={'whiteOutline'}
                       value={policy.strategy.streamInterval}
                       onChange={(val) => {
                         setPolicy((prev) => ({
@@ -527,7 +534,7 @@ export const ModerationPolicy = () => {
                             streamInterval:
                               typeof val === 'number' && Number.isFinite(val)
                                 ? Math.max(1, Math.trunc(val))
-                                : 50
+                                : DEFAULT_MODERATION_STREAM_INTERVAL
                           }
                         }));
                       }}
@@ -608,11 +615,15 @@ export const ModerationPolicy = () => {
             </Box>
 
             {/* ================= 4. 审核效果测试 ================= */}
-            <FirstTitle title={t('admin:moderation.test_title')} />
+            {activePlugin !== undefined && (
+              <>
+                <FirstTitle title={t('admin:moderation.test_title')} />
 
-            <Box>
-              <ModerationTestCard activePlugin={activePlugin} />
-            </Box>
+                <Box>
+                  <ModerationTestCard activePlugin={activePlugin} />
+                </Box>
+              </>
+            )}
           </>
         )}
       </SettingPage>

@@ -192,9 +192,10 @@ const Layout = ({ children }: { children: JSX.Element }) => {
     setLastRoute(router.pathname);
   }, [router.pathname, setLastRoute]);
 
-  // 注销用户 - 自动跳转注销页
+  // 注销用户 - 自动跳转注销页（系统 root 代管排查时不触发重定向）
   useEffect(() => {
     if (
+      !isRoot &&
       userInfo?.team?.accountCancellation &&
       router.pathname !== '/account/cancel' &&
       router.pathname !== '/login' &&
@@ -202,7 +203,7 @@ const Layout = ({ children }: { children: JSX.Element }) => {
     ) {
       router.replace('/account/cancel?view=team');
     }
-  }, [router, userInfo?.team?.accountCancellation]);
+  }, [isRoot, router, userInfo?.team?.accountCancellation]);
 
   const showPcNavbar = isPc === true && !isHideNavbar;
   const showPhoneNavbar =

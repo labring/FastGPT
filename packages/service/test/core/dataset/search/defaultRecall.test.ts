@@ -3,6 +3,7 @@ import { DatasetSearchModeEnum, SearchScoreTypeEnum } from '@fastgpt/global/core
 import type { FullTextSearchProps } from '@fastgpt/service/common/vectorDB/type';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { serviceEnv } from '@fastgpt/service/env';
+import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 
 const mockGetVectors = vi.hoisted(() => vi.fn());
 const mockRecallFromVectorStore = vi.hoisted(() => vi.fn());
@@ -195,6 +196,60 @@ describe('default recall dataset search', () => {
     mockSearchSqlFullText.mockResolvedValue([]);
   });
 
+  it('applies topk before formatting without counting tokens, while token-only calls keep their budget', async () => {
+    embeddingModel.config.vision = false;
+    const data = Array.from({ length: 8 }, (_, index) => ({
+      _id: String(index + 1).padStart(24, '0'),
+      datasetId: '507f1f77bcf86cd799439011',
+      collectionId: '507f1f77bcf86cd799439013',
+      updateTime: new Date('2026-01-01'),
+      q: `chunk ${index} ` + 'long content '.repeat(100),
+      a: 'answer',
+      chunkIndex: index,
+      indexes: []
+    }));
+    mockSearchSqlFullText.mockResolvedValue(
+      data.map((row, index) => ({
+        dataId: row._id,
+        collectionId: row.collectionId,
+        score: 10 - index
+      }))
+    );
+    mockMongoDatasetDataFind.mockReturnValue({ lean: vi.fn().mockResolvedValue(data) });
+    mockMongoDatasetCollectionFind.mockImplementation((query: Record<string, unknown>) => ({
+      lean: vi
+        .fn()
+        .mockResolvedValue(
+          query.forbid ? [] : [{ _id: '507f1f77bcf86cd799439013', name: 'Fixture' }]
+        )
+    }));
+    const props = {
+      metadataFilterEnabled: false,
+      histories: [],
+      teamId: '507f1f77bcf86cd799439012',
+      model: embeddingModel,
+      datasetIds: ['507f1f77bcf86cd799439011'],
+      reRankQuery: 'question',
+      textQueries: ['question'],
+      limit: 1,
+      searchMode: DatasetSearchModeEnum.fullTextRecall,
+      usingReRank: false
+    };
+    for (const topk of [1, 3, 100]) {
+      const result = await searchDatasetData({ ...props, topk });
+      expect(result.searchRes.map((row) => row.id)).toEqual(
+        data.slice(0, topk).map((row) => row._id)
+      );
+      expect(mockCountPromptTokensBatch).not.toHaveBeenCalled();
+    }
+    const tokenResult = await searchDatasetData(props);
+    expect(tokenResult.searchRes.map((row) => row.id)).toEqual([data[0]._id]);
+    expect(mockCountPromptTokensBatch).toHaveBeenCalledOnce();
+    mockSearchSqlFullText.mockResolvedValue([]);
+    const empty = await searchDatasetData({ ...props, topk: 100 });
+    expect(empty.searchRes).toEqual([]);
+  });
+
   it('should ignore failed image caption and continue dataset search', async () => {
     const userKey = { key: 'user-key', baseUrl: 'https://api.example.com/v1' };
     mockCreateLLMResponse.mockRejectedValueOnce(new Error('vlm failed')).mockResolvedValueOnce({
@@ -208,6 +263,7 @@ describe('default recall dataset search', () => {
     });
 
     const result = await searchDatasetData({
+      metadataFilterEnabled: false,
       histories: [],
       teamId: 'team-1',
       model: embeddingModel,
@@ -223,6 +279,7 @@ describe('default recall dataset search', () => {
       usingReRank: false
     });
 
+    expect(pushTrack.datasetSearch).not.toHaveBeenCalled();
     expect(result.imageCaptionResult).toEqual({
       model: 'mock-vlm-model',
       inputTokens: 3,
@@ -264,6 +321,7 @@ describe('default recall dataset search', () => {
     });
 
     await searchDatasetData({
+      metadataFilterEnabled: false,
       histories: [],
       teamId: 'team-1',
       model: embeddingModel,
@@ -306,6 +364,7 @@ describe('default recall dataset search', () => {
     });
 
     await searchDatasetData({
+      metadataFilterEnabled: false,
       histories: [],
       teamId: 'team-1',
       model: embeddingModel,
@@ -347,6 +406,7 @@ describe('default recall dataset search', () => {
     }));
 
     await searchDatasetData({
+      metadataFilterEnabled: false,
       histories: [],
       teamId: 'team-1',
       model: smallEmbeddingModel,
@@ -385,6 +445,7 @@ describe('default recall dataset search', () => {
     });
 
     await searchDatasetData({
+      metadataFilterEnabled: false,
       histories: [],
       teamId: 'team-1',
       model: embeddingModel,
@@ -421,6 +482,7 @@ describe('default recall dataset search', () => {
     embeddingModel.config.vision = false;
 
     const result = await searchDatasetData({
+      metadataFilterEnabled: false,
       histories: [],
       teamId: 'team-1',
       model: embeddingModel,
@@ -484,6 +546,7 @@ describe('default recall dataset search', () => {
     });
 
     const result = await searchDatasetData({
+      metadataFilterEnabled: false,
       histories: [],
       teamId: 'team-1',
       model: embeddingModel,
@@ -572,6 +635,7 @@ describe('default recall dataset search', () => {
 
     const runSearch = (params: Record<string, unknown> = {}) =>
       searchDatasetData({
+        metadataFilterEnabled: false,
         histories: [],
         teamId: 'team-1',
         model: embeddingModel,
