@@ -1141,7 +1141,6 @@
   "support.user.auth.Sending Code": "코드 전송 중",
   "support.user.auth.get_code": "인증번호 받기",
   "support.user.auth.get_code_again": "초 후 다시 받기",
-  "support.user.captcha_placeholder": "인증번호를 입력해 주세요",
   "support.user.info.bind_notification_error": "알림 계정 연결 오류",
   "support.user.info.bind_notification_hint": "계정 정보 및 요금제 정보 등의 중요한 안내를 제때 받을 수 있도록 연락처를 연결해 주세요.",
   "support.user.info.bind_notification_success": "알림 계정 연결 성공",

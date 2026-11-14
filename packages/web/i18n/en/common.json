@@ -1150,7 +1150,6 @@
   "support.user.auth.Sending Code": "Sending Code",
   "support.user.auth.get_code": "Get Verification Code",
   "support.user.auth.get_code_again": "s Get Again",
-  "support.user.captcha_placeholder": "Please enter the verification code",
   "support.user.info.bind_notification_error": "Abnormal binding notification account",
   "support.user.info.bind_notification_hint": "Please bind your contact information to ensure that you can receive important information such as account and plan updates in a timely manner.",
   "support.user.info.bind_notification_success": "Binding notification account successful",

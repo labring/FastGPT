@@ -1150,7 +1150,6 @@
   "support.user.auth.Sending Code": "正在傳送驗證碼",
   "support.user.auth.get_code": "取得驗證碼",
   "support.user.auth.get_code_again": "秒後重新取得",
-  "support.user.captcha_placeholder": "請輸入驗證碼",
   "support.user.info.bind_notification_error": "綁定通知帳號異常",
   "support.user.info.bind_notification_hint": "請綁定聯絡方式，以確保您能及時正常接收帳號資訊、套餐資訊等重要資訊",
   "support.user.info.bind_notification_success": "綁定通知帳號成功",
