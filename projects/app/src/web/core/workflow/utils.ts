@@ -539,6 +539,15 @@ export const filterSensitiveNodesData = (nodes: StoreNodeItemType[]) => {
     }
 
     for (const input of node.inputs) {
+      if (
+        node.flowNodeType === FlowNodeTypeEnum.httpRequest468 &&
+        input.key === NodeInputKeyEnum.httpProxy
+      ) {
+        input.value = undefined;
+        input.defaultValue = undefined;
+        continue;
+      }
+
       const secretInputKind = getWorkflowSecretInputKind({
         flowNodeType: node.flowNodeType,
         inputKey: input.key

@@ -77,6 +77,15 @@ export const HttpNode468: FlowNodeTemplateType = {
       required: false
     },
     {
+      key: NodeInputKeyEnum.httpProxy,
+      renderTypeList: [FlowNodeInputTypeEnum.password],
+      valueType: WorkflowIOValueTypeEnum.string,
+      label: i18nT('workflow:http_proxy'),
+      description: i18nT('workflow:http_proxy_description'),
+      placeholder: 'http://user:password@proxy.example.com:8080',
+      required: false
+    },
+    {
       key: NodeInputKeyEnum.httpHeaders,
       renderTypeList: [FlowNodeInputTypeEnum.custom],
       valueType: WorkflowIOValueTypeEnum.any,

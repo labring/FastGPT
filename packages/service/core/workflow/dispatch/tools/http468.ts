@@ -17,7 +17,8 @@ import {
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import json5 from 'json5';
 import { JSONPath } from 'jsonpath-plus';
-import { getSecretValue } from '../../../../common/secret/utils';
+import { getSecretValue, resolveSecretValue } from '../../../../common/secret/utils';
+import { isAxiosError } from 'axios';
 import type { StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 import { getLogger, LogCategories } from '../../../../common/logger';
 import { formatHttpError, getNodeErrResponse } from '../utils';
@@ -77,6 +78,7 @@ type HttpRequestProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.httpContentType]: ContentTypes;
   [NodeInputKeyEnum.addInputParam]: Record<string, any>;
   [NodeInputKeyEnum.httpTimeout]?: number;
+  [NodeInputKeyEnum.httpProxy]?: unknown;
   [key: string]: any;
 }>;
 type HttpResponse = DispatchNodeResultType<
@@ -111,6 +113,7 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
       system_httpParams: httpParams = [],
       system_httpJsonBody: httpJsonBody = '',
       system_httpFormBody: httpFormBody = [],
+      system_httpProxy: httpProxy,
       ...body
     }
   } = props;
@@ -268,7 +271,8 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
       headers: { ...sensitiveHeaders, ...publicHeaders },
       body: requestBody,
       params,
-      timeout: httpTimeout
+      timeout: httpTimeout,
+      proxyValue: httpProxy
     }).catch((error: unknown) => {
       throw new UserConfigError(getErrText(error), undefined, { cause: error });
     });
@@ -552,13 +556,18 @@ export const replaceJsonBodyString = (
   return result.replace(/(".*?")\s*:\s*undefined\b/g, '$1:null');
 };
 
+/**
+ * 发起节点 HTTP 请求，按需解密独立代理配置并保留共享的地址/重定向校验。
+ * 未配置代理时沿用环境配置；代理错误只向上提供摘要，避免原始 agent 配置泄露凭据。
+ */
 async function fetchData({
   method,
   url,
   headers,
   body,
   params,
-  timeout
+  timeout,
+  proxyValue
 }: {
   method: string;
   url: string;
@@ -566,12 +575,36 @@ async function fetchData({
   body: Record<string, any> | string;
   params: Record<string, any>;
   timeout: number;
+  proxyValue?: unknown;
 }) {
   if (await isInternalAddress(url)) {
     return Promise.reject(PRIVATE_URL_TEXT);
   }
 
-  // 都认为是用户的请求，强制 SSRF 检查
+  // 密码输入沿用工作流的加密/解密边界；解析异常不附带原值或 cause，避免日志泄露凭据。
+  const proxyUrl = (() => {
+    if (proxyValue === undefined || proxyValue === null) return undefined;
+    try {
+      const value = resolveSecretValue({ value: proxyValue });
+      if (value === '') return undefined;
+      if (typeof value !== 'string') throw new Error();
+      const url = new URL(value);
+      if (
+        !['http:', 'https:'].includes(url.protocol) ||
+        url.pathname !== '/' ||
+        url.search ||
+        url.hash
+      ) {
+        throw new Error();
+      }
+      return url.toString();
+    } catch {
+      throw new Error('HTTP proxy must be an HTTP(S) URL with an optional username and password');
+    }
+  })();
+  const tlsConfig = getWorkflowHttpNodeHttpsAgentConfig(url);
+
+  // 都认为是用户的请求，强制 SSRF 检查；显式代理只影响本次调用和其重定向。
   const { data: response } = await axios({
     method,
     maxContentLength: serviceRequestMaxContentLength,
@@ -582,7 +615,28 @@ async function fetchData({
     timeout: timeout * 1000,
     params: params,
     data: ['POST', 'PUT', 'PATCH'].includes(method) ? body : undefined,
-    ...getWorkflowHttpNodeHttpsAgentConfig(url)
+    ...tlsConfig,
+    ...(proxyUrl ? { __safeAxios: { ...tlsConfig.__safeAxios, proxyUrl } } : {})
+  }).catch((error: unknown) => {
+    if (!proxyUrl) throw error;
+    // Axios/agent 错误可能持有含代理密码的 config；对外保留响应摘要，不传播该配置。
+    const safeMessage =
+      error instanceof Error && error.message === PRIVATE_URL_TEXT
+        ? PRIVATE_URL_TEXT
+        : 'HTTP request through the configured proxy failed';
+    throw Object.assign(new Error(safeMessage), {
+      name: 'HttpProxyRequestError',
+      ...(isAxiosError(error)
+        ? {
+            code: error.code,
+            status: error.response?.status,
+            config: { method },
+            response: error.response
+              ? { status: error.response.status, data: error.response.data }
+              : undefined
+          }
+        : {})
+    });
   });
 
   return {
