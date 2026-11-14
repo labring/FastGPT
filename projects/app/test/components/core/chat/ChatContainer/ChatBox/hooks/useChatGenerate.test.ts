@@ -359,6 +359,25 @@ describe('useChatGenerate.sendPrompt', () => {
     vi.unstubAllGlobals();
   });
 
+  it.each([undefined, ''])('omits an empty file key from the chat request: %j', async (key) => {
+    await render();
+    await act(async () => {
+      generate.sendPrompt({ text: 'question', files: [{ ...file, key }] });
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    expect(mocks.start).toHaveBeenCalledOnce();
+    const human = records.find((item) => item.obj === ChatRoleEnum.Human);
+    expect(human?.value[0]).toMatchObject({ file: { url: file.url, key: undefined } });
+    const request = JSON.parse(JSON.stringify(mocks.start.mock.calls[0][0]));
+    expect(request.messages[0].content[0]).toEqual({
+      type: 'file_url',
+      name: file.name,
+      url: file.url,
+      fileType: 'document'
+    });
+  });
+
   it.each(['streaming', 'completed', 'interactive'] as const)(
     'restores a rejected send and recovers the already loaded original AI: %s',
     async (mode) => {
