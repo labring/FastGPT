@@ -462,6 +462,12 @@ function applyDiscoveryHeaders(params: {
   return response;
 }
 
+function permanentRedirect(url: URL | string): NextResponse {
+  const response = NextResponse.redirect(url, 301);
+  response.headers.set('Cache-Control', 'public, max-age=3600');
+  return response;
+}
+
 function createGoneResponse(params: { lang: string; isOwnerMode: boolean }): NextResponse {
   const { lang, isOwnerMode } = params;
   const isEn = lang === 'en';
@@ -511,25 +517,23 @@ export default function middleware(request: NextRequest) {
       ? pathname
       : pathname.toLowerCase();
     if (isLegacyProductionHost && hostLocale !== undefined) {
-      return NextResponse.redirect(
+      return permanentRedirect(
         createRootRedirectUrl({
           pathname: canonicalRootPath,
           request,
           lang: hostLocale,
           ownerLocale
-        }),
-        301
+        })
       );
     }
     if (pathname !== canonicalRootPath && ownerLocale !== undefined) {
-      return NextResponse.redirect(
+      return permanentRedirect(
         createRootRedirectUrl({
           pathname: canonicalRootPath,
           request,
           lang: ownerLocale,
           ownerLocale
-        }),
-        301
+        })
       );
     }
     return NextResponse.next();
@@ -578,9 +582,8 @@ export default function middleware(request: NextRequest) {
         lang !== ownerLocale ||
         pathname !== canonicalDiscoveryPath)
     ) {
-      return NextResponse.redirect(
-        createRootRedirectUrl({ pathname: canonicalDiscoveryPath, request, lang, ownerLocale }),
-        301
+      return permanentRedirect(
+        createRootRedirectUrl({ pathname: canonicalDiscoveryPath, request, lang, ownerLocale })
       );
     }
   }
@@ -592,9 +595,8 @@ export default function middleware(request: NextRequest) {
     const strippedBase = hasDocsPrefix ? normalizePath(rawBase).slice('/docs'.length) : rawBase;
     const normalizedBase = normalizePath(strippedBase);
     if (normalizedBase.toLowerCase() === '/pricing') {
-      return NextResponse.redirect(
-        createRootRedirectUrl({ pathname: '/pricing.md', request, lang, ownerLocale }),
-        301
+      return permanentRedirect(
+        createRootRedirectUrl({ pathname: '/pricing.md', request, lang, ownerLocale })
       );
     }
     if (retiredTopicPaths.has(normalizedBase.toLowerCase())) {
@@ -623,9 +625,8 @@ export default function middleware(request: NextRequest) {
       requiresOwnerMdRedirect ||
       requiresPreviewMdRedirect
     ) {
-      return NextResponse.redirect(
-        createRedirectUrl({ target: `${mappedBase}.md`, request, lang, ownerLocale }),
-        301
+      return permanentRedirect(
+        createRedirectUrl({ target: `${mappedBase}.md`, request, lang, ownerLocale })
       );
     }
 
@@ -664,9 +665,8 @@ export default function middleware(request: NextRequest) {
         isOwnerMode: true
       });
     }
-    return NextResponse.redirect(
-      createRedirectUrl({ target: finalPath, request, lang, ownerLocale }),
-      301
+    return permanentRedirect(
+      createRedirectUrl({ target: finalPath, request, lang, ownerLocale })
     );
   }
 
@@ -696,9 +696,8 @@ export default function middleware(request: NextRequest) {
       requiresCrossHostRedirect ||
       requiresSameHostRedirect
     ) {
-      return NextResponse.redirect(
-        createRedirectUrl({ target: mapped, request, lang, ownerLocale }),
-        301
+      return permanentRedirect(
+        createRedirectUrl({ target: mapped, request, lang, ownerLocale })
       );
     }
 
@@ -734,10 +733,7 @@ export default function middleware(request: NextRequest) {
   }
 
   if (mapped !== pathWithoutLang || hasLegacyLocalePrefix) {
-    return NextResponse.redirect(
-      createRedirectUrl({ target: mapped, request, lang }),
-      301
-    );
+    return permanentRedirect(createRedirectUrl({ target: mapped, request, lang }));
   }
 
   if (hasLangPrefix) {
@@ -773,7 +769,9 @@ export default function middleware(request: NextRequest) {
   if (cookieLocale !== undefined && i18n.languages.includes(cookieLocale)) {
     const newUrl = new URL(`/${cookieLocale}${pathname}`, request.url);
     newUrl.search = request.nextUrl.search;
-    return NextResponse.redirect(newUrl, 301);
+    const response = NextResponse.redirect(newUrl, 301);
+    response.headers.set('Cache-Control', 'private, no-store');
+    return response;
   }
 
   // @ts-expect-error - Fumadocs middleware signature mismatch

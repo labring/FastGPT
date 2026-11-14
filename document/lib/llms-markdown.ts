@@ -12,6 +12,7 @@ import { source } from '@/lib/source';
 import {
   getFastGPTDocsOriginForLocale,
   getProductionDocsUrl,
+  isPreviewDocsSite,
   stripDocsLocalePrefix,
   type FastGPTDocsLocale
 } from '@/lib/fastgpt-home-url';
@@ -40,6 +41,19 @@ const CONTENT_ROOT = path.resolve(process.cwd(), 'content');
 const STATIC_MARKDOWN_PREFIXES = ['/examples/', '/deploy/', '/imgs/', '/favicon/'];
 
 export type LlmsBundleKey = 'guide' | 'openapi' | 'self-host';
+
+/** Return X-Robots-Tag directive preventing search engines from indexing machine-readable endpoints. */
+export function getLlmsRobotsTag(): string {
+  return isPreviewDocsSite() ? 'noindex, nofollow' : 'noindex';
+}
+
+/** Return response headers for plain-text llms*.txt endpoints with search-engine noindex protection. */
+export function getLlmsTextHeaders(): Record<string, string> {
+  return {
+    'Content-Type': 'text/plain; charset=utf-8',
+    'X-Robots-Tag': getLlmsRobotsTag()
+  };
+}
 
 export type SingleDocMarkdownResult = {
   markdown: string;

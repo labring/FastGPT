@@ -35,11 +35,7 @@ export async function GET(
   if (result.lastModified !== undefined) {
     headers.set('Last-Modified', new Date(result.lastModified).toUTCString());
   }
-  if (isPreviewDocsSite()) {
-    headers.set('X-Robots-Tag', 'noindex, nofollow');
-  } else if (result.deprecated) {
-    headers.set('X-Robots-Tag', 'noindex');
-  }
+  headers.set('X-Robots-Tag', isPreviewDocsSite() ? 'noindex, nofollow' : 'noindex');
 
   return new Response(result.markdown, { headers });
 }

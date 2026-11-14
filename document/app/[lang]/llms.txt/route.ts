@@ -1,5 +1,5 @@
 import { getSearchableLanguages, i18n } from '@/lib/i18n';
-import { buildLlmsIndexText } from '@/lib/llms-markdown';
+import { buildLlmsIndexText, getLlmsTextHeaders } from '@/lib/llms-markdown';
 
 export const revalidate = false;
 
@@ -16,6 +16,6 @@ export async function GET(_request: Request, { params }: { params: Promise<{ lan
 
   const body = buildLlmsIndexText(lang === 'en' ? 'en' : 'zh-CN');
   return new Response(body, {
-    headers: { 'Content-Type': 'text/plain; charset=utf-8' }
+    headers: getLlmsTextHeaders()
   });
 }

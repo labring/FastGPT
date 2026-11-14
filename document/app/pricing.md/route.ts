@@ -1,5 +1,5 @@
 import { getFastGPTDocsLocale, getProductionDocsUrl } from '@/lib/fastgpt-home-url';
-import { buildSingleDocMarkdown, getSingleDocCanonicalUrl } from '@/lib/llms-markdown';
+import { buildSingleDocMarkdown, getLlmsRobotsTag, getSingleDocCanonicalUrl } from '@/lib/llms-markdown';
 
 export const dynamic = 'force-static';
 
@@ -59,7 +59,8 @@ ${editionOverview}
     headers: {
       'Content-Type': 'text/markdown; charset=utf-8',
       'Content-Language': locale,
-      Link: `<${canonicalUrl}>; rel="canonical"`
+      Link: `<${canonicalUrl}>; rel="canonical"`,
+      'X-Robots-Tag': getLlmsRobotsTag()
     }
   });
 }

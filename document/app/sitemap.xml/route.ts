@@ -66,6 +66,9 @@ export function GET() {
         alternateLinks.push(
           `    <xhtml:link rel="alternate" hreflang="zh-CN" href="${zhOrigin}${routePath}" />`
         );
+        alternateLinks.push(
+          `    <xhtml:link rel="alternate" hreflang="zh" href="${zhOrigin}${routePath}" />`
+        );
       }
       if (hasPublishedLocale('en')) {
         const enUrl = `${enOrigin}${routePath}`;

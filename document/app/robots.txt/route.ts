@@ -18,7 +18,7 @@ const AI_SEARCH_AGENTS = [
 /** Emit host-specific crawler directives on production and block indexing on preview builds. */
 export function GET() {
   if (isPreviewDocsSite()) {
-    return new NextResponse('User-agent: *\nDisallow: /\n', {
+    return new NextResponse('User-agent: *\nAllow: /\n', {
       headers: {
         'Content-Type': 'text/plain; charset=utf-8',
         'X-Robots-Tag': 'noindex, nofollow'

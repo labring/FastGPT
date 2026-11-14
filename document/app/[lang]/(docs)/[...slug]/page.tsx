@@ -265,6 +265,9 @@ export async function generateMetadata(props: {
         languages[targetLocale] = `${getFastGPTDocsOriginForLocale(targetLocale)}${routePath}`;
       }
     }
+    if (languages['zh-CN'] !== undefined) {
+      languages.zh = languages['zh-CN'];
+    }
     if (languages.en !== undefined) {
       languages['x-default'] = languages.en;
     }

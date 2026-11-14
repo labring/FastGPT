@@ -213,7 +213,10 @@ for (const [locale, homeOrigin, timestamp] of [
     const docsOrigin = homeOrigin.replace('https://', 'https://doc.');
     const singleLocaleAlternates =
       locale === 'zh-CN'
-        ? '    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://doc.fastgpt.cn/single-locale" />'
+        ? [
+            '    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://doc.fastgpt.cn/single-locale" />',
+            '    <xhtml:link rel="alternate" hreflang="zh" href="https://doc.fastgpt.cn/single-locale" />'
+          ].join('\n')
         : [
             '    <xhtml:link rel="alternate" hreflang="en" href="https://doc.fastgpt.io/single-locale" />',
             '    <xhtml:link rel="alternate" hreflang="x-default" href="https://doc.fastgpt.io/single-locale" />'
@@ -224,6 +227,7 @@ for (const [locale, homeOrigin, timestamp] of [
     <loc>${docsOrigin}/guide</loc>
     <lastmod>${timestamp}</lastmod>
     <xhtml:link rel="alternate" hreflang="zh-CN" href="https://doc.fastgpt.cn/guide" />
+    <xhtml:link rel="alternate" hreflang="zh" href="https://doc.fastgpt.cn/guide" />
     <xhtml:link rel="alternate" hreflang="en" href="https://doc.fastgpt.io/guide" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://doc.fastgpt.io/guide" />
   </url>
@@ -231,12 +235,14 @@ for (const [locale, homeOrigin, timestamp] of [
     <loc>${docsOrigin}/fallback</loc>
     <lastmod>2026-10-01T00:00:00Z</lastmod>
     <xhtml:link rel="alternate" hreflang="zh-CN" href="https://doc.fastgpt.cn/fallback" />
+    <xhtml:link rel="alternate" hreflang="zh" href="https://doc.fastgpt.cn/fallback" />
     <xhtml:link rel="alternate" hreflang="en" href="https://doc.fastgpt.io/fallback" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://doc.fastgpt.io/fallback" />
   </url>
   <url>
     <loc>${docsOrigin}/undated</loc>
     <xhtml:link rel="alternate" hreflang="zh-CN" href="https://doc.fastgpt.cn/undated" />
+    <xhtml:link rel="alternate" hreflang="zh" href="https://doc.fastgpt.cn/undated" />
     <xhtml:link rel="alternate" hreflang="en" href="https://doc.fastgpt.io/undated" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://doc.fastgpt.io/undated" />
   </url>
@@ -258,7 +264,7 @@ test('preview robots.txt and sitemap.xml block indexing', async () => {
   });
   const robotsRes = getRobots();
   assert.equal(robotsRes.headers.get('x-robots-tag'), 'noindex, nofollow');
-  assert.equal(await robotsRes.text(), 'User-agent: *\nDisallow: /\n');
+  assert.equal(await robotsRes.text(), 'User-agent: *\nAllow: /\n');
 
   const { GET: getSitemap } = loadModule('../app/sitemap.xml/route.ts', {
     imports: {
@@ -391,6 +397,7 @@ test('llms.txt emits an llmstxt.org Markdown index with canonical links and excl
     params: Promise.resolve({ lang: 'en' })
   });
   assert.equal(response.status, 200);
+  assert.equal(response.headers.get('x-robots-tag'), 'noindex');
   const body = await response.text();
   assert.ok(body.startsWith('# FastGPT Documentation\n'));
   assert.ok(body.includes('https://doc.fastgpt.io/llms-full.txt'));
@@ -469,7 +476,7 @@ test('llms.txt emits an llmstxt.org Markdown index with canonical links and excl
   assert.equal(activeMd.status, 200);
   assert.equal(activeMd.headers.get('content-language'), 'en');
   assert.ok(activeMd.headers.get('last-modified'));
-  assert.equal(activeMd.headers.get('x-robots-tag'), null);
+  assert.equal(activeMd.headers.get('x-robots-tag'), 'noindex');
 
   const { GET: getPricingMd } = loadModule('../app/pricing.md/route.ts', {
     env: { NEXT_PUBLIC_DOCS_SITE_VARIANT: 'io', FASTGPT_HOME_DOMAIN: 'https://fastgpt.io' },
@@ -480,6 +487,7 @@ test('llms.txt emits an llmstxt.org Markdown index with canonical links and excl
   });
   const pricingResponse = await getPricingMd();
   assert.equal(pricingResponse.status, 200);
+  assert.equal(pricingResponse.headers.get('x-robots-tag'), 'noindex');
   const pricingText = await pricingResponse.text();
   assert.ok(pricingText.includes('Starting at CNY ¥10,000/month'));
   assert.ok(pricingText.includes('### FastGPT Cloud Subscription Tiers (CNY ¥)'));
@@ -817,6 +825,7 @@ test('middleware resolves section landings, language roots, and historical paths
     const request = new NextRequest(`http://localhost:3210${input}?ref=legacy`);
     const response = middleware(request);
     assert.equal(response.status, 301, `${input} status`);
+    assert.equal(response.headers.get('cache-control'), 'public, max-age=3600', `${input} cache-control`);
     const location = new URL(response.headers.get('location'));
     assert.equal(location.pathname, expected, `${input} pathname`);
     assert.equal(location.search, '?ref=legacy', `${input} query`);
@@ -867,6 +876,12 @@ test('middleware resolves section landings, language roots, and historical paths
   const localizedPricing = middleware(new NextRequest('http://localhost:3210/en/pricing.md?src=agent'));
   assert.equal(localizedPricing.status, 301);
   assert.equal(localizedPricing.headers.get('location'), 'http://localhost:3210/pricing.md?src=agent');
+
+  const cookiePreviewRedirect = middleware(
+    new NextRequest('http://localhost:3210/openapi/intro', { headers: { cookie: 'FD_LOCALE=en' } })
+  );
+  assert.equal(cookiePreviewRedirect.status, 301);
+  assert.equal(cookiePreviewRedirect.headers.get('cache-control'), 'private, no-store');
 
   const legacyCnDomain = middleware(
     new NextRequest('https://doc.fastgpt.in/docs/course/websync', {
