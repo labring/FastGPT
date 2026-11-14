@@ -1,7 +1,6 @@
 import { z } from 'zod';
 import {
   AccountContactUsernameSchema,
-  AccountLoginUsernameSchema,
   CaptchaVerificationPurposeSchema
 } from '../../../../../support/user/account/verification/type';
 import {
@@ -12,7 +11,8 @@ import {
 
 /* ============================================================================
  * API: 获取旋转图像验证码
- * Route: GET /proApi/support/user/account/captcha/getImgCaptcha
+ * Routes: GET /api/support/user/account/captcha/getImgCaptcha
+ *         GET /proApi/support/user/account/captcha/getImgCaptcha
  * Method: GET
  * Description: 为指定账号和业务场景生成旋转图像验证码
  * Tags: ['User', 'Account', 'Verification']
@@ -31,23 +31,6 @@ export const GetImgCaptchaQuerySchema = z.object({
 export type GetImgCaptchaQuery = z.infer<typeof GetImgCaptchaQuerySchema>;
 
 export type GetImgCaptchaResponse = z.infer<typeof PuzzleCaptchaChallengeSchema>;
-
-/* ============================================================================
- * API: 获取旋转图像挑战
- * Route: GET /api/support/user/account/captcha/getImgCaptcha
- * Method: GET
- * Description: 发送验证码使用 code 作用域，密码登录风险校验使用独立的 passwordLogin 作用域
- * Tags: ['User Login', 'Account Verification']
- * ============================================================================ */
-export const GetPuzzleCaptchaQuerySchema = GetImgCaptchaQuerySchema.extend({
-  username: AccountLoginUsernameSchema.meta({ description: '待验证账号' }),
-  usage: z.enum(['code', 'passwordLogin']).optional().default('code').meta({
-    description: '验证用途，密码登录用途仅允许 login 场景'
-  })
-}).refine((value) => value.usage !== 'passwordLogin' || value.purpose === 'login', {
-  message: 'Password login captcha requires login purpose'
-});
-export type GetPuzzleCaptchaQuery = z.infer<typeof GetPuzzleCaptchaQuerySchema>;
 
 /* ============================================================================
  * API: 校验一次性旋转图像挑战

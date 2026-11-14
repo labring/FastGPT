@@ -160,7 +160,7 @@ describe('PuzzleCaptchaService', () => {
     const challenge = await service.create({
       username: 'a@example.com',
       purpose: 'login',
-      scopeKey: 'password-login:a@example.com'
+      scopeKey: 'challenge-scoped-captcha'
     });
     advance(700);
     const results = await Promise.all(
@@ -176,7 +176,7 @@ describe('PuzzleCaptchaService', () => {
       await verification.get({
         type: 'captcha',
         scene: 'login',
-        key: 'password-login:a@example.com'
+        key: 'challenge-scoped-captcha'
       })
     ).not.toBeNull();
   });

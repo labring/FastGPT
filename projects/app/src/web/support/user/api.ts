@@ -42,12 +42,6 @@ export const getCaptchaPic = (username: string, purpose: UserVerificationPurpose
     username,
     purpose
   });
-export const getPasswordLoginCaptcha = (username: string) =>
-  GET<GetImgCaptchaResponse>('/support/user/account/captcha/getImgCaptcha', {
-    username,
-    purpose: 'login',
-    usage: 'passwordLogin'
-  });
 export const verifyPuzzleCaptcha = (data: VerifyPuzzleCaptchaBody) =>
   POST<VerifyPuzzleCaptchaResponse>('/support/user/account/captcha/verify', data);
 

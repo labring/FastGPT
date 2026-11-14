@@ -4,18 +4,14 @@ import {
 } from '../../../../../support/user/account/captcha/type';
 import type { OpenAPIPath } from '../../../../type';
 import { DevApiTagsMap } from '../../../../tag';
-import {
-  GetImgCaptchaQuerySchema,
-  GetPuzzleCaptchaQuerySchema,
-  VerifyPuzzleCaptchaBodySchema
-} from './api';
+import { GetImgCaptchaQuerySchema, VerifyPuzzleCaptchaBodySchema } from './api';
 
 export const CaptchaPath: OpenAPIPath = {
   '/support/user/account/captcha/getImgCaptcha': {
     get: {
       summary: '获取一次性旋转图像挑战',
       tags: [DevApiTagsMap.userLogin],
-      requestParams: { query: GetPuzzleCaptchaQuerySchema },
+      requestParams: { query: GetImgCaptchaQuerySchema },
       responses: {
         200: {
           description: '旋转图像挑战',

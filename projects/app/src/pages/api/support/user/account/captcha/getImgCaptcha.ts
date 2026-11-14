@@ -1,27 +1,26 @@
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/type';
 import {
-  GetPuzzleCaptchaQuerySchema,
-  type GetPuzzleCaptchaQuery
+  GetImgCaptchaQuerySchema,
+  type GetImgCaptchaQuery
 } from '@fastgpt/global/openapi/support/user/account/captcha/api';
 import { PuzzleCaptchaChallengeSchema } from '@fastgpt/global/support/user/account/captcha/type';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { puzzleCaptchaService } from '@fastgpt/service/support/user/account/captcha/service';
-import { getPasswordLoginCaptchaScope } from '@fastgpt/service/support/user/account/login/risk/service';
 import { checkIPRateLimit } from '@fastgpt/service/common/rateLimit/interface/ip';
 import { getClientIpFromRequest } from '@fastgpt/service/common/security/clientIp';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
 import { NextAPI } from '@/service/middleware/entry';
 
-/** 发送验证码和风险登录共用拼图生成，但验证凭证作用域严格分离。 */
+/** 为已有验证码业务生成旋转图片，验证材料绑定账号和业务用途。 */
 export async function handler(
-  req: ApiRequestProps<Record<string, never>, GetPuzzleCaptchaQuery>,
+  req: ApiRequestProps<Record<string, never>, GetImgCaptchaQuery>,
   res: ApiResponseType
 ) {
   res.setHeader('Cache-Control', 'no-store');
-  const { username, purpose, usage } = parseApiInput({
+  const { username, purpose } = parseApiInput({
     req,
-    querySchema: GetPuzzleCaptchaQuerySchema
+    querySchema: GetImgCaptchaQuerySchema
   }).query;
   if (
     !(await checkIPRateLimit({
@@ -36,8 +35,7 @@ export async function handler(
   return PuzzleCaptchaChallengeSchema.parse(
     await puzzleCaptchaService.create({
       username,
-      purpose,
-      scopeKey: usage === 'passwordLogin' ? getPasswordLoginCaptchaScope(username) : username
+      purpose
     })
   );
 }

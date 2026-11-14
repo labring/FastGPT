@@ -1,4 +1,4 @@
-import React, { type Dispatch, useCallback, useEffect, useRef, useState } from 'react';
+import React, { type Dispatch, useCallback, useEffect, useState } from 'react';
 import {
   FormControl,
   Flex,
@@ -19,8 +19,7 @@ import {
   getPreLogin,
   getLoginVerificationCaptcha,
   sendLoginVerificationCode,
-  verifyLoginVerificationCode,
-  getPasswordLoginCaptcha
+  verifyLoginVerificationCode
 } from '@/web/support/user/api';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useTranslation } from 'next-i18next';
@@ -41,21 +40,18 @@ import { getFastGPTSem, onFastGPTLoginSuccess } from '@/web/support/marketing/ut
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { AccountVerificationPanel } from '@/components/support/user/safe/AccountVerificationPanel';
-import PuzzleCaptchaModal from '@/components/support/user/safe/PuzzleCaptchaModal';
-import type { PuzzleCaptchaChallenge } from '@fastgpt/global/support/user/account/captcha/type';
 
 type LoginSuccessHandler = (res: LoginSuccessResponseType) => void | Promise<void>;
 
-type Props = {
+interface Props {
   setPageType: Dispatch<`${LoginPageTypeEnum}`>;
   loginSuccess: LoginSuccessHandler;
-};
+}
 
-type LoginFormType = {
+interface LoginFormType {
   username: string;
   password: string;
-  captcha?: string;
-};
+}
 
 const LoginVerificationModal = ({
   children,
@@ -137,9 +133,6 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
   const hasFindPasswordMethod = !!feConfigs?.find_password_method?.length;
   const [loginVerification, setLoginVerification] =
     useState<LoginVerificationRequiredResponseType>();
-  const [riskCaptcha, setRiskCaptcha] = useState<PuzzleCaptchaChallenge>();
-  // 只在当前组件内暂存本次提交，不把密码放进 URL、localStorage 或验证挑战。
-  const pendingLogin = useRef<LoginFormType>();
 
   /**
    * Challenge 和验证码材料共用同一 TTL，过期后服务端只会回“验证码错误”。
@@ -207,23 +200,17 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
   );
 
   const { runAsync: onclickLogin, loading: requesting } = useRequest(
-    async ({ username, password, captcha }: LoginFormType) => {
+    async ({ username, password }: LoginFormType) => {
       setLoginVerification(undefined);
       const { code } = await getPreLogin(username);
       const loginResponse = await postLogin({
         username,
         password,
         code,
-        captcha,
-        automated: navigator.webdriver === true,
         fastgpt_sem: getFastGPTSem(),
         language: i18n.language as LangEnum
       });
-      if ('status' in loginResponse && loginResponse.status === 'captchaRequired') {
-        clearAutoLoginQuery();
-        pendingLogin.current = { username, password };
-        setRiskCaptcha(loginResponse.captcha);
-      } else if ('status' in loginResponse) {
+      if ('status' in loginResponse) {
         // 密码校验通过但还要走二次验证，先清理自动登录明文密码再展示验证码弹窗
         clearAutoLoginQuery();
         setNow(Date.now());
@@ -465,26 +452,6 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
             )}
           </VStack>
         </LoginVerificationModal>
-      )}
-      {riskCaptcha && (
-        <PuzzleCaptchaModal
-          purpose="login"
-          initialChallenge={riskCaptcha}
-          getCaptcha={() => {
-            if (!pendingLogin.current) throw new Error('Login request is unavailable');
-            return getPasswordLoginCaptcha(pendingLogin.current.username);
-          }}
-          onClose={() => {
-            setRiskCaptcha(undefined);
-            pendingLogin.current = undefined;
-          }}
-          onVerified={async (captcha) => {
-            if (!pendingLogin.current) throw new Error('Login request is unavailable');
-            await onclickLogin({ ...pendingLogin.current, captcha });
-            setRiskCaptcha(undefined);
-            pendingLogin.current = undefined;
-          }}
-        />
       )}
     </>
   );

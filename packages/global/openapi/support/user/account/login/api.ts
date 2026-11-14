@@ -1,9 +1,8 @@
 import { z } from 'zod';
 import {
   CaptchaProofSchema,
-  PuzzleCaptchaChallengeSchema
+  type PuzzleCaptchaChallengeSchema
 } from '../../../../../support/user/account/captcha/type';
-import { BoolSchema } from '../../../../../common/zod';
 import { OAuthEnum } from '../../../../../support/user/constant';
 import { LanguageSchema } from '../../../../../common/i18n/type';
 import { UserSchema } from '../../../../../support/user/type';
@@ -76,15 +75,8 @@ export type LoginVerificationRequiredResponseType = z.infer<
   typeof LoginVerificationRequiredResponseSchema
 >;
 
-export const LoginCaptchaRequiredResponseSchema = z.object({
-  status: z.literal('captchaRequired').meta({ description: '登录存在风险，需将图片转正后重试' }),
-  captcha: PuzzleCaptchaChallengeSchema
-});
-export type LoginCaptchaRequiredResponseType = z.infer<typeof LoginCaptchaRequiredResponseSchema>;
-
 export const LoginByPasswordResponseSchema = z.union([
   LoginSuccessResponseSchema,
-  LoginCaptchaRequiredResponseSchema,
   LoginVerificationRequiredResponseSchema
 ]);
 export type LoginByPasswordResponseType = z.infer<typeof LoginByPasswordResponseSchema>;
@@ -271,10 +263,6 @@ export const LoginByPasswordBodySchema = PublicAuthTrackRegisterParamsSchema.ext
   code: ShortAuthStringSchema.meta({
     example: '123456',
     description: 'preLogin 返回的验证码，30 秒内有效'
-  }),
-  captcha: CaptchaProofSchema.optional(),
-  automated: BoolSchema.optional().meta({
-    description: '浏览器报告的自动化信号，只能提高风险，不替代服务端判断'
   }),
   language: LanguageSchema.optional().default('zh-CN').meta({
     example: 'zh-CN',

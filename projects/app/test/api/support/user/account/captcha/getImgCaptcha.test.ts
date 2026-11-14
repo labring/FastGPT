@@ -7,7 +7,7 @@ describe('get puzzle captcha API', () => {
   it('returns only display data and stores the answer with the correct scope', async () => {
     const challenge = await handler(
       {
-        query: { username: 'a@example.com', purpose: 'register', usage: 'code' },
+        query: { username: 'a@example.com', purpose: 'register' },
         headers: {}
       } as any,
       { setHeader: vi.fn() } as any
@@ -20,22 +20,10 @@ describe('get puzzle captcha API', () => {
       await verification.get({ scene: 'register', type: 'puzzle', key: challenge.challengeId })
     ).toMatchObject({ scopeKey: 'a@example.com', angle: expect.any(Number) });
   });
-  it('allows community usernames for risk puzzles and isolates their proof scope', async () => {
-    const challenge = await handler(
-      { query: { username: 'root', purpose: 'login', usage: 'passwordLogin' }, headers: {} } as any,
-      { setHeader: vi.fn() } as any
-    );
-    expect(
-      await verification.get({ scene: 'login', type: 'puzzle', key: challenge.challengeId })
-    ).toMatchObject({ scopeKey: 'password-login:root' });
-  });
-  it('rejects risk usage for another business scene at the request boundary', async () => {
+  it('keeps the existing contact-account boundary', async () => {
     await expect(
       handler(
-        {
-          query: { username: 'root', purpose: 'register', usage: 'passwordLogin' },
-          headers: {}
-        } as any,
+        { query: { username: 'root', purpose: 'login' }, headers: {} } as any,
         { setHeader: vi.fn() } as any
       )
     ).rejects.toBeInstanceOf(ApiRequestInputParseError);

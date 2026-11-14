@@ -22,17 +22,6 @@ import { AccountCancellationStatus } from '@fastgpt/global/support/user/account/
 
 vi.unmock(import('@fastgpt/service/common/mongo/sessionRun'));
 
-// 本文件覆盖密码与账号策略；风险分支在 loginByPassword.risk.test.ts 独立验证。
-vi.mock('@fastgpt/service/support/user/account/login/risk/service', async (importOriginal) => ({
-  ...(await importOriginal<
-    typeof import('@fastgpt/service/support/user/account/login/risk/service')
-  >()),
-  loginRiskService: {
-    requiresCaptcha: vi.fn(async () => false),
-    recordFailure: vi.fn(async () => undefined)
-  }
-}));
-
 const saveLoginCode = (username: string, code = '123456') =>
   MongoTmpData.updateOne(
     { dataId: getDataId({ scene: 'login', type: 'password', key: username }) },

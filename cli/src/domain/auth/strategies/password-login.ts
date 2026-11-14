@@ -111,45 +111,6 @@ export function createPasswordLoginStrategy(): LoginStrategy {
         spin.stop('Login request finished.');
       }
 
-      if ('status' in loginResult && loginResult.status === 'captchaRequired') {
-        const captcha = await solvePuzzle({
-          challenge: loginResult.captcha,
-          getCaptcha: async () =>
-            PuzzleCaptchaChallengeSchema.parse(
-              await client.request<unknown>({
-                method: 'GET',
-                path: '/support/user/account/captcha/getImgCaptcha',
-                query: { username, purpose: 'login', usage: 'passwordLogin' }
-              })
-            )
-        });
-        // 旋转交互可能超过预登录码的 30 秒有效期，提交前重新获取。
-        const preLoginRaw = await client.request<unknown>({
-          method: 'GET',
-          path: '/support/user/account/preLogin',
-          query: { username }
-        });
-        const { code } = PreLoginResponseSchema.parse(preLoginRaw);
-        loginResult = LoginByPasswordResponseSchema.parse(
-          await client.request<unknown>({
-            method: 'POST',
-            path: '/support/user/account/loginByPassword',
-            body: {
-              username,
-              password: sha256Hex(rawPassword),
-              code,
-              captcha,
-              language: input.language
-            }
-          })
-        );
-        if ('status' in loginResult && loginResult.status === 'captchaRequired') {
-          throw new CliArgumentError(
-            'Image rotation verification expired. Run the login command again.'
-          );
-        }
-      }
-
       if (!('status' in loginResult)) {
         return {
           authType: 'token',
