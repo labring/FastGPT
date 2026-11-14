@@ -1,4 +1,8 @@
 {
+  "history_window_enabled": "주기적 대화 기록 창",
+  "history_window_max": "최대 대화 수",
+  "history_window_min": "최소 유지 대화 수",
+  "history_window_tip": "기록이 늘어나는 동안 접두사를 유지하고 상한을 넘으면 최솟값으로 줄입니다. 평균 컨텍스트가 늘어나며 캐시 효과는 모델과 프롬프트에 따라 달라집니다.",
   "tool_target_already_attached": "이 노드는 이미 다른 도구 호출에 연결되어 있습니다. 기존 도구 연결을 먼저 삭제하세요.",
   "tool_connection_has_normal_edges": "이 노드에는 이미 일반 입력 연결이 있습니다. 도구로 연결하려면 먼저 기존 연결을 삭제하세요.",
   "Array_element": "배열 요소",

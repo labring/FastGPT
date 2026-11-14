@@ -21,6 +21,7 @@ import type { StoreNodeItemType } from '../type/node';
 import { isValidReferenceValueFormat } from '../../../common/workflow/reference';
 import { parseSecretValue } from '../../../common/secret/utils';
 import { isChildInteractive } from '../template/system/interactive/constants';
+import { ChatHistoryWindowSchema } from '../template/system/aiChat/type';
 
 /**
  * 统一判断 Agent Ask 类型，供运行时交互及结构化用户输入共用，并保留调用方的具体类型。
@@ -80,6 +81,13 @@ export const getMaxHistoryLimitFromNodes = (nodes: StoreNodeItemType[]): number 
     return 0;
   let limit = 10;
   nodes.forEach((node) => {
+    // 周期窗口的起点存于最近一轮 memory；加载上限必须覆盖 max，不能只加载固定 history。
+    if (node.flowNodeType === FlowNodeTypeEnum.chatNode) {
+      const config = ChatHistoryWindowSchema.safeParse(
+        node.inputs.find((input) => input.key === NodeInputKeyEnum.aiChatHistoryWindow)?.value
+      );
+      if (config.success) limit = Math.max(limit, config.data.max);
+    }
     node.inputs.forEach((input) => {
       if (
         (input.key === NodeInputKeyEnum.history ||

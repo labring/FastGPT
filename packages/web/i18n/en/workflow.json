@@ -1,4 +1,8 @@
 {
+  "history_window_enabled": "Periodic history window",
+  "history_window_max": "Maximum history rounds",
+  "history_window_min": "Minimum retained rounds",
+  "history_window_tip": "Keep a stable prefix while the window grows, then shrink to the minimum after the maximum. Average context increases; cache savings depend on the model and prompt.",
   "tool_target_already_attached": "This node is already attached to another tool call. Remove its existing tool connection first.",
   "tool_connection_has_normal_edges": "This node already has incoming workflow connections. Remove them before connecting it as a tool.",
   "Array_element": "Array element",
