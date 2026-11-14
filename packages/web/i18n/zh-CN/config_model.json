@@ -109,7 +109,6 @@
   "video": "支持视频识别",
   "video_tip": "如果模型支持视频识别，则打开该开关。",
   "waiting_test": "等待测试",
-  "active_model": "可用模型",
   "channel": "模型渠道",
   "config_model": "模型配置",
   "create_model": "新增模型",
@@ -351,5 +350,7 @@
   "model_deprecation.error_no_terminable_runs": "通知计划当前没有可终止的轮次",
   "model.stt_billing_type": "计费类型",
   "model.stt_billing_duration": "按时长",
-  "model.stt_billing_tokens": "按 Tokens"
+  "model.stt_billing_tokens": "按 Tokens",
+  "model.stt_input_price": "输入价格（积分）",
+  "model.stt_output_price": "输出价格（积分）"
 }

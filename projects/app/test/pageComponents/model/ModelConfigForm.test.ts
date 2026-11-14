@@ -168,7 +168,7 @@ describe('ModelConfigForm comprehensive price', () => {
     }
   );
 
-  it('switches STT pricing to tokens and removes seconds from the saved configuration', async () => {
+  it('saves separate input and output STT prices with fixed million-token units', async () => {
     await render({ type: ModelTypeEnum.stt, unitPrice: 10 });
     const select = Array.from(container.querySelectorAll('select')).find((element) =>
       Array.from(element.options).some((option) => option.value === 'tokens')
@@ -178,10 +178,23 @@ describe('ModelConfigForm comprehensive price', () => {
       select.dispatchEvent(new Event('change', { bubbles: true }));
     });
     expect(container.textContent).toContain('/ 1M Tokens');
+    expect(container.querySelector('input[name="pricing.unitPrice"]')).toBeNull();
+    await fillAndBlur(
+      container.querySelector<HTMLInputElement>('input[name="pricing.inputPrice"]')!,
+      '0.8'
+    );
+    await fillAndBlur(
+      container.querySelector<HTMLInputElement>('input[name="pricing.outputPrice"]')!,
+      '2.7'
+    );
     expect(container.querySelector('input[name="pricing.secondsPerUnit"]')).toBeNull();
     await act(async () => container.querySelector('form')!.requestSubmit());
     await vi.waitFor(() => expect(save).toHaveBeenCalledOnce());
-    expect(save.mock.calls[0][0].pricing).toEqual({ type: 'tokens', unitPrice: 10 });
+    expect(save.mock.calls[0][0].pricing).toEqual({
+      type: 'tokens',
+      inputPrice: 0.8,
+      outputPrice: 2.7
+    });
   });
 
   it('fixes duration pricing to 60 seconds before and after switching price types', async () => {

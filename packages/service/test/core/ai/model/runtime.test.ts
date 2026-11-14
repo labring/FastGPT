@@ -25,7 +25,7 @@ describe('formatDbModelToRuntimeModel', () => {
 
   it.each([
     { type: 'duration', unitPrice: 0.2 },
-    { type: 'tokens', unitPrice: 10 }
+    { type: 'tokens', inputPrice: 10, outputPrice: 20 }
   ])('preserves explicit STT pricing: %j', (pricing) => {
     expect(formatDbModelToRuntimeModel({ ...document, pricing }).pricing).toEqual(pricing);
   });

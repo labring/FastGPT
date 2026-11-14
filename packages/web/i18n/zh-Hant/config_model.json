@@ -109,7 +109,6 @@
   "video": "支援視頻識別",
   "video_tip": "如果模型支援視頻識別，則開啟該開關。",
   "waiting_test": "等待測試",
-  "active_model": "可用模型",
   "channel": "模型管道",
   "config_model": "模型設定",
   "create_model": "新增模型",
@@ -351,5 +350,7 @@
   "model_deprecation.error_no_terminable_runs": "通知計畫目前沒有可終止的輪次",
   "model.stt_billing_type": "計費類型",
   "model.stt_billing_duration": "按時長",
-  "model.stt_billing_tokens": "按 Tokens"
+  "model.stt_billing_tokens": "按 Tokens",
+  "model.stt_input_price": "輸入價格（積分）",
+  "model.stt_output_price": "輸出價格（積分）"
 }

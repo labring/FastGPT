@@ -63,6 +63,12 @@ export const normalizeModelPricingForSave = (
   const roundModelPricing = (pricing: ModelPricingType): ModelPricingType => ({
     ...(pricing.type === undefined ? {} : { type: pricing.type }),
     ...(pricing.unitPrice === undefined ? {} : { unitPrice: roundModelPrice(pricing.unitPrice) }),
+    ...(pricing.inputPrice === undefined
+      ? {}
+      : { inputPrice: roundModelPrice(pricing.inputPrice) }),
+    ...(pricing.outputPrice === undefined
+      ? {}
+      : { outputPrice: roundModelPrice(pricing.outputPrice) }),
     ...(pricing.tiers === undefined
       ? {}
       : {
@@ -108,17 +114,27 @@ export const calculateModelPrice = ({
   const multiple = 1000000;
   if (config?.type === ModelTypeEnum.stt) {
     const pricing = resolveSTTPricing(config.pricing);
-    const quantity =
-      sttUsage?.type === pricing.type
-        ? sttUsage.type === 'duration'
-          ? sttUsage.seconds
-          : sttUsage.totalTokens
-        : 0;
-    const unitSize = STT_PRICE_UNITS[pricing.type];
-    const totalPoints =
-      config.scope === ModelScopeEnum.system && Number.isFinite(quantity) && quantity >= 0
-        ? (quantity / unitSize) * (pricing.unitPrice ?? 0)
-        : 0;
+    const totalPoints = (() => {
+      if (config.scope !== ModelScopeEnum.system || sttUsage?.type !== pricing.type) return 0;
+      if (pricing.type === 'duration' && sttUsage.type === 'duration')
+        return Number.isFinite(sttUsage.seconds) && sttUsage.seconds >= 0
+          ? (sttUsage.seconds / STT_PRICE_UNITS.duration) * (pricing.unitPrice ?? 0)
+          : 0;
+      if (pricing.type !== 'tokens' || sttUsage.type !== 'tokens') return 0;
+      // 两个计量项分别校验和定价；缺少的一侧不能从 totalTokens 或另一侧推导。
+      const input =
+        Number.isSafeInteger(sttUsage.inputTokens) && sttUsage.inputTokens >= 0
+          ? sttUsage.inputTokens
+          : 0;
+      const output =
+        Number.isSafeInteger(sttUsage.outputTokens) && sttUsage.outputTokens >= 0
+          ? sttUsage.outputTokens
+          : 0;
+      return (
+        (input * (pricing.inputPrice ?? 0) + output * (pricing.outputPrice ?? 0)) /
+        STT_PRICE_UNITS.tokens
+      );
+    })();
     return { totalPoints, tiers, matchedTier: undefined };
   }
   const matchedTier =

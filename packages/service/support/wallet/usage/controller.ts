@@ -196,8 +196,6 @@ export const pushSTTUsage = async ({
   if (pricing.type !== billableUsage.type)
     throw new Error('STT pricing and usage types do not match');
   const { totalPoints } = calculateModelPrice({ config: model, sttUsage: billableUsage });
-  const quantity =
-    billableUsage.type === 'duration' ? billableUsage.seconds : billableUsage.totalTokens;
 
   const name = i18nT('common:support.wallet.usage.Whisper');
 
@@ -212,7 +210,9 @@ export const pushSTTUsage = async ({
         moduleName: name,
         amount: totalPoints,
         modelId: model.modelId,
-        ...(billableUsage.type === 'duration' ? { duration: quantity } : { totalTokens: quantity })
+        ...(billableUsage.type === 'duration'
+          ? { duration: billableUsage.seconds }
+          : { inputTokens: billableUsage.inputTokens, outputTokens: billableUsage.outputTokens })
       }
     ]
   });

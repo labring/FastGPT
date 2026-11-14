@@ -50,6 +50,8 @@ const AIModelSchema = new Schema(
             default: undefined
           },
           unitPrice: Number,
+          inputPrice: Number,
+          outputPrice: Number,
           type: { type: String, enum: ['duration', 'tokens'] }
         },
         { _id: false, minimize: false }

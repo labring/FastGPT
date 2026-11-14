@@ -41,7 +41,7 @@ describe('model table projection', () => {
   it.each([
     {
       type: ModelTypeEnum.stt,
-      pricing: { type: 'tokens' as const, unitPrice: 10 },
+      pricing: { type: 'tokens' as const, inputPrice: 10, outputPrice: 20 },
       price: 10,
       unit: '1M Tokens'
     },

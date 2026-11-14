@@ -26,10 +26,17 @@ export const getSTTBillableUsage = ({
   }
 
   // 部分网关在 duration 响应中兼容填充 total_tokens=seconds，这不是真实 Tokens。
-  const tokens = usage?.type === 'duration' ? undefined : usage?.total_tokens;
+  /** 仅接受上游分别报告的安全整数；兼容时长响应不包含可计费 Tokens。 */
+  const getTokens = (value: unknown) =>
+    usage?.type !== 'duration' &&
+    typeof value === 'number' &&
+    Number.isSafeInteger(value) &&
+    value >= 0
+      ? value
+      : 0;
   return {
     type: 'tokens',
-    totalTokens:
-      typeof tokens === 'number' && Number.isSafeInteger(tokens) && tokens >= 0 ? tokens : 0
+    inputTokens: getTokens(usage?.input_tokens),
+    outputTokens: getTokens(usage?.output_tokens)
   };
 };
