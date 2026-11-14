@@ -106,6 +106,15 @@ export type UploadObjectParams = {
    * - 元数据大小、字符集限制由厂商决定；尽量保持 key 简洁并控制总体大小。
    */
   metadata?: StorageObjectMetadata;
+
+  /**
+   * 取消已发起的上传，可选。
+   *
+   * 说明：
+   * - 触发后 adapter 必须尽快终止底层请求，并以 `AbortError` 拒绝当前 Promise。
+   * - 流式 body 会被销毁；调用方不要再复用该流。
+   */
+  abortSignal?: AbortSignal;
 };
 
 /**

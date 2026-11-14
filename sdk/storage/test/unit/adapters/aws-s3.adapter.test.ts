@@ -506,3 +506,51 @@ describe('AwsS3StorageAdapter.generatePublicGetUrl', () => {
     );
   });
 });
+
+describe('AwsS3StorageAdapter.uploadObject', () => {
+  it('rejects a pre-aborted upload without dispatching a request', async () => {
+    const adapter = createAdapter();
+    const send = vi.fn();
+    (adapter as any).client = { config: {}, send };
+    const controller = new AbortController();
+    controller.abort();
+
+    await expect(
+      adapter.uploadObject({
+        key: 'dataset/team/file.txt',
+        body: Buffer.from('file'),
+        abortSignal: controller.signal
+      })
+    ).rejects.toMatchObject({ name: 'AbortError' });
+    expect(send).not.toHaveBeenCalled();
+  });
+
+  it('aborts an in-flight upload when the caller aborts', async () => {
+    const adapter = createAdapter();
+    const send = vi.fn(() => new Promise(() => {}));
+    (adapter as any).client = {
+      config: {
+        requestHandler: undefined,
+        forcePathStyle: false,
+        endpoint: () => ({
+          protocol: 'https:',
+          hostname: 's3.test',
+          port: '',
+          path: '/'
+        })
+      },
+      send
+    };
+    const controller = new AbortController();
+
+    const uploadPromise = adapter.uploadObject({
+      key: 'dataset/team/file.txt',
+      body: Readable.from([Buffer.from('file')]),
+      abortSignal: controller.signal
+    });
+    await vi.waitFor(() => expect(send).toHaveBeenCalled());
+    controller.abort();
+
+    await expect(uploadPromise).rejects.toMatchObject({ name: 'AbortError' });
+  });
+});

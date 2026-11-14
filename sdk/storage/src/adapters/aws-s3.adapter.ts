@@ -3,7 +3,7 @@ import type { IAwsS3CompatibleStorageOptions, IStorage } from '../interface';
 import type * as Storage from '../types';
 import { Upload } from '@aws-sdk/lib-storage';
 import { EmptyObjectError } from '../errors';
-import type { Readable } from 'node:stream';
+import { Readable } from 'node:stream';
 import { camelCase, chunk, isNotNil, kebabCase, trim } from 'es-toolkit';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { AWS_S3_COMPATIBLE_VENDORS, DEFAULT_PRESIGNED_URL_EXPIRED_SECONDS } from '../constants';
@@ -135,25 +135,59 @@ export class AwsS3StorageAdapter implements IStorage {
   }
 
   async uploadObject(params: Storage.UploadObjectParams): Promise<Storage.UploadObjectResult> {
-    const { key, body, contentType, contentLength, contentDisposition, metadata } = params;
+    const { key, body, contentType, contentLength, contentDisposition, metadata, abortSignal } =
+      params;
     assertStorageObjectKey(key);
+    throwIfStorageAborted(abortSignal);
 
     const meta = toAwsMetadata(metadata);
+    const uploadAbortController = new AbortController();
+    const abortUpload = () => {
+      uploadAbortController.abort();
+      // lib-storage 不会销毁调用方传入的 Readable；取消时主动停止继续读取。
+      if (body instanceof Readable && !body.destroyed) body.destroy();
+    };
+    abortSignal?.addEventListener('abort', abortUpload, { once: true });
 
-    const upload = new Upload({
-      client: this.client,
-      params: {
-        Bucket: this.options.bucket,
-        Key: key,
-        Body: body,
-        ContentType: contentType,
-        ContentLength: contentLength,
-        ContentDisposition: contentDisposition,
-        Metadata: meta
+    // lib-storage 不把 abortSignal 传给实际的 S3 命令；用代理客户端为每个 send 注入，
+    // 这样单 PUT、分片和多段完成的在途 HTTP 请求都会随取消关闭。
+    const uploadClient = new Proxy(this.client, {
+      get: (target, property, receiver) => {
+        if (property === 'send') {
+          return (command: any, options?: any) => {
+            // lib-storage 在失败/取消后会发送 AbortMultipartUploadCommand 清理分片；
+            // 该请求不能复用已取消的信号，否则 provider 的 Multipart 会话会残留。
+            if (command instanceof AWS.AbortMultipartUploadCommand) {
+              const cleanupOptions = { ...options };
+              delete cleanupOptions.abortSignal;
+              return target.send(command, cleanupOptions);
+            }
+            return target.send(command, { ...options, abortSignal: uploadAbortController.signal });
+          };
+        }
+        return Reflect.get(target, property, receiver);
       }
     });
 
-    await upload.done();
+    try {
+      const upload = new Upload({
+        client: uploadClient,
+        abortController: uploadAbortController,
+        params: {
+          Bucket: this.options.bucket,
+          Key: key,
+          Body: body,
+          ContentType: contentType,
+          ContentLength: contentLength,
+          ContentDisposition: contentDisposition,
+          Metadata: meta
+        }
+      });
+
+      await upload.done();
+    } finally {
+      abortSignal?.removeEventListener('abort', abortUpload);
+    }
 
     return {
       key,

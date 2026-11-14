@@ -352,4 +352,29 @@ describe('OssStorageAdapter.uploadObject', () => {
       expect.objectContaining({ contentLength: 4 })
     );
   });
+
+  it('aborts an in-flight stream upload when the caller aborts', async () => {
+    const adapter = createAdapter();
+    const body = new PassThrough();
+    const put = vi.fn(
+      (_key: string, stream: PassThrough) =>
+        new Promise((_resolve, reject) => {
+          stream.once('close', () => reject(new Error('stream closed')));
+        })
+    );
+    vi.spyOn(adapter as any, 'createClient').mockReturnValue({ put } as any);
+    const controller = new AbortController();
+
+    const uploadPromise = adapter.uploadObject({
+      key: 'dataset/team/file.txt',
+      body,
+      contentLength: 4,
+      abortSignal: controller.signal
+    });
+    controller.abort();
+
+    await expect(uploadPromise).rejects.toMatchObject({ name: 'AbortError' });
+    expect(body.destroyed).toBe(true);
+    expect(put).toHaveBeenCalledTimes(1);
+  });
 });

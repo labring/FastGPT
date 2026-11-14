@@ -2,11 +2,14 @@ import OSS from 'ali-oss';
 import type { IOssStorageOptions, IStorage } from '../interface';
 import type * as Storage from '../types';
 import { Readable } from 'node:stream';
+import { Agent as HttpAgent } from 'node:http';
+import { Agent as HttpsAgent } from 'node:https';
 import { camelCase, chunk, difference, kebabCase } from 'es-toolkit';
 import { DEFAULT_PRESIGNED_URL_EXPIRED_SECONDS } from '../constants';
 import {
   bindAbortSignalToReadable,
   encodeObjectKeyPath,
+  getAbortSignalError,
   throwIfStorageAborted,
   throwIfStorageDownloadAborted
 } from '../utils';
@@ -23,6 +26,11 @@ import {
   isNoSuchMultipartUploadError
 } from '../assert';
 
+type OssClientOverrides = Partial<OSS.Options> & {
+  agent?: HttpAgent;
+  httpsAgent?: HttpsAgent;
+};
+
 export class OssStorageAdapter implements IStorage {
   protected readonly client: OSS;
 
@@ -31,9 +39,16 @@ export class OssStorageAdapter implements IStorage {
       throw new Error('Invalid storage vendor: expected "oss"');
     }
 
-    this.client = new OSS({
-      accessKeyId: options.credentials.accessKeyId,
-      accessKeySecret: options.credentials.secretAccessKey,
+    this.client = this.createClient();
+  }
+
+  /** 创建 OSS 客户端；可注入单次上传专用 agent，以便取消时关闭所有在途 socket。 */
+  private createClient(overrides: OssClientOverrides = {}): OSS {
+    const { credentials, ...options } = this.options;
+
+    return new OSS({
+      accessKeyId: credentials.accessKeyId,
+      accessKeySecret: credentials.secretAccessKey,
       region: options.region,
       endpoint: options.endpoint,
       bucket: options.bucket,
@@ -42,7 +57,8 @@ export class OssStorageAdapter implements IStorage {
       secure: options.secure,
 
       // @ts-expect-error ali-oss SDK 类型未定义但存在此属性
-      enableProxy: options.proxy ? true : false
+      enableProxy: options.proxy ? true : false,
+      ...overrides
     });
   }
 
@@ -120,8 +136,10 @@ export class OssStorageAdapter implements IStorage {
   }
 
   async uploadObject(params: Storage.UploadObjectParams): Promise<Storage.UploadObjectResult> {
-    const { key, body, contentType, contentLength, contentDisposition, metadata } = params;
+    const { key, body, contentType, contentLength, contentDisposition, metadata, abortSignal } =
+      params;
     assertStorageObjectKey(key);
+    throwIfStorageAborted(abortSignal);
     // ali-oss 会把字符串 body 当成本地文件路径，因此先转成字节以满足 IStorage 契约。
     const uploadBody = typeof body === 'string' ? Buffer.from(body) : body;
 
@@ -141,14 +159,38 @@ export class OssStorageAdapter implements IStorage {
       }
     }
 
-    await this.client.put(key, uploadBody, {
-      headers,
-      mime: contentType,
-      meta,
-      // ali-oss 对 Readable body 会走 putStream：未传 contentLength 时额外写入
-      // Transfer-Encoding: chunked，与上面的 Content-Length 冲突，provider 会直接拒绝请求。
-      ...(uploadBody instanceof Readable && contentLength !== undefined ? { contentLength } : {})
-    } as OSS.PutObjectOptions & { contentLength?: number });
+    /**
+     * ali-oss 的 put 不暴露底层请求句柄，body 读完后也无法再通过流错误中止等待响应。
+     * 携带取消信号时使用独立 agent 的客户端，取消时直接销毁 agent 关闭所有在途 socket。
+     */
+    const httpAgent = abortSignal ? new HttpAgent({ keepAlive: true }) : undefined;
+    const httpsAgent = abortSignal ? new HttpsAgent({ keepAlive: true }) : undefined;
+    const uploadClient =
+      httpAgent && httpsAgent ? this.createClient({ agent: httpAgent, httpsAgent }) : this.client;
+    const abortUpload = () => {
+      httpAgent?.destroy();
+      httpsAgent?.destroy();
+      if (uploadBody instanceof Readable && !uploadBody.destroyed) uploadBody.destroy();
+    };
+    abortSignal?.addEventListener('abort', abortUpload, { once: true });
+
+    try {
+      await uploadClient.put(key, uploadBody, {
+        headers,
+        mime: contentType,
+        meta,
+        // ali-oss 对 Readable body 会走 putStream：未传 contentLength 时额外写入
+        // Transfer-Encoding: chunked，与上面的 Content-Length 冲突，provider 会直接拒绝请求。
+        ...(uploadBody instanceof Readable && contentLength !== undefined ? { contentLength } : {})
+      } as OSS.PutObjectOptions & { contentLength?: number });
+    } catch (error) {
+      throw abortSignal?.aborted ? getAbortSignalError(abortSignal) : error;
+    } finally {
+      abortSignal?.removeEventListener('abort', abortUpload);
+      // 单次上传的 agent 不保留空闲连接，避免取消/完成后 socket 滞留。
+      httpAgent?.destroy();
+      httpsAgent?.destroy();
+    }
 
     return {
       key,
