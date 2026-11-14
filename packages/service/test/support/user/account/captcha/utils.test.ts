@@ -40,6 +40,9 @@ describe('renderPuzzleCaptcha', () => {
     const alpha = (x: number, y: number) => data[(y * info.width + x) * 4 + 3];
     expect([alpha(0, 0), alpha(223, 0), alpha(0, 223), alpha(223, 223)]).toEqual([0, 0, 0, 0]);
     expect(alpha(112, 112)).toBe(255);
+    // 圆形边缘保留抗锯齿透明度，避免缓存原始蒙版后出现锯齿或不透明方框。
+    expect(alpha(32, 32)).toBeGreaterThan(0);
+    expect(alpha(32, 32)).toBeLessThan(255);
     expect(image.mode).toBe('rotate');
     expect(image.angle).toBeGreaterThanOrEqual(45);
     expect(image.angle).toBeLessThanOrEqual(315);
