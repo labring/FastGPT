@@ -7,6 +7,7 @@ import remarkGfm from 'remark-gfm';
 import remarkMdx from 'remark-mdx';
 import remarkStringify from 'remark-stringify';
 import { remarkInclude } from 'fumadocs-mdx/config';
+import docLastModifiedData from '@/data/doc-last-modified.json';
 import { source } from '@/lib/source';
 import {
   getFastGPTDocsOriginForLocale,
@@ -40,14 +41,45 @@ const STATIC_MARKDOWN_PREFIXES = ['/examples/', '/deploy/', '/imgs/', '/favicon/
 
 export type LlmsBundleKey = 'guide' | 'openapi' | 'self-host';
 
-function normalizeExportedMarkdownHref(href: string): string {
-  if (!href.startsWith('/')) {
+export type SingleDocMarkdownResult = {
+  markdown: string;
+  canonicalUrl: string;
+  lastModified?: string;
+  deprecated: boolean;
+};
+
+function resolveDocLastModified(
+  relativeContentKey: string,
+  frontmatterLastModified?: unknown
+): string | undefined {
+  const recorded = (docLastModifiedData as Record<string, string>)[relativeContentKey];
+  if (typeof recorded === 'string' && recorded.trim().length > 0) {
+    return recorded.trim();
+  }
+  if (typeof frontmatterLastModified === 'string' && frontmatterLastModified.trim().length > 0) {
+    const parsed = new Date(frontmatterLastModified);
+    return Number.isNaN(parsed.getTime()) ? undefined : parsed.toISOString();
+  }
+  if (frontmatterLastModified instanceof Date && !Number.isNaN(frontmatterLastModified.getTime())) {
+    return frontmatterLastModified.toISOString();
+  }
+  return undefined;
+}
+
+function normalizeExportedMarkdownHref(href: string, lang: FastGPTDocsLocale): string {
+  if (!href.startsWith('/') || href.startsWith('//')) {
     return href;
   }
   if (STATIC_MARKDOWN_PREFIXES.some((prefix) => href.startsWith(prefix))) {
-    return href;
+    return `${getFastGPTDocsOriginForLocale(lang)}${href}`;
   }
-  return stripDocsLocalePrefix(href).path;
+  const explicitMatch = href.match(/^\/(zh-cn|zh|en)(?=\/|$|[?#])/i);
+  const targetLocale: FastGPTDocsLocale = explicitMatch
+    ? explicitMatch[1].toLowerCase() === 'en'
+      ? 'en'
+      : 'zh-CN'
+    : lang;
+  return getProductionDocsUrl(targetLocale, href);
 }
 
 function matchesLlmsBundle(relSlug: string, bundle?: LlmsBundleKey): boolean {
@@ -122,7 +154,11 @@ function ensureBlockChildren(nodes: AstNode[]): AstNode[] {
 
 /** Strip MDX imports/comments and convert custom JSX documentation components into pure GFM nodes. */
 function remarkCleanLlmsMdx() {
-  const transformNodes = (nodes: AstNode[], inFlow: boolean): AstNode[] =>
+  const transformNodes = (
+    nodes: AstNode[],
+    inFlow: boolean,
+    lang: FastGPTDocsLocale
+  ): AstNode[] =>
     nodes.flatMap<AstNode>((node) => {
       if (node.type === 'mdxjsEsm') return [];
 
@@ -140,7 +176,7 @@ function remarkCleanLlmsMdx() {
       if (node.type === 'mdxJsxFlowElement' || node.type === 'mdxJsxTextElement') {
         const tagName = node.name ?? '';
         const childInFlow = node.type === 'mdxJsxFlowElement';
-        const children = transformNodes(node.children ?? [], childInFlow);
+        const children = transformNodes(node.children ?? [], childInFlow, lang);
 
         if (tagName === 'CurrentOriginCodeBlockUpdater') return [];
         if (tagName === 'span' && children.length === 0) return [];
@@ -189,7 +225,8 @@ function remarkCleanLlmsMdx() {
         if (tagName === 'Card') {
           const title = getAttrString(node, 'title') ?? 'Guide';
           const href = getAttrString(node, 'href');
-          const normalizedHref = href !== undefined ? normalizeExportedMarkdownHref(href) : undefined;
+          const normalizedHref =
+            href !== undefined ? normalizeExportedMarkdownHref(href, lang) : undefined;
           const summary = extractInlineText(children);
           const head: AstNode = normalizedHref
             ? { type: 'link', url: normalizedHref, children: [{ type: 'text', value: title }] }
@@ -219,11 +256,12 @@ function remarkCleanLlmsMdx() {
       if (node.children) {
         const nextChildren = transformNodes(
           node.children,
-          node.type === 'root' || node.type === 'blockquote' || node.type === 'listItem'
+          node.type === 'root' || node.type === 'blockquote' || node.type === 'listItem',
+          lang
         );
         const nextUrl =
           node.type === 'link' && typeof node.url === 'string'
-            ? normalizeExportedMarkdownHref(node.url)
+            ? normalizeExportedMarkdownHref(node.url, lang)
             : node.url;
         return [{ ...node, url: nextUrl, children: nextChildren }];
       }
@@ -231,8 +269,9 @@ function remarkCleanLlmsMdx() {
       return [node];
     });
 
-  return (tree: AstNode) => {
-    tree.children = transformNodes(tree.children ?? [], true);
+  return (tree: AstNode, file?: { path?: string }) => {
+    const lang: FastGPTDocsLocale = file?.path?.endsWith('.en.mdx') ? 'en' : 'zh-CN';
+    tree.children = transformNodes(tree.children ?? [], true, lang);
   };
 }
 
@@ -351,9 +390,13 @@ export async function buildLlmsFullText(
         if (data.deprecated || data.draft) return null;
 
         const body = await renderCleanMdxBody(file, content);
+        const contentKey = file.replace(/^\.\//, '');
+        const lastUpdated = resolveDocLastModified(contentKey, data.lastModified);
+        const lastUpdatedLine =
+          lastUpdated !== undefined ? `\nlast_updated: ${lastUpdated}` : '';
         return `file: ${file}
 url: ${fileToCanonicalUrl(file)}
-title: ${String(data.title ?? '')}
+title: ${String(data.title ?? '')}${lastUpdatedLine}
 meta: ${JSON.stringify(data, null, 2)}
 
 ${body}`;
@@ -371,10 +414,10 @@ export function getSingleDocCanonicalUrl(lang: FastGPTDocsLocale, slugParts: str
 }
 
 /** Render a single published documentation topic as standalone clean Markdown. */
-export async function buildSingleDocMarkdown(params: {
+export async function buildSingleDocMarkdownResult(params: {
   lang: FastGPTDocsLocale;
   slugParts: string[];
-}): Promise<string | null> {
+}): Promise<SingleDocMarkdownResult | null> {
   const { lang, slugParts } = params;
   if (
     slugParts.length === 0 ||
@@ -412,12 +455,36 @@ export async function buildSingleDocMarkdown(params: {
   if (data.draft === true) return null;
 
   const canonicalUrl = getSingleDocCanonicalUrl(lang, slugParts);
-  const relativeForRemark = `./${path.relative(process.cwd(), resolvedFile).split(path.sep).join('/')}`;
+  const contentKey = path.relative(process.cwd(), resolvedFile).split(path.sep).join('/');
+  const relativeForRemark = `./${contentKey}`;
   const body = await renderCleanMdxBody(relativeForRemark, content);
+  const lastModified = resolveDocLastModified(contentKey, data.lastModified);
+  const deprecated = Boolean(data.deprecated);
   const descriptionBlock =
     typeof data.description === 'string' && data.description.trim().length > 0
       ? `\n\n> ${data.description.trim()}`
       : '';
+  const lastUpdatedLine =
+    lastModified !== undefined ? `\nLast Updated: ${lastModified.slice(0, 10)}` : '';
+  const deprecationNotice = deprecated
+    ? lang === 'en'
+      ? '\n\n> **Deprecated**: This page documents a legacy interface or workflow retained for backward compatibility.'
+      : '\n\n> **已归档**：本文档介绍旧版接口或历史方案，仅供存量系统兼容参考。'
+    : '';
 
-  return `# ${String(data.title ?? '')}${descriptionBlock}\n\nSource: ${canonicalUrl}\n\n${body}\n`;
+  return {
+    markdown: `# ${String(data.title ?? '')}${descriptionBlock}\n\nSource: ${canonicalUrl}${lastUpdatedLine}${deprecationNotice}\n\n${body}\n`,
+    canonicalUrl,
+    lastModified,
+    deprecated
+  };
+}
+
+/** Render a single published documentation topic as standalone clean Markdown text. */
+export async function buildSingleDocMarkdown(params: {
+  lang: FastGPTDocsLocale;
+  slugParts: string[];
+}): Promise<string | null> {
+  const result = await buildSingleDocMarkdownResult(params);
+  return result?.markdown ?? null;
 }

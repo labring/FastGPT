@@ -69,6 +69,7 @@ export function generateArticleSchema(params: {
 }): WithContext<TechArticle> {
   const { title, description, url, datePublished, dateModified, lang } = params;
   const origin = new URL(url).origin;
+  const mainSiteOrigin = lang === 'zh-CN' ? 'https://fastgpt.cn' : 'https://fastgpt.io';
   const effectivePublished = datePublished ?? dateModified;
 
   return {
@@ -88,7 +89,9 @@ export function generateArticleSchema(params: {
     },
     publisher: {
       '@type': 'Organization',
+      '@id': `${mainSiteOrigin}/#organization`,
       name: 'FastGPT',
+      url: mainSiteOrigin,
       logo: {
         '@type': 'ImageObject',
         url: `${origin}/favicon/android-chrome-512x512.png`
@@ -118,7 +121,7 @@ export function generateWebSiteSchema(params: { url: string; lang: string }): Gr
           '@type': 'ImageObject',
           url: `${origin}/favicon/android-chrome-512x512.png`
         },
-        sameAs: ['https://github.com/labring/FastGPT']
+        sameAs: ['https://github.com/labring/FastGPT', 'https://fastgpt.io', 'https://fastgpt.cn']
       },
       {
         '@type': 'WebSite',

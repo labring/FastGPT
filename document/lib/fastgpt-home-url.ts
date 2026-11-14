@@ -88,19 +88,6 @@ export const getFastGPTDocsOriginForLocale = (locale: FastGPTDocsLocale): string
 /** Strip a leading `/zh-CN` or `/en` locale prefix while preserving query strings and hashes. */
 export const stripDocsLocalePrefix = (rawPath: string) => stripRawDocsLocalePrefix(rawPath);
 
-/**
- * Format a documentation route for the current site variant:
- * unprefixed on production owner hosts (`cn` / `io`), locale-prefixed on `preview`.
- */
-export const getOwnedDocsPath = (rawPath: string, locale: FastGPTDocsLocale): string => {
-  const { pathname, path } = stripRawDocsLocalePrefix(rawPath);
-  if (isPreviewDocsSite()) {
-    const suffix = path.slice(pathname.length);
-    return pathname === '/' ? `/${locale}${suffix}` : `/${locale}${pathname}${suffix}`;
-  }
-  return path;
-};
-
 /** Build the unprefixed canonical production documentation URL for a locale and path. */
 export const getProductionDocsUrl = (locale: FastGPTDocsLocale, rawPath: string): string =>
   buildProductionDocsUrl(locale, rawPath);

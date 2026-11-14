@@ -5,14 +5,33 @@ import { readFile } from 'node:fs/promises';
 import docsLocale from '../lib/docs-locale.js';
 
 const origin = process.env.DOCS_TEST_ORIGIN ?? 'http://localhost:3210';
+const originUrl = new URL(origin);
 const variant = docsLocale.resolveDocsSiteVariant();
 const isPreview = variant === 'preview';
-const activeLocales = (() => {
-  if (variant === 'cn') return ['zh-CN'];
-  if (variant === 'io') return ['en'];
-  return ['zh-CN', 'en'];
+const ownerLocale = (() => {
+  if (variant === 'cn') return 'zh-CN';
+  if (variant === 'io') return 'en';
+  return undefined;
 })();
+const activeLocales = ownerLocale !== undefined ? [ownerLocale] : ['zh-CN', 'en'];
 const toRoute = (locale, routePath) => (isPreview ? `/${locale}${routePath}` : routePath);
+const expectedRedirectOrigin = (targetLocale) =>
+  !isPreview && targetLocale !== ownerLocale
+    ? docsLocale.getFastGPTDocsOriginForLocale(targetLocale)
+    : originUrl.origin;
+
+/** Check whether SSR HTML contains a crawlable `<a href hreflang lang>` language switch link. */
+const hasLanguageSwitchAnchor = (markup, targetLocale, expectedHref) => {
+  for (const [tag] of markup.matchAll(/<a\b[^>]*>/gi)) {
+    const href = tag.match(/\bhref="([^"]+)"/i)?.[1];
+    const hrefLang = tag.match(/\bhreflang="([^"]+)"/i)?.[1];
+    const langAttr = tag.match(/\blang="([^"]+)"/i)?.[1];
+    if (href === expectedHref && hrefLang === targetLocale && langAttr === targetLocale) {
+      return true;
+    }
+  }
+  return false;
+};
 
 /** Split a Vary header into lowercase tokens so `Accept-Encoding` never satisfies an `Accept` check. */
 const varyTokens = (response) =>
@@ -189,13 +208,19 @@ for (const [locale, host] of [
     assert.equal(response.status, 200);
     const html = await response.text();
     assert.ok(html.includes(`<link rel="canonical" href="https://${host}${routePath}"`));
+    const alternateLocale = locale === 'en' ? 'zh-CN' : 'en';
+    const alternateTargetHost = alternateLocale === 'en' ? 'doc.fastgpt.io' : 'doc.fastgpt.cn';
     if (isPreview) {
       assert.ok(html.includes('noindex'));
-      assert.ok(!html.includes('hrefLang='));
+      assert.ok(!/<link\b[^>]*\shreflang=/i.test(html));
+      assert.ok(hasLanguageSwitchAnchor(html, alternateLocale, `/${alternateLocale}/openapi/intro`));
     } else {
       for (const [alternate, alternateHost] of [['zh-CN', 'doc.fastgpt.cn'], ['en', 'doc.fastgpt.io']]) {
         assert.ok(html.includes(`<link rel="alternate" hrefLang="${alternate}" href="https://${alternateHost}/openapi/intro"`));
       }
+      assert.ok(
+        hasLanguageSwitchAnchor(html, alternateLocale, `https://${alternateTargetHost}/openapi/intro`)
+      );
       assert.ok(html.includes('<link rel="alternate" hrefLang="x-default" href="https://doc.fastgpt.io/openapi/intro"'));
       assert.ok(html.includes(`<link rel="alternate" type="text/markdown" href="https://${host}/openapi/intro.md"`));
       assert.ok(html.includes('"@type":"TechArticle"'));
@@ -217,6 +242,10 @@ for (const [locale, host] of [
       );
       const breadcrumb = ldScripts.find((item) => item['@type'] === 'BreadcrumbList');
       assert.ok(breadcrumb, 'BreadcrumbList JSON-LD present');
+      assert.ok(
+        breadcrumb.itemListElement.length >= 2,
+        'Home BreadcrumbList must contain at least 2 items'
+      );
       const urls = breadcrumb.itemListElement.map((item) => item.item);
       assert.equal(new Set(urls).size, urls.length, 'BreadcrumbList URLs are unique');
       const siteGraph = ldScripts.find((item) => Array.isArray(item['@graph']));
@@ -267,7 +296,10 @@ for (const [locale, host] of [
       assert.equal(res.status, 200, noindexRoute);
       const body = await res.text();
       assert.ok(body.includes('noindex'), `Expected noindex on ${noindexRoute}`);
-      assert.ok(!body.includes('hrefLang='), `Unexpected hreflang on noindex route ${noindexRoute}`);
+      assert.ok(
+        !/<link\b[^>]*\shreflang=/i.test(body),
+        `Unexpected hreflang alternate link on noindex route ${noindexRoute}`
+      );
       assert.ok(!body.includes('"@type":"TechArticle"'), `Unexpected TechArticle JSON-LD on noindex route ${noindexRoute}`);
     }
   });
@@ -282,7 +314,7 @@ for (const [locale, host] of [
     // Next hydrates the localized recovery boundary; its links are checked in browser acceptance.
     assert.ok(html.includes('<meta name="robots" content="noindex"'));
     assert.ok(!html.includes('<link rel="canonical"'), '404 must omit root canonical tag');
-    assert.ok(!html.includes('hrefLang='), '404 must omit root hreflang tags');
+    assert.ok(!/<link\b[^>]*\shreflang=/i.test(html), '404 must omit root hreflang tags');
   });
 
   test(`${locale} search returns localized topics and historical version references`, async () => {
@@ -315,24 +347,48 @@ for (const [locale, host] of [
 }
 
 test('legacy prefix redirects match path segments and retain encoded query values', async () => {
-  for (const [legacy, target] of [
-    ['/en/docs/introduction/development/openapi/chat', '/en/openapi/best-practices/app-integration'],
-    ['/zh-CN/FAQ', '/zh-CN/faq/chat'],
-    ['/en/plugin', '/en/plugin/intro'],
-    ['/zh-CN/faq/app', '/zh-CN/guide/build/faq'],
-    ['/zh-CN/self-host/config/json', '/zh-CN/self-host/config/env'],
-    ['/zh-CN/self-host/upgrading/4-15/4150', '/zh-CN/self-host/upgrading/4-15/41500'],
-    ['/zh-CN/guide/build/workflow/nodes/sandbox', '/zh-CN/guide/build/workflow/nodes/sandbox-v2'],
-    ['/zh-CN/use-cases/app-cases/feishu_webhook', '/zh-CN/guide/build/publish/feishu']
+  const query = '?source=bookmark&value=a%2Fb%20c';
+  for (const [targetLocale, legacySuffix, routePath] of [
+    ['en', '/docs/introduction/development/openapi/chat', '/openapi/best-practices/app-integration'],
+    ['zh-CN', '/FAQ', '/faq/chat'],
+    ['en', '/plugin', '/plugin/intro'],
+    ['zh-CN', '/faq/app', '/guide/build/faq'],
+    ['zh-CN', '/self-host/config/json', '/self-host/config/env'],
+    ['zh-CN', '/self-host/upgrading/4-15/4150', '/self-host/upgrading/4-15/41500'],
+    ['zh-CN', '/guide/build/workflow/nodes/sandbox', '/guide/build/workflow/nodes/sandbox-v2'],
+    ['zh-CN', '/use-cases/app-cases/feishu_webhook', '/guide/build/publish/feishu']
   ]) {
-    const query = '?source=bookmark&value=a%2Fb%20c';
+    const legacy = `/${targetLocale}${legacySuffix}`;
     const response = await fetch(`${origin}${legacy}${query}`, { redirect: 'manual' });
-    assert.equal(response.status, 301);
+    assert.equal(response.status, 301, legacy);
     const destination = new URL(response.headers.get('location'), origin);
-    assert.equal(destination.pathname, target);
+    assert.equal(destination.origin, expectedRedirectOrigin(targetLocale), `${legacy} redirect origin`);
+    assert.equal(destination.pathname, toRoute(targetLocale, routePath), `${legacy} redirect pathname`);
     assert.deepEqual([...destination.searchParams], [...new URLSearchParams(query)]);
-    const targetResponse = await fetch(`${origin}${destination.pathname}`, { redirect: 'manual' });
-    assert.equal(targetResponse.status, 200, `Redirect target must return 200: ${destination.pathname}`);
+
+    if (destination.origin === originUrl.origin) {
+      const targetResponse = await fetch(`${origin}${destination.pathname}`, { redirect: 'manual' });
+      assert.equal(targetResponse.status, 200, `Redirect target must return 200: ${destination.pathname}`);
+    }
+
+    if (!isPreview) {
+      const ownerLegacyResponse = await fetch(`${origin}${legacySuffix}${query}`, {
+        redirect: 'manual'
+      });
+      assert.equal(ownerLegacyResponse.status, 301, legacySuffix);
+      const ownerDestination = new URL(ownerLegacyResponse.headers.get('location'), origin);
+      assert.equal(ownerDestination.origin, originUrl.origin, `${legacySuffix} owner redirect origin`);
+      assert.equal(ownerDestination.pathname, routePath, `${legacySuffix} owner redirect pathname`);
+      assert.deepEqual([...ownerDestination.searchParams], [...new URLSearchParams(query)]);
+      const ownerTargetResponse = await fetch(`${origin}${ownerDestination.pathname}`, {
+        redirect: 'manual'
+      });
+      assert.equal(
+        ownerTargetResponse.status,
+        200,
+        `Owner redirect target must return 200: ${ownerDestination.pathname}`
+      );
+    }
   }
   const goneResponse = await fetch(`${origin}/zh-CN/use-cases/app-cases/dalle3`, {
     redirect: 'manual'
@@ -340,12 +396,27 @@ test('legacy prefix redirects match path segments and retain encoded query value
   assert.equal(goneResponse.status, 410);
   assert.equal(goneResponse.headers.get('x-robots-tag'), 'noindex');
 
-  for (const path of ['/en/FAQish', '/english/openapi/intro']) {
+  for (const [path, unmatchedLocale, expectedTail] of [
+    ['/en/FAQish', 'en', '/FAQish'],
+    ['/english/openapi/intro', undefined, '/english/openapi/intro']
+  ]) {
     const response = await fetch(`${origin}${path}`, { redirect: 'manual' });
     const location = response.headers.get('location');
     if (location) {
       const destination = new URL(location, origin);
-      assert.ok(destination.pathname.endsWith(path), `Preserve the complete unmatched path: ${path}`);
+      if (unmatchedLocale !== undefined) {
+        assert.equal(destination.origin, expectedRedirectOrigin(unmatchedLocale));
+        assert.equal(destination.pathname, toRoute(unmatchedLocale, expectedTail));
+      } else {
+        assert.ok(
+          destination.pathname.endsWith(expectedTail),
+          `Preserve the complete unmatched path: ${path}`
+        );
+      }
+      if (destination.origin === originUrl.origin) {
+        const followUp = await fetch(`${origin}${destination.pathname}`, { redirect: 'manual' });
+        assert.equal(followUp.status, 404, `Unmatched redirect target must 404: ${destination.pathname}`);
+      }
     } else {
       assert.equal(response.status, 404);
     }

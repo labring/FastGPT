@@ -28,7 +28,7 @@ import {
   type UpgradeVersionTimelineItem
 } from '@/components/docs/UpgradeVersionTimeline';
 
-// 在构建时导入静态数据
+// Import static file modification metadata at build time.
 import docLastModifiedData from '@/data/doc-last-modified.json';
 
 export default async function Page({
@@ -36,10 +36,10 @@ export default async function Page({
 }: {
   params: Promise<{ lang: string; slug?: string[] }>;
 }) {
-  // 1. 解析目标文档页与版本升级时间线数据；source.getPage 按环境过滤草稿，此处同时校验物理语言文件后缀一致。
+  // 1. Resolve target documentation page and upgrade timeline entries while matching physical locale file suffix.
   const { lang, slug } = await params;
   const page = source.getPage(slug, lang);
-  if (!page?.data || page.data._file.path.endsWith('.en.mdx') !== (lang === 'en')) notFound();
+  if (page?.data === undefined || page.data._file.path.endsWith('.en.mdx') !== (lang === 'en')) notFound();
 
   const MDXContent = page.data.body;
   const releaseTime = page.data.releaseTime;
@@ -67,53 +67,57 @@ export default async function Page({
   const lastModified = lastModifiedData[filePath] ?? page.data.lastModified;
 
   const locale: FastGPTDocsLocale = lang === 'en' ? 'en' : 'zh-CN';
+  const mainSiteOrigin = locale === 'zh-CN' ? 'https://fastgpt.cn' : 'https://fastgpt.io';
   const domain = getFastGPTDocsOriginForLocale(locale);
   const routePath = stripDocsLocalePrefix(page.url).pathname;
   const isPreview = isPreviewDocsSite();
   const pagePath = isPreview ? getLocalizedPath(routePath, locale) : routePath;
   const url = `${domain}${pagePath}`;
-  const homePath = getLocalizedPath(defaultHomePath, locale);
+  const homePath = isPreview ? getLocalizedPath(defaultHomePath, locale) : defaultHomePath;
   const homeUrl = `${domain}${homePath}`;
 
-  // 3. Derive and deduplicate breadcrumb items while falling back to the first child page for indexless folders.
+  // 3. Build hierarchy breadcrumbs from main site root through intermediate folders without collapsing shared fallback URLs.
   const tree = source.pageTree[lang];
-  const section = searchPath(tree.children, page.url)?.find(
-    (node) => node.type === 'folder' && node.root
-  );
   const findFirstPageUrl = (node: (typeof tree.children)[number]): string | undefined => {
     if (node.type === 'page') return node.url;
     if (node.type === 'folder') {
-      if (node.index?.url) return node.index.url;
+      if (node.index?.url !== undefined && node.index.url !== '') return node.index.url;
       for (const child of node.children) {
         const found = findFirstPageUrl(child);
-        if (found) return found;
+        if (found !== undefined) return found;
       }
     }
     return undefined;
   };
-  const sectionEntryUrl = section ? findFirstPageUrl(section) : undefined;
-  const rawBreadcrumbs = [
-    section?.type === 'folder' && page.url !== homePath
-      ? {
-          name: String(section.name),
-          url: `${domain}${sectionEntryUrl ?? homePath}`
-        }
-      : { name: 'FastGPT', url: homeUrl },
-    ...(searchPath(tree.children, page.url) ?? []).flatMap((node) => {
-      const resolvedUrl = findFirstPageUrl(node);
-      return resolvedUrl && typeof node.name === 'string'
-        ? [{ name: String(node.name), url: `${domain}${resolvedUrl}` }]
-        : [];
-    })
+  const toAbsoluteDocUrl = (rawNodeUrl: string): string => {
+    const cleanRoute = stripDocsLocalePrefix(rawNodeUrl).pathname;
+    const localizedRoute = isPreview ? getLocalizedPath(cleanRoute, locale) : cleanRoute;
+    return `${domain}${localizedRoute}`;
+  };
+  const breadcrumbItems: Array<{ name: string; url: string }> = [
+    { name: 'FastGPT', url: mainSiteOrigin }
   ];
-  const breadcrumbByUrl = new Map<string, { name: string; url: string }>();
-  for (const item of rawBreadcrumbs) {
-    if (item.url === homeUrl && breadcrumbByUrl.has(item.url)) {
-      continue;
+  for (const node of searchPath(tree.children, page.url) ?? []) {
+    const resolvedUrl = findFirstPageUrl(node);
+    if (
+      resolvedUrl !== undefined &&
+      typeof node.name === 'string' &&
+      node.name.trim().length > 0
+    ) {
+      const item = {
+        name: String(node.name).trim(),
+        url: toAbsoluteDocUrl(resolvedUrl)
+      };
+      const previous = breadcrumbItems[breadcrumbItems.length - 1];
+      if (previous !== undefined && previous.name === item.name && previous.url === item.url) {
+        continue;
+      }
+      breadcrumbItems.push(item);
     }
-    breadcrumbByUrl.set(item.url, item);
   }
-  const breadcrumbItems = [...breadcrumbByUrl.values()];
+  if (breadcrumbItems.length < 2) {
+    breadcrumbItems.push({ name: page.data.title, url });
+  }
 
   // 4. Build JSON-LD structured data and gate output to indexable production pages.
   const shouldNoIndex =

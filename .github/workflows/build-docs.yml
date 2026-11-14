@@ -141,6 +141,9 @@ jobs:
             FASTGPT_HOME_DOMAIN=${{ matrix.domain_config.domain }}
             DOC_TRACK_SRC=${{ secrets.DOC_TRACK_SRC }}
             DOC_TRACK_SITE_ID=${{ secrets.DOC_TRACK_CN }}
+            GOOGLE_SITE_VERIFICATION=${{ vars.DOC_GOOGLE_SITE_VERIFICATION_CN || secrets.DOC_GOOGLE_SITE_VERIFICATION_CN }}
+            BING_SITE_VERIFICATION=${{ vars.DOC_BING_SITE_VERIFICATION_CN || secrets.DOC_BING_SITE_VERIFICATION_CN }}
+            BAIDU_SITE_VERIFICATION=${{ vars.DOC_BAIDU_SITE_VERIFICATION_CN || secrets.DOC_BAIDU_SITE_VERIFICATION_CN }}
 
       - name: Build and push Docker images (IO)
         if: matrix.domain_config.suffix == 'io'
@@ -159,6 +162,9 @@ jobs:
             FASTGPT_HOME_DOMAIN=${{ matrix.domain_config.domain }}
             DOC_TRACK_SRC=${{ secrets.DOC_TRACK_SRC }}
             DOC_TRACK_SITE_ID=${{ secrets.DOC_TRACK_IO }}
+            GOOGLE_SITE_VERIFICATION=${{ vars.DOC_GOOGLE_SITE_VERIFICATION_IO || secrets.DOC_GOOGLE_SITE_VERIFICATION_IO }}
+            BING_SITE_VERIFICATION=${{ vars.DOC_BING_SITE_VERIFICATION_IO || secrets.DOC_BING_SITE_VERIFICATION_IO }}
+            BAIDU_SITE_VERIFICATION=${{ vars.DOC_BAIDU_SITE_VERIFICATION_IO || secrets.DOC_BAIDU_SITE_VERIFICATION_IO }}
 
   update-images:
     needs: [generate-timestamp, build-images]

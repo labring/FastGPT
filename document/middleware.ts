@@ -280,12 +280,21 @@ const prefixEntries = Object.entries(prefixMap).map(([oldPrefix, newPrefix]) => 
 // Build O(1) case-insensitive slug lookup and automatic upgrading folder fallbacks from content metadata.
 const lowercaseSlugMap = new Map<string, string>();
 const upgradingFolderFallbackMap = new Map<string, string>();
+const knownSlugsByLocale: Record<'zh-CN' | 'en', Set<string>> = {
+  'zh-CN': new Set<string>(),
+  en: new Set<string>()
+};
 for (const rawKey of Object.keys(docLastModifiedData)) {
-  if (!rawKey.startsWith('content/') || rawKey.endsWith('.en.mdx')) continue;
+  if (!rawKey.startsWith('content/')) continue;
+  const isEnFile = rawKey.endsWith('.en.mdx');
   const slug = rawKey
     .slice('content'.length)
-    .replace(/\.mdx$/, '')
+    .replace(/(?:\.en)?\.mdx$/, '')
     .replace(/\/index$/, '');
+  if (slug) {
+    knownSlugsByLocale[isEnFile ? 'en' : 'zh-CN'].add(slug);
+  }
+  if (isEnFile) continue;
   if (slug && slug !== '/toc') {
     lowercaseSlugMap.set(slug.toLowerCase(), slug);
   }
@@ -490,6 +499,42 @@ export default function middleware(request: NextRequest) {
   );
   const ownerLocale = hostLocale ?? resolveContainerOwnerLocale();
   const isOwnerMode = ownerLocale !== undefined;
+
+  // Redirect root discovery and search index endpoints on legacy domains to their canonical owner host,
+  // while passing canonical and preview root endpoints straight through untouched.
+  if (
+    /^\/(?:robots\.txt|sitemap[^/]*\.xml|llms(?:-(?:full|guide|openapi|self-host))?\.txt|pricing\.md|static\.json(?:\/.*)?)$/i.test(
+      pathname
+    )
+  ) {
+    const canonicalRootPath = /^\/static\.json/i.test(pathname)
+      ? pathname
+      : pathname.toLowerCase();
+    if (isLegacyProductionHost && hostLocale !== undefined) {
+      return NextResponse.redirect(
+        createRootRedirectUrl({
+          pathname: canonicalRootPath,
+          request,
+          lang: hostLocale,
+          ownerLocale
+        }),
+        301
+      );
+    }
+    if (pathname !== canonicalRootPath && ownerLocale !== undefined) {
+      return NextResponse.redirect(
+        createRootRedirectUrl({
+          pathname: canonicalRootPath,
+          request,
+          lang: ownerLocale,
+          ownerLocale
+        }),
+        301
+      );
+    }
+    return NextResponse.next();
+  }
+
   const cookieLocale = request.cookies.get('FD_LOCALE')?.value;
   const previewDefaultLang =
     cookieLocale !== undefined && i18n.languages.includes(cookieLocale)
@@ -518,19 +563,23 @@ export default function middleware(request: NextRequest) {
     }
   }
 
-  // Redirect locale-prefixed LLMs text endpoints on production hosts to their root owner paths.
-  if (/^\/llms(?:-(?:full|guide|openapi|self-host))?\.txt$/i.test(pathWithoutLang)) {
-    const canonicalLlmsPath = pathWithoutLang.toLowerCase();
+  // Redirect locale-prefixed discovery endpoints on production hosts to their root owner paths.
+  if (
+    /^\/(?:robots\.txt|sitemap[^/]*\.xml|llms(?:-(?:full|guide|openapi|self-host))?\.txt)$/i.test(
+      pathWithoutLang
+    )
+  ) {
+    const canonicalDiscoveryPath = pathWithoutLang.toLowerCase();
     if (
       isOwnerMode &&
       (hasLangPrefix ||
         hasLegacyLocalePrefix ||
         isLegacyProductionHost ||
         lang !== ownerLocale ||
-        pathname !== canonicalLlmsPath)
+        pathname !== canonicalDiscoveryPath)
     ) {
       return NextResponse.redirect(
-        createRootRedirectUrl({ pathname: canonicalLlmsPath, request, lang, ownerLocale }),
+        createRootRedirectUrl({ pathname: canonicalDiscoveryPath, request, lang, ownerLocale }),
         301
       );
     }
@@ -552,8 +601,14 @@ export default function middleware(request: NextRequest) {
       return createGoneResponse({ lang, isOwnerMode });
     }
     const mappedBase = resolveLegacyPath(normalizedBase);
+    const isSameOwnerLocale = isOwnerMode && !isLegacyProductionHost && lang === ownerLocale;
+    const hasKnownOwnerMdTarget =
+      ownerLocale !== undefined &&
+      mappedBase !== '/toc' &&
+      knownSlugsByLocale[ownerLocale].has(mappedBase);
     const requiresOwnerMdRedirect =
       isOwnerMode &&
+      (!isSameOwnerLocale || hasKnownOwnerMdTarget) &&
       (hasLangPrefix ||
         hasLegacyLocalePrefix ||
         hasDocsPrefix ||
@@ -592,6 +647,23 @@ export default function middleware(request: NextRequest) {
       return createGoneResponse({ lang, isOwnerMode });
     }
     const finalPath = resolveLegacyPath(stripped);
+    if (
+      isOwnerMode &&
+      !isLegacyProductionHost &&
+      lang === ownerLocale &&
+      !knownSlugsByLocale[ownerLocale].has(finalPath)
+    ) {
+      const requestHeaders = new Headers(request.headers);
+      requestHeaders.set('x-pathname', pathname);
+      return applyDiscoveryHeaders({
+        response: NextResponse.rewrite(
+          createRewriteUrl(`/${ownerLocale}${finalPath}`, request),
+          { request: { headers: requestHeaders } }
+        ),
+        lang: ownerLocale,
+        isOwnerMode: true
+      });
+    }
     return NextResponse.redirect(
       createRedirectUrl({ target: finalPath, request, lang, ownerLocale }),
       301
@@ -615,12 +687,14 @@ export default function middleware(request: NextRequest) {
 
   // Production owner mode serves unprefixed canonical URLs and 301-redirects any locale prefix.
   if (isOwnerMode) {
+    const requiresCrossHostRedirect = isLegacyProductionHost || lang !== ownerLocale;
+    const requiresSameHostRedirect =
+      (hasLangPrefix || hasLegacyLocalePrefix || mapped !== pathWithoutLang) &&
+      knownSlugsByLocale[ownerLocale].has(mapped);
+
     if (
-      hasLangPrefix ||
-      hasLegacyLocalePrefix ||
-      isLegacyProductionHost ||
-      mapped !== pathWithoutLang ||
-      lang !== ownerLocale
+      requiresCrossHostRedirect ||
+      requiresSameHostRedirect
     ) {
       return NextResponse.redirect(
         createRedirectUrl({ target: mapped, request, lang, ownerLocale }),
@@ -630,7 +704,7 @@ export default function middleware(request: NextRequest) {
 
     if (prefersMarkdown) {
       const markdownResponse = NextResponse.rewrite(
-        createRewriteUrl(`/api/doc-markdown/${ownerLocale}${normalizedPath}`, request)
+        createRewriteUrl(`/api/doc-markdown/${ownerLocale}${mapped}`, request)
       );
       markdownResponse.headers.append('Vary', 'Accept');
       return applyDiscoveryHeaders({
@@ -641,7 +715,7 @@ export default function middleware(request: NextRequest) {
     }
 
     const rewriteResponse = NextResponse.rewrite(
-      createRewriteUrl(`/${ownerLocale}${normalizedPath}`, request),
+      createRewriteUrl(`/${ownerLocale}${mapped}`, request),
       { request: { headers: requestHeaders } }
     );
     rewriteResponse.headers.set('Cache-Control', documentCacheControl);
@@ -711,6 +785,6 @@ export default function middleware(request: NextRequest) {
 // Keep static search index, sitemaps, and public assets unprefixed without locale redirects.
 export const config = {
   matcher: [
-    '/((?!api|_next/static|_next/image|favicon(?:\\.ico|/)|robots\\.txt|llms(?:-(?:full|guide|openapi|self-host))?\\.txt|pricing\\.md|cli/skill\\.md$|static\\.json(?:$|/)|sitemap.*\\.xml|.*\\.(?:svg|png|jpe?g|webp)|deploy/.*|examples/.*).*)'
+    '/((?!api|_next/static|_next/image|favicon(?:\\.ico|/)|cli/skill\\.md$|.*\\.(?:svg|png|jpe?g|webp)|deploy/.*|examples/.*).*)'
   ]
 };

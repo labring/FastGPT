@@ -24,9 +24,10 @@ FastGPT 官网 `fastgpt.cn` 与 `fastgpt.io` 已采用独立域名承载各自�
 ### 3.1 生产环境（`cn` / `io` 归属模式）
 - **无前缀直出渲染**：访问 `https://doc.fastgpt.cn/guide/getting-started` 或 `https://doc.fastgpt.io/guide/getting-started` 时，中间件在内部重写至 `/[lang]/(docs)/[...slug]` 对应归属语言路由，直接返回 HTTP `200`，附带 `Content-Language`、`Vary: Accept` 与 `Cache-Control: public, max-age=0, must-revalidate`，匿名请求保持零 `Set-Cookie`。
 - **同站历史语言前缀收敛**：`https://doc.fastgpt.cn/zh-CN/<slug>` 单跳 `301` 至 `https://doc.fastgpt.cn/<slug>`；`https://doc.fastgpt.io/en/<slug>` 单跳 `301` 至 `https://doc.fastgpt.io/<slug>`，完整保留 Query 参数。
+- **同站未知路径直返 `404`**：当归属语言前缀路径或 `/docs/*` 在同站解析后无已发布 MDX 页面对应时，直接内部重写交由 Next.js 返回单跳 `404`（`noindex`），消除 `301 -> 404` 跳转链。
 - **跨站语言前缀分流**：`https://doc.fastgpt.cn/en/<slug>` 单跳 `301` 至 `https://doc.fastgpt.io/<slug>`；`https://doc.fastgpt.io/zh-CN/<slug>` 单跳 `301` 至 `https://doc.fastgpt.cn/<slug>`。
-- **历史路径与旧域名一步到位**：根路径 `/`、`/docs/*`、历史迁移目录、大小写修正以及旧域名 `doc.fastgpt.in` / `doc.tryfastgpt.ai` 均直接单跳 `301` 至对应归属域名的无前缀最终规范 URL；已下线案例维持 HTTP `410 Gone` 与 `X-Robots-Tag: noindex`。
-- **单页 Markdown 与 LLMs 路径收敛**：`/<slug>.md` 与 `Accept: text/markdown` 直接重写至对应归属语言 Markdown 接口；`/{lang}/<slug>.md` 与 `/{lang}/llms*.txt` 单跳 `301` 至归属域名无前缀地址。
+- **历史路径与旧域名一步到位**：根路径 `/`、`/docs/*`、历史迁移目录、大小写修正以及旧域名 `doc.fastgpt.in` / `doc.tryfastgpt.ai`（含 `/robots.txt`、`/sitemap.xml`、`/llms*.txt`、`/pricing.md`、`/static.json` 根发现入口）均直接单跳 `301` 至对应归属域名的无前缀最终规范 URL；已下线案例维持 HTTP `410 Gone` 与 `X-Robots-Tag: noindex`。
+- **单页 Markdown 与 LLMs 路径收敛**：`/<slug>.md` 与 `Accept: text/markdown` 直接重写至对应归属语言 Markdown 接口，输出完整规范域名内链、`Last-Modified` / `Last Updated` 时间戳及归档页 `X-Robots-Tag: noindex`；`/{lang}/<slug>.md` 与 `/{lang}/llms*.txt` 单跳 `301` 至归属域名无前缀地址；`/pricing.md` 同时覆盖商业版与官方云服务套餐（CNY ¥）明细表。
 
 ### 3.2 预览环境（`preview` 模式）
 - 保留 `/zh-CN/<slug>` 与 `/en/<slug>` 双语路径同容器预览体验。
@@ -41,12 +42,12 @@ FastGPT 官网 `fastgpt.cn` 与 `fastgpt.io` 已采用独立域名承载各自�
    - `source.generateParams`、`app/[lang]/layout.tsx`、`app/[lang]/llms*.txt/route.ts`、`app/static.json/route.ts` 与 `app/api/search/route.ts` 按 `getPublishedDocsLocales()` 过滤，生产镜像仅预渲染并索引自身归属语言。
 3. **Title、JSON-LD 与站点验证标签**：
    - 为文档首页补充高意图 `seoTitle`，当页面标题已含 `FastGPT` 时使用绝对标题输出，保持品牌词单次出现。
-   - `generateWebSiteSchema` 将 `Organization.@id` 对齐主站实体（`https://fastgpt.cn/#organization` / `https://fastgpt.io/#organization`），`WebSite.url` 指向 HTTP `200` 文档首页规范地址。
-   - `app/[lang]/layout.tsx` 与 `Dockerfile` 支持注入 Google、Bing（`msvalidate.01`）与百度站长验证标签构建参数。
+   - `generateWebSiteSchema` 与 `generateArticleSchema` 将 `Organization.@id` 对齐主站实体（`https://fastgpt.cn/#organization` / `https://fastgpt.io/#organization`），`BreadcrumbList` 以主站根域名为首节点并完整保留中间无索引目录层级，保证所有页面至少包含 2 个层级项。
+   - `app/[lang]/layout.tsx`、`Dockerfile` 与 `.github/workflows/build-docs.yml` 贯通 Google、Bing（`msvalidate.01`）与百度站长验证标签构建参数。
 4. **组件内链、语言切换器与主站外链对齐**：
    - `LocalizedLink`、`mdx-components.tsx` 中的 `Card`、`generateToc.js` 与 `remarkCleanLlmsMdx` 自动将内部链接规范化为当前环境无前缀（或预览前缀）200 地址。
-   - `LanguageSwitcher` 渲染具备 `href`、`hrefLang`、`lang` 属性的可抓取 `<a>` 链接，并附带基于浏览器语言偏好的轻量可关闭语言切换提示条。
-   - 文档内指向官网的价格与商务咨询链接统一通过 `buildFastGPTWebsiteUrl` 生成 `fastgpt.cn` / `fastgpt.io` 无前缀规范地址；`fastgpt-home` 仓库内指向文档站的入口链接与 `documentation-host` 验收契约同步升级为无前缀规范路由。
+   - `LanguageSwitcher` 直接渲染可见的可抓取 `<a href hrefLang lang>` 语言切换按钮，并附带基于浏览器语言偏好的轻量可关闭语言切换提示条。
+   - 文档内指向官网的价格与商务咨询链接统一通过 `buildFastGPTWebsiteUrl` 生成 `fastgpt.cn` / `fastgpt.io` 无前缀规范地址；`FastGPT` 主仓（`getDocPath`、默认系统配置、README、国际化文案）与 `fastgpt-home` 仓库内指向文档站的入口链接同步收敛为无前缀规范路由。
    - 在 `.github/workflows/build-docs.yml` 与 `.github/workflows/preview-docs-build.yml` 中注入 `DOCS_SITE_VARIANT` 构建参数，保持源文档跨站链接语义一致。
 
 ## 5. TODO 清单

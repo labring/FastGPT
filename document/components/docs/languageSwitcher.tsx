@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom';
 import { usePathname } from 'next/navigation';
 import { useI18n } from 'fumadocs-ui/contexts/i18n';
 import { X } from 'lucide-react';
-import { SwitcherDropdown } from '@/components/docs/switcherDropdown';
+import { cn } from '@/lib/cn';
 import {
   getProductionDocsUrl,
   isPreviewDocsSite,
@@ -27,11 +27,10 @@ type LanguageSwitcherProps = {
   menuClassName?: string;
 };
 
-/** Render crawlable locale switcher links and a client-only browser-language suggestion notice. */
+/** Render a visible crawlable alternate-locale link and a client-only browser-language suggestion notice. */
 export function LanguageSwitcher({
   className,
-  buttonClassName,
-  menuClassName
+  buttonClassName
 }: LanguageSwitcherProps) {
   const { locale, locales = [], onChange } = useI18n();
   const pathname = usePathname();
@@ -126,34 +125,51 @@ export function LanguageSwitcher({
     setSuggestedLocale(null);
   };
 
+  const alternateLocale: FastGPTDocsLocale = currentLocale === 'en' ? 'zh-CN' : 'en';
+  const alternateItem = locales.find((item) => item.locale === alternateLocale);
+  const alternateLabel =
+    alternateItem?.name ?? (alternateLocale === 'en' ? 'English' : '简体中文');
+  const alternateHref = buildOptionHref(alternateLocale);
   const suggestedHref =
     suggestedLocale !== null ? buildOptionHref(suggestedLocale) : undefined;
 
   return (
     <>
-      <SwitcherDropdown
-        className={className}
-        triggerClassName={buttonClassName}
-        contentClassName={menuClassName}
-        options={locales.map((item) => {
-          const targetLocale: FastGPTDocsLocale = item.locale === 'en' ? 'en' : 'zh-CN';
-          const href = buildOptionHref(targetLocale);
-
-          return {
-            key: item.locale,
-            label: item.name,
-            icon: (
-              <span className="text-base leading-none">{localeFlags[item.locale] ?? '🌐'}</span>
-            ),
-            href,
-            hrefLang: targetLocale,
-            lang: targetLocale,
-            external: false,
-            active: item.locale === locale,
-            onSelect: () => navigateToLocale(targetLocale, href)
-          };
-        })}
-      />
+      <a
+        href={alternateHref}
+        hrefLang={alternateLocale}
+        lang={alternateLocale}
+        data-language-switch={alternateLocale}
+        aria-label={alternateLocale === 'en' ? 'Switch to English' : '切换至中文文档'}
+        onClick={(event) => {
+          if (
+            event.button === 0 &&
+            !event.metaKey &&
+            !event.ctrlKey &&
+            !event.shiftKey &&
+            !event.altKey
+          ) {
+            event.preventDefault();
+            navigateToLocale(alternateLocale, alternateHref);
+          } else {
+            persistPreferredLocale(alternateLocale);
+            setSuggestedLocale(null);
+          }
+        }}
+        className={cn(
+          'inline-flex h-8 shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border border-fd-border bg-fd-background px-2.5 text-xs font-medium text-fd-foreground transition-colors hover:bg-fd-accent hover:text-fd-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fd-primary/30',
+          buttonClassName,
+          className
+        )}
+      >
+        <span
+          className="flex size-5 shrink-0 items-center justify-center text-base leading-none"
+          aria-hidden="true"
+        >
+          {localeFlags[alternateLocale] ?? '🌐'}
+        </span>
+        <span className="min-w-0 truncate">{alternateLabel}</span>
+      </a>
       {suggestedLocale !== null &&
         suggestedHref !== undefined &&
         typeof document !== 'undefined' &&
