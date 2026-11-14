@@ -1,4 +1,5 @@
 'use client';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import React, { useState } from 'react';
 import { Box, Flex, Grid, GridItem, HStack, Skeleton } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -64,6 +65,7 @@ const DataItem = ({ icon, title, count = 0, color, isLoading = false }: DataItem
 };
 
 export default function DashboardOverview(): JSX.Element {
+  const { t } = useSafeTranslation();
   const [currentTab, setCurrentTab] = useState<DashboardTab>('overview');
   const { data: userStats, loading: userStatsLoading } = useRequest(getUserStats, {
     manual: false
@@ -71,14 +73,14 @@ export default function DashboardOverview(): JSX.Element {
   const userItems = [
     {
       icon: 'support/user/userLight',
-      title: '用户总数',
+      title: t('admin:dashboard_users_count'),
       count: userStats?.usersCount,
       color: 'blue',
       isLoading: userStatsLoading
     },
     {
       icon: 'support/bill/payRecordLight',
-      title: '充值总额',
+      title: t('admin:dashboard_recharge_count'),
       count: userStats?.rechargeCount,
       color: 'purple',
       isLoading: userStatsLoading
@@ -89,35 +91,35 @@ export default function DashboardOverview(): JSX.Element {
   const appItems = [
     {
       icon: 'core/app/simpleBot',
-      title: '对话 Agent',
+      title: t('admin:dashboard_simple_app'),
       count: appStats?.simpleAppCount,
       color: 'teal',
       isLoading: appStatsLoading
     },
     {
       icon: 'core/app/type/workflowFill',
-      title: '工作流 Agent',
+      title: t('admin:dashboard_workflow_app'),
       count: appStats?.workflowCount,
       color: 'blue',
       isLoading: appStatsLoading
     },
     {
       icon: 'core/app/type/pluginFill',
-      title: '工作流工具',
+      title: t('admin:dashboard_workflow_tool'),
       count: appStats?.workflowToolCount,
       color: 'cyan',
       isLoading: appStatsLoading
     },
     {
       icon: 'core/app/type/httpPluginFill',
-      title: 'HTTP 工具',
+      title: t('admin:dashboard_http_tool'),
       count: appStats?.httpToolCount,
       color: 'orange',
       isLoading: appStatsLoading
     },
     {
       icon: 'core/app/type/mcpToolsFill',
-      title: 'MCP 工具',
+      title: t('admin:dashboard_mcp_tool'),
       count: appStats?.mcpToolCount,
       color: 'purple',
       isLoading: appStatsLoading
@@ -130,42 +132,42 @@ export default function DashboardOverview(): JSX.Element {
   const datasetItems = [
     {
       icon: 'core/dataset/commonDatasetColor',
-      title: '通用知识库',
+      title: t('admin:dashboard_common_dataset'),
       count: datasetStats?.commonDatasetCount,
       color: 'blue',
       isLoading: datasetStatsLoading
     },
     {
       icon: 'core/dataset/websiteDatasetColor',
-      title: 'Web 站点',
+      title: t('admin:dashboard_website_dataset'),
       count: datasetStats?.websiteDatasetCount,
       color: 'pink',
       isLoading: datasetStatsLoading
     },
     {
       icon: 'core/dataset/externalDatasetColor',
-      title: 'API知识库',
+      title: t('admin:dashboard_api_dataset'),
       count: datasetStats?.apiDatasetCount,
       color: 'orange',
       isLoading: datasetStatsLoading
     },
     {
       icon: 'core/dataset/yuqueDatasetColor',
-      title: '语雀知识库',
+      title: t('admin:dashboard_yuque_dataset'),
       count: datasetStats?.yuqueDatasetCount,
       color: 'green',
       isLoading: datasetStatsLoading
     },
     {
       icon: 'core/dataset/feishuDatasetColor',
-      title: '飞书知识库',
+      title: t('admin:dashboard_feishu_dataset'),
       count: datasetStats?.feishuDatasetCount,
       color: 'cyan',
       isLoading: datasetStatsLoading
     },
     {
       icon: 'core/dataset/datasetLight',
-      title: '索引总量',
+      title: t('admin:dashboard_total_index'),
       count: datasetStats?.totalIndexCount,
       color: 'purple',
       isLoading: datasetStatsLoading
@@ -193,7 +195,7 @@ export default function DashboardOverview(): JSX.Element {
           <Box>
             <Flex justify={'space-between'}>
               <Box fontSize={'lg'} fontWeight={'bold'}>
-                用户统计
+                {t('admin:dashboard_user_stats')}
               </Box>
             </Flex>
             <Grid mt={2} templateColumns={['1fr', 'repeat(3, 1fr)']} gap={6}>
@@ -209,7 +211,7 @@ export default function DashboardOverview(): JSX.Element {
           <Box mt={6}>
             <Flex justify={'space-between'}>
               <Box fontSize={'lg'} fontWeight={'bold'}>
-                应用统计
+                {t('admin:dashboard_app_stats')}
               </Box>
             </Flex>
             <Grid mt={2} templateColumns={['1fr', 'repeat(3, 1fr)']} gap={6}>
@@ -225,7 +227,7 @@ export default function DashboardOverview(): JSX.Element {
           <Box mt={6}>
             <Flex justify={'space-between'}>
               <Box fontSize={'lg'} fontWeight={'bold'}>
-                知识库统计
+                {t('admin:dashboard_dataset_stats')}
               </Box>
             </Flex>
             <Grid mt={2} templateColumns={['1fr', 'repeat(3, 1fr)']} gap={6}>

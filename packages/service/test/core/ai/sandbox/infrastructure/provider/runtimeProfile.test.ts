@@ -1,4 +1,8 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import {
+  getTestInstanceConfig,
+  createDefaultInstanceConfig
+} from '@test/utils/instanceConfigSnapshot';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const originalEnv = {
   AGENT_SANDBOX_PROVIDER: process.env.AGENT_SANDBOX_PROVIDER,
@@ -14,20 +18,33 @@ const loadSandboxRuntimeProfileModule = async () => {
 };
 
 describe('sandbox runtime profile', () => {
+  beforeEach(() => {
+    global.systemInstanceConfig = createDefaultInstanceConfig();
+  });
   afterEach(() => {
-    vi.stubEnv('AGENT_SANDBOX_PROVIDER', originalEnv.AGENT_SANDBOX_PROVIDER);
-    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_IMAGE', originalEnv.AGENT_SANDBOX_OPENSANDBOX_IMAGE);
-    vi.stubEnv(
-      'AGENT_SANDBOX_SEALOS_WORK_DIRECTORY',
-      originalEnv.AGENT_SANDBOX_SEALOS_WORK_DIRECTORY
-    );
-    vi.stubEnv('AGENT_SANDBOX_SEALOS_IMAGE', originalEnv.AGENT_SANDBOX_SEALOS_IMAGE);
-    vi.stubEnv('AGENT_SANDBOX_STORAGE_SIZE_GI', originalEnv.AGENT_SANDBOX_STORAGE_SIZE_GI);
+    getTestInstanceConfig().subservice.agentSandbox.provider =
+      originalEnv.AGENT_SANDBOX_PROVIDER ??
+      createDefaultInstanceConfig().subservice.agentSandbox.provider;
+    getTestInstanceConfig().subservice.agentSandbox.opensandbox.image =
+      originalEnv.AGENT_SANDBOX_OPENSANDBOX_IMAGE ??
+      createDefaultInstanceConfig().subservice.agentSandbox.opensandbox.image;
+    getTestInstanceConfig().subservice.agentSandbox.sealosdevbox.workDirectory =
+      originalEnv.AGENT_SANDBOX_SEALOS_WORK_DIRECTORY ??
+      createDefaultInstanceConfig().subservice.agentSandbox.sealosdevbox.workDirectory;
+    getTestInstanceConfig().subservice.agentSandbox.sealosdevbox.image =
+      originalEnv.AGENT_SANDBOX_SEALOS_IMAGE ??
+      createDefaultInstanceConfig().subservice.agentSandbox.sealosdevbox.image;
+    getTestInstanceConfig().subservice.agentSandbox.common.storageSizeGi =
+      originalEnv.AGENT_SANDBOX_STORAGE_SIZE_GI === undefined
+        ? createDefaultInstanceConfig().subservice.agentSandbox.common.storageSizeGi
+        : Number(originalEnv.AGENT_SANDBOX_STORAGE_SIZE_GI);
   });
 
   it('uses fixed /workspace as opensandbox work directory', async () => {
-    vi.stubEnv('AGENT_SANDBOX_PROVIDER', '');
-    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_IMAGE', 'registry.local:5000/runtime-image:stable');
+    getTestInstanceConfig().subservice.agentSandbox.provider = 'none';
+    getTestInstanceConfig().subservice.agentSandbox.opensandbox.image =
+      'registry.local:5000/runtime-image:stable' ??
+      createDefaultInstanceConfig().subservice.agentSandbox.opensandbox.image;
 
     const { getSandboxRuntimeProfile } = await loadSandboxRuntimeProfileModule();
     const runtimeProfile = getSandboxRuntimeProfile('opensandbox');
@@ -45,8 +62,10 @@ describe('sandbox runtime profile', () => {
   });
 
   it('preserves an explicit opensandbox ready timeout', async () => {
-    vi.stubEnv('AGENT_SANDBOX_PROVIDER', '');
-    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_IMAGE', 'runtime/fastgpt:stable');
+    getTestInstanceConfig().subservice.agentSandbox.provider = 'none';
+    getTestInstanceConfig().subservice.agentSandbox.opensandbox.image =
+      'runtime/fastgpt:stable' ??
+      createDefaultInstanceConfig().subservice.agentSandbox.opensandbox.image;
 
     const { getSandboxRuntimeProfile } = await loadSandboxRuntimeProfileModule();
     const runtimeProfile = getSandboxRuntimeProfile('opensandbox');
@@ -60,8 +79,10 @@ describe('sandbox runtime profile', () => {
   });
 
   it('uses devbox defaults for sealosdevbox provider', async () => {
-    vi.stubEnv('AGENT_SANDBOX_PROVIDER', '');
-    vi.stubEnv('AGENT_SANDBOX_SEALOS_IMAGE', 'runtime/fastgpt:stable');
+    getTestInstanceConfig().subservice.agentSandbox.provider = 'none';
+    getTestInstanceConfig().subservice.agentSandbox.sealosdevbox.image =
+      'runtime/fastgpt:stable' ??
+      createDefaultInstanceConfig().subservice.agentSandbox.sealosdevbox.image;
 
     const { getSandboxRuntimeProfile } = await loadSandboxRuntimeProfileModule();
     const runtimeProfile = getSandboxRuntimeProfile('sealosdevbox');
@@ -79,10 +100,14 @@ describe('sandbox runtime profile', () => {
   });
 
   it('uses sealos work directory from env', async () => {
-    vi.stubEnv('AGENT_SANDBOX_PROVIDER', '');
-    vi.stubEnv('AGENT_SANDBOX_SEALOS_WORK_DIRECTORY', '/custom/devbox/workspace');
-    vi.stubEnv('AGENT_SANDBOX_SEALOS_IMAGE', 'runtime/fastgpt:stable');
-    vi.stubEnv('AGENT_SANDBOX_STORAGE_SIZE_GI', '1');
+    getTestInstanceConfig().subservice.agentSandbox.provider = 'none';
+    getTestInstanceConfig().subservice.agentSandbox.sealosdevbox.workDirectory =
+      '/custom/devbox/workspace' ??
+      createDefaultInstanceConfig().subservice.agentSandbox.sealosdevbox.workDirectory;
+    getTestInstanceConfig().subservice.agentSandbox.sealosdevbox.image =
+      'runtime/fastgpt:stable' ??
+      createDefaultInstanceConfig().subservice.agentSandbox.sealosdevbox.image;
+    getTestInstanceConfig().subservice.agentSandbox.common.storageSizeGi = 1;
 
     const { getSandboxRuntimeProfile } = await loadSandboxRuntimeProfileModule();
 
@@ -94,9 +119,13 @@ describe('sandbox runtime profile', () => {
   });
 
   it('builds provider-specific create config through runtime profile', async () => {
-    vi.stubEnv('AGENT_SANDBOX_PROVIDER', '');
-    vi.stubEnv('AGENT_SANDBOX_SEALOS_WORK_DIRECTORY', '/custom/devbox/workspace');
-    vi.stubEnv('AGENT_SANDBOX_SEALOS_IMAGE', 'runtime/fastgpt:stable');
+    getTestInstanceConfig().subservice.agentSandbox.provider = 'none';
+    getTestInstanceConfig().subservice.agentSandbox.sealosdevbox.workDirectory =
+      '/custom/devbox/workspace' ??
+      createDefaultInstanceConfig().subservice.agentSandbox.sealosdevbox.workDirectory;
+    getTestInstanceConfig().subservice.agentSandbox.sealosdevbox.image =
+      'runtime/fastgpt:stable' ??
+      createDefaultInstanceConfig().subservice.agentSandbox.sealosdevbox.image;
 
     const { getSandboxRuntimeProfile } = await loadSandboxRuntimeProfileModule();
     const { buildBaseSandboxRuntimeEnv } =

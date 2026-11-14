@@ -8,7 +8,8 @@ import { AppTypeList, ToolTypeList, AppFolderTypeList } from '@fastgpt/global/co
 import { countEffectiveTeamMembers } from '../user/team/controller';
 import { getVectorCountByTeamId } from '../../common/vectorDB/controller';
 import { ReadPreference } from '../../common/mongo';
-import { serviceEnv } from '../../env';
+import { getSystemInstanceConfig } from '../../common/system/systemInstanceConfig/runtime';
+import { logInstanceConfigRead } from '../../common/system/migrationCoverageLog';
 
 export const checkTeamAIPoints = async (teamId: string) => {
   if (!global.subPlans?.standard) return;
@@ -51,7 +52,12 @@ export const checkTeamDatasetFolderLimit = async ({
     teamId,
     type: DatasetTypeEnum.folder
   });
-  if (folderCount + amount > serviceEnv.DATASET_FOLDER_MAX_AMOUNT) {
+  const maxDatasetFolderAmount = getSystemInstanceConfig().resource.datasetFolderMaxAmount;
+  logInstanceConfigRead({
+    callsite: 'runtime.support.permission.teamLimit.checkTeamDatasetFolderLimit',
+    fields: [{ path: 'resource.datasetFolderMaxAmount', value: maxDatasetFolderAmount }]
+  });
+  if (folderCount + amount > maxDatasetFolderAmount) {
     return Promise.reject(TeamErrEnum.datasetFolderAmountNotEnough);
   }
 };
@@ -110,7 +116,11 @@ export const checkTeamAppTypeLimit = async ({
         $in: AppFolderTypeList
       }
     });
-    const maxAppFolderAmount = serviceEnv.APP_FOLDER_MAX_AMOUNT;
+    const maxAppFolderAmount = getSystemInstanceConfig().resource.appFolderMaxAmount;
+    logInstanceConfigRead({
+      callsite: 'runtime.support.permission.teamLimit.checkTeamAppTypeLimit',
+      fields: [{ path: 'resource.appFolderMaxAmount', value: maxAppFolderAmount }]
+    });
     if (folderCount + amount > maxAppFolderAmount) {
       return Promise.reject(TeamErrEnum.appFolderAmountNotEnough);
     }

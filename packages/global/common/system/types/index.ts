@@ -58,9 +58,9 @@ export type FastGPTTeamModeType = z.infer<typeof FastGPTTeamModeSchema>;
 
 export const FastGPTFeConfigsSchema = z.looseObject({
   /**
-   * 能力投影，不是第二个服务端开关：唯一真相是 `DATASET_SYNONYM_ENABLED`（serviceEnv），
-   * 服务端逻辑直接读取 `serviceEnv.DATASET_SYNONYM_ENABLED`。该字段由宿主初始化时从同一变量
-   * 派生后供前端读取（本仓库在 `initSystemConfig()` 中派生；agent-builder 由 backend 注入），
+   * 能力投影，不是第二个服务端开关：服务端唯一真相是实例配置 `feature.datasetSynonymEnabled`，
+   * `DATASET_SYNONYM_ENABLED` 只在迁移时作为初始值。该字段由宿主初始化时从同一配置派生后供前端读取
+   * （本仓库在 `initSystemConfig()` 中派生；agent-builder 由 backend 注入），
    * 用于决定编辑器是否提供带 `{{synonymMappings}}` 的引用模板。
    * 必须声明：`getInitData` 用 `.strip()` 的客户端 Schema 收口，未声明字段会被丢弃。
    */
@@ -68,6 +68,7 @@ export const FastGPTFeConfigsSchema = z.looseObject({
     .boolean()
     .optional()
     .meta({ description: '检索服务是否启用同义词映射能力' }),
+  codeSandboxEnabled: z.boolean().optional().meta({ description: '代码沙箱已启用且连接配置完整' }),
   show_workorder: z.boolean().optional().meta({ description: '是否展示工单入口' }),
   isPlus: z
     .boolean()
@@ -83,6 +84,9 @@ export const FastGPTFeConfigsSchema = z.looseObject({
     .meta({ description: '是否隐藏对话版权自定义设置' }),
   register_method: z.array(FastGPTRegisterMethodCompatSchema).optional().meta({
     description: '用户自助注册方式列表（支持邮箱、手机号，兼容历史 sync 配置）'
+  }),
+  enableSaasAdminConfig: z.boolean().optional().meta({
+    description: '是否在管理端展示 SaaS 专用配置项，默认为 false（私有化部署隐藏）'
   }),
   teamMode: FastGPTTeamModeSchema.optional().meta({
     description: '团队模式（单团队/多团队/账号同步）'
@@ -100,13 +104,12 @@ export const FastGPTFeConfigsSchema = z.looseObject({
     .optional()
     .meta({ description: '绑定通知联系方式列表' }),
   mcpServerProxyEndpoint: z.string().optional().meta({
-    description: 'MCP SSE 代理地址，运行时配置以环境变量 SSE_MCP_SERVER_PROXY_ENDPOINT 为准'
+    description: 'MCP SSE 代理地址，运行时以子服务配置 mcp.sseProxyUrl 为准'
   }),
 
   chineseRedirectUrl: z.string().optional().meta({ description: '中国大陆地区访问重定向跳转地址' }),
   botIframeUrl: z.string().optional().meta({ description: '嵌入式对话助手 iframe 页面地址' }),
 
-  show_appStore: z.boolean().optional().meta({ description: '是否展示应用市场' }),
   show_git: z.boolean().optional().meta({ description: '是否展示 GitHub 仓库入口及 Star 信息' }),
   show_pay: z.boolean().optional().meta({ description: '是否展示在线充值/支付相关入口' }),
   show_openai_account: z
@@ -123,7 +126,7 @@ export const FastGPTFeConfigsSchema = z.looseObject({
   showWecomConfig: z.boolean().optional().meta({ description: '是否展示企业微信集成配置' }),
   login2faEnabled: z.boolean().optional().meta({
     description:
-      '登录二次验证开关；由 Pro 的 LOGIN_2FA_ENABLED 下发，主服务据此决定是否要求二次验证'
+      '登录二次验证展示兼容字段；实际登录策略由主服务实时向 Pro 读取 LOGIN_2FA_ENABLED，不读取此值'
   }),
   wecomLoginAutoRedirect: z
     .boolean()
@@ -200,9 +203,6 @@ export const FastGPTFeConfigsSchema = z.looseObject({
     .boolean()
     .optional()
     .meta({ description: '是否开启 Agent 代码沙箱执行环境' }),
-  show_workflow_builder: BoolSchema.optional().meta({
-    description: '是否展示工作流 AI 辅助构建入口'
-  }),
   show_agent_sandbox_free_tip: z
     .boolean()
     .optional()
@@ -218,7 +218,6 @@ export const FastGPTFeConfigsSchema = z.looseObject({
     .boolean()
     .optional()
     .meta({ description: '是否开启数据集增强处理能力（如文本清洗、改写）' }),
-  show_batch_eval: z.boolean().optional().meta({ description: '是否开启批量评测模块' }),
 
   concatMd: z
     .string()
@@ -237,6 +236,7 @@ export const FastGPTFeConfigsSchema = z.looseObject({
     .meta({ description: '分享免登对话页面的自定义独立域名' }),
 
   systemTitle: z.string().optional().meta({ description: '系统平台标题名称' }),
+  systemDescription: z.string().optional().meta({ description: '页面 Meta 描述' }),
   scripts: z
     .array(z.record(z.string(), z.string()))
     .optional()
@@ -248,14 +248,14 @@ export const FastGPTFeConfigsSchema = z.looseObject({
       icon: z.string().optional().meta({ description: 'SSO 登录方式图标' }),
       title: z.string().optional().meta({ description: 'SSO 登录按钮显示标题' }),
       enabled: BoolSchema.optional().meta({
-        description: '是否接入 SSO，由服务端根据 systemEnv.sso.url 派生，不作为后端鉴权依据'
+        description: '是否接入 SSO，由 Pro 部署配置派生，不作为后端鉴权依据'
       }),
       autoLogin: z
         .boolean()
         .optional()
         .meta({ description: '是否在首次进入页面时自动跳转 SSO 登录' }),
       disablePasswordForSsoUsers: z.boolean().optional().meta({
-        description: '是否禁止 SSO 账号使用平台密码登录与改密；仅在配置了 systemEnv.sso.url 时生效'
+        description: '是否禁止 SSO 账号使用平台密码登录与改密；仅在 Pro 接入 SSO 时生效'
       })
     })
     .optional()
@@ -268,8 +268,7 @@ export const FastGPTFeConfigsSchema = z.looseObject({
       microsoft: z
         .object({
           clientId: z.string().optional().meta({ description: '微软 Azure AD Client ID' }),
-          tenantId: z.string().optional().meta({ description: '微软 Azure AD 租户 ID' }),
-          customButton: z.string().optional().meta({ description: '微软登录自定义按钮文案' })
+          tenantId: z.string().optional().meta({ description: '微软 Azure AD 租户 ID' })
         })
         .optional()
         .meta({ description: '微软登录配置' }),
@@ -338,13 +337,7 @@ export const FastGPTFeConfigsSchema = z.looseObject({
         .meta({ description: '不同云厂商 DNS 绑定域名配置' })
     })
     .optional()
-    .meta({ description: '自定义独立域名绑定与 SSL 证书配置' }),
-
-  // tmp
-  agentSandboxFree: z
-    .boolean()
-    .optional()
-    .meta({ description: 'Agent 代码沙箱环境是否处于免费体验期' })
+    .meta({ description: '自定义独立域名绑定与 SSL 证书配置' })
 });
 export type FastGPTFeConfigsType = z.infer<typeof FastGPTFeConfigsSchema>;
 
@@ -374,13 +367,6 @@ export const CustomDomainSchema = z.looseObject({
       volcengine: z.string().optional()
     })
     .optional(),
-  domain: z
-    .looseObject({
-      aliyun: z.string().optional(),
-      tencent: z.string().optional(),
-      volcengine: z.string().optional()
-    })
-    .optional(),
   issuerServiceName: z
     .looseObject({
       aliyun: z.string().optional(),
@@ -399,16 +385,27 @@ export const CustomDomainSchema = z.looseObject({
 export type customDomainType = z.infer<typeof CustomDomainSchema>;
 
 export const SystemEnvSchema = z.looseObject({
-  agentSandboxMax: optionalNullToUndefined(IntSchema.min(1)).meta({
+  // 0 表示禁止新实例激活；空字符串不能因数字强制转换变成 0 而意外禁用。
+  agentSandboxMax: optionalNullToUndefined(
+    z.preprocess(
+      (value) => (typeof value === 'string' && !value.trim() ? NaN : value),
+      IntSchema.min(0)
+    )
+  ).meta({
     description:
-      'Agent 沙箱活跃实例系统总上限，须为正整数（app 会话与技能编辑共用计数池）；未配置时使用环境变量',
+      'Agent 沙箱活跃实例系统总上限，须为非负整数；0 表示禁止新实例激活，已活跃实例可继续使用',
     example: 100
   }),
-  agentSandboxMaxPerTeam: optionalNullToUndefined(IntSchema.min(1)).meta({
-    description:
-      '单团队 Agent 沙箱活跃实例配额，须为正整数；未配置时使用环境变量，环境变量未配置时不限制',
-    example: 10
-  }),
+  // null 是显式"不限量"，必须与"未配置"区分：未配置时回落环境变量，
+  // 显式 null 不能再被环境变量重新加回限制。
+  agentSandboxMaxPerTeam: z
+    .union([IntSchema.min(1), z.null()])
+    .optional()
+    .meta({
+      description:
+        '单团队 Agent 沙箱活跃实例配额，须为正整数；null 表示显式不限制，未配置时使用环境变量',
+      example: 10
+    }),
   openapiPrefix: z.string().optional(),
 
   datasetParseMaxProcess: NumSchema.default(10).meta({
@@ -434,11 +431,14 @@ export const SystemEnvSchema = z.looseObject({
     })
     .optional()
     .meta({ description: 'SSO 服务端连接配置，不向普通客户端下发' }),
+  checkExternalFile: z
+    .boolean()
+    .optional()
+    .meta({ description: '是否对外部输入文件应用域名白名单，不向客户端下发' }),
   fileUrlWhitelist: z
     .array(z.string())
     .optional()
     .meta({ description: '后端外部文件 URL 域名白名单，不向客户端下发' }),
-  ip_whitelist: z.string().optional().meta({ description: '历史 IP 白名单，仅保存在服务端配置中' }),
   customDomain: CustomDomainSchema.optional(),
   workflowHttpNode: z
     .looseObject({

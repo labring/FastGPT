@@ -1,11 +1,12 @@
 /** 运行态 client 只管理连接复用、工作目录和命令执行；生命周期交由 runtime/service。 */
 import { isAppSandboxSourceType } from '@fastgpt/global/common/chat/source';
 import { getErrText } from '@fastgpt/global/common/error/utils';
+import { agentSandboxProviderList } from '@fastgpt/global/core/ai/sandbox/constants';
 import { getLogger, LogCategories } from '../../../../../common/logger';
 import type { ExecuteResult, ISandbox } from '@fastgpt-sdk/sandbox-adapter';
 import { deleteSandboxResource, stopSandboxResource } from '../resource';
 import { existsSandboxInstanceBySandboxId } from '../../infrastructure/instance/repository';
-import { getConfiguredSandboxProvider } from '../../infrastructure/provider/config';
+import { getAgentSandboxProvider } from '../../config';
 import { getSandboxRuntimeProfile } from '../../infrastructure/provider/runtimeProfile';
 import { getSandboxRuntimePaths, resolveSandboxRuntimePath } from '../../utils';
 import type { SandboxProviderType } from '../../type';
@@ -164,13 +165,29 @@ export class SandboxClient {
   }
 }
 
-/** 只读本地实例记录，不触发远端创建或归档恢复。 */
+/** 只读本地实例记录；关闭沙盒时保留历史实例的存在状态，不触发远端创建或恢复。 */
 export async function checkSandboxRuntimeInstanceExists(
   props: Pick<SandboxClientQuery, 'sandboxId'>,
   opts: { providerName?: SandboxProviderType } = {}
 ) {
+  const provider = opts.providerName ?? getAgentSandboxProvider();
+  if (provider === 'none') {
+    // 各 provider 分别使用 (provider, sandboxId) 索引，避免因关闭功能丢失历史实例状态。
+    for (const historicalProvider of agentSandboxProviderList) {
+      if (
+        await existsSandboxInstanceBySandboxId({
+          provider: historicalProvider,
+          sandboxId: props.sandboxId
+        })
+      ) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   return existsSandboxInstanceBySandboxId({
-    provider: opts.providerName ?? getConfiguredSandboxProvider(),
+    provider,
     sandboxId: props.sandboxId
   });
 }

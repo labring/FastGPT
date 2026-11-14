@@ -1,4 +1,5 @@
 import OpenAI from '@fastgpt/global/core/ai';
+import { stripUrlTrailingSlash } from '@fastgpt/global/common/string/url';
 import { type OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
 import type { AIModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import { isSystemModel, isTeamModel } from '@fastgpt/global/core/ai/model/utils';
@@ -13,12 +14,36 @@ import {
   hasLegacyRequestUrl
 } from './legacy/requestUrl';
 
-const aiProxyBaseUrl = serviceEnv.AIPROXY_API_ENDPOINT
-  ? `${serviceEnv.AIPROXY_API_ENDPOINT}/v1`
-  : undefined;
-export const openaiBaseUrl = aiProxyBaseUrl || 'https://api.openai.com/v1';
-export const openaiBaseKey = serviceEnv.AIPROXY_API_TOKEN || '';
+/**
+ * AI Proxy 请求基地址（`${endpoint}/v1`），地址和 Token 都由 ENV 提供。
+ *
+ * 地址与 Token 都由 ENV 提供；这里仍需保留两个归一化约定：
+ *  - 去尾部斜杠：避免 `http://x/` 与 `/v1` 拼成 `http://x//v1`；
+ *  - token 去首尾空白：避免粘贴 Key 时带入换行/空格导致鉴权静默失败。
+ *  - 地址与 token 缺一不可，未配置时回落到 OpenAI 官方地址。
+ */
+export const getAiProxyBaseUrl = () => {
+  const normalizedEndpoint = stripUrlTrailingSlash(serviceEnv.AIPROXY_API_ENDPOINT ?? '');
+  return normalizedEndpoint && serviceEnv.AIPROXY_API_TOKEN?.trim()
+    ? `${normalizedEndpoint}/v1`
+    : undefined;
+};
+
+export const getOpenaiBaseUrl = () => {
+  return getAiProxyBaseUrl() || 'https://api.openai.com/v1';
+};
+export const getOpenaiBaseKey = () => {
+  // 地址与凭据必须绑定同一连接配置：禁用或缺少有效代理地址时请求会回落到
+  // api.openai.com，此时绝不能携带保留的私有代理 token。
+  if (!getAiProxyBaseUrl()) return '';
+  return serviceEnv.AIPROXY_API_TOKEN?.trim() ?? '';
+};
 export const defaultUserOpenAIBaseUrl = 'https://api.openai.com/v1';
+
+/** @deprecated 使用 getOpenaiBaseUrl() 读取 ENV */
+export const openaiBaseUrl = 'https://api.openai.com/v1';
+/** @deprecated 使用 getOpenaiBaseKey() 读取 ENV */
+export const openaiBaseKey = '';
 
 export type AIApiRequestMeta = {
   usedUserOpenAIKey: boolean;
@@ -46,8 +71,8 @@ export const getAIApi = (props?: {
   const legacyEndpoint = userOpenAIAccount ? undefined : getLegacyModelEndpoint(model);
   const guardedLegacyEndpoint = legacyEndpoint && isTeamModel(model) ? legacyEndpoint : undefined;
 
-  const baseUrl = userOpenAIAccount?.baseUrl || openaiBaseUrl;
-  const apiKey = userOpenAIAccount?.key || openaiBaseKey;
+  const baseUrl = userOpenAIAccount?.baseUrl || getOpenaiBaseUrl();
+  const apiKey = userOpenAIAccount?.key || getOpenaiBaseKey();
 
   const defaultHeaders =
     model && !guardedLegacyEndpoint ? getAiproxyScopeHeaders(model, baseUrl) : undefined;
@@ -73,8 +98,8 @@ export const getAxiosConfig = (props?: { userKey?: OpenaiAccountType }) => {
   const { userKey } = props || {};
   const userOpenAIAccount = getUserOpenAIAccount(userKey);
 
-  const baseUrl = userOpenAIAccount?.baseUrl || openaiBaseUrl;
-  const apiKey = userOpenAIAccount?.key || openaiBaseKey;
+  const baseUrl = userOpenAIAccount?.baseUrl || getOpenaiBaseUrl();
+  const apiKey = userOpenAIAccount?.key || getOpenaiBaseKey();
 
   return {
     baseUrl,
@@ -95,6 +120,7 @@ export const getAiproxyScopeHeaders = (
   modelData: AiproxyScopeModelInput,
   baseUrl: string | undefined
 ): Record<string, string> => {
+  const aiProxyBaseUrl = getAiProxyBaseUrl();
   if (!baseUrl || baseUrl !== aiProxyBaseUrl || !modelData || hasLegacyRequestUrl(modelData)) {
     return {};
   }

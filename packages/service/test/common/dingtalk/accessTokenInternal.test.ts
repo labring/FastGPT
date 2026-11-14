@@ -1,6 +1,14 @@
+import {
+  getTestInstanceConfig,
+  createDefaultInstanceConfig
+} from '@test/utils/instanceConfigSnapshot';
 import http from 'http';
 import os from 'os';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+
+// 注意：getSystemInstanceConfig 只在模块首次调用时读 global.systemInstanceConfig，
+// vi.resetModules 会重置 controller 模块缓存，因此每次动态 import 都会重新采纳该种子。
+(global as any).systemInstanceConfig = createDefaultInstanceConfig();
 
 const { mockGetOrRefresh } = vi.hoisted(() => ({ mockGetOrRefresh: vi.fn() }));
 
@@ -37,8 +45,10 @@ describe('getDingtalkAppAccessToken 访问内网钉钉代理', () => {
         process.env[key] = value;
       }
     });
-    vi.stubEnv('DINGTALK_BASE_URL', originalBaseUrl ?? '');
-    vi.stubEnv('CHECK_INTERNAL_IP', originalCheckInternalIp ?? '');
+    getTestInstanceConfig().providers.dataSource.dingtalkBaseUrl =
+      originalBaseUrl ?? '' ?? createDefaultInstanceConfig().providers.dataSource.dingtalkBaseUrl;
+    getTestInstanceConfig().security.checkInternalIp =
+      ((originalCheckInternalIp ?? '' === 'true') || originalCheckInternalIp) ?? '' === '1';
     vi.unstubAllEnvs();
     vi.resetModules();
   });
@@ -70,8 +80,10 @@ describe('getDingtalkAppAccessToken 访问内网钉钉代理', () => {
 
     try {
       // serviceEnv 在模块加载时解析 process.env，必须先 stub 再导入，无法使用静态 import。
-      vi.stubEnv('DINGTALK_BASE_URL', `http://${privateHost}:${address.port}`);
-      vi.stubEnv('CHECK_INTERNAL_IP', 'true');
+      getTestInstanceConfig().providers.dataSource.dingtalkBaseUrl =
+        `http://${privateHost}:${address.port}` ??
+        createDefaultInstanceConfig().providers.dataSource.dingtalkBaseUrl;
+      getTestInstanceConfig().security.checkInternalIp = true;
       vi.resetModules();
       const { getDingtalkAppAccessToken } =
         await import('@fastgpt/service/common/dingtalk/accessToken');

@@ -85,4 +85,11 @@ describe('plugin debug channel enable handler', () => {
       updatedAt: 1_781_500_000_000
     });
   });
+
+  it('keeps commercial authorization mandatory', async () => {
+    global.feConfigs.isPlus = false;
+    const result = await Call(handler, { body: {} });
+    expect(result.error).toBe('commercialFeature');
+    expect(mocks.pluginClient.createDebugSession).not.toHaveBeenCalled();
+  });
 });

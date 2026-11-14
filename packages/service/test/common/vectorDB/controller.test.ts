@@ -140,6 +140,7 @@ describe('VectorDB Controller', () => {
       datasetIds: ['dataset'],
       vector: [0.1],
       limit: 100,
+      hnswEfSearch: 200,
       forbidCollectionIdList: []
     };
 
@@ -248,6 +249,7 @@ describe('VectorDB Controller', () => {
           datasetIds: ['dataset'],
           vector: [0.1],
           limit: 100,
+          hnswEfSearch: 200,
           forbidCollectionIdList: []
         })
       ).rejects.toBe(error);
@@ -263,6 +265,7 @@ describe('VectorDB Controller', () => {
           datasetIds: ['dataset'],
           vector: [0.1],
           limit: 100,
+          hnswEfSearch: 200,
           forbidCollectionIdList: []
         })
       ).resolves.toHaveProperty('results');
@@ -275,6 +278,7 @@ describe('VectorDB Controller', () => {
         datasetIds: ['dataset_1', 'dataset_2'],
         vector: [0.1, 0.2, 0.3],
         limit: 10,
+        hnswEfSearch: 200,
         forbidCollectionIdList: ['col_forbidden']
       };
 
@@ -295,6 +299,7 @@ describe('VectorDB Controller', () => {
         datasetIds: ['dataset_1'],
         vector: [0.1, 0.2],
         limit: 5,
+        hnswEfSearch: 200,
         forbidCollectionIdList: [],
         filterCollectionIdList: ['col_1', 'col_2']
       };
@@ -407,6 +412,25 @@ describe('VectorDB Controller', () => {
   });
 
   describe('getVectorCount', () => {
+    it('keeps startup count notifications available to independently loaded route modules', async () => {
+      const onDatasetCounted = vi.fn(async () => {});
+      await initVectorStore({ onDatasetCounted });
+
+      // Next 的 instrumentation 和 API bundle 分别加载模块，但必须使用同一进程级回调。
+      vi.resetModules();
+      const routeController = await import('@fastgpt/service/common/vectorDB/controller');
+      await expect(
+        routeController.getVectorCount({ teamId: 'team', datasetId: 'dataset' })
+      ).resolves.toBe(50);
+      await vi.waitFor(() =>
+        expect(onDatasetCounted).toHaveBeenCalledExactlyOnceWith({
+          teamId: 'team',
+          datasetId: 'dataset',
+          rows: 50
+        })
+      );
+    });
+
     it('notifies fresh dataset counts once, excluding cache hits, team and collection totals', async () => {
       const onDatasetCounted = vi.fn(async () => {});
       await initVectorStore({ onDatasetCounted });

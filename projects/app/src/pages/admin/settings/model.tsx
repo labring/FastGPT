@@ -1,13 +1,13 @@
-'use client';
-import AdminContainer from '@/pageComponents/admin/AdminContainer';
-import ModelSettings from '@/pageComponents/admin/config/model';
+import type { GetServerSideProps } from 'next';
 
-const AdminPage = () => {
-  return (
-    <AdminContainer>
-      <ModelSettings />
-    </AdminContainer>
-  );
-};
+/** 旧模型配置页已由系统模型和安全管理页面接管，保留路由重定向避免旧书签 404。 */
+export const getServerSideProps: GetServerSideProps = async () => ({
+  redirect: {
+    destination: '/admin/resources/model',
+    permanent: false
+  }
+});
 
-export default AdminPage;
+export default function LegacyModelSettingsRedirect() {
+  return null;
+}

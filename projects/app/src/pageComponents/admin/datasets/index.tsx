@@ -1,4 +1,5 @@
 'use client';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import React, { useRef, useState } from 'react';
 import { Table, Thead, Tbody, Tr, Th, Td, Flex, Box, HStack, Button } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -13,6 +14,7 @@ import { accountTitleTextStyles } from '@/pageComponents/account/styles';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 
 const DatasetTable = () => {
+  const { t } = useSafeTranslation();
   const [appDetail, setAppDetail] = useState();
   const router = useRouter();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -44,7 +46,7 @@ const DatasetTable = () => {
         borderColor={'myGray.200'}
       >
         <Box as={'h1'} {...accountTitleTextStyles}>
-          用户知识库
+          {t('admin:user_datasets')}
         </Box>
         <Box flexGrow={1}></Box>
       </Flex>
@@ -68,11 +70,11 @@ const DatasetTable = () => {
           <Table minW={'1100px'}>
             <Thead>
               <Tr>
-                <Th>知识库名</Th>
-                <Th>创建者</Th>
-                <Th>介绍</Th>
-                <Th>数据量</Th>
-                <Th>向量总数</Th>
+                <Th>{t('admin:dataset_name_2')}</Th>
+                <Th>{t('admin:creator')}</Th>
+                <Th>{t('admin:description')}</Th>
+                <Th>{t('admin:data_count')}</Th>
+                <Th>{t('admin:total_vectors')}</Th>
                 <Th></Th>
               </Tr>
             </Thead>
@@ -98,7 +100,7 @@ const DatasetTable = () => {
                         size={'sm'}
                         onClick={() => routeToDataset(item.id)}
                       >
-                        跳转
+                        {t('admin:open')}
                       </Button>
                     </HStack>
                   </Td>
@@ -115,7 +117,7 @@ const DatasetTable = () => {
             >
               <MyIcon name="empty" w={'48px'} h={'48px'} color={'transparent'} />
               <Box mt={2} color={'myGray.500'}>
-                无应用记录～
+                {t('admin:no_datasets')}
               </Box>
             </Flex>
           )}
@@ -130,22 +132,23 @@ const DatasetTable = () => {
 export default DatasetTable;
 
 function AppDetailModal({ app, onClose }: { app: any; onClose: () => void }) {
+  const { t } = useSafeTranslation();
   return (
     <MyModal isOpen={true} onClose={onClose} title={'应用详情'} maxW={['90vw', '700px']}>
       <Flex alignItems={'center'} pb={4}>
-        <Box flex={'0 0 120px'}>应用id:</Box>
+        <Box flex={'0 0 120px'}>{t('admin:app_id_3')}</Box>
         <Box>{app.id}</Box>
       </Flex>
       <Flex alignItems={'center'} pb={4}>
-        <Box flex={'0 0 120px'}>应用名:</Box>
+        <Box flex={'0 0 120px'}>{t('admin:app_name_3')}</Box>
         <Box>{app.name}</Box>
       </Flex>
       <Flex alignItems={'center'} pb={4}>
-        <Box flex={'0 0 120px'}>介绍:</Box>
+        <Box flex={'0 0 120px'}>{t('admin:description_2')}</Box>
         <Box>{app.intro}</Box>
       </Flex>
       <Flex alignItems={'center'} pb={4}>
-        <Box flex={'0 0 120px'}>收藏数:</Box>
+        <Box flex={'0 0 120px'}>{t('admin:favorites')}</Box>
         <Box>{app['share.collection']}</Box>
       </Flex>
     </MyModal>

@@ -15,6 +15,7 @@ import {
   isChatEntryModerationError
 } from '@fastgpt/global/core/chat/error';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
+import { S3ErrEnum } from '@fastgpt/global/common/error/code/s3';
 import {
   MODERATION_BLOCKED_ERROR_MESSAGE,
   MODERATION_ERROR_BLOCKED_MESSAGE
@@ -299,6 +300,44 @@ describe('jsonRes HTTP status mapping', () => {
         errorType: 'UserError'
       })
     );
+  });
+
+  it.each([
+    [S3ErrEnum.invalidUploadFileType, 510000],
+    [S3ErrEnum.uploadFileTypeMismatch, 510001],
+    [S3ErrEnum.fileUploadDisabled, 510002],
+    [S3ErrEnum.emptyUploadFile, 510003]
+  ] as const)('returns HTTP 400 for registered upload validation error %s', (errorKey, code) => {
+    const res = createResponse();
+
+    // 上传代理已经将这些错误分类为 400，JSON 包装不能再覆盖成默认 500。
+    jsonRes(res, { code: 400, error: new Error(errorKey) });
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ code, statusText: errorKey }));
+  });
+
+  it('keeps an explicitly configured server status for an S3 business error', () => {
+    const entry = ERROR_RESPONSE[S3ErrEnum.uploadFileTypeMismatch];
+    const original = entry.httpStatus;
+    const res = createResponse();
+
+    try {
+      entry.httpStatus = 503;
+      jsonRes(res, { code: 400, error: new Error(S3ErrEnum.uploadFileTypeMismatch) });
+      expect(res.status).toHaveBeenCalledWith(503);
+    } finally {
+      if (original === undefined) delete entry.httpStatus;
+      else entry.httpStatus = original;
+    }
+  });
+
+  it('keeps unregistered internal errors at HTTP 500 even with an S3-range fallback code', () => {
+    const res = createResponse();
+
+    jsonRes(res, { code: 510001, error: new Error('Unexpected storage failure') });
+
+    expect(res.status).toHaveBeenCalledWith(500);
   });
 
   it.each(['httpStatus', 'statusCode'] as const)(

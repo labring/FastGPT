@@ -12,7 +12,7 @@ vi.mock('@fastgpt/service/common/vectorDB/oceanbase/controller', () => ({
 
 describe.each(['oceanbase', 'seekdb'] as const)('ObVectorCtrl (%s)', (type) => {
   beforeEach(() => {
-    global.systemEnv = {} as any;
+    global.systemEnv = { ...global.systemEnv, hnswEfSearch: 9999 };
     query.mockReset().mockResolvedValue([{ affectedRows: 0 }]);
   });
 
@@ -21,18 +21,18 @@ describe.each(['oceanbase', 'seekdb'] as const)('ObVectorCtrl (%s)', (type) => {
     expect(query).toHaveBeenCalledWith(expect.stringContaining('m=32, ef_construction=256'));
   });
 
-  it.each([undefined, 100])('applies search width %j', async (configured) => {
-    if (configured !== undefined) global.systemEnv.hnswEfSearch = configured;
+  it.each([200, 100])('applies the supplied search width %j', async (hnswEfSearch) => {
     query.mockResolvedValue([[{}, {}, []]]);
     await new ObVectorCtrl({ type }).embRecall({
       teamId: 'team',
       datasetIds: ['dataset'],
       vector: [0.1, 0.2],
       limit: 100,
+      hnswEfSearch,
       forbidCollectionIdList: []
     });
     expect(query).toHaveBeenCalledWith(
-      expect.stringContaining(`SET ob_hnsw_ef_search = ${configured ?? 200};`)
+      expect.stringContaining(`SET ob_hnsw_ef_search = ${hnswEfSearch};`)
     );
   });
 

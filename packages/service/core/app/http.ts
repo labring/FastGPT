@@ -208,7 +208,38 @@ export const runHTTPTool = async ({
 
     return { data };
   } catch (error) {
-    logger.warn('HTTP tool request failed', { error });
+    // 请求错误可能携带鉴权头、URL 或响应体；日志只保留固定类别和可信状态码。
+    const response =
+      typeof error === 'object' && error !== null && 'response' in error
+        ? error.response
+        : undefined;
+    const status =
+      typeof response === 'object' && response !== null && 'status' in response
+        ? response.status
+        : undefined;
+    const code =
+      typeof error === 'object' && error !== null && 'code' in error ? error.code : undefined;
+    const safeCodes = [
+      'ECONNABORTED',
+      'ETIMEDOUT',
+      'ECONNRESET',
+      'ECONNREFUSED',
+      'ENOTFOUND',
+      'EHOSTUNREACH',
+      'ENETUNREACH',
+      'ERR_NETWORK',
+      'ERR_BAD_REQUEST',
+      'ERR_BAD_RESPONSE',
+      'ERR_CANCELED'
+    ];
+    logger.warn('HTTP tool request failed', {
+      name: 'HttpToolRequestError',
+      message: 'HTTP tool request failed',
+      ...(typeof code === 'string' && safeCodes.includes(code) ? { code } : {}),
+      ...(typeof status === 'number' && Number.isInteger(status) && status >= 100 && status <= 599
+        ? { status }
+        : {})
+    });
     // 与 HTTP 节点保持一致：非 2xx 时把响应体中的具体原因附加到错误文本，避免只剩状态行。
     return { errorMsg: formatHttpError(error).rawText };
   }

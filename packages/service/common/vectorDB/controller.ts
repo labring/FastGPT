@@ -45,11 +45,12 @@ const vectorCountCache = new VectorCountCache({
   logger: getLogger(LogCategories.INFRA.REDIS)
 });
 
-let vectorStoreHooks: VectorStoreHooks = {};
+// 启动入口和 API 可能属于不同 Next bundle，回调不能保存在各自的模块副本中。
+const vectorStoreHooksKey = Symbol.for('fastgpt.vectorStore.hooks');
 
 /** 启动时由业务入口注入计数通知；provider 保持不依赖 MQ 的纯向量存取职责。 */
 export const initVectorStore = async (hooks: VectorStoreHooks = {}) => {
-  vectorStoreHooks = hooks;
+  Reflect.set(globalThis, vectorStoreHooksKey, hooks);
   await Vector.init();
 };
 /**
@@ -196,7 +197,8 @@ const getCachedVectorCount = async (
     const count = await Vector.getVectorCount(scope);
     void vectorCountCache.set({ ...scope, count });
     const datasetId = scope.datasetId;
-    const onDatasetCounted = vectorStoreHooks.onDatasetCounted;
+    const hooks = Reflect.get(globalThis, vectorStoreHooksKey) as VectorStoreHooks | undefined;
+    const onDatasetCounted = hooks?.onDatasetCounted;
     if (notifyDatasetCounted && datasetId && onDatasetCounted) {
       // 通知失败不改变统计结果；下一次真实统计仍会再通知，缓存命中不重复投递。
       void withTimeout(

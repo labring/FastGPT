@@ -1,7 +1,11 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TrackEnum } from '@fastgpt/global/common/middle/tracks/constants';
 import { TrackModel } from '@fastgpt/service/common/middle/tracks/schema';
-import { countTrackTimer } from '@fastgpt/service/common/middle/tracks/processor';
+import {
+  countTrackTimer,
+  trackTimerProcess
+} from '@fastgpt/service/common/middle/tracks/processor';
+import * as systemUtils from '@fastgpt/global/common/system/utils';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 
 vi.unmock('@fastgpt/service/common/middle/tracks/utils');
@@ -92,5 +96,47 @@ describe('Workflow Builder track persistence', () => {
       teamId: 'team-1',
       data: { requestCount: 2 }
     });
+  });
+});
+
+describe('trackTimerProcess fixed interval', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.useRealTimers();
+    global.countTrackQueue = new Map();
+  });
+
+  it('flushes queued events every five seconds', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    global.feConfigs = { ...global.feConfigs, isPlus: true };
+    global.countTrackQueue = new Map();
+    const bulkWrite = vi.spyOn(TrackModel, 'bulkWrite').mockResolvedValue({} as any);
+    const stop = new Error('stop tracking loop');
+    const originalDelay = systemUtils.delay;
+    let waits = 0;
+    vi.spyOn(systemUtils, 'delay').mockImplementation((ms) => {
+      // 仅在测试完成两个真实定时周期后结束无限循环。
+      if (++waits === 3) return Promise.reject(stop);
+      return originalDelay(ms);
+    });
+
+    const stopped = expect(trackTimerProcess()).rejects.toBe(stop);
+    await vi.advanceTimersByTimeAsync(0);
+    pushTrack.workflowBuilderClick();
+    pushTrack.workflowBuilderClick();
+    await vi.advanceTimersByTimeAsync(4_999);
+    expect(bulkWrite).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(1);
+    expect(bulkWrite).toHaveBeenCalledTimes(1);
+    expect(bulkWrite.mock.calls[0][0][0]).toMatchObject({
+      updateOne: { update: { $inc: { 'data.count': 2 } } }
+    });
+
+    pushTrack.workflowBuilderClick();
+    await vi.advanceTimersByTimeAsync(4_999);
+    expect(bulkWrite).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(bulkWrite).toHaveBeenCalledTimes(2);
+    await stopped;
   });
 });

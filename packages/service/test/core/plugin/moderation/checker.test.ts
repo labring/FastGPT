@@ -9,7 +9,10 @@ import type { SystemModerationPolicyType } from '@fastgpt/global/core/plugin/mod
 import * as service from '../../../../core/plugin/moderation/service';
 import * as fastgptPluginMod from '../../../../thirdProvider/fastgptPlugin/moderation';
 import * as recordMod from '../../../../core/plugin/moderation/record/entity';
-import { checkContentByPolicy, isModerationHookEnabled } from '../../../../core/plugin/moderation/checker';
+import {
+  checkContentByPolicy,
+  isModerationHookEnabled
+} from '../../../../core/plugin/moderation/checker';
 
 describe('moderation checker (checkContentByPolicy)', () => {
   afterEach(() => {

@@ -6,7 +6,7 @@ import { checkRedisHealth } from '@fastgpt/dal/redis';
 import { S3Buckets } from '@fastgpt/service/common/s3/config/constants';
 import { InitialErrorEnum } from '@fastgpt/service/common/system/constants';
 import { loadModelProviders } from '@fastgpt/service/thirdProvider/fastgptPlugin/model';
-import { codeSandbox } from '@fastgpt/service/thirdProvider/codeSandbox';
+import { codeSandbox, isCodeSandboxConfigured } from '@fastgpt/service/thirdProvider/codeSandbox';
 
 export const instrumentationCheck = async () => {
   const logger = getLogger(LogCategories.SYSTEM);
@@ -57,16 +57,18 @@ export const instrumentationCheck = async () => {
   }
 
   // sandbox
-  try {
-    await codeSandbox.runCode({
-      codeType: SandboxCodeTypeEnum.py,
-      code: `def main():
+  if (isCodeSandboxConfigured()) {
+    try {
+      await codeSandbox.runCode({
+        codeType: SandboxCodeTypeEnum.py,
+        code: `def main():
     print("Hello, World!")
     return {}`,
-      variables: {}
-    });
-  } catch (error) {
-    logger.warn(`[${InitialErrorEnum.SANDBOX_ERROR}]: ${getErrText(error)}`);
+        variables: {}
+      });
+    } catch (error) {
+      logger.warn(`[${InitialErrorEnum.SANDBOX_ERROR}]: ${getErrText(error)}`);
+    }
   }
 
   logger.info('instrumentation check finish');

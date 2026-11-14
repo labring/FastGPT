@@ -123,6 +123,57 @@ describe('generateQA writes data only after QA completes', () => {
     );
   });
 
+  it('retires an excess worker after a lower limit without cancelling in-flight QA', async () => {
+    const first = await createContext();
+    const second = await createContext();
+    const pending = await createContext();
+    global.systemEnv.qaMaxProcess = 2;
+
+    const response = {
+      answerText: 'Q1: question\nA1: answer',
+      usage: { inputTokens: 1, outputTokens: 1 }
+    };
+    let releaseFirst = () => {};
+    let releaseSecond = () => {};
+    const firstResponse = new Promise<typeof response>((resolve) => {
+      releaseFirst = () => resolve(response);
+    });
+    const secondResponse = new Promise<typeof response>((resolve) => {
+      releaseSecond = () => resolve(response);
+    });
+    mocks.llm
+      .mockReturnValueOnce(firstResponse)
+      .mockReturnValueOnce(secondResponse)
+      .mockResolvedValue(response);
+
+    let firstWorker: Promise<unknown> | undefined;
+    let secondWorker: Promise<unknown> | undefined;
+    try {
+      firstWorker = generateQA();
+      await vi.waitFor(() => expect(mocks.llm).toHaveBeenCalledTimes(1), { timeout: 10000 });
+      secondWorker = generateQA();
+      await vi.waitFor(() => expect(mocks.llm).toHaveBeenCalledTimes(2), { timeout: 10000 });
+      global.systemEnv.qaMaxProcess = 1;
+      releaseFirst();
+      await firstWorker;
+
+      expect(mocks.llm).toHaveBeenCalledTimes(2);
+      expect(global.qaQueueLen).toBe(1);
+      expect(await MongoDatasetTraining.exists({ _id: first.task._id })).toBeNull();
+      expect(await MongoDatasetTraining.exists({ _id: second.task._id })).not.toBeNull();
+      expect(await MongoDatasetTraining.exists({ _id: pending.task._id })).not.toBeNull();
+    } finally {
+      releaseFirst();
+      releaseSecond();
+      await Promise.all([firstWorker, secondWorker]);
+    }
+
+    // 剩余循环继续处理等待任务，降限不能导致队列停摆或名额泄漏。
+    expect(mocks.llm).toHaveBeenCalledTimes(3);
+    expect(await MongoDatasetTraining.countDocuments({ mode: TrainingModeEnum.qa })).toBe(0);
+    expect(global.qaQueueLen).toBe(0);
+  });
+
   it('leaves no dataset data when QA produces no result', async () => {
     const { collection, task } = await createContext();
     await MongoDatasetTraining.updateOne({ _id: task._id }, { $set: { q: '' } });

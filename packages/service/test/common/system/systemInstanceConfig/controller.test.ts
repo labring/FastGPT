@@ -1,0 +1,781 @@
+import { describe, expect, it, beforeEach, vi } from 'vitest';
+import {
+  getDomainConfig,
+  updateDomainConfig,
+  batchUpdateDomainConfigs,
+  getSystemInstanceConfigSnapshot
+} from '../../../../common/system/systemInstanceConfig/controller';
+import { MongoSystemInstanceConfig } from '../../../../common/system/systemInstanceConfig/schema';
+import { MongoSystemConfigs } from '../../../../common/system/config/schema';
+import { SystemConfigsTypeEnum } from '@fastgpt/global/common/system/config/constants';
+import { getDomainDefaultConfig } from '@fastgpt/global/common/system/config/schema';
+import { SECRET_MASK } from '@fastgpt/global/common/system/config/permission';
+import { ApiRequestInputParseError } from '@fastgpt/service/common/zod/requestParseError';
+
+describe('systemInstanceConfig controller', () => {
+  beforeEach(async () => {
+    await MongoSystemInstanceConfig.deleteMany({});
+  });
+
+  describe('getDomainConfig', () => {
+    it('returns default config and revision 0 when no record in DB', async () => {
+      const res = await getDomainConfig('site');
+
+      expect(res.domain).toBe('site');
+      expect(res.revision).toBe(0);
+      expect(res.overrides).toEqual({});
+      expect(res.effectiveConfig).toEqual(getDomainDefaultConfig('site'));
+    });
+
+    it('returns masked secrets when maskSecrets option is true', async () => {
+      // 先写入一个带 Key 的提供商配置
+      await MongoSystemInstanceConfig.create({
+        domain: 'providers',
+        revision: 1,
+        overrides: {
+          documentParse: {
+            customPdf: {
+              url: 'https://pdf.example.com',
+              key: 'real-pdf-api-key-12345'
+            }
+          }
+        },
+        updatedBy: { actor: 'admin' }
+      });
+
+      const maskedRes = await getDomainConfig('providers', { maskSecrets: true });
+      expect(maskedRes.effectiveConfig.documentParse.customPdf.key).toBe(SECRET_MASK);
+      expect(maskedRes.overrides.documentParse?.customPdf?.key).toBe(SECRET_MASK);
+
+      const unmaskedRes = await getDomainConfig('providers');
+      expect(unmaskedRes.effectiveConfig.documentParse.customPdf.key).toBe(
+        'real-pdf-api-key-12345'
+      );
+      expect(unmaskedRes.overrides.documentParse?.customPdf?.key).toBe('real-pdf-api-key-12345');
+    });
+  });
+
+  describe('updateDomainConfig', () => {
+    it('creates first document with revision 1 when expectedRevision is 0', async () => {
+      const updated = await updateDomainConfig({
+        domain: 'site',
+        expectedRevision: 0,
+        submittedOverrides: {
+          name: 'FastGPT Enterprise'
+        },
+        actor: {
+          actor: 'admin',
+          username: 'root'
+        }
+      });
+
+      expect(updated.domain).toBe('site');
+      expect(updated.revision).toBe(1);
+      expect(updated.overrides.name).toBe('FastGPT Enterprise');
+      expect(updated.effectiveConfig.name).toBe('FastGPT Enterprise');
+      expect(updated.effectiveConfig.docUrl).toBe('https://doc.fastgpt.io'); // defaults preserved
+    });
+
+    it('increments revision on consecutive updates', async () => {
+      await updateDomainConfig({
+        domain: 'site',
+        expectedRevision: 0,
+        submittedOverrides: { name: 'V1' },
+        actor: { actor: 'admin' }
+      });
+
+      const updatedV2 = await updateDomainConfig({
+        domain: 'site',
+        expectedRevision: 1,
+        submittedOverrides: { name: 'V2' },
+        actor: { actor: 'admin' }
+      });
+
+      expect(updatedV2.revision).toBe(2);
+      expect(updatedV2.effectiveConfig.name).toBe('V2');
+    });
+
+    it('throws 409 conflict when expectedRevision does not match', async () => {
+      await updateDomainConfig({
+        domain: 'site',
+        expectedRevision: 0,
+        submittedOverrides: { name: 'V1' },
+        actor: { actor: 'admin' }
+      });
+
+      // Try updating with stale expectedRevision 0
+      await expect(
+        updateDomainConfig({
+          domain: 'site',
+          expectedRevision: 0,
+          submittedOverrides: { name: 'Stale' },
+          actor: { actor: 'admin' }
+        })
+      ).rejects.toThrowError(/Revision conflict/);
+    });
+
+    it('preserves existing secret when client submits mask string', async () => {
+      // 1. 首次保存 secret
+      await updateDomainConfig({
+        domain: 'providers',
+        expectedRevision: 0,
+        submittedOverrides: {
+          documentParse: {
+            customPdf: {
+              url: 'https://pdf.example.com',
+              key: 'original-secret-key'
+            }
+          }
+        },
+        actor: { actor: 'admin' }
+      });
+
+      // 2. 再次更新时，前端传回掩码 '******'
+      const updated = await updateDomainConfig({
+        domain: 'providers',
+        expectedRevision: 1,
+        submittedOverrides: {
+          documentParse: {
+            customPdf: {
+              url: 'https://pdf.new-domain.com',
+              key: SECRET_MASK
+            }
+          }
+        },
+        actor: { actor: 'admin' }
+      });
+
+      expect(updated.effectiveConfig.documentParse.customPdf.url).toBe(
+        'https://pdf.new-domain.com'
+      );
+      expect(updated.effectiveConfig.documentParse.customPdf.key).toBe('original-secret-key'); // 保留原有密钥！
+    });
+
+    describe('partial override merge', () => {
+      it('preserves omitted fields when saving a partial override', async () => {
+        await updateDomainConfig({
+          domain: 'site',
+          expectedRevision: 0,
+          submittedOverrides: {
+            name: 'V1',
+            docUrl: 'https://custom-doc.example.com',
+            scripts: [{ src: 'a.js' }]
+          },
+          actor: { actor: 'admin' }
+        });
+
+        const updated = await updateDomainConfig({
+          domain: 'site',
+          expectedRevision: 1,
+          submittedOverrides: { name: 'V2' },
+          actor: { actor: 'admin' }
+        });
+
+        expect(updated.overrides).toMatchObject({
+          name: 'V2',
+          docUrl: 'https://custom-doc.example.com',
+          scripts: [{ src: 'a.js' }]
+        });
+        expect(updated.effectiveConfig.docUrl).toBe('https://custom-doc.example.com');
+        expect(updated.effectiveConfig.scripts).toEqual([{ src: 'a.js' }]);
+      });
+
+      it('merges nested objects and preserves an omitted secret', async () => {
+        await updateDomainConfig({
+          domain: 'providers',
+          expectedRevision: 0,
+          submittedOverrides: {
+            documentParse: {
+              customPdf: {
+                url: 'https://pdf.example.com',
+                key: 'original-secret-key'
+              }
+            }
+          },
+          actor: { actor: 'admin' }
+        });
+
+        const updated = await updateDomainConfig({
+          domain: 'providers',
+          expectedRevision: 1,
+          submittedOverrides: {
+            documentParse: {
+              customPdf: {
+                url: 'https://pdf.new-domain.com'
+              }
+            }
+          },
+          actor: { actor: 'admin' }
+        });
+
+        expect(updated.overrides.documentParse?.customPdf?.url).toBe('https://pdf.new-domain.com');
+        expect(updated.overrides.documentParse?.customPdf?.key).toBe('original-secret-key');
+        expect(updated.effectiveConfig.documentParse.customPdf.key).toBe('original-secret-key');
+      });
+
+      it('treats an empty string as an explicit override', async () => {
+        await updateDomainConfig({
+          domain: 'site',
+          expectedRevision: 0,
+          submittedOverrides: { docUrl: 'https://custom-doc.example.com' },
+          actor: { actor: 'admin' }
+        });
+
+        const updated = await updateDomainConfig({
+          domain: 'site',
+          expectedRevision: 1,
+          submittedOverrides: { docUrl: '' },
+          actor: { actor: 'admin' }
+        });
+
+        expect(updated.overrides.docUrl).toBe('');
+        expect(updated.effectiveConfig.docUrl).toBe('');
+      });
+
+      it('clears an array explicitly and keeps other fields and explicit-default intent', async () => {
+        await updateDomainConfig({
+          domain: 'site',
+          expectedRevision: 0,
+          submittedOverrides: {
+            name: 'Keep Me',
+            docUrl: 'https://custom-doc.example.com',
+            scripts: [{ src: 'a.js' }]
+          },
+          actor: { actor: 'admin' }
+        });
+
+        const cleared = await updateDomainConfig({
+          domain: 'site',
+          expectedRevision: 1,
+          submittedOverrides: { scripts: [] },
+          actor: { actor: 'admin' }
+        });
+
+        expect(cleared.overrides.scripts).toBeUndefined();
+        expect(cleared.overrides.name).toBe('Keep Me');
+        expect(cleared.overrides.docUrl).toBe('https://custom-doc.example.com');
+
+        let doc = await MongoSystemInstanceConfig.findOne({ domain: 'site' }).lean();
+        expect(doc?.explicitDefaultPaths).toContain('scripts');
+
+        // 后续局部保存不能丢掉此前“明确清空”的意图
+        await updateDomainConfig({
+          domain: 'site',
+          expectedRevision: 2,
+          submittedOverrides: { name: 'Keep Me Too' },
+          actor: { actor: 'admin' }
+        });
+
+        doc = await MongoSystemInstanceConfig.findOne({ domain: 'site' }).lean();
+        expect(doc?.overrides.scripts).toBeUndefined();
+        expect(doc?.explicitDefaultPaths).toContain('scripts');
+        expect(doc?.overrides.name).toBe('Keep Me Too');
+      });
+
+      it('leaves existing overrides unchanged when submitting an empty object', async () => {
+        await updateDomainConfig({
+          domain: 'site',
+          expectedRevision: 0,
+          submittedOverrides: { name: 'Unchanged' },
+          actor: { actor: 'admin' }
+        });
+
+        const updated = await updateDomainConfig({
+          domain: 'site',
+          expectedRevision: 1,
+          submittedOverrides: {},
+          actor: { actor: 'admin' }
+        });
+
+        expect(updated.revision).toBe(2);
+        expect(updated.overrides.name).toBe('Unchanged');
+        expect(updated.effectiveConfig.name).toBe('Unchanged');
+      });
+
+      it('drops deprecated existing fields without blocking a partial save', async () => {
+        await MongoSystemInstanceConfig.collection.insertOne({
+          domain: 'site',
+          schemaVersion: 1,
+          revision: 1,
+          overrides: {
+            name: 'Legacy Name',
+            deprecatedField: 'legacy-value'
+          },
+          explicitDefaultPaths: [],
+          updatedBy: { actor: 'system' }
+        });
+
+        const updated = await updateDomainConfig({
+          domain: 'site',
+          expectedRevision: 1,
+          submittedOverrides: { docUrl: 'https://custom-doc.example.com' },
+          actor: { actor: 'admin' }
+        });
+
+        expect(updated.overrides.name).toBe('Legacy Name');
+        expect(updated.overrides.docUrl).toBe('https://custom-doc.example.com');
+        expect((updated.overrides as Record<string, unknown>).deprecatedField).toBeUndefined();
+      });
+    });
+  });
+
+  describe('getSystemInstanceConfigSnapshot', () => {
+    it('uses the primary when the caller requests an authoritative snapshot', async () => {
+      const read = vi.fn().mockReturnThis();
+      const lean = vi.fn().mockResolvedValue([]);
+      const find = vi
+        .spyOn(MongoSystemInstanceConfig, 'find')
+        .mockReturnValue({ read, lean } as any);
+
+      try {
+        await getSystemInstanceConfigSnapshot({ readPreference: 'primary' });
+        expect(read).toHaveBeenCalledExactlyOnceWith('primary');
+      } finally {
+        find.mockRestore();
+      }
+    });
+
+    it('aggregates overrides across domains into a complete snapshot', async () => {
+      await updateDomainConfig({
+        domain: 'site',
+        expectedRevision: 0,
+        submittedOverrides: { name: 'Snapshot Site' },
+        actor: { actor: 'system' }
+      });
+
+      await updateDomainConfig({
+        domain: 'performance',
+        expectedRevision: 0,
+        submittedOverrides: { workflow: { maxRunTimes: 999 } },
+        actor: { actor: 'system' }
+      });
+
+      const { snapshot } = await getSystemInstanceConfigSnapshot();
+      expect(snapshot.site.name).toBe('Snapshot Site');
+      expect(snapshot.performance.workflow.maxRunTimes).toBe(999);
+      expect(snapshot.security.csrfEnabled).toBe(true); // default
+      expect(snapshot.subservice.agentSandbox.provider).toBe('none'); // default
+    });
+  });
+
+  describe('batchUpdateDomainConfigs (cross-domain atomic transaction)', () => {
+    it('atomically saves multiple domains in a single transaction', async () => {
+      const updated = await batchUpdateDomainConfigs({
+        items: [
+          {
+            domain: 'site',
+            expectedRevision: 0,
+            overrides: { name: 'Batch Site' }
+          },
+          {
+            domain: 'auth',
+            expectedRevision: 0,
+            overrides: { openApiKeyMaxCount: 88 }
+          }
+        ],
+        actor: { actor: 'admin' }
+      });
+
+      expect(updated.map((result) => result.domain)).toEqual(['site', 'auth']);
+      expect(updated.map((result) => result.revision)).toEqual([1, 1]);
+      expect(updated[0].effectiveConfig).toMatchObject({ name: 'Batch Site' });
+
+      const siteDoc = await MongoSystemInstanceConfig.findOne({ domain: 'site' }).lean();
+      const authDoc = await MongoSystemInstanceConfig.findOne({ domain: 'auth' }).lean();
+
+      expect(siteDoc?.overrides.name).toBe('Batch Site');
+      expect(siteDoc?.revision).toBe(1);
+      expect(authDoc?.overrides.openApiKeyMaxCount).toBe(88);
+      expect(authDoc?.revision).toBe(1);
+    });
+
+    it('merges partial overrides with existing values in batch saves', async () => {
+      await batchUpdateDomainConfigs({
+        items: [
+          {
+            domain: 'site',
+            expectedRevision: 0,
+            overrides: {
+              name: 'Batch V1',
+              docUrl: 'https://custom-doc.example.com',
+              scripts: [{ src: 'a.js' }]
+            }
+          }
+        ],
+        actor: { actor: 'admin' }
+      });
+
+      const [updated] = await batchUpdateDomainConfigs({
+        items: [
+          {
+            domain: 'site',
+            expectedRevision: 1,
+            overrides: { name: 'Batch V2' }
+          }
+        ],
+        actor: { actor: 'admin' }
+      });
+
+      expect(updated.overrides).toMatchObject({
+        name: 'Batch V2',
+        docUrl: 'https://custom-doc.example.com',
+        scripts: [{ src: 'a.js' }]
+      });
+      expect(updated.effectiveConfig.docUrl).toBe('https://custom-doc.example.com');
+      expect(updated.effectiveConfig.scripts).toEqual([{ src: 'a.js' }]);
+    });
+
+    it.each([
+      {
+        domain: 'performance' as const,
+        overrides: { task: { evalConcurrency: 0 } }
+      },
+      {
+        domain: 'providers' as const,
+        overrides: { documentParse: { provider: 'customPdf' } }
+      },
+      {
+        domain: 'performance' as const,
+        overrides: { workflow: { maxLoopTimes: 1 } }
+      }
+    ])(
+      'reports invalid effective config caused by submitted values as request input errors: $domain $overrides',
+      async ({ domain, overrides }) => {
+        await expect(
+          batchUpdateDomainConfigs({
+            items: [{ domain, expectedRevision: 0, overrides }],
+            actor: { actor: 'admin' }
+          })
+        ).rejects.toBeInstanceOf(ApiRequestInputParseError);
+
+        expect(await MongoSystemInstanceConfig.findOne({ domain })).toBeNull();
+      }
+    );
+
+    it('keeps database-originated invalid values as internal errors', async () => {
+      // 直接写 collection 模拟历史坏记录，绕过当前 Schema 的写入校验。
+      await MongoSystemInstanceConfig.collection.insertOne({
+        domain: 'performance',
+        schemaVersion: 1,
+        revision: 1,
+        overrides: { task: { evalConcurrency: 0 } },
+        updatedBy: { actor: 'system' },
+        createdAt: new Date(),
+        updatedAt: new Date()
+      });
+
+      await expect(
+        batchUpdateDomainConfigs({
+          items: [
+            {
+              domain: 'performance',
+              expectedRevision: 1,
+              overrides: { workflow: { maxLoopTimes: 2 } }
+            }
+          ],
+          actor: { actor: 'admin' }
+        })
+      ).rejects.not.toBeInstanceOf(ApiRequestInputParseError);
+    });
+
+    it('rolls back completely if any domain in the batch encounters a revision conflict', async () => {
+      // 预先建立 site 文档 revision=1
+      await MongoSystemInstanceConfig.create({
+        domain: 'site',
+        revision: 1,
+        overrides: { name: 'Existing Site' },
+        updatedBy: { actor: 'system' }
+      });
+
+      // 批量提交中 site 期望版本错误（传 0，实际是 1），auth 是新域（期望 0）
+      await expect(
+        batchUpdateDomainConfigs({
+          items: [
+            {
+              domain: 'auth',
+              expectedRevision: 0,
+              overrides: { openApiKeyMaxCount: 999 }
+            },
+            {
+              domain: 'site',
+              expectedRevision: 0, // conflict!
+              overrides: { name: 'Should Not Persist' }
+            }
+          ],
+          actor: { actor: 'admin' }
+        })
+      ).rejects.toThrow(/Revision conflict/);
+
+      // 确认事务全部回滚：auth 没有被创建，site 没有被修改
+      const authDoc = await MongoSystemInstanceConfig.findOne({ domain: 'auth' }).lean();
+      expect(authDoc).toBeNull();
+
+      const siteDoc = await MongoSystemInstanceConfig.findOne({ domain: 'site' }).lean();
+      expect(siteDoc?.overrides.name).toBe('Existing Site');
+      expect(siteDoc?.revision).toBe(1);
+    });
+
+    describe('subPlans 归一化', () => {
+      beforeEach(async () => {
+        await MongoSystemConfigs.deleteMany({});
+      });
+
+      it('normalizes flat form keys into nested storage shape before persisting', async () => {
+        await batchUpdateDomainConfigs({
+          items: [],
+          subPlans: {
+            planDescriptionUrl: 'https://docs.example.com/plans',
+            activityExpirationTime: '2030-01-01T00:00:00.000Z',
+            extraDatasetSizePrice: 5,
+            extraPointsPackages: [{ points: 1000, month: 12, price: 10 }]
+          },
+          subPlansExpectedRevision: 0,
+          actor: { actor: 'admin' }
+        });
+
+        const doc = await MongoSystemConfigs.findOne({
+          type: SystemConfigsTypeEnum.fastgpt
+        }).lean();
+        const subPlans = (doc?.value as Record<string, any>)?.subPlans;
+
+        // 扁平键不应残留，计费字段必须是嵌套存储形状
+        expect(subPlans.extraDatasetSizePrice).toBeUndefined();
+        expect(subPlans.extraPointsPackages).toBeUndefined();
+        expect(subPlans.extraDatasetSize).toEqual({ price: 5 });
+        expect(subPlans.extraPoints).toEqual({
+          packages: [{ points: 1000, month: 12, price: 10 }]
+        });
+        // 字符串日期应被强转为 Date，供 Pro 与 FastGPTConfigFileSchema 消费
+        expect(subPlans.activityExpirationTime).toBeInstanceOf(Date);
+        expect(subPlans.planDescriptionUrl).toBe('https://docs.example.com/plans');
+      });
+
+      it('keeps already-nested keys authoritative over flat duplicates', async () => {
+        await batchUpdateDomainConfigs({
+          items: [],
+          subPlans: {
+            extraDatasetSize: { price: 9 },
+            extraDatasetSizePrice: 1
+          },
+          subPlansExpectedRevision: 0,
+          actor: { actor: 'admin' }
+        });
+
+        const doc = await MongoSystemConfigs.findOne({
+          type: SystemConfigsTypeEnum.fastgpt
+        }).lean();
+        const subPlans = (doc?.value as Record<string, any>)?.subPlans;
+        expect(subPlans.extraDatasetSize).toEqual({ price: 9 });
+      });
+
+      it('rejects malformed subPlans before opening the transaction', async () => {
+        // 非法积分包字段应在预校验阶段抛错，域配置完全不落库
+        await expect(
+          batchUpdateDomainConfigs({
+            items: [{ domain: 'site', expectedRevision: 0, overrides: { name: 'X' } }],
+            subPlans: {
+              extraPointsPackages: [{ points: 'not-a-number', month: 1, price: 1 }]
+            },
+            subPlansExpectedRevision: 0,
+            actor: { actor: 'admin' }
+          })
+        ).rejects.toThrow();
+
+        const siteDoc = await MongoSystemInstanceConfig.findOne({ domain: 'site' }).lean();
+        expect(siteDoc).toBeNull();
+      });
+
+      it('treats NaN from cleared numeric inputs as unconfigured instead of failing the save', async () => {
+        // RHF valueAsNumber 对清空输入产出 NaN，等价"未配置"（对齐旧 || 0 容错）
+        await batchUpdateDomainConfigs({
+          items: [],
+          subPlans: { extraDatasetSizePrice: Number.NaN, extraPointsPackages: Number.NaN },
+          subPlansExpectedRevision: 0,
+          actor: { actor: 'admin' }
+        });
+
+        const doc = await MongoSystemConfigs.findOne({
+          type: SystemConfigsTypeEnum.fastgpt
+        }).lean();
+        // 保存成功即验证 NaN 不再阻断整表校验；嵌套计费字段应保持缺省
+        const subPlans = ((doc?.value as Record<string, any>)?.subPlans ?? {}) as Record<
+          string,
+          any
+        >;
+        expect(subPlans.extraDatasetSize).toBeUndefined();
+        expect(subPlans.extraPoints).toBeUndefined();
+      });
+
+      it('wraps invalid subPlans as a request input error for a 400 response', async () => {
+        await expect(
+          batchUpdateDomainConfigs({
+            items: [],
+            subPlans: { planDescriptionUrl: 123 },
+            subPlansExpectedRevision: 0,
+            actor: { actor: 'admin' }
+          })
+        ).rejects.toMatchObject({ name: 'ApiRequestInputParseError' });
+      });
+
+      it('requires subPlansExpectedRevision only when subPlans is provided', async () => {
+        await expect(
+          batchUpdateDomainConfigs({
+            items: [],
+            subPlans: { extraDatasetSizePrice: 5 },
+            actor: { actor: 'admin' }
+          })
+        ).rejects.toThrow(/subPlansExpectedRevision is required/);
+
+        await expect(
+          batchUpdateDomainConfigs({
+            items: [{ domain: 'site', expectedRevision: 0, overrides: { name: 'X' } }],
+            subPlansExpectedRevision: 0,
+            actor: { actor: 'admin' }
+          })
+        ).rejects.toThrow(/subPlansExpectedRevision is only allowed/);
+      });
+
+      it('rejects a plan save when the commercial item revision differs', async () => {
+        await MongoSystemInstanceConfig.create({
+          domain: 'commercial',
+          revision: 1,
+          overrides: { showCoupon: true },
+          updatedBy: { actor: 'system' }
+        });
+
+        await expect(
+          batchUpdateDomainConfigs({
+            items: [{ domain: 'commercial', expectedRevision: 1, overrides: {} }],
+            subPlans: { extraDatasetSizePrice: 5 },
+            subPlansExpectedRevision: 0,
+            actor: { actor: 'admin' }
+          })
+        ).rejects.toThrow(/Revision conflict for subPlans/);
+
+        expect(
+          await MongoSystemConfigs.findOne({ type: SystemConfigsTypeEnum.fastgpt }).lean()
+        ).toBeNull();
+        const commercialDoc = await MongoSystemInstanceConfig.findOne({
+          domain: 'commercial'
+        }).lean();
+        expect(commercialDoc?.revision).toBe(1);
+      });
+
+      it('saves plans with a matching commercial revision and preserves commercial overrides', async () => {
+        await MongoSystemInstanceConfig.create({
+          domain: 'commercial',
+          revision: 1,
+          overrides: { showCoupon: true },
+          updatedBy: { actor: 'system' }
+        });
+
+        const results = await batchUpdateDomainConfigs({
+          items: [
+            {
+              domain: 'commercial',
+              expectedRevision: 1,
+              overrides: { payFormUrl: 'https://pay.example.com' }
+            }
+          ],
+          subPlans: { extraDatasetSizePrice: 5 },
+          subPlansExpectedRevision: 1,
+          actor: { actor: 'admin' }
+        });
+
+        expect(results).toHaveLength(1);
+        expect(results[0]).toMatchObject({ domain: 'commercial', revision: 2 });
+
+        const commercialDoc = await MongoSystemInstanceConfig.findOne({
+          domain: 'commercial'
+        }).lean();
+        expect(commercialDoc).toMatchObject({
+          revision: 2,
+          overrides: {
+            showCoupon: true,
+            payFormUrl: 'https://pay.example.com'
+          }
+        });
+
+        const planDoc = await MongoSystemConfigs.findOne({
+          type: SystemConfigsTypeEnum.fastgpt
+        })
+          .sort({ createTime: -1 })
+          .lean();
+        expect(planDoc?.value?.subPlans?.extraDatasetSize).toEqual({ price: 5 });
+      });
+
+      it('synthesizes a commercial revision bump for plan-only saves and rejects stale retries', async () => {
+        await MongoSystemInstanceConfig.create({
+          domain: 'commercial',
+          revision: 2,
+          overrides: { showCoupon: true },
+          updatedBy: { actor: 'system' }
+        });
+
+        const results = await batchUpdateDomainConfigs({
+          items: [],
+          subPlans: { extraDatasetSizePrice: 7 },
+          subPlansExpectedRevision: 2,
+          actor: { actor: 'admin' }
+        });
+
+        // 自动补充的 commercial 更新只用于加锁，不出现在返回结果中
+        expect(results).toEqual([]);
+        const commercialDoc = await MongoSystemInstanceConfig.findOne({
+          domain: 'commercial'
+        }).lean();
+        expect(commercialDoc).toMatchObject({
+          revision: 3,
+          overrides: { showCoupon: true }
+        });
+
+        const firstPlan = await MongoSystemConfigs.findOne({
+          type: SystemConfigsTypeEnum.fastgpt
+        })
+          .sort({ createTime: -1 })
+          .lean();
+        expect(firstPlan?.value?.subPlans?.extraDatasetSize).toEqual({ price: 7 });
+
+        await expect(
+          batchUpdateDomainConfigs({
+            items: [],
+            subPlans: { extraDatasetSizePrice: 8 },
+            subPlansExpectedRevision: 2,
+            actor: { actor: 'admin' }
+          })
+        ).rejects.toThrow(/Revision conflict/);
+
+        const latestPlan = await MongoSystemConfigs.findOne({
+          type: SystemConfigsTypeEnum.fastgpt
+        })
+          .sort({ createTime: -1 })
+          .lean();
+        expect(latestPlan?.value?.subPlans?.extraDatasetSize).toEqual({ price: 7 });
+      });
+    });
+
+    it('preserves newly saved explicit default markers even when existing explicitDefaultPaths has 200+ entries', async () => {
+      const legacyMarkers = Array.from({ length: 205 }, (_, i) => `legacy.marker.${i}`);
+      await MongoSystemInstanceConfig.create({
+        domain: 'site',
+        schemaVersion: 1,
+        revision: 1,
+        overrides: { description: 'custom' },
+        explicitDefaultPaths: legacyMarkers,
+        updatedBy: { actor: 'system' }
+      });
+
+      await updateDomainConfig({
+        domain: 'site',
+        expectedRevision: 1,
+        submittedOverrides: { description: '' },
+        actor: { actor: 'admin' }
+      });
+
+      const siteDoc = await MongoSystemInstanceConfig.findOne({ domain: 'site' }).lean();
+      expect(siteDoc?.overrides).toEqual({});
+      expect(siteDoc?.explicitDefaultPaths).toHaveLength(206);
+      expect(siteDoc?.explicitDefaultPaths).toContain('description');
+    });
+  });
+});

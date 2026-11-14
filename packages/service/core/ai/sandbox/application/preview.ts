@@ -176,6 +176,7 @@ export function resolveSandboxPreviewPath(filePath: string): {
 }
 
 const getSandboxPreviewProxyBaseUrl = () => {
+  // 与 WebSocket 代理一致，HTTP 预览代理只使用部署 ENV。
   const rawUrl = serviceEnv.AGENT_SANDBOX_PREVIEW_PROXY_URL;
   if (!rawUrl) {
     throw new Error('AGENT_SANDBOX_PREVIEW_PROXY_URL environment variable is missing');

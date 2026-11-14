@@ -1,6 +1,5 @@
 import { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
 import { getChatGenerationStatuses } from './generationLease';
-import { serviceEnv } from '../../env';
 import { getLogger, LogCategories } from '../../common/logger';
 import {
   StreamResumeCache,
@@ -17,33 +16,51 @@ import { stripModerationRecordsFromNodeResponses } from '@fastgpt/global/core/ch
 
 const logger = getLogger(LogCategories.MODULE.CHAT.RESUME);
 
-/** 生成中：定期续期（见 env `STREAM_RESUME_TTL_SECONDS`） */
-export const STREAM_RESUME_TTL_SECONDS = serviceEnv.STREAM_RESUME_TTL_SECONDS;
-/** 流结束后短 TTL（见 env `STREAM_RESUME_POST_COMPLETE_TTL_SECONDS`） */
-export const STREAM_RESUME_POST_COMPLETE_TTL_SECONDS =
-  serviceEnv.STREAM_RESUME_POST_COMPLETE_TTL_SECONDS;
-/** 当 Redis 已用内存 / maxmemory 达到该阈值时，停止为新请求创建镜像 */
-export const STREAM_RESUME_REDIS_MAXMEMORY_RATIO = serviceEnv.STREAM_RESUME_REDIS_MAXMEMORY_RATIO;
-/** Redis 内存检测缓存时间，避免每个流请求都去调用 INFO MEMORY */
-export const STREAM_RESUME_REDIS_MEMORY_CHECK_INTERVAL_MS =
-  serviceEnv.STREAM_RESUME_REDIS_MEMORY_CHECK_INTERVAL_MS;
+/** 流式恢复统一采用固定策略，后台配置与环境变量均不能覆盖。 */
+const streamResumePolicy = {
+  ttlSeconds: 300,
+  postCompleteTtlSeconds: 30,
+  redisMaxmemoryRatio: 0.5,
+  redisMemoryCheckIntervalMs: 5_000
+} as const;
+
+/** 生成中镜像定期续期，固定保留 300 秒。 */
+export const getStreamResumeTtlSeconds = () => streamResumePolicy.ttlSeconds;
+
+/** 流结束后固定保留 30 秒，供客户端完成恢复。 */
+export const getStreamResumePostCompleteTtlSeconds = () =>
+  streamResumePolicy.postCompleteTtlSeconds;
+
+/** Redis 已用内存达到 maxmemory 的 50% 时，停止为新请求创建镜像。 */
+export const getStreamResumeRedisMaxmemoryRatio = () => streamResumePolicy.redisMaxmemoryRatio;
+
+/** Redis 内存检测结果固定缓存 5 秒，避免每个流请求都调用 INFO MEMORY。 */
+const getStreamResumeRedisMemoryCheckIntervalMs = () =>
+  streamResumePolicy.redisMemoryCheckIntervalMs;
 /**
  * One active resume request keeps one dedicated blocking Redis connection alive for at most this
  * long before the XREAD call returns and the loop re-checks the HTTP socket state.
  */
 export const STREAM_RESUME_BLOCK_MS = 30000;
 export const STREAM_RESUME_TTL_TOUCH_INTERVAL_MS = 1000;
-export const STREAM_RESUME_MIRROR_KEEPALIVE_INTERVAL_MS = Math.max(
-  1_000,
-  Math.min(30_000, (STREAM_RESUME_TTL_SECONDS * 1000) / 3)
-);
+/** 按固定 TTL 确定保活周期；生成期间每 30 秒续期一次。 */
+export const STREAM_RESUME_MIRROR_KEEPALIVE_INTERVAL_MS = 30_000;
 
-const streamResumeCache = new StreamResumeCache({
-  logger,
-  streamTtlSeconds: STREAM_RESUME_TTL_SECONDS,
-  postCompleteTtlSeconds: STREAM_RESUME_POST_COMPLETE_TTL_SECONDS,
-  ttlTouchIntervalMs: STREAM_RESUME_TTL_TOUCH_INTERVAL_MS
-});
+let streamResumeCache: StreamResumeCache | undefined;
+
+/** 惰性创建使用系统固定 TTL 策略的流恢复缓存。 */
+const getStreamResumeCache = () => {
+  if (!streamResumeCache) {
+    streamResumeCache = new StreamResumeCache({
+      logger,
+      streamTtlSeconds: getStreamResumeTtlSeconds(),
+      postCompleteTtlSeconds: getStreamResumePostCompleteTtlSeconds(),
+      ttlTouchIntervalMs: STREAM_RESUME_TTL_TOUCH_INTERVAL_MS
+    });
+  }
+
+  return streamResumeCache;
+};
 
 type ResumeRequestHeaderValue = string | string[] | undefined;
 type RedisMemoryPressureCache = {
@@ -67,7 +84,7 @@ export const getStreamResumeRedisKeys = ({
   sourceId,
   chatId
 }: StreamResumeRedisKeysParams) =>
-  streamResumeCache.getKeys({ teamId, sourceType, sourceId, chatId });
+  getStreamResumeCache().getKeys({ teamId, sourceType, sourceId, chatId });
 
 export type StreamResumeUnavailableState = DalStreamResumeUnavailableState & {
   reason: `${StreamResumeUnavailableReasonEnum}`;
@@ -103,7 +120,7 @@ const logRedisMemoryPressureState = (cache: RedisMemoryPressureCache) => {
       usedMemory: cache.usedMemory,
       maxMemory: cache.maxMemory,
       usageRatio,
-      threshold: STREAM_RESUME_REDIS_MAXMEMORY_RATIO
+      threshold: getStreamResumeRedisMaxmemoryRatio()
     });
     return;
   }
@@ -118,7 +135,7 @@ const logRedisMemoryPressureState = (cache: RedisMemoryPressureCache) => {
     usedMemory: cache.usedMemory,
     maxMemory: cache.maxMemory,
     usageRatio,
-    threshold: STREAM_RESUME_REDIS_MAXMEMORY_RATIO
+    threshold: getStreamResumeRedisMaxmemoryRatio()
   });
 };
 
@@ -126,7 +143,7 @@ const isRedisMemoryPressureBlockingStreamResume = async () => {
   const now = Date.now();
   if (
     redisMemoryPressureCache &&
-    now - redisMemoryPressureCache.checkedAt < STREAM_RESUME_REDIS_MEMORY_CHECK_INTERVAL_MS
+    now - redisMemoryPressureCache.checkedAt < getStreamResumeRedisMemoryCheckIntervalMs()
   ) {
     return redisMemoryPressureCache.blocked;
   }
@@ -137,12 +154,12 @@ const isRedisMemoryPressureBlockingStreamResume = async () => {
 
   redisMemoryPressurePromise = (async () => {
     try {
-      const { usedMemory, maxMemory } = await streamResumeCache.getMemoryInfo();
+      const { usedMemory, maxMemory } = await getStreamResumeCache().getMemoryInfo();
       const blocked =
         typeof usedMemory === 'number' &&
         typeof maxMemory === 'number' &&
         maxMemory > 0 &&
-        usedMemory / maxMemory >= STREAM_RESUME_REDIS_MAXMEMORY_RATIO;
+        usedMemory / maxMemory >= getStreamResumeRedisMaxmemoryRatio();
 
       redisMemoryPressureCache = {
         checkedAt: now,
@@ -179,7 +196,7 @@ const isResponseClosed = (res: NodeHttpResponse) =>
   !!(res.closed || res.writableEnded || res.destroyed);
 
 export const getStreamResumeUnavailableState = async (params: StreamResumeRedisKeysParams) => {
-  return streamResumeCache.getUnavailable(params);
+  return getStreamResumeCache().getUnavailable(params);
 };
 
 const chunkToString = (chunk: string | Buffer | Uint8Array, encoding?: BufferEncoding) => {
@@ -189,7 +206,7 @@ const chunkToString = (chunk: string | Buffer | Uint8Array, encoding?: BufferEnc
 };
 
 export const mirrorChatStream = (params: StreamResumeRedisKeysParams) => {
-  const mirror = streamResumeCache.createMirror(params);
+  const mirror = getStreamResumeCache().createMirror(params);
 
   return {
     ...getStreamResumeRedisKeys(params),
@@ -211,6 +228,7 @@ export const startStreamResumeMirrorKeepAlive = (
   const touch = mirror?.touch;
   if (!touch) return () => undefined;
 
+  // 固定每 30 秒续期，覆盖客户端断开后仍在生成的场景。
   const timer = setInterval(() => {
     void touch().catch((error) => {
       logger.warn('Stream resume mirror keepalive failed', { error });
@@ -228,7 +246,7 @@ export const getStreamResumeMirror = async ({
   if (!isStreamResumeMirrorRequested(resumeRequestHeaderValue)) return;
 
   if (await isRedisMemoryPressureBlockingStreamResume()) {
-    await streamResumeCache
+    await getStreamResumeCache()
       .setUnavailable(params, {
         reason: StreamResumeUnavailableReasonEnum.memoryPressure
       })
@@ -328,7 +346,7 @@ export const catchUpAllHistoryItems = async ({
   while (!isResponseClosed(res)) {
     const rangeStart = lastStreamId ? `(${lastStreamId}` : '-';
 
-    const historyItems = await streamResumeCache.range({
+    const historyItems = await getStreamResumeCache().range({
       params,
       start: rangeStart,
       end: '+',
@@ -370,7 +388,7 @@ export const _resume = async ({
   let cursor = initialCursor ?? '';
 
   if (cursor) {
-    const currentItems = await streamResumeCache.range({
+    const currentItems = await getStreamResumeCache().range({
       params,
       start: cursor,
       end: cursor,
@@ -382,7 +400,7 @@ export const _resume = async ({
     }
   }
 
-  return streamResumeCache.withBlockingReader({
+  return getStreamResumeCache().withBlockingReader({
     params,
     blockMs: STREAM_RESUME_BLOCK_MS,
     count: 1,

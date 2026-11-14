@@ -1,6 +1,7 @@
 import { createLLMResponse } from '../../../ai/llm/request';
 import { getLogger, LogCategories } from '../../../../common/logger';
 import { normalizeImageToBase64 } from '../utils';
+import { getMultipleDataToBase64 } from '../../../../common/system/constants';
 import type { OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
 import type { LLMModelDataType } from '@fastgpt/global/core/ai/model/schema';
 
@@ -48,6 +49,8 @@ export const getImageCaptionQueries = async ({
 
   const vlmModelData = vlmModel;
 
+  // 批量入口一次求值下传，避免同批图片混合转/不转 base64
+  const toBase64 = getMultipleDataToBase64();
   const results = await Promise.all(
     imageQueries.map(async (url, index) => {
       try {
@@ -71,7 +74,7 @@ export const getImageCaptionQueries = async ({
                   {
                     type: 'image_url',
                     image_url: {
-                      url: await normalizeImageToBase64(url)
+                      url: await normalizeImageToBase64(url, toBase64)
                     }
                   },
                   {

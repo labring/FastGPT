@@ -6,6 +6,7 @@ import { Prompt_AgentQA } from '@fastgpt/global/core/ai/prompt/agent';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import type { PushDataChunkType } from '@fastgpt/global/openapi/core/dataset/data/api';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
+import { logInstanceConfigRead } from '@fastgpt/service/common/system/migrationCoverageLog';
 import { replaceVariable } from '@fastgpt/service/common/string/replaceVariable';
 import { pushLLMTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
 
@@ -45,13 +46,19 @@ type PopulateType = {
 /** 消费 QA 任务并在成功后创建索引数据；任务最外层管理心跳，业务失败保留重试。 */
 export async function generateQA(): Promise<any> {
   const max = global.systemEnv?.qaMaxProcess || 10;
+  logInstanceConfigRead({
+    callsite: 'runtime.app.dataset.queue.generateQA',
+    source: 'bridged-system-env',
+    fields: [{ path: 'performance.dataset.qaMaxProcess', value: max }]
+  });
   logger.debug('QA queue size check', { queueSize: global.qaQueueLen, max });
 
   if (global.qaQueueLen >= max) return;
   global.qaQueueLen++;
 
   try {
-    while (true) {
+    // 配置下调后先完成在途任务，再让超额循环退出；每次领取前重新读取上限。
+    while (global.qaQueueLen <= (global.systemEnv?.qaMaxProcess || 10)) {
       const startTime = Date.now();
       // get training data
       let claimed;

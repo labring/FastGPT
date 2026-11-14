@@ -6,6 +6,7 @@ import type { SystemToolListItemType } from '@fastgpt/global/core/app/tool/syste
 import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
 import { TeamPluginPolicyStatusEnum } from '@fastgpt/global/core/plugin/schema/type';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { ApiHttpError } from '@fastgpt/service/common/http/apiError';
 import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
 
 const mocks = vi.hoisted(() => ({
@@ -88,6 +89,18 @@ describe('listAuthorizedSystemToolTemplates', () => {
     vi.resetAllMocks();
     mocks.getUserDetail.mockResolvedValue({ tags: ['hidden-user'] });
     mocks.getDebugSessionStatus.mockResolvedValue(undefined);
+  });
+
+  it('does not resolve an explicit inactive debug parent as a system tool', async () => {
+    await expect(
+      listAuthorizedSystemToolTemplates({
+        ...context,
+        parentId: 'systemTool-parent',
+        source: 'debug:tmbId:member-1'
+      })
+    ).resolves.toEqual([]);
+    expect(mocks.getDebugSessionStatus).toHaveBeenCalledWith({ tmbId: context.tmbId });
+    expect(mocks.getSystemToolDisplayInfoWithChildIcons).not.toHaveBeenCalled();
   });
 
   it('filters top-level system and team tools without loading details or toolset children', async () => {
@@ -396,6 +409,14 @@ describe('getAuthorizedSystemToolTemplateCatalog', () => {
     });
 
     await expect(getAuthorizedSystemToolTemplateCatalog(context)).resolves.toEqual([]);
+  });
+
+  it('still propagates unrelated forbidden errors', async () => {
+    mocks.getSystemToolList.mockResolvedValue([createTool('systemTool-forbidden')]);
+    const failure = new ApiHttpError(403, 'Permission denied by upstream');
+    mocks.getClientToolPreviewNode.mockRejectedValue(failure);
+
+    await expect(getAuthorizedSystemToolTemplateCatalog(context)).rejects.toBe(failure);
   });
 
   it.each(['children', 'detail'])(

@@ -1,3 +1,4 @@
+import { getTestInstanceConfig } from '@test/utils/instanceConfigSnapshot';
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import createHandler from '@/pages/api/core/dataset/collection/create';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
@@ -16,7 +17,7 @@ import { syncCollection } from '@fastgpt/service/core/dataset/collection/utils';
 import * as datasetRead from '@fastgpt/service/core/dataset/read';
 import * as datasetS3 from '@fastgpt/service/common/s3/sources/dataset';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
-import { serviceEnv } from '@fastgpt/service/env';
+
 import { Types } from '@fastgpt/service/common/mongo';
 import { getFakeUsers } from '@test/datas/users';
 import { getModelTestDefaults } from '@test/modelCache';
@@ -162,7 +163,7 @@ describe('create collection parent checks', () => {
   it('enforces depth for generic and shared folder creation, and allows a leaf at the boundary', async () => {
     const { owner, scope } = await fixture();
     let parentId: string | null = null;
-    for (let i = 0; i < serviceEnv.MAX_FOLDER_DEPTH - 1; i++) {
+    for (let i = 0; i < getTestInstanceConfig().resource.maxFolderDepth - 1; i++) {
       const folder: { _id: unknown } = await MongoDatasetCollection.create({
         ...scope,
         name: `level-${i}`,

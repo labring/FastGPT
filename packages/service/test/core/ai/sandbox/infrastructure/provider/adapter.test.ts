@@ -1,27 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { createDefaultInstanceConfig } from '@test/utils/instanceConfigSnapshot';
 
 const mocks = vi.hoisted(() => ({
-  serviceEnv: {
-    AGENT_SANDBOX_PROVIDER: 'opensandbox',
-    AGENT_SANDBOX_OPENSANDBOX_BASEURL: 'http://mock-opensandbox.local',
-    AGENT_SANDBOX_OPENSANDBOX_API_KEY: 'mock-opensandbox-api-key',
-    AGENT_SANDBOX_OPENSANDBOX_RUNTIME: 'docker',
-    AGENT_SANDBOX_OPENSANDBOX_USE_SERVER_PROXY: false,
-    AGENT_SANDBOX_OPENSANDBOX_IMAGE: 'runtime-image:test',
-    AGENT_SANDBOX_SEALOS_BASEURL: 'http://mock-sealos.local',
-    AGENT_SANDBOX_SEALOS_TOKEN: 'mock-sealos-token',
-    AGENT_SANDBOX_STORAGE_SIZE_GI: 1
-  },
   createSandbox: vi.fn(
     (config: { provider: string; connectionConfig: unknown; createConfig?: unknown }) => ({
       ...config,
       close: vi.fn(async () => undefined)
     })
   )
-}));
-
-vi.mock('@fastgpt/service/env', () => ({
-  serviceEnv: mocks.serviceEnv
 }));
 
 vi.mock('@fastgpt-sdk/sandbox-adapter', async (importOriginal) => ({
@@ -39,6 +25,20 @@ import {
 describe('sandbox provider adapter', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    global.systemInstanceConfig = createDefaultInstanceConfig();
+    const sandbox = global.systemInstanceConfig.subservice.agentSandbox;
+    sandbox.provider = 'opensandbox';
+    Object.assign(sandbox.opensandbox, {
+      baseUrl: 'http://mock-opensandbox.local',
+      apiKey: 'mock-opensandbox-api-key',
+      runtime: 'docker',
+      useServerProxy: false,
+      image: 'runtime-image:test'
+    });
+    Object.assign(sandbox.sealosdevbox, {
+      baseUrl: 'http://mock-sealos.local',
+      token: 'mock-sealos-token'
+    });
   });
 
   it('throws when adapter factory receives an unsupported provider', () => {

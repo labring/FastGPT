@@ -1,4 +1,4 @@
-import { getAgentSandboxMissingRequiredEnvKeys, isAgentSandboxProvider } from '../../../env.util';
+import { isAgentSandboxProvider } from '../../../env.util';
 import type { SandboxProviderType } from '@fastgpt-sdk/sandbox-adapter';
 
 const getPositiveIntegerEnv = (
@@ -40,7 +40,18 @@ export const getSandboxIntegrationProvider = (
     );
   }
 
-  const missingKeys = getAgentSandboxMissingRequiredEnvKeys(env);
+  // 独立集成测试显式使用部署凭据；生产服务不再声明这些历史 ENV。
+  const requiredKeys =
+    provider === 'sealosdevbox'
+      ? ['AGENT_SANDBOX_SEALOS_BASEURL', 'AGENT_SANDBOX_SEALOS_TOKEN', 'AGENT_SANDBOX_SEALOS_IMAGE']
+      : [
+          'AGENT_SANDBOX_OPENSANDBOX_BASEURL',
+          'AGENT_SANDBOX_OPENSANDBOX_API_KEY',
+          'AGENT_SANDBOX_OPENSANDBOX_IMAGE',
+          'AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL',
+          'AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN'
+        ];
+  const missingKeys = requiredKeys.filter((key) => !env[key]?.trim());
   if (missingKeys.length > 0) {
     throw new Error(`Missing Sandbox integration environment variables: ${missingKeys.join(', ')}`);
   }

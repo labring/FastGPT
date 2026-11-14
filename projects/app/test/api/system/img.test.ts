@@ -19,9 +19,7 @@ vi.mock('@fastgpt/service/common/s3/sources/avatar', () => ({
 }));
 
 vi.mock('@fastgpt/service/common/s3/config/constants', () => ({
-  get storageDownloadUrlMode() {
-    return mocks.storageDownloadUrlMode;
-  }
+  getStorageDownloadUrlMode: () => mocks.storageDownloadUrlMode
 }));
 
 vi.mock('@/service/common/s3/proxy', () => ({

@@ -1,25 +1,24 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { resolveSystemInstanceConfig } from '@fastgpt/global/common/system/config/schema';
 import type { FastGPTConfigFileType } from '@fastgpt/global/common/system/types';
 
-vi.mock('@fastgpt/service/env', () => ({
-  hasAgentSandboxConfig: vi.fn(() => false),
+const { serviceEnv } = vi.hoisted(() => ({
   serviceEnv: {
     SHOW_OUTLINK_BRAND: false,
-    AGENT_SANDBOX_SHOW_FREE_TIP: false,
-    UPLOAD_FILE_MAX_SIZE: 1000,
-    UPLOAD_FILE_MAX_AMOUNT: 1000,
-    MAX_FOLDER_DEPTH: 4
+    AGENT_SANDBOX_SHOW_FREE_TIP: false
   }
 }));
 
+vi.mock('@fastgpt/service/env', () => ({ serviceEnv }));
+
 vi.mock('@fastgpt/service/core/ai/sandbox/config', () => ({
+  getAgentSandboxProvider: vi.fn(() => 'none'),
   getAgentSandboxSkillMaxBytes: vi.fn(() => 512)
 }));
 
 // setup 已加载过此模块，清缓存后才能使用本文件声明的环境与沙箱 mock。
 vi.resetModules();
 const { initFastGPTConfig } = await import('@fastgpt/service/common/system/tools');
-const { serviceEnv } = await import('@fastgpt/service/env');
 
 describe('initFastGPTConfig', () => {
   it.each([undefined, false, true])(
@@ -57,6 +56,7 @@ describe('initFastGPTConfig', () => {
       expect(global.feConfigs.show_outlink_brand).toBe(enabled);
     }
   );
+
   it.each([false, true])(
     'keeps SSO addresses exclusively in systemEnv when other configuration validation fails=%s',
     (invalid) => {
@@ -79,25 +79,35 @@ describe('initFastGPTConfig', () => {
   });
   beforeEach(() => {
     serviceEnv.SHOW_OUTLINK_BRAND = false;
+    serviceEnv.AGENT_SANDBOX_SHOW_FREE_TIP = false;
     global.feConfigs = {} as any;
     global.systemEnv = {} as any;
   });
 
-  it('只配置 SoMark 时开启 PDF 增强解析入口', () => {
-    initFastGPTConfig({
-      feConfigs: {},
-      systemEnv: {
-        customPdfParse: {
-          somarkApiKey: 'sk-test'
-        }
-      }
-    } as any);
+  it('只配置 SoMark Provider 时开启 PDF 增强解析入口', () => {
+    const originalConfig = (global as any).systemInstanceConfig;
+    (global as any).systemInstanceConfig = resolveSystemInstanceConfig({
+      providers: { documentParse: { provider: 'somark' } }
+    });
 
-    expect(global.feConfigs.showCustomPdfParse).toBe(true);
-    expect(global.systemEnv.customPdfParse?.somarkApiKey).toBe('sk-test');
-    expect(global.systemEnv.datasetParseMaxProcess).toBe(10);
-    expect(global.systemEnv.hnswEfSearch).toBe(200);
-    expect(global.systemEnv.vectorRecallConcurrency).toBe(0);
+    try {
+      initFastGPTConfig({
+        feConfigs: {},
+        systemEnv: {
+          customPdfParse: {
+            somarkApiKey: 'sk-test'
+          }
+        }
+      } as any);
+
+      expect(global.feConfigs.showCustomPdfParse).toBe(true);
+      expect(global.systemEnv.customPdfParse?.somarkApiKey).toBe('sk-test');
+      expect(global.systemEnv.datasetParseMaxProcess).toBe(10);
+      expect(global.systemEnv.hnswEfSearch).toBe(200);
+      expect(global.systemEnv.vectorRecallConcurrency).toBe(0);
+    } finally {
+      (global as any).systemInstanceConfig = originalConfig;
+    }
   });
 
   it('配置校验失败时不中断，仍可降级挂载全局状态', () => {
@@ -112,18 +122,13 @@ describe('initFastGPTConfig', () => {
     expect(global.systemEnv.datasetParseMaxProcess).toBe('not_a_number');
   });
 
-  it('正确挂载 show_agent_sandbox_free_tip 配置', () => {
+  it.each([false, true])('免费提示仅由 ENV 控制：%s，忽略旧配置', (enabled) => {
+    serviceEnv.AGENT_SANDBOX_SHOW_FREE_TIP = enabled;
     initFastGPTConfig({
-      feConfigs: {},
+      feConfigs: { show_agent_sandbox_free_tip: !enabled },
       systemEnv: {}
     } as any);
-    expect(global.feConfigs.show_agent_sandbox_free_tip).toBe(false);
-
-    initFastGPTConfig({
-      feConfigs: { agentSandboxFree: true },
-      systemEnv: {}
-    } as any);
-    expect(global.feConfigs.show_agent_sandbox_free_tip).toBe(true);
+    expect(global.feConfigs.show_agent_sandbox_free_tip).toBe(enabled);
   });
 
   it.each(['agentSandboxMax', 'agentSandboxMaxPerTeam', 'vectorRecallConcurrency'])(
@@ -140,6 +145,11 @@ describe('initFastGPTConfig', () => {
       expect(global.feConfigs).toBe(previousFeConfigs);
     }
   );
+
+  it('刷新配置时保留 0 个沙盒的系统配额', () => {
+    initFastGPTConfig({ feConfigs: {}, systemEnv: { agentSandboxMax: 0 } } as any);
+    expect(global.systemEnv.agentSandboxMax).toBe(0);
+  });
 
   it('其他配置降级时仍归一化配额，并保留无关字段', () => {
     initFastGPTConfig(
@@ -160,7 +170,8 @@ describe('initFastGPTConfig', () => {
     expect(global.systemEnv).toMatchObject({
       datasetParseMaxProcess: 'not_a_number',
       agentSandboxMax: 12,
-      agentSandboxMaxPerTeam: undefined,
+      // null 是显式"不限量"，必须保留而不是归一为 undefined
+      agentSandboxMaxPerTeam: null,
       vectorRecallConcurrency: 8,
       customSetting: 7
     });
@@ -176,17 +187,36 @@ describe('initFastGPTConfig', () => {
             workflowParallelRunMaxConcurrency: 20
           }
         },
-        systemEnv: { fileUrlWhitelist, ip_whitelist: '10.0.0.1' }
+        systemEnv: { fileUrlWhitelist }
       } as any);
       expect(global.systemEnv.fileUrlWhitelist).toEqual(fileUrlWhitelist);
-      expect(global.systemEnv.ip_whitelist).toBe('10.0.0.1');
       expect(global.feConfigs.limit).toMatchObject({
-        uploadFileMaxAmount: 1000,
-        uploadFileMaxSize: 1000,
+        uploadFileMaxAmount: 7,
+        uploadFileMaxSize: 32,
         skillSandboxMaxBytes: 512,
         maxFolderDepth: 4,
         workflowParallelRunMaxConcurrency: 20
       });
     }
   );
+
+  it('uses the instance-config PDF parsing price instead of legacy systemEnv', () => {
+    global.systemInstanceConfig = resolveSystemInstanceConfig({
+      providers: {
+        documentParse: {
+          customPdf: { price: 6.5 }
+        }
+      }
+    });
+
+    try {
+      initFastGPTConfig({
+        feConfigs: {},
+        systemEnv: { customPdfParse: { price: 2 } }
+      } as any);
+      expect(global.feConfigs.customPdfParsePrice).toBe(6.5);
+    } finally {
+      delete (global as any).systemInstanceConfig;
+    }
+  });
 });

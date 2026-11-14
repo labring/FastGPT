@@ -5,6 +5,7 @@ import type {
   FastGPTRegisterMethodType
 } from '@fastgpt/global/common/system/types';
 import { SubTypeEnum } from '@fastgpt/global/support/wallet/sub/constants';
+import type { SubPlanType } from '@fastgpt/global/support/wallet/sub/type';
 import { normalizeSsoConfig } from '@fastgpt/global/common/system/config/sso';
 
 const removedFeConfigKeys = [
@@ -13,7 +14,6 @@ const removedFeConfigKeys = [
   'agentSandboxProxyUrl',
   'evalFileMaxLines',
   'fileUrlWhitelist',
-  'ip_whitelist',
   'uploadFileMaxAmount',
   'uploadFileMaxSize'
 ];
@@ -27,6 +27,21 @@ const omitRemovedFeConfigs = <T extends object>(configs: T): T => {
 
   return filtered as T;
 };
+
+/** 将存储的订阅套餐转为管理表单，缺失时保留原有的空值默认行为。 */
+export function formatSubPlansStore2FormSchema(
+  subPlans: SubPlanType | undefined
+): ConfigFormType['paySettings']['subPlans'] {
+  return {
+    planDescriptionUrl: subPlans?.planDescriptionUrl ?? '',
+    appRegistrationUrl: subPlans?.appRegistrationUrl ?? '',
+    communitySupportTip: subPlans?.communitySupportTip ?? '',
+    activityExpirationTime: subPlans?.activityExpirationTime,
+    standard: subPlans?.[SubTypeEnum.standard],
+    extraDatasetSizePrice: subPlans?.[SubTypeEnum.extraDatasetSize]?.price ?? 0,
+    extraPointsPackages: subPlans?.[SubTypeEnum.extraPoints]?.packages ?? []
+  };
+}
 
 /** 将存储配置转换为管理表单；旧后端白名单迁入 systemEnv，显式配置优先。 */
 export function formatConfigStore2FormSchema({
@@ -92,7 +107,6 @@ export function formatConfigStore2FormSchema({
     fileUrlWhitelist = Array.isArray(feConfigs?.fileUrlWhitelist)
       ? feConfigs.fileUrlWhitelist
       : undefined,
-    ip_whitelist = typeof feConfigs?.ip_whitelist === 'string' ? feConfigs.ip_whitelist : undefined,
     sso: _serverSso,
     workflowHttpNode = { ignoreHttpsCertificate: false },
     ...systemEnvProps
@@ -139,7 +153,6 @@ export function formatConfigStore2FormSchema({
         vlmMaxProcess,
         customPdfParse,
         fileUrlWhitelist,
-        ip_whitelist,
         sso: ssoConfigs.serverConfig,
         workflowHttpNode,
         ...systemEnvProps
@@ -157,8 +170,7 @@ export function formatConfigStore2FormSchema({
       microsoft: {
         clientId: fastgptPro?.auth?.microsoft?.clientId || '',
         secret: fastgptPro?.auth?.microsoft?.secret || '',
-        tenantId: fastgptPro?.auth?.microsoft?.tenantId || '',
-        customButton: fastgptPro?.auth?.microsoft?.customButton || ''
+        tenantId: fastgptPro?.auth?.microsoft?.tenantId || ''
       },
       email: {
         smtp: fastgptPro?.auth?.email?.smtp || '',
@@ -169,6 +181,7 @@ export function formatConfigStore2FormSchema({
         secure: fastgptPro?.auth?.email?.secure ?? true
       },
       sms: {
+        // 英文模板仅从旧 Pro 配置读取，用于迁移兼容；新表单不再写入。
         LOGIN: fastgptPro?.auth?.sms?.LOGIN || '',
         LOGIN_EN: fastgptPro?.auth?.sms?.LOGIN_EN || '',
         REGISTER: fastgptPro?.auth?.sms?.REGISTER || '',
@@ -251,15 +264,7 @@ export function formatConfigStore2FormSchema({
       wx: fastgptPro?.pay?.wx || {},
       alipay: fastgptPro?.pay?.alipay || {},
       bank: fastgptPro?.pay?.bank || {},
-      subPlans: {
-        planDescriptionUrl: subPlans?.planDescriptionUrl || '',
-        appRegistrationUrl: subPlans?.appRegistrationUrl || '',
-        communitySupportTip: subPlans?.communitySupportTip || '',
-        activityExpirationTime: subPlans?.activityExpirationTime,
-        standard: subPlans?.[SubTypeEnum.standard],
-        extraDatasetSizePrice: subPlans?.[SubTypeEnum.extraDatasetSize]?.price || 0,
-        extraPointsPackages: subPlans?.[SubTypeEnum.extraPoints]?.packages || []
-      }
+      subPlans: formatSubPlansStore2FormSchema(subPlans)
     },
     securitySettings: {
       censor: {
@@ -330,8 +335,7 @@ export function formatFormData2ConfigStore({
       microsoft: microsoft?.clientId
         ? {
             clientId: microsoft?.clientId,
-            tenantId: microsoft?.tenantId,
-            customButton: microsoft?.customButton
+            tenantId: microsoft?.tenantId
           }
         : undefined,
       wecom: !!wecom

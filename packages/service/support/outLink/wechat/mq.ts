@@ -12,7 +12,10 @@ import type { OutLinkSchemaType, WechatAppType } from '@fastgpt/global/support/o
 import { MongoOutLink } from '../../../support/outLink/schema';
 import { wechatPollingFailureCache } from '@fastgpt/dal/redis/caches';
 import { groupMessagesByUser } from './messageParser';
-import { serviceEnv } from '../../../env';
+import {
+  getSystemInstanceConfig,
+  onSystemInstanceConfigSnapshot
+} from '../../../common/system/systemInstanceConfig/runtime';
 import { batchRun, retryFn } from '@fastgpt/global/common/system/utils';
 import { wechatOutlinkProvider } from './provider';
 
@@ -222,13 +225,29 @@ async function shouldContinuePolling(shareId: string): Promise<boolean> {
 
 /* ============ 对外接口 ============ */
 
+let unsubscribeSnapshot: (() => void) | undefined;
+
 /**
  * 初始化微信轮询 / 回复 Worker
  */
 export const initWechatPollWorker = async () => {
+  // 快照重载后把新并发同步到已存在的 poll/reply Worker；DAL 命中缓存时原地更新 concurrency。
+  unsubscribeSnapshot ??= onSystemInstanceConfigSnapshot(() => {
+    const next = getSystemInstanceConfig().performance.channel.wechatConcurrency;
+    // 单个 Worker 若正处于断线重启窗口会抛错（新并发已写入 workerOpts），隔离异常以保证另一队列继续同步。
+    try {
+      wechatMQService.getPollWorker(processWechatPollJob, { concurrency: next });
+    } catch {}
+    try {
+      wechatMQService.getReplyWorker(processWechatReplyJob, { concurrency: next });
+    } catch {}
+  });
+  // 渠道并发只读实例配置 performance.channel。
+  const concurrency = getSystemInstanceConfig().performance.channel.wechatConcurrency;
+
   const pollWorker = wechatMQService.getPollWorker(processWechatPollJob, {
     // poll job 主要阻塞在 getUpdates 长轮询 I/O（~30s），不吃 CPU
-    concurrency: serviceEnv.WECHAT_CHANNEL_CONCURRENCY,
+    concurrency,
     lockDuration: POLL_LOCK_MS, // 120s 防止 job 被误判为 stalled
     stalledInterval: 30_000, // 30s 检查下是否活跃
     removeOnComplete: { count: 0 },
@@ -267,7 +286,7 @@ export const initWechatPollWorker = async () => {
   });
 
   wechatMQService.getReplyWorker(processWechatReplyJob, {
-    concurrency: serviceEnv.WECHAT_CHANNEL_CONCURRENCY,
+    concurrency,
     lockDuration: REPLY_LOCK_MS,
     stalledInterval: 60_000,
     removeOnComplete: { count: 0 },

@@ -301,8 +301,7 @@ export class MilvusCtrl implements VectorControllerType {
         // 单表含 dense vector + BM25 sparse 两个 ANN 字段,SDK 缺省取 schema 第一个(依赖字段顺序),必须显式指定 dense
         anns_field: 'vector',
         limit,
-        // Milvus 的 HNSW 搜索宽度不能小于本次返回数量。
-        params: { ef: Math.max(limit, global.systemEnv?.hnswEfSearch || 200) },
+        params: { ef: props.hnswEfSearch },
         expr: filterStr,
         // SDK 不自动回填主键:search 结果只含 output_fields 指定的字段,id 需显式列出
         output_fields: ['id', 'collectionId']

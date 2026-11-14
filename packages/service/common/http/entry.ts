@@ -9,6 +9,7 @@ import { getClientIpFromRequest } from '../security/clientIp';
 import { ApiRequestInputParseError, getZodParseErrorInputSource } from '../zod/requestParseError';
 import { withHttpRequestProfile } from './requestProfile';
 import { markProfileError } from '../profiling';
+import { ApiHttpError } from './apiError';
 import type { ApiI18n } from '../i18n/request';
 
 export type ApiHandler<
@@ -200,6 +201,15 @@ export const createApiEntry = <
                   });
                   if (!isResponseClosed()) res.destroy();
                   return;
+                }
+
+                if (error instanceof ApiHttpError) {
+                  span.setAttribute('http.response.status_code', error.statusCode);
+                  return jsonRes(res, {
+                    code: error.statusCode,
+                    message: error.message,
+                    url: logUrl
+                  });
                 }
 
                 // Handle Zod validation errors. Only explicit API input parse errors can be downgraded.

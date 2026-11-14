@@ -35,9 +35,11 @@ describe('initStaticData through the real initialization pipeline', () => {
   let clientInitData: typeof import('@/web/common/system/staticData').clientInitData;
   let getDocPath: typeof import('@/web/common/system/doc').getDocPath;
   let initialState: ReturnType<typeof useSystemStore.getState>;
+  let originalSsoHandler: typeof global.getSsoConfiguredHandler;
   const storage = new Map<string, string>();
 
   beforeAll(async () => {
+    originalSsoHandler = global.getSsoConfiguredHandler;
     vi.stubGlobal('localStorage', {
       getItem: (key: string) => storage.get(key) ?? null,
       setItem: (key: string, value: string) => storage.set(key, value),
@@ -50,6 +52,7 @@ describe('initStaticData through the real initialization pipeline', () => {
   });
 
   beforeEach(() => {
+    global.getSsoConfiguredHandler = () => false;
     vi.clearAllMocks();
     useSystemStore.setState(initialState, true);
     storage.clear();
@@ -92,6 +95,7 @@ describe('initStaticData through the real initialization pipeline', () => {
   });
 
   afterAll(() => {
+    global.getSsoConfiguredHandler = originalSsoHandler;
     useSystemStore.setState(initialState, true);
     vi.unstubAllGlobals();
   });
@@ -107,7 +111,7 @@ describe('initStaticData through the real initialization pipeline', () => {
     expect(publicConfig.limit).toEqual({ uploadFileMaxAmount: 7, uploadFileMaxSize: 32 });
     expect(publicConfig.limit?.uploadFileMaxSize).toBe(32);
     expect(useSystemStore.getState().feConfigs).toEqual(publicConfig);
-    expect(useSystemStore.getState().initDataBufferId).toBe('unAuth_v9_config-1');
+    expect(useSystemStore.getState().initDataBufferId).toBe('unAuth_v10_sso_0_config-1');
     expect(JSON.parse(storage.get('globalStore')!).state.feConfigs).toEqual(publicConfig);
 
     const cached = await clientInitData();
@@ -140,14 +144,18 @@ describe('initStaticData through the real initialization pipeline', () => {
     const anonymous = await clientInitData();
     expect(anonymous.feConfigs).toEqual(publicConfig);
     expect(useSystemStore.getState().feConfigs).toEqual(publicConfig);
-    expect(useSystemStore.getState().initDataBufferId).toBe('unAuth_v9_config-1');
+    expect(useSystemStore.getState().initDataBufferId).toBe('unAuth_v10_sso_0_config-1');
     expect(useSystemStore.getState().systemVersion).toBe('4.17.3');
     expect(JSON.parse(storage.get('globalStore')!).state.feConfigs).toEqual(publicConfig);
 
     expect(mocks.GET.mock.calls).toEqual(
-      ['unAuth_config-1', 'unAuth_v9_config-1', 'unAuth_v9_config-1', 'config-1', 'config-1'].map(
-        (bufferId) => ['/common/system/getInitData', { bufferId }]
-      )
+      [
+        'unAuth_config-1',
+        'unAuth_v10_sso_0_config-1',
+        'unAuth_v10_sso_0_config-1',
+        'config-1',
+        'config-1'
+      ].map((bufferId) => ['/common/system/getInitData', { bufferId }])
     );
   });
 

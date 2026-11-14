@@ -1,12 +1,14 @@
+import { serviceEnv } from '@fastgpt/service/env';
 import {
   TeamApikeyCreateRoleVal,
   TeamAppCreateRoleVal,
   TeamDatasetCreateRoleVal,
   TeamSkillCreateRoleVal
 } from '@fastgpt/global/support/permission/user/constant';
+
 import { DefaultGroupName } from '@fastgpt/global/support/user/team/group/constant';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
-import { serviceEnv } from '@fastgpt/service/env';
+
 import { MongoMemberGroupModel } from '@fastgpt/service/support/permission/memberGroup/memberGroupSchema';
 import { MongoOrgModel } from '@fastgpt/service/support/permission/org/orgSchema';
 import { resourcePermissionRepo } from '@fastgpt/service/support/permission/repository/resourcePermissionRepo';
@@ -16,6 +18,7 @@ import {
   assertTargetMemberNotRoot,
   countEffectiveTeamMembers,
   createDefaultTeam,
+  createUserLoginTeam,
   ensureRootTeamMember,
   getForeignRootMemberInfo,
   getTeamOwner,
@@ -32,6 +35,7 @@ import {
 } from '@fastgpt/global/support/user/team/constant';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 import { MongoTeam } from '@fastgpt/service/support/user/team/teamSchema';
+import { MongoTeamSub } from '@fastgpt/service/support/wallet/sub/schema';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.unmock(import('@fastgpt/service/common/mongo/sessionRun'));
@@ -118,6 +122,75 @@ describe('createDefaultTeam', () => {
         MongoOrgModel.findOne({ teamId: { $ne: null } }).lean()
       ])
     ).resolves.toEqual([null, null, null, null, null]);
+  });
+});
+
+describe('createUserLoginTeam', () => {
+  afterEach(() => {
+    setDefaultPermissionsEnabled(originalDefaultPermissionsEnabled);
+  });
+
+  it.each([true, false])(
+    'applies default group creation permissions to ordinary members when enabled is %s',
+    async (enabled) => {
+      setDefaultPermissionsEnabled(enabled);
+      const owner = await MongoUser.create({ username: 'fallback-owner', password: 'password' });
+      const user = await MongoUser.create({ username: 'fallback-member', password: 'password' });
+
+      const ownerTmbId = await mongoSessionRun((session) =>
+        createUserLoginTeam({ userId: String(owner._id), username: owner.username, session })
+      );
+      const ownerTmb = await MongoTeamMember.findById(ownerTmbId).orFail().lean();
+      const teamId = String(ownerTmb.teamId);
+      const group = await MongoMemberGroupModel.findOne({ teamId, name: DefaultGroupName })
+        .orFail()
+        .lean();
+      const acl = await MongoResourcePermission.findOne({
+        teamId,
+        groupId: group._id,
+        resourceType: 'team',
+        resourceId: null
+      }).lean();
+      const member = await MongoTeamMember.create({
+        teamId,
+        userId: user._id,
+        name: 'Member',
+        status: 'active'
+      });
+      const { permission } = await getTmbInfoByTmbId({ tmbId: String(member._id) });
+
+      expect(acl?.permission ?? null).toBe(enabled ? defaultBasicRole : null);
+      expect(permission).toMatchObject({
+        hasAppCreatePer: enabled,
+        hasSkillCreatePer: enabled,
+        hasDatasetCreatePer: enabled,
+        hasApikeyCreatePer: enabled,
+        hasManagePer: false
+      });
+    }
+  );
+
+  it('rolls back the fallback team and default permissions with the caller transaction', async () => {
+    setDefaultPermissionsEnabled(true);
+    const owner = await MongoUser.create({ username: 'fallback-rollback', password: 'password' });
+
+    await expect(
+      mongoSessionRun(async (session) => {
+        await createUserLoginTeam({ userId: String(owner._id), username: owner.username, session });
+        throw new Error('caller transaction failed');
+      })
+    ).rejects.toThrow('caller transaction failed');
+
+    await expect(
+      Promise.all([
+        MongoTeam.findOne({ ownerId: owner._id }).lean(),
+        MongoTeamMember.findOne({ userId: owner._id }).lean(),
+        MongoMemberGroupModel.findOne({}).lean(),
+        MongoResourcePermission.findOne({}).lean(),
+        MongoOrgModel.findOne({}).lean(),
+        MongoTeamSub.findOne({}).lean()
+      ])
+    ).resolves.toEqual([null, null, null, null, null, null]);
   });
 });
 

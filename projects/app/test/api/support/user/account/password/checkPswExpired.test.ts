@@ -1,4 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { resolveSystemInstanceConfig } from '@fastgpt/global/common/system/config/schema';
+
 import { MongoUser } from '@fastgpt/service/support/user/schema';
 import { MongoTeam } from '@fastgpt/service/support/user/team/teamSchema';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
@@ -18,6 +20,7 @@ describe('checkPswExpired API', () => {
   let testTmb: any;
 
   beforeEach(async () => {
+    global.systemInstanceConfig = resolveSystemInstanceConfig({});
     testUser = await MongoUser.create({
       username: 'testuser',
       password: 'testpassword',
@@ -42,8 +45,8 @@ describe('checkPswExpired API', () => {
     vi.stubEnv('PASSWORD_EXPIRED_MONTH', originalPasswordExpiredMonth);
   });
 
-  it('should return false when PASSWORD_EXPIRED_MONTH is not set', async () => {
-    vi.stubEnv('PASSWORD_EXPIRED_MONTH', undefined);
+  it('uses the default never-expire config independently of ENV', async () => {
+    vi.stubEnv('PASSWORD_EXPIRED_MONTH', '1');
     const checkPswExpiredApi = await loadCheckPswExpiredApi();
 
     const res = await Call(checkPswExpiredApi.default, {
@@ -60,8 +63,8 @@ describe('checkPswExpired API', () => {
     expect(res.data).toBe(false);
   });
 
-  it('should return false when PASSWORD_EXPIRED_MONTH=0', async () => {
-    vi.stubEnv('PASSWORD_EXPIRED_MONTH', '0');
+  it('should return false when the config expiration is zero', async () => {
+    global.systemInstanceConfig!.auth.passwordExpiredMonth = 0;
     const checkPswExpiredApi = await loadCheckPswExpiredApi();
 
     const res = await Call(checkPswExpiredApi.default, {
@@ -79,7 +82,7 @@ describe('checkPswExpired API', () => {
   });
 
   it('should return false when password was updated recently', async () => {
-    vi.stubEnv('PASSWORD_EXPIRED_MONTH', '3');
+    global.systemInstanceConfig!.auth.passwordExpiredMonth = 3;
     const checkPswExpiredApi = await loadCheckPswExpiredApi();
 
     // Update password time to now
@@ -102,7 +105,7 @@ describe('checkPswExpired API', () => {
   });
 
   it('should return true when password has expired (update time older than expiry period)', async () => {
-    vi.stubEnv('PASSWORD_EXPIRED_MONTH', '1');
+    global.systemInstanceConfig!.auth.passwordExpiredMonth = 1;
     const checkPswExpiredApi = await loadCheckPswExpiredApi();
 
     // Set password update time to 2 months ago
@@ -126,8 +129,8 @@ describe('checkPswExpired API', () => {
     expect(res.data).toBe(true);
   });
 
-  it('should return true when passwordUpdateTime is not set and env is configured', async () => {
-    vi.stubEnv('PASSWORD_EXPIRED_MONTH', '3');
+  it('should return true when passwordUpdateTime is not set and config requires expiration', async () => {
+    global.systemInstanceConfig!.auth.passwordExpiredMonth = 3;
     const checkPswExpiredApi = await loadCheckPswExpiredApi();
 
     // Remove passwordUpdateTime
@@ -149,8 +152,42 @@ describe('checkPswExpired API', () => {
     expect(res.data).toBe(true);
   });
 
+  it('checks expiry only when the Pro SSO policy permits the account password', async () => {
+    const oldFeConfigs = global.feConfigs;
+    const oldHandler = global.getSsoConfiguredHandler;
+    try {
+      global.systemInstanceConfig!.auth.passwordExpiredMonth = 1;
+      global.feConfigs = { ...global.feConfigs, sso: { disablePasswordForSsoUsers: true } };
+      global.getSsoConfiguredHandler = () => true;
+      await MongoUser.findByIdAndUpdate(testUser._id, {
+        username: 'tenant-user',
+        passwordUpdateTime: new Date(0)
+      });
+      const checkPswExpiredApi = await loadCheckPswExpiredApi();
+      const auth = {
+        userId: String(testUser._id),
+        teamId: String(testTeam._id),
+        tmbId: String(testTmb._id),
+        isRoot: false,
+        sessionId: 'session123'
+      } as any;
+
+      const restricted = await Call(checkPswExpiredApi.default, { auth });
+      expect(restricted.code).toBe(200);
+      expect(restricted.data).toBe(false);
+
+      global.getSsoConfiguredHandler = () => false;
+      const permitted = await Call(checkPswExpiredApi.default, { auth });
+      expect(permitted.code).toBe(200);
+      expect(permitted.data).toBe(true);
+    } finally {
+      global.feConfigs = oldFeConfigs;
+      global.getSsoConfiguredHandler = oldHandler;
+    }
+  });
+
   it('should return false for root when password expiry is configured', async () => {
-    vi.stubEnv('PASSWORD_EXPIRED_MONTH', '1');
+    global.systemInstanceConfig!.auth.passwordExpiredMonth = 1;
     const checkPswExpiredApi = await loadCheckPswExpiredApi();
 
     await MongoUser.findByIdAndUpdate(testUser._id, {
@@ -194,7 +231,7 @@ describe('checkPswExpired API', () => {
     ['empty', ''],
     ['null', null]
   ])('should return false when password is %s', async (_label, password) => {
-    vi.stubEnv('PASSWORD_EXPIRED_MONTH', '1');
+    global.systemInstanceConfig!.auth.passwordExpiredMonth = 1;
     const checkPswExpiredApi = await loadCheckPswExpiredApi();
     const update =
       password === undefined

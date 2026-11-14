@@ -21,32 +21,35 @@ describe('OpenGaussVectorCtrl.init', () => {
 
 describe('OpenGaussVectorCtrl.embRecall', () => {
   beforeEach(() => {
-    global.systemEnv = {} as any;
+    global.systemEnv = { ...global.systemEnv, hnswEfSearch: 9999 };
     vi.mocked(OgClient.query)
       .mockReset()
       .mockResolvedValue([{}, { rows: [] }] as any);
   });
 
-  it.each([undefined, 100])('scopes the query and applies search width %j', async (configured) => {
-    if (configured !== undefined) global.systemEnv.hnswEfSearch = configured;
-    await new OpenGaussVectorCtrl().embRecall({
-      teamId: 'team-a',
-      datasetIds: ['dataset-a', 'dataset-b'],
-      vector: [0.1, 0.2],
-      limit: 20,
-      forbidCollectionIdList: [],
-      filterCollectionIdList: undefined
-    });
+  it.each([200, 100])(
+    'scopes the query and applies the supplied search width %j',
+    async (hnswEfSearch) => {
+      await new OpenGaussVectorCtrl().embRecall({
+        teamId: 'team-a',
+        datasetIds: ['dataset-a', 'dataset-b'],
+        vector: [0.1, 0.2],
+        limit: 20,
+        hnswEfSearch,
+        forbidCollectionIdList: [],
+        filterCollectionIdList: undefined
+      });
 
-    expect(OgClient.query).toHaveBeenCalledOnce();
-    const [query] = vi.mocked(OgClient.query).mock.calls[0];
-    expect(query).toMatchObject({ query_timeout: 120_000 });
-    const sql = typeof query === 'string' ? query : query.text;
-    expect(sql).toContain(`SET LOCAL hnsw.ef_search = ${configured ?? 200};`);
-    expect(sql).toMatch(
-      /WHERE\s+team_id = 'team-a'\s+AND dataset_id IN \('dataset-a','dataset-b'\)/
-    );
-  });
+      expect(OgClient.query).toHaveBeenCalledOnce();
+      const [query] = vi.mocked(OgClient.query).mock.calls[0];
+      expect(query).toMatchObject({ query_timeout: 120_000 });
+      const sql = typeof query === 'string' ? query : query.text;
+      expect(sql).toContain(`SET LOCAL hnsw.ef_search = ${hnswEfSearch};`);
+      expect(sql).toMatch(
+        /WHERE\s+team_id = 'team-a'\s+AND dataset_id IN \('dataset-a','dataset-b'\)/
+      );
+    }
+  );
 });
 
 describe('OpenGaussVectorCtrl.refreshCreateTime', () => {

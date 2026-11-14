@@ -1,3 +1,4 @@
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import {
   Box,
   Button,
@@ -53,6 +54,7 @@ export default function PlanEditModal(props: {
   getData: any;
   subType: `${SubTypeEnum}`;
 }) {
+  const { t } = useSafeTranslation();
   const { isOpen, onOpen, onClose } = useDisclosure();
   const { data, getData, subType } = props;
   const { toast } = useToast();
@@ -134,7 +136,7 @@ export default function PlanEditModal(props: {
         enableSandbox: toOverrideValue(formData.enableSandbox)
       });
       toast({
-        title: '更新成功',
+        title: t('admin:updated_success'),
         status: 'success'
       });
       getData(1);
@@ -176,7 +178,7 @@ export default function PlanEditModal(props: {
           });
         }}
       >
-        编辑
+        {t('admin:edit')}
       </Button>
 
       <MyModal
@@ -187,17 +189,17 @@ export default function PlanEditModal(props: {
         footer={
           <>
             <Button variant={'whiteBase'} onClick={onClose}>
-              关闭
+              {t('admin:close')}
             </Button>
             <Button isLoading={loading} variant={'primary'} onClick={handleSubmit(onSubmit)}>
-              确定
+              {t('admin:ok')}
             </Button>
           </>
         }
       >
         <FormControl mt={4}>
           <FormLabel htmlFor="startTime" fontWeight="bold">
-            开始时间
+            {t('admin:start_time')}
           </FormLabel>
           <Input
             size="md"
@@ -209,7 +211,7 @@ export default function PlanEditModal(props: {
         </FormControl>
         <FormControl mt={4}>
           <FormLabel htmlFor="expiredTime" fontWeight="bold">
-            结束时间
+            {t('admin:end_time')}
           </FormLabel>
           <Input
             size="md"
@@ -223,7 +225,7 @@ export default function PlanEditModal(props: {
           <>
             <FormControl mt={4}>
               <FormLabel htmlFor="level" fontWeight="bold">
-                套餐等级
+                {t('admin:plan_tier')}
               </FormLabel>
               <Controller
                 control={control}
@@ -234,15 +236,18 @@ export default function PlanEditModal(props: {
                     value={value}
                     onChange={onChange}
                     list={[
-                      { label: '免费版', value: StandardSubLevelEnum.free },
-                      { label: '基础版', value: StandardSubLevelEnum.basic },
-                      { label: '高级版', value: StandardSubLevelEnum.advanced },
-                      { label: '定制版', value: StandardSubLevelEnum.custom },
+                      { label: t('admin:free_edition'), value: StandardSubLevelEnum.free },
+                      { label: t('admin:basic_edition'), value: StandardSubLevelEnum.basic },
+                      { label: t('admin:advanced_edition'), value: StandardSubLevelEnum.advanced },
+                      { label: t('admin:custom'), value: StandardSubLevelEnum.custom },
 
                       // deprecated
-                      { label: '体验版', value: StandardSubLevelEnum.experience },
-                      { label: '团队版', value: StandardSubLevelEnum.team },
-                      { label: '企业版', value: StandardSubLevelEnum.enterprise }
+                      { label: t('admin:trial'), value: StandardSubLevelEnum.experience },
+                      { label: t('admin:team_edition'), value: StandardSubLevelEnum.team },
+                      {
+                        label: t('admin:enterprise_edition'),
+                        value: StandardSubLevelEnum.enterprise
+                      }
                     ]}
                   />
                 )}
@@ -253,10 +258,10 @@ export default function PlanEditModal(props: {
         {subType === SubTypeEnum.extraDatasetSize ? (
           <FormControl mt={4}>
             <FormLabel htmlFor="extraDatasetSize" fontWeight="bold">
-              额外知识库容量
+              {t('admin:extra_dataset_storage')}
               {errors && !!errors?.extraDatasetSize && (
                 <Box as="span" ml={2} fontSize="12px" color="red.500">
-                  *必填
+                  {t('admin:required')}
                 </Box>
               )}
             </FormLabel>
@@ -266,7 +271,7 @@ export default function PlanEditModal(props: {
               })}
               id="extraDatasetSize"
               variant="outline"
-              placeholder="额外知识库容量"
+              placeholder={t('admin:extra_dataset_storage')}
               type="number"
             />
           </FormControl>
@@ -274,7 +279,7 @@ export default function PlanEditModal(props: {
           <>
             <FormControl mt={4}>
               <FormLabel htmlFor="totalPoints" fontWeight="bold">
-                总积分
+                {t('admin:total_points')}
               </FormLabel>
               <Input
                 {...register('totalPoints', {
@@ -282,13 +287,13 @@ export default function PlanEditModal(props: {
                 })}
                 id="totalPoints"
                 variant="outline"
-                placeholder="总积分"
+                placeholder={t('admin:total_points')}
                 type="number"
               />
             </FormControl>
             <FormControl mt={4}>
               <FormLabel htmlFor="surplusPoints" fontWeight="bold">
-                剩余积分
+                {t('admin:remaining_points')}
               </FormLabel>
               <Input
                 {...register('surplusPoints', {
@@ -296,7 +301,7 @@ export default function PlanEditModal(props: {
                 })}
                 id="surplusPoints"
                 variant="outline"
-                placeholder="剩余积分"
+                placeholder={t('admin:remaining_points')}
                 type="number"
               />
             </FormControl>
@@ -305,10 +310,12 @@ export default function PlanEditModal(props: {
         {subType === SubTypeEnum.standard && (
           <>
             <MyDivider />
-            <Box mt={4}>下面的值会覆盖套餐配置，不填则会用套餐的标准值</Box>
+            <Box mt={4}>
+              {t('admin:these_values_override_the_plan_configuration_leave_empty_to')}
+            </Box>
             <FormControl>
               <FormLabel htmlFor="maxTeamMember" fontWeight={'bold'}>
-                团队成员上限
+                {t('admin:team_member_limit')}
               </FormLabel>
               <Input
                 {...register('maxTeamMember')}
@@ -320,7 +327,7 @@ export default function PlanEditModal(props: {
             </FormControl>
             <FormControl mt={4}>
               <FormLabel htmlFor="maxApp" fontWeight={'bold'}>
-                应用上限
+                {t('admin:app_limit')}
               </FormLabel>
               <Input
                 {...register('maxApp')}
@@ -332,7 +339,7 @@ export default function PlanEditModal(props: {
             </FormControl>
             <FormControl mt={4}>
               <FormLabel htmlFor="maxDataset" fontWeight={'bold'}>
-                知识库上限
+                {t('admin:dataset_limit')}
               </FormLabel>
               <Input
                 {...register('maxDataset')}
@@ -344,7 +351,7 @@ export default function PlanEditModal(props: {
             </FormControl>
             <FormControl mt={4}>
               <FormLabel htmlFor="maxDatasetSize" fontWeight={'bold'}>
-                知识库索引容量上限
+                {t('admin:dataset_index_capacity_limit')}
               </FormLabel>
               <Input
                 {...register('maxDatasetSize')}
@@ -368,7 +375,7 @@ export default function PlanEditModal(props: {
             </FormControl>
             <FormControl mt={4}>
               <FormLabel htmlFor="websiteSyncPerDataset" fontWeight={'bold'}>
-                单个知识库网页同步数量
+                {t('admin:website_sync_count_per_dataset')}
               </FormLabel>
               <Input
                 {...register('websiteSyncPerDataset')}
@@ -380,7 +387,7 @@ export default function PlanEditModal(props: {
             </FormControl>
             <FormControl mt={4}>
               <FormLabel htmlFor="chatHistoryStoreDuration" fontWeight={'bold'}>
-                对话记录保存时长（天）
+                {t('admin:chat_history_retention_days')}
               </FormLabel>
               <Input
                 {...register('chatHistoryStoreDuration')}
@@ -392,7 +399,7 @@ export default function PlanEditModal(props: {
             </FormControl>
             <FormControl mt={4}>
               <FormLabel htmlFor="appRegistrationCount" fontWeight={'bold'}>
-                应用备案数量上限
+                {t('admin:app_filing_limit')}
               </FormLabel>
               <Input
                 {...register('appRegistrationCount')}
@@ -404,7 +411,7 @@ export default function PlanEditModal(props: {
             </FormControl>
             <FormControl mt={4}>
               <FormLabel htmlFor="auditLogStoreDuration" fontWeight={'bold'}>
-                审计日志保存时间（天）
+                {t('admin:audit_log_retention_days')}
               </FormLabel>
               <Input
                 {...register('auditLogStoreDuration')}
@@ -416,7 +423,7 @@ export default function PlanEditModal(props: {
             </FormControl>
             <FormControl mt={4}>
               <FormLabel htmlFor="ticketResponseTime" fontWeight={'bold'}>
-                工单支持响应时间（小时）
+                {t('admin:ticket_support_response_time_hours')}
               </FormLabel>
               <Input
                 {...register('ticketResponseTime')}
@@ -428,7 +435,7 @@ export default function PlanEditModal(props: {
             </FormControl>
             <FormControl mt={4}>
               <FormLabel htmlFor="customDomain" fontWeight={'bold'}>
-                自定义域名数量
+                {t('admin:custom_domain_count')}
               </FormLabel>
               <Input
                 {...register('customDomain')}
@@ -440,7 +447,7 @@ export default function PlanEditModal(props: {
             </FormControl>
             <FormControl mt={4}>
               <FormLabel htmlFor="maxUploadFileSize" fontWeight={'bold'}>
-                最大上传文件大小（MB）
+                {t('admin:max_upload_file_size_mb')}
               </FormLabel>
               <Input
                 {...register('maxUploadFileSize')}
@@ -452,7 +459,7 @@ export default function PlanEditModal(props: {
             </FormControl>
             <FormControl mt={4}>
               <FormLabel htmlFor="maxUploadFileCount" fontWeight={'bold'}>
-                最大上传文件数量
+                {t('admin:max_upload_file_count')}
               </FormLabel>
               <Input
                 {...register('maxUploadFileCount')}
@@ -484,7 +491,7 @@ export default function PlanEditModal(props: {
             </FormControl>
             <FormControl mt={4}>
               <FormLabel htmlFor="enableSandbox" fontWeight={'bold'}>
-                虚拟机
+                {t('admin:virtual_machine')}
               </FormLabel>
               <Controller
                 control={control}
@@ -495,9 +502,9 @@ export default function PlanEditModal(props: {
                     value={value}
                     onChange={(e) => onChange(e.target.value)}
                   >
-                    <option value="inherit">跟随套餐</option>
-                    <option value="enabled">启用</option>
-                    <option value="disabled">禁止</option>
+                    <option value="inherit">{t('admin:follow_plan')}</option>
+                    <option value="enabled">{t('admin:enable')}</option>
+                    <option value="disabled">{t('admin:forbidden')}</option>
                   </Select>
                 )}
               />

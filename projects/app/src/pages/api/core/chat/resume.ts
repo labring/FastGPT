@@ -16,7 +16,7 @@ import {
   StreamResumeUnavailableEvent
 } from '@fastgpt/global/core/workflow/runtime/constants';
 import {
-  STREAM_RESUME_TTL_SECONDS,
+  getStreamResumeTtlSeconds,
   catchUpAllHistoryItems,
   _resume,
   getStreamResumeUnavailableState
@@ -35,7 +35,6 @@ import { translateApiMessage } from '@fastgpt/service/common/i18n/request';
 
 const completedChatPageSize = 10;
 const resumeUnavailablePollIntervalMs = 3000;
-const resumeUnavailableMaxWaitMs = STREAM_RESUME_TTL_SECONDS * 1000;
 type CurrentChatState = Pick<StreamNoNeedToBeResumeType, 'chatGenerateStatus' | 'hasBeenRead'>;
 const resumeGeneratingRequiresSseMessage = i18nT('common:api_error.resume_requires_sse');
 
@@ -179,7 +178,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   };
 
   const waitForCompletedChat = async () => {
-    const deadlineAt = Date.now() + resumeUnavailableMaxWaitMs;
+    const deadlineAt = Date.now() + getStreamResumeTtlSeconds() * 1000;
 
     while (!isResponseClosed(res)) {
       const chat = await findCurrentChat();

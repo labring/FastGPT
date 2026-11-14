@@ -13,6 +13,7 @@ import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/
 import type { RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import { UserConfigError } from '@fastgpt/global/common/error/utils';
 import { codeSandbox } from '@fastgpt/service/thirdProvider/codeSandbox';
+import { getTestInstanceConfig } from '@test/utils/instanceConfigSnapshot';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { SystemToolRepo } from '@fastgpt/service/core/app/tool/systemTool/systemTool.repo';
 import * as workflowMetrics from '@fastgpt/service/core/workflow/metrics';
@@ -39,13 +40,6 @@ vi.mock('@fastgpt/service/support/user/team/utils', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@fastgpt/service/support/user/team/utils')>()),
   getUserChatInfo: vi.fn(async () => ({ externalProvider: undefined }))
 }));
-vi.mock('@fastgpt/service/env', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@fastgpt/service/env')>();
-  return {
-    ...actual,
-    serviceEnv: { ...actual.serviceEnv, CODE_SANDBOX_URL: 'http://sandbox.test' }
-  };
-});
 
 /** 资源加载边界返回固定工作流，内部实际执行 runWorkflow 和所有节点。 */
 const childResource = ({
@@ -68,6 +62,11 @@ const childResource = ({
 
 beforeEach(() => {
   loadChild.mockReset();
+  getTestInstanceConfig().subservice.codeSandbox = {
+    enabled: true,
+    url: 'http://sandbox.test',
+    token: 'test-token'
+  };
 });
 afterEach(() => vi.restoreAllMocks());
 

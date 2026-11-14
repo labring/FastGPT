@@ -11,17 +11,18 @@ import {
 } from '@fastgpt/global/support/user/account/verification/type';
 import {
   LoginVerificationCaptchaResponseSchema,
+  LoginVerificationConfigResponseSchema,
   LoginVerificationResolveResponseSchema,
   LoginVerificationSendCodeResponseSchema,
   type LoginVerificationCaptchaResponseType,
+  type LoginVerificationConfigResponseType,
   type LoginVerificationRequiredResponseType,
   type LoginVerificationResolveResponseType,
   type LoginVerificationSendCodeResponseType
 } from '@fastgpt/global/openapi/support/user/account/login/api';
-import { POST } from '../../../../../thirdProvider/fastgptPro/plusRequest';
+import { GET, POST } from '../../../../../thirdProvider/fastgptPro/plusRequest';
+import { FastGPTProUrl } from '../../../../../common/system/constants';
 import { assertCodeVerificationConsumeRateLimit } from '../../../../../common/rateLimit/interface/accountVerification';
-import { MongoSystemConfigs } from '../../../../../common/system/config/schema';
-import { SystemConfigsTypeEnum } from '@fastgpt/global/common/system/config/constants';
 import {
   getCodeVerificationKey,
   verification,
@@ -56,21 +57,21 @@ export const isLoginContactUsername = (username: string) =>
   AccountContactUsernameSchema.safeParse(username).success;
 
 /**
- * 读取登录二次验证开关。开关只在 Pro 侧通过 LOGIN_2FA_ENABLED 配置，Pro 在启动归一化和保存
- * 配置时写入共享 feConfigs；开源版没有 Pro 下发，配置缺失即视为关闭。
- *
- * 这里直接查库而不是读 global.feConfigs：主服务的内存配置只在启动和 Mongo change stream
- * 触发时刷新，watch 未建立或不可用时会长期读到旧值，出现“环境变量已关闭但登录仍要求验证”。
- * 密码登录本身受频率限制且需要跑密码散列，多一次按 type 索引的查询开销可以忽略。
+ * 每次向 Pro 读取其部署环境中的登录二次验证开关；社区版未接入 Pro 时保持关闭。
+ * 已配置 Pro 但请求或响应校验失败时向调用方传递错误，不能回落旧库值而绕过验证。
  */
 export const isLoginVerificationEnabled = async () => {
-  const config = await MongoSystemConfigs.findOne({
-    type: SystemConfigsTypeEnum.fastgpt
-  })
-    .sort({ createTime: -1 })
-    .lean();
+  if (!FastGPTProUrl) return false;
 
-  return config?.value?.feConfigs?.login2faEnabled === true;
+  try {
+    const config = await GET<LoginVerificationConfigResponseType>(
+      '/support/user/account/login/verification/config'
+    );
+    return LoginVerificationConfigResponseSchema.parse(config).enabled;
+  } catch {
+    // 网络异常可能包含服务间令牌，响应校验异常也可能包含服务端数据；禁止交给公共登录日志。
+    throw new Error('Login verification configuration is unavailable');
+  }
 };
 
 /** 防止开关关闭后仍使用已经生成的登录 Challenge 完成二次验证。 */

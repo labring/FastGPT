@@ -1,5 +1,6 @@
+import { getTestInstanceConfig } from '@test/utils/instanceConfigSnapshot';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
-import { serviceEnv } from '@fastgpt/service/env';
+
 import * as createapi from '@/pages/api/core/app/create';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
@@ -420,7 +421,7 @@ describe('generic app creation folder depth', () => {
     async (type) => {
       const { owner } = await getFakeUsers(1);
       const ids: string[] = [];
-      for (let i = 0; i < serviceEnv.MAX_FOLDER_DEPTH - 1; i++) {
+      for (let i = 0; i < getTestInstanceConfig().resource.maxFolderDepth - 1; i++) {
         const folder = await MongoApp.create({
           name: `level-${i}`,
           type,

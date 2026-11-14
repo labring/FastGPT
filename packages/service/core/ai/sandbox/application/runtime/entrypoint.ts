@@ -21,7 +21,7 @@ import {
   isRedisLeaseError
 } from '@fastgpt/dal/redis/caches';
 import { getLogger, LogCategories } from '../../../../../common/logger';
-import { serviceEnv } from '../../../../../env';
+import { getAgentSandboxCommonConfig } from '../../config';
 import { createAgentSandboxInitializingError } from '../../error';
 import type { SandboxPrepareContext, SandboxPrepareStep } from './prepare';
 import { buildRuntimeHash } from '../../utils';
@@ -208,7 +208,7 @@ const buildBashScriptCommand = (script: string): string => {
 };
 
 const getEntrypointTimeoutSeconds = (): number =>
-  Math.min(Math.max(serviceEnv.AGENT_SANDBOX_ENTRYPOINT_TIMEOUT_SECONDS, 1), 600);
+  Math.min(Math.max(getAgentSandboxCommonConfig().entrypointTimeoutSeconds, 1), 600);
 
 const truncateOutput = (value: string): string =>
   value.length > MAX_LOG_OUTPUT_LENGTH ? `${value.slice(0, MAX_LOG_OUTPUT_LENGTH)}...` : value;

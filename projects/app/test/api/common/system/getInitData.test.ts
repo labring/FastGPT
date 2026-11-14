@@ -9,8 +9,15 @@ import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { ApiRequestInputParseError } from '@fastgpt/service/common/zod/requestParseError';
 import { ZodError } from 'zod';
 import { serviceEnv } from '@fastgpt/service/env';
+import { postHealth } from '@fastgpt/service/thirdProvider/fastgptPro/api';
+
+vi.mock('@fastgpt/service/thirdProvider/fastgptPro/api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fastgpt/service/thirdProvider/fastgptPro/api')>()),
+  postHealth: vi.fn()
+}));
 
 const originalShowRunDetail = serviceEnv.AUXILIARY_GENERATION_SHOW_RUN_DETAIL;
+const originalProUrl = serviceEnv.PRO_URL;
 
 // 公开字段和值只维护一份；精确响应断言同时验证保留值和顶层、嵌套字段过滤。
 const publicConfig = {
@@ -39,8 +46,7 @@ const publicConfig = {
     wecom: true,
     microsoft: {
       clientId: 'microsoft-client',
-      tenantId: 'company-tenant',
-      customButton: 'Company Microsoft'
+      tenantId: 'company-tenant'
     }
   },
   limit: { uploadFileMaxAmount: 7, uploadFileMaxSize: 32 },
@@ -78,9 +84,13 @@ const channel = {
 };
 
 describe('getInitData anonymous configuration filtering', () => {
+  let originalSsoHandler: typeof global.getSsoConfiguredHandler;
   beforeEach(() => {
+    originalSsoHandler = global.getSsoConfiguredHandler;
+    global.getSsoConfiguredHandler = () => true;
     vi.clearAllMocks();
     serviceEnv.AUXILIARY_GENERATION_SHOW_RUN_DETAIL = false;
+    serviceEnv.PRO_URL = undefined;
     global.systemInitBufferId = 'config-1';
     global.systemVersion = '4.17.3';
     global.systemEnv = { ...global.systemEnv, sso: { url: 'https://sso.internal.example.com' } };
@@ -115,7 +125,9 @@ describe('getInitData anonymous configuration filtering', () => {
   });
 
   afterEach(() => {
+    global.getSsoConfiguredHandler = originalSsoHandler;
     serviceEnv.AUXILIARY_GENERATION_SHOW_RUN_DETAIL = originalShowRunDetail;
+    serviceEnv.PRO_URL = originalProUrl;
     vi.restoreAllMocks();
   });
 
@@ -132,7 +144,7 @@ describe('getInitData anonymous configuration filtering', () => {
 
     expect(code).toBe(200);
     expect(data).toEqual({
-      bufferId: 'unAuth_v9_config-1',
+      bufferId: 'unAuth_v10_sso_1_config-1',
       feConfigs: publicConfig
     });
     expect(global.feConfigs).toEqual(originalConfig);
@@ -159,7 +171,7 @@ describe('getInitData anonymous configuration filtering', () => {
     const { code, data } = await Call(handler, {
       auth,
       headers: {},
-      query: { bufferId: 'unAuth_v9_config-1' }
+      query: { bufferId: 'unAuth_v10_sso_1_config-1' }
     });
 
     expect(code).toBe(200);
@@ -181,6 +193,104 @@ describe('getInitData anonymous configuration filtering', () => {
     });
   });
 
+  it('uses fresh Pro capabilities on authenticated requests, including cache hits', async () => {
+    serviceEnv.PRO_URL = 'http://127.0.0.1:3001';
+    const capabilities = {
+      show_git: true,
+      show_workorder: false,
+      show_enterprise_auth: true,
+      showWecomConfig: false
+    };
+    Object.assign(global.feConfigs, {
+      show_git: false,
+      show_workorder: true,
+      show_enterprise_auth: false,
+      showWecomConfig: true
+    });
+    const before = structuredClone(global.feConfigs);
+    vi.mocked(postHealth)
+      .mockResolvedValueOnce({ data: 'success', auth: true, frontendCapabilities: capabilities })
+      .mockResolvedValueOnce({
+        data: 'success',
+        auth: true,
+        frontendCapabilities: {
+          show_git: false,
+          show_workorder: true,
+          show_enterprise_auth: false,
+          showWecomConfig: true
+        }
+      });
+
+    const first = await Call(handler, { auth, headers: {} });
+    const cached = await Call(handler, { auth, headers: {}, query: { bufferId: 'config-1' } });
+
+    expect(first.data.feConfigs).toMatchObject(capabilities);
+    expect(cached.data.feConfigs).toMatchObject({
+      show_git: false,
+      show_workorder: true,
+      show_enterprise_auth: false,
+      showWecomConfig: true
+    });
+    expect(postHealth).toHaveBeenCalledTimes(2);
+    expect(postHealth).toHaveBeenCalledWith({ timeout: 1500 });
+    expect(global.feConfigs).toEqual(before);
+  });
+
+  it('does not request Pro for anonymous sessions or a community deployment', async () => {
+    serviceEnv.PRO_URL = 'http://127.0.0.1:3001';
+    await Call(handler, { headers: {} });
+    expect(postHealth).not.toHaveBeenCalled();
+
+    serviceEnv.PRO_URL = undefined;
+    global.feConfigs.show_git = true;
+    const response = await Call(handler, { auth, headers: {} });
+    expect(response.data.feConfigs.show_git).toBe(true);
+    expect(postHealth).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { name: 'connection failure', failure: new Error('unavailable') },
+    { name: 'timeout', failure: Object.assign(new Error('timeout'), { code: 'ECONNABORTED' }) },
+    {
+      name: 'malformed data',
+      response: { data: 'success', auth: true, frontendCapabilities: { show_git: true } }
+    },
+    {
+      name: 'unexpected extra field',
+      response: {
+        data: 'success',
+        auth: true,
+        frontendCapabilities: {
+          show_git: true,
+          show_workorder: true,
+          show_enterprise_auth: true,
+          showWecomConfig: true,
+          secret: 'ignored'
+        }
+      }
+    },
+    { name: 'missing authentication', response: { data: 'success' } }
+  ])('disables all Pro display capabilities on $name', async ({ failure, response }) => {
+    serviceEnv.PRO_URL = 'http://127.0.0.1:3001';
+    Object.assign(global.feConfigs, {
+      show_git: true,
+      show_workorder: true,
+      show_enterprise_auth: true,
+      showWecomConfig: true
+    });
+    if (failure) vi.mocked(postHealth).mockRejectedValueOnce(failure);
+    else vi.mocked(postHealth).mockResolvedValueOnce(response as never);
+
+    const result = await Call(handler, { auth, headers: {} });
+    expect(result.code).toBe(200);
+    expect(result.data.feConfigs).toMatchObject({
+      show_git: false,
+      show_workorder: false,
+      show_enterprise_auth: false,
+      showWecomConfig: false
+    });
+  });
+
   it.each([
     'unAuth_config-1',
     'unAuth_v2_config-1',
@@ -194,17 +304,17 @@ describe('getInitData anonymous configuration filtering', () => {
   ])('refreshes stale or authenticated cache %s with filtered data', async (bufferId) => {
     const { data } = await Call(handler, { headers: {}, query: { bufferId } });
 
-    expect(data.bufferId).toBe('unAuth_v9_config-1');
+    expect(data.bufferId).toBe('unAuth_v10_sso_1_config-1');
     expect(data.feConfigs).toEqual(publicConfig);
   });
 
   it('retains the anonymous cache-hit response only for the current policy version', async () => {
     const { data } = await Call(handler, {
       headers: {},
-      query: { bufferId: 'unAuth_v9_config-1' }
+      query: { bufferId: 'unAuth_v10_sso_1_config-1' }
     });
 
-    expect(data).toEqual({ bufferId: 'unAuth_v9_config-1' });
+    expect(data).toEqual({ bufferId: 'unAuth_v10_sso_1_config-1' });
   });
 
   it.each([
@@ -220,10 +330,10 @@ describe('getInitData anonymous configuration filtering', () => {
     async (referer) => {
       const { data } = await Call(handler, {
         headers: { referer },
-        query: { bufferId: 'unAuth_v9_config-1', includeSubPlans: 'true' }
+        query: { bufferId: 'unAuth_v10_sso_1_config-1', includeSubPlans: 'true' }
       });
       expect(data).toEqual({
-        bufferId: 'unAuth_v9_config-1',
+        bufferId: 'unAuth_v10_sso_1_config-1',
         subPlans: global.subPlans
       });
     }
@@ -258,7 +368,7 @@ describe('getInitData anonymous configuration filtering', () => {
     }
   ])('preserves $name', async ({ config }) => {
     global.feConfigs = config;
-    global.systemEnv.sso = undefined;
+    global.getSsoConfiguredHandler = () => false;
     const { code, data } = await Call(handler, { headers: {} });
     expect(code).toBe(200);
     expect(data.feConfigs).toEqual({
@@ -274,7 +384,7 @@ describe('getInitData anonymous configuration filtering', () => {
       headers: { referer: 'https://app.example.com/login' }
     });
 
-    expect(data.bufferId).toBe('unAuth_v9_config-1');
+    expect(data.bufferId).toBe('unAuth_v10_sso_1_config-1');
     expect(data.feConfigs).not.toHaveProperty('payConfig');
   });
 
@@ -322,7 +432,7 @@ describe('getInitData anonymous configuration filtering', () => {
     async (includeSubPlans) => {
       const { data } = await Call(handler, { headers: {}, query: { includeSubPlans } });
       expect(data).toEqual({
-        bufferId: 'unAuth_v9_config-1',
+        bufferId: 'unAuth_v10_sso_1_config-1',
         feConfigs: publicConfig,
         subPlans: global.subPlans
       });
@@ -361,7 +471,7 @@ describe('getInitData anonymous configuration filtering', () => {
 
   it('reports unavailable SSO even when stored display and password-policy switches are enabled', async () => {
     global.feConfigs.sso = { enabled: true, autoLogin: true, disablePasswordForSsoUsers: true };
-    global.systemEnv.sso = { url: '' };
+    global.getSsoConfiguredHandler = () => false;
     const { data } = await Call(handler, { headers: {} });
     expect(data.feConfigs.sso).toEqual({
       enabled: false,
@@ -370,12 +480,45 @@ describe('getInitData anonymous configuration filtering', () => {
     });
   });
 
+  it('refreshes an anonymous cache when Pro SSO changes or becomes unavailable', async () => {
+    global.systemEnv.sso = undefined;
+    const enabled = await Call(handler, { headers: {} });
+    expect(enabled.data.feConfigs.sso.enabled).toBe(true);
+
+    global.systemEnv.sso = { url: 'http://legacy.invalid' };
+    global.getSsoConfiguredHandler = () => false;
+    const disabled = await Call(handler, {
+      headers: {},
+      query: { bufferId: enabled.data.bufferId }
+    });
+    expect(disabled.data.feConfigs.sso.enabled).toBe(false);
+    expect(disabled.data.bufferId).not.toBe(enabled.data.bufferId);
+
+    global.getSsoConfiguredHandler = () => {
+      throw new Error('private-token');
+    };
+    const unavailable = await Call(handler, {
+      headers: {},
+      query: { bufferId: disabled.data.bufferId }
+    });
+    expect(unavailable.code).toBe(200);
+    expect(unavailable.data.feConfigs.sso.enabled).toBe(false);
+    expect(unavailable.data.bufferId).not.toBe(disabled.data.bufferId);
+
+    global.getSsoConfiguredHandler = () => true;
+    const recovered = await Call(handler, {
+      headers: {},
+      query: { bufferId: unavailable.data.bufferId }
+    });
+    expect(recovered.data.feConfigs.sso.enabled).toBe(true);
+    expect(recovered.data.bufferId).toBe(enabled.data.bufferId);
+  });
+
   it.each([false, true])(
     'removes legacy sandbox config for authenticated=%s without mutating global state',
     async (authenticated) => {
       global.feConfigs.agentSandboxProxyUrl = 'wss://private-proxy.example.com';
       global.feConfigs.fileUrlWhitelist = ['private.internal'];
-      global.feConfigs.ip_whitelist = '10.0.0.1';
       global.feConfigs.evalFileMaxLines = 99;
       Object.assign(global.feConfigs, {
         accountCancellation: { enabled: true, secret: 'private' }
@@ -410,7 +553,6 @@ describe('getInitData anonymous configuration filtering', () => {
       for (const key of [
         'agentSandboxProxyUrl',
         'fileUrlWhitelist',
-        'ip_whitelist',
         'evalFileMaxLines',
         'futurePrivateField'
       ]) {
@@ -436,5 +578,77 @@ describe('getInitData anonymous configuration filtering', () => {
 
     expect(invalidResponse.code).toBe(500);
     expect(invalidResponse.error).toBeInstanceOf(ZodError);
+  });
+
+  it('snapshots feConfigs, subPlans and bufferId atomically when config rotates during async auth', async () => {
+    global.systemInitBufferId = 'config-v1';
+    global.feConfigs = { ...global.feConfigs, systemTitle: 'Old Title' };
+    global.subPlans = { extraDatasetSize: { price: 4 } };
+
+    vi.mocked(authCert).mockImplementationOnce(async () => {
+      // 模拟异步鉴权期间 initSystemConfig 原子切换到了新配置与新 bufferId
+      global.feConfigs = { ...global.feConfigs, systemTitle: 'New Title' };
+      global.subPlans = { extraDatasetSize: { price: 9 } };
+      global.systemInitBufferId = 'config-v2';
+      throw new Error('Anonymous visitor');
+    });
+
+    const first = await Call(handler, {
+      headers: {},
+      query: { includeSubPlans: true }
+    });
+    expect(first.code).toBe(200);
+    expect(first.data.bufferId).toBe('unAuth_v10_sso_1_config-v2');
+    expect(first.data.feConfigs?.systemTitle).toBe('New Title');
+    expect(first.data.subPlans).toEqual({ extraDatasetSize: { price: 9 } });
+  });
+
+  it('does not pair a rotated instance version tag with stale feConfigs before initSystemConfig publishes', async () => {
+    const { reloadSystemInstanceConfig, updateDomainConfig } =
+      await import('@fastgpt/service/common/system/systemInstanceConfig/controller');
+    const { MongoSystemInstanceConfig } =
+      await import('@fastgpt/service/common/system/systemInstanceConfig/schema');
+    await MongoSystemInstanceConfig.deleteMany({});
+
+    global.systemInitBufferId = 'v_stable';
+    global.feConfigs = { ...global.feConfigs, systemTitle: 'Title V1' };
+
+    await updateDomainConfig({
+      domain: 'site',
+      expectedRevision: 0,
+      submittedOverrides: { name: 'Title V2' },
+      actor: { actor: 'admin', userId: 'root' }
+    });
+    // 模拟 doInitSystemConfig 并行读取完成 reloadSystemInstanceConfig 但尚未调用 initFastGPTConfig
+    await reloadSystemInstanceConfig({ updateInitBufferId: false });
+
+    const duringReload = await Call(handler, { headers: {} });
+    expect(duringReload.data.bufferId).toBe('unAuth_v10_sso_1_v_stable');
+    expect(duringReload.data.feConfigs?.systemTitle).toBe('Title V1');
+
+    // 随后 initSystemConfig 在同一同步帧发布新 feConfigs 与新 bufferId，客户端携带旧 bufferId 请求必不命中旧缓存
+    global.feConfigs = { ...global.feConfigs, systemTitle: 'Title V2' };
+    global.systemInitBufferId = 'v_next';
+
+    const afterPublish = await Call(handler, {
+      headers: {},
+      query: { bufferId: duringReload.data.bufferId }
+    });
+    expect(afterPublish.data.bufferId).toBe('unAuth_v10_sso_1_v_next');
+    expect(afterPublish.data.feConfigs?.systemTitle).toBe('Title V2');
+  });
+
+  it('downgrades legacy sync teamMode to single when Pro reports SSO is not configured', async () => {
+    global.feConfigs = {
+      ...global.feConfigs,
+      teamMode: 'sync',
+      register_method: ['email', 'sync']
+    };
+    global.getSsoConfiguredHandler = () => false;
+
+    const { code, data } = await Call(handler, { auth, headers: {} });
+    expect(code).toBe(200);
+    expect(data.feConfigs?.teamMode).toBe('single');
+    expect(data.feConfigs?.register_method).toEqual(['email']);
   });
 });

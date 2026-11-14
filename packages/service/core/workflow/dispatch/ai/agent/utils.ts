@@ -1,6 +1,7 @@
 import type { localeType } from '@fastgpt/global/common/i18n/type';
 import type { AgentLoopProviderName } from '../../../../ai/llm/agentLoop/interface';
-import { serviceEnv } from '../../../../../env';
+import { getSystemInstanceConfig } from '../../../../../common/system/systemInstanceConfig/runtime';
+import { logInstanceConfigRead } from '../../../../../common/system/migrationCoverageLog';
 import type { SubAppRuntimeType } from './type';
 import { getAgentLoopCoreSystemToolInfo } from '../agentLoopCore/interface';
 
@@ -8,8 +9,14 @@ import { getAgentLoopCoreSystemToolInfo } from '../agentLoopCore/interface';
  * 解析本次 workflow agent 应使用的 agentLoop provider。
  * 业务层只关心 provider 名称，不直接判断具体实现入口。
  */
-export const getWorkflowAgentLoopProvider = (): AgentLoopProviderName =>
-  serviceEnv.AGENT_ENGINE === 'piAgent' ? 'piAgent' : 'fastAgent';
+export const getWorkflowAgentLoopProvider = (): AgentLoopProviderName => {
+  const engine = getSystemInstanceConfig().feature.agentEngine;
+  logInstanceConfigRead({
+    callsite: 'runtime.workflow.agent.getWorkflowAgentLoopProvider',
+    fields: [{ path: 'feature.agentEngine', value: engine }]
+  });
+  return engine === 'piAgent' ? 'piAgent' : 'fastAgent';
+};
 
 /**
  * 创建 Agent 工具展示信息查询器。

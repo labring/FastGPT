@@ -1,7 +1,7 @@
 import { SystemErrEnum } from '@fastgpt/global/common/error/code/system';
 
 /**
- * 系统工具远程调试依赖商业版能力；API 层统一拦截，避免绕过前端直接创建或使用调试通道。
+ * 创建、刷新和兑换调试连接需要商业授权；服务能力由 Plugin 服务判断。
  */
 export function assertCommercialPluginDebugEnabled() {
   if (!global.feConfigs?.isPlus) {

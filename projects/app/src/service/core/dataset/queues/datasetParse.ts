@@ -24,6 +24,7 @@ import type {
 import { predictDataLimitLength } from '@fastgpt/global/core/dataset/utils';
 import { UsageItemTypeEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
+import { logInstanceConfigRead } from '@fastgpt/service/common/system/migrationCoverageLog';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { getTrainingModeByCollection } from '@fastgpt/service/core/dataset/collection/utils';
 import { rawText2Chunks, readDatasetSourceRawText } from '@fastgpt/service/core/dataset/read';
@@ -125,12 +126,18 @@ const getQuotaErrorCode = (err: unknown): TeamErrEnum | undefined => {
 /** 读取并分块原文；共用训练租约，解析失败才扣重试次数，容量不足则暂停等待恢复。 */
 export const datasetParseQueue = async (): Promise<any> => {
   const max = global.systemEnv?.datasetParseMaxProcess || 10;
+  logInstanceConfigRead({
+    callsite: 'runtime.app.dataset.queue.datasetParse',
+    source: 'bridged-system-env',
+    fields: [{ path: 'performance.dataset.parseMaxProcess', value: max }]
+  });
   logger.debug('Parse queue size check', { queueSize: global.datasetParseQueueLen, max });
   if (global.datasetParseQueueLen >= max) return;
   global.datasetParseQueueLen++;
 
   try {
-    while (true) {
+    // 配置下调后先完成在途任务，再让超额循环退出；每次领取前重新读取上限。
+    while (global.datasetParseQueueLen <= (global.systemEnv?.datasetParseMaxProcess || 10)) {
       const startTime = Date.now();
 
       let claimed;

@@ -35,7 +35,8 @@ export default s3ErrList.reduce((acc, cur, index) => {
       code: 510000 + index,
       statusText: cur.statusText,
       message: cur.message,
-      data: null
+      data: null,
+      httpStatus: 400
     }
   };
 }, {} as ErrType<`${S3ErrEnum}`>);

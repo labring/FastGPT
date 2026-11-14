@@ -6,10 +6,17 @@ import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   GetSystemInitDataQuerySchema,
   GetSystemInitDataResponseSchema,
+  ProHealthResponseSchema,
   type GetSystemInitDataResponse
 } from '@fastgpt/global/openapi/common/system/api';
 import { getRuntimeSubPlansConfig } from '@fastgpt/global/support/wallet/sub/utils';
 import { serviceEnv } from '@fastgpt/service/env';
+import { postHealth } from '@fastgpt/service/thirdProvider/fastgptPro/api';
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
+import { getSsoConfigured } from '@fastgpt/service/common/system/sso';
+import { resolveEffectiveTeamMode } from '@fastgpt/global/common/system/config/teamMode';
+
+const logger = getLogger(LogCategories.SYSTEM);
 
 /** 按会话鉴权返回初始化数据；匿名白名单覆盖登录、价格和分享聊天的公共依赖。 */
 async function handler(
@@ -20,21 +27,73 @@ async function handler(
     req,
     querySchema: GetSystemInitDataQuerySchema
   }).query;
-  const subPlans = getRuntimeSubPlansConfig(global.subPlans);
+  // 展示可在 Pro 不可用时暂时隐藏入口；密码安全校验独立读取并拒绝未知状态。
+  const ssoConfigured = await getSsoConfigured().catch(() => undefined);
+
+  // 只有鉴权失败才降级为匿名响应，配置处理错误仍交给 API 中间件报告。
+  const isAuthenticated = await authCert({ req, authToken: true })
+    .then(() => true)
+    .catch(() => false);
+  // Pro 环境能力不写入 Mongo；只在登录态按需读取，避免启动迁移与 Pro 互相等待。
+  const proFrontendCapabilities = await (async () => {
+    if (!isAuthenticated || !serviceEnv.PRO_URL) return undefined;
+
+    const disabled = {
+      show_git: false,
+      show_workorder: false,
+      show_enterprise_auth: false,
+      showWecomConfig: false
+    };
+    try {
+      const health = ProHealthResponseSchema.safeParse(await postHealth({ timeout: 1500 }));
+      if (health.success && health.data.auth === true && health.data.frontendCapabilities) {
+        return health.data.frontendCapabilities;
+      }
+    } catch {
+      // 连接失败和超时都只关闭展示入口；不记录可能携带凭据的请求错误。
+    }
+    logger.debug('Pro frontend capabilities unavailable');
+    return disabled;
+  })();
+
+  // 所有异步探测完成后在同一同步帧快照全局状态，确保 feConfigs、subPlans 与 bufferId 来自同一次发布。
+  const runtimeSnapshot = {
+    feConfigs: global.feConfigs,
+    subPlans: global.subPlans,
+    systemVersion: global.systemVersion,
+    systemInitBufferId: global.systemInitBufferId
+  };
+  const subPlans = getRuntimeSubPlansConfig(runtimeSnapshot.subPlans);
 
   /**
    * 登录后返回 Schema 声明的公开配置；匿名统一投影公共页面实际使用的字段。
    * 响应 Schema 同时过滤顶层及嵌套对象的未知字段，避免扩展配置泄漏。
    */
-  const filterFeConfigs = (isAuthenticated: boolean): GetSystemInitDataResponse['feConfigs'] => {
+  const filterFeConfigs = (): GetSystemInitDataResponse['feConfigs'] => {
+    // 存量库残留 sync 但 Pro 明确未配置外部用户系统地址时，与 Pro 保持一致降级为 single。
+    const configuredTeamMode = runtimeSnapshot.feConfigs?.teamMode ?? 'single';
+    const effectiveTeamMode = resolveEffectiveTeamMode({
+      teamMode: configuredTeamMode,
+      // 探测结果未知时不擅自降级；Pro 不可用时业务请求本身会失败。
+      externalUserSystemConfigured: ssoConfigured !== false
+    });
+    const shouldDowngradeSyncTeamMode = effectiveTeamMode !== configuredTeamMode;
+    const effectiveRegisterMethod = shouldDowngradeSyncTeamMode
+      ? runtimeSnapshot.feConfigs?.register_method?.filter((method) => method !== 'sync')
+      : runtimeSnapshot.feConfigs?.register_method;
+
     const config = {
-      ...global.feConfigs,
+      ...runtimeSnapshot.feConfigs,
+      ...(effectiveTeamMode !== undefined ? { teamMode: effectiveTeamMode } : {}),
+      ...(effectiveRegisterMethod !== undefined
+        ? { register_method: effectiveRegisterMethod }
+        : {}),
       // 每次响应直接读取环境变量，忽略文件、数据库和热更新配置中的同名字段。
       showAuxiliaryGenerationRunDetail: serviceEnv.AUXILIARY_GENERATION_SHOW_RUN_DETAIL,
       sso: (() => {
-        if (!global.feConfigs.sso && !global.systemEnv?.sso?.url) return undefined;
-        // 地址及启用状态以服务端连接配置为准，不能信任存储的前端能力标志。
-        return { ...global.feConfigs.sso, enabled: Boolean(global.systemEnv?.sso?.url) };
+        if (!runtimeSnapshot.feConfigs?.sso && ssoConfigured !== true) return undefined;
+        // 只信任 Pro 的部署能力，旧库地址和存储的前端能力标志都不是权威来源。
+        return { ...runtimeSnapshot.feConfigs?.sso, enabled: ssoConfigured === true };
       })()
     };
     if (isAuthenticated) return config;
@@ -72,35 +131,35 @@ async function handler(
     // 所有匿名入口共用同一白名单，页面切换无需补取配置。
     return { ...commonConfig, ...loginConfig, ...uploadConfig, ...chatConfig };
   };
-
-  // 只有鉴权失败才降级为匿名响应，配置处理错误仍交给 API 中间件报告。
-  const isAuthenticated = await authCert({ req, authToken: true })
-    .then(() => true)
-    .catch(() => false);
-  const feConfigs = filterFeConfigs(isAuthenticated);
+  const feConfigs = { ...filterFeConfigs(), ...proFrontendCapabilities };
 
   const response = (() => {
     if (isAuthenticated) {
-      if (bufferId && global.systemInitBufferId && global.systemInitBufferId === bufferId) {
+      if (
+        bufferId &&
+        runtimeSnapshot.systemInitBufferId &&
+        runtimeSnapshot.systemInitBufferId === bufferId
+      ) {
         return {
-          bufferId: global.systemInitBufferId,
+          bufferId: runtimeSnapshot.systemInitBufferId,
           feConfigs,
-          systemVersion: global.systemVersion,
+          systemVersion: runtimeSnapshot.systemVersion,
           ...(includeSubPlans && { subPlans })
         };
       }
 
       return {
-        bufferId: global.systemInitBufferId,
+        bufferId: runtimeSnapshot.systemInitBufferId,
         feConfigs,
         subPlans,
-        systemVersion: global.systemVersion
+        systemVersion: runtimeSnapshot.systemVersion
       };
     }
 
-    // 白名单改变时升级版本，强制旧匿名缓存重新获取过滤后的配置。
-    const unAuthBufferId = global.systemInitBufferId
-      ? `unAuth_v9_${global.systemInitBufferId}`
+    // Pro 环境变化不改变 Mongo revision，必须把能力及不可用状态加入匿名缓存标识。
+    const ssoVersion = ssoConfigured === undefined ? 'unavailable' : ssoConfigured ? '1' : '0';
+    const unAuthBufferId = runtimeSnapshot.systemInitBufferId
+      ? `unAuth_v10_sso_${ssoVersion}_${runtimeSnapshot.systemInitBufferId}`
       : '';
     if (bufferId && unAuthBufferId === bufferId) {
       return {

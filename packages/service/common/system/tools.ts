@@ -5,9 +5,13 @@ import {
 } from '@fastgpt/global/common/system/types';
 import { isIPv6 } from 'net';
 import { getLogger, LogCategories } from '../logger';
-import { getAgentSandboxSkillMaxBytes } from '../../core/ai/sandbox/config';
-import { hasAgentSandboxConfig, serviceEnv } from '../../env';
+import {
+  getAgentSandboxProvider,
+  getAgentSandboxSkillMaxBytes
+} from '../../core/ai/sandbox/config';
+import { serviceEnv } from '../../env';
 import { normalizeSsoConfig } from '@fastgpt/global/common/system/config/sso';
+import { getSystemInstanceConfig } from './systemInstanceConfig/runtime';
 
 const logger = getLogger(LogCategories.ERROR);
 
@@ -42,22 +46,21 @@ export const initFastGPTConfig = (config?: FastGPTConfigFileType) => {
   config.systemEnv.sso = sso.serverConfig;
 
   // Special config computed
-  config.feConfigs.showCustomPdfParse =
-    !!config.systemEnv.customPdfParse?.url ||
-    !!config.systemEnv.customPdfParse?.somarkApiKey ||
-    !!config.systemEnv.customPdfParse?.textinAppId ||
-    !!config.systemEnv.customPdfParse?.doc2xKey;
-  config.feConfigs.customPdfParsePrice = config.systemEnv.customPdfParse?.price || 0;
+  // 解析入口只看当前选中的 Provider；none 表示关闭外部解析，不能被旧凭据重新点亮。
+  const documentParse = getSystemInstanceConfig().providers.documentParse;
+  config.feConfigs.showCustomPdfParse = documentParse.provider !== 'none';
+  config.feConfigs.customPdfParsePrice = documentParse.customPdf.price;
   config.feConfigs.show_outlink_brand = serviceEnv.SHOW_OUTLINK_BRAND;
-  config.feConfigs.show_agent_sandbox = hasAgentSandboxConfig();
-  config.feConfigs.show_agent_sandbox_free_tip =
-    serviceEnv.AGENT_SANDBOX_SHOW_FREE_TIP || !!config.feConfigs.agentSandboxFree;
+  // provider 只以实例配置为权威，保证后台配置与前端沙箱入口一致。
+  config.feConfigs.show_agent_sandbox = getAgentSandboxProvider() !== 'none';
+  // 免费提示只由保留的 ENV 控制，避免旧配置在开关关闭后继续展示。
+  config.feConfigs.show_agent_sandbox_free_tip = serviceEnv.AGENT_SANDBOX_SHOW_FREE_TIP;
   config.feConfigs.limit = {
     ...config.feConfigs.limit,
-    uploadFileMaxSize: serviceEnv.UPLOAD_FILE_MAX_SIZE,
-    uploadFileMaxAmount: serviceEnv.UPLOAD_FILE_MAX_AMOUNT,
+    uploadFileMaxSize: config.feConfigs.limit?.uploadFileMaxSize ?? 1000,
+    uploadFileMaxAmount: config.feConfigs.limit?.uploadFileMaxAmount ?? 1000,
     skillSandboxMaxBytes: getAgentSandboxSkillMaxBytes(),
-    maxFolderDepth: serviceEnv.MAX_FOLDER_DEPTH
+    maxFolderDepth: config.feConfigs.limit?.maxFolderDepth ?? 4
   };
 
   const parseResult = FastGPTConfigFileSchema.safeParse(config);

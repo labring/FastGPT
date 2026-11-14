@@ -79,12 +79,23 @@ export type LoginByPasswordResponseType = z.infer<typeof LoginByPasswordResponse
 
 /* ============================================================================
  * API: 登录二次验证内部协议
- * Routes: POST /api/support/user/account/login/verification/resolve
+ * Routes: GET /api/support/user/account/login/verification/config
+ *         POST /api/support/user/account/login/verification/resolve
  *         POST /api/support/user/account/login/verification/captcha
  *         POST /api/support/user/account/login/verification/sendCode
  * Description: FastGPT app 与 Pro 之间的登录二次验证能力协议，仅供服务端调用。
  * Tags: ['User Login', 'Account Verification']
  * ============================================================================ */
+
+/** Pro 登录二次验证部署开关；内部接口只返回这一项，不暴露投递配置。 */
+export const LoginVerificationConfigResponseSchema = z
+  .object({
+    enabled: z.boolean().meta({ description: 'Pro 是否启用登录二次验证', example: true })
+  })
+  .strict();
+export type LoginVerificationConfigResponseType = z.infer<
+  typeof LoginVerificationConfigResponseSchema
+>;
 
 export const LoginVerificationResolveBodySchema = z
   .object({

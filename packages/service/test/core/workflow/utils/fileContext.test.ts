@@ -237,6 +237,7 @@ describe('prepareWorkflowFileContext', () => {
       'Invalid child workflow file URL'
     );
     await expect(child.derive([{}])).rejects.toThrow('Invalid child workflow file URL');
+    global.systemEnv.checkExternalFile = true;
     global.systemEnv.fileUrlWhitelist = ['allowed.example.com'];
     await expect(child.derive(['https://blocked.example.com/a.pdf'])).rejects.toThrow(
       'Invalid child workflow file URL'
@@ -561,7 +562,10 @@ describe('prepareWorkflowFileContext', () => {
       })
     ).rejects.toThrow('Invalid workflow file URL');
 
-    global.systemEnv = { fileUrlWhitelist: ['allowed.example.com'] } as any;
+    global.systemEnv = {
+      checkExternalFile: true,
+      fileUrlWhitelist: ['allowed.example.com']
+    } as any;
     await expect(
       prepareWorkflowFileContext({
         query: [createFile({ key: undefined, url: 'https://blocked.example.com/a.pdf' })],

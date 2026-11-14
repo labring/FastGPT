@@ -1,7 +1,16 @@
+import {
+  getTestInstanceConfig,
+  createDefaultInstanceConfig
+} from '@test/utils/instanceConfigSnapshot';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { getDomainDefaultConfig } from '@fastgpt/global/common/system/config/schema';
+
+(global as any).systemInstanceConfig = createDefaultInstanceConfig();
+
 import { DatasetSearchModeEnum, SearchScoreTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import type { FullTextSearchProps } from '@fastgpt/service/common/vectorDB/type';
-import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import type { EmbeddingModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import { serviceEnv } from '@fastgpt/service/env';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 
@@ -27,15 +36,15 @@ const mockCreateS3DownloadAccessUrls = vi.hoisted(() =>
   )
 );
 
-const originalMultipleDataToBase64 = serviceEnv.MULTIPLE_DATA_TO_BASE64;
+const originalMultipleDataToBase64 = getTestInstanceConfig().feature.multipleDataToBase64;
 
-const embeddingModel = {
+const embeddingModel: EmbeddingModelDataType = {
   modelId: '507f1f77bcf86cd799439017',
   provider: 'openai',
   model: 'mock-embedding-model',
   name: 'Mock Embedding Model',
   type: ModelTypeEnum.embedding,
-  scope: 'system' as const,
+  scope: ModelScopeEnum.system,
   isActive: true,
   config: {
     defaultToken: 100,
@@ -156,16 +165,18 @@ import { filterSearchResultsByScore } from '../../../../core/dataset/search/defa
 import { fullTextRecall } from '../../../../core/dataset/search/defaultRecall/fullTextRecall';
 
 afterEach(() => {
-  serviceEnv.MULTIPLE_DATA_TO_BASE64 = originalMultipleDataToBase64;
+  getTestInstanceConfig().feature.multipleDataToBase64 = originalMultipleDataToBase64;
 });
 
 describe('default recall dataset search', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    global.systemInstanceConfig!.vector = getDomainDefaultConfig('vector');
+    global.systemInstanceConfig!.feature.multipleDataToBase64 = originalMultipleDataToBase64;
     // 重置 getFullTextStore 可切换 mock(ISSUE-015):默认走 mongo 委托,避免 milvus 用例污染
     mockUseMilvusStore.value = false;
     mockFullTextStoreSearch.mockReset();
-    serviceEnv.MULTIPLE_DATA_TO_BASE64 = originalMultipleDataToBase64;
+    getTestInstanceConfig().feature.multipleDataToBase64 = originalMultipleDataToBase64;
     mockCountPromptTokensBatch.mockImplementation(async (prompts: string[]) =>
       prompts.map((prompt) => prompt.length)
     );
@@ -195,6 +206,44 @@ describe('default recall dataset search', () => {
       lean: vi.fn().mockResolvedValue([])
     });
     mockMongoDatasetDataTextAggregate.mockResolvedValue([]);
+  });
+
+  it.each([
+    { configured: undefined, expected: 200 },
+    { configured: 99, expected: 100 },
+    { configured: 100, expected: 100 },
+    { configured: 400, expected: 400 },
+    { configured: 1000, expected: 1000 },
+    { configured: 1001, expected: 1000 }
+  ])('bounds HNSW search width once for all recall tasks: %j', async ({ configured, expected }) => {
+    if (configured !== undefined) global.systemInstanceConfig!.vector.hnswEfSearch = configured;
+    mockRecallFromVectorStore.mockImplementation(async () => {
+      // 首个 query 执行后配置变化，本轮其他 query 仍需使用入口读取的同一份参数。
+      global.systemInstanceConfig!.vector.hnswEfSearch = 800;
+      return { results: [] };
+    });
+
+    await searchDatasetData({
+      metadataFilterEnabled: false,
+      histories: [],
+      teamId: '507f1f77bcf86cd799439011',
+      model: embeddingModel,
+      datasetIds: ['507f1f77bcf86cd799439012'],
+      reRankQuery: 'first query',
+      textQueries: ['first query', 'second query'],
+      imageQueries: [],
+      limit: 5000,
+      searchMode: DatasetSearchModeEnum.mixedRecall,
+      embeddingWeight: 0.5,
+      usingReRank: false
+    });
+
+    expect(mockRecallFromVectorStore).toHaveBeenCalledTimes(2);
+    expect(mockRecallFromVectorStore.mock.calls[0][0].limit).toBe(80);
+    expect(mockRecallFromVectorStore.mock.calls.map(([props]) => props.hnswEfSearch)).toEqual([
+      expected,
+      expected
+    ]);
   });
 
   it('applies topk before formatting without counting tokens, while token-only calls keep their budget', async () => {
@@ -435,7 +484,8 @@ describe('default recall dataset search', () => {
 
   it('should ignore failed image embedding normalization and keep text recall', async () => {
     embeddingModel.config.vision = true;
-    serviceEnv.MULTIPLE_DATA_TO_BASE64 = true;
+    getTestInstanceConfig().feature.multipleDataToBase64 = true;
+    global.systemInstanceConfig!.feature.multipleDataToBase64 = true;
     mockGetImageBase64.mockRejectedValueOnce(new Error('expired image'));
     mockGetVectors.mockResolvedValueOnce({
       tokens: 12,

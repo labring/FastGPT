@@ -41,7 +41,6 @@ export type SystemConfigType = {
       clientId: string;
       secret: string;
       tenantId: string;
-      customButton?: string;
     };
     email?: {
       smtp: string;
@@ -51,6 +50,10 @@ export type SystemConfigType = {
       port?: number;
       secure?: boolean;
     };
+    /**
+     * 历史兼容：`*_EN` 英文模板仅用于迁移读取旧数据，不再作为有效运行时配置。
+     * 当前短信发送统一使用中文模板，新表单不写入这些字段。
+     */
     sms: {
       /** 登录二次验证短信模板 CODE；未配置时手机号账号降级为纯密码登录。 */
       LOGIN?: string;
@@ -93,10 +96,6 @@ export type SystemConfigType = {
       appID: string;
       appSecret: string;
     };
-    dingtalk?: {
-      clientId: string;
-      secret: string;
-    };
     wecom?: {
       suiteId: string;
       secret: string;
@@ -126,8 +125,6 @@ export type SystemConfigType = {
       ALIPAY_GATEWAY?: string;
       ALIPAY_ROOT_CERT_CONTENT?: string;
       ALIPAY_PUBLIC_CERT_CONTENT?: string;
-      ALIPAY_ENDPOINT?: string;
-      ALIPAY_NOTIFY_URL?: string;
     };
     bank?: {
       description?: string;
@@ -148,6 +145,8 @@ export type SystemConfigType = {
 export type ConfigStoreType = {
   [SystemConfigsTypeEnum.fastgpt]: FastGPTConfigFileType;
   [SystemConfigsTypeEnum.fastgptPro]: SystemConfigType;
+  /** 套餐对应的 commercial 域 revision，用于套餐保存的乐观锁校验 */
+  subPlansRevision?: number;
 };
 
 export type ConfigFormType = {
@@ -201,7 +200,6 @@ export type ConfigFormType = {
       vectorRecallConcurrency: FastGPTConfigFileType['systemEnv']['vectorRecallConcurrency'];
       customPdfParse?: customPdfParseType;
       fileUrlWhitelist?: string[];
-      ip_whitelist?: string;
       sso?: FastGPTConfigFileType['systemEnv']['sso'];
       workflowHttpNode?: {
         ignoreHttpsCertificate?: boolean;
@@ -245,7 +243,7 @@ export type ConfigFormType = {
       /**
        * 开启后，SSO 命名空间下的账号（username 形如 `<租户>-<账号>`）不再允许使用平台密码：
        * 登录、找回密码、管理端改密都会被服务端拒绝，登录页首屏改为登录方式选择页。
-       * 仅在配置了 systemEnv.sso.url 时生效。
+       * 仅在 Pro 接入 SSO 时生效。
        */
       disablePasswordForSsoUsers?: boolean;
     };

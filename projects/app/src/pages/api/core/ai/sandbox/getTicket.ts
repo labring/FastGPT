@@ -24,6 +24,7 @@ async function handler(req: ApiRequestProps): Promise<SandboxGetTicketResponse> 
   if (!secret) {
     throw new Error('AGENT_SANDBOX_PROXY_SECRET environment variable is missing');
   }
+  // 代理地址是部署连接信息，只从 ENV 读取，不参与管理员表单或 DB 配置。
   const proxyUrl = serviceEnv.AGENT_SANDBOX_PROXY_URL;
   if (!proxyUrl) {
     throw new Error('AGENT_SANDBOX_PROXY_URL environment variable is missing');

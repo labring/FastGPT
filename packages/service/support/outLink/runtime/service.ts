@@ -31,7 +31,7 @@ import {
 } from '../../../core/chat/saveChat';
 import { preChatRound, type PreChatRoundResult } from '../../../core/chat/utils/prepare';
 import { dispatchWorkFlow } from '../../../core/workflow/dispatch';
-import { WORKFLOW_MAX_RUN_TIMES } from '../../../core/workflow/constants';
+import { getWorkflowMaxRunTimes } from '../../../core/workflow/constants';
 import {
   filterWorkflowQueryFiles,
   getWorkflowFileLimits
@@ -428,7 +428,7 @@ export async function runOutlinkRuntime<T extends OutlinkAppType>({
       workflowStreamResponse,
       runtimeEdges: storeEdges2RuntimeEdges(edges),
       runtimeNodes: storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes)),
-      maxRunTimes: WORKFLOW_MAX_RUN_TIMES,
+      maxRunTimes: getWorkflowMaxRunTimes(),
       retainDatasetCite: false,
       nodeResponseWriteConfig: {
         persistToDb: true,

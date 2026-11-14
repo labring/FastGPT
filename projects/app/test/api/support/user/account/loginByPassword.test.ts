@@ -583,12 +583,15 @@ describe('loginByPassword API', () => {
   describe('SSO password policy', () => {
     let originalFeConfigs: typeof global.feConfigs;
     let originalSystemEnv: typeof global.systemEnv;
+    let originalSsoHandler: typeof global.getSsoConfiguredHandler;
     beforeEach(() => {
       originalFeConfigs = global.feConfigs;
       originalSystemEnv = global.systemEnv;
+      originalSsoHandler = global.getSsoConfiguredHandler;
     });
 
     const enableSsoPasswordPolicy = () => {
+      global.getSsoConfiguredHandler = () => true;
       global.systemEnv = { ...global.systemEnv, sso: { url: 'https://sso.example.com' } };
       global.feConfigs = {
         ...global.feConfigs,
@@ -601,6 +604,7 @@ describe('loginByPassword API', () => {
     afterEach(() => {
       global.feConfigs = originalFeConfigs;
       global.systemEnv = originalSystemEnv;
+      global.getSsoConfiguredHandler = originalSsoHandler;
     });
 
     // disablePasswordForSsoUsers 开启后，受限 SSO 账号即便持有历史密码，
@@ -701,6 +705,34 @@ describe('loginByPassword API', () => {
       expect(setCookie).not.toHaveBeenCalled();
 
       await MongoUser.findByIdAndDelete(ssoUser._id);
+    });
+
+    it('fails closed without exposing Pro request details when SSO state is unavailable', async () => {
+      enableSsoPasswordPolicy();
+      global.getSsoConfiguredHandler = () => {
+        throw new Error('synthetic-private-token');
+      };
+      await MongoUser.create({ username: 'tenant-user', password: 'testpassword' });
+      await saveLoginCode('tenant-user');
+
+      const res = await Call<LoginByPasswordBodyType, Record<string, never>, any>(
+        loginApi.default,
+        {
+          body: {
+            username: 'tenant-user',
+            password: 'testpassword',
+            code: '123456',
+            language: 'zh-CN'
+          }
+        }
+      );
+
+      expect(res.code).not.toBe(200);
+      expect(res.error).toEqual(
+        expect.objectContaining({ message: 'SSO configuration is unavailable' })
+      );
+      expect(JSON.stringify(res.error)).not.toContain('synthetic-private-token');
+      expect(setCookie).not.toHaveBeenCalled();
     });
 
     it('should still allow a non-SSO user to login when the policy is enabled', async () => {

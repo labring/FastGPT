@@ -1,3 +1,4 @@
+import { getTestInstanceConfig } from '@test/utils/instanceConfigSnapshot';
 import { afterEach, describe, it, expect, vi, beforeEach } from 'vitest';
 import http from 'http';
 import os from 'os';
@@ -6,7 +7,6 @@ import zlib from 'node:zlib';
 import { createProxyAxios, type SafeAxiosRequestConfig } from '../../../common/api/axios';
 import { PRIVATE_URL_TEXT } from '../../../common/system/utils';
 import { serviceAxiosMaxContentLength } from '../../../common/system/constants';
-import { serviceEnv } from '../../../env';
 
 type AxiosRequestConfig = {
   timeout?: number;
@@ -19,8 +19,7 @@ type AxiosRequestConfig = {
 };
 
 describe('axios.ts', () => {
-  const mutableServiceEnv = serviceEnv as { CHECK_INTERNAL_IP: boolean };
-  const originalCheckInternalIp = serviceEnv.CHECK_INTERNAL_IP;
+  const originalCheckInternalIp = getTestInstanceConfig().security.checkInternalIp;
   const proxyEnvKeys = [
     'HTTP_PROXY',
     'HTTPS_PROXY',
@@ -44,7 +43,7 @@ describe('axios.ts', () => {
   );
 
   afterEach(() => {
-    mutableServiceEnv.CHECK_INTERNAL_IP = originalCheckInternalIp;
+    getTestInstanceConfig().security.checkInternalIp = originalCheckInternalIp;
     vi.restoreAllMocks();
     for (const key of proxyEnvKeys) {
       const value = originalProxyEnv[key];
@@ -104,7 +103,7 @@ describe('axios.ts', () => {
 
     it('checks the file domain policy before the first request and every redirect', async () => {
       clearProxyEnv();
-      mutableServiceEnv.CHECK_INTERNAL_IP = false;
+      getTestInstanceConfig().security.checkInternalIp = false;
       const adapter = vi.fn(async (config) => ({
         status: 302,
         statusText: 'Found',
@@ -281,7 +280,7 @@ describe('axios.ts', () => {
 
   describe('safe axios redirect protection', () => {
     it('应该逐跳跟随公网重定向', async () => {
-      mutableServiceEnv.CHECK_INTERNAL_IP = false;
+      getTestInstanceConfig().security.checkInternalIp = false;
       const carrierHost = getReachablePrivateHost();
       if (!carrierHost) {
         return;
@@ -316,7 +315,7 @@ describe('axios.ts', () => {
     });
 
     it('应该阻止重定向到 loopback 地址', async () => {
-      mutableServiceEnv.CHECK_INTERNAL_IP = false;
+      getTestInstanceConfig().security.checkInternalIp = false;
       const carrierHost = getReachablePrivateHost();
       if (!carrierHost) {
         return;
@@ -348,7 +347,7 @@ describe('axios.ts', () => {
     });
 
     it('应该限制最大重定向次数', async () => {
-      mutableServiceEnv.CHECK_INTERNAL_IP = false;
+      getTestInstanceConfig().security.checkInternalIp = false;
       const carrierHost = getReachablePrivateHost();
       if (!carrierHost) {
         return;
@@ -379,7 +378,7 @@ describe('axios.ts', () => {
   describe('safe axios DNS pinning', () => {
     it('应该拒绝直连路径中预检后重绑定到 loopback 的地址', async () => {
       clearProxyEnv();
-      mutableServiceEnv.CHECK_INTERNAL_IP = false;
+      getTestInstanceConfig().security.checkInternalIp = false;
 
       vi.spyOn(dns, 'resolve4').mockResolvedValue(['8.8.8.8']);
       vi.spyOn(dns, 'resolve6').mockRejectedValue(new Error('No AAAA records'));
@@ -404,7 +403,7 @@ describe('axios.ts', () => {
 
     it('应该覆盖直连路径调用方传入的自定义 lookup agent', async () => {
       clearProxyEnv();
-      mutableServiceEnv.CHECK_INTERNAL_IP = false;
+      getTestInstanceConfig().security.checkInternalIp = false;
       const carrierHost = getReachablePrivateHost();
       if (!carrierHost) {
         return;
@@ -449,7 +448,7 @@ describe('axios.ts', () => {
 
     it('应该拒绝重定向下一跳中的 DNS rebinding', async () => {
       clearProxyEnv();
-      mutableServiceEnv.CHECK_INTERNAL_IP = false;
+      getTestInstanceConfig().security.checkInternalIp = false;
       const carrierHost = getReachablePrivateHost();
       if (!carrierHost) {
         return;
@@ -480,7 +479,7 @@ describe('axios.ts', () => {
 
     it('走代理时命中 isInternalAddress 应该直接拒绝', async () => {
       process.env.HTTP_PROXY = 'http://proxy.example:8080';
-      mutableServiceEnv.CHECK_INTERNAL_IP = false;
+      getTestInstanceConfig().security.checkInternalIp = false;
 
       const adapter = vi.fn().mockResolvedValue({
         data: {},
@@ -497,7 +496,7 @@ describe('axios.ts', () => {
 
     it('走代理且 isInternalAddress 返回 false 时应保留代理路径并跳过 pinning lookup', async () => {
       process.env.HTTP_PROXY = 'http://proxy.example:8080';
-      mutableServiceEnv.CHECK_INTERNAL_IP = false;
+      getTestInstanceConfig().security.checkInternalIp = false;
 
       vi.spyOn(dns, 'resolve4').mockRejectedValue(new Error('DNS unavailable'));
       vi.spyOn(dns, 'resolve6').mockRejectedValue(new Error('DNS unavailable'));
@@ -520,7 +519,7 @@ describe('axios.ts', () => {
 
     it('直连路径 DNS lookup 失败时应该失败', async () => {
       clearProxyEnv();
-      mutableServiceEnv.CHECK_INTERNAL_IP = false;
+      getTestInstanceConfig().security.checkInternalIp = false;
 
       vi.spyOn(dns, 'resolve4').mockResolvedValue(['8.8.8.8']);
       vi.spyOn(dns, 'resolve6').mockRejectedValue(new Error('No AAAA records'));
@@ -563,7 +562,7 @@ describe('axios.ts', () => {
 
     it('应该在解压后的响应体超过 maxContentLength 时中止', async () => {
       clearProxyEnv();
-      mutableServiceEnv.CHECK_INTERNAL_IP = false;
+      getTestInstanceConfig().security.checkInternalIp = false;
       const carrierHost = getReachablePrivateHost();
       if (!carrierHost) {
         return;
@@ -645,7 +644,7 @@ describe('axios.ts', () => {
 
     it('流式响应未显式限制时应该允许读取超过默认上限的业务文件', async () => {
       clearProxyEnv();
-      mutableServiceEnv.CHECK_INTERNAL_IP = false;
+      getTestInstanceConfig().security.checkInternalIp = false;
       const carrierHost = getReachablePrivateHost();
       if (!carrierHost) {
         return;
@@ -671,7 +670,7 @@ describe('axios.ts', () => {
 
     it('构造实例时显式传入 maxContentLength: -1 应该保留取消限制的语义', async () => {
       clearProxyEnv();
-      mutableServiceEnv.CHECK_INTERNAL_IP = false;
+      getTestInstanceConfig().security.checkInternalIp = false;
       const carrierHost = getReachablePrivateHost();
       if (!carrierHost) {
         return;
@@ -693,7 +692,7 @@ describe('axios.ts', () => {
 
     it('单次请求显式传入 maxContentLength: -1 应该保留取消限制的语义', async () => {
       clearProxyEnv();
-      mutableServiceEnv.CHECK_INTERNAL_IP = false;
+      getTestInstanceConfig().security.checkInternalIp = false;
       const carrierHost = getReachablePrivateHost();
       if (!carrierHost) {
         return;
