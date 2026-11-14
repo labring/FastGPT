@@ -5,6 +5,7 @@ import { GroupMemberRole } from '../../../../../support/permission/memberGroup/c
 import { PermissionSchema } from '../../../../../support/permission/controller';
 import { TeamMemberStatusEnum } from '../../../../../support/user/team/constant';
 import { TeamMemberNameSchema } from '../../../../../support/user/team/memberName';
+import { TeamTmbItemSchema } from '../../../../../support/user/team/type';
 import { PaginationResponseSchema, createPaginationSchema } from '../../../../api';
 
 const TeamMemberIdSchema = ObjectIdSchema.meta({
@@ -121,12 +122,15 @@ export type ListTeamMembersBodyType = z.infer<typeof ListTeamMembersBodySchema>;
 export const TeamMemberListItemSchema = z
   .object({
     userId: ObjectIdSchema.meta({ description: '用户 ID' }),
+    username: z.string().meta({
+      description: '登录用户名',
+      example: 'zhangsan'
+    }),
     tmbId: TeamMemberIdSchema,
     teamId: ObjectIdSchema.meta({ description: '团队 ID' }),
-    memberName: z
-      .string()
-      .default('Member')
-      .meta({ description: '团队成员名；即数据库成员名，未显式设置过时为加入时的回落值' }),
+    memberName: TeamTmbItemSchema.shape.memberName.meta({
+      description: '团队成员名；即数据库成员名，未显式设置过时为加入时的回落值'
+    }),
     isSetMemberName: z.boolean().default(false).meta({
       description:
         '成员名是否已由显式来源设置；为 false 时 memberName 是待确认的回落展示名，不是用户提交值'

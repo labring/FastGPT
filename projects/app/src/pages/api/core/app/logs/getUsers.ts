@@ -1,3 +1,4 @@
+import { buildChatPublishSourceFilter } from '@fastgpt/service/core/chat/publishSource/utils';
 import { MongoAppChatLog } from '@fastgpt/service/core/app/logs/chatLogsSchema';
 import { Types } from '@fastgpt/service/common/mongo';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
@@ -7,7 +8,6 @@ import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSc
 import { getTeamMemberMap } from '@fastgpt/service/support/user/team/utils';
 import { MongoUser } from '@fastgpt/service/support/user/schema';
 import { AppReadChatLogPerVal } from '@fastgpt/global/support/permission/app/constant';
-import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 import {
@@ -42,18 +42,15 @@ async function handler(req: ApiRequestProps): Promise<GetLogUsersResponse> {
     req,
     bodySchema: GetLogUsersBodySchema
   });
-  const { appId, dateStart, dateEnd, searchKey, sources } = body;
+  const { appId: requestedAppId, dateStart, dateEnd, searchKey, sources } = body;
   const { pageSize: resolvedPageSize, offset: resolvedOffset } = normalizePagination(body);
 
-  if (!appId) {
-    return Promise.reject(CommonErrEnum.missingParams);
-  }
-
-  const { teamId } = await authApp({
+  const { teamId, appId } = await authApp({
     req,
     authToken: true,
     authApiKey: true,
-    appId,
+    authAppApiKey: true,
+    appId: requestedAppId,
     per: AppReadChatLogPerVal
   });
 
@@ -115,7 +112,7 @@ async function handler(req: ApiRequestProps): Promise<GetLogUsersResponse> {
             $lte: new Date(dateEnd)
           },
           userId: { $exists: true, $nin: [null, ''] },
-          ...(sources?.length && { source: { $in: sources } }),
+          $and: [buildChatPublishSourceFilter(sources)],
           ...userMatch
         }
       },
@@ -123,7 +120,7 @@ async function handler(req: ApiRequestProps): Promise<GetLogUsersResponse> {
         $group: {
           _id: {
             userId: '$userId',
-            source: '$source'
+            source: { $ifNull: ['$publishSource.type', '$source'] }
           },
           count: { $sum: 1 }
         }

@@ -1,9 +1,6 @@
 import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
-import type {
-  FlowNodeTemplateType,
-  StoreNodeItemType
-} from '@fastgpt/global/core/workflow/type/node';
+import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import {
   FlowNodeInputTypeEnum,
   FlowNodeTypeEnum
@@ -40,10 +37,7 @@ import {
 import { getAppChatConfig } from '@fastgpt/global/common/app/chat';
 import { getDefaultAppForm } from '@fastgpt/global/core/app/utils';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
-import {
-  getToolConfigStatus,
-  stripToolInputDefaultMode
-} from '@fastgpt/global/core/app/formEdit/utils';
+import { stripToolInputDefaultMode } from '@fastgpt/global/core/app/formEdit/utils';
 
 /** 将简易应用的已存工作流还原为表单；标签过滤版本沿用默认的 structured。 */
 export const appWorkflow2Form = ({
@@ -157,6 +151,10 @@ export const appWorkflow2Form = ({
         node.inputs,
         NodeInputKeyEnum.datasetSearchRerankWeight
       );
+      defaultAppForm.dataset.rerankCandidateNum = findInputValueByKey(
+        node.inputs,
+        NodeInputKeyEnum.datasetSearchRerankCandidateNum
+      );
       // Query extension
       defaultAppForm.dataset.datasetSearchUsingExtensionQuery = findInputValueByKey(
         node.inputs,
@@ -211,8 +209,7 @@ export const appWorkflow2Form = ({
         userGuide: node.pluginData?.userGuide,
         toolConfig: node.toolConfig,
         hasSystemSecret: node.hasSystemSecret,
-        systemKeyCost: node.systemKeyCost,
-        configStatus: getToolConfigStatus({ tool: node as unknown as FlowNodeTemplateType }).status
+        systemKeyCost: node.systemKeyCost
       });
     }
   });
@@ -541,6 +538,13 @@ export function form2AppWorkflow(
           label: '',
           valueType: WorkflowIOValueTypeEnum.number,
           value: formData.dataset.rerankWeight
+        },
+        {
+          key: NodeInputKeyEnum.datasetSearchRerankCandidateNum,
+          renderTypeList: [FlowNodeInputTypeEnum.hidden],
+          label: '',
+          valueType: WorkflowIOValueTypeEnum.number,
+          value: formData.dataset.rerankCandidateNum
         },
         {
           key: NodeInputKeyEnum.datasetSearchUsingExtensionQuery,

@@ -1,20 +1,55 @@
 ---
-title: Docker Database Migration (Simple Method)
-description: FastGPT Docker database backup and migration
+title: Docker data backup and migration
+description: Inventory persistent data, back up during downtime, validate restoration, and switch traffic.
 ---
 
-## 1. Stop Services
+Volume archiving or directory copying applies to deployments with writes stopped and compatible database versions. Rehearse restoration in the target environment before scheduling a production cutover. Use the database vendor's backup and restore procedure for major-version migrations.
+
+## 1. Before migration
+
+Record application and database versions, the actual Compose configuration, environment variables, and persistent mounts. Inspect configuration with `docker compose config`; its output can contain credentials and must be stored securely.
+
+| Data | What to verify |
+| --- | --- |
+| MongoDB | Applications, conversations, knowledge collections, chunks, permissions, and other records; actual mounts or database backup locations |
+| Vector backend | The selected PG, Milvus, or other backend and all its persistent data |
+| Object storage | Files, parsed text, and other objects in public/private buckets; use the applicable self-hosted or managed backup procedure |
+| Other dependencies | Persistent data and restoration requirements for Redis, AI Proxy, and other enabled services |
+| Configuration and credentials | Compose configuration, secrets, model channels, storage buckets, and endpoint settings |
+
+## 2. Stop services
+
+Pause external entry points and scheduled tasks. Wait for or manage running writes and file-processing jobs. Stop this Compose project's services from the deployment directory:
 
 ```bash
-docker-compose down
+docker compose down
 ```
 
+The command stops the current Compose project. Coordinate external databases, object storage, and other writers separately so backups share a consistent period with writes paused. Preserve data volumes and confirm clean database shutdown.
 
-## 2. Copy Directories
+## 3. Back up and copy data
 
-Docker-deployed databases mount local directories into containers via volumes. To migrate, simply copy these directories.
+Current official Docker Compose templates store persistent data in named volumes (such as `fastgpt-pg`, `fastgpt-mongo`, `fastgpt-redis`, and `fastgpt-rustfs`). After stopping the services, archive each named volume on the source host and extract it on the target host:
 
-`PG data`: pg/data
-`Mongo data`: mongo/data
+```bash
+# Export a named volume on the source host (repeat for each active volume)
+docker run --rm -v fastgpt-mongo:/data:ro -v "$PWD":/backup alpine tar czf /backup/fastgpt-mongo.tar.gz -C /data .
 
-Just copy the entire pg and mongo directories to the new location.
+# Restore into the named volume on the target host
+docker volume create fastgpt-mongo
+docker run --rm -v fastgpt-mongo:/data -v "$PWD":/backup alpine tar xzf /backup/fastgpt-mongo.tar.gz -C /data
+```
+
+For older templates or custom bind-mounted host directories (such as `pg/data` and `mongo/data`), copy all mounted directories according to your configuration inventory while preserving file ownership, permissions, and directory layout (`cp -a` or `rsync -a`). Use the vendor's backup and restoration tools for managed databases and external object storage.
+
+After restoring the data, start the target services with compatible versions and corresponding configuration:
+
+```bash
+docker compose up -d
+```
+
+## 4. Validate and switch traffic
+
+Inspect startup logs and service health. Verify login, existing applications, conversations, original-file access, knowledge retrieval, and one new-file import. Confirm permissions and model channels before switching traffic and resuming scheduled tasks.
+
+Retain the source environment and backups until acceptance is complete. Control write entry points during restoration so business data reaches the selected environment. See [Upgrade Guide](/en/self-host/upgrading/upgrade-instruction) and [Object Storage Configuration](/en/self-host/config/object-storage).

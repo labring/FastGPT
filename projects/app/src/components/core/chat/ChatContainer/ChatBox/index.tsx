@@ -88,9 +88,13 @@ const WorkorderEntrance = dynamic(() => import('@/pageComponents/chat/WorkorderE
 
 type Props = ChatProviderProps &
   BoxProps & {
+    /** 分享页品牌位于底部时，合规提示由外层移至顶部。 */
+    complianceTipPlacement?: 'default' | 'external';
     isReady: boolean;
     features?: ChatBoxFeatures;
     active?: boolean; // can use
+    /** 初始化遮罩由聊天布局控制，关闭后允许历史请求期间先展示欢迎内容或变量表单。 */
+    showInitialLoading?: boolean;
     disabledSendTip?: string;
 
     onStartChat?: (e: StartChatFnProps) => Promise<
@@ -150,9 +154,11 @@ const resolveChatBoxFeatures = (features?: ChatBoxFeatures): Required<ChatBoxFea
 });
 
 const ChatBox = ({
+  complianceTipPlacement = 'default',
   isReady = true,
   features,
   active = true,
+  showInitialLoading = true,
   disabledSendTip,
   onStartChat,
   onGeneratingMessage,
@@ -190,8 +196,13 @@ const ChatBox = ({
 
   const [questionGuides, setQuestionGuide] = useState<string[]>([]);
   const [expandedDeletedGroups, setExpandedDeletedGroups] = useState<Set<string>>(new Set());
-  const { ScrollContainerRef, scrollToBottom, generatingScroll, isScrollToBottomButtonVisible } =
-    useChatScroll();
+  const {
+    ScrollContainerRef,
+    scrollToBottom,
+    autoScrollToBottom,
+    generatingScroll,
+    isScrollToBottomButtonVisible
+  } = useChatScroll();
 
   const chatBoxData = useContextSelector(ChatItemContext, (v) => v.chatBoxData);
   const setChatBoxData = useContextSelector(ChatItemContext, (v) => v.setChatBoxData);
@@ -199,6 +210,11 @@ const ChatBox = ({
   const setIsVariableVisible = useContextSelector(ChatItemContext, (v) => v.setIsVariableVisible);
 
   const isLoadingRecords = useContextSelector(ChatRecordContext, (v) => v.isLoadingRecords);
+  const isInitialLoadingRecords = useContextSelector(
+    ChatRecordContext,
+    (v) => v.isInitialLoadingRecords
+  );
+  const paginationLoading = useContextSelector(ChatRecordContext, (v) => v.paginationLoading);
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
   const setChatRecords = useContextSelector(ChatRecordContext, (v) => v.setChatRecords);
   const isChatRecordsLoaded = useContextSelector(ChatRecordContext, (v) => v.isChatRecordsLoaded);
@@ -389,7 +405,7 @@ const ChatBox = ({
     restoreSubmittedInput,
     setQuestionGuide,
     createQuestionGuide,
-    scrollToBottom,
+    scrollToBottom: autoScrollToBottom,
     generatingScroll,
     notifyChatGenerateStatusChange,
     finishChatGenerateStatus,
@@ -457,8 +473,8 @@ const ChatBox = ({
     }
 
     lastRecordsLoadedScrollTargetRef.current = chatScrollTargetKey;
-    scrollToBottom('auto');
-  }, [chatScrollTargetKey, isChatRecordsLoaded, scrollToBottom]);
+    autoScrollToBottom('auto');
+  }, [chatScrollTargetKey, isChatRecordsLoaded, autoScrollToBottom]);
 
   const onChatGeneratingConflictRecovered = useMemoizedFn(() => {
     toast({
@@ -478,7 +494,7 @@ const ChatBox = ({
     resumeControllerRef: resumeController,
     generatingMessage,
     flushGeneratingMessages,
-    scrollToBottom,
+    scrollToBottom: autoScrollToBottom,
     finishChatGenerateStatus,
     onChatGeneratingConflictRecovered
   });
@@ -726,7 +742,7 @@ const ChatBox = ({
           {/* chat box container */}
           {isHomeRender ? (
             <MyBox
-              isLoading={isLoadingRecords}
+              isLoading={showInitialLoading && isInitialLoadingRecords}
               display="flex"
               flexDirection="column"
               flex={'1 0 0'}
@@ -738,11 +754,15 @@ const ChatBox = ({
               ) : (
                 <MobileHomeLayout inputSlot={HomeChatInput} />
               )}
-              {!isLogMode && <ComplianceTip type={'chat'} pt={0} pb={4} />}
+              {!isLogMode && complianceTipPlacement !== 'external' && (
+                <ComplianceTip type={'chat'} pt={0} pb={4} />
+              )}
             </MyBox>
           ) : (
             <>
               <AppChatMain
+                isLoading={showInitialLoading && isInitialLoadingRecords}
+                paginationLoading={paginationLoading}
                 ScrollData={ScrollData}
                 ScrollContainerRef={ScrollContainerRef}
                 welcomeText={welcomeText}
@@ -825,7 +845,9 @@ const ChatBox = ({
                     </Box>
                   </>
                 )}
-                {!isLogMode && <ComplianceTip type={'chat'} pt={0} pb={4} />}
+                {!isLogMode && complianceTipPlacement !== 'external' && (
+                  <ComplianceTip type={'chat'} pt={0} pb={4} />
+                )}
               </Box>
             </>
           )}

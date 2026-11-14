@@ -207,7 +207,11 @@ describe('team model management integration: permission, member isolation and AI
     const groupId = `fastgpt:tmb:${installer.tmbId}`;
     expect(bucketOf(groupId)[0]).toMatchObject({
       name: 'created-channel',
-      configs: { map_reasoning_to_reasoning_content: true, custom: 'kept' }
+      configs: {
+        map_reasoning_to_reasoning_content: true,
+        chat_upstream_protocol: 'auto',
+        custom: 'kept'
+      }
     });
     const second = await Call(channelCreateHandler, { auth: otherInstaller, body });
     expect(second.code).toBe(200);
@@ -221,7 +225,14 @@ describe('team model management integration: permission, member isolation and AI
 
       const created = await Call(createHandler, {
         auth: installer,
-        body: { modelData: modelDraft('team-model-a'), channelType: 'team' }
+        body: {
+          modelData: {
+            ...modelDraft('team-model-a'),
+            requestUrl: 'https://93.184.216.34/v1',
+            requestAuth: 'sk-team-secret'
+          },
+          channelType: 'team'
+        }
       });
       expect(created.code).toBe(200);
 
@@ -233,6 +244,9 @@ describe('team model management integration: permission, member isolation and AI
       expect(config.data.models.map((item: { model: string }) => item.model)).toEqual([
         'team-model-a'
       ]);
+      expect(config.data.models[0].requestUrl).toBeUndefined();
+      expect(config.data.models[0].requestAuth).toBeUndefined();
+      expect(JSON.stringify(config.data)).not.toContain('sk-team-secret');
 
       const removed = await Call(deleteHandler, {
         auth: installer,

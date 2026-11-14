@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import { getDefaultAppForm, getAppType } from '@fastgpt/global/core/app/utils';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 
 describe('getDefaultAppForm', () => {
   it('should return default app form with correct structure', () => {
@@ -33,9 +32,9 @@ describe('getDefaultAppForm', () => {
       searchMode: DatasetSearchModeEnum.embedding,
       usingReRank: false,
       rerankWeight: 0.5,
+      rerankCandidateNum: 100,
       datasetSearchUsingExtensionQuery: false,
       datasetSearchExtensionBg: '',
-      [NodeInputKeyEnum.collectionFilterVersion]: 'structured',
       authTmbId: false
     });
   });

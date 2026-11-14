@@ -2,14 +2,17 @@ import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { ModelScopeEnum } from '@fastgpt/global/core/ai/constants';
 import { normalizeModelPricingForSave } from '@fastgpt/global/core/ai/model/pricing';
+import { NEW_MODEL_SORT_ORDER, sortModelOrderItems } from '@fastgpt/global/core/ai/model/order';
 import type {
   CreateModelBody,
   CreateModelsFromTemplatesBody,
-  UpdateModelBody
+  UpdateModelBody,
+  UpdateModelOrderBody
 } from '@fastgpt/global/openapi/core/ai/model/api';
 import { getLogger, LogCategories } from '../../../common/logger';
+import { mongoSessionRun } from '../../../common/mongo/sessionRun';
 import { invalidateTeamModelCatalog } from './catalog/cache';
-import type { ModelCatalogScope } from './catalog/entity';
+import { incrementModelCatalogRevision, type ModelCatalogScope } from './catalog/entity';
 import { updatedReloadSystemModel } from './catalog/service';
 import { runModelTransaction } from './catalog/transaction';
 import {
@@ -21,7 +24,11 @@ import { deleteModelRecords } from './cleanup';
 import { importSystemModels as importSystemModelRecords } from './import';
 import { MongoAIModel } from './schema';
 import { refreshModelTemplates } from './template';
-import { getModelConfigUpdate, sanitizeTeamModelData } from './utils';
+import {
+  assertTeamModelRequestUrlSafe,
+  getModelConfigUpdate,
+  sanitizeTeamModelData
+} from './utils';
 
 const logger = getLogger(LogCategories.MODULE.AI.MODEL);
 
@@ -70,6 +77,9 @@ export const updateModel = async ({
   ...owner
 }: Omit<UpdateModelBody, 'channelType'> & ModelMutationOwner) => {
   const { context, filter } = getMutationScope(owner);
+  if (context.scope === ModelScopeEnum.team) {
+    await assertTeamModelRequestUrlSafe(modelData);
+  }
   const change = await runModelTransaction(context, async (session) => {
     const existing = await MongoAIModel.findOne({ _id: modelId, ...filter })
       .session(session)
@@ -139,28 +149,91 @@ export const updateModelStatus = async ({
   await refreshMutationCatalog(context);
 };
 
-/** 创建时覆盖请求中的归属字段；团队模型去除系统专用的直连配置，唯一索引负责并发重名兜底。 */
+/** 在一个目录事务中按客户端提交的完整顺序写入连续的 1-based rank。 */
+export const updateModelOrder = async ({
+  modelIds,
+  ...owner
+}: Omit<UpdateModelOrderBody, 'channelType'> & ModelMutationOwner) => {
+  const { context, filter } = getMutationScope(owner);
+  const changed = await mongoSessionRun(
+    async (session) => {
+      // 读取完整作用域列表；旧数据缺失或重复 rank 时，先按历史稳定顺序构造当前列表。
+      const modelDocuments = await MongoAIModel.find(filter)
+        .select({ _id: 1, sortOrder: 1 })
+        .sort({ _id: -1 })
+        .session(session)
+        .lean();
+      const currentIds = sortModelOrderItems(
+        modelDocuments.map(({ _id, sortOrder }) => ({ modelId: String(_id), sortOrder }))
+      ).map(({ modelId }) => modelId);
+      const currentIdSet = new Set(currentIds);
+      if (
+        modelIds.length !== currentIds.length ||
+        new Set(modelIds).size !== modelIds.length ||
+        modelIds.some((modelId) => !currentIdSet.has(modelId))
+      ) {
+        throw new UserError(ModelErrEnum.unExist);
+      }
+
+      const modelById = new Map(
+        modelDocuments.map(({ _id, sortOrder }) => [String(_id), { sortOrder }])
+      );
+      const updates = modelIds.flatMap((modelId, index) => {
+        const sortOrder = index + 1;
+        if (modelById.get(modelId)?.sortOrder === sortOrder) return [];
+        return [
+          {
+            updateOne: {
+              filter: { _id: modelId, ...filter },
+              update: { $set: { sortOrder } }
+            }
+          }
+        ];
+      });
+      if (updates.length === 0) return false;
+
+      // 先写目录 revision 作为同作用域并发栅栏，再与完整 rank 更新一起提交。
+      await incrementModelCatalogRevision(context, session);
+      await MongoAIModel.bulkWrite(updates, { session });
+      return true;
+    },
+    { readConcern: { level: 'snapshot' }, writeConcern: { w: 'majority' } }
+  );
+
+  if (changed) await refreshMutationCatalog(context);
+};
+
+/**
+ * 创建时覆盖归属、忽略入参 rank 并将新建模型写入置顶位 `0`；
+ * 手动排序固定使用 `1..N`，因此新建模型无需修改存量记录即可排在首位，多个 `0` 之间沿用快照原有的 `_id: -1` 顺序。
+ */
 export const createModel = async ({
   modelData,
   channelIds,
   ...owner
 }: Pick<CreateModelBody, 'modelData' | 'channelIds'> & ModelMutationOwner) => {
   const { context, filter } = getMutationScope(owner);
+  if (context.scope === ModelScopeEnum.team) {
+    await assertTeamModelRequestUrlSafe(modelData);
+  }
   const {
     tmbId: _tmbId,
     teamId: _teamId,
     scope: _scope,
+    sortOrder: _sortOrder,
     ...data
   } = normalizeModelPricingForSave(modelData);
   const [model] = await runModelTransaction(context, async (session) => {
     if (await MongoAIModel.exists({ ...filter, model: data.model }).session(session)) {
       throw new UserError(ModelErrEnum.alreadyExists);
     }
+
     return MongoAIModel.create(
       [
         {
           ...(context.scope === ModelScopeEnum.team ? sanitizeTeamModelData(data) : data),
           ...filter,
+          sortOrder: NEW_MODEL_SORT_ORDER,
           isActive: data.isActive ?? false
         }
       ],
@@ -172,7 +245,7 @@ export const createModel = async ({
   return { modelId: String(model._id) };
 };
 
-/** 从最新模板创建缺失的停用实例；重复提交不会覆盖已安装模型或无意义地增加目录版本。 */
+/** 从最新模板创建缺失的停用实例并置顶；重复提交不会覆盖已安装模型或无意义地增加目录版本。 */
 export const createModelsFromTemplates = async ({
   templates,
   channelIds,
@@ -189,7 +262,9 @@ export const createModelsFromTemplates = async ({
         const key = `${reference.type}:${reference.model}`;
         const template = templateMap.get(key);
         if (!template) throw new UserError(`Model template no longer exists: ${key}`);
-        return [template.model, normalizeModelPricingForSave(template)] as const;
+        // 模板只提供模型配置，不继承模板携带的 rank。
+        const { sortOrder: _sortOrder, ...modelData } = normalizeModelPricingForSave(template);
+        return [template.model, modelData] as const;
       })
     ).values()
   );
@@ -201,6 +276,11 @@ export const createModelsFromTemplates = async ({
     .lean();
   const names = new Set(existing.map(({ model }) => model));
   const missing = selected.filter(({ model }) => !names.has(model));
+  // 已安装模型只追加渠道，不写入模板配置，因此仅校验实际待新建的端点。
+  if (context.scope === ModelScopeEnum.team) {
+    await Promise.all(missing.map((template) => assertTeamModelRequestUrlSafe(template)));
+  }
+
   const models =
     missing.length === 0
       ? []
@@ -211,6 +291,7 @@ export const createModelsFromTemplates = async ({
                 ? sanitizeTeamModelData(template)
                 : template),
               ...filter,
+              sortOrder: NEW_MODEL_SORT_ORDER,
               isActive: false
             })),
             { session }

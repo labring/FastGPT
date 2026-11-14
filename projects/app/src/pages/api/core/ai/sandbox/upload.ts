@@ -19,10 +19,11 @@ import { createSizeLimitedStream } from '@fastgpt/service/common/file/stream';
 async function handler(
   req: ApiRequestProps<unknown, SandboxUploadQuery>
 ): Promise<SandboxUploadResponse> {
-  const { sourceType, sourceId, chatId, path, outLinkAuthData } = parseApiInput({
-    req,
-    querySchema: SandboxUploadQuerySchema
-  }).query;
+  const { customUid, authProxy, sourceType, sourceId, chatId, path, outLinkAuthData } =
+    parseApiInput({
+      req,
+      querySchema: SandboxUploadQuerySchema
+    }).query;
 
   const maxFileBytes = getAgentSandboxMaxFileBytes();
   const contentLengthHeader = req.headers['content-length'];
@@ -39,6 +40,8 @@ async function handler(
     sourceType: resolvedSourceType,
     sourceId: resolvedSourceId
   } = await authSandboxRuntimeSession({
+    customUid,
+    authProxy,
     req,
     sourceType,
     sourceId,

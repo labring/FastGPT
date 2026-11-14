@@ -11,13 +11,14 @@ upgradeTags:
 
 ### 1. fastgpt-pro 环境变量更新
 
-社区版跳过。
+社区版跳过本节。`FE_DOMAIN` 从 V4.15.4 起对社区版同样必填，见 [V4.15.4](/zh-CN/self-host/upgrading/4-15/4154)。
 
 v4.15.1 起，FastGPT 主应用访问 Pro/Admin 内部接口不再使用 `rootkey`，改为使用独立的服务间凭证 `PRO_TOKEN`。同时要求 `FE_DOMAIN` 变量必填，如果你部署了 Pro 版本，需要同时在 FastGPT 主应用和 Pro/Admin 服务中配置相同的 `PRO_TOKEN`：
 
 ```bash
 PRO_TOKEN=your_pro_token_at_least_32_chars
-FE_DOMAIN=fastgpt_domain
+# 带协议的 FastGPT 访问地址
+FE_DOMAIN=https://fastgpt.example.com
 ```
 
 注意事项：

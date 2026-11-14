@@ -2,12 +2,34 @@ import z from 'zod';
 import { PaginationResponseSchema, createPaginationSchema } from '../../api';
 import { UserStatusEnum } from '../../../support/user/constant';
 import { TeamMemberNameSchema } from '../../../support/user/team/memberName';
+import { TeamTmbItemSchema } from '../../../support/user/team/type';
+
+export const AdminUserTeamSchema = z.object({
+  teamId: TeamTmbItemSchema.shape.teamId.meta({ description: '所属团队 ID' }),
+  teamName: TeamTmbItemSchema.shape.teamName.meta({
+    description: '所属团队名称',
+    example: '研发团队'
+  }),
+  tmbId: TeamTmbItemSchema.shape.tmbId.meta({ description: '团队成员 ID' }),
+  memberName: TeamTmbItemSchema.shape.memberName.meta({
+    description: '该用户在此团队的成员名',
+    example: '张三'
+  }),
+  orgs: z.array(z.string()).meta({
+    description: '该成员所属部门的名称路径列表，省略团队根组织；未分配部门时为空数组',
+    example: ['/研发部/平台组']
+  })
+});
+export type AdminUserTeamType = z.infer<typeof AdminUserTeamSchema>;
 
 export const UserItemSchema = z.object({
   _id: z.string().meta({ description: '用户ID' }),
   username: z.string().meta({ description: '用户名' }),
   contact: z.string().nullish().meta({ description: '联系方式' }),
   avatar: z.string().optional().meta({ description: '用户头像' }),
+  teams: z.array(AdminUserTeamSchema).default([]).meta({
+    description: '用户未离开的团队成员信息，包含停用成员，排除已删除团队；无团队时为空数组'
+  }),
   status: z.enum(UserStatusEnum).meta({
     description: '用户实际状态；注销仅为管理端按用户名推断的虚拟状态，不改变此字段'
   }),
@@ -22,7 +44,7 @@ export type UserItemType = z.infer<typeof UserItemSchema>;
  * API: 获取用户列表
  * Route: POST /proApi/admin/user/getUsers
  * Method: POST
- * Description: 分页获取用户列表，支持按用户名搜索与活跃、待激活、禁用、注销状态过滤
+ * Description: 分页获取用户列表及各团队成员名、部门路径，支持按用户名搜索与活跃、待激活、禁用、注销状态过滤
  * Tags: ['Admin', 'Users', 'Read']
  * ============================================================================ */
 

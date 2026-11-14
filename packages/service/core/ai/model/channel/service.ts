@@ -1,5 +1,6 @@
 import {
   REASONING_FIELD_MAPPING_CHANNEL_TYPES,
+  CHAT_UPSTREAM_PROTOCOL_CHANNEL_TYPES,
   type ChannelConfig
 } from '@fastgpt/global/core/ai/model/channel';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
@@ -109,9 +110,15 @@ export const createChannel = async ({
     ...channelData,
     name: channelData.name.trim(),
     // 默认协议配置属于平台创建规则；调用方显式提供的配置（含 false）优先。
-    configs: REASONING_FIELD_MAPPING_CHANNEL_TYPES.some((type) => type === channelData.type)
-      ? { map_reasoning_to_reasoning_content: true, ...channelData.configs }
-      : channelData.configs
+    configs: {
+      ...(REASONING_FIELD_MAPPING_CHANNEL_TYPES.some((type) => type === channelData.type)
+        ? { map_reasoning_to_reasoning_content: true }
+        : {}),
+      ...(CHAT_UPSTREAM_PROTOCOL_CHANNEL_TYPES.some((type) => type === channelData.type)
+        ? { chat_upstream_protocol: 'auto' }
+        : {}),
+      ...channelData.configs
+    }
   };
   await assertChannelNameUnique({ client, name: data.name });
   try {
@@ -131,7 +138,7 @@ export const updateChannel = async ({
   tmbId,
   channelData
 }: ChannelScope & { id: number; channelData: Partial<ChannelConfig> }): Promise<void> => {
-  await resolveChannelForOperation({ id, channelType, tmbId });
+  const channel = await resolveChannelForOperation({ id, channelType, tmbId });
   const client = getAiproxyClientByScope({ channelType, tmbId }).channels;
 
   if (channelData.name) {
@@ -139,7 +146,13 @@ export const updateChannel = async ({
   }
 
   try {
-    await client.update(id, channelData);
+    await client.update(id, {
+      ...channelData,
+      // 列表仅返回可公开配置；修改协议时不能覆盖 AIProxy 中其他高级配置。
+      ...(channelData.configs !== undefined && {
+        configs: { ...channel.configs, ...channelData.configs }
+      })
+    });
   } catch (error) {
     if (isChannelNameConflictError(error)) {
       return Promise.reject(ModelErrEnum.channelNameConflict);

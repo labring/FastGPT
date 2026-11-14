@@ -7,6 +7,7 @@ import { initCollectionUpdateWorker } from '@fastgpt/service/core/dataset/collec
 import { initWechatPollWorker } from '@fastgpt/service/support/outLink/wechat/mq';
 import { initAgentSkillCreateWorker } from '@fastgpt/service/core/ai/skill/manage/creation';
 import { initAgentSkillDeleteWorker } from '@fastgpt/service/core/ai/skill/delete';
+import { initDatasetVectorIndexWorker } from '@fastgpt/service/core/dataset/vectorData/mq';
 
 const logger = getLogger(LogCategories.INFRA.QUEUE);
 
@@ -18,6 +19,7 @@ export const initBullMQWorkers = () => {
     initAppDeleteWorker(),
     initTeamDeleteWorker(),
     initCollectionUpdateWorker(),
+    initDatasetVectorIndexWorker(),
     initAgentSkillCreateWorker(),
     initAgentSkillDeleteWorker(),
     initWechatPollWorker()

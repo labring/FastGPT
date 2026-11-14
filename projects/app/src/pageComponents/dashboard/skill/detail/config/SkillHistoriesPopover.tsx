@@ -111,6 +111,7 @@ const HistoryList = ({ onClose }: { onClose: () => void }) => {
   const {
     ScrollData,
     data: versionList,
+    isInitialLoading,
     setData
   } = useScrollPagination(getSkillVersionList, {
     pageSize: 20,
@@ -137,142 +138,143 @@ const HistoryList = ({ onClose }: { onClose: () => void }) => {
   };
 
   return (
-    <ScrollData
-      flex={1}
-      minH={0}
-      px={0}
-      pb={0}
-      display="flex"
-      flexDirection="column"
-      sx={{
-        '& > *:last-child': {
-          mt: 'auto !important',
-          pt: 4,
-          pb: '24px'
-        }
-      }}
-    >
-      <Box px="24px" display="flex" flexDirection="column" gap="8px">
-        {versionList.map((item) => (
-          <Flex
-            key={item._id}
-            alignItems={'center'}
-            py="8px"
-            pl="8px"
-            pr="16px"
-            borderRadius="xs"
-            fontWeight={500}
-            onMouseEnter={() => setHoveredId(item._id)}
-            onMouseLeave={() => setHoveredId(undefined)}
-            _hover={{ bg: 'myGray.05' }}
-          >
-            <VersionPublisherPopover
-              sourceMember={item.sourceMember}
-              time={new Date(item.createdAt)}
-            />
+    <MyBox isLoading={isInitialLoading} position={'relative'} overflow={'hidden'} flex={1} minH={0}>
+      <ScrollData
+        minH={0}
+        px={0}
+        pb={0}
+        display="flex"
+        flexDirection="column"
+        sx={{
+          '& > *:last-child': {
+            mt: 'auto !important',
+            pt: 4,
+            pb: '24px'
+          }
+        }}
+      >
+        <Box px="24px" display="flex" flexDirection="column" gap="8px">
+          {versionList.map((item) => (
+            <Flex
+              key={item._id}
+              alignItems={'center'}
+              py="8px"
+              pl="8px"
+              pr="16px"
+              borderRadius="xs"
+              fontWeight={500}
+              onMouseEnter={() => setHoveredId(item._id)}
+              onMouseLeave={() => setHoveredId(undefined)}
+              _hover={{ bg: 'myGray.05' }}
+            >
+              <VersionPublisherPopover
+                sourceMember={item.sourceMember}
+                time={new Date(item.createdAt)}
+              />
 
-            {editId !== item._id ? (
-              <>
-                <Box
-                  ml={3}
-                  flex={'1 0 0'}
-                  fontSize={'sm'}
-                  display="flex"
-                  alignItems="center"
-                  overflow="hidden"
-                  textOverflow="ellipsis"
-                  whiteSpace="nowrap"
-                >
-                  <Box minWidth={0} overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
-                    <Box as={'span'} color={'myGray.900'} fontWeight="normal" lineHeight="20px">
-                      {item.versionName || formatTime2YMDHMS(new Date(item.createdAt))}
+              {editId !== item._id ? (
+                <>
+                  <Box
+                    ml={3}
+                    flex={'1 0 0'}
+                    fontSize={'sm'}
+                    display="flex"
+                    alignItems="center"
+                    overflow="hidden"
+                    textOverflow="ellipsis"
+                    whiteSpace="nowrap"
+                  >
+                    <Box minWidth={0} overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
+                      <Box as={'span'} color={'myGray.900'} fontWeight="normal" lineHeight="20px">
+                        {item.versionName || formatTime2YMDHMS(new Date(item.createdAt))}
+                      </Box>
                     </Box>
-                  </Box>
-                  {item.isCurrent && (
-                    <Box
-                      ml={3}
-                      flexShrink={0}
-                      border="1px solid"
-                      borderColor="myGray.200"
-                      bg="white"
-                      color="myGray.700"
-                      borderRadius="sm"
-                      px="8px"
-                      h="20px"
-                      display="inline-flex"
-                      alignItems="center"
-                      fontSize="10px"
-                      fontWeight="500"
-                      lineHeight="14px"
-                    >
-                      {t('app:app.version_current')}
-                    </Box>
-                  )}
-                </Box>
-                {hoveredId === item._id && (
-                  <Flex alignItems="center" ml={2} gap={2} onClick={(e) => e.stopPropagation()}>
-                    <MyIcon
-                      name="edit"
-                      w={'16px'}
-                      h={'16px'}
-                      color="myGray.500"
-                      cursor="pointer"
-                      _hover={{ color: 'primary.600' }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setEditId(item._id);
-                      }}
-                    />
-                    {!item.isCurrent && (
-                      <PopoverConfirm
-                        content={t('skill:switch_version_confirm')}
-                        type="delete"
-                        placement="bottom"
-                        modifiers={[
-                          {
-                            name: 'preventOverflow',
-                            options: {
-                              padding: { top: 8, bottom: 8, left: 8, right: 16 }
-                            }
-                          }
-                        ]}
-                        onConfirm={() => onChangeVersion(item)}
-                        Trigger={
-                          <Flex alignItems="center" justifyContent="center" w="16px" h="16px">
-                            <MyIcon
-                              name="common/rollback"
-                              w={'16px'}
-                              h={'16px'}
-                              color="myGray.500"
-                              cursor="pointer"
-                              _hover={{ color: 'primary.600' }}
-                            />
-                          </Flex>
-                        }
-                      />
+                    {item.isCurrent && (
+                      <Box
+                        ml={3}
+                        flexShrink={0}
+                        border="1px solid"
+                        borderColor="myGray.200"
+                        bg="white"
+                        color="myGray.700"
+                        borderRadius="sm"
+                        px="8px"
+                        h="20px"
+                        display="inline-flex"
+                        alignItems="center"
+                        fontSize="10px"
+                        fontWeight="500"
+                        lineHeight="14px"
+                      >
+                        {t('app:app.version_current')}
+                      </Box>
                     )}
-                  </Flex>
-                )}
-              </>
-            ) : (
-              <MyBox ml={3} isLoading={isEditing} size={'md'} flex={'1 0 0'}>
-                <Input
-                  autoFocus
-                  h={8}
-                  defaultValue={item.versionName || formatTime2YMDHMS(new Date(item.createdAt))}
-                  onClick={(e) => e.stopPropagation()}
-                  onBlur={(e) => onUpdateVersion(item, e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      onUpdateVersion(item, (e.target as HTMLInputElement).value);
-                    }
-                  }}
-                />
-              </MyBox>
-            )}
-          </Flex>
-        ))}
-      </Box>
-    </ScrollData>
+                  </Box>
+                  {hoveredId === item._id && (
+                    <Flex alignItems="center" ml={2} gap={2} onClick={(e) => e.stopPropagation()}>
+                      <MyIcon
+                        name="edit"
+                        w={'16px'}
+                        h={'16px'}
+                        color="myGray.500"
+                        cursor="pointer"
+                        _hover={{ color: 'primary.600' }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditId(item._id);
+                        }}
+                      />
+                      {!item.isCurrent && (
+                        <PopoverConfirm
+                          content={t('skill:switch_version_confirm')}
+                          type="delete"
+                          placement="bottom"
+                          modifiers={[
+                            {
+                              name: 'preventOverflow',
+                              options: {
+                                padding: { top: 8, bottom: 8, left: 8, right: 16 }
+                              }
+                            }
+                          ]}
+                          onConfirm={() => onChangeVersion(item)}
+                          Trigger={
+                            <Flex alignItems="center" justifyContent="center" w="16px" h="16px">
+                              <MyIcon
+                                name="common/rollback"
+                                w={'16px'}
+                                h={'16px'}
+                                color="myGray.500"
+                                cursor="pointer"
+                                _hover={{ color: 'primary.600' }}
+                              />
+                            </Flex>
+                          }
+                        />
+                      )}
+                    </Flex>
+                  )}
+                </>
+              ) : (
+                <MyBox ml={3} isLoading={isEditing} size={'md'} flex={'1 0 0'}>
+                  <Input
+                    autoFocus
+                    h={8}
+                    defaultValue={item.versionName || formatTime2YMDHMS(new Date(item.createdAt))}
+                    onClick={(e) => e.stopPropagation()}
+                    onBlur={(e) => onUpdateVersion(item, e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        onUpdateVersion(item, (e.target as HTMLInputElement).value);
+                      }
+                    }}
+                  />
+                </MyBox>
+              )}
+            </Flex>
+          ))}
+        </Box>
+      </ScrollData>
+    </MyBox>
   );
 };

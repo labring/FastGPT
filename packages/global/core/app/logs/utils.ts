@@ -1,5 +1,9 @@
+import { getChatPublishSourceType } from '../../../common/chat/publishSource';
 import dayjs from 'dayjs';
-import { AppLogTimespanEnum } from './constants';
+import { AppLogKeysEnum, AppLogTimespanEnum, DefaultAppLogKeys } from './constants';
+import { AppLogKeysSchema, type AppLogKeysType } from './type';
+import type { SourceMemberType } from '../../../support/user/type';
+import { ChatSourceEnum } from '../../chat/constants';
 
 /**
  * 用户筛选「未选择」会同时传两个空数组。两者都省略才是不过滤。
@@ -71,4 +75,64 @@ export const calculateOffsetDates = (
   }
 
   return { offsetStart, offsetEnd };
+};
+
+/** 保留个人/团队已选列的顺序与开关，只补齐缺失列；新增鉴权者默认关闭。 */
+export const normalizeAppLogKeys = (keys?: unknown): AppLogKeysType[] => {
+  const result: AppLogKeysType[] = [];
+  const seen = new Set<AppLogKeysEnum>();
+  if (Array.isArray(keys)) {
+    keys.forEach((item) => {
+      const parsed = AppLogKeysSchema.safeParse(item);
+      if (!parsed.success || seen.has(parsed.data.key)) return;
+      seen.add(parsed.data.key);
+      result.push(parsed.data);
+    });
+  }
+  DefaultAppLogKeys.forEach((item) => {
+    if (seen.has(item.key)) return;
+    const sourceIndex = result.findIndex(({ key }) => key === AppLogKeysEnum.SOURCE);
+    if (item.key === AppLogKeysEnum.PUBLISH_SOURCE_TYPE && sourceIndex >= 0) {
+      result.splice(sourceIndex, 0, { ...item });
+      return;
+    }
+    const userIndex = result.findIndex(({ key }) => key === AppLogKeysEnum.USER);
+    if (item.key === AppLogKeysEnum.AUTH_USER && userIndex >= 0) {
+      result.splice(userIndex + 1, 0, { ...item });
+    } else {
+      result.push({ ...item });
+    }
+  });
+  return result;
+};
+
+/** 分享访客使用已解析的团队成员信息，API customUid 保留原值；鉴权者始终取 tmbId。 */
+export const getLogIdentity = ({
+  tmbId,
+  outLinkUid,
+  source,
+  publishSource,
+  sourceMember,
+  authMember,
+  isAuthorizer = false
+}: {
+  tmbId?: string | null;
+  outLinkUid?: string | null;
+  source?: string | null;
+  publishSource?: { type?: string | null } | null;
+  sourceMember?: SourceMemberType | null;
+  authMember?: SourceMemberType | null;
+  isAuthorizer?: boolean;
+}): { name: string; member?: SourceMemberType } => {
+  if (!isAuthorizer && outLinkUid) {
+    if (
+      getChatPublishSourceType({ source, publishSource }) === ChatSourceEnum.share &&
+      sourceMember
+    ) {
+      return { name: sourceMember.name, member: sourceMember };
+    }
+    return { name: outLinkUid };
+  }
+  if (authMember) return { name: authMember.name, member: authMember };
+  return { name: tmbId || '-' };
 };

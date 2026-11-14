@@ -109,7 +109,7 @@ async function handler(req: ApiRequestProps) {
 
   const isMove = parentId !== undefined;
   const targetParentId = parentId || null;
-  // move 只校验源父级/目标父级；字段更新要求节点自身 manage。
+  // move 只校验源父级/目标父级（根级移动校验节点自身 manage）；字段更新要求节点自身 manage。
   const hasMetaUpdate =
     !!name || tags !== undefined || forbid !== undefined || createTime !== undefined;
   const auth = { req, authToken: true, authApiKey: true, collectionId: id };
@@ -168,22 +168,27 @@ async function handler(req: ApiRequestProps) {
       });
     }
 
-    await MongoDatasetCollection.updateOne(
-      {
-        _id: id
-      },
-      {
-        $set: {
-          ...(name && { name, updateTime: getCollectionUpdateTime({ name }) }),
-          ...(collectionTags !== undefined && { tags: collectionTags }),
-          ...(forbid !== undefined && { forbid }),
-          ...(createTime !== undefined && { createTime })
+    const setFields = {
+      ...(name && { name, updateTime: getCollectionUpdateTime({ name }) }),
+      ...(collectionTags !== undefined && { tags: collectionTags }),
+      ...(forbid !== undefined && { forbid }),
+      ...(createTime !== undefined && { createTime })
+    };
+
+    // 仅移动集合或没有元数据变更时，避免向 MongoDB 4.x 发送空 $set。
+    if (Object.keys(setFields).length > 0) {
+      await MongoDatasetCollection.updateOne(
+        {
+          _id: id
+        },
+        {
+          $set: setFields
+        },
+        {
+          session
         }
-      },
-      {
-        session
-      }
-    );
+      );
+    }
 
     // Folder update forbid
     if (collection.type === DatasetCollectionTypeEnum.folder && forbid !== undefined) {

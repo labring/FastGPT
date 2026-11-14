@@ -12,12 +12,16 @@ import { getUser } from '@test/datas/users';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
+import { Types } from '@fastgpt/service/common/mongo';
 import {
   AIChatItemSchema,
   UserChatItemSchema,
-  type ChatItemSchema
+  type ChatItemDBSchemaType,
+  type ChatItemMiniType
 } from '@fastgpt/global/core/chat/type';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+
+type FixtureChatItem = ChatItemDBSchemaType & { _id: Types.ObjectId };
 
 describe('getChatItems', () => {
   let testUser: Awaited<ReturnType<typeof getUser>>;
@@ -28,6 +32,12 @@ describe('getChatItems', () => {
     sourceType: ChatSourceTypeEnum.app,
     sourceId: appId
   });
+
+  /** 这些断言读取 AI 专有字段，先验证角色，避免依赖已移除类型或隐式 any。 */
+  function requireAIItem(item: ChatItemMiniType) {
+    if (item.obj !== ChatRoleEnum.AI) throw new Error('Expected an AI history item');
+    return item;
+  }
 
   beforeEach(async () => {
     testUser = await getUser('test-user');
@@ -45,8 +55,8 @@ describe('getChatItems', () => {
   });
 
   // Helper function to create chat items
-  const createChatItems = async (count: number): Promise<ChatItemSchema[]> => {
-    const items: ChatItemSchema[] = [];
+  const createChatItems = async (count: number): Promise<FixtureChatItem[]> => {
+    const items: FixtureChatItem[] = [];
     for (let i = 0; i < count; i++) {
       const item = await MongoChatItem.create({
         teamId: testUser.teamId,
@@ -66,7 +76,7 @@ describe('getChatItems', () => {
           }
         ]
       });
-      items.push(item.toObject() as ChatItemSchema);
+      items.push(item.toObject() as FixtureChatItem);
     }
     return items;
   };
@@ -148,6 +158,129 @@ describe('getChatItems', () => {
       tools: [{ params: '', response: '', hideDetails: true }]
     });
     expect(displayed.histories[1].value[0]).not.toHaveProperty('inputContext');
+  });
+
+  describe('complete round pagination', () => {
+    it.each([1, 2, 3])(
+      'walks both directions without gaps or duplicates when page size is %i and round IDs are shared',
+      async (limit) => {
+        const items = await createChatItems(6);
+        for (let round = 0; round < 3; round++) {
+          const dataId = `shared-round-${round}`;
+          await MongoChatItem.updateMany(
+            { _id: { $in: [items[round * 2]._id, items[round * 2 + 1]._id] } },
+            { $set: { dataId } }
+          );
+          items[round * 2].dataId = dataId;
+          items[round * 2 + 1].dataId = dataId;
+        }
+        const label = (item: { value: unknown }) => JSON.stringify(item.value);
+        const expected = items.map(label);
+        const options = { ...chatSource(), chatId, field: 'obj value', limit, completeRound: true };
+        const backwards: string[] = [];
+        let page = await getChatItems(options);
+        let steps = 0;
+        while (true) {
+          backwards.unshift(...page.histories.map(label));
+          if (!page.hasMorePrev) break;
+          expect(++steps).toBeLessThan(7);
+          page = await getChatItems({
+            ...options,
+            prevId: page.histories[0].dataId
+          });
+        }
+        expect(backwards).toEqual(expected);
+
+        const forwards = items.slice(0, 2).map(label);
+        let cursor = items[1].dataId;
+        steps = 0;
+        while (true) {
+          page = await getChatItems({ ...options, nextId: cursor });
+          forwards.push(...page.histories.map(label));
+          if (!page.hasMoreNext) break;
+          expect(++steps).toBeLessThan(7);
+          const last = page.histories.at(-1)!;
+          const next = last.dataId!;
+          expect(next).not.toBe(cursor);
+          cursor = next;
+        }
+        expect(forwards).toEqual(expected);
+
+        const around = await getChatItems({
+          ...options,
+          initialId: items[3].dataId,
+          limit: 1
+        });
+        expect(around.histories.map(label)).toEqual(items.slice(2, 4).map(label));
+        expect(around.hasMorePrev).toBe(true);
+        expect(around.hasMoreNext).toBe(true);
+      }
+    );
+
+    it('preserves independent legacy IDs and unpaired visible messages in both directions', async () => {
+      const items = await createChatItems(8);
+      const removed = [0, 2, 7];
+      await MongoChatItem.updateMany(
+        { _id: { $in: removed.map((index) => items[index]._id) } },
+        { $set: { deleteTime: new Date() } }
+      );
+      const expected = items
+        .filter((_, index) => !removed.includes(index))
+        .map((item) => item.dataId);
+      const options = {
+        ...chatSource(),
+        chatId,
+        field: 'obj value',
+        limit: 1,
+        completeRound: true
+      };
+      const backwards: (string | undefined)[] = [];
+      let page = await getChatItems(options);
+      expect(page.hasMoreNext).toBe(false);
+      let steps = 0;
+      while (true) {
+        backwards.unshift(...page.histories.map((item) => item.dataId));
+        if (!page.hasMorePrev) break;
+        expect(++steps).toBeLessThan(8);
+        page = await getChatItems({ ...options, prevId: page.histories[0].dataId });
+      }
+      expect(backwards).toEqual(expected);
+      const forwards = [expected[0]];
+      let cursor = expected[0];
+      steps = 0;
+      while (true) {
+        page = await getChatItems({ ...options, nextId: cursor });
+        forwards.push(...page.histories.map((item) => item.dataId!));
+        if (!page.hasMoreNext) break;
+        expect(++steps).toBeLessThan(8);
+        cursor = page.histories.at(-1)!.dataId!;
+      }
+      expect(forwards).toEqual(expected);
+    });
+
+    it('keeps anchors scoped to the source, conversation and deletion filter, with initial positioning on AI', async () => {
+      const items = await createChatItems(2);
+      const cursor = items[1].dataId;
+      const options = {
+        ...chatSource(),
+        chatId,
+        field: 'obj value',
+        limit: 1,
+        completeRound: true
+      };
+      await expect(
+        getChatItems({ ...options, chatId: 'other-chat', nextId: cursor })
+      ).rejects.toThrow('Next item not found');
+      await expect(
+        getChatItems({ ...options, sourceId: String(new Types.ObjectId()), prevId: cursor })
+      ).rejects.toThrow('Prev item not found');
+      await MongoChatItem.updateOne({ _id: items[1]._id }, { $set: { deleteTime: new Date() } });
+      await expect(getChatItems({ ...options, initialId: cursor })).rejects.toThrow(
+        'Target item not found'
+      );
+      const included = await getChatItems({ ...options, initialId: cursor, includeDeleted: true });
+      expect(included.histories.some((item) => item.dataId === items[1].dataId)).toBe(true);
+    });
   });
 
   describe('Normal Pagination Mode', () => {
@@ -233,7 +366,7 @@ describe('getChatItems', () => {
         field: 'obj value'
       });
 
-      expect(result.histories[0].value[0].plan).toEqual({
+      expect(requireAIItem(result.histories[0]).value[0].plan).toEqual({
         planId: 'legacy-plan',
         name: 'Legacy plan',
         description: 'Legacy description',
@@ -280,7 +413,7 @@ describe('getChatItems', () => {
         field: 'obj value'
       });
 
-      expect(result.histories[0].value[0].plan).toBeUndefined();
+      expect(requireAIItem(result.histories[0]).value[0].plan).toBeUndefined();
       expect(result.histories[0].value[0].text?.content).toBe('Visible answer');
     });
 
@@ -1017,12 +1150,16 @@ describe('getChatItems', () => {
       });
 
       expect(result.histories).toHaveLength(1);
-      expect(result.histories[0].responseData?.[0]).toMatchObject({
+      expect(requireAIItem(result.histories[0]).responseData?.[0]).toMatchObject({
         id: 'root-response',
         childResponseCount: 1
       });
-      expect(result.histories[0].responseData?.[0].childTotalPoints).toBeUndefined();
-      expect(result.histories[0].responseData?.[0].childrenResponses?.[0]).toMatchObject({
+      expect(
+        Reflect.get(requireAIItem(result.histories[0]).responseData?.[0] ?? {}, 'childTotalPoints')
+      ).toBeUndefined();
+      expect(
+        requireAIItem(result.histories[0]).responseData?.[0].childrenResponses?.[0]
+      ).toMatchObject({
         id: 'child-response',
         parentId: 'root-response',
         moduleType: FlowNodeTypeEnum.datasetSearchNode
@@ -1073,7 +1210,9 @@ describe('getChatItems', () => {
         nodeResponseMode: 'full'
       });
 
-      expect(result.histories[0].responseData?.map((item) => item.id)).toEqual(['persisted-root']);
+      expect(requireAIItem(result.histories[0]).responseData?.map((item) => item.id)).toEqual([
+        'persisted-root'
+      ]);
     });
 
     it('does not use empty legacy chat item responseData as a fallback', async () => {
@@ -1113,7 +1252,9 @@ describe('getChatItems', () => {
         nodeResponseMode: 'full'
       });
 
-      expect(result.histories[0].responseData?.map((item) => item.id)).toEqual(['persisted-root']);
+      expect(requireAIItem(result.histories[0]).responseData?.map((item) => item.id)).toEqual([
+        'persisted-root'
+      ]);
     });
 
     it('loads lightweight preview response rows without composing responseData tree', async () => {

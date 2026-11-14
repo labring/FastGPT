@@ -34,7 +34,6 @@ import { ChatGenerateStatusEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/
 import type { WorkflowBuilderActivity } from './context';
 import { useTranslation } from 'next-i18next';
 import {
-  getWorkflowBuilderErrorAttentionKey,
   getWorkflowBuilderPendingInteractiveKey,
   getWorkflowBuilderWatchChatId,
   isWorkflowBuilderVersionGenerating
@@ -260,10 +259,6 @@ const WorkflowBuilderChatContent = ({
       pendingInteractiveKey: getWorkflowBuilderPendingInteractiveKey(chatRecords, {
         isBuildingWorkflow
       }),
-      errorAttentionKey: getWorkflowBuilderErrorAttentionKey({
-        chatRecords,
-        chatGenerateStatus: chatBoxData.chatGenerateStatus
-      }),
       latestVersion
     });
   }, [
@@ -327,6 +322,7 @@ const WorkflowBuilderChatContent = ({
     <Box display={'flex'} flexDirection={'column'} h={'100%'} minH={0}>
       <Box flex={1} minH={0} overflow={'hidden'}>
         <ChatBox
+          showInitialLoading={false}
           dialogTips={t('builder_input_placeholder')}
           isReady={!!selectedModel}
           active={!watchExternalChat}
@@ -446,7 +442,7 @@ const ChatPanel = React.forwardRef<
           </Flex>
         )}
         {chatId && (
-          <ChatRecordContextProvider params={chatRecordProviderParams} showInitialLoading={false}>
+          <ChatRecordContextProvider params={chatRecordProviderParams}>
             <WorkflowBuilderChatContent
               appId={appId}
               appDetail={appDetail}

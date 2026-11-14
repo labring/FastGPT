@@ -35,6 +35,8 @@ import { ParallelRunNode } from './system/parallelRun/parallelRun';
 import { ReadFilesNode } from './system/readFiles';
 import { RunToolNode } from './system/runTool';
 import { RunToolSetNode } from './system/runToolSet';
+import { HttpToolSetNode } from './system/httpToolSet';
+import { McpToolSetNode } from './system/mcpToolSet';
 import { CodeNode } from './system/sandbox';
 import { TextEditorNode } from './system/textEditor';
 import { ToolParamsNode } from './system/toolParams';
@@ -51,7 +53,6 @@ const systemNodes: FlowNodeTemplateType[] = [
   ToolCallNode,
   ToolParamsNode,
   StopToolNode,
-  AgentNode,
   ReadFilesNode,
   HttpNode468,
   IfElseNode,
@@ -65,6 +66,9 @@ const systemNodes: FlowNodeTemplateType[] = [
 export const appSystemModuleTemplates: FlowNodeTemplateType[] = [
   WorkflowStart,
   ...systemNodes,
+  McpToolSetNode,
+  HttpToolSetNode,
+  AgentNode,
   CustomFeedbackNode,
   UserSelectNode,
   FormInputNode

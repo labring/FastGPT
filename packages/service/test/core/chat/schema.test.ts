@@ -38,8 +38,18 @@ describe('chat schema indexes', () => {
     expect(sourceAwareIndex?.[1]?.unique).toBe(true);
   });
 
-  it('does not register historical chat indexes for automatic cleanup', () => {
-    expect(getSchemaDeprecatedMongoIndexes(MongoChat.schema)).toEqual([]);
+  it('keeps deprecated share data and its index, only cleaning the obsolete generation status index', () => {
+    expect(MongoChat.schema.path('shareId')).toBeDefined();
+    expect(
+      hasIndex(MongoChat.schema.indexes(), { shareId: 1, outLinkUid: 1, updateTime: -1 })
+    ).toBe(true);
+    expect(getSchemaDeprecatedMongoIndexes(MongoChat.schema)).toMatchObject([
+      {
+        indexName: 'chatGenerateStatus_1_updateTime_1',
+        key: { chatGenerateStatus: 1, updateTime: 1 },
+        options: { partialFilterExpression: { chatGenerateStatus: 0 } }
+      }
+    ]);
   });
 
   it('keeps legacy chat item read and pagination indexes', () => {

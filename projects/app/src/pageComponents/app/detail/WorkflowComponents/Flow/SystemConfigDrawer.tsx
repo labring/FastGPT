@@ -119,12 +119,6 @@ const SystemConfigDrawer = () => {
             pb={6}
             overflowY={'auto'}
             overflowX={'hidden'}
-            sx={{
-              scrollbarWidth: 'none',
-              '&::-webkit-scrollbar': {
-                display: 'none'
-              }
-            }}
           >
             {isWorkflowTool ? (
               <PluginConfigForm chatConfig={chatConfig} setAppDetail={setAppDetail} />

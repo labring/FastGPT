@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import {
   getWorkflowBuilderAttentionKeys,
   getWorkflowBuilderEntryAccess,
-  getWorkflowBuilderErrorAttentionKey,
   getWorkflowBuilderEntryVisualState,
   getWorkflowBuilderInitialState,
   getWorkflowBuilderPendingInteractiveKey,
@@ -10,7 +9,7 @@ import {
   hasUnseenWorkflowBuilderAttention,
   isWorkflowBuilderVersionGenerating
 } from '@/pageComponents/app/detail/WorkflowComponents/WorkflowBuilder/uiState';
-import { ChatGenerateStatusEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import type { ChatItemObjItemType } from '@fastgpt/global/core/chat/type';
 
@@ -250,18 +249,13 @@ describe('getWorkflowBuilderEntryVisualState', () => {
 });
 
 describe('getWorkflowBuilderAttentionKeys', () => {
-  it('shows attention only for unseen ask, pending-version, or runtime-error keys', () => {
+  it('shows attention only for unseen ask or pending-version keys', () => {
     const attentionKeys = getWorkflowBuilderAttentionKeys({
       pendingInteractiveKey: 'interactive:response-1:0',
-      pendingVersionChecksum: 'checksum-1',
-      errorAttentionKey: 'error:response-2'
+      pendingVersionChecksum: 'checksum-1'
     });
 
-    expect(attentionKeys).toEqual([
-      'interactive:response-1:0',
-      'version:checksum-1',
-      'error:response-2'
-    ]);
+    expect(attentionKeys).toEqual(['interactive:response-1:0', 'version:checksum-1']);
     expect(
       hasUnseenWorkflowBuilderAttention({ attentionKeys, acknowledgedAttentionKeys: [] })
     ).toBe(true);
@@ -271,30 +265,6 @@ describe('getWorkflowBuilderAttentionKeys', () => {
         acknowledgedAttentionKeys: attentionKeys
       })
     ).toBe(false);
-  });
-});
-
-describe('getWorkflowBuilderErrorAttentionKey', () => {
-  it('uses the failed run record as a stable runtime-error attention key', () => {
-    const failedResponse = {
-      dataId: 'response-error-1',
-      obj: ChatRoleEnum.AI,
-      value: [],
-      errorMsg: 'Sandbox crashed'
-    } as ChatItemObjItemType & { dataId: string };
-
-    expect(
-      getWorkflowBuilderErrorAttentionKey({
-        chatRecords: [failedResponse],
-        chatGenerateStatus: ChatGenerateStatusEnum.error
-      })
-    ).toBe('error:response-error-1');
-    expect(
-      getWorkflowBuilderErrorAttentionKey({
-        chatRecords: [failedResponse],
-        chatGenerateStatus: ChatGenerateStatusEnum.done
-      })
-    ).toBeUndefined();
   });
 });
 

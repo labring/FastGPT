@@ -1,4 +1,5 @@
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
+import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import updateHandler from '@/pages/api/core/dataset/collection/update';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
@@ -8,6 +9,7 @@ import {
   ReadRoleVal,
   WriteRoleVal
 } from '@fastgpt/global/support/permission/constant';
+import { TeamDatasetCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
@@ -17,7 +19,10 @@ import { getFakeUsers } from '@test/datas/users';
 import { Call } from '@test/utils/request';
 
 const defaultSessionRun = vi.mocked(mongoSessionRun).getMockImplementation()!;
-afterEach(() => vi.mocked(mongoSessionRun).mockImplementation(defaultSessionRun));
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.mocked(mongoSessionRun).mockImplementation(defaultSessionRun);
+});
 
 beforeEach(async () => {
   const actual = await vi.importActual<typeof import('@fastgpt/service/common/mongo/sessionRun')>(
@@ -115,6 +120,7 @@ describe('update collection', () => {
 
   it('普通移动复用批量鉴权，只解析一次身份并实际落库', async () => {
     const { actor, file, target } = await fixture();
+    const updateOne = vi.spyOn(MongoDatasetCollection, 'updateOne');
     vi.mocked(parseHeaderCert).mockClear();
     const result = await Call(updateHandler, {
       auth: actor,
@@ -122,10 +128,51 @@ describe('update collection', () => {
     });
     expect(result.code).toBe(200);
     expect(parseHeaderCert).toHaveBeenCalledTimes(1);
+    expect(updateOne).toHaveBeenCalledExactlyOnceWith(
+      { _id: String(file._id) },
+      { $set: { parentId: String(target._id), inheritPermission: false } },
+      { session: expect.anything() }
+    );
     expect(String((await MongoDatasetCollection.findById(file._id).lean())?.parentId)).toBe(
       String(target._id)
     );
   });
+
+  it('skips metadata writes when no fields are provided', async () => {
+    const { owner, file } = await fixture();
+    const updateOne = vi.spyOn(MongoDatasetCollection, 'updateOne');
+
+    const result = await Call(updateHandler, {
+      auth: owner,
+      body: { id: String(file._id) }
+    });
+
+    expect(result.code).toBe(200);
+    expect(updateOne).not.toHaveBeenCalled();
+  });
+
+  it('persists false and empty tags in a non-empty metadata update', async () => {
+    const { owner, file } = await fixture();
+    await MongoDatasetCollection.updateOne({ _id: file._id }, { $set: { forbid: true } });
+    const updateOne = vi.spyOn(MongoDatasetCollection, 'updateOne');
+
+    const result = await Call(updateHandler, {
+      auth: owner,
+      body: { id: String(file._id), forbid: false, tags: [] }
+    });
+
+    expect(result.code).toBe(200);
+    expect(updateOne).toHaveBeenCalledExactlyOnceWith(
+      { _id: String(file._id) },
+      { $set: { forbid: false, tags: [] } },
+      { session: expect.anything() }
+    );
+    expect(await MongoDatasetCollection.findById(file._id).lean()).toMatchObject({
+      forbid: false,
+      tags: []
+    });
+  });
+
   it('externalFileId 定位的 ObjectId 可正常移动，身份只解析一次', async () => {
     const { actor, datasetId, file, target } = await fixture();
     await MongoDatasetCollection.updateOne({ _id: file._id }, { externalFileId: 'external-move' });
@@ -215,6 +262,36 @@ describe('update collection', () => {
     });
     expect(allowed.code).toBe(200);
     expect((await MongoDatasetCollection.findById(file._id).lean())?.parentId).toBeNull();
+  });
+
+  it('rejects moving a root collection when the member only has read permission on it', async () => {
+    const { actor, file, target, grant } = await fixture();
+    await MongoDatasetCollection.updateOne({ _id: file._id }, { parentId: null });
+    await MongoResourcePermission.create({
+      resourceType: PerResourceTypeEnum.team,
+      teamId: actor.teamId,
+      resourceId: null,
+      tmbId: actor.tmbId,
+      permission: TeamDatasetCreatePermissionVal
+    });
+
+    const denied = await Call(updateHandler, {
+      auth: actor,
+      body: { id: String(file._id), parentId: String(target._id) }
+    });
+    expect(denied.code).toBe(500);
+    expect(denied.error).toBe(DatasetErrEnum.unAuthDatasetCollection);
+    expect((await MongoDatasetCollection.findById(file._id).lean())?.parentId).toBeNull();
+
+    await grant(String(file._id), ManageRoleVal);
+    const allowed = await Call(updateHandler, {
+      auth: actor,
+      body: { id: String(file._id), parentId: String(target._id) }
+    });
+    expect(allowed.code).toBe(200);
+    expect(String((await MongoDatasetCollection.findById(file._id).lean())?.parentId)).toBe(
+      String(target._id)
+    );
   });
 });
 

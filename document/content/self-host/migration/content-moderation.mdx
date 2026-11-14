@@ -1,0 +1,250 @@
+---
+title: 内容审核升级与迁移指南
+description: 从旧版商业版百度文本审核或自定义审核 URL 迁移至新版内容审核插件体系
+---
+
+本文介绍新版内容审核插件体系与旧版内容审核机制的区别，以及如何将旧版的「百度内容审核」和「自定义审核 URL（`customCensorURL`）」平滑迁移到新版本。
+
+## 1. 旧版与新版的核心区别
+
+新版将原先内置在商业版 `fastgpt-pro` 中的文本审核能力重构为标准的 `moderation` 插件体系，由 `fastgpt-plugin` 服务统一托管运行，并在管理后台提供可视化的全局策略配置与审计记录。
+
+| 维度                   | 旧版（Pro 内置 Censor）                                                                                                          | 新版（Moderation 插件体系）                                                                                                                                                                                                                                                                                      |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **运行位置与扩展性**   | 内置在 `fastgpt-pro` 进程中，仅支持「百度审核」与「自定义 URL」二选一（配置了 `customCensorURL` 时百度配置失效）                 | 运行在 `fastgpt-plugin` 独立进程池中；官方提供百度（`baidu`）、阿里云（`aliyun`）、腾讯云（`tencent`）、敏感词表（`keyword`）、旧版自定义审核兼容（`legacy-custom-censor`）插件，并支持基于 SDK 自研插件                                                                                                         |
+| **配置入口**           | 需同时修改两处：<br/>1. 商业版系统配置 `censor` 字段填写凭证或 URL<br/>2. 在**每个需要审核的 LLM 模型配置**中开启 `censor: true` | 模型配置中的 `censor` 开关已废弃。统一在 **管理后台 > 内容审核 > 审核策略配置**（`/admin/moderation/policy`）一站式管理插件参数、生效环节与处理策略                                                                                                                                                              |
+| **审核生效环节**       | 仅在请求开启了 `censor` 的 LLM（对话补全与工具调用）前，拼接系统提示词与本轮用户输入做一次审核；不支持输出审核与流式拦截         | 支持按全局策略独立勾选三个环节：<br/>1. **用户输入（`userInput`）**：前置审核用户问题、全局变量与表单输入<br/>2. **模型输入（`modelInput`）**：审核发往模型的提示词、知识库引用切片与文件文本（历史消息免审）<br/>3. **最终输出（`finalOutput`）**：审核交付给用户的文本输出与流式输出（可配置流式审核字符间隔） |
+| **裁决语义与百度判定** | 仅区分通过（`200`）与拦截（`5000`）。旧版百度审核仅当 `data[0].hits[0].words` 返回具体命中词时才拦截，无词表的违规结果会漏判     | 标准化为四档裁决：`pass`（通过）、`block`（拦截）、`suspected`（疑似）、`error`（服务异常）。新版百度插件完整解析 `conclusionType`，对不合规（`2`）与疑似（`3`）均做准确映射，并汇总风险标签与命中词                                                                                                             |
+| **疑似风险与异常处理** | 无疑似档位；审核请求报错或超时一律静默放行（隐式 fail-open）                                                                     | 支持显式配置：<br/>1. **疑似风险（`suspectedRiskAction`）**：`拦截并记录`（默认）或 `放行并记录`<br/>2. **服务异常（`serviceExceptionAction`）**：`放行未审核内容`（默认，保持 fail-open）或 `拦截未审核内容`（fail-closed）                                                                                     |
+| **审计记录与测试**     | 无独立审核记录与在线测试入口                                                                                                     | 提供在线 **审核效果测试**、全局 **审核记录**（`/admin/moderation/records`）、**审核服务日志**（`/admin/moderation/logs`）及对话详情中的内容审核记录查看                                                                                                                                                          |
+
+---
+
+## 2. 从旧版百度内容审核迁移
+
+### 2.1 配置项映射
+
+旧版在商业版系统配置 `censor` 中填写的两个字段，对应新版 **百度内容安全（`baidu`）** 插件的配置参数如下：
+
+| 旧版商业版配置字段                      | 新版 `baidu` 插件字段         | 是否必填 | 加密存储 | 说明                                                            |
+| --------------------------------------- | ----------------------------- | -------- | -------- | --------------------------------------------------------------- |
+| `censor.BAIDU_TEXT_CENSOR_CLIENTID`     | **API Key（`apiKey`）**       | 是       | 是       | 百度智能云内容审核应用的 API Key                                |
+| `censor.BAIDU_TEXT_CENSOR_CLIENTSECRET` | **Secret Key（`secretKey`）** | 是       | 是       | 百度智能云内容审核应用的 Secret Key                             |
+| （旧版不支持）                          | **策略 ID（`strategyId`）**   | 否       | 否       | 百度智能云控制台自定义的审核策略 ID；留空则使用百度默认审核策略 |
+
+### 2.2 迁移步骤
+
+1. **安装或确认插件**：使用管理员账号进入 **管理后台 > 内容审核 > 审核策略配置**（`/admin/moderation/policy`），打开 **是否开启内容审核** 开关。若插件列表中还没有「百度内容安全」，点击 **从插件市场添加** 安装（离线环境可点击 **从本地安装** 上传 `baidu` 插件的 `.pkg` 包）。
+2. **配置百度凭证**：在插件列表中找到「百度内容安全」，点击右侧 **配置参数**：
+   - 将原 `BAIDU_TEXT_CENSOR_CLIENTID` 填入 **API Key**。
+   - 将原 `BAIDU_TEXT_CENSOR_CLIENTSECRET` 填入 **Secret Key**。
+   - 如在百度智能云定制了审核策略，可按需填入 **策略 ID**。
+   - 点击保存，系统会自动调用百度接口完成一次连通性校验。
+3. **选择当前生效服务**：在插件列表左侧单选框勾选「百度内容安全」，将其设为 **当前生效服务**。
+4. **配置生效环节与处理策略**：
+   - **审核生效环节**：默认全部开启（**用户输入**、**模型输入** 与 **最终输出**）。若希望仅审核输入侧（贴近旧版行为），可关闭 **最终输出**（并按需调整 **用户输入** 与 **模型输入**）；若开启 **最终输出**，可按业务延迟与成本要求调整 **流式审核间隔**（默认 `100` 字符/次）。
+   - **疑似风险**：新版会将百度 `conclusionType = 3`（疑似）映射为 `suspected`，默认执行 **拦截并记录**。若希望疑似内容不阻断对话，可切换为 **放行并记录**。
+   - **服务异常**：默认选择 **放行未审核内容**（与旧版异常放行一致）。
+5. **在线测试并保存**：在页面底部 **审核效果测试** 输入测试文本，点击 **开始测试** 验证通过与拦截效果，确认无误后保存页面配置。
+6. **清理旧配置**：验证正常后，可移除旧商业版配置中的 `censor.BAIDU_TEXT_CENSOR_CLIENTID` 与 `censor.BAIDU_TEXT_CENSOR_CLIENTSECRET`。各模型配置中遗留的 `censor` 字段会被运行时自动忽略，无需逐一清理。
+
+---
+
+## 3. 从旧版自定义审核 URL（`customCensorURL`）迁移
+
+如果您此前在商业版配置了 `censor.customCensorURL` 对接自建或第三方 HTTP 审核服务，新版提供两种迁移方式：
+
+- **方案 A：使用官方「旧版自定义审核兼容（`legacy-custom-censor`）」插件（零代码改造，推荐快速迁移）**
+- **方案 B：使用 SDK 开发原生 `moderation` 审核插件（支持风险标签、命中敏感词与疑似档位，推荐深度定制）**
+
+### 3.1 方案 A：使用「旧版自定义审核兼容」插件
+
+官方提供的 `legacy-custom-censor` 插件专门用于兼容旧版 `customCensorURL` 通信协议，您无需修改已有的 HTTP 审核服务代码即可完成接入。
+
+#### 通信协议与结果映射
+
+插件向配置的 `endpoint` 发起如下 HTTP 请求：
+
+```http
+POST <endpoint>
+Content-Type: application/json
+
+{"text": "待审核文本"}
+```
+
+期望您的审核服务返回包含顶层布尔字段 `success` 的 JSON 响应：
+
+```json
+{
+  "success": true,
+  "message": "可选的说明信息"
+}
+```
+
+| 审核服务响应                                                                     | 新版裁决结果（`verdict`） | 说明                                                                   |
+| -------------------------------------------------------------------------------- | ------------------------- | ---------------------------------------------------------------------- |
+| HTTP 2xx 且 `{"success": true}`                                                  | `pass`（通过）            | 严格校验 `success` 为布尔值 `true`                                     |
+| HTTP 2xx 且 `{"success": false}`                                                 | `block`（拦截）           | 严格校验 `success` 为布尔值 `false`；忽略 `message` 字段               |
+| 超时、网络错误、非 2xx、非法 JSON，或 `success` 非布尔类型（如字符串 `"false"`） | `error`（服务异常）       | 不再将非布尔值隐式转换为通过；最终放行或拦截由全局「服务异常」策略决定 |
+
+> **注意**：`endpoint` 应填写您实际的自定义审核服务地址，不要填写旧版 `fastgpt-pro` 的内部转发路由 `/api/common/censor/check`（该插件不接收 `{ "code": 200 }` 或 `{ "data": ... }` 包装格式）。
+
+#### 网络与运行环境检查
+
+旧版请求由 `fastgpt-pro` 进程发起，而新版插件请求由 **`fastgpt-plugin` 服务（Plugin Server）的插件子进程** 发起。迁移前请确认：
+
+1. **地址可达性**：如果原 `customCensorURL` 使用了 `localhost`、`127.0.0.1` 或容器内网主机名，需改为从 **`fastgpt-plugin` 容器/节点** 可访问的地址。
+2. **网络访问白名单**：确认 `fastgpt-plugin` 运行时允许访问目标网络（如 `POOL_SERVICE_POD_ALLOW_NET` 配置），且目标审核服务的防火墙或 IP 白名单已放行 `fastgpt-plugin` 节点。
+
+#### 配置步骤
+
+1. 进入 **管理后台 > 内容审核 > 审核策略配置**（`/admin/moderation/policy`），打开 **是否开启内容审核**，从插件市场或本地安装 **旧版自定义审核兼容**（`legacy-custom-censor`）插件。
+2. 点击该插件右侧的 **配置参数**，填写以下配置项：
+   - **旧版自定义审核 URL（`endpoint`）**：必填，填入原 `customCensorURL`（仅支持 `http://` 或 `https://`，URL 中不得内嵌用户名或密码）。
+   - **请求超时（`timeoutMs`）**：选填，范围 `100` 到 `60000` 毫秒，默认 `10000` 毫秒（单次响应体上限为 64 KiB，不自动重试、不跟随 HTTP 重定向）。
+3. 点击保存（系统会发送固定非敏感文本测试接口连通性，服务正常返回布尔类型的 `success` 即可保存成功）。
+4. 勾选「旧版自定义审核兼容」为 **当前生效服务**，按需勾选 **审核生效环节**：
+   - 如需保持与旧版一致的异常放行（fail-open）行为，请确认 **服务异常** 策略保持默认的 **放行未审核内容**。
+5. 在页面底部 **审核效果测试** 测试通过后保存策略，随后即可移除旧商业版配置中的 `censor.customCensorURL`。
+
+---
+
+### 3.2 方案 B：自己开发新的 `moderation` 审核插件
+
+如果您的审核服务能够返回风险分类标签（如涉政、色情、违禁、广告等）、命中的具体敏感词、置信度分数（`0` 到 `100`）或疑似风险状态，推荐基于 `@fastgpt-plugin/sdk-factory` 开发原生 `moderation` 插件。原生插件可在 FastGPT「审核记录」和对话详情中直接高亮展示命中的敏感词与风险标签。
+
+#### 1. 创建插件脚手架
+
+在插件工程目录（或 `fastgpt-official-plugins` / 自定义插件工作区）下使用 `@fastgpt-plugin/cli` 创建 `moderation` 类型插件：
+
+```bash
+npx @fastgpt-plugin/cli create my-moderation --type moderation
+```
+
+#### 2. 编写配置 Schema 与审核逻辑
+
+在插件入口 `index.ts` 中，使用 `defineModeration`、`defineModerationManifest` 和 `defineSecretSchema` 声明插件元信息、密钥表单和 `check` 方法：
+
+```ts
+import {
+  defineModeration,
+  defineModerationManifest,
+  defineSecretSchema
+} from '@fastgpt-plugin/sdk-factory';
+import z from 'zod';
+
+const secretSchema = defineSecretSchema({
+  endpoint: {
+    type: z.string().trim().url(),
+    title: { en: 'Moderation Endpoint', 'zh-CN': '审核接口地址' },
+    description: {
+      en: 'HTTP(S) endpoint of your moderation service',
+      'zh-CN': '自定义审核服务的 HTTP(S) 接口地址'
+    },
+    isSecret: false
+  },
+  apiKey: {
+    type: z.string().min(1),
+    title: { en: 'API Key', 'zh-CN': 'API Key' },
+    isSecret: true
+  }
+});
+
+export default defineModeration({
+  manifest: defineModerationManifest({
+    pluginId: 'my-moderation',
+    version: '1.0.0',
+    name: { en: 'Custom Moderation', 'zh-CN': '自定义内容审核' },
+    description: {
+      en: 'Custom content moderation plugin',
+      'zh-CN': '对接内部内容安全审核服务'
+    },
+    meta: {
+      provider: 'my-moderation'
+    }
+  }),
+  secretSchema,
+  provider: {
+    name: 'my-moderation',
+    check: async (input, ctx) => {
+      try {
+        const response = await fetch(ctx.secrets.endpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${ctx.secrets.apiKey}`
+          },
+          body: JSON.stringify({ content: input.content }),
+          signal: AbortSignal.timeout(5000)
+        });
+
+        if (!response.ok) {
+          return ctx.moderationError(`Upstream HTTP ${response.status}`);
+        }
+
+        const data = (await response.json()) as {
+          verdict: 'pass' | 'block' | 'suspected';
+          label?: string;
+          score?: number;
+          keywords?: string[];
+          requestId?: string;
+        };
+
+        if (data.verdict === 'pass') {
+          return {
+            verdict: 'pass',
+            hits: [],
+            requestId: data.requestId
+          };
+        }
+
+        return {
+          verdict: data.verdict,
+          hits: [
+            {
+              label: 'contraband', // 归一化标准标签
+              providerLabel: data.label || 'custom_rule', // 服务原始标签
+              score: data.score, // 可选，0-100 真实置信度
+              keywords: data.keywords // 可选，命中的敏感词数组
+            }
+          ],
+          requestId: data.requestId
+        };
+      } catch (error) {
+        // 捕获网络或解析异常，返回标准 error 结果，交由 FastGPT「服务异常」策略决定放行或拦截
+        return ctx.moderationError(
+          error instanceof Error ? error.message : 'Moderation request failed'
+        );
+      }
+    }
+  }
+});
+```
+
+#### 3. 返回值与开发规范
+
+- **四档 `verdict`**：
+  - `pass`：内容合规。
+  - `block`：内容明确违规，直接拦截。
+  - `suspected`：内容疑似违规，由 FastGPT 全局策略中的「疑似风险」（`拦截并记录` / `放行并记录`）决定后续动作。
+  - `error`：上游服务超时、网络错误、鉴权失败或返回格式非法。**请勿将上游异常直接 `throw` 抛出**，应返回 `ctx.moderationError('...')`（即 `verdict: 'error'` 且包含 `errorMessage`），以便宿主按「服务异常」策略处理并记入审核服务日志。
+- **标准风险标签（`hits[].label`）**：支持 `porn`（色情）、`politics`（涉政）、`terror`（暴恐）、`contraband`（违禁）、`abuse`（辱骂）、`hate`（仇恨）、`ad`（广告）、`advertising-law`（广告法违规）、`privacy`（隐私泄露）、`flood`（灌水）、`self-harm`（自残自杀）、`violence`（暴力血腥）、`sexual-minors`（涉未成年人）与 `other`（其他）。
+- **多语言说明文档**：在插件根目录提供 `README.zh-CN.md` 与 `README.en.md`（可选 `README.zh-Hant.md`），打包时会自动收录并在管理后台插件详情中展示。
+
+#### 4. 本地调试、打包与上传安装
+
+在插件目录下执行以下命令完成本地调试与打包：
+
+```bash
+# 本地命令行调试运行
+npx @fastgpt-plugin/cli debug . --run \
+  --secrets '{"endpoint":"https://example.com/moderate","apiKey":"sk-xxx"}' \
+  --input '{"content":"待测试文本"}'
+
+# 构建、检查并打包为 .pkg 文件
+pnpm build
+npx @fastgpt-plugin/cli check --entry . --output ./dist
+pnpm run pack
+```
+
+打包完成后，进入 FastGPT **管理后台 > 内容审核 > 审核策略配置**，点击 **从本地安装** 上传生成的 `.pkg` 文件，即可按常规流程配置参数并启用。

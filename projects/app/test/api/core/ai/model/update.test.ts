@@ -52,6 +52,7 @@ import { calculateModelPrice } from '@fastgpt/global/core/ai/model/pricing';
 import { formatDbModelToRuntimeModel } from '@fastgpt/service/core/ai/model/runtime';
 import getModelTemplatesApi from '@/pages/api/core/ai/model/templates';
 import updateModelApi from '@/pages/api/core/ai/model/update';
+import updateModelOrderApi from '@/pages/api/core/ai/model/updateOrder';
 
 const buildLlmDocument = () => ({
   type: ModelTypeEnum.llm,
@@ -120,6 +121,34 @@ describe('admin settings model create/update api', () => {
     clearTeamModelCatalogCache();
   });
 
+  it.each([{}, { unitPrice: 0.2 }, null, { type: 'unknown', unitPrice: 0.2 }])(
+    'rejects invalid STT prices on create and update despite permissive database reads: %j',
+    async (pricing) => {
+      const modelData = {
+        ...buildLlmDocument(),
+        type: ModelTypeEnum.stt,
+        config: {},
+        pricing: { type: 'duration', unitPrice: 0.2 }
+      };
+      const existing = await insertSystemModel(modelData);
+      const create = await callApi({
+        handler: createModelApi,
+        body: { modelData: { ...modelData, model: 'invalid-stt', pricing } }
+      });
+      expect(create.error).toBeDefined();
+      const update = await callApi({
+        handler: updateModelApi,
+        body: { modelId: String(existing._id), modelData: { ...modelData, pricing } }
+      });
+      expect(update.error).toBeDefined();
+      expect(await MongoAIModel.countDocuments({})).toBe(1);
+      expect((await MongoAIModel.findById(existing._id).lean())?.pricing).toMatchObject({
+        type: 'duration',
+        unitPrice: 0.2
+      });
+    }
+  );
+
   it.each([
     {
       pricing: {
@@ -138,10 +167,11 @@ describe('admin settings model create/update api', () => {
     async ({ pricing, expected }) => {
       const result = await callApi({
         handler: createModelApi,
-        body: { modelData: { ...buildLlmDocument(), ...pricing } }
+        body: { modelData: { ...buildLlmDocument(), ...pricing, sortOrder: 123 } }
       });
       expect(result.code).toBe(200);
       const stored = await MongoAIModel.findById(result.data.modelId).lean();
+      expect(stored?.sortOrder).toBe(0);
       expect(stored).not.toHaveProperty('inputPrice');
       expect(stored).not.toHaveProperty('pricing.unitPrice');
       expect(stored).not.toHaveProperty('pricing.extra');
@@ -258,7 +288,10 @@ describe('admin settings model create/update api', () => {
         ...buildLlmDocument(),
         type,
         config: type === ModelTypeEnum.tts ? { voices: [] } : {},
-        pricing: { unitPrice: 0.125 }
+        pricing:
+          type === ModelTypeEnum.stt
+            ? { type: 'duration' as const, unitPrice: 0.125 }
+            : { unitPrice: 0.125 }
       };
       const created = await callApi({ handler: createModelApi, body: { modelData: doc } });
       expect(created.code).toBe(200);
@@ -269,7 +302,10 @@ describe('admin settings model create/update api', () => {
       const { model: _model, ...modelData } = doc;
       const updated = await callApi({
         handler: updateModelApi,
-        body: { modelId, modelData: { ...modelData, pricing: { unitPrice: 1.005 } } }
+        body: {
+          modelId,
+          modelData: { ...modelData, pricing: { ...doc.pricing, unitPrice: 1.005 } }
+        }
       });
       expect(updated.code).toBe(200);
       const stored = await MongoAIModel.findById(modelId).lean();
@@ -278,11 +314,43 @@ describe('admin settings model create/update api', () => {
       expect(
         calculateModelPrice({
           config: formatDbModelToRuntimeModel(stored!, { fallbackProvider: true }),
-          inputTokens: multiple
+          inputTokens: type === ModelTypeEnum.stt ? undefined : multiple,
+          sttUsage: type === ModelTypeEnum.stt ? { type: 'duration', seconds: multiple } : undefined
         }).totalPoints
       ).toBe(1.01);
     }
   );
+
+  it('applies a complete system model order and rejects IDs outside the scope', async () => {
+    const first = await insertSystemModel({ ...buildLlmDocument(), model: 'first' });
+    const second = await insertSystemModel({ ...buildLlmDocument(), model: 'second' });
+
+    const res = await callApi({
+      handler: updateModelOrderApi,
+      body: {
+        modelIds: [String(first._id), String(second._id)]
+      }
+    });
+
+    expect(res.error).toBeUndefined();
+    await expect(
+      MongoAIModel.find({ scope: ModelScopeEnum.system }).sort({ sortOrder: 1 }).lean()
+    ).resolves.toMatchObject([
+      { model: 'first', sortOrder: 1 },
+      { model: 'second', sortOrder: 2 }
+    ]);
+
+    const invalidAnchor = await callApi({
+      handler: updateModelOrderApi,
+      body: {
+        modelIds: [String(first._id), '68ad85a7463006c963799a07']
+      }
+    });
+    expect(invalidAnchor.error).toBeDefined();
+    await expect(MongoAIModel.findById(first._id).lean()).resolves.toMatchObject({
+      sortOrder: 1
+    });
+  });
 
   it('creates a custom model through the dedicated create endpoint', async () => {
     const res = await callApi({

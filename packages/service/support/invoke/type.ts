@@ -1,13 +1,16 @@
+import { ChatIdSchema } from '@fastgpt/global/core/chat/schema';
 import z from 'zod';
 import { UploadFileByBodySchema } from '../../common/s3/contracts/type';
 import { PluginPermissionListSchema } from '@fastgpt/global/sdk/fastgpt-plugin';
 
 export const InvokeSessionSchema = z.object({
   appId: z.string().nonempty(),
-  chatId: z.string().nonempty(),
+  chatId: ChatIdSchema.nonempty(),
   uId: z.string().nonempty(),
   teamId: z.string().nonempty(),
   tmbId: z.string().nonempty(),
+  /** Current chat usage record; injected for backend-side plugin usage push. */
+  usageId: z.string().optional(),
   permissions: PluginPermissionListSchema.default([])
 });
 

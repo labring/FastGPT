@@ -21,7 +21,7 @@
   "add_new_input": "add_new Input",
   "add_new_output": "New output",
   "agent.prompt_placeholder": "Type “/” to insert a variable reference; type “@” to insert a capability, including Skills, apps, tools, and Datasets.",
-  "agent.prompt_skill_tip": "@ to select Skills and tools, \"/\" to select variables",
+  "agent.prompt_skill_tip": "\"@\" to select Skills and tools, \"/\" to select variables",
   "agent.select_skill": "Select Skill",
   "agent.select_tool": "Select Tool",
   "agent.tools": "Tools",
@@ -40,8 +40,10 @@
   "click_to_change_value": "Click to switch Variable citation mode",
   "cli.input.ai_model": "Model used by this AI node",
   "cli.input.answer": "Fixed answer text or an upstream output reference",
+  "cli.input.custom_feedback": "Feedback text to append to the current conversation record",
+  "cli.input.dataset_quotes": "Dataset references supplied by an upstream node",
   "cli.input.system_prompt": "Instructions that define the assistant's role and response rules",
-  "cli.input.text_editor": "Static text or text assembled from upstream variables",
+  "cli.input.text_editor": "Static text or text assembled from upstream variables. This is a literal text field. Embed references using {{$nodeId.outputKey$}}; global variables use {{$VARIABLE_NODE_ID.variableKey$}}. Do not generate bare {{variableKey}} or {{nodeId.outputKey}} placeholders.",
   "cli.input.user_question": "User question supplied by the workflow start node",
   "cli.config.auto_execute": "Configure this when the app should run automatically as soon as a conversation opens; set both the switch and the default prompt.",
   "cli.config.auto_execute_open": "Enable this only when opening a conversation should immediately run the workflow without waiting for user input.",
@@ -389,5 +391,7 @@
   "workflow_builder_preview_confirm": "Confirm and build",
   "workflow_builder_preview_revise": "Revise the plan",
   "workflow_builder_preview_cancel": "Cancel this build",
-  "workflow_builder_preview_revise_placeholder": "Describe the nodes or logic to change"
+  "workflow_builder_preview_revise_placeholder": "Describe the nodes or logic to change",
+  "workflow_builder_preview_pending": "Awaiting confirmation",
+  "workflow_builder_preview_flow": "Workflow preview"
 }

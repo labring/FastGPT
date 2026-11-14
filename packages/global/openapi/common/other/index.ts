@@ -38,8 +38,8 @@ export const CommonOtherPath: OpenAPIPath = {
     post: {
       summary: '上报行为埋点',
       description:
-        '仅接收指定的前端行为事件及各事件对应的 data，拒绝未声明的数据字段；辅助生成入口点击按小时全局聚合，不接受服务端链路事件',
-      tags: [DevApiTagsMap.commonOther],
+        '支持两种请求模式：登录态客户端事件由 authCert 校验；外链品牌事件必须传 authType=outLink，并按外链身份、品牌展示状态和公开接口限流校验。拒绝未声明的数据字段；辅助生成入口点击按小时全局聚合，不接受服务端链路事件',
+      tags: [DevApiTagsMap.commonOther, DevApiTagsMap.chatHistory],
       requestBody: {
         required: true,
         content: {
@@ -51,6 +51,9 @@ export const CommonOtherPath: OpenAPIPath = {
       responses: {
         200: {
           description: '成功接收埋点事件'
+        },
+        429: {
+          description: '外链品牌事件请求超限或限流服务不可用'
         }
       }
     }

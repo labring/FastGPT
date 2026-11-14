@@ -7,7 +7,7 @@ import type { NodeInputAutomationMeta } from '@fastgpt/global/core/workflow/temp
 
 /**
  * 为描述符、输入写入和草稿校验提供同一份值契约。
- * 工具授权从 inputList 派生画布实际使用的 { type, value: { key: { value, secret } } } 结构；
+ * 工具授权从 inputList 派生画布实际使用的明文、密文或引用结构；
  * 允许草稿保留待填字段，完整授权仍由运行/发布前检查，不支持尚未实现的团队密钥来源。
  */
 export const getNodeInputValueSchema = ({
@@ -21,6 +21,12 @@ export const getNodeInputValueSchema = ({
   if (explicitSchema) return explicitSchema;
   if (input.key !== NodeInputKeyEnum.systemInputConfig) return undefined;
 
+  const referenceTuple = {
+    type: 'array',
+    minItems: 2,
+    maxItems: 2,
+    items: { type: 'string', minLength: 1 }
+  };
   const properties = Object.fromEntries(
     (input.inputList ?? []).map((item) => {
       const valueSchema = (() => {
@@ -43,12 +49,16 @@ export const getNodeInputValueSchema = ({
             .filter(Boolean)
             .join('\n'),
           additionalProperties: false,
+          not: { anyOf: [{ required: ['ref', 'value'] }, { required: ['ref', 'secret'] }] },
           properties: {
             // 画布在尚未填写或清空字段时使用空字符串，不能因此阻止保存草稿。
             value: { anyOf: [valueSchema, { const: '' }] },
             secret: {
               type: 'string',
               description: 'Preserve existing ciphertext; do not invent it.'
+            },
+            ref: {
+              anyOf: [referenceTuple, { type: 'array', minItems: 1, items: referenceTuple }]
             }
           }
         }

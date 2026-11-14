@@ -1,3 +1,4 @@
+import { ChatIdSchema } from '../../../../core/chat/schema';
 import { requiredAlternatives } from '../../../../common/zod/openapi';
 import {
   FolderAccessModeSchema,
@@ -25,6 +26,7 @@ import {
 } from '../../../../support/permission/collaborator.schema';
 import { PaginationResponseSchema, createPaginationSchema } from '../../../api';
 import z from 'zod';
+import type { ZodOpenApiMetadata } from 'zod-openapi';
 import {
   createOptionalOutLinkChatTargetInputSchema,
   createOutLinkChatTargetInputSchema,
@@ -52,6 +54,17 @@ export type UpdateDatasetCollectionBodyType = z.infer<typeof UpdateDatasetCollec
 
 // ============= Export Collection =============
 // Schema 1: Basic collection export with authentication
+const chatExportKeys = [
+  'customUid',
+  'authProxy',
+  'appId',
+  'skillId',
+  'sourceType',
+  'outLinkAuthData',
+  'chatId',
+  'chatItemDataId',
+  'chatTime'
+] as const;
 const BasicExportSchema = z
   .object({
     collectionId: ObjectIdSchema.describe('集合ID')
@@ -59,15 +72,6 @@ const BasicExportSchema = z
   .passthrough()
   .superRefine((data, ctx) => {
     // 先检查原始键再清洗，避免无效聊天鉴权参数被 union 降级为普通登录态导出。
-    const chatExportKeys = [
-      'appId',
-      'skillId',
-      'sourceType',
-      'outLinkAuthData',
-      'chatId',
-      'chatItemDataId',
-      'chatTime'
-    ] as const;
     const invalidKey = chatExportKeys.find((key) => data[key] !== undefined);
 
     if (invalidKey) {
@@ -80,16 +84,20 @@ const BasicExportSchema = z
   })
   .transform(({ collectionId }) => ({ collectionId }))
   .meta({
-    description: '通过身份鉴权导出集合',
+    description: '通过资源自身权限导出集合，不接受 customUid、authProxy、appId 或会话上下文字段。',
+    override: ({ jsonSchema }) => {
+      // 与运行时拒绝键一致，同时兼容其他无关字段的历史清洗行为。
+      jsonSchema.not = { anyOf: chatExportKeys.map((key) => ({ required: [key] })) };
+    },
     example: {
       collectionId: '68ad85a7463006c963799a05'
     }
-  });
+  } satisfies ZodOpenApiMetadata);
 
 // Schema 2: Export from chat context with app/skill/outLink authentication
 const ChatExportRawSchema = createOutLinkChatTargetInputSchema({
   collectionId: ObjectIdSchema.describe('集合ID'),
-  chatId: z.string().min(1).max(256).describe('会话ID'),
+  chatId: ChatIdSchema.min(1).describe('会话ID'),
   chatItemDataId: z.string().min(1).max(256).describe('对话ID'),
   chatTime: z.coerce.date().optional().describe('对话时间')
 }).meta({
@@ -115,17 +123,80 @@ export type ExportCollectionBodyType = z.infer<typeof ExportCollectionBodyRawSch
 export type ExportCollectionRuntimeBodyType = z.infer<typeof ExportCollectionBodySchema>;
 
 // ============= Delete Collection =============
+/** 已弃用：仅为兼容旧调用方保留，新调用方应使用 body.id。 */
 export const DeleteCollectionQuerySchema = z.object({
   id: z.string().optional().meta({
     example: '68ad85a7463006c963799a05',
-    description: '单个集合 ID（与 body.collectionIds 二选一）'
+    description: '旧版用于指定单个集合 ID，已弃用，请改用 body.id',
+    deprecated: true
   })
 });
 export type DeleteCollectionQueryType = z.infer<typeof DeleteCollectionQuerySchema>;
 
-export const DeleteCollectionBodySchema = z.object({
-  collectionIds: z.array(z.string()).optional().meta({ description: '集合 ID 列表' })
-});
+const DeleteCollectionByIdBodySchema = z
+  .strictObject({
+    id: z.string().min(1).meta({
+      example: '68ad85a7463006c963799a05',
+      description: '集合 ID，删除该集合及其全部子集合'
+    })
+  })
+  .meta({
+    title: '按集合 ID 删除',
+    description: '删除单个集合及其全部子集合'
+  });
+
+const DeleteCollectionByCollectionIdsBodySchema = z
+  .strictObject({
+    collectionIds: z
+      .array(z.string().min(1))
+      .min(1)
+      .meta({
+        example: ['68ad85a7463006c963799a05'],
+        description: '集合 ID 列表，删除每个集合及其全部子集合'
+      })
+  })
+  .meta({
+    title: '按集合 ID 列表删除',
+    description: '批量删除多个集合及其全部子集合'
+  });
+
+const DeleteCollectionByApiFileIdsBodySchema = z
+  .strictObject({
+    datasetId: z.string().min(1).meta({
+      example: '68ad85a7463006c963799a05',
+      description: 'API 文件库对应的知识库 ID'
+    }),
+    apiFileIds: z
+      .array(z.string().min(1))
+      .min(1)
+      .meta({
+        example: ['6893c04c0a1c3e0012a3b4c5'],
+        description: 'API 文件库的外部文件或目录 ID 列表；全部未命中时返回集合不存在'
+      })
+  })
+  .meta({
+    title: '按 API 文件 ID 删除',
+    description:
+      '外部集成只知道外部文件或目录 ID 时使用：在指定知识库内按 apiFileId 定位集合，删除命中的集合及其全部子集合'
+  });
+
+/**
+ * 三种定位方式互斥，按 body 分支表达。各分支使用 strictObject：
+ * 混用其他定位字段或夹带不完整外部参数时没有任何分支能匹配，请求在数据变更前被拒绝，
+ * 而不是按分支顺序静默丢弃多余字段。缺失 body 或严格空对象仅用于兼容旧版 query.id，
+ * 是否提供了有效定位参数由路由统一判断；空对象分支不能清洗非法字段后放行。
+ */
+export const DeleteCollectionBodySchema = z
+  .union([
+    DeleteCollectionByIdBodySchema,
+    DeleteCollectionByCollectionIdsBodySchema,
+    DeleteCollectionByApiFileIdsBodySchema,
+    z.strictObject({}).meta({
+      title: '旧版 query.id 兼容',
+      description: '仅通过旧版 query.id 定位时允许空请求体；未提供任何定位参数时拒绝请求'
+    })
+  ])
+  .optional();
 export type DeleteCollectionBodyType = z.infer<typeof DeleteCollectionBodySchema>;
 
 // ============= Get Collection Detail =============
@@ -140,6 +211,9 @@ export const GetCollectionDetailResponseSchema = DatasetCollectionItemSchema.met
 export type GetCollectionDetailResponseType = z.infer<typeof GetCollectionDetailResponseSchema>;
 
 // ============= List Collections V2 =============
+/** 集合列表支持的排序字段。 */
+export const CollectionListSortByEnum = z.enum(['name', 'createTime', 'updateTime']);
+
 export const ListCollectionV2BodySchema = createPaginationSchema({
   datasetId: z.string().meta({ description: '数据集 ID' }),
   parentId: z.string().nullable().optional().default(null).meta({ description: '父级目录 ID' }),
@@ -148,6 +222,15 @@ export const ListCollectionV2BodySchema = createPaginationSchema({
   tagFilters: z.array(CollectionTagFilterItemSchema).optional().default([]).meta({
     description: '按标签值过滤。同一标签多值为 OR，不同标签为 AND'
   }),
+  sortBy: CollectionListSortByEnum.optional().default('updateTime').meta({
+    description: '排序字段，支持名称、创建时间和更新时间',
+    example: 'name'
+  }),
+  sortOrder: z
+    .enum(['asc', 'desc'])
+    .optional()
+    .default('desc')
+    .meta({ description: '排序方向', example: 'asc' }),
   simple: z.boolean().optional().default(false).meta({ description: '简单模式（不统计数量）' })
 });
 export type ListCollectionV2BodyType = z.infer<typeof ListCollectionV2BodySchema>;
@@ -192,11 +275,14 @@ export const GetCollectionPathsResponseSchema = z.array(ParentTreePathItemSchema
 export type GetCollectionPathsResponseType = z.infer<typeof GetCollectionPathsResponseSchema>;
 
 // ============= Read Collection Source =============
-export const ReadCollectionSourceBodyRawSchema = createOptionalOutLinkChatTargetInputSchema({
-  collectionId: ObjectIdSchema.meta({ description: '集合 ID' }),
-  chatId: z.string().min(1).optional().meta({ description: '对话 ID（对话中使用）' }),
-  chatItemDataId: z.string().min(1).optional().meta({ description: '对话消息 ID（对话中使用）' })
-});
+export const ReadCollectionSourceBodyRawSchema = createOptionalOutLinkChatTargetInputSchema(
+  {
+    collectionId: ObjectIdSchema.meta({ description: '集合 ID' }),
+    chatId: ChatIdSchema.min(1).optional().meta({ description: '对话 ID（对话中使用）' }),
+    chatItemDataId: z.string().min(1).optional().meta({ description: '对话消息 ID（对话中使用）' })
+  },
+  { requiredIdentityFields: ['chatId', 'chatItemDataId'] }
+);
 export const ReadCollectionSourceBodySchema = ReadCollectionSourceBodyRawSchema.transform(
   transformOptionalChatAuthTargetInput
 );

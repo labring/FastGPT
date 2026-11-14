@@ -24,23 +24,28 @@ export const selectChatHistories = ({
   histories,
   window,
   memoryKey,
+  memories,
   responseChatItemId
 }: {
   history: ChatItemMiniType[] | number;
   histories: ChatItemMiniType[];
   window?: unknown;
   memoryKey: string;
+  memories?: Record<string, unknown>;
   responseChatItemId: string;
 }): {
   histories: ChatItemMiniType[];
   memories?: Record<string, z.infer<typeof WindowMemorySchema> | null>;
 } => {
-  // 失败或未执行本节点的轮次不覆盖上次成功状态；显式 null 是关闭/切换模式后的清除标记。
-  const previousItem = histories.findLast(
-    (item) => item.obj === ChatRoleEnum.AI && Object.hasOwn(item.memories ?? {}, memoryKey)
-  );
-  const previousValue =
-    previousItem?.obj === ChatRoleEnum.AI ? previousItem.memories?.[memoryKey] : undefined;
+  // 运行状态已包含当前调用路径的基线和增量；独立调用才回溯历史以兼容旧的稀疏记录。
+  // 显式 null 是关闭/切换模式后的清除标记，不能回退恢复更早的窗口。
+  const previousValue = (() => {
+    if (memories !== undefined) return memories[memoryKey];
+    const previousItem = histories.findLast(
+      (item) => item.obj === ChatRoleEnum.AI && Object.hasOwn(item.memories ?? {}, memoryKey)
+    );
+    return previousItem?.obj === ChatRoleEnum.AI ? previousItem.memories?.[memoryKey] : undefined;
+  })();
   if (
     window === undefined ||
     window === null ||

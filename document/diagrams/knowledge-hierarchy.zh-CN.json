@@ -1,0 +1,121 @@
+{
+  "type": "architecture",
+  "title": "知识资产层级",
+  "nodes": [
+    {
+      "id": "dataset",
+      "label": "知识库",
+      "row": 0,
+      "col": 0,
+      "kind": "backend",
+      "focal": true,
+      "illustration": "files"
+    },
+    {
+      "id": "config",
+      "label": "配置与权限",
+      "row": 0,
+      "col": 1,
+      "kind": "backend",
+      "illustration": "settings"
+    },
+    {
+      "id": "folder",
+      "label": "目录集合",
+      "row": 1,
+      "col": 1,
+      "kind": "backend",
+      "sub": "组织子集合",
+      "illustration": "folder"
+    },
+    {
+      "id": "collection",
+      "label": "内容集合",
+      "row": 1,
+      "col": 0,
+      "kind": "backend",
+      "illustration": "document"
+    },
+    {
+      "id": "chunk",
+      "label": "数据块",
+      "row": 2,
+      "col": 0,
+      "kind": "backend",
+      "sub": "原文与索引关联",
+      "illustration": "chunk"
+    },
+    {
+      "id": "indexes",
+      "label": "检索索引",
+      "row": 3,
+      "col": 0,
+      "kind": "store",
+      "sub": "向量 / 全文",
+      "illustration": "vector"
+    }
+  ],
+  "edges": [
+    [
+      "dataset",
+      "config",
+      "",
+      "default"
+    ],
+    [
+      "dataset",
+      "folder",
+      "",
+      "default"
+    ],
+    [
+      "dataset",
+      "collection",
+      "",
+      "primary"
+    ],
+    [
+      "folder",
+      "collection",
+      "包含",
+      "default"
+    ],
+    [
+      "collection",
+      "chunk",
+      "",
+      "primary"
+    ],
+    [
+      "chunk",
+      "indexes",
+      "关联",
+      "primary"
+    ]
+  ],
+  "evidence": [
+    {
+      "id": "collection",
+      "file": "packages/service/core/dataset/collection/schema.ts",
+      "line": 14
+    },
+    {
+      "id": "chunk",
+      "file": "packages/service/core/dataset/data/schema.ts",
+      "line": 39
+    },
+    {
+      "id": "indexes",
+      "file": "packages/service/core/dataset/data/schema.ts",
+      "line": 57
+    }
+  ],
+  "dir": "TB",
+  "lang": "zh-CN",
+  "eyebrow": "",
+  "legend": false,
+  "motion": "trace",
+  "fonts": "system",
+  "watermark": false,
+  "skin": "light"
+}

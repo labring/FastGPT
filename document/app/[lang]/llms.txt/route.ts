@@ -1,58 +1,19 @@
-import * as fs from 'node:fs/promises';
-import fg from 'fast-glob';
-import matter from 'gray-matter';
-import { remark } from 'remark';
-import remarkGfm from 'remark-gfm';
-import remarkStringify from 'remark-stringify';
-import remarkMdx from 'remark-mdx';
-import { remarkInclude } from 'fumadocs-mdx/config';
 import { i18n } from '@/lib/i18n';
+import { buildLlmsIndexText } from '@/lib/llms-markdown';
 
 export const revalidate = false;
 
-const includeMdxFiles = remarkInclude as unknown as typeof remarkMdx;
+export function generateStaticParams() {
+  return i18n.languages.map((lang) => ({ lang }));
+}
 
-const processor = remark()
-  .use(remarkMdx)
-  // https://fumadocs.vercel.app/docs/mdx/include
-  .use(includeMdxFiles)
-  // gfm styles
-  .use(remarkGfm)
-  // .use(your remark plugins)
-  .use(remarkStringify); // to string
+/** Export an llmstxt.org-compliant Markdown index of active documentation pages with canonical URLs. */
+export async function GET(_request: Request, { params }: { params: Promise<{ lang: string }> }) {
+  const { lang } = await params;
+  if (!i18n.languages.includes(lang)) return new Response('Unknown language', { status: 404 });
 
-export async function GET() {
-  // all scanned content
-  // Select files based on the default language
-  const defaultLanguage = i18n.defaultLanguage;
-  let globPattern;
-
-  if (defaultLanguage === 'zh-CN') {
-    // For Chinese, select *.mdx files
-    globPattern = ['./content/**/*.mdx'];
-  } else {
-    // For other languages (default English), select *.en.mdx files that don't have .mdx. in their path
-    globPattern = ['./content/**/*.en.mdx'];
-  }
-
-  const files = await fg(globPattern);
-
-  const scan = files.map(async (file: string) => {
-    const fileContent = await fs.readFile(file);
-    const { content, data } = matter(fileContent.toString());
-
-    const processed = await processor.process({
-      path: file,
-      value: content
-    });
-
-    return `file: ${file}
-meta: ${JSON.stringify(data, null, 2)}
-
-${processed}`;
+  const body = buildLlmsIndexText(lang === 'en' ? 'en' : 'zh-CN');
+  return new Response(body, {
+    headers: { 'Content-Type': 'text/plain; charset=utf-8' }
   });
-
-  const scanned = await Promise.all(scan);
-
-  return new Response(scanned.join('\n\n'));
 }

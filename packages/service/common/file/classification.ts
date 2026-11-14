@@ -1,15 +1,19 @@
 import path from 'node:path';
 import pLimit from 'p-limit';
-import { parseFilenameExtension } from '@fastgpt/global/common/string/tools';
 import { isHttpUrl } from '@fastgpt/global/common/string/url';
-import { audioFileType, imageFileType, videoFileType } from '@fastgpt/global/common/file/constants';
+import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
+import {
+  getChatFileTypeByFilename,
+  isChatFileResolvedType,
+  normalizeChatFileType
+} from '@fastgpt/global/core/chat/file/utils';
 import { inferFileTypeFromUrl } from './infer/service';
 import { validateFileUrlDomain } from '../security/fileUrlValidator';
 import { verifyS3DownloadAccess } from '../s3/accessLink/downloadAlias/service';
 import { S3SignedDownloadAliasValueSchema } from '../s3/accessLink/type';
-import { normalizeMimeType } from '../s3/utils/mime';
+import { normalizeMimeType, resolveMimeExtension } from '../s3/utils/mime';
 
-export type FileClassificationMediaType = 'image' | 'audio' | 'video' | 'file';
+export type FileClassificationMediaType = `${ChatFileTypeEnum}`;
 
 export type FileProbeResult = {
   type: FileClassificationMediaType;
@@ -66,27 +70,19 @@ const getFileUrlIdentity = (url: string): string => {
   return `external:${parsed.toString()}`;
 };
 
-const mediaExtensions: [string, FileClassificationMediaType][] = [
-  [imageFileType, 'image'],
-  [audioFileType, 'audio'],
-  [videoFileType, 'video']
-];
-
-/** 根据文件扩展名匹配图片、音频、视频媒体分类。 */
-const matchMediaExtension = (candidate?: string): FileClassificationMediaType | undefined => {
-  const ext = parseFilenameExtension(candidate);
-  if (!ext) return;
-  return mediaExtensions.find(([extensions]) =>
-    extensions.split(',').some((item) => item.trim() === `.${ext}`)
-  )?.[1];
+/** 缺少可识别后缀时保留后续探测机会，不提前认定为普通文件。 */
+const matchFileExtension = (candidate?: string): FileClassificationMediaType | undefined => {
+  const type = getChatFileTypeByFilename(candidate);
+  return type === ChatFileTypeEnum.unknown ? undefined : type;
 };
 
-/** 对象元数据与 HTTP 响应头使用同一 MIME 规则判断媒体分类。 */
-const mediaTypeFromMime = (contentType?: string): FileClassificationMediaType | undefined => {
+/** 对象元数据与响应头共用 MIME 分类；文档后缀仍受当前解析器清单约束。 */
+const fileTypeFromMime = (contentType?: string): FileClassificationMediaType | undefined => {
   const mime = normalizeMimeType(contentType, '');
   if (mime.startsWith('image/')) return 'image';
   if (mime.startsWith('audio/')) return 'audio';
   if (mime.startsWith('video/')) return 'video';
+  return matchFileExtension(`file${resolveMimeExtension(mime)}`);
 };
 
 /**
@@ -110,7 +106,10 @@ const probeWithoutContext = pLimit(5);
 
 /**
  * 通用 URL 媒体类型分类入口：
- * 规则优先级：已登记结果 > 明确媒体类型 > 可信对象元数据 > 链接扩展名 > 短链与系统链接探测 > 普通文件降级。
+ * 规则优先级：已登记结果 > 显式 image/audio/video/document > 传入名称后缀 > 可信对象元数据 > 链接扩展名 > 短链与系统链接探测 > unknown。
+ * unknown 和历史 file 均表示待分类，不阻止名称、链接或响应信息推测。
+ * name 本身为 HTTP(S) URL 或没有后缀时继续推测；名称后缀未知时保留 unknown，不用链接覆盖它。
+ * document 的后缀推测范围与现有解析器一致；file 只作为旧输入兼容，不再作为分类输出。
  *
  * 仅负责媒体类型识别与探测结果缓存，不产生文件登记副作用，不依赖具体业务层。
  */
@@ -128,18 +127,31 @@ export const classifyUrlMediaType = async ({
   metadata?: { filename?: string; contentType?: string };
 }): Promise<ClassifiedFileItem | undefined> => {
   if (typeof url !== 'string') return;
-  const registered = fileContext?.resolveFile?.(url) ?? fileContext?.resolveChatFile?.(url);
-  if (registered) {
+  /** Context 也是输入边界；复用登记分类，旧输入统一交给共享归类函数。 */
+  const resolveRegisteredFile = (): ClassifiedFileItem | undefined => {
+    const file = fileContext?.resolveFile?.(url) ?? fileContext?.resolveChatFile?.(url);
+    if (!file) return;
+    const suppliedName = name || ('name' in file ? file.name : undefined);
+    const hasSuppliedFilename =
+      suppliedName && !isHttpUrl(suppliedName) && path.extname(suppliedName);
+    const filename = file.filename || getFileNameFromUrl(url);
     return {
-      type: registered.type as FileClassificationMediaType,
-      name:
-        name ||
-        registered.filename ||
-        ('name' in registered && registered.name ? registered.name : url),
+      type: normalizeChatFileType({
+        type: file.type,
+        filename: hasSuppliedFilename
+          ? suppliedName
+          : filename && !isSignedDownloadAlias(filename) && path.extname(filename)
+            ? filename
+            : undefined,
+        url
+      }),
+      name: name || file.filename || ('name' in file && file.name ? file.name : url),
       url,
-      ...(registered.filename ? { filename: registered.filename } : {})
+      ...(file.filename ? { filename: file.filename } : {})
     };
-  }
+  };
+  const registered = resolveRegisteredFile();
+  if (registered) return registered;
 
   /** 缓存远端类型和文件名；调用方的显示名称和显式类型不进入缓存，避免相互污染。 */
   const probeFile = (signedAlias?: string): Promise<FileProbeResult> => {
@@ -167,13 +179,13 @@ export const classifyUrlMediaType = async ({
             const aliasFilename =
               access.filename || (objectBasename.includes('.') ? objectBasename : undefined);
             const aliasType =
-              mediaTypeFromMime(access.responseContentType) ??
-              matchMediaExtension(aliasFilename) ??
+              fileTypeFromMime(access.responseContentType) ??
+              matchFileExtension(aliasFilename) ??
               // 显示名称可能没有后缀，不能遮蔽历史对象键中仍然有效的媒体后缀。
-              matchMediaExtension(objectBasename);
+              matchFileExtension(objectBasename);
             if (aliasType || aliasFilename) {
               return {
-                type: aliasType ?? 'file',
+                type: aliasType ?? ChatFileTypeEnum.unknown,
                 ...(aliasFilename && !isSignedDownloadAlias(aliasFilename)
                   ? { filename: aliasFilename }
                   : {})
@@ -192,7 +204,10 @@ export const classifyUrlMediaType = async ({
             validateUrl: validateFileUrlDomain
           });
           return {
-            type: mediaTypeFromMime(contentType) ?? 'file',
+            type:
+              fileTypeFromMime(contentType) ??
+              matchFileExtension(filename) ??
+              ChatFileTypeEnum.unknown,
             // 探测端未返回文件名或格式证据时，不能继续把 URL 中的签名当作解析文件名。
             filename: isSignedDownloadAlias(filename) ? undefined : filename
           };
@@ -200,7 +215,7 @@ export const classifyUrlMediaType = async ({
           // 系统探测失败时只降级类型，不授予读取权限；业务读取仍需通过独立校验。
         }
       }
-      return { type: 'file' };
+      return { type: ChatFileTypeEnum.unknown };
     });
     state?.files.set(identity, pending);
     return pending;
@@ -228,21 +243,33 @@ export const classifyUrlMediaType = async ({
         ? ''
         : (url.startsWith('chat/') ? undefined : parsedUrl.searchParams.get('filename')?.trim()) ||
           (basename.includes('.') ? basename : '');
-      const filenameType = matchMediaExtension(metadata?.filename) ?? matchMediaExtension(filename);
+      const filenameType =
+        metadata?.filename && path.extname(metadata.filename)
+          ? matchFileExtension(metadata.filename)
+          : matchFileExtension(filename);
 
       const resolved = await (async (): Promise<FileProbeResult> => {
-        if (type && type !== 'file') return { type };
-        const metadataType = mediaTypeFromMime(metadata?.contentType);
+        if (isChatFileResolvedType(type)) return { type };
+        // 调用方传入的文件名是分类依据；MCP 等入口把整个 URL 当 name，需继续识别链接。
+        if (name && !isHttpUrl(name) && path.extname(name))
+          return { type: getChatFileTypeByFilename(name) };
+        const metadataType = fileTypeFromMime(metadata?.contentType);
         if (metadataType) return { type: metadataType };
         if (filenameType) return { type: filenameType };
-        if (filename || (!isShortAlias && (!isAbsoluteHttpUrl(url) || !validateFileUrlDomain(url))))
-          return { type: 'file' };
+        if (
+          metadata?.filename ||
+          filename ||
+          (!isShortAlias && (!isAbsoluteHttpUrl(url) || !validateFileUrlDomain(url)))
+        )
+          return { type: ChatFileTypeEnum.unknown };
         return probeFile(isShortAlias ? basename : undefined);
       })();
 
       return {
         type: resolved.type,
-        ...(resolved.filename ? { filename: resolved.filename } : {}),
+        ...(resolved.filename || metadata?.filename
+          ? { filename: resolved.filename || metadata?.filename }
+          : {}),
         // URL 路径和 query 已各自解码一次，避免把文件名中的字面量百分号再次解码。
         // 私有 key 保留原有显示名称兼容行为。
         name:
@@ -251,22 +278,10 @@ export const classifyUrlMediaType = async ({
         url
       };
     } catch {
-      return { type: 'file', name: name || url, url };
+      return { type: ChatFileTypeEnum.unknown, name: name || url, url };
     }
   };
 
   const inferred = await infer();
-  const latestRegistered = fileContext?.resolveFile?.(url) ?? fileContext?.resolveChatFile?.(url);
-  if (latestRegistered) {
-    return {
-      type: latestRegistered.type as FileClassificationMediaType,
-      name:
-        name ||
-        latestRegistered.filename ||
-        ('name' in latestRegistered && latestRegistered.name ? latestRegistered.name : url),
-      url,
-      ...(latestRegistered.filename ? { filename: latestRegistered.filename } : {})
-    };
-  }
-  return inferred;
+  return resolveRegisteredFile() ?? inferred;
 };

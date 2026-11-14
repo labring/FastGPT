@@ -51,7 +51,8 @@ import {
   isLangfuseEnabled,
   prepareLangfuseSpan,
   refreshLangfuseTracing,
-  setActiveLangfuseAttributes
+  setActiveLangfuseAttributes,
+  setActiveLangfuseTraceAttributes
 } from '@fastgpt/service/common/langfuse';
 
 describe('initLangfuseTracing', () => {
@@ -83,11 +84,13 @@ describe('initLangfuseTracing', () => {
     facade.onStart(originalSpan, 'context');
     expect(mocks.onStart).not.toHaveBeenCalled();
 
-    prepareLangfuseSpan({ 'langfuse.trace.name': 'message' });
+    prepareLangfuseSpan({ 'langfuse.trace.name': 'message' }, 'trace');
     facade.onStart(originalSpan, 'context');
     facade.onStart({ ...originalSpan, spanContext: () => ({ spanId: 'span-2' }) }, 'context');
     vi.spyOn(trace, 'getActiveSpan').mockReturnValue(originalSpan as never);
-    setActiveLangfuseAttributes({ 'langfuse.trace.output': 'private output' });
+    // 节点级属性写到 trace span 上必须被忽略，避免未建 span 的节点污染父 span。
+    setActiveLangfuseAttributes({ 'langfuse.observation.input': 'should be ignored' });
+    setActiveLangfuseTraceAttributes({ 'langfuse.trace.output': 'private output' });
     facade.onEnd(originalSpan);
     await facade.forceFlush();
     const privateStartedSpan = mocks.onStart.mock.calls[0]?.[0] as {
@@ -165,7 +168,7 @@ describe('initLangfuseTracing', () => {
 
       vi.resetModules();
       const second = await import('@fastgpt/service/common/langfuse');
-      second.prepareLangfuseSpan({ 'langfuse.trace.name': 'shared' });
+      second.prepareLangfuseSpan({ 'langfuse.trace.name': 'shared' }, 'trace');
       facade.onStart(span, 'context');
       expect(mocks.onStart).toHaveBeenCalledTimes(1);
       expect(
@@ -173,7 +176,7 @@ describe('initLangfuseTracing', () => {
       ).toMatchObject({ 'langfuse.trace.name': 'shared' });
 
       vi.spyOn(trace, 'getActiveSpan').mockReturnValue(span as never);
-      second.setActiveLangfuseAttributes({ 'langfuse.trace.output': 'shared output' });
+      second.setActiveLangfuseTraceAttributes({ 'langfuse.trace.output': 'shared output' });
       facade.onEnd(span);
       expect(mocks.onEnd).toHaveBeenCalledTimes(1);
       expect(

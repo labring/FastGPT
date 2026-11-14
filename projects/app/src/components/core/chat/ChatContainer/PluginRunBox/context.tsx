@@ -19,6 +19,7 @@ import {
   mergeNodeResponseDataByIdAndParent
 } from '@fastgpt/global/core/chat/utils/mergeNode';
 import { getErrText } from '@fastgpt/global/common/error/utils';
+import { isChatEntryModerationError } from '@fastgpt/global/core/chat/error';
 import { WorkflowRuntimeContextProvider } from '@/components/core/chat/ChatContainer/context/workflowRuntimeContext';
 import { safeAbortController } from '../ChatBox/utils/generate';
 
@@ -178,12 +179,10 @@ const PluginRunContextProvider = ({
             pluginInputs,
             variables
           }),
-          id: humanChatItemId,
           dataId: humanChatItemId,
           status: 'finish'
         },
         {
-          id: responseChatItemId,
           dataId: responseChatItemId,
           obj: ChatRoleEnum.AI,
           value: [
@@ -241,6 +240,12 @@ const PluginRunContextProvider = ({
         );
       } catch (err: any) {
         const errorMsg = t(getErrText(err, t('common:core.chat.error.Chat error') as any));
+        if (isChatEntryModerationError(err)) {
+          toast({ title: errorMsg, status: 'warning' });
+          setChatRecords([]);
+          setTab(PluginRunBoxTabEnum.input);
+          return;
+        }
         toast({ title: errorMsg, status: 'error' });
         setChatRecords((state) =>
           state.map((item, index) => {

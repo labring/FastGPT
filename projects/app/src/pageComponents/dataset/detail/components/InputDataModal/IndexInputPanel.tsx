@@ -70,7 +70,6 @@ const IndexInputPanel = ({
         <Button
           variant={'whiteBase'}
           size={'sm'}
-          h={'30px'}
           px={'14px'}
           py={'7px'}
           borderRadius={'6px'}

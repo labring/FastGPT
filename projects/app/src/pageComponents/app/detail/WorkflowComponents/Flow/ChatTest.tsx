@@ -1,3 +1,4 @@
+import { WorkflowBufferDataContext } from '../context/workflowInitContext';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import React, { useCallback, useMemo } from 'react';
 import { Box, CloseButton, Flex } from '@chakra-ui/react';
@@ -44,7 +45,16 @@ const ChatTest = ({ isOpen, nodes = [], edges = [], onClose, chatId }: Props) =>
     [appDetail.chatConfig]
   );
 
+  const getNodes = useContextSelector(WorkflowBufferDataContext, (v) => v.getNodes);
+  // 详情与运行请求使用同一次打开预览的快照，后台编辑不替换本次请求的资源诊断。
+  const resourceNodes = useMemo(() => {
+    const nodeIds = new Set(nodes.map((node) => node.nodeId));
+    return getNodes()
+      .filter(({ data }) => nodeIds.has(data.nodeId))
+      .map(({ data }) => data);
+  }, [getNodes, nodes]);
   const { restartChat, ChatContainer } = useChatTest({
+    getResourceNodes: () => resourceNodes,
     nodes,
     edges,
     chatConfig: chatConfigForDebug,

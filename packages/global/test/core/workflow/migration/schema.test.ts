@@ -5,6 +5,7 @@ import {
   migrateWorkflowToCurrent,
   isLegacyV1Workflow
 } from '@fastgpt/global/core/workflow/migration';
+import { normalizeAgentToolInputs } from '@fastgpt/global/core/workflow/migration/agentToolInput';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import {
   NodeInputKeyEnum,
@@ -47,7 +48,284 @@ describe('workflow input schema boundaries', () => {
   });
 });
 
+describe('legacy ToolSet migration', () => {
+  it.each(['mcpToolSet', 'httpToolSet'] as const)(
+    'projects a legacy external %s snapshot to its referenced summary',
+    (toolSetKey) => {
+      const result = migrateWorkflowToCurrent({
+        nodes: [
+          {
+            nodeId: 'external-tool-set',
+            flowNodeType: 'toolSet',
+            pluginId: 'external-tool-set-id',
+            name: 'External ToolSet',
+            inputs: [],
+            outputs: [],
+            toolConfig: {
+              [toolSetKey]: {
+                ...(toolSetKey === 'mcpToolSet'
+                  ? { url: 'https://mcp.example.com' }
+                  : { baseUrl: 'https://api.example.com' }),
+                headerSecret: { Authorization: { value: 'secret', secret: '' } },
+                toolList: [{ name: 'search', description: 'Search' }]
+              }
+            }
+          }
+        ],
+        edges: []
+      });
+
+      expect(result.nodes[0].toolConfig?.[toolSetKey]).toEqual({
+        toolId: 'external-tool-set-id',
+        toolList: [{ name: 'search', description: 'Search' }]
+      });
+    }
+  );
+
+  it('keeps node-local HTTP source config and tool summaries', () => {
+    const result = migrateWorkflowToCurrent({
+      nodes: [
+        {
+          nodeId: 'inline-tool-set',
+          flowNodeType: 'toolSet',
+          name: 'Inline ToolSet',
+          inputs: [],
+          outputs: [],
+          toolConfig: {
+            httpToolSet: {
+              apiSchemaUrl: 'https://api.example.com/openapi.json',
+              toolList: [{ name: 'search', description: 'Search' }]
+            }
+          }
+        }
+      ],
+      edges: []
+    });
+
+    expect(result.nodes[0].toolConfig?.httpToolSet).toEqual({
+      apiSchemaUrl: 'https://api.example.com/openapi.json',
+      toolList: [{ name: 'search', description: 'Search' }]
+    });
+  });
+
+  it('preserves a full inline HTTP App runtime config and tool schemas', () => {
+    const httpToolSet = {
+      baseUrl: 'https://http.example.com',
+      apiSchemaStr: '{"openapi":"3.0.0"}',
+      customHeaders: '{}',
+      headerSecret: { Authorization: { value: 'secret' } },
+      toolList: [
+        {
+          name: 'search',
+          description: 'Search',
+          path: '/search',
+          method: 'POST',
+          inputSchema: {
+            type: 'object',
+            properties: { query: { type: 'string' } },
+            required: ['query']
+          }
+        }
+      ]
+    };
+    const result = migrateWorkflowToCurrent({
+      nodes: [
+        {
+          nodeId: 'http-app-root',
+          flowNodeType: 'toolSet',
+          name: 'HTTP App',
+          inputs: [],
+          outputs: [],
+          toolConfig: { httpToolSet }
+        }
+      ],
+      edges: []
+    });
+
+    expect(result.nodes[0].toolConfig?.httpToolSet).toEqual(httpToolSet);
+  });
+
+  it('preserves a full inline MCP App runtime config and tool schemas', () => {
+    const mcpToolSet = {
+      url: 'https://mcp.example.com',
+      headerSecret: { Authorization: { value: 'secret' } },
+      toolList: [
+        {
+          name: 'search',
+          description: 'Search',
+          inputSchema: {
+            type: 'object',
+            properties: { query: { type: 'string' } },
+            required: ['query']
+          }
+        }
+      ]
+    };
+    const result = migrateWorkflowToCurrent({
+      nodes: [
+        {
+          nodeId: 'mcp-app-root',
+          flowNodeType: 'toolSet',
+          name: 'MCP App',
+          inputs: [],
+          outputs: [],
+          toolConfig: { mcpToolSet }
+        }
+      ],
+      edges: []
+    });
+
+    expect(result.nodes[0].toolConfig?.mcpToolSet).toEqual(mcpToolSet);
+  });
+
+  it('strips a historical empty MCP toolId before strict runtime validation', () => {
+    const mcpToolSet = {
+      toolId: '',
+      url: 'https://mcp.example.com',
+      headerSecret: { Authorization: { value: 'secret' } },
+      toolList: [
+        {
+          name: 'search',
+          description: 'Search',
+          inputSchema: { type: 'object', properties: { query: { type: 'string' } } }
+        }
+      ]
+    };
+    const result = migrateWorkflowToCurrent({
+      nodes: [
+        {
+          nodeId: 'mcp-app-root',
+          flowNodeType: 'toolSet',
+          name: 'MCP App',
+          inputs: [],
+          outputs: [],
+          toolConfig: { mcpToolSet }
+        }
+      ],
+      edges: []
+    });
+
+    expect(result.nodes[0].toolConfig?.mcpToolSet).toEqual({
+      url: mcpToolSet.url,
+      headerSecret: mcpToolSet.headerSecret,
+      toolList: mcpToolSet.toolList
+    });
+  });
+
+  it('rejects an incomplete inline MCP App runtime config', () => {
+    expect(() =>
+      migrateWorkflowToCurrent({
+        nodes: [
+          {
+            nodeId: 'mcp-app-root',
+            flowNodeType: 'toolSet',
+            name: 'MCP App',
+            inputs: [],
+            outputs: [],
+            toolConfig: {
+              mcpToolSet: {
+                toolList: [{ name: 'search', description: 'Search' }]
+              }
+            }
+          }
+        ],
+        edges: []
+      })
+    ).toThrow();
+  });
+
+  it('rejects an invalid inline HTTP App runtime config', () => {
+    expect(() =>
+      migrateWorkflowToCurrent({
+        nodes: [
+          {
+            nodeId: 'inline-tool-set',
+            flowNodeType: 'toolSet',
+            name: 'Inline ToolSet',
+            inputs: [],
+            outputs: [],
+            toolConfig: {
+              httpToolSet: {
+                apiSchemaStr: '{"openapi":"3.0.0"}',
+                toolList: [
+                  {
+                    name: 'search',
+                    description: 'Search',
+                    path: '/search',
+                    inputSchema: { type: 'object' }
+                  }
+                ]
+              }
+            }
+          }
+        ],
+        edges: []
+      })
+    ).toThrow();
+  });
+
+  it('rejects a toolset configuring both protocols', () => {
+    expect(() =>
+      migrateWorkflowToCurrent({
+        nodes: [
+          {
+            nodeId: 'dual-tool-set',
+            flowNodeType: 'toolSet',
+            name: 'Dual ToolSet',
+            inputs: [],
+            outputs: [],
+            toolConfig: {
+              mcpToolSet: { toolId: 'mcp-tool-set', toolList: [] },
+              httpToolSet: { toolId: 'http-tool-set', toolList: [] }
+            }
+          }
+        ],
+        edges: []
+      })
+    ).toThrow();
+  });
+});
+
 describe('workflow migration boundary', () => {
+  it('preserves typed system tool values through canonical migration', () => {
+    const result = migrateWorkflowToCurrent({
+      nodes: [
+        {
+          nodeId: 'tool',
+          name: 'Tool',
+          flowNodeType: 'tool',
+          outputs: [],
+          inputs: [
+            {
+              key: NodeInputKeyEnum.systemInputConfig,
+              label: 'Config',
+              renderTypeList: [],
+              inputList: [
+                { key: 'count', label: 'Count', inputType: 'numberInput', value: { value: 0 } },
+                { key: 'enabled', label: 'Enabled', inputType: 'switch', value: { value: false } },
+                { key: 'optional', label: 'Optional', inputType: 'numberInput' }
+              ],
+              value: {
+                type: 'manual',
+                value: {
+                  count: { value: '12' },
+                  enabled: { value: 'false' },
+                  optional: { value: '' }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    });
+    expect(result.nodes[0].inputs[0]).toMatchObject({
+      inputList: [{ value: { value: 0 } }, { value: { value: false } }, { key: 'optional' }],
+      value: { value: { count: { value: 12 }, enabled: { value: false } } }
+    });
+    expect(result.nodes[0].inputs[0].value.value).not.toHaveProperty('optional');
+    expect(migrateWorkflowToCurrent(result)).toEqual(result);
+  });
+
   it('preserves ordinary business JSON containing credential-shaped fields', () => {
     const value = {
       headerSecret: { Authorization: { value: 'business-value', secret: 'business-secret' } },
@@ -92,8 +370,9 @@ describe('workflow migration boundary', () => {
             outputs: [],
             toolConfig: {
               [toolSetKey]: {
-                url: 'https://example.com/mcp',
-                baseUrl: 'https://example.com',
+                ...(toolSetKey === 'mcpToolSet'
+                  ? { url: 'https://example.com/mcp' }
+                  : { baseUrl: 'https://example.com' }),
                 toolList: [],
                 headerSecret: {
                   Authorization: {},
@@ -953,60 +1232,188 @@ describe('workflow migration boundary', () => {
     });
   });
 
-  it('rejects legacy tool input snapshots and invalid modes', async () => {
-    expect(() =>
-      migrateWorkflowToCurrent({
-        nodes: [
-          {
-            nodeId: 'agent-1',
-            flowNodeType: 'agent',
-            name: 'Agent',
-            inputs: [
-              {
-                key: NodeInputKeyEnum.selectedTools,
-                label: 'Selected tools',
-                renderTypeList: [FlowNodeInputTypeEnum.selectTool],
-                value: [
-                  {
-                    id: 'tool-1',
-                    inputs: [{ key: 'query', selectedType: 'agentGenerated' }],
-                    config: {}
-                  }
-                ]
-              }
-            ],
-            outputs: []
-          }
-        ]
-      } as any)
-    ).toThrow();
+  it('normalizes full NodeIO tool input snapshots into canonical key/mode', async () => {
+    // fork 前端会把 getPreviewNode 的完整 NodeIO 快照写进 agent_selectedTools.value，
+    // migration 边界必须把它投影成 { key, mode }，并把固定值搬进 config。
+    const result = await migrateWorkflowToCurrent({
+      nodes: [
+        {
+          nodeId: 'agent-1',
+          flowNodeType: 'agent',
+          name: 'Agent',
+          inputs: [
+            {
+              key: NodeInputKeyEnum.selectedTools,
+              label: 'Selected tools',
+              renderTypeList: [FlowNodeInputTypeEnum.selectTool],
+              value: [
+                {
+                  id: 'tool-1',
+                  pluginId: 'tool-1',
+                  name: 'Nested chat agent',
+                  flowNodeType: 'appModule',
+                  inputs: [
+                    {
+                      key: NodeInputKeyEnum.forbidStream,
+                      label: 'Forbid stream',
+                      renderTypeList: [FlowNodeInputTypeEnum.switch],
+                      valueType: WorkflowIOValueTypeEnum.boolean,
+                      selectedType: FlowNodeInputTypeEnum.switch,
+                      canAgentGenerated: false,
+                      value: false
+                    },
+                    {
+                      key: NodeInputKeyEnum.userChatInput,
+                      label: 'User question',
+                      renderTypeList: [
+                        FlowNodeInputTypeEnum.agentGenerated,
+                        FlowNodeInputTypeEnum.reference,
+                        FlowNodeInputTypeEnum.textarea
+                      ],
+                      valueType: WorkflowIOValueTypeEnum.string,
+                      selectedType: FlowNodeInputTypeEnum.agentGenerated,
+                      defaultToAgentGenerated: true,
+                      toolDescription: 'user question',
+                      required: true
+                    }
+                  ],
+                  config: {}
+                }
+              ]
+            }
+          ],
+          outputs: []
+        }
+      ]
+    } as any);
 
-    expect(() =>
-      migrateWorkflowToCurrent({
-        nodes: [
-          {
-            nodeId: 'agent-1',
-            flowNodeType: 'agent',
-            name: 'Agent',
-            inputs: [
-              {
-                key: NodeInputKeyEnum.selectedTools,
-                label: 'Selected tools',
-                renderTypeList: [FlowNodeInputTypeEnum.selectTool],
-                value: [
-                  {
-                    id: 'tool-1',
-                    inputs: [{ key: 'query', mode: 'invalid-mode' }],
-                    config: {}
-                  }
-                ]
-              }
-            ],
-            outputs: []
-          }
-        ]
-      } as any)
-    ).toThrow();
+    expect((result.nodes[0].inputs[0].value as any)[0]).toEqual({
+      id: 'tool-1',
+      name: 'Nested chat agent',
+      inputs: [
+        { key: NodeInputKeyEnum.forbidStream, mode: 'manual' },
+        { key: NodeInputKeyEnum.userChatInput, mode: 'agentGenerated' }
+      ],
+      // 固定值从 input.value 搬进 config，NodeIO 其余字段全部丢弃。
+      config: { [NodeInputKeyEnum.forbidStream]: false }
+    });
+  });
+
+  it('moves fixed NodeIO values into config and keeps canonical data idempotent', async () => {
+    const legacyWorkflow = {
+      nodes: [
+        {
+          nodeId: 'agent-1',
+          flowNodeType: 'agent',
+          name: 'Agent',
+          inputs: [
+            {
+              key: NodeInputKeyEnum.selectedTools,
+              label: 'Selected tools',
+              renderTypeList: [FlowNodeInputTypeEnum.selectTool],
+              value: [
+                {
+                  id: 'tool-1',
+                  inputs: [
+                    {
+                      key: 'query',
+                      renderTypeList: [FlowNodeInputTypeEnum.input],
+                      selectedType: FlowNodeInputTypeEnum.input,
+                      valueType: WorkflowIOValueTypeEnum.string,
+                      value: 'fixed value'
+                    },
+                    {
+                      key: 'dynamic',
+                      renderTypeList: [
+                        FlowNodeInputTypeEnum.agentGenerated,
+                        FlowNodeInputTypeEnum.textarea
+                      ],
+                      selectedType: FlowNodeInputTypeEnum.agentGenerated,
+                      valueType: WorkflowIOValueTypeEnum.string
+                    }
+                  ],
+                  // 已有 config 优先，不被 NodeIO 的同名字段覆盖。
+                  config: { query: 'saved config value' }
+                }
+              ]
+            }
+          ],
+          outputs: []
+        }
+      ]
+    };
+
+    const first = await migrateWorkflowToCurrent(legacyWorkflow as any);
+    expect((first.nodes[0].inputs[0].value as any)[0]).toEqual({
+      id: 'tool-1',
+      inputs: [
+        { key: 'query', mode: 'manual' },
+        { key: 'dynamic', mode: 'agentGenerated' }
+      ],
+      config: { query: 'saved config value' }
+    });
+
+    // 幂等：canonical 再跑一遍结果不变。
+    const second = await migrateWorkflowToCurrent(first as any);
+    expect(second).toEqual(first);
+    expect(migrateWorkflowToCurrent(second as any)).toEqual(second);
+  });
+
+  it('repairs invalid NodeIO mode strings instead of rejecting the workflow', async () => {
+    const result = await migrateWorkflowToCurrent({
+      nodes: [
+        {
+          nodeId: 'agent-1',
+          flowNodeType: 'agent',
+          name: 'Agent',
+          inputs: [
+            {
+              key: NodeInputKeyEnum.selectedTools,
+              label: 'Selected tools',
+              renderTypeList: [FlowNodeInputTypeEnum.selectTool],
+              value: [
+                {
+                  id: 'tool-1',
+                  inputs: [
+                    // 脏 mode：旧前端把 selectedType 原样写进 mode。
+                    {
+                      key: 'query',
+                      mode: FlowNodeInputTypeEnum.input,
+                      renderTypeList: [
+                        FlowNodeInputTypeEnum.agentGenerated,
+                        FlowNodeInputTypeEnum.input
+                      ],
+                      selectedType: FlowNodeInputTypeEnum.input,
+                      value: 'hello'
+                    },
+                    {
+                      key: 'userChatInput',
+                      mode: 0,
+                      renderTypeList: [
+                        FlowNodeInputTypeEnum.agentGenerated,
+                        FlowNodeInputTypeEnum.textarea
+                      ],
+                      selectedType: FlowNodeInputTypeEnum.agentGenerated
+                    }
+                  ],
+                  config: {}
+                }
+              ]
+            }
+          ],
+          outputs: []
+        }
+      ]
+    } as any);
+
+    expect((result.nodes[0].inputs[0].value as any)[0]).toEqual({
+      id: 'tool-1',
+      inputs: [
+        { key: 'query', mode: 'manual' },
+        { key: 'userChatInput', mode: 'agentGenerated' }
+      ],
+      config: { query: 'hello' }
+    });
   });
 
   it('restores legacy toolDescription defaults for tool nodes', async () => {
@@ -1491,6 +1898,146 @@ describe('workflow migration boundary', () => {
           { nodeId: 'node-2', flowNodeType: 'datasetSearchNode' }
         ])
       ).toBe(false);
+    });
+  });
+
+  describe('normalizeAgentToolInputs', () => {
+    const explicitTypes = [FlowNodeInputTypeEnum.agentGenerated, FlowNodeInputTypeEnum.input];
+
+    it('keeps an explicit manual selection when config already holds the saved value', () => {
+      const result = normalizeAgentToolInputs({
+        rawInputs: [
+          { key: 'query', renderTypeList: explicitTypes, selectedType: FlowNodeInputTypeEnum.input }
+        ],
+        rawConfig: { query: 'saved value' }
+      });
+
+      expect(result.inputs).toEqual([{ key: 'query', mode: 'manual' }]);
+      expect(result.config).toEqual({ query: 'saved value' });
+    });
+
+    it('keeps an explicit manual selection with an empty value and carries it into config', () => {
+      const result = normalizeAgentToolInputs({
+        rawInputs: [
+          {
+            key: 'query',
+            renderTypeList: explicitTypes,
+            selectedType: FlowNodeInputTypeEnum.input,
+            value: ''
+          }
+        ],
+        rawConfig: {}
+      });
+
+      expect(result.inputs).toEqual([{ key: 'query', mode: 'manual' }]);
+      expect(result.config).toEqual({ query: '' });
+    });
+
+    it('treats an explicit agentGenerated selection as model generated', () => {
+      const result = normalizeAgentToolInputs({
+        rawInputs: [
+          {
+            key: 'query',
+            renderTypeList: explicitTypes,
+            selectedType: FlowNodeInputTypeEnum.agentGenerated,
+            value: 'ignored for mode'
+          }
+        ],
+        rawConfig: {}
+      });
+
+      expect(result.inputs).toEqual([{ key: 'query', mode: 'agentGenerated' }]);
+      expect(result.config).toEqual({});
+    });
+
+    it('falls back to the saved config only when the snapshot has no source type', () => {
+      const result = normalizeAgentToolInputs({
+        rawInputs: [{ key: 'query' }],
+        rawConfig: { query: 'from config' }
+      });
+
+      expect(result.inputs).toEqual([{ key: 'query', mode: 'manual' }]);
+      expect(result.config).toEqual({ query: 'from config' });
+    });
+
+    it('narrows unknown NodeIO fields instead of trusting dirty values', () => {
+      const result = normalizeAgentToolInputs({
+        rawInputs: [
+          {
+            key: 'query',
+            mode: 'bogus',
+            renderTypeList: ['not-a-type', FlowNodeInputTypeEnum.input],
+            selectedType: 'nope'
+          }
+        ],
+        rawConfig: {}
+      });
+
+      expect(result.inputs).toEqual([{ key: 'query', mode: 'manual' }]);
+    });
+
+    it('is idempotent for canonical input', () => {
+      const first = normalizeAgentToolInputs({
+        rawInputs: [{ key: 'query', mode: 'manual' }],
+        rawConfig: { query: '' }
+      });
+      const second = normalizeAgentToolInputs({ rawInputs: first.inputs, rawConfig: first.config });
+
+      expect(second).toEqual(first);
+    });
+  });
+
+  describe('normalizeAgentToolInputs null config fallback', () => {
+    it('falls back to the legacy input value when config[key] is null', () => {
+      const result = normalizeAgentToolInputs({
+        rawInputs: [{ key: 'query', value: 'saved fixed value' }],
+        rawConfig: { query: null }
+      });
+
+      expect(result.inputs).toEqual([{ key: 'query', mode: 'manual' }]);
+      expect(result.config).toEqual({ query: 'saved fixed value' });
+    });
+
+    it('keeps the empty-config baseline for the same input', () => {
+      const result = normalizeAgentToolInputs({
+        rawInputs: [{ key: 'query', value: 'saved fixed value' }],
+        rawConfig: {}
+      });
+
+      expect(result.inputs).toEqual([{ key: 'query', mode: 'manual' }]);
+      expect(result.config).toEqual({ query: 'saved fixed value' });
+    });
+  });
+
+  describe('normalizeAgentToolInputs own-property semantics', () => {
+    it('carries a fixed value for a param named toString even though Object.prototype has one', () => {
+      const result = normalizeAgentToolInputs({
+        rawInputs: [{ key: 'toString', value: 'saved fixed value' }],
+        rawConfig: {}
+      });
+
+      expect(result.inputs).toEqual([{ key: 'toString', mode: 'manual' }]);
+      expect(Object.hasOwn(result.config, 'toString')).toBe(true);
+      expect(result.config.toString).toBe('saved fixed value');
+    });
+
+    it('does not treat the inherited toString as a saved config value', () => {
+      const result = normalizeAgentToolInputs({
+        rawInputs: [{ key: 'toString' }],
+        rawConfig: {}
+      });
+
+      // 没有来源信息、也没有自有配置值 => 视为模型生成，而不是“已配置”。
+      expect(result.inputs).toEqual([{ key: 'toString', mode: 'agentGenerated' }]);
+    });
+
+    it('keeps an explicitly stored own toString value untouched', () => {
+      const result = normalizeAgentToolInputs({
+        rawInputs: [{ key: 'toString', value: 'legacy value' }],
+        rawConfig: { toString: 'saved fixed value' }
+      });
+
+      expect(result.config.toString).toBe('saved fixed value');
     });
   });
 });

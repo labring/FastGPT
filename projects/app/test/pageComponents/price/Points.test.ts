@@ -11,12 +11,27 @@ vi.mock('@fastgpt/web/hooks/useSafeTranslation', () => ({
 }));
 vi.mock('@fastgpt/web/hooks/useRequest', () => ({
   useRequest: () => ({
-    data: [ModelTypeEnum.embedding, ModelTypeEnum.tts, ModelTypeEnum.stt].map((type) => ({
-      type,
-      name: type,
-      provider: 'openai',
-      pricing: { unitPrice: type !== ModelTypeEnum.stt ? 125 : 0.125 }
-    }))
+    data: [
+      {
+        type: ModelTypeEnum.stt,
+        name: 'token-stt',
+        provider: 'openai',
+        pricing: { type: 'tokens', unitPrice: 10 }
+      },
+      {
+        type: ModelTypeEnum.stt,
+        name: '60s-stt',
+        provider: 'openai',
+        pricing: { type: 'duration', unitPrice: 0.2 }
+      },
+      ...[ModelTypeEnum.embedding, ModelTypeEnum.tts, ModelTypeEnum.stt].map((type) => ({
+        type,
+        name: type,
+        provider: 'openai',
+        pricing:
+          type === ModelTypeEnum.stt ? { type: 'duration', unitPrice: 0.125 } : { unitPrice: 125 }
+      }))
+    ]
   })
 }));
 vi.mock('@/components/core/ai/ModelTable', () => ({ default: () => null }));
@@ -35,6 +50,8 @@ describe('public model prices', () => {
       '125common:support.wallet.subscription.point / 1M common:unit.character'
     );
     expect(text).toContain('0.13common:support.wallet.subscription.point / 60common:unit.seconds');
+    expect(text).toContain('10common:support.wallet.subscription.point / 1M Tokens');
+    expect(text).toContain('0.2common:support.wallet.subscription.point / 60common:unit.seconds');
     expect(text).not.toContain('1000');
     dom.window.close();
   });

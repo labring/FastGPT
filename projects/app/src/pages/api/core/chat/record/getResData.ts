@@ -4,22 +4,28 @@ import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
-import { filterPublicNodeResponseData } from '@fastgpt/global/core/chat/utils';
+import {
+  filterPublicNodeResponseData,
+  stripModerationRecordsFromNodeResponses
+} from '@fastgpt/global/core/chat/utils';
 import { GetResDataQuerySchema } from '@fastgpt/global/openapi/core/chat/record/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { getChatItemResponseData } from '@fastgpt/service/core/chat/nodeResponseStorage';
 import { buildChatSourceQuery } from '@fastgpt/service/core/chat/source';
 
 export async function handler(req: ApiRequestProps): Promise<ChatHistoryItemResType[]> {
-  const { sourceType, sourceId, chatId, dataId, outLinkAuthData } = parseApiInput({
-    req,
-    querySchema: GetResDataQuerySchema
-  }).query;
+  const { customUid, authProxy, sourceType, sourceId, chatId, dataId, outLinkAuthData } =
+    parseApiInput({
+      req,
+      querySchema: GetResDataQuerySchema
+    }).query;
   if (!chatId || !dataId) {
     return [];
   }
 
   const authRes = await authChatTargetCrud({
+    customUid,
+    authProxy,
     req,
     authToken: true,
     authApiKey: true,
@@ -53,11 +59,15 @@ export async function handler(req: ApiRequestProps): Promise<ChatHistoryItemResT
     chatItemDataId: dataId,
     fallbackResponseData: hasInlineResponseData ? chatData.responseData || [] : undefined
   });
-  return outLinkAuthData?.shareId
-    ? filterPublicNodeResponseData({
-        responseDetail: authRes.showCite,
-        nodeRespones: flowResponses
-      })
+  if (outLinkAuthData?.shareId) {
+    return filterPublicNodeResponseData({
+      responseDetail: authRes.showCite,
+      nodeRespones: flowResponses
+    });
+  }
+
+  return authRes.canWrite === false
+    ? stripModerationRecordsFromNodeResponses(flowResponses)
     : flowResponses;
 }
 

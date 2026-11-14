@@ -17,6 +17,10 @@ import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { SystemToolRepo } from '@fastgpt/service/core/app/tool/systemTool/systemTool.repo';
 import * as workflowMetrics from '@fastgpt/service/core/workflow/metrics';
 import * as mcp from '@fastgpt/service/core/app/mcp';
+import {
+  internalRuntimeNodeRunnerKey,
+  internalRuntimeNodeType
+} from '@fastgpt/service/core/workflow/dispatch/internal/runtimeNode';
 import { findFailedResponseNode } from '@fastgpt/global/core/chat/utils';
 import {
   graphNode,
@@ -672,4 +676,92 @@ describe('child workflow data transfer without mocking runWorkflow', () => {
     expect(result.workflowRuntimeSummary.errorCount).toBe(0);
     expect(Object.hasOwn(result, 'rawError')).toBe(false);
   });
+
+  it.each(['loopRun', 'parallelRun', 'loop'] as const)(
+    'propagates hasAgentSandbox from a nested child app through %s container',
+    async (containerKind) => {
+      loadChild.mockResolvedValue(
+        childResource({
+          nodes: [
+            graphNode({ id: 'childstart', type: FlowNodeTypeEnum.workflowStart }),
+            graphNode({
+              id: 'childagent',
+              type: internalRuntimeNodeType as FlowNodeTypeEnum,
+              params: {
+                [internalRuntimeNodeRunnerKey]: (props: any) => {
+                  props.nodeSummary.mergeNodeSummary({ hasAgentSandbox: true });
+                  return { data: { [NodeOutputKeyEnum.answerText]: 'sandbox-ok' } };
+                }
+              },
+              outputs: [NodeOutputKeyEnum.answerText]
+            })
+          ],
+          edges: [graphEdge({ source: 'childstart', target: 'childagent' })]
+        })
+      );
+
+      const innerApp = graphNode({
+        id: 'innerapp',
+        type: FlowNodeTypeEnum.appModule,
+        pluginId: 'childapp',
+        params: { userChatInput: 'run sandbox' },
+        outputs: [NodeOutputKeyEnum.answerText]
+      });
+      const isLoopRun = containerKind === 'loopRun';
+      const startNode = graphNode({
+        id: 'start',
+        type: isLoopRun ? FlowNodeTypeEnum.loopRunStart : FlowNodeTypeEnum.nestedStart,
+        params: isLoopRun
+          ? {
+              loopRunMode: LoopRunModeEnum.array,
+              [NodeInputKeyEnum.nestedStartInput]: undefined,
+              [NodeInputKeyEnum.nestedStartIndex]: 0
+            }
+          : undefined,
+        outputs: [isLoopRun ? NodeOutputKeyEnum.currentItem : NodeInputKeyEnum.nestedStartInput]
+      });
+      const endNode = graphNode({
+        id: 'end',
+        type: FlowNodeTypeEnum.nestedEnd,
+        inputs: [
+          graphReference({
+            key: NodeInputKeyEnum.nestedEndInput,
+            from: ['innerapp', NodeOutputKeyEnum.answerText]
+          })
+        ]
+      });
+      const container = graphNode({
+        id: 'container',
+        type: isLoopRun
+          ? FlowNodeTypeEnum.loopRun
+          : containerKind === 'parallelRun'
+            ? FlowNodeTypeEnum.parallelRun
+            : FlowNodeTypeEnum.loop,
+        isEntry: true,
+        params: isLoopRun
+          ? {
+              [NodeInputKeyEnum.loopRunMode]: LoopRunModeEnum.array,
+              [NodeInputKeyEnum.loopRunInputArray]: ['item-1'],
+              [NodeInputKeyEnum.childrenNodeIdList]: ['start', 'innerapp']
+            }
+          : {
+              [NodeInputKeyEnum.nestedInputArray]: ['item-1'],
+              [NodeInputKeyEnum.childrenNodeIdList]: ['start', 'innerapp', 'end']
+            }
+      });
+
+      const { result } = await runGraph({
+        nodes: isLoopRun
+          ? [container, startNode, innerApp]
+          : [container, startNode, innerApp, endNode],
+        edges: isLoopRun
+          ? [graphEdge({ source: 'start', target: 'innerapp' })]
+          : [
+              graphEdge({ source: 'start', target: 'innerapp' }),
+              graphEdge({ source: 'innerapp', target: 'end' })
+            ]
+      });
+      expect(result.workflowRuntimeSummary.hasAgentSandbox).toBe(true);
+    }
+  );
 });

@@ -64,6 +64,8 @@ export type SystemConfigType = {
       ACCOUNT_CANCELLATION_REMINDER_EN?: string;
       ACCOUNT_CANCELLATION_TODAY?: string;
       ACCOUNT_CANCELLATION_TODAY_EN?: string;
+      MODEL_DEPRECATION?: string;
+      MODEL_DEPRECATION_EN?: string;
       EXPIRE_SOON: string;
       EXPIRED: string;
       FREE_CLEAN: string;
@@ -196,7 +198,6 @@ export type ConfigFormType = {
       qaMaxProcess: number;
       vlmMaxProcess: number;
       hnswEfSearch: number;
-      hnswMaxScanTuples: number;
       vectorRecallConcurrency: FastGPTConfigFileType['systemEnv']['vectorRecallConcurrency'];
       customPdfParse?: customPdfParseType;
       fileUrlWhitelist?: string[];

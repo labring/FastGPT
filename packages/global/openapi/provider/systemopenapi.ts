@@ -17,8 +17,7 @@ const ApiKeyTagNameMap: Record<string, string> = {
   [SystemOpenApiTagMap.datasetCollection]: '集合管理',
   [SystemOpenApiTagMap.datasetCollectionCreate]: '集合创建',
   [SystemOpenApiTagMap.datasetData]: '数据管理',
-  [SystemOpenApiTagMap.datasetDataIndex]: '索引管理',
-  [SystemOpenApiTagMap.datasetOther]: '其他',
+  [SystemOpenApiTagMap.datasetSearch]: '知识库搜索',
 
   [SystemOpenApiTagMap.model]: '模型管理'
 };
@@ -48,8 +47,7 @@ export const tagGroups = [
       ApiKeyTagNameMap[SystemOpenApiTagMap.datasetCollection],
       ApiKeyTagNameMap[SystemOpenApiTagMap.datasetCollectionCreate],
       ApiKeyTagNameMap[SystemOpenApiTagMap.datasetData],
-      ApiKeyTagNameMap[SystemOpenApiTagMap.datasetDataIndex],
-      ApiKeyTagNameMap[SystemOpenApiTagMap.datasetOther]
+      ApiKeyTagNameMap[SystemOpenApiTagMap.datasetSearch]
     ]
   }
 ];
@@ -109,7 +107,7 @@ export const apiDocOpenAPIDocument = setRequiredRequestExamples(
             scheme: 'bearer',
             bearerFormat: 'API Key',
             description:
-              '在 Authorization 请求头中传入 Bearer <apiKey>。除 chat/completions 外，对话相关接口必须在 body/query 中显式传入 appId。chat/completions 推荐传 body.appId；为兼容 OpenAI SDK，也允许 Bearer <apiKey>-<appId>，该后缀仅作为传输兼容，不会写入数据库。'
+              '在 Authorization 请求头中传入 Bearer <apiKey>。应用 API Key 自动使用绑定的应用，对话及配套管理接口无需传 appId；显式 appId 或 SDK 后缀不能覆盖 Key 绑定。个人密钥调用应用会话接口需提供 appId；chat/completions 推荐传 body.appId，为兼容 OpenAI SDK 也支持 Bearer <apiKey>-<appId>。SDK 后缀仅作为传输兼容，不会写入数据库。'
           }
         }
       },

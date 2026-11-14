@@ -4,6 +4,9 @@ import { createDocument, createSchema } from 'zod-openapi';
 import { ObjectIdSchema } from '../../common/type/mongo';
 import { openApiDocumentOptions } from '../../openapi/generation';
 import { setRequiredRequestExamples } from '../../openapi/requiredExamples';
+import { openAPIDocument } from '../../openapi/provider/devapi';
+import { apiDocOpenAPIDocument } from '../../openapi/provider/systemopenapi';
+import { getErrorResponse } from '../../openapi/type';
 
 const id = '507f1f77bcf86cd799439011';
 const fields = z.object({
@@ -14,6 +17,32 @@ const fields = z.object({
   optionalDefaultId: ObjectIdSchema.default(id).optional(),
   title: z.string(),
   optionalTitle: z.string().optional()
+});
+
+describe('localized API error contract', () => {
+  it('accepts localized messages while keeping code and statusText fixed in validation and OpenAPI', () => {
+    const schema = getErrorResponse({
+      code: 401,
+      statusText: 'unAuthorization',
+      message: 'common:code_error.error_message.401'
+    });
+    for (const message of ['凭证错误', 'Unauthorized', '憑證錯誤', '인증 정보 오류']) {
+      expect(schema.safeParse({ code: 401, statusText: 'unAuthorization', message }).success).toBe(
+        true
+      );
+    }
+    expect(
+      schema.safeParse({ code: 500, statusText: 'unAuthorization', message: 'Unauthorized' })
+        .success
+    ).toBe(false);
+    const { schema: document } = createSchema(schema, { io: 'output' });
+    if ('$ref' in document) throw new Error('Expected inline error schema');
+    expect(document.properties!.message).toMatchObject({ type: 'string' });
+    expect(document.properties!.message).not.toHaveProperty('const');
+    expect(document.properties!.message).not.toHaveProperty('enum');
+    expect(document.properties!.code).toMatchObject({ const: 401 });
+    expect(document.properties!.statusText).toMatchObject({ const: 'unAuthorization' });
+  });
 });
 
 describe('OpenAPI ObjectId generation', () => {
@@ -118,6 +147,107 @@ describe('OpenAPI never properties', () => {
       expect(
         fields.safeParse({ name: 'test', nullableValue: null, forbidden: 'invalid' }).success
       ).toBe(false);
+    }
+  );
+});
+
+describe('OpenAPI request omission semantics', () => {
+  const fields = z.object({
+    enabled: z.preprocess((value) => value ?? undefined, z.boolean().default(false)),
+    count: z.number().default(0),
+    text: z.string().default(''),
+    items: z.array(z.string()).default([]),
+    required: z.string(),
+    nullable: z.string().nullable(),
+    documentedDefault: z.string().meta({ default: 'example' })
+  });
+
+  it('uses accepted omissions rather than default annotations for request fields', () => {
+    const { schema } = createSchema(fields, { io: 'input', opts: openApiDocumentOptions });
+    if ('$ref' in schema) throw new Error('Unexpected schema reference');
+    expect(schema.required?.slice().sort()).toEqual(['documentedDefault', 'nullable', 'required']);
+    expect(schema.properties).toMatchObject({
+      enabled: { type: 'boolean', default: false },
+      count: { type: 'number', default: 0 },
+      text: { type: 'string', default: '' },
+      items: { type: 'array', default: [] },
+      documentedDefault: { type: 'string', default: 'example' }
+    });
+    expect(
+      fields.parse({ required: 'value', nullable: null, documentedDefault: 'value' })
+    ).toMatchObject({ enabled: false, count: 0, text: '', items: [] });
+  });
+
+  it('applies the same rule to query and header parameters', () => {
+    const paths = {
+      '/test': {
+        get: {
+          requestParams: { query: fields, header: fields },
+          responses: { '200': { description: 'ok' } }
+        }
+      }
+    };
+    const document = setRequiredRequestExamples(
+      createDocument(
+        {
+          openapi: '3.1.0',
+          info: { title: 'test', version: '1' },
+          paths
+        },
+        openApiDocumentOptions
+      ),
+      paths
+    );
+    const parameters = document.paths!['/test']!.get!.parameters!;
+    for (const parameter of parameters) {
+      if ('$ref' in parameter) throw new Error('Unexpected parameter reference');
+      expect(parameter.required === true, `${parameter.in}.${parameter.name}`).toBe(
+        ['required', 'nullable', 'documentedDefault'].includes(parameter.name)
+      );
+    }
+  });
+
+  it('retains the generated requirement when a custom parser cannot be probed synchronously', () => {
+    const fields = z.object({
+      value: z.preprocess((value) => {
+        if (value === undefined) throw new Error('Expected an explicit value');
+        return value;
+      }, z.string())
+    });
+    expect(createSchema(fields, { io: 'input', opts: openApiDocumentOptions })).toEqual(
+      createSchema(fields, { io: 'input' })
+    );
+  });
+
+  it('preserves response requirements and defaults', () => {
+    const generated = createSchema(fields, { io: 'output', opts: openApiDocumentOptions });
+    expect(generated).toEqual(createSchema(fields, { io: 'output' }));
+    if ('$ref' in generated.schema) throw new Error('Unexpected schema reference');
+    expect(generated.schema.required).toContain('enabled');
+  });
+
+  it.each([
+    ['DevAPI', openAPIDocument],
+    ['System OpenAPI', apiDocOpenAPIDocument]
+  ] as const)(
+    'documents optional completion flags in %s for all identities and versions',
+    (_, document) => {
+      for (const version of ['v1', 'v2']) {
+        const body = document.paths![`/${version}/chat/completions`]!.post!.requestBody!;
+        if ('$ref' in body) throw new Error('Unexpected body reference');
+        const schema = body.content['application/json'].schema!;
+        if ('$ref' in schema) throw new Error('Unexpected schema reference');
+        const identities = schema.anyOf!.flatMap((branch) => branch.anyOf ?? [branch]);
+        expect(identities.length).toBeGreaterThan(0);
+        for (const identity of identities) {
+          for (const name of ['retainDatasetCite', 'showSkillReferences', 'detail', 'stream']) {
+            expect(identity.required ?? [], `${version}.${identity.title}.${name}`).not.toContain(
+              name
+            );
+            expect(identity.properties?.[name]).toMatchObject({ type: 'boolean', default: false });
+          }
+        }
+      }
     }
   );
 });

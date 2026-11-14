@@ -14,26 +14,12 @@ import { useContextSelector } from 'use-context-selector';
 import CatchError from './render/RenderOutput/CatchError';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { WorkflowUtilsContext } from '../../context/workflowUtilsContext';
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import WorkflowSandboxConfig, {
-  createSandboxEntrypointInput
-} from './components/WorkflowSandboxConfig';
-import { WorkflowActionsContext } from '../../context/workflowActionsContext';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { useUserStore } from '@/web/support/user/useUserStore';
-import { useToast } from '@fastgpt/web/hooks/useToast';
 
 const NodeToolCall = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
   const { nodeId, inputs, outputs, catchError } = data;
-  const { toast } = useToast();
-  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
   const splitToolInputs = useContextSelector(WorkflowUtilsContext, (ctx) => ctx.splitToolInputs);
   const splitOutput = useContextSelector(WorkflowUtilsContext, (ctx) => ctx.splitOutput);
-  const { feConfigs } = useSystemStore();
-  const { teamPlanStatus } = useUserStore();
-  const enableSandbox = !teamPlanStatus?.standard || !!teamPlanStatus?.standard?.enableSandbox;
-  const showSandbox = feConfigs.show_agent_sandbox;
   const { isTool, commonInputs } = useMemoEnhance(
     () => splitToolInputs(inputs, nodeId),
     [inputs, nodeId, splitToolInputs]
@@ -42,100 +28,12 @@ const NodeToolCall = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     () => splitOutput(outputs),
     [outputs, splitOutput]
   );
-  const sandboxInput = React.useMemo(
-    () => inputs.find((input) => input.key === NodeInputKeyEnum.useAgentSandbox),
-    [inputs]
-  );
-  const sandboxEntrypointInput = React.useMemo(
-    () => inputs.find((input) => input.key === NodeInputKeyEnum.sandboxEntrypoint),
-    [inputs]
-  );
-  const { beforeSandboxInputs, afterSandboxInputs } = React.useMemo(() => {
-    const visibleInputs = commonInputs.filter(
-      (input) =>
-        input.key !== NodeInputKeyEnum.useAgentSandbox &&
-        input.key !== NodeInputKeyEnum.sandboxEntrypoint
-    );
-    const sandboxIndex = commonInputs.findIndex(
-      (input) => input.key === NodeInputKeyEnum.useAgentSandbox
-    );
-    if (sandboxIndex < 0) {
-      return {
-        beforeSandboxInputs: visibleInputs,
-        afterSandboxInputs: []
-      };
-    }
-
-    return {
-      beforeSandboxInputs: visibleInputs.filter(
-        (input) => commonInputs.findIndex((item) => item.key === input.key) < sandboxIndex
-      ),
-      afterSandboxInputs: visibleInputs.filter(
-        (input) => commonInputs.findIndex((item) => item.key === input.key) > sandboxIndex
-      )
-    };
-  }, [commonInputs]);
-  const onChangeSandbox = React.useCallback(
-    (checked: boolean) => {
-      if (!sandboxInput) return;
-      if (checked) {
-        if (!showSandbox) {
-          toast({
-            status: 'warning',
-            title: t('skill:sandbox_system_not_configured_toast')
-          });
-          return;
-        }
-        if (!enableSandbox) {
-          toast({
-            status: 'warning',
-            title: t('app:sandbox_free_not_support')
-          });
-          return;
-        }
-      }
-
-      onChangeNode({
-        nodeId,
-        key: NodeInputKeyEnum.useAgentSandbox,
-        type: 'updateInput',
-        value: {
-          ...sandboxInput,
-          value: checked
-        }
-      });
-    },
-    [enableSandbox, nodeId, onChangeNode, sandboxInput, showSandbox, t, toast]
-  );
 
   return (
     <NodeCard minW={'524px'} selected={selected} {...data}>
       <Container>
         <IOTitle text={t('common:Input')} />
-        <RenderInput nodeId={nodeId} flowInputList={beforeSandboxInputs} isTool={isTool} />
-        <WorkflowSandboxConfig
-          nodeId={nodeId}
-          sandboxInput={sandboxInput}
-          sandboxEntrypointInput={sandboxEntrypointInput}
-          showSandbox={!!showSandbox}
-          enableSandbox={enableSandbox}
-          isPlus={feConfigs?.isPlus}
-          onChangeSandbox={onChangeSandbox}
-          onChangeEntrypoint={(value) => {
-            onChangeNode({
-              nodeId,
-              key: NodeInputKeyEnum.sandboxEntrypoint,
-              type: 'replaceInput',
-              value: sandboxEntrypointInput
-                ? {
-                    ...sandboxEntrypointInput,
-                    value
-                  }
-                : createSandboxEntrypointInput(value)
-            });
-          }}
-        />
-        <RenderInput nodeId={nodeId} flowInputList={afterSandboxInputs} isTool={isTool} />
+        <RenderInput nodeId={nodeId} flowInputList={commonInputs} isTool={isTool} />
       </Container>
       <Container>
         <IOTitle text={t('common:Output')} nodeId={nodeId} catchError={catchError} />

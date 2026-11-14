@@ -34,6 +34,7 @@ import { AgentNode } from '@fastgpt/global/core/workflow/template/system/agent';
 import { ClassifyQuestionModule } from '@fastgpt/global/core/workflow/template/system/classifyQuestion';
 import { ToolCallNode } from '@fastgpt/global/core/workflow/template/system/toolCall';
 import { LoopRunModeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { HttpToolSetNode } from '@fastgpt/global/core/workflow/template/system/httpToolSet';
 import { Input_Template_Dataset_Tag_Filter_Version } from '@fastgpt/global/core/workflow/template/input';
 
 describe('nodeTemplate2FlowNode', () => {
@@ -194,6 +195,77 @@ describe('nodeTemplate2FlowNode', () => {
 });
 
 describe('storeNode2FlowNode', () => {
+  it.each([
+    { datasets: [], expected: [] },
+    {
+      datasets: [{ datasetId: 'dataset-1', name: 'Dataset' }],
+      expected: [{ datasetId: 'dataset-1', name: 'Dataset' }]
+    }
+  ])('Agent 知识库手动选择模式下清理混入的旧引用值 %#', ({ datasets, expected }) => {
+    const node = storeNode2FlowNode({
+      item: {
+        ...AgentNode,
+        nodeId: 'legacy-agent',
+        inputs: AgentNode.inputs.map((input) =>
+          input.key === NodeInputKeyEnum.datasetSelectList
+            ? {
+                ...input,
+                renderTypeList: [
+                  FlowNodeInputTypeEnum.selectDataset,
+                  FlowNodeInputTypeEnum.reference
+                ],
+                selectedType: FlowNodeInputTypeEnum.selectDataset,
+                value: [['source-a', 'datasets'], ['source-b', 'datasets'], ...datasets]
+              }
+            : input
+        )
+      },
+      t: ((key: string) => key) as any
+    });
+    const stored = uiWorkflow2StoreWorkflow({ nodes: [node], edges: [] });
+
+    expect(
+      node.data.inputs.find((input) => input.key === NodeInputKeyEnum.datasetSelectList)
+    ).toMatchObject({
+      selectedType: FlowNodeInputTypeEnum.selectDataset,
+      value: expected
+    });
+    expect(
+      stored.nodes[0].inputs.find((input) => input.key === NodeInputKeyEnum.datasetSelectList)
+        ?.value
+    ).toEqual(expected);
+  });
+
+  it('Agent 知识库引用模式下保留引用值', () => {
+    const referenceValue = [
+      ['source-a', 'datasets'],
+      ['source-b', 'datasets']
+    ];
+    const node = storeNode2FlowNode({
+      item: {
+        ...AgentNode,
+        nodeId: 'agent-reference-datasets',
+        inputs: AgentNode.inputs.map((input) =>
+          input.key === NodeInputKeyEnum.datasetSelectList
+            ? {
+                ...input,
+                selectedType: FlowNodeInputTypeEnum.reference,
+                value: referenceValue
+              }
+            : input
+        )
+      },
+      t: ((key: string) => key) as any
+    });
+
+    expect(
+      node.data.inputs.find((input) => input.key === NodeInputKeyEnum.datasetSelectList)
+    ).toMatchObject({
+      selectedType: FlowNodeInputTypeEnum.reference,
+      value: referenceValue
+    });
+  });
+
   it('preserves saved query extension settings despite the new disabled template default', () => {
     const node = storeNode2FlowNode({
       item: {
@@ -318,6 +390,19 @@ describe('storeNode2FlowNode', () => {
     });
 
     expect(result.data.showSourceHandle).toBe(false);
+  });
+
+  it('restores custom HTTP tool sets with the HTTP icon', () => {
+    const result = storeNode2FlowNode({
+      item: {
+        ...HttpToolSetNode,
+        nodeId: 'http-tool-set',
+        avatar: 'core/app/type/httpToolsFill'
+      },
+      t: ((key: string) => key) as any
+    });
+
+    expect(result.data.avatar).toBe('core/app/type/httpPluginFill');
   });
 
   it('should materialize stored editable text when it matches an i18n key', () => {

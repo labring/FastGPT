@@ -38,7 +38,7 @@ export const getSystemMigrationDisplayStatus = ({
   return migration.status;
 };
 
-/** 未提供完整计数时隐藏进度；显式空任务显示 0%，成功后显示 100%。 */
+/** 未提供完整计数时不计算百分比；已处理数由页面单独展示，显式空任务完成后为 100%。 */
 export const getSystemMigrationProgressPercent = (progress: SystemMigrationProgressListItem) => {
   const current = progress.current;
   const total = progress.total;

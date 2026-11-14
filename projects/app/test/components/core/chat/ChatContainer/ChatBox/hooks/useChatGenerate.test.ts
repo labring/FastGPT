@@ -1,5 +1,5 @@
 import { JSDOM } from 'jsdom';
-import React, { act, useLayoutEffect, useRef, useState } from 'react';
+import React, { act, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { useForm } from 'react-hook-form';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -22,6 +22,7 @@ import {
 } from '@fastgpt/global/core/chat/constants';
 import type {
   ChatBoxInputFormType,
+  ChatGeneratingConflictRecovery,
   ChatSiteItemType
 } from '@/components/core/chat/ChatContainer/ChatBox/type';
 import { clearChatInputDrafts, readChatInputDraft } from '@/web/core/chat/inputDraft/storage';
@@ -29,9 +30,14 @@ import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/cons
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import type { UserChatSelectType } from '@fastgpt/global/core/chat/input/type';
 import { AuxiliaryGenerationEventEnum } from '@fastgpt/global/core/ai/auxiliaryGeneration/constants';
+import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
+import {
+  MODERATION_BLOCKED_ERROR_MESSAGE,
+  MODERATION_ERROR_BLOCKED_MESSAGE
+} from '@fastgpt/global/core/plugin/moderation/constants';
 import { ChatAgentConfigFormDataSchema } from '@fastgpt/global/core/ai/auxiliaryGeneration/type';
 import type { generatingMessageProps } from '@/components/core/chat/ChatContainer/type';
-import type { streamResumeFetch } from '@/web/common/api/fetch';
+import { createStreamFetchError, type streamResumeFetch } from '@/web/common/api/fetch';
 
 const mocks = vi.hoisted(() => ({
   start: vi.fn(),
@@ -117,6 +123,7 @@ describe('useChatGenerate.sendPrompt', () => {
     const activeChat = useRef<string | undefined>(chatId);
     const resumeController = useRef<AbortController>();
     const resumedChatTarget = useRef<string>();
+    const [conflict, setConflict] = useState<ChatGeneratingConflictRecovery>();
     useLayoutEffect(() => {
       activeChat.current = chatId;
     }, [chatId]);
@@ -151,9 +158,10 @@ describe('useChatGenerate.sendPrompt', () => {
       scrollToBottom: () => {},
       generatingScroll: mocks.scroll,
       notifyChatGenerateStatusChange: mocks.notifyStatus,
-      finishChatGenerateStatus: mocks.finishStatus
+      finishChatGenerateStatus: mocks.finishStatus,
+      onChatGeneratingConflict: resume ? setConflict : undefined
     });
-    useChatResume({
+    const { recoverChatGeneratingConflict } = useChatResume({
       enableAutoResume: resume,
       isReady: true,
       resumeTargetAiDataId: records.at(-1)?.dataId,
@@ -166,6 +174,11 @@ describe('useChatGenerate.sendPrompt', () => {
       scrollToBottom: mocks.scroll,
       finishChatGenerateStatus: mocks.finishStatus
     });
+    useEffect(() => {
+      if (!conflict) return;
+      setConflict(undefined);
+      recoverChatGeneratingConflict(conflict);
+    }, [conflict, recoverChatGeneratingConflict]);
     recordActions = useChatRecordActions({ sendPrompt: generate.sendPrompt });
     return withComposer
       ? React.createElement(ChatInput, {
@@ -204,7 +217,6 @@ describe('useChatGenerate.sendPrompt', () => {
       resume
         ? [
             {
-              id: 'resumed-ai',
               dataId: 'resumed-ai',
               obj: ChatRoleEnum.AI,
               status: ChatStatusEnum.loading,
@@ -296,14 +308,15 @@ describe('useChatGenerate.sendPrompt', () => {
   const edit = async (text: string, files: (typeof file)[] = []) =>
     act(async () => input.resetInputVal({ text, files }));
   const send = async ({ clearInput = true, text = 'submitted', autoTTSResponse = false } = {}) =>
-    act(async () =>
+    act(async () => {
       generate.sendPrompt({
         text,
         files: input.chatForm.getValues('files'),
         clearInput,
         autoTTSResponse
-      })
-    );
+      });
+      await vi.advanceTimersByTimeAsync(0);
+    });
 
   beforeEach(() => {
     dom = new JSDOM('<div id="root"></div>', {
@@ -346,6 +359,96 @@ describe('useChatGenerate.sendPrompt', () => {
     vi.unstubAllGlobals();
   });
 
+  it.each([undefined, ''])('omits an empty file key from the chat request: %j', async (key) => {
+    await render();
+    await act(async () => {
+      generate.sendPrompt({ text: 'question', files: [{ ...file, key }] });
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    expect(mocks.start).toHaveBeenCalledOnce();
+    const human = records.find((item) => item.obj === ChatRoleEnum.Human);
+    expect(human?.value[0]).toMatchObject({ file: { url: file.url, key: undefined } });
+    const request = JSON.parse(JSON.stringify(mocks.start.mock.calls[0][0]));
+    expect(request.messages[0].content[0]).toEqual({
+      type: 'file_url',
+      name: file.name,
+      url: file.url,
+      fileType: 'document'
+    });
+  });
+
+  it.each(['streaming', 'completed', 'interactive'] as const)(
+    'restores a rejected send and recovers the already loaded original AI: %s',
+    async (mode) => {
+      const original: ChatSiteItemType = {
+        id: 'resumed-ai',
+        dataId: 'resumed-ai',
+        obj: ChatRoleEnum.AI,
+        status: ChatStatusEnum.finish,
+        value: []
+      };
+      mocks.resume
+        .mockResolvedValueOnce({
+          responseText: '',
+          completedChat: {
+            chatGenerateStatus: ChatGenerateStatusEnum.done,
+            records: { list: [original], total: 1, hasMorePrev: false, hasMoreNext: false }
+          }
+        })
+        .mockImplementationOnce(async ({ onmessage }: Parameters<typeof streamResumeFetch>[0]) => {
+          if (mode === 'completed') {
+            return {
+              responseText: '',
+              completedChat: {
+                chatGenerateStatus: ChatGenerateStatusEnum.done,
+                records: {
+                  list: [{ ...original, value: [{ text: { content: 'original A answer' } }] }],
+                  total: 1,
+                  hasMorePrev: false,
+                  hasMoreNext: false
+                }
+              }
+            };
+          }
+          onmessage({ event: SseResponseEventEnum.answer, text: 'original A answer' });
+          return { responseText: 'original A answer' };
+        });
+      mocks.refreshRecords.mockResolvedValueOnce([original]);
+      mocks.start.mockRejectedValueOnce(
+        createStreamFetchError({
+          error: {
+            statusText: 'chatIsGenerating',
+            data:
+              mode === 'interactive'
+                ? { reusePreviousAi: true }
+                : { responseChatItemId: 'resumed-ai' }
+          },
+          fallbackMessage: 'Conflict',
+          responseText: ''
+        })
+      );
+      await render({ resume: true });
+      expect(mocks.resume).toHaveBeenCalledOnce();
+      await edit('rejected B text', [file]);
+      await send({ text: 'rejected B text' });
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1200);
+      });
+      expect(mocks.start).toHaveBeenCalledOnce();
+      expect(input.chatForm.getValues('input')).toBe('rejected B text');
+      expect(input.chatForm.getValues('files')[0].key).toBe(file.key);
+      expect(readChatInputDraft(identity)?.text).toBe('rejected B text');
+      expect(mocks.refreshRecords).toHaveBeenCalledOnce();
+      expect(mocks.resume).toHaveBeenCalledTimes(2);
+      expect(records).toHaveLength(1);
+      expect(records[0].dataId).toBe('resumed-ai');
+      if (mode === 'completed') expect(Object.hasOwn(records[0], 'id')).toBe(false);
+      expect(JSON.stringify(records[0].value)).toContain('original A answer');
+      expect(JSON.stringify(records)).not.toContain('rejected B text');
+    }
+  );
+
   it.each(['normal', 'resume'] as const)(
     'applies generated agent configuration once through the %s stream',
     async (mode) => {
@@ -381,6 +484,7 @@ describe('useChatGenerate.sendPrompt', () => {
         expect.objectContaining(event)
       );
       expect(records.at(-1)?.value).toEqual(expect.arrayContaining([{ chatAgentBuilderVersion }]));
+      expect(records.every((item) => !Object.hasOwn(item, 'id'))).toBe(true);
       expect(mode === 'resume' ? mocks.resume : mocks.start).toHaveBeenCalledOnce();
       expect(mode === 'resume' ? mocks.start : mocks.resume).not.toHaveBeenCalled();
     }
@@ -772,10 +876,107 @@ describe('useChatGenerate.sendPrompt', () => {
     expect(input.chatForm.getValues('files')).toEqual([]);
     expect(readChatInputDraft(identity)).toBeUndefined();
 
-    await act(async () => request.reject(new Error('network')));
+    await act(async () => {
+      request.reject(new Error('network'));
+      await vi.advanceTimersByTimeAsync(0);
+    });
     expect(input.chatForm.getValues('input')).toBe('spoken input');
     expect(input.chatForm.getValues('files')[0].key).toBe(file.key);
     expect(readChatInputDraft(identity)?.files).toHaveLength(1);
+  });
+
+  it.each([
+    { outcome: 'resolve', nextDraft: '' },
+    { outcome: 'reject', nextDraft: '' },
+    { outcome: 'reject', nextDraft: 'next unsent draft' }
+  ] as const)(
+    'preserves only new drafts after refresh ($outcome, nextDraft: "$nextDraft")',
+    async ({ outcome, nextDraft }) => {
+      const request = Promise.withResolvers<{ responseText: string }>();
+      mocks.start.mockReturnValueOnce(request.promise);
+      await render({ withComposer: true });
+      await edit('', [file]);
+      // 直接输入后立刻发送，覆盖尚未完成防抖保存的文字和已上传附件。
+      await act(async () => input.chatForm.setValue('input', 'submitted'));
+      await send();
+      expect(mocks.start).toHaveBeenCalledOnce();
+      expect(input.chatForm.getValues('input')).toBe('');
+      expect(input.chatForm.getValues('files')).toEqual([]);
+      if (nextDraft) await act(async () => input.chatForm.setValue('input', nextDraft));
+
+      for (const event of ['beforeunload', 'pagehide']) {
+        await act(async () => window.dispatchEvent(new window.Event(event)));
+      }
+      const controller = mocks.start.mock.calls[0][0].controller as AbortController;
+      expect(controller.signal.aborted).toBe(true);
+      expect(controller.signal.reason.message).toBe('leave');
+      // 某些流库在关闭时正常返回，另一些以网络错误结束，两者都不能复活已发送内容。
+      await act(async () => {
+        if (outcome === 'resolve') request.resolve({ responseText: '' });
+        else request.reject(new TypeError('Failed to fetch'));
+      });
+      await act(async () => vi.advanceTimersByTimeAsync(1000));
+      expect(input.chatForm.getValues('input')).toBe(nextDraft);
+      expect(readChatInputDraft(identity)?.text).toBe(nextDraft || undefined);
+      expect(mocks.finishStatus).not.toHaveBeenCalled();
+      expect(mocks.createGuide).not.toHaveBeenCalled();
+
+      // 同一 sessionStorage 重挂载输入区，模拟刷新后读取草稿。
+      await act(async () => root.unmount());
+      root = createRoot(document.getElementById('root')!);
+      await render({ withComposer: true });
+      expect(input.chatForm.getValues('input')).toBe(nextDraft);
+      expect(document.querySelector('textarea')?.value).toBe(nextDraft);
+      expect(input.chatForm.getValues('files')).toEqual([]);
+    }
+  );
+
+  it.each(['cancelled-unload', 'back-forward-cache'] as const)(
+    'keeps a stream active for %s and still restores a real failure',
+    async (lifecycle) => {
+      const request = Promise.withResolvers<{ responseText: string }>();
+      mocks.start.mockReturnValueOnce(request.promise);
+      await render();
+      await edit('submitted', [file]);
+      await send();
+      await act(async () => window.dispatchEvent(new window.Event('beforeunload')));
+      if (lifecycle === 'back-forward-cache') {
+        await act(async () =>
+          window.dispatchEvent(new window.PageTransitionEvent('pagehide', { persisted: true }))
+        );
+        await act(async () =>
+          window.dispatchEvent(new window.PageTransitionEvent('pageshow', { persisted: true }))
+        );
+      }
+      const controller = mocks.start.mock.calls[0][0].controller as AbortController;
+      expect(controller.signal.aborted).toBe(false);
+      await act(async () => {
+        request.reject(new Error('network'));
+        await vi.advanceTimersByTimeAsync(0);
+      });
+      expect(input.chatForm.getValues('input')).toBe('submitted');
+      expect(input.chatForm.getValues('files')[0].key).toBe(file.key);
+      expect(readChatInputDraft(identity)?.text).toBe('submitted');
+    }
+  );
+
+  it('does not restore a draft when browser navigation rejects fetch before pagehide', async () => {
+    const request = Promise.withResolvers<{ responseText: string }>();
+    mocks.start.mockReturnValueOnce(request.promise);
+    await render();
+    await edit('submitted', [file]);
+    await send();
+    await act(async () => {
+      request.reject(new TypeError('Failed to fetch'));
+      // 真实浏览器先运行 fetch reject 的微任务，随后才通知页面离开。
+      await Promise.resolve();
+      window.dispatchEvent(new window.PageTransitionEvent('pagehide', { persisted: false }));
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(input.chatForm.getValues('input')).toBe('');
+    expect(input.chatForm.getValues('files')).toEqual([]);
+    expect(readChatInputDraft(identity)).toBeUndefined();
+    expect(mocks.finishStatus).not.toHaveBeenCalled();
   });
 
   it('does not restore a submission that already received a partial reply', async () => {
@@ -818,7 +1019,10 @@ describe('useChatGenerate.sendPrompt', () => {
         icon: 'icon'
       };
       await act(async () => input.chatForm.setValue('files', [pendingFile]));
-      await act(async () => audio.resolve());
+      await act(async () => {
+        audio.resolve();
+        await vi.advanceTimersByTimeAsync(0);
+      });
 
       expect(mocks.start).toHaveBeenCalledOnce();
       expect(records.find((item) => item.obj === ChatRoleEnum.Human)?.value).toEqual([
@@ -829,8 +1033,7 @@ describe('useChatGenerate.sendPrompt', () => {
       expect(mocks.finishAudio).toHaveBeenCalledOnce();
       expect(mocks.finishStatus).toHaveBeenCalledWith(
         expect.objectContaining({
-          status:
-            outcome === 'resolve' ? ChatGenerateStatusEnum.done : ChatGenerateStatusEnum.error,
+          status: outcome === 'resolve' ? ChatGenerateStatusEnum.done : ChatGenerateStatusEnum.done,
           finishedInActiveChat: true
         })
       );
@@ -936,4 +1139,64 @@ describe('useChatGenerate.sendPrompt', () => {
       expect(readChatInputDraft(identity)?.text).toBe('submitted');
     }
   );
+
+  it.each([MODERATION_BLOCKED_ERROR_MESSAGE, MODERATION_ERROR_BLOCKED_MESSAGE])(
+    'shows a warning toast, rolls back optimistic messages, and restores input when entry moderation blocks: %s',
+    async (moderationMessage) => {
+      mocks.start.mockRejectedValueOnce(
+        createStreamFetchError({
+          error: {
+            statusText: ChatErrEnum.chatEntryModerationBlocked,
+            message: moderationMessage
+          },
+          fallbackMessage: 'Error',
+          responseText: ''
+        })
+      );
+
+      await render();
+      await edit('甲基苯丙胺', [file]);
+      await send({ text: '甲基苯丙胺' });
+
+      expect(mocks.start).toHaveBeenCalledOnce();
+      expect(mocks.toast).toHaveBeenCalledWith({
+        title: moderationMessage,
+        status: 'warning'
+      });
+      expect(records).toEqual([]);
+      expect(input.chatForm.getValues('input')).toBe('甲基苯丙胺');
+      expect(input.chatForm.getValues('files')[0].key).toBe(file.key);
+      expect(readChatInputDraft(identity)?.text).toBe('甲基苯丙胺');
+      expect(mocks.finishStatus).toHaveBeenCalledWith(
+        expect.objectContaining({
+          status: ChatGenerateStatusEnum.done,
+          finishedInActiveChat: true
+        })
+      );
+    }
+  );
+
+  it('preserves persisted chat round and sets errorMsg when post-persistence moderation fails with empty responseText', async () => {
+    mocks.start.mockRejectedValueOnce(
+      createStreamFetchError({
+        error: {
+          statusText: 'error',
+          message: MODERATION_BLOCKED_ERROR_MESSAGE
+        },
+        fallbackMessage: 'Error',
+        responseText: ''
+      })
+    );
+
+    await render();
+    await edit('build a workflow', [file]);
+    await send({ text: 'build a workflow' });
+
+    expect(mocks.start).toHaveBeenCalledOnce();
+    expect(records).toHaveLength(2);
+    expect(records[1]).toMatchObject({
+      status: 'finish',
+      errorMsg: MODERATION_BLOCKED_ERROR_MESSAGE
+    });
+  });
 });

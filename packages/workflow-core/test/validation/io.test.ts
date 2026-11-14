@@ -19,8 +19,8 @@ import { ContextExtractModule } from '@fastgpt/global/core/workflow/template/sys
 import { HttpNode468 } from '@fastgpt/global/core/workflow/template/system/http468';
 import { VariableUpdateNode } from '@fastgpt/global/core/workflow/template/system/variableUpdate';
 import { FormInputNode } from '@fastgpt/global/core/workflow/template/system/interactive/formInput';
-import { AgentNode } from '@fastgpt/global/core/workflow/template/system/agent';
 import { WorkflowStart } from '@fastgpt/global/core/workflow/template/system/workflowStart';
+import { AgentNode } from '@fastgpt/global/core/workflow/template/system/agent';
 import { jsonSchema2NodeInput } from '@fastgpt/global/core/app/jsonschema';
 import { createEmptyTagFilterValue } from '@fastgpt/global/core/dataset/search/tagFilter/type';
 import {
@@ -99,6 +99,7 @@ describe('validateNodeIO', () => {
     { value: createEmptyTagFilterValue() },
     { defaultValue: createEmptyTagFilterValue() },
     {
+      renderTypeList: [FlowNodeInputTypeEnum.hidden],
       value: {
         logic: DatasetTagFilterLogicEnum.AND,
         conditions: [

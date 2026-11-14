@@ -62,6 +62,10 @@ const createManifest = ({
   downloadObjectKey: `pkgs/${pluginId}/${version}.pkg`,
   downloadUrl: `https://cdn.example.com/${pluginId}/${version}.pkg`,
   readmeUrl: `https://cdn.example.com/${pluginId}/README.md`,
+  readmeUrls: {
+    en: `https://cdn.example.com/${pluginId}/README.en.md`,
+    'zh-CN': `https://cdn.example.com/${pluginId}/README.zh-CN.md`
+  },
   filename: `${pluginId}@${version}@${etag}.pkg`,
   source: 'official',
   size: 12,
@@ -93,9 +97,9 @@ describe('marketplace tool data service', () => {
 
     const { getToolVersionList } = await import('../../../src/service/tool/data');
     await expect(getToolVersionList('tool-a')).resolves.toEqual([
-      { toolId: 'tool-a', version: '2.0.0', etag: 'a2' },
-      { toolId: 'tool-a', version: '1.0.0', etag: 'a1' },
-      { toolId: 'tool-b', version: '1.0.0', etag: 'b1' }
+      { toolId: 'tool-a', version: '2.0.0', etag: 'a2', type: 'tool' },
+      { toolId: 'tool-a', version: '1.0.0', etag: 'a1', type: 'tool' },
+      { toolId: 'tool-b', version: '1.0.0', etag: 'b1', type: 'tool' }
     ]);
     expect(repoMocks.listToolVersionIndexes).toHaveBeenCalledWith('tool-a');
   });
@@ -131,7 +135,11 @@ describe('marketplace tool data service', () => {
         isToolset: true,
         source: 'official',
         downloadCount: 7,
-        downloadUrl: 'https://cdn.example.com/tool-a/1.0.0.pkg'
+        downloadUrl: 'https://cdn.example.com/tool-a/1.0.0.pkg',
+        readmeUrls: {
+          en: 'https://cdn.example.com/tool-a/README.en.md',
+          'zh-CN': 'https://cdn.example.com/tool-a/README.zh-CN.md'
+        }
       },
       {
         pluginId: 'tool-a/child',
@@ -143,7 +151,11 @@ describe('marketplace tool data service', () => {
         tags: ['search'],
         source: 'official',
         downloadCount: 0,
-        downloadUrl: 'https://cdn.example.com/tool-a/1.0.0.pkg'
+        downloadUrl: 'https://cdn.example.com/tool-a/1.0.0.pkg',
+        readmeUrls: {
+          en: 'https://cdn.example.com/tool-a/README.en.md',
+          'zh-CN': 'https://cdn.example.com/tool-a/README.zh-CN.md'
+        }
       }
     ]);
     expect(repoMocks.listToolManifests).toHaveBeenCalledWith({ latestOnly: true });

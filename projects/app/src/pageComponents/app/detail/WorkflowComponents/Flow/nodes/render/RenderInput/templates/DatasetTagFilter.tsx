@@ -6,14 +6,15 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   createEmptyTagFilterValue,
+  getNextDatasetTagFilterValue,
   isDatasetTagFilterOpen,
-  isDatasetTagFilterValue,
   normalizeLegacyDatasetTagFilterValue,
   type DatasetTagFilterValue
 } from '@fastgpt/global/core/dataset/search/tagFilter';
 import { getSelectedInputRenderType } from '@fastgpt/global/common/workflow/reference';
 import { WorkflowActionsContext } from '@/pageComponents/app/detail/WorkflowComponents/context/workflowActionsContext';
 import { useReference } from './Reference';
+import { getStaticDatasetIds } from './SelectDatasetParams.utils';
 import DatasetTagFilterRows, {
   DatasetTagFilterDeprecated,
   DatasetTagFilterUpgradeButton
@@ -44,19 +45,11 @@ const DatasetTagFilterRender = ({ inputs = [], item, nodeId }: RenderInputProps)
     nodeId,
     valueType: WorkflowIOValueTypeEnum.any
   });
-  const datasetIds = useMemo(() => {
-    const datasetValue = inputs.find(
-      (input) => input.key === NodeInputKeyEnum.datasetSelectList
-    )?.value;
-    if (!Array.isArray(datasetValue)) return [];
-    return datasetValue
-      .map((dataset) =>
-        dataset && typeof dataset === 'object' && 'datasetId' in dataset
-          ? String(dataset.datasetId ?? '')
-          : ''
-      )
-      .filter(Boolean);
-  }, [inputs]);
+  const datasetIds = useMemo(
+    () =>
+      getStaticDatasetIds(inputs.find((input) => input.key === NodeInputKeyEnum.datasetSelectList)),
+    [inputs]
+  );
 
   const editorVariables = useMemoEnhance(() => {
     return getEditorVariables({
@@ -181,17 +174,11 @@ export const DatasetTagFilterLogic = React.memo(function DatasetTagFilterLogic({
   const isOpen = isDatasetTagFilterOpen(item.value);
 
   const handleToggle = () => {
-    const nextOpen = !isOpen;
-    const renderType = getSelectedInputRenderType(item);
-    const nextValue =
-      renderType === FlowNodeInputTypeEnum.reference
-        ? nextOpen
-          ? []
-          : undefined
-        : {
-            ...(isDatasetTagFilterValue(item.value) ? item.value : createEmptyTagFilterValue()),
-            open: nextOpen
-          };
+    const nextValue = getNextDatasetTagFilterValue({
+      value: item.value,
+      isReference: getSelectedInputRenderType(item) === FlowNodeInputTypeEnum.reference,
+      open: !isOpen
+    });
 
     onChangeNode({
       nodeId,

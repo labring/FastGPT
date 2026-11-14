@@ -1,42 +1,68 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { type LinkedListResponse, type LinkedPaginationProps } from '@fastgpt/global/openapi/api';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { type LinkedPaginationProps } from '@fastgpt/global/openapi/api';
 import { Box, type BoxProps } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
-import { useScroll, useDebounceEffect } from 'ahooks';
-import MyBox from '../components/common/MyBox';
+import { useScroll, useDebounceEffect, useMemoizedFn } from 'ahooks';
 import { useRequest } from './useRequest';
 
 const threshold = 200;
+
+type LinkedScrollResponse = {
+  list: object[];
+  hasMorePrev: boolean;
+  hasMoreNext: boolean;
+};
+
+export type LinkedScrollPaginationLoading = {
+  prev: boolean;
+  next: boolean;
+};
+
+export type LinkedScrollDataProps = BoxProps & {
+  children: ReactNode;
+  ScrollContainerRef?: React.RefObject<HTMLDivElement>;
+  /** 显式传递分页状态，使 memo 包裹的布局也能更新请求提示。 */
+  paginationLoading?: LinkedScrollPaginationLoading;
+};
 
 /**
  * 加载以锚点为中心的关联列表，并按滚动位置补充前后数据。
  * 关闭分页时仍保留滚动容器和初始锚点请求，适用于只展示单条数据的场景。
  * 查询参数变化时立即切换数据窗口，首次加载未完成时也会重查，并丢弃旧参数的响应。
+ * 实际发出初始化或完整刷新时切换窗口版本，丢弃此前的初始化与分页响应。
+ * 滚动层只展示前后分页的请求文字；初始化与追加的加载状态交给外层决定显示效果。
+ * 调用方可自定义业务标识，用于滚动及分页定位，默认读取 id。
  */
 export function useLinkedScroll<
   TParams extends LinkedPaginationProps,
-  TData extends LinkedListResponse
+  TData extends LinkedScrollResponse
 >(
   api: (data: TParams) => Promise<TData>,
   {
     pageSize = 20,
     params = {},
     currentData,
+    currentId = currentData?.id,
+    getItemId,
     defaultScroll = 'top',
+    getScrollTarget,
     enablePagination = true,
     showPrevLoading = true,
-    showErrorToast = true,
-    showInitialLoading = true
+    showErrorToast = true
   }: {
     pageSize?: number;
     params?: Record<string, any>;
     currentData?: { id: string; anchor?: any };
+    /** 初始定位及滚动使用的业务标识；未传时兼容 currentData.id。 */
+    currentId?: string;
+    /** 列表项的业务标识，默认读取 id；聊天记录可使用 dataId。 */
+    getItemId?: (item: TData['list'][number]) => string;
     defaultScroll?: 'top' | 'bottom';
+    /** 列表项内部有更精确的阅读起点时，由业务返回实际需要对齐的元素。 */
+    getScrollTarget?: (element: HTMLElement) => HTMLElement;
     enablePagination?: boolean;
     showPrevLoading?: boolean;
     showErrorToast?: boolean;
-    /** 是否在初次历史请求期间覆盖滚动内容。关闭后可先渲染输入区。 */
-    showInitialLoading?: boolean;
   }
 ) {
   const { t } = useTranslation();
@@ -51,23 +77,29 @@ export function useLinkedScroll<
   });
   const containerRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<Map<string, HTMLElement | null>>(new Map());
-  const isInit = useRef(false);
   const previousParamsRef = useRef(params);
   const paramsVersionRef = useRef(0);
   // 滚动事件和布局变化可能在请求状态完成渲染前重复触发，使用 ref 立即锁住同一方向的分页请求。
   const prevLoadingRef = useRef(false);
   const nextLoadingRef = useRef(false);
 
+  const getId = useMemoizedFn((item: TData['list'][number]): string => {
+    const value = getItemId ? getItemId(item) : Reflect.get(item, 'id');
+    if (typeof value !== 'string')
+      throw new Error('useLinkedScroll requires getItemId for items without an id.');
+    return value;
+  });
+
   const scrollToItem = useCallback(
     (id?: string) => {
-      const targetId =
-        id || (defaultScroll === 'top' ? dataList[0]?.id : dataList[dataList.length - 1]?.id);
+      const defaultItem = defaultScroll === 'top' ? dataList[0] : dataList.at(-1);
+      const targetId = id ?? (defaultItem ? getId(defaultItem) : undefined);
 
       if (!targetId) {
         return;
       }
 
-      const itemIndex = dataList.findIndex((item) => item.id === targetId);
+      const itemIndex = dataList.findIndex((item) => getId(item) === targetId);
       if (itemIndex === -1) {
         return;
       }
@@ -79,7 +111,7 @@ export function useLinkedScroll<
           return;
         }
 
-        const elementRect = element.getBoundingClientRect();
+        const elementRect = (getScrollTarget?.(element) ?? element).getBoundingClientRect();
         const containerRect = containerRef.current.getBoundingClientRect();
 
         const scrollTop = containerRef.current.scrollTop + elementRect.top - containerRect.top;
@@ -91,10 +123,8 @@ export function useLinkedScroll<
 
       tryScroll();
     },
-    [dataList, defaultScroll]
+    [dataList, defaultScroll, getScrollTarget, getId]
   );
-
-  const { runAsync: callApi, loading: isLoading } = useRequest(api, { errorToast: '' });
 
   const scrollSign = useRef(false);
 
@@ -114,18 +144,19 @@ export function useLinkedScroll<
     []
   );
 
-  const { runAsync: loadInitData } = useRequest(
+  const { runAsync: loadInitData, loading: isInitialLoading } = useRequest(
     async ({ scrollWhenFinish, refresh } = { scrollWhenFinish: true, refresh: false }) => {
       // 已经被加载的数据，直接滚动到该位置
-      const item = dataList.find((item) => item.id === currentData?.id);
+      const item = dataList.find((item) => getId(item) === currentId);
       if (item && !refresh) {
-        scrollToItem(item.id);
+        scrollToItem(getId(item));
         return;
       }
 
-      const paramsVersion = paramsVersionRef.current;
-      const response = await callApi({
-        initialId: currentData?.id,
+      // 完整请求替换整个数据窗口；即使参数未变，也需让旧分页和旧刷新失效。
+      const paramsVersion = ++paramsVersionRef.current;
+      const response = await api({
+        initialId: currentId,
         anchor: currentData?.anchor,
         pageSize,
         ...params
@@ -149,10 +180,7 @@ export function useLinkedScroll<
       return response;
     },
     {
-      refreshDeps: [currentData],
-      onFinally() {
-        isInit.current = true;
-      },
+      refreshDeps: [currentData, currentId],
       manual: false,
       errorToast: showErrorToast ? undefined : ''
     }
@@ -171,17 +199,18 @@ export function useLinkedScroll<
     setHasMoreNext(true);
     setDataList([]);
     loadInitData({ refresh: true, scrollWhenFinish: true });
-  }, [params]);
+  }, [params, loadInitData]);
   useEffect(() => {
     if (scrollSign.current) {
       scrollSign.current = false;
-      scrollToItem(currentData?.id);
+      scrollToItem(currentId);
     }
-  }, [dataList]);
+  }, [dataList, currentId, scrollToItem]);
 
   const { runAsync: loadPrevData, loading: prevLoading } = useRequest(
     async (scrollRef = containerRef) => {
-      if (!anchorRef.current.top || !hasMorePrev || isLoading || prevLoadingRef.current) return;
+      if (!anchorRef.current.top || !hasMorePrev || isInitialLoading || prevLoadingRef.current)
+        return;
 
       prevLoadingRef.current = true;
 
@@ -190,9 +219,10 @@ export function useLinkedScroll<
         const prevScrollTop = scrollRef?.current?.scrollTop || 0;
         const prevScrollHeight = scrollRef?.current?.scrollHeight || 0;
 
-        const response = await callApi({
-          prevId: anchorRef.current.top.id,
-          anchor: anchorRef.current.top.anchor,
+        // 前后分页可并发，各自由外层 useRequest 管理，避免共享请求实例丢弃另一方向的返回。
+        const response = await api({
+          prevId: getId(anchorRef.current.top),
+          anchor: Reflect.get(anchorRef.current.top, 'anchor'),
           pageSize,
           ...params
         } as TParams);
@@ -221,14 +251,15 @@ export function useLinkedScroll<
       }
     },
     {
-      refreshDeps: [hasMorePrev, isLoading, params, pageSize],
+      refreshDeps: [hasMorePrev, isInitialLoading, params, pageSize],
       errorToast: showErrorToast ? undefined : ''
     }
   );
 
   const { runAsync: loadNextData, loading: nextLoading } = useRequest(
     async (scrollRef = containerRef) => {
-      if (!anchorRef.current.bottom || !hasMoreNext || isLoading || nextLoadingRef.current) return;
+      if (!anchorRef.current.bottom || !hasMoreNext || isInitialLoading || nextLoadingRef.current)
+        return;
 
       nextLoadingRef.current = true;
 
@@ -236,9 +267,9 @@ export function useLinkedScroll<
         const paramsVersion = paramsVersionRef.current;
         const prevScrollTop = scrollRef?.current?.scrollTop || 0;
 
-        const response = await callApi({
-          nextId: anchorRef.current.bottom.id,
-          anchor: anchorRef.current.bottom.anchor,
+        const response = await api({
+          nextId: getId(anchorRef.current.bottom),
+          anchor: Reflect.get(anchorRef.current.bottom, 'anchor'),
           pageSize,
           ...params
         } as TParams);
@@ -265,81 +296,88 @@ export function useLinkedScroll<
       }
     },
     {
-      refreshDeps: [hasMoreNext, isLoading, params, pageSize],
+      refreshDeps: [hasMoreNext, isInitialLoading, params, pageSize],
       errorToast: showErrorToast ? undefined : ''
     }
   );
 
-  const ScrollData = useCallback(
-    ({
-      children,
-      ScrollContainerRef,
-      ...props
-    }: {
-      children: ReactNode;
-      ScrollContainerRef?: React.RefObject<HTMLDivElement>;
-    } & BoxProps) => {
-      // If external ref is provided, use it; otherwise use internal ref
-      const actualContainerRef = ScrollContainerRef || containerRef;
-      const scroll = useScroll(actualContainerRef);
-
-      // Merge refs: set both internal and external refs when element mounts
-      const setRefs = useCallback(
-        (el: HTMLDivElement | null) => {
-          // @ts-ignore - RefObject.current is readonly, but we need to set it
-          containerRef.current = el;
-          if (ScrollContainerRef) {
-            // @ts-ignore - RefObject.current is readonly, but we need to set it
-            ScrollContainerRef.current = el;
-          }
-        },
-        [ScrollContainerRef]
-      );
-
-      useDebounceEffect(
-        () => {
-          if (!enablePagination || !actualContainerRef?.current || isLoading) return;
-
-          const { scrollTop, scrollHeight, clientHeight } = actualContainerRef.current;
-
-          // 滚动到底部附近，加载更多下方数据
-          if (scrollTop + clientHeight >= scrollHeight - threshold && !nextLoadingRef.current) {
-            loadNextData(actualContainerRef);
-          }
-
-          // 滚动到顶部附近，加载更多上方数据
-          if (scrollTop <= threshold && !prevLoadingRef.current) {
-            loadPrevData(actualContainerRef);
-          }
-        },
-        [scroll, enablePagination],
-        { wait: 200 }
-      );
-
-      return (
-        <MyBox
-          ref={setRefs}
-          h={'100%'}
-          overflow={'auto'}
-          isLoading={isLoading && (showInitialLoading || isInit.current)}
-          {...props}
-        >
-          {showPrevLoading && hasMorePrev && prevLoading && (
-            <Box mt={2} fontSize={'xs'} color={'blackAlpha.500'} textAlign={'center'}>
-              {t('common:is_requesting')}
-            </Box>
-          )}
-          {children}
-          {hasMoreNext && nextLoading && (
-            <Box mt={2} fontSize={'xs'} color={'blackAlpha.500'} textAlign={'center'}>
-              {t('common:is_requesting')}
-            </Box>
-          )}
-        </MyBox>
-      );
-    },
-    [enablePagination, isLoading, showInitialLoading, showPrevLoading]
+  const isLoading = isInitialLoading || prevLoading || nextLoading;
+  const paginationLoading = useMemo(
+    () => ({ prev: prevLoading, next: nextLoading }),
+    [prevLoading, nextLoading]
   );
+
+  // 组件引用保持稳定；跨 memo 布局时通过 paginationLoading prop 驱动更新，避免重建滚动 DOM。
+  const ScrollData = useMemoizedFn(function ScrollData({
+    children,
+    ScrollContainerRef,
+    paginationLoading: paginationLoadingProp,
+    ...props
+  }: LinkedScrollDataProps) {
+    const loading = paginationLoadingProp ?? paginationLoading;
+    // If external ref is provided, use it; otherwise use internal ref
+    const actualContainerRef = ScrollContainerRef || containerRef;
+    const scroll = useScroll(actualContainerRef);
+
+    // Merge refs: set both internal and external refs when element mounts
+    const setRefs = useCallback(
+      (el: HTMLDivElement | null) => {
+        // @ts-ignore - RefObject.current is readonly, but we need to set it
+        containerRef.current = el;
+        if (ScrollContainerRef) {
+          // @ts-ignore - RefObject.current is readonly, but we need to set it
+          ScrollContainerRef.current = el;
+        }
+      },
+      [ScrollContainerRef]
+    );
+
+    useDebounceEffect(
+      () => {
+        if (!enablePagination || !actualContainerRef?.current || isLoading) return;
+
+        const { scrollTop, scrollHeight, clientHeight } = actualContainerRef.current;
+
+        // 滚动到底部附近，加载更多下方数据
+        if (
+          hasMoreNext &&
+          anchorRef.current.bottom &&
+          scrollTop + clientHeight >= scrollHeight - threshold &&
+          !nextLoadingRef.current
+        ) {
+          loadNextData(actualContainerRef);
+        }
+
+        // 滚动到顶部附近，加载更多上方数据
+        if (
+          hasMorePrev &&
+          anchorRef.current.top &&
+          scrollTop <= threshold &&
+          !prevLoadingRef.current
+        ) {
+          loadPrevData(actualContainerRef);
+        }
+      },
+      [scroll, enablePagination, isLoading, hasMorePrev, hasMoreNext],
+      { wait: 200 }
+    );
+
+    return (
+      <Box ref={setRefs} h={'100%'} minH={0} overflow={'auto'} {...props}>
+        {showPrevLoading && hasMorePrev && loading.prev && (
+          <Box mt={2} fontSize={'xs'} color={'blackAlpha.500'} textAlign={'center'}>
+            {t('common:is_requesting')}
+          </Box>
+        )}
+        {children}
+        {hasMoreNext && loading.next && (
+          <Box mt={2} fontSize={'xs'} color={'blackAlpha.500'} textAlign={'center'}>
+            {t('common:is_requesting')}
+          </Box>
+        )}
+      </Box>
+    );
+  });
 
   return {
     dataList,
@@ -348,6 +386,9 @@ export function useLinkedScroll<
     hasMorePrev,
     hasMoreNext,
     isLoading,
+    isInitialLoading,
+    isLoadingMore: prevLoading || nextLoading,
+    paginationLoading,
     loadInitData,
     ScrollData,
     itemRefs,

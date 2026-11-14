@@ -56,6 +56,24 @@ describe('periodic history recovery boundaries', () => {
     history.findLast((item) => item.obj === ChatRoleEnum.AI)!.memories = { [memoryKey]: null };
     expect(userIds(select(history).histories)).toEqual(['r2', 'new-round']);
   });
+  it.each([undefined, null, { min: 2, max: 4, startDataId: 'r1' }])(
+    'prefers the current runtime snapshot over older history memory (%j)',
+    (value) => {
+      const histories = withMemory(rounds(4));
+      const before = structuredClone(histories);
+      const result = selectChatHistories({
+        histories,
+        history: 2,
+        window: { min: 2, max: 4 },
+        memoryKey,
+        memories: value === undefined ? {} : { [memoryKey]: value },
+        responseChatItemId: 'current'
+      });
+      expect(userIds(result.histories)).toEqual(value ? ['r1', 'r2', 'r3'] : ['r2', 'r3']);
+      expect(histories).toEqual(before);
+    }
+  );
+
   it('does not reuse another node or source memory', () => {
     expect(
       userIds(
@@ -114,6 +132,9 @@ describe('periodic history recovery boundaries', () => {
     history.at(-1)!.value = [
       {
         interactive: {
+          entryNodeIds: [],
+          memoryEdges: [],
+          nodeOutputs: [],
           type: 'userSelect',
           params: {
             description: 'Choose',

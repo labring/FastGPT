@@ -85,6 +85,7 @@ export type ToolDispatchContext = Pick<
   | 'usageId'
   | 'uid'
   | 'variableState'
+  | 'memoryState'
   | 'externalProvider'
   | 'lang'
   | 'requestOrigin'
@@ -108,9 +109,15 @@ export type ToolDispatchContext = Pick<
   streamResponseFn?: (args: WorkflowResponseItemType) => void | undefined;
 };
 
-const filterAgentWorkflowRuntimeParams = (params: Record<string, any>) => {
+const filterAgentWorkflowRuntimeParams = (
+  params: Record<string, any>,
+  options: { omitHistory?: boolean } = {}
+) => {
   const runtimeParams = { ...params };
   delete runtimeParams[NodeInputKeyEnum.forbidStream];
+  if (options.omitHistory) {
+    delete runtimeParams[NodeInputKeyEnum.history];
+  }
   return runtimeParams;
 };
 
@@ -134,6 +141,7 @@ export const getAgentDatasetParams = (
     rerankModelId: params[NodeInputKeyEnum.datasetSearchRerankModelId],
     rerankModel: params[NodeInputKeyEnum.datasetSearchRerankModel],
     rerankWeight: params[NodeInputKeyEnum.datasetSearchRerankWeight],
+    rerankCandidateNum: params[NodeInputKeyEnum.datasetSearchRerankCandidateNum],
     datasetSearchUsingExtensionQuery: params[NodeInputKeyEnum.datasetSearchUsingExtensionQuery],
     datasetSearchExtensionModelId: params[NodeInputKeyEnum.datasetSearchExtensionModelId],
     datasetSearchExtensionModel: params[NodeInputKeyEnum.datasetSearchExtensionModel],
@@ -156,8 +164,10 @@ export const getExecuteTool = ({
   runningAppInfo,
   chatId,
   responseChatItemId,
+  usageId,
   uid,
   variableState,
+  memoryState,
   runtimeNodesMap,
   externalProvider,
   lang,
@@ -244,6 +254,7 @@ export const getExecuteTool = ({
             runningUserInfo,
             runningAppInfo,
             chatId,
+            usageId,
             uid,
             variableState,
             runtimeNodesMap,
@@ -259,7 +270,9 @@ export const getExecuteTool = ({
             errorMessage
           };
         } else if (tool.type === 'workflow') {
-          const { userChatInput, ...params } = filterAgentWorkflowRuntimeParams(requestParams);
+          const { userChatInput, ...params } = filterAgentWorkflowRuntimeParams(requestParams, {
+            omitHistory: true
+          });
 
           const {
             response,
@@ -295,6 +308,7 @@ export const getExecuteTool = ({
             nodeResponseSink,
             nodeResponseParentId: callId,
             variableState,
+            memoryState,
             lastInteractive,
             query
           });
@@ -370,6 +384,7 @@ export const getExecuteTool = ({
             nodeResponseSink,
             nodeResponseParentId: callId,
             variableState,
+            memoryState,
             lastInteractive,
             query
           });

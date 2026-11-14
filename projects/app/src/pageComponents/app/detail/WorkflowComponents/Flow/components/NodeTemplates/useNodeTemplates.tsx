@@ -12,7 +12,7 @@ import { WorkflowBufferDataContext } from '../../../context/workflowInitContext'
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { AppContext } from '@/pageComponents/app/detail/context';
 import { getPluginToolTags } from '@/web/core/plugin/toolTag/api';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { AppTypeEnum, AppTypeList } from '@fastgpt/global/core/app/constants';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
@@ -49,11 +49,11 @@ export const useNodeTemplates = (context: NodeTemplateContext | null = null) => 
           AppTypeEnum.mcpToolSet,
           AppTypeEnum.httpToolSet
         ]
-      : [AppTypeEnum.folder, AppTypeEnum.simple, AppTypeEnum.workflow];
+      : [AppTypeEnum.folder, ...AppTypeList];
 
   const {
     data: teamTemplates,
-    isLoading: teamTemplatesIsLoading,
+    isInitialLoading: teamTemplatesIsLoading,
     ScrollData: TeamScrollData
   } = useScrollPagination(getTeamAppTemplatesV2, {
     params: {
@@ -82,6 +82,14 @@ export const useNodeTemplates = (context: NodeTemplateContext | null = null) => 
         return basicNodeTemplates
           .filter((item) => {
             if (item.flowNodeType === FlowNodeTypeEnum.queryExtension) return false;
+            // 工具集只在侧栏和工具调用节点的工具选择器中展示。
+            if (
+              item.flowNodeType === FlowNodeTypeEnum.toolSet &&
+              !context?.isSidebar &&
+              context?.handleId !== NodeOutputKeyEnum.selectedTools
+            ) {
+              return false;
+            }
             // unique node filter
             if (item.unique) {
               const nodeExist = getNodeList().some(
@@ -223,14 +231,7 @@ export const useNodeTemplates = (context: NodeTemplateContext | null = null) => 
         ? 'isTool' in item && item.isTool === true
         : true
     );
-  }, [
-    basicNodes,
-    context?.handleId,
-    isTeamTemplate,
-    systemTools,
-    teamTemplates,
-    templateType
-  ]);
+  }, [basicNodes, context?.handleId, isTeamTemplate, systemTools, teamTemplates, templateType]);
 
   return {
     templateType,

@@ -23,7 +23,7 @@ import { TeamSkillCreatePermissionVal } from '@fastgpt/global/support/permission
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 async function handler(req: ApiRequestProps<CreateSkillFolderBody>) {
-  const { name, description, parentId } = parseApiInput({
+  const { name, description, parentId, inheritPermission } = parseApiInput({
     req,
     bodySchema: CreateSkillFolderBodySchema
   }).body;
@@ -56,7 +56,8 @@ async function handler(req: ApiRequestProps<CreateSkillFolderBody>) {
         description,
         parentId,
         teamId,
-        tmbId
+        tmbId,
+        inheritPermission
       },
       session
     );

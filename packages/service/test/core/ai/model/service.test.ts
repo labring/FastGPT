@@ -1,4 +1,6 @@
+import { formatDbModelToRuntimeModel } from '@fastgpt/service/core/ai/model/runtime';
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { sortModelOrderItems } from '@fastgpt/global/core/ai/model/order';
 import {
   PerResourceTypeEnum,
   ReadPermissionVal
@@ -20,6 +22,7 @@ import {
   importSystemModels,
   restoreModelName,
   updateModel,
+  updateModelOrder,
   updateModelStatus
 } from '@fastgpt/service/core/ai/model/service';
 import { MongoModelStatusProbeRecord } from '@fastgpt/service/core/ai/modelStatus/schema';
@@ -65,6 +68,164 @@ beforeEach(async () => {
 });
 
 describe('model lifecycle', () => {
+  it.each([
+    { type: 'duration' as const, unitPrice: 0.2 },
+    { type: 'tokens' as const, unitPrice: 10 }
+  ])('round-trips STT $type pricing through Mongo and the runtime catalog', async (pricing) => {
+    const created = await createModel({
+      ...owner,
+      modelData: { ...draft, type: ModelTypeEnum.stt, config: {}, pricing }
+    });
+    const stored = await MongoAIModel.findById(created.modelId).lean();
+    expect(stored?.pricing).toMatchObject(pricing);
+    expect(
+      getCachedSystemModelHandle()
+        ?.getSystemModels()
+        .find((model) => model.modelId === created.modelId)?.pricing
+    ).toEqual(pricing);
+    const changed =
+      pricing.type === 'tokens'
+        ? { type: 'duration' as const, unitPrice: 0.2 }
+        : { type: 'tokens' as const, unitPrice: 20 };
+    await updateModel({
+      ...owner,
+      modelId: created.modelId,
+      modelData: { ...draft, type: ModelTypeEnum.stt, config: {}, pricing: changed }
+    });
+    expect((await MongoAIModel.findById(created.modelId).lean())?.pricing).toMatchObject(changed);
+  });
+
+  it('reads legacy STT database pricing without writing it back', async () => {
+    const raw = { ...draft, type: ModelTypeEnum.stt, config: {}, pricing: { unitPrice: 0.2 } };
+    const { insertedId } = await MongoAIModel.collection.insertOne(raw);
+    const stored = await MongoAIModel.findById(insertedId).lean();
+    expect(formatDbModelToRuntimeModel(stored!, { fallbackProvider: true }).pricing).toEqual({
+      type: 'duration',
+      unitPrice: 0.2
+    });
+    expect((await MongoAIModel.findById(insertedId).lean())?.pricing).toEqual({ unitPrice: 0.2 });
+  });
+
+  it('rewrites complete order with consecutive ranks without changing runtime fallback order', async () => {
+    const first = await createModel({ ...owner, modelData: draft });
+    const second = await createModel({ ...owner, modelData: { ...draft, model: 'second' } });
+
+    // 完整顺序保存后，rank 从 1 开始连续赋值。
+    await updateModelOrder({
+      ...owner,
+      modelIds: [first.modelId, second.modelId]
+    });
+
+    const orderedModels = await MongoAIModel.find({ scope: ModelScopeEnum.system })
+      .sort({ sortOrder: 1 })
+      .lean();
+    expect(orderedModels.map(({ model }) => model)).toEqual(['original', 'second']);
+    expect(orderedModels.map(({ sortOrder }) => sortOrder)).toEqual([1, 2]);
+
+    // 自定义顺序只用于管理员展示；ModelHandle 保持原有 `_id DESC` 的默认回退次序。
+    expect(
+      getCachedSystemModelHandle()
+        ?.getSystemModels()
+        .map((model) => model.modelId)
+    ).toEqual([second.modelId, first.modelId]);
+    expect(getCachedSystemModelHandle()?.getDefaultModelIds()[ModelTypeEnum.llm]).toBe(
+      second.modelId
+    );
+
+    await expect(
+      updateModelOrder({
+        ...owner,
+        modelIds: [first.modelId, '68ad85a7463006c963799a07']
+      })
+    ).rejects.toThrow('modelUnExist');
+  });
+
+  it('places newly created, template-installed and JSON-imported models at the top with leading rank 0', async () => {
+    const first = await createModel({ ...owner, modelData: draft });
+    const second = await createModel({ ...owner, modelData: { ...draft, model: 'second' } });
+    await updateModelOrder({
+      ...owner,
+      modelIds: [first.modelId, second.modelId]
+    });
+
+    // 模拟历史未设置 sortOrder 的存量模型，应始终保留在末尾兜底。
+    await MongoAIModel.create({ ...draft, model: 'legacy-unranked' });
+
+    await createModel({ ...owner, modelData: { ...draft, model: 'newer' } });
+    const newest = await createModel({ ...owner, modelData: { ...draft, model: 'newest' } });
+    const afterSingleCreate = sortModelOrderItems(
+      await MongoAIModel.find({ scope: ModelScopeEnum.system }).sort({ _id: -1 }).lean()
+    );
+    expect(afterSingleCreate.map(({ model, sortOrder }) => ({ model, sortOrder }))).toEqual([
+      { model: 'newest', sortOrder: 0 },
+      { model: 'newer', sortOrder: 0 },
+      { model: 'original', sortOrder: 1 },
+      { model: 'second', sortOrder: 2 },
+      { model: 'legacy-unranked', sortOrder: undefined }
+    ]);
+
+    const templates = await import('@fastgpt/service/core/ai/model/template');
+    const tplA = { ...draft, model: 'tpl-a', sortOrder: 99 };
+    const tplB = { ...draft, model: 'tpl-b', sortOrder: 88 };
+    const templateSpy = vi
+      .spyOn(templates, 'refreshModelTemplates')
+      .mockResolvedValue([draft, tplA, tplB]);
+    try {
+      await createModelsFromTemplates({
+        ...owner,
+        templates: [draft, tplA, tplB].map(({ model, type }) => ({ model, type }))
+      });
+    } finally {
+      templateSpy.mockRestore();
+    }
+
+    const afterTemplateCreate = sortModelOrderItems(
+      await MongoAIModel.find({ scope: ModelScopeEnum.system }).sort({ _id: -1 }).lean()
+    );
+    expect(afterTemplateCreate.map(({ model, sortOrder }) => ({ model, sortOrder }))).toEqual([
+      { model: 'tpl-b', sortOrder: 0 },
+      { model: 'tpl-a', sortOrder: 0 },
+      { model: 'newest', sortOrder: 0 },
+      { model: 'newer', sortOrder: 0 },
+      { model: 'original', sortOrder: 1 },
+      { model: 'second', sortOrder: 2 },
+      { model: 'legacy-unranked', sortOrder: undefined }
+    ]);
+
+    // 手动保存完整顺序后，所有置顶 `0` 与缺省值会被统一归一化为连续的 1..N。
+    await updateModelOrder({
+      ...owner,
+      modelIds: afterTemplateCreate.map(({ _id }) => String(_id))
+    });
+
+    await importSystemModels({
+      config: [
+        { ...draft, modelId: newest.modelId, model: 'newest' },
+        { ...draft, modelId: 'external-json-a', model: 'json-a' },
+        { ...draft, modelId: first.modelId, model: 'original' },
+        { ...draft, modelId: 'external-json-b', model: 'json-b' }
+      ]
+    });
+
+    const runtimeOrderedModels = await MongoAIModel.find({ scope: ModelScopeEnum.system })
+      .sort({ _id: -1 })
+      .lean();
+    const afterJsonImport = sortModelOrderItems(runtimeOrderedModels);
+    expect(afterJsonImport.map(({ model, sortOrder }) => ({ model, sortOrder }))).toEqual([
+      { model: 'json-b', sortOrder: 0 },
+      { model: 'json-a', sortOrder: 0 },
+      { model: 'newest', sortOrder: 3 },
+      { model: 'original', sortOrder: 5 }
+    ]);
+    // create 与 upsert 的 ObjectId 可能分别由客户端和服务端生成，同秒内不能按导入先后推断大小。
+    // 管理列表继续验证 rank；运行目录和默认回退独立按数据库的 `_id DESC` 校验。
+    const handle = getCachedSystemModelHandle();
+    expect(handle?.getSystemModels().map((model) => model.modelId)).toEqual(
+      runtimeOrderedModels.map((model) => String(model._id))
+    );
+    expect(handle?.getDefaultModelIds().llm).toBe(String(runtimeOrderedModels[0]._id));
+  });
+
   it('preserves stable identity and synchronizes an edited upstream identifier', async () => {
     const model = await createModel({ ...owner, modelData: draft, channelIds: [1] });
     await updateModel({
@@ -256,6 +417,117 @@ describe('team model writes', () => {
       expect(await readModelCatalogRevision(context)).toBe(1);
       expect(await readModelCatalogRevision({ scope: ModelScopeEnum.system })).toBe(0);
     });
+    it('validates, persists and clears team custom endpoints across create, update and template install', async () => {
+      const unsafeUrl = 'http://169.254.169.254/latest/meta-data';
+      await expect(
+        createModel({ ...owner, modelData: { ...draft, requestUrl: unsafeUrl } })
+      ).rejects.toThrow('requestUrl');
+
+      const templateModule = await import('@fastgpt/service/core/ai/model/template');
+      const templateSpy = vi
+        .spyOn(templateModule, 'refreshModelTemplates')
+        .mockResolvedValue([{ ...draft, requestUrl: unsafeUrl }]);
+      try {
+        await expect(
+          createModelsFromTemplates({
+            ...owner,
+            templates: [{ model: draft.model, type: draft.type }]
+          })
+        ).rejects.toThrow('requestUrl');
+      } finally {
+        templateSpy.mockRestore();
+      }
+      expect(await MongoAIModel.countDocuments({})).toBe(0);
+
+      const created = await createModel({
+        ...owner,
+        modelData: {
+          ...draft,
+          requestUrl: 'https://93.184.216.34/v1',
+          requestAuth: 'sk-team'
+        }
+      });
+      expect(await MongoAIModel.findById(created.modelId).lean()).toMatchObject({
+        requestUrl: 'https://93.184.216.34/v1',
+        requestAuth: 'sk-team'
+      });
+
+      await expect(
+        updateModel({
+          ...owner,
+          modelId: created.modelId,
+          modelData: { ...draft, requestUrl: unsafeUrl }
+        })
+      ).rejects.toThrow('requestUrl');
+
+      await updateModel({
+        ...owner,
+        modelId: created.modelId,
+        modelData: { ...draft, requestUrl: '', requestAuth: '' }
+      });
+      const stored = await MongoAIModel.findById(created.modelId).lean();
+      expect(stored?.requestUrl).toBeUndefined();
+      expect(stored?.requestAuth).toBeUndefined();
+    });
+    it('only validates missing templates when binding already installed team models', async () => {
+      const installed = await createModel({ ...owner, modelData: draft });
+      const second = { ...draft, model: 'second' };
+      const templateModule = await import('@fastgpt/service/core/ai/model/template');
+      const templateSpy = vi
+        .spyOn(templateModule, 'refreshModelTemplates')
+        .mockResolvedValue([
+          { ...draft, requestUrl: 'http://169.254.169.254/latest/meta-data' },
+          second
+        ]);
+      try {
+        const result = await createModelsFromTemplates({
+          ...owner,
+          templates: [draft, second].map(({ model, type }) => ({ model, type })),
+          channelIds: [1]
+        });
+        expect(result.models.map(({ model }) => model)).toEqual(['second']);
+        expect(proxy.append.mock.calls.map(([arg]) => arg.model)).toEqual(['custom', 'second']);
+        expect((await MongoAIModel.findById(installed.modelId).lean())?.requestUrl).toBeUndefined();
+      } finally {
+        templateSpy.mockRestore();
+      }
+    });
+    it('keeps team model order isolated to the owning member', async () => {
+      const ownFirst = await createModel({ ...owner, modelData: draft });
+      const ownSecond = await createModel({
+        ...owner,
+        modelData: { ...draft, model: 'second' }
+      });
+      const otherTmbId = new Types.ObjectId().toString();
+      const other = await createModel({
+        ...owner,
+        tmbId: otherTmbId,
+        modelData: { ...draft, model: 'other' }
+      });
+
+      await updateModelOrder({
+        ...owner,
+        modelIds: [ownFirst.modelId, ownSecond.modelId]
+      });
+
+      await expect(
+        MongoAIModel.find({ scope: ModelScopeEnum.team, tmbId: owner.tmbId })
+          .sort({ sortOrder: 1 })
+          .lean()
+      ).resolves.toMatchObject([
+        { model: 'custom', sortOrder: 1 },
+        { model: 'second', sortOrder: 2 }
+      ]);
+      const otherModel = await MongoAIModel.findById(other.modelId).lean();
+      expect(otherModel).toMatchObject({ model: 'other', sortOrder: 0 });
+      await expect(
+        updateModelOrder({
+          ...owner,
+          modelIds: [ownSecond.modelId, other.modelId]
+        })
+      ).rejects.toThrow('modelUnExist');
+    });
+
     it('rolls back a batch that includes another member model', async () => {
       const own = await createModel({ ...owner, modelData: draft });
       const other = await createModel({

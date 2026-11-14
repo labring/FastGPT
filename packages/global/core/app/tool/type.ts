@@ -5,6 +5,7 @@ import { NodeToolConfigTypeSchema } from '../../workflow/type/node';
 import type { AppChatConfigType } from '../type';
 import { CanonicalAgentToolInputConfigSchema } from '../../workflow/migration';
 import { LanguageSchema } from '../../../common/i18n/type';
+import { AgentToolConfigSchema } from './config';
 
 export type AppToolRuntimeType = {
   id: string;
@@ -35,7 +36,7 @@ export type AppToolRuntimeType = {
 export const AgentToolInputConfigSchema = CanonicalAgentToolInputConfigSchema;
 export type AgentToolInputConfigType = z.infer<typeof AgentToolInputConfigSchema>;
 
-const AgentToolBaseSchema = z.object({
+export const AgentToolSchema = z.object({
   id: z.string(),
   name: z.string().optional(),
   avatar: z.string().optional(),
@@ -45,19 +46,6 @@ const AgentToolBaseSchema = z.object({
   metadataLocale: LanguageSchema.optional(),
   toolConfig: NodeToolConfigTypeSchema.optional(),
   inputs: z.array(AgentToolInputConfigSchema).optional(),
-  config: z.record(z.string(), z.any())
+  config: AgentToolConfigSchema
 });
-
-export const AgentToolSchema = AgentToolBaseSchema;
 export type AgentToolType = z.infer<typeof AgentToolSchema>;
-
-// // System tool
-
-// export type AppToolTemplateListItemType = Omit<
-//   AppToolTemplateItemType,
-//   'name' | 'intro' | 'workflow'
-// > & {
-//   name: string;
-//   intro: string;
-//   tags?: SystemPluginToolTagType[];
-// };

@@ -9,6 +9,7 @@ import { getLogger, LogCategories } from '../../../../../../common/logger';
 import type { DeployedSkillVersion } from './types';
 import { buildLimitedOutputShellCommand, executeEntrypointCommand } from '../entrypoint';
 import { joinSandboxPath } from '../../../utils';
+import { SKILL_ENTRYPOINT_STATE_LIST_KEY } from '../../../constants';
 import {
   getRuntimeStateValue,
   readSandboxRuntimeState,
@@ -19,7 +20,6 @@ import {
 const logger = getLogger(LogCategories.MODULE.AI.AGENT);
 
 const ENTRYPOINT_FILE_NAME = 'entrypoint.sh';
-const SKILL_ENTRYPOINT_STATE_LIST_KEY = 'skillEntrypoints';
 
 /**
  * 执行 selected skill version 根目录下的 entrypoint。
@@ -37,22 +37,9 @@ export const runAgentSkillVersionEntrypoints = async ({
   if (versions.length === 0) return;
 
   const stateContext = await readSandboxRuntimeState({ sandbox });
-  const state = stateContext.state;
-
-  const stateValue = getRuntimeStateValue(state, SKILL_ENTRYPOINT_STATE_LIST_KEY);
-  const originalSkillEntrypoints = Array.isArray(stateValue) ? stateValue : [];
-  const selectedVersionIds = new Set(versions.map(({ versionId }) => versionId));
-  const executedVersionIds = new Set(
-    originalSkillEntrypoints.filter((versionId) => selectedVersionIds.has(versionId))
-  );
-  let stateDirty = originalSkillEntrypoints.length !== executedVersionIds.size;
-  const writeSkillEntrypointState = async () => {
-    setRuntimeStateValue(stateContext.state, SKILL_ENTRYPOINT_STATE_LIST_KEY, [
-      ...executedVersionIds
-    ]);
-    await writeSandboxRuntimeState(sandbox, stateContext);
-    stateDirty = false;
-  };
+  const stateValue = getRuntimeStateValue(stateContext.state, SKILL_ENTRYPOINT_STATE_LIST_KEY);
+  // 未被当前节点选择的版本仍可能由父级或其他会话使用，成功标记随缓存一并保留。
+  const executedVersionIds = new Set(Array.isArray(stateValue) ? stateValue : []);
 
   for (const version of versions) {
     if (executedVersionIds.has(version.versionId)) continue;
@@ -78,10 +65,9 @@ export const runAgentSkillVersionEntrypoints = async ({
     if (!result) continue;
 
     executedVersionIds.add(version.versionId);
-    await writeSkillEntrypointState();
-  }
-
-  if (stateDirty) {
-    await writeSkillEntrypointState();
+    setRuntimeStateValue(stateContext.state, SKILL_ENTRYPOINT_STATE_LIST_KEY, [
+      ...executedVersionIds
+    ]);
+    await writeSandboxRuntimeState(sandbox, stateContext);
   }
 };

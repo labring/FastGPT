@@ -1,6 +1,6 @@
 ---
 title: 'V4.14.10'
-description: 'FastGPT V4.14.10 Release Notes'
+description: "FastGPT V4.14.10 release notes covering container image updates, upgrade steps, and feature changes."
 releaseTime: '2026-03-31'
 upgradeTags:
   - CONFIG
@@ -12,7 +12,7 @@ upgradeTags:
 
 The following configuration adjustments are for `docker compose` deployments. `sealos` commercial users can contact support for an online sandbox service solution.
 
-Open the [latest yml deployment file](https://github.com/labring/FastGPT/blob/main/document/public/deploy/docker/v4.14/global/docker-compose.pg.yml) and add the following:
+Open the [archived 4.14 deployment YAML](https://github.com/labring/FastGPT/blob/6a5b648fb4e8eb9e0df760fa9118c85b6b16bca7/document/public/deploy/docker/v4.14/global/docker-compose.pg.yml) and add the following:
 
 1. Add the `x-volume-manager-auth-token: &x-volume-manager-auth-token 'vmtoken'` variable configuration at the top of the file.
 2. Add these 5 service entries: `opensandbox-server`, `opensandbox-agent-sandbox-image`, `opensandbox-execd-image`, `opensandbox-egress-image`, and `fastgpt-volume-manager`.

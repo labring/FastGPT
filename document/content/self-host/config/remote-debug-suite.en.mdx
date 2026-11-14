@@ -33,28 +33,11 @@ The remote debug flow includes these components:
 
 Main flow:
 
-```mermaid
-sequenceDiagram
-    participant User as Developer
-    participant FastGPT as FastGPT
-    participant Plugin as Plugin Server
-    participant Gateway as Connection Gateway
-    participant CLI as fastgpt-plugin dev
+![Remote debugging: connect](/imgs/diagrams/remote-debug-connect.en.light.svg)
 
-    User->>FastGPT: Enable debug channel
-    FastGPT->>Plugin: Create debug channel
-    Plugin-->>FastGPT: connectionKey / connectionUrl / source
-    User->>CLI: fastgpt-plugin dev --connect <connectionUrl>
-    CLI->>FastGPT: Exchange connectionKey
-    FastGPT->>Plugin: Forward connectionKey exchange
-    Plugin-->>CLI: gatewayUrl / connectToken / source
-    CLI->>Gateway: WebSocket bind
-    FastGPT->>Plugin: Invoke plugin under debug source
-    Plugin->>Gateway: Send plugin-debug.run
-    Gateway->>CLI: Forward debug request
-    CLI-->>Gateway: Return execution result
-    Gateway-->>Plugin: Stream result
-```
+![Remote debugging: invoke and return](/imgs/diagrams/remote-debug-call.en.light.svg)
+
+FastGPT exchanges the connection key and returns connection details to the CLI. Execution results return through the Gateway, Plugin Server, and FastGPT. Gateway and CLI interactions follow the remote debugging interface contract.
 
 ## Prerequisites
 
@@ -94,16 +77,16 @@ services:
       CONNECTION_GATEWAY_WS_PORT: 3001
       CONNECTION_GATEWAY_WS_PATH: /connection-gateway/v1
     ports:
-      - '3010:3000'
-      - '3011:3001'
+      - '3020:3000'
+      - '3021:3001'
 ```
 
 Port notes:
 
 | Port   | Purpose                                                                                                | Exposure requirement                                                                                              |
 | ------ | ------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------- |
-| `3010` | Gateway HTTP API, mapped to container port `3000`, including `/health`, `/internal/*`, and `/metrics`. | Public exposure is not required. Plugin Server only needs private network access.                                 |
-| `3011` | Gateway WebSocket, mapped to container port `3001`, default path `/connection-gateway/v1`.             | Must be reachable from the developer's local CLI, usually exposed as a public `wss://` URL through reverse proxy. |
+| `3020` | Gateway HTTP API, mapped to container port `3000`, including `/health`, `/internal/*`, and `/metrics`. | Public exposure is not required. Plugin Server only needs private network access (avoids port `3010` used by dev AI Proxy). |
+| `3021` | Gateway WebSocket, mapped to container port `3001`, default path `/connection-gateway/v1`.             | Must be reachable from the developer's local CLI, usually exposed as a public `wss://` URL through reverse proxy. |
 | Redis  | Stores Gateway sessions, source owner leases, and mailboxes.                                           | Public exposure is not required. The Redis version must support Stream.                                           |
 
 ## Configure Plugin Server
@@ -133,10 +116,9 @@ The FastGPT main service keeps using the regular plugin configuration:
 ```dotenv
 PLUGIN_BASE_URL=http://fastgpt-plugin:3000
 PLUGIN_TOKEN=replace-with-the-same-value-as-plugin-auth-token
-NEXT_PUBLIC_BASE_URL=https://fastgpt.example.com
 ```
 
-`NEXT_PUBLIC_BASE_URL` affects the generated debug connection link. For public access, set it to the FastGPT URL reachable by the browser.
+The debug connection link takes its origin from the `Host`, `X-Forwarded-Host`, and `X-Forwarded-Proto` request headers, and falls back to `FE_DOMAIN` when they are missing. When `X-Forwarded-Proto` is absent and `Host` is a non-loopback address (other than `localhost` or `127.0.0.1`), the server defaults to `https`; for HTTP LAN deployments behind a proxy, forward `X-Forwarded-Proto: http`. `NEXT_PUBLIC_BASE_URL` is only for sub-path deployments (for example, `/fastgpt`); it is prepended to the link path, so set it to the path prefix only.
 
 ## Configure Reverse Proxy
 
@@ -159,7 +141,7 @@ Do not expose `/internal/*`, `/metrics`, or the Gateway HTTP port directly to th
 
 ## Developer Connection
 
-1. Enable the debug channel from the FastGPT plugin debug entry and copy the generated connection link.
+1. In FastGPT, open **Studio → System Tools**, click **Local Debug**, click **Generate Link** in the dialog to enable the debug channel, and copy the **Debug Link**.
 2. Run this command in the local plugin directory:
 
 ```bash
@@ -174,10 +156,10 @@ debug:tmbId:{tmbId}
 
 ## Verification
 
-1. Check Gateway health:
+1. Check Gateway health (use `http://connection-gateway:3000/health` from a container on the same Compose network, or the mapped host port `localhost:3020` from the host):
 
 ```bash
-curl http://connection-gateway:3000/health
+curl http://localhost:3020/health
 ```
 
 2. Enable the debug channel in FastGPT and confirm the status changes from `enabled` to `connected`.
@@ -192,11 +174,11 @@ curl http://connection-gateway:3000/health
 - Debug source invocations use the remote debug path. If the connection or session is missing, the invocation fails instead of falling back to the production plugin runtime.
 - Multi-replica Gateway deployments must route session deletion requests to the node that owns the WebSocket, or accept that calls fail after the Redis session is deleted.
 
-## FAQ
+## Connection and Invocation Troubleshooting
 
 ### The debug channel opens, but the CLI cannot connect
 
-Check whether `CONNECTION_GATEWAY_PUBLIC_URL` is reachable from the developer's local machine. The browser and CLI run on the developer's computer, so Docker private hostnames will not work.
+Check whether `CONNECTION_GATEWAY_PUBLIC_URL` is reachable from the developer's local machine. The browser and CLI run on the developer's computer, requiring a reachable host IP or public domain.
 
 ### The CLI is connected, but FastGPT shows disconnected
 

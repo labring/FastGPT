@@ -1,6 +1,6 @@
 ---
 title: 'V4.15.0'
-description: 'FastGPT V4.15.0 Release Notes'
+description: "FastGPT V4.15.0 release notes covering container image updates, upgrade steps, and feature changes."
 releaseTime: '2026-06-30'
 upgradeTags:
   - CONFIG
@@ -30,7 +30,7 @@ INVOKE_TOKEN_SECRET=
 
 ##### New environment variables
 
-**Required**
+**Add as needed**
 
 ```dotenv
 # SSE MCP Server address. Leave empty if you do not use SSE.
@@ -212,7 +212,7 @@ DEPLOYMENT_ENVIRONMENT=
 
 ### 2. OpenSandbox Changes (as needed)
 
-See the [4.15 deployment YAML](https://doc.fastgpt.cn/deploy/docker/v4.15/cn/docker-compose.pg.yml) for the complete OpenSandbox setup. The 4.15 Docker Compose deployment file already includes OpenSandbox Server, Volume Manager, Agent Sandbox Proxy, and the image pre-pull services.
+See the [4.15 deployment YAML](https://github.com/labring/FastGPT/blob/6a5b648fb4e8eb9e0df760fa9118c85b6b16bca7/document/public/deploy/docker/v4.15/cn/docker-compose.pg.yml) for the complete OpenSandbox setup. The 4.15 Docker Compose deployment file already includes OpenSandbox Server, Volume Manager, Agent Sandbox Proxy, and the image pre-pull services.
 
 For this upgrade, focus on:
 
@@ -220,6 +220,11 @@ For this upgrade, focus on:
 2. Updating OpenSandbox environment variables in `fastgpt-app` and `fastgpt-pro`.
 
 You can overwrite your deployment directly with the new OpenSandbox template.
+
+When upgrading from 4.14.x with OpenSandbox enabled, make these changes in `fastgpt-app` and `fastgpt-pro`:
+
+- Rename `AGENT_SANDBOX_VOLUME_MANAGER_URL` and `AGENT_SANDBOX_VOLUME_MANAGER_TOKEN` to `AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL` and `AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN`. Both are now required.
+- Add `AGENT_SANDBOX_PROXY_SECRET` (at least 32 characters, matching the same variable on `fastgpt-agent-sandbox-proxy`) and `AGENT_SANDBOX_PROXY_URL` (the browser-accessible agent-sandbox-proxy WebSocket URL).
 
 ### 3. Image Changes
 
@@ -233,6 +238,7 @@ If `opensandbox` is enabled, also update:
 
 - fastgpt-agent-sandbox-proxy image tag: v0.2.0
 - fastgpt-agent-sandbox image tag: v0.2.0
+- fastgpt-agent-volume-manager image tag: v0.2.0
 
 ### 4. Start Services
 
@@ -242,8 +248,8 @@ Run `docker compose up -d` to restart services.
 
 After upgrading the plugin service, reinstall all legacy system tools:
 
-1. Download the [zip package](<https://github.com/labring/fastgpt-img/raw/refs/heads/main/fastgpt-official-plugins(1).zip>) that contains all system tools.
-2. Open the `fastgpt` web app, click `Admin` in the navbar, click Add Plugin, click `Import/Update Plugin`, upload the zip package, and confirm.
+1. Download the [zip package](https://github.com/labring/fastgpt-img/raw/refs/heads/main/fastgpt-official-plugins%281%29.zip) that contains all system tools.
+2. Open the `fastgpt` web app, go to `Admin → System Resources → System Tools`, click `New Tool` (or `Add Plugin` in earlier UI versions), click `Import/update Plugin`, upload the zip package, and click `Confirm import`.
 
 You can also install them one by one from the plugin marketplace: [https://v2.marketplace.fastgpt.cn](https://v2.marketplace.fastgpt.cn). The environment variable default now points to this address, so no marketplace-related variables are required.
 

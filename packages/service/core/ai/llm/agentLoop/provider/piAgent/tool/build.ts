@@ -8,6 +8,17 @@ import type {
   ChatCompletionMessageToolCall
 } from '@fastgpt/global/core/ai/llm/type';
 import { getErrText } from '@fastgpt/global/common/error/utils';
+import {
+  checkToolResultModeration,
+  isToolResultModerated,
+  markToolResultModerated,
+  sanitizeModeratedToolNodeResponse
+} from '../../../../../../plugin/moderation/modelInput';
+import { checkToolParamsModeration } from '../../../../../../plugin/moderation/output';
+import {
+  isModerationBlockErrorMessage,
+  MODERATION_BLOCKED_REPLACE_TEXT
+} from '@fastgpt/global/core/plugin/moderation/constants';
 import { createAskUserAgentTool } from '../../../domain/systemTool/ask';
 import {
   applyPlanUpdate,
@@ -31,6 +42,7 @@ import {
 import { runSandboxTools } from '../../../../../sandbox/application/toolCall';
 import { createToolCall, normalizeToolArgs, stringifyJson } from '../message';
 import { getPiAgentRuntimeTools } from './catalog';
+import { sanitizeToolParametersForModel } from '@fastgpt/global/common/jsonSchema/utils';
 
 type PlanOperationEvent = Extract<AgentLoopEvent, { type: 'plan_operation' }>;
 
@@ -56,9 +68,14 @@ const pushAgentLoopUsages = <TChildrenResponse = unknown>(
   if (normalizedUsages.length > 0) runtime.usagePush?.(normalizedUsages);
 };
 
+/** pi-ai 会把工具参数原样交给模型供应商，需在进入 agent loop 前统一清理内部字段。 */
+const toPiToolParameters = (parameters: unknown) =>
+  Type.Unsafe<any>((sanitizeToolParametersForModel(parameters) as Record<string, unknown>) ?? {});
+
 /**
  * 将统一 runtime tools 和 piAgent 支持的系统工具转换为 pi-agent-core AgentTool。
- * 普通工具统一发 tool 生命周期事件；plan/ask 仅发各自的领域事件。
+ * 普通工具统一发 tool 生命周期事件；plan 保留领域展示并补齐隐藏的结束事件，供运行时统计活动。
+ * Ask 仍通过交互事件暂停，不改变其确认与恢复协议。
  */
 export const buildPiAgentTools = async <TChildrenResponse = unknown>({
   runtime,
@@ -70,7 +87,8 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
   onToolStop,
   getMessages,
   onToolCall,
-  onToolResult
+  onToolResult,
+  isToolCallParamsAllowed
 }: {
   runtime: AgentLoopRuntime<TChildrenResponse>;
   getActivePlan: () => AgentPlanType | undefined;
@@ -85,9 +103,22 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
     call: ChatCompletionMessageToolCall;
     response: string;
     assistantMessages?: ChatCompletionMessageParam[];
+    continuationMessage?: string;
   }) => void;
+  isToolCallParamsAllowed?: (call: ChatCompletionMessageToolCall) => Promise<boolean>;
 }): Promise<AgentTool[]> => {
   const tools: AgentTool[] = [];
+
+  const checkParamsAllowed = async (call: ChatCompletionMessageToolCall): Promise<boolean> => {
+    if (isToolCallParamsAllowed) {
+      return isToolCallParamsAllowed(call);
+    }
+    const paramCheck = await checkToolParamsModeration({
+      toolCalls: [call],
+      context: { teamId: runtime.teamId }
+    });
+    return paramCheck.isPass;
+  };
 
   /** 保证每个普通工具 start 都对应 end，并将异常变成可回填模型的工具结果。 */
   const executeOrdinaryTool = async ({
@@ -104,8 +135,41 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
       stop?: boolean;
       errorMessage?: string;
       metadata?: unknown;
+      hideInUI?: boolean;
+      continuationMessage?: string;
     }>;
   }) => {
+    // 工具参数违规时不派发原始敏感参数、不执行底层工具，直接向 Agent Loop 回填统一审核结果
+    const isParamsAllowed = await checkParamsAllowed(call);
+    if (!isParamsAllowed) {
+      const maskedCall: ChatCompletionMessageToolCall = {
+        ...call,
+        function: {
+          ...call.function,
+          arguments: '{}'
+        }
+      };
+      onToolCall(maskedCall);
+      runtime.emitEvent?.({
+        type: 'tool_run_end',
+        call: maskedCall,
+        response: MODERATION_BLOCKED_REPLACE_TEXT,
+        assistantMessages: [],
+        usages: [],
+        seconds: 0
+      });
+      onToolResult({
+        call: maskedCall,
+        response: MODERATION_BLOCKED_REPLACE_TEXT,
+        assistantMessages: []
+      });
+      return {
+        response: MODERATION_BLOCKED_REPLACE_TEXT,
+        assistantMessages: [],
+        usages: []
+      };
+    }
+
     const startedAt = Date.now();
     onToolCall(call);
     runtime.emitEvent?.({ type: 'tool_run_start', call });
@@ -114,10 +178,39 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
       try {
         return await execute();
       } catch (error) {
-        const errorMessage = `Tool error: ${getErrText(error)}`;
+        const errText = getErrText(error);
+        if (isModerationBlockErrorMessage(errText)) {
+          return {
+            response: MODERATION_BLOCKED_REPLACE_TEXT,
+            assistantMessages: [],
+            usages: []
+          };
+        }
+        const errorMessage = `Tool error: ${errText}`;
         return { response: errorMessage, assistantMessages: [], usages: [], errorMessage };
       }
     })();
+
+    if (!isToolResultModerated(result)) {
+      const originalResponse = result.response;
+      const moderatedResponse = originalResponse
+        ? await checkToolResultModeration({
+            response: originalResponse,
+            context: { teamId: runtime.teamId }
+          })
+        : originalResponse;
+      const hitModeration =
+        moderatedResponse !== originalResponse ||
+        isModerationBlockErrorMessage(result.errorMessage);
+      if (hitModeration) {
+        result.response = MODERATION_BLOCKED_REPLACE_TEXT;
+        result.errorMessage = undefined;
+        result.assistantMessages = [];
+        result.assistantResponses = undefined;
+        result.metadata = sanitizeModeratedToolNodeResponse(result.metadata);
+      }
+      markToolResultModerated(result);
+    }
     const normalizedResponse = normalizeToolResponseContent(result.response);
     const assistantMessages = result.assistantMessages ?? [];
     const usages = normalizeAgentLoopUsages(result.usages);
@@ -133,9 +226,16 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
       usages,
       errorMessage: result.errorMessage,
       metadata: result.metadata,
+      hideInUI: result.hideInUI,
       seconds: +((Date.now() - startedAt) / 1000).toFixed(2)
     });
-    onToolResult({ call, response: normalizedResponse, assistantMessages });
+    onToolResult({
+      call,
+      response: normalizedResponse,
+      assistantMessages,
+      ...(!result.interactive &&
+        !result.stop && { continuationMessage: result.continuationMessage })
+    });
     return { ...result, response: normalizedResponse, assistantMessages, usages };
   };
 
@@ -146,7 +246,7 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
       label: toolName,
       description: tool.function.description || '',
       parameters: tool.function.parameters
-        ? Type.Unsafe<any>(tool.function.parameters as Record<string, unknown>)
+        ? toPiToolParameters(tool.function.parameters)
         : Type.Object({}, { additionalProperties: false }),
       execute: async (callId: string, args: unknown) => {
         const call = createToolCall({ id: callId, name: toolName, args: normalizeToolArgs(args) });
@@ -170,11 +270,25 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
         name: planTool.function.name,
         label: planTool.function.name,
         description: planTool.function.description || '',
-        parameters: Type.Unsafe<any>(
-          (planTool.function.parameters as Record<string, unknown>) ?? {}
-        ),
+        parameters: toPiToolParameters(planTool.function.parameters),
         execute: async (callId: string, args: unknown) => {
           const toolArgs = normalizeToolArgs(args);
+          const call = createToolCall({
+            id: callId,
+            name: planTool.function.name,
+            args: toolArgs
+          });
+          const isAllowed = await checkParamsAllowed(call);
+          if (!isAllowed) {
+            onToolResult({
+              call: createToolCall({ id: callId, name: planTool.function.name, args: {} }),
+              response: MODERATION_BLOCKED_REPLACE_TEXT
+            });
+            return {
+              content: [{ type: 'text' as const, text: MODERATION_BLOCKED_REPLACE_TEXT }],
+              details: {}
+            };
+          }
           const params = stringifyJson(toolArgs);
           const isSetPlan = planTool.function.name === setPlanToolName;
           runtime.emitEvent?.({
@@ -212,8 +326,16 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
             });
           }
           onToolResult({
-            call: createToolCall({ id: callId, name: planTool.function.name, args: toolArgs }),
+            call,
             response: result.message
+          });
+          // 与 FastAgent 的计划工具保持一致；展示仍由 plan_operation 负责，避免重复工具卡。
+          runtime.emitEvent?.({
+            type: 'tool_run_end',
+            call,
+            response: result.message,
+            seconds: 0,
+            hideInUI: true
           });
           return { content: [{ type: 'text' as const, text: result.message }], details: {} };
         }
@@ -228,9 +350,21 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
       name: askTool.function.name,
       label: askTool.function.name,
       description: askTool.function.description || '',
-      parameters: Type.Unsafe<any>((askTool.function.parameters as Record<string, unknown>) ?? {}),
+      parameters: toPiToolParameters(askTool.function.parameters),
       execute: async (callId: string, args: unknown) => {
         const toolArgs = normalizeToolArgs(args);
+        const rawCall = createToolCall({ id: callId, name: askTool.function.name, args: toolArgs });
+        const isAllowed = await checkParamsAllowed(rawCall);
+        if (!isAllowed) {
+          onToolResult({
+            call: createToolCall({ id: callId, name: askTool.function.name, args: {} }),
+            response: MODERATION_BLOCKED_REPLACE_TEXT
+          });
+          return {
+            content: [{ type: 'text' as const, text: MODERATION_BLOCKED_REPLACE_TEXT }],
+            details: {}
+          };
+        }
         const params = stringifyJson(toolArgs);
         const parsed = AgentAskPayloadSchema.safeParse(toolArgs);
         if (!parsed.success) {
@@ -279,9 +413,7 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
         name: agentLoopToolName,
         label: agentLoopToolName,
         description: sandboxTool.function.description || '',
-        parameters: Type.Unsafe<any>(
-          (sandboxTool.function.parameters as Record<string, unknown>) ?? {}
-        ),
+        parameters: toPiToolParameters(sandboxTool.function.parameters),
         execute: async (callId: string, args: unknown) => {
           const call = createToolCall({
             id: callId,
@@ -319,9 +451,7 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
       name: readFileTool.function.name,
       label: readFileTool.function.name,
       description: readFileTool.function.description || '',
-      parameters: Type.Unsafe<any>(
-        (readFileTool.function.parameters as Record<string, unknown>) ?? {}
-      ),
+      parameters: toPiToolParameters(readFileTool.function.parameters),
       execute: async (callId: string, args: unknown) => {
         const call = createToolCall({
           id: callId,
@@ -355,9 +485,7 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
       name: datasetSearchTool.function.name,
       label: datasetSearchTool.function.name,
       description: datasetSearchTool.function.description || '',
-      parameters: Type.Unsafe<any>(
-        (datasetSearchTool.function.parameters as Record<string, unknown>) ?? {}
-      ),
+      parameters: toPiToolParameters(datasetSearchTool.function.parameters),
       execute: async (callId: string, args: unknown) => {
         const patchedArgs = patchDatasetSearchParams({
           args: stringifyJson(normalizeToolArgs(args)),

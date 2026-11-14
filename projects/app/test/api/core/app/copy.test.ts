@@ -5,6 +5,8 @@ import { configureAgentQuota } from './quotaTestUtils';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { getHTTPToolSetRuntimeNode } from '@fastgpt/global/core/app/tool/httpTool/utils';
+import { getMCPToolSetRuntimeNode } from '@fastgpt/global/core/app/tool/mcpTool/utils';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   FlowNodeInputTypeEnum,
@@ -18,6 +20,7 @@ import type {
 } from '@fastgpt/global/openapi/core/app/common/api';
 import {
   PerResourceTypeEnum,
+  ReadPermissionVal,
   WritePermissionVal
 } from '@fastgpt/global/support/permission/constant';
 import { TeamAppCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
@@ -25,6 +28,7 @@ import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { getCachedSystemModelHandle } from '@fastgpt/service/core/ai/model/catalog/cache';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
+import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { serviceEnv } from '@fastgpt/service/env';
 import { getResourceOwnedClbs } from '@fastgpt/service/support/permission/controller';
 import { updateResourceCollaborators } from '@fastgpt/service/support/permission/resourcePermissionService';
@@ -75,6 +79,29 @@ describe('Copy', () => {
     expect(res2.error).toBeUndefined();
     expect(res2.code).toBe(200);
     const appId = res2.data as string;
+    const [readableDataset, privateDataset] = await MongoDataset.create([
+      {
+        name: 'readable-dataset',
+        teamId: users.members[0].teamId,
+        tmbId: users.members[0].tmbId,
+        vectorModel: 'text-embedding-3-small',
+        agentModel: 'gpt-4o-mini'
+      },
+      {
+        name: 'private-dataset',
+        teamId: users.members[0].teamId,
+        tmbId: users.members[0].tmbId,
+        vectorModel: 'text-embedding-3-small',
+        agentModel: 'gpt-4o-mini'
+      }
+    ]);
+    await MongoResourcePermission.create({
+      resourceType: PerResourceTypeEnum.dataset,
+      teamId: users.members[0].teamId,
+      resourceId: String(readableDataset._id),
+      tmbId: users.members[1].tmbId,
+      permission: ReadPermissionVal
+    });
     await MongoAppVersion.updateOne(
       { appId, isPublish: true },
       {
@@ -90,6 +117,22 @@ describe('Copy', () => {
                   value: 'disabled-copy-model',
                   selectedType: FlowNodeInputTypeEnum.selectLLMModel,
                   renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
+                }
+              ],
+              outputs: []
+            },
+            {
+              nodeId: 'dataset-node',
+              flowNodeType: FlowNodeTypeEnum.datasetSearchNode,
+              name: 'Dataset Search',
+              inputs: [
+                {
+                  key: NodeInputKeyEnum.datasetSelectList,
+                  renderTypeList: [FlowNodeInputTypeEnum.selectDataset],
+                  value: [
+                    { datasetId: String(readableDataset._id) },
+                    { datasetId: String(privateDataset._id) }
+                  ]
                 }
               ],
               outputs: []
@@ -161,6 +204,10 @@ describe('Copy', () => {
         value: expectedFallbackModelId
       })
     ]);
+    expect(copiedVersion?.resources).toEqual([
+      { type: 'dataset', id: String(readableDataset._id) },
+      { type: 'model', id: expectedFallbackModelId }
+    ]);
   });
 
   it.each([AppTypeEnum.simple, AppTypeEnum.chatAgent, AppTypeEnum.workflow])(
@@ -229,19 +276,67 @@ describe('Copy', () => {
           type: AppTypeEnum.chatAgent
         }))
       );
+      const inputSchema = {
+        type: 'object',
+        properties: { query: { type: 'string' } }
+      };
+      const nodes = (() => {
+        if (type === AppTypeEnum.mcpToolSet) {
+          return [
+            getMCPToolSetRuntimeNode({
+              url: 'https://mcp.example.com',
+              toolList: [{ name: 'search', description: 'Search', inputSchema }]
+            })
+          ];
+        }
+        if (type === AppTypeEnum.httpToolSet) {
+          return [
+            getHTTPToolSetRuntimeNode({
+              baseUrl: 'https://api.example.com',
+              apiSchemaStr: '{"openapi":"3.0.0"}',
+              toolList: [
+                {
+                  name: 'search',
+                  description: 'Search',
+                  path: '/search',
+                  method: 'GET',
+                  inputSchema
+                }
+              ]
+            })
+          ];
+        }
+        return [];
+      })();
       const sourceId = await createapi.onCreateApp({
         teamId: owner.teamId,
         tmbId: owner.tmbId,
         name: 'tool',
         type,
-        nodes: []
+        nodes
       });
       const copy = () =>
         Call<CopyAppBodyType, Record<string, never>, CopyAppResponseType>(copyapi.default, {
           auth: owner,
           body: { appId: sourceId }
         });
-      expect((await copy()).code).toBe(200);
+      const copied = await copy();
+      expect(copied.code).toBe(200);
+      if (type === AppTypeEnum.mcpToolSet || type === AppTypeEnum.httpToolSet) {
+        const copiedVersion = await MongoAppVersion.findOne({
+          appId: copied.data?.appId,
+          isPublish: true
+        }).lean();
+        const toolSet =
+          type === AppTypeEnum.mcpToolSet
+            ? copiedVersion?.nodes[0].toolConfig?.mcpToolSet
+            : copiedVersion?.nodes[0].toolConfig?.httpToolSet;
+        expect(toolSet?.toolList[0]).toMatchObject({
+          name: 'search',
+          description: 'Search',
+          inputSchema: JSON.stringify(inputSchema)
+        });
+      }
       await MongoApp.insertMany(
         Array.from({ length: 998 }, () => ({
           teamId: owner.teamId,

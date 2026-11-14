@@ -2,6 +2,7 @@ import { execFile } from 'node:child_process';
 import {
   chmod,
   lstat,
+  mkdir,
   mkdtemp,
   readdir,
   readFile,
@@ -14,6 +15,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 import type { ICommandExecution } from '@/contracts';
+import { CommandExecutionError, ConnectionError, FileOperationError } from '@/errors';
 import { CommandFilesystemPolyfill } from '@/polyfills/command-filesystem';
 import type { ExecuteResult } from '@/types';
 
@@ -153,22 +155,285 @@ drwxr-xr-x 2 user group 4096 2024-01-15T10:45:00 subdir`)
     });
   });
 
-  it('maps provider stat metadata to the public file shape', async () => {
-    const { execute, polyfill } = setup();
-    execute.mockResolvedValueOnce(
-      commandResult('1234|1705312200|1705311000|644|user|group|regular file')
+  describe('getFileInfo', () => {
+    const path = '/workspace/file.txt';
+    const metadata = '1234|1705312200|1705311000|644|user|group|regular file';
+    const missing = commandResult(
+      '',
+      `stat: cannot statx '${path}': No such file or directory\n`,
+      1
+    );
+    const denied = commandResult('', `stat: cannot statx '${path}': Permission denied\n`, 1);
+
+    it('maps complete stat metadata to the public file shape', async () => {
+      const { execute, polyfill } = setup();
+      execute.mockResolvedValueOnce(commandResult(`${metadata}\n`));
+
+      const info = await polyfill.getFileInfo([path]);
+
+      expect(info.get(path)).toEqual({
+        path,
+        size: 1234,
+        modifiedAt: new Date(1705312200000),
+        createdAt: new Date(1705311000000),
+        mode: 0o644,
+        owner: 'user',
+        group: 'group',
+        isFile: true,
+        isDirectory: false,
+        isSymlink: false
+      });
+    });
+
+    it('keeps zero size and mode and accepts epoch and pre-epoch timestamps', async () => {
+      const { execute, polyfill } = setup();
+      execute.mockResolvedValueOnce(commandResult('0|0|-1|0|user|group|regular empty file'));
+
+      const info = await polyfill.getFileInfo([path]);
+
+      expect(info.get(path)).toMatchObject({
+        size: 0,
+        mode: 0,
+        modifiedAt: new Date(0),
+        createdAt: new Date(-1000),
+        isFile: true
+      });
+    });
+
+    it.each([
+      ['directory', true, false],
+      ['symbolic link', false, true],
+      ['block special file', false, false],
+      ['character special file', false, false],
+      ['fifo', false, false],
+      ['socket', false, false]
+    ])('preserves valid %s metadata', async (fileType, isDirectory, isSymlink) => {
+      const { execute, polyfill } = setup();
+      execute.mockResolvedValueOnce(commandResult(`0|0|0|600|user|group|${fileType}\n`));
+
+      const info = await polyfill.getFileInfo([path]);
+
+      expect(info.get(path)).toMatchObject({ size: 0, isDirectory, isSymlink, isFile: false });
+    });
+
+    it.each(['stat', 'statx'])(
+      'omits only confirmed ENOENT from %s in a mixed batch',
+      async (operation) => {
+        const { execute, polyfill } = setup();
+        const missingPath = '/workspace/missing parent/file.txt';
+        execute
+          .mockResolvedValueOnce(commandResult(metadata))
+          .mockResolvedValueOnce(
+            commandResult(
+              '',
+              `stat: cannot ${operation} '${missingPath}': No such file or directory\n`,
+              1
+            )
+          )
+          .mockResolvedValueOnce(commandResult(metadata));
+
+        const info = await polyfill.getFileInfo([path, missingPath, '/workspace/other.txt']);
+
+        expect([...info.keys()]).toEqual([path, '/workspace/other.txt']);
+        expect(execute).toHaveBeenCalledTimes(3);
+      }
     );
 
-    const info = await polyfill.getFileInfo(['/workspace/file.txt']);
+    it('throws permission errors even when the path contains missing-file diagnostic text', async () => {
+      const { execute, polyfill } = setup();
+      const protectedPath = '/workspace/No such file or directory';
+      const stderr = `stat: cannot statx '${protectedPath}': Permission denied\n`;
+      execute.mockResolvedValueOnce(commandResult('', stderr, 1));
 
-    expect(info.get('/workspace/file.txt')).toMatchObject({
-      path: '/workspace/file.txt',
-      size: 1234,
-      mode: 0o644,
-      owner: 'user',
-      group: 'group',
-      isFile: true,
-      isDirectory: false
+      await expect(polyfill.getFileInfo([protectedPath])).rejects.toMatchObject({
+        path: protectedPath,
+        fileErrorCode: 'PERMISSION_DENIED',
+        cause: expect.objectContaining({ exitCode: 1, stderr })
+      });
+      expect(execute).toHaveBeenCalledTimes(1);
+    });
+
+    it.each([
+      ['missing stat executable', commandResult('', 'sh: stat: not found\n', 127)],
+      ['unsupported stat option', commandResult('', "stat: invalid option -- 'c'\n", 1)],
+      [
+        'non-directory ancestor',
+        commandResult('', `stat: cannot statx '${path}': Not a directory\n`, 1)
+      ],
+      ['unconfirmed ENOENT text', commandResult('', 'No such file or directory\n', 1)],
+      ['multiple diagnostics', commandResult('', `stat: command failed\n${missing.stderr}`, 1)],
+      ['unknown exit status', { ...missing, exitCode: null }],
+      ['command termination', { ...missing, exitCode: 137 }],
+      ['partial stdout on failure', { ...missing, stdout: metadata }],
+      ['failure without diagnostics', commandResult('', '', 1)]
+    ])('rejects %s without retrying or interpreting it as missing', async (_, result) => {
+      const { execute, polyfill } = setup();
+      execute.mockResolvedValueOnce(result);
+
+      await expect(polyfill.getFileInfo([path])).rejects.toBeInstanceOf(CommandExecutionError);
+      expect(execute).toHaveBeenCalledTimes(1);
+    });
+
+    it.each([
+      new Error('transport failed'),
+      new ConnectionError('connection lost'),
+      new CommandExecutionError('execution failed', 'stat', 1, '', missing.stderr)
+    ])('propagates executor rejection unchanged: %s', async (error) => {
+      const { execute, polyfill } = setup();
+      execute.mockRejectedValueOnce(error);
+
+      await expect(polyfill.getFileInfo([path])).rejects.toBe(error);
+      expect(execute).toHaveBeenCalledTimes(1);
+    });
+
+    it.each([commandResult(metadata), missing])(
+      'rejects truncated output before interpreting it',
+      async (result) => {
+        const { execute, polyfill } = setup();
+        execute.mockResolvedValueOnce({ ...result, truncated: true });
+
+        await expect(polyfill.getFileInfo([path])).rejects.toMatchObject({
+          path,
+          fileErrorCode: 'TRANSFER_ERROR'
+        });
+        expect(execute).toHaveBeenCalledTimes(1);
+      }
+    );
+
+    it.each([
+      '',
+      'STAT_FAILED',
+      '1234|1705312200|1705311000|644|user|group',
+      `${metadata}|extra`,
+      `${metadata}\n\n`,
+      '12bytes|0|0|644|user|group|regular file',
+      '-1|0|0|644|user|group|regular file',
+      '9007199254740993|0|0|644|user|group|regular file',
+      '0|not-a-date|0|644|user|group|regular file',
+      '0|8640000000001|0|644|user|group|regular file',
+      '0|0|8640000000001|644|user|group|regular file',
+      '0|0|0|888|user|group|regular file',
+      '0|0|0|644||group|regular file',
+      '0|0|0|644|user||regular file',
+      '0|0|0|644|user|group|regular'
+    ])('rejects invalid metadata instead of returning an incomplete map: %j', async (stdout) => {
+      const { execute, polyfill } = setup();
+      execute.mockResolvedValueOnce(commandResult(stdout));
+
+      await expect(polyfill.getFileInfo([path])).rejects.toMatchObject({
+        path,
+        fileErrorCode: 'TRANSFER_ERROR'
+      });
+      expect(execute).toHaveBeenCalledTimes(1);
+    });
+
+    it('rejects unexpected diagnostics even with a successful exit and valid metadata', async () => {
+      const { execute, polyfill } = setup();
+      execute.mockResolvedValueOnce(commandResult(metadata, denied.stderr));
+
+      await expect(polyfill.getFileInfo([path])).rejects.toBeInstanceOf(FileOperationError);
+    });
+
+    it.each([
+      denied,
+      commandResult('', 'sh: stat: not found\n', 127),
+      commandResult('invalid metadata'),
+      { ...missing, truncated: true },
+      new ConnectionError('connection lost after the first path')
+    ])('rejects the whole batch after an earlier path succeeded: %j', async (failure) => {
+      const { execute, polyfill } = setup();
+      execute.mockResolvedValueOnce(commandResult(metadata));
+      if (failure instanceof Error) {
+        execute.mockRejectedValueOnce(failure);
+      } else {
+        execute.mockResolvedValueOnce(failure);
+      }
+
+      await expect(
+        polyfill.getFileInfo(['/workspace/first.txt', path, '/workspace/unqueried.txt'])
+      ).rejects.toThrow();
+      expect(execute).toHaveBeenCalledTimes(2);
+    });
+
+    it('quotes spaces, apostrophes and shell substitutions in paths', async () => {
+      const { execute, polyfill } = setup();
+      const unsafePath = "/workspace/with space'$(touch injected)`echo bad`.txt";
+      execute.mockResolvedValueOnce(commandResult(metadata));
+
+      const info = await polyfill.getFileInfo([unsafePath]);
+
+      expect(info.has(unsafePath)).toBe(true);
+      expect(execute).toHaveBeenCalledWith(
+        "LC_ALL=C stat -c '%s|%Y|%W|%a|%U|%G|%F' -- '/workspace/with space'\\''$(touch injected)`echo bad`.txt'"
+      );
+    });
+
+    describe.skipIf(process.platform !== 'linux')('with real GNU stat', () => {
+      const setupShell = (directory: string) => {
+        const { execute, polyfill } = setup();
+        execute.mockImplementation(
+          (command) =>
+            new Promise((resolve, reject) => {
+              execFile('sh', ['-c', command], { cwd: directory }, (error, stdout, stderr) => {
+                if (error && typeof error.code !== 'number') {
+                  reject(error);
+                  return;
+                }
+                resolve(commandResult(stdout, stderr, error ? Number(error.code) : 0));
+              });
+            })
+        );
+        return { execute, polyfill };
+      };
+
+      it('distinguishes actual missing paths from empty files and dangling symlinks safely', async () => {
+        const directory = await mkdtemp(join(tmpdir(), 'command-stat-'));
+        const filePath = join(directory, 'space \' "$(touch injected)" `touch injected`.txt');
+        const linkPath = join(directory, 'dangling link');
+        const missingPath = join(directory, 'missing parent', 'file.txt');
+        const { polyfill } = setupShell(directory);
+        try {
+          await writeFile(filePath, '');
+          await chmod(filePath, 0o000);
+          await symlink('missing target', linkPath);
+
+          const info = await polyfill.getFileInfo([filePath, missingPath, linkPath]);
+
+          expect([...info.keys()]).toEqual([filePath, linkPath]);
+          expect(info.get(filePath)).toMatchObject({ size: 0, mode: 0, isFile: true });
+          expect(info.get(linkPath)).toMatchObject({ isSymlink: true, isFile: false });
+          expect((await readdir(directory)).sort()).toEqual([
+            'dangling link',
+            'space \' "$(touch injected)" `touch injected`.txt'
+          ]);
+        } finally {
+          await rm(directory, { recursive: true, force: true });
+        }
+      });
+
+      it.skipIf(process.getuid?.() === 0)(
+        'throws for an existing file behind a non-searchable directory',
+        async () => {
+          const directory = await mkdtemp(join(tmpdir(), 'command-stat-'));
+          const protectedDirectory = join(directory, 'No such file or directory');
+          const filePath = join(protectedDirectory, 'file.txt');
+          const { execute, polyfill } = setupShell(directory);
+          await mkdir(protectedDirectory);
+          try {
+            await writeFile(filePath, 'existing data');
+            await chmod(protectedDirectory, 0o000);
+
+            await expect(polyfill.getFileInfo([filePath])).rejects.toMatchObject({
+              path: filePath,
+              fileErrorCode: 'PERMISSION_DENIED'
+            });
+            expect(execute).toHaveBeenCalledTimes(1);
+          } finally {
+            await chmod(protectedDirectory, 0o700);
+            await rm(directory, { recursive: true, force: true });
+          }
+        }
+      );
     });
   });
 
@@ -264,8 +529,18 @@ MemAvailable:   6144000 kB`)
         'function a() {\n  return 1;\n}\nfunction a() {\n  return 1;\n}\nend\n'
       );
       try {
-        await polyfill.replaceContent([
-          { path, oldContent: '{\n  return 1;\n}', newContent: '{\n  return 2;\n}' }
+        await expect(
+          polyfill.replaceContent([
+            { path, oldContent: '{\n  return 1;\n}', newContent: '{\n  return 2;\n}' },
+            { path, oldContent: 'missing', newContent: 'unused' },
+            { path, oldContent: '2', newContent: '3' },
+            { path: `${path}.missing`, oldContent: 'old', newContent: 'new' }
+          ])
+        ).resolves.toEqual([
+          { path, status: 'replaced', replacedCount: 2 },
+          { path, status: 'unmatched' },
+          { path, status: 'skipped' },
+          { path: `${path}.missing`, status: 'skipped' }
         ]);
 
         await expect(read()).resolves.toBe(

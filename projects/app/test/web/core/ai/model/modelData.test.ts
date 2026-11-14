@@ -212,6 +212,42 @@ describe('catalog consumers', () => {
     ).toBeUndefined();
   });
 
+  it('uses custom catalog order for the final system fallback while preserving default priority', async () => {
+    const teamModel = { ...makeModel('owned', true), scope: 'team' as const, tmbId: 'member' };
+    mocks.catalog.mockResolvedValueOnce({
+      version: 'v1:custom:order',
+      data: {
+        models: [
+          teamModel,
+          makeModel('second', true),
+          makeModel('first', true),
+          makeModel('system')
+        ],
+        providers: [],
+        defaultModelIds: { llm: 'system' }
+      }
+    });
+
+    expect((await getModelDefault({ modelType: ModelTypeEnum.llm }))?.modelId).toBe('system');
+    expect((await getModelDefault({ modelType: ModelTypeEnum.llm, vision: true }))?.modelId).toBe(
+      'second'
+    );
+    expect(
+      (
+        await getModelDefault({
+          modelType: ModelTypeEnum.llm,
+          vision: true,
+          businessDefaultModelId: 'first'
+        })
+      )?.modelId
+    ).toBe('first');
+    expect(mocks.catalog).toHaveBeenCalledExactlyOnceWith({
+      version: undefined,
+      outLinkAuthData: undefined,
+      orderBy: 'custom'
+    });
+  });
+
   it('does not fall back to a vision model when no dataset image default is configured', async () => {
     mocks.catalog.mockResolvedValueOnce({
       version: 'v2',

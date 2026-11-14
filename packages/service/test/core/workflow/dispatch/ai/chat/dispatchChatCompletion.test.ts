@@ -23,6 +23,11 @@ import { prepareWorkflowFileContext } from '@fastgpt/service/core/workflow/utils
 import { serviceEnv } from '@fastgpt/service/env';
 import { axios } from '@fastgpt/service/common/api/axios';
 import { WorkflowVariableState } from '@fastgpt/service/core/workflow/dispatch/utils/variables';
+import * as modelInputModeration from '@fastgpt/service/core/plugin/moderation/modelInput';
+import {
+  getWorkflowNodeMemoryKey,
+  WorkflowMemoryState
+} from '@fastgpt/service/core/workflow/memory/state';
 
 const fixture = vi.hoisted(() => ({
   requestMock: vi.fn(),
@@ -321,6 +326,184 @@ describe('periodic chat history across persisted rounds', () => {
     requestMock.mockReset();
   });
 
+  it.each([false, true])(
+    '审核拦截不推进周期窗口，放行重试恢复原起点（stream=%s）',
+    async (stream) => {
+      requestMock.mockReset();
+      fixture.useRealFileFlow = true;
+      fixture.useRealDatasetCite = true;
+      const runningAppInfo = {
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: 'source',
+        teamId: 'team'
+      };
+      const memoryKey = getWorkflowNodeMemoryKey({ runningAppInfo, nodeId: 'chat:historyWindow' });
+      const histories = Array.from({ length: 3 }, (_, index) => [
+        {
+          dataId: `r${index}`,
+          obj: ChatRoleEnum.Human,
+          value: [{ text: { content: `q${index}` } }]
+        },
+        {
+          dataId: `r${index}`,
+          obj: ChatRoleEnum.AI,
+          value: [{ text: { content: `a${index}` } }],
+          memories: { [memoryKey]: { min: 2, max: 4, startDataId: 'r0' } }
+        }
+      ]).flat();
+      const before = structuredClone(histories);
+      const usagePush = vi.fn();
+      const props = {
+        node: { ...AiChatModule, nodeId: 'chat' },
+        histories,
+        stream,
+        chatId: 'conversation',
+        responseChatItemId: 'current',
+        runningAppInfo,
+        runningUserInfo: { teamId: 'team', tmbId: 'member' },
+        externalProvider: {},
+        checkIsStopping: () => false,
+        params: {
+          history: 6,
+          aiChatHistoryWindow: { min: 2, max: 4 },
+          systemPrompt: 'system',
+          userChatInput: 'current',
+          maxToken: 1
+        },
+        usagePush,
+        nodeSummary: createNodeSummary()
+      };
+      const check = vi.spyOn(modelInputModeration, 'checkModelContextModeration');
+      try {
+        check.mockResolvedValueOnce({ isBlocked: true, blockErrorMessage: 'input blocked' });
+        const blocked = await dispatchChatCompletion(props as any);
+        expect(blocked.rawError).toBe('input blocked');
+        expect(blocked[DispatchNodeResponseKeyEnum.memories]).toBeUndefined();
+        expect(requestMock).not.toHaveBeenCalled();
+        expect(usagePush).not.toHaveBeenCalled();
+        expect(histories).toEqual(before);
+        expect(check).toHaveBeenCalledWith({
+          messages: expect.any(Array),
+          context: expect.objectContaining({
+            teamId: 'team',
+            tmbId: 'member',
+            appId: 'source',
+            chatId: 'conversation',
+            responseChatItemId: 'current',
+            nodeId: 'chat'
+          })
+        });
+
+        check.mockResolvedValueOnce({ isBlocked: false });
+        requestMock.mockImplementationOnce(async ({ body }) => ({
+          completeMessages: body.messages,
+          answerText: 'answer',
+          finish_reason: 'stop',
+          requestId: 'req',
+          usage: { inputTokens: 1, outputTokens: 1 }
+        }));
+        const retried = await dispatchChatCompletion(props as any);
+        expect(retried.rawError).toBeUndefined();
+        expect(retried[DispatchNodeResponseKeyEnum.memories]?.[memoryKey]).toEqual({
+          min: 2,
+          max: 4,
+          startDataId: 'r0'
+        });
+        const sent = await loadRequestMessages({
+          messages: requestMock.mock.calls[0][0].body.messages
+        });
+        expect(
+          sent.filter((message) => message.role === 'user').map((message) => message.content)
+        ).toEqual(['q0', 'q1', 'q2', 'current']);
+        expect(histories).toEqual(before);
+      } finally {
+        check.mockRestore();
+      }
+    }
+  );
+
+  it('使用调用路径隔离根节点和两个子工作流的周期窗口，不直接修改运行状态', async () => {
+    fixture.useRealFileFlow = true;
+    fixture.useRealDatasetCite = true;
+    const runningAppInfo = {
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: 'source',
+      teamId: 'team'
+    };
+    const base = WorkflowMemoryState.fromRecord({}, { rootSource: runningAppInfo });
+    const scopes = [base, base.fork('node:left'), base.fork('node:right')];
+    const keys = scopes.map((memoryState) =>
+      getWorkflowNodeMemoryKey({
+        memoryState,
+        runningAppInfo,
+        nodeId: 'chat:historyWindow'
+      })
+    );
+    const memories = Object.fromEntries(
+      keys.map((key, index) => [
+        key,
+        {
+          min: 2,
+          max: 4,
+          startDataId: `r${index}`
+        }
+      ])
+    );
+    const root = WorkflowMemoryState.fromRecord(memories, { rootSource: runningAppInfo });
+    const states = [root, root.fork('node:left'), root.fork('node:right')];
+    const histories = Array.from({ length: 4 }, (_, index) => [
+      { dataId: `r${index}`, obj: ChatRoleEnum.Human, value: [{ text: { content: `q${index}` } }] },
+      {
+        dataId: `r${index}`,
+        obj: ChatRoleEnum.AI,
+        value: [{ text: { content: `a${index}` } }],
+        memories
+      }
+    ]).flat();
+    for (const [index, memoryState] of states.entries()) {
+      requestMock.mockImplementationOnce(async ({ body }) => ({
+        completeMessages: body.messages,
+        answerText: 'answer',
+        finish_reason: 'stop',
+        requestId: 'req',
+        usage: { inputTokens: 1, outputTokens: 1 }
+      }));
+      const result = await dispatchChatCompletion({
+        node: { ...AiChatModule, nodeId: 'chat' },
+        histories,
+        memoryState,
+        responseChatItemId: 'current',
+        runningAppInfo,
+        runningUserInfo: { teamId: 'team', tmbId: 'member' },
+        externalProvider: {},
+        checkIsStopping: () => false,
+        params: {
+          history: 0,
+          aiChatHistoryWindow: { min: 2, max: 4 },
+          userChatInput: 'current',
+          maxToken: 1
+        },
+        usagePush: vi.fn(),
+        nodeSummary: createNodeSummary()
+      } as any);
+      expect(result.rawError).toBeUndefined();
+      expect(result[DispatchNodeResponseKeyEnum.memories]).toEqual({
+        [keys[index]]: memories[keys[index]]
+      });
+      const sent = await loadRequestMessages({
+        messages: requestMock.mock.calls[index][0].body.messages
+      });
+      expect(
+        sent.filter((message) => message.role === 'user').map((message) => message.content)
+      ).toEqual([
+        ...Array.from({ length: 4 - index }, (_, offset) => `q${index + offset}`),
+        'current'
+      ]);
+      expect(memoryState.getDelta()).toEqual({});
+    }
+    expect(root.toRecord()).toEqual(memories);
+  });
+
   it('周期窗口仍受最终 token 上限约束，模型失败时不推进窗口状态', async () => {
     fixture.useRealFileFlow = true;
     fixture.useRealDatasetCite = true;
@@ -413,6 +596,7 @@ describe('periodic chat history across persisted rounds', () => {
         const result = await dispatchChatCompletion({
           node,
           histories,
+          memoryState: WorkflowMemoryState.fromHistories(histories),
           stream,
           responseChatItemId: `round-${round}`,
           runningAppInfo: { sourceType: ChatSourceTypeEnum.app, sourceId, teamId },

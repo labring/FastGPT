@@ -254,28 +254,63 @@ describe('user account OpenAPI contracts', () => {
     });
   });
 
-  it('defaults a missing team member name in user details', () => {
-    const user = OpenAPIUserSchema.parse({
-      _id: objectIdLike,
-      username: 'user@example.com',
-      avatar: '/icon/avatar.svg',
-      timezone: 'Asia/Shanghai',
-      contact: null,
-      hasPassword: true,
-      status: 'active',
-      team: {
-        userId: objectIdLike,
-        teamId: objectIdLike,
-        teamName: 'FastGPT 团队',
+  it.each([
+    { memberName: undefined, expected: 'Member' },
+    { memberName: null, expected: 'Member' },
+    { memberName: '', expected: '' },
+    { memberName: '张三', expected: '张三' },
+    { memberName: 'a'.repeat(21), expected: 'a'.repeat(21) }
+  ])(
+    'normalizes member name $memberName in user details and login responses',
+    ({ memberName, expected }) => {
+      const userDetails = {
+        _id: objectIdLike,
+        username: 'user@example.com',
         avatar: '/icon/avatar.svg',
-        tmbId: objectIdLike,
+        timezone: 'Asia/Shanghai',
+        contact: null,
+        hasPassword: true,
         status: 'active',
-        notificationAccount: null,
+        team: {
+          userId: objectIdLike,
+          teamId: objectIdLike,
+          teamName: 'FastGPT 团队',
+          memberName,
+          avatar: '/icon/avatar.svg',
+          tmbId: objectIdLike,
+          status: 'active',
+          notificationAccount: null,
+          permission: {}
+        },
         permission: {}
-      },
-      permission: {}
-    });
+      };
 
-    expect(user.team.memberName).toBe('Member');
+      expect(OpenAPIUserSchema.parse(userDetails).team.memberName).toBe(expected);
+      const { user } = LoginSuccessResponseSchema.parse({
+        user: userDetails,
+        token: 'login-token'
+      });
+      expect(user.team.memberName).toBe(expected);
+      expect(user.team.isSetMemberName).toBe(false);
+    }
+  );
+
+  it('documents the normalized OAuth member name as a string', () => {
+    const response =
+      openAPIDocument.paths?.['/proApi/support/user/account/login/oauth']?.post?.responses?.['200'];
+    const memberNamePath = [
+      'content',
+      'application/json',
+      'schema',
+      'properties',
+      'user',
+      'properties',
+      'team',
+      'properties',
+      'memberName'
+    ];
+
+    expect(response).toHaveProperty([...memberNamePath, 'type'], 'string');
+    expect(response).toHaveProperty([...memberNamePath, 'default'], 'Member');
   });
 });

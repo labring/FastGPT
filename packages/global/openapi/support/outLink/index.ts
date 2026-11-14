@@ -82,7 +82,7 @@ export const OutLinkPath: OpenAPIPath = {
   '/support/outLink/update': {
     put: {
       summary: '更新发布渠道',
-      description: '更新发布渠道配置',
+      description: '更新发布渠道配置；省略名称时保留原名称，允许单独更新品牌偏好',
       tags: [DevApiTagsMap.publishChannel],
       requestBody: {
         content: {

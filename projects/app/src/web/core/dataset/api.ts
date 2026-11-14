@@ -20,8 +20,6 @@ import type {
   GetDatasetListV2Response,
   UpdateDatasetBody,
   CreateDatasetFolderBody,
-  SearchDatasetTestBody,
-  SearchDatasetTestResponse,
   GetDatasetPermissionResponse,
   ChangeDatasetOwnerBody,
   EnableCollectionPermissionBody,
@@ -29,6 +27,11 @@ import type {
   DisableCollectionPermissionBody,
   DisableCollectionPermissionResponse
 } from '@fastgpt/global/openapi/core/dataset/api';
+
+import type {
+  SearchDatasetBody,
+  SearchDatasetResponse
+} from '@fastgpt/global/openapi/core/dataset/search/api';
 
 /* ======================== dataset ======================= */
 /** @deprecated 使用 getDatasetsV2，并按分页协议获取列表。 */
@@ -109,6 +112,6 @@ export const postDisableCollectionPermission = (data: DisableCollectionPermissio
     timeout: 600000
   });
 
-/* =========== search test ============ */
-export const postSearchText = (data: SearchDatasetTestBody) =>
-  POST<SearchDatasetTestResponse>(`/core/dataset/searchTest`, data);
+/** 知识库页面使用统一搜索协议，旧搜索测试路由仅用于兼容已有调用。 */
+export const postDatasetSearch = (data: SearchDatasetBody) =>
+  POST<SearchDatasetResponse>('/core/dataset/search', data);

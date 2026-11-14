@@ -1,0 +1,123 @@
+{
+  "type": "sequence",
+  "title": "远程调试：建立连接",
+  "participants": [
+    {
+      "id": "user",
+      "label": "开发者",
+      "kind": "external",
+      "focal": false,
+      "illustration": "user"
+    },
+    {
+      "id": "app",
+      "label": "FastGPT",
+      "kind": "backend",
+      "focal": true,
+      "illustration": "core"
+    },
+    {
+      "id": "plugin",
+      "label": "Plugin 服务",
+      "kind": "backend",
+      "focal": false,
+      "illustration": "plugin"
+    },
+    {
+      "id": "cli",
+      "label": "本地 CLI",
+      "kind": "external",
+      "focal": false,
+      "illustration": "code"
+    },
+    {
+      "id": "gateway",
+      "label": "网关",
+      "kind": "external",
+      "focal": false,
+      "illustration": "gateway"
+    }
+  ],
+  "messages": [
+    [
+      "user",
+      "app",
+      "开启调试",
+      "primary"
+    ],
+    [
+      "app",
+      "plugin",
+      "创建会话",
+      "sync"
+    ],
+    [
+      "plugin",
+      "app",
+      "连接凭据",
+      "reply"
+    ],
+    [
+      "app",
+      "user",
+      "连接 URL",
+      "reply"
+    ],
+    [
+      "user",
+      "cli",
+      "dev --connect",
+      "sync"
+    ],
+    [
+      "cli",
+      "app",
+      "请求连接 URL",
+      "primary"
+    ],
+    [
+      "app",
+      "plugin",
+      "兑换 connectionKey",
+      "sync"
+    ],
+    [
+      "plugin",
+      "app",
+      "网关与短期 token",
+      "reply"
+    ],
+    [
+      "app",
+      "cli",
+      "返回连接信息",
+      "reply"
+    ],
+    [
+      "cli",
+      "gateway",
+      "WebSocket 绑定",
+      "primary"
+    ]
+  ],
+  "numbered": true,
+  "evidence": [
+    {
+      "id": "app",
+      "file": "projects/app/src/pages/api/plugin/debug-channel/connection-key/exchange.ts",
+      "line": 22
+    },
+    {
+      "id": "plugin",
+      "file": "packages/global/openapi/core/plugin/debug/api.ts",
+      "line": 237
+    }
+  ],
+  "lang": "zh-CN",
+  "eyebrow": "",
+  "legend": false,
+  "motion": "trace",
+  "fonts": "system",
+  "watermark": false,
+  "skin": "light"
+}

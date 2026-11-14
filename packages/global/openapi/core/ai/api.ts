@@ -1,3 +1,4 @@
+import { ChatIdSchema } from '../../../core/chat/schema';
 import { ObjectIdSchema } from '../../../common/type/mongo';
 import z from 'zod';
 import { OpenObjectOpenApiMeta } from '../../../common/zod/openapi';
@@ -102,7 +103,7 @@ export const ResumeStreamParamsRawSchema = createOutLinkChatTargetQuerySchema({
   outLinkAuthData: OutLinkChatAuthQuerySchema.optional().meta({
     description: '外链鉴权数据。GET query 中需 JSON 序列化。'
   }),
-  chatId: z.string().meta({ example: 'bEdzC6PNupZrr1RoVutMF2DL', description: '聊天 ID' })
+  chatId: ChatIdSchema.meta({ example: 'bEdzC6PNupZrr1RoVutMF2DL', description: '聊天 ID' })
 });
 export const ResumeStreamParamsSchema = ResumeStreamParamsRawSchema.transform(
   transformChatAuthTargetInput
@@ -114,7 +115,7 @@ export type ResumeStreamRuntimeParams = z.infer<typeof ResumeStreamParamsSchema>
 export const StreamResumeCompletedRecordsSchema = z.object({
   list: z.array(z.any()).meta({
     items: OpenObjectOpenApiMeta,
-    description: '最新已落库的聊天记录'
+    description: '最新已落库的聊天记录，业务标识使用 dataId；id 为已弃用的兼容别名'
   }),
   total: z.number().int().nonnegative().meta({
     example: 2,

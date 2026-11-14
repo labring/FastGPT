@@ -10,7 +10,7 @@ import { runOutlinkRuntime } from '@fastgpt/service/support/outLink/runtime/serv
 import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controller';
 import { dispatchWorkFlow } from '@fastgpt/service/core/workflow/dispatch';
 import { selectChatHistories } from '@fastgpt/service/core/workflow/dispatch/ai/chat/historyWindow';
-import { getWorkflowSourceNodeKey } from '@fastgpt/service/core/workflow/dispatch/utils/source';
+import { getWorkflowNodeMemoryKey } from '@fastgpt/service/core/workflow/memory/state';
 import type { OutlinkResponseEvent } from '@fastgpt/service/support/outLink/runtime/type';
 
 vi.mock('@fastgpt/service/core/app/version/controller', () => ({ getAppLatestVersion: vi.fn() }));
@@ -69,16 +69,13 @@ describe('external channel periodic history persistence', () => {
       resources: [],
       chatConfig: { variables: [], fileSelectConfig: { maxFiles: 0 } }
     } as any);
-    const memoryKey = `${getWorkflowSourceNodeKey({
+    const memoryKey = getWorkflowNodeMemoryKey({
       runningAppInfo: {
         sourceType: ChatSourceTypeEnum.app,
-        sourceId: String(app._id),
-        teamId,
-        tmbId,
-        name: app.name
+        sourceId: String(app._id)
       },
-      nodeId: node.nodeId
-    })}:historyWindow`;
+      nodeId: `${node.nodeId}:historyWindow`
+    });
     let selectedIds: (string | undefined)[] = [];
     vi.mocked(dispatchWorkFlow).mockImplementation(async (props) => {
       const selected = selectChatHistories({
@@ -107,6 +104,7 @@ describe('external channel periodic history persistence', () => {
       } as any;
     });
     const outLinkConfig = {
+      _id: '654a4107c32f3bf5f9984530',
       appId: String(app._id),
       teamId,
       tmbId,

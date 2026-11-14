@@ -1,3 +1,4 @@
+import { buildChatPublishSourceFilter } from '@fastgpt/service/core/chat/publishSource/utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildChatHistoryMatch, buildClearChatHistoriesMatch } from '@/service/core/chat/history';
 import { authChatTargetCrud } from '@fastgpt/service/core/chat/auth';
@@ -54,7 +55,7 @@ describe('chat history access', () => {
 
   it('keeps ordinary App web and API clear scopes', async () => {
     expect(await buildClearChatHistoriesMatch(params)).toMatchObject({
-      source: ChatSourceEnum.online,
+      $and: [buildChatPublishSourceFilter([ChatSourceEnum.online])],
       tmbId: 'member-1'
     });
     vi.mocked(authChatTargetCrud).mockResolvedValueOnce({
@@ -63,8 +64,25 @@ describe('chat history access', () => {
       authType: AuthUserTypeEnum.apikey
     } as any);
     const apiMatch = await buildClearChatHistoriesMatch(params);
-    expect(apiMatch).toMatchObject({ source: ChatSourceEnum.api });
+    expect(apiMatch).toMatchObject({ $and: [buildChatPublishSourceFilter([ChatSourceEnum.api])] });
     expect(apiMatch).not.toHaveProperty('tmbId');
+  });
+
+  it('preserves the proxy member when clearing API history with a personal key', async () => {
+    vi.mocked(authChatTargetCrud).mockResolvedValueOnce({
+      ...params,
+      tmbId: 'member-2',
+      authType: AuthUserTypeEnum.apikey,
+      apiKeyType: 'personal',
+      scope: { teamId: 'team-1', tmbId: 'member-2' }
+    } as any);
+    expect(
+      await buildClearChatHistoriesMatch({ ...params, authProxy: { tmbId: 'member-2' } })
+    ).toMatchObject({
+      tmbId: 'member-2',
+      teamId: 'team-1',
+      $and: [buildChatPublishSourceFilter([ChatSourceEnum.api])]
+    });
   });
 
   it('retains share identity and the existing time window', async () => {
@@ -72,6 +90,7 @@ describe('chat history access', () => {
       ...params,
       tmbId: 'owner',
       uid: 'external',
+      publishSource: { type: ChatSourceEnum.share, id: '6909d3c4b6a72185d0f08101' },
       authType: AuthUserTypeEnum.outLink
     } as any);
     const match = await buildClearChatHistoriesMatch({
@@ -79,7 +98,8 @@ describe('chat history access', () => {
       outLinkAuthData: { shareId: 'share-1', outLinkUid: 'external' }
     });
     expect(match).toMatchObject({
-      shareId: 'share-1',
+      'publishSource.type': ChatSourceEnum.share,
+      'publishSource.id': '6909d3c4b6a72185d0f08101',
       outLinkUid: 'external',
       updateTime: { $gte: expect.any(Date) }
     });

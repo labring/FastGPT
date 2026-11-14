@@ -40,6 +40,7 @@ import {
   getWorkflowFileContext,
   getWorkflowFileMaxAmount,
   getWorkflowResourceContext,
+  getWorkflowSandboxContext,
   getWorkflowFileRegistrar,
   readWorkflowFileBuffer,
   prepareWorkflowFiles,
@@ -51,6 +52,33 @@ const createWorkflowContext = () => ({
 });
 
 describe('WorkflowContext', () => {
+  it('inherits the root sandbox across child resource contexts and isolates concurrent requests', async () => {
+    const fallback = {
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: 'child-app',
+      teamId: 'child-team',
+      userId: 'user',
+      chatId: 'chat'
+    };
+    expect(getWorkflowSandboxContext(fallback)).toBe(fallback);
+    await Promise.all(
+      ['root-a', 'root-b'].map(async (sourceId) => {
+        const sandboxContext = { ...fallback, sourceId, teamId: 'root-team' };
+        await runWithContext({ mcpClientMemory: {}, sandboxContext }, () =>
+          runWithDerivedWorkflowFileContext({
+            files: [],
+            resourceContext: { isRoot: false, resourceMap: new Map() },
+            fn: async () => {
+              await Promise.resolve();
+              expect(getWorkflowSandboxContext(fallback)).toBe(sandboxContext);
+            }
+          })
+        );
+      })
+    );
+    expect(getWorkflowSandboxContext(fallback)).toBe(fallback);
+  });
+
   describe('runWithContext / getWorkflowContext', () => {
     it('should provide context inside callback', async () => {
       const ctx = createWorkflowContext();
@@ -385,7 +413,7 @@ describe('runWithDerivedWorkflowFileContext', () => {
         histories: [createHistory(historyFile)],
         files: [explicitFile],
         fn: async ({ query, histories, filterFiles }) => {
-          expect(query).toEqual([queryFile]);
+          expect(query).toEqual([{ file: { ...queryFile.file, type: ChatFileTypeEnum.document } }]);
           expect(histories[0].value).toEqual([]);
           expect(filterFiles([explicitFile])).toEqual([explicitFile]);
           expect(getWorkflowFileContext()?.resolve(explicitFile)).toBeDefined();
@@ -495,7 +523,9 @@ describe('runWithDerivedWorkflowFileContext', () => {
           expect(childHistories[0].value).toEqual([]);
           expect(childHistories[1]).not.toBe(assistantHistory);
           expect(childHistories[1]).toEqual(assistantHistory);
-          expect(childHistories[2].value).toEqual([recentFile]);
+          expect(childHistories[2].value).toEqual([
+            { file: { ...recentFile.file, type: ChatFileTypeEnum.document } }
+          ]);
           expect(
             getWorkflowFileContext()?.resolve('https://files.example.com/old.pdf')
           ).toBeUndefined();
@@ -719,7 +749,7 @@ describe('runWithDerivedWorkflowFileContext', () => {
 
   it('normalizes child query and history using its registered classifications', async () => {
     const { fileContext } = await prepare();
-    const file = createFile({ url: 'https://files.example.com/child-opaque' });
+    const file = createFile({ url: 'https://files.example.com/child-opaque', name: 'attachment' });
     await runWithContext({ fileContext, mcpClientMemory: {} }, () =>
       runWithDerivedWorkflowFileContext({
         query: [file],
@@ -874,7 +904,7 @@ describe('prepareWorkflowFiles', () => {
       );
       expect(result).toHaveLength(count);
       if (withContext && count)
-        expect(fileContext.resolve(files[0].url)?.type).toBe(ChatFileTypeEnum.file);
+        expect(fileContext.resolve(files[0].url)?.type).toBe(ChatFileTypeEnum.document);
     }
   );
 });

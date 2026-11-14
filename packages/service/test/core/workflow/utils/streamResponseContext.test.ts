@@ -12,10 +12,18 @@ import {
 } from '@fastgpt/service/core/workflow/utils/streamResponseContext';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
+import { createApiI18n } from '@fastgpt/service/common/i18n/request';
+import { generatedLoaders } from '@fastgpt/web/i18n/resourceLoaders.generated';
 import {
   ChatSourceTypeEnum,
   STREAM_RESUME_REQUEST_HEADER
 } from '@fastgpt/global/core/chat/constants';
+
+const {
+  getStreamResumeRedisKeys,
+  STREAM_RESUME_MIRROR_KEEPALIVE_INTERVAL_MS,
+  STREAM_RESUME_TTL_SECONDS
+} = streamResume;
 
 const clearCookieMock = vi.hoisted(() => vi.fn());
 const responseWriteMock = vi.hoisted(() => vi.fn());
@@ -256,6 +264,72 @@ describe('createWorkflowStreamResponseContext', () => {
     }
   );
 
+  it('should keep the resume mirror alive after the client connection closes', async () => {
+    vi.useFakeTimers();
+    const redis = getRedisRuntime().getCommandConnection() as any;
+    const res = createRes();
+    const keys = getStreamResumeRedisKeys({
+      teamId,
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId,
+      chatId
+    });
+
+    const context = await createWorkflowStreamResponseContext({
+      req: createReq({ [STREAM_RESUME_REQUEST_HEADER]: 'true' }),
+      res,
+      stream: true,
+      detail: true,
+      teamId,
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId,
+      chatId,
+      responseId: chatId
+    });
+
+    context.responseWrite(workflowSseEvent.answerDelta('hello'));
+    await vi.advanceTimersByTimeAsync(10_000);
+    res.closed = true;
+    res.emit('close');
+    redis.expire.mockClear();
+
+    await vi.advanceTimersByTimeAsync(STREAM_RESUME_MIRROR_KEEPALIVE_INTERVAL_MS);
+    expect(redis.expire).toHaveBeenCalledWith(
+      `${FASTGPT_REDIS_PREFIX}${keys.keyOfStream}`,
+      STREAM_RESUME_TTL_SECONDS
+    );
+
+    await context.flushResume();
+    redis.expire.mockClear();
+    await vi.advanceTimersByTimeAsync(STREAM_RESUME_MIRROR_KEEPALIVE_INTERVAL_MS);
+    expect(redis.expire).not.toHaveBeenCalled();
+  });
+
+  it('should stop the resume mirror keepalive when the response finishes', async () => {
+    vi.useFakeTimers();
+    const redis = getRedisRuntime().getCommandConnection() as any;
+    const res = createRes();
+    const context = await createWorkflowStreamResponseContext({
+      req: createReq({ [STREAM_RESUME_REQUEST_HEADER]: 'true' }),
+      res,
+      stream: true,
+      detail: true,
+      teamId,
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId,
+      chatId,
+      responseId: chatId
+    });
+
+    context.responseWrite(workflowSseEvent.answerDelta('hello'));
+    await vi.advanceTimersByTimeAsync(10_000);
+    res.emit('finish');
+    redis.expire.mockClear();
+
+    await vi.advanceTimersByTimeAsync(STREAM_RESUME_MIRROR_KEEPALIVE_INTERVAL_MS);
+    expect(redis.expire).not.toHaveBeenCalled();
+  });
+
   it('should not create resume mirror when resume is disabled even if request opts in', async () => {
     const redis = getRedisRuntime().getCommandConnection() as any;
 
@@ -303,6 +377,38 @@ describe('createWorkflowStreamResponseContext', () => {
         event: SseResponseEventEnum.error,
         data: expect.stringContaining(ERROR_ENUM.unAuthorization)
       })
+    );
+  });
+
+  it('mirrors the translated error payload before writing it, even outside the request scope', async () => {
+    const req = createReq({
+      'x-fastgpt-language': 'zh-CN',
+      [STREAM_RESUME_REQUEST_HEADER]: 'true'
+    });
+    const res = createRes();
+    const context = await createApiI18n(generatedLoaders)({ req, res }, () =>
+      createWorkflowStreamResponseContext({
+        req,
+        res,
+        stream: true,
+        detail: true,
+        teamId,
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId,
+        chatId
+      })
+    );
+    context.writeStreamError(ERROR_ENUM.unAuthorization);
+    await context.flushResume();
+    res.emit('finish');
+
+    const redis = getRedisRuntime().getCommandConnection() as any;
+    const raw = redis.call.mock.calls.find(([command]: string[]) => command === 'XADD')?.at(-1);
+    expect(raw).toContain('"message":"凭证错误"');
+    expect(raw).not.toContain('common:code_error.error_message.401');
+    const payload = raw.split('data: ')[1].trim();
+    expect(responseWrite).toHaveBeenCalledWith(
+      expect.objectContaining({ event: SseResponseEventEnum.error, data: payload })
     );
   });
 

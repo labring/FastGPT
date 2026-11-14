@@ -8,7 +8,6 @@ import { addHours } from 'date-fns';
 import { getScheduleTriggerApp } from '@/service/core/app/utils';
 import { cronJob as sandboxCronJob } from '@fastgpt/service/core/ai/sandbox/application/cron';
 import { clearExpiredS3FilesCron } from '@fastgpt/service/common/s3/lifecycle/cleanup';
-import { cleanStaleGeneratingChats } from '@fastgpt/service/core/chat/cleanStaleGeneratingChats';
 import { checkAndRunModelStatusProbe } from '@fastgpt/service/core/ai/modelStatus/service';
 
 // Try to run train every minute
@@ -65,20 +64,6 @@ const scheduleTriggerAppCron = () => {
   getScheduleTriggerApp();
 };
 
-/** 基于 Redis stream activity 快速纠正异常中断的 generating 会话，保留 30 分钟兜底 */
-const cleanStaleGeneratingChatCron = () => {
-  setCron('*/1 * * * *', async () => {
-    if (
-      await checkTimerLock({
-        timerId: TimerIdEnum.cleanStaleGeneratingChat,
-        lockMinuted: 1
-      })
-    ) {
-      await cleanStaleGeneratingChats();
-    }
-  });
-};
-
 /** 每分钟先获取 timer lock，进入后由服务层统一校验开关与探测间隔。 */
 const modelStatusProbeCron = () => {
   setCron('*/1 * * * *', async () => {
@@ -105,6 +90,5 @@ export const startCron = () => {
   scheduleTriggerAppCron();
   clearExpiredS3FilesCron();
   sandboxCronJob();
-  cleanStaleGeneratingChatCron();
   modelStatusProbeCron();
 };

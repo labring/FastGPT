@@ -1,3 +1,4 @@
+import { ApiKeyTypeEnum } from '@fastgpt/global/support/openapi/constants';
 import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import React, { useMemo, useState } from 'react';
 import {
@@ -52,8 +53,10 @@ import {
 import TagMultiSelect from './TagMultiSelect';
 import TagManageModal from './TagManageModal';
 import { useDebounce } from 'ahooks';
+import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
+import UserBox from '@fastgpt/web/components/common/UserBox';
 
-type EditProps = EditApiKeyProps & { _id?: string };
+type EditProps = EditApiKeyProps & { _id?: string; defaultAppId?: string };
 const defaultEditData: EditProps = {
   name: '',
   authProxy: false,
@@ -80,11 +83,15 @@ const maskApiKey = (apiKey: string) => {
 type ApiKeyTableProps = {
   mode?: 'account' | 'publish';
   appId?: string;
+  keyType?: ApiKeyTypeEnum;
+  title?: React.ReactNode;
+  hideHeader?: boolean;
 };
 
 const apiKeyTableFields = [
   'name',
   'apiKey',
+  'sourceMember',
   'usagePoints',
   'expiredTime',
   'lastUsedTime',
@@ -187,7 +194,77 @@ const ApiKeyTagEditor = ({
   );
 };
 
-const ApiKeyTable = ({ mode = 'account', appId }: ApiKeyTableProps) => {
+/** 稳定挂载的密钥页标题与文档入口；发布页切换类型时仅重建下方表格。 */
+export const ApiKeyTableHeader = ({
+  title,
+  isPublishMode = false
+}: {
+  title: React.ReactNode;
+  isPublishMode?: boolean;
+}) => {
+  const { t } = useSafeTranslation();
+  const { feConfigs } = useSystemStore();
+  return (
+    <Flex
+      flexShrink={0}
+      minW={0}
+      alignItems={'center'}
+      justifyContent={'space-between'}
+      h={isPublishMode ? 'auto' : '64px'}
+      px={isPublishMode ? 0 : [4, 6]}
+      borderBottom={isPublishMode ? 'none' : '1px solid'}
+      borderColor={'myGray.200'}
+    >
+      <Box
+        as={isPublishMode ? undefined : 'h1'}
+        {...(isPublishMode
+          ? {
+              color: 'myGray.900',
+              fontWeight: 'medium',
+              fontSize: 'lg'
+            }
+          : accountTitleTextStyles)}
+      >
+        {title}
+      </Box>
+      <Flex alignItems={'center'} gap={2} ml={3}>
+        {feConfigs?.docUrl && (
+          <Button
+            as={Link}
+            href={feConfigs.openAPIDocUrl || getDocPath('/openapi/intro')}
+            target={'_blank'}
+            size={'sm'}
+            variant={'whitePrimary'}
+            textDecoration={'none'}
+            _hover={{ textDecoration: 'none' }}
+          >
+            {t('apikey:usage_tutorial')}
+          </Button>
+        )}
+        <Button
+          as={Link}
+          href={'/apidoc/systemopenapi'}
+          target={'_blank'}
+          size={'sm'}
+          variant={'primary'}
+          textDecoration={'none'}
+          _hover={{ textDecoration: 'none' }}
+        >
+          {t('apikey:openapi_document')}
+        </Button>
+      </Flex>
+    </Flex>
+  );
+};
+
+const ApiKeyTable = ({
+  mode = 'account',
+  appId,
+  keyType = ApiKeyTypeEnum.personal,
+  title,
+  hideHeader = false
+}: ApiKeyTableProps) => {
+  const isAppKey = keyType === ApiKeyTypeEnum.app;
   const { t } = useSafeTranslation();
   const { copyData } = useCopyData();
   const { feConfigs } = useSystemStore();
@@ -227,7 +304,7 @@ const ApiKeyTable = ({ mode = 'account', appId }: ApiKeyTableProps) => {
 
   const { ConfirmModal, openConfirm } = useConfirm({
     type: 'delete',
-    content: t('common:delete_api')
+    content: t('apikey:delete_key_tip')
   });
 
   const { runAsync: onclickRemove } = useRequest(delOpenApiById, {
@@ -272,13 +349,14 @@ const ApiKeyTable = ({ mode = 'account', appId }: ApiKeyTableProps) => {
     () =>
       getOpenApiKeys({
         keyword: requestKeyword || undefined,
-        tags: selectedTagIds.length > 0 ? selectedTagIds : undefined,
+        type: keyType,
+        tags: !isAppKey && selectedTagIds.length > 0 ? selectedTagIds : undefined,
         sortBy: effectiveSortBy,
-        appId
+        appId: isAppKey ? appId : undefined
       }),
     {
       manual: false,
-      refreshDeps: [requestKeyword, selectedTagIds, effectiveSortBy, appId]
+      refreshDeps: [requestKeyword, selectedTagIds, effectiveSortBy, appId, keyType]
     }
   );
   const {
@@ -286,7 +364,7 @@ const ApiKeyTable = ({ mode = 'account', appId }: ApiKeyTableProps) => {
     loading: isGettingTags,
     run: refetchTags
   } = useRequest(() => getOpenApiTags({ withKeyCount: true }), {
-    manual: false
+    manual: isAppKey
   });
   const { runAsync: onCreateTagFromSelect } = useRequest(
     async (name: string) => createOpenApiTag({ name }),
@@ -302,6 +380,7 @@ const ApiKeyTable = ({ mode = 'account', appId }: ApiKeyTableProps) => {
   const tableHeaders: Record<ApiKeyTableField, { label: React.ReactNode; width?: string }> = {
     name: { label: t('common:Name'), width: '240px' },
     apiKey: { label: 'API KEY', width: '130px' },
+    sourceMember: { label: t('apikey:owner_member'), width: '140px' },
     usagePoints: { label: t('common:support.outlink.Usage points'), width: '150px' },
     expiredTime: { label: t('common:expired_time'), width: '120px' },
     lastUsedTime: { label: t('apikey:last_used_time'), width: '160px' },
@@ -311,7 +390,8 @@ const ApiKeyTable = ({ mode = 'account', appId }: ApiKeyTableProps) => {
   const tableColumns = apiKeyTableFields
     .filter((field) => {
       if (field === 'usagePoints' || field === 'expiredTime') return hasUsagePlan;
-      return field !== 'createTime' || !isPublishMode;
+      if (field === 'sourceMember') return isAppKey;
+      return field !== 'createTime' || !isPublishMode || isAppKey;
     })
     .map((field) => ({ field, ...tableHeaders[field] }));
 
@@ -331,23 +411,31 @@ const ApiKeyTable = ({ mode = 'account', appId }: ApiKeyTableProps) => {
                   {item.name}
                 </Box>
               </MyTooltip>
-              <ApiKeyTagEditor
-                key={`${item._id}-${(item.tagIds || []).join(',')}`}
-                apiKeyId={item._id}
-                appName={item.appName}
-                tagIds={item.tagIds || []}
-                allTags={openApiTags}
-                onSave={async (apiKeyId, tagIds) => {
-                  await onUpdateApiKeyTags({
-                    apiKeyId,
-                    tagIds
-                  });
-                }}
-                onManage={() => setShowTagManage(true)}
-                onCreateTag={onCreateTagFromSelect}
-                isLoading={isGettingTags || isUpdatingApiKeyTags}
-              />
+              {!isAppKey && (
+                <ApiKeyTagEditor
+                  key={`${item._id}-${(item.tagIds || []).join(',')}`}
+                  apiKeyId={item._id}
+                  appName={item.appName}
+                  tagIds={item.tagIds || []}
+                  allTags={openApiTags}
+                  onSave={async (apiKeyId, tagIds) => {
+                    await onUpdateApiKeyTags({
+                      apiKeyId,
+                      tagIds
+                    });
+                  }}
+                  onManage={() => setShowTagManage(true)}
+                  onCreateTag={onCreateTagFromSelect}
+                  isLoading={isGettingTags || isUpdatingApiKeyTags}
+                />
+              )}
             </Flex>
+          </Td>
+        );
+      case 'sourceMember':
+        return (
+          <Td key={field}>
+            {item.sourceMember ? <UserBox sourceMember={item.sourceMember} /> : '-'}
           </Td>
         );
       case 'apiKey':
@@ -384,15 +472,15 @@ const ApiKeyTable = ({ mode = 'account', appId }: ApiKeyTableProps) => {
             </Flex>
           </Td>
         );
-      case 'usagePoints':
+      case 'usagePoints': {
+        const maxUsagePoints = item.limit?.maxUsagePoints ?? -1;
         return (
           <Td key={field} whiteSpace={'nowrap'}>
             {Math.round(item.usagePoints)}/
-            {item.limit?.maxUsagePoints && item.limit.maxUsagePoints > -1
-              ? `${item.limit.maxUsagePoints}`
-              : t('common:Unlimited')}
+            {maxUsagePoints > -1 ? `${maxUsagePoints}` : t('common:Unlimited')}
           </Td>
         );
+      }
       case 'expiredTime':
         return (
           <Td key={field} whiteSpace={'pre-wrap'}>
@@ -431,6 +519,7 @@ const ApiKeyTable = ({ mode = 'account', appId }: ApiKeyTableProps) => {
                       name: item.name,
                       limit: item.limit,
                       authProxy: item.authProxy,
+                      defaultAppId: item.defaultAppId,
                       tags: item.tagIds || []
                     })
                   }
@@ -460,58 +549,21 @@ const ApiKeyTable = ({ mode = 'account', appId }: ApiKeyTableProps) => {
       minH={0}
       position={'relative'}
       p={isPublishMode ? 6 : 0}
+      pt={hideHeader ? 0 : undefined}
     >
-      <Flex
-        flexShrink={0}
-        minW={0}
-        alignItems={'center'}
-        justifyContent={'space-between'}
-        h={isPublishMode ? 'auto' : '64px'}
-        px={isPublishMode ? 0 : [4, 6]}
-        borderBottom={isPublishMode ? 'none' : '1px solid'}
-        borderColor={'myGray.200'}
-      >
-        <Box
-          as={isPublishMode ? undefined : 'h1'}
-          {...(isPublishMode
-            ? {
-                color: 'myGray.900',
-                fontWeight: 'medium',
-                fontSize: 'lg'
-              }
-            : accountTitleTextStyles)}
-        >
-          {isPublishMode
-            ? `${t('common:support.openapi.Api manager')}(${apiKeys.length})`
-            : `${t('account:api_key')} (${apiKeys.length})`}
-        </Box>
-        <Flex alignItems={'center'} gap={2} ml={3}>
-          {feConfigs?.docUrl && (
-            <Button
-              as={Link}
-              href={feConfigs.openAPIDocUrl || getDocPath('/openapi/intro')}
-              target={'_blank'}
-              size={'sm'}
-              variant={'whitePrimary'}
-              textDecoration={'none'}
-              _hover={{ textDecoration: 'none' }}
-            >
-              {t('apikey:usage_tutorial')}
-            </Button>
-          )}
-          <Button
-            as={Link}
-            href={'/apidoc/systemopenapi'}
-            target={'_blank'}
-            size={'sm'}
-            variant={'primary'}
-            textDecoration={'none'}
-            _hover={{ textDecoration: 'none' }}
-          >
-            {t('apikey:openapi_document')}
-          </Button>
-        </Flex>
-      </Flex>
+      {!hideHeader && (
+        <ApiKeyTableHeader
+          isPublishMode={isPublishMode}
+          title={
+            title ??
+            (isPublishMode
+              ? isAppKey
+                ? t('apikey:app_key')
+                : t('apikey:personal_key')
+              : `${t('account:api_key')} (${apiKeys.length})`)
+          }
+        />
+      )}
       <Flex
         flexDirection={'column'}
         flex={isPublishMode ? '1 0 0' : ['0 0 auto', '1 0 0']}
@@ -545,17 +597,19 @@ const ApiKeyTable = ({ mode = 'account', appId }: ApiKeyTableProps) => {
               maxW={['100%', '240px']}
               onChange={(e) => setKeyword(e.target.value)}
             />
-            <TagMultiSelect
-              tags={openApiTags}
-              value={selectedTagIds}
-              onChange={setSelectedTagIds}
-              label={t('apikey:tags')}
-              placeholder={t('common:All')}
-              onManage={() => setShowTagManage(true)}
-              onCreateTag={onCreateTagFromSelect}
-              isLoading={isGettingTags}
-              popoverW="220px"
-            />
+            {!isAppKey && (
+              <TagMultiSelect
+                tags={openApiTags}
+                value={selectedTagIds}
+                onChange={setSelectedTagIds}
+                label={t('apikey:tags')}
+                placeholder={t('common:All')}
+                onManage={() => setShowTagManage(true)}
+                onCreateTag={onCreateTagFromSelect}
+                isLoading={isGettingTags}
+                popoverW="220px"
+              />
+            )}
             <SingleSelectFilter
               title={t('apikey:sort_label')}
               value={effectiveSortBy}
@@ -613,7 +667,7 @@ const ApiKeyTable = ({ mode = 'account', appId }: ApiKeyTableProps) => {
               variant={'primary'}
               onClick={() => setEditData(getDefaultEditData())}
             >
-              {t('common:new_create')}
+              {isAppKey ? t('apikey:create_app_key') : t('common:new_create')}
             </Button>
           </Flex>
         </Flex>
@@ -637,6 +691,13 @@ const ApiKeyTable = ({ mode = 'account', appId }: ApiKeyTableProps) => {
               </Tr>
             </Thead>
             <Tbody fontSize={'sm'}>
+              {!isGetting && apiKeys.length === 0 && (
+                <Tr>
+                  <Td colSpan={tableColumns.length} p={0} borderBottom={0}>
+                    <EmptyTip text={isAppKey ? t('apikey:app_key_empty') : undefined} />
+                  </Td>
+                </Tr>
+              )}
               {apiKeys.map((item) => (
                 <Tr key={item._id}>
                   {tableColumns.map(({ field }) => renderTableCell(field, item))}
@@ -650,17 +711,19 @@ const ApiKeyTable = ({ mode = 'account', appId }: ApiKeyTableProps) => {
       {!!editData && (
         <EditKeyModal
           defaultData={editData}
+          keyType={keyType}
+          appId={appId}
           tags={openApiTags}
           onClose={() => setEditData(undefined)}
           onCreate={(id) => {
             setApiKey(id);
             refetch();
-            refetchTags();
+            if (!isAppKey) refetchTags();
             setEditData(undefined);
           }}
           onEdit={() => {
             refetch();
-            refetchTags();
+            if (!isAppKey) refetchTags();
             setEditData(undefined);
           }}
         />
@@ -699,7 +762,7 @@ const ApiKeyTable = ({ mode = 'account', appId }: ApiKeyTableProps) => {
           <MyIcon ml={1} name={'copy'} w={'16px'}></MyIcon>
         </Flex>
       </MyModalV2>
-      {showTagManage && (
+      {!isAppKey && showTagManage && (
         <TagManageModal
           tags={openApiTags}
           onClose={() => setShowTagManage(false)}
@@ -716,18 +779,23 @@ export default React.memo(ApiKeyTable);
 // edit link modal
 function EditKeyModal({
   defaultData,
+  keyType,
+  appId,
   tags,
   onClose,
   onCreate,
   onEdit
 }: {
   defaultData: EditProps;
+  keyType: ApiKeyTypeEnum;
+  appId?: string;
   tags: OpenApiTagType[];
   onClose: () => void;
   onCreate: (id: string) => void;
   onEdit: () => void;
 }) {
   const { t } = useSafeTranslation();
+  const isAppKey = keyType === ApiKeyTypeEnum.app;
   const isEdit = useMemo(() => !!defaultData._id, [defaultData]);
   const { feConfigs } = useSystemStore();
 
@@ -741,7 +809,13 @@ function EditKeyModal({
   });
 
   const { runAsync: onclickCreate, loading: creating } = useRequest(
-    async (e: EditProps) => createAOpenApiKey(e),
+    async (e: EditProps) =>
+      createAOpenApiKey({
+        name: e.name,
+        limit: e.limit,
+        type: keyType,
+        ...(isAppKey ? { appId } : { tags: e.tags, authProxy: e.authProxy })
+      }),
     {
       errorToast: t('apikey:create_link_error'),
       onSuccess: onCreate
@@ -750,8 +824,14 @@ function EditKeyModal({
 
   const { runAsync: onclickUpdate, loading: updating } = useRequest(
     (e: EditProps) => {
-      //@ts-ignore
-      return putOpenApiKey(e);
+      return putOpenApiKey({
+        _id: e._id!,
+        name: e.name,
+        limit: e.limit,
+        ...(!isAppKey
+          ? { tags: e.tags, ...(!defaultData.defaultAppId ? { authProxy: e.authProxy } : {}) }
+          : {})
+      });
     },
     {
       errorToast: t('apikey:update_link_error'),
@@ -801,23 +881,30 @@ function EditKeyModal({
             })}
           />
         </Flex>
-        <Flex alignItems={'center'} gap={4}>
-          <FormLabel flex={'0 0 90px'}>{t('apikey:tags')}</FormLabel>
-          <Controller
-            control={control}
-            name="tags"
-            render={({ field }) => (
-              <TagMultiSelect
-                tags={tags}
-                value={field.value || []}
-                onChange={field.onChange}
-                placeholder={t('apikey:select_tag')}
-                showFooter={false}
-                w={'100%'}
-              />
-            )}
-          />
-        </Flex>
+        {!isAppKey && (
+          <Flex alignItems={'center'} gap={4}>
+            <FormLabel flex={'0 0 90px'}>{t('apikey:tags')}</FormLabel>
+            <Controller
+              control={control}
+              name="tags"
+              render={({ field }) => (
+                <TagMultiSelect
+                  tags={tags}
+                  value={field.value || []}
+                  onChange={field.onChange}
+                  placeholder={t('apikey:select_tag')}
+                  showFooter={false}
+                  w={'100%'}
+                />
+              )}
+            />
+          </Flex>
+        )}
+        {isAppKey && (
+          <Box fontSize="sm" color="myGray.600">
+            {t('apikey:bound_app_id')}: {appId}
+          </Box>
+        )}
         {feConfigs?.isPlus && (
           <>
             <Flex alignItems={'center'} gap={4}>
@@ -853,22 +940,24 @@ function EditKeyModal({
             </Flex>
           </>
         )}
-        <Flex alignItems={'center'} gap={4} mt={4}>
-          <FormLabel display={'flex'} flex={'0 0 90px'} alignItems={'center'}>
-            {t('common:support.openapi.Auth proxy')}
-            <QuestionTip ml={1} label={t('common:support.openapi.Auth proxy tip')}></QuestionTip>
-          </FormLabel>
-          <Controller
-            control={control}
-            name="authProxy"
-            render={({ field }) => (
-              <Switch
-                isChecked={!!field.value}
-                onChange={(e) => field.onChange(e.target.checked)}
-              />
-            )}
-          />
-        </Flex>
+        {!isAppKey && !defaultData.defaultAppId && (
+          <Flex alignItems={'center'} gap={4} mt={4}>
+            <FormLabel display={'flex'} flex={'0 0 90px'} alignItems={'center'}>
+              {t('common:support.openapi.Auth proxy')}
+              <QuestionTip ml={1} label={t('common:support.openapi.Auth proxy tip')}></QuestionTip>
+            </FormLabel>
+            <Controller
+              control={control}
+              name="authProxy"
+              render={({ field }) => (
+                <Switch
+                  isChecked={!!field.value}
+                  onChange={(e) => field.onChange(e.target.checked)}
+                />
+              )}
+            />
+          </Flex>
+        )}
       </Flex>
     </MyModalV2>
   );

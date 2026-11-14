@@ -38,7 +38,7 @@ export const AddTagsToCollectionsBodySchema = z.object({
     .meta({ description: '来源集合 ID 列表（用于复制标签）' }),
   collectionIds: z.array(z.string()).meta({ description: '目标集合 ID 列表' }),
   datasetId: z.string().meta({ description: '数据集 ID' }),
-  tag: z.string().trim().meta({ description: '标签名称' }),
+  tag: z.string().trim().min(1).meta({ description: '标签名称' }),
   value: z.string().optional().meta({ description: '标签值（仅 string 类型标签支持）' })
 });
 

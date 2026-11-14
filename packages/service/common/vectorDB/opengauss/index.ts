@@ -24,7 +24,7 @@ export class OpenGaussVectorCtrl implements VectorControllerType {
       `);
 
       await OgClient.query(
-        `CREATE INDEX CONCURRENTLY IF NOT EXISTS vector_index ON ${DatasetVectorTableName} USING hnsw (vector vector_ip_ops) WITH (m = 32, ef_construction = 128);`
+        `CREATE INDEX CONCURRENTLY IF NOT EXISTS vector_index ON ${DatasetVectorTableName} USING hnsw (vector vector_ip_ops) WITH (m = 32, ef_construction = 256);`
       );
       await OgClient.query(
         `CREATE INDEX CONCURRENTLY IF NOT EXISTS team_dataset_collection_index ON ${DatasetVectorTableName} USING btree(team_id, dataset_id, collection_id);`
@@ -140,7 +140,7 @@ export class OpenGaussVectorCtrl implements VectorControllerType {
       // 客户端等待长于服务端的 90 秒超时，避免顶层提前释放并发额度。
       query_timeout: 120_000,
       text: `BEGIN;
-          SET LOCAL hnsw.ef_search = ${global.systemEnv?.hnswEfSearch || 100};
+          SET LOCAL hnsw.ef_search = ${global.systemEnv?.hnswEfSearch || 200};
           SELECT id, collection_id, vector <#> '[${vector}]' AS score
             FROM ${DatasetVectorTableName}
             WHERE team_id = '${String(teamId)}'

@@ -27,6 +27,7 @@ import { shouldInheritResourcePermission } from '@fastgpt/service/support/permis
 import { syncDatasetToCollections } from '@fastgpt/service/support/permission/collection/controller';
 import { addAuditLog, getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 
 const logDatasetMove = ({
   tmbId,
@@ -89,11 +90,15 @@ export const moveDataset = async ({
       datasetId: dataset.parentId,
       per: ManagePermissionVal
     });
+  } else if (!dataset.permission.hasManagePer) {
+    return Promise.reject(DatasetErrEnum.unAuthDataset);
   }
   if (parentId === null || !dataset.parentId) {
+    // 根目录移动仍需校验创建权限，认证方式与前面的资源鉴权保持一致。
     await authUserPer({
       req,
       authToken: true,
+      authApiKey: true,
       per: TeamDatasetCreatePermissionVal
     });
   }

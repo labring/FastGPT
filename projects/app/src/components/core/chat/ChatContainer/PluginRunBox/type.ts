@@ -7,6 +7,7 @@ import type { onStartChatType } from '../type';
 import { ChatBoxInputFormType } from '../ChatBox/type';
 
 export type PluginRunBoxProps = {
+  complianceTipPlacement?: 'default' | 'external';
   appId: string;
   chatId: string;
   outLinkAuthData?: OutLinkChatAuthProps;

@@ -23,20 +23,21 @@ describe('getSystemMigrationErrorText', () => {
     code: 409,
     message: 'system_migration:prerequisite_not_succeeded',
     data: {
-      prerequisiteNameKey: 'system_migration:migrations.20261008_migrate_chunk_training.name'
+      prerequisiteNameKey:
+        'system_migration:migrations.20261022_initialize_dataset_vector_indexes.name'
     }
   };
 
   it.each([
-    ['zh-CN', '请先执行「迁移旧版知识库训练任务」，并等待其成功完成后再执行当前任务。'],
+    ['zh-CN', '请先执行「初始化知识库向量索引」，并等待其成功完成后再执行当前任务。'],
     [
       'en',
-      'Run "Migrate legacy dataset training tasks" first and wait for it to succeed before running this task.'
+      'Run "Initialize dataset vector indexes" first and wait for it to succeed before running this task.'
     ],
-    ['zh-Hant', '請先執行「遷移舊版知識庫訓練任務」，並等待其成功完成後再執行目前任務。'],
+    ['zh-Hant', '請先執行「初始化知識庫向量索引」，並等待其成功完成後再執行目前任務。'],
     [
       'ko-KR',
-      '먼저 "이전 데이터셋 학습 작업 마이그레이션" 작업을 실행하고 성공적으로 완료된 후 현재 작업을 실행하세요.'
+      '먼저 "데이터셋 벡터 인덱스 초기화" 작업을 실행하고 성공적으로 완료된 후 현재 작업을 실행하세요.'
     ]
   ])('translates both the task name and instruction in %s', async (language, expected) => {
     const i18n = createInstance();
@@ -44,7 +45,7 @@ describe('getSystemMigrationErrorText', () => {
     const t = (key: string, options?: { name: string }) => i18n.t(key as any, options);
 
     expect(getSystemMigrationErrorText(error, t)).toBe(expected);
-    expect(getSystemMigrationErrorText(error, t)).not.toContain('20261008');
+    expect(getSystemMigrationErrorText(error, t)).not.toContain('20261022');
     expect(getSystemMigrationErrorText(new Error('Network failure'), t)).toBe('Network failure');
   });
 });
