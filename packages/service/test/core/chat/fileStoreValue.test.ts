@@ -7,24 +7,6 @@ import {
 } from '../../../core/chat/fileStoreValue';
 
 describe('normalizeChatFileStoreValue', () => {
-  it('将 null key 的聊天附件归一为外链存储值', () => {
-    const file = {
-      key: null,
-      url: 'https://example.com/image.png',
-      name: 'image.png',
-      type: ChatFileTypeEnum.image
-    };
-    const expected = {
-      url: file.url,
-      name: file.name,
-      type: file.type
-    };
-
-    expect(normalizeChatFileStoreValue(file)).toEqual(expected);
-    expect(normalizeChatFileStoreValues([file])).toEqual([expected]);
-    expect(normalizeChatFileStoreValue({ key: null })).toBeUndefined();
-  });
-
   it('按 S3 key 提取文件名并推断图片类型', () => {
     expect(
       normalizeChatFileStoreValue({

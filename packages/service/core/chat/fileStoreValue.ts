@@ -5,8 +5,7 @@ import path from 'path';
 import { getFileNameFromUrl } from './file/utils';
 
 export type RawChatFileValue = {
-  // 兼容聊天记录中的空 key；归一化后的 ChatFileStoreValue 仍只保存有效字符串。
-  key?: string | null;
+  key?: string;
   url?: string;
   name?: string;
   type?: ChatFileTypeEnum;
@@ -25,7 +24,7 @@ type ChatFileInputFieldValue = string | number | boolean | object | null | undef
  * 后续统一通过 `parseRawChatFileValue` 白名单提取，避免把临时状态或渲染字段写入 chat variables。
  */
 export type ChatFileValueInput = {
-  key?: string | null;
+  key?: string;
   url?: string;
   name?: string;
   type?: ChatFileTypeEnum;

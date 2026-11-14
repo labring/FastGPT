@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, expectTypeOf, it } from 'vitest';
 import { AppChatLogSchema } from '@fastgpt/global/core/app/logs/type';
 import { ChatLogItemSchema } from '@fastgpt/global/openapi/core/app/log/api';
 import { ChatPublishSourceResponseSchema } from '@fastgpt/global/core/chat/publishSource/type';
@@ -136,18 +136,25 @@ describe('ToolModuleResponseItemSchema', () => {
 });
 
 describe('UserChatItemFileItemSchema', () => {
-  it.each([null, undefined, '', 'chat/files/image.png'])(
-    'preserves supported file keys: %j',
-    (key) => {
-      const file = {
-        type: ChatFileTypeEnum.image,
-        name: 'image.png',
-        url: 'https://example.com/image.png',
-        key
-      };
-      expect(UserChatItemFileItemSchema.parse(file)).toEqual(file);
-    }
-  );
+  it('normalizes a null file key without widening the output type or mutating input', () => {
+    const file = { type: ChatFileTypeEnum.image, url: 'https://example.com/image.png', key: null };
+    const parsed = UserChatItemFileItemSchema.parse(file);
+
+    expect(parsed.key).toBeUndefined();
+    expect(JSON.parse(JSON.stringify(parsed))).toEqual({ type: file.type, url: file.url });
+    expect(file.key).toBeNull();
+    expectTypeOf(parsed.key).toEqualTypeOf<string | undefined>();
+  });
+
+  it.each([undefined, '', 'chat/files/image.png'])('preserves supported file keys: %j', (key) => {
+    const file = {
+      type: ChatFileTypeEnum.image,
+      name: 'image.png',
+      url: 'https://example.com/image.png',
+      key
+    };
+    expect(UserChatItemFileItemSchema.parse(file)).toEqual(file);
+  });
 
   it.each([0, false, {}, []])('rejects invalid file keys: %j', (key) => {
     expect(

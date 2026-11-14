@@ -5,7 +5,6 @@ import {
 } from '@fastgpt/global/openapi/core/chat/record/api';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { ChatFileTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
-import { UserChatItemFileItemSchema } from '@fastgpt/global/core/chat/type';
 import { createSchema, createDocument } from 'zod-openapi';
 import Ajv2020 from 'ajv/dist/2020';
 import { openApiDocumentOptions } from '@fastgpt/global/openapi/generation';
@@ -13,7 +12,7 @@ import { openApiDocumentOptions } from '@fastgpt/global/openapi/generation';
 const itemId = '68ad85a7463006c963799a05';
 
 describe('chat record pagination contracts', () => {
-  it('preserves historical null file keys when validating a complete records page', () => {
+  it('normalizes historical null file keys while preserving the complete records page', () => {
     const files = [1, 2].map((index) => ({
       file: {
         type: ChatFileTypeEnum.image,
@@ -41,15 +40,25 @@ describe('chat record pagination contracts', () => {
       nextCursor: null
     };
 
-    expect(GetRecordsV2ResponseSchema.parse(page)).toEqual(page);
+    const response = GetRecordsV2ResponseSchema.parse(page);
+    const normalizedHuman = {
+      ...human,
+      value: [human.value[0], ...files.map(({ file }) => ({ file: { ...file, key: undefined } }))]
+    };
+    expect(response).toEqual({ ...page, list: [ai, ai, normalizedHuman, ai, normalizedHuman] });
+    expect(files[0].file.key).toBeNull();
 
-    // 校验附件字段的文档契约；完整分页的运行时校验已在上方覆盖。
-    const { schema } = createSchema(UserChatItemFileItemSchema, {
+    // 输出文档也必须接受实际序列化后的完整分页，不能只校验独立附件字段。
+    const { schema, components } = createSchema(GetRecordsV2ResponseSchema, {
       io: 'output',
       opts: openApiDocumentOptions
     });
-    const validate = new Ajv2020({ strict: false, validateFormats: false }).compile(schema);
-    expect(validate(files[0].file)).toBe(true);
+    const validate = new Ajv2020({ strict: false, validateFormats: false }).compile({
+      ...schema,
+      components
+    });
+    expect(validate(JSON.parse(JSON.stringify(response)))).toBe(true);
+    expect(validate(page)).toBe(false);
   });
 
   it('accepts one of three anchors or the latest page, rejects conflicting anchors and caller-supplied roles', () => {
@@ -102,6 +111,30 @@ describe('chat record pagination contracts', () => {
     expect(response.prevCursor).toBeNull();
     expect(response.nextCursor).toBe('round');
   });
+
+  it.each([ChatRoleEnum.Human, ChatRoleEnum.System, ChatRoleEnum.AI])(
+    'preserves metadata and response tags for the %s role while coercing time',
+    (obj) => {
+      const record = {
+        dataId: 'round',
+        obj,
+        value: [{ text: { content: 'message' } }],
+        time: '2026-11-13T00:00:00Z',
+        useAgentSandbox: true,
+        customDisplayMetadata: { label: 'preserved' }
+      };
+      const response = GetRecordsV2ResponseSchema.parse({
+        list: [record],
+        total: 1,
+        hasMorePrev: false,
+        hasMoreNext: false,
+        prevCursor: null,
+        nextCursor: null
+      });
+
+      expect(response.list).toEqual([{ ...record, time: new Date(record.time) }]);
+    }
+  );
 
   it('preserves built-in and custom output keys in persisted interactive records', () => {
     const interactive = {
@@ -229,7 +262,7 @@ describe('chat record pagination contracts', () => {
       properties: {
         list: {
           items: {
-            allOf: expect.arrayContaining([
+            anyOf: expect.arrayContaining([
               expect.objectContaining({
                 required: expect.arrayContaining(['dataId']),
                 properties: expect.objectContaining({

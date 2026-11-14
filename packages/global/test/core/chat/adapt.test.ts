@@ -13,7 +13,7 @@ import {
 } from '@fastgpt/global/core/chat/adapt';
 import { ChatRoleEnum, ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
-import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
+import { ChatItemMiniSchema, type ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import {
   ChatCompletionMessageParamSchema,
   type ChatCompletionMessageParam
@@ -1060,12 +1060,12 @@ describe('chats2GPTMessages', () => {
     'keeps historical image and document keys compatible with request validation: %j',
     (key) => {
       const messages: ChatItemMiniType[] = [
-        {
+        ChatItemMiniSchema.parse({
           obj: ChatRoleEnum.Human,
           value: [ChatFileTypeEnum.image, ChatFileTypeEnum.document].map((type) => ({
             file: { type, name: 'attachment', url: 'https://example.com/download', key }
           }))
-        }
+        })
       ];
 
       const transport = chats2GPTMessages({ messages, reserveId: false });
@@ -1084,7 +1084,7 @@ describe('chats2GPTMessages', () => {
           key: key || undefined
         }
       ]);
-      expect(messages[0].value[0]).toMatchObject({ file: { key } });
+      expect(messages[0].value[0]).toMatchObject({ file: { key: key ?? undefined } });
     }
   );
 
