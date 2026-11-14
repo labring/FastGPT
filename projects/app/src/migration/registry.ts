@@ -1,4 +1,3 @@
-import { splitSTTTokenPrices } from './tasks/4180/20261114_split_stt_token_prices';
 import { backfillOpenApiKeyType } from './tasks/4180/20261104_backfill_openapi_key_type';
 import { backfillChatPublishSource } from './tasks/4180/20261104_backfill_chat_publish_source';
 import type {
@@ -187,27 +186,6 @@ export const systemMigrations = [
       }
     ],
     run: backfillSTTPricingType
-  },
-  {
-    id: '20261114_split_stt_token_prices',
-    version: '4.18.0',
-    blockStartup: false,
-    nameKey: i18nT('system_migration:migrations.20261114_split_stt_token_prices.name'),
-    descriptionKey: i18nT(
-      'system_migration:migrations.20261114_split_stt_token_prices.description'
-    ),
-    resultKey: i18nT('system_migration:migrations.20261114_split_stt_token_prices.result'),
-    progressSteps: [
-      {
-        key: 'models',
-        labelKey: i18nT('system_migration:migrations.20261114_split_stt_token_prices.models')
-      },
-      {
-        key: 'validation',
-        labelKey: i18nT('system_migration:migrations.20261114_split_stt_token_prices.validation')
-      }
-    ],
-    run: splitSTTTokenPrices
   }
 ] as const satisfies readonly SystemMigration[];
 

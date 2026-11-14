@@ -58,10 +58,5 @@
   "migrations.20261112_backfill_stt_pricing_type.description": "Backfill legacy STT prices as duration-based in the background, preserving rates and existing token pricing without blocking startup.",
   "migrations.20261112_backfill_stt_pricing_type.result": "Scanned {{models}} STT models",
   "migrations.20261112_backfill_stt_pricing_type.models": "Model pricing types",
-  "migrations.20261112_backfill_stt_pricing_type.validation": "Validate backfill",
-  "migrations.20261114_split_stt_token_prices.name": "Split STT token prices",
-  "migrations.20261114_split_stt_token_prices.description": "Backfill legacy STT token rates into separate input and output prices without overwriting configured prices or blocking startup.",
-  "migrations.20261114_split_stt_token_prices.result": "Scanned {{models}} STT models",
-  "migrations.20261114_split_stt_token_prices.models": "Model prices",
-  "migrations.20261114_split_stt_token_prices.validation": "Validate split prices"
+  "migrations.20261112_backfill_stt_pricing_type.validation": "Validate backfill"
 }

@@ -58,10 +58,5 @@
   "migrations.20261112_backfill_stt_pricing_type.description": "在背景將舊 STT 價格標記為按時長計費，保留原單價及既有 Tokens 設定，不阻塞業務啟動。",
   "migrations.20261112_backfill_stt_pricing_type.result": "已掃描 {{models}} 個 STT 模型",
   "migrations.20261112_backfill_stt_pricing_type.models": "模型計價類型",
-  "migrations.20261112_backfill_stt_pricing_type.validation": "驗證回填結果",
-  "migrations.20261114_split_stt_token_prices.name": "拆分 STT Tokens 單價",
-  "migrations.20261114_split_stt_token_prices.description": "在背景將舊 STT Tokens 綜合單價分別填入輸入與輸出單價，保留既有設定，不阻塞業務啟動。",
-  "migrations.20261114_split_stt_token_prices.result": "已掃描 {{models}} 個 STT 模型",
-  "migrations.20261114_split_stt_token_prices.models": "模型價格",
-  "migrations.20261114_split_stt_token_prices.validation": "驗證拆分結果"
+  "migrations.20261112_backfill_stt_pricing_type.validation": "驗證回填結果"
 }

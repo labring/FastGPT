@@ -58,10 +58,5 @@
   "migrations.20261112_backfill_stt_pricing_type.description": "기존 STT 가격을 백그라운드에서 시간 기준으로 표시하며, 단가와 기존 토큰 과금 설정을 유지하고 서비스 시작을 차단하지 않습니다.",
   "migrations.20261112_backfill_stt_pricing_type.result": "STT 모델 {{models}}개 검사 완료",
   "migrations.20261112_backfill_stt_pricing_type.models": "모델 과금 유형",
-  "migrations.20261112_backfill_stt_pricing_type.validation": "결과 검증",
-  "migrations.20261114_split_stt_token_prices.name": "STT 토큰 단가 분리",
-  "migrations.20261114_split_stt_token_prices.description": "기존 STT 토큰 단가를 입력과 출력 단가로 채웁니다. 기존 설정을 덮어쓰거나 시작을 차단하지 않습니다.",
-  "migrations.20261114_split_stt_token_prices.result": "STT 모델 {{models}}개 검사 완료",
-  "migrations.20261114_split_stt_token_prices.models": "모델 가격",
-  "migrations.20261114_split_stt_token_prices.validation": "분리 결과 검증"
+  "migrations.20261112_backfill_stt_pricing_type.validation": "결과 검증"
 }

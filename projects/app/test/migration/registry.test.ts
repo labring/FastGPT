@@ -18,8 +18,7 @@ describe('validateSystemMigrationRegistry', () => {
       '20261022_initialize_dataset_vector_indexes',
       '20261104_backfill_chat_publish_source',
       '20261104_backfill_openapi_key_type',
-      '20261112_backfill_stt_pricing_type',
-      '20261114_split_stt_token_prices'
+      '20261112_backfill_stt_pricing_type'
     ]);
     expect(
       systemMigrations.filter(
@@ -61,27 +60,14 @@ describe('validateSystemMigrationRegistry', () => {
   });
 
   it('appends STT pricing backfill as non-blocking background work', () => {
-    const task = systemMigrations.find(({ id }) => id === '20261112_backfill_stt_pricing_type');
-    expect(task).toMatchObject({
+    expect(systemMigrations.at(-1)).toMatchObject({
       id: '20261112_backfill_stt_pricing_type',
       version: '4.18.0',
       blockStartup: false,
       progressSteps: [{ key: 'models' }, { key: 'validation' }]
     });
-    expect(task).not.toHaveProperty('dependsOn');
-    expect(task).not.toHaveProperty('independent');
-  });
-
-  it('appends the split STT token prices as non-blocking background work', () => {
-    const task = systemMigrations.at(-1);
-    expect(task).toMatchObject({
-      id: '20261114_split_stt_token_prices',
-      version: '4.18.0',
-      blockStartup: false,
-      progressSteps: [{ key: 'models' }, { key: 'validation' }]
-    });
-    expect(task).not.toHaveProperty('dependsOn');
-    expect(task).not.toHaveProperty('independent');
+    expect(systemMigrations.at(-1)).not.toHaveProperty('dependsOn');
+    expect(systemMigrations.at(-1)).not.toHaveProperty('independent');
   });
 
   it('runs only the selected production tasks independently', () => {
