@@ -20,7 +20,6 @@ const SendCodeAuthModal = ({
   username: string;
   purpose: UserVerificationPurpose;
   onClose: () => void;
-  onSending: boolean;
   onSendCode: (params: { username: string; captcha: string }) => Promise<void>;
   getCaptchaPic?: GetCaptchaPic;
 }) => (

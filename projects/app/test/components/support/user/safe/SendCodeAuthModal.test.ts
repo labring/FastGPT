@@ -13,7 +13,6 @@ describe('SendCodeAuthModal', () => {
     username: 'a@example.com',
     purpose: 'register' as const,
     onClose: vi.fn(),
-    onSending: false,
     onSendCode: vi.fn(async () => undefined)
   };
 

@@ -16,20 +16,18 @@ import { verifyPuzzleCaptcha } from '@/web/support/user/api';
 const PuzzleCaptchaModal = ({
   purpose,
   getCaptcha,
-  initialChallenge,
   onVerified,
   onClose
 }: {
   purpose: CaptchaVerificationPurpose;
   getCaptcha: () => Promise<PuzzleCaptchaChallenge>;
-  initialChallenge?: PuzzleCaptchaChallenge;
   onVerified: (captcha: string) => Promise<void>;
   onClose: () => void;
 }) => {
   const { t } = useTranslation();
-  const [challenge, setChallenge] = useState(initialChallenge);
+  const [challenge, setChallenge] = useState<PuzzleCaptchaChallenge>();
   const [x, setX] = useState(0);
-  const [busy, setBusy] = useState(!initialChallenge);
+  const [busy, setBusy] = useState(true);
   const [message, setMessage] = useState('');
   const [expired, setExpired] = useState(false);
   const [dragging, setDragging] = useState(false);
@@ -69,7 +67,7 @@ const PuzzleCaptchaModal = ({
   useEffect(() => {
     mounted.current = true;
     // 延迟到下个任务启动首次请求，StrictMode 的卸载重挂载可以取消尚未启动的重复请求。
-    const timer = initialChallenge ? undefined : window.setTimeout(() => void refresh(), 0);
+    const timer = window.setTimeout(() => void refresh(), 0);
     return () => {
       window.clearTimeout(timer);
       mounted.current = false;

@@ -378,7 +378,6 @@ export const AccountVerificationPanel = ({
                 username={username}
                 purpose={purpose}
                 onClose={onCloseCaptcha}
-                onSending={codeSending}
                 onSendCode={sendCode}
                 getCaptchaPic={getCaptchaPic}
               />
@@ -535,7 +534,6 @@ export const AccountVerificationPanel = ({
             username={username}
             purpose={purpose}
             onClose={onCloseCaptcha}
-            onSending={codeSending}
             onSendCode={sendCode}
             getCaptchaPic={getCaptchaPic}
           />
