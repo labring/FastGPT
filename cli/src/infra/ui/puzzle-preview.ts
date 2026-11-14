@@ -27,6 +27,7 @@ export const createPuzzlePreview = async ({
   let submitting = false;
   let currentChallenge = challenge;
   let served = false;
+  let timeout: ReturnType<typeof setTimeout> | undefined;
   const solution = new Promise<string>((resolve, reject) => {
     resolveSolution = resolve;
     rejectSolution = reject;
@@ -63,7 +64,10 @@ async function submit(){if(busy||!track.length)return;busy=true;s.disabled=true;
     }
     if (req.method === 'GET') {
       try {
-        if (served) currentChallenge = await getCaptcha();
+        if (served) {
+          currentChallenge = await getCaptcha();
+          resetTimeout();
+        }
         served = true;
         res.setHeader('Content-Type', 'text/html; charset=utf-8');
         res.end(renderPage());
@@ -112,18 +116,23 @@ async function submit(){if(busy||!track.length)return;busy=true;s.disabled=true;
   const address = server.address();
   if (!address || typeof address === 'string')
     throw new Error('Failed to open image rotation verification');
-  const timeout = setTimeout(
-    () => {
-      if (!settled) {
-        settled = true;
-        rejectSolution(new Error('Image rotation verification expired.'));
-      }
-      server.close();
-      server.closeAllConnections();
-    },
-    Math.max(1, Math.min(300_000, new Date(challenge.expiresAt).getTime() - Date.now()))
-  );
-  timeout.unref();
+  /** 每次成功换图按新图片重设有效期，旧图定时器不能终止仍有效的新图。 */
+  function resetTimeout() {
+    clearTimeout(timeout);
+    timeout = setTimeout(
+      () => {
+        if (!settled) {
+          settled = true;
+          rejectSolution(new Error('Image rotation verification expired.'));
+        }
+        server.close();
+        server.closeAllConnections();
+      },
+      Math.max(1, Math.min(300_000, new Date(currentChallenge.expiresAt).getTime() - Date.now()))
+    );
+    timeout.unref();
+  }
+  resetTimeout();
 
   return {
     url: `http://127.0.0.1:${address.port}/${nonce}`,

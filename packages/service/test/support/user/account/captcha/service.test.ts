@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 import { PuzzleCaptchaService } from '@fastgpt/service/support/user/account/captcha/service';
+import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { verification } from '@fastgpt/service/support/tmpData/verification';
+
+vi.unmock(import('@fastgpt/service/common/mongo/sessionRun'));
 
 const makeService = (angle = 140) => {
   let now = Date.now();
@@ -49,6 +52,58 @@ describe('PuzzleCaptchaService', () => {
     await expect(
       service.verify({ challengeId: challenge.challengeId, purpose: 'register', angle: 140, track })
     ).resolves.toEqual({ status: 'refreshRequired' });
+  });
+
+  it('joins the caller transaction for create and verify, including rollback', async () => {
+    const { service, advance } = makeService();
+    let challengeId = '';
+    await expect(
+      mongoSessionRun(async (session) => {
+        const challenge = await service.create(
+          { username: 'a@example.com', purpose: 'register' },
+          session
+        );
+        challengeId = challenge.challengeId;
+        advance(700);
+        expect(
+          await service.verify({ challengeId, purpose: 'register', angle: 140, track }, session)
+        ).toHaveProperty('captcha');
+        throw new Error('business rollback');
+      })
+    ).rejects.toThrow('business rollback');
+    expect(
+      await verification.get({ type: 'puzzle', scene: 'register', key: challengeId })
+    ).toBeNull();
+    expect(
+      await verification.get({ type: 'captcha', scene: 'register', key: 'a@example.com' })
+    ).toBeNull();
+  });
+
+  it('rolls back image consumption when proof persistence fails, keeping the claimed attempt', async () => {
+    const { service, advance } = makeService();
+    const challenge = await service.create({ username: 'a@example.com', purpose: 'register' });
+    advance(700);
+    const upsert = vi
+      .spyOn(verification, 'upsert')
+      .mockRejectedValueOnce(new Error('storage failed'));
+    try {
+      await expect(
+        service.verify({
+          challengeId: challenge.challengeId,
+          purpose: 'register',
+          angle: 140,
+          track
+        })
+      ).rejects.toThrow('storage failed');
+      expect(
+        await verification.get({ type: 'puzzle', scene: 'register', key: challenge.challengeId })
+      ).toMatchObject({ attempts: 1 });
+      expect(
+        await verification.get({ type: 'captcha', scene: 'register', key: 'a@example.com' })
+      ).toBeNull();
+    } finally {
+      upsert.mockRestore();
+    }
   });
 
   it.each([

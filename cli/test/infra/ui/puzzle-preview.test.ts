@@ -103,4 +103,38 @@ describe('CLI puzzle preview', () => {
       await preview.cleanup();
     }
   });
+  it('resets the expiry timer when refreshing to a new image', async () => {
+    vi.useFakeTimers({ toFake: ['Date', 'setTimeout', 'clearTimeout'] });
+    const now = Date.now();
+    const fresh = {
+      ...challenge,
+      challengeId: 'c'.repeat(64),
+      expiresAt: new Date(now + 5000).toISOString()
+    };
+    const preview = await createPuzzlePreview({
+      challenge: { ...challenge, expiresAt: new Date(now + 1000).toISOString() },
+      getCaptcha: async () => fresh,
+      verify: async () => ({ status: 'passed', captcha: 'b'.repeat(64) })
+    });
+    let finished = false;
+    void preview.solution.then(
+      () => {
+        finished = true;
+      },
+      () => {
+        finished = true;
+      }
+    );
+    try {
+      await (await fetch(preview.url)).text();
+      expect(await (await fetch(preview.url)).text()).toContain(fresh.challengeId);
+      await vi.advanceTimersByTimeAsync(1500);
+      expect(finished).toBe(false);
+      await vi.advanceTimersByTimeAsync(3501);
+      await expect(preview.solution).rejects.toThrow('expired');
+    } finally {
+      await preview.cleanup();
+      vi.useRealTimers();
+    }
+  });
 });

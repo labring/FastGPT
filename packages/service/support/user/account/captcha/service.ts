@@ -16,6 +16,8 @@ import {
 } from '../../../../common/rateLimit/interface/accountVerification';
 import { isPlausiblePuzzleTrack, renderPuzzleCaptcha } from './utils';
 import { claimCaptchaAttempt } from './entity';
+import type { ClientSession } from '../../../../common/mongo';
+import { mongoSessionRun } from '../../../../common/mongo/sessionRun';
 
 const defaultDependencies = {
   render: renderPuzzleCaptcha,
@@ -38,15 +40,15 @@ export class PuzzleCaptchaService {
     this.dependencies = { ...defaultDependencies, ...dependencies };
   }
 
-  async create({
-    username,
-    purpose,
-    scopeKey = username
-  }: {
-    username: string;
-    purpose: CaptchaVerificationPurpose;
-    scopeKey?: string;
-  }): Promise<PuzzleCaptchaChallenge> {
+  /** 可传入调用方事务；图片计算先完成，数据库材料写入使用同一 session。 */
+  async create(
+    {
+      username,
+      purpose,
+      scopeKey = username
+    }: { username: string; purpose: CaptchaVerificationPurpose; scopeKey?: string },
+    session?: ClientSession
+  ): Promise<PuzzleCaptchaChallenge> {
     await this.dependencies.assertCreateFrequency({ account: username, scene: purpose });
     const { angle, ...image } = await this.dependencies.render();
     const challengeId = this.dependencies.randomToken();
@@ -56,7 +58,8 @@ export class PuzzleCaptchaService {
       type: 'puzzle',
       key: challengeId,
       data: { scopeKey, angle, createdAt, attempts: 0 },
-      ttlPreset: 'medium'
+      ttlPreset: 'medium',
+      session
     });
     if (!created) throw new Error('Failed to allocate puzzle challenge');
 
@@ -67,25 +70,31 @@ export class PuzzleCaptchaService {
     };
   }
 
-  async verify({
-    purpose,
-    ...submission
-  }: PuzzleCaptchaSubmission & {
-    purpose: CaptchaVerificationPurpose;
-  }): Promise<PuzzleCaptchaResult> {
+  /**
+   * 默认先原子提交次数预占，再用短事务同时消费图片和签发凭证，存储失败不丢失图片。
+   * 传入 session 时所有读写加入调用方事务；调用方负责提交失败尝试，回滚也会撤销次数预占。
+   */
+  async verify(
+    { purpose, ...submission }: PuzzleCaptchaSubmission & { purpose: CaptchaVerificationPurpose },
+    session?: ClientSession
+  ): Promise<PuzzleCaptchaResult> {
     const material = await this.dependencies.materials.get({
       scene: purpose,
       type: 'puzzle',
-      key: submission.challengeId
+      key: submission.challengeId,
+      session
     });
     if (!material) return { status: 'refreshRequired' };
     await this.dependencies.assertConsumeFrequency({ account: material.scopeKey, scene: purpose });
 
     // 不刷新 TTL；即使请求并发或前端重开弹窗，同一道题也只能占用三次机会。
-    const attempted = await this.dependencies.claimAttempt({
-      challengeId: submission.challengeId,
-      purpose
-    });
+    const attempted = await this.dependencies.claimAttempt(
+      {
+        challengeId: submission.challengeId,
+        purpose
+      },
+      session
+    );
     if (!attempted) return { status: 'refreshRequired' };
     const { attempts, ...identity } = attempted;
     const difference = Math.abs(submission.angle - attempted.angle);
@@ -104,28 +113,34 @@ export class PuzzleCaptchaService {
         scene: purpose,
         type: 'puzzle',
         key: submission.challengeId,
-        match: identity
+        match: identity,
+        session
       });
       return { status: 'refreshRequired' };
     }
 
-    // 不把可变的次数放进删除条件，允许已预占的正确请求竞争消费；只有删除成功者能签发凭证。
-    const consumed = await this.dependencies.materials.deleteIfMatch({
-      scene: purpose,
-      type: 'puzzle',
-      key: submission.challengeId,
-      match: identity
-    });
-    if (consumed.deletedCount !== 1) return { status: 'refreshRequired' };
-    const captcha = this.dependencies.randomToken();
-    await this.dependencies.materials.upsert({
-      scene: purpose,
-      type: 'captcha',
-      key: attempted.scopeKey,
-      data: { code: captcha },
-      ttlPreset: 'short'
-    });
-    return { status: 'passed', captcha };
+    // 不把可变次数放入删除条件；消费与签发同处事务，写入失败时恢复图片但保留已提交的尝试。
+    const issueProof = async (writeSession: ClientSession): Promise<PuzzleCaptchaResult> => {
+      const consumed = await this.dependencies.materials.deleteIfMatch({
+        scene: purpose,
+        type: 'puzzle',
+        key: submission.challengeId,
+        match: identity,
+        session: writeSession
+      });
+      if (consumed.deletedCount !== 1) return { status: 'refreshRequired' };
+      const captcha = this.dependencies.randomToken();
+      await this.dependencies.materials.upsert({
+        scene: purpose,
+        type: 'captcha',
+        key: attempted.scopeKey,
+        data: { code: captcha },
+        ttlPreset: 'short',
+        session: writeSession
+      });
+      return { status: 'passed', captcha };
+    };
+    return session ? issueProof(session) : mongoSessionRun(issueProof);
   }
 }
 
