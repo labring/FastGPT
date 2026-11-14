@@ -81,8 +81,8 @@ STT Tokens 明细直接记录 inputTokens、outputTokens，不额外保存合计
 ## AI Proxy 契约
 
 STT 统一返回 input_tokens/output_tokens，兼容上游 prompt_tokens/completion_tokens；显式原生字段优先（包括 0）。
-缺少的项不从 total_tokens、音频时长、识别文字或另一侧估算。保留 total_tokens 的既有计数与服务器补齐 seconds 的逻辑。
-无上游用量时，响应标记 duration，不把历史估算的 Tokens 暴露为真实输入输出；网关内部历史 total_tokens 计算保留。
+缺少的项不从 total_tokens、音频时长、识别文字或另一侧估算。上游 total_tokens 仅作统计信息透传，不参与 STT 计费；seconds 继续由服务器补齐。
+无上游用量时只提供服务器测得的秒数，不从录音、识别文字或另一侧估算输入、输出或合计 Tokens。
 
 ## 验证范围
 

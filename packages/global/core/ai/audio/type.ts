@@ -15,6 +15,7 @@ export type STTBillableUsageType = z.infer<typeof STTBillableUsageSchema>;
 export type STTUpstreamUsageType = {
   type?: unknown;
   seconds?: unknown;
+  /** 上游统计字段，不参与 STT 计费，也不用于推导输入或输出数量。 */
   total_tokens?: unknown;
   input_tokens?: unknown;
   output_tokens?: unknown;
