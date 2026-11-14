@@ -37,7 +37,7 @@ import { createNodeFileIoAdapter, type FileIoAdapter } from '../infra/fs/file-io
 import { createFastGptHttpClient } from '../infra/http/fastgpt-http-client';
 import { readJsonInput } from '../infra/input/json-input';
 import { createDefaultSecretStore, type SecretStore } from '../infra/secrets/secret-store';
-import { createTempFileCaptchaPreviewer } from '../infra/ui/captcha-preview';
+import { createBrowserCaptchaPreviewer } from '../infra/ui/captcha-preview';
 import { openExternalFile } from '../infra/ui/external-opener';
 import { createClackPrompter, createNonTtyPrompter, type Prompter } from '../infra/ui/prompter';
 import { getCliVersion, type CliFetchFn, type CliFormat } from '../shared/types';
@@ -133,7 +133,7 @@ export function createCliContainer(deps: CliRuntimeDeps): CliContainer {
     createTokenLoginStrategy()
   ];
 
-  const captchaPreviewer = createTempFileCaptchaPreviewer({
+  const captchaPreviewer = createBrowserCaptchaPreviewer({
     openExternal: deps.openExternal ?? openExternalFile
   });
 

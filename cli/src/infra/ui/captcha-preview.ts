@@ -1,65 +1,42 @@
-import { chmod, mkdtemp, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
 import type { Prompter } from './prompter';
+import type {
+  PuzzleCaptchaChallenge,
+  PuzzleCaptchaSubmission,
+  PuzzleCaptchaResult
+} from '@fastgpt/global/support/user/account/captcha/type';
+import { createPuzzlePreview } from './puzzle-preview';
 
 export type CaptchaPreviewHandle = {
-  captchaPath: string;
+  url: string;
   opened: boolean;
+  solution: Promise<string>;
   cleanup: () => Promise<void>;
 };
 
 export type CaptchaPreviewer = (params: {
-  captchaImage: string;
+  challenge: PuzzleCaptchaChallenge;
+  getCaptcha: () => Promise<PuzzleCaptchaChallenge>;
+  verify: (submission: PuzzleCaptchaSubmission) => Promise<PuzzleCaptchaResult>;
   prompter: Prompter;
 }) => Promise<CaptchaPreviewHandle>;
 
-function decodeCaptchaDataUrl(captchaImage: string): { ext: string; buffer: Buffer } {
-  const match = captchaImage.match(/^data:image\/([a-zA-Z0-9+.-]+);base64,(.+)$/);
-  if (match) {
-    const rawExt = match[1].toLowerCase().replace('+xml', '');
-    const ext = rawExt === 'jpeg' ? 'jpg' : rawExt;
-    return {
-      ext,
-      buffer: Buffer.from(match[2], 'base64')
-    };
-  }
-  return {
-    ext: 'png',
-    buffer: Buffer.from(captchaImage, 'base64')
-  };
-}
-
-/**
- * 将 2FA 图片验证码落盘到 `0600` 临时文件并尝试通过系统默认查看器打开，返回清理句柄。
- */
-export function createTempFileCaptchaPreviewer({
+/** 在本地浏览器打开旋转验证页面，所有验证请求由 CLI 代理到 FastGPT 服务端。 */
+export function createBrowserCaptchaPreviewer({
   openExternal
 }: {
-  openExternal?: (targetPath: string) => Promise<boolean>;
+  openExternal?: (url: string) => Promise<boolean>;
 }): CaptchaPreviewer {
-  return async ({ captchaImage, prompter }) => {
-    const { ext, buffer } = decodeCaptchaDataUrl(captchaImage);
-    const tempDir = await mkdtemp(join(tmpdir(), 'fastgpt-captcha-'));
-    const captchaPath = join(tempDir, `captcha.${ext}`);
-
-    const cleanup = async () => {
-      await rm(tempDir, { recursive: true, force: true }).catch(() => {});
-    };
-
+  return async ({ challenge, getCaptcha, verify, prompter }) => {
+    const preview = await createPuzzlePreview({ challenge, getCaptcha, verify });
     try {
-      await writeFile(captchaPath, buffer, { mode: 0o600 });
-      if (process.platform !== 'win32') {
-        await chmod(captchaPath, 0o600).catch(() => {});
-      }
-      const opened = (await openExternal?.(captchaPath)) ?? false;
+      const opened = (await openExternal?.(preview.url)) ?? false;
       prompter.note(
-        opened ? `Opened captcha image: ${captchaPath}` : `Captcha image saved at: ${captchaPath}`,
-        '2FA Captcha'
+        `Turn the image upright in your browser: ${preview.url}`,
+        'Security verification'
       );
-      return { captchaPath, opened, cleanup };
+      return { url: preview.url, opened, solution: preview.solution, cleanup: preview.cleanup };
     } catch (error) {
-      await cleanup();
+      await preview.cleanup();
       throw error;
     }
   };

@@ -1,10 +1,10 @@
+import { CaptchaProofSchema } from '../../../../support/user/account/captcha/type';
 import { z } from 'zod';
 import { LanguageSchema } from '../../../../common/i18n/type';
 import { InformLevelEnum } from '../../../../support/user/inform/constants';
 import { VerificationCodeTypeEnum } from '../../../../support/user/account/verification/constants';
 import {
   AccountContactUsernameSchema,
-  ShortAuthStringSchema,
   VERIFICATION_CODE_PURPOSES_BY_TYPE
 } from '../../../../support/user/account/verification/type';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
@@ -15,10 +15,7 @@ const SendAuthCodeCommonSchema = z.object({
     description: '接收验证码的邮箱或手机号',
     example: 'user@example.com'
   }),
-  captcha: ShortAuthStringSchema.max(64).meta({
-    description: '图片验证码答案',
-    example: 'A1B2C3'
-  }),
+  captcha: CaptchaProofSchema,
   lang: LanguageSchema.meta({
     description: '验证码消息语言',
     example: 'zh-CN'

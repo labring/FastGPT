@@ -38,6 +38,7 @@ export const VERIFICATION_TYPES = [
   'password',
   'code',
   'captcha',
+  'puzzle',
   'wechat',
   'oauth',
   'loginChallenge'
@@ -62,6 +63,7 @@ export const VERIFICATION_SCENES_BY_TYPE = {
     'unsubscribe',
     'bindNotification'
   ],
+  puzzle: ACCOUNT_VERIFICATION_PURPOSES,
   // The callback adapter discovers the scene from all active QR materials.
   wechat: ACCOUNT_VERIFICATION_PURPOSES,
   oauth: ['login'],
@@ -86,6 +88,12 @@ export type VerificationMaterialByType = {
   };
   captcha: {
     code: string;
+  };
+  puzzle: {
+    scopeKey: string;
+    angle: number;
+    createdAt: number;
+    attempts: number;
   };
   wechat: {
     openId?: string;

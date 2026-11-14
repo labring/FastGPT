@@ -1,7 +1,9 @@
+import { PuzzleCaptchaChallengeSchema } from '@fastgpt/global/support/user/account/captcha/type';
+import type { PuzzleCaptchaChallenge } from '@fastgpt/global/support/user/account/captcha/type';
+import { PuzzleCaptchaResultSchema } from '@fastgpt/global/support/user/account/captcha/type';
 import {
   LoginByPasswordResponseSchema,
   LoginSuccessResponseSchema,
-  LoginVerificationCaptchaResponseSchema,
   PreLoginResponseSchema
 } from '@fastgpt/global/openapi/support/user/account/login/api';
 import { sha256Hex } from '../../../shared/crypto';
@@ -10,7 +12,7 @@ import type { LoginStrategy } from './login-strategy';
 
 /**
  * 账号密码登录策略：对齐 FastGPT `preLogin` + 本地 SHA-256 + `loginByPassword` + 可选 2FA 状态机。
- * 临时验证码文件创建与清理委托给注入的 `captchaPreviewer`，保持领域层零文件系统依赖。
+ * 浏览器旋转交互委托给注入的 `captchaPreviewer`，领域层不持有本地 HTTP 服务。
  */
 export function createPasswordLoginStrategy(): LoginStrategy {
   return {
@@ -44,6 +46,43 @@ export function createPasswordLoginStrategy(): LoginStrategy {
       if (!rawPassword) {
         throw new CliArgumentError('Password cannot be empty.');
       }
+
+      /** 在本地浏览器将图片转正，所有角度与轨迹均交给 FastGPT 服务端验证。 */
+      const solvePuzzle = async ({
+        challenge,
+        getCaptcha
+      }: {
+        challenge: PuzzleCaptchaChallenge;
+        getCaptcha: () => Promise<PuzzleCaptchaChallenge>;
+      }) => {
+        if (!prompter.isInteractive || !captchaPreviewer) {
+          throw new CliAuthError({
+            code: 'AUTH_REQUIRED',
+            message: 'This login requires image rotation verification in a browser.',
+            hint: 'Run interactive login, or use an API Key / --token-stdin.'
+          });
+        }
+        const preview = await captchaPreviewer({
+          challenge,
+          getCaptcha,
+          prompter,
+          verify: async (submission) => {
+            const result = await client.request<unknown>({
+              method: 'POST',
+              path: '/support/user/account/captcha/verify',
+              body: { ...submission, purpose: 'login' }
+            });
+            return PuzzleCaptchaResultSchema.parse(result);
+          }
+        });
+        try {
+          if (!preview.solution)
+            throw new CliArgumentError('Image rotation browser preview is unavailable.');
+          return await preview.solution;
+        } finally {
+          await preview.cleanup();
+        }
+      };
 
       // 2. 拉取 30s 预登录码并提交 SHA-256 密码摘要。
       const spin = prompter.spinner();
@@ -89,31 +128,24 @@ export function createPasswordLoginStrategy(): LoginStrategy {
       }
 
       // 4. 拉取并交由 UI 预览图片验证码，发送短信/邮件验证码后完成 verify。
-      const captchaRaw = await client.request<unknown>({
+      const loginChallenge = loginResult.challenge;
+      const getCaptcha = async () =>
+        PuzzleCaptchaChallengeSchema.parse(
+          await client.request<unknown>({
+            method: 'POST',
+            path: '/support/user/account/login/verification/captcha',
+            body: { challenge: loginChallenge }
+          })
+        );
+      const captcha = await solvePuzzle({ challenge: await getCaptcha(), getCaptcha });
+      await client.request<unknown>({
         method: 'POST',
-        path: '/support/user/account/login/verification/captcha',
-        body: { challenge: loginResult.challenge }
-      });
-      const { captchaImage } = LoginVerificationCaptchaResponseSchema.parse(captchaRaw);
-      const previewHandle = await captchaPreviewer?.({ captchaImage, prompter });
-
-      try {
-        const captchaCode = await prompter.text({ message: 'Enter captcha text' });
-        if (!captchaCode) {
-          throw new CliArgumentError('Captcha text cannot be empty.');
+        path: '/support/user/account/login/verification/sendCode',
+        body: {
+          challenge: loginResult.challenge,
+          captcha
         }
-
-        await client.request<unknown>({
-          method: 'POST',
-          path: '/support/user/account/login/verification/sendCode',
-          body: {
-            challenge: loginResult.challenge,
-            captcha: captchaCode
-          }
-        });
-      } finally {
-        await previewHandle?.cleanup();
-      }
+      });
 
       const verificationCode = await prompter.text({
         message: `Enter ${loginResult.channel} verification code sent to ${loginResult.maskedTarget}`

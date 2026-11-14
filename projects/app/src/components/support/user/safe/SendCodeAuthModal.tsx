@@ -1,127 +1,37 @@
+import React from 'react';
 import {
   getCaptchaPic as getDefaultCaptchaPic,
   type UserVerificationPurpose
 } from '@/web/support/user/api';
-import { Button, FormControl, Input, ModalBody, ModalFooter, Skeleton } from '@chakra-ui/react';
-import MyImage from '@fastgpt/web/components/common/Image/MyImage';
-import MyModal from '@fastgpt/web/components/common/MyModal';
-import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { useTranslation } from 'next-i18next';
-import { useForm } from 'react-hook-form';
-import { useMemoizedFn } from 'ahooks';
-import { useEffect } from 'react';
-import { VerificationTtlSeconds } from '@fastgpt/global/support/user/account/verification/type';
-import type { GetImgCaptchaResponse } from '@fastgpt/global/openapi/support/user/account/captcha/api';
+import type { PuzzleCaptchaChallenge } from '@fastgpt/global/support/user/account/captcha/type';
+import PuzzleCaptchaModal from './PuzzleCaptchaModal';
 
-/**
- * 图片验证码获取适配器。
- * 登录二次验证由调用方注入 Challenge 作用域的实现，普通场景留空时组件回退到账号作用域接口。
- * 面板与弹窗共用这一份声明，避免两端的适配器契约各自漂移。
- */
-export type GetCaptchaPic = () => Promise<GetImgCaptchaResponse>;
+/** 登录二次验证注入 Challenge 作用域的图像验证获取方式，其他场景按账号获取。 */
+export type GetCaptchaPic = () => Promise<PuzzleCaptchaChallenge>;
 
+/** 发送短信或邮箱验证码之前必须通过图像验证，服务端仍会校验一次性凭证。 */
 const SendCodeAuthModal = ({
   username,
   purpose,
   onClose,
-  onSending,
   onSendCode,
   getCaptchaPic
 }: {
   username: string;
   purpose: UserVerificationPurpose;
   onClose: () => void;
-
-  onSending: boolean;
-  onSendCode: (e: { username: string; captcha: string }) => Promise<void>;
-  /** 登录二次验证使用 Challenge 作用域的图片验证码，普通场景使用账号作用域。 */
+  onSendCode: (params: { username: string; captcha: string }) => Promise<void>;
   getCaptchaPic?: GetCaptchaPic;
-}) => {
-  const { t } = useTranslation();
-
-  const { register, handleSubmit } = useForm({
-    defaultValues: {
-      code: ''
-    }
-  });
-
-  const {
-    data,
-    loading,
-    run: getCaptcha
-  } = useRequest(
-    useMemoizedFn(() => getCaptchaPic?.() ?? getDefaultCaptchaPic(username, purpose)),
-    { manual: false }
-  );
-
-  const refreshCaptcha = useMemoizedFn(() => {
-    getCaptcha();
-  });
-
-  useEffect(() => {
-    if (!data?.captchaImage) return;
-
-    const timer = window.setInterval(refreshCaptcha, VerificationTtlSeconds.medium * 1000);
-
-    return () => window.clearInterval(timer);
-  }, [data?.captchaImage, refreshCaptcha]);
-
-  const onSubmit = async ({ code }: { code: string }) => {
-    try {
-      await onSendCode({ username, captcha: code });
+}) => (
+  <PuzzleCaptchaModal
+    purpose={purpose}
+    getCaptcha={() => getCaptchaPic?.() ?? getDefaultCaptchaPic(username, purpose)}
+    onClose={onClose}
+    onVerified={async (captcha) => {
+      await onSendCode({ username, captcha });
       onClose();
-    } catch {
-      // 发送方负责展示具体错误；保留弹窗和验证码，允许用户直接重试。
-    }
-  };
-
-  const handleEnterKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    e.stopPropagation();
-    if (e.nativeEvent.isComposing || e.keyCode === 229 || e.key.toLowerCase() !== 'enter') return;
-    handleSubmit(onSubmit)();
-  };
-
-  return (
-    <MyModal isOpen={true}>
-      <ModalBody pt={8}>
-        <Skeleton
-          minH="200px"
-          isLoaded={!loading}
-          fadeDuration={1}
-          display={'flex'}
-          justifyContent={'center'}
-          my={1}
-        >
-          <MyImage
-            borderRadius={'md'}
-            w={'100%'}
-            h={'200px'}
-            _hover={{ cursor: 'pointer' }}
-            mb={8}
-            onClick={refreshCaptcha}
-            src={data?.captchaImage}
-            alt=""
-          />
-        </Skeleton>
-
-        <FormControl isInvalid={false}>
-          <Input
-            placeholder={t('common:support.user.captcha_placeholder')}
-            {...register('code')}
-            onKeyDown={handleEnterKeyDown}
-          />
-        </FormControl>
-      </ModalBody>
-      <ModalFooter gap={2}>
-        <Button isLoading={onSending} variant={'whiteBase'} onClick={onClose}>
-          {t('common:Cancel')}
-        </Button>
-        <Button isLoading={onSending} onClick={handleSubmit(onSubmit)}>
-          {t('common:Confirm')}
-        </Button>
-      </ModalFooter>
-    </MyModal>
-  );
-};
+    }}
+  />
+);
 
 export default SendCodeAuthModal;
