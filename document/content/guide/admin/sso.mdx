@@ -11,7 +11,7 @@ import { Alert } from '@/components/docs/Alert';
 
 为了方便地接入**外部成员系统**，FastGPT 提供一套接入外部系统的**标准接口**，以及一个 FastGPT-SSO-Service 镜像作为**适配器**。
 
-通过这套标准接口，你可以可以实现：
+通过这套标准接口，你可以实现：
 
 1. SSO 登录。从外部系统回调后，在 FastGPT 中创建一个用户。
 2. 成员和组织架构同步（下面都简称成员同步）。
@@ -22,7 +22,7 @@ FastGPT-pro 中，有一套标准的 SSO 和成员同步接口，系统会根据
 
 FastGPT-SSO-Service 是为了聚合不同来源的 SSO 和成员同步接口，将他们转成 fastgpt-pro 可识别的接口。
 
-![](/imgs/sso2.png)
+![通过适配服务完成 SSO 登录](/imgs/diagrams/sso-adapter.zh-CN.light.svg)
 
 ## 系统配置教程
 
@@ -107,6 +107,8 @@ env:
 
 #### 2. 在 FastGPT 前台的 `管理员` -> `系统配置` -> `用户配置` 中配置按钮文字，图标等。
 
+在“自定义用户系统配置”区域可查看只读的 SSO 服务地址，并设置 **SSO 登录按钮标题**、**SSO 登录按钮图标** 与 **自动跳转** 开关。下方三张品牌图标可直接下载并上传作为登录按钮图标：
+
 <table className="table-hover table-striped-columns text-center">
   <thead>
     <tr>
@@ -126,9 +128,9 @@ env:
 
 #### 3. 开启成员同步（可选）
 
-如果需要同步外部系统的成员，可以选择开启成员同步。团队模式具体可参考：[团队模式说明文档](./teamMode.mdx)
+如果需要同步外部系统的成员，请在 **管理员 → 系统配置 → 用户配置** 的 **团队模式设置** 下拉框中选择 **同步模式**（需已配置 `EXTERNAL_USER_SYSTEM_BASE_URL` 且商业版 License 具备 SSO 能力）。团队模式规则可参考：[团队模式说明文档](/zh-CN/guide/admin/teamMode)。
 
-![](/imgs/sso1.png)
+![3. 开启成员同步（可选）：界面示例](/imgs/optimized/sso1.png.webp)
 
 #### 4. 可选配置
 
@@ -151,13 +153,13 @@ App ID 和 App Secret
 
 进入开发者后台，点击企业自建应用，在凭证与基础信息页面查看应用凭证。
 
-![](/imgs/sso3.png)
+![1. 参数获取：界面示例](/imgs/optimized/sso3.png.webp)
 
 #### 2. 权限配置
 
 进入开发者后台，点击企业自建应用，在开发配置的权限管理页面开通权限。
 
-![](/imgs/sso4.png)
+![2. 权限配置：界面示例](/imgs/optimized/sso4.png.webp)
 
 可以使用**批量导入/导出权限** 功能，导入如下权限配置:
 
@@ -184,13 +186,13 @@ App ID 和 App Secret
 #### 3. 重定向 URL
 
 进入开发者后台，点击企业自建应用，在开发配置的安全设置中设置重定向 URL，重定向 URL 形如 `https://www.fastgpt.cn/login/provider` 前面的域名修改为部署后公开可访问的 fastgpt 的域名
-![](/imgs/sso5.png)
+![3. 重定向 URL：界面示例](/imgs/optimized/sso5.png.webp)
 
 #### 4. yml 配置示例
 
 ```yaml
 fastgpt-sso:
-  image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sso-service:v4.14.16
+  image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sso-service:latest
   container_name: fastgpt-sso
   restart: always
   networks:
@@ -204,8 +206,8 @@ fastgpt-sso:
     - FEISHU_TOKEN_URL=https://open.feishu.cn/open-apis/authen/v2/oauth/token
     # 获取用户信息接口
     - FEISHU_GET_USER_INFO_URL=https://open.feishu.cn/open-apis/authen/v1/user_info
-    # 重定向地址，设置为上面第三部中一模一样的地址
-    - FEISHU_REDIRECT_URI=https://fastgpt.cn/login/provider
+    # 重定向地址，设置为上面第三步中一模一样的地址
+    - FEISHU_REDIRECT_URI=https://www.fastgpt.cn/login/provider
     # 飞书APP的应用ID，一般以cli开头
     - FEISHU_APP_ID=xxx
     # 飞书APP的应用密钥
@@ -218,7 +220,7 @@ fastgpt-sso:
 
 CLIENT_ID 与 CLIENT_SECRET
 
-进入钉钉开放平台，点击应用开发，选择自己的应用进入，记录在凭证与基础信息页面下的 \`Client ID\` 与 \`Client secret\`。![](/imgs/sso6.png)
+进入钉钉开放平台，点击应用开发，选择自己的应用进入，记录在凭证与基础信息页面下的 `Client ID` 与 `Client secret`。![1. 参数获取：界面示例](/imgs/optimized/sso6.png.webp)
 
 #### 2. 权限配置
 
@@ -240,7 +242,7 @@ CLIENT_ID 与 CLIENT_SECRET
 
 ```yaml
 fastgpt-sso:
-  image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sso-service:v4.14.16
+  image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sso-service:latest
   container_name: fastgpt-sso
   restart: always
   networks:
@@ -275,7 +277,7 @@ fastgpt-sso:
 
     b. 点击【我的企业】页面，查看企业的 **企业 ID**
 
-    ![](/imgs/sso7.png)
+    ![1. 参数获取：界面示例](/imgs/optimized/sso7.png.webp)
 
 2.  创建一个供 FastGPT 使用的内部应用：
 
@@ -283,9 +285,9 @@ fastgpt-sso:
 
     b. 应用的可见范围决定企微成员同步范围。请至少覆盖需要同步的部门；如果需要同步整个企业，请设置为根部门（全部可见）。
 
-    ![](/imgs/sso8.png)
+    ![1. 参数获取：界面示例](/imgs/optimized/sso8.png.webp)
 
-    ![](/imgs/sso9.png)
+    ![1. 参数获取：界面示例](/imgs/optimized/sso9.png.webp)
 
 3.  一个域名。并且要求：
 
@@ -297,11 +299,11 @@ fastgpt-sso:
 
     d. 可以在【企业微信授权登陆】页面下方设置"在工作台隐藏应用"
 
-    ![](/imgs/sso10.png)
+    ![1. 参数获取：界面示例](/imgs/optimized/sso10.png.webp)
 
-    ![](/imgs/sso11.png)
+    ![1. 参数获取：界面示例](/imgs/optimized/sso11.png.webp)
 
-    ![](/imgs/sso12.png)
+    ![1. 参数获取：界面示例](/imgs/optimized/sso12.png.webp)
 
 4.  获取 "通讯录同步助手" secret
 
@@ -309,7 +311,7 @@ fastgpt-sso:
 
     【安全与管理】--【管理工具】--【通讯录同步】
 
-    ![](/imgs/sso13.png)
+    ![1. 参数获取：界面示例](/imgs/optimized/sso13.png.webp)
 
 5.  开启接口同步
 
@@ -317,7 +319,7 @@ fastgpt-sso:
 
 7.  配置企业可信 IP
 
-    ![](/imgs/sso14.png)
+    ![1. 参数获取：界面示例](/imgs/optimized/sso14.png.webp)
 
 #### 2. 使用 latest 镜像部署 fastgpt-sso 中转服务
 
@@ -422,7 +424,7 @@ fastgpt-sso:
 
 ```yaml
 fastgpt-sso:
-  image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sso-service:v4.14.16
+  image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sso-service:latest
   container_name: fastgpt-sso
   restart: always
   networks:
@@ -462,7 +464,7 @@ LDAP provider 只负责同步用户和组织，不提供登录能力。推荐将
 
 ```yaml
 fastgpt-sso:
-  image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sso-service:v4.14.16
+  image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sso-service:latest
   environment:
     - SSO_PROVIDER=oauth2
     - SSO_SYNC_PROVIDER=ldap
@@ -498,7 +500,7 @@ env:
   - SYNC_MEMBER_CRON=0 0 * * *
 ```
 
-然后在 FastGPT 前台的 `管理员` -> `系统配置` -> `用户配置` 中开启成员同步。SYNC_MEMBER_CRON 使用 UTC 时区；留空表示不执行定时同步。
+然后在 FastGPT 前台的 `管理员` -> `系统配置` -> `用户配置` 中将 **团队模式设置** 切换为 **同步模式**。`SYNC_MEMBER_CRON` 使用 UTC 时区；留空表示不执行定时同步。
 
 #### LDAP 连接配置
 
@@ -639,7 +641,7 @@ curl -H 'Authorization: Bearer replace-with-a-sync-token' http://fastgpt-sso:300
 
 以下是 FastGPT-pro 中，SSO 和成员同步的标准接口文档，如果需要对接非标准系统，可以参考该章节进行开发。
 
-![](/imgs/sso18.png)
+![第三方直接实现 SSO 标准接口](/imgs/diagrams/sso-direct.zh-CN.light.svg)
 
 FastGPT 提供如下标准接口支持：
 
@@ -656,7 +658,7 @@ FastGPT 提供如下标准接口支持：
   <Tab value="请求示例" >
 
 ```bash
-curl -X GET "https://redict.example/login/oauth/getAuthURL?redirect_uri=xxx&state=xxxx" \
+curl -X GET "https://redirect.example/login/oauth/getAuthURL?redirect_uri=xxx&state=xxxx" \
 -H "Authorization: Bearer your_token_here" \
 -H "Content-Type: application/json"
 ```
@@ -814,7 +816,7 @@ type UserListResponseListType = {
 };
 ```
 
-curl 示例
+响应示例
 
 ```json
 {
@@ -844,6 +846,6 @@ curl 示例
 
 ## 如何对接非标准系统
 
-1. 客户自己开发：按 fastgpt 提供的标准接口进行开发，并将部署后的服务地址填入 FastGPT 前台的 `管理员` -> `系统配置` -> `用户配置`
+1. 客户自己开发：按 FastGPT 提供的标准接口进行开发，并通过环境变量 `EXTERNAL_USER_SYSTEM_BASE_URL` 配置部署后的服务地址（`管理员` -> `系统配置` -> `用户配置` 中只读展示该服务地址）
    可以参考该模版库：[fastgpt-sso-template](https://github.com/labring/fastgpt-sso-template) 进行开发
 2. 由 fastgpt 团队定制开发：a. 提供系统的 SSO 文档、获取成员和组织的文档、以及外网测试地址。b. 在 fastgpt-sso-service 中，增加对应的 provider 和环境变量，并编写代码来对接。

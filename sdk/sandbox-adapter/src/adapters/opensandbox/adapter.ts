@@ -33,6 +33,7 @@ import type {
   SandboxStatus,
   SearchResult
 } from '../../types';
+import type { ContentReplaceResult } from '../../types/filesystem';
 import {
   getFileDataByteLength,
   isReadableStreamData,
@@ -243,20 +244,45 @@ export class OpenSandboxAdapter extends BaseSandboxAdapter {
    *
    * OpenSandbox 的 /files/replace 请求体以路径为键，同一请求里同一路径只保留最后一项，
    * 因此按“每个文件的第 n 处修改”分批：不同文件仍合并在同一请求，同一文件的后续修改进入下一批。
+   * 返回结果保持输入顺序；后端缺失计数时保留未知状态，不自动重试可能已生效的修改。
+   * 明确未命中时停止后续批次，未发送条目保留 skipped；当前批次其他修改可能已生效。
    */
-  async replaceContent(entries: ContentReplaceEntry[]): Promise<void> {
-    const batches: ContentReplaceEntry[][] = [];
+  async replaceContent(entries: ContentReplaceEntry[]): Promise<ContentReplaceResult[]> {
+    const batches: { entry: ContentReplaceEntry; index: number }[][] = [];
     const editCountByPath = new Map<string, number>();
-    for (const entry of entries) {
+    const results: ContentReplaceResult[] = [];
+
+    // 按规范化路径分批，同时保留原始索引，避免同一文件的不同编辑互相覆盖结果。
+    entries.forEach((entry, index) => {
       const path = this.normalizePath(entry.path);
       const batchIndex = editCountByPath.get(path) ?? 0;
       editCountByPath.set(path, batchIndex + 1);
-      (batches[batchIndex] ??= []).push({ ...entry, path });
+      (batches[batchIndex] ??= []).push({ entry: { ...entry, path }, index });
+      results.push({ path, status: 'skipped' });
+    });
+
+    // 同一批次内路径唯一，按路径关联响应，再按原始索引回填；缺失计数不代表未命中。
+    for (const batch of batches) {
+      const batchResults = await this.lifecycle.sandbox.files.replaceContentsDetailed(
+        batch.map(({ entry }) => entry)
+      );
+      const replacedByPath = new Map(
+        batchResults.map(({ path, replacedCount }) => [path, replacedCount])
+      );
+      for (const { entry, index } of batch) {
+        const replacedCount = replacedByPath.get(entry.path);
+        results[index] = (() => {
+          if (replacedCount === undefined) return { path: entry.path, status: 'unknown' };
+          if (replacedCount === 0) return { path: entry.path, status: 'unmatched' };
+          return { path: entry.path, status: 'replaced', replacedCount };
+        })();
+      }
+
+      // 仅明确未命中会停止后续请求，尚未发送的条目保留初始 skipped 状态。
+      if (batchResults.some(({ replacedCount }) => replacedCount === 0)) break;
     }
 
-    for (const batch of batches) {
-      await this.lifecycle.sandbox.files.replaceContents(batch);
-    }
+    return results;
   }
 
   async createDirectories(

@@ -1,3 +1,4 @@
+import { listRetainedPlugins } from '@fastgpt/service/thirdProvider/fastgptPlugin/lifecycle';
 import { NextAPI } from '@/service/middleware/entry';
 import { getLocale } from '@fastgpt/service/common/middle/i18n';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
@@ -34,6 +35,10 @@ async function handler(
   await authSystemAdmin({ req });
 
   const systemToolRepo = SystemToolRepo.getInstance();
+  const retained = (await listRetainedPlugins()).find(
+    (item) => item.pluginId === toolId.replace(/^systemTool-/, '').split('/')[0]
+  );
+  if (retained?.installationStatus === 'disabled') return [{ version: retained.version }];
   const versions = await systemToolRepo.getVersions({
     pluginId: toolId,
     source: 'system',

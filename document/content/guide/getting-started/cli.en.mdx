@@ -1,0 +1,108 @@
+---
+title: 'Hands-on guide: Manage FastGPT with the CLI'
+description: Manage FastGPT resources from your terminal with the official CLI (fastgpt) and AI Agents.
+---
+
+import { Alert } from '@/components/docs/Alert';
+import { CurrentOriginCodeBlockUpdater } from '@/components/docs/CurrentOriginCodeBlockUpdater';
+
+FastGPT CLI (`fastgpt`) is the official command-line tool for FastGPT. It gives developers, DevOps engineers, and AI coding assistants such as **Codex**, **Claude Code**, **Cursor**, and **Windsurf** reliable, secure, and programmable access to FastGPT resources.
+
+Use the terminal directly or work with an AI Agent to authenticate, switch teams, manage Datasets, test retrieval, and manage App conversations without opening a browser.
+
+---
+
+## AI Agent setup
+
+If you use an AI coding assistant such as **Codex** or **Claude Code**, send it the prompt below instead of installing the CLI manually. Your Agent will read the official Skill guide, install the CLI, help you sign in, run diagnostics, and list the available commands:
+
+<Alert context="info">Send this prompt in your Codex or Claude Code chat:</Alert>
+
+```text
+Help me install FastGPT CLI and complete setup using https://doc.fastgpt.io/cli/skill.md.
+```
+
+<CurrentOriginCodeBlockUpdater fallbackOrigin="https://doc.fastgpt.io" />
+
+---
+
+## ⚡ Developer quick start: Three steps
+
+To set up the CLI yourself, follow these three steps:
+
+### 1. Install the CLI
+
+With Node.js `>= 20.12.0` installed, run:
+
+```bash
+npm install -g @fastgpt/cli@beta
+# Or use pnpm: pnpm add -g @fastgpt/cli@beta
+
+# Verify installation
+fastgpt --version
+```
+
+### 2. Sign in
+
+Run the login command to authenticate:
+
+```bash
+# Option A: Sign in interactively (cloud or self-hosted)
+fastgpt login
+# For self-hosted instances: fastgpt login --base-url https://your-domain.com/api
+
+# Option B: Sign in with an API Key (for CI, containers, or Agent scripts)
+fastgpt login --api-key <FASTGPT_API_KEY>
+
+# Option C: Pass a password through standard input
+echo "<PASSWORD>" | fastgpt login --username <USERNAME> --password-stdin
+```
+
+After signing in, check your current identity and team at any time:
+
+```bash
+fastgpt whoami
+```
+
+> **Credential storage and session expiration**:
+> Credentials are stored in your system keychain (macOS Keychain / Linux Secret Service) when available. Sessions expire 7 days after creation. Run `fastgpt login` to sign in again after expiration.
+
+### 3. Run diagnostics (Doctor)
+
+Check your local environment, configuration file permissions, and connection to the server:
+
+```bash
+fastgpt doctor
+```
+
+---
+
+## Core capabilities
+
+FastGPT CLI uses domain-driven design (DDD) and a concise command structure:
+
+| Category               | Example commands                                                                                                                                             | Description                                                                                                                                  |
+| :--------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Identity and teams** | `fastgpt whoami`<br/>`fastgpt auth switch-team --team-id <id>`                                                                                               | View the current user and team, or switch teams                                                                                              |
+| **Dataset search**     | `fastgpt dataset list`<br/>`fastgpt dataset search <id1,id2> "query"`                                                                                        | List Datasets with pagination, or search one or more Datasets; returns the top 20 results by default                                         |
+| **Dataset management** | `fastgpt dataset create --name "Docs"`<br/>`fastgpt dataset update <id> --parent-id null`<br/>`fastgpt dataset delete <id> --dry-run`                        | Create, read, update, and delete Datasets; move them to the root folder and preview changes with `--dry-run`                                 |
+| **Configuration**      | `fastgpt config list`<br/>`fastgpt commands --format json`                                                                                                   | View local client configuration or discover complete, machine-readable command metadata                                                      |
+| **App conversations**  | `fastgpt chat run --appId <id> --text "Hello"`<br/>`fastgpt chat init --appId <id> --chatId <chatId>`<br/>`fastgpt chat stop --appId <id> --chatId <chatId>` | Run an App and get a JSON response, read its configuration and status, or send a stop signal                                                 |
+| **App chat history**   | `fastgpt chat history list --appId <id>`<br/>`fastgpt chat record list --appId <id> --chatId <chatId>`                                                       | List, update, and soft-delete App conversations, check status in batches, mark conversations as read, and read messages and response details |
+
+App chat commands use OpenAPI endpoints only. App API Keys can omit `--appId`; personal API Keys and user sessions must specify an App. Use `--file <path>` or `--stdin` with `chat run` to load a JSON request. All write operations support `--dry-run`.
+
+`chat record list` fetches the latest page by default and returns messages in chronological order. Each command fetches one page. Pass `meta.prevCursor` as `--prevId` to fetch older rounds, or `meta.nextCursor` as `--nextId` to fetch newer rounds. `--initialId` loads rounds around the AI reply with the specified `dataId`. Use only one of these three ID flags. The server determines the anchor role from the pagination direction. `--pageSize` is a target message count; the server may return extra messages to keep round boundaries intact.
+
+The API returns `prevCursor` and `nextCursor`, which the CLI copies unchanged into `meta`. A cursor is `null` when there is no next page in that direction.
+
+Use `dataId` for message operations such as reading response details. A message's `id` is a deprecated compatibility alias.
+
+`chat run` has a default HTTP timeout of 300000 milliseconds, configurable with `--timeoutMs`. A timeout does not stop the App, and failed generation requests are not retried automatically. `chat stop` returns as soon as the stop signal is written, without waiting for background cleanup. Use each command's `--help` for its full parameter list.
+
+---
+
+## Automation and scripting guidelines
+
+- **Automation and AI Agents**: Add `--format json` for consistent, structured JSON envelopes. Logs go to `stderr`, leaving `stdout` ready for piping.
+- **Destructive operations**: Use `--dry-run` to preview deletions such as `dataset delete`. In non-interactive scripts or CI, explicitly pass `--yes` to confirm destructive operations.

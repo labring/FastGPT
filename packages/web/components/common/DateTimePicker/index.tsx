@@ -17,7 +17,6 @@ type DateTimePickerProps = {
   selectedDateTime?: Date;
   disabled?: Matcher[];
   isDisabled?: boolean;
-  timeZone?: string;
   'data-testid'?: string;
 } & Omit<BoxProps, 'onChange'>;
 
@@ -38,7 +37,6 @@ const DateTimePicker = (rawProps: DateTimePickerProps) => {
     selectedDateTime,
     disabled,
     isDisabled,
-    timeZone,
     ...props
   } = rawProps;
 
@@ -115,19 +113,10 @@ const DateTimePicker = (rawProps: DateTimePickerProps) => {
 
   const formatSelected = useMemo(() => {
     if (selectedDate) {
-      return timeZone
-        ? new Intl.DateTimeFormat('en-CA', {
-            timeZone,
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit'
-          })
-            .format(selectedDate)
-            .replace(/-/g, '/')
-        : format(selectedDate, 'y/MM/dd');
+      return format(selectedDate, 'y/MM/dd');
     }
     return '';
-  }, [selectedDate, timeZone]);
+  }, [selectedDate]);
 
   return (
     <Box position={'relative'} ref={containerRef}>
@@ -193,7 +182,6 @@ const DateTimePicker = (rawProps: DateTimePickerProps) => {
                 defaultMonth={selectedDate}
                 selected={selectedDate}
                 disabled={disabled}
-                timeZone={timeZone}
                 onSelect={(date) => {
                   if (!isControlled) {
                     setInternalSelectedDate(date);

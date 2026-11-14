@@ -123,7 +123,7 @@ async function handler(
   const findResponse = await MongoOpenApi.find({
     teamId,
     ...getOpenApiTypeFilter(type),
-    ...(type === ApiKeyTypeEnum.app ? { appId: getOpenApiAppIdFilter([appId!]) } : { tmbId }),
+    ...(type === ApiKeyTypeEnum.app ? getOpenApiAppIdFilter([appId!]) : { tmbId }),
     ...(tags && tags.length > 0
       ? {
           tagIds: {
@@ -157,7 +157,8 @@ async function handler(
         ...scope,
         sourceMember: members.get(String(item.tmbId)),
         apiKey: maskApiKey(item.apiKey),
-        authProxy: scope.type === ApiKeyTypeEnum.personal && !!item.authProxy,
+        authProxy:
+          scope.type === ApiKeyTypeEnum.personal && !scope.defaultAppId && !!item.authProxy,
         tagIds: type === ApiKeyTypeEnum.personal ? (item.tagIds ?? []) : [],
         tags: (type === ApiKeyTypeEnum.personal ? (item.tagIds ?? []) : []).flatMap((tagId) => {
           const tag = tagMap.get(String(tagId));

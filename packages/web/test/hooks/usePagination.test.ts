@@ -276,4 +276,55 @@ describe('usePagination', () => {
     expect(onState.mock.lastCall?.[0]).toMatchObject({ data: [], isLoading: false });
     expect(mocks.toast).toHaveBeenCalledTimes(toastCount);
   });
+
+  it('ignores an old success while the latest page is still loading', async () => {
+    const { api, requests } = createDeferredApi();
+    const onState = vi.fn<HarnessProps['onState']>();
+    await renderHarness(root, { api, onState, type: 'button' });
+    await act(async () => {
+      void onState.mock.lastCall?.[0].getData(2);
+    });
+
+    await act(async () => requests[0].resolve({ list: ['old'], total: 10 }));
+    expect(onState.mock.lastCall?.[0]).toMatchObject({
+      data: [],
+      total: 0,
+      pageNum: 1,
+      isLoading: true,
+      error: null
+    });
+
+    await act(async () => requests[1].resolve({ list: ['latest'], total: 2 }));
+    expect(onState.mock.lastCall?.[0]).toMatchObject({
+      data: ['latest'],
+      total: 2,
+      pageNum: 2,
+      isLoading: false,
+      error: null
+    });
+  });
+
+  it.each([new Error('old request failed'), { code: 'ERR_CANCELED' }])(
+    'ignores an old rejection without clearing current loading or showing an error: %j',
+    async (reason) => {
+      const { api, requests } = createDeferredApi();
+      const onState = vi.fn<HarnessProps['onState']>();
+      await renderHarness(root, { api, onState, type: 'button' });
+      await act(async () => {
+        void onState.mock.lastCall?.[0].getData(2);
+      });
+
+      await act(async () => requests[0].reject(reason));
+      expect(onState.mock.lastCall?.[0]).toMatchObject({ isLoading: true, error: null });
+      expect(mocks.toast).not.toHaveBeenCalled();
+
+      await act(async () => requests[1].resolve({ list: ['latest'], total: 2 }));
+      expect(onState.mock.lastCall?.[0]).toMatchObject({
+        data: ['latest'],
+        pageNum: 2,
+        isLoading: false,
+        error: null
+      });
+    }
+  );
 });

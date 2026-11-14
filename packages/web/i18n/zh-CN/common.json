@@ -253,7 +253,7 @@
   "comfirm_import": "确认导入",
   "comfirm_leave_page": "确认离开该页面？",
   "comfirn_create": "确认创建",
-  "commercial_function_tip": "请升级商业版后使用该功能：https://doc.fastgpt.cn/guide/version/commercial",
+  "commercial_function_tip": "请升级商业版后使用该功能：https://doc.fastgpt.cn/zh-CN/guide/version/commercial",
   "community_support": "社区支持",
   "compliance.chat": "内容由 AI 生成，请注意甄别",
   "compliance.dataset": "请确保您的内容严格遵守相关法律法规，避免包含任何违法或侵权的内容。请谨慎上传可能涉及敏感信息的资料。",
@@ -1411,5 +1411,9 @@
   "core.workflow.check.node_missing": "节点 {{nodeId}} 已不存在，请删除残留连线",
   "core.workflow.check.option_keys_invalid": "选项或分类的键名缺失或重复，请检查配置",
   "core.workflow.check.form_configuration_invalid": "表单字段的键名或对应输出配置不完整：{{fieldKeys}}",
-  "Version": "版本"
+  "Version": "版本",
+  "api_error.request_failed": "请求错误",
+  "api_error.network_error": "网络连接异常",
+  "api_error.validation_error": "数据校验失败",
+  "api_error.resume_requires_sse": "当前对话仍在生成，请携带 Accept: text/event-stream 重试 /api/core/chat/resume。"
 }

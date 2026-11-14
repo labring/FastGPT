@@ -1,3 +1,4 @@
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import type { NodeApiResponse, NodeHttpResponse } from '../../types/http';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { proxyError, ERROR_RESPONSE, ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
@@ -10,6 +11,7 @@ import { getLogger, LogCategories } from '../logger';
 import { ApiRequestInputParseError, getZodError } from '../zod/requestParseError';
 import { markProfileError } from '../profiling';
 import { ChatGeneratingConflictError } from '@fastgpt/global/core/chat/error';
+import { translateApiMessage } from '../i18n/request';
 
 const logger = getLogger(LogCategories.HTTP.ERROR);
 
@@ -97,7 +99,16 @@ export function processError(params: {
   const { error, url, defaultCode = 500 } = params;
   let zodError;
 
-  const errResponseKey = typeof error === 'string' ? error : error?.message;
+  // 服务间响应的 message 可能已经翻译；只有业务码与登记项同时匹配才按 statusText 识别。
+  const errResponseKey =
+    typeof error?.statusText === 'string' &&
+    typeof error.code === 'number' &&
+    Object.hasOwn(ERROR_RESPONSE, error.statusText) &&
+    ERROR_RESPONSE[error.statusText]?.code === error.code
+      ? error.statusText
+      : typeof error === 'string'
+        ? error
+        : error?.message;
 
   // 1. 处理特定的业务错误（ERROR_RESPONSE）
   if (ERROR_RESPONSE[errResponseKey]) {
@@ -136,9 +147,9 @@ export function processError(params: {
 
   // 2. 提取通用错误消息
   // 上游响应体的具体原因优先于 statusText；保留既有网络错误提示和业务码语义。
-  let msg = getErrorMessage(error, '请求错误');
+  let msg = getErrorMessage(error, i18nT('common:api_error.request_failed'));
   if (typeof error !== 'string' && proxyError[error?.code]) {
-    msg = '网络连接异常';
+    msg = i18nT('common:api_error.network_error');
   }
 
   // 3. 根据错误类型记录不同级别的日志
@@ -198,7 +209,7 @@ export const jsonRes = <T = any>(
     res.status(httpStatus).json({
       code: processedError.code,
       statusText: processedError.statusText,
-      message: message || processedError.message,
+      message: translateApiMessage(message || processedError.message, res),
       data: processedError.data !== undefined ? processedError.data : null,
       zodError: processedError.zodError,
       errorType: error instanceof UserError ? 'UserError' : undefined
@@ -211,13 +222,13 @@ export const jsonRes = <T = any>(
   res.status(code).json({
     code,
     statusText: '',
-    message: replaceSensitiveText(message),
+    message: translateApiMessage(replaceSensitiveText(message), res),
     data: data !== undefined ? data : null
   });
 };
 
 export const sseErrRes = (res: NodeHttpResponse, error: any) => {
-  const { event, data, shouldClearCookie } = getSseErrorResponse(error);
+  const { event, data, shouldClearCookie } = getSseErrorResponse(error, res);
   if (shouldClearCookie) {
     clearCookie(res);
   }
@@ -229,7 +240,8 @@ export const sseErrRes = (res: NodeHttpResponse, error: any) => {
 };
 
 export const getSseErrorResponse = (
-  error: any
+  error: any,
+  res?: NodeHttpResponse
 ): {
   event: SseResponseEventEnum.error;
   data: string;
@@ -240,15 +252,15 @@ export const getSseErrorResponse = (
   // 只影响观测口径，不改变响应内容。
   markProfileError(error);
 
-  const errResponseKey = typeof error === 'string' ? error : error?.message;
   const processedError = processError({ error });
+  const errorResponse = ERROR_RESPONSE[processedError.statusText];
 
-  if (ERROR_RESPONSE[errResponseKey]) {
+  if (errorResponse) {
     return {
       event: SseResponseEventEnum.error,
       data: JSON.stringify({
-        ...ERROR_RESPONSE[errResponseKey],
-        message: processedError.message,
+        ...errorResponse,
+        message: translateApiMessage(processedError.message, res),
         data: processedError.data
       }),
       shouldClearCookie: processedError.shouldClearCookie
@@ -257,7 +269,7 @@ export const getSseErrorResponse = (
 
   return {
     event: SseResponseEventEnum.error,
-    data: JSON.stringify({ message: processedError.message }),
+    data: JSON.stringify({ message: translateApiMessage(processedError.message, res) }),
     shouldClearCookie: processedError.shouldClearCookie
   };
 };

@@ -8,11 +8,14 @@ export const ApiKeyTypeSchema = z.enum(ApiKeyTypeEnum).meta({
 });
 
 export const ApiKeyScopeSchema = z.discriminatedUnion('type', [
-  z.object({ type: z.literal(ApiKeyTypeEnum.personal), appId: z.never().optional() }),
-  // Key 绑定沿用 String 存储，避免将非法的存量 BSON 绑定隐式转换为有效凭证。
+  z.object({
+    type: z.literal(ApiKeyTypeEnum.personal),
+    // 历史 appId 只作为 completions 默认目标，不参与个人凭证的授权范围判断。
+    defaultAppId: ObjectIdSchema.optional()
+  }),
   z.object({
     type: z.literal(ApiKeyTypeEnum.app),
-    appId: z.intersection(z.string(), ObjectIdSchema)
+    appId: ObjectIdSchema
   })
 ]);
 export type ApiKeyScope = z.infer<typeof ApiKeyScopeSchema>;

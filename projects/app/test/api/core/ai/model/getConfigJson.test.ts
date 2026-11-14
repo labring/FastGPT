@@ -6,6 +6,61 @@ import { describe, expect, it } from 'vitest';
 import getConfigJsonApi from '@/pages/api/core/ai/model/getConfigJson';
 
 describe('GET /api/core/ai/model/getConfigJson', () => {
+  it.each([
+    { pricing: null, expected: undefined },
+    { pricing: {}, expected: { type: 'duration' } },
+    { pricing: { unitPrice: 0 }, expected: { type: 'duration', unitPrice: 0 } },
+    { pricing: { unitPrice: 0.4 }, expected: { type: 'duration', unitPrice: 0.4 } },
+    { pricing: { type: 'tokens', unitPrice: 10 }, expected: { type: 'tokens', unitPrice: 10 } }
+  ])(
+    'exports STT pricing $pricing without changing database records',
+    async ({ pricing, expected }) => {
+      const root = await getRootUser();
+      const raw = {
+        model: 'old-node-stt',
+        type: ModelTypeEnum.stt,
+        provider: 'Private provider',
+        name: 'Old node STT',
+        scope: 'system',
+        requestUrl: 'https://example.com/v1',
+        requestAuth: 'fixture-auth',
+        pricing,
+        config: {}
+      };
+      const { insertedId } = await MongoAIModel.collection.insertOne({ ...raw });
+      const before = await MongoAIModel.collection.findOne({ _id: insertedId });
+      const response = await Call<string>(getConfigJsonApi, { auth: root });
+      expect(response.code).toBe(200);
+      const { pricing: _pricing, ...fields } = raw;
+      expect(JSON.parse(response.data)).toEqual([
+        {
+          ...fields,
+          ...(expected !== undefined && { pricing: expected }),
+          modelId: String(insertedId)
+        }
+      ]);
+      expect(await MongoAIModel.collection.findOne({ _id: insertedId })).toEqual(before);
+    }
+  );
+
+  it('exports unknown STT price types as free without changing stored data', async () => {
+    const root = await getRootUser();
+    const { insertedId } = await MongoAIModel.collection.insertOne({
+      model: 'invalid-stt',
+      type: ModelTypeEnum.stt,
+      provider: 'OpenAI',
+      name: 'Invalid STT',
+      scope: 'system',
+      config: {},
+      pricing: { type: 'unknown', unitPrice: 0.4 }
+    });
+    const before = await MongoAIModel.collection.findOne({ _id: insertedId });
+    const response = await Call<string>(getConfigJsonApi, { auth: root });
+    expect(response.code).toBe(200);
+    expect(JSON.parse(response.data)[0]).not.toHaveProperty('pricing');
+    expect(await MongoAIModel.collection.findOne({ _id: insertedId })).toEqual(before);
+  });
+
   it('exports an empty JSON array when no system model is installed', async () => {
     const root = await getRootUser();
 
@@ -64,7 +119,7 @@ describe('GET /api/core/ai/model/getConfigJson', () => {
     });
     expect(exported[0]).not.toHaveProperty('inputPrice');
     expect(exported[0]).not.toHaveProperty('outputPrice');
-    // 导出保留数据库中的旧价格，不触发格式转换或回写。
+    // 导出不触发历史金额换算或数据库回写。
     expect(await MongoAIModel.findById(modelId).lean()).toMatchObject({
       inputPrice: 1,
       outputPrice: 2,

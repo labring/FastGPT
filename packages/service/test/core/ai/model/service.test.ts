@@ -1,4 +1,6 @@
+import { formatDbModelToRuntimeModel } from '@fastgpt/service/core/ai/model/runtime';
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { sortModelOrderItems } from '@fastgpt/global/core/ai/model/order';
 import {
   PerResourceTypeEnum,
   ReadPermissionVal
@@ -66,6 +68,44 @@ beforeEach(async () => {
 });
 
 describe('model lifecycle', () => {
+  it.each([
+    { type: 'duration' as const, unitPrice: 0.2 },
+    { type: 'tokens' as const, unitPrice: 10 }
+  ])('round-trips STT $type pricing through Mongo and the runtime catalog', async (pricing) => {
+    const created = await createModel({
+      ...owner,
+      modelData: { ...draft, type: ModelTypeEnum.stt, config: {}, pricing }
+    });
+    const stored = await MongoAIModel.findById(created.modelId).lean();
+    expect(stored?.pricing).toMatchObject(pricing);
+    expect(
+      getCachedSystemModelHandle()
+        ?.getSystemModels()
+        .find((model) => model.modelId === created.modelId)?.pricing
+    ).toEqual(pricing);
+    const changed =
+      pricing.type === 'tokens'
+        ? { type: 'duration' as const, unitPrice: 0.2 }
+        : { type: 'tokens' as const, unitPrice: 20 };
+    await updateModel({
+      ...owner,
+      modelId: created.modelId,
+      modelData: { ...draft, type: ModelTypeEnum.stt, config: {}, pricing: changed }
+    });
+    expect((await MongoAIModel.findById(created.modelId).lean())?.pricing).toMatchObject(changed);
+  });
+
+  it('reads legacy STT database pricing without writing it back', async () => {
+    const raw = { ...draft, type: ModelTypeEnum.stt, config: {}, pricing: { unitPrice: 0.2 } };
+    const { insertedId } = await MongoAIModel.collection.insertOne(raw);
+    const stored = await MongoAIModel.findById(insertedId).lean();
+    expect(formatDbModelToRuntimeModel(stored!, { fallbackProvider: true }).pricing).toEqual({
+      type: 'duration',
+      unitPrice: 0.2
+    });
+    expect((await MongoAIModel.findById(insertedId).lean())?.pricing).toEqual({ unitPrice: 0.2 });
+  });
+
   it('rewrites complete order with consecutive ranks without changing runtime fallback order', async () => {
     const first = await createModel({ ...owner, modelData: draft });
     const second = await createModel({ ...owner, modelData: { ...draft, model: 'second' } });
@@ -98,6 +138,92 @@ describe('model lifecycle', () => {
         modelIds: [first.modelId, '68ad85a7463006c963799a07']
       })
     ).rejects.toThrow('modelUnExist');
+  });
+
+  it('places newly created, template-installed and JSON-imported models at the top with leading rank 0', async () => {
+    const first = await createModel({ ...owner, modelData: draft });
+    const second = await createModel({ ...owner, modelData: { ...draft, model: 'second' } });
+    await updateModelOrder({
+      ...owner,
+      modelIds: [first.modelId, second.modelId]
+    });
+
+    // 模拟历史未设置 sortOrder 的存量模型，应始终保留在末尾兜底。
+    await MongoAIModel.create({ ...draft, model: 'legacy-unranked' });
+
+    await createModel({ ...owner, modelData: { ...draft, model: 'newer' } });
+    const newest = await createModel({ ...owner, modelData: { ...draft, model: 'newest' } });
+    const afterSingleCreate = sortModelOrderItems(
+      await MongoAIModel.find({ scope: ModelScopeEnum.system }).sort({ _id: -1 }).lean()
+    );
+    expect(afterSingleCreate.map(({ model, sortOrder }) => ({ model, sortOrder }))).toEqual([
+      { model: 'newest', sortOrder: 0 },
+      { model: 'newer', sortOrder: 0 },
+      { model: 'original', sortOrder: 1 },
+      { model: 'second', sortOrder: 2 },
+      { model: 'legacy-unranked', sortOrder: undefined }
+    ]);
+
+    const templates = await import('@fastgpt/service/core/ai/model/template');
+    const tplA = { ...draft, model: 'tpl-a', sortOrder: 99 };
+    const tplB = { ...draft, model: 'tpl-b', sortOrder: 88 };
+    const templateSpy = vi
+      .spyOn(templates, 'refreshModelTemplates')
+      .mockResolvedValue([draft, tplA, tplB]);
+    try {
+      await createModelsFromTemplates({
+        ...owner,
+        templates: [draft, tplA, tplB].map(({ model, type }) => ({ model, type }))
+      });
+    } finally {
+      templateSpy.mockRestore();
+    }
+
+    const afterTemplateCreate = sortModelOrderItems(
+      await MongoAIModel.find({ scope: ModelScopeEnum.system }).sort({ _id: -1 }).lean()
+    );
+    expect(afterTemplateCreate.map(({ model, sortOrder }) => ({ model, sortOrder }))).toEqual([
+      { model: 'tpl-b', sortOrder: 0 },
+      { model: 'tpl-a', sortOrder: 0 },
+      { model: 'newest', sortOrder: 0 },
+      { model: 'newer', sortOrder: 0 },
+      { model: 'original', sortOrder: 1 },
+      { model: 'second', sortOrder: 2 },
+      { model: 'legacy-unranked', sortOrder: undefined }
+    ]);
+
+    // 手动保存完整顺序后，所有置顶 `0` 与缺省值会被统一归一化为连续的 1..N。
+    await updateModelOrder({
+      ...owner,
+      modelIds: afterTemplateCreate.map(({ _id }) => String(_id))
+    });
+
+    await importSystemModels({
+      config: [
+        { ...draft, modelId: newest.modelId, model: 'newest' },
+        { ...draft, modelId: 'external-json-a', model: 'json-a' },
+        { ...draft, modelId: first.modelId, model: 'original' },
+        { ...draft, modelId: 'external-json-b', model: 'json-b' }
+      ]
+    });
+
+    const runtimeOrderedModels = await MongoAIModel.find({ scope: ModelScopeEnum.system })
+      .sort({ _id: -1 })
+      .lean();
+    const afterJsonImport = sortModelOrderItems(runtimeOrderedModels);
+    expect(afterJsonImport.map(({ model, sortOrder }) => ({ model, sortOrder }))).toEqual([
+      { model: 'json-b', sortOrder: 0 },
+      { model: 'json-a', sortOrder: 0 },
+      { model: 'newest', sortOrder: 3 },
+      { model: 'original', sortOrder: 5 }
+    ]);
+    // create 与 upsert 的 ObjectId 可能分别由客户端和服务端生成，同秒内不能按导入先后推断大小。
+    // 管理列表继续验证 rank；运行目录和默认回退独立按数据库的 `_id DESC` 校验。
+    const handle = getCachedSystemModelHandle();
+    expect(handle?.getSystemModels().map((model) => model.modelId)).toEqual(
+      runtimeOrderedModels.map((model) => String(model._id))
+    );
+    expect(handle?.getDefaultModelIds().llm).toBe(String(runtimeOrderedModels[0]._id));
   });
 
   it('preserves stable identity and synchronizes an edited upstream identifier', async () => {
@@ -393,8 +519,7 @@ describe('team model writes', () => {
         { model: 'second', sortOrder: 2 }
       ]);
       const otherModel = await MongoAIModel.findById(other.modelId).lean();
-      expect(otherModel).toMatchObject({ model: 'other' });
-      expect(otherModel).not.toHaveProperty('sortOrder');
+      expect(otherModel).toMatchObject({ model: 'other', sortOrder: 0 });
       await expect(
         updateModelOrder({
           ...owner,

@@ -4,6 +4,18 @@ import type {
 } from '../../../../../../ai/llm/agentLoop/domain/tool';
 import type { SandboxClient } from '../../../../../../ai/sandbox/application/runtime/client';
 import type { AgentLoopDatasetSearchExecutor } from '../../../../../../ai/llm/agentLoop/domain/systemTool/datasetSearch';
+import { getErrText } from '@fastgpt/global/common/error/utils';
+import {
+  isModerationBlockErrorMessage,
+  MODERATION_BLOCKED_REPLACE_TEXT
+} from '@fastgpt/global/core/plugin/moderation/constants';
+import {
+  checkToolResultModeration,
+  isToolResultModerated,
+  markToolResultModerated,
+  sanitizeModeratedToolNodeResponse
+} from '../../../../../../plugin/moderation/modelInput';
+import type { CheckContentByPolicyParams } from '@fastgpt/global/core/plugin/moderation/type';
 
 export type CreateAgentLoopCoreSystemToolsParams = {
   planEnabled: boolean;
@@ -27,43 +39,75 @@ export type CreateAgentLoopCoreSystemToolsParams = {
  * plan/ask 是控制类 system tool，由节点能力决定是否开启；
  * sandbox 在提供 client 时注入；readFile/datasetSearch 在启用并提供执行器时注入。
  */
-export const createAgentLoopCoreSystemTools = ({
-  planEnabled,
-  askEnabled,
-  sandboxClient,
-  readFile,
-  datasetSearch
-}: CreateAgentLoopCoreSystemToolsParams): AgentLoopSystemTools => ({
-  plan: {
-    enabled: planEnabled
-  },
-  ask: {
-    enabled: askEnabled
-  },
-  ...(sandboxClient
-    ? {
-        sandbox: {
-          enabled: true,
-          client: sandboxClient
-        }
+export const createAgentLoopCoreSystemTools = (
+  {
+    planEnabled,
+    askEnabled,
+    sandboxClient,
+    readFile,
+    datasetSearch
+  }: CreateAgentLoopCoreSystemToolsParams,
+  context?: CheckContentByPolicyParams['context']
+): AgentLoopSystemTools => {
+  // 统一内置 read_files 与 dataset_search 工具的结果审核及详情脱敏，避免同模块两处入口规则分叉
+  const moderateSystemToolResult = async <
+    TResult extends { response: string; error?: unknown; metadata?: unknown }
+  >(
+    res: TResult
+  ): Promise<TResult> => {
+    if (!isToolResultModerated(res)) {
+      const originalResponse = res.response;
+      const moderatedResponse = originalResponse
+        ? await checkToolResultModeration({
+            response: originalResponse,
+            context
+          })
+        : originalResponse;
+      const hitModeration =
+        moderatedResponse !== originalResponse ||
+        (res.error !== undefined && isModerationBlockErrorMessage(getErrText(res.error)));
+      if (hitModeration) {
+        res.response = MODERATION_BLOCKED_REPLACE_TEXT;
+        res.error = undefined;
+        res.metadata = sanitizeModeratedToolNodeResponse(res.metadata);
       }
-    : {}),
-  ...(readFile?.enabled
-    ? {
-        readFile: {
-          enabled: true,
-          maxFileAmount: readFile.maxFileAmount,
-          execute: readFile.execute
+      markToolResultModerated(res);
+    }
+    return res;
+  };
+
+  return {
+    plan: {
+      enabled: planEnabled
+    },
+    ask: {
+      enabled: askEnabled
+    },
+    ...(sandboxClient
+      ? {
+          sandbox: {
+            enabled: true,
+            client: sandboxClient
+          }
         }
-      }
-    : {}),
-  ...(datasetSearch?.enabled
-    ? {
-        datasetSearch: {
-          enabled: true,
-          execute: datasetSearch.execute,
-          currentInputFiles: datasetSearch.currentInputFiles
+      : {}),
+    ...(readFile?.enabled
+      ? {
+          readFile: {
+            enabled: true,
+            maxFileAmount: readFile.maxFileAmount,
+            execute: async (params) => moderateSystemToolResult(await readFile.execute(params))
+          }
         }
-      }
-    : {})
-});
+      : {}),
+    ...(datasetSearch?.enabled
+      ? {
+          datasetSearch: {
+            enabled: true,
+            currentInputFiles: datasetSearch.currentInputFiles,
+            execute: async (params) => moderateSystemToolResult(await datasetSearch.execute(params))
+          }
+        }
+      : {})
+  };
+};

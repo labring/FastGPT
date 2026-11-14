@@ -56,7 +56,7 @@ import { useDebounce } from 'ahooks';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import UserBox from '@fastgpt/web/components/common/UserBox';
 
-type EditProps = EditApiKeyProps & { _id?: string };
+type EditProps = EditApiKeyProps & { _id?: string; defaultAppId?: string };
 const defaultEditData: EditProps = {
   name: '',
   authProxy: false,
@@ -472,15 +472,15 @@ const ApiKeyTable = ({
             </Flex>
           </Td>
         );
-      case 'usagePoints':
+      case 'usagePoints': {
+        const maxUsagePoints = item.limit?.maxUsagePoints ?? -1;
         return (
           <Td key={field} whiteSpace={'nowrap'}>
             {Math.round(item.usagePoints)}/
-            {item.limit?.maxUsagePoints && item.limit.maxUsagePoints > -1
-              ? `${item.limit.maxUsagePoints}`
-              : t('common:Unlimited')}
+            {maxUsagePoints > -1 ? `${maxUsagePoints}` : t('common:Unlimited')}
           </Td>
         );
+      }
       case 'expiredTime':
         return (
           <Td key={field} whiteSpace={'pre-wrap'}>
@@ -519,6 +519,7 @@ const ApiKeyTable = ({
                       name: item.name,
                       limit: item.limit,
                       authProxy: item.authProxy,
+                      defaultAppId: item.defaultAppId,
                       tags: item.tagIds || []
                     })
                   }
@@ -692,7 +693,7 @@ const ApiKeyTable = ({
             <Tbody fontSize={'sm'}>
               {!isGetting && apiKeys.length === 0 && (
                 <Tr>
-                  <Td colSpan={tableColumns.length} p={0}>
+                  <Td colSpan={tableColumns.length} p={0} borderBottom={0}>
                     <EmptyTip text={isAppKey ? t('apikey:app_key_empty') : undefined} />
                   </Td>
                 </Tr>
@@ -827,7 +828,9 @@ function EditKeyModal({
         _id: e._id!,
         name: e.name,
         limit: e.limit,
-        ...(!isAppKey ? { tags: e.tags, authProxy: e.authProxy } : {})
+        ...(!isAppKey
+          ? { tags: e.tags, ...(!defaultData.defaultAppId ? { authProxy: e.authProxy } : {}) }
+          : {})
       });
     },
     {
@@ -937,7 +940,7 @@ function EditKeyModal({
             </Flex>
           </>
         )}
-        {!isAppKey && (
+        {!isAppKey && !defaultData.defaultAppId && (
           <Flex alignItems={'center'} gap={4} mt={4}>
             <FormLabel display={'flex'} flex={'0 0 90px'} alignItems={'center'}>
               {t('common:support.openapi.Auth proxy')}

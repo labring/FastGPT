@@ -1,98 +1,105 @@
 ---
 title: 通用问题排查
-description: FastGPT 私有部署常见问题排查方式
+description: 汇总 FastGPT 私有部署启动、端口占用、向量库切换、HTTPS 上传与模型超时等高频问题及解决方案。
 ---
 
-### 前端页面崩溃
+{/* Preserve incoming bookmarks for reorganized sections. */}
 
-1. 90% 情况是模型配置不正确：确保每类模型都至少有一个启用；检查模型中一些 `对象` 参数是否异常（数组和对象），如果为空，可以尝试给个空数组或空对象。
-2. 少部分是由于浏览器兼容问题，由于项目中包含一些高阶语法，可能低版本浏览器不兼容，可以将具体操作步骤和控制台中错误信息提供 issue。
-3. 关闭浏览器翻译功能，如果浏览器开启了翻译，可能会导致页面崩溃。
+<span id="修改了-vectormodels-但是没有生效" />
+<span id="通过-sealos-部署的话是否没有本地部署的一些限制" />
+<span id="数据库-3306-端口被占用了启动服务失败" />
+<span id="页面崩溃" />
+<span id="开启内容补全后响应速度变慢" />
 
----
+<span id="前端页面崩溃" />
 
-### 通过 sealos 部署的话，是否没有本地部署的一些限制？
+### 前端页面崩溃或报 URI malformed 怎么办？
 
-![](../../../public/imgs/faq1.png)
-这是索引模型的长度限制，通过任何方式部署都一样的，但不同索引模型的配置不一样，可以在后台修改参数。
-
----
-
-### 怎么挂载小程序配置文件
-
-将验证文件，挂载到指定位置：/app/projects/app/public/xxxx.txt
-
-然后重启。例如:
-
-![](../../../public/imgs/faq2.png)
+1. 记录复现步骤、FastGPT 版本，以及浏览器控制台和失败请求的错误信息。
+2. 检查管理员中的模型配置、服务端初始化日志和网络请求。
+3. 使用当前稳定版浏览器，关闭页面翻译和相关扩展后复测；提交 Issue 时去掉密钥和个人数据。
+4. 出现 `URI malformed` 时，记录发生错误的地址和操作步骤，并检查 URL 编码；配置加载失败时，先处理服务端对应错误，再刷新页面。
 
 ---
 
-### 数据库 3306 端口被占用了，启动服务失败
+### 知识库分块上限受什么限制？
 
-![](../../../public/imgs/faq3.png)
-
-把端口映射改成 3307 之类的，例如 3307:3306。
-
----
-
-### 能否纯本地运行
-
-可以。需要准备好向量模型和 LLM 模型。
+![知识库分块上限受什么限制？：界面示例](/imgs/optimized/faq1.png.webp)
+该上限由知识库所选索引模型（Embedding 模型）的单块 Token 长度限制决定，所有部署方式一致。不同索引模型的上限不同，可在「管理员 → 系统资源 → 系统模型 → 模型配置」中编辑对应索引模型的分块参数。
 
 ---
 
-### 其他模型没法进行问题分类/内容提取
+<span id="怎么挂载小程序配置文件" />
 
-1. 看日志。如果提示 JSON invalid，not support tool 之类的，说明该模型不支持工具调用或函数调用，需要设置 `toolChoice=false` 和 `functionCall=false`，就会默认走提示词模式。目前内置提示词仅针对了商业模型 API 进行测试。问题分类基本可用，内容提取不太行。
-2. 如果已经配置正常，并且没有错误日志，则说明可能提示词不太适合该模型，可以通过修改 `customCQPrompt` 来自定义提示词。
+### 怎么在容器中挂载微信小程序域名校验文件？
 
----
+将域名校验文件挂载到容器内的 `/app/projects/app/public/xxxx.txt` 路径后重启服务：
 
-### 页面崩溃
+- **Docker Compose 部署**：在 `docker-compose.yml` 的 `fastgpt-app` 服务 `volumes` 下添加 `- ./xxxx.txt:/app/projects/app/public/xxxx.txt`，随后执行 `docker compose up -d` 重启。
+- **Sealos 部署**：在 Sealos「应用管理」进入对应应用的变更页面，在「配置文件」区域点击「新增配置文件」，文件名填写 `/app/projects/app/public/xxxx.txt` 并填入文件内容，保存变更并重启应用：
 
-1. 关闭翻译
-2. 检查配置文件是否正常加载，如果没有正常加载会导致缺失系统信息，在某些操作下会导致空指针。
-
-- 95%情况是配置文件不对。会提示 xxx undefined
-- 提示 `URI malformed`，请 Issue 反馈具体操作和页面，这是由于特殊字符串编码解析报错。
-
-3. 某些 API 不兼容问题（较少）
+![怎么挂载小程序配置文件：界面示例](/imgs/optimized/faq2.png.webp)
 
 ---
 
-### 开启内容补全后，响应速度变慢
+<span id="宿主机端口被占用启动服务失败" />
 
-1. 问题补全需要经过一轮 AI 生成。
-2. 会进行 3~5 轮的查询，如果数据库性能不足，会有明显影响。
+### 宿主机端口被占用导致服务启动失败怎么办？
 
----
-
-### 页面中可以正常回复，API 报错
-
-页面中是用 stream=true 模式，所以 API 也需要设置 stream=true 来进行测试。部分模型接口（国产居多）非 Stream 的兼容有点垃圾。和上一个问题一样，curl 测试。
+检查 `docker-compose.yml` 中报错容器的 `ports` 配置，将冒号左侧的宿主机监听端口改为空闲端口（例如将 `3000:3000` 改为 `3001:3000`），保持冒号右侧的容器内部端口不变，保存后重新执行 `docker compose up -d`。
 
 ---
 
-### 知识库索引没有进度/索引很慢
+<span id="能否纯本地运行" />
 
-先看日志报错信息。有以下几种情况：
+### FastGPT 能否在纯本地或离线环境中运行？
 
-1. 可以对话，但是索引没有进度：没有配置向量模型（vectorModels）
-2. 不能对话，也不能索引：API 调用失败。可能是没连上 OneAPI 或 OpenAI
-3. 有进度，但是非常慢：API key 不行，OpenAI 的免费号，一分钟只有 3 次还是 60 次。一天上限 200 次。
+可以。需要在本地准备语言模型、Embedding 模型，以及当前部署模板要求的数据库、对象存储、AI Proxy 和插件等服务。离线环境还需提前准备镜像、模型文件和所需插件包，并验证每条调用链。
+
+---
+
+<span id="其他模型没法进行问题分类内容提取" />
+
+### 为什么部分模型无法完成问题分类或内容提取？
+
+检查运行详情和模型响应，确认所选模型与渠道支持节点需要的工具调用或结构化输出。JSON 解析失败也可能来自返回格式、截断或提示词。先在管理员中测试模型，再使用小输入复测对应节点，按实际能力调整模型配置与提示词。参见[模型问题排查](/zh-CN/self-host/troubleshooting/model-errors)。
+
+---
+
+<span id="开启问题优化后响应速度变慢" />
+
+### 开启问题优化后为什么响应速度变慢？
+
+开启「问题优化」会增加一次模型调用，并可能生成多条检索查询。可在运行详情中查看问题优化、召回和重排各阶段耗时，按需调整问题优化模型、检索配置与并发参数；实际查询数量以配置和运行结果为准。
+
+---
+
+<span id="页面中可以正常回复api-报错" />
+
+### 为什么页面对话正常回复但调用 API 报错？
+
+比较两次调用的应用、身份、请求体和 `stream` 设置。分别测试流式与非流式请求，并记录 HTTP 状态、错误体和服务端 requestId；继续沿 FastGPT、AI Proxy、模型上游逐层定位。
+
+---
+
+<span id="知识库索引没有进度索引很慢" />
+
+### 知识库索引没有进度或向量化很慢如何排查？
+
+1. 检查集合处理状态和解析、向量训练错误。
+2. 在管理员中测试该知识库绑定的 Embedding 模型与渠道。
+3. 查看模型服务商的限流、余额和请求耗时，并检查解析及向量队列并发。
+4. 处理错误后按页面提供的重试操作恢复。详细步骤见[知识库常见问题](/zh-CN/guide/dataset/faq)。
 
 ---
 
 ### Connection error
 
-网络异常。国内服务器无法请求 OpenAI，自行检查与 AI 模型的连接是否正常。
-
-或者是 FastGPT 请求不到 OneAPI（没放同一个网络）
+从 FastGPT 服务所在网络检查 AI Proxy 的地址、端口、DNS、TLS 和代理配置，再检查 AI Proxy 到模型上游的连通性。容器间通信使用共享网络内的服务名与容器端口；宿主机服务使用容器可达的宿主机地址。
 
 ---
 
-### 修改了 vectorModels 但是没有生效
+### 修改了 vectorModels 未生效
 
 1. 在管理员的模型配置中启用新的向量模型，然后刷新页面。旧版本通过 `config.json` 的 `vectorModels` 配置模型时，修改文件后还需重启服务。
 2. 已有知识库不会自动切换模型。由知识库所有者进入该知识库的「配置」页，选择新的索引模型并确认重建索引，无需删除知识库。
@@ -102,17 +109,17 @@ description: FastGPT 私有部署常见问题排查方式
 
 ### 如何修改 root 密码
 
-- **Web 界面修改**：登录 `root` 后在右上角「个人信息」页面中的安全设置中修改。
+- **Web 界面修改**：登录 `root` 后进入左侧导航栏「账号 → 个人信息」，在「通用信息」区的「密码」行点击「变更」。
 - **命令行快速重置（忘记密码）**：在服务器上执行 `docker compose exec fastgpt-app node /app/scripts/reset-root-password.cjs '新密码'`，无需重启即可重置生效。
 - **历史版本（v4.17.2 及更早）**：修改环境变量中的 `DEFAULT_ROOT_PSW`，然后重启 FastGPT。
 
-更多场景与详细说明请参考 [修改与重置 root 密码](/self-host/config/root-password)。
+更多场景与详细说明请参考 [修改与重置 root 密码](/zh-CN/self-host/config/root-password)。
 
 ---
 
 ### FastGPT 支持 OpenAI 的 Responses API（/v1/responses）吗？
 
-不支持（截至 4.17.0），请求会返回 404。请改用 `POST /api/v1/chat/completions` 调用应用，它兼容 OpenAI Chat Completions 格式。
+不支持（截至 4.17.3），请求会返回 404。请改用 `POST /api/v1/chat/completions` 调用应用，它兼容 OpenAI Chat Completions 格式。
 
 ---
 
@@ -122,7 +129,7 @@ description: FastGPT 私有部署常见问题排查方式
 
 原因：从 4.16.2 起，向量检索和全文检索都使用 `modeldata_v2` 这张表。启动时这张表已存在、却缺少全文检索索引，就会报错并退出。为什么会缺索引，目前还没有定论。另外要求 Milvus 不低于 2.5.16。
 
-怎么做：升级前按 [Milvus BM25 全文检索配置与迁移](/self-host/milvus-bm25) 备份并升级 Milvus，再升级 FastGPT 并迁移数据。已经出现这个报错的，需要删除并重建这张表，会删除数据，请先备份并联系技术支持处理。迁移完成之前，知识库检索查不到旧数据。
+怎么做：升级前按 [Milvus BM25 全文检索配置与迁移](/zh-CN/self-host/milvus-bm25) 备份并升级 Milvus，再升级 FastGPT 并迁移数据。已经出现这个报错的，需要删除并重建这张表，会删除数据，请先备份并联系技术支持处理。迁移完成之前，知识库检索查不到旧数据。
 
 ---
 
@@ -130,7 +137,7 @@ description: FastGPT 私有部署常见问题排查方式
 
 适用版本：4.16.0 及以后。从 4.16.0 起，沙箱镜像只用 `AGENT_SANDBOX_OPENSANDBOX_IMAGE` 这一个变量，并且必须配置 `AGENT_SANDBOX_PREVIEW_PROXY_URL`。用 4.15 或更早的 compose 模板搭配新版镜像，就会报这两个错。
 
-怎么做：按 [Docker Compose 部署](/self-host/deploy/docker) 使用一键脚本，或手动下载和镜像同一版本的模板（4.17.x 使用 `main` 目录，4.16.x 使用 `v4.16` 目录）。
+怎么做：按 [Docker Compose 部署](/zh-CN/self-host/deploy/docker) 使用一键脚本，或手动下载和镜像同一版本的模板（4.17.x 使用 `main` 目录，4.16.x 使用 `v4.16` 目录）。
 
 注意：在已经部署过的目录里重新运行一键脚本，会重新生成数据库密码和 `AES256_SECRET_KEY`，并覆盖 `docker-compose.yml`。请先备份原文件；要保留数据，就选择不自动生成密码（或设置 `FASTGPT_AUTO_GENERATE_CREDENTIALS=false`），并把原来的密码和密钥拷过去。
 
@@ -138,7 +145,7 @@ description: FastGPT 私有部署常见问题排查方式
 
 ### 并行执行报 parallel_task_not_reach_end，或者只跑了一个任务怎么办？
 
-适用版本：已按 4.17.0 核实。并行执行按输入数组的元素个数开任务，一个元素对应一个任务。传入的是一整段多行文本（比如每行一个 URL）时，它会被当成只有一个元素的数组，所以只跑一个任务。`parallel_task_not_reach_end` 表示某个任务的子流程没有走到「结束」节点；子流程有更具体的报错时，会优先显示那条报错。
+适用版本：已按 4.17.3 核实。并行执行按输入数组的元素个数开任务，一个元素对应一个任务。传入的是一整段多行文本（比如每行一个 URL）时，它会被当成只有一个元素的数组，所以只跑一个任务。`parallel_task_not_reach_end` 表示某个任务的子流程没有走到「结束」节点；子流程有更具体的报错时，会优先显示那条报错。
 
 怎么做：在并行执行前加一个「代码运行」节点，把文本按换行拆成数组，例如返回 `text.split('\n').map(s => s.trim()).filter(Boolean)`，再让并行执行的数组输入引用这个结果。仍然报错，就打开出错任务的运行详情，检查子流程有没有走到「结束」节点。
 
@@ -146,7 +153,7 @@ description: FastGPT 私有部署常见问题排查方式
 
 ### 用 HTTPS 访问时，上传文件报 s3 upload network error 怎么办？
 
-适用版本：已按 4.17.0 核实。浏览器上传文件用的地址取自 `FILE_DOMAIN`，没设置时取自 `FE_DOMAIN`。页面是 HTTPS、而这个地址是 `http://` 时，浏览器会把请求当作混合内容拦截，请求到不了服务端。
+适用版本：已按 4.17.3 核实。浏览器上传文件用的地址取自 `FILE_DOMAIN`，没设置时取自 `FE_DOMAIN`。页面是 HTTPS、而这个地址是 `http://` 时，浏览器会把请求当作混合内容拦截，请求到不了服务端。
 
 怎么做：把对应配置改成可以访问的 HTTPS 地址（设置了 `FILE_DOMAIN` 就改它，否则改 `FE_DOMAIN`），然后重启。可以在浏览器控制台确认是否有 Mixed Content 报错。
 
@@ -164,7 +171,7 @@ description: FastGPT 私有部署常见问题排查方式
 
 适用版本：4.15.2 及以后。`MULTIPLE_DATA_TO_BASE64` 默认值在 4.15.2 是 `true`，4.15.3 起是 `false`。为 `false` 时，FastGPT 把 `http(s)://` 开头的文件下载短链交给模型服务商去下载。短链前缀依次取 `FILE_DOWNLOAD_PUBLIC_URL_PREFIX`、`FILE_DOMAIN`、`FE_DOMAIN` 中第一个设置了的；如果是内网地址，模型服务商访问不到，就会下载超时（可能返回 `Download multimodal file timed out`）。
 
-怎么做（二选一）：设置 `MULTIPLE_DATA_TO_BASE64=true`，让 FastGPT 转成 base64 再发给模型（请求体会变大）；或者把 `FILE_DOMAIN` 配置成模型服务商能从公网访问到的 FastGPT 地址，而不是改 `FE_DOMAIN`（它是用户访问 FastGPT 的地址）。
+可选方案：其一，设置 `MULTIPLE_DATA_TO_BASE64=true`，由 FastGPT 编码为 base64 发送；其二，将 `FILE_DOMAIN` 配置为模型服务商可从公网访问的 FastGPT 服务地址，`FE_DOMAIN` 专用于用户浏览器访问。
 
 ---
 
@@ -174,7 +181,7 @@ description: FastGPT 私有部署常见问题排查方式
 
 原因：这些版本只接受 CSV 文件，并且文件内容（去掉首尾空白后）必须以 `q,a,indexes` 开头。表头每一列都加了引号（如 `"q","a","indexes"`）、写成了 `index`，或者第一行前面多了别的内容，都会报这个错。
 
-怎么做：使用导入页提供的 CSV 模板填写内容，用文本编辑器打开确认第一行以 `q,a,indexes` 开头，不要另存成 `.xlsx`。也可以升级到 4.16.0 及以后：支持 `.csv` 和 `.xlsx`，表头为 `q`、`a`、`index`（可重复）、`metadata`（可选），旧版的 `q,a,indexes` 表头仍然可用，不需要改文件。新模板的写法见 [模板导入](/guide/dataset/template)。
+怎么做：使用导入页提供的 CSV 模板填写内容，用文本编辑器打开确认第一行以 `q,a,indexes` 开头，不要另存成 `.xlsx`。也可以升级到 4.16.0 及以后：支持 `.csv` 和 `.xlsx`，表头为 `q`、`a`、`index`（可重复）、`metadata`（可选），旧版的 `q,a,indexes` 表头仍然可用，不需要改文件。新模板的写法见 [模板导入](/zh-CN/guide/dataset/template)。
 
 ---
 
@@ -203,24 +210,40 @@ description: FastGPT 私有部署常见问题排查方式
 
 ---
 
+### Docker Compose 各组件版本对应与环境变量检查
+
+- **组件镜像版本**：使用目标 FastGPT 版本配套 Compose 模板中的各组件镜像版本，升级前阅读 [升级说明](/zh-CN/self-host/upgrading/upgrade-instruction)。
+- **AI Proxy 接入（v4.17.0+）**：在 `fastgpt-app`（及复用配置的商业版 Admin 服务）中配置 `AIPROXY_API_ENDPOINT`（根地址，如 `http://fastgpt-aiproxy:3000`）与 `AIPROXY_API_TOKEN`，修改 `docker-compose.yml` 后执行 `docker compose up -d` 生效。
+- **验证环境变量加载**：执行 `docker exec -it fastgpt-app sh` 进入容器后运行 `env` 查看当前生效的环境变量。
+- **连接本地模型容器**：将模型服务容器加入 FastGPT 所在的 Docker 网络，使用 `http://服务名:容器端口` 作为上游地址。
+
+---
+
+### Docker 部署常见数据库与对象存储报错
+
+- **Mongo 副本集初始化失败 / `Operation auth_codes.findOne() buffering timed out` / 首次部署提示 `root` 未注册**：检查 `docker compose ps` 与 MongoDB 日志，核对副本集名称、内网主机名、账号密码、key 文件权限与持久卷属主；新建未初始化的副本集可在 MongoDB 客户端核对 `rs.status()` 后执行 `rs.initiate()`。
+- **`Illegal instruction`**：核对报错容器镜像、宿主机 CPU 架构与 MongoDB 版本所需的指令集（如 AVX），选用受支持的宿主机与镜像组合。
+- **`relation "modeldata" does not exist`**：PostgreSQL 尚未就绪或缺少 `vector` 扩展，检查 PG 容器日志并确认已启用 pgvector 插件。
+- **S3 / 对象存储无法正常连接**：核对 FastGPT 容器可访问的对象存储地址与签名主机名，详见 [对象存储配置](/zh-CN/self-host/config/object-storage) 与 [Docker Compose 从 MinIO 迁移到 RustFS](/zh-CN/self-host/docker_minio_to_rustfs)。
+
+---
+
 ### 沙箱启动报 Sandbox work directory is not writable: /workspace，但卷的权限是正确的怎么办？
 
-4.15.2 及以上版本使用 OpenSandbox 时，沙箱启动后会检查 `/workspace` 是否可写，不可写就报这个错并退出。卷里 `/workspace` 的属主和权限已经正确仍然报错时，可能是宿主机 Docker 默认的 seccomp 配置拦截了沙箱容器。
+4.15.2 及以上版本使用 OpenSandbox 时，沙箱启动后会检查 `/workspace` 是否可写，不可写时报错退出。若卷内 `/workspace` 的属主和权限均已正确但仍报错，可能是宿主机 Docker 默认的 seccomp 配置拦截了沙箱容器。
 
-用沙箱镜像执行下面的命令（`<卷名>` 是沙箱容器挂载到 `/workspace` 的卷，用 `docker inspect <沙箱容器名>` 查看）。先后输出 fail、ok，就是 seccomp 的原因：
+用沙箱镜像执行以下命令（`<卷名>` 为沙箱容器挂载到 `/workspace` 的卷，可通过 `docker inspect <沙箱容器名>` 查看）；先后输出 `fail`、`ok` 即确认由 seccomp 引起：
 
 ```bash
 for o in "" "--security-opt seccomp=unconfined"; do docker run --rm $o -v <卷名>:/workspace --entrypoint bash <沙箱镜像> -c '[ -w /workspace ] && echo ok || echo fail'; done
 ```
 
-解决方法：在 compose 里 `opensandbox-config` 的 `[docker]` 下增加 `seccomp_profile = "unconfined"`，执行 `docker compose up -d --force-recreate fastgpt-opensandbox-server`，再到页面点「重试」。这会放宽沙箱容器的系统调用限制，确认是 seccomp 引起后再使用。
+解决方法：在 compose 的 `opensandbox-config` 中 `[docker]` 下增加 `seccomp_profile = "unconfined"`，执行 `docker compose up -d --force-recreate fastgpt-opensandbox-server`，再到页面点击「重试」。该配置会放宽沙箱容器的系统调用限制，请在确认由 seccomp 引起后启用。
 
 ---
 
 ### 工具报“反向调用上传文件失败”，日志里 /api/invoke/fileUpload 返回 401 怎么办？
 
-使用官方 `main` 版 docker-compose（官网部署页和 `install.sh` 默认使用）部署 4.15.0 到 4.17.4 时，`fastgpt-plugin` 没有配置 `FASTGPT_BASE_URL`（`v4.15` 版 compose 从 4.15.2 起已经配置）。插件的工具（例如基础图表）生成文件后，会通过它反向调用 FastGPT 的 `/api/invoke/fileUpload` 上传文件。它默认是 `http://localhost:3000`，指向插件容器自己，请求被插件自己的鉴权拒绝（401），工具就报“反向调用上传文件失败”。
+使用官方 `main` 版 docker-compose（官网部署页和 `install.sh` 默认使用）部署 4.15.0 到 4.17.4 时，`fastgpt-plugin` 默认未显式配置 `FASTGPT_BASE_URL`（`v4.15` / `v4.16` 模板自 4.15.2 起已配置）。插件工具（例如基础图表）生成文件后通过该变量反向调用 FastGPT 的 `/api/invoke/fileUpload` 上传文件；默认 `http://localhost:3000` 会指向插件容器自身并触发鉴权 401（日志含 `HTTP Exception: Unauthorized`），工具随之报“反向调用上传文件失败”。
 
-如果 401 日志由 `fastgpt-plugin` 输出（含 `HTTP Exception: Unauthorized`），在它的环境变量里增加 `FASTGPT_BASE_URL: http://fastgpt-app:3000`（服务名按你 compose 里 FastGPT 主服务的名字写），执行 `docker compose up -d fastgpt-plugin` 重建容器，再重新运行工具。
-
----
+解决方法：在 `fastgpt-plugin` 的环境变量中增加 `FASTGPT_BASE_URL: http://fastgpt-app:3000`（按你的 compose 中 FastGPT 主服务名填写），执行 `docker compose up -d fastgpt-plugin` 重建容器后重新运行工具。

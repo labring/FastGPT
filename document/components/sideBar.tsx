@@ -1,13 +1,8 @@
 'use client';
 
+import { useCurrentLang } from '@/lib/localized-navigation';
 import { usePathname } from 'next/navigation';
-import {
-  createContext,
-  useContext,
-  useEffect,
-  type FC,
-  type ReactNode
-} from 'react';
+import { createContext, useContext, useEffect, type FC, type ReactNode } from 'react';
 import {
   SidebarItem,
   SidebarFolder,
@@ -16,15 +11,19 @@ import {
 } from 'fumadocs-ui/components/layout/sidebar';
 import { type SidebarComponents } from 'fumadocs-ui/components/layout/sidebar';
 import { type PageTree } from 'fumadocs-core/server';
-import { useI18n } from 'fumadocs-ui/contexts/i18n';
 import { ExternalLink } from 'lucide-react';
 import { cn } from '@/lib/cn';
+import {
+  persistSidebarViewportScroll,
+  restoreSidebarViewportScroll
+} from '@/components/sidebarScrollFix';
 
 const VIRTUAL_SECTION_ID_SUFFIX = '#virtual-section';
 
 const NestingLevelContext = createContext(0);
 
 type TaggedPageTreeItem = PageTree.Item & {
+  draft?: boolean;
   deprecated?: boolean;
   sidebarTag?: string;
   upgradeTags?: string[];
@@ -55,19 +54,29 @@ const isInFolder = (folder: PageTree.Folder, pathname: string): boolean => {
 
 const CustomItem: FC<{ item: PageTree.Item }> = ({ item }) => {
   const pathname = usePathname();
-  const { locale } = useI18n();
   const level = useContext(NestingLevelContext);
+  const lang = useCurrentLang();
   const isActive = pathname === item.url;
   const { deprecated, tags, isUpgradeTag } = getSidebarItemTags(item);
 
   useEffect(() => {
-    if (isActive) {
-      const anchor = document.querySelector(`a[href='${item.url}']`);
-      if (anchor) {
-        setTimeout(() => {
-          anchor.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }, 100);
-      }
+    if (!isActive) return;
+    const viewport = document.querySelector<HTMLElement>(
+      '#nd-sidebar [data-radix-scroll-area-viewport]'
+    );
+    const anchor = viewport?.querySelector<HTMLElement>(`a[href='${item.url}']`);
+    if (!viewport || !anchor) return;
+
+    restoreSidebarViewportScroll(viewport);
+
+    const viewportRect = viewport.getBoundingClientRect();
+    const anchorRect = anchor.getBoundingClientRect();
+    if (viewportRect.height <= 0) return;
+
+    if (anchorRect.top < viewportRect.top || anchorRect.bottom > viewportRect.bottom) {
+      viewport.scrollTop +=
+        anchorRect.top - viewportRect.top - viewportRect.height / 2 + anchorRect.height / 2;
+      persistSidebarViewportScroll(viewport);
     }
   }, [isActive, item.url]);
 
@@ -87,6 +96,11 @@ const CustomItem: FC<{ item: PageTree.Item }> = ({ item }) => {
         <span className={cn('min-w-0 break-words leading-5', deprecated && 'line-through')}>
           {item.name}
         </span>
+        {(item as TaggedPageTreeItem).draft && (
+          <span className="shrink-0 rounded-md bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800 dark:bg-amber-400/15 dark:text-amber-300">
+            {lang === 'en' ? 'Draft' : '草稿'}
+          </span>
+        )}
         {tags.length > 0 && (
           <span className="inline-flex shrink-0 items-center gap-1">
             {tags.map((tag) => (
@@ -113,7 +127,7 @@ const CustomItem: FC<{ item: PageTree.Item }> = ({ item }) => {
         )}
         {item.external && (
           <ExternalLink
-            aria-label={locale === 'en' ? 'External link' : '外部链接'}
+            aria-label={lang === 'en' ? 'External link' : '外部链接'}
             className="!size-2.5 shrink-0 text-fd-muted-foreground/60 opacity-0 transition-opacity group-hover/sidebar-item:opacity-100 group-focus-visible/sidebar-item:opacity-100"
           />
         )}
@@ -148,9 +162,7 @@ const CustomFolder: FC<{ item: PageTree.Folder; level: number; children: ReactNo
             {item.name}
           </div>
         ) : (
-          <SidebarFolderTrigger
-            className="min-h-8 min-w-0 max-w-full rounded-lg px-2 text-sm text-fd-muted-foreground hover:cursor-pointer hover:text-fd-accent-foreground data-[state=open]:text-fd-foreground [&>svg[data-icon]]:shrink-0"
-          >
+          <SidebarFolderTrigger className="min-h-8 min-w-0 max-w-full rounded-lg px-2 text-sm text-fd-muted-foreground hover:cursor-pointer hover:text-fd-accent-foreground data-[state=open]:text-fd-foreground [&>svg[data-icon]]:shrink-0">
             <span className="min-w-0 flex-1 break-words text-left leading-5">{item.name}</span>
           </SidebarFolderTrigger>
         )}

@@ -1,100 +1,149 @@
 ---
-title: API 文档介绍
-description: FastGPT API 文档介绍
+title: API 入门：完成首次请求
+description: 配置服务地址、成员密钥和应用 ID，调用已发布应用并验证响应。
 ---
 
-从 `4.15.0` 开始，FastGPT API 文档均采用 `zod-openapi` 自动生成的方式。可通过访问 API 文档地址查看最新的接口情况，**该文档里左侧手动编辑的接口说明不再更新。**
+{/* Preserve incoming bookmarks for reorganized sections. */}
 
-FastGPT API 文档一共分成两套：
+<span id="api-文档地址" />
+<span id="下一步" />
 
-- Dev API: 所有开发的 API，不一定能通过 ApiKey 调用。
-- System OpenAPI: 系统所有开放的接口，可以通过系统 ApiKey 调用。
+{/* Preserve incoming bookmarks for reorganized sections. */}
 
-## API 文档地址
+<span id="云服务-api-文档地址" />
+<span id="使用说明" />
+<span id="如何获取-api-key" />
+<span id="api-密钥可用范围" />
+<span id="密钥使用规范" />
+<span id="如何获取应用-idappid" />
+<span id="如何获取知识库-id-和文件集合-id" />
+<span id="基本配置" />
 
-endpoint 是你的 FastGPT 访问地址，拼上对应 path 即可打开文档。
+## 前置准备
 
-- Dev API: `{{endpoint}}/apidoc/devapi`
-- System OpenAPI: `{{endpoint}}/apidoc/systemopenapi`
+当前接口契约及在线文档入口见 [API 文档地址](/zh-CN/openapi/api-reference)。
 
-## 云服务 API 文档地址
+准备一个已调试并发布的应用及可用模型额度，并在以下位置创建或管理 API 密钥：
 
-**Dev API:**
+1. **账号 → API 密钥**：管理当前成员的个人密钥（仅对具备“创建 API 密钥”权限的成员显示；可在**账号 → 团队管理 → 权限**中勾选**创建 API 密钥**开启）。
+2. **工作台 → 目标应用 → 发布渠道 → API 访问**：切换管理 **应用 Key**（FastGPT 4.18.0 及以上）与 **个人密钥**。
 
-- [中国大陆版文档](https://cloud.fastgpt.cn/apidoc/devapi)
-- [国际版文档](https://cloud.fastgpt.io/apidoc/devapi)
+历史上保存了 `appId` 的 Key 仍属于个人密钥，原 `appId` 仅作为 `chat/completions` 的默认应用；请求体或 SDK 后缀可覆盖该默认值，访问权限仍由归属成员决定。只有显式新建的应用 Key 才具有下表中的应用绑定边界。
 
-**System OpenAPI**
+| 类型     | 授权范围                                                               | 管理方式                                             |
+| -------- | ---------------------------------------------------------------------- | ---------------------------------------------------- |
+| 应用 Key | 绑定单个应用的对话与对话管理接口（含对话日志、对话文件与沙盒文件接口） | 应用管理员可查看、创建和管理同一应用下的全部应用 Key |
+| 个人密钥 | 以成员身份访问当前团队中有权限且开放 API Key 鉴权的资源                | 创建成员管理本人的密钥                               |
 
-- [中国大陆版文档](https://cloud.fastgpt.cn/apidoc/systemopenapi)
-- [国际版文档](https://cloud.fastgpt.io/apidoc/systemopenapi)
+应用 Key 的调用授权来自 Key 本身：只要 Key、归属成员、团队和绑定应用有效，归属成员权限变更后仍可继续调用。个人密钥支持由团队所有者开启 `authProxy` 代理团队成员身份（FastGPT >= v4.15.0，见[身份代理](/zh-CN/openapi/identity-proxy)）；应用 Key 通过 `customUid` 标记外部使用者。当团队开通套餐用量计划后，可在创建或编辑密钥时设置**积分上限**与**过期时间**。请将密钥保存在可信服务端或密钥管理系统。
 
-## 使用说明
+## 首次请求
 
-FastGPT OpenAPI 接口允许你使用 API Key 进行鉴权，从而操作 FastGPT 上的相关服务和资源，例如：调用应用对话接口、上传知识库数据、搜索测试等等。出于兼容性和安全考虑，并不是所有的接口都允许通过 API Key 访问。
+将 `FASTGPT_ORIGIN` 替换为自己的 FastGPT 访问地址，复制应用详情 URL 中的 `appId`（使用 4.18.0+ 应用 Key 时可省略 `appId`，服务端自动读取绑定应用）。下面请求通过 `/api/v2/chat/completions`（推荐使用 v2；`/api/v1/chat/completions` 保留历史兼容）调用发布版本：
 
-### 如何获取 API Key
+```bash
+export FASTGPT_ORIGIN='https://cloud.fastgpt.cn'
+export FASTGPT_API_KEY='YOUR_API_KEY'
+export FASTGPT_APP_ID='YOUR_APP_ID'
+curl --fail-with-body "$FASTGPT_ORIGIN/api/v2/chat/completions" \
+  -H "Authorization: Bearer $FASTGPT_API_KEY" \
+  -H 'Content-Type: application/json' \
+  --data @- <<EOF
+{"appId":"$FASTGPT_APP_ID","stream":false,"messages":[{"role":"user","content":"Hello"}]}
+EOF
+```
 
-系统里有两个地方可看到 API 密钥：
+## 响应
 
-1. `账号` - `API 密钥`：管理自己的个人密钥。
-2. `应用` - `发布渠道` - `API 访问`：切换查看应用 Key 和个人密钥。
+成功时返回 JSON，普通文本回复位于 `choices[0].message.content`，`id` 标识会话。具体内容由应用的发布配置决定；多模态或详细结果按当前生成契约解析。检查响应中的 `error` 及业务结果，计费信息以用量记录为准。
 
-### API 密钥可用范围
+| 现象           | 检查                                                           |
+| -------------- | -------------------------------------------------------------- |
+| 认证或权限错误 | 密钥、所属团队、成员状态及目标资源权限                         |
+| 应用标识错误   | `appId` 是否复制完整且属于当前可访问资源                       |
+| 404            | 地址是否为 FastGPT 实例，路径是否为 `/api/v2/chat/completions` |
+| 模型或额度错误 | 应用模型配置、服务状态及可用额度                               |
 
-**FastGPT 4.18.0 及以上支持应用 Key。**
+## 应用选择与 SDK
 
-| 类型     | 授权范围                                                                                                     | 管理方式                                                           |
-| -------- | ------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------ |
-| 应用 Key | 仅限绑定应用的对话与对话管理，包括对话日志及配套的对话文件、沙盒文件接口；不能管理应用配置、发布渠道或知识库 | 仅应用管理员可查看、创建和管理；不同管理员可以操作同一应用下的 Key |
-| 个人密钥 | 以成员身份访问当前团队中有权限的资源，仍受各接口开放范围限制                                                 | 仅管理本人的密钥                                                   |
+对话补全接口支持 OpenAI 兼容请求与普通文本响应；详细事件及其他接口遵循 FastGPT 自身契约。通过标准 OpenAI SDK 接入时，可将 `baseURL` 设置为 FastGPT 实例地址加 `/api/v2`，并在请求体中显式传递 `appId`：
 
-应用 Key 的调用授权来自 Key 本身。只要 Key、归属成员、团队和绑定应用仍有效，即使归属成员失去该应用的访问权限，也可继续调用；管理 Key 仍需应用管理员权限。
+<Tabs items={['Python SDK', 'Node.js SDK']}>
+  <Tab value="Python SDK">
 
-### 密钥使用规范
+```python
+import os
+from openai import OpenAI
 
-- 统一使用 `Authorization: Bearer <apiKey>` 鉴权。
-- **应用 Key**：所有支持应用 Key 的对话与对话管理接口均可省略 `appId`，由服务端读取 Key 的绑定应用。即使请求中的 `appId` 或 `apiKey-appId` 后缀不同，也始终使用绑定应用。
-- **个人密钥**：调用 `chat/completions` 时推荐传 `body.appId`；为兼容 OpenAI SDK，也支持 `Authorization: Bearer <apiKey>-<appId>`，优先使用 `body.appId`。其他需要定位应用的接口仍需显式传入 `appId`。
-- 在自动生成的接口文档中，选择“应用 API Key（无需 appId）”格式即可查看对应请求参数；`sourceType` 由服务端固定为 `app`，无需传入。
-- 部分 SDK 需要在 `BaseURL` 后添加 `v1` 路径。如果出现 404，可补充 `v1` 后重试。
-- 个人密钥可使用 `authProxy` 代理团队成员身份，需要团队所有者在创建或编辑密钥时开启；代理身份仍需具备目标应用和会话的访问权限。（FastGPT >= v4.15.0）应用 Key 不支持 `authProxy`。
+client = OpenAI(
+    api_key=os.environ["FASTGPT_API_KEY"],
+    base_url=f"{os.environ['FASTGPT_ORIGIN'].rstrip('/')}/api/v2"
+)
+
+response = client.chat.completions.create(
+    model="fastgpt",  # The published application selects the model.
+    messages=[{"role": "user", "content": "Introduce yourself"}],
+    stream=False,
+    extra_body={"appId": os.environ["FASTGPT_APP_ID"]}
+)
+
+print(response.choices[0].message.content)
+```
+
+  </Tab>
+  <Tab value="Node.js SDK">
+
+```typescript
+import OpenAI from 'openai';
+
+const client = new OpenAI({
+  apiKey: process.env.FASTGPT_API_KEY!,
+  baseURL: `${process.env.FASTGPT_ORIGIN!.replace(/\/$/, '')}/api/v2`
+});
+
+async function main() {
+  const request: OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming & {
+    appId: string;
+  } = {
+    model: 'fastgpt',
+    messages: [{ role: 'user', content: 'Introduce yourself' }],
+    appId: process.env.FASTGPT_APP_ID!,
+    stream: false
+  };
+  const response = await client.chat.completions.create(request);
+  console.log(response.choices[0].message.content);
+}
+
+main().catch(console.error);
+```
+
+  </Tab>
+</Tabs>
+
+使用应用 Key 时，所有支持应用 Key 的对话与对话管理接口均可省略 `appId` 与 `sourceType`（服务端固定使用绑定应用与 `sourceType=app`，在在线接口文档中可选择“应用 API Key（无需 appId）”查看对应入参）。使用个人密钥且第三方客户端只支持配置单个 API Key 时，可使用 `<apiKey>-<appId>` 组合格式，解析优先级为：请求体 `body.appId` → Authorization 请求头后缀 → 历史个人密钥保存的默认应用。
 
 ### 使用应用 Key 获取会话列表
 
-应用 Key 调用 `getHistories` 时固定查询绑定应用的 API 来源会话，不能通过 `source` 改为查询其他来源。请求不需要 `appId`、`sourceType` 或 `source`：
+应用 Key 调用 `/api/core/chat/history/getHistories` 时固定查询绑定应用的 API 来源会话，无需传入 `appId`、`sourceType` 或 `source`：
 
 ```bash
-curl --request POST 'http://localhost:3000/api/core/chat/history/getHistories' \
-  --header 'Authorization: Bearer YOUR_APP_API_KEY' \
-  --header 'Content-Type: application/json' \
-  --data '{"offset": 0, "pageSize": 20}'
+export FASTGPT_ORIGIN='https://cloud.fastgpt.cn'
+export FASTGPT_APP_API_KEY='YOUR_APP_API_KEY'
+curl --fail-with-body "$FASTGPT_ORIGIN/api/core/chat/history/getHistories" \
+  -H "Authorization: Bearer $FASTGPT_APP_API_KEY" \
+  -H 'Content-Type: application/json' \
+  --data @- <<EOF
+{"offset":0,"pageSize":20}
+EOF
 ```
 
-- 按偏移量获取：传 `offset`，从 `0` 开始。
-- 按页码获取：省略 `offset`，传 `pageNum`，从 `1` 开始；例如 `{"pageNum": 2, "pageSize": 20}`。同时传入两者时，以 `offset` 为准。
-- `pageSize` 默认 `20`，最大 `500`；超过上限时按 `500` 处理。不传分页参数时获取第一页。
-- 可选传 `startCreateTime`、`endCreateTime`、`startUpdateTime`、`endUpdateTime` 筛选时间范围。
+- 按偏移量分页：传 `offset`（从 `0` 开始）。
+- 按页码分页：省略 `offset`，传 `pageNum`（从 `1` 开始，例如 `{"pageNum": 2, "pageSize": 20}`）；同时传入时以 `offset` 为准。
+- `pageSize` 默认 `20`，最大 `500`（超出上限按 `500` 处理）；省略分页参数时返回第一页。
+- 可选传入 `startCreateTime`、`endCreateTime`、`startUpdateTime`、`endUpdateTime` 筛选时间范围。
 
-### 如何获取应用 ID（appId）
+## 下一步
 
-打开应用详情，可在浏览器地址栏的 URL 中获取 `appId`。
+[业务系统集成应用](/zh-CN/openapi/best-practices/app-integration)：通过应用 Key 和 OpenAI SDK 接入自己的系统，对接 `customUid` 并管理聊天记录。
 
-![](../../public/imgs/appid.png)
-
-### 如何获取知识库 ID 和文件集合 ID
-
-| 知识库 ID（datasetId）                  | 文件集合 ID（collectionId）                |
-| --------------------------------------- | ------------------------------------------ |
-| ![](../../public/imgs/getDatasetId.png) | ![](../../public/imgs/getCollectionId.png) |
-
-### 基本配置
-
-OpenAPI 中，所有的接口都通过 Header.Authorization 进行鉴权。
-
-```
-baseUrl: "http://localhost:3000/api"
-headers: {
-    Authorization: "Bearer {{apikey}}"
-}
-```
+[知识库集成](/zh-CN/openapi/dataset)、[身份代理](/zh-CN/openapi/identity-proxy)。历史手写参数保存在[归档](/zh-CN/openapi/legacy)。

@@ -298,5 +298,10 @@
   "process.Synonym_Rebuild": "Synonym rebuild",
   "data_index_status_synonym_pending": "Pending synonym rebuild",
   "data_index_status_synonym_running": "Rebuilding synonyms",
-  "data_index_status_synonym_failed": "Synonym rebuild failed"
+  "data_index_status_synonym_failed": "Synonym rebuild failed",
+  "search_targets_required": "At least one dataset is required",
+  "search_targets_must_be_datasets": "Search targets must be datasets, not folders",
+  "search_query_images_must_belong_to_team": "Query images must be temporary files uploaded by the current team",
+  "search_filters_unsupported": "Dataset search filters are not supported in this edition",
+  "search_embedding_models_must_match": "Multi-dataset vector search requires all datasets to use the same embedding model"
 }

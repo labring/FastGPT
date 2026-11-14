@@ -341,7 +341,6 @@ export const useChatResume = ({
         return [
           ...state,
           {
-            id: responseChatId,
             dataId: responseChatId,
             obj: ChatRoleEnum.AI,
             value: [
@@ -496,10 +495,12 @@ export const useChatResume = ({
           setChatRecords((state) =>
             mergeResumeCompletedChatRecords({
               currentRecords: state,
-              completedRecords: completedChat.records.list.map((item) => ({
-                ...item,
-                status: ChatStatusEnum.finish
-              })),
+              completedRecords: completedChat.records.list.map(
+                ({ id: _deprecatedId, ...item }) => ({
+                  ...item,
+                  status: ChatStatusEnum.finish
+                })
+              ),
               responseChatId
             })
           );

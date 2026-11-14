@@ -89,6 +89,78 @@ describe('logs list API - errorFilter', () => {
     };
   });
 
+  it('历史及未知来源在未筛选列表、未知筛选和 CSV 中一致归类，且不改原记录', async () => {
+    const now = new Date();
+    const records = [
+      { chatId: 'legacy-source' },
+      { chatId: 'migrated-source', publishSource: { type: 'unknown' } },
+      { chatId: 'future-source', publishSource: { type: 'future' } },
+      { chatId: 'known-source', publishSource: { type: 'api' } }
+    ].map((row) => ({
+      ...row,
+      _id: new Types.ObjectId(),
+      appId: new Types.ObjectId(testAppId),
+      teamId: new Types.ObjectId(testTeamId),
+      tmbId: new Types.ObjectId(testTmbId),
+      sourceType: ChatSourceTypeEnum.app,
+      source: '历史渠道名',
+      sourceName: '历史入口',
+      title: '历史对话',
+      createTime: now,
+      updateTime: now
+    }));
+    await MongoChat.collection.insertMany(records as any);
+
+    const body = { appId: testAppId, dateStart: '2020-01-01', dateEnd: '2099-01-01' };
+    const result = await Call(listApi.default, {
+      auth: authUser,
+      headers: {},
+      body
+    });
+    expect(result.code, String(result.error)).toBe(200);
+    expect(result.data.list).toHaveLength(4);
+    expect(result.data.list.every((row: any) => row.source === 'unknown')).toBe(true);
+    const unknownIds = ['future-source', 'legacy-source', 'migrated-source'];
+    for (const chatId of unknownIds) {
+      expect(result.data.list.find((row: any) => row.chatId === chatId)?.publishSource).toEqual({
+        type: 'unknown',
+        name: '历史入口'
+      });
+    }
+    const filtered = await Call(listApi.default, {
+      auth: authUser,
+      headers: {},
+      body: { ...body, sources: ['unknown'] }
+    });
+    expect(filtered.code, String(filtered.error)).toBe(200);
+    expect(filtered.data.total).toBe(unknownIds.length);
+    expect(filtered.data.list.map((row: any) => row.chatId).sort()).toEqual(unknownIds);
+
+    for (const sources of [undefined, ['unknown']]) {
+      const exported = await StreamCall(exportLogs, {
+        auth: authUser,
+        headers: {},
+        body: {
+          ...body,
+          ...(sources ? { sources } : {}),
+          title: '会话,来源',
+          sourcesMap: { unknown: { label: '未知' }, api: { label: 'API调用' } },
+          logKeys: [AppLogKeysEnum.SESSION_ID, AppLogKeysEnum.PUBLISH_SOURCE_TYPE]
+        }
+      });
+      expect(exported.code).toBe(200);
+      for (const chatId of unknownIds) expect(exported.raw).toContain(`\n${chatId},未知,`);
+      if (sources) {
+        expect(exported.raw).not.toContain('known-source');
+      } else {
+        expect(exported.raw).toContain('\nknown-source,API调用,');
+      }
+    }
+    for (const record of records) {
+      expect(await MongoChat.collection.findOne({ _id: record._id })).toEqual(record);
+    }
+  });
+
   it('扩展渠道当前名、兼容旧名，来源筛选与CSV使用最新分类', async () => {
     const key = await MongoOpenApi.create({
       type: ApiKeyTypeEnum.personal,

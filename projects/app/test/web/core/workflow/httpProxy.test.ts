@@ -66,10 +66,43 @@ describe('HTTP proxy editor persistence and export', () => {
 
   it('retains same-named business inputs on other node types', () => {
     const node = { ...httpNode({ value: 'business-value' }), flowNodeType: FlowNodeTypeEnum.code };
+    node.inputs.find((input) => input.key === NodeInputKeyEnum.httpProxy)!.renderTypeList = [
+      FlowNodeInputTypeEnum.input
+    ];
     expect(
       filterSensitiveNodesData([node])[0].inputs.find(
         (input) => input.key === NodeInputKeyEnum.httpProxy
       )?.value
     ).toEqual({ value: 'business-value' });
+  });
+
+  it.each([
+    'http://user:private@proxy.test:8080',
+    { value: 'http://user:private@proxy.test:8080' },
+    { secret: 'encrypted-proxy' },
+    { ref: 'proxy-credential-reference' }
+  ])('removes every proxy representation and its default during export: %j', (value) => {
+    const node = httpNode(value);
+    const input = node.inputs.find((item) => item.key === NodeInputKeyEnum.httpProxy)!;
+    input.defaultValue = { value: 'http://default:private@proxy.test:8080' };
+    const before = structuredClone(node);
+    const exported = filterSensitiveNodesData([node]);
+    const proxy = exported[0].inputs.find((item) => item.key === NodeInputKeyEnum.httpProxy);
+    expect(proxy?.value).toBeUndefined();
+    expect(proxy?.defaultValue).toBeUndefined();
+    expect(JSON.stringify(exported)).not.toContain('private');
+    expect(JSON.stringify(exported)).not.toContain('proxy-credential-reference');
+    expect(node).toEqual(before);
+  });
+
+  it('keeps the upstream password-field policy on other node types', () => {
+    const node = { ...httpNode({ value: 'business-secret' }), flowNodeType: FlowNodeTypeEnum.code };
+    const exported = filterSensitiveNodesData([node]);
+    expect(
+      exported[0].inputs.find((item) => item.key === NodeInputKeyEnum.httpProxy)?.value
+    ).toBeUndefined();
+    expect(node.inputs.find((item) => item.key === NodeInputKeyEnum.httpProxy)?.value).toEqual({
+      value: 'business-secret'
+    });
   });
 });

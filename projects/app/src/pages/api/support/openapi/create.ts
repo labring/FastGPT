@@ -65,7 +65,7 @@ export async function handler(
     const count = await MongoOpenApi.countDocuments({
       teamId,
       ...getOpenApiTypeFilter(type),
-      ...(type === ApiKeyTypeEnum.app ? { appId: getOpenApiAppIdFilter([boundAppId!]) } : { tmbId })
+      ...(type === ApiKeyTypeEnum.app ? getOpenApiAppIdFilter([boundAppId!]) : { tmbId })
     });
 
     // 应用固定按每个应用 100 个计数，与成员个人密钥的配置额度互不占用。

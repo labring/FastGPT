@@ -5,6 +5,9 @@
   "select_model_provider_placeholder": "Select a provider",
   "aipoint_usage": "AI points",
   "all": "All",
+  "chat_upstream_protocol": "Model endpoint protocol",
+  "chat_upstream_protocol_tip": "Applies to chat models only. Other models keep their existing endpoints. The upstream must support the selected protocol.",
+  "chat_upstream_protocol_auto": "Auto (based on model)",
   "api_key": "API key",
   "audio": "Audio recognition",
   "audio_tip": "Turn this on if the model supports audio recognition.",
@@ -134,8 +137,7 @@
   "model.upcoming_deprecation": "Upcoming deprecation",
   "model.censor": "Censor check",
   "model.censor_tip": "If sensitive verification is required, turn on this switch",
-  "model.unitPrice": "Model price",
-  "model.unitPrice_tip": "Token models are priced per M Tokens, TTS per 1M characters, and STT per 60 seconds.",
+  "model.unitPrice": "Model price (credits)",
   "model.defaultConfig": "Additional Body parameters",
   "model.defaultConfig_tip": "Each request will carry this additional Body parameter.",
   "model.default_config": "Body extra fields",
@@ -346,5 +348,8 @@
   "model_deprecation.error_plan_changed": "The notification plan has changed. Refresh and try again.",
   "model_deprecation.error_recover_requires_incomplete": "Only failed or interrupted runs can be recovered.",
   "model_deprecation.error_plan_not_found": "The notification plan does not exist.",
-  "model_deprecation.error_no_terminable_runs": "The notification plan has no runs that can be terminated."
+  "model_deprecation.error_no_terminable_runs": "The notification plan has no runs that can be terminated.",
+  "model.stt_billing_type": "Billing type",
+  "model.stt_billing_duration": "By duration",
+  "model.stt_billing_tokens": "By tokens"
 }

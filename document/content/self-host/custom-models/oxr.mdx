@@ -39,21 +39,14 @@ curl --fail http://127.0.0.1:18080/health
 
 ## 3. 接入 FastGPT
 
-在现有 `config.json` 的 `systemEnv` 中添加或修改 `customPdfParse`，将 `GPU_SERVER_IP` 替换为 FastGPT 服务端可以访问的 GPU 服务器地址：
+在 `fastgpt-app` 的环境变量中添加或修改以下变量（4.15.0 起开源版不再读取 `config.json`），将 `GPU_SERVER_IP` 替换为 FastGPT 服务端可以访问的 GPU 服务器地址：
 
-```json
-{
-  "systemEnv": {
-    "customPdfParse": {
-      "url": "http://GPU_SERVER_IP:18080/v2/parse/file",
-      "key": "",
-      "price": 0
-    }
-  }
-}
+```dotenv
+CUSTOM_PDF_PARSE_URL=http://GPU_SERVER_IP:18080/v2/parse/file
+CUSTOM_PDF_PARSE_KEY=
 ```
 
-默认无需密钥，`key` 留空。通过配置文件修改后需重启 FastGPT。
+默认无需密钥，`CUSTOM_PDF_PARSE_KEY` 留空。修改环境变量后需重启 FastGPT。
 
 商业版可进入「管理员 → 系统配置 → 基础配置 → PDF 解析配置」，在「自定义 PDF 解析地址（第一优先级）」中填写服务 URL，默认将「自定义 PDF 解析密钥」留空，然后点击「保存」。
 
@@ -129,7 +122,7 @@ curl --fail-with-body \
 
 ### 启用密钥
 
-如需鉴权，在启动命令的镜像地址前加入 `-e FASTGPT_API_KEY=your-api-key`，并在 FastGPT 的 `customPdfParse.key` 中填写相同密钥。直接调用 API 时需增加 `Authorization: Bearer your-api-key` 请求头。
+如需鉴权，在启动命令的镜像地址前加入 `-e FASTGPT_API_KEY=your-api-key`，并在 FastGPT 的 `CUSTOM_PDF_PARSE_KEY` 中填写相同密钥。直接调用 API 时需增加 `Authorization: Bearer your-api-key` 请求头。
 
 ## 5. 离线部署（可选）
 

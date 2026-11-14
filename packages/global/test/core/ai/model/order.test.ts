@@ -1,16 +1,24 @@
 import { describe, expect, it } from 'vitest';
-import { ModelOrderIdsSchema, sortModelOrderItems } from '@fastgpt/global/core/ai/model/order';
+import {
+  ModelOrderIdsSchema,
+  NEW_MODEL_SORT_ORDER,
+  sortModelOrderItems
+} from '@fastgpt/global/core/ai/model/order';
 
 describe('sortModelOrderItems', () => {
   it('sorts persisted ranks first and preserves input order for legacy or tied ranks', () => {
     const items = [
       { modelId: 'legacy', sortOrder: undefined },
       { modelId: 'rank-two', sortOrder: 2 },
+      { modelId: 'new-b', sortOrder: NEW_MODEL_SORT_ORDER },
       { modelId: 'rank-one-a', sortOrder: 1 },
+      { modelId: 'new-a', sortOrder: NEW_MODEL_SORT_ORDER },
       { modelId: 'rank-one-b', sortOrder: 1 }
     ];
 
     expect(sortModelOrderItems(items).map(({ modelId }) => modelId)).toEqual([
+      'new-b',
+      'new-a',
       'rank-one-a',
       'rank-one-b',
       'rank-two',

@@ -50,8 +50,13 @@
   "migrations.20261104_backfill_chat_publish_source.chatLogs": "Log bucket sources",
   "migrations.20261104_backfill_chat_publish_source.validation": "Validate backfill",
   "migrations.20261104_backfill_openapi_key_type.name": "Backfill API key types",
-  "migrations.20261104_backfill_openapi_key_type.description": "Backfill personal and app key types in the background, preserving bindings, credentials, and legacy fields.",
+  "migrations.20261104_backfill_openapi_key_type.description": "Independently scan all API keys in background batches, fill missing types as personal, and normalize valid app IDs to BSON ObjectId values while preserving default targets, credentials, and permissions.",
   "migrations.20261104_backfill_openapi_key_type.result": "Scanned {{keys}} keys",
   "migrations.20261104_backfill_openapi_key_type.keys": "Key types",
-  "migrations.20261104_backfill_openapi_key_type.validation": "Validate backfill"
+  "migrations.20261104_backfill_openapi_key_type.validation": "Validate backfill",
+  "migrations.20261112_backfill_stt_pricing_type.name": "Backfill STT pricing types",
+  "migrations.20261112_backfill_stt_pricing_type.description": "Backfill legacy STT prices as duration-based in the background, preserving rates and existing token pricing without blocking startup.",
+  "migrations.20261112_backfill_stt_pricing_type.result": "Scanned {{models}} STT models",
+  "migrations.20261112_backfill_stt_pricing_type.models": "Model pricing types",
+  "migrations.20261112_backfill_stt_pricing_type.validation": "Validate backfill"
 }

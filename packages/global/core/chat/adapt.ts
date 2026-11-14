@@ -493,7 +493,7 @@ export const chats2GPTMessages = ({
             if (type === ChatFileTypeEnum.image) {
               return {
                 type: 'image_url',
-                key: item.file.key,
+                key: item.file.key || undefined,
                 image_url: {
                   url: item.file.url
                 }
@@ -504,7 +504,7 @@ export const chats2GPTMessages = ({
                 name: item.file?.name || '',
                 url: item.file.url,
                 fileType: type,
-                key: item.file.key
+                key: item.file.key || undefined
               };
             }
           }

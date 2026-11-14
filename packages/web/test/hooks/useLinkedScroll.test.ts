@@ -152,6 +152,61 @@ describe('useLinkedScroll', () => {
     vi.unstubAllGlobals();
   });
 
+  it('uses dataId for scrolling and pagination without an id alias', async () => {
+    vi.useFakeTimers();
+    type ChatResponse = {
+      list: { dataId: string; role: string }[];
+      hasMorePrev: boolean;
+      hasMoreNext: boolean;
+    };
+    let chatState!: ReturnType<typeof useLinkedScroll<Params, ChatResponse>>;
+    const chatRequests: { params: Params; resolve: (response: ChatResponse) => void }[] = [];
+    const chatApi = (params: Params) =>
+      new Promise<ChatResponse>((resolve) => chatRequests.push({ params, resolve }));
+    const ChatHarness = () => {
+      const params = useMemo(() => ({ chatId: 'chat' }), []);
+      chatState = useLinkedScroll(chatApi, {
+        params,
+        currentId: 'round',
+        getItemId: (item) => item.dataId
+      });
+      const scrollProps = {
+        children: chatState.dataList.map((item) =>
+          React.createElement('div', {
+            key: item.role,
+            ref: (element: HTMLDivElement | null) => {
+              chatState.itemRefs.current.set(item.dataId, element);
+            }
+          })
+        )
+      };
+      return React.createElement(chatState.ScrollData, scrollProps);
+    };
+    await act(async () => root.render(React.createElement(ChatHarness)));
+    expect(chatRequests[0].params.initialId).toBe('round');
+    await act(async () =>
+      chatRequests[0].resolve({
+        list: [
+          { dataId: 'round', role: 'Human' },
+          { dataId: 'round', role: 'AI' }
+        ],
+        hasMorePrev: true,
+        hasMoreNext: true
+      })
+    );
+    await act(async () => chatState.scrollToItem('round'));
+    expect(chatState.itemRefs.current.get('round')).toBeInstanceOf(HTMLElement);
+    await act(async () => vi.advanceTimersByTimeAsync(250));
+    expect(chatRequests[1].params).toMatchObject({ nextId: 'round' });
+    expect(chatRequests[2].params).toMatchObject({ prevId: 'round' });
+    expect(chatRequests.every(({ params }) => !Object.hasOwn(params, 'role'))).toBe(true);
+    await act(async () => {
+      chatRequests[1].resolve({ list: [], hasMorePrev: true, hasMoreNext: false });
+      chatRequests[2].resolve({ list: [], hasMorePrev: false, hasMoreNext: true });
+    });
+    expect(chatState.dataList).toHaveLength(2);
+  });
+
   it.each(['prev', 'next'] as const)(
     'ignores an older %s page after a complete refresh replaces the window',
     async (direction) => {

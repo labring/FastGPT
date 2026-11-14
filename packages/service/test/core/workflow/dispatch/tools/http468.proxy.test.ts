@@ -15,7 +15,7 @@ import {
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { encryptSecretValue } from '@fastgpt/service/common/secret/utils';
 import { serviceEnv } from '@fastgpt/service/env';
-import { createProxyAxios } from '@fastgpt/service/common/api/axios';
+import { createProxyAxios, type SafeAxiosRequestConfig } from '@fastgpt/service/common/api/axios';
 import { PRIVATE_URL_TEXT } from '@fastgpt/service/common/system/utils';
 import { formatToolInputSecrets } from '@fastgpt/service/core/app/tool/secretConfig';
 import { HttpNode468 } from '@fastgpt/global/core/workflow/template/system/http468';
@@ -84,7 +84,7 @@ describe('HTTP node proxy over real sockets', () => {
         [NodeInputKeyEnum.httpTimeout]: 2,
         ...(proxy === undefined ? {} : { [proxyKey]: proxy })
       }
-    }) as Parameters<typeof dispatchHttp468Request>[0];
+    }) as unknown as Parameters<typeof dispatchHttp468Request>[0];
 
   beforeEach(() => {
     proxyEnvKeys.forEach((key) => delete process.env[key]);
@@ -275,11 +275,12 @@ describe('HTTP node proxy over real sockets', () => {
       .spyOn(dns, 'lookup')
       .mockResolvedValue([{ address: '127.0.0.1', family: 4 }] as any);
     const client = createProxyAxios();
-    await expect(
-      client.get('http://public.example.test', {
-        __safeAxios: { proxyUrl: 'http://proxy.example.test:8080' }
-      })
-    ).rejects.toThrow(PRIVATE_URL_TEXT);
+    const requestConfig: SafeAxiosRequestConfig = {
+      __safeAxios: { proxyUrl: 'http://proxy.example.test:8080' }
+    };
+    await expect(client.get('http://public.example.test', requestConfig)).rejects.toThrow(
+      PRIVATE_URL_TEXT
+    );
     expect(lookup).toHaveBeenCalledWith('proxy.example.test', { all: true, verbatim: true });
   });
 
@@ -382,12 +383,13 @@ describe('HTTP node proxy over real sockets', () => {
         notifyConnect();
       });
       const controller = new AbortController();
+      const requestConfig: SafeAxiosRequestConfig = {
+        timeout: 5000,
+        signal: controller.signal,
+        __safeAxios: { proxyUrl: proxy, rejectUnauthorized: false }
+      };
       const request = createProxyAxios()
-        .get('https://public.example.test/', {
-          timeout: 5000,
-          signal: controller.signal,
-          __safeAxios: { proxyUrl: proxy, rejectUnauthorized: false }
-        })
+        .get('https://public.example.test/', requestConfig)
         .catch((error: unknown) => error);
       await connected;
       controller.abort();
@@ -421,12 +423,13 @@ describe('HTTP node proxy over real sockets', () => {
       });
       const proxy = await listenServer(server, true);
       const controller = new AbortController();
+      const requestConfig: SafeAxiosRequestConfig = {
+        timeout: cancel ? 5000 : 150,
+        signal: controller.signal,
+        __safeAxios: { proxyUrl: proxy, rejectUnauthorized: false }
+      };
       const request = createProxyAxios()
-        .get(`${targetProtocol}://public.example.test/`, {
-          timeout: cancel ? 5000 : 150,
-          signal: controller.signal,
-          __safeAxios: { proxyUrl: proxy, rejectUnauthorized: false }
-        })
+        .get(`${targetProtocol}://public.example.test/`, requestConfig)
         .catch((error: unknown) => error);
       await receivedData;
       if (cancel) controller.abort();
@@ -448,11 +451,12 @@ describe('HTTP node proxy over real sockets', () => {
         res.write('first-');
         finishBody = () => res.end('last');
       });
+      const requestConfig: SafeAxiosRequestConfig = {
+        responseType: 'stream',
+        __safeAxios: { proxyUrl: proxy }
+      };
       const response = await createProxyAxios()
-        .get('http://public.example.test/', {
-          responseType: 'stream',
-          __safeAxios: { proxyUrl: proxy }
-        })
+        .get('http://public.example.test/', requestConfig)
         .catch((error) => error.response);
       expect(response.status).toBe(status);
       expect(openConnections).toBe(1);
@@ -476,11 +480,12 @@ describe('HTTP node proxy over real sockets', () => {
       res.write('unfinished body');
     });
     const controller = new AbortController();
-    const response = await createProxyAxios().get('http://public.example.test/', {
+    const requestConfig: SafeAxiosRequestConfig = {
       responseType: 'stream',
       signal: controller.signal,
       __safeAxios: { proxyUrl: proxy }
-    });
+    };
+    const response = await createProxyAxios().get('http://public.example.test/', requestConfig);
     const streamError = once(response.data, 'error');
     controller.abort();
     expect(await streamError).toEqual([expect.objectContaining({ code: 'ERR_CANCELED' })]);
@@ -502,11 +507,15 @@ describe('HTTP node proxy over real sockets', () => {
         res.end('final body');
       }
     });
-    const response = await createProxyAxios().get('http://public.example.test/start', {
+    const requestConfig: SafeAxiosRequestConfig = {
       timeout: 1000,
       responseType: 'stream',
       __safeAxios: { proxyUrl: proxy }
-    });
+    };
+    const response = await createProxyAxios().get(
+      'http://public.example.test/start',
+      requestConfig
+    );
     let body = '';
     for await (const chunk of response.data) body += chunk.toString();
     expect(body).toBe('final body');
@@ -549,9 +558,10 @@ describe('HTTP node proxy over real sockets', () => {
       res.end('TLS proxy');
     }, true);
     // 只在此测试中信任自签名代理证书；生产默认仍校验证书。
-    const response = await createProxyAxios().get('http://public.example.test/', {
+    const requestConfig: SafeAxiosRequestConfig = {
       __safeAxios: { proxyUrl: proxy, rejectUnauthorized: false }
-    });
+    };
+    const response = await createProxyAxios().get('http://public.example.test/', requestConfig);
     expect(response.data).toBe('TLS proxy');
     expect(seen).toEqual(['http://public.example.test/']);
   });

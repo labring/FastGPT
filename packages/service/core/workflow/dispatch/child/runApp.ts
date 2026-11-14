@@ -29,6 +29,7 @@ import { loadChildWorkflowWithResource } from '../../resource/service';
 import { getUserChatInfo } from '../../../../support/user/team/utils';
 import { getWorkflowRuntimeSummary } from '../utils/summary';
 import { WorkflowMemoryState } from '../../memory/state';
+import { MODERATION_BLOCKED_REPLACE_TEXT } from '@fastgpt/global/core/plugin/moderation/constants';
 
 /**
  * 加载并执行子应用工作流（供画布子应用节点与 Agent 子应用工具共用）。
@@ -286,17 +287,27 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
     });
 
     // 详情由子流程独立发布，父流程需要从摘要显式接收未捕获错误，才能触发自己的错误分支。
+    const isToolModerationBlocked = Boolean(props.isToolCall && runtimeSummary.hasModerationBlock);
+    if (props.isToolCall) {
+      props.nodeSummary?.mergeNodeSummary({
+        ...(runtimeSummary.hasModerationBlock ? { hasModerationBlock: true } : {}),
+        ...(runtimeSummary.hasToolResultModerated ? { hasToolResultModerated: true } : {})
+      });
+    }
+    const effectiveText = isToolModerationBlocked ? MODERATION_BLOCKED_REPLACE_TEXT : text;
     const errorText =
-      runtimeSummary.errorCount > 0 ? runtimeSummary.errorText || 'Run workflow failed' : undefined;
+      !isToolModerationBlocked && runtimeSummary.errorCount > 0
+        ? runtimeSummary.errorText || 'Run workflow failed'
+        : undefined;
     return {
       data: {
-        [NodeOutputKeyEnum.answerText]: text,
+        [NodeOutputKeyEnum.answerText]: effectiveText,
         [NodeOutputKeyEnum.history]: completeMessages
       },
       ...(errorText !== undefined && {
         error: { [NodeOutputKeyEnum.errorText]: errorText }
       }),
-      [DispatchNodeResponseKeyEnum.answerText]: text,
+      [DispatchNodeResponseKeyEnum.answerText]: isToolModerationBlocked ? undefined : effectiveText,
       system_memories,
       [DispatchNodeResponseKeyEnum.interactive]: workflowInteractiveResponse
         ? {
@@ -312,16 +323,18 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
               removeUnfinishedInteractiveHistories(histories)
           }
         : {}),
-      assistantResponses: system_forbid_stream ? [] : assistantResponses,
+      assistantResponses: system_forbid_stream || isToolModerationBlocked ? [] : assistantResponses,
       [DispatchNodeResponseKeyEnum.runTimes]: runTimes,
       [DispatchNodeResponseKeyEnum.nodeResponse]: {
         moduleLogo: appData.avatar,
         query: userChatInput,
-        textOutput: text,
+        ...(isToolModerationBlocked
+          ? { toolRes: MODERATION_BLOCKED_REPLACE_TEXT }
+          : { textOutput: effectiveText }),
         childResponseCount: runtimeSummary.childResponseCount,
         ...(errorText !== undefined && { errorText })
       },
-      [DispatchNodeResponseKeyEnum.toolResponse]: errorText ?? text,
+      [DispatchNodeResponseKeyEnum.toolResponse]: errorText ?? effectiveText,
       [DispatchNodeResponseKeyEnum.customFeedbacks]: customFeedbacks
     };
   } catch (error) {

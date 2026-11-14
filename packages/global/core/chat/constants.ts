@@ -39,7 +39,9 @@ export enum ChatSourceEnum {
   wecom = 'wecom',
   wechat = 'wechat',
   mcp = 'mcp',
-  dingtalk = 'dingtalk'
+  dingtalk = 'dingtalk',
+  /** 历史来源名称等无法可靠还原渠道类型的数据。 */
+  unknown = 'unknown'
 }
 
 /**
@@ -128,6 +130,10 @@ export const ChatSourceMap = {
   [ChatSourceEnum.mcp]: {
     name: i18nT('common:core.chat.logs.mcp'),
     color: '#F97066'
+  },
+  [ChatSourceEnum.unknown]: {
+    name: i18nT('chat:source_unknown'),
+    color: '#98A2B3'
   }
 };
 

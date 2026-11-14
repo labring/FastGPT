@@ -3,7 +3,7 @@
 import React, { useEffect } from 'react';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { PaginationType, PaginationResponseType } from '@fastgpt/global/openapi/api';
 import { useScrollPagination, type ScrollListType } from '../../hooks/useScrollPagination';
 import MyBox from '../../components/common/MyBox';
@@ -93,6 +93,8 @@ type HarnessProps = {
   renderInitialOverlay?: boolean;
   isOperating?: boolean;
   memoConsumer?: boolean;
+  disabled?: boolean;
+  scrollLoadType?: 'top' | 'bottom';
 };
 
 const MemoScrollConsumer = React.memo(function MemoScrollConsumer({
@@ -121,6 +123,8 @@ const Harness = ({
   renderInitialOverlay = true,
   isOperating = false,
   memoConsumer = false,
+  disabled = false,
+  scrollLoadType = 'bottom',
   scrollDataProps: extraScrollDataProps
 }: HarnessProps) => {
   const state = useScrollPagination(api, {
@@ -130,6 +134,8 @@ const Harness = ({
     showErrorToast: false,
     showPaginationTip,
     showNoMoreTip,
+    disabled,
+    scrollLoadType,
     refreshByIds: refreshApi ? { getId: (item) => item.split(':')[0], api: refreshApi } : undefined
   });
 
@@ -432,6 +438,166 @@ describe('useScrollPagination', () => {
 
     expect(host.textContent).not.toContain('common:request_end');
     expect(host.textContent).not.toContain('common:request_more');
+    await act(async () => root.unmount());
+  });
+});
+
+describe('useScrollPagination 自动补页', () => {
+  class ResizeObserverMock {
+    observe = vi.fn();
+    disconnect = vi.fn();
+
+    constructor(public notify: () => void) {
+      observers.push(this);
+    }
+  }
+  const observers: ResizeObserverMock[] = [];
+
+  beforeEach(() => {
+    observers.length = 0;
+    vi.stubGlobal('ResizeObserver', ResizeObserverMock);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it.each([false, true])(
+    '逐页填充首屏，产生可滚动内容后停止（外部 ref：%s）',
+    async (externalRef) => {
+      const { api, requests } = createDeferredApi();
+      const onState = vi.fn();
+      const host = document.createElement('div');
+      const root = createRoot(host);
+      const scrollRef = React.createRef<HTMLDivElement>();
+      await renderHarness(root, {
+        query: 'fill',
+        api,
+        onState,
+        showPaginationTip: false,
+        memoConsumer: !externalRef,
+        scrollDataProps: externalRef ? { ScrollContainerRef: scrollRef } : undefined
+      });
+      const scroller = host.querySelector<HTMLDivElement>('[data-testid="scroll-data"]')!;
+      let contentHeight = 200;
+      Object.defineProperties(scroller, {
+        clientHeight: { value: 600 },
+        scrollHeight: { get: () => contentHeight }
+      });
+      expect(observers[0].observe).toHaveBeenCalledWith(scroller);
+      if (externalRef) expect(scrollRef.current).toBe(scroller);
+
+      await act(async () => requests[0].resolve({ list: ['one', 'two'], total: 10 }));
+      expect(requests).toHaveLength(2);
+      expect(requests[1].params).toEqual({ query: 'fill', offset: 2, pageSize: 10 });
+
+      await act(async () => {
+        observers[0].notify();
+        scroller.dispatchEvent(new Event('scroll'));
+        observers[0].notify();
+      });
+      expect(requests).toHaveLength(2);
+
+      contentHeight = 400;
+      await act(async () => requests[1].resolve({ list: ['three', 'four'], total: 10 }));
+      expect(requests).toHaveLength(3);
+      expect(requests[2].params.offset).toBe(4);
+
+      contentHeight = 1000;
+      await act(async () => requests[2].resolve({ list: ['five', 'six'], total: 10 }));
+      expect(requests).toHaveLength(3);
+      expect(onState.mock.lastCall?.[0].data).toEqual([
+        'one',
+        'two',
+        'three',
+        'four',
+        'five',
+        'six'
+      ]);
+      expect(host.querySelector('[data-testid="scroll-data"]')).toBe(scroller);
+      await act(async () => root.unmount());
+      expect(observers[0].disconnect).toHaveBeenCalledOnce();
+    }
+  );
+
+  it('容器放大后继续加载，加载完全部数据后停止', async () => {
+    const { api, requests } = createDeferredApi();
+    const host = document.createElement('div');
+    const root = createRoot(host);
+    await renderHarness(root, { query: 'resize', api, onState: vi.fn() });
+    const scroller = host.querySelector<HTMLDivElement>('[data-testid="scroll-data"]')!;
+    let viewportHeight = 200;
+    Object.defineProperties(scroller, {
+      clientHeight: { get: () => viewportHeight },
+      scrollHeight: { value: 500 }
+    });
+    await act(async () => requests[0].resolve({ list: ['one'], total: 2 }));
+    expect(requests).toHaveLength(1);
+
+    viewportHeight = 800;
+    await act(async () => observers[0].notify());
+    expect(requests).toHaveLength(2);
+    await act(async () => requests[1].resolve({ list: ['two'], total: 2 }));
+    await act(async () => observers[0].notify());
+    expect(requests).toHaveLength(2);
+    await act(async () => root.unmount());
+  });
+
+  it.each(['empty', 'error'] as const)('追加返回 %s 时暂停补页，并允许显式刷新', async (result) => {
+    const { api, requests } = createDeferredApi();
+    const onState = vi.fn();
+    const host = document.createElement('div');
+    const root = createRoot(host);
+    await renderHarness(root, { query: 'pause', api, onState, memoConsumer: true });
+    const scroller = host.querySelector<HTMLDivElement>('[data-testid="scroll-data"]')!;
+    Object.defineProperties(scroller, {
+      clientHeight: { value: 600 },
+      scrollHeight: { value: 200 }
+    });
+    await act(async () => requests[0].resolve({ list: ['one'], total: 3 }));
+    expect(requests).toHaveLength(2);
+
+    await act(async () => {
+      if (result === 'empty') requests[1].resolve({ list: [], total: 3 });
+      else requests[1].reject(new Error('offline'));
+    });
+    await act(async () => {
+      observers[0].notify();
+      scroller.dispatchEvent(new Event('scroll'));
+    });
+    expect(requests).toHaveLength(2);
+    expect(onState.mock.lastCall?.[0].data).toEqual(['one']);
+
+    await act(async () => onState.mock.lastCall?.[0].refreshList());
+    expect(requests[2].params.offset).toBe(0);
+    await act(async () => requests[2].resolve({ list: ['new'], total: 3 }));
+    expect(requests).toHaveLength(4);
+    expect(requests[3].params.offset).toBe(1);
+    await act(async () => root.unmount());
+  });
+
+  it.each(['hidden', 'disabled', 'top'] as const)('%s 列表不自动补页', async (mode) => {
+    const { api, requests } = createDeferredApi();
+    const host = document.createElement('div');
+    const root = createRoot(host);
+    const props: HarnessProps = {
+      query: mode,
+      api,
+      onState: vi.fn(),
+      scrollLoadType: mode === 'top' ? 'top' : 'bottom',
+      // 向上加载需要传入 ref，以便沿用原有的滚动锚点恢复。
+      scrollDataProps: { ScrollContainerRef: React.createRef<HTMLDivElement>() }
+    };
+    await renderHarness(root, props);
+    const scroller = host.querySelector<HTMLDivElement>('[data-testid="scroll-data"]')!;
+    Object.defineProperties(scroller, {
+      clientHeight: { value: mode === 'hidden' ? 0 : 600 },
+      scrollHeight: { value: 200 }
+    });
+    if (mode === 'disabled') await renderHarness(root, { ...props, disabled: true });
+    await act(async () => requests[0].resolve({ list: ['one'], total: 3 }));
+    await act(async () => observers[0].notify());
+    expect(requests).toHaveLength(1);
     await act(async () => root.unmount());
   });
 });

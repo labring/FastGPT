@@ -5,6 +5,7 @@ import { NodeToolConfigTypeSchema } from '../../workflow/type/node';
 import type { AppChatConfigType } from '../type';
 import { CanonicalAgentToolInputConfigSchema } from '../../workflow/migration';
 import { LanguageSchema } from '../../../common/i18n/type';
+import { AgentToolConfigSchema } from './config';
 
 export type AppToolRuntimeType = {
   id: string;
@@ -45,6 +46,6 @@ export const AgentToolSchema = z.object({
   metadataLocale: LanguageSchema.optional(),
   toolConfig: NodeToolConfigTypeSchema.optional(),
   inputs: z.array(AgentToolInputConfigSchema).optional(),
-  config: z.record(z.string(), z.any())
+  config: AgentToolConfigSchema
 });
 export type AgentToolType = z.infer<typeof AgentToolSchema>;

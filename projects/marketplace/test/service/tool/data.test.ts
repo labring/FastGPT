@@ -97,9 +97,9 @@ describe('marketplace tool data service', () => {
 
     const { getToolVersionList } = await import('../../../src/service/tool/data');
     await expect(getToolVersionList('tool-a')).resolves.toEqual([
-      { toolId: 'tool-a', version: '2.0.0', etag: 'a2' },
-      { toolId: 'tool-a', version: '1.0.0', etag: 'a1' },
-      { toolId: 'tool-b', version: '1.0.0', etag: 'b1' }
+      { toolId: 'tool-a', version: '2.0.0', etag: 'a2', type: 'tool' },
+      { toolId: 'tool-a', version: '1.0.0', etag: 'a1', type: 'tool' },
+      { toolId: 'tool-b', version: '1.0.0', etag: 'b1', type: 'tool' }
     ]);
     expect(repoMocks.listToolVersionIndexes).toHaveBeenCalledWith('tool-a');
   });

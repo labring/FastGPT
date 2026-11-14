@@ -1,0 +1,63 @@
+---
+title: Developers
+description: Choose API integration or extension development to connect FastGPT and build plugins, model presets, and Skills.
+---
+
+{/* Preserve incoming bookmarks for reorganized sections. */}
+
+<span id="extend-capabilities" />
+
+## Choose a development task
+
+<Cards>
+  <Card title="API integration" href="/en/openapi/intro">
+    Make your first request, then integrate Apps, conversations, and Datasets.
+  </Card>
+  <Card title="Plugin system" href="#plugin-system">
+    Build system tool plugins, contribute model presets, and package them for FastGPT.
+  </Card>
+</Cards>
+
+## Developer Integration Architecture
+
+FastGPT provides an open capability matrix for enterprise systems and developers:
+
+![Integrate through a trusted backend](/imgs/diagrams/integration-overview.en.light.svg)
+
+Keep API keys on a trusted server. Identity proxy is optional and requires endpoint support and a trusted mapping to a member in the same team. MCP clients use the separately configured MCP service and its authentication.
+
+## Credential Types and Authentication
+
+Each endpoint declares the credentials it accepts. Check the authentication method for each endpoint in `/apidoc/systemopenapi` or `/apidoc/devapi` before integrating.
+
+| Credential                 | Transport Location                       | Permission Scope                                                                                     | Recommended Scenario                                                       |
+| -------------------------- | ---------------------------------------- | ---------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| **Personal API key**       | `Authorization: Bearer <apiKey>`         | Accesses permitted team resources as the issuing member on endpoints that accept personal API keys   | Backend integrations, automated jobs, model calls                          |
+| **App API key** (v4.18.0+) | `Authorization: Bearer <apiKey>`         | Bound to one app for its chat and chat management endpoints; authorization comes from the key itself | Integrating a specific app and identifying business users with `customUid` |
+| **User Session Token**     | Cookie `fastgpt_token` or `token` header | Current member permissions, subject to endpoint authorization and session checks                     | Web UI communication, same-origin management APIs                          |
+| **Root Key**               | Header `rootkey: <ROOT_KEY>`             | Administrative operations on endpoints that explicitly enable root authentication                    | Cross-team maintenance, model status probing, migrations                   |
+
+## Core Integration Workflows
+
+1. [API Quick Start](/en/openapi/intro): Choose a personal API key or an app API key, execute the first end-to-end request, and connect via the official OpenAI SDK.
+2. [Identity Proxy](/en/openapi/identity-proxy): Execute on behalf of end users using `authProxy` to enforce member-level permissions and audit logging.
+3. [Knowledge Base Integration](/en/openapi/dataset): Create collections via API, push content to training queues asynchronously, and run search tests.
+
+<span id="extension-development" />
+
+## Plugin System
+
+- [Plugin development](/en/plugin/intro): Explore plugin types and development paths, start with [your first tool](/en/plugin/quick-start), and continue to [debugging and publishing](/en/plugin/debugging-and-publishing).
+- [System Tool Development](/en/plugin/system-tool-development): Build single tools (`defineTool`) and tool suites (`defineToolSet`) with `@fastgpt-plugin/cli`.
+- [Model Presets](/en/plugin/model-presets): Register new model providers and map AIProxy channels.
+- [Package and SDK Reference](/en/plugin/package-reference): Inspect plugin directory conventions, package archive formats, and SDK type definitions.
+- [Skill Development Tutorial](/en/guide/build/skill/development): Author custom Skills in the sandbox and bind them to an Agent.
+
+## Machine-Readable OpenAPI Contracts
+
+Each FastGPT deployment generates OpenAPI 3.1 specification files locally:
+
+- **System OpenAPI (API Key Operations)**: Access `/apidoc/systemopenapi` (UI) or `/api/apidoc/systemopenapi.json` (JSON).
+- **Dev API (Full Developer Operations)**: Access `/apidoc/devapi` (UI) or `/api/apidoc/devapi.json` (JSON).
+
+When maintaining older integrations, refer to [Historical API Parameters and Migration](/en/openapi/legacy).

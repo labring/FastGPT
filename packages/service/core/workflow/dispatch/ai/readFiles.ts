@@ -58,9 +58,11 @@ export const dispatchWorkflowReadFiles = async ({
           onPdfParseUsage: (usage) => usages.push(usage)
         });
 
+        const resolvedName = inputName ?? name;
+
         return {
           url,
-          name: inputName ?? name,
+          name: resolvedName,
           content
         };
       } catch (error) {

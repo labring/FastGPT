@@ -1,35 +1,33 @@
 ---
 title: 'App Evaluation (Beta)'
-description: 'A quick overview of FastGPT app evaluation'
+description: 'Evaluate FastGPT applications with test datasets, automated scoring metrics, and quality regression reports.'
 ---
 
 Starting from FastGPT v4.11.0, batch app evaluation is supported. By providing multiple QA pairs, the system automatically scores your app's responses, enabling quantitative assessment of app performance.
 
-The system supports three evaluation metrics: answer accuracy, question relevance, and semantic accuracy. The current beta only includes answer accuracy — the remaining metrics will be added in future releases.
+The system automatically scores each QA pair in the dataset and summarizes the result as an **Overall Score** in the evaluation list.
 
 ## Create an App Evaluation
 
 ### Go to the Evaluation Page
 
-![Create app evaluation](/imgs/evaluation1.png)
+![App evaluation entry and task list](/imgs/optimized/current/evaluation-entry.png.webp)
 
-Open **App Evaluation** in Studio and click **Create Task** in the upper-right corner.
+App evaluation is available only in the commercial edition. In the left Studio sidebar, click **App Evaluation(Beta)** to open the **App evaluation** page, then click **Create a task** in the upper-right corner.
 
 ### Fill in Evaluation Details
 
-![Create app evaluation](/imgs/evaluation2.png)
+![Configure task name, evaluation model, and target application](/imgs/optimized/current/evaluation-create.png.webp)
 
 On the task creation page, provide the following:
 
-- **Task Name**: A label to identify this evaluation
-- **Evaluation Model**: The model used for scoring
-- **Target App**: The app to be evaluated
+- **Task name**: A label to identify this evaluation
+- **Evaluation model**: The model used for scoring
+- **Evaluation app**: The app to be evaluated (supports simple Chat Agents and Workflows without user interaction nodes; plugins and Chat Agent V2 are not supported)
 
 ### Prepare Evaluation Data
 
-![Create app evaluation](/imgs/evaluation2.png)
-
-After selecting the target app, a button appears to download the CSV template. The template includes these fields:
+Click **Click to download the CSV template for this app** in the dialog to download the CSV template. The template includes these fields:
 
 - Global variables
 - q (question)
@@ -41,19 +39,19 @@ After selecting the target app, a button appears to download the CSV template. T
 - Maximum of 1,000 QA pairs
 - Follow the template format when filling in data
 
-Upload the completed file and click "Start Evaluation" to create the task.
+Upload the completed file and click **Start the evaluation** to create the task.
 
 ## View Evaluation Results
 
 ### Evaluation List
 
-![View app evaluation](/imgs/evaluation4.png)
+![Evaluation list displaying progress and overall scores](/imgs/optimized/current/evaluation-list.png.webp)
 
 The evaluation list shows all tasks with key information:
 
 - **Progress**: Current execution status
-- **Created By**: The user who created the task
-- **Target App**: The app being evaluated
+- **Executor**: The user who created the task
+- **Evaluation app**: The app being evaluated
 - **Start/End Time**: Execution time range
 - **Overall Score**: The task's aggregate score
 
@@ -61,14 +59,16 @@ Use this to compare results across iterations as you improve your app.
 
 ### Evaluation Details
 
-![View app evaluation](/imgs/evaluation5.png)
+![Evaluation task details and HTTP 429 rate-limit error example](/imgs/optimized/current/evaluation-error-detail.png.webp)
 
-Click "View Details" to open the detail page:
+The screenshot shows an evaluation interrupted by a model HTTP 429 rate limit. Failed records display the error; resolve the rate or quota limit and retry before comparing valid scores.
 
-**Task Overview**: The top section shows overall task information, including evaluation configuration and summary statistics.
+Click **Detail** to open the **Task Details** dialog:
 
-**Detailed Results**: The bottom section lists each QA pair with its score, showing:
+**Task Overview**: The top of the dialog shows overall task information, including evaluation configuration and summary statistics.
+
+**Detailed Results**: The lower part of the dialog lists each QA pair with its score, showing:
 
 - User question
-- Expected output
+- Standard output
 - App output

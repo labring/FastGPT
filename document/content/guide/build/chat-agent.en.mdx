@@ -1,0 +1,69 @@
+---
+title: Build a Chat Agent
+description: Configure models, system instructions, knowledge bases, tool calls, interactive features, and workflow conversion in a Chat Agent.
+---
+
+A Chat Agent organizes system instructions, knowledge retrieval, tool calling, and multimodal inputs around a single core chat model through a form-based editor.
+
+## Use Cases and Prerequisites
+
+- **Use cases**: Policy and product manual Q&A, standardized writing assistants, and lightweight assistants combining a single model with tools.
+- **Permissions**: Application creation or editing permission in the active team, plus access to the selected models, knowledge bases, and tools.
+- **Model capabilities**: Select a model with tool-calling support when attaching tools, and vision or audio support when enabling image or voice inputs.
+
+![Create a Chat Agent application](/imgs/optimized/current/app-create.png.webp)
+
+## Configuration Steps
+
+### 1. Select the Model and Parameters
+
+1. Go to **Studio → Agents**, click the first **New** card in the list (when the list is empty, click **Create your first Agent** in the center of the page), select **Chat Agent**, enter a name, and click **Create** to the right of the name field.
+2. Click the model selector in the left **AI Settings** panel and choose an available language model.
+3. Open the parameter dialog next to the model to configure temperature, max response tokens, chat history turns, output format (Text or JSON Schema), and reasoning mode. See [AI Settings](/en/guide/build/general/ai_settings) for parameter details.
+
+![Select a chat model and configure parameters](/imgs/optimized/current/ai-model-selector.png.webp)
+
+### 2. Write System Instructions and Global Variables
+
+1. Define the assistant's role, grounding boundaries, and output structure in the **Prompt** field.
+2. Type `/` in the prompt editor to open the variable selector and insert defined [global variables](/en/guide/build/workflow/variables) (such as `{{userName}}`); click the **AI prompt optimizer** icon on the prompt field to generate or optimize the prompt.
+3. Click **New** in the **Global Variable** section to add text, single-select, multi-select, or file variables when users need to supply context before starting a conversation.
+
+### 3. Associate Datasets and Retrieval Settings
+
+1. In the **Dataset** section, click **+ Choose** and select one or more team Datasets.
+2. Click **Parameters** to open the **Dataset Search Configuration** dialog. Use the **Search Method / Search Filter / Query rewriting** tabs to configure search mode (semantic, full-text, or hybrid), reranking, citation token budget, minimum relevance threshold, and query rewriting. The commercial edition adds a **Tag filter** tab for [collection tag filters](/en/guide/dataset/collection_tags).
+3. See [Connect a Knowledge Base to an Application](/en/guide/dataset/connect-application) for tuning steps.
+
+![Configure knowledge base search mode and filters](/imgs/optimized/current/dataset-search-mode.png.webp)
+
+### 4. Attach Tools
+
+1. In the **Tool** section, click **+ Choose** (disabled until a model is selected) and pick tools from the **System Tools / Tools / Agent** tabs of the dialog. Workflow tools, HTTP tools, and MCP tools are under **Tools**.
+2. Supply required credentials or fixed parameters for the selected tools.
+3. State when each tool should be used in the system prompt so the model invokes tools automatically and synthesizes the returned data.
+
+### 5. Configure Conversation Features
+
+| Feature | Purpose | Detailed Guide |
+| --- | --- | --- |
+| **Conversation Opening** | Display a greeting, quick starter questions, and rich text cards in new chats | [Welcome Text](/en/guide/build/general/welcomeText) |
+| **File Upload** | Allow users to upload documents or images in the chat box | [File Input](/en/guide/build/general/fileInput) |
+| **Voice Input / Voice Playback** | Enable microphone speech-to-text (STT) and audio playback (TTS) | [Voice Input](/en/guide/build/general/voiceInput) |
+| **Guess What You Want to Ask / Input Guide** | Generate follow-up suggestions or autocomplete prompts from a lexicon | [Input Guide](/en/guide/build/general/chat_input_guide) |
+
+## Debug, Publish, and Convert to Workflow
+
+1. **Live debugging**: Send test queries in the right **Debug Preview** pane, expand citation badges and run details, and verify retrieved chunks, tool arguments, and model outputs.
+2. **Publish a release version**: Once verified, click **Save → Save and Publish** in the top-right corner and enter a version name. Draft edits take effect on external channels after publication; see [Published Versions and Publishing Channels](/en/guide/build/publish/versions).
+3. **Convert to Workflow**: When your scenario grows to require deterministic branching, loop processing, or human form input, click the **... (More)** menu on the right side of the App name card in the upper-left corner and select **Convert to Workflow**. Leave the create-new-app checkbox selected (checked by default) to generate a new Workflow App copy, or clear the checkbox and confirm to convert the current App into a Workflow in place.
+
+## Troubleshooting
+
+| Symptom | Check |
+| --- | --- |
+| Prompt or knowledge updates do not appear in shared links | Draft edits stay in the workspace until published; click **Save → Save and Publish** and start a fresh chat |
+| Attached tools are not invoked | Confirm the selected model supports tool calling, tool descriptions are clear, and required secrets are configured |
+| Knowledge base has content but answers lack citations | Run **Search Test** in the knowledge base and check relevance thresholds and collection tag filters |
+
+Next: Explore autonomous planning and virtual machines in [Chat Agent V2](/en/guide/build/agentv2/settings), or learn [Visual Workflow Orchestration](/en/guide/build/workflow/intro).

@@ -1,6 +1,7 @@
 import { docs } from '@/.source';
 import { loader } from 'fumadocs-core/source';
 import { i18n } from './i18n';
+import { normalizePageTreeSections } from './page-tree';
 import { icons } from 'lucide-react';
 import { createElement } from 'react';
 import type { PageTree } from 'fumadocs-core/server';
@@ -10,12 +11,13 @@ const contentSource = loader({
   i18n,
   // it assigns a URL to your pages
   baseUrl: '/',
-  // 先保留所有语言文件完成索引，避免删除默认语言草稿时连带丢失已发布翻译。
+  // Index all locale files first so draft default-locale pages keep published translations intact.
   source: docs.toFumadocsSource(),
   pageTree: {
     attachFile(node, file) {
       return {
         ...node,
+        draft: file?.data.draft === true,
         deprecated: file?.data.deprecated,
         sidebarTag: file?.data.sidebarTag,
         upgradeTags: file?.data.upgradeTags
@@ -29,14 +31,17 @@ const contentSource = loader({
   }
 });
 
-/** 按最终解析到的语言页面判断发布状态；缺少翻译仍可回退，显式草稿不能回退。 */
-const isPublished = (page: ReturnType<typeof contentSource.getPage>) =>
-  page !== undefined && page.data.draft !== true;
+/** 按解析后的语言页面判断可见性；仅生产环境隐藏草稿，开发预览保留真实草稿状态。 */
+const isVisible = (page: ReturnType<typeof contentSource.getPage>) =>
+  page !== undefined && (process.env.NODE_ENV !== 'production' || page.data.draft !== true);
 
-/** 删除草稿导航及空目录；手工配置的外部链接继续保留。 */
+/** Remove draft items and empty folders from the page tree while preserving external links. */
 const filterPageTree = (tree: PageTree.Root, language: string): PageTree.Root => {
   const draftUrls = new Set(
-    contentSource.getPages(language).filter((page) => !isPublished(page)).map((page) => page.url)
+    contentSource
+      .getPages(language)
+      .filter((page) => !isVisible(page))
+      .map((page) => page.url)
   );
   const filterPage = (node: PageTree.Item) =>
     draftUrls.has(node.url.split('#', 1)[0]) ? undefined : node;
@@ -56,28 +61,28 @@ const filterPageTree = (tree: PageTree.Root, language: string): PageTree.Root =>
   return { ...tree, children: filterNodes(tree.children) };
 };
 
-/** 在语言索引之后统一隐藏草稿，所有查询、发现入口和静态参数共用发布状态。 */
+/** 按环境统一控制路由、导航与发现入口的草稿可见性，并规范化虚拟目录分组。 */
 export const source: typeof contentSource = {
   ...contentSource,
   pageTree: Object.fromEntries(
     Object.entries(contentSource.pageTree).map(([language, tree]) => [
       language,
-      filterPageTree(tree, language)
+      normalizePageTreeSections(filterPageTree(tree, language))
     ])
   ),
   getPage(...args) {
     const page = contentSource.getPage(...args);
-    return isPublished(page) ? page : undefined;
+    return isVisible(page) ? page : undefined;
   },
   getPages(language) {
-    return contentSource.getPages(language).filter(isPublished);
+    return contentSource.getPages(language).filter(isVisible);
   },
   getNodePage(...args) {
     const page = contentSource.getNodePage(...args);
-    return isPublished(page) ? page : undefined;
+    return isVisible(page) ? page : undefined;
   },
   getPageByHref(...args) {
     const result = contentSource.getPageByHref.call(this, ...args);
-    return result && isPublished(result.page) ? result : undefined;
+    return result && isVisible(result.page) ? result : undefined;
   }
 };

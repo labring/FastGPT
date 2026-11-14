@@ -10,7 +10,8 @@ const mocks = vi.hoisted(() => ({
   cron: vi.fn(),
   training: vi.fn(),
   tracks: vi.fn(),
-  reloadModels: vi.fn()
+  reloadModels: vi.fn(),
+  loadModels: vi.fn()
 }));
 
 // 隔离外部依赖和消费者；启动编排、迁移 runner 与 MongoDB 事务使用实际实现。
@@ -41,7 +42,7 @@ vi.mock('@fastgpt/service/common/vectorDB/controller', async (importOriginal) =>
 vi.mock('@fastgpt/service/support/user/systemUser', () => ({ initSystemUser: vi.fn() }));
 vi.mock('@fastgpt/service/core/ai/model/catalog/service', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@fastgpt/service/core/ai/model/catalog/service')>()),
-  loadSystemModels: vi.fn(),
+  loadSystemModels: mocks.loadModels,
   loadInstalledModels: mocks.reloadModels
 }));
 vi.mock('@fastgpt/service/core/ai/model/template', async (importOriginal) => ({
@@ -92,6 +93,8 @@ vi.mock('@fastgpt/service/common/metrics', () => ({
 
 import { SystemMigrationStatusEnum } from '@fastgpt/global/migration/constants';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
+import { MongoAIModel } from '@fastgpt/service/core/ai/model/schema';
+import { formatDbModelToRuntimeModel } from '@fastgpt/service/core/ai/model/runtime';
 import { Types } from '@fastgpt/service/common/mongo';
 import { redisCacheAdapter } from '@fastgpt/dal/redis/adapter';
 import { registerNodeInstrumentation } from '@/instrumentation-node';
@@ -106,75 +109,116 @@ afterEach(async () => {
 });
 
 describe('registerNodeInstrumentation', () => {
-  it('ignores retired migration failures and starts business while current background work runs', async () => {
-    vi.clearAllMocks();
-    mocks.postHealth.mockResolvedValue({ auth: true, data: 'success' });
-    global.feConfigs = { ...global.feConfigs, isPlus: true };
-    const migrationId = '20261104_backfill_chat_publish_source';
-    const legacyMigrationId = '20260903_migrate_legacy_system_models';
-    await MongoSystemMigrationState.insertMany([
-      {
-        _id: legacyMigrationId,
-        status: SystemMigrationStatusEnum.failed,
-        checkpoint: { retired: true }
-      },
-      {
-        _id: '20261022_initialize_dataset_vector_indexes',
-        status: SystemMigrationStatusEnum.succeeded
+  it.each([
+    { pricing: { unitPrice: 0.2 }, expected: { type: 'duration', unitPrice: 0.2 } },
+    { pricing: {}, expected: { type: 'duration' } },
+    { pricing: null, expected: undefined },
+    { pricing: { type: 'unknown', unitPrice: 0.2 }, expected: undefined },
+    { pricing: { unitPrice: -1 }, expected: undefined }
+  ])(
+    'starts business with failed STT backfill and legacy pricing $pricing',
+    async ({ pricing, expected }) => {
+      vi.clearAllMocks();
+      const { insertedId: modelId } = await MongoAIModel.collection.insertOne({
+        model: 'legacy-stt',
+        name: 'STT',
+        provider: 'openai',
+        scope: 'system',
+        type: 'stt',
+        config: {},
+        pricing
+      });
+      mocks.loadModels.mockImplementation(async () => {
+        const model = await MongoAIModel.findById(modelId).lean();
+        expect(formatDbModelToRuntimeModel(model!, { fallbackProvider: true }).pricing).toEqual(
+          expected
+        );
+      });
+      mocks.postHealth.mockResolvedValue({ auth: true, data: 'success' });
+      global.feConfigs = { ...global.feConfigs, isPlus: true };
+      const migrationId = '20261104_backfill_chat_publish_source';
+      const legacyMigrationId = '20260903_migrate_legacy_system_models';
+      await MongoSystemMigrationState.insertMany([
+        {
+          _id: legacyMigrationId,
+          status: SystemMigrationStatusEnum.failed,
+          checkpoint: { retired: true }
+        },
+        {
+          _id: '20261022_initialize_dataset_vector_indexes',
+          status: SystemMigrationStatusEnum.succeeded
+        },
+        {
+          _id: '20261112_backfill_stt_pricing_type',
+          status: SystemMigrationStatusEnum.failed
+        }
+      ]);
+      const legacyState = await MongoSystemMigrationState.findById(legacyMigrationId).lean();
+      const { insertedId } = await MongoChat.collection.insertOne({
+        teamId: new Types.ObjectId(),
+        appId: new Types.ObjectId(),
+        source: 'api'
+      } as any);
+
+      let release!: () => void;
+      const gate = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      // 仅替代 Redis Lua 边界，并暂停真实回填写入；Runner、启动编排和 Mongo 事务均真实执行。
+      const redisScripts = vi.spyOn(redisCacheAdapter, 'evalScript').mockResolvedValue(1);
+      const bulkWrite = MongoChat.collection.bulkWrite.bind(MongoChat.collection);
+      const write = vi
+        .spyOn(MongoChat.collection, 'bulkWrite')
+        .mockImplementation(async (operations, options) => {
+          await gate;
+          return bulkWrite(operations, options);
+        });
+      const registration = registerNodeInstrumentation();
+      try {
+        await registration;
+        expect(global.systemMigrationRunner!.hasBlockingMigrations).toBe(false);
+        expect(mocks.loadModels).toHaveBeenCalledTimes(1);
+        expect(mocks.reloadModels).not.toHaveBeenCalled();
+        expect(
+          (await MongoSystemMigrationState.findById('20261112_backfill_stt_pricing_type').lean())
+            ?.status
+        ).toBe(SystemMigrationStatusEnum.failed);
+        expect((await MongoAIModel.findById(modelId).lean())?.pricing).toEqual(pricing);
+        for (const consumer of [
+          mocks.watch,
+          mocks.workers,
+          mocks.cron,
+          mocks.training,
+          mocks.tracks
+        ])
+          expect(consumer).toHaveBeenCalledTimes(1);
+        await vi.waitFor(() => expect(write).toHaveBeenCalledTimes(1), { timeout: 10000 });
+        expect(redisScripts).toHaveBeenCalled();
+        expect((await MongoSystemMigrationState.findById(migrationId).lean())?.status).toBe(
+          SystemMigrationStatusEnum.running
+        );
+        expect(await MongoChat.collection.findOne({ _id: insertedId })).not.toHaveProperty(
+          'publishSource'
+        );
+
+        release();
+        await global.systemMigrationRunner!.tick();
+        expect((await MongoSystemMigrationState.findById(migrationId).lean())?.status).toBe(
+          SystemMigrationStatusEnum.succeeded
+        );
+        expect(await MongoChat.collection.findOne({ _id: insertedId })).toMatchObject({
+          publishSource: { type: 'api' }
+        });
+        expect(await MongoSystemMigrationState.findById(legacyMigrationId).lean()).toEqual(
+          legacyState
+        );
+        expect(mocks.postHealth).toHaveBeenCalledTimes(1);
+        expect(mocks.exit).not.toHaveBeenCalled();
+      } finally {
+        release();
+        global.systemMigrationRunner?.stop();
+        await registration.catch(() => undefined);
       }
-    ]);
-    const legacyState = await MongoSystemMigrationState.findById(legacyMigrationId).lean();
-    const { insertedId } = await MongoChat.collection.insertOne({
-      teamId: new Types.ObjectId(),
-      appId: new Types.ObjectId(),
-      source: 'api'
-    } as any);
-
-    let release!: () => void;
-    const gate = new Promise<void>((resolve) => {
-      release = resolve;
-    });
-    // 仅替代 Redis Lua 边界，并暂停真实回填写入；Runner、启动编排和 Mongo 事务均真实执行。
-    const redisScripts = vi.spyOn(redisCacheAdapter, 'evalScript').mockResolvedValue(1);
-    const bulkWrite = MongoChat.collection.bulkWrite.bind(MongoChat.collection);
-    const write = vi
-      .spyOn(MongoChat.collection, 'bulkWrite')
-      .mockImplementation(async (operations, options) => {
-        await gate;
-        return bulkWrite(operations, options);
-      });
-    const registration = registerNodeInstrumentation();
-    try {
-      await registration;
-      expect(global.systemMigrationRunner!.hasBlockingMigrations).toBe(false);
-      for (const consumer of [mocks.watch, mocks.workers, mocks.cron, mocks.training, mocks.tracks])
-        expect(consumer).toHaveBeenCalledTimes(1);
-      await vi.waitFor(() => expect(write).toHaveBeenCalledTimes(1), { timeout: 10000 });
-      expect(redisScripts).toHaveBeenCalled();
-      expect((await MongoSystemMigrationState.findById(migrationId).lean())?.status).toBe(
-        SystemMigrationStatusEnum.running
-      );
-      expect(await MongoChat.collection.findOne({ _id: insertedId })).not.toHaveProperty(
-        'publishSource'
-      );
-
-      release();
-      await global.systemMigrationRunner!.tick();
-      expect((await MongoSystemMigrationState.findById(migrationId).lean())?.status).toBe(
-        SystemMigrationStatusEnum.succeeded
-      );
-      expect(await MongoChat.collection.findOne({ _id: insertedId })).toMatchObject({
-        publishSource: { type: 'api' }
-      });
-      expect(await MongoSystemMigrationState.findById(legacyMigrationId).lean()).toEqual(
-        legacyState
-      );
-      expect(mocks.postHealth).toHaveBeenCalledTimes(1);
-      expect(mocks.exit).not.toHaveBeenCalled();
-    } finally {
-      release();
-      global.systemMigrationRunner?.stop();
-      await registration.catch(() => undefined);
     }
-  });
+  );
 });

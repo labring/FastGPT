@@ -33,6 +33,7 @@ const UsageItemSchema = new Schema({
   // Params
   inputTokens: Number,
   outputTokens: Number,
+  totalTokens: Number,
   charsLength: Number,
   duration: Number,
   pages: Number,
