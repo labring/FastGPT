@@ -12,13 +12,13 @@ STT 模型各自保存计价口径，网页语音输入、公众号语音和飞�
 // 固定每 60 秒 0.2 积分。
 pricing: { type: 'duration', unitPrice: 0.2 }
 
-// 每百万输入与输出合计 Tokens 10 积分。
-pricing: { type: 'tokens', unitPrice: 10 }
+// 输入、输出每百万 Tokens 分别定价。
+pricing: { type: 'tokens', inputPrice: 0.8, outputPrice: 2.7 }
 ```
 
-时长费用为 `seconds / 60 * unitPrice`；Tokens 费用为 `totalTokens / 1_000_000 * unitPrice`。60 秒是固定单价分母，不是分段进位步长。单次费用保留精度，时长不强制最少 1 秒，不做向上取整。
+时长费用为 `seconds / 60 * unitPrice`；Tokens 费用为 `(inputTokens * inputPrice + outputTokens * outputPrice) / 1_000_000`。60 秒是固定单价分母，不是分段进位步长。单次费用保留精度，时长不强制最少 1 秒，不做向上取整。
 
-两种配置通过判别联合解析，均不保存可配置的单位分母。表单只提供计价类型和单价；按时长固定展示每 60 秒，按 Tokens 固定展示每 1M Tokens。价格表和公开价格页使用相同单位。
+两种配置通过判别联合解析，均不保存可配置的单位分母。表单提供计价类型；时长模式一个单价，Tokens 模式分别配置输入和输出单价；按时长固定展示每 60 秒，按 Tokens 固定展示每 1M Tokens。价格表和公开价格页使用相同单位。
 
 缺少单价保持免费；单价 0 表示显式免费。清空 STT 单价时保留所选类型，但不恢复历史根级价格。其他模型保留原有清空语义。
 
@@ -27,13 +27,13 @@ pricing: { type: 'tokens', unitPrice: 10 }
 | 价格类型 | 唯一计费用量来源 | 缺失或无效时 |
 | --- | --- | --- |
 | duration | 上游 `usage.seconds` | 0 秒、0 积分 |
-| tokens | 上游 `usage.total_tokens` | 0 Tokens、0 积分 |
+| tokens | 上游 `usage.input_tokens`、`usage.output_tokens` | 各侧独立记 0，只收有效侧费用 |
 
 客户端 `duration` 从请求契约和新客户端发送内容移除；旧客户端继续传入的未知字段会被剥离，不参与校验或计费。飞书消息自带的时长也不用于兜底。
 
-上游 seconds 必须为有限非负数，保留小数；total_tokens 必须为安全非负整数。字符串、负数、NaN 和 Infinity 均记 0。不从识别文字估算、不将 Tokens 换算成秒数、不将秒数换算成 Tokens。
+上游 seconds 必须为有限非负数，保留小数；input_tokens/output_tokens 必须为安全非负整数。字符串、负数、NaN 和 Infinity 均记 0。不从识别文字估算、不将 Tokens 换算成秒数、不将秒数换算成 Tokens。
 
-上游同时返回两种用量时，始终按模型价格类型选择一种。上游 `usage.type` 不切换本地价格类型；若它明确为 duration，其兼容填入的 total_tokens 不作为真实 Tokens 使用。
+上游同时返回两种用量时，始终按模型价格类型选择一种。上游 `usage.type` 不切换本地价格类型；若它明确为 duration，其中任何兼容 Tokens 字段均不作为真实 Tokens 使用。
 
 ## 统一计费入口
 
@@ -42,7 +42,7 @@ pricing: { type: 'tokens', unitPrice: 10 }
 ```typescript
 usage: { type: 'duration', seconds: number }
 // 或
-usage: { type: 'tokens', totalTokens: number }
+usage: { type: 'tokens', inputTokens: number, outputTokens: number }
 ```
 
 `getSTTBillableUsage({ pricing, usage })` 根据模型价格处理原始上游 usage，供三个业务入口复用。其输出 type 是本地选择的计费口径，不是对上游 type 的直接复制。
@@ -55,11 +55,11 @@ usage: { type: 'tokens', totalTokens: number }
 
 ## 账单持久化
 
-usage 保存本次总积分 totalPoints；usage_item 保存模型、实际计费用量及该项积分 amount。时长账单只记录 duration（秒）；Tokens 账单只记录 totalTokens，避免写入已废弃的 tokens 字段。上游两种数量同时存在时，账单仍只保存本次配置选择的计费用量；即使数量为 0 也保留对应字段。
+usage 保存本次总积分 totalPoints；usage_item 保存模型、实际计费用量及该项积分 amount。时长账单只记录 duration（秒）；Tokens 账单只记录 inputTokens、outputTokens，避免写入已废弃的 tokens 字段。上游两种数量同时存在时，账单仍只保存本次配置选择的计费用量；即使数量为 0 也保留对应字段。
 
 不额外保存 STT 专属的类型、单价、分母或数量快照。单次金额在计费时计算并落库，历史记录直接读取已存数量及金额，不根据当前模型价格重算。Pro 创建明细、批量持久化及查询均透传所选数量。
 
-详情按字段是否存在展示总 Tokens 或时长列，不增加计费类型列；字段值 0 显示为 0，未记录的字段显示横线。历史 tokens 字段保留展示回退。之前开发版本若已保存 sttBilling，不清洗历史数据库，新代码不再写入或消费该字段，无需数据迁移。
+详情按字段是否存在展示输入/输出 Tokens 或时长列，不增加计费类型列；字段值 0 显示为 0，未记录的字段显示横线。历史 totalTokens/tokens 字段保留展示回退。之前开发版本若已保存 sttBilling，不清洗历史数据库，新代码不再写入或消费该字段，无需数据迁移。
 
 ## 兼容与迁移决定
 
@@ -73,13 +73,29 @@ usage 保存本次总积分 totalPoints；usage_item 保存模型、实际计费
 
 历史账单按保存的数量及金额展示，不重算价格、不调整余额；已有历史价格单位迁移仍以 [模型计价统一为百万单位](./model-token-price-unit.md) 为准。
 
+## 拆分 Tokens 单价升级
+
+追加普通后台任务 `20261114_split_stt_token_prices`（4.18.0），不改已发布任务，也不阻塞启动。
+对系统和团队 STT Tokens 模型，只有两个新单价均未配置且存在旧 unitPrice 时，分别将旧单价填入 inputPrice、outputPrice；显式 0 同样处理。
+任一侧已有新配置即不覆盖，另一侧保持免费；保留旧字段供审计，但业务 Schema、导出和计费只消费新字段。
+价格与目录修订号事务提交，固定 _id 上界分批续跑，错误快照先于 checkpoint 保存；重试先处理游标之前的坏记录。
+迁移前旧综合价临时不计费，滚动升级期间允许偏差，不增加数据库读边界兜底或启动屏障。
+
+旧账单的 totalTokens/tokens、数量和金额原样保留。新账单不额外存合计数、单价或计费类型，可直接复用现有输入/输出明细列。
+
+## AI Proxy 契约
+
+STT 统一返回 input_tokens/output_tokens，兼容上游 prompt_tokens/completion_tokens；显式原生字段优先（包括 0）。
+缺少的项不从 total_tokens、音频时长、识别文字或另一侧估算。保留 total_tokens 的既有计数与服务器补齐 seconds 的逻辑。
+无上游用量时，响应标记 duration，不把历史估算的 Tokens 暴露为真实输入输出；网关内部历史 total_tokens 计算保留。
+
 ## 验证范围
 
 局部验证以下行为，不运行全仓测试：
 
 - 两种计价模式、固定 60 秒和百万 Tokens 分母、亚秒级时长、显式免费和团队免费。
 - 后台迁移、幂等重放、断点前崩溃、坏数据修复、并发改价、目录修订号事务回滚，以及 STT 任务失败时业务仍可启动；运行目录及 JSON 导出可读取未回填价格，保留配置与凭证且不回写数据库。
-- 上游同时返回 seconds 与 total_tokens，价格配置只选择对应字段。
+- 上游同时返回 seconds、input_tokens、output_tokens 与 total_tokens，价格配置只选择对应字段；两个 Tokens 单价不同，缺少一侧不从合计反推。
 - 缺少用量、非法数字、duration 兼容 Tokens 字段均不误扣费。
 - 伪造或省略客户端 duration 不影响接口成功及实际费用。
 - 表单切换与保存、公开价格单位、JSON 导入导出、Mongo 模型保存和运行目录。

@@ -787,7 +787,7 @@ const ModelConfigForm = ({
           ) : (
             <Grid templateColumns={['1fr', 'repeat(2, minmax(0, 1fr))']} gap={4}>
               {isSTTModel && (
-                <>
+                <GridItem colSpan={sttPriceType === 'tokens' ? [1, 2] : 1}>
                   <Field label={t('config_model:model.stt_billing_type')}>
                     <MySelect
                       value={sttPriceType}
@@ -796,48 +796,62 @@ const ModelConfigForm = ({
                         { label: t('config_model:model.stt_billing_tokens'), value: 'tokens' }
                       ]}
                       onChange={(value) => {
-                        const unitPrice = getValues('pricing.unitPrice');
-                        setValue(
-                          'pricing',
-                          value === 'tokens'
-                            ? { type: 'tokens', unitPrice }
-                            : { type: 'duration', unitPrice },
-                          { shouldDirty: true }
-                        );
+                        setValue('pricing.type', value === 'tokens' ? 'tokens' : 'duration', {
+                          shouldDirty: true
+                        });
                       }}
                     />
                   </Field>
-                </>
+                </GridItem>
               )}
-              <Field label={t('config_model:model.unitPrice')}>
-                <Flex alignItems={'center'} gap={2}>
-                  <Input
-                    type="number"
-                    step={0.01}
-                    {...register('pricing.unitPrice', {
-                      setValueAs: (value) =>
-                        value === '' ? undefined : roundModelPrice(Number(value)),
-                      onBlur: (event) => {
-                        const price =
-                          event.target.value === '' ? undefined : Number(event.target.value);
-                        if (price !== undefined && !Number.isFinite(price)) return;
-                        // 与阶梯单价共用十进制舍入，避免 Chakra precision 提前压低中点。
-                        setValue(
-                          'pricing.unitPrice',
-                          price === undefined ? undefined : roundModelPrice(price),
-                          {
-                            shouldDirty: true
-                          }
-                        );
-                      }
-                    })}
-                    {...InputStyles}
-                  />
-                  <Box flexShrink={0} fontSize={'12px'} color={'myGray.900'}>
-                    {priceUnit}
-                  </Box>
-                </Flex>
-              </Field>
+              {(isSTTModel && sttPriceType === 'tokens'
+                ? [
+                    {
+                      priceKey: 'pricing.inputPrice' as const,
+                      label: t('config_model:model.stt_input_price')
+                    },
+                    {
+                      priceKey: 'pricing.outputPrice' as const,
+                      label: t('config_model:model.stt_output_price')
+                    }
+                  ]
+                : [
+                    {
+                      priceKey: 'pricing.unitPrice' as const,
+                      label: t('config_model:model.unitPrice')
+                    }
+                  ]
+              ).map(({ priceKey, label }) => (
+                <Field key={priceKey} label={label}>
+                  <Flex alignItems={'center'} gap={2}>
+                    <Input
+                      type="number"
+                      step={0.01}
+                      {...register(priceKey, {
+                        setValueAs: (value) =>
+                          value === '' ? undefined : roundModelPrice(Number(value)),
+                        onBlur: (event) => {
+                          const price =
+                            event.target.value === '' ? undefined : Number(event.target.value);
+                          if (price !== undefined && !Number.isFinite(price)) return;
+                          // 与阶梯单价共用十进制舍入，避免 Chakra precision 提前压低中点。
+                          setValue(
+                            priceKey,
+                            price === undefined ? undefined : roundModelPrice(price),
+                            {
+                              shouldDirty: true
+                            }
+                          );
+                        }
+                      })}
+                      {...InputStyles}
+                    />
+                    <Box flexShrink={0} fontSize={'12px'} color={'myGray.900'}>
+                      {priceUnit}
+                    </Box>
+                  </Flex>
+                </Field>
+              ))}
             </Grid>
           )}
         </Section>

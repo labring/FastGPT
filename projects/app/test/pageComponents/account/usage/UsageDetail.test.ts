@@ -64,6 +64,27 @@ describe('UsageDetail STT quantities', () => {
     expect(cells).toEqual(['STT', value, '1.25']);
   });
 
+  it.each([
+    { inputTokens: 125, outputTokens: 17 },
+    { inputTokens: 125, outputTokens: 0 },
+    { inputTokens: 0, outputTokens: 17 },
+    { inputTokens: 0, outputTokens: 0 }
+  ])('shows split counters including zero without a total or duration column: %j', (quantities) => {
+    const { headers, cells } = renderTable([{ moduleName: 'STT', amount: 0, ...quantities }]);
+    expect(headers).toEqual([
+      'account_usage:module_name',
+      'account_usage:input_token_length',
+      'account_usage:output_token_length',
+      'account_usage:total_points_consumed'
+    ]);
+    expect(cells).toEqual([
+      'STT',
+      String(quantities.inputTokens),
+      String(quantities.outputTokens),
+      '0'
+    ]);
+  });
+
   it('keeps missing quantities distinct from zero when historical and new usage share a table', () => {
     const { headers, cells } = renderTable([
       { moduleName: 'Old STT', amount: 1.25, tokens: 77 },

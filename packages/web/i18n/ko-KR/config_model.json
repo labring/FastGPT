@@ -109,7 +109,6 @@
   "video": "영상 인식",
   "video_tip": "모델이 영상 인식을 지원하는 경우 켜세요.",
   "waiting_test": "테스트 대기 중",
-  "active_model": "사용 가능한 모델",
   "channel": "모델 제공업체",
   "config_model": "모델 설정",
   "create_model": "새 모델 추가",
@@ -351,5 +350,7 @@
   "model_deprecation.error_no_terminable_runs": "알림 계획에 종료할 수 있는 실행이 없습니다.",
   "model.stt_billing_type": "과금 유형",
   "model.stt_billing_duration": "시간 기준",
-  "model.stt_billing_tokens": "토큰 기준"
+  "model.stt_billing_tokens": "토큰 기준",
+  "model.stt_input_price": "입력 가격(포인트)",
+  "model.stt_output_price": "출력 가격(포인트)"
 }
