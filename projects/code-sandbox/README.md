@@ -188,6 +188,8 @@ Python native 隔离不提供整体关闭开关。Linux 环境固定启用 chroo
 
 Linux 环境同样固定启用 native chroot、`no_new_privs` 和降权，chroot 根目录为 `/tmp/fastgpt-js-sandbox`，JS 子进程使用独立的 `65538:65538`；seccomp 按上述配置控制。每个预热进程最多执行一个用户任务。启用 seccomp 时，直接网络、创建进程和执行二进制的 syscall 均被拒绝。
 
+开启应用层 seccomp 时，Linux JS worker 先由 `fastgpt_js_launcher` 启动。launcher 在 Node 初始化前拒绝 io_uring，使 libuv 使用 epoll，避免大结果输出遇到背压后因 io_uring 被后置白名单拒绝而崩溃。完整 chroot、降权和 syscall 白名单仍由 addon 安装。launcher 编译与复制随 `build:native:js` 和构建流程完成；源码运行需先构建 native 资产，缺失时初始化失败。显式关闭 seccomp 时跳过 launcher；非 Linux 开发路径不使用 launcher。
+
 ### 资源限制
 
 | 变量                      | 说明                                           | 默认值  |

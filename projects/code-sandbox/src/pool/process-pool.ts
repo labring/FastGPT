@@ -24,16 +24,22 @@ const isCompiled = import.meta.url.endsWith('.js');
 
 const WORKER_SCRIPT = join(__dirname, isCompiled ? 'worker.js' : 'worker.ts');
 const SPAWN_RUNTIME = isCompiled ? 'node' : 'tsx';
-const NATIVE_SANDBOX_ADDON = getBundledJsNativeAddonPath(__dirname);
+const NATIVE_DIR = isCompiled ? __dirname : join(__dirname, '../isolated');
+const NATIVE_SANDBOX_ADDON = getBundledJsNativeAddonPath(NATIVE_DIR);
+const NATIVE_SANDBOX_LAUNCHER = join(NATIVE_DIR, 'fastgpt_js_launcher');
 
 export class ProcessPool extends BaseProcessPool {
   constructor(poolSize?: number) {
     assertJsNativeIsolationReady(NATIVE_SANDBOX_ADDON);
     const nativeIsolation = shouldEnableJsNativeIsolation();
+    const seccompConfig = getSeccompConfig();
+    // 路径始终作为单个 shell 参数传递，兼容源码 checkout 路径中的空格和引号。
+    const quote = (value: string) => `'${value.replace(/'/g, `'"'"'`)}'`;
     super(poolSize, {
       name: 'JS',
       workerScript: WORKER_SCRIPT,
-      spawnCommand: (script) => `exec ${SPAWN_RUNTIME} ${script}`,
+      spawnCommand: (script) =>
+        `exec ${nativeIsolation && seccompConfig.enableSeccomp ? `${quote(NATIVE_SANDBOX_LAUNCHER)} ` : ''}${SPAWN_RUNTIME} ${quote(script)}`,
       allowedModules: env.SANDBOX_JS_ALLOWED_MODULES,
       // 任何接触过用户代码的进程都不回到 idle 池。
       recycleAfterTask: true,
@@ -45,7 +51,7 @@ export class ProcessPool extends BaseProcessPool {
           uid: JS_SANDBOX_UID,
           gid: JS_SANDBOX_GID,
           cwd: '/app/code-sandbox',
-          ...getSeccompConfig()
+          ...seccompConfig
         }
       }
     });

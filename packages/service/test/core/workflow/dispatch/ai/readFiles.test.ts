@@ -119,6 +119,35 @@ describe('dispatchWorkflowReadFiles', () => {
     ]);
   });
 
+  it('checks file access before parsing and keeps authorized files when another file is denied', async () => {
+    getFileContentByUrlMock.mockResolvedValue({ name: 'allowed.pdf', content: 'PDF content' });
+    const validateFile = vi.fn(async ({ url }: { url: string }) => {
+      if (url.endsWith('/denied.pdf')) throw new Error('File belongs to another chat');
+    });
+
+    const result = await dispatchWorkflowReadFiles({
+      files: [
+        { url: 'https://files.example.com/allowed.pdf' },
+        { url: 'https://files.example.com/denied.pdf' }
+      ],
+      teamId: 'team_1',
+      tmbId: 'tmb_1',
+      maxFileAmount: 20,
+      validateFile
+    });
+
+    expect(getFileContentByUrlMock).toHaveBeenCalledTimes(1);
+    expect(validateFile).toHaveBeenCalledTimes(2);
+    expect(JSON.parse(result.response)).toEqual([
+      { name: 'allowed.pdf', content: 'PDF content' },
+      {
+        name: 'https://files.example.com/denied.pdf',
+        content: '',
+        error: 'File belongs to another chat'
+      }
+    ]);
+  });
+
   it('only reads the first maxFileAmount items with at most 5 concurrent tasks', async () => {
     let activeTasks = 0;
     let maxActiveTasks = 0;

@@ -320,7 +320,7 @@ const DataCard = () => {
           />
         </Flex>
         {/* data */}
-        <ScrollData px={5} pb={5} showLoadingOverlay={false} showPaginationTip={!showSkeleton}>
+        <ScrollData px={5} pb={5} showPaginationTip={!showSkeleton}>
           <Flex flexDir={'column'} gap={2}>
             {showSkeleton &&
               Array.from({ length: 3 }, (_, index) => (

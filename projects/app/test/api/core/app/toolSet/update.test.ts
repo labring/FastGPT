@@ -54,13 +54,16 @@ describe('tool set update handlers', () => {
   it('preserves request metadata through validation, version storage and runtime decoding', async () => {
     mocks.updateAppPublishedVersion.mockResolvedValueOnce(undefined);
     const requestMeta = { 'example/context': { locale: 'zh-CN', flags: [false, 0, null] } };
-    await updateMcpTools({
-      body: {
-        appId,
-        url: 'https://example.com/mcp',
-        toolList: [{ name: 'search', description: '', requestMeta }]
-      }
-    } as ApiRequestProps<UpdateMcpToolsBodyType>);
+    await updateMcpTools(
+      {
+        body: {
+          appId,
+          url: 'https://example.com/mcp',
+          toolList: [{ name: 'search', description: '', requestMeta }]
+        }
+      } as unknown as ApiRequestProps<UpdateMcpToolsBodyType>,
+      {} as Parameters<typeof updateMcpTools>[1]
+    );
 
     const saved = mocks.updateAppPublishedVersion.mock.calls[0][0];
     const decoded = decodeMcpToolSetNodesFromStorage(saved.nodes);
@@ -100,7 +103,9 @@ describe('tool set update handlers', () => {
       body: { appId, url: 'https://example.com/mcp', toolList: [] } as UpdateMcpToolsBodyType
     }
   ])('propagates a $name published-version update failure', async ({ handler, body }) => {
-    await expect(handler({ body } as ApiRequestProps<any>)).rejects.toBe(AppErrEnum.unExist);
+    await expect(handler({ body } as unknown as ApiRequestProps<any>)).rejects.toBe(
+      AppErrEnum.unExist
+    );
 
     expect(mocks.updateAppPublishedVersion).toHaveBeenCalledWith(
       expect.objectContaining({

@@ -12,6 +12,7 @@ import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { ChatRoleEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import {
   filterPublicNodeResponseData,
+  stripModerationRecordsFromNodeResponses,
   removeAIResponseCite
 } from '@fastgpt/global/core/chat/utils';
 import { GetChatTypeEnum } from '@fastgpt/global/core/chat/constants';
@@ -27,6 +28,8 @@ import { getChatItemValueType } from '@/service/core/chat/utils';
 
 export async function handler(req: ApiRequestProps): Promise<GetPaginationRecordsResponseType> {
   const {
+    customUid,
+    authProxy,
     sourceType,
     sourceId,
     chatId,
@@ -45,6 +48,8 @@ export async function handler(req: ApiRequestProps): Promise<GetPaginationRecord
   }
 
   const authRes = await authChatTargetCrud({
+    customUid,
+    authProxy,
     req,
     authToken: true,
     authApiKey: true,
@@ -109,6 +114,8 @@ export async function handler(req: ApiRequestProps): Promise<GetPaginationRecord
           item.value = item.value.filter((v) => !v.skills);
         }
       }
+    } else if (authRes.canWrite === false && item.obj === ChatRoleEnum.AI && item.responseData) {
+      item.responseData = stripModerationRecordsFromNodeResponses(item.responseData);
     }
 
     if (!authRes.showCite) {

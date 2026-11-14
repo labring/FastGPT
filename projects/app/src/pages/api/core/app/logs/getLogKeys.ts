@@ -1,3 +1,4 @@
+import { normalizeAppLogKeys } from '@fastgpt/global/core/app/logs/utils';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { MongoAppLogKeys } from '@fastgpt/service/core/app/logs/logkeysSchema';
@@ -27,7 +28,7 @@ async function handler(req: ApiRequestProps): Promise<getLogKeysResponseType> {
 
   const result = await MongoAppLogKeys.findOne({ teamId, appId });
 
-  return GetLogKeysResponseSchema.parse({ logKeys: result?.logKeys || [] });
+  return GetLogKeysResponseSchema.parse({ logKeys: normalizeAppLogKeys(result?.logKeys) });
 }
 
 export default NextAPI(handler);

@@ -253,4 +253,35 @@ describe('dispatchUserSelect', () => {
       }
     });
   });
+
+  it('truncates dynamic reference options to 200 items and 100 chars', async () => {
+    const dynamicRaw = Array.from({ length: 205 }, (_, i) => `dyn_${i}_${'y'.repeat(110)}`);
+    const res = await dispatchUserSelect({
+      histories: [],
+      node: {
+        nodeId: 'selectNode',
+        isEntry: false,
+        inputs: [
+          {
+            key: NodeInputKeyEnum.userSelectOptions,
+            renderTypeList: [FlowNodeInputTypeEnum.custom, FlowNodeInputTypeEnum.reference],
+            selectedType: FlowNodeInputTypeEnum.reference
+          }
+        ]
+      } as any,
+      runtimeNodesMap: new Map(),
+      params: {
+        [NodeInputKeyEnum.description]: 'Choose one',
+        [NodeInputKeyEnum.userSelectOptions]: dynamicRaw
+      },
+      query: []
+    } as any);
+
+    const dynamicOptions = res[DispatchNodeResponseKeyEnum.interactive]?.params?.userSelectOptions;
+    expect(dynamicOptions).toHaveLength(200);
+    expect(dynamicOptions?.[0]).toEqual({
+      key: 'option_1',
+      value: dynamicRaw[0].slice(0, 100)
+    });
+  });
 });

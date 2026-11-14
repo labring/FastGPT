@@ -33,12 +33,7 @@ import {
   isAgentAskInteractive,
   extractDeepestInteractive
 } from '@fastgpt/global/core/workflow/runtime/utils';
-import {
-  ChatInputWrapperStyle,
-  ChatTypeEnum,
-  FeedbackTypeEnum,
-  HomeChatContentWrapperStyle
-} from './constants';
+import { ChatInputWrapperStyle, ChatTypeEnum, HomeChatContentWrapperStyle } from './constants';
 import ChatProvider, { ChatBoxContext, type ChatProviderProps } from './Provider';
 import { WorkflowRuntimeContext } from '../context/workflowRuntimeContext';
 import dynamic from 'next/dynamic';
@@ -61,7 +56,6 @@ import { useQuestionGuide } from './hooks/useQuestionGuide';
 import { useChatResume } from './hooks/useChatResume';
 import { useChatGenerate } from './hooks/useChatGenerate';
 import { useChatRecordActions } from './hooks/useChatRecordActions';
-import { useChatFeedbackActions } from './hooks/useChatFeedbackActions';
 import ChatBoxModals from './components/ChatBoxModals';
 import { WorkflowBuilderPreviewComposer } from '../../components/AIResponseBox/WorkflowBuilder/WorkflowBuilderPreviewComposer';
 import type { ChatRecordsListProps } from './components/ChatRecordsList';
@@ -79,6 +73,8 @@ import { requestStopAndAbortClient } from './utils/stop';
 import { getLastAiDataId } from './utils/resume';
 import ComplianceTip from '@/components/common/ComplianceTip/index';
 import { ChatInstanceActionsContext } from '../context/chatInstanceActionsContext';
+import { ChatFeedbackProvider } from '../context/chatFeedbackContext';
+import type { FeedbackTypeEnum } from './constants';
 import {
   registerChatInstanceActions,
   retainExternalChatPromptListener,
@@ -92,9 +88,13 @@ const WorkorderEntrance = dynamic(() => import('@/pageComponents/chat/WorkorderE
 
 type Props = ChatProviderProps &
   BoxProps & {
+    /** 分享页品牌位于底部时，合规提示由外层移至顶部。 */
+    complianceTipPlacement?: 'default' | 'external';
     isReady: boolean;
     features?: ChatBoxFeatures;
     active?: boolean; // can use
+    /** 初始化遮罩由聊天布局控制，关闭后允许历史请求期间先展示欢迎内容或变量表单。 */
+    showInitialLoading?: boolean;
     disabledSendTip?: string;
 
     onStartChat?: (e: StartChatFnProps) => Promise<
@@ -115,8 +115,8 @@ type Props = ChatProviderProps &
   };
 
 export type ChatBoxFeatures = {
-  feedbackType?: `${FeedbackTypeEnum}`;
-  mark?: boolean;
+  /** 显式开启消息反馈；省略时不展示，版本卡片独立复用 Context 的用户评价方法。 */
+  fbTypes?: `${FeedbackTypeEnum}`[];
   /** 语音识别输入开关。 */
   voice?: boolean;
   /** AI 回复朗读和自动 TTS 开关。 */
@@ -137,13 +137,8 @@ export type ChatBoxFeatures = {
   hideAgentAskOptionDescription?: boolean;
 };
 
-const resolveChatBoxFeatures = (
-  features?: ChatBoxFeatures
-): Required<Omit<ChatBoxFeatures, 'feedbackType'>> & {
-  feedbackType: `${FeedbackTypeEnum}`;
-} => ({
-  feedbackType: features?.feedbackType ?? FeedbackTypeEnum.hidden,
-  mark: features?.mark ?? false,
+const resolveChatBoxFeatures = (features?: ChatBoxFeatures): Required<ChatBoxFeatures> => ({
+  fbTypes: features?.fbTypes ?? [],
   voice: features?.voice ?? true,
   tts: features?.tts ?? true,
   inputGuide: features?.inputGuide ?? true,
@@ -159,9 +154,11 @@ const resolveChatBoxFeatures = (
 });
 
 const ChatBox = ({
+  complianceTipPlacement = 'default',
   isReady = true,
   features,
   active = true,
+  showInitialLoading = true,
   disabledSendTip,
   onStartChat,
   onGeneratingMessage,
@@ -199,8 +196,13 @@ const ChatBox = ({
 
   const [questionGuides, setQuestionGuide] = useState<string[]>([]);
   const [expandedDeletedGroups, setExpandedDeletedGroups] = useState<Set<string>>(new Set());
-  const { ScrollContainerRef, scrollToBottom, generatingScroll, isScrollToBottomButtonVisible } =
-    useChatScroll();
+  const {
+    ScrollContainerRef,
+    scrollToBottom,
+    autoScrollToBottom,
+    generatingScroll,
+    isScrollToBottomButtonVisible
+  } = useChatScroll();
 
   const chatBoxData = useContextSelector(ChatItemContext, (v) => v.chatBoxData);
   const setChatBoxData = useContextSelector(ChatItemContext, (v) => v.setChatBoxData);
@@ -208,6 +210,11 @@ const ChatBox = ({
   const setIsVariableVisible = useContextSelector(ChatItemContext, (v) => v.setIsVariableVisible);
 
   const isLoadingRecords = useContextSelector(ChatRecordContext, (v) => v.isLoadingRecords);
+  const isInitialLoadingRecords = useContextSelector(
+    ChatRecordContext,
+    (v) => v.isInitialLoadingRecords
+  );
+  const paginationLoading = useContextSelector(ChatRecordContext, (v) => v.paginationLoading);
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
   const setChatRecords = useContextSelector(ChatRecordContext, (v) => v.setChatRecords);
   const isChatRecordsLoaded = useContextSelector(ChatRecordContext, (v) => v.isChatRecordsLoaded);
@@ -398,7 +405,7 @@ const ChatBox = ({
     restoreSubmittedInput,
     setQuestionGuide,
     createQuestionGuide,
-    scrollToBottom,
+    scrollToBottom: autoScrollToBottom,
     generatingScroll,
     notifyChatGenerateStatusChange,
     finishChatGenerateStatus,
@@ -428,26 +435,6 @@ const ChatBox = ({
   const { isRecordActionLoading, retryInput, editInput } = useChatRecordActions({
     sendPrompt
   });
-  const {
-    feedbackId,
-    setFeedbackId,
-    adminMarkData,
-    setAdminMarkData,
-    likeFeedbackEffect,
-    onMark,
-    onAddUserLike,
-    onAddUserDislike,
-    onCloseCustomFeedback,
-    onToggleFeedbackReadStatus,
-    onFeedbackSuccess,
-    onAdminMarkSuccess
-  } = useChatFeedbackActions({
-    feedbackType: resolvedFeatures.feedbackType,
-    enableMark: resolvedFeatures.mark,
-    chatType,
-    onTriggerRefresh
-  });
-
   const statusBoxData = useCreation(() => {
     if (!isChatting) return;
     const chatContent = chatRecords[chatRecords.length - 1];
@@ -486,8 +473,8 @@ const ChatBox = ({
     }
 
     lastRecordsLoadedScrollTargetRef.current = chatScrollTargetKey;
-    scrollToBottom('auto');
-  }, [chatScrollTargetKey, isChatRecordsLoaded, scrollToBottom]);
+    autoScrollToBottom('auto');
+  }, [chatScrollTargetKey, isChatRecordsLoaded, autoScrollToBottom]);
 
   const onChatGeneratingConflictRecovered = useMemoizedFn(() => {
     toast({
@@ -507,7 +494,7 @@ const ChatBox = ({
     resumeControllerRef: resumeController,
     generatingMessage,
     flushGeneratingMessages,
-    scrollToBottom,
+    scrollToBottom: autoScrollToBottom,
     finishChatGenerateStatus,
     onChatGeneratingConflictRecovered
   });
@@ -683,46 +670,30 @@ const ChatBox = ({
       expandedDeletedGroups,
       itemRefs,
       enableTTS: resolvedFeatures.tts,
-      enableMark: resolvedFeatures.mark,
       enableSandbox: resolvedFeatures.sandbox,
       statusBoxData,
       questionGuides,
       onToggleDeletedGroup: toggleDeletedGroup,
       onRetry: retryInput,
       onEdit: editInput,
-      onMark,
-      onAddUserLike,
-      onAddUserDislike,
-      likeFeedbackEffect,
       disableFooterHoverTranslate: resolvedFeatures.disableFooterHoverTranslate,
       footerRunDetailPosition: resolvedFeatures.footerRunDetailPosition,
-      workflowBuilderStyle: resolvedFeatures.workflowBuilderInput,
-      feedbackUserName,
-      onCloseCustomFeedback,
-      onToggleFeedbackReadStatus
+      workflowBuilderStyle: resolvedFeatures.workflowBuilderInput
     }),
     [
       processedRecords,
       expandedDeletedGroups,
       itemRefs,
       resolvedFeatures.tts,
-      resolvedFeatures.mark,
       resolvedFeatures.sandbox,
       statusBoxData,
       questionGuides,
       toggleDeletedGroup,
       retryInput,
       editInput,
-      onMark,
-      onAddUserLike,
-      onAddUserDislike,
-      likeFeedbackEffect,
       resolvedFeatures.disableFooterHoverTranslate,
       resolvedFeatures.footerRunDetailPosition,
-      resolvedFeatures.workflowBuilderInput,
-      feedbackUserName,
-      onCloseCustomFeedback,
-      onToggleFeedbackReadStatus
+      resolvedFeatures.workflowBuilderInput
     ]
   );
   const HomeChatInput = (
@@ -748,133 +719,143 @@ const ChatBox = ({
   );
 
   return (
-    <ChatInstanceActionsContext.Provider value={instanceActions}>
-      <MyBox
-        isLoading={isRecordActionLoading}
-        display={'flex'}
-        flexDirection={'column'}
-        h={'100%'}
-        position={'relative'}
-        {...props}
-      >
-        <Script src={getWebReqUrl('/js/html2pdf.bundle.min.js')} strategy="lazyOnload"></Script>
-        {/* chat box container */}
-        {isHomeRender ? (
-          <MyBox
-            isLoading={isLoadingRecords}
-            display="flex"
-            flexDirection="column"
-            flex={'1 0 0'}
-            h={0}
-            {...HomeChatContentWrapperStyle}
-          >
-            {isPc ? (
-              <DesktopHomeLayout inputSlot={HomeChatInput} />
-            ) : (
-              <MobileHomeLayout inputSlot={HomeChatInput} />
-            )}
-            {!isLogMode && <ComplianceTip type={'chat'} pt={0} pb={4} />}
-          </MyBox>
-        ) : (
-          <>
-            <AppChatMain
-              ScrollData={ScrollData}
-              ScrollContainerRef={ScrollContainerRef}
-              welcomeText={welcomeText}
-              welcomeQuestions={resolvedFeatures.quickReplies ? welcomeQuestions : []}
-              chatStarted={chatStarted}
-              chatForm={chatForm}
-              chatType={chatType}
-              recordsListProps={recordsListProps}
-              maxW={props.maxW}
-              boxBodyProps={boxBodyProps}
-              EmptyState={
-                chatRecords.length === 0 && isChatRecordsLoaded && !isLoadingRecords
-                  ? EmptyState
-                  : undefined
-              }
-            />
-            <Box {...ChatInputWrapperStyle} {...inputBodyProps}>
-              {canRenderChatInput && (
-                <>
-                  {resolvedFeatures.workorder && <WorkorderEntrance />}
-                  <Box position="relative">
-                    <ScrollToBottomButton
-                      isVisible={canRenderScrollToBottomButton}
-                      onClick={() => scrollToBottom('smooth')}
-                    />
-
-                    <Box display={isBlockingInteractivePending ? 'none' : undefined}>
-                      <ChatInput
-                        onSendMessage={sendPromptWithDisabledGuard}
-                        lastInteractive={lastInteractive}
-                        onStopChat={requestStopChat}
-                        enableInputGuide={resolvedFeatures.inputGuide}
-                        enableVoiceInput={resolvedFeatures.voice}
-                        disableSend={isRoundPending}
-                        TextareaDom={TextareaDom}
-                        textareaRef={textareaRef}
-                        resetInputVal={resetInputVal}
-                        chatForm={chatForm}
-                        workflowBuilderStyle={resolvedFeatures.workflowBuilderInput}
+    <ChatFeedbackProvider
+      fbTypes={resolvedFeatures.fbTypes}
+      feedbackUserName={feedbackUserName}
+      active={active}
+      sourceKey={sourceKey}
+      chatId={chatId}
+      chatAuthTarget={chatAuthTarget}
+      setChatRecords={setChatRecords}
+      onTriggerRefresh={onTriggerRefresh}
+    >
+      <ChatInstanceActionsContext.Provider value={instanceActions}>
+        <MyBox
+          isLoading={isRecordActionLoading}
+          display={'flex'}
+          flexDirection={'column'}
+          h={'100%'}
+          position={'relative'}
+          {...props}
+        >
+          <Script src={getWebReqUrl('/js/html2pdf.bundle.min.js')} strategy="lazyOnload"></Script>
+          {/* chat box container */}
+          {isHomeRender ? (
+            <MyBox
+              isLoading={showInitialLoading && isInitialLoadingRecords}
+              display="flex"
+              flexDirection="column"
+              flex={'1 0 0'}
+              h={0}
+              {...HomeChatContentWrapperStyle}
+            >
+              {isPc ? (
+                <DesktopHomeLayout inputSlot={HomeChatInput} />
+              ) : (
+                <MobileHomeLayout inputSlot={HomeChatInput} />
+              )}
+              {!isLogMode && complianceTipPlacement !== 'external' && (
+                <ComplianceTip type={'chat'} pt={0} pb={4} />
+              )}
+            </MyBox>
+          ) : (
+            <>
+              <AppChatMain
+                isLoading={showInitialLoading && isInitialLoadingRecords}
+                paginationLoading={paginationLoading}
+                ScrollData={ScrollData}
+                ScrollContainerRef={ScrollContainerRef}
+                welcomeText={welcomeText}
+                welcomeQuestions={resolvedFeatures.quickReplies ? welcomeQuestions : []}
+                chatStarted={chatStarted}
+                chatForm={chatForm}
+                chatType={chatType}
+                recordsListProps={recordsListProps}
+                maxW={props.maxW}
+                boxBodyProps={boxBodyProps}
+                EmptyState={
+                  chatRecords.length === 0 && isChatRecordsLoaded && !isLoadingRecords
+                    ? EmptyState
+                    : undefined
+                }
+              />
+              <Box {...ChatInputWrapperStyle} {...inputBodyProps}>
+                {canRenderChatInput && (
+                  <>
+                    {resolvedFeatures.workorder && <WorkorderEntrance />}
+                    <Box position="relative">
+                      <ScrollToBottomButton
+                        isVisible={canRenderScrollToBottomButton}
+                        onClick={() => scrollToBottom('smooth')}
                       />
-                    </Box>
-                    {isAgentAskPending && activeAsk && (
-                      <Box
-                        w={'100%'}
-                        maxW={inputBodyProps?.maxW ?? ['100%', '780px']}
-                        mx={inputBodyProps?.mx ?? inputBodyProps?.margin ?? 'auto'}
-                        pb={inputBodyProps?.pb ?? ['calc(16px + env(safe-area-inset-bottom))', 4]}
-                      >
-                        <AgentAskComposer
-                          questions={activeAsk.questions}
-                          showOptionValue={!resolvedFeatures.hideAgentAskOptionDescription}
-                          onSubmit={(answers) =>
-                            sendPromptWithDisabledGuard({
-                              select: {
-                                type: 'agentAsk',
-                                questions: activeAsk.questions.map(({ question }, index) => ({
-                                  question,
-                                  value: answers[index] ?? ''
-                                }))
-                              },
-                              interactive: lastInteractive
-                            })
-                          }
+
+                      <Box display={isBlockingInteractivePending ? 'none' : undefined}>
+                        <ChatInput
+                          onSendMessage={sendPromptWithDisabledGuard}
+                          lastInteractive={lastInteractive}
+                          onStopChat={requestStopChat}
+                          enableInputGuide={resolvedFeatures.inputGuide}
+                          enableVoiceInput={resolvedFeatures.voice}
+                          disableSend={isRoundPending}
+                          TextareaDom={TextareaDom}
+                          textareaRef={textareaRef}
+                          resetInputVal={resetInputVal}
+                          chatForm={chatForm}
+                          workflowBuilderStyle={resolvedFeatures.workflowBuilderInput}
                         />
                       </Box>
-                    )}
-                    {isWorkflowBuilderPreviewPending &&
-                      activeInteractive?.type === 'workflowBuilderPreview' && (
+                      {isAgentAskPending && activeAsk && (
                         <Box
                           w={'100%'}
                           maxW={inputBodyProps?.maxW ?? ['100%', '780px']}
                           mx={inputBodyProps?.mx ?? inputBodyProps?.margin ?? 'auto'}
                           pb={inputBodyProps?.pb ?? ['calc(16px + env(safe-area-inset-bottom))', 4]}
                         >
-                          <WorkflowBuilderPreviewComposer interactive={activeInteractive} />
+                          <AgentAskComposer
+                            questions={activeAsk.questions}
+                            showOptionValue={!resolvedFeatures.hideAgentAskOptionDescription}
+                            onSubmit={(answers) =>
+                              sendPromptWithDisabledGuard({
+                                select: {
+                                  type: 'agentAsk',
+                                  questions: activeAsk.questions.map(({ question }, index) => ({
+                                    question,
+                                    value: answers[index] ?? ''
+                                  }))
+                                },
+                                interactive: lastInteractive
+                              })
+                            }
+                          />
                         </Box>
                       )}
-                  </Box>
-                </>
-              )}
-              {!isLogMode && <ComplianceTip type={'chat'} pt={0} pb={4} />}
-            </Box>
-          </>
-        )}
+                      {isWorkflowBuilderPreviewPending &&
+                        activeInteractive?.type === 'workflowBuilderPreview' && (
+                          <Box
+                            w={'100%'}
+                            maxW={inputBodyProps?.maxW ?? ['100%', '780px']}
+                            mx={inputBodyProps?.mx ?? inputBodyProps?.margin ?? 'auto'}
+                            pb={
+                              inputBodyProps?.pb ?? ['calc(16px + env(safe-area-inset-bottom))', 4]
+                            }
+                          >
+                            <WorkflowBuilderPreviewComposer interactive={activeInteractive} />
+                          </Box>
+                        )}
+                    </Box>
+                  </>
+                )}
+                {!isLogMode && complianceTipPlacement !== 'external' && (
+                  <ComplianceTip type={'chat'} pt={0} pb={4} />
+                )}
+              </Box>
+            </>
+          )}
 
-        <ChatBoxModals
-          chatId={chatId}
-          feedbackId={feedbackId}
-          adminMarkData={adminMarkData}
-          onCloseFeedback={() => setFeedbackId(undefined)}
-          onFeedbackSuccess={onFeedbackSuccess}
-          onCloseAdminMark={() => setAdminMarkData(undefined)}
-          onAdminMarkChange={setAdminMarkData}
-          onAdminMarkSuccess={onAdminMarkSuccess}
-        />
-      </MyBox>
-    </ChatInstanceActionsContext.Provider>
+          <ChatBoxModals />
+        </MyBox>
+      </ChatInstanceActionsContext.Provider>
+    </ChatFeedbackProvider>
   );
 };
 const ChatBoxContainer = (props: Props) => {

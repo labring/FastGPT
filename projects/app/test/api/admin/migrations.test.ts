@@ -141,7 +141,7 @@ describe('system migration admin APIs', () => {
     'returns translatable dependency details without waking the runner on %s',
     async (action) => {
       const prerequisiteNameKey =
-        'system_migration:migrations.20261008_migrate_chunk_training.name';
+        'system_migration:migrations.20261022_initialize_dataset_vector_indexes.name';
       const service =
         action === 'start' ? mocks.startManualSystemMigration : mocks.retrySystemMigration;
       const handler = action === 'start' ? startHandler : retryHandler;

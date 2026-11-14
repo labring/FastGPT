@@ -98,6 +98,7 @@ export const FormInputComponent = React.memo(function FormInputComponent({
   });
 
   const runtimeFileUploading = useContextSelector(WorkflowRuntimeContext, (v) => v.fileUploading);
+  const outLinkAuthData = useContextSelector(WorkflowRuntimeContext, (v) => v.outLinkAuthData);
   const formValues = watch();
   const [fileErrorKeys, setFileErrorKeys] = React.useState<Set<string>>(() => new Set());
 
@@ -193,6 +194,7 @@ export const FormInputComponent = React.memo(function FormInputComponent({
                       isDisabled={submitted}
                       isInvalid={!!error}
                       isRichText={false}
+                      outLinkAuthData={outLinkAuthData}
                       onFileErrorChange={(hasError) => updateFileError(input.key, hasError)}
                     />
                     {error && error.message && <FormErrorMessage>{error.message}</FormErrorMessage>}

@@ -37,14 +37,15 @@ const mockJsonRes = vi.mocked(jsonRes);
 
 const pkgPath = '/virtual-fastgpt-plugin-upload-test/tool-a.pkg';
 const zipPath = '/virtual-fastgpt-plugin-upload-test/tools.zip';
+const readFileSync = fs.readFileSync;
 
 describe('POST /api/core/plugin/admin/pkg/upload', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.spyOn(fs, 'readFileSync').mockImplementation((filePath) => {
+    vi.spyOn(fs, 'readFileSync').mockImplementation((filePath, options) => {
       if (filePath === pkgPath) return Buffer.from('pkg-a');
       if (filePath === zipPath) return Buffer.from('zip-content');
-      return Buffer.from('');
+      return readFileSync(filePath, options);
     });
 
     mocks.authSystemAdmin.mockResolvedValue(undefined);
@@ -114,7 +115,8 @@ describe('POST /api/core/plugin/admin/pkg/upload', () => {
 
   it('批量读取 .pkg 和 .zip，并一次性调用新版 SDK uploadPlugin', async () => {
     const req = {
-      method: 'POST'
+      method: 'POST',
+      headers: {}
     } as any;
     const res = {} as any;
 

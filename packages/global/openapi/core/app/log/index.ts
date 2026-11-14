@@ -1,3 +1,4 @@
+import { createChatTargetQueryParameters } from '../../chat/api';
 import type { OpenAPIPath } from '../../../type';
 import { DevApiTagsMap, SystemOpenApiTagMap } from '../../../tag';
 import {
@@ -115,9 +116,7 @@ export const AppLogPath: OpenAPIPath = {
       summary: '获取应用总体数据统计',
       description: '获取应用的总体数据统计，包括总用户数、总对话数、总积分消耗',
       tags: [DevApiTagsMap.appLog, SystemOpenApiTagMap.appLog],
-      requestParams: {
-        query: GetTotalDataQuerySchema
-      },
+      parameters: createChatTargetQueryParameters(GetTotalDataQuerySchema),
       responses: {
         200: {
           description: '成功获取应用总体数据',
@@ -133,7 +132,8 @@ export const AppLogPath: OpenAPIPath = {
   '/proApi/core/app/logs/getChartData': {
     post: {
       summary: '获取应用图表数据',
-      description: '获取应用的图表统计数据，包括用户数据、对话数据、应用数据的时序统计',
+      description:
+        '严格按起止绝对时间查询，不扩展查询窗口；用户、对话及应用数据统一按开始时间自带的固定偏移分组，无偏移时使用服务器时区，不接收独立时区参数。',
       tags: [DevApiTagsMap.appLog, SystemOpenApiTagMap.appLog],
       requestBody: {
         content: {

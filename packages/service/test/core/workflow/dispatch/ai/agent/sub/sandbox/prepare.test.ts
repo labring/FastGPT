@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ChatFileTypeEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { getRunningSandboxId } from '@fastgpt/service/core/ai/sandbox/utils/id';
 
 const {
   prepareAgentSandboxRuntimeMock,
@@ -68,11 +69,12 @@ vi.mock(
       typeof import('@fastgpt/service/core/ai/sandbox/application/runtime/entrypoint')
     >()),
     runSandboxEntrypoint:
-      ({ sandboxEntrypoint }: { sandboxEntrypoint?: string }) =>
+      ({ sandboxEntrypoint, scope }: { sandboxEntrypoint?: string; scope: string }) =>
       async (context: { sandbox: unknown; workDirectory: string }) => {
         await runAgentSandboxEntrypointMock({
           sandbox: context.sandbox,
           sandboxEntrypoint,
+          scope,
           workDirectory: context.workDirectory
         });
         return context;
@@ -164,19 +166,26 @@ describe('ensureAgentSandboxRuntime', () => {
       sourceId: 'app_1',
       userId: 'user_1',
       chatId: 'chat_1',
-      teamId: 'team_1',
       tmbId: 'tmb_1',
       needSandboxRuntime: true,
       sandboxEntrypoint: 'pip install -r requirements.txt',
+      sandboxEntrypointScope: 'app:app_1:node:agent_1',
       skillIds: ['skill_1'],
       prepareActions: [prepareAction],
       currentFiles
     });
 
     expect(withAgentSandboxInitLeaseMock).toHaveBeenCalledWith({
-      sandboxId: 'sandbox_1',
+      sandboxId: getRunningSandboxId({
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: 'app_1',
+        userId: 'user_1'
+      }),
       fn: expect.any(Function)
     });
+    expect(withAgentSandboxInitLeaseMock.mock.invocationCallOrder[0]).toBeLessThan(
+      prepareAgentSandboxRuntimeMock.mock.invocationCallOrder[0]
+    );
     expect(loadWorkflowSkillResourcesMock).toHaveBeenCalledWith({
       skillIds: ['skill_1'],
       tmbId: 'tmb_1'
@@ -206,6 +215,7 @@ describe('ensureAgentSandboxRuntime', () => {
     expect(runAgentSandboxEntrypointMock).toHaveBeenCalledWith({
       sandbox: sandboxProviderMock,
       sandboxEntrypoint: 'pip install -r requirements.txt',
+      scope: 'app:app_1:node:agent_1',
       workDirectory: '/workspace'
     });
     expect(runAgentSkillVersionEntrypointsMock).toHaveBeenCalledWith({
@@ -262,9 +272,9 @@ describe('ensureAgentSandboxRuntime', () => {
       sourceId: 'edit_skill_1',
       userId: 'user_1',
       chatId: 'chat_1',
-      teamId: 'team_1',
       tmbId: 'tmb_1',
       needSandboxRuntime: true,
+      sandboxEntrypointScope: 'skillEdit:edit_skill_1:node:agent_1',
       skillIds: [],
       editSkillId: 'edit_skill_1',
       currentFiles
@@ -304,8 +314,8 @@ describe('ensureAgentSandboxRuntime', () => {
       sourceId: 'edit_skill_1',
       userId: 'user_1',
       chatId: 'chat_1',
-      teamId: 'team_1',
       needSandboxRuntime: true,
+      sandboxEntrypointScope: 'skillEdit:edit_skill_1:node:agent_1',
       skillIds: [],
       editSkillId: 'edit_skill_1',
       prepareActions: [prepareAction],
@@ -385,9 +395,9 @@ describe('ensureAgentSandboxRuntime', () => {
         sourceId: 'app_1',
         userId: 'user_1',
         chatId: 'chat_1',
-        teamId: 'team_1',
         tmbId: 'tmb_1',
         needSandboxRuntime: false,
+        sandboxEntrypointScope: 'app:app_1:node:agent_1',
         skillIds: [],
         currentFiles: []
       })

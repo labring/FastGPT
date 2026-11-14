@@ -192,6 +192,10 @@ export const FastGPTFeConfigsSchema = z.looseObject({
     .boolean()
     .optional()
     .meta({ description: '应用发布渠道中是否展示微信个人号客服' }),
+  show_outlink_brand: BoolSchema.optional().meta({
+    description: '是否展示免登录品牌标识，由服务端环境变量派生',
+    example: false
+  }),
   show_agent_sandbox: z
     .boolean()
     .optional()
@@ -414,8 +418,7 @@ export const SystemEnvSchema = z.looseObject({
   qaMaxProcess: NumSchema.default(10).meta({ description: 'QA 问答对拆分最大并发进程数' }),
   vlmMaxProcess: NumSchema.default(10).meta({ description: '视觉语言模型处理最大并发进程数' }),
 
-  hnswEfSearch: NumSchema.default(100).meta({ description: 'HNSW 向量检索 efSearch 参数' }),
-  hnswMaxScanTuples: NumSchema.default(100000).meta({ description: 'HNSW 向量检索最大扫描元组数' }),
+  hnswEfSearch: NumSchema.default(200).meta({ description: 'HNSW 向量检索 efSearch 参数' }),
   vectorRecallConcurrency: IntSchema.min(0).max(1000).default(0).meta({
     description: '商业版所有向量库召回共享的并发上限，0 表示不限制，仅通过 Admin 配置',
     example: 0

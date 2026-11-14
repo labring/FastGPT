@@ -48,7 +48,8 @@ export async function authOutLinkCrud({
     const { app } = await authAppByTmbId({
       tmbId,
       appId: outLink.appId,
-      per
+      per,
+      isRoot: result.isRoot
     });
 
     return {

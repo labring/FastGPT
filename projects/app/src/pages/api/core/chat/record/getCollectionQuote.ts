@@ -22,6 +22,8 @@ type BaseMatchType = FilterQuery<DatasetDataSchemaType>;
 
 async function handler(req: ApiRequestProps): Promise<GetCollectionQuoteResType> {
   const {
+    customUid,
+    authProxy,
     initialId,
     prevId,
     nextId,
@@ -39,6 +41,8 @@ async function handler(req: ApiRequestProps): Promise<GetCollectionQuoteResType>
   const limitedPageSize = pageSize;
 
   const authRes = await authChatTargetCrud({
+    customUid,
+    authProxy,
     req,
     authToken: true,
     authApiKey: true,

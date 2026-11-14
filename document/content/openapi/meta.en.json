@@ -2,9 +2,12 @@
   "root": true,
   "title": "OpenAPI Documentation",
   "pages": [
+    "api-reference",
     "intro",
-    "app",
-    "chat",
-    "dataset"
+    "best-practices",
+    "interactive-and-variables",
+    "dataset",
+    "identity-proxy",
+    "legacy"
   ]
 }

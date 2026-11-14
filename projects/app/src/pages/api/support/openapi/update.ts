@@ -14,6 +14,8 @@ import {
   type UpdateApiKeyBodyType,
   type UpdateApiKeyResponseType
 } from '@fastgpt/global/openapi/support/openapi/api';
+import { resolveApiKeyScope } from '@fastgpt/service/support/openapi/utils';
+import { ApiKeyTypeEnum } from '@fastgpt/global/support/openapi/constants';
 
 async function handler(
   req: ApiRequestProps<UpdateApiKeyBodyType>
@@ -29,12 +31,15 @@ async function handler(
     id: _id
   });
 
+  const scope = resolveApiKeyScope(openapi);
+  if (scope.type === ApiKeyTypeEnum.app && (authProxy !== undefined || tags !== undefined)) {
+    throw OpenApiErrEnum.unAuth;
+  }
   if (authProxy !== undefined) {
-    // 旧应用 key 仅作为 completions appId 兼容来源，不能开启 authProxy。
-    if (openapi.appId && authProxy) {
-      return Promise.reject(OpenApiErrEnum.unAuth);
+    // 历史默认应用不是强绑定，但仍保留旧协议禁止成员代理的限制。
+    if (authProxy && scope.type === ApiKeyTypeEnum.personal && scope.defaultAppId) {
+      throw OpenApiErrEnum.unAuth;
     }
-
     if (authProxy && !permission.isOwner) {
       return Promise.reject(TeamErrEnum.unPermission);
     }
@@ -55,7 +60,10 @@ async function handler(
       teamId,
       event: AuditEventEnum.UPDATE_API_KEY,
       params: {
-        keyName: name || openapi.name
+        keyName: name || openapi.name,
+        keyId: String(openapi._id),
+        keyType: scope.type,
+        ...(scope.type === ApiKeyTypeEnum.app ? { appId: scope.appId } : {})
       }
     });
   })();

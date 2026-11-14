@@ -1,7 +1,7 @@
 import { authChatTargetCrud } from '@fastgpt/service/core/chat/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import type { ApiRequestProps } from '@fastgpt/next/type';
-import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
+import type { ChatAuthProxy, OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { serviceEnv } from '@fastgpt/service/env';
 import { timingSafeEqual } from 'crypto';
@@ -15,6 +15,8 @@ export type AuthSandboxSessionParams = {
   sourceType: ChatSourceTypeEnum;
   sourceId?: string;
   chatId: string;
+  customUid?: string;
+  authProxy?: ChatAuthProxy;
   outLinkAuthData?: OutLinkChatAuthProps;
   per?: number;
 };
@@ -37,6 +39,8 @@ export async function authSandboxSession({
   sourceType,
   sourceId,
   chatId,
+  customUid,
+  authProxy,
   outLinkAuthData,
   per = ReadPermissionVal
 }: AuthSandboxSessionParams): Promise<SandboxSessionAuthResult> {
@@ -45,22 +49,26 @@ export async function authSandboxSession({
   }
 
   const authResult = await authChatTargetCrud({
+    allowMissingChat: true,
     req,
     authToken: true,
     authApiKey: true,
     sourceType,
     sourceId,
     chatId,
+    customUid,
+    authProxy,
     outLinkAuthData,
     per
   });
 
   // 普通 Chat 鉴权只证明会话可访问；写入沙盒文件时还需要显式校验 App 写权限。
-  if (sourceType === ChatSourceTypeEnum.app && per !== ReadPermissionVal) {
+  if (sourceType === ChatSourceTypeEnum.app && per !== ReadPermissionVal && !authResult.isProxy) {
     await authApp({
       req,
       authToken: true,
       authApiKey: true,
+      authAppApiKey: true,
       appId: authResult.sourceId,
       per
     });

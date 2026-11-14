@@ -4,6 +4,7 @@ import { TrackEnum } from '@fastgpt/global/common/middle/tracks/constants';
 
 const TrackSchema = new Schema({
   event: { type: String, required: true, enum: Object.values(TrackEnum) },
+  eventId: String,
   uid: String,
   teamId: String,
   tmbId: String,
@@ -12,6 +13,17 @@ const TrackSchema = new Schema({
 });
 
 defineIndex(TrackSchema, { key: { event: 1 } });
+// 曝光重试由数据库原子去重；排除缺少 ID 的历史记录，不影响点击逐次写入。
+defineIndex(TrackSchema, {
+  key: { event: 1, eventId: 1 },
+  options: {
+    unique: true,
+    partialFilterExpression: {
+      event: TrackEnum.shareBrandExposure,
+      eventId: { $type: 'string' }
+    }
+  }
+});
 // Dataset search index
 defineIndex(TrackSchema, {
   key: { event: 1, teamId: 1, 'data.datasetId': 1, createTime: -1 },

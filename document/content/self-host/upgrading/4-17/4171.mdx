@@ -2,6 +2,9 @@
 title: 'V4.17.1'
 description: 'FastGPT V4.17.1 更新说明'
 releaseTime: '2026-09-30'
+upgradeTags:
+  - 配置变更
+  - 升级脚本
 ---
 
 ## 📦 升级指南
@@ -15,27 +18,27 @@ releaseTime: '2026-09-30'
 
 ### AI Proxy 环境变量配置
 
-升级 AI Proxy 镜像时，还需在 **AI Proxy 服务**中添加环境变量 `ENABLE_ADMIN_BYPASS_CHANNEL_MODEL_CHECK=true`。该变量默认为 `false`，开启后允许管理员在渠道尚未绑定模型时，指定该渠道和模型标识符进行测试，无需先将模型加入渠道的模型列表；未配置时，此类测试会被渠道模型列表校验拒绝。
+升级 AI Proxy 镜像时，还需在 **AI Proxy 服务**中添加环境变量 `ENABLE_ADMIN_BYPASS_CHANNEL_MODEL_CHECK=true`。该变量默认为 `false`，开启后允许管理员在渠道尚未绑定模型时，指定该渠道和模型标识符进行测试，无需先将模型加入渠道的模型列表；未配置时，此类测试会被渠道模型列表校验拒绝。官方 docker-compose 模板未内置该变量，需手动添加。
 
-使用 Docker Compose 部署时，在 `aiproxy` 服务的 `environment` 中追加以下配置，保留已有环境变量：
+使用 Docker Compose 部署时，在 `fastgpt-aiproxy` 服务的 `environment` 中追加以下配置，保留已有环境变量：
 
 ```yaml
 services:
-  aiproxy:
+  fastgpt-aiproxy:
     environment:
-      - ENABLE_ADMIN_BYPASS_CHANNEL_MODEL_CHECK=true
+      ENABLE_ADMIN_BYPASS_CHANNEL_MODEL_CHECK: 'true'
 ```
 
-保存配置后执行 `docker compose up -d aiproxy`，重新创建 AI Proxy 容器使环境变量生效，再到管理员的系统模型页面进行测试。
+保存配置后执行 `docker compose up -d fastgpt-aiproxy`，重新创建 AI Proxy 容器使环境变量生效，再到管理员的系统模型页面进行测试。
 
 ### 升级脚本
 
-本次升级包含以下自动化脚本
+本次升级包含以下自动化脚本：
 
-1. 回填应用资源权限快照，清理遗留 V1 应用及版本数据，并校验应用正式版本；迁移任务不阻塞服务启动，可在系统升级任务中查看进度和失败记录。
-2. 为兼容渠道启用 reasoning 映射：为现有 AIProxy OpenAI 协议渠道开启 `map_reasoning_to_reasoning_content: true` 的响应字段转换，解决深度思考模型（如 DeepSeek-R1）的思考内容字段兼容问题，并保留渠道的原有配置；已配置该项的渠道不会重复更新，迁移任务不阻塞服务启动。
-3. 升级知识库标签数据：将存量 Collection 标签迁移为类型化标签，并清理重复标签定义；迁移任务不阻塞服务启动。
-4. 回填团队成员名设置标记：为历史团队成员回填 `isSetMemberName` 标记；owner 始终标记为已设置，非 owner 中与登录用户名相同的成员名标记为需要补充；迁移任务不阻塞服务启动。
+1. **回填应用资源快照**（`20260916_backfill_app_resource_snapshots`）：回填应用资源权限快照，清理遗留 V1 应用及版本数据，并校验应用正式版本；迁移任务不阻塞服务启动，可在「管理员 > 版本升级」中查看进度和失败记录。
+2. **为 OpenAI 协议渠道启用 reasoning 映射**（`20260923_enable_channel_reasoning_mapping`）：为现有 AIProxy OpenAI 协议渠道开启 `map_reasoning_to_reasoning_content: true` 的响应字段转换，解决深度思考模型（如 DeepSeek-R1）的思考内容字段兼容问题，并保留渠道的原有配置；已配置该项的渠道不会重复更新，迁移任务不阻塞服务启动。
+3. **升级知识库标签数据**（`20260907_migrate_dataset_tags_v2`）：将存量 Collection 标签迁移为类型化标签，并清理重复标签定义；迁移任务不阻塞服务启动。
+4. **回填团队成员名设置标记**（`20260928_backfill_member_name_set`）：为历史团队成员回填 `isSetMemberName` 标记；owner 始终标记为已设置，非 owner 中与登录用户名相同的成员名标记为需要补充；迁移任务不阻塞服务启动。
 
 ## 管理员入口调整
 
@@ -53,8 +56,8 @@ FastGPT Pro 服务仍需保留；若为 Pro 配置了自定义健康检查，请
 6. App、Agent、Skill、工具和 Dataset 列表支持批量选择、移动和删除，并根据管理权限限制可操作资源。
 7. 管理员功能统一集成到主应用，支持按 License 授权展示管理菜单和功能状态。
 8. 文件读取节点调试支持本地上传文件和添加文件链接，并在上传未完成或文件异常时阻止运行。
-9. 新增知识库文件级权限（集合级权限）：可按文件/文件夹单独配置协作者，并支持继承与独立态、恢复继承、所有权转移。开关默认关闭，存量知识库行为不变；开启后列表、详情与检索召回均按文件权限逐条鉴权，关闭则清空全部文件权限配置。详见 [知识库文件级权限](../../../guide/dataset/collection_permission)。
-10. 系统模型健康状态探测与监控：管理员支持开启系统模型健康状态定时探测，提供 48 小时状态图可视化监控，并支持配置告警 Webhook 和 Token，在模型状态发生变动时触发 Webhook 通知。详见 [系统模型配置与监控](../../config/model/intro)。
+9. 新增知识库文件级权限（集合级权限）：可按文件/文件夹单独配置协作者，并支持继承与独立态、恢复继承、所有权转移。开关默认关闭，存量知识库行为不变；开启后列表、详情与检索召回均按文件权限逐条鉴权，关闭则清空全部文件权限配置。详见 [知识库文件级权限](/zh-CN/guide/dataset/collection_permission)。
+10. 系统模型健康状态探测与监控：管理员支持开启系统模型健康状态定时探测，提供 48 小时状态图可视化监控，并支持配置告警 Webhook 和 Token，在模型状态发生变动时触发 Webhook 通知。详见 [系统模型配置与监控](/zh-CN/self-host/config/model/intro)。
 11. 首次登录待办与引导流程：首次登录支持强制要求补齐团队成员显示姓名，自动提示并处理待确认的团队邀请，并统一编排系统公告与企业认证提示等后续弹窗。
 12. 系统模型标识符修改：管理员支持通过稳定的 `modelId` 直接修改系统模型的模型标识符（`model`），并自动同步更新关联渠道的模型映射与列表。
 13. 支持 OFD 文件解析。

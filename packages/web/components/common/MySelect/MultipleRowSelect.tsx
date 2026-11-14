@@ -6,7 +6,6 @@ import {
   Box,
   Flex,
   Checkbox,
-  css,
   Menu,
   MenuButton,
   MenuList
@@ -29,7 +28,6 @@ type RenderListProps = {
   changeOnEverySelect: boolean;
   emptyTip?: string;
   maxH: number;
-  minWidth: string;
   rowMinWidth: string;
   MenuRef: React.MutableRefObject<(HTMLDivElement | null)[]>;
   SelectedItemRef: React.MutableRefObject<(HTMLDivElement | null)[]>;
@@ -46,7 +44,6 @@ const RenderList = React.memo(function RenderList({
   changeOnEverySelect,
   emptyTip,
   maxH,
-  minWidth,
   rowMinWidth,
   MenuRef,
   SelectedItemRef
@@ -82,10 +79,10 @@ const RenderList = React.memo(function RenderList({
           MenuRef.current[index] = ref;
         }}
         className="nowheel"
-        flex={'1 0 auto'}
+        flex={'1 1 auto'}
         px={2}
         borderLeft={index !== 0 ? 'base' : 'none'}
-        minW={index !== 0 ? minWidth : rowMinWidth}
+        minW={index !== 0 ? '80px' : rowMinWidth === 'auto' ? 0 : rowMinWidth}
         maxH={`${maxH}px`}
         overflowY={'auto'}
         whiteSpace={'nowrap'}
@@ -158,7 +155,6 @@ const RenderList = React.memo(function RenderList({
           changeOnEverySelect={changeOnEverySelect}
           emptyTip={emptyTip}
           maxH={maxH}
-          minWidth={minWidth}
           rowMinWidth={rowMinWidth}
           MenuRef={MenuRef}
           SelectedItemRef={SelectedItemRef}
@@ -202,7 +198,6 @@ export const MultipleRowSelect = ({
   const resolvedCloneValue =
     isOpen && !list.some((item) => item.value === safeCloneValue[0]) ? safeValue : safeCloneValue;
 
-  const minWidth = `${MenuRef.current?.[0]?.offsetWidth || 0}px`;
   const onOpenSelect = useCallback(() => {
     setCloneValue(Array.isArray(value) ? value : []);
     onOpen();
@@ -212,21 +207,14 @@ export const MultipleRowSelect = ({
   useCloseOnFlowNodeDragAreaPointerDown(OutsideClickRef, onClose, isOpen);
 
   return (
-    <Box
-      ref={OutsideClickRef}
-      css={css({
-        '& div:not([data-preserve-width])': {
-          width: 'auto !important'
-        }
-      })}
-    >
+    // 保留标签自身的截断宽度，避免长名称撑大控件和后续音色列。
+    <Box ref={OutsideClickRef} minW={0} maxW={'100%'}>
       <Menu
         autoSelect={false}
         isOpen={isOpen}
         onOpen={onOpenSelect}
         onClose={onClose}
         strategy={'fixed'}
-        matchWidth
       >
         <MenuButton
           as={Button}
@@ -286,7 +274,9 @@ export const MultipleRowSelect = ({
               ? width.map((item) => `${item} !important`)
               : `${width} !important`;
           })()}
-          w={'auto'}
+          // 菜单按各列内容展开；触发器宽度仅作下限，避免音色等子列被挤压裁切。
+          w={'max-content'}
+          maxW={'calc(100vw - 24px)'}
           py={'6px'}
           border={'1px solid #fff'}
           boxShadow={
@@ -321,7 +311,6 @@ export const MultipleRowSelect = ({
               changeOnEverySelect={changeOnEverySelect}
               emptyTip={emptyTip}
               maxH={maxH}
-              minWidth={minWidth}
               rowMinWidth={rowMinWidth}
               MenuRef={MenuRef}
               SelectedItemRef={SelectedItemRef}

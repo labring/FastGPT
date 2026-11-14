@@ -4,9 +4,15 @@ import { getLogger, LogCategories } from '../../../common/logger';
 import { clearCookie } from '../../../support/permission/auth/common';
 import { STREAM_RESUME_REQUEST_HEADER } from '@fastgpt/global/core/chat/constants';
 import type { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
-import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
+import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
+import { stripModerationRecordsFromNodeResponses } from '@fastgpt/global/core/chat/utils';
+import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import {
+  workflowSseEvent,
+  type WorkflowResponseType
+} from '@fastgpt/global/core/workflow/runtime/sse';
 import { createSseStreamContext } from '../../../common/response/sse';
-import { getStreamResumeMirror } from '../../chat/resume';
+import { getStreamResumeMirror, startStreamResumeMirrorKeepAlive } from '../../chat/resume';
 import { getWorkflowResponseWrite } from '../dispatch/utils';
 
 const logger = getLogger(LogCategories.MODULE.CHAT.RESUME);
@@ -139,6 +145,8 @@ export async function createWorkflowStreamResponseContext({
           chatId
         })
       : undefined;
+  const stopMirrorKeepAlive = startStreamResumeMirrorKeepAlive(mirror);
+  res.once('finish', stopMirrorKeepAlive);
 
   const responseWrite = getWorkflowResponseWrite({
     res,
@@ -160,7 +168,7 @@ export async function createWorkflowStreamResponseContext({
     writeStreamError(error: unknown) {
       if (!stream) return;
 
-      const { event, data, shouldClearCookie } = getSseErrorResponse(error);
+      const { event, data, shouldClearCookie } = getSseErrorResponse(error, res);
       if (shouldClearCookie) {
         clearCookie(res);
       }
@@ -177,6 +185,7 @@ export async function createWorkflowStreamResponseContext({
     flushResume() {
       // 完成与 finally 可重复调用，共享同一次缓存写入等待与 TTL 收尾。
       flushPromise ??= (async () => {
+        stopMirrorKeepAlive();
         // 分别处理两步的异常，缓存写入失败时仍需尝试 TTL 收尾。
         await mirror?.flush().catch((error) => {
           logger.error('Failed to flush workflow stream resume cache', {
@@ -201,3 +210,30 @@ export async function createWorkflowStreamResponseContext({
     }
   };
 }
+
+/**
+ * 在写入 SSE 与续流镜像前按写权限过滤节点响应中的 `moderationRecords`，不影响已持久化的节点记录。
+ */
+export const createModerationFilteredWorkflowResponse = ({
+  responseWrite,
+  canReadModerationRecords = false
+}: {
+  responseWrite: WorkflowResponseType;
+  canReadModerationRecords?: boolean;
+}): WorkflowResponseType => {
+  return (event) => {
+    if (
+      !canReadModerationRecords &&
+      event.event === SseResponseEventEnum.flowNodeResponse &&
+      typeof event.data !== 'string'
+    ) {
+      responseWrite({
+        id: event.id,
+        event: SseResponseEventEnum.flowNodeResponse,
+        data: stripModerationRecordsFromNodeResponses([event.data as ChatHistoryItemResType])[0]
+      });
+      return;
+    }
+    responseWrite(event);
+  };
+};

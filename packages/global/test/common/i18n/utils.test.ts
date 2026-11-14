@@ -88,6 +88,20 @@ describe('parseI18nString', () => {
 
     expect(parseI18nString(i18n, 'zh-CN')).toBe('');
   });
+
+  it('should treat an empty zh-Hant translation as missing and fall back to zh-CN', () => {
+    const i18n: I18nStringType = {
+      en: 'Hello',
+      'zh-CN': '你好',
+      'zh-Hant': ''
+    };
+
+    expect(parseI18nString(i18n, 'zh-Hant')).toBe('你好');
+  });
+
+  it('should fall back to en when zh-Hant is empty and zh-CN is missing', () => {
+    expect(parseI18nString({ en: 'Hello', 'zh-Hant': '' }, 'zh-Hant')).toBe('Hello');
+  });
 });
 
 describe('selectPluginText', () => {

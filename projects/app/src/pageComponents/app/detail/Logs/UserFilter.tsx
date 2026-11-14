@@ -1,3 +1,4 @@
+import { formatToISOWithTimezone } from '@fastgpt/global/common/string/time';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import {
@@ -14,7 +15,6 @@ import type {
   GetLogUsersResponse,
   LogUserType
 } from '@fastgpt/global/openapi/core/app/log/api';
-import dayjs from 'dayjs';
 import type { DateRangeType } from '@fastgpt/web/components/common/DateRangePicker';
 
 export type SelectedUserType = {
@@ -62,18 +62,19 @@ const UserFilter = ({
   const requestParams = useMemo<Omit<GetLogUsersBody, 'offset' | 'pageSize'>>(
     () => ({
       appId,
-      dateStart: dayjs(dateRange.from || new Date()).format(),
-      dateEnd: dayjs(dateRange.to || new Date()).format(),
+      dateStart: formatToISOWithTimezone(dateRange.from),
+      dateEnd: formatToISOWithTimezone(dateRange.to),
       searchKey: searchKey || undefined,
       sources
     }),
     [appId, dateRange.from, dateRange.to, searchKey, sources]
   );
 
-  const { data: users = [], ScrollData } = useScrollPagination<
-    GetLogUsersBody,
-    GetLogUsersResponse
-  >(getLogUsers, {
+  const {
+    data: users = [],
+    ScrollData,
+    isInitialLoading
+  } = useScrollPagination<GetLogUsersBody, GetLogUsersResponse>(getLogUsers, {
     pageSize: USER_PAGE_SIZE,
     params: requestParams,
     disabled: !menuOpened,
@@ -138,6 +139,7 @@ const UserFilter = ({
       filterLocal={false}
       onOpen={() => setMenuOpened(true)}
       ListContainer={ScrollData}
+      isLoading={isInitialLoading}
     />
   );
 };

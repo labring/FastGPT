@@ -63,10 +63,24 @@ describe('getTimezoneCodeFromStr', () => {
     expect(getTimezoneCodeFromStr('2024-01-01 12:00:00-05:30')).toBe('-05:30');
   });
 
-  it('should return default for missing or invalid timezone', () => {
-    expect(getTimezoneCodeFromStr('2024-01-01 12:00:00')).toBe('+00:00');
-    expect(getTimezoneCodeFromStr('UTC')).toBe('+00:00');
-    expect(getTimezoneCodeFromStr(new Date())).toBe('+00:00');
+  afterEach(() => vi.unstubAllEnvs());
+
+  it.each([
+    { server: 'UTC', winter: '+00:00', summer: '+00:00' },
+    { server: 'Asia/Shanghai', winter: '+08:00', summer: '+08:00' },
+    { server: 'America/New_York', winter: '-05:00', summer: '-04:00' }
+  ])('uses server offsets only when none were supplied: $server', ({ server, winter, summer }) => {
+    vi.stubEnv('TZ', server);
+    for (const [time, expected] of [
+      ['2026-01-15T12:00:00.000', winter],
+      ['2026-07-15T12:00:00.000', summer]
+    ]) {
+      expect(getTimezoneCodeFromStr(time)).toBe(expected);
+      expect(getTimezoneCodeFromStr(new Date(`${time}Z`))).toBe(expected);
+      expect(getTimezoneCodeFromStr(`${time}Z`)).toBe('+00:00');
+      expect(getTimezoneCodeFromStr(`${time}+05:45`)).toBe('+05:45');
+    }
+    expect(getTimezoneCodeFromStr('invalid')).toBe(getTimezoneCodeFromStr(new Date()));
   });
 });
 

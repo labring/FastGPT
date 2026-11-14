@@ -1,4 +1,5 @@
 'use client';
+import { getLocalDateRange } from '@fastgpt/global/common/time/dateRange';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Flex, Box, Button, useDisclosure } from '@chakra-ui/react';
 import type { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
@@ -28,7 +29,8 @@ import {
 import UsageTableList from '@/pageComponents/account/usage/UsageTable';
 import { type UnitType } from '@/pageComponents/account/usage/type';
 import UsageRechargeModal from '@/pageComponents/account/usage/UsageRechargeModal';
-import TeamMemberFilter from '@/components/support/user/TeamMemberFilter';
+import UsageSubjectFilter from '@/pageComponents/account/usage/UsageSubjectFilter';
+import { useUsageFilterController } from '@/pageComponents/account/usage/useUsageFilterController';
 const UsageDashboard = dynamic(() => import('@/pageComponents/account/usage/Dashboard'));
 
 export enum UsageTabEnum {
@@ -49,11 +51,9 @@ const UsageTable = () => {
   } = useDisclosure();
 
   const [unit] = useState<UnitType>('day');
-  const [dateRange, setDateRange] = useState<DateRangeType>({
-    from: addDays(new Date(), -7),
-    to: new Date()
-  });
-  const [memberFilter, setMemberFilter] = useState(createMultiSelectFilter());
+  const [dateRange, setDateRange] = useState<DateRangeType>(() =>
+    getLocalDateRange(addDays(new Date(), -7), new Date())
+  );
   const [sourceFilter, setSourceFilter] =
     useState<MultiSelectFilterValue<UsageSourceEnum>>(createMultiSelectFilter());
 
@@ -68,6 +68,15 @@ const UsageTable = () => {
 
   const [projectName, setProjectName] = useState<string>('');
   const [inputValue] = useState('');
+  const filterParams = useMemo(
+    () => ({ dateRange, sourceFilter, projectName, unit }),
+    [dateRange, projectName, sourceFilter, unit]
+  );
+  const controller = useUsageFilterController({
+    teamId: userInfo?.team.teamId,
+    canManage: userInfo?.team.permission.hasManagePer ?? false,
+    filters: filterParams
+  });
 
   const Tabs = useMemo(
     () => (
@@ -109,13 +118,7 @@ const UsageTable = () => {
           dateRange={dateRange}
           onSuccess={setDateRange}
         />
-        {userInfo?.team?.permission.hasManagePer && (
-          <TeamMemberFilter
-            title={t('account_usage:member')}
-            value={memberFilter}
-            onChange={setMemberFilter}
-          />
-        )}
+        <UsageSubjectFilter controller={controller} />
         <MultiSelectFilter
           title={t('account_usage:source')}
           value={sourceFilter}
@@ -125,15 +128,7 @@ const UsageTable = () => {
         />
       </Flex>
     ),
-    [
-      t,
-      dateRange,
-      userInfo?.team?.permission.hasManagePer,
-      memberFilter,
-      sourceFilter,
-      sourceOptions,
-      labels
-    ]
+    [t, dateRange, controller, sourceFilter, sourceOptions, labels]
   );
 
   useEffect(() => {
@@ -143,17 +138,6 @@ const UsageTable = () => {
 
     return () => clearTimeout(timer);
   }, [inputValue]);
-
-  const filterParams = useMemo(
-    () => ({
-      dateRange,
-      memberFilter,
-      sourceFilter,
-      projectName,
-      unit
-    }),
-    [dateRange, memberFilter, projectName, sourceFilter, unit]
-  );
 
   return (
     <AccountContainer>
@@ -184,10 +168,10 @@ const UsageTable = () => {
           flexDirection={'column'}
         >
           {usageTab === UsageTabEnum.detail && (
-            <UsageTableList filterParams={filterParams} Tabs={Tabs} Selectors={Selectors} />
+            <UsageTableList controller={controller} Tabs={Tabs} Selectors={Selectors} />
           )}
           {usageTab === UsageTabEnum.dashboard && (
-            <UsageDashboard filterParams={filterParams} Tabs={Tabs} Selectors={Selectors} />
+            <UsageDashboard controller={controller} Tabs={Tabs} Selectors={Selectors} />
           )}
         </Box>
         {isOpenUsageRecharge && (

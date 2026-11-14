@@ -1,5 +1,6 @@
+import { getLocalDateRange } from '@fastgpt/global/common/time/dateRange';
 import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
-import { Box, Flex, Table, Tbody, Td, Th, Thead, Tr } from '@chakra-ui/react';
+import { Box, Button, Flex, Table, Tbody, Td, Th, Thead, Tr } from '@chakra-ui/react';
 import { useMemo, useRef, useState } from 'react';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import MyBox from '@fastgpt/web/components/common/MyBox';
@@ -19,13 +20,32 @@ import {
   type MultiSelectFilterValue,
   useCommonFilterLabels
 } from '@fastgpt/web/components/common/TagFilter';
-import { processAuditMetadata } from './processors';
+import { processAuditMetadata } from '@fastgpt/web/support/user/audit/processors';
 import TeamMemberFilter from '@/components/support/user/TeamMemberFilter';
+import DateRangePicker, {
+  type DateRangeType
+} from '@fastgpt/web/components/common/DateRangePicker';
+import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import { formatToISOWithTimezone } from '@fastgpt/global/common/string/time';
+import { downloadFetch } from '@/web/common/system/utils';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { parseLocale } from '@fastgpt/global/common/i18n/utils';
+import dayjs from 'dayjs';
 
 function AuditLog({ Tabs }: { Tabs: React.ReactNode }) {
-  const { t } = useSafeTranslation();
+  /** 最近七个本地自然日含今天，按日历日期计算并补齐首尾边界。 */
+  const getDefaultAuditDateRange = (now = new Date()): DateRangeType => {
+    const from = new Date(now);
+    from.setDate(from.getDate() - 6);
+    return getLocalDateRange(from, now);
+  };
+
+  const { t, i18n } = useSafeTranslation();
   const labels = useCommonFilterLabels();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [dateRange, setDateRange] = useState(getDefaultAuditDateRange);
+  const exportInProgress = useRef(false);
   const [memberFilter, setMemberFilter] = useState(createMultiSelectFilter());
   const [eventFilter, setEventFilter] =
     useState<MultiSelectFilterValue<TeamAuditEvent>>(createMultiSelectFilter());
@@ -42,10 +62,12 @@ function AuditLog({ Tabs }: { Tabs: React.ReactNode }) {
 
   const searchParams = useMemo(
     () => ({
+      dateStart: formatToISOWithTimezone(dateRange.from),
+      dateEnd: formatToISOWithTimezone(dateRange.to),
       tmbIds: toMultiSelectFilterQuery(memberFilter),
       events: toMultiSelectFilterQuery(eventFilter)
     }),
-    [eventFilter, memberFilter]
+    [dateRange, eventFilter, memberFilter]
   );
 
   const {
@@ -63,6 +85,19 @@ function AuditLog({ Tabs }: { Tabs: React.ReactNode }) {
     scrollContainerRef
   });
 
+  const { run: exportLogs, loading: exporting } = useRequest(async () => {
+    if (exportInProgress.current) return;
+    exportInProgress.current = true;
+    try {
+      await downloadFetch({
+        url: '/api/proApi/support/user/team/audit/export',
+        filename: `${t('account_team:audit_export_filename')}_${dayjs(dateRange.from).format('YYYY-MM-DD')}_${dayjs(dateRange.to).format('YYYY-MM-DD')}_${dayjs().format('YYYY-MM-DD_HH-mm-ss')}.csv`,
+        body: { ...searchParams, locale: parseLocale(i18n.language) ?? 'en' }
+      });
+    } finally {
+      exportInProgress.current = false;
+    }
+  });
   const isLoading = loadingLogs;
 
   return (
@@ -85,7 +120,15 @@ function AuditLog({ Tabs }: { Tabs: React.ReactNode }) {
           gap={2}
           wrap={'wrap'}
         >
+          <DateRangePicker
+            formLabel={t('account_team:log_time')}
+            dateRange={dateRange}
+            defaultDate={dateRange}
+            historyLimitDays={null}
+            onSuccess={setDateRange}
+          />
           <TeamMemberFilter
+            activeOnly={false}
             title={t('account_team:log_user')}
             value={memberFilter}
             onChange={setMemberFilter}
@@ -98,6 +141,18 @@ function AuditLog({ Tabs }: { Tabs: React.ReactNode }) {
             labels={labels}
             showSearch
           />
+          <MyTooltip label={total === 0 ? t('account_team:audit_empty') : ''}>
+            <Box>
+              <Button
+                variant={'whitePrimary'}
+                isLoading={exporting}
+                isDisabled={isLoading || total === 0}
+                onClick={exportLogs}
+              >
+                {t('common:Export')}
+              </Button>
+            </Box>
+          </MyTooltip>
         </Flex>
       </Flex>
 
@@ -145,9 +200,29 @@ function AuditLog({ Tabs }: { Tabs: React.ReactNode }) {
               </Tr>
             </Thead>
             <Tbody>
+              {auditLog.length === 0 && !isLoading && (
+                <Tr>
+                  <Td colSpan={4}>
+                    <EmptyTip
+                      text={
+                        <>
+                          <Box>{t('account_team:audit_empty')}</Box>
+                          <Button
+                            variant={'link'}
+                            mt={3}
+                            onClick={() => setDateRange(getDefaultAuditDateRange())}
+                          >
+                            {t('account_team:audit_reset_time')}
+                          </Button>
+                        </>
+                      }
+                    />
+                  </Td>
+                </Tr>
+              )}
               {auditLog.map((log) => {
                 const i18nData = auditLogMap[log.event];
-                const metadata = processAuditMetadata({
+                const metadata: Record<string, unknown> = processAuditMetadata({
                   event: log.event,
                   metadata: log.metadata,
                   t
@@ -170,7 +245,7 @@ function AuditLog({ Tabs }: { Tabs: React.ReactNode }) {
                       wordBreak={['normal', 'break-word']}
                       overflowWrap={['normal', 'anywhere']}
                     >
-                      {t(i18nData.content as any, metadata)}
+                      {t(i18nData.content, metadata)}
                     </Td>
                   </Tr>
                 ) : null;

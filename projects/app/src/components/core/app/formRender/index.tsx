@@ -211,6 +211,7 @@ const InputRender = (props: InputRenderProps) => {
       <AIModelSelector
         {...commonProps}
         modelType={ModelTypeEnum.llm}
+        appId={props.appId}
         outLinkAuthData={props.outLinkAuthData}
       />
     );

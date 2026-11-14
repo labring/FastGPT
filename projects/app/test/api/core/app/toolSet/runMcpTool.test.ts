@@ -29,17 +29,23 @@ describe('MCP tool debug handler', () => {
   it('forwards request metadata separately from business params', async () => {
     const requestMeta = { 'example/context': { locale: 'zh-CN' } };
     const params = { _meta: 'business parameter', query: 'hello' };
-    await runMcpTool({
-      body: { url: 'https://example.com/mcp', toolName: 'search', params, requestMeta }
-    } as ApiRequestProps<RunMcpToolBodyType>);
+    await runMcpTool(
+      {
+        body: { url: 'https://example.com/mcp', toolName: 'search', params, requestMeta }
+      } as unknown as ApiRequestProps<RunMcpToolBodyType>,
+      {} as Parameters<typeof runMcpTool>[1]
+    );
     expect(mocks.toolCall).toHaveBeenCalledWith({ toolName: 'search', params, requestMeta });
   });
 
   it('rejects metadata that is not a JSON object before calling the server', async () => {
     await expect(
-      runMcpTool({
-        body: { url: 'https://example.com/mcp', toolName: 'search', params: {}, requestMeta: [] }
-      } as unknown as ApiRequestProps<RunMcpToolBodyType>)
+      runMcpTool(
+        {
+          body: { url: 'https://example.com/mcp', toolName: 'search', params: {}, requestMeta: [] }
+        } as unknown as ApiRequestProps<RunMcpToolBodyType>,
+        {} as Parameters<typeof runMcpTool>[1]
+      )
     ).rejects.toThrow();
     expect(mocks.toolCall).not.toHaveBeenCalled();
   });

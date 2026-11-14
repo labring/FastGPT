@@ -127,6 +127,7 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
             return {
               inputType: it,
               formParams: {
+                appId: appDetail._id,
                 maxLength: variable.maxLength,
                 minLength: variable.minLength,
                 min: variable.min,
@@ -203,6 +204,7 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
             </FormLabel>
             <Box ml={2}>
               <NodeInputSelect
+                strategy="absolute"
                 renderTypeList={[inputType, FlowNodeInputTypeEnum.reference]}
                 selectedType={updateItem.renderType}
                 onChange={(e) => {

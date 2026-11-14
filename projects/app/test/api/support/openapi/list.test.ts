@@ -1,3 +1,4 @@
+import { ApiKeyTypeEnum } from '@fastgpt/global/support/openapi/constants';
 import { describe, expect, it } from 'vitest';
 import handler from '@/pages/api/support/openapi/list';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
@@ -6,11 +7,19 @@ import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { getFakeUsers, getRootUser } from '@test/datas/users';
 import { Call } from '@test/utils/request';
 import { MongoOpenApiTag } from '@fastgpt/service/support/openapi/tag/schema';
+import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 
 describe('support/openapi/list', () => {
   it('团队级 APIKey 列表对有复制权限的记录返回脱敏值和复制权限', async () => {
     const user = await getRootUser();
+    await MongoTeamMember.updateOne(
+      { _id: user.tmbId },
+      {
+        $set: { name: '当前成员', avatar: '/imgs/member.png' }
+      }
+    );
     await MongoOpenApi.create({
+      type: ApiKeyTypeEnum.personal,
       teamId: user.teamId,
       tmbId: user.tmbId,
       apiKey: 'fastgpt-team-secret',
@@ -26,6 +35,12 @@ describe('support/openapi/list', () => {
     expect(result.data[0].apiKey).toBe('******cret');
     expect(result.data[0].canCopy).toBe(true);
     expect(result.data[0].authProxy).toBe(false);
+    expect(result.data[0].sourceMember).toEqual({
+      name: '当前成员',
+      avatar: '/imgs/member.png',
+      status: 'active'
+    });
+    expect(result.data[0]).not.toHaveProperty('tmbName');
   });
 
   it('团队级 APIKey 列表只返回当前登录成员自己的记录', async () => {
@@ -34,12 +49,14 @@ describe('support/openapi/list', () => {
 
     await MongoOpenApi.create([
       {
+        type: ApiKeyTypeEnum.personal,
         teamId: manager.teamId,
         tmbId: manager.tmbId,
         apiKey: 'fastgpt-manager-secret',
         name: 'manager key'
       },
       {
+        type: ApiKeyTypeEnum.personal,
         teamId: member.teamId,
         tmbId: member.tmbId,
         apiKey: 'fastgpt-member-secret',
@@ -58,9 +75,15 @@ describe('support/openapi/list', () => {
     expect(result.data[0].canCopy).toBe(true);
   });
 
-  it('旧 appId 查询参数只用于置顶排序，不扩大可见范围', async () => {
+  it('应用列表包括其他成员的绑定 Key，个人列表不包括应用 Key', async () => {
     const { owner, members } = await getFakeUsers(1);
     const [member] = members;
+    await MongoTeamMember.updateOne(
+      { _id: member.tmbId },
+      {
+        $set: { name: '归属成员', avatar: '/imgs/owner.png', status: 'leave' }
+      }
+    );
     const app = await MongoApp.create({
       teamId: owner.teamId,
       tmbId: owner.tmbId,
@@ -68,50 +91,66 @@ describe('support/openapi/list', () => {
       type: AppTypeEnum.simple
     });
 
-    await MongoOpenApi.create([
-      {
-        teamId: owner.teamId,
-        tmbId: owner.tmbId,
-        createTime: new Date('2024-01-01T00:00:00.000Z'),
-        appId: String(app._id),
-        apiKey: 'fastgpt-app-secret',
-        name: 'legacy app key'
-      },
-      {
-        teamId: owner.teamId,
-        tmbId: owner.tmbId,
-        createTime: new Date('2025-01-01T00:00:00.000Z'),
-        apiKey: 'fastgpt-new-global-secret',
-        name: 'new global key'
-      },
-      {
-        teamId: member.teamId,
-        tmbId: member.tmbId,
-        appId: String(app._id),
-        apiKey: 'fastgpt-member-app-secret',
-        name: 'member legacy app key'
-      }
-    ]);
+    await MongoOpenApi.collection.insertMany(
+      [
+        {
+          teamId: owner.teamId,
+          tmbId: owner.tmbId,
+          createTime: new Date('2024-01-01T00:00:00.000Z'),
+          appId: String(app._id).toUpperCase(),
+          apiKey: 'fastgpt-app-secret',
+          name: 'legacy app key',
+          type: 'app'
+        },
+        {
+          teamId: owner.teamId,
+          tmbId: owner.tmbId,
+          createTime: new Date('2025-01-01T00:00:00.000Z'),
+          apiKey: 'fastgpt-new-global-secret',
+          name: 'new global key',
+          type: 'personal'
+        },
+        {
+          teamId: member.teamId,
+          tmbId: member.tmbId,
+          appId: String(app._id),
+          apiKey: 'fastgpt-member-app-secret',
+          name: 'member legacy app key',
+          type: 'app'
+        }
+      ].map((record) => new MongoOpenApi(record).toObject({ getters: false }))
+    );
 
     const result = await Call(handler, {
       auth: owner,
       query: {
+        type: 'app',
         appId: String(app._id)
       }
     });
 
     expect(result.code).toBe(200);
     expect(result.data).toHaveLength(2);
-    expect(result.data[0].name).toBe('legacy app key');
+    expect(result.data.map((item) => item.name).sort()).toEqual([
+      'legacy app key',
+      'member legacy app key'
+    ]);
     expect(result.data[0].apiKey).toBe('******cret');
     expect(result.data[0].canCopy).toBe(true);
     expect(result.data[0].authProxy).toBe(false);
-    expect(result.data[1].name).toBe('new global key');
+    expect(result.data.find((item) => item.tmbId === member.tmbId)?.sourceMember).toEqual({
+      name: '归属成员',
+      avatar: '/imgs/owner.png',
+      status: 'leave'
+    });
+    const personal = await Call(handler, { auth: owner, query: { appId: String(app._id) } });
+    expect(personal.data.map((item) => item.name)).toEqual(['new global key']);
   });
 
   it('团队级 APIKey 列表返回 authProxy 状态', async () => {
     const user = await getRootUser();
     await MongoOpenApi.create({
+      type: ApiKeyTypeEnum.personal,
       teamId: user.teamId,
       tmbId: user.tmbId,
       apiKey: 'fastgpt-auth-proxy-secret',
@@ -126,6 +165,35 @@ describe('support/openapi/list', () => {
     expect(result.code).toBe(200);
     expect(result.data).toHaveLength(1);
     expect(result.data[0].authProxy).toBe(true);
+  });
+
+  it('归属成员缺失时仍可管理应用 Key，且不返回伪造的成员信息', async () => {
+    const {
+      owner,
+      members: [member]
+    } = await getFakeUsers(1);
+    const app = await MongoApp.create({
+      teamId: owner.teamId,
+      tmbId: owner.tmbId,
+      name: 'app',
+      type: AppTypeEnum.simple
+    });
+    await MongoOpenApi.create({
+      teamId: owner.teamId,
+      tmbId: member.tmbId,
+      type: 'app',
+      appId: String(app._id),
+      apiKey: 'missing-member-key'
+    });
+    await MongoTeamMember.deleteOne({ _id: member.tmbId });
+    const result = await Call(handler, {
+      auth: owner,
+      query: { type: 'app', appId: String(app._id) }
+    });
+    expect(result.code).toBe(200);
+    expect(result.data).toHaveLength(1);
+    expect(result.data[0].sourceMember).toBeUndefined();
+    expect(result.data[0]).not.toHaveProperty('tmbName');
   });
 
   it('returns tags and filters APIKeys by keyword and tags', async () => {
@@ -150,6 +218,7 @@ describe('support/openapi/list', () => {
     ]);
     await MongoOpenApi.create([
       {
+        type: ApiKeyTypeEnum.personal,
         teamId: user.teamId,
         tmbId: user.tmbId,
         apiKey: 'fastgpt-production-secret',
@@ -157,6 +226,7 @@ describe('support/openapi/list', () => {
         tagIds: [prodTag._id, customerTag._id]
       },
       {
+        type: ApiKeyTypeEnum.personal,
         teamId: user.teamId,
         tmbId: user.tmbId,
         apiKey: 'fastgpt-debug-secret',
@@ -193,12 +263,14 @@ describe('support/openapi/list', () => {
     const user = await getRootUser();
     await MongoOpenApi.create([
       {
+        type: ApiKeyTypeEnum.personal,
         teamId: user.teamId,
         tmbId: user.tmbId,
         apiKey: 'fastgpt-search-value-secret',
         name: 'normal name'
       },
       {
+        type: ApiKeyTypeEnum.personal,
         teamId: user.teamId,
         tmbId: user.tmbId,
         apiKey: 'fastgpt-other-secret',
@@ -249,6 +321,7 @@ describe('support/openapi/list', () => {
       type: AppTypeEnum.simple
     });
     const openapi = await MongoOpenApi.create({
+      type: ApiKeyTypeEnum.app,
       teamId: user.teamId,
       tmbId: user.tmbId,
       appId: String(app._id),
@@ -256,6 +329,7 @@ describe('support/openapi/list', () => {
       name: 'legacy appName key'
     });
     await MongoOpenApi.create({
+      type: ApiKeyTypeEnum.app,
       teamId: user.teamId,
       tmbId: user.tmbId,
       appId: String(app._id),
@@ -265,7 +339,8 @@ describe('support/openapi/list', () => {
     });
 
     const result = await Call(handler, {
-      auth: user
+      auth: user,
+      query: { type: 'app', appId: String(app._id) }
     });
 
     expect(result.code).toBe(200);
@@ -278,7 +353,7 @@ describe('support/openapi/list', () => {
     expect(updated?.appName).toBeUndefined();
   });
 
-  it('sorts by last used time with appId priority first', async () => {
+  it('sorts personal keys by last used time without mixing bound keys', async () => {
     const user = await getRootUser();
     const app = await MongoApp.create({
       teamId: user.teamId,
@@ -289,6 +364,7 @@ describe('support/openapi/list', () => {
 
     await MongoOpenApi.create([
       {
+        type: ApiKeyTypeEnum.app,
         teamId: user.teamId,
         tmbId: user.tmbId,
         appId: String(app._id),
@@ -297,6 +373,7 @@ describe('support/openapi/list', () => {
         lastUsedTime: new Date('2024-01-01T00:00:00.000Z')
       },
       {
+        type: ApiKeyTypeEnum.personal,
         teamId: user.teamId,
         tmbId: user.tmbId,
         apiKey: 'fastgpt-global-new-used',
@@ -304,6 +381,7 @@ describe('support/openapi/list', () => {
         lastUsedTime: new Date('2026-01-01T00:00:00.000Z')
       },
       {
+        type: ApiKeyTypeEnum.personal,
         teamId: user.teamId,
         tmbId: user.tmbId,
         apiKey: 'fastgpt-global-middle-used',
@@ -321,11 +399,7 @@ describe('support/openapi/list', () => {
     });
 
     expect(result.code).toBe(200);
-    expect(result.data.map((item) => item.name)).toEqual([
-      'app old used',
-      'global new used',
-      'global middle used'
-    ]);
+    expect(result.data.map((item) => item.name)).toEqual(['global new used', 'global middle used']);
   });
 
   it('sorts by remaining points ascending with unlimited keys last', async () => {
@@ -339,6 +413,7 @@ describe('support/openapi/list', () => {
 
     await MongoOpenApi.create([
       {
+        type: ApiKeyTypeEnum.app,
         teamId: user.teamId,
         tmbId: user.tmbId,
         appId: String(app._id),
@@ -350,6 +425,7 @@ describe('support/openapi/list', () => {
         }
       },
       {
+        type: ApiKeyTypeEnum.app,
         teamId: user.teamId,
         tmbId: user.tmbId,
         appId: String(app._id),
@@ -361,6 +437,7 @@ describe('support/openapi/list', () => {
         }
       },
       {
+        type: ApiKeyTypeEnum.personal,
         teamId: user.teamId,
         tmbId: user.tmbId,
         apiKey: 'fastgpt-low-remaining',
@@ -371,6 +448,7 @@ describe('support/openapi/list', () => {
         }
       },
       {
+        type: ApiKeyTypeEnum.personal,
         teamId: user.teamId,
         tmbId: user.tmbId,
         apiKey: 'fastgpt-high-remaining',
@@ -381,6 +459,7 @@ describe('support/openapi/list', () => {
         }
       },
       {
+        type: ApiKeyTypeEnum.personal,
         teamId: user.teamId,
         tmbId: user.tmbId,
         apiKey: 'fastgpt-unlimited',
@@ -402,8 +481,6 @@ describe('support/openapi/list', () => {
 
     expect(result.code).toBe(200);
     expect(result.data.map((item) => item.name)).toEqual([
-      'app limited remaining',
-      'app unlimited remaining',
       'low remaining',
       'high remaining',
       'unlimited remaining'

@@ -187,18 +187,6 @@ export const Settings = () => {
           placeholder=""
         />
       </FormItem>
-      <FormItem
-        title="HNSW max_scan_tuples"
-        description="迭代搜索最大数量，越大召回率越高，性能越差，默认为 100000，具体可见：https://github.com/pgvector/pgvector"
-      >
-        <Input
-          type="number"
-          {...register('systemEnv.hnswMaxScanTuples', {
-            valueAsNumber: true
-          })}
-          placeholder=""
-        />
-      </FormItem>
       {isPlus && (
         <FormItem
           title="向量检索最大并发数"

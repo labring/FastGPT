@@ -1,233 +1,36 @@
 import { NextAPI } from '@/service/middleware/entry';
-import { pushDatasetTestUsage } from '@/service/support/wallet/usage/push';
+import type { ApiRequestProps } from '@fastgpt/next/type';
+import type { NextApiResponse } from 'next';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { parseHeaderCert } from '@fastgpt/service/support/permission/auth/common';
 import {
   SearchDatasetTestBodySchema,
   SearchDatasetTestResponseSchema,
-  type SearchDatasetTestBody,
   type SearchDatasetTestResponse
 } from '@fastgpt/global/openapi/core/dataset/api';
-import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
-import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
-import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
-import { type ApiRequestProps } from '@fastgpt/next/type';
-import { LimitTypeEnum, teamFrequencyLimit } from '@fastgpt/service/common/api/frequencyLimit';
-import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
-import { isAuthorizedTempFileS3Key } from '@fastgpt/service/common/s3/sources/temp/key';
-import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/catalog/service';
-import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
-import { defaultSearchDatasetData } from '@fastgpt/service/core/dataset/search';
-import { findFirstDatasetSearchVlmModel } from '@fastgpt/service/core/dataset/search/vlm';
-import { updateApiKeyUsage } from '@fastgpt/service/support/openapi/tools';
-import { resolveReadableCollectionIds } from '@fastgpt/service/support/permission/collection/auth';
-import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
-import {
-  assertAuthModels,
-  getAuthorizedModelIds
-} from '@fastgpt/service/support/permission/model/auth';
-import { checkTeamAIPoints } from '@fastgpt/service/support/permission/teamLimit';
-import { addAuditLog, getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
-import type { NextApiResponse } from 'next';
+import { searchDatasetTestForApi } from '@/service/core/dataset/searchTest';
 
+/** 保留单知识库搜索测试协议；执行链路与多知识库搜索共用同一个应用服务。 */
 export async function handler(
-  req: ApiRequestProps<SearchDatasetTestBody>,
-  res: NextApiResponse
-): Promise<SearchDatasetTestResponse | void> {
-  const {
-    datasetId,
-    text,
-    queryImageUrls,
-    limit = 5000,
-    similarity,
-    searchMode,
-    embeddingWeight,
-
-    usingReRank,
-    rerankModelId,
-    rerankModel,
-    rerankWeight,
-
-    datasetSearchUsingExtensionQuery = false,
-    datasetSearchExtensionModelId,
-    datasetSearchExtensionModel,
-    datasetSearchExtensionBg
-  } = parseApiInput({ req, bodySchema: SearchDatasetTestBodySchema }).body;
-
-  const start = Date.now();
-
-  // auth dataset role
-  const { dataset, teamId, tmbId, isRoot, apikey } = await authDataset({
-    req,
-    authToken: true,
-    authApiKey: true,
-    datasetId,
-    per: ReadPermissionVal
-  });
-  if (!(await teamFrequencyLimit({ teamId, type: LimitTypeEnum.chat, res }))) return;
-  // auth balance
-  await checkTeamAIPoints(teamId);
-
-  // Search-test images must be temp objects created by this team. Client-supplied keys are not
-  // proof of ownership, so reject dataset/chat/foreign-team keys before any S3 read happens.
-  const validQueryImageKeys = queryImageUrls.filter((key) =>
-    isAuthorizedTempFileS3Key({ key, teamId })
-  );
-
-  if (validQueryImageKeys.length !== queryImageUrls.length) {
-    return Promise.reject('Invalid query image key');
-  }
-
-  // Collection 级权限可读集合：undefined=无需过滤；真子集=仅这些 collection 可召回
-  const readableCollectionIdList = await resolveReadableCollectionIds({
-    teamId,
-    datasetIds: [datasetId],
-    tmbId
-  });
-
-  // 搜索主链路只接收模型可读图片 URL；temp key 的鉴权和临时 URL 生成固定在入口层完成。
-  const validQueryImageUrls = await Promise.all(
-    validQueryImageKeys.map(async (key) => {
-      const { url } = await getS3DatasetSource().createExternalUrl({
-        key,
-        expiredHours: 1
-      });
-      return url;
+  req: ApiRequestProps,
+  res?: NextApiResponse
+): Promise<SearchDatasetTestResponse> {
+  const { body } = parseApiInput({ req, bodySchema: SearchDatasetTestBodySchema });
+  const auth = await parseHeaderCert({ req, authToken: true, authApiKey: true });
+  return SearchDatasetTestResponseSchema.parse(
+    await searchDatasetTestForApi({
+      params: body,
+      auth,
+      onRateLimit: ({ limit, remaining, resetAt }) => {
+        // 兼容旧接口的响应头；限流策略仍由应用服务执行。
+        if (res && limit !== undefined && remaining !== undefined && resetAt !== undefined) {
+          res.setHeader('X-RateLimit-Limit', limit);
+          res.setHeader('X-RateLimit-Remaining', remaining);
+          res.setHeader('X-RateLimit-Reset', resetAt);
+        }
+      }
     })
   );
-
-  const modelHandle = await getTeamModelHandle({ teamId });
-  const authorizedIds = await getAuthorizedModelIds({
-    actor: { teamId, tmbId, isRoot },
-    handle: modelHandle
-  });
-  const rerankModelData = usingReRank
-    ? modelHandle.getModelData(
-        { modelId: rerankModelId, model: rerankModel },
-        { type: 'rerank', fallbackToDefault: true, authorizedIds }
-      )
-    : undefined;
-  const extensionModelData = datasetSearchUsingExtensionQuery
-    ? modelHandle.getModelData(
-        {
-          modelId: datasetSearchExtensionModelId,
-          model: datasetSearchExtensionModel
-        },
-        { type: 'llm', fallbackToDefault: true, authorizedIds }
-      )
-    : undefined;
-  const auxiliaryModels = [rerankModelData, extensionModelData].filter(
-    (model) => model !== undefined
-  );
-  await assertAuthModels({
-    actor: { teamId, tmbId, isRoot },
-    modelIds: auxiliaryModels.map((model) => model.modelId),
-    action: 'use',
-    handle: modelHandle
-  });
-
-  const embeddingModelData = modelHandle.getModelData(
-    getDatasetModelReference(dataset, 'embedding'),
-    { type: 'embedding' }
-  );
-  const vlmModelData = findFirstDatasetSearchVlmModel([dataset], modelHandle);
-
-  const searchData = {
-    histories: [],
-    teamId,
-    tmbId,
-    reRankQuery: text,
-    textQueries: text ? [text] : [],
-    imageQueries: validQueryImageUrls,
-    model: embeddingModelData,
-    vlmModel: vlmModelData,
-    limit: Math.min(limit, 20000),
-    similarity,
-    datasetIds: [datasetId],
-    searchMode,
-    embeddingWeight,
-    usingReRank,
-    rerankModel: rerankModelData,
-    rerankWeight,
-    readableCollectionIdList
-  };
-  const {
-    searchRes,
-    embeddingTokens,
-    reRankInputTokens,
-    usingReRank: searchUsingReRank,
-    queryExtensionResult,
-    imageCaptionResult,
-    ...result
-  } = await defaultSearchDatasetData({
-    ...searchData,
-    datasetSearchUsingExtensionQuery,
-    datasetSearchExtensionModel: extensionModelData,
-    datasetSearchExtensionBg
-  });
-
-  // push bill
-  const source = apikey ? UsageSourceEnum.api : UsageSourceEnum.fastgpt;
-  const { totalPoints } = pushDatasetTestUsage({
-    teamId,
-    tmbId,
-    source,
-    embUsage: {
-      model: embeddingModelData,
-      inputTokens: embeddingTokens
-    },
-    rerankUsage:
-      searchUsingReRank && rerankModelData
-        ? {
-            model: rerankModelData,
-            inputTokens: reRankInputTokens
-          }
-        : undefined,
-    extensionUsage:
-      queryExtensionResult && extensionModelData
-        ? {
-            model: extensionModelData,
-            inputTokens: queryExtensionResult.inputTokens,
-            outputTokens: queryExtensionResult.outputTokens,
-            embeddingTokens: queryExtensionResult.embeddingTokens,
-            embeddingModel: embeddingModelData
-          }
-        : undefined,
-    imageCaptionUsage:
-      imageCaptionResult && vlmModelData
-        ? {
-            model: vlmModelData,
-            inputTokens: imageCaptionResult.inputTokens,
-            outputTokens: imageCaptionResult.outputTokens
-          }
-        : undefined
-  });
-
-  if (apikey) {
-    updateApiKeyUsage({
-      apikey,
-      totalPoints
-    });
-  }
-
-  (async () => {
-    addAuditLog({
-      tmbId,
-      teamId,
-      event: AuditEventEnum.SEARCH_TEST,
-      params: {
-        datasetName: dataset.name,
-        datasetType: getI18nDatasetType(dataset.type)
-      }
-    });
-  })();
-
-  return SearchDatasetTestResponseSchema.parse({
-    list: searchRes,
-    duration: `${((Date.now() - start) / 1000).toFixed(3)}s`,
-    queryExtensionModel: queryExtensionResult?.llmModel,
-    usingReRank: searchUsingReRank,
-    ...result
-  });
 }
 
 export default NextAPI(handler);

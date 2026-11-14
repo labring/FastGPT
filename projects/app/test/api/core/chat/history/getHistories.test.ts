@@ -4,7 +4,12 @@ import type {
   GetHistoriesResponseType
 } from '@fastgpt/global/openapi/core/chat/history/api';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { ChatSourceEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import {
+  ChatGenerateStatusEnum,
+  ChatSourceEnum,
+  ChatSourceTypeEnum
+} from '@fastgpt/global/core/chat/constants';
+import { ChatGenerationLeaseCache } from '@fastgpt/dal/redis/lease/chat/chatGenerationLease';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
@@ -102,6 +107,33 @@ describe('getHistories api test', () => {
     expect(res.data.list[0].top).toBe(true);
   });
 
+  it('uses the live lease for list state and ignores a stale Mongo generating value', async () => {
+    const cache = new ChatGenerationLeaseCache();
+    const params = { sourceType: ChatSourceTypeEnum.app, sourceId: appId, chatId: chatIds[0] };
+    // 模拟旧版本遗留字段，新版本必须只按 lease 判断。
+    await MongoChat.collection.updateOne(
+      { chatId: chatIds[1] },
+      { $set: { chatGenerateStatus: 0 } }
+    );
+    await cache.tryAcquire({ params, token: 'list-request', ttlMs: 90_000 });
+    try {
+      const res = await Call<GetHistoriesBodyType, any, GetHistoriesResponseType>(handler, {
+        auth: testUser,
+        body: { appId },
+        query: { offset: 0, pageSize: 10 }
+      });
+      expect(res.code).toBe(200);
+      expect(res.data.list.find((chat) => chat.chatId === chatIds[0])?.chatGenerateStatus).toBe(
+        ChatGenerateStatusEnum.generating
+      );
+      expect(res.data.list.find((chat) => chat.chatId === chatIds[1])?.chatGenerateStatus).toBe(
+        ChatGenerateStatusEnum.done
+      );
+    } finally {
+      await cache.release({ params, token: 'list-request' });
+    }
+  });
+
   it('should return paginated results', async () => {
     const res = await Call<GetHistoriesBodyType, any, GetHistoriesResponseType>(handler, {
       auth: testUser,
@@ -133,6 +165,62 @@ describe('getHistories api test', () => {
     expect(res2.code).toBe(200);
     expect(res2.data.list).toHaveLength(1);
     expect(res2.data.total).toBe(3);
+  });
+
+  it('recovers only the current member’s latest non-deleted Builder session for the requested app', async () => {
+    const otherMember = await getUser('other-builder-history-member', testUser.teamId);
+    const otherApp = await MongoApp.create({
+      name: 'Other Builder App',
+      type: AppTypeEnum.workflow,
+      teamId: testUser.teamId,
+      tmbId: testUser.tmbId
+    });
+    const builderChat = {
+      teamId: testUser.teamId,
+      tmbId: testUser.tmbId,
+      sourceType: ChatSourceTypeEnum.workflowBuilder,
+      source: ChatSourceEnum.test,
+      appId
+    };
+    await MongoChat.create([
+      { ...builderChat, chatId: 'old-builder', updateTime: new Date('2026-10-28T00:00:00Z') },
+      { ...builderChat, chatId: 'latest-builder', updateTime: new Date('2026-10-29T00:00:00Z') },
+      {
+        ...builderChat,
+        chatId: 'deleted-builder',
+        updateTime: new Date('2026-10-30T00:00:00Z'),
+        deleteTime: new Date()
+      },
+      {
+        ...builderChat,
+        tmbId: otherMember.tmbId,
+        chatId: 'other-member-builder',
+        updateTime: new Date('2026-10-30T00:00:00Z')
+      },
+      {
+        ...builderChat,
+        appId: otherApp._id,
+        chatId: 'other-app-builder',
+        updateTime: new Date('2026-10-30T00:00:00Z')
+      }
+    ]);
+
+    const res = await Call<GetHistoriesBodyType, Record<string, never>, GetHistoriesResponseType>(
+      handler,
+      {
+        auth: testUser,
+        body: { appId, sourceType: ChatSourceTypeEnum.workflowBuilder, pageNum: 1, pageSize: 1 }
+      }
+    );
+
+    expect(res.code).toBe(200);
+    expect(res.data.total).toBe(2);
+    expect(res.data.list).toHaveLength(1);
+    expect(res.data.list[0]).toMatchObject({
+      appId,
+      sourceType: ChatSourceTypeEnum.workflowBuilder,
+      chatId: 'latest-builder'
+    });
   });
 
   it('should filter by source', async () => {
@@ -278,7 +366,7 @@ describe('getHistories api test', () => {
     const shareChatId = getNanoid();
     const otherShareChatId = getNanoid();
 
-    await MongoOutLink.create({
+    const link = await MongoOutLink.create({
       shareId,
       teamId: testUser.teamId,
       tmbId: testUser.tmbId,
@@ -302,7 +390,7 @@ describe('getHistories api test', () => {
         appId,
         chatId: shareChatId,
         source: ChatSourceEnum.share,
-        shareId,
+        publishSource: { type: ChatSourceEnum.share, id: link._id },
         outLinkUid,
         title: 'Current Share Chat'
       }),
@@ -313,11 +401,34 @@ describe('getHistories api test', () => {
         appId,
         chatId: otherShareChatId,
         source: ChatSourceEnum.share,
-        shareId,
+        publishSource: { type: ChatSourceEnum.share, id: link._id },
         outLinkUid: otherOutLinkUid,
         title: 'Other Share Chat'
       })
     ]);
+
+    // 同访客的其他渠道与缺来源记录均不可被当前分享列表查询到。
+    await MongoChat.create({
+      teamId: testUser.teamId,
+      tmbId: testUser.tmbId,
+      sourceType: ChatSourceTypeEnum.app,
+      appId,
+      chatId: getNanoid(),
+      source: ChatSourceEnum.share,
+      publishSource: { type: ChatSourceEnum.share, id: appId },
+      outLinkUid,
+      title: 'Other Channel Chat'
+    });
+    await MongoChat.collection.insertOne({
+      teamId: link.teamId,
+      tmbId: link.tmbId,
+      appId: link.appId,
+      sourceType: ChatSourceTypeEnum.app,
+      chatId: getNanoid(),
+      shareId,
+      outLinkUid,
+      updateTime: new Date()
+    });
 
     const res = await Call<unknown, unknown, GetHistoriesResponseType>(handler, {
       body: {

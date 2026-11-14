@@ -111,12 +111,14 @@ const MigrationProgressStage = ({
           {t(progress.labelKey as any, progress.params as any)}
         </Box>
         <Flex flexShrink={0} alignItems={'center'} gap={2}>
-          {progress.current !== undefined && progress.total !== undefined && (
+          {progress.current !== undefined && (
             <Box fontSize={'xs'} color={'myGray.500'}>
-              {t('system_migration:progress_count', {
-                current: progress.current,
-                total: progress.total
-              })}
+              {progress.total === undefined
+                ? t('system_migration:progress_processed', { current: progress.current })
+                : t('system_migration:progress_count', {
+                    current: progress.current,
+                    total: progress.total
+                  })}
             </Box>
           )}
           <Badge
@@ -226,7 +228,18 @@ const MigrationCard = ({
               {t(visual.labelKey as any)}
             </Badge>
             {migration.independent && (
-              <Badge colorScheme={'purple'}>{t('system_migration:mode_independent')}</Badge>
+              <Badge
+                px={2}
+                py={0.5}
+                borderRadius={'md'}
+                color={'purple.700'}
+                bg={'purple.50'}
+                border={'1px solid'}
+                borderColor={'purple.200'}
+                textTransform={'none'}
+              >
+                {t('system_migration:mode_independent')}
+              </Badge>
             )}
             {migration.blockStartup && (
               <Badge colorScheme={'orange'}>{t('system_migration:mode_startup')}</Badge>

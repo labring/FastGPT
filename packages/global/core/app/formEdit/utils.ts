@@ -4,10 +4,14 @@ import type { FlowNodeInputItemType } from '../../workflow/type/io';
 import type { FlowNodeTemplateType } from '../../workflow/type/node';
 import type { CanonicalFlowNodeInputItem } from '../../workflow/migration';
 import { getSelectedInputRenderType } from '../../../common/workflow/reference';
+import { normalizeDatasetSelectValue } from '../../../common/workflow/input';
 import type { SelectedToolItemType } from './type';
 import { AgentToolInputModeEnum } from '../tool/constants';
 import { isSecretValueConfigured } from '../../../common/secret/utils';
+import { SecretRefValueSchema } from '../../../common/secret/type';
 import { normalizeToolInputValue } from '../tool/systemTool/codec';
+import { SystemToolSecretInputTypeEnum } from '../tool/systemTool/constants';
+import { PluginStatusEnum } from '../../plugin/type';
 
 const formRenderTypesMap: Record<string, boolean> = {
   [FlowNodeInputTypeEnum.input]: true,
@@ -137,6 +141,7 @@ export const canInputBeAgentGenerated = (
  *
  * 所有支持 AI 生成的输入都会补充 agentGenerated；工具上下文才允许选中该类型，
  * 并在没有明确选择时按 defaultToAgentGenerated 应用默认值。
+ * 最终为手动知识库选择时清理无效项，避免旧引用模式回退后仍保留引用值。
  */
 export const normalizeFlowNodeInputType = <T extends CanonicalFlowNodeInputItem>(
   input: T,
@@ -184,7 +189,11 @@ export const normalizeFlowNodeInputType = <T extends CanonicalFlowNodeInputItem>
   return {
     ...input,
     renderTypeList,
-    selectedType
+    selectedType,
+    // 未显式配置的输入继续使用原有 defaultValue，不能用空数组覆盖默认值。
+    ...(selectedType === FlowNodeInputTypeEnum.selectDataset && input.value !== undefined
+      ? { value: normalizeDatasetSelectValue(input.value) }
+      : {})
   } as T;
 };
 
@@ -402,38 +411,39 @@ export const getAgentToolInputMode = (input: InputRenderTypeState) =>
     : AgentToolInputModeEnum.manual;
 
 /** 将应用内完整 NodeIO 工具投影为 Agent 持久化所需的稀疏配置。 */
-export const serializeAgentTool = ({
-  tool,
-  maxHistories
-}: {
-  tool: SelectedToolItemType;
-  maxHistories?: number;
-}) => {
-  const config = tool.inputs.reduce<Record<string, unknown>>((acc, input) => {
-    if (input.key === NodeInputKeyEnum.forbidStream) return acc;
-    if (
-      maxHistories !== undefined &&
-      tool.flowNodeType === FlowNodeTypeEnum.appModule &&
-      input.key === NodeInputKeyEnum.history
-    ) {
-      acc[input.key] = maxHistories;
-      return acc;
-    }
-    acc[input.key] = input.value;
-    return acc;
-  }, {});
+export const serializeAgentTool = ({ tool }: { tool: SelectedToolItemType }) => {
+  const isInvalidTool = Boolean(tool.pluginData?.error);
+  const config = isInvalidTool
+    ? (tool.config ?? {})
+    : tool.inputs.reduce<Record<string, unknown>>((acc, input) => {
+        if (
+          input.key === NodeInputKeyEnum.forbidStream ||
+          (tool.flowNodeType === FlowNodeTypeEnum.appModule &&
+            input.key === NodeInputKeyEnum.history)
+        ) {
+          return acc;
+        }
+        acc[input.key] = input.value;
+        return acc;
+      }, {});
 
   return {
     id: tool.pluginId ?? tool.id,
+    name: tool.name,
+    avatar: tool.avatar,
     version: tool.version,
     ...(tool.metadataLocale !== undefined ? { metadataLocale: tool.metadataLocale } : {}),
     source: tool.source,
     toolConfig: tool.toolConfig,
-    inputs: tool.inputs.filter(canInputBeAgentGenerated).map((input) => ({
-      key: input.key,
-      mode: getAgentToolInputMode(input)
-    })),
-    config: filterToolConfiguredParams({ params: config, inputs: tool.inputs })
+    inputs: isInvalidTool
+      ? tool.rawInputs
+      : tool.inputs.filter(canInputBeAgentGenerated).map((input) => ({
+          key: input.key,
+          mode: getAgentToolInputMode(input)
+        })),
+    config: isInvalidTool
+      ? config
+      : filterToolConfiguredParams({ params: config, inputs: tool.inputs })
   };
 };
 
@@ -544,6 +554,20 @@ export const initToolInputsTypeByDefaultMode = <T extends FlowNodeInputItemType>
   options?: ToolInputDefaultModeOptions
 ): T[] => inputs.map((input) => initToolInputTypeByDefaultMode(input, options));
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+/** 配置值是否已填写；ref 是合法绑定，对象和数组递归检查，空值不参与判定。 */
+const hasConfiguredValue = (value: unknown): boolean => {
+  if (value === undefined || value === null || value === '') return false;
+  if (isRecord(value)) {
+    if ('ref' in value) return SecretRefValueSchema.safeParse(value).success;
+    return Object.values(value).some(hasConfiguredValue);
+  }
+  if (Array.isArray(value)) return value.some(hasConfiguredValue);
+  return true;
+};
+
 /**
  * 判断开发者手动配置的工具入参是否已有有效值。
  * 节点上未显式覆盖时，工作流/工作流工具会在运行时使用 defaultValue，
@@ -554,10 +578,26 @@ export const isToolInputValueConfigured = ({
   input,
   value = input.value
 }: {
-  input: Pick<FlowNodeInputItemType, 'renderTypeList' | 'selectedType' | 'value' | 'defaultValue'>;
+  input: Pick<
+    FlowNodeInputItemType,
+    'key' | 'renderTypeList' | 'selectedType' | 'value' | 'defaultValue' | 'inputList'
+  >;
   value?: FlowNodeInputItemType['value'];
 }) => {
   const configuredValue = value ?? input.defaultValue;
+  if (input.key === NodeInputKeyEnum.systemInputConfig && isRecord(configuredValue)) {
+    // 平台托管优先，旧数据残留的空 value 表不影响已激活状态。
+    if (configuredValue.type === SystemToolSecretInputTypeEnum.system) return true;
+
+    const configValue = configuredValue.value;
+    if (!isRecord(configValue)) return false;
+    if (!Array.isArray(input.inputList)) return hasConfiguredValue(configValue);
+
+    // 引用和静态值都满足对应项；只有必填项缺少有效来源时才需要重新配置。
+    return input.inputList.every(
+      (config) => config.required !== true || hasConfiguredValue(configValue[config.key])
+    );
+  }
   // 候选控件中包含 password 不代表当前在手动密码模式；普通引用仍保存原始 tuple。
   if (getSelectedInputRenderType(input) === FlowNodeInputTypeEnum.password) {
     return isSecretValueConfigured(
@@ -669,23 +709,31 @@ export const checkNeedsUserConfiguration = (toolTemplate: {
 };
 
 /**
- * Get the configuration status of a tool
- * Checks if tool needs configuration and whether all required fields are filled
- * @param tool - The tool template to check
- * @returns 'active' if tool is ready to use, 'waitingForConfig' if configuration needed
+ * 只根据完整工具输入推导配置完整性，不保存派生状态，也不判断资源是否可加载。
+ * AI 生成字段不要求开发者填写；手动必填项、默认值和密钥激活沿用同一套配置规则。
  */
 export const getToolConfigStatus = ({
   tool
 }: {
   tool: {
-    inputs: FlowNodeTemplateType['inputs'];
+    inputs?: FlowNodeTemplateType['inputs'];
   };
 }): {
   needConfig: boolean;
-  status: SelectedToolItemType['configStatus'];
+  status: 'noConfig' | 'waitingForConfig' | 'configured';
 } => {
+  // 编辑详情使用完整 NodeIO；仅有持久化输入来源的快照无法推导必填项，等待详情加载后检查。
+  const templateInputs = tool.inputs?.filter((input) => Array.isArray(input.renderTypeList)) ?? [];
+
+  if (templateInputs.length === 0) {
+    return {
+      needConfig: false,
+      status: 'noConfig'
+    };
+  }
+
   // Check if tool needs configuration
-  const needsConfig = checkNeedsUserConfiguration(tool);
+  const needsConfig = checkNeedsUserConfiguration({ inputs: templateInputs });
   if (!needsConfig) {
     return {
       needConfig: false,
@@ -694,7 +742,7 @@ export const getToolConfigStatus = ({
   }
 
   // Find all inputs that need configuration(Only check the required items)
-  const configInputs = tool.inputs.filter((input) => {
+  const configInputs = templateInputs.filter((input) => {
     const normalizedInput = initToolInputTypeByDefaultMode(input, {
       allowUserChatInputAgentGenerated: true
     });
@@ -717,4 +765,13 @@ export const getToolConfigStatus = ({
     needConfig: !allConfigured,
     status: allConfigured ? 'configured' : 'waitingForConfig'
   };
+};
+
+/** 先检查工具资源有效性，再推导配置完整性，供卡片、提示词和运行/发布校验共用。 */
+export const getAgentToolRuntimeStatus = (
+  tool: Pick<FlowNodeTemplateType, 'inputs' | 'status' | 'pluginData'>
+) => {
+  if (tool.pluginData?.error) return 'invalid';
+  if ((tool.status ?? tool.pluginData?.status) === PluginStatusEnum.Offline) return 'offline';
+  return getToolConfigStatus({ tool }).status;
 };

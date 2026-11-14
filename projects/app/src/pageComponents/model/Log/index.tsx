@@ -1,3 +1,5 @@
+import { getLocalDateRange } from '@fastgpt/global/common/time/dateRange';
+import { sortModelSelectorModels } from '@/components/Select/AIModelSelector.utils';
 import { getChannelList, getChannelLog, getLogDetail } from '@/web/core/ai/model/channel';
 import {
   Table,
@@ -64,18 +66,7 @@ const ChannelLog = ({ Tab, channelType }: { Tab: React.ReactNode; channelType: C
   }>({
     request_id: '',
     code_type: 'all',
-    dateRange: {
-      from: (() => {
-        const today = addDays(new Date(), -1);
-        today.setHours(0, 0, 0, 0);
-        return today;
-      })(),
-      to: (() => {
-        const today = new Date();
-        today.setHours(23, 59, 59, 999);
-        return today;
-      })()
-    }
+    dateRange: getLocalDateRange(addDays(new Date(), -1), new Date())
   });
 
   const { data: channelList = [] } = useRequest(
@@ -93,17 +84,14 @@ const ChannelLog = ({ Tab, channelType }: { Tab: React.ReactNode; channelType: C
   );
 
   const modelList = useMemo(() => {
-    const res = availableModels
-      .map((item) => {
-        const provider = getModelProvider(item.provider, i18n.language);
-        return {
-          order: provider.order,
-          avatar: provider.avatar,
-          label: item.model,
-          value: item.model
-        };
-      })
-      .sort((a, b) => a.order - b.order);
+    const res = sortModelSelectorModels(availableModels).map((item) => {
+      const provider = getModelProvider(item.provider, i18n.language);
+      return {
+        avatar: provider.avatar,
+        label: item.model,
+        value: item.model
+      };
+    });
     return [{ label: t('common:All'), value: '' }, ...res];
   }, [availableModels, getModelProvider, i18n.language, t]);
 

@@ -702,4 +702,29 @@ describe('dispatchTool runtime toolset auth', () => {
       error: expect.objectContaining({ name: 'UserConfigError' })
     });
   });
+
+  it('should inject usageId into systemVar and invokeToken when dispatching tool', async () => {
+    const props = createDispatchToolProps({
+      systemTool: {
+        toolId: 'search/run'
+      }
+    });
+    props.usageId = 'usage-dispatch-1';
+    props.runningAppInfo = {
+      ...props.runningAppInfo,
+      sourceType: 'app',
+      sourceId: 'app-id'
+    };
+
+    await dispatchTool(props);
+
+    const runParams = runToolStreamMock.mock.calls[0][0];
+    expect(runParams.systemVar.chat.usageId).toBe('usage-dispatch-1');
+    expect(runParams.systemVar.usageId).toBe('usage-dispatch-1');
+
+    const token = runParams.systemVar.invokeToken as string;
+    const [, payload] = token.split('.');
+    const tokenPayload = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
+    expect(tokenPayload.usageId).toBe('usage-dispatch-1');
+  });
 });

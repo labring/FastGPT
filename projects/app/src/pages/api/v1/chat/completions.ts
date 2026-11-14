@@ -1,3 +1,4 @@
+import { assertChatPublishSource } from '@fastgpt/service/core/chat/publishSource/utils';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { sseErrRes, jsonRes } from '@fastgpt/service/common/response';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
@@ -5,8 +6,7 @@ import { markProfileError } from '@fastgpt/service/common/profiling';
 import {
   ChatRoleEnum,
   ChatSourceEnum,
-  ChatSourceTypeEnum,
-  ChatGenerateStatusEnum
+  ChatSourceTypeEnum
 } from '@fastgpt/global/core/chat/constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { dispatchWorkFlow } from '@fastgpt/service/core/workflow/dispatch';
@@ -41,7 +41,8 @@ import { getUsageSourceByAuthType } from '@fastgpt/global/support/wallet/usage/t
 import {
   concatHistories,
   removeAIResponseCite,
-  removeEmptyUserInput
+  removeEmptyUserInput,
+  stripModerationRecordsFromNodeResponses
 } from '@fastgpt/global/core/chat/utils';
 import { updateApiKeyUsage } from '@fastgpt/service/support/openapi/tools';
 import { getRunningUserInfoByTmbId } from '@fastgpt/service/support/user/team/utils';
@@ -74,7 +75,6 @@ import { LimitTypeEnum, teamFrequencyLimit } from '@fastgpt/service/common/api/f
 import { getIpFromRequest } from '@fastgpt/service/common/geo';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import { updateChatGenerateStatus } from '@fastgpt/service/core/chat/chatGenerateStatus';
 
 import {
   filterWorkflowFinalResponseData,
@@ -85,6 +85,7 @@ import {
 } from '@/service/core/workflow/nodeResponse';
 import { formatCompletionResponseContent } from '@/service/core/chat/utils';
 import {
+  createModerationFilteredWorkflowResponse,
   createWorkflowStreamResponseContext,
   type WorkflowStreamResponseContext
 } from '@fastgpt/service/core/workflow/utils/streamResponseContext';
@@ -145,8 +146,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       showCite,
       authType,
       sourceName,
+      publishSource,
       apikey,
       responseAllData,
+      canReadModerationRecords,
       outLinkUserId = customUid,
       showRunningStatus,
       showSkillReferences: authShowSkillReferences
@@ -176,6 +179,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         req,
         appId,
         chatId,
+        customUid,
         authProxy,
         showSkillReferences: true
       });
@@ -279,6 +283,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
     // Get runtimeNodes
     let runtimeNodes = storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes, interactive));
+    const entryVariables = variables;
     if (isPlugin) {
       // Assign values to runtimeNodes using variables
       runtimeNodes = updateWorkflowToolInputByVariables(runtimeNodes, variables);
@@ -318,10 +323,13 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       teamId,
       tmbId: String(tmbId),
       source,
+      publishSource,
       sourceName: sourceName || '',
-      shareId,
       outLinkUid: outLinkUserId,
       userContent: workflowUserQuestion,
+      variables: entryVariables,
+      requestId:
+        typeof req.headers['x-request-id'] === 'string' ? req.headers['x-request-id'] : undefined,
       responseChatItemId: roundState.responseChatItemId,
       interactive,
       fixedTitle: pluginFixedTitle,
@@ -348,7 +356,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       showNodeStatus: showRunningStatus,
       enableStreamResume: false
     });
-    const workflowResponseWrite = streamResponseContext.responseWrite;
+    const workflowResponseWrite = createModerationFilteredWorkflowResponse({
+      responseWrite: streamResponseContext.responseWrite,
+      canReadModerationRecords
+    });
     const shouldCollectFinalResponseData = shouldRetainWorkflowNodeResponses({
       apiVersion: 'v1',
       stream,
@@ -437,9 +448,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       nodes,
       appChatConfig: chatConfig,
       variables: newVariables,
-      shareId,
       outLinkUid: outLinkUserId,
       source,
+      publishSource: preparedRound.publishSource,
       sourceName: sourceName || '',
       userContent: workflowUserQuestion,
       aiContent: aiResponse,
@@ -458,14 +469,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       });
     } else if (preparedRound.shouldFinalizePreparedRound) {
       await finalizeChatRound(params);
-    }
-
-    if (!preparedRound.shouldFinalizePreparedRound && preparedRound.shouldPersistChatRound) {
-      await updateChatGenerateStatus({
-        ...chatSource,
-        chatId: saveChatId,
-        status: ChatGenerateStatusEnum.done
-      });
     }
     const isOwnerUse = !shareId;
     if (isOwnerUse && source === ChatSourceEnum.online) {
@@ -492,6 +495,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
     const feResponseData = filterWorkflowFinalResponseData({
       responseData: finalResponseData,
+      canReadModerationRecords,
       responseAllData,
       responseDetail: showCite
     });
@@ -555,7 +559,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         outLinkUid,
         shareId,
         appName: app.name,
-        flowResponses: finalResponseData,
+        flowResponses: stripModerationRecordsFromNodeResponses(finalResponseData),
         chatId: saveChatId
       });
       addOutLinkUsage({
@@ -580,13 +584,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           responseChatItemId: roundState.responseChatItemId,
           error: err
         });
-      } else {
-        await updateChatGenerateStatus({
-          sourceType: ChatSourceTypeEnum.app,
-          sourceId: roundState.sourceId,
-          chatId: roundState.chatId,
-          status: ChatGenerateStatusEnum.error
-        });
       }
     }
     if (stream) {
@@ -603,8 +600,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       });
     }
   } finally {
-    if (stream) {
-      res.end();
+    try {
+      if (stream) {
+        res.end();
+      }
+    } finally {
+      await roundState.preparedRound?.releaseGenerationLease?.();
     }
   }
 }
@@ -628,6 +629,7 @@ const authShareChat = async ({
     showRunningStatus,
     showSkillReferences,
     uid,
+    publishSource,
     sourceName
   } = await authOutLinkChatStart({ ...data, req });
   const app = await MongoApp.findById(appId).lean();
@@ -641,17 +643,22 @@ const authShareChat = async ({
     ...buildChatSourceQuery({ sourceType: ChatSourceTypeEnum.app, sourceId: String(appId) }),
     chatId
   }).lean();
-  if (chat && (chat.shareId !== data.shareId || chat.outLinkUid !== uid)) {
-    return Promise.reject(ChatErrEnum.unAuthChat);
+  if (chat) {
+    assertChatPublishSource({ previous: chat.publishSource, current: publishSource });
+    if (chat.outLinkUid !== uid) {
+      return Promise.reject(ChatErrEnum.unAuthChat);
+    }
   }
 
   return {
+    publishSource,
     sourceName,
     teamId,
     tmbId,
     app,
     apikey: '',
     authType,
+    canReadModerationRecords: false,
     // 工作流工具的分享运行需要把完整节点链路返回给运行面板；普通对话仍按公开字段过滤。
     responseAllData: app.type === AppTypeEnum.workflowTool,
     showCite,

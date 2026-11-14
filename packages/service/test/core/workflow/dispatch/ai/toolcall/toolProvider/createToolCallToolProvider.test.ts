@@ -383,4 +383,124 @@ describe('createToolCallToolProvider', () => {
 
     expect(provider.readFileExecutor).toBeDefined();
   });
+
+  it('forks memoryState and merges child system_memories for parallel dataset_search and user tools', async () => {
+    const { WorkflowMemoryState } = await import('@fastgpt/service/core/workflow/memory/state');
+    const parentMemoryState = WorkflowMemoryState.fromRecord({
+      'app:app_1:rootExtract': { memory: 'baseline' }
+    }).fork('node:toolCall1');
+
+    runWorkflowMock.mockImplementation(async ({ runtimeNodes, memoryState }) => {
+      const entryNode = runtimeNodes.find((node: any) => node.isEntry);
+      const key = memoryState.getNodeMemoryKey({
+        runningAppInfo: { sourceType: 'app', sourceId: 'app_1' },
+        nodeId: entryNode.nodeId
+      });
+      return {
+        toolResponse: {
+          prompt: 'Use citations',
+          cites: []
+        },
+        assistantResponses: [],
+        flowUsages: [],
+        flatNodeResponses: [],
+        runTimes: 1,
+        system_memories: {
+          [key]: {
+            memory: `ok-${entryNode.nodeId}`
+          }
+        },
+        workflowRuntimeSummary: { hasToolStop: false, runningTime: 0 },
+        workflowInteractiveResponse: undefined
+      };
+    });
+
+    const provider = await createProvider({
+      workflowProps: {
+        node: { nodeId: 'toolCall1' },
+        memoryState: parentMemoryState,
+        runningAppInfo: { id: 'app_1', sourceType: 'app', sourceId: 'app_1' },
+        runningUserInfo: { teamId: 'team_1', tmbId: 'tmb_1' },
+        uid: 'user_1',
+        chatId: 'chat_1',
+        chatConfig: {},
+        usageId: 'usage_1'
+      } as any,
+      toolNodes: [
+        createToolNode({
+          nodeId: 'dataset_node_1',
+          flowNodeType: FlowNodeTypeEnum.datasetSearchNode
+        }),
+        createToolNode({
+          nodeId: 'dataset_node_2',
+          flowNodeType: FlowNodeTypeEnum.datasetSearchNode
+        }),
+        createToolNode({
+          nodeId: 'search'
+        })
+      ],
+      runtimeNodes: [
+        {
+          nodeId: 'dataset_node_1',
+          inputs: [{ key: NodeInputKeyEnum.datasetSearchInput, value: [] }]
+        },
+        {
+          nodeId: 'dataset_node_2',
+          inputs: [{ key: NodeInputKeyEnum.datasetSearchInput, value: [] }]
+        },
+        {
+          nodeId: 'search',
+          inputs: [
+            {
+              key: 'q',
+              value: '',
+              renderTypeList: [FlowNodeInputTypeEnum.agentGenerated],
+              selectedType: FlowNodeInputTypeEnum.agentGenerated
+            }
+          ]
+        }
+      ] as any,
+      runtimeEdges: [
+        { target: 'dataset_node_1' },
+        { target: 'dataset_node_2' },
+        { target: 'search' }
+      ] as any
+    });
+
+    await provider.datasetSearchExecutor!({
+      messages: [],
+      call: {
+        id: 'call_dataset',
+        type: 'function',
+        function: {
+          name: 'dataset_search',
+          arguments: JSON.stringify({ query: ['FastGPT'] })
+        }
+      } as any
+    });
+
+    await provider.executeTool({
+      messages: [],
+      call: {
+        id: 'call_search',
+        type: 'function',
+        function: {
+          name: 'search',
+          arguments: JSON.stringify({ q: 'FastGPT' })
+        }
+      } as any
+    });
+
+    expect(parentMemoryState.getDelta()).toEqual({
+      'node:toolCall1/app:app_1:dataset_node_1': {
+        memory: 'ok-dataset_node_1'
+      },
+      'node:toolCall1/app:app_1:dataset_node_2': {
+        memory: 'ok-dataset_node_2'
+      },
+      'node:toolCall1/app:app_1:search': {
+        memory: 'ok-search'
+      }
+    });
+  });
 });

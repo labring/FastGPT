@@ -2,7 +2,7 @@ import type { AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { ChatRoleEnum, ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
 
 export const hasAiAnswerContent = (item: AIChatItemValueItemType) =>
-  Boolean(item.text?.content?.trim());
+  !item.hideInUI && Boolean(item.text?.content?.trim());
 
 export const hasAiInteractiveContent = (item: AIChatItemValueItemType) => Boolean(item.interactive);
 
@@ -92,7 +92,7 @@ export const groupAIChatResponseValues = ({
 };
 
 export const shouldFilterAiValue = (item: AIChatItemValueItemType) => {
-  if (item.hideInUI) return true;
+  if (item.hideInUI) return !item.interactive;
   if (item.text?.content?.trim() || item.reasoning?.content?.trim()) return false;
   if (!item.text && !item.reasoning) return false;
 

@@ -452,8 +452,10 @@ export const getTrainingModeByCollection = ({
   ) {
     return TrainingModeEnum.image;
   }
+  // chunk（文件）与 template（FAQ q/a）共用 auto 准入；图片模式优先级在上方。
   if (
-    trainingType === DatasetCollectionDataProcessModeEnum.chunk &&
+    (trainingType === DatasetCollectionDataProcessModeEnum.chunk ||
+      trainingType === DatasetCollectionDataProcessModeEnum.template) &&
     autoIndexes &&
     global.feConfigs?.isPlus
   ) {

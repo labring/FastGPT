@@ -13,8 +13,11 @@ import {
 } from '@fastgpt/global/core/chat/adapt';
 import { ChatRoleEnum, ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
-import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
-import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/llm/type';
+import { ChatItemMiniSchema, type ChatItemMiniType } from '@fastgpt/global/core/chat/type';
+import {
+  ChatCompletionMessageParamSchema,
+  type ChatCompletionMessageParam
+} from '@fastgpt/global/core/ai/llm/type';
 import type {
   WorkflowBuilderPreviewInteractive,
   WorkflowBuilderPreviewAction
@@ -1053,6 +1056,38 @@ describe('normalizeAIChatValue', () => {
 });
 
 describe('chats2GPTMessages', () => {
+  it.each([null, undefined, '', 'chat/file-key'])(
+    'keeps historical image and document keys compatible with request validation: %j',
+    (key) => {
+      const messages: ChatItemMiniType[] = [
+        ChatItemMiniSchema.parse({
+          obj: ChatRoleEnum.Human,
+          value: [ChatFileTypeEnum.image, ChatFileTypeEnum.document].map((type) => ({
+            file: { type, name: 'attachment', url: 'https://example.com/download', key }
+          }))
+        })
+      ];
+
+      const transport = chats2GPTMessages({ messages, reserveId: false });
+      expect(ChatCompletionMessageParamSchema.array().safeParse(transport).success).toBe(true);
+      expect(transport[0].content).toEqual([
+        {
+          type: 'image_url',
+          image_url: { url: 'https://example.com/download' },
+          key: key || undefined
+        },
+        {
+          type: 'file_url',
+          fileType: ChatFileTypeEnum.document,
+          name: 'attachment',
+          url: 'https://example.com/download',
+          key: key || undefined
+        }
+      ]);
+      expect(messages[0].value[0]).toMatchObject({ file: { key: key ?? undefined } });
+    }
+  );
+
   it('should convert system message', () => {
     const messages: ChatItemMiniType[] = [
       {
@@ -1147,6 +1182,23 @@ describe('chats2GPTMessages', () => {
     expect(content[0].type).toBe('file_url');
     expect(content[0].name).toBe('document.pdf');
   });
+
+  it.each([ChatFileTypeEnum.document, ChatFileTypeEnum.unknown])(
+    '文件类型 %s 在聊天与模型消息间往返时保持不变',
+    (type) => {
+      const messages: ChatItemMiniType[] = [
+        {
+          obj: ChatRoleEnum.Human,
+          value: [{ file: { type, name: 'attachment', url: 'https://example.com/download' } }]
+        }
+      ];
+      const transport = chats2GPTMessages({ messages, reserveId: false });
+      expect(transport[0].content).toEqual([
+        expect.objectContaining({ type: 'file_url', fileType: type })
+      ]);
+      expect(GPTMessages2Chats({ messages: transport })[0].value).toEqual(messages[0].value);
+    }
+  );
 
   it('should convert AI message with text', () => {
     const messages: ChatItemMiniType[] = [
@@ -3077,7 +3129,7 @@ describe('GPTMessages2Chats', () => {
 
     expect(result).toHaveLength(1);
     const fileValue = result[0].value[0] as { file?: { type: string; name: string } };
-    expect(fileValue.file?.type).toBe(ChatFileTypeEnum.file);
+    expect(fileValue.file?.type).toBe(ChatFileTypeEnum.document);
     expect(fileValue.file?.name).toBe('document.pdf');
   });
 
@@ -3093,7 +3145,7 @@ describe('GPTMessages2Chats', () => {
 
     expect(result).toHaveLength(1);
     const fileValue = result[0].value[0] as { file?: { type: string; name: string } };
-    expect(fileValue.file?.type).toBe(ChatFileTypeEnum.file);
+    expect(fileValue.file?.type).toBe(ChatFileTypeEnum.document);
     expect(fileValue.file?.name).toBe('');
   });
 

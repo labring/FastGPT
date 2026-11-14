@@ -1,29 +1,6 @@
 import type { AgentAskAnswerDetail } from '@/components/core/chat/ChatContainer/ChatBox/Input/AgentAskComposer';
-import type {
-  WorkflowBuilderPreviewReply,
-  WorkflowBuilderVersionDisplayState
-} from '@fastgpt/global/core/workflow/builder/type';
+import type { WorkflowBuilderPreviewReply } from '@fastgpt/global/core/workflow/builder/type';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
-
-export const workflowBuilderAppliedFeedbackDuration = 1200;
-
-export type WorkflowBuilderVersionButtonState = 'apply' | 'loading' | 'applied' | 'expired';
-
-/** 将版本事实状态和本次点击反馈合并为 Figma 定义的按钮视觉状态。 */
-export const getWorkflowBuilderVersionButtonState = ({
-  displayState,
-  loading,
-  showApplied
-}: {
-  displayState: WorkflowBuilderVersionDisplayState;
-  loading: boolean;
-  showApplied: boolean;
-}): WorkflowBuilderVersionButtonState => {
-  if (displayState === 'expired') return displayState;
-  if (loading) return 'loading';
-  if (showApplied) return 'applied';
-  return 'apply';
-};
 
 const workflowBuilderToolPresentationMap: Record<string, { nameKey: string; avatar: string }> = {
   workflow_cli_query: {

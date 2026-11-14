@@ -73,8 +73,14 @@ describe('getAIChatDisplayGroups', () => {
       }
     };
     expect(getGroups([select])).toEqual([{ type: 'ai', values: [select] }]);
+    expect(getGroups([{ ...select, hideInUI: true }])).toEqual([
+      { type: 'ai', values: [{ ...select, hideInUI: true }] }
+    ]);
     expect(getGroups([{ ...askValue, hideInUI: true }, before])).toEqual([
       { type: 'ai', values: [before] }
+    ]);
+    expect(getGroups([{ ...askValue, ...before, hideInUI: true }, after])).toEqual([
+      { type: 'ai', values: [after] }
     ]);
   });
 

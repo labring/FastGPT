@@ -14,9 +14,9 @@ export const McpToolConfigSchema = z.object({
   inputSchema: JSONSchemaInputTypeSchema.optional().meta({
     description: 'MCP 工具入参 JSON Schema'
   }),
-  // 不把 z.json() 的内部递归类型暴露到工作流 SDK 的声明文件中。
+  // JSON 值在运行时统一校验，避免递归类型影响 SDK 声明和表单默认值推导。
   requestMeta: z
-    .record(z.string(), z.unknown())
+    .record(z.string(), z.any())
     .refine((value) => z.json().safeParse(value).success, {
       message: 'Metadata must contain JSON values'
     })

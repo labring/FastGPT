@@ -223,4 +223,15 @@ describe('parseFileExtensionFromUrl', () => {
     expect(parseFilenameExtension('.gitignore')).toBe('');
     expect(parseFilenameExtension('')).toBe('');
   });
+
+  it.each([
+    ['page.HtM', 'html'],
+    ['README.MARKDOWN', 'md']
+  ])('normalizes parser-supported aliases from filenames and URLs: %s', (filename, extension) => {
+    expect(parseFilenameExtension(filename)).toBe(extension);
+    expect(parseFileExtensionFromUrl(`https://example.com/${filename}`)).toBe(extension);
+    expect(parseFileExtensionFromUrl(`https://example.com/download?filename=${filename}`)).toBe(
+      extension
+    );
+  });
 });

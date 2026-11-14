@@ -14,6 +14,7 @@ import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/cons
 import type { FlowNodeTemplateOutputItemType } from '@fastgpt/global/core/workflow/template/output';
 import { EmptyNode } from '@fastgpt/global/core/workflow/template/system/emptyNode';
 import type { ClassifyQuestionAgentItemType } from '@fastgpt/global/core/workflow/template/system/classifyQuestion/type';
+import { HttpToolSetNode } from '@fastgpt/global/core/workflow/template/system/httpToolSet';
 import type { IfElseListItemType } from '@fastgpt/global/core/workflow/template/system/ifElse/type';
 import { initNewIfElseList } from '@fastgpt/global/common/workflow/condition';
 import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
@@ -30,10 +31,13 @@ import type {
 } from '@fastgpt/global/core/workflow/type/node';
 import { formatEditorVariablePickerIcon } from '@fastgpt/web/core/workflow/utils';
 import { getAppChatConfig } from '@fastgpt/global/common/app/chat';
+import { getWorkflowSecretInputKind } from '@fastgpt/global/common/workflow/input';
 import {
   getSelectedInputRenderType,
   getWorkflowReferenceSourceNodes,
-  getWorkflowReferenceVariables
+  getWorkflowReferenceVariables,
+  isValidReferenceValueFormat,
+  nodeInputIsReference
 } from '@fastgpt/global/common/workflow/reference';
 import { isWorkflowSystemModelInput } from '@fastgpt/global/common/workflow/model';
 import { workflowModelKeyMappings } from '@fastgpt/global/core/workflow/model/constants';
@@ -153,7 +157,12 @@ export const storeNode2FlowNode = ({
 }: StoreNode2FlowNodeProps): Node<FlowNodeItemType> => {
   // init some static data
   const nodeTemplate =
-    moduleTemplatesFlat.find((template) => template.flowNodeType === storeNode.flowNodeType) ||
+    (storeNode.flowNodeType === FlowNodeTypeEnum.toolSet &&
+    !storeNode.pluginId &&
+    storeNode.toolConfig?.httpToolSet &&
+    !('toolId' in storeNode.toolConfig.httpToolSet)
+      ? HttpToolSetNode
+      : moduleTemplatesFlat.find((template) => template.flowNodeType === storeNode.flowNodeType)) ||
     EmptyNode;
 
   const storedInputs = storeNode.inputs;
@@ -256,7 +265,10 @@ export const storeNode2FlowNode = ({
     showSourceHandle: nodeTemplate.showSourceHandle,
     name: isPluginNode ? storeNode.name : t(storeNode.name),
     intro: isPluginNode || !storeNode.intro ? storeNode.intro : t(storeNode.intro),
-    avatar: nodeTemplate.avatar ?? storeNode.avatar,
+    avatar:
+      isPluginNode && storeNode.flowNodeType === FlowNodeTypeEnum.toolSet
+        ? storeNode.avatar || nodeTemplate.avatar
+        : (nodeTemplate.avatar ?? storeNode.avatar),
     version: nodeTemplate.version || storeNode.version,
     catchError: storeNode.catchError ?? nodeTemplate.catchError,
     // 按模板顺序恢复当前输入及存量废弃输入。
@@ -423,21 +435,131 @@ export const storeNode2FlowNode = ({
 };
 
 export const filterSensitiveNodesData = (nodes: StoreNodeItemType[]) => {
-  // 当前导出脱敏范围与历史基线保持一致，仅处理数据集选择和系统密钥输入；工具配置暂不做递归脱敏，避免误删普通 value/defaultValue。
+  // 只清理已确认的凭据容器，避免误删普通业务字段中的 value/defaultValue。
   const cloneNodes = JSON.parse(JSON.stringify(nodes)) as StoreNodeItemType[];
+  const isRecord = (value: unknown): value is Record<string, unknown> =>
+    typeof value === 'object' && value !== null && !Array.isArray(value);
+  const keepSecretRef = (value: unknown) => isRecord(value) && 'ref' in value;
+  const clearHeaderSecret = (value: unknown) => {
+    if (!isRecord(value)) return;
+    const references = Object.entries(value).filter(([, item]) => keepSecretRef(item));
+    return references.length > 0 ? Object.fromEntries(references) : undefined;
+  };
+  const clearHeaderSecretField = (value: Record<string, unknown>) => {
+    const headerSecret = clearHeaderSecret(value.headerSecret);
+    if (headerSecret) {
+      value.headerSecret = headerSecret;
+    } else {
+      delete value.headerSecret;
+    }
+    return value;
+  };
+  const clearSystemInputConfig = (input: StoreNodeItemType['inputs'][number]) => {
+    if (!isRecord(input.value)) return;
+    const configValue = input.value.value;
+    if (!isRecord(configValue)) return;
+
+    const secretKeys = new Set(
+      (input.inputList ?? []).filter((item) => item.inputType === 'secret').map((item) => item.key)
+    );
+    input.value.value = Object.fromEntries(
+      Object.entries(configValue).filter(
+        ([key, value]) => secretKeys.has(key) && keepSecretRef(value)
+      )
+    );
+  };
+  const clearToolCredentials = (toolConfig: unknown) => {
+    if (!isRecord(toolConfig)) return;
+
+    (['mcpTool', 'httpTool'] as const).forEach((key) => {
+      const tool = toolConfig[key];
+      if (isRecord(tool) && 'headerSecret' in tool) {
+        toolConfig[key] = clearHeaderSecretField(tool);
+      }
+    });
+
+    (['mcpToolSet', 'httpToolSet'] as const).forEach((key) => {
+      const toolSet = toolConfig[key];
+      if (!isRecord(toolSet)) return;
+      clearHeaderSecretField(toolSet);
+      if (Array.isArray(toolSet.toolList)) {
+        toolSet.toolList = toolSet.toolList.map((tool) =>
+          isRecord(tool) && 'headerSecret' in tool ? clearHeaderSecretField(tool) : tool
+        );
+      }
+    });
+  };
 
   cloneNodes.forEach((node) => {
+    clearToolCredentials(node.toolConfig);
+
+    const selectedToolsInput = node.inputs.find(
+      (input) => input.key === NodeInputKeyEnum.selectedTools
+    );
+    if (Array.isArray(selectedToolsInput?.value)) {
+      selectedToolsInput.value.forEach((selectedTool) => {
+        if (isRecord(selectedTool)) clearToolCredentials(selectedTool.toolConfig);
+      });
+    }
     // selected dataset
     if (node.flowNodeType === FlowNodeTypeEnum.datasetSearchNode) {
       node.inputs.forEach((input) => {
-        if (input.key === NodeInputKeyEnum.datasetSelectList) {
+        if (input.key === NodeInputKeyEnum.datasetSelectList && !nodeInputIsReference(input)) {
           input.value = [];
         }
       });
     }
 
+    if (node.flowNodeType === FlowNodeTypeEnum.agent) {
+      node.inputs.forEach((input) => {
+        if (input.key === NodeInputKeyEnum.skills || input.key === NodeInputKeyEnum.selectedTools) {
+          input.value = [];
+        } else if (
+          input.key === NodeInputKeyEnum.datasetSelectList &&
+          !nodeInputIsReference(input)
+        ) {
+          input.value = [];
+        } else if (
+          input.key === NodeInputKeyEnum.datasetParams &&
+          input.value &&
+          typeof input.value === 'object' &&
+          !Array.isArray(input.value)
+        ) {
+          input.value = {
+            ...input.value,
+            datasets: []
+          };
+        } else if (
+          input.key === NodeInputKeyEnum.aiSystemPrompt &&
+          typeof input.value === 'string'
+        ) {
+          input.value = input.value.replace(/\{\{@[^@{}]+@\}\}/g, '');
+        }
+      });
+    }
+
     for (const input of node.inputs) {
-      if (input.key === NodeInputKeyEnum.systemInputConfig) {
+      const secretInputKind = getWorkflowSecretInputKind({
+        flowNodeType: node.flowNodeType,
+        inputKey: input.key
+      });
+      if (secretInputKind === 'systemConfig') {
+        clearSystemInputConfig(input);
+      }
+      if (secretInputKind === 'headers') {
+        const headerSecret = clearHeaderSecret(input.value);
+        if (headerSecret) {
+          input.value = headerSecret;
+        } else {
+          delete input.value;
+        }
+      }
+      if (
+        input.renderTypeList?.includes(FlowNodeInputTypeEnum.password) &&
+        !nodeInputIsReference(input) &&
+        !keepSecretRef(input.value) &&
+        !isValidReferenceValueFormat(input.value)
+      ) {
         input.value = undefined;
       }
     }
@@ -681,6 +803,8 @@ export const compareSnapshot = (
           intro: node.data.intro,
           avatar: node.data.avatar,
           version: node.data.version,
+          // 工具集配置随节点持久化，必须参与脏状态和撤销快照比较。
+          toolConfig: node.data.toolConfig,
           isFolded: node.data.isFolded
         }
       }));

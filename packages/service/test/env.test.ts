@@ -5,6 +5,8 @@ const validInvokeTokenSecret = 'fastgpt_test_invoke_token_secret_32';
 const originalEnv = {
   AUXILIARY_GENERATION_SHOW_RUN_DETAIL: process.env.AUXILIARY_GENERATION_SHOW_RUN_DETAIL,
   DB_MAX_LINK: process.env.DB_MAX_LINK,
+  HNSW_MAX_SCAN_TUPLES: process.env.HNSW_MAX_SCAN_TUPLES,
+  HNSW_EF_SEARCH: process.env.HNSW_EF_SEARCH,
   SYSTEM_MIGRATION_BATCH_SIZE: process.env.SYSTEM_MIGRATION_BATCH_SIZE,
   SYSTEM_MIGRATION_DELAY_SECONDS: process.env.SYSTEM_MIGRATION_DELAY_SECONDS,
   SYSTEM_MAX_STRING_LENGTH_M: process.env.SYSTEM_MAX_STRING_LENGTH_M,
@@ -35,6 +37,7 @@ const originalEnv = {
   SANGFOR_PARSE_TIMEOUT_SECONDS: process.env.SANGFOR_PARSE_TIMEOUT_SECONDS,
   PRO_URL: process.env.PRO_URL,
   PRO_TOKEN: process.env.PRO_TOKEN,
+  SHOW_OUTLINK_BRAND: process.env.SHOW_OUTLINK_BRAND,
   VITEST: process.env.VITEST,
   NODE_ENV: process.env.NODE_ENV,
   AGENT_SANDBOX_PROVIDER: process.env.AGENT_SANDBOX_PROVIDER,
@@ -68,6 +71,8 @@ describe('serviceEnv', () => {
       originalEnv.AUXILIARY_GENERATION_SHOW_RUN_DETAIL
     );
     vi.stubEnv('DB_MAX_LINK', originalEnv.DB_MAX_LINK);
+    vi.stubEnv('HNSW_MAX_SCAN_TUPLES', originalEnv.HNSW_MAX_SCAN_TUPLES);
+    vi.stubEnv('HNSW_EF_SEARCH', originalEnv.HNSW_EF_SEARCH);
     vi.stubEnv('SYSTEM_MIGRATION_BATCH_SIZE', originalEnv.SYSTEM_MIGRATION_BATCH_SIZE);
     vi.stubEnv('SYSTEM_MIGRATION_DELAY_SECONDS', originalEnv.SYSTEM_MIGRATION_DELAY_SECONDS);
     vi.stubEnv('SYSTEM_MAX_STRING_LENGTH_M', originalEnv.SYSTEM_MAX_STRING_LENGTH_M);
@@ -110,6 +115,7 @@ describe('serviceEnv', () => {
     vi.stubEnv('SANGFOR_PARSE_TIMEOUT_SECONDS', originalEnv.SANGFOR_PARSE_TIMEOUT_SECONDS);
     vi.stubEnv('PRO_URL', originalEnv.PRO_URL);
     vi.stubEnv('PRO_TOKEN', originalEnv.PRO_TOKEN);
+    vi.stubEnv('SHOW_OUTLINK_BRAND', originalEnv.SHOW_OUTLINK_BRAND);
     vi.stubEnv('VITEST', originalEnv.VITEST);
     vi.stubEnv('NODE_ENV', originalEnv.NODE_ENV);
     vi.stubEnv('AGENT_SANDBOX_PROVIDER', originalEnv.AGENT_SANDBOX_PROVIDER);
@@ -143,6 +149,18 @@ describe('serviceEnv', () => {
     expect(serviceEnv.AUXILIARY_GENERATION_SHOW_RUN_DETAIL).toBe(expected);
   });
 
+  it('ignores the retired HNSW scan budget environment variable', async () => {
+    vi.stubEnv('HNSW_MAX_SCAN_TUPLES', 'no-longer-used');
+    const { serviceEnv } = await importServiceEnv();
+    expect(serviceEnv).not.toHaveProperty('HNSW_MAX_SCAN_TUPLES');
+  });
+
+  it.each([undefined, '100', '400'])('loads HNSW search width %j', async (configured) => {
+    vi.stubEnv('HNSW_EF_SEARCH', configured);
+    const { serviceEnv } = await importServiceEnv();
+    expect(serviceEnv.HNSW_EF_SEARCH).toBe(configured === undefined ? 200 : Number(configured));
+  });
+
   it('clamps DB_MAX_LINK to the supported connection pool range', async () => {
     vi.stubEnv('FILE_TOKEN_KEY', 'filetokenkey');
     vi.stubEnv('AES256_SECRET_KEY', 'fastgptsecret');
@@ -174,20 +192,14 @@ describe('serviceEnv', () => {
     });
   });
 
-  it('enables MongoDB index synchronization by default and supports disabling it', async () => {
+  it.each([undefined, 'false', 'invalid'])('ignores retired SYNC_INDEX=%s', async (value) => {
     vi.stubEnv('FILE_TOKEN_KEY', 'filetokenkey');
     vi.stubEnv('AES256_SECRET_KEY', 'fastgptsecret');
     vi.stubEnv('INVOKE_TOKEN_SECRET', validInvokeTokenSecret);
 
-    vi.stubEnv('SYNC_INDEX', undefined);
-    await expect(importServiceEnv()).resolves.toMatchObject({
-      serviceEnv: { SYNC_INDEX: true }
-    });
-
-    vi.stubEnv('SYNC_INDEX', 'false');
-    await expect(importServiceEnv()).resolves.toMatchObject({
-      serviceEnv: { SYNC_INDEX: false }
-    });
+    vi.stubEnv('SYNC_INDEX', value);
+    const { serviceEnv } = await importServiceEnv();
+    expect('SYNC_INDEX' in serviceEnv).toBe(false);
   });
 
   it('validates the persisted file URL expiration in days', async () => {
@@ -564,6 +576,29 @@ describe('serviceEnv', () => {
       }
     });
   });
+
+  it.each([
+    { proUrl: undefined, configured: undefined, expected: true },
+    { proUrl: undefined, configured: 'false', expected: true },
+    { proUrl: undefined, configured: 'invalid', expected: true },
+    { proUrl: '', configured: undefined, expected: true },
+    { proUrl: 'https://pro.example.com', configured: undefined, expected: false },
+    { proUrl: 'https://pro.example.com', configured: '', expected: false },
+    { proUrl: 'https://pro.example.com', configured: 'false', expected: false },
+    { proUrl: 'https://pro.example.com', configured: 'true', expected: true },
+    { proUrl: 'https://pro.example.com', configured: 'invalid', expected: false }
+  ])(
+    'resolves share branding with PRO_URL=$proUrl and SHOW_OUTLINK_BRAND=$configured as $expected',
+    async ({ proUrl, configured, expected }) => {
+      vi.stubEnv('PRO_URL', proUrl);
+      vi.stubEnv('PRO_TOKEN', 'custom_pro_token_32_chars_minimum');
+      vi.stubEnv('SHOW_OUTLINK_BRAND', configured);
+
+      const { serviceEnv } = await importServiceEnv();
+      expect(serviceEnv.SHOW_OUTLINK_BRAND).toBe(expected);
+      expect(process.env.SHOW_OUTLINK_BRAND).toBe(configured);
+    }
+  );
 
   it('validates shared Agent Sandbox resource limits during service env init', async () => {
     vi.stubEnv('FILE_TOKEN_KEY', 'filetokenkey');

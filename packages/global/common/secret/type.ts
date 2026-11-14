@@ -79,8 +79,27 @@ export const SecretValueParseSchema = SecretValueInputSchema.refine(
   .pipe(SecretValueTypeSchema);
 
 /** 仅在已确认的凭据边界兼容旧空 wrapper；API 与迁移共用相同转换规则。 */
-export const CompatibleSecretValueSchema =
-  SecretValueInputSchema.transform(normalizeSecretValueInput).pipe(SecretValueTypeSchema);
+export const CompatibleSecretValueSchema = z
+  .preprocess(
+    (value) => {
+      if (typeof value !== 'string') return value;
+      try {
+        return JSON.parse(value);
+      } catch {
+        return value;
+      }
+    },
+    z.union([
+      SecretRefValueSchema,
+      z.object({ value: z.unknown().optional(), secret: z.string().optional() }).strict()
+    ])
+  )
+  .transform((value) => {
+    if ('ref' in value) return value;
+    if (value.value !== undefined && value.value !== '') return { value: value.value };
+    if (value.secret !== undefined) return { secret: value.secret };
+    return { value: '' };
+  });
 
 export const StoreSecretValueTypeSchema = z.record(z.string(), SecretValueTypeSchema).meta({
   description: '存储密钥值类型，key 为密钥名称，value 为密钥值。',

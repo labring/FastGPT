@@ -19,6 +19,7 @@ import { type PaginationResponse } from '@fastgpt/global/openapi/api';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import MemberItemCard from '@/components/support/permission/MemberManager/MemberItemCard';
 import TeamMemberEditLoader from '../TeamMemberEditLoader';
+import MyBox from '@fastgpt/web/components/common/MyBox';
 
 export type GroupMemberSelectedType = {
   name: string;
@@ -61,7 +62,11 @@ function GroupEditModalContent({
     }))
   );
 
-  const { data: allMembers = [], ScrollData: MemberScrollData } = useScrollPagination<
+  const {
+    data: allMembers = [],
+    ScrollData: MemberScrollData,
+    isInitialLoading
+  } = useScrollPagination<
     any,
     PaginationResponse<TeamMemberItemType<{ withOrgs: true; withPermission: true }>>
   >(getTeamMembers, {
@@ -170,20 +175,29 @@ function GroupEditModalContent({
                 setSearchKey(e.target.value);
               }}
             />
-            <MemberScrollData mt={3} flexGrow="1" overflow={'auto'}>
-              {allMembers.map((member) => {
-                return (
-                  <MemberItemCard
-                    avatar={member.avatar}
-                    key={member.tmbId}
-                    name={member.memberName}
-                    onChange={() => handleToggleSelect(member.tmbId)}
-                    isChecked={!!isSelected(member.tmbId)}
-                    orgs={member.orgs}
-                  />
-                );
-              })}
-            </MemberScrollData>
+            <MyBox
+              isLoading={isInitialLoading}
+              position={'relative'}
+              overflow={'hidden'}
+              mt={3}
+              flex={1}
+              minH={0}
+            >
+              <MemberScrollData>
+                {allMembers.map((member) => {
+                  return (
+                    <MemberItemCard
+                      avatar={member.avatar}
+                      key={member.tmbId}
+                      name={member.memberName}
+                      onChange={() => handleToggleSelect(member.tmbId)}
+                      isChecked={!!isSelected(member.tmbId)}
+                      orgs={member.orgs}
+                    />
+                  );
+                })}
+              </MemberScrollData>
+            </MyBox>
           </Flex>
           <Flex borderLeft="1px" borderColor="myGray.200" flexDirection="column" p="4" h={'100%'}>
             <Box mt={2} mb={3}>

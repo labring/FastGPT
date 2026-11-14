@@ -6,6 +6,7 @@
 import { createHash } from 'crypto';
 import type { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { isAppSandboxSourceType } from '@fastgpt/global/common/chat/source';
+import { getRunningSandboxId } from './id';
 
 type HashContent = string | Buffer | Uint8Array;
 
@@ -121,14 +122,104 @@ export const resolveSandboxRuntimePath = (
 export const buildRuntimeHash = (content: HashContent): string =>
   `sha256:${createHash('sha256').update(content).digest('hex')}`;
 
+export type SandboxInputFileNameAllocation = {
+  usedNames: Map<string, number>;
+  urlByFilename: Map<string, string>;
+  filenameByUrlAndBaseName: Map<string, string>;
+};
+
+export const createSandboxInputFileNameAllocation = (): SandboxInputFileNameAllocation => ({
+  usedNames: new Map<string, number>(),
+  urlByFilename: new Map<string, string>(),
+  filenameByUrlAndBaseName: new Map<string, string>()
+});
+
+const allocationsByOwner = new WeakMap<object, Map<string, SandboxInputFileNameAllocation>>();
+
+const setOwnerAllocation = (
+  owner: object,
+  key: string,
+  allocation: SandboxInputFileNameAllocation
+) => {
+  let byScope = allocationsByOwner.get(owner);
+  if (!byScope) {
+    byScope = new Map<string, SandboxInputFileNameAllocation>();
+    allocationsByOwner.set(owner, byScope);
+  }
+  byScope.set(key, allocation);
+};
+
+/** 生成单个会话沙盒工作目录的输入文件去重作用域键。 */
+export const buildSandboxInputFileScopeKey = ({
+  sourceType,
+  sourceId,
+  userId,
+  chatId
+}: {
+  sourceType: ChatSourceTypeEnum;
+  sourceId: string;
+  userId: string;
+  chatId?: string;
+}) => `${getRunningSandboxId({ sourceType, sourceId, userId })}:${chatId ?? ''}`;
+
+/**
+ * 获取或创建同一沙盒会话工作目录下的输入文件名分配状态。
+ *
+ * 状态仅通过 WeakMap 绑定到当前请求上下文对象（contextOwner）或沙盒实例（sandbox），
+ * 请求或实例释放后随 GC 自动回收，不在进程级 Map 中永久保留历史会话数据。
+ */
+export const getSandboxInputFileNameAllocation = ({
+  scopeKey,
+  contextOwner,
+  sandbox,
+  workDirectory = ''
+}: {
+  scopeKey?: string;
+  contextOwner?: object;
+  sandbox?: object | null;
+  workDirectory?: string;
+}): SandboxInputFileNameAllocation => {
+  const key = scopeKey || workDirectory;
+  const sandboxObject = sandbox && typeof sandbox === 'object' ? sandbox : undefined;
+
+  if (contextOwner) {
+    let allocation = allocationsByOwner.get(contextOwner)?.get(key);
+    if (!allocation) {
+      allocation = createSandboxInputFileNameAllocation();
+      setOwnerAllocation(contextOwner, key, allocation);
+    }
+    if (sandboxObject) {
+      setOwnerAllocation(sandboxObject, key, allocation);
+    }
+    return allocation;
+  }
+
+  if (sandboxObject) {
+    let allocation = allocationsByOwner.get(sandboxObject)?.get(key);
+    if (!allocation) {
+      allocation = createSandboxInputFileNameAllocation();
+      setOwnerAllocation(sandboxObject, key, allocation);
+    }
+    return allocation;
+  }
+
+  return createSandboxInputFileNameAllocation();
+};
+
 /**
  * 将外部文件名收敛为可写入 sandbox user_files 的单个 path segment。
  * URL query、API body 和模型上下文都可能携带文件名，因此调用方不能信任原始 name。
+ * 当提供会话级 allocation 时，相同 URL 复用原文件名，不同 URL 的同名文件自动递增后缀。
  */
 export const getSafeSandboxInputFilename = (
   filename: string,
   index: number,
-  usedNames: Map<string, number>
+  usedNames: Map<string, number>,
+  options?: {
+    url?: string;
+    allocation?: SandboxInputFileNameAllocation;
+    batchUsedFilenames?: Set<string>;
+  }
 ) => {
   const fallbackName = `file-${index}`;
   const normalized = filename.replace(/\\/g, '/').split('/').pop()?.trim() || fallbackName;
@@ -137,11 +228,40 @@ export const getSafeSandboxInputFilename = (
     withoutControlChars && withoutControlChars !== '.' && withoutControlChars !== '..'
       ? withoutControlChars
       : fallbackName;
+
+  const allocation = options?.allocation;
+  const normalizedUrl = options?.url?.trim() || undefined;
+  const batchUsedFilenames = options?.batchUsedFilenames;
+  if (allocation && normalizedUrl) {
+    const existing = allocation.filenameByUrlAndBaseName.get(`${baseName}\0${normalizedUrl}`);
+    if (existing && !batchUsedFilenames?.has(existing)) {
+      batchUsedFilenames?.add(existing);
+      return existing;
+    }
+  }
+
   const firstDotIndex = baseName.indexOf('.');
   const stem = firstDotIndex > 0 ? baseName.slice(0, firstDotIndex) : baseName;
   const extension = firstDotIndex > 0 ? baseName.slice(firstDotIndex) : '';
-  const count = usedNames.get(baseName) || 0;
-  usedNames.set(baseName, count + 1);
+  const targetUsedNames = allocation?.usedNames ?? usedNames;
+  let count = targetUsedNames.get(baseName) || 0;
+  let candidate = count === 0 ? baseName : `${stem}-${count}${extension}`;
+  while (
+    batchUsedFilenames?.has(candidate) ||
+    (allocation &&
+      allocation.urlByFilename.has(candidate) &&
+      allocation.urlByFilename.get(candidate) !== normalizedUrl)
+  ) {
+    count += 1;
+    candidate = `${stem}-${count}${extension}`;
+  }
+  targetUsedNames.set(baseName, count + 1);
+  batchUsedFilenames?.add(candidate);
+  if (allocation && normalizedUrl) {
+    allocation.urlByFilename.set(candidate, normalizedUrl);
+    allocation.filenameByUrlAndBaseName.set(`${baseName}\0${normalizedUrl}`, candidate);
+    allocation.filenameByUrlAndBaseName.set(`${candidate}\0${normalizedUrl}`, candidate);
+  }
 
-  return count === 0 ? baseName : `${stem}-${count}${extension}`;
+  return candidate;
 };

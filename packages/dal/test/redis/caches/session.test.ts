@@ -273,6 +273,7 @@ describe('SessionCache adapter integration', () => {
     });
 
     await expect(cache.get('user-1:token-1')).resolves.toMatchObject({ userId: 'user-1' });
+    expect(commandClient.multi).not.toHaveBeenCalled();
     await cache.set({
       sessionId: 'user-1:token-1',
       data: {

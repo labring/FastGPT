@@ -9,6 +9,7 @@ import {
 } from '../type/node';
 import { StoreEdgeItemTypeSchema } from '../type/edge';
 import { LanguageSchema } from '../../../common/i18n/type';
+import { AgentToolConfigSchema } from '../../app/tool/config';
 
 /**
  * 当前工作流输入。该类型不包含任何历史字段。
@@ -39,7 +40,7 @@ const CanonicalAvailableAgentToolSchema = z.object({
   metadataLocale: LanguageSchema.optional(),
   toolConfig: WorkflowNodeToolConfigSchema.optional(),
   inputs: z.array(CanonicalAgentToolInputConfigSchema).optional(),
-  config: z.record(z.string(), z.unknown())
+  config: AgentToolConfigSchema
 });
 
 /** Agent 工具选择的 canonical 结构。 */

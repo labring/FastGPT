@@ -5,7 +5,7 @@ import { ModelTypeEnum } from '../../../../core/ai/constants';
  * API: 替换团队内失效模型引用
  * Route: POST /api/core/ai/model/invalidReferences/replace
  * Method: POST
- * Description: 团队 owner 同步扫描知识库、应用和历史版本并替换失效的静态模型引用
+ * Description: 团队 owner 或系统管理员（root）同步扫描知识库、应用和历史版本并替换失效的静态模型引用
  * Tags: ['模型管理', 'Write']
  * ============================================================================ */
 

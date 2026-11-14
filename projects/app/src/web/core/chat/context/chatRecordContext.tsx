@@ -1,13 +1,19 @@
 import { type ChatSiteItemType } from '@/components/core/chat/ChatContainer/ChatBox/type';
-import type { LinkedPaginationProps, LinkedListResponse } from '@fastgpt/global/openapi/api';
-import { useLinkedScroll } from '@fastgpt/web/hooks/useLinkedScroll';
+import type { LinkedPaginationProps } from '@fastgpt/global/openapi/api';
+import {
+  useLinkedScroll,
+  type LinkedScrollDataProps,
+  type LinkedScrollPaginationLoading
+} from '@fastgpt/web/hooks/useLinkedScroll';
 import React, { type ReactNode, useState } from 'react';
 import { createContext } from 'use-context-selector';
 import { getChatRecords } from '../record/api';
 import { ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
-import { type BoxProps } from '@chakra-ui/react';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
-import type { GetRecordsV2ResponseType } from '@fastgpt/global/openapi/core/chat/record/api';
+import {
+  GetRecordsV2BodyRawSchema,
+  type GetRecordsV2ResponseType
+} from '@fastgpt/global/openapi/core/chat/record/api';
 import { hasChatAuthTargetInput, type ChatAuthTargetInput } from '../utils';
 import { useMemoizedFn } from 'ahooks';
 
@@ -18,24 +24,22 @@ type ChatRecordProviderParams = ChatAuthTargetInput & {
 
 type ChatRecordContextType = {
   isLoadingRecords: boolean;
+  isInitialLoadingRecords: boolean;
+  paginationLoading: LinkedScrollPaginationLoading;
   chatRecords: ChatSiteItemType[];
   setChatRecords: React.Dispatch<React.SetStateAction<ChatSiteItemType[]>>;
   refreshChatRecords: () => Promise<ChatSiteItemType[]>;
   truncateChatRecords: (dataId: string) => Promise<ChatSiteItemType[]>;
   isChatRecordsLoaded: boolean;
   totalRecordsCount: number;
-  ScrollData: ({
-    children,
-    ...props
-  }: {
-    children: React.ReactNode;
-    ScrollContainerRef?: React.RefObject<HTMLDivElement>;
-  } & BoxProps) => React.JSX.Element;
+  ScrollData: (props: LinkedScrollDataProps) => React.JSX.Element;
   itemRefs: React.MutableRefObject<Map<string, HTMLElement | null>>;
 };
 
 export const ChatRecordContext = createContext<ChatRecordContextType>({
   isLoadingRecords: false,
+  isInitialLoadingRecords: false,
+  paginationLoading: { prev: false, next: false },
   chatRecords: [],
   setChatRecords: function (_value: React.SetStateAction<ChatSiteItemType[]>): void {
     throw new Error('Function not implemented.');
@@ -44,12 +48,7 @@ export const ChatRecordContext = createContext<ChatRecordContextType>({
   truncateChatRecords: async () => [],
   isChatRecordsLoaded: false,
 
-  ScrollData: function (
-    _props: {
-      children: React.ReactNode;
-      ScrollContainerRef?: React.RefObject<HTMLDivElement>;
-    } & BoxProps
-  ): React.JSX.Element {
+  ScrollData: function (_props: LinkedScrollDataProps): React.JSX.Element {
     throw new Error('Function not implemented.');
   },
   totalRecordsCount: 0,
@@ -64,13 +63,11 @@ const ChatRecordContextProvider = ({
   params,
   feedbackRecordId,
   fetchFn,
-  showInitialLoading = true,
   showPrevLoading = true
 }: {
   children: ReactNode;
   params: ChatRecordProviderParams;
   feedbackRecordId?: string;
-  showInitialLoading?: boolean;
   fetchFn?: (
     data: LinkedPaginationProps<ChatRecordProviderParams>
   ) => Promise<GetRecordsV2ResponseType>;
@@ -79,7 +76,11 @@ const ChatRecordContextProvider = ({
   const [isChatRecordsLoaded, setIsChatRecordsLoaded] = useState(false);
   const [totalRecordsCount, setTotalRecordsCount] = useState(0);
 
-  const currentData = useMemoEnhance(() => ({ id: feedbackRecordId || '' }), [feedbackRecordId]);
+  // 恢复待确认方案时对齐卡片顶部，避免分页列表的初始定位覆盖 ChatBox 的阅读起点。
+  const getScrollTarget = useMemoizedFn(
+    (element: HTMLElement) =>
+      element.querySelector<HTMLElement>('[data-chat-scroll-anchor]') ?? element
+  );
   const {
     dataList: chatRecords,
     setDataList: setChatRecords,
@@ -88,15 +89,18 @@ const ChatRecordContextProvider = ({
     hasMoreNext,
     ScrollData,
     isLoading,
+    isInitialLoading,
+    paginationLoading,
     itemRefs,
     loadInitData
   } = useLinkedScroll(
     async (
       data: LinkedPaginationProps<ChatRecordProviderParams>
-    ): Promise<LinkedListResponse<ChatSiteItemType>> => {
+    ): Promise<{ list: ChatSiteItemType[]; hasMorePrev: boolean; hasMoreNext: boolean }> => {
       const request = (() => {
         if (fetchFn) return () => fetchFn(data);
-        if (hasChatAuthTargetInput(data)) return () => getChatRecords(data);
+        if (hasChatAuthTargetInput(data))
+          return () => getChatRecords(GetRecordsV2BodyRawSchema.parse(data));
         return undefined;
       })();
       if (!request) {
@@ -115,9 +119,9 @@ const ChatRecordContextProvider = ({
       setTotalRecordsCount(res.total);
 
       return {
-        list: res.list.map((item) => ({
+        list: res.list.map(({ id: _deprecatedId, ...item }) => ({
           ...item,
-          dataId: item.dataId!,
+          dataId: item.dataId,
           status: ChatStatusEnum.finish
         })),
         hasMorePrev: res.hasMorePrev,
@@ -127,10 +131,11 @@ const ChatRecordContextProvider = ({
     {
       pageSize: 20,
       params,
-      currentData,
+      currentId: feedbackRecordId,
+      getItemId: (item) => item.dataId,
       defaultScroll: 'bottom',
+      getScrollTarget,
       showErrorToast: false,
-      showInitialLoading,
       showPrevLoading
     }
   );
@@ -158,6 +163,8 @@ const ChatRecordContextProvider = ({
   const contextValue = useMemoEnhance(() => {
     return {
       isLoadingRecords: isLoading,
+      isInitialLoadingRecords: isInitialLoading,
+      paginationLoading,
       chatRecords,
       setChatRecords,
       refreshChatRecords,
@@ -169,6 +176,8 @@ const ChatRecordContextProvider = ({
     };
   }, [
     isLoading,
+    isInitialLoading,
+    paginationLoading,
     chatRecords,
     setChatRecords,
     refreshChatRecords,

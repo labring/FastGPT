@@ -73,7 +73,7 @@ describe('MCP metadata ownership across stored versions and dispatch', () => {
         mcpTool: { toolId: `mcp-${toolAppId}/search` },
         mcpToolSet: {
           url: 'https://old.example.com',
-          toolList: [{ name: 'search', description: 'Old', requestMeta: { revision: 'stale' } }]
+          toolList: [{ name: 'search', description: 'Old' }]
         }
       };
       const published = PublishAppBodySchema.parse({

@@ -250,8 +250,10 @@ function AutoExecute({ chatConfig: { autoExecute }, setAppDetail }: ComponentPro
 }
 
 function QuestionGuide({ chatConfig: { questionGuide }, setAppDetail }: ComponentProps) {
+  const appId = useContextSelector(AppContext, (v) => v.appDetail._id);
   return (
     <QGConfig
+      appId={appId || undefined}
       value={questionGuide}
       onChange={(e) => {
         setAppDetail((state) => ({

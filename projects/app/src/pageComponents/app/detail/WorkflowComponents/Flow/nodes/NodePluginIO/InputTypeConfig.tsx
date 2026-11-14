@@ -43,6 +43,10 @@ import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { canInputBeAgentGenerated } from '@fastgpt/global/core/app/formEdit/utils';
 import { getUserFileAmountLimit } from '@fastgpt/global/core/workflow/fileLimit';
+import {
+  MAX_SELECT_OPTION_COUNT,
+  MAX_SELECT_OPTION_LENGTH
+} from '@fastgpt/global/core/workflow/optionLimit';
 import type {
   ReferenceArrayValueType,
   SelectedDatasetType
@@ -52,6 +56,8 @@ import InputSlider from '@fastgpt/web/components/common/MySlider/InputSlider';
 import RadioGroup from '@fastgpt/web/components/common/Radio/RadioGroup';
 import { FileTypeSelectorPanel } from '@fastgpt/web/components/core/app/FileTypeSelector';
 import NodeInputSelect from '@fastgpt/web/components/core/workflow/NodeInputSelect';
+import { useContextSelector } from 'use-context-selector';
+import { AppContext } from '@/pageComponents/app/detail/context';
 import { ReferSelector, useReference } from '../render/RenderInput/templates/Reference';
 
 const inputFormGridTemplateColumns = 'minmax(64px, max-content) minmax(0, 1fr)';
@@ -116,6 +122,7 @@ const InputTypeConfig = ({
 }) => {
   const { t } = useTranslation();
   const { maxUploadFileCount } = useFileUploadLimits();
+  const appId = useContextSelector(AppContext, (v) => v.appId);
 
   const typeLabels = useMemo(() => {
     return {
@@ -239,7 +246,7 @@ const InputTypeConfig = ({
     [removeEnums, isMultipleSelectInput, isSelectInput, getValues, setValue]
   );
 
-  const isOptionLimitReached = optionFields.length >= 50;
+  const isOptionLimitReached = optionFields.length >= MAX_SELECT_OPTION_COUNT;
 
   const valueTypeSelectList = Object.values(FlowValueTypeMap)
     .filter((item) => !item.abandon)
@@ -431,6 +438,7 @@ const InputTypeConfig = ({
         alignContent={'start'}
         textAlign={'left'}
         p={8}
+        h={'full'}
         flex={'0 1 auto'}
         overflow={'auto'}
       >
@@ -746,6 +754,7 @@ const InputTypeConfig = ({
                 <Box flex={'1'}>
                   <AIModelSelector
                     modelType={ModelTypeEnum.llm}
+                    appId={appId || undefined}
                     value={defaultValue}
                     onChange={(model) => {
                       setValue('defaultValue', model);
@@ -942,6 +951,7 @@ const InputTypeConfig = ({
                                   <FormControl flex={1} minW={0}>
                                     <Input
                                       bg={'white'}
+                                      maxLength={MAX_SELECT_OPTION_LENGTH}
                                       placeholder={t('workflow:please_input_option')}
                                       {...register(`list.${i}.label`, {
                                         validate: (val: string) =>

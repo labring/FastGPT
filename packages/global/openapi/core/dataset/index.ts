@@ -9,6 +9,7 @@ import { DatasetFilePath } from './file';
 import { DatasetTrainingPath } from './training';
 import { DatasetSynonymPath } from './synonym';
 import { DatasetBatchPath } from './batch';
+import { DatasetSearchPath } from './search';
 import {
   CreateDatasetBodySchema,
   CreateDatasetWithFilesBodySchema,
@@ -290,7 +291,7 @@ export const DatasetPath: OpenAPIPath = {
     put: {
       summary: '更新知识库',
       description: '更新知识库信息、配置或移动知识库到其他目录',
-      tags: [DevApiTagsMap.datasetCommon],
+      tags: [DevApiTagsMap.datasetCommon, SystemOpenApiTagMap.dataset],
       requestBody: {
         content: {
           'application/json': {
@@ -383,7 +384,7 @@ export const DatasetPath: OpenAPIPath = {
 - 图片上传：先调用 \`/core/dataset/file/presignSearchTestImage\`，按返回的预签名信息上传图片，再将 \`temp/\${teamId}/...\` key 传入 \`queryImageUrls\`。最多 10 张，仅接受当前团队的临时 key，不支持公网 URL、dataset key 或 chat key。
 - 检索配置：支持向量、全文和混合检索，以及文本重排序和问题扩展；纯图片输入不执行文本扩展。
 - \`limit\` 是召回内容的 token 预算，并非结果条数；默认 5000，超过 20000 时按 20000 处理。`,
-      tags: [DevApiTagsMap.datasetCommon, SystemOpenApiTagMap.datasetOther],
+      tags: [DevApiTagsMap.datasetCommon],
       requestBody: {
         content: {
           'application/json': {
@@ -441,5 +442,6 @@ export const DatasetPath: OpenAPIPath = {
   ...DatasetFilePath,
   ...DatasetTrainingPath,
   ...DatasetSynonymPath,
-  ...DatasetBatchPath
+  ...DatasetBatchPath,
+  ...DatasetSearchPath
 };

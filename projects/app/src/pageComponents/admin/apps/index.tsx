@@ -22,6 +22,7 @@ import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 import { accountTitleTextStyles } from '@/pageComponents/account/styles';
+import MyBox from '@fastgpt/web/components/common/MyBox';
 
 const AppTable = () => {
   const [appDetail, setAppDetail] = useState<any>();
@@ -70,70 +71,72 @@ const AppTable = () => {
           ></Input>
         </InputGroup>
       </Flex>
-      <FixedTableContainer
-        ref={scrollContainerRef}
-        position={'relative'}
-        h={'100%'}
-        maxH={'none'}
-        px={[4, 6]}
-        py={6}
-        footer={
-          total > pageSize ? (
-            <Flex mt={3} justifyContent={'center'}>
-              <Pagination />
-            </Flex>
-          ) : undefined
-        }
-      >
-        <Table minW={'1000px'}>
-          <Thead>
-            <Tr>
-              <Th>应用id</Th>
-              <Th>应用名</Th>
-              <Th>创建者</Th>
-              <Th>团队</Th>
-              <Th>介绍</Th>
-              <Th></Th>
-            </Tr>
-          </Thead>
-          <Tbody fontSize={'sm'}>
-            {apps.map((item, i) => (
-              <Tr key={i}>
-                <Td>{item.id}</Td>
-                <Td>{item.name}</Td>
-                <Td>{item.username}</Td>
-                <Td>{item.teamName}</Td>
-                <Td maxW={'300px'} className="textEllipsis">
-                  {item.intro || '-'}
-                </Td>
-                <Td textAlign={'center'}>
-                  <HStack spacing={2} ml={4}>
-                    <Button variant={'whiteBase'} size={'sm'} onClick={() => setAppDetail(item)}>
-                      详情
-                    </Button>
-                    <Button variant={'whiteBase'} size={'sm'} onClick={() => routeToApp(item.id)}>
-                      跳转
-                    </Button>
-                  </HStack>
-                </Td>
+      <MyBox isLoading={isLoading} flex={'1 0 0'} h={0} minH={0}>
+        <FixedTableContainer
+          ref={scrollContainerRef}
+          position={'relative'}
+          h={'100%'}
+          maxH={'none'}
+          px={[4, 6]}
+          py={6}
+          footer={
+            total > pageSize ? (
+              <Flex mt={3} justifyContent={'center'}>
+                <Pagination />
+              </Flex>
+            ) : undefined
+          }
+        >
+          <Table minW={'1000px'}>
+            <Thead>
+              <Tr>
+                <Th>应用id</Th>
+                <Th>应用名</Th>
+                <Th>创建者</Th>
+                <Th>团队</Th>
+                <Th>介绍</Th>
+                <Th></Th>
               </Tr>
-            ))}
-          </Tbody>
-        </Table>
-        {!isLoading && apps.length === 0 && (
-          <Flex
-            mt={'20vh'}
-            flexDirection={'column'}
-            alignItems={'center'}
-            justifyContent={'center'}
-          >
-            <MyIcon name="empty" w={'48px'} h={'48px'} color={'transparent'} />
-            <Box mt={2} color={'myGray.500'}>
-              无应用记录～
-            </Box>
-          </Flex>
-        )}
-      </FixedTableContainer>
+            </Thead>
+            <Tbody fontSize={'sm'}>
+              {apps.map((item, i) => (
+                <Tr key={i}>
+                  <Td>{item.id}</Td>
+                  <Td>{item.name}</Td>
+                  <Td>{item.username}</Td>
+                  <Td>{item.teamName}</Td>
+                  <Td maxW={'300px'} className="textEllipsis">
+                    {item.intro || '-'}
+                  </Td>
+                  <Td textAlign={'center'}>
+                    <HStack spacing={2} ml={4}>
+                      <Button variant={'whiteBase'} size={'sm'} onClick={() => setAppDetail(item)}>
+                        详情
+                      </Button>
+                      <Button variant={'whiteBase'} size={'sm'} onClick={() => routeToApp(item.id)}>
+                        跳转
+                      </Button>
+                    </HStack>
+                  </Td>
+                </Tr>
+              ))}
+            </Tbody>
+          </Table>
+          {!isLoading && apps.length === 0 && (
+            <Flex
+              mt={'20vh'}
+              flexDirection={'column'}
+              alignItems={'center'}
+              justifyContent={'center'}
+            >
+              <MyIcon name="empty" w={'48px'} h={'48px'} color={'transparent'} />
+              <Box mt={2} color={'myGray.500'}>
+                无应用记录～
+              </Box>
+            </Flex>
+          )}
+        </FixedTableContainer>
+      </MyBox>
 
       {!!appDetail && <AppDetailModal app={appDetail} onClose={() => setAppDetail(undefined)} />}
     </BoxPageRoot>

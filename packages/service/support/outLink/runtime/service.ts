@@ -1,9 +1,5 @@
 import { Readable } from 'node:stream';
-import {
-  ChatGenerateStatusEnum,
-  ChatRoleEnum,
-  ChatSourceTypeEnum
-} from '@fastgpt/global/core/chat/constants';
+import { ChatRoleEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import type { UserChatItemType } from '@fastgpt/global/core/chat/type';
 import {
   getWorkflowEntryNodeIds,
@@ -34,7 +30,6 @@ import {
   type Props as SaveChatProps
 } from '../../../core/chat/saveChat';
 import { preChatRound, type PreChatRoundResult } from '../../../core/chat/utils/prepare';
-import { updateChatGenerateStatus } from '../../../core/chat/chatGenerateStatus';
 import { dispatchWorkFlow } from '../../../core/workflow/dispatch';
 import { WORKFLOW_MAX_RUN_TIMES } from '../../../core/workflow/constants';
 import {
@@ -384,10 +379,14 @@ export async function runOutlinkRuntime<T extends OutlinkAppType>({
       teamId: String(outLinkConfig.teamId),
       tmbId: String(outLinkConfig.tmbId),
       source: getChatSourceByPublishChannel(outLinkConfig.type),
+      publishSource: {
+        type: getChatSourceByPublishChannel(outLinkConfig.type),
+        id: String(outLinkConfig._id)
+      },
       sourceName: outLinkConfig.name,
-      shareId: outLinkConfig.shareId,
       outLinkUid: chatUserId,
       userContent,
+      variables,
       responseChatItemId: messageId
     });
     roundState.preparedRound = preparedRound;
@@ -467,8 +466,8 @@ export async function runOutlinkRuntime<T extends OutlinkAppType>({
       nodes,
       appChatConfig: chatConfig,
       variables: newVariables,
-      shareId: outLinkConfig.shareId,
       source: getChatSourceByPublishChannel(outLinkConfig.type),
+      publishSource: preparedRound.publishSource,
       sourceName: outLinkConfig.name,
       userContent,
       aiContent: {
@@ -506,20 +505,6 @@ export async function runOutlinkRuntime<T extends OutlinkAppType>({
             error: saveError
           });
         });
-      } else {
-        await updateChatGenerateStatus({
-          sourceType: ChatSourceTypeEnum.app,
-          sourceId: roundState.sourceId,
-          chatId: preparedRound.chatId,
-          status: ChatGenerateStatusEnum.error
-        }).catch((saveError) => {
-          logger.error('Outlink runtime unlock failed', {
-            shareId: outLinkConfig.shareId,
-            chatId,
-            messageId,
-            error: saveError
-          });
-        });
       }
     }
 
@@ -544,5 +529,7 @@ export async function runOutlinkRuntime<T extends OutlinkAppType>({
       });
     }
     return { status: 'handled' };
+  } finally {
+    await roundState.preparedRound?.releaseGenerationLease?.();
   }
 }

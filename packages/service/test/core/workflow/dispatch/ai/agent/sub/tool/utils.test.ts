@@ -571,6 +571,31 @@ describe('getAgentRuntimeTools schema loading', () => {
     }
   };
 
+  appMap.plugin_with_reference_only_input = {
+    ...createPersonalApp({ id: 'plugin_with_reference_only_input', type: AppTypeEnum.workflow }),
+    type: AppTypeEnum.workflowTool,
+    modules: [
+      {
+        nodeId: 'plugin-input',
+        flowNodeType: FlowNodeTypeEnum.pluginInput,
+        name: 'Input',
+        inputs: [
+          {
+            key: 'ref_param',
+            label: 'Reference Param',
+            description: 'Ref param description',
+            value: '',
+            valueType: WorkflowIOValueTypeEnum.string,
+            required: true,
+            renderTypeList: [FlowNodeInputTypeEnum.reference],
+            selectedType: FlowNodeInputTypeEnum.reference
+          }
+        ],
+        outputs: []
+      }
+    ]
+  };
+
   it.each(['simple_app', 'chat_agent_app', 'workflow_app'] as const)(
     'loads %s as a callable tool with agent-generated user input',
     async (appId) => {
@@ -597,6 +622,24 @@ describe('getAgentRuntimeTools schema loading', () => {
     });
 
     expect(tools).toEqual([]);
+  });
+
+  it('keeps plugin tools whose start node has reference-only inputs without toolDescription', async () => {
+    const tools = await getAgentRuntimeTools({
+      tmbId: 'tmb_1',
+      tools: [{ id: 'plugin_with_reference_only_input', config: {} }]
+    });
+
+    expect(tools).toHaveLength(1);
+    expect(tools[0].agentGeneratedInputKeys).toContain('ref_param');
+    expect(tools[0].requestSchema.function.parameters).toMatchObject({
+      type: 'object',
+      properties: {
+        ref_param: expect.objectContaining({
+          description: 'Ref param description'
+        })
+      }
+    });
   });
 
   it('keeps external variables that project to supported manual inputs', async () => {
@@ -678,7 +721,7 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(tools[0].requestSchema.function.name).toBe('mcp_app0');
     expect(tools[0].requestSchema.function.description).toBe('mcp_app name/search: Search docs');
     expect(tools[0].requestSchema.function.parameters).toEqual(getModelToolSchema(mcpInputSchema));
-    expect(tools[0].toolConfig?.mcpTool?.toolId).toBe('mcp-mcp_app/search');
+    expect(tools[0].toolConfig?.mcpTool).toMatchObject({ toolId: 'mcp-mcp_app/search' });
     expect(tools[0].version).toBe('');
     expect(tools[0].toolConfig).not.toHaveProperty('mcpToolSet');
     expect(tools[0].promptReference).toEqual({
@@ -699,7 +742,7 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(tools[0].requestSchema.function.name).toBe('mcp_appsearch');
     expect(tools[0].requestSchema.function.description).toBe('search: Search docs');
     expect(tools[0].requestSchema.function.parameters).toEqual(getModelToolSchema(mcpInputSchema));
-    expect(tools[0].toolConfig?.mcpTool?.toolId).toBe('mcp-mcp_app/search');
+    expect(tools[0].toolConfig?.mcpTool).toMatchObject({ toolId: 'mcp-mcp_app/search' });
   });
 
   it('does not persist runtime MCP connection data in expanded Agent tools', async () => {
@@ -718,7 +761,7 @@ describe('getAgentRuntimeTools schema loading', () => {
       ]
     });
 
-    expect(tools[0].toolConfig?.mcpTool?.toolId).toBe('mcp-mcp_app/search');
+    expect(tools[0].toolConfig?.mcpTool).toMatchObject({ toolId: 'mcp-mcp_app/search' });
     expect(tools[0].toolConfig).not.toHaveProperty('mcpToolSet');
   });
 
@@ -731,7 +774,7 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(tools).toHaveLength(1);
     expect(getAppVersionByIdMock).not.toHaveBeenCalled();
     expect(tools[0].version).toBe('');
-    expect(tools[0].toolConfig?.mcpTool?.toolId).toBe('mcp-mcp_app/search');
+    expect(tools[0].toolConfig?.mcpTool).toMatchObject({ toolId: 'mcp-mcp_app/search' });
     expect(tools[0].toolConfig).not.toHaveProperty('mcpToolSet');
   });
 
@@ -774,7 +817,7 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(tools).toHaveLength(1);
     expect(tools[0].id).toBe('mcp_slash_apptest');
     expect(tools[0].name).toBe('/test');
-    expect(tools[0].toolConfig?.mcpTool?.toolId).toBe('mcp-mcp_slash_app//test');
+    expect(tools[0].toolConfig?.mcpTool).toMatchObject({ toolId: 'mcp-mcp_slash_app//test' });
   });
 
   it('prefixes tool function name only when the runtime tool id starts with a number', async () => {
@@ -860,7 +903,7 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(tools).toHaveLength(1);
     expect(tools[0].requestSchema.function.name).toBe('legacy_mcp_app0');
     expect(tools[0].requestSchema.function.parameters).toEqual(getModelToolSchema(mcpInputSchema));
-    expect(tools[0].toolConfig?.mcpTool?.toolId).toBe('mcp-legacy_mcp_app/search');
+    expect(tools[0].toolConfig?.mcpTool).toMatchObject({ toolId: 'mcp-legacy_mcp_app/search' });
   });
 
   it('loads a selected legacy MCP tool with its input schema', async () => {
@@ -882,7 +925,7 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(tools[0].id).toBe('legacy_mcp_appsearch');
     expect(tools[0].name).toBe('search');
     expect(tools[0].requestSchema.function.parameters).toEqual(getModelToolSchema(mcpInputSchema));
-    expect(tools[0].toolConfig?.mcpTool?.toolId).toBe('mcp-legacy_mcp_app/search');
+    expect(tools[0].toolConfig?.mcpTool).toMatchObject({ toolId: 'mcp-legacy_mcp_app/search' });
   });
 
   it('loads an MCP tool without isToolParam as an agent tool', async () => {
@@ -990,9 +1033,10 @@ describe('getAgentRuntimeTools schema loading', () => {
     );
 
     expect(tools).toHaveLength(1);
-    expect(tools[0].toolConfig?.mcpTool?.toolId ?? tools[0].toolConfig?.httpTool?.toolId).toContain(
-      `/${tool.name}`
-    );
+    const mcpTool = tools[0].toolConfig?.mcpTool;
+    const toolId =
+      mcpTool && 'toolId' in mcpTool ? mcpTool.toolId : tools[0].toolConfig?.httpTool?.toolId;
+    expect(toolId).toContain(`/${tool.name}`);
     expect(authAppByTmbIdMock).not.toHaveBeenCalled();
   });
 

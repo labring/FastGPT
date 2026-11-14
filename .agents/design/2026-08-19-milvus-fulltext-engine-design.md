@@ -63,7 +63,7 @@ text --BM25--> sparse
 
 | 字段 | 索引 |
 |---|---|
-| `vector` | HNSW，IP，`M=32`，`efConstruction=128` |
+| `vector` | HNSW，IP，`M=32`，`efConstruction=256` |
 | `sparse` | `SPARSE_INVERTED_INDEX`，BM25，`k1=1.2`，`b=0.75` |
 | `createTime` | `STL_SORT` |
 | `teamId`、`datasetId`、`collectionId` | `Trie` |

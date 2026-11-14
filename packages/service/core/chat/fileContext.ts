@@ -1,4 +1,5 @@
 import { ChatFileTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import { isChatFileMediaType, isChatFileResolvedType } from '@fastgpt/global/core/chat/file/utils';
 import { isHttpUrl } from '@fastgpt/global/common/string/url';
 import type {
   ChatItemMiniType,
@@ -109,16 +110,17 @@ const resolveShortDownloadAccessFromUrl = async (
   return verifyS3DownloadAccess(signedAlias);
 };
 
-const resolveShortLinkMediaFileItem = async (file: UserChatItemFileItemType) => {
-  if (file.type !== ChatFileTypeEnum.file) return file;
-  if (!resolveSignedDownloadAliasFromUrl(file.url)) return file;
+/** 保留明确分类，unknown 与历史 file 经过统一推测，不能依赖模型提示再次猜测。 */
+const resolveUserFileItem = async (file: UserChatItemFileItemType) => {
+  if (isChatFileResolvedType(file.type)) return file;
 
   const parsed = await parseUrlToChatFileType({
     url: file.url,
     name: file.name,
     type: file.type
   });
-  if (!parsed || parsed.type === ChatFileTypeEnum.file) return file;
+  if (!parsed) return { ...file, type: ChatFileTypeEnum.unknown };
+  if (parsed.type === file.type) return file;
 
   return {
     ...file,
@@ -127,14 +129,14 @@ const resolveShortLinkMediaFileItem = async (file: UserChatItemFileItemType) => 
   };
 };
 
-const resolveShortLinkMediaFilesInUserQuery = async (userQuery: UserChatItemValueItemType[]) => {
+const resolveFilesInUserQuery = async (userQuery: UserChatItemValueItemType[]) => {
   let changed = false;
 
   const normalizedUserQuery = await Promise.all(
     userQuery.map(async (item) => {
       if (!item.file) return item;
 
-      const file = await resolveShortLinkMediaFileItem(item.file);
+      const file = await resolveUserFileItem(item.file);
       if (file === item.file) return item;
 
       changed = true;
@@ -157,16 +159,9 @@ type ParsedFileItem = {
 
 type ParseFileFn = (urls: string[]) => Promise<ParsedFileItem[]>;
 
-/** 归一化短链文件类型，并按 URL 去除同一条消息中的重复文件。 */
+/** 归一化文档与未知文件类型，并按 URL 去除同一条消息中的重复文件。 */
 const prepareAIChatUserQueryFiles = async (userQuery: UserChatItemValueItemType[]) => {
-  const hasShortLinkFile = userQuery.some(
-    (item) =>
-      item.file?.type === ChatFileTypeEnum.file &&
-      !!resolveSignedDownloadAliasFromUrl(item.file.url)
-  );
-  const normalizedUserQuery = hasShortLinkFile
-    ? await resolveShortLinkMediaFilesInUserQuery(userQuery)
-    : userQuery;
+  const normalizedUserQuery = await resolveFilesInUserQuery(userQuery);
   const seenFileUrls = new Set<string>();
   const filteredUserQuery = normalizedUserQuery.filter((item) => {
     if (!item.file) return true;
@@ -185,7 +180,7 @@ const prepareAIChatUserQueryFiles = async (userQuery: UserChatItemValueItemType[
 
 const getAIChatDocumentUrls = (userQuery: UserChatItemValueItemType[]) =>
   userQuery
-    .map((item) => (item.file?.type === ChatFileTypeEnum.file ? item.file.url : ''))
+    .map((item) => (item.file?.type === ChatFileTypeEnum.document ? item.file.url : ''))
     .filter(Boolean);
 
 /** 将已经解析的文件正文合并进单条 Human 消息。 */
@@ -210,7 +205,7 @@ const mergeAIChatUserQueryWithFiles = ({
   });
 
   const multimodalItems = userQuery.filter(
-    (item) => !item.text && item.file?.type !== ChatFileTypeEnum.file
+    (item) => !item.text && item.file?.type !== ChatFileTypeEnum.document
   );
 
   return [
@@ -302,7 +297,10 @@ export const rewriteChatMessagesWithFileContext = async ({
   });
 };
 
-/** 将已授权引用或绝对 HTTP(S) URL 归一化为可解析的文档 URL。 */
+/**
+ * 将已授权引用或绝对 HTTP(S) URL 归一化为文档读取候选，排除明确的多模态文件。
+ * 显式读取仍允许 unknown，由下载响应和解析器判断格式，避免无后缀链接在 HEAD 探测失败后无法读取。
+ */
 export const normalizeReadableFileUrl = async ({
   url,
   fileContext
@@ -326,7 +324,7 @@ export const normalizeReadableFileUrl = async ({
         url: access.objectKey,
         metadata: { filename: access.filename, contentType: access.responseContentType }
       });
-      return file?.type === ChatFileTypeEnum.file ? normalizedUrl : '';
+      return file && !isChatFileMediaType(file.type) ? normalizedUrl : '';
     }
   }
 
@@ -335,7 +333,7 @@ export const normalizeReadableFileUrl = async ({
     maxFiles: 1,
     fileContext
   });
-  return file?.type === ChatFileTypeEnum.file ? file.url : '';
+  return file && !isChatFileMediaType(file.type) ? file.url : '';
 };
 
 /**

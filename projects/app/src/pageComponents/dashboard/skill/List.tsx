@@ -125,11 +125,7 @@ const List = ({
     reservedSlotCount: isInitialLoading || isBatchMode ? 0 : 1,
     estimatedRowHeight: 160,
     estimatedRowGap: 20,
-    loadingItemCount: isFetchingSkills
-      ? isInitialLoading
-        ? getGridPageSize(columnCount)
-        : pageSize
-      : 0,
+    loadingItemCount: isInitialLoading ? getGridPageSize(columnCount) : 0,
     renderLoadingItem: () => <ResourceCardSkeleton />
   });
 
@@ -505,7 +501,6 @@ const List = ({
       minH={0}
       pr={[3, 6]}
       mr={[-3, -6]}
-      showLoadingOverlay={false}
     >
       <>
         {isInitialLoading ? (

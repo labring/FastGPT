@@ -1,51 +1,73 @@
 ---
-title: MCP 工具集
-description: 快速了解 MCP 工具接入 FastGPT
+title: 连接 MCP 工具集
+description: 将外部 MCP 服务的工具接入 FastGPT，验证传输、认证与调用。
 ---
 
-FastGPT v4.9.6 版本开始，新增了 MCP 工具集 这种新的应用类型，允许传入一个 MCP 的 SSE URL 来批量创建可被模型轻松调用的 MCP 工具，下面就来看下如何创建 MCP 工具并且让 AI 调用
+MCP 工具集把外部服务能力接入 FastGPT。向外部客户端提供 FastGPT 应用使用 [MCP 服务发布](/zh-CN/guide/build/publish/mcp_server)。工具集功能在 v4.9.6 引入；下述连接行为对应当前实现，旧部署应按对应版本核对。
 
 ## 创建一个 MCP 工具集
 
-首先选择新建 MCP 工具集，以对接高德地图的 MCP Server 为例，[高德地图 MCP Server](https://lbs.amap.com/api/mcp-server/create-project-and-key)
+需要工具创建权限、外部服务地址及认证信息，并确保 FastGPT 服务端能访问该地址。
 
-需要获取到一个 MCP 地址，例 https://mcp.amap.com/sse?key=xxx
+1. 进入 **工作台 → 我的工具**，点击右上角 **新建 → MCP 工具**。
+2. 填写服务提供方给出的 **MCP 地址** 和 **鉴权配置**（鉴权类型支持无、`Bearer`、`Basic` 或自定义）。
+3. 点击解析，检查返回的工具名称、用途与参数，再创建工具集。
 
-![创建 MCP tools](/imgs/mcp_tools1.png)
+![创建并解析 MCP 工具集](/imgs/optimized/current/mcp-tool-config.png.webp)
 
-然后填入到弹窗中的对应位置，点击后面的解析，会解析出对应的一系列工具
+当前连接优先使用 Streamable HTTP。当该传输返回 429 以外的任意 4xx 状态码时，客户端回退尝试 SSE。认证、网络或服务端问题仍需根据返回错误处理；仅修改 URL 后缀无法确认协议兼容。
 
-这时再点击创建就能轻松创建 MCP 工具和 MCP 工具集
+## 接入需要鉴权的 Streamable HTTP 服务
+
+以[百智云浏览器（Baizhi Cloud Browser，也即 CapyBrowser）](https://baizhibrowser.cloud/)为例，可以在 FastGPT 中查询本次凭据的身份、价格和云浏览器运行状态，无需额外安装 FastGPT 插件。
+
+先在[百智云控制台](https://capybrowser.app.baizhi.cloud/)准备本人有权使用的 API Key，并核对[正式接入指南](https://capybrowser.app.baizhi.cloud/docs/installation.md)。新建 **MCP 工具**，按下表填写，再点击 **解析** 并完成创建。
+
+| 配置项         | 填写内容                                   |
+| -------------- | ------------------------------------------ |
+| MCP 地址       | `https://capybrowser.app.baizhi.cloud/mcp` |
+| 鉴权类型       | `Bearer`（在 **鉴权配置** 中选择）         |
+| Bearer Token / 密钥值 | 原始 API Key，不加 `Bearer ` 前缀   |
+
+Bearer 模式会自动生成 `Authorization: Bearer <API_KEY>`。如果选择自定义请求头，则名称填写 `Authorization`，值填写完整的 `Bearer <API_KEY>`；两种方式选一种，避免重复前缀。Key 放在鉴权配置中，不放入 URL、聊天消息或公开工作流。
+
+### 先做只读验证
+
+进入工具集调试页，仅运行 `browser_auth_check`，参数为 `{}`。检查返回的 `isError`，并阅读 `content` 中的文本结果，确认是预期服务及账号；缺失的归属字段按未知处理。再按需调用 `browser_pricing` 查询价格。这两步不创建浏览器运行。
+
+若要让模型调用，先只把 `browser_auth_check` 作为单个工具加入受控应用，使用支持工具调用的模型，请它核对本次凭据身份。只读调试成功仅证明该工具可用，不代表完整网页任务已经通过。
+
+解析会发现生命周期写工具。应用中有权调用这些工具的人可能使用所配置 Key 的资源权限；不要将整套工具集分享给不受信任的应用或用户。创建运行前确认任务、价格和权限；本示例不提供自动逐次确认机制。
+
+### 网页操作与结束运行
+
+该 MCP 管理云浏览器运行，网页导航、点击和读取仍需兼容 CDP 客户端；仅添加 MCP 不会让 FastGPT 自动获得页面操作能力。需要页面任务时，先准备 CDP 执行端，再按正式指南创建运行并记录原 Session ID。
+
+创建后即可能产生运行费。正常完成或失败都需结束自己创建的运行，并查询原 Session 确认 `released`；费用结算另行核对。关闭聊天、移除工具节点或删除 MCP 工具集不等于停止云浏览器。只连接他人拥有的运行时，不擅自结束。
+
+接入资料见 [Chaitin 公共接入仓库](https://github.com/chaitin/baizhi-cloud-browser)。本文贡献者 `ctcbyzx` 已参与该仓贡献，并通过[个人维护仓](https://github.com/ctcbyzx/baizhi-cloud-browser)维护客户端接入说明；使用问题可到其 [Issues](https://github.com/ctcbyzx/baizhi-cloud-browser/issues) 反馈。
 
 ## 测试 MCP 工具
 
-进入到 MCP 工具集内部，能够对每个单独的 MCP 工具进行调试
-
-![测试 MCP tools](/imgs/mcp_tools3.png)
-
-以 maps_weather 这个查询天气的工具为例，点击运行，可以看到能够获得杭州的具体天气
-
+进入工具集，选择一个只读工具，按其参数契约填写已知输入并运行。预期返回服务声明的结构；将结果与服务文档对照，再接入应用。调试会调用真实外部服务，结果与费用取决于服务提供方。
 
 ## 模型调用工具
 
 ### 调用单个工具
 
-![调用单个工具](/imgs/mcp_tools4.png)
-
-选中 maps_weather 和 maps_text_search 这两个工具为例，分别问 AI 两个问题，可以看到 AI 智能地调用了相应的工具获得了需要的信息，然后根据获得的信息回答
-
-| | |
-|---|---|
-| ![](/imgs/mcp_tools5.png) | ![](/imgs/mcp_tools6.png) |
+在应用中选择所需工具，使用支持工具调用的模型。提出一个符合工具用途的问题，展开执行详情核对工具名、参数和返回值。
 
 ### 调用工具集
 
-FastGPT 也支持调用整个 MCP 工具集，AI 会自动选取需要的工具执行，
+选择工具集以提供多个相关操作，检查工具描述能否清晰区分用途。工作流可以通过工具相关节点调用；Agent 会根据任务选择可用操作。
 
-点击 MCP 工具集，会添加一个工具集类型的节点，使用工具调用节点连接
+## 连接排障
 
-| | |
-|---|---|
-| ![](/imgs/mcp_tools7.png) | ![](/imgs/mcp_tools8.png) |
+| 异常现象 | 触发原因与排查步骤 |
+| --- | --- |
+| **点击解析报格式错误或连接失败** | 核对 URL 是否为合法的 MCP 端点、认证 Header 是否有效，以及 FastGPT 服务端到该地址的网络连通性；外部服务返回非标准 JSON-RPC 2.0 响应时会提示响应格式错误 |
+| **SSE 会话返回 HTTP 404** | 外部 MCP Server 的 SSE 会话已过期或重启；重新发起请求建立新会话 |
+| **工具列表可见但调用报错** | 展开对话运行详情查看 MCP 工具返回的错误文本（如上游限流、参数校验失败或业务权限不足）；系统会将模型生成的参数与节点预设固定参数合并（固定参数优先）后透传给 MCP 服务 |
+| **请求超时** | 检查外部 MCP 服务响应延迟与网络链路，先在工具集调试面板使用最小输入参数单步验证 |
 
-可以看到 AI 同样智能调用了相应的工具，获得了需要的信息，然后根据获得的信息回答
+凭证只保存在受控配置中。外部工具的业务权限与 FastGPT 资源权限分别核对。

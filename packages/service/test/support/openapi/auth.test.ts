@@ -1,4 +1,5 @@
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { ApiKeyTypeEnum } from '@fastgpt/global/support/openapi/constants';
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
@@ -10,8 +11,13 @@ import { MongoAccountCancellation } from '@fastgpt/service/support/user/account/
 import { MongoUser } from '@fastgpt/service/support/user/schema';
 import { MongoTeam } from '@fastgpt/service/support/user/team/teamSchema';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
+import type { OpenApiSchema } from '@fastgpt/global/support/openapi/type';
 
-import { authOpenApiKey, resolveOpenApiCredential } from '@fastgpt/service/support/openapi/auth';
+import {
+  assertOpenApiLimit,
+  authOpenApiKey,
+  resolveOpenApiCredential
+} from '@fastgpt/service/support/openapi/auth';
 
 const { parseHeaderCert } = await vi.importActual<
   typeof import('@fastgpt/service/support/permission/auth/common')
@@ -23,6 +29,7 @@ const appId = new Types.ObjectId().toString();
 const parsedAppId = new Types.ObjectId().toString();
 
 const teamApiKey = {
+  type: ApiKeyTypeEnum.personal,
   teamId,
   tmbId,
   apiKey: 'fastgpt-team',
@@ -30,13 +37,40 @@ const teamApiKey = {
 };
 
 const legacyAppApiKey = {
-  ...teamApiKey,
+  teamId,
+  tmbId,
   apiKey: 'fastgpt-app',
   appId,
   name: 'legacy app key'
 };
 
 const originalFeConfigs = global.feConfigs;
+
+describe('assertOpenApiLimit', () => {
+  it.each([
+    { maxUsagePoints: undefined, usagePoints: 100, overLimit: false },
+    { maxUsagePoints: -1, usagePoints: 100, overLimit: false },
+    { maxUsagePoints: 0, usagePoints: 0, overLimit: false },
+    { maxUsagePoints: 0, usagePoints: 0.001, overLimit: true },
+    { maxUsagePoints: 1, usagePoints: 0.5, overLimit: false },
+    { maxUsagePoints: 1, usagePoints: 1, overLimit: false },
+    { maxUsagePoints: 1, usagePoints: 1.001, overLimit: true }
+  ])('enforces quota boundaries: %j', ({ maxUsagePoints, usagePoints, overLimit }) => {
+    const openApi: OpenApiSchema = {
+      ...teamApiKey,
+      _id: '68ad85a7463006c963799a00',
+      createTime: new Date(),
+      usagePoints,
+      limit: maxUsagePoints === undefined ? undefined : { maxUsagePoints }
+    };
+
+    if (overLimit) {
+      expect(() => assertOpenApiLimit(openApi)).toThrow('API Key is over usage');
+    } else {
+      expect(() => assertOpenApiLimit(openApi)).not.toThrow();
+    }
+  });
+});
 
 describe('openapi auth', () => {
   let updateApiKeyUsedTimeSpy: ReturnType<typeof vi.spyOn>;
@@ -73,8 +107,11 @@ describe('openapi auth', () => {
 
     expect(result).toEqual({
       apikey: 'fastgpt-team',
+      apiKeyId: String(openApi._id),
       teamId,
       tmbId,
+      apiKeyType: ApiKeyTypeEnum.personal,
+      boundAppId: undefined,
       legacyAppId: '',
       parsedAppId: '',
       authProxy: false,
@@ -84,17 +121,26 @@ describe('openapi auth', () => {
     expect(String(updateApiKeyUsedTimeSpy.mock.calls[0][0])).toBe(String(openApi._id));
   });
 
-  it('旧应用 APIKey 按系统 key 鉴权并返回 legacyAppId', async () => {
-    await MongoOpenApi.create(legacyAppApiKey);
+  it('历史带默认应用的 Key 仍按个人凭证鉴权，不获得强绑定授权', async () => {
+    const owner = await MongoUser.create({ username: 'legacy-owner', password: 'password' });
+    await MongoTeam.create({ _id: teamId, ownerId: owner._id, name: 'legacy team' });
+    await MongoTeamMember.create({ _id: tmbId, teamId, userId: owner._id, status: 'leave' });
+    // 用原始集合模拟旧版缺少 type 的记录，保留历史数据兼容验证。
+    const openApi = new MongoOpenApi(legacyAppApiKey);
+    await MongoOpenApi.collection.insertOne(openApi.toObject({ getters: false }));
 
-    const result = await authOpenApiKey({
-      apikey: 'fastgpt-app'
-    });
+    await expect(
+      authOpenApiKey({ apikey: 'fastgpt-app', authApiKey: false, authAppApiKey: true })
+    ).rejects.toBe(ERROR_ENUM.unAuthApiKey);
+    const result = await authOpenApiKey({ apikey: 'fastgpt-app' });
 
     expect(result).toEqual({
       apikey: 'fastgpt-app',
+      apiKeyId: String(openApi._id),
       teamId,
       tmbId,
+      apiKeyType: ApiKeyTypeEnum.personal,
+      boundAppId: undefined,
       legacyAppId: appId,
       parsedAppId: '',
       authProxy: false,

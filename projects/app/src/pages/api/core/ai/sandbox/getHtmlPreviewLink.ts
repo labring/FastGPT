@@ -19,10 +19,11 @@ import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import mime from 'mime';
 
 async function handler(req: ApiRequestProps, res: NextApiResponse): Promise<void> {
-  const { sourceType, sourceId, chatId, filePath, outLinkAuthData } = parseApiInput({
-    req,
-    bodySchema: SandboxGetHtmlPreviewLinkBodySchema
-  }).body;
+  const { customUid, authProxy, sourceType, sourceId, chatId, filePath, outLinkAuthData } =
+    parseApiInput({
+      req,
+      bodySchema: SandboxGetHtmlPreviewLinkBodySchema
+    }).body;
 
   // 1. 鉴权
   const {
@@ -30,6 +31,8 @@ async function handler(req: ApiRequestProps, res: NextApiResponse): Promise<void
     sourceType: resolvedSourceType,
     sourceId: resolvedSourceId
   } = await authSandboxRuntimeSession({
+    customUid,
+    authProxy,
     req,
     sourceType,
     sourceId,

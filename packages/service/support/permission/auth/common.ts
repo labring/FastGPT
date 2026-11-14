@@ -10,14 +10,15 @@ import { assertCancellation } from '../../../support/user/account/cancellation/g
 import { getUserIdByTmbId } from '../../../support/user/team/utils';
 import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { serviceEnv } from '../../../env';
+import { ApiKeyTypeEnum } from '@fastgpt/global/support/openapi/constants';
 
 export const authCert = async (props: AuthModeType) => {
   const result = await parseHeaderCert(props);
 
   return {
     ...result,
-    isOwner: true,
-    canWrite: true
+    isOwner: result.apiKeyType !== ApiKeyTypeEnum.app,
+    canWrite: result.apiKeyType !== ApiKeyTypeEnum.app
   };
 };
 
@@ -33,6 +34,7 @@ export async function parseHeaderCert({
   authToken = false,
   authRoot = false,
   authApiKey = false,
+  authAppApiKey = false,
   allowAccountCancellation = false
 }: AuthModeType) {
   // parse jwt
@@ -67,10 +69,14 @@ export async function parseHeaderCert({
       legacyAppId = '',
       parsedAppId = '',
       authProxy,
+      apiKeyId,
+      apiKeyType,
+      boundAppId,
       sourceName
     } = await authOpenApiKey({
       apikey,
-      authApiKey
+      authApiKey,
+      authAppApiKey
     });
     const userId = await getUserIdByTmbId(tmbId);
 
@@ -82,6 +88,9 @@ export async function parseHeaderCert({
       legacyAppId,
       parsedAppId,
       apiKeyAuthProxy: authProxy,
+      apiKeyId,
+      apiKeyType,
+      boundAppId,
       sourceName
     };
   }
@@ -104,11 +113,15 @@ export async function parseHeaderCert({
     isRoot,
     sourceName,
     sessionId,
+    sessionCreatedAt,
     legacyAppId,
     parsedAppId,
-    apiKeyAuthProxy
+    apiKeyAuthProxy,
+    apiKeyId,
+    apiKeyType,
+    boundAppId
   } = await (async () => {
-    if (authApiKey && authorization) {
+    if ((authApiKey || authAppApiKey) && authorization) {
       // apikey from authorization
       const authResponse = await parseAuthorization(authorization);
       return {
@@ -121,22 +134,26 @@ export async function parseHeaderCert({
         openApiKey: authResponse.apikey,
         authType: AuthUserTypeEnum.apikey,
         apiKeyAuthProxy: authResponse.apiKeyAuthProxy,
+        apiKeyId: authResponse.apiKeyId,
+        apiKeyType: authResponse.apiKeyType,
+        boundAppId: authResponse.boundAppId,
         sourceName: authResponse.sourceName
       };
     }
     if (authToken && (token || cookie)) {
       // user token(from fastgpt web)
-      const res = await authCookieToken(cookie, token);
+      const sessionData = await authCookieToken(cookie, token);
 
       return {
-        uid: res.userId,
-        teamId: res.teamId,
-        tmbId: res.tmbId,
+        uid: sessionData.userId,
+        teamId: sessionData.teamId,
+        tmbId: sessionData.tmbId,
         appId: '',
         openApiKey: '',
         authType: AuthUserTypeEnum.token,
-        isRoot: res.isRoot,
-        sessionId: res.sessionId
+        isRoot: sessionData.isRoot,
+        sessionId: sessionData.sessionId,
+        sessionCreatedAt: sessionData.createdAt
       };
     }
     if (authRoot && rootkey) {
@@ -160,13 +177,16 @@ export async function parseHeaderCert({
     return Promise.reject(ERROR_ENUM.unAuthorization);
   }
 
+  // 系统 root 代管进入处于注销冷静期的租户团队时需允许正常排查与管理，不受租户注销门禁阻断。
   const shouldAssertCancellation =
-    authType === AuthUserTypeEnum.apikey ||
-    (authType === AuthUserTypeEnum.token && !allowAccountCancellation);
+    !isRoot &&
+    (authType === AuthUserTypeEnum.apikey ||
+      (authType === AuthUserTypeEnum.token && !allowAccountCancellation));
   if (shouldAssertCancellation) {
     await assertCancellation({
       teamId: String(teamId),
-      userId: String(uid)
+      // 应用凭证不受归属人的个人注销/ACL 支配，团队注销仍必须阻止应用访问。
+      userId: apiKeyType === ApiKeyTypeEnum.app ? undefined : String(uid)
     });
   }
 
@@ -180,9 +200,13 @@ export async function parseHeaderCert({
     legacyAppId,
     parsedAppId,
     apiKeyAuthProxy,
+    apiKeyId,
+    apiKeyType,
+    boundAppId,
     apikey: openApiKey,
     isRoot: !!isRoot,
-    sessionId
+    sessionId,
+    sessionCreatedAt
   };
 }
 

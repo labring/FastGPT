@@ -1,3 +1,4 @@
+import type { ChatPublishSourceType } from '@fastgpt/global/core/chat/publishSource/type';
 import type {
   AIChatItemType,
   AIChatItemValueItemType,
@@ -6,8 +7,7 @@ import type {
   UserChatItemType
 } from '@fastgpt/global/core/chat/type';
 import {
-  type ChatSourceEnum,
-  ChatGenerateStatusEnum,
+  ChatSourceEnum,
   ChatRoleEnum,
   ChatSourceTypeEnum
 } from '@fastgpt/global/core/chat/constants';
@@ -43,6 +43,8 @@ import {
   stripUserContentFileUrls
 } from './utils/prepare';
 import { buildChatSourceQuery, buildChatSourceWriteFields, type ChatSourceParams } from './source';
+import { mergeWorkflowMemories } from '../workflow/memory/utils';
+import { APP_SANDBOX_ENABLED_CHAT_METADATA_KEY } from '@fastgpt/global/core/ai/sandbox/constants';
 
 const logger = getLogger(LogCategories.MODULE.CHAT);
 
@@ -55,8 +57,8 @@ export type Props = ChatSourceParams & {
   appChatConfig?: AppChatConfigType;
   variables?: Record<string, any>;
   source: `${ChatSourceEnum}`;
+  publishSource?: ChatPublishSourceType;
   sourceName?: string;
-  shareId?: string;
   outLinkUid?: string;
   userContent: UserChatItemType & { dataId?: string };
   aiContent: AIChatItemType & { dataId?: string };
@@ -227,8 +229,16 @@ const getChatDataLog = async ({
  */
 const getRuntimeChatSummary = (summary?: WorkflowRuntimeSummaryType): ChatSummaryType => ({
   llmInputTokens: summary?.llmInputTokens ?? 0,
-  llmOutputTokens: summary?.llmOutputTokens ?? 0
+  llmOutputTokens: summary?.llmOutputTokens ?? 0,
+  ...(summary?.hasAgentSandbox ? { hasAgentSandbox: true } : {})
 });
+
+/** 过滤客户端可传入的会话 metadata，避免非测试入口覆盖服务端保留的沙盒调试开关。 */
+const sanitizeChatMetadata = (metadata: Record<string, any>, source: `${ChatSourceEnum}`) => {
+  if (source === ChatSourceEnum.test) return metadata;
+  const { [APP_SANDBOX_ENABLED_CHAT_METADATA_KEY]: _ignored, ...rest } = metadata;
+  return rest;
+};
 
 type FailChatRoundParams = ChatSourceParams & {
   chatId: string;
@@ -239,9 +249,9 @@ type FailChatRoundParams = ChatSourceParams & {
 /**
  * 完成一轮已经 prepare 的对话保存。
  *
- * preChatRound 会先创建 chat 记录和本轮 Human/AI 两条占位 chat items，并把会话标记为
- * generating。workflow 真正运行结束后，这里负责把占位 item 更新为最终消息内容、补齐
- * chat 的标题/变量/插件输入/统计信息，并把 chatGenerateStatus 改成 done。
+ * preChatRound 会先创建 chat 记录和本轮 Human/AI 两条占位 chat items。workflow 真正
+ * 运行结束后，这里负责把占位 item 更新为最终消息内容、补齐 chat 的标题/变量/插件输入/统计信息。
+ * 运行状态由请求持有的 Redis lease 提供，保存完成后仍由请求 finally 释放。
  *
  * 这个方法只处理“已经预创建”的新运行轮次；未接入 prepare 的旧兼容路径仍由
  * pushChatRecords 单独处理。
@@ -259,7 +269,6 @@ export const finalizeChatRound = async (props: Props) => {
     variables,
     source,
     sourceName,
-    shareId,
     outLinkUid,
     userContent,
     aiContent,
@@ -315,10 +324,7 @@ export const finalizeChatRound = async (props: Props) => {
       throw new Error(`Pending chat round chat not found: ${chatId}`);
     }
 
-    const metadataUpdate = {
-      ...chat.metadata,
-      ...metadata
-    };
+    const metadataUpdate = sanitizeChatMetadata({ ...chat.metadata, ...metadata }, source);
 
     // 这里不是新增 chat items，而是把 prepare 阶段创建的占位记录替换成最终内容。
     // obj 是 chat item 的角色标识，只用于查询定位，不在 finalize 阶段修改。
@@ -375,14 +381,11 @@ export const finalizeChatRound = async (props: Props) => {
           welcomeText,
           variables: variables || {},
           pluginInputs,
-          source,
-          sourceName,
-          shareId,
           outLinkUid,
           metadata: metadataUpdate,
+          ...(runtimeChatSummary.hasAgentSandbox ? { 'summary.hasAgentSandbox': true } : {}),
           updateTime: now,
-          hasBeenRead: false,
-          chatGenerateStatus: ChatGenerateStatusEnum.done
+          hasBeenRead: false
         },
         $inc: {
           'summary.llmInputTokens': runtimeChatSummary.llmInputTokens,
@@ -451,8 +454,7 @@ export const finalizeChatRound = async (props: Props) => {
             totalResponseTime: durationSeconds
           },
           $set: {
-            updateTime: now,
-            sourceName
+            updateTime: now
           },
           $setOnInsert: {
             appId: appSourceId,
@@ -460,6 +462,8 @@ export const finalizeChatRound = async (props: Props) => {
             chatId,
             userId,
             source,
+            publishSource: props.publishSource ?? { type: source },
+            ...(props.publishSource?.id && sourceName ? { sourceName } : {}),
             createTime: now,
             goodFeedbackCount: 0,
             badFeedbackCount: 0,
@@ -495,7 +499,6 @@ export const failChatRound = async (params: FailChatRoundParams) => {
         { ...buildChatSourceQuery(chatSource), chatId },
         {
           $set: {
-            chatGenerateStatus: ChatGenerateStatusEnum.error,
             updateTime: now,
             hasBeenRead: false
           }
@@ -542,7 +545,6 @@ export const pushChatRecords = async (props: Props) => {
     variables,
     source,
     sourceName,
-    shareId,
     outLinkUid,
     userContent,
     aiContent,
@@ -570,10 +572,7 @@ export const pushChatRecords = async (props: Props) => {
       '_id metadata'
     );
 
-    const metadataUpdate = {
-      ...chat?.metadata,
-      ...metadata
-    };
+    const metadataUpdate = sanitizeChatMetadata({ ...chat?.metadata, ...metadata }, source);
 
     const { welcomeText, variables: variableList } = getAppChatConfig({
       chatConfig: appChatConfig,
@@ -620,13 +619,10 @@ export const pushChatRecords = async (props: Props) => {
             welcomeText,
             variables: variables || {},
             pluginInputs,
-            source,
-            sourceName,
-            shareId,
             outLinkUid,
             metadata: metadataUpdate,
-            updateTime: new Date(),
-            chatGenerateStatus: ChatGenerateStatusEnum.done
+            ...(runtimeChatSummary.hasAgentSandbox ? { 'summary.hasAgentSandbox': true } : {}),
+            updateTime: new Date()
           },
           $setOnInsert: {
             createTime: new Date()
@@ -700,8 +696,7 @@ export const pushChatRecords = async (props: Props) => {
               totalResponseTime: durationSeconds
             },
             $set: {
-              updateTime: now,
-              sourceName
+              updateTime: now
             },
             $setOnInsert: {
               appId: appSourceId,
@@ -709,6 +704,8 @@ export const pushChatRecords = async (props: Props) => {
               chatId,
               userId,
               source,
+              publishSource: props.publishSource ?? { type: source },
+              ...(props.publishSource?.id && sourceName ? { sourceName } : {}),
               createTime: now,
               goodFeedbackCount: 0,
               badFeedbackCount: 0,
@@ -992,10 +989,11 @@ export const updateInteractiveChat = async ({
     }
 
     if (aiContent.memories) {
-      chatItem.memories = {
-        ...chatItem.memories,
-        ...aiContent.memories
-      };
+      chatItem.memories = mergeWorkflowMemories({
+        baseline: chatItem.memories,
+        entries: aiContent.memories,
+        rootSource: chatSource
+      });
     }
 
     chatItem.durationSeconds = chatItem.durationSeconds
@@ -1014,7 +1012,15 @@ export const updateInteractiveChat = async ({
       {
         $set: {
           variables,
-          updateTime: new Date()
+          updateTime: new Date(),
+          ...(props.source === ChatSourceEnum.test &&
+          typeof props.metadata?.[APP_SANDBOX_ENABLED_CHAT_METADATA_KEY] === 'boolean'
+            ? {
+                [`metadata.${APP_SANDBOX_ENABLED_CHAT_METADATA_KEY}`]:
+                  props.metadata[APP_SANDBOX_ENABLED_CHAT_METADATA_KEY]
+              }
+            : {}),
+          ...(runtimeChatSummary.hasAgentSandbox ? { 'summary.hasAgentSandbox': true } : {})
         },
         $inc: {
           'summary.llmInputTokens': runtimeChatSummary.llmInputTokens,

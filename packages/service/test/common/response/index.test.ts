@@ -9,6 +9,16 @@ import { SandboxErrEnum } from '@fastgpt/global/common/error/code/sandbox';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { EventEmitter } from 'node:events';
+import {
+  ChatEntryModerationError,
+  ChatGeneratingConflictError,
+  isChatEntryModerationError
+} from '@fastgpt/global/core/chat/error';
+import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
+import {
+  MODERATION_BLOCKED_ERROR_MESSAGE,
+  MODERATION_ERROR_BLOCKED_MESSAGE
+} from '@fastgpt/global/core/plugin/moderation/constants';
 
 vi.unmock('@fastgpt/service/common/response');
 
@@ -34,6 +44,67 @@ vi.mock('@fastgpt/service/common/profiling', () => profilingMocks);
 
 const { getSseErrorResponse, jsonRes, processError, responseWrite, sseErrRes } =
   await import('../../../common/response');
+
+describe('chat generating conflict recovery target', () => {
+  it.each([{ responseChatItemId: 'active-A' }, { reusePreviousAi: true as const }])(
+    'preserves the recovery target in both JSON and SSE errors: %o',
+    (data) => {
+      const error = new ChatGeneratingConflictError(data);
+      const res = { status: vi.fn().mockReturnThis(), json: vi.fn() };
+      jsonRes(res as unknown as Parameters<typeof jsonRes>[0], { code: 409, error });
+      expect(res.status).toHaveBeenCalledWith(409);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          statusText: ChatErrEnum.chatIsGenerating,
+          data
+        })
+      );
+      expect(JSON.parse(getSseErrorResponse(error).data)).toMatchObject({
+        statusText: ChatErrEnum.chatIsGenerating,
+        data
+      });
+    }
+  );
+
+  it('does not expose arbitrary data attached to ordinary business errors', () => {
+    expect(
+      processError({
+        error: {
+          message: ChatErrEnum.chatIsGenerating,
+          data: { responseChatItemId: 'untrusted' }
+        }
+      }).data
+    ).toBeNull();
+  });
+
+  it.each([MODERATION_BLOCKED_ERROR_MESSAGE, MODERATION_ERROR_BLOCKED_MESSAGE])(
+    'marks ChatEntryModerationError with chatEntryModerationBlocked in JSON and SSE while keeping ordinary moderation errors distinct: %s',
+    (moderationMessage) => {
+      const entryError = new ChatEntryModerationError(moderationMessage);
+      const res = { status: vi.fn().mockReturnThis(), json: vi.fn() };
+      jsonRes(res as unknown as Parameters<typeof jsonRes>[0], { code: 500, error: entryError });
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          statusText: ChatErrEnum.chatEntryModerationBlocked,
+          message: moderationMessage
+        })
+      );
+
+      const ssePayload = JSON.parse(getSseErrorResponse(entryError).data);
+      expect(ssePayload).toMatchObject({
+        statusText: ChatErrEnum.chatEntryModerationBlocked,
+        message: moderationMessage
+      });
+      expect(isChatEntryModerationError(ssePayload)).toBe(true);
+
+      const postPersistError = new UserError(moderationMessage);
+      const postPersistSsePayload = JSON.parse(getSseErrorResponse(postPersistError).data);
+      expect(postPersistSsePayload).toEqual({ message: moderationMessage });
+      expect(isChatEntryModerationError(postPersistSsePayload)).toBe(false);
+    }
+  );
+});
 
 function buildZodError() {
   try {

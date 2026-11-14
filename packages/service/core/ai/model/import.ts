@@ -1,5 +1,7 @@
+import { Types } from '../../../common/mongo';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { ModelScopeEnum } from '@fastgpt/global/core/ai/constants';
+import { NEW_MODEL_SORT_ORDER } from '@fastgpt/global/core/ai/model/order';
 import { normalizeModelPricingForSave } from '@fastgpt/global/core/ai/model/pricing';
 import { type ParsedSystemModelsWithJsonBody } from '@fastgpt/global/openapi/core/ai/model/api';
 import { runModelTransaction } from './catalog/transaction';
@@ -9,7 +11,8 @@ import { updatedReloadSystemModel } from './catalog/service';
 import { getModelConfigUpdate } from './utils';
 
 /**
- * 用导入配置替换系统模型集合，保留可匹配实例的稳定 ID，并在同一事务内清理派生权限与探测记录。
+ * 用导入配置替换系统模型集合，保留可匹配实例的稳定 ID 与原有展示顺序，并在同一事务内清理派生权限与探测记录。
+ * 输入中的 sortOrder 始终忽略；新建模型写入置顶位 `0`，无需修改存量模型的 sortOrder。
  */
 export const importSystemModels = async ({ config }: ParsedSystemModelsWithJsonBody) => {
   const latestRecords = config.map((record) => ({ record, modelId: record.modelId }));
@@ -67,7 +70,7 @@ export const importSystemModels = async ({ config }: ParsedSystemModelsWithJsonB
 
     const resolvedModels = importedModels.map(
       ({ data: { modelId: importedModelId, ...importedData }, existingModel }) => {
-        const modelData = normalizeModelPricingForSave(importedData);
+        const { sortOrder: _sortOrder, ...modelData } = normalizeModelPricingForSave(importedData);
         if (!existingModel) {
           return {
             modelId: importedModelId,
@@ -113,7 +116,12 @@ export const importSystemModels = async ({ config }: ParsedSystemModelsWithJsonB
             filter: isExistingModel
               ? { _id: modelId, scope: ModelScopeEnum.system }
               : { scope: ModelScopeEnum.system, model },
-            update: isExistingModel ? getModelConfigUpdate(modelData) : { $set: modelData },
+            update: isExistingModel
+              ? getModelConfigUpdate(modelData)
+              : {
+                  $set: { ...modelData, sortOrder: NEW_MODEL_SORT_ORDER },
+                  $setOnInsert: { _id: new Types.ObjectId() as unknown as string }
+                },
             upsert: !isExistingModel
           }
         })),

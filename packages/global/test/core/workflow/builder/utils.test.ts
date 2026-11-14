@@ -26,6 +26,7 @@ describe('parseWorkflowBuilderPreviewArguments', () => {
           sections: [{ title: 'Goal', content: 'Build' }],
           extension: true,
           mermaid: 'flowchart TD\n A-->B',
+          summary: ' Accept questions. Generate answers. ',
           title: ' Plan '
         },
         null,
@@ -34,11 +35,36 @@ describe('parseWorkflowBuilderPreviewArguments', () => {
       '\n';
     expect(parseWorkflowBuilderPreviewArguments(raw)).toEqual({
       title: 'Plan',
+      summary: 'Accept questions. Generate answers.',
       mermaid: 'flowchart TD\n A-->B',
       sections: [{ title: 'Goal', content: 'Build' }]
     });
     expect(raw.startsWith(' \n')).toBe(true);
     expect(raw).toContain('"extension": true');
+  });
+  it('keeps historical previews without a summary readable without adding a default', () => {
+    const payload = {
+      title: 'Plan',
+      mermaid: 'flowchart TD\n A-->B',
+      sections: [{ title: 'Goal', content: 'Build' }]
+    };
+
+    const parsed = parseWorkflowBuilderPreviewArguments(JSON.stringify(payload));
+
+    expect(parsed).toEqual(payload);
+    expect(parsed).not.toHaveProperty('summary');
+  });
+  it.each(['', ' \n ', null, 123])('rejects a supplied invalid summary: %s', (summary) => {
+    expect(
+      parseWorkflowBuilderPreviewArguments(
+        JSON.stringify({
+          title: 'Plan',
+          summary,
+          mermaid: 'flowchart TD\n A-->B',
+          sections: [{ title: 'Goal', content: 'Build' }]
+        })
+      )
+    ).toBeUndefined();
   });
   it.each([
     'not JSON',

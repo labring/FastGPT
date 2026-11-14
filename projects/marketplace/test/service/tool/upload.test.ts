@@ -29,7 +29,10 @@ const dataMocks = vi.hoisted(() => ({
   refreshToolList: vi.fn()
 }));
 
-vi.mock('@fastgpt/global/sdk/fastgpt-plugin', () => sdkMocks);
+vi.mock('@fastgpt/global/sdk/fastgpt-plugin', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fastgpt/global/sdk/fastgpt-plugin')>()),
+  ...sdkMocks
+}));
 
 vi.mock('../../../src/service/plugin/repo', () => ({
   pluginRepo: repoMocks
@@ -56,7 +59,11 @@ const createToolInfo = () => ({
   etag: 'etag-123',
   name: { en: 'Tool A' },
   description: { en: 'Tool A description' },
-  readmeUrl: 'https://cdn.example.com/assets/tool-a/README.md'
+  readmeUrl: 'https://cdn.example.com/assets/tool-a/README.md',
+  readmeUrls: {
+    en: 'https://cdn.example.com/assets/tool-a/README.en.md',
+    'zh-CN': 'https://cdn.example.com/assets/tool-a/README.zh-CN.md'
+  }
 });
 
 describe('uploadMarketplacePkg', () => {
@@ -78,6 +85,10 @@ describe('uploadMarketplacePkg', () => {
         info: tool,
         files: {
           readme: createFile('README.md', '# readme'),
+          readmes: {
+            en: createFile('README.en.md', '# English readme'),
+            'zh-CN': createFile('README.zh-CN.md', '# 中文 readme')
+          },
           logos: [createFile('logo.svg', '<svg />', 'image/svg+xml')],
           assets: [createFile('docs/guide.md', 'guide')]
         }
@@ -104,11 +115,23 @@ describe('uploadMarketplacePkg', () => {
       buffer: Buffer.from('pkg'),
       filename: 'tool-a@1.2.3@etag-123.pkg'
     });
-    expect(s3Mocks.uploadBufferToS3).toHaveBeenCalledTimes(3);
+    expect(s3Mocks.uploadBufferToS3).toHaveBeenCalledTimes(5);
     expect(s3Mocks.uploadBufferToS3).toHaveBeenCalledWith({
       objectKey: 'official/tool-a/1.2.3/etag-123/README.md',
       buffer: Buffer.from('# readme'),
       filename: 'README.md',
+      contentType: 'text/plain'
+    });
+    expect(s3Mocks.uploadBufferToS3).toHaveBeenCalledWith({
+      objectKey: 'official/tool-a/1.2.3/etag-123/README.en.md',
+      buffer: Buffer.from('# English readme'),
+      filename: 'README.en.md',
+      contentType: 'text/plain'
+    });
+    expect(s3Mocks.uploadBufferToS3).toHaveBeenCalledWith({
+      objectKey: 'official/tool-a/1.2.3/etag-123/README.zh-CN.md',
+      buffer: Buffer.from('# 中文 readme'),
+      filename: 'README.zh-CN.md',
       contentType: 'text/plain'
     });
     expect(repoMocks.publishToolManifest).toHaveBeenCalledWith(
@@ -120,6 +143,11 @@ describe('uploadMarketplacePkg', () => {
         source: 'official',
         downloadObjectKey: 'pkgs/official/tool-a@1.2.3@etag-123.pkg',
         downloadUrl: 'https://cdn.example.com/pkgs/official/tool-a@1.2.3@etag-123.pkg',
+        readmeUrl: 'https://cdn.example.com/assets/tool-a/README.md',
+        readmeUrls: {
+          en: 'https://cdn.example.com/assets/tool-a/README.en.md',
+          'zh-CN': 'https://cdn.example.com/assets/tool-a/README.zh-CN.md'
+        },
         filename: 'tool-a@1.2.3@etag-123.pkg',
         size: 3
       })

@@ -6,7 +6,7 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import ChatController, { type ChatControllerProps } from '../ChatController';
 import { ChatBoxContext } from '../../Provider';
 import { useContextSelector } from 'use-context-selector';
-import { ChatTypeEnum } from '../../constants';
+import { ChatTypeEnum, FeedbackTypeEnum } from '../../constants';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatSiteItemType } from '../../type';
 import { addStatisticalDataToHistoryItem } from '@/global/core/chat/utils';
@@ -18,6 +18,7 @@ import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { toChatApiTarget } from '@/web/core/chat/utils';
 import { useChatInstanceActions } from '../../../context/chatInstanceActionsContext';
+import { ChatFeedbackContext } from '../../../context/chatFeedbackContext';
 
 type AIChatBubbleActionsProps = {
   chatControllerProps: ChatControllerProps;
@@ -44,7 +45,14 @@ const AIChatBubbleActions = ({
 }: AIChatBubbleActionsProps) => {
   const { t } = useTranslation();
   const { sendMessage } = useChatInstanceActions();
-  const { onRetry, feedbackUserName, disableFooterHoverTranslate } = chatControllerProps;
+  const { onRetry, disableFooterHoverTranslate } = chatControllerProps;
+  const feedbackUserName = useContextSelector(
+    ChatFeedbackContext,
+    (value) => value?.feedbackUserName
+  );
+  const showLogFeedback = useContextSelector(ChatFeedbackContext, (value) =>
+    value?.fbTypes.includes(FeedbackTypeEnum.log)
+  );
   const footerActionHoverStyle = {
     color: 'primary.600',
     ...(!disableFooterHoverTranslate ? { transform: 'translateY(-1px)' } : {})
@@ -87,8 +95,7 @@ const AIChatBubbleActions = ({
   const badFeedback = historyItem.obj === ChatRoleEnum.AI ? historyItem.userBadFeedback : undefined;
   const isFeedbackRead =
     historyItem.obj === ChatRoleEnum.AI ? historyItem.isFeedbackRead : undefined;
-  const showUnreadBadFeedback =
-    chatType === ChatTypeEnum.log && !!badFeedback && isFeedbackRead !== true;
+  const showUnreadBadFeedback = showLogFeedback && !!badFeedback && isFeedbackRead !== true;
 
   const formattedPoints = useMemo(() => {
     const formatted = new Intl.NumberFormat(undefined, {

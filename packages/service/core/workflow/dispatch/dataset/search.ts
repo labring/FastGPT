@@ -9,6 +9,7 @@ import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runti
 import type { SelectedDatasetType } from '@fastgpt/global/core/workflow/type/io';
 import { type ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import { getLogger, LogCategories } from '../../../../common/logger';
+import { pushTrack } from '../../../../common/middle/tracks/utils';
 import { resolveReadableCollectionIds } from '../../../../support/permission/collection/auth';
 import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
 import { getTeamModelHandle } from '../../../ai/model/catalog/service';
@@ -44,6 +45,7 @@ type DatasetSearchProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.datasetSearchRerankModelId]?: string;
   [NodeInputKeyEnum.datasetSearchRerankModel]?: string;
   [NodeInputKeyEnum.datasetSearchRerankWeight]?: number;
+  [NodeInputKeyEnum.datasetSearchRerankCandidateNum]?: number;
 
   [NodeInputKeyEnum.collectionFilterMatch]: string;
   [NodeInputKeyEnum.authTmbId]?: boolean;
@@ -99,6 +101,7 @@ export const dispatchDatasetSearch = async (
       rerankModelId,
       rerankModel,
       rerankWeight,
+      rerankCandidateNum,
 
       datasetSearchUsingExtensionQuery,
       datasetSearchExtensionModelId,
@@ -217,7 +220,9 @@ export const dispatchDatasetSearch = async (
       usingReRank,
       rerankModel: rerankModelData,
       rerankWeight,
+      rerankCandidateNum,
       collectionFilterMatch,
+      metadataFilterEnabled: Boolean(global.feConfigs.isPlus),
       readableCollectionIdList
     };
     const {
@@ -236,6 +241,7 @@ export const dispatchDatasetSearch = async (
       datasetSearchExtensionBg,
       userKey: externalProvider.openaiAccount
     });
+    pushTrack.datasetSearch({ datasetIds, teamId });
     // count bill results
     const nodeUsages: ChatNodeUsageType[] = [];
     const childrenResponses: ChatHistoryItemResType[] = [];

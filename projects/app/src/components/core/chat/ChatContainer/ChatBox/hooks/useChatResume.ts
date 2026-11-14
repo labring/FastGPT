@@ -341,7 +341,6 @@ export const useChatResume = ({
         return [
           ...state,
           {
-            id: responseChatId,
             dataId: responseChatId,
             obj: ChatRoleEnum.AI,
             value: [
@@ -496,10 +495,12 @@ export const useChatResume = ({
           setChatRecords((state) =>
             mergeResumeCompletedChatRecords({
               currentRecords: state,
-              completedRecords: completedChat.records.list.map((item) => ({
-                ...item,
-                status: ChatStatusEnum.finish
-              })),
+              completedRecords: completedChat.records.list.map(
+                ({ id: _deprecatedId, ...item }) => ({
+                  ...item,
+                  status: ChatStatusEnum.finish
+                })
+              ),
               responseChatId
             })
           );
@@ -546,7 +547,7 @@ export const useChatResume = ({
         // 只有恢复流明确返回业务错误时才能结束本轮生成。
         // 网络、鉴权或 target 传输错误不能把服务端仍为 generating 的会话误解锁。
         resumeFinalStatus = isStreamError
-          ? ChatGenerateStatusEnum.error
+          ? ChatGenerateStatusEnum.done
           : ChatGenerateStatusEnum.generating;
 
         finishResumeAiRecord({ mergeResponseData: false });

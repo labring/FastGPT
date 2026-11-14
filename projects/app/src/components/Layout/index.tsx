@@ -5,6 +5,7 @@ import { useLoading } from '@fastgpt/web/hooks/useLoading';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useQuery } from '@tanstack/react-query';
 import { useUserStore } from '@/web/support/user/useUserStore';
+import { useInvitationResultToast } from '@/web/support/user/team/useInvitationResultToast';
 import { getUnreadCount } from '@/web/support/user/inform/api';
 import dynamic from 'next/dynamic';
 import { useI18nLng } from '@fastgpt/web/hooks/useI18n';
@@ -89,6 +90,8 @@ const Layout = ({ children }: { children: JSX.Element }) => {
   const modelLoginGeneration = useUserModelStore((state) => state.loginGeneration);
   const { setUserDefaultLng, setShareDefaultLng } = useI18nLng();
   const checkedModelIdentityRef = useRef<string>();
+
+  useInvitationResultToast();
 
   const isRoot = userInfo?.username === 'root';
   // /admin 区域外的路由（工作台、知识库、对话等）属于开源版本体，不受 License 状态影响
@@ -189,9 +192,10 @@ const Layout = ({ children }: { children: JSX.Element }) => {
     setLastRoute(router.pathname);
   }, [router.pathname, setLastRoute]);
 
-  // 注销用户 - 自动跳转注销页
+  // 注销用户 - 自动跳转注销页（系统 root 代管排查时不触发重定向）
   useEffect(() => {
     if (
+      !isRoot &&
       userInfo?.team?.accountCancellation &&
       router.pathname !== '/account/cancel' &&
       router.pathname !== '/login' &&
@@ -199,7 +203,7 @@ const Layout = ({ children }: { children: JSX.Element }) => {
     ) {
       router.replace('/account/cancel?view=team');
     }
-  }, [router, userInfo?.team?.accountCancellation]);
+  }, [isRoot, router, userInfo?.team?.accountCancellation]);
 
   const showPcNavbar = isPc === true && !isHideNavbar;
   const showPhoneNavbar =

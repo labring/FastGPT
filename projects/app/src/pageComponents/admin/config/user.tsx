@@ -116,7 +116,7 @@ const UserSetting = () => {
           <FirstTitle title="自定义用户系统配置" />
           <FormItem
             title="用户服务根地址(末尾不加/)"
-            description="具体用法请看： [SSO & 外部成员同步](https://doc.fastgpt.io/guide/admin/sso)"
+            description="具体用法请看： [SSO & 外部成员同步](https://doc.fastgpt.cn/zh-CN/guide/admin/sso)"
           >
             <Box>{ssoUrl}</Box>
           </FormItem>
@@ -256,6 +256,12 @@ const UserSetting = () => {
       </FormItem>*/}
       <FormItem title="账号注销当天提醒" description="注销当天 10:00 发送。">
         <Input {...register('sms.ACCOUNT_CANCELLATION_TODAY')} placeholder="账号注销当天提醒" />
+      </FormItem>
+      <FormItem
+        title="模型下架提醒"
+        description="发送模型下架提醒时会用到. 阿里云模板变量：`${models}、${plannedDeprecationAt}`。"
+      >
+        <Input {...register('sms.MODEL_DEPRECATION')} placeholder="模型下架提醒" />
       </FormItem>
       {/*<FormItem title="账号注销当天提醒(EN)" description="注销当天 10:00 发送。">
         <Input

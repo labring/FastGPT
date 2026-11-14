@@ -1,7 +1,10 @@
+import { apiI18n } from '@/service/middleware/i18n';
+import { getChatGenerationStatuses } from '@fastgpt/service/core/chat/generationLease';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Call } from '@test/utils/request';
 import { getRedisRuntime } from '@fastgpt/dal/redis/runtime';
 import { FASTGPT_REDIS_PREFIX } from '@fastgpt/dal/redis/runtime';
+import { ChatGenerationLeaseCache } from '@fastgpt/dal/redis/lease/chat/chatGenerationLease';
 import {
   ChatGenerateStatusEnum,
   ChatRoleEnum,
@@ -25,14 +28,15 @@ import {
   mirrorChatStream,
   resetStreamResumeMirrorGuardForTest,
   getStreamResumeRedisKeys,
-  getStreamResumeActiveState,
-  isStreamResumeActiveStale,
-  STREAM_RESUME_INACTIVE_MS,
   STREAM_RESUME_POST_COMPLETE_TTL_SECONDS,
   STREAM_RESUME_REDIS_MAXMEMORY_RATIO,
   STREAM_RESUME_TTL_SECONDS,
   STREAM_RESUME_TTL_TOUCH_INTERVAL_MS
 } from '@fastgpt/service/core/chat/resume';
+
+vi.mock('@fastgpt/service/core/chat/generationLease', () => ({
+  getChatGenerationStatuses: vi.fn()
+}));
 
 vi.mock('@fastgpt/service/core/chat/chatSchema', () => ({
   MongoChat: {
@@ -167,7 +171,7 @@ const invokeStreamingHandler = async (
 
   const req = {
     query,
-    headers: reqHeaders,
+    headers: reqHeaders ?? {},
     on: vi.fn((event: string, callback: () => void) => {
       if (event === 'close') {
         closeHandler = callback;
@@ -206,7 +210,7 @@ const invokeStreamingHandler = async (
     destroyed: false
   } as any;
 
-  const result = await handler(req, res);
+  const result = await apiI18n({ req, res }, () => handler(req, res));
 
   if (closeHandler && !res.writableEnded) {
     closeHandler();
@@ -226,6 +230,9 @@ const invokeStreamingHandler = async (
 describe('stream resume api', () => {
   beforeEach(async () => {
     vi.clearAllMocks();
+    vi.mocked(getChatGenerationStatuses).mockResolvedValue(
+      new Map([[chatId, ChatGenerateStatusEnum.done]])
+    );
 
     const redis = getRedisRuntime().getCommandConnection() as any;
     await redis.flushdb();
@@ -244,6 +251,9 @@ describe('stream resume api', () => {
   });
 
   it('should replay history in batches and then continue with live stream until done', async () => {
+    vi.mocked(getChatGenerationStatuses).mockResolvedValue(
+      new Map([[chatId, ChatGenerateStatusEnum.generating]])
+    );
     vi.mocked(MongoChat.findOne).mockReturnValue(
       createFindOneResult({
         hasBeenRead: false,
@@ -319,6 +329,123 @@ describe('stream resume api', () => {
     expect(res.end).toHaveBeenCalledTimes(1);
     expect(closeHandler).toBeDefined();
     expect(res.writableEnded).toBe(true);
+  });
+
+  it('strips moderationRecords from flowNodeResponse when reader has no write permission', async () => {
+    vi.mocked(getChatGenerationStatuses).mockResolvedValue(
+      new Map([[chatId, ChatGenerateStatusEnum.generating]])
+    );
+    vi.mocked(MongoChat.findOne).mockReturnValue(
+      createFindOneResult({
+        hasBeenRead: false,
+        chatGenerateStatus: ChatGenerateStatusEnum.generating
+      })
+    );
+    vi.mocked(authChatTargetCrud).mockResolvedValue({
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: appId,
+      teamId,
+      tmbId: 'tmb-reader',
+      canWrite: false,
+      showCite: true
+    } as any);
+
+    const historyItems = [
+      createStreamEntry(
+        '1-0',
+        `event: flowNodeResponse\ndata: ${JSON.stringify({
+          nodeId: 'node-1',
+          moderationRecords: [{ verdict: 'block', content: 'toxic raw content' }],
+          moduleName: 'AI Chat'
+        })}\n\n`
+      ),
+      createStreamEntry('2-0', 'event: done\ndata: [DONE]\n\n')
+    ];
+
+    const { redis, call, blockingRedis } = setupRedisStreamMock({
+      historyItems,
+      liveResponses: []
+    });
+
+    const { chunks } = await invokeStreamingHandler(
+      {
+        teamId,
+        appId,
+        chatId
+      },
+      {
+        headers: {
+          accept: 'text/event-stream'
+        }
+      }
+    );
+
+    const joined = chunks.join('');
+    expect(joined).not.toContain('toxic raw content');
+    expect(joined).not.toContain('moderationRecords');
+    expect(joined).toContain('"nodeId":"node-1"');
+  });
+
+  it('ends an existing resume connection when the lease disappears without a terminal stream event', async () => {
+    vi.mocked(getChatGenerationStatuses)
+      .mockResolvedValue(new Map([[chatId, ChatGenerateStatusEnum.done]]))
+      .mockResolvedValueOnce(new Map([[chatId, ChatGenerateStatusEnum.generating]]));
+    // Mongo 旧字段仍为 generating，也不能阻止恢复连接结束。
+    vi.mocked(MongoChat.findOne).mockReturnValue(
+      createFindOneResult({
+        hasBeenRead: false,
+        chatGenerateStatus: ChatGenerateStatusEnum.generating
+      })
+    );
+    vi.mocked(MongoChat.updateOne).mockResolvedValue({ acknowledged: true } as any);
+    vi.mocked(getChatItems).mockResolvedValue({
+      histories: [],
+      total: 0,
+      hasMorePrev: false,
+      hasMoreNext: false
+    } as any);
+    const { blockingRedis } = setupRedisStreamMock({ historyItems: [], liveResponses: [null] });
+    const { chunks, res } = await invokeStreamingHandler(
+      { teamId, appId, chatId },
+      { headers: { accept: 'text/event-stream' } }
+    );
+    expect(chunks.join('')).toContain(`event: ${StreamResumeCompletedEvent}`);
+    expect(chunks.join('')).toContain('data: [DONE]');
+    expect(blockingRedis.quit).toHaveBeenCalledOnce();
+    expect(res.end).toHaveBeenCalledOnce();
+  });
+
+  it('ends the resume connection as idle when reading the lease fails', async () => {
+    const actual = await vi.importActual<
+      typeof import('@fastgpt/service/core/chat/generationLease')
+    >('@fastgpt/service/core/chat/generationLease');
+    vi.mocked(getChatGenerationStatuses)
+      .mockImplementation(actual.getChatGenerationStatuses)
+      .mockResolvedValueOnce(new Map([[chatId, ChatGenerateStatusEnum.generating]]));
+    const read = vi
+      .spyOn(ChatGenerationLeaseCache.prototype, 'getTokens')
+      .mockRejectedValue(new Error('Redis lease read unavailable'));
+    vi.mocked(MongoChat.findOne).mockReturnValue(createFindOneResult({ hasBeenRead: false }));
+    vi.mocked(MongoChat.updateOne).mockResolvedValue({ acknowledged: true } as any);
+    vi.mocked(getChatItems).mockResolvedValue({
+      histories: [],
+      total: 0,
+      hasMorePrev: false,
+      hasMoreNext: false
+    } as any);
+    const { blockingRedis } = setupRedisStreamMock({ historyItems: [], liveResponses: [null] });
+    try {
+      const { chunks, res } = await invokeStreamingHandler(
+        { teamId, appId, chatId },
+        { headers: { accept: 'text/event-stream' } }
+      );
+      expect(blockingRedis.call).toHaveBeenCalledOnce();
+      expect(chunks.join('')).toContain(`event: ${StreamResumeCompletedEvent}`);
+      expect(chunks.join('')).toContain('data: [DONE]');
+      expect(res.end).toHaveBeenCalledOnce();
+    } finally {
+      read.mockRestore();
+    }
   });
 
   it('should mark completed chat as read and skip stream recovery', async () => {
@@ -411,6 +538,9 @@ describe('stream resume api', () => {
   });
 
   it('should reject non-sse resume requests while the chat is still generating', async () => {
+    vi.mocked(getChatGenerationStatuses).mockResolvedValue(
+      new Map([[chatId, ChatGenerateStatusEnum.generating]])
+    );
     vi.mocked(MongoChat.findOne).mockReturnValue(
       createFindOneResult({
         hasBeenRead: false,
@@ -524,6 +654,9 @@ describe('stream resume api', () => {
   });
 
   it('should emit a resume unavailable event and later push completed chat records', async () => {
+    vi.mocked(getChatGenerationStatuses).mockResolvedValue(
+      new Map([[chatId, ChatGenerateStatusEnum.generating]])
+    );
     vi.useFakeTimers();
     try {
       const chatStates = [
@@ -545,6 +678,10 @@ describe('stream resume api', () => {
         }
       ];
 
+      const leaseStates = chatStates.map((chat) => chat.chatGenerateStatus);
+      vi.mocked(getChatGenerationStatuses).mockImplementation(
+        async () => new Map([[chatId, leaseStates.shift() ?? ChatGenerateStatusEnum.done]])
+      );
       vi.mocked(MongoChat.findOne).mockImplementation(() =>
         createFindOneResult(chatStates.shift())
       );
@@ -653,6 +790,9 @@ describe('stream resume api', () => {
   });
 
   it('should stop waiting after the resume ttl while keeping the sse connection alive', async () => {
+    vi.mocked(getChatGenerationStatuses).mockResolvedValue(
+      new Map([[chatId, ChatGenerateStatusEnum.generating]])
+    );
     vi.useFakeTimers();
     try {
       vi.mocked(MongoChat.findOne).mockImplementation(() =>
@@ -821,9 +961,6 @@ describe('stream resume helpers', () => {
         'PX',
         STREAM_RESUME_TTL_SECONDS * 1000
       );
-      expect(await getStreamResumeActiveState({ teamId, ...appSource, chatId })).toEqual({
-        updatedAt: expect.any(Number)
-      });
 
       vi.advanceTimersByTime(STREAM_RESUME_TTL_TOUCH_INTERVAL_MS);
       await mirror.enqueueRaw('event: done\ndata: [DONE]\n\n');
@@ -962,27 +1099,5 @@ describe('stream resume helpers', () => {
   it('should parse truthy stream resume request headers', () => {
     expect(isStreamResumeMirrorRequested('YES')).toBe(true);
     expect(isStreamResumeMirrorRequested('0')).toBe(false);
-  });
-
-  it('should detect stale stream resume activity states', () => {
-    const now = Date.now();
-
-    expect(isStreamResumeActiveStale(undefined, now)).toBe(true);
-    expect(
-      isStreamResumeActiveStale(
-        {
-          updatedAt: now - STREAM_RESUME_INACTIVE_MS + 1
-        },
-        now
-      )
-    ).toBe(false);
-    expect(
-      isStreamResumeActiveStale(
-        {
-          updatedAt: now - STREAM_RESUME_INACTIVE_MS - 1
-        },
-        now
-      )
-    ).toBe(true);
   });
 });

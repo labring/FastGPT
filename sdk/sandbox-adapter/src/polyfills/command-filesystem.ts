@@ -1,6 +1,7 @@
 import { CommandExecutionError, FileOperationError } from '../errors';
 import type { ICommandExecution } from '../contracts';
 import type { DirectoryEntry, FileInfo, SearchResult } from '../types';
+import type { ContentReplaceEntry, ContentReplaceResult } from '../types/filesystem';
 import { base64ToBytes, bytesToBase64 } from '../utils/base64';
 
 /**
@@ -30,17 +31,27 @@ export class CommandFilesystemPolyfill {
    * size, then issues range reads so that no single command's stdout exceeds
    * the executor's bounded output limit.
    *
-   * Falls back to a single `cat | base64` read when `stat` fails (e.g. when
-   * the sandbox lacks GNU stat). That fallback is bounded by the caller's
-   * `maxOutputBytes`, so very large files require stat-based chunking.
+   * Falls back to a single `base64 < file` read when `stat` fails (e.g. when
+   * the sandbox lacks GNU stat or the file is missing). The redirect makes a
+   * missing or unreadable file fail the command; with `cat | base64` the
+   * pipeline exits with base64's status and the file reads as empty. That
+   * fallback is bounded by the executor's output cap, so a file too large for
+   * it fails instead of returning partial content.
    */
   async readFile(path: string): Promise<Uint8Array> {
     try {
       const size = await this.statSize(path);
       if (size === undefined) {
-        const result = await this.executor.execute(`cat ${this.shellQuote(path)} | base64 -w 0`);
+        const result = await this.executor.execute(`base64 -w 0 < ${this.shellQuote(path)}`);
         if (result.exitCode !== 0) {
           throw this.createFileError(path, result.stderr);
+        }
+        if (result.truncated) {
+          throw new FileOperationError(
+            'File is too large to read without stat',
+            path,
+            'TRANSFER_ERROR'
+          );
         }
         return base64ToBytes(result.stdout);
       }
@@ -54,6 +65,14 @@ export class CommandFilesystemPolyfill {
         const chunk = await this.readFileRange({ path, start: offset, end });
         chunks.push(chunk);
         totalLength += chunk.length;
+      }
+
+      if (totalLength !== size) {
+        throw new FileOperationError(
+          `Read ${totalLength} of ${size} bytes`,
+          path,
+          'TRANSFER_ERROR'
+        );
       }
 
       const combined = new Uint8Array(totalLength);
@@ -79,10 +98,11 @@ export class CommandFilesystemPolyfill {
    * does not exist or stat is unavailable).
    */
   private async statSize(path: string): Promise<number | undefined> {
-    // GNU stat uses -c '%s', BSD/macOS stat uses -f '%z'.
+    // GNU stat uses -c '%s', BSD/macOS stat uses -f '%z'. -L sizes the file a
+    // symlink points to, which is what `tail` reads.
     const quotedPath = this.shellQuote(path);
     const result = await this.executor.execute(
-      `stat -c '%s' ${quotedPath} 2>/dev/null || stat -f '%z' ${quotedPath} 2>/dev/null || echo STAT_FAILED`
+      `stat -L -c '%s' ${quotedPath} 2>/dev/null || stat -L -f '%z' ${quotedPath} 2>/dev/null || echo STAT_FAILED`
     );
     const stdout = result.stdout.trim();
     if (!stdout || stdout.includes('STAT_FAILED')) return undefined;
@@ -107,7 +127,10 @@ export class CommandFilesystemPolyfill {
         : `tail -c +${tailPos} ${quotedPath} | base64 -w 0`;
 
     const result = await this.executor.execute(cmd);
-    if (result.exitCode !== 0) {
+    // The pipeline exits with base64's status, so a `tail` that can't read the
+    // file (e.g. permission denied) only shows up on stderr. Some base64
+    // builds print a bare newline for empty input.
+    if (result.exitCode !== 0 || (!result.stdout.trim() && result.stderr.trim())) {
       throw this.createFileError(path, result.stderr);
     }
     return base64ToBytes(result.stdout);
@@ -150,7 +173,7 @@ export class CommandFilesystemPolyfill {
     }
 
     const base64 = bytesToBase64(data);
-    const chunkSize = 1024; // Avoid command line length limits
+    const chunkSize = 64 * 1024; // Avoid command line length limits
     let first = truncate;
 
     for (let i = 0; i < base64.length; i += chunkSize) {
@@ -289,40 +312,93 @@ export class CommandFilesystemPolyfill {
   // ==================== Metadata Operations ====================
 
   /**
-   * Get file information via stat.
+   * 通过 GNU stat 读取元数据，只省略确定返回 ENOENT 的路径。
+   * 传输、命令或响应校验失败时中止整批查询，不返回部分 Map。
    */
   async getFileInfo(paths: string[]): Promise<Map<string, FileInfo>> {
     const infoMap = new Map<string, FileInfo>();
 
     for (const path of paths) {
-      try {
-        // Use stat for detailed info
-        const result = await this.executor.execute(
-          `stat -c '%s|%Y|%W|%a|%U|%G|%F' ${this.shellQuote(path)} 2>/dev/null || echo "STAT_FAILED"`
-        );
+      // 固定诊断和文件类型的语言，保留退出码及 stderr，避免把执行失败当成缺失。
+      const command = `LC_ALL=C stat -c '%s|%Y|%W|%a|%U|%G|%F' -- ${this.shellQuote(path)}`;
+      const result = await this.executor.execute(command);
 
-        if (result.stdout.includes('STAT_FAILED')) {
-          continue; // File doesn't exist
-        }
-
-        const parts = result.stdout.trim().split('|');
-        if (parts.length >= 7) {
-          infoMap.set(path, {
-            path,
-            size: Number.parseInt(parts[0], 10) || undefined,
-            modifiedAt: parts[1] ? new Date(Number.parseInt(parts[1], 10) * 1000) : undefined,
-            createdAt: parts[2] ? new Date(Number.parseInt(parts[2], 10) * 1000) : undefined,
-            mode: Number.parseInt(parts[3], 8) || undefined,
-            owner: parts[4] || undefined,
-            group: parts[5] || undefined,
-            isDirectory: parts[6].includes('directory'),
-            isFile: parts[6].includes('regular file'),
-            isSymlink: parts[6].includes('symbolic link')
-          });
-        }
-      } catch {
-        // Skip files that can't be stat'd
+      if (result.truncated) {
+        throw new FileOperationError('Stat output was truncated', path, 'TRANSFER_ERROR');
       }
+
+      if (result.exitCode !== 0) {
+        // 单路径 stat 的完整 ENOENT 诊断才能证明缺失；裸错误文本或其他退出状态不算。
+        const diagnostic =
+          /^stat: cannot stat(?:x)? .+: (No such file or directory|Permission denied)\n?$/.exec(
+            result.stderr
+          );
+        const reason = diagnostic?.[0] === result.stderr ? diagnostic[1] : undefined;
+        if (
+          result.exitCode === 1 &&
+          result.stdout === '' &&
+          reason === 'No such file or directory'
+        ) {
+          continue;
+        }
+
+        const error = new CommandExecutionError(
+          `Failed to stat file: ${result.stderr.trim() || 'No diagnostic output'}`,
+          command,
+          result.exitCode ?? undefined,
+          result.stdout,
+          result.stderr
+        );
+        if (reason === 'Permission denied') {
+          throw new FileOperationError(result.stderr, path, 'PERMISSION_DENIED', error);
+        }
+        throw error;
+      }
+
+      // 校验完整记录，拒绝截断字段、宽松数值解析及无效日期，零值仍然有效。
+      const metadata =
+        /^(\d+)\|(-?\d+)\|(-?\d+)\|([0-7]{1,4})\|([^|\r\n]+)\|([^|\r\n]+)\|([^|\r\n]+)\n?$/.exec(
+          result.stdout
+        );
+      if (!metadata || metadata[0] !== result.stdout || result.stderr !== '') {
+        throw new FileOperationError('Invalid stat metadata', path, 'TRANSFER_ERROR');
+      }
+
+      const [, sizeText, modifiedAtText, createdAtText, modeText, owner, group, fileType] =
+        metadata;
+      const size = Number(sizeText);
+      const modifiedAt = new Date(Number(modifiedAtText) * 1000);
+      const createdAt = new Date(Number(createdAtText) * 1000);
+      if (
+        !Number.isSafeInteger(size) ||
+        !Number.isFinite(modifiedAt.getTime()) ||
+        !Number.isFinite(createdAt.getTime()) ||
+        ![
+          'regular file',
+          'regular empty file',
+          'directory',
+          'symbolic link',
+          'block special file',
+          'character special file',
+          'fifo',
+          'socket'
+        ].includes(fileType)
+      ) {
+        throw new FileOperationError('Invalid stat metadata', path, 'TRANSFER_ERROR');
+      }
+
+      infoMap.set(path, {
+        path,
+        size,
+        modifiedAt,
+        createdAt,
+        mode: Number.parseInt(modeText, 8),
+        owner,
+        group,
+        isDirectory: fileType === 'directory',
+        isFile: fileType === 'regular file' || fileType === 'regular empty file',
+        isSymlink: fileType === 'symbolic link'
+      });
     }
 
     return infoMap;
@@ -402,34 +478,102 @@ export class CommandFilesystemPolyfill {
   }
 
   /**
-   * Replace content in files via sed.
+   * 按字面量替换 UTF-8 文件内容，保留正则字符、换行、BOM 和文件权限。
+   *
+   * 读取后通过临时文件原子写回；明确未命中时保持文件不变，并停止后续请求。
+   * 返回结果与输入一一对应，未发送条目保留 skipped；参数、读取和写入异常向上抛出。
    */
-  async replaceContent(
-    entries: { path: string; oldContent: string; newContent: string }[]
-  ): Promise<void> {
-    for (const { path, oldContent, newContent } of entries) {
-      // Escape sed special characters
-      const escapedOld = oldContent
-        .replace(/\\/g, '\\\\\\\\')
-        .replace(/\//g, '\\/')
-        .replace(/&/g, '\\&');
-      const escapedNew = newContent
-        .replace(/\\/g, '\\\\\\\\')
-        .replace(/\//g, '\\/')
-        .replace(/&/g, '\\&');
+  async replaceContent(entries: ContentReplaceEntry[]): Promise<ContentReplaceResult[]> {
+    const results: ContentReplaceResult[] = entries.map(({ path }) => ({
+      path,
+      status: 'skipped'
+    }));
+    for (const [index, { path, oldContent, newContent }] of entries.entries()) {
+      if (!oldContent) {
+        throw new FileOperationError('Content to replace must not be empty', path, 'INVALID_PATH');
+      }
 
-      const result = await this.executor.execute(
-        `sed -i ${this.shellQuote(`s/${escapedOld}/${escapedNew}/g`)} ${this.shellQuote(path)}`
-      );
+      const bytes = await this.readFile(path);
+      let content: string;
+      try {
+        // Keep a leading BOM, and refuse bytes that aren't UTF-8 instead of
+        // writing them back as U+FFFD.
+        content = new TextDecoder('utf-8', { ignoreBOM: true, fatal: true }).decode(bytes);
+      } catch {
+        throw new FileOperationError('File is not valid UTF-8 text', path, 'TRANSFER_ERROR');
+      }
+      const parts = content.split(oldContent);
+      const occurrences = parts.length - 1;
+      if (occurrences === 0) {
+        results[index] = { path, status: 'unmatched' };
+        break;
+      }
 
-      if (result.exitCode !== 0) {
+      await this.replaceFileContents(path, new TextEncoder().encode(parts.join(newContent)));
+      results[index] = { path, status: 'replaced', replacedCount: occurrences };
+    }
+    return results;
+  }
+
+  /**
+   * Overwrite an existing file with `data` without leaving it partly written.
+   *
+   * A symlink is followed and the file it points to is replaced, so the link
+   * stays a link. That file is copied with `cp -p` to a temporary file in the
+   * same directory, which keeps its mode and timestamps. Its name is short
+   * and fixed-length, so it fits even when the target's name is near the
+   * filename length limit. The copy is rewritten with `data` over as many
+   * commands as it needs. Once its size is checked, `mv` renames it over the
+   * file in one step. If any step fails, the original file is untouched.
+   * Other hard links to the file keep the old content, as with `sed -i`.
+   */
+  private async replaceFileContents(path: string, data: Uint8Array): Promise<void> {
+    const target = await this.resolveSymlinks(path);
+    const quotedTarget = this.shellQuote(target);
+    const tempPath = `${target.slice(0, target.lastIndexOf('/') + 1)}.edit-${Math.random().toString(36).slice(2, 10).padEnd(8, '0')}.tmp`;
+    const quotedTemp = this.shellQuote(tempPath);
+    try {
+      const copy = await this.executor.execute(`cp -p ${quotedTarget} ${quotedTemp}`);
+      if (copy.exitCode !== 0) {
+        throw this.createFileError(path, copy.stderr);
+      }
+
+      await this.appendBytes({ path: tempPath, data, truncate: true });
+
+      const size = await this.executor.execute(`wc -c < ${quotedTemp}`);
+      const written = Number.parseInt(size.stdout.trim(), 10);
+      if (size.exitCode !== 0 || written !== data.length) {
         throw new FileOperationError(
-          `Failed to replace content: ${result.stderr}`,
+          `Wrote ${Number.isNaN(written) ? 0 : written} of ${data.length} bytes`,
           path,
-          'INVALID_PATH'
+          'TRANSFER_ERROR'
         );
       }
+
+      const result = await this.executor.execute(`mv -f ${quotedTemp} ${quotedTarget}`);
+      if (result.exitCode !== 0) {
+        throw this.createFileError(path, result.stderr);
+      }
+    } finally {
+      await this.executor.execute(`rm -f ${quotedTemp}`).catch(() => undefined);
     }
+  }
+
+  /**
+   * Return the file `path` finally points to, or `path` itself if it is not a
+   * symlink. Fails if `path` is a symlink that `readlink -f` can't resolve,
+   * rather than replacing the link with a regular file.
+   */
+  private async resolveSymlinks(path: string): Promise<string> {
+    const quotedPath = this.shellQuote(path);
+    const result = await this.executor.execute(
+      `if [ -L ${quotedPath} ]; then readlink -f ${quotedPath}; fi`
+    );
+    const resolved = result.stdout.replace(/\n$/, '');
+    if (result.exitCode !== 0) {
+      throw this.createFileError(path, result.stderr || 'Cannot resolve symlink');
+    }
+    return resolved || path;
   }
 
   // ==================== Health Check Polyfill ====================

@@ -1,3 +1,4 @@
+import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { UserError } from '@fastgpt/global/common/error/utils';
@@ -187,6 +188,13 @@ describe('dispatchDatasetSearch', () => {
     } finally {
       serviceEnv.DATASET_SYNONYM_ENABLED = previous;
     }
+    expect(pushTrack.datasetSearch).toHaveBeenCalledExactlyOnceWith({
+      teamId: 'team_1',
+      datasetIds: ['dataset_1']
+    });
+    expect(defaultSearchDatasetDataMock).toHaveBeenCalledWith(
+      expect.objectContaining({ metadataFilterEnabled: false })
+    );
     expect(result.data?.quoteQA[0]).toMatchObject(quote);
     expect(result[DispatchNodeResponseKeyEnum.nodeResponse]?.quoteList?.[0]).toMatchObject(quote);
     expect(
@@ -236,6 +244,7 @@ describe('dispatchDatasetSearch', () => {
     const result = await runSearch(
       {
         usingReRank: true,
+        rerankCandidateNum: 30,
         datasetSearchUsingExtensionQuery: true,
         datasetSearchExtensionModelId: 'deleted'
       },
@@ -246,6 +255,7 @@ describe('dispatchDatasetSearch', () => {
     expect(result.error).toBeUndefined();
     expect(defaultSearchDatasetDataMock).toHaveBeenCalledWith(
       expect.objectContaining({
+        rerankCandidateNum: 30,
         rerankModel: expect.objectContaining({ modelId: 'fallback-rerank' }),
         datasetSearchExtensionModel: expect.objectContaining({ modelId: 'fallback-llm' })
       })

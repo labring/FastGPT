@@ -1,10 +1,11 @@
 ---
 title: V4.9.0
-description: FastGPT V4.9.0 Release Notes
+description: 'FastGPT V4.9.0 release notes covering container image updates, upgrade steps, and feature changes.'
 releaseTime: '2025-03-06'
 upgradeTags:
   - CONFIG
   - MIGRATION
+deprecated: true
 ---
 
 ## Upgrade Guide
@@ -16,7 +17,7 @@ upgradeTags:
 - Update FastGPT image tag: v4.9.0
 - Update FastGPT Pro image tag: v4.9.0
 - Sandbox image: no update required
-- Update PG container to v0.8.0-pg15. See the [latest yml](https://raw.githubusercontent.com/labring/FastGPT/main/document/public/deploy/docker/main/global/docker-compose.pg.yml)
+- Update PG container to v0.8.0-pg15. See the [v4.9.0 yml](https://raw.githubusercontent.com/labring/FastGPT/v4.9.0/deploy/docker/docker-compose-pgvector.yml)
 
 ### 3. Replace OneAPI (Optional)
 
@@ -24,7 +25,7 @@ Follow this step if you want to replace OneAPI with [AI Proxy](https://github.co
 
 #### 1. Modify the yml File
 
-Refer to the [latest yml](https://raw.githubusercontent.com/labring/FastGPT/main/document/public/deploy/docker/main/global/docker-compose.pg.yml) file. OneAPI has been removed and AI Proxy configuration has been added, including one service and one PgSQL database. Append the `aiproxy` configuration after the OneAPI configuration (don't remove OneAPI yet — the initialization process will automatically sync OneAPI's configuration).
+Refer to the [v4.9.0 yml](https://raw.githubusercontent.com/labring/FastGPT/v4.9.0/deploy/docker/docker-compose-pgvector.yml) file. OneAPI has been removed and AI Proxy configuration has been added, including one service and one PgSQL database. Append the `aiproxy` configuration after the OneAPI configuration (don't remove OneAPI yet — the initialization process will automatically sync OneAPI's configuration).
 
 <details>
 <summary>AI Proxy Yml Configuration</summary>

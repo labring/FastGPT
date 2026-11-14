@@ -57,6 +57,7 @@ export const getSideTabItems = (response: ChatHistoryItemResType[]): SideTabItem
       runningTime: presentedItem.runningTime,
       moduleType: presentedItem.moduleType,
       id: presentedItem.id ?? presentedItem.nodeId,
+      hasError: Boolean(item.error || item.errorText),
       children
     };
   });

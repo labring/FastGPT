@@ -1,6 +1,7 @@
 import {
   datasetQuoteValueDesc,
   datasetSelectValueDesc,
+  datasetTagFilterValueDesc,
   FlowNodeInputTypeEnum,
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
@@ -14,6 +15,7 @@ import {
 } from '../../constants';
 import { Input_Template_Dataset_Tag_Filter_Version, Input_Template_UserChatInput } from '../input';
 import { DatasetSearchModeEnum } from '../../../dataset/constants';
+import { rerankCandidateNumRange } from '../../../dataset/search/utils';
 import { i18nT } from '../../../../common/i18n/utils';
 import { Output_Template_Error_Message } from '../output';
 
@@ -95,6 +97,13 @@ export const DatasetSearchModule: FlowNodeTemplateType = {
       valueType: WorkflowIOValueTypeEnum.number,
       value: 0.5
     },
+    {
+      key: NodeInputKeyEnum.datasetSearchRerankCandidateNum,
+      renderTypeList: [FlowNodeInputTypeEnum.hidden],
+      label: '',
+      valueType: WorkflowIOValueTypeEnum.number,
+      value: rerankCandidateNumRange.default
+    },
     // Query Extension
     {
       key: NodeInputKeyEnum.datasetSearchUsingExtensionQuery,
@@ -138,7 +147,8 @@ export const DatasetSearchModule: FlowNodeTemplateType = {
       label: i18nT('workflow:tag_filter'),
       valueType: WorkflowIOValueTypeEnum.string,
       isPro: true,
-      description: i18nT('workflow:tag_filter_description')
+      description: i18nT('workflow:tag_filter_description'),
+      valueDesc: datasetTagFilterValueDesc
     }
   ],
   outputs: [

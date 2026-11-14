@@ -61,11 +61,11 @@ const SearchMemberSchema = z
       example: '68ad85a7463006c963799a07',
       description: '团队 ID'
     }),
-    name: z.string().meta({
+    name: TeamTmbItemSchema.shape.memberName.meta({
       example: '张三',
       description: '成员名称，展示口径；即数据库成员名'
     }),
-    memberName: z.string().default('Member').meta({
+    memberName: TeamTmbItemSchema.shape.memberName.meta({
       example: '张三',
       description: '成员展示名称；即数据库成员名，未显式设置过时为加入时的回落值'
     }),
@@ -249,7 +249,7 @@ export const TeamListItemSchema = z
       example: 'FastGPT 团队',
       description: '团队名称'
     }),
-    memberName: z.string().default('Member').meta({
+    memberName: TeamTmbItemSchema.shape.memberName.meta({
       example: '张三',
       description: '当前用户在团队中的名称'
     }),
@@ -432,8 +432,11 @@ export type UpdateTeamResponseType = z.infer<typeof UpdateTeamResponseSchema>;
  * Tags: ['订阅管理', 'Read']
  * ============================================================================ */
 
-export const GetTeamPlanStatusQuerySchema = z.object({}).meta({
-  description: '该接口不需要查询参数'
+export const GetTeamPlanStatusQuerySchema = z.object({
+  scope: z.literal('entitlements').optional().meta({
+    description: '传入 entitlements 时仅查询当前团队权益，不统计资源用量',
+    example: 'entitlements'
+  })
 });
 export type GetTeamPlanStatusQuery = z.infer<typeof GetTeamPlanStatusQuerySchema>;
 
@@ -441,6 +444,21 @@ export const GetTeamPlanStatusResponseSchema = ClientTeamPlanStatusSchema.option
   description: '鉴权或套餐状态查询失败时不返回业务数据'
 });
 export type GetTeamPlanStatusResponse = z.infer<typeof GetTeamPlanStatusResponseSchema>;
+
+export const GetTeamPlanEntitlementsResponseSchema = z.object({
+  scope: z.literal('entitlements').meta({ description: '权益查询模式', example: 'entitlements' }),
+  canHideShareBrand: z.boolean().meta({
+    description: '当前团队是否具有隐藏分享链接品牌的权益',
+    example: true
+  })
+});
+export type GetTeamPlanEntitlementsResponse = z.infer<typeof GetTeamPlanEntitlementsResponseSchema>;
+
+export const GetTeamPlanStatusApiResponseSchema = z
+  .union([ClientTeamPlanStatusSchema, GetTeamPlanEntitlementsResponseSchema])
+  .optional()
+  .meta({ description: '根据 scope 返回完整套餐状态或轻量权益' });
+export type GetTeamPlanStatusApiResponse = z.infer<typeof GetTeamPlanStatusApiResponseSchema>;
 
 /* ============================================================================
  * API: 获取团队套餐列表

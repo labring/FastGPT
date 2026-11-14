@@ -1,6 +1,12 @@
 import type { MyModelItemType } from '@fastgpt/global/openapi/core/ai/model/api';
 import { findClientModelByValue } from '@/web/core/ai/model/modelReference';
 
+/** 即将下架的候选只保留多模态提示，避免两个状态标签挤占模型名称。 */
+export const shouldShowTestModeTag = (model: {
+  testMode?: boolean;
+  isUpcomingDeprecation?: boolean;
+}) => model.testMode === true && model.isUpcomingDeprecation !== true;
+
 /** 仅业务只读态和禁用提示锁定选择器；目录加载由下拉面板处理，不影响触发按钮。 */
 export const resolveModelSelectorDisabled = ({
   isDisabled,

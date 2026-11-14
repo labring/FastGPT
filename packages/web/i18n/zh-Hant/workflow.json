@@ -17,7 +17,7 @@
   "add_new_input": "新增輸入",
   "add_new_output": "新增輸出",
   "agent.prompt_placeholder": "輸入「/」插入引用變數；輸入「@」插入特定能力，包括技能、應用、工具、知識庫。",
-  "agent.prompt_skill_tip": "@選擇技能及工具，\"/\"選擇變數",
+  "agent.prompt_skill_tip": "\"@\"選擇技能及工具，\"/\"選擇變數",
   "agent.select_skill": "選擇技能",
   "agent.select_tool": "選擇工具",
   "agent.tools": "工具",
@@ -36,8 +36,10 @@
   "click_to_change_value": "點擊切換變量引用模式",
   "cli.input.ai_model": "此 AI 節點使用的模型",
   "cli.input.answer": "固定回答文字或上游輸出引用",
+  "cli.input.custom_feedback": "要附加到目前對話記錄的回饋內容",
+  "cli.input.dataset_quotes": "由上游節點提供的知識庫引用",
   "cli.input.system_prompt": "定義助手角色和回答規則的指令",
-  "cli.input.text_editor": "靜態文字或由上游變數組合的文字",
+  "cli.input.text_editor": "靜態文字或由上游變數組合的文字。這是純文字輸入框。用 {{$nodeId.outputKey$}} 引用上游輸出，全域變數用 {{$VARIABLE_NODE_ID.variableKey$}} 引用。不要產生裸的 {{variableKey}} 或 {{nodeId.outputKey}} 佔位符。",
   "cli.input.user_question": "由工作流程開始節點提供的使用者問題",
   "cli.config.auto_execute": "當應用程式需要在使用者進入對話後立即自動執行時設定；應同時設定開啟狀態和預設問題。",
   "cli.config.auto_execute_open": "僅當進入對話後應立即執行工作流程、無需等待使用者輸入時開啟。",
@@ -385,5 +387,7 @@
   "workflow_builder_preview_confirm": "確認並開始搭建",
   "workflow_builder_preview_revise": "修改方案",
   "workflow_builder_preview_cancel": "取消本次搭建",
-  "workflow_builder_preview_revise_placeholder": "請說明需要調整的節點或流程"
+  "workflow_builder_preview_revise_placeholder": "請說明需要調整的節點或流程",
+  "workflow_builder_preview_pending": "待確認",
+  "workflow_builder_preview_flow": "流程預覽"
 }

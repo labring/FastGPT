@@ -93,6 +93,93 @@ const calculatorTool: ChatCompletionTool = {
 };
 
 describe('runAgentLoop with mocked createLLMResponse', () => {
+  it('appends a tool continuation after all paired tool results in the original context', async () => {
+    const onUserMessage = vi.fn();
+    const first = toolCall({ id: 'search-1', name: 'search', args: { q: 'original requirement' } });
+    const second = toolCall({ id: 'calculate-1', name: 'calculator' });
+    mockCreateLLMResponseQueue(createLLMResponseMock, [
+      { ...first, toolCalls: [...first.toolCalls!, ...second.toolCalls!] },
+      ({ body }) => {
+        expect(body.messages.map((message) => message.role)).toEqual([
+          'user',
+          'assistant',
+          'tool',
+          'tool',
+          'user'
+        ]);
+        expect(body.messages[0].content).toBe('original requirement');
+        expect(body.messages.at(-1)).toMatchObject({
+          role: 'user',
+          content: 'Review the draft.',
+          hideInUI: true
+        });
+        return text({ content: 'Reviewed.' });
+      }
+    ]);
+    const result = await runAgentLoop({
+      teamId: 'team-1',
+      maxRunAgentTimes: 5,
+      body: {
+        model: modelData,
+        messages: [{ role: 'user', content: 'original requirement' }],
+        tools: [searchTool, calculatorTool]
+      },
+      isAborted: () => false,
+      onRunTool: async ({ call }) => ({
+        response: 'tool result',
+        assistantMessages: [],
+        usages: [],
+        ...(call.id === 'search-1' && { continuationMessage: 'Review the draft.' })
+      }),
+      onRunInteractiveTool: vi.fn(),
+      onUserMessage
+    });
+    expect(result.error).toBeUndefined();
+    expect(onUserMessage).toHaveBeenCalledExactlyOnceWith({
+      content: 'Review the draft.',
+      source: 'server'
+    });
+  });
+
+  it.each(['stop', 'pause', 'abort'] as const)(
+    'does not append a tool continuation after %s',
+    async (exit) => {
+      let aborted = false;
+      const onUserMessage = vi.fn();
+      mockCreateLLMResponseQueue(createLLMResponseMock, [
+        toolCall({ name: 'search', args: { q: 'test' } })
+      ]);
+      const result = await runAgentLoop({
+        teamId: 'team-1',
+        maxRunAgentTimes: 5,
+        body: {
+          model: modelData,
+          messages: [{ role: 'user', content: 'test' }],
+          tools: [searchTool]
+        },
+        isAborted: () => aborted,
+        onRunTool: async () => {
+          aborted = exit === 'abort';
+          return {
+            response: 'stopped',
+            assistantMessages: [],
+            usages: [],
+            continuationMessage: 'Do not send.',
+            ...(exit === 'stop' && { stop: true }),
+            ...(exit === 'pause' && { interactive: { pending: true } })
+          };
+        },
+        onRunInteractiveTool: vi.fn(),
+        onUserMessage
+      });
+      expect(createLLMResponseMock).toHaveBeenCalledTimes(1);
+      expect(onUserMessage).not.toHaveBeenCalled();
+      expect(result.completeMessages).not.toContainEqual(
+        expect.objectContaining({ content: 'Do not send.' })
+      );
+    }
+  );
+
   beforeEach(() => {
     vi.clearAllMocks();
     countGptMessagesTokensMock.mockResolvedValue(100);

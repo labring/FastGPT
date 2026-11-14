@@ -20,6 +20,7 @@ import {
 } from '../agentLoopCore/interface';
 import { createToolCallToolProvider } from './toolProvider';
 import { runtimeSummaryToNodeSummary, stripNodeSummaryErrorFields } from '../../utils/summary';
+import { getDispatchModerationContext } from '../../utils/runtime';
 import { getWorkflowFileContext } from '../../../utils/context';
 
 type ResponseType = {
@@ -168,6 +169,7 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
         checkIsStopping,
         toolRuntime: {
           toolProvider,
+          context: getDispatchModerationContext(workflowProps),
           /**
            * ToolCall 节点内部工具执行依赖流式输出、交互状态和 nodeResponse 顺序，
            * 这里显式保持串行；普通 Agent 入口再按 batchToolSize 控制并发。

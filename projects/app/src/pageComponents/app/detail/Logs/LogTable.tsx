@@ -1,3 +1,10 @@
+import { formatToISOWithTimezone } from '@fastgpt/global/common/string/time';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import {
+  getChatPublishSourceName,
+  getChatPublishSourceType
+} from '@fastgpt/global/common/chat/publishSource';
+import { getLogIdentity, normalizeAppLogKeys } from '@fastgpt/global/core/app/logs/utils';
 import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import {
   Box,
@@ -12,8 +19,7 @@ import {
   Tr,
   Checkbox
 } from '@chakra-ui/react';
-import type { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
-import { ChatSourceMap } from '@fastgpt/global/core/chat/constants';
+import { ChatSourceMap, type ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import DateRangePicker from '@fastgpt/web/components/common/DateRangePicker';
 import {
   FilterInput,
@@ -109,9 +115,10 @@ const LogTable = ({
   const [chatSearch, setChatSearch] = useState('');
 
   // log keys
-  const [logKeys = DefaultAppLogKeys, setLogKeys] = useLocalStorageState<AppLogKeysType[]>(
+  const [storedLogKeys, setLogKeys] = useLocalStorageState<AppLogKeysType[]>(
     `app_log_keys_${appId}`
   );
+  const logKeys = useMemo(() => normalizeAppLogKeys(storedLogKeys), [storedLogKeys]);
   const { runAsync: fetchLogKeys, data: teamLogKeys } = useRequest(
     async () => {
       return getLogKeys({ appId });
@@ -120,9 +127,9 @@ const LogTable = ({
       manual: false,
       refreshDeps: [appId],
       onSuccess: (res) => {
-        if (logKeys.length > 0) return;
+        if (storedLogKeys?.length) return;
         if (res.logKeys.length > 0) {
-          setLogKeys(res.logKeys);
+          setLogKeys(normalizeAppLogKeys(res.logKeys));
         } else if (res.logKeys.length === 0) {
           setLogKeys(DefaultAppLogKeys);
         }
@@ -130,9 +137,7 @@ const LogTable = ({
     }
   );
   const showSyncPopover = useMemo(() => {
-    const teamLogKeysList = (
-      teamLogKeys?.logKeys?.length ? teamLogKeys?.logKeys : DefaultAppLogKeys
-    ).filter((item) => item.enable);
+    const teamLogKeysList = normalizeAppLogKeys(teamLogKeys?.logKeys).filter((item) => item.enable);
     const personalLogKeysList = logKeys.filter((item) => item.enable);
     return !isEqual(teamLogKeysList, personalLogKeysList);
   }, [teamLogKeys, logKeys]);
@@ -157,8 +162,8 @@ const LogTable = ({
       filename: t('app:export_log_filename', { name: appName }),
       body: {
         appId,
-        dateStart: dayjs(dateRange.from || new Date()).format(),
-        dateEnd: dayjs(dateRange.to || new Date()).format(),
+        dateStart: formatToISOWithTimezone(dateRange.from),
+        dateEnd: formatToISOWithTimezone(dateRange.to),
         sources: toMultiSelectFilterQuery(sourceFilter),
         tmbIds,
         outLinkUids,
@@ -252,6 +257,9 @@ const LogTable = ({
 
   const HeaderRenderMap = useMemoEnhance(
     () => ({
+      [AppLogKeysEnum.PUBLISH_SOURCE_TYPE]: (
+        <Th key={AppLogKeysEnum.PUBLISH_SOURCE_TYPE}>{t('app:logs_keys_publish_source_type')}</Th>
+      ),
       [AppLogKeysEnum.SOURCE]: <Th key={AppLogKeysEnum.SOURCE}>{t('app:logs_keys_source')}</Th>,
       [AppLogKeysEnum.CREATED_TIME]: (
         <Th key={AppLogKeysEnum.CREATED_TIME}>{t('app:logs_keys_createdTime')}</Th>
@@ -261,7 +269,10 @@ const LogTable = ({
           {t('app:logs_keys_lastConversationTime')}
         </Th>
       ),
-      [AppLogKeysEnum.USER]: <Th key={AppLogKeysEnum.USER}>{t('app:logs_chat_user')}</Th>,
+      [AppLogKeysEnum.USER]: <Th key={AppLogKeysEnum.USER}>{t('app:logs_keys_user')}</Th>,
+      [AppLogKeysEnum.AUTH_USER]: (
+        <Th key={AppLogKeysEnum.AUTH_USER}>{t('app:logs_keys_auth_user')}</Th>
+      ),
       [AppLogKeysEnum.REGION]: (
         <Th key={AppLogKeysEnum.REGION}>
           <UserIpTypeFilter
@@ -347,10 +358,30 @@ const LogTable = ({
 
   const getCellRenderMap = useCallback(
     (item: AppLogsListItemType) => ({
+      [AppLogKeysEnum.PUBLISH_SOURCE_TYPE]: (
+        <Td key={AppLogKeysEnum.PUBLISH_SOURCE_TYPE}>
+          {item.publishSource?.type && ChatSourceMap[item.publishSource.type]
+            ? t(ChatSourceMap[item.publishSource.type].name)
+            : '-'}
+        </Td>
+      ),
       [AppLogKeysEnum.SOURCE]: (
         <Td key={AppLogKeysEnum.SOURCE}>
-          {/* @ts-ignore */}
-          {item.sourceName || t(ChatSourceMap[item.source]?.name) || item.source}
+          <MyTooltip
+            label={
+              item.publishSource?.id
+                ? t('app:logs_publish_source_id', { id: item.publishSource.id })
+                : undefined
+            }
+          >
+            <Box as="span">
+              {getChatPublishSourceName({
+                type: getChatPublishSourceType(item),
+                name: item.publishSource?.name,
+                sourceName: item.sourceName
+              }) ?? '-'}
+            </Box>
+          </MyTooltip>
         </Td>
       ),
       [AppLogKeysEnum.CREATED_TIME]: (
@@ -365,15 +396,20 @@ const LogTable = ({
       ),
       [AppLogKeysEnum.USER]: (
         <Td key={AppLogKeysEnum.USER}>
-          <Box>
-            {item.sourceMember ? (
-              <UserBox sourceMember={item.sourceMember} />
-            ) : !!item.outLinkUid ? (
-              item.outLinkUid
-            ) : (
-              '-'
-            )}
-          </Box>
+          {getLogIdentity(item).member ? (
+            <UserBox sourceMember={getLogIdentity(item).member!} />
+          ) : (
+            getLogIdentity(item).name
+          )}
+        </Td>
+      ),
+      [AppLogKeysEnum.AUTH_USER]: (
+        <Td key={AppLogKeysEnum.AUTH_USER}>
+          {item.authMember ? (
+            <UserBox sourceMember={item.authMember} />
+          ) : (
+            getLogIdentity({ ...item, isAuthorizer: true }).name
+          )}
         </Td>
       ),
       [AppLogKeysEnum.REGION]: (
@@ -543,7 +579,8 @@ const LogTable = ({
           </>
         }
       >
-        <Table variant={'simple'} fontSize={'sm'}>
+        {/* 按内容分配列宽，避免长 UID 将成员姓名压缩；不足一屏时仍铺满容器。 */}
+        <Table variant={'simple'} fontSize={'sm'} w={'max-content'} minW={'100%'}>
           <Thead>
             <Tr>
               <Th>
@@ -566,8 +603,7 @@ const LogTable = ({
                     onClick: () =>
                       setDetailLogData({
                         chatId: item.chatId,
-                        feedbackUserName:
-                          item.outLinkUid || item.sourceMember?.name || item.tmbId || undefined
+                        feedbackUserName: getLogIdentity(item).name
                       })
                   })}
                 >

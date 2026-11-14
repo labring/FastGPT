@@ -1,3 +1,4 @@
+import { ChatIdSchema } from '../../../../core/chat/schema';
 import { OutLinkChatAuthSchema } from '../../../../support/permission/chat';
 import z from 'zod';
 import {
@@ -41,7 +42,7 @@ export const SandboxKeepaliveBodySchema = z.object({
     example: '68ad85a7463006c963799a06',
     description: '沙盒所属用户 ID'
   }),
-  chatId: z.string().meta({
+  chatId: ChatIdSchema.meta({
     example: 'bEdzC6PNupZrr1RoVutMF2DL',
     description: '沙盒会话 ID'
   }),
@@ -109,7 +110,7 @@ export const SandboxVerifyTicketResponseSchema = z.object({
 export type SandboxVerifyTicketResponse = z.infer<typeof SandboxVerifyTicketResponseSchema>;
 
 const SandboxBaseShape = {
-  chatId: z.string().meta({
+  chatId: ChatIdSchema.meta({
     example: 'bEdzC6PNupZrr1RoVutMF2DL',
     description: '对话 ID'
   }),

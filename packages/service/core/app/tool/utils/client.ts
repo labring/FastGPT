@@ -69,6 +69,7 @@ import {
 } from '../../../plugin/teamPluginPolicy';
 
 type AppToolType = WorkflowTemplateType & {
+  type?: AppTypeEnum;
   status?: PluginStatusType;
   // FastGPT-plugin tool
   inputs?: FlowNodeInputItemType[];
@@ -314,6 +315,7 @@ export async function getClientToolPreviewNode({
         return {
           id: String(item._id),
           teamId: String(item.teamId),
+          type: item.type,
           name: item.name,
           avatar: item.avatar,
           intro: item.intro,
@@ -465,7 +467,10 @@ export async function getClientToolPreviewNode({
       // Chat workflow
       return {
         flowNodeType: FlowNodeTypeEnum.appModule,
-        nodeIOConfig: appData2FlowNodeIO({ chatConfig: app.workflow.chatConfig })
+        nodeIOConfig: appData2FlowNodeIO({
+          chatConfig: app.workflow.chatConfig,
+          isChatAgent: app.type === AppTypeEnum.chatAgent
+        })
       };
     })();
 

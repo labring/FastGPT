@@ -1,5 +1,6 @@
 import { extension as getMimeExtension, lookup as lookupMimeType } from 'mime-types';
 import path from 'node:path';
+import { normalizeDocumentFileExtension } from '@fastgpt/global/common/file/utils';
 
 export const DEFAULT_CONTENT_TYPE = 'application/octet-stream';
 
@@ -29,8 +30,11 @@ export const resolveMimeType = (
   return fallback;
 };
 
+/** 从 MIME 推导带点的规范后缀，与文件名解析使用相同的文档别名规则；未知 MIME 返回空串。 */
 export const resolveMimeExtension = (mimeType?: string | false): `.${string}` | '' => {
-  const extension = getMimeExtension(normalizeMimeType(mimeType, ''));
+  const extension = normalizeDocumentFileExtension(
+    getMimeExtension(normalizeMimeType(mimeType, '')) || undefined
+  );
   return extension ? `.${extension}` : '';
 };
 

@@ -237,9 +237,6 @@ export const serviceEnv = createEnv({
         'mongodb://myusername:mypassword@localhost:27017/fastgpt?authSource=admin&directConnection=true'
       ),
     MONGODB_LOG_URI: z.string().optional(),
-    SYNC_INDEX: BoolSchema.default(true).meta({
-      description: '是否在启动时创建当前 MongoDB 索引并清理显式声明的废弃索引'
-    }),
 
     // VectorDB
     VECTOR_VQ_LEVEL: IntSchema.default(32).meta({
@@ -255,11 +252,8 @@ export const serviceEnv = createEnv({
       description: 'Milvus 语言识别引擎(BM25 analyzer): lingua(默认) | whatlang'
     }),
     OPENGAUSS_URL: z.string().optional().meta({ description: 'openGauss 向量库连接参数' }),
-    HNSW_EF_SEARCH: IntSchema.min(1).default(100).meta({
-      description: '向量检索 hnsw ef_search 参数，仅对 PG / OB / OpenGauss 生效'
-    }),
-    HNSW_MAX_SCAN_TUPLES: IntSchema.min(1).default(100000).meta({
-      description: '向量检索最大扫描数据量，仅对 PG 生效'
+    HNSW_EF_SEARCH: IntSchema.min(1).default(200).meta({
+      description: 'HNSW 向量检索搜索宽度，对 PG / Milvus / OceanBase / SeekDB / OpenGauss 生效'
     }),
 
     // 对象存储
@@ -439,6 +433,10 @@ export const serviceEnv = createEnv({
       description:
         '系统同步字符串处理最大字符数（M，1M=1,000,000 字符），用于变量替换等 CPU 密集文本操作'
     }),
+    SHOW_OUTLINK_BRAND: BoolSchema.default(false).meta({
+      description:
+        '是否展示免登录品牌标识；开源版始终开启，接入 Pro 服务后默认关闭，可设为 true 开启'
+    }),
     CHAT_MAX_QPM: IntSchema.default(5000).meta({
       description: '聊天 QPM（若用户套餐有限制，这里不生效）'
     }),
@@ -470,6 +468,10 @@ export const serviceEnv = createEnv({
     // ==================== 资源限制 ====================
     SERVICE_REQUEST_MAX_CONTENT_LENGTH: IntSchema.default(10).meta({
       description: '服务器接收请求的最大大小（MB）'
+    }),
+    SERVICE_AXIOS_MAX_CONTENT_LENGTH: IntSchema.default(20).meta({
+      description:
+        '服务端共享 HTTP 客户端缓冲型响应体的最大大小（MB，按解压后大小计算）；流式下载由调用方或业务配额限制'
     }),
     MAX_FOLDER_DEPTH: IntSchema.min(2).max(20).default(DEFAULT_MAX_FOLDER_DEPTH).meta({
       description: '允许的最深文件夹层级，默认 4（根目录下最多 4 层文件夹）'
