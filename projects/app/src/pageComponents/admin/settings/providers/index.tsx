@@ -20,12 +20,12 @@ import AdminFormItem from '@/pageComponents/admin/settings/AdminFormItem';
 import ConnectivityTestInput from '@/pageComponents/admin/settings/ConnectivityTestInput';
 import type { SettingTOCItem } from '@/pageComponents/admin/settings/AdminSettingTOC';
 import ThirdPartyVariables from '@/pageComponents/admin/config/components/FormField/ThirdPartyVariables';
-import { isHttpUrl } from '@fastgpt/global/common/string/url';
+import { isValidHttpUrl } from '@fastgpt/global/common/string/url';
 import type { SystemInstanceConfigDomainMap } from '@fastgpt/global/common/system/config/schema';
 
 type ProvidersConfigForm = SystemInstanceConfigDomainMap['providers'];
 
-const isValidOptionalUrl = (url?: string) => !url || isHttpUrl(url.trim());
+const isValidOptionalUrl = (url?: string) => !url || isValidHttpUrl(url);
 
 const ProvidersSettingComponent = () => {
   const { t } = useSafeTranslation();
