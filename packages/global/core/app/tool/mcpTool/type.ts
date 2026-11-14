@@ -13,7 +13,19 @@ export const McpToolConfigSchema = z.object({
   }),
   inputSchema: JSONSchemaInputTypeSchema.optional().meta({
     description: 'MCP 工具入参 JSON Schema'
-  })
+  }),
+  // JSON 值在运行时统一校验，避免递归类型影响 SDK 声明和表单默认值推导。
+  requestMeta: z
+    .record(z.string(), z.any())
+    .refine((value) => z.json().safeParse(value).success, {
+      message: 'Metadata must contain JSON values'
+    })
+    .optional()
+    .meta({
+      example: { 'example/context': { locale: 'zh-CN' } },
+      description:
+        '调用此工具时发送的 MCP 请求元数据，位于 tools/call 的 params._meta，独立于工具入参'
+    })
 });
 export type McpToolConfigType = z.infer<typeof McpToolConfigSchema>;
 

@@ -6,7 +6,8 @@ const ToolSetConfigKey: Record<ToolSetStorageType, 'mcpToolSet' | 'httpToolSet'>
 };
 
 const JsonSchemaStorageKeys: Record<ToolSetStorageType, ReadonlySet<string>> = {
-  mcp: new Set(['inputSchema']),
+  // 请求元数据也允许任意 JSON key，和工具 Schema 一样编码，避免 Mongo 字段名限制。
+  mcp: new Set(['inputSchema', 'requestMeta']),
   http: new Set(['inputSchema', 'outputSchema', 'requestSchema', 'responseSchema', 'secretSchema'])
 };
 

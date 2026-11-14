@@ -12,6 +12,7 @@ import {
   type TTSModelDataType
 } from '@fastgpt/global/core/ai/model/schema';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { encodeMcpToolSetNodesForStorage } from '@fastgpt/service/core/app/jsonSchemaStorage';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
@@ -36,7 +37,10 @@ import {
 } from '@fastgpt/global/support/permission/constant';
 import { getCachedSystemModelHandle } from '@fastgpt/service/core/ai/model/catalog/cache';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
-import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controller';
+import {
+  getAppLatestVersion,
+  getAppVersionById
+} from '@fastgpt/service/core/app/version/controller';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { getWorkflowNodeRunParams } from '@fastgpt/service/core/workflow/dispatch/utils/runtime';
@@ -260,6 +264,104 @@ const createEmbeddingTestModel = (baseModel: AIModelDataType, modelId: string) =
     type: ModelTypeEnum.embedding,
     config: { defaultToken: 512, maxToken: 8192, batchSize: 64 }
   });
+
+describe('publish MCP metadata ownership', () => {
+  const saveModes = [
+    { mode: 'publish', isPublish: true, autoSave: false },
+    { mode: 'save', isPublish: false, autoSave: false },
+    { mode: 'autosave', isPublish: false, autoSave: true }
+  ];
+  const requestMeta = {
+    'example/context': { 'tenant.id': 'owner-tenant', $flags: [false, 0, null] }
+  };
+  const inputSchema = { type: 'object', properties: { 'query.text': { type: 'string' } } };
+  const createNodes = () => [
+    getMCPToolSetRuntimeNode({
+      name: 'MCP tools',
+      url: 'https://mcp.example.com',
+      toolList: [
+        { name: 'search', description: '', inputSchema, requestMeta },
+        { name: 'empty', description: '', requestMeta: {} },
+        { name: 'plain', description: '' }
+      ]
+    })
+  ];
+
+  it.each(saveModes)('preserves tool-owned metadata through read and $mode', async (mode) => {
+    const owner = await getRootUser();
+    const app = await MongoApp.create({
+      name: 'MCP metadata publish',
+      type: AppTypeEnum.mcpToolSet,
+      teamId: owner.teamId,
+      tmbId: owner.tmbId
+    });
+    const original = await MongoAppVersion.create({
+      appId: app._id,
+      tmbId: owner.tmbId,
+      nodes: encodeMcpToolSetNodesForStorage(createNodes()),
+      edges: [],
+      isPublish: true,
+      resources: []
+    });
+    await MongoApp.updateOne({ _id: app._id }, { $set: { publishedVersionId: original._id } });
+    const current = await getAppLatestVersion(String(app._id));
+    expect(current.nodes[0].toolConfig?.mcpToolSet?.toolList?.[0]).toHaveProperty(
+      'requestMeta',
+      requestMeta
+    );
+
+    const result = await Call<PublishAppBodyType>(handler, {
+      auth: owner,
+      query: { appId: String(app._id) },
+      body: { ...mode, nodes: current.nodes, edges: current.edges, chatConfig: current.chatConfig }
+    });
+    expect(result.code, JSON.stringify(result)).toBe(200);
+    const saved = await MongoAppVersion.findOne({
+      appId: app._id,
+      _id: { $ne: original._id }
+    }).lean();
+    expect(saved).not.toBeNull();
+    const loaded = await getAppVersionById({
+      appId: String(app._id),
+      versionId: String(saved!._id)
+    });
+    expect(loaded.nodes[0].toolConfig?.mcpToolSet?.toolList).toEqual(
+      current.nodes[0].toolConfig?.mcpToolSet?.toolList
+    );
+    const savedTools = saved!.nodes[0].toolConfig?.mcpToolSet?.toolList;
+    expect(savedTools?.[0]).toMatchObject({
+      inputSchema: JSON.stringify(inputSchema),
+      requestMeta: JSON.stringify(requestMeta)
+    });
+    expect(savedTools?.[1]).toHaveProperty('requestMeta', '{}');
+    expect(savedTools?.[2]).not.toHaveProperty('requestMeta');
+    const updatedApp = await MongoApp.findById(app._id).lean();
+    expect(String(updatedApp?.publishedVersionId)).toBe(
+      String(mode.isPublish ? saved!._id : original._id)
+    );
+    if (mode.isPublish) {
+      expect((await getAppLatestVersion(String(app._id))).nodes).toEqual(loaded.nodes);
+    }
+  });
+
+  it.each(saveModes)('rejects full tool metadata on ordinary workflow $mode', async (mode) => {
+    const owner = await getRootUser();
+    const app = await MongoApp.create({
+      name: 'Workflow metadata boundary',
+      type: AppTypeEnum.workflow,
+      teamId: owner.teamId,
+      tmbId: owner.tmbId
+    });
+    const result = await Call(handler, {
+      auth: owner,
+      query: { appId: String(app._id) },
+      // 客户端伪造的类型不能把引用快照变成工具本体配置。
+      body: { ...mode, nodes: createNodes(), appType: AppTypeEnum.mcpToolSet }
+    });
+    expect(result.code, JSON.stringify(result)).not.toBe(200);
+    expect(await MongoAppVersion.countDocuments({ appId: app._id })).toBe(0);
+  });
+});
 
 describe('publish manually selected datasets', () => {
   let previousModels: AIModelDataType[];

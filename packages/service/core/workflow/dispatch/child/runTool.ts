@@ -114,9 +114,11 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
   const callMcpTool = async ({
     toolName,
     url,
-    headerSecret
+    headerSecret,
+    requestMeta
   }: {
     toolName: string;
+    requestMeta?: Record<string, unknown>;
     url: string;
     headerSecret?: StoreSecretValueType | null;
   }) => {
@@ -135,7 +137,12 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
     context.mcpClientMemory[cacheKey] = mcpClient;
 
     toolInput = params;
-    return mcpClient.toolCall({ toolName, params, closeConnection: false });
+    return mcpClient.toolCall({
+      toolName,
+      params,
+      ...(requestMeta !== undefined ? { requestMeta } : {}),
+      closeConnection: false
+    });
   };
 
   /** HTTP 子工具沿用现有参数透传、工具级凭据优先级与标准节点响应。 */
@@ -410,7 +417,14 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
         const url = mcpToolSet.url ?? referencedTool.url;
         const headerSecret = mcpToolSet.headerSecret ?? referencedTool.headerSecret;
         if (!url) throw new Error('MCP tool set URL is missing');
-        return getMcpResponse(await callMcpTool({ toolName, url, headerSecret }));
+        return getMcpResponse(
+          await callMcpTool({
+            toolName,
+            url,
+            headerSecret,
+            requestMeta: referencedTool.requestMeta
+          })
+        );
       }
 
       if (!mcpTool.url) throw new Error('MCP tool set URL is missing');
@@ -418,7 +432,8 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
         await callMcpTool({
           toolName: mcpTool.name,
           url: mcpTool.url,
-          headerSecret: mcpTool.headerSecret
+          headerSecret: mcpTool.headerSecret,
+          requestMeta: mcpTool.requestMeta
         })
       );
     } else if (toolConfig?.httpTool) {
@@ -480,7 +495,11 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
         })
       });
       toolInput = restParams;
-      const result = await mcpClient.toolCall({ toolName, params: restParams });
+      const result = await mcpClient.toolCall({
+        toolName,
+        params: restParams
+      });
+
       return getMcpResponse(result);
     }
   } catch (error) {
