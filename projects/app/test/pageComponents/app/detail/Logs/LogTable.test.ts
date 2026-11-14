@@ -3,12 +3,18 @@ import React, { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { downloadFetch } from '@/web/common/system/utils';
-import { getLogKeys, updateLogKeys } from '@/web/core/app/api/log';
+import { getLogKeys, searchAppChatLogs, updateLogKeys } from '@/web/core/app/api/log';
 
 const getLogRows = vi.hoisted(() => vi.fn());
+const getPaginationOptions = vi.hoisted(() => vi.fn());
+const translate = vi.hoisted(() => vi.fn());
 
-vi.mock('next-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
+vi.mock('next-i18next', () => ({ useTranslation: () => ({ t: translate }) }));
 vi.mock('next/dynamic', () => ({ default: () => () => null }));
+vi.mock('ahooks', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('ahooks')>()),
+  useDebounce: <T>(value: T) => value
+}));
 vi.mock('@/web/common/system/useSystemStore', () => ({
   useSystemStore: () => ({ feConfigs: {} })
 }));
@@ -18,6 +24,7 @@ vi.mock('@/web/common/system/utils', () => ({ downloadFetch: vi.fn() }));
 vi.mock('@/web/core/app/api/log', () => ({
   getLogKeys: vi.fn(async () => ({ logKeys: [] })),
   getAppChatLogs: vi.fn(),
+  searchAppChatLogs: vi.fn(),
   updateLogKeys: vi.fn()
 }));
 vi.mock('@fastgpt/web/hooks/useRequest', async () => {
@@ -40,18 +47,24 @@ vi.mock('@fastgpt/web/hooks/useRequest', async () => {
   };
 });
 vi.mock('@fastgpt/web/hooks/usePagination', () => ({
-  usePagination: () => ({
-    data: getLogRows(),
-    Pagination: () => null,
-    getData: vi.fn(),
-    pageNum: 1,
-    total: 1,
-    pageSize: 20
-  })
+  usePagination: (_api: unknown, options: unknown) => {
+    getPaginationOptions(options);
+    return {
+      data: getLogRows(),
+      Pagination: () => null,
+      getData: vi.fn(),
+      pageNum: 1,
+      total: 1,
+      pageSize: 20
+    };
+  }
 }));
 vi.mock('@fastgpt/web/hooks/useTableMultipleSelect', () => ({
   useTableMultipleSelect: () => ({
     selectedItems: [],
+    setSelectedItems: vi.fn(),
+    isSelecteAll: false,
+    selectAllTrigger: vi.fn(),
     isSelected: () => false,
     getRowSelectionProps: (_item: any, props: any) => props,
     FloatingActionBar: () => null
@@ -86,6 +99,27 @@ vi.mock('@fastgpt/web/components/common/Icon', async () => {
       onClick ? React.createElement('button', { onClick, 'aria-label': name }, name) : null
   };
 });
+vi.mock('@fastgpt/web/components/common/TagFilter', async () => {
+  const React = await import('react');
+  return {
+    FilterInput: ({ value = '', onChange, ...props }: any) =>
+      props.placeholder === 'app:logs_search_placeholder'
+        ? React.createElement(
+            'button',
+            {
+              ...props,
+              onClick: () => onChange({ target: { value: 'needle' } }),
+              'aria-label': props.placeholder
+            },
+            value
+          )
+        : React.createElement('input', { ...props, value, onChange }),
+    MultiSelectFilter: () => null,
+    createMultiSelectFilter: () => ({ mode: 'all', values: [] }),
+    toMultiSelectFilterQuery: () => undefined,
+    useCommonFilterLabels: () => ({})
+  };
+});
 vi.mock('@fastgpt/web/components/common/Avatar', async () => {
   const React = await import('react');
   return { default: ({ src }: { src?: string }) => React.createElement('img', { src, alt: '' }) };
@@ -100,8 +134,13 @@ vi.mock('@fastgpt/web/components/common/MyPopover', async () => {
 vi.mock('@fastgpt/web/components/common/MyPopover/PopoverConfirm', async () => {
   const React = await import('react');
   return {
-    default: ({ onConfirm }: any) =>
-      React.createElement('button', { onClick: onConfirm }, 'confirm-export')
+    default: ({ content, onConfirm }: any) =>
+      React.createElement(
+        React.Fragment,
+        null,
+        React.createElement('span', { 'data-testid': 'export-confirm-content' }, content),
+        React.createElement('button', { onClick: onConfirm }, 'confirm-export')
+      )
   };
 });
 vi.mock('@fastgpt/web/components/common/DndDrag', async () => {
@@ -153,6 +192,7 @@ describe('LogTable identity columns UI', () => {
     vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
     localStorage.clear();
     vi.clearAllMocks();
+    translate.mockImplementation((key: string) => key);
     vi.mocked(getLogKeys).mockResolvedValue({ logKeys: [] });
     getLogRows.mockReturnValue([
       {
@@ -176,7 +216,7 @@ describe('LogTable identity columns UI', () => {
     dom.window.close();
     vi.unstubAllGlobals();
   });
-  const render = async () => {
+  const render = async (props: Record<string, unknown> = {}) => {
     await act(async () =>
       root.render(
         React.createElement(
@@ -188,7 +228,8 @@ describe('LogTable identity columns UI', () => {
             sourceFilter: { mode: 'all', values: [] },
             setSourceFilter: () => {},
             dateRange: { from: new Date(), to: new Date() },
-            setDateRange: () => {}
+            setDateRange: () => {},
+            ...props
           })
         )
       )
@@ -197,6 +238,14 @@ describe('LogTable identity columns UI', () => {
   const click = async (element: Element | undefined | null) => {
     expect(element).toBeTruthy();
     await act(async () => element!.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+  };
+  const setSearch = async () => {
+    const input = container.querySelector('button[aria-label="app:logs_search_placeholder"]');
+    expect(input).toBeTruthy();
+    await act(async () => {
+      input!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      await Promise.resolve();
+    });
   };
   const authorizerToggle = () =>
     [...container.querySelectorAll('button[aria-label="invisible"]')].find((button) =>
@@ -334,5 +383,48 @@ describe('LogTable identity columns UI', () => {
         { key: 'authUser', enable: false }
       ])
     });
+  });
+  it('shows search failure and retries the first page without an end marker', async () => {
+    vi.mocked(searchAppChatLogs)
+      .mockRejectedValueOnce(new Error('503'))
+      .mockResolvedValueOnce({ list: [], nextCursor: undefined });
+    await render({ cursorSearch: true });
+    await setSearch();
+
+    expect(container.textContent).toContain('common:load_failed');
+    expect(container.textContent).not.toContain('common:request_end');
+    expect(searchAppChatLogs).toHaveBeenCalledTimes(1);
+
+    await click(
+      [...container.querySelectorAll('button')].find(
+        (button) => button.textContent === 'common:refresh'
+      )
+    );
+    expect(searchAppChatLogs).toHaveBeenCalledTimes(2);
+    expect(vi.mocked(searchAppChatLogs).mock.calls[1][0].cursor).toBeUndefined();
+    expect(container.textContent).toContain('common:request_end');
+  });
+  it('uses the export confirmation without total in search mode', async () => {
+    await render({ cursorSearch: true });
+    await setSearch();
+    expect(container.querySelector('[data-testid="export-confirm-content"]')?.textContent).toBe(
+      'app:logs_export_confirm_tip_without_total'
+    );
+  });
+  it('keeps the total in the export confirmation on paginated logs', async () => {
+    await render();
+    expect(container.querySelector('[data-testid="export-confirm-content"]')?.textContent).toBe(
+      'app:logs_export_confirm_tip'
+    );
+    expect(translate).toHaveBeenCalledWith('app:logs_export_confirm_tip', { total: 1 });
+  });
+  it('connects pagination to the actual table body scroll container', async () => {
+    await render();
+    const scrollContainerRef = getPaginationOptions.mock.calls.at(-1)?.[0].scrollContainerRef as {
+      current: HTMLDivElement | null;
+    };
+    const tableBody = container.querySelector('table')?.parentElement;
+    expect(scrollContainerRef.current).toBeTruthy();
+    expect(scrollContainerRef.current).toBe(tableBody);
   });
 });

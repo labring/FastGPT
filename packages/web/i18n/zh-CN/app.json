@@ -244,6 +244,7 @@
   "logs_error_rate": "对话报错比例",
   "logs_error_rate_description": "报错对话占总对话数量的比例",
   "logs_export_confirm_tip": "当前共有 {{total}} 条对话记录，每条对话最多可导出最新 100 条消息。确认导出？",
+  "logs_export_confirm_tip_without_total": "每条对话最多可导出最新 100 条消息。确认导出？",
   "logs_good_feedback": "点赞",
   "logs_has_any_feedback": "包含反馈",
   "logs_has_bad_feedback": "包含踩",

@@ -244,6 +244,7 @@
   "logs_error_rate": "대화 오류율",
   "logs_error_rate_description": "전체 대화 중 오류로 보고된 비율",
   "logs_export_confirm_tip": "현재 {{total}}건의 대화 기록이 있으며, 각 대화는 최대 100개의 최신 메시지를 내보낼 수 있습니다. 내보내시겠습니까?",
+  "logs_export_confirm_tip_without_total": "각 대화는 최대 100개의 최신 메시지를 내보낼 수 있습니다. 내보내시겠습니까?",
   "logs_good_feedback": "긍정적 피드백",
   "logs_has_any_feedback": "피드백 있음",
   "logs_has_bad_feedback": "부정적 피드백 있음",

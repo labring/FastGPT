@@ -244,6 +244,7 @@
   "logs_error_rate": "Chat error rate",
   "logs_error_rate_description": "Percentage of Chats that returned an error",
   "logs_export_confirm_tip": "There are {{total}} chat records. Up to the latest 100 messages can be exported from each chat. Export now?",
+  "logs_export_confirm_tip_without_total": "Up to the latest 100 messages can be exported from each chat. Export now?",
   "logs_good_feedback": "Good Feedback",
   "logs_has_any_feedback": "Has Feedback",
   "logs_has_bad_feedback": "Has Bad Feedback",
