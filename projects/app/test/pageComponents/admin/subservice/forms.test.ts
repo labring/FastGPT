@@ -3,12 +3,15 @@ import React, { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { resolveDomainEffectiveConfig } from '@fastgpt/global/common/system/config/schema';
+import { SubserviceConfigSchema } from '@fastgpt/global/common/system/config/schemas/subservice';
 
 const mocks = vi.hoisted(() => ({
   patch: vi.fn(),
   effectiveConfig: {} as Record<string, unknown>,
   save: undefined as undefined | (() => Promise<unknown>),
-  toc: [] as { id: string }[]
+  toc: [] as { id: string }[],
+  inputs: new Map<string, (value: unknown) => void>(),
+  changeProvider: undefined as undefined | ((value: string) => void)
 }));
 vi.mock('@/web/common/system/useDomainConfig', () => ({
   useDomainConfig: () => ({
@@ -26,12 +29,30 @@ vi.mock('@chakra-ui/react', () => ({
   Text: ({ children }: any) => React.createElement('span', null, children),
   Wrap: ({ children }: any) => React.createElement('div', null, children),
   Tag: ({ children }: any) => React.createElement('span', null, children),
+  SimpleGrid: ({ children }: any) => React.createElement('div', null, children),
+  NumberInput: () => null,
+  NumberInputField: () => null,
+  NumberInputStepper: () => null,
+  NumberIncrementStepper: () => null,
+  NumberDecrementStepper: () => null,
   Input: React.forwardRef(function Input(
     { value, onChange, name, type, placeholder }: any,
     ref: any
   ) {
     return React.createElement('input', { ref, value, onChange, name, type, placeholder });
   })
+}));
+vi.mock('@fastgpt/web/components/common/MySelect', () => ({
+  default: ({
+    list,
+    onChange
+  }: {
+    list: { value: string }[];
+    onChange: (value: string) => void;
+  }) => {
+    if (list.some(({ value }) => value === 'none')) mocks.changeProvider = onChange;
+    return null;
+  }
 }));
 vi.mock('@/pageComponents/admin/settings/AdminSettingPage', () => ({
   default: ({ children, onSave, tocItems }: any) => {
@@ -63,6 +84,7 @@ vi.mock('@/pageComponents/admin/settings/ConnectivityTestInput', () => ({
     { value, name, onChange, service, token }: any,
     ref: any
   ) {
+    mocks.inputs.set(name, onChange);
     return React.createElement('input', {
       ref,
       value,
@@ -76,6 +98,7 @@ vi.mock('@/pageComponents/admin/settings/ConnectivityTestInput', () => ({
 
 import CodeSandbox from '@/pageComponents/admin/subservice/code-sandbox';
 import Mcp from '@/pageComponents/admin/subservice/mcp';
+import AgentSandbox from '@/pageComponents/admin/subservice/agent-sandbox';
 
 let dom: JSDOM;
 let container: HTMLDivElement;
@@ -94,6 +117,88 @@ beforeEach(() => {
   document.body.append(container);
   root = createRoot(container);
   mocks.patch.mockReset().mockResolvedValue(undefined);
+  mocks.inputs.clear();
+  mocks.changeProvider = undefined;
+});
+
+describe('agent sandbox hidden URL drafts', () => {
+  const fields = [
+    { name: 'agentSandbox.sealosdevbox.baseUrl', provider: 'sealosdevbox', other: 'opensandbox' },
+    { name: 'agentSandbox.opensandbox.baseUrl', provider: 'opensandbox', other: 'sealosdevbox' },
+    {
+      name: 'agentSandbox.opensandbox.volumeManagerUrl',
+      provider: 'opensandbox',
+      other: 'sealosdevbox'
+    }
+  ] as const;
+
+  /** 通过真实 RHF 输入回调留下草稿，再切换 Provider，检查提交值和服务端域契约。 */
+  const saveDraft = async ({
+    field,
+    draft,
+    target
+  }: {
+    field: (typeof fields)[number];
+    draft: string;
+    target: string;
+  }) => {
+    const baseline = resolveDomainEffectiveConfig({
+      domain: 'subservice',
+      overrides: {
+        agentSandbox: {
+          provider: field.provider,
+          sealosdevbox: { baseUrl: 'https://sealos.example.test' },
+          opensandbox: {
+            baseUrl: 'https://opensandbox.example.test',
+            volumeManagerUrl: 'https://volume.example.test'
+          }
+        }
+      }
+    });
+    mocks.effectiveConfig = baseline;
+    await act(async () => root.render(React.createElement(AgentSandbox)));
+    expect(mocks.inputs.has(field.name)).toBe(true);
+    await act(async () => mocks.inputs.get(field.name)!({ target: { value: draft } }));
+    await act(async () => mocks.changeProvider!(target));
+    await act(async () => {
+      await mocks.save!();
+    });
+    expect(mocks.patch).toHaveBeenCalledTimes(1);
+    return { baseline, submitted: { ...baseline, ...mocks.patch.mock.calls[0][0] } };
+  };
+
+  it.each(fields.flatMap((field) => ['none', field.other].map((target) => ({ field, target }))))(
+    'restores $field.name when switching to $target with an incomplete URL',
+    async ({ field, target }) => {
+      const { baseline, submitted } = await saveDraft({ field, target, draft: 'https://' });
+      expect(SubserviceConfigSchema.parse(submitted).agentSandbox).toEqual({
+        ...baseline.agentSandbox,
+        provider: target
+      });
+    }
+  );
+
+  it.each(['https://draft.example.test/path?version=1', ''])(
+    'preserves a valid hidden draft or explicit clear: %j',
+    async (draft) => {
+      const field = fields[2];
+      const { baseline, submitted } = await saveDraft({ field, target: 'none', draft });
+      expect(SubserviceConfigSchema.parse(submitted).agentSandbox).toEqual({
+        ...baseline.agentSandbox,
+        provider: 'none',
+        opensandbox: { ...baseline.agentSandbox.opensandbox, volumeManagerUrl: draft }
+      });
+    }
+  );
+
+  it.each(fields)('retains invalid active input for server rejection: $name', async (field) => {
+    const { submitted } = await saveDraft({ field, target: field.provider, draft: 'https://' });
+    const result = SubserviceConfigSchema.safeParse(submitted);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.some((issue) => issue.path.join('.') === field.name)).toBe(true);
+    }
+  });
 });
 
 afterEach(async () => {
