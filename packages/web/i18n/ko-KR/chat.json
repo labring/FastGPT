@@ -3,6 +3,7 @@
   "source_unknown": "알 수 없음",
   "AI_input_is_empty": "AI 노드로 전달된 내용이 비어 있습니다",
   "LLM_model_response_empty": "모델 응답이 비어 있습니다. 모델 상세 요청을 확인해 주세요",
+  "llm_tool_call_arguments_truncated": "모델이 출력 토큰 한도에 도달해 도구 인수를 완성하지 못했습니다. 이 응답의 도구 호출은 실행되지 않았습니다.",
   "Next": "다음",
   "Previous": "이전",
   "agent_plan_generating": "계획 생성 중",

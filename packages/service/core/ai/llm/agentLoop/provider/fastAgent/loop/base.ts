@@ -6,7 +6,10 @@ import type {
   ChatCompletionTool,
   CompletionFinishReason
 } from '@fastgpt/global/core/ai/llm/type';
-import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
+import {
+  ChatCompletionRequestMessageRoleEnum,
+  LLM_TOOL_CALL_ARGUMENTS_TRUNCATED
+} from '@fastgpt/global/core/ai/constants';
 import type { CreateLLMResponseProps } from '../../../../request';
 import { createLLMResponse } from '../../../../request';
 import { compressRequestMessages, compressToolResponse } from '../../../../compress';
@@ -487,6 +490,13 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
       onToolCall,
       onToolParam
     });
+    // 输出被截断时，JSON 修复可能把未生成完的参数变成合法但错误的值；
+    // 在落库和执行任何工具前终止本轮，同时保留原始请求错误和用量。
+    const requestFailure =
+      error ??
+      (finishReason === 'length' && toolCalls.length > 0
+        ? new Error(LLM_TOOL_CALL_ARGUMENTS_TRUNCATED)
+        : undefined);
     const totalPoints = usage.usedUserOpenAIKey
       ? 0
       : formatModelChars2Points({
@@ -514,12 +524,12 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
         firstTokenTime === undefined
           ? undefined
           : +((firstTokenTime - requestStartTime) / 1000).toFixed(2),
-      error: error ?? responseEmptyTip
+      error: requestFailure ?? responseEmptyTip
     });
     // 请求后赋值操作
     {
       finish_reason = finishReason;
-      requestError = error;
+      requestError = requestFailure;
       requestIds.push(requestId);
 
       // 错误响应也可能产生消耗，退出前先累计；每轮单独计价以兼容梯度计费。

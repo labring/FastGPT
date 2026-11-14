@@ -3,6 +3,7 @@
   "source_unknown": "Unknown",
   "AI_input_is_empty": "The content passed to the AI ​​node is empty",
   "LLM_model_response_empty": "The model returned an empty response. Check the model request details.",
+  "llm_tool_call_arguments_truncated": "The model reached its output token limit before finishing the tool arguments. No tools from this response were executed.",
   "Next": "Next",
   "Previous": "Previous",
   "agent_plan_generating": "Creating plan",

@@ -6,6 +6,8 @@ import {
 } from '@/web/core/chat/context/chatItemContext';
 import { WorkflowRuntimeContext } from '../../ChatContainer/context/workflowRuntimeContext';
 import { removeDatasetCiteText } from '@fastgpt/global/core/ai/llm/utils';
+import { LLM_TOOL_CALL_ARGUMENTS_TRUNCATED } from '@fastgpt/global/core/ai/constants';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { useCreation } from 'ahooks';
 import React, { useMemo } from 'react';
 import { useContextSelector } from 'use-context-selector';
@@ -34,15 +36,21 @@ const RenderText = React.memo(function RenderText({
   const chatId = useContextSelector(WorkflowRuntimeContext, (v) => v.chatId);
   const outLinkAuthData = useContextSelector(WorkflowRuntimeContext, (v) => v.outLinkAuthData);
   const isShowCite = useContextSelector(ChatItemContext, (v) => v.isShowCite);
+  const { t } = useSafeTranslation();
 
   const source = useMemo(() => {
     if (!text) return '';
+    // Agent 错误可能与先前已生成的正文一起返回，只翻译末尾的固定错误标识。
+    const rendered = text.endsWith(LLM_TOOL_CALL_ARGUMENTS_TRUNCATED)
+      ? text.slice(0, -LLM_TOOL_CALL_ARGUMENTS_TRUNCATED.length) +
+        t('chat:llm_tool_call_arguments_truncated')
+      : text;
 
     if (isShowCite) {
-      return text;
+      return rendered;
     }
-    return removeDatasetCiteText(text, isShowCite);
-  }, [text, isShowCite]);
+    return removeDatasetCiteText(rendered, isShowCite);
+  }, [text, isShowCite, t]);
 
   const chatAuthData = useCreation(() => {
     if (!sourceTarget.sourceId) return undefined;
