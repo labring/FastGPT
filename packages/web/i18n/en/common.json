@@ -1415,5 +1415,16 @@
   "api_error.request_failed": "Request failed",
   "api_error.network_error": "Network connection error",
   "api_error.validation_error": "Data validation error",
-  "api_error.resume_requires_sse": "This chat is still generating. Retry /api/core/chat/resume with Accept: text/event-stream."
+  "api_error.resume_requires_sse": "This chat is still generating. Retry /api/core/chat/resume with Accept: text/event-stream.",
+  "puzzle_captcha_title": "Security verification",
+  "puzzle_captcha_hint": "Drag the slider to turn the image upright",
+  "puzzle_captcha_slider": "Rotate the image",
+  "puzzle_captcha_keyboard": "Use arrow keys to rotate, then press Enter to verify",
+  "puzzle_captcha_refresh": "New image",
+  "puzzle_captcha_passed": "Verification passed",
+  "puzzle_captcha_retry_remaining": "Verification failed. {{count}} attempts remaining.",
+  "puzzle_captcha_refreshed": "This image is no longer valid. Try the new image.",
+  "puzzle_captcha_retry": "Verification failed. Try the new image.",
+  "puzzle_captcha_expired": "This image expired. Get a new image.",
+  "puzzle_captcha_load_failed": "Could not load the image. Select New image."
 }

@@ -1,3 +1,4 @@
+import { PuzzleCaptchaChallengeSchema } from '../../../../../support/user/account/captcha/type';
 import type { OpenAPIPath } from '../../../../type';
 import { DevApiTagsMap } from '../../../../tag';
 import {
@@ -11,7 +12,6 @@ import {
   LoginSuccessResponseSchema,
   LoginByPasswordResponseSchema,
   LoginVerificationChallengeBodySchema,
-  LoginVerificationCaptchaResponseSchema,
   LoginVerificationSendCodeBodySchema,
   LoginVerificationSendCodeResponseSchema,
   LoginVerificationVerifyBodySchema,
@@ -101,8 +101,8 @@ export const LoginPath: OpenAPIPath = {
   },
   '/support/user/account/login/verification/captcha': {
     post: {
-      summary: '获取登录二次验证图片验证码',
-      description: '使用登录 Challenge 获取图片验证码，验证码答案用于发送邮箱或短信验证码',
+      summary: '获取登录二次验证旋转图像验证码',
+      description: '使用登录 Challenge 获取旋转图像，验证通过后用一次性凭证发送邮箱或短信验证码',
       tags: [DevApiTagsMap.userLogin],
       requestBody: {
         content: {
@@ -113,10 +113,10 @@ export const LoginPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成功获取图片验证码',
+          description: '成功获取旋转图像验证码',
           content: {
             'application/json': {
-              schema: LoginVerificationCaptchaResponseSchema
+              schema: PuzzleCaptchaChallengeSchema
             }
           }
         }
@@ -126,7 +126,7 @@ export const LoginPath: OpenAPIPath = {
   '/support/user/account/login/verification/sendCode': {
     post: {
       summary: '发送登录二次验证码',
-      description: '校验图片验证码后向登录账号的邮箱或手机号发送验证码',
+      description: '校验旋转图像验证码后向登录账号的邮箱或手机号发送验证码',
       tags: [DevApiTagsMap.userLogin],
       requestBody: {
         content: {

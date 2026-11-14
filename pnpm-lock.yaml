@@ -815,6 +815,9 @@ importers:
       safe-regex:
         specifier: ^2.1.1
         version: 2.1.1
+      sharp:
+        specifier: 0.35.4
+        version: 0.35.4(@types/node@24.13.3)
       turndown:
         specifier: ^7.1.2
         version: 7.2.0
@@ -17953,8 +17956,7 @@ snapshots:
       '@iconify/types': 2.0.0
       import-meta-resolve: 4.2.0
 
-  '@img/colour@1.1.0':
-    optional: true
+  '@img/colour@1.1.0': {}
 
   '@img/sharp-darwin-arm64@0.35.4':
     optionalDependencies:
@@ -29565,7 +29567,6 @@ snapshots:
       '@img/sharp-win32-ia32': 0.35.4
       '@img/sharp-win32-x64': 0.35.4
       '@types/node': 24.13.3
-    optional: true
 
   shebang-command@2.0.0:
     dependencies:

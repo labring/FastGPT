@@ -1415,5 +1415,16 @@
   "api_error.request_failed": "请求错误",
   "api_error.network_error": "网络连接异常",
   "api_error.validation_error": "数据校验失败",
-  "api_error.resume_requires_sse": "当前对话仍在生成，请携带 Accept: text/event-stream 重试 /api/core/chat/resume。"
+  "api_error.resume_requires_sse": "当前对话仍在生成，请携带 Accept: text/event-stream 重试 /api/core/chat/resume。",
+  "puzzle_captcha_title": "安全验证",
+  "puzzle_captcha_hint": "拖动下方滑块，将图片转正",
+  "puzzle_captcha_slider": "旋转图片",
+  "puzzle_captcha_keyboard": "可用方向键旋转，按回车验证",
+  "puzzle_captcha_refresh": "换一张",
+  "puzzle_captcha_passed": "验证通过",
+  "puzzle_captcha_retry_remaining": "验证未通过，还可尝试 {{count}} 次",
+  "puzzle_captcha_refreshed": "当前图片已失效，请尝试新图片",
+  "puzzle_captcha_retry": "未能完成验证，请重新拖动",
+  "puzzle_captcha_expired": "图片已过期，请换一张",
+  "puzzle_captcha_load_failed": "图片加载失败，请点击换一张"
 }

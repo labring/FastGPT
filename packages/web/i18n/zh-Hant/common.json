@@ -1415,5 +1415,16 @@
   "api_error.request_failed": "請求錯誤",
   "api_error.network_error": "網路連線異常",
   "api_error.validation_error": "資料驗證失敗",
-  "api_error.resume_requires_sse": "目前對話仍在生成，請攜帶 Accept: text/event-stream 重試 /api/core/chat/resume。"
+  "api_error.resume_requires_sse": "目前對話仍在生成，請攜帶 Accept: text/event-stream 重試 /api/core/chat/resume。",
+  "puzzle_captcha_title": "安全驗證",
+  "puzzle_captcha_hint": "拖動下方滑塊，將圖片轉正",
+  "puzzle_captcha_slider": "旋轉圖片",
+  "puzzle_captcha_keyboard": "可用方向鍵旋轉，按 Enter 驗證",
+  "puzzle_captcha_refresh": "換一張",
+  "puzzle_captcha_passed": "驗證通過",
+  "puzzle_captcha_retry_remaining": "驗證未通過，還可嘗試 {{count}} 次",
+  "puzzle_captcha_refreshed": "目前圖片已失效，請嘗試新圖片",
+  "puzzle_captcha_retry": "未能完成驗證，請重新拖動",
+  "puzzle_captcha_expired": "圖片已過期，請換一張",
+  "puzzle_captcha_load_failed": "圖片載入失敗，請點擊換一張"
 }

@@ -1,7 +1,7 @@
+import { PuzzleCaptchaChallengeSchema } from '@fastgpt/global/support/user/account/captcha/type';
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/type';
 import {
   LoginVerificationChallengeBodySchema,
-  LoginVerificationCaptchaResponseSchema,
   type LoginVerificationChallengeBodyType,
   type LoginVerificationCaptchaResponseType
 } from '@fastgpt/global/openapi/support/user/account/login/api';
@@ -18,7 +18,7 @@ async function handler(
     bodySchema: LoginVerificationChallengeBodySchema
   });
 
-  return LoginVerificationCaptchaResponseSchema.parse(await createLoginVerificationCaptcha(body));
+  return PuzzleCaptchaChallengeSchema.parse(await createLoginVerificationCaptcha(body));
 }
 
 export default NextAPI(handler);

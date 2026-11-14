@@ -1,5 +1,4 @@
 import { createHash } from 'node:crypto';
-import { existsSync } from 'node:fs';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -313,10 +312,22 @@ describe('CLI auth command integration', () => {
         });
       }
       if (url.endsWith('/support/user/account/login/verification/captcha')) {
-        return jsonResp({ captchaImage: 'data:image/png;base64,iVBORw0KGgo=' });
+        return jsonResp({
+          challengeId: 'a'.repeat(64),
+          captchaImage: 'data:image/png;base64,iVBORw0KGgo=',
+          mode: 'rotate' as const,
+          width: 224,
+          height: 224,
+          expiresAt: new Date(Date.now() + 300_000).toISOString()
+        });
+      }
+      if (url.endsWith('/support/user/account/captcha/verify')) {
+        expect(body.purpose).toBe('login');
+        expect(body.challengeId).toBe('a'.repeat(64));
+        return jsonResp({ status: 'passed', captcha: 'b'.repeat(64) });
       }
       if (url.endsWith('/support/user/account/login/verification/sendCode')) {
-        expect(body).toEqual({ challenge: 'chal-1', captcha: 'ABCD' });
+        expect(body).toEqual({ challenge: 'chal-1', captcha: 'b'.repeat(64) });
         return jsonResp({ message: 'sent' });
       }
       if (url.endsWith('/support/user/account/login/verification/verify')) {
@@ -365,14 +376,25 @@ describe('CLI auth command integration', () => {
       fetchFn: mockFetch,
       prompter: createTestPrompter({
         selectQueue: ['__custom__', 'password'],
-        textQueue: ['https://cloud.fastgpt.in', 'alice@fastgpt.in', 'ABCD', '654321'],
+        textQueue: ['https://cloud.fastgpt.in', 'alice@fastgpt.in', '654321'],
         secretQueue: [rawPassword],
         onSelect: ({ message, options }) =>
           seenSelects.push({ message, values: options.map((o) => o.value) })
       }),
       openExternal: async (path) => {
         seenCaptchaPaths.push(path);
-        expect(existsSync(path)).toBe(true);
+        expect(path).toMatch(/^http:\/\/127\.0\.0\.1:\d+\/[a-f0-9]{64}$/);
+        expect(await (await fetch(path)).text()).toContain('Security verification');
+        const response = await fetch(path, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            challengeId: 'a'.repeat(64),
+            angle: 100,
+            track: [0, 25, 50, 75, 100].map((x, i) => ({ x, y: 0, t: i * 150 }))
+          })
+        });
+        expect(response.ok).toBe(true);
         return true;
       }
     });
@@ -385,7 +407,7 @@ describe('CLI auth command integration', () => {
     ]);
     expect(loginRes.exitCode).toBe(0);
     expect(seenCaptchaPaths).toHaveLength(1);
-    expect(existsSync(seenCaptchaPaths[0])).toBe(false);
+    await expect(fetch(seenCaptchaPaths[0])).rejects.toThrow();
     expect(JSON.parse(loginRes.stdout).data).toMatchObject({
       authType: 'token',
       maskedSecret: '******-2fa'
