@@ -4,7 +4,8 @@ import {
   GetRecordsV2ResponseSchema
 } from '@fastgpt/global/openapi/core/chat/record/api';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatFileTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import { UserChatItemFileItemSchema } from '@fastgpt/global/core/chat/type';
 import { createSchema, createDocument } from 'zod-openapi';
 import Ajv2020 from 'ajv/dist/2020';
 import { openApiDocumentOptions } from '@fastgpt/global/openapi/generation';
@@ -12,6 +13,45 @@ import { openApiDocumentOptions } from '@fastgpt/global/openapi/generation';
 const itemId = '68ad85a7463006c963799a05';
 
 describe('chat record pagination contracts', () => {
+  it('preserves historical null file keys when validating a complete records page', () => {
+    const files = [1, 2].map((index) => ({
+      file: {
+        type: ChatFileTypeEnum.image,
+        name: `image${index}.png`,
+        url: `https://example.com/image${index}.png`,
+        key: null
+      }
+    }));
+    const human = {
+      dataId: 'round',
+      obj: ChatRoleEnum.Human,
+      value: [{ text: { content: 'question' } }, ...files]
+    };
+    const ai = {
+      dataId: 'round',
+      obj: ChatRoleEnum.AI,
+      value: [{ text: { content: 'answer' } }]
+    };
+    const page = {
+      list: [ai, ai, human, ai, human],
+      total: 5,
+      hasMorePrev: true,
+      hasMoreNext: false,
+      prevCursor: 'round',
+      nextCursor: null
+    };
+
+    expect(GetRecordsV2ResponseSchema.parse(page)).toEqual(page);
+
+    // 校验附件字段的文档契约；完整分页的运行时校验已在上方覆盖。
+    const { schema } = createSchema(UserChatItemFileItemSchema, {
+      io: 'output',
+      opts: openApiDocumentOptions
+    });
+    const validate = new Ajv2020({ strict: false, validateFormats: false }).compile(schema);
+    expect(validate(files[0].file)).toBe(true);
+  });
+
   it('accepts one of three anchors or the latest page, rejects conflicting anchors and caller-supplied roles', () => {
     const body = { appId: itemId, chatId: 'chat' };
     const keys = ['prevId', 'nextId', 'initialId'];

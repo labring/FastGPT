@@ -136,6 +136,29 @@ describe('ToolModuleResponseItemSchema', () => {
 });
 
 describe('UserChatItemFileItemSchema', () => {
+  it.each([null, undefined, '', 'chat/files/image.png'])(
+    'preserves supported file keys: %j',
+    (key) => {
+      const file = {
+        type: ChatFileTypeEnum.image,
+        name: 'image.png',
+        url: 'https://example.com/image.png',
+        key
+      };
+      expect(UserChatItemFileItemSchema.parse(file)).toEqual(file);
+    }
+  );
+
+  it.each([0, false, {}, []])('rejects invalid file keys: %j', (key) => {
+    expect(
+      UserChatItemFileItemSchema.safeParse({
+        type: ChatFileTypeEnum.image,
+        url: 'https://example.com/image.png',
+        key
+      }).success
+    ).toBe(false);
+  });
+
   it('should validate image file', () => {
     const result = UserChatItemFileItemSchema.safeParse({
       type: ChatFileTypeEnum.image,

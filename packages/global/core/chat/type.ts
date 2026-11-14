@@ -174,7 +174,8 @@ export type ChatWithAppSchema = z.infer<typeof ChatWithAppSchema>;
 export const UserChatItemFileItemSchema = z.object({
   type: z.enum(ChatFileTypeEnum),
   name: z.string().optional(),
-  key: z.string().optional(),
+  // 外链附件可能保存 key: null，和缺省一样表示没有 S3 对象 key。
+  key: z.string().nullish(),
   url: z.string()
 });
 export type UserChatItemFileItemType = z.infer<typeof UserChatItemFileItemSchema>;
