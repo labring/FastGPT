@@ -1,9 +1,10 @@
 import defaultMdxComponents from 'fumadocs-ui/mdx';
 import type { MDXComponents } from 'mdx/types';
+import type { CardProps } from 'fumadocs-ui/components/card';
 import { ImageZoom } from 'fumadocs-ui/components/image-zoom';
 import * as TabsComponents from 'fumadocs-ui/components/tabs';
 import { TypeTable } from 'fumadocs-ui/components/type-table';
-import { LocalizedLink } from '@/components/docs/LocalizedLink';
+import { LocalizedCard, LocalizedLink } from '@/components/docs/LocalizedLink';
 import { MermaidDiagram } from '@/components/docs/MermaidDiagram';
 import type { ComponentProps, ComponentType, CSSProperties } from 'react';
 
@@ -132,6 +133,7 @@ export function getMDXComponents(components?: MDXComponents): MDXComponents {
     img: (props) => <MdxImage {...props} />,
     pre: (props) => <MdxPre {...props} />,
     a: (props) => <LocalizedLink {...(props as any)} />,
+    Card: (props) => <LocalizedCard {...(props as CardProps)} />,
     ...TabsComponents,
     ...components,
     MermaidDiagram,

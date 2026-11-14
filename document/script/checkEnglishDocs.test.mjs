@@ -28,7 +28,7 @@ test('requires English pages and navigation even when Chinese fallback exists', 
 test('checks actual heading slugs, explicit IDs, and English index routes', (t) => {
   const dir = fixture(t, {
     'guide/index.mdx': chinese,
-    'guide/index.en.mdx': `${english}\n## Stable Heading [#stable]\n\n[Setup](/en/guide#setup) [Stable](/en/guide#stable)\n`,
+    'guide/index.en.mdx': `${english}\n## Stable Heading [#stable]\n\n[Setup](/guide#setup) [Prefixed](/en/guide#setup) [Stable](https://doc.fastgpt.io/guide#stable)\n`,
     'meta.json': '{"pages":["guide"]}',
     'meta.en.json': '{"pages":["guide"]}'
   });

@@ -24,9 +24,11 @@ type CategorySwitcherProps = {
 
 const getCategoryKey = (path: string): string => {
   const segments = path.split('/').filter(Boolean);
-  return segments[1] ?? '';
+  const categoryIndex = segments[0] === 'zh-CN' || segments[0] === 'en' ? 1 : 0;
+  return segments[categoryIndex] ?? '';
 };
 
+/** Render the sidebar top-level category switcher and optional commercial contact dialog. */
 export function CategorySwitcher({ options, className }: CategorySwitcherProps) {
   const pathname = usePathname();
   const [dialogOpen, setDialogOpen] = useState(false);

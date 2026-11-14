@@ -81,8 +81,29 @@ export const source: typeof contentSource = {
     const page = contentSource.getNodePage(...args);
     return isVisible(page) ? page : undefined;
   },
-  getPageByHref(...args) {
-    const result = contentSource.getPageByHref.call(this, ...args);
+  getPageByHref(href, options) {
+    const normalizedHref =
+      i18n.hideLocale === 'always' && href.startsWith('/')
+        ? href.replace(/^\/(?:zh-CN|en)(?=\/|$)/, '') || '/'
+        : href;
+    const result = contentSource.getPageByHref.call(this, normalizedHref, options);
     return result && isVisible(result.page) ? result : undefined;
   }
 };
+
+/**
+ * Check whether an active, published, non-deprecated physical MDX file exists for the given locale.
+ */
+export function hasPublishedLocalePage(params: {
+  slugs?: string[];
+  locale: 'zh-CN' | 'en';
+}): boolean {
+  const page = source.getPage(params.slugs, params.locale);
+  if (page === undefined) {
+    return false;
+  }
+  return (
+    !Boolean(page.data.deprecated) &&
+    page.data._file.path.endsWith('.en.mdx') === (params.locale === 'en')
+  );
+}

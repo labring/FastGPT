@@ -1,6 +1,6 @@
 import { createI18nMiddleware } from 'fumadocs-core/i18n';
 import { defaultHomePath, i18n } from '@/lib/i18n';
-import { getFastGPTDocsOriginForLocale } from '@/lib/docs-locale';
+import { getFastGPTDocsOriginForLocale, resolveDocsSiteVariant } from '@/lib/docs-locale';
 import docLastModifiedData from '@/data/doc-last-modified.json';
 import { type NextRequest, NextResponse } from 'next/server';
 
@@ -280,12 +280,21 @@ const prefixEntries = Object.entries(prefixMap).map(([oldPrefix, newPrefix]) => 
 // Build O(1) case-insensitive slug lookup and automatic upgrading folder fallbacks from content metadata.
 const lowercaseSlugMap = new Map<string, string>();
 const upgradingFolderFallbackMap = new Map<string, string>();
+const knownSlugsByLocale: Record<'zh-CN' | 'en', Set<string>> = {
+  'zh-CN': new Set<string>(),
+  en: new Set<string>()
+};
 for (const rawKey of Object.keys(docLastModifiedData)) {
-  if (!rawKey.startsWith('content/') || rawKey.endsWith('.en.mdx')) continue;
+  if (!rawKey.startsWith('content/')) continue;
+  const isEnFile = rawKey.endsWith('.en.mdx');
   const slug = rawKey
     .slice('content'.length)
-    .replace(/\.mdx$/, '')
+    .replace(/(?:\.en)?\.mdx$/, '')
     .replace(/\/index$/, '');
+  if (slug) {
+    knownSlugsByLocale[isEnFile ? 'en' : 'zh-CN'].add(slug);
+  }
+  if (isEnFile) continue;
   if (slug && slug !== '/toc') {
     lowercaseSlugMap.set(slug.toLowerCase(), slug);
   }
@@ -302,6 +311,7 @@ for (const rawKey of Object.keys(docLastModifiedData)) {
 
 const i18nMiddleware = createI18nMiddleware(i18n);
 const documentCacheControl = 'public, max-age=0, must-revalidate';
+const previewRobotsTag = 'noindex, nofollow';
 const PRODUCTION_HOST_LOCALES: Record<string, 'zh-CN' | 'en'> = {
   'doc.fastgpt.cn': 'zh-CN',
   'doc.fastgpt.in': 'zh-CN',
@@ -309,6 +319,20 @@ const PRODUCTION_HOST_LOCALES: Record<string, 'zh-CN' | 'en'> = {
   'doc.tryfastgpt.ai': 'en'
 };
 const CANONICAL_PRODUCTION_HOSTS = new Set(['doc.fastgpt.cn', 'doc.fastgpt.io']);
+
+function resolveContainerOwnerLocale(): 'zh-CN' | 'en' | undefined {
+  const variant = resolveDocsSiteVariant({
+    siteVariant: process.env.NEXT_PUBLIC_DOCS_SITE_VARIANT ?? process.env.DOCS_SITE_VARIANT,
+    homeOrigin: process.env.NEXT_PUBLIC_FASTGPT_HOME_DOMAIN ?? process.env.FASTGPT_HOME_DOMAIN
+  });
+  if (variant === 'cn') {
+    return 'zh-CN';
+  }
+  if (variant === 'io') {
+    return 'en';
+  }
+  return undefined;
+}
 
 /** Strip trailing slashes and /index suffixes from non-root paths. */
 function normalizePath(path: string) {
@@ -368,12 +392,28 @@ function resolveLegacyPath(path: string): string {
   return target;
 }
 
-function createRedirectUrl(target: string, request: NextRequest, lang: string) {
+function createRedirectUrl(params: {
+  target: string;
+  request: NextRequest;
+  lang: string;
+  ownerLocale?: 'zh-CN' | 'en';
+}) {
+  const { target, request, lang, ownerLocale } = params;
   const host = request.headers.get('host')?.split(':')[0]?.toLowerCase();
-  const origin = host && host in PRODUCTION_HOST_LOCALES
-    ? getFastGPTDocsOriginForLocale(lang === 'en' ? 'en' : 'zh-CN')
-    : request.url;
-  const url = new URL(`/${lang}${target || '/'}`, origin);
+  const resolvedLang: 'zh-CN' | 'en' = lang === 'en' ? 'en' : 'zh-CN';
+  const isProductionHost = host !== undefined && host in PRODUCTION_HOST_LOCALES;
+  const isOwnerMode = ownerLocale !== undefined;
+
+  const origin = (() => {
+    if (isProductionHost || (isOwnerMode && resolvedLang !== ownerLocale)) {
+      return getFastGPTDocsOriginForLocale(resolvedLang);
+    }
+    return request.url;
+  })();
+
+  const targetPath = target !== '' ? target : '/';
+  const destinationPath = isOwnerMode ? targetPath : `/${resolvedLang}${targetPath}`;
+  const url = new URL(destinationPath, origin);
   url.search = request.nextUrl.search;
   return url;
 }
@@ -381,35 +421,70 @@ function createRedirectUrl(target: string, request: NextRequest, lang: string) {
 function createRootRedirectUrl({
   pathname,
   request,
-  lang
+  lang,
+  ownerLocale
 }: {
   pathname: string;
   request: NextRequest;
   lang: string;
+  ownerLocale?: 'zh-CN' | 'en';
 }) {
   const host = request.headers.get('host')?.split(':')[0]?.toLowerCase();
-  const origin = host && host in PRODUCTION_HOST_LOCALES
-    ? getFastGPTDocsOriginForLocale(lang === 'en' ? 'en' : 'zh-CN')
-    : request.url;
+  const resolvedLang: 'zh-CN' | 'en' = lang === 'en' ? 'en' : 'zh-CN';
+  const isProductionHost = host !== undefined && host in PRODUCTION_HOST_LOCALES;
+  const origin = (() => {
+    if (isProductionHost || (ownerLocale !== undefined && resolvedLang !== ownerLocale)) {
+      return getFastGPTDocsOriginForLocale(resolvedLang);
+    }
+    return request.url;
+  })();
   const url = new URL(pathname, origin);
   url.search = request.nextUrl.search;
   return url;
 }
 
-function createGoneResponse(lang: string): NextResponse {
+function createRewriteUrl(pathname: string, request: NextRequest): URL {
+  const url = new URL(pathname, request.url);
+  url.search = request.nextUrl.search;
+  return url;
+}
+
+function applyDiscoveryHeaders(params: {
+  response: NextResponse;
+  lang: string;
+  isOwnerMode: boolean;
+}): NextResponse {
+  const { response, lang, isOwnerMode } = params;
+  response.headers.set('Content-Language', lang === 'en' ? 'en' : 'zh-CN');
+  if (!isOwnerMode) {
+    response.headers.set('X-Robots-Tag', previewRobotsTag);
+  }
+  return response;
+}
+
+function permanentRedirect(url: URL | string): NextResponse {
+  const response = NextResponse.redirect(url, 301);
+  response.headers.set('Cache-Control', 'public, max-age=3600');
+  return response;
+}
+
+function createGoneResponse(params: { lang: string; isOwnerMode: boolean }): NextResponse {
+  const { lang, isOwnerMode } = params;
   const isEn = lang === 'en';
-  const homeHref = `/${isEn ? 'en' : 'zh-CN'}${defaultHomePath}`;
+  const resolvedLocale = isEn ? 'en' : 'zh-CN';
+  const homeHref = isOwnerMode ? defaultHomePath : `/${resolvedLocale}${defaultHomePath}`;
   const title = isEn ? '410 — Documentation Topic Retired' : '410 — 历史案例已下线';
   const message = isEn
     ? 'This historical showcase has been retired. Explore maintained tutorials and workflow guides from the documentation home.'
     : '该早期应用案例已归档下线，请前往文档首页查看现行快速上手教程与工作流实操案例。';
   const cta = isEn ? 'Open FastGPT Documentation Home' : '前往 FastGPT 文档首页';
-  const html = `<!DOCTYPE html><html lang="${isEn ? 'en' : 'zh-CN'}"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><meta name="robots" content="noindex"/><title>${title} | FastGPT</title></head><body style="font-family:system-ui,-apple-system,sans-serif;max-width:40rem;margin:4rem auto;padding:0 1.5rem;text-align:center;line-height:1.6"><h1>${title}</h1><p>${message}</p><p><a href="${homeHref}">${cta}</a></p></body></html>`;
+  const html = `<!DOCTYPE html><html lang="${resolvedLocale}"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><meta name="robots" content="noindex"/><title>${title} | FastGPT</title></head><body style="font-family:system-ui,-apple-system,sans-serif;max-width:40rem;margin:4rem auto;padding:0 1.5rem;text-align:center;line-height:1.6"><h1>${title}</h1><p>${message}</p><p><a href="${homeHref}">${cta}</a></p></body></html>`;
 
   return new NextResponse(html, {
     status: 410,
     headers: {
       'Content-Type': 'text/html; charset=utf-8',
+      'Content-Language': resolvedLocale,
       'X-Robots-Tag': 'noindex'
     }
   });
@@ -418,16 +493,59 @@ function createGoneResponse(lang: string): NextResponse {
 export default function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // CLI 静态技能规范直接放行，不参与文档路由重写与语言前缀重定向。
+  // Pass static CLI skill specification straight through without locale routing.
   if (pathname === '/cli/skill.md') {
     return NextResponse.next();
   }
 
-  // Extract language from pathname
   const host = request.headers.get('host')?.split(':')[0]?.toLowerCase();
-  const hostLocale = host ? PRODUCTION_HOST_LOCALES[host] : undefined;
-  const isLegacyProductionHost = Boolean(host && hostLocale && !CANONICAL_PRODUCTION_HOSTS.has(host));
-  let lang = hostLocale ?? i18n.defaultLanguage;
+  const hostLocale = host !== undefined ? PRODUCTION_HOST_LOCALES[host] : undefined;
+  const isLegacyProductionHost = Boolean(
+    host !== undefined && hostLocale !== undefined && !CANONICAL_PRODUCTION_HOSTS.has(host)
+  );
+  const ownerLocale = hostLocale ?? resolveContainerOwnerLocale();
+  const isOwnerMode = ownerLocale !== undefined;
+
+  // Redirect root discovery and search index endpoints on legacy domains to their canonical owner host,
+  // while passing canonical and preview root endpoints straight through untouched.
+  if (
+    /^\/(?:robots\.txt|sitemap[^/]*\.xml|llms(?:-(?:full|guide|openapi|self-host))?\.txt|pricing\.md|static\.json(?:\/.*)?)$/i.test(
+      pathname
+    )
+  ) {
+    const canonicalRootPath = /^\/static\.json/i.test(pathname)
+      ? pathname
+      : pathname.toLowerCase();
+    if (isLegacyProductionHost && hostLocale !== undefined) {
+      return permanentRedirect(
+        createRootRedirectUrl({
+          pathname: canonicalRootPath,
+          request,
+          lang: hostLocale,
+          ownerLocale
+        })
+      );
+    }
+    if (pathname !== canonicalRootPath && ownerLocale !== undefined) {
+      return permanentRedirect(
+        createRootRedirectUrl({
+          pathname: canonicalRootPath,
+          request,
+          lang: ownerLocale,
+          ownerLocale
+        })
+      );
+    }
+    return NextResponse.next();
+  }
+
+  const cookieLocale = request.cookies.get('FD_LOCALE')?.value;
+  const previewDefaultLang =
+    cookieLocale !== undefined && i18n.languages.includes(cookieLocale)
+      ? cookieLocale
+      : i18n.defaultLanguage;
+
+  let lang = ownerLocale ?? previewDefaultLang;
   let pathWithoutLang = pathname;
   let hasLangPrefix = false;
   let hasLegacyLocalePrefix = false;
@@ -442,124 +560,229 @@ export default function middleware(request: NextRequest) {
   }
   if (!hasLangPrefix) {
     const legacyLocaleMatch = pathname.match(/^\/(zh-cn|zh|en)(?=\/|$)(.*)$/i);
-    if (legacyLocaleMatch) {
+    if (legacyLocaleMatch !== null) {
       lang = legacyLocaleMatch[1].toLowerCase() === 'en' ? 'en' : 'zh-CN';
       pathWithoutLang = legacyLocaleMatch[2];
       hasLegacyLocalePrefix = true;
     }
   }
 
-  // Standalone single-page Markdown endpoint (`/{lang}/{...slug}.md`).
+  // Redirect locale-prefixed discovery endpoints on production hosts to their root owner paths.
+  if (
+    /^\/(?:robots\.txt|sitemap[^/]*\.xml|llms(?:-(?:full|guide|openapi|self-host))?\.txt)$/i.test(
+      pathWithoutLang
+    )
+  ) {
+    const canonicalDiscoveryPath = pathWithoutLang.toLowerCase();
+    if (
+      isOwnerMode &&
+      (hasLangPrefix ||
+        hasLegacyLocalePrefix ||
+        isLegacyProductionHost ||
+        lang !== ownerLocale ||
+        pathname !== canonicalDiscoveryPath)
+    ) {
+      return permanentRedirect(
+        createRootRedirectUrl({ pathname: canonicalDiscoveryPath, request, lang, ownerLocale })
+      );
+    }
+  }
+
+  // Standalone single-page Markdown endpoint (`/{...slug}.md` on owner hosts, `/{lang}/{...slug}.md` on preview).
   if (/\.md$/i.test(pathWithoutLang)) {
     const rawBase = pathWithoutLang.slice(0, -3);
     const hasDocsPrefix = /^\/docs(?=\/|$)/i.test(rawBase);
     const strippedBase = hasDocsPrefix ? normalizePath(rawBase).slice('/docs'.length) : rawBase;
     const normalizedBase = normalizePath(strippedBase);
     if (normalizedBase.toLowerCase() === '/pricing') {
-      return NextResponse.redirect(
-        createRootRedirectUrl({ pathname: '/pricing.md', request, lang }),
-        301
+      return permanentRedirect(
+        createRootRedirectUrl({ pathname: '/pricing.md', request, lang, ownerLocale })
       );
     }
     if (retiredTopicPaths.has(normalizedBase.toLowerCase())) {
-      return createGoneResponse(lang);
+      return createGoneResponse({ lang, isOwnerMode });
     }
     const mappedBase = resolveLegacyPath(normalizedBase);
+    const isSameOwnerLocale = isOwnerMode && !isLegacyProductionHost && lang === ownerLocale;
+    const hasKnownOwnerMdTarget =
+      ownerLocale !== undefined &&
+      mappedBase !== '/toc' &&
+      knownSlugsByLocale[ownerLocale].has(mappedBase);
+    const requiresOwnerMdRedirect =
+      isOwnerMode &&
+      (!isSameOwnerLocale || hasKnownOwnerMdTarget) &&
+      (hasLangPrefix ||
+        hasLegacyLocalePrefix ||
+        hasDocsPrefix ||
+        mappedBase !== rawBase ||
+        isLegacyProductionHost ||
+        lang !== ownerLocale);
+    const requiresPreviewMdRedirect =
+      !isOwnerMode &&
+      (!hasLangPrefix || hasLegacyLocalePrefix || hasDocsPrefix || mappedBase !== rawBase);
+
     if (
-      !hasLangPrefix ||
-      hasLegacyLocalePrefix ||
-      hasDocsPrefix ||
-      mappedBase !== rawBase ||
-      isLegacyProductionHost ||
-      (hostLocale !== undefined && lang !== hostLocale)
+      requiresOwnerMdRedirect ||
+      requiresPreviewMdRedirect
     ) {
-      return NextResponse.redirect(createRedirectUrl(`${mappedBase}.md`, request, lang), 301);
+      return permanentRedirect(
+        createRedirectUrl({ target: `${mappedBase}.md`, request, lang, ownerLocale })
+      );
     }
-    return NextResponse.rewrite(new URL(`/api/doc-markdown/${lang}${mappedBase}`, request.url));
+
+    const targetLocale = ownerLocale ?? lang;
+    return applyDiscoveryHeaders({
+      response: NextResponse.rewrite(
+        createRewriteUrl(`/api/doc-markdown/${targetLocale}${mappedBase}`, request)
+      ),
+      lang: targetLocale,
+      isOwnerMode
+    });
   }
 
   // Legacy /docs/* URLs: strip the /docs prefix and run redirect-match.
   // Always 301 to the canonical (no-/docs) path, even if no map entry matches.
   if (/^\/docs(?=\/|$)/i.test(pathWithoutLang)) {
-    const stripped = normalizePath(pathWithoutLang).slice('/docs'.length); // '' for /docs, /foo for /docs/foo
+    const stripped = normalizePath(pathWithoutLang).slice('/docs'.length);
     if (retiredTopicPaths.has(stripped.toLowerCase())) {
-      return createGoneResponse(lang);
+      return createGoneResponse({ lang, isOwnerMode });
     }
     const finalPath = resolveLegacyPath(stripped);
-    return NextResponse.redirect(createRedirectUrl(finalPath, request, lang), 301);
+    if (
+      isOwnerMode &&
+      !isLegacyProductionHost &&
+      lang === ownerLocale &&
+      !knownSlugsByLocale[ownerLocale].has(finalPath)
+    ) {
+      const requestHeaders = new Headers(request.headers);
+      requestHeaders.set('x-pathname', pathname);
+      return applyDiscoveryHeaders({
+        response: NextResponse.rewrite(
+          createRewriteUrl(`/${ownerLocale}${finalPath}`, request),
+          { request: { headers: requestHeaders } }
+        ),
+        lang: ownerLocale,
+        isOwnerMode: true
+      });
+    }
+    return permanentRedirect(
+      createRedirectUrl({ target: finalPath, request, lang, ownerLocale })
+    );
   }
 
   // Non-/docs paths still consult the same maps so that direct hits on old
   // canonical paths (e.g. /upgrading) get redirected to their new home.
   const normalizedPath = normalizePath(pathWithoutLang);
   if (retiredTopicPaths.has(normalizedPath.toLowerCase())) {
-    return createGoneResponse(lang);
+    return createGoneResponse({ lang, isOwnerMode });
   }
   const mapped = resolveLegacyPath(normalizedPath);
-  if (mapped !== pathWithoutLang || hasLegacyLocalePrefix || isLegacyProductionHost) {
-    return NextResponse.redirect(createRedirectUrl(mapped, request, lang), 301);
-  }
-
-  if (hostLocale && lang !== hostLocale) {
-    return NextResponse.redirect(createRedirectUrl(normalizedPath, request, lang), 301);
-  }
-
-  // Build enhanced request headers so server components (e.g. (docs)/layout)
-  // can read the current pathname via `headers().get('x-pathname')`.
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set('x-pathname', pathname);
+  const acceptHeader = request.headers.get('accept') ?? '';
+  const prefersMarkdown =
+    acceptHeader.includes('text/markdown') &&
+    !acceptHeader.includes('text/html') &&
+    normalizedPath.length > 1;
 
-  if (hasLangPrefix) {
-    const acceptHeader = request.headers.get('accept') ?? '';
+  // Production owner mode serves unprefixed canonical URLs and 301-redirects any locale prefix.
+  if (isOwnerMode) {
+    const requiresCrossHostRedirect = isLegacyProductionHost || lang !== ownerLocale;
+    const requiresSameHostRedirect =
+      (hasLangPrefix || hasLegacyLocalePrefix || mapped !== pathWithoutLang) &&
+      knownSlugsByLocale[ownerLocale].has(mapped);
+
     if (
-      acceptHeader.includes('text/markdown') &&
-      !acceptHeader.includes('text/html') &&
-      normalizedPath.length > 1
+      requiresCrossHostRedirect ||
+      requiresSameHostRedirect
     ) {
-      const rewriteResponse = NextResponse.rewrite(
-        new URL(`/api/doc-markdown/${lang}${normalizedPath}`, request.url)
+      return permanentRedirect(
+        createRedirectUrl({ target: mapped, request, lang, ownerLocale })
       );
-      rewriteResponse.headers.append('Vary', 'Accept');
-      return rewriteResponse;
     }
 
-    // Pass through with x-pathname; only rewrite FD_LOCALE cookie if an existing cookie disagrees,
-    // keeping anonymous and crawler HTML responses free of Set-Cookie for CDN caching.
+    if (prefersMarkdown) {
+      const markdownResponse = NextResponse.rewrite(
+        createRewriteUrl(`/api/doc-markdown/${ownerLocale}${mapped}`, request)
+      );
+      markdownResponse.headers.append('Vary', 'Accept');
+      return applyDiscoveryHeaders({
+        response: markdownResponse,
+        lang: ownerLocale,
+        isOwnerMode: true
+      });
+    }
+
+    const rewriteResponse = NextResponse.rewrite(
+      createRewriteUrl(`/${ownerLocale}${mapped}`, request),
+      { request: { headers: requestHeaders } }
+    );
+    rewriteResponse.headers.set('Cache-Control', documentCacheControl);
+    rewriteResponse.headers.append('Vary', 'Accept');
+    if (cookieLocale !== undefined && cookieLocale !== ownerLocale) {
+      rewriteResponse.cookies.set('FD_LOCALE', ownerLocale, {
+        path: '/',
+        maxAge: 60 * 60 * 24 * 365
+      });
+    }
+    return applyDiscoveryHeaders({
+      response: rewriteResponse,
+      lang: ownerLocale,
+      isOwnerMode: true
+    });
+  }
+
+  if (mapped !== pathWithoutLang || hasLegacyLocalePrefix) {
+    return permanentRedirect(createRedirectUrl({ target: mapped, request, lang }));
+  }
+
+  if (hasLangPrefix) {
+    if (prefersMarkdown) {
+      const rewriteResponse = NextResponse.rewrite(
+        createRewriteUrl(`/api/doc-markdown/${lang}${normalizedPath}`, request)
+      );
+      rewriteResponse.headers.append('Vary', 'Accept');
+      return applyDiscoveryHeaders({
+        response: rewriteResponse,
+        lang,
+        isOwnerMode: false
+      });
+    }
+
     const response = NextResponse.next({ request: { headers: requestHeaders } });
-    // Static HTML references build-hashed chunks. Reusing HTML across image rollouts can
-    // point the browser at chunks that only exist in the previous deployment.
     response.headers.set('Cache-Control', documentCacheControl);
     response.headers.append('Vary', 'Accept');
-    const currentCookie = request.cookies.get('FD_LOCALE')?.value;
-    if (currentCookie !== undefined && currentCookie !== lang) {
+    if (cookieLocale !== undefined && cookieLocale !== lang) {
       response.cookies.set('FD_LOCALE', lang, {
         path: '/',
         maxAge: 60 * 60 * 24 * 365
       });
     }
+    return applyDiscoveryHeaders({
+      response,
+      lang,
+      isOwnerMode: false
+    });
+  }
+
+  // Preview mode without a locale prefix checks cookie preference before Accept-Language fallback.
+  if (cookieLocale !== undefined && i18n.languages.includes(cookieLocale)) {
+    const newUrl = new URL(`/${cookieLocale}${pathname}`, request.url);
+    newUrl.search = request.nextUrl.search;
+    const response = NextResponse.redirect(newUrl, 301);
+    response.headers.set('Cache-Control', 'private, no-store');
     return response;
   }
 
-  if (hostLocale) {
-    return NextResponse.redirect(createRedirectUrl(normalizedPath, request, hostLocale), 301);
-  }
-
-  // No language prefix — check cookie for user's language preference
-  const cookieLocale = request.cookies.get('FD_LOCALE')?.value;
-  if (cookieLocale && i18n.languages.includes(cookieLocale)) {
-    const newUrl = new URL(`/${cookieLocale}${pathname}`, request.url);
-    newUrl.search = request.nextUrl.search;
-    return NextResponse.redirect(newUrl, 301);
-  }
-
-  // Fall back to fumadocs i18n (Accept-Language detection / redirect)
   // @ts-expect-error - Fumadocs middleware signature mismatch
-  return i18nMiddleware(request);
+  const fallbackResponse = i18nMiddleware(request) as NextResponse;
+  fallbackResponse.headers.set('X-Robots-Tag', previewRobotsTag);
+  return fallbackResponse;
 }
 
 // Keep static search index, sitemaps, and public assets unprefixed without locale redirects.
 export const config = {
   matcher: [
-    '/((?!api|_next/static|_next/image|favicon(?:\\.ico|/)|robots\\.txt|llms(?:-(?:full|guide|openapi|self-host))?\\.txt|pricing\\.md|cli/skill\\.md$|static\\.json(?:$|/)|sitemap.*\\.xml|.*\\.(?:svg|png|jpe?g|webp)|deploy/.*|examples/.*).*)'
+    '/((?!api|_next/static|_next/image|favicon(?:\\.ico|/)|cli/skill\\.md$|.*\\.(?:svg|png|jpe?g|webp)|deploy/.*|examples/.*).*)'
   ]
 };

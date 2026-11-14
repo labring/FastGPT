@@ -7,8 +7,15 @@ import remarkGfm from 'remark-gfm';
 import remarkMdx from 'remark-mdx';
 import remarkStringify from 'remark-stringify';
 import { remarkInclude } from 'fumadocs-mdx/config';
+import docLastModifiedData from '@/data/doc-last-modified.json';
 import { source } from '@/lib/source';
-import { getFastGPTDocsOriginForLocale, type FastGPTDocsLocale } from '@/lib/fastgpt-home-url';
+import {
+  getFastGPTDocsOriginForLocale,
+  getProductionDocsUrl,
+  isPreviewDocsSite,
+  stripDocsLocalePrefix,
+  type FastGPTDocsLocale
+} from '@/lib/fastgpt-home-url';
 import { getApiReferenceNotice } from '@/lib/api-reference-notice';
 
 type AstAttribute = {
@@ -31,8 +38,63 @@ type AstNode = {
 
 const includeMdxFiles = remarkInclude as unknown as typeof remarkMdx;
 const CONTENT_ROOT = path.resolve(process.cwd(), 'content');
+const STATIC_MARKDOWN_PREFIXES = ['/examples/', '/deploy/', '/imgs/', '/favicon/'];
 
 export type LlmsBundleKey = 'guide' | 'openapi' | 'self-host';
+
+/** Return X-Robots-Tag directive preventing search engines from indexing machine-readable endpoints. */
+export function getLlmsRobotsTag(): string {
+  return isPreviewDocsSite() ? 'noindex, nofollow' : 'noindex';
+}
+
+/** Return response headers for plain-text llms*.txt endpoints with search-engine noindex protection. */
+export function getLlmsTextHeaders(): Record<string, string> {
+  return {
+    'Content-Type': 'text/plain; charset=utf-8',
+    'X-Robots-Tag': getLlmsRobotsTag()
+  };
+}
+
+export type SingleDocMarkdownResult = {
+  markdown: string;
+  canonicalUrl: string;
+  lastModified?: string;
+  deprecated: boolean;
+};
+
+function resolveDocLastModified(
+  relativeContentKey: string,
+  frontmatterLastModified?: unknown
+): string | undefined {
+  const recorded = (docLastModifiedData as Record<string, string>)[relativeContentKey];
+  if (typeof recorded === 'string' && recorded.trim().length > 0) {
+    return recorded.trim();
+  }
+  if (typeof frontmatterLastModified === 'string' && frontmatterLastModified.trim().length > 0) {
+    const parsed = new Date(frontmatterLastModified);
+    return Number.isNaN(parsed.getTime()) ? undefined : parsed.toISOString();
+  }
+  if (frontmatterLastModified instanceof Date && !Number.isNaN(frontmatterLastModified.getTime())) {
+    return frontmatterLastModified.toISOString();
+  }
+  return undefined;
+}
+
+function normalizeExportedMarkdownHref(href: string, lang: FastGPTDocsLocale): string {
+  if (!href.startsWith('/') || href.startsWith('//')) {
+    return href;
+  }
+  if (STATIC_MARKDOWN_PREFIXES.some((prefix) => href.startsWith(prefix))) {
+    return `${getFastGPTDocsOriginForLocale(lang)}${href}`;
+  }
+  const explicitMatch = href.match(/^\/(zh-cn|zh|en)(?=\/|$|[?#])/i);
+  const targetLocale: FastGPTDocsLocale = explicitMatch
+    ? explicitMatch[1].toLowerCase() === 'en'
+      ? 'en'
+      : 'zh-CN'
+    : lang;
+  return getProductionDocsUrl(targetLocale, href);
+}
 
 function matchesLlmsBundle(relSlug: string, bundle?: LlmsBundleKey): boolean {
   if (!bundle) return true;
@@ -106,7 +168,11 @@ function ensureBlockChildren(nodes: AstNode[]): AstNode[] {
 
 /** Strip MDX imports/comments and convert custom JSX documentation components into pure GFM nodes. */
 function remarkCleanLlmsMdx() {
-  const transformNodes = (nodes: AstNode[], inFlow: boolean): AstNode[] =>
+  const transformNodes = (
+    nodes: AstNode[],
+    inFlow: boolean,
+    lang: FastGPTDocsLocale
+  ): AstNode[] =>
     nodes.flatMap<AstNode>((node) => {
       if (node.type === 'mdxjsEsm') return [];
 
@@ -124,7 +190,7 @@ function remarkCleanLlmsMdx() {
       if (node.type === 'mdxJsxFlowElement' || node.type === 'mdxJsxTextElement') {
         const tagName = node.name ?? '';
         const childInFlow = node.type === 'mdxJsxFlowElement';
-        const children = transformNodes(node.children ?? [], childInFlow);
+        const children = transformNodes(node.children ?? [], childInFlow, lang);
 
         if (tagName === 'CurrentOriginCodeBlockUpdater') return [];
         if (tagName === 'span' && children.length === 0) return [];
@@ -173,9 +239,11 @@ function remarkCleanLlmsMdx() {
         if (tagName === 'Card') {
           const title = getAttrString(node, 'title') ?? 'Guide';
           const href = getAttrString(node, 'href');
+          const normalizedHref =
+            href !== undefined ? normalizeExportedMarkdownHref(href, lang) : undefined;
           const summary = extractInlineText(children);
-          const head: AstNode = href
-            ? { type: 'link', url: href, children: [{ type: 'text', value: title }] }
+          const head: AstNode = normalizedHref
+            ? { type: 'link', url: normalizedHref, children: [{ type: 'text', value: title }] }
             : { type: 'text', value: title };
           const inlineParts: AstNode[] = summary
             ? [head, { type: 'text', value: `: ${summary}` }]
@@ -202,16 +270,22 @@ function remarkCleanLlmsMdx() {
       if (node.children) {
         const nextChildren = transformNodes(
           node.children,
-          node.type === 'root' || node.type === 'blockquote' || node.type === 'listItem'
+          node.type === 'root' || node.type === 'blockquote' || node.type === 'listItem',
+          lang
         );
-        return [{ ...node, children: nextChildren }];
+        const nextUrl =
+          node.type === 'link' && typeof node.url === 'string'
+            ? normalizeExportedMarkdownHref(node.url, lang)
+            : node.url;
+        return [{ ...node, url: nextUrl, children: nextChildren }];
       }
 
       return [node];
     });
 
-  return (tree: AstNode) => {
-    tree.children = transformNodes(tree.children ?? [], true);
+  return (tree: AstNode, file?: { path?: string }) => {
+    const lang: FastGPTDocsLocale = file?.path?.endsWith('.en.mdx') ? 'en' : 'zh-CN';
+    tree.children = transformNodes(tree.children ?? [], true, lang);
   };
 }
 
@@ -244,48 +318,51 @@ export function buildLlmsIndexText(lang: FastGPTDocsLocale): string {
         !/^toc(?:\.en)?\.mdx$/.test(page.data._file.path) &&
         !page.data._file.path.startsWith('self-host/upgrading/outdated/')
     )
-    .sort((a, b) => a.url.localeCompare(b.url));
+    .sort((a, b) =>
+      stripDocsLocalePrefix(a.url).pathname.localeCompare(stripDocsLocalePrefix(b.url).pathname)
+    );
 
   const sectionDefs = [
     {
       title: isEn ? 'Use FastGPT' : '使用 FastGPT',
-      match: (pageUrl: string) => pageUrl.startsWith(`/${lang}/guide/`)
+      match: (routePath: string) => routePath.startsWith('/guide/')
     },
     {
       title: isEn ? 'Developers & OpenAPI' : '开发者与 OpenAPI',
-      match: (pageUrl: string) =>
-        pageUrl.startsWith(`/${lang}/developers`) ||
-        pageUrl.startsWith(`/${lang}/openapi/`) ||
-        pageUrl.startsWith(`/${lang}/plugin/`)
+      match: (routePath: string) =>
+        routePath === '/developers' ||
+        routePath.startsWith('/developers/') ||
+        routePath.startsWith('/openapi/') ||
+        routePath.startsWith('/plugin/')
     },
     {
       title: isEn ? 'Deploy and Operate' : '部署与运维',
-      match: (pageUrl: string) =>
-        pageUrl === `/${lang}/self-host` ||
-        (pageUrl.startsWith(`/${lang}/self-host/`) &&
-          !pageUrl.startsWith(`/${lang}/self-host/upgrading/`))
+      match: (routePath: string) =>
+        routePath === '/self-host' ||
+        (routePath.startsWith('/self-host/') && !routePath.startsWith('/self-host/upgrading/'))
     },
     {
       title: isEn ? 'Versions & Upgrades' : '版本与升级',
-      match: (pageUrl: string) => pageUrl.startsWith(`/${lang}/self-host/upgrading/`)
+      match: (routePath: string) => routePath.startsWith('/self-host/upgrading/')
     },
     {
       title: isEn ? 'FAQ' : '常见问题',
-      match: (pageUrl: string) => pageUrl.startsWith(`/${lang}/faq/`)
+      match: (routePath: string) => routePath.startsWith('/faq/')
     }
   ];
 
   const header = isEn
-    ? `# FastGPT Documentation\n\n> Official documentation for FastGPT: AI agent building, knowledge base RAG, visual workflow orchestration, System OpenAPI, plugins, and self-hosted operations. Append \`.md\` to any canonical page URL (for example \`${domain}/en/openapi/intro.md\`) to fetch standalone Markdown.\n\n- [Full Documentation Corpus](${domain}/${lang}/llms-full.txt): Complete Markdown text of all active FastGPT documentation topics.\n- [Product & RAG Guides Corpus](${domain}/${lang}/llms-guide.txt): Focused corpus covering Agent building, workflows, datasets, and FAQs.\n- [Developers & OpenAPI Corpus](${domain}/${lang}/llms-openapi.txt): Focused corpus covering System OpenAPI, authentication, and plugin development.\n- [Self-Hosted Operations Corpus](${domain}/${lang}/llms-self-host.txt): Focused corpus covering Docker/Sealos deployment, model configuration, migrations, and troubleshooting.\n- [Pricing & Editions](${domain}/pricing.md): Structured comparison of Community, Cloud, and Commercial editions and resource pricing.`
-    : `# FastGPT 文档\n\n> FastGPT 官方文档：涵盖 AI Agent 构建、知识库 RAG、可视化工作流编排、System OpenAPI、插件开发与私有化部署运维。在任意规范文档 URL 后追加 \`.md\`（例如 \`${domain}/zh-CN/openapi/intro.md\`）可直接拉取单页纯净 Markdown。\n\n- [完整文档语料库](${domain}/${lang}/llms-full.txt): 全部现行 FastGPT 文档页面的完整 Markdown 正文。\n- [产品与知识库语料分卷](${domain}/${lang}/llms-guide.txt): 聚焦应用构建、工作流、知识库 RAG 与常见问题的精简语料。\n- [开发者与 OpenAPI 语料分卷](${domain}/${lang}/llms-openapi.txt): 聚焦 System OpenAPI、鉴权代理与插件开发的接口语料。\n- [私有化部署与运维语料分卷](${domain}/${lang}/llms-self-host.txt): 聚焦 Docker/Sealos 部署、模型配置、数据迁移与排障的运维语料。\n- [版本与定价清单](${domain}/pricing.md): 社区版、云服务版与商业版功能边界及资源计费标准。`;
+    ? `# FastGPT Documentation\n\n> Official documentation for FastGPT: AI agent building, knowledge base RAG, visual workflow orchestration, System OpenAPI, plugins, and self-hosted operations. Append \`.md\` to any canonical page URL (for example \`${domain}/openapi/intro.md\`) to fetch standalone Markdown.\n\n- [Full Documentation Corpus](${domain}/llms-full.txt): Complete Markdown text of all active FastGPT documentation topics.\n- [Product & RAG Guides Corpus](${domain}/llms-guide.txt): Focused corpus covering Agent building, workflows, datasets, and FAQs.\n- [Developers & OpenAPI Corpus](${domain}/llms-openapi.txt): Focused corpus covering System OpenAPI, authentication, and plugin development.\n- [Self-Hosted Operations Corpus](${domain}/llms-self-host.txt): Focused corpus covering Docker/Sealos deployment, model configuration, migrations, and troubleshooting.\n- [Pricing & Editions](${domain}/pricing.md): Structured comparison of Community, Cloud, and Commercial editions and resource pricing.`
+    : `# FastGPT 文档\n\n> FastGPT 官方文档：涵盖 AI Agent 构建、知识库 RAG、可视化工作流编排、System OpenAPI、插件开发与私有化部署运维。在任意规范文档 URL 后追加 \`.md\`（例如 \`${domain}/openapi/intro.md\`）可直接拉取单页纯净 Markdown。\n\n- [完整文档语料库](${domain}/llms-full.txt): 全部现行 FastGPT 文档页面的完整 Markdown 正文。\n- [产品与知识库语料分卷](${domain}/llms-guide.txt): 聚焦应用构建、工作流、知识库 RAG 与常见问题的精简语料。\n- [开发者与 OpenAPI 语料分卷](${domain}/llms-openapi.txt): 聚焦 System OpenAPI、鉴权代理与插件开发的接口语料。\n- [私有化部署与运维语料分卷](${domain}/llms-self-host.txt): 聚焦 Docker/Sealos 部署、模型配置、数据迁移与排障的运维语料。\n- [版本与定价清单](${domain}/pricing.md): 社区版、云服务版与商业版功能边界及资源计费标准。`;
 
   const sections = sectionDefs
     .map((section) => {
       const items = pages
-        .filter((page) => section.match(page.url))
+        .filter((page) => section.match(stripDocsLocalePrefix(page.url).pathname))
         .map((page) => {
           const desc = page.data.description ? `: ${page.data.description}` : '';
-          return `- [${page.data.title}](${domain}${page.url})${desc}`;
+          const canonicalUrl = getProductionDocsUrl(lang, page.url);
+          return `- [${page.data.title}](${canonicalUrl})${desc}`;
         });
       return items.length > 0 ? `## ${section.title}\n\n${items.join('\n')}` : '';
     })
@@ -301,13 +378,13 @@ export async function buildLlmsFullText(
   bundle?: LlmsBundleKey
 ): Promise<string> {
   const isEn = lang === 'en';
-  const domain = getFastGPTDocsOriginForLocale(lang);
   const fileToRelSlug = (file: string): string =>
     file
       .replace(/^\.\/content/, '')
       .replace(/(?:\.en)?\.mdx$/, '')
       .replace(/\/index$/, '');
-  const fileToCanonicalUrl = (file: string): string => `${domain}/${lang}${fileToRelSlug(file)}`;
+  const fileToCanonicalUrl = (file: string): string =>
+    getProductionDocsUrl(lang, fileToRelSlug(file));
 
   const files = (await fg('./content/**/*.mdx'))
     .filter(
@@ -327,9 +404,13 @@ export async function buildLlmsFullText(
         if (data.deprecated || data.draft) return null;
 
         const body = await renderCleanMdxBody(file, content);
+        const contentKey = file.replace(/^\.\//, '');
+        const lastUpdated = resolveDocLastModified(contentKey, data.lastModified);
+        const lastUpdatedLine =
+          lastUpdated !== undefined ? `\nlast_updated: ${lastUpdated}` : '';
         return `file: ${file}
 url: ${fileToCanonicalUrl(file)}
-title: ${String(data.title ?? '')}
+title: ${String(data.title ?? '')}${lastUpdatedLine}
 meta: ${JSON.stringify(data, null, 2)}
 
 ${body}`;
@@ -342,16 +423,15 @@ ${body}`;
 
 /** Resolve the canonical HTML URL corresponding to a single-page Markdown slug. */
 export function getSingleDocCanonicalUrl(lang: FastGPTDocsLocale, slugParts: string[]): string {
-  const domain = getFastGPTDocsOriginForLocale(lang);
   const normalizedSlug = slugParts.join('/').replace(/\/index$/, '');
-  return `${domain}/${lang}/${normalizedSlug}`;
+  return getProductionDocsUrl(lang, `/${normalizedSlug}`);
 }
 
 /** Render a single published documentation topic as standalone clean Markdown. */
-export async function buildSingleDocMarkdown(params: {
+export async function buildSingleDocMarkdownResult(params: {
   lang: FastGPTDocsLocale;
   slugParts: string[];
-}): Promise<string | null> {
+}): Promise<SingleDocMarkdownResult | null> {
   const { lang, slugParts } = params;
   if (
     slugParts.length === 0 ||
@@ -389,12 +469,36 @@ export async function buildSingleDocMarkdown(params: {
   if (data.draft === true) return null;
 
   const canonicalUrl = getSingleDocCanonicalUrl(lang, slugParts);
-  const relativeForRemark = `./${path.relative(process.cwd(), resolvedFile).split(path.sep).join('/')}`;
+  const contentKey = path.relative(process.cwd(), resolvedFile).split(path.sep).join('/');
+  const relativeForRemark = `./${contentKey}`;
   const body = await renderCleanMdxBody(relativeForRemark, content);
+  const lastModified = resolveDocLastModified(contentKey, data.lastModified);
+  const deprecated = Boolean(data.deprecated);
   const descriptionBlock =
     typeof data.description === 'string' && data.description.trim().length > 0
       ? `\n\n> ${data.description.trim()}`
       : '';
+  const lastUpdatedLine =
+    lastModified !== undefined ? `\nLast Updated: ${lastModified.slice(0, 10)}` : '';
+  const deprecationNotice = deprecated
+    ? lang === 'en'
+      ? '\n\n> **Deprecated**: This page documents a legacy interface or workflow retained for backward compatibility.'
+      : '\n\n> **已归档**：本文档介绍旧版接口或历史方案，仅供存量系统兼容参考。'
+    : '';
 
-  return `# ${String(data.title ?? '')}${descriptionBlock}\n\nSource: ${canonicalUrl}\n\n${body}\n`;
+  return {
+    markdown: `# ${String(data.title ?? '')}${descriptionBlock}\n\nSource: ${canonicalUrl}${lastUpdatedLine}${deprecationNotice}\n\n${body}\n`,
+    canonicalUrl,
+    lastModified,
+    deprecated
+  };
+}
+
+/** Render a single published documentation topic as standalone clean Markdown text. */
+export async function buildSingleDocMarkdown(params: {
+  lang: FastGPTDocsLocale;
+  slugParts: string[];
+}): Promise<string | null> {
+  const result = await buildSingleDocMarkdownResult(params);
+  return result?.markdown ?? null;
 }
