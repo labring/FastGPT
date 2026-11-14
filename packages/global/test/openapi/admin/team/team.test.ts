@@ -4,6 +4,7 @@ import {
   AdminSwitchTeamResponseSchema,
   AdminTeamSelectorQuerySchema,
   AdminTeamSelectorResponseSchema,
+  GetTeamsBodySchema,
   TeamMemberItemSchema,
   GetTeamMembersResponseSchema
 } from '../../../../openapi/admin/team/api';
@@ -111,5 +112,33 @@ describe('Admin team schemas', () => {
     });
     expect(parsedListRes.total).toBe(1);
     expect(parsedListRes.list[0].teamName).toBe('Alpha Team');
+    expect(parsedListRes.list[0].isOwner).toBe(false);
+
+    const parsedOwnerRes = AdminTeamSelectorResponseSchema.parse({
+      total: 1,
+      list: [
+        {
+          teamId: '68ad85a7463006c963799a06',
+          teamName: 'My Root Team',
+          avatar: null,
+          isOwner: true
+        }
+      ]
+    });
+    expect(parsedOwnerRes.list[0].isOwner).toBe(true);
+
+    expect(
+      GetTeamsBodySchema.parse({
+        username: '  alice  ',
+        teamName: '  Alpha  ',
+        teamId: '68ad85a7463006c963799a06'
+      })
+    ).toMatchObject({
+      username: 'alice',
+      teamName: 'Alpha',
+      teamId: '68ad85a7463006c963799a06'
+    });
+    expect(GetTeamsBodySchema.parse({ teamId: '' }).teamId).toBeUndefined();
+    expect(GetTeamsBodySchema.safeParse({ teamId: 'bad-id' }).success).toBe(false);
   });
 });

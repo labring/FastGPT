@@ -1,4 +1,6 @@
 import z from 'zod';
+import { ObjectIdSchema } from '../../../common/type/mongo';
+import { optionalEmptyToUndefined } from '../../../common/zod';
 import { PaginationResponseSchema, createPaginationSchema } from '../../api';
 
 // App type schema
@@ -14,7 +16,11 @@ export type AppItemType = z.infer<typeof AppItemSchema>;
 
 // Get apps request body schema
 export const GetAppsBodySchema = createPaginationSchema({
-  searchKey: z.string().nullish().meta({ description: '搜索关键词（支持应用名称和应用ID）' })
+  username: z.string().trim().max(100).optional().meta({ description: '创建者用户名（模糊匹配）' }),
+  teamName: z.string().trim().max(100).optional().meta({ description: '团队名称（模糊匹配）' }),
+  teamId: optionalEmptyToUndefined(ObjectIdSchema).meta({ description: '团队ID（精确匹配）' }),
+  appId: optionalEmptyToUndefined(ObjectIdSchema).meta({ description: '应用ID（精确匹配）' }),
+  appName: z.string().trim().max(100).optional().meta({ description: '应用名称（模糊匹配）' })
 });
 export type GetAppsBodyType = z.infer<typeof GetAppsBodySchema>;
 

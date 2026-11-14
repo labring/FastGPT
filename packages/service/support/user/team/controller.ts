@@ -92,6 +92,7 @@ async function getTeamMember(
     openaiAccount: tmb.team.openaiAccount,
     externalWorkflowVariables: tmb.team.externalWorkflowVariables,
     isWecomTeam: !!tmb.team.meta?.wecom,
+    ...(tmb.lastSwitchTime ? { lastSwitchTime: tmb.lastSwitchTime } : {}),
     ...(cancellation
       ? {
           accountCancellation: formatTeamAccountCancellationSummary(cancellation.record)
@@ -407,6 +408,7 @@ export async function ensureRootTeamMember({
   };
   const updateSet = {
     status: TeamMemberStatusEnum.active,
+    lastSwitchTime: new Date(),
     ...(isOwnTeam ? { role: TeamMemberRoleEnum.owner } : {})
   };
 

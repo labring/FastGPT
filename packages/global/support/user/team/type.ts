@@ -40,6 +40,7 @@ export type TeamMemberSchema = {
   userId: string;
   createTime: Date;
   updateTime?: Date;
+  lastSwitchTime?: Date;
   name: string;
   /** 成员名是否由显式来源设置；false 表示 name 是待确认的 username 回落值。存量文档迁移前可能缺失该字段。 */
   isSetMemberName?: boolean;
@@ -71,6 +72,7 @@ export const TeamTmbItemSchema = ThidPartyAccountSchema.extend({
   notificationAccount: z.string().nullish(),
   permission: z.instanceof(TeamPermission),
   isWecomTeam: z.boolean().optional(),
+  lastSwitchTime: z.union([z.date(), z.iso.datetime({ offset: true })]).optional(),
   accountCancellation: z
     .object({
       status: TeamAccountCancellationStatusSchema,

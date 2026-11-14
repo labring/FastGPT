@@ -72,10 +72,12 @@ describe('GET /api/admin/team/list', () => {
     });
     expect(allRes.code).toBe(200);
     expect(allRes.data.total).toBe(3);
-    expect(allRes.data.list.map((t: any) => t.teamName)).toEqual([
-      'Root Base Team',
-      'Beta Staging Team',
-      'Alpha [Prod] Team'
+    expect(
+      allRes.data.list.map((t: any) => ({ teamName: t.teamName, isOwner: t.isOwner }))
+    ).toEqual([
+      { teamName: 'Root Base Team', isOwner: true },
+      { teamName: 'Beta Staging Team', isOwner: false },
+      { teamName: 'Alpha [Prod] Team', isOwner: false }
     ]);
 
     // 分页滚动：pageSize=1 连续按 offset=0,1,2 拉取全部 3 页，当前所在团队置顶且无遗漏、无重复；
@@ -100,6 +102,25 @@ describe('GET /api/admin/team/list', () => {
     expect(page2.data.list.map((t: any) => t.teamId)).toEqual([String(betaTeam._id)]);
     expect(page3.data.list.map((t: any) => t.teamId)).toEqual([String(alphaTeam._id)]);
 
+    // 即使切换到其他团队，自己作为 Owner 的团队仍然置顶，当前所在团队紧随其后
+    const switchedAuth = {
+      ...rootAuth,
+      teamId: String(alphaTeam._id)
+    };
+    const switchedRes = await Call(listTeamsApi.default, {
+      method: 'GET',
+      query: {},
+      auth: switchedAuth
+    });
+    expect(switchedRes.code).toBe(200);
+    expect(
+      switchedRes.data.list.map((t: any) => ({ teamName: t.teamName, isOwner: t.isOwner }))
+    ).toEqual([
+      { teamName: 'Root Base Team', isOwner: true },
+      { teamName: 'Alpha [Prod] Team', isOwner: false },
+      { teamName: 'Beta Staging Team', isOwner: false }
+    ]);
+
     const searchRes = await Call(listTeamsApi.default, {
       method: 'GET',
       query: { search: '[Prod]' },
@@ -109,6 +130,69 @@ describe('GET /api/admin/team/list', () => {
     expect(searchRes.data.total).toBe(1);
     expect(searchRes.data.list).toHaveLength(1);
     expect(searchRes.data.list[0].teamId).toBe(String(alphaTeam._id));
+    expect(searchRes.data.list[0].isOwner).toBe(false);
+
+    // 搜索关键词同时命中自有团队与非自有团队时，自有团队仍置顶
+    const searchTeamRes = await Call(listTeamsApi.default, {
+      method: 'GET',
+      query: { search: 'Team' },
+      auth: rootAuth
+    });
+    expect(searchTeamRes.code).toBe(200);
+    expect(
+      searchTeamRes.data.list.map((t: any) => ({ teamName: t.teamName, isOwner: t.isOwner }))
+    ).toEqual([
+      { teamName: 'Root Base Team', isOwner: true },
+      { teamName: 'Beta Staging Team', isOwner: false },
+      { teamName: 'Alpha [Prod] Team', isOwner: false }
+    ]);
+
+    // 最近切过的非自有团队应排在未切过的团队之前（即使后者 createTime 更晚），且不影响分页边界
+    const gammaTeam = await MongoTeam.create({
+      name: 'Gamma New Team',
+      ownerId: normalUser._id,
+      createTime: new Date('2026-08-01T00:00:00Z')
+    });
+    await MongoTeamMember.create([
+      {
+        teamId: alphaTeam._id,
+        userId: rootUser._id,
+        name: 'root',
+        status: TeamMemberStatusEnum.active,
+        lastSwitchTime: new Date('2026-04-17T09:00:00Z')
+      },
+      {
+        teamId: betaTeam._id,
+        userId: rootUser._id,
+        name: 'root',
+        status: TeamMemberStatusEnum.active,
+        lastSwitchTime: new Date('2026-04-17T08:00:00Z')
+      }
+    ]);
+
+    const recentRes = await Call(listTeamsApi.default, {
+      method: 'GET',
+      query: {},
+      auth: rootAuth
+    });
+    expect(recentRes.code).toBe(200);
+    expect(recentRes.data.total).toBe(4);
+    expect(recentRes.data.list.map((t: any) => t.teamName)).toEqual([
+      'Root Base Team',
+      'Alpha [Prod] Team',
+      'Beta Staging Team',
+      'Gamma New Team'
+    ]);
+
+    const recentPage2 = await Call(listTeamsApi.default, {
+      method: 'GET',
+      query: { offset: '2', pageSize: '2' },
+      auth: rootAuth
+    });
+    expect(recentPage2.data.list.map((t: any) => String(t.teamId))).toEqual([
+      String(betaTeam._id),
+      String(gammaTeam._id)
+    ]);
   });
 
   it('rejects non-root callers and non-GET methods', async () => {

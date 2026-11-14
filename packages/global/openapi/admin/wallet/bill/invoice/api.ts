@@ -1,6 +1,6 @@
 import z from 'zod';
 import { ObjectIdSchema } from '../../../../../common/type/mongo';
-import { IntSchema, NumSchema } from '../../../../../common/zod';
+import { IntSchema, NumSchema, optionalEmptyToUndefined } from '../../../../../common/zod';
 import { InvoiceStatusEnum } from '../../../../../support/wallet/bill/invoice/constants';
 import { PaginationPageSizeSchema, PaginationResponseSchema } from '../../../../api';
 
@@ -29,7 +29,14 @@ export type InvoiceItemType = z.infer<typeof InvoiceItemSchema>;
 export const InvoiceListBodySchema = z.object({
   pageNum: IntSchema.positive().optional().default(1).meta({ description: '页码' }),
   pageSize: PaginationPageSizeSchema,
-  search: z.string().optional().meta({ description: '搜索关键词（团队名称）' })
+  username: z
+    .string()
+    .trim()
+    .max(100)
+    .optional()
+    .meta({ description: '团队所有者用户名（模糊匹配）' }),
+  teamName: z.string().trim().max(100).optional().meta({ description: '团队名称（模糊匹配）' }),
+  teamId: optionalEmptyToUndefined(ObjectIdSchema).meta({ description: '团队ID（精确匹配）' })
 });
 export const InvoiceListResponseSchema = PaginationResponseSchema(InvoiceItemSchema);
 export type InvoiceListBodyType = z.infer<typeof InvoiceListBodySchema>;

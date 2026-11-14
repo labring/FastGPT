@@ -1,24 +1,13 @@
 'use client';
 import React, { useRef, useState } from 'react';
-import {
-  Button,
-  Table,
-  Thead,
-  Tbody,
-  Tr,
-  Th,
-  Td,
-  Flex,
-  Box,
-  InputGroup,
-  Input,
-  InputLeftElement
-} from '@chakra-ui/react';
+import { Button, Table, Thead, Tbody, Tr, Th, Td, Flex, Box } from '@chakra-ui/react';
 import dayjs from 'dayjs';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import Tag from '@fastgpt/web/components/common/Tag';
 import SingleSelectFilter from '@fastgpt/web/components/common/TagFilter/SingleSelectFilter';
+import AdminCompositeSearch, { useAdminCompositeSearch } from '@/components/admin/CompositeSearch';
+import type { AdminSearchOption } from '@/components/admin/CompositeSearch/utils';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import { getUsers } from '@/web/admin/user/api';
 import UserEditModal from './components/UserEditModal';
@@ -41,15 +30,20 @@ const userStatusColorMap = {
   cancelled: 'gray'
 } as const;
 
+const userSearchOptions: readonly AdminSearchOption<'username' | 'userId'>[] = [
+  { value: 'username', label: '用户名', placeholder: '搜索用户名' },
+  { value: 'userId', label: '用户 ID', placeholder: '搜索用户 ID', exactObjectId: true }
+];
+
 const UserTable = () => {
   const { t } = useSafeTranslation();
-  // const [username, setUsername] = useState<string>();
   const [userDetail, setUserDetail] = useState<UserItemType>();
-  const [search, setSearch] = useState<string>();
   const [status, setStatus] = useState<AdminUserStatusFilterType | undefined>(
     UserStatusEnum.active
   );
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const { searchField, inputValue, isInvalid, searchParams, onFieldChange, onInputChange } =
+    useAdminCompositeSearch({ options: userSearchOptions });
 
   const statusOptions = [
     { label: t('common:All'), value: undefined },
@@ -70,11 +64,11 @@ const UserTable = () => {
     defaultPageSize: 20,
     pageSizeCacheKey: 'users-users-list',
     params: {
-      username: search,
+      ...searchParams,
       // 接口保留多选契约；单选“全部”时省略条件，其余转换为单元素数组。
       statuses: status ? [status] : undefined
     },
-    refreshDeps: [search, status],
+    refreshDeps: [searchParams, status],
     scrollContainerRef
   });
 
@@ -93,18 +87,14 @@ const UserTable = () => {
           用户信息
         </Box>
         <Box flexGrow={1} />
-        <InputGroup w={['100%', '250px']} h={'36px'}>
-          <InputLeftElement h={'full'}>
-            <MyIcon name="common/searchLight" w={4} color={'myGray.400'} />
-          </InputLeftElement>
-          <Input
-            placeholder="请输入用户名搜索"
-            onChange={(e) => {
-              setSearch(e.target.value);
-            }}
-            h={'36px'}
-          ></Input>
-        </InputGroup>
+        <AdminCompositeSearch
+          options={userSearchOptions}
+          field={searchField}
+          value={inputValue}
+          isInvalid={isInvalid}
+          onFieldChange={onFieldChange}
+          onValueChange={onInputChange}
+        />
         <SingleSelectFilter
           title={t('common:Status')}
           value={status}

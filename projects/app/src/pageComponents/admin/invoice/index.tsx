@@ -15,12 +15,11 @@ import {
   Flex,
   Box,
   HStack,
-  InputGroup,
-  Input,
-  InputLeftElement,
   Button,
   FormLabel
 } from '@chakra-ui/react';
+import AdminCompositeSearch, { useAdminCompositeSearch } from '@/components/admin/CompositeSearch';
+import type { AdminSearchOption } from '@/components/admin/CompositeSearch/utils';
 import type { InvoiceSchemaType } from '@fastgpt/global/support/wallet/bill/type';
 import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import { formatStorePrice2Read } from '@fastgpt/global/support/wallet/usage/tools';
@@ -35,12 +34,19 @@ import { InvoiceStatusEnum } from '@fastgpt/global/support/wallet/bill/invoice/c
 import { accountTitleTextStyles } from '@/pageComponents/account/styles';
 import { downloadFetch } from '@/web/common/system/utils';
 
+const invoiceSearchOptions: readonly AdminSearchOption<'username' | 'teamId' | 'teamName'>[] = [
+  { value: 'username', label: '用户名', placeholder: '搜索用户名' },
+  { value: 'teamId', label: '团队 ID', placeholder: '搜索团队 ID', exactObjectId: true },
+  { value: 'teamName', label: '团队名', placeholder: '搜索团队名' }
+];
+
 const InvoiceManageTable = () => {
-  const [search, setSearch] = useState<string>();
   // 保存选中记录的快照，避免列表刷新、排序或翻页后查找不到弹窗数据。
   const [uploadInvoiceData, setUploadInvoiceData] = useState<InvoiceSchemaType>();
   const [invoiceDetailData, setInvoiceDetailData] = useState<InvoiceSchemaType>();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const { searchField, inputValue, isInvalid, searchParams, onFieldChange, onInputChange } =
+    useAdminCompositeSearch({ options: invoiceSearchOptions });
 
   const {
     data: invoices,
@@ -52,10 +58,8 @@ const InvoiceManageTable = () => {
   } = usePagination(getInvoiceList, {
     defaultPageSize: 20,
     pageSizeCacheKey: 'users-invoice-list',
-    params: {
-      search
-    },
-    refreshDeps: [search],
+    params: searchParams,
+    refreshDeps: [searchParams],
     scrollContainerRef
   });
 
@@ -74,16 +78,14 @@ const InvoiceManageTable = () => {
           开票管理
         </Box>
         <Box flexGrow={1}></Box>
-        <InputGroup w={['100%', '250px']} h={'36px'}>
-          <InputLeftElement h={'full'}>
-            <MyIcon name="common/searchLight" w={4} color={'myGray.400'} />
-          </InputLeftElement>
-          <Input
-            placeholder="请输入用户名，回车搜索"
-            h={'36px'}
-            onChange={(e) => setSearch(e.target.value)}
-          ></Input>
-        </InputGroup>
+        <AdminCompositeSearch
+          options={invoiceSearchOptions}
+          field={searchField}
+          value={inputValue}
+          isInvalid={isInvalid}
+          onFieldChange={onFieldChange}
+          onValueChange={onInputChange}
+        />
       </Flex>
 
       <FixedTableContainer

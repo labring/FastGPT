@@ -5,4 +5,4 @@ import type {
 } from '@fastgpt/global/openapi/admin/wallet/pay/api';
 
 export const getPays = (data: GetPaysBodyType) =>
-  POST<GetPaysResponseType>('/proApi/admin/wallet/pay/getPays', data);
+  POST<GetPaysResponseType>('/proApi/admin/wallet/pay/getPays', data, { maxQuantity: 1 });

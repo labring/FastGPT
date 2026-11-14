@@ -1,4 +1,6 @@
 import z from 'zod';
+import { ObjectIdSchema } from '../../../common/type/mongo';
+import { optionalEmptyToUndefined } from '../../../common/zod';
 import { PaginationResponseSchema, createPaginationSchema } from '../../api';
 import { UserStatusEnum } from '../../../support/user/constant';
 import { TeamMemberNameSchema } from '../../../support/user/team/memberName';
@@ -44,7 +46,7 @@ export type UserItemType = z.infer<typeof UserItemSchema>;
  * API: 获取用户列表
  * Route: POST /proApi/admin/user/getUsers
  * Method: POST
- * Description: 分页获取用户列表及各团队成员名、部门路径，支持按用户名搜索与活跃、待激活、禁用、注销状态过滤
+ * Description: 分页获取用户列表及各团队成员名、部门路径，支持按用户名模糊搜索、用户ID精确搜索与活跃、待激活、禁用、注销状态过滤
  * Tags: ['Admin', 'Users', 'Read']
  * ============================================================================ */
 
@@ -59,6 +61,9 @@ export const GetUsersBodySchema = createPaginationSchema({
     .max(100)
     .optional()
     .meta({ description: '搜索用户名（支持模糊匹配）' }),
+  userId: optionalEmptyToUndefined(ObjectIdSchema).meta({
+    description: '用户ID（精确匹配）'
+  }),
   statuses: z
     .array(AdminUserStatusFilterEnum)
     .optional()

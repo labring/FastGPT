@@ -11,7 +11,7 @@ export const AdminPlanPath: OpenAPIPath = {
   '/proApi/admin/wallet/plan/getPlans': {
     post: {
       summary: '获取套餐列表',
-      description: '分页获取套餐订阅列表，支持按用户名搜索',
+      description: '分页获取套餐订阅列表，支持按团队所有者用户名、团队名称模糊搜索及团队ID精确搜索',
       tags: [DevApiTagsMap.adminPlans],
       requestBody: {
         content: {
