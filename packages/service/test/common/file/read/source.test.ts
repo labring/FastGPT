@@ -79,6 +79,23 @@ describe('common/file/read/source', () => {
     });
   });
 
+  it('S3 source 透传消费侧读取限制，并在抛错时销毁流', async () => {
+    const stream = Readable.from([Buffer.from('too large')]);
+    const source = createS3FileSource({
+      sizeBytes: 1,
+      metadata: {},
+      getStream: async () => stream
+    });
+    const onReadBytes = vi.fn(() => {
+      throw new Error('consumer size limit');
+    });
+    await expect(
+      source.materialize({ signal: new AbortController().signal, onReadBytes })
+    ).rejects.toThrow('consumer size limit');
+    expect(onReadBytes).toHaveBeenCalledWith(9);
+    expect(stream.destroyed).toBe(true);
+  });
+
   it('可信 File Ref filename 优先于远端 Content-Disposition', async () => {
     mockReadExternalFileBuffer.mockResolvedValue({
       buffer: Buffer.from('content'),

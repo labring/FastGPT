@@ -50,7 +50,21 @@ Use `{{key}}` to reference variables. For example:
 
 ### Body
 
-Only takes effect with certain request types.
+#### Forward uploaded files with form-data
+
+Use `POST`, `PUT`, or `PATCH` and select `form-data` for the Body. Each row supports **Text** or **File**:
+
+- Text fields accept text and workflow variables.
+- File fields reference a file URL registered in the current workflow, such as the start node's `userFiles` output or a file variable. A URL array produces repeated file parts with the same field name.
+- Files are sent as binary data with their filename and MIME type. Execution details show filename, type, and size.
+
+Workflow file authorization, file count, and per-file size limits apply. File bytes and text also share the `SERVICE_REQUEST_MAX_CONTENT_LENGTH` request budget, in MB; the complete encoded multipart request must fit this limit too. An administrator can adjust this existing setting for larger uploads.
+
+File reading and sending share the node timeout. Stopping the workflow cancels a pending read or request. The receiving service must accept multipart uploads; configure its required authentication, form fields, and upload policy separately.
+
+The system generates the multipart Content-Type boundary and Content-Length automatically.
+
+#### JSON Body
 
 Write a custom JSON body and use `{{key}}` to reference variables. For example:
 
