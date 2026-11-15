@@ -240,4 +240,44 @@ describe('browser session pre-refresh coordination', () => {
       'x-fastgpt-session-context': 'user:new-device.1'
     });
   });
+  it.each(['login', 'team'] as const)(
+    'does not attach new %s requests to prior-epoch status initialization',
+    async (change) => {
+      let release!: (value: { session: SessionLifecycle }) => void;
+      const coordinator = new SessionCoordinator({
+        now: () => 0,
+        request: () =>
+          new Promise((resolve) => {
+            release = resolve;
+          })
+      });
+      coordinator.observe(lifecycle());
+      const oldStatus = coordinator.synchronize();
+      const oldRejection = expect(oldStatus).rejects.toThrow('context changed');
+      if (change === 'login') coordinator.stop();
+      coordinator.observe(
+        {
+          ...lifecycle(),
+          sessionId: change === 'login' ? 'user:new-device' : 'user:device',
+          contextVersion: 2
+        },
+        { login: change === 'login' }
+      );
+      let ready = false;
+      const next = coordinator.beforeRequest().then(
+        () => {
+          ready = true;
+        },
+        () => {}
+      );
+      try {
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        expect(ready).toBe(true);
+      } finally {
+        release({ session: lifecycle() });
+        await oldRejection;
+        await next;
+      }
+    }
+  );
 });

@@ -1,3 +1,4 @@
+import { fetchWithSession } from '@fastgpt/web/common/auth/session';
 import type {
   SandboxDownloadBody,
   SandboxCheckExistBody,
@@ -45,12 +46,16 @@ const normalizeSandboxRequest = <T extends SandboxRawTargetRequest>(data: T): T 
 /**
  * 下载文件或目录（强制下载）
  */
-const fetchSandboxDownloadResponse = (data: SandboxDownloadClientBody) =>
-  fetch('/api/core/ai/sandbox/download', {
+const fetchSandboxDownloadResponse = (data: SandboxDownloadClientBody) => {
+  // 分享外链已有独立凭证，不依赖当前登录；个人沙盒统一使用 Session 续约传输。
+  const hasShareAuth = Boolean(data.outLinkAuthData?.shareId && data.outLinkAuthData.outLinkUid);
+  const request = hasShareAuth ? fetch : fetchWithSession;
+  return request('/api/core/ai/sandbox/download', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(normalizeSandboxRequest(data))
   });
+};
 
 export const downloadSandbox = async (data: SandboxDownloadClientBody) => {
   const response = await fetchSandboxDownloadResponse(data);

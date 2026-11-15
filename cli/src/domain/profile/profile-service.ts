@@ -1,3 +1,4 @@
+import { withCredentialLock } from '../../infra/secrets/credential-lock';
 import { DEFAULT_PROFILE_NAME, type ConfigRepository } from '../../infra/config/config-repository';
 import { assertValidProfileName } from '../../shared/crypto';
 import { CliArgumentError } from '../../shared/errors';
@@ -69,31 +70,37 @@ export function createProfileService({
         );
       }
       const profileName = assertValidProfileName(targetName);
-      const { config, warnings } = await configRepo.read();
+      return withCredentialLock({
+        configDir: configRepo.getConfigDir(),
+        fn: async (assertValid) => {
+          const { config, warnings } = await configRepo.read();
 
-      if (!config.profiles[profileName]) {
-        throw new CliArgumentError(
-          `Profile "${profileName}" does not exist.`,
-          { availableProfiles: Object.keys(config.profiles) },
-          `Run "fastgpt login --profile ${profileName}" to create it.`
-        );
-      }
+          if (!config.profiles[profileName]) {
+            throw new CliArgumentError(
+              `Profile "${profileName}" does not exist.`,
+              { availableProfiles: Object.keys(config.profiles) },
+              `Run "fastgpt login --profile ${profileName}" to create it.`
+            );
+          }
 
-      await configRepo.write({
-        ...config,
-        currentProfile: profileName
+          assertValid();
+          await configRepo.write({
+            ...config,
+            currentProfile: profileName
+          });
+
+          return {
+            changed: true,
+            message: `Switched current profile to "${profileName}".`,
+            data: {
+              currentProfile: profileName,
+              baseUrl: config.profiles[profileName].baseUrl,
+              authType: config.profiles[profileName].authType ?? null
+            },
+            warnings
+          };
+        }
       });
-
-      return {
-        changed: true,
-        message: `Switched current profile to "${profileName}".`,
-        data: {
-          currentProfile: profileName,
-          baseUrl: config.profiles[profileName].baseUrl,
-          authType: config.profiles[profileName].authType ?? null
-        },
-        warnings
-      };
     },
 
     listConfig: async () => {
@@ -132,27 +139,33 @@ export function createProfileService({
 
     setConfigValue: async ({ global, key, rawValue }) => {
       const descriptor = getConfigDescriptor(key);
-      const { config, warnings } = await configRepo.read();
-      const profileName = resolveProfileName(config.currentProfile, global.profile);
-      const { nextConfig, value } = descriptor.write({
-        config,
-        profileName,
-        rawValue,
-        global
+      return withCredentialLock({
+        configDir: configRepo.getConfigDir(),
+        fn: async (assertValid) => {
+          const { config, warnings } = await configRepo.read();
+          const profileName = resolveProfileName(config.currentProfile, global.profile);
+          const { nextConfig, value } = descriptor.write({
+            config,
+            profileName,
+            rawValue,
+            global
+          });
+
+          assertValid();
+          await configRepo.write(nextConfig);
+
+          return {
+            changed: true,
+            message: `Updated ${key} to ${String(value)}.`,
+            data: {
+              profile: profileName,
+              key: descriptor.key,
+              value
+            },
+            warnings
+          };
+        }
       });
-
-      await configRepo.write(nextConfig);
-
-      return {
-        changed: true,
-        message: `Updated ${key} to ${String(value)}.`,
-        data: {
-          profile: profileName,
-          key: descriptor.key,
-          value
-        },
-        warnings
-      };
     }
   };
 }

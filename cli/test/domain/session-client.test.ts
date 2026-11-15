@@ -1,7 +1,8 @@
+import { createProfileService } from '../../src/domain/profile/profile-service';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createFileConfigRepository } from '../../src/infra/config/config-repository';
 import { createDefaultSecretStore } from '../../src/infra/secrets/secret-store';
 import { createFastGptHttpClient } from '../../src/infra/http/fastgpt-http-client';
@@ -55,6 +56,87 @@ describe('CLI persisted dual-token session client', () => {
     for (const directory of directories.splice(0))
       await rm(directory, { recursive: true, force: true });
   });
+
+  it.each(['switch', 'baseUrl'] as const)(
+    'serializes profile %s with a delayed automatic refresh',
+    async (mutation) => {
+      const stores = await makeStores();
+      const { config } = await stores.configRepo.read();
+      await stores.configRepo.write({
+        ...config,
+        profiles: {
+          ...config.profiles,
+          prod: { baseUrl: 'https://prod.fastgpt.test/api', updatedAt: Date.now() }
+        }
+      });
+      const auth = initial();
+      await stores.secretStore.setSecret('default', encodeSessionCredential(auth));
+      let release!: () => void;
+      let arrived!: () => void;
+      const held = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      const started = new Promise<void>((resolve) => {
+        arrived = resolve;
+      });
+      const next = {
+        token: `at.user:device.1.2.${'c'.repeat(43)}`,
+        refreshToken: `rt.user:device.1.2.${'d'.repeat(43)}`,
+        session: { ...auth.session, generation: 2, accessExpiresAt: Date.now() + 900_000 }
+      };
+      const client = createSessionAwareClient({
+        ...stores,
+        profileName: 'default',
+        client: createFastGptHttpClient({
+          baseUrl: 'https://fastgpt.test/api',
+          cliVersion: 'test',
+          fetchFn: async (input) => {
+            if ((input as Request).url.endsWith('/session/refresh')) {
+              arrived();
+              await held;
+              return Response.json({ code: 200, data: { status: 'rotated', ...next } });
+            }
+            return Response.json({ code: 200, data: { ok: true } });
+          }
+        })
+      });
+      const reading = vi.spyOn(stores.configRepo, 'read');
+      const refreshing = client.request({ method: 'GET', path: '/whoami', auth });
+      await started;
+      const priorReads = reading.mock.calls.length;
+      const service = createProfileService({ configRepo: stores.configRepo, env: {} });
+      const changing =
+        mutation === 'switch'
+          ? service.switchProfile({ targetName: 'prod' })
+          : service.setConfigValue({
+              global: {
+                allowInsecureHttp: false,
+                insecure: false,
+                format: 'json',
+                quiet: true,
+                color: false,
+                raw: false
+              },
+              key: 'baseUrl',
+              rawValue: 'https://updated.fastgpt.test/api'
+            });
+      try {
+        // 配置修改也必须先取得锁，不能在刷新等待网络时读出即将过期的整份快照。
+        expect(reading.mock.calls.length).toBe(priorReads);
+      } finally {
+        release();
+        await Promise.allSettled([refreshing, changing]);
+        reading.mockRestore();
+      }
+      await expect(refreshing).resolves.toEqual({ ok: true });
+      await expect(changing).resolves.toMatchObject({ changed: true });
+      const saved = (await stores.configRepo.read()).config;
+      expect(mutation === 'switch' ? saved.currentProfile : saved.profiles.default.baseUrl).toBe(
+        mutation === 'switch' ? 'prod' : 'https://updated.fastgpt.test/api'
+      );
+      expect(saved.profiles.default.accessExpiresAt).toBe(next.session.accessExpiresAt);
+    }
+  );
 
   it('re-reads under a shared file lock so concurrent clients refresh once and save one complete pair', async () => {
     const stores = await makeStores();

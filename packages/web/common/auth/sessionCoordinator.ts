@@ -147,8 +147,12 @@ export class SessionCoordinator {
         next &&
         (this.session.sessionId !== next.sessionId ||
           this.session.contextVersion !== next.contextVersion))
-    )
+    ) {
       this.epoch++;
+      // 旧请求仍由自己的快照拒绝，但新上下文不能继续等待旧登录的初始化或刷新。
+      this.initializePromise = undefined;
+      this.refreshPromise = undefined;
+    }
     if (login) {
       this.stopped = false;
       this.stoppedContext = undefined;
