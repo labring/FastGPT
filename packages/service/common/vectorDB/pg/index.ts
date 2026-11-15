@@ -5,8 +5,9 @@ import type { VectorControllerType } from '../type';
 import dayjs from 'dayjs';
 import { getLogger, LogCategories } from '../../logger';
 import { buildPgVectorRecallQuery } from './utils';
-import { SQL_FULL_TEXT_COLUMN, SQL_FULL_TEXT_INDEX } from '../fullText/utils';
+import { SQL_FULL_TEXT_COLUMN } from '../fullText/utils';
 import { insertPostgresVectorFullTextRows } from '../fullText/postgres';
+import { startSqlFullTextIndexBuild } from '../fullText/controller';
 
 const logger = getLogger(LogCategories.INFRA.POSTGRES);
 
@@ -41,17 +42,7 @@ export class PgVectorCtrl implements VectorControllerType {
       await PgClient.query(
         `CREATE INDEX CONCURRENTLY IF NOT EXISTS create_time_index ON ${DatasetVectorTableName} USING btree(createtime);`
       );
-      try {
-        await PgClient.query(`
-          CREATE EXTENSION IF NOT EXISTS pg_search;
-          CREATE INDEX IF NOT EXISTS ${SQL_FULL_TEXT_INDEX} ON ${DatasetVectorTableName} USING paradedb (id, (${SQL_FULL_TEXT_COLUMN}::pdb.whitespace), (team_id::pdb.literal), (dataset_id::pdb.literal), (collection_id::pdb.literal));
-        `);
-      } catch (error) {
-        logger.warn(
-          'Postgres full-text index initialization skipped; native full-text requires pg_search and migration readiness',
-          { error }
-        );
-      }
+      startSqlFullTextIndexBuild('pg');
       // 10w rows
       // await PgClient.query(`
       //   ALTER TABLE modeldata SET (

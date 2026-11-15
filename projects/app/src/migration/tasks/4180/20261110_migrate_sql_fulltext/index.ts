@@ -52,7 +52,7 @@ const CheckpointSchema = z.object({
  * 1. prepare：准备并核验当前 SQL 检索库的词串列、全文索引与物理目标元数据，迁移未完成前保持旧 Mongo 兼容读取；
  * 2. preflight：每次执行重新全量只读预检，发现异常先阻断写入；
  * 3. scan：按 _id 游标幂等回填 NULL 词串，保留已有向量、业务主数据与旧 Mongo 全文表；
- * 4. validation：全量分批校验所有有效索引词串已完整一致后，标记当前物理 SQL 目标就绪并平滑切换读取。
+ * 4. validation：全量分批校验所有有效索引词串完整一致后标记目标就绪，读取位置仍由 DATASET_FULLTEXT_PROVIDER 显式指定。
  */
 export const migrateSqlFullTextMigration = async (
   context: SystemMigrationContext

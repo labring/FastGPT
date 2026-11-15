@@ -1,4 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+const startSqlFullTextIndexBuild = vi.hoisted(() => vi.fn());
+vi.mock('@fastgpt/service/common/vectorDB/fullText/controller', () => ({
+  startSqlFullTextIndexBuild
+}));
 import { OgClient } from '@fastgpt/service/common/vectorDB/opengauss/controller';
 import { OpenGaussVectorCtrl } from '@fastgpt/service/common/vectorDB/opengauss';
 
@@ -21,21 +26,10 @@ describe('OpenGaussVectorCtrl.init', () => {
     expect(OgClient.query).toHaveBeenCalledWith(
       expect.stringContaining('ALTER TABLE modeldata ADD COLUMN fulltext_tokens TEXT;')
     );
-    expect(OgClient.query).toHaveBeenCalledWith(
-      expect.stringContaining(
-        'CREATE INDEX modeldata_fulltext ON modeldata USING bm25(fulltext_tokens);'
-      )
-    );
-
-    vi.mocked(OgClient.query)
-      .mockReset()
-      .mockImplementation(async (sql) => {
-        if (String(sql).includes('USING bm25')) {
-          throw new Error('bm25 access method unsupported');
-        }
-        return { rows: [] } as any;
-      });
-    await expect(new OpenGaussVectorCtrl().init()).resolves.toBeUndefined();
+    expect(startSqlFullTextIndexBuild).toHaveBeenCalledWith('opengauss');
+    expect(
+      vi.mocked(OgClient.query).mock.calls.some(([sql]) => String(sql).includes('USING bm25'))
+    ).toBe(false);
   });
 });
 

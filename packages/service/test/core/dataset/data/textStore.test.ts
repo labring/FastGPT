@@ -7,6 +7,25 @@ const mockJiebaSplit = vi.hoisted(() => vi.fn());
 const mockSearchSqlFullText = vi.hoisted(() => vi.fn());
 const mockIsSqlFullTextTargetReady = vi.hoisted(() => vi.fn());
 const mockMilvusSearch = vi.hoisted(() => vi.fn());
+const fullTextConfig = vi.hoisted(() => ({
+  provider: undefined as 'mongo' | 'pg' | 'oceanbase' | 'seekdb' | 'opengauss' | undefined,
+  dualWrite: true
+}));
+vi.mock('@fastgpt/service/env', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@fastgpt/service/env')>();
+  return {
+    ...actual,
+    serviceEnv: {
+      ...actual.serviceEnv,
+      get DATASET_FULLTEXT_PROVIDER() {
+        return fullTextConfig.provider;
+      },
+      get DATASET_FULLTEXT_DUAL_WRITE() {
+        return fullTextConfig.dualWrite;
+      }
+    }
+  };
+});
 
 vi.mock('@fastgpt/service/core/dataset/data/dataTextSchema', () => ({
   MongoDatasetDataText: {
@@ -51,6 +70,8 @@ const loadTextStore = async (provider: 'milvus' | 'pg' | 'oceanbase' | 'seekdb' 
 };
 
 beforeEach(() => {
+  fullTextConfig.provider = undefined;
+  fullTextConfig.dualWrite = true;
   mockAggregate
     .mockReset()
     .mockResolvedValue([{ dataId: '68ad85a7463006c963799a05', collectionId: 'col1', score: 1.5 }]);
@@ -88,7 +109,7 @@ describe('textStore', () => {
   });
 
   it.each(['pg', 'oceanbase', 'seekdb', 'opengauss'] as const)(
-    'TC-7.3 dispatches to SqlFullTextStore, falls back to Mongo before cutover, and delegates to SQL after cutover when provider=%s',
+    'TC-7.3 keeps %s on Mongo until explicitly selected and supports manual rollback',
     async (provider) => {
       const { getFullTextStore, SqlFullTextStore } = await loadTextStore(provider);
       const store = getFullTextStore();
@@ -103,6 +124,12 @@ describe('textStore', () => {
         forbidCollectionIdList: []
       };
 
+      // 即使迁移已经完成，默认仍读 Mongo，管理员显式选择 provider 才允许切读。
+      await store.search(props);
+      expect(mockSearchSqlFullText).not.toHaveBeenCalled();
+      expect(mockIsSqlFullTextTargetReady).not.toHaveBeenCalled();
+      mockAggregate.mockClear();
+      fullTextConfig.provider = provider;
       mockIsSqlFullTextTargetReady.mockResolvedValueOnce(false);
       const fallbackItems = await store.search(props);
       expect(mockSearchSqlFullText).not.toHaveBeenCalled();
@@ -127,6 +154,13 @@ describe('textStore', () => {
           score: 2.5
         }
       ]);
+
+      fullTextConfig.provider = 'mongo';
+      mockAggregate.mockClear();
+      mockSearchSqlFullText.mockClear();
+      await store.search(props);
+      expect(mockAggregate).toHaveBeenCalledOnce();
+      expect(mockSearchSqlFullText).not.toHaveBeenCalled();
     }
   );
 
@@ -194,5 +228,56 @@ describe('textStore', () => {
       { teamId: 't1', datasetId: { $in: ['ds1'] }, collectionId: { $in: ['c1'] } },
       { session }
     );
+  });
+
+  it('skips Mongo compatibility writes and deletes when native reads disable dual write', async () => {
+    const { getFullTextStore } = await loadTextStore('pg');
+    fullTextConfig.provider = 'pg';
+    fullTextConfig.dualWrite = false;
+    const store = getFullTextStore();
+    await store.write([
+      { dataId: 'd', teamId: 't', datasetId: 'ds', collectionId: 'c', fullText: 'text' }
+    ]);
+    await store.deleteByDataId('d');
+    await store.deleteByDatasetIds({ teamId: 't', datasetIds: ['ds'] });
+    await store.deleteByCollectionIds({ teamId: 't', datasetIds: ['ds'], collectionIds: ['c'] });
+    expect(mockJiebaSplit).not.toHaveBeenCalled();
+    expect(mockBulkWrite).not.toHaveBeenCalled();
+    expect(mockDeleteMany).not.toHaveBeenCalled();
+
+    await store.search({
+      teamId: 't',
+      datasetIds: ['ds'],
+      query: 'q',
+      limit: 10,
+      forbidCollectionIdList: []
+    });
+    expect(mockSearchSqlFullText).toHaveBeenCalledOnce();
+    mockIsSqlFullTextTargetReady.mockResolvedValueOnce(false);
+    await expect(
+      store.search({
+        teamId: 't',
+        datasetIds: ['ds'],
+        query: 'q',
+        limit: 10,
+        forbidCollectionIdList: []
+      })
+    ).rejects.toThrow('dual write is disabled');
+    expect(mockAggregate).not.toHaveBeenCalled();
+  });
+
+  it('continues Mongo primary writes and deletes even when the compatibility switch is off', async () => {
+    const { getFullTextStore } = await loadTextStore('pg');
+    fullTextConfig.provider = 'mongo';
+    fullTextConfig.dualWrite = false;
+    const store = getFullTextStore();
+    await store.write([
+      { dataId: 'd', teamId: 't', datasetId: 'ds', collectionId: 'c', fullText: 'text' }
+    ]);
+    await store.deleteByDataId('d');
+    await store.deleteByDatasetIds({ teamId: 't', datasetIds: ['ds'] });
+    await store.deleteByCollectionIds({ teamId: 't', datasetIds: ['ds'], collectionIds: ['c'] });
+    expect(mockBulkWrite).toHaveBeenCalledOnce();
+    expect(mockDeleteMany).toHaveBeenCalledTimes(3);
   });
 });

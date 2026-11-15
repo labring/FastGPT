@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+
 import { randomUUID } from 'node:crypto';
 import type { SqlFullTextProvider } from '@fastgpt/global/core/dataset/fullText/schema';
 import { Types } from '@fastgpt/service/common/mongo';
@@ -15,6 +16,12 @@ import type {
   SystemMigrationFailedRecord,
   SystemMigrationFailureInput
 } from '@fastgpt/global/migration/schema';
+
+// 本用例验证显式选择原生读取后的业务行为；默认 Mongo 与手动回退由 textStore 用例覆盖。
+vi.mock('@fastgpt/service/common/vectorDB/fullText/config', () => ({
+  getFullTextProvider: () => driver.provider,
+  shouldWriteMongoFullText: () => true
+}));
 
 vi.mock('@/migration/constants', async (importOriginal) => ({
   ...(await importOriginal<object>()),

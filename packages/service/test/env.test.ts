@@ -835,3 +835,25 @@ describe('MILVUS_LANGUAGE_IDENTIFIER', () => {
     expect((serviceEnv as Record<string, unknown>).FULL_TEXT_ENGINE).toBeUndefined();
   });
 });
+
+describe('DATASET_FULLTEXT configuration', () => {
+  afterEach(() => vi.unstubAllEnvs());
+
+  it('defaults to manual provider selection with Mongo compatibility dual write enabled', async () => {
+    vi.stubEnv('DATASET_FULLTEXT_PROVIDER', undefined);
+    vi.stubEnv('DATASET_FULLTEXT_DUAL_WRITE', undefined);
+    const { serviceEnv } = await importServiceEnv();
+    expect(serviceEnv.DATASET_FULLTEXT_PROVIDER).toBeUndefined();
+    expect(serviceEnv.DATASET_FULLTEXT_DUAL_WRITE).toBe(true);
+  });
+
+  it('parses the explicit provider and false switch without string truthiness', async () => {
+    vi.stubEnv('DATASET_FULLTEXT_PROVIDER', 'pg');
+    vi.stubEnv('DATASET_FULLTEXT_DUAL_WRITE', 'false');
+    const { serviceEnv } = await importServiceEnv();
+    expect(serviceEnv.DATASET_FULLTEXT_PROVIDER).toBe('pg');
+    expect(serviceEnv.DATASET_FULLTEXT_DUAL_WRITE).toBe(false);
+    vi.stubEnv('DATASET_FULLTEXT_PROVIDER', 'unknown');
+    await expect(importServiceEnv()).rejects.toThrow('DATASET_FULLTEXT_PROVIDER');
+  });
+});

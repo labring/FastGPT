@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
 import { DatasetSearchModeEnum, SearchScoreTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import type { FullTextSearchProps } from '@fastgpt/service/common/vectorDB/type';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
@@ -153,6 +154,12 @@ import { searchDatasetData } from '../../../../core/dataset/search/defaultRecall
 import { reRankSearchResults } from '../../../../core/dataset/search/defaultRecall/rerank';
 import { filterSearchResultsByScore } from '../../../../core/dataset/search/defaultRecall/result';
 import { fullTextRecall } from '../../../../core/dataset/search/defaultRecall/fullTextRecall';
+
+// 本用例验证显式选择原生读取后的业务行为；默认 Mongo 与手动回退由 textStore 用例覆盖。
+vi.mock('@fastgpt/service/common/vectorDB/fullText/config', () => ({
+  getFullTextProvider: () => 'pg',
+  shouldWriteMongoFullText: () => true
+}));
 
 afterEach(() => {
   serviceEnv.MULTIPLE_DATA_TO_BASE64 = originalMultipleDataToBase64;

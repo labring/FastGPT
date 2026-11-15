@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+
 import { Client, Pool } from 'pg';
 import qualityDatasets from './quality.datasets.json';
 
@@ -35,6 +36,12 @@ import { systemMigrations } from '@/migration/registry';
 import { createSystemMigrationRunner } from '@/migration/runner';
 import { enqueueManualMigration, ensureMigrationStates } from '@/migration/entity';
 import { MongoSystemMigrationState } from '@/migration/mongoSchema';
+
+// 本用例验证显式选择原生读取后的业务行为；默认 Mongo 与手动回退由 textStore 用例覆盖。
+vi.mock('@fastgpt/service/common/vectorDB/fullText/config', () => ({
+  getFullTextProvider: () => 'pg',
+  shouldWriteMongoFullText: () => true
+}));
 
 type CorpusDocument = { _id: string; title: string; text: string };
 type Query = { _id: string; text: string };

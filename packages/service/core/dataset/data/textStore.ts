@@ -11,6 +11,10 @@ import type {
 import { getMilvusFullTextStore } from '../../../common/vectorDB/milvus/fullText';
 import { isSqlFullTextTargetReady, searchSqlFullText } from '../fullText/sql/store';
 import { MongoDatasetDataText } from './dataTextSchema';
+import {
+  getFullTextProvider,
+  shouldWriteMongoFullText
+} from '../../../common/vectorDB/fullText/config';
 
 export type {
   FullTextStore,
@@ -143,23 +147,54 @@ export class MongoFullTextStore implements FullTextStore {
 
 /**
  * SQL 向量库（PG / OceanBase / SeekDB / openGauss）平滑切换全文实现。
- * 兼容窗口内继续继承维护 MongoDatasetDataText；仅当当前 SQL 物理目标已完成回填与验收时走原生 SQL 检索，
- * 未完成迁移、预检/验收失败或目标变更时自动回退到 Mongo $text 兼容读取。
+ * 默认读 Mongo；管理员显式指定当前 SQL provider 且目标已通过验收时才读原生全文。
+ * 双写开启时允许就绪失效后回退 Mongo；关闭双写后不能回退到已停止追平的旧全文。
  */
 export class SqlFullTextStore extends MongoFullTextStore {
   override async search(props: FullTextSearchProps): Promise<FullTextSearchItem[]> {
+    if (getFullTextProvider() === 'mongo') return super.search(props);
     if (await isSqlFullTextTargetReady()) {
       return searchSqlFullText(props);
     }
+    if (!shouldWriteMongoFullText()) {
+      throw new Error(
+        'SQL full-text target is not ready and Mongo full-text dual write is disabled'
+      );
+    }
     return super.search(props);
+  }
+
+  /** Mongo 主读始终写入；原生读可关闭兼容写入，向量通道的同行词串写入不受影响。 */
+  override async write(props: FullTextWriteProps[], session?: ClientSession): Promise<void> {
+    if (shouldWriteMongoFullText()) await super.write(props, session);
+  }
+
+  /** 兼容写删使用同一开关，开启时透传上层事务。 */
+  override async deleteByDataId(dataId: string, session?: ClientSession): Promise<void> {
+    if (shouldWriteMongoFullText()) await super.deleteByDataId(dataId, session);
+  }
+
+  override async deleteByDatasetIds(
+    props: { teamId: string; datasetIds: string[] },
+    session?: ClientSession
+  ): Promise<void> {
+    if (shouldWriteMongoFullText()) await super.deleteByDatasetIds(props, session);
+  }
+
+  override async deleteByCollectionIds(
+    props: { teamId: string; datasetIds: string[]; collectionIds: string[] },
+    session?: ClientSession
+  ): Promise<void> {
+    if (shouldWriteMongoFullText()) await super.deleteByCollectionIds(props, session);
   }
 }
 
 let fullTextStore: FullTextStore | undefined;
 
-/** 单例按配置的检索库分发：Milvus 走 BM25，SQL 向量库走带就绪屏障的 SqlFullTextStore。 */
+/** 先核验显式读取 provider 与向量库匹配，再按物理存储分发单例；SQL 内部处理手动读路由。 */
 export const getFullTextStore = (): FullTextStore => {
   if (fullTextStore) return fullTextStore;
+  getFullTextProvider();
   fullTextStore = getVectorType() === 'milvus' ? getMilvusFullTextStore() : new SqlFullTextStore();
   return fullTextStore;
 };

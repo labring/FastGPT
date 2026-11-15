@@ -1,4 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+const startSqlFullTextIndexBuild = vi.hoisted(() => vi.fn());
+vi.mock('@fastgpt/service/common/vectorDB/fullText/controller', () => ({
+  startSqlFullTextIndexBuild
+}));
 import { ObVectorCtrl } from '@fastgpt/service/common/vectorDB/oceanbase';
 
 const { query, insertBoundRows } = vi.hoisted(() => ({ query: vi.fn(), insertBoundRows: vi.fn() }));
@@ -29,19 +34,8 @@ describe.each(['oceanbase', 'seekdb'] as const)('ObVectorCtrl (%s)', (type) => {
         'fulltext_tokens LONGTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL'
       )
     );
-    expect(query).toHaveBeenCalledWith(
-      expect.stringContaining(
-        'CREATE FULLTEXT INDEX modeldata_fulltext ON modeldata(fulltext_tokens) WITH PARSER SPACE PARSER_PROPERTIES=(min_token_size=1)'
-      )
-    );
-
-    query.mockReset().mockImplementation(async (sql: string) => {
-      if (sql.includes('CREATE FULLTEXT INDEX')) {
-        throw new Error('fulltext parser unsupported');
-      }
-      return [[]];
-    });
-    await expect(new ObVectorCtrl({ type }).init()).resolves.toBeUndefined();
+    expect(startSqlFullTextIndexBuild).toHaveBeenCalledWith(type);
+    expect(query.mock.calls.some(([sql]) => String(sql).includes('CREATE FULLTEXT'))).toBe(false);
   });
 
   it.each([undefined, 100])('applies search width %j', async (configured) => {

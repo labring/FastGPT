@@ -4,8 +4,9 @@ import { OgClient, connectOg } from './controller';
 import type { VectorControllerType } from '../type';
 import dayjs from 'dayjs';
 import { getLogger, LogCategories } from '../../logger';
-import { SQL_FULL_TEXT_COLUMN, SQL_FULL_TEXT_INDEX } from '../fullText/utils';
+import { SQL_FULL_TEXT_COLUMN } from '../fullText/utils';
 import { insertPostgresVectorFullTextRows } from '../fullText/postgres';
+import { startSqlFullTextIndexBuild } from '../fullText/controller';
 
 const logger = getLogger(LogCategories.INFRA.VECTOR);
 
@@ -45,22 +46,7 @@ export class OpenGaussVectorCtrl implements VectorControllerType {
       await OgClient.query(
         `CREATE INDEX CONCURRENTLY IF NOT EXISTS create_time_index ON ${DatasetVectorTableName} USING btree(createtime);`
       );
-      try {
-        const fullTextIndex = await OgClient.query(
-          `SELECT 1 FROM pg_class c WHERE c.relname=$1 AND c.relnamespace=(SELECT relnamespace FROM pg_class WHERE oid='${DatasetVectorTableName}'::regclass)`,
-          [SQL_FULL_TEXT_INDEX]
-        );
-        if (!fullTextIndex.rows.length) {
-          await OgClient.query(
-            `CREATE INDEX ${SQL_FULL_TEXT_INDEX} ON ${DatasetVectorTableName} USING bm25(${SQL_FULL_TEXT_COLUMN});`
-          );
-        }
-      } catch (error) {
-        logger.warn(
-          'openGauss full-text index initialization skipped; native full-text requires DataVec BM25 and migration readiness',
-          { error }
-        );
-      }
+      startSqlFullTextIndexBuild('opengauss');
 
       logger.info('openGauss DataVec vector initialization completed');
     } catch (error) {

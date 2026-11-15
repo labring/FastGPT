@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+
 import { Client, Pool } from 'pg';
 import { createMysqlFullTextTestTarget } from '@fastgpt/service/test/integrations/vectorDB/fullText/client';
 import type { SqlFullTextProvider } from '@fastgpt/global/core/dataset/fullText/schema';
@@ -60,6 +61,12 @@ import { systemMigrations } from '@/migration/registry';
 import { createSystemMigrationRunner } from '@/migration/runner';
 import { enqueueManualMigration, ensureMigrationStates } from '@/migration/entity';
 import { MongoSystemMigrationState } from '@/migration/mongoSchema';
+
+// 本用例验证显式选择原生读取后的业务行为；默认 Mongo 与手动回退由 textStore 用例覆盖。
+vi.mock('@fastgpt/service/common/vectorDB/fullText/config', () => ({
+  getFullTextProvider: () => target?.provider ?? 'pg',
+  shouldWriteMongoFullText: () => true
+}));
 
 describe.skipIf(!target)('selected SQL database real full-text migration', () => {
   const teamId = new Types.ObjectId().toString();

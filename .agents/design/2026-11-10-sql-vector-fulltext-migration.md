@@ -1,10 +1,35 @@
 # PG、OceanBase、SeekDB、OpenGauss 原生全文检索适配与数据迁移方案
 
-> 状态：四种 SQL 检索库统一适配各自原生全文检索并接入平滑切读与兼容期双写保留；新装与升级由各向量控制器 `init()` 自动建齐基础表、`fulltext_tokens` 列和向量索引（全文索引/扩展创建置于非阻塞 `try / catch`，避免旧镜像缺扩展阻断启动），存量升级由手动确认触发的升级任务 `20261110_migrate_sql_fulltext`（`manual: true`）在集群旧节点全部升级排空后顺序完成结构核验、只读预检、分批回填与全量完整性校验，校验通过后写入 `dataset_sql_fulltext_targets` 标记并将 `SqlFullTextStore` 读取从旧 Mongo `$text` 平滑切换至 SQL 原生全文检索，兼容期内继续维护 `dataset_data_texts` 双写/双删及其索引。更新日期：2026-11-13。
+> 状态：四种 SQL 检索库统一适配各自原生全文检索并接入平滑切读与兼容期双写保留；新装与升级由各向量控制器 `init()` 自动建齐基础表、`fulltext_tokens` 列和向量索引（全文索引/扩展通过后台 Promise 构建，启动不等待；失败记录告警，迁移准备阶段仍严格校验），存量升级由手动确认触发的升级任务 `20261110_migrate_sql_fulltext`（`manual: true`）在集群旧节点全部升级排空后顺序完成结构核验、只读预检、分批回填与全量完整性校验，校验通过后写入 `dataset_sql_fulltext_targets` 就绪标记；SQL 部署默认仍读 Mongo，由 `DATASET_FULLTEXT_PROVIDER` 显式选择原生读取，兼容期内继续维护 `dataset_data_texts` 双写/双删及其索引。更新日期：2026-11-15。
 >
 > 源码基线：`upstream/main`；工作分支：`yyh/dataset-unified-search`。
 >
 > 范围：四个 SQL 检索 provider 的业务代码改造与生产存量数据迁移。本文件不包含 Milvus / Zilliz 的迁移、集合改造或适配器重构。
+
+## 0. 本轮确定的运行配置（2026-11-15）
+
+全文来源确定为每条 `index.text`（沿用同义词处理和图片空全文规则）。本轮不修改现有候选扩展、去重和 500 条预算。
+
+| 环境变量 | 默认值 | 语义 |
+| --- | --- | --- |
+| `DATASET_FULLTEXT_PROVIDER` | SQL 部署为 `mongo`；Milvus 部署为 `milvus` | 指定读取 provider，可选 `mongo/pg/oceanbase/seekdb/opengauss/milvus`。SQL 原生 provider 必须与当前向量库相同，并通过目标就绪核验；不支持读取其他物理向量库。Milvus 保留原有路径，不支持本轮未回填的 Mongo 切读。 |
+| `DATASET_FULLTEXT_DUAL_WRITE` | `true` | SQL 原生读取期间是否继续维护 Mongo 全文写删。读 `mongo` 时 Mongo 是主读存储，始终维护；SQL 词串始终随向量同行写入，不受该开关影响。此开关不改变 Milvus 原有写删路径。 |
+
+配置通过环境变量加载，修改后应更新所有 App/Pro/训练节点并重启生效，避免集群写策略混用。
+
+```text
+双写、读 Mongo（初始/回退）：DATASET_FULLTEXT_PROVIDER=mongo；DATASET_FULLTEXT_DUAL_WRITE=true
+双写、读 PG（验收后启用）： DATASET_FULLTEXT_PROVIDER=pg；DATASET_FULLTEXT_DUAL_WRITE=true
+结束回退窗口、仅维护原生： DATASET_FULLTEXT_PROVIDER=pg；DATASET_FULLTEXT_DUAL_WRITE=false
+```
+
+迁移成功仅生成目标就绪证据，不修改环境变量。显式选择 SQL 原生读取但目标未就绪/身份失效时，开启双写的部署继续 Mongo 兼容读；关闭双写的部署明确报错，不自动返回陈旧全文。原生查询本身的错误仍上抛，不逐请求静默切库。
+
+关闭 Mongo 双写意味着失去完整的即时回退能力。重新打开双写只能追平后续写入，不能补回关闭期间的数据；必须先从业务数据完整重建并验证 Mongo 全文，才能安全切读 Mongo。兼容表和索引本轮不清理。
+
+启动只等待基础表、词串列和既有必要索引；全文扩展、全文索引与物理元数据由 `startSqlFullTextIndexBuild` 异步准备。启动后台构建与手动迁移共享本进程内同 provider 的在途 prepare Promise；成功或失败后释放，后续迁移仍可重新核验。构建失败记录 provider 与错误告警，不拒绝应用初始化。
+
+异步构建解除应用启动等待，不改变数据库 DDL 的锁语义；PG 当前普通建索引仍可能阻塞 `modeldata` 写入，需按生产规模控制构建时机。
 
 ## 1. 目标与总体决策
 
@@ -13,7 +38,7 @@
 确定采用以下路径：
 
 ```text
-开机 init() 建齐基础表与 fulltext_tokens 列（非阻塞尝试建全文索引） → 新写入同行写向量与词串并保持 Mongo 旧全文双写 → 管理员确认节点升级排空后手动执行 20261110_migrate_sql_fulltext（结构核验 → 全量只读预检 → 分批回填 → 全量完整性校验 → 激活目标就绪标记切读）
+开机 init() 建齐基础表与 fulltext_tokens 列（后台构建全文索引，不等待完成） → 新写入同行写向量与词串并保持 Mongo 旧全文双写 → 管理员确认节点升级排空后手动执行 20261110_migrate_sql_fulltext（结构核验 → 全量只读预检 → 分批回填 → 全量完整性校验 → 登记目标就绪标记；管理员通过环境变量选择读取 provider）
 ```
 
 核心约定：
@@ -190,14 +215,14 @@ SQL 原生召回流程：
 | `projects/app/src/migration/registry.ts` 与 `tasks/<version>/...` | 注册手动触发升级任务 `20261110_migrate_sql_fulltext`（`manual: true`），编排准备、预检、回填、全量验收与切读激活 |
 | global 业务契约与多语言 i18n | SQL 全文 provider / 元数据契约与升级任务多语言文案 |
 
-新装与升级启动时各 SQL 向量控制器 `init()` 优先幂等补齐基础表、`fulltext_tokens` 列与向量索引，并在非阻塞 `try / catch` 中尝试创建全文扩展与全文索引，写入始终同行写向量与外置分词词串，同时在兼容期内继续维护 `dataset_data_texts` 双写/双删；只用于升级迁移的历史文本生成、扫描与恢复编排留在 App migration 目录。兼容期继续保留 `dataset_data_texts` 活动索引。
+新装与升级启动时各 SQL 向量控制器 `init()` 优先幂等补齐基础表、`fulltext_tokens` 列与向量索引，并通过后台 Promise 构建全文扩展与全文索引，写入始终同行写向量与外置分词词串，同时在兼容期内继续维护 `dataset_data_texts` 双写/双删；只用于升级迁移的历史文本生成、扫描与恢复编排留在 App migration 目录。兼容期继续保留 `dataset_data_texts` 活动索引。
 
 ## 6. 运行期平滑切读与兼容期双写策略
 
 运行期通过目标就绪记录 `dataset_sql_fulltext_targets` 控制 `SqlFullTextStore` 的平滑切读，并在兼容窗口内保留 Mongo `dataset_data_texts` 双写/双删与 `$text` 读取兜底：
 
-- **新装与升级启动**：应用启动执行对应向量库 `init()` 时先建好基础 `modeldata` 表、`fulltext_tokens` 列和向量索引，再以非阻塞方式尝试创建全文扩展与全文索引（旧镜像缺扩展时仅记录 `warn`，不阻断应用启动与向量服务）；后续新写入同行写向量与词串，同时继续维护 `dataset_data_texts`。
-- **平滑切读**：`20261110_migrate_sql_fulltext` 在 `prepare` 阶段先清理当前 provider 的就绪标记，仅当 `prepare → preflight → scan → validation` 全量通过后，才将当前 SQL 目标的 `{ provider, targetId, schemaVersion, analyzerVersion }` 写入 `dataset_sql_fulltext_targets`。`SqlFullTextStore.search()` 在目标已就绪且签名匹配时走 `searchSqlFullText()`，否则自动回退 `MongoFullTextStore.search()`（Mongo `$text`）。
+- **新装与升级启动**：应用启动执行对应向量库 `init()` 时先建好基础 `modeldata` 表、`fulltext_tokens` 列和向量索引，再启动后台全文扩展与索引构建，不等待其完成（旧镜像缺扩展时仅记录 `warn`，不阻断应用启动与向量服务）；后续新写入同行写向量与词串，同时继续维护 `dataset_data_texts`。
+- **平滑切读**：`20261110_migrate_sql_fulltext` 在 `prepare` 阶段先清理当前 provider 的就绪标记，仅当 `prepare → preflight → scan → validation` 全量通过后，才将当前 SQL 目标的 `{ provider, targetId, schemaVersion, analyzerVersion }` 写入 `dataset_sql_fulltext_targets`。`SqlFullTextStore.search()` 默认读 Mongo，显式选择当前 SQL provider 且目标已就绪、签名匹配时走 `searchSqlFullText()`；目标未就绪且开启兼容双写时自动回退 `MongoFullTextStore.search()`（Mongo `$text`）；关闭双写时就绪失效直接报错，避免读取陈旧 Mongo 数据。
 - **目标身份保护**：目标 SQL 库内部通过 `fastgpt_fulltext_metadata` 持久化 `{ targetId, schemaVersion, analyzerVersion }`，既供升级任务的 checkpoint 绑定物理目标与分词签名，也供运行期核对当前连接的物理目标是否已完成回填与校验。
 
 ## 7. 系统迁移任务如何共用
@@ -206,7 +231,7 @@ SQL 原生召回流程：
 
 | 任务 ID | 模式 | 阶段 | 职责 |
 |---|---|---|---|
-| `20261110_migrate_sql_fulltext` | 手动触发任务（`manual: true`） | `prepare → preflight → scan → validation` | 待旧写入方排空后校验并准备目标 SQL 全文结构、全量只读预检、按游标幂等回填历史词串、全量校验通过后激活目标就绪标记平滑切读 |
+| `20261110_migrate_sql_fulltext` | 手动触发任务（`manual: true`） | `prepare → preflight → scan → validation` | 待旧写入方排空后校验并准备目标 SQL 全文结构、全量只读预检、按游标幂等回填历史词串、全量校验通过后登记目标就绪标记，显式配置读取 provider 后才走原生全文 |
 
 任务声明 `manual: true`（不设 `blockStartup` 或 `independent`），初始为 `waiting`，待管理员确认集群所有旧版节点和训练消费者升级排空后入队执行，支持租约续期与分批断点续跑；恢复重跑时重新校验完整范围并安全补齐旧游标前重新出现的 `NULL` 行。
 
@@ -295,11 +320,11 @@ OceanBase / SeekDB 使用对应驱动参数及结果检查；OpenGauss 使用经
 
 ### 9.1 切换与观察
 
-回填 succeeded、目标身份一致、未解决错误为零、全写入方已升级，并且关键查询、权限、增删改、相关性与性能通过验收后，管理员将 ready 切为 native。
+回填 succeeded、目标身份一致、未解决错误为零、全写入方已升级，并且关键查询、权限、增删改、相关性与性能通过验收后，管理员将 `DATASET_FULLTEXT_PROVIDER` 设置为当前 SQL provider，并在所有相关节点重启生效；观察期保持 `DATASET_FULLTEXT_DUAL_WRITE=true`。
 
 观察期继续双写。监控错误率、延迟分布、超时、有效引用映射失败、候选预算耗尽、写入失败及索引状态。可以限流执行影子查询，但必须计入额外资源成本。
 
-发现问题时将 native 切回 dual：恢复旧全文读取，保留新结构，无须反向搬运数据。回退后作废本次切换验收，修复、重新验证后可再次切换。禁止每个原生查询出错就静默回 Mongo。
+观察期发现问题时将 `DATASET_FULLTEXT_PROVIDER` 改为 `mongo` 并重启相关节点：恢复旧全文读取，保留新结构；仅在持续双写期间无须反向搬运数据。回退后作废本次切换验收，修复、重新验证后可再次切换。禁止每个原生查询出错就静默回 Mongo。
 
 观察期覆盖有代表性的业务周期，并由实际结果决定何时结束；保留旧集合但停止更新不能提供完整回退。兼容版本回滚保留新增列，清理后不能直接回滚到依赖旧全文的应用版本。
 
@@ -371,7 +396,7 @@ cleanup 是独立手动任务。首期通过**短暂暂停知识库写入并排�
 
 Milvus/Zilliz 保留原生全文路径，不进入 SQL 迁移。Mongo 仍是业务原文和当前有效索引引用的权威来源。
 
-统一升级任务为 `20261110_migrate_sql_fulltext`（`manual: true`），登记于 4.18.0（阶段：`prepare → preflight → scan → validation`）。`getFullTextStore()` 在非 Milvus 下返回 `SqlFullTextStore`（继承 `MongoFullTextStore`）：迁移完成并写入 `dataset_sql_fulltext_targets` 前回退 `MongoFullTextStore.search()`，完成后平滑切读至 `searchSqlFullText()`。checkpoint 绑定 provider、物理目标 UUID 与 `analyzerVersion`。
+统一升级任务为 `20261110_migrate_sql_fulltext`（`manual: true`），登记于 4.18.0（阶段：`prepare → preflight → scan → validation`）。`getFullTextStore()` 在非 Milvus 下返回 `SqlFullTextStore`（继承 `MongoFullTextStore`）：迁移完成并写入 `dataset_sql_fulltext_targets` 前回退 `MongoFullTextStore.search()`，完成后仅允许显式选择当前 SQL provider 的部署读取 `searchSqlFullText()`；默认 Mongo 读取不因迁移完成而改变。checkpoint 绑定 provider、物理目标 UUID 与 `analyzerVersion`。
 
 四库共用历史文本规则、断点恢复、失败重试和业务 ID 映射。MySQL 协议写入使用绑定参数及 utf8mb4，逐行获取精确自增 ID，不推算连续 ID，也不改写正文中的引号。运行期业务写删在同行维护 SQL `fulltext_tokens` 的同时，兼容期内继续维护 `dataset_data_texts` 双写/双删及其索引，保障升级回退与共享/未切换目标的平滑检索。
 
@@ -430,8 +455,8 @@ PG 的专项恢复用例仍保留在同目录 `service.integration.test.ts`，�
 
 ### 12.5 升级切读与兼容期行为
 
-1. 服务启动时，所选 SQL 向量库控制器 `init()` 自动确保基础表、`fulltext_tokens` 列及向量索引存在，并以非阻塞方式尝试创建全文扩展和全文索引；升级后的新向量写入同行携带分词词串，同时在兼容期内继续维护 Mongo `dataset_data_texts` 双写/双删。
-2. `20261110_migrate_sql_fulltext` 初始处于 `waiting`（待手动执行），期间检索继续走旧 Mongo `$text`。待管理员确认集群所有旧版节点与训练消费者已升级排空后点击执行，任务先通过 `prepare` 与 `assertCapability` 校验数据库版本、扩展和索引定义，再执行全量只读预检、分批回填历史 `NULL` 词串与全量一致性校验，全部通过后写入 `dataset_sql_fulltext_targets` 平滑切读；旧 `dataset_data_texts` 表与索引留待后续版本独立任务退役清理。
+1. 服务启动时，所选 SQL 向量库控制器 `init()` 自动确保基础表、`fulltext_tokens` 列及向量索引存在，并启动不阻塞初始化返回的后台全文扩展与索引构建；升级后的新向量写入同行携带分词词串，同时在兼容期内继续维护 Mongo `dataset_data_texts` 双写/双删。
+2. `20261110_migrate_sql_fulltext` 初始处于 `waiting`（待手动执行），期间检索继续走旧 Mongo `$text`。待管理员确认集群所有旧版节点与训练消费者已升级排空后点击执行，任务先通过 `prepare` 与 `assertCapability` 校验数据库版本、扩展和索引定义，再执行全量只读预检、分批回填历史 `NULL` 词串与全量一致性校验，全部通过后写入 `dataset_sql_fulltext_targets` 就绪记录，由 `DATASET_FULLTEXT_PROVIDER` 决定是否切读；旧 `dataset_data_texts` 表与索引留待后续版本独立任务退役清理。
 3. 若数据库版本/扩展不满足或存在脏引用/非法向量 ID/非法文本，任务在对应阶段阻断切读并记录可定位 `dataset_datas._id` 的失败明细，管理员修复后通过标准升级页面重试。
 
 ### 12.6 PG 专项迁移与中英日六组公开语料回归验证

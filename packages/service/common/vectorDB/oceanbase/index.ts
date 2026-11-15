@@ -5,8 +5,9 @@ import { type RowDataPacket } from 'mysql2/promise';
 import type { VectorControllerType } from '../type';
 import dayjs from 'dayjs';
 import { getLogger, LogCategories } from '../../logger';
-import { SQL_FULL_TEXT_COLUMN, SQL_FULL_TEXT_INDEX } from '../fullText/utils';
+import { SQL_FULL_TEXT_COLUMN } from '../fullText/utils';
 import { toSqlFullTextTokens } from '../fullText/analyzer';
+import { startSqlFullTextIndexBuild } from '../fullText/controller';
 
 const logger = getLogger(LogCategories.INFRA.VECTOR);
 
@@ -49,29 +50,7 @@ export class ObVectorCtrl implements VectorControllerType {
       await this.obClient.query(
         `CREATE INDEX IF NOT EXISTS create_time_index ON ${DatasetVectorTableName}(createtime);`
       );
-      try {
-        const [indexes] = await this.obClient.query<RowDataPacket[]>(
-          `SHOW INDEX FROM ${DatasetVectorTableName}`
-        );
-        if (
-          !Array.isArray(indexes) ||
-          !indexes.some(
-            (row) => row.Key_name === SQL_FULL_TEXT_INDEX || row.key_name === SQL_FULL_TEXT_INDEX
-          )
-        ) {
-          await this.obClient.query(
-            `CREATE FULLTEXT INDEX ${SQL_FULL_TEXT_INDEX} ON ${DatasetVectorTableName}(${SQL_FULL_TEXT_COLUMN}) WITH PARSER SPACE PARSER_PROPERTIES=(min_token_size=1);`
-          );
-        }
-      } catch (error) {
-        logger.warn(
-          'Full-text index initialization skipped; native full-text requires supported parser capability and migration readiness',
-          {
-            provider: this.controllerType,
-            error
-          }
-        );
-      }
+      startSqlFullTextIndexBuild(this.controllerType);
 
       logger.info('Vector DB initialization completed', {
         provider: this.controllerType

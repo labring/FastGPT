@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { mongo } from 'mongoose';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+
 import { Client, Pool } from 'pg';
 
 // 必须显式指定独立本地实例和测试库，绝不复用 PG_URL 或业务数据库。
@@ -64,6 +65,12 @@ import { migrateSqlFullTextRecord } from '@/migration/tasks/4180/20261110_migrat
 import { DatasetDataOperation } from '@/service/core/dataset/data/data';
 import type { EmbeddingModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import { mockGetVectors } from '@test/mocks/core/ai/embedding';
+
+// 本用例验证显式选择原生读取后的业务行为；默认 Mongo 与手动回退由 textStore 用例覆盖。
+vi.mock('@fastgpt/service/common/vectorDB/fullText/config', () => ({
+  getFullTextProvider: () => 'pg',
+  shouldWriteMongoFullText: () => true
+}));
 
 /** 仅模拟框架恢复状态，业务读写使用真实隔离的 Mongo 副本集和 PG。 */
 const createContext = () => {
