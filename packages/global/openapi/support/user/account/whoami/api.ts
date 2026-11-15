@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { SessionLifecycleSchema } from '../../../../../support/user/session/type';
 import { ObjectIdSchema } from '../../../../../common/type/mongo';
 import { ApiKeyTypeEnum } from '../../../../../support/openapi/constants';
 import { ApiKeyTypeSchema } from '../../../../../support/openapi/schema';
@@ -54,14 +55,14 @@ export const WhoamiTeamSchema = z.object({
 });
 export type WhoamiTeamType = z.infer<typeof WhoamiTeamSchema>;
 
-export const WhoamiSessionSchema = z.object({
+export const WhoamiSessionSchema = SessionLifecycleSchema.partial().extend({
   createdAt: z.number().int().nonnegative().meta({
     example: 1762752000000,
     description: '会话创建时间戳（毫秒）'
   }),
   expiresAt: z.number().int().nonnegative().meta({
     example: 1763356800000,
-    description: '会话过期时间戳（毫秒，基于 7 天 TTL 计算）'
+    description: '当前会话可续约截止时间（毫秒）；旧登录按原 7 天期限'
   })
 });
 export type WhoamiSessionType = z.infer<typeof WhoamiSessionSchema>;

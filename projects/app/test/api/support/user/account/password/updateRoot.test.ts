@@ -1,3 +1,4 @@
+import type { IssuedSessionCredentials as Credentials } from '@fastgpt/global/support/user/session/type';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import type { UpdateRootPasswordBody } from '@fastgpt/global/openapi/support/user/account/password/api';
@@ -8,12 +9,13 @@ import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSc
 import { initTeamFreePlan } from '@fastgpt/service/support/wallet/sub/utils';
 import updateRootPasswordApi from '@/pages/api/support/user/account/password/updateRoot';
 import { Call } from '@test/utils/request';
-import { delUserAllSession } from '@fastgpt/service/support/user/session';
+import { delUserAllSession, rekeyUserSession } from '@fastgpt/service/support/user/session';
 
 vi.mock('@fastgpt/service/support/user/session', async (importOriginal) => {
   const actual = (await importOriginal()) as Record<string, unknown>;
   return {
     ...actual,
+    rekeyUserSession: vi.fn().mockResolvedValue({ token: 'rekeyed-session' }),
     delUserAllSession: vi.fn().mockResolvedValue(undefined)
   };
 });
@@ -71,9 +73,43 @@ describe('password/updateRoot API', () => {
       sessionId: 'current-session'
     }) as any;
 
+  it.each([false, true])(
+    'returns replacement credentials without exposing browser Refresh (native=%s)',
+    async (native) => {
+      const now = Date.now();
+      const credentials = {
+        token: 'at.replacement',
+        refreshToken: 'rt.replacement',
+        session: {
+          sessionId: 'user:device',
+          contextVersion: 2,
+          generation: 2,
+          serverTime: now,
+          createdAt: now,
+          accessExpiresAt: now + 900_000,
+          refreshExpiresAt: now + 604_800_000,
+          absoluteExpiresAt: now + 2_592_000_000
+        }
+      };
+      vi.mocked(rekeyUserSession).mockResolvedValueOnce(credentials);
+      const response = await Call(updateRootPasswordApi, {
+        body: { oldPsw: hashStr(OLD_PASSWORD), newPsw: hashStr('native-new-password') },
+        auth: getAuth(),
+        headers: {
+          'x-fastgpt-session-transport': 'header',
+          ...(native ? {} : { origin: 'https://fastgpt.example.com' })
+        }
+      });
+      expect(response.code).toBe(200);
+      expect(response.data).toEqual(
+        native ? credentials : { token: credentials.token, session: credentials.session }
+      );
+    }
+  );
+
   it('updates the root password in OSS when the old password matches', async () => {
     const newPsw = hashStr('new-root-password');
-    const response = await Call<UpdateRootPasswordBody, Record<string, never>, undefined>(
+    const response = await Call<UpdateRootPasswordBody, Record<string, never>, Credentials>(
       updateRootPasswordApi,
       {
         body: {
@@ -90,7 +126,7 @@ describe('password/updateRoot API', () => {
   });
 
   it('requires the old password when root already has a stored password', async () => {
-    const response = await Call<UpdateRootPasswordBody, Record<string, never>, undefined>(
+    const response = await Call<UpdateRootPasswordBody, Record<string, never>, Credentials>(
       updateRootPasswordApi,
       {
         body: { newPsw: hashStr('new-root-password') },
@@ -106,7 +142,7 @@ describe('password/updateRoot API', () => {
   });
 
   it('rejects a wrong old password', async () => {
-    const response = await Call<UpdateRootPasswordBody, Record<string, never>, undefined>(
+    const response = await Call<UpdateRootPasswordBody, Record<string, never>, Credentials>(
       updateRootPasswordApi,
       {
         body: {
@@ -131,7 +167,7 @@ describe('password/updateRoot API', () => {
       password: hashStr(OLD_PASSWORD)
     });
 
-    const response = await Call<UpdateRootPasswordBody, Record<string, never>, undefined>(
+    const response = await Call<UpdateRootPasswordBody, Record<string, never>, Credentials>(
       updateRootPasswordApi,
       {
         body: {
@@ -151,7 +187,7 @@ describe('password/updateRoot API', () => {
   it('rejects requests when commercial edition (isPlus) is active', async () => {
     global.feConfigs = { ...global.feConfigs, isPlus: true };
 
-    const response = await Call<UpdateRootPasswordBody, Record<string, never>, undefined>(
+    const response = await Call<UpdateRootPasswordBody, Record<string, never>, Credentials>(
       updateRootPasswordApi,
       {
         body: {

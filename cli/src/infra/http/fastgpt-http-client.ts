@@ -4,6 +4,7 @@ import { CliApiError, CliAuthError, CliNetworkError } from '../../shared/errors'
 import { redactText } from '../../shared/redact';
 import type { CliFetchFn } from '../../shared/types';
 import { createNodeTlsFetch } from './tls-fetch';
+import type { SessionLifecycle } from '@fastgpt/global/support/user/session/type';
 
 export const DEFAULT_TIMEOUT_MS = 15_000;
 export const LONG_OPERATION_TIMEOUT_MS = 120_000;
@@ -11,6 +12,10 @@ export const LONG_OPERATION_TIMEOUT_MS = 120_000;
 export type HttpRequestAuth = {
   authType: 'token' | 'apikey';
   secret: string;
+  refreshToken?: string;
+  session?: SessionLifecycle;
+  localAccessExpiresAt?: number;
+  localRefreshExpiresAt?: number;
 };
 
 export type SseEvent = {
@@ -90,6 +95,7 @@ export function buildAuthHeaders({
   const headers: Record<string, string> = {
     accept: 'application/json',
     'x-fastgpt-client': `fastgpt-cli/${cliVersion} (${process.platform}-${process.arch}; ${getRuntimeTag()})`,
+    'x-fastgpt-session-transport': 'header',
     ...extraHeaders
   };
 
@@ -167,7 +173,7 @@ function mapServerError({
       message: safeMessage || 'Authentication failed',
       hint: isApiKey
         ? 'Verify your API Key or check whether it has been deleted/restricted. Run "fastgpt doctor" for diagnostics.'
-        : 'Your session may be invalid or expired (7-day TTL). Run "fastgpt login" to re-authenticate.',
+        : 'Your session is invalid or cannot be renewed. Run "fastgpt login" to re-authenticate.',
       details: { httpStatus, serverCode, statusText, url: safeUrl }
     });
   }
@@ -586,11 +592,7 @@ export function createFastGptHttpClient({
 
       if (response.status >= 400) {
         const rawText = await response.text();
-        throw mapServerError({
-          httpStatus: response.status,
-          message: rawText.slice(0, 300) || `HTTP ${response.status}`,
-          url: finalUrl
-        });
+        unpackFastGptResponse<never>({ response, rawText, displayUrl: finalUrl });
       }
 
       return {
@@ -674,11 +676,7 @@ export function createFastGptHttpClient({
 
       if (response.status >= 400) {
         const rawText = await response.text();
-        throw mapServerError({
-          httpStatus: response.status,
-          message: rawText.slice(0, 300) || `HTTP ${response.status}`,
-          url: finalUrl
-        });
+        unpackFastGptResponse<never>({ response, rawText, displayUrl: finalUrl });
       }
 
       if (!response.body) {

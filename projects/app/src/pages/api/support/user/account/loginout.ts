@@ -1,14 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { NextAPI } from '@/service/middleware/entry';
-import { authCert, clearCookie } from '@fastgpt/service/support/permission/auth/common';
-import { delUserAllSession } from '@fastgpt/service/support/user/session';
+import { logoutUserSessions } from '@fastgpt/service/support/user/account/session/service';
 
-async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
-  try {
-    const { userId } = await authCert({ req, authToken: true, allowAccountCancellation: true });
-    await delUserAllSession(userId);
-    clearCookie(res);
-  } catch (error) {}
+/** 保留历史全部设备退出入口；新客户端使用 Refresh Cookie 作用域内的 session/logout。 */
+async function handler(req: NextApiRequest, res: NextApiResponse): Promise<void> {
+  await logoutUserSessions({ req, res });
 }
-
 export default NextAPI(handler);

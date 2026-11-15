@@ -1,10 +1,10 @@
+import { SessionErrEnum } from '@fastgpt/global/common/error/code/session';
 vi.unmock('@fastgpt/service/support/permission/auth/common');
 
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import whoamiDefaultHandler, { handler } from '@/pages/api/support/user/account/whoami';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 import { SESSION_TTL_SECONDS } from '@fastgpt/dal/redis/caches';
-import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { ApiKeyTypeEnum } from '@fastgpt/global/support/openapi/constants';
 import { AccountCancellationStatus } from '@fastgpt/global/support/user/account/cancellation/constants';
@@ -198,7 +198,7 @@ describe('GET /api/support/user/account/whoami', () => {
 
     const unauthRes = await Call(whoamiDefaultHandler, { headers: {} });
     expect(unauthRes.code).toBe(500);
-    expect(unauthRes.error).toBe(ERROR_ENUM.unAuthorization);
+    expect(unauthRes.error).toEqual(new Error(SessionErrEnum.accessMissing));
 
     global.feConfigs = { ...global.feConfigs, isPlus: true } as any;
     await expect(

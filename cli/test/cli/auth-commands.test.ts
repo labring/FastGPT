@@ -3,11 +3,19 @@ import { existsSync } from 'node:fs';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import pkg from '../../package.json';
 import { runCli } from '../../src/cli/run';
 import type { Prompter, SelectOption } from '../../src/infra/ui/prompter';
 import type { CliFetchFn } from '../../src/shared/types';
+import {
+  createFileConfigRepository,
+  type ConfigRepository
+} from '../../src/infra/config/config-repository';
+import { withCredentialLock } from '../../src/infra/secrets/credential-lock';
+import { createDefaultSecretStore, type SecretStore } from '../../src/infra/secrets/secret-store';
+import { encodeSessionCredential } from '../../src/domain/auth/session-credentials';
+import { SessionErrEnum } from '@fastgpt/global/common/error/code/session';
 
 const OBJECT_ID_USER = '68ad85a7463006c963799a01';
 const OBJECT_ID_TEAM = '68ad85a7463006c963799a02';
@@ -109,7 +117,10 @@ async function execCli({
   fetchFn,
   stdinText = '',
   prompter,
-  openExternal
+  openExternal,
+  env = {},
+  configRepo,
+  secretStore
 }: {
   argv: string[];
   configDir: string;
@@ -118,6 +129,9 @@ async function execCli({
   stdinText?: string;
   prompter?: Prompter;
   openExternal?: (path: string) => Promise<boolean>;
+  env?: NodeJS.ProcessEnv;
+  configRepo?: ConfigRepository;
+  secretStore?: SecretStore;
 }) {
   const stdoutLines: string[] = [];
   const stderrLines: string[] = [];
@@ -126,9 +140,12 @@ async function execCli({
     argv,
     env: {
       FASTGPT_CONFIG_DIR: configDir,
-      FASTGPT_SECRET_STORE: 'file'
+      FASTGPT_SECRET_STORE: 'file',
+      ...env
     },
     isTTY,
+    configRepo,
+    secretStore,
     fetchFn,
     prompter,
     readStdin: async () => stdinText,
@@ -145,6 +162,357 @@ async function execCli({
 }
 
 describe('CLI auth command integration', () => {
+  it.each(['baseUrl', 'login'] as const)(
+    'rejects a switch-team command whose stored %s changes while it waits for the credential lock',
+    async (mutation) => {
+      const configDir = await makeConfigDir();
+      const repo = createFileConfigRepository({ configDir });
+      const secrets = createDefaultSecretStore({
+        configDir,
+        env: { FASTGPT_SECRET_STORE: 'file' }
+      });
+      await repo.write({
+        schemaVersion: 1,
+        currentProfile: 'default',
+        profiles: {
+          default: {
+            baseUrl: 'https://cloud.fastgpt.cn/api',
+            authType: 'token',
+            updatedAt: Date.now()
+          }
+        }
+      });
+      await secrets.setSecret('default', 'original-session');
+      let observed!: () => void;
+      const resolvedSnapshot = new Promise<void>((resolve) => {
+        observed = resolve;
+      });
+      const secretStore = {
+        ...secrets,
+        getSecret: async (profile: string) => {
+          const snapshot = await secrets.getSecret(profile);
+          observed();
+          return snapshot;
+        }
+      };
+      const fetchFn = vi.fn();
+      let pending!: ReturnType<typeof execCli>;
+      await withCredentialLock({
+        configDir,
+        fn: async () => {
+          pending = execCli({
+            argv: [
+              'auth',
+              'switch-team',
+              OBJECT_ID_TEAM_2,
+              '--base-url',
+              'https://alias.fastgpt.test/api'
+            ],
+            configDir,
+            configRepo: repo,
+            secretStore,
+            fetchFn
+          });
+          // 先让命令解析旧 Profile，再让已经持锁的另一个写入者提交变更。
+          await resolvedSnapshot;
+          if (mutation === 'login') await secrets.setSecret('default', 'replacement-session');
+          else {
+            const { config } = await repo.read();
+            config.profiles.default.baseUrl = 'https://replacement.fastgpt.test/api';
+            await repo.write(config);
+          }
+        }
+      });
+      const result = await pending;
+      expect(result.exitCode).toBe(3);
+      expect(JSON.parse(result.stderr).error.code).toBe('AUTH_CONFLICT');
+      expect(fetchFn).not.toHaveBeenCalled();
+      expect(
+        mutation === 'login'
+          ? await secrets.getSecret('default')
+          : (await repo.read()).config.profiles.default.baseUrl
+      ).toBe(mutation === 'login' ? 'replacement-session' : 'https://replacement.fastgpt.test/api');
+    }
+  );
+
+  it.each(
+    [
+      { source: 'flag', dual: false },
+      { source: 'env', dual: false },
+      { source: 'flag', dual: true },
+      { source: 'env', dual: true }
+    ].flatMap((row) => ['whoami', 'switch-team'].map((command) => ({ ...row, command })))
+  )(
+    'uses a $source URL override for $command with a stored Token (dual=$dual)',
+    async ({ source, dual, command }) => {
+      const configDir = await makeConfigDir();
+      const repo = createFileConfigRepository({ configDir });
+      const secrets = createDefaultSecretStore({
+        configDir,
+        env: { FASTGPT_SECRET_STORE: 'file' }
+      });
+      const now = Date.now();
+      const session = {
+        sessionId: `${OBJECT_ID_USER}:device`,
+        serverTime: now,
+        createdAt: now,
+        accessExpiresAt: now + 30_000,
+        refreshExpiresAt: now + 604_800_000,
+        absoluteExpiresAt: now + 2_592_000_000,
+        contextVersion: 1,
+        generation: 1
+      };
+      await repo.write({
+        schemaVersion: 1,
+        currentProfile: 'default',
+        profiles: {
+          default: { baseUrl: 'https://cloud.fastgpt.cn/api', authType: 'token', updatedAt: now }
+        }
+      });
+      const token = dual ? `at.${session.sessionId}.1.1.${'a'.repeat(43)}` : 'legacy-session';
+      await secrets.setSecret(
+        'default',
+        dual
+          ? encodeSessionCredential({
+              authType: 'token',
+              secret: token,
+              refreshToken: `rt.${session.sessionId}.1.1.${'b'.repeat(43)}`,
+              session
+            })
+          : token
+      );
+      const alias = 'https://alias.fastgpt.test/api';
+      const paths: string[] = [];
+      let currentSession = session;
+      const result = await execCli({
+        argv: [
+          ...(command === 'whoami' ? ['whoami'] : ['auth', 'switch-team', OBJECT_ID_TEAM_2]),
+          ...(source === 'flag' ? ['--base-url', alias] : [])
+        ],
+        configDir,
+        env: source === 'env' ? { FASTGPT_BASE_URL: alias } : {},
+        fetchFn: async (input) => {
+          const request = input as Request;
+          expect(request.url.startsWith(alias + '/')).toBe(true);
+          paths.push(new URL(request.url).pathname);
+          if (request.url.endsWith('/session/refresh')) {
+            currentSession = { ...session, generation: 2, accessExpiresAt: now + 900_000 };
+            return jsonResp({
+              status: 'rotated',
+              token: `at.${session.sessionId}.1.2.${'c'.repeat(43)}`,
+              refreshToken: `rt.${session.sessionId}.1.2.${'d'.repeat(43)}`,
+              session: currentSession
+            });
+          }
+          if (request.url.endsWith('/team/switch')) {
+            currentSession = { ...currentSession, contextVersion: 2, generation: 3 };
+            return jsonResp(
+              dual
+                ? {
+                    token: `at.${session.sessionId}.2.3.${'e'.repeat(43)}`,
+                    refreshToken: `rt.${session.sessionId}.2.3.${'f'.repeat(43)}`,
+                    session: currentSession
+                  }
+                : 'legacy-replacement'
+            );
+          }
+          return jsonResp({
+            authType: 'token',
+            user: { userId: OBJECT_ID_USER, username: 'alice' },
+            team: {
+              teamId: command === 'whoami' ? OBJECT_ID_TEAM : OBJECT_ID_TEAM_2,
+              teamName: 'Team',
+              tmbId: OBJECT_ID_TMB,
+              role: 'owner',
+              permission: fullPermission
+            },
+            isRoot: false,
+            session: { ...currentSession, expiresAt: session.refreshExpiresAt }
+          });
+        }
+      });
+      expect(result.exitCode).toBe(0);
+      expect(paths).toEqual([
+        ...(dual ? ['/api/support/user/account/session/refresh'] : []),
+        ...(command === 'switch-team' ? ['/api/proApi/support/user/team/switch'] : []),
+        '/api/support/user/account/whoami'
+      ]);
+      expect((await repo.read()).config.profiles.default.user?.username).toBe('alice');
+      expect((await repo.read()).config.profiles.default.baseUrl).toBe(
+        'https://cloud.fastgpt.cn/api'
+      );
+    }
+  );
+
+  it.each(['pre-refresh outage', 'server Access expiry'] as const)(
+    'switches a stored session team through %s with at most one recovery',
+    async (scenario) => {
+      const configDir = await makeConfigDir();
+      const repo = createFileConfigRepository({ configDir });
+      const secrets = createDefaultSecretStore({
+        configDir,
+        env: { FASTGPT_SECRET_STORE: 'file' }
+      });
+      const now = Date.now();
+      const session = {
+        sessionId: `${OBJECT_ID_USER}:device`,
+        serverTime: now,
+        createdAt: now,
+        accessExpiresAt: now + (scenario === 'pre-refresh outage' ? 30_000 : 900_000),
+        refreshExpiresAt: now + 604_800_000,
+        absoluteExpiresAt: now + 2_592_000_000,
+        contextVersion: 1,
+        generation: 1
+      };
+      const initial = {
+        authType: 'token' as const,
+        secret: `at.${session.sessionId}.1.1.${'a'.repeat(43)}`,
+        refreshToken: `rt.${session.sessionId}.1.1.${'b'.repeat(43)}`,
+        session
+      };
+      await repo.write({
+        schemaVersion: 1,
+        currentProfile: 'default',
+        profiles: {
+          default: {
+            baseUrl: 'https://cloud.fastgpt.cn/api',
+            authType: 'token',
+            updatedAt: now
+          }
+        }
+      });
+      await secrets.setSecret('default', encodeSessionCredential(initial));
+      let refreshes = 0;
+      let switches = 0;
+      const next = {
+        token: `at.${session.sessionId}.2.3.${'c'.repeat(43)}`,
+        refreshToken: `rt.${session.sessionId}.2.3.${'d'.repeat(43)}`,
+        session: { ...session, contextVersion: 2, generation: 3, accessExpiresAt: now + 900_000 }
+      };
+      const result = await execCli({
+        argv: ['auth', 'switch-team', OBJECT_ID_TEAM_2],
+        configDir,
+        fetchFn: async (input) => {
+          const request = input as Request;
+          if (request.url.endsWith('/session/refresh')) {
+            refreshes++;
+            if (scenario === 'pre-refresh outage')
+              return Response.json({ code: 503, message: 'Temporary outage' }, { status: 503 });
+            return jsonResp({
+              status: 'rotated',
+              token: `at.${session.sessionId}.1.2.${'e'.repeat(43)}`,
+              refreshToken: `rt.${session.sessionId}.1.2.${'f'.repeat(43)}`,
+              session: { ...session, generation: 2, accessExpiresAt: now + 900_000 }
+            });
+          }
+          if (request.url.endsWith('/team/switch')) {
+            switches++;
+            expect(await request.json()).toEqual({ teamId: OBJECT_ID_TEAM_2 });
+            if (scenario === 'server Access expiry' && switches === 1)
+              return Response.json(
+                { code: 401, statusText: SessionErrEnum.accessExpired },
+                { status: 401 }
+              );
+            return jsonResp(next);
+          }
+          return jsonResp({
+            authType: 'token',
+            user: { userId: OBJECT_ID_USER, username: 'alice', avatar: null },
+            team: {
+              teamId: OBJECT_ID_TEAM_2,
+              teamName: 'New team',
+              tmbId: OBJECT_ID_TMB,
+              role: 'owner',
+              permission: fullPermission
+            },
+            isRoot: false,
+            session: { ...next.session, expiresAt: session.refreshExpiresAt }
+          });
+        }
+      });
+      expect(result.exitCode).toBe(0);
+      expect(refreshes).toBe(1);
+      expect(switches).toBe(scenario === 'pre-refresh outage' ? 1 : 2);
+      expect((await secrets.getSecret('default'))?.includes(next.refreshToken)).toBe(true);
+      expect((await repo.read()).config.profiles.default.team?.teamId).toBe(OBJECT_ID_TEAM_2);
+    }
+  );
+
+  it('does not let a late whoami response overwrite a concurrent team switch', async () => {
+    const configDir = await makeConfigDir();
+    const repo = createFileConfigRepository({ configDir });
+    const secrets = createDefaultSecretStore({ configDir, env: { FASTGPT_SECRET_STORE: 'file' } });
+    const now = Date.now();
+    const session = {
+      sessionId: `${OBJECT_ID_USER}:device`,
+      serverTime: now,
+      createdAt: now,
+      accessExpiresAt: now + 900_000,
+      refreshExpiresAt: now + 604_800_000,
+      absoluteExpiresAt: now + 2_592_000_000,
+      contextVersion: 1,
+      generation: 1
+    };
+    const old = {
+      authType: 'token' as const,
+      secret: `at.${session.sessionId}.1.1.${'a'.repeat(43)}`,
+      refreshToken: `rt.${session.sessionId}.1.1.${'b'.repeat(43)}`,
+      session
+    };
+    await repo.write({
+      schemaVersion: 1,
+      currentProfile: 'default',
+      profiles: {
+        default: {
+          baseUrl: 'https://cloud.fastgpt.cn/api',
+          authType: 'token',
+          updatedAt: now
+        }
+      }
+    });
+    await secrets.setSecret('default', encodeSessionCredential(old));
+    const result = await execCli({
+      argv: ['whoami'],
+      configDir,
+      fetchFn: async () => {
+        await secrets.setSecret(
+          'default',
+          encodeSessionCredential({
+            ...old,
+            secret: `at.${session.sessionId}.2.2.${'c'.repeat(43)}`,
+            refreshToken: `rt.${session.sessionId}.2.2.${'d'.repeat(43)}`,
+            session: { ...session, contextVersion: 2, generation: 2 }
+          })
+        );
+        const { config } = await repo.read();
+        await repo.write({
+          ...config,
+          profiles: {
+            default: {
+              ...config.profiles.default,
+              team: { teamId: OBJECT_ID_TEAM_2, teamName: 'New team', tmbId: OBJECT_ID_TMB }
+            }
+          }
+        });
+        return jsonResp({
+          authType: 'token',
+          user: { userId: OBJECT_ID_USER, username: 'alice', avatar: null },
+          team: {
+            teamId: OBJECT_ID_TEAM,
+            teamName: 'Old team',
+            tmbId: OBJECT_ID_TMB,
+            role: 'owner',
+            permission: fullPermission
+          },
+          isRoot: false,
+          session: { ...session, expiresAt: session.refreshExpiresAt }
+        });
+      }
+    });
+    expect(result.exitCode).toBe(0);
+    expect((await repo.read()).config.profiles.default.team?.teamId).toBe(OBJECT_ID_TEAM_2);
+  });
+
   it.each([404, 200])(
     'reports an unsupported CLI server when whoami returns code 404 with HTTP %i',
     async (status) => {

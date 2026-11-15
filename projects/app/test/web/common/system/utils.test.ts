@@ -8,6 +8,12 @@ import {
   FASTGPT_WEB_REQUEST_VALUE
 } from '@fastgpt/global/common/system/constants';
 
+// 下载错误与保存逻辑单测隔离认证传输；续约和重试由共享 Session 模块专项覆盖。
+vi.mock('@fastgpt/web/common/auth/session', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fastgpt/web/common/auth/session')>()),
+  fetchWithSession: (...args: Parameters<typeof fetch>) => fetch(...args)
+}));
+
 const createFeConfigs = (overrides: Partial<FastGPTFeConfigsType>): FastGPTFeConfigsType => ({
   limit: { uploadFileMaxAmount: 10, uploadFileMaxSize: 100 },
   ...overrides

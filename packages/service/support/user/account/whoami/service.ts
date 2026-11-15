@@ -84,7 +84,8 @@ export async function getWhoamiDetail({
       return Promise.reject(ERROR_ENUM.unAuthorization);
     }
 
-    const expiresAt = createdAt + SESSION_TTL_SECONDS * 1000;
+    const expiresAt =
+      certificate.session?.refreshExpiresAt ?? createdAt + SESSION_TTL_SECONDS * 1000;
 
     // 2. 严格校验当前会话绑定的用户与团队成员，不使用 getUserFallbackTeam 静默切换团队。
     const [user, tmb] = await Promise.all([
@@ -122,6 +123,7 @@ export async function getWhoamiDetail({
       },
       isRoot: certificate.isRoot,
       session: {
+        ...certificate.session,
         createdAt,
         expiresAt
       }

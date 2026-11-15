@@ -1,8 +1,11 @@
+import { browserSession } from '@fastgpt/web/common/auth/session';
+
 let logoutInProgress = false;
 
 /** 标记客户端已进入主动登出流程，后续并发鉴权失败只负责收敛，不再重复提示或跳转。 */
 export const beginLogout = () => {
   logoutInProgress = true;
+  browserSession.stop();
 };
 
 /** 登录成功后结束登出保护，使后续真实的会话失效仍按正常鉴权错误处理。 */

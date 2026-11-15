@@ -50,9 +50,17 @@ async function handler(req: NextApiRequest, res: NextApiResponse): Promise<void>
 
     response.headers.forEach((value, key) => {
       const lowerKey = key.toLowerCase();
-      if (lowerKey === 'content-encoding' || lowerKey === 'transfer-encoding') return;
+      if (
+        lowerKey === 'content-encoding' ||
+        lowerKey === 'transfer-encoding' ||
+        lowerKey === 'set-cookie'
+      )
+        return;
       res.setHeader(key, value);
     });
+
+    const cookies = response.headers.getSetCookie();
+    if (cookies.length) res.setHeader('Set-Cookie', cookies);
 
     res.status(response.status);
 

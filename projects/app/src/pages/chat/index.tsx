@@ -1,3 +1,4 @@
+import { SESSION_SELECTOR_COOKIE_NAME } from '@fastgpt/global/support/user/session/constants';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import NextHead from '@/components/common/NextHead';
 import { Box, Flex } from '@chakra-ui/react';
@@ -299,7 +300,11 @@ export default Render;
 
 export async function getServerSideProps(context: any) {
   const appId = context?.query?.appId || '';
-  const shouldInitUserInfo = !!context.req?.cookies?.fastgpt_token;
+  // 定位 Cookie 只触发服务端会话恢复，不构成鉴权；AT 已过期时仍可用路径内的 RT 恢复。
+  const cookies = context.req?.cookies;
+  const shouldInitUserInfo = Boolean(
+    cookies?.fastgpt_token || cookies?.[SESSION_SELECTOR_COOKIE_NAME]
+  );
 
   const chatQuoteReaderConfig = await (async () => {
     try {

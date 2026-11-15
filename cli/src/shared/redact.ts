@@ -1,5 +1,5 @@
 const SENSITIVE_KEY_PATTERN =
-  /^(authorization|token|apikey|api_key|password|passwd|secret|cookie|set-cookie|x-api-key|rootkey)$/i;
+  /^(authorization|token|refreshToken|refresh_token|apikey|api_key|password|passwd|secret|cookie|set-cookie|x-api-key|rootkey)$/i;
 
 /**
  * 将密钥脱敏为仅保留末 4 位的展示字符串；过短密钥全部遮蔽。
@@ -27,12 +27,16 @@ export function redactText(input: string): string {
   }
 
   return input
+    .replace(/\b(?:at|rt)\.[\w-]+(?::|%3a)[\w-]+\.\d+\.\d+\.[\w-]{43}\b/gi, '[REDACTED]')
     .replace(/(Bearer\s+)[^\s"',;]+/gi, '$1[REDACTED]')
-    .replace(/(fastgpt_token=)[^\s"',;]+/gi, '$1[REDACTED]')
+    .replace(
+      /(fastgpt_(?:(?:refresh_)?token|(?:access|refresh)_[a-f0-9]{32}_[1-9]\d*)=)[^\s"',;]+/gi,
+      '$1[REDACTED]'
+    )
     .replace(/([?&]apiKey=)[^&\s"']+/gi, '$1REDACTED')
     .replace(/\bfastgpt-[A-Za-z0-9_-]{24,}\b/g, (matched) => maskSecret(matched))
     .replace(
-      /("(?:token|apiKey|api_key|password|secret|authorization|cookie)"\s*:\s*")[^"]*(")/gi,
+      /("(?:token|refreshToken|refresh_token|apiKey|api_key|password|secret|authorization|cookie)"\s*:\s*")[^"]*(")/gi,
       '$1[REDACTED]$2'
     );
 }

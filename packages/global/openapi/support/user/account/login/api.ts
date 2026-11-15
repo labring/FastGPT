@@ -1,3 +1,4 @@
+import { SessionLifecycleSchema } from '../../../../../support/user/session/type';
 import { z } from 'zod';
 import { OAuthEnum } from '../../../../../support/user/constant';
 import { LanguageSchema } from '../../../../../common/i18n/type';
@@ -44,7 +45,12 @@ export const LoginSuccessResponseSchema = z.object({
   token: z.string().meta({
     example: 'eyJhbGciOiJIUzI1NiIs...',
     description: '登录令牌'
-  })
+  }),
+  session: SessionLifecycleSchema.optional(),
+  refreshToken: z
+    .string()
+    .optional()
+    .meta({ description: '仅显式 Header 传输的原生客户端获得；浏览器仅通过 HttpOnly Cookie 接收' })
 });
 export type LoginSuccessResponseType = z.infer<typeof LoginSuccessResponseSchema>;
 

@@ -16,6 +16,17 @@ import { getAuthLoginRedirectPath } from '@/web/support/user/loginRedirect/url';
 import { getLanguageRequestHeaders } from '@fastgpt/web/i18n/utils';
 import { ToastHandledError } from '@fastgpt/global/common/error/utils';
 import { isLogoutInProgress } from '@/web/support/user/logoutState';
+import { browserSession, observeSessionHeader } from '@fastgpt/web/common/auth/session';
+import {
+  shouldCoordinateSession,
+  isSessionLoginResponse
+} from '@fastgpt/web/common/auth/sessionRequest';
+import {
+  SessionRequestContextChangedError,
+  getSessionContextHeaders,
+  isSessionContextMutation,
+  type SessionRequestSnapshot
+} from '@fastgpt/web/common/auth/sessionCoordinator';
 import {
   FASTGPT_WEB_REQUEST_HEADER,
   FASTGPT_WEB_REQUEST_VALUE
@@ -148,9 +159,7 @@ function requestFinish({ signId, url }: { signId?: string; url: string }) {
 function startInterceptors(config: InternalAxiosRequestConfig): InternalAxiosRequestConfig {
   const languageHeaders = getLanguageRequestHeaders();
   config.headers ??= {} as InternalAxiosRequestConfig['headers'];
-  if (config.method?.toUpperCase() === 'GET') {
-    config.headers[FASTGPT_WEB_REQUEST_HEADER] = FASTGPT_WEB_REQUEST_VALUE;
-  }
+  config.headers[FASTGPT_WEB_REQUEST_HEADER] = FASTGPT_WEB_REQUEST_VALUE;
   if (Object.keys(languageHeaders).length > 0) {
     Object.assign(config.headers, languageHeaders);
   }
@@ -162,6 +171,9 @@ function startInterceptors(config: InternalAxiosRequestConfig): InternalAxiosReq
  * 请求成功,检查请求头
  */
 function responseSuccess(response: AxiosResponse<ResponseDataType>) {
+  observeSessionHeader(response.headers['x-fastgpt-session'], {
+    login: isSessionLoginResponse(response.config?.url ?? '')
+  });
   return response;
 }
 /**
@@ -181,6 +193,8 @@ function checkRes(data: ResponseDataType) {
  * 响应错误
  */
 function responseError(err: any) {
+  if (err instanceof SessionRequestContextChangedError)
+    return Promise.reject(new ToastHandledError('Ignore request from an old session context'));
   console.log('error->', 'Request failed', err);
   const pathname = window.location.pathname;
   const isOutlinkPage = {
@@ -299,18 +313,68 @@ function request(
     return existingRequest;
   }
 
-  const requestPromise = instance
-    .request({
-      baseURL: getWebReqUrl('/api'),
-      url,
-      method,
-      data: shouldSendBody ? data : undefined,
-      params: shouldSendBody ? undefined : data,
-      signal: cancelToken?.signal ?? abortSignal,
-      withCredentials,
-      ...config // 用户自定义配置，可以覆盖前面的配置
-    })
-    .then((res) => checkRes(res.data))
+  const send = (snapshot?: SessionRequestSnapshot) => {
+    if (snapshot) browserSession.assertRequestContext(snapshot);
+    const dispatch = () =>
+      instance
+        .request({
+          baseURL: getWebReqUrl('/api'),
+          url,
+          method,
+          data: shouldSendBody ? data : undefined,
+          params: shouldSendBody ? undefined : data,
+          signal: cancelToken?.signal ?? abortSignal,
+          withCredentials,
+          ...config,
+          headers: { ...config.headers, ...getSessionContextHeaders(snapshot) }
+        })
+        .then(async (res) => {
+          const result = await checkRes(res.data);
+          if (snapshot)
+            browserSession.assertResponseContext(
+              snapshot,
+              isSessionContextMutation(url) ? res.headers['x-fastgpt-session'] : undefined
+            );
+          return result;
+        });
+    const pending = isSessionContextMutation(url)
+      ? browserSession.trackContextMutation(dispatch)
+      : dispatch();
+    return pending.catch(async (error) => {
+      // 在 mutation 自己完成后再等待同页其他变更，避免等待自身；首发和唯一一次重试都须检查快照。
+      if (snapshot)
+        await browserSession.assertFailureContext(snapshot, cancelToken?.signal ?? abortSignal);
+      throw error;
+    });
+  };
+
+  const perform = async () => {
+    if (
+      !shouldCoordinateSession(url, {
+        headers: config.headers,
+        data,
+        origin: typeof window === 'undefined' ? undefined : window.location.origin
+      })
+    )
+      return send();
+    const snapshot = await browserSession.beforeRequest({
+      initialize: /\/(?:tokenLogin|whoami)$/.test(url),
+      signal: cancelToken?.signal ?? abortSignal
+    });
+    try {
+      return await send(snapshot);
+    } catch (error) {
+      if (
+        await browserSession.recover(error, {
+          snapshot,
+          signal: cancelToken?.signal ?? abortSignal
+        })
+      )
+        return send(snapshot);
+      throw error;
+    }
+  };
+  const requestPromise = perform()
     .catch((err) => responseError(err))
     .finally(() => {
       requestFinish({ signId, url });

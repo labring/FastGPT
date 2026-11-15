@@ -1,3 +1,4 @@
+import { browserSession } from '@fastgpt/web/common/auth/session';
 import { GET, POST, PUT } from '@/web/common/api/request';
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import type { UserUpdateParams } from '@/types/user';
@@ -77,7 +78,12 @@ export const getWXLoginResult = (params: WxLoginBodyType) =>
   POST<WxLoginResultResponseType>(`/proApi/support/user/account/login/wx/getResult`, params, {
     maxQuantity: 1
   });
-export const loginOut = () => GET('/support/user/account/loginout');
+export const loginOut = async () => {
+  // 等待期间可能完成另一账号的登录，退出始终绑定点击时的原上下文。
+  const contextHeaders = browserSession.contextHeaders;
+  await browserSession.waitForRefresh();
+  return POST('/support/user/account/session/logout', {}, { headers: contextHeaders });
+};
 
 /* ===== register ===== */
 export const postRegister = ({

@@ -1,4 +1,5 @@
 import z from 'zod';
+import { IssuedSessionCredentialsSchema } from '../../../../support/user/session/type';
 import { BoolSchema } from '../../../../common/zod';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
 import { PermissionSchema } from '../../../../support/permission/controller';
@@ -325,10 +326,10 @@ export const SwitchTeamBodySchema = z
   });
 export type SwitchTeamBodyType = z.infer<typeof SwitchTeamBodySchema>;
 
-export const SwitchTeamResponseSchema = z.string().meta({
-  example: 'eyJhbGciOiJIUzI1NiIs...',
-  description: '切换团队后生成的登录令牌，同时会写入登录 Cookie'
-});
+export const SwitchTeamResponseSchema = z.union([
+  z.string().meta({ description: '浏览器兼容返回 Access 字符串，凭证经 Cookie 更新' }),
+  IssuedSessionCredentialsSchema
+]);
 export type SwitchTeamResponseType = z.infer<typeof SwitchTeamResponseSchema>;
 
 /* ============================================================================

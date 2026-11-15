@@ -30,6 +30,11 @@ import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSc
 import { MongoTeam } from '@fastgpt/service/support/user/team/teamSchema';
 import { Call } from '@test/utils/request';
 
+vi.mock('@fastgpt/service/support/user/session', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fastgpt/service/support/user/session')>()),
+  rekeyUserSession: vi.fn()
+}));
+
 describe('PUT /api/admin/team/switch', () => {
   let rootUser: any;
   let rootOwnTeam: any;
@@ -83,10 +88,13 @@ describe('PUT /api/admin/team/switch', () => {
     ]);
 
     vi.clearAllMocks();
+    vi.mocked(sessionService.rekeyUserSession).mockResolvedValue({
+      token: `${String(rootUser._id)}:rekeyed`
+    });
   });
 
-  it('switches root into any tenant team, preserves isRoot session, cleans old session and logs audit', async () => {
-    const createSessionSpy = vi.spyOn(sessionService, 'createUserSession');
+  it('switches root into any tenant team, preserves stable session identity and logs audit', async () => {
+    const createSessionSpy = vi.spyOn(sessionService, 'rekeyUserSession');
     const delSessionSpy = vi.spyOn(sessionService, 'delUserSession');
     const oldSessionId = 'old-root-session-id';
 
@@ -111,16 +119,15 @@ describe('PUT /api/admin/team/switch', () => {
     expect(res.data.teamId).toBe(String(tenantTeam._id));
     expect(res.data.token).toContain(`${String(rootUser._id)}:`);
 
-    // 新会话携带目标团队且严格保留 isRoot=true，旧会话被同步清理
+    // 重签当前稳定会话；root 身份由已有会话保留，不另建或删除设备记录。
     expect(createSessionSpy).toHaveBeenCalledWith(
       expect.objectContaining({
-        userId: String(rootUser._id),
+        sessionId: oldSessionId,
         teamId: String(tenantTeam._id),
-        tmbId: res.data.tmbId,
-        isRoot: true
+        tmbId: res.data.tmbId
       })
     );
-    expect(delSessionSpy).toHaveBeenCalledWith(oldSessionId);
+    expect(delSessionSpy).not.toHaveBeenCalled();
 
     const updatedRoot = await MongoUser.findById(rootUser._id).lean();
     expect(String(updatedRoot?.lastLoginTmbId)).toBe(res.data.tmbId);

@@ -211,7 +211,7 @@ describe.skipIf(!process.env.FASTGPT_RESOURCE_ENV_FILE)(
       reader = await getUser(`${prefix}-reader`, owner.teamId);
       foreign = await getUser(`${prefix}-foreign`);
       for (const actor of [owner, reader, foreign])
-        tokens.set(actor.userId, await createUserSession({ ...actor, isRoot: false }));
+        tokens.set(actor.userId, (await createUserSession({ ...actor, isRoot: false })).token);
       appUrl = await startHttp(3310, routes);
       // Pro 有独立 @ alias；运行时加载实际入口，避免 App 的 TS 项目递归纳入 Pro 源码。
       const proRoutes = new Map<string, Handler>();

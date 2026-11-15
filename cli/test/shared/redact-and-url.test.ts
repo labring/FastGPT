@@ -5,6 +5,17 @@ import { maskSecret, redactText, redactValue } from '../../src/shared/redact';
 import { isLoopbackHost, normalizeBaseUrl, resolveServerAssetUrl } from '../../src/shared/url';
 
 describe('shared utilities', () => {
+  it('redacts raw and encoded dual-token credentials in versioned Cookie text', () => {
+    const token = `rt.user:device.1.2.${'a'.repeat(43)}`;
+    const encoded = encodeURIComponent(token);
+    const name = `fastgpt_refresh_${'b'.repeat(32)}_1`;
+    const result = redactText(`Set-Cookie: ${name}=${encoded}; HttpOnly; credential=${encoded}`);
+    expect(result.includes(token)).toBe(false);
+    expect(result.includes(encoded)).toBe(false);
+    expect(result).toContain(`${name}=[REDACTED]`);
+    expect(result).toContain('credential=[REDACTED]');
+  });
+
   it('masks secrets and redacts sensitive strings/objects without mangling paths', () => {
     expect(maskSecret('')).toBe('');
     expect(maskSecret('123456')).toBe('******');

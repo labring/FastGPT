@@ -17,6 +17,7 @@ import { addAuditLog } from '../../audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import type { NodeHttpRequest, NodeHttpResponse } from '../../../../types/http';
 import { MongoUser } from '../../schema';
+import { getPublicSessionCredentials } from '../../session/http';
 
 /**
  * 登录流程内部传递的用户文档类型。
@@ -139,7 +140,7 @@ export const finishPasswordLogin = async ({
     ip: getClientIpFromRequest(req)
   });
 
-  setCookie(res, token);
+  setCookie(res, { ...token, request: req, selectSession: true });
 
   void reportCRMVisitorIdentity({
     visitorId: visitorIdentity.visitorId,
@@ -160,6 +161,6 @@ export const finishPasswordLogin = async ({
 
   return {
     user: userDetail,
-    token
+    ...getPublicSessionCredentials(token, req)
   };
 };

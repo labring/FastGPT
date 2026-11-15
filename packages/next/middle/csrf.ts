@@ -25,8 +25,18 @@ const hasCookie = (cookie: string | undefined, name: string) =>
   cookie?.split(';').some((item) => item.trim().startsWith(`${name}=`)) ?? false;
 
 /** 判断登录 Cookie 请求是否需要 Web 请求标记。 */
-export const shouldValidateWebRequest = (req: WebRequest) =>
-  hasCookie(getHeader(req.headers, 'cookie'), 'fastgpt_token');
+export const shouldValidateWebRequest = (req: WebRequest) => {
+  const cookie = getHeader(req.headers, 'cookie');
+  // 退出后保留的公开定位没有认证能力，不能让匿名 API 被误判为 Cookie 登录请求。
+  return (
+    hasCookie(cookie, 'fastgpt_token') ||
+    hasCookie(cookie, 'fastgpt_refresh_token') ||
+    (cookie
+      ?.split(';')
+      .some((item) => /^fastgpt_(access|refresh)_[a-f0-9]{32}_[1-9]\d*=/.test(item.trim())) ??
+      false)
+  );
+};
 
 /** 校验登录 Cookie 请求是否带有由 FastGPT Web 客户端添加的标记。 */
 export const isValidWebRequest = (req: WebRequest) => {

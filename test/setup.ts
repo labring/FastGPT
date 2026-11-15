@@ -1,3 +1,4 @@
+import { serviceEnv } from '@fastgpt/service/env';
 import './mocks';
 
 import { connectMongo } from '@fastgpt/service/common/mongo/init';
@@ -10,6 +11,8 @@ import { loadVectorDBEnv } from './utils/env';
 import type { Mongoose } from '@fastgpt/service/common/mongo';
 
 vi.stubEnv('NODE_ENV', 'test');
+// 通用单测的 Redis 夹具保留旧 Session 语义；双 Token 的 Lua 原子行为由真实 Redis 专项集成验证。
+serviceEnv.AUTH_DUAL_TOKEN_ENABLED = false;
 
 loadVectorDBEnv({ envFileNames: ['.env.test.local'] });
 

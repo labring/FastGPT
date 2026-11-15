@@ -357,7 +357,7 @@ describe('createWorkflowStreamResponseContext', () => {
     expect(redis.call).not.toHaveBeenCalled();
   });
 
-  it('should write stream errors and clear expired auth cookies', async () => {
+  it('writes auth stream errors without clearing cookies renewed by a newer request', async () => {
     const context = await createWorkflowStreamResponseContext({
       req: createReq(),
       res: createRes(),
@@ -371,7 +371,7 @@ describe('createWorkflowStreamResponseContext', () => {
 
     context.writeStreamError(ERROR_ENUM.unAuthorization);
 
-    expect(clearCookieMock).toHaveBeenCalledTimes(1);
+    expect(clearCookieMock).not.toHaveBeenCalled();
     expect(responseWrite).toHaveBeenCalledWith(
       expect.objectContaining({
         event: SseResponseEventEnum.error,

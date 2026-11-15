@@ -1,3 +1,10 @@
+import {
+  getPublicModelCatalog,
+  getPublicModelList,
+  getUserModelCatalog
+} from '@/web/core/ai/model/catalogApi';
+import { SessionErrEnum } from '@fastgpt/global/common/error/code/session';
+import { browserSession } from '@fastgpt/web/common/auth/session';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import {
   maxQuantityMap,
@@ -6,6 +13,7 @@ import {
   requestFinish,
   checkRes,
   responseError,
+  responseSuccess,
   AUTH_ERROR_EVENT_NAME,
   GET,
   POST,
@@ -63,9 +71,11 @@ vi.mock('../../../../src/web/common/system/useSystemStore', () => ({
 
 // Mock window.location
 const mockLocation = {
+  origin: 'https://fastgpt.test',
   pathname: '/test',
   replace: vi.fn(),
-  search: ''
+  search: '',
+  reload: vi.fn()
 };
 const dispatchEventMock = vi.fn();
 const tokenErrorCode = Number(Object.keys(TOKEN_ERROR_CODE)[0]);
@@ -77,6 +87,338 @@ vi.stubGlobal('window', {
 vi.stubGlobal('location', mockLocation);
 
 describe('request utils', () => {
+  it('keeps the public model-price catalogue available after returning from login', async () => {
+    browserSession.stop();
+    const catalog = { models: [{ model: 'public-model' }], providers: [] };
+    const send = vi
+      .spyOn(instance, 'request')
+      .mockResolvedValue({ data: { code: 200, data: catalog } });
+    try {
+      await expect(getPublicModelCatalog()).resolves.toEqual(catalog);
+      await expect(getPublicModelList()).resolves.toEqual(catalog.models);
+      expect(send).toHaveBeenCalledTimes(2);
+      await expect(getUserModelCatalog()).rejects.toBeInstanceOf(ToastHandledError);
+      expect(send).toHaveBeenCalledTimes(2);
+    } finally {
+      send.mockRestore();
+      browserSession.observe(null, { login: true });
+    }
+  });
+
+  it.each([false, true])(
+    'fences a retried request failure without another replay (newLogin=%s)',
+    async (newLogin) => {
+      mockLocation.pathname = '/test-route/chat';
+      const now = Date.now();
+      const session = {
+        sessionId: 'old:device',
+        contextVersion: 1,
+        generation: 1,
+        serverTime: now,
+        createdAt: now,
+        accessExpiresAt: now + 900_000,
+        refreshExpiresAt: now + 604_800_000,
+        absoluteExpiresAt: now + 2_592_000_000
+      };
+      browserSession.observe(session, { login: true });
+      let failRetry!: (error: unknown) => void;
+      let started!: () => void;
+      const retryStarted = new Promise<void>((resolve) => {
+        started = resolve;
+      });
+      const refresh = vi
+        .spyOn(globalThis, 'fetch')
+        .mockResolvedValue(
+          new Response(
+            JSON.stringify({ code: 200, data: { session: { ...session, generation: 2 } } })
+          )
+        );
+      const send = vi
+        .spyOn(instance, 'request')
+        .mockRejectedValueOnce({ code: 401, statusText: SessionErrEnum.accessExpired })
+        .mockImplementationOnce(
+          () =>
+            new Promise((_, reject) => {
+              failRetry = reject;
+              started();
+            })
+        );
+      const pending = GET('/test/retried').catch((error) => error);
+      try {
+        await retryStarted;
+        if (newLogin) {
+          browserSession.stop();
+          browserSession.observe({ ...session, sessionId: 'new:device' }, { login: true });
+        }
+        failRetry({ code: 401, statusText: SessionErrEnum.revoked });
+        const result = await pending;
+        expect(result instanceof ToastHandledError).toBe(newLogin);
+        expect(dispatchEventMock).toHaveBeenCalledTimes(newLogin ? 0 : 1);
+        expect(refresh).toHaveBeenCalledTimes(1);
+        expect(send).toHaveBeenCalledTimes(2);
+      } finally {
+        send.mockRestore();
+        refresh.mockRestore();
+        browserSession.observe(null, { login: true });
+      }
+    }
+  );
+
+  it('sends external geolocation requests while stopped and keeps same-origin absolute URLs coordinated', async () => {
+    browserSession.stop();
+    const send = vi
+      .spyOn(instance, 'request')
+      .mockResolvedValue({ data: { code: 200, data: { country: '中国' } } });
+    try {
+      await expect(GET('https://qifu-api.baidubce.com/ip/local/geo/v1/district')).resolves.toEqual({
+        country: '中国'
+      });
+      expect(send).toHaveBeenCalledOnce();
+      expect(send.mock.calls[0][0].headers).not.toHaveProperty('x-fastgpt-session-context');
+      await expect(GET('https://fastgpt.test/api/private')).rejects.toThrow(
+        'Ignore request from an old session context'
+      );
+      expect(send).toHaveBeenCalledOnce();
+    } finally {
+      send.mockRestore();
+      browserSession.observe(null, { login: true });
+    }
+  });
+
+  it.each(['before', 'after'] as const)(
+    'ignores a legacy 401 arriving %s a password rekey response installs its Cookie',
+    async (order) => {
+      browserSession.observe(null, { login: true });
+      let failOld!: (reason: unknown) => void;
+      let release!: () => void;
+      let oldArrived!: () => void;
+      let changeArrived!: () => void;
+      const oldStarted = new Promise<void>((resolve) => {
+        oldArrived = resolve;
+      });
+      const changeStarted = new Promise<void>((resolve) => {
+        changeArrived = resolve;
+      });
+      const held = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      const send = vi.spyOn(instance, 'request').mockImplementation(async (config) => {
+        if (config.url === '/test/old')
+          return new Promise((_, reject) => {
+            failOld = reject;
+            oldArrived();
+          });
+        if (config.url?.endsWith('/password/update')) {
+          changeArrived();
+          await held;
+          return responseSuccess({
+            data: { code: 200, data: 'changed' },
+            config,
+            headers: { 'x-fastgpt-session': 'null' }
+          } as Parameters<typeof responseSuccess>[0]);
+        }
+        return { data: { code: 200, data: 'current' } };
+      });
+      const old = GET('/test/old').then(
+        () => undefined,
+        (error) => error
+      );
+      await oldStarted;
+      const changing = POST('/support/user/account/password/update', {});
+      await changeStarted;
+      try {
+        if (order === 'before') failOld({ code: 401, statusText: 'unAuthorization' });
+        await Promise.resolve();
+        release();
+        await expect(changing).resolves.toBe('changed');
+        if (order === 'after') failOld({ code: 401, statusText: 'unAuthorization' });
+        expect(await old).toBeInstanceOf(ToastHandledError);
+        expect(clearToken).not.toHaveBeenCalled();
+        expect(mockLocation.replace).not.toHaveBeenCalled();
+        await expect(GET('/test/current')).resolves.toBe('current');
+      } finally {
+        release();
+        failOld({ code: 401, statusText: 'unAuthorization' });
+        await Promise.allSettled([old, changing]);
+        send.mockRestore();
+        browserSession.observe(null, { login: true });
+      }
+    }
+  );
+
+  it.each([false, true])(
+    'allows independent share requests after session cleanup (query=%s)',
+    async (query) => {
+      browserSession.stop();
+      const auth = { shareId: 'share', outLinkUid: 'viewer' };
+      const send = vi
+        .spyOn(instance, 'request')
+        .mockResolvedValue({ data: { code: 200, data: 'shared' } });
+      try {
+        const data = { outLinkAuthData: query ? JSON.stringify(auth) : auth };
+        await expect(
+          query ? GET('/core/chat/outLink/init', data) : POST('/core/ai/sandbox/getTicket', data)
+        ).resolves.toBe('shared');
+        expect(send).toHaveBeenCalledOnce();
+        expect(send.mock.calls[0][0].headers).not.toHaveProperty('x-fastgpt-session-context');
+        await expect(
+          POST('/core/ai/sandbox/getTicket', { outLinkAuthData: { shareId: 'incomplete' } })
+        ).rejects.toThrow('Ignore request from an old session context');
+        expect(send).toHaveBeenCalledOnce();
+      } finally {
+        send.mockRestore();
+        browserSession.observe(null, { login: true });
+      }
+    }
+  );
+
+  it('keeps a successful password response usable when an overlapping request sees stale cookies', async () => {
+    const now = Date.now();
+    const session = {
+      sessionId: 'user:password',
+      serverTime: now,
+      createdAt: now,
+      accessExpiresAt: now + 900_000,
+      refreshExpiresAt: now + 604_800_000,
+      absoluteExpiresAt: now + 2_592_000_000,
+      generation: 1,
+      contextVersion: 1
+    };
+    browserSession.observe(session, { login: true });
+    let release!: () => void;
+    let arrived!: () => void;
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const started = new Promise<void>((resolve) => {
+      arrived = resolve;
+    });
+    const send = vi.spyOn(instance, 'request').mockImplementation(async (config) => {
+      if (config.url?.endsWith('/password/update')) {
+        arrived();
+        await held;
+        return responseSuccess({
+          data: { code: 200, data: 'changed' },
+          config,
+          headers: {
+            'x-fastgpt-session': JSON.stringify({ ...session, generation: 2, contextVersion: 2 })
+          }
+        } as Parameters<typeof responseSuccess>[0]);
+      }
+      throw { code: 409, statusText: 'session_context_changed' };
+    });
+    const changing = POST('/support/user/account/password/update', {});
+    await started;
+    const overlap = GET('/test/read');
+    const rejected = expect(overlap).rejects.toThrow('Ignore request from an old session context');
+    try {
+      await vi.waitFor(() => expect(send).toHaveBeenCalledTimes(2));
+      expect(mockLocation.reload).not.toHaveBeenCalled();
+      release();
+      await expect(changing).resolves.toBe('changed');
+      await rejected;
+      expect(mockLocation.reload).not.toHaveBeenCalled();
+      expect(clearToken).not.toHaveBeenCalled();
+      expect(browserSession.hasSession).toBe(true);
+      expect(browserSession.contextHeaders).toEqual({
+        'x-fastgpt-session-context': 'user:password.2'
+      });
+    } finally {
+      release();
+      await Promise.allSettled([changing, overlap]);
+      send.mockRestore();
+      browserSession.observe(null, { login: true });
+    }
+  });
+
+  it('allows public initialization and network recovery while logged out', async () => {
+    browserSession.stop();
+    const send = vi
+      .spyOn(instance, 'request')
+      .mockRejectedValueOnce(new Error('offline'))
+      .mockResolvedValueOnce({
+        data: { code: 200, data: { feConfigs: { systemTitle: 'Recovered' } } }
+      });
+    try {
+      await expect(GET('/common/system/getInitData')).rejects.toThrow('offline');
+      await expect(GET('/common/system/getInitData')).resolves.toMatchObject({
+        feConfigs: { systemTitle: 'Recovered' }
+      });
+      expect(send).toHaveBeenCalledTimes(2);
+    } finally {
+      send.mockRestore();
+      browserSession.observe(null, { login: true });
+    }
+  });
+
+  it('rejects before dispatch if login changes while an unknown-session snapshot is being prepared', async () => {
+    browserSession.observe(null, { login: true });
+    const snapshot = await browserSession.beforeRequest();
+    const prepare = vi.spyOn(browserSession, 'beforeRequest').mockImplementation(async () => {
+      const now = Date.now();
+      browserSession.observe(
+        {
+          sessionId: 'user:new-device',
+          serverTime: now,
+          createdAt: now,
+          accessExpiresAt: now + 900_000,
+          refreshExpiresAt: now + 604_800_000,
+          absoluteExpiresAt: now + 2_592_000_000,
+          generation: 1,
+          contextVersion: 1
+        },
+        { login: true }
+      );
+      return snapshot;
+    });
+    const send = vi
+      .spyOn(instance, 'request')
+      .mockResolvedValue({ data: { code: 200, data: 'must not execute' } });
+    try {
+      await expect(POST('/test/write', { intent: 'old context' })).rejects.toThrow(
+        'Ignore request from an old session context'
+      );
+      expect(send).not.toHaveBeenCalled();
+    } finally {
+      prepare.mockRestore();
+      send.mockRestore();
+      browserSession.observe(null, { login: true });
+    }
+  });
+
+  it('keeps notification binding behind authenticated session coordination', async () => {
+    browserSession.stop();
+    const send = vi.spyOn(instance, 'request');
+    try {
+      await expect(
+        POST('/proApi/support/user/inform/sendAuthCode', { type: 'bindNotification' })
+      ).rejects.toThrow('Ignore request from an old session context');
+      expect(send).not.toHaveBeenCalled();
+    } finally {
+      send.mockRestore();
+      browserSession.observe(null, { login: true });
+    }
+  });
+
+  it.each(['register', 'findPassword'])(
+    'sends anonymous %s codes after login-page cleanup',
+    async (type) => {
+      browserSession.stop();
+      const send = vi
+        .spyOn(instance, 'request')
+        .mockResolvedValue({ data: { code: 200, data: 'sent' } });
+      try {
+        await expect(POST('/proApi/support/user/inform/sendAuthCode', { type })).resolves.toBe(
+          'sent'
+        );
+        expect(send).toHaveBeenCalledOnce();
+      } finally {
+        send.mockRestore();
+        browserSession.observe(null, { login: true });
+      }
+    }
+  );
+
   beforeEach(() => {
     vi.clearAllMocks();
     Object.keys(maxQuantityMap).forEach((key) => delete maxQuantityMap[key]);
@@ -125,10 +467,12 @@ describe('request utils', () => {
       };
       const oldList = getUserUsages(body).catch((error) => error);
       const oldDashboard = getDashboardData(body).catch((error) => error);
+      await vi.waitFor(() => expect(pending).toHaveLength(2));
       expect(pending.map(({ signal }) => signal.aborted)).toEqual([false, false]);
 
       const latestList = getUserUsages(body);
       const latestDashboard = getDashboardData(body);
+      await vi.waitFor(() => expect(pending).toHaveLength(4));
       expect(pending.map(({ signal }) => signal.aborted)).toEqual([true, true, false, false]);
       await expect(oldList).resolves.toMatchObject({ code: 'ERR_CANCELED' });
       await expect(oldDashboard).resolves.toMatchObject({ code: 'ERR_CANCELED' });
@@ -158,7 +502,7 @@ describe('request utils', () => {
       const secondRequest = GET('/test', { type: 'llm', versionKey: '1' }, { deduplicate: true });
 
       expect(firstRequest).toBe(secondRequest);
-      expect(requestSpy).toHaveBeenCalledTimes(1);
+      await vi.waitFor(() => expect(requestSpy).toHaveBeenCalledTimes(1));
 
       resolveRequest?.({ data: { code: 200, data: 'shared result', message: 'success' } });
       await expect(firstRequest).resolves.toBe('shared result');

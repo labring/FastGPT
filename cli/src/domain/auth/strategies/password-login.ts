@@ -75,7 +75,9 @@ export function createPasswordLoginStrategy(): LoginStrategy {
       if (!('status' in loginResult)) {
         return {
           authType: 'token',
-          secret: loginResult.token
+          secret: loginResult.token,
+          refreshToken: loginResult.refreshToken,
+          session: loginResult.session
         };
       }
 
@@ -134,7 +136,9 @@ export function createPasswordLoginStrategy(): LoginStrategy {
 
       return {
         authType: 'token',
-        secret: verified.token
+        secret: verified.token,
+        refreshToken: verified.refreshToken,
+        session: verified.session
       };
     }
   };

@@ -1,3 +1,4 @@
+import { stripUrlTrailingSlash } from '@fastgpt/global/common/string/url';
 import type { ReqHeaderAuthType } from '../type';
 import { type AuthModeType } from '../type';
 import { SERVICE_LOCAL_HOST } from '../../../common/system/tools';
@@ -11,6 +12,22 @@ import { getUserIdByTmbId } from '../../../support/user/team/utils';
 import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { serviceEnv } from '../../../env';
 import { ApiKeyTypeEnum } from '@fastgpt/global/support/openapi/constants';
+import { SessionErrEnum } from '@fastgpt/global/common/error/code/session';
+import {
+  SESSION_API_PATH,
+  SESSION_REFRESH_COOKIE_NAME,
+  SESSION_SELECTOR_COOKIE_NAME,
+  SESSION_CONTEXT_HEADER
+} from '@fastgpt/global/support/user/session/constants';
+import type {
+  IssuedSessionCredentials,
+  SessionLifecycle
+} from '@fastgpt/global/support/user/session/type';
+import {
+  getSessionCookieNames,
+  readSelectedSessionCookies,
+  assertSessionContext
+} from '../../user/session/http';
 
 export const authCert = async (props: AuthModeType) => {
   const result = await parseHeaderCert(props);
@@ -38,16 +55,20 @@ export async function parseHeaderCert({
   allowAccountCancellation = false
 }: AuthModeType) {
   // parse jwt
-  async function authCookieToken(cookie?: string, token?: string) {
+  async function authCookieToken(token?: string) {
     // 获取 cookie
-    const cookies = Cookie.parse(cookie ?? '');
-    const cookieToken = token || cookies[TokenName];
+    const cookieToken = token || (await readSelectedSessionCookies(req)).accessToken;
 
     if (!cookieToken) {
-      return Promise.reject(ERROR_ENUM.unAuthorization);
+      throw new Error(SessionErrEnum.accessMissing);
     }
 
-    return { ...(await authUserSession(cookieToken)), sessionId: cookieToken };
+    const identity = await authUserSession(cookieToken);
+    assertSessionContext(req.headers[SESSION_CONTEXT_HEADER], {
+      sessionId: identity.sessionId,
+      contextVersion: identity.session?.contextVersion
+    });
+    return identity;
   }
   // from authorization get apikey
   async function parseAuthorization(authorization?: string) {
@@ -114,6 +135,7 @@ export async function parseHeaderCert({
     sourceName,
     sessionId,
     sessionCreatedAt,
+    session,
     legacyAppId,
     parsedAppId,
     apiKeyAuthProxy,
@@ -142,7 +164,7 @@ export async function parseHeaderCert({
     }
     if (authToken && (token || cookie)) {
       // user token(from fastgpt web)
-      const sessionData = await authCookieToken(cookie, token);
+      const sessionData = await authCookieToken(token);
 
       return {
         uid: sessionData.userId,
@@ -153,7 +175,8 @@ export async function parseHeaderCert({
         authType: AuthUserTypeEnum.token,
         isRoot: sessionData.isRoot,
         sessionId: sessionData.sessionId,
-        sessionCreatedAt: sessionData.createdAt
+        sessionCreatedAt: sessionData.createdAt,
+        session: sessionData.session
       };
     }
     if (authRoot && rootkey) {
@@ -170,7 +193,9 @@ export async function parseHeaderCert({
       };
     }
 
-    return Promise.reject(ERROR_ENUM.unAuthorization);
+    return Promise.reject(
+      authToken ? new Error(SessionErrEnum.accessMissing) : ERROR_ENUM.unAuthorization
+    );
   })();
 
   if (!authRoot && (!teamId || !tmbId)) {
@@ -206,7 +231,8 @@ export async function parseHeaderCert({
     apikey: openApiKey,
     isRoot: !!isRoot,
     sessionId,
-    sessionCreatedAt
+    sessionCreatedAt,
+    session
   };
 }
 
@@ -220,26 +246,167 @@ const getAuthCookieOptions = () => ({
   secure: serviceEnv.AUTH_COOKIE_SECURE
 });
 
+/** 与 webEnv / Next basePath 使用同一前缀归一化，签发和删除必须匹配实际会话请求路径。 */
+const getRefreshCookiePath = () =>
+  `${stripUrlTrailingSlash(serviceEnv.NEXT_PUBLIC_BASE_URL)}/api${SESSION_API_PATH}`;
+
 /**
  * 写入登录凭证 Cookie；启用 AUTH_COOKIE_SECURE 后，浏览器只会通过 HTTPS 发送凭证。
  */
-export const setCookie = (res: NodeHttpResponse, token: string) => {
-  res.setHeader(
-    'Set-Cookie',
-    Cookie.serialize(TokenName, token, {
-      ...getAuthCookieOptions(),
-      maxAge: 604800
-    })
+export const setCookie = (
+  res: NodeHttpResponse,
+  value:
+    | string
+    | (IssuedSessionCredentials & { request?: NodeHttpRequest; selectSession?: boolean })
+) => {
+  const credentials = typeof value === 'string' ? { token: value } : value;
+  const existing = res.getHeader('Set-Cookie');
+  const headers =
+    existing === undefined
+      ? []
+      : Array.isArray(existing)
+        ? existing.map(String)
+        : [String(existing)];
+  const now = Date.now();
+  const refreshPath = getRefreshCookiePath();
+  if (credentials.session && credentials.refreshToken) {
+    const names = getSessionCookieNames(
+      credentials.session.sessionId,
+      credentials.session.contextVersion
+    );
+    headers.push(
+      Cookie.serialize(names.access, credentials.token, {
+        ...getAuthCookieOptions(),
+        maxAge: Math.max(0, Math.ceil((credentials.session.accessExpiresAt - now) / 1000))
+      })
+    );
+    headers.push(
+      Cookie.serialize(names.refresh, credentials.refreshToken, {
+        ...getAuthCookieOptions(),
+        path: refreshPath,
+        maxAge: Math.max(0, Math.ceil((credentials.session.refreshExpiresAt - now) / 1000))
+      })
+    );
+    // 只有明确的新登录可以选择设备。普通刷新、改密和切团队均不能覆盖其他页的新登录定位。
+    if (credentials.selectSession)
+      headers.push(
+        Cookie.serialize(SESSION_SELECTOR_COOKIE_NAME, credentials.session.sessionId, {
+          ...getAuthCookieOptions(),
+          maxAge: Math.max(0, Math.ceil((credentials.session.absoluteExpiresAt - now) / 1000))
+        })
+      );
+  } else {
+    headers.push(
+      Cookie.serialize(TokenName, credentials.token, { ...getAuthCookieOptions(), maxAge: 604800 })
+    );
+    if (credentials.selectSession)
+      headers.push(
+        Cookie.serialize(SESSION_SELECTOR_COOKIE_NAME, '', { ...getAuthCookieOptions(), maxAge: 0 })
+      );
+  }
+  if (credentials.session || credentials.selectSession)
+    headers.push(
+      ...getSupersededSessionCookieHeaders({
+        request: credentials.request,
+        session: credentials.session,
+        selectSession: credentials.selectSession
+      })
+    );
+  res.setHeader('Set-Cookie', headers);
+  res.setHeader('x-fastgpt-session', JSON.stringify(credentials.session ?? null));
+};
+
+/**
+ * 按请求快照清理已替换的凭证名称，并由 Access 名推导同组的窄路径 Refresh。
+ * 不清理固定 selector；请求发送后才创建的新登录标签不在快照中，迟到响应不会删除它。
+ */
+const getSupersededSessionCookieHeaders = ({
+  request,
+  session,
+  selectSession = false
+}: {
+  request?: NodeHttpRequest;
+  session?: SessionLifecycle;
+  selectSession?: boolean;
+}) => {
+  const cookies = Cookie.parse(request?.headers.cookie ?? '');
+  // 显式新登录才可替换 selector；旧 Header 凭证不能清理浏览器已经选择的另一个登录。
+  const selected = cookies[SESSION_SELECTOR_COOKIE_NAME];
+  if (!selectSession && selected && selected !== session?.sessionId) return [];
+  const current = session
+    ? {
+        ...getSessionCookieNames(session.sessionId, session.contextVersion),
+        contextVersion: session.contextVersion
+      }
+    : undefined;
+  const groups = new Set<string>();
+  // 改密 / 切团队的路径收不到 Refresh，当前上下文的前一组仍须成对清理。
+  if (current && current.contextVersion > 1)
+    groups.add(`${current.tag}_${current.contextVersion - 1}`);
+  for (const name of Object.keys(cookies)) {
+    const match = /^fastgpt_(?:access|refresh)_([a-f0-9]{32})_([1-9]\d*)$/.exec(name);
+    if (!match) continue;
+    // 同设备只删除更早的安全上下文；其他标签都已被当前 selector 替换。
+    if (current && match[1] === current.tag && Number(match[2]) >= current.contextVersion) continue;
+    groups.add(`${match[1]}_${match[2]}`);
+  }
+  return [...groups].flatMap((group) =>
+    ['access', 'refresh'].map((kind) =>
+      Cookie.serialize(`fastgpt_${kind}_${group}`, '', {
+        ...getAuthCookieOptions(),
+        path: kind === 'refresh' ? getRefreshCookiePath() : '/',
+        maxAge: 0
+      })
+    )
   );
 };
 
-/** 清理登录凭证 Cookie，并复用写入时的路径与安全属性。 */
-export const clearCookie = (res: NodeHttpResponse) => {
-  res.setHeader(
-    'Set-Cookie',
-    Cookie.serialize(TokenName, '', {
-      ...getAuthCookieOptions(),
-      maxAge: 0
-    })
-  );
+/** 会话接口可以收到所有 Refresh Cookie；即使 Access 已自然过期，也能清理旧登录残留。 */
+export const clearSupersededSessionCookies = (
+  res: NodeHttpResponse,
+  props: {
+    request: NodeHttpRequest;
+    session?: SessionLifecycle;
+  }
+) => {
+  const expired = getSupersededSessionCookieHeaders(props);
+  if (!expired.length) return;
+  const existing = res.getHeader('Set-Cookie');
+  res.setHeader('Set-Cookie', [
+    ...(existing === undefined
+      ? []
+      : Array.isArray(existing)
+        ? existing.map(String)
+        : [String(existing)]),
+    ...expired
+  ]);
+};
+
+/**
+ * 只清理认证凭据，保留无认证能力的定位 Cookie 到其自然过期或下次登录覆盖。
+ * 已删除的 Redis 会话不会因迟到刷新回包复活；不删除固定定位名，避免旧退出回包清掉其他页的新登录。
+ */
+export const clearCookie = (res: NodeHttpResponse, req?: NodeHttpRequest) => {
+  const existing = res.getHeader('Set-Cookie');
+  const names = new Set([TokenName, SESSION_REFRESH_COOKIE_NAME]);
+  for (const name of Object.keys(Cookie.parse(req?.headers.cookie ?? ''))) {
+    if (/^fastgpt_(access|refresh)_[a-f0-9]{32}_[1-9]\d*$/.test(name)) names.add(name);
+  }
+  res.setHeader('Set-Cookie', [
+    ...(existing === undefined
+      ? []
+      : Array.isArray(existing)
+        ? existing.map(String)
+        : [String(existing)]),
+    ...Array.from(names, (name) =>
+      Cookie.serialize(name, '', {
+        ...getAuthCookieOptions(),
+        path:
+          name === SESSION_REFRESH_COOKIE_NAME || name.startsWith('fastgpt_refresh_')
+            ? getRefreshCookiePath()
+            : '/',
+        maxAge: 0
+      })
+    )
+  ]);
 };

@@ -1,5 +1,7 @@
 'use client';
 
+import { fetchWithSession } from '@fastgpt/web/common/auth/session';
+
 import { useState, useCallback, useRef } from 'react';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
@@ -86,7 +88,7 @@ export const useAudioPlay = (props?: {
       audioController.current = new AbortController();
       const hasOutLinkAuth = !!(outLinkAuthData?.shareId && outLinkAuthData.outLinkUid);
 
-      const response = await fetch(getWebReqUrl('/api/core/chat/record/getSpeech'), {
+      const response = await fetchWithSession(getWebReqUrl('/api/core/chat/record/getSpeech'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

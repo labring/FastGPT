@@ -9,8 +9,12 @@ export async function Call<B = any, Q = any, R = any>(
 ) {
   const { body = {}, query = {}, ...rest } = props || {};
   let raw;
+  const responseHeaders = new Map<string, unknown>();
   const res: any = {
-    setHeader: vi.fn(),
+    setHeader: vi.fn((key: string, value: unknown) =>
+      responseHeaders.set(key.toLowerCase(), value)
+    ),
+    getHeader: vi.fn((key: string) => responseHeaders.get(key.toLowerCase())),
     write: vi.fn((data: any) => {
       raw = data;
       return true;
@@ -32,6 +36,7 @@ export async function Call<B = any, Q = any, R = any>(
   };
   const response = (await handler(
     {
+      headers: {},
       body: JSON.parse(JSON.stringify(body)),
       query: JSON.parse(JSON.stringify(query)),
       ...(rest as any)

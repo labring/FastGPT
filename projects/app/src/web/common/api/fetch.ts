@@ -35,6 +35,7 @@ import {
   FASTGPT_WEB_REQUEST_VALUE
 } from '@fastgpt/global/common/system/constants';
 import { getLanguageRequestHeaders } from '@fastgpt/web/i18n/utils';
+import { fetchWithSession } from '@fastgpt/web/common/auth/session';
 
 type StreamFetchProps = {
   url?: string;
@@ -410,6 +411,7 @@ function $ssefetch(params: SSEFetchParams) {
 
     try {
       const fetchEventSourceOptions: FetchEventSourceInit = {
+        fetch: fetchWithSession,
         ...restRequestInit,
         headers: {
           ...getLanguageRequestHeaders(),
@@ -602,6 +604,7 @@ function $resumefetch({
       const req = new Request(getWebReqUrl(url));
 
       await fetchEventSource(req, {
+        fetch: fetchWithSession,
         headers: {
           ...getLanguageRequestHeaders(),
           [FASTGPT_WEB_REQUEST_HEADER]: FASTGPT_WEB_REQUEST_VALUE

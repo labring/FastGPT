@@ -28,10 +28,17 @@ describe('user auth logout state', () => {
   });
 
   it('marks logout before clearing client state and requesting server logout', async () => {
-    await clearToken();
+    await clearToken({ revoke: true });
 
     expect(isLogoutInProgress()).toBe(true);
     expect(mocks.clearMemory).toHaveBeenCalledOnce();
     expect(mocks.loginOut).toHaveBeenCalledOnce();
+  });
+
+  it('clears local auth state without revoking a newer login when handling an expired page or login mount', async () => {
+    await clearToken();
+    expect(isLogoutInProgress()).toBe(true);
+    expect(mocks.clearMemory).toHaveBeenCalledOnce();
+    expect(mocks.loginOut).not.toHaveBeenCalled();
   });
 });

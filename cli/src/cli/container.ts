@@ -10,6 +10,7 @@ import { createWhoamiProbeHandler } from '../domain/auth/probe/whoami-probe';
 import { createApiKeyLoginStrategy } from '../domain/auth/strategies/api-key-login';
 import { createPasswordLoginStrategy } from '../domain/auth/strategies/password-login';
 import { createTokenLoginStrategy } from '../domain/auth/strategies/token-login';
+import { createSessionAwareClient } from '../domain/auth/session-client';
 import {
   createAuthResolutionCheck,
   createConfigCheck,
@@ -111,14 +112,24 @@ export function createCliContainer(deps: CliRuntimeDeps): CliContainer {
             : undefined
         ));
 
-  const createHttpClient: HttpClientFactory = ({ baseUrl, insecure, caCertPath }) =>
-    createFastGptHttpClient({
+  const createHttpClient: HttpClientFactory = ({
+    baseUrl,
+    insecure,
+    caCertPath,
+    profileName,
+    profileBaseUrl
+  }) => {
+    const client = createFastGptHttpClient({
       baseUrl,
       cliVersion,
       fetchFn: deps.fetchFn,
       insecure,
       caCertPath
     });
+    return profileName
+      ? createSessionAwareClient({ client, profileName, profileBaseUrl, configRepo, secretStore })
+      : client;
+  };
 
   const probeHandlers = [
     createWhoamiProbeHandler(),
