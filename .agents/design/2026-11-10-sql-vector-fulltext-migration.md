@@ -12,18 +12,18 @@
 
 | 环境变量 | 默认值 | 语义 |
 | --- | --- | --- |
-| `DATASET_FULLTEXT_PROVIDER` | SQL 部署为 `mongo`；Milvus 部署为 `milvus` | 指定读取 provider，可选 `mongo/pg/oceanbase/seekdb/opengauss/milvus`。SQL 原生 provider 必须与当前向量库相同，并通过目标就绪核验；不支持读取其他物理向量库。Milvus 保留原有路径，不支持本轮未回填的 Mongo 切读。 |
+| `DATASET_FULLTEXT_PROVIDER` | SQL 部署为 `mongo`；Milvus 部署为 `native` | 指定读取方式，仅支持 `mongo/native`。`native` 自动使用当前向量库，不需要指定数据库名称；SQL 原生读取还需通过目标就绪核验。Milvus 保留原有路径，不支持本轮未回填的 Mongo 切读。 |
 | `DATASET_FULLTEXT_DUAL_WRITE` | `true` | SQL 原生读取期间是否继续维护 Mongo 全文写删。读 `mongo` 时 Mongo 是主读存储，始终维护；SQL 词串始终随向量同行写入，不受该开关影响。此开关不改变 Milvus 原有写删路径。 |
 
 配置通过环境变量加载，修改后应更新所有 App/Pro/训练节点并重启生效，避免集群写策略混用。
 
 ```text
 双写、读 Mongo（初始/回退）：DATASET_FULLTEXT_PROVIDER=mongo；DATASET_FULLTEXT_DUAL_WRITE=true
-双写、读 PG（验收后启用）： DATASET_FULLTEXT_PROVIDER=pg；DATASET_FULLTEXT_DUAL_WRITE=true
-结束回退窗口、仅维护原生： DATASET_FULLTEXT_PROVIDER=pg；DATASET_FULLTEXT_DUAL_WRITE=false
+双写、读当前向量库（验收后启用）：DATASET_FULLTEXT_PROVIDER=native；DATASET_FULLTEXT_DUAL_WRITE=true
+结束回退窗口、仅维护原生： DATASET_FULLTEXT_PROVIDER=native；DATASET_FULLTEXT_DUAL_WRITE=false
 ```
 
-迁移成功仅生成目标就绪证据，不修改环境变量。显式选择 SQL 原生读取但目标未就绪/身份失效时，开启双写的部署继续 Mongo 兼容读；关闭双写的部署明确报错，不自动返回陈旧全文。原生查询本身的错误仍上抛，不逐请求静默切库。
+迁移成功仅生成目标就绪证据，不修改环境变量。设置 `DATASET_FULLTEXT_PROVIDER=native` 选择 SQL 原生读取但目标未就绪/身份失效时，开启双写的部署继续 Mongo 兼容读；关闭双写的部署明确报错，不自动返回陈旧全文。原生查询本身的错误仍上抛，不逐请求静默切库。
 
 关闭 Mongo 双写意味着失去完整的即时回退能力。重新打开双写只能追平后续写入，不能补回关闭期间的数据；必须先从业务数据完整重建并验证 Mongo 全文，才能安全切读 Mongo。兼容表和索引本轮不清理。
 
@@ -222,7 +222,7 @@ SQL 原生召回流程：
 运行期通过目标就绪记录 `dataset_sql_fulltext_targets` 控制 `SqlFullTextStore` 的平滑切读，并在兼容窗口内保留 Mongo `dataset_data_texts` 双写/双删与 `$text` 读取兜底：
 
 - **新装与升级启动**：应用启动执行对应向量库 `init()` 时先建好基础 `modeldata` 表、`fulltext_tokens` 列和向量索引，再启动后台全文扩展与索引构建，不等待其完成（旧镜像缺扩展时仅记录 `warn`，不阻断应用启动与向量服务）；后续新写入同行写向量与词串，同时继续维护 `dataset_data_texts`。
-- **平滑切读**：`20261110_migrate_sql_fulltext` 在 `prepare` 阶段先清理当前 provider 的就绪标记，仅当 `prepare → preflight → scan → validation` 全量通过后，才将当前 SQL 目标的 `{ provider, targetId, schemaVersion, analyzerVersion }` 写入 `dataset_sql_fulltext_targets`。`SqlFullTextStore.search()` 默认读 Mongo，显式选择当前 SQL provider 且目标已就绪、签名匹配时走 `searchSqlFullText()`；目标未就绪且开启兼容双写时自动回退 `MongoFullTextStore.search()`（Mongo `$text`）；关闭双写时就绪失效直接报错，避免读取陈旧 Mongo 数据。
+- **平滑切读**：`20261110_migrate_sql_fulltext` 在 `prepare` 阶段先清理当前 provider 的就绪标记，仅当 `prepare → preflight → scan → validation` 全量通过后，才将当前 SQL 目标的 `{ provider, targetId, schemaVersion, analyzerVersion }` 写入 `dataset_sql_fulltext_targets`。`SqlFullTextStore.search()` 默认读 Mongo，显式选择 `native` 且目标已就绪、签名匹配时走 `searchSqlFullText()`；目标未就绪且开启兼容双写时自动回退 `MongoFullTextStore.search()`（Mongo `$text`）；关闭双写时就绪失效直接报错，避免读取陈旧 Mongo 数据。
 - **目标身份保护**：目标 SQL 库内部通过 `fastgpt_fulltext_metadata` 持久化 `{ targetId, schemaVersion, analyzerVersion }`，既供升级任务的 checkpoint 绑定物理目标与分词签名，也供运行期核对当前连接的物理目标是否已完成回填与校验。
 
 ## 7. 系统迁移任务如何共用
@@ -320,7 +320,7 @@ OceanBase / SeekDB 使用对应驱动参数及结果检查；OpenGauss 使用经
 
 ### 9.1 切换与观察
 
-回填 succeeded、目标身份一致、未解决错误为零、全写入方已升级，并且关键查询、权限、增删改、相关性与性能通过验收后，管理员将 `DATASET_FULLTEXT_PROVIDER` 设置为当前 SQL provider，并在所有相关节点重启生效；观察期保持 `DATASET_FULLTEXT_DUAL_WRITE=true`。
+回填 succeeded、目标身份一致、未解决错误为零、全写入方已升级，并且关键查询、权限、增删改、相关性与性能通过验收后，管理员将 `DATASET_FULLTEXT_PROVIDER` 设置为 `native`，并在所有相关节点重启生效；观察期保持 `DATASET_FULLTEXT_DUAL_WRITE=true`。
 
 观察期继续双写。监控错误率、延迟分布、超时、有效引用映射失败、候选预算耗尽、写入失败及索引状态。可以限流执行影子查询，但必须计入额外资源成本。
 
@@ -396,7 +396,7 @@ cleanup 是独立手动任务。首期通过**短暂暂停知识库写入并排�
 
 Milvus/Zilliz 保留原生全文路径，不进入 SQL 迁移。Mongo 仍是业务原文和当前有效索引引用的权威来源。
 
-统一升级任务为 `20261110_migrate_sql_fulltext`（`manual: true`），登记于 4.18.0（阶段：`prepare → preflight → scan → validation`）。`getFullTextStore()` 在非 Milvus 下返回 `SqlFullTextStore`（继承 `MongoFullTextStore`）：迁移完成并写入 `dataset_sql_fulltext_targets` 前回退 `MongoFullTextStore.search()`，完成后仅允许显式选择当前 SQL provider 的部署读取 `searchSqlFullText()`；默认 Mongo 读取不因迁移完成而改变。checkpoint 绑定 provider、物理目标 UUID 与 `analyzerVersion`。
+统一升级任务为 `20261110_migrate_sql_fulltext`（`manual: true`），登记于 4.18.0（阶段：`prepare → preflight → scan → validation`）。`getFullTextStore()` 在非 Milvus 下返回 `SqlFullTextStore`（继承 `MongoFullTextStore`）：迁移完成并写入 `dataset_sql_fulltext_targets` 前回退 `MongoFullTextStore.search()`，完成后仅允许显式选择 `native` 的部署读取 `searchSqlFullText()`；默认 Mongo 读取不因迁移完成而改变。checkpoint 绑定 provider、物理目标 UUID 与 `analyzerVersion`。
 
 四库共用历史文本规则、断点恢复、失败重试和业务 ID 映射。MySQL 协议写入使用绑定参数及 utf8mb4，逐行获取精确自增 ID，不推算连续 ID，也不改写正文中的引号。运行期业务写删在同行维护 SQL `fulltext_tokens` 的同时，兼容期内继续维护 `dataset_data_texts` 双写/双删及其索引，保障升级回退与共享/未切换目标的平滑检索。
 

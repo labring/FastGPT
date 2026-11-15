@@ -3,21 +3,19 @@ import { getVectorType } from '../constants';
 
 /**
  * 显式选择全文读取位置；SQL 部署默认保持 Mongo 兼容读，Milvus 保留原生路径。
- * 原生全文与向量同行维护，不能指定另一个向量库，也不支持将 Milvus 改读未经回填的 Mongo。
+ * native 自动解析为当前向量库；不支持将 Milvus 改读未经回填的 Mongo。
  */
 export const getFullTextProvider = () => {
   const vectorProvider = getVectorType();
   const provider =
-    serviceEnv.DATASET_FULLTEXT_PROVIDER ?? (vectorProvider === 'milvus' ? 'milvus' : 'mongo');
-  if (
-    (provider !== 'mongo' && provider !== vectorProvider) ||
-    (vectorProvider === 'milvus' && provider !== 'milvus')
-  ) {
+    serviceEnv.DATASET_FULLTEXT_PROVIDER ?? (vectorProvider === 'milvus' ? 'native' : 'mongo');
+  if (provider === 'native') return vectorProvider;
+  if (vectorProvider === 'milvus') {
     throw new Error(
       `Full-text provider ${provider} is incompatible with vector provider ${vectorProvider}`
     );
   }
-  return provider;
+  return 'mongo';
 };
 
 /**

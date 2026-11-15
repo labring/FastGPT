@@ -147,7 +147,7 @@ export class MongoFullTextStore implements FullTextStore {
 
 /**
  * SQL 向量库（PG / OceanBase / SeekDB / openGauss）平滑切换全文实现。
- * 默认读 Mongo；管理员显式指定当前 SQL provider 且目标已通过验收时才读原生全文。
+ * 默认读 Mongo；管理员选择 native 后自动使用当前 SQL provider，且目标通过验收时才读原生全文。
  * 双写开启时允许就绪失效后回退 Mongo；关闭双写后不能回退到已停止追平的旧全文。
  */
 export class SqlFullTextStore extends MongoFullTextStore {

@@ -8,7 +8,7 @@ const mockSearchSqlFullText = vi.hoisted(() => vi.fn());
 const mockIsSqlFullTextTargetReady = vi.hoisted(() => vi.fn());
 const mockMilvusSearch = vi.hoisted(() => vi.fn());
 const fullTextConfig = vi.hoisted(() => ({
-  provider: undefined as 'mongo' | 'pg' | 'oceanbase' | 'seekdb' | 'opengauss' | undefined,
+  provider: undefined as 'mongo' | 'native' | undefined,
   dualWrite: true
 }));
 vi.mock('@fastgpt/service/env', async (importOriginal) => {
@@ -129,7 +129,7 @@ describe('textStore', () => {
       expect(mockSearchSqlFullText).not.toHaveBeenCalled();
       expect(mockIsSqlFullTextTargetReady).not.toHaveBeenCalled();
       mockAggregate.mockClear();
-      fullTextConfig.provider = provider;
+      fullTextConfig.provider = 'native';
       mockIsSqlFullTextTargetReady.mockResolvedValueOnce(false);
       const fallbackItems = await store.search(props);
       expect(mockSearchSqlFullText).not.toHaveBeenCalled();
@@ -232,7 +232,7 @@ describe('textStore', () => {
 
   it('skips Mongo compatibility writes and deletes when native reads disable dual write', async () => {
     const { getFullTextStore } = await loadTextStore('pg');
-    fullTextConfig.provider = 'pg';
+    fullTextConfig.provider = 'native';
     fullTextConfig.dualWrite = false;
     const store = getFullTextStore();
     await store.write([

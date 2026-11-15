@@ -7,7 +7,7 @@ import type { VectorType } from '@fastgpt/service/common/vectorDB/constants';
 
 const config = vi.hoisted(() => ({
   vector: 'pg' as VectorType,
-  DATASET_FULLTEXT_PROVIDER: undefined as 'mongo' | VectorType | undefined,
+  DATASET_FULLTEXT_PROVIDER: undefined as 'mongo' | 'native' | undefined,
   DATASET_FULLTEXT_DUAL_WRITE: true
 }));
 vi.mock('@fastgpt/service/env', () => ({ serviceEnv: config }));
@@ -23,11 +23,11 @@ beforeEach(() => {
 
 describe('getFullTextProvider', () => {
   it.each(['pg', 'oceanbase', 'seekdb', 'opengauss'] as const)(
-    'defaults %s to Mongo and permits explicit matching native reads',
+    'defaults %s to Mongo and automatically selects it for native reads',
     (provider) => {
       config.vector = provider;
       expect(getFullTextProvider()).toBe('mongo');
-      config.DATASET_FULLTEXT_PROVIDER = provider;
+      config.DATASET_FULLTEXT_PROVIDER = 'native';
       expect(getFullTextProvider()).toBe(provider);
       config.DATASET_FULLTEXT_PROVIDER = 'mongo';
       expect(getFullTextProvider()).toBe('mongo');
@@ -37,14 +37,9 @@ describe('getFullTextProvider', () => {
   it('preserves the existing Milvus path and rejects an unbackfilled Mongo route', () => {
     config.vector = 'milvus';
     expect(getFullTextProvider()).toBe('milvus');
-    config.DATASET_FULLTEXT_PROVIDER = 'milvus';
+    config.DATASET_FULLTEXT_PROVIDER = 'native';
     expect(getFullTextProvider()).toBe('milvus');
     config.DATASET_FULLTEXT_PROVIDER = 'mongo';
-    expect(getFullTextProvider).toThrow('incompatible');
-  });
-
-  it('rejects native reads from a provider that does not own the vectors', () => {
-    config.DATASET_FULLTEXT_PROVIDER = 'oceanbase';
     expect(getFullTextProvider).toThrow('incompatible');
   });
 });
@@ -67,7 +62,7 @@ describe('shouldWriteMongoFullText', () => {
   it.each([true, false])(
     'honors the compatibility write switch with native reads (dual=%s)',
     (dual) => {
-      config.DATASET_FULLTEXT_PROVIDER = 'pg';
+      config.DATASET_FULLTEXT_PROVIDER = 'native';
       config.DATASET_FULLTEXT_DUAL_WRITE = dual;
       expect(shouldWriteMongoFullText()).toBe(dual);
     }

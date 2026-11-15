@@ -251,13 +251,10 @@ export const serviceEnv = createEnv({
     MILVUS_ADDRESS: z.string().optional().meta({ description: 'Milvus 向量库连接参数' }),
     MILVUS_TOKEN: z.string().optional().meta({ description: 'Milvus 向量库Token' }),
     // ==================== 全文检索 ====================
-    DATASET_FULLTEXT_PROVIDER: z
-      .enum(['mongo', 'pg', 'oceanbase', 'seekdb', 'opengauss', 'milvus'])
-      .optional()
-      .meta({
-        description:
-          '全文读取 provider；SQL 向量库默认读 mongo，Milvus 默认读 milvus。原生 provider 必须与向量库一致，SQL 原生读取还需迁移验收通过'
-      }),
+    DATASET_FULLTEXT_PROVIDER: z.enum(['mongo', 'native']).optional().meta({
+      description:
+        '全文读取方式，仅支持 mongo 或 native；native 自动使用当前向量库。SQL 部署默认 mongo，Milvus 默认 native，SQL 原生读取还需迁移验收通过'
+    }),
     DATASET_FULLTEXT_DUAL_WRITE: BoolSchema.default(true).meta({
       description:
         'SQL 原生全文读取时是否继续维护 Mongo 全文，默认 true 以支持回退；读 mongo 时始终维护 Mongo，SQL 词串始终随向量写入。关闭后回退前需重建 Mongo 全文'
