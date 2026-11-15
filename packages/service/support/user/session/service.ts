@@ -60,10 +60,17 @@ export class UserSessionTokenService {
       refreshTtlSeconds: SESSION_REFRESH_TTL_SECONDS,
       absoluteTtlSeconds: SESSION_ABSOLUTE_TTL_SECONDS,
       preRefreshMs: SESSION_PREFRESH_MS,
-      replayTtlMs: SESSION_REFRESH_REPLAY_MS,
-      ...policy
+      replayTtlMs: SESSION_REFRESH_REPLAY_MS
     };
-    for (const value of Object.values(this.policy)) z.int().positive().parse(value);
+    // Next 构建阶段跳过 env 校验，策略可能仍是 undefined / string；保留数字默认值并继续拒绝非法配置。
+    for (const key of Object.keys(this.policy) as (keyof UserSessionPolicy)[]) {
+      const value: unknown = policy[key];
+      this.policy[key] = z.coerce
+        .number()
+        .int()
+        .positive()
+        .parse(value === undefined || value === '' ? this.policy[key] : value);
+    }
     const extendableTtlMs =
       Math.min(this.policy.accessTtlSeconds, this.policy.refreshTtlSeconds) * 1000;
     if (

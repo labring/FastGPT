@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { NodeHttpResponse } from '@fastgpt/service/types/http';
+import { maxHeaderSize } from 'node:http';
+import type { NodeHttpRequest, NodeHttpResponse } from '@fastgpt/service/types/http';
+import { SESSION_API_PATH } from '@fastgpt/global/support/user/session/constants';
 import { serviceEnv } from '@fastgpt/service/env';
 import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
 
@@ -94,6 +96,58 @@ describe('auth cookie', () => {
       setHeader: vi.fn(),
       getHeader: vi.fn()
     }) as unknown as NodeHttpResponse;
+
+  it('expires Refresh cookies during repeated rekeys even when their Path excludes them from the request', () => {
+    const jar = new Map<string, { name: string; value: string; path: string }>();
+    const refreshPath = `${serviceEnv.NEXT_PUBLIC_BASE_URL}/api${SESSION_API_PATH}`;
+    const mutationPath = `${serviceEnv.NEXT_PUBLIC_BASE_URL}/api/support/user/account/password/update`;
+    const cookieHeader = (path: string) =>
+      [...jar.values()]
+        .filter((cookie) => path.startsWith(cookie.path))
+        .map((cookie) => `${cookie.name}=${cookie.value}`)
+        .join('; ');
+    const now = Date.now();
+    const sessionId = '012345678901234567890123:01234567890123456789012345678901';
+    for (let contextVersion = 1; contextVersion <= 111; contextVersion++) {
+      const response = createResponse();
+      const requestCookies = cookieHeader(mutationPath);
+      expect(requestCookies).not.toContain('fastgpt_refresh_');
+      setCookie(response, {
+        token: `at.${sessionId}.${contextVersion}.${contextVersion}.${'a'.repeat(43)}`,
+        refreshToken: `rt.${sessionId}.${contextVersion}.${contextVersion}.${'b'.repeat(43)}`,
+        session: {
+          sessionId,
+          contextVersion,
+          generation: contextVersion,
+          serverTime: now,
+          createdAt: now,
+          accessExpiresAt: now + 900_000,
+          refreshExpiresAt: now + 604_800_000,
+          absoluteExpiresAt: now + 2_592_000_000
+        },
+        selectSession: contextVersion === 1,
+        request: { headers: { cookie: requestCookies } } as NodeHttpRequest
+      });
+      const headers = vi
+        .mocked(response.setHeader)
+        .mock.calls.find(([name]) => name === 'Set-Cookie')![1] as string[];
+      for (const header of headers) {
+        const [entry, ...attributes] = header.split('; ');
+        const separator = entry.indexOf('=');
+        const name = entry.slice(0, separator);
+        const value = entry.slice(separator + 1);
+        const path = attributes.find((attribute) => attribute.startsWith('Path='))!.slice(5);
+        const key = `${name}|${path}`;
+        if (attributes.includes('Max-Age=0')) jar.delete(key);
+        else jar.set(key, { name, value, path });
+      }
+    }
+    // 浏览器只发送路径匹配的 Cookie；重复重签后也不能触发 Node 默认 16 KiB Header 上限。
+    expect(Buffer.byteLength(cookieHeader(refreshPath))).toBeLessThan(maxHeaderSize);
+    expect(
+      [...jar.values()].filter((cookie) => cookie.name.startsWith('fastgpt_refresh_'))
+    ).toHaveLength(1);
+  });
 
   it('默认不添加 Secure 属性以兼容 HTTP 自部署环境', () => {
     serviceEnv.AUTH_COOKIE_SECURE = false;

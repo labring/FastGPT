@@ -288,16 +288,21 @@ export const setCookie = (
         })
       );
     const cookies = Cookie.parse(credentials.request?.headers.cookie ?? '');
+    // 改密 / 切团队的路径收不到 Refresh Cookie，仍须按旧上下文成对清理，避免不断累积到 Header 上限。
+    const previousContexts = new Set<string>();
+    if (credentials.session.contextVersion > 1)
+      previousContexts.add(String(credentials.session.contextVersion - 1));
     for (const name of Object.keys(cookies)) {
-      if (name === names.access || name === names.refresh) continue;
-      if (
-        name.startsWith(`fastgpt_access_${names.tag}_`) ||
-        name.startsWith(`fastgpt_refresh_${names.tag}_`)
-      ) {
+      const match = /^fastgpt_(?:access|refresh)_([a-f0-9]{32})_([1-9]\d*)$/.exec(name);
+      if (match?.[1] === names.tag && match[2] !== String(credentials.session.contextVersion))
+        previousContexts.add(match[2]);
+    }
+    for (const context of previousContexts) {
+      for (const kind of ['access', 'refresh']) {
         headers.push(
-          Cookie.serialize(name, '', {
+          Cookie.serialize(`fastgpt_${kind}_${names.tag}_${context}`, '', {
             ...getAuthCookieOptions(),
-            path: name.startsWith('fastgpt_refresh_') ? refreshPath : '/',
+            path: kind === 'refresh' ? refreshPath : '/',
             maxAge: 0
           })
         );
