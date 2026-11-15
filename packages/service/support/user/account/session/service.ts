@@ -73,7 +73,7 @@ export const refreshUserSession = async ({
   });
 };
 
-/** 保留现有全部设备退出语义，支持 Access 已过期、只剩 Refresh 的浏览器。 */
+/** 全设备退出在用户锁内重新认证，拒绝等待期间已被改密或切团队替换的凭证。 */
 export const logoutUserSessions = async ({
   req,
   res,
@@ -86,16 +86,25 @@ export const logoutUserSessions = async ({
   let clearCredentials = true;
   try {
     const { refreshToken } = await readSessionCredentials(req, bodyRefreshToken);
-    const identity = refreshToken
-      ? await userSessionTokenService.authRefreshForRevocation(refreshToken)
-      : await authCert({ req, authToken: true, allowAccountCancellation: true });
-    assertSessionContext(req.headers[SESSION_CONTEXT_HEADER], {
-      sessionId: identity.sessionId ?? '',
-      contextVersion:
-        'contextVersion' in identity ? identity.contextVersion : identity.session?.contextVersion
-    });
+    const authenticate = async () => {
+      const identity = refreshToken
+        ? await userSessionTokenService.authRefreshForRevocation(refreshToken)
+        : await authCert({ req, authToken: true, allowAccountCancellation: true });
+      assertSessionContext(req.headers[SESSION_CONTEXT_HEADER], {
+        sessionId: identity.sessionId ?? '',
+        contextVersion:
+          'contextVersion' in identity ? identity.contextVersion : identity.session?.contextVersion
+      });
+      return identity;
+    };
+    const identity = await authenticate();
     const userId = identity.userId;
-    await withUserLock({ userId, waitTimeoutMs: 8000 }, () => delUserAllSession(userId));
+    await withUserLock({ userId, waitTimeoutMs: 8000 }, async ({ assertValid }) => {
+      // 等锁前的认证仅确定锁归属；新上下文生效后，旧请求不能继续撤销新凭证。
+      await authenticate();
+      assertValid();
+      await delUserAllSession(userId);
+    });
   } catch (error) {
     const reason = error instanceof Error ? error.message : error;
     if (reason === SessionErrEnum.contextChanged) {

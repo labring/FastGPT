@@ -396,6 +396,55 @@ describe('Session HTTP pipeline with real Mongo and Redis', () => {
     expect(await getUserSessionCount(userId)).toBe(0);
   });
 
+  it.each(['refresh-cookie', 'access-header'] as const)(
+    'rejects a queued %s logout after its security context changes under the user lock',
+    async (transport) => {
+      const original = await createUserSession({ userId, teamId, tmbId, isRoot: false });
+      let notifyAuthenticated!: () => void;
+      const authenticated = new Promise<void>((resolve) => {
+        notifyAuthenticated = resolve;
+      });
+      const method = transport === 'refresh-cookie' ? 'authRefreshForRevocation' : 'auth';
+      const authenticate = userSessionTokenService[method].bind(userSessionTokenService);
+      const spy = vi.spyOn(userSessionTokenService, method).mockImplementation(async (token) => {
+        const identity = await authenticate(token);
+        notifyAuthenticated();
+        return identity;
+      });
+      let pendingLogout!: ReturnType<typeof request>;
+      try {
+        const next = await withUserLock(userId, async () => {
+          pendingLogout = request('/logout', {
+            method: 'POST',
+            body: '{}',
+            headers: {
+              ...(transport === 'refresh-cookie'
+                ? { cookie: cookie(original, false) }
+                : { token: original.token }),
+              [SESSION_CONTEXT_HEADER]: `${original.session!.sessionId}.1`
+            }
+          });
+          // 确保退出已通过锁外认证，再模拟改密或切团队持锁重签，稳定覆盖等待窗口。
+          await authenticated;
+          return rekeyUserSession({ sessionId: original.session!.sessionId });
+        });
+        const logout = await pendingLogout;
+        expect(logout.response.status).toBe(409);
+        expect(logout.body.statusText).toBe(SessionErrEnum.contextChanged);
+        expect(logout.response.headers.getSetCookie()).toEqual([]);
+        await expect(authUserSession(next.token)).resolves.toMatchObject({ userId });
+        await expect(
+          userSessionTokenService.verifyRefresh(next.refreshToken!)
+        ).resolves.toMatchObject({
+          userId
+        });
+        expect(await getUserSessionCount(userId)).toBe(1);
+      } finally {
+        spy.mockRestore();
+      }
+    }
+  );
+
   it('does not let a late logout response remove the selector of a newer login', async () => {
     const original = await createUserSession({ userId, teamId, tmbId, isRoot: false });
     const logout = await request('/logout', {
