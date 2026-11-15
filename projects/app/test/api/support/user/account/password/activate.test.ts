@@ -1,3 +1,4 @@
+import type { IssuedSessionCredentials as Credentials } from '@fastgpt/global/support/user/session/type';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import { UserStatusEnum } from '@fastgpt/global/support/user/constant';
@@ -5,7 +6,7 @@ import type { ActivateAccountBody } from '@fastgpt/global/openapi/support/user/a
 import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
 import { ApiRequestInputParseError } from '@fastgpt/service/common/zod/requestParseError';
 import { MongoUser } from '@fastgpt/service/support/user/schema';
-import { delUserAllSession } from '@fastgpt/service/support/user/session';
+import { delUserAllSession, rekeyUserSession } from '@fastgpt/service/support/user/session';
 import activateAccountApi from '@/pages/api/support/user/account/password/activate';
 import { Call } from '@test/utils/request';
 
@@ -74,8 +75,42 @@ describe('password/activate API', () => {
     newPsw = hashStr(NEW_PASSWORD)
   }: { newPsw?: string } = {}): ActivateAccountBody => ({ newPsw });
 
+  it.each([false, true])(
+    'returns replacement credentials without exposing browser Refresh (native=%s)',
+    async (native) => {
+      const now = Date.now();
+      const credentials = {
+        token: 'at.replacement',
+        refreshToken: 'rt.replacement',
+        session: {
+          sessionId: 'user:device',
+          contextVersion: 2,
+          generation: 2,
+          serverTime: now,
+          createdAt: now,
+          accessExpiresAt: now + 900_000,
+          refreshExpiresAt: now + 604_800_000,
+          absoluteExpiresAt: now + 2_592_000_000
+        }
+      };
+      vi.mocked(rekeyUserSession).mockResolvedValueOnce(credentials);
+      const response = await Call(activateAccountApi, {
+        body: getBody(),
+        auth: getAuth(),
+        headers: {
+          'x-fastgpt-session-transport': 'header',
+          ...(native ? {} : { origin: 'https://fastgpt.example.com' })
+        }
+      });
+      expect(response.code).toBe(200);
+      expect(response.data).toEqual(
+        native ? credentials : { token: credentials.token, session: credentials.session }
+      );
+    }
+  );
+
   it('activates the account and revokes the other sessions on success', async () => {
-    const response = await Call<ActivateAccountBody, Record<string, never>, undefined>(
+    const response = await Call<ActivateAccountBody, Record<string, never>, Credentials>(
       activateAccountApi,
       { body: getBody(), auth: getAuth() }
     );
@@ -98,7 +133,7 @@ describe('password/activate API', () => {
   });
 
   it('no longer accepts an old password field', async () => {
-    const response = await Call<any, Record<string, never>, undefined>(activateAccountApi, {
+    const response = await Call<any, Record<string, never>, Credentials>(activateAccountApi, {
       body: { ...getBody(), oldPsw: hashStr(OLD_PASSWORD) },
       auth: getAuth()
     });
@@ -115,7 +150,7 @@ describe('password/activate API', () => {
 
   it('rejects an account that is not pending activation', async () => {
     // 已激活账号必须拒绝：本端点不校验旧密码，只能用于首次激活。
-    const response = await Call<ActivateAccountBody, Record<string, never>, undefined>(
+    const response = await Call<ActivateAccountBody, Record<string, never>, Credentials>(
       activateAccountApi,
       {
         body: getBody(),
@@ -135,7 +170,7 @@ describe('password/activate API', () => {
 
   it('allows non-root accounts when the commercial license is active', async () => {
     global.feConfigs = { ...global.feConfigs, isPlus: true };
-    const response = await Call<ActivateAccountBody, Record<string, never>, undefined>(
+    const response = await Call<ActivateAccountBody, Record<string, never>, Credentials>(
       activateAccountApi,
       { body: getBody(), auth: getAuth() }
     );
@@ -153,7 +188,7 @@ describe('password/activate API', () => {
   });
 
   it('rejects reusing the current password and keeps the account inactive', async () => {
-    const response = await Call<ActivateAccountBody, Record<string, never>, undefined>(
+    const response = await Call<ActivateAccountBody, Record<string, never>, Credentials>(
       activateAccountApi,
       { body: getBody({ newPsw: hashStr(OLD_PASSWORD) }), auth: getAuth() }
     );
@@ -168,7 +203,7 @@ describe('password/activate API', () => {
   it('rejects the request before the lock when the per-user rate limit is reached', async () => {
     mocks.assertPasswordUpdateRateLimit.mockRejectedValueOnce(new Error('rate limited'));
 
-    const response = await Call<ActivateAccountBody, Record<string, never>, undefined>(
+    const response = await Call<ActivateAccountBody, Record<string, never>, Credentials>(
       activateAccountApi,
       { body: getBody(), auth: getAuth() }
     );
@@ -181,12 +216,12 @@ describe('password/activate API', () => {
   });
 
   it('rejects unknown body fields instead of applying them to another account', async () => {
-    const withUserId = await Call<any, Record<string, never>, undefined>(activateAccountApi, {
+    const withUserId = await Call<any, Record<string, never>, Credentials>(activateAccountApi, {
       body: { ...getBody(), userId: String(normalUser._id) },
       auth: getAuth()
     });
     // 密码入参必须是 64 位 SHA-256 摘要，前端传入明文摘要以外的东西一律拒绝。
-    const withPlainPassword = await Call<any, Record<string, never>, undefined>(
+    const withPlainPassword = await Call<any, Record<string, never>, Credentials>(
       activateAccountApi,
       { body: getBody({ newPsw: 'plain-password' }), auth: getAuth() }
     );
@@ -204,9 +239,12 @@ describe('password/activate API', () => {
   });
 
   it('rejects requests without a current Session', async () => {
-    const response = await Call<ActivateAccountBody, Record<string, never>, undefined>(
+    const response = await Call<ActivateAccountBody, Record<string, never>, Credentials>(
       activateAccountApi,
-      { body: getBody(), auth: getAuth(String(pendingUser._id), { sessionId: undefined }) }
+      {
+        body: getBody(),
+        auth: getAuth(String(pendingUser._id), { sessionId: undefined })
+      }
     );
 
     expect(response.code).toBe(500);
@@ -225,7 +263,7 @@ describe('password/activate API', () => {
         disablePasswordForSsoUsers: true
       }
     };
-    const response = await Call<ActivateAccountBody, Record<string, never>, undefined>(
+    const response = await Call<ActivateAccountBody, Record<string, never>, Credentials>(
       activateAccountApi,
       { body: getBody(), auth: getAuth() }
     );

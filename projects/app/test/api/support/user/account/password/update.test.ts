@@ -1,3 +1,4 @@
+import type { IssuedSessionCredentials as Credentials } from '@fastgpt/global/support/user/session/type';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import type { UpdatePasswordBody } from '@fastgpt/global/openapi/support/user/account/password/api';
@@ -10,7 +11,7 @@ import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSc
 import { initTeamFreePlan } from '@fastgpt/service/support/wallet/sub/utils';
 import updatePasswordApi from '@/pages/api/support/user/account/password/update';
 import { Call } from '@test/utils/request';
-import { delUserAllSession } from '@fastgpt/service/support/user/session';
+import { delUserAllSession, rekeyUserSession } from '@fastgpt/service/support/user/session';
 
 vi.mock('@fastgpt/service/support/user/session', async (importOriginal) => {
   const actual = (await importOriginal()) as Record<string, unknown>;
@@ -86,9 +87,43 @@ describe('password/update API', () => {
     ).sessionId
   });
 
+  it.each([false, true])(
+    'returns replacement credentials without exposing browser Refresh (native=%s)',
+    async (native) => {
+      const now = Date.now();
+      const credentials = {
+        token: 'at.replacement',
+        refreshToken: 'rt.replacement',
+        session: {
+          sessionId: 'user:device',
+          contextVersion: 2,
+          generation: 2,
+          serverTime: now,
+          createdAt: now,
+          accessExpiresAt: now + 900_000,
+          refreshExpiresAt: now + 604_800_000,
+          absoluteExpiresAt: now + 2_592_000_000
+        }
+      };
+      vi.mocked(rekeyUserSession).mockResolvedValueOnce(credentials);
+      const response = await Call(updatePasswordApi, {
+        body: await getBody(),
+        auth: getAuth(),
+        headers: {
+          'x-fastgpt-session-transport': 'header',
+          ...(native ? {} : { origin: 'https://fastgpt.example.com' })
+        }
+      });
+      expect(response.code).toBe(200);
+      expect(response.data).toEqual(
+        native ? credentials : { token: credentials.token, session: credentials.session }
+      );
+    }
+  );
+
   it('updates an existing password and its update time', async () => {
     const body = await getBody();
-    const response = await Call<UpdatePasswordBody, Record<string, never>, undefined>(
+    const response = await Call<UpdatePasswordBody, Record<string, never>, Credentials>(
       updatePasswordApi,
       {
         body,
@@ -111,7 +146,7 @@ describe('password/update API', () => {
     const body = await getBody();
     mocks.assertPasswordUpdateRateLimit.mockRejectedValueOnce(new Error('rate limited'));
 
-    const response = await Call<UpdatePasswordBody, Record<string, never>, undefined>(
+    const response = await Call<UpdatePasswordBody, Record<string, never>, Credentials>(
       updatePasswordApi,
       { body, auth: getAuth() }
     );
@@ -125,13 +160,13 @@ describe('password/update API', () => {
 
   it('consumes the session after a successful password update', async () => {
     const body = await getBody();
-    const response = await Call<UpdatePasswordBody, Record<string, never>, undefined>(
+    const response = await Call<UpdatePasswordBody, Record<string, never>, Credentials>(
       updatePasswordApi,
       { body, auth: getAuth() }
     );
 
     expect(response.code).toBe(200);
-    const reuseResponse = await Call<UpdatePasswordBody, Record<string, never>, undefined>(
+    const reuseResponse = await Call<UpdatePasswordBody, Record<string, never>, Credentials>(
       updatePasswordApi,
       { body, auth: getAuth() }
     );
@@ -139,7 +174,7 @@ describe('password/update API', () => {
   });
   it('rejects a session issued for a different login Session', async () => {
     const body = await getBody();
-    const response = await Call<UpdatePasswordBody, Record<string, never>, undefined>(
+    const response = await Call<UpdatePasswordBody, Record<string, never>, Credentials>(
       updatePasswordApi,
       {
         body,
@@ -160,7 +195,7 @@ describe('password/update API', () => {
       { $set: { expireAt: new Date(Date.now() - 1) } }
     );
 
-    const response = await Call<UpdatePasswordBody, Record<string, never>, undefined>(
+    const response = await Call<UpdatePasswordBody, Record<string, never>, Credentials>(
       updatePasswordApi,
       { body, auth: getAuth() }
     );
@@ -173,7 +208,7 @@ describe('password/update API', () => {
 
   it('keeps the session available when the password update is rejected', async () => {
     const body = await getBody({ newPsw: hashStr(OLD_PASSWORD) });
-    const rejectedResponse = await Call<UpdatePasswordBody, Record<string, never>, undefined>(
+    const rejectedResponse = await Call<UpdatePasswordBody, Record<string, never>, Credentials>(
       updatePasswordApi,
       { body, auth: getAuth() }
     );
@@ -184,7 +219,7 @@ describe('password/update API', () => {
       message: UserErrEnum.newPasswordSameAsOld
     });
 
-    const retryResponse = await Call<UpdatePasswordBody, Record<string, never>, undefined>(
+    const retryResponse = await Call<UpdatePasswordBody, Record<string, never>, Credentials>(
       updatePasswordApi,
       {
         body: { ...body, newPsw: hashStr('retried-password') },
@@ -202,7 +237,7 @@ describe('password/update API', () => {
     const userWithoutPassword = await MongoUser.create({ username: 'password-first-set-user' });
     const body = await getBody({ userId: String(userWithoutPassword._id) });
 
-    const response = await Call<UpdatePasswordBody, Record<string, never>, undefined>(
+    const response = await Call<UpdatePasswordBody, Record<string, never>, Credentials>(
       updatePasswordApi,
       {
         body,
@@ -219,7 +254,7 @@ describe('password/update API', () => {
   });
 
   it('rejects the current password when a stored password exists', async () => {
-    const response = await Call<UpdatePasswordBody, Record<string, never>, undefined>(
+    const response = await Call<UpdatePasswordBody, Record<string, never>, Credentials>(
       updatePasswordApi,
       {
         body: await getBody({ newPsw: hashStr(OLD_PASSWORD) }),
@@ -237,7 +272,7 @@ describe('password/update API', () => {
   });
 
   it('rejects a token issued for another user', async () => {
-    const response = await Call<UpdatePasswordBody, Record<string, never>, undefined>(
+    const response = await Call<UpdatePasswordBody, Record<string, never>, Credentials>(
       updatePasswordApi,
       {
         body: await getBody({ userId: 'another-user' }),
@@ -252,7 +287,7 @@ describe('password/update API', () => {
   });
 
   it('rejects a missing password change session', async () => {
-    const response = await Call<any, Record<string, never>, undefined>(updatePasswordApi, {
+    const response = await Call<any, Record<string, never>, Credentials>(updatePasswordApi, {
       body: { newPsw: hashStr('new-password') },
       auth: getAuth()
     });
@@ -264,7 +299,7 @@ describe('password/update API', () => {
   });
 
   it('rejects non-string password input', async () => {
-    const invalidPasswordResponse = await Call<any, Record<string, never>, undefined>(
+    const invalidPasswordResponse = await Call<any, Record<string, never>, Credentials>(
       updatePasswordApi,
       {
         body: {
@@ -285,7 +320,7 @@ describe('password/update API', () => {
 
   it('allows root to change password with a valid password change session', async () => {
     const body = await getBody();
-    const response = await Call<UpdatePasswordBody, Record<string, never>, undefined>(
+    const response = await Call<UpdatePasswordBody, Record<string, never>, Credentials>(
       updatePasswordApi,
       {
         body,
@@ -301,7 +336,7 @@ describe('password/update API', () => {
   });
 
   it('rejects requests without a current Session', async () => {
-    const response = await Call<UpdatePasswordBody, Record<string, never>, undefined>(
+    const response = await Call<UpdatePasswordBody, Record<string, never>, Credentials>(
       updatePasswordApi,
       {
         body: await getBody()
@@ -322,7 +357,7 @@ describe('password/update API', () => {
     };
     vi.mocked(delUserAllSession).mockClear();
 
-    const response = await Call<UpdatePasswordBody, Record<string, never>, undefined>(
+    const response = await Call<UpdatePasswordBody, Record<string, never>, Credentials>(
       updatePasswordApi,
       {
         body: await getBody(),

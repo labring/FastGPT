@@ -18,7 +18,10 @@ import {
   SESSION_SELECTOR_COOKIE_NAME,
   SESSION_CONTEXT_HEADER
 } from '@fastgpt/global/support/user/session/constants';
-import type { IssuedSessionCredentials } from '@fastgpt/global/support/user/session/type';
+import type {
+  IssuedSessionCredentials,
+  SessionLifecycle
+} from '@fastgpt/global/support/user/session/type';
 import {
   getSessionCookieNames,
   readSelectedSessionCookies,
@@ -287,27 +290,6 @@ export const setCookie = (
           maxAge: Math.max(0, Math.ceil((credentials.session.absoluteExpiresAt - now) / 1000))
         })
       );
-    const cookies = Cookie.parse(credentials.request?.headers.cookie ?? '');
-    // 改密 / 切团队的路径收不到 Refresh Cookie，仍须按旧上下文成对清理，避免不断累积到 Header 上限。
-    const previousContexts = new Set<string>();
-    if (credentials.session.contextVersion > 1)
-      previousContexts.add(String(credentials.session.contextVersion - 1));
-    for (const name of Object.keys(cookies)) {
-      const match = /^fastgpt_(?:access|refresh)_([a-f0-9]{32})_([1-9]\d*)$/.exec(name);
-      if (match?.[1] === names.tag && match[2] !== String(credentials.session.contextVersion))
-        previousContexts.add(match[2]);
-    }
-    for (const context of previousContexts) {
-      for (const kind of ['access', 'refresh']) {
-        headers.push(
-          Cookie.serialize(`fastgpt_${kind}_${names.tag}_${context}`, '', {
-            ...getAuthCookieOptions(),
-            path: kind === 'refresh' ? refreshPath : '/',
-            maxAge: 0
-          })
-        );
-      }
-    }
   } else {
     headers.push(
       Cookie.serialize(TokenName, credentials.token, { ...getAuthCookieOptions(), maxAge: 604800 })
@@ -317,8 +299,83 @@ export const setCookie = (
         Cookie.serialize(SESSION_SELECTOR_COOKIE_NAME, '', { ...getAuthCookieOptions(), maxAge: 0 })
       );
   }
+  if (credentials.session || credentials.selectSession)
+    headers.push(
+      ...getSupersededSessionCookieHeaders({
+        request: credentials.request,
+        session: credentials.session,
+        selectSession: credentials.selectSession
+      })
+    );
   res.setHeader('Set-Cookie', headers);
   res.setHeader('x-fastgpt-session', JSON.stringify(credentials.session ?? null));
+};
+
+/**
+ * 按请求快照清理已替换的凭证名称，并由 Access 名推导同组的窄路径 Refresh。
+ * 不清理固定 selector；请求发送后才创建的新登录标签不在快照中，迟到响应不会删除它。
+ */
+const getSupersededSessionCookieHeaders = ({
+  request,
+  session,
+  selectSession = false
+}: {
+  request?: NodeHttpRequest;
+  session?: SessionLifecycle;
+  selectSession?: boolean;
+}) => {
+  const cookies = Cookie.parse(request?.headers.cookie ?? '');
+  // 显式新登录才可替换 selector；旧 Header 凭证不能清理浏览器已经选择的另一个登录。
+  const selected = cookies[SESSION_SELECTOR_COOKIE_NAME];
+  if (!selectSession && selected && selected !== session?.sessionId) return [];
+  const current = session
+    ? {
+        ...getSessionCookieNames(session.sessionId, session.contextVersion),
+        contextVersion: session.contextVersion
+      }
+    : undefined;
+  const groups = new Set<string>();
+  // 改密 / 切团队的路径收不到 Refresh，当前上下文的前一组仍须成对清理。
+  if (current && current.contextVersion > 1)
+    groups.add(`${current.tag}_${current.contextVersion - 1}`);
+  for (const name of Object.keys(cookies)) {
+    const match = /^fastgpt_(?:access|refresh)_([a-f0-9]{32})_([1-9]\d*)$/.exec(name);
+    if (!match) continue;
+    // 同设备只删除更早的安全上下文；其他标签都已被当前 selector 替换。
+    if (current && match[1] === current.tag && Number(match[2]) >= current.contextVersion) continue;
+    groups.add(`${match[1]}_${match[2]}`);
+  }
+  return [...groups].flatMap((group) =>
+    ['access', 'refresh'].map((kind) =>
+      Cookie.serialize(`fastgpt_${kind}_${group}`, '', {
+        ...getAuthCookieOptions(),
+        path:
+          kind === 'refresh' ? `${serviceEnv.NEXT_PUBLIC_BASE_URL}/api${SESSION_API_PATH}` : '/',
+        maxAge: 0
+      })
+    )
+  );
+};
+
+/** 会话接口可以收到所有 Refresh Cookie；即使 Access 已自然过期，也能清理旧登录残留。 */
+export const clearSupersededSessionCookies = (
+  res: NodeHttpResponse,
+  props: {
+    request: NodeHttpRequest;
+    session?: SessionLifecycle;
+  }
+) => {
+  const expired = getSupersededSessionCookieHeaders(props);
+  if (!expired.length) return;
+  const existing = res.getHeader('Set-Cookie');
+  res.setHeader('Set-Cookie', [
+    ...(existing === undefined
+      ? []
+      : Array.isArray(existing)
+        ? existing.map(String)
+        : [String(existing)]),
+    ...expired
+  ]);
 };
 
 /**

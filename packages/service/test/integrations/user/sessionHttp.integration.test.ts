@@ -223,6 +223,45 @@ describe('Session HTTP pipeline with real Mongo and Redis', () => {
     expect(retry.response.headers.getSetCookie()).toEqual([]);
   });
 
+  it.each(['/status', '/refresh'])(
+    'cleans superseded scoped Refresh cookies at %s after their Access has expired',
+    async (path) => {
+      const old = await createUserSession({ userId, teamId, tmbId, isRoot: false });
+      const current = await createUserSession({ userId, teamId, tmbId, isRoot: false });
+      const oldNames = getSessionCookieNames(old.session!.sessionId, 1);
+      const currentNames = getSessionCookieNames(current.session!.sessionId, 1);
+      const result = await request(path, {
+        ...(path === '/refresh' ? { method: 'POST', body: '{}' } : {}),
+        headers: { cookie: `${cookie(current)}; ${oldNames.refresh}=${old.refreshToken}` }
+      });
+      expect(result.response.status).toBe(200);
+      const expired = result.response.headers
+        .getSetCookie()
+        .filter((header) => header.includes('Max-Age=0'));
+      expect(expired).toEqual(
+        expect.arrayContaining([expect.stringContaining(`${oldNames.refresh}=;`)])
+      );
+      expect(
+        expired.every(
+          (header) =>
+            !header.startsWith(`${currentNames.access}=`) &&
+            !header.startsWith(`${currentNames.refresh}=`) &&
+            !header.startsWith('fastgpt_session=')
+        )
+      ).toBe(true);
+      // 迟到清理只包含旧请求中已观察到的名称，后续新登录的随机标签不会被清掉。
+      const next = await createUserSession({ userId, teamId, tmbId, isRoot: false });
+      const nextNames = getSessionCookieNames(next.session!.sessionId, 1);
+      expect(
+        expired.some(
+          (header) =>
+            header.startsWith(`${nextNames.access}=`) || header.startsWith(`${nextNames.refresh}=`)
+        )
+      ).toBe(false);
+      await expect(authUserSession(current.token)).resolves.toMatchObject({ userId });
+    }
+  );
+
   it('enforces browser origin and RT transport while native clients receive the complete rotated pair', async () => {
     const pair = await createUserSession({ userId, teamId, tmbId, isRoot: false });
     const forged = await request('/refresh', {

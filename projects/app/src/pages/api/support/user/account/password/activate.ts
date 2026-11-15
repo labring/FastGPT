@@ -17,13 +17,18 @@ import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { MongoUser } from '@fastgpt/service/support/user/schema';
 import { delUserAllSession, rekeyUserSession } from '@fastgpt/service/support/user/session';
 import { withUserLock } from '@fastgpt/service/support/user/lock';
+import {
+  IssuedSessionCredentialsSchema,
+  type IssuedSessionCredentials
+} from '@fastgpt/global/support/user/session/type';
+import { getPublicSessionCredentials } from '@fastgpt/service/support/user/session/http';
 import { NextAPI } from '@/service/middleware/entry';
 
 /** 未激活账号首次设置密码；该入口不校验旧密码，也不限制其他 API 的使用。 */
 async function handler(
   req: ApiRequestProps<ActivateAccountBody>,
   res: ApiResponseType
-): Promise<void> {
+): Promise<IssuedSessionCredentials> {
   const { body } = parseApiInput({ req, bodySchema: ActivateAccountBodySchema });
   const { userId, sessionId, tmbId, teamId } = await authCert({
     req,
@@ -36,7 +41,7 @@ async function handler(
     limit: serviceEnv.PASSWORD_LOGIN_MINUTE_LIMIT_COUNT
   });
 
-  await withUserLock(userId, async () => {
+  const credentials = await withUserLock(userId, async () => {
     const user = await MongoUser.findById(userId);
     if (!user) throw new Error('Failed to activate account');
     assertUserPasswordAvailable(user.username);
@@ -47,7 +52,9 @@ async function handler(
     });
 
     await delUserAllSession(userId, [sessionId]);
-    setCookie(res, { ...(await rekeyUserSession({ sessionId })), request: req });
+    const credentials = await rekeyUserSession({ sessionId });
+    setCookie(res, { ...credentials, request: req });
+    return credentials;
   });
   void addAuditLog({
     tmbId,
@@ -55,6 +62,7 @@ async function handler(
     event: AuditEventEnum.CHANGE_PASSWORD,
     params: {}
   });
+  return IssuedSessionCredentialsSchema.parse(getPublicSessionCredentials(credentials, req));
 }
 
 export default NextAPI(handler);

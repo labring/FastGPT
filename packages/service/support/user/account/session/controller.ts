@@ -10,7 +10,11 @@ import {
 import { parseApiInput } from '../../../../common/zod/requestParseError';
 import { checkIPRateLimit } from '../../../../common/rateLimit/interface/ip';
 import { getClientIpFromRequest } from '../../../../common/security/clientIp';
-import { authCert, setCookie } from '../../../permission/auth/common';
+import {
+  authCert,
+  setCookie,
+  clearSupersededSessionCookies
+} from '../../../permission/auth/common';
 import { assertSessionRequestOrigin } from '../../session/http';
 import { logoutUserSessions, readSessionCredentials, refreshUserSession } from './service';
 
@@ -43,6 +47,7 @@ export const refreshSessionHandler = async (req: NodeApiRequest, res: NodeHttpRe
     expectedContext: req.headers[SESSION_CONTEXT_HEADER]
   });
   if (result.credentials) setCookie(res, { ...result.credentials, request: req });
+  else clearSupersededSessionCookies(res, { request: req, session: result.session ?? undefined });
   res.setHeader('x-fastgpt-session', JSON.stringify(result.session));
   return RefreshSessionResponseSchema.parse({
     status: result.status,
@@ -62,6 +67,7 @@ export const sessionStatusHandler = async (req: NodeApiRequest, res: NodeHttpRes
   res.setHeader('Cache-Control', 'no-store');
   assertSessionRequestOrigin(req);
   const { session } = await authCert({ req, authToken: true, allowAccountCancellation: true });
+  clearSupersededSessionCookies(res, { request: req, session });
   return SessionStatusResponseSchema.parse({ session: session ?? null });
 };
 

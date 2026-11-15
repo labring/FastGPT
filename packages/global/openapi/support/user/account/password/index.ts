@@ -1,3 +1,4 @@
+import { IssuedSessionCredentialsSchema } from '../../../../../support/user/session/type';
 import type { OpenAPIPath } from '../../../../type';
 import { DevApiTagsMap } from '../../../../tag';
 import {
@@ -56,7 +57,8 @@ export const PasswordPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '密码设置成功'
+          description: '密码设置成功并返回替换凭证；浏览器 Refresh 仅写入 HttpOnly Cookie',
+          content: { 'application/json': { schema: IssuedSessionCredentialsSchema } }
         }
       }
     }
@@ -72,7 +74,8 @@ export const PasswordPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '密码设置成功'
+          description: '密码设置成功并返回替换凭证；浏览器 Refresh 仅写入 HttpOnly Cookie',
+          content: { 'application/json': { schema: IssuedSessionCredentialsSchema } }
         }
       }
     }
@@ -87,7 +90,8 @@ export const PasswordPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '密码设置成功'
+          description: '密码设置成功并返回替换凭证；浏览器 Refresh 仅写入 HttpOnly Cookie',
+          content: { 'application/json': { schema: IssuedSessionCredentialsSchema } }
         }
       }
     }
