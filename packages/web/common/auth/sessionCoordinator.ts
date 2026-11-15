@@ -383,6 +383,9 @@ export class SessionCoordinator {
       })
       .catch(async (error) => {
         this.assertContext(snapshot);
+        // 初始化也可能遇到已提交但尚未安装 Cookie 的重签，必须复用本页等待与跨页重载语义。
+        if (getSessionErrorReason(error) === SessionErrEnum.contextChanged)
+          return this.rejectContextChange(snapshot);
         if (isRecoverableSessionError(error)) return this.refresh();
         throw error;
       })

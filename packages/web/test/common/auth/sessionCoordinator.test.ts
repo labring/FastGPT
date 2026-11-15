@@ -28,7 +28,7 @@ describe('browser session pre-refresh coordination', () => {
     ).resolves.toBe(false);
   });
 
-  it.each(['business', 'refresh'] as const)(
+  it.each(['business', 'refresh', 'status'] as const)(
     'waits for this page to install a rekey response before handling %s context errors',
     async (source) => {
       let reloaded = false;
@@ -54,10 +54,12 @@ describe('browser session pre-refresh coordination', () => {
       };
       const changing = coordinator.trackContextMutation(commit);
       if (source === 'refresh') coordinator.observe({ ...original, accessExpiresAt: 61_000 });
-      const oldRequest =
-        source === 'business'
-          ? coordinator.recover({ statusText: SessionErrEnum.contextChanged }, { snapshot })
-          : coordinator.beforeRequest();
+      const oldRequest = (() => {
+        if (source === 'business')
+          return coordinator.recover({ statusText: SessionErrEnum.contextChanged }, { snapshot });
+        if (source === 'refresh') return coordinator.beforeRequest();
+        return coordinator.synchronize();
+      })();
       const rejected = expect(oldRequest).rejects.toThrow('context changed');
       await Promise.resolve();
       await Promise.resolve();
@@ -71,6 +73,35 @@ describe('browser session pre-refresh coordination', () => {
       expect(coordinator.contextHeaders).toEqual({ 'x-fastgpt-session-context': 'user:device.2' });
     }
   );
+
+  it('reloads an uninitialized page after a remote status conflict instead of leaving login permanently unavailable', async () => {
+    let reloads = 0;
+    const actions: string[] = [];
+    const coordinator = new SessionCoordinator({
+      now: () => 0,
+      onContextChanged: () => {
+        reloads++;
+      },
+      request: async (action) => {
+        actions.push(action);
+        throw { code: 409, statusText: SessionErrEnum.contextChanged };
+      }
+    });
+    await expect(coordinator.beforeRequest({ initialize: true })).rejects.toThrow(
+      'context changed'
+    );
+    expect(reloads).toBe(1);
+    expect(actions).toEqual(['status']);
+    // 浏览器完成页面重载后，新实例按已安装的新 Cookie 重新读取当前生命周期。
+    const reloaded = new SessionCoordinator({
+      now: () => 0,
+      request: async () => ({ session: { ...lifecycle(), contextVersion: 2 } })
+    });
+    await expect(reloaded.beforeRequest({ initialize: true })).resolves.toMatchObject({
+      contextVersion: 2
+    });
+    expect(reloaded.hasSession).toBe(true);
+  });
 
   it('keeps waiting for a second local mutation after the first response installs its cookies', async () => {
     let reloaded = false;
