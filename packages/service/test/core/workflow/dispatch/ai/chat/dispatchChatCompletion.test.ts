@@ -504,6 +504,105 @@ describe('periodic chat history across persisted rounds', () => {
     expect(root.toRecord()).toEqual(memories);
   });
 
+  it.each([
+    { name: 'legacy child anchor', rootIsChild: false, sibling: false, expectedStart: 0 },
+    { name: 'recursive source isolation', rootIsChild: true, sibling: false, expectedStart: 2 },
+    { name: 'sibling scope isolation', rootIsChild: false, sibling: true, expectedStart: 2 },
+    {
+      name: 'explicit undefined delta',
+      rootIsChild: false,
+      sibling: false,
+      marker: undefined,
+      expectedStart: 2
+    },
+    {
+      name: 'explicit null delta',
+      rootIsChild: false,
+      sibling: false,
+      marker: null,
+      expectedStart: 2
+    }
+  ])('读取节点记忆时遵守旧键兼容和来源保护：$name', async (scenario) => {
+    fixture.useRealFileFlow = true;
+    fixture.useRealDatasetCite = true;
+    const runningAppInfo = {
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: 'child',
+      teamId: 'team'
+    };
+    const legacyKey = getWorkflowNodeMemoryKey({ runningAppInfo, nodeId: 'chat:historyWindow' });
+    const anchor = { min: 2, max: 4, startDataId: 'r0' };
+    const baseline = {
+      [legacyKey]: anchor,
+      ...(scenario.sibling ? { [`node:sibling/${legacyKey}`]: anchor } : {})
+    };
+    const root = WorkflowMemoryState.fromRecord(baseline, {
+      rootSource: {
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: scenario.rootIsChild ? 'child' : 'root'
+      }
+    });
+    const memoryState = root.fork('node:child-call');
+    const scopedKey = getWorkflowNodeMemoryKey({
+      memoryState,
+      runningAppInfo,
+      nodeId: 'chat:historyWindow'
+    });
+    if ('marker' in scenario) memoryState.merge({ [scopedKey]: scenario.marker });
+    const before = memoryState.toRecord();
+    const histories = Array.from({ length: 4 }, (_, index) => [
+      { dataId: `r${index}`, obj: ChatRoleEnum.Human, value: [{ text: { content: `q${index}` } }] },
+      {
+        dataId: `r${index}`,
+        obj: ChatRoleEnum.AI,
+        value: [{ text: { content: `a${index}` } }],
+        memories: baseline
+      }
+    ]).flat();
+    requestMock.mockImplementationOnce(async ({ body }) => ({
+      completeMessages: body.messages,
+      answerText: 'answer',
+      finish_reason: 'stop',
+      requestId: 'req',
+      usage: { inputTokens: 1, outputTokens: 1 }
+    }));
+    const result = await dispatchChatCompletion({
+      node: { ...AiChatModule, nodeId: 'chat' },
+      histories,
+      memoryState,
+      responseChatItemId: 'current',
+      runningAppInfo,
+      runningUserInfo: { teamId: 'team', tmbId: 'member' },
+      externalProvider: {},
+      checkIsStopping: () => false,
+      params: {
+        history: 0,
+        aiChatHistoryWindow: { min: 2, max: 4 },
+        userChatInput: 'current',
+        maxToken: 1
+      },
+      usagePush: vi.fn(),
+      nodeSummary: createNodeSummary()
+    } as any);
+    expect(result.rawError).toBeUndefined();
+    const sent = await loadRequestMessages({
+      messages: requestMock.mock.lastCall![0].body.messages
+    });
+    expect(
+      sent.filter((message) => message.role === 'user').map((message) => message.content)
+    ).toEqual([
+      ...Array.from(
+        { length: 4 - scenario.expectedStart },
+        (_, offset) => `q${scenario.expectedStart + offset}`
+      ),
+      'current'
+    ]);
+    expect(result[DispatchNodeResponseKeyEnum.memories]).toEqual({
+      [scopedKey]: { min: 2, max: 4, startDataId: `r${scenario.expectedStart}` }
+    });
+    expect(memoryState.toRecord()).toEqual(before);
+  });
+
   it('周期窗口仍受最终 token 上限约束，模型失败时不推进窗口状态', async () => {
     fixture.useRealFileFlow = true;
     fixture.useRealDatasetCite = true;

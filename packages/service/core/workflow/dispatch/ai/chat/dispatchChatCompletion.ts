@@ -87,16 +87,26 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     const fileContextConfig = getAIChatFileContextConfig({ inputs, rawFileLinks });
     fileLinks = fileContextConfig.fileLinks;
 
+    const memoryNodeId = `${nodeId}:historyWindow`;
+    const memoryKey = getWorkflowNodeMemoryKey({
+      memoryState: props.memoryState,
+      runningAppInfo,
+      nodeId: memoryNodeId
+    });
     const historySelection = selectChatHistories({
       history,
       histories,
       window: aiChatHistoryWindow,
-      memoryKey: getWorkflowNodeMemoryKey({
-        memoryState: props.memoryState,
-        runningAppInfo,
-        nodeId: `${nodeId}:historyWindow`
-      }),
-      memories: props.memoryState?.toRecord(),
+      memoryKey,
+      // 只读取本节点，沿用旧键兼容及调用路径保护；周期窗口独立于固定 history=0。
+      memories: props.memoryState
+        ? {
+            [memoryKey]: props.memoryState.readNodeMemory<unknown>({
+              runningAppInfo,
+              nodeId: memoryNodeId
+            })
+          }
+        : undefined,
       responseChatItemId: props.responseChatItemId
     });
     const chatHistories = historySelection.histories;
