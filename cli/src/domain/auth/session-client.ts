@@ -20,11 +20,13 @@ import {
  */
 export const createSessionAwareClient = ({
   client,
+  profileBaseUrl = client.baseUrl,
   profileName,
   configRepo,
   secretStore
 }: {
   client: FastGptHttpClient;
+  profileBaseUrl?: string;
   profileName: string;
   configRepo: ConfigRepository;
   secretStore: SecretStore;
@@ -40,7 +42,8 @@ export const createSessionAwareClient = ({
         if (
           !stored ||
           profile?.authType !== 'token' ||
-          profile.baseUrl.replace(/\/+$/, '') !== client.baseUrl
+          // 网络地址可由 flag / env 覆盖；并发检查针对解析时的持久化 Profile 快照。
+          profile.baseUrl.replace(/\/+$/, '') !== profileBaseUrl.replace(/\/+$/, '')
         ) {
           throw new CliAuthError({
             code: 'AUTH_CONFLICT',

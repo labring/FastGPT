@@ -57,6 +57,30 @@ describe('CLI persisted dual-token session client', () => {
       await rm(directory, { recursive: true, force: true });
   });
 
+  it('rejects a persisted URL change even when this command uses an alias override', async () => {
+    const stores = await makeStores();
+    const auth = initial();
+    await stores.secretStore.setSecret('default', encodeSessionCredential(auth));
+    const fetchFn = vi.fn();
+    const client = createSessionAwareClient({
+      ...stores,
+      profileName: 'default',
+      profileBaseUrl: 'https://fastgpt.test/api',
+      client: createFastGptHttpClient({
+        baseUrl: 'https://alias.fastgpt.test/api',
+        cliVersion: 'test',
+        fetchFn
+      })
+    });
+    const { config } = await stores.configRepo.read();
+    config.profiles.default.baseUrl = 'https://replacement.fastgpt.test/api';
+    await stores.configRepo.write(config);
+    await expect(client.request({ method: 'GET', path: '/whoami', auth })).rejects.toThrow(
+      'active profile changed'
+    );
+    expect(fetchFn).not.toHaveBeenCalled();
+  });
+
   it.each(['switch', 'baseUrl'] as const)(
     'serializes profile %s with a delayed automatic refresh',
     async (mutation) => {

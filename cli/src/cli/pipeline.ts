@@ -121,6 +121,7 @@ function createBoundHttpClient({
     profileName:
       resolvedAuth.credential.source === 'profile' ? resolvedAuth.profileName : undefined,
     baseUrl: resolvedAuth.baseUrl,
+    profileBaseUrl: resolvedAuth.profile?.baseUrl,
     insecure: global.insecure,
     caCertPath: global.caCert
   });

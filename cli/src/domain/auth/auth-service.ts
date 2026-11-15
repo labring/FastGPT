@@ -34,6 +34,7 @@ export type HttpClientFactory = (params: {
   insecure: boolean;
   caCertPath?: string;
   profileName?: string;
+  profileBaseUrl?: string;
 }) => FastGptHttpClient;
 
 export type AuthService = {
@@ -402,6 +403,7 @@ export function createAuthService({
       const credential = resolved.credential!;
       const client = createHttpClient({
         baseUrl: resolved.baseUrl,
+        profileBaseUrl: resolved.profile?.baseUrl,
         profileName: resolved.credential?.source === 'profile' ? resolved.profileName : undefined,
         insecure: global.insecure,
         caCertPath: global.caCert
@@ -574,6 +576,7 @@ export function createAuthService({
 
       const client = createHttpClient({
         baseUrl: resolved.baseUrl,
+        profileBaseUrl: resolved.profile?.baseUrl,
         profileName: resolved.credential?.source === 'profile' ? resolved.profileName : undefined,
         insecure: global.insecure,
         caCertPath: global.caCert

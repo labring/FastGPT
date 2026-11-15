@@ -112,7 +112,13 @@ export function createCliContainer(deps: CliRuntimeDeps): CliContainer {
             : undefined
         ));
 
-  const createHttpClient: HttpClientFactory = ({ baseUrl, insecure, caCertPath, profileName }) => {
+  const createHttpClient: HttpClientFactory = ({
+    baseUrl,
+    insecure,
+    caCertPath,
+    profileName,
+    profileBaseUrl
+  }) => {
     const client = createFastGptHttpClient({
       baseUrl,
       cliVersion,
@@ -121,7 +127,7 @@ export function createCliContainer(deps: CliRuntimeDeps): CliContainer {
       caCertPath
     });
     return profileName
-      ? createSessionAwareClient({ client, profileName, configRepo, secretStore })
+      ? createSessionAwareClient({ client, profileName, profileBaseUrl, configRepo, secretStore })
       : client;
   };
 
