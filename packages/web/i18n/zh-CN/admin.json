@@ -1254,5 +1254,6 @@
   "moderation.col_duration": "耗时",
   "moderation.col_time": "触发时间",
   "moderation.logs_title": "审核服务日志",
-  "moderation.empty_logs": "当前暂无内容审核服务的异常告警日志"
+  "moderation.empty_logs": "当前暂无内容审核服务的异常告警日志",
+  "dataset_storage_price_invalid": "请输入大于或等于 0 的有效价格"
 }

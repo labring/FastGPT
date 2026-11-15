@@ -1254,5 +1254,6 @@
   "moderation.col_duration": "耗時",
   "moderation.col_time": "觸發時間",
   "moderation.logs_title": "審核服務日誌",
-  "moderation.empty_logs": "目前暫無內容審核服務的異常告警日誌"
+  "moderation.empty_logs": "目前暫無內容審核服務的異常告警日誌",
+  "dataset_storage_price_invalid": "請輸入大於或等於 0 的有效價格"
 }

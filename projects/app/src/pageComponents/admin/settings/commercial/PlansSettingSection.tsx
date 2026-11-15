@@ -169,8 +169,14 @@ const PlansSettingSection = forwardRef<PlansSettingSectionHandle, PlansSettingSe
 
     const [openPlan, setOpenPlan] = useState(false);
 
-    const { setValue, reset, watch, register, handleSubmit } =
-      useForm<ConfigFormType['paySettings']>();
+    const {
+      setValue,
+      reset,
+      watch,
+      register,
+      handleSubmit,
+      formState: { errors }
+    } = useForm<ConfigFormType['paySettings']>();
     /** 套餐读取时一起返回的 commercial revision，提交时用于防并发覆盖 */
     const [subPlansRevision, setSubPlansRevision] = useState<number>();
 
@@ -333,9 +339,23 @@ const PlansSettingSection = forwardRef<PlansSettingSectionHandle, PlansSettingSe
             >
               <Input
                 type={'number'}
-                {...register('subPlans.extraDatasetSizePrice', { valueAsNumber: true })}
+                min={0}
+                isInvalid={Boolean(errors.subPlans?.extraDatasetSizePrice)}
+                {...register('subPlans.extraDatasetSizePrice', {
+                  valueAsNumber: true,
+                  // 空输入会被 RHF 转为 NaN；与负价格一起在提交前拒绝，避免发送无效套餐。
+                  validate: (value) =>
+                    !openPlan ||
+                    (typeof value === 'number' && Number.isFinite(value) && value >= 0) ||
+                    t('admin:dataset_storage_price_invalid')
+                })}
                 placeholder="0"
               />
+              {errors.subPlans?.extraDatasetSizePrice && (
+                <Box color={'red.500'} fontSize={'xs'} mt={1}>
+                  {t('admin:dataset_storage_price_invalid')}
+                </Box>
+              )}
             </AdminFormItem>
 
             <Box mb={6}>

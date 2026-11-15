@@ -1254,5 +1254,6 @@
   "moderation.col_duration": "Duration",
   "moderation.col_time": "Time",
   "moderation.logs_title": "Moderation Service Logs",
-  "moderation.empty_logs": "No moderation service error or alert logs"
+  "moderation.empty_logs": "No moderation service error or alert logs",
+  "dataset_storage_price_invalid": "Enter a valid price greater than or equal to 0"
 }

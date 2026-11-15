@@ -1254,5 +1254,6 @@
   "moderation.col_duration": "소요 시간",
   "moderation.col_time": "발생 시간",
   "moderation.logs_title": "심사 서비스 로그",
-  "moderation.empty_logs": "현재 콘텐츠 심사 서비스의 오류 및 알림 로그가 없습니다"
+  "moderation.empty_logs": "현재 콘텐츠 심사 서비스의 오류 및 알림 로그가 없습니다",
+  "dataset_storage_price_invalid": "0 이상의 유효한 가격을 입력하세요"
 }

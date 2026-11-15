@@ -63,11 +63,12 @@ vi.mock('@/pageComponents/admin/settings/AdminSwitchRow', () => ({ default: () =
 vi.mock('@chakra-ui/react', () => {
   const Container = ({ children }: { children: React.ReactNode }) =>
     React.createElement('div', null, children);
-  const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>(
-    function Input(props, ref) {
-      return React.createElement('input', { ...props, ref });
-    }
-  );
+  const Input = React.forwardRef<
+    HTMLInputElement,
+    React.InputHTMLAttributes<HTMLInputElement> & { isInvalid?: boolean }
+  >(function Input({ isInvalid: _isInvalid, ...props }, ref) {
+    return React.createElement('input', { ...props, ref });
+  });
   const Textarea = React.forwardRef<
     HTMLTextAreaElement,
     React.TextareaHTMLAttributes<HTMLTextAreaElement>
@@ -233,6 +234,59 @@ describe('subscription plans on the payment settings page', () => {
         })
       })
     );
+  });
+
+  it.each(['-1', ''])(
+    'rejects invalid dataset storage price %j before submitting payment configuration',
+    async (value) => {
+      mocks.readPlans.mockResolvedValue({
+        fastgpt: { subPlans: structuredClone(storedSubPlans) },
+        subPlansRevision: 7
+      });
+      await renderPayPage();
+
+      const price = container.querySelector<HTMLInputElement>(
+        'input[name="subPlans.extraDatasetSizePrice"]'
+      )!;
+      await act(async () => {
+        price.focus();
+        Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(
+          price,
+          value
+        );
+        price.dispatchEvent(new Event('input', { bubbles: true }));
+        price.blur();
+      });
+      const button = container.querySelector<HTMLButtonElement>('button[data-action="save"]')!;
+      await act(async () => {
+        button.click();
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+      expect(container.textContent).toContain('admin:dataset_storage_price_invalid');
+
+      expect(mocks.save).not.toHaveBeenCalled();
+      expect(mocks.refetch).not.toHaveBeenCalled();
+    }
+  );
+
+  it('allows a zero dataset storage price', async () => {
+    mocks.readPlans.mockResolvedValue({
+      fastgpt: { subPlans: structuredClone(storedSubPlans) },
+      subPlansRevision: 7
+    });
+    await renderPayPage();
+    const price = container.querySelector<HTMLInputElement>(
+      'input[name="subPlans.extraDatasetSizePrice"]'
+    )!;
+    await act(async () => {
+      price.focus();
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(price, '0');
+      price.dispatchEvent(new Event('input', { bubbles: true }));
+      price.blur();
+    });
+
+    await savePayPage();
+    expect(mocks.save.mock.calls[0][0].subPlans.extraDatasetSizePrice).toBe(0);
   });
 
   it.each(['rejected', 'missing revision'])(
