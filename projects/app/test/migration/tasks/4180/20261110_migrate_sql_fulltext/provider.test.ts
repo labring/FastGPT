@@ -9,6 +9,7 @@ import { MongoDatasetDataText } from '@fastgpt/service/core/dataset/data/dataTex
 import { migrateSqlFullTextMigration } from '@/migration/tasks/4180/20261110_migrate_sql_fulltext';
 import { getFullTextStore } from '@fastgpt/service/core/dataset/data/textStore';
 import { searchSqlFullText } from '@fastgpt/service/core/dataset/fullText/sql/store';
+import { findSqlFullTextTargetById } from '@fastgpt/service/core/dataset/fullText/sql/entity';
 import { systemMigrations, type SystemMigrationContext } from '@/migration/registry';
 import { createSystemMigrationRunner } from '@/migration/runner';
 import { enqueueManualMigration, ensureMigrationStates } from '@/migration/entity';
@@ -224,6 +225,122 @@ describe.each(['pg', 'oceanbase', 'seekdb', 'opengauss'] as const)(
       expect(driver.fill).toHaveBeenCalledTimes(2);
       expect(await state.context.getFailedRecords()).toEqual([]);
       expect(await MongoDatasetDataText.countDocuments()).toBe(1);
+    });
+
+    it.each(['replace', 'delete'] as const)(
+      'accepts concurrent %s and includes post-boundary native inserts without restoring old IDs',
+      async (change) => {
+        const teamId = new Types.ObjectId();
+        const datasetId = new Types.ObjectId();
+        const collectionId = new Types.ObjectId();
+        const tmbId = new Types.ObjectId();
+        const doc = await MongoDatasetData.create({
+          teamId,
+          datasetId,
+          collectionId,
+          tmbId,
+          synonymVersion: 0,
+          indexes: [{ dataId: '1', text: '旧文本', type: 'custom' }]
+        });
+        // 仅模拟 SQL 行状态；Mongo 引用读取、迁移恢复与 ready 写入均执行真实代码。
+        const rows = new Map([['1', '旧文本']]);
+        let changed = false;
+        driver.fill.mockImplementation(
+          async (expected: { vectorId: string; text: string }[], validateOnly: boolean) => {
+            if (!changed) {
+              expect(validateOnly).toBe(false);
+              expect(expected.map(({ vectorId }) => vectorId)).toEqual(['1']);
+              changed = true;
+              if (change === 'replace') {
+                // 新业务写入先提交同行向量/词串，再切换 Mongo 引用，最后删除旧向量。
+                rows.set('2', '新文本');
+                await MongoDatasetData.updateOne(
+                  { _id: doc._id },
+                  {
+                    $set: { indexes: [{ dataId: '2', text: '新文本', type: 'custom' }] }
+                  }
+                );
+              } else {
+                await MongoDatasetData.deleteOne({ _id: doc._id });
+              }
+              rows.delete('1');
+              rows.set('3', '新增文本');
+              await MongoDatasetData.create({
+                teamId,
+                datasetId,
+                collectionId,
+                tmbId,
+                synonymVersion: 0,
+                indexes: [{ dataId: '3', text: '新增文本', type: 'custom' }]
+              });
+              return ['1'];
+            }
+            expect(validateOnly).toBe(true);
+            return expected
+              .filter((row) => rows.get(row.vectorId) !== row.text)
+              .map((row) => row.vectorId);
+          }
+        );
+        const state = createContext();
+        expect(await migrateSqlFullTextMigration(state.context)).toMatchObject({
+          scanned: 1,
+          validated: change === 'replace' ? 2 : 1
+        });
+        expect(rows.has('1')).toBe(false);
+        expect(rows.get('3')).toBe('新增文本');
+        expect(rows.get('2')).toBe(change === 'replace' ? '新文本' : undefined);
+        expect(await state.context.getFailedRecords()).toEqual([]);
+        expect(await findSqlFullTextTargetById(provider)).toMatchObject({
+          targetId: metadata.targetId
+        });
+      }
+    );
+
+    it('blocks readiness when the text changes in place under the same vector ID', async () => {
+      const doc = await MongoDatasetData.create({
+        teamId: new Types.ObjectId(),
+        datasetId: new Types.ObjectId(),
+        collectionId: new Types.ObjectId(),
+        tmbId: new Types.ObjectId(),
+        synonymVersion: 0,
+        indexes: [{ dataId: '1', text: '旧文本', type: 'custom' }]
+      });
+      driver.fill.mockImplementationOnce(async () => {
+        await MongoDatasetData.updateOne(
+          { _id: doc._id },
+          { $set: { 'indexes.0.text': '新文本' } }
+        );
+        return [];
+      });
+      const state = createContext();
+      await expect(migrateSqlFullTextMigration(state.context)).rejects.toThrow('unresolved');
+      expect(await state.context.getFailedRecords()).toMatchObject([
+        { stageKey: 'scan', data: { id: String(doc._id) } }
+      ]);
+      expect(await findSqlFullTextTargetById(provider)).toBeNull();
+    });
+
+    it('blocks a missing SQL row while Mongo still references it and recovers after the delete commits', async () => {
+      const doc = await MongoDatasetData.create({
+        teamId: new Types.ObjectId(),
+        datasetId: new Types.ObjectId(),
+        collectionId: new Types.ObjectId(),
+        tmbId: new Types.ObjectId(),
+        synonymVersion: 0,
+        indexes: [{ dataId: '1', text: '删除中', type: 'custom' }]
+      });
+      driver.fill.mockResolvedValueOnce(['1']);
+      const state = createContext();
+      await expect(migrateSqlFullTextMigration(state.context)).rejects.toThrow('unresolved');
+      expect(await findSqlFullTextTargetById(provider)).toBeNull();
+      await MongoDatasetData.deleteOne({ _id: doc._id });
+      driver.fill.mockClear();
+      expect(await migrateSqlFullTextMigration(state.context)).toMatchObject({
+        scanned: 1,
+        validated: 0
+      });
+      expect(driver.fill).not.toHaveBeenCalled();
+      expect(await state.context.getFailedRecords()).toEqual([]);
     });
 
     it('propagates unexpected database errors immediately instead of recording them as dirty records', async () => {
