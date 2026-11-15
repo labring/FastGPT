@@ -1,3 +1,4 @@
+import { browserSession } from '@fastgpt/web/common/auth/session';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as api from '@/web/support/user/api';
 import { GET, POST } from '@/web/common/api/request';
@@ -28,6 +29,43 @@ describe('user api', () => {
     };
     await api.sendAuthCode(data);
     expect(POST).toHaveBeenCalledWith('/proApi/support/user/inform/sendAuthCode', data);
+  });
+
+  it('keeps the original logout context while a newer login completes during refresh', async () => {
+    const now = Date.now();
+    const session = {
+      sessionId: 'user:old-device',
+      serverTime: now,
+      createdAt: now,
+      accessExpiresAt: now + 900_000,
+      refreshExpiresAt: now + 604_800_000,
+      absoluteExpiresAt: now + 2_592_000_000,
+      generation: 1,
+      contextVersion: 1
+    };
+    browserSession.observe(session, { login: true });
+    browserSession.stop();
+    let release!: () => void;
+    const pending = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const waiting = vi.spyOn(browserSession, 'waitForRefresh').mockReturnValue(pending);
+    try {
+      const logout = api.loginOut();
+      browserSession.observe({ ...session, sessionId: 'user:new-device' }, { login: true });
+      release();
+      await logout;
+      expect(POST).toHaveBeenCalledWith(
+        '/support/user/account/session/logout',
+        {},
+        {
+          headers: { 'x-fastgpt-session-context': 'user:old-device.1' }
+        }
+      );
+    } finally {
+      waiting.mockRestore();
+      browserSession.observe(null, { login: true });
+    }
   });
 
   it('should get token login', async () => {

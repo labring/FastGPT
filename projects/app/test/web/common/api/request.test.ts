@@ -1,3 +1,4 @@
+import { browserSession } from '@fastgpt/web/common/auth/session';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import {
   maxQuantityMap,
@@ -77,6 +78,39 @@ vi.stubGlobal('window', {
 vi.stubGlobal('location', mockLocation);
 
 describe('request utils', () => {
+  it('keeps notification binding behind authenticated session coordination', async () => {
+    browserSession.stop();
+    const send = vi.spyOn(instance, 'request');
+    try {
+      await expect(
+        POST('/proApi/support/user/inform/sendAuthCode', { type: 'bindNotification' })
+      ).rejects.toThrow('Ignore request from an old session context');
+      expect(send).not.toHaveBeenCalled();
+    } finally {
+      send.mockRestore();
+      browserSession.observe(null, { login: true });
+    }
+  });
+
+  it.each(['register', 'findPassword'])(
+    'sends anonymous %s codes after login-page cleanup',
+    async (type) => {
+      browserSession.stop();
+      const send = vi
+        .spyOn(instance, 'request')
+        .mockResolvedValue({ data: { code: 200, data: 'sent' } });
+      try {
+        await expect(POST('/proApi/support/user/inform/sendAuthCode', { type })).resolves.toBe(
+          'sent'
+        );
+        expect(send).toHaveBeenCalledOnce();
+      } finally {
+        send.mockRestore();
+        browserSession.observe(null, { login: true });
+      }
+    }
+  );
+
   beforeEach(() => {
     vi.clearAllMocks();
     Object.keys(maxQuantityMap).forEach((key) => delete maxQuantityMap[key]);

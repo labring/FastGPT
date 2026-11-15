@@ -1,5 +1,6 @@
+'use client';
+
 import { fetchWithSession } from '@fastgpt/web/common/auth/session';
-('use client');
 
 import { useState, useCallback, useRef } from 'react';
 import { useToast } from '@fastgpt/web/hooks/useToast';

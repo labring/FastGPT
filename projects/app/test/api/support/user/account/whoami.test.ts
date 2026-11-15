@@ -1,3 +1,4 @@
+import { SessionErrEnum } from '@fastgpt/global/common/error/code/session';
 vi.unmock('@fastgpt/service/support/permission/auth/common');
 
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -198,7 +199,7 @@ describe('GET /api/support/user/account/whoami', () => {
 
     const unauthRes = await Call(whoamiDefaultHandler, { headers: {} });
     expect(unauthRes.code).toBe(500);
-    expect(unauthRes.error).toBe(ERROR_ENUM.unAuthorization);
+    expect(unauthRes.error).toEqual(new Error(SessionErrEnum.accessMissing));
 
     global.feConfigs = { ...global.feConfigs, isPlus: true } as any;
     await expect(

@@ -338,7 +338,7 @@ function request(
       });
 
   const perform = async () => {
-    if (!shouldCoordinateSession(url, config.headers)) return send();
+    if (!shouldCoordinateSession(url, { headers: config.headers, data })) return send();
     const snapshot = await browserSession.beforeRequest({
       initialize: /\/(?:tokenLogin|whoami)$/.test(url),
       signal: cancelToken?.signal ?? abortSignal

@@ -73,7 +73,19 @@ export const observeSessionHeader = (
 };
 
 /** 公共登录入口、会话接口及显式其他凭证不进入当前浏览器 Session 的刷新链。 */
-export const shouldCoordinateSession = (url: string, headers?: Record<string, string>) => {
+export const shouldCoordinateSession = (
+  url: string,
+  { headers, data }: { headers?: Record<string, string>; data?: unknown } = {}
+) => {
+  // 同一个发送入口也服务于登录态下的绑定通知；仅注册和找回密码绕过 Session 协调。
+  if (
+    /\/(?:proApi\/)?support\/user\/inform\/sendAuthCode(?:\?|$)/.test(url) &&
+    data &&
+    typeof data === 'object' &&
+    'type' in data &&
+    (data.type === 'register' || data.type === 'findPassword')
+  )
+    return false;
   if (
     Object.keys(headers ?? {}).some((key) =>
       ['authorization', 'token', 'rootkey'].includes(key.toLowerCase())

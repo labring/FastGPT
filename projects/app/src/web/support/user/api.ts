@@ -79,12 +79,10 @@ export const getWXLoginResult = (params: WxLoginBodyType) =>
     maxQuantity: 1
   });
 export const loginOut = async () => {
+  // 等待期间可能完成另一账号的登录，退出始终绑定点击时的原上下文。
+  const contextHeaders = browserSession.contextHeaders;
   await browserSession.waitForRefresh();
-  return POST(
-    '/support/user/account/session/logout',
-    {},
-    { headers: browserSession.contextHeaders }
-  );
+  return POST('/support/user/account/session/logout', {}, { headers: contextHeaders });
 };
 
 /* ===== register ===== */

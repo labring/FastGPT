@@ -348,13 +348,13 @@ describe('getSseErrorResponse logging', () => {
     expect(logger.info).not.toHaveBeenCalled();
   });
 
-  it('keeps specified error responses unchanged for UserError', () => {
+  it('keeps the auth error response but leaves newer session cookies intact', () => {
     const error = new UserError(ERROR_ENUM.unAuthorization);
 
     const response = getSseErrorResponse(error);
 
     expect(JSON.parse(response.data)).toEqual(ERROR_RESPONSE[ERROR_ENUM.unAuthorization]);
-    expect(response.shouldClearCookie).toBe(true);
+    expect(response.shouldClearCookie).toBe(false);
     expect(logger.error).not.toHaveBeenCalled();
   });
 });

@@ -53,7 +53,7 @@ describe('confirm system plugin package handler', () => {
     expect(mocks.recordInstalledModerationPluginsAudit).toHaveBeenCalledWith({
       operator: { teamId: 'team-1', tmbId: 'tmb-1' },
       pluginIds: ['weather'],
-      lang: undefined
+      lang: 'en'
     });
     expect(mocks.confirmPlugin).toHaveBeenCalledWith([{ ...tool, pluginId: 'weather' }]);
   });
