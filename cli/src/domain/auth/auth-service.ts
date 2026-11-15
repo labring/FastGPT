@@ -1,10 +1,21 @@
+import { SESSION_PREFRESH_MS } from '@fastgpt/global/support/user/session/constants';
+import {
+  encodeSessionCredential,
+  decodeSessionCredential,
+  refreshNativeSession,
+  isSameSessionContext,
+  isSessionAccessExpired,
+  isTemporarySessionRefreshError
+} from './session-credentials';
+import { withCredentialLock } from '../../infra/secrets/credential-lock';
+import { IssuedSessionCredentialsSchema } from '@fastgpt/global/support/user/session/type';
 import { DEFAULT_PROFILE_NAME, type ConfigRepository } from '../../infra/config/config-repository';
 import type { FastGptHttpClient } from '../../infra/http/fastgpt-http-client';
 import type { SecretStore } from '../../infra/secrets/secret-store';
 import type { CaptchaPreviewer } from '../../infra/ui/captcha-preview';
 import type { Prompter } from '../../infra/ui/prompter';
 import { assertValidProfileName } from '../../shared/crypto';
-import { CliArgumentError } from '../../shared/errors';
+import { CliArgumentError, CliAuthError, CliNetworkError } from '../../shared/errors';
 import { maskSecret } from '../../shared/redact';
 import type { CliResult, GlobalCliOptions } from '../../shared/types';
 import {
@@ -22,6 +33,7 @@ export type HttpClientFactory = (params: {
   baseUrl: string;
   insecure: boolean;
   caCertPath?: string;
+  profileName?: string;
 }) => FastGptHttpClient;
 
 export type AuthService = {
@@ -243,22 +255,34 @@ export function createAuthService({
         auth
       });
 
-      const { backend } = await secretStore.setSecret(profileName, auth.secret);
-      const nextProfile = buildProfileFromProbe({
-        existing: existingProfile,
-        baseUrl,
-        allowInsecureHttp,
-        secret: auth.secret,
-        probe,
-        storageMode: backend
+      const { backend, nextProfile, nextConfig } = await withCredentialLock({
+        configDir: configRepo.getConfigDir(),
+        fn: async (assertValid) => {
+          const latest = (await configRepo.read()).config;
+          assertValid();
+          const { backend } = await secretStore.setSecret(
+            profileName,
+            encodeSessionCredential(auth)
+          );
+          const nextProfile = buildProfileFromProbe({
+            existing: existingProfile,
+            baseUrl,
+            allowInsecureHttp,
+            secret: auth.secret,
+            probe,
+            storageMode: backend
+          });
+          const nextConfig = upsertProfileInConfig({
+            config: latest,
+            profileName,
+            profile: nextProfile,
+            setAsCurrent: input.noSwitch !== true
+          });
+          assertValid();
+          await configRepo.write(nextConfig);
+          return { backend, nextProfile, nextConfig };
+        }
       });
-      const nextConfig = upsertProfileInConfig({
-        config,
-        profileName,
-        profile: nextProfile,
-        setAsCurrent: input.noSwitch !== true
-      });
-      await configRepo.write(nextConfig);
 
       return {
         changed: true,
@@ -284,92 +308,101 @@ export function createAuthService({
       };
     },
 
-    logout: async ({ global, local, purge }) => {
-      const { config, warnings } = await configRepo.read();
-      const profileName = assertValidProfileName(
-        global.profile ?? env.FASTGPT_PROFILE ?? config.currentProfile ?? DEFAULT_PROFILE_NAME
-      );
-      const profile = config.profiles[profileName];
-      const nextWarnings = [...warnings];
+    logout: async ({ global, local, purge }) =>
+      withCredentialLock({
+        configDir: configRepo.getConfigDir(),
+        fn: async () => {
+          const { config, warnings } = await configRepo.read();
+          const profileName = assertValidProfileName(
+            global.profile ?? env.FASTGPT_PROFILE ?? config.currentProfile ?? DEFAULT_PROFILE_NAME
+          );
+          const profile = config.profiles[profileName];
+          const nextWarnings = [...warnings];
 
-      let serverRevoked = false;
-      if (profile?.authType === 'token' && !local) {
-        const token = await secretStore.getSecret(profileName);
-        if (token) {
-          try {
-            const client = createHttpClient({
-              baseUrl: profile.baseUrl,
-              insecure: global.insecure,
-              caCertPath: global.caCert
-            });
-            await client.request({
-              method: 'GET',
-              path: '/support/user/account/loginout',
-              auth: { authType: 'token', secret: token }
-            });
-            serverRevoked = true;
-          } catch (error) {
-            nextWarnings.push(
-              `Failed to revoke server session (${error instanceof Error ? error.message : String(error)}); local credentials were still removed.`
-            );
-          }
-        }
-      } else if (profile?.authType === 'apikey') {
-        nextWarnings.push(
-          'API Key was removed locally. To invalidate the key on the server, delete it in the FastGPT console.'
-        );
-      }
-
-      await secretStore.deleteSecret(profileName);
-
-      if (profile) {
-        const nextConfig = (() => {
-          if (purge) {
-            const remaining = { ...config.profiles };
-            delete remaining[profileName];
-            const fallbackCurrent =
-              config.currentProfile === profileName
-                ? (Object.keys(remaining)[0] ?? DEFAULT_PROFILE_NAME)
-                : config.currentProfile;
-            return {
-              ...config,
-              currentProfile: fallbackCurrent,
-              profiles: remaining
-            };
-          }
-          return {
-            ...config,
-            profiles: {
-              ...config.profiles,
-              [profileName]: {
-                baseUrl: profile.baseUrl,
-                ...(profile.allowInsecureHttp ? { allowInsecureHttp: true } : {}),
-                updatedAt: Date.now()
+          let serverRevoked = false;
+          if (profile?.authType === 'token' && !local) {
+            const token = await secretStore.getSecret(profileName);
+            if (token) {
+              const auth = decodeSessionCredential(token);
+              try {
+                const client = createHttpClient({
+                  baseUrl: profile.baseUrl,
+                  insecure: global.insecure,
+                  caCertPath: global.caCert
+                });
+                await client.request({
+                  method: auth.refreshToken ? 'POST' : 'GET',
+                  path: auth.refreshToken
+                    ? '/support/user/account/session/logout'
+                    : '/support/user/account/loginout',
+                  ...(auth.refreshToken ? { body: { refreshToken: auth.refreshToken } } : {}),
+                  auth
+                });
+                serverRevoked = true;
+              } catch (error) {
+                nextWarnings.push(
+                  `Failed to revoke server session (${error instanceof Error ? error.message : String(error)}); local credentials were still removed.`
+                );
               }
             }
-          };
-        })();
-        await configRepo.write(nextConfig);
-      }
+          } else if (profile?.authType === 'apikey') {
+            nextWarnings.push(
+              'API Key was removed locally. To invalidate the key on the server, delete it in the FastGPT console.'
+            );
+          }
 
-      return {
-        changed: Boolean(profile),
-        message: profile
-          ? `Logged out profile "${profileName}".`
-          : `Profile "${profileName}" has no stored credentials.`,
-        data: {
-          profile: profileName,
-          purged: Boolean(purge && profile),
-          serverRevoked
-        },
-        warnings: nextWarnings
-      };
-    },
+          await secretStore.deleteSecret(profileName);
+
+          if (profile) {
+            const nextConfig = (() => {
+              if (purge) {
+                const remaining = { ...config.profiles };
+                delete remaining[profileName];
+                const fallbackCurrent =
+                  config.currentProfile === profileName
+                    ? (Object.keys(remaining)[0] ?? DEFAULT_PROFILE_NAME)
+                    : config.currentProfile;
+                return {
+                  ...config,
+                  currentProfile: fallbackCurrent,
+                  profiles: remaining
+                };
+              }
+              return {
+                ...config,
+                profiles: {
+                  ...config.profiles,
+                  [profileName]: {
+                    baseUrl: profile.baseUrl,
+                    ...(profile.allowInsecureHttp ? { allowInsecureHttp: true } : {}),
+                    updatedAt: Date.now()
+                  }
+                }
+              };
+            })();
+            await configRepo.write(nextConfig);
+          }
+
+          return {
+            changed: Boolean(profile),
+            message: profile
+              ? `Logged out profile "${profileName}".`
+              : `Profile "${profileName}" has no stored credentials.`,
+            data: {
+              profile: profileName,
+              purged: Boolean(purge && profile),
+              serverRevoked
+            },
+            warnings: nextWarnings
+          };
+        }
+      }),
 
     whoami: async ({ global, resolved, noCacheUpdate }) => {
       const credential = resolved.credential!;
       const client = createHttpClient({
         baseUrl: resolved.baseUrl,
+        profileName: resolved.credential?.source === 'profile' ? resolved.profileName : undefined,
         insecure: global.insecure,
         caCertPath: global.caCert
       });
@@ -385,23 +418,65 @@ export function createAuthService({
       });
 
       if (credential.source === 'profile' && !noCacheUpdate) {
-        const { config } = await configRepo.read();
-        const storageMode = resolved.profile?.storageMode ?? (await secretStore.getBackendName());
-        const refreshed = buildProfileFromProbe({
-          existing: resolved.profile,
-          baseUrl: resolved.baseUrl,
-          allowInsecureHttp: resolved.allowInsecureHttp,
-          secret: credential.secret,
-          probe,
-          storageMode
+        await withCredentialLock({
+          configDir: configRepo.getConfigDir(),
+          fn: async (assertValid) => {
+            const { config } = await configRepo.read();
+            const profile = config.profiles[resolved.profileName];
+            const stored = await secretStore.getSecret(resolved.profileName);
+            if (
+              !profile ||
+              !stored ||
+              profile.baseUrl !== resolved.baseUrl ||
+              profile.authType !== credential.authType
+            )
+              return;
+            const current =
+              credential.authType === 'token'
+                ? decodeSessionCredential(stored)
+                : { secret: stored };
+            if (!isSameSessionContext(credential.secret, current.secret)) return;
+
+            // 普通刷新可更新 Token 摘要；切团队 / 新登录后的旧探测结果不能覆盖缓存。
+            const detail = probe.detail;
+            const lifecycle = 'session' in current ? current.session : undefined;
+            if (
+              lifecycle &&
+              (detail?.authType !== 'token' ||
+                detail.session.sessionId !== lifecycle.sessionId ||
+                detail.session.contextVersion !== lifecycle.contextVersion)
+            )
+              return;
+            const storageMode = profile.storageMode ?? (await secretStore.getBackendName());
+            const refreshed = buildProfileFromProbe({
+              existing: profile,
+              baseUrl: resolved.baseUrl,
+              allowInsecureHttp: resolved.allowInsecureHttp,
+              secret: current.secret,
+              probe,
+              storageMode
+            });
+            assertValid();
+            await configRepo.write(
+              upsertProfileInConfig({
+                config,
+                profileName: resolved.profileName,
+                profile: {
+                  ...refreshed,
+                  ...(lifecycle
+                    ? {
+                        sessionExpiresAt: lifecycle.refreshExpiresAt,
+                        accessExpiresAt: lifecycle.accessExpiresAt,
+                        absoluteExpiresAt: lifecycle.absoluteExpiresAt
+                      }
+                    : {}),
+                  refreshRetryAt: profile.refreshRetryAt
+                },
+                setAsCurrent: false
+              })
+            );
+          }
         });
-        const nextConfig = upsertProfileInConfig({
-          config,
-          profileName: resolved.profileName,
-          profile: refreshed,
-          setAsCurrent: false
-        });
-        await configRepo.write(nextConfig);
       }
 
       const data = (() => {
@@ -499,6 +574,7 @@ export function createAuthService({
 
       const client = createHttpClient({
         baseUrl: resolved.baseUrl,
+        profileName: resolved.credential?.source === 'profile' ? resolved.profileName : undefined,
         insecure: global.insecure,
         caCertPath: global.caCert
       });
@@ -529,83 +605,216 @@ export function createAuthService({
       };
     },
 
-    switchTeam: async ({ global, resolved, teamId }) => {
-      const normalizedTeamId = teamId.trim();
-      if (!normalizedTeamId) {
-        throw new CliArgumentError(
-          'Team ID is required.',
-          undefined,
-          'Usage: fastgpt auth switch-team <teamId>'
-        );
-      }
+    switchTeam: async ({ global, resolved, teamId }) =>
+      withCredentialLock({
+        configDir: configRepo.getConfigDir(),
+        fn: async (assertValid) => {
+          const normalizedTeamId = teamId.trim();
+          if (!normalizedTeamId) {
+            throw new CliArgumentError(
+              'Team ID is required.',
+              undefined,
+              'Usage: fastgpt auth switch-team <teamId>'
+            );
+          }
 
-      const client = createHttpClient({
-        baseUrl: resolved.baseUrl,
-        insecure: global.insecure,
-        caCertPath: global.caCert
-      });
-
-      const nextToken = await client.request<string>({
-        method: 'PUT',
-        path: '/proApi/support/user/team/switch',
-        body: { teamId: normalizedTeamId },
-        auth: {
-          authType: 'token',
-          secret: resolved.credential!.secret
-        }
-      });
-
-      if (typeof nextToken !== 'string' || !nextToken.trim()) {
-        throw new CliArgumentError(
-          'Server did not return a valid session token after switching team.'
-        );
-      }
-
-      const probe = await runWhoamiProbeChain({
-        handlers: probeHandlers,
-        client,
-        auth: { authType: 'token', secret: nextToken }
-      });
-
-      const storageMode = await (async () => {
-        if (resolved.credential!.source === 'profile') {
-          const { config } = await configRepo.read();
-          const saved = await secretStore.setSecret(resolved.profileName, nextToken);
-          const nextProfile = buildProfileFromProbe({
-            existing: resolved.profile,
+          const client = createHttpClient({
             baseUrl: resolved.baseUrl,
-            allowInsecureHttp: resolved.allowInsecureHttp,
-            secret: nextToken,
-            probe,
-            storageMode: saved.backend
+            insecure: global.insecure,
+            caCertPath: global.caCert
           });
-          const nextConfig = upsertProfileInConfig({
-            config,
-            profileName: resolved.profileName,
-            profile: nextProfile,
-            setAsCurrent: false
-          });
-          await configRepo.write(nextConfig);
-          return saved.backend;
-        }
-        return resolved.profile?.storageMode;
-      })();
 
-      return {
-        changed: true,
-        message: `Switched active team to "${normalizedTeamId}".`,
-        data: {
-          profile: resolved.profileName,
-          teamId: normalizedTeamId,
-          ...(probe.detail && probe.detail.authType === 'token'
-            ? { team: probe.detail.team }
-            : probe.fallbackInfo
-              ? { teamId: probe.fallbackInfo.teamId, teamName: probe.fallbackInfo.teamName }
-              : {}),
-          ...(storageMode ? { storageMode } : {})
-        },
-        warnings: [...resolved.warnings, ...probe.warnings]
-      };
-    }
+          let currentAuth = resolved.credential!;
+          if (currentAuth.source === 'profile') {
+            const { config } = await configRepo.read();
+            const profile = config.profiles[resolved.profileName];
+            const stored = await secretStore.getSecret(resolved.profileName);
+            if (!stored || profile?.baseUrl !== resolved.baseUrl || profile.authType !== 'token') {
+              throw new CliAuthError({
+                code: 'AUTH_CONFLICT',
+                message: 'The active profile changed. Run the command again.'
+              });
+            }
+            const latest = decodeSessionCredential(stored);
+            if (!isSameSessionContext(currentAuth.secret, latest.secret)) {
+              throw new CliAuthError({
+                code: 'AUTH_CONFLICT',
+                message: 'The login or team context changed. Run the command again.'
+              });
+            }
+            currentAuth = { ...currentAuth, ...latest };
+          }
+          let preRefreshFailure: unknown;
+          /** 在现有凭据锁内续约并保存；仅预刷新临时失败且 AT 仍有效时允许原凭据回退。 */
+          const renew = async (allowFallback = false) => {
+            try {
+              const renewed = await refreshNativeSession({ client, auth: currentAuth });
+              const stored = encodeSessionCredential(renewed);
+              currentAuth = { ...currentAuth, ...decodeSessionCredential(stored) };
+              if (currentAuth.source === 'profile') {
+                assertValid();
+                await secretStore.setSecret(resolved.profileName, stored);
+                const { config } = await configRepo.read();
+                const profile = config.profiles[resolved.profileName];
+                assertValid();
+                await configRepo.write({
+                  ...config,
+                  profiles: {
+                    ...config.profiles,
+                    [resolved.profileName]: {
+                      ...profile,
+                      maskedSecret: maskSecret(currentAuth.secret),
+                      sessionExpiresAt: currentAuth.session?.refreshExpiresAt,
+                      accessExpiresAt: currentAuth.session?.accessExpiresAt,
+                      absoluteExpiresAt: currentAuth.session?.absoluteExpiresAt,
+                      refreshRetryAt: undefined,
+                      updatedAt: Date.now()
+                    }
+                  }
+                });
+              }
+            } catch (error) {
+              if (
+                !allowFallback ||
+                !isTemporarySessionRefreshError(error) ||
+                (currentAuth.localAccessExpiresAt ?? 0) <= Date.now()
+              )
+                throw error;
+              preRefreshFailure = error;
+              if (currentAuth.source === 'profile') {
+                const { config } = await configRepo.read();
+                assertValid();
+                await configRepo.write({
+                  ...config,
+                  profiles: {
+                    ...config.profiles,
+                    [resolved.profileName]: {
+                      ...config.profiles[resolved.profileName],
+                      refreshRetryAt: Date.now() + 3000
+                    }
+                  }
+                });
+              }
+            }
+          };
+          if (
+            currentAuth.refreshToken &&
+            (currentAuth.localAccessExpiresAt ?? 0) - Date.now() <= SESSION_PREFRESH_MS
+          ) {
+            const retryAt =
+              currentAuth.source === 'profile'
+                ? ((await configRepo.read()).config.profiles[resolved.profileName]
+                    ?.refreshRetryAt ?? 0)
+                : 0;
+            if (retryAt > Date.now() && (currentAuth.localAccessExpiresAt ?? 0) > Date.now())
+              preRefreshFailure = new CliNetworkError(
+                'Session renewal is temporarily unavailable. Try again shortly.'
+              );
+            else await renew(true);
+          }
+          const sendSwitch = () =>
+            client.request<unknown>({
+              method: 'PUT',
+              path: '/proApi/support/user/team/switch',
+              body: { teamId: normalizedTeamId },
+              auth: currentAuth
+            });
+          const result = await sendSwitch().catch(async (error) => {
+            if (!currentAuth.refreshToken || !isSessionAccessExpired(error)) throw error;
+            if (preRefreshFailure) throw preRefreshFailure;
+            await renew();
+            return sendSwitch();
+          });
+          const nextAuth =
+            typeof result === 'string'
+              ? { authType: 'token' as const, secret: result, session: undefined }
+              : (() => {
+                  const pair = IssuedSessionCredentialsSchema.parse(result);
+                  return {
+                    authType: 'token' as const,
+                    secret: pair.token,
+                    refreshToken: pair.refreshToken,
+                    session: pair.session
+                  };
+                })();
+          const nextToken = nextAuth.secret;
+          if (!nextToken.trim()) {
+            throw new CliArgumentError(
+              'Server did not return a valid session token after switching team.'
+            );
+          }
+
+          if (currentAuth.source === 'profile') {
+            const { config } = await configRepo.read();
+            const profile = config.profiles[resolved.profileName];
+            assertValid();
+            await secretStore.setSecret(resolved.profileName, encodeSessionCredential(nextAuth));
+            assertValid();
+            await configRepo.write({
+              ...config,
+              profiles: {
+                ...config.profiles,
+                [resolved.profileName]: {
+                  ...profile,
+                  team: undefined,
+                  maskedSecret: maskSecret(nextToken),
+                  sessionExpiresAt: nextAuth.session?.refreshExpiresAt,
+                  accessExpiresAt: nextAuth.session?.accessExpiresAt,
+                  absoluteExpiresAt: nextAuth.session?.absoluteExpiresAt,
+                  refreshRetryAt: undefined,
+                  updatedAt: Date.now()
+                }
+              }
+            });
+          }
+
+          const probe = await runWhoamiProbeChain({
+            handlers: probeHandlers,
+            client,
+            auth: nextAuth
+          });
+
+          const storageMode = await (async () => {
+            if (resolved.credential!.source === 'profile') {
+              const { config } = await configRepo.read();
+              assertValid();
+              const backend = await secretStore.getBackendName(resolved.profileName);
+              const nextProfile = buildProfileFromProbe({
+                existing: resolved.profile,
+                baseUrl: resolved.baseUrl,
+                allowInsecureHttp: resolved.allowInsecureHttp,
+                secret: nextToken,
+                probe,
+                storageMode: backend
+              });
+              const nextConfig = upsertProfileInConfig({
+                config,
+                profileName: resolved.profileName,
+                profile: nextProfile,
+                setAsCurrent: false
+              });
+              await configRepo.write(nextConfig);
+              return backend;
+            }
+            return resolved.profile?.storageMode;
+          })();
+
+          return {
+            changed: true,
+            message: `Switched active team to "${normalizedTeamId}".`,
+            data: {
+              profile: resolved.profileName,
+              teamId: normalizedTeamId,
+              ...(probe.detail && probe.detail.authType === 'token'
+                ? { team: probe.detail.team }
+                : probe.fallbackInfo
+                  ? { teamId: probe.fallbackInfo.teamId, teamName: probe.fallbackInfo.teamName }
+                  : {}),
+              ...(storageMode ? { storageMode } : {})
+            },
+            warnings: [...resolved.warnings, ...probe.warnings]
+          };
+        }
+      })
   };
 }

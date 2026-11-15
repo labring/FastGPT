@@ -30,6 +30,9 @@ export const CliProfileConfigSchema = z.object({
     .optional(),
   isRoot: z.boolean().optional(),
   sessionExpiresAt: z.number().optional(),
+  accessExpiresAt: z.number().optional(),
+  absoluteExpiresAt: z.number().optional(),
+  refreshRetryAt: z.number().optional(),
   storageMode: z.enum(['keychain', 'file']).optional(),
   updatedAt: z.number()
 });

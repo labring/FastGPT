@@ -349,6 +349,18 @@ export const serviceEnv = createEnv({
     AUTH_COOKIE_SECURE: BoolSchema.default(false).meta({
       description: '是否强制为登录 Cookie 添加 Secure 属性，仅允许通过 HTTPS 传输'
     }),
+    AUTH_DUAL_TOKEN_ENABLED: BoolSchema.default(true).meta({
+      description: '为新登录签发 Access / Refresh；关闭时仍兼容读取已签发的双 Token 会话'
+    }),
+    AUTH_ACCESS_TTL_SECONDS: IntSchema.min(120)
+      .default(900)
+      .meta({ description: 'Access 有效秒数，至少覆盖预刷新与幂等窗口（各 60 秒）' }),
+    AUTH_REFRESH_TTL_SECONDS: IntSchema.min(1)
+      .default(604800)
+      .meta({ description: '会话成功续约后的有效秒数' }),
+    AUTH_SESSION_ABSOLUTE_TTL_SECONDS: IntSchema.min(1)
+      .default(2592000)
+      .meta({ description: '首次登录后的绝对有效秒数，续约不推迟' }),
     CSRF_ENABLED: BoolSchema.default(true).meta({
       description: '是否启用 CSRF Web 请求标记校验'
     }),

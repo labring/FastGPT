@@ -162,6 +162,8 @@ export function createServerConnectivityCheck(): DoctorCheck {
       }
       const client = ctx.createHttpClient({
         baseUrl: ctx.resolved.baseUrl,
+        profileName:
+          ctx.resolved.credential?.source === 'profile' ? ctx.resolved.profileName : undefined,
         insecure: ctx.global.insecure,
         caCertPath: ctx.global.caCert
       });
@@ -199,6 +201,8 @@ export function createIdentityProbeCheck(): DoctorCheck {
       }
       const client = ctx.createHttpClient({
         baseUrl: ctx.resolved.baseUrl,
+        profileName:
+          ctx.resolved.credential?.source === 'profile' ? ctx.resolved.profileName : undefined,
         insecure: ctx.global.insecure,
         caCertPath: ctx.global.caCert
       });

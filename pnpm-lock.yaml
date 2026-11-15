@@ -102,6 +102,9 @@ catalogs:
     '@types/nodemailer':
       specifier: ^6.4.24
       version: 6.4.24
+    '@types/proper-lockfile':
+      specifier: ^4.1.4
+      version: 4.1.4
     '@types/proxy-addr':
       specifier: 2.0.3
       version: 2.0.3
@@ -216,6 +219,9 @@ catalogs:
     postcss:
       specifier: ^8.5.12
       version: 8.5.22
+    proper-lockfile:
+      specifier: 4.1.2
+      version: 4.1.2
     proxy-addr:
       specifier: 2.0.7
       version: 2.0.7
@@ -389,6 +395,9 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 24.13.3
+      '@types/proper-lockfile':
+        specifier: 'catalog:'
+        version: 4.1.4
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 4.1.5(vitest@4.1.5)
@@ -401,6 +410,9 @@ importers:
       picocolors:
         specifier: 'catalog:'
         version: 1.1.1
+      proper-lockfile:
+        specifier: 'catalog:'
+        version: 4.1.2
       tsdown:
         specifier: 'catalog:'
         version: 0.23.7(tsx@4.20.6)(typescript@6.0.3)(unrun@0.2.39)
@@ -7048,6 +7060,9 @@ packages:
 
   '@types/prop-types@15.7.14':
     resolution: {integrity: sha512-gNMvNH49DJ7OJYv+KAKn0Xp45p8PLl6zo2YnvDIbTd4J6MER2BmWN49TG7n9LvkyihINxeKW8+3bfS2yDC9dzQ==}
+
+  '@types/proper-lockfile@4.1.4':
+    resolution: {integrity: sha512-uo2ABllncSqg9F1D4nugVl9v93RmjxF6LJzQLMLDdPaXCUIDPeOJ21Gbqi43xNKzBi/WQ0Q0dICqufzQbMjipQ==}
 
   '@types/proxy-addr@2.0.3':
     resolution: {integrity: sha512-TgAHHO4tNG3HgLTUhB+hM4iwW6JUNeQHCLnF1DjaDA9c69PN+IasoFu2MYDhubFc+ZIw5c5t9DMtjvrD6R3Egg==}
@@ -21330,6 +21345,10 @@ snapshots:
       pg-types: 4.0.2
 
   '@types/prop-types@15.7.14': {}
+
+  '@types/proper-lockfile@4.1.4':
+    dependencies:
+      '@types/retry': 0.12.5
 
   '@types/proxy-addr@2.0.3':
     dependencies:

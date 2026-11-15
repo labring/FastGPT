@@ -94,7 +94,15 @@ export class SessionCache {
     this.readByLogicalKey({ logicalKey: this.getKey(sessionId), sessionId });
 
   /** 原子写入历史 session hash 并设置 7 天 TTL。 */
-  async set({ sessionId, data }: { sessionId: string; data: SessionData }) {
+  async set({
+    sessionId,
+    data,
+    ttlSeconds = SESSION_TTL_SECONDS
+  }: {
+    sessionId: string;
+    data: SessionData;
+    ttlSeconds?: number;
+  }) {
     const parsedData = SessionDataSchema.safeParse(data);
     if (!parsedData.success) {
       throw new RedisInvalidArgumentError({
@@ -114,7 +122,7 @@ export class SessionCache {
         createdAt: String(createdAt),
         ...(ip === undefined || ip === null ? {} : { ip })
       },
-      ttlSeconds: SESSION_TTL_SECONDS
+      ttlSeconds
     });
   }
 

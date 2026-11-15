@@ -28,7 +28,20 @@ describe('web request CSRF guard', () => {
     expect(isValidWebRequest({ headers: { rootkey: 'root-key' } })).toBe(true);
     expect(isValidWebRequest(request({}))).toBe(true);
     expect(isValidWebRequest(request({ cookie: 'NEXT_LOCALE=en' }))).toBe(true);
+    expect(isValidWebRequest(request({ cookie: 'fastgpt_session=revoked-public-selector' }))).toBe(
+      true
+    );
   });
+
+  it.each(['access', 'refresh'])(
+    'requires the Web marker for a versioned %s credential Cookie',
+    (type) => {
+      const cookie = `fastgpt_${type}_${'a'.repeat(32)}_1=credential`;
+      expect(shouldValidateWebRequest(request({ cookie }))).toBe(true);
+      expect(isValidWebRequest(request({ cookie }))).toBe(false);
+      expect(isValidWebRequest(request({ cookie, [FASTGPT_WEB_REQUEST_HEADER]: '1' }))).toBe(true);
+    }
+  );
 
   it('rejects a GET Cookie request before the handler when the Web header is missing', async () => {
     const json = vi.fn();

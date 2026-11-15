@@ -50,7 +50,9 @@ export function buildProfileFromProbe({
           tmbId: probe.detail.team.tmbId
         },
         isRoot: probe.detail.isRoot,
-        sessionExpiresAt: probe.detail.session.expiresAt
+        sessionExpiresAt: probe.detail.session.expiresAt,
+        accessExpiresAt: probe.detail.session.accessExpiresAt,
+        absoluteExpiresAt: probe.detail.session.absoluteExpiresAt
       });
     }
 

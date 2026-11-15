@@ -1,5 +1,5 @@
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
-import type { ApiRequestProps } from '@fastgpt/next/type';
+import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/type';
 import {
   UpdatePasswordBodySchema,
   type UpdatePasswordBody
@@ -8,19 +8,22 @@ import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { serviceEnv } from '@fastgpt/service/env';
 import { assertPasswordUpdateRateLimit } from '@fastgpt/service/common/rateLimit/interface/accountVerification';
-import { authCert } from '@fastgpt/service/support/permission/auth/common';
+import { authCert, setCookie } from '@fastgpt/service/support/permission/auth/common';
 import {
   assertUserPasswordAvailable,
   updatePassword
 } from '@fastgpt/service/support/user/account/password/service';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { MongoUser } from '@fastgpt/service/support/user/schema';
-import { delUserAllSession } from '@fastgpt/service/support/user/session';
+import { delUserAllSession, rekeyUserSession } from '@fastgpt/service/support/user/session';
 import { withUserLock } from '@fastgpt/service/support/user/lock';
 import { NextAPI } from '@/service/middleware/entry';
 
 /** 使用当前登录 Session 和一次性改密 Session 更新密码，并仅保留发起请求的 Session。 */
-async function handler(req: ApiRequestProps<UpdatePasswordBody>): Promise<void> {
+async function handler(
+  req: ApiRequestProps<UpdatePasswordBody>,
+  res: ApiResponseType
+): Promise<void> {
   const { body } = parseApiInput({ req, bodySchema: UpdatePasswordBodySchema });
   const { userId, sessionId, tmbId, teamId } = await authCert({
     req,
@@ -47,6 +50,7 @@ async function handler(req: ApiRequestProps<UpdatePasswordBody>): Promise<void> 
     });
 
     await delUserAllSession(userId, [sessionId]);
+    setCookie(res, { ...(await rekeyUserSession({ sessionId })), request: req });
   });
   void addAuditLog({
     tmbId,

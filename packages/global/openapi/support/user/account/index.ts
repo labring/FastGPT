@@ -6,6 +6,7 @@ import { CaptchaPath } from './captcha';
 import { AccountCancellationPath } from './cancellation';
 import { UpdateUserAccountPath } from './update';
 import { WhoamiPath } from './whoami';
+import { SessionPath } from './session';
 
 export const UserAccountPath: OpenAPIPath = {
   ...LoginPath,
@@ -14,5 +15,6 @@ export const UserAccountPath: OpenAPIPath = {
   ...CaptchaPath,
   ...AccountCancellationPath,
   ...UpdateUserAccountPath,
-  ...WhoamiPath
+  ...WhoamiPath,
+  ...SessionPath
 };

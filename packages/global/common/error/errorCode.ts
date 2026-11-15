@@ -13,6 +13,7 @@ import agentSkillErr from './code/skill';
 import sandboxErr from './code/sandbox';
 import couponErr from './code/coupon';
 import modelErr from './code/model';
+import sessionErr from './code/session';
 import { i18nT } from '../i18n/utils';
 
 export const ERROR_CODE: { [key: number]: string } = {
@@ -135,5 +136,6 @@ export const ERROR_RESPONSE: Record<
   ...agentSkillErr,
   ...sandboxErr,
   ...couponErr,
-  ...modelErr
+  ...modelErr,
+  ...sessionErr
 };

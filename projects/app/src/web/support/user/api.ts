@@ -1,3 +1,4 @@
+import { browserSession } from '@fastgpt/web/common/auth/session';
 import { GET, POST, PUT } from '@/web/common/api/request';
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import type { UserUpdateParams } from '@/types/user';
@@ -77,7 +78,14 @@ export const getWXLoginResult = (params: WxLoginBodyType) =>
   POST<WxLoginResultResponseType>(`/proApi/support/user/account/login/wx/getResult`, params, {
     maxQuantity: 1
   });
-export const loginOut = () => GET('/support/user/account/loginout');
+export const loginOut = async () => {
+  await browserSession.waitForRefresh();
+  return POST(
+    '/support/user/account/session/logout',
+    {},
+    { headers: browserSession.contextHeaders }
+  );
+};
 
 /* ===== register ===== */
 export const postRegister = ({

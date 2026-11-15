@@ -34,7 +34,7 @@ const UserAvatarPopover = ({
 
   const handleLogout = useCallback(() => {
     setUserInfo(null);
-    clearToken();
+    void clearToken({ revoke: true });
   }, [setUserInfo]);
 
   const onLogout = useCallback(

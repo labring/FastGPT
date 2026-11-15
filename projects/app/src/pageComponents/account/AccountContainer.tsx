@@ -6,6 +6,7 @@ import { useUserStore } from '@/web/support/user/useUserStore';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import SecondaryNavigationContainer from '@/pageComponents/common/SecondaryNavigationContainer';
+import { clearToken } from '@/web/support/user/auth';
 
 export enum TabEnum {
   'info' = 'info',
@@ -138,8 +139,9 @@ const AccountContainer = ({
     (tab: string) => {
       if (tab === TabEnum.loginout) {
         openConfirm({
-          onConfirm: () => {
+          onConfirm: async () => {
             setUserInfo(null);
+            await clearToken({ revoke: true })?.catch(() => {});
             router.replace('/login');
           }
         })();

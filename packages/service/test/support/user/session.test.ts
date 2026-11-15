@@ -1,6 +1,7 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => {
+  const tokenCache = { get: vi.fn(), delete: vi.fn(), listByUser: vi.fn() };
   const cache = {
     delete: vi.fn(),
     deleteMany: vi.fn(),
@@ -10,6 +11,7 @@ const mocks = vi.hoisted(() => {
   };
   return {
     cache,
+    tokenCache,
     SessionCache: class MockSessionCache {
       constructor() {
         return cache;
@@ -20,6 +22,14 @@ const mocks = vi.hoisted(() => {
 
 vi.mock('@fastgpt/dal/redis/caches', () => ({
   SessionCache: mocks.SessionCache
+}));
+
+vi.mock('@fastgpt/dal/redis/caches/sessionToken', () => ({
+  SessionTokenCache: class {
+    constructor() {
+      return mocks.tokenCache;
+    }
+  }
 }));
 
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
@@ -45,6 +55,10 @@ beforeAll(async () => {
 describe('user session service', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    serviceEnv.AUTH_DUAL_TOKEN_ENABLED = false;
+    mocks.tokenCache.listByUser.mockResolvedValue([]);
+    mocks.tokenCache.get.mockResolvedValue(undefined);
+    mocks.tokenCache.delete.mockResolvedValue(undefined);
     mocks.cache.delete.mockResolvedValue(undefined);
     mocks.cache.deleteMany.mockResolvedValue(undefined);
     mocks.cache.get.mockResolvedValue({
@@ -71,7 +85,7 @@ describe('user session service', () => {
   it('creates a session with the historical fields and starts background cleanup', async () => {
     serviceEnv.MAX_LOGIN_SESSION = 2;
 
-    const sessionId = await createUserSession({
+    const { token: sessionId } = await createUserSession({
       userId: 'user-1',
       teamId: 'team-1',
       tmbId: 'tmb-1',
@@ -111,7 +125,7 @@ describe('user session service', () => {
 
     await delUserAllSession('user-1', ['user-1:keep', undefined]);
 
-    expect(mocks.cache.deleteMany).toHaveBeenCalledWith(['user-1:remove']);
+    expect(mocks.cache.delete).toHaveBeenCalledWith('user-1:remove');
   });
 
   it('removes the oldest sessions in background when the login limit is exceeded', async () => {
@@ -124,7 +138,7 @@ describe('user session service', () => {
 
     await createUserSession({ userId: 'user-1', teamId: 'team-1', tmbId: 'tmb-1', isRoot: false });
 
-    await vi.waitFor(() => expect(mocks.cache.deleteMany).toHaveBeenCalledWith(['user-1:old']));
+    await vi.waitFor(() => expect(mocks.cache.delete).toHaveBeenCalledWith('user-1:old'));
   });
 
   it('propagates session write errors so login fails closed', async () => {

@@ -1,5 +1,5 @@
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
-import type { ApiRequestProps } from '@fastgpt/next/type';
+import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/type';
 import {
   UpdateRootPasswordBodySchema,
   type UpdateRootPasswordBody
@@ -11,11 +11,11 @@ import { hasStoredPassword } from '@fastgpt/global/support/user/utils';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { serviceEnv } from '@fastgpt/service/env';
 import { assertPasswordUpdateRateLimit } from '@fastgpt/service/common/rateLimit/interface/accountVerification';
-import { authCert } from '@fastgpt/service/support/permission/auth/common';
+import { authCert, setCookie } from '@fastgpt/service/support/permission/auth/common';
 import { updateRootPassword } from '@fastgpt/service/support/user/account/password/service';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { MongoUser } from '@fastgpt/service/support/user/schema';
-import { delUserAllSession } from '@fastgpt/service/support/user/session';
+import { delUserAllSession, rekeyUserSession } from '@fastgpt/service/support/user/session';
 import { withUserLock } from '@fastgpt/service/support/user/lock';
 import { NextAPI } from '@/service/middleware/entry';
 
@@ -23,7 +23,10 @@ import { NextAPI } from '@/service/middleware/entry';
  * 开源版专用：仅允许已登录的 root 账号通过校验旧密码更新自身密码，并仅保留发起请求的 Session。
  * 商业版（isPlus）的 root 与普通用户均走标准认证改密接口 `/support/user/account/password/update`。
  */
-async function handler(req: ApiRequestProps<UpdateRootPasswordBody>): Promise<void> {
+async function handler(
+  req: ApiRequestProps<UpdateRootPasswordBody>,
+  res: ApiResponseType
+): Promise<void> {
   const { body } = parseApiInput({ req, bodySchema: UpdateRootPasswordBodySchema });
   const { userId, sessionId, tmbId, teamId, isRoot } = await authCert({
     req,
@@ -57,6 +60,7 @@ async function handler(req: ApiRequestProps<UpdateRootPasswordBody>): Promise<vo
     });
 
     await delUserAllSession(userId, [sessionId]);
+    setCookie(res, { ...(await rekeyUserSession({ sessionId })), request: req });
   });
 
   void addAuditLog({

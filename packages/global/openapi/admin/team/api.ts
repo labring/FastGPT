@@ -1,4 +1,5 @@
 import z from 'zod';
+import { SessionLifecycleSchema } from '../../../support/user/session/type';
 import { ObjectIdSchema } from '../../../common/type/mongo';
 import { PaginationResponseSchema, createPaginationSchema } from '../../api';
 
@@ -77,6 +78,8 @@ export const AdminSwitchTeamBodySchema = z
 export type AdminSwitchTeamBodyType = z.infer<typeof AdminSwitchTeamBodySchema>;
 
 export const AdminSwitchTeamResponseSchema = z.object({
+  session: SessionLifecycleSchema.optional(),
+  refreshToken: z.string().optional().meta({ description: '仅 Header 传输的原生客户端返回' }),
   token: z.string().meta({
     example: '68ad85a7463006c963799a05:abc123def456',
     description: '切换团队后生成的新登录会话令牌，同时写入登录 Cookie'

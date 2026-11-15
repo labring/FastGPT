@@ -13,6 +13,7 @@ vi.mock('@fastgpt/service/support/user/session', async (importOriginal) => {
   const actual = (await importOriginal()) as Record<string, unknown>;
   return {
     ...actual,
+    rekeyUserSession: vi.fn().mockResolvedValue({ token: 'rekeyed-session' }),
     delUserAllSession: vi.fn().mockResolvedValue(undefined)
   };
 });

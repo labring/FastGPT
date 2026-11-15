@@ -3,6 +3,7 @@ import type {
   FastGPTRegisterMethodType
 } from '@fastgpt/global/common/system/types';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
+import { fetchWithSession } from '@fastgpt/web/common/auth/session';
 import { getErrorMessage } from '@fastgpt/global/common/error/utils';
 import {
   FASTGPT_WEB_REQUEST_HEADER,
@@ -46,7 +47,7 @@ export const downloadFetch = async ({
 }) => {
   const shouldFetch = body || waitResponse || url.startsWith('/api');
   if (shouldFetch) {
-    const response = await fetch(getWebReqUrl(url), {
+    const response = await fetchWithSession(getWebReqUrl(url), {
       method: body ? 'POST' : 'GET',
       headers: {
         ...(body ? { 'Content-Type': 'application/json' } : {}),

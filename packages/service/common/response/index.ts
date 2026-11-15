@@ -1,7 +1,7 @@
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import type { NodeApiResponse, NodeHttpResponse } from '../../types/http';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { proxyError, ERROR_RESPONSE, ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
+import { proxyError, ERROR_RESPONSE } from '@fastgpt/global/common/error/errorCode';
 import { replaceSensitiveText } from '@fastgpt/global/common/string/tools';
 import { getErrorMessage, isUserConfigError, UserError } from '@fastgpt/global/common/error/utils';
 import { clearCookie } from '../../support/permission/auth/common';
@@ -112,7 +112,8 @@ export function processError(params: {
 
   // 1. 处理特定的业务错误（ERROR_RESPONSE）
   if (ERROR_RESPONSE[errResponseKey]) {
-    const shouldClearCookie = errResponseKey === ERROR_ENUM.unAuthorization;
+    // 认证失败响应可能迟到，不能清掉其他请求刚续好的凭证；清理由显式退出接口统一执行。
+    const shouldClearCookie = false;
     const message =
       error instanceof UserError && error.displayMessage
         ? replaceSensitiveText(error.displayMessage)

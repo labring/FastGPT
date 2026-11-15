@@ -125,10 +125,12 @@ describe('request utils', () => {
       };
       const oldList = getUserUsages(body).catch((error) => error);
       const oldDashboard = getDashboardData(body).catch((error) => error);
+      await vi.waitFor(() => expect(pending).toHaveLength(2));
       expect(pending.map(({ signal }) => signal.aborted)).toEqual([false, false]);
 
       const latestList = getUserUsages(body);
       const latestDashboard = getDashboardData(body);
+      await vi.waitFor(() => expect(pending).toHaveLength(4));
       expect(pending.map(({ signal }) => signal.aborted)).toEqual([true, true, false, false]);
       await expect(oldList).resolves.toMatchObject({ code: 'ERR_CANCELED' });
       await expect(oldDashboard).resolves.toMatchObject({ code: 'ERR_CANCELED' });
@@ -158,7 +160,7 @@ describe('request utils', () => {
       const secondRequest = GET('/test', { type: 'llm', versionKey: '1' }, { deduplicate: true });
 
       expect(firstRequest).toBe(secondRequest);
-      expect(requestSpy).toHaveBeenCalledTimes(1);
+      await vi.waitFor(() => expect(requestSpy).toHaveBeenCalledTimes(1));
 
       resolveRequest?.({ data: { code: 200, data: 'shared result', message: 'success' } });
       await expect(firstRequest).resolves.toBe('shared result');

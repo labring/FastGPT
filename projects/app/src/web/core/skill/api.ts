@@ -1,4 +1,5 @@
 import { GET, DELETE, POST, POSTRawFile } from '@/web/common/api/request';
+import { fetchWithSession } from '@fastgpt/web/common/auth/session';
 import { streamFetch, type StreamResponseType } from '@/web/common/api/fetch';
 import { downloadFetch } from '@/web/common/system/utils';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -111,6 +112,7 @@ export const streamInitSkillRuntime = ({
     }, 60000);
 
     fetchEventSource(getWebReqUrl('/api/core/ai/skill/runtime/init'), {
+      fetch: fetchWithSession,
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

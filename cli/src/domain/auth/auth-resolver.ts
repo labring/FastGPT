@@ -13,8 +13,10 @@ import type {
   GlobalCliOptions
 } from '../../shared/types';
 import { DEFAULT_FASTGPT_BASE_URL, normalizeBaseUrl } from '../../shared/url';
+import { decodeSessionCredential } from './session-credentials';
+import type { HttpRequestAuth } from '../../infra/http/fastgpt-http-client';
 
-export type ResolvedCredential = {
+export type ResolvedCredential = HttpRequestAuth & {
   source: 'flag' | 'env' | 'profile';
   authType: 'token' | 'apikey';
   secret: string;
@@ -130,12 +132,12 @@ export async function resolveEffectiveAuth({
     }
 
     if (profile.authType === 'token') {
+      const decoded = decodeSessionCredential(secret);
       return {
         source: 'profile',
-        authType: 'token',
-        secret,
+        ...decoded,
         kind: 'token',
-        sessionExpiresAt: profile.sessionExpiresAt
+        sessionExpiresAt: decoded.localRefreshExpiresAt ?? profile.sessionExpiresAt
       };
     }
 

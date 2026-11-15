@@ -15,7 +15,10 @@ import { setCookie } from '@fastgpt/service/support/permission/auth/common';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { MongoUser } from '@fastgpt/service/support/user/schema';
-import { createUserSession, delUserSession } from '@fastgpt/service/support/user/session';
+import { rekeyUserSession } from '@fastgpt/service/support/user/session';
+import { withUserLock } from '@fastgpt/service/support/user/lock';
+import { getPublicSessionCredentials } from '@fastgpt/service/support/user/session/http';
+import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import { ensureRootTeamMember } from '@fastgpt/service/support/user/team/controller';
 
 /**
@@ -49,21 +52,12 @@ async function handler(
 
   // 3. 更新最近登录团队成员偏好，并签发保持 isRoot=true 的新会话令牌与 Cookie。
   const ip = getClientIpFromRequest(req);
-  const [, token] = await Promise.all([
-    MongoUser.updateOne({ _id: userId }, { $set: { lastLoginTmbId: tmb._id } }),
-    createUserSession({
-      userId,
-      teamId: targetTeamId,
-      tmbId: targetTmbId,
-      isRoot: true,
-      ip
-    })
-  ]);
-  setCookie(res, token);
-
-  if (sessionId && sessionId !== token) {
-    await delUserSession(sessionId);
-  }
+  if (!sessionId) throw new Error(ERROR_ENUM.unAuthorization);
+  const credentials = await withUserLock(userId, async () => {
+    await MongoUser.updateOne({ _id: userId }, { $set: { lastLoginTmbId: tmb._id } });
+    return rekeyUserSession({ sessionId, teamId: targetTeamId, tmbId: targetTmbId });
+  });
+  setCookie(res, { ...credentials, request: req });
 
   // 4. 异步记录跨团队切换审计日志。
   void addAuditLog({
@@ -80,7 +74,7 @@ async function handler(
   });
 
   return AdminSwitchTeamResponseSchema.parse({
-    token,
+    ...getPublicSessionCredentials(credentials, req),
     teamId: targetTeamId,
     tmbId: targetTmbId
   });

@@ -118,15 +118,14 @@ function createBoundHttpClient({
   }
 
   const baseClient = container.createHttpClient({
+    profileName:
+      resolvedAuth.credential.source === 'profile' ? resolvedAuth.profileName : undefined,
     baseUrl: resolvedAuth.baseUrl,
     insecure: global.insecure,
     caCertPath: global.caCert
   });
 
-  const authPayload = {
-    authType: resolvedAuth.credential.authType,
-    secret: resolvedAuth.credential.secret
-  };
+  const authPayload = resolvedAuth.credential;
 
   return {
     baseUrl: baseClient.baseUrl,

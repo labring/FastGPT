@@ -14,6 +14,7 @@ const { clearCookie, setCookie } = await vi.importActual<
 
 describe('token auth cancellation access', () => {
   const session = {
+    sessionId: 'user-1:token-1',
     userId: 'user-1',
     teamId: 'team-1',
     tmbId: 'tmb-1',
@@ -90,7 +91,8 @@ describe('auth cookie', () => {
 
   const createResponse = () =>
     ({
-      setHeader: vi.fn()
+      setHeader: vi.fn(),
+      getHeader: vi.fn()
     }) as unknown as NodeHttpResponse;
 
   it('默认不添加 Secure 属性以兼容 HTTP 自部署环境', () => {
@@ -99,10 +101,9 @@ describe('auth cookie', () => {
 
     setCookie(response, 'test-token');
 
-    expect(response.setHeader).toHaveBeenCalledWith(
-      'Set-Cookie',
+    expect(response.setHeader).toHaveBeenCalledWith('Set-Cookie', [
       'fastgpt_token=test-token; Max-Age=604800; Path=/; HttpOnly; SameSite=Strict'
-    );
+    ]);
   });
 
   it('启用配置后为登录 Cookie 添加 Secure 属性', () => {
@@ -111,10 +112,9 @@ describe('auth cookie', () => {
 
     setCookie(response, 'test-token');
 
-    expect(response.setHeader).toHaveBeenCalledWith(
-      'Set-Cookie',
+    expect(response.setHeader).toHaveBeenCalledWith('Set-Cookie', [
       'fastgpt_token=test-token; Max-Age=604800; Path=/; HttpOnly; Secure; SameSite=Strict'
-    );
+    ]);
   });
 
   it('清理 Cookie 时复用 Secure 配置', () => {
@@ -125,7 +125,9 @@ describe('auth cookie', () => {
 
     expect(response.setHeader).toHaveBeenCalledWith(
       'Set-Cookie',
-      'fastgpt_token=; Max-Age=0; Path=/; HttpOnly; Secure; SameSite=Strict'
+      expect.arrayContaining([
+        'fastgpt_token=; Max-Age=0; Path=/; HttpOnly; Secure; SameSite=Strict'
+      ])
     );
   });
 });

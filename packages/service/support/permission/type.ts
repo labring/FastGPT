@@ -4,6 +4,7 @@ import type { RequireAtLeastOne } from '@fastgpt/global/common/type/utils';
 import type { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
 import type { NodeHttpRequest } from '../../types/http';
 import type { ApiKeyTypeEnum } from '@fastgpt/global/support/openapi/constants';
+import type { SessionLifecycle } from '@fastgpt/global/support/user/session/type';
 
 export type ReqHeaderAuthType = {
   cookie?: string;
@@ -46,6 +47,7 @@ export type AuthResponseType<T extends Permission = Permission> = {
   sourceName?: string;
   sessionId?: string;
   sessionCreatedAt?: number;
+  session?: SessionLifecycle;
   isRoot: boolean;
   permission: T;
 };
