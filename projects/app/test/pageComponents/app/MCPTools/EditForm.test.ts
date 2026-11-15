@@ -65,11 +65,15 @@ describe('MCP per-tool request metadata configuration', () => {
   const setToolSourceUrl = vi.fn();
   const requestMeta = { 'example/context': { locale: 'zh-CN' } };
   const tool = { name: 'search', description: 'Search', requestMeta };
-  const render = async (
+  const render = async ({
     url = 'https://example.com/mcp',
-    tools: McpToolConfigType[] = [tool],
+    tools = [tool],
     toolSourceUrl = 'https://example.com/mcp'
-  ) => {
+  }: {
+    url?: string;
+    tools?: McpToolConfigType[];
+    toolSourceUrl?: string;
+  } = {}) => {
     await act(async () => {
       root.render(
         React.createElement(EditForm, {
@@ -147,7 +151,7 @@ describe('MCP per-tool request metadata configuration', () => {
 
   it('drops stale responses and does not reuse metadata for a different server', async () => {
     const freshTool = { name: 'search', description: 'Other server' };
-    await render('https://other.example.com/mcp');
+    await render({ url: 'https://other.example.com/mcp' });
     await act(async () => mocks.onParsed!([freshTool], [{ url: 'https://example.com/mcp' }]));
     expect(setToolList).not.toHaveBeenCalled();
     await act(async () => mocks.onParsed!([freshTool], [{ url: 'https://other.example.com/mcp' }]));
@@ -167,7 +171,7 @@ describe('MCP per-tool request metadata configuration', () => {
     };
     await act(async () => mocks.onParsed!([freshTool], [{ url: 'https://example.com/mcp' }]));
     const parsedTools = setToolList.mock.calls.at(-1)![0];
-    await render('https://example.com/mcp', parsedTools);
+    await render({ url: 'https://example.com/mcp', tools: parsedTools });
     expect(container.textContent).not.toContain('common:Confirm');
     expect(parsedTools[0]).toEqual({ ...freshTool, requestMeta });
     await click('details');
@@ -186,7 +190,7 @@ describe('MCP per-tool request metadata configuration', () => {
         properties: { newParam: { type: 'string' as const } }
       }
     };
-    await render('https://example.com/mcp', [freshTool]);
+    await render({ url: 'https://example.com/mcp', tools: [freshTool] });
     await act(async () => mocks.onChange!({ target: { value: '{}' } }));
     await click('common:Confirm');
     expect(setToolList).toHaveBeenLastCalledWith([{ ...freshTool, requestMeta: {} }]);
@@ -194,13 +198,17 @@ describe('MCP per-tool request metadata configuration', () => {
   });
 
   it('does not let a dialog opened on the old list restore metadata after a server switch', async () => {
-    await render('https://other.example.com/mcp');
+    await render({ url: 'https://other.example.com/mcp' });
     await click('details');
     expect(container.textContent).not.toContain('common:Confirm');
     const freshTool = { name: 'search', description: 'Other server definition' };
     await act(async () => mocks.onParsed!([freshTool], [{ url: 'https://other.example.com/mcp' }]));
     const parsedTools = setToolList.mock.calls.at(-1)![0];
-    await render('https://other.example.com/mcp', parsedTools, 'https://other.example.com/mcp');
+    await render({
+      url: 'https://other.example.com/mcp',
+      tools: parsedTools,
+      toolSourceUrl: 'https://other.example.com/mcp'
+    });
     expect(container.textContent).not.toContain('common:Confirm');
     expect(parsedTools).toEqual([freshTool]);
     await click('details');
@@ -211,7 +219,7 @@ describe('MCP per-tool request metadata configuration', () => {
   it('hides an existing dialog immediately when the service URL changes', async () => {
     await click('details');
     expect(container.textContent).toContain('common:Confirm');
-    await render('https://other.example.com/mcp');
+    await render({ url: 'https://other.example.com/mcp' });
     expect(container.textContent).not.toContain('common:Confirm');
     expect(setToolList).not.toHaveBeenCalled();
   });
