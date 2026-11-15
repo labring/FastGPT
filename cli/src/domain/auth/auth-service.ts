@@ -426,10 +426,11 @@ export function createAuthService({
             const { config } = await configRepo.read();
             const profile = config.profiles[resolved.profileName];
             const stored = await secretStore.getSecret(resolved.profileName);
+            // URL 覆盖只作用于网络地址；缓存提交检查原始 Profile 快照，不把覆盖地址写回配置。
             if (
               !profile ||
               !stored ||
-              profile.baseUrl !== resolved.baseUrl ||
+              profile.baseUrl !== resolved.profile?.baseUrl ||
               profile.authType !== credential.authType
             )
               return;
@@ -452,7 +453,7 @@ export function createAuthService({
             const storageMode = profile.storageMode ?? (await secretStore.getBackendName());
             const refreshed = buildProfileFromProbe({
               existing: profile,
-              baseUrl: resolved.baseUrl,
+              baseUrl: profile.baseUrl,
               allowInsecureHttp: resolved.allowInsecureHttp,
               secret: current.secret,
               probe,
@@ -632,7 +633,13 @@ export function createAuthService({
             const { config } = await configRepo.read();
             const profile = config.profiles[resolved.profileName];
             const stored = await secretStore.getSecret(resolved.profileName);
-            if (!stored || profile?.baseUrl !== resolved.baseUrl || profile.authType !== 'token') {
+            // 本命令自行持锁，仍需拒绝解析凭证后、进入锁前已经变化的 Profile。
+            if (
+              !stored ||
+              !profile ||
+              profile.baseUrl !== resolved.profile?.baseUrl ||
+              profile.authType !== 'token'
+            ) {
               throw new CliAuthError({
                 code: 'AUTH_CONFLICT',
                 message: 'The active profile changed. Run the command again.'
@@ -780,11 +787,12 @@ export function createAuthService({
           const storageMode = await (async () => {
             if (resolved.credential!.source === 'profile') {
               const { config } = await configRepo.read();
+              const profile = config.profiles[resolved.profileName];
               assertValid();
               const backend = await secretStore.getBackendName(resolved.profileName);
               const nextProfile = buildProfileFromProbe({
-                existing: resolved.profile,
-                baseUrl: resolved.baseUrl,
+                existing: profile,
+                baseUrl: profile.baseUrl,
                 allowInsecureHttp: resolved.allowInsecureHttp,
                 secret: nextToken,
                 probe,
