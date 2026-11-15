@@ -1,3 +1,9 @@
+import {
+  getPublicModelCatalog,
+  getPublicModelList,
+  getUserModelCatalog
+} from '@/web/core/ai/model/catalogApi';
+import { SessionErrEnum } from '@fastgpt/global/common/error/code/session';
 import { browserSession } from '@fastgpt/web/common/auth/session';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import {
@@ -81,6 +87,83 @@ vi.stubGlobal('window', {
 vi.stubGlobal('location', mockLocation);
 
 describe('request utils', () => {
+  it('keeps the public model-price catalogue available after returning from login', async () => {
+    browserSession.stop();
+    const catalog = { models: [{ model: 'public-model' }], providers: [] };
+    const send = vi
+      .spyOn(instance, 'request')
+      .mockResolvedValue({ data: { code: 200, data: catalog } });
+    try {
+      await expect(getPublicModelCatalog()).resolves.toEqual(catalog);
+      await expect(getPublicModelList()).resolves.toEqual(catalog.models);
+      expect(send).toHaveBeenCalledTimes(2);
+      await expect(getUserModelCatalog()).rejects.toBeInstanceOf(ToastHandledError);
+      expect(send).toHaveBeenCalledTimes(2);
+    } finally {
+      send.mockRestore();
+      browserSession.observe(null, { login: true });
+    }
+  });
+
+  it.each([false, true])(
+    'fences a retried request failure without another replay (newLogin=%s)',
+    async (newLogin) => {
+      mockLocation.pathname = '/test-route/chat';
+      const now = Date.now();
+      const session = {
+        sessionId: 'old:device',
+        contextVersion: 1,
+        generation: 1,
+        serverTime: now,
+        createdAt: now,
+        accessExpiresAt: now + 900_000,
+        refreshExpiresAt: now + 604_800_000,
+        absoluteExpiresAt: now + 2_592_000_000
+      };
+      browserSession.observe(session, { login: true });
+      let failRetry!: (error: unknown) => void;
+      let started!: () => void;
+      const retryStarted = new Promise<void>((resolve) => {
+        started = resolve;
+      });
+      const refresh = vi
+        .spyOn(globalThis, 'fetch')
+        .mockResolvedValue(
+          new Response(
+            JSON.stringify({ code: 200, data: { session: { ...session, generation: 2 } } })
+          )
+        );
+      const send = vi
+        .spyOn(instance, 'request')
+        .mockRejectedValueOnce({ code: 401, statusText: SessionErrEnum.accessExpired })
+        .mockImplementationOnce(
+          () =>
+            new Promise((_, reject) => {
+              failRetry = reject;
+              started();
+            })
+        );
+      const pending = GET('/test/retried').catch((error) => error);
+      try {
+        await retryStarted;
+        if (newLogin) {
+          browserSession.stop();
+          browserSession.observe({ ...session, sessionId: 'new:device' }, { login: true });
+        }
+        failRetry({ code: 401, statusText: SessionErrEnum.revoked });
+        const result = await pending;
+        expect(result instanceof ToastHandledError).toBe(newLogin);
+        expect(dispatchEventMock).toHaveBeenCalledTimes(newLogin ? 0 : 1);
+        expect(refresh).toHaveBeenCalledTimes(1);
+        expect(send).toHaveBeenCalledTimes(2);
+      } finally {
+        send.mockRestore();
+        refresh.mockRestore();
+        browserSession.observe(null, { login: true });
+      }
+    }
+  );
+
   it('sends external geolocation requests while stopped and keeps same-origin absolute URLs coordinated', async () => {
     browserSession.stop();
     const send = vi

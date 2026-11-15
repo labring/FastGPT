@@ -284,6 +284,12 @@ export class SessionCoordinator {
     this.assertContext(snapshot);
   }
 
+  /** 失败交给业务错误处理前等待本页凭证变更并校验原快照；重试失败也不能影响新登录。 */
+  async assertFailureContext(snapshot: SessionRequestSnapshot, signal?: AbortSignal) {
+    await this.waitForContextMutations(snapshot, signal);
+    this.assertContext(snapshot);
+  }
+
   /**
    * 成功响应交给业务层前也要校验上下文，防止旧用户 / 团队的数据回写新页面。
    * 自身改密 / 切团队可以提交新上下文，但其响应必须仍对应当前已观察到的同一 Session。
@@ -425,8 +431,7 @@ export class SessionCoordinator {
     { snapshot, signal }: { snapshot: SessionRequestSnapshot; signal?: AbortSignal }
   ): Promise<boolean> {
     // 旧 Token 没有公开 sessionId，仍须在任何失败进入退出逻辑前检查本页凭证变更。
-    await this.waitForContextMutations(snapshot, signal);
-    this.assertContext(snapshot);
+    await this.assertFailureContext(snapshot, signal);
     if (getSessionErrorReason(error) === SessionErrEnum.contextChanged) {
       return this.rejectRemoteContextChange();
     }

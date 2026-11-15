@@ -337,9 +337,15 @@ function request(
             );
           return result;
         });
-    return isSessionContextMutation(url)
+    const pending = isSessionContextMutation(url)
       ? browserSession.trackContextMutation(dispatch)
       : dispatch();
+    return pending.catch(async (error) => {
+      // 在 mutation 自己完成后再等待同页其他变更，避免等待自身；首发和唯一一次重试都须检查快照。
+      if (snapshot)
+        await browserSession.assertFailureContext(snapshot, cancelToken?.signal ?? abortSignal);
+      throw error;
+    });
   };
 
   const perform = async () => {
