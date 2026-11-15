@@ -5,6 +5,7 @@ import { DEFAULT_LS_LIMIT, SANDBOX_TOOL_MAX_BYTES, SANDBOX_TOOL_MAX_LINES } from
 import z from 'zod';
 import { defineTool } from './type';
 import { truncateSandboxToolOutput } from './utils';
+import { STOPPED_TOOL_RESPONSE_TEXT } from '../../../../chat/stop';
 
 export const SandboxLsToolSchema = z.object({
   path: z.string().optional(),
@@ -15,7 +16,7 @@ export const sandboxLsTool = defineTool({
   zodSchema: SandboxLsToolSchema,
   execute: async ({ sandboxInstance, params, signal }) => {
     if (signal?.aborted) {
-      throw new Error('Tool execution was stopped by user.');
+      throw new Error(STOPPED_TOOL_RESPONSE_TEXT);
     }
     await sandboxInstance.ensureAvailable();
     const limit = params.limit ?? DEFAULT_LS_LIMIT;

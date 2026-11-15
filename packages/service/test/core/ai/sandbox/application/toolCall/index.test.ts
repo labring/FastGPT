@@ -5,6 +5,7 @@ import {
   SANDBOX_WRITE_FILE_TOOL_NAME
 } from '@fastgpt/global/core/ai/sandbox/tools';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { STOPPED_TOOL_RESPONSE_TEXT } from '@fastgpt/service/core/chat/stop';
 
 const runtimeMock = vi.hoisted(() => ({
   getSandboxClient: vi.fn()
@@ -180,7 +181,7 @@ describe('sandbox toolCall index', () => {
     ).resolves.toMatchObject({
       success: false,
       input: {},
-      response: 'Tool execution was stopped by user.'
+      response: STOPPED_TOOL_RESPONSE_TEXT
     });
     expect(sandbox.exec).not.toHaveBeenCalled();
     expect(sandbox.ensureAvailable).not.toHaveBeenCalled();
@@ -204,7 +205,7 @@ describe('sandbox toolCall index', () => {
     ).resolves.toMatchObject({
       success: false,
       input: { command: 'sleep 5' },
-      response: 'Tool execution was stopped by user.'
+      response: STOPPED_TOOL_RESPONSE_TEXT
     });
     expect(sandbox.exec).toHaveBeenCalledWith(expect.any(String), {
       timeout: undefined,

@@ -6,6 +6,7 @@
 import z from 'zod';
 import path from 'path';
 import { defineTool } from './type';
+import { STOPPED_TOOL_RESPONSE_TEXT } from '../../../../chat/stop';
 import {
   buildSandboxPreviewFileUrl,
   createSandboxPreviewSession,
@@ -23,7 +24,7 @@ export const sandboxGetFileUrlTool = defineTool({
       return { response: '[]' };
     }
     if (signal?.aborted) {
-      throw new Error('Tool execution was stopped by user.');
+      throw new Error(STOPPED_TOOL_RESPONSE_TEXT);
     }
 
     const sandboxId = sandboxInstance.getSandboxId();

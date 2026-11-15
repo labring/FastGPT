@@ -38,6 +38,7 @@ import {
 } from '../../utils';
 import { getRunningSandboxId, getSandboxUserId } from '../../utils/id';
 import { createToolRunner, type SandboxToolCallValidator } from './type';
+import { STOPPED_TOOL_RESPONSE_TEXT } from '../../../../chat/stop';
 
 const ToolMap = {
   [SANDBOX_EDIT_FILE_TOOL_NAME]: createToolRunner(sandboxEditFileTool),
@@ -105,7 +106,7 @@ export const runSandboxTools = async ({
     return {
       success: false,
       input: {},
-      response: 'Tool execution was stopped by user.',
+      response: STOPPED_TOOL_RESPONSE_TEXT,
       durationSeconds: getDuration()
     };
   }
@@ -121,7 +122,7 @@ export const runSandboxTools = async ({
       if (signal?.aborted) {
         return {
           success: false as const,
-          error: 'Tool execution was stopped by user.'
+          error: STOPPED_TOOL_RESPONSE_TEXT
         };
       }
       throw error;
@@ -131,7 +132,7 @@ export const runSandboxTools = async ({
     return {
       success: false,
       input: result.success ? result.input : {},
-      response: 'Tool execution was stopped by user.',
+      response: STOPPED_TOOL_RESPONSE_TEXT,
       durationSeconds: getDuration()
     };
   }

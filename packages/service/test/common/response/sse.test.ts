@@ -82,6 +82,11 @@ describe('SSE stream lifecycle after client disconnect', () => {
       'event: answer\ndata: continued generation\n\n'
     );
     expect(response.write).not.toHaveBeenCalled();
+
+    enqueueRaw.mockClear();
+    void context.flushResume();
+    context.write({ event: 'answer', data: 'late orphan after flush' });
+    expect(enqueueRaw).not.toHaveBeenCalled();
     context.cleanup();
   });
 });

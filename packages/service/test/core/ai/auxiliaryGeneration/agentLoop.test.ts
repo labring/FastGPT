@@ -120,6 +120,7 @@ describe('runAuxiliaryGenerationAgentLoop', () => {
   it('forwards stopSignal and checkIsStopping into runAgentLoop runtime', async () => {
     const abortController = new AbortController();
     const checkIsStopping = vi.fn(() => abortController.signal.aborted);
+    const getStopDeadlineAt = vi.fn(() => 123456);
     runAgentLoopMock.mockResolvedValue({
       status: 'aborted',
       completeMessages: [],
@@ -135,14 +136,16 @@ describe('runAuxiliaryGenerationAgentLoop', () => {
       systemPrompt: 'helper prompt',
       messages: [{ role: 'user', content: '停止测试' }],
       checkIsStopping,
-      stopSignal: abortController.signal
+      stopSignal: abortController.signal,
+      getStopDeadlineAt
     });
 
     expect(runAgentLoopMock).toHaveBeenCalledWith(
       expect.objectContaining({
         runtime: expect.objectContaining({
           checkIsStopping,
-          stopSignal: abortController.signal
+          stopSignal: abortController.signal,
+          getStopDeadlineAt
         })
       })
     );

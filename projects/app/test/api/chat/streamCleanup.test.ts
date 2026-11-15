@@ -230,6 +230,17 @@ describe.each([
     expect(response.end).toHaveBeenCalledOnce();
   });
 
+  it('absorbs generation lease release errors and completes stream cleanup once', async () => {
+    mocks.releaseGenerationLease.mockRejectedValueOnce(new Error('Redis unavailable'));
+
+    const { response, result } = runRequest();
+    await expect(result).resolves.toBeUndefined();
+
+    expect(mocks.releaseGenerationLease).toHaveBeenCalledOnce();
+    expect(mocks.flushResume).toHaveBeenCalledOnce();
+    expect(response.end).toHaveBeenCalledOnce();
+  });
+
   if (supportsNonStream) {
     it('keeps non-streaming responses outside stream cleanup', async () => {
       const { response, result } = runRequest(false);

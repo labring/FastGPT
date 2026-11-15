@@ -288,7 +288,13 @@ export const datasetSearchQueryExtension = async ({
         teamId,
         signal: stopSignal
       });
-      if (result.extensionQueries?.length === 0) return;
+      if (
+        result.extensionQueries?.length === 0 &&
+        result.inputTokens <= 0 &&
+        result.outputTokens <= 0
+      ) {
+        return;
+      }
       return result;
     } catch (error) {
       if (stopSignal?.aborted) return;
@@ -304,7 +310,7 @@ export const datasetSearchQueryExtension = async ({
     };
   }
 
-  if (aiExtensionResult) {
+  if (aiExtensionResult && aiExtensionResult.extensionQueries.length > 0) {
     queries = filterSameQuery(queries.concat(aiExtensionResult.extensionQueries));
     reRankQuery = queries.join('\n');
   }

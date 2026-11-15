@@ -4,7 +4,6 @@ import { getRemainingStopGraceMs } from '../../../../chat/stop';
 
 // Agent 工具执行取消宽限期略早于外层工作流 3000ms 大限，留出配对收尾与历史落库时间。
 export const AGENT_TOOL_STOP_GRACE_MS = 2500;
-export const STOPPED_TOOL_RESPONSE_TEXT = 'Tool execution was stopped by user.';
 
 export type RaceToolWithStopGraceResult<T> =
   | { status: 'resolved'; value: T }
@@ -81,7 +80,7 @@ export const raceToolWithStopGrace = async <T>({
       cleanupAbortListener = () => stopSignal.removeEventListener('abort', onAbort);
     }
 
-    if (checkIsStopping && !stopSignal) {
+    if (checkIsStopping) {
       pollTimer = setInterval(() => {
         if (isStopping()) {
           startGraceCountdown();

@@ -31,6 +31,7 @@ import {
   updateInteractiveChat
 } from '@fastgpt/service/core/chat/saveChat';
 import { preChatRound, type PreChatRoundResult } from '@fastgpt/service/core/chat/utils/prepare';
+import { createGenerationLeaseReleaser } from '@fastgpt/service/core/chat/generationLease';
 import { createGeneratedChatTitleSender } from '@fastgpt/service/core/chat/title';
 import { authOutLinkChatStart } from '@fastgpt/service/support/permission/publish/authChat';
 import { recordAppUsage } from '@fastgpt/service/core/app/record/utils';
@@ -126,12 +127,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     chatId: undefined as string | undefined,
     responseChatItemId: responseChatItemId || getNanoid(24)
   };
-  let leaseReleased = false;
-  const releaseGenerationLeaseOnce = async () => {
-    if (leaseReleased) return;
-    await roundState.preparedRound?.releaseGenerationLease?.();
-    leaseReleased = true;
-  };
+  const releaseGenerationLeaseOnce = createGenerationLeaseReleaser(
+    () => roundState.preparedRound?.releaseGenerationLease
+  );
 
   try {
     if (!Array.isArray(messages)) {

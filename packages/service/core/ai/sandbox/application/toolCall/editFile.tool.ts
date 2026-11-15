@@ -5,6 +5,7 @@
  */
 import z from 'zod';
 import { defineTool } from './type';
+import { STOPPED_TOOL_RESPONSE_TEXT } from '../../../../chat/stop';
 
 export const SandboxEditFileToolSchema = z.object({
   entries: z.array(
@@ -20,7 +21,7 @@ export const sandboxEditFileTool = defineTool({
   zodSchema: SandboxEditFileToolSchema,
   execute: async ({ sandboxInstance, params, signal }) => {
     if (signal?.aborted) {
-      throw new Error('Tool execution was stopped by user.');
+      throw new Error(STOPPED_TOOL_RESPONSE_TEXT);
     }
     await sandboxInstance.ensureAvailable();
     await sandboxInstance.provider.replaceContent(

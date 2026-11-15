@@ -8,6 +8,7 @@ import {
 import {
   CHAT_GENERATION_LEASE_RENEW_INTERVAL_MS,
   CHAT_GENERATION_LEASE_TTL_MS,
+  createGenerationLeaseReleaser,
   tryStartChatGenerationLease,
   getChatGenerationStatuses
 } from '@fastgpt/service/core/chat/generationLease';
@@ -367,5 +368,31 @@ describe('chat generation lease', () => {
       chatIds: [params.chatId]
     });
     expect(statuses.get(params.chatId)).toBe(ChatGenerateStatusEnum.generating);
+  });
+});
+
+describe('createGenerationLeaseReleaser', () => {
+  it('runs the underlying release callback at most once across concurrent callers', async () => {
+    const release = vi.fn(async () => {});
+    const releaseOnce = createGenerationLeaseReleaser(() => release);
+
+    await Promise.all([releaseOnce(), releaseOnce()]);
+    await releaseOnce();
+
+    expect(release).toHaveBeenCalledTimes(1);
+  });
+
+  it('resolves without throwing when no lease callback exists or when release rejects', async () => {
+    const missingReleaseOnce = createGenerationLeaseReleaser(() => undefined);
+    await expect(missingReleaseOnce()).resolves.toBeUndefined();
+
+    const failingRelease = vi.fn(async () => {
+      throw new Error('redis release failed');
+    });
+    const failingReleaseOnce = createGenerationLeaseReleaser(() => failingRelease);
+
+    await expect(failingReleaseOnce()).resolves.toBeUndefined();
+    await expect(failingReleaseOnce()).resolves.toBeUndefined();
+    expect(failingRelease).toHaveBeenCalledTimes(1);
   });
 });

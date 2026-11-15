@@ -62,7 +62,7 @@ import {
   createUpdatePlanAgentTool
 } from '@fastgpt/service/core/ai/llm/agentLoop/interface';
 import { createAgentLoopSandboxTools } from '@fastgpt/service/core/ai/llm/agentLoop/domain/systemTool/sandbox';
-import { STOPPED_TOOL_RESPONSE_TEXT } from '@fastgpt/service/core/ai/llm/agentLoop/domain/stopGrace';
+import { STOPPED_TOOL_RESPONSE_TEXT } from '@fastgpt/service/core/chat/stop';
 import {
   runFastAgentMainLoop,
   type AgentLoopRuntime
@@ -967,5 +967,61 @@ describe('runFastAgentMainLoop', () => {
         content: STOPPED_TOOL_RESPONSE_TEXT
       })
     );
+  });
+
+  it('clears interactive error and suppresses tool_interactive when stopping during interactive resume', async () => {
+    const stopController = new AbortController();
+    const events: any[] = [];
+
+    const result = await runFastAgentMainLoop({
+      runtime: createRuntime({
+        stopSignal: stopController.signal,
+        checkIsStopping: () => stopController.signal.aborted,
+        emitEvent: (event) => events.push(event),
+        executeInteractiveTool: vi.fn(async () => {
+          stopController.abort(new Error('Chat stopped'));
+          return {
+            response: 'Tool error: aborted',
+            errorMessage: 'Tool error: aborted',
+            interactive: { type: 'userSelect', params: { description: 'choose' } },
+            assistantMessages: [],
+            usages: []
+          };
+        })
+      }),
+      input: {
+        messages: [
+          {
+            role: ChatCompletionRequestMessageRoleEnum.Assistant,
+            content: null,
+            tool_calls: [
+              {
+                id: 'call_resume_stop',
+                type: 'function',
+                function: { name: 'search', arguments: '{}' }
+              }
+            ]
+          },
+          {
+            role: ChatCompletionRequestMessageRoleEnum.Tool,
+            tool_call_id: 'call_resume_stop',
+            content: 'waiting'
+          }
+        ],
+        childrenInteractiveParams: {
+          childrenResponse: { type: 'userSelect' },
+          toolCallId: 'call_resume_stop'
+        }
+      }
+    });
+
+    expect(result.status).toBe('aborted');
+    expect(result.pause).toBeUndefined();
+    expect(events.some((event) => event.type === 'tool_interactive')).toBe(false);
+    expect(events.find((event) => event.type === 'tool_run_end')).toMatchObject({
+      call: { id: 'call_resume_stop' },
+      response: STOPPED_TOOL_RESPONSE_TEXT,
+      errorMessage: undefined
+    });
   });
 });

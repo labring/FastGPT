@@ -73,16 +73,27 @@ export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse
     histories: chatHistories,
     cqModel
   });
-  if (props.checkIsStopping?.() || props.stopSignal?.aborted) {
-    return {};
-  }
-  const result = agents.find((item) => item.key === arg?.type) || agents[agents.length - 1];
-
   const { totalPoints } = formatModelChars2Points({
     model: cqModel,
     inputTokens: inputTokens,
     outputTokens: outputTokens
   });
+  if (props.checkIsStopping?.() || props.stopSignal?.aborted) {
+    if (inputTokens > 0 || outputTokens > 0) {
+      props.usagePush([
+        {
+          moduleName: name,
+          totalPoints: usedUserOpenAIKey ? 0 : totalPoints,
+          modelId: cqModel.modelId,
+          inputTokens: inputTokens,
+          outputTokens: outputTokens
+        }
+      ]);
+    }
+    return {};
+  }
+  const result = agents.find((item) => item.key === arg?.type) || agents[agents.length - 1];
+
   props.usagePush([
     {
       moduleName: name,
@@ -161,7 +172,6 @@ const completions = async ({
     answerText: answer,
     usage: { inputTokens, outputTokens, usedUserOpenAIKey }
   } = await createLLMResponse({
-    throwError: false,
     body: {
       model: cqModel,
       messages: chats2GPTMessages({ messages, reserveId: false, reserveReason: false }),

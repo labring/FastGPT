@@ -35,7 +35,8 @@ import {
   createFileClassificationContext,
   type FileClassificationContext
 } from '../../../../../../../common/file/classification';
-import { raceToolWithStopGrace, STOPPED_TOOL_RESPONSE_TEXT } from '../../../domain/stopGrace';
+import { raceToolWithStopGrace } from '../../../domain/stopGrace';
+import { STOPPED_TOOL_RESPONSE_TEXT } from '../../../../../../chat/stop';
 
 type RunAgentCallProps<TChildrenResponse = unknown> = {
   maxRunAgentTimes: number;
@@ -360,6 +361,19 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
             stop: false
           };
         }
+        if (
+          isStopping() &&
+          interactiveRace.value.errorMessage &&
+          !isModerationBlockErrorMessage(interactiveRace.value.errorMessage)
+        ) {
+          return {
+            ...interactiveRace.value,
+            response: interactiveRace.value.assistantResponses?.length
+              ? interactiveRace.value.response
+              : STOPPED_TOOL_RESPONSE_TEXT,
+            errorMessage: undefined
+          };
+        }
         return interactiveRace.value;
       } catch (error) {
         const errText = getErrText(error);
@@ -399,7 +413,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
       seconds: +((Date.now() - toolStartTime) / 1000).toFixed(2),
       usages: toolUsages,
       metadata,
-      interactive
+      interactive: isStopping() ? undefined : interactive
     });
 
     // FastAgent 只使用 ChatItem 重建的上下文，旧交互中的 memory 快照不再参与恢复。
@@ -421,7 +435,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
     });
     assistantMessages.push(...filterEmptyAssistantMessages(toolAssistantMessages));
     // 相同 tool 触发了多次交互, 调用的 toolId 认为是相同的
-    if (interactive) {
+    if (interactive && !isStopping()) {
       pause = {
         interactive,
         toolCallId: childrenInteractiveParams.toolCallId
@@ -786,7 +800,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
           toolResponseCompress,
           metadata,
           hideInUI,
-          interactive
+          interactive: isStopping() ? undefined : interactive
         });
 
         return {
@@ -813,7 +827,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
           toolAssistantMessages,
           continuationMessage
         } of toolRunResults) {
-          if (interactive) {
+          if (interactive && !isStopping()) {
             pause = {
               interactive,
               toolCallId: tool.id

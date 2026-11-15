@@ -6,7 +6,11 @@ import type { NodeApiRequest, NodeApiResponse } from '@fastgpt/service/types/htt
 import type { AgentSandboxPrepareAction } from '@fastgpt/service/core/workflow/dispatch/ai/agent/sub/sandbox/prepare';
 import { sseErrRes } from '@fastgpt/service/common/response';
 import { LimitTypeEnum } from '@fastgpt/service/common/api/frequencyLimit';
-import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import {
+  DispatchNodeResponseKeyEnum,
+  SseResponseEventEnum
+} from '@fastgpt/global/core/workflow/runtime/constants';
+import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
 
 const mocks = vi.hoisted(() => ({
   authSkill: vi.fn(),
@@ -142,6 +146,39 @@ describe('runSkillDebugChat', () => {
     expect(streamContext.flushResume).toHaveBeenCalledOnce();
     expect(mocks.teamFrequencyLimit).not.toHaveBeenCalled();
     expect(mocks.createWorkflowStreamResponseContext).not.toHaveBeenCalled();
+  });
+
+  it('releases the generation lease before emitting answerStop and done on stopped streams', async () => {
+    const options = createTransport();
+    mocks.releaseGenerationLease.mockRejectedValueOnce(new Error('lease cleanup failed'));
+    mocks.dispatchWorkFlow.mockResolvedValueOnce({
+      flatNodeResponses: [],
+      assistantResponses: [],
+      system_memories: {},
+      durationSeconds: 1,
+      workflowRuntimeSummary: {},
+      stopped: true
+    });
+
+    await expect(runSkillDebugChat({ req, body, options })).resolves.toBeUndefined();
+
+    expect(mocks.releaseGenerationLease).toHaveBeenCalledOnce();
+    const writeCalls = streamContext.responseWrite.mock.calls.map(([event]) => event);
+    const answerStopIndex = writeCalls.findIndex(
+      (event) =>
+        event?.event === workflowSseEvent.answerStop().event &&
+        JSON.stringify(event) === JSON.stringify(workflowSseEvent.answerStop())
+    );
+    const doneIndex = writeCalls.findIndex(
+      (event) =>
+        JSON.stringify(event) === JSON.stringify(workflowSseEvent.done(SseResponseEventEnum.answer))
+    );
+    expect(answerStopIndex).toBeGreaterThanOrEqual(0);
+    expect(doneIndex).toBe(answerStopIndex + 1);
+    expect(mocks.releaseGenerationLease.mock.invocationCallOrder[0]).toBeLessThan(
+      streamContext.responseWrite.mock.invocationCallOrder[answerStopIndex]
+    );
+    expect(streamContext.flushResume).toHaveBeenCalledOnce();
   });
 
   it('stops before sandbox access and SSE creation when the injected limiter rejects', async () => {

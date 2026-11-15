@@ -29,7 +29,10 @@ import {
   FlowNodeOutputTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
 import type { WorkflowVariableStateLike } from '@fastgpt/service/core/workflow/types/runtime';
-import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import {
+  DispatchNodeResponseKeyEnum,
+  SseResponseEventEnum
+} from '@fastgpt/global/core/workflow/runtime/constants';
 import { callbackMap } from '@fastgpt/service/core/workflow/dispatch/constants';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { WorkflowNodeResponseSink } from '@fastgpt/service/core/workflow/dispatch/nodeResponseSink';
@@ -2418,6 +2421,65 @@ describe('Workflow stop grace period and orphan write fencing', () => {
         MODERATION_BLOCKED_REPLACE_TEXT
       );
       expect(result.workflowRuntimeSummary.errorCount).toBe(0);
+    } finally {
+      callbackMap[FlowNodeTypeEnum.tool] = originalTool;
+    }
+  });
+
+  it('suppresses interactive output and SSE event when workflow is stopping', async () => {
+    const originalTool = callbackMap[FlowNodeTypeEnum.tool];
+    const stopController = new AbortController();
+    const node = createNode('tool-interactive-stop', FlowNodeTypeEnum.tool);
+    node.isEntry = true;
+    const emittedEvents: Array<{ event?: SseResponseEventEnum }> = [];
+
+    callbackMap[FlowNodeTypeEnum.tool] = vi.fn(async () => {
+      stopController.abort(new Error('Chat stopped'));
+      return {
+        [DispatchNodeResponseKeyEnum.interactive]: {
+          type: 'userSelect',
+          params: {
+            description: 'choose one',
+            userSelectOptions: [{ key: 'opt-1', value: 'Option 1' }]
+          }
+        }
+      } as any;
+    });
+
+    try {
+      const result = await runWorkflow({
+        apiVersion: 'v2',
+        mode: 'chat',
+        runningAppInfo: {
+          id: '67e0d5535c02d1d5cdede721',
+          name: 'interactive stop suppression',
+          teamId: '654a4107c32f3bf5f998452f',
+          tmbId: '65ab7007462ada7dbb899948'
+        },
+        runningUserInfo: {
+          teamId: '654a4107c32f3bf5f998452f',
+          tmbId: '65ab7007462ada7dbb899948'
+        },
+        histories: [],
+        query: [],
+        chatConfig: {},
+        runtimeNodes: [node],
+        runtimeEdges: [],
+        variableState: createWorkflowVariableState(),
+        externalProvider: {},
+        workflowDispatchDeep: 0,
+        maxRunTimes: 10,
+        workflowStreamResponse: (event) => {
+          emittedEvents.push(event);
+        },
+        checkIsStopping: () => stopController.signal.aborted,
+        stopSignal: stopController.signal
+      } as any);
+
+      expect(result.workflowInteractiveResponse).toBeUndefined();
+      expect(emittedEvents.some((event) => event.event === SseResponseEventEnum.interactive)).toBe(
+        false
+      );
     } finally {
       callbackMap[FlowNodeTypeEnum.tool] = originalTool;
     }

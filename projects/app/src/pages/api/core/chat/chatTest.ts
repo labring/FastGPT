@@ -41,6 +41,7 @@ import {
   updateInteractiveChat
 } from '@fastgpt/service/core/chat/saveChat';
 import { preChatRound, type PreChatRoundResult } from '@fastgpt/service/core/chat/utils/prepare';
+import { createGenerationLeaseReleaser } from '@fastgpt/service/core/chat/generationLease';
 import { getLocale } from '@fastgpt/service/common/middle/i18n';
 import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
 import { LimitTypeEnum, teamFrequencyLimit } from '@fastgpt/service/common/api/frequencyLimit';
@@ -79,12 +80,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     chatId: undefined as string | undefined,
     responseChatItemId: responseChatItemIdFromBody ?? getNanoid(24)
   };
-  let leaseReleased = false;
-  const releaseGenerationLeaseOnce = async () => {
-    if (leaseReleased) return;
-    await roundState.preparedRound?.releaseGenerationLease?.();
-    leaseReleased = true;
-  };
+  const releaseGenerationLeaseOnce = createGenerationLeaseReleaser(
+    () => roundState.preparedRound?.releaseGenerationLease
+  );
   let { variables = {} } = chatTestProps;
   const source = ChatSourceEnum.test;
   const originIp = getIpFromRequest(req);

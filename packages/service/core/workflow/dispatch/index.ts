@@ -947,9 +947,19 @@ export class WorkflowQueue {
 
         if (node) {
           // 不再递归调用，异步执行节点（不等待完成）
-          const nodePromise: Promise<unknown> = this.checkNodeCanRun(node).finally(() => {
-            runningNodePromises.delete(nodePromise);
-          });
+          const nodePromise: Promise<unknown> = this.checkNodeCanRun(node)
+            .catch((error) => {
+              logger.error('Workflow node execution rejected unexpectedly', {
+                ...getWorkflowSource(this.data.runningAppInfo),
+                chatId: this.data.chatId,
+                nodeId: node.nodeId,
+                nodeName: node.name,
+                error
+              });
+            })
+            .finally(() => {
+              runningNodePromises.delete(nodePromise);
+            });
           runningNodePromises.add(nodePromise);
         }
       }
@@ -1213,6 +1223,39 @@ export class WorkflowQueue {
         };
       }
 
+      // 出口统一裁决：先保证前序内容审核阻断不被停止掩盖，再清理用户停止引发的中断错误与分支标记，
+      // 确保停止时带回的部分 toolResponse 仍会进入下方的工具结果内容审核。
+      const isStoppingNow = this.data.checkIsStopping() || Boolean(this.data.stopSignal?.aborted);
+      const preModerationErrorCandidate = getErrText(
+        dispatchRes.rawError ??
+          dispatchRes.error?.[NodeOutputKeyEnum.errorText] ??
+          dispatchRes[DispatchNodeResponseKeyEnum.nodeResponse]?.errorText ??
+          dispatchRes[DispatchNodeResponseKeyEnum.nodeResponse]?.error,
+        ''
+      );
+      const hasModerationBlockError =
+        nodeSummary.hasModerationBlock ||
+        collectedModerationRecords.some(
+          (item) => item.actionTaken === ModerationActionEnum.block
+        ) ||
+        isModerationBlockErrorMessage(preModerationErrorCandidate);
+
+      if (isStoppingNow && !hasModerationBlockError) {
+        delete dispatchRes.rawError;
+        delete dispatchRes.error;
+        delete dispatchRes[DispatchNodeResponseKeyEnum.skipHandleId];
+        const stoppingNodeResponse = dispatchRes[DispatchNodeResponseKeyEnum.nodeResponse];
+        if (stoppingNodeResponse) {
+          const {
+            error: _err,
+            errorText: _errText,
+            errorCaptured: _captured,
+            ...restNodeResponse
+          } = stoppingNodeResponse;
+          dispatchRes[DispatchNodeResponseKeyEnum.nodeResponse] = restNodeResponse;
+        }
+      }
+
       // 工具调用子流程内若节点命中内容审核或产出敏感工具返回值，不将其作为工作流错误上报，
       // 而是隐藏原始敏感值并转为统一工具审核占位文本交由上层 Agent Loop 继续推理。
       if (this.data.isToolCall) {
@@ -1299,38 +1342,6 @@ export class WorkflowQueue {
           nodeResponseId,
           result: {}
         };
-      }
-
-      // 出口统一裁决：先保证前序内容审核阻断不被停止掩盖，再清理用户停止引发的中断错误与分支标记。
-      const isStoppingNow = this.data.checkIsStopping() || Boolean(this.data.stopSignal?.aborted);
-      const postModerationErrorCandidate = getErrText(
-        dispatchRes.rawError ??
-          dispatchRes.error?.[NodeOutputKeyEnum.errorText] ??
-          dispatchRes[DispatchNodeResponseKeyEnum.nodeResponse]?.errorText ??
-          dispatchRes[DispatchNodeResponseKeyEnum.nodeResponse]?.error,
-        ''
-      );
-      const hasModerationBlockError =
-        nodeSummary.hasModerationBlock ||
-        collectedModerationRecords.some(
-          (item) => item.actionTaken === ModerationActionEnum.block
-        ) ||
-        isModerationBlockErrorMessage(postModerationErrorCandidate);
-
-      if (isStoppingNow && !hasModerationBlockError) {
-        delete dispatchRes.rawError;
-        delete dispatchRes.error;
-        delete dispatchRes[DispatchNodeResponseKeyEnum.skipHandleId];
-        const stoppingNodeResponse = dispatchRes[DispatchNodeResponseKeyEnum.nodeResponse];
-        if (stoppingNodeResponse) {
-          const {
-            error: _err,
-            errorText: _errText,
-            errorCaptured: _captured,
-            ...restNodeResponse
-          } = stoppingNodeResponse;
-          dispatchRes[DispatchNodeResponseKeyEnum.nodeResponse] = restNodeResponse;
-        }
       }
 
       const rawNodeResponse = dispatchRes[DispatchNodeResponseKeyEnum.nodeResponse];
@@ -2080,8 +2091,11 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
             });
 
             // Get interactive node response.
+            const isWorkflowStopping = Boolean(
+              data.checkIsStopping?.() || data.stopSignal?.aborted
+            );
             const interactiveResult = (() => {
-              if (workflowQueue.nodeInteractiveResponse) {
+              if (!isWorkflowStopping && workflowQueue.nodeInteractiveResponse) {
                 const interactiveAssistant = workflowQueue.handleInteractiveResult({
                   entryNodeIds: workflowQueue.nodeInteractiveResponse.entryNodeIds,
                   interactiveResponse: workflowQueue.nodeInteractiveResponse.interactiveResponse,
@@ -2103,7 +2117,7 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
             workflowSpan.setAttribute('fastgpt.workflow.run_times', workflowQueue.workflowRunTimes);
             workflowSpan.setAttribute(
               'fastgpt.workflow.has_interactive_response',
-              !!workflowQueue.nodeInteractiveResponse
+              !!interactiveResult
             );
             workflowSpan.setStatus({ code: SpanStatusCode.OK });
 

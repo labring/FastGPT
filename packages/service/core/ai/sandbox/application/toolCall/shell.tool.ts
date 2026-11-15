@@ -41,8 +41,11 @@ export const sandboxShellTool = defineTool({
         ? ''
         : `Command exited with code ${result.exitCode}`;
 
-    if (!signal?.aborted && !output.truncated && !result.truncated) {
-      await sandboxInstance.provider.deleteFiles([fullOutputPath]).catch(() => {});
+    if (!output.truncated && !result.truncated) {
+      const cleanupPromise = sandboxInstance.provider.deleteFiles([fullOutputPath]).catch(() => {});
+      if (!signal?.aborted) {
+        await cleanupPromise;
+      }
     }
 
     return {

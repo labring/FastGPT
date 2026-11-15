@@ -51,7 +51,8 @@ import { buildPiAgentTools } from './tool/build';
 import { getPiAgentNormalizationTools } from './tool/catalog';
 import type { PiAgentProviderState } from './type';
 import { compressRequestMessages } from '../../../compress';
-import { raceToolWithStopGrace, STOPPED_TOOL_RESPONSE_TEXT } from '../../domain/stopGrace';
+import { raceToolWithStopGrace } from '../../domain/stopGrace';
+import { STOPPED_TOOL_RESPONSE_TEXT } from '../../../../../chat/stop';
 import {
   convertChatMessagesToPiAgentMessages,
   convertPiAgentMessagesToChatMessages,
@@ -407,6 +408,7 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
         };
       }
     })();
+    let hitToolModeration = false;
     if (!isToolResultModerated(result)) {
       const originalResponse = result.response;
       const moderatedResponse = originalResponse
@@ -419,13 +421,27 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
         moderatedResponse !== originalResponse ||
         isModerationBlockErrorMessage(result.errorMessage);
       if (hitModeration) {
+        hitToolModeration = true;
         result.response = MODERATION_BLOCKED_REPLACE_TEXT;
         result.errorMessage = undefined;
         result.assistantMessages = [];
         result.assistantResponses = undefined;
+        result.interactive = undefined;
+        result.stop = false;
         result.metadata = sanitizeModeratedToolNodeResponse(result.metadata);
       }
       markToolResultModerated(result);
+    }
+    if (
+      !hitToolModeration &&
+      isStopping() &&
+      result.errorMessage &&
+      !isModerationBlockErrorMessage(result.errorMessage)
+    ) {
+      result.response = result.assistantResponses?.length
+        ? result.response
+        : STOPPED_TOOL_RESPONSE_TEXT;
+      result.errorMessage = undefined;
     }
     const normalizedResponse = normalizeToolResponseContent(result.response);
     pushAgentLoopUsages(runtime, result.usages);
@@ -457,6 +473,18 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
       response: normalizedResponse,
       childAssistantMessages: result.assistantMessages
     });
+    if (isStopping()) {
+      return {
+        status: 'aborted',
+        activePlan,
+        providerState,
+        completeMessages,
+        assistantMessages,
+        requestIds,
+        finishReason: 'close',
+        usages: normalizeAgentLoopUsages(result.usages)
+      };
+    }
     if (result.interactive) {
       return {
         status: 'paused',
@@ -482,18 +510,6 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
         assistantMessages,
         requestIds,
         finishReason,
-        usages: normalizeAgentLoopUsages(result.usages)
-      };
-    }
-    if (isStopping()) {
-      return {
-        status: 'aborted',
-        activePlan,
-        providerState,
-        completeMessages,
-        assistantMessages,
-        requestIds,
-        finishReason: 'close',
         usages: normalizeAgentLoopUsages(result.usages)
       };
     }
@@ -655,10 +671,12 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
   const streamModerationBuffer = await createStreamModerationBuffer({
     context: { teamId: runtime.teamId },
     onApprovedText: (text) => {
-      runtime.emitEvent?.({
-        type: 'answer_delta',
-        text
-      });
+      if (!isStopping()) {
+        runtime.emitEvent?.({
+          type: 'answer_delta',
+          text
+        });
+      }
     },
     onBlocked: () => {
       isRunBlocked = true;
@@ -670,10 +688,12 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
     ? await createStreamModerationBuffer({
         context: { teamId: runtime.teamId },
         onApprovedText: (text) => {
-          runtime.emitEvent?.({
-            type: 'reasoning_delta',
-            text
-          });
+          if (!isStopping()) {
+            runtime.emitEvent?.({
+              type: 'reasoning_delta',
+              text
+            });
+          }
         },
         onBlocked: () => {
           agent.abort();
@@ -705,18 +725,18 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
     }
 
     if (event.type === 'message_update') {
-      if (isStopping()) {
+      const stopping = isStopping();
+      if (stopping) {
         agent.abort();
-        return;
       }
       const assistantEvent = event.assistantMessageEvent;
       if (assistantEvent.type === 'text_delta') {
         const request = pendingRequests[0];
-        if (request) request.firstTokenAt ??= Date.now();
+        if (request && !stopping) request.firstTokenAt ??= Date.now();
         answerText += assistantEvent.delta;
         if (streamModerationBuffer.enabled) {
           await streamModerationBuffer.push(assistantEvent.delta);
-        } else {
+        } else if (!stopping) {
           runtime.emitEvent?.({
             type: 'answer_delta',
             text: assistantEvent.delta
@@ -726,11 +746,11 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
       }
       if (assistantEvent.type === 'thinking_delta') {
         const request = pendingRequests[0];
-        if (request) request.firstTokenAt ??= Date.now();
+        if (request && !stopping) request.firstTokenAt ??= Date.now();
         reasoningText += assistantEvent.delta;
         if (reasoningModerationBuffer?.enabled) {
           await reasoningModerationBuffer.push(assistantEvent.delta);
-        } else {
+        } else if (!stopping) {
           runtime.emitEvent?.({
             type: 'reasoning_delta',
             text: assistantEvent.delta
@@ -739,7 +759,7 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
         return;
       }
       if (assistantEvent.type === 'toolcall_start' || assistantEvent.type === 'toolcall_delta') {
-        if (isRunBlocked) return;
+        if (isRunBlocked || stopping) return;
         const toolCall = assistantEvent.partial.content[assistantEvent.contentIndex];
         if (toolCall?.type !== 'toolCall') return;
 

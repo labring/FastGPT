@@ -257,6 +257,7 @@ vi.mock('@fastgpt/service/support/wallet/usage/utils', () => ({
 }));
 
 import { runPiAgentLoop as runPiAgentLoopWithoutModelData } from '@fastgpt/service/core/ai/llm/agentLoop/provider/piAgent/run';
+import { STOPPED_TOOL_RESPONSE_TEXT } from '@fastgpt/service/core/chat/stop';
 
 const modelData = {
   modelId: '68ad85a7463006c963799a67',
@@ -1990,32 +1991,38 @@ describe('runPiAgentLoop', () => {
     const checkerMod = await import('@fastgpt/service/core/plugin/moderation/checker');
     const { ModerationActionEnum } =
       await import('@fastgpt/global/core/plugin/moderation/constants');
-    vi.spyOn(checkerMod, 'isModerationHookEnabled').mockReturnValue(true);
-    vi.spyOn(checkerMod, 'checkContentByPolicy').mockResolvedValue({
+    const hookSpy = vi.spyOn(checkerMod, 'isModerationHookEnabled').mockReturnValue(true);
+    const policySpy = vi.spyOn(checkerMod, 'checkContentByPolicy').mockResolvedValue({
       action: ModerationActionEnum.block,
       isPass: false,
       text: 'toxic'
     });
 
     const emittedEvents: any[] = [];
-    const result = await runPiAgentLoop({
-      input: {
-        messages: [{ role: 'user', content: 'hello' }]
-      },
-      runtime: {
-        llmParams: {
-          model: 'gpt-5',
-          stream: true
+    let result: Awaited<ReturnType<typeof runPiAgentLoop>>;
+    try {
+      result = await runPiAgentLoop({
+        input: {
+          messages: [{ role: 'user', content: 'hello' }]
         },
-        toolCatalog: {
-          runtimeTools: []
-        },
-        executeTool: vi.fn(),
-        checkIsStopping: vi.fn(() => false),
-        teamId: 'test_team',
-        emitEvent: (e) => emittedEvents.push(e)
-      }
-    });
+        runtime: {
+          llmParams: {
+            model: 'gpt-5',
+            stream: true
+          },
+          toolCatalog: {
+            runtimeTools: []
+          },
+          executeTool: vi.fn(),
+          checkIsStopping: vi.fn(() => false),
+          teamId: 'test_team',
+          emitEvent: (e) => emittedEvents.push(e)
+        }
+      });
+    } finally {
+      hookSpy.mockRestore();
+      policySpy.mockRestore();
+    }
 
     expect(result.status).toBe('error');
     expect(emittedEvents.some((e) => e.type === 'answer_delta' && e.text.includes('toxic'))).toBe(
@@ -2036,7 +2043,7 @@ describe('runPiAgentLoop', () => {
     const { MODERATION_BLOCKED_REPLACE_TEXT } =
       await import('@fastgpt/global/core/plugin/moderation/constants');
     const outputMod = await import('@fastgpt/service/core/plugin/moderation/output');
-    vi.spyOn(outputMod, 'checkToolParamsModeration').mockResolvedValue({
+    const paramModSpy = vi.spyOn(outputMod, 'checkToolParamsModeration').mockResolvedValue({
       isPass: false,
       blockedToolName: 'search',
       blockedToolCallIds: ['call_toxic_param'],
@@ -2051,30 +2058,35 @@ describe('runPiAgentLoop', () => {
       args: { q: 'toxic parameter' }
     };
 
-    const result = await runPiAgentLoop({
-      input: {
-        messages: [{ role: 'user', content: 'hello' }]
-      },
-      runtime: {
-        llmParams: { model: 'gpt-5' },
-        toolCatalog: {
-          runtimeTools: [
-            {
-              type: 'function',
-              function: {
-                name: 'search',
-                description: 'Search',
-                parameters: { type: 'object', properties: {} }
-              }
-            }
-          ]
+    let result: Awaited<ReturnType<typeof runPiAgentLoop>>;
+    try {
+      result = await runPiAgentLoop({
+        input: {
+          messages: [{ role: 'user', content: 'hello' }]
         },
-        executeTool,
-        checkIsStopping: vi.fn(() => false),
-        teamId: 'test_team',
-        emitEvent: (e) => emittedEvents.push(e)
-      }
-    });
+        runtime: {
+          llmParams: { model: 'gpt-5' },
+          toolCatalog: {
+            runtimeTools: [
+              {
+                type: 'function',
+                function: {
+                  name: 'search',
+                  description: 'Search',
+                  parameters: { type: 'object', properties: {} }
+                }
+              }
+            ]
+          },
+          executeTool,
+          checkIsStopping: vi.fn(() => false),
+          teamId: 'test_team',
+          emitEvent: (e) => emittedEvents.push(e)
+        }
+      });
+    } finally {
+      paramModSpy.mockRestore();
+    }
 
     expect(executeTool).not.toHaveBeenCalled();
     expect(emittedEvents.some((e) => e.type === 'tool_run_start')).toBe(false);
@@ -2106,7 +2118,7 @@ describe('runPiAgentLoop', () => {
     const { MODERATION_BLOCKED_REPLACE_TEXT } =
       await import('@fastgpt/global/core/plugin/moderation/constants');
     const outputMod = await import('@fastgpt/service/core/plugin/moderation/output');
-    vi.spyOn(outputMod, 'checkToolParamsModeration').mockResolvedValue({
+    const paramModSpy = vi.spyOn(outputMod, 'checkToolParamsModeration').mockResolvedValue({
       isPass: false,
       blockedToolName: 'ask_user',
       blockedToolCallIds: ['call_toxic_ask'],
@@ -2123,20 +2135,25 @@ describe('runPiAgentLoop', () => {
       }
     };
 
-    const result = await runPiAgentLoop({
-      input: {
-        messages: [{ role: 'user', content: 'hello' }]
-      },
-      runtime: {
-        llmParams: { model: 'gpt-5' },
-        toolCatalog: { runtimeTools: [] },
-        systemTools: { ask: { enabled: true } },
-        executeTool: vi.fn(),
-        checkIsStopping: vi.fn(() => false),
-        teamId: 'test_team',
-        emitEvent: (e) => emittedEvents.push(e)
-      }
-    });
+    let result: Awaited<ReturnType<typeof runPiAgentLoop>>;
+    try {
+      result = await runPiAgentLoop({
+        input: {
+          messages: [{ role: 'user', content: 'hello' }]
+        },
+        runtime: {
+          llmParams: { model: 'gpt-5' },
+          toolCatalog: { runtimeTools: [] },
+          systemTools: { ask: { enabled: true } },
+          executeTool: vi.fn(),
+          checkIsStopping: vi.fn(() => false),
+          teamId: 'test_team',
+          emitEvent: (e) => emittedEvents.push(e)
+        }
+      });
+    } finally {
+      paramModSpy.mockRestore();
+    }
 
     expect(result.status).toBe('done');
     expect(emittedEvents.some((e) => e.type === 'tool_interactive')).toBe(false);
@@ -2156,9 +2173,9 @@ describe('runPiAgentLoop', () => {
     const { MODERATION_BLOCKED_REPLACE_TEXT } =
       await import('@fastgpt/global/core/plugin/moderation/constants');
     const modelInputMod = await import('@fastgpt/service/core/plugin/moderation/modelInput');
-    vi.spyOn(modelInputMod, 'checkToolResultModeration').mockResolvedValue(
-      MODERATION_BLOCKED_REPLACE_TEXT
-    );
+    const toolResultModSpy = vi
+      .spyOn(modelInputMod, 'checkToolResultModeration')
+      .mockResolvedValue(MODERATION_BLOCKED_REPLACE_TEXT);
 
     runSandboxToolsMock.mockResolvedValueOnce({
       success: false,
@@ -2172,25 +2189,30 @@ describe('runPiAgentLoop', () => {
       args: { command: 'cat /tmp/out' }
     };
 
-    const result = await runPiAgentLoop({
-      input: {
-        messages: [{ role: 'user', content: 'run command' }]
-      },
-      runtime: {
-        llmParams: { model: 'gpt-5' },
-        toolCatalog: { runtimeTools: [] },
-        systemTools: {
-          sandbox: {
-            enabled: true,
-            client: {} as any
-          }
+    let result: Awaited<ReturnType<typeof runPiAgentLoop>>;
+    try {
+      result = await runPiAgentLoop({
+        input: {
+          messages: [{ role: 'user', content: 'run command' }]
         },
-        executeTool: vi.fn(),
-        checkIsStopping: vi.fn(() => false),
-        teamId: 'test_team',
-        emitEvent: (e) => emittedEvents.push(e)
-      }
-    });
+        runtime: {
+          llmParams: { model: 'gpt-5' },
+          toolCatalog: { runtimeTools: [] },
+          systemTools: {
+            sandbox: {
+              enabled: true,
+              client: {} as any
+            }
+          },
+          executeTool: vi.fn(),
+          checkIsStopping: vi.fn(() => false),
+          teamId: 'test_team',
+          emitEvent: (e) => emittedEvents.push(e)
+        }
+      });
+    } finally {
+      toolResultModSpy.mockRestore();
+    }
 
     expect(result.status).toBe('done');
     const toolEndEvent = emittedEvents.find((e) => e.type === 'tool_run_end');
@@ -2415,5 +2437,245 @@ describe('runPiAgentLoop', () => {
         tool_call_id: 'call_search_after_ask'
       })
     );
+  });
+
+  it('returns aborted and clears non-moderation error when stopping during interactive resume even if interactive is returned', async () => {
+    const stopController = new AbortController();
+    const events: any[] = [];
+
+    const result = await runPiAgentLoop({
+      input: {
+        messages: [
+          {
+            role: 'assistant',
+            content: null,
+            tool_calls: [
+              {
+                id: 'call_pi_resume_stop',
+                type: 'function',
+                function: {
+                  name: 'search',
+                  arguments: '{}'
+                }
+              }
+            ]
+          },
+          {
+            role: 'tool',
+            tool_call_id: 'call_pi_resume_stop',
+            content: 'waiting'
+          }
+        ],
+        providerState: {
+          piMessages: [
+            {
+              role: 'toolResult',
+              toolCallId: 'call_pi_resume_stop',
+              toolName: 'search',
+              content: [{ type: 'text', text: 'waiting' }],
+              details: {},
+              isError: false,
+              timestamp: 1
+            }
+          ]
+        },
+        childrenInteractiveParams: {
+          childrenResponse: { type: 'userSelect' },
+          toolCallId: 'call_pi_resume_stop'
+        }
+      },
+      runtime: {
+        llmParams: { model: 'gpt-5' },
+        toolCatalog: { runtimeTools: [] },
+        executeTool: vi.fn(),
+        executeInteractiveTool: vi.fn(async () => {
+          stopController.abort(new Error('Chat stopped'));
+          return {
+            response: 'Tool error: aborted',
+            errorMessage: 'Tool error: aborted',
+            interactive: { type: 'userSelect', params: { description: 'choose' } } as any,
+            assistantMessages: [],
+            usages: [],
+            stop: false
+          };
+        }),
+        stopSignal: stopController.signal,
+        checkIsStopping: () => stopController.signal.aborted,
+        emitEvent: (event) => events.push(event)
+      }
+    });
+
+    expect(result.status).toBe('aborted');
+    expect(result.pause).toBeUndefined();
+    expect(events.find((event) => event.type === 'tool_run_end')).toMatchObject({
+      call: { id: 'call_pi_resume_stop' },
+      response: STOPPED_TOOL_RESPONSE_TEXT,
+      errorMessage: undefined
+    });
+    expect(result.completeMessages).toContainEqual({
+      role: 'tool',
+      tool_call_id: 'call_pi_resume_stop',
+      content: STOPPED_TOOL_RESPONSE_TEXT
+    });
+  });
+
+  it('still feeds stream moderation buffer when stopping mid-stream while suppressing delta events', async () => {
+    const checkerMod = await import('@fastgpt/service/core/plugin/moderation/checker');
+    const { ModerationActionEnum } =
+      await import('@fastgpt/global/core/plugin/moderation/constants');
+    const hookSpy = vi.spyOn(checkerMod, 'isModerationHookEnabled').mockReturnValue(true);
+    const policySpy = vi.spyOn(checkerMod, 'checkContentByPolicy').mockResolvedValue({
+      action: ModerationActionEnum.block,
+      isPass: false,
+      text: 'toxic'
+    });
+
+    const stopController = new AbortController();
+    const emittedEvents: any[] = [];
+
+    agentCustomPromptHandler.value = async ({ args, subscribers }) => {
+      args.onPayload?.({ messages: [], model: 'gpt-5', stream: true }, { name: 'GPT-5' });
+      stopController.abort(new Error('Chat stopped'));
+      subscribers.forEach((subscriber) => {
+        subscriber({
+          type: 'message_update',
+          assistantMessageEvent: {
+            type: 'text_delta',
+            delta: 'toxic output'
+          }
+        });
+      });
+      subscribers.forEach((subscriber) => {
+        subscriber({
+          type: 'message_end',
+          message: {
+            role: 'assistant',
+            content: [{ type: 'text', text: 'toxic output' }],
+            usage: { input: 3, output: 2 },
+            stopReason: 'stop'
+          }
+        });
+      });
+    };
+
+    let result: Awaited<ReturnType<typeof runPiAgentLoop>>;
+    try {
+      result = await runPiAgentLoop({
+        input: {
+          messages: [{ role: 'user', content: 'hello' }]
+        },
+        runtime: {
+          llmParams: {
+            model: 'gpt-5',
+            stream: true
+          },
+          toolCatalog: {
+            runtimeTools: []
+          },
+          executeTool: vi.fn(),
+          stopSignal: stopController.signal,
+          checkIsStopping: () => stopController.signal.aborted,
+          teamId: 'test_team',
+          emitEvent: (e) => emittedEvents.push(e)
+        }
+      });
+    } finally {
+      hookSpy.mockRestore();
+      policySpy.mockRestore();
+    }
+
+    expect(result.status).toBe('error');
+    expect(emittedEvents.some((e) => e.type === 'answer_delta' && e.text.includes('toxic'))).toBe(
+      false
+    );
+    expect(result.assistantMessages.every((msg) => !msg.content || msg.content === '')).toBe(true);
+    expect(
+      result.completeMessages.every(
+        (msg) => msg.role !== 'assistant' || !msg.content || msg.content === ''
+      )
+    ).toBe(true);
+  });
+
+  it('clears interactive and stop when interactive tool resume hits moderation', async () => {
+    const { MODERATION_BLOCKED_REPLACE_TEXT } =
+      await import('@fastgpt/global/core/plugin/moderation/constants');
+    const modelInputMod = await import('@fastgpt/service/core/plugin/moderation/modelInput');
+    const toolResultModSpy = vi
+      .spyOn(modelInputMod, 'checkToolResultModeration')
+      .mockResolvedValue(MODERATION_BLOCKED_REPLACE_TEXT);
+    const events: any[] = [];
+
+    let result: Awaited<ReturnType<typeof runPiAgentLoop>>;
+    try {
+      result = await runPiAgentLoop({
+        input: {
+          messages: [
+            { role: 'user', content: 'continue' },
+            {
+              role: 'assistant',
+              content: null,
+              tool_calls: [
+                {
+                  id: 'call_pi_resume_mod',
+                  type: 'function',
+                  function: {
+                    name: 'search',
+                    arguments: '{}'
+                  }
+                }
+              ]
+            },
+            {
+              role: 'tool',
+              tool_call_id: 'call_pi_resume_mod',
+              content: 'waiting'
+            }
+          ],
+          providerState: {
+            piMessages: [
+              {
+                role: 'toolResult',
+                toolCallId: 'call_pi_resume_mod',
+                toolName: 'search',
+                content: [{ type: 'text', text: 'waiting' }],
+                details: {},
+                isError: false,
+                timestamp: 1
+              }
+            ]
+          },
+          childrenInteractiveParams: {
+            childrenResponse: { type: 'userSelect' },
+            toolCallId: 'call_pi_resume_mod'
+          }
+        },
+        runtime: {
+          llmParams: { model: 'gpt-5' },
+          toolCatalog: { runtimeTools: [] },
+          executeTool: vi.fn(),
+          executeInteractiveTool: vi.fn(async () => ({
+            response: 'unsafe interactive prompt',
+            interactive: { type: 'userSelect', params: { description: 'choose' } } as any,
+            assistantMessages: [],
+            usages: [],
+            stop: true
+          })),
+          checkIsStopping: () => false,
+          teamId: 'test_team',
+          emitEvent: (event) => events.push(event)
+        }
+      });
+    } finally {
+      toolResultModSpy.mockRestore();
+    }
+
+    expect(result.status).toBe('done');
+    expect(result.pause).toBeUndefined();
+    expect(events.some((event) => event.type === 'tool_interactive')).toBe(false);
+    expect(events.find((event) => event.type === 'tool_run_end')).toMatchObject({
+      call: { id: 'call_pi_resume_mod' },
+      response: MODERATION_BLOCKED_REPLACE_TEXT,
+      errorMessage: undefined
+    });
   });
 });

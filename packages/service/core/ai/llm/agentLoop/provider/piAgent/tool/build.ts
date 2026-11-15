@@ -43,7 +43,8 @@ import { runSandboxTools } from '../../../../../sandbox/application/toolCall';
 import { createToolCall, normalizeToolArgs, stringifyJson } from '../message';
 import { getPiAgentRuntimeTools } from './catalog';
 import { sanitizeToolParametersForModel } from '@fastgpt/global/common/jsonSchema/utils';
-import { raceToolWithStopGrace, STOPPED_TOOL_RESPONSE_TEXT } from '../../../domain/stopGrace';
+import { raceToolWithStopGrace } from '../../../domain/stopGrace';
+import { STOPPED_TOOL_RESPONSE_TEXT } from '../../../../../../chat/stop';
 
 type PlanOperationEvent = Extract<AgentLoopEvent, { type: 'plan_operation' }>;
 
@@ -109,6 +110,25 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
   isToolCallParamsAllowed?: (call: ChatCompletionMessageToolCall) => Promise<boolean>;
 }): Promise<AgentTool[]> => {
   const tools: AgentTool[] = [];
+  const isToolStopping = (signal?: AbortSignal) =>
+    Boolean(runtime.checkIsStopping?.() || runtime.stopSignal?.aborted || signal?.aborted);
+  const finishStoppedControlTool = (call: ChatCompletionMessageToolCall) => {
+    onToolResult({
+      call,
+      response: STOPPED_TOOL_RESPONSE_TEXT
+    });
+    runtime.emitEvent?.({
+      type: 'tool_run_end',
+      call,
+      response: STOPPED_TOOL_RESPONSE_TEXT,
+      seconds: 0,
+      hideInUI: true
+    });
+    return {
+      content: [{ type: 'text' as const, text: STOPPED_TOOL_RESPONSE_TEXT }],
+      details: {}
+    };
+  };
 
   const checkParamsAllowed = async (call: ChatCompletionMessageToolCall): Promise<boolean> => {
     if (isToolCallParamsAllowed) {
@@ -174,8 +194,7 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
     }
 
     const startedAt = Date.now();
-    const isStopping = () =>
-      Boolean(runtime.checkIsStopping?.() || runtime.stopSignal?.aborted || signal?.aborted);
+    const isStopping = () => isToolStopping(signal);
     const effectiveSignal =
       runtime.stopSignal && signal
         ? AbortSignal.any([runtime.stopSignal, signal])
@@ -240,6 +259,8 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
         result.errorMessage = undefined;
         result.assistantMessages = [];
         result.assistantResponses = undefined;
+        result.interactive = undefined;
+        result.stop = false;
         result.metadata = sanitizeModeratedToolNodeResponse(result.metadata);
       }
       markToolResultModerated(result);
@@ -259,7 +280,7 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
     const assistantMessages = result.assistantMessages ?? [];
     const usages = normalizeAgentLoopUsages(result.usages);
     pushAgentLoopUsages(runtime, usages);
-    if (result.interactive)
+    if (result.interactive && !isStopping())
       runtime.emitEvent?.({ type: 'tool_interactive', call, interactive: result.interactive });
     runtime.emitEvent?.({
       type: 'tool_run_end',
@@ -278,7 +299,8 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
       response: normalizedResponse,
       assistantMessages,
       ...(!result.interactive &&
-        !result.stop && { continuationMessage: result.continuationMessage })
+        !result.stop &&
+        !isStopping() && { continuationMessage: result.continuationMessage })
     });
     return { ...result, response: normalizedResponse, assistantMessages, usages };
   };
@@ -299,10 +321,12 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
           signal,
           execute: () => runtime.executeTool({ call, messages: [...getMessages()] })
         });
-        if (result.interactive) {
-          onToolChildPending?.({ childrenResponse: result.interactive, toolCallId: call.id });
-        } else if (result.stop) {
-          onToolStop?.();
+        if (!isToolStopping(signal)) {
+          if (result.interactive) {
+            onToolChildPending?.({ childrenResponse: result.interactive, toolCallId: call.id });
+          } else if (result.stop) {
+            onToolStop?.();
+          }
         }
         return { content: [{ type: 'text' as const, text: result.response }], details: {} };
       }
@@ -316,7 +340,7 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
         label: planTool.function.name,
         description: planTool.function.description || '',
         parameters: toPiToolParameters(planTool.function.parameters),
-        execute: async (callId: string, args: unknown) => {
+        execute: async (callId: string, args: unknown, signal?: AbortSignal) => {
           const toolArgs = normalizeToolArgs(args);
           const call = createToolCall({
             id: callId,
@@ -333,6 +357,9 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
               content: [{ type: 'text' as const, text: MODERATION_BLOCKED_REPLACE_TEXT }],
               details: {}
             };
+          }
+          if (isToolStopping(signal)) {
+            return finishStoppedControlTool(call);
           }
           const params = stringifyJson(toolArgs);
           const isSetPlan = planTool.function.name === setPlanToolName;
@@ -396,7 +423,7 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
       label: askTool.function.name,
       description: askTool.function.description || '',
       parameters: toPiToolParameters(askTool.function.parameters),
-      execute: async (callId: string, args: unknown) => {
+      execute: async (callId: string, args: unknown, signal?: AbortSignal) => {
         const toolArgs = normalizeToolArgs(args);
         const rawCall = createToolCall({ id: callId, name: askTool.function.name, args: toolArgs });
         const isAllowed = await checkParamsAllowed(rawCall);
@@ -410,6 +437,9 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
             details: {}
           };
         }
+        if (isToolStopping(signal)) {
+          return finishStoppedControlTool(rawCall);
+        }
         const params = stringifyJson(toolArgs);
         const parsed = AgentAskPayloadSchema.safeParse(toolArgs);
         if (!parsed.success) {
@@ -422,6 +452,9 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
         }
 
         const validationError = await askSystemTool.validate?.(parsed.data);
+        if (isToolStopping(signal)) {
+          return finishStoppedControlTool(rawCall);
+        }
         if (validationError) {
           onToolResult({
             call: createToolCall({ id: callId, name: askTool.function.name, args: toolArgs }),

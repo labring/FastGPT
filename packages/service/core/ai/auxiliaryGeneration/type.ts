@@ -31,6 +31,7 @@ export type AuxiliaryGenerationProcessorParams<T = unknown> = {
   customPdfParse?: boolean;
   checkIsStopping?: () => boolean;
   stopSignal?: AbortSignal;
+  getStopDeadlineAt?: () => number | undefined;
   usageSink?: (usages: ChatNodeUsageType[]) => void;
   user: AuxiliaryGenerationUser;
 };

@@ -21,6 +21,7 @@ type RunAuxiliaryGenerationAgentLoopParams = {
   streamWriter?: AuxiliaryGenerationStreamWriter;
   checkIsStopping?: () => boolean;
   stopSignal?: AbortSignal;
+  getStopDeadlineAt?: () => number | undefined;
   usageSink?: (usages: ChatNodeUsageType[]) => void;
   userAnswer?: string;
   runtimeTools?: ChatCompletionTool[];
@@ -46,6 +47,7 @@ export async function runAuxiliaryGenerationAgentLoop({
   streamWriter,
   checkIsStopping,
   stopSignal,
+  getStopDeadlineAt,
   usageSink,
   userAnswer,
   runtimeTools = [],
@@ -75,6 +77,7 @@ export async function runAuxiliaryGenerationAgentLoop({
         }),
       checkIsStopping,
       stopSignal,
+      getStopDeadlineAt,
       recordEvent: onEvent,
       emitEvent: (event) => {
         if (event.type === 'reasoning_delta') {

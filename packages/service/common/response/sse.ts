@@ -41,11 +41,16 @@ export const createSseStreamContext = ({
   onCleanup,
   onError
 }: CreateSseStreamContextParams) => {
+  let resumeFlushed = false;
+  let flushPromise: Promise<void> | undefined;
+
   const write: SseStreamWriter = ({ event, data }) => {
     if (!stream) return;
 
     const raw = `${event ? `event: ${event}\n` : ''}data: ${data}\n\n`;
-    void streamResumeMirror?.enqueueRaw?.(raw);
+    if (!resumeFlushed) {
+      void streamResumeMirror?.enqueueRaw?.(raw);
+    }
 
     if (!res || isResponseClosed(res)) return;
     responseWrite({ res, event, data });
@@ -53,12 +58,16 @@ export const createSseStreamContext = ({
 
   /** 等待镜像写入再缩短 TTL；两步分别记录错误，避免收尾异常覆盖业务结果。 */
   const flushResume = async () => {
-    await streamResumeMirror?.flush?.().catch((error) => {
-      logger.error('Failed to flush SSE stream resume cache', { error });
-    });
-    await streamResumeMirror?.shrinkTTLAfterComplete?.().catch((error) => {
-      logger.error('Failed to shrink SSE stream resume cache TTL', { error });
-    });
+    flushPromise ??= (async () => {
+      resumeFlushed = true;
+      await streamResumeMirror?.flush?.().catch((error) => {
+        logger.error('Failed to flush SSE stream resume cache', { error });
+      });
+      await streamResumeMirror?.shrinkTTLAfterComplete?.().catch((error) => {
+        logger.error('Failed to shrink SSE stream resume cache TTL', { error });
+      });
+    })();
+    await flushPromise;
   };
 
   if (!stream || !res) {

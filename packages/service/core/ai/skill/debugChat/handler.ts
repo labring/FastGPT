@@ -42,6 +42,7 @@ import {
   updateInteractiveChat
 } from '../../../chat/saveChat';
 import { preChatRound, type PreChatRoundResult } from '../../../chat/utils/prepare';
+import { createGenerationLeaseReleaser } from '../../../chat/generationLease';
 import { WORKFLOW_MAX_RUN_TIMES } from '../../../workflow/constants';
 import { dispatchWorkFlow } from '../../../workflow/dispatch';
 import type { AgentSandboxPrepareAction } from '../../../workflow/dispatch/ai/agent/sub/sandbox';
@@ -106,12 +107,9 @@ export async function runSkillDebugChat({
     responseChatItemId: '',
     finalized: false
   };
-  let leaseReleased = false;
-  const releaseGenerationLeaseOnce = async () => {
-    if (leaseReleased) return;
-    await roundState.preparedRound?.releaseGenerationLease?.();
-    leaseReleased = true;
-  };
+  const releaseGenerationLeaseOnce = createGenerationLeaseReleaser(
+    () => roundState.preparedRound?.releaseGenerationLease
+  );
 
   try {
     const {
@@ -314,9 +312,6 @@ export async function runSkillDebugChat({
       streamResponseContext?.responseWrite(workflowSseEvent.flowNodeResponse(nodeResponse));
     });
     // 本轮耗时由 dispatch 在 root runtime 统一下发（本流的 writer 已交给它），此处重复下发会让客户端累加翻倍。
-
-    streamResponseContext.responseWrite(workflowSseEvent.answerStop());
-
     const aiResponse: AIChatItemType & { dataId?: string } = {
       dataId: finalResponseChatItemId,
       obj: ChatRoleEnum.AI,
@@ -354,6 +349,7 @@ export async function runSkillDebugChat({
     roundState.finalized = true;
     await releaseGenerationLeaseOnce();
 
+    streamResponseContext.responseWrite(workflowSseEvent.answerStop());
     streamResponseContext.responseWrite(workflowSseEvent.done(SseResponseEventEnum.answer));
   } catch (err: any) {
     const { preparedRound } = roundState;

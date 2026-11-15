@@ -27,8 +27,11 @@ import {
   checkToolParamsModeration,
   createStreamModerationBuffer
 } from '../../../plugin/moderation/output';
-import { UserError } from '@fastgpt/global/common/error/utils';
-import { MODERATION_BLOCKED_ERROR_MESSAGE } from '@fastgpt/global/core/plugin/moderation/constants';
+import { getErrText, UserError } from '@fastgpt/global/common/error/utils';
+import {
+  isModerationBlockErrorMessage,
+  MODERATION_BLOCKED_ERROR_MESSAGE
+} from '@fastgpt/global/core/plugin/moderation/constants';
 
 const logger = getLogger(LogCategories.MODULE.AI.LLM);
 
@@ -493,24 +496,38 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
       completeMessages: [...initialRequestMessages, assistantMessage]
     };
   } catch (error) {
-    if (isUserAborted()) {
-      if (continuationCount === 0) {
+    if (
+      isUserAborted() &&
+      !hasSavedLLMRequestRecord &&
+      !isModerationBlockErrorMessage(getErrText(error, ''))
+    ) {
+      const { assistantMessage, answerText, reasoningText, toolCalls, isStreamResponse, usage } =
+        accumulator.getResponse();
+      const hasUsage = Boolean(
+        usage.prompt_tokens || usage.completion_tokens || usage.total_tokens
+      );
+      if (
+        continuationCount === 0 &&
+        !answerText &&
+        !reasoningText &&
+        !toolCalls?.length &&
+        !hasUsage
+      ) {
         return buildUnstartedAbortedResponse();
       }
-      const { assistantMessage, answerText, reasoningText, isStreamResponse, usage } =
-        accumulator.getResponse();
       return {
         requestId,
         isStreamResponse,
         answerText,
         reasoningText,
+        ...(toolCalls?.length ? { toolCalls } : {}),
         finish_reason: 'close',
         usage: {
-          inputTokens: usage?.prompt_tokens ?? 0,
-          outputTokens: usage?.completion_tokens ?? 0,
+          inputTokens: usage.prompt_tokens,
+          outputTokens: usage.completion_tokens,
           usedUserOpenAIKey: resolveUsedUserOpenAIKey()
         },
-        rawUsage: usage,
+        rawUsage: hasUsage ? usage : undefined,
         requestMessages: initialRequestMessages,
         assistantMessage,
         completeMessages: [...initialRequestMessages, assistantMessage]

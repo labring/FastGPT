@@ -14,6 +14,7 @@ const localStopEmitter = new EventEmitter();
 localStopEmitter.setMaxListeners(0);
 
 export const StopStatus = 'STOPPING';
+export const STOPPED_TOOL_RESPONSE_TEXT = 'Tool execution was stopped by user.';
 export const DEFAULT_STOP_GRACE_MS = 3000;
 
 /**

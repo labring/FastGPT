@@ -109,7 +109,7 @@ export const reRankSearchResults = async ({
     if (stopSignal?.aborted) {
       return {
         results: textRecallResults,
-        inputTokens: 0,
+        inputTokens,
         usingReRank: false
       };
     }
