@@ -3,13 +3,6 @@ import type { SqlFullTextRow, SqlFullTextTokenRow } from './type';
 import { assertSqlFullText, assertSqlFullTextTokens } from './utils';
 
 /**
- * 外置分析器签名：jieba 搜索模式 + jiebaSplit 预处理与停用词 + 转小写。
- * 切词模式、词典、停用词或归一化规则任一变化，都必须升级本签名及各 provider 的 analyzerVersion，
- * 并整体重新生成词串、重建索引；否则旧词串与新查询词对不上会静默漏检。
- */
-export const SQL_FULL_TEXT_EXTERNAL_ANALYZER = 'fastgpt-jieba-search-v1';
-
-/**
  * 写入与回填核对：把原文转换为空格分隔的词串。
  * 空原文（如图片索引）得到空串；原文受 1 MiB / 空字符契约约束，超限直接失败而不截断。
  */

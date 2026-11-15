@@ -179,10 +179,6 @@ export const systemMigrations = [
         labelKey: i18nT('system_migration:migrations.20261110_migrate_sql_fulltext.prepare')
       },
       {
-        key: 'preflight',
-        labelKey: i18nT('system_migration:migrations.20261110_migrate_sql_fulltext.preflight')
-      },
-      {
         key: 'scan',
         labelKey: i18nT('system_migration:migrations.20261110_migrate_sql_fulltext.scan')
       },

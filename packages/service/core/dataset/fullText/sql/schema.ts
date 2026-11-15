@@ -21,7 +21,6 @@ const SqlFullTextTargetMongoSchema = new connectionMongo.Schema<SqlFullTextTarge
     enum: SqlFullTextProviderSchema.options
   },
   targetId: { type: String, required: true },
-  schemaVersion: { type: Number, required: true },
   analyzerVersion: { type: String, required: true }
 });
 

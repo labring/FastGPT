@@ -7,7 +7,7 @@ import {
 const mocks = vi.hoisted(() => ({
   prepare: vi.fn(),
   warn: vi.fn(),
-  metadata: { targetId: 'target', schemaVersion: 1, analyzerVersion: 'test' }
+  metadata: { targetId: 'target', analyzerVersion: 'test' }
 }));
 vi.mock('@fastgpt/service/common/vectorDB/constants', () => ({ getVectorType: () => 'pg' }));
 vi.mock('@fastgpt/service/common/logger', () => ({
@@ -18,19 +18,15 @@ vi.mock('@fastgpt/service/common/vectorDB/pg/fullText', () => ({
   preparePgFullText: mocks.prepare,
   assertPgFullTextCapability: vi.fn(),
   getPgFullTextMetadata: vi.fn(),
-  preflightPgFullText: vi.fn(),
   fillPgFullText: vi.fn(),
-  searchPgFullText: vi.fn(),
-  PG_FULL_TEXT_ANALYZER_VERSION: 'pg'
+  searchPgFullText: vi.fn()
 }));
 vi.mock('@fastgpt/service/common/vectorDB/opengauss/fullText', () => ({
   prepareOpenGaussFullText: mocks.prepare,
   assertOpenGaussFullTextCapability: vi.fn(),
   getOpenGaussFullTextMetadata: vi.fn(),
-  preflightOpenGaussFullText: vi.fn(),
   fillOpenGaussFullText: vi.fn(),
-  searchOpenGaussFullText: vi.fn(),
-  OPENGAUSS_FULL_TEXT_ANALYZER_VERSION: 'opengauss'
+  searchOpenGaussFullText: vi.fn()
 }));
 vi.mock('@fastgpt/service/common/vectorDB/oceanbase/fullText', () => ({
   OceanBaseFullTextAdapter: class {

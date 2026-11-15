@@ -1,3 +1,4 @@
+import { SQL_FULL_TEXT_ANALYZER_VERSION } from '@fastgpt/global/core/dataset/fullText/constants';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { randomUUID } from 'node:crypto';
@@ -31,11 +32,9 @@ vi.mock('@/migration/constants', async (importOriginal) => ({
 // 仅隔离物理驱动；Mongo 权威引用、断点、查询归一化与旧表清理执行真实代码。
 const driver = vi.hoisted(() => ({
   provider: 'pg' as SqlFullTextProvider,
-  analyzerVersion: 'pg-search-0.26.6-whitespace-fastgpt-jieba-search-v1',
   prepare: vi.fn(),
   assertCapability: vi.fn(),
   getMetadata: vi.fn(),
-  preflight: vi.fn(),
   fill: vi.fn(),
   search: vi.fn()
 }));
@@ -46,13 +45,6 @@ vi.mock('@fastgpt/service/common/vectorDB/constants', async (importOriginal) => 
 vi.mock('@fastgpt/service/common/vectorDB/fullText/controller', () => ({
   getSqlFullTextAdapter: () => driver
 }));
-
-const signatures = {
-  pg: 'pg-search-0.26.6-whitespace-fastgpt-jieba-search-v1',
-  oceanbase: 'oceanbase-space-fastgpt-jieba-search-v1',
-  seekdb: 'seekdb-space-fastgpt-jieba-search-v1',
-  opengauss: 'opengauss-bm25-fastgpt-jieba-search-v1'
-};
 
 const createContext = () => {
   let checkpoint: Record<string, unknown> | undefined;
@@ -84,25 +76,22 @@ const createContext = () => {
 describe.each(['pg', 'oceanbase', 'seekdb', 'opengauss'] as const)(
   '%s unified automatic migration and native search',
   (provider) => {
-    let metadata: { targetId: string; schemaVersion: number; analyzerVersion: string };
+    let metadata: { targetId: string; analyzerVersion: string };
 
     beforeEach(() => {
       driver.provider = provider;
-      driver.analyzerVersion = signatures[provider];
       metadata = {
         targetId: randomUUID(),
-        schemaVersion: 1,
-        analyzerVersion: driver.analyzerVersion
+        analyzerVersion: SQL_FULL_TEXT_ANALYZER_VERSION
       };
       driver.prepare.mockReset().mockResolvedValue(metadata);
       driver.getMetadata.mockReset().mockResolvedValue(metadata);
       driver.assertCapability.mockReset().mockResolvedValue(undefined);
-      driver.preflight.mockReset().mockResolvedValue([]);
       driver.fill.mockReset().mockResolvedValue([]);
       driver.search.mockReset().mockResolvedValue([]);
     });
 
-    it('prepares, preflights, backfills, validates, retains legacy Mongo rows and cuts over reads to native SQL search', async () => {
+    it('prepares, backfills, validates, retains legacy Mongo rows and cuts over reads to native SQL search', async () => {
       const teamId = new Types.ObjectId().toString();
       const datasetId = new Types.ObjectId().toString();
       const collectionId = new Types.ObjectId().toString();
@@ -140,17 +129,13 @@ describe.each(['pg', 'oceanbase', 'seekdb', 'opengauss'] as const)(
       expect(result).toEqual({
         applicable: true,
         provider,
-        analyzerVersion: signatures[provider],
+        analyzerVersion: SQL_FULL_TEXT_ANALYZER_VERSION,
         targetId: metadata.targetId,
-        prechecked: 1,
         scanned: 1,
         validated: 1
       });
       expect(await MongoDatasetDataText.countDocuments()).toBe(1);
       expect(driver.prepare).toHaveBeenCalledOnce();
-      expect(driver.preflight).toHaveBeenCalledWith([
-        { vectorId: '1', teamId, datasetId, collectionId, text: '查询内容' }
-      ]);
       expect(driver.fill).toHaveBeenCalledWith(
         [{ vectorId: '1', teamId, datasetId, collectionId, text: '查询内容' }],
         false
@@ -159,13 +144,10 @@ describe.each(['pg', 'oceanbase', 'seekdb', 'opengauss'] as const)(
         [{ vectorId: '1', teamId, datasetId, collectionId, text: '查询内容' }],
         true
       );
-      expect(driver.preflight.mock.invocationCallOrder[0]).toBeLessThan(
-        driver.fill.mock.invocationCallOrder[0]
-      );
       expect(state.checkpoint()).toMatchObject({
         provider,
         targetId: metadata.targetId,
-        analyzerVersion: signatures[provider],
+        analyzerVersion: SQL_FULL_TEXT_ANALYZER_VERSION,
         stage: 'validation'
       });
 
@@ -182,7 +164,7 @@ describe.each(['pg', 'oceanbase', 'seekdb', 'opengauss'] as const)(
       expect(driver.search).toHaveBeenCalledTimes(2);
     });
 
-    it('blocks fill and read cutover when preflight fails, logs original reason and repeats preflight on retry', async () => {
+    it('records failed backfills before advancing the cursor and retries them before validation', async () => {
       const teamId = new Types.ObjectId();
       const datasetId = new Types.ObjectId();
       const collectionId = new Types.ObjectId();
@@ -203,14 +185,18 @@ describe.each(['pg', 'oceanbase', 'seekdb', 'opengauss'] as const)(
       });
 
       const state = createContext();
-      driver.preflight.mockResolvedValue(['1']);
+      driver.fill.mockResolvedValue(['1']);
       await expect(migrateSqlFullTextMigration(state.context)).rejects.toThrow('unresolved');
-      expect(driver.fill).not.toHaveBeenCalled();
+      expect(driver.fill).toHaveBeenCalledOnce();
       expect(await MongoDatasetDataText.countDocuments()).toBe(1);
-      expect(state.checkpoint()).toMatchObject({ lastId: null, scanned: 0, validated: 0 });
+      expect(state.checkpoint()).toMatchObject({
+        lastId: String(doc._id),
+        scanned: 1,
+        validated: 0
+      });
       expect(await state.context.getFailedRecords()).toMatchObject([
         {
-          stageKey: 'preflight',
+          stageKey: 'scan',
           data: {
             id: String(doc._id)
           },
@@ -224,19 +210,18 @@ describe.each(['pg', 'oceanbase', 'seekdb', 'opengauss'] as const)(
       expect(state.context.logger.warn).toHaveBeenCalledWith(
         'SQL full-text migration record validation failed',
         expect.objectContaining({
-          stageKey: 'preflight',
+          stageKey: 'scan',
           id: String(doc._id)
         })
       );
 
-      driver.preflight.mockClear().mockResolvedValue([]);
+      driver.fill.mockClear().mockResolvedValue([]);
       expect(await migrateSqlFullTextMigration(state.context)).toMatchObject({
-        prechecked: 1,
         scanned: 1,
         validated: 1
       });
-      // 先重试原错误，再从起点检查完整范围，验收通过后切换读取并保留旧表数据。
-      expect(driver.preflight).toHaveBeenCalledTimes(2);
+      // 先重试游标之前的错误，再全量验收，保留旧表与目标 ready 证据。
+      expect(driver.fill).toHaveBeenCalledTimes(2);
       expect(await state.context.getFailedRecords()).toEqual([]);
       expect(await MongoDatasetDataText.countDocuments()).toBe(1);
     });
@@ -251,7 +236,7 @@ describe.each(['pg', 'oceanbase', 'seekdb', 'opengauss'] as const)(
         indexes: [{ dataId: '1', text: '连接中断测试', type: 'custom' }]
       });
       const state = createContext();
-      driver.preflight.mockRejectedValueOnce(new Error('ECONNRESET database connection lost'));
+      driver.fill.mockRejectedValueOnce(new Error('ECONNRESET database connection lost'));
       await expect(migrateSqlFullTextMigration(state.context)).rejects.toThrow(
         'ECONNRESET database connection lost'
       );
@@ -262,7 +247,7 @@ describe.each(['pg', 'oceanbase', 'seekdb', 'opengauss'] as const)(
 
     it('rejects resuming a checkpoint bound to a different physical target', async () => {
       const state = createContext();
-      driver.preflight.mockResolvedValue(['1']);
+      driver.fill.mockResolvedValue(['1']);
       await MongoDatasetData.create({
         teamId: new Types.ObjectId(),
         datasetId: new Types.ObjectId(),
@@ -275,12 +260,54 @@ describe.each(['pg', 'oceanbase', 'seekdb', 'opengauss'] as const)(
 
       driver.prepare.mockResolvedValue({
         targetId: randomUUID(),
-        schemaVersion: 1,
-        analyzerVersion: signatures[provider]
+        analyzerVersion: SQL_FULL_TEXT_ANALYZER_VERSION
       });
       await expect(migrateSqlFullTextMigration(state.context)).rejects.toThrow(
         'another SQL target or analyzer version'
       );
+    });
+
+    it('rejects a checkpoint from another analyzer rule before writing', async () => {
+      const state = createContext();
+      await state.context.saveCheckpoint({
+        provider,
+        targetId: metadata.targetId,
+        analyzerVersion: 'future-rule',
+        endId: null,
+        lastId: null,
+        scanned: 0,
+        stage: 'scan',
+        validationEndId: null,
+        validationLastId: null,
+        validated: 0
+      });
+      await expect(migrateSqlFullTextMigration(state.context)).rejects.toThrow();
+      expect(driver.fill).not.toHaveBeenCalled();
+    });
+
+    it('retries validation failures after skipping the completed scan stage', async () => {
+      await MongoDatasetData.create({
+        teamId: new Types.ObjectId(),
+        datasetId: new Types.ObjectId(),
+        collectionId: new Types.ObjectId(),
+        tmbId: new Types.ObjectId(),
+        synonymVersion: 0,
+        indexes: [{ dataId: '1', text: '验收冲突', type: 'custom' }]
+      });
+      const state = createContext();
+      let conflict = true;
+      driver.fill.mockImplementation(async (_rows, validateOnly) =>
+        conflict && validateOnly ? ['1'] : []
+      );
+      await expect(migrateSqlFullTextMigration(state.context)).rejects.toThrow('unresolved');
+      expect(state.checkpoint()).toMatchObject({ stage: 'validation', scanned: 1 });
+      expect(await state.context.getFailedRecords()).toMatchObject([{ stageKey: 'validation' }]);
+      conflict = false;
+      expect(await migrateSqlFullTextMigration(state.context)).toMatchObject({
+        scanned: 1,
+        validated: 1
+      });
+      expect(await state.context.getFailedRecords()).toEqual([]);
     });
 
     it('stays waiting on Mongo fallback until manually enqueued after legacy writers drain', async () => {
@@ -400,7 +427,6 @@ describe.each(['pg', 'oceanbase', 'seekdb', 'opengauss'] as const)(
 
       const resumedResult = await migrateSqlFullTextMigration(state.context);
       expect(resumedResult).toMatchObject({
-        prechecked: 3,
         scanned: 3,
         validated: 3
       });
@@ -438,28 +464,35 @@ describe.each(['pg', 'oceanbase', 'seekdb', 'opengauss'] as const)(
 
       const state = createContext();
       await expect(migrateSqlFullTextMigration(state.context)).rejects.toThrow('unresolved');
-      expect(driver.preflight).toHaveBeenCalledWith([
-        {
-          vectorId: '3',
-          teamId: String(teamId),
-          datasetId: String(datasetId),
-          collectionId: String(collectionId),
-          text: '健康可迁移数据'
-        }
-      ]);
+      expect(driver.fill).toHaveBeenCalledWith(
+        [
+          {
+            vectorId: '3',
+            teamId: String(teamId),
+            datasetId: String(datasetId),
+            collectionId: String(collectionId),
+            text: '健康可迁移数据'
+          }
+        ],
+        false
+      );
       expect(await state.context.getFailedRecords()).toEqual([
         {
-          stageKey: 'preflight',
+          stageKey: 'scan',
           data: { id: String(badVectorDoc._id) },
           reason: { message: 'Full-text vector ID must be a positive signed bigint' }
         },
         {
-          stageKey: 'preflight',
+          stageKey: 'scan',
           data: { id: String(badTextDoc._id) },
           reason: { message: 'Full-text input exceeds 1 MiB or contains a null character' }
         }
       ]);
       expect(healthyDoc._id).toBeDefined();
+      expect(state.checkpoint()).toMatchObject({ lastId: String(healthyDoc._id), scanned: 3 });
+      expect(state.context.reportFailedRecords.mock.invocationCallOrder.at(-1)).toBeLessThan(
+        state.context.saveCheckpoint.mock.invocationCallOrder.at(-1)!
+      );
     });
   }
 );

@@ -9,7 +9,7 @@ vi.mock('@fastgpt/service/common/vectorDB/constants', async (importOriginal) => 
 }));
 
 describe('SQL full-text migration provider boundary', () => {
-  it('completes all five stages as non-applicable on Milvus without issuing SQL or cleaning Mongo', async () => {
+  it('completes all three stages as non-applicable on Milvus without issuing SQL or cleaning Mongo', async () => {
     const query = vi.spyOn(PgClient, 'query');
     const context = {
       migrationId: '20261110_migrate_sql_fulltext',
@@ -29,7 +29,6 @@ describe('SQL full-text migration provider boundary', () => {
 
     expect(await migrateSqlFullTextMigration(context)).toEqual({
       applicable: false,
-      prechecked: 0,
       scanned: 0,
       validated: 0
     });
@@ -38,7 +37,7 @@ describe('SQL full-text migration provider boundary', () => {
         .map(([value]) => value)
         .filter((value) => value.status === 'succeeded')
     ).toEqual(
-      ['prepare', 'preflight', 'scan', 'validation'].map((key) => ({
+      ['prepare', 'scan', 'validation'].map((key) => ({
         key,
         status: 'succeeded'
       }))

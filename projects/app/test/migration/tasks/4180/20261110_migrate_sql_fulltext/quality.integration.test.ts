@@ -56,7 +56,6 @@ afterAll(() => {
     join(target.outputRoot, 'suite-results.json'),
     JSON.stringify(
       {
-        schemaVersion: 1,
         status:
           reports.length === qualityDatasets.length &&
           reports.every((report) => report.status === 'PASS')
@@ -301,7 +300,6 @@ describe.skipIf(!target).each(qualityDatasets)(
         expect(migration).toMatchObject({
           status: 'succeeded',
           result: {
-            prechecked: corpus.length,
             scanned: corpus.length,
             validated: corpus.length
           }

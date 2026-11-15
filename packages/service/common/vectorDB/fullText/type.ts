@@ -24,12 +24,10 @@ export type SqlFullTextHit = { vectorId: string; collectionId: string; score: nu
  */
 export type SqlFullTextAdapter = {
   provider: SqlFullTextProvider;
-  analyzerVersion: SqlFullTextMetadata['analyzerVersion'];
+  /** 准备物理结构并核验能力后返回目标身份，失败不得返回可用元数据。 */
   prepare: () => Promise<SqlFullTextMetadata>;
   assertCapability: () => Promise<void>;
   getMetadata: () => Promise<SqlFullTextMetadata>;
-  /** 只读检查：允许待回填的 NULL，拒绝缺失行、归属冲突和非 NULL 词串冲突。 */
-  preflight: (rows: SqlFullTextRow[]) => Promise<string[]>;
   fill: (rows: SqlFullTextRow[], validateOnly?: boolean) => Promise<string[]>;
   search: (props: FullTextSearchProps) => Promise<SqlFullTextHit[]>;
 };

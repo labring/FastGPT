@@ -1,3 +1,4 @@
+import { SQL_FULL_TEXT_ANALYZER_VERSION } from '@fastgpt/global/core/dataset/fullText/constants';
 import { randomUUID } from 'node:crypto';
 import {
   SqlFullTextMetadataSchema,
@@ -13,14 +14,8 @@ import {
   SQL_FULL_TEXT_INDEX
 } from '../fullText/utils';
 import { executePostgresFullTextRows } from '../fullText/postgres';
-import { SQL_FULL_TEXT_EXTERNAL_ANALYZER, toSqlFullTextQueryTerms } from '../fullText/analyzer';
+import { toSqlFullTextQueryTerms } from '../fullText/analyzer';
 
-/**
- * 词串由外置分析器生成后写入，BM25 索引再用 openGauss 内置分词处理该词串。
- * 内置分词能否严格按空格切分未经实测验证；写入与查询都经过同一个内置分词，两侧仍保持一致。
- */
-export const OPENGAUSS_FULL_TEXT_ANALYZER_VERSION =
-  `opengauss-bm25-${SQL_FULL_TEXT_EXTERNAL_ANALYZER}` as const;
 const metadataTable = 'fastgpt_fulltext_metadata';
 const indexName = SQL_FULL_TEXT_INDEX;
 const column = SQL_FULL_TEXT_COLUMN;
@@ -35,19 +30,15 @@ export const assertOpenGaussFullTextVersion = (version: string) => {
 
 /** 读取该物理库持久化的目标身份，同时检查分词配置版本。 */
 export const getOpenGaussFullTextMetadata = async (): Promise<SqlFullTextMetadata> => {
-  const { rows } =
-    await OgClient.query(`SELECT target_id AS "targetId", schema_version AS "schemaVersion",
-    analyzer_version AS "analyzerVersion" FROM ${metadataTable} WHERE singleton = true`);
-  const metadata = SqlFullTextMetadataSchema.parse(rows[0]);
-  if (metadata.analyzerVersion !== OPENGAUSS_FULL_TEXT_ANALYZER_VERSION) {
-    throw new Error('OpenGauss full-text analyzer version differs from this adapter');
-  }
-  return metadata;
+  const { rows } = await OgClient.query(
+    `SELECT target_id AS "targetId", analyzer_version AS "analyzerVersion" FROM ${metadataTable} WHERE singleton = true`
+  );
+  return SqlFullTextMetadataSchema.parse(rows[0]);
 };
 
 /**
  * 检查真实 BM25 单列索引及索引执行计划，避免只有同名索引或退成全表扫描。
- * 使用默认内置词典；自定义 dict_path 必须作为新 analyzer 版本另行迁移。
+ * 使用默认内置词典；自定义 dict_path 需独立适配并重新验证，不复用当前索引配置。
  */
 export const assertOpenGaussFullTextCapability = async () => {
   const { rows } = await OgClient.query<{ valid: boolean }>(`SELECT
@@ -103,14 +94,10 @@ export const prepareOpenGaussFullText = async () => {
     );
     if (existingMetaTable.rows.length) {
       const existingMeta = await client.query(
-        `SELECT target_id AS "targetId", schema_version AS "schemaVersion",
-          analyzer_version AS "analyzerVersion" FROM ${metadataTable} WHERE singleton = true`
+        `SELECT target_id AS "targetId",     analyzer_version AS "analyzerVersion" FROM ${metadataTable} WHERE singleton = true`
       );
       if (existingMeta.rows[0]) {
-        const parsed = SqlFullTextMetadataSchema.parse(existingMeta.rows[0]);
-        if (parsed.analyzerVersion !== OPENGAUSS_FULL_TEXT_ANALYZER_VERSION) {
-          throw new Error('OpenGauss full-text analyzer version differs from this adapter');
-        }
+        SqlFullTextMetadataSchema.parse(existingMeta.rows[0]);
       }
     }
     const columnInfo = await client.query<{ data_type: string; is_nullable: string }>(
@@ -134,11 +121,11 @@ export const prepareOpenGaussFullText = async () => {
       );
     await client.query(`CREATE TABLE IF NOT EXISTS ${metadataTable} (
       singleton BOOLEAN PRIMARY KEY CHECK(singleton), target_id UUID NOT NULL,
-      schema_version INTEGER NOT NULL, analyzer_version TEXT NOT NULL)`);
+      analyzer_version TEXT NOT NULL)`);
     await client.query(
-      `INSERT INTO ${metadataTable}
-      SELECT true,$1::uuid,1,$2::text WHERE NOT EXISTS (SELECT 1 FROM ${metadataTable} WHERE singleton=true)`,
-      [randomUUID(), OPENGAUSS_FULL_TEXT_ANALYZER_VERSION]
+      `INSERT INTO ${metadataTable} (singleton, target_id, analyzer_version)
+      SELECT true,$1::uuid,$2::text WHERE NOT EXISTS (SELECT 1 FROM ${metadataTable} WHERE singleton=true)`,
+      [randomUUID(), SQL_FULL_TEXT_ANALYZER_VERSION]
     );
     await client.query('COMMIT');
   } catch (error) {
@@ -157,14 +144,6 @@ export const fillOpenGaussFullText = (rows: SqlFullTextRow[], validateOnly = fal
     query: OgClient.query.bind(OgClient),
     rows,
     mode: validateOnly ? 'validate' : 'fill'
-  });
-
-/** 只读核对有效引用及已有词串，允许尚未填充的 NULL。 */
-export const preflightOpenGaussFullText = (rows: SqlFullTextRow[]) =>
-  executePostgresFullTextRows({
-    query: OgClient.query.bind(OgClient),
-    rows,
-    mode: 'preflight'
   });
 
 /**

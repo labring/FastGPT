@@ -13,7 +13,7 @@ import {
 describe('SQL full-text target entity session propagation', () => {
   it('commits and rolls back target readiness mutations with ClientSession', async () => {
     const targetId = randomUUID();
-    const analyzerVersion = 'pg-search-0.26.6-whitespace-fastgpt-jieba-search-v1';
+    const analyzerVersion = 'fastgpt-jieba-search-v1';
 
     await expect(
       mongoSessionRun(async (session) => {
@@ -21,7 +21,6 @@ describe('SQL full-text target entity session propagation', () => {
           {
             provider: 'pg',
             targetId,
-            schemaVersion: 1,
             analyzerVersion
           },
           session
@@ -29,7 +28,6 @@ describe('SQL full-text target entity session propagation', () => {
         expect(await findSqlFullTextTargetById('pg', session)).toMatchObject({
           _id: 'pg',
           targetId,
-          schemaVersion: 1,
           analyzerVersion
         });
         throw new Error('abort readiness transaction');
@@ -43,7 +41,6 @@ describe('SQL full-text target entity session propagation', () => {
         {
           provider: 'pg',
           targetId,
-          schemaVersion: 1,
           analyzerVersion
         },
         session
@@ -52,7 +49,6 @@ describe('SQL full-text target entity session propagation', () => {
     expect(await findSqlFullTextTargetById('pg')).toMatchObject({
       _id: 'pg',
       targetId,
-      schemaVersion: 1,
       analyzerVersion
     });
 

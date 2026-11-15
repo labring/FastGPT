@@ -6,20 +6,16 @@ import {
   preparePgFullText,
   assertPgFullTextCapability,
   getPgFullTextMetadata,
-  preflightPgFullText,
   fillPgFullText,
-  searchPgFullText,
-  PG_FULL_TEXT_ANALYZER_VERSION
+  searchPgFullText
 } from '../pg/fullText';
 import { OceanBaseFullTextAdapter } from '../oceanbase/fullText';
 import {
   prepareOpenGaussFullText,
   assertOpenGaussFullTextCapability,
   getOpenGaussFullTextMetadata,
-  preflightOpenGaussFullText,
   fillOpenGaussFullText,
-  searchOpenGaussFullText,
-  OPENGAUSS_FULL_TEXT_ANALYZER_VERSION
+  searchOpenGaussFullText
 } from '../opengauss/fullText';
 
 const adapters = new Map<SqlFullTextProvider, SqlFullTextAdapter>();
@@ -35,22 +31,18 @@ export const getSqlFullTextAdapter = (
     if (provider === 'pg')
       return {
         provider,
-        analyzerVersion: PG_FULL_TEXT_ANALYZER_VERSION,
         prepare: preparePgFullText,
         assertCapability: assertPgFullTextCapability,
         getMetadata: getPgFullTextMetadata,
-        preflight: preflightPgFullText,
         fill: fillPgFullText,
         search: searchPgFullText
       };
     if (provider === 'opengauss')
       return {
         provider,
-        analyzerVersion: OPENGAUSS_FULL_TEXT_ANALYZER_VERSION,
         prepare: prepareOpenGaussFullText,
         assertCapability: assertOpenGaussFullTextCapability,
         getMetadata: getOpenGaussFullTextMetadata,
-        preflight: preflightOpenGaussFullText,
         fill: fillOpenGaussFullText,
         search: searchOpenGaussFullText
       };

@@ -75,12 +75,7 @@ describe('validateSystemMigrationRegistry', () => {
     expect(task).not.toHaveProperty('blockStartup');
     expect(task).not.toHaveProperty('independent');
     expect(task).not.toHaveProperty('delay');
-    expect(task?.progressSteps.map(({ key }) => key)).toEqual([
-      'prepare',
-      'preflight',
-      'scan',
-      'validation'
-    ]);
+    expect(task?.progressSteps.map(({ key }) => key)).toEqual(['prepare', 'scan', 'validation']);
   });
 
   it('rejects delayed manual execution', () => {

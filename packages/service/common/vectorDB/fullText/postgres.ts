@@ -88,8 +88,8 @@ export const insertPostgresVectorFullTextRows = async ({
 };
 
 /**
- * PG 协议公共预检/回填/验收：原文先经外置分析器转成词串，再与库中词串比较。
- * 预检允许尚未回填的 NULL；只有回填模式会写入，且只补同归属已有行的 NULL，不覆盖已有词串。
+ * PG 协议公共回填/验收：先完成源文本与 ID 校验，回填仅补同归属已有行的 NULL。
+ * 已有非空词串不覆盖；每批写后比较归属与词串，冲突返回调用方定位，验收模式只读。
  */
 export const executePostgresFullTextRows = async ({
   query,
@@ -98,7 +98,7 @@ export const executePostgresFullTextRows = async ({
 }: {
   query: PostgresFullTextQuery;
   rows: SqlFullTextRow[];
-  mode: 'preflight' | 'fill' | 'validate';
+  mode: 'fill' | 'validate';
 }) => {
   const invalidIds: string[] = [];
   const column = SQL_FULL_TEXT_COLUMN;
@@ -128,7 +128,7 @@ export const executePostgresFullTextRows = async ({
       `SELECT v.id::text FROM (VALUES ${tuples}) AS v(id,team_id,dataset_id,collection_id,tokens)
       LEFT JOIN ${DatasetVectorTableName} m ON m.id=v.id AND m.team_id=v.team_id
         AND m.dataset_id=v.dataset_id AND m.collection_id=v.collection_id
-      WHERE m.id IS NULL OR ${mode === 'preflight' ? `(m.${column} IS NOT NULL AND m.${column} IS DISTINCT FROM v.tokens)` : `m.${column} IS DISTINCT FROM v.tokens`}`,
+      WHERE m.id IS NULL OR m.${column} IS DISTINCT FROM v.tokens`,
       values
     );
     invalidIds.push(...invalid.map(({ id }) => id));

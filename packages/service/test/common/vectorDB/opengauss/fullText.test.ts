@@ -1,3 +1,4 @@
+import { SQL_FULL_TEXT_ANALYZER_VERSION } from '@fastgpt/global/core/dataset/fullText/constants';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { randomUUID } from 'node:crypto';
 import { OgClient } from '@fastgpt/service/common/vectorDB/opengauss/controller';
@@ -7,9 +8,7 @@ import {
   prepareOpenGaussFullText,
   getOpenGaussFullTextMetadata,
   fillOpenGaussFullText,
-  preflightOpenGaussFullText,
-  searchOpenGaussFullText,
-  OPENGAUSS_FULL_TEXT_ANALYZER_VERSION
+  searchOpenGaussFullText
 } from '@fastgpt/service/common/vectorDB/opengauss/fullText';
 
 const client = vi.hoisted(() => ({ query: vi.fn(), release: vi.fn() }));
@@ -19,8 +18,7 @@ vi.mock('@fastgpt/service/common/vectorDB/opengauss/controller', () => ({
 }));
 const metadata = {
   targetId: randomUUID(),
-  schemaVersion: 1,
-  analyzerVersion: 'opengauss-bm25-fastgpt-jieba-search-v1'
+  analyzerVersion: 'fastgpt-jieba-search-v1'
 };
 const result = (rows: Record<string, unknown>[]) => ({
   rows,
@@ -52,20 +50,7 @@ beforeEach(() => {
 
 describe('OpenGauss native BM25', () => {
   it('uses the analyzer version declared by the shared metadata schema', () => {
-    expect(OPENGAUSS_FULL_TEXT_ANALYZER_VERSION).toBe(metadata.analyzerVersion);
-  });
-
-  it('preflights existing rows without writing or rejecting pending NULL tokens', async () => {
-    const row = { vectorId: '1', teamId: 't', datasetId: 'd', collectionId: 'c', text: '全文' };
-    vi.mocked(OgClient.query).mockResolvedValueOnce(result([{ id: '1' }]));
-    expect(await preflightOpenGaussFullText([row])).toEqual(['1']);
-    expect(OgClient.query).toHaveBeenCalledOnce();
-    const [sql, values] = vi.mocked(OgClient.query).mock.calls[0];
-    expect(sql).toContain(
-      'm.id IS NULL OR (m.fulltext_tokens IS NOT NULL AND m.fulltext_tokens IS DISTINCT FROM v.tokens)'
-    );
-    expect(sql).not.toMatch(/UPDATE|INSERT|DELETE/);
-    expect(values).toEqual(['1', 't', 'd', 'c', '全文']);
+    expect(SQL_FULL_TEXT_ANALYZER_VERSION).toBe(metadata.analyzerVersion);
   });
 
   it.each([
@@ -87,7 +72,7 @@ describe('OpenGauss native BM25', () => {
     expect(statements).toContain(
       'CREATE INDEX modeldata_fulltext ON modeldata USING bm25(fulltext_tokens)'
     );
-    expect(statements.some((sql) => sql.includes('SELECT true,$1::uuid,1,$2::text'))).toBe(true);
+    expect(statements.some((sql) => sql.includes('SELECT true,$1::uuid,$2::text'))).toBe(true);
     expect(statements.some((sql) => /DROP|DELETE|TRUNCATE|SET vector/i.test(sql))).toBe(false);
     expect(statements).toContain('COMMIT');
     expect(client.release).toHaveBeenCalledOnce();
@@ -97,7 +82,7 @@ describe('OpenGauss native BM25', () => {
     client.query.mockImplementation(async (sql: string) => {
       if (sql.includes('information_schema.tables')) return result([{ '?column?': 1 }]);
       if (sql.includes('target_id AS "targetId"'))
-        return result([{ ...metadata, schemaVersion: 99 }]);
+        return result([{ ...metadata, targetId: 'invalid-uuid' }]);
       return query(sql);
     });
     await expect(prepareOpenGaussFullText()).rejects.toThrow();
@@ -138,18 +123,18 @@ describe('OpenGauss native BM25', () => {
     );
     await expect(prepareOpenGaussFullText()).rejects.toThrow('unavailable');
   });
-  it('rejects metadata from another analyzer version or schema generation', async () => {
+  it('rejects invalid identity or unsupported analyzer rules', async () => {
     vi.mocked(OgClient.query).mockResolvedValueOnce(
-      result([
-        { ...metadata, analyzerVersion: 'pg-search-0.26.6-whitespace-fastgpt-jieba-search-v1' }
-      ])
-    );
-    await expect(getOpenGaussFullTextMetadata()).rejects.toThrow('analyzer');
-    vi.mocked(OgClient.query).mockResolvedValueOnce(
-      result([{ ...metadata, analyzerVersion: 'opengauss-bm25-jieba-v1' }])
+      result([{ ...metadata, analyzerVersion: 'unsupported-analyzer' }])
     );
     await expect(getOpenGaussFullTextMetadata()).rejects.toThrow();
-    vi.mocked(OgClient.query).mockResolvedValueOnce(result([{ ...metadata, schemaVersion: 2 }]));
+    vi.mocked(OgClient.query).mockResolvedValueOnce(
+      result([{ ...metadata, analyzerVersion: 'future-rule' }])
+    );
+    await expect(getOpenGaussFullTextMetadata()).rejects.toThrow();
+    vi.mocked(OgClient.query).mockResolvedValueOnce(
+      result([{ ...metadata, targetId: 'invalid-uuid' }])
+    );
     await expect(getOpenGaussFullTextMetadata()).rejects.toThrow();
   });
   it('binds analyzed terms and all filters before indexed top-K and omits zero-score non-matches', async () => {

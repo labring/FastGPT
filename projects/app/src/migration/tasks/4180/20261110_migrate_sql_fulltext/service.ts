@@ -114,20 +114,16 @@ export const listDatasetDataBatchIds = async ({
 };
 
 /**
- * 三种模式共用当前有效引用核对；执行后再次读取主库，允许并发删除或替换向量 ID。
- * 预检只读且允许 NULL，回填仅补 NULL 词串，验收只读校验词串完整一致；均不修改向量与业务原文。
+ * 回填前完成源记录校验，执行后再次读取主库，允许并发删除或替换向量 ID。
+ * 回填只补 NULL，验收核对当前有效引用的归属与词串；均不修改向量与业务原文。
  */
-const processSqlFullTextRecord = async (id: string, mode: 'preflight' | 'fill' | 'validate') =>
+const processSqlFullTextRecord = async (id: string, validateOnly: boolean) =>
   withRecordDataErrorBoundary(async () => {
     const data = await MongoDatasetData.findById(id).read('primary').lean();
     if (!data) return 0;
     const expected = await buildSqlFullTextRows(data);
     const adapter = getSqlFullTextAdapter();
-    const invalid = new Set(
-      await (mode === 'preflight'
-        ? adapter.preflight(expected)
-        : adapter.fill(expected, mode === 'validate'))
-    );
+    const invalid = new Set(await adapter.fill(expected, validateOnly));
     const current = await MongoDatasetData.findById(id).read('primary').lean();
     if (!current) return 0;
     const currentRows = await buildSqlFullTextRows(current);
@@ -150,9 +146,6 @@ const processSqlFullTextRecord = async (id: string, mode: 'preflight' | 'fill' |
     return expected.filter((row) => currentById.has(row.vectorId)).length;
   });
 
-/** 全量预检的单条只读检查，不因目标词串为 NULL 而失败。 */
-export const preflightSqlFullTextRecord = (id: string) => processSqlFullTextRecord(id, 'preflight');
-
 /** 回填或验收单条业务块；并发变化后只对仍有效的索引判定失败。 */
 export const migrateSqlFullTextRecord = (id: string, validateOnly = false) =>
-  processSqlFullTextRecord(id, validateOnly ? 'validate' : 'fill');
+  processSqlFullTextRecord(id, validateOnly);

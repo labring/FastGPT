@@ -14,11 +14,8 @@ vi.mock('@fastgpt/service/common/vectorDB/oceanbase/controller', () => ({
 
 describe.each(['oceanbase', 'seekdb'] as const)('%s native full text', (provider) => {
   let indexExists = false;
-  const analyzer =
-    provider === 'seekdb'
-      ? 'seekdb-space-fastgpt-jieba-search-v1'
-      : 'oceanbase-space-fastgpt-jieba-search-v1';
-  const metadata = { targetId: randomUUID(), schemaVersion: 1, analyzerVersion: analyzer };
+  const analyzer = 'fastgpt-jieba-search-v1';
+  const metadata = { targetId: randomUUID(), analyzerVersion: analyzer };
   const version = provider === 'seekdb' ? 'OceanBase seekdb 1.0.1.0' : 'OceanBase_CE 4.3.5.1';
   const definition =
     'CREATE TABLE modeldata (fulltext_tokens longtext, FULLTEXT KEY `modeldata_fulltext` (`fulltext_tokens`) WITH PARSER space PARSER_PROPERTIES=(min_token_size=1))';
@@ -57,19 +54,20 @@ describe.each(['oceanbase', 'seekdb'] as const)('%s native full text', (provider
       )
     );
     expect(state.query).toHaveBeenCalledWith(
-      expect.stringContaining('VALUES(1,?,1,?)'),
+      expect.stringContaining('VALUES(1,?,?)'),
       expect.anything()
     );
     expect(
       state.query.mock.calls.some(([sql]) => /DELETE|TRUNCATE|DROP|SET vector/i.test(sql))
     ).toBe(false);
-    expect(adapter.analyzerVersion).toBe(analyzer);
+    expect((await adapter.getMetadata()).analyzerVersion).toBe(analyzer);
   });
   it('rejects incompatible existing metadata before executing heavy column/index DDL', async () => {
     const query = state.query.getMockImplementation()!;
     state.query.mockImplementation(async (sql: string) => {
       if (sql.includes('information_schema.tables')) return [[{ 1: 1 }]];
-      if (sql.includes('target_id AS targetId')) return [[{ ...metadata, schemaVersion: 99 }]];
+      if (sql.includes('target_id AS targetId'))
+        return [[{ ...metadata, targetId: 'invalid-uuid' }]];
       return query(sql);
     });
     await expect(adapter.prepare()).rejects.toThrow();
@@ -135,16 +133,14 @@ describe.each(['oceanbase', 'seekdb'] as const)('%s native full text', (provider
       await expect(adapter.assertCapability()).resolves.toBeUndefined();
     }
   });
-  it('rejects metadata from another provider configuration', async () => {
-    state.query.mockResolvedValueOnce([
-      [{ ...metadata, analyzerVersion: 'pg-search-0.26.6-whitespace-fastgpt-jieba-search-v1' }]
-    ]);
-    await expect(adapter.getMetadata()).rejects.toThrow('configured provider');
-    state.query.mockResolvedValueOnce([[{ ...metadata, schemaVersion: 2 }]]);
+  it('rejects invalid identity or unsupported analyzer rules', async () => {
+    state.query.mockResolvedValueOnce([[{ ...metadata, analyzerVersion: 'unsupported-analyzer' }]]);
+    await expect(adapter.getMetadata()).rejects.toThrow();
+    state.query.mockResolvedValueOnce([[{ ...metadata, targetId: 'invalid-uuid' }]]);
     await expect(adapter.getMetadata()).rejects.toThrow();
   });
-  it('uses the analyzer version declared by the shared metadata schema', () => {
-    expect(adapter.analyzerVersion).toBe(analyzer);
+  it('uses the analyzer version declared by the shared metadata schema', async () => {
+    expect((await adapter.getMetadata()).analyzerVersion).toBe(analyzer);
   });
   it('fills only NULL with bound analyzed tokens and compares tokens byte-for-byte', async () => {
     const rows = [
@@ -167,27 +163,6 @@ describe.each(['oceanbase', 'seekdb'] as const)('%s native full text', (provider
     expect(await adapter.fill(rows, true)).toEqual([]);
     expect(state.query).toHaveBeenCalledOnce();
     expect(state.query.mock.calls[0][0]).not.toContain('UPDATE');
-  });
-  it('preflights read-only, permits NULL and compares existing tokens byte-for-byte', async () => {
-    const row = {
-      vectorId: '1',
-      teamId: 't',
-      datasetId: 'd',
-      collectionId: 'c',
-      text: rawText
-    };
-    state.query.mockResolvedValueOnce([[{ id: '1' }]]);
-    expect(await adapter.preflight([row])).toEqual(['1']);
-    expect(state.query).toHaveBeenCalledOnce();
-    const [sql, values] = state.query.mock.calls[0];
-    expect(sql).toContain(
-      'm.id IS NULL OR (m.fulltext_tokens IS NOT NULL AND NOT (BINARY m.fulltext_tokens <=> BINARY v.tokens))'
-    );
-    expect(sql).not.toMatch(/UPDATE|INSERT|DELETE/);
-    expect(values).toEqual(['1', 't', 'd', 'c', rawTokens]);
-    expect(await adapter.preflight([row])).toEqual([]);
-    await expect(adapter.preflight([{ ...row, vectorId: '01' }])).rejects.toThrow('bigint');
-    expect(state.query).toHaveBeenCalledTimes(2);
   });
   it('rejects malformed IDs before MySQL casts can coerce them to another row', async () => {
     for (const vectorId of ['bad', '0', '-1', '01', '9223372036854775808'])

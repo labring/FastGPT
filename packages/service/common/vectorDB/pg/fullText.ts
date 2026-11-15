@@ -1,6 +1,9 @@
+import { SQL_FULL_TEXT_ANALYZER_VERSION } from '@fastgpt/global/core/dataset/fullText/constants';
 import { randomUUID } from 'node:crypto';
-import { z } from 'zod';
-import { SqlFullTextMetadataSchema } from '@fastgpt/global/core/dataset/fullText/schema';
+import {
+  SqlFullTextMetadataSchema,
+  type SqlFullTextMetadata
+} from '@fastgpt/global/core/dataset/fullText/schema';
 import { connectPg, PgClient } from './controller';
 import { DatasetVectorTableName } from '../constants';
 import type { FullTextSearchProps } from '../type';
@@ -11,28 +14,19 @@ import {
   SQL_FULL_TEXT_INDEX
 } from '../fullText/utils';
 import { executePostgresFullTextRows } from '../fullText/postgres';
-import { SQL_FULL_TEXT_EXTERNAL_ANALYZER, toSqlFullTextQueryTerms } from '../fullText/analyzer';
+import { toSqlFullTextQueryTerms } from '../fullText/analyzer';
 
 export const PG_FULL_TEXT_EXTENSION_VERSION = '0.26.6';
-/** pg_search 只按空格切词打分，分词由外置分析器完成；两者任一变化都要升级版本。 */
-export const PG_FULL_TEXT_ANALYZER_VERSION =
-  `pg-search-0.26.6-whitespace-${SQL_FULL_TEXT_EXTERNAL_ANALYZER}` as const;
 const metadataTable = 'fastgpt_fulltext_metadata';
 const indexName = SQL_FULL_TEXT_INDEX;
 const column = SQL_FULL_TEXT_COLUMN;
 
-export const PgFullTextMetadataSchema = SqlFullTextMetadataSchema.extend({
-  analyzerVersion: z.literal(PG_FULL_TEXT_ANALYZER_VERSION)
-});
-export type PgFullTextMetadata = z.infer<typeof PgFullTextMetadataSchema>;
-
 /** 读取目标库自身的持久身份；不使用连接串或主机名作为迁移身份。 */
-export const getPgFullTextMetadata = async (): Promise<PgFullTextMetadata> => {
+export const getPgFullTextMetadata = async (): Promise<SqlFullTextMetadata> => {
   const { rows } = await PgClient.query(
-    `SELECT target_id AS "targetId", schema_version AS "schemaVersion",
-      analyzer_version AS "analyzerVersion" FROM ${metadataTable} WHERE singleton = true`
+    `SELECT target_id AS "targetId", analyzer_version AS "analyzerVersion" FROM ${metadataTable} WHERE singleton = true`
   );
-  return PgFullTextMetadataSchema.parse(rows[0]);
+  return SqlFullTextMetadataSchema.parse(rows[0]);
 };
 
 /** 精确核对已安装扩展和全文索引；同名错误索引不能被 IF NOT EXISTS 当作成功。 */
@@ -59,10 +53,10 @@ export const assertPgFullTextCapability = async () => {
 
 /**
  * 准备阶段确保可空词串列、按空格切词的全文索引和目标身份就绪，不修改旧向量或 Mongo 业务数据。
- * 一张表只能有一个 ParadeDB 索引；建重型索引前先核对既有元数据代次，避免不兼容目标白建索引。
+ * 一张表只能有一个 ParadeDB 索引；建重型索引前先核对既有目标的分词规则，避免不兼容目标白建索引。
  * DDL 在事务中串行执行并限制锁等待；扩展二进制及 preload 由部署者提前准备。
  */
-export const preparePgFullText = async (): Promise<PgFullTextMetadata> => {
+export const preparePgFullText = async (): Promise<SqlFullTextMetadata> => {
   const client = await (await connectPg()).connect();
   try {
     await client.query('BEGIN');
@@ -87,11 +81,10 @@ export const preparePgFullText = async (): Promise<PgFullTextMetadata> => {
     );
     if (existingMetaTable.rows[0]?.regclass) {
       const existingMeta = await client.query(
-        `SELECT target_id AS "targetId", schema_version AS "schemaVersion",
-          analyzer_version AS "analyzerVersion" FROM ${metadataTable} WHERE singleton = true`
+        `SELECT target_id AS "targetId",     analyzer_version AS "analyzerVersion" FROM ${metadataTable} WHERE singleton = true`
       );
       if (existingMeta.rows[0]) {
-        PgFullTextMetadataSchema.parse(existingMeta.rows[0]);
+        SqlFullTextMetadataSchema.parse(existingMeta.rows[0]);
       }
     }
     await client.query(
@@ -102,12 +95,12 @@ export const preparePgFullText = async (): Promise<PgFullTextMetadata> => {
         (team_id::pdb.literal), (dataset_id::pdb.literal), (collection_id::pdb.literal))`);
     await client.query(`CREATE TABLE IF NOT EXISTS ${metadataTable} (
       singleton BOOLEAN PRIMARY KEY CHECK (singleton), target_id UUID NOT NULL,
-      schema_version INTEGER NOT NULL, analyzer_version TEXT NOT NULL
+      analyzer_version TEXT NOT NULL
     )`);
     await client.query(
-      `INSERT INTO ${metadataTable} VALUES (true, $1, 1, $2)
+      `INSERT INTO ${metadataTable} (singleton, target_id, analyzer_version) VALUES (true, $1, $2)
       ON CONFLICT (singleton) DO NOTHING`,
-      [randomUUID(), PG_FULL_TEXT_ANALYZER_VERSION]
+      [randomUUID(), SQL_FULL_TEXT_ANALYZER_VERSION]
     );
     await client.query('COMMIT');
   } catch (error) {
@@ -129,14 +122,6 @@ export const fillPgFullText = (rows: SqlFullTextRow[], validateOnly = false) =>
     query: PgClient.query.bind(PgClient),
     rows,
     mode: validateOnly ? 'validate' : 'fill'
-  });
-
-/** 回填前只读核对目标行，NULL 词串属于正常待回填状态。 */
-export const preflightPgFullText = (rows: SqlFullTextRow[]) =>
-  executePostgresFullTextRows({
-    query: PgClient.query.bind(PgClient),
-    rows,
-    mode: 'preflight'
   });
 
 /**

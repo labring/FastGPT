@@ -197,7 +197,6 @@ describe.skipIf(!target)('selected SQL database real full-text migration', () =>
       result: {
         applicable: true,
         provider: target!.provider,
-        prechecked: 3,
         scanned: 3,
         validated: 3
       }

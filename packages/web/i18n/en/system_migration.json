@@ -55,10 +55,9 @@
   "migrations.20261104_backfill_openapi_key_type.keys": "Key types",
   "migrations.20261104_backfill_openapi_key_type.validation": "Validate backfill",
   "migrations.20261110_migrate_sql_fulltext.name": "Migrate SQL vector full-text search",
-  "migrations.20261110_migrate_sql_fulltext.description": "Confirm that all App/Pro nodes are upgraded, legacy training jobs have drained, and the configured SQL vector database supports full-text search before running. Performs a full read-only preflight, backfills historical tokens with checkpoint recovery, and records target readiness after validation. Select the read provider with DATASET_FULLTEXT_PROVIDER; DATASET_FULLTEXT_DUAL_WRITE controls Mongo compatibility writes while reading from SQL.",
-  "migrations.20261110_migrate_sql_fulltext.result": "Prechecked {{prechecked}} records, backfilled {{scanned}} records, and validated {{validated}} records",
+  "migrations.20261110_migrate_sql_fulltext.description": "Confirm that all App/Pro nodes are upgraded, legacy training jobs have drained, and the SQL vector database supports full-text search before running. Validates source records and backfills historical tokens in batches, then records target readiness after a complete final validation. Select mongo/native with DATASET_FULLTEXT_PROVIDER; DATASET_FULLTEXT_DUAL_WRITE controls Mongo compatibility writes while reading from SQL.",
+  "migrations.20261110_migrate_sql_fulltext.result": "Backfilled {{scanned}} records and validated {{validated}} records",
   "migrations.20261110_migrate_sql_fulltext.prepare": "Prepare full-text schema and index",
-  "migrations.20261110_migrate_sql_fulltext.preflight": "Run full read-only preflight",
   "migrations.20261110_migrate_sql_fulltext.scan": "Backfill historical tokenized indexes",
   "migrations.20261110_migrate_sql_fulltext.validation": "Verify active index coverage"
 }

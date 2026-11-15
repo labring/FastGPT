@@ -1,3 +1,4 @@
+import { SQL_FULL_TEXT_ANALYZER_VERSION } from '@fastgpt/global/core/dataset/fullText/constants';
 import { randomUUID } from 'node:crypto';
 import type { RowDataPacket } from 'mysql2/promise';
 import {
@@ -14,11 +15,7 @@ import {
   SQL_FULL_TEXT_COLUMN,
   SQL_FULL_TEXT_INDEX
 } from '../fullText/utils';
-import {
-  SQL_FULL_TEXT_EXTERNAL_ANALYZER,
-  toSqlFullTextQueryTerms,
-  tokenizeSqlFullTextRows
-} from '../fullText/analyzer';
+import { toSqlFullTextQueryTerms, tokenizeSqlFullTextRows } from '../fullText/analyzer';
 
 const metadataTable = 'fastgpt_fulltext_metadata';
 const indexName = SQL_FULL_TEXT_INDEX;
@@ -48,31 +45,23 @@ export const assertOceanBaseFullTextVersion = (
 };
 
 /**
- * OceanBase 与 SeekDB 共用 MySQL FULLTEXT 语法；保留独立 provider、版本和分词签名。
+ * OceanBase 与 SeekDB 共用 MySQL FULLTEXT 语法；保留独立 provider 与产品版本检查。
  * 词串由外置分析器生成，FULLTEXT 索引只用 SPACE 解析器按空格切词，写入与查询两侧词项一致。
  * DDL 会隐式提交，因此准备按实际结构幂等续跑，全部能力校验通过后写入目标身份元数据。
  */
 export class OceanBaseFullTextAdapter implements SqlFullTextAdapter {
-  readonly analyzerVersion;
   private readonly client: ObClass;
   constructor(readonly provider: 'oceanbase' | 'seekdb') {
     this.client = new ObClass({ type: provider });
-    this.analyzerVersion =
-      provider === 'seekdb'
-        ? (`seekdb-space-${SQL_FULL_TEXT_EXTERNAL_ANALYZER}` as const)
-        : (`oceanbase-space-${SQL_FULL_TEXT_EXTERNAL_ANALYZER}` as const);
   }
 
-  /** 元数据与所选产品的分词签名必须一致，防止跨 provider 复用旧成功记录。 */
+  /** 读取物理目标身份并核对共用的外置分词规则版本。 */
   getMetadata = async (): Promise<SqlFullTextMetadata> => {
     const [rows] = await this.client.query<RowDataPacket[]>(
-      `SELECT target_id AS targetId,schema_version AS schemaVersion,analyzer_version AS analyzerVersion
+      `SELECT target_id AS targetId,analyzer_version AS analyzerVersion
        FROM ${metadataTable} WHERE singleton=1`
     );
-    const metadata = SqlFullTextMetadataSchema.parse(rows[0]);
-    if (metadata.analyzerVersion !== this.analyzerVersion)
-      throw new Error('Full-text analyzer differs from the configured provider');
-    return metadata;
+    return SqlFullTextMetadataSchema.parse(rows[0]);
   };
 
   /** 同时核对索引类型、词串列、可见状态、分词器和属性，不只检查同名索引存在。 */
@@ -135,14 +124,11 @@ export class OceanBaseFullTextAdapter implements SqlFullTextAdapter {
     );
     if (existingMetaTables.length) {
       const [existingMetaRows] = await this.client.query<RowDataPacket[]>(
-        `SELECT target_id AS targetId,schema_version AS schemaVersion,analyzer_version AS analyzerVersion
+        `SELECT target_id AS targetId,analyzer_version AS analyzerVersion
          FROM ${metadataTable} WHERE singleton=1`
       );
       if (existingMetaRows[0]) {
-        const parsed = SqlFullTextMetadataSchema.parse(existingMetaRows[0]);
-        if (parsed.analyzerVersion !== this.analyzerVersion) {
-          throw new Error('Full-text analyzer differs from the configured provider');
-        }
+        SqlFullTextMetadataSchema.parse(existingMetaRows[0]);
       }
     }
     const [columns] = await this.client.query<RowDataPacket[]>(
@@ -174,20 +160,19 @@ export class OceanBaseFullTextAdapter implements SqlFullTextAdapter {
     await this.assertCapability();
     await this.client.query(`CREATE TABLE IF NOT EXISTS ${metadataTable} (
       singleton TINYINT PRIMARY KEY,target_id VARCHAR(36) NOT NULL,
-      schema_version INT NOT NULL,analyzer_version VARCHAR(96) NOT NULL)`);
+      analyzer_version VARCHAR(96) NOT NULL)`);
     await this.client.query(
-      `INSERT INTO ${metadataTable} VALUES(1,?,1,?)
+      `INSERT INTO ${metadataTable} (singleton, target_id, analyzer_version) VALUES(1,?,?)
       ON DUPLICATE KEY UPDATE singleton=singleton`,
-      [randomUUID(), this.analyzerVersion]
+      [randomUUID(), SQL_FULL_TEXT_ANALYZER_VERSION]
     );
     return this.getMetadata();
   };
 
   /**
-   * 三种模式共用归属与二进制比较；原文先经外置分析器转成词串再比较。
-   * 预检允许 NULL，只有 fill 会写入，且只补 NULL、不覆盖已有词串。
+   * 回填与验收共用归属及二进制比较；源文本与 ID 校验后只补 NULL，不覆盖已有词串。
    */
-  private executeRows = async (rows: SqlFullTextRow[], mode: 'preflight' | 'fill' | 'validate') => {
+  private executeRows = async (rows: SqlFullTextRow[], mode: 'fill' | 'validate') => {
     const invalidIds: string[] = [];
     for (const chunk of splitSqlFullTextRows(await tokenizeSqlFullTextRows(rows))) {
       const values = chunk.flatMap((row) => [
@@ -212,16 +197,13 @@ export class OceanBaseFullTextAdapter implements SqlFullTextAdapter {
         );
       const [invalid] = await this.client.query<({ id: string } & RowDataPacket)[]>(
         `SELECT CAST(v.id AS CHAR) AS id FROM (${source}) v LEFT JOIN ${DatasetVectorTableName} m ON ${join}
-         WHERE m.id IS NULL OR ${mode === 'preflight' ? `(m.${column} IS NOT NULL AND NOT (BINARY m.${column} <=> BINARY v.tokens))` : `NOT (BINARY m.${column} <=> BINARY v.tokens)`}`,
+         WHERE m.id IS NULL OR NOT (BINARY m.${column} <=> BINARY v.tokens)`,
         values
       );
       invalidIds.push(...invalid.map((row) => row.id));
     }
     return invalidIds;
   };
-
-  /** 只读检查目标行及已有词串，NULL 词串可在预检通过后回填。 */
-  preflight = (rows: SqlFullTextRow[]) => this.executeRows(rows, 'preflight');
 
   /** 只补同归属的 NULL；验收模式要求词串已完整且逐字节一致。 */
   fill = (rows: SqlFullTextRow[], validateOnly = false) =>

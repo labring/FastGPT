@@ -36,7 +36,6 @@ import { PgVectorCtrl } from '@fastgpt/service/common/vectorDB/pg';
 import { toSqlFullTextTokens } from '@fastgpt/service/common/vectorDB/fullText/analyzer';
 import {
   fillPgFullText,
-  preflightPgFullText,
   searchPgFullText,
   preparePgFullText,
   assertPgFullTextCapability
@@ -242,7 +241,6 @@ describe.skipIf(!target)('PG full-text real migration', () => {
         result: {
           applicable: true,
           provider: 'pg',
-          prechecked: 4,
           scanned: 4,
           validated: 4
         }
@@ -258,7 +256,7 @@ describe.skipIf(!target)('PG full-text real migration', () => {
     }
   });
 
-  it('fails the real Runner on an active missing vector without backfilling or cutting over reads until repaired', async () => {
+  it('fails the real Runner on a missing vector while backfilling healthy rows and blocking readiness until repaired', async () => {
     const fixture = await seed('缺失向量 missingvectorproof');
     await pool.query('DELETE FROM modeldata WHERE id=$1', [fixture.insertIds[0]]);
     const healthy = await seed('正常向量 healthyvectorproof');
@@ -274,7 +272,7 @@ describe.skipIf(!target)('PG full-text real migration', () => {
         await MongoSystemMigrationState.findById('20261110_migrate_sql_fulltext').lean()
       ).toMatchObject({ status: 'failed' });
       expect(await getMigrationFailedRecords('20261110_migrate_sql_fulltext')).toMatchObject([
-        { stageKey: 'preflight', data: { id: fixture.id } }
+        { stageKey: 'scan', data: { id: fixture.id } }
       ]);
       expect(await MongoDatasetData.find().sort({ _id: 1 }).lean()).toEqual(original);
       expect(await MongoDatasetDataText.find().sort({ _id: 1 }).lean()).toEqual(oldText);
@@ -284,7 +282,7 @@ describe.skipIf(!target)('PG full-text real migration', () => {
             healthy.insertIds[0]
           ])
         ).rows[0].text
-      ).toBeNull();
+      ).toBe(await toSqlFullTextTokens('正常向量 healthyvectorproof'));
       expect((await snapshot()).map((row) => row.id)).toEqual(healthy.insertIds);
 
       // 模拟管理员修复缺失向量后从保留断点重试。
@@ -298,7 +296,7 @@ describe.skipIf(!target)('PG full-text real migration', () => {
         await MongoSystemMigrationState.findById('20261110_migrate_sql_fulltext').lean()
       ).toMatchObject({
         status: 'succeeded',
-        result: { prechecked: 2, scanned: 2, validated: 2 }
+        result: { scanned: 2, validated: 2 }
       });
       expect(await getMigrationFailedRecords('20261110_migrate_sql_fulltext')).toEqual([]);
       expect(
@@ -315,32 +313,28 @@ describe.skipIf(!target)('PG full-text real migration', () => {
     }
   });
 
-  it('finds late preflight failures before any fill and rechecks earlier rows on retry', async () => {
+  it('backfills healthy records around a bad row, then revalidates earlier records before readiness', async () => {
     const fixtures = [];
-    for (let i = 0; i < 5; i++) fixtures.push(await seed(`全量预检 preflight ${i}`));
+    for (let i = 0; i < 5; i++) fixtures.push(await seed(`分批回填 batch ${i}`));
     const state = createContext();
     await pool.query('UPDATE modeldata SET team_id=$1 WHERE id=$2', [
       foreignTeamId,
       fixtures[4].insertIds[0]
     ]);
     await expect(migrateSqlFullTextMigration(state.context)).rejects.toThrow('unresolved');
-    expect(state.failures()).toMatchObject([
-      { stageKey: 'preflight', data: { id: fixtures[4].id } }
-    ]);
-    expect(state.context.reportProgress).toHaveBeenCalledWith(
-      expect.objectContaining({ key: 'preflight', current: 5 })
-    );
+    expect(state.failures()).toMatchObject([{ stageKey: 'scan', data: { id: fixtures[4].id } }]);
     expect(
       (
         await pool.query(
           'SELECT count(*)::int AS n FROM modeldata WHERE fulltext_tokens IS NOT NULL'
         )
       ).rows[0].n
-    ).toBe(0);
-    expect(await MongoDatasetDataText.countDocuments()).toBe(5);
+    ).toBe(4);
     expect(state.context.saveCheckpoint).toHaveBeenLastCalledWith(
-      expect.objectContaining({ scanned: 0, lastId: null })
+      expect.objectContaining({ scanned: 5, lastId: fixtures[4].id })
     );
+    expect(await MongoDatasetDataText.countDocuments()).toBe(5);
+
     await pool.query('UPDATE modeldata SET team_id=$1 WHERE id=$2', [
       teamId,
       fixtures[4].insertIds[0]
@@ -351,66 +345,27 @@ describe.skipIf(!target)('PG full-text real migration', () => {
     ]);
     await expect(migrateSqlFullTextMigration(state.context)).rejects.toThrow('unresolved');
     expect(state.failures()).toMatchObject([
-      { stageKey: 'preflight', data: { id: fixtures[0].id } }
+      { stageKey: 'validation', data: { id: fixtures[0].id } }
     ]);
     expect(
       (
-        await pool.query(
-          'SELECT count(*)::int AS n FROM modeldata WHERE fulltext_tokens IS NOT NULL'
-        )
-      ).rows[0].n
-    ).toBe(1);
+        await pool.query('SELECT fulltext_tokens FROM modeldata WHERE id=$1', [
+          fixtures[0].insertIds[0]
+        ])
+      ).rows[0].fulltext_tokens
+    ).toBe('conflict');
     await pool.query('UPDATE modeldata SET fulltext_tokens=NULL WHERE id=$1', [
       fixtures[0].insertIds[0]
     ]);
     expect(await migrateSqlFullTextMigration(state.context)).toMatchObject({
-      prechecked: 5,
       scanned: 5,
       validated: 5
     });
+    expect(state.failures()).toEqual([]);
     expect(await MongoDatasetDataText.countDocuments()).toBe(5);
   });
 
-  it('cancels read-only preflight without filling and starts preflight from the beginning on resume', async () => {
-    const fixtures = [];
-    for (let i = 0; i < 5; i++) fixtures.push(await seed(`预检取消 preflightcancel ${i}`));
-    const state = createContext();
-    const controller = new AbortController();
-    state.context.signal = controller.signal;
-    state.context.reportProgress.mockImplementation(async ({ key, current }) => {
-      if (key === 'preflight' && current === 2) controller.abort();
-    });
-    await expect(migrateSqlFullTextMigration(state.context)).rejects.toThrow();
-    expect(
-      (
-        await pool.query(
-          'SELECT count(*)::int AS n FROM modeldata WHERE fulltext_tokens IS NOT NULL'
-        )
-      ).rows[0].n
-    ).toBe(0);
-    expect(await MongoDatasetDataText.countDocuments()).toBe(5);
-    state.context.signal = new AbortController().signal;
-    state.context.runId = randomUUID();
-    state.context.reportProgress.mockReset();
-    await pool.query('UPDATE modeldata SET fulltext_tokens=$1 WHERE id=$2', [
-      'conflict',
-      fixtures[0].insertIds[0]
-    ]);
-    await expect(migrateSqlFullTextMigration(state.context)).rejects.toThrow('unresolved');
-    expect(state.failures()).toMatchObject([
-      { stageKey: 'preflight', data: { id: fixtures[0].id } }
-    ]);
-    await pool.query('UPDATE modeldata SET fulltext_tokens=NULL WHERE id=$1', [
-      fixtures[0].insertIds[0]
-    ]);
-    expect(await migrateSqlFullTextMigration(state.context)).toMatchObject({
-      prechecked: 5,
-      scanned: 5,
-      validated: 5
-    });
-  });
-
-  it('checks NULL, matching, conflicting, missing and foreign-owned target rows without writes', async () => {
+  it('validates NULL, matching, conflicting, missing and foreign-owned rows without writes', async () => {
     const fixtures = [];
     for (let i = 0; i < 5; i++) fixtures.push(await seed(`check ${i}`));
     await preparePgFullText();
@@ -431,16 +386,17 @@ describe.skipIf(!target)('PG full-text real migration', () => {
       'SELECT id::text, fulltext_tokens, team_id, dataset_id, collection_id FROM modeldata ORDER BY id'
     );
     expect(
-      await preflightPgFullText(
+      await fillPgFullText(
         fixtures.map((fixture, i) => ({
           vectorId: fixture.insertIds[0],
           teamId,
           datasetId,
           collectionId,
           text: `check ${i}`
-        }))
+        })),
+        true
       )
-    ).toEqual(fixtures.slice(2).map(({ insertIds }) => insertIds[0]));
+    ).toEqual([fixtures[0], ...fixtures.slice(2)].map(({ insertIds }) => insertIds[0]));
     expect(
       (
         await pool.query(
@@ -476,7 +432,7 @@ describe.skipIf(!target)('PG full-text real migration', () => {
     expect(order[0]).toBeLessThan(state.context.saveCheckpoint.mock.invocationCallOrder[1]);
   });
 
-  it('retains a scan failure behind the cursor through preflight failure and recovery', async () => {
+  it('retains a scan failure behind the cursor through repeated failure and recovery', async () => {
     const missing = await seed('missing active row');
     await seed('correct row');
     const state = createContext();
@@ -496,7 +452,7 @@ describe.skipIf(!target)('PG full-text real migration', () => {
         .failures()
         .map(({ stageKey }) => stageKey)
         .sort()
-    ).toEqual(['preflight', 'scan']);
+    ).toEqual(['scan']);
     await pool.query('UPDATE modeldata SET fulltext_tokens=NULL WHERE id=$1', [
       missing.insertIds[0]
     ]);

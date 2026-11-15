@@ -7,7 +7,7 @@ import { SqlFullTextTargetSchema } from './schema';
 
 /**
  * 核验当前 SQL 目标是否已通过回填与验收：既要求 Mongo 侧登记了该目标，
- * 也要求当前连接的 SQL 物理库元数据（targetId、schemaVersion、analyzerVersion）完全匹配。
+ * 也要求当前连接的 SQL 物理库身份及分词规则完全匹配。
  */
 export const isSqlFullTextTargetReady = async (): Promise<boolean> => {
   const provider = getVectorType();
@@ -17,12 +17,9 @@ export const isSqlFullTextTargetReady = async (): Promise<boolean> => {
     if (!record) return false;
     const target = SqlFullTextTargetSchema.parse(record);
     const adapter = getSqlFullTextAdapter(provider);
-    if (target.analyzerVersion !== adapter.analyzerVersion) return false;
     const metadata = await adapter.getMetadata();
     return (
-      metadata.targetId === target.targetId &&
-      metadata.schemaVersion === target.schemaVersion &&
-      metadata.analyzerVersion === target.analyzerVersion
+      metadata.targetId === target.targetId && metadata.analyzerVersion === target.analyzerVersion
     );
   } catch {
     return false;

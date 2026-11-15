@@ -1,12 +1,11 @@
+import { SQL_FULL_TEXT_ANALYZER_VERSION } from '@fastgpt/global/core/dataset/fullText/constants';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { randomUUID } from 'node:crypto';
 import {
   assertPgFullTextCapability,
   fillPgFullText,
   getPgFullTextMetadata,
-  PG_FULL_TEXT_ANALYZER_VERSION,
   preparePgFullText,
-  preflightPgFullText,
   searchPgFullText
 } from '@fastgpt/service/common/vectorDB/pg/fullText';
 import {
@@ -26,8 +25,7 @@ vi.mock('@fastgpt/service/common/vectorDB/pg/controller', () => ({
 }));
 const identity = {
   targetId: randomUUID(),
-  schemaVersion: 1,
-  analyzerVersion: 'pg-search-0.26.6-whitespace-fastgpt-jieba-search-v1'
+  analyzerVersion: 'fastgpt-jieba-search-v1'
 };
 const definition =
   'CREATE INDEX modeldata_fulltext ON public.modeldata USING paradedb (id, ((fulltext_tokens)::pdb.whitespace), ((team_id)::pdb.literal), ((dataset_id)::pdb.literal), ((collection_id)::pdb.literal))';
@@ -49,25 +47,7 @@ beforeEach(() => {
 
 describe('PG full-text contracts', () => {
   it('uses the analyzer version declared by the shared metadata schema', () => {
-    expect(PG_FULL_TEXT_ANALYZER_VERSION).toBe(identity.analyzerVersion);
-  });
-
-  it('preflights tokenized values with bound parameters and permits NULL tokens without writes', async () => {
-    const row = { vectorId: '1', teamId: 't', datasetId: 'd', collectionId: 'c', text: rawText };
-    vi.mocked(PgClient.query).mockResolvedValueOnce({ rows: [{ id: '1' }] } as never);
-    expect(await preflightPgFullText([row])).toEqual(['1']);
-    expect(PgClient.query).toHaveBeenCalledOnce();
-    const [sql, values] = vi.mocked(PgClient.query).mock.calls[0];
-    expect(sql).toContain(
-      'm.id IS NULL OR (m.fulltext_tokens IS NOT NULL AND m.fulltext_tokens IS DISTINCT FROM v.tokens)'
-    );
-    expect(sql).toContain('m.collection_id=v.collection_id');
-    expect(sql).not.toMatch(/UPDATE|INSERT|DELETE/);
-    expect(values).toEqual(['1', 't', 'd', 'c', rawTokens]);
-    expect(await preflightPgFullText([row])).toEqual([]);
-    await expect(preflightPgFullText([{ ...row, vectorId: '01' }])).rejects.toThrow('bigint');
-    await expect(preflightPgFullText([{ ...row, text: 'a\0b' }])).rejects.toThrow('null character');
-    expect(PgClient.query).toHaveBeenCalledTimes(2);
+    expect(SQL_FULL_TEXT_ANALYZER_VERSION).toBe(identity.analyzerVersion);
   });
 
   it('preserves empty text, quotes and Unicode; enforces bytes and forbids null characters', () => {
@@ -79,12 +59,12 @@ describe('PG full-text contracts', () => {
     expect(() => assertSqlFullText('a\0b')).toThrow('null character');
   });
 
-  it('validates target metadata instead of accepting an incompatible schema', async () => {
+  it('validates target identity and analyzer rules', async () => {
     vi.mocked(PgClient.query).mockResolvedValueOnce({ rows: [identity] } as never);
     expect(await getPgFullTextMetadata()).toEqual(identity);
     for (const stale of [
-      { ...identity, schemaVersion: 2 },
-      { ...identity, analyzerVersion: 'pg-search-0.26.6-jieba-v1' }
+      { ...identity, targetId: 'invalid-uuid' },
+      { ...identity, analyzerVersion: 'future-rule' }
     ]) {
       vi.mocked(PgClient.query).mockResolvedValueOnce({ rows: [stale] } as never);
       await expect(getPgFullTextMetadata()).rejects.toThrow();
@@ -125,7 +105,7 @@ describe('PG full-text contracts', () => {
     expect(createIndex).toContain('modeldata_fulltext');
     expect(createIndex).toContain('fulltext_tokens::pdb.whitespace');
     expect(createIndex).not.toContain('key_field');
-    expect(statements.some((sql) => sql.includes('VALUES (true, $1, 1, $2)'))).toBe(true);
+    expect(statements.some((sql) => sql.includes('VALUES (true, $1, $2)'))).toBe(true);
     expect(statements).toContain('COMMIT');
     expect(statements.some((sql) => /DROP|DELETE|TRUNCATE/.test(sql))).toBe(false);
     expect(client.release).toHaveBeenCalledOnce();
@@ -136,7 +116,7 @@ describe('PG full-text contracts', () => {
     client.query.mockImplementation(async (sql: string) => {
       if (sql.includes('to_regclass')) return { rows: [{ regclass: 'fastgpt_fulltext_metadata' }] };
       if (sql.includes('target_id AS "targetId"'))
-        return { rows: [{ ...identity, schemaVersion: 99 }] };
+        return { rows: [{ ...identity, targetId: 'invalid-uuid' }] };
       return query(sql);
     });
     await expect(preparePgFullText()).rejects.toThrow();

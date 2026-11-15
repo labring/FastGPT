@@ -1,7 +1,7 @@
+import { SQL_FULL_TEXT_ANALYZER_VERSION } from '@fastgpt/global/core/dataset/fullText/constants';
 import { describe, expect, it, vi } from 'vitest';
 import { jiebaSearchTokens, jiebaSplit } from '@fastgpt/service/common/string/jieba/index';
 import {
-  SQL_FULL_TEXT_EXTERNAL_ANALYZER,
   toSqlFullTextQueryTerms,
   toSqlFullTextTokens,
   tokenizeSqlFullTextRows
@@ -11,9 +11,6 @@ import {
   SQL_FULL_TEXT_MAX_BYTES
 } from '@fastgpt/service/common/vectorDB/fullText/utils';
 import { SqlFullTextMetadataSchema } from '@fastgpt/global/core/dataset/fullText/schema';
-import { PG_FULL_TEXT_ANALYZER_VERSION } from '@fastgpt/service/common/vectorDB/pg/fullText';
-import { OPENGAUSS_FULL_TEXT_ANALYZER_VERSION } from '@fastgpt/service/common/vectorDB/opengauss/fullText';
-import { OceanBaseFullTextAdapter } from '@fastgpt/service/common/vectorDB/oceanbase/fullText';
 
 describe('SQL full-text external analyzer', () => {
   it('uses jieba search mode so abbreviations and full names share terms', async () => {
@@ -121,18 +118,10 @@ describe('SQL full-text external analyzer', () => {
     ]);
   });
 
-  it('keeps every provider analyzer version in sync with the shared schema and analyzer signature', () => {
-    const versions = [
-      PG_FULL_TEXT_ANALYZER_VERSION,
-      OPENGAUSS_FULL_TEXT_ANALYZER_VERSION,
-      new OceanBaseFullTextAdapter('oceanbase').analyzerVersion,
-      new OceanBaseFullTextAdapter('seekdb').analyzerVersion
-    ];
-    expect([...versions].sort()).toEqual(
-      [...SqlFullTextMetadataSchema.shape.analyzerVersion.options].sort()
+  it('shares one analyzer version across providers', () => {
+    expect(SqlFullTextMetadataSchema.shape.analyzerVersion.value).toBe(
+      SQL_FULL_TEXT_ANALYZER_VERSION
     );
-    for (const version of versions)
-      expect(version.endsWith(SQL_FULL_TEXT_EXTERNAL_ANALYZER)).toBe(true);
   });
 
   it('lazily initializes native Jieba only when tokenizing non-empty cleaned text', async () => {
