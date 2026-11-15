@@ -80,6 +80,32 @@ vi.stubGlobal('window', {
 vi.stubGlobal('location', mockLocation);
 
 describe('request utils', () => {
+  it.each([false, true])(
+    'allows independent share requests after session cleanup (query=%s)',
+    async (query) => {
+      browserSession.stop();
+      const auth = { shareId: 'share', outLinkUid: 'viewer' };
+      const send = vi
+        .spyOn(instance, 'request')
+        .mockResolvedValue({ data: { code: 200, data: 'shared' } });
+      try {
+        const data = { outLinkAuthData: query ? JSON.stringify(auth) : auth };
+        await expect(
+          query ? GET('/core/chat/outLink/init', data) : POST('/core/ai/sandbox/getTicket', data)
+        ).resolves.toBe('shared');
+        expect(send).toHaveBeenCalledOnce();
+        expect(send.mock.calls[0][0].headers).not.toHaveProperty('x-fastgpt-session-context');
+        await expect(
+          POST('/core/ai/sandbox/getTicket', { outLinkAuthData: { shareId: 'incomplete' } })
+        ).rejects.toThrow('Ignore request from an old session context');
+        expect(send).toHaveBeenCalledOnce();
+      } finally {
+        send.mockRestore();
+        browserSession.observe(null, { login: true });
+      }
+    }
+  );
+
   it('keeps a successful password response usable when an overlapping request sees stale cookies', async () => {
     const now = Date.now();
     const session = {

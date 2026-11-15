@@ -4,6 +4,48 @@ import { SessionCoordinator } from '@fastgpt/web/common/auth/sessionCoordinator'
 import { SessionErrEnum } from '@fastgpt/global/common/error/code/session';
 
 describe('session-aware fetch and SSE handshake', () => {
+  it.each(['body', 'query'] as const)(
+    'does not bind independent share %s requests to a stopped user session',
+    async (transport) => {
+      const coordinator = new SessionCoordinator({
+        request: async () => {
+          throw new Error('must not refresh');
+        }
+      });
+      coordinator.stop();
+      const auth = { shareId: 'share', outLinkUid: 'viewer' };
+      const fetchImpl = vi.fn<typeof fetch>(
+        async () => new Response('event: answer\ndata: shared\n\n')
+      );
+      const fetcher = createSessionFetch({ coordinator, fetchImpl });
+      const response = await fetcher(
+        transport === 'query'
+          ? `https://fastgpt.test/api/core/chat/resume?outLinkAuthData=${encodeURIComponent(JSON.stringify(auth))}`
+          : 'https://fastgpt.test/api/v2/chat/completions',
+        transport === 'body'
+          ? {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ outLinkAuthData: auth })
+            }
+          : {}
+      );
+      expect(await response.text()).toContain('shared');
+      expect(fetchImpl).toHaveBeenCalledOnce();
+      const sent = fetchImpl.mock.calls[0][0] as Request;
+      expect(sent.headers.has('x-fastgpt-session-context')).toBe(false);
+      if (transport === 'body') expect(await sent.json()).toEqual({ outLinkAuthData: auth });
+      await expect(
+        fetcher('https://fastgpt.test/api/v2/chat/completions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ outLinkAuthData: { shareId: 'incomplete' } })
+        })
+      ).rejects.toThrow('context changed');
+      expect(fetchImpl).toHaveBeenCalledOnce();
+    }
+  );
+
   const createCoordinator = (onRefresh: () => void) =>
     new SessionCoordinator({
       now: () => 0,

@@ -1,3 +1,4 @@
+import { shouldCoordinateSession } from './sessionRequest';
 import type { SessionCoordinator } from './sessionCoordinator';
 import { getSessionContextHeaders } from './sessionCoordinator';
 
@@ -16,7 +17,19 @@ export const createSessionFetch =
   async (input, init) => {
     const template = new Request(input, init);
     const headers = new Headers(template.headers);
-    if (headers.has('authorization') || headers.has('token') || headers.has('rootkey'))
+    let data: unknown;
+    // 现有 SSE / JSON 请求显式传入字符串 Body；同步检查不消费上传流，也不引入发送前身份切换窗口。
+    if (
+      typeof init?.body === 'string' &&
+      headers.get('content-type')?.includes('application/json')
+    ) {
+      try {
+        data = JSON.parse(init.body);
+      } catch {
+        /* 非 JSON Body 保持原传输错误语义。 */
+      }
+    }
+    if (!shouldCoordinateSession(template.url, { headers: Object.fromEntries(headers), data }))
       return fetchImpl(template);
     const snapshot = await coordinator.beforeRequest({ signal: template.signal });
     for (const [key, value] of Object.entries(getSessionContextHeaders(snapshot)))

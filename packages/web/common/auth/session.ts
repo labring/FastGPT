@@ -72,36 +72,6 @@ export const observeSessionHeader = (
   }
 };
 
-/** 公共登录入口、会话接口及显式其他凭证不进入当前浏览器 Session 的刷新链。 */
-export const shouldCoordinateSession = (
-  url: string,
-  { headers, data }: { headers?: Record<string, string>; data?: unknown } = {}
-) => {
-  // 公共启动配置决定登录表单能否显示，退出后的初始化和网络恢复重试也必须可以发送。
-  if (/\/(?:proApi\/)?common\/system\/getInitData(?:\?|$)/.test(url)) return false;
-  // 同一个发送入口也服务于登录态下的绑定通知；仅注册和找回密码绕过 Session 协调。
-  if (
-    /\/(?:proApi\/)?support\/user\/inform\/sendAuthCode(?:\?|$)/.test(url) &&
-    data &&
-    typeof data === 'object' &&
-    'type' in data &&
-    (data.type === 'register' || data.type === 'findPassword')
-  )
-    return false;
-  if (
-    Object.keys(headers ?? {}).some((key) =>
-      ['authorization', 'token', 'rootkey'].includes(key.toLowerCase())
-    )
-  )
-    return false;
-  return !/\/(?:proApi\/)?support\/user\/account\/(?:session\/|preLogin|login[^/]*|captcha\/|register\/|password\/updateByCode)/.test(
-    url
-  );
-};
-
-export const isSessionLoginResponse = (url: string) =>
-  /\/support\/user\/account\/(?:login[^/]*|register\/|password\/updateByCode)/.test(url);
-
 // 页面挂起时单调时钟可能暂停，恢复前台 / 网络后重新向服务端校准，不使用后台保活定时器。
 if (typeof window !== 'undefined' && typeof document !== 'undefined') {
   const synchronize = () => {

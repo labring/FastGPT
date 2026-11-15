@@ -16,12 +16,11 @@ import { getAuthLoginRedirectPath } from '@/web/support/user/loginRedirect/url';
 import { getLanguageRequestHeaders } from '@fastgpt/web/i18n/utils';
 import { ToastHandledError } from '@fastgpt/global/common/error/utils';
 import { isLogoutInProgress } from '@/web/support/user/logoutState';
+import { browserSession, observeSessionHeader } from '@fastgpt/web/common/auth/session';
 import {
-  browserSession,
-  observeSessionHeader,
   shouldCoordinateSession,
   isSessionLoginResponse
-} from '@fastgpt/web/common/auth/session';
+} from '@fastgpt/web/common/auth/sessionRequest';
 import {
   SessionRequestContextChangedError,
   getSessionContextHeaders,
