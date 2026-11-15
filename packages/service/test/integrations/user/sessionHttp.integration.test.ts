@@ -380,6 +380,32 @@ describe('Session HTTP pipeline with real Mongo and Redis', () => {
     expect(await getUserSessionCount(userId)).toBe(1);
   });
 
+  it.each([true, false])(
+    'identifies stale cookies before credential lookup (context header=%s)',
+    async (withContext) => {
+      const original = await createUserSession({ userId, teamId, tmbId, isRoot: false });
+      const next = await withUserLock(userId, async () =>
+        rekeyUserSession({ sessionId: original.session!.sessionId })
+      );
+      const headers = {
+        cookie: cookie(original),
+        ...(withContext ? { [SESSION_CONTEXT_HEADER]: `${original.session!.sessionId}.1` } : {})
+      };
+      for (const path of ['/business', '/refresh']) {
+        const result = await request(path, {
+          method: path === '/refresh' ? 'POST' : 'GET',
+          ...(path === '/refresh' ? { body: '{}' } : {}),
+          headers
+        });
+        expect(result.response.status).toBe(409);
+        expect(result.body.statusText).toBe(SessionErrEnum.contextChanged);
+        expect(result.response.headers.getSetCookie()).toEqual([]);
+      }
+      const current = await request('/business', { headers: { cookie: cookie(next) } });
+      expect(current.response.status).toBe(200);
+    }
+  );
+
   it('never revives a device when HTTP logout races an HTTP refresh using the same Refresh', async () => {
     const pair = await createUserSession({ userId, teamId, tmbId, isRoot: false });
     const headers = { 'content-type': 'application/json', 'x-fastgpt-session-transport': 'header' };

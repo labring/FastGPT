@@ -7,6 +7,7 @@ import {
   requestFinish,
   checkRes,
   responseError,
+  responseSuccess,
   AUTH_ERROR_EVENT_NAME,
   GET,
   POST,
@@ -66,7 +67,8 @@ vi.mock('../../../../src/web/common/system/useSystemStore', () => ({
 const mockLocation = {
   pathname: '/test',
   replace: vi.fn(),
-  search: ''
+  search: '',
+  reload: vi.fn()
 };
 const dispatchEventMock = vi.fn();
 const tokenErrorCode = Number(Object.keys(TOKEN_ERROR_CODE)[0]);
@@ -78,6 +80,65 @@ vi.stubGlobal('window', {
 vi.stubGlobal('location', mockLocation);
 
 describe('request utils', () => {
+  it('keeps a successful password response usable when an overlapping request sees stale cookies', async () => {
+    const now = Date.now();
+    const session = {
+      sessionId: 'user:password',
+      serverTime: now,
+      createdAt: now,
+      accessExpiresAt: now + 900_000,
+      refreshExpiresAt: now + 604_800_000,
+      absoluteExpiresAt: now + 2_592_000_000,
+      generation: 1,
+      contextVersion: 1
+    };
+    browserSession.observe(session, { login: true });
+    let release!: () => void;
+    let arrived!: () => void;
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const started = new Promise<void>((resolve) => {
+      arrived = resolve;
+    });
+    const send = vi.spyOn(instance, 'request').mockImplementation(async (config) => {
+      if (config.url?.endsWith('/password/update')) {
+        arrived();
+        await held;
+        return responseSuccess({
+          data: { code: 200, data: 'changed' },
+          config,
+          headers: {
+            'x-fastgpt-session': JSON.stringify({ ...session, generation: 2, contextVersion: 2 })
+          }
+        } as Parameters<typeof responseSuccess>[0]);
+      }
+      throw { code: 409, statusText: 'session_context_changed' };
+    });
+    const changing = POST('/support/user/account/password/update', {});
+    await started;
+    const overlap = GET('/test/read');
+    const rejected = expect(overlap).rejects.toThrow('Ignore request from an old session context');
+    try {
+      await vi.waitFor(() => expect(send).toHaveBeenCalledTimes(2));
+      expect(mockLocation.reload).not.toHaveBeenCalled();
+      release();
+      await expect(changing).resolves.toBe('changed');
+      await rejected;
+      expect(mockLocation.reload).not.toHaveBeenCalled();
+      expect(clearToken).not.toHaveBeenCalled();
+      expect(browserSession.hasSession).toBe(true);
+      expect(browserSession.contextHeaders).toEqual({
+        'x-fastgpt-session-context': 'user:password.2'
+      });
+    } finally {
+      release();
+      await Promise.allSettled([changing, overlap]);
+      send.mockRestore();
+      browserSession.observe(null, { login: true });
+    }
+  });
+
   it('allows public initialization and network recovery while logged out', async () => {
     browserSession.stop();
     const send = vi

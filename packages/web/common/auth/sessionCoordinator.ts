@@ -75,6 +75,7 @@ export class SessionCoordinator {
   private stopped = false;
   private refreshPromise?: Promise<void>;
   private initializePromise?: Promise<void>;
+  private readonly contextMutations = new Set<Promise<void>>();
   private retryAt = 0;
   private lastRefreshFailure?: unknown;
   private stoppedContext?: Pick<SessionLifecycle, 'sessionId' | 'contextVersion'>;
@@ -107,6 +108,36 @@ export class SessionCoordinator {
     this.stop();
     this.onContextChanged?.();
     throw new SessionRequestContextChangedError();
+  }
+
+  /** 本页改密 / 切团队需先安装响应 Cookie；等待后仍是原上下文，才按外部变更重载。 */
+  private async rejectContextChange(
+    snapshot: SessionRequestSnapshot,
+    signal?: AbortSignal
+  ): Promise<never> {
+    this.assertContext(snapshot);
+    if (this.contextMutations.size)
+      await this.wait(
+        Promise.all([...this.contextMutations]).then(() => {}),
+        signal
+      );
+    this.assertContext(snapshot);
+    return this.rejectRemoteContextChange();
+  }
+
+  /** 仅跟踪已进入 HTTP 发送阶段的上下文变更，避免其自身预刷新等待自身形成死锁。 */
+  async trackContextMutation<T>(send: () => Promise<T>): Promise<T> {
+    let finish!: () => void;
+    const pending = new Promise<void>((resolve) => {
+      finish = resolve;
+    });
+    this.contextMutations.add(pending);
+    try {
+      return await send();
+    } finally {
+      this.contextMutations.delete(pending);
+      finish();
+    }
   }
 
   private observeRemoteSession(session: SessionLifecycle | null, elapsedMs: number) {
@@ -152,6 +183,7 @@ export class SessionCoordinator {
       // 旧请求仍由自己的快照拒绝，但新上下文不能继续等待旧登录的初始化或刷新。
       this.initializePromise = undefined;
       this.refreshPromise = undefined;
+      this.contextMutations.clear();
     }
     if (login) {
       this.stopped = false;
@@ -281,12 +313,12 @@ export class SessionCoordinator {
         if (!result.session) throw new Error('Missing refreshed session lifecycle');
         this.observeRemoteSession(result.session, this.now() - started);
       })
-      .catch((error) => {
+      .catch(async (error) => {
         if (
           snapshot.epoch === this.epoch &&
           getSessionErrorReason(error) === SessionErrEnum.contextChanged
         )
-          this.rejectRemoteContextChange();
+          return this.rejectContextChange(snapshot);
         if (snapshot.epoch === this.epoch) {
           this.lastRefreshFailure = error;
           this.retryAt = this.now() + 3000;
@@ -361,8 +393,7 @@ export class SessionCoordinator {
     { snapshot, signal }: { snapshot: SessionRequestSnapshot; signal?: AbortSignal }
   ): Promise<boolean> {
     if (getSessionErrorReason(error) === SessionErrEnum.contextChanged) {
-      this.assertContext(snapshot);
-      this.rejectRemoteContextChange();
+      return this.rejectContextChange(snapshot, signal);
     }
     if (!isRecoverableSessionError(error)) {
       if (!snapshot.sessionId || !isTerminalSessionError(error)) return false;

@@ -316,27 +316,31 @@ function request(
 
   const send = (snapshot?: SessionRequestSnapshot) => {
     if (snapshot) browserSession.assertRequestContext(snapshot);
-    return instance
-      .request({
-        baseURL: getWebReqUrl('/api'),
-        url,
-        method,
-        data: shouldSendBody ? data : undefined,
-        params: shouldSendBody ? undefined : data,
-        signal: cancelToken?.signal ?? abortSignal,
-        withCredentials,
-        ...config,
-        headers: { ...config.headers, ...getSessionContextHeaders(snapshot) }
-      })
-      .then(async (res) => {
-        const result = await checkRes(res.data);
-        if (snapshot)
-          browserSession.assertResponseContext(
-            snapshot,
-            isSessionContextMutation(url) ? res.headers['x-fastgpt-session'] : undefined
-          );
-        return result;
-      });
+    const dispatch = () =>
+      instance
+        .request({
+          baseURL: getWebReqUrl('/api'),
+          url,
+          method,
+          data: shouldSendBody ? data : undefined,
+          params: shouldSendBody ? undefined : data,
+          signal: cancelToken?.signal ?? abortSignal,
+          withCredentials,
+          ...config,
+          headers: { ...config.headers, ...getSessionContextHeaders(snapshot) }
+        })
+        .then(async (res) => {
+          const result = await checkRes(res.data);
+          if (snapshot)
+            browserSession.assertResponseContext(
+              snapshot,
+              isSessionContextMutation(url) ? res.headers['x-fastgpt-session'] : undefined
+            );
+          return result;
+        });
+    return isSessionContextMutation(url)
+      ? browserSession.trackContextMutation(dispatch)
+      : dispatch();
   };
 
   const perform = async () => {

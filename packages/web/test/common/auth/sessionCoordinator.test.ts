@@ -14,6 +14,50 @@ describe('browser session pre-refresh coordination', () => {
     generation: 1,
     contextVersion: 1
   });
+  it.each(['business', 'refresh'] as const)(
+    'waits for this page to install a rekey response before handling %s context errors',
+    async (source) => {
+      let reloaded = false;
+      const coordinator = new SessionCoordinator({
+        now: () => 0,
+        onContextChanged: () => {
+          reloaded = true;
+        },
+        request: async () => {
+          throw { statusText: SessionErrEnum.contextChanged };
+        }
+      });
+      const original = lifecycle();
+      coordinator.observe(original);
+      const snapshot = await coordinator.beforeRequest();
+      let release!: () => void;
+      const delayedResponse = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      const commit = async () => {
+        await delayedResponse;
+        coordinator.observe({ ...original, contextVersion: 2, generation: 2 });
+      };
+      const changing = coordinator.trackContextMutation(commit);
+      if (source === 'refresh') coordinator.observe({ ...original, accessExpiresAt: 61_000 });
+      const oldRequest =
+        source === 'business'
+          ? coordinator.recover({ statusText: SessionErrEnum.contextChanged }, { snapshot })
+          : coordinator.beforeRequest();
+      const rejected = expect(oldRequest).rejects.toThrow('context changed');
+      await Promise.resolve();
+      await Promise.resolve();
+      const wasReloadedBeforeCookies = reloaded;
+      release();
+      await changing;
+      await rejected;
+      expect(wasReloadedBeforeCookies).toBe(false);
+      expect(reloaded).toBe(false);
+      expect(coordinator.hasSession).toBe(true);
+      expect(coordinator.contextHeaders).toEqual({ 'x-fastgpt-session-context': 'user:device.2' });
+    }
+  );
+
   it('coalesces concurrent pre-refresh and lets every original request continue with one successor', async () => {
     let now = 0;
     let calls = 0;

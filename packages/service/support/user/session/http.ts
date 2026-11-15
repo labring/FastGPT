@@ -10,7 +10,8 @@ import Cookie from 'cookie';
 import { createHash } from 'node:crypto';
 import {
   SESSION_SELECTOR_COOKIE_NAME,
-  SESSION_REFRESH_COOKIE_NAME
+  SESSION_REFRESH_COOKIE_NAME,
+  SESSION_CONTEXT_HEADER
 } from '@fastgpt/global/support/user/session/constants';
 import { sessionTokenCache } from '../session';
 
@@ -46,9 +47,26 @@ export const readSelectedSessionCookies = async (req: NodeHttpRequest) => {
   if (!/^[\w-]+:[\w-]+$/.test(sessionId)) throw new Error(SessionErrEnum.accessInvalid);
   const data = await sessionTokenCache.get(sessionId);
   if (!data) throw new Error(SessionErrEnum.revoked);
+  // 重签已提交但新 Cookie 尚未安装时，旧请求属于上下文变化，不能误报凭证缺失导致退出。
+  assertSessionContext(req.headers[SESSION_CONTEXT_HEADER], {
+    sessionId,
+    contextVersion: data.contextVersion
+  });
   const names = getSessionCookieNames(sessionId, data.contextVersion);
   const access = cookies[names.access];
   const refresh = cookies[names.refresh];
+  if (
+    !access &&
+    !refresh &&
+    Object.keys(cookies).some(
+      (name) =>
+        name !== names.access &&
+        name !== names.refresh &&
+        (name.startsWith(`fastgpt_access_${names.tag}_`) ||
+          name.startsWith(`fastgpt_refresh_${names.tag}_`))
+    )
+  )
+    throw new Error(SessionErrEnum.contextChanged);
   return {
     cookies,
     accessToken: access?.startsWith(`at.${sessionId}.${data.contextVersion}.`) ? access : undefined,
