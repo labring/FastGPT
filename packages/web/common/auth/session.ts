@@ -59,14 +59,18 @@ export const fetchWithSession: typeof fetch = (input, init) => {
   return sessionFetch(input, init);
 };
 
-/** 登录与显式凭证变更响应的公开时间元数据，禁止从 Cookie 读取任何凭证。 */
+/** 接收公开元数据；新登录立即初始化窄路径 status，清理只有该路径才能收到的旧 Refresh Cookie。 */
 export const observeSessionHeader = (
   value: unknown,
   { login = false }: { login?: boolean } = {}
 ) => {
   if (typeof value !== 'string') return;
   try {
-    browserSession.observe(JSON.parse(value), { login });
+    const parsed = JSON.parse(value);
+    const session = parsed === null ? null : SessionLifecycleSchema.parse(parsed);
+    browserSession.observe(session, { login });
+    // 即使旧 Access 已过期且用户频繁重新登录，也不能让旧 Refresh 一直积累到 Header 上限。
+    if (login && typeof window !== 'undefined') void browserSession.synchronize().catch(() => {});
   } catch {
     /* 展示元数据损坏不替代真实服务端鉴权。 */
   }
