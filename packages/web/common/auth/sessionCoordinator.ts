@@ -16,6 +16,15 @@ export type SessionRequestSnapshot = {
   refreshFailure?: unknown;
 };
 
+/** 使用所有受支持浏览器都有的 aborted 状态检查取消，保留原因并兼容没有 reason 的旧实现。 */
+export const throwIfSessionRequestAborted = (signal?: AbortSignal) => {
+  if (!signal?.aborted) return;
+  if (signal.reason !== undefined && signal.reason !== null) throw signal.reason;
+  const error = new Error('Session request aborted');
+  error.name = 'AbortError';
+  throw error;
+};
+
 /** 非认证上下文约束，防止跨标签页 Cookie 已变化时旧请求在新团队 / 新账号下执行。 */
 export const getSessionContextHeaders = (
   snapshot?: Pick<SessionRequestSnapshot, 'sessionId' | 'contextVersion'>
@@ -206,6 +215,8 @@ export class SessionCoordinator {
       this.refreshPromise = undefined;
     }
     if (login) {
+      // 显式新登录解除上一登录的等待；旧 Token 无 sessionId，不能仅靠 undefined 区分归属。
+      this.contextMutations.clear();
       this.stopped = false;
       this.stoppedContext = undefined;
     }
@@ -228,6 +239,7 @@ export class SessionCoordinator {
 
   /** 主动退出先阻止新刷新，并使所有旧请求快照失效。 */
   stop() {
+    this.contextMutations.clear();
     if (this.session)
       this.stoppedContext = {
         sessionId: this.session.sessionId,
@@ -298,7 +310,7 @@ export class SessionCoordinator {
 
   /** 取消单个等待者不能中止所有请求共用的刷新；每个监听均在等待完成后清理。 */
   private wait(promise: Promise<void>, signal?: AbortSignal): Promise<void> {
-    signal?.throwIfAborted();
+    throwIfSessionRequestAborted(signal);
     if (!signal) return promise;
     return new Promise((resolve, reject) => {
       const onAbort = () => {
@@ -380,7 +392,7 @@ export class SessionCoordinator {
     initialize = false,
     signal
   }: { initialize?: boolean; signal?: AbortSignal } = {}) {
-    signal?.throwIfAborted();
+    throwIfSessionRequestAborted(signal);
     if (this.stopped) throw new SessionRequestContextChangedError();
     const initialContext = this.snapshot();
     if (this.initializePromise) await this.wait(this.initializePromise, signal);
@@ -402,7 +414,7 @@ export class SessionCoordinator {
         return this.snapshot(error);
       }
     }
-    signal?.throwIfAborted();
+    throwIfSessionRequestAborted(signal);
     this.assertContext(initialContext);
     return this.snapshot();
   }

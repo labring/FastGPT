@@ -4,6 +4,89 @@ import { SessionCoordinator } from '@fastgpt/web/common/auth/sessionCoordinator'
 import { SessionErrEnum } from '@fastgpt/global/common/error/code/session';
 
 describe('session-aware fetch and SSE handshake', () => {
+  it('sends and cancels requests when AbortSignal.throwIfAborted and reason are unavailable', async () => {
+    const descriptor = Object.getOwnPropertyDescriptor(AbortSignal.prototype, 'throwIfAborted')!;
+    Object.defineProperty(AbortSignal.prototype, 'throwIfAborted', {
+      configurable: true,
+      value: undefined
+    });
+    const coordinator = new SessionCoordinator({ request: async () => ({ session: null }) });
+    coordinator.observe(null);
+    const fetchImpl = vi.fn<typeof fetch>(async () => new Response('ready'));
+    const fetcher = createSessionFetch({ coordinator, fetchImpl });
+    try {
+      await expect(
+        (
+          await fetcher('https://fastgpt.test/api/private', {
+            signal: new AbortController().signal
+          })
+        ).text()
+      ).resolves.toBe('ready');
+      const canceled = new AbortController();
+      const reason = new Error('caller canceled');
+      canceled.abort(reason);
+      await expect(
+        fetcher('https://fastgpt.test/api/private', { signal: canceled.signal })
+      ).rejects.toBe(reason);
+      await expect(
+        coordinator.beforeRequest({ signal: { aborted: true } as AbortSignal })
+      ).rejects.toMatchObject({ name: 'AbortError' });
+      expect(fetchImpl).toHaveBeenCalledOnce();
+    } finally {
+      Object.defineProperty(AbortSignal.prototype, 'throwIfAborted', descriptor);
+    }
+  });
+
+  it.each([false, true])(
+    'returns a new login stream while a previous legacy mutation is pending (dual=%s)',
+    async (dual) => {
+      const coordinator = new SessionCoordinator({ request: async () => ({ session: null }) });
+      coordinator.observe(null, { login: true });
+      let release!: () => void;
+      const held = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      const oldMutation = coordinator.trackContextMutation(() => held);
+      coordinator.stop();
+      const now = Date.now();
+      coordinator.observe(
+        dual
+          ? {
+              sessionId: 'user:new-login',
+              serverTime: now,
+              createdAt: now,
+              accessExpiresAt: now + 900_000,
+              refreshExpiresAt: now + 604_800_000,
+              absoluteExpiresAt: now + 2_592_000_000,
+              generation: 1,
+              contextVersion: 1
+            }
+          : null,
+        { login: true }
+      );
+      const fetcher = createSessionFetch({
+        coordinator,
+        fetchImpl: async () =>
+          new Response('event: answer\ndata: current\n\n', {
+            headers: { 'content-type': 'text/event-stream' }
+          })
+      });
+      let delivered = false;
+      const current = fetcher('https://fastgpt.test/api/v2/chat/completions').then((response) => {
+        delivered = true;
+        return response;
+      });
+      try {
+        // 新登录必须自行完成，不能靠旧登录的慢请求结束后才恢复。
+        await vi.waitFor(() => expect(delivered).toBe(true));
+        expect(await (await current).text()).toContain('current');
+      } finally {
+        release();
+        await Promise.allSettled([oldMutation, current]);
+      }
+    }
+  );
+
   it.each(['body', 'query'] as const)(
     'does not bind independent share %s requests to a stopped user session',
     async (transport) => {

@@ -1,6 +1,6 @@
 import { shouldCoordinateSession } from './sessionRequest';
 import type { SessionCoordinator } from './sessionCoordinator';
-import { getSessionContextHeaders } from './sessionCoordinator';
+import { getSessionContextHeaders, throwIfSessionRequestAborted } from './sessionCoordinator';
 
 /**
  * fetch / SSE 共用认证恢复。只识别 HTTP JSON 拒绝或 SSE 首事件的明确 Access 错误，
@@ -132,6 +132,6 @@ export const createSessionFetch =
     if (!(await coordinator.recover(first.error, { snapshot, signal: template.signal })))
       return validate(first.response);
     void first.response.body?.cancel().catch(() => {});
-    template.signal.throwIfAborted();
+    throwIfSessionRequestAborted(template.signal);
     return validate(await send());
   };
