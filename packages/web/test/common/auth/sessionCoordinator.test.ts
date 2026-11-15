@@ -280,4 +280,31 @@ describe('browser session pre-refresh coordination', () => {
       }
     }
   );
+  it.each(['login', 'team'] as const)(
+    'rejects an old queued request when pre-refresh fails after a %s transition',
+    async (change) => {
+      let reject!: (error: Error) => void;
+      const coordinator = new SessionCoordinator({
+        now: () => 0,
+        request: () =>
+          new Promise((_, fail) => {
+            reject = fail;
+          })
+      });
+      coordinator.observe({ ...lifecycle(), accessExpiresAt: 31_000 });
+      const queued = coordinator.beforeRequest();
+      const rejected = expect(queued).rejects.toThrow('context changed');
+      coordinator.observe(
+        {
+          ...lifecycle(),
+          sessionId: change === 'login' ? 'user:new-device' : 'user:device',
+          contextVersion: 2
+        },
+        { login: change === 'login' }
+      );
+      reject(new Error('offline'));
+      await rejected;
+      await expect(coordinator.beforeRequest()).resolves.toMatchObject({ contextVersion: 2 });
+    }
+  );
 });

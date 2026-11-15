@@ -111,10 +111,14 @@ export const createSessionFetch =
         throw error;
       }
     };
-    const first = await inspectResponse(validate(await fetchImpl(template.clone())));
+    const send = () => {
+      coordinator.assertRequestContext(snapshot);
+      return fetchImpl(template.clone());
+    };
+    const first = await inspectResponse(validate(await send()));
     if (!(await coordinator.recover(first.error, { snapshot, signal: template.signal })))
       return validate(first.response);
     void first.response.body?.cancel().catch(() => {});
     template.signal.throwIfAborted();
-    return validate(await fetchImpl(template.clone()));
+    return validate(await send());
   };

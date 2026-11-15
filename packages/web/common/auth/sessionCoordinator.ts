@@ -215,6 +215,11 @@ export class SessionCoordinator {
       throw new SessionRequestContextChangedError();
   }
 
+  /** HTTP 真正发送前再次验证准备阶段的快照，覆盖 await 到发送之间的身份变化。 */
+  assertRequestContext(snapshot: SessionRequestSnapshot) {
+    this.assertContext(snapshot);
+  }
+
   /**
    * 成功响应交给业务层前也要校验上下文，防止旧用户 / 团队的数据回写新页面。
    * 自身改密 / 切团队可以提交新上下文，但其响应必须仍对应当前已观察到的同一 Session。
@@ -328,10 +333,13 @@ export class SessionCoordinator {
     const initialContext = this.snapshot();
     if (this.initializePromise) await this.wait(this.initializePromise, signal);
     else if (initialize && this.session === undefined) await this.wait(this.synchronize(), signal);
+    this.assertContext(initialContext);
     if (this.session && this.deadline - this.now() <= SESSION_PREFRESH_MS) {
       try {
         await this.wait(this.refresh(), signal);
       } catch (error) {
+        // 只允许原身份在自身 AT 仍有效时降级，不能借新登录的期限放行旧业务。
+        this.assertContext(initialContext);
         if (
           signal?.aborted ||
           error instanceof SessionRequestContextChangedError ||
@@ -343,7 +351,7 @@ export class SessionCoordinator {
       }
     }
     signal?.throwIfAborted();
-    if (initialContext.sessionId) this.assertContext(initialContext);
+    this.assertContext(initialContext);
     return this.snapshot();
   }
 

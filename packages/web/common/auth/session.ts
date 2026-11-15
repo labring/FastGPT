@@ -77,6 +77,8 @@ export const shouldCoordinateSession = (
   url: string,
   { headers, data }: { headers?: Record<string, string>; data?: unknown } = {}
 ) => {
+  // 公共启动配置决定登录表单能否显示，退出后的初始化和网络恢复重试也必须可以发送。
+  if (/\/(?:proApi\/)?common\/system\/getInitData(?:\?|$)/.test(url)) return false;
   // 同一个发送入口也服务于登录态下的绑定通知；仅注册和找回密码绕过 Session 协调。
   if (
     /\/(?:proApi\/)?support\/user\/inform\/sendAuthCode(?:\?|$)/.test(url) &&

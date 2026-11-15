@@ -78,6 +78,61 @@ vi.stubGlobal('window', {
 vi.stubGlobal('location', mockLocation);
 
 describe('request utils', () => {
+  it('allows public initialization and network recovery while logged out', async () => {
+    browserSession.stop();
+    const send = vi
+      .spyOn(instance, 'request')
+      .mockRejectedValueOnce(new Error('offline'))
+      .mockResolvedValueOnce({
+        data: { code: 200, data: { feConfigs: { systemTitle: 'Recovered' } } }
+      });
+    try {
+      await expect(GET('/common/system/getInitData')).rejects.toThrow('offline');
+      await expect(GET('/common/system/getInitData')).resolves.toMatchObject({
+        feConfigs: { systemTitle: 'Recovered' }
+      });
+      expect(send).toHaveBeenCalledTimes(2);
+    } finally {
+      send.mockRestore();
+      browserSession.observe(null, { login: true });
+    }
+  });
+
+  it('rejects before dispatch if login changes while an unknown-session snapshot is being prepared', async () => {
+    browserSession.observe(null, { login: true });
+    const snapshot = await browserSession.beforeRequest();
+    const prepare = vi.spyOn(browserSession, 'beforeRequest').mockImplementation(async () => {
+      const now = Date.now();
+      browserSession.observe(
+        {
+          sessionId: 'user:new-device',
+          serverTime: now,
+          createdAt: now,
+          accessExpiresAt: now + 900_000,
+          refreshExpiresAt: now + 604_800_000,
+          absoluteExpiresAt: now + 2_592_000_000,
+          generation: 1,
+          contextVersion: 1
+        },
+        { login: true }
+      );
+      return snapshot;
+    });
+    const send = vi
+      .spyOn(instance, 'request')
+      .mockResolvedValue({ data: { code: 200, data: 'must not execute' } });
+    try {
+      await expect(POST('/test/write', { intent: 'old context' })).rejects.toThrow(
+        'Ignore request from an old session context'
+      );
+      expect(send).not.toHaveBeenCalled();
+    } finally {
+      prepare.mockRestore();
+      send.mockRestore();
+      browserSession.observe(null, { login: true });
+    }
+  });
+
   it('keeps notification binding behind authenticated session coordination', async () => {
     browserSession.stop();
     const send = vi.spyOn(instance, 'request');

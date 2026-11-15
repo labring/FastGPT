@@ -314,8 +314,9 @@ function request(
     return existingRequest;
   }
 
-  const send = (snapshot?: SessionRequestSnapshot) =>
-    instance
+  const send = (snapshot?: SessionRequestSnapshot) => {
+    if (snapshot) browserSession.assertRequestContext(snapshot);
+    return instance
       .request({
         baseURL: getWebReqUrl('/api'),
         url,
@@ -336,6 +337,7 @@ function request(
           );
         return result;
       });
+  };
 
   const perform = async () => {
     if (!shouldCoordinateSession(url, { headers: config.headers, data })) return send();

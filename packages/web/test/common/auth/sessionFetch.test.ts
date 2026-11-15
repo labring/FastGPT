@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { createSessionFetch } from '@fastgpt/web/common/auth/sessionFetch';
 import { SessionCoordinator } from '@fastgpt/web/common/auth/sessionCoordinator';
 import { SessionErrEnum } from '@fastgpt/global/common/error/code/session';
@@ -118,4 +118,71 @@ describe('session-aware fetch and SSE handshake', () => {
     release();
     await rejection;
   });
+  it('checks the prepared epoch before sending an initially unknown-session request', async () => {
+    const coordinator = createCoordinator(() => {});
+    const snapshot = await coordinator.beforeRequest();
+    vi.spyOn(coordinator, 'beforeRequest').mockImplementation(async () => {
+      coordinator.observe(
+        {
+          sessionId: 'user:new-device',
+          serverTime: 1000,
+          createdAt: 1000,
+          accessExpiresAt: 901_000,
+          refreshExpiresAt: 1_000_000,
+          absoluteExpiresAt: 2_000_000,
+          generation: 1,
+          contextVersion: 1
+        },
+        { login: true }
+      );
+      return snapshot;
+    });
+    const send = vi.fn(async () => new Response('must not execute'));
+    const fetcher = createSessionFetch({ coordinator, fetchImpl: send });
+    await expect(
+      fetcher('https://fastgpt.test/write', { method: 'POST', body: 'old payload' })
+    ).rejects.toThrow('context changed');
+    expect(send).not.toHaveBeenCalled();
+  });
+
+  it.each(['login', 'team'] as const)(
+    'does not send a queued write with replacement credentials after a %s and refresh outage',
+    async (change) => {
+      let reject!: (error: Error) => void;
+      const coordinator = new SessionCoordinator({
+        now: () => 0,
+        request: () =>
+          new Promise((_, fail) => {
+            reject = fail;
+          })
+      });
+      const session = {
+        sessionId: 'user:device',
+        serverTime: 1000,
+        createdAt: 1000,
+        accessExpiresAt: 31_000,
+        refreshExpiresAt: 1_000_000,
+        absoluteExpiresAt: 2_000_000,
+        generation: 1,
+        contextVersion: 1
+      };
+      coordinator.observe(session);
+      const send = vi.fn(async () => new Response('must not execute'));
+      const fetcher = createSessionFetch({ coordinator, fetchImpl: send });
+      const queued = fetcher('https://fastgpt.test/write', { method: 'POST', body: 'old payload' });
+      const rejected = expect(queued).rejects.toThrow('context changed');
+      coordinator.observe(
+        {
+          ...session,
+          sessionId: change === 'login' ? 'user:new-device' : session.sessionId,
+          contextVersion: 2,
+          accessExpiresAt: 901_000
+        },
+        { login: change === 'login' }
+      );
+      reject(new Error('offline'));
+      await rejected;
+      expect(send).not.toHaveBeenCalled();
+    }
+  );
 });
