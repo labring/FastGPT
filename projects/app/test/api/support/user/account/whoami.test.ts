@@ -5,7 +5,6 @@ import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import whoamiDefaultHandler, { handler } from '@/pages/api/support/user/account/whoami';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 import { SESSION_TTL_SECONDS } from '@fastgpt/dal/redis/caches';
-import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { ApiKeyTypeEnum } from '@fastgpt/global/support/openapi/constants';
 import { AccountCancellationStatus } from '@fastgpt/global/support/user/account/cancellation/constants';
