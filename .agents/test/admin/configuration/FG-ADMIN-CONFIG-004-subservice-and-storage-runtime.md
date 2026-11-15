@@ -104,6 +104,7 @@ baseline: "e3c79af52eb772e7318e829f0cadcce558bd9a40"
 | C10 | 基础；MCP mock 可用，D0 | 打开 `/admin/subservice/mcp`，启用开关、把 `subservice.mcp.sseProxyUrl` 设为 MCP mock 地址并保存；点击页面连通测试并读取初始化配置及工作台 SSE 发布选项。再关闭开关保存并重复读取，最后重新开启检查地址是否保留。 |
 | C11 | 页面/异常；D0 | 核对子服务菜单无 Plugin/AI Proxy，MCP 名称为“MCP SSE 服务”。分别关闭 Code Sandbox/MCP 后检查隐藏字段；开启后尝试空字段保存，再填写合法 URL/Token 保存并刷新；探测有效服务、错误 Token、普通 HTTP 冒充服务和不可达地址。提交 query/hash/账号密码或非 HTTP(S) 的 base URL，观察拒绝；探测中修改 URL/Token，旧结果不得覆盖当前输入。 |
 | C12 | 边界；商业版隔离 App 和 OpenSandbox 协议 mock | 依次通过真实配置 API 设置 `agentSandbox.common.npmRegistry/pypiIndexUrl/aptMirror` 为受控值 A、B、空值；每次等待配置刷新，再以同一 App/chat 调用包含 `useAgentSandbox=true` ToolCall 节点的 workflow debug，读取 mock 中的文件、备份、来源标记与运行态状态。B 生效后人工改写一个受管的自建文件，再清空配置。结束后按本轮 ID 清理模型、会话和沙箱记录并恢复配置。 |
+| C13 | 边界；独立知识库数据块引用本轮对象 | 设置 `storage.fileUrlExpiredDays=0.5`，经真实集合导出生成图片短链；再设为 `1.5`，对同一数据块重复导出，解析短链过期时刻并下载校验对象。恢复配置并清理本轮资源。 |
 
 ## 预期结果
 
@@ -123,3 +124,4 @@ baseline: "e3c79af52eb772e7318e829f0cadcce558bd9a40"
 | C10 | UI + API + DB | 开启且有效地址保存后，DB enabled=true、地址更新，`getInitData` 的 `feConfigs.mcpServerProxyEndpoint` 为新值，页面探测收到符合 MCP SSE 协议的 endpoint 事件后主动断开；工作台出现 SSE 选项。关闭后隐藏地址表单和 SSE 选项，初始化投影不再包含旧地址；再次开启后原地址可回显。HTTP 发布方式始终可用。 | 页面 Toast/测试结果、`getInitData` 响应、subservice 文档。 |
 | C11 | UI + API + DB | 关闭时仅显示启用开关；启用时显示对应 URL，沙箱另显示密码 Token 及一级连通测试按钮。必填为空不得提交；保存刷新正确回显且 Token 为掩码，原有 Agent Sandbox 等兄弟配置保持。有效服务探测成功，错误 Token/协议响应失败，网络错误分类明确且不含凭据；非法 base URL 被拒绝且无配置写入。修改输入后旧探测结果消失，迟到响应不能标记当前输入成功；Plugin/AI Proxy 页面不可访问。 | 截图、脱敏响应、前后 DB 对照、mock 请求与断连记录。 |
 | C12 | API + DB + mock | A、B 两次分别通过真实 SDK 在同一 mock 文件系统写入 npm、pip/uv 与 Debian apt 的对应新地址，原文件备份及来源标记正确；清空后原有文件逐字节恢复、未被用户修改的自建文件删除、B 后人工改写的文件保留。运行态 marker 反映各阶段状态；其他 10 个配置域及非本轮资源不变。测试结束后配置恢复，mock 不再监听且没有本轮沙箱/模型残留。 | 配置 API revision、workflow debug 响应、SDK 协议事件、内存文件/marker 的脱敏比较、Mongo 精确查询及恢复结果。 |
+| C13 | API + DB + storage | 导出的签名有效期以 12/36 小时为输入，按现有 SDK 规则分别向上取整到 1 小时/24 小时分桶；过期时刻须与请求起止时间计算区间一致，不得立即过期；两次均可实际下载且哈希一致，alias 指向本轮对象，配置恢复。 | 导出响应、签名过期值、alias 数据库记录和下载哈希。 |
