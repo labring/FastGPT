@@ -343,7 +343,14 @@ function request(
   };
 
   const perform = async () => {
-    if (!shouldCoordinateSession(url, { headers: config.headers, data })) return send();
+    if (
+      !shouldCoordinateSession(url, {
+        headers: config.headers,
+        data,
+        origin: typeof window === 'undefined' ? undefined : window.location.origin
+      })
+    )
+      return send();
     const snapshot = await browserSession.beforeRequest({
       initialize: /\/(?:tokenLogin|whoami)$/.test(url),
       signal: cancelToken?.signal ?? abortSignal

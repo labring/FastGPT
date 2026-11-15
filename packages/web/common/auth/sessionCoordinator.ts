@@ -110,11 +110,11 @@ export class SessionCoordinator {
     throw new SessionRequestContextChangedError();
   }
 
-  /** 本页改密 / 切团队需先安装响应 Cookie；等待后仍是原上下文，才按外部变更重载。 */
-  private async rejectContextChange(
+  /** 等待同 Session 的本页凭证变更完成；跨账号新登录不等待旧账号的在途响应。 */
+  private async waitForContextMutations(
     snapshot: SessionRequestSnapshot,
     signal?: AbortSignal
-  ): Promise<never> {
+  ): Promise<void> {
     while (true) {
       this.assertContext(snapshot);
       const pending = [...this.contextMutations]
@@ -126,18 +126,35 @@ export class SessionCoordinator {
         signal
       );
     }
+  }
+
+  /** 本页改密 / 切团队需先安装响应 Cookie；等待后仍是原上下文，才按外部变更重载。 */
+  private async rejectContextChange(
+    snapshot: SessionRequestSnapshot,
+    signal?: AbortSignal
+  ): Promise<never> {
+    await this.waitForContextMutations(snapshot, signal);
+    this.assertContext(snapshot);
     return this.rejectRemoteContextChange();
   }
 
   /** 仅跟踪已进入 HTTP 发送阶段的上下文变更，避免其自身预刷新等待自身形成死锁。 */
   async trackContextMutation<T>(send: () => Promise<T>): Promise<T> {
+    const epoch = this.epoch;
     let finish!: () => void;
     const pending = new Promise<void>((resolve) => {
       finish = resolve;
     });
     this.contextMutations.set(pending, this.session?.sessionId);
     try {
-      return await send();
+      const result = await send();
+      // 旧 Token 重签只返回 null 生命周期，也必须废弃旧请求；不能因此把旧登录提升为双 Token。
+      if (!this.stopped && this.epoch === epoch && this.session === null) {
+        this.epoch++;
+        this.initializePromise = undefined;
+        this.refreshPromise = undefined;
+      }
+      return result;
     } finally {
       this.contextMutations.delete(pending);
       finish();
@@ -395,8 +412,11 @@ export class SessionCoordinator {
     error: unknown,
     { snapshot, signal }: { snapshot: SessionRequestSnapshot; signal?: AbortSignal }
   ): Promise<boolean> {
+    // 旧 Token 没有公开 sessionId，仍须在任何失败进入退出逻辑前检查本页凭证变更。
+    await this.waitForContextMutations(snapshot, signal);
+    this.assertContext(snapshot);
     if (getSessionErrorReason(error) === SessionErrEnum.contextChanged) {
-      return this.rejectContextChange(snapshot, signal);
+      return this.rejectRemoteContextChange();
     }
     if (!isRecoverableSessionError(error)) {
       if (!snapshot.sessionId || !isTerminalSessionError(error)) return false;

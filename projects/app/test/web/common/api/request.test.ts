@@ -65,6 +65,7 @@ vi.mock('../../../../src/web/common/system/useSystemStore', () => ({
 
 // Mock window.location
 const mockLocation = {
+  origin: 'https://fastgpt.test',
   pathname: '/test',
   replace: vi.fn(),
   search: '',
@@ -80,6 +81,88 @@ vi.stubGlobal('window', {
 vi.stubGlobal('location', mockLocation);
 
 describe('request utils', () => {
+  it('sends external geolocation requests while stopped and keeps same-origin absolute URLs coordinated', async () => {
+    browserSession.stop();
+    const send = vi
+      .spyOn(instance, 'request')
+      .mockResolvedValue({ data: { code: 200, data: { country: '中国' } } });
+    try {
+      await expect(GET('https://qifu-api.baidubce.com/ip/local/geo/v1/district')).resolves.toEqual({
+        country: '中国'
+      });
+      expect(send).toHaveBeenCalledOnce();
+      expect(send.mock.calls[0][0].headers).not.toHaveProperty('x-fastgpt-session-context');
+      await expect(GET('https://fastgpt.test/api/private')).rejects.toThrow(
+        'Ignore request from an old session context'
+      );
+      expect(send).toHaveBeenCalledOnce();
+    } finally {
+      send.mockRestore();
+      browserSession.observe(null, { login: true });
+    }
+  });
+
+  it.each(['before', 'after'] as const)(
+    'ignores a legacy 401 arriving %s a password rekey response installs its Cookie',
+    async (order) => {
+      browserSession.observe(null, { login: true });
+      let failOld!: (reason: unknown) => void;
+      let release!: () => void;
+      let oldArrived!: () => void;
+      let changeArrived!: () => void;
+      const oldStarted = new Promise<void>((resolve) => {
+        oldArrived = resolve;
+      });
+      const changeStarted = new Promise<void>((resolve) => {
+        changeArrived = resolve;
+      });
+      const held = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      const send = vi.spyOn(instance, 'request').mockImplementation(async (config) => {
+        if (config.url === '/test/old')
+          return new Promise((_, reject) => {
+            failOld = reject;
+            oldArrived();
+          });
+        if (config.url?.endsWith('/password/update')) {
+          changeArrived();
+          await held;
+          return responseSuccess({
+            data: { code: 200, data: 'changed' },
+            config,
+            headers: { 'x-fastgpt-session': 'null' }
+          } as Parameters<typeof responseSuccess>[0]);
+        }
+        return { data: { code: 200, data: 'current' } };
+      });
+      const old = GET('/test/old').then(
+        () => undefined,
+        (error) => error
+      );
+      await oldStarted;
+      const changing = POST('/support/user/account/password/update', {});
+      await changeStarted;
+      try {
+        if (order === 'before') failOld({ code: 401, statusText: 'unAuthorization' });
+        await Promise.resolve();
+        release();
+        await expect(changing).resolves.toBe('changed');
+        if (order === 'after') failOld({ code: 401, statusText: 'unAuthorization' });
+        expect(await old).toBeInstanceOf(ToastHandledError);
+        expect(clearToken).not.toHaveBeenCalled();
+        expect(mockLocation.replace).not.toHaveBeenCalled();
+        await expect(GET('/test/current')).resolves.toBe('current');
+      } finally {
+        release();
+        failOld({ code: 401, statusText: 'unAuthorization' });
+        await Promise.allSettled([old, changing]);
+        send.mockRestore();
+        browserSession.observe(null, { login: true });
+      }
+    }
+  );
+
   it.each([false, true])(
     'allows independent share requests after session cleanup (query=%s)',
     async (query) => {

@@ -6,7 +6,11 @@ import {
 /** 公共登录入口、会话接口及显式其他凭证不进入当前浏览器 Session 的刷新链。 */
 export const shouldCoordinateSession = (
   url: string,
-  { headers, data }: { headers?: Record<string, string>; data?: unknown } = {}
+  {
+    headers,
+    data,
+    origin
+  }: { headers?: Record<string, string>; data?: unknown; origin?: string } = {}
 ) => {
   /** 分享凭证选择独立鉴权通道；这里只决定客户端续约策略，实际授权仍由服务端校验。 */
   const hasOutLinkAuth = (data: unknown) => {
@@ -16,7 +20,10 @@ export const shouldCoordinateSession = (
 
   if (hasOutLinkAuth(data)) return false;
   try {
-    const query = new URL(url, 'http://fastgpt.local').searchParams.get('outLinkAuthData');
+    const target = new URL(url, origin ?? 'http://fastgpt.local');
+    // 第三方公开请求不属于 FastGPT 登录，不能因本页退出或续约失败被阻止。
+    if (origin && target.origin !== new URL(origin).origin) return false;
+    const query = target.searchParams.get('outLinkAuthData');
     if (hasOutLinkAuth({ outLinkAuthData: query })) return false;
   } catch {
     /* 非法 URL 交给传输层处理，不能因此免除 Session 协调。 */

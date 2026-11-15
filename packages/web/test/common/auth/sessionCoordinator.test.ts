@@ -14,6 +14,20 @@ describe('browser session pre-refresh coordination', () => {
     generation: 1,
     contextVersion: 1
   });
+  it('preserves ordinary legacy authentication failures when a credential mutation itself fails', async () => {
+    const coordinator = new SessionCoordinator({ request: async () => ({ session: null }) });
+    coordinator.observe(null);
+    const snapshot = await coordinator.beforeRequest();
+    await expect(
+      coordinator.trackContextMutation(async () => {
+        throw new Error('password rejected');
+      })
+    ).rejects.toThrow('password rejected');
+    await expect(
+      coordinator.recover({ code: 401, statusText: 'unAuthorization' }, { snapshot })
+    ).resolves.toBe(false);
+  });
+
   it.each(['business', 'refresh'] as const)(
     'waits for this page to install a rekey response before handling %s context errors',
     async (source) => {
