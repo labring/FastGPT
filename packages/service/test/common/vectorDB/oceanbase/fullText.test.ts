@@ -171,6 +171,19 @@ describe.each(['oceanbase', 'seekdb'] as const)('%s native full text', (provider
       ).rejects.toThrow('bigint');
     expect(state.query).not.toHaveBeenCalled();
   });
+
+  it('checks physical absence in bounded batches and validates every ID before querying', async () => {
+    const ids = Array.from({ length: 51 }, (_, n) => String(n + 1));
+    state.query.mockResolvedValueOnce([[{ id: '1' }]]).mockResolvedValueOnce([[{ id: '51' }]]);
+    expect(await adapter.findMissingVectorIds(ids)).toEqual(ids.slice(1, 50));
+    expect(state.query).toHaveBeenCalledTimes(2);
+    expect(state.query.mock.calls[0][0]).toContain('WHERE id IN (');
+    expect(state.query.mock.calls[0][1]).toEqual(ids.slice(0, 50));
+    state.query.mockClear();
+    expect(await adapter.findMissingVectorIds([])).toEqual([]);
+    await expect(adapter.findMissingVectorIds(['1', 'bad'])).rejects.toThrow('bigint');
+    expect(state.query).not.toHaveBeenCalled();
+  });
   it('filters before Top-K, binds the analyzed terms and preserves native scores', async () => {
     state.query.mockResolvedValueOnce([
       [{ vectorId: '1', collectionId: 'allowed', score: '1.25' }]

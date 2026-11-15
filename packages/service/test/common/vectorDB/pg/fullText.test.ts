@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto';
 import {
   assertPgFullTextCapability,
   fillPgFullText,
+  findMissingPgVectorIds,
   getPgFullTextMetadata,
   preparePgFullText,
   searchPgFullText
@@ -177,6 +178,23 @@ describe('PG full-text contracts', () => {
     const empty = Array.from({ length: 51 }, () => ({ ...base, tokens: '' }));
     expect([...splitSqlFullTextRows(empty)].map((chunk) => chunk.length)).toEqual([50, 1]);
     expect(await fillPgFullText([])).toEqual([]);
+    expect(PgClient.query).not.toHaveBeenCalled();
+  });
+
+  it('distinguishes physically missing IDs in bounded batches without filtering out foreign-owned rows', async () => {
+    const ids = Array.from({ length: 51 }, (_, n) => String(n + 1));
+    vi.mocked(PgClient.query)
+      .mockResolvedValueOnce({ rows: [{ id: '1' }] } as never)
+      .mockResolvedValueOnce({ rows: [{ id: '51' }] } as never);
+    expect(await findMissingPgVectorIds(ids)).toEqual(ids.slice(1, 50));
+    expect(PgClient.query).toHaveBeenCalledTimes(2);
+    expect(vi.mocked(PgClient.query).mock.calls[0]).toEqual([
+      'SELECT id::text FROM modeldata WHERE id = ANY($1::bigint[])',
+      [ids.slice(0, 50)]
+    ]);
+    vi.mocked(PgClient.query).mockClear();
+    expect(await findMissingPgVectorIds([])).toEqual([]);
+    await expect(findMissingPgVectorIds(['1', 'bad'])).rejects.toThrow('bigint');
     expect(PgClient.query).not.toHaveBeenCalled();
   });
 

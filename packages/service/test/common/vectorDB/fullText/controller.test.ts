@@ -19,6 +19,7 @@ vi.mock('@fastgpt/service/common/vectorDB/pg/fullText', () => ({
   assertPgFullTextCapability: vi.fn(),
   getPgFullTextMetadata: vi.fn(),
   fillPgFullText: vi.fn(),
+  findMissingPgVectorIds: vi.fn(),
   searchPgFullText: vi.fn()
 }));
 vi.mock('@fastgpt/service/common/vectorDB/opengauss/fullText', () => ({
@@ -26,6 +27,7 @@ vi.mock('@fastgpt/service/common/vectorDB/opengauss/fullText', () => ({
   assertOpenGaussFullTextCapability: vi.fn(),
   getOpenGaussFullTextMetadata: vi.fn(),
   fillOpenGaussFullText: vi.fn(),
+  findMissingOpenGaussVectorIds: vi.fn(),
   searchOpenGaussFullText: vi.fn()
 }));
 vi.mock('@fastgpt/service/common/vectorDB/oceanbase/fullText', () => ({

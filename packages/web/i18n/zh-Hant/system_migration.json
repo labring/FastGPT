@@ -55,7 +55,7 @@
   "migrations.20261104_backfill_openapi_key_type.keys": "密鑰類型",
   "migrations.20261104_backfill_openapi_key_type.validation": "驗證回填結果",
   "migrations.20261110_migrate_sql_fulltext.name": "遷移 SQL 向量庫全文檢索",
-  "migrations.20261110_migrate_sql_fulltext.description": "請確認所有 App/Pro 節點已完成升級、舊訓練任務已排空並已準備目前 SQL 向量庫全文能力後再手動執行。分批驗證並回填歷史分詞詞串，最終完整驗收通過後登記目標就緒狀態。透過 DATASET_FULLTEXT_PROVIDER=mongo/native 選擇讀取位置，DATASET_FULLTEXT_DUAL_WRITE 控制原生讀取期間的 Mongo 相容寫入。",
+  "migrations.20261110_migrate_sql_fulltext.description": "請確認所有 App/Pro 節點已完成升級、舊訓練任務已排空並已準備目前 SQL 向量庫全文能力後再手動執行。缺失的向量列會依知識庫模型補建並產生 embedding 用量。分批驗證並回填歷史分詞詞串，最終完整驗收通過後登記目標就緒狀態。透過 DATASET_FULLTEXT_PROVIDER=mongo/native 選擇讀取位置，DATASET_FULLTEXT_DUAL_WRITE 控制原生讀取期間的 Mongo 相容寫入。",
   "migrations.20261110_migrate_sql_fulltext.result": "已回填 {{scanned}} 筆，驗證 {{validated}} 筆",
   "migrations.20261110_migrate_sql_fulltext.prepare": "準備全文結構與索引",
   "migrations.20261110_migrate_sql_fulltext.scan": "回填歷史分詞索引",

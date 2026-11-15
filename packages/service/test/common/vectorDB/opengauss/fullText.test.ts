@@ -8,6 +8,7 @@ import {
   prepareOpenGaussFullText,
   getOpenGaussFullTextMetadata,
   fillOpenGaussFullText,
+  findMissingOpenGaussVectorIds,
   searchOpenGaussFullText
 } from '@fastgpt/service/common/vectorDB/opengauss/fullText';
 
@@ -182,5 +183,14 @@ describe('OpenGauss native BM25', () => {
     expect(await fillOpenGaussFullText([row], true)).toEqual([]);
     expect(OgClient.query).toHaveBeenCalledOnce();
     expect(vi.mocked(OgClient.query).mock.calls[0][0]).not.toContain('UPDATE');
+  });
+
+  it('checks physical vector absence through the openGauss connection without ownership filtering', async () => {
+    vi.mocked(OgClient.query).mockResolvedValueOnce(result([{ id: '9007199254740993' }]));
+    expect(await findMissingOpenGaussVectorIds(['1', '9007199254740993'])).toEqual(['1']);
+    expect(OgClient.query).toHaveBeenCalledWith(
+      'SELECT id::text FROM modeldata WHERE id = ANY($1::bigint[])',
+      [['1', '9007199254740993']]
+    );
   });
 });

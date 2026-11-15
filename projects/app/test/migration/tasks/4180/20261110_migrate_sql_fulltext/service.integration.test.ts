@@ -459,7 +459,9 @@ describe.skipIf(!target)('PG full-text real migration', () => {
     expect(await migrateSqlFullTextMigration(state.context)).toMatchObject({ validated: 2 });
     expect(state.failures()).toEqual([]);
     await pool.query('DELETE FROM modeldata WHERE id=$1', [missing.insertIds[0]]);
-    await expect(migrateSqlFullTextRecord(missing.id)).rejects.toThrow('Active vector');
+    await expect(migrateSqlFullTextRecord(missing.id, { validateOnly: true })).rejects.toThrow(
+      'Active vector'
+    );
     expect((await pool.query('SELECT count(*)::int AS n FROM modeldata')).rows[0].n).toBe(1);
   });
 

@@ -13,7 +13,7 @@ import {
   SQL_FULL_TEXT_COLUMN,
   SQL_FULL_TEXT_INDEX
 } from '../fullText/utils';
-import { executePostgresFullTextRows } from '../fullText/postgres';
+import { executePostgresFullTextRows, findMissingPostgresVectorIds } from '../fullText/postgres';
 import { toSqlFullTextQueryTerms } from '../fullText/analyzer';
 
 const metadataTable = 'fastgpt_fulltext_metadata';
@@ -145,6 +145,10 @@ export const fillOpenGaussFullText = (rows: SqlFullTextRow[], validateOnly = fal
     rows,
     mode: validateOnly ? 'validate' : 'fill'
   });
+
+/** 为迁移区分物理缺失与已有行的内容/归属冲突。 */
+export const findMissingOpenGaussVectorIds = (ids: string[]) =>
+  findMissingPostgresVectorIds({ query: OgClient.query.bind(OgClient), ids });
 
 /**
  * OpenGauss 的 <&> 必须配合 BM25 索引降序排序；过滤先于 LIMIT。

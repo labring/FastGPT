@@ -29,5 +29,7 @@ export type SqlFullTextAdapter = {
   assertCapability: () => Promise<void>;
   getMetadata: () => Promise<SqlFullTextMetadata>;
   fill: (rows: SqlFullTextRow[], validateOnly?: boolean) => Promise<string[]>;
+  /** 按全局向量 ID 判断物理缺失；错误归属的已有行不算缺失，禁止借修复绕过归属校验。 */
+  findMissingVectorIds: (ids: string[]) => Promise<string[]>;
   search: (props: FullTextSearchProps) => Promise<SqlFullTextHit[]>;
 };

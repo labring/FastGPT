@@ -11,6 +11,7 @@ import type { FullTextSearchProps } from '../type';
 import type { SqlFullTextAdapter, SqlFullTextRow, SqlFullTextHit } from '../fullText/type';
 import {
   splitSqlFullTextRows,
+  assertSqlFullTextVectorId,
   normalizeSqlFullTextScope,
   SQL_FULL_TEXT_COLUMN,
   SQL_FULL_TEXT_INDEX
@@ -208,6 +209,21 @@ export class OceanBaseFullTextAdapter implements SqlFullTextAdapter {
   /** 只补同归属的 NULL；验收模式要求词串已完整且逐字节一致。 */
   fill = (rows: SqlFullTextRow[], validateOnly = false) =>
     this.executeRows(rows, validateOnly ? 'validate' : 'fill');
+
+  /** 按全局 ID 判断物理缺失，错误归属的已有行始终不进入自动补建。 */
+  findMissingVectorIds = async (ids: string[]): Promise<string[]> => {
+    ids.forEach(assertSqlFullTextVectorId);
+    const existing = new Set<string>();
+    for (let start = 0; start < ids.length; start += 50) {
+      const chunk = ids.slice(start, start + 50);
+      const [rows] = await this.client.query<({ id: string } & RowDataPacket)[]>(
+        `SELECT CAST(id AS CHAR) AS id FROM ${DatasetVectorTableName} WHERE id IN (${chunk.map(() => '?').join(',')})`,
+        chunk
+      );
+      rows.forEach(({ id }) => existing.add(id));
+    }
+    return ids.filter((id) => !existing.has(id));
+  };
 
   /**
    * 查询先经外置分析器切成去重词，以空格连接后做自然语言全文匹配；只含停用词/标点时直接返回空结果。

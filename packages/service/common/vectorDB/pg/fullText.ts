@@ -13,7 +13,7 @@ import {
   SQL_FULL_TEXT_COLUMN,
   SQL_FULL_TEXT_INDEX
 } from '../fullText/utils';
-import { executePostgresFullTextRows } from '../fullText/postgres';
+import { executePostgresFullTextRows, findMissingPostgresVectorIds } from '../fullText/postgres';
 import { toSqlFullTextQueryTerms } from '../fullText/analyzer';
 
 export const PG_FULL_TEXT_EXTENSION_VERSION = '0.26.6';
@@ -123,6 +123,10 @@ export const fillPgFullText = (rows: SqlFullTextRow[], validateOnly = false) =>
     rows,
     mode: validateOnly ? 'validate' : 'fill'
   });
+
+/** 为迁移区分物理缺失与已有行的内容/归属冲突。 */
+export const findMissingPgVectorIds = (ids: string[]) =>
+  findMissingPostgresVectorIds({ query: PgClient.query.bind(PgClient), ids });
 
 /**
  * 查询先经外置分析器切成去重后的词数组，按词精确匹配（不再由数据库分词），业务范围在 Top-K 前过滤。

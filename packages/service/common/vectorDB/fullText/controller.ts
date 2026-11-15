@@ -7,6 +7,7 @@ import {
   assertPgFullTextCapability,
   getPgFullTextMetadata,
   fillPgFullText,
+  findMissingPgVectorIds,
   searchPgFullText
 } from '../pg/fullText';
 import { OceanBaseFullTextAdapter } from '../oceanbase/fullText';
@@ -15,6 +16,7 @@ import {
   assertOpenGaussFullTextCapability,
   getOpenGaussFullTextMetadata,
   fillOpenGaussFullText,
+  findMissingOpenGaussVectorIds,
   searchOpenGaussFullText
 } from '../opengauss/fullText';
 
@@ -35,6 +37,7 @@ export const getSqlFullTextAdapter = (
         assertCapability: assertPgFullTextCapability,
         getMetadata: getPgFullTextMetadata,
         fill: fillPgFullText,
+        findMissingVectorIds: findMissingPgVectorIds,
         search: searchPgFullText
       };
     if (provider === 'opengauss')
@@ -44,6 +47,7 @@ export const getSqlFullTextAdapter = (
         assertCapability: assertOpenGaussFullTextCapability,
         getMetadata: getOpenGaussFullTextMetadata,
         fill: fillOpenGaussFullText,
+        findMissingVectorIds: findMissingOpenGaussVectorIds,
         search: searchOpenGaussFullText
       };
     return new OceanBaseFullTextAdapter(provider);

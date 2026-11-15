@@ -40,7 +40,7 @@ const CheckpointSchema = z.object({
 
 /**
  * 手动迁移 SQL 全文，采用分批断点续跑；执行前必须排空旧 App/Pro/训练写入方。
- * 每条记录先校验源文本与历史同义词，再条件补齐同归属向量行的 NULL 词串，不覆盖已有内容。
+ * 每条记录先校验源文本与历史同义词，再补 NULL；物理缺失行通过 embedding 补建并 CAS 更新引用。
  * 坏记录按批保存并在重试时优先处理；回填结束后完整重验，全部通过才登记目标 ready。
  * 读取仍由 DATASET_FULLTEXT_PROVIDER 决定，迁移不修改读写配置，也不删除 Mongo 兼容全文。
  */
@@ -107,15 +107,15 @@ export const migrateSqlFullTextMigration = async (
     const key = `${stage}:${id}`;
     try {
       try {
-        await migrateSqlFullTextRecord(id, stage === 'validation');
+        await migrateSqlFullTextRecord(id, { validateOnly: stage === 'validation', assertActive });
       } catch (error) {
         if (stage !== 'validation' || !(error instanceof SqlFullTextMigrationRecordError)) {
           throw error;
         }
-        // 中断或并发变更可能在已扫描范围重新留下 NULL，条件补齐后重验；冲突值始终不会覆盖。
+        // 中断或并发变更可能留下 NULL 或缺失行，补齐后重验；已有冲突值始终不会覆盖。
         await assertActive();
-        await migrateSqlFullTextRecord(id, false);
-        await migrateSqlFullTextRecord(id, true);
+        await migrateSqlFullTextRecord(id, { assertActive });
+        await migrateSqlFullTextRecord(id, { validateOnly: true, assertActive });
       }
       failures.delete(key);
     } catch (error) {

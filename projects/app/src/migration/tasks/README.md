@@ -77,7 +77,7 @@
 - `manual` 不得与 `independent` 或 `delay` 同时启用。后续自动任务不得依赖尚未手动执行的任务。
 - 手动触发不会自动检测集群升级完成，执行前需按任务说明确认升级前提。
 
-当前 4.18.0 包含手动任务 `20261110_migrate_sql_fulltext`：待集群所有节点升级完毕、旧训练任务排空并确认目标 SQL 向量库全文能力可用后由管理员手动触发，统一完成结构准备、逐记录校验与分批回填、最终完整性校验；校验通过后只登记 ready，读取位置由 DATASET_FULLTEXT_PROVIDER=mongo/native 手动选择，并在兼容窗口内保留旧 Mongo `dataset_data_texts` 数据与索引。
+当前 4.18.0 包含手动任务 `20261110_migrate_sql_fulltext`：待集群所有节点升级完毕、旧训练任务排空并确认目标 SQL 向量库全文能力可用后由管理员手动触发，统一完成结构准备、逐记录校验与分批回填、最终完整性校验；确认物理缺失的有效向量引用会使用知识库配置的 embedding 模型补建向量和全文、CAS 替换为新 ID，并沿用余额检查和向量用量上报，健康行不会重新生成；校验通过后只登记 ready，读取位置由 DATASET_FULLTEXT_PROVIDER=mongo/native 手动选择，并在兼容窗口内保留旧 Mongo `dataset_data_texts` 数据与索引。
 
 ## 前置依赖
 

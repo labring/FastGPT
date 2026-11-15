@@ -37,6 +37,7 @@ const driver = vi.hoisted(() => ({
   assertCapability: vi.fn(),
   getMetadata: vi.fn(),
   fill: vi.fn(),
+  findMissingVectorIds: vi.fn(),
   search: vi.fn()
 }));
 vi.mock('@fastgpt/service/common/vectorDB/constants', async (importOriginal) => ({
@@ -89,6 +90,7 @@ describe.each(['pg', 'oceanbase', 'seekdb', 'opengauss'] as const)(
       driver.getMetadata.mockReset().mockResolvedValue(metadata);
       driver.assertCapability.mockReset().mockResolvedValue(undefined);
       driver.fill.mockReset().mockResolvedValue([]);
+      driver.findMissingVectorIds.mockReset().mockResolvedValue([]);
       driver.search.mockReset().mockResolvedValue([]);
     });
 
@@ -203,7 +205,7 @@ describe.each(['pg', 'oceanbase', 'seekdb', 'opengauss'] as const)(
           },
           reason: {
             message: expect.stringContaining(
-              'Active vector row is missing, has wrong ownership, or has conflicting full text'
+              'Active vector row has wrong ownership or conflicting full text'
             )
           }
         }
@@ -330,6 +332,7 @@ describe.each(['pg', 'oceanbase', 'seekdb', 'opengauss'] as const)(
         indexes: [{ dataId: '1', text: '删除中', type: 'custom' }]
       });
       driver.fill.mockResolvedValueOnce(['1']);
+      driver.findMissingVectorIds.mockResolvedValueOnce(['1']);
       const state = createContext();
       await expect(migrateSqlFullTextMigration(state.context)).rejects.toThrow('unresolved');
       expect(await findSqlFullTextTargetById(provider)).toBeNull();

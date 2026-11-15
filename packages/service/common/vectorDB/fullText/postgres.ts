@@ -2,7 +2,7 @@ import type { QueryResult, QueryResultRow } from 'pg';
 import { DatasetVectorTableName } from '../constants';
 import type { InsertVectorControllerPropsType } from '../type';
 import type { SqlFullTextRow } from './type';
-import { SQL_FULL_TEXT_COLUMN, splitSqlFullTextRows } from './utils';
+import { SQL_FULL_TEXT_COLUMN, assertSqlFullTextVectorId, splitSqlFullTextRows } from './utils';
 import { tokenizeSqlFullTextRows, toSqlFullTextTokens } from './analyzer';
 
 export type PostgresFullTextQuery = <T extends QueryResultRow>(
@@ -13,6 +13,26 @@ export type PostgresFullTextQuery = <T extends QueryResultRow>(
 export type PostgresVectorInsertClient = {
   query: PostgresFullTextQuery;
   release: () => void;
+};
+
+/** 仅按全局 ID 确认物理缺失，不能把归属不符的已有行当作可自动修复的缺口。 */
+export const findMissingPostgresVectorIds = async ({
+  query,
+  ids
+}: {
+  query: PostgresFullTextQuery;
+  ids: string[];
+}): Promise<string[]> => {
+  ids.forEach(assertSqlFullTextVectorId);
+  const existing = new Set<string>();
+  for (let start = 0; start < ids.length; start += 50) {
+    const { rows } = await query<{ id: string }>(
+      `SELECT id::text FROM ${DatasetVectorTableName} WHERE id = ANY($1::bigint[])`,
+      [ids.slice(start, start + 50)]
+    );
+    rows.forEach(({ id }) => existing.add(id));
+  }
+  return ids.filter((id) => !existing.has(id));
 };
 
 // 单条 INSERT 最多绑定 500 行（2500 个参数），避免大批量写入触及 PG 协议参数数量上限。
