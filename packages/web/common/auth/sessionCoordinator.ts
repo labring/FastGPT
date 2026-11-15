@@ -75,7 +75,7 @@ export class SessionCoordinator {
   private stopped = false;
   private refreshPromise?: Promise<void>;
   private initializePromise?: Promise<void>;
-  private readonly contextMutations = new Set<Promise<void>>();
+  private readonly contextMutations = new Map<Promise<void>, string | undefined>();
   private retryAt = 0;
   private lastRefreshFailure?: unknown;
   private stoppedContext?: Pick<SessionLifecycle, 'sessionId' | 'contextVersion'>;
@@ -115,13 +115,17 @@ export class SessionCoordinator {
     snapshot: SessionRequestSnapshot,
     signal?: AbortSignal
   ): Promise<never> {
-    this.assertContext(snapshot);
-    if (this.contextMutations.size)
+    while (true) {
+      this.assertContext(snapshot);
+      const pending = [...this.contextMutations]
+        .filter(([, sessionId]) => sessionId === snapshot.sessionId)
+        .map(([promise]) => promise);
+      if (!pending.length) break;
       await this.wait(
-        Promise.all([...this.contextMutations]).then(() => {}),
+        Promise.all(pending).then(() => {}),
         signal
       );
-    this.assertContext(snapshot);
+    }
     return this.rejectRemoteContextChange();
   }
 
@@ -131,7 +135,7 @@ export class SessionCoordinator {
     const pending = new Promise<void>((resolve) => {
       finish = resolve;
     });
-    this.contextMutations.add(pending);
+    this.contextMutations.set(pending, this.session?.sessionId);
     try {
       return await send();
     } finally {
@@ -183,7 +187,6 @@ export class SessionCoordinator {
       // 旧请求仍由自己的快照拒绝，但新上下文不能继续等待旧登录的初始化或刷新。
       this.initializePromise = undefined;
       this.refreshPromise = undefined;
-      this.contextMutations.clear();
     }
     if (login) {
       this.stopped = false;

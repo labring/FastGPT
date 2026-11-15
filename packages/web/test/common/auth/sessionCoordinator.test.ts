@@ -58,6 +58,49 @@ describe('browser session pre-refresh coordination', () => {
     }
   );
 
+  it('keeps waiting for a second local mutation after the first response installs its cookies', async () => {
+    let reloaded = false;
+    const coordinator = new SessionCoordinator({
+      now: () => 0,
+      onContextChanged: () => {
+        reloaded = true;
+      },
+      request: async () => ({ session: lifecycle() })
+    });
+    coordinator.observe(lifecycle());
+    let releaseFirst!: () => void;
+    let releaseSecond!: () => void;
+    const firstResponse = new Promise<void>((resolve) => {
+      releaseFirst = resolve;
+    });
+    const secondResponse = new Promise<void>((resolve) => {
+      releaseSecond = resolve;
+    });
+    const first = coordinator.trackContextMutation(async () => {
+      await firstResponse;
+      coordinator.observe({ ...lifecycle(), contextVersion: 2, generation: 2 });
+    });
+    const second = coordinator.trackContextMutation(async () => {
+      await secondResponse;
+      coordinator.observe({ ...lifecycle(), contextVersion: 3, generation: 3 });
+    });
+    releaseFirst();
+    await first;
+    const snapshot = await coordinator.beforeRequest();
+    const rejected = expect(
+      coordinator.recover({ statusText: SessionErrEnum.contextChanged }, { snapshot })
+    ).rejects.toThrow('context changed');
+    await Promise.resolve();
+    const earlyReload = reloaded;
+    releaseSecond();
+    await second;
+    await rejected;
+    expect(earlyReload).toBe(false);
+    expect(reloaded).toBe(false);
+    expect(coordinator.hasSession).toBe(true);
+    expect(coordinator.contextHeaders).toEqual({ 'x-fastgpt-session-context': 'user:device.3' });
+  });
+
   it('coalesces concurrent pre-refresh and lets every original request continue with one successor', async () => {
     let now = 0;
     let calls = 0;
