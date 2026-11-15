@@ -86,9 +86,11 @@ describe('token auth cancellation access', () => {
 
 describe('auth cookie', () => {
   const originalAuthCookieSecure = serviceEnv.AUTH_COOKIE_SECURE;
+  const originalBaseUrl = serviceEnv.NEXT_PUBLIC_BASE_URL;
 
   afterEach(() => {
     serviceEnv.AUTH_COOKIE_SECURE = originalAuthCookieSecure;
+    serviceEnv.NEXT_PUBLIC_BASE_URL = originalBaseUrl;
   });
 
   const createResponse = () =>
@@ -96,6 +98,52 @@ describe('auth cookie', () => {
       setHeader: vi.fn(),
       getHeader: vi.fn()
     }) as unknown as NodeHttpResponse;
+
+  it.each([
+    ['', '/api/support/user/account/session'],
+    ['/', '/api/support/user/account/session'],
+    ['/fastgpt', '/fastgpt/api/support/user/account/session'],
+    ['/fastgpt/', '/fastgpt/api/support/user/account/session'],
+    ['/fastgpt///', '/fastgpt/api/support/user/account/session']
+  ])(
+    'uses the browser base path for issuing and clearing Refresh cookies: %s',
+    (baseUrl, expectedPath) => {
+      serviceEnv.NEXT_PUBLIC_BASE_URL = baseUrl;
+      const now = Date.now();
+      const session = {
+        sessionId: 'user:device',
+        contextVersion: 2,
+        generation: 2,
+        serverTime: now,
+        createdAt: now,
+        accessExpiresAt: now + 900_000,
+        refreshExpiresAt: now + 604_800_000,
+        absoluteExpiresAt: now + 2_592_000_000
+      };
+      const request = {
+        headers: {
+          cookie: `fastgpt_session=user:device; fastgpt_refresh_${'b'.repeat(32)}_1=rt.old`
+        }
+      } as NodeHttpRequest;
+      const responses = [createResponse(), createResponse(), createResponse()];
+      setCookie(responses[0], {
+        token: 'at.current',
+        refreshToken: 'rt.current',
+        session,
+        request
+      });
+      clearSupersededSessionCookies(responses[1], { request, session });
+      clearCookie(responses[2], request);
+      for (const response of responses) {
+        const headers = vi
+          .mocked(response.setHeader)
+          .mock.calls.find(([name]) => name === 'Set-Cookie')![1] as string[];
+        const refresh = headers.filter((header) => header.startsWith('fastgpt_refresh_'));
+        expect(refresh.length).toBeGreaterThan(0);
+        expect(refresh.every((header) => header.includes(`Path=${expectedPath};`))).toBe(true);
+      }
+    }
+  );
 
   it.each(['rekey', 'login'])(
     'expires prior Refresh cookies during repeated %s despite the scoped Path',

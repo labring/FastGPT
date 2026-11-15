@@ -1,3 +1,4 @@
+import { stripUrlTrailingSlash } from '@fastgpt/global/common/string/url';
 import type { ReqHeaderAuthType } from '../type';
 import { type AuthModeType } from '../type';
 import { SERVICE_LOCAL_HOST } from '../../../common/system/tools';
@@ -245,6 +246,10 @@ const getAuthCookieOptions = () => ({
   secure: serviceEnv.AUTH_COOKIE_SECURE
 });
 
+/** 与 webEnv / Next basePath 使用同一前缀归一化，签发和删除必须匹配实际会话请求路径。 */
+const getRefreshCookiePath = () =>
+  `${stripUrlTrailingSlash(serviceEnv.NEXT_PUBLIC_BASE_URL)}/api${SESSION_API_PATH}`;
+
 /**
  * 写入登录凭证 Cookie；启用 AUTH_COOKIE_SECURE 后，浏览器只会通过 HTTPS 发送凭证。
  */
@@ -263,7 +268,7 @@ export const setCookie = (
         ? existing.map(String)
         : [String(existing)];
   const now = Date.now();
-  const refreshPath = `${serviceEnv.NEXT_PUBLIC_BASE_URL}/api${SESSION_API_PATH}`;
+  const refreshPath = getRefreshCookiePath();
   if (credentials.session && credentials.refreshToken) {
     const names = getSessionCookieNames(
       credentials.session.sessionId,
@@ -349,8 +354,7 @@ const getSupersededSessionCookieHeaders = ({
     ['access', 'refresh'].map((kind) =>
       Cookie.serialize(`fastgpt_${kind}_${group}`, '', {
         ...getAuthCookieOptions(),
-        path:
-          kind === 'refresh' ? `${serviceEnv.NEXT_PUBLIC_BASE_URL}/api${SESSION_API_PATH}` : '/',
+        path: kind === 'refresh' ? getRefreshCookiePath() : '/',
         maxAge: 0
       })
     )
@@ -399,7 +403,7 @@ export const clearCookie = (res: NodeHttpResponse, req?: NodeHttpRequest) => {
         ...getAuthCookieOptions(),
         path:
           name === SESSION_REFRESH_COOKIE_NAME || name.startsWith('fastgpt_refresh_')
-            ? `${serviceEnv.NEXT_PUBLIC_BASE_URL}/api${SESSION_API_PATH}`
+            ? getRefreshCookiePath()
             : '/',
         maxAge: 0
       })
