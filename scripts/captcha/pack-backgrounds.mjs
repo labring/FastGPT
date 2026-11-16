@@ -15,7 +15,11 @@ if (!inputDirectory || !sourceManifest)
   );
 const sources = JSON.parse(await readFile(sourceManifest, 'utf8'));
 if (sources.images?.length !== 100) throw new Error('Expected source records for all 100 images');
-if (sources.license !== 'MIT' || !sources.licenseText?.includes('Microsoft Corporation')) {
+// 图片统一继承顶层许可；从独立文件读取完整版权声明，继续嵌入生成的服务端模块。
+const licenseText = (
+  await readFile(path.resolve(path.dirname(sourceManifest), sources.licenseFile), 'utf8')
+).trimEnd();
+if (sources.license !== 'MIT' || !licenseText.includes('Microsoft Corporation')) {
   throw new Error('Expected Microsoft Fluent Emoji MIT license notice');
 }
 const sourcesByFile = new Map(sources.images.map((image) => [image.filename, image]));
@@ -37,7 +41,7 @@ for (const filename of files) {
     throw new Error(`${filename}: must be smaller than 40,000 bytes`);
   const hash = createHash('sha256').update(buffer).digest('hex');
   const source = sourcesByFile.get(filename);
-  if (!source || source.sha256 !== hash || source.license !== 'MIT') {
+  if (!source || source.sha256 !== hash) {
     throw new Error(`${filename}: missing or inconsistent MIT source record`);
   }
   if (hashes.has(hash)) throw new Error(`${filename}: duplicate image`);
@@ -53,7 +57,7 @@ const output = path.join(
 );
 await writeFile(
   output,
-  `/*! @license\n${sources.licenseText
+  `/*! @license\n${licenseText
     .split('\n')
     .map((line) => ` * ${line.trimEnd()}`.trimEnd())
     .join(
@@ -66,7 +70,7 @@ await writeFile(
 );
 await writeFile(
   path.join(path.dirname(output), 'LICENSE-MICROSOFT-FLUENT-EMOJI.txt'),
-  sources.licenseText + '\n'
+  licenseText + '\n'
 );
 console.log(
   JSON.stringify(
