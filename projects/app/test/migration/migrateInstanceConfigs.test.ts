@@ -795,10 +795,14 @@ describe('migration env wiring', () => {
       ]
     ];
 
+    // EVAL_CONCURRENCY 已明确弃用，本轮不迁入实例配置。
+    expect(legacyEnv).not.toHaveProperty('EVAL_CONCURRENCY');
+    expect(pick(overrides, 'performance.task.evalConcurrency')).toBeUndefined();
+
     // 兜底：有取值才能验证绑定，条数过少说明表格被削掉了
     expect(
       cases.filter(([, expected]) => expected !== undefined && expected !== '').length
-    ).toBeGreaterThanOrEqual(66);
+    ).toBeGreaterThanOrEqual(65);
 
     const mismatched = cases
       .filter(([path, expected]) => {

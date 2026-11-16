@@ -1,3 +1,4 @@
+import { setTestLicenseActive } from '@test/utils/instanceConfigSnapshot';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
@@ -153,7 +154,7 @@ describe('search API business adapter', () => {
   it.each([false, true])(
     'injects metadata filter capability from the trusted application configuration: %s',
     async (enabled) => {
-      global.feConfigs.isPlus = enabled;
+      setTestLicenseActive(enabled);
       await searchDatasetForApi({ params, auth });
       expect(mocks.search).toHaveBeenCalledWith(
         expect.objectContaining({

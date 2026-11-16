@@ -139,6 +139,11 @@ describe('agent sandbox Kubernetes overcommit settings', () => {
         overrides: {
           agentSandbox: {
             provider,
+            proxy: {
+              wsUrl: 'wss://proxy.test',
+              previewUrl: 'https://proxy.test',
+              secret: 'proxy_secret_32_characters_minimum'
+            },
             sealosdevbox: { baseUrl: 'https://devbox.test' },
             opensandbox: { baseUrl: 'https://sandbox.test', runtime }
           }

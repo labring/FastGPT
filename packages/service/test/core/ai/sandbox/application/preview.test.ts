@@ -50,7 +50,8 @@ describe('sandbox preview application', () => {
           provider: 'opensandbox',
           proxy: {
             wsUrl: 'wss://agent-proxy.example.com/base/',
-            previewUrl: 'https://agent-preview.example.com:3007/base/'
+            previewUrl: 'https://agent-preview.example.com:3007/base/',
+            secret: 'test-agent-sandbox-proxy-secret-32-characters'
           },
           opensandbox: { baseUrl: 'https://sandbox.example.com' }
         }

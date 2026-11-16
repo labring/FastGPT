@@ -1,3 +1,4 @@
+import { setTestLicenseActive } from '@test/utils/instanceConfigSnapshot';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
@@ -44,7 +45,7 @@ describe('instrumentationCheck', () => {
       [S3Buckets.public]: { checkBucketHealth: publicBucketHealth },
       [S3Buckets.private]: { checkBucketHealth: privateBucketHealth }
     } as any;
-    global.feConfigs = { isPlus: false } as any;
+    setTestLicenseActive(false);
   });
 
   it('checks Redis before the remaining production dependencies', async () => {
@@ -89,7 +90,7 @@ describe('instrumentationCheck', () => {
   });
 
   it('validates the Pro service only for Plus deployments', async () => {
-    global.feConfigs = { isPlus: true } as any;
+    setTestLicenseActive(true);
     mocks.postHealth.mockResolvedValueOnce({ auth: false, data: '' });
 
     await expect(instrumentationCheck()).rejects.toContain(`[${InitialErrorEnum.PRO_ERROR}]`);

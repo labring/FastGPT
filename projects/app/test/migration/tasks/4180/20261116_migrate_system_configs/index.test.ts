@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   apply: vi.fn(),
   cleanup: vi.fn(),
   verifyCleanup: vi.fn(),
+  migrateScopes: vi.fn(),
   backfillExternal: vi.fn(),
   backfillSms: vi.fn(),
   rehomeFile: vi.fn(),
@@ -21,11 +22,16 @@ const mocks = vi.hoisted(() => ({
   verifyFile: vi.fn(),
   verifyHttp: vi.fn(),
   verifyDomain: vi.fn(),
+  verifyScopes: vi.fn(),
   verifyConnections: vi.fn(),
   verifyProxy: vi.fn(),
   verifyOvercommit: vi.fn()
 }));
 
+vi.mock('@/migration/tasks/4180/20261116_migrate_system_configs/scopes', () => ({
+  migrateLegacyConfigScopes: mocks.migrateScopes,
+  verifyLegacyConfigScopes: mocks.verifyScopes
+}));
 vi.mock('@/migration/tasks/4180/20261116_migrate_system_configs/service', () => ({
   inspectInstanceConfigMigration: mocks.inspect,
   applyInstanceConfigMigration: mocks.apply
@@ -106,6 +112,7 @@ describe('migrateSystemConfigs', () => {
 
     expect(mocks.apply).not.toHaveBeenCalled();
     for (const backfill of [
+      mocks.migrateScopes,
       mocks.backfillExternal,
       mocks.rehomeConnections,
       mocks.backfillSms,
@@ -126,7 +133,8 @@ describe('migrateSystemConfigs', () => {
       mocks.verifyOvercommit,
       mocks.verifyFile,
       mocks.verifyHttp,
-      mocks.verifyDomain
+      mocks.verifyDomain,
+      mocks.verifyScopes
     ]) {
       expect(verify).toHaveBeenCalledOnce();
     }
@@ -139,8 +147,8 @@ describe('migrateSystemConfigs', () => {
     expect(context.reportProgress).toHaveBeenCalledWith({
       key: 'backfill',
       status: SystemMigrationStatusEnum.succeeded,
-      current: 8,
-      total: 8
+      current: 9,
+      total: 9
     });
   });
 

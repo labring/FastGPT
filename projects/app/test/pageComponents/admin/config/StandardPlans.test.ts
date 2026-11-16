@@ -9,7 +9,7 @@ vi.mock('next-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key })
 }));
 vi.mock('@/web/common/system/useSystemStore', () => ({
-  useSystemStore: () => ({ feConfigs: { show_outlink_brand: true } })
+  useSystemStore: () => ({ feConfigs: { show_outlink_brand: false } })
 }));
 vi.mock('@fastgpt/web/components/v2/common/MyModal', () => ({
   default: ({ children, footer }: any) =>
@@ -28,7 +28,9 @@ vi.mock('@chakra-ui/react', () => ({
   Flex: ({ children }: any) => React.createElement('div', {}, children),
   Grid: ({ children }: any) => React.createElement('div', {}, children),
   Button: ({ children, onClick }: any) => React.createElement('button', { onClick }, children),
-  Input: ({ value, onChange }: any) => React.createElement('input', { value, onChange })
+  Input: ({ value, onChange }: any) => React.createElement('input', { value, onChange }),
+  Switch: ({ isChecked, onChange }: any) =>
+    React.createElement('input', { type: 'checkbox', checked: isChecked, onChange })
 }));
 
 let dom: JSDOM;

@@ -17,7 +17,7 @@ const mocks = vi.hoisted(() => {
 vi.mock('@fastgpt/service/common/system/systemInstanceConfig/schema', () => ({
   MongoSystemInstanceConfig: {
     findOne: ({ domain }: { domain: string }) => ({
-      lean: async () => mocks.documents[domain] ?? null
+      session: () => ({ lean: async () => mocks.documents[domain] ?? null })
     }),
     findOneAndUpdate: mocks.update
   }
