@@ -31,7 +31,7 @@ FastGPT 将内容审核（Content Moderation）抽象为独立插件类型 `mode
 
 1. 打开 **是否开启内容审核** 开关（默认关闭）。
 2. 在插件列表区域安装审核插件：
-   - **从插件市场添加**：跳转到插件市场审核分类（`/config/tool/marketplace?type=moderation`），可直接安装官方提供的 **百度内容安全**（`baidu`）、**阿里云内容安全**（`aliyun`）、**腾讯云内容安全**（`tencent`）、**关键词审核**（`keyword`）或 **旧版自定义审核兼容**（`legacy-custom-censor`）插件。
+   - **从插件市场添加**：跳转到插件市场审核分类（`/config/tool/marketplace?type=moderation`），可直接安装官方提供的 **百度内容安全**（`baidu`）、**阿里云内容安全**（`aliyun`）、**腾讯云内容安全**（`tencent`）、**关键词审核**（`keyword`）或 **旧版自定义审核兼容**（`legacy-custom-censor`，适配旧版配置方式详见[内容审核升级与迁移指南](/zh-CN/self-host/migration/content-moderation)）插件。
    - **从本地安装**：上传自行打包或离线分发的 `.pkg` / `.zip` 插件包。
 3. 点击目标插件右侧的 **配置参数**，按插件声明的表单填写厂商凭据或策略 ID：
    - 标记为敏感字段的密钥在服务端采用 AES-256-GCM 加密存储，接口和界面均做脱敏展示，修改时需填写新值，留空则保留已有密钥或按插件校验规则清理。

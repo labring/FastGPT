@@ -31,7 +31,7 @@ Sign in as a `root` administrator and open **Admin Console > Content Moderation 
 
 1. Turn on **Enable Content Moderation** (disabled by default).
 2. Add a moderation Plugin from the service panel:
-   - **Add from Marketplace**: Opens the Marketplace filtered by moderation Plugins (`/config/tool/marketplace?type=moderation`), where you can install official Plugins including **Baidu** (`baidu`), **Alibaba Cloud** (`aliyun`), **Tencent Cloud** (`tencent`), **Keyword** (`keyword`), and **Legacy Custom Moderation** (`legacy-custom-censor`).
+   - **Add from Marketplace**: Opens the Marketplace filtered by moderation Plugins (`/config/tool/marketplace?type=moderation`), where you can install official Plugins including **Baidu** (`baidu`), **Alibaba Cloud** (`aliyun`), **Tencent Cloud** (`tencent`), **Keyword** (`keyword`), and **Legacy Custom Moderation** (`legacy-custom-censor`; see the [Content moderation upgrade and migration guide](/en/self-host/migration/content-moderation) for legacy protocol adaptation).
    - **Install from Local**: Upload a `.pkg` archive or `.zip` bundle built locally or delivered offline.
 3. Click **Configure Parameters** next to a Plugin and fill in the fields declared by its `secretSchema`:
    - Fields marked `isSecret: true` are encrypted with AES-256-GCM on the server and masked in API responses and UI forms.
