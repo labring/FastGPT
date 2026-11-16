@@ -3,7 +3,7 @@ import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import { type AppTemplateSchemaType } from '@fastgpt/global/core/app/type';
 import { MongoAppTemplate } from './templateSchema';
 import { pluginClient } from '../../../thirdProvider/fastgptPlugin';
-import { VersionedDataCache } from '../../../common/cache';
+import { VersionedDataCache } from '../../../common/cache/versionedDataCache';
 import { SystemCacheKeyEnum } from '../../../common/cache/type';
 import { serviceEnv } from '../../../env';
 import { getLogger, LogCategories } from '../../../common/logger';

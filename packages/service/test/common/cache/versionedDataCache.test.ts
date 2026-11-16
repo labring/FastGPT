@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { VersionedDataCache } from '@fastgpt/service/common/cache';
+import { VersionedDataCache } from '@fastgpt/service/common/cache/versionedDataCache';
 
 /** 可控的数据源和共享版本，用两个实例模拟不同服务进程。 */
 const createFixture = () => {
