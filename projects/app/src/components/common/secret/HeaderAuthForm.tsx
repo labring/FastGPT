@@ -16,6 +16,7 @@ import NodeInputSelect from '@fastgpt/web/components/core/workflow/NodeInputSele
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import SecretValueInput from './SecretValueInput';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
 
 /** 选择器只编辑单个引用；历史引用数组保留为只读摘要。 */
 export const getSingleReference = (
@@ -254,6 +255,14 @@ const HeaderAuthForm = ({
   const BearerValue = headerSecretValue.Bearer;
   const BasicValue = headerSecretValue.Basic;
   const customHeaders = headerSecretValue.customs;
+  // 行 ID 仅属于界面，改名和更新密钥不重建组件，也不把 ID 写进业务配置。
+  const [customHeaderIds, setCustomHeaderIds] = useState(
+    () => customHeaders?.map(() => getNanoid()) ?? []
+  );
+  // 外部切换鉴权类型或替换行数时重建身份；本地增删在事件内同步 ID，保留剩余行状态。
+  if (customHeaderIds.length !== (customHeaders?.length ?? 0)) {
+    setCustomHeaderIds(customHeaders?.map(() => getNanoid()) ?? []);
+  }
   const [valueModes, setValueModes] = useState<Record<string, ValueMode>>({});
 
   const getValueMode = (key: string, value?: HeaderSecretValueType): ValueMode =>
@@ -369,8 +378,10 @@ const HeaderAuthForm = ({
           ) : (
             <Box>
               {customHeaders?.map((item, index) => {
+                const rowId = customHeaderIds[index];
+                const modeKey = `custom-${rowId}`;
                 return (
-                  <Flex key={index} mb={3} align="center" gap={2}>
+                  <Flex key={rowId} mb={3} align="center" gap={2}>
                     <Flex flex={'3 1 0'} minW={0} alignItems={'center'}>
                       <Input
                         flex={1}
@@ -394,7 +405,6 @@ const HeaderAuthForm = ({
                     <Flex flex={'7 1 0'} minW={0} alignItems={'center'}>
                       <Box flex={1} minW={0}>
                         <AuthValueDisplay
-                          key={item.key}
                           value={getManualValue(item.value)}
                           onChange={(value) => {
                             onChange({
@@ -417,14 +427,14 @@ const HeaderAuthForm = ({
                             });
                           }}
                           secretValue={item.value}
-                          mode={getValueMode(`custom-${index}`, item.value)}
+                          mode={getValueMode(modeKey, item.value)}
                           renderReference={renderReference}
                           modeSelect={
                             renderReference ? (
                               <CustomHeaderModeSelect
-                                mode={getValueMode(`custom-${index}`, item.value)}
+                                mode={getValueMode(modeKey, item.value)}
                                 onChange={(mode) => {
-                                  changeValueMode(`custom-${index}`, mode);
+                                  changeValueMode(modeKey, mode);
                                   onChange({
                                     customs: headerSecretValue.customs?.map((header, i) =>
                                       i === index ? { ...header, value: { value: '' } } : header
@@ -448,21 +458,10 @@ const HeaderAuthForm = ({
                           _hover={{ color: 'red.500' }}
                           isDisabled={customHeaders.length <= 1}
                           onClick={() => {
+                            setCustomHeaderIds((prev) => prev.filter((_, i) => i !== index));
                             setValueModes((prev) => {
-                              const next: Record<string, ValueMode> = {};
-                              Object.entries(prev).forEach(([key, mode]) => {
-                                if (!key.startsWith('custom-')) {
-                                  next[key] = mode;
-                                  return;
-                                }
-
-                                const modeIndex = Number(key.slice('custom-'.length));
-                                if (modeIndex !== index) {
-                                  next[`custom-${modeIndex > index ? modeIndex - 1 : modeIndex}`] =
-                                    mode;
-                                }
-                              });
-                              return next;
+                              const { [modeKey]: _removedMode, ...remainingModes } = prev;
+                              return remainingModes;
                             });
                             onChange({
                               customs: headerSecretValue.customs?.filter((_, i) => i !== index)
@@ -481,6 +480,7 @@ const HeaderAuthForm = ({
                 minH={8}
                 h={8}
                 onClick={() => {
+                  setCustomHeaderIds((prev) => [...prev, getNanoid()]);
                   onChange({
                     customs: [
                       ...(headerSecretValue.customs || []),

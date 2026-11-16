@@ -77,7 +77,7 @@ const SecretValueInput = ({
         <>
           <IconButton
             type="button"
-            aria-label={t(isEditing ? 'common:Save' : 'common:Edit')}
+            aria-label={isEditing ? t('common:Save') : t('common:Edit')}
             icon={<MyIcon name={isEditing ? 'check' : 'edit'} w={'16px'} />}
             size="sm"
             flexShrink={0}
