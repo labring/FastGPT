@@ -21,8 +21,7 @@ const mocks = vi.hoisted(() => {
     }),
     createStream: () => ({ on: vi.fn().mockReturnThis(), close: vi.fn() }),
     datasetWatch: vi.fn(),
-    initSystemConfig: vi.fn(),
-    loadAppTemplates: vi.fn()
+    initSystemConfig: vi.fn()
   };
 });
 
@@ -37,9 +36,6 @@ vi.mock('@fastgpt/service/core/app/templates/templateSchema', () => ({
 }));
 vi.mock('@/service/common/system', () => ({
   initSystemConfig: mocks.initSystemConfig
-}));
-vi.mock('@fastgpt/service/core/app/templates/register', () => ({
-  getAppTemplatesAndLoadThem: mocks.loadAppTemplates
 }));
 
 import { startMongoWatch } from '@/service/common/system/volumnMongoWatch';
@@ -68,7 +64,7 @@ describe('startMongoWatch', () => {
     mocks.datasetWatch.mockReturnValue({ close: vi.fn() });
   });
 
-  it('只监听配置、训练和模板，重启时关闭旧 watch，不打开模型目录 watch', async () => {
+  it('只监听配置和训练，重启时关闭旧 watch，不打开模型目录和模板 watch', async () => {
     const modelWatch = vi.spyOn(MongoAIModel, 'watch');
     const defaultsWatch = vi.spyOn(MongoAIModelCatalog, 'watch');
 
@@ -77,9 +73,8 @@ describe('startMongoWatch', () => {
 
     expect(mocks.configWatch).toHaveBeenCalledTimes(2);
     expect(mocks.datasetWatch).toHaveBeenCalledTimes(2);
-    expect(mocks.templateWatch).toHaveBeenCalledTimes(2);
+    expect(mocks.templateWatch).not.toHaveBeenCalled();
     expect(fakeStreamAt(mocks.configStreams, 0).close).toHaveBeenCalledOnce();
-    expect(fakeStreamAt(mocks.templateStreams, 0).close).toHaveBeenCalledOnce();
     expect(mocks.datasetWatch.mock.results[0].value.close).toHaveBeenCalledOnce();
     expect(modelWatch).not.toHaveBeenCalled();
     expect(defaultsWatch).not.toHaveBeenCalled();
@@ -140,22 +135,5 @@ describe('startMongoWatch', () => {
     expect(mocks.configWatch).toHaveBeenCalledTimes(2);
     // 只允许重连补偿读一次：若 invalidate 也被当成变更事件派发，这里会是 2 次。
     expect(mocks.initSystemConfig).toHaveBeenCalledTimes(1);
-  });
-
-  it('模板变更防抖后延迟重拉，重连时同样触发重拉', async () => {
-    vi.useFakeTimers();
-    await startMongoWatch();
-    const templateStream = fakeStreamAt(mocks.templateStreams, 0);
-
-    templateStream.emit('change', { operationType: 'insert' });
-    // 防抖 500ms + 延迟 5s 读库，避免读到写一半的中间状态。
-    await vi.advanceTimersByTimeAsync(5000 + 500);
-    expect(mocks.loadAppTemplates).toHaveBeenCalledTimes(1);
-    expect(mocks.loadAppTemplates).toHaveBeenCalledWith(true);
-
-    templateStream.emit('close');
-    await vi.advanceTimersByTimeAsync(1000 + 5000);
-    expect(mocks.templateWatch).toHaveBeenCalledTimes(2);
-    expect(mocks.loadAppTemplates).toHaveBeenCalledTimes(2);
   });
 });
