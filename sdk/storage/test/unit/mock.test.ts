@@ -197,4 +197,33 @@ describe('createVitestStorageMock', () => {
       `https://storage.test/public/mock-bucket/${encodeURIComponent(key)}`
     );
   });
+
+  it('downloads exact inclusive byte ranges and rejects out-of-bounds starts', async () => {
+    const storage = createVitestStorageMock({ vi });
+    storage.__putObject('range.txt', { body: Buffer.from('0123456789') });
+
+    const { body } = await storage.downloadObject({
+      key: 'range.txt',
+      range: { start: 2, end: 5 }
+    });
+    const chunks: Buffer[] = [];
+    for await (const chunk of body) {
+      chunks.push(Buffer.from(chunk));
+    }
+    expect(Buffer.concat(chunks).toString()).toBe('2345');
+
+    const { body: clampedBody } = await storage.downloadObject({
+      key: 'range.txt',
+      range: { start: 7, end: 99 }
+    });
+    const clampedChunks: Buffer[] = [];
+    for await (const chunk of clampedBody) {
+      clampedChunks.push(Buffer.from(chunk));
+    }
+    expect(Buffer.concat(clampedChunks).toString()).toBe('789');
+
+    await expect(
+      storage.downloadObject({ key: 'range.txt', range: { start: 10, end: 12 } })
+    ).rejects.toMatchObject({ name: 'InvalidRange' });
+  });
 });

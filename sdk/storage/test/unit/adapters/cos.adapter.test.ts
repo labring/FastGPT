@@ -262,6 +262,32 @@ describe('CosStorageAdapter.downloadObject', () => {
     expect(body.errored).toBe(abortReason);
     expect(body.destroyed).toBe(true);
   });
+
+  it('forwards Range parameter to COS getObject when range is provided', async () => {
+    const adapter = createAdapter();
+    (adapter as any).client.headObject = vi.fn(
+      (_params: unknown, callback: (error: unknown, result: unknown) => void) => {
+        callback(null, {});
+      }
+    );
+    const getObject = vi.fn();
+    (adapter as any).client.getObject = getObject;
+
+    await adapter.downloadObject({
+      key: 'dataset/team/file.txt',
+      range: { start: 4, end: 15 }
+    });
+
+    expect(getObject).toHaveBeenCalledWith(
+      expect.objectContaining({
+        Bucket: 'fastgpt-private',
+        Region: 'ap-guangzhou',
+        Key: 'dataset/team/file.txt',
+        Range: 'bytes=4-15'
+      }),
+      expect.any(Function)
+    );
+  });
 });
 
 describe('CosStorageAdapter deletion boundaries', () => {
