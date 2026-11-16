@@ -8,7 +8,9 @@ import type {
 } from '@fastgpt/global/support/user/account/captcha/type';
 import type { CaptchaVerificationPurpose } from '@fastgpt/global/support/user/account/verification/type';
 import { verifyPuzzleCaptcha } from '@/web/support/user/api';
-import { getErrText } from '@fastgpt/global/common/error/utils';
+import { getErrorMessage } from '@fastgpt/global/common/error/utils';
+import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
+import { replaceSensitiveText } from '@fastgpt/global/common/string/tools';
 
 /**
  * 圆形图片转正交互：滑块从 0 到 360 度，鼠标、触摸与键盘使用相同的服务端角度校验。
@@ -43,6 +45,26 @@ const PuzzleCaptchaModal = ({
   const startY = useRef(0);
   const generation = useRef(0);
 
+  /** 仅翻译验证码业务的已知键；具体错误原文只做脱敏，缺失或无效文本使用静态兜底。 */
+  const getErrorText = (error: unknown, fallback: string): string => {
+    const message = getErrorMessage(error);
+    switch (message) {
+      case UserErrEnum.verifyCodeTooFrequently:
+      case 'common:error.verify_code_too_frequently':
+        return t('common:error.verify_code_too_frequently');
+      case UserErrEnum.sendVerificationCodeTooFrequently:
+      case 'common:error.send_auth_code_too_frequently':
+        return t('common:error.send_auth_code_too_frequently');
+      case UserErrEnum.invalidVerificationCode:
+      case 'common:error.code_error':
+        return t('common:error.code_error');
+      case 'common:error.operation_too_frequently':
+        return t('common:error.operation_too_frequently');
+      default:
+        return message ? replaceSensitiveText(message) : fallback;
+    }
+  };
+
   /** 刷新时立即禁用旧题；只接受最新请求结果，关闭弹窗后忽略异步回调。 */
   const refresh = async () => {
     const version = ++requestVersion.current;
@@ -60,7 +82,7 @@ const PuzzleCaptchaModal = ({
       if (mounted.current && version === requestVersion.current) setChallenge(result);
     } catch (error) {
       if (mounted.current && version === requestVersion.current) {
-        setMessage(t(getErrText(error, t('common:puzzle_captcha_load_failed'))));
+        setMessage(getErrorText(error, t('common:puzzle_captcha_load_failed')));
       }
     } finally {
       if (mounted.current && version === requestVersion.current) setBusy(false);
@@ -153,7 +175,7 @@ const PuzzleCaptchaModal = ({
     } catch (error) {
       if (mounted.current && currentGeneration === generation.current) {
         // 保留接口的具体原因；重新取题成功后仍展示本次错误，方便用户判断何时重试。
-        setMessage(t(getErrText(error, t('common:puzzle_captcha_retry'))));
+        setMessage(getErrorText(error, t('common:puzzle_captcha_retry')));
         await refresh();
       }
     } finally {

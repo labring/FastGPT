@@ -8,9 +8,17 @@ import { puzzleCaptchaFixture } from '@test/datas/captcha';
 
 vi.mock('@/web/support/user/api', () => ({ verifyPuzzleCaptcha: vi.fn() }));
 vi.mock('next-i18next', async () => {
+  const { createInstance } = await import('i18next');
   const { default: messages } = await import('@fastgpt/web/i18n/zh-CN/common.json');
-  const t = (key: string) => messages[key.replace(/^common:/, '') as keyof typeof messages] ?? key;
-  return { useTranslation: () => ({ t }) };
+  const i18n = createInstance();
+  await i18n.init({
+    lng: 'zh-CN',
+    fallbackLng: 'zh-CN',
+    defaultNS: 'common',
+    ns: ['common'],
+    resources: { 'zh-CN': { common: messages } }
+  });
+  return { useTranslation: () => ({ t: i18n.t.bind(i18n) }) };
 });
 vi.mock('@fastgpt/web/components/common/MyModal', () => ({
   default: ({ children }: { children: React.ReactNode }) => React.createElement('div', {}, children)
@@ -116,6 +124,20 @@ describe('PuzzleCaptchaModal errors', () => {
       },
       expected: '操作过于频繁，请稍后重试'
     },
+    { error: { message: 'verifyCodeTooFrequently' }, expected: '操作过于频繁，请稍后重试' },
+    { error: { message: 'SMTP:AUTH_FAILED' }, expected: 'SMTP:AUTH_FAILED' },
+    {
+      error: { message: 'common:error.operation_too_frequently' },
+      expected: '操作过于频繁，请稍后重试'
+    },
+    { error: { message: 'sendVerificationCodeTooFrequently' }, expected: '请勿频繁获取验证码' },
+    { error: { message: 'invalidVerificationCode' }, expected: '验证码错误' },
+    {
+      error: { message: 'Upstream https://private.example.com/send failed' },
+      expected: 'Upstream https://xxx failed'
+    },
+    { error: { code: 503006 }, expected: '图片加载失败，请点击换一张' },
+    { error: { message: '   ' }, expected: '图片加载失败，请点击换一张' },
     { error: undefined, expected: '图片加载失败，请点击换一张' }
   ])('shows the image request error with a fallback: $expected', async ({ error, expected }) => {
     getCaptcha.mockRejectedValueOnce(error);
@@ -138,6 +160,9 @@ describe('PuzzleCaptchaModal errors', () => {
       expected: '操作过于频繁，请稍后重试'
     },
     { phase: 'delivery', error: { message: '邮件服务暂不可用' }, expected: '邮件服务暂不可用' },
+    { phase: 'verification', error: { code: 503006 }, expected: '未能完成验证，请重新拖动' },
+    { phase: 'verification', error: { message: '   ' }, expected: '未能完成验证，请重新拖动' },
+    { phase: 'delivery', error: { message: 'SMTP:AUTH_FAILED' }, expected: 'SMTP:AUTH_FAILED' },
     { phase: 'verification', error: undefined, expected: '未能完成验证，请重新拖动' }
   ])(
     'preserves the $phase error after refreshing: $expected',
