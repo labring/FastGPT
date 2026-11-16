@@ -43,6 +43,13 @@ vi.mock('@fastgpt/web/components/common/FixedTable', () => ({
 }));
 vi.mock('@fastgpt/web/components/common/Icon', () => ({ default: () => null }));
 vi.mock('@/pageComponents/account/styles', () => ({ accountTitleTextStyles: {} }));
+vi.mock('@/components/admin/CompositeSearch', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/components/admin/CompositeSearch')>();
+  return {
+    ...actual,
+    default: () => null
+  };
+});
 vi.mock('@/web/common/system/utils', () => ({ downloadFetch: vi.fn() }));
 vi.mock('@fastgpt/web/components/v2/common/MyModal', () => ({
   default: ({ children, footer }: { children: ReactNode; footer: ReactNode }) =>
