@@ -369,6 +369,70 @@ describe('moderation admin audit helpers', () => {
       expect(updatedLogs).toHaveLength(1);
       expect(updatedLogs[0].metadata).toEqual({ pluginName: '远程解析名称' });
     });
+
+    it('logs enablement only for the first auto-enabled plugin and not for subsequent configured plugins', async () => {
+      vi.spyOn(remoteModeration, 'getModerationPluginDetail').mockImplementation(
+        async ({ pluginId }) => ({
+          pluginId,
+          source: 'system',
+          version: '1.0.0',
+          type: 'moderation',
+          name: pluginId === 'first-plugin' ? '首个插件' : '第二个插件',
+          meta: { provider: 'test' },
+          secretSchema: {}
+        })
+      );
+      vi.spyOn(remoteModeration, 'checkModerationContent').mockResolvedValue({
+        verdict: 'pass',
+        provider: 'test',
+        hits: [],
+        keywords: []
+      });
+
+      const first = await moderationService.saveModerationConfig({
+        pluginId: 'first-plugin',
+        secretsVal: { customKeywords: 'abc' }
+      });
+      expect(first.autoEnabled).toBe(true);
+      await recordModerationConfigAudit({
+        operator,
+        snapshot: first.auditSnapshot,
+        pluginId: 'first-plugin',
+        pluginName: first.item.name,
+        secretsUpdated: true,
+        nextEnabled: first.autoEnabled ? true : undefined
+      });
+
+      const second = await moderationService.saveModerationConfig({
+        pluginId: 'second-plugin',
+        secretsVal: { customKeywords: 'def' }
+      });
+      expect(second.autoEnabled).toBe(false);
+      await recordModerationConfigAudit({
+        operator,
+        snapshot: second.auditSnapshot,
+        pluginId: 'second-plugin',
+        pluginName: second.item.name,
+        secretsUpdated: true,
+        nextEnabled: second.autoEnabled ? true : undefined
+      });
+
+      const logs = await MongoTeamAudit.find({}).sort({ _id: 1 }).lean();
+      expect(logs.map(({ event, metadata }) => ({ event, metadata }))).toEqual([
+        {
+          event: AdminAuditEventEnum.ADMIN_UPDATE_MODERATION_PLUGIN_CONFIG,
+          metadata: { pluginName: '首个插件' }
+        },
+        {
+          event: AdminAuditEventEnum.ADMIN_ENABLE_MODERATION_PLUGIN,
+          metadata: { pluginName: '首个插件' }
+        },
+        {
+          event: AdminAuditEventEnum.ADMIN_UPDATE_MODERATION_PLUGIN_CONFIG,
+          metadata: { pluginName: '第二个插件' }
+        }
+      ]);
+    });
   });
 
   describe('committed mutation audit snapshots', () => {
