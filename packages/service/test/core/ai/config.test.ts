@@ -49,21 +49,7 @@ describe('AI config instance source', () => {
   });
 });
 describe('AI config user OpenAI account', () => {
-  const originalSystemEnv = global.systemEnv;
-
-  beforeEach(() => {
-    global.systemEnv = {
-      ...(global.systemEnv || {}),
-      oneapiUrl: 'https://system.example.com/v1',
-      chatApiKey: 'system-key'
-    } as any;
-  });
-
-  afterEach(() => {
-    global.systemEnv = originalSystemEnv;
-  });
-
-  it('uses AIProxy when the user key is missing, ignoring legacy system overrides', async () => {
+  it('uses AIProxy when the user key is missing, when the user key is missing', async () => {
     const { getAIApi, getAxiosConfig } = await importConfig();
 
     expect(

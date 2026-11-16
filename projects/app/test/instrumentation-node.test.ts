@@ -1,3 +1,4 @@
+import { setTestLicenseActive } from '@test/utils/instanceConfigSnapshot';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
@@ -118,7 +119,7 @@ describe('registerNodeInstrumentation', () => {
   it('ignores retired migration failures and starts business while current background work runs', async () => {
     vi.clearAllMocks();
     mocks.postHealth.mockResolvedValue({ auth: true, data: 'success' });
-    global.feConfigs = { ...global.feConfigs, isPlus: true };
+    setTestLicenseActive(true);
     const migrationId = '20261104_backfill_chat_publish_source';
     const legacyMigrationId = '20260903_migrate_legacy_system_models';
     await MongoSystemMigrationState.insertMany([
@@ -233,7 +234,7 @@ describe('registerNodeInstrumentation', () => {
         );
       });
       mocks.postHealth.mockResolvedValue({ auth: true, data: 'success' });
-      global.feConfigs = { ...global.feConfigs, isPlus: true };
+      setTestLicenseActive(true);
       const migrationId = '20261104_backfill_chat_publish_source';
       const legacyMigrationId = '20260903_migrate_legacy_system_models';
       await MongoSystemMigrationState.insertMany([

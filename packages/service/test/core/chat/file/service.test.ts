@@ -1,3 +1,7 @@
+import {
+  createDefaultInstanceConfig,
+  getTestInstanceConfig
+} from '@test/utils/instanceConfigSnapshot';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Readable } from 'node:stream';
 import { ChatFileTypeEnum as FileType } from '@fastgpt/global/core/chat/constants';
@@ -26,10 +30,10 @@ const createContext = () => {
   return { context, files };
 };
 
-let savedEnv: typeof global.systemEnv;
+let savedEnv: typeof global.systemInstanceConfig;
 beforeEach(() => {
-  savedEnv = global.systemEnv;
-  global.systemEnv = { ...savedEnv, fileUrlWhitelist: [] };
+  savedEnv = global.systemInstanceConfig;
+  global.systemInstanceConfig = createDefaultInstanceConfig();
   vi.spyOn(axios, 'head').mockResolvedValue({ headers: { 'content-type': 'image/png' } });
   vi.spyOn(axios, 'get').mockImplementation(async () => ({
     headers: {},
@@ -38,7 +42,7 @@ beforeEach(() => {
   }));
 });
 afterEach(() => {
-  global.systemEnv = savedEnv;
+  global.systemInstanceConfig = savedEnv;
   vi.restoreAllMocks();
 });
 
@@ -330,8 +334,8 @@ describe('parseUrlToChatFileType', () => {
   });
 
   it('分类被域名策略拒绝的未知链接时不探测', async () => {
-    global.systemEnv.checkExternalFile = true;
-    global.systemEnv.fileUrlWhitelist = ['allowed.example.com'];
+    getTestInstanceConfig().security.checkExternalFile = true;
+    getTestInstanceConfig().security.fileUrlWhitelist = ['allowed.example.com'];
     expect((await parseUrlToChatFileType({ url }))?.type).toBe(FileType.unknown);
     expect(axios.head).not.toHaveBeenCalled();
   });
@@ -348,8 +352,8 @@ describe('validateChatFileInput', () => {
   });
 
   it('已登记签名域名可用，但不能放行其他被阻止的文件', () => {
-    global.systemEnv.checkExternalFile = true;
-    global.systemEnv.fileUrlWhitelist = ['allowed.example.com'];
+    getTestInstanceConfig().security.checkExternalFile = true;
+    getTestInstanceConfig().security.fileUrlWhitelist = ['allowed.example.com'];
     const { context, files } = createContext();
     files.set(url, { url, name: '报告', type: FileType.file });
     expect(validateChatFileInput({ url, fileContext: context })).toBe(true);
@@ -362,8 +366,8 @@ describe('validateChatFileInput', () => {
 
 describe('prepareChatFiles', () => {
   it('清理空输入，按 Context 身份去重并在校验、探测、登记前截断', async () => {
-    global.systemEnv.checkExternalFile = true;
-    global.systemEnv.fileUrlWhitelist = ['files.example.com'];
+    getTestInstanceConfig().security.checkExternalFile = true;
+    getTestInstanceConfig().security.fileUrlWhitelist = ['files.example.com'];
     const { context } = createContext();
     context.getIdentity = (input) => (input.includes('/alias') ? 'same-object' : undefined);
     const result = await prepareChatFiles({

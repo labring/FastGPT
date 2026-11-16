@@ -49,6 +49,12 @@ const getRenderedFields = (route: string): Set<string> => {
             const expression = node.initializer.expression;
             // 当前唯一的动态输入名来自 datasetArchiveFields；从同一文件的数组读取叶子名。
             if (expression && ts.isTemplateExpression(expression)) {
+              if (expression.head.text === 'agentSandbox.proxy.') {
+                expect(text).toContain("['wsUrl', 'previewUrl', 'secret']");
+                for (const key of ['wsUrl', 'previewUrl', 'secret'])
+                  add(`agentSandbox.proxy.${key}`);
+                return;
+              }
               expect(expression.head.text).toBe('datasetArchive.');
               const collectArchiveFields = (entry: ts.Node) => {
                 if (
@@ -78,8 +84,31 @@ const getRenderedFields = (route: string): Set<string> => {
       ts.isCallExpression(node) &&
       ['register', 'setValue'].includes(node.expression.getText(source))
     ) {
-      if (node.arguments[0] && ts.isStringLiteralLike(node.arguments[0]))
-        add(node.arguments[0].text);
+      const name = node.arguments[0];
+      if (name && ts.isStringLiteralLike(name)) add(name.text);
+      if (name && ts.isTemplateExpression(name)) {
+        expect(route).toBe('/admin/settings/custom-domain');
+        const providers: string[] = [];
+        const collectProviders = (entry: ts.Node) => {
+          if (
+            ts.isPropertyAssignment(entry) &&
+            entry.name.getText(source) === 'key' &&
+            ts.isStringLiteral(entry.initializer)
+          )
+            providers.push(entry.initializer.text);
+          ts.forEachChild(entry, collectProviders);
+        };
+        const declaration = source.statements.find(
+          (statement) =>
+            ts.isVariableStatement(statement) &&
+            statement.declarationList.declarations.some(
+              (d) => d.name.getText(source) === 'providers'
+            )
+        );
+        expect(declaration).toBeDefined();
+        collectProviders(declaration!);
+        for (const key of providers) add(`customDomain.${name.head.text}${key}`);
+      }
     }
     ts.forEachChild(node, walk);
   };

@@ -1,3 +1,4 @@
+import { setTestProLicense } from '../../../utils/instanceConfig';
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { authOutLinkValid } from '@fastgpt/service/support/permission/publish/authLink';
 import { authOutLinkInit, authOutLinkLimit } from '@fastgpt/service/support/outLink/runtime/auth';
@@ -59,7 +60,7 @@ const outLinkConfig = {
   }
 };
 
-const originalFeConfigs = global.feConfigs;
+const originalInstanceConfig = global.systemInstanceConfig;
 
 describe('authOutLink', () => {
   beforeEach(() => {
@@ -234,11 +235,11 @@ describe('authOutLinkChatStart', () => {
   });
 
   afterAll(() => {
-    global.feConfigs = originalFeConfigs;
+    global.systemInstanceConfig = originalInstanceConfig;
   });
 
   it('商业版在 FastGPT 进程内执行外链校验', async () => {
-    global.feConfigs = { ...global.feConfigs, isPlus: true } as any;
+    setTestProLicense(true);
 
     const result = await authOutLinkChatStart({
       shareId: 'share-id',
@@ -256,7 +257,7 @@ describe('authOutLinkChatStart', () => {
   });
 
   it('社区版保持历史行为，不执行商业版外链校验', async () => {
-    global.feConfigs = { ...global.feConfigs, isPlus: false } as any;
+    setTestProLicense(false);
 
     const result = await authOutLinkChatStart({
       shareId: 'share-id',

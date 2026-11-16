@@ -1,3 +1,4 @@
+import { getSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/runtime';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import handler from '@/pages/api/common/system/getInitData';
 import { Call } from '@test/utils/request';
@@ -11,6 +12,13 @@ import { ZodError } from 'zod';
 import { serviceEnv } from '@fastgpt/service/env';
 import { postHealth } from '@fastgpt/service/thirdProvider/fastgptPro/api';
 import { appEnv } from '@/env';
+
+vi.mock('@fastgpt/service/common/system/systemInstanceConfig/service', () => ({
+  systemInstanceConfig: {
+    get: () => getSystemInstanceConfig(),
+    getClientConfig: () => ({ feConfigs: global.feConfigs, version: global.systemInitBufferId })
+  }
+}));
 
 vi.mock('@fastgpt/service/thirdProvider/fastgptPro/api', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@fastgpt/service/thirdProvider/fastgptPro/api')>()),
@@ -99,9 +107,9 @@ describe('getInitData anonymous configuration filtering', () => {
     appEnv.SHOW_GIT = false;
     global.systemInitBufferId = 'config-1';
     global.systemVersion = '4.17.3';
-    global.systemEnv = { ...global.systemEnv, sso: { url: 'https://sso.internal.example.com' } };
+    getSystemInstanceConfig().proEnv.ssoUrl = 'https://sso.internal.example.com';
     global.aiproxyChannelsCache = [channel];
-    global.subPlans = { extraDatasetSize: { price: 4 } };
+    getSystemInstanceConfig().commercial.subPlans = { extraDatasetSize: { price: 4 } };
     global.feConfigs = {
       ...structuredClone(publicConfig),
       sso: {
@@ -185,7 +193,7 @@ describe('getInitData anonymous configuration filtering', () => {
     expect(data).toEqual({
       bufferId: 'config-1',
       feConfigs: expectedAuthenticatedConfig(),
-      subPlans: global.subPlans,
+      subPlans: serviceEnv.PRO_URL ? getSystemInstanceConfig().commercial.subPlans : undefined,
       systemVersion: '4.17.3'
     });
   });
@@ -357,7 +365,7 @@ describe('getInitData anonymous configuration filtering', () => {
       });
       expect(data).toEqual({
         bufferId: 'unAuth_v11_sso_1_config-1',
-        subPlans: global.subPlans
+        subPlans: serviceEnv.PRO_URL ? getSystemInstanceConfig().commercial.subPlans : undefined
       });
     }
   );
@@ -448,7 +456,9 @@ describe('getInitData anonymous configuration filtering', () => {
       headers: {},
       query: { bufferId: 'config-1', includeSubPlans: true }
     });
-    expect(data.subPlans).toEqual(global.subPlans);
+    expect(data.subPlans).toEqual(
+      serviceEnv.PRO_URL ? getSystemInstanceConfig().commercial.subPlans : undefined
+    );
   });
 
   it.each([true, 'true', '1'])(
@@ -458,7 +468,7 @@ describe('getInitData anonymous configuration filtering', () => {
       expect(data).toEqual({
         bufferId: 'unAuth_v11_sso_1_config-1',
         feConfigs: publicConfig,
-        subPlans: global.subPlans
+        subPlans: serviceEnv.PRO_URL ? getSystemInstanceConfig().commercial.subPlans : undefined
       });
       expect(data.feConfigs).not.toHaveProperty('payConfig');
       expect(data.feConfigs.sso).not.toHaveProperty('url');
@@ -505,11 +515,11 @@ describe('getInitData anonymous configuration filtering', () => {
   });
 
   it('refreshes an anonymous cache when Pro SSO changes or becomes unavailable', async () => {
-    global.systemEnv.sso = undefined;
+    getSystemInstanceConfig().proEnv.ssoUrl = '';
     const enabled = await Call(handler, { headers: {} });
     expect(enabled.data.feConfigs.sso.enabled).toBe(true);
 
-    global.systemEnv.sso = { url: 'http://legacy.invalid' };
+    getSystemInstanceConfig().proEnv.ssoUrl = 'http://legacy.invalid';
     global.getSsoConfiguredHandler = () => false;
     const disabled = await Call(handler, {
       headers: {},
@@ -605,14 +615,15 @@ describe('getInitData anonymous configuration filtering', () => {
   });
 
   it('snapshots feConfigs, subPlans and bufferId atomically when config rotates during async auth', async () => {
+    serviceEnv.PRO_URL = 'https://pro.example.com';
     global.systemInitBufferId = 'config-v1';
     global.feConfigs = { ...global.feConfigs, systemTitle: 'Old Title' };
-    global.subPlans = { extraDatasetSize: { price: 4 } };
+    getSystemInstanceConfig().commercial.subPlans = { extraDatasetSize: { price: 4 } };
 
     vi.mocked(authCert).mockImplementationOnce(async () => {
       // 模拟异步鉴权期间 initSystemConfig 原子切换到了新配置与新 bufferId
       global.feConfigs = { ...global.feConfigs, systemTitle: 'New Title' };
-      global.subPlans = { extraDatasetSize: { price: 9 } };
+      getSystemInstanceConfig().commercial.subPlans = { extraDatasetSize: { price: 9 } };
       global.systemInitBufferId = 'config-v2';
       throw new Error('Anonymous visitor');
     });
@@ -625,41 +636,6 @@ describe('getInitData anonymous configuration filtering', () => {
     expect(first.data.bufferId).toBe('unAuth_v11_sso_1_config-v2');
     expect(first.data.feConfigs?.systemTitle).toBe('New Title');
     expect(first.data.subPlans).toEqual({ extraDatasetSize: { price: 9 } });
-  });
-
-  it('does not pair a rotated instance version tag with stale feConfigs before initSystemConfig publishes', async () => {
-    const { reloadSystemInstanceConfig, updateDomainConfig } =
-      await import('@fastgpt/service/common/system/systemInstanceConfig/controller');
-    const { MongoSystemInstanceConfig } =
-      await import('@fastgpt/service/common/system/systemInstanceConfig/schema');
-    await MongoSystemInstanceConfig.deleteMany({});
-
-    global.systemInitBufferId = 'v_stable';
-    global.feConfigs = { ...global.feConfigs, systemTitle: 'Title V1' };
-
-    await updateDomainConfig({
-      domain: 'site',
-      expectedRevision: 0,
-      submittedOverrides: { name: 'Title V2' },
-      actor: { actor: 'admin', userId: 'root' }
-    });
-    // 模拟 doInitSystemConfig 并行读取完成 reloadSystemInstanceConfig 但尚未调用 initFastGPTConfig
-    await reloadSystemInstanceConfig({ updateInitBufferId: false });
-
-    const duringReload = await Call(handler, { headers: {} });
-    expect(duringReload.data.bufferId).toBe('unAuth_v11_sso_1_v_stable');
-    expect(duringReload.data.feConfigs?.systemTitle).toBe('Title V1');
-
-    // 随后 initSystemConfig 在同一同步帧发布新 feConfigs 与新 bufferId，客户端携带旧 bufferId 请求必不命中旧缓存
-    global.feConfigs = { ...global.feConfigs, systemTitle: 'Title V2' };
-    global.systemInitBufferId = 'v_next';
-
-    const afterPublish = await Call(handler, {
-      headers: {},
-      query: { bufferId: duringReload.data.bufferId }
-    });
-    expect(afterPublish.data.bufferId).toBe('unAuth_v11_sso_1_v_next');
-    expect(afterPublish.data.feConfigs?.systemTitle).toBe('Title V2');
   });
 
   it('downgrades legacy sync teamMode to single when Pro reports SSO is not configured', async () => {

@@ -25,6 +25,9 @@ import {
   type SystemModerationPolicyType
 } from '@fastgpt/global/core/plugin/moderation/type';
 import { MongoSystemInstanceConfig } from '../../../common/system/systemInstanceConfig/schema';
+import { getSystemInstanceConfig } from '../../../common/system/systemInstanceConfig/runtime';
+import { systemInstanceConfig } from '../../../common/system/systemInstanceConfig/service';
+import { getLogger, LogCategories } from '../../../common/logger';
 import type { LangEnum } from '@fastgpt/global/common/i18n/type';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import type { ModerationCheckInputType } from '@fastgpt/global/sdk/fastgpt-plugin';
@@ -41,6 +44,15 @@ import {
   getModerationPluginDetail,
   listModerationPlugins
 } from '../../../thirdProvider/fastgptPlugin/moderation';
+
+const logger = getLogger(LogCategories.SYSTEM);
+
+/** 事务提交后刷新策略快照，失败交由版本轮询重试，不能误报已提交的变更。 */
+const refreshModerationPolicySnapshot = async () => {
+  await systemInstanceConfig.refresh().catch((error) => {
+    logger.error('Failed to refresh moderation policy config; polling will retry', { error });
+  });
+};
 
 /** 与成功提交的策略变更对应的前态，不包含操作者或外部插件元数据。 */
 export type ModerationPolicyAuditSnapshot = {
@@ -349,6 +361,8 @@ export const saveModerationConfig = async ({
     return { saved: record, auditSnapshot };
   });
 
+  if (enabled === true) await refreshModerationPolicySnapshot();
+
   return { item: buildAdminItem({ detail, config: saved, lang }), auditSnapshot };
 };
 
@@ -402,7 +416,7 @@ export const deleteModerationPlugin = async ({
   await disableSystemPlugin(pluginId);
 
   // 3. 在同一事务内读取实际停用前态、软删除本地配置，并在停用最后插件（或并发刚被启用的目标插件）时关闭全局策略。
-  const auditSnapshot = await mongoSessionRun(async (session) => {
+  const { auditSnapshot, policyChanged } = await mongoSessionRun(async (session) => {
     const prevTarget = await findModerationConfig({ pluginId, source }, session);
     const policyState =
       isLastModerationPlugin || prevTarget?.enabled
@@ -422,12 +436,13 @@ export const deleteModerationPlugin = async ({
       ...(session ? { session } : {})
     });
 
-    if (
+    const policyChanged = Boolean(
       policyState &&
       (isLastModerationPlugin ||
         policyState.enabledPluginId === pluginId ||
         policyState.policy.activePluginId === pluginId)
-    ) {
+    );
+    if (policyChanged && policyState) {
       await syncPolicyContentionRecord({
         session,
         policy: {
@@ -441,8 +456,10 @@ export const deleteModerationPlugin = async ({
       }
     }
 
-    return { wasEnabled };
+    return { auditSnapshot: { wasEnabled }, policyChanged };
   });
+
+  if (policyChanged) await refreshModerationPolicySnapshot();
 
   return { auditSnapshot };
 };
@@ -566,7 +583,7 @@ export const checkModerationForTest = async ({
 };
 
 /**
- * 读取全局策略及实际启用插件，供查询与事务内审计共同使用。
+ * 在事务中读取全局策略及实际启用插件，作为更新的审计前态。
  *
  * 从实例配置读取，若不存在或校验失败则回退到默认值，
  * 优先使用数据库中实际启用的审查插件作为 activePluginId。
@@ -604,8 +621,9 @@ const readModerationPolicyState = async (session?: ClientSession) => {
 
 /** 获取全局内容审核策略，以实际启用的插件校正生效插件，缺失或无效配置回退到默认值。 */
 export const getModerationPolicy = async (): Promise<SystemModerationPolicyType> => {
-  const { policy } = await readModerationPolicyState();
-  return policy;
+  const policy = getSystemInstanceConfig().moderationPolicy;
+  const enabledPlugin = await findEnabledModerationConfig();
+  return { ...policy, activePluginId: enabledPlugin?.pluginId ?? policy.activePluginId };
 };
 
 /**
@@ -628,7 +646,7 @@ export const updateModerationPolicy = async (
     throw new Error('请选择一个审核插件后再保存');
   }
 
-  return await mongoSessionRun(async (session) => {
+  const result = await mongoSessionRun(async (session) => {
     // 1. 在更新事务内读取前态，冲突重试时重新生成，避免并发切换或策略恢复漏记日志。
     const { policy: prevPolicy, enabledPluginId } = await readModerationPolicyState(session);
     const auditSnapshot: ModerationPolicyAuditSnapshot = {
@@ -648,4 +666,7 @@ export const updateModerationPolicy = async (
 
     return { policy: validated, auditSnapshot };
   });
+
+  await refreshModerationPolicySnapshot();
+  return result;
 };

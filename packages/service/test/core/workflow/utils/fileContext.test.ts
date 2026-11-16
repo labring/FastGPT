@@ -1,3 +1,7 @@
+import {
+  createDefaultInstanceConfig,
+  getTestInstanceConfig
+} from '@test/utils/instanceConfigSnapshot';
 import { prepareChatFiles, type ChatFileInput } from '@fastgpt/service/core/chat/file/service';
 import { Readable } from 'node:stream';
 import { resolveFileSourceExtension } from '@fastgpt/service/common/file/read/source';
@@ -52,19 +56,19 @@ const createHistory = (file: UserChatItemValueItemType): ChatItemMiniType => ({
 
 describe('prepareWorkflowFileContext', () => {
   const originalS3BucketMap = global.s3BucketMap;
-  let originalSystemEnv: typeof global.systemEnv;
+  let originalSystemEnv: typeof global.systemInstanceConfig;
 
   beforeEach(() => {
     vi.clearAllMocks();
     axiosHeadMock.mockReset();
     axiosGetMock.mockReset();
-    originalSystemEnv = global.systemEnv;
-    global.systemEnv = { fileUrlWhitelist: [] } as any;
+    originalSystemEnv = global.systemInstanceConfig;
+    global.systemInstanceConfig = createDefaultInstanceConfig();
   });
 
   afterEach(() => {
     global.s3BucketMap = originalS3BucketMap;
-    global.systemEnv = originalSystemEnv;
+    global.systemInstanceConfig = originalSystemEnv;
   });
 
   it('保留文本和非 Human 历史，不共享可变消息对象', async () => {
@@ -237,8 +241,8 @@ describe('prepareWorkflowFileContext', () => {
       'Invalid child workflow file URL'
     );
     await expect(child.derive([{}])).rejects.toThrow('Invalid child workflow file URL');
-    global.systemEnv.checkExternalFile = true;
-    global.systemEnv.fileUrlWhitelist = ['allowed.example.com'];
+    getTestInstanceConfig().security.checkExternalFile = true;
+    getTestInstanceConfig().security.fileUrlWhitelist = ['allowed.example.com'];
     await expect(child.derive(['https://blocked.example.com/a.pdf'])).rejects.toThrow(
       'Invalid child workflow file URL'
     );
@@ -562,10 +566,10 @@ describe('prepareWorkflowFileContext', () => {
       })
     ).rejects.toThrow('Invalid workflow file URL');
 
-    global.systemEnv = {
+    Object.assign(getTestInstanceConfig().security, {
       checkExternalFile: true,
       fileUrlWhitelist: ['allowed.example.com']
-    } as any;
+    });
     await expect(
       prepareWorkflowFileContext({
         query: [createFile({ key: undefined, url: 'https://blocked.example.com/a.pdf' })],
@@ -822,15 +826,15 @@ describe('prepareWorkflowFileContext — 外链登记与派生', () => {
     const [result] = await prepareChatFiles({ files: [file], maxFiles: 1, fileContext });
     return fileContext.resolve(result.url)!;
   };
-  let savedEnv: typeof global.systemEnv;
+  let savedEnv: typeof global.systemInstanceConfig;
   beforeEach(() => {
-    savedEnv = global.systemEnv;
+    savedEnv = global.systemInstanceConfig;
     axiosHeadMock.mockReset().mockResolvedValue({ headers: { 'content-type': 'image/png' } });
-    global.systemEnv = { fileUrlWhitelist: [] } as any;
+    global.systemInstanceConfig = createDefaultInstanceConfig();
   });
 
   afterEach(() => {
-    global.systemEnv = savedEnv;
+    global.systemInstanceConfig = savedEnv;
   });
 
   const prepare = (query: UserChatItemValueItemType[] = [], maxFileAmount = 20) =>

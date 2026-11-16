@@ -25,7 +25,7 @@ const systemConfigSchema = new Schema(
     }
   },
   {
-    // 配置按变更事件刷新内存，不能将滞后副本的旧值当作一次成功刷新长期缓存。
+    // 此模型仅供迁移读取历史配置；从主库读取，避免迁入滞后副本中的旧快照。
     read: 'primary',
     writeConcern: { w: 'majority' }
   }

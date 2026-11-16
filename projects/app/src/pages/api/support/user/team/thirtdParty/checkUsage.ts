@@ -1,3 +1,4 @@
+import { getSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/runtime';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
@@ -29,7 +30,8 @@ async function handler(
     try {
       const { tmb } = await authUserPer({ req, authToken: true, per: ReadPermissionVal });
 
-      const externalProviderWorkflowVariables = global.feConfigs.externalProviderWorkflowVariables;
+      const externalProviderWorkflowVariables =
+        getSystemInstanceConfig().providers.externalProviderWorkflowVariables;
       logInstanceConfigRead({
         callsite: 'runtime.app.team.checkThirdPartyUsage',
         source: 'bridged-fe',

@@ -145,7 +145,6 @@ describe('PgVectorCtrl.embRecall indexed transactions', () => {
     datasetVectorData: [{ datasetId: 'large', rows: 10001, pgIndex: 'ready' as const }]
   };
   beforeEach(() => {
-    global.systemEnv = { ...global.systemEnv, hnswEfSearch: 9999 };
     poolClient.query.mockReset().mockResolvedValue({ rows: [] });
     poolClient.release.mockReset();
   });

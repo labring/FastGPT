@@ -1,3 +1,4 @@
+import { isProVersion } from '@fastgpt/service/common/system/constants';
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import {
@@ -29,7 +30,7 @@ async function handler(req: ApiRequestProps<UpdateRootPasswordBody>): Promise<vo
     req,
     authToken: true
   });
-  if (!sessionId || !isRoot || global.feConfigs?.isPlus) {
+  if (!sessionId || !isRoot || isProVersion()) {
     return Promise.reject(ERROR_ENUM.unAuthorization);
   }
 

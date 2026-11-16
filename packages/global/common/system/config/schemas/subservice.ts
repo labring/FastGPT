@@ -29,7 +29,7 @@ const CodeSandboxSubserviceConfigSchema = z.strictObject({
   token: textWithDefault()
 });
 
-/** 浏览器代理统一配置；空值允许先保存禁用状态，启用时由页面和启动边界检查完整性。 */
+/** 浏览器代理统一配置；空值允许先保存禁用状态，启用时由共享终审和启动边界检查完整性。 */
 export const AgentSandboxProxyConfigSchema = z.strictObject({
   wsUrl: z.union([z.url({ protocol: /^wss?$/ }), z.literal('')]).default(''),
   previewUrl: z.union([z.url({ protocol: /^https?$/ }), z.literal('')]).default(''),
@@ -117,6 +117,19 @@ export const SubserviceConfigBaseSchema = z.strictObject({
 
 export const SubserviceConfigSchema = SubserviceConfigBaseSchema.superRefine((subservice, ctx) => {
   const { agentSandbox } = subservice;
+
+  // 启用任一供应商都依赖完整代理配置，必须在保存前拒绝不完整状态。
+  if (agentSandbox.provider !== 'none') {
+    for (const key of ['wsUrl', 'previewUrl', 'secret'] as const) {
+      if (!agentSandbox.proxy[key].trim()) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['agentSandbox', 'proxy', key],
+          message: `${key} is required when Agent Sandbox is enabled`
+        });
+      }
+    }
+  }
 
   // Admin 提交的掩码先由配置服务恢复；终审在恢复后检查真实密钥，不能把 ****** 当成新密钥。
   if (agentSandbox.proxy.secret && agentSandbox.proxy.secret.length < 32) {

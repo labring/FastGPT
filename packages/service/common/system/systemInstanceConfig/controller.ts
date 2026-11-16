@@ -1,5 +1,6 @@
 import { assertStorageDownloadConfig } from '../../s3/config/utils';
 import {
+  SYSTEM_INSTANCE_CONFIG_SCOPES,
   type SystemInstanceConfigDomainKey,
   type SystemInstanceConfigDomainMap,
   getDomainDefaultConfig,
@@ -35,13 +36,9 @@ import { mongoSessionRun } from '../../mongo/sessionRun';
 import { ZodError } from 'zod';
 import { ApiRequestInputParseError } from '../../zod/requestParseError';
 import { serviceEnv } from '../../../env';
-import {
-  computeSystemInitBufferId,
-  getInstanceConfigVersionTag,
-  publishSystemInstanceConfigSnapshot
-} from './runtime';
 import { logInstanceConfigRead } from '../migrationCoverageLog';
 import { ApiHttpError } from '../../http/apiError';
+import type { ClientSession } from '../../mongo';
 
 export type GetDomainConfigResult<T extends SystemInstanceConfigDomainKey> = {
   domain: T;
@@ -312,19 +309,22 @@ export type BatchUpdateItemInput = {
  * 携带套餐时必须同时提供 subPlansExpectedRevision，并绑定 commercial 域的 revision：
  * 页面同时提交 commercial 时要求两者一致；只提交套餐时自动补一个空 commercial 更新来递增版本。
  * 任一域冲突、套餐写入失败或网络异常整体回滚。返回本次事务写入的数据，
- * 不等待运行时应用、不在提交后重新查询；刷新由业务入口和 Watch 负责。
+ * 不等待运行时应用、不在提交后重新查询；刷新由业务入口和轮询负责。
  */
-export const batchUpdateDomainConfigs = async ({
-  items,
-  subPlans,
-  subPlansExpectedRevision,
-  actor
-}: {
-  items: BatchUpdateItemInput[];
-  subPlans?: Record<string, unknown>;
-  subPlansExpectedRevision?: number;
-  actor: SystemInstanceConfigUpdatedByType;
-}): Promise<GetDomainConfigResult<SystemInstanceConfigDomainKey>[]> => {
+export const batchUpdateDomainConfigs = async (
+  {
+    items,
+    subPlans,
+    subPlansExpectedRevision,
+    actor
+  }: {
+    items: BatchUpdateItemInput[];
+    subPlans?: Record<string, unknown>;
+    subPlansExpectedRevision?: number;
+    actor: SystemInstanceConfigUpdatedByType;
+  },
+  session?: ClientSession
+): Promise<GetDomainConfigResult<SystemInstanceConfigDomainKey>[]> => {
   if (subPlans !== undefined && subPlansExpectedRevision === undefined) {
     throw new ApiHttpError(400, 'subPlansExpectedRevision is required when subPlans is provided');
   }
@@ -427,6 +427,12 @@ export const batchUpdateDomainConfigs = async ({
   // 1. 预校验与准备阶段：对所有域执行局部合并、敏感字段恢复、形态校验、终审校验和默认值剪枝
   const preparedItems = await Promise.all(
     resolvedItems.map(async ({ domain, expectedRevision, overrides: submittedOverrides }) => {
+      if (domain === 'commercial' && Object.hasOwn(submittedOverrides, 'subPlans')) {
+        throw new ApiHttpError(
+          400,
+          'Use the dedicated subPlans input with subPlansExpectedRevision'
+        );
+      }
       const existing = await MongoSystemInstanceConfig.findOne({ domain }).lean();
       const currentRevision = existing?.revision ?? 0;
       if (currentRevision !== expectedRevision) {
@@ -499,6 +505,14 @@ export const batchUpdateDomainConfigs = async ({
         }
       }
 
+      if (domain === 'commercial' && normalizedSubPlans !== undefined) {
+        // 专用套餐输入是整表替换，不能按一般对象补丁合并，否则清空套餐会保留旧权益。
+        (parsedOverrides as DeepPartial<SystemInstanceConfigDomainMap['commercial']>).subPlans =
+          normalizedSubPlans;
+        (effectiveConfig as SystemInstanceConfigDomainMap['commercial']).subPlans =
+          normalizedSubPlans;
+      }
+
       const defaultValues = getDomainDefaultConfig(domain);
       const cleanOverrides = pruneDefaultOverrides(parsedOverrides, defaultValues) ?? {};
 
@@ -519,83 +533,71 @@ export const batchUpdateDomainConfigs = async ({
   );
 
   // 2. 事务执行阶段：在同一个 session 中执行所有文档的新建、带 revision 限制的更新以及套餐写入
-  return mongoSessionRun(
-    async (session) => {
-      // 事务回调可能由 driver 重试；每次重新收集，避免返回已回滚尝试的 revision 或时间。
-      const results: GetDomainConfigResult<SystemInstanceConfigDomainKey>[] = [];
-      if (normalizedSubPlans !== undefined) {
-        await MongoSystemInstanceConfig.updateOne(
-          { domain: 'subPlans' },
+  const write = async (session: ClientSession) => {
+    // 事务回调可能由 driver 重试；每次重新收集，避免返回已回滚尝试的 revision 或时间。
+    const results: GetDomainConfigResult<SystemInstanceConfigDomainKey>[] = [];
+
+    for (const item of preparedItems) {
+      let updatedDoc;
+      if (!item.existing) {
+        const newDoc = new MongoSystemInstanceConfig({
+          domain: item.domain,
+          revision: 1,
+          overrides: item.cleanOverrides,
+          explicitDefaultPaths: item.explicitDefaultPaths,
+          updatedBy: actor
+        });
+        try {
+          await newDoc.save({ session });
+        } catch (error) {
+          if ((error as { code?: number })?.code === 11000) {
+            throw new ApiHttpError(409, 'Revision conflict: document was concurrently created');
+          }
+          throw error;
+        }
+        updatedDoc = newDoc.toObject();
+      } else {
+        updatedDoc = await MongoSystemInstanceConfig.findOneAndUpdate(
+          { domain: item.domain, revision: item.expectedRevision },
           {
-            $set: { overrides: normalizedSubPlans, updatedBy: actor },
-            $inc: { revision: 1 },
-            $setOnInsert: { schemaVersion: 1, explicitDefaultPaths: [] }
-          },
-          { session, upsert: true, setDefaultsOnInsert: false }
-        );
-      }
-
-      for (const item of preparedItems) {
-        let updatedDoc;
-        if (!item.existing) {
-          const newDoc = new MongoSystemInstanceConfig({
-            domain: item.domain,
-            revision: 1,
-            overrides: item.cleanOverrides,
-            explicitDefaultPaths: item.explicitDefaultPaths,
-            updatedBy: actor
-          });
-          try {
-            await newDoc.save({ session });
-          } catch (error) {
-            if ((error as { code?: number })?.code === 11000) {
-              throw new ApiHttpError(409, 'Revision conflict: document was concurrently created');
-            }
-            throw error;
-          }
-          updatedDoc = newDoc.toObject();
-        } else {
-          updatedDoc = await MongoSystemInstanceConfig.findOneAndUpdate(
-            { domain: item.domain, revision: item.expectedRevision },
-            {
-              $set: {
-                overrides: item.cleanOverrides,
-                explicitDefaultPaths: item.explicitDefaultPaths,
-                updatedBy: actor,
-                updatedAt: new Date()
-              },
-              $inc: { revision: 1 }
+            $set: {
+              overrides: item.cleanOverrides,
+              explicitDefaultPaths: item.explicitDefaultPaths,
+              updatedBy: actor,
+              updatedAt: new Date()
             },
-            { session, new: true, runValidators: false }
-          ).lean();
+            $inc: { revision: 1 }
+          },
+          { session, new: true, runValidators: false }
+        ).lean();
 
-          if (!updatedDoc) {
-            throw new ApiHttpError(
-              409,
-              `Revision conflict for domain "${item.domain}": concurrent modification detected`
-            );
-          }
-        }
-        // 自动补充的 commercial 更新只用于套餐写入加锁，不属于调用方请求的域，不回传。
-        if (!item.syntheticCommercial) {
-          results.push({
-            domain: item.domain,
-            revision: updatedDoc.revision,
-            overrides: item.cleanOverrides,
-            effectiveConfig: item.effectiveConfig,
-            updatedAt: updatedDoc.updatedAt,
-            updatedBy: updatedDoc.updatedBy
-          });
+        if (!updatedDoc) {
+          throw new ApiHttpError(
+            409,
+            `Revision conflict for domain "${item.domain}": concurrent modification detected`
+          );
         }
       }
-      return results;
-    },
-    { readPreference: 'primary', writeConcern: { w: 'majority' } }
-  );
+      // 自动补充的 commercial 更新只用于套餐写入加锁，不属于调用方请求的域，不回传。
+      if (!item.syntheticCommercial) {
+        results.push({
+          domain: item.domain,
+          revision: updatedDoc.revision,
+          overrides: item.cleanOverrides,
+          effectiveConfig: item.effectiveConfig,
+          updatedAt: updatedDoc.updatedAt,
+          updatedBy: updatedDoc.updatedBy
+        });
+      }
+    }
+    return results;
+  };
+  if (session) return write(session);
+  return mongoSessionRun(write, { readPreference: 'primary', writeConcern: { w: 'majority' } });
 };
 
 /**
- * 一次性获取所有 11 个 Domain 的最新配置合成快照。
+ * 一次性获取全部 17 个 scope 并合成完整快照。
  * 供服务启动、Worker 进程同步以及全局运行时配置读取。
  * 发生错误时向上抛出，保留调用方已有的上一成功快照，绝不降级覆盖为全默认配置。
  *
@@ -607,7 +609,15 @@ export const getSystemInstanceConfigSnapshot = async ({
   snapshot: SystemInstanceConfig;
   versionTag: string;
 }> => {
-  const docs = await MongoSystemInstanceConfig.find({}).read(readPreference).lean();
+  // 跨域保存使用事务；读取也使用短 snapshot 事务，避免游标跨批次拼出不同提交的配置。
+  const docs = await mongoSessionRun(
+    (session) =>
+      MongoSystemInstanceConfig.find({ domain: { $in: SYSTEM_INSTANCE_CONFIG_SCOPES } })
+        .read(readPreference)
+        .session(session)
+        .lean(),
+    { readConcern: { level: 'snapshot' }, readPreference: 'primary' }
+  );
 
   const versionTag =
     docs
@@ -616,9 +626,9 @@ export const getSystemInstanceConfigSnapshot = async ({
       .sort()
       .join(';') || '0';
 
-  const domainOverridesMap: Partial<Record<SystemInstanceConfigDomainKey, unknown>> = {};
+  const domainOverridesMap: Record<string, unknown> = {};
   for (const doc of docs) {
-    const domainKey = ((doc as any).domain ?? doc._id) as SystemInstanceConfigDomainKey;
+    const domainKey = String(doc.domain ?? doc._id);
     domainOverridesMap[domainKey] = doc.overrides;
   }
 
@@ -646,26 +656,9 @@ export const getSystemInstanceConfigSnapshot = async ({
  * 重新加载并刷新系统实例配置内存快照。
  * 供服务启动、Admin API 保存后以及集群变更通知时调用。
  *
- * App 的 `initSystemConfig` 还需合并 辅助 scope / 插件能力后再统一发布 `feConfigs`，
- * 因此传入 `updateInitBufferId: false`，避免提前旋转 `systemInitBufferId` 造成“新标识 + 旧页面配置”竞态。
+ * 兼容既有内部调用名称；加载、发布和排队统一交给管理器，版本与公开投影同步发布。
  */
-export const reloadSystemInstanceConfig = async (options?: {
-  readPreference?: 'primary';
-  updateInitBufferId?: boolean;
-}): Promise<SystemInstanceConfig> => {
-  const { snapshot, versionTag } = await getSystemInstanceConfigSnapshot({
-    readPreference: options?.readPreference
-  });
-  // 环境变量仅提供基础设施 vendor；下载策略来自已加载配置，校验失败保留旧快照。
-  assertStorageDownloadConfig(snapshot.storage);
-  publishSystemInstanceConfigSnapshot({ snapshot, versionTag });
-  if (options?.updateInitBufferId !== false) {
-    global.systemInitBufferId = computeSystemInitBufferId({
-      instanceVersionTag: getInstanceConfigVersionTag(),
-      licenseUpdateTime: (global.licenseData as any)?.expiredTime
-        ? new Date((global.licenseData as any).expiredTime).getTime()
-        : undefined
-    });
-  }
-  return snapshot;
+export const reloadSystemInstanceConfig = async (): Promise<SystemInstanceConfig> => {
+  const { systemInstanceConfig } = await import('./service');
+  return systemInstanceConfig.refresh();
 };

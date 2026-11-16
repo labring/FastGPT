@@ -1,3 +1,4 @@
+import { getSystemInstanceConfig } from '../system/systemInstanceConfig/runtime';
 /* vector crud */
 import { VectorCountCache, type VectorCountScope } from '@fastgpt/dal/redis/caches/vectorCount';
 import { PgVectorCtrl } from './pg';
@@ -66,7 +67,7 @@ export const recallFromVectorStore: VectorControllerType['embRecall'] = async (p
           key: 'vector:recall',
           label: 'vector-recall',
           concurrency: () =>
-            isProVersion() ? (global.systemEnv?.vectorRecallConcurrency ?? 0) : 0,
+            isProVersion() ? (getSystemInstanceConfig().vector.vectorRecallConcurrency ?? 0) : 0,
           ttlMs: RECALL_LEASE_TTL_MS,
           renewIntervalMs: 10_000,
           fn: () => Vector.embRecall(props)

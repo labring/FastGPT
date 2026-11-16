@@ -157,8 +157,8 @@ const DateInput = ({
 /**
  * 订阅套餐配置区块。
  *
- * subPlans 不在新的 system_instance_configs 11 个 Domain 内，由 commercial
- * 页面统一批量事务保存写入 system_instance_configs 的 subPlans scope，与商业配置原子生效。
+ * 套餐保存于 system_instance_configs 的 commercial.subPlans，与其他商业配置
+ * 共用文档及 revision，由 commercial 页面在同一事务内保存。
  *
  * 套餐读取走 Pro 的配置接口：读取未成功（未激活/已到期）时本区块只读，
  * 提交时不带 subPlans 键，避免把读取失败写成清空套餐。

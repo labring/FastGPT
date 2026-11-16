@@ -81,6 +81,20 @@ export const LicensePayloadSchema = z.object({
 });
 export type LicensePayload = z.infer<typeof LicensePayloadSchema>;
 
+/** 已验签的运行时数据兼容无限期与旧展示字段，但不接受错误类型的配额或能力。 */
+export const RuntimeLicenseDataSchema = LicensePayloadSchema.extend({
+  startTime: z.string().min(1),
+  expiredTime: z.string().min(1),
+  functions: LicenseFunctionsSchema.extend({
+    batchEval: z.boolean().optional(),
+    customTemplates: z.boolean().optional()
+  }),
+  hosts: z.array(z.string()).optional(),
+  maxUsers: z.number().int().nonnegative().optional(),
+  maxApps: z.number().int().nonnegative().optional(),
+  maxDatasets: z.number().int().nonnegative().optional()
+});
+
 /** 签发侧强制未知键拒绝（决策版：customTemplates/networkIds 不入新 license） */
 export const StrictLicensePayloadSchema = z.strictObject({
   ...LicensePayloadSchema.shape

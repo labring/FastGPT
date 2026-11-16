@@ -1,3 +1,4 @@
+import { isProVersion } from '../../system/constants';
 import type {
   PushTrackTeamType,
   PushTrackUserType,
@@ -39,7 +40,7 @@ type AccountCancellationTrackData = PushTrackUserType & {
 
 /** 提取埋点身份；账号事件只保留 uid，团队事件保留团队及成员，业务字段放入 data。 */
 const createTrack = ({ event, data }: { event: TrackEnum; data: Record<string, any> }) => {
-  if (!global.feConfigs?.isPlus) return;
+  if (!isProVersion()) return;
   logger.debug('Enqueue track event', {
     event,
     ...data
@@ -64,7 +65,7 @@ const pushCountTrack = ({
   key: string;
   data: Record<string, any>;
 }) => {
-  if (!global.feConfigs?.isPlus) return;
+  if (!isProVersion()) return;
   logger.debug('Enqueue track counter event', {
     event,
     key
@@ -102,7 +103,7 @@ export const pushTrack = {
   },
   /** 固定字段逐条落库；拒绝额外参数进入埋点，采集失败不影响业务执行。 */
   workflowBuilder: async ({ teamId, tmbId, appId, chatId, event }: WorkflowBuilderTrackData) => {
-    if (!global.feConfigs?.isPlus) return;
+    if (!isProVersion()) return;
     try {
       await createTrack({ event, data: { teamId, tmbId, appId, chatId } });
     } catch {

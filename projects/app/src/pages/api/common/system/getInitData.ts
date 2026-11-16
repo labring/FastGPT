@@ -1,3 +1,4 @@
+import { systemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/service';
 import type { NextApiResponse } from 'next';
 import { type ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
@@ -57,11 +58,12 @@ async function handler(
   })();
 
   // 所有异步探测完成后在同一同步帧快照全局状态，确保 feConfigs、subPlans 与 bufferId 来自同一次发布。
+  const clientConfig = systemInstanceConfig.getClientConfig();
   const runtimeSnapshot = {
-    feConfigs: global.feConfigs,
-    subPlans: global.subPlans,
+    feConfigs: clientConfig.feConfigs,
+    subPlans: serviceEnv.PRO_URL ? systemInstanceConfig.get().commercial.subPlans : undefined,
     systemVersion: global.systemVersion,
-    systemInitBufferId: global.systemInitBufferId
+    systemInitBufferId: clientConfig.version
   };
   const subPlans = getRuntimeSubPlansConfig(runtimeSnapshot.subPlans);
 

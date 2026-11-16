@@ -7,16 +7,10 @@ const mocks = vi.hoisted(() => ({
   getConfig: vi.fn(),
   reload: vi.fn(),
   storage: vi.fn(),
-  buckets: vi.fn(),
-  tracing: vi.fn()
+  buckets: vi.fn()
 }));
-vi.mock('@fastgpt/service/common/system/config/controller', async (original) => ({
-  ...(await original<Record<string, unknown>>()),
-  getFastGPTConfigFromDB: mocks.getConfig
-}));
-vi.mock('@fastgpt/service/common/system/systemInstanceConfig/controller', async (original) => ({
-  ...(await original<Record<string, unknown>>()),
-  reloadSystemInstanceConfig: mocks.reload
+vi.mock('@fastgpt/service/common/system/systemInstanceConfig/service', () => ({
+  systemInstanceConfig: { initialize: mocks.reload, setFrontendContext: vi.fn() }
 }));
 vi.mock('@fastgpt/service/common/s3/config/constants', async (original) => ({
   ...(await original<Record<string, unknown>>()),
@@ -25,10 +19,6 @@ vi.mock('@fastgpt/service/common/s3/config/constants', async (original) => ({
 vi.mock('@fastgpt/service/common/s3', async (original) => ({
   ...(await original<Record<string, unknown>>()),
   initS3Buckets: mocks.buckets
-}));
-vi.mock('@fastgpt/service/common/langfuse', async (original) => ({
-  ...(await original<Record<string, unknown>>()),
-  refreshLangfuseTracing: mocks.tracing
 }));
 vi.mock('@fastgpt/service/thirdProvider/fastgptPlugin', async (original) => ({
   ...(await original<Record<string, unknown>>()),
@@ -42,7 +32,6 @@ describe('initSystemConfig', () => {
     mocks.reload.mockResolvedValue(resolveSystemInstanceConfig({}));
     mocks.storage.mockReturnValue(false);
     mocks.buckets.mockReset();
-    mocks.tracing.mockResolvedValue(undefined);
   });
 
   it('retries failed bucket creation on the next refresh and then stops rebuilding unchanged storage', async () => {
@@ -58,7 +47,6 @@ describe('initSystemConfig', () => {
     await expect(reload()).rejects.toThrow('temporary bucket failure');
     await reload();
     expect(mocks.buckets).toHaveBeenCalledTimes(2);
-    expect(mocks.tracing).toHaveBeenCalledOnce();
     await reload();
     expect(mocks.buckets).toHaveBeenCalledTimes(2);
   });

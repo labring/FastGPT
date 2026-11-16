@@ -1,3 +1,4 @@
+import { getSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/runtime';
 import { getModelTestDefaults, addModelTestModel } from '@test/modelCache';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
@@ -83,7 +84,7 @@ describe('generateQA writes data only after QA completes', () => {
   beforeEach(() => {
     Object.assign(serviceEnv, { DATASET_SYNONYM_ENABLED: false });
     global.qaQueueLen = 0;
-    global.systemEnv = { ...(global.systemEnv ?? {}), qaMaxProcess: 10 } as any;
+    getSystemInstanceConfig().performance.dataset.qaMaxProcess = 10;
     mocks.llm.mockReset();
     mocks.usage.mockReset();
     embeddingModel = {
@@ -127,7 +128,7 @@ describe('generateQA writes data only after QA completes', () => {
     const first = await createContext();
     const second = await createContext();
     const pending = await createContext();
-    global.systemEnv.qaMaxProcess = 2;
+    getSystemInstanceConfig().performance.dataset.qaMaxProcess = 2;
 
     const response = {
       answerText: 'Q1: question\nA1: answer',
@@ -153,7 +154,7 @@ describe('generateQA writes data only after QA completes', () => {
       await vi.waitFor(() => expect(mocks.llm).toHaveBeenCalledTimes(1), { timeout: 10000 });
       secondWorker = generateQA();
       await vi.waitFor(() => expect(mocks.llm).toHaveBeenCalledTimes(2), { timeout: 10000 });
-      global.systemEnv.qaMaxProcess = 1;
+      getSystemInstanceConfig().performance.dataset.qaMaxProcess = 1;
       releaseFirst();
       await firstWorker;
 

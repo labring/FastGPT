@@ -32,11 +32,11 @@ const normalizeUnlimitedValue = (value: number): number | null =>
   Number.isFinite(value) ? value : null;
 
 export const getStandardPlansConfig = () => {
-  return global?.subPlans?.standard;
+  return getSystemInstanceConfig().commercial.subPlans?.standard;
 };
 export const getStandardPlanConfig = (level: `${StandardSubLevelEnum}`) => {
   return getRuntimeStandardPlanConfig({
-    plans: global.subPlans?.standard,
+    plans: getSystemInstanceConfig().commercial.subPlans?.standard,
     level
   });
 };
@@ -86,7 +86,7 @@ export const buildStandardPlan = (
   ...getFileUploadLimits({
     teamPlan: standard,
     plan: standardConstants,
-    systemLimit: global.feConfigs?.limit
+    systemLimit: getSystemInstanceConfig().resource
   }),
   enableSandbox: standard?.enableSandbox ?? standardConstants.enableSandbox
 });
@@ -122,8 +122,11 @@ export const initTeamFreePlan = async ({
   session?: ClientSession;
 }) => {
   const freePoints = isWecomTeam
-    ? Math.round((global.subPlans?.standard?.basic?.totalPoints ?? 4000) / 2)
-    : global?.subPlans?.standard?.[StandardSubLevelEnum.free]?.totalPoints || 100;
+    ? Math.round(
+        (getSystemInstanceConfig().commercial.subPlans?.standard?.basic?.totalPoints ?? 4000) / 2
+      )
+    : getSystemInstanceConfig().commercial.subPlans?.standard?.[StandardSubLevelEnum.free]
+        ?.totalPoints || 100;
 
   const freePlan = await MongoTeamSub.findOne({
     teamId,
@@ -133,7 +136,8 @@ export const initTeamFreePlan = async ({
 
   // Get basic plan config for wecom mode
   const specialConfig: Record<string, any> | null = (() => {
-    const config = global?.subPlans?.standard?.[StandardSubLevelEnum.basic];
+    const config =
+      getSystemInstanceConfig().commercial.subPlans?.standard?.[StandardSubLevelEnum.basic];
     if (isWecomTeam && config) {
       return {
         maxTeamMember: config.maxTeamMember,
@@ -217,7 +221,7 @@ export const getTeamStandPlan = async ({
   teamId: string;
   readPreference?: TeamStandPlanReadPreference;
 }) => {
-  const standardPlans = global.subPlans?.standard;
+  const standardPlans = getSystemInstanceConfig().commercial.subPlans?.standard;
   const plans = await MongoTeamSub.find(
     {
       teamId,
@@ -258,7 +262,7 @@ export const getTeamPlanStatus = async ({
   teamId: string;
 }): Promise<TeamPlanStatusType> => {
   /** 配置里的套餐 */
-  const standardPlans = global.subPlans?.standard;
+  const standardPlans = getSystemInstanceConfig().commercial.subPlans?.standard;
 
   /* Get all plans and datasetSize */
   const plans = await MongoTeamSub.find({ teamId }, undefined, {
@@ -335,7 +339,7 @@ export const getTeamPlanStatus = async ({
           ...buildStandardPlan(standardPlan, standardConstants),
           canHideShareBrand: getPlansCanHideShareBrand({
             plans,
-            standardPlans: global.subPlans?.standard,
+            standardPlans: getSystemInstanceConfig().commercial.subPlans?.standard,
             now: Date.now()
           })
         }

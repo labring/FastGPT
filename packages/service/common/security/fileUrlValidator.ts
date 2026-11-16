@@ -1,3 +1,4 @@
+import { getSystemInstanceConfig } from '../system/systemInstanceConfig/runtime';
 import { serviceEnv } from '../../env';
 import { getStorageExternalEndpoint, getStorageS3CdnEndpoint } from '../s3/config/constants';
 import { logInstanceConfigRead } from '../system/migrationCoverageLog';
@@ -40,30 +41,28 @@ const getSystemWhiteList = () => {
 
 export const validateFileUrlDomain = (url: string): boolean => {
   try {
+    const { checkExternalFile, fileUrlWhitelist } = getSystemInstanceConfig().security;
     logInstanceConfigRead({
       callsite: 'runtime.common.security.fileUrlValidator',
-      source: 'bridged-system-env',
+      source: 'instance-config',
       fields: [
         {
           path: 'security.checkExternalFile',
-          value: global.systemEnv?.checkExternalFile
+          value: checkExternalFile
         },
         {
           path: 'security.fileUrlWhitelist',
-          value: global.systemEnv?.fileUrlWhitelist
+          value: fileUrlWhitelist
         }
       ]
     });
 
     // 关闭时保留已保存名单但不执行域名限制；开启后空名单仍表示不限域名。
-    if (
-      !global.systemEnv?.checkExternalFile ||
-      (global.systemEnv.fileUrlWhitelist || []).length === 0
-    ) {
+    if (!checkExternalFile || fileUrlWhitelist.length === 0) {
       return true;
     }
 
-    const whitelistArray = [...(global.systemEnv?.fileUrlWhitelist || []), ...getSystemWhiteList()];
+    const whitelistArray = [...fileUrlWhitelist, ...getSystemWhiteList()];
 
     const urlObj = new URL(url);
 

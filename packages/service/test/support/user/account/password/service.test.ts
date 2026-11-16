@@ -1,3 +1,7 @@
+import {
+  createDefaultInstanceConfig,
+  getTestInstanceConfig
+} from '@test/utils/instanceConfigSnapshot';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import { UserStatusEnum } from '@fastgpt/global/support/user/constant';
@@ -18,13 +22,7 @@ import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
 /** 分别配置真实 SSO 服务与公开密码策略，其余字段沿用运行时已有配置。 */
 const setSsoPasswordPolicy = (enabled: boolean) => {
   global.getSsoConfiguredHandler = () => true;
-  global.feConfigs = {
-    ...global.feConfigs,
-    limit: global.feConfigs?.limit ?? { uploadFileMaxAmount: 10, uploadFileMaxSize: 10 },
-    sso: {
-      disablePasswordForSsoUsers: enabled
-    }
-  };
+  getTestInstanceConfig().auth.sso.disablePasswordForSsoUsers = enabled;
 };
 
 describe('password change session service', () => {
@@ -155,19 +153,17 @@ describe('password change session service', () => {
 });
 
 describe('SSO password policy', () => {
-  let originalFeConfigs: typeof global.feConfigs;
-  let originalSystemEnv: typeof global.systemEnv;
+  let originalConfig: typeof global.systemInstanceConfig;
   let originalSsoHandler: typeof global.getSsoConfiguredHandler;
   beforeEach(() => {
     // 全局配置由 beforeAll 初始化，不能在模块导入时保存未初始化的值。
-    originalFeConfigs = global.feConfigs;
-    originalSystemEnv = global.systemEnv;
+    originalConfig = global.systemInstanceConfig;
+    global.systemInstanceConfig = createDefaultInstanceConfig();
     originalSsoHandler = global.getSsoConfiguredHandler;
     setSsoPasswordPolicy(false);
   });
   afterEach(() => {
-    global.feConfigs = originalFeConfigs;
-    global.systemEnv = originalSystemEnv;
+    global.systemInstanceConfig = originalConfig;
     global.getSsoConfiguredHandler = originalSsoHandler;
   });
 
@@ -198,10 +194,7 @@ describe('SSO password policy', () => {
   it('restores password availability when the switch is disabled or SSO is not configured', async () => {
     await expect(getUserPasswordAvailability('tenant-user')).resolves.toBe(true);
 
-    global.feConfigs.sso = {
-      enabled: true,
-      disablePasswordForSsoUsers: true
-    };
+    getTestInstanceConfig().auth.sso.disablePasswordForSsoUsers = true;
     global.getSsoConfiguredHandler = () => false;
     await expect(isSsoPasswordDisabled()).resolves.toBe(false);
     await expect(getUserPasswordAvailability('tenant-user')).resolves.toBe(true);
@@ -219,7 +212,7 @@ describe('SSO password policy', () => {
     await expect(getUserPasswordAvailability('tenant-user')).rejects.toThrow(
       'SSO configuration is unavailable'
     );
-    global.feConfigs.sso!.disablePasswordForSsoUsers = false;
+    getTestInstanceConfig().auth.sso.disablePasswordForSsoUsers = false;
     await expect(getUserPasswordAvailability('tenant-user')).resolves.toBe(true);
     expect(resolver).toHaveBeenCalledTimes(1);
   });

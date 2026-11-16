@@ -1,3 +1,4 @@
+import { getTestInstanceConfig } from '@test/utils/instanceConfigSnapshot';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { resolveSystemInstanceConfig } from '@fastgpt/global/common/system/config/schema';
 
@@ -157,7 +158,7 @@ describe('checkPswExpired API', () => {
     const oldHandler = global.getSsoConfiguredHandler;
     try {
       global.systemInstanceConfig!.auth.passwordExpiredMonth = 1;
-      global.feConfigs = { ...global.feConfigs, sso: { disablePasswordForSsoUsers: true } };
+      getTestInstanceConfig().auth.sso.disablePasswordForSsoUsers = true;
       global.getSsoConfiguredHandler = () => true;
       await MongoUser.findByIdAndUpdate(testUser._id, {
         username: 'tenant-user',

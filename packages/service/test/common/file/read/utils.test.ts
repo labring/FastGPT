@@ -1,4 +1,7 @@
-import { createDefaultInstanceConfig } from '@test/utils/instanceConfigSnapshot';
+import {
+  createDefaultInstanceConfig,
+  getTestInstanceConfig
+} from '@test/utils/instanceConfigSnapshot';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { Readable } from 'node:stream';
@@ -7,8 +10,7 @@ import {
   createS3FileSource
 } from '@fastgpt/service/common/file/read/source';
 
-// 本文件通过 vi.mock 的 mockEnv 驱动解析链路的行为会失效。因此预置"域对象存在、叶子字段全部缺省"的
-// 叶子 undefined 走回 mockEnv 兜底，保持原 env 驱动的测试意图。
+// 每个用例从完整默认快照开始，再指定解析服务及凭据。
 (global as any).systemInstanceConfig = createDefaultInstanceConfig();
 
 // Hoist all mock functions so they're available in vi.mock factories
@@ -189,7 +191,6 @@ describe('readFileContentByBuffer', () => {
     (global as any).systemInstanceConfig.providers.documentParse.sangfor.url =
       'http://sangfor-parser.test/parse';
     (global as any).systemInstanceConfig.providers.documentParse.sangfor.key = 'sangfor-key';
-    global.systemEnv = {} as any;
     mockEnv.PARSE_FILE_TIMEOUT_SECONDS = 600;
     mockEnv.DOCUMENT_PARSE_PROVIDER = '';
     setDocumentParseProvider('customPdf');
@@ -308,8 +309,6 @@ describe('readFileContentByBuffer', () => {
   });
 
   it('should use system parse for pdf when customPdfParse is true but no service configured', async () => {
-    global.systemEnv = { customPdfParse: {} } as any;
-
     const buffer = Buffer.from('pdf content');
 
     const result = await readFileContentByBuffer({
@@ -362,9 +361,10 @@ describe('readFileContentByBuffer', () => {
 
   it('should use custom URL service for pdf when configured', async () => {
     mockEnv.PARSE_FILE_TIMEOUT_SECONDS = 1200;
-    global.systemEnv = {
-      customPdfParse: { url: 'http://custom-pdf-service.com/parse', key: 'test-key' }
-    } as any;
+    Object.assign(getTestInstanceConfig().providers.documentParse.customPdf, {
+      url: 'http://custom-pdf-service.com/parse',
+      key: 'test-key'
+    });
 
     mockAxiosPost.mockResolvedValueOnce({
       data: {
@@ -398,7 +398,9 @@ describe('readFileContentByBuffer', () => {
   it('should use Sangfor for a configured document type', async () => {
     mockEnv.DOCUMENT_PARSE_PROVIDER = 'sangfor';
     mockEnv.SANGFOR_PARSE_EXTENSIONS = 'pdf,docx';
-    global.systemEnv.customPdfParse = { url: 'http://sangfor-parser.test/parse' };
+    Object.assign(getTestInstanceConfig().providers.documentParse.customPdf, {
+      url: 'http://sangfor-parser.test/parse'
+    });
     const buffer = Buffer.from('docx content');
 
     const result = await readFileContentByBuffer({
@@ -426,9 +428,10 @@ describe('readFileContentByBuffer', () => {
 
   it('should let Sangfor override the original PDF providers when enabled', async () => {
     mockEnv.DOCUMENT_PARSE_PROVIDER = 'sangfor';
-    global.systemEnv = {
-      customPdfParse: { url: 'http://sangfor-parser.test/parse', somarkApiKey: 'sk-test' }
-    } as any;
+    Object.assign(getTestInstanceConfig().providers.documentParse.customPdf, {
+      url: 'http://sangfor-parser.test/parse',
+      somarkApiKey: 'sk-test'
+    });
 
     const result = await readFileContentByBuffer({
       teamId,
@@ -447,7 +450,9 @@ describe('readFileContentByBuffer', () => {
   it('should not fall back to another parser when Sangfor fails', async () => {
     mockEnv.DOCUMENT_PARSE_PROVIDER = 'sangfor';
     mockEnv.SANGFOR_PARSE_EXTENSIONS = 'docx';
-    global.systemEnv.customPdfParse = { url: 'http://sangfor-parser.test/parse' };
+    Object.assign(getTestInstanceConfig().providers.documentParse.customPdf, {
+      url: 'http://sangfor-parser.test/parse'
+    });
     mockSangforParseDocument.mockRejectedValueOnce(new Error('[sangfor] parse failed'));
 
     await expect(
@@ -499,7 +504,9 @@ describe('readFileContentByBuffer', () => {
   it('uses system parsing when Sangfor does not handle the extension', async () => {
     mockEnv.DOCUMENT_PARSE_PROVIDER = 'sangfor';
     mockEnv.SANGFOR_PARSE_EXTENSIONS = 'docx';
-    global.systemEnv.customPdfParse = { somarkApiKey: 'sk-test' };
+    Object.assign(getTestInstanceConfig().providers.documentParse.customPdf, {
+      somarkApiKey: 'sk-test'
+    });
     const result = await readFileContentByBuffer({
       teamId,
       tmbId,
@@ -514,14 +521,11 @@ describe('readFileContentByBuffer', () => {
   });
 
   it('should report enhanced PDF usage to the caller without creating usage directly', async () => {
-    // 计费价格以实例配置为权威来源；旧 systemEnv.price 不再参与计算。
+    // 计费价格与解析凭据来自同一份实例快照。
     (global as any).systemInstanceConfig.providers.documentParse.customPdf.price = 4;
-    global.systemEnv = {
-      customPdfParse: {
-        url: 'http://custom-pdf-service.com/parse',
-        price: 99
-      }
-    } as any;
+    Object.assign(getTestInstanceConfig().providers.documentParse.customPdf, {
+      url: 'http://custom-pdf-service.com/parse'
+    });
     mockAxiosPost.mockResolvedValueOnce({
       data: {
         pages: 3,
@@ -549,9 +553,10 @@ describe('readFileContentByBuffer', () => {
   });
 
   it('should upload custom URL service base64 and http markdown images with shared handler', async () => {
-    global.systemEnv = {
-      customPdfParse: { url: 'http://custom-pdf-service.com/parse', key: 'test-key' }
-    } as any;
+    Object.assign(getTestInstanceConfig().providers.documentParse.customPdf, {
+      url: 'http://custom-pdf-service.com/parse',
+      key: 'test-key'
+    });
     const expiredTime = new Date('2030-01-01T00:00:00.000Z');
     mockAxiosPost.mockResolvedValueOnce({
       data: {
@@ -608,9 +613,10 @@ describe('readFileContentByBuffer', () => {
 
   it('should use textin service for pdf when textinAppId is configured', async () => {
     setDocumentParseProvider('textin');
-    global.systemEnv = {
-      customPdfParse: { textinAppId: 'app-id', textinSecretCode: 'secret' }
-    } as any;
+    Object.assign(getTestInstanceConfig().providers.documentParse.customPdf, {
+      textinAppId: 'app-id',
+      textinSecretCode: 'secret'
+    });
 
     const buffer = Buffer.from('pdf content');
 
@@ -628,9 +634,9 @@ describe('readFileContentByBuffer', () => {
 
   it('should use SoMark service for pdf when somarkApiKey is configured', async () => {
     setDocumentParseProvider('somark');
-    global.systemEnv = {
-      customPdfParse: { somarkApiKey: 'sk-test' }
-    } as any;
+    Object.assign(getTestInstanceConfig().providers.documentParse.customPdf, {
+      somarkApiKey: 'sk-test'
+    });
 
     const result = await readFileContentByBuffer({
       teamId,
@@ -647,9 +653,9 @@ describe('readFileContentByBuffer', () => {
 
   it('should upload SoMark markdown images with the shared image handler', async () => {
     setDocumentParseProvider('somark');
-    global.systemEnv = {
-      customPdfParse: { somarkApiKey: 'sk-test' }
-    } as any;
+    Object.assign(getTestInstanceConfig().providers.documentParse.customPdf, {
+      somarkApiKey: 'sk-test'
+    });
     mockSomarkParsePDF.mockResolvedValueOnce({
       pages: 2,
       text: 'image ![img](https://somark.ai/image.png)'
@@ -673,9 +679,10 @@ describe('readFileContentByBuffer', () => {
 
   it('should pass Textin image upload handler when imageKeyOptions is provided', async () => {
     setDocumentParseProvider('textin');
-    global.systemEnv = {
-      customPdfParse: { textinAppId: 'app-id', textinSecretCode: 'secret' }
-    } as any;
+    Object.assign(getTestInstanceConfig().providers.documentParse.customPdf, {
+      textinAppId: 'app-id',
+      textinSecretCode: 'secret'
+    });
     const expiredTime = new Date('2030-01-01T00:00:00.000Z');
 
     await readFileContentByBuffer({
@@ -734,9 +741,9 @@ describe('readFileContentByBuffer', () => {
 
   it('should use doc2x service for pdf when doc2xKey is configured', async () => {
     setDocumentParseProvider('doc2x');
-    global.systemEnv = {
-      customPdfParse: { doc2xKey: 'doc2x-api-key' }
-    } as any;
+    Object.assign(getTestInstanceConfig().providers.documentParse.customPdf, {
+      doc2xKey: 'doc2x-api-key'
+    });
 
     const buffer = Buffer.from('pdf content');
 
@@ -757,9 +764,10 @@ describe('readFileContentByBuffer', () => {
     snapshot.providers.documentParse.provider = 'doc2x';
     (global as any).systemInstanceConfig = snapshot;
     // 旧 custom URL 仍然存在，但管理员已选中 doc2x：不能再被 custom 抢占
-    global.systemEnv = {
-      customPdfParse: { url: 'http://old-custom.test/parse', doc2xKey: 'doc2x-api-key' }
-    } as any;
+    Object.assign(getTestInstanceConfig().providers.documentParse.customPdf, {
+      url: 'http://old-custom.test/parse',
+      doc2xKey: 'doc2x-api-key'
+    });
 
     const result = await readFileContentByBuffer({
       teamId,
@@ -776,9 +784,9 @@ describe('readFileContentByBuffer', () => {
 
   it('should pass Doc2x image upload handler when imageKeyOptions is provided', async () => {
     setDocumentParseProvider('doc2x');
-    global.systemEnv = {
-      customPdfParse: { doc2xKey: 'doc2x-api-key' }
-    } as any;
+    Object.assign(getTestInstanceConfig().providers.documentParse.customPdf, {
+      doc2xKey: 'doc2x-api-key'
+    });
     const expiredTime = new Date('2030-01-01T00:00:00.000Z');
 
     await readFileContentByBuffer({
@@ -836,9 +844,9 @@ describe('readFileContentByBuffer', () => {
   });
 
   it('should reject when custom URL service returns error', async () => {
-    global.systemEnv = {
-      customPdfParse: { url: 'http://custom-pdf-service.com/parse' }
-    } as any;
+    Object.assign(getTestInstanceConfig().providers.documentParse.customPdf, {
+      url: 'http://custom-pdf-service.com/parse'
+    });
 
     mockAxiosPost.mockResolvedValueOnce({
       data: {
@@ -864,9 +872,7 @@ describe('readFileContentByBuffer', () => {
 
   it('should fallback to system parse when custom URL service url is empty', async () => {
     setDocumentParseProvider('none');
-    global.systemEnv = {
-      customPdfParse: { url: '' }
-    } as any;
+    Object.assign(getTestInstanceConfig().providers.documentParse.customPdf, { url: '' });
 
     const buffer = Buffer.from('pdf content');
 
@@ -883,9 +889,9 @@ describe('readFileContentByBuffer', () => {
   });
 
   it('should upload custom service markdown base64 images when imageKeyOptions is provided', async () => {
-    global.systemEnv = {
-      customPdfParse: { url: 'http://custom-pdf-service.com/parse' }
-    } as any;
+    Object.assign(getTestInstanceConfig().providers.documentParse.customPdf, {
+      url: 'http://custom-pdf-service.com/parse'
+    });
     mockAxiosPost.mockResolvedValueOnce({
       data: {
         pages: 1,
@@ -919,9 +925,9 @@ describe('readFileContentByBuffer', () => {
   });
 
   it('should remove custom service markdown base64 images when imageKeyOptions is not provided', async () => {
-    global.systemEnv = {
-      customPdfParse: { url: 'http://custom-pdf-service.com/parse' }
-    } as any;
+    Object.assign(getTestInstanceConfig().providers.documentParse.customPdf, {
+      url: 'http://custom-pdf-service.com/parse'
+    });
     mockAxiosPost.mockResolvedValueOnce({
       data: {
         pages: 1,
@@ -989,7 +995,6 @@ describe('readFileContentBySource', () => {
     (global as any).systemInstanceConfig.providers.documentParse.sangfor.url =
       'http://sangfor-parser.test/parse';
     (global as any).systemInstanceConfig.providers.documentParse.sangfor.key = 'sangfor-key';
-    global.systemEnv = {} as any;
     mockEnv.DOCUMENT_PARSE_PROVIDER = '';
     setDocumentParseProvider('customPdf');
     mockEnv.SANGFOR_PARSE_EXTENSIONS = 'pdf';
@@ -1004,7 +1009,9 @@ describe('readFileContentBySource', () => {
     ['广州环际云计算有限公司商标驳回通知书.PDF', '广州环际云计算有限公司商标驳回通知书.pdf'],
     ['Annual.Report.2026.Pdf', 'Annual.Report.2026.pdf']
   ])('自定义解析请求保留文件名主体并统一使用小写后缀：%s', async (filename, expectedFilename) => {
-    global.systemEnv.customPdfParse = { url: 'http://custom-pdf-service.test/parse' };
+    Object.assign(getTestInstanceConfig().providers.documentParse.customPdf, {
+      url: 'http://custom-pdf-service.test/parse'
+    });
     mockAxiosPost.mockResolvedValueOnce({
       data: { pages: 1, markdown: 'parsed-content' }
     });
@@ -1028,7 +1035,9 @@ describe('readFileContentBySource', () => {
   });
 
   it.each([undefined, '', ' \t '])('来源缺少文件名时保留默认名称（%s）', async (filename) => {
-    global.systemEnv.customPdfParse = { url: 'http://custom-pdf-service.test/parse' };
+    Object.assign(getTestInstanceConfig().providers.documentParse.customPdf, {
+      url: 'http://custom-pdf-service.test/parse'
+    });
     mockAxiosPost.mockResolvedValueOnce({ data: { pages: 1, markdown: 'parsed-content' } });
     const buffer = Buffer.from('pdf-content');
     const source = createS3FileSource({
@@ -1045,7 +1054,9 @@ describe('readFileContentBySource', () => {
   });
 
   it.each(['年度报表', '年度报表.'])('来源原名没有有效后缀时补全格式（%s）', async (filename) => {
-    global.systemEnv.customPdfParse = { url: 'http://custom-pdf-service.test/parse' };
+    Object.assign(getTestInstanceConfig().providers.documentParse.customPdf, {
+      url: 'http://custom-pdf-service.test/parse'
+    });
     mockAxiosPost.mockResolvedValueOnce({ data: { pages: 1, markdown: 'parsed-content' } });
     const buffer = Buffer.from('pdf-content');
     const source = createS3FileSource({
@@ -1065,7 +1076,9 @@ describe('readFileContentBySource', () => {
     ['folder/"report"\r\n.pdf', 'folder__report___.pdf'],
     ['folder\\report.pdf', 'folder_report.pdf']
   ])('文件名不会破坏 multipart 请求头（%s）', async (filename, expectedFilename) => {
-    global.systemEnv.customPdfParse = { url: 'http://custom-pdf-service.test/parse' };
+    Object.assign(getTestInstanceConfig().providers.documentParse.customPdf, {
+      url: 'http://custom-pdf-service.test/parse'
+    });
     mockAxiosPost.mockResolvedValueOnce({ data: { pages: 1, markdown: 'parsed-content' } });
     const buffer = Buffer.from('pdf-content');
     const source = createS3FileSource({
@@ -1082,7 +1095,9 @@ describe('readFileContentBySource', () => {
   });
 
   it('自定义解析请求以物化格式修正来源文件名后缀', async () => {
-    global.systemEnv.customPdfParse = { url: 'http://custom-pdf-service.test/parse' };
+    Object.assign(getTestInstanceConfig().providers.documentParse.customPdf, {
+      url: 'http://custom-pdf-service.test/parse'
+    });
     mockAxiosPost.mockResolvedValueOnce({ data: { pages: 1, markdown: 'parsed-content' } });
     const buffer = Buffer.from('pdf-content');
     const source = createS3FileSource({
@@ -1110,7 +1125,9 @@ describe('readFileContentBySource', () => {
   ])(
     '自定义解析请求规范化 HTTP 下载返回的真实文件名（%s）',
     async (contentDisposition, filename) => {
-      global.systemEnv.customPdfParse = { url: 'http://custom-pdf-service.test/parse' };
+      Object.assign(getTestInstanceConfig().providers.documentParse.customPdf, {
+        url: 'http://custom-pdf-service.test/parse'
+      });
       mockAxiosPost.mockResolvedValueOnce({ data: { pages: 1, markdown: 'parsed-content' } });
       mockReadExternalFileBuffer.mockResolvedValueOnce({
         buffer: Buffer.from('pdf-content'),
@@ -1158,7 +1175,9 @@ describe('readFileContentBySource', () => {
   it('selects Sangfor from declared source metadata', async () => {
     mockEnv.DOCUMENT_PARSE_PROVIDER = 'sangfor';
     mockEnv.SANGFOR_PARSE_EXTENSIONS = '.PDF';
-    global.systemEnv.customPdfParse = { url: 'http://sangfor-parser.test/parse' };
+    Object.assign(getTestInstanceConfig().providers.documentParse.customPdf, {
+      url: 'http://sangfor-parser.test/parse'
+    });
     const materialized = {
       buffer: Buffer.from('pdf-content'),
       metadata: { filename: 'file.PDF' }
@@ -1184,7 +1203,9 @@ describe('readFileContentBySource', () => {
   it('forceSystemParse 绕过 Sangfor 路由，保留 worker 的结构化产物', async () => {
     mockEnv.DOCUMENT_PARSE_PROVIDER = 'sangfor';
     mockEnv.SANGFOR_PARSE_EXTENSIONS = 'xlsx,csv';
-    global.systemEnv.customPdfParse = { url: 'http://sangfor-parser.test/parse' };
+    Object.assign(getTestInstanceConfig().providers.documentParse.customPdf, {
+      url: 'http://sangfor-parser.test/parse'
+    });
     mockReadRawContentFromSource.mockResolvedValueOnce({
       rawText: 'q,a\nquestion,answer',
       tableInfo: { sheetCount: 1, mergedCellCount: 0 }
@@ -1231,9 +1252,10 @@ describe('readFileContentBySource', () => {
 
   it('启用自定义 PDF Provider 时只在调用 Provider 前物化 source', async () => {
     setDocumentParseProvider('somark');
-    global.systemEnv = {
-      customPdfParse: { somarkApiKey: 'key', price: 1 }
-    } as any;
+    Object.assign(getTestInstanceConfig().providers.documentParse.customPdf, {
+      somarkApiKey: 'key',
+      price: 1
+    });
     const source = {
       kind: 's3' as const,
       sizeBytes: 3,

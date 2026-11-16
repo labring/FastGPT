@@ -114,6 +114,16 @@ describe('configuration form edition boundary', () => {
   });
 
   it.each([false, true])(
+    'shows an empty fast-login editor only when its edition permits editing: Pro=%s',
+    (isPro) => {
+      mocks.isPro = isPro;
+      mocks.authOverrides = { fastLogin: [] };
+      const html = renderToStaticMarkup(React.createElement(AuthSettings));
+      expect(html.includes('id="fastLogin"')).toBe(isPro);
+    }
+  );
+
+  it.each([false, true])(
     'places the editable file domain under core downloads for Pro=%s',
     async (isPro) => {
       mocks.isPro = isPro;

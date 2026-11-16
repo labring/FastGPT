@@ -1,3 +1,4 @@
+import { getSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/runtime';
 import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import type { ClientSession } from '@fastgpt/service/common/mongo';
@@ -88,7 +89,7 @@ export const seedDatasetRebuildTasks = async (
   session?: ClientSession
 ) => {
   const seed = async (session: ClientSession) => {
-    const seedCount = (global.systemEnv?.vectorMaxProcess ?? 10) * 2;
+    const seedCount = (getSystemInstanceConfig().performance.dataset.vectorMaxProcess ?? 10) * 2;
     logInstanceConfigRead({
       callsite: 'runtime.app.dataset.queue.rebuild.seedWithSession',
       source: 'bridged-system-env',
@@ -104,7 +105,7 @@ export const seedDatasetRebuildTasks = async (
 
   if (session) return seed(session);
 
-  const seedCount = (global.systemEnv?.vectorMaxProcess ?? 10) * 2;
+  const seedCount = (getSystemInstanceConfig().performance.dataset.vectorMaxProcess ?? 10) * 2;
   logInstanceConfigRead({
     callsite: 'runtime.app.dataset.queue.rebuild.seed',
     source: 'bridged-system-env',

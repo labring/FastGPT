@@ -244,8 +244,8 @@ const readFileContent = async ({
     });
   };
   const parsePdfFromCustomService = async (): Promise<ReadFileResponse> => {
-    const url = global.systemEnv.customPdfParse?.url;
-    const token = global.systemEnv.customPdfParse?.key;
+    const url = getSystemInstanceConfig().providers.documentParse.customPdf?.url;
+    const token = getSystemInstanceConfig().providers.documentParse.customPdf?.key;
     if (!url) return systemParse();
 
     const { buffer, extension: materializedExtension, metadata } = await getMaterializedFile();
@@ -300,7 +300,7 @@ const readFileContent = async ({
     };
   };
   const parsePdfFromSomark = async (): Promise<ReadFileResponse> => {
-    const apiKey = global.systemEnv.customPdfParse?.somarkApiKey;
+    const apiKey = getSystemInstanceConfig().providers.documentParse.customPdf?.somarkApiKey;
     if (!apiKey) return systemParse();
 
     const { buffer } = await getMaterializedFile();
@@ -316,8 +316,9 @@ const readFileContent = async ({
   };
   // Textin api
   const parsePdfFromTextin = async (): Promise<ReadFileResponse> => {
-    const appId = global.systemEnv.customPdfParse?.textinAppId;
-    const secretCode = global.systemEnv.customPdfParse?.textinSecretCode;
+    const appId = getSystemInstanceConfig().providers.documentParse.customPdf?.textinAppId;
+    const secretCode =
+      getSystemInstanceConfig().providers.documentParse.customPdf?.textinSecretCode;
     if (!appId || !secretCode) return systemParse();
 
     const { buffer } = await getMaterializedFile();
@@ -353,7 +354,7 @@ const readFileContent = async ({
   };
   // Doc2x api
   const parsePdfFromDoc2x = async (): Promise<ReadFileResponse> => {
-    const doc2xKey = global.systemEnv.customPdfParse?.doc2xKey;
+    const doc2xKey = getSystemInstanceConfig().providers.documentParse.customPdf?.doc2xKey;
     if (!doc2xKey) return systemParse();
 
     const { buffer } = await getMaterializedFile();
@@ -418,27 +419,27 @@ const readFileContent = async ({
         { path: 'providers.documentParse.provider', value: provider },
         {
           path: 'providers.documentParse.customPdf.url',
-          value: global.systemEnv.customPdfParse?.url
+          value: documentParse.customPdf.url
         },
         {
           path: 'providers.documentParse.customPdf.key',
-          value: global.systemEnv.customPdfParse?.key
+          value: documentParse.customPdf.key
         },
         {
           path: 'providers.documentParse.customPdf.somarkApiKey',
-          value: global.systemEnv.customPdfParse?.somarkApiKey
+          value: documentParse.customPdf.somarkApiKey
         },
         {
           path: 'providers.documentParse.customPdf.textinAppId',
-          value: global.systemEnv.customPdfParse?.textinAppId
+          value: documentParse.customPdf.textinAppId
         },
         {
           path: 'providers.documentParse.customPdf.textinSecretCode',
-          value: global.systemEnv.customPdfParse?.textinSecretCode
+          value: documentParse.customPdf.textinSecretCode
         },
         {
           path: 'providers.documentParse.customPdf.doc2xKey',
-          value: global.systemEnv.customPdfParse?.doc2xKey
+          value: documentParse.customPdf.doc2xKey
         }
       ]
     });

@@ -1,3 +1,4 @@
+import { setTestProLicense } from '../../../utils/instanceConfig';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TrackEnum } from '@fastgpt/global/common/middle/tracks/constants';
 import { TrackModel } from '@fastgpt/service/common/middle/tracks/schema';
@@ -15,7 +16,7 @@ describe('Workflow Builder track persistence', () => {
     await TrackModel.createIndexes();
   });
   beforeEach(() => {
-    global.feConfigs = { ...global.feConfigs, isPlus: true };
+    setTestProLicense(true);
     global.countTrackQueue = new Map();
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(new Date('2026-10-27T10:59:59Z'));
@@ -108,7 +109,7 @@ describe('trackTimerProcess fixed interval', () => {
 
   it('flushes queued events every five seconds', async () => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
-    global.feConfigs = { ...global.feConfigs, isPlus: true };
+    setTestProLicense(true);
     global.countTrackQueue = new Map();
     const bulkWrite = vi.spyOn(TrackModel, 'bulkWrite').mockResolvedValue({} as any);
     const stop = new Error('stop tracking loop');

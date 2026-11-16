@@ -1,5 +1,10 @@
-import { describe, expect, it, vi, afterEach } from 'vitest';
+import {
+  createDefaultInstanceConfig,
+  getTestInstanceConfig
+} from '@test/utils/instanceConfigSnapshot';
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { MongoSystemInstanceConfig } from '../../../../common/system/systemInstanceConfig/schema';
+import { systemInstanceConfig } from '../../../../common/system/systemInstanceConfig/service';
 import * as entity from '../../../../core/plugin/moderation/entity';
 import {
   getModerationPolicy,
@@ -12,67 +17,48 @@ import {
 import { DefaultSystemModerationPolicy } from '@fastgpt/global/core/plugin/moderation/type';
 
 describe('moderation policy service', () => {
+  beforeEach(() => {
+    global.systemInstanceConfig = createDefaultInstanceConfig();
+  });
   afterEach(() => {
     vi.restoreAllMocks();
   });
 
   describe('getModerationPolicy', () => {
-    it('returns default policy when no database record exists and no plugin is enabled', async () => {
-      vi.spyOn(MongoSystemInstanceConfig, 'findOne').mockReturnValue({
-        session: vi.fn().mockReturnThis(),
-        lean: vi.fn().mockResolvedValue(null)
-      } as any);
+    it('reads defaults from the snapshot when no plugin is enabled', async () => {
+      const findSpy = vi.spyOn(MongoSystemInstanceConfig, 'findOne');
       vi.spyOn(entity, 'findEnabledModerationConfig').mockResolvedValue(null);
 
-      const policy = await getModerationPolicy();
-
-      expect(policy).toEqual(DefaultSystemModerationPolicy);
-      expect(policy.enabled).toBe(false);
-      expect(policy.hooks).toEqual({
-        userInput: true,
-        modelInput: true,
-        finalOutput: true
-      });
-      expect(policy.strategy.streamInterval).toBe(100);
+      expect(await getModerationPolicy()).toEqual(DefaultSystemModerationPolicy);
+      expect(findSpy).not.toHaveBeenCalled();
     });
 
-    it('returns stored policy and aligns enabled state with active plugin', async () => {
-      vi.spyOn(MongoSystemInstanceConfig, 'findOne').mockReturnValue({
-        session: vi.fn().mockReturnThis(),
-        lean: vi.fn().mockResolvedValue({
-          overrides: {
-            enabled: true,
-            activePluginId: 'baidu-moderation',
-            hooks: { userInput: true, modelInput: true, finalOutput: false },
-            strategy: {
-              streamInterval: 40,
-              suspectedRiskAction: ModerationRiskActionEnum.passAndLog,
-              serviceExceptionAction: ModerationExceptionActionEnum.block
-            }
-          }
-        })
-      } as any);
-      vi.spyOn(entity, 'findEnabledModerationConfig').mockResolvedValue({
-        pluginId: 'baidu-moderation',
+    it('uses the latest snapshot and gives an enabled plugin priority', async () => {
+      getTestInstanceConfig().moderationPolicy = {
+        enabled: true,
+        activePluginId: 'saved-plugin',
+        hooks: { userInput: true, modelInput: true, finalOutput: false },
+        strategy: {
+          streamInterval: 40,
+          suspectedRiskAction: ModerationRiskActionEnum.passAndLog,
+          serviceExceptionAction: ModerationExceptionActionEnum.block
+        }
+      };
+      const enabledPlugin = vi.spyOn(entity, 'findEnabledModerationConfig').mockResolvedValue({
+        pluginId: 'actual-plugin',
         enabled: true
       });
 
       const policy = await getModerationPolicy();
-
-      expect(policy.enabled).toBe(true);
-      expect(policy.activePluginId).toBe('baidu-moderation');
-      expect(policy.hooks.modelInput).toBe(true);
-      expect(policy.strategy.streamInterval).toBe(40);
-    });
-
-    it('falls back to defaults when the stored policy is invalid', async () => {
-      vi.spyOn(MongoSystemInstanceConfig, 'findOne').mockReturnValue({
-        session: vi.fn().mockReturnThis(),
-        lean: vi.fn().mockResolvedValue({ overrides: { strategy: { streamInterval: 0 } } })
-      } as any);
-      vi.spyOn(entity, 'findEnabledModerationConfig').mockResolvedValue(null);
-
-      expect(await getModerationPolicy()).toEqual(DefaultSystemModerationPolicy);
+      expect(policy).toMatchObject({
+        enabled: true,
+        activePluginId: 'actual-plugin',
+        strategy: { streamInterval: 40 }
+      });
+      enabledPlugin.mockResolvedValue(null);
+      expect((await getModerationPolicy()).activePluginId).toBe('saved-plugin');
+      getTestInstanceConfig().moderationPolicy.enabled = false;
+      expect((await getModerationPolicy()).enabled).toBe(false);
     });
   });
 
@@ -179,9 +165,23 @@ describe('moderation policy service', () => {
         revision: 2,
         overrides: { hooks: { finalOutput: false } }
       });
+      expect((await getModerationPolicy()).hooks.finalOutput).toBe(false);
       expect(await MongoSystemInstanceConfig.countDocuments({ domain: 'moderationPolicy' })).toBe(
         1
       );
+    });
+
+    it('keeps the committed policy when snapshot refresh fails', async () => {
+      vi.spyOn(systemInstanceConfig, 'refresh').mockRejectedValueOnce(new Error('refresh failed'));
+      const policy = {
+        ...DefaultSystemModerationPolicy,
+        hooks: { ...DefaultSystemModerationPolicy.hooks, finalOutput: false }
+      };
+
+      await expect(updateModerationPolicy(policy)).resolves.toMatchObject({ policy });
+      const record = await MongoSystemInstanceConfig.findOne({ domain: 'moderationPolicy' }).lean();
+      expect(record).toMatchObject({ revision: 1, overrides: { hooks: { finalOutput: false } } });
+      expect((await getModerationPolicy()).hooks.finalOutput).toBe(true);
     });
   });
 });

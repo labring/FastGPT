@@ -12,7 +12,6 @@ vi.mock('@fastgpt/service/common/vectorDB/oceanbase/controller', () => ({
 
 describe.each(['oceanbase', 'seekdb'] as const)('ObVectorCtrl (%s)', (type) => {
   beforeEach(() => {
-    global.systemEnv = { ...global.systemEnv, hnswEfSearch: 9999 };
     query.mockReset().mockResolvedValue([{ affectedRows: 0 }]);
   });
 

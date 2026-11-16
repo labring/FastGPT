@@ -16,7 +16,6 @@ vi.unmock(import('@fastgpt/service/common/mongo/sessionRun'));
 
 const pluginMocks = vi.hoisted(() => ({ listModels: vi.fn() }));
 const reloadMocks = vi.hoisted(() => ({
-  updateFastGPTConfigBuffer: vi.fn(),
   delay: vi.fn()
 }));
 
@@ -36,10 +35,6 @@ vi.mock('@fastgpt/service/core/ai/model/provider/controller', async (importOrigi
 });
 vi.mock('@fastgpt/service/thirdProvider/fastgptPlugin', () => ({
   pluginClient: { listModels: pluginMocks.listModels }
-}));
-vi.mock('@fastgpt/service/common/system/config/controller', () => ({
-  reloadFastGPTConfigBuffer: vi.fn(),
-  updateFastGPTConfigBuffer: reloadMocks.updateFastGPTConfigBuffer
 }));
 vi.mock('@fastgpt/global/common/system/utils', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@fastgpt/global/common/system/utils')>()),
@@ -67,7 +62,6 @@ describe('loadSystemModels', () => {
   beforeEach(async () => {
     pluginMocks.listModels.mockReset().mockResolvedValue([]);
     vi.mocked(preloadModelProviders).mockReset().mockResolvedValue(undefined);
-    reloadMocks.updateFastGPTConfigBuffer.mockReset().mockResolvedValue(undefined);
     reloadMocks.delay.mockReset().mockResolvedValue(undefined);
     await Promise.all([MongoAIModel.deleteMany({}), MongoAIModelCatalog.deleteMany({})]);
     publishSystemModelHandle(undefined);
@@ -251,7 +245,6 @@ describe('loadSystemModels', () => {
   it('reloads the model catalog without changing the system init buffer', async () => {
     await updatedReloadSystemModel();
 
-    expect(reloadMocks.updateFastGPTConfigBuffer).not.toHaveBeenCalled();
     expect(reloadMocks.delay).not.toHaveBeenCalled();
     expect(getCachedSystemModelHandle()?.revision).toBe(0);
   });

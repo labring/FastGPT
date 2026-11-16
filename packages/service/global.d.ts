@@ -1,9 +1,4 @@
-import type {
-  FastGPTFeConfigsType,
-  LicenseDataType,
-  SystemEnvType
-} from '@fastgpt/global/common/system/types';
-import type { SubPlanType } from '@fastgpt/global/support/wallet/sub/type';
+import type { FastGPTFeConfigsType } from '@fastgpt/global/common/system/types';
 import type { SystemInstanceConfig } from '@fastgpt/global/common/system/config/schema';
 import type { WorkerNameEnum } from './worker/utils';
 
@@ -14,12 +9,9 @@ declare global {
 
   var systemVersion: string;
   var feConfigs: FastGPTFeConfigsType;
-  var systemEnv: SystemEnvType;
-  /** Pro 进程直接读取部署配置；主服务未注入时通过服务间接口读取。 */
+  /** Pro 进程读取统一快照中的 SSO 状态；App 未注入时通过服务间接口读取。 */
   var getSsoConfiguredHandler: (() => boolean | Promise<boolean>) | undefined;
   var agentUserTmbIds: ReadonlySet<string> | undefined;
-  var subPlans: SubPlanType | undefined;
-  var licenseData: LicenseDataType | undefined;
 
   // 不同 worker name 对应不同 Props/Response 泛型，注册表只负责保存实例，读取处再按 name 收窄。
   var workerPoll: Partial<Record<WorkerNameEnum, unknown>>;

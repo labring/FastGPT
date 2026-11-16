@@ -1,3 +1,4 @@
+import { setTestLicenseActive } from '@test/utils/instanceConfigSnapshot';
 // 同义词开关已接管实例配置（94ae033d7）：isDatasetSynonymEnabled 读快照叶子 ?? serviceEnv。
 // 本文件通过改写 serviceEnv.DATASET_SYNONYM_ENABLED 驱动，预置"域存在、叶子缺省"种子快照走兜底分支。
 (global as any).systemInstanceConfig = {
@@ -155,7 +156,7 @@ describe('datasetParseQueue creates index-ready data', () => {
     mocks.read.mockResolvedValue({ rawText: 'Original source text.' });
     mocks.paragraph.mockReset();
     global.datasetParseQueueLen = 0;
-    global.feConfigs.isPlus = true;
+    setTestLicenseActive(true);
     Object.assign(serviceEnv, { DATASET_SYNONYM_ENABLED: false });
   });
 

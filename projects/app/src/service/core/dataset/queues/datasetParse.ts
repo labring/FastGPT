@@ -1,3 +1,5 @@
+import { isProVersion } from '@fastgpt/service/common/system/constants';
+import { getSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/runtime';
 import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/catalog/service';
 import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
 
@@ -60,7 +62,7 @@ const requestLLMPargraph = async ({
   paragraphChunkAIMode?: ParagraphChunkAIModeEnum;
 }) => {
   if (
-    !global.feConfigs?.isPlus ||
+    !isProVersion() ||
     !paragraphChunkAIMode ||
     paragraphChunkAIMode === ParagraphChunkAIModeEnum.forbid
   ) {
@@ -125,7 +127,7 @@ const getQuotaErrorCode = (err: unknown): TeamErrEnum | undefined => {
 
 /** 读取并分块原文；共用训练租约，解析失败才扣重试次数，容量不足则暂停等待恢复。 */
 export const datasetParseQueue = async (): Promise<any> => {
-  const max = global.systemEnv?.datasetParseMaxProcess || 10;
+  const max = getSystemInstanceConfig().performance.dataset.parseMaxProcess || 10;
   logInstanceConfigRead({
     callsite: 'runtime.app.dataset.queue.datasetParse',
     source: 'bridged-system-env',
@@ -137,7 +139,10 @@ export const datasetParseQueue = async (): Promise<any> => {
 
   try {
     // 配置下调后先完成在途任务，再让超额循环退出；每次领取前重新读取上限。
-    while (global.datasetParseQueueLen <= (global.systemEnv?.datasetParseMaxProcess || 10)) {
+    while (
+      global.datasetParseQueueLen <=
+      (getSystemInstanceConfig().performance.dataset.parseMaxProcess || 10)
+    ) {
       const startTime = Date.now();
 
       let claimed;

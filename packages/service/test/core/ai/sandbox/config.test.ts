@@ -34,7 +34,6 @@ describe('agent sandbox config', () => {
   const originalAgentSandboxMaxPerTeam =
     getTestInstanceConfig().subservice.agentSandbox.common.maxPerTeam;
   const originalProxy = { ...getAgentSandboxProxyConfig() };
-  const originalSystemEnv = global.systemEnv;
 
   afterEach(() => {
     getTestInstanceConfig().subservice.agentSandbox.common.storageSizeGi =
@@ -47,7 +46,6 @@ describe('agent sandbox config', () => {
     getTestInstanceConfig().subservice.agentSandbox.common.maxPerTeam =
       originalAgentSandboxMaxPerTeam;
     getTestInstanceConfig().subservice.agentSandbox.proxy = { ...originalProxy };
-    global.systemEnv = originalSystemEnv;
     vi.unstubAllEnvs();
   });
 
@@ -94,7 +92,6 @@ describe('agent sandbox config', () => {
   it('does not revive an explicit unlimited per-team quota from env', () => {
     vi.stubEnv('AGENT_SANDBOX_MAX_PER_TEAM', '5');
     getTestInstanceConfig().subservice.agentSandbox.common.maxPerTeam = null;
-    global.systemEnv = { agentSandboxMaxPerTeam: null };
 
     expect(getAgentSandboxMaxPerTeam()).toBeUndefined();
   });

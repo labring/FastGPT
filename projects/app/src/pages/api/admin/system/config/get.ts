@@ -7,7 +7,7 @@ import {
   GetDomainConfigResponseSchema,
   type GetDomainConfigResponse
 } from '@fastgpt/global/openapi/admin/system/instanceConfig/api';
-import { getDomainConfigForAdmin } from '@fastgpt/service/common/system/systemInstanceConfig/controller';
+import { systemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/service';
 import { logInstanceConfigRead } from '@fastgpt/service/common/system/migrationCoverageLog';
 
 /**
@@ -23,7 +23,7 @@ async function handler(req: ApiRequestProps): Promise<GetDomainConfigResponse> {
     querySchema: GetDomainConfigQuerySchema
   }).query;
 
-  const result = await getDomainConfigForAdmin(domain);
+  const result = await systemInstanceConfig.readForEdit(domain);
   logInstanceConfigRead({
     callsite: 'runtime.app.admin.system.config.get',
     source: 'admin-db',

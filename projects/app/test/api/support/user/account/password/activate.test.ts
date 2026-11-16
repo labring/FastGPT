@@ -1,3 +1,5 @@
+import { getTestInstanceConfig, setTestLicenseActive } from '@test/utils/instanceConfigSnapshot';
+import { getSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/runtime';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import { UserStatusEnum } from '@fastgpt/global/support/user/constant';
@@ -42,8 +44,9 @@ describe('password/activate API', () => {
     originalSsoHandler = global.getSsoConfiguredHandler;
     mocks.withUserLock.mockImplementation((_userId: string, fn: () => Promise<unknown>) => fn());
     mocks.assertPasswordUpdateRateLimit.mockResolvedValue(undefined);
-    global.feConfigs = { ...global.feConfigs, sso: undefined, isPlus: false };
-    global.systemEnv = { ...global.systemEnv, sso: undefined };
+    getTestInstanceConfig().auth.sso.disablePasswordForSsoUsers = false;
+    setTestLicenseActive(false);
+    getSystemInstanceConfig().proEnv.ssoUrl = '';
 
     // 待激活账号（新口令落库后应标记为已激活）。
     pendingUser = await MongoUser.create({
@@ -139,7 +142,7 @@ describe('password/activate API', () => {
   });
 
   it('allows non-root accounts when the commercial license is active', async () => {
-    global.feConfigs = { ...global.feConfigs, isPlus: true };
+    setTestLicenseActive(true);
     const response = await Call<ActivateAccountBody, Record<string, never>, undefined>(
       activateAccountApi,
       { body: getBody(), auth: getAuth() }
@@ -224,13 +227,8 @@ describe('password/activate API', () => {
     global.getSsoConfiguredHandler = () => true;
     await MongoUser.updateOne({ _id: pendingUser._id }, { username: 'tenant-user' });
     // SSO 接入状态来自 Pro，feConfigs 只承载策略开关。
-    global.systemEnv = { ...global.systemEnv, sso: { url: 'https://sso.example.com' } };
-    global.feConfigs = {
-      ...global.feConfigs,
-      sso: {
-        disablePasswordForSsoUsers: true
-      }
-    };
+    getSystemInstanceConfig().proEnv.ssoUrl = 'https://sso.example.com';
+    getTestInstanceConfig().auth.sso.disablePasswordForSsoUsers = true;
     const response = await Call<ActivateAccountBody, Record<string, never>, undefined>(
       activateAccountApi,
       { body: getBody(), auth: getAuth() }

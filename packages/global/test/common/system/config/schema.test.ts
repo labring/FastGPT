@@ -598,9 +598,16 @@ describe('systemInstanceConfigRegistry', () => {
       return paths;
     };
 
-    // 旧文档字段仍需解析，但不能重新开放为可编辑配置。
+    // 旧团队模式仅兼容解析；套餐使用专用输入，两者都不属于通用配置字段注册表。
     expect(AuthConfigSchema.shape.teamMode.meta()?.deprecated).toBe(true);
-    const leafPaths = getLeafPaths(config).filter((path) => path !== 'auth.teamMode');
+    const editableConfig = Object.fromEntries(
+      Object.entries(config).filter(([key]) =>
+        systemInstanceConfigRegistry.some((item) => item.section === key)
+      )
+    );
+    const leafPaths = getLeafPaths(editableConfig).filter(
+      (path) => path !== 'auth.teamMode' && path !== 'commercial.subPlans'
+    );
     const registryKeys = new Set(systemInstanceConfigRegistry.map((item) => item.key));
 
     expect(registryKeys.has('auth.teamMode')).toBe(false);

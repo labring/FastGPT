@@ -1,3 +1,4 @@
+import { isProVersion } from '@fastgpt/service/common/system/constants';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { TrackEnum } from '@fastgpt/global/common/middle/tracks/constants';
@@ -16,7 +17,7 @@ const isOutLinkBrandTrack = (body: PushTrackBodyType): body is PushOutLinkBrandT
   'authType' in body && body.authType === 'outLink';
 
 export async function handler(req: ApiRequestProps): Promise<undefined> {
-  if (!global.feConfigs?.isPlus) return;
+  if (!isProVersion()) return;
 
   const body = parseApiInput({ req, bodySchema: PushTrackBodySchema }).body;
 

@@ -12,7 +12,7 @@ import { getSystemInstanceConfig } from '../../common/system/systemInstanceConfi
 import { logInstanceConfigRead } from '../../common/system/migrationCoverageLog';
 
 export const checkTeamAIPoints = async (teamId: string) => {
-  if (!global.subPlans?.standard) return;
+  if (!getSystemInstanceConfig().commercial.subPlans?.standard) return;
 
   const { totalPoints, usedPoints } = await teamPoint.getTeamPoints({ teamId });
 
@@ -87,14 +87,15 @@ export const checkTeamAppTypeLimit = async ({
       return Promise.reject(TeamErrEnum.appAmountNotEnough);
     }
 
-    // System check
-    if (global?.licenseData?.maxApps && typeof global?.licenseData?.maxApps === 'number') {
+    // 同一次校验使用同一份授权快照，避免查询期间配置更新导致上限前后不一致。
+    const maxApps = getSystemInstanceConfig().license.data?.maxApps;
+    if (maxApps && typeof maxApps === 'number') {
       const totalApps = await MongoApp.countDocuments({
         type: {
           $in: AppTypeList
         }
       });
-      if (totalApps + amount > global.licenseData.maxApps) {
+      if (totalApps + amount > maxApps) {
         return Promise.reject(SystemErrEnum.licenseAppAmountLimit);
       }
     }
@@ -163,12 +164,13 @@ export const checkTeamDatasetLimit = async (teamId: string) => {
     return Promise.reject(TeamErrEnum.datasetAmountNotEnough);
   }
 
-  // System check
-  if (global?.licenseData?.maxDatasets && typeof global?.licenseData?.maxDatasets === 'number') {
+  // 同一次校验使用同一份授权快照，避免查询期间配置更新导致上限前后不一致。
+  const maxDatasets = getSystemInstanceConfig().license.data?.maxDatasets;
+  if (maxDatasets && typeof maxDatasets === 'number') {
     const totalDatasets = await MongoDataset.countDocuments({
       type: { $ne: DatasetTypeEnum.folder }
     });
-    if (totalDatasets >= global.licenseData.maxDatasets) {
+    if (totalDatasets >= maxDatasets) {
       return Promise.reject(SystemErrEnum.licenseDatasetAmountLimit);
     }
   }
@@ -185,7 +187,7 @@ export const checkTeamDatasetSyncPermission = async (teamId: string) => {
 };
 
 export const checkTeamSandboxPermission = async (teamId: string) => {
-  if (!global.subPlans?.standard) return;
+  if (!getSystemInstanceConfig().commercial.subPlans?.standard) return;
 
   const { standard } = await getTeamStandPlan({
     teamId

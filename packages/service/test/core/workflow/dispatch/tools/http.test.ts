@@ -646,7 +646,6 @@ describe('replaceJsonBodyString', () => {
 });
 
 describe('getWorkflowHttpNodeHttpsAgentConfig', () => {
-  const originalSystemEnv = global.systemEnv;
   const originalInstanceConfig = global.systemInstanceConfig;
 
   beforeEach(() => {
@@ -654,25 +653,16 @@ describe('getWorkflowHttpNodeHttpsAgentConfig', () => {
   });
 
   afterEach(() => {
-    global.systemEnv = originalSystemEnv;
     global.systemInstanceConfig = originalInstanceConfig;
   });
 
-  it('uses the disabled instance setting even when a legacy Pro bridge still enables bypass', () => {
-    global.systemEnv = {
-      ...originalSystemEnv,
-      workflowHttpNode: { ignoreHttpsCertificate: true }
-    };
+  it('uses the disabled instance setting', () => {
     global.systemInstanceConfig!.security.workflowHttpNode.ignoreHttpsCertificate = false;
 
     expect(getWorkflowHttpNodeHttpsAgentConfig('https://example.com')).toEqual({});
   });
 
-  it('uses the enabled instance setting only for HTTPS even when the legacy bridge disables bypass', () => {
-    global.systemEnv = {
-      ...originalSystemEnv,
-      workflowHttpNode: { ignoreHttpsCertificate: false }
-    };
+  it('uses the enabled instance setting only for HTTPS', () => {
     global.systemInstanceConfig!.security.workflowHttpNode.ignoreHttpsCertificate = true;
 
     const httpsConfig = getWorkflowHttpNodeHttpsAgentConfig('https://example.com');

@@ -365,10 +365,7 @@ describe('dispatchRunAgent user context', () => {
     ensureAppSandboxRuntimeReadyMock.mockResolvedValue(false);
     markChatSandboxEnabledMock.mockResolvedValue(undefined);
     getTestInstanceConfig().feature.agentEngine = 'fastAgent';
-    (global as any).feConfigs = {
-      ...(global as any).feConfigs,
-      show_agent_sandbox: true
-    };
+    getTestInstanceConfig().subservice.agentSandbox.provider = 'opensandbox';
     sandboxCreateDirectoriesMock.mockResolvedValue(undefined);
     sandboxWriteFilesMock.mockResolvedValue([]);
     sandboxGetFileInfoMock.mockResolvedValue(new Map());
@@ -1768,7 +1765,7 @@ describe('dispatchRunAgent user context', () => {
       configure: (props: ReturnType<typeof createProps>) => {
         props.params.useAgentSandbox = true;
         props.params.skills = [{ skillId: 'skill_1', name: 'Report' }];
-        global.feConfigs = { ...global.feConfigs, show_agent_sandbox: false };
+        getTestInstanceConfig().subservice.agentSandbox.provider = 'none';
       }
     }
   ])('continues without sandbox or skills when $name', async ({ configure }) => {
@@ -1807,7 +1804,7 @@ describe('dispatchRunAgent user context', () => {
     props.runningAppInfo.sourceType = ChatSourceTypeEnum.skillEdit;
     props.runningAppInfo.sourceId = 'skill_1';
     props.params.editSkillId = 'skill_1';
-    global.feConfigs = { ...global.feConfigs, show_agent_sandbox: false };
+    getTestInstanceConfig().subservice.agentSandbox.provider = 'none';
 
     let promise: Promise<any>;
     runWithContext(

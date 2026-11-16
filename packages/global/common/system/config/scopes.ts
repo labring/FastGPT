@@ -1,12 +1,31 @@
 import z from 'zod';
 import { ProEnvConfigSchema } from './proEnv';
-import { SubPlanInputSchema } from '../../../support/wallet/sub/type';
-import { LangfuseConfigSchema } from '../types';
 import { ModelStatusProbeConfigSchema } from './modelStatus';
 import {
   DefaultSystemModerationPolicy,
   SystemModerationPolicySchema
 } from '../../../core/plugin/moderation/type';
+
+/** 运营内容按独立子对象保存，局部更新不得覆盖同域其他公告或广告。 */
+export const SystemMsgModalConfigSchema = z.looseObject({
+  id: z.string().default(''),
+  content: z.string().default('')
+});
+export const OperationalAdConfigSchema = z.looseObject({
+  id: z.string().default(''),
+  operationalAdImage: z.string().default(''),
+  operationalAdLink: z.string().default('')
+});
+export const ActivityAdConfigSchema = z.looseObject({
+  id: z.string().default(''),
+  activityAdImage: z.string().default(''),
+  activityAdLink: z.string().default('')
+});
+export const OperationsConfigSchema = z.strictObject({
+  systemMsgModal: SystemMsgModalConfigSchema.optional(),
+  operationalAd: OperationalAdConfigSchema.optional(),
+  activityAd: ActivityAdConfigSchema.optional()
+});
 
 /**
  * 辅助系统 scope 的持久化合约，与 11 个管理表单业务域分开。
@@ -14,8 +33,6 @@ import {
  */
 export const systemInstanceConfigScopeSchemaMap = {
   proEnv: ProEnvConfigSchema,
-  subPlans: SubPlanInputSchema,
-  langfuse: LangfuseConfigSchema,
   license: z.looseObject({
     license: z.string().optional(),
     data: z.looseObject({}).optional()
@@ -29,15 +46,5 @@ export const systemInstanceConfigScopeSchemaMap = {
         : value,
     SystemModerationPolicySchema.passthrough()
   ),
-  systemMsgModal: z.looseObject({ id: z.string().default(''), content: z.string().default('') }),
-  operationalAd: z.looseObject({
-    id: z.string().default(''),
-    operationalAdImage: z.string().default(''),
-    operationalAdLink: z.string().default('')
-  }),
-  activityAd: z.looseObject({
-    id: z.string().default(''),
-    activityAdImage: z.string().default(''),
-    activityAdLink: z.string().default('')
-  })
+  operations: OperationsConfigSchema
 };

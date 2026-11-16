@@ -1,4 +1,7 @@
-import { getTestInstanceConfig } from '@test/utils/instanceConfigSnapshot';
+import {
+  getTestInstanceConfig,
+  createDefaultInstanceConfig
+} from '@test/utils/instanceConfigSnapshot';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   ChatFileTypeEnum,
@@ -28,20 +31,20 @@ vi.mock('@fastgpt/service/common/s3/sources/rawText', () => ({
 }));
 
 describe('getChatMessages', () => {
-  let originalSystemEnv: typeof global.systemEnv;
+  let originalSystemEnv: typeof global.systemInstanceConfig;
 
   const originalMultipleDataToBase64 = getTestInstanceConfig().feature.multipleDataToBase64;
 
   beforeEach(() => {
-    originalSystemEnv = global.systemEnv;
-    global.systemEnv = { ...originalSystemEnv, fileUrlWhitelist: [] };
+    originalSystemEnv = global.systemInstanceConfig;
+    global.systemInstanceConfig = createDefaultInstanceConfig();
     getTestInstanceConfig().feature.multipleDataToBase64 = false;
     vi.spyOn(axios, 'head').mockResolvedValue({ headers: { 'content-type': 'audio/wav' } });
     vi.spyOn(axios, 'get');
   });
 
   afterEach(() => {
-    global.systemEnv = originalSystemEnv;
+    global.systemInstanceConfig = originalSystemEnv;
     getTestInstanceConfig().feature.multipleDataToBase64 = originalMultipleDataToBase64;
     vi.restoreAllMocks();
   });

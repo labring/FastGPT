@@ -1,3 +1,4 @@
+import { getSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/runtime';
 import { generateQA } from '@/service/core/dataset/queues/generateQA';
 import { generateRebuildIndex } from '@/service/core/dataset/queues/generateRebuildIndex';
 import { generateRebuildSynonym } from '@/service/core/dataset/queues/generateRebuildSynonym';
@@ -43,9 +44,9 @@ export const createDatasetTrainingMongoWatch = () =>
   });
 
 export const startTrainingQueue = (fast?: boolean) => {
-  const qaMax = global.systemEnv?.qaMaxProcess || 10;
-  const vectorMax = global.systemEnv?.vectorMaxProcess || 15;
-  const parseMax = global.systemEnv?.datasetParseMaxProcess || 10;
+  const qaMax = getSystemInstanceConfig().performance.dataset.qaMaxProcess || 10;
+  const vectorMax = getSystemInstanceConfig().performance.dataset.vectorMaxProcess || 15;
+  const parseMax = getSystemInstanceConfig().performance.dataset.parseMaxProcess || 10;
   logInstanceConfigRead({
     callsite: 'runtime.app.dataset.training.startTrainingQueue',
     source: 'bridged-system-env',

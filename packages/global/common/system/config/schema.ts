@@ -13,6 +13,8 @@ import { SubserviceConfigBaseSchema, SubserviceConfigSchema } from './schemas/su
 import { VectorConfigSchema } from './schemas/vector';
 import { deepMergeConfig } from './merge';
 import type { DeepPartial } from './type';
+import { systemInstanceConfigScopeSchemaMap } from './scopes';
+import { RuntimeLicenseDataSchema } from '../license/schema';
 
 export const SYSTEM_INSTANCE_CONFIG_SCHEMA_VERSION = 1 as const;
 
@@ -34,19 +36,15 @@ export type SystemInstanceConfigDomainKey = (typeof SYSTEM_INSTANCE_CONFIG_DOMAI
 
 export const SystemInstanceConfigDomainKeySchema = z.enum(SYSTEM_INSTANCE_CONFIG_DOMAINS);
 
-/** 持久化 scope 包含 11 个业务域及 10 个辅助系统配置；辅助 scope 不参与表单和业务域初始化。 */
+/** 持久化 scope 包含 11 个业务域及 6 个辅助系统配置；辅助 scope 不参与表单和业务域初始化。 */
 export const SYSTEM_INSTANCE_CONFIG_SCOPES = [
   ...SYSTEM_INSTANCE_CONFIG_DOMAINS,
   'proEnv',
-  'subPlans',
-  'langfuse',
   'license',
   'instanceId',
   'modelStatusProbe',
   'moderationPolicy',
-  'systemMsgModal',
-  'operationalAd',
-  'activityAd'
+  'operations'
 ] as const;
 export const SystemInstanceConfigScopeKeySchema = z.enum(SYSTEM_INSTANCE_CONFIG_SCOPES);
 
@@ -227,7 +225,7 @@ export const resolveDomainEffectiveConfig = <T extends SystemInstanceConfigDomai
 };
 
 /**
- * 完整实例配置 Schema（包含所有 11 个 domain 的最终生效结构）。
+ * 完整运行时快照：11 个业务域及 6 个辅助 scope，读取默认值不会创建部署身份或授权。
  */
 export const SystemInstanceConfigSchema = z.strictObject({
   site: SiteConfigSchema.prefault({}),
@@ -240,7 +238,18 @@ export const SystemInstanceConfigSchema = z.strictObject({
   storage: StorageConfigSchema.prefault({}),
   vector: VectorConfigSchema.prefault({}),
   providers: ProvidersConfigSchema.prefault({}),
-  subservice: SubserviceConfigSchema.prefault({})
+  subservice: SubserviceConfigSchema.prefault({}),
+  proEnv: systemInstanceConfigScopeSchemaMap.proEnv.prefault({}),
+  license: systemInstanceConfigScopeSchemaMap.license
+    .extend({
+      // 缓存可能来自旧授权格式；非法缓存只撤销授权，保留原文供 Pro 重验，不阻塞其他 scope。
+      data: RuntimeLicenseDataSchema.optional().catch(undefined)
+    })
+    .prefault({}),
+  instanceId: z.object({ instanceId: z.string().min(1).optional() }).prefault({}),
+  modelStatusProbe: systemInstanceConfigScopeSchemaMap.modelStatusProbe.prefault({}),
+  moderationPolicy: systemInstanceConfigScopeSchemaMap.moderationPolicy.prefault({}),
+  operations: systemInstanceConfigScopeSchemaMap.operations.prefault({})
 });
 
 export type SystemInstanceConfig = z.infer<typeof SystemInstanceConfigSchema>;
@@ -250,7 +259,7 @@ export type SystemInstanceConfig = z.infer<typeof SystemInstanceConfigSchema>;
  */
 export const resolveSystemInstanceConfig = (
   domainOverridesMap: Partial<{
-    [K in SystemInstanceConfigDomainKey]: unknown;
+    [K in (typeof SYSTEM_INSTANCE_CONFIG_SCOPES)[number]]: unknown;
   }> = {},
   options?: { strict?: boolean }
 ): SystemInstanceConfig => {
@@ -309,7 +318,17 @@ export const resolveSystemInstanceConfig = (
       domain: 'subservice',
       overrides: domainOverridesMap.subservice,
       options
-    })
+    }),
+    proEnv: SystemInstanceConfigSchema.shape.proEnv.parse(domainOverridesMap.proEnv),
+    license: SystemInstanceConfigSchema.shape.license.parse(domainOverridesMap.license),
+    instanceId: SystemInstanceConfigSchema.shape.instanceId.parse(domainOverridesMap.instanceId),
+    modelStatusProbe: SystemInstanceConfigSchema.shape.modelStatusProbe.parse(
+      domainOverridesMap.modelStatusProbe
+    ),
+    moderationPolicy: SystemInstanceConfigSchema.shape.moderationPolicy.parse(
+      domainOverridesMap.moderationPolicy
+    ),
+    operations: SystemInstanceConfigSchema.shape.operations.parse(domainOverridesMap.operations)
   };
 };
 

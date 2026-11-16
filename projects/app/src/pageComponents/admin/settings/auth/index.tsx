@@ -56,8 +56,8 @@ const AuthSettingComponent = () => {
   const { effectiveConfig } = auth;
   const isLoading = auth.isLoading || security.isLoading;
 
-  // 仅当加载时既有 fastLogin 非空才显示编辑器和目录项；不能跟随当前草稿即时变化。
-  const showFastLogin = showFastLoginPermission && (effectiveConfig.fastLogin?.length ?? 0) > 0;
+  // 空配置也要允许首次添加和清空后重新配置；显示仅由字段权限决定。
+  const showFastLogin = showFastLoginPermission;
 
   const tocItems: SettingTOCItem[] = useMemo(
     () => [

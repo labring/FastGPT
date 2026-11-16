@@ -1,3 +1,4 @@
+import { getSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/runtime';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import handler from '@/pages/api/common/system/getInitData';
 import { Call } from '@test/utils/request';
@@ -60,7 +61,7 @@ describe('initStaticData through the real initialization pipeline', () => {
     mocks.referer = 'https://app.example.com/login';
     global.systemInitBufferId = 'config-1';
     global.systemVersion = '4.17.3';
-    global.subPlans = { extraDatasetSize: { price: 4 } };
+    getSystemInstanceConfig().commercial.subPlans = { extraDatasetSize: { price: 4 } };
     global.aiproxyChannelsCache = [
       {
         channelId: 1,
@@ -201,7 +202,7 @@ describe('initStaticData through the real initialization pipeline', () => {
       includeSubPlans: true
     });
     const { subPlans } = useSystemStore.getState();
-    expect(subPlans).toEqual(global.subPlans);
+    expect(subPlans).toEqual(getSystemInstanceConfig().commercial.subPlans);
 
     mocks.referer = 'https://app.example.com/chat/share?shareId=share-1';
     await clientInitData();
@@ -278,10 +279,12 @@ describe('initStaticData through the real initialization pipeline', () => {
       state.feConfigs.docUrl = 'https://docs.example.com';
     });
 
-    global.subPlans = { extraDatasetSize: { price: 8 } };
+    getSystemInstanceConfig().commercial.subPlans = { extraDatasetSize: { price: 8 } };
     mocks.referer = '';
     await clientInitData({ includeSubPlans: true });
-    expect(useSystemStore.getState().subPlans).toEqual(global.subPlans);
+    expect(useSystemStore.getState().subPlans).toEqual(
+      getSystemInstanceConfig().commercial.subPlans
+    );
     expect(useSystemStore.getState().feConfigs.docUrl).toBe('https://docs.example.com');
   });
 

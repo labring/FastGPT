@@ -458,7 +458,7 @@ export const FastGPTConfigFileSchema = z.looseObject({
 export type FastGPTConfigFileType = z.infer<typeof FastGPTConfigFileSchema>;
 
 /**
- * 运行时 License 数据（global.licenseData / 前端展示）=
+ * 运行时 License 数据（global.systemInstanceConfig.license.data / 前端展示）=
  * 决策版 payload（schema 单一来源派生）+ deprecated 兼容视图。
  *
  * deprecated 视图（旧 UI/消费方直接读顶层字段，避免回归；新代码一律用 limits/functions 决策版键）：

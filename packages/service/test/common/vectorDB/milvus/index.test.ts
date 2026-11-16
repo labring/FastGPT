@@ -65,7 +65,6 @@ vi.unmock('@fastgpt/service/common/vectorDB/milvus');
 import { MilvusCtrl } from '@fastgpt/service/common/vectorDB/milvus/index';
 
 beforeEach(() => {
-  global.systemEnv = {} as any;
   vi.resetModules();
   mockCreateCollection.mockReset();
   mockHasCollection.mockReset().mockResolvedValue({ value: false });
@@ -387,7 +386,6 @@ describe('MilvusCtrl', () => {
   ])(
     'TC-8.6 embRecall uses SDK 2.6 data and HNSW search parameters: %j',
     async ({ hnswEfSearch, limit }) => {
-      global.systemEnv.hnswEfSearch = 9999;
       const ctrl = new MilvusCtrl();
       await ctrl.embRecall({
         teamId: 't',

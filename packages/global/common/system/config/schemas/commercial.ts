@@ -1,4 +1,5 @@
 import z from 'zod';
+import { SubPlanInputSchema } from '../../../../support/wallet/sub/type';
 import { textWithDefault, urlWithDefault } from './primitives';
 
 /** 微信支付商户凭据。 */
@@ -59,5 +60,7 @@ export const CommercialConfigSchema = z.strictObject({
       bank: BankPayConfigSchema.prefault({})
     })
     .prefault({}),
-  billingNotify: BillingNotifyConfigSchema.prefault({})
+  billingNotify: BillingNotifyConfigSchema.prefault({}),
+  // 套餐与商业配置共享同一 revision；保持专用表单/API 输入，不开放成通用叶子补丁。
+  subPlans: SubPlanInputSchema.optional()
 });

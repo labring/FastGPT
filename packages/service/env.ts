@@ -151,6 +151,7 @@ export const serviceEnv = createEnv({
     TRACING_OTEL_URL: UrlSchema.optional(),
     TRACING_OTEL_SAMPLE_RATIO: NumSchema.min(0).max(1).optional(),
 
+    // App 与 Pro 各自直接读取本进程 ENV，不写入数据库 scope。
     LANGFUSE_SECRET_KEY: z.string().optional(),
     LANGFUSE_PUBLIC_KEY: z.string().optional(),
     LANGFUSE_BASE_URL: UrlSchema.optional(),

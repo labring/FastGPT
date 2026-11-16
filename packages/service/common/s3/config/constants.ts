@@ -16,7 +16,8 @@ export const S3Buckets = {
 } as const;
 
 /** 系统上传大小上限，单位 MB；0 表示未配置，与客户端使用相同的 1000MB 默认值。 */
-export const getSystemMaxFileSize = () => global.feConfigs.limit?.uploadFileMaxSize || 1000;
+export const getSystemMaxFileSize = () =>
+  getSystemInstanceConfig().resource.uploadFileMaxSize || 1000;
 
 const DAY_IN_MS = 24 * 60 * 60 * 1000;
 

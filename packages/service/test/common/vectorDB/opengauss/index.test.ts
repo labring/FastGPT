@@ -21,7 +21,6 @@ describe('OpenGaussVectorCtrl.init', () => {
 
 describe('OpenGaussVectorCtrl.embRecall', () => {
   beforeEach(() => {
-    global.systemEnv = { ...global.systemEnv, hnswEfSearch: 9999 };
     vi.mocked(OgClient.query)
       .mockReset()
       .mockResolvedValue([{}, { rows: [] }] as any);

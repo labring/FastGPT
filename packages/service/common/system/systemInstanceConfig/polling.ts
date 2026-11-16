@@ -1,3 +1,4 @@
+import { SYSTEM_INSTANCE_CONFIG_SCOPES } from '@fastgpt/global/common/system/config/schema';
 import { MongoSystemInstanceConfig } from './schema';
 import { getLogger, LogCategories } from '../../logger';
 
@@ -6,7 +7,10 @@ type ConfigPoller = { stop: () => Promise<void> };
 
 /** 只从主库批量读取版本元数据；文档身份参与比较，删除后同 revision 重建也能被发现。 */
 export const readSystemConfigScopeVersions = async (): Promise<ScopeVersions> => {
-  const docs = await MongoSystemInstanceConfig.find({}, { _id: 1, domain: 1, revision: 1 })
+  const docs = await MongoSystemInstanceConfig.find(
+    { domain: { $in: SYSTEM_INSTANCE_CONFIG_SCOPES } },
+    { _id: 1, domain: 1, revision: 1 }
+  )
     .read('primary')
     .lean();
   return Object.fromEntries(docs.map((doc) => [doc.domain, `${doc._id}:${doc.revision ?? 0}`]));
@@ -21,11 +25,14 @@ export const readSystemConfigScopeVersions = async (): Promise<ScopeVersions> =>
 export const startSystemConfigPolling = ({
   key,
   refresh,
-  isReady
+  isReady,
+  readAuxiliaryVersions
 }: {
   key: 'app' | 'pro';
   refresh: (context: { changedScopes: string[]; initialLoad: boolean }) => Promise<void>;
   isReady?: () => Promise<boolean>;
+  /** 可选的外部状态参与变更检测；读取失败不阻止配置刷新，下轮继续重试。 */
+  readAuxiliaryVersions?: () => Promise<ScopeVersions>;
 }): (() => Promise<void>) => {
   const store = global as typeof global & { systemConfigPollers?: Map<string, ConfigPoller> };
   const pollers = (store.systemConfigPollers ??= new Map());
@@ -55,6 +62,17 @@ export const startSystemConfigPolling = ({
         const ready = !isReady || (await isReady());
         if (!stopped && ready) {
           const versions = await readSystemConfigScopeVersions();
+          if (readAuxiliaryVersions) {
+            try {
+              Object.assign(versions, await readAuxiliaryVersions());
+            } catch (error) {
+              // 保留上次辅助状态，避免短暂故障被误认成状态删除，也不阻挡 scope 变更。
+              for (const [scope, version] of Object.entries(appliedVersions ?? {})) {
+                if (scope.startsWith('migration:')) versions[scope] = version;
+              }
+              logger.warn('Failed to read auxiliary config polling metadata', { key, error });
+            }
+          }
           const scopes = new Set([...Object.keys(appliedVersions ?? {}), ...Object.keys(versions)]);
           const changedScopes = [...scopes].filter(
             (scope) => versions[scope] !== appliedVersions?.[scope]

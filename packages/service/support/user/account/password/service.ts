@@ -1,3 +1,4 @@
+import { getSystemInstanceConfig } from '../../../../common/system/systemInstanceConfig/runtime';
 import { randomBytes } from 'node:crypto';
 import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
 import { UserError } from '@fastgpt/global/common/error/utils';
@@ -24,7 +25,7 @@ type PasswordChangeSessionData = {
 
 /** 仅在密码策略开启时读取 Pro 接入状态，避免无关账号操作依赖 Pro 可用性。 */
 export const isSsoPasswordDisabled = async () => {
-  if (global.feConfigs?.sso?.disablePasswordForSsoUsers !== true) return false;
+  if (getSystemInstanceConfig().auth.sso.disablePasswordForSsoUsers !== true) return false;
   return isSsoPasswordPolicyEnabled({
     enabled: await getSsoConfigured(),
     disablePasswordForSsoUsers: true
@@ -39,7 +40,7 @@ export const isSsoUserByUsername = async (username: string) => {
 
 /** 非 SSO 用户和未开启策略的部署无需访问 Pro；能力未知时拒绝受影响账号的密码操作。 */
 export const getUserPasswordAvailability = async (username: string) => {
-  if (global.feConfigs?.sso?.disablePasswordForSsoUsers !== true) return true;
+  if (getSystemInstanceConfig().auth.sso.disablePasswordForSsoUsers !== true) return true;
   if (!isSsoUsername(username, { enabled: true })) return true;
 
   return isPasswordAvailableForUsername(username, {

@@ -123,9 +123,6 @@ export const migrateSystemConfigs = async (context: SystemMigrationContext) => {
     status: SystemMigrationStatusEnum.running
   });
 
-  await context.assertActive();
-  await migrateLegacyConfigScopes();
-
   const result = needsLegacyMigration
     ? await applyInstanceConfigMigration({
         overrides: inspection.overrides,
@@ -172,6 +169,8 @@ export const migrateSystemConfigs = async (context: SystemMigrationContext) => {
   });
 
   const backfills = [
+    // 先完成业务域初始化和废弃字段清理，再合并套餐与运营配置，避免遮蔽文件或严格校验失败。
+    () => migrateLegacyConfigScopes(),
     backfillExternalFileCheck,
     rehomeSubserviceConnections,
     backfillModelDeprecationSms,

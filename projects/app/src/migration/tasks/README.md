@@ -17,12 +17,12 @@
 1. `inspect`：检查旧 Mongo 配置与历史 ENV；仅当实例集合为空时读取 App 工作目录下可选的 `defaultConfig.json`。异常配置只记录字段路径，保留脱敏跳过项统计。
 2. `migrate`：按域创建缺失文档或补充缺失叶子，保留管理员已有值和显式默认意图。文件使用当前实例配置域格式，仅参与首次初始化。
 3. `cleanup`：清理当前 Schema 明确废弃的字段及相应默认值标记。现行字段不得登记为废弃项。
-4. `backfill`：补齐外链检查、模型下架短信、Code Sandbox/MCP SSE、Agent Sandbox 代理及超卖系数、文件域名、HTTP/Cookie 策略、自定义域名部署参数。先校验再按 revision CAS 写入，保留已有值与显式清空。
+4. `backfill`：先将旧套餐合入 `commercial.subPlans`，公告及两类广告合入 `operations`，迁入其他辅助 scope；再补齐外链检查、模型下架短信、Code Sandbox/MCP SSE、Agent Sandbox 代理及超卖系数、文件域名、HTTP/Cookie 策略、自定义域名部署参数。先校验再按 revision CAS 写入，保留已有值与显式清空。
 5. `validate`：重新检查全部域、旧值缺口、废弃字段及各补齐目标的持久化依据。Schema 默认值本身不等于迁移完成。
 
 旧配置中的数值字段先通过 `NumSchema` 兼容数字字符串（如 `"4"` → `4`），再执行目标域的整数、范围等校验；空值、非数字类型与非有限值不强制转成 `0`。已有实例值和显式默认意图仍优先。
 
-Pro 可先使用 Schema 默认值启动，等待本任务状态为 `succeeded` 后自动加载真实配置并同步 ENV；等待期间不读取半成品或写回旧配置。首次刷新失败会重试，成功后转回常规热更新。旧 Mongo 配置统一按类型筛选、`_id` 倒序选取，不以 `createTime` 决定迁移来源。
+Pro 启动及轮询始终按已有 scope 与 Schema 默认值合成完整快照，不以迁移状态阻塞读取；本任务写入后由版本变化驱动刷新。Pro ENV 独立按差异发布，实例 ID 首建及授权变更等写入保留必要迁移检查。刷新失败保留上一有效快照并重试。旧 Mongo 配置统一按类型筛选、`_id` 倒序选取，不以 `createTime` 决定迁移来源。
 
 旧 `EVAL_CONCURRENCY` 不导入，评估并发的新配置默认 `3`；Cookie Secure、共享 HTTP 响应上限和 Sandbox 两个超卖系数只从 App 进程 ENV 导入，Pro 同名 ENV 不参与。已有实例值和显式默认意图仍优先。
 
@@ -34,4 +34,6 @@ Pro 可先使用 Schema 默认值启动，等待本任务状态为 `succeeded` �
 
 `proEnv` 是同集合中的特殊 scope，仅由 Pro 启动根据 ENV 发布；不属于 11 个可配置业务域，defaultConfig.json 和管理 API 不允许写入。Pro 先发布不会影响 App 业务域的首次初始化或迁移完成判断。
 
-辅助 scope 也统一迁入 `system_instance_configs`：subPlans、langfuse、license、instanceId、modelStatusProbe、moderationPolicy、systemMsgModal、operationalAd、activityAd。proEnv 仍只由 ENV 发布。旧 systemconfigs 仅保留迁移来源；配置更新只轮询 `domain/_id/revision`，不保留配置 Change Stream 监听。
+`system_instance_configs` 共 17 个 scope：上述 11 个业务域，以及 proEnv、license、instanceId、modelStatusProbe、moderationPolicy、operations 六个辅助 scope。套餐保存为 `commercial.subPlans`，与商业配置共用 revision；`operations` 包含 systemMsgModal、operationalAd、activityAd 三个子对象，局部保存不会覆盖其他子项。license 保持独立，proEnv 仍只由 ENV 发布。
+
+合并迁移优先保留新目标，其次读取开发期旧 `system_instance_configs` scope，最后读取旧 `systemconfigs`；完整校验后，在同一事务中迁入并删除四个开发期旧 scope，保留原始 `systemconfigs` 作为迁移来源。配置更新只轮询 `domain/_id/revision`，不保留配置 Change Stream 监听。

@@ -12,6 +12,13 @@ describe('readSystemConfigScopeVersions', () => {
       revision: 3,
       overrides: { name: 'Config' }
     });
+    // 开发期残留 scope 不能再触发系统配置刷新。
+    await MongoSystemInstanceConfig.collection.insertOne({
+      domain: 'langfuse',
+      overrides: {},
+      revision: 99,
+      schemaVersion: 1
+    });
     const find = vi.spyOn(MongoSystemInstanceConfig.collection, 'find');
     try {
       expect(await readSystemConfigScopeVersions()).toEqual({ site: `${doc._id}:3` });
@@ -92,6 +99,28 @@ describe('startSystemConfigPolling', () => {
     expect(refresh).toHaveBeenCalledTimes(2);
     await vi.advanceTimersByTimeAsync(1000);
     expect(refresh).toHaveBeenCalledTimes(2);
+  });
+
+  it('detects auxiliary changes without blocking config refresh when metadata is unavailable', async () => {
+    const metadata = vi.fn().mockResolvedValue({ 'migration:license-config': 'pending' });
+    stop = startSystemConfigPolling({ key: 'pro', refresh, readAuxiliaryVersions: metadata });
+    await vi.advanceTimersByTimeAsync(0);
+    expect(refresh).toHaveBeenCalledWith({
+      changedScopes: ['site', 'migration:license-config'],
+      initialLoad: true
+    });
+
+    metadata.mockRejectedValueOnce(new Error('temporary metadata failure'));
+    read.mockResolvedValue([row('site', 2)]);
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(refresh).toHaveBeenLastCalledWith({ changedScopes: ['site'], initialLoad: false });
+
+    metadata.mockResolvedValue({ 'migration:license-config': 'succeeded' });
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(refresh).toHaveBeenLastCalledWith({
+      changedScopes: ['migration:license-config'],
+      initialLoad: false
+    });
   });
 
   it('waits one second after a slow refresh and catches writes made during that refresh', async () => {

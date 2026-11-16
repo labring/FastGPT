@@ -1070,7 +1070,7 @@ Server、Agent Sandbox Proxy 和 IDE Agent 的运行时变量。为了避免“�
 
 ### 13.6 逐字段版本、表单与页面映射
 
-本表逐项覆盖注册表的 **202 个配置叶子**，不使用通配符或虚构的聚合字段。字段定义与默认值以 `schemas/*.ts` 为准，版本、敏感项和 SaaS 显示条件以 `registry.ts` 为准；页面归属与 `pageFields.ts`、实际表单保持一致。支付宝仅使用 V2 gateway，未被支付、查询和退款调用的 V3 endpoint 已移除；旧版商业内置文本审查（`security.censor.*`）已由内容审核插件策略体系（`/admin/moderation/policy`）取代，历史覆盖项由可重入清理迁移删除。
+本表逐项覆盖注册表的 **214 个配置叶子**，不使用通配符或虚构的聚合字段。字段定义与默认值以 `schemas/*.ts` 为准，版本、敏感项和 SaaS 显示条件以 `registry.ts` 为准；页面归属与 `pageFields.ts`、实际表单保持一致。支付宝仅使用 V2 gateway，未被支付、查询和退款调用的 V3 endpoint 已移除；旧版商业内置文本审查（`security.censor.*`）已由内容审核插件策略体系（`/admin/moderation/policy`）取代，历史覆盖项由可重入清理迁移删除。
 
 - 社区版／商业版的勾选表示配置 API 的读写权限；商业版按是否配置 `PRO_URL` 判定，不依赖 License 是否激活。
 - “仅 SaaS 显示”表示 `ENABLE_SAAS_ADMIN_CONFIG=true` 才显示对应控件，**不收紧商业版 API 权限**。标为“仅 API”的字段当前没有新表单，开启显示开关也不会产生控件。
@@ -1082,8 +1082,26 @@ Server、Agent Sandbox Proxy 和 IDE Agent 的运行时变量。为了避免“�
 
 <!-- instance-config-field-matrix:start -->
 
-#### 站点（site）
-
+| 配置字段 | 用途 | 社区版 | 商业版 | 仅 SaaS 显示 | 敏感项 | 当前管理入口 |
+| --- | --- | :---: | :---: | :---: | :---: | --- |
+| 配置字段 | 用途 | 社区版 | 商业版 | 仅 SaaS 显示 | 敏感项 | 当前管理入口 |
+| --- | --- | :---: | :---: | :---: | :---: | --- |
+| 配置字段 | 用途 | 社区版 | 商业版 | 仅 SaaS 显示 | 敏感项 | 当前管理入口 |
+| --- | --- | :---: | :---: | :---: | :---: | --- |
+| 配置字段 | 用途 | 社区版 | 商业版 | 仅 SaaS 显示 | 敏感项 | 当前管理入口 |
+| --- | --- | :---: | :---: | :---: | :---: | --- |
+| 配置字段 | 用途 | 社区版 | 商业版 | 仅 SaaS 显示 | 敏感项 | 当前管理入口 |
+| --- | --- | :---: | :---: | :---: | :---: | --- |
+| 配置字段 | 用途 | 社区版 | 商业版 | 仅 SaaS 显示 | 敏感项 | 当前管理入口 |
+| --- | --- | :---: | :---: | :---: | :---: | --- |
+| 配置字段 | 用途 | 社区版 | 商业版 | 仅 SaaS 显示 | 敏感项 | 当前管理入口 |
+| --- | --- | :---: | :---: | :---: | :---: | --- |
+| 配置字段 | 用途 | 社区版 | 商业版 | 仅 SaaS 显示 | 敏感项 | 当前管理入口 |
+| --- | --- | :---: | :---: | :---: | :---: | --- |
+| 配置字段 | 用途 | 社区版 | 商业版 | 仅 SaaS 显示 | 敏感项 | 当前管理入口 |
+| --- | --- | :---: | :---: | :---: | :---: | --- |
+| 配置字段 | 用途 | 社区版 | 商业版 | 仅 SaaS 显示 | 敏感项 | 当前管理入口 |
+| --- | --- | :---: | :---: | :---: | :---: | --- |
 | 配置字段 | 用途 | 社区版 | 商业版 | 仅 SaaS 显示 | 敏感项 | 当前管理入口 |
 | --- | --- | :---: | :---: | :---: | :---: | --- |
 | `site.name` | 站点名称 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/site` |
@@ -1099,30 +1117,24 @@ Server、Agent Sandbox Proxy 和 IDE Agent 的运行时变量。为了避免“�
 | `site.loginGuideDocUrl` | 登录引导帮助文档地址 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/site` |
 | `site.customApiDomain` | 自定义 API 域名 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/site` |
 | `site.customSharePageDomain` | 自定义分享链接域名 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/site` |
-| `site.customDomain.enable` | 启用自定义独立域名 | ❌ | ✅ | ✅ | — | 可编辑：`/admin/settings/custom-domain` |
-| `site.customDomain.domain.aliyun` | 阿里云 CNAME 域名 | ❌ | ✅ | ✅ | — | 可编辑：`/admin/settings/custom-domain` |
-| `site.customDomain.domain.tencent` | 腾讯云 CNAME 域名 | ❌ | ✅ | ✅ | — | 可编辑：`/admin/settings/custom-domain` |
-| `site.customDomain.domain.volcengine` | 火山引擎 CNAME 域名 | ❌ | ✅ | ✅ | — | 可编辑：`/admin/settings/custom-domain` |
-| `site.customDomain.kc.aliyun` | 阿里云 kubeconfig | ❌ | ✅ | ✅ | ✅ | 可编辑：`/admin/settings/custom-domain` |
-| `site.customDomain.kc.tencent` | 腾讯云 kubeconfig | ❌ | ✅ | ✅ | ✅ | 可编辑：`/admin/settings/custom-domain` |
-| `site.customDomain.kc.volcengine` | 火山引擎 kubeconfig | ❌ | ✅ | ✅ | ✅ | 可编辑：`/admin/settings/custom-domain` |
-| `site.customDomain.issuerServiceName.aliyun` | 阿里云 证书签发器名称 | ❌ | ✅ | ✅ | — | 可编辑：`/admin/settings/custom-domain` |
-| `site.customDomain.issuerServiceName.tencent` | 腾讯云 证书签发器名称 | ❌ | ✅ | ✅ | — | 可编辑：`/admin/settings/custom-domain` |
-| `site.customDomain.issuerServiceName.volcengine` | 火山引擎 证书签发器名称 | ❌ | ✅ | ✅ | — | 可编辑：`/admin/settings/custom-domain` |
-| `site.customDomain.nginxServiceName.aliyun` | 阿里云 Nginx 服务名称 | ❌ | ✅ | ✅ | — | 可编辑：`/admin/settings/custom-domain` |
-| `site.customDomain.nginxServiceName.tencent` | 腾讯云 Nginx 服务名称 | ❌ | ✅ | ✅ | — | 可编辑：`/admin/settings/custom-domain` |
-| `site.customDomain.nginxServiceName.volcengine` | 火山引擎 Nginx 服务名称 | ❌ | ✅ | ✅ | — | 可编辑：`/admin/settings/custom-domain` |
 | `site.botIframeUrl` | 客服助手 iframe 地址 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/site` |
 | `site.scripts` | 第三方脚本列表 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/site` |
-
-#### 账号与登录（auth）
-
-| 配置字段 | 用途 | 社区版 | 商业版 | 仅 SaaS 显示 | 敏感项 | 当前管理入口 |
-| --- | --- | :---: | :---: | :---: | :---: | --- |
+| `site.customDomain.enable` | 启用自定义独立域名 | — | ✅ | ✅ | — | 可编辑：`/admin/settings/custom-domain` |
+| `site.customDomain.domain.aliyun` | 阿里云 CNAME 域名 | — | ✅ | ✅ | — | 可编辑：`/admin/settings/custom-domain` |
+| `site.customDomain.domain.tencent` | 腾讯云 CNAME 域名 | — | ✅ | ✅ | — | 可编辑：`/admin/settings/custom-domain` |
+| `site.customDomain.domain.volcengine` | 火山引擎 CNAME 域名 | — | ✅ | ✅ | — | 可编辑：`/admin/settings/custom-domain` |
+| `site.customDomain.kc.aliyun` | 阿里云 kubeconfig | — | ✅ | ✅ | ✅ | 可编辑：`/admin/settings/custom-domain` |
+| `site.customDomain.kc.tencent` | 腾讯云 kubeconfig | — | ✅ | ✅ | ✅ | 可编辑：`/admin/settings/custom-domain` |
+| `site.customDomain.kc.volcengine` | 火山引擎 kubeconfig | — | ✅ | ✅ | ✅ | 可编辑：`/admin/settings/custom-domain` |
+| `site.customDomain.issuerServiceName.aliyun` | 阿里云 证书签发器名称 | — | ✅ | ✅ | — | 可编辑：`/admin/settings/custom-domain` |
+| `site.customDomain.issuerServiceName.tencent` | 腾讯云 证书签发器名称 | — | ✅ | ✅ | — | 可编辑：`/admin/settings/custom-domain` |
+| `site.customDomain.issuerServiceName.volcengine` | 火山引擎 证书签发器名称 | — | ✅ | ✅ | — | 可编辑：`/admin/settings/custom-domain` |
+| `site.customDomain.nginxServiceName.aliyun` | 阿里云 Nginx 服务名称 | — | ✅ | ✅ | — | 可编辑：`/admin/settings/custom-domain` |
+| `site.customDomain.nginxServiceName.tencent` | 腾讯云 Nginx 服务名称 | — | ✅ | ✅ | — | 可编辑：`/admin/settings/custom-domain` |
+| `site.customDomain.nginxServiceName.volcengine` | 火山引擎 Nginx 服务名称 | — | ✅ | ✅ | — | 可编辑：`/admin/settings/custom-domain` |
 | `auth.openApiKeyMaxCount` | OpenAPI Key 数量上限 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
 | `auth.passwordExpiredMonth` | 密码有效周期（月） | ✅ | ✅ | — | — | 可编辑：`/admin/settings/auth` |
 | `auth.wecomLoginAutoRedirect` | 企业微信自动跳转 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/auth` |
-| `TEAM_MODE`（Pro ENV） | 团队模式 | — | — | — | — | ENV 唯一来源；页面不可编辑。历史 `auth.teamMode` 仅保留兼容解析，不参与业务判断 |
 | `auth.fastLogin` | 快捷登录方式 | — | ✅ | — | — | 可编辑：`/admin/settings/auth` |
 | `auth.sso.title` | SSO 登录按钮标题 | — | ✅ | — | — | 可编辑：`/admin/settings/auth` |
 | `auth.sso.icon` | SSO 登录按钮图标 | — | ✅ | — | — | 可编辑：`/admin/settings/auth` |
@@ -1166,11 +1178,6 @@ Server、Agent Sandbox Proxy 和 IDE Agent 的运行时变量。为了避免“�
 | `auth.loginProviders.microsoft.secret` | Microsoft Client Secret | — | ✅ | — | ✅ | 可编辑：`/admin/settings/auth` |
 | `auth.loginProviders.wecom.providerSecret` | 服务商 Secret | — | ✅ | ✅ | ✅ | 可编辑：`/admin/settings/auth` |
 | `auth.loginProviders.wecom.paySecret` | 企微支付密钥 | — | ✅ | ✅ | ✅ | 可编辑：`/admin/settings/auth` |
-
-#### 安全策略（security）
-
-| 配置字段 | 用途 | 社区版 | 商业版 | 仅 SaaS 显示 | 敏感项 | 当前管理入口 |
-| --- | --- | :---: | :---: | :---: | :---: | --- |
 | `security.checkInternalIp` | 内网 IP 访问拦截 (SSRF) | ✅ | ✅ | — | — | 可编辑：`/admin/settings/security` |
 | `security.csrfEnabled` | CSRF 严格校验 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/security` |
 | `security.authCookieSecure` | 登录 Cookie 的 Secure 属性；重新签发时生效 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/security` |
@@ -1178,14 +1185,9 @@ Server、Agent Sandbox Proxy 和 IDE Agent 的运行时变量。为了避免“�
 | `security.maxLoginSession` | 最大登录会话数 (Max Sessions) | ✅ | ✅ | — | — | 可编辑：`/admin/settings/auth` |
 | `security.allowedOrigins` | 允许的跨域来源 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/security` |
 | `security.skipFileTypeCheck` | 上传文件类型检查 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/security` |
-| `security.workflowHttpNode.ignoreHttpsCertificate` | HTTP 节点忽略 HTTPS 证书校验 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/security` |
 | `security.checkExternalFile` | 检查外部文件（关闭时保留名单） | ✅ | ✅ | — | — | 可编辑：`/admin/settings/security` |
+| `security.workflowHttpNode.ignoreHttpsCertificate` | HTTP 节点忽略 HTTPS 证书校验 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/security` |
 | `security.fileUrlWhitelist` | 聊天及工作流输入文件域名白名单（开关开启时显示） | ✅ | ✅ | — | — | 可编辑：`/admin/settings/security` |
-
-#### 功能（feature）
-
-| 配置字段 | 用途 | 社区版 | 商业版 | 仅 SaaS 显示 | 敏感项 | 当前管理入口 |
-| --- | --- | :---: | :---: | :---: | :---: | --- |
 | `feature.hideChatCopyrightSetting` | 分享链接版权配置 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/feature` |
 | `feature.multipleDataToBase64` | 发送给模型的多模态内容转换为 base64 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/core` |
 | `feature.agentEngine` | Agent 执行引擎 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/core` |
@@ -1201,11 +1203,6 @@ Server、Agent Sandbox Proxy 和 IDE Agent 的运行时变量。为了避免“�
 | `feature.showPublishOffiaccount` | 发布渠道 - 公众号 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/feature` |
 | `feature.showPublishWechat` | 发布渠道 - 微信客服 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/feature` |
 | `feature.showComplianceCopywriting` | 展示合规文案 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/feature` |
-
-#### 商业与支付（commercial）
-
-| 配置字段 | 用途 | 社区版 | 商业版 | 仅 SaaS 显示 | 敏感项 | 当前管理入口 |
-| --- | --- | :---: | :---: | :---: | :---: | --- |
 | `commercial.showCoupon` | 展示充值优惠券 | — | ✅ | ✅ | — | 可编辑：`/admin/settings/pay` |
 | `commercial.showDiscountCoupon` | 展示满减折扣券 | — | ✅ | ✅ | — | 可编辑：`/admin/settings/pay` |
 | `commercial.payFormUrl` | 企业汇款表单地址 | — | ✅ | ✅ | — | 可编辑：`/admin/settings/pay` |
@@ -1228,13 +1225,7 @@ Server、Agent Sandbox Proxy 和 IDE Agent 的运行时变量。为了避免“�
 | `commercial.payment.alipay.appCertContent` | 应用公钥证书 | — | ✅ | — | ✅ | 可编辑：`/admin/settings/pay` |
 | `commercial.payment.alipay.rootCertContent` | 支付宝根证书 | — | ✅ | — | ✅ | 可编辑：`/admin/settings/pay` |
 | `commercial.payment.alipay.publicCertContent` | 支付宝公钥证书 | — | ✅ | — | ✅ | 可编辑：`/admin/settings/pay` |
-
-#### 资源限制（resource）
-
-| 配置字段 | 用途 | 社区版 | 商业版 | 仅 SaaS 显示 | 敏感项 | 当前管理入口 |
-| --- | --- | :---: | :---: | :---: | :---: | --- |
 | `resource.serviceRequestMaxContentLength` | 工作流 HTTP 节点响应体上限 (MB) | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
-| `resource.serviceAxiosMaxContentLength` | 共享 HTTP 缓冲响应体解压后上限 (MiB)，默认 20，0 仅允许空响应 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
 | `resource.maxFolderDepth` | 最大目录层级深度 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
 | `resource.appFolderMaxAmount` | 应用文件夹数量上限 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
 | `resource.datasetFolderMaxAmount` | 知识库文件夹数量上限 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
@@ -1243,16 +1234,12 @@ Server、Agent Sandbox Proxy 和 IDE Agent 的运行时变量。为了避免“�
 | `resource.systemMaxStringLengthM` | 同步字符串处理最大字符数 (M) | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
 | `resource.exportDatasetLimitMinutes` | 知识库导出冷却时间（分钟） | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
 | `resource.websiteSyncLimitMinuted` | 网站同步冷却时间（分钟） | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
-| `resource.datasetArchive.maxFiles` | 归档下载文件数上限 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
+| `resource.serviceAxiosMaxContentLength` | 共享 HTTP 缓冲响应体解压后上限 (MiB)，默认 20，0 仅允许空响应 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
 | `resource.evaluationMaxRows` | 单次评估任务最大数据行数 | — | ✅ | — | — | 可编辑：`/admin/settings/limits` |
+| `resource.datasetArchive.maxFiles` | 归档下载文件数上限 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
 | `resource.datasetArchive.maxSourceSizeMiB` | 归档源文件总大小上限（MiB） | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
 | `resource.datasetArchive.maxConcurrency` | 归档下载并发上限 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
 | `resource.datasetArchive.prepareTimeoutSeconds` | 归档下载准备超时（秒） | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
-
-#### 性能与并发（performance）
-
-| 配置字段 | 用途 | 社区版 | 商业版 | 仅 SaaS 显示 | 敏感项 | 当前管理入口 |
-| --- | --- | :---: | :---: | :---: | :---: | --- |
 | `performance.workflow.maxRunTimes` | 单次最大运行次数 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
 | `performance.workflow.maxLoopTimes` | 最大循环/数组长度 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
 | `performance.workflow.parallelMaxConcurrency` | 并行节点并发上限 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
@@ -1270,28 +1257,14 @@ Server、Agent Sandbox Proxy 和 IDE Agent 的运行时变量。为了避免“�
 | `performance.tracking.retentionHours` | LLM 追踪保留时长 (小时) | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
 | `performance.task.evalConcurrency` | 评估任务并发上限 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
 | `performance.channel.wechatConcurrency` | 公众号渠道消息处理并发 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
-
-#### 存储策略（storage）
-
-| 配置字段 | 用途 | 社区版 | 商业版 | 仅 SaaS 显示 | 敏感项 | 当前管理入口 |
-| --- | --- | :---: | :---: | :---: | :---: | --- |
+| `storage.fileDomain` | 文件服务域名，留空使用 FE_DOMAIN | ✅ | ✅ | — | — | 可编辑：`/admin/settings/core` |
 | `storage.downloadMode` | 下载链接工作模式 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/core` |
 | `storage.externalEndpoint` | 存储外部访问端点 (Endpoint) | ✅ | ✅ | — | — | 可编辑：`/admin/settings/core` |
 | `storage.cdnEndpoint` | CDN 加速地址 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/core` |
 | `storage.fileUrlExpiredDays` | 对话临时文件有效天数 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
 | `storage.redirectTtlSeconds` | 重定向地址有效期（秒） | ✅ | ✅ | — | — | 可编辑：`/admin/settings/core` |
-
-#### 向量检索（vector）
-
-| 配置字段 | 用途 | 社区版 | 商业版 | 仅 SaaS 显示 | 敏感项 | 当前管理入口 |
-| --- | --- | :---: | :---: | :---: | :---: | --- |
 | `vector.hnswEfSearch` | HNSW ef_search | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
 | `vector.vectorRecallConcurrency` | 向量检索最大并发数 | — | ✅ | — | — | 可编辑：`/admin/settings/limits` |
-
-#### 解析与数据源（providers）
-
-| 配置字段 | 用途 | 社区版 | 商业版 | 仅 SaaS 显示 | 敏感项 | 当前管理入口 |
-| --- | --- | :---: | :---: | :---: | :---: | --- |
 | `providers.documentParse.provider` | 解析服务提供方 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/providers` |
 | `providers.documentParse.customPdf.url` | 自建 PDF 解析服务地址 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/providers` |
 | `providers.documentParse.customPdf.price` | 自建 PDF 解析计费价格 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/providers` |
@@ -1303,24 +1276,16 @@ Server、Agent Sandbox Proxy 和 IDE Agent 的运行时变量。为了避免“�
 | `providers.dataSource.dingtalkOapiBaseUrl` | 钉钉 OAPI 平台地址 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/providers` |
 | `providers.dataSource.yuqueDatasetBaseUrl` | 语雀平台地址 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/providers` |
 | `providers.externalProviderWorkflowVariables` | 外部工作流变量提供方 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/providers` |
-| `providers.documentParse.customPdf.key` | 自建服务认证 Key | ✅ | ✅ | — | ✅ | 可编辑：`/admin/settings/providers` |
-| `providers.documentParse.customPdf.somarkApiKey` | Somark API Key | ✅ | ✅ | — | ✅ | 可编辑：`/admin/settings/providers` |
-| `providers.documentParse.customPdf.doc2xKey` | Doc2X Key | ✅ | ✅ | — | ✅ | 可编辑：`/admin/settings/providers` |
-| `providers.documentParse.customPdf.textinAppId` | TextIn AppId | ✅ | ✅ | — | ✅ | 可编辑：`/admin/settings/providers` |
-| `providers.documentParse.customPdf.textinSecretCode` | TextIn Secret Code | ✅ | ✅ | — | ✅ | 可编辑：`/admin/settings/providers` |
-| `providers.documentParse.sangfor.key` | 深信服服务密钥 | ✅ | ✅ | — | ✅ | 可编辑：`/admin/settings/providers` |
-
-#### 子服务客户端（subservice）
-
-Code Sandbox 和 MCP SSE 五个字段均为 `edition: all`、`applyMode: reload`；Code Sandbox Token 为敏感项。插件远程调试由 Plugin 服务配置控制，AI Proxy 的地址和 Token 由 ENV 提供，两者均无实例配置注册项或管理页。
-
-| 配置字段 | 用途 | 社区版 | 商业版 | 仅 SaaS 显示 | 敏感项 | 当前管理入口 |
-| --- | --- | :---: | :---: | :---: | :---: | --- |
 | `subservice.codeSandbox.enabled` | 启用 Code Sandbox，默认关闭 | ✅ | ✅ | — | — | 可编辑：`/admin/subservice/code-sandbox` |
 | `subservice.codeSandbox.url` | Code Sandbox 服务地址 | ✅ | ✅ | — | — | 可编辑：`/admin/subservice/code-sandbox` |
-| `subservice.codeSandbox.token` | Code Sandbox 访问 Token | ✅ | ✅ | — | ✅ | 可编辑：`/admin/subservice/code-sandbox` |
 | `subservice.mcp.enabled` | 启用 MCP SSE 服务，默认关闭 | ✅ | ✅ | — | — | 可编辑：`/admin/subservice/mcp` |
 | `subservice.mcp.sseProxyUrl` | MCP SSE 代理地址 | ✅ | ✅ | — | — | 可编辑：`/admin/subservice/mcp` |
+| `subservice.codeSandbox.token` | Code Sandbox 访问 Token | ✅ | ✅ | — | ✅ | 可编辑：`/admin/subservice/code-sandbox` |
+| `subservice.agentSandbox.opensandbox.cpuOvercommitFactor` | CPU 超卖倍数（仅 Kubernetes 展示） | — | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
+| `subservice.agentSandbox.opensandbox.memoryOvercommitFactor` | 内存超卖倍数（仅 Kubernetes 展示） | — | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
+| `subservice.agentSandbox.proxy.wsUrl` | 浏览器 WebSocket 代理地址 | — | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
+| `subservice.agentSandbox.proxy.previewUrl` | 文件预览代理地址 | — | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
+| `subservice.agentSandbox.proxy.secret` | 代理共享密钥（掩码） | — | ✅ | — | ✅ | 可编辑：`/admin/subservice/agent-sandbox` |
 | `subservice.agentSandbox.provider` | 当前沙箱 Provider | — | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
 | `subservice.agentSandbox.common.cpuCount` | CPU 核心数 (Core) | — | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
 | `subservice.agentSandbox.common.memoryMiB` | 内存规格 (MiB) | — | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
@@ -1340,26 +1305,27 @@ Code Sandbox 和 MCP SSE 五个字段均为 `edition: all`、`applyMode: reload`
 | `subservice.agentSandbox.sealosdevbox.image` | 默认开发镜像 | — | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
 | `subservice.agentSandbox.opensandbox.baseUrl` | OpenSandbox 服务地址 | — | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
 | `subservice.agentSandbox.opensandbox.runtime` | 底层容器运行时 | — | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
-| `subservice.agentSandbox.opensandbox.cpuOvercommitFactor` | CPU 超卖倍数（仅 Kubernetes 展示） | — | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
-| `subservice.agentSandbox.opensandbox.memoryOvercommitFactor` | 内存超卖倍数（仅 Kubernetes 展示） | — | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
 | `subservice.agentSandbox.opensandbox.image` | 默认容器镜像 | — | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
 | `subservice.agentSandbox.opensandbox.useServerProxy` | 使用主站反向代理模式 | — | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
 | `subservice.agentSandbox.opensandbox.volumeManagerUrl` | 持久卷管理器地址 (Volume Manager) | — | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
 | `subservice.agentSandbox.opensandbox.volumeNamePrefix` | 存储卷名前缀 | — | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
-| `subservice.agentSandbox.proxy.wsUrl` | 浏览器 WebSocket 代理地址 | — | ✅ | — | ✅ | 可编辑：`/admin/subservice/agent-sandbox` |
-| `subservice.agentSandbox.proxy.previewUrl` | 文件预览代理地址 | — | ✅ | — | ✅ | 可编辑：`/admin/subservice/agent-sandbox` |
-| `subservice.agentSandbox.proxy.secret` | 代理共享密钥（掩码） | — | ✅ | — | ✅ | 可编辑：`/admin/subservice/agent-sandbox` |
 | `subservice.agentSandbox.sealosdevbox.token` | Sealos 访问 Token | — | ✅ | — | ✅ | 可编辑：`/admin/subservice/agent-sandbox` |
 | `subservice.agentSandbox.opensandbox.apiKey` | OpenSandbox API Key | — | ✅ | — | ✅ | 可编辑：`/admin/subservice/agent-sandbox` |
 | `subservice.agentSandbox.opensandbox.volumeManagerToken` | 卷管理器 Token | — | ✅ | — | ✅ | 可编辑：`/admin/subservice/agent-sandbox` |
+| `providers.documentParse.customPdf.key` | 自建服务认证 Key | ✅ | ✅ | — | ✅ | 可编辑：`/admin/settings/providers` |
+| `providers.documentParse.customPdf.somarkApiKey` | Somark API Key | ✅ | ✅ | — | ✅ | 可编辑：`/admin/settings/providers` |
+| `providers.documentParse.customPdf.doc2xKey` | Doc2X Key | ✅ | ✅ | — | ✅ | 可编辑：`/admin/settings/providers` |
+| `providers.documentParse.customPdf.textinAppId` | TextIn AppId | ✅ | ✅ | — | ✅ | 可编辑：`/admin/settings/providers` |
+| `providers.documentParse.customPdf.textinSecretCode` | TextIn Secret Code | ✅ | ✅ | — | ✅ | 可编辑：`/admin/settings/providers` |
+| `providers.documentParse.sangfor.key` | 深信服服务密钥 | ✅ | ✅ | — | ✅ | 可编辑：`/admin/settings/providers` |
 
 <!-- instance-config-field-matrix:end -->
 
-### 13.7 套餐配置的独立边界
+### 13.7 套餐配置的存储与输入边界
 
-`subPlans` 存放在 `system_instance_configs` 的独立 `domain=subPlans` scope 中，不属于上述 11 个实例配置域，但必须与商业配置页面采用相同部署版本边界。旧 FastGPT 记录仅在统一系统配置迁移中读取，迁移幂等且不覆盖已有新 scope。
+`subPlans` 存放在 `system_instance_configs` 的 `domain=commercial` 文档下的 `overrides.subPlans`，与支付及商业通知共用 revision。管理入口保留专用套餐输入及其预期版本，不接受通过通用 commercial 补丁绕过套餐保存约定。旧 FastGPT 记录仅在统一系统配置迁移中读取，迁移幂等且不覆盖已有新目标。
 
-旧 `systemEnv.langfuse` 同步迁入`system_instance_configs` 的独立 `domain=langfuse` scope，避免移除旧快照回读后丢失追踪配置。
+Langfuse 不属于系统配置 scope，不提供表单，也不参与系统配置迁移或轮询。App 和 Pro 各自直接读取当前进程的 LANGFUSE_PUBLIC_KEY / LANGFUSE_SECRET_KEY / LANGFUSE_BASE_URL ENV；缺少任一凭据时关闭追踪，不回退数据库旧值，修改 ENV 后需重启对应服务。
 
 Pro ENV 派生能力存放在`system_instance_configs` 内独立 `domain=proEnv` scope，每次 Pro 启动按白名单 diff 更新；无差异不写入。它与 App 管理的 11 个业务域互斥，不参与业务域首次初始化判断。运行时仅从新 scope 和实例配置生成 `feConfigs/systemEnv` 内存及响应投影，不再读写旧 `fastgpt/fastgptPro` 数据库快照。
 
@@ -1397,4 +1363,17 @@ Pro ENV 派生配置统一由 `getProEnvConfig` 归一化，每次启动由 `syn
 
 Pro ENV 是独占系统 scope，沿用 domain 唯一索引与 revision；仅 Pro 启动根据 ENV diff 写入，管理 API 与 defaultConfig.json 均不接受 proEnv。11 个业务域的迁移检查、首次文件初始化和原子判空都排除 proEnv；App/Pro 使用实例集合版本轮询刷新。
 
-全部系统配置统一存储于 `system_instance_configs`：11 个管理表单业务域与 proEnv、subPlans、langfuse、license、instanceId、modelStatusProbe、moderationPolicy、systemMsgModal、operationalAd、activityAd 十个辅助 scope。辅助 scope 不参与业务域 defaultConfig 初始化；旧 systemconfigs 仅由统一迁移读取，保留原数据但不再是运行期数据源。迁移在同一事务内导入缺失的辅助 scope，优先保留新目标，完整校验后才标记成功。License 原文/缓存与已有实例 ID 不重新生成；Pro 只有迁移成功后才能创建身份或写入授权。
+全部系统配置统一存储于 `system_instance_configs`，共 17 个 scope：11 个管理表单业务域与 proEnv、license、instanceId、modelStatusProbe、moderationPolicy、operations 六个辅助 scope。套餐合入 `commercial.subPlans`，license 保持独立；operations 下包含 systemMsgModal、operationalAd、activityAd，写入单个子对象时仅更新对应路径并递增共享 revision。
+
+辅助 scope 不参与业务域 defaultConfig 初始化；旧 systemconfigs 仅由统一迁移读取，保留原数据但不再是运行期数据源。迁移在业务域初始化及废弃字段清理后，在同一事务内导入缺失配置，优先保留新目标，其次承接开发期旧实例 scope，最后回退旧 systemconfigs；完整校验后删除四个开发期旧实例 scope，失败整体回滚。License 原文/缓存与已有实例 ID 不重新生成；Pro 只有迁移成功后才能创建身份或写入授权。
+
+
+### 统一运行时快照与管理入口
+
+全部 17 个 scope 均加载到 `global.systemInstanceConfig`；同步业务读取使用 `getSystemInstanceConfig()` 或 `systemInstanceConfig.get()`，它们读取同一个对象。移除 `global.systemEnv/systemConfig/subPlans/licenseData` 及其内存兼容投影；套餐从 `commercial.subPlans`、授权从 `license.data`、运营内容从 `operations` 读取。`global.feConfigs` 仅为客户端公开字段投影，后端业务不依赖它判断策略或权限。
+
+`SystemInstanceConfigManager.initialize()` 与 `refresh()` 不接收 role/proOperations，也不检查迁移完成：始终按已有 scope 与 Schema 默认值合成完整快照，迁移陆续写入后由版本轮询刷新。App 启动迁移屏障仍由原迁移框架控制；实例 ID 首次生成、激活与授权缓存写回等写入操作保留必要迁移检查。Pro 在初始化后自行顺序同步 ENV、重验授权，最后刷新快照，共享包不反向依赖 Pro。
+
+刷新按进程级队列串行执行，从主库 snapshot 事务取得配置及 `_id/revision`，完成解析和公开投影后同步发布。配置读取或解析失败保留上一份完整快照。非法 License 缓存只撤销其 data、保留原文供 Pro 重验，不阻塞其他 scope；Pro 已证实无效的源指纹在后续刷新仍被拒绝，不能被旧缓存重新激活。
+
+`isLicenseActive()` 与 `getLicenseStatus()` 同步按调用时间判断；验签、激活和第三方授权查询留在 Pro。`getClientConfig()` 返回时重算授权展示及版本状态，License 到期不依赖数据库变更。写入使用实际主库 revision 和事务，外部 session 提交前不发布；已提交写入不因后续资源刷新失败而改报失败。S3 和 Worker 等资源继续应用更新，失败保留重试依据。配置更新仅使用轮询，无配置 Change Stream。

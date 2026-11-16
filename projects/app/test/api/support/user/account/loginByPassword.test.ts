@@ -1,3 +1,5 @@
+import { getTestInstanceConfig } from '@test/utils/instanceConfigSnapshot';
+import { getSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/runtime';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import * as loginApi from '@/pages/api/support/user/account/loginByPassword';
 import { MongoUser } from '@fastgpt/service/support/user/schema';
@@ -232,7 +234,7 @@ describe('loginByPassword API', () => {
   });
 
   it('should create and use a personal team when multi-team login has no usable team', async () => {
-    global.feConfigs = { ...global.feConfigs, teamMode: 'multi' };
+    getTestInstanceConfig().proEnv.teamMode = 'multi';
     const loginUser = await MongoUser.create({
       username: 'multi-orphan-user',
       password: 'testpassword',
@@ -265,7 +267,7 @@ describe('loginByPassword API', () => {
   });
 
   it('should keep the user lock until a fallback login consumes its verification material', async () => {
-    global.feConfigs = { ...global.feConfigs, teamMode: 'multi' };
+    getTestInstanceConfig().proEnv.teamMode = 'multi';
     const loginUser = await MongoUser.create({
       username: 'concurrent-orphan-user',
       password: 'testpassword',
@@ -341,7 +343,7 @@ describe('loginByPassword API', () => {
   });
 
   it('should roll back fallback team creation and profile updates when verification consumption fails', async () => {
-    global.feConfigs = { ...global.feConfigs, teamMode: 'multi' };
+    getTestInstanceConfig().proEnv.teamMode = 'multi';
     const loginUser = await MongoUser.create({
       username: 'rollback-orphan-user',
       password: 'testpassword',
@@ -389,7 +391,7 @@ describe('loginByPassword API', () => {
   });
 
   it('should not create a team for a pending cancellation user without a usable team', async () => {
-    global.feConfigs = { ...global.feConfigs, teamMode: 'multi' };
+    getTestInstanceConfig().proEnv.teamMode = 'multi';
     const loginUser = await MongoUser.create({
       username: 'pending-orphan-user',
       password: 'testpassword',
@@ -416,7 +418,7 @@ describe('loginByPassword API', () => {
   });
 
   it('should keep single-team login failure when the user has no usable team', async () => {
-    global.feConfigs = { ...global.feConfigs, teamMode: 'single' };
+    getTestInstanceConfig().proEnv.teamMode = 'single';
     const loginUser = await MongoUser.create({
       username: 'single-orphan-user',
       password: 'testpassword',
@@ -582,28 +584,23 @@ describe('loginByPassword API', () => {
 
   describe('SSO password policy', () => {
     let originalFeConfigs: typeof global.feConfigs;
-    let originalSystemEnv: typeof global.systemEnv;
+    let originalSystemEnv: string;
     let originalSsoHandler: typeof global.getSsoConfiguredHandler;
     beforeEach(() => {
       originalFeConfigs = global.feConfigs;
-      originalSystemEnv = global.systemEnv;
+      originalSystemEnv = getSystemInstanceConfig().proEnv.ssoUrl;
       originalSsoHandler = global.getSsoConfiguredHandler;
     });
 
     const enableSsoPasswordPolicy = () => {
       global.getSsoConfiguredHandler = () => true;
-      global.systemEnv = { ...global.systemEnv, sso: { url: 'https://sso.example.com' } };
-      global.feConfigs = {
-        ...global.feConfigs,
-        sso: {
-          disablePasswordForSsoUsers: true
-        }
-      };
+      getSystemInstanceConfig().proEnv.ssoUrl = 'https://sso.example.com';
+      getTestInstanceConfig().auth.sso.disablePasswordForSsoUsers = true;
     };
 
     afterEach(() => {
       global.feConfigs = originalFeConfigs;
-      global.systemEnv = originalSystemEnv;
+      getSystemInstanceConfig().proEnv.ssoUrl = originalSystemEnv;
       global.getSsoConfiguredHandler = originalSsoHandler;
     });
 

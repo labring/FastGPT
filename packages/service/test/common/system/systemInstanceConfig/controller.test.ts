@@ -73,6 +73,33 @@ describe('systemInstanceConfig controller', () => {
   });
 
   describe('updateDomainConfig', () => {
+    it.each(['wsUrl', 'previewUrl', 'secret'] as const)(
+      'rejects an enabled sandbox with missing %s before writing',
+      async (missing) => {
+        const proxy = {
+          wsUrl: 'wss://proxy.test',
+          previewUrl: 'https://proxy.test',
+          secret: 'proxy_secret_32_characters_minimum',
+          [missing]: ''
+        };
+        await expect(
+          updateDomainConfig({
+            domain: 'subservice',
+            expectedRevision: 0,
+            submittedOverrides: {
+              agentSandbox: {
+                provider: 'opensandbox',
+                opensandbox: { baseUrl: 'https://sandbox.test' },
+                proxy
+              }
+            },
+            actor: { actor: 'admin' }
+          })
+        ).rejects.toBeInstanceOf(ApiRequestInputParseError);
+        expect(await MongoSystemInstanceConfig.findOne({ domain: 'subservice' }).lean()).toBeNull();
+      }
+    );
+
     it('masks and restores the proxy secret while validating the real saved value', async () => {
       const secret = 'proxy_secret_32_characters_minimum';
       await updateDomainConfig({
@@ -80,6 +107,8 @@ describe('systemInstanceConfig controller', () => {
         expectedRevision: 0,
         submittedOverrides: {
           agentSandbox: {
+            provider: 'opensandbox',
+            opensandbox: { baseUrl: 'https://sandbox.test' },
             proxy: { wsUrl: 'wss://proxy.test', previewUrl: 'https://proxy.test', secret }
           }
         },
@@ -383,7 +412,7 @@ describe('systemInstanceConfig controller', () => {
         const lean = vi.fn().mockResolvedValue([]);
         const find = vi
           .spyOn(MongoSystemInstanceConfig, 'find')
-          .mockReturnValue({ read, lean } as any);
+          .mockReturnValue({ read, lean, session: vi.fn().mockReturnThis() } as any);
 
         try {
           await getSystemInstanceConfigSnapshot(options);
@@ -575,6 +604,49 @@ describe('systemInstanceConfig controller', () => {
     });
 
     describe('subPlans 归一化', () => {
+      it('preserves plans while saving payment settings and clears plans by replacing only their subtree', async () => {
+        await MongoSystemInstanceConfig.create({
+          domain: 'commercial',
+          revision: 1,
+          overrides: { showCoupon: true, subPlans: { extraDatasetSize: { price: 7 } } }
+        });
+        await batchUpdateDomainConfigs({
+          items: [
+            {
+              domain: 'commercial',
+              expectedRevision: 1,
+              overrides: { payFormUrl: 'https://pay.example.test' }
+            }
+          ],
+          actor: { actor: 'admin' }
+        });
+        expect(
+          (await MongoSystemInstanceConfig.findOne({ domain: 'commercial' }).lean())?.overrides
+            .subPlans
+        ).toEqual({ extraDatasetSize: { price: 7 } });
+        await batchUpdateDomainConfigs({
+          items: [],
+          subPlans: {},
+          subPlansExpectedRevision: 2,
+          actor: { actor: 'admin' }
+        });
+        expect(
+          await MongoSystemInstanceConfig.findOne({ domain: 'commercial' }).lean()
+        ).toMatchObject({
+          revision: 3,
+          overrides: { subPlans: {}, showCoupon: true, payFormUrl: 'https://pay.example.test' }
+        });
+        expect(await MongoSystemInstanceConfig.countDocuments({ domain: 'subPlans' })).toBe(0);
+      });
+      it('rejects plans submitted through a generic commercial patch', async () => {
+        await expect(
+          batchUpdateDomainConfigs({
+            items: [{ domain: 'commercial', expectedRevision: 0, overrides: { subPlans: {} } }],
+            actor: { actor: 'admin' }
+          })
+        ).rejects.toMatchObject({ statusCode: 400 });
+      });
+
       beforeEach(async () => {
         await MongoSystemConfigs.deleteMany({});
       });
@@ -592,8 +664,8 @@ describe('systemInstanceConfig controller', () => {
           actor: { actor: 'admin' }
         });
 
-        const doc = await MongoSystemInstanceConfig.findOne({ domain: 'subPlans' }).lean();
-        const subPlans = doc?.overrides as Record<string, any>;
+        const doc = await MongoSystemInstanceConfig.findOne({ domain: 'commercial' }).lean();
+        const subPlans = doc?.overrides?.subPlans as Record<string, any>;
 
         // 扁平键不应残留，计费字段必须是嵌套存储形状
         expect(subPlans.extraDatasetSizePrice).toBeUndefined();
@@ -618,8 +690,8 @@ describe('systemInstanceConfig controller', () => {
           actor: { actor: 'admin' }
         });
 
-        const doc = await MongoSystemInstanceConfig.findOne({ domain: 'subPlans' }).lean();
-        const subPlans = doc?.overrides as Record<string, any>;
+        const doc = await MongoSystemInstanceConfig.findOne({ domain: 'commercial' }).lean();
+        const subPlans = doc?.overrides?.subPlans as Record<string, any>;
         expect(subPlans.extraDatasetSize).toEqual({ price: 9 });
       });
 
@@ -649,9 +721,12 @@ describe('systemInstanceConfig controller', () => {
           actor: { actor: 'admin' }
         });
 
-        const doc = await MongoSystemInstanceConfig.findOne({ domain: 'subPlans' }).lean();
+        const doc = await MongoSystemInstanceConfig.findOne({ domain: 'commercial' }).lean();
         // 保存成功即验证 NaN 不再阻断整表校验；嵌套计费字段应保持缺省
-        const subPlans = ((doc?.overrides as Record<string, any>) ?? {}) as Record<string, any>;
+        const subPlans = ((doc?.overrides?.subPlans as Record<string, any>) ?? {}) as Record<
+          string,
+          any
+        >;
         expect(subPlans.extraDatasetSize).toBeUndefined();
         expect(subPlans.extraPoints).toBeUndefined();
       });
@@ -702,7 +777,9 @@ describe('systemInstanceConfig controller', () => {
           })
         ).rejects.toThrow(/Revision conflict for subPlans/);
 
-        expect(await MongoSystemInstanceConfig.findOne({ domain: 'subPlans' }).lean()).toBeNull();
+        expect(
+          (await MongoSystemInstanceConfig.findOne({ domain: 'commercial' }).lean())?.overrides
+        ).not.toHaveProperty('subPlans');
         const commercialDoc = await MongoSystemInstanceConfig.findOne({
           domain: 'commercial'
         }).lean();
@@ -744,10 +821,10 @@ describe('systemInstanceConfig controller', () => {
           }
         });
 
-        const planDoc = await MongoSystemInstanceConfig.findOne({ domain: 'subPlans' })
+        const planDoc = await MongoSystemInstanceConfig.findOne({ domain: 'commercial' })
           .sort({ createTime: -1 })
           .lean();
-        expect(planDoc?.overrides?.extraDatasetSize).toEqual({ price: 5 });
+        expect(planDoc?.overrides?.subPlans?.extraDatasetSize).toEqual({ price: 5 });
         expect(await MongoSystemConfigs.countDocuments({ type: 'fastgpt' })).toBe(0);
       });
 
@@ -776,10 +853,10 @@ describe('systemInstanceConfig controller', () => {
           overrides: { showCoupon: true }
         });
 
-        const firstPlan = await MongoSystemInstanceConfig.findOne({ domain: 'subPlans' })
+        const firstPlan = await MongoSystemInstanceConfig.findOne({ domain: 'commercial' })
           .sort({ createTime: -1 })
           .lean();
-        expect(firstPlan?.overrides?.extraDatasetSize).toEqual({ price: 7 });
+        expect(firstPlan?.overrides?.subPlans?.extraDatasetSize).toEqual({ price: 7 });
 
         await expect(
           batchUpdateDomainConfigs({
@@ -790,10 +867,10 @@ describe('systemInstanceConfig controller', () => {
           })
         ).rejects.toThrow(/Revision conflict/);
 
-        const latestPlan = await MongoSystemInstanceConfig.findOne({ domain: 'subPlans' })
+        const latestPlan = await MongoSystemInstanceConfig.findOne({ domain: 'commercial' })
           .sort({ createTime: -1 })
           .lean();
-        expect(latestPlan?.overrides?.extraDatasetSize).toEqual({ price: 7 });
+        expect(latestPlan?.overrides?.subPlans?.extraDatasetSize).toEqual({ price: 7 });
       });
     });
 

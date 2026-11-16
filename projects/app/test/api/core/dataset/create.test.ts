@@ -1,3 +1,4 @@
+import { getSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/runtime';
 import { getTestInstanceConfig } from '@test/utils/instanceConfigSnapshot';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { SystemErrEnum } from '@fastgpt/global/common/error/code/system';
@@ -201,10 +202,12 @@ describe('generic dataset creation quota', () => {
       tmbId: owner.tmbId,
       type: DatasetTypeEnum.dataset
     });
-    const originalLicense = global.licenseData;
+    const originalLicense = getSystemInstanceConfig().license.data;
 
     try {
-      global.licenseData = { maxDatasets: 1 } as typeof global.licenseData;
+      getSystemInstanceConfig().license.data = { maxDatasets: 1 } as ReturnType<
+        typeof getSystemInstanceConfig
+      >['license']['data'];
       const dataset = await Call(createHandler, {
         auth: owner,
         body: { name: 'denied-dataset', intro: '', type: DatasetTypeEnum.dataset }
@@ -225,7 +228,7 @@ describe('generic dataset creation quota', () => {
         await MongoDataset.countDocuments({ teamId: owner.teamId, type: DatasetTypeEnum.folder })
       ).toBe(2);
     } finally {
-      global.licenseData = originalLicense;
+      getSystemInstanceConfig().license.data = originalLicense;
     }
   });
 });

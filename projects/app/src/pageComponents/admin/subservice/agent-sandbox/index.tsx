@@ -186,13 +186,13 @@ const AgentSandboxSubserviceComponent = () => {
             return (
               <AdminFormItem
                 key={key}
-                label={t(
+                label={
                   key === 'wsUrl'
-                    ? 'admin:sandbox_proxy_ws_url'
+                    ? t('admin:sandbox_proxy_ws_url')
                     : key === 'previewUrl'
-                      ? 'admin:sandbox_proxy_preview_url'
-                      : 'admin:sandbox_proxy_secret'
-                )}
+                      ? t('admin:sandbox_proxy_preview_url')
+                      : t('admin:sandbox_proxy_secret')
+                }
                 tooltip={isSecret ? t('admin:sandbox_proxy_secret_tip') : undefined}
                 isRequired
               >

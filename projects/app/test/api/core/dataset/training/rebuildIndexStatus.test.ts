@@ -1,3 +1,4 @@
+import { getSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/runtime';
 // 同义词重建入队已接管实例配置（94ae033d7）：isDatasetSynonymEnabled 读快照叶子 ?? serviceEnv。
 // 本文件通过改写 serviceEnv.DATASET_SYNONYM_ENABLED 驱动，预置"域存在、叶子缺省"种子快照走兜底分支。
 (global as any).systemInstanceConfig = {
@@ -107,7 +108,7 @@ describe('rebuild paths skip pending index data', () => {
   beforeEach(async () => {
     testRoot = await getRootUser();
     Object.assign(serviceEnv, { DATASET_SYNONYM_ENABLED: false });
-    global.systemEnv = { ...global.systemEnv, vectorMaxProcess: 1 };
+    getSystemInstanceConfig().performance.dataset.vectorMaxProcess = 1;
     const defaultEmbedding = getModelTestDefaults().embedding!;
     currentModel = {
       ...defaultEmbedding,

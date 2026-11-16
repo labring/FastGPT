@@ -1,3 +1,4 @@
+import { getSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/runtime';
 import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/catalog/service';
 import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
 
@@ -45,7 +46,7 @@ type PopulateType = {
 
 /** 消费 QA 任务并在成功后创建索引数据；任务最外层管理心跳，业务失败保留重试。 */
 export async function generateQA(): Promise<any> {
-  const max = global.systemEnv?.qaMaxProcess || 10;
+  const max = getSystemInstanceConfig().performance.dataset.qaMaxProcess || 10;
   logInstanceConfigRead({
     callsite: 'runtime.app.dataset.queue.generateQA',
     source: 'bridged-system-env',
@@ -58,7 +59,9 @@ export async function generateQA(): Promise<any> {
 
   try {
     // 配置下调后先完成在途任务，再让超额循环退出；每次领取前重新读取上限。
-    while (global.qaQueueLen <= (global.systemEnv?.qaMaxProcess || 10)) {
+    while (
+      global.qaQueueLen <= (getSystemInstanceConfig().performance.dataset.qaMaxProcess || 10)
+    ) {
       const startTime = Date.now();
       // get training data
       let claimed;

@@ -1,9 +1,13 @@
+import {
+  createDefaultInstanceConfig,
+  getTestInstanceConfig
+} from '@test/utils/instanceConfigSnapshot';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { LeaseCache, RedisLeaseUnavailableError } from '@fastgpt/dal/redis/caches';
 import type { AIModelDataType } from '@fastgpt/global/core/ai/model/schema';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   aggregateRecordsToTimelinePoints,
   checkAndRunModelStatusProbe,
@@ -15,8 +19,13 @@ import {
 } from '../../../../core/ai/modelStatus/service';
 import { MongoModelStatusProbeRecord } from '../../../../core/ai/modelStatus/schema';
 import { MongoSystemInstanceConfig } from '../../../../common/system/systemInstanceConfig/schema';
+import { systemInstanceConfig } from '../../../../common/system/systemInstanceConfig/service';
 import * as modelStatusService from '../../../../core/ai/modelStatus/service';
 import { MODEL_TEST_TIMEOUT_MS } from '../../../../core/ai/model/test';
+
+beforeEach(() => {
+  global.systemInstanceConfig = createDefaultInstanceConfig();
+});
 
 const model: AIModelDataType = {
   modelId: 'model-status-test-id',
@@ -193,24 +202,26 @@ describe('aggregateRecordsToTimelinePoints', () => {
 });
 
 describe('model status probe configuration', () => {
-  it('returns defaults for missing or invalid stored configuration', async () => {
+  it('reads the current snapshot without querying the persisted scope', async () => {
+    const findSpy = vi.spyOn(MongoSystemInstanceConfig, 'findOne');
     expect(await getModelStatusProbeConfig()).toEqual({
       enabled: false,
       intervalMinutes: 5,
       webhookTokenConfigured: false
     });
 
-    // 模拟历史迁移留下的异常值，确认运行时仍安全降级。
-    await MongoSystemInstanceConfig.collection.insertOne({
-      domain: 'modelStatusProbe',
-      overrides: { enabled: true, intervalMinutes: 1 },
-      revision: 1
-    } as any);
+    getTestInstanceConfig().modelStatusProbe = {
+      enabled: true,
+      intervalMinutes: 15,
+      webhookToken: 'snapshot-token'
+    };
     expect(await getModelStatusProbeConfig()).toEqual({
-      enabled: false,
-      intervalMinutes: 5,
-      webhookTokenConfigured: false
+      enabled: true,
+      intervalMinutes: 15,
+      webhookTokenConfigured: true
     });
+    expect(findSpy).not.toHaveBeenCalled();
+    findSpy.mockRestore();
   });
 
   it('upserts one record, preserves the stored token, and increments revision', async () => {
@@ -232,6 +243,9 @@ describe('model status probe configuration', () => {
       }
     });
 
+    expect(await getModelStatusProbeConfig()).toMatchObject({ enabled: true, intervalMinutes: 10 });
+    // 写入时必须从主库合并凭据，即使本进程快照尚未更新。
+    getTestInstanceConfig().modelStatusProbe = { enabled: false, intervalMinutes: 5 };
     expect(
       await updateModelStatusProbeConfig({
         enabled: false,
@@ -262,6 +276,38 @@ describe('model status probe configuration', () => {
     expect(cleared?.revision).toBe(3);
     expect(cleared?.overrides).toEqual({ enabled: false, intervalMinutes: 5 });
   });
+
+  it('rejects invalid stored configuration before overwriting its credentials', async () => {
+    await MongoSystemInstanceConfig.collection.insertOne({
+      domain: 'modelStatusProbe',
+      overrides: { enabled: true, intervalMinutes: 1, webhookToken: 'stored-token' },
+      revision: 1
+    } as any);
+
+    await expect(
+      updateModelStatusProbeConfig({ enabled: false, intervalMinutes: 5, clearWebhookToken: false })
+    ).rejects.toThrow();
+    const record = await MongoSystemInstanceConfig.findOne({ domain: 'modelStatusProbe' }).lean();
+    expect(record).toMatchObject({ revision: 1, overrides: { webhookToken: 'stored-token' } });
+  });
+
+  it('keeps the successful write when refreshing the snapshot fails', async () => {
+    vi.spyOn(systemInstanceConfig, 'refresh').mockRejectedValueOnce(new Error('refresh failed'));
+    try {
+      await expect(
+        updateModelStatusProbeConfig({
+          enabled: true,
+          intervalMinutes: 10,
+          clearWebhookToken: false
+        })
+      ).resolves.toMatchObject({ enabled: true, intervalMinutes: 10 });
+      const record = await MongoSystemInstanceConfig.findOne({ domain: 'modelStatusProbe' }).lean();
+      expect(record).toMatchObject({ revision: 1, overrides: { enabled: true } });
+      expect((await getModelStatusProbeConfig()).enabled).toBe(false);
+    } finally {
+      vi.restoreAllMocks();
+    }
+  });
 });
 
 describe('checkAndRunModelStatusProbe', () => {
@@ -270,11 +316,6 @@ describe('checkAndRunModelStatusProbe', () => {
   });
 
   it('does not run probe if disabled', async () => {
-    vi.spyOn(MongoSystemInstanceConfig, 'findOne').mockReturnValue({
-      lean: vi.fn().mockResolvedValue({
-        overrides: { enabled: false, intervalMinutes: 5 }
-      })
-    } as any);
     const runSpy = vi.spyOn(modelStatusService, 'runModelStatusProbe');
 
     const result = await checkAndRunModelStatusProbe(new Date('2026-09-23T00:05:00.000Z'));
@@ -284,11 +325,7 @@ describe('checkAndRunModelStatusProbe', () => {
   });
 
   it('does not run probe if minute does not match interval', async () => {
-    vi.spyOn(MongoSystemInstanceConfig, 'findOne').mockReturnValue({
-      lean: vi.fn().mockResolvedValue({
-        overrides: { enabled: true, intervalMinutes: 5 }
-      })
-    } as any);
+    getTestInstanceConfig().modelStatusProbe.enabled = true;
     const runSpy = vi.spyOn(modelStatusService, 'runModelStatusProbe');
 
     // 12:03:00 -> 3 % 5 !== 0
@@ -324,19 +361,11 @@ describe('testModelStatusWebhook', () => {
   });
 
   it('throws UserError when webhookUrl is not provided and not configured', async () => {
-    vi.spyOn(MongoSystemInstanceConfig, 'findOne').mockReturnValue({
-      lean: vi.fn().mockResolvedValue(null)
-    } as any);
-
     await expect(testModelStatusWebhook()).rejects.toThrowError(UserError);
   });
 
   it('sends one error and one recovered message sequentially with bearer token', async () => {
-    vi.spyOn(MongoSystemInstanceConfig, 'findOne').mockReturnValue({
-      lean: vi.fn().mockResolvedValue({
-        overrides: { enabled: true, intervalMinutes: 5, webhookToken: 'stored-token' }
-      })
-    } as any);
+    getTestInstanceConfig().modelStatusProbe.webhookToken = 'stored-token';
 
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
@@ -371,10 +400,6 @@ describe('testModelStatusWebhook', () => {
   });
 
   it('throws UserError if webhook returns non-2xx status', async () => {
-    vi.spyOn(MongoSystemInstanceConfig, 'findOne').mockReturnValue({
-      lean: vi.fn().mockResolvedValue(null)
-    } as any);
-
     const fetchMock = vi.fn().mockResolvedValue({
       ok: false,
       status: 500,

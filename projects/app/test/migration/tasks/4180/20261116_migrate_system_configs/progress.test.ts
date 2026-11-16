@@ -8,6 +8,7 @@ import { MongoSystemMigrationState } from '@/migration/mongoSchema';
 import { systemMigrations, type SystemMigrationLogger } from '@/migration/registry';
 import { createSystemMigrationRunner } from '@/migration/runner';
 import * as legacyEnv from '@/migration/tasks/4180/20261116_migrate_system_configs/env';
+import * as defaultConfig from '@/migration/tasks/4180/20261116_migrate_system_configs/defaultConfig';
 
 // 真实事务覆盖空库初始化、跨域 HTTP 回填及 Runner 状态提交。
 vi.unmock('@fastgpt/service/common/mongo/sessionRun');
@@ -102,6 +103,21 @@ afterEach(() => {
 
 /** 真实 Runner 与独立 Mongo 库共同验证阶段状态、写入及接管语义。 */
 describe('system configuration migration with the real runner', () => {
+  it('ignores legacy Langfuse records without creating a scope', async () => {
+    await seedLegacySources();
+    await MongoSystemConfigs.create({
+      type: SystemConfigsTypeEnum.langfuse,
+      value: { secretKey: { invalidLegacyValue: true } }
+    });
+    const runner = createRunner('ignore-legacy-langfuse');
+    try {
+      await runner.start();
+      await waitForSuccess(runner);
+      expect(await MongoSystemInstanceConfig.findOne({ domain: 'langfuse' }).lean()).toBeNull();
+    } finally {
+      await runner.stop();
+    }
+  });
   it('chooses the same latest _id snapshot for all legacy sources regardless of createTime', async () => {
     await seedLegacySources();
     await MongoSystemInstanceConfig.create({ domain: 'vector', overrides: {}, revision: 1 });
@@ -141,12 +157,78 @@ describe('system configuration migration with the real runner', () => {
         loginProviders: { sms: { modelDeprecation: { zh: 'LATEST_BY_ID_SMS' } } }
       });
       expect(
-        (await MongoSystemInstanceConfig.findOne({ domain: 'subPlans' }).lean())?.overrides
-          .extraDatasetSize
+        (await MongoSystemInstanceConfig.findOne({ domain: 'commercial' }).lean())?.overrides
+          .subPlans.extraDatasetSize
       ).toEqual({ price: 7 });
+      expect(await MongoSystemInstanceConfig.findOne({ domain: 'langfuse' }).lean()).toBeNull();
+    } finally {
+      await runner.stop();
+    }
+  });
+
+  it('initializes defaultConfig before merging an older standalone plan', async () => {
+    await seedLegacySources();
+    await MongoSystemConfigs.create({
+      type: SystemConfigsTypeEnum.subPlans,
+      value: { extraDatasetSize: { price: 99 } }
+    });
+    vi.spyOn(defaultConfig, 'readDefaultInstanceConfig').mockResolvedValue({
+      site: { docUrl: 'https://file-docs.example.test' },
+      commercial: {
+        payment: { wx: { appId: 'file-payment' } },
+        subPlans: { extraDatasetSize: { price: 12 } }
+      }
+    });
+    const runner = createRunner('system-config-file-before-plan');
+    try {
+      await runner.start();
+      await waitForSuccess(runner);
       expect(
-        (await MongoSystemInstanceConfig.findOne({ domain: 'langfuse' }).lean())?.overrides
-      ).toEqual({ publicKey: 'latest-public', secretKey: 'latest-secret' });
+        (await MongoSystemInstanceConfig.findOne({ domain: 'site' }).lean())?.overrides
+      ).toMatchObject({
+        docUrl: 'https://file-docs.example.test'
+      });
+      expect(
+        (await MongoSystemInstanceConfig.findOne({ domain: 'commercial' }).lean())?.overrides
+      ).toMatchObject({
+        payment: { wx: { appId: 'file-payment' } },
+        subPlans: { extraDatasetSize: { price: 12 } }
+      });
+    } finally {
+      await runner.stop();
+    }
+  });
+
+  it('cleans obsolete commercial fields before validating and merging plans', async () => {
+    await seedLegacySources();
+    await MongoSystemConfigs.create({
+      type: SystemConfigsTypeEnum.subPlans,
+      value: { extraDatasetSize: { price: 7 } }
+    });
+    await MongoSystemInstanceConfig.create({
+      domain: 'commercial',
+      overrides: { showCoupon: true },
+      revision: 1
+    });
+    await MongoSystemInstanceConfig.collection.updateOne(
+      { domain: 'commercial' },
+      { $set: { 'overrides.agentSandboxFreeTip': true } }
+    );
+    const runner = createRunner('system-config-cleanup-before-plan');
+    try {
+      await runner.start();
+      await waitForSuccess(runner);
+      const commercial = await MongoSystemInstanceConfig.findOne({ domain: 'commercial' }).lean();
+      expect(commercial?.overrides).toMatchObject({
+        showCoupon: true,
+        subPlans: { extraDatasetSize: { price: 7 } }
+      });
+      expect(commercial?.overrides).not.toHaveProperty('agentSandboxFreeTip');
+      expect(
+        (await MongoSystemMigrationState.findById(migration.id).lean())?.progress?.find(
+          ({ key }) => key === 'backfill'
+        )
+      ).toMatchObject({ current: 9, total: 9 });
     } finally {
       await runner.stop();
     }

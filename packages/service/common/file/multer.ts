@@ -1,3 +1,4 @@
+import { getSystemInstanceConfig } from '../system/systemInstanceConfig/runtime';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { S3ErrEnum } from '@fastgpt/global/common/error/code/s3';
 import m from 'multer';
@@ -76,7 +77,7 @@ export const multer = {
       preservePath: true,
       storage: this._storage,
       ...(fileFilter ? { fileFilter } : {})
-    }).array('file', global.feConfigs.limit.uploadFileMaxAmount);
+    }).array('file', getSystemInstanceConfig().resource.uploadFileMaxAmount);
   },
 
   resolveFormData<T extends Record<string, any>>({

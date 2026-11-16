@@ -1,3 +1,4 @@
+import { isProVersion } from '@fastgpt/service/common/system/constants';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { SandboxCodeTypeEnum } from '@fastgpt/global/core/workflow/template/system/sandbox/constants';
 import { postHealth } from '@fastgpt/service/thirdProvider/fastgptPro/api';
@@ -43,7 +44,7 @@ export const instrumentationCheck = async () => {
   }
 
   // pro
-  if (global.feConfigs?.isPlus) {
+  if (isProVersion()) {
     try {
       const data = await postHealth();
       if (!data.auth) {

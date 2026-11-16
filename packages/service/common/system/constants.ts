@@ -1,16 +1,17 @@
 import { getSystemInstanceConfig } from './systemInstanceConfig/runtime';
 import { logInstanceConfigRead } from './migrationCoverageLog';
 import { serviceEnv } from '../../env';
+import { isLicenseActive } from '@fastgpt/global/common/system/license/utils';
+import { getSystemConfigRuntimeState } from './systemInstanceConfig/runtime';
 
 export const FastGPTProUrl = serviceEnv.PRO_URL ? `${serviceEnv.PRO_URL}/api` : '';
 /** @deprecated 插件地址由插件服务连接环境变量管理，业务调用使用插件客户端。 */
 export const FastGPTPluginUrl = '';
-// @ts-ignore
-export const isFastGPTProService = () => !!global.systemConfig;
-
-export const isProVersion = () => {
-  return !!global.feConfigs?.isPlus;
-};
+/** 判断当前授权是否允许商业功能；部署是否接入 Pro 使用 PRO_URL 单独判定。 */
+export const isProVersion = () =>
+  (getSystemConfigRuntimeState().frontendContext.commercialService ??
+    Boolean(serviceEnv.PRO_URL)) &&
+  isLicenseActive(getSystemInstanceConfig().license.data);
 
 /**
  * 工作流 HTTP 节点的响应体大小上限（MB → 字节），按解压后的大小计算。

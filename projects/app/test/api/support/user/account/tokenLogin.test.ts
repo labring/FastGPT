@@ -1,3 +1,5 @@
+import { getTestInstanceConfig } from '@test/utils/instanceConfigSnapshot';
+import { getSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/runtime';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import * as tokenLoginApi from '@/pages/api/support/user/account/tokenLogin';
 import { MongoUser } from '@fastgpt/service/support/user/schema';
@@ -56,12 +58,12 @@ describe('tokenLogin API', () => {
 
   it('reports password availability from Pro rather than the legacy URL', async () => {
     const oldFeConfigs = global.feConfigs;
-    const oldSystemEnv = global.systemEnv;
+    const oldSystemEnv = getSystemInstanceConfig().proEnv.ssoUrl;
     const oldHandler = global.getSsoConfiguredHandler;
     try {
       await MongoUser.updateOne({ _id: testUser._id }, { username: 'tenant-user' });
-      global.feConfigs = { ...global.feConfigs, sso: { disablePasswordForSsoUsers: true } };
-      global.systemEnv = { ...global.systemEnv, sso: undefined };
+      getTestInstanceConfig().auth.sso.disablePasswordForSsoUsers = true;
+      getSystemInstanceConfig().proEnv.ssoUrl = '';
       global.getSsoConfiguredHandler = () => true;
       const auth = {
         userId: String(testUser._id),
@@ -75,7 +77,7 @@ describe('tokenLogin API', () => {
       expect(restricted.code).toBe(200);
       expect(restricted.data.passwordAvailable).toBe(false);
 
-      global.systemEnv.sso = { url: 'http://legacy.invalid' };
+      getSystemInstanceConfig().proEnv.ssoUrl = 'http://legacy.invalid';
       global.getSsoConfiguredHandler = () => false;
       const unrestricted = await Call(tokenLoginApi.default, { auth });
       expect(unrestricted.code).toBe(200);
@@ -90,7 +92,7 @@ describe('tokenLogin API', () => {
       expect(JSON.stringify(unavailable.data)).not.toContain('synthetic-private-token');
     } finally {
       global.feConfigs = oldFeConfigs;
-      global.systemEnv = oldSystemEnv;
+      getSystemInstanceConfig().proEnv.ssoUrl = oldSystemEnv;
       global.getSsoConfiguredHandler = oldHandler;
     }
   });
