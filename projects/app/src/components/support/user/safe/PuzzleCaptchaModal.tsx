@@ -419,11 +419,7 @@ const PuzzleCaptchaModal = ({
                   background: 'transparent',
                   border: 0
                 },
-                '&:focus-visible': {
-                  outline: '2px solid #A8A2FF',
-                  outlineOffset: '4px',
-                  borderRadius: '999px'
-                },
+                '&:focus-visible': { outline: 'none' },
                 '&:disabled': { cursor: 'not-allowed' }
               }}
               onPointerDown={(event: React.PointerEvent<HTMLInputElement>) => {
