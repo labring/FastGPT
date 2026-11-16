@@ -35,6 +35,9 @@ describe('buildAppChatLogFilter', () => {
       buildAppChatLogFilter({ ...params, chatSearch: 'Ab.C', searchType: 'chatId' }).$and
     ).toContainEqual({ chatId: 'Ab.C' });
     expect(
+      buildAppChatLogFilter({ ...params, chatSearch: '  ', searchType: 'chatId' }).$and
+    ).toContainEqual({ chatId: '  ' });
+    expect(
       buildAppChatLogFilter({ ...params, chatSearch: 'Ab.C', searchType: 'title' }).$and
     ).toContainEqual({
       $or: [{ title: /Ab\.C/i }, { customTitle: /Ab\.C/i }]

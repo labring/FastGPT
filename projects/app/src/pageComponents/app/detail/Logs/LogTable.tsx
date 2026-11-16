@@ -54,7 +54,8 @@ import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import type {
   AppChatLogsSearchCursor,
   AppLogsListItemType,
-  SearchAppChatLogsBody
+  SearchAppChatLogsBody,
+  AppChatLogSearchType
 } from '@fastgpt/global/openapi/core/app/log/api';
 import dayjs from 'dayjs';
 import UserBox from '@fastgpt/web/components/common/UserBox';
@@ -87,8 +88,8 @@ const LogSearchInput = React.memo(
     setSearchType
   }: {
     onSearch: (value: string) => void;
-    searchType: 'title' | 'chatId';
-    setSearchType: (value: 'title' | 'chatId') => void;
+    searchType: AppChatLogSearchType;
+    setSearchType: (value: AppChatLogSearchType) => void;
   }) => {
     const { t } = useTranslation();
     const [value, setValue] = useState('');
@@ -108,7 +109,7 @@ const LogSearchInput = React.memo(
               variant={'unstyled'}
               h={'auto'}
               fontSize={'sm'}
-              aria-label={t('app:logs_search_type')}
+              aria-label={`${t('app:logs_search_type')}: ${t(searchType === 'chatId' ? 'app:logs_keys_sessionId' : 'app:logs_title')}`}
             >
               {t(searchType === 'chatId' ? 'app:logs_keys_sessionId' : 'app:logs_title')} ▾
             </MenuButton>
@@ -172,11 +173,11 @@ const LogTable = ({
 
   // chat
   const [searchQuery, setSearchQuery] = useState('');
-  const [storedSearchType, setSearchType] = useLocalStorageState<'title' | 'chatId'>(
+  const [storedSearchType, setSearchType] = useLocalStorageState<AppChatLogSearchType>(
     `app_log_search_type_${appId}`,
     { defaultValue: 'title' }
   );
-  const searchType: 'title' | 'chatId' = storedSearchType === 'chatId' ? 'chatId' : 'title';
+  const searchType: AppChatLogSearchType = storedSearchType === 'chatId' ? 'chatId' : 'title';
   const [searchResult, setSearchResult] = useState<{
     list: AppLogsListItemType[];
     nextCursor?: AppChatLogsSearchCursor;

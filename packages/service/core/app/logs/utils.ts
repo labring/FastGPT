@@ -4,6 +4,7 @@ import type { FilterQuery } from 'mongoose';
 import type { ChatSchemaType } from '@fastgpt/global/core/chat/type';
 import type {
   AppLogsListItemType,
+  AppChatLogSearchType,
   getAppChatLogsBody
 } from '@fastgpt/global/openapi/core/app/log/api';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
@@ -27,7 +28,7 @@ export const buildAppChatLogFilter = ({
   errorFilter
 }: Omit<getAppChatLogsBody, 'pageNum' | 'pageSize'> & {
   appId: string;
-  searchType?: 'title' | 'chatId';
+  searchType?: AppChatLogSearchType;
 }): FilterQuery<ChatSchemaType> => {
   const conditions: FilterQuery<ChatSchemaType>[] = [
     { $or: [{ sourceType: ChatSourceTypeEnum.app }, { sourceType: { $exists: false } }] }
@@ -55,7 +56,7 @@ export const buildAppChatLogFilter = ({
     ];
     conditions.push(users.length ? { $or: users } : { _id: { $in: [] } });
   }
-  if (chatSearch?.trim()) {
+  if (chatSearch && (searchType === 'chatId' || chatSearch.trim())) {
     if (searchType === 'chatId') {
       conditions.push({ chatId: chatSearch });
     } else {

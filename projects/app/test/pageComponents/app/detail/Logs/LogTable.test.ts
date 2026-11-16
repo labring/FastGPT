@@ -435,7 +435,9 @@ describe('LogTable identity columns UI', () => {
   });
   it('switches the search mode and remembers it', async () => {
     await render();
-    await click(container.querySelector('button[aria-label="app:logs_search_type"]'));
+    await click(
+      container.querySelector('button[aria-label="app:logs_search_type: app:logs_title"]')
+    );
     await click(
       [...document.querySelectorAll('[role="menuitem"]')].find(
         (item) => item.textContent === 'app:logs_keys_sessionId'

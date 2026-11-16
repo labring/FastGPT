@@ -221,6 +221,7 @@ const AppChatLogSearchTypeSchema = z.enum(['title', 'chatId']).optional().meta({
   description: '搜索类型：title 搜索标题，chatId 精确匹配会话 ID；省略时兼容旧搜索',
   example: 'title'
 });
+export type AppChatLogSearchType = NonNullable<z.infer<typeof AppChatLogSearchTypeSchema>>;
 export const SearchAppChatLogsBodySchema = z.intersection(
   createAppApiKeyInputSchema(z.object({ appId: appIdSchema })),
   z.object(appChatLogsFilterShape).extend({
