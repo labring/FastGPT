@@ -194,6 +194,13 @@ const PuzzleCaptchaModal = ({
 
   const progress = max > 0 ? (x / max) * 100 : 0;
   const thumbWidth = 72;
+  const sliderUnavailable = expired || !challenge;
+  const disabledButtonStyles = {
+    opacity: 1,
+    bg: 'myGray.100',
+    color: 'myGray.500',
+    cursor: 'not-allowed'
+  };
 
   return (
     <MyModal
@@ -235,6 +242,7 @@ const PuzzleCaptchaModal = ({
             variant="ghost"
             color="myGray.400"
             _hover={{ bg: 'myGray.50', color: 'myGray.700' }}
+            _disabled={disabledButtonStyles}
             minW="30px"
             h="30px"
             mr="-5px"
@@ -304,6 +312,7 @@ const PuzzleCaptchaModal = ({
             color="myGray.500"
             bg="myGray.50"
             _hover={{ bg: 'myGray.100', color: 'myGray.800' }}
+            _disabled={disabledButtonStyles}
             isDisabled={busy}
             onClick={() => {
               setMessage('');
@@ -325,7 +334,7 @@ const PuzzleCaptchaModal = ({
             <Box
               h="100%"
               w={`calc(${progress}% + ${thumbWidth * (1 - progress / 100)}px)`}
-              bg={passed ? '#D2F1E1' : '#E5E2FF'}
+              bg={sliderUnavailable ? 'myGray.200' : passed ? '#D2F1E1' : '#E5E2FF'}
               opacity={x > 0 || passed ? 1 : 0}
             />
           </Box>
@@ -339,17 +348,21 @@ const PuzzleCaptchaModal = ({
             align="center"
             justify="center"
             gap="5px"
-            bg={passed ? '#24A36A' : '#5D54FF'}
+            bg={passed ? '#24A36A' : sliderUnavailable ? 'myGray.300' : '#5D54FF'}
+            color={sliderUnavailable && !passed ? 'myGray.700' : 'white'}
             borderRadius="full"
             boxShadow={
-              dragging ? '0 4px 12px rgba(93,84,255,.28)' : '0 2px 5px rgba(93,84,255,.12)'
+              sliderUnavailable
+                ? 'none'
+                : dragging
+                  ? '0 4px 12px rgba(93,84,255,.28)'
+                  : '0 2px 5px rgba(93,84,255,.12)'
             }
-            opacity={expired || !challenge ? 0.45 : 1}
             transition="background-color .15s, box-shadow .15s"
             sx={{ '@media (prefers-reduced-motion: reduce)': { transition: 'none' } }}
           >
             {busy && challenge ? (
-              <Spinner size="xs" color="white" />
+              <Spinner size="xs" color="currentColor" />
             ) : passed ? (
               <Icon viewBox="0 0 24 24" boxSize="22px" color="white">
                 <path
@@ -363,7 +376,7 @@ const PuzzleCaptchaModal = ({
               </Icon>
             ) : (
               [0, 1, 2].map((line) => (
-                <Box key={line} w="2px" h="17px" borderRadius="full" bg="white" />
+                <Box key={line} w="2px" h="17px" borderRadius="full" bg="currentColor" />
               ))
             )}
           </Flex>
@@ -377,7 +390,7 @@ const PuzzleCaptchaModal = ({
             max={max}
             step={1}
             value={x}
-            disabled={busy || expired || !challenge}
+            disabled={busy || sliderUnavailable}
             position="absolute"
             inset={0}
             w="100%"
