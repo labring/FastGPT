@@ -7,10 +7,7 @@ import { DatasetSearchModeMap } from '@fastgpt/global/core/dataset/constants';
 import styles from '@/components/Markdown/index.module.scss';
 import { formatNumber } from '@fastgpt/global/common/math/tools';
 import { getFileIcon } from '@fastgpt/global/common/file/icon';
-import {
-  completionFinishReasonMap,
-  LLM_TOOL_CALL_ARGUMENTS_TRUNCATED
-} from '@fastgpt/global/core/ai/constants';
+import { completionFinishReasonMap } from '@fastgpt/global/core/ai/constants';
 import {
   formatModerationLabel,
   ModerationStageEnum
@@ -173,7 +170,6 @@ const ModerationRecordsRow = ({
 
 export const CommonInfoRows = ({ activeModule }: { activeModule: ChatHistoryItemResType }) => {
   const { t } = useSafeTranslation();
-  const errorText = activeModule.errorText ?? activeModule.error;
   const hasChildResponses = (activeModule.childrenResponses?.length ?? 0) > 0;
   const childTotalPoints = getChildrenTotalPoints(activeModule);
 
@@ -200,14 +196,7 @@ export const CommonInfoRows = ({ activeModule }: { activeModule: ChatHistoryItem
       {hasChildResponses && (
         <Row label={t('chat:response.child_total_points')} value={formatNumber(childTotalPoints)} />
       )}
-      <Row
-        label={t('chat:response.error')}
-        value={
-          errorText === LLM_TOOL_CALL_ARGUMENTS_TRUNCATED
-            ? t('chat:llm_tool_call_arguments_truncated')
-            : errorText
-        }
-      />
+      <Row label={t('chat:response.error')} value={activeModule.errorText ?? activeModule.error} />
       <ModerationRecordsRow moderationRecords={activeModule.moderationRecords} />
       <Row label={t('chat:response.node_inputs')} value={activeModule.nodeInputs} />
     </>

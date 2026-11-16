@@ -8,8 +8,10 @@ import type {
 } from '@fastgpt/global/core/ai/llm/type';
 import {
   ChatCompletionRequestMessageRoleEnum,
-  LLM_TOOL_CALL_ARGUMENTS_TRUNCATED
+  LLM_TOOL_CALL_ARGUMENTS_TRUNCATED_RESPONSE
 } from '@fastgpt/global/core/ai/constants';
+import type { localeType } from '@fastgpt/global/common/i18n/type';
+import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import type { CreateLLMResponseProps } from '../../../../request';
 import { createLLMResponse } from '../../../../request';
 import { compressRequestMessages, compressToolResponse } from '../../../../compress';
@@ -38,6 +40,7 @@ import {
 
 type RunAgentCallProps<TChildrenResponse = unknown> = {
   maxRunAgentTimes: number;
+  lang?: localeType;
   completionPolicy?: AgentLoopCompletionPolicy;
   getCheckpointContext?: () => Promise<string>;
   batchToolSize?: number;
@@ -212,6 +215,7 @@ export const onCompressContext = async ({
  */
 export const runAgentLoop = async <TChildrenResponse = unknown>({
   maxRunAgentTimes,
+  lang,
   completionPolicy,
   getCheckpointContext,
   batchToolSize = 1,
@@ -490,13 +494,6 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
       onToolCall,
       onToolParam
     });
-    // 输出被截断时，JSON 修复可能把未生成完的参数变成合法但错误的值；
-    // 在落库和执行任何工具前终止本轮，同时保留原始请求错误和用量。
-    const requestFailure =
-      error ??
-      (finishReason === 'length' && toolCalls.length > 0
-        ? new Error(LLM_TOOL_CALL_ARGUMENTS_TRUNCATED)
-        : undefined);
     const totalPoints = usage.usedUserOpenAIKey
       ? 0
       : formatModelChars2Points({
@@ -524,12 +521,12 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
         firstTokenTime === undefined
           ? undefined
           : +((firstTokenTime - requestStartTime) / 1000).toFixed(2),
-      error: requestFailure ?? responseEmptyTip
+      error: error ?? responseEmptyTip
     });
     // 请求后赋值操作
     {
       finish_reason = finishReason;
-      requestError = requestFailure;
+      requestError = error;
       requestIds.push(requestId);
 
       // 错误响应也可能产生消耗，退出前先累计；每轮单独计价以兼容梯度计费。
@@ -586,10 +583,17 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
       }: {
         tool: ChatCompletionMessageToolCall;
       }): Promise<ToolRunResult> => {
-        if (moderatedToolCallIdSet.has(tool.id)) {
+        // length 无法保证同轮任何工具参数完整，不能交给 JSON 修复后执行。
+        // 按请求语言补齐工具结果后继续模型循环，不把截断升级为请求失败。
+        if (finishReason === 'length' || moderatedToolCallIdSet.has(tool.id)) {
+          const response =
+            finishReason === 'length'
+              ? parseI18nString(LLM_TOOL_CALL_ARGUMENTS_TRUNCATED_RESPONSE, lang)
+              : MODERATION_BLOCKED_REPLACE_TEXT;
           onToolRunEnd?.({
             call: tool,
-            response: MODERATION_BLOCKED_REPLACE_TEXT,
+            response,
+            ...(finishReason === 'length' ? { errorMessage: response } : {}),
             assistantMessages: [],
             seconds: 0,
             usages: []
@@ -599,7 +603,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
             toolMessage: {
               tool_call_id: tool.id,
               role: ChatCompletionRequestMessageRoleEnum.Tool,
-              content: MODERATION_BLOCKED_REPLACE_TEXT
+              content: response
             } as ChatCompletionMessageParam,
             toolAssistantMessages: []
           };

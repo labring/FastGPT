@@ -4,6 +4,7 @@ import {
 } from '@fastgpt/global/core/ai/constants';
 import type { ChatCompletionTool } from '@fastgpt/global/core/ai/llm/type';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { LangEnum } from '@fastgpt/global/common/i18n/type';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { mockCreateLLMResponseQueue, text, toolCall } from './_mocks/llmQueue';
 
@@ -114,6 +115,65 @@ describe('runFastAgentLoop', () => {
     expect(compressRequestMessagesMock).toHaveBeenCalledWith(
       expect.objectContaining({ getCheckpointContext })
     );
+  });
+
+  it.each([
+    [LangEnum.en, 'Tool not executed:'],
+    [LangEnum.zh_CN, '工具未执行：'],
+    [LangEnum.zh_Hant, '工具未執行：'],
+    [LangEnum.ko_KR, '도구가 실행되지 않았습니다.']
+  ] as const)('continues with localized skipped tool results: lang=%s', async (lang, prefix) => {
+    const truncated = toolCall({ name: 'search', args: '{"q":"incomplete' });
+    const ask = toolCall({ name: 'ask_user', args: '{"questions":[' });
+    const calls = [...truncated.toolCalls!, ...ask.toolCalls!];
+    const validate = vi.fn();
+    const emitEvent = vi.fn();
+    const runtime = createRuntime({
+      lang,
+      emitEvent,
+      systemTools: { ask: { enabled: true, validate } }
+    });
+    mockCreateLLMResponseQueue(createLLMResponseMock, [
+      { ...truncated, finishReason: 'length', toolCalls: calls },
+      ({ body }) => {
+        expect(runtime.executeTool).not.toHaveBeenCalled();
+        expect(validate).not.toHaveBeenCalled();
+        expect(body.messages.slice(1)).toEqual([
+          { role: 'assistant', tool_calls: calls },
+          ...calls.map((call) => ({
+            role: 'tool',
+            tool_call_id: call.id,
+            content: expect.stringContaining(prefix)
+          }))
+        ]);
+        return text({ content: 'Recovered.' });
+      }
+    ]);
+
+    const result = await runFastAgentLoop({
+      input: { messages: [{ role: 'user', content: 'search and ask' }] },
+      runtime
+    });
+
+    expect(result.status).toBe('done');
+    expect(result.finishReason).toBe('stop');
+    expect(createLLMResponseMock).toHaveBeenCalledTimes(2);
+    const toolEndEvents = emitEvent.mock.calls
+      .map(([event]) => event)
+      .filter((event) => event.type === 'tool_run_end');
+    expect(toolEndEvents).toHaveLength(2);
+    expect(toolEndEvents[0]).toMatchObject({
+      call: calls[0],
+      response: expect.stringContaining(prefix),
+      seconds: 0,
+      usages: []
+    });
+    expect(toolEndEvents[1]).toMatchObject({
+      call: calls[1],
+      response: expect.stringContaining(prefix),
+      hideInUI: true
+    });
+    expect(emitEvent.mock.calls.map(([event]) => event.type)).not.toContain('tool_interactive');
   });
 
   it('uses the final input systemPrompt without injecting provider defaults', async () => {
