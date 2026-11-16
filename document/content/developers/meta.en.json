@@ -16,6 +16,7 @@
     "../plugin/intro",
     "../plugin/quick-start",
     "../plugin/system-tool-development",
+    "../plugin/moderation",
     "../plugin/model-presets",
     "../plugin/debugging-and-publishing",
     "../plugin/package-reference",
