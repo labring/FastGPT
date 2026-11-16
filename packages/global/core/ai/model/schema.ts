@@ -17,23 +17,29 @@ export type ModelPriceTierType = z.infer<typeof ModelPriceTierSchema>;
 /** STT 支持独立计价口径；其他类型仍由模型类型确定分母。 */
 export const ModelPricingSchema = z.object({
   type: z.enum(['duration', 'tokens']).optional().meta({ description: 'STT 计价类型' }),
+  inputPrice: ModelPriceTierSchema.shape.inputPrice.optional(),
+  outputPrice: ModelPriceTierSchema.shape.outputPrice.optional(),
   tiers: z
     .array(ModelPriceTierSchema)
     .max(5)
     .optional()
     .meta({ description: 'LLM 阶梯价格，下限从上一档上限推导' }),
   unitPrice: z.number().min(0).optional().meta({
-    description: '综合单价；Token/TTS 每百万数量，STT 按类型固定为每 60 秒或每百万 Tokens',
+    description: '综合单价；Token/TTS 每百万数量，STT 时长模式固定为每 60 秒',
     example: 2
   })
 });
 export type ModelPricingType = z.infer<typeof ModelPricingSchema>;
 export const LLMModelPricingSchema = ModelPricingSchema.omit({
   unitPrice: true,
+  inputPrice: true,
+  outputPrice: true,
   type: true
 });
 export const UnitModelPricingSchema = ModelPricingSchema.omit({
   tiers: true,
+  inputPrice: true,
+  outputPrice: true,
   type: true
 });
 /** STT 价格必须明确声明口径；旧数据由后台迁移补齐。 */
@@ -47,10 +53,8 @@ export const STTModelPricingSchema = z.union([
   }),
   z.object({
     type: z.literal('tokens'),
-    unitPrice: UnitModelPricingSchema.shape.unitPrice.meta({
-      description: '每百万总 Tokens 的积分单价',
-      example: 10
-    })
+    inputPrice: ModelPricingSchema.shape.inputPrice,
+    outputPrice: ModelPricingSchema.shape.outputPrice
   })
 ]);
 export type STTModelPricingType = z.infer<typeof STTModelPricingSchema>;
