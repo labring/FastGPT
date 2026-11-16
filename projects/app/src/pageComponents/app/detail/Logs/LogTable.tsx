@@ -17,7 +17,11 @@ import {
   Th,
   Thead,
   Tr,
-  Checkbox
+  Checkbox,
+  Menu,
+  MenuButton,
+  MenuList,
+  MenuItem
 } from '@chakra-ui/react';
 import { ChatSourceMap, type ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import DateRangePicker from '@fastgpt/web/components/common/DateRangePicker';
@@ -49,7 +53,8 @@ import { useStaticVirtualList } from '@fastgpt/web/hooks/useVirtualList';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import type {
   AppChatLogsSearchCursor,
-  AppLogsListItemType
+  AppLogsListItemType,
+  SearchAppChatLogsBody
 } from '@fastgpt/global/openapi/core/app/log/api';
 import dayjs from 'dayjs';
 import UserBox from '@fastgpt/web/components/common/UserBox';
@@ -75,25 +80,57 @@ const DetailLogsModal = dynamic(() => import('./DetailLogsModal'));
 const logRowHeight = 57;
 
 /** 隔离输入态，避免每次键入都重渲染日志表格。 */
-const LogSearchInput = React.memo(({ onSearch }: { onSearch: (value: string) => void }) => {
-  const { t } = useTranslation();
-  const [value, setValue] = useState('');
-  const debouncedValue = useDebounce(value, { wait: 400 });
+const LogSearchInput = React.memo(
+  ({
+    onSearch,
+    searchType,
+    setSearchType
+  }: {
+    onSearch: (value: string) => void;
+    searchType: 'title' | 'chatId';
+    setSearchType: (value: 'title' | 'chatId') => void;
+  }) => {
+    const { t } = useTranslation();
+    const [value, setValue] = useState('');
+    const debouncedValue = useDebounce(value, { wait: 400 });
 
-  React.useEffect(() => {
-    onSearch(debouncedValue.trim());
-  }, [debouncedValue, onSearch]);
+    React.useEffect(() => {
+      onSearch(searchType === 'chatId' ? debouncedValue : debouncedValue.trim());
+    }, [debouncedValue, onSearch, searchType]);
 
-  return (
-    <FilterInput
-      flex={'0 1 230px'}
-      label={t('common:Search')}
-      placeholder={t('app:logs_search_placeholder')}
-      value={value}
-      onChange={(e) => setValue(e.target.value)}
-    />
-  );
-});
+    return (
+      <FilterInput
+        flex={'0 1 230px'}
+        label={
+          <Menu>
+            <MenuButton
+              as={Button}
+              variant={'unstyled'}
+              h={'auto'}
+              fontSize={'sm'}
+              aria-label={t('app:logs_search_type')}
+            >
+              {t(searchType === 'chatId' ? 'app:logs_keys_sessionId' : 'app:logs_title')} ▾
+            </MenuButton>
+            <MenuList zIndex={10}>
+              <MenuItem onClick={() => setSearchType('title')}>{t('app:logs_title')}</MenuItem>
+              <MenuItem onClick={() => setSearchType('chatId')}>
+                {t('app:logs_keys_sessionId')}
+              </MenuItem>
+            </MenuList>
+          </Menu>
+        }
+        placeholder={t(
+          searchType === 'chatId'
+            ? 'app:logs_search_chat_id_placeholder'
+            : 'app:logs_search_title_placeholder'
+        )}
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+      />
+    );
+  }
+);
 LogSearchInput.displayName = 'LogSearchInput';
 
 type LogTableProps = HeaderControlProps;
@@ -135,6 +172,11 @@ const LogTable = ({
 
   // chat
   const [searchQuery, setSearchQuery] = useState('');
+  const [storedSearchType, setSearchType] = useLocalStorageState<'title' | 'chatId'>(
+    `app_log_search_type_${appId}`,
+    { defaultValue: 'title' }
+  );
+  const searchType: 'title' | 'chatId' = storedSearchType === 'chatId' ? 'chatId' : 'title';
   const [searchResult, setSearchResult] = useState<{
     list: AppLogsListItemType[];
     nextCursor?: AppChatLogsSearchCursor;
@@ -200,6 +242,7 @@ const LogTable = ({
         tmbIds,
         outLinkUids,
         chatSearch: searchQuery,
+        searchType,
         title: `${headerTitle},${t('app:logs_keys_chatDetails')}`,
         logKeys: enabledKeys,
         sourcesMap: Object.fromEntries(
@@ -216,7 +259,7 @@ const LogTable = ({
       }
     });
   };
-  const params = useMemoEnhance(
+  const params = useMemoEnhance<SearchAppChatLogsBody>(
     () => ({
       appId,
       dateStart: dateRange.from!,
@@ -225,6 +268,7 @@ const LogTable = ({
       tmbIds,
       outLinkUids,
       chatSearch: searchQuery || undefined,
+      searchType,
       feedbackType,
       unreadOnly: feedbackType === 'all' ? undefined : unreadOnly,
       errorFilter: errorFilter === 'all' ? undefined : errorFilter
@@ -237,6 +281,7 @@ const LogTable = ({
       tmbIds,
       outLinkUids,
       searchQuery,
+      searchType,
       feedbackType,
       unreadOnly,
       errorFilter
@@ -623,7 +668,11 @@ const LogTable = ({
             onChange={setUserFilter}
           />
         )}
-        <LogSearchInput onSearch={setSearchQuery} />
+        <LogSearchInput
+          onSearch={setSearchQuery}
+          searchType={searchType}
+          setSearchType={setSearchType}
+        />
 
         <Box flex={'1'} />
         {showSyncPopover && (

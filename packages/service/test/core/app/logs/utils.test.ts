@@ -5,7 +5,11 @@ import {
   buildAppChatLogSearchFilter,
   getAppChatLogNextCursor
 } from '@fastgpt/service/core/app/logs/utils';
-import { SearchAppChatLogsBodySchema } from '@fastgpt/global/openapi/core/app/log/api';
+import {
+  SearchAppChatLogsBodySchema,
+  GetAppChatLogsBodySchema,
+  ExportChatLogsBodySchema
+} from '@fastgpt/global/openapi/core/app/log/api';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { ChatSourceEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 
@@ -24,6 +28,75 @@ describe('buildAppChatLogFilter', () => {
     expect(buildAppChatLogFilter({ ...params, chatSearch: 'hello' }).$and).toContainEqual({
       $or: [{ chatId: /hello/i }, { title: /hello/i }, { customTitle: /hello/i }]
     });
+  });
+
+  it('uses exact case-sensitive ID matching or title-only matching when selected', () => {
+    expect(
+      buildAppChatLogFilter({ ...params, chatSearch: 'Ab.C', searchType: 'chatId' }).$and
+    ).toContainEqual({ chatId: 'Ab.C' });
+    expect(
+      buildAppChatLogFilter({ ...params, chatSearch: 'Ab.C', searchType: 'title' }).$and
+    ).toContainEqual({
+      $or: [{ title: /Ab\.C/i }, { customTitle: /Ab\.C/i }]
+    });
+  });
+
+  it('matches only the selected field in MongoDB', async () => {
+    const appId = new Types.ObjectId();
+    const teamId = new Types.ObjectId();
+    const tmbId = new Types.ObjectId();
+    await MongoChat.collection.insertMany([
+      {
+        appId,
+        teamId,
+        tmbId,
+        chatId: 'Ab.C',
+        title: 'other',
+        sourceType: 'app',
+        source: 'api',
+        updateTime: new Date('2026-11-05')
+      },
+      {
+        appId,
+        teamId,
+        tmbId,
+        chatId: 'ab.c',
+        title: 'Ab.C',
+        sourceType: 'app',
+        source: 'api',
+        updateTime: new Date('2026-11-05')
+      },
+      {
+        appId,
+        teamId,
+        tmbId,
+        chatId: 'Ab.C-extra',
+        customTitle: 'ab.c',
+        sourceType: 'app',
+        source: 'api',
+        updateTime: new Date('2026-11-05')
+      }
+    ]);
+    const filter = { ...params, appId: String(appId), chatSearch: 'Ab.C' };
+    const ids = async (searchType: 'chatId' | 'title') =>
+      (await MongoChat.collection.find(buildAppChatLogFilter({ ...filter, searchType })).toArray())
+        .map((item) => item.chatId)
+        .sort();
+    expect(await ids('chatId')).toEqual(['Ab.C']);
+    expect(await ids('title')).toEqual(['Ab.C-extra', 'ab.c']);
+  });
+
+  it('accepts the mode in search and export but preserves the list contract', () => {
+    const input = { ...params, chatSearch: 'Ab.C', searchType: 'chatId' };
+    expect(SearchAppChatLogsBodySchema.parse(input).searchType).toBe('chatId');
+    expect(
+      ExportChatLogsBodySchema.parse({ ...input, title: '', sourcesMap: {}, logKeys: [] })
+        .searchType
+    ).toBe('chatId');
+    expect(GetAppChatLogsBodySchema.parse(input)).not.toHaveProperty('searchType');
+    expect(SearchAppChatLogsBodySchema.safeParse({ ...input, searchType: 'invalid' }).success).toBe(
+      false
+    );
   });
 });
 

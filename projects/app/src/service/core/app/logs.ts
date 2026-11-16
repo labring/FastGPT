@@ -55,6 +55,7 @@ export const getAuthenticatedAppChatLogFilter = async ({
         tmbIds,
         outLinkUids,
         chatSearch,
+        searchType: 'searchType' in body ? body.searchType : undefined,
         feedbackType,
         unreadOnly,
         errorFilter

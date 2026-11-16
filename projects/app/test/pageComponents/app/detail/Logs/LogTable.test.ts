@@ -87,18 +87,20 @@ vi.mock('@fastgpt/web/components/common/Icon', async () => {
 vi.mock('@fastgpt/web/components/common/TagFilter', async () => {
   const React = await import('react');
   return {
-    FilterInput: ({ value = '', onChange, ...props }: any) =>
-      props.placeholder === 'app:logs_search_placeholder'
-        ? React.createElement(
-            'button',
-            {
-              ...props,
-              onClick: () => onChange({ target: { value: 'needle' } }),
-              'aria-label': props.placeholder
-            },
-            value
-          )
-        : React.createElement('input', { ...props, value, onChange }),
+    FilterInput: ({ value = '', onChange, label, placeholder }: any) =>
+      React.createElement(
+        'div',
+        null,
+        label,
+        React.createElement(
+          'button',
+          {
+            onClick: () => onChange({ target: { value: 'needle' } }),
+            'aria-label': placeholder
+          },
+          value
+        )
+      ),
     MultiSelectFilter: () => null,
     createMultiSelectFilter: () => ({ mode: 'all', values: [] }),
     toMultiSelectFilterQuery: () => undefined,
@@ -159,6 +161,9 @@ describe('LogTable identity columns UI', () => {
     vi.stubGlobal('localStorage', dom.window.localStorage);
     vi.stubGlobal('navigator', dom.window.navigator);
     vi.stubGlobal('HTMLElement', dom.window.HTMLElement);
+    vi.stubGlobal('Element', dom.window.Element);
+    vi.stubGlobal('SVGElement', dom.window.SVGElement);
+    dom.window.HTMLElement.prototype.scrollTo = vi.fn();
     vi.stubGlobal('Node', dom.window.Node);
     vi.stubGlobal('getComputedStyle', dom.window.getComputedStyle.bind(dom.window));
     vi.stubGlobal('MouseEvent', dom.window.MouseEvent);
@@ -225,7 +230,7 @@ describe('LogTable identity columns UI', () => {
     await act(async () => element!.dispatchEvent(new MouseEvent('click', { bubbles: true })));
   };
   const setSearch = async () => {
-    const input = container.querySelector('button[aria-label="app:logs_search_placeholder"]');
+    const input = container.querySelector('button[aria-label="app:logs_search_title_placeholder"]');
     expect(input).toBeTruthy();
     await act(async () => {
       input!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
@@ -398,9 +403,48 @@ describe('LogTable identity columns UI', () => {
   it('loads logs without a search term', async () => {
     await render();
     expect(searchAppChatLogs).toHaveBeenCalledWith(
-      expect.objectContaining({ chatSearch: '', cursor: undefined }),
+      expect.objectContaining({ chatSearch: '', searchType: 'title', cursor: undefined }),
       expect.any(AbortController)
     );
     expect(container.querySelector('tbody')?.textContent).toContain('customer-42');
+  });
+  it('restores the selected ID mode and exports with the same filter', async () => {
+    localStorage.setItem('app_log_search_type_app-1', JSON.stringify('chatId'));
+    await render();
+    expect(searchAppChatLogs).toHaveBeenLastCalledWith(
+      expect.objectContaining({ searchType: 'chatId' }),
+      expect.any(AbortController)
+    );
+    await click(
+      container.querySelector('button[aria-label="app:logs_search_chat_id_placeholder"]')
+    );
+    expect(searchAppChatLogs).toHaveBeenLastCalledWith(
+      expect.objectContaining({ searchType: 'chatId', chatSearch: 'needle' }),
+      expect.any(AbortController)
+    );
+    await click(
+      [...container.querySelectorAll('button')].find(
+        (button) => button.textContent === 'confirm-export'
+      )
+    );
+    expect(downloadFetch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        body: expect.objectContaining({ searchType: 'chatId', chatSearch: 'needle' })
+      })
+    );
+  });
+  it('switches the search mode and remembers it', async () => {
+    await render();
+    await click(container.querySelector('button[aria-label="app:logs_search_type"]'));
+    await click(
+      [...document.querySelectorAll('[role="menuitem"]')].find(
+        (item) => item.textContent === 'app:logs_keys_sessionId'
+      )
+    );
+    expect(JSON.parse(localStorage.getItem('app_log_search_type_app-1') || 'null')).toBe('chatId');
+    expect(searchAppChatLogs).toHaveBeenLastCalledWith(
+      expect.objectContaining({ searchType: 'chatId', cursor: undefined }),
+      expect.any(AbortController)
+    );
   });
 });

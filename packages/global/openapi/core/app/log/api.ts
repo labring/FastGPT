@@ -217,9 +217,18 @@ export const AppChatLogsSearchCursorSchema = z.object({
 export type AppChatLogsSearchCursor = z.infer<typeof AppChatLogsSearchCursorSchema>;
 
 const { appId: appIdSchema, ...appChatLogsFilterShape } = AppChatLogsFilterSchema.shape;
+const AppChatLogSearchTypeSchema = z.enum(['title', 'chatId']).optional().meta({
+  description: '搜索类型：title 搜索标题，chatId 精确匹配会话 ID；省略时兼容旧搜索',
+  example: 'title'
+});
 export const SearchAppChatLogsBodySchema = z.intersection(
   createAppApiKeyInputSchema(z.object({ appId: appIdSchema })),
   z.object(appChatLogsFilterShape).extend({
+    chatSearch: AppChatLogsFilterSchema.shape.chatSearch.meta({
+      description: '搜索关键词；与 searchType 共同指定标题搜索或会话 ID 精确匹配',
+      example: 'chat123'
+    }),
+    searchType: AppChatLogSearchTypeSchema,
     cursor: AppChatLogsSearchCursorSchema.optional().meta({
       example: {
         timestamp: 1735689600000,
@@ -252,6 +261,11 @@ export type exportChatLogsResponseType = z.infer<typeof ExportChatLogsResponseSc
 /* Export chat log */
 export const ExportChatLogsBodySchema = createAppApiKeyInputSchema(
   AppChatLogsFilterSchema.safeExtend({
+    chatSearch: AppChatLogsFilterSchema.shape.chatSearch.meta({
+      description: '搜索关键词；与 searchType 共同指定标题搜索或会话 ID 精确匹配',
+      example: 'chat123'
+    }),
+    searchType: AppChatLogSearchTypeSchema,
     title: z.string().meta({
       example: 'chat logs',
       description: '标题'

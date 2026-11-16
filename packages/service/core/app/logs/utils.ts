@@ -21,11 +21,13 @@ export const buildAppChatLogFilter = ({
   tmbIds,
   outLinkUids,
   chatSearch,
+  searchType,
   feedbackType,
   unreadOnly,
   errorFilter
 }: Omit<getAppChatLogsBody, 'pageNum' | 'pageSize'> & {
   appId: string;
+  searchType?: 'title' | 'chatId';
 }): FilterQuery<ChatSchemaType> => {
   const conditions: FilterQuery<ChatSchemaType>[] = [
     { $or: [{ sourceType: ChatSourceTypeEnum.app }, { sourceType: { $exists: false } }] }
@@ -54,8 +56,18 @@ export const buildAppChatLogFilter = ({
     conditions.push(users.length ? { $or: users } : { _id: { $in: [] } });
   }
   if (chatSearch?.trim()) {
-    const regex = new RegExp(replaceRegChars(chatSearch), 'i');
-    conditions.push({ $or: [{ chatId: regex }, { title: regex }, { customTitle: regex }] });
+    if (searchType === 'chatId') {
+      conditions.push({ chatId: chatSearch });
+    } else {
+      const regex = new RegExp(replaceRegChars(chatSearch), 'i');
+      conditions.push({
+        $or: [
+          ...(searchType === 'title' ? [] : [{ chatId: regex }]),
+          { title: regex },
+          { customTitle: regex }
+        ]
+      });
+    }
   }
   return {
     appId: new Types.ObjectId(appId),
