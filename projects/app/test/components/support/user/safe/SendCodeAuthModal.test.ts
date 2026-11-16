@@ -47,6 +47,7 @@ vi.mock('@chakra-ui/react', () => ({
 
 vi.mock('@fastgpt/web/components/common/Image/MyImage', () => ({ default: 'image' }));
 vi.mock('@fastgpt/web/components/common/MyModal', () => ({ default: 'modal' }));
+vi.mock('@/components/support/user/safe/PuzzleCaptchaModal', () => ({ default: 'puzzle-modal' }));
 
 vi.stubGlobal('React', await import('react'));
 
@@ -77,14 +78,18 @@ const renderModal = ({
 }: {
   onClose?: () => void;
   onSendCode?: (params: { username: string; captcha: string }) => Promise<void>;
-} = {}) =>
-  SendCodeAuthModal({
+} = {}) => {
+  const element = SendCodeAuthModal({
     username: 'user@example.com',
-    purpose: 'register',
+    purpose: 'login',
+    getCaptchaPic: async () => ({ captchaImage: 'legacy-captcha' }),
     onClose,
     onSending: false,
     onSendCode
   });
+  if (typeof element.type !== 'function') throw new Error('Expected legacy captcha component');
+  return element.type(element.props);
+};
 
 describe('SendCodeAuthModal', () => {
   beforeEach(() => {
@@ -140,5 +145,39 @@ describe('SendCodeAuthModal', () => {
 
     expect(mocks.handleSubmit).toHaveBeenCalledTimes(1);
     expect(mocks.submit).not.toHaveBeenCalled();
+  });
+});
+
+describe('SendCodeAuthModal ordinary forms', () => {
+  const props = {
+    username: 'user@example.com',
+    purpose: 'register' as const,
+    onSending: false,
+    onClose: vi.fn(),
+    onSendCode: vi.fn(async () => undefined)
+  };
+
+  it('requires rotation verification and closes only after sending succeeds', async () => {
+    const onSendCode = vi.fn(async () => undefined);
+    const onClose = vi.fn();
+    const element = SendCodeAuthModal({ ...props, onSendCode, onClose });
+    expect(element.type).toBe('puzzle-modal');
+    expect(onSendCode).not.toHaveBeenCalled();
+    await element.props.onVerified('a'.repeat(64));
+    expect(onSendCode).toHaveBeenCalledWith({ username: props.username, captcha: 'a'.repeat(64) });
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it('keeps send failures open so the rotation component can refresh the consumed challenge', async () => {
+    const onClose = vi.fn();
+    const element = SendCodeAuthModal({
+      ...props,
+      onClose,
+      onSendCode: vi.fn(async () => {
+        throw new Error('send failed');
+      })
+    });
+    await expect(element.props.onVerified('a'.repeat(64))).rejects.toThrow('send failed');
+    expect(onClose).not.toHaveBeenCalled();
   });
 });

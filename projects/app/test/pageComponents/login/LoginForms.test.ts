@@ -14,6 +14,7 @@ vi.mock('react', async (importOriginal) => ({
   ...(await importOriginal<typeof import('react')>()),
   useState: (initial: unknown) => [typeof initial === 'function' ? initial() : initial, vi.fn()],
   useEffect: vi.fn(),
+  useRef: () => ({ current: undefined }),
   useCallback: (callback: unknown) => callback
 }));
 
