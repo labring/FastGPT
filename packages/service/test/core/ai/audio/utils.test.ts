@@ -6,13 +6,22 @@ describe('getSTTBillableUsage', () => {
     undefined,
     { type: 'duration' as const },
     { type: 'duration' as const, unitPrice: 0.2 }
-  ])('uses only upstream seconds for duration pricing %j', (pricing) => {
+  ])('uses only seconds for duration pricing %j', (pricing) => {
     expect(
-      getSTTBillableUsage({ pricing, usage: { type: 'tokens', seconds: 3, total_tokens: 77 } })
+      getSTTBillableUsage({
+        pricing,
+        usage: {
+          type: 'tokens',
+          seconds: 3,
+          input_tokens: 125,
+          output_tokens: 17,
+          total_tokens: 142
+        }
+      })
     ).toEqual({ type: 'duration', seconds: 3 });
   });
   it.each([undefined, null, -1, NaN, Infinity, -Infinity, '77'])(
-    'treats invalid seconds %s as zero',
+    'rejects invalid seconds %s',
     (seconds) => {
       expect(getSTTBillableUsage({ usage: { seconds, total_tokens: 77 } })).toEqual({
         type: 'duration',
@@ -20,41 +29,52 @@ describe('getSTTBillableUsage', () => {
       });
     }
   );
-  it.each([0, 0.2, 2.5, 60])('does not round or enforce a minimum on %s seconds', (seconds) => {
+  it.each([0, 0.2, 2.5, 60])('preserves %s seconds without rounding', (seconds) => {
     expect(getSTTBillableUsage({ usage: { seconds } })).toEqual({ type: 'duration', seconds });
   });
-  it('records zero when upstream usage is absent', () => {
-    expect(getSTTBillableUsage({})).toEqual({ type: 'duration', seconds: 0 });
-    expect(getSTTBillableUsage({ pricing: { type: 'tokens' } })).toEqual({
-      type: 'tokens',
-      totalTokens: 0
-    });
+  it('accepts genuine counters independently and ignores total/seconds', () => {
+    expect(
+      getSTTBillableUsage({
+        pricing: { type: 'tokens' },
+        usage: { input_tokens: 125, output_tokens: 17, seconds: 77, total_tokens: 999 }
+      })
+    ).toEqual({ type: 'tokens', inputTokens: 125, outputTokens: 17 });
+    for (const usage of [
+      undefined,
+      { seconds: 77 },
+      { total_tokens: 77 },
+      { type: 'duration', input_tokens: 5, output_tokens: 2, total_tokens: 7 }
+    ]) {
+      expect(getSTTBillableUsage({ pricing: { type: 'tokens' }, usage })).toEqual({
+        type: 'tokens',
+        inputTokens: 0,
+        outputTokens: 0
+      });
+    }
   });
   it.each([undefined, null, -1, 1.5, NaN, Infinity, '77', Number.MAX_SAFE_INTEGER + 1])(
-    'treats invalid tokens %s as zero',
-    (total_tokens) => {
+    'zeroes only the invalid side %s',
+    (value) => {
       expect(
-        getSTTBillableUsage({ pricing: { type: 'tokens' }, usage: { seconds: 3, total_tokens } })
-      ).toEqual({ type: 'tokens', totalTokens: 0 });
+        getSTTBillableUsage({
+          pricing: { type: 'tokens' },
+          usage: { input_tokens: value, output_tokens: 17, total_tokens: 142 }
+        })
+      ).toEqual({ type: 'tokens', inputTokens: 0, outputTokens: 17 });
+      expect(
+        getSTTBillableUsage({
+          pricing: { type: 'tokens' },
+          usage: { input_tokens: 125, output_tokens: value, total_tokens: 142 }
+        })
+      ).toEqual({ type: 'tokens', inputTokens: 125, outputTokens: 0 });
     }
   );
-  it.each([0, 77, 1733])('uses only reported total_tokens=%s for token pricing', (total_tokens) => {
+  it('preserves explicit zero counters', () => {
     expect(
       getSTTBillableUsage({
         pricing: { type: 'tokens' },
-        usage: { type: 'tokens', seconds: 60, total_tokens }
+        usage: { input_tokens: 0, output_tokens: 0, total_tokens: 77 }
       })
-    ).toEqual({ type: 'tokens', totalTokens: total_tokens });
-  });
-  it('accepts genuine untyped token usage but excludes duration compatibility counters', () => {
-    expect(
-      getSTTBillableUsage({ pricing: { type: 'tokens' }, usage: { total_tokens: 77 } })
-    ).toEqual({ type: 'tokens', totalTokens: 77 });
-    expect(
-      getSTTBillableUsage({
-        pricing: { type: 'tokens' },
-        usage: { type: 'duration', seconds: 3, total_tokens: 3 }
-      })
-    ).toEqual({ type: 'tokens', totalTokens: 0 });
+    ).toEqual({ type: 'tokens', inputTokens: 0, outputTokens: 0 });
   });
 });
