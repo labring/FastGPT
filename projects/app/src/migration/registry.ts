@@ -99,40 +99,6 @@ export type SystemMigration = {
  */
 export const systemMigrations = [
   {
-    id: systemConfigMigrationId,
-    version: '4.18.0',
-    nameKey: i18nT('system_migration:migrations.20261116_migrate_system_configs.name'),
-    descriptionKey: i18nT(
-      'system_migration:migrations.20261116_migrate_system_configs.description'
-    ),
-    resultKey: i18nT('system_migration:migrations.20261116_migrate_system_configs.result'),
-    progressSteps: [
-      {
-        key: 'inspect',
-        labelKey: i18nT('system_migration:migrations.20261116_migrate_system_configs.inspect')
-      },
-      {
-        key: 'migrate',
-        labelKey: i18nT('system_migration:migrations.20261116_migrate_system_configs.migrate')
-      },
-      {
-        key: 'cleanup',
-        labelKey: i18nT('system_migration:migrations.20261116_migrate_system_configs.cleanup')
-      },
-      {
-        key: 'backfill',
-        labelKey: i18nT('system_migration:migrations.20261116_migrate_system_configs.backfill')
-      },
-      {
-        key: 'validate',
-        labelKey: i18nT('system_migration:migrations.20261116_migrate_system_configs.validate')
-      }
-    ],
-    // 系统配置先迁移成功，后续模型加载与业务启动才能读取完整的生效配置。
-    blockStartup: true,
-    run: migrateSystemConfigs
-  },
-  {
     id: '20261022_initialize_dataset_vector_indexes',
     version: '4.18.0',
     nameKey: i18nT('system_migration:migrations.20261022_initialize_dataset_vector_indexes.name'),
@@ -231,6 +197,40 @@ export const systemMigrations = [
       }
     ],
     run: backfillSTTPricingType
+  },
+  {
+    id: systemConfigMigrationId,
+    version: '4.18.0',
+    nameKey: i18nT('system_migration:migrations.20261116_migrate_system_configs.name'),
+    descriptionKey: i18nT(
+      'system_migration:migrations.20261116_migrate_system_configs.description'
+    ),
+    resultKey: i18nT('system_migration:migrations.20261116_migrate_system_configs.result'),
+    progressSteps: [
+      {
+        key: 'inspect',
+        labelKey: i18nT('system_migration:migrations.20261116_migrate_system_configs.inspect')
+      },
+      {
+        key: 'migrate',
+        labelKey: i18nT('system_migration:migrations.20261116_migrate_system_configs.migrate')
+      },
+      {
+        key: 'cleanup',
+        labelKey: i18nT('system_migration:migrations.20261116_migrate_system_configs.cleanup')
+      },
+      {
+        key: 'backfill',
+        labelKey: i18nT('system_migration:migrations.20261116_migrate_system_configs.backfill')
+      },
+      {
+        key: 'validate',
+        labelKey: i18nT('system_migration:migrations.20261116_migrate_system_configs.validate')
+      }
+    ],
+    // 系统配置先迁移成功，后续模型加载与业务启动才能读取完整的生效配置。
+    blockStartup: true,
+    run: migrateSystemConfigs
   }
 ] as const satisfies readonly SystemMigration[];
 

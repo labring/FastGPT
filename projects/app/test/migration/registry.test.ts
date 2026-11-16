@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { SystemMigration } from '@/migration/registry';
 import { systemMigrations, validateSystemMigrationRegistry } from '@/migration/registry';
+import { createSystemMigrationPlan } from '@/migration/plan';
 
 const createMigration = (id: string): SystemMigration => ({
   id,
@@ -13,13 +14,13 @@ const createMigration = (id: string): SystemMigration => ({
 });
 
 describe('validateSystemMigrationRegistry', () => {
-  it('runs the system configuration migration first and blocks startup until it succeeds', () => {
+  it('appends system configuration migration while prioritizing it in the startup plan', () => {
     expect(systemMigrations.map(({ id }) => id)).toEqual([
-      '20261116_migrate_system_configs',
       '20261022_initialize_dataset_vector_indexes',
       '20261104_backfill_chat_publish_source',
       '20261104_backfill_openapi_key_type',
-      '20261112_backfill_stt_pricing_type'
+      '20261112_backfill_stt_pricing_type',
+      '20261116_migrate_system_configs'
     ]);
     const tasks: readonly SystemMigration[] = systemMigrations;
     expect(tasks.filter((task) => task.blockStartup).map(({ id }) => id)).toEqual([
@@ -42,6 +43,14 @@ describe('validateSystemMigrationRegistry', () => {
     expect(configMigration).not.toHaveProperty('dependsOn');
     expect(configMigration).not.toHaveProperty('independent');
     expect(configMigration).not.toHaveProperty('resumable', true);
+    const plan = createSystemMigrationPlan(tasks);
+    expect(plan.startupMigrations.map(({ id }) => id)).toEqual(['20261116_migrate_system_configs']);
+    expect(plan.backgroundMigrations.map(({ id }) => id)).toEqual([
+      '20261022_initialize_dataset_vector_indexes',
+      '20261104_backfill_chat_publish_source',
+      '20261104_backfill_openapi_key_type',
+      '20261112_backfill_stt_pricing_type'
+    ]);
     expect(() => validateSystemMigrationRegistry(systemMigrations)).not.toThrow();
   });
 
