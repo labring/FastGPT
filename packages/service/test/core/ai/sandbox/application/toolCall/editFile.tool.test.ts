@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { sandboxEditFileTool } from '@fastgpt/service/core/ai/sandbox/application/toolCall/editFile.tool';
+import { raceToolWithStopGrace } from '@fastgpt/service/core/ai/llm/agentLoop/domain/stopGrace';
+import { STOPPED_TOOL_RESPONSE_TEXT } from '@fastgpt/service/core/chat/stop';
 import { createToolRunner } from '@fastgpt/service/core/ai/sandbox/application/toolCall/type';
 
 const createSandboxInstance = () =>
@@ -30,6 +32,45 @@ describe('sandboxEditFileTool', () => {
     expect(sandbox.provider.replaceContent).toHaveBeenCalledWith([
       { path: '/workspace/a.txt', oldContent: 'old', newContent: 'new' }
     ]);
+  });
+
+  it('does not invoke provider.replaceContent when aborted during ensureAvailable and resumed after stop grace', async () => {
+    const sandbox = createSandboxInstance();
+    const ensureDeferred = Promise.withResolvers<void>();
+    sandbox.ensureAvailable.mockReturnValueOnce(ensureDeferred.promise);
+    const controller = new AbortController();
+
+    const toolRacePromise = raceToolWithStopGrace({
+      execute: () =>
+        sandboxEditFileTool.execute({
+          sandboxInstance: sandbox,
+          params: {
+            entries: [{ path: '/workspace/a.txt', oldContent: 'old', newContent: 'new' }]
+          },
+          signal: controller.signal
+        }),
+      stopSignal: controller.signal,
+      graceMs: 20
+    });
+
+    await vi.waitFor(() => expect(sandbox.ensureAvailable).toHaveBeenCalledTimes(1));
+    controller.abort();
+    await expect(toolRacePromise).resolves.toEqual({ status: 'stopped' });
+
+    ensureDeferred.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(sandbox.provider.replaceContent).not.toHaveBeenCalled();
+
+    await expect(
+      sandboxEditFileTool.execute({
+        sandboxInstance: sandbox,
+        params: {
+          entries: [{ path: '/workspace/a.txt', oldContent: 'old', newContent: 'new' }]
+        },
+        signal: controller.signal
+      })
+    ).rejects.toThrow(STOPPED_TOOL_RESPONSE_TEXT);
   });
 
   it.each([

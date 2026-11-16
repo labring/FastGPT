@@ -5,6 +5,7 @@ import {
   SANDBOX_WRITE_FILE_TOOL_NAME
 } from '@fastgpt/global/core/ai/sandbox/tools';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { STOPPED_TOOL_RESPONSE_TEXT } from '@fastgpt/service/core/chat/stop';
 
 const runtimeMock = vi.hoisted(() => ({
   getSandboxClient: vi.fn()
@@ -163,6 +164,53 @@ describe('sandbox toolCall index', () => {
       expect.stringMatching(/^\/bin\/bash -c 'pwd' > '\/tmp\/fastgpt-bash-[^']+\.log' 2>&1/),
       undefined
     );
+  });
+
+  it('returns stopped failure without touching sandbox when signal is already aborted', async () => {
+    const sandbox = createSandboxInstance();
+    const controller = new AbortController();
+    controller.abort();
+
+    await expect(
+      runSandboxTools({
+        toolName: SANDBOX_SHELL_TOOL_NAME,
+        args: JSON.stringify({ command: 'pwd' }),
+        sandboxClient: sandbox,
+        signal: controller.signal
+      })
+    ).resolves.toMatchObject({
+      success: false,
+      input: {},
+      response: STOPPED_TOOL_RESPONSE_TEXT
+    });
+    expect(sandbox.exec).not.toHaveBeenCalled();
+    expect(sandbox.ensureAvailable).not.toHaveBeenCalled();
+  });
+
+  it('forwards signal to sandbox tool and marks mid-run abort as failure', async () => {
+    const sandbox = createSandboxInstance();
+    const controller = new AbortController();
+    sandbox.exec.mockImplementationOnce(async () => {
+      controller.abort();
+      return { stdout: '', stderr: 'Command execution aborted', exitCode: -1 };
+    });
+
+    await expect(
+      runSandboxTools({
+        toolName: SANDBOX_SHELL_TOOL_NAME,
+        args: JSON.stringify({ command: 'sleep 5' }),
+        sandboxClient: sandbox,
+        signal: controller.signal
+      })
+    ).resolves.toMatchObject({
+      success: false,
+      input: { command: 'sleep 5' },
+      response: STOPPED_TOOL_RESPONSE_TEXT
+    });
+    expect(sandbox.exec).toHaveBeenCalledWith(expect.any(String), {
+      timeout: undefined,
+      signal: controller.signal
+    });
   });
 
   it('injects sandbox files into the session sandbox', async () => {

@@ -16,7 +16,7 @@ const SandboxShellToolSchema = z.object({
 
 export const sandboxShellTool = defineTool({
   zodSchema: SandboxShellToolSchema,
-  execute: async ({ sandboxInstance, params }) => {
+  execute: async ({ sandboxInstance, params, signal }) => {
     const fullOutputPath = `/tmp/fastgpt-bash-${getNanoid(12)}.log`;
     const result = await sandboxInstance.exec(
       [
@@ -25,7 +25,7 @@ export const sandboxShellTool = defineTool({
         `cat ${shellQuote(fullOutputPath)}`,
         'exit "$exit_code"'
       ].join('\n'),
-      params.timeout
+      signal ? { timeout: params.timeout, signal } : params.timeout
     );
     const rawOutput = [result.stdout, result.stderr].filter(Boolean).join('\n');
     const output = truncateSandboxToolOutput({ content: rawOutput, direction: 'tail' });
@@ -42,7 +42,10 @@ export const sandboxShellTool = defineTool({
         : `Command exited with code ${result.exitCode}`;
 
     if (!output.truncated && !result.truncated) {
-      await sandboxInstance.provider.deleteFiles([fullOutputPath]).catch(() => {});
+      const cleanupPromise = sandboxInstance.provider.deleteFiles([fullOutputPath]).catch(() => {});
+      if (!signal?.aborted) {
+        await cleanupPromise;
+      }
     }
 
     return {

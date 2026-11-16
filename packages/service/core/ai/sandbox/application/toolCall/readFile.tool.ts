@@ -5,7 +5,7 @@
  */
 import z from 'zod';
 import { defineTool } from './type';
-import { truncateSandboxToolOutput } from './utils';
+import { ensureSandboxAvailableWithSignal, truncateSandboxToolOutput } from './utils';
 import { SANDBOX_TOOL_MAX_BYTES } from '../../constants';
 
 export const SandboxReadFileToolSchema = z.object({
@@ -23,8 +23,8 @@ const decodeFileContent = (content: unknown) => {
 
 export const sandboxReadFileTool = defineTool({
   zodSchema: SandboxReadFileToolSchema,
-  execute: async ({ sandboxInstance, params }) => {
-    await sandboxInstance.ensureAvailable();
+  execute: async ({ sandboxInstance, params, signal }) => {
+    await ensureSandboxAvailableWithSignal({ sandboxInstance, signal });
 
     const providerPath = sandboxInstance.resolveRuntimePath(params.path, {
       allowAbsolutePath: true

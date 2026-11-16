@@ -881,6 +881,40 @@ describe('createStreamResponse', () => {
       }
     );
 
+    it('preserves reasoning and partial text when AbortSignal aborts mid-stream', async () => {
+      const callbacks = createCallbacks();
+      const abortController = new AbortController();
+      callbacks.onStreaming.mockImplementation(({ text }) => {
+        if (text === 'hello') {
+          abortController.abort(new Error('Chat stopped'));
+        }
+      });
+      const { response, abort } = createStream(
+        [
+          chunk({ reasoning_content: 'step 1' }),
+          chunk({ content: 'hello' }),
+          chunk({ content: ' world' }),
+          chunk({}, 'stop')
+        ],
+        { withController: true, error: new Error('must not read past signal abort') }
+      );
+
+      const result = await createStreamResponse({
+        body: createBody(),
+        response,
+        signal: abortController.signal,
+        ...callbacks
+      });
+
+      expect(result).toMatchObject({
+        reasoningText: 'step 1',
+        answerText: 'hello',
+        finish_reason: 'close',
+        error: undefined
+      });
+      expect(abort).toHaveBeenCalledTimes(1);
+    });
+
     it.each(
       modes.flatMap((mode) => [
         { ...mode, wrapped: false },

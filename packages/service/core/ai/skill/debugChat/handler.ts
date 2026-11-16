@@ -42,6 +42,7 @@ import {
   updateInteractiveChat
 } from '../../../chat/saveChat';
 import { preChatRound, type PreChatRoundResult } from '../../../chat/utils/prepare';
+import { createGenerationLeaseReleaser } from '../../../chat/generationLease';
 import { WORKFLOW_MAX_RUN_TIMES } from '../../../workflow/constants';
 import { dispatchWorkFlow } from '../../../workflow/dispatch';
 import type { AgentSandboxPrepareAction } from '../../../workflow/dispatch/ai/agent/sub/sandbox';
@@ -106,6 +107,9 @@ export async function runSkillDebugChat({
     responseChatItemId: '',
     finalized: false
   };
+  const releaseGenerationLeaseOnce = createGenerationLeaseReleaser(
+    () => roundState.preparedRound?.releaseGenerationLease
+  );
 
   try {
     const {
@@ -308,9 +312,6 @@ export async function runSkillDebugChat({
       streamResponseContext?.responseWrite(workflowSseEvent.flowNodeResponse(nodeResponse));
     });
     // 本轮耗时由 dispatch 在 root runtime 统一下发（本流的 writer 已交给它），此处重复下发会让客户端累加翻倍。
-
-    streamResponseContext.responseWrite(workflowSseEvent.answerStop());
-
     const aiResponse: AIChatItemType & { dataId?: string } = {
       dataId: finalResponseChatItemId,
       obj: ChatRoleEnum.AI,
@@ -346,7 +347,9 @@ export async function runSkillDebugChat({
       await finalizeChatRound(saveParams);
     }
     roundState.finalized = true;
+    await releaseGenerationLeaseOnce();
 
+    streamResponseContext.responseWrite(workflowSseEvent.answerStop());
     streamResponseContext.responseWrite(workflowSseEvent.done(SseResponseEventEnum.answer));
   } catch (err: any) {
     const { preparedRound } = roundState;
@@ -367,6 +370,7 @@ export async function runSkillDebugChat({
         });
       }
     }
+    await releaseGenerationLeaseOnce();
 
     if (!streamResponseContext) throw err;
 
@@ -376,7 +380,7 @@ export async function runSkillDebugChat({
       // runner 统一等待缓存收尾，HTTP 响应仍由调用方关闭。
       await streamResponseContext?.flushResume();
     } finally {
-      await roundState.preparedRound?.releaseGenerationLease?.();
+      await releaseGenerationLeaseOnce();
     }
   }
 }

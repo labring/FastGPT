@@ -36,6 +36,7 @@ export type RunHTTPToolParams = {
   staticHeaders?: HttpToolConfigType['staticHeaders'];
   staticBody?: HttpToolConfigType['staticBody'];
   resolveReference?: SecretValueReferenceResolver;
+  signal?: AbortSignal;
 };
 
 export type RunHTTPToolResult = RequireOnlyOne<{
@@ -160,7 +161,8 @@ export const runHTTPTool = async ({
   staticHeaders,
   staticBody,
   apiSchemaStr,
-  resolveReference
+  resolveReference,
+  signal
 }: RunHTTPToolParams): Promise<RunHTTPToolResult> => {
   try {
     // OpenAPI 与手动工具共用发送层，但参数来源不同；不能用 staticBody 缺失来猜测来源。
@@ -203,7 +205,8 @@ export const runHTTPTool = async ({
       headers,
       data: request.body,
       params: request.queryParams,
-      timeout: 300000
+      timeout: 300000,
+      signal
     });
 
     return { data };

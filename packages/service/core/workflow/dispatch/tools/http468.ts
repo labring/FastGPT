@@ -268,7 +268,8 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
       headers: { ...sensitiveHeaders, ...publicHeaders },
       body: requestBody,
       params,
-      timeout: httpTimeout
+      timeout: httpTimeout,
+      signal: props.stopSignal
     }).catch((error: unknown) => {
       throw new UserConfigError(getErrText(error), undefined, { cause: error });
     });
@@ -558,7 +559,8 @@ async function fetchData({
   headers,
   body,
   params,
-  timeout
+  timeout,
+  signal
 }: {
   method: string;
   url: string;
@@ -566,6 +568,7 @@ async function fetchData({
   body: Record<string, any> | string;
   params: Record<string, any>;
   timeout: number;
+  signal?: AbortSignal;
 }) {
   if (await isInternalAddress(url)) {
     return Promise.reject(PRIVATE_URL_TEXT);
@@ -582,6 +585,7 @@ async function fetchData({
     timeout: timeout * 1000,
     params: params,
     data: ['POST', 'PUT', 'PATCH'].includes(method) ? body : undefined,
+    signal,
     ...getWorkflowHttpNodeHttpsAgentConfig(url)
   });
 

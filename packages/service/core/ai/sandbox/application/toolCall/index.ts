@@ -38,6 +38,7 @@ import {
 } from '../../utils';
 import { getRunningSandboxId, getSandboxUserId } from '../../utils/id';
 import { createToolRunner, type SandboxToolCallValidator } from './type';
+import { STOPPED_TOOL_RESPONSE_TEXT } from '../../../../chat/stop';
 
 const ToolMap = {
   [SANDBOX_EDIT_FILE_TOOL_NAME]: createToolRunner(sandboxEditFileTool),
@@ -68,12 +69,14 @@ export const runSandboxTools = async ({
   toolName,
   args,
   sandboxClient,
-  validate
+  validate,
+  signal
 }: {
   toolName: string;
   args: string;
   sandboxClient: SandboxClient;
   validate?: SandboxToolCallValidator;
+  signal?: AbortSignal;
 }): Promise<SandboxToolCallResult> => {
   const startTime = Date.now();
   const getDuration = () => +((Date.now() - startTime) / 1000).toFixed(2);
@@ -99,10 +102,40 @@ export const runSandboxTools = async ({
     };
   }
 
-  const result = await tool({
-    sandboxInstance: sandboxClient,
-    input: parseJsonArgs<Record<string, unknown>>(args)
-  });
+  if (signal?.aborted) {
+    return {
+      success: false,
+      input: {},
+      response: STOPPED_TOOL_RESPONSE_TEXT,
+      durationSeconds: getDuration()
+    };
+  }
+
+  const result = await (async () => {
+    try {
+      return await tool({
+        sandboxInstance: sandboxClient,
+        input: parseJsonArgs<Record<string, unknown>>(args),
+        signal
+      });
+    } catch (error) {
+      if (signal?.aborted) {
+        return {
+          success: false as const,
+          error: STOPPED_TOOL_RESPONSE_TEXT
+        };
+      }
+      throw error;
+    }
+  })();
+  if (signal?.aborted) {
+    return {
+      success: false,
+      input: result.success ? result.input : {},
+      response: STOPPED_TOOL_RESPONSE_TEXT,
+      durationSeconds: getDuration()
+    };
+  }
   if (!result.success) {
     return {
       success: false,

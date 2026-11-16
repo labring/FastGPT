@@ -27,11 +27,16 @@ import { batchRun } from '@fastgpt/global/common/system/utils';
 import { normalizeToolResponseContent } from '@fastgpt/global/core/ai/llm/utils';
 import type { AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { MODERATION_BLOCKED_REPLACE_TEXT } from '@fastgpt/global/core/plugin/moderation/constants';
+import {
+  isModerationBlockErrorMessage,
+  MODERATION_BLOCKED_REPLACE_TEXT
+} from '@fastgpt/global/core/plugin/moderation/constants';
 import {
   createFileClassificationContext,
   type FileClassificationContext
 } from '../../../../../../../common/file/classification';
+import { raceToolWithStopGrace } from '../../../domain/stopGrace';
+import { STOPPED_TOOL_RESPONSE_TEXT } from '../../../../../../chat/stop';
 
 type RunAgentCallProps<TChildrenResponse = unknown> = {
   maxRunAgentTimes: number;
@@ -47,6 +52,9 @@ type RunAgentCallProps<TChildrenResponse = unknown> = {
   };
 
   isAborted: CreateLLMResponseProps['isAborted'];
+  stopSignal?: AbortSignal;
+  getStopDeadlineAt?: () => number | undefined;
+  toolStopGraceMs?: number;
   userKey?: CreateLLMResponseProps['userKey'];
   teamId: string;
 
@@ -146,6 +154,7 @@ export const onCompressContext = async ({
   activePlan,
   getCheckpointContext,
   isAborted,
+  stopSignal,
   messageTokens,
   requestMessages,
   modelData,
@@ -157,6 +166,7 @@ export const onCompressContext = async ({
   activePlan?: AgentPlanType;
   getCheckpointContext?: () => Promise<string>;
   isAborted: RunAgentCallProps['isAborted'];
+  stopSignal?: AbortSignal;
   messageTokens?: number;
   requestMessages: ChatCompletionMessageParam[];
   modelData: LLMModelDataType;
@@ -170,6 +180,7 @@ export const onCompressContext = async ({
     activePlan,
     getCheckpointContext,
     checkIsStopping: isAborted,
+    signal: stopSignal,
     messageTokens,
     messages: requestMessages,
     model: modelData,
@@ -219,6 +230,9 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
   userKey,
   teamId,
   isAborted,
+  stopSignal,
+  getStopDeadlineAt,
+  toolStopGraceMs,
 
   onAfterCompressContext,
   getActivePlan,
@@ -239,6 +253,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
   onStreaming
 }: RunAgentCallProps<TChildrenResponse>): Promise<RunAgentResponse<TChildrenResponse>> => {
   const modelData = model;
+  const isStopping = () => Boolean(isAborted?.() || stopSignal?.aborted);
 
   let runTimes = 0;
   let pause: AgentLoopPause<TChildrenResponse> | undefined;
@@ -326,13 +341,59 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
       metadata
     } = await (async () => {
       try {
-        return await onRunInteractiveTool({
-          ...childrenInteractiveParams,
-          call: resumedToolCall,
-          messages: requestMessages
+        const interactiveRace = await raceToolWithStopGrace({
+          execute: () =>
+            onRunInteractiveTool({
+              ...childrenInteractiveParams,
+              call: resumedToolCall,
+              messages: requestMessages
+            }),
+          stopSignal,
+          checkIsStopping: isAborted,
+          graceMs: toolStopGraceMs,
+          getStopDeadlineAt
         });
+        if (interactiveRace.status === 'stopped') {
+          return {
+            response: STOPPED_TOOL_RESPONSE_TEXT,
+            assistantMessages: [],
+            usages: [],
+            stop: false
+          };
+        }
+        if (
+          isStopping() &&
+          interactiveRace.value.errorMessage &&
+          !isModerationBlockErrorMessage(interactiveRace.value.errorMessage)
+        ) {
+          return {
+            ...interactiveRace.value,
+            response: interactiveRace.value.assistantResponses?.length
+              ? interactiveRace.value.response
+              : STOPPED_TOOL_RESPONSE_TEXT,
+            errorMessage: undefined
+          };
+        }
+        return interactiveRace.value;
       } catch (error) {
-        interactiveToolErrorMessage = `Tool error: ${getErrText(error)}`;
+        const errText = getErrText(error);
+        if (isModerationBlockErrorMessage(errText)) {
+          return {
+            response: MODERATION_BLOCKED_REPLACE_TEXT,
+            assistantMessages: [],
+            usages: [],
+            stop: false
+          };
+        }
+        if (isStopping()) {
+          return {
+            response: STOPPED_TOOL_RESPONSE_TEXT,
+            assistantMessages: [],
+            usages: [],
+            stop: false
+          };
+        }
+        interactiveToolErrorMessage = `Tool error: ${errText}`;
         return {
           response: interactiveToolErrorMessage,
           assistantMessages: [],
@@ -352,7 +413,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
       seconds: +((Date.now() - toolStartTime) / 1000).toFixed(2),
       usages: toolUsages,
       metadata,
-      interactive
+      interactive: isStopping() ? undefined : interactive
     });
 
     // FastAgent 只使用 ChatItem 重建的上下文，旧交互中的 memory 快照不再参与恢复。
@@ -374,14 +435,14 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
     });
     assistantMessages.push(...filterEmptyAssistantMessages(toolAssistantMessages));
     // 相同 tool 触发了多次交互, 调用的 toolId 认为是相同的
-    if (interactive) {
+    if (interactive && !isStopping()) {
       pause = {
         interactive,
         toolCallId: childrenInteractiveParams.toolCallId
       };
     }
 
-    if (pause || stop) {
+    if (pause || stop || isStopping()) {
       return {
         requestIds: [],
         model: modelData.model,
@@ -404,6 +465,9 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
   let lastConsecutiveToolSignature: string | undefined;
   let consecutiveSameToolRequestTimes = 0;
   while (runTimes < maxRunAgentTimes) {
+    if (isStopping()) {
+      break;
+    }
     let stopAgentLoop = false;
 
     // 费用限制由 workflow 入口统一校验；这里保留单轮 usage 明细，便于上层累计。
@@ -415,6 +479,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
         activePlan: getActivePlan?.(),
         getCheckpointContext,
         isAborted,
+        stopSignal,
         messageTokens: requestMessagesTokenCount,
         requestMessages,
         modelData,
@@ -436,6 +501,10 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
           });
         }
       }
+    }
+
+    if (isStopping()) {
+      break;
     }
 
     // 工具执行使用本轮请求快照，工具结果随后单独追加到 requestMessages。
@@ -476,11 +545,14 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
       userKey,
       teamId,
       isAborted,
+      signal: stopSignal,
       onReasoning: (event) => {
+        if (isStopping()) return;
         firstTokenTime ??= Date.now();
         onReasoning?.(event);
       },
       onStreaming: (event) => {
+        if (isStopping()) return;
         firstTokenTime ??= Date.now();
         onStreaming?.(event);
       },
@@ -614,13 +686,63 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
           metadata
         } = await (async () => {
           try {
-            return await onRunTool({
-              call: tool,
-              messages: cloneRequestMessages,
-              assistantMessage: llmAssistantMessage
+            const toolRace = await raceToolWithStopGrace({
+              execute: () =>
+                onRunTool({
+                  call: tool,
+                  messages: cloneRequestMessages,
+                  assistantMessage: llmAssistantMessage
+                }),
+              stopSignal,
+              checkIsStopping: isAborted,
+              graceMs: toolStopGraceMs,
+              getStopDeadlineAt
             });
+            if (toolRace.status === 'stopped') {
+              return {
+                response: STOPPED_TOOL_RESPONSE_TEXT,
+                assistantMessages: [],
+                usages: [],
+                stop: false,
+                skipResponseCompress: true
+              };
+            }
+            if (
+              isStopping() &&
+              toolRace.value.errorMessage &&
+              !isModerationBlockErrorMessage(toolRace.value.errorMessage)
+            ) {
+              return {
+                ...toolRace.value,
+                response: toolRace.value.assistantResponses?.length
+                  ? toolRace.value.response
+                  : STOPPED_TOOL_RESPONSE_TEXT,
+                errorMessage: undefined,
+                skipResponseCompress: true
+              };
+            }
+            return toolRace.value;
           } catch (error) {
-            toolErrorMessage = `Tool error: ${getErrText(error)}`;
+            const errText = getErrText(error);
+            if (isModerationBlockErrorMessage(errText)) {
+              return {
+                response: MODERATION_BLOCKED_REPLACE_TEXT,
+                assistantMessages: [],
+                usages: [],
+                stop: false,
+                skipResponseCompress: true
+              };
+            }
+            if (isStopping()) {
+              return {
+                response: STOPPED_TOOL_RESPONSE_TEXT,
+                assistantMessages: [],
+                usages: [],
+                stop: false,
+                skipResponseCompress: true
+              };
+            }
+            toolErrorMessage = `Tool error: ${errText}`;
             return {
               response: toolErrorMessage,
               assistantMessages: [],
@@ -631,7 +753,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
         })();
         // Compress tool response
         const { toolFinalResponse, toolResponseCompress } = await (async () => {
-          if (skipResponseCompress) {
+          if (skipResponseCompress || isStopping()) {
             return {
               toolFinalResponse: normalizeToolResponseContent(response)
             };
@@ -678,7 +800,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
           toolResponseCompress,
           metadata,
           hideInUI,
-          interactive
+          interactive: isStopping() ? undefined : interactive
         });
 
         return {
@@ -705,7 +827,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
           toolAssistantMessages,
           continuationMessage
         } of toolRunResults) {
-          if (interactive) {
+          if (interactive && !isStopping()) {
             pause = {
               interactive,
               toolCallId: tool.id
@@ -739,7 +861,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
 
           // 交互或 stop 工具已经决定暂停当前 loop，不能再执行同一轮中排在后面的工具，
           // 否则会在用户回答前产生额外副作用，且恢复上下文无法准确反映实际执行顺序。
-          if (pause || stopAgentLoop || isAborted?.()) {
+          if (pause || stopAgentLoop || isStopping()) {
             break;
           }
           continue;
@@ -767,15 +889,16 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
         await appendToolRunResults(toolRunResults);
 
         // 同一并发批次已经启动的工具无法撤回，但后续批次不应在暂停信号后继续调度。
-        if (pause || stopAgentLoop || isAborted?.()) {
+        if (pause || stopAgentLoop || isStopping()) {
           break;
         }
       }
 
       // 暂停之后的调用尚未执行，显式记录跳过结果，保证原始多工具消息始终完整配对。
       for (const tool of toolCalls.slice(toolIndex)) {
-        const response =
-          'Tool was not executed because a preceding tool paused or stopped the loop.';
+        const response = isStopping()
+          ? STOPPED_TOOL_RESPONSE_TEXT
+          : 'Tool was not executed because a preceding tool paused or stopped the loop.';
         const toolMessage: ChatCompletionMessageParam = {
           role: ChatCompletionRequestMessageRoleEnum.Tool,
           tool_call_id: tool.id,
@@ -787,13 +910,13 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
       }
 
       // 先补齐同一 assistant 的全部工具结果，再追加 User，避免破坏工具调用配对。
-      if (!pause && !stopAgentLoop && !isAborted?.()) {
+      if (!pause && !stopAgentLoop && !isStopping()) {
         for (const content of continuationMessages) await appendContinuationMessage(content);
       }
     }
 
     // 暂停、工具显式停止和取消优先于业务完成判断。
-    if (pause || stopAgentLoop || isAborted?.()) {
+    if (pause || stopAgentLoop || isStopping()) {
       break;
     }
     if (toolCalls.length > 0) {
@@ -805,7 +928,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
       if (!completionPolicy) break;
       const decision = await completionPolicy({ requestIndex: runTimes, answerText: answer });
       // 策略可能异步执行，等待期间的取消不能触发下一轮请求。
-      if (isAborted?.() || decision.action === 'complete') {
+      if (isStopping() || decision.action === 'complete') {
         break;
       }
       // 续跑指令是服务端输入，按 User 角色落库；不伪造模型工具调用，也不提升为 System。

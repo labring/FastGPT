@@ -116,4 +116,38 @@ describe('runAuxiliaryGenerationAgentLoop', () => {
       expect.objectContaining({ event: AuxiliaryGenerationEventEnum.answer })
     );
   });
+
+  it('forwards stopSignal and checkIsStopping into runAgentLoop runtime', async () => {
+    const abortController = new AbortController();
+    const checkIsStopping = vi.fn(() => abortController.signal.aborted);
+    const getStopDeadlineAt = vi.fn(() => 123456);
+    runAgentLoopMock.mockResolvedValue({
+      status: 'aborted',
+      completeMessages: [],
+      assistantMessages: [],
+      requestIds: [],
+      finishReason: 'close',
+      usages: []
+    });
+
+    await runAuxiliaryGenerationAgentLoop({
+      teamId: 'team_1',
+      model: 'gpt-4o' as any,
+      systemPrompt: 'helper prompt',
+      messages: [{ role: 'user', content: '停止测试' }],
+      checkIsStopping,
+      stopSignal: abortController.signal,
+      getStopDeadlineAt
+    });
+
+    expect(runAgentLoopMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        runtime: expect.objectContaining({
+          checkIsStopping,
+          stopSignal: abortController.signal,
+          getStopDeadlineAt
+        })
+      })
+    );
+  });
 });

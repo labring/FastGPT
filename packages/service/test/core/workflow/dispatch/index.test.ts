@@ -29,10 +29,20 @@ import {
   FlowNodeOutputTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
 import type { WorkflowVariableStateLike } from '@fastgpt/service/core/workflow/types/runtime';
-import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import {
+  DispatchNodeResponseKeyEnum,
+  SseResponseEventEnum
+} from '@fastgpt/global/core/workflow/runtime/constants';
 import { callbackMap } from '@fastgpt/service/core/workflow/dispatch/constants';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
-import { UserConfigError } from '@fastgpt/global/common/error/utils';
+import { WorkflowNodeResponseSink } from '@fastgpt/service/core/workflow/dispatch/nodeResponseSink';
+import { WorkflowNodeResponseWriter } from '@fastgpt/service/core/chat/nodeResponseStorage';
+import { WorkflowVariableState } from '@fastgpt/service/core/workflow/dispatch/utils/variables';
+import { UserConfigError, UserError } from '@fastgpt/global/common/error/utils';
+import {
+  MODERATION_BLOCKED_ERROR_MESSAGE,
+  MODERATION_BLOCKED_REPLACE_TEXT
+} from '@fastgpt/global/core/plugin/moderation/constants';
 import { getNodeErrResponse } from '@fastgpt/service/core/workflow/dispatch/utils';
 
 const waitWithTimeout = async <T>(promise: Promise<T>, timeoutMs: number, label: string) => {
@@ -180,6 +190,30 @@ describe('dispatchWorkFlow explicit stop lifecycle', () => {
     const count = read.mock.calls.length;
     await new Promise((resolve) => setTimeout(resolve, 150));
     expect(read).toHaveBeenCalledTimes(count);
+  });
+
+  it('strips failure details on non-moderation node error during stop and reports stopped in dispatchWorkFlow', async () => {
+    const originalTool = callbackMap[FlowNodeTypeEnum.tool];
+    const node = createNode('tool-normal-stop', FlowNodeTypeEnum.tool);
+    node.isEntry = true;
+    callbackMap[FlowNodeTypeEnum.tool] = vi.fn(async () => {
+      await setAgentRuntimeStop(params);
+      throw new Error('Request aborted by stop');
+    });
+
+    try {
+      const result = await dispatchWorkFlow({
+        ...createParams('v2'),
+        runtimeNodes: [node]
+      });
+
+      expect(result.stopped).toBe(true);
+      expect(result.workflowRuntimeSummary.errorCount).toBe(0);
+      expect(result.flatNodeResponses?.[0]?.error).toBeUndefined();
+      expect(result.flatNodeResponses?.[0]?.errorText).toBeUndefined();
+    } finally {
+      callbackMap[FlowNodeTypeEnum.tool] = originalTool;
+    }
   });
 });
 
@@ -2019,4 +2053,435 @@ describe('runWorkflow inline MCP discovery timing', () => {
       expect(secrets.mock.results[0]?.value).toEqual({ Authorization: 'current-token' });
     }
   );
+});
+
+describe('Workflow stop grace period and orphan write fencing', () => {
+  it('preserves partial AI output on cooperative stop without activating downstream or catch edges', async () => {
+    const originalChat = callbackMap[FlowNodeTypeEnum.chatNode];
+    const originalEditor = callbackMap[FlowNodeTypeEnum.textEditor];
+    const stopController = new AbortController();
+    const downstreamSpy = vi.fn(async () => ({ data: {} }));
+
+    callbackMap[FlowNodeTypeEnum.chatNode] = vi.fn(async () => {
+      stopController.abort(new Error('Chat stopped'));
+      return {
+        data: { [NodeOutputKeyEnum.answerText]: 'partial answer' },
+        [DispatchNodeResponseKeyEnum.answerText]: 'partial answer',
+        [DispatchNodeResponseKeyEnum.assistantResponses]: [
+          { text: { content: 'partial answer' } } as any
+        ]
+      };
+    });
+    callbackMap[FlowNodeTypeEnum.textEditor] = downstreamSpy;
+
+    try {
+      const chatNode = {
+        ...createNode('chat', FlowNodeTypeEnum.chatNode),
+        isEntry: true,
+        catchError: true
+      };
+      const nextNode = createNode('next', FlowNodeTypeEnum.textEditor);
+      const catchNode = createNode('catch', FlowNodeTypeEnum.textEditor);
+
+      const result = await runWorkflow({
+        apiVersion: 'v2',
+        mode: 'chat',
+        runningAppInfo: {
+          id: '67e0d5535c02d1d5cdede721',
+          sourceId: '67e0d5535c02d1d5cdede721',
+          name: 'stop cooperative test',
+          teamId: '654a4107c32f3bf5f998452f'
+        },
+        runningUserInfo: {
+          teamId: '654a4107c32f3bf5f998452f',
+          tmbId: '65ab7007462ada7dbb899948'
+        },
+        histories: [],
+        query: [],
+        chatConfig: {},
+        runtimeNodes: [chatNode, nextNode, catchNode],
+        runtimeEdges: [
+          createEdge('chat', 'next'),
+          {
+            ...createEdge('chat', 'catch'),
+            sourceHandle: 'chat-source-catch'
+          }
+        ],
+        variableState: createWorkflowVariableState(),
+        externalProvider: {},
+        workflowDispatchDeep: 0,
+        maxRunTimes: 10,
+        checkIsStopping: () => stopController.signal.aborted,
+        stopSignal: stopController.signal
+      } as any);
+
+      expect(downstreamSpy).not.toHaveBeenCalled();
+      expect(result.workflowRuntimeSummary.errorCount).toBe(0);
+      expect(result[DispatchNodeResponseKeyEnum.assistantResponses]).toEqual([
+        expect.objectContaining({
+          text: { content: 'partial answer' }
+        })
+      ]);
+    } finally {
+      callbackMap[FlowNodeTypeEnum.chatNode] = originalChat;
+      callbackMap[FlowNodeTypeEnum.textEditor] = originalEditor;
+    }
+  });
+
+  it('detaches hung nodes after stopGraceTimeoutMs and blocks late orphan writes', async () => {
+    const originalTool = callbackMap[FlowNodeTypeEnum.tool];
+    const originalEditor = callbackMap[FlowNodeTypeEnum.textEditor];
+    const stopController = new AbortController();
+    const downstreamSpy = vi.fn(async () => ({ data: {} }));
+    const orphanGate = Promise.withResolvers<void>();
+    let orphanSettled = false;
+    let streamClosed = false;
+    const emittedEvents: unknown[] = [];
+
+    const variableState = await WorkflowVariableState.create({
+      runningAppInfo: {
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: '67e0d5535c02d1d5cdede721',
+        name: 'stop detach test',
+        teamId: '654a4107c32f3bf5f998452f',
+        tmbId: '65ab7007462ada7dbb899948'
+      },
+      variablesConfig: [{ id: 'v1', key: 'statusVar', label: 'statusVar', type: 'input' as any }],
+      inputVariables: { statusVar: 'initial' }
+    });
+    const gatedStreamResponse = (payload: unknown) => {
+      if (!streamClosed) {
+        emittedEvents.push(payload);
+      }
+    };
+    const writer = new WorkflowNodeResponseWriter({
+      persistToDb: false,
+      retainInMemory: true,
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: '67e0d5535c02d1d5cdede721',
+      teamId: '654a4107c32f3bf5f998452f',
+      chatId: 'stop-detach-chat',
+      chatItemDataId: 'stop-detach-round'
+    });
+    const nodeResponseSink = new WorkflowNodeResponseSink({
+      writer,
+      apiVersion: 'v2',
+      workflowStreamResponse: gatedStreamResponse as any
+    });
+
+    callbackMap[FlowNodeTypeEnum.tool] = vi.fn(async (props) => {
+      stopController.abort(new Error('Chat stopped'));
+      await orphanGate.promise;
+      orphanSettled = true;
+      await props.variableState.set('statusVar', 'late-mutation');
+      await props.nodeResponseSink.publish([
+        {
+          response: {
+            id: 'late-orphan-node',
+            nodeId: 'hung-tool',
+            moduleName: 'Hung Tool',
+            moduleType: FlowNodeTypeEnum.tool,
+            runningTime: 5
+          } as any
+        }
+      ]);
+      props.workflowStreamResponse?.({
+        event: 'answer' as any,
+        data: 'late chunk'
+      });
+      return {
+        data: {},
+        [DispatchNodeResponseKeyEnum.answerText]: 'late answer'
+      };
+    });
+    callbackMap[FlowNodeTypeEnum.textEditor] = downstreamSpy;
+
+    try {
+      const hungNode = {
+        ...createNode('hung-tool', FlowNodeTypeEnum.tool),
+        isEntry: true
+      };
+      const nextNode = createNode('next', FlowNodeTypeEnum.textEditor);
+
+      const startAt = Date.now();
+      const result = await waitWithTimeout(
+        runWorkflow({
+          apiVersion: 'v2',
+          mode: 'chat',
+          runningAppInfo: {
+            id: '67e0d5535c02d1d5cdede721',
+            sourceId: '67e0d5535c02d1d5cdede721',
+            name: 'stop detach test',
+            teamId: '654a4107c32f3bf5f998452f'
+          },
+          runningUserInfo: {
+            teamId: '654a4107c32f3bf5f998452f',
+            tmbId: '65ab7007462ada7dbb899948'
+          },
+          histories: [],
+          query: [],
+          chatConfig: {},
+          runtimeNodes: [hungNode, nextNode],
+          runtimeEdges: [createEdge('hung-tool', 'next')],
+          variableState,
+          nodeResponseSink,
+          workflowStreamResponse: gatedStreamResponse,
+          externalProvider: {},
+          workflowDispatchDeep: 0,
+          maxRunTimes: 10,
+          stopGraceTimeoutMs: 40,
+          checkIsStopping: () => stopController.signal.aborted,
+          stopSignal: stopController.signal
+        } as any),
+        500,
+        'hung workflow stop grace'
+      );
+      const elapsedMs = Date.now() - startAt;
+      streamClosed = true;
+      variableState.close?.();
+      await nodeResponseSink.close();
+      const eventsBeforeOrphanSettle = emittedEvents.length;
+
+      expect(elapsedMs).toBeLessThan(400);
+      expect(orphanSettled).toBe(false);
+      expect(downstreamSpy).not.toHaveBeenCalled();
+      expect(result.workflowRuntimeSummary.errorCount).toBe(0);
+
+      orphanGate.resolve();
+      await new Promise((resolve) => setTimeout(resolve, 20));
+
+      expect(orphanSettled).toBe(true);
+      expect(variableState.get('statusVar')).toBe('initial');
+      expect(writer.getFlatNodeResponses()).toEqual([]);
+      expect(emittedEvents.length).toBe(eventsBeforeOrphanSettle);
+    } finally {
+      orphanGate.resolve();
+      callbackMap[FlowNodeTypeEnum.tool] = originalTool;
+      callbackMap[FlowNodeTypeEnum.textEditor] = originalEditor;
+    }
+  });
+
+  it('assigns strictly smaller stop grace to nested child workflows so completed inner outputs and usages return before outer detach', async () => {
+    const originalAppModule = callbackMap[FlowNodeTypeEnum.appModule];
+    const originalTool = callbackMap[FlowNodeTypeEnum.tool];
+    const originalEditor = callbackMap[FlowNodeTypeEnum.textEditor];
+
+    const stopController = new AbortController();
+    const innerOrphanGate = Promise.withResolvers<void>();
+    let observedChildStopGraceMs: number | undefined;
+
+    callbackMap[FlowNodeTypeEnum.textEditor] = vi.fn().mockImplementation(async (props) => {
+      props.usagePush([
+        {
+          moduleName: 'Inner Completed Step',
+          totalPoints: 7,
+          inputTokens: 10,
+          outputTokens: 5
+        } as any
+      ]);
+      return {
+        data: {},
+        [DispatchNodeResponseKeyEnum.answerText]: 'inner partial output'
+      };
+    });
+    callbackMap[FlowNodeTypeEnum.tool] = vi.fn().mockImplementation(async () => {
+      stopController.abort();
+      await innerOrphanGate.promise;
+      return { data: {} };
+    });
+    callbackMap[FlowNodeTypeEnum.appModule] = vi.fn().mockImplementation(async (props) => {
+      observedChildStopGraceMs = props.stopGraceTimeoutMs;
+      const innerDoneNode = {
+        ...createNode('inner-done', FlowNodeTypeEnum.textEditor),
+        isEntry: true
+      };
+      const innerHungNode = createNode('inner-hung', FlowNodeTypeEnum.tool);
+      const childRes = await runWorkflow({
+        ...props,
+        workflowDispatchDeep: props.workflowDispatchDeep + 1,
+        runtimeNodes: [innerDoneNode, innerHungNode],
+        runtimeEdges: [createEdge('inner-done', 'inner-hung')]
+      } as any);
+      props.usagePush(childRes.flowUsages);
+      return {
+        data: {},
+        [DispatchNodeResponseKeyEnum.assistantResponses]:
+          childRes[DispatchNodeResponseKeyEnum.assistantResponses]
+      };
+    });
+
+    try {
+      const parentAppNode = {
+        ...createNode('parent-child-app', FlowNodeTypeEnum.appModule),
+        isEntry: true
+      };
+      const variableState = await WorkflowVariableState.create({
+        runningAppInfo: {
+          sourceType: ChatSourceTypeEnum.app,
+          sourceId: '67e0d5535c02d1d5cdede721',
+          name: 'nested grace test',
+          teamId: '654a4107c32f3bf5f998452f',
+          tmbId: '65ab7007462ada7dbb899948'
+        },
+        variablesConfig: [],
+        inputVariables: {}
+      });
+      const result = await waitWithTimeout(
+        runWorkflow({
+          apiVersion: 'v2',
+          mode: 'chat',
+          runningAppInfo: {
+            id: '67e0d5535c02d1d5cdede721',
+            sourceId: '67e0d5535c02d1d5cdede721',
+            name: 'nested grace test',
+            teamId: '654a4107c32f3bf5f998452f'
+          },
+          runningUserInfo: {
+            teamId: '654a4107c32f3bf5f998452f',
+            tmbId: '65ab7007462ada7dbb899948'
+          },
+          histories: [],
+          query: [],
+          chatConfig: {},
+          runtimeNodes: [parentAppNode],
+          runtimeEdges: [],
+          variableState,
+          externalProvider: {},
+          workflowDispatchDeep: 1,
+          maxRunTimes: 10,
+          stopGraceTimeoutMs: 120,
+          checkIsStopping: () => stopController.signal.aborted,
+          stopSignal: stopController.signal
+        } as any),
+        800,
+        'nested child workflow stop grace'
+      );
+
+      expect(observedChildStopGraceMs).toBeDefined();
+      expect(observedChildStopGraceMs!).toBeLessThan(120);
+      expect(result.flowUsages).toEqual([
+        expect.objectContaining({
+          moduleName: 'Inner Completed Step',
+          totalPoints: 7
+        })
+      ]);
+      expect(result[DispatchNodeResponseKeyEnum.assistantResponses]).toEqual([
+        expect.objectContaining({
+          text: { content: 'inner partial output' }
+        })
+      ]);
+    } finally {
+      innerOrphanGate.resolve();
+      callbackMap[FlowNodeTypeEnum.appModule] = originalAppModule;
+      callbackMap[FlowNodeTypeEnum.tool] = originalTool;
+      callbackMap[FlowNodeTypeEnum.textEditor] = originalEditor;
+    }
+  });
+
+  it('preserves moderation replacement in isToolCall workflow even when stop signal is aborted', async () => {
+    const originalTool = callbackMap[FlowNodeTypeEnum.tool];
+    const stopController = new AbortController();
+    const node = createNode('tool-mod-stop', FlowNodeTypeEnum.tool);
+    node.isEntry = true;
+    callbackMap[FlowNodeTypeEnum.tool] = vi.fn(async () => {
+      stopController.abort(new Error('Chat stopped'));
+      throw new UserError(MODERATION_BLOCKED_ERROR_MESSAGE);
+    });
+
+    try {
+      const result = await runWorkflow({
+        apiVersion: 'v2',
+        mode: 'chat',
+        runningAppInfo: {
+          id: '67e0d5535c02d1d5cdede721',
+          name: 'tool moderation stop',
+          teamId: '654a4107c32f3bf5f998452f',
+          tmbId: '65ab7007462ada7dbb899948'
+        },
+        runningUserInfo: {
+          teamId: '654a4107c32f3bf5f998452f',
+          tmbId: '65ab7007462ada7dbb899948'
+        },
+        histories: [],
+        query: [],
+        chatConfig: {},
+        runtimeNodes: [node],
+        isToolCall: true,
+        runtimeEdges: [],
+        variableState: createWorkflowVariableState(),
+        externalProvider: {},
+        workflowDispatchDeep: 0,
+        maxRunTimes: 10,
+        checkIsStopping: () => stopController.signal.aborted,
+        stopSignal: stopController.signal
+      } as any);
+
+      expect(result.workflowRuntimeSummary.hasModerationBlock).toBe(true);
+      expect(result[DispatchNodeResponseKeyEnum.toolResponse]).toBe(
+        MODERATION_BLOCKED_REPLACE_TEXT
+      );
+      expect(result.workflowRuntimeSummary.errorCount).toBe(0);
+    } finally {
+      callbackMap[FlowNodeTypeEnum.tool] = originalTool;
+    }
+  });
+
+  it('suppresses interactive output and SSE event when workflow is stopping', async () => {
+    const originalTool = callbackMap[FlowNodeTypeEnum.tool];
+    const stopController = new AbortController();
+    const node = createNode('tool-interactive-stop', FlowNodeTypeEnum.tool);
+    node.isEntry = true;
+    const emittedEvents: Array<{ event?: SseResponseEventEnum }> = [];
+
+    callbackMap[FlowNodeTypeEnum.tool] = vi.fn(async () => {
+      stopController.abort(new Error('Chat stopped'));
+      return {
+        [DispatchNodeResponseKeyEnum.interactive]: {
+          type: 'userSelect',
+          params: {
+            description: 'choose one',
+            userSelectOptions: [{ key: 'opt-1', value: 'Option 1' }]
+          }
+        }
+      } as any;
+    });
+
+    try {
+      const result = await runWorkflow({
+        apiVersion: 'v2',
+        mode: 'chat',
+        runningAppInfo: {
+          id: '67e0d5535c02d1d5cdede721',
+          name: 'interactive stop suppression',
+          teamId: '654a4107c32f3bf5f998452f',
+          tmbId: '65ab7007462ada7dbb899948'
+        },
+        runningUserInfo: {
+          teamId: '654a4107c32f3bf5f998452f',
+          tmbId: '65ab7007462ada7dbb899948'
+        },
+        histories: [],
+        query: [],
+        chatConfig: {},
+        runtimeNodes: [node],
+        runtimeEdges: [],
+        variableState: createWorkflowVariableState(),
+        externalProvider: {},
+        workflowDispatchDeep: 0,
+        maxRunTimes: 10,
+        workflowStreamResponse: (event) => {
+          emittedEvents.push(event);
+        },
+        checkIsStopping: () => stopController.signal.aborted,
+        stopSignal: stopController.signal
+      } as any);
+
+      expect(result.workflowInteractiveResponse).toBeUndefined();
+      expect(emittedEvents.some((event) => event.event === SseResponseEventEnum.interactive)).toBe(
+        false
+      );
+    } finally {
+      callbackMap[FlowNodeTypeEnum.tool] = originalTool;
+    }
+  });
 });

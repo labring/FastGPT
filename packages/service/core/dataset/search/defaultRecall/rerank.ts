@@ -9,12 +9,14 @@ const datasetDataReRank = async ({
   rerankModel,
   data,
   query,
-  teamId
+  teamId,
+  stopSignal
 }: {
   rerankModel?: RerankModelDataType;
   data: SearchDataResponseItemType[];
   query: string;
   teamId: string;
+  stopSignal?: AbortSignal;
 }): Promise<{
   results: SearchDataResponseItemType[];
   inputTokens: number;
@@ -23,6 +25,7 @@ const datasetDataReRank = async ({
     model: rerankModel,
     teamId,
     query,
+    stopSignal,
     documents: data.map((item) => ({
       id: item.id,
       datasetId: String(item.datasetId),
@@ -64,7 +67,8 @@ export const reRankSearchResults = async ({
   query,
   rerankWeight,
   rerankCandidateNum,
-  teamId
+  teamId,
+  stopSignal
 }: {
   usingReRank: boolean;
   textRecallResults: SearchDataResponseItemType[];
@@ -73,12 +77,13 @@ export const reRankSearchResults = async ({
   rerankWeight: number;
   rerankCandidateNum?: number;
   teamId: string;
+  stopSignal?: AbortSignal;
 }): Promise<{
   results: SearchDataResponseItemType[];
   inputTokens: number;
   usingReRank: boolean;
 }> => {
-  if (!usingReRank || !query || textRecallResults.length === 0) {
+  if (!usingReRank || !query || textRecallResults.length === 0 || stopSignal?.aborted) {
     return {
       results: textRecallResults,
       inputTokens: 0,
@@ -97,8 +102,17 @@ export const reRankSearchResults = async ({
       teamId,
       rerankModel,
       query,
-      data: candidates
+      data: candidates,
+      stopSignal
     });
+
+    if (stopSignal?.aborted) {
+      return {
+        results: textRecallResults,
+        inputTokens,
+        usingReRank: false
+      };
+    }
 
     if (rerankWeight === 1) {
       return {

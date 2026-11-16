@@ -85,6 +85,25 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
       extractModel,
       lastMemory
     });
+    const { totalPoints } = formatModelChars2Points({
+      model: extractModel,
+      inputTokens: inputTokens,
+      outputTokens: outputTokens
+    });
+    if (props.checkIsStopping?.() || props.stopSignal?.aborted) {
+      if (inputTokens > 0 || outputTokens > 0) {
+        props.usagePush([
+          {
+            moduleName: name,
+            totalPoints: usedUserOpenAIKey ? 0 : totalPoints,
+            modelId: extractModel.modelId,
+            inputTokens,
+            outputTokens
+          }
+        ]);
+      }
+      return {};
+    }
     // remove invalid key
     for (const key in arg) {
       const item = extractKeys.find((item) => item.key === key);
@@ -116,11 +135,6 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
       }
     }
 
-    const { totalPoints } = formatModelChars2Points({
-      model: extractModel,
-      inputTokens: inputTokens,
-      outputTokens: outputTokens
-    });
     props.usagePush([
       {
         moduleName: name,
@@ -222,7 +236,9 @@ const completions = async (props: ActionProps) => {
       stream: true
     },
     userKey: externalProvider.openaiAccount,
-    teamId: props.runningUserInfo.teamId
+    teamId: props.runningUserInfo.teamId,
+    isAborted: props.checkIsStopping,
+    signal: props.stopSignal
   });
 
   // parse response

@@ -57,5 +57,7 @@ export type DispatchFlowResponse = {
   workflowRuntimeSummary: WorkflowRuntimeSummaryType;
   /** 请求内保留的 flat nodeResponses；只有业务入口显式开启 retainInMemory 时才返回。 */
   flatNodeResponses?: ChatHistoryItemResType[];
+  /** 本轮工作流是否因主动停止或客户端中断而提前终止。 */
+  stopped?: boolean;
   durationSeconds: number;
 };

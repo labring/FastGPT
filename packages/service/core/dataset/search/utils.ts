@@ -237,7 +237,8 @@ export const datasetSearchQueryExtension = async ({
   teamId,
   extensionBg = '',
   histories = [],
-  datasetIds = []
+  datasetIds = [],
+  stopSignal
 }: {
   query: string;
   llmModel?: LLMModelDataType;
@@ -247,6 +248,7 @@ export const datasetSearchQueryExtension = async ({
   extensionBg?: string;
   histories?: ChatItemMiniType[];
   datasetIds?: string[];
+  stopSignal?: AbortSignal;
 }) => {
   /**
    * query extension 结果可能与原 query 只有标点或空格差异。
@@ -273,7 +275,7 @@ export const datasetSearchQueryExtension = async ({
 
   // Use LLM to generate extension queries
   const aiExtensionResult = await (async () => {
-    if (!llmModel || !embeddingModel) return;
+    if (!llmModel || !embeddingModel || stopSignal?.aborted) return;
 
     try {
       const result = await queryExtension({
@@ -283,16 +285,32 @@ export const datasetSearchQueryExtension = async ({
         llmModel,
         embeddingModel,
         userKey,
-        teamId
+        teamId,
+        signal: stopSignal
       });
-      if (result.extensionQueries?.length === 0) return;
+      if (
+        result.extensionQueries?.length === 0 &&
+        result.inputTokens <= 0 &&
+        result.outputTokens <= 0
+      ) {
+        return;
+      }
       return result;
     } catch (error) {
+      if (stopSignal?.aborted) return;
       logger.error('Failed to generate extension queries', { error });
     }
   })();
 
-  if (aiExtensionResult) {
+  if (stopSignal?.aborted) {
+    return {
+      searchQueries: queries,
+      reRankQuery,
+      aiExtensionResult
+    };
+  }
+
+  if (aiExtensionResult && aiExtensionResult.extensionQueries.length > 0) {
     queries = filterSameQuery(queries.concat(aiExtensionResult.extensionQueries));
     reRankQuery = queries.join('\n');
   }

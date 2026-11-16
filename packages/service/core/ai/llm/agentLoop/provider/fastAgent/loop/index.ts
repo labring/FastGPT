@@ -213,6 +213,9 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
     teamId: runtime.teamId,
     userKey: runtime.userKey,
     isAborted: runtime.checkIsStopping,
+    stopSignal: runtime.stopSignal,
+    getStopDeadlineAt: runtime.getStopDeadlineAt,
+    toolStopGraceMs: runtime.toolStopGraceMs,
     getActivePlan: () => activePlan,
     // 内置工具会修改本地状态或依赖串行上下文，不能参与普通 runtime tool 的批量并发。
     canBatchTool: (call) => !internalToolNames.has(call.function.name),
@@ -414,7 +417,8 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
             toolName: sandboxToolName,
             args: call.function.arguments ?? '',
             sandboxClient: runtime.sandboxToolContext.client,
-            validate: runtime.sandboxToolContext.validate
+            validate: runtime.sandboxToolContext.validate,
+            signal: runtime.stopSignal
           });
           return createToolResponse(sandboxResult.response, {
             skipResponseCompress: true,
@@ -496,8 +500,10 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
     }
   });
 
-  // 用户 abort
-  if (runtime.checkIsStopping?.()) {
+  const isModerationBlocked = isModerationBlockErrorMessage(getErrText(result.error, ''));
+
+  // 用户 abort；内容审核阻断优先级高于用户停止。
+  if (!isModerationBlocked && (runtime.checkIsStopping?.() || runtime.stopSignal?.aborted)) {
     return {
       status: 'aborted',
       activePlan,

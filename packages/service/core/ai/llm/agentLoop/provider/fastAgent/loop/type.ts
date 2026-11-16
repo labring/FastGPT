@@ -58,6 +58,9 @@ export type AgentLoopRuntime<TChildrenResponse = unknown> = {
   getCheckpointContext?: () => Promise<string>;
   batchToolSize?: number;
   checkIsStopping?: () => boolean;
+  stopSignal?: AbortSignal;
+  getStopDeadlineAt?: () => number | undefined;
+  toolStopGraceMs?: number;
   systemTools?: AgentLoopSystemTools;
   toolCatalog: AgentLoopToolCatalog;
   executeTool: (e: {

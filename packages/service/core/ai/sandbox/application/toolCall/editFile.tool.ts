@@ -5,6 +5,7 @@
  */
 import z from 'zod';
 import { defineTool } from './type';
+import { ensureSandboxAvailableWithSignal } from './utils';
 
 export const SandboxEditFileToolSchema = z.object({
   entries: z.array(
@@ -18,8 +19,8 @@ export const SandboxEditFileToolSchema = z.object({
 
 export const sandboxEditFileTool = defineTool({
   zodSchema: SandboxEditFileToolSchema,
-  execute: async ({ sandboxInstance, params }) => {
-    await sandboxInstance.ensureAvailable();
+  execute: async ({ sandboxInstance, params, signal }) => {
+    await ensureSandboxAvailableWithSignal({ sandboxInstance, signal });
     const results = await sandboxInstance.provider.replaceContent(
       params.entries.map((entry) => ({
         path: sandboxInstance.resolveRuntimePath(entry.path, { allowAbsolutePath: true }),

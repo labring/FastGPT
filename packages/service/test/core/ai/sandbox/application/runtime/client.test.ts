@@ -135,6 +135,47 @@ describe('SandboxClient', () => {
     expect(runtime.adapter.createDirectories).not.toHaveBeenCalled();
     expect(runtime.adapter.execute).toHaveBeenCalledWith('echo skill', { timeoutMs: undefined });
   });
+
+  it('passes abort signal to provider.execute and skips ensureAvailable when already aborted', async () => {
+    const client = await getSandboxClient(query);
+    const preAborted = new AbortController();
+    preAborted.abort();
+
+    expect(await client.exec('echo skipped', { signal: preAborted.signal })).toEqual({
+      stdout: '',
+      stderr: 'Command execution aborted',
+      exitCode: -1
+    });
+    expect(mocks.ensure).toHaveBeenCalledTimes(1);
+    expect(runtime.adapter.execute).not.toHaveBeenCalled();
+
+    const activeController = new AbortController();
+    await client.exec('echo active', { timeout: 5, signal: activeController.signal });
+    expect(runtime.adapter.execute).toHaveBeenCalledWith('echo active', {
+      timeoutMs: 5000,
+      workingDirectory: client.getRuntimePaths().sessionWorkDirectory,
+      signal: activeController.signal
+    });
+  });
+
+  it('skips provider.execute when signal aborts while prepareWorkDirectory is pending', async () => {
+    const client = await getSandboxClient(query);
+    const dirDeferred = Promise.withResolvers<void>();
+    runtime.adapter.createDirectories.mockReturnValueOnce(dirDeferred.promise);
+    const controller = new AbortController();
+
+    const execPromise = client.exec('echo late', { signal: controller.signal });
+    await vi.waitFor(() => expect(runtime.adapter.createDirectories).toHaveBeenCalledTimes(1));
+    controller.abort();
+    dirDeferred.resolve();
+
+    await expect(execPromise).resolves.toEqual({
+      stdout: '',
+      stderr: 'Command execution aborted',
+      exitCode: -1
+    });
+    expect(runtime.adapter.execute).not.toHaveBeenCalled();
+  });
   it.each(['stop', 'delete'] as const)(
     'closes the connection before %s and lets cleanup failure proceed',
     async (action) => {

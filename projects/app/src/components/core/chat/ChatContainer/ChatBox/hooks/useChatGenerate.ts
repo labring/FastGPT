@@ -191,6 +191,7 @@ export const useChatGenerate = ({
   const generatingMessageQueueRef = useRef<QueuedGeneratingMessage[]>([]);
   // React 状态提交前也要同步锁住发送，避免同一渲染周期创建两条本地生成流。
   const chatRequestActiveRef = useRef(false);
+  const activeStreamPromiseRef = useRef<Promise<void>>();
 
   const applyGeneratingMessage = useMemoizedFn(
     (
@@ -662,6 +663,16 @@ export const useChatGenerate = ({
     safeAbortController(resumeControllerRef.current, abortReason);
   });
 
+  /** 获取点击停止瞬间正在执行的生成请求控制器与收敛 Promise，避免切会话后误读新会话 ref。 */
+  const getActiveGenerateStopTarget = useMemoizedFn(() => ({
+    controllers: [
+      chatControllerRef.current,
+      questionGuideControllerRef.current,
+      pluginControllerRef.current
+    ],
+    streamPromise: activeStreamPromiseRef.current
+  }));
+
   useEffect(() => {
     // 刷新不保证触发 React 卸载；先标记为离开，避免断流被当作发送失败而复活已清理的草稿。
     // beforeunload 可能被用户取消，往返缓存中的页面也可能恢复，只在页面销毁时断开本地订阅。
@@ -829,6 +840,11 @@ export const useChatGenerate = ({
           const abortSignal = new AbortController();
           const isLeaveAborted = () =>
             abortSignal.signal.aborted && isAbortByLeave(abortSignal.signal.reason);
+          let resolveActiveStream: (() => void) | undefined;
+          const activeStreamPromise = new Promise<void>((resolve) => {
+            resolveActiveStream = resolve;
+          });
+          activeStreamPromiseRef.current = activeStreamPromise;
 
           try {
             chatControllerRef.current = abortSignal;
@@ -1015,6 +1031,10 @@ export const useChatGenerate = ({
             });
           } finally {
             chatRequestActiveRef.current = false;
+            resolveActiveStream?.();
+            if (activeStreamPromiseRef.current === activeStreamPromise) {
+              activeStreamPromiseRef.current = undefined;
+            }
             if (autoTTSResponse) {
               finishSegmentedAudio();
             }
@@ -1027,6 +1047,7 @@ export const useChatGenerate = ({
 
   return {
     abortRequest,
+    getActiveGenerateStopTarget,
     flushGeneratingMessages: flushGeneratingMessageQueue,
     generatingMessage,
     sendPrompt

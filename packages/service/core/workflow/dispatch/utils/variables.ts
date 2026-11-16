@@ -186,7 +186,8 @@ export class WorkflowVariableState implements WorkflowVariableStateLike {
   private constructor(
     private readonly state: Map<string, WorkflowVariableStateItem>,
     private readonly fileMetaMap: Map<string, ChatFileStoreValue>,
-    private readonly sourceVariableState?: WorkflowVariableStateLike
+    private readonly sourceVariableState?: WorkflowVariableStateLike,
+    private readonly closedRef: { current: boolean } = { current: false }
   ) {}
 
   /** 创建完整变量状态，包含用户全局变量、系统变量和运行时临时变量。 */
@@ -265,6 +266,9 @@ export class WorkflowVariableState implements WorkflowVariableStateLike {
 
   /** 更新变量值，并按变量类型同步刷新 storeValue 与 runtimeValue。 */
   async set(key: string, value: unknown) {
+    if (this.closedRef.current) {
+      return this.get(key);
+    }
     const item = this.state.get(key);
     const config = item?.config;
 
@@ -362,8 +366,14 @@ export class WorkflowVariableState implements WorkflowVariableStateLike {
         ])
       ),
       new Map(this.fileMetaMap),
-      this.sourceVariableState
+      this.sourceVariableState,
+      this.closedRef
     );
+  }
+
+  /** 封锁变量写入，防止强制脱钩后的孤儿分支修改最终存储值。 */
+  close() {
+    this.closedRef.current = true;
   }
 
   /** 根据变量配置初始化单个用户变量，并完成特殊类型的 store/runtime 转换。 */

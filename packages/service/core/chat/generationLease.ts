@@ -149,3 +149,26 @@ export const tryStartChatGenerationLease = async (
     });
   };
 };
+
+/**
+ * 创建单飞、幂等且不抛错的生成租约释放器。
+ * 同一轮在正常收尾、错误处理与 finally 中复用同一 Promise，避免并发重复释放或释放异常掩盖流清理。
+ */
+export const createGenerationLeaseReleaser = (
+  getReleaseLease: () => (() => Promise<void>) | undefined
+) => {
+  let releasePromise: Promise<void> | undefined;
+
+  return () => {
+    const release = getReleaseLease();
+    if (!release) return Promise.resolve();
+
+    releasePromise ??= Promise.resolve()
+      .then(() => release())
+      .catch((error) => {
+        logger.warn('Chat generation lease release failed', { error });
+      });
+
+    return releasePromise;
+  };
+};

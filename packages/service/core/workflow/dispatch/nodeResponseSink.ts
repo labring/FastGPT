@@ -68,6 +68,7 @@ export type WorkflowNodeResponseSinkLike = {
   publish: (inputs: WorkflowNodeResponseInput[]) => Promise<ChatHistoryItemResType[]>;
   /** 是否存在请求级 writer/SSE output；summary-only scope 为 false。 */
   hasOutput?: boolean;
+  isClosed?: () => boolean;
   createScope?: (options: WorkflowNodeResponseScopeOptions) => WorkflowNodeResponseSinkLike;
   withActivity?: (activity: WorkflowNodeResponseActivity) => WorkflowNodeResponseSinkLike;
   withOutputPolicy?: (policy: WorkflowNodeResponseOutputPolicy) => WorkflowNodeResponseSinkLike;
@@ -188,7 +189,7 @@ class WorkflowNodeResponseScope implements WorkflowNodeResponseSinkLike {
   }
 
   async publish(inputs: WorkflowNodeResponseInput[]): Promise<ChatHistoryItemResType[]> {
-    if (inputs.length === 0) return [];
+    if (inputs.length === 0 || this.output?.isClosed?.()) return [];
 
     const normalizedInputs = inputs.map(({ response, parentId, record, emit }) => {
       const normalizedParentId = response.parentId ?? parentId ?? this.defaultParentId;
@@ -219,6 +220,10 @@ class WorkflowNodeResponseScope implements WorkflowNodeResponseSinkLike {
       this.activity.publishedResponseCount += outputResponseCount;
     }
     return outputResponses;
+  }
+
+  isClosed() {
+    return this.output?.isClosed?.() ?? false;
   }
 
   createScope({
@@ -277,6 +282,7 @@ export class WorkflowNodeResponseSink implements WorkflowNodeResponseSinkLike {
   private readonly responseAllData: boolean;
   private readonly responseDetail: boolean;
   private readonly workflowStreamResponse?: WorkflowResponseType;
+  private closed = false;
 
   constructor({
     writer,
@@ -300,7 +306,7 @@ export class WorkflowNodeResponseSink implements WorkflowNodeResponseSinkLike {
 
   /** 接收一批同一调度步骤产生的响应，保持 writer 的批量写入顺序并发布可见响应。 */
   async publish(inputs: WorkflowNodeResponseInput[]): Promise<ChatHistoryItemResType[]> {
-    if (inputs.length === 0) return [];
+    if (this.closed || inputs.length === 0) return [];
 
     const responses = inputs.map(({ response, parentId }) => {
       const normalizedParentId = response.parentId ?? parentId;
@@ -328,7 +334,7 @@ export class WorkflowNodeResponseSink implements WorkflowNodeResponseSinkLike {
       }
     });
 
-    if (this.apiVersion !== 'v2' || !this.workflowStreamResponse) {
+    if (this.closed || this.apiVersion !== 'v2' || !this.workflowStreamResponse) {
       return outputResponses;
     }
 
@@ -354,7 +360,12 @@ export class WorkflowNodeResponseSink implements WorkflowNodeResponseSinkLike {
     });
   }
 
+  isClosed() {
+    return this.closed;
+  }
+
   async close() {
+    this.closed = true;
     await this.writer.close();
   }
 

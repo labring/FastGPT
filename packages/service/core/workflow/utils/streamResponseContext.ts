@@ -147,6 +147,7 @@ export async function createWorkflowStreamResponseContext({
       : undefined;
   const stopMirrorKeepAlive = startStreamResumeMirrorKeepAlive(mirror);
   res.once('finish', stopMirrorKeepAlive);
+  let resumeFlushed = false;
 
   const responseWrite = getWorkflowResponseWrite({
     res,
@@ -155,6 +156,13 @@ export async function createWorkflowStreamResponseContext({
     id: responseId,
     showNodeStatus,
     streamResumeMirror: mirror
+      ? {
+          enqueueRaw: (chunk: string) => {
+            if (resumeFlushed) return;
+            return mirror.enqueueRaw(chunk);
+          }
+        }
+      : undefined
   });
 
   initWorkflowSseResponse({
@@ -185,6 +193,7 @@ export async function createWorkflowStreamResponseContext({
     flushResume() {
       // 完成与 finally 可重复调用，共享同一次缓存写入等待与 TTL 收尾。
       flushPromise ??= (async () => {
+        resumeFlushed = true;
         stopMirrorKeepAlive();
         // 分别处理两步的异常，缓存写入失败时仍需尝试 TTL 收尾。
         await mirror?.flush().catch((error) => {

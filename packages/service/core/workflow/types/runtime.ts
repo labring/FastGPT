@@ -53,12 +53,18 @@ export type WorkflowVariableStateLike = {
   toRuntimeRecord: () => Record<string, unknown>;
   toStoreRecord: () => Record<string, unknown>;
   clone: () => WorkflowVariableStateLike;
+  close?: () => void;
 };
 
 /* workflow props */
 export type ChatDispatchProps = {
   res?: NodeHttpResponse;
   checkIsStopping: () => boolean;
+  stopSignal?: AbortSignal;
+  /** 获取本轮全局停止截止时间戳，供嵌套子流程和工具计算剩余宽限预算。 */
+  getStopDeadlineAt?: () => number | undefined;
+  /** 可选覆盖停止宽限期（毫秒），用于测试或按嵌套层级递减子流程停止预算。 */
+  stopGraceTimeoutMs?: number;
   lang?: localeType;
   requestOrigin?: string;
   /** Workflow 服务端读取单个输入文件的最大字节数；缺省使用系统文件大小限制。 */

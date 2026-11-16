@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { sandboxWriteFileTool } from '@fastgpt/service/core/ai/sandbox/application/toolCall/writeFile.tool';
+import { raceToolWithStopGrace } from '@fastgpt/service/core/ai/llm/agentLoop/domain/stopGrace';
+import { STOPPED_TOOL_RESPONSE_TEXT } from '@fastgpt/service/core/chat/stop';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 
 const createSandboxInstance = () =>
@@ -74,5 +76,40 @@ describe('sandboxWriteFileTool', () => {
         params: { path: '/workspace/a.txt', content: 'hello' }
       })
     ).rejects.toThrow('Failed to write file: /workspace/a.txt');
+  });
+
+  it('does not invoke provider.writeFiles when aborted during ensureAvailable and resumed after stop grace', async () => {
+    const sandbox = createSandboxInstance();
+    const ensureDeferred = Promise.withResolvers<void>();
+    sandbox.ensureAvailable.mockReturnValueOnce(ensureDeferred.promise);
+    const controller = new AbortController();
+
+    const toolRacePromise = raceToolWithStopGrace({
+      execute: () =>
+        sandboxWriteFileTool.execute({
+          sandboxInstance: sandbox,
+          params: { path: '/workspace/a.txt', content: 'hello' },
+          signal: controller.signal
+        }),
+      stopSignal: controller.signal,
+      graceMs: 20
+    });
+
+    await vi.waitFor(() => expect(sandbox.ensureAvailable).toHaveBeenCalledTimes(1));
+    controller.abort();
+    await expect(toolRacePromise).resolves.toEqual({ status: 'stopped' });
+
+    ensureDeferred.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(sandbox.provider.writeFiles).not.toHaveBeenCalled();
+
+    await expect(
+      sandboxWriteFileTool.execute({
+        sandboxInstance: sandbox,
+        params: { path: '/workspace/a.txt', content: 'hello' },
+        signal: controller.signal
+      })
+    ).rejects.toThrow(STOPPED_TOOL_RESPONSE_TEXT);
   });
 });

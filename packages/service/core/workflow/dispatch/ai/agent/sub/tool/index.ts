@@ -64,6 +64,8 @@ export type Props = {
   uid: ChatDispatchProps['uid'];
   variableState: ChatDispatchProps['variableState'];
   runtimeNodesMap?: Map<string, RuntimeNodeItemType>;
+  checkIsStopping?: ChatDispatchProps['checkIsStopping'];
+  stopSignal?: ChatDispatchProps['stopSignal'];
   workflowStreamResponse: ChatDispatchProps['workflowStreamResponse'];
 };
 
@@ -78,6 +80,8 @@ export const dispatchTool = async ({
   uid,
   variableState,
   runtimeNodesMap,
+  checkIsStopping,
+  stopSignal,
   workflowStreamResponse
 }: Props): Promise<DispatchSubAppResponse> => {
   const resolveReference = (value: ReferenceValueType) =>
@@ -209,7 +213,7 @@ export const dispatchTool = async ({
 
       const childId = toolConfig.systemTool.toolId.split('/')[1];
 
-      const res = await pluginClient.runToolStream({
+      const streamParams = {
         pluginId: formatToolId,
         ...(childId ? { childId } : {}),
         version: tool.version ?? version ?? '',
@@ -230,7 +234,8 @@ export const dispatchTool = async ({
           invokeToken: invokeToken || '',
           usageId
         },
-        onMessage: ({ type, content }) => {
+        onMessage: ({ type, content }: { type: string; content?: string }) => {
+          if (checkIsStopping?.() || stopSignal?.aborted) return;
           if (!workflowStreamResponse || !content || !isPluginAnswerType(type)) return;
 
           workflowStreamResponse(
@@ -239,7 +244,10 @@ export const dispatchTool = async ({
               : workflowSseEvent.answerDelta(content)
           );
         }
-      });
+      };
+      const res = await (stopSignal
+        ? pluginClient.runToolStream(streamParams, { signal: stopSignal })
+        : pluginClient.runToolStream(streamParams));
 
       const result: any = res.output || {};
 
@@ -314,7 +322,8 @@ export const dispatchTool = async ({
 
       const result = await mcpClient.toolCall({
         toolName,
-        params
+        params,
+        signal: stopSignal
       });
       const errorMessage = getMCPToolErrorText(result);
       return {
@@ -368,7 +377,8 @@ export const dispatchTool = async ({
         staticParams: httpTool.staticParams,
         staticHeaders: httpTool.staticHeaders,
         staticBody: httpTool.staticBody,
-        resolveReference
+        resolveReference,
+        signal: stopSignal
       });
 
       if (errorMsg) {

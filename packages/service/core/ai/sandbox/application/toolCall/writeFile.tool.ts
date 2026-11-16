@@ -5,6 +5,7 @@
  */
 import z from 'zod';
 import { defineTool } from './type';
+import { ensureSandboxAvailableWithSignal } from './utils';
 
 export const SandboxWriteFileToolSchema = z.object({
   path: z.string(),
@@ -13,8 +14,8 @@ export const SandboxWriteFileToolSchema = z.object({
 
 export const sandboxWriteFileTool = defineTool({
   zodSchema: SandboxWriteFileToolSchema,
-  execute: async ({ sandboxInstance, params }) => {
-    await sandboxInstance.ensureAvailable();
+  execute: async ({ sandboxInstance, params, signal }) => {
+    await ensureSandboxAvailableWithSignal({ sandboxInstance, signal });
     const providerPath = sandboxInstance.resolveRuntimePath(params.path, {
       allowAbsolutePath: true
     });

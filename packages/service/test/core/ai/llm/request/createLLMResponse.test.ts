@@ -6,6 +6,7 @@ import type {
 } from '@fastgpt/global/core/ai/llm/type';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { getErrText, UserConfigError } from '@fastgpt/global/common/error/utils';
+import { MODERATION_BLOCKED_ERROR_MESSAGE } from '@fastgpt/global/core/plugin/moderation/constants';
 import type { LLMModelConfigType, LLMModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 
@@ -48,6 +49,11 @@ vi.mock('@fastgpt/service/core/ai/record/controller', async (importOriginal) => 
   saveLLMRequestRecord: vi.fn()
 }));
 
+vi.mock('@fastgpt/service/core/plugin/moderation/output', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fastgpt/service/core/plugin/moderation/output')>()),
+  checkOutputTextModeration: vi.fn(async () => ({ isPass: true }))
+}));
+
 vi.mock('@fastgpt/global/core/ai/llm/utils', () => ({
   removeDatasetCiteText: vi.fn((text: string) => text),
   normalizeToolResponseContent: vi.fn((content: unknown) =>
@@ -82,6 +88,7 @@ import { parseLLMStreamResponse, parseReasoningContent } from '@fastgpt/service/
 import { getLLMSupportParams } from '@fastgpt/global/core/ai/llm/utils';
 import { promptToolCallMessageRewrite } from '@fastgpt/service/core/ai/llm/promptCall';
 import { saveLLMRequestRecord } from '@fastgpt/service/core/ai/record/controller';
+import { checkOutputTextModeration } from '@fastgpt/service/core/plugin/moderation/output';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 
 import { createLLMResponse as rawCreateLLMResponse } from '@fastgpt/service/core/ai/llm/request';
@@ -94,6 +101,7 @@ const mockParseReasoningContent = vi.mocked(parseReasoningContent);
 const mockGetLLMSupportParams = vi.mocked(getLLMSupportParams);
 const mockPromptToolCallMessageRewrite = vi.mocked(promptToolCallMessageRewrite);
 const mockSaveLLMRequestRecord = vi.mocked(saveLLMRequestRecord);
+const mockCheckOutputTextModeration = vi.mocked(checkOutputTextModeration);
 
 /** 为请求测试补齐默认团队，同时保留生产入口其余参数的真实类型约束。 */
 const createLLMResponse = (
@@ -2427,6 +2435,241 @@ describe('createLLMResponse', () => {
         }
       ]);
       expect(result.completeMessages).toEqual(result.requestMessages);
+    });
+  });
+
+  describe('User abort before response vs continuation rounds', () => {
+    it('returns zero tokens, preserves userKey flag, and skips record persistence when round 0 aborts before response', async () => {
+      const abortController = new AbortController();
+      const mockAI = {
+        chat: {
+          completions: {
+            create: vi.fn().mockImplementation(async () => {
+              abortController.abort();
+              throw new Error('Request was aborted.');
+            })
+          }
+        }
+      };
+      mockGetAIApi.mockReturnValue(
+        createMockAIApiResult(mockAI, {
+          usedUserOpenAIKey: true,
+          baseUrl: 'https://user.example.com/v1'
+        })
+      );
+
+      const result = await createLLMResponse({
+        signal: abortController.signal,
+        userKey: { key: 'sk-user-owned' },
+        body: {
+          model: createMockModelData(),
+          messages: [{ role: ChatCompletionRequestMessageRoleEnum.User, content: 'long prompt' }],
+          stream: true
+        }
+      });
+
+      expect(result.finish_reason).toBe('close');
+      expect(result.error).toBeUndefined();
+      expect(result.usage).toEqual({
+        inputTokens: 0,
+        outputTokens: 0,
+        usedUserOpenAIKey: true
+      });
+      expect(mockCountGptMessagesTokens).not.toHaveBeenCalled();
+      expect(mockSaveLLMRequestRecord).not.toHaveBeenCalled();
+    });
+
+    it('preserves accumulated round-0 output and token usage when continuation round is aborted', async () => {
+      const abortController = new AbortController();
+      let round = 0;
+      const mockAI = {
+        chat: {
+          completions: {
+            create: vi.fn().mockImplementation(async () => {
+              round += 1;
+              if (round === 1) {
+                return {
+                  choices: [
+                    {
+                      message: { role: 'assistant', content: 'Part 1 ' },
+                      finish_reason: 'length'
+                    }
+                  ],
+                  usage: { prompt_tokens: 12, completion_tokens: 8, total_tokens: 20 }
+                };
+              }
+              abortController.abort();
+              throw new Error('Request was aborted.');
+            })
+          }
+        }
+      };
+      mockGetAIApi.mockReturnValue(createMockAIApiResult(mockAI));
+
+      const result = await createLLMResponse({
+        signal: abortController.signal,
+        maxContinuations: 2,
+        body: {
+          model: createMockModelData(),
+          messages: [{ role: ChatCompletionRequestMessageRoleEnum.User, content: 'continue me' }],
+          stream: false
+        }
+      });
+
+      expect(result.finish_reason).toBe('close');
+      expect(result.answerText).toBe('Part 1 ');
+      expect(result.error).toBeUndefined();
+      expect(result.usage).toEqual({
+        inputTokens: 12,
+        outputTokens: 8,
+        usedUserOpenAIKey: false
+      });
+    });
+
+    it('rethrows moderation block error even when abort signal is triggered concurrently', async () => {
+      const abortController = new AbortController();
+      mockCheckOutputTextModeration.mockResolvedValueOnce({
+        isPass: false,
+        blockErrorMessage: MODERATION_BLOCKED_ERROR_MESSAGE
+      });
+      const mockAI = {
+        chat: {
+          completions: {
+            create: vi.fn().mockImplementation(async () => {
+              abortController.abort();
+              return {
+                choices: [
+                  {
+                    message: { role: 'assistant', content: 'sensitive output' },
+                    finish_reason: 'stop'
+                  }
+                ],
+                usage: { prompt_tokens: 10, completion_tokens: 4, total_tokens: 14 }
+              };
+            })
+          }
+        }
+      };
+      mockGetAIApi.mockReturnValue(createMockAIApiResult(mockAI));
+
+      await expect(
+        createLLMResponse({
+          signal: abortController.signal,
+          body: {
+            model: createMockModelData(),
+            messages: [{ role: ChatCompletionRequestMessageRoleEnum.User, content: 'test' }],
+            stream: false
+          }
+        })
+      ).rejects.toThrow(MODERATION_BLOCKED_ERROR_MESSAGE);
+    });
+
+    it('treats pre-response outer-catch abort with zero empty usage as unstarted abort', async () => {
+      const abortController = new AbortController();
+      const mockAI = {
+        chat: {
+          completions: {
+            create: vi.fn().mockResolvedValue({
+              get choices() {
+                abortController.abort();
+                throw new Error('Body read aborted.');
+              }
+            })
+          }
+        }
+      };
+      mockGetAIApi.mockReturnValue(
+        createMockAIApiResult(mockAI, {
+          usedUserOpenAIKey: true,
+          baseUrl: 'https://user.example.com/v1'
+        })
+      );
+
+      const result = await createLLMResponse({
+        signal: abortController.signal,
+        userKey: { key: 'sk-user-owned' },
+        body: {
+          model: createMockModelData(),
+          messages: [{ role: ChatCompletionRequestMessageRoleEnum.User, content: 'outer abort' }],
+          stream: false
+        }
+      });
+
+      expect(result.finish_reason).toBe('close');
+      expect(result.error).toBeUndefined();
+      expect(result.rawUsage).toBeUndefined();
+      expect(result.usage).toEqual({
+        inputTokens: 0,
+        outputTokens: 0,
+        usedUserOpenAIKey: true
+      });
+      expect(mockCountGptMessagesTokens).not.toHaveBeenCalled();
+      expect(mockSaveLLMRequestRecord).not.toHaveBeenCalled();
+    });
+
+    it('preserves emitted round-0 tool calls and omits rawUsage when stream aborts before usage chunk', async () => {
+      const { parseLLMStreamResponse } = await vi.importActual<
+        typeof import('@fastgpt/service/core/ai/utils')
+      >('@fastgpt/service/core/ai/utils');
+      mockParseLLMStreamResponse.mockImplementationOnce(parseLLMStreamResponse);
+      const abortController = new AbortController();
+      const mockStream = createMockStreamResponse([
+        {
+          choices: [
+            {
+              index: 0,
+              delta: {
+                tool_calls: [
+                  {
+                    index: 0,
+                    id: 'call_abort_1',
+                    type: 'function',
+                    function: { name: 'search', arguments: '{"q":"hi"}' }
+                  }
+                ]
+              },
+              finish_reason: null
+            }
+          ]
+        }
+      ]);
+      const mockAI = {
+        chat: {
+          completions: {
+            create: vi.fn().mockResolvedValue(mockStream)
+          }
+        }
+      };
+      mockGetAIApi.mockReturnValue(createMockAIApiResult(mockAI));
+      mockCountGptMessagesTokens.mockImplementationOnce(async () => {
+        abortController.abort();
+        throw new Error('Request was aborted.');
+      });
+
+      const result = await createLLMResponse({
+        signal: abortController.signal,
+        body: {
+          model: createMockModelData(),
+          messages: [
+            { role: ChatCompletionRequestMessageRoleEnum.User, content: 'tool call abort' }
+          ],
+          tools: [
+            { type: 'function', function: { name: 'search', parameters: { type: 'object' } } }
+          ],
+          stream: true
+        }
+      });
+
+      expect(result.finish_reason).toBe('close');
+      expect(result.error).toBeUndefined();
+      expect(result.rawUsage).toBeUndefined();
+      expect(result.toolCalls).toEqual([
+        {
+          id: 'call_abort_1',
+          type: 'function',
+          function: { name: 'search', arguments: '{"q":"hi"}' }
+        }
+      ]);
     });
   });
 });

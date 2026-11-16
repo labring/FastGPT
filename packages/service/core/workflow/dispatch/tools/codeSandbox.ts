@@ -46,7 +46,8 @@ export const dispatchCodeSandbox = async (props: RunCodeType): Promise<RunCodeRe
     const { codeReturn, log } = await codeSandbox.runCode({
       codeType,
       code,
-      variables: customVariables
+      variables: customVariables,
+      signal: props.stopSignal
     });
 
     return {

@@ -69,7 +69,8 @@ import {
 } from '../context/quickReplyContext';
 import type { ResolvedChatAuthTargetInput } from '@/web/core/chat/type';
 import { useChatAuthApiTarget } from '@/web/core/chat/utils';
-import { requestStopAndAbortClient } from './utils/stop';
+import { createCapturedStopHandlers, requestStopAndAbortClient } from './utils/stop';
+import { safeAbortController } from './utils/generate';
 import { getLastAiDataId } from './utils/resume';
 import ComplianceTip from '@/components/common/ComplianceTip/index';
 import { ChatInstanceActionsContext } from '../context/chatInstanceActionsContext';
@@ -387,7 +388,13 @@ const ChatBox = ({
   const [chatGeneratingConflict, setChatGeneratingConflict] =
     useState<ChatGeneratingConflictRecovery>();
 
-  const { abortRequest, flushGeneratingMessages, generatingMessage, sendPrompt } = useChatGenerate({
+  const {
+    abortRequest,
+    getActiveGenerateStopTarget,
+    flushGeneratingMessages,
+    generatingMessage,
+    sendPrompt
+  } = useChatGenerate({
     onStartChat,
     onGeneratingMessage,
     isRoundPending,
@@ -410,16 +417,6 @@ const ChatBox = ({
     notifyChatGenerateStatusChange,
     finishChatGenerateStatus,
     onChatGeneratingConflict: resolvedFeatures.autoResume ? setChatGeneratingConflict : undefined
-  });
-  const requestStopChat = useMemoizedFn(async () => {
-    await requestStopAndAbortClient({
-      requestStop: () =>
-        postStopV2Chat({
-          ...chatAuthTarget,
-          chatId
-        }),
-      abortClientRequest: () => abortRequest('stop')
-    });
   });
   const sendPromptWithDisabledGuard = useMemoizedFn((input: ChatBoxInputType) => {
     if (disabledSendTip) {
@@ -484,7 +481,7 @@ const ChatBox = ({
     });
   });
 
-  const { recoverChatGeneratingConflict } = useChatResume({
+  const { recoverChatGeneratingConflict, getActiveResumeStopTarget } = useChatResume({
     enableAutoResume: resolvedFeatures.autoResume,
     isReady,
     resumeTargetAiDataId,
@@ -497,6 +494,27 @@ const ChatBox = ({
     scrollToBottom: autoScrollToBottom,
     finishChatGenerateStatus,
     onChatGeneratingConflictRecovered
+  });
+  const requestStopChat = useMemoizedFn(async () => {
+    const targetChatId = chatId;
+    const targetChatAuthTarget = chatAuthTarget;
+    const generateTarget = getActiveGenerateStopTarget();
+    const resumeTarget = getActiveResumeStopTarget();
+    const { waitForStreamSettle, abortClientRequest } = createCapturedStopHandlers({
+      controllers: [...generateTarget.controllers, resumeTarget.controller],
+      streamPromises: [generateTarget.streamPromise, resumeTarget.streamPromise],
+      abortController: safeAbortController
+    });
+
+    await requestStopAndAbortClient({
+      requestStop: () =>
+        postStopV2Chat({
+          ...targetChatAuthTarget,
+          chatId: targetChatId
+        }),
+      waitForStreamSettle,
+      abortClientRequest
+    });
   });
 
   useEffect(() => {

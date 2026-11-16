@@ -109,7 +109,23 @@ export class SandboxClient {
    *
    * 执行前会先 ensureAvailable；失败时返回标准 ExecuteResult，让 workflow 能把错误当作工具输出处理。
    */
-  async exec(command: string, timeout?: number): Promise<ExecuteResult> {
+  async exec(
+    command: string,
+    timeoutOrOptions?: number | { timeout?: number; signal?: AbortSignal }
+  ): Promise<ExecuteResult> {
+    const { timeout, signal } =
+      typeof timeoutOrOptions === 'number' || timeoutOrOptions === undefined
+        ? { timeout: timeoutOrOptions, signal: undefined }
+        : timeoutOrOptions;
+
+    if (signal?.aborted) {
+      return {
+        stdout: '',
+        stderr: 'Command execution aborted',
+        exitCode: -1
+      };
+    }
+
     try {
       await this.ensureAvailable();
     } catch (err) {
@@ -124,16 +140,39 @@ export class SandboxClient {
       };
     }
 
+    if (signal?.aborted) {
+      return {
+        stdout: '',
+        stderr: 'Command execution aborted',
+        exitCode: -1
+      };
+    }
+
     return await this.prepareWorkDirectory()
-      .then(() =>
-        this.provider.execute(command, {
+      .then(() => {
+        if (signal?.aborted) {
+          return {
+            stdout: '',
+            stderr: 'Command execution aborted',
+            exitCode: -1
+          };
+        }
+        return this.provider.execute(command, {
           timeoutMs: timeout ? timeout * 1000 : undefined,
           ...(isAppSandboxSourceType(this.query.sourceType)
             ? { workingDirectory: this.runtimePaths.sessionWorkDirectory }
-            : {})
-        })
-      )
+            : {}),
+          ...(signal ? { signal } : {})
+        });
+      })
       .catch((err: unknown) => {
+        if (signal?.aborted) {
+          return {
+            stdout: '',
+            stderr: 'Command execution aborted',
+            exitCode: -1
+          };
+        }
         logger.error('Failed to execute sandbox', { sandboxId: this.query.sandboxId, error: err });
         return {
           stdout: '',

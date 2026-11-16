@@ -16,6 +16,8 @@ import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { mergeToolRuntimeParams } from '@fastgpt/global/core/app/tool/runtime';
+import { AGENT_TOOL_STOP_GRACE_MS } from '../../../../../ai/llm/agentLoop/domain/stopGrace';
+import { getNestedStopGraceMs } from '../../../../../chat/stop';
 
 /**
  * 收集 Agent 节点可用的 workflow runtime tools 和用户选择的子应用工具。
@@ -77,6 +79,9 @@ export const getSubapps = async ({
 export type ToolDispatchContext = Pick<
   DispatchAgentModuleProps,
   | 'checkIsStopping'
+  | 'stopSignal'
+  | 'getStopDeadlineAt'
+  | 'stopGraceTimeoutMs'
   | 'chatConfig'
   | 'runningUserInfo'
   | 'runningAppInfo'
@@ -160,6 +165,9 @@ export const getExecuteTool = ({
   getSubAppInfo,
   getSubApp,
   checkIsStopping,
+  stopSignal,
+  getStopDeadlineAt,
+  stopGraceTimeoutMs,
   runningUserInfo,
   runningAppInfo,
   chatId,
@@ -180,6 +188,12 @@ export const getExecuteTool = ({
   query,
   nodeResponseSink
 }: ToolDispatchContext) => {
+  const toolStopGraceMs = Math.min(
+    AGENT_TOOL_STOP_GRACE_MS,
+    stopGraceTimeoutMs ?? AGENT_TOOL_STOP_GRACE_MS
+  );
+  const childWorkflowGraceMs = getNestedStopGraceMs(toolStopGraceMs);
+
   /**
    * 执行单次工具调用，并补齐节点响应的 id、运行时间和计费信息。
    */
@@ -258,6 +272,8 @@ export const getExecuteTool = ({
             uid,
             variableState,
             runtimeNodesMap,
+            checkIsStopping,
+            stopSignal,
             // Agent 统一负责外层流输出，子工具不得绕过 Agent 直接写入响应流。
             workflowStreamResponse: undefined
           });
@@ -292,6 +308,9 @@ export const getExecuteTool = ({
             userChatInput: userChatInput,
             customAppVariables: params,
             checkIsStopping,
+            stopSignal,
+            getStopDeadlineAt,
+            stopGraceTimeoutMs: childWorkflowGraceMs,
             lang,
             requestOrigin,
             mode,
@@ -368,6 +387,9 @@ export const getExecuteTool = ({
             userChatInput: '',
             customAppVariables,
             checkIsStopping,
+            stopSignal,
+            getStopDeadlineAt,
+            stopGraceTimeoutMs: childWorkflowGraceMs,
             lang,
             requestOrigin,
             mode,

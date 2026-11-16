@@ -61,7 +61,8 @@ export const dispatchReadFiles = async (props: Props): Promise<Response> => {
       tmbId,
       customPdfParse,
       usageId,
-      fileContext: getWorkflowFileContext()
+      fileContext: getWorkflowFileContext(),
+      signal: props.stopSignal
     });
     const files = readFilesResult.map((item, index) => ({
       id: `${index}`,

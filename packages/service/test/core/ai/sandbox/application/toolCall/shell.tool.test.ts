@@ -66,6 +66,29 @@ describe('sandboxShellTool', () => {
     expect(result.response).toBe('out\nerr\n\nCommand exited with code 2');
   });
 
+  it('forwards abort signal to sandbox.exec and triggers non-blocking temp file cleanup when aborted', async () => {
+    const sandbox = createSandboxInstance();
+    const controller = new AbortController();
+    const neverSettledDelete = new Promise<void>(() => {});
+    sandbox.provider.deleteFiles.mockReturnValueOnce(neverSettledDelete);
+    sandbox.exec.mockImplementationOnce(async () => {
+      controller.abort();
+      return { stdout: '', stderr: 'Command execution aborted', exitCode: -1 };
+    });
+
+    await sandboxShellTool.execute({
+      sandboxInstance: sandbox,
+      params: { command: 'sleep 10', timeout: 30 },
+      signal: controller.signal
+    });
+
+    expect(sandbox.exec).toHaveBeenCalledWith(expect.any(String), {
+      timeout: 30,
+      signal: controller.signal
+    });
+    expect(sandbox.provider.deleteFiles).toHaveBeenCalledTimes(1);
+  });
+
   it('keeps the tail of long output and points to the full output file', async () => {
     const sandbox = createSandboxInstance();
     sandbox.exec.mockResolvedValueOnce({

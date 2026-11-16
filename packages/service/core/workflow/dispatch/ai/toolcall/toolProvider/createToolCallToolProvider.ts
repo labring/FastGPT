@@ -18,6 +18,8 @@ import { dispatchWorkflowReadFiles } from '../../readFiles';
 import { getWorkflowFileMaxAmount } from '../../../../utils/context';
 import type { DispatchFlowResponse } from '../../../type';
 import { WorkflowMemoryState } from '../../../../memory/state';
+import { AGENT_TOOL_STOP_GRACE_MS } from '../../../../../ai/llm/agentLoop/domain/stopGrace';
+import { getNestedStopGraceMs } from '../../../../../chat/stop';
 
 type CacheToolFlowResponse = (args: {
   callId: string;
@@ -65,10 +67,16 @@ export const createToolCallToolProvider = async ({
   const datasetSearchNodeIds = toolNodes
     .filter((toolNode) => toolNode.flowNodeType === FlowNodeTypeEnum.datasetSearchNode)
     .map((toolNode) => toolNode.nodeId);
+  const toolStopGraceMs = Math.min(
+    AGENT_TOOL_STOP_GRACE_MS,
+    workflowProps.stopGraceTimeoutMs ?? AGENT_TOOL_STOP_GRACE_MS
+  );
+  const childWorkflowGraceMs = getNestedStopGraceMs(toolStopGraceMs);
   const runWorkflowTool: CreateAgentLoopCoreWorkflowToolRunnerParams<WorkflowInteractiveResponseType>['runWorkflowTool'] =
     async ({ runtimeNodes, runtimeEdges, lastInteractive }) => {
       const result = await runWorkflow({
         ...workflowProps,
+        stopGraceTimeoutMs: childWorkflowGraceMs,
         memoryState: memoryState.fork(),
         // 继承父流程的流式能力；是否禁流由子节点的 forbidStream 控制。
         // 简易应用在表单转换时强制禁流，不能在共用 ToolCall 层关闭所有工作流的输出。
@@ -109,7 +117,8 @@ export const createToolCallToolProvider = async ({
         tmbId: workflowProps.runningUserInfo.tmbId,
         customPdfParse: workflowProps.chatConfig?.fileSelectConfig?.customPdfParse,
         usageId: workflowProps.usageId,
-        maxFileAmount: readFileMaxFileAmount
+        maxFileAmount: readFileMaxFileAmount,
+        signal: workflowProps.stopSignal
       })
   });
 

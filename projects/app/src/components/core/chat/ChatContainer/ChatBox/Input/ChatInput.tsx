@@ -288,10 +288,9 @@ const ChatInput = ({
     [inputValue, lastInteractive, canSendMessage, fileList, onSendMessage, resetCompletionContext]
   );
   const { runAsync: handleStop, loading: isStopping } = useRequest(async () => {
+    if (isStopping || !isChatting) return;
     try {
-      if (isChatting) {
-        await onStopChat();
-      }
+      await onStopChat();
     } catch {
       return;
     }
@@ -661,10 +660,19 @@ const ChatInput = ({
                 isChatting ? 'primary.50' : canSendMessage ? 'primary.500' : 'rgba(17, 24, 36, 0.1)'
               }
               borderRadius={['md', 'lg']}
-              cursor={isChatting ? 'pointer' : canSendMessage ? 'pointer' : 'not-allowed'}
+              cursor={
+                isStopping
+                  ? 'not-allowed'
+                  : isChatting
+                    ? 'pointer'
+                    : canSendMessage
+                      ? 'pointer'
+                      : 'not-allowed'
+              }
               onClick={(e) => {
                 e.stopPropagation();
                 if (isChatting) {
+                  if (isStopping) return;
                   void handleStop();
                   return;
                 }

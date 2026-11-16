@@ -76,6 +76,8 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
     runningUserInfo,
     runningAppInfo,
     variableState,
+    checkIsStopping,
+    stopSignal,
     workflowStreamResponse,
     node: { name, avatar, toolConfig, version, catchError }
   } = props;
@@ -135,7 +137,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
     context.mcpClientMemory[cacheKey] = mcpClient;
 
     toolInput = params;
-    return mcpClient.toolCall({ toolName, params, closeConnection: false });
+    return mcpClient.toolCall({ toolName, params, closeConnection: false, signal: stopSignal });
   };
 
   /** HTTP 子工具沿用现有参数透传、工具级凭据优先级与标准节点响应。 */
@@ -168,7 +170,8 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
       staticParams: tool.staticParams,
       staticHeaders: tool.staticHeaders,
       staticBody: tool.staticBody,
-      resolveReference
+      resolveReference,
+      signal: stopSignal
     });
 
     if (errorMsg) {
@@ -289,7 +292,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
       const childId = toolConfig.systemTool.toolId.split('/')[1];
       let answerText = '';
 
-      const res = await pluginClient.runToolStream({
+      const streamParams = {
         pluginId: formatToolId,
         version: tool.version ?? version ?? '',
         source: runtimeToolSource,
@@ -310,7 +313,8 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
           time: cTime,
           usageId: props.usageId
         },
-        onMessage: ({ type, content }) => {
+        onMessage: ({ type, content }: { type: string; content?: string }) => {
+          if (checkIsStopping?.() || stopSignal?.aborted) return;
           if (!workflowStreamResponse || !content || !isPluginAnswerType(type)) return;
 
           answerText += content;
@@ -320,7 +324,10 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
               : workflowSseEvent.answerDelta(content)
           );
         }
-      });
+      };
+      const res = await (stopSignal
+        ? pluginClient.runToolStream(streamParams, { signal: stopSignal })
+        : pluginClient.runToolStream(streamParams));
 
       const result = (res.output as any) || {};
 
@@ -480,7 +487,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
         })
       });
       toolInput = restParams;
-      const result = await mcpClient.toolCall({ toolName, params: restParams });
+      const result = await mcpClient.toolCall({ toolName, params: restParams, signal: stopSignal });
       return getMcpResponse(result);
     }
   } catch (error) {

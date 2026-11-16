@@ -418,6 +418,7 @@ export class WorkflowNodeResponseWriter {
   // 子 workflow 可能共享同一个 writer，并发 record 必须串行化，才能保证写入顺序稳定。
   private writeQueue = Promise.resolve();
   private failedFlushCount = 0;
+  private closed = false;
   constructor({
     model,
     batchSize = 5,
@@ -476,11 +477,15 @@ export class WorkflowNodeResponseWriter {
    * 返回值与请求内保留的完整 row data 一致。
    */
   async record(nodeResponses?: ChatHistoryItemResType[]) {
+    if (this.closed || !nodeResponses?.length) {
+      return [];
+    }
     const rows = createChatItemResponseRows({
       ...this.base,
       nodeResponses
     });
     await this.enqueue(async () => {
+      if (this.closed) return;
       this.buffer.push(...rows);
       this.retainFlatRows(rows);
       if (!this.persistToDb) {
@@ -644,6 +649,7 @@ export class WorkflowNodeResponseWriter {
    */
   async close() {
     await this.enqueue(async () => {
+      if (this.closed) return;
       // close 是 saveChat 前的最终检查：尽量把剩余 rows 写完；失败则只记录日志。
       await this.flushBufferedRows();
       if (this.buffer.length > 0) {
@@ -652,6 +658,8 @@ export class WorkflowNodeResponseWriter {
           failedFlushCount: this.failedFlushCount
         });
       }
+      // 封锁后续迟到写入，避免强制脱钩后的孤儿节点继续向 Mongo 或内存缓存追加记录。
+      this.closed = true;
     });
   }
 

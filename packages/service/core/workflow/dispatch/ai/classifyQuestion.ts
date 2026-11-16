@@ -73,13 +73,27 @@ export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse
     histories: chatHistories,
     cqModel
   });
-  const result = agents.find((item) => item.key === arg?.type) || agents[agents.length - 1];
-
   const { totalPoints } = formatModelChars2Points({
     model: cqModel,
     inputTokens: inputTokens,
     outputTokens: outputTokens
   });
+  if (props.checkIsStopping?.() || props.stopSignal?.aborted) {
+    if (inputTokens > 0 || outputTokens > 0) {
+      props.usagePush([
+        {
+          moduleName: name,
+          totalPoints: usedUserOpenAIKey ? 0 : totalPoints,
+          modelId: cqModel.modelId,
+          inputTokens: inputTokens,
+          outputTokens: outputTokens
+        }
+      ]);
+    }
+    return {};
+  }
+  const result = agents.find((item) => item.key === arg?.type) || agents[agents.length - 1];
+
   props.usagePush([
     {
       moduleName: name,
@@ -120,6 +134,8 @@ const completions = async ({
   runningUserInfo,
   histories,
   lastMemory,
+  checkIsStopping,
+  stopSignal,
   params: { agents, systemPrompt = '', userChatInput }
 }: ActionProps) => {
   const messages: ChatItemMiniType[] = [
@@ -162,7 +178,9 @@ const completions = async ({
       stream: true
     },
     userKey: externalProvider.openaiAccount,
-    teamId: runningUserInfo.teamId
+    teamId: runningUserInfo.teamId,
+    isAborted: checkIsStopping,
+    signal: stopSignal
   });
 
   // console.log(JSON.stringify(chats2GPTMessages({ messages, reserveId: false }), null, 2));

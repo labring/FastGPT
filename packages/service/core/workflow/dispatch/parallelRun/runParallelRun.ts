@@ -128,6 +128,21 @@ export const dispatchParallelRun = async (props: Props): Promise<Response> => {
           });
 
           const result = parseTaskResponse({ index, response });
+          if (checkIsStopping?.() || props.stopSignal?.aborted) {
+            const stoppedResult = {
+              ...result,
+              taskResponseId,
+              runningTime,
+              totalPoints: accumulatedPoints
+            };
+            attemptResults.push({
+              ...result,
+              taskResponseId,
+              runningTime,
+              totalPoints: attemptPoints
+            });
+            return stoppedResult;
+          }
           if (result.success) {
             successfulTaskMemories[index] = response[DispatchNodeResponseKeyEnum.memories];
             await syncContainerRunState({
@@ -166,6 +181,9 @@ export const dispatchParallelRun = async (props: Props): Promise<Response> => {
             totalPoints: accumulatedPoints
           };
         } catch (err) {
+          if (checkIsStopping?.() || props.stopSignal?.aborted) {
+            return lastResult;
+          }
           // 重试成功不遗留本节点的失败状态；最终异常由外层调度统一记录。
           if (attempt === maxRetryAttempts) parallelFailure = { rawError: err };
           const attemptResult = {

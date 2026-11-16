@@ -71,6 +71,8 @@ export const runAuxiliaryGeneration = async <T>({
       requestOrigin: req.headers.origin,
       streamWriter: streamContext.write,
       checkIsStopping: stopController.checkIsStopping,
+      stopSignal: stopController.stopSignal,
+      getStopDeadlineAt: stopController.getStopDeadlineAt,
       usageSink: usageContext.pushUsage,
       maxFiles,
       customPdfParse,
@@ -83,16 +85,17 @@ export const runAuxiliaryGeneration = async <T>({
       }
     });
 
-    streamContext.writeDone();
-
     return {
       ...result,
       durationSeconds: +((Date.now() - startedAt) / 1000).toFixed(2),
       streamContext
     };
   } catch (error) {
-    await streamContext?.flushResume().catch(() => undefined);
-    streamContext?.cleanup();
+    // 调用方通过 onStreamContextReady 接管流上下文时，由外层在落库、释放租约和写入错误帧后统一收尾。
+    if (!onStreamContextReady) {
+      await streamContext?.flushResume().catch(() => undefined);
+      streamContext?.cleanup();
+    }
     throw error;
   } finally {
     await stopController.cleanup();

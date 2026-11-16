@@ -3,6 +3,15 @@ import { embeddingRecall } from './embeddingRecall';
 import { fullTextRecall } from './fullTextRecall';
 import type { EmbeddingModelDataType } from '@fastgpt/global/core/ai/model/schema';
 
+const emptyMultiQueryRecallResult = () => ({
+  tokens: 0,
+  textEmbeddingRecallResults: [],
+  imageCaptionEmbeddingRecallResults: [],
+  imageVectorRecallResults: [],
+  textFullTextRecallResults: [],
+  imageCaptionFullTextRecallResults: []
+});
+
 /**
  * 默认召回的并行调度层。
  * 这里先统一计算 forbid collection 与 metadata filter，再把同一份 collection 约束
@@ -19,7 +28,8 @@ export const multiQueryRecall = async ({
   embeddingLimit,
   fullTextLimit,
   textQueries,
-  imageCaptionQueries
+  imageCaptionQueries,
+  stopSignal
 }: {
   teamId: string;
   datasetIds: string[];
@@ -32,7 +42,12 @@ export const multiQueryRecall = async ({
   fullTextLimit: number;
   textQueries: string[];
   imageCaptionQueries: string[];
+  stopSignal?: AbortSignal;
 }) => {
+  if (stopSignal?.aborted) {
+    return emptyMultiQueryRecallResult();
+  }
+
   const [forbidCollectionIdList, metadataFilterCollectionIdList] = await Promise.all([
     getForbidCollectionIdList({
       teamId,
@@ -40,6 +55,10 @@ export const multiQueryRecall = async ({
     }),
     filterCollectionByMetadata({ teamId, datasetIds, collectionFilterMatch, metadataFilterEnabled })
   ]);
+
+  if (stopSignal?.aborted) {
+    return emptyMultiQueryRecallResult();
+  }
 
   // 权限可读集合 ∩ 用户 metadata 过滤集合 → 有效过滤集合（AND 语义）。
   // 两者均未定义 → 不设 collectionId 过滤（undefined）；交集为空 → 直接返回空结果（跳过向量召回）。
@@ -52,14 +71,7 @@ export const multiQueryRecall = async ({
   }
 
   if (filterCollectionIdList && filterCollectionIdList.length === 0) {
-    return {
-      tokens: 0,
-      textEmbeddingRecallResults: [],
-      imageCaptionEmbeddingRecallResults: [],
-      imageVectorRecallResults: [],
-      textFullTextRecallResults: [],
-      imageCaptionFullTextRecallResults: []
-    };
+    return emptyMultiQueryRecallResult();
   }
 
   const [
@@ -80,7 +92,8 @@ export const multiQueryRecall = async ({
       imageCaptionQueries,
       limit: embeddingLimit,
       forbidCollectionIdList,
-      filterCollectionIdList
+      filterCollectionIdList,
+      stopSignal
     }),
     fullTextRecall({
       teamId,
@@ -91,7 +104,8 @@ export const multiQueryRecall = async ({
       ],
       limit: fullTextLimit,
       filterCollectionIdList,
-      forbidCollectionIdList
+      forbidCollectionIdList,
+      stopSignal
     })
   ]);
 

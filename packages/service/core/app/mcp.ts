@@ -780,12 +780,23 @@ export class MCPClient {
   public async toolCall({
     toolName,
     params,
-    closeConnection = true
+    closeConnection = true,
+    signal
   }: {
     toolName: string;
     params: Record<string, any>;
     closeConnection?: boolean;
+    signal?: AbortSignal;
   }): Promise<any> {
+    if (signal?.aborted) {
+      return Promise.reject(signal.reason ?? new Error('MCP tool call aborted'));
+    }
+
+    const onAbort = () => {
+      void this.closeConnection();
+    };
+    signal?.addEventListener('abort', onAbort, { once: true });
+
     try {
       const client = await this.getConnection();
       logger.debug('MCP client calling tool', {
@@ -802,7 +813,8 @@ export class MCPClient {
           },
           undefined,
           {
-            timeout: 300000
+            timeout: 300000,
+            ...(signal ? { signal } : {})
           }
         )
       );
@@ -815,6 +827,7 @@ export class MCPClient {
       });
       return Promise.reject(normalizedError);
     } finally {
+      signal?.removeEventListener('abort', onAbort);
       if (closeConnection) {
         await this.closeConnection();
       }

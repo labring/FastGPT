@@ -4,6 +4,11 @@ import {
   ModelTypeEnum
 } from '@fastgpt/global/core/ai/constants';
 import type { ChatCompletionTool } from '@fastgpt/global/core/ai/llm/type';
+import { UserError } from '@fastgpt/global/common/error/utils';
+import {
+  MODERATION_BLOCKED_ERROR_MESSAGE,
+  MODERATION_BLOCKED_REPLACE_TEXT
+} from '@fastgpt/global/core/plugin/moderation/constants';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { mockCreateLLMResponseQueue, text, toolCall } from './_mocks/llmQueue';
 
@@ -57,6 +62,7 @@ import {
   createUpdatePlanAgentTool
 } from '@fastgpt/service/core/ai/llm/agentLoop/interface';
 import { createAgentLoopSandboxTools } from '@fastgpt/service/core/ai/llm/agentLoop/domain/systemTool/sandbox';
+import { STOPPED_TOOL_RESPONSE_TEXT } from '@fastgpt/service/core/chat/stop';
 import {
   runFastAgentMainLoop,
   type AgentLoopRuntime
@@ -455,6 +461,7 @@ describe('runFastAgentMainLoop', () => {
 
     const result = await runFastAgentMainLoop({
       runtime: createRuntime({
+        stopSignal: new AbortController().signal,
         toolCatalog: {
           runtimeTools: [],
           sandboxTools: createAgentLoopSandboxTools()
@@ -480,7 +487,8 @@ describe('runFastAgentMainLoop', () => {
       expect.objectContaining({
         toolName: 'sandbox_shell',
         args: '{"command":"pwd"}',
-        sandboxClient: expect.anything()
+        sandboxClient: expect.anything(),
+        signal: expect.any(AbortSignal)
       })
     );
     expect(events).toEqual(
@@ -869,5 +877,151 @@ describe('runFastAgentMainLoop', () => {
         })
       })
     );
+  });
+
+  it('detaches a hung tool after toolStopGraceMs on stopSignal abort and pairs tool_call_id', async () => {
+    const stopController = new AbortController();
+    const neverResolves = new Promise<never>(() => {});
+    mockCreateLLMResponseQueue(createLLMResponseMock, [
+      toolCall({
+        id: 'call_hung_tool',
+        name: 'search',
+        args: { q: 'slow' }
+      }),
+      text({
+        requestId: 'req_should_not_run',
+        content: 'should not continue after stop'
+      })
+    ]);
+
+    const result = await runFastAgentMainLoop({
+      runtime: createRuntime({
+        stopSignal: stopController.signal,
+        checkIsStopping: () => stopController.signal.aborted,
+        toolStopGraceMs: 25,
+        executeTool: vi.fn(async () => {
+          stopController.abort(new Error('Chat stopped'));
+          return neverResolves;
+        })
+      }),
+      input: {
+        messages: [
+          {
+            role: ChatCompletionRequestMessageRoleEnum.User,
+            content: 'run slow tool'
+          }
+        ]
+      }
+    });
+
+    expect(result.status).toBe('aborted');
+    expect(createLLMResponseMock).toHaveBeenCalledTimes(1);
+    expect(result.completeMessages).toContainEqual(
+      expect.objectContaining({
+        role: ChatCompletionRequestMessageRoleEnum.Tool,
+        tool_call_id: 'call_hung_tool',
+        content: STOPPED_TOOL_RESPONSE_TEXT
+      })
+    );
+  });
+
+  it('preserves moderation replacement in tool response when tool hits moderation while stopping', async () => {
+    const stopController = new AbortController();
+    mockCreateLLMResponseQueue(createLLMResponseMock, [
+      toolCall({
+        id: 'call_fast_mod_stop',
+        name: 'search',
+        args: { q: 'sensitive' }
+      })
+    ]);
+
+    const result = await runFastAgentMainLoop({
+      runtime: createRuntime({
+        stopSignal: stopController.signal,
+        checkIsStopping: () => stopController.signal.aborted,
+        executeTool: vi.fn(async () => {
+          stopController.abort(new Error('Chat stopped'));
+          throw new UserError(MODERATION_BLOCKED_ERROR_MESSAGE);
+        })
+      }),
+      input: {
+        messages: [
+          {
+            role: ChatCompletionRequestMessageRoleEnum.User,
+            content: 'search'
+          }
+        ]
+      }
+    });
+
+    expect(result.status).toBe('aborted');
+    expect(result.completeMessages).toContainEqual(
+      expect.objectContaining({
+        role: ChatCompletionRequestMessageRoleEnum.Tool,
+        tool_call_id: 'call_fast_mod_stop',
+        content: MODERATION_BLOCKED_REPLACE_TEXT
+      })
+    );
+    expect(result.completeMessages).not.toContainEqual(
+      expect.objectContaining({
+        content: STOPPED_TOOL_RESPONSE_TEXT
+      })
+    );
+  });
+
+  it('clears interactive error and suppresses tool_interactive when stopping during interactive resume', async () => {
+    const stopController = new AbortController();
+    const events: any[] = [];
+
+    const result = await runFastAgentMainLoop({
+      runtime: createRuntime({
+        stopSignal: stopController.signal,
+        checkIsStopping: () => stopController.signal.aborted,
+        emitEvent: (event) => events.push(event),
+        executeInteractiveTool: vi.fn(async () => {
+          stopController.abort(new Error('Chat stopped'));
+          return {
+            response: 'Tool error: aborted',
+            errorMessage: 'Tool error: aborted',
+            interactive: { type: 'userSelect', params: { description: 'choose' } },
+            assistantMessages: [],
+            usages: []
+          };
+        })
+      }),
+      input: {
+        messages: [
+          {
+            role: ChatCompletionRequestMessageRoleEnum.Assistant,
+            content: null,
+            tool_calls: [
+              {
+                id: 'call_resume_stop',
+                type: 'function',
+                function: { name: 'search', arguments: '{}' }
+              }
+            ]
+          },
+          {
+            role: ChatCompletionRequestMessageRoleEnum.Tool,
+            tool_call_id: 'call_resume_stop',
+            content: 'waiting'
+          }
+        ],
+        childrenInteractiveParams: {
+          childrenResponse: { type: 'userSelect' },
+          toolCallId: 'call_resume_stop'
+        }
+      }
+    });
+
+    expect(result.status).toBe('aborted');
+    expect(result.pause).toBeUndefined();
+    expect(events.some((event) => event.type === 'tool_interactive')).toBe(false);
+    expect(events.find((event) => event.type === 'tool_run_end')).toMatchObject({
+      call: { id: 'call_resume_stop' },
+      response: STOPPED_TOOL_RESPONSE_TEXT,
+      errorMessage: undefined
+    });
   });
 });

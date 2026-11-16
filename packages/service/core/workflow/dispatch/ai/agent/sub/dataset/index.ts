@@ -46,6 +46,7 @@ type DatasetSearchParams = {
   llmModel: LLMModelDataType;
   userKey?: OpenaiAccountType;
   datasetParams?: AppFormEditFormType['dataset'];
+  stopSignal?: AbortSignal;
 };
 
 /**
@@ -71,13 +72,15 @@ const selectRelevantChunksByLLM = async ({
   chunks,
   model,
   userKey,
-  teamId
+  teamId,
+  stopSignal
 }: {
   query: string;
   chunks: SearchDataResponseItemType[];
   model: LLMModelDataType;
   userKey?: OpenaiAccountType;
   teamId: string;
+  stopSignal?: AbortSignal;
 }): Promise<
   | {
       ids: string[];
@@ -92,7 +95,7 @@ const selectRelevantChunksByLLM = async ({
   const estimatedTokens = await countPromptTokens(searchResponseText);
 
   // 超过一定阈值才进行裁切
-  if (estimatedTokens <= threshold) {
+  if (estimatedTokens <= threshold || stopSignal?.aborted) {
     return;
   }
 
@@ -127,12 +130,17 @@ ${chunkSummaries}
     const response = await createLLMResponse({
       userKey,
       teamId,
+      signal: stopSignal,
+      isAborted: () => Boolean(stopSignal?.aborted),
       body: {
         model,
         messages: [{ role: 'user', content: prompt }],
         stream: false
       }
     });
+    if (stopSignal?.aborted) {
+      return;
+    }
 
     const content = response.answerText || '';
     const ids = content
@@ -173,7 +181,8 @@ export const dispatchAgentDatasetSearch = async ({
   teamId,
   tmbId,
   llmModel,
-  userKey
+  userKey,
+  stopSignal
 }: DatasetSearchParams): Promise<DispatchSubAppResponse> => {
   if (!datasetParams || datasetParams.datasets.length === 0) {
     return {
@@ -295,7 +304,8 @@ export const dispatchAgentDatasetSearch = async ({
       }),
       readableCollectionIdList,
       metadataFilterEnabled: Boolean(global.feConfigs.isPlus),
-      userKey
+      userKey,
+      stopSignal
     };
     // retrievalResults：重排前的候选快照，由检索层在 usingReRank 成立且
     // RETRIEVAL_RESULTS_LIMIT > 0 时产出；此处只透出，不参与后续选块与提示词拼装。
@@ -422,7 +432,8 @@ export const dispatchAgentDatasetSearch = async ({
       chunks: searchRes,
       model: llmModel,
       userKey,
-      teamId
+      teamId,
+      stopSignal
     });
     if (pickResults) {
       if (pickResults.ids.length > 0) {
