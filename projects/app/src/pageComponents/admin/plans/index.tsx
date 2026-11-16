@@ -3,8 +3,10 @@ import React, { useRef } from 'react';
 import { Table, Thead, Tbody, Tr, Th, Td, Flex, Box } from '@chakra-ui/react';
 import dayjs from 'dayjs';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import AdminCompositeSearch, { useAdminCompositeSearch } from '@/components/admin/CompositeSearch';
-import type { AdminSearchOption } from '@/components/admin/CompositeSearch/utils';
+import AdminCompositeSearch, {
+  useAdminCompositeSearch,
+  useAdminTeamSearchOptions
+} from '@/components/admin/CompositeSearch';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import { getPlans } from '@/web/admin/wallet/plan/api';
 import { standardSubLevelMap } from '../pays';
@@ -47,13 +49,8 @@ export type PlanType = {
   enableSandbox?: boolean;
 };
 
-const planSearchOptions: readonly AdminSearchOption<'username' | 'teamId' | 'teamName'>[] = [
-  { value: 'username', label: '用户名', placeholder: '搜索用户名' },
-  { value: 'teamId', label: '团队 ID', placeholder: '搜索团队 ID', exactObjectId: true },
-  { value: 'teamName', label: '团队名', placeholder: '搜索团队名' }
-];
-
 const PlanTable = () => {
+  const planSearchOptions = useAdminTeamSearchOptions();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const { searchField, inputValue, isInvalid, searchParams, onFieldChange, onInputChange } =
     useAdminCompositeSearch({ options: planSearchOptions });

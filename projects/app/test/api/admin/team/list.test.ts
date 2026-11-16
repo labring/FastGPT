@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as listTeamsApi from '@/pages/api/admin/team/list';
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
@@ -193,6 +193,71 @@ describe('GET /api/admin/team/list', () => {
       String(betaTeam._id),
       String(gammaTeam._id)
     ]);
+  });
+
+  it('paginates visited and unvisited segments in DB without loading full visited history into Node.js', async () => {
+    const visitedTeams = await MongoTeam.create(
+      Array.from({ length: 15 }, (_, index) => ({
+        name: `Visited Team ${String(index).padStart(2, '0')}`,
+        ownerId: normalUser._id,
+        createTime: new Date(`2026-01-${String(index + 1).padStart(2, '0')}T00:00:00Z`)
+      }))
+    );
+    await MongoTeamMember.create(
+      visitedTeams.map((team, index) => ({
+        teamId: team._id,
+        userId: rootUser._id,
+        name: 'root',
+        status: index === 0 ? TeamMemberStatusEnum.leave : TeamMemberStatusEnum.active,
+        lastSwitchTime: new Date(`2026-05-${String(index + 1).padStart(2, '0')}T00:00:00Z`)
+      }))
+    );
+
+    const rootAuth = {
+      userId: String(rootUser._id),
+      teamId: String(betaTeam._id),
+      tmbId: String(normalTmb._id),
+      isRoot: true,
+      sessionId: 'root-session'
+    } as any;
+
+    const aggregateSpy = vi.spyOn(MongoTeamMember, 'aggregate');
+    const pageSize1Res = await Call(listTeamsApi.default, {
+      method: 'GET',
+      query: { offset: '2', pageSize: '1' },
+      auth: rootAuth
+    });
+    expect(pageSize1Res.code).toBe(200);
+    expect(pageSize1Res.data.total).toBe(18);
+    expect(pageSize1Res.data.list).toHaveLength(1);
+    expect(pageSize1Res.data.list[0].teamName).toBe('Visited Team 14');
+    const visitedFacetResults = await aggregateSpy.mock.results[0].value;
+    expect(visitedFacetResults[0].list).toHaveLength(1);
+    aggregateSpy.mockRestore();
+
+    // 逐页拉取全部分段（owned -> current -> visited 14..1 -> unvisited beta/alpha/Visited 00 按 createTime desc）
+    const collectedIds: string[] = [];
+    for (let offset = 0; offset < 18; offset += 4) {
+      const res = await Call(listTeamsApi.default, {
+        method: 'GET',
+        query: { offset: String(offset), pageSize: '4' },
+        auth: rootAuth
+      });
+      expect(res.code).toBe(200);
+      expect(res.data.total).toBe(18);
+      collectedIds.push(...res.data.list.map((item: any) => item.teamId));
+    }
+    expect(collectedIds).toHaveLength(18);
+    expect(new Set(collectedIds).size).toBe(18);
+    expect(collectedIds.slice(0, 3)).toEqual([
+      String(rootTeam._id),
+      String(betaTeam._id),
+      String(visitedTeams[14]._id)
+    ]);
+    // leave 状态的成员记录不进入最近切换置顶段，回到剩余团队按 createTime 倒序
+    expect(collectedIds.indexOf(String(visitedTeams[0]._id))).toBeGreaterThan(
+      collectedIds.indexOf(String(visitedTeams[1]._id))
+    );
   });
 
   it('rejects non-root callers and non-GET methods', async () => {

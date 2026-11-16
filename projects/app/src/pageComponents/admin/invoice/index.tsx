@@ -18,8 +18,10 @@ import {
   Button,
   FormLabel
 } from '@chakra-ui/react';
-import AdminCompositeSearch, { useAdminCompositeSearch } from '@/components/admin/CompositeSearch';
-import type { AdminSearchOption } from '@/components/admin/CompositeSearch/utils';
+import AdminCompositeSearch, {
+  useAdminCompositeSearch,
+  useAdminTeamSearchOptions
+} from '@/components/admin/CompositeSearch';
 import type { InvoiceSchemaType } from '@fastgpt/global/support/wallet/bill/type';
 import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import { formatStorePrice2Read } from '@fastgpt/global/support/wallet/usage/tools';
@@ -34,13 +36,8 @@ import { InvoiceStatusEnum } from '@fastgpt/global/support/wallet/bill/invoice/c
 import { accountTitleTextStyles } from '@/pageComponents/account/styles';
 import { downloadFetch } from '@/web/common/system/utils';
 
-const invoiceSearchOptions: readonly AdminSearchOption<'username' | 'teamId' | 'teamName'>[] = [
-  { value: 'username', label: '用户名', placeholder: '搜索用户名' },
-  { value: 'teamId', label: '团队 ID', placeholder: '搜索团队 ID', exactObjectId: true },
-  { value: 'teamName', label: '团队名', placeholder: '搜索团队名' }
-];
-
 const InvoiceManageTable = () => {
+  const invoiceSearchOptions = useAdminTeamSearchOptions();
   // 保存选中记录的快照，避免列表刷新、排序或翻页后查找不到弹窗数据。
   const [uploadInvoiceData, setUploadInvoiceData] = useState<InvoiceSchemaType>();
   const [invoiceDetailData, setInvoiceDetailData] = useState<InvoiceSchemaType>();

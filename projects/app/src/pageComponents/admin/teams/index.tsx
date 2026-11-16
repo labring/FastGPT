@@ -5,8 +5,10 @@ import dayjs from 'dayjs';
 import { useRouter } from 'next/router';
 import { useQueryClient } from '@tanstack/react-query';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import AdminCompositeSearch, { useAdminCompositeSearch } from '@/components/admin/CompositeSearch';
-import type { AdminSearchOption } from '@/components/admin/CompositeSearch/utils';
+import AdminCompositeSearch, {
+  useAdminCompositeSearch,
+  useAdminTeamSearchOptions
+} from '@/components/admin/CompositeSearch';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
@@ -18,14 +20,9 @@ import { accountTitleTextStyles } from '@/pageComponents/account/styles';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import { useUserStore } from '@/web/support/user/useUserStore';
 
-const teamSearchOptions: readonly AdminSearchOption<'username' | 'teamId' | 'teamName'>[] = [
-  { value: 'username', label: '用户名', placeholder: '搜索用户名' },
-  { value: 'teamId', label: '团队 ID', placeholder: '搜索团队 ID', exactObjectId: true },
-  { value: 'teamName', label: '团队名', placeholder: '搜索团队名' }
-];
-
 const TeamTable = () => {
   const { t } = useSafeTranslation();
+  const teamSearchOptions = useAdminTeamSearchOptions();
   const router = useRouter();
   const queryClient = useQueryClient();
   const { resetChatCache } = useChatStore();

@@ -16,9 +16,21 @@ import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 import { MongoTeam } from '@fastgpt/service/support/user/team/teamSchema';
 
+type TeamSelectorItemDoc = {
+  _id: Types.ObjectId;
+  name: string;
+  avatar?: string;
+};
+
+type TeamSelectorFacetResult = {
+  total: Array<{ count: number }>;
+  list: TeamSelectorItemDoc[];
+};
+
 /**
  * 供系统超级管理员（root）在全局团队切换器中分页检索全站可用团队。
  * 排序优先级：自有团队（Owner）置顶 → 无搜索词时的当前所处团队 → 最近切换过的团队（lastSwitchTime 倒序）→ 其余全站团队（创建时间倒序）。
+ * 各分段均在数据库内完成排序、计数与 skip/limit 切片，避免把历史访问记录全量拉入 Node.js。
  */
 async function handler(
   req: ApiRequestProps<Record<string, never>, AdminTeamSelectorQueryType>
@@ -36,7 +48,6 @@ async function handler(
   const { search } = query;
   const { offset, pageSize } = normalizePagination(query);
 
-  // 2. 先查询 root 在 team_members 中记录过最近切换时间的团队，避免对全站 teams 做全表 $lookup。
   const baseFilter = {
     $or: [{ deleteTime: { $exists: false } }, { deleteTime: null }],
     ...(search ? { name: { $regex: new RegExp(replaceRegChars(search), 'i') } } : {})
@@ -47,91 +58,179 @@ async function handler(
       ? new Types.ObjectId(currentTeamId)
       : null;
 
-  const switchedMembers = await MongoTeamMember.find(
-    {
-      userId: currentUserObjectId,
-      status: { $ne: TeamMemberStatusEnum.leave },
-      lastSwitchTime: { $exists: true, $ne: null }
-    },
-    { teamId: 1, lastSwitchTime: 1 }
-  ).lean();
-
-  const switchTimeMap = new Map<string, number>();
-  const switchedTeamIds: Types.ObjectId[] = [];
-  for (const member of switchedMembers) {
-    if (!member.lastSwitchTime) continue;
-    switchTimeMap.set(String(member.teamId), new Date(member.lastSwitchTime).getTime());
-    switchedTeamIds.push(new Types.ObjectId(String(member.teamId)));
-  }
-
-  // 3. 拉取置顶前置段（自有团队 + 最近切换团队 + 当前团队）并排序，再由剩余未切换团队按创建时间补位。
-  const pinnedTeamConditions: Record<string, any>[] = [{ ownerId: currentUserObjectId }];
-  if (switchedTeamIds.length > 0) {
-    pinnedTeamConditions.push({ _id: { $in: switchedTeamIds } });
-  }
-  if (currentTeamObjectId) {
-    pinnedTeamConditions.push({ _id: currentTeamObjectId });
-  }
-
-  const [pinnedTeamsRaw, total] = await Promise.all([
-    MongoTeam.find(
-      { $and: [baseFilter, { $or: pinnedTeamConditions }] },
-      { _id: 1, name: 1, avatar: 1, ownerId: 1, createTime: 1 }
-    ).lean(),
+  // 2. 在数据库内分页统计并查询“自有团队”分段、当前非自有团队及全站总数。
+  const [[ownedFacet], currentTeamDoc, total] = await Promise.all([
+    MongoTeam.aggregate<TeamSelectorFacetResult>([
+      { $match: { $and: [baseFilter, { ownerId: currentUserObjectId }] } },
+      {
+        $lookup: {
+          from: MongoTeamMember.collection.name,
+          let: { teamId: '$_id' },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ['$userId', currentUserObjectId] },
+                    { $eq: ['$teamId', '$$teamId'] }
+                  ]
+                },
+                status: { $ne: TeamMemberStatusEnum.leave },
+                lastSwitchTime: { $exists: true, $ne: null }
+              }
+            },
+            { $limit: 1 },
+            { $project: { lastSwitchTime: 1 } }
+          ],
+          as: 'member'
+        }
+      },
+      {
+        $addFields: {
+          isCurrent: currentTeamObjectId
+            ? { $cond: [{ $eq: ['$_id', currentTeamObjectId] }, 1, 0] }
+            : 0,
+          lastSwitchTime: {
+            $ifNull: [{ $arrayElemAt: ['$member.lastSwitchTime', 0] }, new Date(0)]
+          }
+        }
+      },
+      { $sort: { isCurrent: -1, lastSwitchTime: -1, createTime: -1, _id: -1 } },
+      {
+        $facet: {
+          total: [{ $count: 'count' }],
+          list: [
+            { $skip: offset },
+            { $limit: pageSize },
+            { $project: { _id: 1, name: 1, avatar: 1 } }
+          ]
+        }
+      }
+    ]),
+    currentTeamObjectId
+      ? MongoTeam.findOne(
+          {
+            $and: [baseFilter, { _id: currentTeamObjectId, ownerId: { $ne: currentUserObjectId } }]
+          },
+          { _id: 1, name: 1, avatar: 1 }
+        ).lean<TeamSelectorItemDoc | null>()
+      : Promise.resolve(null),
     MongoTeam.countDocuments(baseFilter)
   ]);
 
-  const currentTeamIdStr = currentTeamObjectId ? String(currentTeamObjectId) : '';
-  const pinnedTeams = [...pinnedTeamsRaw].sort((a, b) => {
-    const aOwner = String(a.ownerId) === currentUserId ? 1 : 0;
-    const bOwner = String(b.ownerId) === currentUserId ? 1 : 0;
-    if (aOwner !== bOwner) return bOwner - aOwner;
+  const ownedCount = ownedFacet?.total[0]?.count ?? 0;
+  const ownedSlice = ownedFacet?.list ?? [];
 
-    if (currentTeamIdStr) {
-      const aCurrent = String(a._id) === currentTeamIdStr ? 1 : 0;
-      const bCurrent = String(b._id) === currentTeamIdStr ? 1 : 0;
-      if (aCurrent !== bCurrent) return bCurrent - aCurrent;
-    }
+  const currentCount = currentTeamDoc ? 1 : 0;
+  const includeCurrent = Boolean(
+    currentTeamDoc && offset <= ownedCount && ownedSlice.length < pageSize
+  );
+  const currentSlice = includeCurrent && currentTeamDoc ? [currentTeamDoc] : [];
 
-    const aSwitch = switchTimeMap.get(String(a._id)) ?? 0;
-    const bSwitch = switchTimeMap.get(String(b._id)) ?? 0;
-    if (aSwitch !== bSwitch) return bSwitch - aSwitch;
+  // 3. 当当前页未填满时，在数据库内对“最近切换过的非自有团队”分页并统计分段总数。
+  const visitedLimit = pageSize - ownedSlice.length - currentSlice.length;
+  const visitedSkip = Math.max(0, offset - ownedCount - currentCount);
+  const [visitedFacet] =
+    visitedLimit > 0
+      ? await MongoTeamMember.aggregate<TeamSelectorFacetResult>([
+          {
+            $match: {
+              userId: currentUserObjectId,
+              status: { $ne: TeamMemberStatusEnum.leave },
+              lastSwitchTime: { $exists: true, $ne: null },
+              ...(currentTeamObjectId ? { teamId: { $ne: currentTeamObjectId } } : {})
+            }
+          },
+          {
+            $lookup: {
+              from: MongoTeam.collection.name,
+              localField: 'teamId',
+              foreignField: '_id',
+              pipeline: [
+                {
+                  $match: {
+                    $and: [baseFilter, { ownerId: { $ne: currentUserObjectId } }]
+                  }
+                },
+                { $project: { _id: 1, name: 1, avatar: 1, createTime: 1 } }
+              ],
+              as: 'team'
+            }
+          },
+          { $unwind: '$team' },
+          { $sort: { lastSwitchTime: -1, 'team.createTime': -1, 'team._id': -1 } },
+          {
+            $facet: {
+              total: [{ $count: 'count' }],
+              list: [
+                { $skip: visitedSkip },
+                { $limit: visitedLimit },
+                { $project: { _id: '$team._id', name: '$team.name', avatar: '$team.avatar' } }
+              ]
+            }
+          }
+        ])
+      : [undefined];
 
-    const aCreate = a.createTime ? new Date(a.createTime).getTime() : 0;
-    const bCreate = b.createTime ? new Date(b.createTime).getTime() : 0;
-    if (aCreate !== bCreate) return bCreate - aCreate;
+  const visitedCount = visitedFacet?.total[0]?.count ?? 0;
+  const visitedSlice = visitedFacet?.list ?? [];
 
-    const aId = String(a._id);
-    const bId = String(b._id);
-    return bId > aId ? 1 : bId < aId ? -1 : 0;
-  });
-
-  const pinnedSlice = pinnedTeams.slice(offset, offset + pageSize);
-  const remainingCount = pageSize - pinnedSlice.length;
+  // 4. 若仍未填满当前页，按创建时间倒序补齐剩余未切换团队（同样在数据库内完成过滤与 skip/limit）。
+  const restLimit = visitedLimit - visitedSlice.length;
+  const restSkip = Math.max(0, offset - ownedCount - currentCount - visitedCount);
   const restTeams =
-    remainingCount > 0
-      ? await MongoTeam.find(
-          pinnedTeams.length > 0
-            ? { $and: [baseFilter, { _id: { $nin: pinnedTeams.map((team) => team._id) } }] }
-            : baseFilter,
-          { _id: 1, name: 1, avatar: 1 }
-        )
-          .sort({ createTime: -1, _id: -1 })
-          .skip(Math.max(0, offset - pinnedTeams.length))
-          .limit(remainingCount)
-          .lean()
+    restLimit > 0
+      ? await MongoTeam.aggregate<TeamSelectorItemDoc>([
+          {
+            $match: {
+              $and: [
+                baseFilter,
+                { ownerId: { $ne: currentUserObjectId } },
+                ...(currentTeamObjectId ? [{ _id: { $ne: currentTeamObjectId } }] : [])
+              ]
+            }
+          },
+          { $sort: { createTime: -1, _id: -1 } },
+          {
+            $lookup: {
+              from: MongoTeamMember.collection.name,
+              let: { teamId: '$_id' },
+              pipeline: [
+                {
+                  $match: {
+                    $expr: {
+                      $and: [
+                        { $eq: ['$userId', currentUserObjectId] },
+                        { $eq: ['$teamId', '$$teamId'] }
+                      ]
+                    },
+                    status: { $ne: TeamMemberStatusEnum.leave },
+                    lastSwitchTime: { $exists: true, $ne: null }
+                  }
+                },
+                { $limit: 1 },
+                { $project: { _id: 1 } }
+              ],
+              as: 'switchedMember'
+            }
+          },
+          { $match: { switchedMember: { $size: 0 } } },
+          { $skip: restSkip },
+          { $limit: restLimit },
+          { $project: { _id: 1, name: 1, avatar: 1 } }
+        ])
       : [];
 
   return AdminTeamSelectorResponseSchema.parse({
     total,
     list: [
-      ...pinnedSlice.map((team) => ({
+      ...ownedSlice.map((team) => ({
         teamId: String(team._id),
         teamName: team.name,
         avatar: team.avatar,
-        isOwner: String(team.ownerId) === currentUserId
+        isOwner: true
       })),
-      ...restTeams.map((team) => ({
+      ...[...currentSlice, ...visitedSlice, ...restTeams].map((team) => ({
         teamId: String(team._id),
         teamName: team.name,
         avatar: team.avatar,

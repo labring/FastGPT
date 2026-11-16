@@ -103,6 +103,9 @@ vi.mock('@chakra-ui/react', async () => {
   };
 });
 
+vi.mock('@fastgpt/web/hooks/useSafeTranslation', () => ({
+  useSafeTranslation: () => ({ t: (key: string) => key })
+}));
 vi.mock('@fastgpt/web/components/common/Icon', () => ({ default: () => null }));
 vi.mock('@fastgpt/web/components/common/MyTooltip', () => ({
   default: ({
@@ -271,6 +274,9 @@ describe('AdminCompositeSearch and useAdminCompositeSearch', () => {
       vi.advanceTimersByTime(1000);
     });
     expect(getInput().getAttribute('data-invalid')).toBe('true');
+    expect(
+      container.querySelector('[data-testid="tooltip-wrapper"]')?.getAttribute('data-tooltip')
+    ).toBe('admin:composite_search.invalid_object_id');
     expect(committedParams).toEqual([{}, { username: 'alice' }, {}]);
 
     // 4. 输入合法 ObjectId 并在防抖后发出请求
@@ -283,7 +289,7 @@ describe('AdminCompositeSearch and useAdminCompositeSearch', () => {
 
     // 5. 清空按钮重置搜索条件
     const clearButton = container.querySelector(
-      'button[aria-label="清空搜索"]'
+      'button[aria-label="admin:composite_search.clear"]'
     ) as HTMLButtonElement;
     expect(clearButton).not.toBeNull();
     await act(async () => {

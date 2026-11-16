@@ -18,6 +18,7 @@ import {
 } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { evaluateAdminSearchInput, isSameAdminSearchParams, type AdminSearchOption } from './utils';
 
 const DEFAULT_SEARCH_WAIT_MS = 400;
@@ -109,6 +110,37 @@ type AdminCompositeSearchProps<TField extends string> = Omit<FlexProps, 'onChang
 };
 
 /**
+ * 复用团队维度的多字段搜索配置（用户名、团队 ID、团队名），保留静态翻译 key。
+ */
+export const useAdminTeamSearchOptions = (): readonly AdminSearchOption<
+  'username' | 'teamId' | 'teamName'
+>[] => {
+  const { t } = useSafeTranslation();
+
+  return useMemo(
+    () => [
+      {
+        value: 'username',
+        label: t('admin:composite_search.field_username'),
+        placeholder: t('admin:composite_search.placeholder_username')
+      },
+      {
+        value: 'teamId',
+        label: t('admin:composite_search.field_team_id'),
+        placeholder: t('admin:composite_search.placeholder_team_id'),
+        exactObjectId: true
+      },
+      {
+        value: 'teamName',
+        label: t('admin:composite_search.field_team_name'),
+        placeholder: t('admin:composite_search.placeholder_team_name')
+      }
+    ],
+    [t]
+  );
+};
+
+/**
  * 管理员后台组合搜索框：左侧固定宽度下拉切换搜索字段，右侧输入实时防抖搜索（不响应回车提交）。
  */
 const AdminCompositeSearch = <TField extends string>({
@@ -117,14 +149,17 @@ const AdminCompositeSearch = <TField extends string>({
   value,
   triggerW = '96px',
   isInvalid = false,
-  invalidTip = '请输入有效的 24 位 ID',
+  invalidTip,
   onFieldChange,
   onValueChange,
   w = ['100%', '295px'],
   ...props
 }: AdminCompositeSearchProps<TField>) => {
+  const { t } = useSafeTranslation();
   const { isOpen, onOpen, onClose } = useDisclosure();
   const [isFocused, setIsFocused] = useState(false);
+
+  const resolvedInvalidTip = invalidTip ?? t('admin:composite_search.invalid_object_id');
 
   const activeOption = useMemo(
     () => options.find((item) => item.value === field) ?? options[0],
@@ -220,7 +255,7 @@ const AdminCompositeSearch = <TField extends string>({
       </Menu>
 
       <MyTooltip
-        label={invalidTip}
+        label={resolvedInvalidTip}
         isDisabled={!isInvalid}
         isOpen={isInvalid && isFocused ? true : undefined}
         shouldWrapChildren={false}
@@ -239,7 +274,12 @@ const AdminCompositeSearch = <TField extends string>({
             pl={'36px'}
             pr={value ? 8 : 3}
             value={value}
-            placeholder={activeOption?.placeholder ?? `搜索${activeOption?.label ?? ''}`}
+            placeholder={
+              activeOption?.placeholder ??
+              t('admin:composite_search.default_placeholder', {
+                label: activeOption?.label ?? ''
+              })
+            }
             _placeholder={{ color: 'myGray.500', fontSize: 'sm' }}
             isInvalid={isInvalid}
             borderColor={isInvalid ? 'red.500' : 'myGray.200'}
@@ -263,7 +303,7 @@ const AdminCompositeSearch = <TField extends string>({
               <Box
                 as={'button'}
                 type={'button'}
-                aria-label={'清空搜索'}
+                aria-label={t('admin:composite_search.clear')}
                 display={'flex'}
                 alignItems={'center'}
                 justifyContent={'center'}

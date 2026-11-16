@@ -1,5 +1,5 @@
 'use client';
-import React, { useRef, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { Button, Table, Thead, Tbody, Tr, Th, Td, Flex, Box } from '@chakra-ui/react';
 import dayjs from 'dayjs';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -30,13 +30,24 @@ const userStatusColorMap = {
   cancelled: 'gray'
 } as const;
 
-const userSearchOptions: readonly AdminSearchOption<'username' | 'userId'>[] = [
-  { value: 'username', label: '用户名', placeholder: '搜索用户名' },
-  { value: 'userId', label: '用户 ID', placeholder: '搜索用户 ID', exactObjectId: true }
-];
-
 const UserTable = () => {
   const { t } = useSafeTranslation();
+  const userSearchOptions = useMemo<readonly AdminSearchOption<'username' | 'userId'>[]>(
+    () => [
+      {
+        value: 'username',
+        label: t('admin:composite_search.field_username'),
+        placeholder: t('admin:composite_search.placeholder_username')
+      },
+      {
+        value: 'userId',
+        label: t('admin:composite_search.field_user_id'),
+        placeholder: t('admin:composite_search.placeholder_user_id'),
+        exactObjectId: true
+      }
+    ],
+    [t]
+  );
   const [userDetail, setUserDetail] = useState<UserItemType>();
   const [status, setStatus] = useState<AdminUserStatusFilterType | undefined>(
     UserStatusEnum.active

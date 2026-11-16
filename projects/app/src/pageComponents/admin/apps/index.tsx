@@ -1,5 +1,5 @@
 'use client';
-import React, { useRef, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { Button, Table, Thead, Tbody, Tr, Th, Td, Flex, Box, HStack } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import AdminCompositeSearch, { useAdminCompositeSearch } from '@/components/admin/CompositeSearch';
@@ -12,18 +12,44 @@ import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 import { accountTitleTextStyles } from '@/pageComponents/account/styles';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-
-const appSearchOptions: readonly AdminSearchOption<
-  'username' | 'teamId' | 'teamName' | 'appId' | 'appName'
->[] = [
-  { value: 'username', label: '用户名', placeholder: '搜索用户名' },
-  { value: 'teamId', label: '团队 ID', placeholder: '搜索团队 ID', exactObjectId: true },
-  { value: 'teamName', label: '团队名', placeholder: '搜索团队名' },
-  { value: 'appId', label: '应用 ID', placeholder: '搜索应用 ID', exactObjectId: true },
-  { value: 'appName', label: '应用名', placeholder: '搜索应用名' }
-];
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 
 const AppTable = () => {
+  const { t } = useSafeTranslation();
+  const appSearchOptions = useMemo<
+    readonly AdminSearchOption<'username' | 'teamId' | 'teamName' | 'appId' | 'appName'>[]
+  >(
+    () => [
+      {
+        value: 'username',
+        label: t('admin:composite_search.field_username'),
+        placeholder: t('admin:composite_search.placeholder_username')
+      },
+      {
+        value: 'teamId',
+        label: t('admin:composite_search.field_team_id'),
+        placeholder: t('admin:composite_search.placeholder_team_id'),
+        exactObjectId: true
+      },
+      {
+        value: 'teamName',
+        label: t('admin:composite_search.field_team_name'),
+        placeholder: t('admin:composite_search.placeholder_team_name')
+      },
+      {
+        value: 'appId',
+        label: t('admin:composite_search.field_app_id'),
+        placeholder: t('admin:composite_search.placeholder_app_id'),
+        exactObjectId: true
+      },
+      {
+        value: 'appName',
+        label: t('admin:composite_search.field_app_name'),
+        placeholder: t('admin:composite_search.placeholder_app_name')
+      }
+    ],
+    [t]
+  );
   const [appDetail, setAppDetail] = useState<any>();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const { searchField, inputValue, isInvalid, searchParams, onFieldChange, onInputChange } =

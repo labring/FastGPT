@@ -5,8 +5,10 @@ import type { BillItemType } from '@fastgpt/global/openapi/admin/wallet/pay/api'
 import dayjs from 'dayjs';
 import { formatStorePrice2Read } from '@fastgpt/global/support/wallet/usage/tools';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import AdminCompositeSearch, { useAdminCompositeSearch } from '@/components/admin/CompositeSearch';
-import type { AdminSearchOption } from '@/components/admin/CompositeSearch/utils';
+import AdminCompositeSearch, {
+  useAdminCompositeSearch,
+  useAdminTeamSearchOptions
+} from '@/components/admin/CompositeSearch';
 import {
   BillPayWayEnum,
   BillStatusEnum,
@@ -123,13 +125,8 @@ const billPayWayMap = {
   }
 };
 
-const paySearchOptions: readonly AdminSearchOption<'username' | 'teamId' | 'teamName'>[] = [
-  { value: 'username', label: '用户名', placeholder: '搜索用户名' },
-  { value: 'teamId', label: '团队 ID', placeholder: '搜索团队 ID', exactObjectId: true },
-  { value: 'teamName', label: '团队名', placeholder: '搜索团队名' }
-];
-
 const BillTable = () => {
+  const paySearchOptions = useAdminTeamSearchOptions();
   const [billType, setBillType] = useState<BillTypeEnum | ''>('');
   const [billStatus, setBillStatus] = useState<BillStatusEnum | ''>(BillStatusEnum.SUCCESS);
   const [billDetail, setBillDetail] = useState<BillItemType>();
