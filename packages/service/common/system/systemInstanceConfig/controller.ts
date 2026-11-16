@@ -556,7 +556,11 @@ export const batchUpdateDomainConfigs = async (
       existing,
       expectedRevision,
       cleanOverrides,
-      storedOverrides: encryptDomainSecrets(domain, cleanOverrides, existing?.overrides),
+      storedOverrides: encryptDomainSecrets({
+        domain,
+        data: cleanOverrides,
+        previousStored: existing?.overrides
+      }),
       effectiveConfig,
       syntheticCommercial: hasSyntheticCommercialItem && domain === 'commercial',
       explicitDefaultPaths: resolveExplicitDefaultPaths({

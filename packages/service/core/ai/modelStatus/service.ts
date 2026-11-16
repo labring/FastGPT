@@ -130,7 +130,11 @@ export const updateModelStatusProbeConfig = async (input: UpdateModelStatusProbe
   };
 
   const value = ModelStatusProbeConfigSchema.parse(next);
-  const encrypted = encryptDomainSecrets('modelStatusProbe', value, storedOverrides);
+  const encrypted = encryptDomainSecrets({
+    domain: 'modelStatusProbe',
+    data: value,
+    previousStored: storedOverrides
+  });
   await MongoSystemInstanceConfig.updateOne(
     { domain: 'modelStatusProbe' },
     {

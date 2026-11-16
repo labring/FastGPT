@@ -455,8 +455,11 @@ describe('applyInstanceConfigMigration (field-level backfill)', () => {
   });
 
   it('backfills beside an encrypted secret without mistaking it for a missing object', async () => {
-    const stored = encryptDomainSecrets('auth', {
-      loginProviders: { github: { secret: 'admin-secret' } }
+    const stored = encryptDomainSecrets({
+      domain: 'auth',
+      data: {
+        loginProviders: { github: { secret: 'admin-secret' } }
+      }
     });
     await MongoSystemInstanceConfig.create({ domain: 'auth', revision: 1, overrides: stored });
 

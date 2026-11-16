@@ -1331,7 +1331,11 @@ export const applyInstanceConfigMigration = async ({
         { domain, revision: doc.revision },
         {
           $set: {
-            overrides: encryptDomainSecrets(domain, mergedOverrides, doc.overrides),
+            overrides: encryptDomainSecrets({
+              domain,
+              data: mergedOverrides,
+              previousStored: doc.overrides
+            }),
             explicitDefaultPaths: nextExplicitDefaultPaths,
             updatedAt: new Date()
           },
@@ -1366,7 +1370,7 @@ export const applyInstanceConfigMigration = async ({
           domain,
           schemaVersion: SYSTEM_INSTANCE_CONFIG_SCHEMA_VERSION,
           revision: 1,
-          overrides: encryptDomainSecrets(domain, targetOverrides),
+          overrides: encryptDomainSecrets({ domain, data: targetOverrides }),
           ...(explicitDefaultPaths?.[domain]?.length
             ? { explicitDefaultPaths: explicitDefaultPaths[domain] }
             : {}),

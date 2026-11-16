@@ -231,7 +231,7 @@ describe('cleanupInstanceConfigDeprecatedFields (integration)', () => {
       gateway: 'https://gateway.example.test/gateway.do',
       appPrivateKey: 'synthetic-key'
     };
-    const stored = encryptDomainSecrets('commercial', { payment: { alipay } });
+    const stored = encryptDomainSecrets({ domain: 'commercial', data: { payment: { alipay } } });
     await seedDirtyDoc({
       domain: 'commercial',
       revision: 4,

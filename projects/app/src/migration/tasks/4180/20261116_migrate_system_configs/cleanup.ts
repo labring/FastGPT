@@ -258,7 +258,11 @@ export const cleanupInstanceConfigDeprecatedFields = async ({
       { _id: doc._id, revision: doc.revision },
       {
         $set: {
-          overrides: encryptDomainSecrets(domain, overrides, doc.overrides),
+          overrides: encryptDomainSecrets({
+            domain,
+            data: overrides,
+            previousStored: doc.overrides
+          }),
           ...(explicitDefaultPaths !== undefined ? { explicitDefaultPaths } : {}),
           updatedAt: new Date()
         },
@@ -300,7 +304,11 @@ export const cleanupInstanceConfigDeprecatedFields = async ({
           { _id: doc._id, revision: latest!.revision },
           {
             $set: {
-              overrides: encryptDomainSecrets(domain, retry.overrides, latest!.overrides),
+              overrides: encryptDomainSecrets({
+                domain,
+                data: retry.overrides,
+                previousStored: latest!.overrides
+              }),
               ...(retryMarkers.explicitDefaultPaths !== undefined
                 ? { explicitDefaultPaths: retryMarkers.explicitDefaultPaths }
                 : {}),

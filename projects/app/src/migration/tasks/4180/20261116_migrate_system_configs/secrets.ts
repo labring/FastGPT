@@ -41,7 +41,11 @@ export const encryptStoredConfigSecrets = async ({
     for (let attempt = 0; attempt < 5; attempt += 1) {
       // 先解密以验证已有密文，再复用相同密文，避免重放更改随机 nonce。
       const plain = decryptDomainSecrets(domain, current.overrides);
-      const encrypted = encryptDomainSecrets(domain, plain, current.overrides);
+      const encrypted = encryptDomainSecrets({
+        domain,
+        data: plain,
+        previousStored: current.overrides
+      });
       if (isDeepStrictEqual(encrypted, current.overrides)) {
         completed = true;
         break;
@@ -86,7 +90,11 @@ export const verifyStoredConfigSecrets = async () => {
     const domain = getDocumentDomain(document);
     if (!domain) continue;
     const plain = decryptDomainSecrets(domain, document.overrides);
-    const encrypted = encryptDomainSecrets(domain, plain, document.overrides);
+    const encrypted = encryptDomainSecrets({
+      domain,
+      data: plain,
+      previousStored: document.overrides
+    });
     if (!isDeepStrictEqual(encrypted, document.overrides)) {
       throw new Error(`System configuration secret migration incomplete: ${domain}`);
     }

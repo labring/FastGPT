@@ -86,7 +86,7 @@ export const initializeEmptyInstanceConfig = async ({
       domain,
       schemaVersion: SYSTEM_INSTANCE_CONFIG_SCHEMA_VERSION,
       revision: 1,
-      overrides: encryptDomainSecrets(domain, domainOverrides),
+      overrides: encryptDomainSecrets({ domain, data: domainOverrides }),
       explicitDefaultPaths: explicitDefaultPaths?.[domain] ?? [],
       updatedBy: { actor: 'migration' as const }
     };

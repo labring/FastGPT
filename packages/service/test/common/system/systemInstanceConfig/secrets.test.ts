@@ -13,7 +13,7 @@ describe('system instance configuration secret codec', () => {
       },
       unrelated: { secret: 'plain-non-secret', expiresAt: new Date('2030-01-01T00:00:00Z') }
     };
-    const stored = encryptDomainSecrets('providers', input);
+    const stored = encryptDomainSecrets({ domain: 'providers', data: input });
     const wrapped = stored.documentParse.customPdf.key as unknown as { secret: string };
 
     expect(wrapped).toEqual({ secret: expect.any(String) });
@@ -29,12 +29,18 @@ describe('system instance configuration secret codec', () => {
     const data = { documentParse: { customPdf: { key: 'original' } } };
     expect(decryptDomainSecrets('providers', data)).toEqual(data);
 
-    const stored = encryptDomainSecrets('providers', data);
-    expect(encryptDomainSecrets('providers', data, stored)).toEqual(stored);
-    expect(encryptDomainSecrets('providers', stored)).toEqual(stored);
+    const stored = encryptDomainSecrets({ domain: 'providers', data });
+    expect(encryptDomainSecrets({ domain: 'providers', data, previousStored: stored })).toEqual(
+      stored
+    );
+    expect(encryptDomainSecrets({ domain: 'providers', data: stored })).toEqual(stored);
 
     const replacement = { documentParse: { customPdf: { key: 'replacement' } } };
-    const replaced = encryptDomainSecrets('providers', replacement, stored);
+    const replaced = encryptDomainSecrets({
+      domain: 'providers',
+      data: replacement,
+      previousStored: stored
+    });
     expect(replaced.documentParse.customPdf.key).not.toEqual(stored.documentParse.customPdf.key);
     expect(decryptDomainSecrets('providers', replaced)).toEqual(replacement);
   });
@@ -59,7 +65,10 @@ describe('system instance configuration secret codec', () => {
       }
     }
     expect(() =>
-      encryptDomainSecrets('providers', { documentParse: { customPdf: { key: 7 } } })
+      encryptDomainSecrets({
+        domain: 'providers',
+        data: { documentParse: { customPdf: { key: 7 } } }
+      })
     ).toThrow('Invalid configuration secret: providers.documentParse.customPdf.key');
   });
 });

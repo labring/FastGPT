@@ -122,8 +122,11 @@ describe('migrateLegacyConfigScopes', () => {
   });
 
   it('retains encrypted payment credentials while merging legacy plans', async () => {
-    const stored = encryptDomainSecrets('commercial', {
-      payment: { alipay: { appPrivateKey: 'existing-private-key' } }
+    const stored = encryptDomainSecrets({
+      domain: 'commercial',
+      data: {
+        payment: { alipay: { appPrivateKey: 'existing-private-key' } }
+      }
     });
     await MongoSystemInstanceConfig.create({
       domain: 'commercial',

@@ -90,7 +90,11 @@ export const rehomeSubserviceConnections = async ({
       { _id: doc._id, revision: doc.revision },
       {
         $set: {
-          overrides: encryptDomainSecrets('subservice', target, doc.overrides),
+          overrides: encryptDomainSecrets({
+            domain: 'subservice',
+            data: target,
+            previousStored: doc.overrides
+          }),
           updatedAt: new Date(),
           updatedBy: { actor: 'migration' }
         },
@@ -191,7 +195,11 @@ export const rehomeAgentSandboxProxy = async ({
       { _id: doc._id, revision: doc.revision },
       {
         $set: {
-          overrides: encryptDomainSecrets('subservice', target, doc.overrides),
+          overrides: encryptDomainSecrets({
+            domain: 'subservice',
+            data: target,
+            previousStored: doc.overrides
+          }),
           updatedAt: new Date(),
           updatedBy: { actor: 'migration' }
         },
@@ -301,7 +309,11 @@ export const rehomeSandboxOvercommit = async ({
       { _id: doc._id, revision: doc.revision },
       {
         $set: {
-          overrides: encryptDomainSecrets('subservice', target, doc.overrides),
+          overrides: encryptDomainSecrets({
+            domain: 'subservice',
+            data: target,
+            previousStored: doc.overrides
+          }),
           updatedAt: new Date(),
           updatedBy: { actor: 'migration' }
         },

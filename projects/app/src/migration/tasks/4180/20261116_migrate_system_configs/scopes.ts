@@ -69,7 +69,15 @@ const mergeNormalizedPlans = (source: unknown, normalized: unknown): unknown => 
 };
 
 /** 只报告 schema 字段路径，不能把历史授权码、密钥或配置正文写入迁移日志。 */
-const validateSchema = (name: string, schema: z.ZodType, value: unknown) => {
+const validateSchema = ({
+  name,
+  schema,
+  value
+}: {
+  name: string;
+  schema: z.ZodType;
+  value: unknown;
+}) => {
   const result = schema.safeParse(value);
   if (!result.success) {
     const paths = result.error.issues.map((issue) => issue.path.join('.') || '<root>');
@@ -94,7 +102,11 @@ const validateTarget = (domain: TargetScope | 'proEnv', overrides: unknown) => {
     }
     return;
   }
-  validateSchema(domain, systemInstanceConfigScopeSchemaMap[domain], decoded);
+  validateSchema({
+    name: domain,
+    schema: systemInstanceConfigScopeSchemaMap[domain],
+    value: decoded
+  });
 };
 
 /**
@@ -150,7 +162,15 @@ const readLegacyScopeSources = async ({
  * 合并历史 scope 时，已有整个子对象即代表管理员意图；仅对象缺失时才补充旧源。
  * 如果仅显式默认路径存在，过滤对应分支，不能把用户清除的旧值重新写回。
  */
-const withoutExplicitDefaults = (value: unknown, path: string, markers: string[]): unknown => {
+const withoutExplicitDefaults = ({
+  value,
+  path,
+  markers
+}: {
+  value: unknown;
+  path: string;
+  markers: string[];
+}): unknown => {
   if (markers.some((marker) => path === marker || path.startsWith(`${marker}.`))) return undefined;
   const hasDescendant = markers.some((marker) => marker.startsWith(`${path}.`));
   if (!hasDescendant) return value;
@@ -165,7 +185,7 @@ const withoutExplicitDefaults = (value: unknown, path: string, markers: string[]
   }
   const entries = Object.entries(value);
   const kept = entries.flatMap(([key, child]) => {
-    const next = withoutExplicitDefaults(child, `${path}.${key}`, markers);
+    const next = withoutExplicitDefaults({ value: child, path: `${path}.${key}`, markers });
     return next === undefined ? [] : [[key, next]];
   });
   // 子树被全部标记时删除空父节点，避免制造缺少必填字段的不完整对象。
@@ -243,12 +263,16 @@ const prepareScopeMigration = async (session?: ClientSession) => {
     const source =
       scope === 'modelStatusProbe' ? decryptDomainSecrets(scope, rawSource) : rawSource;
     const normalized = MERGED_SCOPES.some((item) => item === scope)
-      ? validateSchema(scope, mergedScopeSchemas[scope as MergedScope], source)
-      : validateSchema(
-          scope,
-          systemInstanceConfigScopeSchemaMap[scope as (typeof STANDALONE_SCOPES)[number]],
-          source
-        );
+      ? validateSchema({
+          name: scope,
+          schema: mergedScopeSchemas[scope as MergedScope],
+          value: source
+        })
+      : validateSchema({
+          name: scope,
+          schema: systemInstanceConfigScopeSchemaMap[scope as (typeof STANDALONE_SCOPES)[number]],
+          value: source
+        });
     const value = scope === 'subPlans' ? mergeNormalizedPlans(source, normalized) : source;
     const domain = getTargetDomain(scope);
     const existing = targetByDomain.get(domain);
@@ -262,7 +286,7 @@ const prepareScopeMigration = async (session?: ClientSession) => {
         ? getMarkers(oldInstance.explicitDefaultPaths, scope).map((path) => `${scope}.${path}`)
         : [];
       const markers = Array.from(new Set([...explicitDefaultPaths, ...oldMarkers]));
-      const retained = withoutExplicitDefaults(value, scope, markers);
+      const retained = withoutExplicitDefaults({ value, path: scope, markers });
       // 已选中的旧源即使被标记完全过滤，也要记下空对象，防止后续重新选取更旧快照。
       if (!markers.includes(scope)) overrides[scope] = retained ?? {};
       pending.set(domain, { overrides, explicitDefaultPaths: markers });
@@ -297,7 +321,11 @@ export const migrateLegacyConfigScopes = async (session?: ClientSession) => {
             $set: {
               overrides:
                 domain === 'commercial' || domain === 'modelStatusProbe'
-                  ? encryptDomainSecrets(domain, overrides, storedOverridesByDomain.get(domain))
+                  ? encryptDomainSecrets({
+                      domain,
+                      data: overrides,
+                      previousStored: storedOverridesByDomain.get(domain)
+                    })
                   : overrides,
               explicitDefaultPaths,
               updatedBy: { actor: 'migration' },
@@ -317,7 +345,7 @@ export const migrateLegacyConfigScopes = async (session?: ClientSession) => {
                 domain,
                 overrides:
                   domain === 'commercial' || domain === 'modelStatusProbe'
-                    ? encryptDomainSecrets(domain, overrides)
+                    ? encryptDomainSecrets({ domain, data: overrides })
                     : overrides,
                 revision: 1,
                 schemaVersion: SYSTEM_INSTANCE_CONFIG_SCHEMA_VERSION,

@@ -163,7 +163,11 @@ export const backfillModelDeprecationSms = async ({
       { _id: doc._id, revision: doc.revision },
       {
         $set: {
-          overrides: encryptDomainSecrets('auth', target, doc.overrides),
+          overrides: encryptDomainSecrets({
+            domain: 'auth',
+            data: target,
+            previousStored: doc.overrides
+          }),
           updatedAt: new Date(),
           updatedBy: { actor: 'migration' }
         },
@@ -357,7 +361,11 @@ export const rehomeHttpRuntimePolicies = async ({
             { _id: doc._id, revision: doc.revision },
             {
               $set: {
-                overrides: encryptDomainSecrets(domain, target, doc.overrides),
+                overrides: encryptDomainSecrets({
+                  domain,
+                  data: target,
+                  previousStored: doc.overrides
+                }),
                 updatedAt: new Date(),
                 updatedBy: { actor: 'migration' }
               },
@@ -454,7 +462,11 @@ export const restoreCustomDomainConfig = async ({
       { _id: doc._id, revision: doc.revision },
       {
         $set: {
-          overrides: encryptDomainSecrets('site', merged, doc.overrides),
+          overrides: encryptDomainSecrets({
+            domain: 'site',
+            data: merged,
+            previousStored: doc.overrides
+          }),
           explicitDefaultPaths: [...explicit],
           updatedAt: new Date(),
           updatedBy: { actor: 'migration' }

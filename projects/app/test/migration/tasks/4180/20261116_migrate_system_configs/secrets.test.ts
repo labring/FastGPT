@@ -15,8 +15,11 @@ const assertActive = async () => {};
 
 describe('encryptStoredConfigSecrets', () => {
   it('encrypts old secrets across domains, preserves existing ciphertext and is idempotent', async () => {
-    const alreadyEncrypted = encryptDomainSecrets('auth', {
-      loginProviders: { github: { secret: 'existing-secret' } }
+    const alreadyEncrypted = encryptDomainSecrets({
+      domain: 'auth',
+      data: {
+        loginProviders: { github: { secret: 'existing-secret' } }
+      }
     });
     await collection.insertMany([
       {
