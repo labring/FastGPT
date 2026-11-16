@@ -8,7 +8,6 @@ import { commercialDocUrl } from '@/components/admin/constants';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import type { LicenseFunctionKey } from '@fastgpt/global/common/system/types';
 import type { LicenseType } from '@fastgpt/global/common/system/license/schema';
-import type { ParseKeys } from '@fastgpt/web/i18n/i18next';
 import { getLicenseStatus, LicenseStatusEnum } from '@fastgpt/global/common/system/license/utils';
 
 const formatDate = (value?: string) => {
@@ -18,71 +17,61 @@ const formatDate = (value?: string) => {
   return date.toISOString().slice(0, 10);
 };
 
-/**
- * 授权能力的展示顺序与文案 key，键取自决策版函数清单（licenseFunctionKeys）。
- *
- * 顺序即界面顺序：先给客户最关心的登录与计费，再是增强类能力。
- * 新增能力时在 licenseFunctionKeys 与本清单各补一项即可，两个清单不一致时由
- * typing 报错提醒，不会静默漏展示某一项授权。
- * labelKey 用 ParseKeys<'admin'> 编译期联合类型约束（而非仅约束前缀的模板类型），
- * key 拼写错误、漏加翻译在 tsc 阶段即报错；同时保持静态完整 key 可被 grep 检出。
- */
-const FUNCTION_CAPABILITY_ITEMS: Array<{
-  key: LicenseFunctionKey;
-  labelKey: ParseKeys<'admin'>;
-}> = [
-  { key: 'sso', labelKey: 'admin:license_sso' },
-  { key: 'pay', labelKey: 'admin:license_pay' },
-  { key: 'eval', labelKey: 'admin:license_eval' },
-  { key: 'datasetEnhance', labelKey: 'admin:license_dataset_enhance' },
-  { key: 'assistantGenerate', labelKey: 'admin:license_assistant_generate' },
-  { key: 'portal', labelKey: 'admin:license_portal' },
-  { key: 'sandboxSkills', labelKey: 'admin:license_sandbox_skills' }
-];
-
 /** 无有效授权（尚未激活/已到期）时统一使用的占位符，避免把「不限」误读为真实额度。 */
 const PLACEHOLDER = '--';
-
-/**
- * 授权类型徽标：显式映射 LicenseType（trial/official）到完整 i18n key，
- * Record 类型穷举强制新增授权类型时补全映射，避免兜底分支把未知类型静默标成商业版。
- */
-const LICENSE_TYPE_DISPLAY: Record<LicenseType, ParseKeys<'admin'>> = {
-  trial: 'admin:license_trial',
-  official: 'admin:license_business'
-};
-
-/** 四态对应的徽标文案与配色；「即将过期」用橙色提示续期。 */
-const LICENSE_STATUS_DISPLAY: Record<
-  LicenseStatusEnum,
-  { labelKey: ParseKeys<'admin'>; color: string; dot: string }
-> = {
-  [LicenseStatusEnum.inactive]: {
-    labelKey: 'admin:license_inactive',
-    color: 'red.600',
-    dot: 'red.500'
-  },
-  [LicenseStatusEnum.active]: {
-    labelKey: 'admin:license_active',
-    color: 'primary.600',
-    dot: 'primary.500'
-  },
-  [LicenseStatusEnum.expiring]: {
-    labelKey: 'admin:license_expiring_soon',
-    color: 'orange.600',
-    dot: 'orange.500'
-  },
-  [LicenseStatusEnum.expired]: {
-    labelKey: 'admin:license_expired',
-    color: 'red.600',
-    dot: 'red.500'
-  }
-};
 
 /** 管理员首页的 License 概览，按设计稿展示版本信息、租户信息、额度和授权能力。 */
 const AdminHome = () => {
   const { licenseData, licenseLoading, feConfigs, systemVersion } = useSystemStore();
   const { t } = useSafeTranslation();
+  // 文案先通过静态字面量翻译，避免动态key被语言包清理遗漏；切换语言时同步重建。
+  const functionCapabilityItems = useMemo(
+    () =>
+      [
+        { key: 'sso', label: t('admin:license_sso') },
+        { key: 'pay', label: t('admin:license_pay') },
+        { key: 'eval', label: t('admin:license_eval') },
+        { key: 'datasetEnhance', label: t('admin:license_dataset_enhance') },
+        { key: 'assistantGenerate', label: t('admin:license_assistant_generate') },
+        { key: 'portal', label: t('admin:license_portal') },
+        { key: 'sandboxSkills', label: t('admin:license_sandbox_skills') }
+      ] satisfies Array<{ key: LicenseFunctionKey; label: string }>,
+    [t]
+  );
+  const licenseTypeDisplay = useMemo(
+    () =>
+      ({
+        trial: t('admin:license_trial'),
+        official: t('admin:license_business')
+      }) satisfies Record<LicenseType, string>,
+    [t]
+  );
+  const licenseStatusDisplay = useMemo(
+    () =>
+      ({
+        [LicenseStatusEnum.inactive]: {
+          label: t('admin:license_inactive'),
+          color: 'red.600',
+          dot: 'red.500'
+        },
+        [LicenseStatusEnum.active]: {
+          label: t('admin:license_active'),
+          color: 'primary.600',
+          dot: 'primary.500'
+        },
+        [LicenseStatusEnum.expiring]: {
+          label: t('admin:license_expiring_soon'),
+          color: 'orange.600',
+          dot: 'orange.500'
+        },
+        [LicenseStatusEnum.expired]: {
+          label: t('admin:license_expired'),
+          color: 'red.600',
+          dot: 'red.500'
+        }
+      }) satisfies Record<LicenseStatusEnum, { label: string; color: string; dot: string }>,
+    [t]
+  );
   const [showLicenseInput, setShowLicenseInput] = useState(false);
   // 未接入 pro 服务 = 社区版部署，没有授权概念：不展示租户名、额度与激活状态，只保留功能能力清单。
   const isCommunityEdition = !feConfigs?.isProService;
@@ -97,8 +86,8 @@ const AdminHome = () => {
   const isLicenseValid = isActivated;
   const company = isLicenseValid ? licenseData?.company : undefined;
   const limits = isLicenseValid ? licenseData?.limits : undefined;
-  const licenseTypeKey = isLicenseValid
-    ? LICENSE_TYPE_DISPLAY[licenseData?.licenseType ?? 'official']
+  const licenseTypeLabel = isLicenseValid
+    ? licenseTypeDisplay[licenseData?.licenseType ?? 'official']
     : undefined;
   const avatarText = useMemo(() => {
     const latin = company
@@ -110,9 +99,9 @@ const AdminHome = () => {
 
   // 展示顺序与文案由展示清单决定；每一项都从授权状态实际取值。
   // 未激活/已过期时全部显示为未授权（不隐藏任何能力项），避免过期授权继续显示为已开通。
-  const capabilities = FUNCTION_CAPABILITY_ITEMS.map(({ key, labelKey }) => ({
+  const capabilities = functionCapabilityItems.map(({ key, label }) => ({
     key,
-    label: t(labelKey),
+    label,
     enabled: isLicenseValid && Boolean(licenseData?.functions?.[key])
   }));
 
@@ -127,7 +116,7 @@ const AdminHome = () => {
 
   // 状态徽标：四态各有文案与配色，「已到期」与「尚未激活」都不可授权，
   // 但前者需要指向续期、后者需要引导激活，因此分开呈现。
-  const statusDisplay = LICENSE_STATUS_DISPLAY[licenseStatus];
+  const statusDisplay = licenseStatusDisplay[licenseStatus];
 
   return (
     <Box h="100%" overflow="auto" bg="white" color="myGray.900">
@@ -240,7 +229,7 @@ const AdminHome = () => {
                     <Box fontSize="24px" fontWeight="600" lineHeight="1.25" noOfLines={1}>
                       {licenseLoading ? <Skeleton w="260px" h="38px" /> : company || PLACEHOLDER}
                     </Box>
-                    {licenseTypeKey && (
+                    {licenseTypeLabel && (
                       <Box
                         px={3}
                         py={1}
@@ -251,7 +240,7 @@ const AdminHome = () => {
                         fontWeight={500}
                         whiteSpace="nowrap"
                       >
-                        {t(licenseTypeKey)}
+                        {licenseTypeLabel}
                       </Box>
                     )}
                   </Flex>
@@ -289,7 +278,7 @@ const AdminHome = () => {
                         borderRadius="50%"
                         bg={statusDisplay.dot}
                       />
-                      {t(statusDisplay.labelKey)}
+                      {statusDisplay.label}
                     </Box>
                     <Flex alignItems="center" gap={4}>
                       <Box color="myGray.500" fontSize="12px">

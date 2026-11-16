@@ -31,29 +31,6 @@ type LimitsConfigForm = SystemInstanceConfigDomainMap['resource'] &
 /** 数字输入统一尺寸，避免各字段各自声明宽度 */
 const numberInputProps = { variant: 'whiteOutline' as const, maxW: '400px' };
 
-const datasetArchiveFields = [
-  {
-    name: 'maxFiles',
-    label: 'admin:dataset_archive_max_files',
-    tooltip: 'admin:dataset_archive_max_files_tooltip'
-  },
-  {
-    name: 'maxSourceSizeMiB',
-    label: 'admin:dataset_archive_max_source_size_mib',
-    tooltip: 'admin:dataset_archive_max_source_size_mib_tooltip'
-  },
-  {
-    name: 'maxConcurrency',
-    label: 'admin:dataset_archive_max_concurrency',
-    tooltip: 'admin:dataset_archive_max_concurrency_tooltip'
-  },
-  {
-    name: 'prepareTimeoutSeconds',
-    label: 'admin:dataset_archive_prepare_timeout_seconds',
-    tooltip: 'admin:dataset_archive_prepare_timeout_seconds_tooltip'
-  }
-] as const;
-
 /**
  * 限制与并发页：由原「资源限制」与「性能与并发」合并而成。
  * 字段跨越 resource / performance / auth / storage / vector 五个配置域，
@@ -61,6 +38,32 @@ const datasetArchiveFields = [
  */
 const LimitsSettingComponent = () => {
   const { t } = useSafeTranslation();
+  const datasetArchiveFields = useMemo(
+    () =>
+      [
+        {
+          name: 'maxFiles',
+          label: t('admin:dataset_archive_max_files'),
+          tooltip: t('admin:dataset_archive_max_files_tooltip')
+        },
+        {
+          name: 'maxSourceSizeMiB',
+          label: t('admin:dataset_archive_max_source_size_mib'),
+          tooltip: t('admin:dataset_archive_max_source_size_mib_tooltip')
+        },
+        {
+          name: 'maxConcurrency',
+          label: t('admin:dataset_archive_max_concurrency'),
+          tooltip: t('admin:dataset_archive_max_concurrency_tooltip')
+        },
+        {
+          name: 'prepareTimeoutSeconds',
+          label: t('admin:dataset_archive_prepare_timeout_seconds'),
+          tooltip: t('admin:dataset_archive_prepare_timeout_seconds_tooltip')
+        }
+      ] as const,
+    [t]
+  );
   const { isFieldVisible, filterConfigDataByEdition } = useAdminPermission();
   const showVectorRecallConcurrency = isFieldVisible('vector.vectorRecallConcurrency');
   const showEvaluationMaxRows = isFieldVisible('resource.evaluationMaxRows');
@@ -517,7 +520,7 @@ const LimitsSettingComponent = () => {
       >
         <SimpleGrid columns={[1, 2]} spacing={5}>
           {datasetArchiveFields.map(({ name, label, tooltip }) => (
-            <AdminFormItem key={name} label={t(label)} tooltip={t(tooltip)} isRequired>
+            <AdminFormItem key={name} label={label} tooltip={tooltip} isRequired>
               <Controller
                 name={`datasetArchive.${name}`}
                 control={control}

@@ -3,6 +3,30 @@ import { getAdminDefaultRoute, getAdminMenuList } from '@/pageComponents/admin/u
 import { isConfigFieldVisible } from '@fastgpt/global/common/system/config/permission';
 
 describe('getAdminMenuList', () => {
+  it('uses the current translator and preserves intentionally empty translated labels', () => {
+    const translatedMenu = (locale: string) =>
+      getAdminMenuList({ isProService: false, t: (key) => `${locale}:${key}` });
+    const english = translatedMenu('en');
+    const chinese = translatedMenu('zh-CN');
+
+    expect(english.find((item) => item.value === '/admin/license')?.label).toBe(
+      'en:admin:menu_overview'
+    );
+    expect(chinese.find((item) => item.value === '/admin/license')?.label).toBe(
+      'zh-CN:admin:menu_overview'
+    );
+    expect(
+      english
+        .find((item) => item.value === '/admin/settings/core')
+        ?.children?.find((item) => item.value === '/admin/settings/limits')?.label
+    ).toBe('en:admin:menu_setting_limits');
+    expect(
+      getAdminMenuList({ isProService: false, t: () => '' }).find(
+        (item) => item.value === '/admin/license'
+      )?.label
+    ).toBe('');
+  });
+
   it.each([false, true])('shows external providers only with saved variables (Pro=%s)', (isPro) => {
     for (const configured of [false, true]) {
       const routes = getAdminMenuList({

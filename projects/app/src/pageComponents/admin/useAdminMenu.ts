@@ -52,50 +52,49 @@ export type GetAdminMenuListParams = {
   t?: MenuTranslateFn;
 };
 
-// 静态声明每个菜单项对应的完整 i18n key，避免动态拼接（'admin:' + key）导致静态扫描脚本无法提取
-const ADMIN_MENU_I18N_KEYS = {
-  menu_overview: 'admin:menu_overview',
-  menu_system_resources: 'admin:menu_system_resources',
-  menu_models: 'admin:menu_models',
-  menu_tools: 'admin:menu_tools',
-  menu_migration: 'admin:menu_migration',
-  menu_dashboard: 'admin:menu_dashboard',
-  menu_operation: 'admin:menu_operation',
-  menu_inform: 'admin:menu_inform',
-  menu_user_team: 'admin:menu_user_team',
-  menu_users: 'admin:menu_users',
-  menu_teams: 'admin:menu_teams',
-  menu_commercial: 'admin:menu_commercial',
-  menu_plans: 'admin:menu_plans',
-  menu_pays: 'admin:menu_pays',
-  menu_invoice: 'admin:menu_invoice',
-  menu_pay_settings: 'admin:menu_pay_settings',
-  menu_user_resources: 'admin:menu_user_resources',
-  menu_apps: 'admin:menu_apps',
-  menu_datasets: 'admin:menu_datasets',
-  menu_app_templates: 'admin:menu_app_templates',
-  menu_subservices: 'admin:menu_subservices',
-  menu_subservice_code_sandbox: 'admin:menu_subservice_code_sandbox',
-  menu_subservice_agent_sandbox: 'admin:menu_subservice_agent_sandbox',
-  menu_subservice_mcp: 'admin:menu_subservice_mcp',
-  menu_system_settings: 'admin:menu_system_settings',
-  menu_setting_core: 'admin:menu_setting_core',
-  menu_setting_site: 'admin:menu_setting_site',
-  menu_setting_custom_domain: 'admin:menu_setting_custom_domain',
-  menu_setting_feature: 'admin:menu_setting_feature',
-  menu_setting_auth: 'admin:menu_setting_auth',
-  menu_setting_security: 'admin:menu_setting_security',
-  menu_setting_limits: 'admin:menu_setting_limits',
-  menu_setting_providers: 'admin:menu_setting_providers',
-  menu_moderation: 'admin:menu_moderation',
-  menu_moderation_policy: 'admin:menu_moderation_policy',
-  menu_audit_log: 'admin:menu_audit_log'
-} as const;
+/** 静态字面量翻译后再按菜单键取文案；未提供t时沿用原fallback，空译文不会被替换。 */
+const createLabelGetter = (t?: MenuTranslateFn) => {
+  const labels = {
+    menu_overview: t?.('admin:menu_overview'),
+    menu_system_resources: t?.('admin:menu_system_resources'),
+    menu_models: t?.('admin:menu_models'),
+    menu_tools: t?.('admin:menu_tools'),
+    menu_migration: t?.('admin:menu_migration'),
+    menu_dashboard: t?.('admin:menu_dashboard'),
+    menu_operation: t?.('admin:menu_operation'),
+    menu_inform: t?.('admin:menu_inform'),
+    menu_user_team: t?.('admin:menu_user_team'),
+    menu_users: t?.('admin:menu_users'),
+    menu_teams: t?.('admin:menu_teams'),
+    menu_commercial: t?.('admin:menu_commercial'),
+    menu_plans: t?.('admin:menu_plans'),
+    menu_pays: t?.('admin:menu_pays'),
+    menu_invoice: t?.('admin:menu_invoice'),
+    menu_pay_settings: t?.('admin:menu_pay_settings'),
+    menu_user_resources: t?.('admin:menu_user_resources'),
+    menu_apps: t?.('admin:menu_apps'),
+    menu_datasets: t?.('admin:menu_datasets'),
+    menu_app_templates: t?.('admin:menu_app_templates'),
+    menu_subservices: t?.('admin:menu_subservices'),
+    menu_subservice_code_sandbox: t?.('admin:menu_subservice_code_sandbox'),
+    menu_subservice_agent_sandbox: t?.('admin:menu_subservice_agent_sandbox'),
+    menu_subservice_mcp: t?.('admin:menu_subservice_mcp'),
+    menu_system_settings: t?.('admin:menu_system_settings'),
+    menu_setting_core: t?.('admin:menu_setting_core'),
+    menu_setting_site: t?.('admin:menu_setting_site'),
+    menu_setting_custom_domain: t?.('admin:menu_setting_custom_domain'),
+    menu_setting_feature: t?.('admin:menu_setting_feature'),
+    menu_setting_auth: t?.('admin:menu_setting_auth'),
+    menu_setting_security: t?.('admin:menu_setting_security'),
+    menu_setting_limits: t?.('admin:menu_setting_limits'),
+    menu_setting_providers: t?.('admin:menu_setting_providers'),
+    menu_moderation: t?.('admin:menu_moderation'),
+    menu_moderation_policy: t?.('admin:menu_moderation_policy'),
+    menu_audit_log: t?.('admin:menu_audit_log')
+  };
 
-type AdminMenuKey = keyof typeof ADMIN_MENU_I18N_KEYS;
-
-const createLabelGetter = (t?: MenuTranslateFn) => (key: AdminMenuKey, fallback: string) =>
-  t ? t(ADMIN_MENU_I18N_KEYS[key]) : fallback;
+  return (key: keyof typeof labels, fallback: string) => labels[key] ?? fallback;
+};
 
 /**
  * 根据环境配置、版本归属以及所管理字段的实际可见数，动态解析并返回 /admin 菜单树。
