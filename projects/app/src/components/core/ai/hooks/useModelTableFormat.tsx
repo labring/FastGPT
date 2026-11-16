@@ -115,11 +115,11 @@ export const formatModelTableList = <T extends BaseFormatModelItem>({
         ) : item.type === ModelTypeEnum.stt && sttPricing.type === 'tokens' ? (
           <Box color={'myGray.700'}>
             {[
-              ['inputPrice', 'common:Input'],
-              ['outputPrice', 'common:Output']
-            ].map(([key, label]) => (
-              <Box key={key}>
-                {`${t(label)}: ${roundModelPrice(sttPricing[key as 'inputPrice' | 'outputPrice'])} ${t('common:support.wallet.subscription.point')} / 1M Tokens`}
+              { label: t('common:Input'), price: sttPricing.inputPrice },
+              { label: t('common:Output'), price: sttPricing.outputPrice }
+            ].map(({ label, price }) => (
+              <Box key={label}>
+                {`${label}: ${roundModelPrice(price)} ${t('common:support.wallet.subscription.point')} / 1M Tokens`}
               </Box>
             ))}
           </Box>

@@ -88,9 +88,16 @@ describe('model table projection', () => {
       const dom = new JSDOM(
         renderToStaticMarkup(React.createElement(ChakraProvider, null, row.priceLabel))
       );
-      expect(dom.window.document.body.textContent).toContain(
-        `${price} common:support.wallet.subscription.point / ${unit}`
-      );
+      const text = dom.window.document.body.textContent;
+      expect(text).toContain(`${price} common:support.wallet.subscription.point / ${unit}`);
+      if ('inputPrice' in pricing.pricing) {
+        expect(text).toContain(
+          'common:Input: 10 common:support.wallet.subscription.point / 1M Tokens'
+        );
+        expect(text).toContain(
+          'common:Output: 20 common:support.wallet.subscription.point / 1M Tokens'
+        );
+      }
       dom.window.close();
     }
   );
