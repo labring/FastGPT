@@ -110,6 +110,15 @@ describe('useChatGenerate.sendPrompt', () => {
   let recordActions: ReturnType<typeof useChatRecordActions>;
   let records: ChatSiteItemType[];
   let setRecords: React.Dispatch<React.SetStateAction<ChatSiteItemType[]>>;
+  let setBoxData: React.Dispatch<
+    React.SetStateAction<{
+      appId: string;
+      sourceKey: string;
+      chatId: string;
+      chatGenerateStatus: ChatGenerateStatusEnum | undefined;
+      app: { name: string };
+    }>
+  >;
 
   const Harness = ({
     chatId,
@@ -234,13 +243,20 @@ describe('useChatGenerate.sendPrompt', () => {
     );
     records = chatRecords;
     setRecords = setChatRecords;
-    const [chatBoxData, setChatBoxData] = useState({
+    const [chatBoxData, setChatBoxData] = useState<{
+      appId: string;
+      sourceKey: string;
+      chatId: string;
+      chatGenerateStatus: ChatGenerateStatusEnum | undefined;
+      app: { name: string };
+    }>({
       appId: 'app',
       sourceKey,
       chatId,
       chatGenerateStatus: resume ? ChatGenerateStatusEnum.generating : undefined,
       app: { name: 'App' }
     });
+    setBoxData = setChatBoxData;
     const runtime: React.ComponentProps<typeof WorkflowRuntimeContext.Provider>['value'] = {
       sourceTarget: { sourceType: ChatSourceTypeEnum.app, sourceId: 'app' },
       sourceKey,
@@ -1204,8 +1220,27 @@ describe('useChatGenerate.sendPrompt', () => {
     });
 
     // 停止确认尚未返回前切换到正在生成的会话 B（B 触发 Resume）。
+    await act(async () => {
+      generate.abortRequest('leave');
+      setBoxData((state) => ({
+        ...state,
+        chatId: 'B',
+        chatGenerateStatus: ChatGenerateStatusEnum.generating
+      }));
+      setRecords([
+        {
+          dataId: 'resumed-b-ai',
+          obj: ChatRoleEnum.AI,
+          status: ChatStatusEnum.loading,
+          value: []
+        }
+      ]);
+    });
     await render({ chatId: 'B', resume: true });
-    await vi.waitFor(() => expect(controllerB).toBeDefined());
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(controllerB).toBeDefined();
 
     stopConfirmation.resolve();
     await act(async () => {
