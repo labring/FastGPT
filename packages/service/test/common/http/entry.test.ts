@@ -176,6 +176,13 @@ describe('createApiEntry response lifecycle', () => {
 
   it.each([
     { error: new Error('Handler failed'), status: 500 },
+    {
+      error: Object.assign(new Error('Internal failure'), {
+        name: 'ApiHttpError',
+        statusCode: 409
+      }),
+      status: 500
+    },
     { error: new UserConfigError('Invalid API key'), status: 400 },
     { error: new ApiHttpError(409, 'Revision conflict'), status: 409 }
   ])('returns the response mapper status before streaming: $status', async ({ error, status }) => {
@@ -234,6 +241,34 @@ describe('createApiEntry response lifecycle', () => {
 
     expect(res.statusCode).toBe(500);
     expect(res.json).toHaveBeenCalledOnce();
+  });
+
+  it('keeps request validation at 400 across separately loaded module instances', async () => {
+    vi.resetModules();
+    const reloaded = await import('../../../common/zod/requestParseError');
+    const { req, res } = createHttpObjects();
+
+    await createApiEntry({ requestI18n })(async () => {
+      reloaded.parseApiInput({ req, bodySchema: z.object({ value: z.string() }) });
+    })(req, res);
+
+    expect(res.statusCode).toBe(400);
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ code: 400 }));
+  });
+
+  it('keeps explicit HTTP errors at their declared status across module instances', async () => {
+    vi.resetModules();
+    const reloaded = await import('../../../common/http/apiError');
+    const { req, res } = createHttpObjects();
+    const error = new reloaded.ApiHttpError(409, 'Revision conflict');
+    expect(error).not.toBeInstanceOf(ApiHttpError);
+
+    await createApiEntry({ requestI18n })(async () => {
+      throw error;
+    })(req, res);
+
+    expect(res.statusCode).toBe(409);
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ code: 409 }));
   });
 
   it('destroys a partial response instead of appending a JSON error', async () => {

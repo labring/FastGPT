@@ -6,10 +6,10 @@ import { setSpanError, withActiveSpan } from '../tracing';
 import { ZodError } from 'zod';
 import { randomUUID } from 'crypto';
 import { getClientIpFromRequest } from '../security/clientIp';
-import { ApiRequestInputParseError, getZodParseErrorInputSource } from '../zod/requestParseError';
+import { getZodParseErrorInputSource } from '../zod/requestParseError';
 import { withHttpRequestProfile } from './requestProfile';
 import { markProfileError } from '../profiling';
-import { ApiHttpError } from './apiError';
+import { isApiHttpError } from './apiError';
 import type { ApiI18n } from '../i18n/request';
 
 export type ApiHandler<
@@ -203,7 +203,7 @@ export const createApiEntry = <
                   return;
                 }
 
-                if (error instanceof ApiHttpError) {
+                if (isApiHttpError(error)) {
                   span.setAttribute('http.response.status_code', error.statusCode);
                   return jsonRes(res, {
                     code: error.statusCode,
@@ -213,8 +213,8 @@ export const createApiEntry = <
                 }
 
                 // Handle Zod validation errors. Only explicit API input parse errors can be downgraded.
-                if (error instanceof ZodError || error instanceof ApiRequestInputParseError) {
-                  const requestInputErrorContext = getZodParseErrorInputSource(error);
+                const requestInputErrorContext = getZodParseErrorInputSource(error);
+                if (error instanceof ZodError || requestInputErrorContext) {
                   if (!requestInputErrorContext) {
                     span.setAttribute('http.response.status_code', 500);
                     setSpanError(span, error);
