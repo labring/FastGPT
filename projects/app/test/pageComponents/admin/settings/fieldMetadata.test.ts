@@ -95,13 +95,18 @@ const getRenderedFields = (route: string): Set<string> => {
                 }
                 ts.forEachChild(entry, collectArchiveFields);
               };
-              const declaration = source.statements.find(
-                (statement) =>
-                  ts.isVariableStatement(statement) &&
-                  statement.declarationList.declarations.some(
-                    (d) => d.name.getText(source) === 'datasetArchiveFields'
-                  )
-              );
+              // 翻译后的字段数组可以在组件内通过 useMemo 声明，不能只扫描模块顶层。
+              let declaration: ts.VariableDeclaration | undefined;
+              const findArchiveFields = (entry: ts.Node) => {
+                if (
+                  ts.isVariableDeclaration(entry) &&
+                  ts.isIdentifier(entry.name) &&
+                  entry.name.text === 'datasetArchiveFields'
+                )
+                  declaration = entry;
+                ts.forEachChild(entry, findArchiveFields);
+              };
+              findArchiveFields(source);
               expect(declaration).toBeDefined();
               collectArchiveFields(declaration!);
             }
