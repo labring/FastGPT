@@ -271,8 +271,27 @@ const splitTextByCounterLengthLimit: SplitTextByLengthLimit = ({
   return chunks;
 };
 
-const getTextLengthCounter = (props: SplitProps): TextLengthCounter =>
-  props.lengthUnit === 'token' ? countPromptTokensInWorker : getTextValidLength;
+/**
+ * 返回本次切分使用的长度计数器。
+ *
+ * token 模式下，同一段文本在一次切分里会被反复计数：Markdown 每一层标题、代码块和表格
+ * 步骤都会先统计一次整段正文，上一项的 newText 也会在下一项作为 lastText 再统计一次。
+ * tokenizer 编码远比字符计数昂贵，所以在单次切分内按文本缓存 token 数；计数是纯函数，
+ * 缓存不会改变切分结果。字符模式计数本身很便宜，直接使用原函数。
+ */
+const getTextLengthCounter = (props: SplitProps): TextLengthCounter => {
+  if (props.lengthUnit !== 'token') return getTextValidLength;
+
+  const tokenCountCache = new Map<string, number>();
+  return (text) => {
+    const cached = tokenCountCache.get(text);
+    if (cached !== undefined) return cached;
+
+    const count = countPromptTokensInWorker(text);
+    tokenCountCache.set(text, count);
+    return count;
+  };
+};
 
 const getSplitTextByLengthLimit = (props: SplitProps): SplitTextByLengthLimit =>
   props.lengthUnit === 'token' ? splitTextByCounterLengthLimit : splitTextByCharLengthLimit;
