@@ -109,8 +109,7 @@ export const useDomainConfig = <T extends SystemInstanceConfigDomainKey>(domain:
    * 局部提交：先与库中现有 overrides 深合并再提交。
    *
    * 页面只负责部分字段时必须用它，否则同 Domain 其它字段（含本页未展示、
-   * 未编辑的嵌套字段）会被整体替换掉。合并进来的敏感字段是脱敏占位符，
-   * 后端会用库中原值恢复。
+   * 未编辑的嵌套字段）会被整体替换掉。服务端不返回密钥，未提交的密钥由服务端保留。
    */
   const patchConfig = (partial: Record<string, unknown>, options?: { silent?: boolean }) =>
     submitOverrides({
@@ -128,6 +127,7 @@ export const useDomainConfig = <T extends SystemInstanceConfigDomainKey>(domain:
     effectiveConfig: (data?.effectiveConfig ?? EMPTY_OBJECT) as SystemInstanceConfigDomainMap[T],
     overrides,
     secretKeys: data?.secretKeys ?? EMPTY_SECRET_KEYS,
+    configuredSecretKeys: data?.configuredSecretKeys ?? EMPTY_SECRET_KEYS,
     updatedAt: data?.updatedAt,
     updatedBy: data?.updatedBy,
     isLoading,

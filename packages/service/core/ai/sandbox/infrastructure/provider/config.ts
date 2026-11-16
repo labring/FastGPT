@@ -3,8 +3,8 @@
  *
  * 只负责把实例配置转换成 adapter 可用的配置，不执行远端生命周期动作。
  */
+import { SANDBOX_WS_MAX_MESSAGE_BYTES, SANDBOX_WS_MAX_FRAME_BYTES } from '../../constants';
 import {
-  getAgentSandboxCommonConfig,
   getAgentSandboxMaxFileBytes,
   getAgentSandboxOpenSandboxConfig,
   getAgentSandboxProvider,
@@ -105,7 +105,6 @@ export function getSandboxAdapterConfig({
   sessionId?: string;
 } = {}): SandboxAdapterConfig {
   const profile = getSandboxRuntimeProfile(provider);
-  const common = getAgentSandboxCommonConfig();
   const baseEnv =
     runtime && sessionId
       ? buildBaseSandboxRuntimeEnv({
@@ -113,8 +112,8 @@ export function getSandboxAdapterConfig({
           workDirectory: profile.workDirectory,
           ideAgentMaxFileBytes: getAgentSandboxMaxFileBytes(),
           ideAgentWsLimits: {
-            maxMessageBytes: common.wsMaxMessageBytes,
-            maxFrameBytes: common.wsMaxFrameBytes
+            maxMessageBytes: SANDBOX_WS_MAX_MESSAGE_BYTES,
+            maxFrameBytes: SANDBOX_WS_MAX_FRAME_BYTES
           }
         })
       : undefined;

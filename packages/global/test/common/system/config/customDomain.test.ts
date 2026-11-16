@@ -2,9 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { resolveSystemInstanceConfig } from '../../../../common/system/config/schema';
 import { buildCustomDomainFeConfig } from '../../../../common/system/config/frontendProjection';
 import {
-  maskDomainSecrets,
-  restorePreservedSecrets,
-  SECRET_MASK
+  omitDomainSecrets,
+  getConfiguredDomainSecretKeys
 } from '../../../../common/system/config/permission';
 import {
   adminConfigPageFieldsMap,
@@ -31,16 +30,11 @@ describe('SaaS custom domain configuration', () => {
     });
   });
 
-  it('masks saved kubeconfig, preserves a masked submission and allows explicit clearing', () => {
-    const masked = maskDomainSecrets('site', site);
-    expect(masked.customDomain.kc.aliyun).toBe(SECRET_MASK);
-    expect(masked.customDomain.issuerServiceName.aliyun).toBe('issuer');
-    expect(restorePreservedSecrets({ domain: 'site', submitted: masked, previous: site })).toEqual(
-      site
-    );
-    masked.customDomain.kc.aliyun = '';
-    const cleared = restorePreservedSecrets({ domain: 'site', submitted: masked, previous: site });
-    expect(cleared.customDomain.kc.aliyun).toBe('');
+  it('omits saved kubeconfig and exposes only configured paths', () => {
+    const projected = omitDomainSecrets('site', site);
+    expect(projected.customDomain.kc).not.toHaveProperty('aliyun');
+    expect(projected.customDomain.issuerServiceName.aliyun).toBe('issuer');
+    expect(getConfiguredDomainSecretKeys('site', site)).toEqual(['customDomain.kc.aliyun']);
   });
 
   it.each([

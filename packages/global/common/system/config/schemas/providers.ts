@@ -34,13 +34,6 @@ const DocumentParseProviderConfigSchema = z.strictObject({
     .prefault({ url: '', key: '', extensions: 'pdf', timeoutSeconds: 600 })
 });
 
-const DataSourceProviderConfigSchema = z.strictObject({
-  feishuBaseUrl: urlWithDefault('https://open.feishu.cn'),
-  dingtalkBaseUrl: urlWithDefault('https://api.dingtalk.com'),
-  dingtalkOapiBaseUrl: urlWithDefault('https://oapi.dingtalk.com'),
-  yuqueDatasetBaseUrl: urlWithDefault('https://www.yuque.com')
-});
-
 /** 外部提供商注入到工作流的全局变量定义。 */
 const ExternalProviderWorkflowVarConfigSchema = z.strictObject({
   name: z.string().max(100),
@@ -52,11 +45,14 @@ const ExternalProviderWorkflowVarConfigSchema = z.strictObject({
 
 export const ProvidersConfigBaseSchema = z.strictObject({
   documentParse: DocumentParseProviderConfigSchema.prefault({}),
-  dataSource: DataSourceProviderConfigSchema.prefault({}),
   externalProviderWorkflowVariables: z
     .array(ExternalProviderWorkflowVarConfigSchema)
     .max(50)
     .default([])
+    .meta({
+      deprecated: true,
+      description: '已弃用；仅保留已有外部提供商工作流变量，清空后不允许重新配置'
+    })
 });
 
 export const ProvidersConfigSchema = ProvidersConfigBaseSchema.superRefine((providers, ctx) => {

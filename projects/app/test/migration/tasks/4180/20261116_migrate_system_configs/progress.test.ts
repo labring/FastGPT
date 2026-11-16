@@ -1,10 +1,13 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { redisCacheAdapter } from '@fastgpt/dal/redis/adapter';
 import { SYSTEM_INSTANCE_CONFIG_DOMAINS } from '@fastgpt/global/common/system/config/schema';
 import { SystemConfigsTypeEnum } from '@fastgpt/global/common/system/config/constants';
 import { SystemMigrationStatusEnum } from '@fastgpt/global/migration/constants';
 import { MongoSystemConfigs } from '@fastgpt/service/common/system/config/schema';
 import { MongoSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/schema';
+import { decryptDomainSecrets } from '@fastgpt/service/common/system/systemInstanceConfig/secrets';
 import { MongoSystemMigrationState } from '@/migration/mongoSchema';
+import { resetFailedMigration } from '@/migration/entity';
 import { systemMigrations, type SystemMigrationLogger } from '@/migration/registry';
 import { createSystemMigrationRunner } from '@/migration/runner';
 import * as legacyEnv from '@/migration/tasks/4180/20261116_migrate_system_configs/env';
@@ -83,7 +86,7 @@ const seedLegacySources = async () => {
 const createRunner = (runnerId: string) =>
   createSystemMigrationRunner({ migrations: [migration], runnerId, timing, logger });
 
-/** 先有界等待持久化终态，再验证启动屏障，避免失败时测试无限等待。 */
+/** 有界等待后台任务持久化成功，避免失败时测试无限等待。 */
 const waitForSuccess = async (runner: ReturnType<typeof createRunner>) => {
   await vi.waitFor(
     async () => {
@@ -95,6 +98,11 @@ const waitForSuccess = async (runner: ReturnType<typeof createRunner>) => {
   );
   await runner.waitForBlockingMigrations();
 };
+
+beforeEach(() => {
+  // 本文件单任务执行，Redis 原子脚本统一放行；集群名额互斥由 runner.test.ts 单独覆盖。
+  vi.spyOn(redisCacheAdapter, 'evalScript').mockResolvedValue(1);
+});
 
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -146,7 +154,10 @@ describe('system configuration migration with the real runner', () => {
       await runner.start();
       await waitForSuccess(runner);
       expect(
-        (await MongoSystemInstanceConfig.findOne({ domain: 'site' }).lean())?.overrides
+        decryptDomainSecrets(
+          'site',
+          (await MongoSystemInstanceConfig.findOne({ domain: 'site' }).lean())?.overrides
+        )
       ).toMatchObject({
         name: 'Latest by id',
         customDomain: { kc: { aliyun: 'latest-by-id-kc' } }
@@ -228,7 +239,7 @@ describe('system configuration migration with the real runner', () => {
         (await MongoSystemMigrationState.findById(migration.id).lean())?.progress?.find(
           ({ key }) => key === 'backfill'
         )
-      ).toMatchObject({ current: 9, total: 9 });
+      ).toMatchObject({ current: 10, total: 10 });
     } finally {
       await runner.stop();
     }
@@ -272,7 +283,7 @@ describe('system configuration migration with the real runner', () => {
       });
       expect(doc('providers')?.overrides.documentParse.customPdf.price).toBe(0.5);
       expect(doc('auth')?.overrides.loginProviders.email.port).toBe(2525);
-      expect(doc('site')?.overrides).toMatchObject({
+      expect(decryptDomainSecrets('site', doc('site')?.overrides)).toMatchObject({
         name: 'Legacy Platform',
         customDomain: legacyDomain
       });
@@ -287,7 +298,7 @@ describe('system configuration migration with the real runner', () => {
       });
       expect(doc('resource')?.overrides).toMatchObject({ serviceAxiosMaxContentLength: 32 });
       expect(doc('storage')?.overrides).toMatchObject({ fileDomain: 'https://files.example.test' });
-      expect(doc('subservice')?.overrides).toMatchObject({
+      expect(decryptDomainSecrets('subservice', doc('subservice')?.overrides)).toMatchObject({
         codeSandbox: {
           enabled: true,
           url: 'https://code.example.test',
@@ -326,7 +337,7 @@ describe('system configuration migration with the real runner', () => {
     }
   });
 
-  it('retries a failed startup run without restoring cleared or administrator values', async () => {
+  it('allows startup before migration and retries background failure without overwriting administrator values', async () => {
     await seedLegacySources();
     vi.stubEnv('FILE_DOMAIN', 'not a valid url');
     const failedOwner = createRunner('system-config-failed-owner');
@@ -334,6 +345,8 @@ describe('system configuration migration with the real runner', () => {
 
     try {
       await failedOwner.start();
+      expect(failedOwner.hasBlockingMigrations).toBe(false);
+      await failedOwner.waitForBlockingMigrations();
       await vi.waitFor(
         async () => {
           expect(await MongoSystemMigrationState.findById(migration.id).lean()).toMatchObject({
@@ -343,6 +356,7 @@ describe('system configuration migration with the real runner', () => {
         },
         { timeout: 30_000, interval: 100 }
       );
+      await failedOwner.waitForBlockingMigrations();
       const failed = await MongoSystemMigrationState.findById(migration.id).lean();
       expect(failed?.progress?.find(({ key }) => key === 'backfill')?.status).toBe(
         SystemMigrationStatusEnum.failed
@@ -369,11 +383,8 @@ describe('system configuration migration with the real runner', () => {
       );
       vi.stubEnv('FILE_DOMAIN', 'https://files.example.test');
       vi.stubEnv('AGENT_SANDBOX_PROXY_URL', 'wss://changed.example.test');
-      // 启动阻塞任务由失败 owner 停止后、lease 过期时接管；不通过后台 reset 快捷路径重试。
-      await MongoSystemMigrationState.updateOne(
-        { _id: migration.id },
-        { $set: { leaseExpireAt: new Date(0) } }
-      );
+      // 独立后台任务失败后由管理员重置再执行，无需等待失败 lease 过期。
+      expect(await resetFailedMigration(migration.id)).toBe(true);
       await retry.start();
       await waitForSuccess(retry);
 

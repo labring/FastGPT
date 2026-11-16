@@ -3,17 +3,28 @@ import { getAdminDefaultRoute, getAdminMenuList } from '@/pageComponents/admin/u
 import { isConfigFieldVisible } from '@fastgpt/global/common/system/config/permission';
 
 describe('getAdminMenuList', () => {
+  it.each([false, true])('shows external providers only with saved variables (Pro=%s)', (isPro) => {
+    for (const configured of [false, true]) {
+      const routes = getAdminMenuList({
+        isProService: isPro,
+        hasExternalProviderWorkflowVariables: configured
+      }).flatMap((menu) => (menu.children ?? [menu]).map((item) => item.value));
+      expect(routes.includes('/admin/settings/providers')).toBe(configured);
+    }
+  });
+
   it('dynamically hides menus with zero visible fields in community edition', () => {
     const menus = getAdminMenuList({ isProService: false });
 
     const topLabels = menus.map((item) => item.label);
 
-    // 沙箱和 MCP SSE 的配置入口对社区版开放，Agent Sandbox 仍仅限商业版。
+    // Code Sandbox、Agent Sandbox 和 MCP SSE 的配置入口均对社区版开放。
     expect(topLabels).toEqual(['系统概览', '系统资源', '子服务', '系统配置', '版本升级']);
     const subserviceMenu = menus.find((item) => item.label === '子服务');
     expect(subserviceMenu?.value).toBe('/admin/subservice/code-sandbox');
     expect(subserviceMenu?.children?.map((child) => child.value)).toEqual([
       '/admin/subservice/code-sandbox',
+      '/admin/subservice/agent-sandbox',
       '/admin/subservice/mcp'
     ]);
 
@@ -29,16 +40,12 @@ describe('getAdminMenuList', () => {
       '/admin/resources/tool'
     ]);
 
-    // 系统配置：包含 7 个含开源字段的配置页（支付配置 pay 页面全为商业字段，自动隐藏）
+    // 空变量列表不展示外部提供商；支付配置 pay 页面全为商业字段，自动隐藏。
     const systemConfigMenu = menus.find((item) => item.label === '系统配置');
     expect(systemConfigMenu?.children?.map((c) => c.value)).toEqual([
       '/admin/settings/core',
-      '/admin/settings/site',
-      '/admin/settings/feature',
-      '/admin/settings/auth',
       '/admin/settings/security',
-      '/admin/settings/limits',
-      '/admin/settings/providers'
+      '/admin/settings/limits'
     ]);
 
     // 版本升级
@@ -90,7 +97,7 @@ describe('getAdminMenuList', () => {
     // 移除「向量检索策略」（量化等级改环境变量、HNSW 并入限制与并发）
     const systemConfigMenu = menus.find((item) => item.label === '系统配置');
     const settingsValues = systemConfigMenu?.children?.map((c) => c.value) ?? [];
-    expect(systemConfigMenu?.children?.length).toBe(7);
+    expect(systemConfigMenu?.children?.length).toBe(6);
     expect(settingsValues).toContain('/admin/settings/core');
     expect(settingsValues).toContain('/admin/settings/limits');
     expect(settingsValues).not.toContain('/admin/settings/resource');
@@ -110,7 +117,7 @@ describe('getAdminMenuList', () => {
     expect(menuLabels).toContain('子服务');
   });
 
-  it('hides commercial business menus when pro license is inactive or expired', () => {
+  it('hides the entire commercial group when pro license is inactive or expired', () => {
     // License 未激活/已过期：商业版业务菜单隐藏，仅保留基础管理和系统配置入口
     const menus = getAdminMenuList({
       isProService: true,
@@ -123,9 +130,11 @@ describe('getAdminMenuList', () => {
     expect(menuLabels).toContain('系统资源');
     expect(menuLabels).toContain('系统配置');
     expect(menuLabels).toContain('版本升级');
-    expect(
-      menus.find((menu) => menu.label === '商业化')?.children?.map((item) => item.value)
-    ).toEqual(['/admin/settings/pay']);
+    expect(menuLabels).not.toContain('商业化');
+    const routes = menus.flatMap((menu) => (menu.children ?? [menu]).map((item) => item.value));
+    for (const route of ['/admin/plans', '/admin/pays', '/admin/invoice', '/admin/settings/pay']) {
+      expect(routes).not.toContain(route);
+    }
     expect(menuLabels).toContain('子服务');
     expect(menuLabels).not.toContain('数据面板');
     expect(menuLabels).not.toContain('运营管理');

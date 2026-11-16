@@ -15,29 +15,71 @@ import { isValidServiceBaseUrl } from '../../../../common/string/url';
 export const ProbeConnectionBodySchema = z
   .object({
     url: z.string().url().meta({
-      description: '待测试的地址；子服务探测要求不含凭据、查询参数或片段的 HTTP(S) 基地址',
+      description:
+        '待测试的基地址，不含凭据、查询参数或片段；WebSocket 代理使用 WS(S)，其余服务使用 HTTP(S)',
       example: 'http://sandbox:3002'
     }),
     timeoutMs: IntSchema.min(500).max(30000).default(5000).meta({
       description: '探测超时时间（毫秒），默认 5000ms',
       example: 5000
     }),
-    service: z.enum(['codeSandbox', 'mcpSse']).optional().meta({
-      description: '子服务类型；省略时只探测网络连通性'
-    }),
+    service: z
+      .enum([
+        'codeSandbox',
+        'mcpSse',
+        'fileService',
+        'cdn',
+        'agentSandboxWsProxy',
+        'agentSandboxPreviewProxy'
+      ])
+      .optional()
+      .meta({
+        description:
+          '服务类型；Agent Sandbox 代理检查 /health，不验证共享密钥或创建沙箱；省略时只探测网络连通性'
+      }),
     token: z.string().optional().meta({
-      description: '代码沙箱草稿凭据；掩码表示使用当前已保存的凭据'
+      description: '代码沙箱新填写的草稿凭据；空字符串表示明确不使用密钥'
+    }),
+    useStoredToken: z.boolean().optional().meta({
+      description: '使用服务端已保存凭据，不向客户端返回其明文或密文；与 token 互斥',
+      example: true
     })
   })
   .refine((body) => body.token === undefined || body.service === 'codeSandbox', {
     message: 'Token is only supported for code sandbox probes',
     path: ['token']
   })
-  .refine((body) => body.service === undefined || isValidServiceBaseUrl(body.url), {
-    message: 'Expected an HTTP(S) base URL without credentials, query or fragment',
-    path: ['url']
-  });
+  .refine(
+    (body) => !body.useStoredToken || (body.service === 'codeSandbox' && body.token === undefined),
+    {
+      message: 'Stored credentials require a code sandbox probe without a draft token',
+      path: ['useStoredToken']
+    }
+  )
+  .refine(
+    (body) => {
+      if (body.service === undefined) return true;
+      if (body.service === 'agentSandboxWsProxy') {
+        return /^wss?:/.test(body.url) && isValidServiceBaseUrl(body.url.replace(/^ws/, 'http'));
+      }
+      return isValidServiceBaseUrl(body.url);
+    },
+    {
+      message:
+        'Expected a service base URL with the matching protocol and without credentials, query or fragment',
+      path: ['url']
+    }
+  );
 export type ProbeConnectionBody = z.infer<typeof ProbeConnectionBodySchema>;
+
+/** 文件域名探测的公开响应，只确认路由可用，不暴露实例配置或存储凭据。 */
+export const FileServiceHealthResponseSchema = z.object({
+  service: z.literal('fastgpt-file-service').meta({
+    description: '文件服务标识',
+    example: 'fastgpt-file-service'
+  })
+});
+export type FileServiceHealthResponse = z.infer<typeof FileServiceHealthResponseSchema>;
 
 export const ProbeConnectionErrorCodeSchema = z.enum([
   'protocol',
@@ -62,11 +104,24 @@ export const ProbeConnectionResponseSchema = z.object({
 export type ProbeConnectionResponse = z.infer<typeof ProbeConnectionResponseSchema>;
 
 export const AdminInstanceConfigProbePath: OpenAPIPath = {
+  '/api/system/file/health': {
+    get: {
+      summary: '检查文件服务路由可用性',
+      description: '公开探针，仅返回固定服务标识，不读取文件或实例配置',
+      tags: [DevApiTagsMap.adminSettings],
+      responses: {
+        200: {
+          description: '文件服务路由可用',
+          content: { 'application/json': { schema: FileServiceHealthResponseSchema } }
+        }
+      }
+    }
+  },
   '/api/admin/system/config/probe': {
     post: {
       summary: '后端探测目标服务 URL 连通性',
       description:
-        '默认检测网络连通性；代码沙箱执行固定算术，MCP SSE 验证传输握手，不验证真实密钥或工具调用',
+        '默认检测网络连通性；代码沙箱执行固定算术，MCP SSE 验证传输握手；Agent Sandbox 两类代理检查 /health，WebSocket 地址按 WS→HTTP、WSS→HTTPS 转换，不验证 WebSocket 升级、共享密钥或实际沙箱访问',
       tags: [DevApiTagsMap.adminSettings],
       requestBody: {
         content: {

@@ -185,8 +185,19 @@ describe('VectorDB Controller', () => {
       }
     );
 
+    it.each([false, true])(
+      'uses configured recall concurrency with Pro license=%s',
+      async (isPlus) => {
+        setTestProLicense(isPlus);
+        getTestInstanceConfig().vector.vectorRecallConcurrency = 8;
+        await recallFromVectorStore(props);
+        expect(withConcurrency.mock.calls[0][0].concurrency()).toBe(8);
+        expect(mockVectorEmbRecall).toHaveBeenCalledOnce();
+      }
+    );
+
     it.each([
-      { isPlus: false, concurrency: 8 },
+      { isPlus: false, concurrency: 0 },
       { isPlus: true, concurrency: 0 },
       { isPlus: true, concurrency: undefined }
     ])(

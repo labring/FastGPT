@@ -95,18 +95,21 @@ const FeatureSettingComponent = () => {
               />
             )}
           />
-          <Controller
-            name="showOpenaiAccount"
-            control={control}
-            render={({ field }) => (
-              <AdminSwitchRow
-                label={t('admin:show_openai_account')}
-                tooltip={t('admin:show_openai_account_tip')}
-                isChecked={field.value}
-                onChange={field.onChange}
-              />
-            )}
-          />
+          {/* 只为仍启用的旧实例保留关闭入口；提交成功并回读 false 后隐藏。 */}
+          {effectiveConfig.showOpenaiAccount === true && (
+            <Controller
+              name="showOpenaiAccount"
+              control={control}
+              render={({ field }) => (
+                <AdminSwitchRow
+                  label={t('admin:show_openai_account')}
+                  tooltip={t('admin:show_openai_account_tip')}
+                  isChecked={field.value}
+                  onChange={field.onChange}
+                />
+              )}
+            />
+          )}
           <Controller
             name="enableTeamModel"
             control={control}

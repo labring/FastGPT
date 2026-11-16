@@ -7,8 +7,13 @@ import { getLicenseStatus } from '@fastgpt/global/common/system/license/utils';
 import { createHash } from 'node:crypto';
 import { serviceEnv } from '../../../env';
 import { ProEnvConfigSchema } from '@fastgpt/global/common/system/config/proEnv';
+import { resolveFeatureConfigForEdition } from '@fastgpt/global/common/system/config/feature';
+import { AuthConfigSchema } from '@fastgpt/global/common/system/config/schemas/auth';
+import { SecurityConfigSchema } from '@fastgpt/global/common/system/config/schemas/security';
 
 const logger = getLogger(LogCategories.SYSTEM);
+const defaultAuthConfig = AuthConfigSchema.parse({});
+const defaultSecurityConfig = SecurityConfigSchema.parse({});
 
 type RuntimeState = {
   frontendContext: FrontendConfigContext;
@@ -45,7 +50,18 @@ export const getInstanceConfigVersionTag = (): string =>
  */
 export const getSystemInstanceConfig = (): SystemInstanceConfig => {
   // global 是跨 Next bundle 的唯一快照源；模块级缓存会让已访问过的路由永久滞留旧配置。
-  const snapshot = global.systemInstanceConfig ?? resolveSystemInstanceConfig({});
+  const snapshot =
+    global.systemInstanceConfig ??
+    (() => {
+      const initial = resolveSystemInstanceConfig({});
+      initial.feature = resolveFeatureConfigForEdition({
+        config: initial.feature,
+        commercialService:
+          getSystemConfigRuntimeState().frontendContext.commercialService ??
+          Boolean(serviceEnv.PRO_URL)
+      });
+      return initial;
+    })();
   global.systemInstanceConfig = snapshot;
 
   logInstanceConfigRead({
@@ -103,6 +119,20 @@ export const publishSystemInstanceConfigSnapshot = ({
     ? snapshot
     : {
         ...snapshot,
+        feature: resolveFeatureConfigForEdition({ config: snapshot.feature, commercialService }),
+        // 开源版没有账号策略配置入口，生效值固定采用 Schema 默认值，不继承商业版旧值。
+        auth: { ...snapshot.auth, passwordExpiredMonth: defaultAuthConfig.passwordExpiredMonth },
+        security: {
+          ...snapshot.security,
+          passwordLoginMinuteLimitCount: defaultSecurityConfig.passwordLoginMinuteLimitCount,
+          maxLoginSession: defaultSecurityConfig.maxLoginSession
+        },
+        // 开源版不配置导出/站点同步冷却，不能继承数据库里残留的商业版限制。
+        resource: {
+          ...snapshot.resource,
+          exportDatasetLimitMinutes: 0,
+          websiteSyncLimitMinuted: 0
+        },
         proEnv: ProEnvConfigSchema.parse({}),
         commercial: { ...snapshot.commercial, subPlans: undefined },
         license: { ...snapshot.license, data: undefined }

@@ -105,6 +105,23 @@ const render = async () => {
 };
 
 describe('admin route guard', () => {
+  it('closes external provider settings after the refreshed client projection becomes empty', async () => {
+    mocks.router.pathname = '/admin/settings/providers';
+    mocks.system.licenseLoading = false;
+    mocks.system.feConfigs = {
+      isProService: false,
+      externalProviderWorkflowVariables: [{ name: 'Legacy', key: 'System_legacy' }]
+    };
+    await render();
+    expect(mocks.mountChild).toHaveBeenCalledTimes(1);
+    expect(mocks.router.replace).not.toHaveBeenCalled();
+
+    mocks.system.feConfigs = { isProService: false, externalProviderWorkflowVariables: [] };
+    await render();
+    expect(container.textContent).not.toContain('admin content');
+    expect(mocks.router.replace).toHaveBeenCalledWith('/admin/license');
+  });
+
   it('waits for the edition and Pro license before mounting or redirecting', async () => {
     mocks.system.initd = false;
     await render();

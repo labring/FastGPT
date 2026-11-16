@@ -9,6 +9,7 @@ import { useDomainConfig, updateDomainConfigApi } from '@/web/common/system/useD
 import AdminSettingPage from '@/pageComponents/admin/settings/AdminSettingPage';
 import AdminSettingSection from '@/pageComponents/admin/settings/AdminSettingSection';
 import AdminFormItem from '@/pageComponents/admin/settings/AdminFormItem';
+import AdminSecretInput from '@/pageComponents/admin/settings/AdminSecretInput';
 import AdminSwitchRow from '@/pageComponents/admin/settings/AdminSwitchRow';
 import type { SettingTOCItem } from '@/pageComponents/admin/settings/AdminSettingTOC';
 import type { SystemInstanceConfigDomainMap } from '@fastgpt/global/common/system/config/schema';
@@ -47,6 +48,7 @@ const CommercialSettingComponent = () => {
   const {
     revision,
     effectiveConfig,
+    configuredSecretKeys,
     overrides: commercialOverrides,
     isLoading,
     isUpdating,
@@ -221,7 +223,18 @@ const CommercialSettingComponent = () => {
             <Input {...register('payment.wx.serialNo')} placeholder="******" />
           </AdminFormItem>
           <AdminFormItem label={t('admin:apiv3_key')} tooltip={t('admin:wechat_pay_apiv3_key')}>
-            <Input type="password" {...register('payment.wx.apiV3Key')} placeholder="******" />
+            <Controller
+              name="payment.wx.apiV3Key"
+              control={control}
+              render={({ field }) => (
+                <AdminSecretInput
+                  name={field.name}
+                  value={field.value}
+                  onChange={field.onChange}
+                  isConfigured={configuredSecretKeys.includes('payment.wx.apiV3Key')}
+                />
+              )}
+            />
           </AdminFormItem>
           <AdminFormItem
             label={t('admin:payment_callback_url')}
@@ -238,10 +251,20 @@ const CommercialSettingComponent = () => {
           label={t('admin:merchant_private_key_pem')}
           tooltip={t('admin:wechat_pay_api_certificate_private_key_paste_the_full_conten')}
         >
-          <Textarea
-            {...register('payment.wx.privateKey')}
-            rows={6}
-            placeholder="-----BEGIN PRIVATE KEY-----"
+          <Controller
+            name="payment.wx.privateKey"
+            control={control}
+            render={({ field }) => (
+              <AdminSecretInput
+                name={field.name}
+                value={field.value}
+                onChange={field.onChange}
+                isConfigured={configuredSecretKeys.includes('payment.wx.privateKey')}
+                multiline
+                rows={6}
+                placeholder="-----BEGIN PRIVATE KEY-----"
+              />
+            )}
           />
         </AdminFormItem>
       </AdminSettingSection>
@@ -268,40 +291,80 @@ const CommercialSettingComponent = () => {
             label={t('admin:application_private_key')}
             tooltip={t('admin:application_private_key_content_paste_the_full_pem_text')}
           >
-            <Textarea
-              {...register('payment.alipay.appPrivateKey')}
-              rows={5}
-              placeholder="-----BEGIN RSA PRIVATE KEY-----"
+            <Controller
+              name="payment.alipay.appPrivateKey"
+              control={control}
+              render={({ field }) => (
+                <AdminSecretInput
+                  name={field.name}
+                  value={field.value}
+                  onChange={field.onChange}
+                  isConfigured={configuredSecretKeys.includes('payment.alipay.appPrivateKey')}
+                  multiline
+                  rows={5}
+                  placeholder="-----BEGIN RSA PRIVATE KEY-----"
+                />
+              )}
             />
           </AdminFormItem>
           <AdminFormItem
             label={t('admin:application_public_certificate')}
             tooltip={t('admin:application_public_certificate_content')}
           >
-            <Textarea
-              {...register('payment.alipay.appCertContent')}
-              rows={5}
-              placeholder="-----BEGIN CERTIFICATE-----"
+            <Controller
+              name="payment.alipay.appCertContent"
+              control={control}
+              render={({ field }) => (
+                <AdminSecretInput
+                  name={field.name}
+                  value={field.value}
+                  onChange={field.onChange}
+                  isConfigured={configuredSecretKeys.includes('payment.alipay.appCertContent')}
+                  multiline
+                  rows={5}
+                  placeholder="-----BEGIN CERTIFICATE-----"
+                />
+              )}
             />
           </AdminFormItem>
           <AdminFormItem
             label={t('admin:alipay_root_certificate')}
             tooltip={t('admin:alipay_root_certificate_content')}
           >
-            <Textarea
-              {...register('payment.alipay.rootCertContent')}
-              rows={5}
-              placeholder="-----BEGIN CERTIFICATE-----"
+            <Controller
+              name="payment.alipay.rootCertContent"
+              control={control}
+              render={({ field }) => (
+                <AdminSecretInput
+                  name={field.name}
+                  value={field.value}
+                  onChange={field.onChange}
+                  isConfigured={configuredSecretKeys.includes('payment.alipay.rootCertContent')}
+                  multiline
+                  rows={5}
+                  placeholder="-----BEGIN CERTIFICATE-----"
+                />
+              )}
             />
           </AdminFormItem>
           <AdminFormItem
             label={t('admin:alipay_public_certificate')}
             tooltip={t('admin:alipay_public_certificate_content')}
           >
-            <Textarea
-              {...register('payment.alipay.publicCertContent')}
-              rows={5}
-              placeholder="-----BEGIN CERTIFICATE-----"
+            <Controller
+              name="payment.alipay.publicCertContent"
+              control={control}
+              render={({ field }) => (
+                <AdminSecretInput
+                  name={field.name}
+                  value={field.value}
+                  onChange={field.onChange}
+                  isConfigured={configuredSecretKeys.includes('payment.alipay.publicCertContent')}
+                  multiline
+                  rows={5}
+                  placeholder="-----BEGIN CERTIFICATE-----"
+                />
+              )}
             />
           </AdminFormItem>
         </SimpleGrid>

@@ -7,6 +7,8 @@ export const appEnv = createEnv({
 
     SHOW_GIT: BoolSchema.default(false),
 
+    WECOM_LOGIN_AUTO_REDIRECT: BoolSchema.default(false),
+
     DISABLE_MARKETPLACE: BoolSchema.default(false)
   },
   emptyStringAsUndefined: true,

@@ -116,6 +116,7 @@ async function doInitSystemConfig({
     pluginRemoteDebug,
     disableMarketplace: appEnv.DISABLE_MARKETPLACE,
     showGit: appEnv.SHOW_GIT,
+    wecomLoginAutoRedirect: appEnv.WECOM_LOGIN_AUTO_REDIRECT,
     chineseRedirectUrl: appEnv.CHINESE_IP_REDIRECT_URL
   });
   const instanceConfig = await systemInstanceConfig.initialize();

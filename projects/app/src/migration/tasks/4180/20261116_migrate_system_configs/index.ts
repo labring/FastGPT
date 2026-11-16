@@ -31,6 +31,7 @@ import {
   rehomeSandboxOvercommit,
   verifySandboxOvercommitMigration
 } from './subservices';
+import { encryptStoredConfigSecrets, verifyStoredConfigSecrets } from './secrets';
 
 const MAX_SKIPPED_PATHS_TEXT_LENGTH = 1000;
 
@@ -80,7 +81,7 @@ const buildSkippedConfigSummary = ({
 /**
  * 系统配置迁移的唯一入口：导入旧配置、清理废弃字段并补齐全部受管配置。
  * 采用幂等全量重跑，无 checkpoint；失败后重新检查与补缺，保留管理员值和显式清空。
- * 空集合首次初始化承接 App defaultConfig.json；完整终验通过前阻塞业务启动。
+ * 空集合首次初始化承接 App defaultConfig.json；后台独立执行，不阻塞业务启动。
  * 任务成功后由 Runner 永久跳过，后续启动不再导入旧 ENV 或文件。
  */
 export const migrateSystemConfigs = async (context: SystemMigrationContext) => {
@@ -152,7 +153,7 @@ export const migrateSystemConfigs = async (context: SystemMigrationContext) => {
       backfilledDomainCount: result.backfilledDomains.length
     },
     current: result.migratedCount,
-    // 使用默认值的域也会创建文档；只数非默认 overrides 会使 current > total 并阻塞启动。
+    // 使用默认值的域也会创建文档；只数非默认 overrides 会使 current > total 并导致任务失败。
     total: SYSTEM_INSTANCE_CONFIG_DOMAINS.length
   });
 
@@ -178,7 +179,9 @@ export const migrateSystemConfigs = async (context: SystemMigrationContext) => {
     rehomeSandboxOvercommit,
     rehomeFileDomain,
     rehomeHttpRuntimePolicies,
-    restoreCustomDomainConfig
+    restoreCustomDomainConfig,
+    // 既有完整域也要重扫加密；前述回填完成后统一处理尚未触及的旧明文。
+    encryptStoredConfigSecrets
   ];
   await context.reportProgress({
     key: 'backfill',
@@ -242,7 +245,8 @@ export const migrateSystemConfigs = async (context: SystemMigrationContext) => {
     verifyFileDomainMigration,
     verifyHttpRuntimePolicyMigration,
     verifyCustomDomainConfig,
-    verifyLegacyConfigScopes
+    verifyLegacyConfigScopes,
+    verifyStoredConfigSecrets
   ]) {
     await context.assertActive();
     await verify();

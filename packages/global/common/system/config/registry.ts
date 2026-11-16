@@ -64,13 +64,17 @@ const createEntries = ({
 export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistryItem[] = [
   ...createEntries({
     section: 'site',
+    keys: ['publicUrl'],
+    options: { edition: 'all', secret: false, applyMode: 'live' }
+  }),
+  // 站点品牌与定制信息仅商业版可修改，菜单和 API 写入边界统一由字段归属推导。
+  ...createEntries({
+    section: 'site',
     keys: [
       'name',
       'description',
       'favicon',
-      'marketplaceUrl',
       'docUrl',
-      'openApiDocUrl',
       'openApiPrefix',
       'concatMd',
       'navbarItems',
@@ -81,7 +85,7 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
       'botIframeUrl',
       'scripts'
     ],
-    options: { edition: 'all', secret: false, applyMode: 'live' }
+    options: { edition: 'pro', secret: false, applyMode: 'live' }
   }),
   // 自定义域名入口与 CNAME 配置沿用旧页面“SaaS 服务才会用到”的定位
   ...createEntries({
@@ -113,8 +117,14 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
   }),
   ...createEntries({
     section: 'auth',
-    keys: ['openApiKeyMaxCount', 'passwordExpiredMonth', 'wecomLoginAutoRedirect'],
+    keys: ['openApiKeyMaxCount'],
     options: { edition: 'all', secret: false, applyMode: 'live' }
+  }),
+  // 开源版账号与登录策略固定使用 Schema 默认值，配置入口仅限商业版。
+  ...createEntries({
+    section: 'auth',
+    keys: ['passwordExpiredMonth'],
+    options: { edition: 'pro', secret: false, applyMode: 'live' }
   }),
   ...createEntries({
     section: 'auth',
@@ -147,8 +157,6 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
       'loginProviders.phone.accessKeyId',
       'loginProviders.phone.signName',
       'loginProviders.wechat.appId',
-      'loginProviders.wecom.suiteId',
-      'loginProviders.wecom.corpId',
       'loginProviders.github.clientId',
       'loginProviders.google.clientId',
       'loginProviders.microsoft.clientId',
@@ -160,10 +168,12 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
     ],
     options: { edition: 'pro', secret: false, applyMode: 'live' }
   }),
-  // 企微服务商运营字段：仅 SaaS 开启时在管理端表单展示
+  // 企业微信服务商的全部配置只在 SaaS 模式下展示。
   ...createEntries({
     section: 'auth',
     keys: [
+      'loginProviders.wecom.suiteId',
+      'loginProviders.wecom.corpId',
       'loginProviders.wecom.buyerUserId',
       'loginProviders.wecom.basicVersionId',
       'loginProviders.wecom.advancedVersionId'
@@ -176,9 +186,6 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
       'loginProviders.email.pass',
       'loginProviders.phone.accessKeySecret',
       'loginProviders.wechat.appSecret',
-      'loginProviders.wecom.secret',
-      'loginProviders.wecom.token',
-      'loginProviders.wecom.encodingAESKey',
       'loginProviders.github.secret',
       'loginProviders.google.secret',
       'loginProviders.microsoft.secret'
@@ -187,7 +194,13 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
   }),
   ...createEntries({
     section: 'auth',
-    keys: ['loginProviders.wecom.providerSecret', 'loginProviders.wecom.paySecret'],
+    keys: [
+      'loginProviders.wecom.secret',
+      'loginProviders.wecom.token',
+      'loginProviders.wecom.encodingAESKey',
+      'loginProviders.wecom.providerSecret',
+      'loginProviders.wecom.paySecret'
+    ],
     options: { edition: 'pro', secret: true, applyMode: 'live', isSaasOnly: true }
   }),
   ...createEntries({
@@ -196,8 +209,7 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
       'checkInternalIp',
       'csrfEnabled',
       'authCookieSecure',
-      'passwordLoginMinuteLimitCount',
-      'maxLoginSession',
+      'allowedOriginsEnabled',
       'allowedOrigins',
       'skipFileTypeCheck',
       'checkExternalFile',
@@ -207,11 +219,20 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
     options: { edition: 'all', secret: false, applyMode: 'live' }
   }),
   ...createEntries({
+    section: 'security',
+    keys: ['passwordLoginMinuteLimitCount', 'maxLoginSession'],
+    options: { edition: 'pro', secret: false, applyMode: 'live' }
+  }),
+  ...createEntries({
+    section: 'feature',
+    keys: ['multipleDataToBase64', 'agentEngine'],
+    options: { edition: 'all', secret: false, applyMode: 'live' }
+  }),
+  // 社区版固定使用功能默认值；核心页的引擎与多模态设置仍独立配置。
+  ...createEntries({
     section: 'feature',
     keys: [
       'hideChatCopyrightSetting',
-      'multipleDataToBase64',
-      'agentEngine',
       'enableTeamPluginUpload',
       'showOpenaiAccount',
       'enableTeamModel',
@@ -225,7 +246,7 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
       'showPublishWechat',
       'showComplianceCopywriting'
     ],
-    options: { edition: 'all', secret: false, applyMode: 'live' }
+    options: { edition: 'pro', secret: false, applyMode: 'live' }
   }),
   // 营销与收款运营开关：私有化部署不展示，仅 SaaS 运营（ENABLE_SAAS_ADMIN_CONFIG）可配
   ...createEntries({
@@ -288,11 +309,14 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
       'datasetFolderMaxAmount',
       'uploadFileMaxSize',
       'uploadFileMaxAmount',
-      'systemMaxStringLengthM',
-      'exportDatasetLimitMinutes',
-      'websiteSyncLimitMinuted'
+      'systemMaxStringLengthM'
     ],
     options: { edition: 'all', secret: false, applyMode: 'reload' }
+  }),
+  ...createEntries({
+    section: 'resource',
+    keys: ['exportDatasetLimitMinutes', 'websiteSyncLimitMinuted'],
+    options: { edition: 'pro', secret: false, applyMode: 'reload' }
   }),
   ...createEntries({
     section: 'resource',
@@ -331,22 +355,18 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
       'dataset.qaMaxProcess',
       'dataset.vlmMaxProcess',
       'chat.maxQpm',
-      'tracking.retentionHours',
-      'task.evalConcurrency',
-      'channel.wechatConcurrency'
+      'tracking.retentionHours'
     ],
     options: { edition: 'all', secret: false, applyMode: 'reload' }
   }),
   ...createEntries({
+    section: 'performance',
+    keys: ['task.evalConcurrency'],
+    options: { edition: 'pro', secret: false, applyMode: 'reload' }
+  }),
+  ...createEntries({
     section: 'storage',
-    keys: [
-      'fileDomain',
-      'downloadMode',
-      'externalEndpoint',
-      'cdnEndpoint',
-      'fileUrlExpiredDays',
-      'redirectTtlSeconds'
-    ],
+    keys: ['fileDomain', 'downloadMode', 'externalEndpoint', 'cdnEndpoint', 'fileUrlExpiredDays'],
     options: {
       edition: 'all',
       secret: false,
@@ -366,7 +386,7 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
     section: 'vector',
     keys: ['vectorRecallConcurrency'],
     options: {
-      edition: 'pro',
+      edition: 'all',
       secret: false,
       applyMode: 'reload'
     }
@@ -380,10 +400,6 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
       'documentParse.sangfor.url',
       'documentParse.sangfor.extensions',
       'documentParse.sangfor.timeoutSeconds',
-      'dataSource.feishuBaseUrl',
-      'dataSource.dingtalkBaseUrl',
-      'dataSource.dingtalkOapiBaseUrl',
-      'dataSource.yuqueDatasetBaseUrl',
       'externalProviderWorkflowVariables'
     ],
     options: { edition: 'all', secret: false, applyMode: 'reload' }
@@ -404,17 +420,17 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
       'agentSandbox.opensandbox.cpuOvercommitFactor',
       'agentSandbox.opensandbox.memoryOvercommitFactor'
     ],
-    options: { edition: 'pro', secret: false, applyMode: 'live' }
+    options: { edition: 'all', secret: false, applyMode: 'live' }
   }),
   ...createEntries({
     section: 'subservice',
     keys: ['agentSandbox.proxy.wsUrl', 'agentSandbox.proxy.previewUrl'],
-    options: { edition: 'pro', secret: false, applyMode: 'reload' }
+    options: { edition: 'all', secret: false, applyMode: 'reload' }
   }),
   ...createEntries({
     section: 'subservice',
     keys: ['agentSandbox.proxy.secret'],
-    options: { edition: 'pro', secret: true, applyMode: 'reload' }
+    options: { edition: 'all', secret: true, applyMode: 'reload' }
   }),
   ...createEntries({
     section: 'subservice',
@@ -427,9 +443,6 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
       'agentSandbox.common.archiveInactiveDays',
       'agentSandbox.common.maxEditDebug',
       'agentSandbox.common.maxPerTeam',
-      'agentSandbox.common.entrypointTimeoutSeconds',
-      'agentSandbox.common.wsMaxMessageBytes',
-      'agentSandbox.common.wsMaxFrameBytes',
       'agentSandbox.common.npmRegistry',
       'agentSandbox.common.pypiIndexUrl',
       'agentSandbox.common.aptMirror',
@@ -443,7 +456,7 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
       'agentSandbox.opensandbox.volumeManagerUrl',
       'agentSandbox.opensandbox.volumeNamePrefix'
     ],
-    options: { edition: 'pro', secret: false, applyMode: 'restart' }
+    options: { edition: 'all', secret: false, applyMode: 'restart' }
   }),
   ...createEntries({
     section: 'subservice',
@@ -452,7 +465,7 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
       'agentSandbox.opensandbox.apiKey',
       'agentSandbox.opensandbox.volumeManagerToken'
     ],
-    options: { edition: 'pro', secret: true, applyMode: 'restart' }
+    options: { edition: 'all', secret: true, applyMode: 'restart' }
   }),
   ...createEntries({
     section: 'providers',

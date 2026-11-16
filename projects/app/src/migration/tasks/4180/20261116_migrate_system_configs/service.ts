@@ -17,6 +17,10 @@ import {
 } from '@fastgpt/global/common/system/config/merge';
 import { MongoSystemConfigs } from '@fastgpt/service/common/system/config/schema';
 import { MongoSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/schema';
+import {
+  decryptDomainSecrets,
+  encryptDomainSecrets
+} from '@fastgpt/service/common/system/systemInstanceConfig/secrets';
 import { logInstanceConfigRead } from '@fastgpt/service/common/system/migrationCoverageLog';
 import type { SystemMigrationLogger } from '@/migration/registry';
 import {
@@ -124,12 +128,11 @@ export const buildLegacyDomainOverrides = ({
 
   // ---------- site ----------
   overrides.site = compact({
+    publicUrl: optionalText(legacyEnv.FE_DOMAIN),
     name: optionalText(feConfigs.systemTitle) ?? optionalText(legacyEnv.SYSTEM_NAME),
     description: optionalText(legacyEnv.SYSTEM_DESCRIPTION),
     favicon: optionalText(feConfigs.favicon) ?? optionalText(legacyEnv.SYSTEM_FAVICON),
-    marketplaceUrl: optionalText(legacyEnv.MARKETPLACE_URL),
     docUrl: optionalString(feConfigs.docUrl),
-    openApiDocUrl: optionalString(feConfigs.openAPIDocUrl),
     openApiPrefix: optionalText(systemEnv.openapiPrefix),
     concatMd: optionalString(feConfigs.concatMd),
     appTemplateCourse: optionalString(feConfigs.appTemplateCourse),
@@ -192,7 +195,6 @@ export const buildLegacyDomainOverrides = ({
   overrides.auth = compact({
     openApiKeyMaxCount: optionalNumber(legacyEnv.OPENAPI_KEY_MAX_COUNT),
     passwordExpiredMonth: optionalNumber(legacyEnv.PASSWORD_EXPIRED_MONTH) ?? null,
-    wecomLoginAutoRedirect: optionalBool(legacyEnv.WECOM_LOGIN_AUTO_REDIRECT),
     sso: compact({
       title: optionalString(feConfigs.sso?.title),
       icon: optionalString(feConfigs.sso?.icon),
@@ -313,8 +315,7 @@ export const buildLegacyDomainOverrides = ({
     }),
     tracking: compact({
       retentionHours: optionalNumber(legacyEnv.LLM_REQUEST_TRACKING_RETENTION_HOURS)
-    }),
-    channel: compact({ wechatConcurrency: optionalNumber(legacyEnv.WECHAT_CHANNEL_CONCURRENCY) })
+    })
   }) as DomainOverrides['performance'];
 
   // ---------- storage ----------
@@ -322,8 +323,7 @@ export const buildLegacyDomainOverrides = ({
     downloadMode: optionalText(legacyEnv.STORAGE_DOWNLOAD_URL_MODE),
     externalEndpoint: optionalText(legacyEnv.STORAGE_EXTERNAL_ENDPOINT),
     cdnEndpoint: optionalText(legacyEnv.STORAGE_S3_CDN_ENDPOINT),
-    fileUrlExpiredDays: optionalNumber(legacyEnv.FILE_URL_EXPIRED_DAYS),
-    redirectTtlSeconds: optionalNumber(legacyEnv.STORAGE_DOWNLOAD_REDIRECT_TTL_SECONDS)
+    fileUrlExpiredDays: optionalNumber(legacyEnv.FILE_URL_EXPIRED_DAYS)
   }) as DomainOverrides['storage'];
 
   // ---------- vector ----------
@@ -389,12 +389,6 @@ export const buildLegacyDomainOverrides = ({
         timeoutSeconds: optionalNumber(legacyEnv.SANGFOR_PARSE_TIMEOUT_SECONDS)
       })
     }),
-    dataSource: compact({
-      feishuBaseUrl: optionalText(legacyEnv.FEISHU_BASE_URL),
-      dingtalkBaseUrl: optionalText(legacyEnv.DINGTALK_BASE_URL),
-      dingtalkOapiBaseUrl: optionalText(legacyEnv.DINGTALK_OAPI_BASE_URL),
-      yuqueDatasetBaseUrl: optionalText(legacyEnv.YUQUE_DATASET_BASE_URL)
-    }),
     externalProviderWorkflowVariables: Array.isArray(feConfigs.externalProviderWorkflowVariables)
       ? (compactDeep(feConfigs.externalProviderWorkflowVariables) as Record<string, unknown>[])
       : undefined
@@ -432,11 +426,6 @@ export const buildLegacyDomainOverrides = ({
             ? null
             : (optionalNumber(systemEnv.agentSandboxMaxPerTeam) ??
               optionalNumber(legacyEnv.AGENT_SANDBOX_MAX_PER_TEAM)),
-        entrypointTimeoutSeconds: optionalNumber(
-          legacyEnv.AGENT_SANDBOX_ENTRYPOINT_TIMEOUT_SECONDS
-        ),
-        wsMaxMessageBytes: optionalNumber(legacyEnv.AGENT_SANDBOX_WS_MAX_MESSAGE_BYTES),
-        wsMaxFrameBytes: optionalNumber(legacyEnv.AGENT_SANDBOX_WS_MAX_FRAME_BYTES),
         npmRegistry: optionalText(legacyEnv.AGENT_SANDBOX_NPM_REGISTRY),
         pypiIndexUrl: optionalText(legacyEnv.AGENT_SANDBOX_PYPI_INDEX_URL),
         aptMirror: optionalText(legacyEnv.AGENT_SANDBOX_APT_MIRROR)
@@ -1032,7 +1021,10 @@ export const inspectInstanceConfigMigration = async () => {
     existingDocs.map((doc) => [
       String((doc as any).domain ?? doc._id),
       {
-        overrides: (doc.overrides ?? {}) as Record<string, unknown>,
+        overrides: decryptDomainSecrets(
+          (doc as any).domain ?? doc._id,
+          (doc.overrides ?? {}) as Record<string, unknown>
+        ),
         explicitDefaultPaths: new Set(
           Array.isArray((doc as any).explicitDefaultPaths) ? (doc as any).explicitDefaultPaths : []
         )
@@ -1229,7 +1221,10 @@ export const applyInstanceConfigMigration = async ({
       // 文档被并发删除：本次不处理，交给下一轮迁移补齐
       if (!doc) return { acceptedPaths: [], skippedPaths: [] };
 
-      const existingOverrides = (doc.overrides ?? {}) as Record<string, unknown>;
+      const existingOverrides = decryptDomainSecrets(
+        domain,
+        (doc.overrides ?? {}) as Record<string, unknown>
+      );
       const existingExplicitDefaultPaths = new Set(
         Array.isArray((doc as any).explicitDefaultPaths)
           ? ((doc as any).explicitDefaultPaths as string[])
@@ -1336,7 +1331,7 @@ export const applyInstanceConfigMigration = async ({
         { domain, revision: doc.revision },
         {
           $set: {
-            overrides: mergedOverrides,
+            overrides: encryptDomainSecrets(domain, mergedOverrides, doc.overrides),
             explicitDefaultPaths: nextExplicitDefaultPaths,
             updatedAt: new Date()
           },
@@ -1371,7 +1366,7 @@ export const applyInstanceConfigMigration = async ({
           domain,
           schemaVersion: SYSTEM_INSTANCE_CONFIG_SCHEMA_VERSION,
           revision: 1,
-          overrides: targetOverrides,
+          overrides: encryptDomainSecrets(domain, targetOverrides),
           ...(explicitDefaultPaths?.[domain]?.length
             ? { explicitDefaultPaths: explicitDefaultPaths[domain] }
             : {}),

@@ -1,9 +1,9 @@
 import z from 'zod';
 import { isValidServiceBaseUrl } from '../../../string/url';
-import { positiveInteger, positiveNumber, urlWithDefault } from './primitives';
+import { positiveNumber, urlWithDefault } from './primitives';
 
 export const StorageConfigSchema = z.strictObject({
-  // 指向 FastGPT 文件路由的公开地址；空值使用当前部署 FE_DOMAIN。
+  // 指向 FastGPT 文件路由的公开地址；空值使用部署的站点访问地址。
   fileDomain: z
     .string()
     .trim()
@@ -16,7 +16,5 @@ export const StorageConfigSchema = z.strictObject({
   externalEndpoint: urlWithDefault(),
   // 可选 CDN 地址，用于重写 pre-signed URL 的 host；空值表示未配置
   cdnEndpoint: urlWithDefault(),
-  fileUrlExpiredDays: positiveNumber(90),
-  // short-redirect 302 预签名地址的临时有效期（秒），对应旧 STORAGE_DOWNLOAD_REDIRECT_TTL_SECONDS
-  redirectTtlSeconds: positiveInteger(300)
+  fileUrlExpiredDays: positiveNumber(90)
 });

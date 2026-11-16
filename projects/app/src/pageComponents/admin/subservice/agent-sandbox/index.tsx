@@ -17,14 +17,16 @@ import { useDomainConfig } from '@/web/common/system/useDomainConfig';
 import AdminSettingPage from '@/pageComponents/admin/settings/AdminSettingPage';
 import AdminSettingSection from '@/pageComponents/admin/settings/AdminSettingSection';
 import AdminFormItem from '@/pageComponents/admin/settings/AdminFormItem';
+import AdminSecretInput from '@/pageComponents/admin/settings/AdminSecretInput';
 import AdminNumberInput from '@/pageComponents/admin/settings/AdminNumberInput';
 import AdminSwitchRow from '@/pageComponents/admin/settings/AdminSwitchRow';
 import ConnectivityTestInput from '@/pageComponents/admin/settings/ConnectivityTestInput';
+import ConnectivityTestGroup from '@/pageComponents/admin/settings/ConnectivityTestGroup';
 import type { SettingTOCItem } from '@/pageComponents/admin/settings/AdminSettingTOC';
 import { isValidHttpUrl } from '@fastgpt/global/common/string/url';
 import { AgentSandboxProxyConfigSchema } from '@fastgpt/global/common/system/config/schemas/subservice';
-import { SECRET_MASK } from '@fastgpt/global/common/system/config/permission';
 import type { SystemInstanceConfigDomainMap } from '@fastgpt/global/common/system/config/schema';
+import type { DeepPartial } from '@fastgpt/global/common/system/config/type';
 
 type SubserviceConfigForm = SystemInstanceConfigDomainMap['subservice'];
 
@@ -32,12 +34,12 @@ const isValidOptionalUrl = (url?: string) => !url || isValidHttpUrl(url);
 
 const AgentSandboxSubserviceComponent = () => {
   const { t } = useSafeTranslation();
-  const { effectiveConfig, isLoading, isUpdating, patchConfig } = useDomainConfig('subservice');
+  const { effectiveConfig, configuredSecretKeys, isLoading, isUpdating, patchConfig } =
+    useDomainConfig('subservice');
 
   const tocItems: SettingTOCItem[] = [
     { id: 'provider', label: t('admin:sandbox_provider_selection') },
     { id: 'proxy', label: t('admin:sandbox_proxy_settings') },
-    { id: 'providerConfig', label: t('admin:provider_settings') },
     { id: 'specs', label: t('admin:shared_resource_specs') },
     { id: 'lifecycle', label: t('admin:lifecycle_runtime') },
     { id: 'mirrors', label: t('admin:package_mirror_acceleration') }
@@ -82,7 +84,7 @@ const AgentSandboxSubserviceComponent = () => {
     const resolveOvercommitFactor = (value: number, previous = 1) =>
       isKubernetesActive || (Number.isFinite(value) && value >= 1) ? value : previous;
     // 非当前激活 Provider 的隐藏分支若残留未填完的草稿 URL，回落到已持久化地址，不阻断切换或关闭。
-    const sanitizedAgentSandbox: SubserviceConfigForm['agentSandbox'] = {
+    const sanitizedAgentSandbox: DeepPartial<SubserviceConfigForm['agentSandbox']> = {
       ...formData.agentSandbox,
       // 关闭服务时隐藏的无效草稿回退到已保存值，允许管理员正常停用。
       proxy:
@@ -99,11 +101,11 @@ const AgentSandboxSubserviceComponent = () => {
                 ? formData.agentSandbox.proxy.previewUrl
                 : (effectiveConfig.agentSandbox?.proxy.previewUrl ?? ''),
               secret:
-                !formData.agentSandbox.proxy.secret ||
-                formData.agentSandbox.proxy.secret === SECRET_MASK ||
+                formData.agentSandbox.proxy.secret === undefined ||
+                formData.agentSandbox.proxy.secret === '' ||
                 formData.agentSandbox.proxy.secret.length >= 32
                   ? formData.agentSandbox.proxy.secret
-                  : (effectiveConfig.agentSandbox?.proxy.secret ?? '')
+                  : undefined
             }
           : formData.agentSandbox.proxy,
       sealosdevbox: {
@@ -176,75 +178,8 @@ const AgentSandboxSubserviceComponent = () => {
             )}
           />
         </AdminFormItem>
-      </AdminSettingSection>
 
-      {isSandboxEnabled && (
-        <AdminSettingSection id="proxy" title={t('admin:sandbox_proxy_settings')} showDivider>
-          {(['wsUrl', 'previewUrl', 'secret'] as const).map((key) => {
-            const isSecret = key === 'secret';
-            const error = errors.agentSandbox?.proxy?.[key];
-            return (
-              <AdminFormItem
-                key={key}
-                label={
-                  key === 'wsUrl'
-                    ? t('admin:sandbox_proxy_ws_url')
-                    : key === 'previewUrl'
-                      ? t('admin:sandbox_proxy_preview_url')
-                      : t('admin:sandbox_proxy_secret')
-                }
-                tooltip={isSecret ? t('admin:sandbox_proxy_secret_tip') : undefined}
-                isRequired
-              >
-                <Controller
-                  name={`agentSandbox.proxy.${key}`}
-                  control={control}
-                  rules={{
-                    validate: (value) => {
-                      if (!isSandboxEnabled) return true;
-                      if (!value) return t('admin:required');
-                      if (isSecret)
-                        return (
-                          value === SECRET_MASK ||
-                          value.length >= 32 ||
-                          t('admin:sandbox_proxy_secret_invalid')
-                        );
-                      return (
-                        AgentSandboxProxyConfigSchema.shape[
-                          key === 'wsUrl' ? 'wsUrl' : 'previewUrl'
-                        ].safeParse(value).success || t('admin:sandbox_proxy_url_invalid')
-                      );
-                    }
-                  }}
-                  render={({ field }) => (
-                    <Input
-                      {...field}
-                      type={isSecret ? 'password' : 'text'}
-                      autoComplete={isSecret ? 'new-password' : 'off'}
-                      isInvalid={Boolean(error)}
-                      placeholder={
-                        isSecret
-                          ? SECRET_MASK
-                          : key === 'wsUrl'
-                            ? 'wss://sandbox-proxy.example.com'
-                            : 'https://sandbox-proxy.example.com'
-                      }
-                    />
-                  )}
-                />
-                {error && (
-                  <Text color={'red.500'} fontSize={'xs'} mt={1}>
-                    {error.message}
-                  </Text>
-                )}
-              </AdminFormItem>
-            );
-          })}
-        </AdminSettingSection>
-      )}
-
-      {/* 2. Provider 专属配置 */}
-      <AdminSettingSection id="providerConfig" title={t('admin:provider_settings')} showDivider>
+        {/* 当前 Provider 配置卡片直接跟随选择器。 */}
         {selectedProvider === 'none' && (
           <Box
             p={5}
@@ -267,37 +202,58 @@ const AgentSandboxSubserviceComponent = () => {
             borderWidth={'1px'}
             borderColor={'myGray.200'}
           >
-            <AdminFormItem
-              label={t('admin:sealos_devbox_service_url')}
-              tooltip={t('admin:sealos_devbox_cluster_api_endpoint')}
-              isRequired
-            >
-              <Controller
-                name="agentSandbox.sealosdevbox.baseUrl"
-                control={control}
-                render={({ field }) => (
-                  <ConnectivityTestInput
-                    {...field}
-                    isEditable
-                    placeholder="https://devbox.cloud.sealos.io"
-                  />
-                )}
-              />
-            </AdminFormItem>
+            <Controller
+              name="agentSandbox.sealosdevbox.baseUrl"
+              control={control}
+              render={({ field }) => (
+                <ConnectivityTestInput
+                  {...field}
+                  isEditable
+                  placeholder="https://devbox.cloud.sealos.io"
+                  renderLayout={({ input, button, result }) => (
+                    <ConnectivityTestGroup
+                      address={
+                        <AdminFormItem
+                          label={t('admin:sealos_devbox_service_url')}
+                          tooltip={t('admin:sealos_devbox_cluster_api_endpoint')}
+                          isRequired
+                          mb={4}
+                        >
+                          {input}
+                        </AdminFormItem>
+                      }
+                      credential={
+                        <AdminFormItem
+                          label={t('admin:sealos_access_token')}
+                          tooltip={t('admin:sealos_platform_api_token')}
+                          isRequired
+                          mb={4}
+                        >
+                          <Controller
+                            name="agentSandbox.sealosdevbox.token"
+                            control={control}
+                            render={({ field }) => (
+                              <AdminSecretInput
+                                name={field.name}
+                                value={field.value}
+                                onChange={field.onChange}
+                                isConfigured={configuredSecretKeys.includes(
+                                  'agentSandbox.sealosdevbox.token'
+                                )}
+                              />
+                            )}
+                          />
+                        </AdminFormItem>
+                      }
+                      button={button}
+                      result={result}
+                    />
+                  )}
+                />
+              )}
+            />
 
             <SimpleGrid columns={[1, 2]} spacing={5}>
-              <AdminFormItem
-                label={t('admin:sealos_access_token')}
-                tooltip={t('admin:sealos_platform_api_token')}
-                isRequired
-              >
-                <Input
-                  type="password"
-                  {...register('agentSandbox.sealosdevbox.token')}
-                  placeholder="******"
-                />
-              </AdminFormItem>
-
               <AdminFormItem
                 label={t('admin:default_development_image')}
                 tooltip={t('admin:default_base_container_image_pulled_at_sandbox_startup')}
@@ -330,37 +286,58 @@ const AgentSandboxSubserviceComponent = () => {
             borderWidth={'1px'}
             borderColor={'myGray.200'}
           >
-            <AdminFormItem
-              label={t('admin:opensandbox_service_url')}
-              tooltip={t('admin:opensandbox_base_url')}
-              isRequired
-            >
-              <Controller
-                name="agentSandbox.opensandbox.baseUrl"
-                control={control}
-                render={({ field }) => (
-                  <ConnectivityTestInput
-                    {...field}
-                    isEditable
-                    placeholder="http://opensandbox:8080"
-                  />
-                )}
-              />
-            </AdminFormItem>
+            <Controller
+              name="agentSandbox.opensandbox.baseUrl"
+              control={control}
+              render={({ field }) => (
+                <ConnectivityTestInput
+                  {...field}
+                  isEditable
+                  placeholder="http://opensandbox:8080"
+                  renderLayout={({ input, button, result }) => (
+                    <ConnectivityTestGroup
+                      address={
+                        <AdminFormItem
+                          label={t('admin:opensandbox_service_url')}
+                          tooltip={t('admin:opensandbox_base_url')}
+                          isRequired
+                          mb={4}
+                        >
+                          {input}
+                        </AdminFormItem>
+                      }
+                      credential={
+                        <AdminFormItem
+                          label={'OpenSandbox API Key'}
+                          tooltip={t('admin:service_api_auth_key')}
+                          isRequired
+                          mb={4}
+                        >
+                          <Controller
+                            name="agentSandbox.opensandbox.apiKey"
+                            control={control}
+                            render={({ field }) => (
+                              <AdminSecretInput
+                                name={field.name}
+                                value={field.value}
+                                onChange={field.onChange}
+                                isConfigured={configuredSecretKeys.includes(
+                                  'agentSandbox.opensandbox.apiKey'
+                                )}
+                              />
+                            )}
+                          />
+                        </AdminFormItem>
+                      }
+                      button={button}
+                      result={result}
+                    />
+                  )}
+                />
+              )}
+            />
 
             <SimpleGrid columns={[1, 2]} spacing={5} mb={4}>
-              <AdminFormItem
-                label="OpenSandbox API Key"
-                tooltip={t('admin:service_api_auth_key')}
-                isRequired
-              >
-                <Input
-                  type="password"
-                  {...register('agentSandbox.opensandbox.apiKey')}
-                  placeholder="******"
-                />
-              </AdminFormItem>
-
               <AdminFormItem
                 label={t('admin:container_runtime')}
                 tooltip={t('admin:opensandbox_runtime_backend')}
@@ -392,6 +369,23 @@ const AgentSandboxSubserviceComponent = () => {
                   placeholder="opensandbox/runtime:latest"
                 />
               </AdminFormItem>
+
+              <SimpleGrid columns={[1, 2]} spacing={5} gridColumn={'1 / -1'}>
+                <Controller
+                  name="agentSandbox.opensandbox.useServerProxy"
+                  control={control}
+                  render={({ field }) => (
+                    <AdminSwitchRow
+                      label={t('admin:use_reverse_proxy_mode')}
+                      tooltip={t(
+                        'admin:traffic_is_tunneled_to_the_sandbox_through_the_main_site_pro'
+                      )}
+                      isChecked={field.value}
+                      onChange={field.onChange}
+                    />
+                  )}
+                />
+              </SimpleGrid>
 
               {isKubernetesRuntime && (
                 <>
@@ -461,52 +455,141 @@ const AgentSandboxSubserviceComponent = () => {
               </AdminFormItem>
             </SimpleGrid>
 
-            <AdminFormItem
-              label={t('admin:volume_manager_service_url')}
-              tooltip={t('admin:volume_manager_microservice_url')}
-              isRequired
-            >
-              <Controller
-                name="agentSandbox.opensandbox.volumeManagerUrl"
-                control={control}
-                render={({ field }) => (
-                  <ConnectivityTestInput
-                    {...field}
-                    isEditable
-                    testPath="/health"
-                    placeholder="http://volume-manager:8081"
-                  />
-                )}
-              />
-            </AdminFormItem>
-
-            <AdminFormItem
-              label={t('admin:volume_manager_token')}
-              tooltip={t('admin:volume_manager_credential')}
-              isRequired
-            >
-              <Input
-                type="password"
-                {...register('agentSandbox.opensandbox.volumeManagerToken')}
-                placeholder="******"
-              />
-            </AdminFormItem>
-
             <Controller
-              name="agentSandbox.opensandbox.useServerProxy"
+              name="agentSandbox.opensandbox.volumeManagerUrl"
               control={control}
               render={({ field }) => (
-                <AdminSwitchRow
-                  label={t('admin:use_reverse_proxy_mode')}
-                  tooltip={t('admin:traffic_is_tunneled_to_the_sandbox_through_the_main_site_pro')}
-                  isChecked={field.value}
-                  onChange={field.onChange}
+                <ConnectivityTestInput
+                  {...field}
+                  isEditable
+                  placeholder="http://volume-manager:8081"
+                  testPath="/health"
+                  renderLayout={({ input, button, result }) => (
+                    <ConnectivityTestGroup
+                      address={
+                        <AdminFormItem
+                          label={t('admin:volume_manager_service_url')}
+                          tooltip={t('admin:volume_manager_microservice_url')}
+                          isRequired
+                          mb={4}
+                        >
+                          {input}
+                        </AdminFormItem>
+                      }
+                      credential={
+                        <AdminFormItem
+                          label={t('admin:volume_manager_token')}
+                          tooltip={t('admin:volume_manager_credential')}
+                          isRequired
+                          mb={4}
+                        >
+                          <Controller
+                            name="agentSandbox.opensandbox.volumeManagerToken"
+                            control={control}
+                            render={({ field }) => (
+                              <AdminSecretInput
+                                name={field.name}
+                                value={field.value}
+                                onChange={field.onChange}
+                                isConfigured={configuredSecretKeys.includes(
+                                  'agentSandbox.opensandbox.volumeManagerToken'
+                                )}
+                              />
+                            )}
+                          />
+                        </AdminFormItem>
+                      }
+                      button={button}
+                      result={result}
+                    />
+                  )}
                 />
               )}
             />
           </Box>
         )}
       </AdminSettingSection>
+
+      {isSandboxEnabled && (
+        <AdminSettingSection id="proxy" title={t('admin:sandbox_proxy_settings')} showDivider>
+          {(['wsUrl', 'previewUrl', 'secret'] as const).map((key) => {
+            const isSecret = key === 'secret';
+            const error = errors.agentSandbox?.proxy?.[key];
+            return (
+              <AdminFormItem
+                key={key}
+                label={
+                  key === 'wsUrl'
+                    ? t('admin:sandbox_proxy_ws_url')
+                    : key === 'previewUrl'
+                      ? t('admin:sandbox_proxy_preview_url')
+                      : t('admin:sandbox_proxy_secret')
+                }
+                tooltip={isSecret ? t('admin:sandbox_proxy_secret_tip') : undefined}
+                isRequired
+              >
+                <Controller
+                  name={`agentSandbox.proxy.${key}`}
+                  control={control}
+                  rules={{
+                    validate: (value) => {
+                      if (!isSandboxEnabled) return true;
+                      if (isSecret) {
+                        if (
+                          value === undefined &&
+                          configuredSecretKeys.includes('agentSandbox.proxy.secret')
+                        ) {
+                          return true;
+                        }
+                        if (!value) return t('admin:required');
+                        return value.length >= 32 || t('admin:sandbox_proxy_secret_invalid');
+                      }
+                      if (!value) return t('admin:required');
+                      return (
+                        AgentSandboxProxyConfigSchema.shape[
+                          key === 'wsUrl' ? 'wsUrl' : 'previewUrl'
+                        ].safeParse(value).success || t('admin:sandbox_proxy_url_invalid')
+                      );
+                    }
+                  }}
+                  render={({ field }) =>
+                    isSecret ? (
+                      <AdminSecretInput
+                        name={field.name}
+                        value={field.value}
+                        onChange={field.onChange}
+                        isConfigured={configuredSecretKeys.includes('agentSandbox.proxy.secret')}
+                        isInvalid={Boolean(error)}
+                      />
+                    ) : (
+                      <ConnectivityTestInput
+                        {...field}
+                        isEditable
+                        service={
+                          key === 'wsUrl' ? 'agentSandboxWsProxy' : 'agentSandboxPreviewProxy'
+                        }
+                        type="text"
+                        autoComplete="off"
+                        isInvalid={Boolean(error)}
+                        placeholder={
+                          key === 'wsUrl'
+                            ? 'wss://sandbox-proxy.example.com'
+                            : 'https://sandbox-proxy.example.com'
+                        }
+                      />
+                    )
+                  }
+                />
+                {error && (
+                  <Text color={'red.500'} fontSize={'xs'} mt={1}>
+                    {error.message}
+                  </Text>
+                )}
+              </AdminFormItem>
+            );
+          })}
+        </AdminSettingSection>
+      )}
 
       {/* 3. 公共资源规格 */}
       <AdminSettingSection id="specs" title={t('admin:shared_resource_specs')} showDivider>
@@ -683,84 +766,6 @@ const AgentSandboxSubserviceComponent = () => {
                   }
                 >
                   <NumberInputField placeholder={t('admin:unlimited')} />
-                  <NumberInputStepper>
-                    <NumberIncrementStepper />
-                    <NumberDecrementStepper />
-                  </NumberInputStepper>
-                </NumberInput>
-              )}
-            />
-          </AdminFormItem>
-
-          <AdminFormItem
-            label={t('admin:container_entrypoint_timeout_seconds')}
-            tooltip={t('admin:max_wait_time_for_a_custom_container_entrypoint')}
-            isRequired
-          >
-            <Controller
-              name="agentSandbox.common.entrypointTimeoutSeconds"
-              control={control}
-              render={({ field }) => (
-                <NumberInput
-                  variant={'whiteOutline'}
-                  min={5}
-                  max={600}
-                  value={field.value ?? 30}
-                  onChange={(_, val) => field.onChange(val || 30)}
-                >
-                  <NumberInputField />
-                  <NumberInputStepper>
-                    <NumberIncrementStepper />
-                    <NumberDecrementStepper />
-                  </NumberInputStepper>
-                </NumberInput>
-              )}
-            />
-          </AdminFormItem>
-
-          <AdminFormItem
-            label={t('admin:websocket_message_limit_bytes')}
-            tooltip={t('admin:max_single_websocket_package_size_between_the_terminal_and_t')}
-            isRequired
-          >
-            <Controller
-              name="agentSandbox.common.wsMaxMessageBytes"
-              control={control}
-              render={({ field }) => (
-                <NumberInput
-                  variant={'whiteOutline'}
-                  min={1024 * 1024}
-                  max={512 * 1024 * 1024}
-                  value={field.value ?? 64 * 1024 * 1024}
-                  onChange={(_, val) => field.onChange(val || 64 * 1024 * 1024)}
-                >
-                  <NumberInputField />
-                  <NumberInputStepper>
-                    <NumberIncrementStepper />
-                    <NumberDecrementStepper />
-                  </NumberInputStepper>
-                </NumberInput>
-              )}
-            />
-          </AdminFormItem>
-
-          <AdminFormItem
-            label={t('admin:websocket_frame_limit_bytes')}
-            tooltip={t('admin:websocket_max_frame_size')}
-            isRequired
-          >
-            <Controller
-              name="agentSandbox.common.wsMaxFrameBytes"
-              control={control}
-              render={({ field }) => (
-                <NumberInput
-                  variant={'whiteOutline'}
-                  min={1024 * 1024}
-                  max={128 * 1024 * 1024}
-                  value={field.value ?? 16 * 1024 * 1024}
-                  onChange={(_, val) => field.onChange(val || 16 * 1024 * 1024)}
-                >
-                  <NumberInputField />
                   <NumberInputStepper>
                     <NumberIncrementStepper />
                     <NumberDecrementStepper />

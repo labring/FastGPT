@@ -4,6 +4,11 @@ import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { resolveDomainEffectiveConfig } from '@fastgpt/global/common/system/config/schema';
 import { SubserviceConfigSchema } from '@fastgpt/global/common/system/config/schemas/subservice';
+import { deepMergeConfig } from '@fastgpt/global/common/system/config/merge';
+import {
+  getConfiguredDomainSecretKeys,
+  omitDomainSecrets
+} from '@fastgpt/global/common/system/config/permission';
 
 const mocks = vi.hoisted(() => ({
   patch: vi.fn(),
@@ -15,18 +20,37 @@ const mocks = vi.hoisted(() => ({
   changeRuntime: undefined as undefined | ((value: string) => void)
 }));
 vi.mock('@/web/common/system/useDomainConfig', () => ({
-  useDomainConfig: () => ({
-    effectiveConfig: mocks.effectiveConfig,
-    isLoading: false,
-    isUpdating: false,
-    patchConfig: mocks.patch
-  })
+  useDomainConfig: () => {
+    const effectiveConfig = mocks.effectiveConfig;
+    return {
+      effectiveConfig: React.useMemo(
+        () => omitDomainSecrets('subservice', effectiveConfig),
+        [effectiveConfig]
+      ),
+      configuredSecretKeys: getConfiguredDomainSecretKeys('subservice', mocks.effectiveConfig),
+      isLoading: false,
+      isUpdating: false,
+      patchConfig: mocks.patch
+    };
+  }
+}));
+vi.mock('@/pageComponents/admin/settings/AdminSecretInput', () => ({
+  default: ({ name, value, onChange, isConfigured }: any) => {
+    mocks.inputs.set(name, (event: any) => onChange(event.target.value));
+    return React.createElement('input', {
+      name,
+      value: value ?? '',
+      onChange: (event: any) => onChange(event.target.value),
+      'data-configured': isConfigured && value === undefined
+    });
+  }
 }));
 vi.mock('@fastgpt/web/hooks/useSafeTranslation', () => ({
   useSafeTranslation: () => ({ t: (key: string) => key })
 }));
 vi.mock('@chakra-ui/react', () => ({
   Box: ({ children }: any) => React.createElement('div', null, children),
+  Flex: ({ children }: any) => React.createElement('div', null, children),
   Text: ({ children }: any) => React.createElement('span', null, children),
   Wrap: ({ children }: any) => React.createElement('div', null, children),
   Tag: ({ children }: any) => React.createElement('span', null, children),
@@ -84,18 +108,22 @@ vi.mock('@/pageComponents/admin/settings/AdminSwitchRow', () => ({
 }));
 vi.mock('@/pageComponents/admin/settings/ConnectivityTestInput', () => ({
   default: React.forwardRef(function ConnectivityTestInput(
-    { value, name, onChange, service, token }: any,
+    { value, name, onChange, service, token, useStoredToken, renderLayout }: any,
     ref: any
   ) {
     mocks.inputs.set(name, onChange);
-    return React.createElement('input', {
+    const input = React.createElement('input', {
       ref,
       value,
       name,
       onChange,
       'data-service': service,
-      'data-token': token
+      'data-token': token,
+      'data-use-stored-token': useStoredToken
     });
+    return renderLayout
+      ? renderLayout({ input, button: React.createElement('button', null, 'probe'), result: null })
+      : input;
   })
 }));
 
@@ -212,7 +240,7 @@ describe('agent sandbox hidden URL drafts', () => {
       await mocks.save!();
     });
     expect(mocks.patch).toHaveBeenCalledTimes(1);
-    return { baseline, submitted: { ...baseline, ...mocks.patch.mock.calls[0][0] } };
+    return { baseline, submitted: deepMergeConfig(baseline, mocks.patch.mock.calls[0][0]) };
   };
 
   it.each(fields.flatMap((field) => ['none', field.other].map((target) => ({ field, target }))))(
@@ -261,10 +289,10 @@ const clickSwitch = async (label: string) => {
 };
 
 describe('subservice settings forms', () => {
-  it('hides sandbox connection and modules while disabled and retains saved masked credentials', async () => {
+  it('hides sandbox connection and modules while disabled and retains configured credentials', async () => {
     mocks.effectiveConfig = resolveDomainEffectiveConfig({
       domain: 'subservice',
-      overrides: { codeSandbox: { enabled: false, url: 'http://sandbox', token: '******' } }
+      overrides: { codeSandbox: { enabled: false, url: 'http://sandbox', token: 'saved-token' } }
     });
     await act(async () => root.render(React.createElement(CodeSandbox)));
     expect(container.querySelector('[data-service="codeSandbox"]')).toBeNull();
@@ -275,16 +303,16 @@ describe('subservice settings forms', () => {
     expect(container.querySelector<HTMLInputElement>('[data-service="codeSandbox"]')?.value).toBe(
       'http://sandbox'
     );
-    expect(container.querySelector('[data-token="******"]')).not.toBeNull();
-    expect(container.querySelector<HTMLInputElement>('[name="codeSandbox.token"]')?.type).toBe(
-      'password'
-    );
+    expect(container.querySelector('[data-use-stored-token="true"]')).not.toBeNull();
+    expect(
+      container.querySelector('[name="codeSandbox.token"][data-configured="true"]')
+    ).not.toBeNull();
     expect(container.querySelector('#modules')).not.toBeNull();
     await act(async () => {
       await mocks.save!();
     });
     expect(mocks.patch).toHaveBeenLastCalledWith({
-      codeSandbox: { enabled: true, url: 'http://sandbox', token: '******' }
+      codeSandbox: { enabled: true, url: 'http://sandbox' }
     });
 
     await clickSwitch('enable_code_sandbox');
@@ -293,7 +321,7 @@ describe('subservice settings forms', () => {
       await mocks.save!();
     });
     expect(mocks.patch).toHaveBeenLastCalledWith({
-      codeSandbox: { enabled: false, url: 'http://sandbox', token: '******' }
+      codeSandbox: { enabled: false, url: 'http://sandbox' }
     });
   });
 
@@ -331,7 +359,28 @@ describe('subservice settings forms', () => {
       await mocks.save!();
     });
     expect(mocks.patch).toHaveBeenLastCalledWith({
-      codeSandbox: { enabled: false, url: '', token: '' }
+      codeSandbox: { enabled: false, url: '' }
+    });
+  });
+
+  it('probes a replacement or explicit clear instead of the saved code sandbox token', async () => {
+    mocks.effectiveConfig = resolveDomainEffectiveConfig({
+      domain: 'subservice',
+      overrides: { codeSandbox: { enabled: true, url: 'http://sandbox', token: 'stored' } }
+    });
+    await act(async () => root.render(React.createElement(CodeSandbox)));
+    for (const token of ['replacement', '']) {
+      await act(async () => mocks.inputs.get('codeSandbox.token')!({ target: { value: token } }));
+      const probe = container.querySelector('[data-service="codeSandbox"]');
+      expect(probe?.getAttribute('data-token')).toBe(token);
+      expect(probe?.getAttribute('data-use-stored-token')).toBe('false');
+    }
+    await clickSwitch('enable_code_sandbox');
+    await act(async () => {
+      await mocks.save!();
+    });
+    expect(mocks.patch).toHaveBeenCalledWith({
+      codeSandbox: { enabled: false, url: 'http://sandbox', token: '' }
     });
   });
 
@@ -342,7 +391,7 @@ describe('subservice settings forms', () => {
     const defaults = resolveDomainEffectiveConfig({ domain: 'subservice', overrides: {} });
     mocks.effectiveConfig = {
       ...defaults,
-      codeSandbox: { enabled: true, url: 'https://user:secret@sandbox.test', token: '******' },
+      codeSandbox: { enabled: true, url: 'https://user:secret@sandbox.test', token: 'saved-token' },
       mcp: { enabled: true, sseProxyUrl: 'https://mcp.test?key=value' }
     };
     await act(async () => root.render(React.createElement(Component)));
@@ -381,7 +430,47 @@ describe('subservice settings forms', () => {
 });
 
 describe('Agent Sandbox proxy form', () => {
-  it('saves the three proxy fields together, keeps a masked secret and hides them while disabled', async () => {
+  it('accepts a configured proxy secret without submitting its value', async () => {
+    mocks.effectiveConfig = resolveDomainEffectiveConfig({
+      domain: 'subservice',
+      overrides: {
+        agentSandbox: {
+          provider: 'opensandbox',
+          proxy: {
+            wsUrl: 'wss://proxy.test',
+            previewUrl: 'https://preview.test',
+            secret: 'proxy_secret_32_characters_minimum'
+          },
+          opensandbox: { baseUrl: 'https://sandbox.test' }
+        }
+      }
+    });
+    await act(async () => root.render(React.createElement(AgentSandbox)));
+    expect(
+      container.querySelector('[name="agentSandbox.proxy.secret"][data-configured="true"]')
+    ).not.toBeNull();
+    for (const [key, service, value] of [
+      ['wsUrl', 'agentSandboxWsProxy', 'wss://proxy.test'],
+      ['previewUrl', 'agentSandboxPreviewProxy', 'https://preview.test']
+    ]) {
+      const input = container.querySelector<HTMLInputElement>(`[name="agentSandbox.proxy.${key}"]`);
+      expect(input?.dataset.service).toBe(service);
+      expect(input?.value).toBe(value);
+      expect(input?.hasAttribute('data-token')).toBe(false);
+    }
+    await act(async () => {
+      await mocks.save!();
+    });
+    expect(mocks.patch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        agentSandbox: expect.objectContaining({
+          proxy: { wsUrl: 'wss://proxy.test', previewUrl: 'https://preview.test' }
+        })
+      })
+    );
+  });
+
+  it('validates new proxy secrets and hides the proxy settings while disabled', async () => {
     const defaults = resolveDomainEffectiveConfig({ domain: 'subservice', overrides: {} });
     mocks.effectiveConfig = defaults;
     await act(async () => root.render(React.createElement(AgentSandbox)));
@@ -389,9 +478,7 @@ describe('Agent Sandbox proxy form', () => {
     expect(mocks.toc.some(({ id }) => id === 'proxy')).toBe(false);
     await act(async () => mocks.changeProvider!('opensandbox'));
     expect(container.querySelector('#proxy')).not.toBeNull();
-    expect(
-      container.querySelector<HTMLInputElement>('[name="agentSandbox.proxy.secret"]')?.type
-    ).toBe('password');
+    expect(container.querySelector('[name="agentSandbox.proxy.secret"]')).not.toBeNull();
     await act(async () => {
       await mocks.save!();
     });
@@ -400,7 +487,7 @@ describe('Agent Sandbox proxy form', () => {
     for (const [key, value] of Object.entries({
       wsUrl: 'wss://proxy.test',
       previewUrl: 'https://preview.test',
-      secret: '******'
+      secret: 'proxy_secret_32_characters_minimum'
     })) {
       await act(async () => mocks.inputs.get(`agentSandbox.proxy.${key}`)!({ target: { value } }));
     }
@@ -410,7 +497,11 @@ describe('Agent Sandbox proxy form', () => {
     expect(mocks.patch).toHaveBeenLastCalledWith(
       expect.objectContaining({
         agentSandbox: expect.objectContaining({
-          proxy: { wsUrl: 'wss://proxy.test', previewUrl: 'https://preview.test', secret: '******' }
+          proxy: {
+            wsUrl: 'wss://proxy.test',
+            previewUrl: 'https://preview.test',
+            secret: 'proxy_secret_32_characters_minimum'
+          }
         })
       })
     );

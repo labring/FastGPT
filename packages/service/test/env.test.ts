@@ -7,6 +7,33 @@ const importServiceEnv = async () => {
 };
 afterEach(() => vi.unstubAllEnvs());
 describe('serviceEnv bootstrap configuration', () => {
+  it.each([undefined, '', 'https://private-platform.example.com'])(
+    'uses ENV-only datasource endpoints with official defaults when unset: %s',
+    async (value) => {
+      const defaults = {
+        FEISHU_BASE_URL: 'https://open.feishu.cn',
+        DINGTALK_BASE_URL: 'https://api.dingtalk.com',
+        DINGTALK_OAPI_BASE_URL: 'https://oapi.dingtalk.com',
+        YUQUE_DATASET_BASE_URL: 'https://www.yuque.com'
+      };
+      for (const key of Object.keys(defaults)) vi.stubEnv(key, value);
+      const { serviceEnv } = await importServiceEnv();
+      for (const [key, fallback] of Object.entries(defaults)) {
+        expect(serviceEnv[key as keyof typeof defaults]).toBe(value || fallback);
+      }
+    }
+  );
+
+  it.each([
+    [undefined, 'https://v3.marketplace.fastgpt.cn'],
+    ['', 'https://v3.marketplace.fastgpt.cn'],
+    ['https://marketplace.example.com', 'https://marketplace.example.com']
+  ])('uses the code default unless Marketplace ENV is configured: %s', async (value, expected) => {
+    vi.stubEnv('MARKETPLACE_URL', value);
+    const { serviceEnv } = await importServiceEnv();
+    expect(serviceEnv.MARKETPLACE_URL).toBe(expected);
+  });
+
   it.each([
     [undefined, false],
     ['', false],
@@ -192,7 +219,7 @@ describe('serviceEnv bootstrap configuration', () => {
 
     await expect(importServiceEnv()).resolves.not.toThrow();
   });
-  it('requires FE_DOMAIN during service env init', async () => {
+  it('does not require the retired FE_DOMAIN environment variable', async () => {
     vi.stubEnv('FILE_TOKEN_KEY', 'filetokenkey');
     vi.stubEnv('AES256_SECRET_KEY', 'fastgptsecret');
     vi.stubEnv('INVOKE_TOKEN_SECRET', validInvokeTokenSecret);
@@ -200,9 +227,8 @@ describe('serviceEnv bootstrap configuration', () => {
     vi.stubEnv('VITEST', undefined);
     vi.stubEnv('NODE_ENV', 'production');
 
-    await expect(importServiceEnv()).rejects.toThrow(
-      'Invalid environment variables. Please check: FE_DOMAIN'
-    );
+    const env = await importServiceEnv();
+    expect(env.serviceEnv).not.toHaveProperty('FE_DOMAIN');
   });
   it('uses a test-only INVOKE_TOKEN_SECRET default during vitest', async () => {
     vi.stubEnv('FILE_TOKEN_KEY', 'filetokenkey');

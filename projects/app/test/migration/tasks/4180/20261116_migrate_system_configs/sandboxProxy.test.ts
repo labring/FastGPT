@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MongoSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/schema';
+import { decryptDomainSecrets } from '@fastgpt/service/common/system/systemInstanceConfig/secrets';
 import {
   rehomeAgentSandboxProxy,
   verifyAgentSandboxProxyMigration
@@ -29,7 +30,9 @@ beforeEach(async () => {
 describe('rehomeAgentSandboxProxy', () => {
   it('imports all three fields atomically and ignores changed ENV on replay', async () => {
     expect(await run()).toEqual({ updatedDocuments: 1 });
-    expect((await read())?.overrides.agentSandbox.proxy).toEqual({
+    const stored = (await read())?.overrides;
+    expect(stored.agentSandbox.proxy.secret).toEqual({ secret: expect.any(String) });
+    expect(decryptDomainSecrets('subservice', stored).agentSandbox.proxy).toEqual({
       wsUrl: legacyEnv.AGENT_SANDBOX_PROXY_URL,
       previewUrl: legacyEnv.AGENT_SANDBOX_PREVIEW_PROXY_URL,
       secret: legacyEnv.AGENT_SANDBOX_PROXY_SECRET

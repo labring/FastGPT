@@ -17,11 +17,22 @@ export const isRouteVisible = (
     hasPayCapability?: boolean;
     licenseActive?: boolean;
     enableSaasAdminConfig?: boolean;
+    hasExternalProviderWorkflowVariables?: boolean;
   }
 ): boolean => {
   const licenseActive = options.licenseActive ?? true;
-  // 配置字段按部署版本授权；License 只限制下方商业业务页面，与 API 的版本边界一致。
+  // 普通配置字段按部署版本授权；商业化入口额外要求 License 已激活。
   const edition = getSystemEdition(options.isProService);
+
+  // 已弃用的变量配置是该页唯一内容；未配置或已清空时，菜单与直接访问均关闭。
+  if (route === '/admin/settings/providers' && !options.hasExternalProviderWorkflowVariables) {
+    return false;
+  }
+
+  // 支付配置属于商业化分组，不能通过普通配置页的字段可见性绕过授权门禁。
+  if (route === '/admin/settings/pay' && (!options.isProService || !licenseActive)) {
+    return false;
+  }
 
   // 1. 配置或子服务页面：按所管理字段在当前版本和显示条件下的可见数量判定
   if (route in adminConfigPageFieldsMap) {

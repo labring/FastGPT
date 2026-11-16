@@ -1,5 +1,9 @@
 import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest';
 import { MongoSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/schema';
+import {
+  decryptDomainSecrets,
+  encryptDomainSecrets
+} from '@fastgpt/service/common/system/systemInstanceConfig/secrets';
 import { ProEnvConfigSchema } from '@fastgpt/global/common/system/config/proEnv';
 import {
   SYSTEM_INSTANCE_CONFIG_DOMAINS,
@@ -450,6 +454,41 @@ describe('applyInstanceConfigMigration (field-level backfill)', () => {
     await MongoSystemInstanceConfig.deleteMany({});
   });
 
+  it('backfills beside an encrypted secret without mistaking it for a missing object', async () => {
+    const stored = encryptDomainSecrets('auth', {
+      loginProviders: { github: { secret: 'admin-secret' } }
+    });
+    await MongoSystemInstanceConfig.create({ domain: 'auth', revision: 1, overrides: stored });
+
+    await applyInstanceConfigMigration({
+      overrides: {
+        auth: {
+          loginProviders: {
+            github: { clientId: 'legacy-client', secret: 'legacy-secret' },
+            google: { secret: 'legacy-google-secret' }
+          }
+        }
+      },
+      logger
+    });
+    const after = await MongoSystemInstanceConfig.findOne({ domain: 'auth' }).lean();
+    expect(after?.overrides.loginProviders.github.secret).toEqual(
+      stored.loginProviders.github.secret
+    );
+    expect(after?.overrides.loginProviders.google.secret).toEqual({ secret: expect.any(String) });
+    expect(decryptDomainSecrets('auth', after?.overrides).loginProviders).toEqual({
+      github: { clientId: 'legacy-client', secret: 'admin-secret' },
+      google: { secret: 'legacy-google-secret' }
+    });
+    await applyInstanceConfigMigration({
+      overrides: { auth: { loginProviders: { github: { secret: 'legacy-secret' } } } },
+      logger
+    });
+    const replayed = await MongoSystemInstanceConfig.findOne({ domain: 'auth' }).lean();
+    expect(replayed?.overrides).toEqual(after?.overrides);
+    expect(replayed?.revision).toBe(after?.revision);
+  });
+
   it('backfills only missing fields into an existing domain and keeps existing values', async () => {
     await MongoSystemInstanceConfig.create({
       domain: 'site',
@@ -500,7 +539,7 @@ describe('applyInstanceConfigMigration (field-level backfill)', () => {
         auth: {
           sso: { title: 'Env SSO', autoLogin: true },
           fastLogin: [{ key: 'sso', authUrl: 'https://sso.example.com' }],
-          wecomLoginAutoRedirect: true
+          openApiKeyMaxCount: 200
         }
       },
       logger
@@ -514,7 +553,7 @@ describe('applyInstanceConfigMigration (field-level backfill)', () => {
     });
     // 数组按原子值处理：管理员显式清空后不会被迁移重新填回
     expect(doc?.overrides.fastLogin).toEqual([]);
-    expect(doc?.overrides.wecomLoginAutoRedirect).toBe(true);
+    expect(doc?.overrides.openApiKeyMaxCount).toBe(200);
   });
 
   it('does not touch a domain when nothing is missing (no revision bump)', async () => {

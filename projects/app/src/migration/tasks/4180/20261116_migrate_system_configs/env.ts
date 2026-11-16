@@ -31,6 +31,7 @@ const LegacyEnvBooleanSchema = z
  * 不让退役 ENV 再影响业务读取或全局 ENV 初始化。AI Proxy 继续由运行时 ENV 独立管理。
  */
 const LegacyInstanceConfigEnvSchema = z.object({
+  FE_DOMAIN: UrlSchema.optional(),
   CODE_SANDBOX_URL: UrlSchema.optional(),
   CODE_SANDBOX_TOKEN: z.string().optional(),
   AGENT_SANDBOX_PROVIDER: z.enum(agentSandboxProviderList).optional().meta({
@@ -81,21 +82,6 @@ const LegacyInstanceConfigEnvSchema = z.object({
   AGENT_SANDBOX_MAX_PER_TEAM: IntSchema.min(1).optional().meta({
     description: '单团队 Agent sandbox 活跃实例配额；不配置表示不限制'
   }),
-  AGENT_SANDBOX_ENTRYPOINT_TIMEOUT_SECONDS: IntSchema.min(1).max(600).default(30).meta({
-    description: 'Agent sandbox entrypoint 执行超时时间（秒）'
-  }),
-  AGENT_SANDBOX_WS_MAX_MESSAGE_BYTES: IntSchema.min(1)
-    .default(64 * 1024 * 1024)
-    .meta({
-      description:
-        'Agent sandbox WebSocket 单消息上限（字节），由 FastGPT app 统一下发给 proxy/IDE Agent'
-    }),
-  AGENT_SANDBOX_WS_MAX_FRAME_BYTES: IntSchema.min(1)
-    .default(16 * 1024 * 1024)
-    .meta({
-      description:
-        'Agent sandbox WebSocket 单帧上限（字节），由 FastGPT app 统一下发给 proxy/IDE Agent'
-    }),
   AGENT_SANDBOX_NPM_REGISTRY: z.string().optional(),
   AGENT_SANDBOX_PYPI_INDEX_URL: z.string().optional(),
   AGENT_SANDBOX_APT_MIRROR: z.string().optional().meta({
@@ -144,9 +130,6 @@ const LegacyInstanceConfigEnvSchema = z.object({
     description:
       '下载链接模式：short-proxy 返回 FastGPT 短链并由 app 代理；short-redirect 返回 FastGPT 短链并 302 到短 TTL S3 链接'
   }),
-  STORAGE_DOWNLOAD_REDIRECT_TTL_SECONDS: IntSchema.min(1).default(300).meta({
-    description: 'short-redirect 模式下临时 S3 预签名下载链接 TTL（秒）'
-  }),
   FILE_URL_EXPIRED_DAYS: NumSchema.positive().default(90).meta({
     description: '聊天记录中文件访问短链有效期（天），支持小数'
   }),
@@ -172,9 +155,6 @@ const LegacyInstanceConfigEnvSchema = z.object({
   }),
   SKIP_FILE_TYPE_CHECK: LegacyEnvBooleanSchema.default(false).meta({
     description: '是否跳过文件类型检查'
-  }),
-  WECHAT_CHANNEL_CONCURRENCY: IntSchema.min(10).default(1000).meta({
-    description: '微信渠道 poll worker 并发数'
   }),
   XLSX_PARSE_MAX_ROWS: IntSchema.min(1).max(1_048_576).default(100_000).meta({
     description: 'XLSX 单个工作表允许的最大行数'
@@ -250,10 +230,6 @@ const LegacyInstanceConfigEnvSchema = z.object({
   MAX_HTML_TRANSFORM_CHARS: IntSchema.default(1000000).meta({
     description: 'HTML 转 Markdown 最大字符数（超过后不执行转换）'
   }),
-  FEISHU_BASE_URL: UrlSchema.default('https://open.feishu.cn'),
-  DINGTALK_BASE_URL: UrlSchema.default('https://api.dingtalk.com'),
-  DINGTALK_OAPI_BASE_URL: UrlSchema.default('https://oapi.dingtalk.com'),
-  YUQUE_DATASET_BASE_URL: UrlSchema.default('https://www.yuque.com'),
   SSE_MCP_SERVER_PROXY_ENDPOINT: UrlSchema.optional(),
   SYSTEM_NAME: z.string().default('AI'),
   SYSTEM_DESCRIPTION: z.string().default(''),
@@ -262,9 +238,7 @@ const LegacyInstanceConfigEnvSchema = z.object({
   SHOW_COUPON: LegacyEnvBooleanSchema.default(false),
   SHOW_DISCOUNT_COUPON: LegacyEnvBooleanSchema.default(false),
   HIDE_CHAT_COPYRIGHT_SETTING: LegacyEnvBooleanSchema.default(false),
-  WECOM_LOGIN_AUTO_REDIRECT: LegacyEnvBooleanSchema.default(false),
   OPENAPI_KEY_MAX_COUNT: IntSchema.min(1).default(100),
-  MARKETPLACE_URL: UrlSchema.default('https://v3.marketplace.fastgpt.cn'),
   PASSWORD_EXPIRED_MONTH: IntSchema.optional(),
   CUSTOM_API_DOMAIN: UrlSchema.default(''),
   CUSTOM_SHARE_PAGE_DOMAIN: UrlSchema.default(''),

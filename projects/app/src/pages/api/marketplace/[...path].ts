@@ -5,7 +5,7 @@ import { Readable } from 'stream';
 import { finished, pipeline } from 'node:stream/promises';
 import { authSystemAdmin, authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { buildSameOriginUrl } from '@fastgpt/service/common/security/network';
-import { getSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/runtime';
+import { serviceEnv } from '@fastgpt/service/env';
 
 /** 转发市场响应并等待流结束，避免统一入口抢先写入默认 JSON 或覆盖上游状态码。 */
 async function handler(req: NextApiRequest, res: NextApiResponse): Promise<void> {
@@ -28,7 +28,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse): Promise<void>
       throw new Error('url is empty');
     }
 
-    const marketplaceUrl = getSystemInstanceConfig().site.marketplaceUrl;
+    const marketplaceUrl = serviceEnv.MARKETPLACE_URL;
 
     if (!marketplaceUrl) {
       throw new Error('Marketplace URL is not configured');

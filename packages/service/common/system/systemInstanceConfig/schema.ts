@@ -3,11 +3,13 @@ import {
   SYSTEM_INSTANCE_CONFIG_SCOPES,
   SYSTEM_INSTANCE_CONFIG_SCHEMA_VERSION,
   type SystemInstanceConfigDomainKey,
+  type SystemInstanceConfigScopeKey,
   resolveDomainEffectiveConfig
 } from '@fastgpt/global/common/system/config/schema';
 import { systemInstanceConfigScopeSchemaMap } from '@fastgpt/global/common/system/config/scopes';
 import type { SystemInstanceDomainDocumentType } from '@fastgpt/global/common/system/config/type';
 import { connectionMongo, getMongoModel, defineIndex } from '../../mongo';
+import { decryptDomainSecrets } from './secrets';
 
 const { Schema } = connectionMongo;
 
@@ -81,7 +83,8 @@ const systemInstanceConfigSchema = new Schema(
           if (domain && Object.hasOwn(systemInstanceConfigScopeSchemaMap, domain)) {
             return systemInstanceConfigScopeSchemaMap[
               domain as keyof typeof systemInstanceConfigScopeSchemaMap
-            ].safeParse(value).success;
+            ].safeParse(decryptDomainSecrets(domain as SystemInstanceConfigScopeKey, value))
+              .success;
           }
           if (
             !domain ||
@@ -93,7 +96,7 @@ const systemInstanceConfigSchema = new Schema(
           try {
             resolveDomainEffectiveConfig({
               domain: domain as SystemInstanceConfigDomainKey,
-              overrides: value
+              overrides: decryptDomainSecrets(domain as SystemInstanceConfigDomainKey, value)
             });
             return true;
           } catch {

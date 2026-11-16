@@ -50,9 +50,6 @@ const AgentSandboxSubserviceConfigSchema = z.strictObject({
       maxEditDebug: nonNegativeInteger(100),
       // 单团队活跃实例配额；null 表示不限制
       maxPerTeam: z.number().int().positive().nullable().default(null),
-      entrypointTimeoutSeconds: z.number().int().min(1).max(600).default(30),
-      wsMaxMessageBytes: positiveInteger(64 * 1024 * 1024),
-      wsMaxFrameBytes: positiveInteger(16 * 1024 * 1024),
       npmRegistry: textWithDefault(),
       pypiIndexUrl: textWithDefault(),
       aptMirror: textWithDefault()
@@ -131,7 +128,7 @@ export const SubserviceConfigSchema = SubserviceConfigBaseSchema.superRefine((su
     }
   }
 
-  // Admin 提交的掩码先由配置服务恢复；终审在恢复后检查真实密钥，不能把 ****** 当成新密钥。
+  // 配置服务先解密已有凭据并合并补丁，终审始终校验实际生效的明文。
   if (agentSandbox.proxy.secret && agentSandbox.proxy.secret.length < 32) {
     ctx.addIssue({
       code: 'custom',

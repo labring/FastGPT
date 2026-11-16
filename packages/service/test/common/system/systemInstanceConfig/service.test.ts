@@ -45,18 +45,57 @@ describe('SystemInstanceConfigManager', () => {
         revision: 1,
         overrides: { subPlans: { extraDatasetSize: { price: 7 } } }
       },
-      { domain: 'license', revision: 1, overrides: { data: license } }
+      { domain: 'license', revision: 1, overrides: { data: license } },
+      {
+        domain: 'feature',
+        revision: 1,
+        overrides: {
+          agentEngine: 'piAgent',
+          multipleDataToBase64: true,
+          hideChatCopyrightSetting: true,
+          enableTeamPluginUpload: true,
+          enableTeamModel: true,
+          showComplianceCopywriting: true,
+          showDatasetFeishu: false,
+          showDatasetYuque: false,
+          showDatasetDingtalk: false,
+          showPublishWecom: true,
+          showPublishWechat: false
+        }
+      }
     ]);
     systemInstanceConfig.setFrontendContext({ commercialService: false });
     const community = await systemInstanceConfig.refresh();
     expect(community.proEnv.teamMode).toBe('single');
     expect(community.commercial.subPlans).toBeUndefined();
     expect(community.license.data).toBeUndefined();
+    expect(getSystemInstanceConfig().feature).toMatchObject({
+      agentEngine: 'piAgent',
+      multipleDataToBase64: true,
+      hideChatCopyrightSetting: false,
+      enableTeamPluginUpload: false,
+      enableTeamModel: false,
+      showComplianceCopywriting: false,
+      showDatasetFeishu: true,
+      showDatasetYuque: true,
+      showDatasetDingtalk: true,
+      showPublishFeishu: false,
+      showPublishDingtalk: false,
+      showPublishWecom: false,
+      showPublishOffiaccount: false,
+      showPublishWechat: true
+    });
+    expect(global.feConfigs.enable_team_plugin_upload).toBe(false);
+    expect(global.feConfigs.show_publish_wechat).toBe(true);
     systemInstanceConfig.setFrontendContext({ commercialService: true });
     const pro = await systemInstanceConfig.refresh();
     expect(pro.proEnv.teamMode).toBe('multi');
     expect(pro.commercial.subPlans?.extraDatasetSize?.price).toBe(7);
     expect(pro.license.data).toEqual(license);
+    expect(pro.feature.enableTeamPluginUpload).toBe(true);
+    expect(pro.feature.enableTeamModel).toBe(true);
+    expect(pro.feature.showDatasetFeishu).toBe(false);
+    expect(pro.feature.showPublishWechat).toBe(false);
   });
   it('joins an outer write transaction without publishing uncommitted state', async () => {
     const previous = systemInstanceConfig.get();

@@ -53,6 +53,40 @@ afterEach(async () => {
 });
 
 describe('ConnectivityTestInput', () => {
+  it.each(['agentSandboxWsProxy', 'agentSandboxPreviewProxy'] as const)(
+    'submits the current %s address without credentials and clears obsolete results',
+    async (service) => {
+      const url = service === 'agentSandboxWsProxy' ? 'wss://proxy.test' : 'https://preview.test';
+      mocks.post.mockResolvedValue({ connected: true, status: 200, responseTimeMs: 8 });
+      await act(async () =>
+        root.render(React.createElement(ConnectivityTestInput, { value: url, service }))
+      );
+      await act(async () => container.querySelector('button')!.click());
+      expect(mocks.post).toHaveBeenCalledWith('/admin/system/config/probe', {
+        url,
+        service,
+        timeoutMs: 5000
+      });
+      expect(container.textContent).toContain('admin:probe_connected');
+      await act(async () =>
+        root.render(React.createElement(ConnectivityTestInput, { value: '', service }))
+      );
+      expect(container.textContent).not.toContain('admin:probe_connected');
+      expect(container.querySelector('button')?.disabled).toBe(true);
+    }
+  );
+
+  it('disables the test action for an empty or whitespace-only address', async () => {
+    for (const value of ['', '   ']) {
+      await act(async () =>
+        root.render(React.createElement(ConnectivityTestInput, { value, service: 'codeSandbox' }))
+      );
+      expect(container.querySelector('button')?.disabled).toBe(true);
+      await act(async () => container.querySelector('button')!.click());
+    }
+    expect(mocks.post).not.toHaveBeenCalled();
+  });
+
   it('tests the latest sandbox credentials and ignores an older response after they change', async () => {
     let resolveOld!: (value: ProbeConnectionResponse) => void;
     mocks.post.mockImplementationOnce(
@@ -63,22 +97,23 @@ describe('ConnectivityTestInput', () => {
     );
     mocks.post.mockResolvedValueOnce({ connected: true, status: 200, responseTimeMs: 12 });
 
-    const render = (token: string, value = 'http://sandbox') =>
+    const render = (token: string | undefined, value = 'http://sandbox') =>
       root.render(
         React.createElement(ConnectivityTestInput, {
           isEditable: true,
           service: 'codeSandbox',
           value,
-          token
+          token,
+          useStoredToken: token === undefined
         })
       );
-    await act(async () => render('******'));
+    await act(async () => render(undefined));
     await act(async () => container.querySelector('button')!.click());
     expect(mocks.post).toHaveBeenNthCalledWith(1, '/admin/system/config/probe', {
       url: 'http://sandbox',
       timeoutMs: 5000,
       service: 'codeSandbox',
-      token: '******'
+      useStoredToken: true
     });
 
     await act(async () => render('draft-token'));
@@ -87,7 +122,8 @@ describe('ConnectivityTestInput', () => {
       url: 'http://sandbox',
       timeoutMs: 5000,
       service: 'codeSandbox',
-      token: 'draft-token'
+      token: 'draft-token',
+      useStoredToken: false
     });
     expect(container.textContent).toContain('admin:probe_connected');
     expect(container.textContent).toContain('12ms');
@@ -99,6 +135,16 @@ describe('ConnectivityTestInput', () => {
     expect(container.textContent).not.toContain('admin:probe_error_refused');
     await act(async () => render('draft-token', 'http://new-sandbox'));
     expect(container.textContent).not.toContain('admin:probe_connected');
+
+    await act(async () => render(''));
+    await act(async () => container.querySelector('button')!.click());
+    expect(mocks.post).toHaveBeenLastCalledWith('/admin/system/config/probe', {
+      url: 'http://sandbox',
+      timeoutMs: 5000,
+      service: 'codeSandbox',
+      token: '',
+      useStoredToken: false
+    });
   });
 
   it('keeps generic probes compatible and omits credentials for MCP probes', async () => {

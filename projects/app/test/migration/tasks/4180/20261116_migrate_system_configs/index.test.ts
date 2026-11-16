@@ -25,7 +25,9 @@ const mocks = vi.hoisted(() => ({
   verifyScopes: vi.fn(),
   verifyConnections: vi.fn(),
   verifyProxy: vi.fn(),
-  verifyOvercommit: vi.fn()
+  verifyOvercommit: vi.fn(),
+  encryptSecrets: vi.fn(),
+  verifySecrets: vi.fn()
 }));
 
 vi.mock('@/migration/tasks/4180/20261116_migrate_system_configs/scopes', () => ({
@@ -59,6 +61,10 @@ vi.mock('@/migration/tasks/4180/20261116_migrate_system_configs/subservices', ()
   verifyRehomedSubserviceConnections: mocks.verifyConnections,
   verifyAgentSandboxProxyMigration: mocks.verifyProxy,
   verifySandboxOvercommitMigration: mocks.verifyOvercommit
+}));
+vi.mock('@/migration/tasks/4180/20261116_migrate_system_configs/secrets', () => ({
+  encryptStoredConfigSecrets: mocks.encryptSecrets,
+  verifyStoredConfigSecrets: mocks.verifySecrets
 }));
 
 import { migrateSystemConfigs } from '@/migration/tasks/4180/20261116_migrate_system_configs';
@@ -120,7 +126,8 @@ describe('migrateSystemConfigs', () => {
       mocks.rehomeOvercommit,
       mocks.rehomeFile,
       mocks.rehomeHttp,
-      mocks.restoreDomain
+      mocks.restoreDomain,
+      mocks.encryptSecrets
     ]) {
       expect(backfill).toHaveBeenCalledOnce();
     }
@@ -134,7 +141,8 @@ describe('migrateSystemConfigs', () => {
       mocks.verifyFile,
       mocks.verifyHttp,
       mocks.verifyDomain,
-      mocks.verifyScopes
+      mocks.verifyScopes,
+      mocks.verifySecrets
     ]) {
       expect(verify).toHaveBeenCalledOnce();
     }
@@ -147,8 +155,8 @@ describe('migrateSystemConfigs', () => {
     expect(context.reportProgress).toHaveBeenCalledWith({
       key: 'backfill',
       status: SystemMigrationStatusEnum.succeeded,
-      current: 9,
-      total: 9
+      current: 10,
+      total: 10
     });
   });
 

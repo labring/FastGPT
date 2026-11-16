@@ -62,10 +62,12 @@ const SiteSettingComponent = () => {
     }
 
     await patchConfig(
-      filterConfigData('site', { ...formData, scripts, customDomain: undefined }) as Record<
-        string,
-        unknown
-      >
+      filterConfigData('site', {
+        ...formData,
+        scripts,
+        customDomain: undefined,
+        publicUrl: undefined
+      }) as Record<string, unknown>
     );
   });
 
@@ -100,6 +102,14 @@ const SiteSettingComponent = () => {
         </AdminFormItem>
 
         <AdminFormItem
+          label={t('admin:openapi_key_prefix')}
+          tooltip={t('admin:unified_prefix_for_generated_openapi_keys_default_fastgpt_ch')}
+          isRequired
+        >
+          <Input maxW={'400px'} {...register('openApiPrefix')} placeholder="fastgpt" />
+        </AdminFormItem>
+
+        <AdminFormItem
           label={t('admin:site_favicon')}
           tooltip={t('admin:favicon_shown_in_the_browser_tab_upload_an_image_directly')}
         >
@@ -113,30 +123,10 @@ const SiteSettingComponent = () => {
       <AdminSettingSection id="externalLinks" title={t('admin:site_section_links')} showDivider>
         <SimpleGrid columns={[1, 2]} spacing={5}>
           <AdminFormItem
-            label={t('admin:plugin_marketplace_url')}
-            tooltip={t('admin:url_of_the_external_plugin_template_marketplace_service')}
-          >
-            <Input
-              {...register('marketplaceUrl')}
-              placeholder="https://v2.marketplace.fastgpt.cn"
-            />
-          </AdminFormItem>
-
-          <AdminFormItem
             label={t('admin:help_documentation_url')}
             tooltip={t('admin:official_documentation_link_used_by_documentation_and_help_e')}
           >
             <Input {...register('docUrl')} placeholder="https://doc.fastgpt.io" />
-          </AdminFormItem>
-
-          <AdminFormItem
-            label={t('admin:openapi_documentation_url')}
-            tooltip={t('admin:public_api_platform_documentation_url')}
-          >
-            <Input
-              {...register('openApiDocUrl')}
-              placeholder="https://doc.fastgpt.io/openapi/intro"
-            />
           </AdminFormItem>
 
           <AdminFormItem

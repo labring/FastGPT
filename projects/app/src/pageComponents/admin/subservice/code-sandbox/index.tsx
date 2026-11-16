@@ -2,12 +2,14 @@ import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import React, { useEffect, useMemo } from 'react';
 import { Controller, useForm, useWatch } from 'react-hook-form';
 import { useDomainConfig } from '@/web/common/system/useDomainConfig';
-import { Box, Input, Text, Wrap, Tag } from '@chakra-ui/react';
+import { Box, Text, Wrap, Tag } from '@chakra-ui/react';
 import AdminSettingPage from '@/pageComponents/admin/settings/AdminSettingPage';
 import AdminSettingSection from '@/pageComponents/admin/settings/AdminSettingSection';
 import AdminFormItem from '@/pageComponents/admin/settings/AdminFormItem';
+import AdminSecretInput from '@/pageComponents/admin/settings/AdminSecretInput';
 import AdminSwitchRow from '@/pageComponents/admin/settings/AdminSwitchRow';
 import ConnectivityTestInput from '@/pageComponents/admin/settings/ConnectivityTestInput';
+import ConnectivityTestGroup from '@/pageComponents/admin/settings/ConnectivityTestGroup';
 import type { SettingTOCItem } from '@/pageComponents/admin/settings/AdminSettingTOC';
 import type { SystemInstanceConfigDomainMap } from '@fastgpt/global/common/system/config/schema';
 import { isValidServiceBaseUrl } from '@fastgpt/global/common/string/url';
@@ -30,7 +32,9 @@ const nodeBuiltins = ['crypto', 'path', 'url', 'lodash', 'dayjs', 'axios', 'qs']
 
 const CodeSandboxSubserviceComponent = () => {
   const { t } = useSafeTranslation();
-  const { effectiveConfig, isLoading, isUpdating, patchConfig } = useDomainConfig('subservice');
+  const { effectiveConfig, configuredSecretKeys, isLoading, isUpdating, patchConfig } =
+    useDomainConfig('subservice');
+  const isTokenConfigured = configuredSecretKeys.includes('codeSandbox.token');
 
   const {
     control,
@@ -41,7 +45,7 @@ const CodeSandboxSubserviceComponent = () => {
     defaultValues: effectiveConfig
   });
   const enabled = useWatch({ control, name: 'codeSandbox.enabled' }) ?? false;
-  const token = useWatch({ control, name: 'codeSandbox.token' }) ?? '';
+  const token = useWatch({ control, name: 'codeSandbox.token' });
   const tocItems: SettingTOCItem[] = useMemo(
     () => [
       { id: 'connection', label: t('admin:connection_connectivity') },
@@ -90,55 +94,72 @@ const CodeSandboxSubserviceComponent = () => {
         />
         {enabled && (
           <Box mt={6}>
-            <AdminFormItem label={t('admin:code_sandbox_url')} isRequired>
-              <Controller
-                name="codeSandbox.url"
-                control={control}
-                rules={{
-                  validate: (value) => {
-                    if (!enabled) return true;
-                    if (!value?.trim()) return t('admin:required');
-                    return isValidServiceBaseUrl(value) || t('admin:invalid_subservice_base_url');
-                  }
-                }}
-                render={({ field }) => (
-                  <ConnectivityTestInput
-                    {...field}
-                    isEditable
-                    service="codeSandbox"
-                    token={token}
-                    buttonVariant="solid"
-                    placeholder="http://code-sandbox:3000"
-                    isInvalid={Boolean(errors.codeSandbox?.url)}
-                  />
-                )}
-              />
-              {errors.codeSandbox?.url && (
-                <Text color={'red.500'} fontSize={'xs'} mt={1}>
-                  {errors.codeSandbox.url.message ?? t('admin:required')}
-                </Text>
+            <Controller
+              name="codeSandbox.url"
+              control={control}
+              rules={{
+                validate: (value) => {
+                  if (!enabled) return true;
+                  if (!value?.trim()) return t('admin:required');
+                  return isValidServiceBaseUrl(value) || t('admin:invalid_subservice_base_url');
+                }
+              }}
+              render={({ field }) => (
+                <ConnectivityTestInput
+                  {...field}
+                  isEditable
+                  service="codeSandbox"
+                  token={token}
+                  useStoredToken={token === undefined && isTokenConfigured}
+                  buttonVariant="solid"
+                  placeholder="http://code-sandbox:3000"
+                  isInvalid={Boolean(errors.codeSandbox?.url)}
+                  renderLayout={({ input, button, result }) => (
+                    <ConnectivityTestGroup
+                      address={
+                        <AdminFormItem label={t('admin:code_sandbox_url')} isRequired mb={4}>
+                          {input}
+                          {errors.codeSandbox?.url && (
+                            <Text color={'red.500'} fontSize={'xs'} mt={1}>
+                              {errors.codeSandbox.url.message ?? t('admin:required')}
+                            </Text>
+                          )}
+                        </AdminFormItem>
+                      }
+                      credential={
+                        <AdminFormItem label={t('admin:code_sandbox_token')} isRequired mb={4}>
+                          <Controller
+                            name="codeSandbox.token"
+                            control={control}
+                            rules={{
+                              validate: (value) =>
+                                !enabled ||
+                                (value === undefined ? isTokenConfigured : Boolean(value.trim()))
+                            }}
+                            render={({ field }) => (
+                              <AdminSecretInput
+                                name={field.name}
+                                value={field.value}
+                                onChange={field.onChange}
+                                isConfigured={isTokenConfigured}
+                                isInvalid={Boolean(errors.codeSandbox?.token)}
+                              />
+                            )}
+                          />
+                          {errors.codeSandbox?.token && (
+                            <Text color={'red.500'} fontSize={'xs'} mt={1}>
+                              {t('admin:required')}
+                            </Text>
+                          )}
+                        </AdminFormItem>
+                      }
+                      button={button}
+                      result={result}
+                    />
+                  )}
+                />
               )}
-            </AdminFormItem>
-            <AdminFormItem label={t('admin:code_sandbox_token')} isRequired mb={0}>
-              <Controller
-                name="codeSandbox.token"
-                control={control}
-                rules={{ validate: (value) => !enabled || Boolean(value?.trim()) }}
-                render={({ field }) => (
-                  <Input
-                    {...field}
-                    type="password"
-                    placeholder="******"
-                    isInvalid={Boolean(errors.codeSandbox?.token)}
-                  />
-                )}
-              />
-              {errors.codeSandbox?.token && (
-                <Text color={'red.500'} fontSize={'xs'} mt={1}>
-                  {t('admin:required')}
-                </Text>
-              )}
-            </AdminFormItem>
+            />
           </Box>
         )}
       </AdminSettingSection>

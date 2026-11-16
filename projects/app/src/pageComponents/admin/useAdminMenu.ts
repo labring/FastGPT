@@ -41,11 +41,13 @@ export type GetAdminMenuListParams = {
   hasPayCapability?: boolean;
   /**
    * License 是否处于可授权状态（可选，默认生效）。
-   * 配置页面按部署版本开放；商业业务页面需要有效 License，与 Layout 路由拦截保持一致。
+   * 普通配置页面按部署版本开放；商业化分组（含支付配置）及商业业务页面需要有效 License。
    */
   licenseActive?: boolean;
   /** 是否开启 SaaS 运营专用配置项展示（默认 false） */
   enableSaasAdminConfig?: boolean;
+  /** 已弃用的外部提供商变量仅在仍有配置时保留入口。 */
+  hasExternalProviderWorkflowVariables?: boolean;
   /** 可选的国际化翻译函数 */
   t?: MenuTranslateFn;
 };
@@ -109,7 +111,8 @@ export const getAdminMenuList = (params: GetAdminMenuListParams): AdminMenuItem[
     isProService: params.isProService,
     hasPayCapability: params.hasPayCapability ?? true,
     licenseActive: params.licenseActive ?? true,
-    enableSaasAdminConfig: params.enableSaasAdminConfig ?? false
+    enableSaasAdminConfig: params.enableSaasAdminConfig ?? false,
+    hasExternalProviderWorkflowVariables: params.hasExternalProviderWorkflowVariables ?? false
   };
 
   const rawMenuTree: AdminMenuItem[] = [
@@ -354,6 +357,8 @@ export const useAdminMenu = () => {
   // 商业版且授权有效时，再按 License functions 决定支付能力（授权不可用时 functions 一律视为关闭）
   const hasPayCapability = isPro && licenseActive && (licenseData?.functions?.pay ?? true);
   const enableSaasAdminConfig = !!feConfigs?.enableSaasAdminConfig;
+  const hasExternalProviderWorkflowVariables =
+    (feConfigs.externalProviderWorkflowVariables?.length ?? 0) > 0;
 
   const menuList = useMemo(() => {
     return getAdminMenuList({
@@ -361,9 +366,17 @@ export const useAdminMenu = () => {
       hasPayCapability,
       licenseActive,
       enableSaasAdminConfig,
+      hasExternalProviderWorkflowVariables,
       t
     });
-  }, [isPro, hasPayCapability, licenseActive, enableSaasAdminConfig, t]);
+  }, [
+    isPro,
+    hasPayCapability,
+    licenseActive,
+    enableSaasAdminConfig,
+    hasExternalProviderWorkflowVariables,
+    t
+  ]);
 
   return {
     isPro,

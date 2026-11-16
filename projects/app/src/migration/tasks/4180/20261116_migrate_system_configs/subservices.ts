@@ -1,5 +1,9 @@
 import { resolveDomainEffectiveConfig } from '@fastgpt/global/common/system/config/schema';
 import { MongoSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/schema';
+import {
+  decryptDomainSecrets,
+  encryptDomainSecrets
+} from '@fastgpt/service/common/system/systemInstanceConfig/secrets';
 import { isDeepStrictEqual } from 'node:util';
 import z from 'zod';
 import { isValidServiceBaseUrl } from '@fastgpt/global/common/string/url';
@@ -35,7 +39,8 @@ export const rehomeSubserviceConnections = async ({
     );
     if (!doc) throw new Error('Subservice instance config is missing');
     // 与统一清理阶段使用同一份废弃声明，单独重试补缺时也不带回旧键。
-    const { overrides } = stripDeprecatedOverrides('subservice', doc.overrides);
+    const decodedOverrides = decryptDomainSecrets('subservice', doc.overrides ?? {});
+    const { overrides } = stripDeprecatedOverrides('subservice', decodedOverrides);
     // 既有地址可能包含凭据，解析失败时不能将原始配置带入迁移错误。
     const config = (() => {
       try {
@@ -78,13 +83,17 @@ export const rehomeSubserviceConnections = async ({
       mcp: { ...config.mcp, enabled: mcpEnabled }
     };
     resolveDomainEffectiveConfig({ domain: 'subservice', overrides: target });
-    if (isDeepStrictEqual(target, doc.overrides ?? {})) return { updatedDocuments: 0 };
+    if (isDeepStrictEqual(target, decodedOverrides)) return { updatedDocuments: 0 };
 
     await assertActive();
     const result = await MongoSystemInstanceConfig.collection.updateOne(
       { _id: doc._id, revision: doc.revision },
       {
-        $set: { overrides: target, updatedAt: new Date(), updatedBy: { actor: 'migration' } },
+        $set: {
+          overrides: encryptDomainSecrets('subservice', target, doc.overrides),
+          updatedAt: new Date(),
+          updatedBy: { actor: 'migration' }
+        },
         $inc: { revision: 1 }
       }
     );
@@ -102,7 +111,10 @@ export const verifyRehomedSubserviceConnections = async () => {
     { readPreference: 'primary' }
   );
   if (!doc) throw new Error('Subservice instance config is missing');
-  resolveDomainEffectiveConfig({ domain: 'subservice', overrides: doc.overrides });
+  resolveDomainEffectiveConfig({
+    domain: 'subservice',
+    overrides: decryptDomainSecrets('subservice', doc.overrides)
+  });
   for (const [group, key] of [
     ['codeSandbox', 'url'],
     ['codeSandbox', 'token'],
@@ -142,7 +154,7 @@ export const rehomeAgentSandboxProxy = async ({
     );
     if (!doc) throw new Error('Subservice instance config is missing');
 
-    const overrides = doc.overrides ?? {};
+    const overrides = decryptDomainSecrets('subservice', doc.overrides ?? {});
     const paths = doc.explicitDefaultPaths ?? [];
     if (!Array.isArray(paths) || !paths.every((path) => typeof path === 'string')) {
       throw new Error('Invalid subservice explicit-default metadata');
@@ -178,7 +190,11 @@ export const rehomeAgentSandboxProxy = async ({
     const result = await MongoSystemInstanceConfig.collection.updateOne(
       { _id: doc._id, revision: doc.revision },
       {
-        $set: { overrides: target, updatedAt: new Date(), updatedBy: { actor: 'migration' } },
+        $set: {
+          overrides: encryptDomainSecrets('subservice', target, doc.overrides),
+          updatedAt: new Date(),
+          updatedBy: { actor: 'migration' }
+        },
         $inc: { revision: 1 }
       }
     );
@@ -195,7 +211,10 @@ export const verifyAgentSandboxProxyMigration = async () => {
   );
   if (!doc) throw new Error('Subservice instance config is missing');
   try {
-    resolveDomainEffectiveConfig({ domain: 'subservice', overrides: doc.overrides });
+    resolveDomainEffectiveConfig({
+      domain: 'subservice',
+      overrides: decryptDomainSecrets('subservice', doc.overrides)
+    });
   } catch {
     throw new Error('Invalid Agent Sandbox proxy configuration after migration');
   }
@@ -221,7 +240,7 @@ const readOvercommitDocument = async () => {
     { readPreference: 'primary' }
   );
   if (!doc) throw new Error('Subservice instance config is missing');
-  const overrides = doc.overrides ?? {};
+  const overrides = decryptDomainSecrets('subservice', doc.overrides ?? {});
   const explicitPaths = doc.explicitDefaultPaths ?? [];
   if (!Array.isArray(explicitPaths) || !explicitPaths.every((path) => typeof path === 'string')) {
     throw new Error('Invalid subservice explicit-default metadata');
@@ -281,7 +300,11 @@ export const rehomeSandboxOvercommit = async ({
     const result = await MongoSystemInstanceConfig.collection.updateOne(
       { _id: doc._id, revision: doc.revision },
       {
-        $set: { overrides: target, updatedAt: new Date(), updatedBy: { actor: 'migration' } },
+        $set: {
+          overrides: encryptDomainSecrets('subservice', target, doc.overrides),
+          updatedAt: new Date(),
+          updatedBy: { actor: 'migration' }
+        },
         $inc: { revision: 1 }
       }
     );

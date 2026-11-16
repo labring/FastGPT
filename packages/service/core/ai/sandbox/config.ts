@@ -53,9 +53,6 @@ export const getAgentSandboxCommonConfig = () => {
     storageSizeGi: common.storageSizeGi,
     suspendMinutes: common.suspendMinutes,
     archiveInactiveDays: common.archiveInactiveDays,
-    entrypointTimeoutSeconds: common.entrypointTimeoutSeconds,
-    wsMaxMessageBytes: common.wsMaxMessageBytes,
-    wsMaxFrameBytes: common.wsMaxFrameBytes,
     npmRegistry: common.npmRegistry,
     pypiIndexUrl: common.pypiIndexUrl,
     aptMirror: common.aptMirror

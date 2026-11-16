@@ -2,7 +2,10 @@ import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import React, { useEffect, useMemo } from 'react';
 import {
   SimpleGrid,
+  Box,
+  HStack,
   Input,
+  Switch,
   Text,
   NumberInput,
   NumberInputField,
@@ -18,21 +21,28 @@ import { useAdminPermission } from '@/pageComponents/admin/useAdminPermission';
 import AdminSettingPage from '@/pageComponents/admin/settings/AdminSettingPage';
 import AdminSettingSection from '@/pageComponents/admin/settings/AdminSettingSection';
 import AdminFormItem from '@/pageComponents/admin/settings/AdminFormItem';
+import AdminSecretInput from '@/pageComponents/admin/settings/AdminSecretInput';
+import AdminNumberInput from '@/pageComponents/admin/settings/AdminNumberInput';
+import ConnectivityTestInput from '@/pageComponents/admin/settings/ConnectivityTestInput';
+import ConnectivityTestGroup from '@/pageComponents/admin/settings/ConnectivityTestGroup';
 import AdminSwitchRow from '@/pageComponents/admin/settings/AdminSwitchRow';
-import { isValidServiceBaseUrl } from '@fastgpt/global/common/string/url';
+import { isValidHttpUrl, isValidServiceBaseUrl } from '@fastgpt/global/common/string/url';
 import { deepMergeConfig } from '@fastgpt/global/common/system/config/merge';
 import type { SettingTOCItem } from '@/pageComponents/admin/settings/AdminSettingTOC';
 import type { SystemInstanceConfigDomainMap } from '@fastgpt/global/common/system/config/schema';
+import { SitePublicUrlSchema } from '@fastgpt/global/common/system/config/schemas/site';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
+import type { DeepPartial } from '@fastgpt/global/common/system/config/type';
 
 type CoreConfigForm = {
+  publicUrl: SystemInstanceConfigDomainMap['site']['publicUrl'];
+  documentParse: SystemInstanceConfigDomainMap['providers']['documentParse'];
   agentEngine: SystemInstanceConfigDomainMap['feature']['agentEngine'];
   multipleDataToBase64: SystemInstanceConfigDomainMap['feature']['multipleDataToBase64'];
   fileDomain: SystemInstanceConfigDomainMap['storage']['fileDomain'];
   downloadMode: SystemInstanceConfigDomainMap['storage']['downloadMode'];
   externalEndpoint: SystemInstanceConfigDomainMap['storage']['externalEndpoint'];
   cdnEndpoint: SystemInstanceConfigDomainMap['storage']['cdnEndpoint'];
-  redirectTtlSeconds: SystemInstanceConfigDomainMap['storage']['redirectTtlSeconds'];
-  openApiPrefix: SystemInstanceConfigDomainMap['site']['openApiPrefix'];
   email: Omit<SystemInstanceConfigDomainMap['auth']['loginProviders']['email'], 'register'>;
   phone: SystemInstanceConfigDomainMap['auth']['loginProviders']['phone'];
 };
@@ -42,32 +52,40 @@ const numberInputProps = { variant: 'whiteOutline' as const, maxW: '400px' };
 
 /**
  * 核心配置页：影响面最大的少量运行策略集中在一处，避免分散在多个配置页。
- * 字段跨越 auth / feature / storage / site 四个配置域，保存时逐域携带各自 revision 局部提交。
+ * 字段跨越 site / auth / feature / storage / providers 五个配置域，保存时逐域携带各自 revision 局部提交。
  */
 const CoreSettingComponent = () => {
   const { t } = useSafeTranslation();
-  const { isFieldVisible, filterConfigData, filterConfigDataByEdition } = useAdminPermission();
+  const { isPro, isFieldVisible, filterConfigData, filterConfigDataByEdition } =
+    useAdminPermission();
+  const { subPlans } = useSystemStore();
   const showEmail = isFieldVisible('auth.loginProviders.email.smtp');
   const showPhone = isFieldVisible('auth.loginProviders.phone.signName');
 
   const tocItems: SettingTOCItem[] = useMemo(
     () => [
-      { id: 'engine', label: t('admin:core_section_engine') },
-      { id: 'applicationRuntime', label: t('admin:application_runtime') },
+      { id: 'basic', label: t('admin:core_section_basic') },
       { id: 'download', label: t('admin:core_section_download') },
-      { id: 'openapi', label: t('admin:core_section_openapi') },
+      { id: 'documentParse', label: t('admin:provider_section_doc_parse') },
       ...(showEmail ? [{ id: 'email', label: t('admin:email_notification_config') }] : []),
       ...(showPhone ? [{ id: 'sms', label: t('admin:aliyun_sms_credentials') }] : [])
     ],
     [t, showEmail, showPhone]
   );
 
+  const site = useDomainConfig('site');
   const auth = useDomainConfig('auth');
   const feature = useDomainConfig('feature');
   const storage = useDomainConfig('storage');
-  const site = useDomainConfig('site');
+  const providers = useDomainConfig('providers');
+  const configuredSecretKeys = providers.configuredSecretKeys;
 
-  const isLoading = auth.isLoading || feature.isLoading || storage.isLoading || site.isLoading;
+  const isLoading =
+    site.isLoading ||
+    auth.isLoading ||
+    feature.isLoading ||
+    storage.isLoading ||
+    providers.isLoading;
 
   const {
     control,
@@ -77,71 +95,115 @@ const CoreSettingComponent = () => {
     formState: { errors }
   } = useForm<CoreConfigForm>({
     defaultValues: {
+      publicUrl: '',
+      documentParse: providers.effectiveConfig.documentParse,
       agentEngine: 'fastAgent',
       multipleDataToBase64: false,
       fileDomain: '',
       downloadMode: 'short-proxy',
       externalEndpoint: '',
       cdnEndpoint: '',
-      redirectTtlSeconds: 300,
-      openApiPrefix: 'fastgpt',
       email: {
         smtp: '',
         user: '',
-        pass: '',
         port: 465,
         secure: true
       },
-      phone: { accessKeyId: '', accessKeySecret: '', signName: '' }
+      phone: { accessKeyId: '', signName: '' }
     }
   });
 
+  const documentParseProvider = useWatch({ control, name: 'documentParse.provider' });
   const downloadMode = useWatch({ control, name: 'downloadMode' });
+  // 与订阅套餐开关一致：无套餐或空套餐均不展示计费，开源版始终隐藏。
+  const showPdfPrice =
+    isPro &&
+    Boolean(subPlans?.standard && Object.keys(subPlans.standard).length > 0) &&
+    Boolean(documentParseProvider) &&
+    documentParseProvider !== 'none';
 
   useEffect(() => {
     if (isLoading) return;
     reset({
+      // 仅为空配置提供浏览器草稿，保存前不发布到 scope，不覆盖已有公网地址。
+      publicUrl: site.effectiveConfig?.publicUrl || window.location.origin,
+      documentParse: providers.effectiveConfig.documentParse,
       agentEngine: feature.effectiveConfig?.agentEngine ?? 'fastAgent',
       multipleDataToBase64: feature.effectiveConfig?.multipleDataToBase64 ?? false,
       fileDomain: storage.effectiveConfig?.fileDomain ?? '',
       downloadMode: storage.effectiveConfig?.downloadMode ?? 'short-proxy',
       externalEndpoint: storage.effectiveConfig?.externalEndpoint ?? '',
       cdnEndpoint: storage.effectiveConfig?.cdnEndpoint ?? '',
-      redirectTtlSeconds: storage.effectiveConfig?.redirectTtlSeconds ?? 300,
-      openApiPrefix: site.effectiveConfig?.openApiPrefix ?? 'fastgpt',
       email: {
         smtp: auth.effectiveConfig?.loginProviders?.email.smtp ?? '',
         user: auth.effectiveConfig?.loginProviders?.email.user ?? '',
-        pass: auth.effectiveConfig?.loginProviders?.email.pass ?? '',
         port: auth.effectiveConfig?.loginProviders?.email.port ?? 465,
         secure: auth.effectiveConfig?.loginProviders?.email.secure ?? true
       },
       phone: auth.effectiveConfig?.loginProviders?.phone ?? {
         accessKeyId: '',
-        accessKeySecret: '',
         signName: ''
       }
     });
   }, [
+    site.effectiveConfig,
     auth.effectiveConfig,
     feature.effectiveConfig,
     storage.effectiveConfig,
-    site.effectiveConfig,
+    providers.effectiveConfig,
     isLoading,
     reset
   ]);
 
   const { runAsync: onSave, loading: isSaving } = useAdminConfigSaveRequest(
     async (formData: CoreConfigForm) => {
+      const activeProvider = formData.documentParse.provider;
+      const isCustomActive = activeProvider === 'customPdf' || activeProvider === 'custom';
+      const isSangforActive = activeProvider === 'sangfor';
+      const rawPrice = Number(formData.documentParse.customPdf.price);
+      const isValidOptionalUrl = (url?: string) => !url || isValidHttpUrl(url);
+      // 隐藏 Provider 的半成品地址回退到已存值；密钥仍按省略、替换和清空语义提交。
+      // 隐藏时省略价格补丁，由服务端保留当前值，避免提交表单中的默认值或过期草稿。
+      const { price: _price, ...customPdf } = formData.documentParse.customPdf;
+      const documentParse: DeepPartial<CoreConfigForm['documentParse']> = {
+        ...formData.documentParse,
+        customPdf: {
+          ...customPdf,
+          ...(showPdfPrice
+            ? { price: Number.isFinite(rawPrice) && rawPrice >= 0 ? rawPrice : 0 }
+            : {}),
+          url:
+            isCustomActive || isValidOptionalUrl(formData.documentParse.customPdf.url)
+              ? formData.documentParse.customPdf.url
+              : (providers.effectiveConfig.documentParse?.customPdf?.url ?? '')
+        },
+        sangfor: {
+          ...formData.documentParse.sangfor,
+          url:
+            isSangforActive || isValidOptionalUrl(formData.documentParse.sangfor.url)
+              ? formData.documentParse.sangfor.url
+              : (providers.effectiveConfig.documentParse?.sangfor?.url ?? '')
+        }
+      };
       // 排除历史团队模式字段：部署 ENV 是唯一权威，页面不能将旧值重新提交。
       const { teamMode: _preservedTeamMode, ...preservedAuthOverrides } = filterConfigDataByEdition(
         'auth',
         auth.overrides
       ) as Record<string, unknown>;
 
-      // 跨域原子提交：auth、feature、storage、site 四个域合并为单个事务请求，避免多域分步提交留下半写
+      // 跨域原子提交：site、auth、feature、storage、providers 五个域合并为单个事务请求，避免多域分步提交留下半写
       await updateDomainConfigApi({
         items: [
+          {
+            domain: 'site',
+            expectedRevision: site.revision,
+            overrides: { publicUrl: formData.publicUrl }
+          },
+          {
+            domain: 'providers',
+            expectedRevision: providers.revision,
+            overrides: filterConfigData('providers', { documentParse }) as Record<string, unknown>
+          },
           {
             domain: 'auth',
             expectedRevision: auth.revision,
@@ -182,24 +244,19 @@ const CoreSettingComponent = () => {
                 fileDomain: formData.fileDomain,
                 downloadMode: formData.downloadMode,
                 externalEndpoint: formData.externalEndpoint || '',
-                cdnEndpoint: formData.cdnEndpoint || '',
-                redirectTtlSeconds: Number(formData.redirectTtlSeconds) || 300
-              })
-            )
-          },
-          {
-            domain: 'site',
-            expectedRevision: site.revision,
-            overrides: deepMergeConfig(
-              filterConfigDataByEdition('site', site.overrides) as Record<string, unknown>,
-              filterConfigData('site', {
-                openApiPrefix: formData.openApiPrefix
+                cdnEndpoint: formData.cdnEndpoint || ''
               })
             )
           }
         ]
       });
-      await Promise.all([auth.refetch(), feature.refetch(), storage.refetch(), site.refetch()]);
+      await Promise.all([
+        site.refetch(),
+        auth.refetch(),
+        feature.refetch(),
+        storage.refetch(),
+        providers.refetch()
+      ]);
     },
     {
       successToast: 'admin:settings_saved',
@@ -217,61 +274,83 @@ const CoreSettingComponent = () => {
       isSaving={isSaving}
       onSave={submit}
     >
-      {/* 执行引擎 */}
-      <AdminSettingSection id="engine" title={t('admin:core_section_engine')}>
+      {/* 1. 基础配置 */}
+      <AdminSettingSection id="basic" title={t('admin:core_section_basic')}>
         <AdminFormItem
-          label={t('admin:agent_execution_engine')}
-          tooltip={t('admin:fastagent_lightweight_high_concurrency_single_node_engine_pi')}
+          label={t('admin:main_site_domain')}
+          tooltip={t('admin:main_site_domain_tip')}
           isRequired
-          mb={0}
         >
-          <Controller
-            name="agentEngine"
-            control={control}
-            render={({ field }) => (
-              <MySelect<string>
-                width={'400px'}
-                list={[
-                  {
-                    label: t('admin:fastagent_high_performance_single_node_streaming_engine'),
-                    value: 'fastAgent'
-                  },
-                  {
-                    label: t('admin:piagent_multi_step_reasoning_and_tool_planning_engine'),
-                    value: 'piAgent'
-                  }
-                ]}
-                value={field.value}
-                onChange={field.onChange}
-              />
-            )}
+          <Input
+            {...register('publicUrl', {
+              required: t('admin:required'),
+              validate: (value) =>
+                SitePublicUrlSchema.safeParse(value).success ||
+                t('admin:invalid_subservice_base_url')
+            })}
+            isInvalid={Boolean(errors.publicUrl)}
+            placeholder="https://cloud.fastgpt.cn"
           />
+          {errors.publicUrl && (
+            <Text color={'red.500'} fontSize={'xs'} mt={1}>
+              {errors.publicUrl.message}
+            </Text>
+          )}
         </AdminFormItem>
-      </AdminSettingSection>
-
-      {/* 3. 应用运行 */}
-      <AdminSettingSection
-        id="applicationRuntime"
-        title={t('admin:application_runtime')}
-        showDivider
-      >
-        <SimpleGrid columns={[1, 2]} spacingX={16} spacingY={4}>
-          <Controller
-            name="multipleDataToBase64"
-            control={control}
-            render={({ field }) => (
-              <AdminSwitchRow
-                label={t('admin:convert_multimodal_content_to_base64_for_models')}
-                tooltip={t('admin:when_enabled_rich_media_such_as_images_is_converted_to_base6')}
-                isChecked={field.value}
-                onChange={field.onChange}
+        <SimpleGrid columns={[1, 2]} spacingX={16} spacingY={4} alignItems={'start'}>
+          <AdminFormItem
+            label={t('admin:agent_execution_engine')}
+            tooltip={t('admin:fastagent_lightweight_high_concurrency_single_node_engine_pi')}
+            isRequired
+            mb={0}
+          >
+            <Controller
+              name="agentEngine"
+              control={control}
+              render={({ field }) => (
+                <MySelect<string>
+                  width={'100%'}
+                  maxW={'400px'}
+                  list={[
+                    {
+                      label: t('admin:fastagent_high_performance_single_node_streaming_engine'),
+                      value: 'fastAgent'
+                    },
+                    {
+                      label: t('admin:piagent_multi_step_reasoning_and_tool_planning_engine'),
+                      value: 'piAgent'
+                    }
+                  ]}
+                  value={field.value}
+                  onChange={field.onChange}
+                />
+              )}
+            />
+          </AdminFormItem>
+          <AdminFormItem
+            label={t('admin:convert_multimodal_content_to_base64_for_models')}
+            tooltip={t('admin:when_enabled_rich_media_such_as_images_is_converted_to_base6')}
+            mb={0}
+          >
+            <Box minH={9} display={'flex'} alignItems={'center'}>
+              <Controller
+                name="multipleDataToBase64"
+                control={control}
+                render={({ field }) => (
+                  <Switch
+                    aria-label={t('admin:convert_multimodal_content_to_base64_for_models')}
+                    isChecked={field.value}
+                    onChange={(event) => field.onChange(event.target.checked)}
+                    colorScheme={'blue'}
+                  />
+                )}
               />
-            )}
-          />
+            </Box>
+          </AdminFormItem>
         </SimpleGrid>
       </AdminSettingSection>
 
-      {/* 4. 下载链接 */}
+      {/* 2. 文件系统 */}
       <AdminSettingSection id="download" title={t('admin:core_section_download')} showDivider>
         <AdminFormItem
           label={t('admin:file_service_domain')}
@@ -286,8 +365,10 @@ const CoreSettingComponent = () => {
                 !value || isValidServiceBaseUrl(value) || t('admin:invalid_subservice_base_url')
             }}
             render={({ field }) => (
-              <Input
+              <ConnectivityTestInput
                 {...field}
+                isEditable
+                service="fileService"
                 isInvalid={Boolean(errors.fileDomain)}
                 placeholder="https://files.example.com"
               />
@@ -325,38 +406,378 @@ const CoreSettingComponent = () => {
           />
         </AdminFormItem>
 
-        {/* 公开桶（如站点头像）在 short-proxy 模式下同样消费 externalEndpoint 与 cdnEndpoint，始终展示；仅 302 有效期随模式显隐 */}
-        <SimpleGrid columns={[1, downloadMode === 'short-redirect' ? 3 : 2]} spacing={5} mt={4}>
-          <AdminFormItem
-            label={t('admin:storage_external_endpoint')}
-            tooltip={t('admin:storage_external_endpoint_tip')}
-            mb={0}
-          >
-            <Input {...register('externalEndpoint')} placeholder="https://files.example.com" />
-          </AdminFormItem>
-          <AdminFormItem
-            label={t('admin:storage_cdn_endpoint')}
-            tooltip={t('admin:storage_cdn_endpoint_tip')}
-            mb={0}
-          >
-            <Input {...register('cdnEndpoint')} placeholder="https://cdn.example.com" />
-          </AdminFormItem>
-          {downloadMode === 'short-redirect' && (
+        {downloadMode === 'short-redirect' && (
+          <SimpleGrid columns={[1, 2]} spacing={5} mt={4}>
             <AdminFormItem
-              label={t('admin:storage_redirect_ttl_seconds')}
-              tooltip={t('admin:storage_redirect_ttl_seconds_tip')}
+              label={t('admin:storage_external_endpoint')}
+              tooltip={t('admin:storage_external_endpoint_tip')}
+              mb={0}
+            >
+              <Input {...register('externalEndpoint')} placeholder="https://storage.example.com" />
+            </AdminFormItem>
+            <AdminFormItem
+              label={t('admin:storage_cdn_endpoint')}
+              tooltip={t('admin:storage_cdn_endpoint_tip')}
               mb={0}
             >
               <Controller
-                name="redirectTtlSeconds"
+                name="cdnEndpoint"
+                control={control}
+                render={({ field }) => (
+                  <ConnectivityTestInput
+                    {...field}
+                    isEditable
+                    service="cdn"
+                    placeholder="https://cdn.example.com"
+                  />
+                )}
+              />
+            </AdminFormItem>
+          </SimpleGrid>
+        )}
+      </AdminSettingSection>
+
+      {/* 文档增强解析 */}
+      <AdminSettingSection
+        id="documentParse"
+        title={t('admin:provider_section_doc_parse')}
+        showDivider
+      >
+        <SimpleGrid columns={[1, 2]} spacing={5} alignItems={'start'} mb={6}>
+          <AdminFormItem
+            label={t('admin:parsing_provider')}
+            tooltip={t('admin:select_the_provider_used_to_parse_hard_formats_such_as_scann')}
+            isRequired
+            mb={0}
+          >
+            <Controller
+              name="documentParse.provider"
+              control={control}
+              render={({ field }) => (
+                <MySelect
+                  width={'full'}
+                  maxW={'400px'}
+                  placeholder={t('admin:select_a_parsing_provider')}
+                  list={[
+                    { label: t('admin:none'), value: 'none' },
+                    { label: 'somark', value: 'somark' },
+                    { label: 'doc2x', value: 'doc2x' },
+                    { label: 'textln', value: 'textln' },
+                    { label: t('admin:custom_self_hosted'), value: 'customPdf' },
+                    { label: t('admin:sangfor_short'), value: 'sangfor' }
+                  ]}
+                  value={
+                    field.value === 'textin'
+                      ? 'textln'
+                      : field.value === 'custom'
+                        ? 'customPdf'
+                        : field.value
+                  }
+                  onChange={field.onChange}
+                />
+              )}
+            />
+          </AdminFormItem>
+
+          {/* 后端对全部启用的 PDF Provider 统一按 customPdf.price 计费，不能只在 customPdf 下展示 */}
+          {showPdfPrice && (
+            <AdminFormItem label={t('admin:custom_pdf_parse_price')} mb={0}>
+              <HStack spacing={3}>
+                <Controller
+                  name="documentParse.customPdf.price"
+                  control={control}
+                  render={({ field }) => (
+                    <AdminNumberInput
+                      name={field.name}
+                      flex={1}
+                      minW={0}
+                      maxW={'400px'}
+                      min={0}
+                      step={0.1}
+                      value={field.value}
+                      fallbackValue={0}
+                      onChange={field.onChange}
+                    />
+                  )}
+                />
+                <Text flexShrink={0} whiteSpace={'nowrap'} fontSize={'sm'} color={'myGray.600'}>
+                  {t('admin:pdf_points_per_page')}
+                </Text>
+              </HStack>
+            </AdminFormItem>
+          )}
+        </SimpleGrid>
+
+        {documentParseProvider === 'somark' && (
+          <Box
+            p={5}
+            bg={'white'}
+            borderRadius={'lg'}
+            borderWidth={'1px'}
+            borderColor={'myGray.200'}
+            mb={6}
+          >
+            <AdminFormItem
+              label="Somark API Key"
+              tooltip={t('admin:use_the_official_somark_intelligent_cloud_parsing_credential')}
+              isRequired
+              mb={0}
+            >
+              <Controller
+                name="documentParse.customPdf.somarkApiKey"
+                control={control}
+                render={({ field }) => (
+                  <AdminSecretInput
+                    name={field.name}
+                    value={field.value}
+                    onChange={field.onChange}
+                    isConfigured={configuredSecretKeys.includes(
+                      'documentParse.customPdf.somarkApiKey'
+                    )}
+                  />
+                )}
+              />
+            </AdminFormItem>
+          </Box>
+        )}
+
+        {documentParseProvider === 'doc2x' && (
+          <Box
+            p={5}
+            bg={'white'}
+            borderRadius={'lg'}
+            borderWidth={'1px'}
+            borderColor={'myGray.200'}
+            mb={6}
+          >
+            <AdminFormItem
+              label="Doc2X Key"
+              tooltip={t('admin:use_the_official_doc2x_layout_recognition_and_table_extracti')}
+              isRequired
+              mb={0}
+            >
+              <Controller
+                name="documentParse.customPdf.doc2xKey"
+                control={control}
+                render={({ field }) => (
+                  <AdminSecretInput
+                    name={field.name}
+                    value={field.value}
+                    onChange={field.onChange}
+                    isConfigured={configuredSecretKeys.includes('documentParse.customPdf.doc2xKey')}
+                  />
+                )}
+              />
+            </AdminFormItem>
+          </Box>
+        )}
+
+        {(documentParseProvider === 'textln' || documentParseProvider === 'textin') && (
+          <Box
+            p={5}
+            bg={'white'}
+            borderRadius={'lg'}
+            borderWidth={'1px'}
+            borderColor={'myGray.200'}
+            mb={6}
+          >
+            <SimpleGrid columns={[1, 2]} spacing={5}>
+              <AdminFormItem
+                label="TextIn AppId"
+                tooltip={t('admin:intsig_textin_platform_appid')}
+                isRequired
+              >
+                <Controller
+                  name="documentParse.customPdf.textinAppId"
+                  control={control}
+                  render={({ field }) => (
+                    <AdminSecretInput
+                      name={field.name}
+                      value={field.value}
+                      onChange={field.onChange}
+                      isConfigured={configuredSecretKeys.includes(
+                        'documentParse.customPdf.textinAppId'
+                      )}
+                    />
+                  )}
+                />
+              </AdminFormItem>
+
+              <AdminFormItem
+                label="TextIn Secret Code"
+                tooltip={t('admin:intsig_textin_platform_secret_code')}
+                isRequired
+              >
+                <Controller
+                  name="documentParse.customPdf.textinSecretCode"
+                  control={control}
+                  render={({ field }) => (
+                    <AdminSecretInput
+                      name={field.name}
+                      value={field.value}
+                      onChange={field.onChange}
+                      isConfigured={configuredSecretKeys.includes(
+                        'documentParse.customPdf.textinSecretCode'
+                      )}
+                    />
+                  )}
+                />
+              </AdminFormItem>
+            </SimpleGrid>
+          </Box>
+        )}
+
+        {(documentParseProvider === 'customPdf' || documentParseProvider === 'custom') && (
+          <Box
+            p={5}
+            bg={'white'}
+            borderRadius={'lg'}
+            borderWidth={'1px'}
+            borderColor={'myGray.200'}
+            mb={6}
+          >
+            <Controller
+              name="documentParse.customPdf.url"
+              control={control}
+              render={({ field }) => (
+                <ConnectivityTestInput
+                  {...field}
+                  isEditable
+                  placeholder="https://pdf-parser.example.com/api"
+                  renderLayout={({ input, button, result }) => (
+                    <ConnectivityTestGroup
+                      address={
+                        <AdminFormItem
+                          label={t('admin:custom_pdf_parser_service_url')}
+                          tooltip={t(
+                            'admin:full_url_of_the_custom_pdf_parsing_service_connectivity_can'
+                          )}
+                          isRequired
+                          mb={4}
+                        >
+                          {input}
+                        </AdminFormItem>
+                      }
+                      credential={
+                        <AdminFormItem
+                          label={t('admin:custom_parser_auth_key')}
+                          tooltip={t(
+                            'admin:bearer_token_used_when_calling_the_custom_parsing_service'
+                          )}
+                          mb={4}
+                        >
+                          <Controller
+                            name="documentParse.customPdf.key"
+                            control={control}
+                            render={({ field }) => (
+                              <AdminSecretInput
+                                name={field.name}
+                                value={field.value}
+                                onChange={field.onChange}
+                                isConfigured={configuredSecretKeys.includes(
+                                  'documentParse.customPdf.key'
+                                )}
+                              />
+                            )}
+                          />
+                        </AdminFormItem>
+                      }
+                      button={button}
+                      result={result}
+                    />
+                  )}
+                />
+              )}
+            />
+          </Box>
+        )}
+
+        {documentParseProvider === 'sangfor' && (
+          <Box
+            p={5}
+            bg={'white'}
+            borderRadius={'lg'}
+            borderWidth={'1px'}
+            borderColor={'myGray.200'}
+            mb={6}
+          >
+            <Controller
+              name="documentParse.sangfor.url"
+              control={control}
+              render={({ field }) => (
+                <ConnectivityTestInput
+                  {...field}
+                  isEditable
+                  placeholder="https://sangfor-parse.example.com"
+                  renderLayout={({ input, button, result }) => (
+                    <ConnectivityTestGroup
+                      address={
+                        <AdminFormItem
+                          label={t('admin:sangfor_parsing_api_endpoint')}
+                          tooltip={t(
+                            'admin:sangfor_document_parsing_microservice_url_connectivity_testi'
+                          )}
+                          isRequired
+                          mb={4}
+                        >
+                          {input}
+                        </AdminFormItem>
+                      }
+                      credential={
+                        <AdminFormItem
+                          label={t('admin:sangfor_service_key')}
+                          tooltip={t('admin:sangfor_service_credential')}
+                          mb={4}
+                        >
+                          <Controller
+                            name="documentParse.sangfor.key"
+                            control={control}
+                            render={({ field }) => (
+                              <AdminSecretInput
+                                name={field.name}
+                                value={field.value}
+                                onChange={field.onChange}
+                                isConfigured={configuredSecretKeys.includes(
+                                  'documentParse.sangfor.key'
+                                )}
+                              />
+                            )}
+                          />
+                        </AdminFormItem>
+                      }
+                      button={button}
+                      result={result}
+                    />
+                  )}
+                />
+              )}
+            />
+
+            <SimpleGrid columns={[1, 2]} spacing={5} mt={4}>
+              <AdminFormItem
+                label={t('admin:supported_file_extensions')}
+                tooltip={t('admin:comma_separated_extensions_e_g_pdf_docx')}
+              >
+                <Input {...register('documentParse.sangfor.extensions')} placeholder="pdf" />
+              </AdminFormItem>
+            </SimpleGrid>
+
+            <AdminFormItem
+              label={t('admin:request_timeout_seconds')}
+              tooltip={t('admin:maximum_timeout_limit_default_600_seconds')}
+              mb={0}
+            >
+              <Controller
+                name="documentParse.sangfor.timeoutSeconds"
                 control={control}
                 render={({ field }) => (
                   <NumberInput
-                    {...numberInputProps}
-                    min={1}
-                    max={3600}
-                    value={field.value ?? 300}
-                    onChange={(_, val) => field.onChange(val || 300)}
+                    variant={'whiteOutline'}
+                    maxW={'400px'}
+                    min={10}
+                    max={7200}
+                    value={field.value ?? 600}
+                    onChange={(_, val) => field.onChange(val || 600)}
                   >
                     <NumberInputField />
                     <NumberInputStepper>
@@ -367,23 +788,11 @@ const CoreSettingComponent = () => {
                 )}
               />
             </AdminFormItem>
-          )}
-        </SimpleGrid>
+          </Box>
+        )}
       </AdminSettingSection>
 
-      {/* 5. 开放接口 */}
-      <AdminSettingSection id="openapi" title={t('admin:core_section_openapi')} showDivider>
-        <AdminFormItem
-          label={t('admin:openapi_key_prefix')}
-          tooltip={t('admin:unified_prefix_for_generated_openapi_keys_default_fastgpt_ch')}
-          isRequired
-          mb={0}
-        >
-          <Input width={'400px'} {...register('openApiPrefix')} placeholder="fastgpt" />
-        </AdminFormItem>
-      </AdminSettingSection>
-
-      {/* 6. 邮箱通知 (SMTP) */}
+      {/* 4. 邮箱 SMTP 服务 */}
       {showEmail && (
         <AdminSettingSection id="email" title={t('admin:email_notification_config')} showDivider>
           <SimpleGrid columns={[1, 2]} spacing={5}>
@@ -403,7 +812,18 @@ const CoreSettingComponent = () => {
               label={t('admin:email_auth_code_password')}
               tooltip={t('admin:smtp_login_credentials')}
             >
-              <Input type="password" {...register('email.pass')} placeholder="******" />
+              <Controller
+                name="email.pass"
+                control={control}
+                render={({ field }) => (
+                  <AdminSecretInput
+                    name={field.name}
+                    value={field.value}
+                    onChange={field.onChange}
+                    isConfigured={auth.configuredSecretKeys.includes('loginProviders.email.pass')}
+                  />
+                )}
+              />
             </AdminFormItem>
             <AdminFormItem
               label={t('admin:smtp_port')}
@@ -448,7 +868,7 @@ const CoreSettingComponent = () => {
         </AdminSettingSection>
       )}
 
-      {/* 7. 阿里云短信密钥配置 */}
+      {/* 5. 阿里云短信服务 */}
       {showPhone && (
         <AdminSettingSection id="sms" title={t('admin:aliyun_sms_credentials')} showDivider>
           <SimpleGrid columns={[1, 3]} spacing={5}>
@@ -462,7 +882,20 @@ const CoreSettingComponent = () => {
               label={t('admin:aliyun_accesskeysecret')}
               tooltip={t('admin:sms_accesskey_secret')}
             >
-              <Input type="password" {...register('phone.accessKeySecret')} placeholder="******" />
+              <Controller
+                name="phone.accessKeySecret"
+                control={control}
+                render={({ field }) => (
+                  <AdminSecretInput
+                    name={field.name}
+                    value={field.value}
+                    onChange={field.onChange}
+                    isConfigured={auth.configuredSecretKeys.includes(
+                      'loginProviders.phone.accessKeySecret'
+                    )}
+                  />
+                )}
+              />
             </AdminFormItem>
             <AdminFormItem
               label={t('admin:sms_signature')}

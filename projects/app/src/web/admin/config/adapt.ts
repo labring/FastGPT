@@ -9,6 +9,7 @@ import type { SubPlanType } from '@fastgpt/global/support/wallet/sub/type';
 import { normalizeSsoConfig } from '@fastgpt/global/common/system/config/sso';
 
 const removedFeConfigKeys = [
+  'openAPIDocUrl',
   ['show', 'team', 'chat'].join('_'),
   'mcpServerProxyEndpoint',
   'agentSandboxProxyUrl',
@@ -66,7 +67,6 @@ export function formatConfigStore2FormSchema({
     concatMd = '',
     docUrl = 'https://doc.fastgpt.io',
     loginGuideDocUrl = '',
-    openAPIDocUrl = '',
     systemTitle = 'FastGPT',
     customApiDomain = '',
     customSharePageDomain = '',
@@ -130,7 +130,6 @@ export function formatConfigStore2FormSchema({
         favicon,
         docUrl,
         loginGuideDocUrl,
-        openAPIDocUrl,
         systemTitle,
         customApiDomain,
         customSharePageDomain,

@@ -20,7 +20,6 @@ import { MilvusCtrl } from './milvus';
 import { retryFn, withTimeout } from '@fastgpt/global/common/system/utils';
 import { getLogger, LogCategories } from '../logger';
 import { isRedisLeaseError, LeaseCache } from '@fastgpt/dal/redis/caches/lease';
-import { isProVersion } from '../system/constants';
 
 const getVectorObj = (): VectorControllerType => {
   switch (getVectorType()) {
@@ -56,7 +55,7 @@ export const initVectorStore = async (hooks: VectorStoreHooks = {}) => {
 };
 /**
  * 所有向量库召回共用跨实例并发额度；每次数据库重试都重新获取额度并读取最新配置。
- * 商业版未配置或开源版直接召回；lease 协调错误直接上抛，避免重复排队加重过载。
+ * 未配置并发上限时直接召回；lease 协调错误直接上抛，避免重复排队加重过载。
  */
 export const recallFromVectorStore: VectorControllerType['embRecall'] = async (props) => {
   const result = await retryFn(async () => {
@@ -66,8 +65,7 @@ export const recallFromVectorStore: VectorControllerType['embRecall'] = async (p
         value: await recallLease.withConcurrency({
           key: 'vector:recall',
           label: 'vector-recall',
-          concurrency: () =>
-            isProVersion() ? (getSystemInstanceConfig().vector.vectorRecallConcurrency ?? 0) : 0,
+          concurrency: () => getSystemInstanceConfig().vector.vectorRecallConcurrency ?? 0,
           ttlMs: RECALL_LEASE_TTL_MS,
           renewIntervalMs: 10_000,
           fn: () => Vector.embRecall(props)

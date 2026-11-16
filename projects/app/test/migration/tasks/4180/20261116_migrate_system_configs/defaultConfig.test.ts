@@ -3,11 +3,13 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MongoSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/schema';
+import { decryptDomainSecrets } from '@fastgpt/service/common/system/systemInstanceConfig/secrets';
 import { MongoSystemConfigs } from '@fastgpt/service/common/system/config/schema';
 import { SystemConfigsTypeEnum } from '@fastgpt/global/common/system/config/constants';
 import { ProEnvConfigSchema } from '@fastgpt/global/common/system/config/proEnv';
 import { SYSTEM_INSTANCE_CONFIG_DOMAINS } from '@fastgpt/global/common/system/config/schema';
 import * as defaultConfig from '@/migration/tasks/4180/20261116_migrate_system_configs/defaultConfig';
+import { readLegacyInstanceConfigEnv } from '@/migration/tasks/4180/20261116_migrate_system_configs/env';
 import {
   applyInstanceConfigMigration,
   buildSparseLegacyMigrationPlan,
@@ -77,6 +79,28 @@ describe('first instance configuration initialization', () => {
 
   beforeEach(async () => {
     await MongoSystemInstanceConfig.createIndexes();
+  });
+
+  it('encrypts file secrets in the atomic initial insert', async () => {
+    await defaultConfig.initializeEmptyInstanceConfig({
+      overrides: {
+        auth: { loginProviders: { github: { secret: 'file-github-secret' } } },
+        providers: { documentParse: { customPdf: { key: 'file-pdf-secret' } } }
+      }
+    });
+
+    const auth = await MongoSystemInstanceConfig.findOne({ domain: 'auth' }).lean();
+    const providers = await MongoSystemInstanceConfig.findOne({ domain: 'providers' }).lean();
+    expect(auth?.overrides.loginProviders.github.secret).toEqual({ secret: expect.any(String) });
+    expect(providers?.overrides.documentParse.customPdf.key).toEqual({
+      secret: expect.any(String)
+    });
+    expect(decryptDomainSecrets('auth', auth?.overrides).loginProviders.github.secret).toBe(
+      'file-github-secret'
+    );
+    expect(
+      decryptDomainSecrets('providers', providers?.overrides).documentParse.customPdf.key
+    ).toBe('file-pdf-secret');
   });
 
   it.each([{ key: 'synthetic-legacy-key' }, { url: 'https://legacy.example.test' }])(
@@ -185,14 +209,17 @@ describe('first instance configuration initialization', () => {
     const readFile = vi.spyOn(defaultConfig, 'readDefaultInstanceConfig').mockResolvedValue({
       site: { docUrl: 'https://docs.example.test' }
     });
+    const legacyPublicUrl = readLegacyInstanceConfigEnv().FE_DOMAIN;
+    const expectedSite = {
+      docUrl: 'https://docs.example.test',
+      ...(legacyPublicUrl ? { publicUrl: legacyPublicUrl } : {})
+    };
 
     const inspection = await inspectInstanceConfigMigration();
     expect(readFile).toHaveBeenCalledOnce();
     expect(inspection.existingDomainCount).toBe(0);
     expect(inspection.missingDomainCount).toBe(SYSTEM_INSTANCE_CONFIG_DOMAINS.length);
-    expect(inspection.initialization?.overrides.site).toEqual({
-      docUrl: 'https://docs.example.test'
-    });
+    expect(inspection.initialization?.overrides.site).toEqual(expectedSite);
     const plan = inspection.initialization;
     if (!plan) throw new Error('Expected file initialization plan');
 
@@ -208,9 +235,7 @@ describe('first instance configuration initialization', () => {
     expect(docs.map((doc) => doc.domain)).toEqual(
       expect.arrayContaining([...SYSTEM_INSTANCE_CONFIG_DOMAINS, 'proEnv'])
     );
-    expect(docs.find((doc) => doc.domain === 'site')?.overrides).toEqual({
-      docUrl: 'https://docs.example.test'
-    });
+    expect(docs.find((doc) => doc.domain === 'site')?.overrides).toEqual(expectedSite);
     expect(await MongoSystemInstanceConfig.findOne({ domain: 'proEnv' }).lean()).toEqual(proBefore);
   });
 

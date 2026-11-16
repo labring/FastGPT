@@ -1,6 +1,7 @@
 import { imageBaseUrl } from '@fastgpt/global/common/file/image/constants';
 import { resolveDomainEffectiveConfig } from '@fastgpt/global/common/system/config/schema';
 import { MongoSystemInstanceConfig } from '../system/systemInstanceConfig/schema';
+import { decryptDomainSecrets } from '../system/systemInstanceConfig/secrets';
 import { getLogger, LogCategories } from '../logger';
 import { S3Buckets } from './config/constants';
 import { S3Sources } from './contracts/type';
@@ -50,12 +51,12 @@ export const getCurrentSiteAvatarKeys = async (): Promise<Set<string> | undefine
 
     const site = resolveDomainEffectiveConfig({
       domain: 'site',
-      overrides: siteDoc?.overrides ?? {},
+      overrides: decryptDomainSecrets('site', siteDoc?.overrides ?? {}),
       options: { strict: false }
     });
     const auth = resolveDomainEffectiveConfig({
       domain: 'auth',
-      overrides: authDoc?.overrides ?? {},
+      overrides: decryptDomainSecrets('auth', authDoc?.overrides ?? {}),
       options: { strict: false }
     });
     const avatars = [

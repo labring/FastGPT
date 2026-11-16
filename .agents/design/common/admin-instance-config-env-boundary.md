@@ -2,7 +2,7 @@
 
 > 状态：已实现，2026-11-11 更新子服务边界。第 13 章是当前版本、页面与 API 契约；前文保留迁移背景与早期盘点，不应把历史 ENV 名视为当前运行期来源。
 >
-> 目标：为 `/admin` 配置中心和运行时配置加载确定边界。当前阶段不做加密，进入 MongoDB 的敏感字段暂时明文保存，但配置注册表必须保留 `secret` 元数据，为后续加密迁移保留空间。
+> 目标：为 `/admin` 配置中心和运行时配置加载确定边界。`system_instance_configs` 中注册为 `secret` 的字段使用 AES-256-GCM 保存为 `{ secret: 密文 }`，运行时读取边界解密；管理接口仅返回已配置路径，不返回明文、密文或掩码。
 
 ## 1. 初版结论
 
@@ -77,9 +77,10 @@ system_instance_configs（按 11 个 Domain 分别保存文档）
 | --- | --- | --- | --- |
 | 站点名称、描述、图标 | `SYSTEM_NAME`、`SYSTEM_DESCRIPTION`、`SYSTEM_FAVICON` | `config.site` | Admin 可直接修改，修改后运行时生效 |
 | 中国大陆 IP 跳转 | `CHINESE_IP_REDIRECT_URL` | **环境变量** | ENV 独占，旧库值不再覆盖表单配置 |
-| 前端与下载公开前缀 | `FE_DOMAIN`、`FILE_DOWNLOAD_PUBLIC_URL_PREFIX` | **环境变量** | `NEXT_PUBLIC_BASE_URL` 同样保留环境变量 |
-| 文件服务域名 | `FILE_DOMAIN`（仅一次性迁移） | `storage.fileDomain` | 后台「核心配置 → 下载链接」可编辑，留空使用 FE_DOMAIN，新生成的上传和下载短链实时读取 |
-| Marketplace 地址 | `MARKETPLACE_URL` | `config.site` 或 `config.subservice` | 属于实例的外部服务入口 |
+| 主站域名 | `FE_DOMAIN`（仅一次性迁移） | `site.publicUrl` | 核心配置首项；客户端为空时填入当前域名草稿，保存后生效，服务端无部署域名默认值 |
+| 下载公开前缀 | `FILE_DOWNLOAD_PUBLIC_URL_PREFIX` | **环境变量** | `NEXT_PUBLIC_BASE_URL` 同样保留环境变量 |
+| 文件服务域名 | `FILE_DOMAIN`（仅一次性迁移） | `storage.fileDomain` | 后台「核心配置 → 文件服务」可编辑，留空使用 site.publicUrl，新生成的上传和下载短链实时读取 |
+| Marketplace 地址 | `MARKETPLACE_URL` | **环境变量** | 默认值跟随 FastGPT 代码，通常无需填写；无页面配置 |
 | 支付表单地址 | `PAY_FORM_URL` | `config.commercial` | 商业化配置 |
 | 优惠券和折扣入口 | `SHOW_COUPON`、`SHOW_DISCOUNT_COUPON` | `config.commercial` | 同时受版本能力过滤 |
 | 聊天版权设置 | `HIDE_CHAT_COPYRIGHT_SETTING` | `config.feature` | 站点功能开关 |
@@ -91,7 +92,7 @@ system_instance_configs（按 11 个 Domain 分别保存文档）
 
 | 配置项 | 当前环境变量 | 目标位置 | 说明 |
 | --- | --- | --- | --- |
-| 企业微信自动跳转 | `WECOM_LOGIN_AUTO_REDIRECT` | `config.auth` | 登录策略 |
+| 企业微信自动跳转 | `WECOM_LOGIN_AUTO_REDIRECT` | **App 环境变量** | 默认关闭，不提供表单 |
 | IP 限流、内网检查 | `USE_IP_LIMIT`、主站侧 `CHECK_INTERNAL_IP` | `config.security` | 主站策略可以运行时读取；独立 Sandbox 的 `CHECK_INTERNAL_IP` 仍由 Sandbox 环境变量提供 |
 | CSRF 开关 | `CSRF_ENABLED` | `config.security` | Admin 可控，但关闭时必须记录审计日志 |
 | 密码登录频率限制 | `PASSWORD_LOGIN_MINUTE_LIMIT_COUNT` | `config.security` | 安全限流 |
@@ -142,10 +143,8 @@ config.performance
 ├── tracking
 │   ├── batchUpdateTime             TRACK_BATCH_UPDATE_TIME
 │   └── retentionHours              LLM_REQUEST_TRACKING_RETENTION_HOURS
-├── task
-│   └── evalConcurrency             新配置，旧 EVAL_CONCURRENCY 不迁移
-└── channel
-    └── wechatConcurrency           WECHAT_CHANNEL_CONCURRENCY
+└── task
+    └── evalConcurrency             新配置，旧 EVAL_CONCURRENCY 不迁移
 
 config.resource
 ├── serviceRequestMaxContentLength  SERVICE_REQUEST_MAX_CONTENT_LENGTH
@@ -173,10 +172,12 @@ config.resource
 | AI Proxy 地址和 Token | `AIPROXY_API_ENDPOINT`、`AIPROXY_API_TOKEN` | **环境变量** | Token 是敏感字段 | 两项均有效才使用代理；缺一时不使用代理，无管理页或实例配置开关 |
 | Agent Sandbox Provider 与参数 | `AGENT_SANDBOX_PROVIDER`、各 `AGENT_SANDBOX_*` | `config.subservice.agentSandbox` | 多个 Token/Key | 主站调用侧的 Provider、地址、CPU、内存、存储、镜像、超时和代理地址均属于实例配置；独立 Sandbox 进程自身的启动参数见第 5 节 |
 | Agent Sandbox 代理配置 | `AGENT_SANDBOX_PROXY_SECRET/URL/PREVIEW_PROXY_URL`（仅一次性迁移） | `config.subservice.agentSandbox.proxy` | 密钥为 secret 字段 | 主站页面统一维护三项；独立 Rust Proxy 的部署密钥须与页面一致 |
-| PDF 增强解析服务 | `CUSTOM_PDF_PARSE_*`、`SOMARK_API_KEY`、`DOC2X_KEY`、`TEXTIN_*` | `config.providers.documentParse` | Key 是敏感字段 | 暂时明文，但 UI/API 必须按 secret 字段处理 |
+| PDF 增强解析服务 | `CUSTOM_PDF_PARSE_*`、`SOMARK_API_KEY`、`DOC2X_KEY`、`TEXTIN_*` | `config.providers.documentParse` | Key 是敏感字段 | 加密存储，UI/API 仅显示已配置状态 |
 | Sangfor 文档解析和智能分块 | `DOCUMENT_PARSE_PROVIDER`、`SANGFOR_*`、`CUSTOM_PDF_PARSE_URL/KEY` | `config.providers.documentParse` / `config.providers.chunk` | Key 是敏感字段 | 当前 Sangfor 复用 `CUSTOM_PDF_PARSE_URL/KEY` 作为服务地址和 Bearer Token，迁移时需要兼容复制，详见第 10 章 |
 | CRM 归因服务 | `CRM_API_URL`、`CRM_API_KEY` | `config.providers.crm` | Key 是敏感字段 | 未配置时保持关闭 |
-| Feishu、DingTalk、Yuque 基础地址 | `FEISHU_BASE_URL`、`DINGTALK_BASE_URL`、`DINGTALK_OAPI_BASE_URL`、`YUQUE_DATASET_BASE_URL` | `config.providers.dataSource` | 否 | 默认官方地址也写入数据库 |
+| Feishu、DingTalk、Yuque 基础地址 | `FEISHU_BASE_URL`、`DINGTALK_BASE_URL`、`DINGTALK_OAPI_BASE_URL`、`YUQUE_DATASET_BASE_URL` | **环境变量** | 否 | 默认官方地址；不写入 scope，不提供管理表单 |
+
+外部提供商工作流全局变量已弃用，仅兼容已有非空配置。`providers.externalProviderWorkflowVariables` 为空或缺失时，隐藏该配置和整个“外部提供商”入口，并禁止通过更新 API 再次新增。已有列表仍可编辑；删除最后一项并保存后同步刷新客户端投影，菜单与直接访问入口随之关闭。文档解析配置不受影响，仍在核心配置页维护。
 
 `PRO_URL` 和 `PRO_TOKEN` 暂保留在环境变量中。它们承担商业版服务连接和版本授权边界，不能被开源版 Admin 当作普通子服务配置暴露；后续如果商业版明确采用中心配置服务，再单独设计迁移。
 
@@ -278,13 +279,13 @@ RuntimeConfigSchema.parse(runtimeConfig)
 | --- | --- | --- |
 | 根密钥 | `ROOT_KEY` | 最高权限校验，不应由 Admin 页面修改 |
 | 文件 Token 密钥 | `FILE_TOKEN_KEY` | 已签发 URL 的验证根，修改会影响历史链接 |
-| AES 密钥 | `AES256_SECRET_KEY` | 当前虽暂时不用于新配置加密，仍是系统级密钥 |
+| AES 密钥 | `AES256_SECRET_KEY` | 用于系统配置及工作流凭据加密，App/Pro 必须使用相同值 |
 | Invoke JWT 密钥 | `INVOKE_TOKEN_SECRET` | 插件反向调用的信任根 |
 | 独立 Agent Sandbox Proxy 密钥 | `AGENT_SANDBOX_PROXY_SECRET`（仅 Rust Proxy 部署侧） | 与主站页面共享密钥保持一致；主站侧读取实例配置 |
 | 反向代理信任 | `TRUSTED_PROXY_ENABLE`、`TRUSTED_PROXY_IPS` | 与部署拓扑强相关，错误配置影响客户端 IP 和安全判断 |
 | 短信发送代理 | `SMS_PROXY`（仅 Pro） | 部署级短信代理地址；只读取 ENV，不进入实例配置 Schema 或表单 |
 
-这些字段即使属于“敏感配置”，本轮也不实现加密；它们只是因为安全边界不同而继续留在环境变量。
+这些字段因基础设施边界不同而继续留在环境变量，不写入配置 scope。
 
 ### 4.3 构建、部署和启动生命周期配置
 
@@ -383,34 +384,38 @@ MCP Server 和 Marketplace 也保留各自的进程启动环境。它们不是�
 1. 开源版不注册或不展示 `edition=pro` 的菜单和字段；不能只依靠前端隐藏。
 2. Admin API 也必须按当前版本过滤字段，开源版不能通过手工请求读取或写入商业配置。
 3. 运行时读取配置时，社区版只消费社区能力；商业版字段即使存在于同一个大文档中，也不应被社区版执行。
-4. 商业版的 `PRO_URL`、`PRO_TOKEN` 仍由环境变量提供，作为版本授权边界，不纳入普通配置表单。
-5. MongoDB 文档可以保留商业版字段，但必须定义未知字段、降级和导入导出的兼容策略；另一种更严格的做法是商业字段仅由 Pro 注册表写入，待后续决定。
+4. 社区版隐藏「账号与登录」整页，Admin API 不开放密码有效期、登录分钟限流和会话上限的读写；发布统一运行时快照时，这三项固定使用 Schema 默认值（密码永不过期、每分钟 10 次、最多 10 个会话）。商业版仍读取已保存值，数据库中的原配置不会因切换版本而丢失。
+5. 商业版的 `PRO_URL`、`PRO_TOKEN` 仍由环境变量提供，作为版本授权边界，不纳入普通配置表单。
+6. MongoDB 文档可以保留商业版字段，但必须定义未知字段、降级和导入导出的兼容策略；另一种更严格的做法是商业字段仅由 Pro 注册表写入，待后续决定。
 
-## 7. 明文存储阶段的安全约束
+## 7. 密钥加密与客户端边界
 
-本轮接受以下字段暂时明文存储：
+以下字段在实例配置中按密钥统一加密存储：
 
 ```text
 子服务 Token
-AI Provider/API Key
-对象存储 Access Key / Secret Key
-向量数据库 Token
 第三方解析服务 Key
+登录、SMTP、短信凭据
+支付私钥与证书
+自定义域名 kubeconfig
+模型状态探测 Webhook Token
 ```
 
-但仍需要在配置注册表中标记：
+11 个表单域通过配置注册表标记敏感叶子；辅助 `modelStatusProbe.webhookToken` 由同一密钥路径解析器登记，不加入普通表单域。部署 ENV 中的基础设施密钥不写入 scope。
+
+注册表示例：
 
 ```text
 secret: true
 ```
 
-这不是现在就加密，而是要求：
+敏感配置统一遵循以下规则：
 
-- Admin 查询接口默认返回脱敏值，只有写入时接受新值；
+- Admin 查询接口省略密钥叶子，仅返回 `configuredSecretKeys`；写入新字符串替换，空字符串清空，省略字段保留原值；
 - 审计日志不能记录完整值；
 - 前端表单不能把已保存的完整值回显给浏览器；
 - 导出、诊断和错误日志不能输出完整值；
-- 后续可以按注册表批量迁移到加密字段，不改变配置 key 和菜单组织。
+- 统一系统配置迁移按注册表加密已有明文，不改变配置 key 和菜单组织；客户端复用 HTTP 鉴权的密钥组件。
 
 ## 8. 迁移顺序建议
 
@@ -447,7 +452,7 @@ MONGODB_URI 环境变量
 1. `system_instance_configs` 按 11 个 Domain 分别保存文档，每个文档有独立 revision，配置内容保存为稀疏 overrides。
 2. 未修改字段由 Schema 默认值补齐；数据库保存覆盖值，运行时加载后发布完整快照。
 3. 配置校验采用独立的 `SystemInstanceConfigSchema`，不把 MongoDB 文档直接塞入 `createEnv({ runtimeEnv })`；启动环境和实例配置分别校验。
-4. 当前阶段敏感字段允许明文存储，但必须保留 `secret: true` 元数据，并在查询、审计、日志和导出时脱敏。
+4. 敏感字段由 `secret: true` 元数据驱动加密存储，在查询、审计、日志和导出时隐藏值。
 5. MongoDB、Redis、对象存储、向量数据库的连接信息，以及安全根、跨进程密钥、部署域名拓扑继续通过环境变量注入。
 6. 子服务客户端配置在 Admin 中单独组织为“子服务配置”；独立子服务自身的端口、进程池、OS 隔离和启动认证暂不迁入主站实例文档。
 7. 开源版/商业版使用注册表进行菜单、字段、读写 API 和运行时消费的统一过滤；开源版采用隐藏（`hide`）而不是只展示禁用状态。
@@ -485,10 +490,10 @@ BUILD    -> 构建、测试、脚本或操作系统继承变量，不属于运�
 | `SYSTEM_DESCRIPTION` | `config.site.description` | 站点描述 |
 | `SYSTEM_FAVICON` | `config.site.favicon` | 站点图标；若当前由构建期注入，需先改为运行时初始化数据 |
 | `CHINESE_IP_REDIRECT_URL` | **保留 ENV** | 不再迁移到 `site`；空字符串表示关闭 |
-| `MARKETPLACE_URL` | `config.site.marketplaceUrl` | 外部 Marketplace 地址 |
+| `MARKETPLACE_URL` | **保留 ENV** | 默认 `https://v3.marketplace.fastgpt.cn`；不迁移到 scope、不提供表单 |
 | `OPENAPI_KEY_MAX_COUNT` | `config.auth.openApiKeyMaxCount` | OpenAPI Key 数量上限 |
 | `PASSWORD_EXPIRED_MONTH` | `config.auth.passwordExpiredMonth` | 未配置映射为 `null` |
-| `WECOM_LOGIN_AUTO_REDIRECT` | `config.auth.wecomLoginAutoRedirect` | 企业微信登录策略 |
+| `WECOM_LOGIN_AUTO_REDIRECT` | **保留 App ENV** | 默认 `false`，通过客户端配置投影控制登录页，不迁入 scope |
 | `DEFAULT_TEAM_BASIC_PERMISSIONS_ENABLED` | `config.auth.defaultTeamBasicPermissionsEnabled` | 只影响新建团队 |
 | `PAY_FORM_URL` | `config.commercial.payFormUrl` | 空字符串表示未配置 |
 | `SHOW_COUPON` | `config.commercial.showCoupon` | 受 edition 过滤 |
@@ -524,7 +529,7 @@ BUILD    -> 构建、测试、脚本或操作系统继承变量，不属于运�
 | `CHAT_LOG_URL` | `config.performance.chat.logUrl` | `CHAT_LOG_INTERVAL` | `config.performance.chat.logInterval` |
 | `CHAT_LOG_SOURCE_ID_PREFIX` | `config.performance.chat.logSourceIdPrefix` | `TRACK_BATCH_UPDATE_TIME` | `config.performance.tracking.batchUpdateTime` |
 | `LLM_REQUEST_TRACKING_RETENTION_HOURS` | `config.performance.tracking.retentionHours` | —（旧 `EVAL_CONCURRENCY` 不迁移） | `config.performance.task.evalConcurrency` |
-| `WECHAT_CHANNEL_CONCURRENCY` | `config.performance.channel.wechatConcurrency` | `DATASET_PARSE_MAX_PROCESS` | `config.performance.dataset.parseMaxProcess` |
+| —（微信渠道并发固定 1000，不迁移旧 ENV） | — | `DATASET_PARSE_MAX_PROCESS` | `config.performance.dataset.parseMaxProcess` |
 | `VECTOR_MAX_PROCESS` | `config.performance.dataset.vectorMaxProcess` | `QA_MAX_PROCESS` | `config.performance.dataset.qaMaxProcess` |
 | `VLM_MAX_PROCESS` | `config.performance.dataset.vlmMaxProcess` | `STREAM_RESUME_TTL_SECONDS` | `config.performance.streamResume.ttlSeconds` |
 | `STREAM_RESUME_POST_COMPLETE_TTL_SECONDS` | `config.performance.streamResume.postCompleteTtlSeconds` | `STREAM_RESUME_REDIS_MAXMEMORY_RATIO` | `config.performance.streamResume.redisMaxmemoryRatio` |
@@ -585,12 +590,12 @@ config.performance.workflow.parallelMaxConcurrency
 | 环境变量 | MongoDB 配置路径 | 迁移说明 |
 | --- | --- | --- |
 | `STORAGE_DOWNLOAD_URL_MODE` | `config.storage.downloadMode` | 只保存下载策略，不保存对象存储连接 |
-| `STORAGE_DOWNLOAD_REDIRECT_TTL_SECONDS` | `config.storage.downloadRedirectTtlSeconds` | 临时下载链接 TTL |
+| `STORAGE_DOWNLOAD_REDIRECT_TTL_SECONDS` | 已移除 | 重定向临时地址固定最多有效 30 秒 |
 | `FILE_URL_EXPIRED_DAYS` | `config.storage.fileUrlExpiredDays` | 聊天文件短链有效期 |
 | `VECTOR_VQ_LEVEL` | `config.vector.vqLevel` | 只保存检索策略 |
 | `MILVUS_LANGUAGE_IDENTIFIER` | `config.vector.languageIdentifier` | `lingua` 或 `whatlang` |
 | `HNSW_EF_SEARCH` | `config.vector.hnswEfSearch` | 向量检索参数 |
-| `systemEnv.vectorRecallConcurrency` | `config.vector.vectorRecallConcurrency` | 商业版召回共享并发，0 表示不限制；无对应环境变量 |
+| `systemEnv.vectorRecallConcurrency` | `config.vector.vectorRecallConcurrency` | 所有版本召回共享并发，0 表示不限制；无对应环境变量 |
 
 #### 外部 Provider
 
@@ -610,10 +615,10 @@ config.performance.workflow.parallelMaxConcurrency
 | `SANGFOR_CHUNK_TIMEOUT_MINUTES` | `config.providers.chunk.timeoutMinutes` | 智能分块超时 |
 | `CRM_API_URL` | `config.providers.crm.apiUrl` | 与 `enabled` 一起校验 |
 | `CRM_API_KEY` | `config.providers.crm.apiKey` | `secret: true` |
-| `FEISHU_BASE_URL` | `config.providers.dataSource.feishuBaseUrl` | 默认官方地址写入 DB |
-| `DINGTALK_BASE_URL` | `config.providers.dataSource.dingtalkBaseUrl` | 默认官方地址写入 DB |
-| `DINGTALK_OAPI_BASE_URL` | `config.providers.dataSource.dingtalkOapiBaseUrl` | 默认官方地址写入 DB |
-| `YUQUE_DATASET_BASE_URL` | `config.providers.dataSource.yuqueDatasetBaseUrl` | 默认官方地址写入 DB |
+| `FEISHU_BASE_URL` | **保留 ENV** | 默认官方地址；不迁移到 scope |
+| `DINGTALK_BASE_URL` | **保留 ENV** | 默认官方地址；不迁移到 scope |
+| `DINGTALK_OAPI_BASE_URL` | **保留 ENV** | 默认官方地址；不迁移到 scope |
+| `YUQUE_DATASET_BASE_URL` | **保留 ENV** | 默认官方地址；不迁移到 scope |
 
 #### 子服务客户端
 
@@ -642,9 +647,6 @@ config.performance.workflow.parallelMaxConcurrency
 | `AGENT_SANDBOX_ARCHIVE_INACTIVE_DAYS` | `config.subservice.agentSandbox.common.archiveInactiveDays` | 生命周期参数 |
 | `AGENT_SANDBOX_MAX` | `config.subservice.agentSandbox.common.maxEditDebug` | 系统活跃实例总上限；`AGENT_SANDBOX_MAX_EDIT_DEBUG` 已弃用且不再读取 |
 | `AGENT_SANDBOX_MAX_PER_TEAM` | `config.subservice.agentSandbox.common.maxPerTeam` | 单团队活跃实例配额，空值表示不限制 |
-| `AGENT_SANDBOX_ENTRYPOINT_TIMEOUT_SECONDS` | `config.subservice.agentSandbox.common.entrypointTimeoutSeconds` | 执行超时 |
-| `AGENT_SANDBOX_WS_MAX_MESSAGE_BYTES` | `config.subservice.agentSandbox.common.wsMaxMessageBytes` | WebSocket 消息上限 |
-| `AGENT_SANDBOX_WS_MAX_FRAME_BYTES` | `config.subservice.agentSandbox.common.wsMaxFrameBytes` | WebSocket 帧上限 |
 | `AGENT_SANDBOX_NPM_REGISTRY` | `config.subservice.agentSandbox.common.npmRegistry` | 运行环境镜像源 |
 | `AGENT_SANDBOX_PYPI_INDEX_URL` | `config.subservice.agentSandbox.common.pypiIndexUrl` | 运行环境镜像源 |
 | `AGENT_SANDBOX_APT_MIRROR` | `config.subservice.agentSandbox.common.aptMirror` | 运行环境镜像源 |
@@ -679,12 +681,12 @@ TRUSTED_PROXY_ENABLE
 TRUSTED_PROXY_IPS
 ```
 
-主服务的三项代理配置统一进入 `config.subservice.agentSandbox.proxy.wsUrl/previewUrl/secret`，密钥按 secret 注册并掩码回显。三个旧 ENV 仅一次性回填，已有值和显式清空优先；独立 Rust Proxy 的 `AGENT_SANDBOX_PROXY_SECRET` 仍由其部署 ENV 注入，并与页面值保持一致。
+主服务的三项代理配置统一进入 `config.subservice.agentSandbox.proxy.wsUrl/previewUrl/secret`，密钥按 secret 注册、加密存储并仅回显已配置状态。三个旧 ENV 仅一次性回填，已有值和显式清空优先；独立 Rust Proxy 的 `AGENT_SANDBOX_PROXY_SECRET` 仍由其部署 ENV 注入，并与页面值保持一致。
 
 #### 域名、构建和生命周期
 
 ```text
-FE_DOMAIN
+# FE_DOMAIN 已迁入 site.publicUrl，运行时不再读取
 FILE_DOWNLOAD_PUBLIC_URL_PREFIX
 NEXT_PUBLIC_BASE_URL
 SYSTEM_MIGRATION_BATCH_SIZE
@@ -732,7 +734,7 @@ STORAGE_OSS_INTERNAL
 STORAGE_OSS_SECURE
 ```
 
-这里不包含已经迁移到 DB 的 `STORAGE_DOWNLOAD_URL_MODE` 和 `STORAGE_DOWNLOAD_REDIRECT_TTL_SECONDS`。
+这里不包含已迁移到 DB 的 `STORAGE_DOWNLOAD_URL_MODE`；`STORAGE_DOWNLOAD_REDIRECT_TTL_SECONDS` 已移除，临时重定向地址统一最多有效 30 秒。
 
 #### 向量数据库基础设施连接
 
@@ -918,7 +920,7 @@ system_instance_configs 不存在
 - `SANGFOR_CHUNK_URL`、`CRM_API_URL` 有效时才启用对应 Provider；AI Proxy 独立读取 ENV，地址与 Token 均有效时才使用代理；
 - `DOCUMENT_PARSE_PROVIDER=sangfor` 时，将 `CUSTOM_PDF_PARSE_URL/KEY` 同步到
   `documentParse.sangfor.url/key`，同时保留 `documentParse.customPdf` 的兼容值；
-- secret 字段即使暂时明文存储，也必须按照注册表的 `secret: true` 处理，不能进入日志、审计详情或普通查询响应。
+- secret 字段按注册表加密存储，不能进入日志、审计详情或普通查询响应。
 
 ### 10.7 变量盘点的完整性要求
 
@@ -978,7 +980,7 @@ Server、Agent Sandbox Proxy 和 IDE Agent 的运行时变量。为了避免“�
 └── 审计日志
 ```
 
-菜单节点和字段都通过同一份注册表过滤。Code Sandbox 与 MCP SSE 服务在社区版和商业版均可配置；商业化菜单、仅商业版子服务字段以及其运行时能力在社区版统一隐藏。页面隐藏、API 字段过滤和运行时能力判断使用同一套 edition 结果，不能由前端单独维护一份白名单。
+菜单节点和字段都通过同一份注册表过滤。Code Sandbox、Agent Sandbox 与 MCP SSE 服务在社区版和商业版均可配置；商业化菜单、仅商业版子服务字段以及其运行时能力在社区版统一隐藏。页面隐藏、API 字段过滤和运行时能力判断使用同一套 edition 结果，不能由前端单独维护一份白名单。
 
 访问 `/admin` 时由入口页按部署形态与授权状态分发默认落地页：社区版固定进
 `/admin/license`；商业版 License 可授权时进 `/admin/dashboard`，未激活或已过期
@@ -998,7 +1000,7 @@ Server、Agent Sandbox Proxy 和 IDE Agent 的运行时变量。为了避免“�
 4. 实例配置按 Domain 稀疏保存 overrides，跨域保存使用同一事务；各域携带独立 revision。
 5. 必须保留在环境变量中的基础设施、安全根、部署拓扑和独立进程参数不因为有默认值而迁移到 Admin。
 6. 开源版对商业菜单和字段采用隐藏策略，且后端 API 和运行时也必须过滤。
-7. 当前阶段敏感配置暂不加密，但仍按 secret 字段脱敏和审计。
+7. 敏感配置按 secret 注册表加密存储，管理响应仅包含配置状态，日志与审计不记录值。
 8. 版本信息只展示 app 自身版本（`projects/app/package.json` 的 `version`，经 `getInitData` 下发），不展示构建版本或部署镜像标签；版本号不写入实例配置。原独立“系统版本”页面的其余内容（配置状态、生效状态）暂未落位。
 9. `/admin` 入口页按部署形态与授权状态分发默认落地页：社区版固定 `/admin/license`；商业版 License 可授权时 `/admin/dashboard`，未激活或已过期时 `/admin/license`。导航栏“配置”入口统一指向 `/admin`。
 10. 「资源限制」与「性能与并发」合并为「限制与并发」（新增「核心配置」页同时落地）；「向量检索策略」页删除：量化等级与语言识别引擎改由环境变量提供，HNSW 索引参数并入限制与并发，向量库连接为部署拓扑不再单独成页。
@@ -1007,7 +1009,7 @@ Server、Agent Sandbox Proxy 和 IDE Agent 的运行时变量。为了避免“�
 
 ### 仍待确认
 
-1. `FILE_DOMAIN` 已迁入 `storage.fileDomain`；`FE_DOMAIN`、`FILE_DOWNLOAD_PUBLIC_URL_PREFIX` 及 `NEXT_PUBLIC_BASE_URL` 继续保留环境变量。
+1. `FILE_DOMAIN` 已迁入 `storage.fileDomain`；`FE_DOMAIN` 迁入 `site.publicUrl`，仅在迁移内读取；`FILE_DOWNLOAD_PUBLIC_URL_PREFIX` 及 `NEXT_PUBLIC_BASE_URL` 继续保留环境变量。
 2. Code Sandbox、MCP Server 等独立进程是否在后续接入配置中心；如果接入，配置变更时采用热更新、重建 Worker 还是受控重启。
 3. 配置 `applyMode` 的实际生效协议：哪些字段支持 live/reload，哪些字段必须 restart，以及集群节点如何确认已应用同一 revision。
 4. PDF/Sangfor 逻辑配置块最终是否长期分开保存；当前迁移必须兼容旧的 `CUSTOM_PDF_PARSE_URL/KEY` 一组变量，不能要求新增一组 `SANGFOR_PARSE_URL/KEY`。
@@ -1070,7 +1072,7 @@ Server、Agent Sandbox Proxy 和 IDE Agent 的运行时变量。为了避免“�
 
 ### 13.6 逐字段版本、表单与页面映射
 
-本表逐项覆盖注册表的 **214 个配置叶子**，不使用通配符或虚构的聚合字段。字段定义与默认值以 `schemas/*.ts` 为准，版本、敏感项和 SaaS 显示条件以 `registry.ts` 为准；页面归属与 `pageFields.ts`、实际表单保持一致。支付宝仅使用 V2 gateway，未被支付、查询和退款调用的 V3 endpoint 已移除；旧版商业内置文本审查（`security.censor.*`）已由内容审核插件策略体系（`/admin/moderation/policy`）取代，历史覆盖项由可重入清理迁移删除。
+本表逐项覆盖注册表的 **204 个配置叶子**，不使用通配符或虚构的聚合字段。字段定义与默认值以 `schemas/*.ts` 为准，版本、敏感项和 SaaS 显示条件以 `registry.ts` 为准；页面归属与 `pageFields.ts`、实际表单保持一致。支付宝仅使用 V2 gateway，未被支付、查询和退款调用的 V3 endpoint 已移除；旧版商业内置文本审查（`security.censor.*`）已由内容审核插件策略体系（`/admin/moderation/policy`）取代，历史覆盖项由可重入清理迁移删除。
 
 - 社区版／商业版的勾选表示配置 API 的读写权限；商业版按是否配置 `PRO_URL` 判定，不依赖 License 是否激活。
 - “仅 SaaS 显示”表示 `ENABLE_SAAS_ADMIN_CONFIG=true` 才显示对应控件，**不收紧商业版 API 权限**。标为“仅 API”的字段当前没有新表单，开启显示开关也不会产生控件。
@@ -1084,41 +1086,20 @@ Server、Agent Sandbox Proxy 和 IDE Agent 的运行时变量。为了避免“�
 
 | 配置字段 | 用途 | 社区版 | 商业版 | 仅 SaaS 显示 | 敏感项 | 当前管理入口 |
 | --- | --- | :---: | :---: | :---: | :---: | --- |
-| 配置字段 | 用途 | 社区版 | 商业版 | 仅 SaaS 显示 | 敏感项 | 当前管理入口 |
-| --- | --- | :---: | :---: | :---: | :---: | --- |
-| 配置字段 | 用途 | 社区版 | 商业版 | 仅 SaaS 显示 | 敏感项 | 当前管理入口 |
-| --- | --- | :---: | :---: | :---: | :---: | --- |
-| 配置字段 | 用途 | 社区版 | 商业版 | 仅 SaaS 显示 | 敏感项 | 当前管理入口 |
-| --- | --- | :---: | :---: | :---: | :---: | --- |
-| 配置字段 | 用途 | 社区版 | 商业版 | 仅 SaaS 显示 | 敏感项 | 当前管理入口 |
-| --- | --- | :---: | :---: | :---: | :---: | --- |
-| 配置字段 | 用途 | 社区版 | 商业版 | 仅 SaaS 显示 | 敏感项 | 当前管理入口 |
-| --- | --- | :---: | :---: | :---: | :---: | --- |
-| 配置字段 | 用途 | 社区版 | 商业版 | 仅 SaaS 显示 | 敏感项 | 当前管理入口 |
-| --- | --- | :---: | :---: | :---: | :---: | --- |
-| 配置字段 | 用途 | 社区版 | 商业版 | 仅 SaaS 显示 | 敏感项 | 当前管理入口 |
-| --- | --- | :---: | :---: | :---: | :---: | --- |
-| 配置字段 | 用途 | 社区版 | 商业版 | 仅 SaaS 显示 | 敏感项 | 当前管理入口 |
-| --- | --- | :---: | :---: | :---: | :---: | --- |
-| 配置字段 | 用途 | 社区版 | 商业版 | 仅 SaaS 显示 | 敏感项 | 当前管理入口 |
-| --- | --- | :---: | :---: | :---: | :---: | --- |
-| 配置字段 | 用途 | 社区版 | 商业版 | 仅 SaaS 显示 | 敏感项 | 当前管理入口 |
-| --- | --- | :---: | :---: | :---: | :---: | --- |
-| `site.name` | 站点名称 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/site` |
-| `site.description` | 站点描述 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/site` |
-| `site.favicon` | 站点图标 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/site` |
-| `site.marketplaceUrl` | 插件市场地址 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/site` |
-| `site.docUrl` | 使用帮助文档地址 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/site` |
-| `site.openApiDocUrl` | OpenAPI 文档地址 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/site` |
-| `site.openApiPrefix` | OpenAPI Key 前缀 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/core` |
-| `site.concatMd` | 联系我们弹窗内容 (Markdown) | ✅ | ✅ | — | — | 可编辑：`/admin/settings/site` |
-| `site.navbarItems` | 自定义导航链接 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/site` |
-| `site.appTemplateCourse` | 应用模板使用教程地址 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/site` |
-| `site.loginGuideDocUrl` | 登录引导帮助文档地址 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/site` |
-| `site.customApiDomain` | 自定义 API 域名 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/site` |
-| `site.customSharePageDomain` | 自定义分享链接域名 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/site` |
-| `site.botIframeUrl` | 客服助手 iframe 地址 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/site` |
-| `site.scripts` | 第三方脚本列表 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/site` |
+| `site.name` | 站点名称 | — | ✅ | — | — | 可编辑：`/admin/settings/site` |
+| `site.description` | 站点描述 | — | ✅ | — | — | 可编辑：`/admin/settings/site` |
+| `site.favicon` | 站点图标 | — | ✅ | — | — | 可编辑：`/admin/settings/site` |
+| `site.docUrl` | 使用帮助文档地址 | — | ✅ | — | — | 可编辑：`/admin/settings/site` |
+| `site.publicUrl` | 主站域名 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/core` |
+| `site.openApiPrefix` | OpenAPI Key 前缀 | — | ✅ | — | — | 可编辑：`/admin/settings/site` |
+| `site.concatMd` | 联系我们弹窗内容 (Markdown) | — | ✅ | — | — | 可编辑：`/admin/settings/site` |
+| `site.navbarItems` | 自定义导航链接 | — | ✅ | — | — | 可编辑：`/admin/settings/site` |
+| `site.appTemplateCourse` | 应用模板使用教程地址 | — | ✅ | — | — | 可编辑：`/admin/settings/site` |
+| `site.loginGuideDocUrl` | 登录引导帮助文档地址 | — | ✅ | — | — | 可编辑：`/admin/settings/site` |
+| `site.customApiDomain` | 自定义 API 域名 | — | ✅ | — | — | 可编辑：`/admin/settings/site` |
+| `site.customSharePageDomain` | 自定义分享链接域名 | — | ✅ | — | — | 可编辑：`/admin/settings/site` |
+| `site.botIframeUrl` | 客服助手 iframe 地址 | — | ✅ | — | — | 可编辑：`/admin/settings/site` |
+| `site.scripts` | 第三方脚本列表 | — | ✅ | — | — | 可编辑：`/admin/settings/site` |
 | `site.customDomain.enable` | 启用自定义独立域名 | — | ✅ | ✅ | — | 可编辑：`/admin/settings/custom-domain` |
 | `site.customDomain.domain.aliyun` | 阿里云 CNAME 域名 | — | ✅ | ✅ | — | 可编辑：`/admin/settings/custom-domain` |
 | `site.customDomain.domain.tencent` | 腾讯云 CNAME 域名 | — | ✅ | ✅ | — | 可编辑：`/admin/settings/custom-domain` |
@@ -1133,9 +1114,8 @@ Server、Agent Sandbox Proxy 和 IDE Agent 的运行时变量。为了避免“�
 | `site.customDomain.nginxServiceName.tencent` | 腾讯云 Nginx 服务名称 | — | ✅ | ✅ | — | 可编辑：`/admin/settings/custom-domain` |
 | `site.customDomain.nginxServiceName.volcengine` | 火山引擎 Nginx 服务名称 | — | ✅ | ✅ | — | 可编辑：`/admin/settings/custom-domain` |
 | `auth.openApiKeyMaxCount` | OpenAPI Key 数量上限 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
-| `auth.passwordExpiredMonth` | 密码有效周期（月） | ✅ | ✅ | — | — | 可编辑：`/admin/settings/auth` |
-| `auth.wecomLoginAutoRedirect` | 企业微信自动跳转 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/auth` |
-| `auth.fastLogin` | 快捷登录方式 | — | ✅ | — | — | 可编辑：`/admin/settings/auth` |
+| `auth.passwordExpiredMonth` | 密码有效周期（月） | — | ✅ | — | — | 可编辑：`/admin/settings/auth` |
+| `auth.fastLogin` | 快捷登录方式（已弃用） | — | ✅ | — | — | 可编辑：`/admin/settings/auth`；仅保留非空旧配置，清空保存后隐藏且不可重新配置 |
 | `auth.sso.title` | SSO 登录按钮标题 | — | ✅ | — | — | 可编辑：`/admin/settings/auth` |
 | `auth.sso.icon` | SSO 登录按钮图标 | — | ✅ | — | — | 可编辑：`/admin/settings/auth` |
 | `auth.sso.autoLogin` | SSO 自动跳转 | — | ✅ | — | — | 可编辑：`/admin/settings/auth` |
@@ -1154,8 +1134,8 @@ Server、Agent Sandbox Proxy 和 IDE Agent 的运行时变量。为了避免“�
 | `auth.loginProviders.phone.accessKeyId` | 阿里云 AccessKeyId | — | ✅ | — | — | 可编辑：`/admin/settings/core` |
 | `auth.loginProviders.phone.signName` | 短信签名 | — | ✅ | — | — | 可编辑：`/admin/settings/core` |
 | `auth.loginProviders.wechat.appId` | 微信服务号 AppId | — | ✅ | — | — | 可编辑：`/admin/settings/auth` |
-| `auth.loginProviders.wecom.suiteId` | SuiteId | — | ✅ | — | — | 可编辑：`/admin/settings/auth` |
-| `auth.loginProviders.wecom.corpId` | 企业 CorpId | — | ✅ | — | — | 可编辑：`/admin/settings/auth` |
+| `auth.loginProviders.wecom.suiteId` | SuiteId | — | ✅ | ✅ | — | 可编辑：`/admin/settings/auth` |
+| `auth.loginProviders.wecom.corpId` | 企业 CorpId | — | ✅ | ✅ | — | 可编辑：`/admin/settings/auth` |
 | `auth.loginProviders.github.clientId` | GitHub Client ID | — | ✅ | — | — | 可编辑：`/admin/settings/auth` |
 | `auth.loginProviders.google.clientId` | Google Client ID | — | ✅ | — | — | 可编辑：`/admin/settings/auth` |
 | `auth.loginProviders.microsoft.clientId` | Microsoft Client ID | — | ✅ | — | — | 可编辑：`/admin/settings/auth` |
@@ -1170,9 +1150,9 @@ Server、Agent Sandbox Proxy 和 IDE Agent 的运行时变量。为了避免“�
 | `auth.loginProviders.email.pass` | 邮箱授权码 / 密码 | — | ✅ | — | ✅ | 可编辑：`/admin/settings/core` |
 | `auth.loginProviders.phone.accessKeySecret` | 阿里云 AccessKeySecret | — | ✅ | — | ✅ | 可编辑：`/admin/settings/core` |
 | `auth.loginProviders.wechat.appSecret` | 微信服务号 AppSecret | — | ✅ | — | ✅ | 可编辑：`/admin/settings/auth` |
-| `auth.loginProviders.wecom.secret` | SuiteSecret | — | ✅ | — | ✅ | 可编辑：`/admin/settings/auth` |
-| `auth.loginProviders.wecom.token` | Token | — | ✅ | — | ✅ | 可编辑：`/admin/settings/auth` |
-| `auth.loginProviders.wecom.encodingAESKey` | EncodingAESKey | — | ✅ | — | ✅ | 可编辑：`/admin/settings/auth` |
+| `auth.loginProviders.wecom.secret` | SuiteSecret | — | ✅ | ✅ | ✅ | 可编辑：`/admin/settings/auth` |
+| `auth.loginProviders.wecom.token` | Token | — | ✅ | ✅ | ✅ | 可编辑：`/admin/settings/auth` |
+| `auth.loginProviders.wecom.encodingAESKey` | EncodingAESKey | — | ✅ | ✅ | ✅ | 可编辑：`/admin/settings/auth` |
 | `auth.loginProviders.github.secret` | GitHub Client Secret | — | ✅ | — | ✅ | 可编辑：`/admin/settings/auth` |
 | `auth.loginProviders.google.secret` | Google Client Secret | — | ✅ | — | ✅ | 可编辑：`/admin/settings/auth` |
 | `auth.loginProviders.microsoft.secret` | Microsoft Client Secret | — | ✅ | — | ✅ | 可编辑：`/admin/settings/auth` |
@@ -1181,28 +1161,29 @@ Server、Agent Sandbox Proxy 和 IDE Agent 的运行时变量。为了避免“�
 | `security.checkInternalIp` | 内网 IP 访问拦截 (SSRF) | ✅ | ✅ | — | — | 可编辑：`/admin/settings/security` |
 | `security.csrfEnabled` | CSRF 严格校验 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/security` |
 | `security.authCookieSecure` | 登录 Cookie 的 Secure 属性；重新签发时生效 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/security` |
-| `security.passwordLoginMinuteLimitCount` | 密码登录分钟限流次数 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/auth` |
-| `security.maxLoginSession` | 最大登录会话数 (Max Sessions) | ✅ | ✅ | — | — | 可编辑：`/admin/settings/auth` |
+| `security.passwordLoginMinuteLimitCount` | 密码登录分钟限流次数 | — | ✅ | — | — | 可编辑：`/admin/settings/auth` |
+| `security.maxLoginSession` | 最大登录会话数 (Max Sessions) | — | ✅ | — | — | 可编辑：`/admin/settings/auth` |
+| `security.allowedOriginsEnabled` | 启用跨域来源白名单 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/security`；关闭保留名单，旧配置未设置时按非空名单推导 |
 | `security.allowedOrigins` | 允许的跨域来源 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/security` |
 | `security.skipFileTypeCheck` | 上传文件类型检查 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/security` |
 | `security.checkExternalFile` | 检查外部文件（关闭时保留名单） | ✅ | ✅ | — | — | 可编辑：`/admin/settings/security` |
 | `security.workflowHttpNode.ignoreHttpsCertificate` | HTTP 节点忽略 HTTPS 证书校验 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/security` |
 | `security.fileUrlWhitelist` | 聊天及工作流输入文件域名白名单（开关开启时显示） | ✅ | ✅ | — | — | 可编辑：`/admin/settings/security` |
-| `feature.hideChatCopyrightSetting` | 分享链接版权配置 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/feature` |
+| `feature.hideChatCopyrightSetting` | 分享链接版权配置 | — | ✅ | — | — | 可编辑：`/admin/settings/feature`；社区版固定 false（版权配置开启） |
 | `feature.multipleDataToBase64` | 发送给模型的多模态内容转换为 base64 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/core` |
 | `feature.agentEngine` | Agent 执行引擎 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/core` |
-| `feature.enableTeamPluginUpload` | 允许团队上传插件 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/feature` |
-| `feature.showOpenaiAccount` | 用户可配置 OpenAI 账号 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/feature` |
-| `feature.enableTeamModel` | 启用团队模型 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/feature` |
-| `feature.showDatasetFeishu` | 知识库接入飞书 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/feature` |
-| `feature.showDatasetYuque` | 知识库接入语雀 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/feature` |
-| `feature.showDatasetDingtalk` | 知识库接入钉钉 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/feature` |
-| `feature.showPublishFeishu` | 发布渠道 - 飞书 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/feature` |
-| `feature.showPublishDingtalk` | 发布渠道 - 钉钉 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/feature` |
-| `feature.showPublishWecom` | 发布渠道 - 企业微信 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/feature` |
-| `feature.showPublishOffiaccount` | 发布渠道 - 公众号 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/feature` |
-| `feature.showPublishWechat` | 发布渠道 - 微信客服 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/feature` |
-| `feature.showComplianceCopywriting` | 展示合规文案 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/feature` |
+| `feature.enableTeamPluginUpload` | 允许团队上传插件 | — | ✅ | — | — | 可编辑：`/admin/settings/feature`；社区版固定 false |
+| `feature.showOpenaiAccount` | 用户可配置 OpenAI 账号（已弃用） | — | ✅ | — | — | 可编辑：`/admin/settings/feature`；社区版固定 false；商业版仅为已有 true 显示关闭入口，保存 false 后隐藏，API 禁止重新开启 |
+| `feature.enableTeamModel` | 启用团队模型 | — | ✅ | — | — | 可编辑：`/admin/settings/feature`；社区版固定 false |
+| `feature.showDatasetFeishu` | 知识库接入飞书 | — | ✅ | — | — | 可编辑：`/admin/settings/feature`；社区版固定 true |
+| `feature.showDatasetYuque` | 知识库接入语雀 | — | ✅ | — | — | 可编辑：`/admin/settings/feature`；社区版固定 true |
+| `feature.showDatasetDingtalk` | 知识库接入钉钉 | — | ✅ | — | — | 可编辑：`/admin/settings/feature`；社区版固定 true |
+| `feature.showPublishFeishu` | 发布渠道 - 飞书 | — | ✅ | — | — | 可编辑：`/admin/settings/feature`；社区版固定 false |
+| `feature.showPublishDingtalk` | 发布渠道 - 钉钉 | — | ✅ | — | — | 可编辑：`/admin/settings/feature`；社区版固定 false |
+| `feature.showPublishWecom` | 发布渠道 - 企业微信 | — | ✅ | — | — | 可编辑：`/admin/settings/feature`；社区版固定 false |
+| `feature.showPublishOffiaccount` | 发布渠道 - 公众号 | — | ✅ | — | — | 可编辑：`/admin/settings/feature`；社区版固定 false |
+| `feature.showPublishWechat` | 发布渠道 - 个人微信 | — | ✅ | — | — | 可编辑：`/admin/settings/feature`；社区版固定 true |
+| `feature.showComplianceCopywriting` | 展示合规文案 | — | ✅ | — | — | 可编辑：`/admin/settings/feature`；社区版固定 false |
 | `commercial.showCoupon` | 展示充值优惠券 | — | ✅ | ✅ | — | 可编辑：`/admin/settings/pay` |
 | `commercial.showDiscountCoupon` | 展示满减折扣券 | — | ✅ | ✅ | — | 可编辑：`/admin/settings/pay` |
 | `commercial.payFormUrl` | 企业汇款表单地址 | — | ✅ | ✅ | — | 可编辑：`/admin/settings/pay` |
@@ -1232,8 +1213,8 @@ Server、Agent Sandbox Proxy 和 IDE Agent 的运行时变量。为了避免“�
 | `resource.uploadFileMaxSize` | 单文件上传体积上限 (MB) | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
 | `resource.uploadFileMaxAmount` | 批量上传文件数量上限 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
 | `resource.systemMaxStringLengthM` | 同步字符串处理最大字符数 (M) | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
-| `resource.exportDatasetLimitMinutes` | 知识库导出冷却时间（分钟） | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
-| `resource.websiteSyncLimitMinuted` | 网站同步冷却时间（分钟） | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
+| `resource.exportDatasetLimitMinutes` | 知识库导出冷却时间（分钟） | — | ✅ | — | — | 可编辑：`/admin/settings/limits` |
+| `resource.websiteSyncLimitMinuted` | 网站同步冷却时间（分钟） | — | ✅ | — | — | 可编辑：`/admin/settings/limits` |
 | `resource.serviceAxiosMaxContentLength` | 共享 HTTP 缓冲响应体解压后上限 (MiB)，默认 20，0 仅允许空响应 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
 | `resource.evaluationMaxRows` | 单次评估任务最大数据行数 | — | ✅ | — | — | 可编辑：`/admin/settings/limits` |
 | `resource.datasetArchive.maxFiles` | 归档下载文件数上限 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
@@ -1255,69 +1236,60 @@ Server、Agent Sandbox Proxy 和 IDE Agent 的运行时变量。为了避免“�
 | `performance.dataset.vlmMaxProcess` | 多模态理解并发数 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
 | `performance.chat.maxQpm` | 对话 QPM 上限 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
 | `performance.tracking.retentionHours` | LLM 追踪保留时长 (小时) | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
-| `performance.task.evalConcurrency` | 评估任务并发上限 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
-| `performance.channel.wechatConcurrency` | 公众号渠道消息处理并发 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
-| `storage.fileDomain` | 文件服务域名，留空使用 FE_DOMAIN | ✅ | ✅ | — | — | 可编辑：`/admin/settings/core` |
-| `storage.downloadMode` | 下载链接工作模式 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/core` |
+| `performance.task.evalConcurrency` | 评估任务并发上限 | — | ✅ | — | — | 可编辑：`/admin/settings/limits` |
+| `storage.fileDomain` | 文件服务域名，留空使用 site.publicUrl | ✅ | ✅ | — | — | 可编辑：`/admin/settings/core` |
+| `storage.downloadMode` | 文件下载模式 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/core` |
 | `storage.externalEndpoint` | 存储外部访问端点 (Endpoint) | ✅ | ✅ | — | — | 可编辑：`/admin/settings/core` |
 | `storage.cdnEndpoint` | CDN 加速地址 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/core` |
 | `storage.fileUrlExpiredDays` | 对话临时文件有效天数 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
-| `storage.redirectTtlSeconds` | 重定向地址有效期（秒） | ✅ | ✅ | — | — | 可编辑：`/admin/settings/core` |
 | `vector.hnswEfSearch` | HNSW ef_search | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
-| `vector.vectorRecallConcurrency` | 向量检索最大并发数 | — | ✅ | — | — | 可编辑：`/admin/settings/limits` |
-| `providers.documentParse.provider` | 解析服务提供方 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/providers` |
-| `providers.documentParse.customPdf.url` | 自建 PDF 解析服务地址 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/providers` |
-| `providers.documentParse.customPdf.price` | 自建 PDF 解析计费价格 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/providers` |
-| `providers.documentParse.sangfor.url` | 深信服解析接口地址 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/providers` |
-| `providers.documentParse.sangfor.extensions` | 支持的格式扩展名 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/providers` |
-| `providers.documentParse.sangfor.timeoutSeconds` | 请求超时时间 (秒) | ✅ | ✅ | — | — | 可编辑：`/admin/settings/providers` |
-| `providers.dataSource.feishuBaseUrl` | 飞书平台地址 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/providers` |
-| `providers.dataSource.dingtalkBaseUrl` | 钉钉平台地址 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/providers` |
-| `providers.dataSource.dingtalkOapiBaseUrl` | 钉钉 OAPI 平台地址 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/providers` |
-| `providers.dataSource.yuqueDatasetBaseUrl` | 语雀平台地址 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/providers` |
+| `vector.vectorRecallConcurrency` | 向量检索最大并发数 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
+| `providers.documentParse.provider` | 解析服务提供方 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/core` |
+| `providers.documentParse.customPdf.url` | 自建 PDF 解析服务地址 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/core` |
+| `providers.documentParse.customPdf.price` | PDF 计费（积分 / 页） | ✅ | ✅ | — | — | 可编辑：`/admin/settings/core` |
+| `providers.documentParse.sangfor.url` | 深信服解析接口地址 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/core` |
+| `providers.documentParse.sangfor.extensions` | 支持的格式扩展名 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/core` |
+| `providers.documentParse.sangfor.timeoutSeconds` | 请求超时时间 (秒) | ✅ | ✅ | — | — | 可编辑：`/admin/settings/core` |
 | `providers.externalProviderWorkflowVariables` | 外部工作流变量提供方 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/providers` |
 | `subservice.codeSandbox.enabled` | 启用 Code Sandbox，默认关闭 | ✅ | ✅ | — | — | 可编辑：`/admin/subservice/code-sandbox` |
 | `subservice.codeSandbox.url` | Code Sandbox 服务地址 | ✅ | ✅ | — | — | 可编辑：`/admin/subservice/code-sandbox` |
 | `subservice.mcp.enabled` | 启用 MCP SSE 服务，默认关闭 | ✅ | ✅ | — | — | 可编辑：`/admin/subservice/mcp` |
 | `subservice.mcp.sseProxyUrl` | MCP SSE 代理地址 | ✅ | ✅ | — | — | 可编辑：`/admin/subservice/mcp` |
 | `subservice.codeSandbox.token` | Code Sandbox 访问 Token | ✅ | ✅ | — | ✅ | 可编辑：`/admin/subservice/code-sandbox` |
-| `subservice.agentSandbox.opensandbox.cpuOvercommitFactor` | CPU 超卖倍数（仅 Kubernetes 展示） | — | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
-| `subservice.agentSandbox.opensandbox.memoryOvercommitFactor` | 内存超卖倍数（仅 Kubernetes 展示） | — | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
-| `subservice.agentSandbox.proxy.wsUrl` | 浏览器 WebSocket 代理地址 | — | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
-| `subservice.agentSandbox.proxy.previewUrl` | 文件预览代理地址 | — | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
-| `subservice.agentSandbox.proxy.secret` | 代理共享密钥（掩码） | — | ✅ | — | ✅ | 可编辑：`/admin/subservice/agent-sandbox` |
-| `subservice.agentSandbox.provider` | 当前沙箱 Provider | — | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
-| `subservice.agentSandbox.common.cpuCount` | CPU 核心数 (Core) | — | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
-| `subservice.agentSandbox.common.memoryMiB` | 内存规格 (MiB) | — | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
-| `subservice.agentSandbox.common.storageSizeGi` | 存储卷大小 (Gi) | — | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
-| `subservice.agentSandbox.common.suspendMinutes` | 无操作自动挂起 (分钟) | — | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
-| `subservice.agentSandbox.common.archiveInactiveDays` | 不活跃自动归档 (天) | — | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
-| `subservice.agentSandbox.common.maxEditDebug` | 编辑调试实例上限 | — | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
-| `subservice.agentSandbox.common.maxPerTeam` | 单团队 Sandbox 活跃实例配额 | — | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
-| `subservice.agentSandbox.common.entrypointTimeoutSeconds` | 容器入口执行超时 (秒) | — | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
-| `subservice.agentSandbox.common.wsMaxMessageBytes` | WebSocket 消息上限 (Bytes) | — | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
-| `subservice.agentSandbox.common.wsMaxFrameBytes` | WebSocket 帧上限 (Bytes) | — | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
-| `subservice.agentSandbox.common.npmRegistry` | npm Registry 源 | — | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
-| `subservice.agentSandbox.common.pypiIndexUrl` | PyPI 镜像源地址 | — | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
-| `subservice.agentSandbox.common.aptMirror` | APT 镜像源地址 | — | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
-| `subservice.agentSandbox.sealosdevbox.baseUrl` | Sealos Devbox 服务地址 | — | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
-| `subservice.agentSandbox.sealosdevbox.workDirectory` | 工作空间工作目录 | — | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
-| `subservice.agentSandbox.sealosdevbox.image` | 默认开发镜像 | — | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
-| `subservice.agentSandbox.opensandbox.baseUrl` | OpenSandbox 服务地址 | — | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
-| `subservice.agentSandbox.opensandbox.runtime` | 底层容器运行时 | — | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
-| `subservice.agentSandbox.opensandbox.image` | 默认容器镜像 | — | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
-| `subservice.agentSandbox.opensandbox.useServerProxy` | 使用主站反向代理模式 | — | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
-| `subservice.agentSandbox.opensandbox.volumeManagerUrl` | 持久卷管理器地址 (Volume Manager) | — | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
-| `subservice.agentSandbox.opensandbox.volumeNamePrefix` | 存储卷名前缀 | — | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
-| `subservice.agentSandbox.sealosdevbox.token` | Sealos 访问 Token | — | ✅ | — | ✅ | 可编辑：`/admin/subservice/agent-sandbox` |
-| `subservice.agentSandbox.opensandbox.apiKey` | OpenSandbox API Key | — | ✅ | — | ✅ | 可编辑：`/admin/subservice/agent-sandbox` |
-| `subservice.agentSandbox.opensandbox.volumeManagerToken` | 卷管理器 Token | — | ✅ | — | ✅ | 可编辑：`/admin/subservice/agent-sandbox` |
-| `providers.documentParse.customPdf.key` | 自建服务认证 Key | ✅ | ✅ | — | ✅ | 可编辑：`/admin/settings/providers` |
-| `providers.documentParse.customPdf.somarkApiKey` | Somark API Key | ✅ | ✅ | — | ✅ | 可编辑：`/admin/settings/providers` |
-| `providers.documentParse.customPdf.doc2xKey` | Doc2X Key | ✅ | ✅ | — | ✅ | 可编辑：`/admin/settings/providers` |
-| `providers.documentParse.customPdf.textinAppId` | TextIn AppId | ✅ | ✅ | — | ✅ | 可编辑：`/admin/settings/providers` |
-| `providers.documentParse.customPdf.textinSecretCode` | TextIn Secret Code | ✅ | ✅ | — | ✅ | 可编辑：`/admin/settings/providers` |
-| `providers.documentParse.sangfor.key` | 深信服服务密钥 | ✅ | ✅ | — | ✅ | 可编辑：`/admin/settings/providers` |
+| `subservice.agentSandbox.opensandbox.cpuOvercommitFactor` | CPU 超卖倍数（仅 Kubernetes 展示） | ✅ | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
+| `subservice.agentSandbox.opensandbox.memoryOvercommitFactor` | 内存超卖倍数（仅 Kubernetes 展示） | ✅ | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
+| `subservice.agentSandbox.proxy.wsUrl` | 浏览器 WebSocket 代理地址 | ✅ | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
+| `subservice.agentSandbox.proxy.previewUrl` | 文件预览代理地址 | ✅ | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
+| `subservice.agentSandbox.proxy.secret` | 代理共享密钥（掩码） | ✅ | ✅ | — | ✅ | 可编辑：`/admin/subservice/agent-sandbox` |
+| `subservice.agentSandbox.provider` | 当前沙箱 Provider | ✅ | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
+| `subservice.agentSandbox.common.cpuCount` | CPU 核心数 (Core) | ✅ | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
+| `subservice.agentSandbox.common.memoryMiB` | 内存规格 (MiB) | ✅ | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
+| `subservice.agentSandbox.common.storageSizeGi` | 存储卷大小 (Gi) | ✅ | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
+| `subservice.agentSandbox.common.suspendMinutes` | 无操作自动挂起 (分钟) | ✅ | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
+| `subservice.agentSandbox.common.archiveInactiveDays` | 不活跃自动归档 (天) | ✅ | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
+| `subservice.agentSandbox.common.maxEditDebug` | 编辑调试实例上限 | ✅ | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
+| `subservice.agentSandbox.common.maxPerTeam` | 单团队 Sandbox 活跃实例配额 | ✅ | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
+| `subservice.agentSandbox.common.npmRegistry` | npm Registry 源 | ✅ | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
+| `subservice.agentSandbox.common.pypiIndexUrl` | PyPI 镜像源地址 | ✅ | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
+| `subservice.agentSandbox.common.aptMirror` | APT 镜像源地址 | ✅ | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
+| `subservice.agentSandbox.sealosdevbox.baseUrl` | Sealos Devbox 服务地址 | ✅ | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
+| `subservice.agentSandbox.sealosdevbox.workDirectory` | 工作空间工作目录 | ✅ | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
+| `subservice.agentSandbox.sealosdevbox.image` | 默认开发镜像 | ✅ | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
+| `subservice.agentSandbox.opensandbox.baseUrl` | OpenSandbox 服务地址 | ✅ | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
+| `subservice.agentSandbox.opensandbox.runtime` | 底层容器运行时 | ✅ | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
+| `subservice.agentSandbox.opensandbox.image` | 默认容器镜像 | ✅ | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
+| `subservice.agentSandbox.opensandbox.useServerProxy` | 使用主站反向代理模式 | ✅ | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
+| `subservice.agentSandbox.opensandbox.volumeManagerUrl` | 持久卷管理器地址 (Volume Manager) | ✅ | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
+| `subservice.agentSandbox.opensandbox.volumeNamePrefix` | 存储卷名前缀 | ✅ | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
+| `subservice.agentSandbox.sealosdevbox.token` | Sealos 访问 Token | ✅ | ✅ | — | ✅ | 可编辑：`/admin/subservice/agent-sandbox` |
+| `subservice.agentSandbox.opensandbox.apiKey` | OpenSandbox API Key | ✅ | ✅ | — | ✅ | 可编辑：`/admin/subservice/agent-sandbox` |
+| `subservice.agentSandbox.opensandbox.volumeManagerToken` | 卷管理器 Token | ✅ | ✅ | — | ✅ | 可编辑：`/admin/subservice/agent-sandbox` |
+| `providers.documentParse.customPdf.key` | 自建服务认证 Key | ✅ | ✅ | — | ✅ | 可编辑：`/admin/settings/core` |
+| `providers.documentParse.customPdf.somarkApiKey` | Somark API Key | ✅ | ✅ | — | ✅ | 可编辑：`/admin/settings/core` |
+| `providers.documentParse.customPdf.doc2xKey` | Doc2X Key | ✅ | ✅ | — | ✅ | 可编辑：`/admin/settings/core` |
+| `providers.documentParse.customPdf.textinAppId` | TextIn AppId | ✅ | ✅ | — | ✅ | 可编辑：`/admin/settings/core` |
+| `providers.documentParse.customPdf.textinSecretCode` | TextIn Secret Code | ✅ | ✅ | — | ✅ | 可编辑：`/admin/settings/core` |
+| `providers.documentParse.sangfor.key` | 深信服服务密钥 | ✅ | ✅ | — | ✅ | 可编辑：`/admin/settings/core` |
 
 <!-- instance-config-field-matrix:end -->
 
@@ -1347,7 +1319,7 @@ Pro ENV 派生配置统一由 `getProEnvConfig` 归一化，每次启动由 `syn
 旧 `fastgptPro` 文档不再参与 Pro 启动配置读取，也不维护 `fastgptPro.teamMode` 镜像；团队模式只从 ENV 派生后发布到 App 快照。
 
 
-文件服务域名由统一任务 `20261116_migrate_system_configs` 的 backfill 阶段迁入 `storage.fileDomain`，保留已有值和显式默认，校验通过后用 revision CAS 更新，幂等全量重跑不删除源配置。旧 ENV 运行时读取移除；FILE_DOWNLOAD_PUBLIC_URL_PREFIX 的下载优先级保持，空文件域名回落到 FE_DOMAIN。
+文件服务域名由统一任务 `20261116_migrate_system_configs` 的 backfill 阶段迁入 `storage.fileDomain`，保留已有值和显式默认，校验通过后用 revision CAS 更新，幂等全量重跑不删除源配置。旧 ENV 运行时读取移除；FILE_DOWNLOAD_PUBLIC_URL_PREFIX 的下载优先级保持，空文件域名回落到 site.publicUrl；两者都为空则生成相对路径。
 
 
 ### HTTP 与 Cookie 策略补充迁移

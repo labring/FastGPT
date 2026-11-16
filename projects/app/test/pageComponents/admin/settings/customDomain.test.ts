@@ -2,6 +2,7 @@ import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { resolveSystemInstanceConfig } from '@fastgpt/global/common/system/config/schema';
+import { omitDomainSecrets } from '@fastgpt/global/common/system/config/permission';
 import CustomDomainSettingComponent from '@/pageComponents/admin/settings/custom-domain';
 
 const mocks = vi.hoisted(() => ({
@@ -15,13 +16,21 @@ vi.mock('@fastgpt/web/hooks/useSafeTranslation', () => ({
 }));
 vi.mock('@/web/common/system/useDomainConfig', () => ({
   useDomainConfig: () => ({
-    effectiveConfig: resolveSystemInstanceConfig({
-      site: { name: 'Unrelated site name', customDomain: { enable: mocks.enabled } }
-    }).site,
+    effectiveConfig: omitDomainSecrets(
+      'site',
+      resolveSystemInstanceConfig({
+        site: { name: 'Unrelated site name', customDomain: { enable: mocks.enabled } }
+      }).site
+    ),
+    configuredSecretKeys: ['customDomain.kc.aliyun'],
     isLoading: false,
     isUpdating: false,
     patchConfig: mocks.patch
   })
+}));
+vi.mock('@/pageComponents/admin/settings/AdminSecretInput', () => ({
+  default: ({ name, isConfigured }: { name: string; isConfigured: boolean }) =>
+    React.createElement('textarea', { name, 'data-configured': isConfigured })
 }));
 vi.mock('@/pageComponents/admin/useAdminPermission', () => ({
   useAdminPermission: () => ({ filterConfigData: (_domain: string, value: unknown) => value })
@@ -75,6 +84,7 @@ describe('SaaS custom domain settings page', () => {
     expect(mocks.patch).toHaveBeenCalledOnce();
     expect(Object.keys(mocks.patch.mock.calls[0][0])).toEqual(['customDomain']);
     expect(mocks.patch.mock.calls[0][0].customDomain.enable).toBe(true);
+    expect(mocks.patch.mock.calls[0][0].customDomain.kc).toEqual({});
   });
 
   it('hides provider fields when custom domains are disabled', () => {

@@ -5,7 +5,10 @@ export const FeatureConfigSchema = z.strictObject({
   multipleDataToBase64: z.boolean().default(false),
   agentEngine: z.enum(['fastAgent', 'piAgent']).default('fastAgent'),
   enableTeamPluginUpload: z.boolean().default(false),
-  showOpenaiAccount: z.boolean().default(false),
+  showOpenaiAccount: z.boolean().default(false).meta({
+    deprecated: true,
+    description: '已弃用；保留既有启用状态，仅允许关闭，关闭后不可重新开启'
+  }),
   enableTeamModel: z.boolean().default(false),
   // 业务入口可见性开关（决定各接入渠道在前端是否可见）
   showDatasetFeishu: z.boolean().default(true),

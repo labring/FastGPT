@@ -21,6 +21,7 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import AdminSettingPage from '@/pageComponents/admin/settings/AdminSettingPage';
 import AdminSettingSection from '@/pageComponents/admin/settings/AdminSettingSection';
 import AdminFormItem from '@/pageComponents/admin/settings/AdminFormItem';
+import AdminSecretInput from '@/pageComponents/admin/settings/AdminSecretInput';
 import AdminSwitchRow from '@/pageComponents/admin/settings/AdminSwitchRow';
 import ImageInput from '@/pageComponents/admin/settings/ImageInput';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -39,10 +40,15 @@ const AuthSettingComponent = () => {
   const { toast } = useToast();
   const { feConfigs, licenseData } = useSystemStore();
 
+  const showPasswordSecurity = isFieldVisible('auth.passwordExpiredMonth');
+  const showLoginProtection = isFieldVisible('security.passwordLoginMinuteLimitCount');
   const showEmail = isFieldVisible('auth.loginProviders.email.register');
   const showSms = isFieldVisible('auth.loginProviders.sms.login.zh');
   const showWechat = isFieldVisible('auth.loginProviders.wechat.appId');
-  const showOauth = isFieldVisible('auth.loginProviders.github.clientId');
+  const showWecom = isFieldVisible('auth.loginProviders.wecom.suiteId');
+  const showGithub = isFieldVisible('auth.loginProviders.github.clientId');
+  const showGoogle = isFieldVisible('auth.loginProviders.google.clientId');
+  const showMicrosoft = isFieldVisible('auth.loginProviders.microsoft.clientId');
   const showCancellation = isFieldVisible('auth.accountCancellation.enabled');
   const showWecomProviderSecret = isFieldVisible('auth.loginProviders.wecom.providerSecret');
   const showWecomSaaS = isFieldVisible('auth.loginProviders.wecom.buyerUserId');
@@ -56,27 +62,50 @@ const AuthSettingComponent = () => {
   const { effectiveConfig } = auth;
   const isLoading = auth.isLoading || security.isLoading;
 
-  // 空配置也要允许首次添加和清空后重新配置；显示仅由字段权限决定。
-  const showFastLogin = showFastLoginPermission;
+  // 已弃用功能只为仍有配置的旧实例保留编辑/清空入口；按已保存值判断，避免清空草稿时立即消失。
+  const showFastLogin =
+    showFastLoginPermission &&
+    Array.isArray(effectiveConfig.fastLogin) &&
+    effectiveConfig.fastLogin.length > 0;
 
   const tocItems: SettingTOCItem[] = useMemo(
     () => [
-      { id: 'apiAndPassword', label: t('admin:api_password_policy') },
-      { id: 'loginAndTeam', label: t('admin:login_policy') },
-      { id: 'loginProtection', label: t('admin:auth_section_protection') },
-      ...(showEmail ? [{ id: 'emailLogin', label: t('admin:email_notification_config') }] : []),
-      ...(showSms ? [{ id: 'smsLogin', label: t('admin:sms_verification_code') }] : []),
-      ...(showWechat
-        ? [{ id: 'wechatLogin', label: t('admin:wechat_service_account_wecom') }]
+      ...(showPasswordSecurity
+        ? [{ id: 'passwordSecurity', label: t('admin:password_security') }]
         : []),
-      ...(showOauth ? [{ id: 'oauthLogin', label: t('admin:oauth_login') }] : []),
-      ...(showSso ? [{ id: 'ssoLogin', label: t('admin:sso_settings') }] : []),
-      ...(showFastLogin ? [{ id: 'fastLogin', label: t('admin:fast_login_entries_json') }] : []),
+      ...(showLoginProtection
+        ? [{ id: 'loginProtection', label: t('admin:auth_section_protection') }]
+        : []),
       ...(showCancellation
         ? [{ id: 'accountCancellation', label: t('admin:account_cancellation') }]
-        : [])
+        : []),
+      ...(showEmail ? [{ id: 'emailLogin', label: t('admin:email_registration') }] : []),
+      ...(showSms ? [{ id: 'smsLogin', label: t('admin:sms_verification_code') }] : []),
+      ...(showWechat
+        ? [{ id: 'wechatLogin', label: t('admin:wechat_service_account_login') }]
+        : []),
+      ...(showWecom ? [{ id: 'wecomLogin', label: t('admin:wecom_login') }] : []),
+      ...(showGithub ? [{ id: 'githubLogin', label: t('admin:github_login') }] : []),
+      ...(showGoogle ? [{ id: 'googleLogin', label: t('admin:google_login') }] : []),
+      ...(showMicrosoft ? [{ id: 'microsoftLogin', label: t('admin:microsoft_login') }] : []),
+      ...(showSso ? [{ id: 'ssoLogin', label: t('admin:sso_settings') }] : []),
+      ...(showFastLogin ? [{ id: 'fastLogin', label: t('admin:fast_login_entries_json') }] : [])
     ],
-    [t, showEmail, showSms, showWechat, showOauth, showSso, showFastLogin, showCancellation]
+    [
+      t,
+      showPasswordSecurity,
+      showLoginProtection,
+      showEmail,
+      showSms,
+      showWechat,
+      showWecom,
+      showGithub,
+      showGoogle,
+      showMicrosoft,
+      showSso,
+      showFastLogin,
+      showCancellation
+    ]
   );
 
   const { control, handleSubmit, reset, register, setValue } = useForm<AuthConfigForm>({
@@ -90,7 +119,9 @@ const AuthSettingComponent = () => {
   const emailRegister = useWatch({ control, name: 'loginProviders.email.register' });
   const ssoAutoLogin = useWatch({ control, name: 'sso.autoLogin' });
   const ssoDisablePassword = useWatch({ control, name: 'sso.disablePasswordForSsoUsers' });
-  const [fastLoginText, setFastLoginText] = useState('');
+  const [fastLoginText, setFastLoginText] = useState(() =>
+    JSON.stringify(effectiveConfig.fastLogin ?? [], null, 2)
+  );
 
   useEffect(() => {
     if (effectiveConfig && Object.keys(effectiveConfig).length > 0) {
@@ -111,7 +142,7 @@ const AuthSettingComponent = () => {
       let fastLogin: unknown;
       if (showFastLogin) {
         try {
-          fastLogin = JSON.parse(fastLoginText || '[]');
+          fastLogin = JSON.parse(fastLoginText.trim() || '[]');
         } catch {
           toast({
             status: 'error',
@@ -138,7 +169,6 @@ const AuthSettingComponent = () => {
       const authOverrides = deepMergeConfig(
         preservedAuthOverrides,
         filterConfigData('auth', {
-          wecomLoginAutoRedirect: Boolean(rest.wecomLoginAutoRedirect),
           passwordExpiredMonth:
             rest.passwordExpiredMonth && Number(rest.passwordExpiredMonth) > 0
               ? Number(rest.passwordExpiredMonth)
@@ -152,10 +182,10 @@ const AuthSettingComponent = () => {
 
       const securityOverrides = deepMergeConfig(
         filterConfigDataByEdition('security', security.overrides) as Record<string, unknown>,
-        {
+        filterConfigData('security', {
           passwordLoginMinuteLimitCount: Number(passwordLoginMinuteLimitCount) || 10,
           maxLoginSession: Number(maxLoginSession) || 10
-        }
+        })
       );
 
       await updateDomainConfigApi({
@@ -191,122 +221,153 @@ const AuthSettingComponent = () => {
       isSaving={isSaving}
       onSave={handleSubmit(submitAuthConfig)}
     >
-      {/* 1. API 与密码策略 */}
-      <AdminSettingSection id="apiAndPassword" title={t('admin:api_password_policy')}>
-        <AdminFormItem
-          label={t('admin:password_validity_period_months')}
-          tooltip={t('admin:password_validity_period_desc')}
-          mb={6}
-        >
-          <Controller
-            name="passwordExpiredMonth"
-            control={control}
-            render={({ field }) => (
-              <NumberInput
-                variant={'whiteOutline'}
-                maxW={'400px'}
-                min={0}
-                max={120}
-                value={field.value ?? ''}
-                onChange={(_, val) => field.onChange(isNaN(val) || val <= 0 ? null : val)}
-              >
-                <NumberInputField placeholder={t('admin:leave_empty_to_never_expire')} />
-                <NumberInputStepper>
-                  <NumberIncrementStepper />
-                  <NumberDecrementStepper />
-                </NumberInputStepper>
-              </NumberInput>
-            )}
-          />
-        </AdminFormItem>
-      </AdminSettingSection>
-
-      {/* 2. 登录策略 */}
-      <AdminSettingSection id="loginAndTeam" title={t('admin:login_policy')} showDivider>
-        <SimpleGrid columns={[1, 2]} spacingX={16} spacingY={4}>
-          <Controller
-            name="wecomLoginAutoRedirect"
-            control={control}
-            render={({ field }) => (
-              <AdminSwitchRow
-                label={t('admin:wecom_auto_redirect')}
-                tooltip={t('admin:auto_redirect_to_wecom_oauth_quick_login_when_the_login_page')}
-                isChecked={field.value}
-                onChange={field.onChange}
-              />
-            )}
-          />
-        </SimpleGrid>
-      </AdminSettingSection>
+      {/* 密码安全 */}
+      {showPasswordSecurity && (
+        <AdminSettingSection id="passwordSecurity" title={t('admin:password_security')}>
+          <AdminFormItem
+            label={t('admin:password_validity_period_months')}
+            tooltip={t('admin:password_validity_period_desc')}
+            mb={6}
+          >
+            <Controller
+              name="passwordExpiredMonth"
+              control={control}
+              render={({ field }) => (
+                <NumberInput
+                  variant={'whiteOutline'}
+                  maxW={'400px'}
+                  min={0}
+                  max={120}
+                  value={field.value ?? ''}
+                  onChange={(_, val) => field.onChange(isNaN(val) || val <= 0 ? null : val)}
+                >
+                  <NumberInputField placeholder={t('admin:leave_empty_to_never_expire')} />
+                  <NumberInputStepper>
+                    <NumberIncrementStepper />
+                    <NumberDecrementStepper />
+                  </NumberInputStepper>
+                </NumberInput>
+              )}
+            />
+          </AdminFormItem>
+        </AdminSettingSection>
+      )}
 
       {/* 3. 登录防护 */}
-      <AdminSettingSection
-        id="loginProtection"
-        title={t('admin:auth_section_protection')}
-        showDivider
-      >
-        <SimpleGrid columns={[1, 2]} spacing={5}>
-          <AdminFormItem
-            label={t('admin:password_login_rate_limit_per_minute')}
-            tooltip={t('admin:max_failed_password_login_attempts_per_account_per_minute')}
-            isRequired
-          >
-            <Controller
-              name="passwordLoginMinuteLimitCount"
-              control={control}
-              render={({ field }) => (
-                <NumberInput
-                  variant={'whiteOutline'}
-                  min={1}
-                  max={100}
-                  value={field.value ?? 10}
-                  onChange={(_, val) => field.onChange(val || 10)}
-                >
-                  <NumberInputField />
-                  <NumberInputStepper>
-                    <NumberIncrementStepper />
-                    <NumberDecrementStepper />
-                  </NumberInputStepper>
-                </NumberInput>
-              )}
-            />
-          </AdminFormItem>
-
-          <AdminFormItem
-            label={t('admin:max_login_sessions')}
-            tooltip={t('admin:max_concurrent_active_sessions_per_user_the_earliest_session')}
-            isRequired
-          >
-            <Controller
-              name="maxLoginSession"
-              control={control}
-              render={({ field }) => (
-                <NumberInput
-                  variant={'whiteOutline'}
-                  min={1}
-                  max={100}
-                  value={field.value ?? 10}
-                  onChange={(_, val) => field.onChange(val || 10)}
-                >
-                  <NumberInputField />
-                  <NumberInputStepper>
-                    <NumberIncrementStepper />
-                    <NumberDecrementStepper />
-                  </NumberInputStepper>
-                </NumberInput>
-              )}
-            />
-          </AdminFormItem>
-        </SimpleGrid>
-      </AdminSettingSection>
-
-      {/* 4. 邮箱通知 (SMTP) */}
-      {showEmail && (
+      {showLoginProtection && (
         <AdminSettingSection
-          id="emailLogin"
-          title={t('admin:email_notification_config')}
+          id="loginProtection"
+          title={t('admin:auth_section_protection')}
           showDivider
         >
+          <SimpleGrid columns={[1, 2]} spacing={5}>
+            <AdminFormItem
+              label={t('admin:password_login_rate_limit_per_minute')}
+              tooltip={t('admin:max_failed_password_login_attempts_per_account_per_minute')}
+              isRequired
+            >
+              <Controller
+                name="passwordLoginMinuteLimitCount"
+                control={control}
+                render={({ field }) => (
+                  <NumberInput
+                    variant={'whiteOutline'}
+                    min={1}
+                    max={100}
+                    value={field.value ?? 10}
+                    onChange={(_, val) => field.onChange(val || 10)}
+                  >
+                    <NumberInputField />
+                    <NumberInputStepper>
+                      <NumberIncrementStepper />
+                      <NumberDecrementStepper />
+                    </NumberInputStepper>
+                  </NumberInput>
+                )}
+              />
+            </AdminFormItem>
+
+            <AdminFormItem
+              label={t('admin:max_login_sessions')}
+              tooltip={t('admin:max_concurrent_active_sessions_per_user_the_earliest_session')}
+              isRequired
+            >
+              <Controller
+                name="maxLoginSession"
+                control={control}
+                render={({ field }) => (
+                  <NumberInput
+                    variant={'whiteOutline'}
+                    min={1}
+                    max={100}
+                    value={field.value ?? 10}
+                    onChange={(_, val) => field.onChange(val || 10)}
+                  >
+                    <NumberInputField />
+                    <NumberInputStepper>
+                      <NumberIncrementStepper />
+                      <NumberDecrementStepper />
+                    </NumberInputStepper>
+                  </NumberInput>
+                )}
+              />
+            </AdminFormItem>
+          </SimpleGrid>
+        </AdminSettingSection>
+      )}
+
+      {/* 账号注销 */}
+      {showCancellation && (
+        <AdminSettingSection
+          id="accountCancellation"
+          title={t('admin:account_cancellation')}
+          showDivider
+        >
+          <SimpleGrid columns={[1, 2]} spacingX={16} spacingY={4} mb={6}>
+            <Controller
+              name="accountCancellation.enabled"
+              control={control}
+              render={({ field }) => (
+                <AdminSwitchRow
+                  label={t('admin:enable_account_cancellation')}
+                  tooltip={t('admin:allow_users_to_self_submit_account_cancellation_requests')}
+                  isChecked={field.value}
+                  onChange={field.onChange}
+                />
+              )}
+            />
+          </SimpleGrid>
+
+          <Text fontSize={'xs'} color={'myGray.500'} mb={3}>
+            {t('admin:sms_templates_for_the_cancellation_flow_apply_for_template_i')}
+          </Text>
+
+          <SimpleGrid columns={[1, 2]} spacing={5}>
+            <AdminFormItem
+              label={t('admin:cancellation_request_chinese_template')}
+              tooltip={t('admin:sms_template_id_for_cancellation_submission_chinese')}
+            >
+              <Input {...register('accountCancellation.cancellationSm.zh')} placeholder="SMS_xxx" />
+            </AdminFormItem>
+            <AdminFormItem
+              label={t('admin:cancellation_reminder_chinese_template')}
+              tooltip={t('admin:sms_template_id_for_cancellation_cooling_off_reminder_chines')}
+            >
+              <Input {...register('accountCancellation.reminderSm.zh')} placeholder="SMS_xxx" />
+            </AdminFormItem>
+            <AdminFormItem
+              label={t('admin:same_day_cancellation_chinese_template')}
+              tooltip={t('admin:sms_template_id_for_cancellation_effective_date_chinese')}
+            >
+              <Input {...register('accountCancellation.todaySm.zh')} placeholder="SMS_xxx" />
+            </AdminFormItem>
+          </SimpleGrid>
+        </AdminSettingSection>
+      )}
+
+      {/* 4. 邮箱注册 */}
+      {showEmail && (
+        <AdminSettingSection id="emailLogin" title={t('admin:email_registration')} showDivider>
           <SimpleGrid columns={[1, 2]} spacingX={16} spacingY={4}>
             <Controller
               name="loginProviders.email.register"
@@ -384,14 +445,14 @@ const AuthSettingComponent = () => {
         </AdminSettingSection>
       )}
 
-      {/* 6. 微信服务号 / 企业微信 */}
+      {/* 微信服务号 */}
       {showWechat && (
         <AdminSettingSection
           id="wechatLogin"
-          title={t('admin:wechat_service_account_wecom')}
+          title={t('admin:wechat_service_account_login')}
           showDivider
         >
-          <SimpleGrid columns={[1, 2]} spacing={5} mb={6}>
+          <SimpleGrid columns={[1, 2]} spacing={5}>
             <AdminFormItem
               label={t('admin:wechat_service_account_appid')}
               tooltip={t('admin:official_account_app_id')}
@@ -402,14 +463,28 @@ const AuthSettingComponent = () => {
               label={t('admin:wechat_service_account_appsecret')}
               tooltip={t('admin:official_account_app_secret')}
             >
-              <Input
-                type="password"
-                {...register('loginProviders.wechat.appSecret')}
-                placeholder="******"
+              <Controller
+                name="loginProviders.wechat.appSecret"
+                control={control}
+                render={({ field }) => (
+                  <AdminSecretInput
+                    name={field.name}
+                    value={field.value}
+                    onChange={field.onChange}
+                    isConfigured={auth.configuredSecretKeys.includes(
+                      'loginProviders.wechat.appSecret'
+                    )}
+                  />
+                )}
               />
             </AdminFormItem>
           </SimpleGrid>
+        </AdminSettingSection>
+      )}
 
+      {/* 企业微信 */}
+      {showWecom && (
+        <AdminSettingSection id="wecomLogin" title={t('admin:wecom_login')} showDivider>
           <Text fontSize={'xs'} color={'myGray.500'} mb={3}>
             {t('admin:wecom_third_party_app_service_provider_integration_settings')}
           </Text>
@@ -422,24 +497,47 @@ const AuthSettingComponent = () => {
               label="SuiteSecret"
               tooltip={t('admin:wecom_service_provider_app_secret')}
             >
-              <Input
-                type="password"
-                {...register('loginProviders.wecom.secret')}
-                placeholder="******"
+              <Controller
+                name="loginProviders.wecom.secret"
+                control={control}
+                render={({ field }) => (
+                  <AdminSecretInput
+                    name={field.name}
+                    value={field.value}
+                    onChange={field.onChange}
+                    isConfigured={auth.configuredSecretKeys.includes('loginProviders.wecom.secret')}
+                  />
+                )}
               />
             </AdminFormItem>
             <AdminFormItem label="Token" tooltip={t('admin:callback_token')}>
-              <Input
-                type="password"
-                {...register('loginProviders.wecom.token')}
-                placeholder="******"
+              <Controller
+                name="loginProviders.wecom.token"
+                control={control}
+                render={({ field }) => (
+                  <AdminSecretInput
+                    name={field.name}
+                    value={field.value}
+                    onChange={field.onChange}
+                    isConfigured={auth.configuredSecretKeys.includes('loginProviders.wecom.token')}
+                  />
+                )}
               />
             </AdminFormItem>
             <AdminFormItem label="EncodingAESKey" tooltip={t('admin:callback_encryption_key')}>
-              <Input
-                type="password"
-                {...register('loginProviders.wecom.encodingAESKey')}
-                placeholder="******"
+              <Controller
+                name="loginProviders.wecom.encodingAESKey"
+                control={control}
+                render={({ field }) => (
+                  <AdminSecretInput
+                    name={field.name}
+                    value={field.value}
+                    onChange={field.onChange}
+                    isConfigured={auth.configuredSecretKeys.includes(
+                      'loginProviders.wecom.encodingAESKey'
+                    )}
+                  />
+                )}
               />
             </AdminFormItem>
             <AdminFormItem
@@ -453,10 +551,19 @@ const AuthSettingComponent = () => {
                 label={t('admin:service_provider_secret')}
                 tooltip={t('admin:service_provider_level_key')}
               >
-                <Input
-                  type="password"
-                  {...register('loginProviders.wecom.providerSecret')}
-                  placeholder="******"
+                <Controller
+                  name="loginProviders.wecom.providerSecret"
+                  control={control}
+                  render={({ field }) => (
+                    <AdminSecretInput
+                      name={field.name}
+                      value={field.value}
+                      onChange={field.onChange}
+                      isConfigured={auth.configuredSecretKeys.includes(
+                        'loginProviders.wecom.providerSecret'
+                      )}
+                    />
+                  )}
                 />
               </AdminFormItem>
             )}
@@ -478,10 +585,19 @@ const AuthSettingComponent = () => {
                   />
                 </AdminFormItem>
                 <AdminFormItem label={t('admin:wecom_pay_secret')}>
-                  <Input
-                    type="password"
-                    {...register('loginProviders.wecom.paySecret')}
-                    placeholder="******"
+                  <Controller
+                    name="loginProviders.wecom.paySecret"
+                    control={control}
+                    render={({ field }) => (
+                      <AdminSecretInput
+                        name={field.name}
+                        value={field.value}
+                        onChange={field.onChange}
+                        isConfigured={auth.configuredSecretKeys.includes(
+                          'loginProviders.wecom.paySecret'
+                        )}
+                      />
+                    )}
                   />
                 </AdminFormItem>
               </>
@@ -490,9 +606,9 @@ const AuthSettingComponent = () => {
         </AdminSettingSection>
       )}
 
-      {/* 7. OAuth 登录 */}
-      {showOauth && (
-        <AdminSettingSection id="oauthLogin" title={t('admin:oauth_login')} showDivider>
+      {/* 各 OAuth 提供商独立成区，目录与权限判断保持对应。 */}
+      {showGithub && (
+        <AdminSettingSection id="githubLogin" title={t('admin:github_login')} showDivider>
           <SimpleGrid columns={[1, 2]} spacing={5}>
             <AdminFormItem label="GitHub Client ID" tooltip={t('admin:github_oauth_app_client_id')}>
               <Input {...register('loginProviders.github.clientId')} placeholder="******" />
@@ -501,12 +617,27 @@ const AuthSettingComponent = () => {
               label="GitHub Client Secret"
               tooltip={t('admin:github_oauth_app_client_secret')}
             >
-              <Input
-                type="password"
-                {...register('loginProviders.github.secret')}
-                placeholder="******"
+              <Controller
+                name="loginProviders.github.secret"
+                control={control}
+                render={({ field }) => (
+                  <AdminSecretInput
+                    name={field.name}
+                    value={field.value}
+                    onChange={field.onChange}
+                    isConfigured={auth.configuredSecretKeys.includes(
+                      'loginProviders.github.secret'
+                    )}
+                  />
+                )}
               />
             </AdminFormItem>
+          </SimpleGrid>
+        </AdminSettingSection>
+      )}
+      {showGoogle && (
+        <AdminSettingSection id="googleLogin" title={t('admin:google_login')} showDivider>
+          <SimpleGrid columns={[1, 2]} spacing={5}>
             <AdminFormItem label="Google Client ID" tooltip={t('admin:google_oauth_2_0_client_id')}>
               <Input {...register('loginProviders.google.clientId')} placeholder="******" />
             </AdminFormItem>
@@ -514,12 +645,27 @@ const AuthSettingComponent = () => {
               label="Google Client Secret"
               tooltip={t('admin:google_oauth_2_0_client_secret')}
             >
-              <Input
-                type="password"
-                {...register('loginProviders.google.secret')}
-                placeholder="******"
+              <Controller
+                name="loginProviders.google.secret"
+                control={control}
+                render={({ field }) => (
+                  <AdminSecretInput
+                    name={field.name}
+                    value={field.value}
+                    onChange={field.onChange}
+                    isConfigured={auth.configuredSecretKeys.includes(
+                      'loginProviders.google.secret'
+                    )}
+                  />
+                )}
               />
             </AdminFormItem>
+          </SimpleGrid>
+        </AdminSettingSection>
+      )}
+      {showMicrosoft && (
+        <AdminSettingSection id="microsoftLogin" title={t('admin:microsoft_login')} showDivider>
+          <SimpleGrid columns={[1, 2]} spacing={5}>
             <AdminFormItem
               label="Microsoft Client ID"
               tooltip={t('admin:azure_ad_application_client_id')}
@@ -530,10 +676,19 @@ const AuthSettingComponent = () => {
               label="Microsoft Client Secret"
               tooltip={t('admin:azure_ad_application_client_secret')}
             >
-              <Input
-                type="password"
-                {...register('loginProviders.microsoft.secret')}
-                placeholder="******"
+              <Controller
+                name="loginProviders.microsoft.secret"
+                control={control}
+                render={({ field }) => (
+                  <AdminSecretInput
+                    name={field.name}
+                    value={field.value}
+                    onChange={field.onChange}
+                    isConfigured={auth.configuredSecretKeys.includes(
+                      'loginProviders.microsoft.secret'
+                    )}
+                  />
+                )}
               />
             </AdminFormItem>
             <AdminFormItem
@@ -594,55 +749,6 @@ const AuthSettingComponent = () => {
               )}
             />
           </AdminFormItem>
-        </AdminSettingSection>
-      )}
-
-      {/* 8. 快速登录与账号注销 */}
-      {showCancellation && (
-        <AdminSettingSection
-          id="accountCancellation"
-          title={t('admin:account_cancellation')}
-          showDivider
-        >
-          <SimpleGrid columns={[1, 2]} spacingX={16} spacingY={4} mb={6}>
-            <Controller
-              name="accountCancellation.enabled"
-              control={control}
-              render={({ field }) => (
-                <AdminSwitchRow
-                  label={t('admin:enable_account_cancellation')}
-                  tooltip={t('admin:allow_users_to_self_submit_account_cancellation_requests')}
-                  isChecked={field.value}
-                  onChange={field.onChange}
-                />
-              )}
-            />
-          </SimpleGrid>
-
-          <Text fontSize={'xs'} color={'myGray.500'} mb={3}>
-            {t('admin:sms_templates_for_the_cancellation_flow_apply_for_template_i')}
-          </Text>
-
-          <SimpleGrid columns={[1, 2]} spacing={5}>
-            <AdminFormItem
-              label={t('admin:cancellation_request_chinese_template')}
-              tooltip={t('admin:sms_template_id_for_cancellation_submission_chinese')}
-            >
-              <Input {...register('accountCancellation.cancellationSm.zh')} placeholder="SMS_xxx" />
-            </AdminFormItem>
-            <AdminFormItem
-              label={t('admin:cancellation_reminder_chinese_template')}
-              tooltip={t('admin:sms_template_id_for_cancellation_cooling_off_reminder_chines')}
-            >
-              <Input {...register('accountCancellation.reminderSm.zh')} placeholder="SMS_xxx" />
-            </AdminFormItem>
-            <AdminFormItem
-              label={t('admin:same_day_cancellation_chinese_template')}
-              tooltip={t('admin:sms_template_id_for_cancellation_effective_date_chinese')}
-            >
-              <Input {...register('accountCancellation.todaySm.zh')} placeholder="SMS_xxx" />
-            </AdminFormItem>
-          </SimpleGrid>
         </AdminSettingSection>
       )}
     </AdminSettingPage>

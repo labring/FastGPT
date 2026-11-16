@@ -262,7 +262,8 @@ describe('backend configuration boundary', () => {
         fastgpt: {
           feConfigs: {
             fileUrlWhitelist: ['private.internal'],
-            evalFileMaxLines: 100
+            evalFileMaxLines: 100,
+            openAPIDocUrl: 'https://legacy-docs.example.com'
           },
           systemEnv: { fileUrlWhitelist: configured }
         } as any,
@@ -272,6 +273,7 @@ describe('backend configuration boundary', () => {
       expect(stored.fastgpt.systemEnv.fileUrlWhitelist).toEqual(configured ?? ['private.internal']);
       for (const key of [
         'fileUrlWhitelist',
+        'openAPIDocUrl',
         'evalFileMaxLines',
         'uploadFileMaxAmount',
         'uploadFileMaxSize'

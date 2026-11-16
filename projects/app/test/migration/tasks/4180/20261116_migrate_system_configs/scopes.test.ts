@@ -1,12 +1,20 @@
 import { describe, expect, it, vi } from 'vitest';
 import { Types } from '@fastgpt/service/common/mongo';
 import { MongoSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/schema';
+import {
+  decryptDomainSecrets,
+  encryptDomainSecrets
+} from '@fastgpt/service/common/system/systemInstanceConfig/secrets';
 import { MongoSystemConfigs } from '@fastgpt/service/common/system/config/schema';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import {
   migrateLegacyConfigScopes,
   verifyLegacyConfigScopes
 } from '@/migration/tasks/4180/20261116_migrate_system_configs/scopes';
+import {
+  encryptStoredConfigSecrets,
+  verifyStoredConfigSecrets
+} from '@/migration/tasks/4180/20261116_migrate_system_configs/secrets';
 
 vi.unmock('@fastgpt/service/common/mongo/sessionRun');
 
@@ -72,6 +80,70 @@ const invalidValues = [
 const readTargets = () => MongoSystemInstanceConfig.find({}).sort({ domain: 1 }).lean();
 
 describe('migrateLegacyConfigScopes', () => {
+  it('encrypts old model probe tokens on import and when rescanning existing scopes', async () => {
+    await MongoSystemConfigs.create({
+      type: 'modelStatusProbe',
+      value: { enabled: true, intervalMinutes: 10, webhookToken: 'old-webhook-token' }
+    });
+
+    await migrateLegacyConfigScopes();
+    await verifyLegacyConfigScopes();
+    const imported = await MongoSystemInstanceConfig.findOne({ domain: 'modelStatusProbe' }).lean();
+    expect(imported?.overrides.webhookToken).toEqual({ secret: expect.any(String) });
+    expect(decryptDomainSecrets('modelStatusProbe', imported?.overrides)).toMatchObject({
+      enabled: true,
+      intervalMinutes: 10,
+      webhookToken: 'old-webhook-token'
+    });
+    await migrateLegacyConfigScopes();
+    expect(await MongoSystemInstanceConfig.findOne({ domain: 'modelStatusProbe' }).lean()).toEqual(
+      imported
+    );
+
+    // 旧版本可能已创建目标 scope，补迁扫尾必须原地加密且复跑不改变密文或 revision。
+    await MongoSystemInstanceConfig.collection.updateOne(
+      { domain: 'modelStatusProbe' },
+      { $set: { 'overrides.webhookToken': 'existing-webhook-token' }, $inc: { revision: 1 } }
+    );
+    await expect(verifyStoredConfigSecrets()).rejects.toThrow('modelStatusProbe');
+    await encryptStoredConfigSecrets({ assertActive: async () => {} });
+    await verifyStoredConfigSecrets();
+    await verifyLegacyConfigScopes();
+    const migrated = await MongoSystemInstanceConfig.findOne({ domain: 'modelStatusProbe' }).lean();
+    expect(migrated?.overrides.webhookToken).toEqual({ secret: expect.any(String) });
+    expect(decryptDomainSecrets('modelStatusProbe', migrated?.overrides).webhookToken).toBe(
+      'existing-webhook-token'
+    );
+    expect(migrated?.revision).toBe((imported?.revision ?? 0) + 2);
+    await encryptStoredConfigSecrets({ assertActive: async () => {} });
+    expect(await MongoSystemInstanceConfig.findOne({ domain: 'modelStatusProbe' }).lean()).toEqual(
+      migrated
+    );
+  });
+
+  it('retains encrypted payment credentials while merging legacy plans', async () => {
+    const stored = encryptDomainSecrets('commercial', {
+      payment: { alipay: { appPrivateKey: 'existing-private-key' } }
+    });
+    await MongoSystemInstanceConfig.create({
+      domain: 'commercial',
+      overrides: stored,
+      revision: 4
+    });
+    await MongoSystemConfigs.create({ type: 'subPlans', value: scopeValues.subPlans });
+
+    await migrateLegacyConfigScopes();
+    await verifyLegacyConfigScopes();
+    const commercial = await MongoSystemInstanceConfig.findOne({ domain: 'commercial' }).lean();
+    expect(commercial?.overrides.payment.alipay.appPrivateKey).toEqual(
+      stored.payment.alipay.appPrivateKey
+    );
+    expect(decryptDomainSecrets('commercial', commercial?.overrides)).toMatchObject({
+      payment: { alipay: { appPrivateKey: 'existing-private-key' } },
+      subPlans: normalizedPlans
+    });
+  });
+
   it('migrates all eight latest scopes, preserves the bound license and old records, and leaves Pro ENV untouched', async () => {
     const createTime = new Date('2026-04-01T00:00:00.000Z');
     const entries = Object.entries(scopeValues);

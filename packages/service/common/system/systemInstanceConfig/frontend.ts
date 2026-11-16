@@ -10,6 +10,7 @@ import {
 } from '@fastgpt/global/common/system/config/frontendProjection';
 import { isValidServiceBaseUrl } from '@fastgpt/global/common/string/url';
 import { serviceEnv } from '../../../env';
+import { resolveFeatureConfigForEdition } from '@fastgpt/global/common/system/config/feature';
 
 export type FrontendConfigContext = {
   /** Pro 本进程不要求 PRO_URL 指向自身；App 缺省按服务连接参数判断。 */
@@ -18,6 +19,7 @@ export type FrontendConfigContext = {
   disableMarketplace?: boolean;
   showGit?: boolean;
   chineseRedirectUrl?: string;
+  wecomLoginAutoRedirect?: boolean;
 };
 
 /** 只选择客户端允许的字段；显式接收候选快照，构建过程中不读取已发布 global。 */
@@ -26,6 +28,10 @@ export const buildSystemFrontendConfig = (
   context: FrontendConfigContext = {}
 ): FastGPTFeConfigsType => {
   const commercialService = context.commercialService ?? Boolean(serviceEnv.PRO_URL);
+  const feature = resolveFeatureConfigForEdition({
+    config: instanceConfig.feature,
+    commercialService
+  });
   const licenseData = commercialService ? instanceConfig.license.data : undefined;
   const proEnv = commercialService
     ? instanceConfig.proEnv
@@ -50,16 +56,15 @@ export const buildSystemFrontendConfig = (
     systemDescription: instanceConfig.site.description,
     favicon: instanceConfig.site.favicon || '/favicon.ico',
     docUrl: instanceConfig.site.docUrl,
-    openAPIDocUrl: instanceConfig.site.openApiDocUrl,
     loginGuideDocUrl: instanceConfig.site.loginGuideDocUrl,
     concatMd: instanceConfig.site.concatMd,
     appTemplateCourse: instanceConfig.site.appTemplateCourse,
-    marketplaceUrl: instanceConfig.site.marketplaceUrl,
+    marketplaceUrl: serviceEnv.MARKETPLACE_URL,
     navbarItems: instanceConfig.site.navbarItems,
 
     // 团队模式由 Pro ENV 控制，Pro 重启时刷新此共享快照；实例 auth.teamMode 不能覆盖。
     teamMode: proEnv.teamMode ?? 'single',
-    wecomLoginAutoRedirect: instanceConfig.auth.wecomLoginAutoRedirect,
+    wecomLoginAutoRedirect: context.wecomLoginAutoRedirect ?? false,
     oauth: buildOauthFeConfig(instanceConfig.auth),
     sso: {
       title: instanceConfig.auth.sso.title,
@@ -75,19 +80,19 @@ export const buildSystemFrontendConfig = (
       enabled: instanceConfig.auth.accountCancellation.enabled
     },
 
-    hideChatCopyrightSetting: instanceConfig.feature.hideChatCopyrightSetting,
-    enable_team_plugin_upload: instanceConfig.feature.enableTeamPluginUpload,
-    show_openai_account: instanceConfig.feature.showOpenaiAccount,
-    enable_team_model: instanceConfig.feature.enableTeamModel,
-    show_dataset_feishu: instanceConfig.feature.showDatasetFeishu,
-    show_dataset_yuque: instanceConfig.feature.showDatasetYuque,
-    show_dataset_dingtalk: instanceConfig.feature.showDatasetDingtalk,
-    show_publish_feishu: instanceConfig.feature.showPublishFeishu,
-    show_publish_dingtalk: instanceConfig.feature.showPublishDingtalk,
-    show_publish_wecom: instanceConfig.feature.showPublishWecom,
-    show_publish_offiaccount: instanceConfig.feature.showPublishOffiaccount,
-    show_publish_wechat: instanceConfig.feature.showPublishWechat,
-    show_compliance_copywriting: instanceConfig.feature.showComplianceCopywriting,
+    hideChatCopyrightSetting: feature.hideChatCopyrightSetting,
+    enable_team_plugin_upload: feature.enableTeamPluginUpload,
+    show_openai_account: feature.showOpenaiAccount,
+    enable_team_model: feature.enableTeamModel,
+    show_dataset_feishu: feature.showDatasetFeishu,
+    show_dataset_yuque: feature.showDatasetYuque,
+    show_dataset_dingtalk: feature.showDatasetDingtalk,
+    show_publish_feishu: feature.showPublishFeishu,
+    show_publish_dingtalk: feature.showPublishDingtalk,
+    show_publish_wecom: feature.showPublishWecom,
+    show_publish_offiaccount: feature.showPublishOffiaccount,
+    show_publish_wechat: feature.showPublishWechat,
+    show_compliance_copywriting: feature.showComplianceCopywriting,
     // 工单与企业认证入口由 Pro 根据实际服务配置决定，不按 PRO_URL 盲目展示
     show_workorder: Boolean(proEnv.show_workorder),
     show_enterprise_auth: Boolean(proEnv.show_enterprise_auth),

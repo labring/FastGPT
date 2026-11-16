@@ -1,13 +1,18 @@
 import { describe, expect, it } from 'vitest';
 import {
+  adminConfigPageFieldsMap,
+  countPageVisibleFields
+} from '@fastgpt/global/common/system/config/pageFields';
+import { resolveSystemInstanceConfig } from '@fastgpt/global/common/system/config/schema';
+import {
   getSystemEdition,
   isCommunityEdition,
   isProEdition,
   isConfigFieldAllowed,
   getDomainAllowedKeys,
   filterDomainDataByEdition,
-  restorePreservedSecrets,
-  SECRET_MASK
+  omitDomainSecrets,
+  getConfiguredDomainSecretKeys
 } from '@fastgpt/global/common/system/config/permission';
 
 describe('Edition detection', () => {
@@ -26,9 +31,53 @@ describe('Edition detection', () => {
 });
 
 describe('Field permissions by edition', () => {
+  it('hides all account/login controls in community and preserves their unconfigured defaults', () => {
+    const page = '/admin/settings/auth';
+    expect(
+      countPageVisibleFields(page, { edition: 'community', enableSaasAdminConfig: true })
+    ).toBe(0);
+    expect(countPageVisibleFields(page, { edition: 'pro' })).toBeGreaterThan(0);
+    for (const key of [
+      'auth.passwordExpiredMonth',
+      'security.passwordLoginMinuteLimitCount',
+      'security.maxLoginSession'
+    ]) {
+      expect(isConfigFieldAllowed(key, 'community')).toBe(false);
+      expect(isConfigFieldAllowed(key, 'pro')).toBe(true);
+    }
+    const defaults = resolveSystemInstanceConfig({});
+    expect(defaults.auth.passwordExpiredMonth).toBeNull();
+    expect(defaults.security).toMatchObject({
+      passwordLoginMinuteLimitCount: 10,
+      maxLoginSession: 10
+    });
+  });
+
+  it('allows vector recall concurrency in all editions and reserves cooldown/evaluation limits for Pro', () => {
+    for (const field of [
+      'resource.exportDatasetLimitMinutes',
+      'resource.websiteSyncLimitMinuted',
+      'performance.task.evalConcurrency'
+    ]) {
+      expect(isConfigFieldAllowed(field, 'community'), field).toBe(false);
+      expect(isConfigFieldAllowed(field, 'pro'), field).toBe(true);
+    }
+    expect(isConfigFieldAllowed('vector.vectorRecallConcurrency', 'community')).toBe(true);
+    expect(isConfigFieldAllowed('vector.vectorRecallConcurrency', 'pro')).toBe(true);
+  });
+
+  it('allows every Agent Sandbox form field in community and pro editions', () => {
+    const fields = adminConfigPageFieldsMap['/admin/subservice/agent-sandbox'];
+    expect(fields.length).toBeGreaterThan(0);
+    for (const field of fields) {
+      expect(isConfigFieldAllowed(field, 'community'), field).toBe(true);
+      expect(isConfigFieldAllowed(field, 'pro'), field).toBe(true);
+    }
+  });
+
   it('allows general fields in community and pro editions', () => {
-    expect(isConfigFieldAllowed('site.name', 'community')).toBe(true);
-    expect(isConfigFieldAllowed('site.name', 'pro')).toBe(true);
+    expect(isConfigFieldAllowed('site.publicUrl', 'community')).toBe(true);
+    expect(isConfigFieldAllowed('site.publicUrl', 'pro')).toBe(true);
     expect(isConfigFieldAllowed('security.csrfEnabled', 'community')).toBe(true);
 
     for (const field of [
@@ -42,6 +91,28 @@ describe('Field permissions by edition', () => {
     }
   });
 
+  it('restricts every site information field, including name and logo, to pro edition', () => {
+    const fields = adminConfigPageFieldsMap['/admin/settings/site'];
+    expect(fields).toContain('site.name');
+    expect(fields).toContain('site.favicon');
+    for (const field of fields) {
+      expect(isConfigFieldAllowed(field, 'community'), field).toBe(false);
+      expect(isConfigFieldAllowed(field, 'pro'), field).toBe(true);
+    }
+  });
+
+  it('restricts feature page fields to Pro but keeps core feature settings editable', () => {
+    const fields = adminConfigPageFieldsMap['/admin/settings/feature'];
+    expect(fields.length).toBeGreaterThan(0);
+    for (const field of fields) {
+      expect(isConfigFieldAllowed(field, 'community'), field).toBe(false);
+      expect(isConfigFieldAllowed(field, 'pro'), field).toBe(true);
+    }
+    expect(getDomainAllowedKeys('feature', 'community')).toEqual(
+      new Set(['agentEngine', 'multipleDataToBase64'])
+    );
+  });
+
   it('restricts pro-only fields from the community edition', () => {
     // commercial fields are pro-only
     expect(isConfigFieldAllowed('commercial.showCoupon', 'community')).toBe(false);
@@ -53,7 +124,7 @@ describe('Field permissions by edition', () => {
     );
     expect(isConfigFieldAllowed('auth.loginProviders.sms.modelDeprecation.zh', 'pro')).toBe(true);
 
-    // subservice fields are pro-only
+    // Code Sandbox 属于社区版和商业版共有能力。
     expect(isConfigFieldAllowed('subservice.codeSandbox.enabled', 'community')).toBe(true);
     expect(isConfigFieldAllowed('subservice.codeSandbox.enabled', 'pro')).toBe(true);
   });
@@ -67,8 +138,7 @@ describe('Field permissions by edition', () => {
     expect(proCommercialKeys.has('payFormUrl')).toBe(true);
 
     const siteKeys = getDomainAllowedKeys('site', 'community');
-    expect(siteKeys.has('name')).toBe(true);
-    expect(siteKeys.has('description')).toBe(true);
+    expect([...siteKeys]).toEqual(['publicUrl']);
   });
 
   it('filters data payload to prevent pro fields from leaking or writing in community edition', () => {
@@ -97,112 +167,34 @@ describe('Field permissions by edition', () => {
       payFormUrl: 'https://pay.example.com'
     });
 
-    // 基础配置在社区版下正常保留
+    // 社区版仅保留核心页的系统访问地址，站点品牌字段由管理接口过滤。
     const filteredSite = filterDomainDataByEdition({
       domain: 'site',
       data: {
         name: 'My Site',
-        description: 'Site Description'
+        description: 'Site Description',
+        favicon: '/custom-logo.png',
+        publicUrl: 'https://fastgpt.example.com'
       },
       edition: 'community'
     });
     expect(filteredSite).toEqual({
-      name: 'My Site',
-      description: 'Site Description'
+      publicUrl: 'https://fastgpt.example.com'
     });
   });
 });
 
-describe('restorePreservedSecrets', () => {
-  it('restores existing secret when submitted value is the mask', () => {
-    const result = restorePreservedSecrets({
-      domain: 'auth',
-      submitted: { loginProviders: { github: { secret: SECRET_MASK, clientId: 'my-client' } } },
-      previous: { loginProviders: { github: { secret: 'real-secret', clientId: 'old-client' } } }
-    });
-
-    // 掩码字段恢复库中真实值，非敏感字段按提交值覆盖
-    expect(result).toEqual({
-      loginProviders: { github: { secret: 'real-secret', clientId: 'my-client' } }
-    });
-  });
-
-  it('drops mask when no previous value can restore it (first save)', () => {
-    const result = restorePreservedSecrets({
-      domain: 'subservice',
-      submitted: {
-        agentSandbox: {
-          sealosdevbox: { token: SECRET_MASK, baseUrl: 'https://sandbox.example.com' }
-        }
-      },
-      previous: undefined
-    });
-
-    // 无上一版本时掩码按未提交丢弃，绝不能把 '******' 写入 DB
-    expect(result).toEqual({
-      agentSandbox: { sealosdevbox: { baseUrl: 'https://sandbox.example.com' } }
-    });
-    expect((result as any).agentSandbox.sealosdevbox.token).toBeUndefined();
-  });
-
-  it('drops mask when previous overrides lacks the secret key', () => {
-    // 密钥值来自 Schema 默认值而非 DB overrides：prevObj 中没有该键
-    const result = restorePreservedSecrets({
-      domain: 'providers',
-      submitted: { documentParse: { customPdf: { key: SECRET_MASK } } },
-      previous: { documentParse: { customPdf: { url: 'https://pdf.example.com' } } }
-    });
-
-    expect(result).toEqual({ documentParse: { customPdf: {} } });
-    expect((result as any).documentParse.customPdf.key).toBeUndefined();
-  });
-
-  it('drops nested mask fields under a new parent object', () => {
-    // 上一版本没有 loginProviders 结构，嵌套层的掩码同样必须被清洗
-    const result = restorePreservedSecrets({
-      domain: 'auth',
-      submitted: { loginProviders: { google: { secret: SECRET_MASK } } },
-      previous: {}
-    });
-
-    expect((result as any).loginProviders.google.secret).toBeUndefined();
-  });
-
-  it('drops mask when previous value is itself a mask', () => {
-    // 防御上一版本存量为掩码的情况，避免掩码自我固化
-    const result = restorePreservedSecrets({
-      domain: 'providers',
-      submitted: { documentParse: { customPdf: { key: SECRET_MASK } } },
-      previous: { documentParse: { customPdf: { key: SECRET_MASK } } }
-    });
-
-    expect(result).toEqual({ documentParse: { customPdf: {} } });
-  });
-
-  it('keeps non-secret fields and real secret submissions untouched', () => {
-    const result = restorePreservedSecrets({
-      domain: 'providers',
-      submitted: {
-        documentParse: {
-          customPdf: { key: 'new-real-key', url: 'https://pdf.example.com' }
-        }
-      },
-      previous: { documentParse: { customPdf: { key: 'old-key' } } }
-    });
-
-    expect(result).toEqual({
-      documentParse: {
-        customPdf: { key: 'new-real-key', url: 'https://pdf.example.com' }
-      }
-    });
-  });
-
-  it('returns submitted payload unchanged for domains without secret keys', () => {
-    const result = restorePreservedSecrets({
-      domain: 'site',
-      submitted: { name: 'My Site' },
-      previous: undefined
-    });
-    expect(result).toEqual({ name: 'My Site' });
+describe('configuration secret projection', () => {
+  it('omits sensitive leaves entirely and reports only configured paths', () => {
+    const input = {
+      documentParse: { customPdf: { key: 'plain', somarkApiKey: '', doc2xKey: '  ', price: 2 } }
+    };
+    const projected = omitDomainSecrets('providers', input);
+    expect(projected).toEqual({ documentParse: { customPdf: { price: 2 } } });
+    expect(getConfiguredDomainSecretKeys('providers', input)).toEqual([
+      'documentParse.customPdf.key'
+    ]);
+    expect(input.documentParse.customPdf.key).toBe('plain');
+    expect(omitDomainSecrets('site', { name: 'Test' })).toEqual({ name: 'Test' });
   });
 });

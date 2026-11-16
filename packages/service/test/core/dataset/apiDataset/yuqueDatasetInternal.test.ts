@@ -65,9 +65,7 @@ describe('useYuqueDatasetRequest 访问内网 API 数据集服务', () => {
 
     try {
       // serviceEnv 在模块加载时解析 process.env，必须先 stub 再导入，无法使用静态 import。
-      getTestInstanceConfig().providers.dataSource.yuqueDatasetBaseUrl =
-        `http://${privateHost}:${address.port}` ??
-        createDefaultInstanceConfig().providers.dataSource.yuqueDatasetBaseUrl;
+      vi.stubEnv('YUQUE_DATASET_BASE_URL', `http://${privateHost}:${address.port}`);
       getTestInstanceConfig().security.checkInternalIp = true;
       vi.resetModules();
       const { useYuqueDatasetRequest: useRequest } =

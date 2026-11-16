@@ -33,7 +33,6 @@ const proxyEnvKeys = [
  */
 describe('getDingtalkAppAccessToken 访问内网钉钉代理', () => {
   const originalProxyEnv = proxyEnvKeys.map((key) => process.env[key]);
-  const originalBaseUrl = process.env.DINGTALK_BASE_URL;
   const originalCheckInternalIp = process.env.CHECK_INTERNAL_IP;
 
   afterEach(() => {
@@ -45,8 +44,7 @@ describe('getDingtalkAppAccessToken 访问内网钉钉代理', () => {
         process.env[key] = value;
       }
     });
-    getTestInstanceConfig().providers.dataSource.dingtalkBaseUrl =
-      originalBaseUrl ?? '' ?? createDefaultInstanceConfig().providers.dataSource.dingtalkBaseUrl;
+
     getTestInstanceConfig().security.checkInternalIp =
       ((originalCheckInternalIp ?? '' === 'true') || originalCheckInternalIp) ?? '' === '1';
     vi.unstubAllEnvs();
@@ -80,9 +78,7 @@ describe('getDingtalkAppAccessToken 访问内网钉钉代理', () => {
 
     try {
       // serviceEnv 在模块加载时解析 process.env，必须先 stub 再导入，无法使用静态 import。
-      getTestInstanceConfig().providers.dataSource.dingtalkBaseUrl =
-        `http://${privateHost}:${address.port}` ??
-        createDefaultInstanceConfig().providers.dataSource.dingtalkBaseUrl;
+      vi.stubEnv('DINGTALK_BASE_URL', `http://${privateHost}:${address.port}`);
       getTestInstanceConfig().security.checkInternalIp = true;
       vi.resetModules();
       const { getDingtalkAppAccessToken } =

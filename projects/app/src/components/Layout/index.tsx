@@ -119,7 +119,9 @@ const Layout = ({ children }: { children: JSX.Element }) => {
     isProService: !!feConfigs.isProService,
     licenseActive: isLicenseValid,
     hasPayCapability: licenseData?.functions?.pay ?? true,
-    enableSaasAdminConfig: feConfigs.enableSaasAdminConfig
+    enableSaasAdminConfig: feConfigs.enableSaasAdminConfig,
+    hasExternalProviderWorkflowVariables:
+      (feConfigs.externalProviderWorkflowVariables?.length ?? 0) > 0
   });
   useEffect(() => {
     if (!isAdminRoute || !initd || !userInfo) return;

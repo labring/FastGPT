@@ -1,13 +1,23 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import {
   updateDomainConfig,
   reloadSystemInstanceConfig
 } from '../../../../common/system/systemInstanceConfig/controller';
-import { getSystemInstanceConfig } from '../../../../common/system/systemInstanceConfig/runtime';
+import {
+  getSystemInstanceConfig,
+  getSystemConfigRuntimeState
+} from '../../../../common/system/systemInstanceConfig/runtime';
 import { MongoSystemInstanceConfig } from '../../../../common/system/systemInstanceConfig/schema';
 
 describe('Runtime Switchover Integration Test', () => {
+  const previousContext = getSystemConfigRuntimeState().frontendContext;
+  afterEach(() => {
+    getSystemConfigRuntimeState().frontendContext = previousContext;
+  });
+
   beforeEach(async () => {
+    // 本组验证商业版可编辑字段的刷新；社区版固定功能值由 Manager 用例单独覆盖。
+    getSystemConfigRuntimeState().frontendContext = { commercialService: true };
     await MongoSystemInstanceConfig.deleteMany({});
     await reloadSystemInstanceConfig();
   });

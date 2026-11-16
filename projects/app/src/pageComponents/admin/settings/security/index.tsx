@@ -1,19 +1,23 @@
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import React, { useEffect, useMemo } from 'react';
-import { Textarea, SimpleGrid } from '@chakra-ui/react';
+import { Box, Textarea, SimpleGrid } from '@chakra-ui/react';
 import { useForm, Controller, useWatch } from 'react-hook-form';
 import { useDomainConfig } from '@/web/common/system/useDomainConfig';
 import AdminSettingPage from '@/pageComponents/admin/settings/AdminSettingPage';
 import AdminSettingSection from '@/pageComponents/admin/settings/AdminSettingSection';
-import AdminFormItem from '@/pageComponents/admin/settings/AdminFormItem';
 import AdminSwitchRow from '@/pageComponents/admin/settings/AdminSwitchRow';
 import type { SettingTOCItem } from '@/pageComponents/admin/settings/AdminSettingTOC';
 import type { SystemInstanceConfigDomainMap } from '@fastgpt/global/common/system/config/schema';
 
 type SecurityConfigForm = Omit<
   SystemInstanceConfigDomainMap['security'],
-  'allowedOrigins' | 'fileUrlWhitelist' | 'passwordLoginMinuteLimitCount' | 'maxLoginSession'
+  | 'allowedOrigins'
+  | 'allowedOriginsEnabled'
+  | 'fileUrlWhitelist'
+  | 'passwordLoginMinuteLimitCount'
+  | 'maxLoginSession'
 > & {
+  allowedOriginsEnabled: boolean;
   allowedOriginsText: string;
   fileUrlWhitelistText: string;
 };
@@ -38,6 +42,7 @@ const SecuritySettingComponent = () => {
       authCookieSecure: false,
       skipFileTypeCheck: false,
       checkExternalFile: false,
+      allowedOriginsEnabled: false,
       allowedOriginsText: '',
       fileUrlWhitelistText: '',
       workflowHttpNode: { ignoreHttpsCertificate: false }
@@ -45,11 +50,14 @@ const SecuritySettingComponent = () => {
   });
 
   const checkExternalFile = useWatch({ control, name: 'checkExternalFile' });
+  const allowedOriginsEnabled = useWatch({ control, name: 'allowedOriginsEnabled' });
 
   useEffect(() => {
     if (effectiveConfig && Object.keys(effectiveConfig).length > 0) {
       reset({
         ...effectiveConfig,
+        allowedOriginsEnabled:
+          effectiveConfig.allowedOriginsEnabled ?? Boolean(effectiveConfig.allowedOrigins?.length),
         allowedOriginsText: (effectiveConfig.allowedOrigins ?? []).join('\n'),
         fileUrlWhitelistText: (effectiveConfig.fileUrlWhitelist ?? []).join('\n')
       });
@@ -70,6 +78,7 @@ const SecuritySettingComponent = () => {
       authCookieSecure: Boolean(formData.authCookieSecure),
       skipFileTypeCheck: Boolean(formData.skipFileTypeCheck),
       checkExternalFile: Boolean(formData.checkExternalFile),
+      allowedOriginsEnabled: Boolean(formData.allowedOriginsEnabled),
       allowedOrigins: parseList(formData.allowedOriginsText),
       fileUrlWhitelist: parseList(formData.fileUrlWhitelistText),
       workflowHttpNode: formData.workflowHttpNode
@@ -143,16 +152,32 @@ const SecuritySettingComponent = () => {
           />
         </SimpleGrid>
 
-        <AdminFormItem
-          label={t('admin:allowed_origins')}
-          tooltip={t('admin:origins_allowed_to_call_the_main_site_api_default_means_unre')}
-        >
-          <Textarea
-            {...register('allowedOriginsText')}
-            rows={4}
-            placeholder="https://app.example.com&#10;https://chat.example.com"
-          />
-        </AdminFormItem>
+        <Box mb={6}>
+          <SimpleGrid columns={[1, 2]} spacingX={16}>
+            <Controller
+              name="allowedOriginsEnabled"
+              control={control}
+              render={({ field }) => (
+                <AdminSwitchRow
+                  label={t('admin:allowed_origins')}
+                  tooltip={t('admin:origins_allowed_to_call_the_main_site_api_default_means_unre')}
+                  isChecked={field.value}
+                  onChange={field.onChange}
+                />
+              )}
+            />
+          </SimpleGrid>
+          {allowedOriginsEnabled && (
+            <Box mt={2}>
+              <Textarea
+                {...register('allowedOriginsText')}
+                aria-label={t('admin:allowed_origins')}
+                rows={4}
+                placeholder={'https://app.example.com\nhttps://chat.example.com'}
+              />
+            </Box>
+          )}
+        </Box>
       </AdminSettingSection>
 
       {/* 2. 文件安全 */}
@@ -170,32 +195,34 @@ const SecuritySettingComponent = () => {
               />
             )}
           />
-          <Controller
-            name="checkExternalFile"
-            control={control}
-            render={({ field }) => (
-              <AdminSwitchRow
-                label={t('admin:check_external_file')}
-                tooltip={t('admin:check_external_file_tip')}
-                isChecked={field.value}
-                onChange={field.onChange}
-              />
-            )}
-          />
         </SimpleGrid>
 
-        {checkExternalFile && (
-          <AdminFormItem
-            label={t('admin:external_resource_domain_whitelist')}
-            tooltip={t('admin:domain_list_allowed_for_loading_external_file_resources_sepa')}
-          >
-            <Textarea
-              {...register('fileUrlWhitelistText')}
-              rows={3}
-              placeholder="cdn.example.com&#10;oss.example.com"
+        <Box mb={6}>
+          <SimpleGrid columns={[1, 2]} spacingX={16}>
+            <Controller
+              name="checkExternalFile"
+              control={control}
+              render={({ field }) => (
+                <AdminSwitchRow
+                  label={t('admin:check_external_file')}
+                  tooltip={t('admin:check_external_file_tip')}
+                  isChecked={field.value}
+                  onChange={field.onChange}
+                />
+              )}
             />
-          </AdminFormItem>
-        )}
+          </SimpleGrid>
+          {checkExternalFile && (
+            <Box mt={2}>
+              <Textarea
+                {...register('fileUrlWhitelistText')}
+                aria-label={t('admin:external_resource_domain_whitelist')}
+                rows={3}
+                placeholder={'cdn.example.com\noss.example.com'}
+              />
+            </Box>
+          )}
+        </Box>
       </AdminSettingSection>
     </AdminSettingPage>
   );

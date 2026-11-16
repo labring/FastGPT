@@ -18,7 +18,10 @@ import {
   type SandboxVerifyTicketQuery,
   type SandboxVerifyTicketResponse
 } from '@fastgpt/global/openapi/core/ai/sandbox/api';
-import { getAgentSandboxCommonConfig } from '@fastgpt/service/core/ai/sandbox/config';
+import {
+  SANDBOX_WS_MAX_MESSAGE_BYTES,
+  SANDBOX_WS_MAX_FRAME_BYTES
+} from '@fastgpt/service/core/ai/sandbox/constants';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { resolveSandboxPreviewSession } from '@fastgpt/service/core/ai/sandbox/application/preview';
 
@@ -114,14 +117,12 @@ async function handler(
 
   const endpoint = await sandbox.provider.getEndpoint(authContext.ideAgentPort);
 
-  const common = getAgentSandboxCommonConfig();
-
   return SandboxVerifyTicketResponseSchema.parse({
     sandbox_url: endpoint.url,
     agent_token: agentPassword,
     ws_limits: {
-      max_message_bytes: common.wsMaxMessageBytes,
-      max_frame_bytes: common.wsMaxFrameBytes
+      max_message_bytes: SANDBOX_WS_MAX_MESSAGE_BYTES,
+      max_frame_bytes: SANDBOX_WS_MAX_FRAME_BYTES
     }
   });
 }

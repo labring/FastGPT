@@ -171,7 +171,6 @@ export type ConfigFormType = {
       favicon: string;
       docUrl: string;
       loginGuideDocUrl: string;
-      openAPIDocUrl: string;
       systemTitle: string;
       customApiDomain: string;
       customSharePageDomain: string;

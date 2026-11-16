@@ -3,17 +3,289 @@ import {
   getDomainConfig,
   updateDomainConfig,
   batchUpdateDomainConfigs,
-  getSystemInstanceConfigSnapshot
+  getSystemInstanceConfigSnapshot,
+  reloadSystemInstanceConfig
 } from '../../../../common/system/systemInstanceConfig/controller';
+import { getSystemInstanceConfig } from '../../../../common/system/systemInstanceConfig/runtime';
+import { connectionMongo } from '../../../../common/mongo';
 import { MongoSystemInstanceConfig } from '../../../../common/system/systemInstanceConfig/schema';
 import { MongoSystemConfigs } from '../../../../common/system/config/schema';
 import { getDomainDefaultConfig } from '@fastgpt/global/common/system/config/schema';
-import { SECRET_MASK } from '@fastgpt/global/common/system/config/permission';
+import { encryptSecret } from '@fastgpt/service/common/secret/aes256gcm';
 import { ApiRequestInputParseError } from '@fastgpt/service/common/zod/requestParseError';
 
 describe('systemInstanceConfig controller', () => {
   beforeEach(async () => {
     await MongoSystemInstanceConfig.deleteMany({});
+  });
+
+  it('accepts an unset runtime URL but rejects empty and malformed administrative URL updates', async () => {
+    expect((await getDomainConfig('site')).effectiveConfig.publicUrl).toBe('');
+    for (const publicUrl of [
+      '',
+      '   ',
+      'invalid',
+      'https://u:p@site.test',
+      'https://site.test?key=value'
+    ]) {
+      await expect(
+        updateDomainConfig({
+          domain: 'site',
+          expectedRevision: 0,
+          submittedOverrides: { publicUrl },
+          actor: { actor: 'admin' }
+        })
+      ).rejects.toBeInstanceOf(ApiRequestInputParseError);
+    }
+    expect(await MongoSystemInstanceConfig.findOne({ domain: 'site' })).toBeNull();
+    const result = await updateDomainConfig({
+      domain: 'site',
+      expectedRevision: 0,
+      submittedOverrides: { publicUrl: ' https://main.test/ ' },
+      actor: { actor: 'admin' }
+    });
+    expect(result.effectiveConfig.publicUrl).toBe('https://main.test');
+  });
+
+  it.each(['missing', 'empty'])(
+    'rejects new external provider variables for a %s configuration before writing any scopes',
+    async (state) => {
+      if (state === 'empty') {
+        await MongoSystemInstanceConfig.create({
+          domain: 'providers',
+          revision: 1,
+          overrides: { externalProviderWorkflowVariables: [] }
+        });
+      }
+      await expect(
+        batchUpdateDomainConfigs({
+          items: [
+            { domain: 'site', expectedRevision: 0, overrides: { name: 'Must not be saved' } },
+            {
+              domain: 'providers',
+              expectedRevision: state === 'empty' ? 1 : 0,
+              overrides: {
+                externalProviderWorkflowVariables: [{ name: 'New', key: 'System_new' }]
+              }
+            }
+          ],
+          actor: { actor: 'admin' }
+        })
+      ).rejects.toMatchObject({ statusCode: 400 });
+      expect(await MongoSystemInstanceConfig.findOne({ domain: 'site' }).lean()).toBeNull();
+      expect(
+        (await getDomainConfig('providers')).effectiveConfig.externalProviderWorkflowVariables
+      ).toEqual([]);
+    }
+  );
+
+  it('preserves and edits existing external variables but prevents reactivation after clearing', async () => {
+    const entries = [{ name: 'Legacy', key: 'System_legacy', intro: '', isOpen: true, url: '' }];
+    await MongoSystemInstanceConfig.create({
+      domain: 'providers',
+      revision: 1,
+      overrides: { externalProviderWorkflowVariables: entries }
+    });
+    const unrelated = await updateDomainConfig({
+      domain: 'providers',
+      expectedRevision: 1,
+      submittedOverrides: { documentParse: { customPdf: { price: 2.5 } } },
+      actor: { actor: 'admin' }
+    });
+    expect(unrelated.effectiveConfig.externalProviderWorkflowVariables).toEqual(entries);
+
+    const edited = await updateDomainConfig({
+      domain: 'providers',
+      expectedRevision: unrelated.revision,
+      submittedOverrides: {
+        externalProviderWorkflowVariables: [{ ...entries[0], name: 'Edited' }]
+      },
+      actor: { actor: 'admin' }
+    });
+    expect(edited.effectiveConfig.externalProviderWorkflowVariables[0].name).toBe('Edited');
+
+    const cleared = await updateDomainConfig({
+      domain: 'providers',
+      expectedRevision: edited.revision,
+      submittedOverrides: { externalProviderWorkflowVariables: [] },
+      actor: { actor: 'admin' }
+    });
+    expect(cleared.effectiveConfig.externalProviderWorkflowVariables).toEqual([]);
+    expect(cleared.effectiveConfig.documentParse.customPdf.price).toBe(2.5);
+    await expect(
+      updateDomainConfig({
+        domain: 'providers',
+        expectedRevision: cleared.revision,
+        submittedOverrides: { externalProviderWorkflowVariables: entries },
+        actor: { actor: 'admin' }
+      })
+    ).rejects.toMatchObject({ statusCode: 400 });
+    expect(
+      (await getDomainConfig('providers')).effectiveConfig.externalProviderWorkflowVariables
+    ).toEqual([]);
+  });
+
+  it('stores the origins switch independently while retaining the legacy allowlist', async () => {
+    const origins = ['https://legacy.example.com'];
+    await MongoSystemInstanceConfig.create({
+      domain: 'security',
+      revision: 1,
+      overrides: { allowedOrigins: origins }
+    });
+    const disabled = await updateDomainConfig({
+      domain: 'security',
+      expectedRevision: 1,
+      submittedOverrides: { allowedOriginsEnabled: false },
+      actor: { actor: 'admin' }
+    });
+    const stored = await MongoSystemInstanceConfig.findOne({ domain: 'security' }).lean();
+    expect(stored?.overrides).toMatchObject({
+      allowedOriginsEnabled: false,
+      allowedOrigins: origins
+    });
+    expect((await getSystemInstanceConfigSnapshot()).snapshot.security).toMatchObject({
+      allowedOriginsEnabled: false,
+      allowedOrigins: origins
+    });
+    const enabled = await updateDomainConfig({
+      domain: 'security',
+      expectedRevision: disabled.revision,
+      submittedOverrides: { allowedOriginsEnabled: true },
+      actor: { actor: 'admin' }
+    });
+    expect(enabled.effectiveConfig).toMatchObject({
+      allowedOriginsEnabled: true,
+      allowedOrigins: origins
+    });
+  });
+
+  it.each([false, true])(
+    'prevents creating deprecated fast-login entries with an existing empty scope: %s',
+    async (existing) => {
+      if (existing) {
+        await MongoSystemInstanceConfig.create({
+          domain: 'auth',
+          revision: 1,
+          overrides: { fastLogin: [] }
+        });
+      }
+      await expect(
+        updateDomainConfig({
+          domain: 'auth',
+          expectedRevision: existing ? 1 : 0,
+          submittedOverrides: { fastLogin: [{ key: 'new', authUrl: 'https://login.test' }] },
+          actor: { actor: 'admin' }
+        })
+      ).rejects.toMatchObject({ statusCode: 400 });
+      expect((await getDomainConfig('auth')).effectiveConfig.fastLogin).toEqual([]);
+    }
+  );
+
+  it('keeps legacy fast login editable and preserves its clear intent without allowing reactivation', async () => {
+    const legacy = [{ key: 'legacy', authUrl: 'https://legacy-login.test' }];
+    await MongoSystemInstanceConfig.create({
+      domain: 'auth',
+      revision: 1,
+      overrides: { fastLogin: legacy }
+    });
+    const edited = await updateDomainConfig({
+      domain: 'auth',
+      expectedRevision: 1,
+      submittedOverrides: { fastLogin: [{ key: 'legacy', authUrl: 'https://updated-login.test' }] },
+      actor: { actor: 'admin' }
+    });
+    expect(edited.effectiveConfig.fastLogin[0].authUrl).toBe('https://updated-login.test');
+    const cleared = await updateDomainConfig({
+      domain: 'auth',
+      expectedRevision: edited.revision,
+      submittedOverrides: { fastLogin: [] },
+      actor: { actor: 'admin' }
+    });
+    expect(cleared.effectiveConfig.fastLogin).toEqual([]);
+    const stored = await MongoSystemInstanceConfig.findOne({ domain: 'auth' }).lean();
+    expect(stored?.explicitDefaultPaths).toContain('fastLogin');
+    await expect(
+      updateDomainConfig({
+        domain: 'auth',
+        expectedRevision: cleared.revision,
+        submittedOverrides: { fastLogin: legacy },
+        actor: { actor: 'admin' }
+      })
+    ).rejects.toMatchObject({ statusCode: 400 });
+    const unrelated = await updateDomainConfig({
+      domain: 'auth',
+      expectedRevision: cleared.revision,
+      submittedOverrides: { openApiKeyMaxCount: 42 },
+      actor: { actor: 'admin' }
+    });
+    expect(unrelated.effectiveConfig.fastLogin).toEqual([]);
+  });
+
+  it.each([undefined, false])(
+    'prevents enabling deprecated OpenAI accounts from %s',
+    async (value) => {
+      if (value === false) {
+        await MongoSystemInstanceConfig.create({
+          domain: 'feature',
+          revision: 1,
+          overrides: { showOpenaiAccount: false }
+        });
+      }
+      await expect(
+        batchUpdateDomainConfigs({
+          items: [
+            { domain: 'site', expectedRevision: 0, overrides: { name: 'Should not be saved' } },
+            {
+              domain: 'feature',
+              expectedRevision: value === false ? 1 : 0,
+              overrides: { showOpenaiAccount: true }
+            }
+          ],
+          actor: { actor: 'admin' }
+        })
+      ).rejects.toMatchObject({ statusCode: 400 });
+      expect(await MongoSystemInstanceConfig.findOne({ domain: 'site' }).lean()).toBeNull();
+      expect((await getDomainConfig('feature')).effectiveConfig.showOpenaiAccount).toBe(false);
+    }
+  );
+
+  it('preserves an enabled legacy OpenAI account switch but never re-enables it after saving false', async () => {
+    await MongoSystemInstanceConfig.create({
+      domain: 'feature',
+      revision: 1,
+      overrides: { showOpenaiAccount: true }
+    });
+    const kept = await updateDomainConfig({
+      domain: 'feature',
+      expectedRevision: 1,
+      submittedOverrides: { showOpenaiAccount: true, enableTeamModel: true },
+      actor: { actor: 'admin' }
+    });
+    expect(kept.effectiveConfig.showOpenaiAccount).toBe(true);
+    const closed = await updateDomainConfig({
+      domain: 'feature',
+      expectedRevision: kept.revision,
+      submittedOverrides: { showOpenaiAccount: false },
+      actor: { actor: 'admin' }
+    });
+    expect(closed.effectiveConfig.showOpenaiAccount).toBe(false);
+    const stored = await MongoSystemInstanceConfig.findOne({ domain: 'feature' }).lean();
+    expect(stored?.explicitDefaultPaths).toContain('showOpenaiAccount');
+    await expect(
+      updateDomainConfig({
+        domain: 'feature',
+        expectedRevision: closed.revision,
+        submittedOverrides: { showOpenaiAccount: true },
+        actor: { actor: 'admin' }
+      })
+    ).rejects.toMatchObject({ statusCode: 400 });
+    const unrelated = await updateDomainConfig({
+      domain: 'feature',
+      expectedRevision: closed.revision,
+      submittedOverrides: { enableTeamModel: false },
+      actor: { actor: 'admin' }
+    });
+    expect(unrelated.effectiveConfig.showOpenaiAccount).toBe(false);
   });
 
   it('changes the runtime version when a scope is recreated with the same revision', async () => {
@@ -44,8 +316,7 @@ describe('systemInstanceConfig controller', () => {
       expect(res.effectiveConfig).toEqual(getDomainDefaultConfig('site'));
     });
 
-    it('returns masked secrets when maskSecrets option is true', async () => {
-      // 先写入一个带 Key 的提供商配置
+    it('reads legacy plaintext and decrypts persisted ciphertext', async () => {
       await MongoSystemInstanceConfig.create({
         domain: 'providers',
         revision: 1,
@@ -53,22 +324,20 @@ describe('systemInstanceConfig controller', () => {
           documentParse: {
             customPdf: {
               url: 'https://pdf.example.com',
-              key: 'real-pdf-api-key-12345'
+              key: 'legacy-plaintext',
+              doc2xKey: { secret: encryptSecret('encrypted-key') }
             }
           }
         },
         updatedBy: { actor: 'admin' }
       });
 
-      const maskedRes = await getDomainConfig('providers', { maskSecrets: true });
-      expect(maskedRes.effectiveConfig.documentParse.customPdf.key).toBe(SECRET_MASK);
-      expect(maskedRes.overrides.documentParse?.customPdf?.key).toBe(SECRET_MASK);
-
-      const unmaskedRes = await getDomainConfig('providers');
-      expect(unmaskedRes.effectiveConfig.documentParse.customPdf.key).toBe(
-        'real-pdf-api-key-12345'
-      );
-      expect(unmaskedRes.overrides.documentParse?.customPdf?.key).toBe('real-pdf-api-key-12345');
+      const result = await getDomainConfig('providers');
+      expect(result.effectiveConfig.documentParse.customPdf).toMatchObject({
+        key: 'legacy-plaintext',
+        doc2xKey: 'encrypted-key'
+      });
+      expect(result.overrides.documentParse?.customPdf?.doc2xKey).toBe('encrypted-key');
     });
   });
 
@@ -100,7 +369,7 @@ describe('systemInstanceConfig controller', () => {
       }
     );
 
-    it('masks and restores the proxy secret while validating the real saved value', async () => {
+    it('validates the decrypted proxy secret when a partial update omits it', async () => {
       const secret = 'proxy_secret_32_characters_minimum';
       await updateDomainConfig({
         domain: 'subservice',
@@ -114,14 +383,11 @@ describe('systemInstanceConfig controller', () => {
         },
         actor: { actor: 'admin' }
       });
-      const masked = await getDomainConfig('subservice', { maskSecrets: true });
-      expect(masked.effectiveConfig.agentSandbox.proxy.secret).toBe(SECRET_MASK);
-      expect(masked.overrides.agentSandbox?.proxy?.secret).toBe(SECRET_MASK);
       await updateDomainConfig({
         domain: 'subservice',
         expectedRevision: 1,
         submittedOverrides: {
-          agentSandbox: { proxy: { wsUrl: 'wss://updated.test', secret: SECRET_MASK } }
+          agentSandbox: { proxy: { wsUrl: 'wss://updated.test' } }
         },
         actor: { actor: 'admin' }
       });
@@ -199,8 +465,7 @@ describe('systemInstanceConfig controller', () => {
       ).rejects.toThrowError(/Revision conflict/);
     });
 
-    it('preserves existing secret when client submits mask string', async () => {
-      // 1. 首次保存 secret
+    it('treats a mask-shaped string as a replacement secret', async () => {
       await updateDomainConfig({
         domain: 'providers',
         expectedRevision: 0,
@@ -215,7 +480,6 @@ describe('systemInstanceConfig controller', () => {
         actor: { actor: 'admin' }
       });
 
-      // 2. 再次更新时，前端传回掩码 '******'
       const updated = await updateDomainConfig({
         domain: 'providers',
         expectedRevision: 1,
@@ -223,7 +487,7 @@ describe('systemInstanceConfig controller', () => {
           documentParse: {
             customPdf: {
               url: 'https://pdf.new-domain.com',
-              key: SECRET_MASK
+              key: '******'
             }
           }
         },
@@ -233,7 +497,10 @@ describe('systemInstanceConfig controller', () => {
       expect(updated.effectiveConfig.documentParse.customPdf.url).toBe(
         'https://pdf.new-domain.com'
       );
-      expect(updated.effectiveConfig.documentParse.customPdf.key).toBe('original-secret-key'); // 保留原有密钥！
+      expect(updated.effectiveConfig.documentParse.customPdf.key).toBe('******');
+      expect((await getDomainConfig('providers')).effectiveConfig.documentParse.customPdf.key).toBe(
+        '******'
+      );
     });
 
     describe('partial override merge', () => {
@@ -266,6 +533,9 @@ describe('systemInstanceConfig controller', () => {
       });
 
       it('merges nested objects and preserves an omitted secret', async () => {
+        const storedKey = (overrides: unknown) =>
+          (overrides as { documentParse?: { customPdf?: { key?: unknown } } } | undefined)
+            ?.documentParse?.customPdf?.key;
         await updateDomainConfig({
           domain: 'providers',
           expectedRevision: 0,
@@ -279,6 +549,11 @@ describe('systemInstanceConfig controller', () => {
           },
           actor: { actor: 'admin' }
         });
+
+        const firstDoc = await MongoSystemInstanceConfig.findOne({ domain: 'providers' }).lean();
+        const firstStoredOverrides = firstDoc?.overrides;
+        expect(storedKey(firstStoredOverrides)).toEqual({ secret: expect.any(String) });
+        expect(JSON.stringify(firstDoc?.overrides)).not.toContain('original-secret-key');
 
         const updated = await updateDomainConfig({
           domain: 'providers',
@@ -296,6 +571,39 @@ describe('systemInstanceConfig controller', () => {
         expect(updated.overrides.documentParse?.customPdf?.url).toBe('https://pdf.new-domain.com');
         expect(updated.overrides.documentParse?.customPdf?.key).toBe('original-secret-key');
         expect(updated.effectiveConfig.documentParse.customPdf.key).toBe('original-secret-key');
+        const preserved = await MongoSystemInstanceConfig.findOne({ domain: 'providers' }).lean();
+        expect(storedKey(preserved?.overrides)).toEqual(storedKey(firstStoredOverrides));
+
+        const snapshot = await getSystemInstanceConfigSnapshot();
+        expect(snapshot.snapshot.providers.documentParse.customPdf.key).toBe('original-secret-key');
+
+        await updateDomainConfig({
+          domain: 'providers',
+          expectedRevision: 2,
+          submittedOverrides: { documentParse: { customPdf: { key: 'replacement-key' } } },
+          actor: { actor: 'admin' }
+        });
+        const replacementDoc = await MongoSystemInstanceConfig.findOne({
+          domain: 'providers'
+        }).lean();
+        expect(storedKey(replacementDoc?.overrides)).toEqual({ secret: expect.any(String) });
+        expect(storedKey(replacementDoc?.overrides)).not.toEqual(storedKey(firstStoredOverrides));
+        expect(
+          (await getDomainConfig('providers')).effectiveConfig.documentParse.customPdf.key
+        ).toBe('replacement-key');
+
+        await updateDomainConfig({
+          domain: 'providers',
+          expectedRevision: 3,
+          submittedOverrides: { documentParse: { customPdf: { key: '' } } },
+          actor: { actor: 'admin' }
+        });
+        const clearedDoc = await MongoSystemInstanceConfig.findOne({ domain: 'providers' }).lean();
+        expect(clearedDoc?.overrides).not.toHaveProperty('documentParse.customPdf.key');
+        expect(clearedDoc?.explicitDefaultPaths).toContain('documentParse.customPdf.key');
+        expect(
+          (await getDomainConfig('providers')).effectiveConfig.documentParse.customPdf.key
+        ).toBe('');
       });
 
       it('treats an empty string as an explicit override', async () => {
@@ -405,6 +713,48 @@ describe('systemInstanceConfig controller', () => {
   });
 
   describe('getSystemInstanceConfigSnapshot', () => {
+    it('does not publish any new scope when stored ciphertext cannot be authenticated', async () => {
+      await batchUpdateDomainConfigs({
+        items: [
+          { domain: 'site', expectedRevision: 0, overrides: { name: 'Published site' } },
+          {
+            domain: 'providers',
+            expectedRevision: 0,
+            overrides: { documentParse: { customPdf: { key: 'valid-key' } } }
+          }
+        ],
+        actor: { actor: 'admin' }
+      });
+      const published = await reloadSystemInstanceConfig();
+      const frontend = global.feConfigs;
+      const version = global.systemInitBufferId;
+
+      await MongoSystemInstanceConfig.collection.updateOne(
+        { domain: 'site' },
+        { $set: { 'overrides.name': 'Unpublished site' }, $inc: { revision: 1 } }
+      );
+      await MongoSystemInstanceConfig.collection.updateOne(
+        { domain: 'providers' },
+        {
+          $set: {
+            'overrides.documentParse.customPdf.key': {
+              secret: `${'0'.repeat(32)}:00:${'0'.repeat(32)}`
+            }
+          },
+          $inc: { revision: 1 }
+        }
+      );
+
+      await expect(reloadSystemInstanceConfig()).rejects.toThrow(
+        'Unable to decrypt configuration secret: providers.documentParse.customPdf.key'
+      );
+      expect(getSystemInstanceConfig()).toBe(published);
+      expect(getSystemInstanceConfig().site.name).toBe('Published site');
+      expect(getSystemInstanceConfig().providers.documentParse.customPdf.key).toBe('valid-key');
+      expect(global.feConfigs).toBe(frontend);
+      expect(global.systemInitBufferId).toBe(version);
+    });
+
     it.each([undefined, { readPreference: 'primary' as const }])(
       'uses the primary for a snapshot with options %j',
       async (options) => {
@@ -447,6 +797,98 @@ describe('systemInstanceConfig controller', () => {
   });
 
   describe('batchUpdateDomainConfigs (cross-domain atomic transaction)', () => {
+    it('rejects client ciphertext wrappers without changing any domain or its existing ciphertext', async () => {
+      await batchUpdateDomainConfigs({
+        items: [
+          { domain: 'site', expectedRevision: 0, overrides: { name: 'Before' } },
+          {
+            domain: 'providers',
+            expectedRevision: 0,
+            overrides: { documentParse: { customPdf: { key: 'original-key' } } }
+          }
+        ],
+        actor: { actor: 'admin' }
+      });
+      const before = await MongoSystemInstanceConfig.findOne({ domain: 'providers' }).lean();
+      const ciphertext = { secret: encryptSecret('injected-key') };
+
+      await expect(
+        batchUpdateDomainConfigs({
+          items: [
+            { domain: 'site', expectedRevision: 1, overrides: { name: 'Must not save' } },
+            {
+              domain: 'providers',
+              expectedRevision: 1,
+              overrides: { documentParse: { customPdf: { key: ciphertext } } }
+            }
+          ],
+          actor: { actor: 'admin' }
+        })
+      ).rejects.toBeInstanceOf(ApiRequestInputParseError);
+
+      expect(await MongoSystemInstanceConfig.findOne({ domain: 'site' }).lean()).toMatchObject({
+        revision: 1,
+        overrides: { name: 'Before' }
+      });
+      const after = await MongoSystemInstanceConfig.findOne({ domain: 'providers' }).lean();
+      expect(after?.revision).toBe(1);
+      expect(after?.overrides).toEqual(before?.overrides);
+      expect((await getDomainConfig('providers')).effectiveConfig.documentParse.customPdf.key).toBe(
+        'original-key'
+      );
+    });
+
+    it('rolls back already written secret and ordinary scopes on a later transaction conflict', async () => {
+      await batchUpdateDomainConfigs({
+        items: [
+          { domain: 'site', expectedRevision: 0, overrides: { name: 'Before' } },
+          {
+            domain: 'providers',
+            expectedRevision: 0,
+            overrides: { documentParse: { customPdf: { key: 'original-key' } } }
+          }
+        ],
+        actor: { actor: 'admin' }
+      });
+      const before = await MongoSystemInstanceConfig.findOne({ domain: 'providers' }).lean();
+      const session = await connectionMongo.startSession();
+      try {
+        // 两次 site 都以 revision 1 预检；第二次写入时第一个 site 更新已使 revision 变为 2。
+        await expect(
+          session.withTransaction(() =>
+            batchUpdateDomainConfigs(
+              {
+                items: [
+                  {
+                    domain: 'providers',
+                    expectedRevision: 1,
+                    overrides: { documentParse: { customPdf: { key: 'must-roll-back' } } }
+                  },
+                  { domain: 'site', expectedRevision: 1, overrides: { name: 'Must roll back' } },
+                  { domain: 'site', expectedRevision: 1, overrides: { name: 'Conflict' } }
+                ],
+                actor: { actor: 'admin' }
+              },
+              session
+            )
+          )
+        ).rejects.toThrow(/Revision conflict/);
+      } finally {
+        await session.endSession();
+      }
+
+      expect(await MongoSystemInstanceConfig.findOne({ domain: 'site' }).lean()).toMatchObject({
+        revision: 1,
+        overrides: { name: 'Before' }
+      });
+      const after = await MongoSystemInstanceConfig.findOne({ domain: 'providers' }).lean();
+      expect(after?.revision).toBe(1);
+      expect(after?.overrides).toEqual(before?.overrides);
+      expect((await getDomainConfig('providers')).effectiveConfig.documentParse.customPdf.key).toBe(
+        'original-key'
+      );
+    });
+
     it('atomically saves multiple domains in a single transaction', async () => {
       const updated = await batchUpdateDomainConfigs({
         items: [
@@ -509,8 +951,10 @@ describe('systemInstanceConfig controller', () => {
         docUrl: 'https://custom-doc.example.com',
         scripts: [{ src: 'a.js' }]
       });
-      expect(updated.effectiveConfig.docUrl).toBe('https://custom-doc.example.com');
-      expect(updated.effectiveConfig.scripts).toEqual([{ src: 'a.js' }]);
+      expect(updated.effectiveConfig).toMatchObject({
+        docUrl: 'https://custom-doc.example.com',
+        scripts: [{ src: 'a.js' }]
+      });
     });
 
     it.each([
@@ -824,7 +1268,7 @@ describe('systemInstanceConfig controller', () => {
         const planDoc = await MongoSystemInstanceConfig.findOne({ domain: 'commercial' })
           .sort({ createTime: -1 })
           .lean();
-        expect(planDoc?.overrides?.subPlans?.extraDatasetSize).toEqual({ price: 5 });
+        expect(planDoc?.overrides).toMatchObject({ subPlans: { extraDatasetSize: { price: 5 } } });
         expect(await MongoSystemConfigs.countDocuments({ type: 'fastgpt' })).toBe(0);
       });
 
@@ -856,7 +1300,9 @@ describe('systemInstanceConfig controller', () => {
         const firstPlan = await MongoSystemInstanceConfig.findOne({ domain: 'commercial' })
           .sort({ createTime: -1 })
           .lean();
-        expect(firstPlan?.overrides?.subPlans?.extraDatasetSize).toEqual({ price: 7 });
+        expect(firstPlan?.overrides).toMatchObject({
+          subPlans: { extraDatasetSize: { price: 7 } }
+        });
 
         await expect(
           batchUpdateDomainConfigs({
@@ -870,7 +1316,9 @@ describe('systemInstanceConfig controller', () => {
         const latestPlan = await MongoSystemInstanceConfig.findOne({ domain: 'commercial' })
           .sort({ createTime: -1 })
           .lean();
-        expect(latestPlan?.overrides?.subPlans?.extraDatasetSize).toEqual({ price: 7 });
+        expect(latestPlan?.overrides).toMatchObject({
+          subPlans: { extraDatasetSize: { price: 7 } }
+        });
       });
     });
 

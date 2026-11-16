@@ -34,7 +34,7 @@ const getSystemWhiteList = () => {
   appendHost({ list, value: getStorageExternalEndpoint() });
   appendHost({ list, value: serviceEnv.STORAGE_R2_PUBLIC_ENDPOINT });
   appendHost({ list, value: getStorageS3CdnEndpoint() });
-  appendHost({ list, value: serviceEnv.FE_DOMAIN });
+  appendHost({ list, value: getSystemInstanceConfig().site.publicUrl });
   appendHost({ list, value: serviceEnv.PRO_URL });
   return list;
 };

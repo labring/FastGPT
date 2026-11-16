@@ -6,8 +6,7 @@ import {
   NumberInputStepper,
   NumberIncrementStepper,
   NumberDecrementStepper,
-  SimpleGrid,
-  Text
+  SimpleGrid
 } from '@chakra-ui/react';
 import { useForm, Controller } from 'react-hook-form';
 import { useAdminConfigSaveRequest } from '@/web/common/system/useAdminConfigSaveRequest';
@@ -17,7 +16,6 @@ import AdminSettingPage from '@/pageComponents/admin/settings/AdminSettingPage';
 import AdminSettingSection from '@/pageComponents/admin/settings/AdminSettingSection';
 import AdminFormItem from '@/pageComponents/admin/settings/AdminFormItem';
 import AdminNumberInput from '@/pageComponents/admin/settings/AdminNumberInput';
-import AdminReadonlyInput from '@/pageComponents/admin/settings/AdminReadonlyInput';
 import type { SettingTOCItem } from '@/pageComponents/admin/settings/AdminSettingTOC';
 import type { SystemInstanceConfigDomainMap } from '@fastgpt/global/common/system/config/schema';
 import { ResourceConfigSchema } from '@fastgpt/global/common/system/config/schemas/resource';
@@ -66,21 +64,28 @@ const LimitsSettingComponent = () => {
   const { isFieldVisible, filterConfigDataByEdition } = useAdminPermission();
   const showVectorRecallConcurrency = isFieldVisible('vector.vectorRecallConcurrency');
   const showEvaluationMaxRows = isFieldVisible('resource.evaluationMaxRows');
+  const showExportCooldown = isFieldVisible('resource.exportDatasetLimitMinutes');
+  const showWebsiteSyncCooldown = isFieldVisible('resource.websiteSyncLimitMinuted');
+  const showEvaluationConcurrency = isFieldVisible('performance.task.evalConcurrency');
+  const showExportSync = showExportCooldown || showWebsiteSyncCooldown;
+  const showTask = showEvaluationMaxRows || showEvaluationConcurrency;
   const tocItems: SettingTOCItem[] = useMemo(
     () => [
       { id: 'requestAndText', label: t('admin:request_text_limits') },
       { id: 'folder', label: t('admin:folder_structure_limits') },
       { id: 'uploadAndExpiry', label: t('admin:file_upload_validity') },
       { id: 'datasetArchive', label: t('admin:dataset_archive_download') },
-      { id: 'exportSync', label: t('admin:export_sync_rate_limiting') },
+      ...(showExportSync
+        ? [{ id: 'exportSync', label: t('admin:export_sync_rate_limiting') }]
+        : []),
       { id: 'workflow', label: t('admin:workflow_execution_limits') },
       { id: 'parse', label: t('admin:document_parsing_limits') },
       { id: 'dataset', label: t('admin:dataset_processing_concurrency') },
       { id: 'vectorIndex', label: t('admin:vector_index_parameters') },
       { id: 'chatAndTracking', label: t('admin:chat_rate_limiting_tracking') },
-      { id: 'taskAndChannel', label: t('admin:task_channel_concurrency') }
+      ...(showTask ? [{ id: 'task', label: t('admin:task_concurrency') }] : [])
     ],
-    [t]
+    [t, showExportSync, showTask]
   );
   const resource = useDomainConfig('resource');
   const performance = useDomainConfig('performance');
@@ -148,8 +153,12 @@ const LimitsSettingComponent = () => {
               datasetArchive: ResourceConfigSchema.shape.datasetArchive.parse(
                 formData.datasetArchive
               ),
-              exportDatasetLimitMinutes: Number(formData.exportDatasetLimitMinutes) || 0,
-              websiteSyncLimitMinuted: Number(formData.websiteSyncLimitMinuted) || 0
+              ...(showExportCooldown
+                ? { exportDatasetLimitMinutes: Number(formData.exportDatasetLimitMinutes) || 0 }
+                : {}),
+              ...(showWebsiteSyncCooldown
+                ? { websiteSyncLimitMinuted: Number(formData.websiteSyncLimitMinuted) || 0 }
+                : {})
             }
           },
           {
@@ -161,8 +170,7 @@ const LimitsSettingComponent = () => {
               dataset: formData.dataset,
               chat: formData.chat,
               tracking: formData.tracking,
-              task: formData.task,
-              channel: formData.channel
+              ...(showEvaluationConcurrency ? { task: formData.task } : {})
             }
           },
           {
@@ -500,24 +508,6 @@ const LimitsSettingComponent = () => {
             />
           </AdminFormItem>
         </SimpleGrid>
-
-        <Text fontSize={'sm'} fontWeight={'medium'} color={'myGray.700'} mt={6} mb={3}>
-          {t('admin:object_storage_backend_read_only')}
-        </Text>
-        <SimpleGrid columns={[1, 2]} spacing={5}>
-          <AdminFormItem
-            label={t('admin:object_storage_driver_status')}
-            tooltip={t('admin:infrastructure_connections_configured_via_storage_environmen')}
-          >
-            <AdminReadonlyInput value={t('admin:storage_injected_via_env')} />
-          </AdminFormItem>
-          <AdminFormItem
-            label={t('admin:storage_bucket_topology')}
-            tooltip={t('admin:private_and_public_buckets_have_been_initialized')}
-          >
-            <AdminReadonlyInput value={t('admin:storage_bucket_initialized')} />
-          </AdminFormItem>
-        </SimpleGrid>
       </AdminSettingSection>
 
       <AdminSettingSection
@@ -557,61 +547,71 @@ const LimitsSettingComponent = () => {
       </AdminSettingSection>
 
       {/* 4. 导出与同步限流 */}
-      <AdminSettingSection id="exportSync" title={t('admin:export_sync_rate_limiting')} showDivider>
-        <SimpleGrid columns={[1, 2]} spacing={5}>
-          <AdminFormItem
-            label={t('admin:dataset_export_cooldown_minutes_2')}
-            tooltip={t('admin:cooldown_minutes_between_two_dataset_exports_for_the_same_te')}
-            isRequired
-          >
-            <Controller
-              name="exportDatasetLimitMinutes"
-              control={control}
-              render={({ field }) => (
-                <NumberInput
-                  {...numberInputProps}
-                  min={0}
-                  max={10000}
-                  value={field.value ?? 0}
-                  onChange={(_, val) => field.onChange(val || 0)}
-                >
-                  <NumberInputField />
-                  <NumberInputStepper>
-                    <NumberIncrementStepper />
-                    <NumberDecrementStepper />
-                  </NumberInputStepper>
-                </NumberInput>
-              )}
-            />
-          </AdminFormItem>
+      {showExportSync && (
+        <AdminSettingSection
+          id="exportSync"
+          title={t('admin:export_sync_rate_limiting')}
+          showDivider
+        >
+          <SimpleGrid columns={[1, 2]} spacing={5}>
+            {showExportCooldown && (
+              <AdminFormItem
+                label={t('admin:dataset_export_cooldown_minutes_2')}
+                tooltip={t('admin:cooldown_minutes_between_two_dataset_exports_for_the_same_te')}
+                isRequired
+              >
+                <Controller
+                  name="exportDatasetLimitMinutes"
+                  control={control}
+                  render={({ field }) => (
+                    <NumberInput
+                      {...numberInputProps}
+                      min={0}
+                      max={10000}
+                      value={field.value ?? 0}
+                      onChange={(_, val) => field.onChange(val || 0)}
+                    >
+                      <NumberInputField />
+                      <NumberInputStepper>
+                        <NumberIncrementStepper />
+                        <NumberDecrementStepper />
+                      </NumberInputStepper>
+                    </NumberInput>
+                  )}
+                />
+              </AdminFormItem>
+            )}
 
-          <AdminFormItem
-            label={t('admin:website_sync_cooldown_minutes_2')}
-            tooltip={t('admin:cooldown_minutes_between_two_website_syncs_for_the_same_team')}
-            isRequired
-          >
-            <Controller
-              name="websiteSyncLimitMinuted"
-              control={control}
-              render={({ field }) => (
-                <NumberInput
-                  {...numberInputProps}
-                  min={0}
-                  max={10000}
-                  value={field.value ?? 0}
-                  onChange={(_, val) => field.onChange(val || 0)}
-                >
-                  <NumberInputField />
-                  <NumberInputStepper>
-                    <NumberIncrementStepper />
-                    <NumberDecrementStepper />
-                  </NumberInputStepper>
-                </NumberInput>
-              )}
-            />
-          </AdminFormItem>
-        </SimpleGrid>
-      </AdminSettingSection>
+            {showWebsiteSyncCooldown && (
+              <AdminFormItem
+                label={t('admin:website_sync_cooldown_minutes_2')}
+                tooltip={t('admin:cooldown_minutes_between_two_website_syncs_for_the_same_team')}
+                isRequired
+              >
+                <Controller
+                  name="websiteSyncLimitMinuted"
+                  control={control}
+                  render={({ field }) => (
+                    <NumberInput
+                      {...numberInputProps}
+                      min={0}
+                      max={10000}
+                      value={field.value ?? 0}
+                      onChange={(_, val) => field.onChange(val || 0)}
+                    >
+                      <NumberInputField />
+                      <NumberInputStepper>
+                        <NumberIncrementStepper />
+                        <NumberDecrementStepper />
+                      </NumberInputStepper>
+                    </NumberInput>
+                  )}
+                />
+              </AdminFormItem>
+            )}
+          </SimpleGrid>
+        </AdminSettingSection>
+      )}
 
       {/* 5. 工作流执行限制 */}
       <AdminSettingSection id="workflow" title={t('admin:workflow_execution_limits')} showDivider>
@@ -1103,97 +1103,73 @@ const LimitsSettingComponent = () => {
         </SimpleGrid>
       </AdminSettingSection>
 
-      {/* 10. 任务与渠道并发 */}
-      <AdminSettingSection
-        id="taskAndChannel"
-        title={t('admin:task_channel_concurrency')}
-        showDivider
-      >
-        <SimpleGrid columns={[1, 2]} spacing={5}>
-          {showEvaluationMaxRows && (
-            <AdminFormItem
-              label={t('admin:evaluation_max_rows')}
-              tooltip={t('admin:evaluation_max_rows_tooltip')}
-              isRequired
-            >
-              <Controller
-                name="evaluationMaxRows"
-                control={control}
-                rules={{
-                  validate: (value) => Number.isSafeInteger(value) && value >= 0
-                }}
-                render={({ field, fieldState }) => (
-                  <NumberInput
-                    {...numberInputProps}
-                    min={0}
-                    precision={0}
-                    value={field.value ?? ''}
-                    isInvalid={Boolean(fieldState.error)}
-                    onChange={(_, value) => field.onChange(value)}
-                  >
-                    <NumberInputField />
-                    <NumberInputStepper>
-                      <NumberIncrementStepper />
-                      <NumberDecrementStepper />
-                    </NumberInputStepper>
-                  </NumberInput>
-                )}
-              />
-            </AdminFormItem>
-          )}
-          <AdminFormItem
-            label={t('admin:evaluation_task_concurrency_limit')}
-            tooltip={t('admin:max_concurrency_for_backend_llm_benchmark_evaluation_tasks')}
-            isRequired
-          >
-            <Controller
-              name="task.evalConcurrency"
-              control={control}
-              render={({ field }) => (
-                <NumberInput
-                  {...numberInputProps}
-                  min={1}
-                  max={50}
-                  value={field.value ?? 3}
-                  onChange={(valueAsString, val) => field.onChange(valueAsString === '' ? 3 : val)}
-                >
-                  <NumberInputField />
-                  <NumberInputStepper>
-                    <NumberIncrementStepper />
-                    <NumberDecrementStepper />
-                  </NumberInputStepper>
-                </NumberInput>
-              )}
-            />
-          </AdminFormItem>
-
-          <AdminFormItem
-            label={t('admin:official_account_message_concurrency')}
-            tooltip={t('admin:max_concurrent_requests_for_the_wechat_official_account_serv')}
-            isRequired
-          >
-            <Controller
-              name="channel.wechatConcurrency"
-              control={control}
-              render={({ field }) => (
-                <NumberInput
-                  {...numberInputProps}
-                  min={10}
-                  max={10000}
-                  value={field.value ?? 1000}
-                  onChange={(_, val) => field.onChange(val || 1000)}
-                >
-                  <NumberInputField />
-                  <NumberInputStepper>
-                    <NumberIncrementStepper />
-                    <NumberDecrementStepper />
-                  </NumberInputStepper>
-                </NumberInput>
-              )}
-            />
-          </AdminFormItem>
-        </SimpleGrid>
-      </AdminSettingSection>
+      {/* 10. 任务并发 */}
+      {showTask && (
+        <AdminSettingSection id="task" title={t('admin:task_concurrency')} showDivider>
+          <SimpleGrid columns={[1, 2]} spacing={5}>
+            {showEvaluationMaxRows && (
+              <AdminFormItem
+                label={t('admin:evaluation_max_rows')}
+                tooltip={t('admin:evaluation_max_rows_tooltip')}
+                isRequired
+              >
+                <Controller
+                  name="evaluationMaxRows"
+                  control={control}
+                  rules={{
+                    validate: (value) => Number.isSafeInteger(value) && value >= 0
+                  }}
+                  render={({ field, fieldState }) => (
+                    <NumberInput
+                      {...numberInputProps}
+                      min={0}
+                      precision={0}
+                      value={field.value ?? ''}
+                      isInvalid={Boolean(fieldState.error)}
+                      onChange={(_, value) => field.onChange(value)}
+                    >
+                      <NumberInputField />
+                      <NumberInputStepper>
+                        <NumberIncrementStepper />
+                        <NumberDecrementStepper />
+                      </NumberInputStepper>
+                    </NumberInput>
+                  )}
+                />
+              </AdminFormItem>
+            )}
+            {showEvaluationConcurrency && (
+              <AdminFormItem
+                label={t('admin:evaluation_task_concurrency_limit')}
+                tooltip={t('admin:max_concurrency_for_backend_llm_benchmark_evaluation_tasks')}
+                isRequired
+              >
+                <Controller
+                  name="task.evalConcurrency"
+                  control={control}
+                  render={({ field }) => (
+                    <NumberInput
+                      {...numberInputProps}
+                      min={1}
+                      max={50}
+                      value={field.value ?? 3}
+                      onChange={(valueAsString, val) =>
+                        field.onChange(valueAsString === '' ? 3 : val)
+                      }
+                    >
+                      <NumberInputField />
+                      <NumberInputStepper>
+                        <NumberIncrementStepper />
+                        <NumberDecrementStepper />
+                      </NumberInputStepper>
+                    </NumberInput>
+                  )}
+                />
+              </AdminFormItem>
+            )}
+          </SimpleGrid>
+        </AdminSettingSection>
+      )}
     </AdminSettingPage>
   );
 };

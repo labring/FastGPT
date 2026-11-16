@@ -3,8 +3,8 @@ import { MongoSystemInstanceConfig } from '@fastgpt/service/common/system/system
 import { MongoTeamAudit } from '@fastgpt/service/support/user/audit/schema';
 import * as auditUtils from '@fastgpt/service/support/user/audit/util';
 import { AdminAuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
-import { SECRET_MASK } from '@fastgpt/global/common/system/config/permission';
 import { ApiRequestInputParseError } from '@fastgpt/service/common/zod/requestParseError';
+import type { UpdateDomainConfigResponse } from '@fastgpt/global/openapi/admin/system/instanceConfig/api';
 
 vi.hoisted(() => vi.resetModules());
 vi.unmock('@fastgpt/service/support/user/audit/util');
@@ -41,6 +41,11 @@ vi.mock(
 );
 
 import handler from '@/pages/api/admin/system/config/update';
+import { getDomainConfigForAdmin } from '@fastgpt/service/common/system/systemInstanceConfig/controller';
+
+const callUpdate = handler as unknown as (request: {
+  body: unknown;
+}) => Promise<UpdateDomainConfigResponse>;
 
 describe('instance config update API', () => {
   beforeEach(() => {
@@ -50,6 +55,58 @@ describe('instance config update API', () => {
     mocks.initSystemConfig.mockRejectedValue(new Error('Runtime apply unavailable'));
     mocks.syncSiteAvatarLifecycle.mockRejectedValue(new Error('Avatar cleanup unavailable'));
     mocks.copyForSiteReference.mockImplementation(async ({ avatar }: { avatar: string }) => avatar);
+  });
+
+  it('allows community admins to save and read Agent Sandbox while keeping secrets encrypted', async () => {
+    mocks.edition = 'community';
+    const proxySecret = 'community-proxy-secret-at-least-32-characters';
+    const agentSandbox = {
+      provider: 'opensandbox',
+      proxy: { wsUrl: 'wss://proxy.test', previewUrl: 'https://preview.test', secret: proxySecret },
+      common: { cpuCount: 2, memoryMiB: 4096 },
+      opensandbox: {
+        baseUrl: 'https://sandbox.test',
+        apiKey: 'community-provider-key',
+        runtime: 'kubernetes',
+        cpuOvercommitFactor: 2,
+        memoryOvercommitFactor: 3
+      },
+      sealosdevbox: { baseUrl: 'https://devbox.test', token: 'community-devbox-token' }
+    };
+    const response = await callUpdate({
+      body: {
+        items: [{ domain: 'subservice', expectedRevision: 0, overrides: { agentSandbox } }]
+      }
+    });
+    expect(response.results[0]).toMatchObject({ domain: 'subservice', revision: 1 });
+    const config = await getDomainConfigForAdmin('subservice', 'community');
+    expect(config.effectiveConfig.agentSandbox).toMatchObject({
+      provider: 'opensandbox',
+      proxy: { wsUrl: 'wss://proxy.test', previewUrl: 'https://preview.test' },
+      common: { cpuCount: 2, memoryMiB: 4096 },
+      opensandbox: {
+        baseUrl: 'https://sandbox.test',
+        cpuOvercommitFactor: 2,
+        memoryOvercommitFactor: 3
+      }
+    });
+    expect(config.configuredSecretKeys).toEqual(
+      expect.arrayContaining([
+        'agentSandbox.proxy.secret',
+        'agentSandbox.opensandbox.apiKey',
+        'agentSandbox.sealosdevbox.token'
+      ])
+    );
+    const stored = await MongoSystemInstanceConfig.findOne({ domain: 'subservice' }).lean();
+    expect(stored?.overrides).toHaveProperty(
+      'agentSandbox.proxy.secret.secret',
+      expect.any(String)
+    );
+    for (const secret of [proxySecret, 'community-provider-key', 'community-devbox-token']) {
+      expect(JSON.stringify(stored)).not.toContain(secret);
+      expect(JSON.stringify(config)).not.toContain(secret);
+      expect(JSON.stringify(response)).not.toContain(secret);
+    }
   });
 
   it('returns the committed revision without waiting for reload, cleanup or a post-commit read', async () => {
@@ -66,7 +123,7 @@ describe('instance config update API', () => {
       throw new Error('Snapshot reload unavailable');
     });
 
-    const response = await handler({
+    const response = await callUpdate({
       body: {
         items: [{ domain: 'site', expectedRevision: 0, overrides: { name: 'Committed name' } }]
       }
@@ -98,7 +155,7 @@ describe('instance config update API', () => {
 
   it('rejects the ENV-only proEnv scope at the admin API boundary', async () => {
     await expect(
-      handler({
+      callUpdate({
         body: {
           items: [{ domain: 'proEnv', expectedRevision: 0, overrides: { teamMode: 'multi' } }]
         }
@@ -117,7 +174,7 @@ describe('instance config update API', () => {
     });
 
     await expect(
-      handler({
+      callUpdate({
         body: {
           items: [
             {
@@ -144,7 +201,7 @@ describe('instance config update API', () => {
     'rejects malformed site avatar values before preprocessing: %j',
     async (overrides) => {
       await expect(
-        handler({
+        callUpdate({
           body: {
             items: [{ domain: 'site', expectedRevision: 0, overrides }]
           }
@@ -168,7 +225,7 @@ describe('instance config update API', () => {
     });
     mocks.copyForSiteReference.mockResolvedValueOnce(copiedAvatar);
 
-    const response = await handler({
+    const response = await callUpdate({
       body: {
         items: [
           {
@@ -195,35 +252,81 @@ describe('instance config update API', () => {
     });
   });
 
-  it('masks secrets in the transaction result and preserves them on the next save', async () => {
+  it('omits secrets from save responses while preserving, replacing and clearing them', async () => {
     const overrides = { documentParse: { customPdf: { key: 'private-key' } } };
-    const first = await handler({
+    const first = await callUpdate({
       body: { items: [{ domain: 'providers', expectedRevision: 0, overrides }] }
     } as any);
-    expect(first.results[0].overrides).toMatchObject({
-      documentParse: { customPdf: { key: SECRET_MASK } }
-    });
+    const firstResult = first.results[0];
+    expect(firstResult.overrides).not.toHaveProperty('documentParse.customPdf.key');
+    expect(firstResult.effectiveConfig).not.toHaveProperty('documentParse.customPdf.key');
+    expect(firstResult.secretKeys).toContain('documentParse.customPdf.key');
+    expect(firstResult.configuredSecretKeys).toContain('documentParse.customPdf.key');
+    const stored = await MongoSystemInstanceConfig.findOne({ domain: 'providers' }).lean();
+    const storedOverrides = stored?.overrides as
+      | { documentParse?: { customPdf?: { key?: { secret: string } } } }
+      | undefined;
+    const firstCipher = storedOverrides?.documentParse?.customPdf?.key;
+    expect(firstCipher).toEqual({ secret: expect.any(String) });
+    expect(JSON.stringify(firstResult)).not.toContain('private-key');
+    expect(JSON.stringify(firstResult)).not.toContain(firstCipher?.secret ?? '');
+    expect(JSON.stringify(firstResult)).not.toContain('******');
 
-    const second = await handler({
+    const second = await callUpdate({
       body: {
-        items: [{ domain: 'providers', expectedRevision: 1, overrides: first.results[0].overrides }]
+        items: [{ domain: 'providers', expectedRevision: 1, overrides: firstResult.overrides }]
       }
     } as any);
     expect(second.results[0].revision).toBe(2);
     expect(
       (await MongoSystemInstanceConfig.findOne({ domain: 'providers' }).lean())?.overrides
-    ).toMatchObject(overrides);
+    ).toMatchObject({ documentParse: { customPdf: { key: firstCipher } } });
+
+    const replaced = await callUpdate({
+      body: {
+        items: [
+          {
+            domain: 'providers',
+            expectedRevision: 2,
+            overrides: { documentParse: { customPdf: { key: '******' } } }
+          }
+        ]
+      }
+    } as any);
+    expect(replaced.results[0].configuredSecretKeys).toContain('documentParse.customPdf.key');
+    expect(replaced.results[0].effectiveConfig).not.toHaveProperty('documentParse.customPdf.key');
+    expect(JSON.stringify(replaced)).not.toContain('******');
+
+    const cleared = await callUpdate({
+      body: {
+        items: [
+          {
+            domain: 'providers',
+            expectedRevision: 3,
+            overrides: { documentParse: { customPdf: { key: '' } } }
+          }
+        ]
+      }
+    } as any);
+    expect(cleared.results[0].secretKeys).toContain('documentParse.customPdf.key');
+    expect(cleared.results[0].configuredSecretKeys).not.toContain('documentParse.customPdf.key');
+    expect(cleared.results[0].effectiveConfig).not.toHaveProperty('documentParse.customPdf.key');
+    expect(
+      (await MongoSystemInstanceConfig.findOne({ domain: 'providers' }).lean())?.overrides
+    ).not.toHaveProperty('documentParse.customPdf.key');
+
     await vi.waitFor(async () => {
       const auditLogs = await MongoTeamAudit.find({
         event: AdminAuditEventEnum.ADMIN_UPDATE_SYSTEM_CONFIG
       }).lean();
-      expect(auditLogs).toHaveLength(2);
+      expect(auditLogs).toHaveLength(4);
       for (const audit of auditLogs) {
         expect(String(audit.teamId)).toBe(mocks.teamId);
         expect(String(audit.tmbId)).toBe(mocks.tmbId);
         expect(audit.metadata).toEqual({ name: 'root' });
       }
       expect(JSON.stringify(auditLogs)).not.toContain('private-key');
+      expect(JSON.stringify(auditLogs)).not.toContain(firstCipher?.secret ?? '');
     });
   });
 
@@ -232,7 +335,7 @@ describe('instance config update API', () => {
       .spyOn(auditUtils, 'addAuditLog')
       .mockRejectedValueOnce(new Error('audit failed'));
 
-    const response = await handler({
+    const response = await callUpdate({
       body: {
         items: [{ domain: 'auth', expectedRevision: 0, overrides: { passwordExpiredMonth: 2 } }]
       }
@@ -249,18 +352,52 @@ describe('instance config update API', () => {
     ).toBe(0);
   });
 
+  it.each([{ name: 'Custom brand' }, { favicon: '/api/system/img/avatar/custom-logo.png' }])(
+    'rejects community site branding changes before writing or copying images: %j',
+    async (overrides) => {
+      mocks.edition = 'community';
+      await expect(
+        callUpdate({
+          body: { items: [{ domain: 'site', expectedRevision: 0, overrides }] }
+        } as any)
+      ).rejects.toMatchObject({ statusCode: 403 });
+      expect(await MongoSystemInstanceConfig.countDocuments({ domain: 'site' })).toBe(0);
+      expect(mocks.copyForSiteReference).not.toHaveBeenCalled();
+      expect(mocks.initSystemConfig).not.toHaveBeenCalled();
+      expect(mocks.syncSiteAvatarLifecycle).not.toHaveBeenCalled();
+    }
+  );
+
+  it.each([
+    { enableTeamPluginUpload: true },
+    { enableTeamModel: true },
+    { showDatasetFeishu: false },
+    { showPublishWechat: false },
+    { hideChatCopyrightSetting: true }
+  ])('rejects community feature switch overrides before writing: %j', async (overrides) => {
+    mocks.edition = 'community';
+    await expect(
+      callUpdate({
+        body: { items: [{ domain: 'feature', expectedRevision: 0, overrides }] }
+      } as any)
+    ).rejects.toMatchObject({ statusCode: 403 });
+    expect(await MongoSystemInstanceConfig.countDocuments({ domain: 'feature' })).toBe(0);
+    expect(mocks.initSystemConfig).not.toHaveBeenCalled();
+  });
+
   it('allows community fields, filters the response and rejects Pro fields before writing', async () => {
     mocks.edition = 'community';
-    const response = await handler({
+    const response = await callUpdate({
       body: {
-        items: [{ domain: 'auth', expectedRevision: 0, overrides: { passwordExpiredMonth: 2 } }]
+        items: [{ domain: 'auth', expectedRevision: 0, overrides: { openApiKeyMaxCount: 200 } }]
       }
     } as any);
-    expect(response.results[0].effectiveConfig).toMatchObject({ passwordExpiredMonth: 2 });
+    expect(response.results[0].effectiveConfig).toMatchObject({ openApiKeyMaxCount: 200 });
+    expect(response.results[0].effectiveConfig).not.toHaveProperty('passwordExpiredMonth');
     expect(response.results[0].effectiveConfig).not.toHaveProperty('loginProviders.email');
 
     await expect(
-      handler({
+      callUpdate({
         body: {
           items: [
             {
@@ -282,11 +419,26 @@ describe('instance config update API', () => {
     });
   });
 
+  it('rejects community account/login strategy changes before writing', async () => {
+    mocks.edition = 'community';
+    for (const [domain, overrides] of [
+      ['auth', { passwordExpiredMonth: 3 }],
+      ['security', { passwordLoginMinuteLimitCount: 20 }],
+      ['security', { maxLoginSession: 20 }]
+    ] as const) {
+      await expect(
+        callUpdate({ body: { items: [{ domain, expectedRevision: 0, overrides }] } })
+      ).rejects.toMatchObject({ statusCode: 403 });
+    }
+    expect(await MongoSystemInstanceConfig.countDocuments({})).toBe(0);
+    expect(mocks.initSystemConfig).not.toHaveBeenCalled();
+  });
+
   it.each(['single', 'multi', 'sync'])(
     'rejects retired teamMode=%s before any database or avatar write',
     async (teamMode) => {
       await expect(
-        handler({
+        callUpdate({
           body: {
             items: [
               { domain: 'auth', expectedRevision: 0, overrides: { teamMode } },
@@ -309,7 +461,7 @@ describe('instance config update API', () => {
     const copiedIcon = '/api/system/img/avatar/site/file/sso-copied.png';
     mocks.copyForSiteReference.mockResolvedValueOnce(copiedIcon);
 
-    const response = await handler({
+    const response = await callUpdate({
       body: {
         items: [
           {

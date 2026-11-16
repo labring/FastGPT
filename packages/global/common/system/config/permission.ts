@@ -1,5 +1,5 @@
 import { type SystemInstanceConfigEdition, systemInstanceConfigRegistry } from './registry';
-import type { SystemInstanceConfigDomainKey } from './schema';
+import type { SystemInstanceConfigDomainKey, SystemInstanceConfigScopeKey } from './schema';
 
 /**
  * 判断当前系统部署版本。
@@ -202,108 +202,34 @@ const secretKeysByDomain: Record<SystemInstanceConfigDomainKey, Set<string>> = (
 /**
  * 获取指定 Domain 下所有标记为 secret: true 的相对字段路径。
  */
-export const getDomainSecretKeys = (domain: SystemInstanceConfigDomainKey): Set<string> => {
-  return secretKeysByDomain[domain] ?? new Set();
+export const getDomainSecretKeys = (domain: SystemInstanceConfigScopeKey): Set<string> => {
+  if (domain === 'modelStatusProbe') return new Set(['webhookToken']);
+  return secretKeysByDomain[domain as SystemInstanceConfigDomainKey] ?? new Set();
 };
 
-/**
- * 对配置数据中的敏感字段进行脱敏，非空敏感字符串替换为 '******'。
- */
-export const maskDomainSecrets = <T>(domain: SystemInstanceConfigDomainKey, data: T): T => {
-  if (!isPlainObject(data)) {
-    return data;
-  }
-
-  const secretKeys = getDomainSecretKeys(domain);
-  if (secretKeys.size === 0) {
-    return structuredClone(data);
-  }
-
-  const maskObject = (obj: Record<string, unknown>, currentPath = ''): Record<string, unknown> => {
-    const result: Record<string, unknown> = {};
-
-    for (const [key, value] of Object.entries(obj)) {
-      if (value === undefined) continue;
-
-      const path = currentPath ? `${currentPath}.${key}` : key;
-
-      if (isPlainObject(value)) {
-        result[key] = maskObject(value, path);
-      } else if (secretKeys.has(path) && typeof value === 'string' && value.trim().length > 0) {
-        result[key] = SECRET_MASK;
-      } else {
-        result[key] = value;
-      }
-    }
-
-    return result;
+/** 管理响应完全省略敏感叶子，不返回明文、密文或可回提交的掩码。 */
+export const omitDomainSecrets = <T>(domain: SystemInstanceConfigDomainKey, data: T): T => {
+  const keys = getDomainSecretKeys(domain);
+  const walk = (value: unknown, path = ''): unknown => {
+    if (!isPlainObject(value)) return value;
+    return Object.fromEntries(
+      Object.entries(value).flatMap(([key, child]) => {
+        const nextPath = path ? `${path}.${key}` : key;
+        return keys.has(nextPath) ? [] : [[key, walk(child, nextPath)]];
+      })
+    );
   };
-
-  return maskObject(data) as T;
+  return walk(data) as T;
 };
 
-/**
- * 当客户端提交保存时，若敏感字段提交了掩码 '******'，则自动从上一版本恢复已有密钥，避免误覆写。
- * 掩码只表示「保持原值」：上一版本没有可恢复的真实值时（首次保存，或该值来自 Schema 默认值），
- * 必须将该字段视为未提交并丢弃，否则 '******' 会被当作真实密钥写入 DB 覆盖默认值。
- */
-export const restorePreservedSecrets = <T>({
-  domain,
-  submitted,
-  previous
-}: {
-  domain: SystemInstanceConfigDomainKey;
-  submitted: T;
-  previous?: unknown;
-}): T => {
-  if (!isPlainObject(submitted)) {
-    return submitted;
-  }
-
-  const secretKeys = getDomainSecretKeys(domain);
-  if (secretKeys.size === 0) {
-    return submitted;
-  }
-
-  // 首次保存没有上一版本可恢复，按空对象处理，掩码字段将被丢弃
-  const previousObj: Record<string, unknown> = isPlainObject(previous) ? previous : {};
-
-  const restoreObject = ({
-    subObj,
-    prevObj,
-    currentPath = ''
-  }: {
-    subObj: Record<string, unknown>;
-    prevObj: Record<string, unknown>;
-    currentPath?: string;
-  }): Record<string, unknown> => {
-    const result: Record<string, unknown> = {};
-
-    for (const [key, value] of Object.entries(subObj)) {
-      if (value === undefined) continue;
-
-      const path = currentPath ? `${currentPath}.${key}` : key;
-      const prevValue = prevObj[key];
-
-      if (isPlainObject(value)) {
-        // 无对应上一版本时传空对象继续递归，确保嵌套层的掩码同样被清洗
-        result[key] = restoreObject({
-          subObj: value,
-          prevObj: isPlainObject(prevValue) ? prevValue : {},
-          currentPath: path
-        });
-      } else if (secretKeys.has(path) && value === SECRET_MASK) {
-        // 仅当上一版本存在非掩码的字符串值时恢复；否则丢弃该字段（按未提交处理）
-        if (typeof prevValue === 'string' && prevValue !== SECRET_MASK) {
-          result[key] = prevValue;
-        }
-      } else {
-        result[key] = value;
-      }
-    }
-
-    return result;
-  };
-
-  return restoreObject({ subObj: submitted, prevObj: previousObj }) as T;
-};
+/** 只返回已配置密钥的相对路径；值由服务端解密后判断，默认凭据也能显示配置状态。 */
+export const getConfiguredDomainSecretKeys = (
+  domain: SystemInstanceConfigDomainKey,
+  data: unknown
+): string[] =>
+  [...getDomainSecretKeys(domain)].filter((path) => {
+    const value = path
+      .split('.')
+      .reduce<unknown>((parent, key) => (isPlainObject(parent) ? parent[key] : undefined), data);
+    return typeof value === 'string' && value.trim().length > 0;
+  });

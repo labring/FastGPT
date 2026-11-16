@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo } from 'react';
-import { Input, SimpleGrid, Textarea } from '@chakra-ui/react';
+import { Input, SimpleGrid } from '@chakra-ui/react';
 import { Controller, useForm, useWatch } from 'react-hook-form';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import type { SystemInstanceConfigDomainMap } from '@fastgpt/global/common/system/config/schema';
@@ -9,6 +9,7 @@ import AdminSettingPage from '../AdminSettingPage';
 import AdminSettingSection from '../AdminSettingSection';
 import AdminFormItem from '../AdminFormItem';
 import AdminSwitchRow from '../AdminSwitchRow';
+import AdminSecretInput from '../AdminSecretInput';
 
 type CustomDomainForm = SystemInstanceConfigDomainMap['site']['customDomain'];
 
@@ -25,7 +26,8 @@ const CustomDomainSettingComponent = () => {
     [t]
   );
   const { filterConfigData } = useAdminPermission();
-  const { effectiveConfig, isLoading, isUpdating, patchConfig } = useDomainConfig('site');
+  const { effectiveConfig, configuredSecretKeys, isLoading, isUpdating, patchConfig } =
+    useDomainConfig('site');
   const { register, control, handleSubmit, reset } = useForm<CustomDomainForm>({
     defaultValues: effectiveConfig.customDomain
   });
@@ -84,12 +86,20 @@ const CustomDomainSettingComponent = () => {
               </AdminFormItem>
             </SimpleGrid>
             <AdminFormItem label={t('admin:custom_domain_kubeconfig')}>
-              <Textarea
-                {...register(`kc.${key}`)}
-                rows={8}
-                resize={'vertical'}
-                spellCheck={false}
-                autoComplete={'off'}
+              <Controller
+                name={`kc.${key}`}
+                control={control}
+                render={({ field }) => (
+                  <AdminSecretInput
+                    name={field.name}
+                    value={field.value}
+                    onChange={field.onChange}
+                    isConfigured={configuredSecretKeys.includes(`customDomain.kc.${key}`)}
+                    multiline
+                    rows={8}
+                    spellCheck={false}
+                  />
+                )}
               />
             </AdminFormItem>
           </AdminSettingSection>

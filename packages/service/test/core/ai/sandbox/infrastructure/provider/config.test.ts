@@ -22,9 +22,7 @@ const originalEnv = {
   AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN:
     process.env.AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN,
   AGENT_SANDBOX_PROXY_SECRET: process.env.AGENT_SANDBOX_PROXY_SECRET,
-  AGENT_SANDBOX_PROXY_URL: process.env.AGENT_SANDBOX_PROXY_URL,
-  AGENT_SANDBOX_WS_MAX_MESSAGE_BYTES: process.env.AGENT_SANDBOX_WS_MAX_MESSAGE_BYTES,
-  AGENT_SANDBOX_WS_MAX_FRAME_BYTES: process.env.AGENT_SANDBOX_WS_MAX_FRAME_BYTES
+  AGENT_SANDBOX_PROXY_URL: process.env.AGENT_SANDBOX_PROXY_URL
 };
 
 const loadSandboxConfigModule = async () => {
@@ -111,14 +109,6 @@ describe('sandbox provider config', () => {
     getTestInstanceConfig().subservice.agentSandbox.opensandbox.volumeManagerToken =
       originalEnv.AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN ??
       createDefaultInstanceConfig().subservice.agentSandbox.opensandbox.volumeManagerToken;
-    getTestInstanceConfig().subservice.agentSandbox.common.wsMaxMessageBytes =
-      originalEnv.AGENT_SANDBOX_WS_MAX_MESSAGE_BYTES === undefined
-        ? createDefaultInstanceConfig().subservice.agentSandbox.common.wsMaxMessageBytes
-        : Number(originalEnv.AGENT_SANDBOX_WS_MAX_MESSAGE_BYTES);
-    getTestInstanceConfig().subservice.agentSandbox.common.wsMaxFrameBytes =
-      originalEnv.AGENT_SANDBOX_WS_MAX_FRAME_BYTES === undefined
-        ? createDefaultInstanceConfig().subservice.agentSandbox.common.wsMaxFrameBytes
-        : Number(originalEnv.AGENT_SANDBOX_WS_MAX_FRAME_BYTES);
     vi.stubEnv('AGENT_SANDBOX_PROXY_SECRET', originalEnv.AGENT_SANDBOX_PROXY_SECRET);
     vi.stubEnv('AGENT_SANDBOX_PROXY_URL', originalEnv.AGENT_SANDBOX_PROXY_URL);
     vi.unstubAllGlobals();
@@ -199,8 +189,6 @@ describe('sandbox provider config', () => {
     getTestInstanceConfig().subservice.agentSandbox.common.cpuCount = 2;
     getTestInstanceConfig().subservice.agentSandbox.common.memoryMiB = 4096;
     getTestInstanceConfig().subservice.agentSandbox.common.storageSizeGi = 5;
-    getTestInstanceConfig().subservice.agentSandbox.common.wsMaxMessageBytes = 67108864;
-    getTestInstanceConfig().subservice.agentSandbox.common.wsMaxFrameBytes = 16777216;
 
     const { getSandboxAdapterConfig } = await loadSandboxConfigModule();
 

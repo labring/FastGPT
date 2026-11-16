@@ -13,6 +13,10 @@ export const SecurityConfigSchema = z.strictObject({
   }),
   passwordLoginMinuteLimitCount: positiveInteger(10),
   maxLoginSession: positiveInteger(10),
+  // 旧 scope 只有名单；缺省时按非空名单继续限制来源，不能在升级时静默放开已有访问限制。
+  allowedOriginsEnabled: z.boolean().optional().meta({
+    description: '是否启用跨域来源白名单；未设置时按名单是否非空推导，关闭后保留名单'
+  }),
   // 旧 ENV 未限制来源数量；迁移时不能因数量上限清空名单并回落为允许所有来源。
   allowedOrigins: z.array(z.string().min(1).max(2048)).default([]),
   skipFileTypeCheck: z.boolean().default(false),

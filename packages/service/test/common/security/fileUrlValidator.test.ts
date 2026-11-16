@@ -24,7 +24,7 @@ describe('fileUrlValidator', () => {
     vi.stubEnv('STORAGE_S3_ENDPOINT', undefined);
     vi.stubEnv('STORAGE_EXTERNAL_ENDPOINT', undefined);
     vi.stubEnv('STORAGE_S3_CDN_ENDPOINT', undefined);
-    vi.stubEnv('FE_DOMAIN', 'https://fastgpt.example.com');
+    getTestInstanceConfig().site.publicUrl = 'https://fastgpt.example.com';
     vi.stubEnv('PRO_URL', undefined);
   });
 
@@ -105,8 +105,8 @@ describe('fileUrlValidator', () => {
       ).resolves.toBeDefined();
     });
 
-    it('should extract hostname from FE_DOMAIN', async () => {
-      vi.stubEnv('FE_DOMAIN', 'https://fe.example.com');
+    it('should extract hostname from site.publicUrl', async () => {
+      getTestInstanceConfig().site.publicUrl = 'https://fe.example.com';
       Object.assign(getTestInstanceConfig().security, {
         checkExternalFile: true,
         fileUrlWhitelist: ['other.com']
@@ -116,16 +116,17 @@ describe('fileUrlValidator', () => {
       expect(validateFileUrlDomain('http://fe.example.com/page')).toBe(true);
     });
 
-    it('should reject invalid FE_DOMAIN at env validation stage', async () => {
+    it('ignores the retired FE_DOMAIN and does not trust it as a site host', async () => {
       vi.stubEnv('FE_DOMAIN', 'invalid-url');
       Object.assign(getTestInstanceConfig().security, {
         checkExternalFile: true,
         fileUrlWhitelist: ['other.com']
       });
 
-      await expect(import('@fastgpt/service/common/security/fileUrlValidator')).rejects.toThrow(
-        'Invalid environment variables. Please check: FE_DOMAIN'
-      );
+      getTestInstanceConfig().site.publicUrl = '';
+      const { validateFileUrlDomain } =
+        await import('@fastgpt/service/common/security/fileUrlValidator');
+      expect(validateFileUrlDomain('https://fe.example.com/file')).toBe(false);
     });
 
     it('should extract hostname from PRO_URL', async () => {
@@ -154,7 +155,7 @@ describe('fileUrlValidator', () => {
     it('should combine env vars and instance storage endpoints into systemWhiteList', async () => {
       // STORAGE_S3_ENDPOINT 在 serviceEnv 模块加载期解析，必须在首次导入前 stub
       vi.stubEnv('STORAGE_S3_ENDPOINT', 'http://s3.example.com');
-      vi.stubEnv('FE_DOMAIN', 'https://fe.example.com');
+      getTestInstanceConfig().site.publicUrl = 'https://fe.example.com';
       vi.stubEnv('PRO_URL', 'https://pro.example.com');
       getTestInstanceConfig().storage.externalEndpoint = 'https://external.example.com';
       getTestInstanceConfig().storage.cdnEndpoint = 'https://cdn.example.com';

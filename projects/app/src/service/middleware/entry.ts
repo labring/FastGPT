@@ -38,11 +38,16 @@ export const NextAPI = (
     logInstanceConfigRead({
       callsite: 'runtime.app.middleware.nextApi.beforeRequest',
       fields: [
+        { path: 'security.allowedOriginsEnabled', value: security.allowedOriginsEnabled },
         { path: 'security.allowedOrigins', value: security.allowedOrigins },
         { path: 'security.csrfEnabled', value: security.csrfEnabled }
       ]
     });
-    const allowedOrigins = security.allowedOrigins.length > 0 ? security.allowedOrigins : undefined;
+    // 未设置开关的旧 scope 继续沿用非空名单；显式关闭则保留名单但不限制跨域来源。
+    const allowedOrigins =
+      security.allowedOriginsEnabled !== false && security.allowedOrigins.length > 0
+        ? security.allowedOrigins
+        : undefined;
 
     await withNextCors({ req, res, allowedOrigins });
 

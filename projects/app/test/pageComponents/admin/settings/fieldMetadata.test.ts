@@ -39,6 +39,31 @@ const getRenderedFields = (route: string): Set<string> => {
     fields.add(field!.key);
   };
 
+  /** register 与 Controller 共用自定义域名的动态云厂商字段展开规则。 */
+  const addCustomDomainFields = (prefix: string) => {
+    expect(route).toBe('/admin/settings/custom-domain');
+    const providers: string[] = [];
+    const collectProviders = (entry: ts.Node) => {
+      if (
+        ts.isPropertyAssignment(entry) &&
+        entry.name.getText(source) === 'key' &&
+        ts.isStringLiteral(entry.initializer)
+      )
+        providers.push(entry.initializer.text);
+      ts.forEachChild(entry, collectProviders);
+    };
+    let declaration: ts.VariableDeclaration | undefined;
+    const findProviders = (entry: ts.Node) => {
+      if (ts.isVariableDeclaration(entry) && entry.name.getText(source) === 'providers')
+        declaration = entry;
+      ts.forEachChild(entry, findProviders);
+    };
+    findProviders(source);
+    expect(declaration).toBeDefined();
+    collectProviders(declaration!);
+    for (const key of providers) add(`customDomain.${prefix}${key}`);
+  };
+
   const walk = (node: ts.Node) => {
     if (ts.isJsxAttribute(node) && node.name.getText(source) === 'name') {
       const tag = node.parent.parent;
@@ -49,6 +74,10 @@ const getRenderedFields = (route: string): Set<string> => {
             const expression = node.initializer.expression;
             // 当前唯一的动态输入名来自 datasetArchiveFields；从同一文件的数组读取叶子名。
             if (expression && ts.isTemplateExpression(expression)) {
+              if (route === '/admin/settings/custom-domain') {
+                addCustomDomainFields(expression.head.text);
+                return;
+              }
               if (expression.head.text === 'agentSandbox.proxy.') {
                 expect(text).toContain("['wsUrl', 'previewUrl', 'secret']");
                 for (const key of ['wsUrl', 'previewUrl', 'secret'])
@@ -87,28 +116,7 @@ const getRenderedFields = (route: string): Set<string> => {
       const name = node.arguments[0];
       if (name && ts.isStringLiteralLike(name)) add(name.text);
       if (name && ts.isTemplateExpression(name)) {
-        expect(route).toBe('/admin/settings/custom-domain');
-        const providers: string[] = [];
-        const collectProviders = (entry: ts.Node) => {
-          if (
-            ts.isPropertyAssignment(entry) &&
-            entry.name.getText(source) === 'key' &&
-            ts.isStringLiteral(entry.initializer)
-          )
-            providers.push(entry.initializer.text);
-          ts.forEachChild(entry, collectProviders);
-        };
-        let declaration: ts.VariableDeclaration | undefined;
-        const findProviders = (entry: ts.Node) => {
-          if (ts.isVariableDeclaration(entry) && entry.name.getText(source) === 'providers') {
-            declaration = entry;
-          }
-          ts.forEachChild(entry, findProviders);
-        };
-        findProviders(source);
-        expect(declaration).toBeDefined();
-        collectProviders(declaration!);
-        for (const key of providers) add(`customDomain.${name.head.text}${key}`);
+        addCustomDomainFields(name.head.text);
       }
     }
     ts.forEachChild(node, walk);

@@ -301,7 +301,7 @@ describe('s3 short access link api', () => {
       storage.downloadMode = 'short-redirect';
       storage.externalEndpoint = 'https://s3.example.com';
       storage.cdnEndpoint = 'https://cdn.example.com/files';
-      storage.redirectTtlSeconds = 120;
+      (storage as any).redirectTtlSeconds = 120;
       const url = await createS3DownloadAccessUrl({
         bucketName: 'fastgpt-private',
         objectKey: 'dataset/team/page%20one.md',
@@ -334,7 +334,7 @@ describe('s3 short access link api', () => {
       );
       expect(generatePresignedGetUrl).toHaveBeenCalledWith({
         key: 'dataset/team/page one.md',
-        expiredSeconds: 120,
+        expiredSeconds: 30,
         responseContentType: 'text/markdown; charset=utf-8'
       });
     } finally {

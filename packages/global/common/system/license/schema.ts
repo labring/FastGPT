@@ -81,18 +81,24 @@ export const LicensePayloadSchema = z.object({
 });
 export type LicensePayload = z.infer<typeof LicensePayloadSchema>;
 
+/** BSON 会将 Mixed 对象中的 undefined 保存为 null；可选授权字段读取时还原为缺省。 */
+const optionalRuntimeField = <T extends z.ZodType>(schema: T) =>
+  z.preprocess((value) => (value === null ? undefined : value), schema.optional());
+
 /** 已验签的运行时数据兼容无限期与旧展示字段，但不接受错误类型的配额或能力。 */
 export const RuntimeLicenseDataSchema = LicensePayloadSchema.extend({
   startTime: z.string().min(1),
   expiredTime: z.string().min(1),
+  description: optionalRuntimeField(z.string()),
+  instanceId: optionalRuntimeField(LicensePayloadSchema.shape.instanceId.unwrap()),
   functions: LicenseFunctionsSchema.extend({
-    batchEval: z.boolean().optional(),
-    customTemplates: z.boolean().optional()
+    batchEval: optionalRuntimeField(z.boolean()),
+    customTemplates: optionalRuntimeField(z.boolean())
   }),
-  hosts: z.array(z.string()).optional(),
-  maxUsers: z.number().int().nonnegative().optional(),
-  maxApps: z.number().int().nonnegative().optional(),
-  maxDatasets: z.number().int().nonnegative().optional()
+  hosts: optionalRuntimeField(z.array(z.string())),
+  maxUsers: optionalRuntimeField(z.number().int().nonnegative()),
+  maxApps: optionalRuntimeField(z.number().int().nonnegative()),
+  maxDatasets: optionalRuntimeField(z.number().int().nonnegative())
 });
 
 /** 签发侧强制未知键拒绝（决策版：customTemplates/networkIds 不入新 license） */

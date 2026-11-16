@@ -3,7 +3,7 @@ import { useYuqueDatasetRequest } from '@fastgpt/service/core/dataset/apiDataset
 import { getApiDatasetRequest } from '@fastgpt/service/core/dataset/apiDataset';
 import { createDatasetCache } from '@fastgpt/service/support/tmpData/datasetCache';
 import { MongoTmpData } from '@fastgpt/service/support/tmpData/schema';
-import { getSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/runtime';
+import { serviceEnv } from '@fastgpt/service/env';
 import type { AsyncCache } from '@fastgpt/service/common/cache/type';
 
 const { request } = vi.hoisted(() => ({ request: vi.fn() }));
@@ -87,13 +87,12 @@ describe('语雀浏览快照缓存', () => {
     await provider({ token: 'different-secret' }).listFiles({});
     await provider({ userId: 'another-group' }).listFiles({});
     await provider().listFiles({ parentId: '101' });
-    const dataSourceConfig = getSystemInstanceConfig().providers.dataSource;
-    const oldBaseUrl = dataSourceConfig.yuqueDatasetBaseUrl;
+    const oldBaseUrl = serviceEnv.YUQUE_DATASET_BASE_URL;
     try {
-      dataSourceConfig.yuqueDatasetBaseUrl = 'https://private.yuque.test';
+      serviceEnv.YUQUE_DATASET_BASE_URL = 'https://private.yuque.test';
       await provider().listFiles({});
     } finally {
-      dataSourceConfig.yuqueDatasetBaseUrl = oldBaseUrl;
+      serviceEnv.YUQUE_DATASET_BASE_URL = oldBaseUrl;
     }
     expect(request).toHaveBeenCalledTimes(5);
     expect(await MongoTmpData.countDocuments({})).toBe(5);

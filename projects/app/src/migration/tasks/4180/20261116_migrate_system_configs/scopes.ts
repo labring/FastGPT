@@ -13,6 +13,10 @@ import { SubPlanInputSchema } from '@fastgpt/global/support/wallet/sub/type';
 import { MongoSystemConfigs } from '@fastgpt/service/common/system/config/schema';
 import { MongoSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/schema';
 import {
+  decryptDomainSecrets,
+  encryptDomainSecrets
+} from '@fastgpt/service/common/system/systemInstanceConfig/secrets';
+import {
   MongoTransactionConflictError,
   mongoSessionRun
 } from '@fastgpt/service/common/mongo/sessionRun';
@@ -76,9 +80,13 @@ const validateSchema = (name: string, schema: z.ZodType, value: unknown) => {
 
 /** 校验整份目标配置，包括商业域的稀疏结构与合并默认值后的完整结构。 */
 const validateTarget = (domain: TargetScope | 'proEnv', overrides: unknown) => {
+  const decoded =
+    domain === 'commercial' || domain === 'modelStatusProbe'
+      ? decryptDomainSecrets(domain, overrides)
+      : overrides;
   if (domain === 'commercial') {
     try {
-      resolveDomainEffectiveConfig({ domain, overrides });
+      resolveDomainEffectiveConfig({ domain, overrides: decoded });
     } catch (error) {
       const issues = (error as { issues?: { path: PropertyKey[] }[] }).issues;
       const paths = issues?.map((issue) => issue.path.join('.') || '<root>') ?? ['<root>'];
@@ -86,7 +94,7 @@ const validateTarget = (domain: TargetScope | 'proEnv', overrides: unknown) => {
     }
     return;
   }
-  validateSchema(domain, systemInstanceConfigScopeSchemaMap[domain], overrides);
+  validateSchema(domain, systemInstanceConfigScopeSchemaMap[domain], decoded);
 };
 
 /**
@@ -175,7 +183,20 @@ const prepareScopeMigration = async (session?: ClientSession) => {
   const legacyInstances = await MongoSystemInstanceConfig.collection
     .find({ domain: { $in: [...MERGED_SCOPES] } }, { session })
     .toArray();
-  const targetByDomain = new Map(targets.map((doc) => [doc.domain, doc]));
+  // 商业域与模型探测均含密钥，校验和合并前先恢复业务值。
+  const targetByDomain = new Map(
+    targets.map((doc) => [
+      doc.domain,
+      {
+        ...doc,
+        overrides:
+          doc.domain === 'commercial' || doc.domain === 'modelStatusProbe'
+            ? decryptDomainSecrets(doc.domain, doc.overrides)
+            : doc.overrides
+      }
+    ])
+  );
+  const storedOverridesByDomain = new Map(targets.map((doc) => [doc.domain, doc.overrides]));
   const legacyByDomain = new Map(legacyInstances.map((doc) => [doc.domain, doc]));
   const getMarkers = (value: unknown, domain: string): string[] => {
     if (value === undefined) return [];
@@ -185,7 +206,7 @@ const prepareScopeMigration = async (session?: ClientSession) => {
     return value;
   };
 
-  for (const target of targets) {
+  for (const target of targetByDomain.values()) {
     validateTarget(target.domain as TargetScope | 'proEnv', target.overrides);
     getMarkers(target.explicitDefaultPaths, target.domain);
   }
@@ -218,7 +239,9 @@ const prepareScopeMigration = async (session?: ClientSession) => {
   for (const scope of missing) {
     const oldInstance = legacyByDomain.get(scope);
     if (!oldInstance && !present.has(scope)) continue;
-    const source = oldInstance ? oldInstance.overrides : sources[scope];
+    const rawSource = oldInstance ? oldInstance.overrides : sources[scope];
+    const source =
+      scope === 'modelStatusProbe' ? decryptDomainSecrets(scope, rawSource) : rawSource;
     const normalized = MERGED_SCOPES.some((item) => item === scope)
       ? validateSchema(scope, mergedScopeSchemas[scope as MergedScope], source)
       : validateSchema(
@@ -250,7 +273,7 @@ const prepareScopeMigration = async (session?: ClientSession) => {
 
   // 不执行任何写入之前校验所有候选与合并结果，确保一次失败不会留下半套配置。
   for (const [domain, update] of pending) validateTarget(domain, update.overrides);
-  return { targets: targetByDomain, legacyInstances, pending };
+  return { targets: targetByDomain, storedOverridesByDomain, legacyInstances, pending };
 };
 
 /**
@@ -261,7 +284,8 @@ const prepareScopeMigration = async (session?: ClientSession) => {
  */
 export const migrateLegacyConfigScopes = async (session?: ClientSession) => {
   const migrate = async (session: ClientSession) => {
-    const { targets, legacyInstances, pending } = await prepareScopeMigration(session);
+    const { targets, storedOverridesByDomain, legacyInstances, pending } =
+      await prepareScopeMigration(session);
 
     for (const [domain, { overrides, explicitDefaultPaths }] of pending) {
       const target = targets.get(domain);
@@ -271,7 +295,10 @@ export const migrateLegacyConfigScopes = async (session?: ClientSession) => {
           { _id: target._id, domain, revision: target.revision },
           {
             $set: {
-              overrides,
+              overrides:
+                domain === 'commercial' || domain === 'modelStatusProbe'
+                  ? encryptDomainSecrets(domain, overrides, storedOverridesByDomain.get(domain))
+                  : overrides,
               explicitDefaultPaths,
               updatedBy: { actor: 'migration' },
               updatedAt: now
@@ -288,7 +315,10 @@ export const migrateLegacyConfigScopes = async (session?: ClientSession) => {
             {
               $setOnInsert: {
                 domain,
-                overrides,
+                overrides:
+                  domain === 'commercial' || domain === 'modelStatusProbe'
+                    ? encryptDomainSecrets(domain, overrides)
+                    : overrides,
                 revision: 1,
                 schemaVersion: SYSTEM_INSTANCE_CONFIG_SCHEMA_VERSION,
                 explicitDefaultPaths,

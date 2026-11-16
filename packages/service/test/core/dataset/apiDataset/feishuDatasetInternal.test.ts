@@ -142,9 +142,7 @@ describe('useFeishuDatasetRequest 访问内网飞书服务', () => {
 
       try {
         // serviceEnv 在模块加载时解析 process.env，必须先 stub 再导入，无法使用静态 import。
-        getTestInstanceConfig().providers.dataSource.feishuBaseUrl =
-          `http://${privateHost}:${address.port}` ??
-          createDefaultInstanceConfig().providers.dataSource.feishuBaseUrl;
+        vi.stubEnv('FEISHU_BASE_URL', `http://${privateHost}:${address.port}`);
         getTestInstanceConfig().security.checkInternalIp = true;
         vi.resetModules();
         const { useFeishuDatasetRequest } =

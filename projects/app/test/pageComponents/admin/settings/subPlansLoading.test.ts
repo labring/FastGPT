@@ -18,6 +18,7 @@ vi.mock('@/web/common/system/useDomainConfig', () => ({
   useDomainConfig: () => ({
     revision: mocks.revision,
     effectiveConfig: mocks.effectiveConfig,
+    configuredSecretKeys: [],
     overrides: {},
     isLoading: false,
     isUpdating: false,
@@ -25,6 +26,7 @@ vi.mock('@/web/common/system/useDomainConfig', () => ({
   }),
   updateDomainConfigApi: mocks.save
 }));
+vi.mock('@/pageComponents/admin/settings/AdminSecretInput', () => ({ default: () => null }));
 vi.mock('@/pageComponents/admin/useAdminPermission', () => ({
   useAdminPermission: () => ({
     isFieldVisible: () => false,

@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MongoSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/schema';
+import { decryptDomainSecrets } from '@fastgpt/service/common/system/systemInstanceConfig/secrets';
 import {
   rehomeSubserviceConnections,
   verifyRehomedSubserviceConnections
@@ -28,7 +29,9 @@ describe('rehomeSubserviceConnections', () => {
       CODE_SANDBOX_TOKEN: 'synthetic-token'
     };
     expect(await run(env)).toEqual({ updatedDocuments: 1 });
-    expect((await read())?.overrides).toMatchObject({
+    const stored = (await read())?.overrides;
+    expect(stored.codeSandbox.token).toEqual({ secret: expect.any(String) });
+    expect(decryptDomainSecrets('subservice', stored)).toMatchObject({
       codeSandbox: { enabled: true, url: env.CODE_SANDBOX_URL, token: env.CODE_SANDBOX_TOKEN },
       mcp: { enabled: true, sseProxyUrl: 'https://mcp.example.com' }
     });
@@ -70,7 +73,7 @@ describe('rehomeSubserviceConnections', () => {
       { $set: { overrides: { codeSandbox: { enabled: false } } } }
     );
     await run({ CODE_SANDBOX_URL: 'http://localhost:3002' });
-    expect((await read())?.overrides.codeSandbox).toEqual({
+    expect(decryptDomainSecrets('subservice', (await read())?.overrides).codeSandbox).toEqual({
       enabled: false,
       url: 'http://localhost:3002',
       token: 'codesandbox'
@@ -156,7 +159,7 @@ describe('rehomeSubserviceConnections', () => {
       );
     });
     await run({ CODE_SANDBOX_URL: 'https://legacy.invalid', CODE_SANDBOX_TOKEN: 'legacy-secret' });
-    expect((await read())?.overrides.codeSandbox).toEqual({
+    expect(decryptDomainSecrets('subservice', (await read())?.overrides).codeSandbox).toEqual({
       enabled: false,
       url: 'https://admin.invalid',
       token: 'admin-secret'

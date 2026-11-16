@@ -71,7 +71,6 @@ const AccountCancellationConfigSchema = z.strictObject({
 export const AuthConfigSchema = z.strictObject({
   openApiKeyMaxCount: positiveInteger(100),
   passwordExpiredMonth: z.number().int().positive().nullable().default(null),
-  wecomLoginAutoRedirect: z.boolean().default(false),
   // 仅兼容历史实例文档和已发布迁移；运行时由 Pro TEAM_MODE 决定，不再开放配置写入。
   teamMode: z
     .enum(['multi', 'single', 'sync'])
@@ -89,7 +88,7 @@ export const AuthConfigSchema = z.strictObject({
       microsoft: MicrosoftOAuthConfigSchema.prefault({})
     })
     .prefault({}),
-  // 免登入口列表：key 为自定义标识，authUrl 为跳转地址
+  // 已弃用的免登入口列表：兼容旧实例，清空后不再开放配置入口。
   fastLogin: z
     .array(
       z.strictObject({
@@ -98,7 +97,11 @@ export const AuthConfigSchema = z.strictObject({
       })
     )
     .max(50)
-    .default([]),
+    .default([])
+    .meta({
+      deprecated: true,
+      description: '已弃用；仅保留已有快速登录入口，清空后不允许重新配置'
+    }),
   accountCancellation: AccountCancellationConfigSchema.prefault({}),
   // SSO 展示配置；服务端地址仍由 ENV/旧 systemEnv 提供
   sso: z

@@ -5,6 +5,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { createApiEntry } from '@fastgpt/service/common/http/entry';
 import { resolveSystemInstanceConfig } from '@fastgpt/global/common/system/config/schema';
 import { apiI18n } from '@/service/middleware/i18n';
+import { serviceEnv } from '@fastgpt/service/env';
 
 vi.unmock('@fastgpt/service/common/http/entry');
 vi.unmock('@fastgpt/service/common/response');
@@ -17,13 +18,20 @@ vi.mock('@fastgpt/service/support/permission/user/auth', () => ({
 }));
 import handler from '@/pages/api/marketplace/[...path]';
 
+const previousMarketplaceUrl = serviceEnv.MARKETPLACE_URL;
+afterEach(() => {
+  serviceEnv.MARKETPLACE_URL = previousMarketplaceUrl;
+  vi.unstubAllGlobals();
+});
+
 describe('Marketplace config source', () => {
   const fetchMock = vi.fn();
   beforeEach(() => {
-    global.systemInstanceConfig = resolveSystemInstanceConfig({
-      site: { marketplaceUrl: 'https://configured.example.com' }
+    global.systemInstanceConfig = resolveSystemInstanceConfig({});
+    Object.assign(global.systemInstanceConfig.site, {
+      marketplaceUrl: 'https://stale.example.com'
     });
-    vi.stubEnv('MARKETPLACE_URL', 'https://retired-env.example.com');
+    serviceEnv.MARKETPLACE_URL = 'https://env.example.com';
     fetchMock.mockReset().mockResolvedValue({ headers: new Headers(), status: 200, body: null });
     vi.stubGlobal('fetch', fetchMock);
   });
@@ -32,7 +40,7 @@ describe('Marketplace config source', () => {
     vi.unstubAllGlobals();
   });
 
-  it('forwards requests to the configured host instead of the retired ENV', async () => {
+  it('forwards requests to the ENV host while ignoring a stale scope value', async () => {
     const response = Object.assign(new PassThrough(), {
       status: vi.fn().mockReturnThis(),
       setHeader: vi.fn()
@@ -42,7 +50,7 @@ describe('Marketplace config source', () => {
       { query: { path: ['api', 'models'] }, headers: {}, method: 'GET' } as any,
       response as any
     );
-    expect(fetchMock.mock.calls[0][0].url).toBe('https://configured.example.com/api/models');
+    expect(fetchMock.mock.calls[0][0].url).toBe('https://env.example.com/api/models');
     expect(response.status).toHaveBeenCalledWith(200);
   });
 });
@@ -52,9 +60,7 @@ describe('Marketplace response lifecycle', () => {
   it.each([200, 404, 500])(
     'preserves the JSON body and HTTP %s until its stream finishes',
     async (status) => {
-      global.systemInstanceConfig = resolveSystemInstanceConfig({
-        site: { marketplaceUrl: 'https://marketplace.example.com' }
-      });
+      serviceEnv.MARKETPLACE_URL = 'https://marketplace.example.com';
       const body = JSON.stringify({ upstream: true, status });
       vi.stubGlobal(
         'fetch',

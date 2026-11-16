@@ -115,7 +115,7 @@ export const FastGPTFeConfigsSchema = z.looseObject({
   show_openai_account: z
     .boolean()
     .optional()
-    .meta({ description: '是否展示个人/团队自定义 OpenAI 账号配置入口' }),
+    .meta({ deprecated: true, description: '已弃用；兼容既有个人/团队自定义 OpenAI 账号配置入口' }),
   show_compliance_copywriting: z
     .boolean()
     .optional()
@@ -225,7 +225,6 @@ export const FastGPTFeConfigsSchema = z.looseObject({
     .meta({ description: '自定义展示的 Markdown 文案（如开源地址、加入交流群说明）' }),
   docUrl: z.string().optional().meta({ description: '官方使用文档地址' }),
   loginGuideDocUrl: z.string().optional().meta({ description: '登录引导帮助文档地址' }),
-  openAPIDocUrl: z.string().optional().meta({ description: 'OpenAPI 接口文档地址' }),
   appTemplateCourse: z.string().optional().meta({ description: '应用模板使用教程链接' }),
   marketplaceUrl: z.string().optional().meta({ description: '插件市场与模板市场服务地址' }),
   disableMarketplace: BoolSchema.optional().meta({ description: '是否隐藏插件市场安装入口' }),
@@ -312,7 +311,8 @@ export const FastGPTFeConfigsSchema = z.looseObject({
 
   navbarItems: z.array(NavbarItemSchema).optional().meta({ description: '自定义系统导航栏链接项' }),
   externalProviderWorkflowVariables: z.array(ExternalProviderWorkflowVarSchema).optional().meta({
-    description: '外部提供商工作流全局变量定义'
+    deprecated: true,
+    description: '已弃用的外部提供商工作流全局变量定义，仅兼容已有配置'
   }),
 
   payConfig: z

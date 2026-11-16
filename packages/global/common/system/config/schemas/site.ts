@@ -1,5 +1,13 @@
 import z from 'zod';
 import { textWithDefault, urlWithDefault } from './primitives';
+import { isValidServiceBaseUrl, stripUrlTrailingSlash } from '../../../string/url';
+
+/** 管理端保存主站域名时要求完整 HTTP(S) 地址，禁止凭据、查询参数和片段。 */
+export const SitePublicUrlSchema = z
+  .string()
+  .trim()
+  .refine(isValidServiceBaseUrl, { message: 'Expected a valid HTTP(S) public site URL' })
+  .transform(stripUrlTrailingSlash);
 
 const NavbarItemConfigSchema = z.strictObject({
   id: z.string().max(100),
@@ -12,12 +20,12 @@ const NavbarItemConfigSchema = z.strictObject({
 export type NavbarItemConfigType = z.infer<typeof NavbarItemConfigSchema>;
 
 export const SiteConfigSchema = z.strictObject({
+  // 未配置时不猜测部署域名，浏览器内可使用相对路径；管理表单保存时必须填写。
+  publicUrl: z.union([z.literal(''), SitePublicUrlSchema]).default(''),
   name: z.string().min(1).max(100).default('AI'),
   description: z.string().max(1000).default(''),
   favicon: textWithDefault(),
-  marketplaceUrl: urlWithDefault('https://v3.marketplace.fastgpt.cn'),
   docUrl: urlWithDefault('https://doc.fastgpt.io'),
-  openApiDocUrl: urlWithDefault('https://doc.fastgpt.io/openapi/intro'),
   // OpenAPI 前缀：用于生成 API Key 的可读前缀
   openApiPrefix: z.string().max(100).default('fastgpt'),
   // 联系/社区弹窗展示的 Markdown 内容

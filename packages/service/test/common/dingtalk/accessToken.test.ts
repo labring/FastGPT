@@ -1,4 +1,4 @@
-import { getTestInstanceConfig } from '@test/utils/instanceConfigSnapshot';
+import { serviceEnv } from '@fastgpt/service/env';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { getDingtalkAppAccessToken } from '@fastgpt/service/common/dingtalk/accessToken';
 
@@ -20,7 +20,7 @@ describe('getDingtalkAppAccessToken', () => {
     post.mockResolvedValueOnce({ data: { accessToken: 'token', expireIn: 7200 } });
     await expect(getDingtalkAppAccessToken(credentials())).resolves.toBe('token');
     expect(post).toHaveBeenCalledWith(
-      `${getTestInstanceConfig().providers.dataSource.dingtalkBaseUrl}/v1.0/oauth2/accessToken`,
+      `${serviceEnv.DINGTALK_BASE_URL}/v1.0/oauth2/accessToken`,
       credentials()
     );
   });

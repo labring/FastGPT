@@ -21,7 +21,7 @@ export const getSystemMaxFileSize = () =>
 
 const DAY_IN_MS = 24 * 60 * 60 * 1000;
 
-/** 文件服务公开地址只读实例配置；空值由链接构造方回落到部署 FE_DOMAIN。 */
+/** 文件服务公开地址只读实例配置；空值由链接构造方回落到 site.publicUrl。 */
 export const getStorageFileDomain = () => {
   const value = getSystemInstanceConfig().storage.fileDomain;
   logInstanceConfigRead({
@@ -48,15 +48,8 @@ export const getStorageFileUrlExpiredDays = () => {
 export const getStorageFileUrlExpiredTime = (now: Date = new Date()): Date =>
   new Date(now.getTime() + Math.round(getStorageFileUrlExpiredDays() * DAY_IN_MS));
 
-/** short-redirect 302 预签名地址临时有效期（秒）：请求期读快照，Admin 保存即生效。 */
-export const getStorageRedirectTtlSeconds = () => {
-  const value = getSystemInstanceConfig().storage.redirectTtlSeconds;
-  logInstanceConfigRead({
-    callsite: 'runtime.common.s3.constants.getStorageRedirectTtlSeconds',
-    fields: [{ path: 'storage.redirectTtlSeconds', value }]
-  });
-  return value;
-};
+/** 重定向签发的临时存储地址固定最多有效 30 秒，且不能超过原短链剩余有效期。 */
+export const getStorageRedirectTtlSeconds = () => 30;
 
 export const S3_KEY_PATH_INVALID_CHARS = /[|\\/]/;
 
@@ -268,8 +261,10 @@ export function createDefaultStorageOptions() {
 }
 
 /** 将下载地址替换为当前 CDN 的协议、主机和端口，保留对象路径与签名参数。 */
-export function replaceS3UrlWithCdnEndpoint(url: string) {
-  const storageS3CdnEndpoint = getStorageS3CdnEndpoint();
+export function replaceS3UrlWithCdnEndpoint(
+  url: string,
+  storageS3CdnEndpoint = getStorageS3CdnEndpoint()
+) {
   if (!storageS3CdnEndpoint || storageVendor === 'r2') {
     return url;
   }

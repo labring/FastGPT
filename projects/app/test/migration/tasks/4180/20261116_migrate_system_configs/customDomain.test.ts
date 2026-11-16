@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MongoSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/schema';
+import { decryptDomainSecrets } from '@fastgpt/service/common/system/systemInstanceConfig/secrets';
 import { MongoSystemConfigs } from '@fastgpt/service/common/system/config/schema';
 import { SystemConfigsTypeEnum } from '@fastgpt/global/common/system/config/constants';
 import { buildSparseLegacyOverrides } from '@/migration/tasks/4180/20261116_migrate_system_configs/service';
@@ -40,7 +41,8 @@ describe('restoreCustomDomainConfig', () => {
     });
     await expect(verifyCustomDomainConfig()).resolves.toBeUndefined();
     const doc = await MongoSystemInstanceConfig.findOne({ domain: 'site' }).lean();
-    expect(doc?.overrides.customDomain).toEqual(legacy);
+    expect(doc?.overrides.customDomain.kc.aliyun).toEqual({ secret: expect.any(String) });
+    expect(decryptDomainSecrets('site', doc?.overrides).customDomain).toEqual(legacy);
     await expect(restoreCustomDomainConfig({ assertActive })).resolves.toEqual({
       updatedFields: 0
     });

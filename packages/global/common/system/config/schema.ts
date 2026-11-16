@@ -47,6 +47,7 @@ export const SYSTEM_INSTANCE_CONFIG_SCOPES = [
   'operations'
 ] as const;
 export const SystemInstanceConfigScopeKeySchema = z.enum(SYSTEM_INSTANCE_CONFIG_SCOPES);
+export type SystemInstanceConfigScopeKey = z.infer<typeof SystemInstanceConfigScopeKeySchema>;
 
 /**
  * 递归将 ZodObject 内的所有叶子和嵌套对象转换为严格且可选的 Partial Schema。

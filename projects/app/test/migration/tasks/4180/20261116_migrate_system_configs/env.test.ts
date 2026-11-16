@@ -10,6 +10,45 @@ import { resolveSystemInstanceConfig } from '@fastgpt/global/common/system/confi
 afterEach(() => vi.unstubAllEnvs());
 
 describe('legacy instance config ENV import', () => {
+  it('ignores retired WeChat concurrency ENV without blocking migration', () => {
+    vi.stubEnv('WECHAT_CHANNEL_CONCURRENCY', 'invalid');
+    expect(readLegacyInstanceConfigEnv()).not.toHaveProperty('WECHAT_CHANNEL_CONCURRENCY');
+    expect(
+      buildSparseLegacyOverrides({ feConfigs: {}, systemEnv: {} }).performance ?? {}
+    ).not.toHaveProperty('channel');
+  });
+
+  it('ignores retired sandbox limit ENV even when values are invalid', () => {
+    for (const key of [
+      'AGENT_SANDBOX_ENTRYPOINT_TIMEOUT_SECONDS',
+      'AGENT_SANDBOX_WS_MAX_MESSAGE_BYTES',
+      'AGENT_SANDBOX_WS_MAX_FRAME_BYTES'
+    ]) {
+      vi.stubEnv(key, 'invalid');
+      expect(readLegacyInstanceConfigEnv()).not.toHaveProperty(key);
+    }
+    const common = buildLegacyDomainOverrides({ feConfigs: {}, systemEnv: {} }).subservice
+      ?.agentSandbox?.common;
+    for (const key of ['entrypointTimeoutSeconds', 'wsMaxMessageBytes', 'wsMaxFrameBytes']) {
+      expect(common).not.toHaveProperty(key);
+    }
+  });
+
+  it('does not migrate deployment-only datasource addresses into a scope', () => {
+    const keys = [
+      'FEISHU_BASE_URL',
+      'DINGTALK_BASE_URL',
+      'DINGTALK_OAPI_BASE_URL',
+      'YUQUE_DATASET_BASE_URL'
+    ];
+    for (const key of keys) vi.stubEnv(key, 'https://private-platform.example.com');
+    const legacyEnv = readLegacyInstanceConfigEnv();
+    for (const key of keys) expect(legacyEnv).not.toHaveProperty(key);
+    expect(
+      buildLegacyDomainOverrides({ feConfigs: {}, systemEnv: {}, legacyEnv }).providers
+    ).not.toHaveProperty('dataSource');
+  });
+
   it.each(['8', 'invalid'])('不导入旧 EVAL_CONCURRENCY=%s，也不因其格式阻塞迁移', (value) => {
     vi.stubEnv('EVAL_CONCURRENCY', value);
     expect(readLegacyInstanceConfigEnv()).not.toHaveProperty('EVAL_CONCURRENCY');
@@ -96,8 +135,7 @@ describe('legacy instance config ENV import', () => {
     'SKIP_FILE_TYPE_CHECK',
     'SHOW_COUPON',
     'SHOW_DISCOUNT_COUPON',
-    'HIDE_CHAT_COPYRIGHT_SETTING',
-    'WECOM_LOGIN_AUTO_REDIRECT'
+    'HIDE_CHAT_COPYRIGHT_SETTING'
   ])('rejects invalid boolean for %s without printing its value', (key) => {
     vi.stubEnv(key, 'treu-secret-value');
     expect(readLegacyInstanceConfigEnv).toThrow(key);

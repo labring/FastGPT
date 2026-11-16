@@ -583,7 +583,10 @@ describe('systemInstanceConfigRegistry', () => {
   });
 
   it('covers all leaf configuration fields in the registry', () => {
-    const config = parseSystemInstanceConfig({}) as unknown as Record<string, unknown>;
+    // 可选开关没有默认值，显式提供后才能纳入叶子字段覆盖检查。
+    const config = parseSystemInstanceConfig({
+      security: { allowedOriginsEnabled: false }
+    }) as unknown as Record<string, unknown>;
 
     const getLeafPaths = (obj: Record<string, unknown>, prefix = ''): string[] => {
       const paths: string[] = [];
@@ -628,10 +631,20 @@ describe('systemInstanceConfigRegistry', () => {
       enableSaasAdminConfig: true
     }).map((item) => item.key);
 
-    expect(communityKeys).toContain('site.name');
+    expect(communityKeys).toContain('site.publicUrl');
+    expect(communityKeys).not.toContain('site.name');
+    expect(communityKeys).not.toContain('site.favicon');
+    expect(proKeys).toContain('site.name');
+    expect(proKeys).toContain('site.favicon');
     expect(communityKeys).not.toContain('commercial.showCoupon');
     expect(proKeys).not.toContain('commercial.showCoupon');
     expect(saasProKeys).toContain('commercial.showCoupon');
+    const wecomKeys = saasProKeys.filter((key) => key.startsWith('auth.loginProviders.wecom.'));
+    expect(wecomKeys.length).toBeGreaterThan(0);
+    for (const key of wecomKeys) {
+      expect(proKeys).not.toContain(key);
+      expect(communityKeys).not.toContain(key);
+    }
   });
   it('checks subservice resolveDomainEffectiveConfig errors', () => {
     try {

@@ -15,6 +15,14 @@ const buildLegacyDomainOverrides = (input: Parameters<typeof buildFromLegacy>[0]
   buildFromLegacy({ ...input, legacyEnv });
 
 describe('migration buildLegacyDomainOverrides', () => {
+  it('maps the legacy main site URL into site.publicUrl', () => {
+    const overrides = buildFromLegacy({
+      feConfigs: {},
+      systemEnv: {},
+      legacyEnv: { ...legacyEnv, FE_DOMAIN: 'https://main.test' }
+    });
+    expect(overrides.site?.publicUrl).toBe('https://main.test');
+  });
   it('maps legacy feConfigs values into the site domain', () => {
     const overrides = buildLegacyDomainOverrides({
       feConfigs: {
@@ -33,12 +41,12 @@ describe('migration buildLegacyDomainOverrides', () => {
       name: 'My Platform',
       favicon: '/custom.ico',
       docUrl: 'https://docs.example.com',
-      openApiDocUrl: 'https://docs.example.com/api',
       concatMd: 'hello',
       appTemplateCourse: 'https://course.example.com',
       loginGuideDocUrl: 'https://guide.example.com',
       openApiPrefix: 'myorg'
     });
+    expect(overrides.site).not.toHaveProperty('openApiDocUrl');
   });
 
   it('maps legacy fileUrlWhitelist / workflowHttpNode into security', () => {
@@ -112,7 +120,6 @@ describe('migration buildLegacyDomainOverrides', () => {
 
     expect(sparse.site).toMatchObject({
       docUrl: '',
-      openApiDocUrl: '',
       concatMd: '',
       appTemplateCourse: '',
       loginGuideDocUrl: ''
@@ -225,7 +232,10 @@ describe('migration buildSparseLegacyOverrides', () => {
       systemEnv: {}
     });
 
-    expect(sparse.site).toBeUndefined();
+    // ENV 中的公网地址不是 Schema 默认值，需保留；其余站点默认字段仍被剪枝。
+    expect(sparse.site).toEqual(
+      legacyEnv.FE_DOMAIN ? { publicUrl: legacyEnv.FE_DOMAIN } : undefined
+    );
     expect(sparse.feature).toBeUndefined();
   });
 
@@ -662,16 +672,15 @@ describe('migration env wiring', () => {
     const overrides = buildLegacyDomainOverrides({ feConfigs: {}, systemEnv: {} });
     const cases: [string, unknown][] = [
       // site
+      ['site.publicUrl', legacyEnv.FE_DOMAIN],
       ['site.name', legacyEnv.SYSTEM_NAME],
       ['site.description', legacyEnv.SYSTEM_DESCRIPTION],
       ['site.favicon', legacyEnv.SYSTEM_FAVICON],
-      ['site.marketplaceUrl', legacyEnv.MARKETPLACE_URL],
       ['site.customApiDomain', legacyEnv.CUSTOM_API_DOMAIN],
       ['site.customSharePageDomain', legacyEnv.CUSTOM_SHARE_PAGE_DOMAIN],
       // auth
       ['auth.openApiKeyMaxCount', legacyEnv.OPENAPI_KEY_MAX_COUNT],
       ['auth.passwordExpiredMonth', legacyEnv.PASSWORD_EXPIRED_MONTH ?? null],
-      ['auth.wecomLoginAutoRedirect', legacyEnv.WECOM_LOGIN_AUTO_REDIRECT],
       // security
       ['security.checkInternalIp', legacyEnv.CHECK_INTERNAL_IP],
       ['security.csrfEnabled', legacyEnv.CSRF_ENABLED],
@@ -717,13 +726,11 @@ describe('migration env wiring', () => {
       ['performance.dataset.vlmMaxProcess', legacyEnv.VLM_MAX_PROCESS],
       ['performance.chat.maxQpm', legacyEnv.CHAT_MAX_QPM],
       ['performance.tracking.retentionHours', legacyEnv.LLM_REQUEST_TRACKING_RETENTION_HOURS],
-      ['performance.channel.wechatConcurrency', legacyEnv.WECHAT_CHANNEL_CONCURRENCY],
       // storage
       ['storage.downloadMode', legacyEnv.STORAGE_DOWNLOAD_URL_MODE],
       ['storage.externalEndpoint', legacyEnv.STORAGE_EXTERNAL_ENDPOINT],
       ['storage.cdnEndpoint', legacyEnv.STORAGE_S3_CDN_ENDPOINT],
       ['storage.fileUrlExpiredDays', legacyEnv.FILE_URL_EXPIRED_DAYS],
-      ['storage.redirectTtlSeconds', legacyEnv.STORAGE_DOWNLOAD_REDIRECT_TTL_SECONDS],
       // vector
       ['vector.hnswEfSearch', legacyEnv.HNSW_EF_SEARCH],
       // providers
@@ -735,10 +742,6 @@ describe('migration env wiring', () => {
       ['providers.documentParse.customPdf.textinSecretCode', legacyEnv.TEXTIN_SECRET_CODE],
       ['providers.documentParse.sangfor.extensions', legacyEnv.SANGFOR_PARSE_EXTENSIONS],
       ['providers.documentParse.sangfor.timeoutSeconds', legacyEnv.SANGFOR_PARSE_TIMEOUT_SECONDS],
-      ['providers.dataSource.feishuBaseUrl', legacyEnv.FEISHU_BASE_URL],
-      ['providers.dataSource.dingtalkBaseUrl', legacyEnv.DINGTALK_BASE_URL],
-      ['providers.dataSource.dingtalkOapiBaseUrl', legacyEnv.DINGTALK_OAPI_BASE_URL],
-      ['providers.dataSource.yuqueDatasetBaseUrl', legacyEnv.YUQUE_DATASET_BASE_URL],
       // subservice
       ['subservice.mcp.sseProxyUrl', legacyEnv.SSE_MCP_SERVER_PROXY_ENDPOINT],
       ['subservice.agentSandbox.provider', legacyEnv.AGENT_SANDBOX_PROVIDER],
@@ -751,18 +754,6 @@ describe('migration env wiring', () => {
         legacyEnv.AGENT_SANDBOX_ARCHIVE_INACTIVE_DAYS
       ],
       ['subservice.agentSandbox.common.maxEditDebug', legacyEnv.AGENT_SANDBOX_MAX],
-      [
-        'subservice.agentSandbox.common.entrypointTimeoutSeconds',
-        legacyEnv.AGENT_SANDBOX_ENTRYPOINT_TIMEOUT_SECONDS
-      ],
-      [
-        'subservice.agentSandbox.common.wsMaxMessageBytes',
-        legacyEnv.AGENT_SANDBOX_WS_MAX_MESSAGE_BYTES
-      ],
-      [
-        'subservice.agentSandbox.common.wsMaxFrameBytes',
-        legacyEnv.AGENT_SANDBOX_WS_MAX_FRAME_BYTES
-      ],
       ['subservice.agentSandbox.common.npmRegistry', legacyEnv.AGENT_SANDBOX_NPM_REGISTRY],
       ['subservice.agentSandbox.common.pypiIndexUrl', legacyEnv.AGENT_SANDBOX_PYPI_INDEX_URL],
       ['subservice.agentSandbox.common.aptMirror', legacyEnv.AGENT_SANDBOX_APT_MIRROR],
@@ -799,10 +790,11 @@ describe('migration env wiring', () => {
     expect(legacyEnv).not.toHaveProperty('EVAL_CONCURRENCY');
     expect(pick(overrides, 'performance.task.evalConcurrency')).toBeUndefined();
 
-    // 兜底：有取值才能验证绑定，条数过少说明表格被削掉了
+    // Marketplace、企业微信自动跳转与四项数据源地址只读运行时 ENV；三项 Sandbox 固定限制也不再计入迁移绑定数。
+    // 兜底：有取值才能验证绑定，条数过少说明表格被削掉了。
     expect(
       cases.filter(([, expected]) => expected !== undefined && expected !== '').length
-    ).toBeGreaterThanOrEqual(65);
+    ).toBeGreaterThanOrEqual(56);
 
     const mismatched = cases
       .filter(([path, expected]) => {

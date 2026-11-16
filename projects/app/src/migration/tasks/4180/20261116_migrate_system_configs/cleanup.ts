@@ -4,6 +4,10 @@ import {
   resolveDomainEffectiveConfig
 } from '@fastgpt/global/common/system/config/schema';
 import { MongoSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/schema';
+import {
+  decryptDomainSecrets,
+  encryptDomainSecrets
+} from '@fastgpt/service/common/system/systemInstanceConfig/secrets';
 import type { SystemMigrationLogger } from '@/migration/registry';
 
 /**
@@ -16,10 +20,12 @@ import type { SystemMigrationLogger } from '@/migration/registry';
 export const deprecatedOverridePaths: Partial<
   Record<SystemInstanceConfigDomainKey, readonly (readonly string[])[]>
 > = {
-  site: [['chineseRedirectUrl'], ['systemTitle']],
+  site: [['chineseRedirectUrl'], ['systemTitle'], ['marketplaceUrl'], ['openApiDocUrl']],
   // 接口注册 IP 限流即强制执行，废弃实例级关闭开关；旧版内置文本审查已迁移为内容审核插件策略。
   security: [['useIpLimit'], ['censor']],
   performance: [
+    // 微信渠道轮询与回复并发固定为 1000，不再接受实例覆盖。
+    ['channel'],
     // 流式恢复采用固定系统策略，清理整个旧配置分支。
     ['streamResume'],
     // 日志候选集记录上限恢复为 ENV 权威。
@@ -30,7 +36,7 @@ export const deprecatedOverridePaths: Partial<
     ['chat', 'logInterval'],
     ['chat', 'logSourceIdPrefix']
   ],
-  storage: [['downloadRedirectTtlSeconds'], ['downloadRedirectEndpoint']],
+  storage: [['downloadRedirectTtlSeconds'], ['downloadRedirectEndpoint'], ['redirectTtlSeconds']],
   feature: [
     // Builder 入口仅由版本、编辑权限和 Sandbox 能力决定，不再提供单独显示开关。
     ['showWorkflowBuilder'],
@@ -43,14 +49,18 @@ export const deprecatedOverridePaths: Partial<
     ['showEmptyChat']
   ],
   vector: [['vqLevel'], ['languageIdentifier'], ['hnswMaxScanTuples']],
-  providers: [['chunk'], ['crm']],
+  providers: [['chunk'], ['crm'], ['dataSource']],
   // Plugin 配置由 Plugin 服务管理，AI Proxy 连接只由部署 ENV 提供。
   subservice: [
     ['plugin'],
     ['aiProxy'],
     // 早期开发版本使用 baseUrl，正式配置统一为 url；token 与 mcp.enabled 现为有效字段。
     ['codeSandbox', 'baseUrl'],
-    ['agentSandbox', 'proxy', 'httpUrl']
+    ['agentSandbox', 'proxy', 'httpUrl'],
+    // 入口超时固定 60 秒，WebSocket 消息/帧上限固定 64/16 MiB。
+    ['agentSandbox', 'common', 'entrypointTimeoutSeconds'],
+    ['agentSandbox', 'common', 'wsMaxMessageBytes'],
+    ['agentSandbox', 'common', 'wsMaxFrameBytes']
   ],
   auth: [
     // 新团队基础权限恢复为 ENV 权威，存量实例配置不再参与运行时决策。
@@ -225,7 +235,7 @@ export const cleanupInstanceConfigDeprecatedFields = async ({
 
     const { overrides, removedFieldCount: removedOverrides } = stripDeprecatedOverrides(
       domain,
-      doc.overrides
+      decryptDomainSecrets(domain, doc.overrides)
     );
     const { explicitDefaultPaths, removedPathCount: removedMarkers } =
       stripDeprecatedExplicitDefaultPaths(domain, doc.explicitDefaultPaths);
@@ -248,7 +258,7 @@ export const cleanupInstanceConfigDeprecatedFields = async ({
       { _id: doc._id, revision: doc.revision },
       {
         $set: {
-          overrides,
+          overrides: encryptDomainSecrets(domain, overrides, doc.overrides),
           ...(explicitDefaultPaths !== undefined ? { explicitDefaultPaths } : {}),
           updatedAt: new Date()
         },
@@ -269,7 +279,7 @@ export const cleanupInstanceConfigDeprecatedFields = async ({
         { readPreference: 'primary' }
       );
       const retry = latest
-        ? stripDeprecatedOverrides(domain, latest.overrides)
+        ? stripDeprecatedOverrides(domain, decryptDomainSecrets(domain, latest.overrides))
         : { overrides: undefined, removedFieldCount: 0 };
       const retryMarkers = latest
         ? stripDeprecatedExplicitDefaultPaths(domain, latest.explicitDefaultPaths)
@@ -290,7 +300,7 @@ export const cleanupInstanceConfigDeprecatedFields = async ({
           { _id: doc._id, revision: latest!.revision },
           {
             $set: {
-              overrides: retry.overrides,
+              overrides: encryptDomainSecrets(domain, retry.overrides, latest!.overrides),
               ...(retryMarkers.explicitDefaultPaths !== undefined
                 ? { explicitDefaultPaths: retryMarkers.explicitDefaultPaths }
                 : {}),
@@ -347,7 +357,10 @@ export const verifyInstanceConfigDeprecatedFields = async () => {
     }
 
     try {
-      resolveDomainEffectiveConfig({ domain, overrides: doc.overrides });
+      resolveDomainEffectiveConfig({
+        domain,
+        overrides: decryptDomainSecrets(domain, doc.overrides)
+      });
     } catch {
       invalidDomains.push(domain);
     }

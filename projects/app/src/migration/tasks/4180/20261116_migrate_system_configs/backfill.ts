@@ -1,5 +1,9 @@
 import { resolveDomainEffectiveConfig } from '@fastgpt/global/common/system/config/schema';
 import { MongoSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/schema';
+import {
+  decryptDomainSecrets,
+  encryptDomainSecrets
+} from '@fastgpt/service/common/system/systemInstanceConfig/secrets';
 import { hasOverridePath } from '@fastgpt/global/common/system/config/merge';
 import { SystemConfigsTypeEnum } from '@fastgpt/global/common/system/config/constants';
 import { MongoSystemConfigs } from '@fastgpt/service/common/system/config/schema';
@@ -39,7 +43,7 @@ export const backfillExternalFileCheck = async ({
     const doc = await readSecurityConfig();
     if (!doc) throw new Error('Security instance config is missing');
 
-    const overrides = doc.overrides ?? {};
+    const overrides = decryptDomainSecrets('security', doc.overrides ?? {});
     const security = resolveDomainEffectiveConfig({ domain: 'security', overrides });
     if (
       Object.hasOwn(overrides, 'checkExternalFile') ||
@@ -74,7 +78,7 @@ export const backfillExternalFileCheck = async ({
 export const verifyExternalFileCheck = async () => {
   const doc = await readSecurityConfig();
   if (!doc) throw new Error('Security instance config is missing');
-  const overrides = doc.overrides ?? {};
+  const overrides = decryptDomainSecrets('security', doc.overrides ?? {});
   resolveDomainEffectiveConfig({ domain: 'security', overrides });
   if (
     !Object.hasOwn(overrides, 'checkExternalFile') &&
@@ -125,7 +129,7 @@ export const backfillModelDeprecationSms = async ({
     );
     if (!doc) throw new Error('Auth instance config is missing');
 
-    const overrides = doc.overrides ?? {};
+    const overrides = decryptDomainSecrets('auth', doc.overrides ?? {});
     resolveDomainEffectiveConfig({ domain: 'auth', overrides });
     if (
       hasOverridePath(overrides, templatePath) ||
@@ -158,7 +162,11 @@ export const backfillModelDeprecationSms = async ({
     const result = await MongoSystemInstanceConfig.collection.updateOne(
       { _id: doc._id, revision: doc.revision },
       {
-        $set: { overrides: target, updatedAt: new Date(), updatedBy: { actor: 'migration' } },
+        $set: {
+          overrides: encryptDomainSecrets('auth', target, doc.overrides),
+          updatedAt: new Date(),
+          updatedBy: { actor: 'migration' }
+        },
         $inc: { revision: 1 }
       }
     );
@@ -179,7 +187,7 @@ export const verifyModelDeprecationSms = async () => {
     )
   ]);
   if (!doc) throw new Error('Auth instance config is missing');
-  const overrides = doc.overrides ?? {};
+  const overrides = decryptDomainSecrets('auth', doc.overrides ?? {});
   resolveDomainEffectiveConfig({ domain: 'auth', overrides });
   const present =
     hasOverridePath(overrides, templatePath) || hasExplicitSmsDefault(doc.explicitDefaultPaths);
@@ -202,7 +210,7 @@ export const rehomeFileDomain = async ({
       { readPreference: 'primary' }
     );
     if (!doc) throw new Error('Storage instance config is missing');
-    const overrides = doc.overrides ?? {};
+    const overrides = decryptDomainSecrets('storage', doc.overrides ?? {});
     const paths = doc.explicitDefaultPaths ?? [];
     if (!Array.isArray(paths) || !paths.every((path) => typeof path === 'string')) {
       throw new Error('Invalid storage explicit-default metadata');
@@ -248,7 +256,10 @@ export const verifyFileDomainMigration = async () => {
   );
   if (!doc) throw new Error('Storage instance config is missing');
   try {
-    resolveDomainEffectiveConfig({ domain: 'storage', overrides: doc.overrides });
+    resolveDomainEffectiveConfig({
+      domain: 'storage',
+      overrides: decryptDomainSecrets('storage', doc.overrides)
+    });
   } catch {
     throw new Error('Invalid storage configuration after file domain migration');
   }
@@ -281,7 +292,7 @@ const readPolicyDocuments = async () => {
   return policies.map((policy) => {
     const doc = docs.find((item) => item.domain === policy.domain);
     if (!doc) throw new Error(`Missing HTTP policy configuration domain: ${policy.domain}`);
-    const overrides = doc.overrides ?? {};
+    const overrides = decryptDomainSecrets(policy.domain, doc.overrides ?? {});
     const paths: unknown = doc.explicitDefaultPaths ?? [];
     if (!Array.isArray(paths) || !paths.every((item) => typeof item === 'string')) {
       throw new Error(`Invalid HTTP policy explicit-default metadata: ${policy.domain}`);
@@ -332,7 +343,7 @@ export const rehomeHttpRuntimePolicies = async ({
         } catch {
           throw new Error(`Invalid HTTP policy migration target: ${policy.domain}`);
         }
-        return { doc, target };
+        return { doc, target, domain: policy.domain };
       });
     if (plans.length === 0) return { updatedDocuments: 0 };
 
@@ -341,12 +352,12 @@ export const rehomeHttpRuntimePolicies = async ({
       await mongoSessionRun(async (session) => {
         // driver 重试事务回调时也检查 lease，避免旧 runId 再发起写入。
         await assertActive();
-        for (const { doc, target } of plans) {
+        for (const { doc, target, domain } of plans) {
           const result = await MongoSystemInstanceConfig.collection.updateOne(
             { _id: doc._id, revision: doc.revision },
             {
               $set: {
-                overrides: target,
+                overrides: encryptDomainSecrets(domain, target, doc.overrides),
                 updatedAt: new Date(),
                 updatedBy: { actor: 'migration' }
               },
@@ -399,7 +410,7 @@ export const restoreCustomDomainConfig = async ({
       { readPreference: 'primary' }
     );
     if (!doc) throw new Error('Site instance config is missing');
-    const overrides = doc.overrides ?? {};
+    const overrides = decryptDomainSecrets('site', doc.overrides ?? {});
     const paths = doc.explicitDefaultPaths ?? [];
     if (!Array.isArray(paths) || !paths.every((path) => typeof path === 'string')) {
       throw new Error('Invalid site explicit-default metadata');
@@ -443,7 +454,7 @@ export const restoreCustomDomainConfig = async ({
       { _id: doc._id, revision: doc.revision },
       {
         $set: {
-          overrides: merged,
+          overrides: encryptDomainSecrets('site', merged, doc.overrides),
           explicitDefaultPaths: [...explicit],
           updatedAt: new Date(),
           updatedBy: { actor: 'migration' }
@@ -468,7 +479,10 @@ export const verifyCustomDomainConfig = async () => {
     throw new Error('Invalid site explicit-default metadata');
   }
   try {
-    resolveDomainEffectiveConfig({ domain: 'site', overrides: doc.overrides });
+    resolveDomainEffectiveConfig({
+      domain: 'site',
+      overrides: decryptDomainSecrets('site', doc.overrides)
+    });
   } catch {
     throw new Error('Invalid restored site configuration');
   }

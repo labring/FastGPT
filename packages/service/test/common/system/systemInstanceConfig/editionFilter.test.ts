@@ -6,7 +6,6 @@ import {
   updateDomainConfig
 } from '../../../../common/system/systemInstanceConfig/controller';
 import { MongoSystemInstanceConfig } from '../../../../common/system/systemInstanceConfig/schema';
-import { SECRET_MASK } from '@fastgpt/global/common/system/config/permission';
 
 describe('service edition gating for Admin config APIs', () => {
   beforeEach(async () => {
@@ -38,7 +37,7 @@ describe('service edition gating for Admin config APIs', () => {
     expect(pro.overrides.teamMode).toBeUndefined();
   });
 
-  it('strips pro-only loginProviders secrets from community reads but masks them for pro', async () => {
+  it('omits secret values and reports configured paths only for the current edition', async () => {
     await updateDomainConfig({
       domain: 'auth',
       expectedRevision: 0,
@@ -52,11 +51,35 @@ describe('service edition gating for Admin config APIs', () => {
     // pro-only 的 loginProviders 在社区版读取中被整体剔除
     expect((community.effectiveConfig as any).loginProviders?.github?.secret).toBeUndefined();
     expect((community.overrides as any).loginProviders).toBeUndefined();
+    expect(community.secretKeys).not.toContain('loginProviders.github.secret');
+    expect(community.configuredSecretKeys).not.toContain('loginProviders.github.secret');
 
     const pro = await getDomainConfigForAdmin('auth', 'pro');
-    // 商业版读取时敏感字段仍要脱敏
-    expect((pro.effectiveConfig as any).loginProviders?.github?.secret).toBe(SECRET_MASK);
+    expect(pro.effectiveConfig).not.toHaveProperty('loginProviders.github.secret');
+    expect(pro.overrides).not.toHaveProperty('loginProviders.github.secret');
+    expect(pro.effectiveConfig).toHaveProperty('loginProviders.github.clientId', 'cid');
     expect(pro.secretKeys).toContain('loginProviders.github.secret');
+    expect(pro.configuredSecretKeys).toContain('loginProviders.github.secret');
+    const stored = await MongoSystemInstanceConfig.findOne({ domain: 'auth' }).lean();
+    const storedOverrides = stored?.overrides as
+      | { loginProviders?: { github?: { secret?: { secret: string } } } }
+      | undefined;
+    const storedCipher = storedOverrides?.loginProviders?.github?.secret?.secret ?? '';
+    expect(storedCipher).not.toBe('');
+    expect(JSON.stringify(pro)).not.toContain('real-secret');
+    expect(JSON.stringify(pro)).not.toContain('******');
+    expect(JSON.stringify(pro)).not.toContain(storedCipher);
+
+    await updateDomainConfig({
+      domain: 'auth',
+      expectedRevision: 1,
+      submittedOverrides: { loginProviders: { github: { secret: '' } } },
+      actor: { actor: 'system' }
+    });
+    const cleared = await getDomainConfigForAdmin('auth', 'pro');
+    expect(cleared.secretKeys).toContain('loginProviders.github.secret');
+    expect(cleared.configuredSecretKeys).not.toContain('loginProviders.github.secret');
+    expect(cleared.effectiveConfig).not.toHaveProperty('loginProviders.github.secret');
   });
 
   it('lists pro-only keys as offenders for community submissions', () => {

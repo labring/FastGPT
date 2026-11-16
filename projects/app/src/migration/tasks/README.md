@@ -4,20 +4,23 @@
 
 | 任务 | 调度 | 职责 |
 | --- | --- | --- |
+| `20261116_migrate_system_configs` | 独立执行 | 统一导入、清理、补齐并校验系统配置 |
 | `20261022_initialize_dataset_vector_indexes` | 普通自动 | 初始化知识库向量索引 |
 | `20261104_backfill_chat_publish_source` | 独立执行 | 回填聊天发布来源 |
 | `20261104_backfill_openapi_key_type` | 独立执行 | 回填 OpenAPI Key 类型 |
 | `20261112_backfill_stt_pricing_type` | 普通自动 | 回填 STT 计价类型 |
-| `20261116_migrate_system_configs` | 启动阻塞 | 统一导入、清理、补齐并校验系统配置 |
 
 ## 系统配置迁移
 
-同一个任务、同一个 lease/runId，依次执行以下阶段，任一阶段失败均不能放行 App 业务：
+本任务位于 v4.18.0 注册表首项，启动后在后台独立调度，不等待普通队列，也不阻塞 App 业务。迁移完成前使用已有配置与 Schema 默认值，写入后由配置轮询刷新。失败不影响业务启动，修复后由管理员重试。
+
+同一个任务、同一个 lease/runId，依次执行以下阶段，任一阶段失败均不得标记任务成功：
 
 1. `inspect`：检查旧 Mongo 配置与历史 ENV；仅当实例集合为空时读取 App 工作目录下可选的 `defaultConfig.json`。异常配置只记录字段路径，保留脱敏跳过项统计。
 2. `migrate`：按域创建缺失文档或补充缺失叶子，保留管理员已有值和显式默认意图。文件使用当前实例配置域格式，仅参与首次初始化。
 3. `cleanup`：清理当前 Schema 明确废弃的字段及相应默认值标记。现行字段不得登记为废弃项。
 4. `backfill`：先将旧套餐合入 `commercial.subPlans`，公告及两类广告合入 `operations`，迁入其他辅助 scope；再补齐外链检查、模型下架短信、Code Sandbox/MCP SSE、Agent Sandbox 代理及超卖系数、文件域名、HTTP/Cookie 策略、自定义域名部署参数。先校验再按 revision CAS 写入，保留已有值与显式清空。
+   最后按 secret 注册表将已有非空明文加密为 `{ secret: 密文 }`，所有回填读写统一通过解密/加密边界；revision CAS 保留并发修改，已有密文复用，重复执行不改变 revision。
 5. `validate`：重新检查全部域、旧值缺口、废弃字段及各补齐目标的持久化依据。Schema 默认值本身不等于迁移完成。
 
 旧配置中的数值字段先通过 `NumSchema` 兼容数字字符串（如 `"4"` → `4`），再执行目标域的整数、范围等校验；空值、非数字类型与非有限值不强制转成 `0`。已有实例值和显式默认意图仍优先。
@@ -26,7 +29,7 @@ Pro 启动及轮询始终按已有 scope 与 Schema 默认值合成完整快照�
 
 旧 `EVAL_CONCURRENCY` 不导入，评估并发的新配置默认 `3`；Cookie Secure、共享 HTTP 响应上限和 Sandbox 两个超卖系数只从 App 进程 ENV 导入，Pro 同名 ENV 不参与。已有实例值和显式默认意图仍优先。
 
-采用幂等全量重跑，不保存 checkpoint。失败后由框架使用新 runId 从检查阶段重试；成功步骤可安全重复执行，已写入配置不被重放覆盖。成功后 Runner 跳过整个任务，不在后续启动重新导入旧 ENV，也不保留开发期拆分任务的注册或状态兼容层。未来已发布后的变更应追加新任务。
+采用幂等全量重跑，不保存 checkpoint。失败后由框架使用新 runId 从检查阶段重试；成功步骤可安全重复执行，已写入配置不被重放覆盖。开发期已有成功记录不会自动重跑新增的加密步骤，需在备份后重跑本任务。成功后 Runner 跳过整个任务，不在后续启动重新导入旧 ENV，也不保留开发期拆分任务的注册或状态兼容层。未来已发布后的变更应追加新任务。
 
 实现均归属同一目录：`index.ts` 编排五阶段，`service.ts` 处理旧值转换与域迁移，`cleanup.ts` 清理废弃字段，`subservices.ts` / `backfill.ts` 处理域内补缺，`env.ts` 读取历史环境变量，`defaultConfig.ts` 负责首次文件初始化。对应测试在 `projects/app/test/migration/tasks/4180/20261116_migrate_system_configs/`。
 

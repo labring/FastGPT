@@ -9,7 +9,6 @@ import {
   type ProbeConnectionResponse
 } from '@fastgpt/global/openapi/admin/system/instanceConfig/probe';
 import { probeUrlConnection } from '@fastgpt/service/common/system/systemInstanceConfig/probe';
-import { SECRET_MASK } from '@fastgpt/global/common/system/config/permission';
 import {
   findOverridesNotAllowedByEdition,
   getDomainConfig
@@ -31,11 +30,23 @@ async function handler(
   }).body;
 
   // 按与配置保存相同的版本边界检查，避免未来字段变为商业版专用后通过探测绕过。
-  if (body.service) {
-    const submittedOverrides =
-      body.service === 'codeSandbox'
-        ? { codeSandbox: { url: body.url, token: body.token ?? '' } }
-        : { mcp: { sseProxyUrl: body.url } };
+  if (
+    body.service === 'codeSandbox' ||
+    body.service === 'mcpSse' ||
+    body.service === 'agentSandboxWsProxy' ||
+    body.service === 'agentSandboxPreviewProxy'
+  ) {
+    const submittedOverrides = (() => {
+      if (body.service === 'codeSandbox') {
+        return { codeSandbox: { url: body.url, token: body.token ?? '' } };
+      }
+      if (body.service === 'mcpSse') return { mcp: { sseProxyUrl: body.url } };
+      return {
+        agentSandbox: {
+          proxy: { [body.service === 'agentSandboxWsProxy' ? 'wsUrl' : 'previewUrl']: body.url }
+        }
+      };
+    })();
     const notAllowed = findOverridesNotAllowedByEdition({
       domain: 'subservice',
       submittedOverrides
@@ -47,7 +58,7 @@ async function handler(
 
   // 只在授权和版本检查后读取持久化凭据，表单空值则保持空值。
   const token =
-    body.service === 'codeSandbox' && body.token === SECRET_MASK
+    body.service === 'codeSandbox' && body.useStoredToken
       ? (await getDomainConfig('subservice')).effectiveConfig.codeSandbox.token
       : body.token;
   const result = await probeUrlConnection({ ...body, token });

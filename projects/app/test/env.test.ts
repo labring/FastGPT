@@ -6,6 +6,16 @@ const importAppEnv = async () => {
 afterEach(() => vi.unstubAllEnvs());
 
 describe('app deployment ENV', () => {
+  it.each([
+    [undefined, false],
+    ['', false],
+    ['false', false],
+    ['true', true]
+  ])('reads WeCom auto redirect from App ENV: %s', async (value, expected) => {
+    vi.stubEnv('WECOM_LOGIN_AUTO_REDIRECT', value);
+    expect((await importAppEnv()).appEnv.WECOM_LOGIN_AUTO_REDIRECT).toBe(expected);
+  });
+
   it('defaults the commercial Git switch to false and accepts an explicit override', async () => {
     vi.stubEnv('PRO_URL', 'https://pro.example.com');
     vi.stubEnv('SHOW_GIT', undefined);
@@ -22,11 +32,15 @@ describe('app deployment ENV', () => {
   });
   it('does not declare or validate retired form configuration', async () => {
     vi.stubEnv('OPENAPI_KEY_MAX_COUNT', '-1');
-    vi.stubEnv('WECOM_LOGIN_AUTO_REDIRECT', 'invalid-legacy-value');
     vi.stubEnv('SYSTEM_NAME', 'retired-name');
     const { appEnv } = await importAppEnv();
     expect(Object.keys(appEnv).sort()).toEqual(
-      ['CHINESE_IP_REDIRECT_URL', 'SHOW_GIT', 'DISABLE_MARKETPLACE'].sort()
+      [
+        'CHINESE_IP_REDIRECT_URL',
+        'SHOW_GIT',
+        'DISABLE_MARKETPLACE',
+        'WECOM_LOGIN_AUTO_REDIRECT'
+      ].sort()
     );
   });
 });

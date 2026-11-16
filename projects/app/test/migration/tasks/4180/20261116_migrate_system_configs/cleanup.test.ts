@@ -7,6 +7,10 @@ import {
   verifyInstanceConfigDeprecatedFields
 } from '@/migration/tasks/4180/20261116_migrate_system_configs/cleanup';
 import { MongoSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/schema';
+import {
+  decryptDomainSecrets,
+  encryptDomainSecrets
+} from '@fastgpt/service/common/system/systemInstanceConfig/secrets';
 
 const logger = { info: () => {}, warn: () => {}, error: () => {} };
 
@@ -20,14 +24,18 @@ describe('deprecatedOverridePaths', () => {
       expect.arrayContaining([
         'site.chineseRedirectUrl',
         'site.systemTitle',
+        'site.marketplaceUrl',
+        'site.openApiDocUrl',
         'security.useIpLimit',
         'performance.streamResume',
+        'performance.channel',
         'performance.tracking.batchUpdateTime',
         'performance.dataset.retrievalResultsLimit',
         'performance.chat.logUrl',
         'performance.chat.logInterval',
         'performance.chat.logSourceIdPrefix',
         'storage.downloadRedirectTtlSeconds',
+        'storage.redirectTtlSeconds',
         'storage.downloadRedirectEndpoint',
         'feature.showWorkflowBuilder',
         'feature.disableCache',
@@ -54,6 +62,38 @@ describe('deprecatedOverridePaths', () => {
 });
 
 describe('stripDeprecatedOverrides', () => {
+  it('removes fixed sandbox limits without changing resources and is idempotent', () => {
+    const overrides = {
+      agentSandbox: {
+        common: {
+          entrypointTimeoutSeconds: 5,
+          wsMaxMessageBytes: 1024,
+          wsMaxFrameBytes: 512,
+          cpuCount: 2
+        }
+      }
+    };
+    const cleaned = stripDeprecatedOverrides('subservice', overrides);
+    expect(cleaned).toEqual({
+      overrides: { agentSandbox: { common: { cpuCount: 2 } } },
+      removedFieldCount: 3
+    });
+    expect(overrides.agentSandbox.common.entrypointTimeoutSeconds).toBe(5);
+    expect(stripDeprecatedOverrides('subservice', cleaned.overrides)).toEqual({
+      overrides: cleaned.overrides,
+      removedFieldCount: 0
+    });
+  });
+
+  it('removes development datasource scope values now managed exclusively by ENV', () => {
+    const result = stripDeprecatedOverrides('providers', {
+      dataSource: { feishuBaseUrl: 'https://old.example.com' },
+      externalProviderWorkflowVariables: []
+    });
+    expect(result.overrides).toEqual({ externalProviderWorkflowVariables: [] });
+    expect(result.removedFieldCount).toBe(1);
+  });
+
   it('removes deprecated leaf fields and keeps the rest untouched', () => {
     const { overrides, removedFieldCount } = stripDeprecatedOverrides('vector', {
       vqLevel: 16,
@@ -83,6 +123,7 @@ describe('stripDeprecatedOverrides', () => {
 
   it('drops parent objects that become empty after cleanup', () => {
     const { overrides } = stripDeprecatedOverrides('performance', {
+      channel: { wechatConcurrency: 20 },
       chat: { maxQpm: 100, logUrl: 'http://log', logInterval: 5000, logSourceIdPrefix: 'p-' },
       workflow: { maxRunTimes: 700 }
     });
@@ -141,6 +182,7 @@ describe('stripDeprecatedOverrides', () => {
 describe('hasDeprecatedOverrides', () => {
   it('detects deprecated fields at any depth', () => {
     expect(hasDeprecatedOverrides('storage', { downloadRedirectTtlSeconds: 300 })).toBe(true);
+    expect(hasDeprecatedOverrides('storage', { redirectTtlSeconds: 300 })).toBe(true);
     expect(
       hasDeprecatedOverrides('commercial', { billingNotify: { expired: { zh: 'x', en: 'y' } } })
     ).toBe(true);
@@ -189,15 +231,19 @@ describe('cleanupInstanceConfigDeprecatedFields (integration)', () => {
       gateway: 'https://gateway.example.test/gateway.do',
       appPrivateKey: 'synthetic-key'
     };
+    const stored = encryptDomainSecrets('commercial', { payment: { alipay } });
     await seedDirtyDoc({
       domain: 'commercial',
       revision: 4,
-      overrides: { payment: { alipay: { ...alipay, endpoint: 'https://unused.example.test' } } }
+      overrides: {
+        payment: { alipay: { ...stored.payment.alipay, endpoint: 'https://unused.example.test' } }
+      }
     });
 
     expect((await cleanupInstanceConfigDeprecatedFields({ logger })).removedFieldCount).toBe(1);
     const first = await MongoSystemInstanceConfig.collection.findOne({ domain: 'commercial' });
-    expect(first?.overrides).toEqual({ payment: { alipay } });
+    expect(first?.overrides).toEqual(stored);
+    expect(decryptDomainSecrets('commercial', first?.overrides)).toEqual({ payment: { alipay } });
     expect(first?.revision).toBe(5);
     expect((await verifyInstanceConfigDeprecatedFields()).invalidDomains).toEqual([]);
 
@@ -224,6 +270,28 @@ describe('cleanupInstanceConfigDeprecatedFields (integration)', () => {
     const verification = await verifyInstanceConfigDeprecatedFields();
     expect(verification.remainingDocuments).toEqual([]);
     expect(verification.invalidDomains).toEqual([]);
+  });
+
+  it('removes retired channel overrides and default markers while preserving task concurrency', async () => {
+    await MongoSystemInstanceConfig.collection.insertOne({
+      domain: 'performance',
+      schemaVersion: 1,
+      revision: 4,
+      overrides: { channel: { wechatConcurrency: 20 }, task: { evalConcurrency: 7 } },
+      explicitDefaultPaths: ['channel.wechatConcurrency', 'tracking.retentionHours']
+    } as any);
+
+    expect((await cleanupInstanceConfigDeprecatedFields({ logger })).updatedDomains).toEqual([
+      'performance'
+    ]);
+    const cleaned = await MongoSystemInstanceConfig.findOne({ domain: 'performance' }).lean();
+    expect(cleaned).toMatchObject({
+      revision: 5,
+      overrides: { task: { evalConcurrency: 7 } },
+      explicitDefaultPaths: ['tracking.retentionHours']
+    });
+    expect((await verifyInstanceConfigDeprecatedFields()).invalidDomains).toEqual([]);
+    expect((await cleanupInstanceConfigDeprecatedFields({ logger })).updatedDomains).toEqual([]);
   });
 
   it('cleans a legacy string-id security document without a domain field', async () => {
@@ -256,7 +324,7 @@ describe('cleanupInstanceConfigDeprecatedFields (integration)', () => {
   it('wraps schema rejection with the domain name for diagnosability', async () => {
     // logUrl 属废弃字段会被剔除，但残留的 maxRunTimes=-1 违反 nonNegativeInteger
     // （0 是合法的"禁用"取值，不能用作非法样例）；
-    // blockStartup 下终审错误必须能定位到具体域。
+    // 后台任务的终审错误必须能定位到具体域，便于管理员修复后重试。
     await seedDirtyDoc({
       domain: 'performance',
       revision: 1,

@@ -10,17 +10,21 @@ import type { SystemInstanceConfigDomainKey } from '@fastgpt/global/common/syste
 
 const mocks = vi.hoisted(() => ({
   isPro: false,
+  enableSaasAdminConfig: false,
   save: undefined as undefined | ((data: any) => Promise<unknown>),
   update: vi.fn(),
   patch: vi.fn(),
   pageSave: undefined as undefined | (() => Promise<void>),
   switchRows: new Map<string, { isChecked: boolean; onChange: (checked: boolean) => void }>(),
   formLabels: [] as string[],
-  authOverrides: {} as Record<string, unknown>
+  authOverrides: {} as Record<string, unknown>,
+  featureOverrides: {} as Record<string, unknown>
 }));
 
 vi.mock('@/web/common/system/useSystemStore', () => ({
-  useSystemStore: () => ({ feConfigs: { isProService: mocks.isPro, enableSaasAdminConfig: false } })
+  useSystemStore: () => ({
+    feConfigs: { isProService: mocks.isPro, enableSaasAdminConfig: mocks.enableSaasAdminConfig }
+  })
 }));
 vi.mock('@fastgpt/web/hooks/useSafeTranslation', () => ({
   useSafeTranslation: () => ({ t: (key: string) => key })
@@ -28,11 +32,15 @@ vi.mock('@fastgpt/web/hooks/useSafeTranslation', () => ({
 vi.mock('@/web/common/system/useDomainConfig', () => ({
   useDomainConfig: (domain: SystemInstanceConfigDomainKey) => ({
     revision: 1,
+    configuredSecretKeys: [],
     isLoading: false,
     overrides: domain === 'auth' ? mocks.authOverrides : {},
     effectiveConfig: filterDomainDataByEdition({
       domain,
-      data: resolveSystemInstanceConfig({ auth: mocks.authOverrides as any })[domain],
+      data: resolveSystemInstanceConfig({
+        auth: mocks.authOverrides as any,
+        feature: mocks.featureOverrides as any
+      })[domain],
       edition: mocks.isPro ? 'pro' : 'community'
     }),
     refetch: vi.fn(),
@@ -40,6 +48,7 @@ vi.mock('@/web/common/system/useDomainConfig', () => ({
   }),
   updateDomainConfigApi: mocks.update
 }));
+vi.mock('@/pageComponents/admin/settings/AdminSecretInput', () => ({ default: () => null }));
 vi.mock('@/web/common/system/useAdminConfigSaveRequest', () => ({
   useAdminConfigSaveRequest: (save: (data: any) => Promise<unknown>) => {
     mocks.save = save;
@@ -52,8 +61,13 @@ vi.mock('@chakra-ui/react', () => {
   const element = ({ children }: { children?: React.ReactNode }) => children;
   return {
     SimpleGrid: element,
+    Box: element,
     Flex: element,
+    HStack: element,
+    Button: element,
+    Tag: element,
     Input: () => null,
+    Switch: () => null,
     Textarea: () => null,
     Text: element,
     NumberInput: element,
@@ -105,7 +119,9 @@ import FeatureSettings from '@/pageComponents/admin/settings/feature';
 describe('configuration form edition boundary', () => {
   beforeEach(() => {
     mocks.isPro = false;
+    mocks.enableSaasAdminConfig = false;
     mocks.authOverrides = {};
+    mocks.featureOverrides = {};
     mocks.patch.mockReset().mockResolvedValue(undefined);
     mocks.pageSave = undefined;
     mocks.switchRows.clear();
@@ -113,15 +129,56 @@ describe('configuration form edition boundary', () => {
     mocks.update.mockReset().mockResolvedValue({ results: [] });
   });
 
-  it.each([false, true])(
-    'shows an empty fast-login editor only when its edition permits editing: Pro=%s',
-    (isPro) => {
+  it.each([
+    [false, true, false],
+    [true, false, false],
+    [true, true, true]
+  ])(
+    'shows WeCom service-provider section and directory for Pro=%s / SaaS=%s',
+    (isPro, saas, visible) => {
       mocks.isPro = isPro;
-      mocks.authOverrides = { fastLogin: [] };
+      mocks.enableSaasAdminConfig = saas;
       const html = renderToStaticMarkup(React.createElement(AuthSettings));
-      expect(html.includes('id="fastLogin"')).toBe(isPro);
+      expect(html.includes('id="wecomLogin"')).toBe(visible);
+      expect(html.includes('admin:wecom_login')).toBe(visible);
+      expect(mocks.formLabels.includes('SuiteId')).toBe(visible);
     }
   );
+
+  it('places account cancellation after login protection in both content and directory', () => {
+    mocks.isPro = true;
+    const html = renderToStaticMarkup(React.createElement(AuthSettings));
+    const sections = [...html.matchAll(/<section id="([^"]+)"/g)].map((match) => match[1]);
+    expect(sections.slice(0, 3)).toEqual([
+      'passwordSecurity',
+      'loginProtection',
+      'accountCancellation'
+    ]);
+    const tocValue = html.match(/data-toc="([^"]+)"/)?.[1].replaceAll('&quot;', '"');
+    expect(tocValue).toBeDefined();
+    const toc = JSON.parse(tocValue!) as { id: string; label: string }[];
+    expect(toc.slice(0, 3).map((item) => item.id)).toEqual(sections.slice(0, 3));
+    expect(toc[0].label).toBe('admin:password_security');
+  });
+
+  it.each([false, true])(
+    'hides missing or empty deprecated fast-login entries for Pro=%s',
+    (isPro) => {
+      mocks.isPro = isPro;
+      for (const overrides of [{}, { fastLogin: [] }]) {
+        mocks.authOverrides = overrides;
+        const html = renderToStaticMarkup(React.createElement(AuthSettings));
+        expect(html.includes('id="fastLogin"')).toBe(false);
+      }
+    }
+  );
+
+  it.each([false, true])('keeps existing fast-login entries visible only for Pro=%s', (isPro) => {
+    mocks.isPro = isPro;
+    mocks.authOverrides = { fastLogin: [{ key: 'legacy', authUrl: 'https://login.test' }] };
+    const html = renderToStaticMarkup(React.createElement(AuthSettings));
+    expect(html.includes('id="fastLogin"')).toBe(isPro);
+  });
 
   it.each([false, true])(
     'places the editable file domain under core downloads for Pro=%s',
@@ -129,6 +186,7 @@ describe('configuration form edition boundary', () => {
       mocks.isPro = isPro;
       renderToStaticMarkup(React.createElement(CoreSettings));
       expect(mocks.formLabels).toContain('admin:file_service_domain');
+      expect(mocks.formLabels).not.toContain('admin:openapi_key_prefix');
       const config = resolveSystemInstanceConfig({});
       await mocks.save!({
         agentEngine: 'fastAgent',
@@ -137,15 +195,20 @@ describe('configuration form edition boundary', () => {
         fileDomain: 'https://files.test',
         externalEndpoint: '',
         cdnEndpoint: '',
-        redirectTtlSeconds: 300,
+        publicUrl: 'https://main.test',
         openApiPrefix: 'fastgpt',
         email: config.auth.loginProviders.email,
+        documentParse: config.providers.documentParse,
         phone: config.auth.loginProviders.phone
       });
       const storage = mocks.update.mock.calls[0][0].items.find(
         (item: { domain: string }) => item.domain === 'storage'
       );
       expect(storage.overrides.fileDomain).toBe('https://files.test');
+      const siteItem = mocks.update.mock.calls[0][0].items.find(
+        (item: { domain: string }) => item.domain === 'site'
+      );
+      expect(siteItem.overrides).toEqual({ publicUrl: 'https://main.test' });
       expect(() =>
         parseDomainOverrides({ domain: 'storage', overrides: storage.overrides })
       ).not.toThrow();
@@ -171,7 +234,12 @@ describe('configuration form edition boundary', () => {
     await uploadValidation.onChange(false);
     await mocks.pageSave!();
     expect(mocks.patch).toHaveBeenLastCalledWith(
-      expect.objectContaining({ skipFileTypeCheck: true, fileUrlWhitelist: [] })
+      expect.objectContaining({
+        skipFileTypeCheck: true,
+        allowedOriginsEnabled: false,
+        allowedOrigins: [],
+        fileUrlWhitelist: []
+      })
     );
 
     await uploadValidation.onChange(true);
@@ -186,6 +254,11 @@ describe('configuration form edition boundary', () => {
     const html = renderToStaticMarkup(React.createElement(LimitsSettings));
     expect(html).toContain('id="datasetArchive"');
     expect(html).toContain('admin:dataset_archive_download');
+    expect(html.includes('id="exportSync"')).toBe(isPro);
+    expect(html.includes('id="task"')).toBe(isPro);
+    expect(mocks.formLabels.includes('admin:dataset_export_cooldown_minutes_2')).toBe(isPro);
+    expect(mocks.formLabels.includes('admin:website_sync_cooldown_minutes_2')).toBe(isPro);
+    expect(mocks.formLabels.includes('admin:evaluation_task_concurrency_limit')).toBe(isPro);
     const config = resolveSystemInstanceConfig({});
     const datasetArchive = {
       maxFiles: 123,
@@ -199,7 +272,9 @@ describe('configuration form edition boundary', () => {
       openApiKeyMaxCount: config.auth.openApiKeyMaxCount,
       fileUrlExpiredDays: config.storage.fileUrlExpiredDays,
       hnswEfSearch: config.vector.hnswEfSearch,
-      vectorRecallConcurrency: config.vector.vectorRecallConcurrency,
+      vectorRecallConcurrency: 8,
+      exportDatasetLimitMinutes: 20,
+      websiteSyncLimitMinuted: 60,
       evaluationMaxRows: 0,
       datasetArchive
     });
@@ -209,6 +284,26 @@ describe('configuration form edition boundary', () => {
     expect(resource.overrides.datasetArchive).toEqual(datasetArchive);
     if (isPro) expect(resource.overrides.evaluationMaxRows).toBe(0);
     else expect(resource.overrides).not.toHaveProperty('evaluationMaxRows');
+    const items = mocks.update.mock.calls[0][0].items;
+    expect(
+      items.find((item: { domain: string }) => item.domain === 'vector').overrides
+        .vectorRecallConcurrency
+    ).toBe(8);
+    if (isPro) {
+      expect(resource.overrides).toMatchObject({
+        exportDatasetLimitMinutes: 20,
+        websiteSyncLimitMinuted: 60
+      });
+      expect(
+        items.find((item: { domain: string }) => item.domain === 'performance').overrides.task
+      ).toEqual(config.performance.task);
+    } else {
+      expect(resource.overrides).not.toHaveProperty('exportDatasetLimitMinutes');
+      expect(resource.overrides).not.toHaveProperty('websiteSyncLimitMinuted');
+      expect(
+        items.find((item: { domain: string }) => item.domain === 'performance').overrides
+      ).not.toHaveProperty('task');
+    }
     // 整页提交必须符合新契约，不能夹带已移除的流恢复、埋点间隔或召回上限。
     for (const item of mocks.update.mock.calls[0][0].items) {
       expect(() =>
@@ -217,8 +312,34 @@ describe('configuration form edition boundary', () => {
     }
   });
 
-  it.each([false, true])('功能页按三方能力分组并可保存：isPro=%s', async (isPro) => {
-    mocks.isPro = isPro;
+  it.each([undefined, false])(
+    'hides deprecated OpenAI accounts when saved value is %s',
+    (value) => {
+      mocks.featureOverrides = value === undefined ? {} : { showOpenaiAccount: value };
+      renderToStaticMarkup(React.createElement(FeatureSettings));
+      expect(mocks.switchRows.has('admin:show_openai_account')).toBe(false);
+    }
+  );
+
+  it('lets an existing enabled instance disable OpenAI accounts and hides the saved false value', async () => {
+    mocks.isPro = true;
+    mocks.featureOverrides = { showOpenaiAccount: true };
+    renderToStaticMarkup(React.createElement(FeatureSettings));
+    const toggle = mocks.switchRows.get('admin:show_openai_account')!;
+    expect(toggle.isChecked).toBe(true);
+    toggle.onChange(false);
+    await mocks.pageSave!();
+    const saved = mocks.patch.mock.calls[0][0];
+    expect(saved.showOpenaiAccount).toBe(false);
+
+    mocks.featureOverrides = saved;
+    mocks.switchRows.clear();
+    renderToStaticMarkup(React.createElement(FeatureSettings));
+    expect(mocks.switchRows.has('admin:show_openai_account')).toBe(false);
+  });
+
+  it('商业版功能页按三方能力分组并可保存', async () => {
+    mocks.isPro = true;
     const html = renderToStaticMarkup(React.createElement(FeatureSettings));
     const datasets = html.match(/<section id="thirdPartyDatasets">(.*?)<\/section>/)?.[1];
     const channels = html.match(/<section id="thirdPartyPublishChannels">(.*?)<\/section>/)?.[1];
@@ -262,9 +383,10 @@ describe('configuration form edition boundary', () => {
       downloadMode: 'short-proxy',
       externalEndpoint: '',
       cdnEndpoint: '',
-      redirectTtlSeconds: 300,
+      publicUrl: 'https://main.test',
       openApiPrefix: 'community',
       email: config.auth.loginProviders.email,
+      documentParse: config.providers.documentParse,
       phone: config.auth.loginProviders.phone
     });
     const auth = mocks.update.mock.calls[0][0].items.find(
@@ -283,6 +405,7 @@ describe('configuration form edition boundary', () => {
     const config = resolveSystemInstanceConfig({});
     await mocks.save!({
       email: { ...config.auth.loginProviders.email, smtp: 'smtp.example.com' },
+      documentParse: config.providers.documentParse,
       phone: config.auth.loginProviders.phone
     });
     const auth = mocks.update.mock.calls[0][0].items.find(
@@ -304,6 +427,7 @@ describe('configuration form edition boundary', () => {
 
       const config = resolveSystemInstanceConfig({});
       await mocks.save!({
+        documentParse: config.providers.documentParse,
         // 即便传入旧页面遗留的注册值，核心页也只提交自己负责的 SMTP 字段。
         email: {
           ...config.auth.loginProviders.email,
@@ -325,6 +449,8 @@ describe('configuration form edition boundary', () => {
   it('hides community email registration and filters it from the auth page payload', async () => {
     const html = renderToStaticMarkup(React.createElement(AuthSettings));
     expect(html).not.toContain('id="emailLogin"');
+    expect(html).not.toContain('id="passwordSecurity"');
+    expect(html).not.toContain('id="loginProtection"');
     const config = resolveSystemInstanceConfig({});
     await mocks.save!({
       ...config.auth,
@@ -333,6 +459,10 @@ describe('configuration form edition boundary', () => {
     });
     const auth = mocks.update.mock.calls[0][0].items[0];
     expect(auth.overrides).not.toHaveProperty('loginProviders.email');
+    expect(auth.overrides).not.toHaveProperty('passwordExpiredMonth');
+    const security = mocks.update.mock.calls[0][0].items[1];
+    expect(security.overrides).not.toHaveProperty('passwordLoginMinuteLimitCount');
+    expect(security.overrides).not.toHaveProperty('maxLoginSession');
   });
 
   it('removes team mode from the core page and excludes historical overrides on save', async () => {
@@ -351,9 +481,10 @@ describe('configuration form edition boundary', () => {
       downloadMode: 'short-proxy',
       externalEndpoint: '',
       cdnEndpoint: '',
-      redirectTtlSeconds: 300,
+      publicUrl: 'https://main.test',
       openApiPrefix: 'fastgpt',
       email: config.auth.loginProviders.email,
+      documentParse: config.providers.documentParse,
       phone: config.auth.loginProviders.phone
     });
     const submitted = mocks.update.mock.calls[0][0].items.find(

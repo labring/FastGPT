@@ -101,7 +101,7 @@ const AdminSettingPage = ({
             overflowY={'auto'}
             onScroll={(e) => handleScroll(e.currentTarget)}
           >
-            <Box p={8} bg={'white'}>
+            <Box p={{ base: 4, md: 8 }} bg={'white'}>
               <Box w={'100%'} maxW={maxW} mx={'auto'} pb={20}>
                 {children}
               </Box>
@@ -110,6 +110,7 @@ const AdminSettingPage = ({
 
           {/* 右侧 TOC 侧边栏：专注于纯粹的目录导航 */}
           <Box
+            display={{ base: 'none', md: 'block' }}
             flex={'0 0 200px'}
             w={'200px'}
             h={'100%'}

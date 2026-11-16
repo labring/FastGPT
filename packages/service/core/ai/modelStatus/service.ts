@@ -27,6 +27,10 @@ import { getLogger, LogCategories } from '../../../common/logger';
 import { MongoSystemInstanceConfig } from '../../../common/system/systemInstanceConfig/schema';
 import { getSystemInstanceConfig } from '../../../common/system/systemInstanceConfig/runtime';
 import { systemInstanceConfig } from '../../../common/system/systemInstanceConfig/service';
+import {
+  decryptDomainSecrets,
+  encryptDomainSecrets
+} from '../../../common/system/systemInstanceConfig/secrets';
 import { MongoUser } from '../../../support/user/schema';
 import { getUserDefaultTeam } from '../../../support/user/team/controller';
 import { getSystemModelHandle } from '../model/catalog/service';
@@ -62,15 +66,18 @@ const manualModelStatusProbeLease = new LeaseCache();
  * 写入前从主库读取模型探测配置，以保留未修改的 URL 和令牌。
  * 缺失记录时使用默认值；现有记录无效时拒绝保存，避免覆盖无法安全合并的凭据。
  */
-const getStoredConfig = async (): Promise<ModelStatusProbeConfig> => {
+const getStoredConfig = async () => {
   const record = await MongoSystemInstanceConfig.findOne({ domain: 'modelStatusProbe' })
     .read('primary')
     .lean();
 
-  return ModelStatusProbeConfigSchema.parse({
-    ...ModelStatusProbeConfigDefaults,
-    ...(record?.overrides ?? {})
-  });
+  return {
+    config: ModelStatusProbeConfigSchema.parse({
+      ...ModelStatusProbeConfigDefaults,
+      ...decryptDomainSecrets('modelStatusProbe', record?.overrides ?? {})
+    }),
+    storedOverrides: record?.overrides
+  };
 };
 
 /**
@@ -100,7 +107,7 @@ export const getModelStatusProbeConfig = async () => {
  * 2. webhookToken 未传时保持旧值，仅在 clearWebhookToken=true 时彻底清除已保存 Token。
  */
 export const updateModelStatusProbeConfig = async (input: UpdateModelStatusProbeConfigBody) => {
-  const current = await getStoredConfig();
+  const { config: current, storedOverrides } = await getStoredConfig();
   const next: ModelStatusProbeConfig = {
     enabled: input.enabled,
     intervalMinutes: input.intervalMinutes,
@@ -123,10 +130,11 @@ export const updateModelStatusProbeConfig = async (input: UpdateModelStatusProbe
   };
 
   const value = ModelStatusProbeConfigSchema.parse(next);
+  const encrypted = encryptDomainSecrets('modelStatusProbe', value, storedOverrides);
   await MongoSystemInstanceConfig.updateOne(
     { domain: 'modelStatusProbe' },
     {
-      $set: { overrides: value },
+      $set: { overrides: encrypted },
       $inc: { revision: 1 },
       $setOnInsert: { schemaVersion: 1, explicitDefaultPaths: [] }
     },
@@ -648,10 +656,8 @@ export const testModelStatusWebhook = async (
     throw new UserError('Webhook URL is required');
   }
 
-  const targetToken =
-    input?.webhookToken !== undefined && input.webhookToken !== ''
-      ? input.webhookToken
-      : config.webhookToken;
+  // 未提交时沿用已存令牌，明确传入空字符串时按无凭据测试。
+  const targetToken = input?.webhookToken ?? config.webhookToken;
 
   const activeModels = [...modelHandle.getActiveModels()] as AIModelDataType[];
   const sampleModel =

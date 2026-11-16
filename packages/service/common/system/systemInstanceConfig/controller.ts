@@ -1,7 +1,9 @@
 import { assertStorageDownloadConfig } from '../../s3/config/utils';
+import { SitePublicUrlSchema } from '@fastgpt/global/common/system/config/schemas/site';
 import {
   SYSTEM_INSTANCE_CONFIG_SCOPES,
   type SystemInstanceConfigDomainKey,
+  type SystemInstanceConfigScopeKey,
   type SystemInstanceConfigDomainMap,
   getDomainDefaultConfig,
   parseDomainOverrides,
@@ -10,8 +12,8 @@ import {
   type SystemInstanceConfig
 } from '@fastgpt/global/common/system/config/schema';
 import {
-  maskDomainSecrets,
-  restorePreservedSecrets,
+  omitDomainSecrets,
+  getConfiguredDomainSecretKeys,
   getSystemEdition,
   getDomainSecretKeys,
   getDomainAllowedKeys,
@@ -39,6 +41,7 @@ import { serviceEnv } from '../../../env';
 import { logInstanceConfigRead } from '../migrationCoverageLog';
 import { ApiHttpError } from '../../http/apiError';
 import type { ClientSession } from '../../mongo';
+import { decryptDomainSecrets, encryptDomainSecrets } from './secrets';
 
 export type GetDomainConfigResult<T extends SystemInstanceConfigDomainKey> = {
   domain: T;
@@ -56,6 +59,7 @@ export type AdminDomainConfigResult<T extends SystemInstanceConfigDomainKey> = {
   overrides: Partial<DeepPartial<SystemInstanceConfigDomainMap[T]>>;
   effectiveConfig: Partial<SystemInstanceConfigDomainMap[T]>;
   secretKeys: string[];
+  configuredSecretKeys: string[];
   updatedAt?: Date;
   updatedBy?: SystemInstanceConfigUpdatedByType;
 };
@@ -135,8 +139,8 @@ export const formatDomainConfigForAdmin = <T extends SystemInstanceConfigDomainK
   edition: SystemInstanceConfigEdition
 ): AdminDomainConfigResult<T> => {
   const { domain } = result;
-  const overrides = maskDomainSecrets(domain, result.overrides);
-  const effectiveConfig = maskDomainSecrets(domain, result.effectiveConfig);
+  const overrides = omitDomainSecrets(domain, result.overrides);
+  const effectiveConfig = omitDomainSecrets(domain, result.effectiveConfig);
 
   const allowedSecretKeys = Array.from(getDomainSecretKeys(domain)).filter((relativeKey) =>
     isConfigFieldAllowed(`${domain}.${relativeKey}`, edition)
@@ -149,6 +153,9 @@ export const formatDomainConfigForAdmin = <T extends SystemInstanceConfigDomainK
     overrides: filterDomainDataByEdition({ domain, data: overrides, edition }),
     effectiveConfig: filterDomainDataByEdition({ domain, data: effectiveConfig, edition }),
     secretKeys: allowedSecretKeys,
+    configuredSecretKeys: getConfiguredDomainSecretKeys(domain, result.effectiveConfig).filter(
+      (key) => allowedSecretKeys.includes(key)
+    ),
     updatedAt: result.updatedAt,
     updatedBy: result.updatedBy
   };
@@ -228,16 +235,16 @@ const mergeSubmittedOverrides = <T extends SystemInstanceConfigDomainKey>({
  * 获取指定 Domain 的配置。
  * 若数据库中不存在记录，则返回内置默认配置及 revision: 0。
  * @param domain 配置域标识
- * @param options.maskSecrets 是否对敏感字段脱敏（掩码为 '******'），供 API 返回时使用
  */
 export const getDomainConfig = async <T extends SystemInstanceConfigDomainKey>(
-  domain: T,
-  options?: { maskSecrets?: boolean }
+  domain: T
 ): Promise<GetDomainConfigResult<T>> => {
   const doc = await MongoSystemInstanceConfig.findOne({ domain }).lean();
 
   const revision = doc?.revision ?? 0;
-  const overrides = (doc?.overrides ?? {}) as DeepPartial<SystemInstanceConfigDomainMap[T]>;
+  const overrides = decryptDomainSecrets(domain, doc?.overrides ?? {}) as DeepPartial<
+    SystemInstanceConfigDomainMap[T]
+  >;
   const effectiveConfig = resolveDomainEffectiveConfig({
     domain,
     overrides,
@@ -249,17 +256,6 @@ export const getDomainConfig = async <T extends SystemInstanceConfigDomainKey>(
     source: 'admin-db',
     fields: [{ path: domain, value: effectiveConfig }]
   });
-
-  if (options?.maskSecrets) {
-    return {
-      domain,
-      revision,
-      overrides: maskDomainSecrets(domain, overrides),
-      effectiveConfig: maskDomainSecrets(domain, effectiveConfig),
-      updatedAt: doc?.updatedAt,
-      updatedBy: doc?.updatedBy
-    };
-  }
 
   return {
     domain,
@@ -448,6 +444,9 @@ export const batchUpdateDomainConfigs = async (
     // 先在请求边界用域 override Schema 校验本次提交，非法值归为 400；
     // 合并后的校验仍保留普通 ZodError，用于暴露数据库坏记录或内部不变量错误（500）。
     try {
+      if (domain === 'site' && Object.hasOwn(submittedOverrides, 'publicUrl')) {
+        SitePublicUrlSchema.parse(submittedOverrides.publicUrl);
+      }
       parseDomainOverrides({ domain, overrides: submittedOverrides });
     } catch (error) {
       if (error instanceof ZodError) {
@@ -456,17 +455,51 @@ export const batchUpdateDomainConfigs = async (
       throw error;
     }
 
+    // 已弃用开关只能延续既有 true 或关闭；默认/已关闭实例不能通过旧客户端或手工请求重新开启。
+    if (
+      domain === 'feature' &&
+      submittedOverrides.showOpenaiAccount === true &&
+      existing?.overrides?.showOpenaiAccount !== true
+    ) {
+      throw new ApiHttpError(
+        400,
+        'User-configured OpenAI accounts are deprecated and cannot be enabled'
+      );
+    }
+
+    // 快速登录同样只兼容既有配置；显式空数组记录清空意图，旧客户端不能再次启用已退役入口。
+    if (
+      domain === 'auth' &&
+      Array.isArray(submittedOverrides.fastLogin) &&
+      submittedOverrides.fastLogin.length > 0 &&
+      (!Array.isArray(existing?.overrides?.fastLogin) || existing.overrides.fastLogin.length === 0)
+    ) {
+      throw new ApiHttpError(
+        400,
+        'Fast login entries are deprecated and cannot be added to an empty configuration'
+      );
+    }
+
+    // 外部提供商变量只兼容已有实例；空列表不能通过旧客户端重新配置。
+    if (
+      domain === 'providers' &&
+      Array.isArray(submittedOverrides.externalProviderWorkflowVariables) &&
+      submittedOverrides.externalProviderWorkflowVariables.length > 0 &&
+      (!Array.isArray(existing?.overrides?.externalProviderWorkflowVariables) ||
+        existing.overrides.externalProviderWorkflowVariables.length === 0)
+    ) {
+      throw new ApiHttpError(
+        400,
+        'External provider workflow variables are deprecated and cannot be added to an empty configuration'
+      );
+    }
+
     const mergedOverrides = mergeSubmittedOverrides({
       domain,
-      existingOverrides: existing?.overrides,
+      existingOverrides: decryptDomainSecrets(domain, existing?.overrides ?? {}),
       submittedOverrides
     });
-    const rawOverrides = restorePreservedSecrets({
-      domain,
-      submitted: mergedOverrides,
-      previous: existing?.overrides
-    });
-    const parsedOverrides = parseDomainOverrides({ domain, overrides: rawOverrides });
+    const parsedOverrides = parseDomainOverrides({ domain, overrides: mergedOverrides });
     let effectiveConfig;
     try {
       effectiveConfig = resolveDomainEffectiveConfig({ domain, overrides: parsedOverrides });
@@ -479,7 +512,7 @@ export const batchUpdateDomainConfigs = async (
         try {
           const previousOverrides = parseDomainOverrides({
             domain,
-            overrides: existing?.overrides ?? {},
+            overrides: decryptDomainSecrets(domain, existing?.overrides ?? {}),
             options: { strict: false }
           });
           resolveDomainEffectiveConfig({ domain, overrides: previousOverrides });
@@ -523,6 +556,7 @@ export const batchUpdateDomainConfigs = async (
       existing,
       expectedRevision,
       cleanOverrides,
+      storedOverrides: encryptDomainSecrets(domain, cleanOverrides, existing?.overrides),
       effectiveConfig,
       syntheticCommercial: hasSyntheticCommercialItem && domain === 'commercial',
       explicitDefaultPaths: resolveExplicitDefaultPaths({
@@ -549,7 +583,7 @@ export const batchUpdateDomainConfigs = async (
         const newDoc = new MongoSystemInstanceConfig({
           domain: item.domain,
           revision: 1,
-          overrides: item.cleanOverrides,
+          overrides: item.storedOverrides,
           explicitDefaultPaths: item.explicitDefaultPaths,
           updatedBy: actor
         });
@@ -567,7 +601,7 @@ export const batchUpdateDomainConfigs = async (
           { domain: item.domain, revision: item.expectedRevision },
           {
             $set: {
-              overrides: item.cleanOverrides,
+              overrides: item.storedOverrides,
               explicitDefaultPaths: item.explicitDefaultPaths,
               updatedBy: actor,
               updatedAt: new Date()
@@ -635,7 +669,10 @@ export const getSystemInstanceConfigSnapshot = async ({
   const domainOverridesMap: Record<string, unknown> = {};
   for (const doc of docs) {
     const domainKey = String(doc.domain ?? doc._id);
-    domainOverridesMap[domainKey] = doc.overrides;
+    domainOverridesMap[domainKey] = decryptDomainSecrets(
+      domainKey as SystemInstanceConfigScopeKey,
+      doc.overrides
+    );
   }
 
   const snapshot = resolveSystemInstanceConfig(domainOverridesMap, { strict: false });

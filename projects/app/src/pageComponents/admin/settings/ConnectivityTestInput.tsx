@@ -2,7 +2,10 @@ import React, { useMemo, useRef, useState } from 'react';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { Box, Button, HStack, Input, Tag, Text, type InputProps } from '@chakra-ui/react';
 import { POST } from '@/web/common/api/request';
-import type { ProbeConnectionResponse } from '@fastgpt/global/openapi/admin/system/instanceConfig/probe';
+import type {
+  ProbeConnectionBody,
+  ProbeConnectionResponse
+} from '@fastgpt/global/openapi/admin/system/instanceConfig/probe';
 import AdminReadonlyInput from './AdminReadonlyInput';
 
 export type ConnectivityTestInputProps = Omit<InputProps, 'value' | 'onChange'> & {
@@ -10,8 +13,9 @@ export type ConnectivityTestInputProps = Omit<InputProps, 'value' | 'onChange'> 
   value?: string;
   testUrl?: string;
   testPath?: string;
-  service?: 'codeSandbox' | 'mcpSse';
+  service?: ProbeConnectionBody['service'];
   token?: string;
+  useStoredToken?: boolean;
   onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
   placeholder?: string;
   buttonText?: string;
@@ -19,6 +23,11 @@ export type ConnectivityTestInputProps = Omit<InputProps, 'value' | 'onChange'> 
   timeoutMs?: number;
   isDisabled?: boolean;
   isEditable?: boolean;
+  renderLayout?: (parts: {
+    input: React.ReactNode;
+    button: React.ReactNode;
+    result: React.ReactNode;
+  }) => React.ReactNode;
 };
 
 /**
@@ -34,6 +43,7 @@ function ConnectivityTestInput(
     testPath,
     service,
     token,
+    useStoredToken = false,
     onChange,
     placeholder,
     buttonText,
@@ -41,6 +51,7 @@ function ConnectivityTestInput(
     timeoutMs = 5000,
     isDisabled = false,
     isEditable = false,
+    renderLayout,
     ...inputProps
   }: ConnectivityTestInputProps,
   ref: React.ForwardedRef<HTMLInputElement>
@@ -51,8 +62,17 @@ function ConnectivityTestInput(
   const effectiveUrl = value ?? url ?? '';
   // 结果绑定完整输入快照；外部重置、凭据修改或禁用后不会展示旧结果。
   const probeInputs = useMemo(
-    () => ({ effectiveUrl, testUrl, testPath, service, token, timeoutMs, isDisabled }),
-    [effectiveUrl, testUrl, testPath, service, token, timeoutMs, isDisabled]
+    () => ({
+      effectiveUrl,
+      testUrl,
+      testPath,
+      service,
+      token,
+      useStoredToken,
+      timeoutMs,
+      isDisabled
+    }),
+    [effectiveUrl, testUrl, testPath, service, token, useStoredToken, timeoutMs, isDisabled]
   );
   const [probeState, setProbeState] = useState<{
     inputs: typeof probeInputs;
@@ -93,14 +113,14 @@ function ConnectivityTestInput(
   };
 
   const resolveTargetUrl = () => {
-    if (testUrl) return testUrl;
-    if (!effectiveUrl) return '';
+    if (testUrl?.trim()) return testUrl.trim();
+    if (!effectiveUrl.trim()) return '';
     if (testPath) {
-      const base = effectiveUrl.replace(/\/+$/, '');
+      const base = effectiveUrl.trim().replace(/\/+$/, '');
       const path = testPath.startsWith('/') ? testPath : '/' + testPath;
       return base + path;
     }
-    return effectiveUrl;
+    return effectiveUrl.trim();
   };
 
   const handleTest = async () => {
@@ -115,7 +135,9 @@ function ConnectivityTestInput(
         url: targetUrl,
         timeoutMs,
         ...(service ? { service } : {}),
-        ...(service === 'codeSandbox' ? { token } : {})
+        ...(service === 'codeSandbox'
+          ? { ...(token !== undefined ? { token } : {}), useStoredToken }
+          : {})
       });
       if (probeRequestIdRef.current !== requestId) return;
       setProbeState({ inputs: probeInputs, status: 'complete', result: res });
@@ -133,74 +155,80 @@ function ConnectivityTestInput(
     }
   };
 
+  const input = isEditable ? (
+    <Input
+      ref={ref}
+      value={effectiveUrl}
+      onChange={handleInputChange}
+      placeholder={resolvedPlaceholder}
+      isDisabled={isDisabled}
+      bg={'white'}
+      {...inputProps}
+    />
+  ) : (
+    <AdminReadonlyInput value={effectiveUrl} placeholder={resolvedPlaceholder} isTruncate />
+  );
+  // 禁用条件与 resolveTargetUrl 一致：testUrl 可独立提供探测目标。
+  const button = (
+    <Button
+      colorScheme={'blue'}
+      variant={buttonVariant}
+      flexShrink={0}
+      px={5}
+      isLoading={isTesting}
+      isDisabled={(!effectiveUrl.trim() && !testUrl?.trim()) || isDisabled}
+      onClick={handleTest}
+    >
+      {resolvedButtonText}
+    </Button>
+  );
+  const resultContent = result && (
+    <HStack spacing={2} alignItems={'center'}>
+      {result.connected ? (
+        <>
+          <Tag
+            size={'sm'}
+            colorScheme={
+              result.status === undefined || (result.status >= 200 && result.status < 400)
+                ? 'green'
+                : 'orange'
+            }
+            variant={'subtle'}
+          >
+            {result.status === undefined || (result.status >= 200 && result.status < 400)
+              ? t('admin:probe_connected')
+              : t('admin:probe_warning')}
+            {result.status !== undefined &&
+              ` (${result.status}${result.statusText ? ` ${result.statusText}` : ''})`}
+          </Tag>
+          <Text fontSize={'xs'} color={'myGray.500'}>
+            {t('admin:probe_latency')}: {result.responseTimeMs}ms
+          </Text>
+        </>
+      ) : (
+        <>
+          <Tag size={'sm'} colorScheme={'red'} variant={'subtle'}>
+            {t('admin:probe_failed')}
+          </Tag>
+          <Text fontSize={'xs'} color={'red.500'}>
+            {result.errorCode ? getProbeErrorText(result) : result.error}
+          </Text>
+        </>
+      )}
+    </HStack>
+  );
+
+  if (renderLayout) return <>{renderLayout({ input, button, result: resultContent })}</>;
+
   return (
     <Box w={'100%'}>
       <HStack spacing={3} w={'100%'}>
         <Box flex={'1 0 0'} minW={0}>
-          {isEditable ? (
-            <Input
-              ref={ref}
-              value={effectiveUrl}
-              onChange={handleInputChange}
-              placeholder={resolvedPlaceholder}
-              isDisabled={isDisabled}
-              bg={'white'}
-              {...inputProps}
-            />
-          ) : (
-            <AdminReadonlyInput value={effectiveUrl} placeholder={resolvedPlaceholder} isTruncate />
-          )}
+          {input}
         </Box>
-        {/* 禁用条件与 resolveTargetUrl 一致：testUrl 可独立提供探测目标，不能只看 effectiveUrl */}
-        <Button
-          colorScheme={'blue'}
-          variant={buttonVariant}
-          flexShrink={0}
-          px={5}
-          isLoading={isTesting}
-          isDisabled={(!effectiveUrl && !testUrl) || isDisabled}
-          onClick={handleTest}
-        >
-          {resolvedButtonText}
-        </Button>
+        {button}
       </HStack>
-
-      {/* 探测结果提示 */}
-      {result && (
-        <HStack spacing={2} mt={2.5} alignItems={'center'}>
-          {result.connected ? (
-            <>
-              <Tag
-                size={'sm'}
-                colorScheme={
-                  result.status === undefined || (result.status >= 200 && result.status < 400)
-                    ? 'green'
-                    : 'orange'
-                }
-                variant={'subtle'}
-              >
-                {result.status === undefined || (result.status >= 200 && result.status < 400)
-                  ? t('admin:probe_connected')
-                  : t('admin:probe_warning')}
-                {result.status !== undefined &&
-                  ` (${result.status}${result.statusText ? ` ${result.statusText}` : ''})`}
-              </Tag>
-              <Text fontSize={'xs'} color={'myGray.500'}>
-                {t('admin:probe_latency')}: {result.responseTimeMs}ms
-              </Text>
-            </>
-          ) : (
-            <>
-              <Tag size={'sm'} colorScheme={'red'} variant={'subtle'}>
-                {t('admin:probe_failed')}
-              </Tag>
-              <Text fontSize={'xs'} color={'red.500'}>
-                {result.errorCode ? getProbeErrorText(result) : result.error}
-              </Text>
-            </>
-          )}
-        </HStack>
-      )}
+      {resultContent && <Box mt={2.5}>{resultContent}</Box>}
     </Box>
   );
 }

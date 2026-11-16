@@ -53,6 +53,21 @@ export const serviceEnv = createEnv({
     PLUGIN_TOKEN: z.string().default('token').meta({
       description: 'FastGPT Plugin 服务访问 Token，需与插件服务 AUTH_TOKEN 一致'
     }),
+    MARKETPLACE_URL: UrlSchema.default('https://v3.marketplace.fastgpt.cn').meta({
+      description: '插件与模板市场服务地址；通常无需填写，默认值随 FastGPT 代码更新'
+    }),
+    FEISHU_BASE_URL: UrlSchema.default('https://open.feishu.cn').meta({
+      description: '飞书开放平台基础地址，私有化部署可覆盖，默认使用官方地址'
+    }),
+    DINGTALK_BASE_URL: UrlSchema.default('https://api.dingtalk.com').meta({
+      description: '钉钉 API 基础地址，默认使用官方地址'
+    }),
+    DINGTALK_OAPI_BASE_URL: UrlSchema.default('https://oapi.dingtalk.com').meta({
+      description: '钉钉 OAPI 基础地址，默认使用官方地址'
+    }),
+    YUQUE_DATASET_BASE_URL: UrlSchema.default('https://www.yuque.com').meta({
+      description: '语雀数据源基础地址，默认使用官方地址'
+    }),
     AIPROXY_API_ENDPOINT: UrlSchema.optional().meta({
       description: 'AI Proxy 服务地址'
     }),
@@ -157,10 +172,6 @@ export const serviceEnv = createEnv({
     LANGFUSE_BASE_URL: UrlSchema.optional(),
 
     // ==================== 域名与前端 ====================
-    FE_DOMAIN: UrlSchema.meta({
-      description:
-        '客户端访问 FastGPT 时使用的地址（由协议、主机和可选端口组成），用于补全文件资源路径。例如 https://fastgpt.cn；本地开发可使用 http://localhost:3000。'
-    }),
     FILE_DOWNLOAD_PUBLIC_URL_PREFIX: UrlSchema.optional().meta({
       description:
         '下载短链公开 URL 前缀。配置后下载链接生成为 {prefix}/{signedAlias}，通常由 nginx rewrite 到 FastGPT /api/system/file/d/{signedAlias}；仅影响下载，不影响上传'

@@ -4,6 +4,7 @@
  * 负责脚本 hash 状态、输出裁剪和 Redis 临界区保护，不处理具体 Skill 版本部署。
  */
 import {
+  SANDBOX_ENTRYPOINT_TIMEOUT_SECONDS,
   MAX_LOG_OUTPUT_LENGTH,
   SANDBOX_ENTRYPOINT_STATE_HASH_KEY,
   MAX_ENTRYPOINT_OUTPUT_BYTES,
@@ -21,7 +22,6 @@ import {
   isRedisLeaseError
 } from '@fastgpt/dal/redis/caches';
 import { getLogger, LogCategories } from '../../../../../common/logger';
-import { getAgentSandboxCommonConfig } from '../../config';
 import { createAgentSandboxInitializingError } from '../../error';
 import type { SandboxPrepareContext, SandboxPrepareStep } from './prepare';
 import { buildRuntimeHash } from '../../utils';
@@ -159,10 +159,9 @@ export const executeEntrypointCommand = async ({
   label: string;
   workingDirectory?: string;
 }): Promise<boolean> => {
-  const timeoutSeconds = getEntrypointTimeoutSeconds();
   const result = await sandbox
     .execute(command, {
-      timeoutMs: timeoutSeconds * 1000,
+      timeoutMs: SANDBOX_ENTRYPOINT_TIMEOUT_SECONDS * 1000,
       maxOutputBytes: MAX_ENTRYPOINT_OUTPUT_BYTES,
       workingDirectory
     })
@@ -206,9 +205,6 @@ const buildBashScriptCommand = (script: string): string => {
   const encoded = Buffer.from(script, 'utf-8').toString('base64');
   return buildLimitedOutputShellCommand(`printf %s ${shellQuote(encoded)} | base64 -d | /bin/bash`);
 };
-
-const getEntrypointTimeoutSeconds = (): number =>
-  Math.min(Math.max(getAgentSandboxCommonConfig().entrypointTimeoutSeconds, 1), 600);
 
 const truncateOutput = (value: string): string =>
   value.length > MAX_LOG_OUTPUT_LENGTH ? `${value.slice(0, MAX_LOG_OUTPUT_LENGTH)}...` : value;

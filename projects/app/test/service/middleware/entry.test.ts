@@ -59,16 +59,36 @@ describe('NextAPI', () => {
     );
   });
 
-  it('treats instance config as the sole authority for allowed origins', async () => {
-    securitySnapshot({ allowedOrigins: ['https://trusted.example.com'], csrfEnabled: true });
+  it.each([
+    {
+      allowedOriginsEnabled: false,
+      allowedOrigins: ['https://trusted.example.com'],
+      expected: undefined
+    },
+    {
+      allowedOriginsEnabled: true,
+      allowedOrigins: ['https://trusted.example.com'],
+      expected: ['https://trusted.example.com']
+    },
+    {
+      allowedOriginsEnabled: undefined,
+      allowedOrigins: ['https://trusted.example.com'],
+      expected: ['https://trusted.example.com']
+    },
+    { allowedOriginsEnabled: true, allowedOrigins: [], expected: undefined }
+  ])(
+    'honors the origins switch and legacy config: $allowedOriginsEnabled / $allowedOrigins',
+    async ({ allowedOriginsEnabled, allowedOrigins, expected }) => {
+      securitySnapshot({ allowedOriginsEnabled, allowedOrigins, csrfEnabled: true });
 
-    NextAPI(async () => undefined);
-    await runBefore(mocks);
+      NextAPI(async () => undefined);
+      await runBefore(mocks);
 
-    expect(mocks.withNextCors).toHaveBeenCalledWith(
-      expect.objectContaining({ allowedOrigins: ['https://trusted.example.com'] })
-    );
-  });
+      expect(mocks.withNextCors).toHaveBeenCalledWith(
+        expect.objectContaining({ allowedOrigins: expected })
+      );
+    }
+  );
 
   it('passes undefined origins when the admin cleared the list so CORS allows all (no env resurrection)', async () => {
     // 管理员清空白名单后落库 []；若这里回落 env ALLOWED_ORIGINS，清空操作会被静默复活

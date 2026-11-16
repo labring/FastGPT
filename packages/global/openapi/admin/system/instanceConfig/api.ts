@@ -29,19 +29,24 @@ export const GetDomainConfigResponseSchema = z.object({
   }),
   revision: z.number().int().nonnegative().meta({ description: '当前乐观锁版本号', example: 12 }),
   effectiveConfig: z.record(z.string(), z.unknown()).meta({
-    description: '当前生效的完整配置（敏感字段已脱敏）',
+    description: '当前生效的配置，敏感字段完全省略，不返回明文、密文或掩码',
     example: {
       favicon: 'https://example.com/avatar/team-1/site.png',
       navbarItems: []
     }
   }),
   overrides: z.record(z.string(), z.unknown()).meta({
-    description: '数据库持久化的稀疏覆盖配置；只包含与默认值不同的字段',
+    description: '稀疏覆盖配置；敏感字段完全省略',
     example: { favicon: 'https://example.com/avatar/team-1/site.png' }
   }),
   secretKeys: z.array(z.string()).meta({
-    description: '该 Domain 下所有敏感字段相对路径；值在 overrides/effectiveConfig 中以掩码返回',
+    description: '该 Domain 下允许访问的敏感字段相对路径',
     example: ['auth.loginProviders.email.smtp']
+  }),
+  configuredSecretKeys: z.array(z.string()).meta({
+    description:
+      '已经配置密钥的相对路径，仅提供状态；更新时省略字段表示保留、字符串表示替换、空字符串表示清空',
+    example: ['codeSandbox.token']
   }),
   updatedAt: z.date().optional().meta({
     description: '最后更新时间',

@@ -9,6 +9,7 @@ import {
   type SystemInstanceConfigDomainKey
 } from '@fastgpt/global/common/system/config/schema';
 import { MongoSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/schema';
+import { encryptDomainSecrets } from '@fastgpt/service/common/system/systemInstanceConfig/secrets';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 
 type DefaultConfigOverrides = Partial<
@@ -85,7 +86,7 @@ export const initializeEmptyInstanceConfig = async ({
       domain,
       schemaVersion: SYSTEM_INSTANCE_CONFIG_SCHEMA_VERSION,
       revision: 1,
-      overrides: domainOverrides,
+      overrides: encryptDomainSecrets(domain, domainOverrides),
       explicitDefaultPaths: explicitDefaultPaths?.[domain] ?? [],
       updatedBy: { actor: 'migration' as const }
     };
