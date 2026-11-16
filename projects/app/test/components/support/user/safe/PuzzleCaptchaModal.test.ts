@@ -132,6 +132,9 @@ describe('PuzzleCaptchaModal errors', () => {
     },
     { error: { message: 'sendVerificationCodeTooFrequently' }, expected: '请勿频繁获取验证码' },
     { error: { message: 'invalidVerificationCode' }, expected: '验证码错误' },
+    { error: { message: 'common:server_error' }, expected: '服务器异常' },
+    { error: { message: 'common:error.unKnow' }, expected: '出现了点意外~' },
+    { error: { message: 'common:unauth_token' }, expected: '凭证已过期，请重新登录' },
     {
       error: { message: 'Upstream https://private.example.com/send failed' },
       expected: 'Upstream https://xxx failed'

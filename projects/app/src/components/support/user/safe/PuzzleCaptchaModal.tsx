@@ -45,7 +45,7 @@ const PuzzleCaptchaModal = ({
   const startY = useRef(0);
   const generation = useRef(0);
 
-  /** 仅翻译验证码业务的已知键；具体错误原文只做脱敏，缺失或无效文本使用静态兜底。 */
+  /** 仅翻译此请求链路的已知键；具体错误原文只做脱敏，缺失或无效文本使用静态兜底。 */
   const getErrorText = (error: unknown, fallback: string): string => {
     const message = getErrorMessage(error);
     switch (message) {
@@ -60,6 +60,12 @@ const PuzzleCaptchaModal = ({
         return t('common:error.code_error');
       case 'common:error.operation_too_frequently':
         return t('common:error.operation_too_frequently');
+      case 'common:server_error':
+        return t('common:server_error');
+      case 'common:error.unKnow':
+        return t('common:error.unKnow');
+      case 'common:unauth_token':
+        return t('common:unauth_token');
       default:
         return message ? replaceSensitiveText(message) : fallback;
     }
