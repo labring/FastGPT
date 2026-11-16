@@ -669,8 +669,39 @@ describe('migration env wiring', () => {
    * 故另用最小可断言条数兜底，防止表格被悄悄清空。
    */
   it('maps every domain field back to the exact environment variable it reads', () => {
-    // FE_DOMAIN 已改为可选；显式提供夹具，避免绑定数量依赖运行测试的机器配置。
-    const legacyEnv = { ...readLegacyInstanceConfigEnv(), FE_DOMAIN: 'https://migration.test' };
+    // 所有可选或默认为空的绑定都显式提供合成值，避免 CI 与开发机 ENV 不同而漏测。
+    const legacyEnv: ReturnType<typeof readLegacyInstanceConfigEnv> = {
+      ...readLegacyInstanceConfigEnv(),
+      FE_DOMAIN: 'https://migration.test',
+      SYSTEM_DESCRIPTION: 'Migration fixture',
+      SYSTEM_FAVICON: '/migration.svg',
+      CUSTOM_API_DOMAIN: 'https://api.migration.test',
+      CUSTOM_SHARE_PAGE_DOMAIN: 'https://share.migration.test',
+      PASSWORD_EXPIRED_MONTH: 3,
+      PAY_FORM_URL: 'https://pay.migration.test',
+      STORAGE_EXTERNAL_ENDPOINT: 'https://storage.migration.test',
+      STORAGE_S3_CDN_ENDPOINT: 'https://cdn.migration.test',
+      DOCUMENT_PARSE_PROVIDER: '',
+      CUSTOM_PDF_PARSE_URL: 'https://pdf.migration.test',
+      CUSTOM_PDF_PARSE_KEY: 'synthetic-pdf-key',
+      SOMARK_API_KEY: 'synthetic-somark-key',
+      DOC2X_KEY: 'synthetic-doc2x-key',
+      TEXTIN_APP_ID: 'synthetic-textin-app',
+      TEXTIN_SECRET_CODE: 'synthetic-textin-secret',
+      SSE_MCP_SERVER_PROXY_ENDPOINT: 'https://mcp.migration.test',
+      AGENT_SANDBOX_PROVIDER: 'opensandbox',
+      AGENT_SANDBOX_NPM_REGISTRY: 'https://npm.migration.test',
+      AGENT_SANDBOX_PYPI_INDEX_URL: 'https://pypi.migration.test',
+      AGENT_SANDBOX_APT_MIRROR: 'https://apt.migration.test',
+      AGENT_SANDBOX_SEALOS_BASEURL: 'https://sealos.migration.test',
+      AGENT_SANDBOX_SEALOS_TOKEN: 'synthetic-sealos-token',
+      AGENT_SANDBOX_SEALOS_IMAGE: 'migration-sealos:latest',
+      AGENT_SANDBOX_OPENSANDBOX_BASEURL: 'https://opensandbox.migration.test',
+      AGENT_SANDBOX_OPENSANDBOX_API_KEY: 'synthetic-opensandbox-key',
+      AGENT_SANDBOX_OPENSANDBOX_IMAGE: 'migration-opensandbox:latest',
+      AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL: 'https://volume.migration.test',
+      AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN: 'synthetic-volume-token'
+    };
     const overrides = buildFromLegacy({ feConfigs: {}, systemEnv: {}, legacyEnv });
     const cases: [string, unknown][] = [
       // site

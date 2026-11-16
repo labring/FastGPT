@@ -7,7 +7,6 @@ import { MongoSystemConfigs } from '@fastgpt/service/common/system/config/schema
 import { MongoSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/schema';
 import { decryptDomainSecrets } from '@fastgpt/service/common/system/systemInstanceConfig/secrets';
 import { MongoSystemMigrationState } from '@/migration/mongoSchema';
-import { resetFailedMigration } from '@/migration/entity';
 import { systemMigrations, type SystemMigrationLogger } from '@/migration/registry';
 import { createSystemMigrationRunner } from '@/migration/runner';
 import * as legacyEnv from '@/migration/tasks/4180/20261116_migrate_system_configs/env';
@@ -337,16 +336,20 @@ describe('system configuration migration with the real runner', () => {
     }
   });
 
-  it('allows startup before migration and retries background failure without overwriting administrator values', async () => {
+  it('blocks startup on migration failure and preserves administrator values after owner restart', async () => {
     await seedLegacySources();
     vi.stubEnv('FILE_DOMAIN', 'not a valid url');
     const failedOwner = createRunner('system-config-failed-owner');
     const retry = createRunner('system-config-retry');
+    const startupReady = vi.fn();
+    let startupWait: Promise<PromiseSettledResult<void>[]> | undefined;
 
     try {
       await failedOwner.start();
-      expect(failedOwner.hasBlockingMigrations).toBe(false);
-      await failedOwner.waitForBlockingMigrations();
+      expect(failedOwner.hasBlockingMigrations).toBe(true);
+      startupWait = Promise.allSettled([
+        failedOwner.waitForBlockingMigrations().then(startupReady)
+      ]);
       await vi.waitFor(
         async () => {
           expect(await MongoSystemMigrationState.findById(migration.id).lean()).toMatchObject({
@@ -356,7 +359,10 @@ describe('system configuration migration with the real runner', () => {
         },
         { timeout: 30_000, interval: 100 }
       );
-      await failedOwner.waitForBlockingMigrations();
+      expect(startupReady).not.toHaveBeenCalled();
+      expect(() => failedOwner.startBackgroundMigrations()).toThrow(
+        'Startup migrations have not completed'
+      );
       const failed = await MongoSystemMigrationState.findById(migration.id).lean();
       expect(failed?.progress?.find(({ key }) => key === 'backfill')?.status).toBe(
         SystemMigrationStatusEnum.failed
@@ -365,6 +371,7 @@ describe('system configuration migration with the real runner', () => {
 
       failedOwner.stop();
       await failedOwner.tick();
+      expect((await startupWait)[0].status).toBe('rejected');
       await MongoSystemInstanceConfig.updateOne(
         { domain: 'site' },
         {
@@ -383,8 +390,11 @@ describe('system configuration migration with the real runner', () => {
       );
       vi.stubEnv('FILE_DOMAIN', 'https://files.example.test');
       vi.stubEnv('AGENT_SANDBOX_PROXY_URL', 'wss://changed.example.test');
-      // 独立后台任务失败后由管理员重置再执行，无需等待失败 lease 过期。
-      expect(await resetFailedMigration(migration.id)).toBe(true);
+      // 启动失败保留 lease；停止旧 owner 后模拟租约到期，由重启节点接管原任务。
+      await MongoSystemMigrationState.updateOne(
+        { _id: migration.id },
+        { $set: { leaseExpireAt: new Date(0) } }
+      );
       await retry.start();
       await waitForSuccess(retry);
 
@@ -403,6 +413,8 @@ describe('system configuration migration with the real runner', () => {
     } finally {
       failedOwner.stop();
       retry.stop();
+      await failedOwner.tick();
+      await startupWait;
     }
   });
 });
