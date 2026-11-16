@@ -25,7 +25,7 @@ import {
 } from '@chakra-ui/react';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import MyModal from '@fastgpt/web/components/common/MyModal';
-import { useForm } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
@@ -57,7 +57,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { jsonSchema2SecretInput } from '@fastgpt/global/core/app/jsonschema';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { SystemToolSecretMaskedValue } from '@fastgpt/global/core/app/tool/systemTool/constants';
-import IconButton from '@/pageComponents/account/team/OrgManage/IconButton';
+import SecretValueInput from '@/components/common/secret/SecretValueInput';
 
 const COST_LIMITS = { max: 1000, min: 0, step: 0.1 };
 const FORM_LABEL_WIDTH = '160px';
@@ -182,7 +182,8 @@ const SystemToolConfigModal = ({
   const { t, i18n } = useSafeTranslation();
   const { feConfigs } = useSystemStore();
   const { toast } = useToast();
-  const { register, reset, handleSubmit, setValue, watch } = useForm<UpdateSystemToolBodyType>();
+  const { register, reset, handleSubmit, setValue, watch, control } =
+    useForm<UpdateSystemToolBodyType>();
   const [runtimeConfig, setRuntimeConfig] = useState<RuntimeConfigValue>({});
   const [selectedVersion, setSelectedVersion] = useState<string>();
   const [tabIndex, setTabIndex] = useState(0);
@@ -466,39 +467,27 @@ const SystemToolConfigModal = ({
       </HStack>
     );
 
-    if (item.inputType === 'secret' && fieldValue === SystemToolSecretMaskedValue) {
+    if (item.inputType === 'secret') {
       return (
         <ConfigRow key={item.key} label={labelSection}>
-          <Flex alignItems={'center'} gap={2}>
-            <Flex
-              flex={1}
-              borderRadius={'6px'}
-              border={'0.5px solid'}
-              borderColor={'primary.200'}
-              bg={'primary.50'}
-              h={8}
-              px={3}
-              alignItems={'center'}
-              gap={1}
-            >
-              <MyIcon name="checkCircle" w={'16px'} color={'primary.600'} />
-              <Box fontSize={'sm'} fontWeight={'medium'} color={'primary.600'}>
-                {t('common:had_auth_value')}
-              </Box>
-            </Flex>
-            {!isToolOffline && (
-              <IconButton
-                name="edit"
-                aria-label={t('common:Edit')}
-                onClick={() => {
-                  setValue(`secretsVal.${item.key}`, '', {
-                    shouldDirty: true,
-                    shouldValidate: true
-                  });
-                }}
+          <Controller
+            control={control}
+            name={`secretsVal.${item.key}`}
+            rules={{ required: item.required }}
+            render={({ field: { value, onChange }, fieldState: { error } }) => (
+              <SecretValueInput
+                value={
+                  typeof value === 'string' && value !== SystemToolSecretMaskedValue ? value : ''
+                }
+                isConfigured={value === SystemToolSecretMaskedValue}
+                onChange={onChange}
+                placeholder={item.placeholder}
+                bg={'white'}
+                isDisabled={isToolOffline}
+                isInvalid={!!error}
               />
             )}
-          </Flex>
+          />
         </ConfigRow>
       );
     }

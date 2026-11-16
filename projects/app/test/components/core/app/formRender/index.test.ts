@@ -77,7 +77,7 @@ describe('InputRender password input', () => {
       );
     });
 
-    const input = container.querySelector<HTMLInputElement>('input[type="password"]');
+    const input = container.querySelector<HTMLInputElement>('input[type="text"]');
     expect(input).not.toBeNull();
     if (!input) throw new Error('Password input was not rendered');
 
@@ -87,8 +87,8 @@ describe('InputRender password input', () => {
       Simulate.change(input);
     });
 
-    expect(container.querySelector('input[type="password"]')).not.toBeNull();
-    expect(container.querySelector<HTMLInputElement>('input[type="password"]')?.value).toBe('a');
+    expect(container.querySelector('input[type="text"]')).not.toBeNull();
+    expect(container.querySelector<HTMLInputElement>('input[type="text"]')?.value).toBe('a');
   });
 
   it.each([
