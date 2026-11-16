@@ -8,7 +8,13 @@ import {
   LinkedPaginationSchema,
   PaginationPageSizeSchema
 } from '../../../api';
-import { ChatItemMiniSchema } from '../../../../core/chat/type';
+import {
+  ChatItemMiniSchema,
+  UserChatItemSchema,
+  SystemChatItemSchema,
+  AIChatItemSchema,
+  ResponseTagItemSchema
+} from '../../../../core/chat/type';
 import { AppTTSConfigInputSchema } from '../../app/common/api';
 import { GetChatTypeEnum } from '../../../../core/chat/constants';
 import {
@@ -212,20 +218,24 @@ export const GetRecordsV2BodySchema = GetRecordsV2BodyRawSchema.transform(
 );
 export type GetRecordsV2BodyType = z.input<typeof GetRecordsV2BodyRawSchema>;
 export type GetRecordsV2BodyRuntimeType = z.infer<typeof GetRecordsV2BodySchema>;
-const ChatRecordListItemSchema = ChatItemMiniSchema.and(
-  // 历史接口还返回 time、_id 等消息展示字段，校验已知字段并保留现有元数据。
-  z.looseObject({
-    _id: ObjectIdSchema.optional(),
-    dataId: z
-      .string()
-      .meta({ description: '聊天业务标识，用于消息详情、反馈及轮次关联，推荐使用此字段' }),
-    id: z
-      .string()
-      .optional()
-      .meta({ deprecated: true, description: '兼容旧客户端的 dataId 别名；已弃用，请使用 dataId' }),
-    time: z.coerce.date().optional()
-  })
-);
+const ChatRecordListItemShape = {
+  ...ResponseTagItemSchema.shape,
+  _id: ObjectIdSchema.optional(),
+  dataId: z
+    .string()
+    .meta({ description: '聊天业务标识，用于消息详情、反馈及轮次关联，推荐使用此字段' }),
+  id: z
+    .string()
+    .optional()
+    .meta({ deprecated: true, description: '兼容旧客户端的 dataId 别名；已弃用，请使用 dataId' }),
+  time: z.coerce.date().optional()
+};
+// 各角色直接扩展展示字段并保留额外元数据，让附件转换只执行一次，避免 intersection 合并原值时冲突。
+const ChatRecordListItemSchema = z.union([
+  UserChatItemSchema.extend(ChatRecordListItemShape).loose(),
+  SystemChatItemSchema.extend(ChatRecordListItemShape).loose(),
+  AIChatItemSchema.extend(ChatRecordListItemShape).loose()
+]);
 
 export const GetRecordsV2ResponseSchema = LinkedListResponseSchema(ChatItemMiniSchema)
   .omit({ list: true })
