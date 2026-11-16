@@ -2,6 +2,8 @@ import { describe, expect, it, vi } from 'vitest';
 import { PuzzleCaptchaService } from '@fastgpt/service/support/user/account/captcha/service';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { verification } from '@fastgpt/service/support/tmpData/verification';
+import { UserError } from '@fastgpt/global/common/error/utils';
+import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
 
 vi.unmock(import('@fastgpt/service/common/mongo/sessionRun'));
 
@@ -431,4 +433,131 @@ describe('process-wide captcha rendering concurrency', () => {
       { status: 'rejected', reason: failure }
     ]);
   });
+
+  /** 可控渲染用于阻塞活动名额；清理时让后续任务直接完成，不访问数据库。 */
+  const makeQueuedService = () => {
+    const releases: (() => void)[] = [];
+    let draining = false;
+    const render = vi.fn(async () => {
+      if (!draining) await new Promise<void>((resolve) => releases.push(resolve));
+      return rendered;
+    });
+    const persist = vi.fn(async () => true);
+    const service = new PuzzleCaptchaService({
+      render,
+      assertCreateFrequency: async () => undefined,
+      materials: { ...verification, createIfInactive: persist }
+    });
+    return {
+      service,
+      render,
+      persist,
+      release: (index: number) => releases[index](),
+      drain: () => {
+        draining = true;
+        releases.forEach((resolve) => resolve());
+      }
+    };
+  };
+
+  it('bounds waiting tasks at 1000, removes them after one minute and reuses their capacity', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'performance'] });
+    const harness = makeQueuedService();
+    const failures: unknown[] = [];
+    const requests = Array.from({ length: 1010 }, (_, index) =>
+      harness.service
+        .create({ username: `queue-${index}@example.com`, purpose: 'register' })
+        .catch((error) => {
+          failures.push(error);
+          throw error;
+        })
+    );
+    const finished = Promise.allSettled(requests);
+    let freshFinished: Promise<unknown> | undefined;
+    try {
+      await vi.advanceTimersByTimeAsync(0);
+      expect(harness.render).toHaveBeenCalledTimes(10);
+      expect(vi.getTimerCount()).toBe(1000);
+      await expect(
+        harness.service.create({ username: 'overflow@example.com', purpose: 'register' })
+      ).rejects.toMatchObject({
+        name: 'UserError',
+        message: UserErrEnum.captchaRenderQueueFull
+      });
+
+      await vi.advanceTimersByTimeAsync(59_999);
+      expect(failures).toHaveLength(0);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(failures).toHaveLength(1000);
+      expect(
+        failures.every(
+          (error) =>
+            error instanceof UserError && error.message === UserErrEnum.captchaRenderQueueTimeout
+        )
+      ).toBe(true);
+      expect(harness.render).toHaveBeenCalledTimes(10);
+      expect(harness.persist).not.toHaveBeenCalled();
+      expect(vi.getTimerCount()).toBe(0);
+
+      freshFinished = Promise.allSettled([
+        harness.service.create({ username: 'fresh@example.com', purpose: 'register' })
+      ]);
+      await vi.advanceTimersByTimeAsync(0);
+      expect(vi.getTimerCount()).toBe(1);
+    } finally {
+      harness.drain();
+      await Promise.all([finished, freshFinished]);
+      vi.useRealTimers();
+    }
+    expect(await freshFinished).toMatchObject([{ status: 'fulfilled' }]);
+    // 超时的一千个任务不能在活动任务完成后补做；只有新入队任务开始生成。
+    expect(harness.render).toHaveBeenCalledTimes(11);
+    expect(harness.persist).toHaveBeenCalledTimes(11);
+  });
+
+  it.each([59_999, 60_000])(
+    'checks the waiting deadline again before dispatch at %dms',
+    async (elapsed) => {
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'performance'] });
+      const harness = makeQueuedService();
+      const failures: unknown[] = [];
+      const requests = Array.from({ length: 11 }, (_, index) =>
+        harness.service
+          .create({ username: `boundary-${index}@example.com`, purpose: 'register' })
+          .catch((error) => {
+            failures.push(error);
+            throw error;
+          })
+      );
+      const finished = Promise.allSettled(requests);
+      const clock = vi.spyOn(performance, 'now');
+      const allowed = elapsed < 60_000;
+      try {
+        await vi.advanceTimersByTimeAsync(0);
+        expect(harness.render).toHaveBeenCalledTimes(10);
+        // 只推进单调时钟，不触发 timer，模拟事件循环尚未派发超时回调。
+        clock.mockReturnValue(elapsed);
+        harness.release(0);
+        await vi.advanceTimersByTimeAsync(0);
+        expect(harness.render).toHaveBeenCalledTimes(allowed ? 11 : 10);
+        expect(vi.getTimerCount()).toBe(0);
+        if (allowed) {
+          // 刚开始执行的任务即使生成超过一分钟，也不会被排队计时器中断。
+          await vi.advanceTimersByTimeAsync(60_001);
+          expect(failures).toHaveLength(0);
+        } else {
+          expect(failures).toMatchObject([
+            { name: 'UserError', message: UserErrEnum.captchaRenderQueueTimeout }
+          ]);
+        }
+      } finally {
+        clock.mockRestore();
+        harness.drain();
+        await finished;
+        vi.useRealTimers();
+      }
+      expect(harness.render).toHaveBeenCalledTimes(allowed ? 11 : 10);
+      expect(harness.persist).toHaveBeenCalledTimes(allowed ? 11 : 10);
+    }
+  );
 });

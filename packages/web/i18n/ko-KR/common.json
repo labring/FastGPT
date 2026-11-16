@@ -833,6 +833,8 @@
   "enterprise_auth_notice_or_click": ", 또는 ",
   "enterprise_auth_notice_read": "읽음",
   "enterprise_auth_notice_title": "기업 인증 혜택",
+  "error.captcha_queue_full": "인증 이미지 생성 대기열이 가득 찼습니다. 잠시 후 다시 시도해 주세요.",
+  "error.captcha_queue_timeout": "인증 이미지 생성 대기 시간이 초과되었습니다. 다시 시도해 주세요.",
   "error.code_error": "인증번호 오류",
   "error.fileNotFound": "파일을 찾을 수 없습니다~",
   "error.file_upload_disabled": "현재 앱은 파일 업로드가 비활성화되어 있습니다",

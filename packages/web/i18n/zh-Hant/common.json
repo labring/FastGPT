@@ -841,6 +841,8 @@
   "enterprise_auth_notice_or_click": "，或點擊",
   "enterprise_auth_notice_read": "已讀",
   "enterprise_auth_notice_title": "企業認證福利",
+  "error.captcha_queue_full": "驗證碼生成佇列已滿，請稍後重試",
+  "error.captcha_queue_timeout": "驗證碼生成排隊逾時，請重試",
   "error.code_error": "驗證碼錯誤",
   "error.fileNotFound": "找不到檔案",
   "error.file_upload_disabled": "當前應用未開啟文件上傳",

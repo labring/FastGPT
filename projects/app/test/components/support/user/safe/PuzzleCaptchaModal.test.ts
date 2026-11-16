@@ -125,6 +125,16 @@ describe('PuzzleCaptchaModal errors', () => {
       expected: '操作过于频繁，请稍后重试'
     },
     { error: { message: 'verifyCodeTooFrequently' }, expected: '操作过于频繁，请稍后重试' },
+    { error: { message: 'captchaRenderQueueFull' }, expected: '验证码生成队列已满，请稍后重试' },
+    {
+      error: { message: 'common:error.captcha_queue_full' },
+      expected: '验证码生成队列已满，请稍后重试'
+    },
+    { error: { message: 'captchaRenderQueueTimeout' }, expected: '验证码生成排队超时，请重试' },
+    {
+      error: { message: 'common:error.captcha_queue_timeout' },
+      expected: '验证码生成排队超时，请重试'
+    },
     { error: { message: 'SMTP:AUTH_FAILED' }, expected: 'SMTP:AUTH_FAILED' },
     {
       error: { message: 'common:error.operation_too_frequently' },

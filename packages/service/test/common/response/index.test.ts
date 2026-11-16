@@ -280,6 +280,8 @@ describe('jsonRes HTTP status mapping', () => {
     [UserErrEnum.invalidVerificationCode, 400],
     [UserErrEnum.sendVerificationCodeTooFrequently, 429],
     [UserErrEnum.verifyCodeTooFrequently, 429],
+    [UserErrEnum.captchaRenderQueueFull, 429],
+    [UserErrEnum.captchaRenderQueueTimeout, 503],
     [SandboxErrEnum.agentSandboxInitializing, 409],
     [SandboxErrEnum.agentSandboxLimitReached, 409],
     [SandboxErrEnum.agentSandboxTeamLimitReached, 409],
