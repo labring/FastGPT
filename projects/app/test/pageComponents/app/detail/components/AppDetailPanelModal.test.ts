@@ -6,8 +6,22 @@ import AppDetailPanelModal from '@/pageComponents/app/detail/components/AppDetai
 
 vi.mock('@chakra-ui/react', async () => {
   const { createElement } = await import('react');
-  const Container = ({ children }: { children?: React.ReactNode }) =>
-    createElement('div', null, children);
+  const Container = ({
+    children,
+    onClick,
+    opacity,
+    pointerEvents
+  }: {
+    children?: React.ReactNode;
+    onClick?: () => void;
+    opacity?: number;
+    pointerEvents?: string;
+  }) =>
+    createElement(
+      'div',
+      { onClick, 'data-opacity': opacity, 'data-pointer-events': pointerEvents },
+      children
+    );
   return {
     Box: Container,
     Flex: Container,
@@ -145,5 +159,35 @@ describe('调试侧栏 Escape', () => {
       );
     });
     expect(close).not.toHaveBeenCalled();
+  });
+
+  it('关闭后遮罩仍可渐隐且不再拦截点击', () => {
+    const render = (isOpen: boolean) =>
+      act(() =>
+        root.render(
+          React.createElement(
+            AppDetailPanelModal,
+            {
+              isOpen,
+              onClose: close,
+              width: '400px',
+              height: '100vh',
+              header: '调试'
+            },
+            '聊天'
+          )
+        )
+      );
+    render(true);
+    const mask = document.querySelector('[data-pointer-events="auto"]');
+    expect(mask?.getAttribute('data-opacity')).toBe('1');
+    act(() => {
+      mask?.dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true }));
+    });
+    expect(close).toHaveBeenCalledTimes(1);
+    render(false);
+    expect(
+      document.querySelector('[data-pointer-events="none"]')?.getAttribute('data-opacity')
+    ).toBe('0');
   });
 });

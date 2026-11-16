@@ -1,6 +1,8 @@
-import { Box, Flex, IconButton } from '@chakra-ui/react';
+import { Box, Flex, FocusLock, IconButton, Portal } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import React, { useEffect, useMemo } from 'react';
+import FullscreenButton from '@/components/common/FullscreenButton';
+import { useDebugFullscreen } from '../hooks/useDebugFullscreen';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 
@@ -27,6 +29,8 @@ type Props = {
 };
 const ChatTest = ({ appForm, setRenderEdit, form2WorkflowFn }: Props) => {
   const { t } = useTranslation();
+  const { isFullscreen, isClosing, prefersReducedMotion, animation, toggle, onAnimationEnd } =
+    useDebugFullscreen();
   const { chatId } = useChatStore();
 
   const { appDetail } = useContextSelector(AppContext, (v) => v);
@@ -64,62 +68,92 @@ const ChatTest = ({ appForm, setRenderEdit, form2WorkflowFn }: Props) => {
   });
 
   return (
-    <Flex h={'full'} gap={2}>
-      <MyBox
-        flex={'1 0 0'}
-        w={0}
-        display={'flex'}
-        position={'relative'}
-        flexDirection={'column'}
-        h={'full'}
-        pt={4}
-        pb={0}
-        {...cardStyles}
-        boxShadow={'3'}
-      >
-        <Flex px={[2, 5]} pb={2} alignItems={'center'}>
-          <Box fontSize={['md', 'lg']} fontWeight={'bold'} color={'myGray.900'} mr={3}>
-            {t('app:chat_debug')}
-          </Box>
-          <Box flex={1} />
+    <Box h={'full'} w={'full'} sx={{ '& > div': { display: 'contents' } }}>
+      <Portal>
+        <Box
+          position={'fixed'}
+          inset={0}
+          zIndex={1299}
+          bg={'blackAlpha.600'}
+          opacity={isFullscreen && !isClosing ? 1 : 0}
+          pointerEvents={isFullscreen && !isClosing ? 'auto' : 'none'}
+          transition={`opacity ${prefersReducedMotion ? '0ms' : '200ms'} ease`}
+        />
+      </Portal>
+      <FocusLock isDisabled={!isFullscreen} autoFocus={false}>
+        <Flex
+          h={isFullscreen ? 'calc(100vh - 32px)' : 'full'}
+          w={isFullscreen ? 'calc(100vw - 32px)' : undefined}
+          position={isFullscreen ? 'fixed' : undefined}
+          top={isFullscreen ? '16px' : undefined}
+          left={isFullscreen ? '16px' : undefined}
+          zIndex={isFullscreen ? 1300 : undefined}
+          role={isFullscreen ? 'dialog' : undefined}
+          aria-modal={isFullscreen ? true : undefined}
+          aria-label={isFullscreen ? t('app:chat_debug') : undefined}
+          data-debug-fullscreen={isFullscreen ? true : undefined}
+          gap={2}
+          animation={animation}
+          onAnimationEnd={onAnimationEnd}
+        >
+          <MyBox
+            flex={'1 0 0'}
+            w={0}
+            display={'flex'}
+            position={'relative'}
+            flexDirection={'column'}
+            h={'full'}
+            pt={4}
+            pb={0}
+            {...cardStyles}
+            boxShadow={'3'}
+          >
+            <Flex px={[2, 5]} pb={2} alignItems={'center'}>
+              <Box fontSize={['md', 'lg']} fontWeight={'bold'} color={'myGray.900'} mr={3}>
+                {t('app:chat_debug')}
+              </Box>
+              <Box flex={1} />
 
-          <Flex alignItems={'center'} gap={2}>
-            <SandboxEntryIcon size={'smSquare'} onOpen={onOpenSandboxModal} />
-            <ChatVariableButton chatType={ChatTypeEnum.test} />
-            <MyTooltip label={t('common:core.chat.New Chat')}>
-              <IconButton
-                className="chat"
-                size={'smSquare'}
-                icon={<MyIcon name={'core/chat/chatLight'} w={'14px'} />}
-                variant={'whitePrimary'}
-                borderRadius={'md'}
-                aria-label={t('common:core.chat.New Chat')}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  restartChat();
-                  setSandboxExists(false);
-                }}
+              <Flex alignItems={'center'} gap={2}>
+                <SandboxEntryIcon size={'smSquare'} onOpen={onOpenSandboxModal} />
+                <ChatVariableButton chatType={ChatTypeEnum.test} />
+                <MyTooltip label={t('common:core.chat.New Chat')}>
+                  <IconButton
+                    className="chat"
+                    size={'smSquare'}
+                    icon={<MyIcon name={'core/chat/chatLight'} w={'14px'} />}
+                    variant={'whitePrimary'}
+                    borderRadius={'md'}
+                    aria-label={t('common:core.chat.New Chat')}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      restartChat();
+                      setSandboxExists(false);
+                    }}
+                  />
+                </MyTooltip>
+                <FullscreenButton isFullscreen={isFullscreen} onClick={toggle} />
+              </Flex>
+            </Flex>
+            <Box flex={1}>
+              <ChatContainer />
+            </Box>
+          </MyBox>
+          {datasetCiteData && (
+            <Box flex={'1 0 0'} w={0} maxW={'560px'} {...cardStyles} boxShadow={'3'}>
+              <ChatQuoteList
+                rawSearch={datasetCiteData.rawSearch}
+                metadata={datasetCiteData.metadata}
+                singleQuote={datasetCiteData.singleQuote}
+                onClose={() => setCiteModalData(undefined)}
               />
-            </MyTooltip>
-          </Flex>
-        </Flex>
-        <Box flex={1}>
-          <ChatContainer />
-        </Box>
-      </MyBox>
-      {datasetCiteData && (
-        <Box flex={'1 0 0'} w={0} maxW={'560px'} {...cardStyles} boxShadow={'3'}>
-          <ChatQuoteList
-            rawSearch={datasetCiteData.rawSearch}
-            metadata={datasetCiteData.metadata}
-            singleQuote={datasetCiteData.singleQuote}
-            onClose={() => setCiteModalData(undefined)}
-          />
-        </Box>
-      )}
+            </Box>
+          )}
 
-      <SandboxEditorModal />
-    </Flex>
+          <SandboxEditorModal />
+        </Flex>
+      </FocusLock>
+    </Box>
   );
 };
 

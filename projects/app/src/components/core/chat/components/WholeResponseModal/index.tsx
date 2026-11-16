@@ -1,4 +1,4 @@
-import { Box, CloseButton, Flex } from '@chakra-ui/react';
+import { Box, CloseButton, Flex, usePrefersReducedMotion } from '@chakra-ui/react';
 import { useState } from 'react';
 import FullscreenButton from '@/components/common/FullscreenButton';
 import { useContextSelector } from 'use-context-selector';
@@ -16,6 +16,7 @@ export { WholeResponseContent } from './WholeResponseContent';
 const WholeResponseModal = ({ onClose, dataId }: { onClose: () => void; dataId: string }) => {
   const { t } = useSafeTranslation();
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const prefersReducedMotion = usePrefersReducedMotion();
   const { getHistoryResponseData } = useContextSelector(ChatBoxContext, (v) => v);
   const { loading: isLoading, data: response } = useRequest(
     () => getHistoryResponseData({ dataId }),
@@ -36,6 +37,11 @@ const WholeResponseModal = ({ onClose, dataId }: { onClose: () => void; dataId: 
       maxW={isFullscreen ? 'calc(100vw - 32px)' : ['90vw', '880px']}
       h={isFullscreen ? 'calc(100vh - 32px)' : ['90vh', '80vh']}
       maxH={isFullscreen ? 'calc(100vh - 32px)' : ['90vh', '80vh']}
+      sx={{
+        transition: prefersReducedMotion
+          ? 'none'
+          : 'width 200ms ease, height 200ms ease, max-width 200ms ease, max-height 200ms ease'
+      }}
       headerStyles={{
         px: [5, 8],
         pt: [6, 8]

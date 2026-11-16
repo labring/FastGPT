@@ -21,6 +21,8 @@ type WorkflowTestData = {
 };
 
 type WorkflowModalContextValue = {
+  debugLeftBoundary: number;
+  setDebugLeftBoundary: React.Dispatch<React.SetStateAction<number>>;
   /** 当前打开的右侧工作流弹窗，历史版本与运行预览通过单一状态互斥。 */
   activePanel: WorkflowActivePanel;
 
@@ -38,6 +40,8 @@ type WorkflowModalContextValue = {
 };
 
 export const WorkflowModalContext = createContext<WorkflowModalContextValue>({
+  debugLeftBoundary: 0,
+  setDebugLeftBoundary: () => {},
   activePanel: null,
   setActivePanel: function (_value: React.SetStateAction<WorkflowActivePanel>): void {
     throw new Error('Function not implemented.');
@@ -53,6 +57,7 @@ export const WorkflowModalContext = createContext<WorkflowModalContextValue>({
 
 export const WorkflowModalProvider = ({ children }: { children: React.ReactNode }) => {
   const [activePanel, setActivePanel] = useState<WorkflowActivePanel>(null);
+  const [debugLeftBoundary, setDebugLeftBoundary] = useState(0);
   const [handleParams, setHandleParams] = useState<handleParamsType | null>(null);
   const [workflowTestData, setWorkflowTestDataState] = useState<WorkflowTestData>();
   const { chatId } = useChatStore();
@@ -66,13 +71,15 @@ export const WorkflowModalProvider = ({ children }: { children: React.ReactNode 
 
   const contextValue = useMemoEnhance(
     () => ({
+      debugLeftBoundary,
+      setDebugLeftBoundary,
       activePanel,
       setActivePanel,
       handleParams,
       setHandleParams,
       setWorkflowTestData
     }),
-    [activePanel, handleParams, setWorkflowTestData]
+    [activePanel, handleParams, setWorkflowTestData, debugLeftBoundary]
   );
 
   return (

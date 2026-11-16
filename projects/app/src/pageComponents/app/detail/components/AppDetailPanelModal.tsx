@@ -90,7 +90,9 @@ const AppDetailPanelModal = ({
       {showMask && (
         <Box
           zIndex={300}
-          display={isOpen ? 'block' : 'none'}
+          opacity={isOpen ? 1 : 0}
+          pointerEvents={isOpen ? 'auto' : 'none'}
+          transition={`opacity ${motionDuration} ease`}
           position={'fixed'}
           top={0}
           left={0}
@@ -124,7 +126,7 @@ const AppDetailPanelModal = ({
           transition={
             usesSlideFromLeft
               ? `transform ${motionDuration} ease, visibility 0s linear ${isOpen ? '0ms' : motionDuration}`
-              : `width ${motionDuration} ease, height ${motionDuration} ease`
+              : `width ${motionDuration} ease, height ${motionDuration} ease, top ${motionDuration} ease, right ${motionDuration} ease`
           }
           {...contentProps}
         >

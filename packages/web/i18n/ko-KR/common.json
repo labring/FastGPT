@@ -398,6 +398,7 @@
   "core.chat.Restart": "재시작",
   "core.chat.Restart Confirm": "대화를 재시작하시겠습니까? 현재 기록은 저장되지 않습니다",
   "core.chat.Run test": "디버그",
+  "resize_debug_panel": "디버그 패널 너비 조절",
   "enter_fullscreen": "전체 화면으로 보기",
   "exit_fullscreen": "전체 화면 종료",
   "core.chat.Select dataset": "데이터셋 선택",

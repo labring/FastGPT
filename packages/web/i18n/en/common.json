@@ -400,6 +400,7 @@
   "core.chat.Restart": "Restart Chat",
   "core.chat.Restart Confirm": "Are you sure you want to restart the chat? The current record will not be saved",
   "core.chat.Run test": "Debug",
+  "resize_debug_panel": "Resize debug panel",
   "enter_fullscreen": "Enter fullscreen",
   "exit_fullscreen": "Exit fullscreen",
   "core.chat.Select dataset": "Select Dataset",

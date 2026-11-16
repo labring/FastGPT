@@ -1,7 +1,7 @@
 import { WorkflowBufferDataContext } from '../context/workflowInitContext';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import React, { useCallback, useMemo, useState } from 'react';
-import { Box, CloseButton, Flex } from '@chakra-ui/react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Box, CloseButton, Flex, usePrefersReducedMotion } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import { useContextSelector } from 'use-context-selector';
@@ -10,6 +10,7 @@ import { useChatTest } from '../../useChatTest';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
 import { PluginRunBoxTabEnum } from '@/components/core/chat/ChatContainer/PluginRunBox/constants';
+import { ChatBoxContentMaxWidth } from '@/components/core/chat/ChatContainer/ChatBox/constants';
 import ChatItemContextProvider, { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import ChatRecordContextProvider, {
   ChatRecordContext
@@ -22,6 +23,8 @@ import { getAppChatConfig } from '@fastgpt/global/common/app/chat';
 import RunPreviewHeader from './RunPreviewHeader';
 import AppDetailPanelModal from '../../components/AppDetailPanelModal';
 import FullscreenButton from '@/components/common/FullscreenButton';
+import { WorkflowModalContext } from '../context/workflowModalContext';
+import { getDebugPanelWidth } from './debugPanelWidth';
 
 type Props = {
   isOpen: boolean;
@@ -33,7 +36,19 @@ type Props = {
 
 const ChatTest = ({ isOpen, nodes = [], edges = [], onClose, chatId }: Props) => {
   const { t } = useTranslation();
+  const prefersReducedMotion = usePrefersReducedMotion();
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [panelWidth, setPanelWidth] = useState(460);
+  const [viewportWidth, setViewportWidth] = useState(0);
+  const [isResizing, setIsResizing] = useState(false);
+  const dragStart = useRef({ x: 0, width: 0 });
+  const leftBoundary = useContextSelector(WorkflowModalContext, (v) => v.debugLeftBoundary);
+  useEffect(() => {
+    const update = () => setViewportWidth(window.innerWidth);
+    update();
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
+  }, []);
   const [wasOpen, setWasOpen] = useState(isOpen);
   if (wasOpen !== isOpen) {
     setWasOpen(isOpen);
@@ -66,16 +81,23 @@ const ChatTest = ({ isOpen, nodes = [], edges = [], onClose, chatId }: Props) =>
     edges,
     chatConfig: chatConfigForDebug,
     isReady: isOpen,
-    boxBodyProps: { maxW: '100%' }
+    boxBodyProps: { maxW: '700px', mx: 'auto' }
   });
   const pluginRunTab = useContextSelector(ChatItemContext, (v) => v.pluginRunTab);
   const setPluginRunTab = useContextSelector(ChatItemContext, (v) => v.setPluginRunTab);
   const datasetCiteData = useContextSelector(ChatItemContext, (v) => v.datasetCiteData);
   const setCiteModalData = useContextSelector(ChatItemContext, (v) => v.setCiteModalData);
+  const minWidth = datasetCiteData ? 960 : 460;
+  const maxWidth = Math.max(0, viewportWidth - leftBoundary - 16);
+  const getWidth = (width: number) =>
+    getDebugPanelWidth({ width, minWidth, viewportWidth, leftBoundary });
+  const currentWidth = getWidth(panelWidth);
+  const resize = (width: number) => setPanelWidth(getWidth(width));
 
   const handleClose = useCallback(() => {
     setCiteModalData(undefined);
     setIsFullscreen(false);
+    setIsResizing(false);
     onClose();
   }, [onClose, setCiteModalData]);
 
@@ -97,15 +119,9 @@ const ChatTest = ({ isOpen, nodes = [], edges = [], onClose, chatId }: Props) =>
         isOpen={isOpen}
         onClose={handleClose}
         onEscape={isFullscreen ? () => setIsFullscreen(false) : undefined}
-        width={
-          isFullscreen
-            ? 'calc(100vw - 32px)'
-            : datasetCiteData
-              ? ['100%', '960px']
-              : ['100%', '460px']
-        }
+        width={isFullscreen ? 'calc(100vw - 32px)' : `${currentWidth}px`}
         height={isFullscreen ? 'calc(100vh - 32px)' : '100vh'}
-        position={isFullscreen ? 'fixed' : 'absolute'}
+        position={'fixed'}
         top={isFullscreen ? '16px' : 0}
         contentProps={
           isFullscreen
@@ -117,9 +133,14 @@ const ChatTest = ({ isOpen, nodes = [], edges = [], onClose, chatId }: Props) =>
                 'aria-label': t('common:core.chat.Run test'),
                 'data-debug-fullscreen': true
               }
-            : undefined
+            : { right: 0, ...(isResizing ? { transition: 'none' } : {}) }
         }
-        maskProps={isFullscreen ? { zIndex: 1299, bg: 'blackAlpha.600' } : undefined}
+        maskProps={{
+          zIndex: isFullscreen ? 1299 : 300,
+          bg: 'blackAlpha.600',
+          opacity: isOpen && isFullscreen ? 1 : 0,
+          pointerEvents: isFullscreen ? 'auto' : 'none'
+        }}
         trapFocus={isFullscreen && isOpen}
         header={
           isPlugin ? (
@@ -176,7 +197,14 @@ const ChatTest = ({ isOpen, nodes = [], edges = [], onClose, chatId }: Props) =>
             overflowY={isPlugin ? 'hidden' : 'auto'}
             overflowX={'hidden'}
           >
-            <ChatContainer />
+            <Box
+              w={'100%'}
+              maxW={isPlugin ? '700px' : ChatBoxContentMaxWidth}
+              h={'100%'}
+              mx={'auto'}
+            >
+              <ChatContainer />
+            </Box>
           </Box>
 
           {datasetCiteData && (
@@ -202,6 +230,63 @@ const ChatTest = ({ isOpen, nodes = [], edges = [], onClose, chatId }: Props) =>
           )}
         </Flex>
       </AppDetailPanelModal>
+
+      <Flex
+        position={'fixed'}
+        right={`${currentWidth}px`}
+        top={0}
+        h={'100vh'}
+        w={'16px'}
+        zIndex={301}
+        alignItems={'center'}
+        justifyContent={'center'}
+        cursor={'col-resize'}
+        opacity={isOpen && !isFullscreen ? 1 : 0}
+        visibility={isOpen && !isFullscreen ? 'visible' : 'hidden'}
+        pointerEvents={isOpen && !isFullscreen ? 'auto' : 'none'}
+        transition={
+          prefersReducedMotion
+            ? 'none'
+            : `opacity 200ms ease, visibility 0s linear ${isOpen && !isFullscreen ? '0ms' : '200ms'}`
+        }
+        sx={{ touchAction: 'none' }}
+        role={'separator'}
+        aria-orientation={'vertical'}
+        aria-label={t('common:resize_debug_panel')}
+        aria-valuemin={Math.min(minWidth, maxWidth)}
+        aria-valuemax={maxWidth}
+        aria-valuenow={currentWidth}
+        tabIndex={isOpen && !isFullscreen ? 0 : -1}
+        aria-hidden={!isOpen || isFullscreen}
+        onPointerDown={(event) => {
+          if (event.button !== 0) return;
+          event.currentTarget.setPointerCapture(event.pointerId);
+          dragStart.current = { x: event.clientX, width: currentWidth };
+          setIsResizing(true);
+        }}
+        onPointerMove={(event) => {
+          if (isResizing) resize(dragStart.current.width + dragStart.current.x - event.clientX);
+        }}
+        onPointerUp={() => setIsResizing(false)}
+        onPointerCancel={() => setIsResizing(false)}
+        onLostPointerCapture={() => setIsResizing(false)}
+        onKeyDown={(event) => {
+          if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+            event.preventDefault();
+            resize(currentWidth + (event.key === 'ArrowLeft' ? 16 : -16));
+          }
+        }}
+      >
+        <Box
+          w={'4px'}
+          h={isResizing ? 'calc(100vh - 2rem)' : '2.5rem'}
+          bg={isResizing ? 'primary.600' : 'myGray.300'}
+          borderRadius={'full'}
+          transition={
+            prefersReducedMotion ? 'none' : 'height 200ms ease, background-color 200ms ease'
+          }
+        />
+      </Flex>
 
       <SandboxEditorModal />
     </Flex>

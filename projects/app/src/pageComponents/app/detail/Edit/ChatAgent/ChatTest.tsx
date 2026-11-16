@@ -1,11 +1,12 @@
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { Box, Flex, FocusLock, IconButton } from '@chakra-ui/react';
+import { Box, Flex, FocusLock, IconButton, Portal } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import FullscreenButton from '@/components/common/FullscreenButton';
+import { useDebugFullscreen } from '../hooks/useDebugFullscreen';
 
 import type { ChatAgentHelperRefType } from '@/components/core/chat/ChatAgentHelper';
 import ChatAgentHelper from '@/components/core/chat/ChatAgentHelper';
@@ -47,20 +48,8 @@ type Props = {
 };
 const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props) => {
   const { t } = useTranslation();
-  const [isFullscreen, setIsFullscreen] = useState(false);
-  useEffect(() => {
-    if (!isFullscreen) return;
-    const handleEscape = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape' || event.defaultPrevented || event.isComposing) return;
-      // 内层弹窗先处理 Escape，避免一次按键关闭多层界面。
-      if (document.querySelector('[role="dialog"][aria-modal="true"]:not([data-debug-fullscreen])'))
-        return;
-      event.stopPropagation();
-      setIsFullscreen(false);
-    };
-    document.addEventListener('keydown', handleEscape);
-    return () => document.removeEventListener('keydown', handleEscape);
-  }, [isFullscreen]);
+  const { isFullscreen, isClosing, prefersReducedMotion, animation, toggle, onAnimationEnd } =
+    useDebugFullscreen();
   const { toast } = useToast();
   const { chatId, agentChatTestTab, setAgentChatTestTab } = useChatStore();
   const { feConfigs } = useSystemStore();
@@ -215,6 +204,17 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
 
   return (
     <Box h={'full'} w={'full'} sx={{ '& > div': { display: 'contents' } }}>
+      <Portal>
+        <Box
+          position={'fixed'}
+          inset={0}
+          zIndex={1299}
+          bg={'blackAlpha.600'}
+          opacity={isFullscreen && !isClosing ? 1 : 0}
+          pointerEvents={isFullscreen && !isClosing ? 'auto' : 'none'}
+          transition={`opacity ${prefersReducedMotion ? '0ms' : '200ms'} ease`}
+        />
+      </Portal>
       <FocusLock isDisabled={!isFullscreen} autoFocus={false}>
         <Flex
           h={isFullscreen ? 'calc(100vh - 32px)' : 'full'}
@@ -228,8 +228,9 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
           aria-label={isFullscreen ? t('app:chat_debug') : undefined}
           data-debug-fullscreen={isFullscreen ? true : undefined}
           gap={2}
+          animation={animation}
+          onAnimationEnd={onAnimationEnd}
         >
-          {isFullscreen && <Box position={'fixed'} inset={0} bg={'blackAlpha.600'} zIndex={-1} />}
           <MyBox
             flex={'1 0 0'}
             w={0}
@@ -285,10 +286,7 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
                     }}
                   />
                 </MyTooltip>
-                <FullscreenButton
-                  isFullscreen={isFullscreen}
-                  onClick={() => setIsFullscreen((value) => !value)}
-                />
+                <FullscreenButton isFullscreen={isFullscreen} onClick={toggle} />
               </Flex>
             </Flex>
             <Box flex={1} minH={0}>
