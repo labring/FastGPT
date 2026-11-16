@@ -19,7 +19,7 @@ describe('service edition gating for Admin config APIs', () => {
   });
 
   it('strips pro-only fields from community edition reads but keeps them for pro', async () => {
-    // teamMode 是 auth 域下 edition=pro 的字段，openApiKeyMaxCount 是 edition=all
+    // 历史 teamMode 不再向任何管理端暴露，openApiKeyMaxCount 仍可编辑。
     await updateDomainConfig({
       domain: 'auth',
       expectedRevision: 0,
@@ -34,8 +34,8 @@ describe('service edition gating for Admin config APIs', () => {
     expect(community.secretKeys).not.toContain('teamMode');
 
     const pro = await getDomainConfigForAdmin('auth', 'pro');
-    expect(pro.effectiveConfig.teamMode).toBe('multi');
-    expect(pro.overrides.teamMode).toBe('multi');
+    expect(pro.effectiveConfig.teamMode).toBeUndefined();
+    expect(pro.overrides.teamMode).toBeUndefined();
   });
 
   it('strips pro-only loginProviders secrets from community reads but masks them for pro', async () => {

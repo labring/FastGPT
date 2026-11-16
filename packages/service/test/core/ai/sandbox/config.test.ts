@@ -6,6 +6,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   getAgentSandboxProvider,
+  getAgentSandboxProxyConfig,
+  validateAgentSandboxProxyConfig,
+  validateAgentSandboxPreviewProxyConfig,
   getAgentSandboxArchiveInactiveDays,
   getAgentSandboxArchiveMaxBytes,
   getAgentSandboxDiskBytes,
@@ -30,6 +33,7 @@ describe('agent sandbox config', () => {
     getTestInstanceConfig().subservice.agentSandbox.common.maxEditDebug;
   const originalAgentSandboxMaxPerTeam =
     getTestInstanceConfig().subservice.agentSandbox.common.maxPerTeam;
+  const originalProxy = { ...getAgentSandboxProxyConfig() };
   const originalSystemEnv = global.systemEnv;
 
   afterEach(() => {
@@ -42,6 +46,7 @@ describe('agent sandbox config', () => {
     getTestInstanceConfig().subservice.agentSandbox.common.maxEditDebug = originalAgentSandboxMax;
     getTestInstanceConfig().subservice.agentSandbox.common.maxPerTeam =
       originalAgentSandboxMaxPerTeam;
+    getTestInstanceConfig().subservice.agentSandbox.proxy = { ...originalProxy };
     global.systemEnv = originalSystemEnv;
     vi.unstubAllEnvs();
   });
@@ -112,5 +117,39 @@ describe('agent sandbox config', () => {
 
     expect(getAgentSandboxSuspendMinutes()).toBe(30);
     expect(getAgentSandboxArchiveInactiveDays()).toBe(3);
+  });
+});
+
+describe('Agent Sandbox proxy configuration', () => {
+  afterEach(() => {
+    getTestInstanceConfig().subservice.agentSandbox.proxy = {
+      wsUrl: '',
+      previewUrl: '',
+      secret: ''
+    };
+    vi.unstubAllEnvs();
+  });
+
+  it('requires all three fields for App, only preview for Pro, and ignores legacy ENV', () => {
+    vi.stubEnv('AGENT_SANDBOX_PROXY_URL', 'wss://legacy.test');
+    vi.stubEnv('AGENT_SANDBOX_PREVIEW_PROXY_URL', 'https://legacy.test');
+    vi.stubEnv('AGENT_SANDBOX_PROXY_SECRET', 'legacy_secret_32_characters_minimum');
+    expect(() => validateAgentSandboxProxyConfig('none')).not.toThrow();
+    expect(() => validateAgentSandboxPreviewProxyConfig('none')).not.toThrow();
+    expect(() => validateAgentSandboxProxyConfig('opensandbox')).toThrow(
+      'wsUrl, previewUrl, secret'
+    );
+    expect(() => validateAgentSandboxPreviewProxyConfig('sealosdevbox')).toThrow('preview proxy');
+    getTestInstanceConfig().subservice.agentSandbox.proxy.previewUrl = 'https://preview.test';
+    expect(() => validateAgentSandboxPreviewProxyConfig('sealosdevbox')).not.toThrow();
+    expect(() => validateAgentSandboxProxyConfig('opensandbox')).toThrow('wsUrl, secret');
+    Object.assign(getTestInstanceConfig().subservice.agentSandbox.proxy, {
+      wsUrl: 'wss://current.test',
+      secret: 'current_secret_32_characters_minimum'
+    });
+    expect(() => validateAgentSandboxProxyConfig('opensandbox')).not.toThrow();
+    expect(getAgentSandboxProxyConfig().wsUrl).toBe('wss://current.test');
+    getTestInstanceConfig().subservice.agentSandbox.proxy.wsUrl = 'wss://updated.test';
+    expect(getAgentSandboxProxyConfig().wsUrl).toBe('wss://updated.test');
   });
 });

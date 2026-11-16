@@ -79,6 +79,7 @@ const ADMIN_MENU_I18N_KEYS = {
   menu_system_settings: 'admin:menu_system_settings',
   menu_setting_core: 'admin:menu_setting_core',
   menu_setting_site: 'admin:menu_setting_site',
+  menu_setting_custom_domain: 'admin:menu_setting_custom_domain',
   menu_setting_feature: 'admin:menu_setting_feature',
   menu_setting_auth: 'admin:menu_setting_auth',
   menu_setting_security: 'admin:menu_setting_security',
@@ -239,6 +240,10 @@ export const getAdminMenuList = (params: GetAdminMenuListParams): AdminMenuItem[
         {
           label: lbl('menu_setting_site', '站点信息'),
           value: '/admin/settings/site'
+        },
+        {
+          label: lbl('menu_setting_custom_domain', '自定义域名'),
+          value: '/admin/settings/custom-domain'
         },
         {
           label: lbl('menu_setting_feature', '功能开关'),

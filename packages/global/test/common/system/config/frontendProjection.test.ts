@@ -92,7 +92,7 @@ describe('buildRegisterMethods', () => {
       buildRegisterMethods({
         auth: createAuth({ teamMode: 'sync', loginProviders: { email: { register: true } } })
       })
-    ).toEqual(['email', 'sync']);
+    ).toEqual(['email']);
   });
 
   it('derives login, find-password and bind-notification methods', () => {

@@ -53,6 +53,28 @@ export const SiteConfigSchema = z.strictObject({
           tencent: textWithDefault(),
           volcengine: textWithDefault()
         })
+        .prefault({}),
+      // 服务端部署参数不下发普通 feConfigs；kubeconfig 在管理 API 中按敏感字段脱敏。
+      kc: z
+        .strictObject({
+          aliyun: textWithDefault(),
+          tencent: textWithDefault(),
+          volcengine: textWithDefault()
+        })
+        .prefault({}),
+      issuerServiceName: z
+        .strictObject({
+          aliyun: textWithDefault(),
+          tencent: textWithDefault(),
+          volcengine: textWithDefault()
+        })
+        .prefault({}),
+      nginxServiceName: z
+        .strictObject({
+          aliyun: textWithDefault(),
+          tencent: textWithDefault(),
+          volcengine: textWithDefault()
+        })
         .prefault({})
     })
     .prefault({}),

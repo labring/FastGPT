@@ -12,7 +12,7 @@ import { ProxyAgent, type ProxyAgentOptions } from 'proxy-agent';
 import { getProxyForUrl } from 'proxy-from-env';
 import { isDevEnv } from '@fastgpt/global/common/system/constants';
 import { isInternalAddress, isInternalResolvedIP, PRIVATE_URL_TEXT } from '../system/utils';
-import { serviceAxiosMaxContentLength } from '../system/constants';
+import { getServiceAxiosMaxContentLength } from '../system/constants';
 
 /**
  * 给 shared axios 实例添加 SSRF 防护。
@@ -414,7 +414,7 @@ const addResponseSizeLimitInterceptor = (instance: AxiosInstance) => {
     // 以便与调用方显式传入 -1 取消限制的语义区分开。
     if (config.maxContentLength === undefined) {
       config.maxContentLength =
-        config.responseType === 'stream' ? -1 : serviceAxiosMaxContentLength;
+        config.responseType === 'stream' ? -1 : getServiceAxiosMaxContentLength();
     }
     return config;
   });

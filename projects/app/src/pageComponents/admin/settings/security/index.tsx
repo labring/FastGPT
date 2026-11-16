@@ -35,6 +35,7 @@ const SecuritySettingComponent = () => {
     defaultValues: {
       checkInternalIp: false,
       csrfEnabled: true,
+      authCookieSecure: false,
       skipFileTypeCheck: false,
       checkExternalFile: false,
       allowedOriginsText: '',
@@ -66,6 +67,7 @@ const SecuritySettingComponent = () => {
     const payload = {
       checkInternalIp: Boolean(formData.checkInternalIp),
       csrfEnabled: Boolean(formData.csrfEnabled),
+      authCookieSecure: Boolean(formData.authCookieSecure),
       skipFileTypeCheck: Boolean(formData.skipFileTypeCheck),
       checkExternalFile: Boolean(formData.checkExternalFile),
       allowedOrigins: parseList(formData.allowedOriginsText),
@@ -121,6 +123,19 @@ const SecuritySettingComponent = () => {
               <AdminSwitchRow
                 label={t('admin:http_node_ignore_https_certificate')}
                 tooltip={t('admin:high_risk_enabling_this_stops_validating_invalid_or_self_sig')}
+                isChecked={field.value}
+                onChange={field.onChange}
+              />
+            )}
+          />
+
+          <Controller
+            name="authCookieSecure"
+            control={control}
+            render={({ field }) => (
+              <AdminSwitchRow
+                label={t('admin:auth_cookie_secure')}
+                tooltip={t('admin:auth_cookie_secure_tip')}
                 isChecked={field.value}
                 onChange={field.onChange}
               />

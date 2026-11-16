@@ -1,9 +1,10 @@
+import { getTestInstanceConfig } from '@test/utils/instanceConfigSnapshot';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const strongFileTokenKey = '1234567890abcdef1234567890abcdef';
 const originalEnv = {
   FILE_TOKEN_KEY: process.env.FILE_TOKEN_KEY,
-  FILE_DOMAIN: process.env.FILE_DOMAIN,
+  fileDomain: getTestInstanceConfig().storage.fileDomain,
   FILE_DOWNLOAD_PUBLIC_URL_PREFIX: process.env.FILE_DOWNLOAD_PUBLIC_URL_PREFIX,
   FE_DOMAIN: process.env.FE_DOMAIN,
   NEXT_PUBLIC_BASE_URL: process.env.NEXT_PUBLIC_BASE_URL
@@ -19,7 +20,7 @@ const loadAccessLinkModules = async (
 ) => {
   vi.resetModules();
   vi.stubEnv('FILE_TOKEN_KEY', strongFileTokenKey);
-  vi.stubEnv('FILE_DOMAIN', env.fileDomain ?? 'https://files.example.com/');
+  getTestInstanceConfig().storage.fileDomain = env.fileDomain ?? 'https://files.example.com/';
   vi.stubEnv('FILE_DOWNLOAD_PUBLIC_URL_PREFIX', env.fileDownloadPublicUrlPrefix);
   vi.stubEnv('FE_DOMAIN', env.feDomain ?? 'https://app.example.com');
   vi.stubEnv('NEXT_PUBLIC_BASE_URL', env.nextPublicBaseUrl ?? '/fastgpt');
@@ -48,11 +49,35 @@ describe('s3 access link', () => {
 
   afterEach(() => {
     vi.stubEnv('FILE_TOKEN_KEY', originalEnv.FILE_TOKEN_KEY);
-    vi.stubEnv('FILE_DOMAIN', originalEnv.FILE_DOMAIN);
+    getTestInstanceConfig().storage.fileDomain = originalEnv.fileDomain;
     vi.stubEnv('FILE_DOWNLOAD_PUBLIC_URL_PREFIX', originalEnv.FILE_DOWNLOAD_PUBLIC_URL_PREFIX);
     vi.stubEnv('FE_DOMAIN', originalEnv.FE_DOMAIN);
     vi.stubEnv('NEXT_PUBLIC_BASE_URL', originalEnv.NEXT_PUBLIC_BASE_URL);
     vi.restoreAllMocks();
+  });
+
+  it('uses saved domains immediately and falls back to FE_DOMAIN after an explicit clear', async () => {
+    vi.stubEnv('FILE_DOMAIN', 'https://ignored-legacy.test');
+    const { createS3DownloadAccessUrl, createS3UploadAccessUrl } = await loadAccessLinkModules();
+    const download = {
+      bucketName: 'fastgpt-private',
+      objectKey: 'test/hot-domain.txt',
+      expiredTime: getFutureDate(10)
+    };
+    const before = await createS3DownloadAccessUrl(download);
+    getTestInstanceConfig().storage.fileDomain = 'https://updated.test/';
+    const after = await createS3DownloadAccessUrl(download);
+    expect(after).toBe(before.replace('https://files.example.com', 'https://updated.test'));
+    getTestInstanceConfig().storage.fileDomain = '';
+    const fallback = await createS3DownloadAccessUrl(download);
+    expect(fallback).toBe(before.replace('https://files.example.com', 'https://app.example.com'));
+    const upload = await createS3UploadAccessUrl({
+      ...download,
+      maxSize: 1024,
+      uploadPolicy: { defaultContentType: 'text/plain' }
+    });
+    expect(upload).toMatch(/^https:\/\/app\.example\.com\/fastgpt\/api\/system\/file\/u\//);
+    vi.unstubAllEnvs();
   });
 
   it('creates stable short download URLs backed by one alias document', async () => {

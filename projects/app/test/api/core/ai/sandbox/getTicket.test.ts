@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { getTestInstanceConfig } from '@test/utils/instanceConfigSnapshot';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { ReadPermissionVal, WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import jwt from 'jsonwebtoken';
@@ -9,12 +10,7 @@ const mocks = vi.hoisted(() => ({
   authSandboxRuntimeSession: vi.fn(),
   buildSandboxClientQueryFromChatSource: vi.fn(),
   getSandboxClient: vi.fn(),
-  createDirectories: vi.fn(),
-  env: {
-    AGENT_SANDBOX_PROXY_SECRET: 'ticket-secret' as string | undefined,
-    AGENT_SANDBOX_PROXY_URL: 'wss://proxy.example.com' as string | undefined,
-    AGENT_SANDBOX_STORAGE_SIZE_GI: 1
-  }
+  createDirectories: vi.fn()
 }));
 
 vi.mock('@/service/middleware/entry', () => ({ NextAPI: (handler: unknown) => handler }));
@@ -27,7 +23,6 @@ vi.mock('@fastgpt/service/core/ai/sandbox/interface/runtime', () => ({
 vi.mock('@fastgpt/service/core/ai/sandbox/application/runtime/client', () => ({
   getSandboxClient: mocks.getSandboxClient
 }));
-vi.mock('@fastgpt/service/env', () => ({ serviceEnv: mocks.env }));
 
 import handler from '@/pages/api/core/ai/sandbox/getTicket';
 
@@ -38,9 +33,12 @@ describe('sandbox getTicket API', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.env.AGENT_SANDBOX_PROXY_SECRET = 'ticket-secret';
-    mocks.env.AGENT_SANDBOX_PROXY_URL = 'wss://proxy.example.com';
-    mocks.env.AGENT_SANDBOX_STORAGE_SIZE_GI = 1;
+    getTestInstanceConfig().subservice.agentSandbox.proxy = {
+      secret: 'ticket-secret-at-least-32-characters',
+      wsUrl: 'wss://proxy.example.com',
+      previewUrl: 'https://proxy.example.com'
+    };
+    getTestInstanceConfig().subservice.agentSandbox.common.storageSizeGi = 1;
     mocks.authSandboxRuntimeSession.mockResolvedValue({
       uid: 'user-1',
       teamId: 'team-1',
@@ -95,7 +93,7 @@ describe('sandbox getTicket API', () => {
     async (scenario) => {
       const sourceType =
         scenario.target === 'skillId' ? ChatSourceTypeEnum.skillEdit : ChatSourceTypeEnum.app;
-      mocks.env.AGENT_SANDBOX_PROXY_URL = scenario.proxy;
+      getTestInstanceConfig().subservice.agentSandbox.proxy.wsUrl = scenario.proxy;
       mocks.authSandboxRuntimeSession.mockResolvedValueOnce({
         uid: 'user-1',
         teamId: 'team-1',
@@ -110,7 +108,7 @@ describe('sandbox getTicket API', () => {
       });
       const url = new URL(result.wsUrl);
       const ticket = url.searchParams.get('ticket')!;
-      const payload = jwt.verify(ticket, 'ticket-secret') as jwt.JwtPayload;
+      const payload = jwt.verify(ticket, 'ticket-secret-at-least-32-characters') as jwt.JwtPayload;
 
       expect(result).toEqual({
         wsUrl: expect.any(String),
@@ -149,18 +147,20 @@ describe('sandbox getTicket API', () => {
     expect(mocks.authSandboxRuntimeSession).not.toHaveBeenCalled();
   });
 
-  it.each(['AGENT_SANDBOX_PROXY_SECRET', 'AGENT_SANDBOX_PROXY_URL'] as const)(
+  it.each(['secret', 'wsUrl'] as const)(
     'rejects missing %s before accessing a sandbox',
     async (field) => {
-      mocks.env[field] = undefined;
-      await expect(invoke({ appId, chatId: 'chat-1', channel: 'fs' })).rejects.toThrow(field);
+      getTestInstanceConfig().subservice.agentSandbox.proxy[field] = '';
+      await expect(invoke({ appId, chatId: 'chat-1', channel: 'fs' })).rejects.toThrow(
+        'is not configured'
+      );
       expect(mocks.authSandboxRuntimeSession).not.toHaveBeenCalled();
       expect(mocks.getSandboxClient).not.toHaveBeenCalled();
     }
   );
 
   it('rejects a malformed proxy URL before preparing a sandbox', async () => {
-    mocks.env.AGENT_SANDBOX_PROXY_URL = 'wss://%invalid';
+    getTestInstanceConfig().subservice.agentSandbox.proxy.wsUrl = 'wss://%invalid';
     await expect(invoke({ appId, chatId: 'chat-1', channel: 'fs' })).rejects.toThrow();
     expect(mocks.getSandboxClient).not.toHaveBeenCalled();
   });

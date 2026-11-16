@@ -1,10 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import {
-  getRuntimeEnv,
-  validateAgentSandboxPreviewProxyEnv,
-  validateAgentSandboxProxyEnv,
-  validateS3Env
-} from '@fastgpt/service/env.util';
+import { getRuntimeEnv, validateS3Env } from '@fastgpt/service/env.util';
 
 afterEach(() => vi.unstubAllEnvs());
 
@@ -42,29 +37,5 @@ describe('bootstrap S3 validation', () => {
       })
     ).not.toThrow();
     expect(() => validateS3Env({ STORAGE_VENDOR: 'minio' })).not.toThrow();
-  });
-});
-
-describe('sandbox proxy ENV validation', () => {
-  it('takes provider from the loaded config and ignores a retired ENV provider', () => {
-    vi.stubEnv('AGENT_SANDBOX_PROVIDER', 'opensandbox');
-    vi.stubEnv('AGENT_SANDBOX_PROXY_SECRET', undefined);
-    vi.stubEnv('AGENT_SANDBOX_PROXY_URL', undefined);
-    vi.stubEnv('AGENT_SANDBOX_PREVIEW_PROXY_URL', undefined);
-    expect(() => validateAgentSandboxProxyEnv('none')).not.toThrow();
-    expect(() => validateAgentSandboxProxyEnv('opensandbox')).toThrow('AGENT_SANDBOX_PROXY_SECRET');
-    vi.stubEnv('AGENT_SANDBOX_PROXY_SECRET', 'secret');
-    vi.stubEnv('AGENT_SANDBOX_PROXY_URL', 'wss://proxy.example.com');
-    vi.stubEnv('AGENT_SANDBOX_PREVIEW_PROXY_URL', 'https://preview.example.com');
-    expect(() => validateAgentSandboxProxyEnv('opensandbox')).not.toThrow();
-  });
-  it('only requires the preview endpoint on Pro when config enables a provider', () => {
-    vi.stubEnv('AGENT_SANDBOX_PREVIEW_PROXY_URL', undefined);
-    expect(() => validateAgentSandboxPreviewProxyEnv('none')).not.toThrow();
-    expect(() => validateAgentSandboxPreviewProxyEnv('sealosdevbox')).toThrow(
-      'AGENT_SANDBOX_PREVIEW_PROXY_URL'
-    );
-    vi.stubEnv('AGENT_SANDBOX_PREVIEW_PROXY_URL', 'https://preview.example.com');
-    expect(() => validateAgentSandboxPreviewProxyEnv('sealosdevbox')).not.toThrow();
   });
 });

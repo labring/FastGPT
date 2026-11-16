@@ -17,21 +17,25 @@ export const getInstanceConfigVersionTag = (): string =>
 
 /**
  * 统一计算系统全局初始化缓存标记（systemInitBufferId）。
- * 结合实例配置版本签名、授权版本时间戳和套餐版本时间戳，确保多节点确定性一致，
+ * 结合实例配置版本签名、授权、套餐和 Pro ENV scope 版本，确保多节点确定性一致，
  * 避免不同节点各自使用 Date.now() 或各并行任务先后覆写产生竞态。
  */
 export const computeSystemInitBufferId = ({
   instanceVersionTag = getInstanceConfigVersionTag(),
   licenseUpdateTime,
-  subPlansUpdateTime
+  subPlansUpdateTime,
+  proEnvUpdateTime
 }: {
   instanceVersionTag?: string;
   licenseUpdateTime?: number;
   subPlansUpdateTime?: number;
+  proEnvUpdateTime?: number;
 } = {}): string => {
   const licenseTag = licenseUpdateTime ?? 0;
   const subPlansTag = subPlansUpdateTime ?? 0;
-  return `v_${instanceVersionTag}_l_${licenseTag}_p_${subPlansTag}`;
+  // 独立 scope 的版本分别参与签名，不能取最大时间戳，否则较慢时钟的更新会被遮蔽。
+  const envTag = proEnvUpdateTime === undefined ? '' : `_e_${proEnvUpdateTime}`;
+  return `v_${instanceVersionTag}_l_${licenseTag}_p_${subPlansTag}${envTag}`;
 };
 
 /**

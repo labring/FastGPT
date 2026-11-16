@@ -29,8 +29,16 @@ const CodeSandboxSubserviceConfigSchema = z.strictObject({
   token: textWithDefault()
 });
 
+/** 浏览器代理统一配置；空值允许先保存禁用状态，启用时由页面和启动边界检查完整性。 */
+export const AgentSandboxProxyConfigSchema = z.strictObject({
+  wsUrl: z.union([z.url({ protocol: /^wss?$/ }), z.literal('')]).default(''),
+  previewUrl: z.union([z.url({ protocol: /^https?$/ }), z.literal('')]).default(''),
+  secret: textWithDefault()
+});
+
 const AgentSandboxSubserviceConfigSchema = z.strictObject({
   provider: z.enum(['none', 'sealosdevbox', 'opensandbox']).default('none'),
+  proxy: AgentSandboxProxyConfigSchema.prefault({}),
   common: z
     .strictObject({
       cpuCount: positiveNumber(1),
@@ -68,6 +76,8 @@ const AgentSandboxSubserviceConfigSchema = z.strictObject({
       baseUrl: urlWithDefault(),
       apiKey: textWithDefault(),
       runtime: z.enum(['docker', 'kubernetes']).default('docker'),
+      cpuOvercommitFactor: z.number().min(1).default(1),
+      memoryOvercommitFactor: z.number().min(1).default(1),
       image: textWithDefault(),
       useServerProxy: z.boolean().default(true),
       volumeManagerUrl: urlWithDefault(),
@@ -89,6 +99,8 @@ const AgentSandboxSubserviceConfigSchema = z.strictObject({
       baseUrl: '',
       apiKey: '',
       runtime: 'docker',
+      cpuOvercommitFactor: 1,
+      memoryOvercommitFactor: 1,
       image: '',
       useServerProxy: true,
       volumeManagerUrl: '',
@@ -105,6 +117,15 @@ export const SubserviceConfigBaseSchema = z.strictObject({
 
 export const SubserviceConfigSchema = SubserviceConfigBaseSchema.superRefine((subservice, ctx) => {
   const { agentSandbox } = subservice;
+
+  // Admin 提交的掩码先由配置服务恢复；终审在恢复后检查真实密钥，不能把 ****** 当成新密钥。
+  if (agentSandbox.proxy.secret && agentSandbox.proxy.secret.length < 32) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['agentSandbox', 'proxy', 'secret'],
+      message: 'Agent Sandbox proxy secret must be at least 32 characters'
+    });
+  }
 
   if (agentSandbox.provider === 'sealosdevbox') {
     const { baseUrl } = agentSandbox.sealosdevbox;

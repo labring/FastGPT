@@ -2,24 +2,16 @@ import type { SystemEnvType } from '@fastgpt/global/common/system/types';
 import type { SystemInstanceConfig } from '@fastgpt/global/common/system/config/schema';
 import { logInstanceConfigRead } from '@fastgpt/service/common/system/migrationCoverageLog';
 
-/**
- * 合成运行时 systemEnv：实例配置（SystemInstanceConfig）为权威数据源，
- * 旧库 systemEnv 仅提供 schema 之外的扩展键（如 langfuse）。
- *
- * 设计原因：
- * - 旧实现用 Object.assign 把旧库 systemEnv 排在最后，会覆盖刚从实例配置读取的值，
- *   导致管理员通过新 Admin 页面修改这 7 个字段后被旧库值静默回退。
- * - customPdfParse 需要深合并：price 等计费字段不在实例配置 schema 内，只能来自旧库。
- */
+/** 合成运行时 systemEnv：业务策略来自实例配置，部署能力来自独立 ENV scope 的内存投影。 */
 export const buildAuthoritativeSystemEnv = ({
-  legacySystemEnv,
+  baseSystemEnv,
   instanceConfig
 }: {
-  legacySystemEnv?: SystemEnvType;
+  baseSystemEnv?: SystemEnvType;
   instanceConfig: SystemInstanceConfig;
 }): SystemEnvType => {
   const systemEnv: SystemEnvType = {
-    ...(legacySystemEnv || {}),
+    ...(baseSystemEnv || {}),
     openapiPrefix: instanceConfig.site.openApiPrefix,
     checkExternalFile: instanceConfig.security.checkExternalFile,
     fileUrlWhitelist: instanceConfig.security.fileUrlWhitelist,
@@ -27,7 +19,7 @@ export const buildAuthoritativeSystemEnv = ({
     // 保留 null：它是"明确不限量"，转成 undefined 会让 getAgentSandboxMaxPerTeam 回落 env。
     agentSandboxMaxPerTeam: instanceConfig.subservice.agentSandbox.common.maxPerTeam,
     workflowHttpNode: {
-      ...(legacySystemEnv?.workflowHttpNode || {}),
+      ...(baseSystemEnv?.workflowHttpNode || {}),
       ignoreHttpsCertificate: instanceConfig.security.workflowHttpNode.ignoreHttpsCertificate
     },
     datasetParseMaxProcess: instanceConfig.performance.dataset.parseMaxProcess,
@@ -38,7 +30,7 @@ export const buildAuthoritativeSystemEnv = ({
     vectorRecallConcurrency: instanceConfig.vector.vectorRecallConcurrency,
     customPdfParse: {
       // 旧库只保留 schema 外的扩展键；计费价格与解析凭据均以实例配置为权威。
-      ...(legacySystemEnv?.customPdfParse || {}),
+      ...(baseSystemEnv?.customPdfParse || {}),
       url: instanceConfig.providers.documentParse.customPdf.url,
       key: instanceConfig.providers.documentParse.customPdf.key,
       somarkApiKey: instanceConfig.providers.documentParse.customPdf.somarkApiKey,

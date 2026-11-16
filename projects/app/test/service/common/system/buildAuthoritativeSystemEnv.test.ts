@@ -9,7 +9,7 @@ describe('buildAuthoritativeSystemEnv', () => {
       security: { checkExternalFile: false, fileUrlWhitelist: ['cdn.example.com'] }
     });
     const result = buildAuthoritativeSystemEnv({
-      legacySystemEnv: { checkExternalFile: true, fileUrlWhitelist: ['old.example.com'] },
+      baseSystemEnv: { checkExternalFile: true, fileUrlWhitelist: ['old.example.com'] },
       instanceConfig
     });
     expect(result.checkExternalFile).toBe(false);
@@ -25,7 +25,7 @@ describe('buildAuthoritativeSystemEnv', () => {
     });
 
     const result = buildAuthoritativeSystemEnv({
-      legacySystemEnv: {
+      baseSystemEnv: {
         datasetParseMaxProcess: 5,
         hnswEfSearch: 99,
         customPdfParse: { url: 'https://legacy.example.com' }
@@ -48,7 +48,7 @@ describe('buildAuthoritativeSystemEnv', () => {
     });
 
     const result = buildAuthoritativeSystemEnv({
-      legacySystemEnv: {
+      baseSystemEnv: {
         langfuse: { publicKey: 'pk', secretKey: 'sk', baseUrl: 'https://lf.example.com' },
         customPdfParse: { price: 0.01 },
         fileUrlWhitelist: ['https://allowed.example.com']
@@ -75,7 +75,7 @@ describe('buildAuthoritativeSystemEnv', () => {
       subservice: { agentSandbox: { common: { maxPerTeam: null } } }
     });
 
-    const result = buildAuthoritativeSystemEnv({ legacySystemEnv: undefined, instanceConfig });
+    const result = buildAuthoritativeSystemEnv({ baseSystemEnv: undefined, instanceConfig });
 
     // null 表示明确不限量；不能转成 undefined，否则 getAgentSandboxMaxPerTeam 会回落 env
     expect(result.agentSandboxMaxPerTeam).toBeNull();
@@ -85,14 +85,14 @@ describe('buildAuthoritativeSystemEnv', () => {
     const instanceConfig = resolveSystemInstanceConfig({
       subservice: { agentSandbox: { common: { maxEditDebug: 0 } } }
     });
-    const projected = buildAuthoritativeSystemEnv({ legacySystemEnv: undefined, instanceConfig });
+    const projected = buildAuthoritativeSystemEnv({ baseSystemEnv: undefined, instanceConfig });
     expect(SystemEnvSchema.parse(projected).agentSandboxMax).toBe(0);
   });
 
   it('works with no legacy systemEnv at all', () => {
     const instanceConfig = resolveSystemInstanceConfig({ vector: { hnswEfSearch: 123 } });
 
-    const result = buildAuthoritativeSystemEnv({ legacySystemEnv: undefined, instanceConfig });
+    const result = buildAuthoritativeSystemEnv({ baseSystemEnv: undefined, instanceConfig });
 
     expect(result.hnswEfSearch).toBe(123);
     expect(result.customPdfParse).toBeDefined();

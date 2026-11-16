@@ -3,7 +3,6 @@
  *
  * 只负责 OpenSandbox createConfig 映射，不连接远端实例。
  */
-import { serviceEnv } from '../../../../../../env';
 import { getAgentSandboxCommonConfig, getAgentSandboxOpenSandboxConfig } from '../../../config';
 import type { SandboxRuntimeCreateConfigInput, SandboxRuntimeProfile } from './types';
 import { getSandboxSkillsRootPath, mergeStringRecord, normalizeEntrypoint } from './utils';
@@ -71,12 +70,13 @@ export function buildOpenSandboxRuntimeProfile(): SandboxRuntimeProfile {
 
   /**
    * 按最终 limits 独立派生 CPU、内存 requests；倍率为 1 时保持该维度不变。
-   * 环境变量 schema 已保证倍率有限且 >= 1；两者均为 1 时省略 requests，沿用服务端默认值。
+   * 实例配置 Schema 已保证倍率有限且 >= 1；两者均为 1 时省略 requests，沿用服务端默认值。
    * CPU 向下取整到毫核、内存到 MiB，最低分别为 1m、1Mi；不派生磁盘预留。
    */
   function deriveResourceRequests(limits: { cpuCount: number; memoryMiB: number }) {
-    const cpuFactor = serviceEnv.AGENT_SANDBOX_CPU_OVERCOMMIT_FACTOR;
-    const memoryFactor = serviceEnv.AGENT_SANDBOX_MEMORY_OVERCOMMIT_FACTOR;
+    // profile 可能被复用；仅在构建新的创建请求时读取最新倍率，不修改现有实例。
+    const { cpuOvercommitFactor: cpuFactor, memoryOvercommitFactor: memoryFactor } =
+      getAgentSandboxOpenSandboxConfig();
     if (cpuFactor === 1 && memoryFactor === 1) return undefined;
 
     return {

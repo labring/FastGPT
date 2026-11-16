@@ -113,6 +113,44 @@ describe('configuration form edition boundary', () => {
     mocks.update.mockReset().mockResolvedValue({ results: [] });
   });
 
+  it.each([false, true])(
+    'places the editable file domain under core downloads for Pro=%s',
+    async (isPro) => {
+      mocks.isPro = isPro;
+      renderToStaticMarkup(React.createElement(CoreSettings));
+      expect(mocks.formLabels).toContain('admin:file_service_domain');
+      const config = resolveSystemInstanceConfig({});
+      await mocks.save!({
+        agentEngine: 'fastAgent',
+        multipleDataToBase64: false,
+        downloadMode: 'short-proxy',
+        fileDomain: 'https://files.test',
+        externalEndpoint: '',
+        cdnEndpoint: '',
+        redirectTtlSeconds: 300,
+        openApiPrefix: 'fastgpt',
+        email: config.auth.loginProviders.email,
+        phone: config.auth.loginProviders.phone
+      });
+      const storage = mocks.update.mock.calls[0][0].items.find(
+        (item: { domain: string }) => item.domain === 'storage'
+      );
+      expect(storage.overrides.fileDomain).toBe('https://files.test');
+      expect(() =>
+        parseDomainOverrides({ domain: 'storage', overrides: storage.overrides })
+      ).not.toThrow();
+      mocks.formLabels = [];
+      renderToStaticMarkup(React.createElement(LimitsSettings));
+      expect(mocks.formLabels).not.toContain('admin:file_service_domain');
+    }
+  );
+
+  it.each([false, true])('shows the evaluation row limit only for Pro=%s', (isPro) => {
+    mocks.isPro = isPro;
+    renderToStaticMarkup(React.createElement(LimitsSettings));
+    expect(mocks.formLabels.includes('admin:evaluation_max_rows')).toBe(isPro);
+  });
+
   it('enables upload validation by default and maps the positive switch to persisted skip semantics', async () => {
     renderToStaticMarkup(React.createElement(SecuritySettings));
     const uploadValidation = mocks.switchRows.get('admin:upload_file_type_check')!;
@@ -152,12 +190,15 @@ describe('configuration form edition boundary', () => {
       fileUrlExpiredDays: config.storage.fileUrlExpiredDays,
       hnswEfSearch: config.vector.hnswEfSearch,
       vectorRecallConcurrency: config.vector.vectorRecallConcurrency,
+      evaluationMaxRows: 0,
       datasetArchive
     });
     const resource = mocks.update.mock.calls[0][0].items.find(
       (item: { domain: string }) => item.domain === 'resource'
     );
     expect(resource.overrides.datasetArchive).toEqual(datasetArchive);
+    if (isPro) expect(resource.overrides.evaluationMaxRows).toBe(0);
+    else expect(resource.overrides).not.toHaveProperty('evaluationMaxRows');
     // 整页提交必须符合新契约，不能夹带已移除的流恢复、埋点间隔或召回上限。
     for (const item of mocks.update.mock.calls[0][0].items) {
       expect(() =>
@@ -284,40 +325,17 @@ describe('configuration form edition boundary', () => {
     expect(auth.overrides).not.toHaveProperty('loginProviders.email');
   });
 
-  it('excludes preserved sync teamMode on core settings save unless teamMode is changed', async () => {
+  it('removes team mode from the core page and excludes historical overrides on save', async () => {
     mocks.isPro = true;
     mocks.authOverrides = {
       teamMode: 'sync',
       loginProviders: { wecom: { providerSecret: 'keep-secret' } }
     };
-    renderToStaticMarkup(React.createElement(CoreSettings));
+    const html = renderToStaticMarkup(React.createElement(CoreSettings));
+    expect(html).not.toContain('name="teamMode"');
+    expect(html).not.toContain('id="team"');
     const config = resolveSystemInstanceConfig({});
-
-    // 1. 存量已是 sync 且本次未改动 teamMode：请求中完全排除 teamMode，避免触发服务端 sync 前置校验 400
     await mocks.save!({
-      teamMode: 'sync',
-      agentEngine: 'fastAgent',
-      multipleDataToBase64: false,
-      downloadMode: 'short-proxy',
-      externalEndpoint: '',
-      cdnEndpoint: '',
-      redirectTtlSeconds: 300,
-      openApiPrefix: 'fastgpt',
-      email: { ...config.auth.loginProviders.email, smtp: 'smtp.example.com' },
-      phone: config.auth.loginProviders.phone
-    });
-    const unchangedAuth = mocks.update.mock.calls[0][0].items.find(
-      (item: { domain: string }) => item.domain === 'auth'
-    );
-    expect(unchangedAuth.overrides).not.toHaveProperty('teamMode');
-    expect(unchangedAuth.overrides.loginProviders).toMatchObject({
-      email: { smtp: 'smtp.example.com' },
-      wecom: { providerSecret: 'keep-secret' }
-    });
-
-    // 2. 管理员主动把 sync 切换为 multi：正常提交 teamMode='multi'
-    await mocks.save!({
-      teamMode: 'multi',
       agentEngine: 'fastAgent',
       multipleDataToBase64: false,
       downloadMode: 'short-proxy',
@@ -328,29 +346,10 @@ describe('configuration form edition boundary', () => {
       email: config.auth.loginProviders.email,
       phone: config.auth.loginProviders.phone
     });
-    const switchedAuth = mocks.update.mock.calls[1][0].items.find(
+    const submitted = mocks.update.mock.calls[0][0].items.find(
       (item: { domain: string }) => item.domain === 'auth'
     );
-    expect(switchedAuth.overrides.teamMode).toBe('multi');
-
-    // 3. 存量为 single 但请求改为 sync：保留提交 teamMode='sync' 交由服务端校验拒绝
-    mocks.authOverrides = { teamMode: 'single' };
-    renderToStaticMarkup(React.createElement(CoreSettings));
-    await mocks.save!({
-      teamMode: 'sync',
-      agentEngine: 'fastAgent',
-      multipleDataToBase64: false,
-      downloadMode: 'short-proxy',
-      externalEndpoint: '',
-      cdnEndpoint: '',
-      redirectTtlSeconds: 300,
-      openApiPrefix: 'fastgpt',
-      email: config.auth.loginProviders.email,
-      phone: config.auth.loginProviders.phone
-    });
-    const requestedSyncAuth = mocks.update.mock.calls[2][0].items.find(
-      (item: { domain: string }) => item.domain === 'auth'
-    );
-    expect(requestedSyncAuth.overrides.teamMode).toBe('sync');
+    expect(submitted.overrides).not.toHaveProperty('teamMode');
+    expect(submitted.overrides.loginProviders.wecom.providerSecret).toBe('keep-secret');
   });
 });

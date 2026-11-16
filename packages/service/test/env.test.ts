@@ -42,6 +42,32 @@ describe('serviceEnv bootstrap configuration', () => {
     await expect(importServiceEnv()).rejects.toThrow('Invalid environment variables');
   });
 
+  it('does not expose retired Agent Sandbox proxy variables at runtime', async () => {
+    for (const key of [
+      'FILE_DOMAIN',
+      'AGENT_SANDBOX_PROXY_URL',
+      'AGENT_SANDBOX_PREVIEW_PROXY_URL',
+      'AGENT_SANDBOX_PROXY_SECRET'
+    ])
+      vi.stubEnv(key, 'invalid-legacy-value');
+    const { serviceEnv } = await importServiceEnv();
+    for (const key of [
+      'FILE_DOMAIN',
+      'AGENT_SANDBOX_PROXY_URL',
+      'AGENT_SANDBOX_PREVIEW_PROXY_URL',
+      'AGENT_SANDBOX_PROXY_SECRET'
+    ])
+      expect(serviceEnv).not.toHaveProperty(key);
+  });
+
+  it('HTTP policy ENV is retired from runtime parsing', async () => {
+    vi.stubEnv('AUTH_COOKIE_SECURE', 'obsolete-runtime-input');
+    vi.stubEnv('SERVICE_AXIOS_MAX_CONTENT_LENGTH', 'obsolete-runtime-input');
+    const { serviceEnv } = await importServiceEnv();
+    expect(serviceEnv).not.toHaveProperty('AUTH_COOKIE_SECURE');
+    expect(serviceEnv).not.toHaveProperty('SERVICE_AXIOS_MAX_CONTENT_LENGTH');
+  });
+
   it('ignores the retired HNSW scan budget environment variable', async () => {
     vi.stubEnv('HNSW_MAX_SCAN_TUPLES', 'no-longer-used');
     const { serviceEnv } = await importServiceEnv();
@@ -278,12 +304,11 @@ describe('serviceEnv bootstrap configuration', () => {
     }
   );
   it.each(['AGENT_SANDBOX_CPU_OVERCOMMIT_FACTOR', 'AGENT_SANDBOX_MEMORY_OVERCOMMIT_FACTOR'])(
-    'rejects invalid overcommit factors for %s at the env boundary',
+    'ignores retired overcommit ENV %s',
     async (name) => {
-      for (const value of ['0', '0.5', 'Infinity', 'NaN']) {
-        vi.stubEnv(name, value);
-        await expect(importServiceEnv()).rejects.toThrow('Invalid environment variables');
-      }
+      vi.stubEnv(name, 'invalid-retired-value');
+      const { serviceEnv } = await importServiceEnv();
+      expect(serviceEnv).not.toHaveProperty(name);
     }
   );
   it('defaults AGENT_SANDBOX_SHOW_FREE_TIP to false and supports enabling it', async () => {

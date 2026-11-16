@@ -1,11 +1,13 @@
-import { getAgentSandboxMaxFileBytes } from '@fastgpt/service/core/ai/sandbox/config';
+import {
+  getAgentSandboxMaxFileBytes,
+  getAgentSandboxProxyConfig
+} from '@fastgpt/service/core/ai/sandbox/config';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/next/type';
 import { buildSandboxClientQueryFromChatSource } from '@fastgpt/service/core/ai/sandbox/interface/runtime';
 import { getSandboxClient } from '@fastgpt/service/core/ai/sandbox/application/runtime/client';
 import { authSandboxRuntimeSession } from '@/service/core/sandbox/access';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import { serviceEnv } from '@fastgpt/service/env';
 import jwt from 'jsonwebtoken';
 import { ReadPermissionVal, WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import {
@@ -20,14 +22,12 @@ const TICKET_EXPIRES_IN = '1m';
 
 /** 鉴权、准备会话后签发通道专用连接地址；地址和文件限制统一由服务端配置派生。 */
 async function handler(req: ApiRequestProps): Promise<SandboxGetTicketResponse> {
-  const secret = serviceEnv.AGENT_SANDBOX_PROXY_SECRET;
+  const { secret, wsUrl: proxyUrl } = getAgentSandboxProxyConfig();
   if (!secret) {
-    throw new Error('AGENT_SANDBOX_PROXY_SECRET environment variable is missing');
+    throw new Error('Agent Sandbox proxy secret is not configured');
   }
-  // 代理地址是部署连接信息，只从 ENV 读取，不参与管理员表单或 DB 配置。
-  const proxyUrl = serviceEnv.AGENT_SANDBOX_PROXY_URL;
   if (!proxyUrl) {
-    throw new Error('AGENT_SANDBOX_PROXY_URL environment variable is missing');
+    throw new Error('Agent Sandbox WebSocket proxy URL is not configured');
   }
   const wsUrl = new URL(proxyUrl);
   const {

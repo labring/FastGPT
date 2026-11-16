@@ -37,7 +37,7 @@ export async function registerNodeInstrumentation() {
       { configureRedisRuntime, registerRedisRuntimeShutdown },
       { serviceEnv },
       { InitialErrorEnum },
-      { validateAgentSandboxProxyEnv },
+      { validateAgentSandboxProxyConfig },
       { getReadableSystemResourceInfo },
       { startSystemMigrationRunner },
       { startBusinessAfterSystemMigrations },
@@ -66,7 +66,7 @@ export async function registerNodeInstrumentation() {
       import('@fastgpt/dal/redis/runtime'),
       import('@fastgpt/service/env'),
       import('@fastgpt/service/common/system/constants'),
-      import('@fastgpt/service/env.util'),
+      import('@fastgpt/service/core/ai/sandbox/config'),
       import('@fastgpt/service/common/system/resource'),
       import('@/migration/runner'),
       import('@/migration/startup'),
@@ -234,6 +234,14 @@ export async function registerNodeInstrumentation() {
         getErrText
       });
 
+      const { startAppConfigPolling } = await import('@/service/common/system/configPolling');
+      runBackgroundInitializationStep({
+        step: 'system-config-polling',
+        action: () => startAppConfigPolling(),
+        logger,
+        getErrText
+      });
+
       await Promise.all([
         runInitializationStep({
           step: 'start-mongo-watch',
@@ -278,7 +286,7 @@ export async function registerNodeInstrumentation() {
           step: 'reload-system-config-after-startup-migrations',
           action: async () => {
             await getInitConfig();
-            validateAgentSandboxProxyEnv(
+            validateAgentSandboxProxyConfig(
               getSystemInstanceConfig().subservice.agentSandbox.provider
             );
             initS3Buckets();

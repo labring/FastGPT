@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { AuthConfigSchema } from '@fastgpt/global/common/system/config/schemas/auth';
 import {
   getDomainDefaultConfig,
   parseDomainOverrides,
@@ -14,6 +15,43 @@ import {
 } from '@fastgpt/global/common/system/config/registry';
 
 describe('Domain default config and overrides validation', () => {
+  it('defaults independent sandbox overcommit factors to 1 and validates finite values >= 1', () => {
+    const defaults = getDomainDefaultConfig('subservice').agentSandbox.opensandbox;
+    expect(defaults.cpuOvercommitFactor).toBe(1);
+    expect(defaults.memoryOvercommitFactor).toBe(1);
+    for (const key of ['cpuOvercommitFactor', 'memoryOvercommitFactor'] as const) {
+      for (const value of [1, 1.5, 10]) {
+        expect(
+          resolveDomainEffectiveConfig({
+            domain: 'subservice',
+            overrides: { agentSandbox: { opensandbox: { [key]: value } } }
+          }).agentSandbox.opensandbox[key]
+        ).toBe(value);
+      }
+      for (const value of [0, 0.5, -1, NaN, Infinity]) {
+        expect(() =>
+          parseDomainOverrides({
+            domain: 'subservice',
+            overrides: { agentSandbox: { opensandbox: { [key]: value } } }
+          })
+        ).toThrow();
+      }
+    }
+  });
+  it('defaults evaluation rows to 1000 and preserves explicit limits including zero', () => {
+    expect(getDomainDefaultConfig('resource').evaluationMaxRows).toBe(1000);
+    for (const evaluationMaxRows of [0, 1, 2000]) {
+      expect(
+        resolveDomainEffectiveConfig({ domain: 'resource', overrides: { evaluationMaxRows } })
+          .evaluationMaxRows
+      ).toBe(evaluationMaxRows);
+    }
+    for (const evaluationMaxRows of [-1, 1.5, NaN, Infinity]) {
+      expect(() =>
+        parseDomainOverrides({ domain: 'resource', overrides: { evaluationMaxRows } })
+      ).toThrow();
+    }
+  });
   it('defaults the model deprecation SMS template to empty and accepts a Chinese template ID', () => {
     expect(getDomainDefaultConfig('auth').loginProviders.sms.modelDeprecation.zh).toBe('');
     const overrides = { loginProviders: { sms: { modelDeprecation: { zh: 'SMS_MODEL_ID' } } } };
@@ -560,9 +598,12 @@ describe('systemInstanceConfigRegistry', () => {
       return paths;
     };
 
-    const leafPaths = getLeafPaths(config);
+    // 旧文档字段仍需解析，但不能重新开放为可编辑配置。
+    expect(AuthConfigSchema.shape.teamMode.meta()?.deprecated).toBe(true);
+    const leafPaths = getLeafPaths(config).filter((path) => path !== 'auth.teamMode');
     const registryKeys = new Set(systemInstanceConfigRegistry.map((item) => item.key));
 
+    expect(registryKeys.has('auth.teamMode')).toBe(false);
     for (const leafPath of leafPaths) {
       expect(registryKeys.has(leafPath), `Missing registry entry for ${leafPath}`).toBe(true);
     }

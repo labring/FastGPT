@@ -8,6 +8,9 @@ const WorkflowHttpNodeSecuritySchema = z.strictObject({
 export const SecurityConfigSchema = z.strictObject({
   checkInternalIp: z.boolean().default(false),
   csrfEnabled: z.boolean().default(true),
+  authCookieSecure: z.boolean().default(false).meta({
+    description: '登录 Cookie 仅通过 HTTPS 传输；默认关闭以兼容 HTTP 自部署环境'
+  }),
   passwordLoginMinuteLimitCount: positiveInteger(10),
   maxLoginSession: positiveInteger(10),
   // 旧 ENV 未限制来源数量；迁移时不能因数量上限清空名单并回落为允许所有来源。

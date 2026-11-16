@@ -7,10 +7,9 @@ import {
   ModerationRiskActionEnum
 } from '@fastgpt/global/core/plugin/moderation/constants';
 import { DefaultSystemModerationPolicy } from '@fastgpt/global/core/plugin/moderation/type';
-import { SystemConfigsTypeEnum } from '@fastgpt/global/common/system/config/constants';
 import { MongoTeamAudit } from '@fastgpt/service/support/user/audit/schema';
 import { MongoSystemModerationPlugin } from '@fastgpt/service/core/plugin/moderation/schema';
-import { MongoSystemConfigs } from '@fastgpt/service/common/system/config/schema';
+import { MongoSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/schema';
 import * as remoteModeration from '@fastgpt/service/thirdProvider/fastgptPlugin/moderation';
 import * as lifecycle from '@fastgpt/service/thirdProvider/fastgptPlugin/lifecycle';
 import * as moderationEntity from '@fastgpt/service/core/plugin/moderation/entity';
@@ -35,7 +34,7 @@ describe('moderation admin audit helpers', () => {
     await Promise.all([
       MongoTeamAudit.deleteMany({}),
       MongoSystemModerationPlugin.deleteMany({}),
-      MongoSystemConfigs.deleteMany({ type: SystemConfigsTypeEnum.moderationPolicy })
+      MongoSystemInstanceConfig.deleteMany({ domain: 'moderationPolicy' })
     ]);
   });
 
@@ -192,9 +191,9 @@ describe('moderation admin audit helpers', () => {
         source: 'system',
         enabled: true
       });
-      await MongoSystemConfigs.create({
-        type: SystemConfigsTypeEnum.moderationPolicy,
-        value: {
+      await MongoSystemInstanceConfig.create({
+        domain: 'moderationPolicy',
+        overrides: {
           ...DefaultSystemModerationPolicy,
           enabled: true,
           activePluginId: 'baidu-moderation'
@@ -372,6 +371,46 @@ describe('moderation admin audit helpers', () => {
   });
 
   describe('committed mutation audit snapshots', () => {
+    it('keeps at most one plugin enabled when concurrent transactions create the policy record', async () => {
+      // 首次写入时还没有可竞争的策略行，唯一索引同样必须阻止创建两条记录。
+      await MongoSystemInstanceConfig.createIndexes();
+      await MongoSystemModerationPlugin.create([
+        { pluginId: 'A', source: 'system', enabled: false },
+        { pluginId: 'B', source: 'system', enabled: false }
+      ]);
+
+      const bothReady = Promise.withResolvers<void>();
+      let writeAttempts = 0;
+      const originalUpdate =
+        MongoSystemInstanceConfig.findOneAndUpdate.bind(MongoSystemInstanceConfig);
+      vi.spyOn(MongoSystemInstanceConfig, 'findOneAndUpdate').mockImplementation((async (
+        ...args: Parameters<typeof originalUpdate>
+      ) => {
+        if (++writeAttempts === 2) bothReady.resolve();
+        await bothReady.promise;
+        return originalUpdate(...args);
+      }) as any);
+
+      const results = await Promise.allSettled(
+        ['A', 'B'].map((activePluginId) =>
+          moderationService.updateModerationPolicy({
+            ...DefaultSystemModerationPolicy,
+            enabled: true,
+            activePluginId
+          })
+        )
+      );
+
+      const enabled = await MongoSystemModerationPlugin.find({ enabled: true }).lean();
+      const policy = await MongoSystemInstanceConfig.findOne({ domain: 'moderationPolicy' }).lean();
+      expect(results.some((result) => result.status === 'fulfilled')).toBe(true);
+      expect(enabled).toHaveLength(1);
+      expect(policy?.overrides.activePluginId).toBe(enabled[0].pluginId);
+      expect(await MongoSystemInstanceConfig.countDocuments({ domain: 'moderationPolicy' })).toBe(
+        1
+      );
+    });
+
     it.each(['policy', 'config'] as const)(
       'records both A→B→A transitions after concurrent %s transactions read A',
       async (entry) => {
@@ -380,9 +419,9 @@ describe('moderation admin audit helpers', () => {
           enabled: true,
           activePluginId: 'A'
         };
-        await MongoSystemConfigs.create({
-          type: SystemConfigsTypeEnum.moderationPolicy,
-          value: originalPolicy
+        await MongoSystemInstanceConfig.create({
+          domain: 'moderationPolicy',
+          overrides: originalPolicy
         });
         await MongoSystemModerationPlugin.create([
           { pluginId: 'A', source: 'system', enabled: true },

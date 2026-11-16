@@ -34,6 +34,22 @@ export type SystemInstanceConfigDomainKey = (typeof SYSTEM_INSTANCE_CONFIG_DOMAI
 
 export const SystemInstanceConfigDomainKeySchema = z.enum(SYSTEM_INSTANCE_CONFIG_DOMAINS);
 
+/** 持久化 scope 包含 11 个业务域及 10 个辅助系统配置；辅助 scope 不参与表单和业务域初始化。 */
+export const SYSTEM_INSTANCE_CONFIG_SCOPES = [
+  ...SYSTEM_INSTANCE_CONFIG_DOMAINS,
+  'proEnv',
+  'subPlans',
+  'langfuse',
+  'license',
+  'instanceId',
+  'modelStatusProbe',
+  'moderationPolicy',
+  'systemMsgModal',
+  'operationalAd',
+  'activityAd'
+] as const;
+export const SystemInstanceConfigScopeKeySchema = z.enum(SYSTEM_INSTANCE_CONFIG_SCOPES);
+
 /**
  * 递归将 ZodObject 内的所有叶子和嵌套对象转换为严格且可选的 Partial Schema。
  */
@@ -308,7 +324,7 @@ export const SystemInstanceConfigUpdatedBySchema = z.strictObject({
  */
 export const SystemInstanceDomainDocumentSchema = z.strictObject({
   _id: z.string().optional(),
-  domain: SystemInstanceConfigDomainKeySchema,
+  domain: SystemInstanceConfigScopeKeySchema,
   schemaVersion: z
     .literal(SYSTEM_INSTANCE_CONFIG_SCHEMA_VERSION)
     .default(SYSTEM_INSTANCE_CONFIG_SCHEMA_VERSION),

@@ -5,6 +5,14 @@ import type {
 } from '../types';
 import type { SystemInstanceConfig } from './schema';
 
+/** 公开配置仅暴露自定义域名开关及 CNAME，部署凭据始终留在服务端实例配置中。 */
+export const buildCustomDomainFeConfig = (
+  config: SystemInstanceConfig['site']['customDomain']
+): FastGPTFeConfigsType['customDomain'] => ({
+  enable: config.enable,
+  domain: config.domain
+});
+
 /** 将实例配置中的登录凭据投影为前端 OAuth 入口；缺少完整凭据的 Provider 不展示。 */
 export const buildOauthFeConfig = (
   auth: SystemInstanceConfig['auth']
@@ -75,8 +83,8 @@ export const buildRegisterMethods = ({
   if (hasPhoneSmsChannel(auth) && hasSmsTemplate(auth.loginProviders.sms.register.zh)) {
     methods.push('phone');
   }
-  // sync 是团队模式的历史兼容项，团队模式仍以 teamMode 为权威。
-  if (legacyMethods?.includes('sync') || auth.teamMode === 'sync') {
+  // 仅保留旧传输形状；调用侧根据 Pro ENV 的生效团队模式统一移除或补充 sync。
+  if (legacyMethods?.includes('sync')) {
     methods.push('sync');
   }
   return methods;

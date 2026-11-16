@@ -13,69 +13,35 @@ const createMigration = (id: string): SystemMigration => ({
 });
 
 describe('validateSystemMigrationRegistry', () => {
-  it('keeps only the current release tasks without legacy startup dependencies', () => {
+  it('registers one startup-blocking system configuration migration', () => {
     expect(systemMigrations.map(({ id }) => id)).toEqual([
       '20261022_initialize_dataset_vector_indexes',
       '20261104_backfill_chat_publish_source',
       '20261104_backfill_openapi_key_type',
-      '20260928_migrate_instance_configs',
-      '20260929_cleanup_instance_config_deprecated_fields',
-      '20261110_backfill_external_file_check',
-      '20261111_rehome_subservice_connections',
-      '20261111_backfill_model_deprecation_sms',
-      '20261112_backfill_stt_pricing_type'
+      '20261112_backfill_stt_pricing_type',
+      '20261116_migrate_system_configs'
     ]);
-    expect(
-      systemMigrations.filter((task: SystemMigration) => task.delay).map(({ id }) => id)
-    ).toEqual([]);
-    expect(
-      systemMigrations.filter((task: SystemMigration) => task.manual).map(({ id }) => id)
-    ).toEqual([]);
-    // 只有「声明集合可能增长、老库必须能补建新成员」的任务才允许每轮重跑
-    expect(
-      systemMigrations.filter((task: SystemMigration) => task.resumable).map(({ id }) => id)
-    ).toEqual(['20260929_cleanup_instance_config_deprecated_fields']);
-    expect(
-      systemMigrations.filter((task: SystemMigration) => task.blockStartup).map(({ id }) => id)
-    ).toEqual([
-      '20260928_migrate_instance_configs',
-      '20260929_cleanup_instance_config_deprecated_fields',
-      '20261110_backfill_external_file_check',
-      '20261111_rehome_subservice_connections',
-      '20261111_backfill_model_deprecation_sms'
+    const tasks: readonly SystemMigration[] = systemMigrations;
+    expect(tasks.filter((task) => task.blockStartup).map(({ id }) => id)).toEqual([
+      '20261116_migrate_system_configs'
     ]);
-    expect(systemMigrations.at(-6)).toMatchObject({
-      id: '20260928_migrate_instance_configs',
+    expect(tasks.filter((task) => task.delay || task.manual || task.resumable)).toEqual([]);
+
+    const configMigration = tasks.find(({ id }) => id === '20261116_migrate_system_configs');
+    expect(configMigration).toMatchObject({
       version: '4.18.0',
       blockStartup: true,
-      progressSteps: [{ key: 'inspect' }, { key: 'migrate' }, { key: 'validate' }]
-    });
-    expect(systemMigrations.at(-6)).not.toHaveProperty('resumable', true);
-    expect(systemMigrations.at(-5)).toMatchObject({
-      id: '20260929_cleanup_instance_config_deprecated_fields',
-      version: '4.18.0',
-      blockStartup: true,
-      resumable: true,
-      progressSteps: [{ key: 'cleanup' }, { key: 'validation' }]
-    });
-    expect(systemMigrations.at(-4)).toMatchObject({
-      id: '20261110_backfill_external_file_check',
-      blockStartup: true,
-      dependsOn: [
-        '20260928_migrate_instance_configs',
-        '20260929_cleanup_instance_config_deprecated_fields'
+      progressSteps: [
+        { key: 'inspect' },
+        { key: 'migrate' },
+        { key: 'cleanup' },
+        { key: 'backfill' },
+        { key: 'validate' }
       ]
     });
-    expect(systemMigrations.at(-2)).toMatchObject({
-      id: '20261111_backfill_model_deprecation_sms',
-      blockStartup: true,
-      dependsOn: [
-        '20260928_migrate_instance_configs',
-        '20260929_cleanup_instance_config_deprecated_fields'
-      ],
-      progressSteps: [{ key: 'backfill' }, { key: 'validation' }]
-    });
-    expect(systemMigrations.at(-2)).not.toHaveProperty('resumable', true);
+    expect(configMigration).not.toHaveProperty('dependsOn');
+    expect(configMigration).not.toHaveProperty('independent', true);
+    expect(configMigration).not.toHaveProperty('resumable', true);
     expect(() => validateSystemMigrationRegistry(systemMigrations)).not.toThrow();
   });
 
@@ -124,14 +90,20 @@ describe('validateSystemMigrationRegistry', () => {
   });
 
   it('appends STT pricing backfill as non-blocking background work', () => {
-    expect(systemMigrations.at(-1)).toMatchObject({
+    expect(
+      systemMigrations.find(({ id }) => id === '20261112_backfill_stt_pricing_type')
+    ).toMatchObject({
       id: '20261112_backfill_stt_pricing_type',
       version: '4.18.0',
       blockStartup: false,
       progressSteps: [{ key: 'models' }, { key: 'validation' }]
     });
-    expect(systemMigrations.at(-1)).not.toHaveProperty('dependsOn');
-    expect(systemMigrations.at(-1)).not.toHaveProperty('independent');
+    expect(
+      systemMigrations.find(({ id }) => id === '20261112_backfill_stt_pricing_type')
+    ).not.toHaveProperty('dependsOn');
+    expect(
+      systemMigrations.find(({ id }) => id === '20261112_backfill_stt_pricing_type')
+    ).not.toHaveProperty('independent');
   });
 
   it('runs only the selected production tasks independently', () => {

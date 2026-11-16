@@ -21,6 +21,25 @@ describe('sandbox runtime profile', () => {
   beforeEach(() => {
     global.systemInstanceConfig = createDefaultInstanceConfig();
   });
+  it('reads live overcommit factors for new Kubernetes create requests and ignores them for Docker', async () => {
+    const config = getTestInstanceConfig().subservice.agentSandbox.opensandbox;
+    config.image = 'runtime:test';
+    config.runtime = 'kubernetes';
+    const { getSandboxRuntimeProfile } = await loadSandboxRuntimeProfileModule();
+    const profile = getSandboxRuntimeProfile('opensandbox');
+    const resourceLimits = { cpuCount: 2, memoryMiB: 4096 };
+    expect(profile.buildConfig({ resourceLimits }).resourceRequests).toBeUndefined();
+    config.cpuOvercommitFactor = 2;
+    config.memoryOvercommitFactor = 4;
+    expect(profile.buildConfig({ resourceLimits }).resourceRequests).toEqual({
+      cpuCount: 1,
+      memoryMiB: 1024
+    });
+    config.runtime = 'docker';
+    expect(
+      getSandboxRuntimeProfile('opensandbox').buildConfig({ resourceLimits }).resourceRequests
+    ).toBeUndefined();
+  });
   afterEach(() => {
     getTestInstanceConfig().subservice.agentSandbox.provider =
       originalEnv.AGENT_SANDBOX_PROVIDER ??

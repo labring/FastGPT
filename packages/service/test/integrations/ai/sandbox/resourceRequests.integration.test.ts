@@ -23,7 +23,7 @@ type ResourceRequestCase = {
   expectedRequests?: Record<string, string>;
 };
 
-// 贯穿真实 env/profile/adapter/SDK 和 HTTP 序列化，只用本地服务替代远端 Lifecycle API。
+// 贯穿实例配置/profile/adapter/SDK 和 HTTP 序列化，只用本地服务替代远端 Lifecycle API。
 // 此处验证发送的请求，不模拟 Kubernetes 调度，也不据此断言真实 Pod 的 QoS。
 describe.sequential('OpenSandbox resource requests HTTP integration', () => {
   const createRequests: unknown[] = [];
@@ -145,8 +145,12 @@ describe.sequential('OpenSandbox resource requests HTTP integration', () => {
       createDefaultInstanceConfig().subservice.agentSandbox.opensandbox.runtime;
     getTestInstanceConfig().subservice.agentSandbox.common.cpuCount = 2;
     getTestInstanceConfig().subservice.agentSandbox.common.memoryMiB = 4096;
-    vi.stubEnv('AGENT_SANDBOX_CPU_OVERCOMMIT_FACTOR', testCase.cpuFactor);
-    vi.stubEnv('AGENT_SANDBOX_MEMORY_OVERCOMMIT_FACTOR', testCase.memoryFactor);
+    getTestInstanceConfig().subservice.agentSandbox.opensandbox.cpuOvercommitFactor = Number(
+      testCase.cpuFactor ?? 1
+    );
+    getTestInstanceConfig().subservice.agentSandbox.opensandbox.memoryOvercommitFactor = Number(
+      testCase.memoryFactor ?? 1
+    );
     vi.resetModules();
     const { buildRuntimeSandboxAdapter } =
       await import('@fastgpt/service/core/ai/sandbox/infrastructure/provider/adapter');
@@ -209,8 +213,10 @@ describe.skipIf(!shouldRunKubernetes).sequential('OpenSandbox Kubernetes resourc
   ])(
     'applies $name to the actual Pod',
     async ({ cpuFactor, memoryFactor, cpu, memory }) => {
-      vi.stubEnv('AGENT_SANDBOX_CPU_OVERCOMMIT_FACTOR', cpuFactor);
-      vi.stubEnv('AGENT_SANDBOX_MEMORY_OVERCOMMIT_FACTOR', memoryFactor);
+      getTestInstanceConfig().subservice.agentSandbox.opensandbox.cpuOvercommitFactor =
+        Number(cpuFactor);
+      getTestInstanceConfig().subservice.agentSandbox.opensandbox.memoryOvercommitFactor =
+        Number(memoryFactor);
       vi.resetModules();
       const { buildRuntimeSandboxAdapter } =
         await import('@fastgpt/service/core/ai/sandbox/infrastructure/provider/adapter');

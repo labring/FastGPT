@@ -15,6 +15,7 @@ import { postHealth } from '@fastgpt/service/thirdProvider/fastgptPro/api';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { getSsoConfigured } from '@fastgpt/service/common/system/sso';
 import { resolveEffectiveTeamMode } from '@fastgpt/global/common/system/config/teamMode';
+import { applyEnvAuthoritativeFeConfigs } from '@/service/common/system/envAuthoritativeFeConfigs';
 
 const logger = getLogger(LogCategories.SYSTEM);
 
@@ -39,7 +40,6 @@ async function handler(
     if (!isAuthenticated || !serviceEnv.PRO_URL) return undefined;
 
     const disabled = {
-      show_git: false,
       show_workorder: false,
       show_enterprise_auth: false,
       showWecomConfig: false
@@ -70,7 +70,7 @@ async function handler(
    * 响应 Schema 同时过滤顶层及嵌套对象的未知字段，避免扩展配置泄漏。
    */
   const filterFeConfigs = (): GetSystemInitDataResponse['feConfigs'] => {
-    // 存量库残留 sync 但 Pro 明确未配置外部用户系统地址时，与 Pro 保持一致降级为 single。
+    // Pro 重启时将 ENV 派生模式刷新到旧配置快照；缺少外部用户系统时统一降级。
     const configuredTeamMode = runtimeSnapshot.feConfigs?.teamMode ?? 'single';
     const effectiveTeamMode = resolveEffectiveTeamMode({
       teamMode: configuredTeamMode,
@@ -100,6 +100,7 @@ async function handler(
 
     const commonConfig = {
       systemTitle: config.systemTitle,
+      systemDescription: config.systemDescription,
       favicon: config.favicon,
       scripts: config.scripts,
       isPlus: config.isPlus,
@@ -131,7 +132,10 @@ async function handler(
     // 所有匿名入口共用同一白名单，页面切换无需补取配置。
     return { ...commonConfig, ...loginConfig, ...uploadConfig, ...chatConfig };
   };
-  const feConfigs = { ...filterFeConfigs(), ...proFrontendCapabilities };
+  const projectedFeConfigs = { ...filterFeConfigs(), ...proFrontendCapabilities };
+  const feConfigs = isAuthenticated
+    ? applyEnvAuthoritativeFeConfigs(projectedFeConfigs)
+    : projectedFeConfigs;
 
   const response = (() => {
     if (isAuthenticated) {
@@ -159,7 +163,7 @@ async function handler(
     // Pro 环境变化不改变 Mongo revision，必须把能力及不可用状态加入匿名缓存标识。
     const ssoVersion = ssoConfigured === undefined ? 'unavailable' : ssoConfigured ? '1' : '0';
     const unAuthBufferId = runtimeSnapshot.systemInitBufferId
-      ? `unAuth_v10_sso_${ssoVersion}_${runtimeSnapshot.systemInitBufferId}`
+      ? `unAuth_v11_sso_${ssoVersion}_${runtimeSnapshot.systemInitBufferId}`
       : '';
     if (bufferId && unAuthBufferId === bufferId) {
       return {

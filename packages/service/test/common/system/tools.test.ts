@@ -49,11 +49,16 @@ describe('initFastGPTConfig', () => {
   );
 
   it.each([false, true])(
-    'derives branding from environment and overrides stale file values=%s',
+    'derives branding from ENV regardless of license activation or stale file values=%s',
     (enabled) => {
       serviceEnv.SHOW_OUTLINK_BRAND = enabled;
-      initFastGPTConfig({ feConfigs: { show_outlink_brand: !enabled }, systemEnv: {} } as any);
-      expect(global.feConfigs.show_outlink_brand).toBe(enabled);
+      for (const isPlus of [false, true]) {
+        initFastGPTConfig({
+          feConfigs: { isPlus, show_outlink_brand: !enabled },
+          systemEnv: {}
+        } as FastGPTConfigFileType);
+        expect(global.feConfigs.show_outlink_brand).toBe(enabled);
+      }
     }
   );
 

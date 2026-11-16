@@ -20,6 +20,16 @@ export const getSystemMaxFileSize = () => global.feConfigs.limit?.uploadFileMaxS
 
 const DAY_IN_MS = 24 * 60 * 60 * 1000;
 
+/** 文件服务公开地址只读实例配置；空值由链接构造方回落到部署 FE_DOMAIN。 */
+export const getStorageFileDomain = () => {
+  const value = getSystemInstanceConfig().storage.fileDomain;
+  logInstanceConfigRead({
+    callsite: 'runtime.common.s3.constants.getStorageFileDomain',
+    fields: [{ path: 'storage.fileDomain', value }]
+  });
+  return value;
+};
+
 /** 文件短链有效期只读实例配置；启动加载前由 Schema 提供默认值。 */
 export const getStorageFileUrlExpiredDays = () => {
   const value = getSystemInstanceConfig().storage.fileUrlExpiredDays;
@@ -246,7 +256,6 @@ export function createDefaultStorageOptions() {
         cname: serviceEnv.STORAGE_OSS_CNAME,
         internal: serviceEnv.STORAGE_OSS_INTERNAL,
         secure: serviceEnv.STORAGE_OSS_SECURE,
-        enableProxy: serviceEnv.STORAGE_OSS_ENABLE_PROXY,
         ...bucketStorageOptions
       } satisfies Omit<IOssStorageOptions, 'bucket'> & BucketStorageOptions;
     }

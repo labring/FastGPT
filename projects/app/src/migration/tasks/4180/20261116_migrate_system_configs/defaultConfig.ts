@@ -1,0 +1,116 @@
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import z from 'zod';
+import {
+  SYSTEM_INSTANCE_CONFIG_DOMAINS,
+  SYSTEM_INSTANCE_CONFIG_SCHEMA_VERSION,
+  resolveDomainEffectiveConfig,
+  systemInstanceConfigDomainOverrideSchemaMap,
+  type SystemInstanceConfigDomainKey
+} from '@fastgpt/global/common/system/config/schema';
+import { MongoSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/schema';
+import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
+
+type DefaultConfigOverrides = Partial<
+  Record<SystemInstanceConfigDomainKey, Record<string, unknown>>
+>;
+
+export type DefaultConfigInitialization = {
+  overrides: DefaultConfigOverrides;
+  explicitDefaultPaths?: Partial<Record<SystemInstanceConfigDomainKey, string[]>>;
+};
+
+/**
+ * 读取 App 工作目录下可选的首次初始化增量；文件缺失等价于没有自定义默认值。
+ * 使用当前实例配置域格式，拒绝未知字段和非法值；错误只返回字段路径，不暴露凭据。
+ * 调用方必须先确认业务域为空；Pro ENV 不属于文件可配置范围，也不影响首次导入。
+ */
+export const readDefaultInstanceConfig = async (
+  filePath = path.join(process.cwd(), 'defaultConfig.json')
+): Promise<DefaultConfigOverrides> => {
+  let content: string;
+  try {
+    content = await fs.readFile(filePath, 'utf8');
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return {};
+    throw new Error('Unable to read defaultConfig.json');
+  }
+
+  let raw: unknown;
+  try {
+    raw = JSON.parse(content);
+  } catch {
+    throw new Error('Invalid defaultConfig.json: expected valid JSON');
+  }
+
+  const schema = z.strictObject(
+    Object.fromEntries(
+      SYSTEM_INSTANCE_CONFIG_DOMAINS.map((domain) => [
+        domain,
+        systemInstanceConfigDomainOverrideSchemaMap[domain].optional()
+      ])
+    )
+  );
+  const parsed = schema.safeParse(raw);
+  if (!parsed.success) {
+    const paths = parsed.error.issues.map((issue) => issue.path.join('.') || '<root>');
+    throw new Error(`Invalid defaultConfig.json fields: ${paths.join(', ')}`);
+  }
+
+  const overrides = parsed.data as DefaultConfigOverrides;
+  for (const domain of SYSTEM_INSTANCE_CONFIG_DOMAINS) {
+    if (overrides[domain] === undefined) continue;
+    try {
+      resolveDomainEffectiveConfig({ domain, overrides: overrides[domain] });
+    } catch {
+      throw new Error(`Invalid defaultConfig.json configuration: ${domain}`);
+    }
+  }
+  return overrides;
+};
+
+/**
+ * 仅在业务域为空时原子创建全部业务域；Pro ENV 独立发布，不参与初始化判断。
+ * 事务中再次判空，确保并发启动只有一个初始化结果，失败不会留下半套域文档。
+ * 已有任意业务域即跳过文件初始化，后续旧版本数据补齐仍由原迁移负责。
+ */
+export const initializeEmptyInstanceConfig = async ({
+  overrides,
+  explicitDefaultPaths
+}: DefaultConfigInitialization): Promise<SystemInstanceConfigDomainKey[]> => {
+  const documents = SYSTEM_INSTANCE_CONFIG_DOMAINS.map((domain) => {
+    const domainOverrides = overrides[domain] ?? {};
+    resolveDomainEffectiveConfig({ domain, overrides: domainOverrides });
+    return {
+      domain,
+      schemaVersion: SYSTEM_INSTANCE_CONFIG_SCHEMA_VERSION,
+      revision: 1,
+      overrides: domainOverrides,
+      explicitDefaultPaths: explicitDefaultPaths?.[domain] ?? [],
+      updatedBy: { actor: 'migration' as const }
+    };
+  });
+
+  try {
+    return await mongoSessionRun(
+      async (session) => {
+        const count = await MongoSystemInstanceConfig.countDocuments({
+          domain: { $in: SYSTEM_INSTANCE_CONFIG_DOMAINS }
+        }).session(session);
+        if (count > 0) return [];
+        await MongoSystemInstanceConfig.insertMany(documents, { session, ordered: true });
+        return [...SYSTEM_INSTANCE_CONFIG_DOMAINS];
+      },
+      { readPreference: 'primary' }
+    );
+  } catch (error) {
+    // 不同启动事务可能争抢 domain 唯一键；仅在另一方已完整提交时接受其结果。
+    if ((error as { code?: number })?.code === 11000) {
+      const count = await MongoSystemInstanceConfig.countDocuments({
+        domain: { $in: SYSTEM_INSTANCE_CONFIG_DOMAINS }
+      }).read('primary');
+      if (count === SYSTEM_INSTANCE_CONFIG_DOMAINS.length) return [];
+    }
+    throw error;
+  }
+};

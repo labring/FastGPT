@@ -1,14 +1,16 @@
 import { appEnv } from '@/env';
+import { serviceEnv } from '@fastgpt/service/env';
 
 /**
  * 在最终 feConfigs 合成处应用 ENV 独占字段。
  *
- * chineseRedirectUrl 不进入实例配置，旧库 system_configs 中的值只属于历史数据；
- * 这里在展开默认值和旧库值之后显式覆盖，保证 ENV 始终是唯一来源。
+ * 旧库值及 Pro 能力响应不能覆盖这些字段。配置 PRO_URL 即视为商业版，
+ * Git 展示由 App 的 SHOW_GIT 决定，与 License 激活状态无关；开源版固定展示。
  */
 export const applyEnvAuthoritativeFeConfigs = <T extends { chineseRedirectUrl?: string }>(
   feConfigs: T
-): T => ({
+) => ({
   ...feConfigs,
-  chineseRedirectUrl: appEnv.CHINESE_IP_REDIRECT_URL
+  chineseRedirectUrl: appEnv.CHINESE_IP_REDIRECT_URL,
+  show_git: serviceEnv.PRO_URL ? appEnv.SHOW_GIT : true
 });

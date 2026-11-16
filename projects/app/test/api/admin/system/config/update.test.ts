@@ -96,6 +96,18 @@ describe('instance config update API', () => {
     });
   });
 
+  it('rejects the ENV-only proEnv scope at the admin API boundary', async () => {
+    await expect(
+      handler({
+        body: {
+          items: [{ domain: 'proEnv', expectedRevision: 0, overrides: { teamMode: 'multi' } }]
+        }
+      } as any)
+    ).rejects.toThrow();
+    expect(await MongoSystemInstanceConfig.countDocuments({ domain: 'proEnv' })).toBe(0);
+    expect(mocks.initSystemConfig).not.toHaveBeenCalled();
+  });
+
   it('does not start avatar cleanup when a stale revision rejects the save', async () => {
     await MongoSystemInstanceConfig.create({
       domain: 'site',
@@ -270,15 +282,14 @@ describe('instance config update API', () => {
     });
   });
 
-  it('rejects saving sync teamMode when EXTERNAL_USER_SYSTEM_BASE_URL is not configured or SSO status is unavailable', async () => {
-    const originalSsoHandler = global.getSsoConfiguredHandler;
-    try {
-      global.getSsoConfiguredHandler = () => false;
+  it.each(['single', 'multi', 'sync'])(
+    'rejects retired teamMode=%s before any database or avatar write',
+    async (teamMode) => {
       await expect(
         handler({
           body: {
             items: [
-              { domain: 'auth', expectedRevision: 0, overrides: { teamMode: 'sync' } },
+              { domain: 'auth', expectedRevision: 0, overrides: { teamMode } },
               {
                 domain: 'site',
                 expectedRevision: 0,
@@ -287,38 +298,11 @@ describe('instance config update API', () => {
             ]
           }
         } as any)
-      ).rejects.toMatchObject({
-        statusCode: 400,
-        message: expect.stringContaining('EXTERNAL_USER_SYSTEM_BASE_URL')
-      });
+      ).rejects.toMatchObject({ statusCode: 400, message: expect.stringContaining('TEAM_MODE') });
       expect(mocks.copyForSiteReference).not.toHaveBeenCalled();
       expect(await MongoSystemInstanceConfig.countDocuments({})).toBe(0);
-
-      global.getSsoConfiguredHandler = () => {
-        throw new Error('private-pro-token');
-      };
-      await expect(
-        handler({
-          body: {
-            items: [{ domain: 'auth', expectedRevision: 0, overrides: { teamMode: 'sync' } }]
-          }
-        } as any)
-      ).rejects.toMatchObject({
-        statusCode: 503
-      });
-      expect(await MongoSystemInstanceConfig.countDocuments({})).toBe(0);
-
-      global.getSsoConfiguredHandler = () => true;
-      const saved = await handler({
-        body: {
-          items: [{ domain: 'auth', expectedRevision: 0, overrides: { teamMode: 'sync' } }]
-        }
-      } as any);
-      expect(saved.results[0].effectiveConfig).toMatchObject({ teamMode: 'sync' });
-    } finally {
-      global.getSsoConfiguredHandler = originalSsoHandler;
     }
-  });
+  );
 
   it('copies a newly uploaded auth.sso.icon and triggers avatar lifecycle sync', async () => {
     const uploadedIcon = '/api/system/img/avatar/team/sso-uploaded.png';

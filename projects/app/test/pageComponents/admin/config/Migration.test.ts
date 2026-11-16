@@ -79,17 +79,17 @@ const renderSucceededResult = (params: Record<string, string | number>) => {
     serverTime: new Date(),
     migrations: [
       {
-        id: '20260928_migrate_instance_configs',
+        id: '20261116_migrate_system_configs',
         version: '4.18.0',
         order: 1,
-        nameKey: 'system_migration:migrations.20260928_migrate_instance_configs.name',
-        descriptionKey: 'system_migration:migrations.20260928_migrate_instance_configs.description',
+        nameKey: 'system_migration:migrations.20261116_migrate_system_configs.name',
+        descriptionKey: 'system_migration:migrations.20261116_migrate_system_configs.description',
         blockStartup: true,
         independent: false,
         status: SystemMigrationStatusEnum.succeeded,
         failedRecordCount: 0,
         result: {
-          key: 'system_migration:migrations.20260928_migrate_instance_configs.result',
+          key: 'system_migration:migrations.20261116_migrate_system_configs.result',
           params
         },
         progress: []
@@ -138,6 +138,7 @@ describe('migration stage progress', () => {
   it('shows skipped legacy config paths in a succeeded result', () => {
     const dom = renderSucceededResult({
       migratedDomainCount: 11,
+      removedFieldCount: 0,
       skippedConfigCount: 2,
       skippedDomainCount: 1,
       skippedPaths: 'security.maxLoginSession, commercial.*'

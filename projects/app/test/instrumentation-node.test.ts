@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
     throw new Error('App exited before readiness');
   }),
   watch: vi.fn(),
+  configPolling: vi.fn(),
   workers: vi.fn(),
   cron: vi.fn(),
   training: vi.fn(),
@@ -78,6 +79,9 @@ vi.mock('@fastgpt/service/common/s3', async () => {
   };
 });
 vi.mock('@/service/common/system/volumnMongoWatch', () => ({ startMongoWatch: mocks.watch }));
+vi.mock('@/service/common/system/configPolling', () => ({
+  startAppConfigPolling: mocks.configPolling
+}));
 vi.mock('@/service/common/bullmq', () => ({ initBullMQWorkers: mocks.workers }));
 vi.mock('@/service/common/system/cron', () => ({ startCron: mocks.cron }));
 vi.mock('@/service/core/dataset/training/utils', () => ({ startTrainingQueue: mocks.training }));
@@ -128,27 +132,11 @@ describe('registerNodeInstrumentation', () => {
         status: SystemMigrationStatusEnum.succeeded
       },
       {
-        _id: '20260928_migrate_instance_configs',
-        status: SystemMigrationStatusEnum.succeeded
-      },
-      {
-        _id: '20260929_cleanup_instance_config_deprecated_fields',
-        status: SystemMigrationStatusEnum.succeeded
-      },
-      {
-        _id: '20261110_backfill_external_file_check',
-        status: SystemMigrationStatusEnum.succeeded
-      },
-      {
-        _id: '20261111_backfill_model_deprecation_sms',
-        status: SystemMigrationStatusEnum.succeeded
-      },
-      {
         _id: '20261112_backfill_stt_pricing_type',
         status: SystemMigrationStatusEnum.succeeded
       }
     ]);
-    // 旧实例已完成域迁移，但 cleanup 完成后仍可能遗留现已退役的子服务字段。
+    // 开发期已有部分实例域；统一配置迁移必须在业务启动前清理残留并补齐全部域。
     await MongoSystemInstanceConfig.collection.insertOne({
       domain: 'subservice',
       schemaVersion: 1,
@@ -181,7 +169,14 @@ describe('registerNodeInstrumentation', () => {
       await registration;
       // 当前注册表仍声明实例配置启动迁移；该标记表示注册表存在阻塞任务，不表示迁移尚未完成。
       expect(global.systemMigrationRunner!.hasBlockingMigrations).toBe(true);
-      for (const consumer of [mocks.watch, mocks.workers, mocks.cron, mocks.training, mocks.tracks])
+      for (const consumer of [
+        mocks.configPolling,
+        mocks.watch,
+        mocks.workers,
+        mocks.cron,
+        mocks.training,
+        mocks.tracks
+      ])
         expect(consumer).toHaveBeenCalledTimes(1);
       await vi.waitFor(() => expect(write).toHaveBeenCalledTimes(1), { timeout: 10000 });
       expect(redisScripts).toHaveBeenCalled();
@@ -252,23 +247,7 @@ describe('registerNodeInstrumentation', () => {
           status: SystemMigrationStatusEnum.succeeded
         },
         {
-          _id: '20260928_migrate_instance_configs',
-          status: SystemMigrationStatusEnum.succeeded
-        },
-        {
-          _id: '20260929_cleanup_instance_config_deprecated_fields',
-          status: SystemMigrationStatusEnum.succeeded
-        },
-        {
-          _id: '20261110_backfill_external_file_check',
-          status: SystemMigrationStatusEnum.succeeded
-        },
-        {
-          _id: '20261111_rehome_subservice_connections',
-          status: SystemMigrationStatusEnum.succeeded
-        },
-        {
-          _id: '20261111_backfill_model_deprecation_sms',
+          _id: '20261116_migrate_system_configs',
           status: SystemMigrationStatusEnum.succeeded
         },
         {
@@ -308,6 +287,7 @@ describe('registerNodeInstrumentation', () => {
         ).toBe(SystemMigrationStatusEnum.failed);
         expect((await MongoAIModel.findById(modelId).lean())?.pricing).toEqual(pricing);
         for (const consumer of [
+          mocks.configPolling,
           mocks.watch,
           mocks.workers,
           mocks.cron,

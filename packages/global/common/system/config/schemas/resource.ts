@@ -3,6 +3,10 @@ import { nonNegativeInteger, positiveInteger } from './primitives';
 
 export const ResourceConfigSchema = z.strictObject({
   serviceRequestMaxContentLength: positiveInteger(10),
+  serviceAxiosMaxContentLength: nonNegativeInteger(20).meta({
+    description:
+      '共享 HTTP 客户端缓冲型响应的解压后大小上限（MiB）；0 仅允许空响应，调用方显式限制优先，流式响应使用业务配额'
+  }),
   maxFolderDepth: z.number().int().min(2).max(20).default(4),
   // 旧 env IntSchema 允许 0，消费点为纯数值比较（folderCount + amount > max），
   // 0 = 禁止创建新目录；保持迁移前后一致
@@ -10,6 +14,9 @@ export const ResourceConfigSchema = z.strictObject({
   datasetFolderMaxAmount: nonNegativeInteger(1000),
   uploadFileMaxSize: positiveInteger(1000),
   uploadFileMaxAmount: positiveInteger(1000),
+  evaluationMaxRows: nonNegativeInteger(1000).meta({
+    description: '单次评估任务最大数据行数，不含表头；0 表示禁止创建包含数据的评估任务'
+  }),
   datasetArchive: z
     .strictObject({
       maxFiles: positiveInteger(2000).meta({

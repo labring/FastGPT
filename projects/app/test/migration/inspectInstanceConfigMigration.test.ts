@@ -23,7 +23,7 @@ vi.mock('@fastgpt/service/common/system/config/schema', () => ({
   }
 }));
 
-import { inspectInstanceConfigMigration } from '@/migration/tasks/4180/20260928_migrate_instance_configs/service';
+import { inspectInstanceConfigMigration } from '@/migration/tasks/4180/20261116_migrate_system_configs/service';
 
 describe('inspectInstanceConfigMigration', () => {
   beforeEach(() => {

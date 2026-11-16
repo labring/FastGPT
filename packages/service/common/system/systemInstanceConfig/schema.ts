@@ -1,9 +1,11 @@
 import {
   SYSTEM_INSTANCE_CONFIG_DOMAINS,
+  SYSTEM_INSTANCE_CONFIG_SCOPES,
   SYSTEM_INSTANCE_CONFIG_SCHEMA_VERSION,
   type SystemInstanceConfigDomainKey,
   resolveDomainEffectiveConfig
 } from '@fastgpt/global/common/system/config/schema';
+import { systemInstanceConfigScopeSchemaMap } from '@fastgpt/global/common/system/config/scopes';
 import type { SystemInstanceDomainDocumentType } from '@fastgpt/global/common/system/config/type';
 import { connectionMongo, getMongoModel, defineIndex } from '../../mongo';
 
@@ -30,7 +32,8 @@ const systemInstanceConfigUpdatedBySchema = new Schema(
 
 /**
  * 实例级运行配置持久化模型：按 Domain 存储为独立文档，通过 domain 唯一索引定位。
- * _id 由 MongoDB 自动生成 ObjectId，overrides 字段仅存储相对于代码内置默认值的稀疏增量。
+ * _id 由 MongoDB 自动生成 ObjectId，业务域 overrides 保存稀疏增量。
+ * Pro ENV 是同集合内的独占 scope，保存 ENV 派生快照，不向表单或配置文件开放。
  */
 const systemInstanceConfigSchema = new Schema(
   {
@@ -38,7 +41,7 @@ const systemInstanceConfigSchema = new Schema(
       type: String,
       required: true,
       immutable: true,
-      enum: SYSTEM_INSTANCE_CONFIG_DOMAINS
+      enum: SYSTEM_INSTANCE_CONFIG_SCOPES
     },
     schemaVersion: {
       type: Number,
@@ -61,7 +64,7 @@ const systemInstanceConfigSchema = new Schema(
       default: () => ({}),
       validate: {
         validator: function (this: any, value: unknown) {
-          const domain: SystemInstanceConfigDomainKey | undefined =
+          const domain: string | undefined =
             (typeof this?.domain === 'string' ? this.domain : undefined) ??
             (typeof this?.getFilter === 'function' && typeof this.getFilter()?.domain === 'string'
               ? this.getFilter()?.domain
@@ -75,12 +78,23 @@ const systemInstanceConfigSchema = new Schema(
               ? this._id
               : undefined);
 
-          if (!domain || !SYSTEM_INSTANCE_CONFIG_DOMAINS.includes(domain)) {
+          if (domain && Object.hasOwn(systemInstanceConfigScopeSchemaMap, domain)) {
+            return systemInstanceConfigScopeSchemaMap[
+              domain as keyof typeof systemInstanceConfigScopeSchemaMap
+            ].safeParse(value).success;
+          }
+          if (
+            !domain ||
+            !SYSTEM_INSTANCE_CONFIG_DOMAINS.includes(domain as SystemInstanceConfigDomainKey)
+          ) {
             return false;
           }
 
           try {
-            resolveDomainEffectiveConfig({ domain, overrides: value });
+            resolveDomainEffectiveConfig({
+              domain: domain as SystemInstanceConfigDomainKey,
+              overrides: value
+            });
             return true;
           } catch {
             return false;
@@ -105,7 +119,10 @@ const systemInstanceConfigSchema = new Schema(
     timestamps: true,
     minimize: false,
     strict: 'throw',
-    versionKey: false
+    versionKey: false,
+    // 覆盖连接串的副本读取偏好，让运行时、管理端及迁移读到同一主库配置。
+    read: 'primary',
+    writeConcern: { w: 'majority' }
   }
 );
 

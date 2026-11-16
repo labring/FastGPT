@@ -7,12 +7,14 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   aggregateRecordsToTimelinePoints,
   checkAndRunModelStatusProbe,
+  getModelStatusProbeConfig,
   probeModelStatus,
   runManualModelStatusProbe,
-  testModelStatusWebhook
+  testModelStatusWebhook,
+  updateModelStatusProbeConfig
 } from '../../../../core/ai/modelStatus/service';
 import { MongoModelStatusProbeRecord } from '../../../../core/ai/modelStatus/schema';
-import { MongoSystemConfigs } from '../../../../common/system/config/schema';
+import { MongoSystemInstanceConfig } from '../../../../common/system/systemInstanceConfig/schema';
 import * as modelStatusService from '../../../../core/ai/modelStatus/service';
 import { MODEL_TEST_TIMEOUT_MS } from '../../../../core/ai/model/test';
 
@@ -190,17 +192,87 @@ describe('aggregateRecordsToTimelinePoints', () => {
   });
 });
 
+describe('model status probe configuration', () => {
+  it('returns defaults for missing or invalid stored configuration', async () => {
+    expect(await getModelStatusProbeConfig()).toEqual({
+      enabled: false,
+      intervalMinutes: 5,
+      webhookTokenConfigured: false
+    });
+
+    // 模拟历史迁移留下的异常值，确认运行时仍安全降级。
+    await MongoSystemInstanceConfig.collection.insertOne({
+      domain: 'modelStatusProbe',
+      overrides: { enabled: true, intervalMinutes: 1 },
+      revision: 1
+    } as any);
+    expect(await getModelStatusProbeConfig()).toEqual({
+      enabled: false,
+      intervalMinutes: 5,
+      webhookTokenConfigured: false
+    });
+  });
+
+  it('upserts one record, preserves the stored token, and increments revision', async () => {
+    await updateModelStatusProbeConfig({
+      enabled: true,
+      intervalMinutes: 10,
+      webhookUrl: 'https://example.com/hook',
+      webhookToken: 'stored-token',
+      clearWebhookToken: false
+    });
+    const first = await MongoSystemInstanceConfig.findOne({ domain: 'modelStatusProbe' }).lean();
+    expect(first).toMatchObject({
+      revision: 1,
+      overrides: {
+        enabled: true,
+        intervalMinutes: 10,
+        webhookUrl: 'https://example.com/hook',
+        webhookToken: 'stored-token'
+      }
+    });
+
+    expect(
+      await updateModelStatusProbeConfig({
+        enabled: false,
+        intervalMinutes: 15,
+        clearWebhookToken: false
+      })
+    ).toEqual({
+      enabled: false,
+      intervalMinutes: 15,
+      webhookUrl: 'https://example.com/hook',
+      webhookTokenConfigured: true
+    });
+    const second = await MongoSystemInstanceConfig.findOne({ domain: 'modelStatusProbe' }).lean();
+    expect(second).toMatchObject({
+      _id: first?._id,
+      revision: 2,
+      overrides: { enabled: false, intervalMinutes: 15, webhookToken: 'stored-token' }
+    });
+    expect(await MongoSystemInstanceConfig.countDocuments({ domain: 'modelStatusProbe' })).toBe(1);
+
+    await updateModelStatusProbeConfig({
+      enabled: false,
+      intervalMinutes: 5,
+      webhookUrl: '',
+      clearWebhookToken: true
+    });
+    const cleared = await MongoSystemInstanceConfig.findOne({ domain: 'modelStatusProbe' }).lean();
+    expect(cleared?.revision).toBe(3);
+    expect(cleared?.overrides).toEqual({ enabled: false, intervalMinutes: 5 });
+  });
+});
+
 describe('checkAndRunModelStatusProbe', () => {
   afterEach(() => {
     vi.restoreAllMocks();
   });
 
   it('does not run probe if disabled', async () => {
-    vi.spyOn(MongoSystemConfigs, 'findOne').mockReturnValue({
-      sort: vi.fn().mockReturnValue({
-        lean: vi.fn().mockResolvedValue({
-          value: { enabled: false, intervalMinutes: 5 }
-        })
+    vi.spyOn(MongoSystemInstanceConfig, 'findOne').mockReturnValue({
+      lean: vi.fn().mockResolvedValue({
+        overrides: { enabled: false, intervalMinutes: 5 }
       })
     } as any);
     const runSpy = vi.spyOn(modelStatusService, 'runModelStatusProbe');
@@ -212,11 +284,9 @@ describe('checkAndRunModelStatusProbe', () => {
   });
 
   it('does not run probe if minute does not match interval', async () => {
-    vi.spyOn(MongoSystemConfigs, 'findOne').mockReturnValue({
-      sort: vi.fn().mockReturnValue({
-        lean: vi.fn().mockResolvedValue({
-          value: { enabled: true, intervalMinutes: 5 }
-        })
+    vi.spyOn(MongoSystemInstanceConfig, 'findOne').mockReturnValue({
+      lean: vi.fn().mockResolvedValue({
+        overrides: { enabled: true, intervalMinutes: 5 }
       })
     } as any);
     const runSpy = vi.spyOn(modelStatusService, 'runModelStatusProbe');
@@ -254,21 +324,17 @@ describe('testModelStatusWebhook', () => {
   });
 
   it('throws UserError when webhookUrl is not provided and not configured', async () => {
-    vi.spyOn(MongoSystemConfigs, 'findOne').mockReturnValue({
-      sort: vi.fn().mockReturnValue({
-        lean: vi.fn().mockResolvedValue(null)
-      })
+    vi.spyOn(MongoSystemInstanceConfig, 'findOne').mockReturnValue({
+      lean: vi.fn().mockResolvedValue(null)
     } as any);
 
     await expect(testModelStatusWebhook()).rejects.toThrowError(UserError);
   });
 
   it('sends one error and one recovered message sequentially with bearer token', async () => {
-    vi.spyOn(MongoSystemConfigs, 'findOne').mockReturnValue({
-      sort: vi.fn().mockReturnValue({
-        lean: vi.fn().mockResolvedValue({
-          value: { enabled: true, intervalMinutes: 5, webhookToken: 'stored-token' }
-        })
+    vi.spyOn(MongoSystemInstanceConfig, 'findOne').mockReturnValue({
+      lean: vi.fn().mockResolvedValue({
+        overrides: { enabled: true, intervalMinutes: 5, webhookToken: 'stored-token' }
       })
     } as any);
 
@@ -305,10 +371,8 @@ describe('testModelStatusWebhook', () => {
   });
 
   it('throws UserError if webhook returns non-2xx status', async () => {
-    vi.spyOn(MongoSystemConfigs, 'findOne').mockReturnValue({
-      sort: vi.fn().mockReturnValue({
-        lean: vi.fn().mockResolvedValue(null)
-      })
+    vi.spyOn(MongoSystemInstanceConfig, 'findOne').mockReturnValue({
+      lean: vi.fn().mockResolvedValue(null)
     } as any);
 
     const fetchMock = vi.fn().mockResolvedValue({

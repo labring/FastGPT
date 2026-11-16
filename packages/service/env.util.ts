@@ -1,7 +1,6 @@
 import type { SandboxProviderType } from '@fastgpt-sdk/sandbox-adapter';
 import { agentSandboxProviderList } from '@fastgpt/global/core/ai/sandbox/constants';
-import { isHttpUrl } from '@fastgpt/global/common/string/url';
-import z from 'zod';
+import type z from 'zod';
 import type { StorageVendorSchema } from './env.const';
 
 const TEST_INVOKE_TOKEN_SECRET = 'fastgpt_test_invoke_token_secret_32';
@@ -13,6 +12,7 @@ const TEST_PRO_TOKEN = 'fastgpt_test_pro_token_32_chars_min';
  */
 export const getRuntimeEnv = (): NodeJS.ProcessEnv => ({
   ...process.env,
+  // 与 Git 展示使用相同的版本边界：只按 PRO_URL 判断，不读取 License；开源版忽略原值。
   SHOW_OUTLINK_BRAND: process.env.PRO_URL ? process.env.SHOW_OUTLINK_BRAND : 'true',
   INVOKE_TOKEN_SECRET:
     process.env.INVOKE_TOKEN_SECRET ??
@@ -38,65 +38,10 @@ export const validateS3Env = (env: {
 };
 
 /* ===== sandbox ===== */
-export const AgentSandboxProxyUrlSchema = z.string().refine((url) => /^wss?:\/\//.test(url), {
-  message: 'AGENT_SANDBOX_PROXY_URL must start with ws:// or wss://'
-});
-export const AgentSandboxPreviewProxyUrlSchema = z.string().refine(isHttpUrl, {
-  message: 'AGENT_SANDBOX_PREVIEW_PROXY_URL must start with http:// or https://'
-});
 export const isAgentSandboxProvider = (
   provider: string | undefined
 ): provider is SandboxProviderType =>
   agentSandboxProviderList.includes(provider as SandboxProviderType);
-
-/* ===== Sandbox proxy ===== */
-const agentSandboxProxyRequiredEnvKeys = [
-  'AGENT_SANDBOX_PROXY_SECRET',
-  'AGENT_SANDBOX_PROXY_URL',
-  'AGENT_SANDBOX_PREVIEW_PROXY_URL'
-] as const;
-/**
- * 校验 FastGPT app 浏览器直连 agent-sandbox-proxy 所需环境变量。
- * provider 必须来自迁移后加载的实例配置，不能再读取已退役的 AGENT_SANDBOX_PROVIDER。
- * 该能力只属于主站 app 的 sandbox editor/proxy 链路，不能放在共享 serviceEnv 中校验，
- * 否则 pro/admin 等只复用服务端能力的项目会被不必要的 proxy 配置阻塞。
- */
-export const validateAgentSandboxProxyEnv = (provider: string): void => {
-  if (!agentSandboxProviderList.includes(provider as (typeof agentSandboxProviderList)[number])) {
-    return;
-  }
-
-  const missingAgentSandboxProxyEnvKeys = agentSandboxProxyRequiredEnvKeys.filter(
-    (key) => !process.env[key]
-  );
-  if (missingAgentSandboxProxyEnvKeys.length === 0) {
-    return;
-  }
-
-  throw new Error(
-    `Invalid Agent Sandbox proxy environment variables: ${missingAgentSandboxProxyEnvKeys.join(
-      ', '
-    )} are required when the Agent Sandbox provider is ${provider}.`
-  );
-};
-
-/**
- * 校验复用 Sandbox 文件预览能力的服务所需环境变量。
- * Pro Admin 不提供 sandbox editor/proxy 链路，因此只要求文件预览代理地址。
- */
-export const validateAgentSandboxPreviewProxyEnv = (provider: string): void => {
-  if (!agentSandboxProviderList.includes(provider as (typeof agentSandboxProviderList)[number])) {
-    return;
-  }
-
-  if (process.env.AGENT_SANDBOX_PREVIEW_PROXY_URL) {
-    return;
-  }
-
-  throw new Error(
-    `Invalid Agent Sandbox preview proxy environment variable: AGENT_SANDBOX_PREVIEW_PROXY_URL is required when the Agent Sandbox provider is ${provider}.`
-  );
-};
 
 /**
  * 校验 Agent 用户初始化环境变量。

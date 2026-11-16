@@ -6,7 +6,7 @@ import dns from 'dns/promises';
 import zlib from 'node:zlib';
 import { createProxyAxios, type SafeAxiosRequestConfig } from '../../../common/api/axios';
 import { PRIVATE_URL_TEXT } from '../../../common/system/utils';
-import { serviceAxiosMaxContentLength } from '../../../common/system/constants';
+import { getServiceAxiosMaxContentLength } from '../../../common/system/constants';
 
 type AxiosRequestConfig = {
   timeout?: number;
@@ -20,6 +20,7 @@ type AxiosRequestConfig = {
 
 describe('axios.ts', () => {
   const originalCheckInternalIp = getTestInstanceConfig().security.checkInternalIp;
+  const originalResponseLimit = getTestInstanceConfig().resource.serviceAxiosMaxContentLength;
   const proxyEnvKeys = [
     'HTTP_PROXY',
     'HTTPS_PROXY',
@@ -44,6 +45,7 @@ describe('axios.ts', () => {
 
   afterEach(() => {
     getTestInstanceConfig().security.checkInternalIp = originalCheckInternalIp;
+    getTestInstanceConfig().resource.serviceAxiosMaxContentLength = originalResponseLimit;
     vi.restoreAllMocks();
     for (const key of proxyEnvKeys) {
       const value = originalProxyEnv[key];
@@ -599,8 +601,23 @@ describe('axios.ts', () => {
       await instance.get('https://example.com/api');
 
       expect(adapter).toHaveBeenCalledWith(
-        expect.objectContaining({ maxContentLength: serviceAxiosMaxContentLength })
+        expect.objectContaining({ maxContentLength: getServiceAxiosMaxContentLength() })
       );
+    });
+
+    it('已创建的客户端按请求读取更新后的实例上限，并保留零字节语义', async () => {
+      clearProxyEnv();
+      mockPublicDns();
+      const adapter = createAdapter();
+      const instance = createProxyAxios({ adapter });
+
+      for (const limit of [7, 11, 0]) {
+        getTestInstanceConfig().resource.serviceAxiosMaxContentLength = limit;
+        await instance.get('https://example.com/api');
+        expect(adapter).toHaveBeenLastCalledWith(
+          expect.objectContaining({ maxContentLength: limit * 1024 * 1024 })
+        );
+      }
     });
 
     it('流式响应未显式限制时应该保留 axios 默认值', async () => {

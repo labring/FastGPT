@@ -32,11 +32,10 @@ sources:
   - "projects/app/src/migration/startup.ts"
   - "projects/app/src/migration/entity.ts"
   - "projects/app/src/migration/mongoSchema.ts"
-  - "projects/app/src/migration/tasks/4180/20260928_migrate_instance_configs/index.ts"
-  - "projects/app/src/migration/tasks/4180/20260928_migrate_instance_configs/service.ts"
-  - "projects/app/src/migration/tasks/4180/20260928_migrate_instance_configs/env.ts"
-  - "projects/app/src/migration/tasks/4180/20260929_cleanup_instance_config_deprecated_fields/index.ts"
-  - "projects/app/src/migration/tasks/4180/20260929_cleanup_instance_config_deprecated_fields/service.ts"
+  - "projects/app/src/migration/tasks/4180/20261116_migrate_system_configs/index.ts"
+  - "projects/app/src/migration/tasks/4180/20261116_migrate_system_configs/service.ts"
+  - "projects/app/src/migration/tasks/4180/20261116_migrate_system_configs/env.ts"
+  - "projects/app/src/migration/tasks/4180/20261116_migrate_system_configs/cleanup.ts"
   - "projects/app/src/instrumentation-node.ts"
   - "projects/app/src/service/common/system/index.ts"
   - "packages/service/common/system/systemInstanceConfig/controller.ts"
@@ -48,8 +47,8 @@ sources:
   - "projects/app/src/pages/api/admin/migrations/list.ts"
   - "projects/app/src/pages/api/admin/migrations/retry.ts"
   - "projects/app/src/pages/api/admin/migrations/failedRecords.ts"
-  - "projects/app/test/migration/tasks/4180/20260928_migrate_instance_configs/progress.test.ts"
-  - "projects/app/test/migration/tasks/4180/20260929_cleanup_instance_config_deprecated_fields/service.test.ts"
+  - "projects/app/test/migration/tasks/4180/20261116_migrate_system_configs/progress.test.ts"
+  - "projects/app/test/migration/tasks/4180/20261116_migrate_system_configs/cleanup.test.ts"
 routes:
   - "GET /api/admin/migrations/list"
   - "POST /api/admin/migrations/retry"
@@ -88,7 +87,7 @@ baseline: "27d88d71f44614d89aef7d7d04fe65431ea19288"
 | C5 | 异常；performance 跨字段冲突 | 保持已有 `parallelMaxConcurrency=20`，注入 `WORKFLOW_MAX_LOOP_TIMES=10` 与独立的 `PARSE_FILE_TIMEOUT_SECONDS=1200`，启动；查看 performance 的最终值、explicitDefaultPaths、日志告警和 ready 状态。 |
 | C6 | 异常；非法 ENV 与可净化旧值 | 6a：注入 `PASSWORD_LOGIN_MINUTE_LIMIT_COUNT=abc`，启动并记录错误、节点 ready 状态；修复后重启。6b：另一副本注入 `WORKFLOW_PARALLEL_MAX_CONCURRENCY=0`（旧 IntSchema 可读、新 Schema 要求正整数），启动并记录 sanitized warning 与生效值。 |
 | C7 | 边界；废弃字段夹具 | 启动后检查各 domain 的废弃路径是否删除、正常字段是否保留、revision 是否只在删除时递增；再次重启，比较第二次的 revision 和日志。 |
-| C8 | 基础；迁移 UI | 打开 `/admin/migration`，记录两个任务的状态、progress、result；打开失败明细（如有），检查是否只显示字段路径/脱敏信息。 |
+| C8 | 基础；迁移 UI | 打开 `/admin/migration`，记录系统配置迁移任务的状态、progress、result；打开失败明细（如有），检查是否只显示字段路径/脱敏信息。 |
 
 ## 预期结果
 
@@ -96,11 +95,11 @@ baseline: "27d88d71f44614d89aef7d7d04fe65431ea19288"
 
 | 子场景 | 验证方式 | 特有预期 | 证据获取方式 |
 | --- | --- | --- | --- |
-| C1 | DB + log + UI | 11 个文档均存在，revision=1，overrides 为空或仅含非默认 seed，updatedBy.actor=migration；`20260928_migrate_instance_configs` 与 `20260929_cleanup_instance_config_deprecated_fields` 均为 succeeded，inspect/migrate/validate/cleanup/validation 阶段成功；首页和配置页使用默认值正常打开。 | 文档计数/投影、迁移状态、启动日志。 |
+| C1 | DB + log + UI | 11 个文档均存在，revision=1，overrides 为空或仅含非默认 seed，updatedBy.actor=migration；`20261116_migrate_system_configs` 为 succeeded，inspect/migrate/cleanup/backfill/validate 阶段成功；首页和配置页使用默认值正常打开。 | 文档计数/投影、迁移状态、启动日志。 |
 | C2 | DB + log | `site.name=DB-TITLE`，不是 ENV-TITLE；ENV 的 allowedOrigins 转为去重数组；workflow.maxLoopTimes=10；storage.mode=short-redirect；AI Proxy 因 endpoint 存在而 enabled=true；Sangfor provider 被选中且 URL/KEY 来自同一来源组，不拼接旧库 URL+ENV KEY；maxPerTeam 的旧库 `null` 保持“不限量”，不被 ENV 配额覆盖。`subservice` 只保存运行策略，不出现 `plugin.baseUrl/token`、`codeSandbox.token`、`aiProxy.token`；这些 ENV 值不能被迁移或 API 读取回 DB 快照。等于默认值的旧值被剪枝，不写入 overrides。 | 各 domain overrides/effective、旧库与 ENV 对照表、subservice 文档字段集合。 |
 | C3 | DB | `site.name` 保持 ADMIN-SITE；`site.description` 因 explicitDefaultPaths 不被 ENV 补写，保持用户清空后的默认值；auth 只补缺失的 openApiKeyMaxCount，已有 passwordExpiredMonth 不变；发生补写的 domain revision 递增，未补写的不变。 | site/auth 文档、revision 与 explicitDefaultPaths。 |
 | C4 | DB + log | 4a：`skipped=true`，migratedDomainCount=0，validate 仍标记 succeeded，所有 revision 不变。4b：仅缺失 domain 被新建，其余域的 overrides/revision 不变，最终仍为 11 个；进度 current 不超过 total=11。 | 迁移 result、domain 差集、revision。 |
 | C5 | DB + log | 冲突字段 `workflow.maxLoopTimes` 不被写入，保持默认/已有值；`workflow.parallelMaxConcurrency=20` 保留；独立字段 `parse.fileTimeoutSeconds=1200` 正常迁入；冲突路径写入 explicitDefaultPaths，日志有 “skipped conflicting field” 告警；最终 validate 成功、节点 ready，不死循环重启。 | performance 文档、explicitDefaultPaths、日志、ready 时间线。 |
 | C6 | log + DB | 6a：迁移 failed，错误只包含变量名 `PASSWORD_LOGIN_MINUTE_LIMIT_COUNT`，不包含值；节点未 ready；修正后重跑成功。6b：非法 `parallelMaxConcurrency=0` 被剔除并记录 sanitized warning，不阻塞启动，生效值回落到 Schema 默认值；不得把 `0` 留给运行时。 | 失败状态/错误文本、日志、performance 文档。 |
-| C7 | DB + log | 所有声明的废弃路径被删除，正常字段保留；仅实际删除的 domain revision+1，清理任务 validation 通过且无 remaining/invalid；第二次启动不写库、revision 不变。未在 deprecated 列表中的字段不被该任务主动删除；若其导致 strictObject 不可解析，任务必须 failed 并保留现场，而不是静默通过。 | 清理前后文档 diff、revision、validation 状态。 |
-| C8 | UI | 两个任务展示 succeeded/进度/结果；进度 current/total 合理，失败明细只包含路径/阶段/脱敏数据；页面不展示 Token、密钥或请求正文。 | 页面截图、`/api/admin/migrations/list` 与 failedRecords 响应。 |
+| C7 | DB + log | 所有声明的废弃路径被删除，正常字段保留；仅实际删除的 domain revision+1，统一任务 validate 阶段通过且无 remaining/invalid；第二次启动不写库、revision 不变。未在 deprecated 列表中的字段不被该任务主动删除；若其导致 strictObject 不可解析，任务必须 failed 并保留现场，而不是静默通过。 | 清理前后文档 diff、revision、validate 状态。 |
+| C8 | UI | 系统配置迁移任务展示 succeeded/进度/结果；进度 current/total 合理，失败明细只包含路径/阶段/脱敏数据；页面不展示 Token、密钥或请求正文。 | 页面截图、`/api/admin/migrations/list` 与 failedRecords 响应。 |

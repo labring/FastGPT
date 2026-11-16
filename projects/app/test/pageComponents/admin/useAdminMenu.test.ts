@@ -169,6 +169,17 @@ describe('getAdminMenuList', () => {
     ).toBe(true);
   });
 
+  it.each([
+    { isProService: true, enableSaasAdminConfig: true, visible: true },
+    { isProService: true, enableSaasAdminConfig: false, visible: false },
+    { isProService: false, enableSaasAdminConfig: true, visible: false }
+  ])('shows custom domains only for SaaS Pro deployments: %j', (options) => {
+    const menu = getAdminMenuList(options).find((item) => item.value === '/admin/settings/core');
+    expect(
+      menu?.children?.some((item) => item.value === '/admin/settings/custom-domain') ?? false
+    ).toBe(options.visible);
+  });
+
   it('keeps the full pro menu when licenseActive defaults to true', () => {
     // 不传 licenseActive 的调用（如默认参数）保持商业版完整菜单
     const menus = getAdminMenuList({ isProService: true });

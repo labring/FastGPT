@@ -5,12 +5,16 @@ export const appEnv = createEnv({
   server: {
     CHINESE_IP_REDIRECT_URL: UrlSchema.default(''),
 
-    SHOW_GIT: BoolSchema.default(true),
+    SHOW_GIT: BoolSchema.default(false),
 
     DISABLE_MARKETPLACE: BoolSchema.default(false)
   },
   emptyStringAsUndefined: true,
-  runtimeEnv: process.env,
+  runtimeEnv: {
+    ...process.env,
+    // 开源版固定展示 Git 信息，不读取或校验商业版专用开关。
+    SHOW_GIT: process.env.PRO_URL ? process.env.SHOW_GIT : undefined
+  },
   onValidationError(issues) {
     const details = issues
       .map((issue) => {

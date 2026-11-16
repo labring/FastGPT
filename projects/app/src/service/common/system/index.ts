@@ -25,7 +25,10 @@ import type {
 import { isProVersion } from '@fastgpt/service/common/system/constants';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { refreshLLMRequestRecordTTL } from '@fastgpt/service/core/ai/record/service';
-import { getAgentSandboxSkillMaxBytes } from '@fastgpt/service/core/ai/sandbox/config';
+import {
+  getAgentSandboxSkillMaxBytes,
+  getAgentSandboxProxyConfig
+} from '@fastgpt/service/core/ai/sandbox/config';
 import { serviceEnv } from '@fastgpt/service/env';
 import { appEnv } from '@/env';
 import { pluginTagList } from '@fastgpt/global/sdk/fastgpt-plugin';
@@ -40,6 +43,7 @@ import { isCodeSandboxConfigured } from '@fastgpt/service/thirdProvider/codeSand
 import { isValidServiceBaseUrl } from '@fastgpt/global/common/string/url';
 import {
   buildAuthMethodProjection,
+  buildCustomDomainFeConfig,
   buildOauthFeConfig,
   buildPayConfig,
   hasPayChannel
@@ -141,6 +145,7 @@ async function getPluginRemoteDebugEnabled() {
 }
 
 let initConfigQueue: Promise<void> = Promise.resolve();
+let storageRefreshPending = false;
 
 /**
  * 重新加载并应用全站系统配置。
@@ -162,7 +167,7 @@ async function doInitSystemConfig({
   refreshLLMRequestRecordTTL: boolean;
 }) {
   const [
-    { fastgptConfig, fastgptConfigTime, licenseData, licenseUpdateTime },
+    { fastgptConfig, fastgptConfigTime, licenseData, licenseUpdateTime, proEnvUpdateTime },
     pluginRemoteDebug,
     instanceConfig
   ] = await Promise.all([
@@ -195,7 +200,7 @@ async function doInitSystemConfig({
   const payConfig = buildPayConfig(instanceConfig.commercial);
   const authMethods = buildAuthMethodProjection({
     auth: instanceConfig.auth,
-    legacyRegisterMethods: fastgptConfig.feConfigs?.register_method
+    legacyRegisterMethods: fastgptConfig.feConfigs?.teamMode === 'sync' ? ['sync'] : []
   });
 
   const config: FastGPTConfigFileType = {
@@ -215,9 +220,8 @@ async function doInitSystemConfig({
       marketplaceUrl: instanceConfig.site.marketplaceUrl,
       navbarItems: instanceConfig.site.navbarItems,
 
-      // 团队模式与 Pro getProTeamMode 共用同一份实例配置；社区版移除该 Pro 字段时
-      // 保留旧库值，避免降级后把历史 multi/sync 模式误判为默认值。
-      teamMode: instanceConfig.auth.teamMode ?? fastgptConfig.feConfigs?.teamMode,
+      // 团队模式由 Pro ENV 控制，Pro 重启时刷新此共享快照；实例 auth.teamMode 不能覆盖。
+      teamMode: fastgptConfig.feConfigs?.teamMode ?? 'single',
       wecomLoginAutoRedirect: instanceConfig.auth.wecomLoginAutoRedirect,
       oauth: buildOauthFeConfig(instanceConfig.auth),
       sso: {
@@ -239,8 +243,6 @@ async function doInitSystemConfig({
       enable_team_plugin_upload: instanceConfig.feature.enableTeamPluginUpload,
       show_openai_account: instanceConfig.feature.showOpenaiAccount,
       enable_team_model: instanceConfig.feature.enableTeamModel,
-      // Pro 保留其 ENV 下发值（默认 false），社区版使用 App ENV（默认 true）。
-      show_git: serviceEnv.PRO_URL ? (fastgptConfig.feConfigs?.show_git ?? false) : appEnv.SHOW_GIT,
       show_dataset_feishu: instanceConfig.feature.showDatasetFeishu,
       show_dataset_yuque: instanceConfig.feature.showDatasetYuque,
       show_dataset_dingtalk: instanceConfig.feature.showDatasetDingtalk,
@@ -271,7 +273,7 @@ async function doInitSystemConfig({
       // 权威数据源：实例配置优先（含已迁入的 ENV 初值及管理员显式清空的空值）
       customApiDomain: instanceConfig.site.customApiDomain,
       customSharePageDomain: instanceConfig.site.customSharePageDomain,
-      customDomain: instanceConfig.site.customDomain,
+      customDomain: buildCustomDomainFeConfig(instanceConfig.site.customDomain),
       botIframeUrl: instanceConfig.site.botIframeUrl,
       scripts: instanceConfig.site.scripts,
       mcpServerProxyEndpoint:
@@ -300,11 +302,11 @@ async function doInitSystemConfig({
       pluginRemoteDebug,
       disableMarketplace: appEnv.DISABLE_MARKETPLACE,
       show_agent_sandbox_free_tip: serviceEnv.AGENT_SANDBOX_SHOW_FREE_TIP,
-      agentSandboxProxyUrl: serviceEnv.AGENT_SANDBOX_PROXY_URL
+      agentSandboxProxyUrl: getAgentSandboxProxyConfig().wsUrl
     }),
-    // 权威数据源：实例配置派生值盖过旧库 systemEnv，旧库仅保留 schema 外扩展键
+    // 内存兼容协议：实例配置与 ENV scope 合成，不回读旧库 systemEnv。
     systemEnv: buildAuthoritativeSystemEnv({
-      legacySystemEnv: fastgptConfig.systemEnv,
+      baseSystemEnv: fastgptConfig.systemEnv,
       instanceConfig
     }),
     subPlans: fastgptConfig.subPlans
@@ -321,13 +323,14 @@ async function doInitSystemConfig({
   const nextSystemInitBufferId = computeSystemInitBufferId({
     instanceVersionTag: getInstanceConfigVersionTag(),
     licenseUpdateTime,
-    subPlansUpdateTime: fastgptConfigTime
+    subPlansUpdateTime: fastgptConfigTime,
+    proEnvUpdateTime
   });
   initFastGPTConfig(config);
   global.systemInitBufferId = nextSystemInitBufferId;
 
   // 启动首次加载时实例配置迁移尚未完成，不能拿 Schema 默认值修改 Mongo TTL 索引；
-  // 迁移后的 reload 以及 Watch/API 触发的普通 reload 才执行 TTL 同步。
+  // 迁移后的 reload 以及轮询/API 触发的普通 reload 才执行 TTL 同步。
   if (shouldRefreshLLMRequestRecordTTL) {
     await refreshLLMRequestRecordTTL();
   }
@@ -335,8 +338,11 @@ async function doInitSystemConfig({
   // 存储运行策略（下载模式 / 公开地址）以实例配置为准，注入后按需重建 S3 bucket。
   // 启动首次调用时全局 bucket 尚未创建，由 instrumentation 的 init-s3-buckets 步骤完成构造。
   const storageConfigChanged = applyRuntimeStorageConfig(instanceConfig.storage);
-  if (storageConfigChanged) {
+  storageRefreshPending ||= storageConfigChanged;
+  if (storageRefreshPending) {
+    // 策略比较标记先于 bucket 构造更新，失败时保留待重建标记，供下轮刷新继续重试。
     initS3Buckets();
+    storageRefreshPending = false;
   }
 
   const { refreshLangfuseTracing } = await import('@fastgpt/service/common/langfuse');

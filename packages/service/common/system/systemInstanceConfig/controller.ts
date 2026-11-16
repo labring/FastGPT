@@ -29,8 +29,6 @@ import type {
   SystemInstanceConfigUpdatedByType
 } from '@fastgpt/global/common/system/config/type';
 import { MongoSystemInstanceConfig } from './schema';
-import { MongoSystemConfigs } from '../config/schema';
-import { SystemConfigsTypeEnum } from '@fastgpt/global/common/system/config/constants';
 import { SubTypeEnum } from '@fastgpt/global/support/wallet/sub/constants';
 import { SubPlanInputSchema, type SubPlanType } from '@fastgpt/global/support/wallet/sub/type';
 import { mongoSessionRun } from '../../mongo/sessionRun';
@@ -147,18 +145,7 @@ export const formatDomainConfigForAdmin = <T extends SystemInstanceConfigDomainK
     isConfigFieldAllowed(`${domain}.${relativeKey}`, edition)
   );
 
-  if (edition === 'pro') {
-    return {
-      domain: result.domain,
-      revision: result.revision,
-      overrides,
-      effectiveConfig,
-      secretKeys: allowedSecretKeys,
-      updatedAt: result.updatedAt,
-      updatedBy: result.updatedBy
-    };
-  }
-
+  // Pro 也只暴露注册字段，避免已退役的兼容字段重新进入管理表单。
   return {
     domain: result.domain,
     revision: result.revision,
@@ -532,86 +519,79 @@ export const batchUpdateDomainConfigs = async ({
   );
 
   // 2. 事务执行阶段：在同一个 session 中执行所有文档的新建、带 revision 限制的更新以及套餐写入
-  return mongoSessionRun(async (session) => {
-    // 事务回调可能由 driver 重试；每次重新收集，避免返回已回滚尝试的 revision 或时间。
-    const results: GetDomainConfigResult<SystemInstanceConfigDomainKey>[] = [];
-    if (normalizedSubPlans !== undefined) {
-      const latestFastgpt = await MongoSystemConfigs.findOne(
-        { type: SystemConfigsTypeEnum.fastgpt },
-        undefined,
-        { session }
-      ).sort({ createTime: -1 });
-
-      await MongoSystemConfigs.create(
-        [
+  return mongoSessionRun(
+    async (session) => {
+      // 事务回调可能由 driver 重试；每次重新收集，避免返回已回滚尝试的 revision 或时间。
+      const results: GetDomainConfigResult<SystemInstanceConfigDomainKey>[] = [];
+      if (normalizedSubPlans !== undefined) {
+        await MongoSystemInstanceConfig.updateOne(
+          { domain: 'subPlans' },
           {
-            type: SystemConfigsTypeEnum.fastgpt,
-            value: {
-              ...(latestFastgpt?.value ?? {}),
-              subPlans: normalizedSubPlans
-            },
-            createTime: new Date()
-          }
-        ],
-        { session, ordered: true }
-      );
-    }
-
-    for (const item of preparedItems) {
-      let updatedDoc;
-      if (!item.existing) {
-        const newDoc = new MongoSystemInstanceConfig({
-          domain: item.domain,
-          revision: 1,
-          overrides: item.cleanOverrides,
-          explicitDefaultPaths: item.explicitDefaultPaths,
-          updatedBy: actor
-        });
-        try {
-          await newDoc.save({ session });
-        } catch (error) {
-          if ((error as { code?: number })?.code === 11000) {
-            throw new ApiHttpError(409, 'Revision conflict: document was concurrently created');
-          }
-          throw error;
-        }
-        updatedDoc = newDoc.toObject();
-      } else {
-        updatedDoc = await MongoSystemInstanceConfig.findOneAndUpdate(
-          { domain: item.domain, revision: item.expectedRevision },
-          {
-            $set: {
-              overrides: item.cleanOverrides,
-              explicitDefaultPaths: item.explicitDefaultPaths,
-              updatedBy: actor,
-              updatedAt: new Date()
-            },
-            $inc: { revision: 1 }
+            $set: { overrides: normalizedSubPlans, updatedBy: actor },
+            $inc: { revision: 1 },
+            $setOnInsert: { schemaVersion: 1, explicitDefaultPaths: [] }
           },
-          { session, new: true, runValidators: false }
-        ).lean();
+          { session, upsert: true, setDefaultsOnInsert: false }
+        );
+      }
 
-        if (!updatedDoc) {
-          throw new ApiHttpError(
-            409,
-            `Revision conflict for domain "${item.domain}": concurrent modification detected`
-          );
+      for (const item of preparedItems) {
+        let updatedDoc;
+        if (!item.existing) {
+          const newDoc = new MongoSystemInstanceConfig({
+            domain: item.domain,
+            revision: 1,
+            overrides: item.cleanOverrides,
+            explicitDefaultPaths: item.explicitDefaultPaths,
+            updatedBy: actor
+          });
+          try {
+            await newDoc.save({ session });
+          } catch (error) {
+            if ((error as { code?: number })?.code === 11000) {
+              throw new ApiHttpError(409, 'Revision conflict: document was concurrently created');
+            }
+            throw error;
+          }
+          updatedDoc = newDoc.toObject();
+        } else {
+          updatedDoc = await MongoSystemInstanceConfig.findOneAndUpdate(
+            { domain: item.domain, revision: item.expectedRevision },
+            {
+              $set: {
+                overrides: item.cleanOverrides,
+                explicitDefaultPaths: item.explicitDefaultPaths,
+                updatedBy: actor,
+                updatedAt: new Date()
+              },
+              $inc: { revision: 1 }
+            },
+            { session, new: true, runValidators: false }
+          ).lean();
+
+          if (!updatedDoc) {
+            throw new ApiHttpError(
+              409,
+              `Revision conflict for domain "${item.domain}": concurrent modification detected`
+            );
+          }
+        }
+        // 自动补充的 commercial 更新只用于套餐写入加锁，不属于调用方请求的域，不回传。
+        if (!item.syntheticCommercial) {
+          results.push({
+            domain: item.domain,
+            revision: updatedDoc.revision,
+            overrides: item.cleanOverrides,
+            effectiveConfig: item.effectiveConfig,
+            updatedAt: updatedDoc.updatedAt,
+            updatedBy: updatedDoc.updatedBy
+          });
         }
       }
-      // 自动补充的 commercial 更新只用于套餐写入加锁，不属于调用方请求的域，不回传。
-      if (!item.syntheticCommercial) {
-        results.push({
-          domain: item.domain,
-          revision: updatedDoc.revision,
-          overrides: item.cleanOverrides,
-          effectiveConfig: item.effectiveConfig,
-          updatedAt: updatedDoc.updatedAt,
-          updatedBy: updatedDoc.updatedBy
-        });
-      }
-    }
-    return results;
-  });
+      return results;
+    },
+    { readPreference: 'primary', writeConcern: { w: 'majority' } }
+  );
 };
 
 /**
@@ -622,17 +602,17 @@ export const batchUpdateDomainConfigs = async ({
  * 只按「Schema 默认值 + 数据库 overrides」合成，不再拼接 ENV；旧 ENV 只在首次迁移时写入。
  */
 export const getSystemInstanceConfigSnapshot = async ({
-  readPreference
+  readPreference = 'primary'
 }: { readPreference?: 'primary' } = {}): Promise<{
   snapshot: SystemInstanceConfig;
   versionTag: string;
 }> => {
-  const query = MongoSystemInstanceConfig.find({});
-  const docs = await (readPreference ? query.read(readPreference) : query).lean();
+  const docs = await MongoSystemInstanceConfig.find({}).read(readPreference).lean();
 
   const versionTag =
     docs
-      .map((d) => `${(d as any).domain ?? d._id}:${d.revision ?? 0}`)
+      // 同 revision 删除重建也是新配置；与轮询元数据一样纳入文档身份，避免前端缓存标识不变。
+      .map((d) => `${(d as any).domain ?? d._id}:${d._id}:${d.revision ?? 0}`)
       .sort()
       .join(';') || '0';
 
@@ -666,7 +646,7 @@ export const getSystemInstanceConfigSnapshot = async ({
  * 重新加载并刷新系统实例配置内存快照。
  * 供服务启动、Admin API 保存后以及集群变更通知时调用。
  *
- * App 的 `initSystemConfig` 还需合并 `MongoSystemConfigs` / 插件能力后再统一发布 `feConfigs`，
+ * App 的 `initSystemConfig` 还需合并 辅助 scope / 插件能力后再统一发布 `feConfigs`，
  * 因此传入 `updateInitBufferId: false`，避免提前旋转 `systemInitBufferId` 造成“新标识 + 旧页面配置”竞态。
  */
 export const reloadSystemInstanceConfig = async (options?: {

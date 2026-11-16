@@ -6,8 +6,7 @@ import {
 } from '../../../../core/plugin/moderation/service';
 import * as remote from '../../../../thirdProvider/fastgptPlugin/moderation';
 import { MongoSystemModerationPlugin } from '../../../../core/plugin/moderation/schema';
-import { MongoSystemConfigs } from '../../../../common/system/config/schema';
-import { SystemConfigsTypeEnum } from '@fastgpt/global/common/system/config/constants';
+import { MongoSystemInstanceConfig } from '../../../../common/system/systemInstanceConfig/schema';
 import { encryptSecret } from '../../../../common/secret/aes256gcm';
 import { ModerationSecretMaskedValue } from '@fastgpt/global/core/plugin/moderation/constants';
 
@@ -183,7 +182,7 @@ describe('moderation configuration save and reload', () => {
     expect(list[0].source).toBe('system');
   });
 
-  it('enables plugin via real MongoSystemConfigs upsert without operator path conflicts', async () => {
+  it('enables plugin via instance configuration upsert without operator path conflicts', async () => {
     vi.spyOn(remote, 'getModerationPluginDetail').mockResolvedValue(detail);
     const { item: saved } = await saveModerationConfig({
       pluginId: detail.pluginId,
@@ -193,44 +192,25 @@ describe('moderation configuration save and reload', () => {
     expect(saved.enabled).toBe(true);
   });
 
-  it('preserves latest moderation policy values and converges duplicate policy records when enabling a plugin', async () => {
+  it('preserves the stored moderation policy and increments its revision when enabling a plugin', async () => {
     vi.spyOn(remote, 'getModerationPluginDetail').mockResolvedValue(detail);
-    await MongoSystemConfigs.create([
-      {
-        type: SystemConfigsTypeEnum.moderationPolicy,
-        createTime: new Date('2026-01-01T00:00:00.000Z'),
-        value: {
-          enabled: false,
-          hooks: {
-            userInput: false,
-            modelInput: false,
-            finalOutput: false
-          },
-          strategy: {
-            streamInterval: 100,
-            suspectedRiskAction: 'passAndLog',
-            serviceExceptionAction: 'pass'
-          }
-        }
-      },
-      {
-        type: SystemConfigsTypeEnum.moderationPolicy,
-        createTime: new Date('2026-01-02T00:00:00.000Z'),
-        value: {
-          enabled: true,
-          hooks: {
-            userInput: true,
-            modelInput: true,
-            finalOutput: false
-          },
-          strategy: {
-            streamInterval: 25,
-            suspectedRiskAction: 'blockAndLog',
-            serviceExceptionAction: 'block'
-          }
+    await MongoSystemInstanceConfig.create({
+      domain: 'moderationPolicy',
+      revision: 7,
+      overrides: {
+        enabled: true,
+        hooks: {
+          userInput: true,
+          modelInput: true,
+          finalOutput: false
+        },
+        strategy: {
+          streamInterval: 25,
+          suspectedRiskAction: 'blockAndLog',
+          serviceExceptionAction: 'block'
         }
       }
-    ]);
+    });
 
     await saveModerationConfig({
       pluginId: detail.pluginId,
@@ -253,8 +233,8 @@ describe('moderation configuration save and reload', () => {
         serviceExceptionAction: 'block'
       }
     });
-    expect(
-      await MongoSystemConfigs.countDocuments({ type: SystemConfigsTypeEnum.moderationPolicy })
-    ).toBe(1);
+    const record = await MongoSystemInstanceConfig.findOne({ domain: 'moderationPolicy' }).lean();
+    expect(record).toMatchObject({ revision: 8, overrides: { activePluginId: detail.pluginId } });
+    expect(await MongoSystemInstanceConfig.countDocuments({ domain: 'moderationPolicy' })).toBe(1);
   });
 });

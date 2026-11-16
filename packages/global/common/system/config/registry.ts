@@ -92,7 +92,24 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
       'customDomain.domain.tencent',
       'customDomain.domain.volcengine'
     ],
-    options: { edition: 'all', secret: false, applyMode: 'live', isSaasOnly: true }
+    options: { edition: 'pro', secret: false, applyMode: 'live', isSaasOnly: true }
+  }),
+  ...createEntries({
+    section: 'site',
+    keys: ['customDomain.kc.aliyun', 'customDomain.kc.tencent', 'customDomain.kc.volcengine'],
+    options: { edition: 'pro', secret: true, applyMode: 'live', isSaasOnly: true }
+  }),
+  ...createEntries({
+    section: 'site',
+    keys: [
+      'customDomain.issuerServiceName.aliyun',
+      'customDomain.issuerServiceName.tencent',
+      'customDomain.issuerServiceName.volcengine',
+      'customDomain.nginxServiceName.aliyun',
+      'customDomain.nginxServiceName.tencent',
+      'customDomain.nginxServiceName.volcengine'
+    ],
+    options: { edition: 'pro', secret: false, applyMode: 'live', isSaasOnly: true }
   }),
   ...createEntries({
     section: 'auth',
@@ -101,7 +118,7 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
   }),
   ...createEntries({
     section: 'auth',
-    keys: ['teamMode', 'fastLogin'],
+    keys: ['fastLogin'],
     options: {
       edition: 'pro',
       secret: false,
@@ -178,6 +195,7 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
     keys: [
       'checkInternalIp',
       'csrfEnabled',
+      'authCookieSecure',
       'passwordLoginMinuteLimitCount',
       'maxLoginSession',
       'allowedOrigins',
@@ -278,6 +296,16 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
   }),
   ...createEntries({
     section: 'resource',
+    keys: ['serviceAxiosMaxContentLength'],
+    options: { edition: 'all', secret: false, applyMode: 'live' }
+  }),
+  ...createEntries({
+    section: 'resource',
+    keys: ['evaluationMaxRows'],
+    options: { edition: 'pro', secret: false, applyMode: 'live' }
+  }),
+  ...createEntries({
+    section: 'resource',
     keys: [
       'datasetArchive.maxFiles',
       'datasetArchive.maxSourceSizeMiB',
@@ -312,6 +340,7 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
   ...createEntries({
     section: 'storage',
     keys: [
+      'fileDomain',
       'downloadMode',
       'externalEndpoint',
       'cdnEndpoint',
@@ -368,6 +397,24 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
     section: 'subservice',
     keys: ['codeSandbox.token'],
     options: { edition: 'all', secret: true, applyMode: 'reload' }
+  }),
+  ...createEntries({
+    section: 'subservice',
+    keys: [
+      'agentSandbox.opensandbox.cpuOvercommitFactor',
+      'agentSandbox.opensandbox.memoryOvercommitFactor'
+    ],
+    options: { edition: 'pro', secret: false, applyMode: 'live' }
+  }),
+  ...createEntries({
+    section: 'subservice',
+    keys: ['agentSandbox.proxy.wsUrl', 'agentSandbox.proxy.previewUrl'],
+    options: { edition: 'pro', secret: false, applyMode: 'reload' }
+  }),
+  ...createEntries({
+    section: 'subservice',
+    keys: ['agentSandbox.proxy.secret'],
+    options: { edition: 'pro', secret: true, applyMode: 'reload' }
   }),
   ...createEntries({
     section: 'subservice',

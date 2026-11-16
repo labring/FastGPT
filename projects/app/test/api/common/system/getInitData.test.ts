@@ -10,6 +10,7 @@ import { ApiRequestInputParseError } from '@fastgpt/service/common/zod/requestPa
 import { ZodError } from 'zod';
 import { serviceEnv } from '@fastgpt/service/env';
 import { postHealth } from '@fastgpt/service/thirdProvider/fastgptPro/api';
+import { appEnv } from '@/env';
 
 vi.mock('@fastgpt/service/thirdProvider/fastgptPro/api', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@fastgpt/service/thirdProvider/fastgptPro/api')>()),
@@ -18,10 +19,12 @@ vi.mock('@fastgpt/service/thirdProvider/fastgptPro/api', async (importOriginal) 
 
 const originalShowRunDetail = serviceEnv.AUXILIARY_GENERATION_SHOW_RUN_DETAIL;
 const originalProUrl = serviceEnv.PRO_URL;
+const originalShowGit = appEnv.SHOW_GIT;
 
 // 公开字段和值只维护一份；精确响应断言同时验证保留值和顶层、嵌套字段过滤。
 const publicConfig = {
   systemTitle: 'Custom FastGPT',
+  systemDescription: 'Custom site description for anonymous pages',
   favicon: '/custom.ico',
   scripts: [{ src: 'https://analytics.example.com/script.js' }],
   isPlus: true,
@@ -73,6 +76,8 @@ const expectedAuthenticatedConfig = () => ({
   payConfig: { wx: true, alipay: true },
   payFormUrl: 'https://pay.example.com',
   teamMode: 'sync',
+  chineseRedirectUrl: appEnv.CHINESE_IP_REDIRECT_URL,
+  show_git: true,
   showAuxiliaryGenerationRunDetail: false
 });
 
@@ -91,6 +96,7 @@ describe('getInitData anonymous configuration filtering', () => {
     vi.clearAllMocks();
     serviceEnv.AUXILIARY_GENERATION_SHOW_RUN_DETAIL = false;
     serviceEnv.PRO_URL = undefined;
+    appEnv.SHOW_GIT = false;
     global.systemInitBufferId = 'config-1';
     global.systemVersion = '4.17.3';
     global.systemEnv = { ...global.systemEnv, sso: { url: 'https://sso.internal.example.com' } };
@@ -128,6 +134,7 @@ describe('getInitData anonymous configuration filtering', () => {
     global.getSsoConfiguredHandler = originalSsoHandler;
     serviceEnv.AUXILIARY_GENERATION_SHOW_RUN_DETAIL = originalShowRunDetail;
     serviceEnv.PRO_URL = originalProUrl;
+    appEnv.SHOW_GIT = originalShowGit;
     vi.restoreAllMocks();
   });
 
@@ -144,7 +151,7 @@ describe('getInitData anonymous configuration filtering', () => {
 
     expect(code).toBe(200);
     expect(data).toEqual({
-      bufferId: 'unAuth_v10_sso_1_config-1',
+      bufferId: 'unAuth_v11_sso_1_config-1',
       feConfigs: publicConfig
     });
     expect(global.feConfigs).toEqual(originalConfig);
@@ -171,7 +178,7 @@ describe('getInitData anonymous configuration filtering', () => {
     const { code, data } = await Call(handler, {
       auth,
       headers: {},
-      query: { bufferId: 'unAuth_v10_sso_1_config-1' }
+      query: { bufferId: 'unAuth_v11_sso_1_config-1' }
     });
 
     expect(code).toBe(200);
@@ -196,7 +203,6 @@ describe('getInitData anonymous configuration filtering', () => {
   it('uses fresh Pro capabilities on authenticated requests, including cache hits', async () => {
     serviceEnv.PRO_URL = 'http://127.0.0.1:3001';
     const capabilities = {
-      show_git: true,
       show_workorder: false,
       show_enterprise_auth: true,
       showWecomConfig: false
@@ -214,7 +220,6 @@ describe('getInitData anonymous configuration filtering', () => {
         data: 'success',
         auth: true,
         frontendCapabilities: {
-          show_git: false,
           show_workorder: true,
           show_enterprise_auth: false,
           showWecomConfig: true
@@ -225,6 +230,7 @@ describe('getInitData anonymous configuration filtering', () => {
     const cached = await Call(handler, { auth, headers: {}, query: { bufferId: 'config-1' } });
 
     expect(first.data.feConfigs).toMatchObject(capabilities);
+    expect(first.data.feConfigs.show_git).toBe(false);
     expect(cached.data.feConfigs).toMatchObject({
       show_git: false,
       show_workorder: true,
@@ -248,6 +254,23 @@ describe('getInitData anonymous configuration filtering', () => {
     expect(postHealth).not.toHaveBeenCalled();
   });
 
+  it.each([false, true])(
+    'uses App SHOW_GIT=%s without an active license or reachable Pro',
+    async (enabled) => {
+      serviceEnv.PRO_URL = 'https://pro.example.com';
+      appEnv.SHOW_GIT = enabled;
+      global.feConfigs.isPlus = false;
+      global.feConfigs.show_git = !enabled;
+      vi.mocked(postHealth).mockRejectedValue(new Error('unavailable'));
+
+      for (const bufferId of [undefined, 'config-1']) {
+        const result = await Call(handler, { auth, headers: {}, query: { bufferId } });
+        expect(result.code).toBe(200);
+        expect(result.data.feConfigs.show_git).toBe(enabled);
+      }
+    }
+  );
+
   it.each([
     { name: 'connection failure', failure: new Error('unavailable') },
     { name: 'timeout', failure: Object.assign(new Error('timeout'), { code: 'ECONNABORTED' }) },
@@ -261,7 +284,6 @@ describe('getInitData anonymous configuration filtering', () => {
         data: 'success',
         auth: true,
         frontendCapabilities: {
-          show_git: true,
           show_workorder: true,
           show_enterprise_auth: true,
           showWecomConfig: true,
@@ -300,21 +322,22 @@ describe('getInitData anonymous configuration filtering', () => {
     'unAuth_v5_config-1',
     'unAuth_v8_config-1',
     'unAuth_v9_config-old',
+    'unAuth_v10_sso_1_config-1',
     'unAuth_v4_share_config-1'
   ])('refreshes stale or authenticated cache %s with filtered data', async (bufferId) => {
     const { data } = await Call(handler, { headers: {}, query: { bufferId } });
 
-    expect(data.bufferId).toBe('unAuth_v10_sso_1_config-1');
+    expect(data.bufferId).toBe('unAuth_v11_sso_1_config-1');
     expect(data.feConfigs).toEqual(publicConfig);
   });
 
   it('retains the anonymous cache-hit response only for the current policy version', async () => {
     const { data } = await Call(handler, {
       headers: {},
-      query: { bufferId: 'unAuth_v10_sso_1_config-1' }
+      query: { bufferId: 'unAuth_v11_sso_1_config-1' }
     });
 
-    expect(data).toEqual({ bufferId: 'unAuth_v10_sso_1_config-1' });
+    expect(data).toEqual({ bufferId: 'unAuth_v11_sso_1_config-1' });
   });
 
   it.each([
@@ -330,10 +353,10 @@ describe('getInitData anonymous configuration filtering', () => {
     async (referer) => {
       const { data } = await Call(handler, {
         headers: { referer },
-        query: { bufferId: 'unAuth_v10_sso_1_config-1', includeSubPlans: 'true' }
+        query: { bufferId: 'unAuth_v11_sso_1_config-1', includeSubPlans: 'true' }
       });
       expect(data).toEqual({
-        bufferId: 'unAuth_v10_sso_1_config-1',
+        bufferId: 'unAuth_v11_sso_1_config-1',
         subPlans: global.subPlans
       });
     }
@@ -358,6 +381,7 @@ describe('getInitData anonymous configuration filtering', () => {
     {
       name: 'false, zero and empty nested settings without Microsoft',
       config: {
+        systemDescription: '',
         limit: { uploadFileMaxAmount: 0, uploadFileMaxSize: 0 },
         isPlus: false,
         wecomLoginAutoRedirect: false,
@@ -384,7 +408,7 @@ describe('getInitData anonymous configuration filtering', () => {
       headers: { referer: 'https://app.example.com/login' }
     });
 
-    expect(data.bufferId).toBe('unAuth_v10_sso_1_config-1');
+    expect(data.bufferId).toBe('unAuth_v11_sso_1_config-1');
     expect(data.feConfigs).not.toHaveProperty('payConfig');
   });
 
@@ -432,7 +456,7 @@ describe('getInitData anonymous configuration filtering', () => {
     async (includeSubPlans) => {
       const { data } = await Call(handler, { headers: {}, query: { includeSubPlans } });
       expect(data).toEqual({
-        bufferId: 'unAuth_v10_sso_1_config-1',
+        bufferId: 'unAuth_v11_sso_1_config-1',
         feConfigs: publicConfig,
         subPlans: global.subPlans
       });
@@ -598,7 +622,7 @@ describe('getInitData anonymous configuration filtering', () => {
       query: { includeSubPlans: true }
     });
     expect(first.code).toBe(200);
-    expect(first.data.bufferId).toBe('unAuth_v10_sso_1_config-v2');
+    expect(first.data.bufferId).toBe('unAuth_v11_sso_1_config-v2');
     expect(first.data.feConfigs?.systemTitle).toBe('New Title');
     expect(first.data.subPlans).toEqual({ extraDatasetSize: { price: 9 } });
   });
@@ -623,7 +647,7 @@ describe('getInitData anonymous configuration filtering', () => {
     await reloadSystemInstanceConfig({ updateInitBufferId: false });
 
     const duringReload = await Call(handler, { headers: {} });
-    expect(duringReload.data.bufferId).toBe('unAuth_v10_sso_1_v_stable');
+    expect(duringReload.data.bufferId).toBe('unAuth_v11_sso_1_v_stable');
     expect(duringReload.data.feConfigs?.systemTitle).toBe('Title V1');
 
     // 随后 initSystemConfig 在同一同步帧发布新 feConfigs 与新 bufferId，客户端携带旧 bufferId 请求必不命中旧缓存
@@ -634,7 +658,7 @@ describe('getInitData anonymous configuration filtering', () => {
       headers: {},
       query: { bufferId: duringReload.data.bufferId }
     });
-    expect(afterPublish.data.bufferId).toBe('unAuth_v10_sso_1_v_next');
+    expect(afterPublish.data.bufferId).toBe('unAuth_v11_sso_1_v_next');
     expect(afterPublish.data.feConfigs?.systemTitle).toBe('Title V2');
   });
 

@@ -1,7 +1,6 @@
 import { LeaseCache, RedisLeaseUnavailableError } from '@fastgpt/dal/redis/caches';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { getErrText, UserError } from '@fastgpt/global/common/error/utils';
-import { SystemConfigsTypeEnum } from '@fastgpt/global/common/system/config/constants';
 import {
   ModelStatusProbeConfigDefaults,
   ModelStatusProbeConfigSchema,
@@ -25,7 +24,7 @@ import type {
   UpdateModelStatusProbeConfigBody
 } from '@fastgpt/global/openapi/admin/system/model/status';
 import { getLogger, LogCategories } from '../../../common/logger';
-import { MongoSystemConfigs } from '../../../common/system/config/schema';
+import { MongoSystemInstanceConfig } from '../../../common/system/systemInstanceConfig/schema';
 import { MongoUser } from '../../../support/user/schema';
 import { getUserDefaultTeam } from '../../../support/user/team/controller';
 import { getSystemModelHandle } from '../model/catalog/service';
@@ -62,15 +61,11 @@ const manualModelStatusProbeLease = new LeaseCache();
  * 若数据库中不存在或格式校验失败，则安全回退到系统默认配置并记录警告日志。
  */
 const getStoredConfig = async (): Promise<ModelStatusProbeConfig> => {
-  const record = await MongoSystemConfigs.findOne({
-    type: SystemConfigsTypeEnum.modelStatusProbe
-  })
-    .sort({ createTime: -1 })
-    .lean();
+  const record = await MongoSystemInstanceConfig.findOne({ domain: 'modelStatusProbe' }).lean();
 
   const parsed = ModelStatusProbeConfigSchema.safeParse({
     ...ModelStatusProbeConfigDefaults,
-    ...(record?.value ?? {})
+    ...(record?.overrides ?? {})
   });
   if (parsed.success) return parsed.data;
 
@@ -130,11 +125,15 @@ export const updateModelStatusProbeConfig = async (input: UpdateModelStatusProbe
   };
 
   const value = ModelStatusProbeConfigSchema.parse(next);
-  await MongoSystemConfigs.create({
-    type: SystemConfigsTypeEnum.modelStatusProbe,
-    value,
-    createTime: new Date()
-  });
+  await MongoSystemInstanceConfig.updateOne(
+    { domain: 'modelStatusProbe' },
+    {
+      $set: { overrides: value },
+      $inc: { revision: 1 },
+      $setOnInsert: { schemaVersion: 1, explicitDefaultPaths: [] }
+    },
+    { upsert: true, setDefaultsOnInsert: false }
+  );
 
   return toConfigResponse(value);
 };

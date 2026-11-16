@@ -1,9 +1,10 @@
 import { stripUrlTrailingSlash } from '@fastgpt/global/common/string/url';
 import { serviceEnv } from '../../../env';
+import { getStorageFileDomain } from '../config/constants';
 import { S3_ACCESS_LINK_ROUTES } from './constants';
 
 const getS3AccessLinkEndpointUrl = () => {
-  const domain = serviceEnv.FILE_DOMAIN ?? serviceEnv.FE_DOMAIN ?? '';
+  const domain = getStorageFileDomain() || serviceEnv.FE_DOMAIN;
 
   return `${stripUrlTrailingSlash(domain)}${serviceEnv.NEXT_PUBLIC_BASE_URL}`;
 };

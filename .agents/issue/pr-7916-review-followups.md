@@ -25,7 +25,7 @@
 | `show_openai_account` | 新 `feature` 字段 | all | 账号第三方页和账户容器读取；默认 `false` |
 | `enable_team_model` | 新 `feature` 字段 | all | 模型选择和后端禁用逻辑读取；默认 `false` |
 | `customDomain.enable/domain.*` | 新 `site` 字段 | `isSaasOnly` | 旧页面明确标注“SaaS 服务才会用到” |
-| `systemEnv.customDomain.kc/issuer/nginx.*` | ENV | Pro 部署 | Pro 证书/Ingress 基础设施，不进入实例配置 |
+| `systemEnv.customDomain.kc/issuer/nginx.*` | 新 `site.customDomain` 表单字段（独立自定义域名页） | Pro、SaaS-only | 保留旧版表单配置；kubeconfig 为敏感字段，不下发普通前端配置 |
 | `sso.title/icon/autoLogin/disablePasswordForSsoUsers` | 新 `auth.sso` 字段 | pro，按 license `functions.sso` 展示 | 登录页和账号同步仍在使用 |
 | `customPdfParse.price` | `providers.documentParse.customPdf.price` | all | PDF 解析计费挂在解析 Provider 下 |
 | `botIframeUrl` | 新 `site` 字段 | all | 客服助手 iframe 地址 |
@@ -90,7 +90,7 @@
 
 - [x] **A5（原第 5 项，P2）迁移静默剔除/跳过**
   - 已实现：sanitize 和回填冲突都输出结构化路径清单（只含路径，不含值），迁移结果增加跳过数量/域数量/路径文本；管理端迁移结果新增黄色警告区展示路径。默认不阻断升级，便于人工复核。
-  - 位置：`projects/app/src/migration/tasks/4180/20260928_migrate_instance_configs/service.ts`、同目录 `index.ts`、`projects/app/src/pageComponents/admin/config/Migration.tsx`、`packages/web/i18n/*/system_migration.json`
+  - 位置：`projects/app/src/migration/tasks/4180/20261116_migrate_system_configs/service.ts`、同目录 `index.ts`、`projects/app/src/pageComponents/admin/config/Migration.tsx`、`packages/web/i18n/*/system_migration.json`
 
 ### 批次 B：配置来源与旧入口
 
@@ -120,14 +120,14 @@
 - [x] **C1.7（原第 16 项）旧 Pro 钉钉/支付宝类型**：已删除旧 Pro/App 类型和旧支付宝 Notify URL 表单项。
 - [x] **C1.8（原第 17 项）旧 Pro `auth.sms.*_EN`**：已按 D4 标记历史兼容，仅保留迁移读取，新表单不写入。
 - [x] **C1.9（原第 18 项）旧索引同步开关**：已按 D5 清理当前 main 部署模板、生成文件和文档；Pro 当前 Helm chart 同步移除；历史 v4.16 文件也已清理。
-- 统一验收：registry、pageFields、旧类型、表单、`20260929_cleanup_instance_config_deprecated_fields`、相关测试同步；存量 overrides 不因 strict schema 读取失败。
+- 统一验收：registry、pageFields、旧类型、表单、`20261116_migrate_system_configs`、相关测试同步；存量 overrides 不因 strict schema 读取失败。
 
 #### C2. 业务仍在用但没有新配置入口（依赖 D1）
 
 - [x] **C2.1（原第 19 项）`show_workflow_builder`**：已补 `feature` 字段/表单/迁移/App 与 Pro 映射。
 - [x] **C2.2（原第 20 项）`show_openai_account`、`enable_team_model`**：已补 `feature` 字段/表单/迁移/App 与 Pro 映射。
 - [x] **C2.3（原第 21 项）`customDomain.enable/domain.*`**：已补 `site` 字段/表单/迁移/App 与 Pro 映射，按 SaaS-only 展示。
-- [x] **C2.4（原第 22 项）`systemEnv.customDomain.kc/issuer/nginx.*`**：已迁 Pro ENV（CUSTOM_DOMAIN_*），旧值只保留迁移告警，不再被运行时读取。
+- [x] **C2.4（原第 22 项）`systemEnv.customDomain.kc/issuer/nginx.*`**：按最新确认恢复为独立自定义域名表单字段，旧值回填到实例配置；Pro 运行时直接读取，不再使用 CUSTOM_DOMAIN_* ENV。
 - [x] **C2.5（原第 23 项）`sso.title/icon/autoLogin/disablePasswordForSsoUsers`**：已补 `auth.sso` 字段/表单/迁移/App 与 Pro 映射，按 license `functions.sso` 展示。
 - [x] **C2.6（原第 24 项）`customPdfParse.price`**：已补 `providers.documentParse.customPdf.price`，页面、迁移和运行时价格读取均已接入。
 - [x] **C2.7（原第 25 项）`botIframeUrl`**：已补 `site` 字段/表单/迁移/App 与 Pro 映射。

@@ -13,7 +13,6 @@ import { BoolSchema, NumSchema } from '../../../common/zod';
 
 // 能力字段只接受真正的布尔值；错误或旧版本响应不能作为开启能力的依据。
 export const ProFrontendCapabilitiesSchema = FastGPTFeConfigsSchema.pick({
-  show_git: true,
   show_workorder: true,
   show_enterprise_auth: true,
   showWecomConfig: true
@@ -96,7 +95,7 @@ const ClientFeConfigsSchema = FastGPTFeConfigsSchema.partial()
 export const GetSystemInitDataResponseSchema = z.object({
   bufferId: z.string().optional().meta({
     example: 'system-config-20260811',
-    description: '当前系统配置缓存标识；未登录时以 unAuth_v10_sso_ 开头，包含 SSO 能力状态'
+    description: '当前系统配置缓存标识；未登录时以 unAuth_v11_sso_ 开头，包含 SSO 能力状态'
   }),
   feConfigs: ClientFeConfigsSchema.optional().meta({
     description:

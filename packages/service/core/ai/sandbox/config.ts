@@ -21,6 +21,28 @@ const getInstanceAgentSandboxConfig = (): AgentSandboxInstanceConfig =>
 export const getAgentSandboxProvider = (): 'none' | 'sealosdevbox' | 'opensandbox' =>
   getInstanceAgentSandboxConfig().provider;
 
+/** 票据签发、Proxy 反向鉴权和文件预览统一读取同一份实例代理配置。 */
+export const getAgentSandboxProxyConfig = () => getInstanceAgentSandboxConfig().proxy;
+
+/** App 启动前校验代理连接；ENV 仅用于迁移，不能覆盖管理员保存的配置。 */
+export const validateAgentSandboxProxyConfig = (provider: string): void => {
+  if (provider !== 'sealosdevbox' && provider !== 'opensandbox') return;
+
+  const proxy = getAgentSandboxProxyConfig();
+  const missing = (['wsUrl', 'previewUrl', 'secret'] as const).filter((key) => !proxy[key]);
+  if (missing.length > 0) {
+    throw new Error(`Agent Sandbox proxy configuration is missing: ${missing.join(', ')}`);
+  }
+};
+
+/** Pro 只复用文件预览能力，无需浏览器 WebSocket 地址或票据签名密钥。 */
+export const validateAgentSandboxPreviewProxyConfig = (provider: string): void => {
+  if (provider !== 'sealosdevbox' && provider !== 'opensandbox') return;
+  if (!getAgentSandboxProxyConfig().previewUrl) {
+    throw new Error('Agent Sandbox preview proxy configuration is missing');
+  }
+};
+
 /** 实例配置的公共资源与生命周期参数。 */
 export const getAgentSandboxCommonConfig = () => {
   const common = getInstanceAgentSandboxConfig().common;
@@ -60,6 +82,8 @@ export const getAgentSandboxOpenSandboxConfig = () => {
     baseUrl: opensandbox.baseUrl,
     apiKey: opensandbox.apiKey,
     runtime: opensandbox.runtime,
+    cpuOvercommitFactor: opensandbox.cpuOvercommitFactor,
+    memoryOvercommitFactor: opensandbox.memoryOvercommitFactor,
     image: opensandbox.image,
     useServerProxy: opensandbox.useServerProxy,
     volumeManagerUrl: opensandbox.volumeManagerUrl,

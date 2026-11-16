@@ -3,6 +3,7 @@ import React, { useEffect, useMemo } from 'react';
 import {
   SimpleGrid,
   Input,
+  Text,
   NumberInput,
   NumberInputField,
   NumberInputStepper,
@@ -18,14 +19,15 @@ import AdminSettingPage from '@/pageComponents/admin/settings/AdminSettingPage';
 import AdminSettingSection from '@/pageComponents/admin/settings/AdminSettingSection';
 import AdminFormItem from '@/pageComponents/admin/settings/AdminFormItem';
 import AdminSwitchRow from '@/pageComponents/admin/settings/AdminSwitchRow';
+import { isValidServiceBaseUrl } from '@fastgpt/global/common/string/url';
 import { deepMergeConfig } from '@fastgpt/global/common/system/config/merge';
 import type { SettingTOCItem } from '@/pageComponents/admin/settings/AdminSettingTOC';
 import type { SystemInstanceConfigDomainMap } from '@fastgpt/global/common/system/config/schema';
 
 type CoreConfigForm = {
-  teamMode: SystemInstanceConfigDomainMap['auth']['teamMode'];
   agentEngine: SystemInstanceConfigDomainMap['feature']['agentEngine'];
   multipleDataToBase64: SystemInstanceConfigDomainMap['feature']['multipleDataToBase64'];
+  fileDomain: SystemInstanceConfigDomainMap['storage']['fileDomain'];
   downloadMode: SystemInstanceConfigDomainMap['storage']['downloadMode'];
   externalEndpoint: SystemInstanceConfigDomainMap['storage']['externalEndpoint'];
   cdnEndpoint: SystemInstanceConfigDomainMap['storage']['cdnEndpoint'];
@@ -45,13 +47,11 @@ const numberInputProps = { variant: 'whiteOutline' as const, maxW: '400px' };
 const CoreSettingComponent = () => {
   const { t } = useSafeTranslation();
   const { isFieldVisible, filterConfigData, filterConfigDataByEdition } = useAdminPermission();
-  const showTeamMode = isFieldVisible('auth.teamMode');
   const showEmail = isFieldVisible('auth.loginProviders.email.smtp');
   const showPhone = isFieldVisible('auth.loginProviders.phone.signName');
 
   const tocItems: SettingTOCItem[] = useMemo(
     () => [
-      ...(showTeamMode ? [{ id: 'team', label: t('admin:core_section_team') }] : []),
       { id: 'engine', label: t('admin:core_section_engine') },
       { id: 'applicationRuntime', label: t('admin:application_runtime') },
       { id: 'download', label: t('admin:core_section_download') },
@@ -59,7 +59,7 @@ const CoreSettingComponent = () => {
       ...(showEmail ? [{ id: 'email', label: t('admin:email_notification_config') }] : []),
       ...(showPhone ? [{ id: 'sms', label: t('admin:aliyun_sms_credentials') }] : [])
     ],
-    [t, showTeamMode, showEmail, showPhone]
+    [t, showEmail, showPhone]
   );
 
   const auth = useDomainConfig('auth');
@@ -69,11 +69,17 @@ const CoreSettingComponent = () => {
 
   const isLoading = auth.isLoading || feature.isLoading || storage.isLoading || site.isLoading;
 
-  const { control, handleSubmit, reset, register } = useForm<CoreConfigForm>({
+  const {
+    control,
+    handleSubmit,
+    reset,
+    register,
+    formState: { errors }
+  } = useForm<CoreConfigForm>({
     defaultValues: {
-      teamMode: 'single',
       agentEngine: 'fastAgent',
       multipleDataToBase64: false,
+      fileDomain: '',
       downloadMode: 'short-proxy',
       externalEndpoint: '',
       cdnEndpoint: '',
@@ -95,9 +101,9 @@ const CoreSettingComponent = () => {
   useEffect(() => {
     if (isLoading) return;
     reset({
-      teamMode: auth.effectiveConfig?.teamMode ?? 'single',
       agentEngine: feature.effectiveConfig?.agentEngine ?? 'fastAgent',
       multipleDataToBase64: feature.effectiveConfig?.multipleDataToBase64 ?? false,
+      fileDomain: storage.effectiveConfig?.fileDomain ?? '',
       downloadMode: storage.effectiveConfig?.downloadMode ?? 'short-proxy',
       externalEndpoint: storage.effectiveConfig?.externalEndpoint ?? '',
       cdnEndpoint: storage.effectiveConfig?.cdnEndpoint ?? '',
@@ -127,11 +133,7 @@ const CoreSettingComponent = () => {
 
   const { runAsync: onSave, loading: isSaving } = useAdminConfigSaveRequest(
     async (formData: CoreConfigForm) => {
-      // 存量库残留 sync 但管理员本次并未改动团队模式时，同时从保留的 auth.overrides 与本次补丁中排除 teamMode，
-      // 交由服务端保留库中原值，避免未配置外部用户系统时触发 update API 的 sync 前置校验 400。
-      const persistedTeamMode = auth.effectiveConfig?.teamMode ?? auth.overrides?.teamMode;
-      const shouldSubmitTeamMode =
-        showTeamMode && !(formData.teamMode === 'sync' && persistedTeamMode === 'sync');
+      // 排除历史团队模式字段：部署 ENV 是唯一权威，页面不能将旧值重新提交。
       const { teamMode: _preservedTeamMode, ...preservedAuthOverrides } = filterConfigDataByEdition(
         'auth',
         auth.overrides
@@ -146,7 +148,6 @@ const CoreSettingComponent = () => {
             overrides: deepMergeConfig(
               preservedAuthOverrides,
               filterConfigData('auth', {
-                ...(shouldSubmitTeamMode ? { teamMode: formData.teamMode } : {}),
                 loginProviders: {
                   // 核心页只保存 SMTP 字段，邮箱注册由账号与登录页维护。
                   email: {
@@ -178,6 +179,7 @@ const CoreSettingComponent = () => {
             overrides: deepMergeConfig(
               filterConfigDataByEdition('storage', storage.overrides) as Record<string, unknown>,
               filterConfigData('storage', {
+                fileDomain: formData.fileDomain,
                 downloadMode: formData.downloadMode,
                 externalEndpoint: formData.externalEndpoint || '',
                 cdnEndpoint: formData.cdnEndpoint || '',
@@ -215,45 +217,8 @@ const CoreSettingComponent = () => {
       isSaving={isSaving}
       onSave={submit}
     >
-      {/* 1. 团队 */}
-      {showTeamMode && (
-        <AdminSettingSection id="team" title={t('admin:core_section_team')}>
-          <AdminFormItem
-            label={t('admin:team_mode')}
-            tooltip={t('admin:multi_multiple_teams_single_single_team_sync_account_sync_sy')}
-            mb={0}
-          >
-            <Controller
-              name="teamMode"
-              control={control}
-              render={({ field }) => (
-                <MySelect<SystemInstanceConfigDomainMap['auth']['teamMode']>
-                  width={'400px'}
-                  /* sync 需配合外部用户系统（SSO 配置在 pro 侧），不提供主动切换入口；
-                     但库内已是 sync 时必须回显该选项，否则展示空白且保存会误覆盖破坏同步登录 */
-                  list={
-                    field.value === 'sync'
-                      ? [
-                          { label: t('admin:single_single_team'), value: 'single' },
-                          { label: t('admin:multi_multiple_teams'), value: 'multi' },
-                          { label: t('admin:sync_account_sync'), value: 'sync' }
-                        ]
-                      : [
-                          { label: t('admin:single_single_team'), value: 'single' },
-                          { label: t('admin:multi_multiple_teams'), value: 'multi' }
-                        ]
-                  }
-                  value={field.value}
-                  onChange={field.onChange}
-                />
-              )}
-            />
-          </AdminFormItem>
-        </AdminSettingSection>
-      )}
-
-      {/* 2. 执行引擎 */}
-      <AdminSettingSection id="engine" title={t('admin:core_section_engine')} showDivider>
+      {/* 执行引擎 */}
+      <AdminSettingSection id="engine" title={t('admin:core_section_engine')}>
         <AdminFormItem
           label={t('admin:agent_execution_engine')}
           tooltip={t('admin:fastagent_lightweight_high_concurrency_single_node_engine_pi')}
@@ -308,6 +273,32 @@ const CoreSettingComponent = () => {
 
       {/* 4. 下载链接 */}
       <AdminSettingSection id="download" title={t('admin:core_section_download')} showDivider>
+        <AdminFormItem
+          label={t('admin:file_service_domain')}
+          tooltip={t('admin:file_service_domain_tip')}
+          mb={4}
+        >
+          <Controller
+            name="fileDomain"
+            control={control}
+            rules={{
+              validate: (value) =>
+                !value || isValidServiceBaseUrl(value) || t('admin:invalid_subservice_base_url')
+            }}
+            render={({ field }) => (
+              <Input
+                {...field}
+                isInvalid={Boolean(errors.fileDomain)}
+                placeholder="https://files.example.com"
+              />
+            )}
+          />
+          {errors.fileDomain && (
+            <Text color={'red.500'} fontSize={'xs'} mt={1}>
+              {errors.fileDomain.message}
+            </Text>
+          )}
+        </AdminFormItem>
         <AdminFormItem
           label={t('admin:download_link_mode')}
           tooltip={t('admin:short_proxy_streamed_proxy_download_via_the_main_site_hides')}

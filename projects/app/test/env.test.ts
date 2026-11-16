@@ -6,11 +6,19 @@ const importAppEnv = async () => {
 afterEach(() => vi.unstubAllEnvs());
 
 describe('app deployment ENV', () => {
-  it('keeps Git visibility in ENV with its community default', async () => {
+  it('defaults the commercial Git switch to false and accepts an explicit override', async () => {
+    vi.stubEnv('PRO_URL', 'https://pro.example.com');
     vi.stubEnv('SHOW_GIT', undefined);
+    expect((await importAppEnv()).appEnv.SHOW_GIT).toBe(false);
+    vi.stubEnv('SHOW_GIT', 'true');
     expect((await importAppEnv()).appEnv.SHOW_GIT).toBe(true);
     vi.stubEnv('SHOW_GIT', 'false');
     expect((await importAppEnv()).appEnv.SHOW_GIT).toBe(false);
+  });
+  it('does not read or validate SHOW_GIT without PRO_URL', async () => {
+    vi.stubEnv('PRO_URL', undefined);
+    vi.stubEnv('SHOW_GIT', 'invalid-unused-community-value');
+    await expect(importAppEnv()).resolves.toHaveProperty('appEnv.SHOW_GIT', false);
   });
   it('does not declare or validate retired form configuration', async () => {
     vi.stubEnv('OPENAPI_KEY_MAX_COUNT', '-1');

@@ -77,7 +77,8 @@ system_instance_configs（按 11 个 Domain 分别保存文档）
 | --- | --- | --- | --- |
 | 站点名称、描述、图标 | `SYSTEM_NAME`、`SYSTEM_DESCRIPTION`、`SYSTEM_FAVICON` | `config.site` | Admin 可直接修改，修改后运行时生效 |
 | 中国大陆 IP 跳转 | `CHINESE_IP_REDIRECT_URL` | **环境变量** | ENV 独占，旧库值不再覆盖表单配置 |
-| 前端、文件和下载公开地址 | `FE_DOMAIN`、`FILE_DOMAIN`、`FILE_DOWNLOAD_PUBLIC_URL_PREFIX` | **环境变量** | 与 DNS、反向代理和已签发链接强绑定，第一版不允许 Admin 直接修改；`NEXT_PUBLIC_BASE_URL` 同样保留环境变量 |
+| 前端与下载公开前缀 | `FE_DOMAIN`、`FILE_DOWNLOAD_PUBLIC_URL_PREFIX` | **环境变量** | `NEXT_PUBLIC_BASE_URL` 同样保留环境变量 |
+| 文件服务域名 | `FILE_DOMAIN`（仅一次性迁移） | `storage.fileDomain` | 后台「核心配置 → 下载链接」可编辑，留空使用 FE_DOMAIN，新生成的上传和下载短链实时读取 |
 | Marketplace 地址 | `MARKETPLACE_URL` | `config.site` 或 `config.subservice` | 属于实例的外部服务入口 |
 | 支付表单地址 | `PAY_FORM_URL` | `config.commercial` | 商业化配置 |
 | 优惠券和折扣入口 | `SHOW_COUPON`、`SHOW_DISCOUNT_COUPON` | `config.commercial` | 同时受版本能力过滤 |
@@ -104,7 +105,7 @@ system_instance_configs（按 11 个 Domain 分别保存文档）
 | 新团队默认权限 | `DEFAULT_TEAM_BASIC_PERMISSIONS_ENABLED` | `config.auth` | 只影响新建团队 |
 | Agent Sandbox 免费提示 | `AGENT_SANDBOX_FREE_TIP` | `config.commercial` | 商业能力展示配置 |
 
-`AUTH_COOKIE_SECURE`、`TRUSTED_PROXY_ENABLE` 和 `TRUSTED_PROXY_IPS` 暂不放入数据库，见第 5 节。它们直接依赖 HTTPS 和反向代理部署方式，错误修改可能导致全站登录或客户端 IP 判断异常。
+`TRUSTED_PROXY_ENABLE` 和 `TRUSTED_PROXY_IPS` 继续保留为部署 ENV。Cookie Secure 已按最新决策迁入 `security.authCookieSecure`，共享 HTTP 响应上限迁入 `resource.serviceAxiosMaxContentLength`；旧 ENV 仅由启动迁移读取，运行时以实例配置为准。
 
 ### 3.3 并发、超时和资源限制
 
@@ -142,7 +143,7 @@ config.performance
 │   ├── batchUpdateTime             TRACK_BATCH_UPDATE_TIME
 │   └── retentionHours              LLM_REQUEST_TRACKING_RETENTION_HOURS
 ├── task
-│   └── evalConcurrency             EVAL_CONCURRENCY
+│   └── evalConcurrency             新配置，旧 EVAL_CONCURRENCY 不迁移
 └── channel
     └── wechatConcurrency           WECHAT_CHANNEL_CONCURRENCY
 
@@ -171,7 +172,7 @@ config.resource
 | MCP SSE 服务开关和代理地址 | `SSE_MCP_SERVER_PROXY_ENDPOINT`（仅迁移读取） | `config.subservice.mcp.enabled/sseProxyUrl` | 否 | 无旧配置时默认关闭；关闭或地址缺失时隐藏 SSE 发布入口 |
 | AI Proxy 地址和 Token | `AIPROXY_API_ENDPOINT`、`AIPROXY_API_TOKEN` | **环境变量** | Token 是敏感字段 | 两项均有效才使用代理；缺一时不使用代理，无管理页或实例配置开关 |
 | Agent Sandbox Provider 与参数 | `AGENT_SANDBOX_PROVIDER`、各 `AGENT_SANDBOX_*` | `config.subservice.agentSandbox` | 多个 Token/Key | 主站调用侧的 Provider、地址、CPU、内存、存储、镜像、超时和代理地址均属于实例配置；独立 Sandbox 进程自身的启动参数见第 5 节 |
-| Agent Sandbox Proxy HMAC 密钥 | `AGENT_SANDBOX_PROXY_SECRET` | 环境变量 | 高敏感 | 主站和独立 Proxy 之间的跨进程信任根，暂不进入 Admin |
+| Agent Sandbox 代理配置 | `AGENT_SANDBOX_PROXY_SECRET/URL/PREVIEW_PROXY_URL`（仅一次性迁移） | `config.subservice.agentSandbox.proxy` | 密钥为 secret 字段 | 主站页面统一维护三项；独立 Rust Proxy 的部署密钥须与页面一致 |
 | PDF 增强解析服务 | `CUSTOM_PDF_PARSE_*`、`SOMARK_API_KEY`、`DOC2X_KEY`、`TEXTIN_*` | `config.providers.documentParse` | Key 是敏感字段 | 暂时明文，但 UI/API 必须按 secret 字段处理 |
 | Sangfor 文档解析和智能分块 | `DOCUMENT_PARSE_PROVIDER`、`SANGFOR_*`、`CUSTOM_PDF_PARSE_URL/KEY` | `config.providers.documentParse` / `config.providers.chunk` | Key 是敏感字段 | 当前 Sangfor 复用 `CUSTOM_PDF_PARSE_URL/KEY` 作为服务地址和 Bearer Token，迁移时需要兼容复制，详见第 10 章 |
 | CRM 归因服务 | `CRM_API_URL`、`CRM_API_KEY` | `config.providers.crm` | Key 是敏感字段 | 未配置时保持关闭 |
@@ -279,9 +280,8 @@ RuntimeConfigSchema.parse(runtimeConfig)
 | 文件 Token 密钥 | `FILE_TOKEN_KEY` | 已签发 URL 的验证根，修改会影响历史链接 |
 | AES 密钥 | `AES256_SECRET_KEY` | 当前虽暂时不用于新配置加密，仍是系统级密钥 |
 | Invoke JWT 密钥 | `INVOKE_TOKEN_SECRET` | 插件反向调用的信任根 |
-| Agent Sandbox Proxy 密钥 | `AGENT_SANDBOX_PROXY_SECRET` | 独立 Proxy 和主站之间的 HMAC 信任 |
+| 独立 Agent Sandbox Proxy 密钥 | `AGENT_SANDBOX_PROXY_SECRET`（仅 Rust Proxy 部署侧） | 与主站页面共享密钥保持一致；主站侧读取实例配置 |
 | 反向代理信任 | `TRUSTED_PROXY_ENABLE`、`TRUSTED_PROXY_IPS` | 与部署拓扑强相关，错误配置影响客户端 IP 和安全判断 |
-| Cookie Secure | `AUTH_COOKIE_SECURE` | 与实际 HTTPS 终止位置强相关 |
 | 短信发送代理 | `SMS_PROXY`（仅 Pro） | 部署级短信代理地址；只读取 ENV，不进入实例配置 Schema 或表单 |
 
 这些字段即使属于“敏感配置”，本轮也不实现加密；它们只是因为安全边界不同而继续留在环境变量。
@@ -455,7 +455,7 @@ MONGODB_URI 环境变量
 
 ## 10. 历史环境变量盘点与迁移背景
 
-本章保留迁移前盘点，部分目标位置已在后续讨论中调整，不作为当前配置或导入契约。当前实例字段见第 13.6 节；实际兼容导入以 `projects/app/src/migration/tasks/4180/20260928_migrate_instance_configs/` 和 `projects/app/src/migration/tasks/4180/20261111_rehome_subservice_connections/` 为准。历史盘点覆盖以下来源：
+本章保留迁移前盘点，部分目标位置已在后续讨论中调整，不作为当前配置或导入契约。当前实例字段见第 13.6 节；实际兼容导入以 `projects/app/src/migration/tasks/4180/20261116_migrate_system_configs/` 为准。历史盘点覆盖以下来源：
 
 - `packages/service/env.ts`：主站共享服务配置；
 - `projects/app/src/env.ts`：App 配置；
@@ -523,7 +523,7 @@ BUILD    -> 构建、测试、脚本或操作系统继承变量，不属于运�
 | `MAX_HTML_TRANSFORM_CHARS` | `config.performance.parse.maxHtmlTransformChars` | `CHAT_MAX_QPM` | `config.performance.chat.maxQpm` |
 | `CHAT_LOG_URL` | `config.performance.chat.logUrl` | `CHAT_LOG_INTERVAL` | `config.performance.chat.logInterval` |
 | `CHAT_LOG_SOURCE_ID_PREFIX` | `config.performance.chat.logSourceIdPrefix` | `TRACK_BATCH_UPDATE_TIME` | `config.performance.tracking.batchUpdateTime` |
-| `LLM_REQUEST_TRACKING_RETENTION_HOURS` | `config.performance.tracking.retentionHours` | `EVAL_CONCURRENCY` | `config.performance.task.evalConcurrency` |
+| `LLM_REQUEST_TRACKING_RETENTION_HOURS` | `config.performance.tracking.retentionHours` | —（旧 `EVAL_CONCURRENCY` 不迁移） | `config.performance.task.evalConcurrency` |
 | `WECHAT_CHANNEL_CONCURRENCY` | `config.performance.channel.wechatConcurrency` | `DATASET_PARSE_MAX_PROCESS` | `config.performance.dataset.parseMaxProcess` |
 | `VECTOR_MAX_PROCESS` | `config.performance.dataset.vectorMaxProcess` | `QA_MAX_PROCESS` | `config.performance.dataset.qaMaxProcess` |
 | `VLM_MAX_PROCESS` | `config.performance.dataset.vlmMaxProcess` | `STREAM_RESUME_TTL_SECONDS` | `config.performance.streamResume.ttlSeconds` |
@@ -568,8 +568,8 @@ BUILD    -> 构建、测试、脚本或操作系统继承变量，不属于运�
 #### 废弃字段的存量清理
 
 字段定义删除后，存量 `system_instance_configs` 文档中的对应 key 会让 Override Schema
-的 `strictObject` 校验失败，导致该 Domain 的读取与保存直接抛错。因此新增阻塞启动任务
-`20260929_cleanup_instance_config_deprecated_fields`，在节点 ready 前按
+的 `strictObject` 校验失败，导致该 Domain 的读取与保存直接抛错。因此由统一阻塞启动任务
+`20261116_migrate_system_configs` 的 cleanup 阶段，在节点 ready 前按
 `deprecatedOverridePaths` 声明逐条删除残留字段，并校验每个 Domain 都能按新 Schema 解析。
 该任务采用幂等全量重跑（最多 11 条 Domain 文档），仅在确实删除字段时写回并递增 revision。
 
@@ -675,21 +675,16 @@ ROOT_KEY
 FILE_TOKEN_KEY
 AES256_SECRET_KEY
 INVOKE_TOKEN_SECRET
-AGENT_SANDBOX_PROXY_SECRET
-AGENT_SANDBOX_PROXY_URL
-AGENT_SANDBOX_PREVIEW_PROXY_URL
-AUTH_COOKIE_SECURE
 TRUSTED_PROXY_ENABLE
 TRUSTED_PROXY_IPS
 ```
 
-`AGENT_SANDBOX_PROXY_URL` 和 `AGENT_SANDBOX_PREVIEW_PROXY_URL` 是浏览器或独立 Proxy 的部署地址；`AGENT_SANDBOX_PROXY_SECRET` 是跨进程信任根，三者均不进入 `config.subservice.agentSandbox`。
+主服务的三项代理配置统一进入 `config.subservice.agentSandbox.proxy.wsUrl/previewUrl/secret`，密钥按 secret 注册并掩码回显。三个旧 ENV 仅一次性回填，已有值和显式清空优先；独立 Rust Proxy 的 `AGENT_SANDBOX_PROXY_SECRET` 仍由其部署 ENV 注入，并与页面值保持一致。
 
 #### 域名、构建和生命周期
 
 ```text
 FE_DOMAIN
-FILE_DOMAIN
 FILE_DOWNLOAD_PUBLIC_URL_PREFIX
 NEXT_PUBLIC_BASE_URL
 SYSTEM_MIGRATION_BATCH_SIZE
@@ -735,7 +730,6 @@ STORAGE_OSS_ENDPOINT
 STORAGE_OSS_CNAME
 STORAGE_OSS_INTERNAL
 STORAGE_OSS_SECURE
-STORAGE_OSS_ENABLE_PROXY
 ```
 
 这里不包含已经迁移到 DB 的 `STORAGE_DOWNLOAD_URL_MODE` 和 `STORAGE_DOWNLOAD_REDIRECT_TTL_SECONDS`。
@@ -835,7 +829,7 @@ AGENT_SANDBOX_PROXY_REWRITE_HOST
 RUST_LOG
 ```
 
-其中 `AGENT_SANDBOX_PROXY_SECRET` 与主站环境变量必须保持一致；`FASTGPT_APP_URL` 是 Proxy 回连主站的部署地址，不是主站可编辑的子服务客户端配置。
+其中 `AGENT_SANDBOX_PROXY_SECRET` 与主站 Agent Sandbox 页面中的代理共享密钥必须保持一致；`FASTGPT_APP_URL` 是 Proxy 回连主站的部署地址，不是主站可编辑的子服务客户端配置。
 
 #### FastGPT IDE Agent
 
@@ -1013,7 +1007,7 @@ Server、Agent Sandbox Proxy 和 IDE Agent 的运行时变量。为了避免“�
 
 ### 仍待确认
 
-1. `FE_DOMAIN`、`FILE_DOMAIN`、`FILE_DOWNLOAD_PUBLIC_URL_PREFIX` 是否长期只读环境变量，还是未来允许通过配置中心管理；当前草案按环境变量处理。
+1. `FILE_DOMAIN` 已迁入 `storage.fileDomain`；`FE_DOMAIN`、`FILE_DOWNLOAD_PUBLIC_URL_PREFIX` 及 `NEXT_PUBLIC_BASE_URL` 继续保留环境变量。
 2. Code Sandbox、MCP Server 等独立进程是否在后续接入配置中心；如果接入，配置变更时采用热更新、重建 Worker 还是受控重启。
 3. 配置 `applyMode` 的实际生效协议：哪些字段支持 live/reload，哪些字段必须 restart，以及集群节点如何确认已应用同一 revision。
 4. PDF/Sangfor 逻辑配置块最终是否长期分开保存；当前迁移必须兼容旧的 `CUSTOM_PDF_PARSE_URL/KEY` 一组变量，不能要求新增一组 `SANGFOR_PARSE_URL/KEY`。
@@ -1027,7 +1021,7 @@ Server、Agent Sandbox Proxy 和 IDE Agent 的运行时变量。为了避免“�
 2. **环境变量角色转为初始种子（Seed）**：旧环境变量只用于迁移时初始化缺失域或回填新增字段，不覆盖已有 overrides 或显式默认意图；完成导入后，运行期只读取实例配置快照。
 3. **保留在环境变量中的配置**：
    - 基础设施与拓扑：MongoDB、Redis、VectorDB、S3 存储桶连接参数、端口与外部网关。
-   - 安全根密钥：`ROOT_KEY`、`FILE_TOKEN_KEY`、`INVOKE_TOKEN_SECRET`、`AGENT_SANDBOX_PROXY_SECRET` 等。
+   - 安全根密钥：`ROOT_KEY`、`FILE_TOKEN_KEY`、`INVOKE_TOKEN_SECRET` 等。
    - 部署与构建：`SHOW_GIT`（Git 提交信息展示开关）、构建路径。
    - 实验性与未进表单配置：`DATASET_SYNONYM_ENABLED`（同义词开关暂留 ENV，不进实例配置表单）。
 
@@ -1076,13 +1070,15 @@ Server、Agent Sandbox Proxy 和 IDE Agent 的运行时变量。为了避免“�
 
 ### 13.6 逐字段版本、表单与页面映射
 
-本表逐项覆盖注册表的 **197 个配置叶子**，不使用通配符或虚构的聚合字段。字段定义与默认值以 `schemas/*.ts` 为准，版本、敏感项和 SaaS 显示条件以 `registry.ts` 为准；页面归属与 `pageFields.ts`、实际表单保持一致。支付宝仅使用 V2 gateway，未被支付、查询和退款调用的 V3 endpoint 已移除；旧版商业内置文本审查（`security.censor.*`）已由内容审核插件策略体系（`/admin/moderation/policy`）取代，历史覆盖项由可重入清理迁移删除。
+本表逐项覆盖注册表的 **202 个配置叶子**，不使用通配符或虚构的聚合字段。字段定义与默认值以 `schemas/*.ts` 为准，版本、敏感项和 SaaS 显示条件以 `registry.ts` 为准；页面归属与 `pageFields.ts`、实际表单保持一致。支付宝仅使用 V2 gateway，未被支付、查询和退款调用的 V3 endpoint 已移除；旧版商业内置文本审查（`security.censor.*`）已由内容审核插件策略体系（`/admin/moderation/policy`）取代，历史覆盖项由可重入清理迁移删除。
 
 - 社区版／商业版的勾选表示配置 API 的读写权限；商业版按是否配置 `PRO_URL` 判定，不依赖 License 是否激活。
 - “仅 SaaS 显示”表示 `ENABLE_SAAS_ADMIN_CONFIG=true` 才显示对应控件，**不收紧商业版 API 权限**。标为“仅 API”的字段当前没有新表单，开启显示开关也不会产生控件。
 - 页面路径指当前实例配置表单；“只读”仅展示根据地址生成的健康检查链接，不能编辑地址。旧 `basic/user` 页面仍写旧 `system_configs`，不算本表的有效编辑入口。
 - 全部字段属于数据库实例配置；“仅 API”不表示回落 ENV。保留在 ENV 的连接、密钥根及部署参数不混入本表。
 - “业务未接入”表示注册／表单存在但当前消费者未使用；版本勾选不代表热更新已生效，也不代表该字段应继续保留。
+
+- `resource.evaluationMaxRows` 由「限制与并发」表单维护，默认 `1000`，不含表头；旧 Pro `EVAL_LINE_LIMIT` 不再读取或迁移，后台修改后按新快照生效。
 
 <!-- instance-config-field-matrix:start -->
 
@@ -1103,10 +1099,19 @@ Server、Agent Sandbox Proxy 和 IDE Agent 的运行时变量。为了避免“�
 | `site.loginGuideDocUrl` | 登录引导帮助文档地址 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/site` |
 | `site.customApiDomain` | 自定义 API 域名 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/site` |
 | `site.customSharePageDomain` | 自定义分享链接域名 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/site` |
-| `site.customDomain.enable` | 启用自定义独立域名 | ✅ | ✅ | ✅ | — | 可编辑：`/admin/settings/site` |
-| `site.customDomain.domain.aliyun` | 阿里云 CNAME 域名 | ✅ | ✅ | ✅ | — | 可编辑：`/admin/settings/site` |
-| `site.customDomain.domain.tencent` | 腾讯云 CNAME 域名 | ✅ | ✅ | ✅ | — | 可编辑：`/admin/settings/site` |
-| `site.customDomain.domain.volcengine` | 火山引擎 CNAME 域名 | ✅ | ✅ | ✅ | — | 可编辑：`/admin/settings/site` |
+| `site.customDomain.enable` | 启用自定义独立域名 | ❌ | ✅ | ✅ | — | 可编辑：`/admin/settings/custom-domain` |
+| `site.customDomain.domain.aliyun` | 阿里云 CNAME 域名 | ❌ | ✅ | ✅ | — | 可编辑：`/admin/settings/custom-domain` |
+| `site.customDomain.domain.tencent` | 腾讯云 CNAME 域名 | ❌ | ✅ | ✅ | — | 可编辑：`/admin/settings/custom-domain` |
+| `site.customDomain.domain.volcengine` | 火山引擎 CNAME 域名 | ❌ | ✅ | ✅ | — | 可编辑：`/admin/settings/custom-domain` |
+| `site.customDomain.kc.aliyun` | 阿里云 kubeconfig | ❌ | ✅ | ✅ | ✅ | 可编辑：`/admin/settings/custom-domain` |
+| `site.customDomain.kc.tencent` | 腾讯云 kubeconfig | ❌ | ✅ | ✅ | ✅ | 可编辑：`/admin/settings/custom-domain` |
+| `site.customDomain.kc.volcengine` | 火山引擎 kubeconfig | ❌ | ✅ | ✅ | ✅ | 可编辑：`/admin/settings/custom-domain` |
+| `site.customDomain.issuerServiceName.aliyun` | 阿里云 证书签发器名称 | ❌ | ✅ | ✅ | — | 可编辑：`/admin/settings/custom-domain` |
+| `site.customDomain.issuerServiceName.tencent` | 腾讯云 证书签发器名称 | ❌ | ✅ | ✅ | — | 可编辑：`/admin/settings/custom-domain` |
+| `site.customDomain.issuerServiceName.volcengine` | 火山引擎 证书签发器名称 | ❌ | ✅ | ✅ | — | 可编辑：`/admin/settings/custom-domain` |
+| `site.customDomain.nginxServiceName.aliyun` | 阿里云 Nginx 服务名称 | ❌ | ✅ | ✅ | — | 可编辑：`/admin/settings/custom-domain` |
+| `site.customDomain.nginxServiceName.tencent` | 腾讯云 Nginx 服务名称 | ❌ | ✅ | ✅ | — | 可编辑：`/admin/settings/custom-domain` |
+| `site.customDomain.nginxServiceName.volcengine` | 火山引擎 Nginx 服务名称 | ❌ | ✅ | ✅ | — | 可编辑：`/admin/settings/custom-domain` |
 | `site.botIframeUrl` | 客服助手 iframe 地址 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/site` |
 | `site.scripts` | 第三方脚本列表 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/site` |
 
@@ -1117,7 +1122,7 @@ Server、Agent Sandbox Proxy 和 IDE Agent 的运行时变量。为了避免“�
 | `auth.openApiKeyMaxCount` | OpenAPI Key 数量上限 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
 | `auth.passwordExpiredMonth` | 密码有效周期（月） | ✅ | ✅ | — | — | 可编辑：`/admin/settings/auth` |
 | `auth.wecomLoginAutoRedirect` | 企业微信自动跳转 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/auth` |
-| `auth.teamMode` | 团队模式 | — | ✅ | — | — | 可编辑：`/admin/settings/core` |
+| `TEAM_MODE`（Pro ENV） | 团队模式 | — | — | — | — | ENV 唯一来源；页面不可编辑。历史 `auth.teamMode` 仅保留兼容解析，不参与业务判断 |
 | `auth.fastLogin` | 快捷登录方式 | — | ✅ | — | — | 可编辑：`/admin/settings/auth` |
 | `auth.sso.title` | SSO 登录按钮标题 | — | ✅ | — | — | 可编辑：`/admin/settings/auth` |
 | `auth.sso.icon` | SSO 登录按钮图标 | — | ✅ | — | — | 可编辑：`/admin/settings/auth` |
@@ -1168,6 +1173,7 @@ Server、Agent Sandbox Proxy 和 IDE Agent 的运行时变量。为了避免“�
 | --- | --- | :---: | :---: | :---: | :---: | --- |
 | `security.checkInternalIp` | 内网 IP 访问拦截 (SSRF) | ✅ | ✅ | — | — | 可编辑：`/admin/settings/security` |
 | `security.csrfEnabled` | CSRF 严格校验 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/security` |
+| `security.authCookieSecure` | 登录 Cookie 的 Secure 属性；重新签发时生效 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/security` |
 | `security.passwordLoginMinuteLimitCount` | 密码登录分钟限流次数 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/auth` |
 | `security.maxLoginSession` | 最大登录会话数 (Max Sessions) | ✅ | ✅ | — | — | 可编辑：`/admin/settings/auth` |
 | `security.allowedOrigins` | 允许的跨域来源 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/security` |
@@ -1228,6 +1234,7 @@ Server、Agent Sandbox Proxy 和 IDE Agent 的运行时变量。为了避免“�
 | 配置字段 | 用途 | 社区版 | 商业版 | 仅 SaaS 显示 | 敏感项 | 当前管理入口 |
 | --- | --- | :---: | :---: | :---: | :---: | --- |
 | `resource.serviceRequestMaxContentLength` | 工作流 HTTP 节点响应体上限 (MB) | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
+| `resource.serviceAxiosMaxContentLength` | 共享 HTTP 缓冲响应体解压后上限 (MiB)，默认 20，0 仅允许空响应 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
 | `resource.maxFolderDepth` | 最大目录层级深度 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
 | `resource.appFolderMaxAmount` | 应用文件夹数量上限 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
 | `resource.datasetFolderMaxAmount` | 知识库文件夹数量上限 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
@@ -1237,6 +1244,7 @@ Server、Agent Sandbox Proxy 和 IDE Agent 的运行时变量。为了避免“�
 | `resource.exportDatasetLimitMinutes` | 知识库导出冷却时间（分钟） | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
 | `resource.websiteSyncLimitMinuted` | 网站同步冷却时间（分钟） | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
 | `resource.datasetArchive.maxFiles` | 归档下载文件数上限 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
+| `resource.evaluationMaxRows` | 单次评估任务最大数据行数 | — | ✅ | — | — | 可编辑：`/admin/settings/limits` |
 | `resource.datasetArchive.maxSourceSizeMiB` | 归档源文件总大小上限（MiB） | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
 | `resource.datasetArchive.maxConcurrency` | 归档下载并发上限 | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
 | `resource.datasetArchive.prepareTimeoutSeconds` | 归档下载准备超时（秒） | ✅ | ✅ | — | — | 可编辑：`/admin/settings/limits` |
@@ -1332,10 +1340,15 @@ Code Sandbox 和 MCP SSE 五个字段均为 `edition: all`、`applyMode: reload`
 | `subservice.agentSandbox.sealosdevbox.image` | 默认开发镜像 | — | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
 | `subservice.agentSandbox.opensandbox.baseUrl` | OpenSandbox 服务地址 | — | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
 | `subservice.agentSandbox.opensandbox.runtime` | 底层容器运行时 | — | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
+| `subservice.agentSandbox.opensandbox.cpuOvercommitFactor` | CPU 超卖倍数（仅 Kubernetes 展示） | — | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
+| `subservice.agentSandbox.opensandbox.memoryOvercommitFactor` | 内存超卖倍数（仅 Kubernetes 展示） | — | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
 | `subservice.agentSandbox.opensandbox.image` | 默认容器镜像 | — | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
 | `subservice.agentSandbox.opensandbox.useServerProxy` | 使用主站反向代理模式 | — | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
 | `subservice.agentSandbox.opensandbox.volumeManagerUrl` | 持久卷管理器地址 (Volume Manager) | — | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
 | `subservice.agentSandbox.opensandbox.volumeNamePrefix` | 存储卷名前缀 | — | ✅ | — | — | 可编辑：`/admin/subservice/agent-sandbox` |
+| `subservice.agentSandbox.proxy.wsUrl` | 浏览器 WebSocket 代理地址 | — | ✅ | — | ✅ | 可编辑：`/admin/subservice/agent-sandbox` |
+| `subservice.agentSandbox.proxy.previewUrl` | 文件预览代理地址 | — | ✅ | — | ✅ | 可编辑：`/admin/subservice/agent-sandbox` |
+| `subservice.agentSandbox.proxy.secret` | 代理共享密钥（掩码） | — | ✅ | — | ✅ | 可编辑：`/admin/subservice/agent-sandbox` |
 | `subservice.agentSandbox.sealosdevbox.token` | Sealos 访问 Token | — | ✅ | — | ✅ | 可编辑：`/admin/subservice/agent-sandbox` |
 | `subservice.agentSandbox.opensandbox.apiKey` | OpenSandbox API Key | — | ✅ | — | ✅ | 可编辑：`/admin/subservice/agent-sandbox` |
 | `subservice.agentSandbox.opensandbox.volumeManagerToken` | 卷管理器 Token | — | ✅ | — | ✅ | 可编辑：`/admin/subservice/agent-sandbox` |
@@ -1344,10 +1357,44 @@ Code Sandbox 和 MCP SSE 五个字段均为 `edition: all`、`applyMode: reload`
 
 ### 13.7 套餐配置的独立边界
 
-`subPlans` 保留在旧 `system_configs` 的 FastGPT 记录中，不属于上述 11 个实例配置域，但必须与商业配置页面采用相同部署版本边界。
+`subPlans` 存放在 `system_instance_configs` 的独立 `domain=subPlans` scope 中，不属于上述 11 个实例配置域，但必须与商业配置页面采用相同部署版本边界。旧 FastGPT 记录仅在统一系统配置迁移中读取，迁移幂等且不覆盖已有新 scope。
+
+旧 `systemEnv.langfuse` 同步迁入`system_instance_configs` 的独立 `domain=langfuse` scope，避免移除旧快照回读后丢失追踪配置。
+
+Pro ENV 派生能力存放在`system_instance_configs` 内独立 `domain=proEnv` scope，每次 Pro 启动按白名单 diff 更新；无差异不写入。它与 App 管理的 11 个业务域互斥，不参与业务域首次初始化判断。运行时仅从新 scope 和实例配置生成 `feConfigs/systemEnv` 内存及响应投影，不再读写旧 `fastgpt/fastgptPro` 数据库快照。
 
 | 保存能力 | 社区版 | 商业版 | 管理入口 |
 | --- | :---: | :---: | --- |
 | `subPlans` 套餐、积分包及用量配置 | — | ✅ | `/admin/settings/pay` 的套餐区块 |
 
 社区版请求携带 `subPlans`（包括 `{}`）时，在读取旧配置或进入事务前返回 **403**，同批普通配置也不保存。商业版可与配置域一起原子提交；省略此键表示不修改现有套餐，与 `ENABLE_SAAS_ADMIN_CONFIG` 无关。
+
+
+### Pro ENV 派生配置发布
+
+Pro 可以先使用 Schema 默认配置完整启动，并独立发布 Pro ENV scope，不加载迁移中的业务配置。App 与 Pro 启动时各注册一条常驻配置轮询：每轮从主库批量读取各 scope 的 `domain/revision/_id` 元数据，识别新增、修改、删除及同 revision 重建；版本变化时整体刷新，成功后才确认版本，每轮完成后等待 1 秒。Pro 在统一任务 `20261116_migrate_system_configs` 成功前维持默认配置，成功后由同一循环加载真实配置。失败保留未确认版本并继续重试；成功后轮询仍持续，配置刷新不再依赖 Mongo watch。训练和模板等非配置监听保持原行为。默认配置期间已执行的业务动作不会被刷新回滚。
+
+Pro ENV 派生配置统一由 `getProEnvConfig` 归一化，每次启动由 `syncProEnvConfig` 在主库事务内读取 Pro 独占 scope 并按叶子 diff 写入；有差异才递增 revision，常驻轮询据此刷新配置与缓存，无差异不写库。
+
+白名单包含 `fastgpt.feConfigs.teamMode/register_method/sso.enabled/show_workorder/show_enterprise_auth/showWecomConfig/login2faEnabled`和 `fastgpt.systemEnv.sso.url`。其中 `register_method` 只按生效团队模式增删 sync，保留其他注册方式；SSO URL 只存服务端并清理旧公开 URL，展示标题、图标等表单字段不覆盖。
+
+旧 `fastgptPro` 文档不再参与 Pro 启动配置读取，也不维护 `fastgptPro.teamMode` 镜像；团队模式只从 ENV 派生后发布到 App 快照。
+
+
+文件服务域名由统一任务 `20261116_migrate_system_configs` 的 backfill 阶段迁入 `storage.fileDomain`，保留已有值和显式默认，校验通过后用 revision CAS 更新，幂等全量重跑不删除源配置。旧 ENV 运行时读取移除；FILE_DOWNLOAD_PUBLIC_URL_PREFIX 的下载优先级保持，空文件域名回落到 FE_DOMAIN。
+
+
+### HTTP 与 Cookie 策略补充迁移
+
+统一任务 `20261116_migrate_system_configs` 的 backfill 阶段在实例配置导入与废弃字段清理后执行；任务整体采用幂等全量重跑，不使用 checkpoint。旧 `AUTH_COOKIE_SECURE` 与 `SERVICE_AXIOS_MAX_CONTENT_LENGTH` 只在目标字段缺失且无显式默认标记时导入；无旧值也持久化默认 `false` / `20`，已有管理员值优先。两域先完成格式校验，再用同一事务与 revision CAS 写入，冲突重读，失败不发布部分结果。运行时按当前实例快照签发 Cookie、按后续 HTTP 请求读取响应上限；不改变已有 Cookie 或在途请求。
+
+
+### 迁移来源补充约定
+
+旧 `EVAL_CONCURRENCY` 不导入，也不再作为运行期来源；`performance.task.evalConcurrency` 保留表单和 Schema 默认值 `3`。旧 `AUTH_COOKIE_SECURE`、`SERVICE_AXIOS_MAX_CONTENT_LENGTH`、`AGENT_SANDBOX_CPU_OVERCOMMIT_FACTOR`、`AGENT_SANDBOX_MEMORY_OVERCOMMIT_FACTOR` 统一只取执行迁移的 App 进程 ENV，忽略 Pro 进程的同名值；已有实例值和显式默认意图仍优先。
+
+旧 `fastgpt` / `fastgptPro` 配置统一按类型筛选、`_id` 倒序选择快照，与 App/Pro 的运行时读取规则一致；迁移中的短信模板和自定义域名回填也采用相同规则，不受 `createTime` 更新影响。
+
+Pro ENV 是独占系统 scope，沿用 domain 唯一索引与 revision；仅 Pro 启动根据 ENV diff 写入，管理 API 与 defaultConfig.json 均不接受 proEnv。11 个业务域的迁移检查、首次文件初始化和原子判空都排除 proEnv；App/Pro 使用实例集合版本轮询刷新。
+
+全部系统配置统一存储于 `system_instance_configs`：11 个管理表单业务域与 proEnv、subPlans、langfuse、license、instanceId、modelStatusProbe、moderationPolicy、systemMsgModal、operationalAd、activityAd 十个辅助 scope。辅助 scope 不参与业务域 defaultConfig 初始化；旧 systemconfigs 仅由统一迁移读取，保留原数据但不再是运行期数据源。迁移在同一事务内导入缺失的辅助 scope，优先保留新目标，完整校验后才标记成功。License 原文/缓存与已有实例 ID 不重新生成；Pro 只有迁移成功后才能创建身份或写入授权。

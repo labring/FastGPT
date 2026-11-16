@@ -20,6 +20,7 @@ import AdminNumberInput from '@/pageComponents/admin/settings/AdminNumberInput';
 import AdminReadonlyInput from '@/pageComponents/admin/settings/AdminReadonlyInput';
 import type { SettingTOCItem } from '@/pageComponents/admin/settings/AdminSettingTOC';
 import type { SystemInstanceConfigDomainMap } from '@fastgpt/global/common/system/config/schema';
+import { ResourceConfigSchema } from '@fastgpt/global/common/system/config/schemas/resource';
 
 type LimitsConfigForm = SystemInstanceConfigDomainMap['resource'] &
   SystemInstanceConfigDomainMap['performance'] & {
@@ -64,6 +65,7 @@ const LimitsSettingComponent = () => {
   const { t } = useSafeTranslation();
   const { isFieldVisible, filterConfigDataByEdition } = useAdminPermission();
   const showVectorRecallConcurrency = isFieldVisible('vector.vectorRecallConcurrency');
+  const showEvaluationMaxRows = isFieldVisible('resource.evaluationMaxRows');
   const tocItems: SettingTOCItem[] = useMemo(
     () => [
       { id: 'requestAndText', label: t('admin:request_text_limits') },
@@ -134,18 +136,18 @@ const LimitsSettingComponent = () => {
             expectedRevision: resource.revision,
             overrides: {
               serviceRequestMaxContentLength: Number(formData.serviceRequestMaxContentLength) || 10,
+              serviceAxiosMaxContentLength: formData.serviceAxiosMaxContentLength,
               systemMaxStringLengthM: Number(formData.systemMaxStringLengthM) || 100,
               maxFolderDepth: Number(formData.maxFolderDepth) || 4,
               appFolderMaxAmount: Number(formData.appFolderMaxAmount ?? 1000),
               datasetFolderMaxAmount: Number(formData.datasetFolderMaxAmount ?? 1000),
               uploadFileMaxSize: Number(formData.uploadFileMaxSize) || 1000,
               uploadFileMaxAmount: Number(formData.uploadFileMaxAmount) || 1000,
-              datasetArchive: {
-                maxFiles: Number(formData.datasetArchive?.maxFiles) || 1000,
-                maxSourceSizeMiB: Number(formData.datasetArchive?.maxSourceSizeMiB) || 1024,
-                maxConcurrency: Number(formData.datasetArchive?.maxConcurrency) || 2,
-                prepareTimeoutSeconds: Number(formData.datasetArchive?.prepareTimeoutSeconds) || 60
-              },
+              ...(showEvaluationMaxRows ? { evaluationMaxRows: formData.evaluationMaxRows } : {}),
+              // 清空的输入由 Schema 补齐默认值，避免页面另维护一套归档限制。
+              datasetArchive: ResourceConfigSchema.shape.datasetArchive.parse(
+                formData.datasetArchive
+              ),
               exportDatasetLimitMinutes: Number(formData.exportDatasetLimitMinutes) || 0,
               websiteSyncLimitMinuted: Number(formData.websiteSyncLimitMinuted) || 0
             }
@@ -223,6 +225,36 @@ const LimitsSettingComponent = () => {
       {/* 1. 请求与文本限制 */}
       <AdminSettingSection id="requestAndText" title={t('admin:request_text_limits')}>
         <SimpleGrid columns={[1, 2]} spacing={5}>
+          <AdminFormItem
+            label={t('admin:service_http_response_max_size_mib')}
+            tooltip={t('admin:service_http_response_max_size_tip')}
+            isRequired
+          >
+            <Controller
+              name="serviceAxiosMaxContentLength"
+              control={control}
+              rules={{ required: true, min: 0, validate: Number.isInteger }}
+              render={({ field, fieldState }) => (
+                <NumberInput
+                  {...numberInputProps}
+                  min={0}
+                  precision={0}
+                  isInvalid={Boolean(fieldState.error)}
+                  value={field.value ?? ''}
+                  onChange={(text, value) =>
+                    field.onChange(text.trim() === '' || Number.isNaN(value) ? undefined : value)
+                  }
+                >
+                  <NumberInputField />
+                  <NumberInputStepper>
+                    <NumberIncrementStepper />
+                    <NumberDecrementStepper />
+                  </NumberInputStepper>
+                </NumberInput>
+              )}
+            />
+          </AdminFormItem>
+
           <AdminFormItem
             label={t('admin:workflow_http_response_max_size_mb')}
             tooltip={t('admin:workflow_http_response_max_size_tip')}
@@ -473,13 +505,6 @@ const LimitsSettingComponent = () => {
           {t('admin:object_storage_backend_read_only')}
         </Text>
         <SimpleGrid columns={[1, 2]} spacing={5}>
-          <AdminFormItem
-            label={t('admin:file_service_domain')}
-            tooltip={t('admin:dedicated_file_storage_domain_provided_by_file_domain')}
-          >
-            {/* FILE_DOMAIN 由环境变量注入且不下发前端，此处仅说明默认行为 */}
-            <AdminReadonlyInput value={t('admin:same_as_service_domain')} />
-          </AdminFormItem>
           <AdminFormItem
             label={t('admin:object_storage_driver_status')}
             tooltip={t('admin:infrastructure_connections_configured_via_storage_environmen')}
@@ -1085,6 +1110,37 @@ const LimitsSettingComponent = () => {
         showDivider
       >
         <SimpleGrid columns={[1, 2]} spacing={5}>
+          {showEvaluationMaxRows && (
+            <AdminFormItem
+              label={t('admin:evaluation_max_rows')}
+              tooltip={t('admin:evaluation_max_rows_tooltip')}
+              isRequired
+            >
+              <Controller
+                name="evaluationMaxRows"
+                control={control}
+                rules={{
+                  validate: (value) => Number.isSafeInteger(value) && value >= 0
+                }}
+                render={({ field, fieldState }) => (
+                  <NumberInput
+                    {...numberInputProps}
+                    min={0}
+                    precision={0}
+                    value={field.value ?? ''}
+                    isInvalid={Boolean(fieldState.error)}
+                    onChange={(_, value) => field.onChange(value)}
+                  >
+                    <NumberInputField />
+                    <NumberInputStepper>
+                      <NumberIncrementStepper />
+                      <NumberDecrementStepper />
+                    </NumberInputStepper>
+                  </NumberInput>
+                )}
+              />
+            </AdminFormItem>
+          )}
           <AdminFormItem
             label={t('admin:evaluation_task_concurrency_limit')}
             tooltip={t('admin:max_concurrency_for_backend_llm_benchmark_evaluation_tasks')}

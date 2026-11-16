@@ -11,7 +11,8 @@ const mocks = vi.hoisted(() => ({
   save: undefined as undefined | (() => Promise<unknown>),
   toc: [] as { id: string }[],
   inputs: new Map<string, (value: unknown) => void>(),
-  changeProvider: undefined as undefined | ((value: string) => void)
+  changeProvider: undefined as undefined | ((value: string) => void),
+  changeRuntime: undefined as undefined | ((value: string) => void)
 }));
 vi.mock('@/web/common/system/useDomainConfig', () => ({
   useDomainConfig: () => ({
@@ -39,6 +40,7 @@ vi.mock('@chakra-ui/react', () => ({
     { value, onChange, name, type, placeholder }: any,
     ref: any
   ) {
+    mocks.inputs.set(name, onChange);
     return React.createElement('input', { ref, value, onChange, name, type, placeholder });
   })
 }));
@@ -51,6 +53,7 @@ vi.mock('@fastgpt/web/components/common/MySelect', () => ({
     onChange: (value: string) => void;
   }) => {
     if (list.some(({ value }) => value === 'none')) mocks.changeProvider = onChange;
+    if (list.some(({ value }) => value === 'kubernetes')) mocks.changeRuntime = onChange;
     return null;
   }
 }));
@@ -119,6 +122,41 @@ beforeEach(() => {
   mocks.patch.mockReset().mockResolvedValue(undefined);
   mocks.inputs.clear();
   mocks.changeProvider = undefined;
+  mocks.changeRuntime = undefined;
+});
+
+describe('agent sandbox Kubernetes overcommit settings', () => {
+  it.each([
+    { provider: 'none', runtime: 'kubernetes', visible: false },
+    { provider: 'sealosdevbox', runtime: 'kubernetes', visible: false },
+    { provider: 'opensandbox', runtime: 'docker', visible: false },
+    { provider: 'opensandbox', runtime: 'kubernetes', visible: true }
+  ] as const)(
+    'shows factors for $provider / $runtime: $visible',
+    async ({ provider, runtime, visible }) => {
+      mocks.effectiveConfig = resolveDomainEffectiveConfig({
+        domain: 'subservice',
+        overrides: {
+          agentSandbox: {
+            provider,
+            sealosdevbox: { baseUrl: 'https://devbox.test' },
+            opensandbox: { baseUrl: 'https://sandbox.test', runtime }
+          }
+        }
+      });
+      await act(async () => root.render(React.createElement(AgentSandbox)));
+      expect(container.textContent?.includes('admin:sandbox_cpu_overcommit_factor')).toBe(visible);
+      expect(container.textContent?.includes('admin:sandbox_memory_overcommit_factor')).toBe(
+        visible
+      );
+      if (provider === 'opensandbox' && runtime === 'docker') {
+        await act(async () => mocks.changeRuntime!('kubernetes'));
+        expect(container.textContent).toContain('admin:sandbox_cpu_overcommit_factor');
+        await act(async () => mocks.changeRuntime!('docker'));
+        expect(container.textContent).not.toContain('admin:sandbox_cpu_overcommit_factor');
+      }
+    }
+  );
 });
 
 describe('agent sandbox hidden URL drafts', () => {
@@ -147,6 +185,11 @@ describe('agent sandbox hidden URL drafts', () => {
       overrides: {
         agentSandbox: {
           provider: field.provider,
+          proxy: {
+            wsUrl: 'wss://proxy.test',
+            previewUrl: 'https://proxy.test',
+            secret: 'proxy_secret_32_characters_minimum'
+          },
           sealosdevbox: { baseUrl: 'https://sealos.example.test' },
           opensandbox: {
             baseUrl: 'https://opensandbox.example.test',
@@ -329,5 +372,63 @@ describe('subservice settings forms', () => {
     expect(mocks.patch).toHaveBeenCalledWith({
       mcp: { enabled: false, sseProxyUrl: '' }
     });
+  });
+});
+
+describe('Agent Sandbox proxy form', () => {
+  it('saves the three proxy fields together, keeps a masked secret and hides them while disabled', async () => {
+    const defaults = resolveDomainEffectiveConfig({ domain: 'subservice', overrides: {} });
+    mocks.effectiveConfig = defaults;
+    await act(async () => root.render(React.createElement(AgentSandbox)));
+    expect(container.querySelector('#proxy')).toBeNull();
+    expect(mocks.toc.some(({ id }) => id === 'proxy')).toBe(false);
+    await act(async () => mocks.changeProvider!('opensandbox'));
+    expect(container.querySelector('#proxy')).not.toBeNull();
+    expect(
+      container.querySelector<HTMLInputElement>('[name="agentSandbox.proxy.secret"]')?.type
+    ).toBe('password');
+    await act(async () => {
+      await mocks.save!();
+    });
+    expect(mocks.patch).not.toHaveBeenCalled();
+    expect(container.textContent?.match(/admin:required/g)).toHaveLength(3);
+    for (const [key, value] of Object.entries({
+      wsUrl: 'wss://proxy.test',
+      previewUrl: 'https://preview.test',
+      secret: '******'
+    })) {
+      await act(async () => mocks.inputs.get(`agentSandbox.proxy.${key}`)!({ target: { value } }));
+    }
+    await act(async () => {
+      await mocks.save!();
+    });
+    expect(mocks.patch).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        agentSandbox: expect.objectContaining({
+          proxy: { wsUrl: 'wss://proxy.test', previewUrl: 'https://preview.test', secret: '******' }
+        })
+      })
+    );
+    await act(async () =>
+      mocks.inputs.get('agentSandbox.proxy.wsUrl')!({
+        target: { value: 'https://wrong-protocol.test' }
+      })
+    );
+    await act(async () =>
+      mocks.inputs.get('agentSandbox.proxy.secret')!({ target: { value: 'short' } })
+    );
+    mocks.patch.mockClear();
+    await act(async () => {
+      await mocks.save!();
+    });
+    expect(mocks.patch).not.toHaveBeenCalled();
+    expect(container.textContent).toContain('admin:sandbox_proxy_url_invalid');
+    expect(container.textContent).toContain('admin:sandbox_proxy_secret_invalid');
+    await act(async () => mocks.changeProvider!('none'));
+    await act(async () => {
+      await mocks.save!();
+    });
+    expect(mocks.patch).toHaveBeenCalledTimes(1);
+    expect(container.querySelector('#proxy')).toBeNull();
   });
 });

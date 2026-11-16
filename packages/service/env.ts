@@ -2,13 +2,7 @@ import { createEnv } from '@t3-oss/env-core';
 import z from 'zod';
 import { isPhaseProductionBuild } from '@fastgpt/global/common/system/constants';
 import { BoolSchema, IntSchema, NumSchema, UrlSchema } from '@fastgpt/global/common/zod';
-import {
-  AgentSandboxPreviewProxyUrlSchema,
-  AgentSandboxProxyUrlSchema,
-  getRuntimeEnv,
-  validateS3Env,
-  validateAgentUsersEnv
-} from './env.util';
+import { getRuntimeEnv, validateS3Env, validateAgentUsersEnv } from './env.util';
 import { LogLevelSchema, StorageVendorSchema, StorageCosProtocolSchema } from './env.const';
 
 export const serviceEnv = createEnv({
@@ -72,34 +66,9 @@ export const serviceEnv = createEnv({
     CRM_API_URL: UrlSchema.optional(),
     CRM_API_KEY: z.string().optional(),
 
-    // Agent sandbox proxy
-    AGENT_SANDBOX_PROXY_SECRET: z
-      .string()
-      .min(32, 'AGENT_SANDBOX_PROXY_SECRET must be at least 32 characters')
-      .optional()
-      .meta({
-        description:
-          'agent-sandbox-proxy 与 FastGPT 主服务共用的 HMAC 密钥；启用 Agent Sandbox 时必填，至少 32 个字符'
-      }),
-    AGENT_SANDBOX_PROXY_URL: AgentSandboxProxyUrlSchema.optional().meta({
-      description: '浏览器访问 agent-sandbox-proxy 的 WebSocket 地址，必须以 ws:// 或 wss:// 开头'
-    }),
-    AGENT_SANDBOX_PREVIEW_PROXY_URL: AgentSandboxPreviewProxyUrlSchema.optional().meta({
-      description:
-        '浏览器访问 Agent Sandbox 文件预览代理的 HTTP(S) 地址，必须以 http:// 或 https:// 开头'
-    }),
     // Agent sandbox
     AGENT_SANDBOX_SHOW_FREE_TIP: BoolSchema.default(false).meta({
       description: '是否展示虚拟机“限时免费”标签；默认为 false，为空或未配置时不展示'
-    }),
-
-    AGENT_SANDBOX_CPU_OVERCOMMIT_FACTOR: NumSchema.min(1).default(1).meta({
-      description:
-        'Agent Sandbox CPU 超卖倍数（仅 opensandbox + kubernetes 运行态生效）：CPU requests = limits / 该值；1 = 该维度不超卖（requests 镜像 limits）'
-    }),
-    AGENT_SANDBOX_MEMORY_OVERCOMMIT_FACTOR: NumSchema.min(1).default(1).meta({
-      description:
-        'Agent Sandbox 内存超卖倍数（仅 opensandbox + kubernetes 运行态生效）：内存 requests = limits / 该值；1 = 该维度不超卖（requests 镜像 limits）'
     }),
 
     // ==================== 智能分块 ====================
@@ -163,7 +132,6 @@ export const serviceEnv = createEnv({
     STORAGE_OSS_CNAME: BoolSchema.default(false),
     STORAGE_OSS_INTERNAL: BoolSchema.default(false),
     STORAGE_OSS_SECURE: BoolSchema.default(false),
-    STORAGE_OSS_ENABLE_PROXY: BoolSchema.default(true),
 
     //  ==================== 日志配置 ====================
     LOG_ENABLE_CONSOLE: BoolSchema.default(true),
@@ -192,10 +160,6 @@ export const serviceEnv = createEnv({
       description:
         '客户端访问 FastGPT 时使用的地址（由协议、主机和可选端口组成），用于补全文件资源路径。例如 https://fastgpt.cn；本地开发可使用 http://localhost:3000。'
     }),
-    FILE_DOMAIN: UrlSchema.optional().meta({
-      description:
-        '文件域名（也指向 FastGPT 服务）；如需更高安全性可独立分配域名，避免高危文件读取到主域名内容'
-    }),
     FILE_DOWNLOAD_PUBLIC_URL_PREFIX: UrlSchema.optional().meta({
       description:
         '下载短链公开 URL 前缀。配置后下载链接生成为 {prefix}/{signedAlias}，通常由 nginx rewrite 到 FastGPT /api/system/file/d/{signedAlias}；仅影响下载，不影响上传'
@@ -204,9 +168,6 @@ export const serviceEnv = createEnv({
 
     //==================== 安全配置 ====================
 
-    AUTH_COOKIE_SECURE: BoolSchema.default(false).meta({
-      description: '是否强制为登录 Cookie 添加 Secure 属性，仅允许通过 HTTPS 传输'
-    }),
     TRUSTED_PROXY_ENABLE: BoolSchema.default(false).meta({
       description:
         '是否启用可信反向代理客户端 IP 校验；关闭时兼容旧逻辑，直接信任 X-Forwarded-For/X-Real-IP'
@@ -231,7 +192,7 @@ export const serviceEnv = createEnv({
 
     SHOW_OUTLINK_BRAND: BoolSchema.default(false).meta({
       description:
-        '是否展示免登录品牌标识；开源版始终开启，接入 Pro 服务后默认关闭，可设为 true 开启'
+        '是否展示免登录品牌标识；App 配置 PRO_URL 即按此 ENV 控制，默认 false，与 License 激活无关；开源版忽略该变量并固定开启'
     }),
     CHAT_LOG_URL: UrlSchema.optional().meta({
       description: '聊天日志推送地址'
@@ -239,12 +200,7 @@ export const serviceEnv = createEnv({
     CHAT_LOG_INTERVAL: IntSchema.optional().meta({
       description: '聊天日志推送延迟时间（毫秒）'
     }),
-    CHAT_LOG_SOURCE_ID_PREFIX: z.string().default('fastgpt-'),
-    // 共享 axios 的缓冲响应体上限仍是服务端基础设施配置，不进入实例配置。
-    SERVICE_AXIOS_MAX_CONTENT_LENGTH: IntSchema.default(20).meta({
-      description:
-        '服务端共享 HTTP 客户端缓冲型响应体的最大大小（MB，按解压后大小计算）；流式下载由调用方或业务配额限制'
-    })
+    CHAT_LOG_SOURCE_ID_PREFIX: z.string().default('fastgpt-')
   },
   emptyStringAsUndefined: true,
   runtimeEnv: getRuntimeEnv(),

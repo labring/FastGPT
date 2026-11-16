@@ -10,7 +10,6 @@ import { isConfigFieldVisible } from './permission';
 export const adminConfigPageFieldsMap: Record<string, readonly string[]> = {
   '/admin/settings/core': [
     'site.openApiPrefix',
-    'auth.teamMode',
     'auth.loginProviders.email.smtp',
     'auth.loginProviders.email.user',
     'auth.loginProviders.email.port',
@@ -21,6 +20,7 @@ export const adminConfigPageFieldsMap: Record<string, readonly string[]> = {
     'auth.loginProviders.phone.accessKeySecret',
     'feature.multipleDataToBase64',
     'feature.agentEngine',
+    'storage.fileDomain',
     'storage.downloadMode',
     'storage.externalEndpoint',
     'storage.cdnEndpoint',
@@ -39,12 +39,23 @@ export const adminConfigPageFieldsMap: Record<string, readonly string[]> = {
     'site.loginGuideDocUrl',
     'site.customApiDomain',
     'site.customSharePageDomain',
+    'site.botIframeUrl',
+    'site.scripts'
+  ],
+  '/admin/settings/custom-domain': [
     'site.customDomain.enable',
     'site.customDomain.domain.aliyun',
     'site.customDomain.domain.tencent',
     'site.customDomain.domain.volcengine',
-    'site.botIframeUrl',
-    'site.scripts'
+    'site.customDomain.kc.aliyun',
+    'site.customDomain.kc.tencent',
+    'site.customDomain.kc.volcengine',
+    'site.customDomain.issuerServiceName.aliyun',
+    'site.customDomain.issuerServiceName.tencent',
+    'site.customDomain.issuerServiceName.volcengine',
+    'site.customDomain.nginxServiceName.aliyun',
+    'site.customDomain.nginxServiceName.tencent',
+    'site.customDomain.nginxServiceName.volcengine'
   ],
   '/admin/settings/feature': [
     'feature.hideChatCopyrightSetting',
@@ -105,6 +116,7 @@ export const adminConfigPageFieldsMap: Record<string, readonly string[]> = {
   '/admin/settings/security': [
     'security.checkInternalIp',
     'security.csrfEnabled',
+    'security.authCookieSecure',
     'security.allowedOrigins',
     'security.skipFileTypeCheck',
     'security.checkExternalFile',
@@ -114,11 +126,13 @@ export const adminConfigPageFieldsMap: Record<string, readonly string[]> = {
   '/admin/settings/limits': [
     'auth.openApiKeyMaxCount',
     'resource.serviceRequestMaxContentLength',
+    'resource.serviceAxiosMaxContentLength',
     'resource.maxFolderDepth',
     'resource.appFolderMaxAmount',
     'resource.datasetFolderMaxAmount',
     'resource.uploadFileMaxSize',
     'resource.uploadFileMaxAmount',
+    'resource.evaluationMaxRows',
     'resource.systemMaxStringLengthM',
     'resource.exportDatasetLimitMinutes',
     'resource.websiteSyncLimitMinuted',
@@ -198,6 +212,9 @@ export const adminConfigPageFieldsMap: Record<string, readonly string[]> = {
   '/admin/subservice/mcp': ['subservice.mcp.enabled', 'subservice.mcp.sseProxyUrl'],
   '/admin/subservice/agent-sandbox': [
     'subservice.agentSandbox.provider',
+    'subservice.agentSandbox.proxy.wsUrl',
+    'subservice.agentSandbox.proxy.previewUrl',
+    'subservice.agentSandbox.proxy.secret',
     'subservice.agentSandbox.common.cpuCount',
     'subservice.agentSandbox.common.memoryMiB',
     'subservice.agentSandbox.common.storageSizeGi',
@@ -216,6 +233,8 @@ export const adminConfigPageFieldsMap: Record<string, readonly string[]> = {
     'subservice.agentSandbox.sealosdevbox.image',
     'subservice.agentSandbox.opensandbox.baseUrl',
     'subservice.agentSandbox.opensandbox.runtime',
+    'subservice.agentSandbox.opensandbox.cpuOvercommitFactor',
+    'subservice.agentSandbox.opensandbox.memoryOvercommitFactor',
     'subservice.agentSandbox.opensandbox.image',
     'subservice.agentSandbox.opensandbox.useServerProxy',
     'subservice.agentSandbox.opensandbox.volumeManagerUrl',

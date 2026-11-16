@@ -4,12 +4,12 @@ import {
   buildLegacyProOverrides,
   buildSparseLegacyOverrides,
   collectEnvRehomedWarnings
-} from '@/migration/tasks/4180/20260928_migrate_instance_configs/service';
+} from '@/migration/tasks/4180/20261116_migrate_system_configs/service';
 import {
   SYSTEM_INSTANCE_CONFIG_DOMAINS,
   resolveDomainEffectiveConfig
 } from '@fastgpt/global/common/system/config/schema';
-import { readLegacyInstanceConfigEnv } from '@/migration/tasks/4180/20260928_migrate_instance_configs/env';
+import { readLegacyInstanceConfigEnv } from '@/migration/tasks/4180/20261116_migrate_system_configs/env';
 const legacyEnv = readLegacyInstanceConfigEnv();
 const buildLegacyDomainOverrides = (input: Parameters<typeof buildFromLegacy>[0]) =>
   buildFromLegacy({ ...input, legacyEnv });
@@ -517,15 +517,13 @@ describe('migration collectEnvRehomedWarnings', () => {
     expect(collectEnvRehomedWarnings({ feConfigs: {} })).toEqual([]);
   });
 
-  it('warns when legacy custom-domain infrastructure must move to ENV', () => {
+  it('keeps custom-domain infrastructure in form configuration without an ENV warning', () => {
     const warnings = collectEnvRehomedWarnings({
       feConfigs: {},
       systemEnv: { customDomain: { kc: { aliyun: 'sensitive-kubeconfig' } } }
     });
 
-    expect(warnings).toHaveLength(1);
-    expect(warnings[0]).toContain('CUSTOM_DOMAIN_*');
-    expect(warnings[0]).not.toContain('sensitive-kubeconfig');
+    expect(warnings).toEqual([]);
   });
 });
 
@@ -719,7 +717,6 @@ describe('migration env wiring', () => {
       ['performance.dataset.vlmMaxProcess', legacyEnv.VLM_MAX_PROCESS],
       ['performance.chat.maxQpm', legacyEnv.CHAT_MAX_QPM],
       ['performance.tracking.retentionHours', legacyEnv.LLM_REQUEST_TRACKING_RETENTION_HOURS],
-      ['performance.task.evalConcurrency', legacyEnv.EVAL_CONCURRENCY],
       ['performance.channel.wechatConcurrency', legacyEnv.WECHAT_CHANNEL_CONCURRENCY],
       // storage
       ['storage.downloadMode', legacyEnv.STORAGE_DOWNLOAD_URL_MODE],

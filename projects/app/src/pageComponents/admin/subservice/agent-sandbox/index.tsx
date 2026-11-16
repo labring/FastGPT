@@ -8,7 +8,8 @@ import {
   NumberIncrementStepper,
   NumberDecrementStepper,
   SimpleGrid,
-  Box
+  Box,
+  Text
 } from '@chakra-ui/react';
 import { useForm, Controller, useWatch } from 'react-hook-form';
 import MySelect from '@fastgpt/web/components/common/MySelect';
@@ -21,6 +22,8 @@ import AdminSwitchRow from '@/pageComponents/admin/settings/AdminSwitchRow';
 import ConnectivityTestInput from '@/pageComponents/admin/settings/ConnectivityTestInput';
 import type { SettingTOCItem } from '@/pageComponents/admin/settings/AdminSettingTOC';
 import { isValidHttpUrl } from '@fastgpt/global/common/string/url';
+import { AgentSandboxProxyConfigSchema } from '@fastgpt/global/common/system/config/schemas/subservice';
+import { SECRET_MASK } from '@fastgpt/global/common/system/config/permission';
 import type { SystemInstanceConfigDomainMap } from '@fastgpt/global/common/system/config/schema';
 
 type SubserviceConfigForm = SystemInstanceConfigDomainMap['subservice'];
@@ -33,13 +36,20 @@ const AgentSandboxSubserviceComponent = () => {
 
   const tocItems: SettingTOCItem[] = [
     { id: 'provider', label: t('admin:sandbox_provider_selection') },
+    { id: 'proxy', label: t('admin:sandbox_proxy_settings') },
     { id: 'providerConfig', label: t('admin:provider_settings') },
     { id: 'specs', label: t('admin:shared_resource_specs') },
     { id: 'lifecycle', label: t('admin:lifecycle_runtime') },
     { id: 'mirrors', label: t('admin:package_mirror_acceleration') }
   ];
 
-  const { control, handleSubmit, reset, register } = useForm<SubserviceConfigForm>({
+  const {
+    control,
+    handleSubmit,
+    reset,
+    register,
+    formState: { errors }
+  } = useForm<SubserviceConfigForm>({
     defaultValues: effectiveConfig
   });
 
@@ -53,14 +63,49 @@ const AgentSandboxSubserviceComponent = () => {
     control,
     name: 'agentSandbox.provider'
   });
+  const openSandboxRuntime = useWatch({
+    control,
+    name: 'agentSandbox.opensandbox.runtime'
+  });
+  const isKubernetesRuntime =
+    selectedProvider === 'opensandbox' && openSandboxRuntime === 'kubernetes';
+
+  const isSandboxEnabled = selectedProvider !== 'none';
 
   const onSave = handleSubmit(async (formData) => {
     const provider = formData.agentSandbox.provider;
     const isSealosActive = provider === 'sealosdevbox';
     const isOpenSandboxActive = provider === 'opensandbox';
+    const isKubernetesActive =
+      isOpenSandboxActive && formData.agentSandbox.opensandbox.runtime === 'kubernetes';
+    // 隐藏的无效数字草稿不能阻断切换运行态或停用服务；可见字段仍由 RHF 与服务端校验。
+    const resolveOvercommitFactor = (value: number, previous = 1) =>
+      isKubernetesActive || (Number.isFinite(value) && value >= 1) ? value : previous;
     // 非当前激活 Provider 的隐藏分支若残留未填完的草稿 URL，回落到已持久化地址，不阻断切换或关闭。
     const sanitizedAgentSandbox: SubserviceConfigForm['agentSandbox'] = {
       ...formData.agentSandbox,
+      // 关闭服务时隐藏的无效草稿回退到已保存值，允许管理员正常停用。
+      proxy:
+        provider === 'none'
+          ? {
+              wsUrl: AgentSandboxProxyConfigSchema.shape.wsUrl.safeParse(
+                formData.agentSandbox.proxy.wsUrl
+              ).success
+                ? formData.agentSandbox.proxy.wsUrl
+                : (effectiveConfig.agentSandbox?.proxy.wsUrl ?? ''),
+              previewUrl: AgentSandboxProxyConfigSchema.shape.previewUrl.safeParse(
+                formData.agentSandbox.proxy.previewUrl
+              ).success
+                ? formData.agentSandbox.proxy.previewUrl
+                : (effectiveConfig.agentSandbox?.proxy.previewUrl ?? ''),
+              secret:
+                !formData.agentSandbox.proxy.secret ||
+                formData.agentSandbox.proxy.secret === SECRET_MASK ||
+                formData.agentSandbox.proxy.secret.length >= 32
+                  ? formData.agentSandbox.proxy.secret
+                  : (effectiveConfig.agentSandbox?.proxy.secret ?? '')
+            }
+          : formData.agentSandbox.proxy,
       sealosdevbox: {
         ...formData.agentSandbox.sealosdevbox,
         baseUrl:
@@ -70,6 +115,14 @@ const AgentSandboxSubserviceComponent = () => {
       },
       opensandbox: {
         ...formData.agentSandbox.opensandbox,
+        cpuOvercommitFactor: resolveOvercommitFactor(
+          formData.agentSandbox.opensandbox.cpuOvercommitFactor,
+          effectiveConfig.agentSandbox?.opensandbox.cpuOvercommitFactor
+        ),
+        memoryOvercommitFactor: resolveOvercommitFactor(
+          formData.agentSandbox.opensandbox.memoryOvercommitFactor,
+          effectiveConfig.agentSandbox?.opensandbox.memoryOvercommitFactor
+        ),
         baseUrl:
           isOpenSandboxActive || isValidOptionalUrl(formData.agentSandbox.opensandbox.baseUrl)
             ? formData.agentSandbox.opensandbox.baseUrl
@@ -87,7 +140,7 @@ const AgentSandboxSubserviceComponent = () => {
   return (
     <AdminSettingPage
       headerTitle={t('admin:page_title_agent_sandbox')}
-      tocItems={tocItems}
+      tocItems={tocItems.filter(({ id }) => id !== 'proxy' || isSandboxEnabled)}
       isLoading={isLoading}
       isSaving={isUpdating}
       onSave={onSave}
@@ -124,6 +177,71 @@ const AgentSandboxSubserviceComponent = () => {
           />
         </AdminFormItem>
       </AdminSettingSection>
+
+      {isSandboxEnabled && (
+        <AdminSettingSection id="proxy" title={t('admin:sandbox_proxy_settings')} showDivider>
+          {(['wsUrl', 'previewUrl', 'secret'] as const).map((key) => {
+            const isSecret = key === 'secret';
+            const error = errors.agentSandbox?.proxy?.[key];
+            return (
+              <AdminFormItem
+                key={key}
+                label={t(
+                  key === 'wsUrl'
+                    ? 'admin:sandbox_proxy_ws_url'
+                    : key === 'previewUrl'
+                      ? 'admin:sandbox_proxy_preview_url'
+                      : 'admin:sandbox_proxy_secret'
+                )}
+                tooltip={isSecret ? t('admin:sandbox_proxy_secret_tip') : undefined}
+                isRequired
+              >
+                <Controller
+                  name={`agentSandbox.proxy.${key}`}
+                  control={control}
+                  rules={{
+                    validate: (value) => {
+                      if (!isSandboxEnabled) return true;
+                      if (!value) return t('admin:required');
+                      if (isSecret)
+                        return (
+                          value === SECRET_MASK ||
+                          value.length >= 32 ||
+                          t('admin:sandbox_proxy_secret_invalid')
+                        );
+                      return (
+                        AgentSandboxProxyConfigSchema.shape[
+                          key === 'wsUrl' ? 'wsUrl' : 'previewUrl'
+                        ].safeParse(value).success || t('admin:sandbox_proxy_url_invalid')
+                      );
+                    }
+                  }}
+                  render={({ field }) => (
+                    <Input
+                      {...field}
+                      type={isSecret ? 'password' : 'text'}
+                      autoComplete={isSecret ? 'new-password' : 'off'}
+                      isInvalid={Boolean(error)}
+                      placeholder={
+                        isSecret
+                          ? SECRET_MASK
+                          : key === 'wsUrl'
+                            ? 'wss://sandbox-proxy.example.com'
+                            : 'https://sandbox-proxy.example.com'
+                      }
+                    />
+                  )}
+                />
+                {error && (
+                  <Text color={'red.500'} fontSize={'xs'} mt={1}>
+                    {error.message}
+                  </Text>
+                )}
+              </AdminFormItem>
+            );
+          })}
+        </AdminSettingSection>
+      )}
 
       {/* 2. Provider 专属配置 */}
       <AdminSettingSection id="providerConfig" title={t('admin:provider_settings')} showDivider>
@@ -274,6 +392,63 @@ const AgentSandboxSubserviceComponent = () => {
                   placeholder="opensandbox/runtime:latest"
                 />
               </AdminFormItem>
+
+              {isKubernetesRuntime && (
+                <>
+                  <AdminFormItem
+                    label={t('admin:sandbox_cpu_overcommit_factor')}
+                    tooltip={t('admin:sandbox_cpu_overcommit_factor_tooltip')}
+                    isRequired
+                  >
+                    <Controller
+                      name="agentSandbox.opensandbox.cpuOvercommitFactor"
+                      control={control}
+                      rules={{ validate: (value) => Number.isFinite(value) && value >= 1 }}
+                      render={({ field, fieldState }) => (
+                        <NumberInput
+                          min={1}
+                          step={0.1}
+                          value={field.value ?? ''}
+                          isInvalid={Boolean(fieldState.error)}
+                          onChange={(_, value) => field.onChange(value)}
+                        >
+                          <NumberInputField />
+                          <NumberInputStepper>
+                            <NumberIncrementStepper />
+                            <NumberDecrementStepper />
+                          </NumberInputStepper>
+                        </NumberInput>
+                      )}
+                    />
+                  </AdminFormItem>
+                  <AdminFormItem
+                    label={t('admin:sandbox_memory_overcommit_factor')}
+                    tooltip={t('admin:sandbox_memory_overcommit_factor_tooltip')}
+                    isRequired
+                  >
+                    <Controller
+                      name="agentSandbox.opensandbox.memoryOvercommitFactor"
+                      control={control}
+                      rules={{ validate: (value) => Number.isFinite(value) && value >= 1 }}
+                      render={({ field, fieldState }) => (
+                        <NumberInput
+                          min={1}
+                          step={0.1}
+                          value={field.value ?? ''}
+                          isInvalid={Boolean(fieldState.error)}
+                          onChange={(_, value) => field.onChange(value)}
+                        >
+                          <NumberInputField />
+                          <NumberInputStepper>
+                            <NumberIncrementStepper />
+                            <NumberDecrementStepper />
+                          </NumberInputStepper>
+                        </NumberInput>
+                      )}
+                    />
+                  </AdminFormItem>
+                </>
+              )}
 
               <AdminFormItem
                 label={t('admin:storage_volume_name_prefix')}

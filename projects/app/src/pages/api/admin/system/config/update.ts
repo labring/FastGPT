@@ -33,10 +33,6 @@ import {
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { logInstanceConfigWrite } from '@fastgpt/service/common/system/migrationCoverageLog';
 import { ApiHttpError } from '@fastgpt/service/common/http/apiError';
-import {
-  getSsoConfigured,
-  SsoConfigurationUnavailableError
-} from '@fastgpt/service/common/system/sso';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AdminAuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 
@@ -97,6 +93,14 @@ async function handler(
     bodySchema: UpdateDomainConfigBodySchema
   }).body;
 
+  // 团队模式是部署 ENV，旧版管理客户端也不能重新写入已退役字段。
+  if (items.some((item) => item.domain === 'auth' && Object.hasOwn(item.overrides, 'teamMode'))) {
+    throw new ApiHttpError(
+      400,
+      'Team mode is configured through the Pro TEAM_MODE environment variable'
+    );
+  }
+
   // 1. 服务端版本边界：当前部署版本不允许的字段直接拒绝
   const edition = getServiceEdition();
   // 套餐不属于实例配置的 11 个域，必须单独校验；包含空对象也代表替换套餐的写入意图。
@@ -119,32 +123,6 @@ async function handler(
         `Edition boundary violation in domain "${item.domain}": fields not allowed in ${edition} edition: ${notAllowedKeys.join(
           ', '
         )}`
-      );
-    }
-  }
-
-  // 1.1 sync 团队模式必须依赖 Pro 侧 EXTERNAL_USER_SYSTEM_BASE_URL；未配置时在事务与 S3 操作前拒绝保存。
-  const authSyncRequested = items.some(
-    (item) =>
-      item.domain === 'auth' &&
-      typeof item.overrides === 'object' &&
-      item.overrides !== null &&
-      (item.overrides as Record<string, unknown>).teamMode === 'sync'
-  );
-  if (authSyncRequested) {
-    const ssoConfigured = await getSsoConfigured().catch((error: unknown) => {
-      if (error instanceof SsoConfigurationUnavailableError) {
-        throw new ApiHttpError(
-          503,
-          'SSO configuration is unavailable; cannot verify sync teamMode prerequisite'
-        );
-      }
-      throw error;
-    });
-    if (!ssoConfigured) {
-      throw new ApiHttpError(
-        400,
-        'Sync teamMode requires EXTERNAL_USER_SYSTEM_BASE_URL to be configured'
       );
     }
   }

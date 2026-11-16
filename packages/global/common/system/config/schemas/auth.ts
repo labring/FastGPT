@@ -72,8 +72,11 @@ export const AuthConfigSchema = z.strictObject({
   openApiKeyMaxCount: positiveInteger(100),
   passwordExpiredMonth: z.number().int().positive().nullable().default(null),
   wecomLoginAutoRedirect: z.boolean().default(false),
-  // 团队模式：multi 多团队 / single 单团队 / sync 账号同步
-  teamMode: z.enum(['multi', 'single', 'sync']).default('single'),
+  // 仅兼容历史实例文档和已发布迁移；运行时由 Pro TEAM_MODE 决定，不再开放配置写入。
+  teamMode: z
+    .enum(['multi', 'single', 'sync'])
+    .default('single')
+    .meta({ deprecated: true, description: '历史团队模式，现由 Pro TEAM_MODE 环境变量控制' }),
   loginProviders: z
     .strictObject({
       email: EmailLoginConfigSchema.prefault({}),
