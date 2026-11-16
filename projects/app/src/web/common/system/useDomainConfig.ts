@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { useMemo } from 'react';
 import { useAdminConfigSaveRequest } from './useAdminConfigSaveRequest';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { GET, POST } from '@/web/common/api/request';
@@ -101,6 +102,12 @@ export const useDomainConfig = <T extends SystemInstanceConfigDomainKey>(domain:
   );
 
   const revision = data?.revision ?? 0;
+  // 密钥保存后公开字段可能完全相同；服务端快照（含 revision）变化时发布新对象，
+  // 让页面 reset 清除本地明文草稿。同一快照仍复用对象，避免覆盖未保存编辑。
+  const effectiveConfig = useMemo(
+    () => (data ? { ...data.effectiveConfig } : EMPTY_OBJECT),
+    [data]
+  );
   const overrides = (data?.overrides ?? EMPTY_OBJECT) as DeepPartial<
     SystemInstanceConfigDomainMap[T]
   >;
@@ -124,7 +131,7 @@ export const useDomainConfig = <T extends SystemInstanceConfigDomainKey>(domain:
   return {
     domain,
     revision,
-    effectiveConfig: (data?.effectiveConfig ?? EMPTY_OBJECT) as SystemInstanceConfigDomainMap[T],
+    effectiveConfig: effectiveConfig as SystemInstanceConfigDomainMap[T],
     overrides,
     secretKeys: data?.secretKeys ?? EMPTY_SECRET_KEYS,
     configuredSecretKeys: data?.configuredSecretKeys ?? EMPTY_SECRET_KEYS,

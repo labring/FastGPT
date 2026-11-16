@@ -168,4 +168,35 @@ describe('useDomainConfig', () => {
     expect(config.effectiveConfig).toBe(firstEffective);
     expect(config.overrides).toBe(firstOverrides);
   });
+
+  it('publishes a new form snapshot when a secret-only save advances the revision', async () => {
+    await render();
+    const previousSnapshot = config.effectiveConfig;
+    await act(async () => edit('Local plaintext draft'));
+    mocks.post.mockResolvedValue({ results: [] });
+    // 密钥不在公开配置中，保存后只有 revision 和已配置标记发生变化。
+    mocks.get.mockResolvedValue({
+      revision: 4,
+      overrides: { name: 'Original' },
+      effectiveConfig: { name: 'Original' },
+      secretKeys: ['kcServerAuth'],
+      configuredSecretKeys: ['kcServerAuth']
+    });
+
+    await act(async () => {
+      await config.patchConfig({ kcServerAuth: 'synthetic-secret' });
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    expect(config.effectiveConfig).toEqual(previousSnapshot);
+    expect(config.effectiveConfig).not.toBe(previousSnapshot);
+    expect(container.querySelector('input')?.value).toBe('Original');
+
+    const savedSnapshot = config.effectiveConfig;
+    await act(async () => {
+      await config.refetch();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    expect(config.effectiveConfig).toBe(savedSnapshot);
+  });
 });
