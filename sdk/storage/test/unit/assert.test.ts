@@ -3,6 +3,7 @@ import { InvalidStorageObjectKeyError } from '../../src/errors';
 import {
   MAX_STORAGE_OBJECT_KEY_UTF8_BYTES,
   assertRequiredStorageObjectPrefix,
+  assertStorageDownloadRange,
   assertStorageObjectKey,
   assertStorageObjectKeys,
   assertStorageObjectPrefix,
@@ -174,5 +175,25 @@ describe('collectStorageObjectKeyViolations', () => {
       'control_character',
       'dot_path_segment'
     ]);
+  });
+});
+
+describe('assertStorageDownloadRange', () => {
+  it('accepts undefined and valid inclusive byte ranges', () => {
+    expect(() => assertStorageDownloadRange(undefined)).not.toThrow();
+    expect(() => assertStorageDownloadRange({ start: 0, end: 0 })).not.toThrow();
+    expect(() => assertStorageDownloadRange({ start: 10, end: 4095 })).not.toThrow();
+  });
+
+  it.each([
+    null,
+    'bytes=0-1',
+    { start: -1, end: 10 },
+    { start: 0.5, end: 10 },
+    { start: 10, end: 9 },
+    { start: 0, end: Number.MAX_SAFE_INTEGER + 1 },
+    { start: 0 }
+  ])('rejects invalid download range %j', (range) => {
+    expect(() => assertStorageDownloadRange(range)).toThrow();
   });
 });
