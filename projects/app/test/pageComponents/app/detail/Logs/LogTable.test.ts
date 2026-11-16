@@ -102,7 +102,15 @@ vi.mock('@fastgpt/web/components/common/TagFilter', async () => {
         )
       ),
     MultiSelectFilter: () => null,
-    SingleSelectFilter: ({ value, options, onChange }: any) =>
+    createMultiSelectFilter: () => ({ mode: 'all', values: [] }),
+    toMultiSelectFilterQuery: () => undefined,
+    useCommonFilterLabels: () => ({})
+  };
+});
+vi.mock('@fastgpt/web/components/common/TagFilter/SingleSelectFilter', async () => {
+  const React = await import('react');
+  return {
+    default: ({ value, options, onChange }: any) =>
       React.createElement(
         'button',
         {
@@ -110,10 +118,7 @@ vi.mock('@fastgpt/web/components/common/TagFilter', async () => {
           onClick: () => onChange(value === 'title' ? 'chatId' : 'title')
         },
         options.find((option: any) => option.value === value)?.label
-      ),
-    createMultiSelectFilter: () => ({ mode: 'all', values: [] }),
-    toMultiSelectFilterQuery: () => undefined,
-    useCommonFilterLabels: () => ({})
+      )
   };
 });
 vi.mock('@fastgpt/web/components/common/Avatar', async () => {

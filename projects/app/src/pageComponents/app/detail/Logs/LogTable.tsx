@@ -24,11 +24,11 @@ import DateRangePicker from '@fastgpt/web/components/common/DateRangePicker';
 import {
   FilterInput,
   MultiSelectFilter,
-  SingleSelectFilter,
   createMultiSelectFilter,
   toMultiSelectFilterQuery,
   useCommonFilterLabels
 } from '@fastgpt/web/components/common/TagFilter';
+import SingleSelectFilter from '@fastgpt/web/components/common/TagFilter/SingleSelectFilter';
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import { useDebounce, useEventListener, useLocalStorageState } from 'ahooks';
@@ -124,11 +124,11 @@ const LogSearchInput = React.memo(
           minW={0}
           ml={'-1px'}
           borderLeftRadius={0}
-          placeholder={t(
+          placeholder={
             searchType === 'chatId'
-              ? 'app:logs_search_chat_id_placeholder'
-              : 'app:logs_search_title_placeholder'
-          )}
+              ? t('app:logs_search_chat_id_placeholder')
+              : t('app:logs_search_title_placeholder')
+          }
           value={value}
           onChange={(e) => setValue(e.target.value)}
         />
