@@ -2,7 +2,7 @@ import { type StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 import type { SecretValueReferenceResolver } from '@fastgpt/global/common/secret/utils';
 import { getSecretValue } from '../../common/secret/utils';
 import { axios } from '../../common/api/axios';
-import { formatHttpError } from '../../common/api/httpError';
+import { formatHttpError, getSafeHttpErrorFields } from '../../common/api/httpError';
 import type { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import {
@@ -208,37 +208,11 @@ export const runHTTPTool = async ({
 
     return { data };
   } catch (error) {
-    // 请求错误可能携带鉴权头、URL 或响应体；日志只保留固定类别和可信状态码。
-    const response =
-      typeof error === 'object' && error !== null && 'response' in error
-        ? error.response
-        : undefined;
-    const status =
-      typeof response === 'object' && response !== null && 'status' in response
-        ? response.status
-        : undefined;
-    const code =
-      typeof error === 'object' && error !== null && 'code' in error ? error.code : undefined;
-    const safeCodes = [
-      'ECONNABORTED',
-      'ETIMEDOUT',
-      'ECONNRESET',
-      'ECONNREFUSED',
-      'ENOTFOUND',
-      'EHOSTUNREACH',
-      'ENETUNREACH',
-      'ERR_NETWORK',
-      'ERR_BAD_REQUEST',
-      'ERR_BAD_RESPONSE',
-      'ERR_CANCELED'
-    ];
+    // 保留 HTTP Tool 只采集响应状态的边界，不把异常上的直接 status 新增为日志来源。
     logger.warn('HTTP tool request failed', {
       name: 'HttpToolRequestError',
       message: 'HTTP tool request failed',
-      ...(typeof code === 'string' && safeCodes.includes(code) ? { code } : {}),
-      ...(typeof status === 'number' && Number.isInteger(status) && status >= 100 && status <= 599
-        ? { status }
-        : {})
+      ...getSafeHttpErrorFields({ error, statusSource: 'response' })
     });
     // 与 HTTP 节点保持一致：非 2xx 时把响应体中的具体原因附加到错误文本，避免只剩状态行。
     return { errorMsg: formatHttpError(error).rawText };

@@ -10,6 +10,7 @@ vi.hoisted(() => vi.resetModules());
 vi.unmock('@fastgpt/service/common/logger');
 
 import { axios } from '@fastgpt/service/common/api/axios';
+import { formatHttpError } from '@fastgpt/service/common/api/httpError';
 import { runHTTPTool } from '@fastgpt/service/core/app/http';
 
 describe('runHTTPTool error logging', () => {
@@ -54,7 +55,7 @@ describe('runHTTPTool error logging', () => {
     await dispose?.();
   });
 
-  it.each(['axios', 'ordinary'] as const)(
+  it.each(['axios', 'ordinary', 'direct-only', 'invalid-response'] as const)(
     'does not emit request secrets or untrusted %s errors through console or OTel',
     async (kind) => {
       consoleRecords.length = 0;
@@ -62,18 +63,23 @@ describe('runHTTPTool error logging', () => {
       let called = false;
       let interceptorApplied = false;
       let secretHeaderPresent = false;
+      let rejectedError: unknown;
       axios.defaults.adapter = (async (config) => {
         called = true;
         interceptorApplied = config.maxRedirects === 0 && '__safeRedirect' in config;
         secretHeaderPresent = config.headers.Authorization === marker;
         const error =
-          kind === 'axios'
-            ? new AxiosError(`request ${marker}`, 'ECONNRESET', config)
-            : Object.assign(new Error(`failure ${marker}`), { code: marker });
+          kind === 'ordinary'
+            ? Object.assign(new Error(`failure ${marker}`), { code: marker })
+            : new AxiosError(`request ${marker}`, 'ECONNRESET', config);
         Object.assign(error, {
           cause: new Error(`cause ${marker}`),
-          response: { status: kind === 'axios' ? 503 : 999, data: { message: marker } }
+          ...(kind !== 'direct-only'
+            ? { response: { status: kind === 'axios' ? 503 : 999, data: { message: marker } } }
+            : {}),
+          ...(kind === 'direct-only' || kind === 'invalid-response' ? { status: 418 } : {})
         });
+        rejectedError = error;
         throw error;
       }) satisfies AxiosAdapter;
 
@@ -88,7 +94,7 @@ describe('runHTTPTool error logging', () => {
       expect(called).toBe(true);
       expect(interceptorApplied).toBe(true);
       expect(secretHeaderPresent).toBe(true);
-      expect(result.errorMsg).toBeTruthy();
+      expect(result.errorMsg).toBe(formatHttpError(rejectedError).rawText);
       expect(consoleRecords).toHaveLength(1);
       expect(otelRecords).toHaveLength(1);
       const allLogs = JSON.stringify({ consoleRecords, otelRecords });
@@ -97,12 +103,18 @@ describe('runHTTPTool error logging', () => {
       expect(allLogs).not.toContain('config');
       expect(allLogs).not.toContain('cause');
       expect(allLogs).toContain('HTTP tool request failed');
+      expect(allLogs).toContain('HttpToolRequestError');
+      expect(otelRecords[0]).toMatchObject({
+        severityText: 'warning',
+        body: { name: 'HttpToolRequestError', message: 'HTTP tool request failed' }
+      });
+      if (kind === 'ordinary') expect(otelRecords[0]).not.toHaveProperty('body.code');
+      else expect(otelRecords[0]).toHaveProperty('body.code', 'ECONNRESET');
       if (kind === 'axios') {
-        expect(allLogs).toContain('ECONNRESET');
-        expect(allLogs).toContain('503');
+        expect(otelRecords[0]).toHaveProperty('body.status', 503);
       } else {
-        expect(allLogs).not.toContain('503');
-        expect(allLogs).not.toContain('999');
+        expect(otelRecords[0]).not.toHaveProperty('body.status');
+        expect(JSON.stringify(consoleRecords)).not.toMatch(/\bstatus\s*:/);
       }
     }
   );

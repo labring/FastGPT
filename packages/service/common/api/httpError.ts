@@ -50,19 +50,29 @@ export const formatHttpError = (error: any) => {
 };
 
 /**
- * 为不可信 HTTP 异常生成日志白名单；不复制凭据、URL、请求对象或上游消息，也不改变原异常。
- * status 只接受 HTTP 整数范围，code 只接受已知网络错误；无法读取异常时仍返回固定摘要。
+ * 提取不可信 HTTP 异常中可记录的 code/status，不复制原对象或调用序列化。
+ * 调用方明确选择状态来源；只有响应状态缺省时才允许回退，非法响应状态不能被直接状态覆盖。
+ * 属性不可读时返回空诊断，避免日志处理替换原业务异常。
  */
-export const getSafeHttpErrorLog = (error: unknown) => {
-  const summary = { name: 'HttpRequestError', message: 'HTTP request failed' };
+export const getSafeHttpErrorFields = ({
+  error,
+  statusSource
+}: {
+  error: unknown;
+  statusSource: 'response' | 'responseOrDirect';
+}) => {
   try {
     const details = typeof error === 'object' && error !== null ? error : undefined;
     const code = details && 'code' in details ? details.code : undefined;
     const response = details && 'response' in details ? details.response : undefined;
-    const status =
-      (typeof response === 'object' && response !== null && 'status' in response
+    const responseStatus =
+      typeof response === 'object' && response !== null && 'status' in response
         ? response.status
-        : undefined) ?? (details && 'status' in details ? details.status : undefined);
+        : undefined;
+    const status =
+      statusSource === 'responseOrDirect'
+        ? (responseStatus ?? (details && 'status' in details ? details.status : undefined))
+        : responseStatus;
     const safeCodes = [
       'ECONNABORTED',
       'ETIMEDOUT',
@@ -77,13 +87,19 @@ export const getSafeHttpErrorLog = (error: unknown) => {
       'ERR_CANCELED'
     ];
     return {
-      ...summary,
       ...(typeof code === 'string' && safeCodes.includes(code) ? { code } : {}),
       ...(typeof status === 'number' && Number.isInteger(status) && status >= 100 && status <= 599
         ? { status }
         : {})
     };
   } catch {
-    return summary;
+    return {};
   }
 };
+
+/** API 与数据源使用固定日志标签，并保留原有的直接状态回退，不改变业务响应。 */
+export const getSafeHttpErrorLog = (error: unknown) => ({
+  name: 'HttpRequestError',
+  message: 'HTTP request failed',
+  ...getSafeHttpErrorFields({ error, statusSource: 'responseOrDirect' })
+});
