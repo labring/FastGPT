@@ -11,8 +11,7 @@ import {
 
 /* ============================================================================
  * API: 获取旋转图像验证码
- * Routes: GET /api/support/user/account/captcha/getImgCaptcha
- *         GET /proApi/support/user/account/captcha/getImgCaptcha
+ * Route: GET /api/support/user/account/captcha/getImgCaptcha
  * Method: GET
  * Description: 为指定账号和业务场景生成旋转图像验证码
  * Tags: ['User', 'Account', 'Verification']

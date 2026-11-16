@@ -28,4 +28,13 @@ describe('get puzzle captcha API', () => {
       )
     ).rejects.toBeInstanceOf(ApiRequestInputParseError);
   });
+
+  it.each([
+    ['missing', { username: 'a@example.com' }],
+    ['unsupported', { username: 'a@example.com', purpose: 'notAVerificationScene' }]
+  ])('rejects a %s purpose at the shared endpoint', async (_name, query) => {
+    await expect(
+      handler({ query, headers: {} } as any, { setHeader: vi.fn() } as any)
+    ).rejects.toBeInstanceOf(ApiRequestInputParseError);
+  });
 });
