@@ -6,8 +6,7 @@ import { migrateLegacyWorkflowStructureData } from './legacy/structure';
 import { migrateWorkflowSecretValues } from './secret';
 import { FlowNodeInputTypeEnum, FlowNodeTypeEnum } from '../node/constant';
 import { NodeInputKeyEnum } from '../constants';
-import { AgentToolInputModeEnum } from '../../app/tool/constants';
-import { isToolInputValueConfigured } from '../../app/formEdit/utils';
+import { normalizeAgentToolInputs } from './agentToolInput';
 
 /**
  * 将外部 workflow 迁移为严格 canonical 数据。
@@ -73,24 +72,20 @@ export const migrateWorkflowToCurrent = (input: LegacyWorkflowDataInput): Canoni
           return input;
         }
 
-        const value = input.value.map((tool) => {
+        const rawSelectedTools = input.value;
+        // 工作流变量引用形态 `[nodeId, outputId]` 不是工具列表，原样保留。
+        if (
+          rawSelectedTools.length === 2 &&
+          rawSelectedTools.every((item) => typeof item === 'string')
+        ) {
+          return input;
+        }
+
+        const value = rawSelectedTools.map((tool) => {
           if (!tool || typeof tool !== 'object' || Array.isArray(tool)) return tool;
 
-          const { config: rawConfig, ...availableTool } = tool;
-          const config =
-            rawConfig && typeof rawConfig === 'object' && !Array.isArray(rawConfig)
-              ? rawConfig
-              : {};
-          const inputs = Array.isArray(tool.inputs)
-            ? tool.inputs
-            : Object.entries(config).map(([key, value]) => ({
-                key,
-                mode: isToolInputValueConfigured({
-                  input: { key, renderTypeList: [], value, defaultValue: undefined }
-                })
-                  ? AgentToolInputModeEnum.manual
-                  : AgentToolInputModeEnum.agentGenerated
-              }));
+          const { config: rawConfig, inputs: rawInputs, ...availableTool } = tool;
+          const { inputs, config } = normalizeAgentToolInputs({ rawInputs, rawConfig });
 
           return { ...availableTool, inputs, config };
         });

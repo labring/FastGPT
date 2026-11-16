@@ -132,7 +132,11 @@ describe('audio transcription API', () => {
   });
 
   it.each([
-    { label: '77-token short recording', usage: { seconds: 3, total_tokens: 77 }, duration: 3 },
+    {
+      label: '77-token short recording',
+      usage: { seconds: 3, input_tokens: 60, output_tokens: 17, total_tokens: 999 },
+      duration: 3
+    },
     {
       label: 'minute-long Qwen recording',
       usage: { seconds: 60, total_tokens: 1733 },
@@ -177,31 +181,31 @@ describe('audio transcription API', () => {
     const model = mocks.getDefaultModelData();
     mocks.getDefaultModelData.mockReturnValue({
       ...model,
-      pricing: { type: 'tokens', unitPrice: 10 }
+      pricing: { type: 'tokens', inputPrice: 10, outputPrice: 20 }
     });
     mocks.aiTranscriptions.mockResolvedValue({
       text: '测试文本',
-      usage: { seconds: 3, total_tokens: 77 }
+      usage: { seconds: 3, input_tokens: 60, output_tokens: 17, total_tokens: 999 }
     });
     await invoke({ appId: '68ad85a7463006c963799a05', chatId: 'chat' });
     const bill = createUsageHandler.mock.calls[0][0];
-    expect(bill.totalPoints).toBeCloseTo((77 / 1000000) * 10, 10);
-    expect(bill.list?.[0]).toMatchObject({ totalTokens: 77 });
+    expect(bill.totalPoints).toBeCloseTo((60 * 10 + 17 * 20) / 1000000, 10);
+    expect(bill.list?.[0]).toMatchObject({ inputTokens: 60, outputTokens: 17 });
     expect(bill.list?.[0]).not.toHaveProperty('duration');
     expect(bill.list?.[0]).not.toHaveProperty('sttBilling');
     expect(mocks.getDefaultModelData).toHaveBeenCalledTimes(2);
   });
 
-  it('does not bill token pricing from seconds when total_tokens is absent', async () => {
+  it('does not bill token pricing from seconds when input/output counters are absent', async () => {
     mocks.getDefaultModelData.mockReturnValue({
       ...mocks.getDefaultModelData(),
-      pricing: { type: 'tokens', unitPrice: 10 }
+      pricing: { type: 'tokens', inputPrice: 10, outputPrice: 20 }
     });
     mocks.aiTranscriptions.mockResolvedValue({ text: '测试文本', usage: { seconds: 77 } });
     await invoke({ appId: '68ad85a7463006c963799a05', chatId: 'chat' });
     expect(createUsageHandler.mock.calls[0][0]).toMatchObject({
       totalPoints: 0,
-      list: [{ totalTokens: 0 }]
+      list: [{ inputTokens: 0, outputTokens: 0 }]
     });
   });
 
