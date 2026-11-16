@@ -66,8 +66,8 @@ export const useDomainConfig = <T extends SystemInstanceConfigDomainKey>(domain:
       overrides: Record<string, unknown>;
       silent?: boolean;
     }) => {
-      // 数据未就绪时禁止提交：否则 expectedRevision 会误用 0 触发无谓冲突，
-      // 且整域提交会以空/半空表单覆盖库中全部配置。
+      // 数据未就绪时禁止提交：expectedRevision 不能误用 0，
+      // 初始表单中的空值也不代表用户明确要求清空现有字段。
       // 提示在当前分支展示；ToastHandledError 让通用保存入口跳过重复 toast。
       if (!data) {
         toast({ status: 'warning', title: 'admin:loading' });
@@ -113,10 +113,10 @@ export const useDomainConfig = <T extends SystemInstanceConfigDomainKey>(domain:
   >;
 
   /**
-   * 局部提交：先与库中现有 overrides 深合并再提交。
+   * 页面补丁先与当前公开快照中的稀疏 overrides 合并，再交给服务端保存。
    *
-   * 页面只负责部分字段时必须用它，否则同 Domain 其它字段（含本页未展示、
-   * 未编辑的嵌套字段）会被整体替换掉。服务端不返回密钥，未提交的密钥由服务端保留。
+   * 服务端还会与数据库现值合并：普通对象递归合并，数组、标量和 null 整体覆盖，
+   * 未提交的字段保持不变。公开快照不包含密钥，省略的密钥同样由服务端保留。
    */
   const patchConfig = (partial: Record<string, unknown>, options?: { silent?: boolean }) =>
     submitOverrides({
