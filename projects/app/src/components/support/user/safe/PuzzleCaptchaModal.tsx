@@ -49,6 +49,12 @@ const PuzzleCaptchaModal = ({
   const getErrorText = (error: unknown, fallback: string): string => {
     const message = getErrorMessage(error);
     switch (message) {
+      case UserErrEnum.captchaRenderQueueFull:
+      case 'common:error.captcha_queue_full':
+        return t('common:error.captcha_queue_full');
+      case UserErrEnum.captchaRenderQueueTimeout:
+      case 'common:error.captcha_queue_timeout':
+        return t('common:error.captcha_queue_timeout');
       case UserErrEnum.verifyCodeTooFrequently:
       case 'common:error.verify_code_too_frequently':
         return t('common:error.verify_code_too_frequently');

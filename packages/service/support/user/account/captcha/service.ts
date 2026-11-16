@@ -1,5 +1,6 @@
 import { randomBytes } from 'node:crypto';
-import pLimit from 'p-limit';
+import { UserError } from '@fastgpt/global/common/error/utils';
+import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
 import type {
   PuzzleCaptchaChallenge,
   PuzzleCaptchaSubmission,
@@ -21,11 +22,91 @@ import type { ClientSession } from '../../../../common/mongo';
 import { mongoSessionRun } from '../../../../common/mongo/sessionRun';
 
 declare global {
-  var puzzleCaptchaRenderLimit: ReturnType<typeof pLimit> | undefined;
+  var puzzleCaptchaRenderQueue: ReturnType<typeof createCaptchaRenderQueue> | undefined;
 }
 
-// 放在进程全局，避免路由打包或模块重载各自创建独立的 10 个生成名额。
-const renderLimit = (global.puzzleCaptchaRenderLimit ??= pLimit(10));
+/**
+ * 固定十个渲染名额，最多等待一千个任务；仅排队阶段计时，满六十秒移除并拒绝任务。
+ * Map 保持 FIFO 且支持单项删除，超时任务立即归还队列容量，不会在稍后补做图片。
+ * 排队失败返回业务标记，由调用方构造 UserError，避免跨路由构建共享函数时类身份不一致。
+ */
+function createCaptchaRenderQueue() {
+  type Result =
+    | Awaited<ReturnType<typeof renderPuzzleCaptcha>>
+    | UserErrEnum.captchaRenderQueueFull
+    | UserErrEnum.captchaRenderQueueTimeout;
+  type Task = {
+    render: typeof renderPuzzleCaptcha;
+    resolve: (result: Result) => void;
+    reject: (error: unknown) => void;
+  };
+  type PendingTask = Task & {
+    expiresAt: number;
+    timer: ReturnType<typeof setTimeout>;
+  };
+  const concurrency = 10;
+  const maxPending = 1000;
+  const waitTimeoutMs = 60_000;
+  const pending = new Map<symbol, PendingTask>();
+  let active = 0;
+
+  /** 淘汰到期任务后按 FIFO 补位；派发前复查时限，避免事件循环延迟时先执行过期任务。 */
+  const dispatch = () => {
+    while (pending.size > 0) {
+      const first = pending.entries().next().value;
+      if (!first) return;
+      const [id, task] = first;
+      const expired = performance.now() >= task.expiresAt;
+      if (!expired && active >= concurrency) return;
+
+      pending.delete(id);
+      clearTimeout(task.timer);
+      if (expired) task.resolve(UserErrEnum.captchaRenderQueueTimeout);
+      else start(task);
+    }
+  };
+
+  /** 成功和同步/异步异常均释放名额；延迟调用 render，避免同步失败连续补位形成递归。 */
+  const start = (task: Task) => {
+    active += 1;
+    void (async () => {
+      try {
+        task.resolve(await Promise.resolve().then(task.render));
+      } catch (error) {
+        task.reject(error);
+      } finally {
+        active -= 1;
+        dispatch();
+      }
+    })();
+  };
+
+  return (render: typeof renderPuzzleCaptcha) =>
+    new Promise<Result>((resolve, reject) => {
+      // 先处理已过期的队列项，超时回调尚未执行时也不让它们占着容量。
+      dispatch();
+      const task = { render, resolve, reject };
+      if (active < concurrency) {
+        start(task);
+        return;
+      }
+      if (pending.size >= maxPending) {
+        resolve(UserErrEnum.captchaRenderQueueFull);
+        return;
+      }
+
+      const id = Symbol();
+      const expiresAt = performance.now() + waitTimeoutMs;
+      const timer = setTimeout(() => {
+        // 已开始的任务从 Map 移除了，排队超时不能影响正在生成的图片。
+        if (pending.delete(id)) resolve(UserErrEnum.captchaRenderQueueTimeout);
+      }, waitTimeoutMs);
+      pending.set(id, { ...task, expiresAt, timer });
+    });
+}
+
+// 放在进程全局，避免路由打包或模块重载各自创建独立队列。
+const renderQueue = (global.puzzleCaptchaRenderQueue ??= createCaptchaRenderQueue());
 
 const defaultDependencies = {
   render: renderPuzzleCaptcha,
@@ -49,7 +130,7 @@ export class PuzzleCaptchaService {
   }
 
   /**
-   * 限流通过后按进程共享的 10 个名额异步生成图片，超出部分排队，成功或失败均释放名额。
+   * 限流通过后使用进程共享的十个生成名额，等待上限一千，排队满一分钟即取消并报错。
    * 仅限制图片计算；等待结束后再分配材料与 TTL，数据库写入使用调用方可选 session。
    */
   async create(
@@ -61,7 +142,9 @@ export class PuzzleCaptchaService {
     session?: ClientSession
   ): Promise<PuzzleCaptchaChallenge> {
     await this.dependencies.assertCreateFrequency({ account: username, scene: purpose });
-    const { angle, ...image } = await renderLimit(() => this.dependencies.render());
+    const rendered = await renderQueue(() => this.dependencies.render());
+    if (typeof rendered === 'string') throw new UserError(rendered);
+    const { angle, ...image } = rendered;
     const challengeId = this.dependencies.randomToken();
     const createdAt = this.dependencies.now();
     const created = await this.dependencies.materials.createIfInactive({
