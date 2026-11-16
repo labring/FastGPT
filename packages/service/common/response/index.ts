@@ -1,4 +1,6 @@
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
+import { isAxiosError } from 'axios';
+import { getSafeHttpErrorLog } from '../api/httpError';
 import type { NodeApiResponse, NodeHttpResponse } from '../../types/http';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { proxyError, ERROR_RESPONSE, ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
@@ -161,6 +163,8 @@ export function processError(params: {
     }
 
     msg = error.message;
+  } else if (isAxiosError(error)) {
+    logger.error('System unexpected error', getSafeHttpErrorLog(error));
   } else {
     logger.error('System unexpected error', { url, message: msg, error });
   }

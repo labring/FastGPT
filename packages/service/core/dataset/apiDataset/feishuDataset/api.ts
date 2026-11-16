@@ -15,6 +15,7 @@ import { type Method } from 'axios';
 import { createProxyAxios, axiosWithoutSSRF } from '../../../../common/api/axios';
 import { getFeishuBaseUrl } from '../../../../common/feishu/endpoint';
 import { getLogger, LogCategories } from '../../../../common/logger';
+import { getSafeHttpErrorLog } from '../../../../common/api/httpError';
 
 type ResponseDataType = {
   code: number;
@@ -106,7 +107,7 @@ export const useFeishuDatasetRequest = ({ feishuServer }: { feishuServer: Feishu
     return data.data;
   };
   const responseError = (err: any) => {
-    logger.error('Feishu dataset request failed', { error: err });
+    logger.error('Feishu dataset request failed', getSafeHttpErrorLog(err));
 
     if (!err) {
       return Promise.reject({ message: '未知错误' });

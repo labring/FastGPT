@@ -14,6 +14,7 @@ import { type Method } from 'axios';
 import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { createProxyAxios } from '../../../../common/api/axios';
 import { getLogger, LogCategories } from '../../../../common/logger';
+import { getSafeHttpErrorLog } from '../../../../common/api/httpError';
 import { serviceEnv } from '../../../../env';
 import type { AsyncCache } from '../../../../common/cache/type';
 import { hashStr } from '@fastgpt/global/common/string/tools';
@@ -89,7 +90,7 @@ export const useYuqueDatasetRequest = ({
     return data.data;
   };
   const responseError = (err: any) => {
-    logger.error('Yuque dataset request failed', { error: err });
+    logger.error('Yuque dataset request failed', getSafeHttpErrorLog(err));
 
     if (!err) {
       return Promise.reject({ message: '未知错误' });

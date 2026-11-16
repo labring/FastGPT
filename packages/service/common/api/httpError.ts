@@ -48,3 +48,42 @@ export const formatHttpError = (error: any) => {
     status: error?.status
   };
 };
+
+/**
+ * 为不可信 HTTP 异常生成日志白名单；不复制凭据、URL、请求对象或上游消息，也不改变原异常。
+ * status 只接受 HTTP 整数范围，code 只接受已知网络错误；无法读取异常时仍返回固定摘要。
+ */
+export const getSafeHttpErrorLog = (error: unknown) => {
+  const summary = { name: 'HttpRequestError', message: 'HTTP request failed' };
+  try {
+    const details = typeof error === 'object' && error !== null ? error : undefined;
+    const code = details && 'code' in details ? details.code : undefined;
+    const response = details && 'response' in details ? details.response : undefined;
+    const status =
+      (typeof response === 'object' && response !== null && 'status' in response
+        ? response.status
+        : undefined) ?? (details && 'status' in details ? details.status : undefined);
+    const safeCodes = [
+      'ECONNABORTED',
+      'ETIMEDOUT',
+      'ECONNRESET',
+      'ECONNREFUSED',
+      'ENOTFOUND',
+      'EHOSTUNREACH',
+      'ENETUNREACH',
+      'ERR_NETWORK',
+      'ERR_BAD_REQUEST',
+      'ERR_BAD_RESPONSE',
+      'ERR_CANCELED'
+    ];
+    return {
+      ...summary,
+      ...(typeof code === 'string' && safeCodes.includes(code) ? { code } : {}),
+      ...(typeof status === 'number' && Number.isInteger(status) && status >= 100 && status <= 599
+        ? { status }
+        : {})
+    };
+  } catch {
+    return summary;
+  }
+};
