@@ -841,6 +841,8 @@
   "enterprise_auth_notice_or_click": ", or click ",
   "enterprise_auth_notice_read": "Read",
   "enterprise_auth_notice_title": "Enterprise verification benefits",
+  "error.captcha_queue_full": "The verification image queue is full. Please try again later.",
+  "error.captcha_queue_timeout": "Timed out waiting to generate the verification image. Please try again.",
   "error.code_error": "Verification code error",
   "error.fileNotFound": "File not found~",
   "error.file_upload_disabled": "File upload is disabled for the current app",

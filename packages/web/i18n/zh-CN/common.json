@@ -841,6 +841,8 @@
   "enterprise_auth_notice_or_click": "，或点击",
   "enterprise_auth_notice_read": "已读",
   "enterprise_auth_notice_title": "企业认证福利",
+  "error.captcha_queue_full": "验证码生成队列已满，请稍后重试",
+  "error.captcha_queue_timeout": "验证码生成排队超时，请重试",
   "error.code_error": "验证码错误",
   "error.fileNotFound": "文件找不到了~",
   "error.file_upload_disabled": "当前应用未开启文件上传",
