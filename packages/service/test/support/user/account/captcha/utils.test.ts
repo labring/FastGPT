@@ -8,7 +8,7 @@ import {
 } from '@fastgpt/service/support/user/account/captcha/utils';
 
 describe('built-in captcha background catalog', () => {
-  it('ships exactly 100 distinct 224x224 WebP images below 40KB', async () => {
+  it('ships exactly 100 distinct 448x448 WebP images below 40KB', async () => {
     expect(PUZZLE_CAPTCHA_BACKGROUNDS).toHaveLength(100);
     const hashes = new Set<string>();
     for (const image of PUZZLE_CAPTCHA_BACKGROUNDS) {
@@ -17,8 +17,8 @@ describe('built-in captcha background catalog', () => {
       expect(buffer.byteLength).toBeLessThan(40_000);
       expect(await sharp(buffer).metadata()).toMatchObject({
         format: 'webp',
-        width: 224,
-        height: 224
+        width: 448,
+        height: 448
       });
       hashes.add(createHash('sha256').update(buffer).digest('hex'));
     }
@@ -32,17 +32,17 @@ describe('renderPuzzleCaptcha', () => {
     const buffer = Buffer.from(image.captchaImage.split(',')[1], 'base64');
     expect(await sharp(buffer).metadata()).toMatchObject({
       format: 'png',
-      width: 224,
-      height: 224,
+      width: 448,
+      height: 448,
       hasAlpha: true
     });
     const { data, info } = await sharp(buffer).raw().toBuffer({ resolveWithObject: true });
     const alpha = (x: number, y: number) => data[(y * info.width + x) * 4 + 3];
-    expect([alpha(0, 0), alpha(223, 0), alpha(0, 223), alpha(223, 223)]).toEqual([0, 0, 0, 0]);
-    expect(alpha(112, 112)).toBe(255);
+    expect([alpha(0, 0), alpha(447, 0), alpha(0, 447), alpha(447, 447)]).toEqual([0, 0, 0, 0]);
+    expect(alpha(224, 224)).toBe(255);
     // 圆形边缘保留抗锯齿透明度，避免缓存原始蒙版后出现锯齿或不透明方框。
-    expect(alpha(32, 32)).toBeGreaterThan(0);
-    expect(alpha(32, 32)).toBeLessThan(255);
+    expect(alpha(65, 65)).toBeGreaterThan(0);
+    expect(alpha(65, 65)).toBeLessThan(255);
     expect(image.mode).toBe('rotate');
     expect(image.angle).toBeGreaterThanOrEqual(45);
     expect(image.angle).toBeLessThanOrEqual(315);

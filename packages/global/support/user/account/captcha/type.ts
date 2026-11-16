@@ -9,8 +9,8 @@ export const PuzzleCaptchaChallengeSchema = z.object({
     .meta({ description: '一次性旋转挑战 ID' }),
   mode: z.literal('rotate').meta({ description: '拖动滑块将圆形图片转正', example: 'rotate' }),
   captchaImage: z.string().meta({ description: '服务端已旋转的圆形 PNG，Base64 Data URL' }),
-  width: IntSchema.positive().meta({ description: '图片原始宽度，单位像素', example: 224 }),
-  height: IntSchema.positive().meta({ description: '图片原始高度，单位像素', example: 224 }),
+  width: IntSchema.positive().meta({ description: '图片原始宽度，单位像素', example: 448 }),
+  height: IntSchema.positive().meta({ description: '图片原始高度，单位像素', example: 448 }),
   expiresAt: z.iso.datetime().meta({ description: '挑战过期时间' })
 });
 export type PuzzleCaptchaChallenge = z.infer<typeof PuzzleCaptchaChallengeSchema>;

@@ -34,8 +34,8 @@ const sizes = [];
 for (const filename of files) {
   const buffer = await readFile(path.join(inputDirectory, filename));
   const metadata = await sharp(buffer).metadata();
-  if (metadata.width !== 224 || metadata.height !== 224 || metadata.format !== 'webp') {
-    throw new Error(`${filename}: expected 224x224 WebP`);
+  if (metadata.width !== 448 || metadata.height !== 448 || metadata.format !== 'webp') {
+    throw new Error(`${filename}: expected 448x448 WebP`);
   }
   if (buffer.byteLength >= 40_000)
     throw new Error(`${filename}: must be smaller than 40,000 bytes`);
@@ -62,7 +62,7 @@ await writeFile(
     .map((line) => ` * ${line.trimEnd()}`.trimEnd())
     .join(
       '\n'
-    )}\n */\n/**\n * 100 张圆形旋转验证插画底图，均为 224×224 WebP，单张小于 40,000 字节。\n * 图形来自 Microsoft Fluent Emoji；来源、MIT 许可及加工记录见同目录 sources.json。\n * 由 scripts/captcha/pack-backgrounds.mjs 生成，请勿手动修改图片数据。\n * 仅在服务端使用；内联保证 app 与 Pro standalone 部署无需额外静态文件或网络。\n */\nexport const PUZZLE_CAPTCHA_BACKGROUNDS: readonly string[] = [\n${images.join(',\n')}\n];\n`
+    )}\n */\n/**\n * 100 张圆形旋转验证插画底图，均为 448×448 WebP，单张小于 40,000 字节。\n * 图形来自 Microsoft Fluent Emoji；来源、MIT 许可及加工记录见同目录 sources.json。\n * 由 scripts/captcha/pack-backgrounds.mjs 生成，请勿手动修改图片数据。\n * 仅在服务端使用；内联保证 app 与 Pro standalone 部署无需额外静态文件或网络。\n */\nexport const PUZZLE_CAPTCHA_BACKGROUNDS: readonly string[] = [\n${images.join(',\n')}\n];\n`
 );
 await writeFile(
   path.join(path.dirname(output), 'sources.json'),
@@ -76,8 +76,8 @@ console.log(
   JSON.stringify(
     {
       count: files.length,
-      width: 224,
-      height: 224,
+      width: 448,
+      height: 448,
       maxBytes: Math.max(...sizes),
       minBytes: Math.min(...sizes),
       totalBytes: sizes.reduce((sum, value) => sum + value, 0)

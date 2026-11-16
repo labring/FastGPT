@@ -3,7 +3,8 @@ import sharp, { type Matrix3x3 } from 'sharp';
 import { PUZZLE_CAPTCHA_BACKGROUNDS } from './constants';
 import type { PuzzleCaptchaSubmission } from '@fastgpt/global/support/user/account/captcha/type';
 
-export const PuzzleCaptchaSize = { width: 224, height: 224 } as const;
+// 以两倍像素输出，前端仍显示 224px，避免高分屏和二次旋转放大低分辨率位图。
+export const PuzzleCaptchaSize = { width: 448, height: 448 } as const;
 
 // 内置图片的 Base64 和圆形透明蒙版仅初始化一次，避免每次取图重复解析 Base64 和 SVG。
 const backgrounds = PUZZLE_CAPTCHA_BACKGROUNDS.map((image) =>

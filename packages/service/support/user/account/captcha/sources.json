@@ -7,16 +7,16 @@
   "licenseFile": "LICENSE-MICROSOFT-FLUENT-EMOJI.txt",
   "licenseUrl": "https://github.com/microsoft/fluentui-emoji/blob/1ffb34c752ecf5d402f04cfb4b392c77f57c54bc/LICENSE",
   "processing": {
-    "width": 224,
-    "height": 224,
+    "width": 448,
+    "height": 448,
     "format": "webp",
     "maxBytes": 40000,
     "description": "Microsoft Fluent Emoji Flat assets, composed as a single upright subject on a square canvas for circular rotation verification. Symmetric subjects and diagonally oriented tools excluded.",
     "modifications": [
-      "Flat SVG rendered as one 152x152 upright subject centered on a 224x224 canvas",
+      "Flat SVG rasterized at 1152 DPI, rendered as one 304x304 upright subject centered on a 448x448 canvas for 224px display at 2x pixel density",
       "Muted solid background; no shared directional decorations",
       "Saturation 0.55, brightness 1.02",
-      "WebP quality 86, metadata removed"
+      "Lossless WebP, metadata removed"
     ]
   },
   "images": [
@@ -24,701 +24,701 @@
       "filename": "background-001-teacup-without-handle.webp",
       "sourcePath": "assets/Teacup without handle/Flat/teacup_without_handle_flat.svg",
       "sourceSha1": "c4d9cab726fc71eb9d8896694e2b5bf5737aa34c",
-      "bytes": 806,
-      "sha256": "bf33d3a373f6ede73eeef2ddead039764f7ca34990f6992419df2c4becd2abe9"
+      "bytes": 2648,
+      "sha256": "258d34ca2af8889b0d732a082f32aae40ffa37d4b8863c0fd307973e6ac3beb7"
     },
     {
       "filename": "background-002-teapot.webp",
       "sourcePath": "assets/Teapot/Flat/teapot_flat.svg",
       "sourceSha1": "b987220325e44e645c62172f1e23087632ab805c",
-      "bytes": 1602,
-      "sha256": "2f381d17c02c85e3ec94612cf7e9007715ded394456af825085cdb430b59472d"
+      "bytes": 3908,
+      "sha256": "2d67c710ee5f4f84e194d13bd04338fc9904b1f9184806f15f2772101ecd64e9"
     },
     {
       "filename": "background-003-glass-of-milk.webp",
       "sourcePath": "assets/Glass of milk/Flat/glass_of_milk_flat.svg",
       "sourceSha1": "2d759b1a91798e5cf70d1d4a6eb5c8c1ba3f6573",
-      "bytes": 798,
-      "sha256": "046b67a3a223756f4c17b32d955d257e68ee9de7a7ded594be30c240eb864762"
+      "bytes": 2712,
+      "sha256": "1d72e241a92387cb1694463db2161f438f83325d7cd8a546cd71966f220022fb"
     },
     {
       "filename": "background-004-cup-with-straw.webp",
       "sourcePath": "assets/Cup with straw/Flat/cup_with_straw_flat.svg",
       "sourceSha1": "a5a55e6b96d4735116417d619f9ad85883fc1d4b",
-      "bytes": 714,
-      "sha256": "665ce623046763963553eef21d1e812331fbf958ad107ed5dad2f9f18932052f"
+      "bytes": 1692,
+      "sha256": "0abdca8a3ef36b97694360208e94fce404778a6d927fc5ebaa6a41eb78aa38d2"
     },
     {
       "filename": "background-005-green-apple.webp",
       "sourcePath": "assets/Green apple/Flat/green_apple_flat.svg",
       "sourceSha1": "8789dbd69b91bf1a5a41e7d1a36091fb9770aa42",
-      "bytes": 1040,
-      "sha256": "e6c3a40a0c7992d33f955406d1b90b6a8b9d353146933f43713b13b000a9e0a2"
+      "bytes": 2930,
+      "sha256": "3e5d3b52de55bea8e8f79ab0e20d06ec9af0bad866e851ffdf46a645d65545e1"
     },
     {
       "filename": "background-006-red-apple.webp",
       "sourcePath": "assets/Red apple/Flat/red_apple_flat.svg",
       "sourceSha1": "aac151e9962f79f31015576f1caf475de5f6c754",
-      "bytes": 1342,
-      "sha256": "c1a6cde51ae5e31fecc59ef73a201bbfb7d03f0988eea044f48349ffedc64709"
+      "bytes": 3348,
+      "sha256": "1391a8137bccd5d06be51dbd96d1d5355bf3b6741ea8033e14d13db9e59e1103"
     },
     {
       "filename": "background-007-pear.webp",
       "sourcePath": "assets/Pear/Flat/pear_flat.svg",
       "sourceSha1": "06804beee738b960e298ada23952c9ca54150afe",
-      "bytes": 778,
-      "sha256": "b656c03dc5646737d247542baa1ca0d6c29c79545443bd7912e0cef57ebcc46a"
+      "bytes": 2818,
+      "sha256": "f6b0aeca5b8ba347ab1745377217b367fbf5c85da422d8f2dd82a1c450ce46a2"
     },
     {
       "filename": "background-008-peach.webp",
       "sourcePath": "assets/Peach/Flat/peach_flat.svg",
       "sourceSha1": "868c8b86af1b5ecda010bcbdab26b422af30dc16",
-      "bytes": 1454,
-      "sha256": "5292621decea9f0db99408de0be543cc85c75b714282de4c7a00a22989c2c9d0"
+      "bytes": 4190,
+      "sha256": "e509b4d3161ae7e33df38bde5cd5006cb9672dfc09013af3b3e41e2d34688b00"
     },
     {
       "filename": "background-009-cherries.webp",
       "sourcePath": "assets/Cherries/Flat/cherries_flat.svg",
       "sourceSha1": "6c48425671476a0cf2626538712b241955772e0f",
-      "bytes": 1900,
-      "sha256": "7d2812ec617c998f7c694ff437a20cc9d682d31c63d5cb143479348b821f2216"
+      "bytes": 5448,
+      "sha256": "89c153a7f000bf66d6d270517670d38e74f632dcd2ca28b1e682535c24465127"
     },
     {
       "filename": "background-010-strawberry.webp",
       "sourcePath": "assets/Strawberry/Flat/strawberry_flat.svg",
       "sourceSha1": "3255bf56507c9ece5541fd50695061cb534e9380",
-      "bytes": 1824,
-      "sha256": "4258cfbc7852476730ba012b0ff80fca51087c4e1074887518f58b6ba7641916"
+      "bytes": 4148,
+      "sha256": "2b87ee55cae470e8f96d939cb5f9af6a79b464991e7f06d222ce795f3c30ef74"
     },
     {
       "filename": "background-011-bell-pepper.webp",
       "sourcePath": "assets/Bell pepper/Flat/bell_pepper_flat.svg",
       "sourceSha1": "66fa53131c7b1e6c1bf5e510ef9a7ec91b8b3fd0",
-      "bytes": 1230,
-      "sha256": "37d15e16c7215ebcb460f090069a478e0dc957e4f764e13a12c1592f1887f558"
+      "bytes": 3694,
+      "sha256": "f4ac6e08a65a1a6b635f9d2d9fe44530a534820aecd21143782bcfa100498430"
     },
     {
       "filename": "background-012-broccoli.webp",
       "sourcePath": "assets/Broccoli/Flat/broccoli_flat.svg",
       "sourceSha1": "c7476cb642bc6f3282c033925f839ecbd320cb82",
-      "bytes": 1314,
-      "sha256": "4d04c79bb254f77d322b3f0b3f2fa02fa510a3177d5d47d6235f639f512a6da5"
+      "bytes": 3746,
+      "sha256": "bf0b32401f7fe3f8629378e4a491f19c3b9c70d17a6f52c33049993553a195c7"
     },
     {
       "filename": "background-013-mushroom.webp",
       "sourcePath": "assets/Mushroom/Flat/mushroom_flat.svg",
       "sourceSha1": "465c23128d587a95daef20049d529ec67848f700",
-      "bytes": 1208,
-      "sha256": "6ce519cf608bfad2b01ae33a3a79abe41f0bcb92c6dbda9bf135dd65427fcb20"
+      "bytes": 3506,
+      "sha256": "f5aa35e1991a793d29d75f80e73724ef0509e6e920834bc51f9a5e0636a3650d"
     },
     {
       "filename": "background-014-bread.webp",
       "sourcePath": "assets/Bread/Flat/bread_flat.svg",
       "sourceSha1": "fa2a74ac7930968f631d125ecd2cc8427885eaac",
-      "bytes": 1398,
-      "sha256": "05edb094dd32d40398d065f931c9fd409a39952629aaba75ea633247e3e4ed91"
+      "bytes": 3270,
+      "sha256": "f03ede30275da214e55ce44ead5afbe115c7d584ba44f17b6e978dda5ebac26b"
     },
     {
       "filename": "background-015-baby-bottle.webp",
       "sourcePath": "assets/Baby bottle/Flat/baby_bottle_flat.svg",
       "sourceSha1": "7ed03168a7225841ad3db1530d321b81284ea44a",
-      "bytes": 1488,
-      "sha256": "49a1484515471f8d80dc91f8e4804827bc96af399283a8134083c36296b2ccd5"
+      "bytes": 3844,
+      "sha256": "b8b42c9b7a4d9e4082accd8267d989f5ea7151d138f9bba2a1d822befda50ea9"
     },
     {
       "filename": "background-016-pretzel.webp",
       "sourcePath": "assets/Pretzel/Flat/pretzel_flat.svg",
       "sourceSha1": "ee8cac6f307648e00f250478cbb0d199262bf506",
-      "bytes": 2224,
-      "sha256": "20eaa10837bb04ecf101faf6a563ff71a920c105fd35175fac72b74ef5820bf1"
+      "bytes": 7788,
+      "sha256": "b89718f4aa881c91ff210e90ce5a1921b78de9519d76d66983c266e85fdfc625"
     },
     {
       "filename": "background-017-cheese-wedge.webp",
       "sourcePath": "assets/Cheese wedge/Flat/cheese_wedge_flat.svg",
       "sourceSha1": "9905c25668dc9d11b478e9a695784b2da2ddd23c",
-      "bytes": 1188,
-      "sha256": "39d91ac6056df05ea26b9702c70696ce6f253f6e8b4f9f3fad298d35c361a758"
+      "bytes": 3132,
+      "sha256": "c799bf50bdbedf2affa2c1423ea2d40d42e72fc0151a7dfd1bdff0cd8c452e9c"
     },
     {
       "filename": "background-018-cupcake.webp",
       "sourcePath": "assets/Cupcake/Flat/cupcake_flat.svg",
       "sourceSha1": "030e53cbdbe7d5bbfe0a1e0a4b75253b6fc1effc",
-      "bytes": 1904,
-      "sha256": "a09c73986fc65ce7b6cd7d9ef6a1d0fa482f8192c5167544b60b44c84247426e"
+      "bytes": 5362,
+      "sha256": "03c6f0e594d534784678201ebd039018609849bd6c4583037bb483ad4b109927"
     },
     {
       "filename": "background-019-honey-pot.webp",
       "sourcePath": "assets/Honey pot/Flat/honey_pot_flat.svg",
       "sourceSha1": "3bfb47f9a0c3bbe96cf077a96edd80ec69f04719",
-      "bytes": 1256,
-      "sha256": "75ab81c6903218a61e2533635acba38d383e2788a5d477ec8f263abda8c54241"
+      "bytes": 3574,
+      "sha256": "40a9898165bc1ffa842633accd91e10f6d74eccc0d0abb1107c383be69dd3de0"
     },
     {
       "filename": "background-020-shortcake.webp",
       "sourcePath": "assets/Shortcake/Flat/shortcake_flat.svg",
       "sourceSha1": "4cbc3be2d7aa16138a803065b6284b0ce5b0513d",
-      "bytes": 1756,
-      "sha256": "8460dae2508311ff6f22e2dfc0d63ac47def559e0c4de027763bcb5d0d9b4348"
+      "bytes": 4212,
+      "sha256": "4aefeebc94552561fa123276caf70c58e7bba21c4736aa6f652c2cb3085b86d4"
     },
     {
       "filename": "background-021-birthday-cake.webp",
       "sourcePath": "assets/Birthday cake/Flat/birthday_cake_flat.svg",
       "sourceSha1": "c6de34d4e05fd126ba5ab0bc10cdbce4909ec043",
-      "bytes": 1494,
-      "sha256": "7188698e28bf109bdc848fd3fc9419b82b6c1c8e4644c90920e41f70b8f9d687"
+      "bytes": 4040,
+      "sha256": "1745b36feaf33d13dd84ca20839069c42026147081c9a3724d78db2c6bac2003"
     },
     {
       "filename": "background-022-steaming-bowl.webp",
       "sourcePath": "assets/Steaming bowl/Flat/steaming_bowl_flat.svg",
       "sourceSha1": "a61a720ce453e3db3bbd0f047cbc8a807598f5a0",
-      "bytes": 1464,
-      "sha256": "0933d686c1d33960f7c86e23866f482e198dcb40a2fd9f08ae8a1f6f3b51215e"
+      "bytes": 3238,
+      "sha256": "8378623b75e1c9cbe3c2d4175536e2641401500a6a506ed182c229fe7821c021"
     },
     {
       "filename": "background-023-bowl-with-spoon.webp",
       "sourcePath": "assets/Bowl with spoon/Flat/bowl_with_spoon_flat.svg",
       "sourceSha1": "2cee2431066963f0f4c183c9f1db5448b2d1f175",
-      "bytes": 1714,
-      "sha256": "b35e3e42bc0ad513f05ecbb305587045c624bf3ecf4b26f37dbc81588410d48c"
+      "bytes": 5558,
+      "sha256": "4732c39e4802bd77a8b0f194e849e9c6fbef3e92b20c2eb791ec4e121b290e56"
     },
     {
       "filename": "background-024-pancakes.webp",
       "sourcePath": "assets/Pancakes/Flat/pancakes_flat.svg",
       "sourceSha1": "01ab671255eef9cb6cd26bc08e135fe274510d8c",
-      "bytes": 1778,
-      "sha256": "773c345191946a9d94b352ecc766d2750bfe09074c7f8e05e0efa4f02a82120b"
+      "bytes": 6846,
+      "sha256": "fcfecf6c22f51beb77d9f9c9add337860dca9221c1f164b9b713001725175b76"
     },
     {
       "filename": "background-025-hamburger.webp",
       "sourcePath": "assets/Hamburger/Flat/hamburger_flat.svg",
       "sourceSha1": "d288c7377b0747965ddd419391da12a818e14f65",
-      "bytes": 1828,
-      "sha256": "a6bc63a2d28e8f1155ff1a042d3660a9879b59b1909aab4ab32aeda3d793f1b7"
+      "bytes": 5074,
+      "sha256": "3b4b87a2bb0f62c63bb415e56d1322e5fec9d628f02519e36ff11580cd9bf949"
     },
     {
       "filename": "background-026-french-fries.webp",
       "sourcePath": "assets/French fries/Flat/french_fries_flat.svg",
       "sourceSha1": "7bbdcb31c5f41a0f5d3792a175816dcbe58e8f69",
-      "bytes": 1980,
-      "sha256": "d9f42621d413b12cb923566a21943eb8b6a111f2be4bc885eb3ec69986725898"
+      "bytes": 6120,
+      "sha256": "e9a40fbb8ae82de1c604d660e977d680f85c923a8846d8e2daaa1b837fcc115b"
     },
     {
       "filename": "background-027-popcorn.webp",
       "sourcePath": "assets/Popcorn/Flat/popcorn_flat.svg",
       "sourceSha1": "37763c84fbb2fe41ea17a7f0d4a9dfef21ac5997",
-      "bytes": 1700,
-      "sha256": "41afeafa4cc5cd56458bba1a679704221694979a78665191e59d8f2ec77a7c43"
+      "bytes": 5908,
+      "sha256": "20fd0d2a26028eccf6824f226921509174b965029b9bd7df28fdc2f2802ec153"
     },
     {
       "filename": "background-028-soft-ice-cream.webp",
       "sourcePath": "assets/Soft ice cream/Flat/soft_ice_cream_flat.svg",
       "sourceSha1": "b5aa363e90dc04881037ceb40291445d5d925ecc",
-      "bytes": 906,
-      "sha256": "9ef9f7a070c61ba41fc350d725da5298b66ce41187bf71aa249011b9f66aa4d9"
+      "bytes": 3212,
+      "sha256": "c55ce20146414d6ba39eb7dcc589ee6c7c420bb8001649fd80cb544a6f5a9a06"
     },
     {
       "filename": "background-029-shaved-ice.webp",
       "sourcePath": "assets/Shaved ice/Flat/shaved_ice_flat.svg",
       "sourceSha1": "0f43a13ff9a69e03cfb6c31c8d670a97657d2e0d",
-      "bytes": 1430,
-      "sha256": "6e7f3602c1be89911bd7304dcfdb9920177d7f54282fa47d2bfe86e179f81eb7"
+      "bytes": 4580,
+      "sha256": "d282f85f2fdf34f268714b64a4236d9f40367e3cdf6d1c8e59f855a6f9b549a7"
     },
     {
       "filename": "background-030-closed-book.webp",
       "sourcePath": "assets/Closed book/Flat/closed_book_flat.svg",
       "sourceSha1": "fc1a3ef723252c1b994b361db664543f1b0f5cbb",
-      "bytes": 574,
-      "sha256": "4e20daf8d4dd637b65a95715f866c721807f2fada78feb7d0e6a94af1f3dc9b6"
+      "bytes": 738,
+      "sha256": "1feef017480d8d982976da699496904a54e08e1ad66801836967a682fa2cab35"
     },
     {
       "filename": "background-031-open-book.webp",
       "sourcePath": "assets/Open book/Flat/open_book_flat.svg",
       "sourceSha1": "bd34ea54e51c842017646d2003663ea5713c32e5",
-      "bytes": 878,
-      "sha256": "e03fe11b305c2012f5c76de4031214c6a4e85145dfd16612686540574d8ab6c8"
+      "bytes": 2116,
+      "sha256": "2cfd2453b11c978fedfbef039e02c7c300354a2d56df6dafe423647cce71e59e"
     },
     {
       "filename": "background-032-notebook.webp",
       "sourcePath": "assets/Notebook/Flat/notebook_flat.svg",
       "sourceSha1": "8e895af2461a3994e80eac3e367769878a4497d1",
-      "bytes": 758,
-      "sha256": "80e0e7ad35ed87c34fcf8a7fa5ce392db4988e4b4fec7777c1e1ab886c996471"
+      "bytes": 1066,
+      "sha256": "74a79de2b80be220f03c8c5438f8423f330153450a7d858254d573c874d3b710"
     },
     {
       "filename": "background-033-light-bulb.webp",
       "sourcePath": "assets/Light bulb/Flat/light_bulb_flat.svg",
       "sourceSha1": "9c460204af9f00fc41069e8801f598205a173a7b",
-      "bytes": 1182,
-      "sha256": "8d92c73d49fc33b0a75c86e053e270e36c3c39c25010c6461016433647807856"
+      "bytes": 4680,
+      "sha256": "8d5ace943531dc38a76acff2494d522c20a99e33d02fbba1ef0e76f7ca919726"
     },
     {
       "filename": "background-034-candle.webp",
       "sourcePath": "assets/Candle/Flat/candle_flat.svg",
       "sourceSha1": "f62a93d399c41bdd0b20485b2844d0eb3f6b5efd",
-      "bytes": 712,
-      "sha256": "3780190627737c20e08a96e9ecea7fd69497ae3e8040df19873f215b7310e54d"
+      "bytes": 2000,
+      "sha256": "cb9ba5fa63a31625fe5c98a5da180328869b1d8f2144117067bf51e8ccea1861"
     },
     {
       "filename": "background-035-alarm-clock.webp",
       "sourcePath": "assets/Alarm clock/Flat/alarm_clock_flat.svg",
       "sourceSha1": "5040c46138f416a2a5ca66befcd6efbdaab4bff8",
-      "bytes": 2386,
-      "sha256": "ffbb80296c04e6c739212b11cfa995c37e8467598f573391fcae192128f9b1de"
+      "bytes": 6184,
+      "sha256": "811fd789c1d9d0971236d214fae47b0e0d53b534704e4282f328925e95792f30"
     },
     {
       "filename": "background-036-bell.webp",
       "sourcePath": "assets/Bell/Flat/bell_flat.svg",
       "sourceSha1": "1f523aadd200776c7cee2256e51bfa2b0d488dbc",
-      "bytes": 924,
-      "sha256": "1707d585d33fc50b9bdb9daaaa5fd20520ce4296e736328448611df4823cae93"
+      "bytes": 2280,
+      "sha256": "118aaa76af04102f769ab308855260996c7aa251b68ef965fa0fab1a99fc759a"
     },
     {
       "filename": "background-037-backpack.webp",
       "sourcePath": "assets/Backpack/Flat/backpack_flat.svg",
       "sourceSha1": "5180b0fb25546ba5f1fcf5879293511f701ed97d",
-      "bytes": 1902,
-      "sha256": "35a714d4d0c9f3607b44ac03ec090a97c9998ed756dfa5dbdf214e4e22ab7c6e"
+      "bytes": 5430,
+      "sha256": "95f81efdd272af614b037988b5e77f2a96938b3173053b722b7d7b6308dc7206"
     },
     {
       "filename": "background-038-handbag.webp",
       "sourcePath": "assets/Handbag/Flat/handbag_flat.svg",
       "sourceSha1": "d8c254bd085399bf4426b4612584d15b5881d9c6",
-      "bytes": 1486,
-      "sha256": "764dd4bbacdd89ccf391995f2cf08effa04fb980fcba6729976b2846459af6fb"
+      "bytes": 3754,
+      "sha256": "512311740746747921e74b8dbf954e0365ef76199088d94cb563e5675493d981"
     },
     {
       "filename": "background-039-purse.webp",
       "sourcePath": "assets/Purse/Flat/purse_flat.svg",
       "sourceSha1": "e880b75aabae7e4f0cce3fb860c158d8ebbc6dd6",
-      "bytes": 1280,
-      "sha256": "dcbd79de21efb7145159babb6951a6973ea64f3d2c6b1a5b2490ab0646dd8fc0"
+      "bytes": 3488,
+      "sha256": "ad822bdab0c761cf9a66c361d33da3cd4ace57cadadc4d368320020013308a0d"
     },
     {
       "filename": "background-040-billed-cap.webp",
       "sourcePath": "assets/Billed cap/Flat/billed_cap_flat.svg",
       "sourceSha1": "224172ffbfd228601b248f47dbeed5fef4bde261",
-      "bytes": 1130,
-      "sha256": "57bcb1b865682dd80299235bf73c5cf3d194781fda212127d9b9a5a0f792f564"
+      "bytes": 3004,
+      "sha256": "6ce3097a350cd733cbeef7d0047eec2894720a45af9c13c8afd9b7bc3b51b30b"
     },
     {
       "filename": "background-041-top-hat.webp",
       "sourcePath": "assets/Top hat/Flat/top_hat_flat.svg",
       "sourceSha1": "a7d422d7dfbf70a54e8c1e204e4fc6aedc15dcd6",
-      "bytes": 1274,
-      "sha256": "980313ea2aa756730f00c38bce5d8ec473457cd2eaa14c63aff78e6c5f857762"
+      "bytes": 3190,
+      "sha256": "eef307dbf984afd7f05c9831c2cab730111d4f911326335cfd412ee7712e09f4"
     },
     {
       "filename": "background-042-crown.webp",
       "sourcePath": "assets/Crown/Flat/crown_flat.svg",
       "sourceSha1": "d45468c2bea103d02262310f9b76844aef572118",
-      "bytes": 1766,
-      "sha256": "d45b3c1429fac4bcb60487f668324a6cfc0c5377bf0433f98ad02409ffb98b2f"
+      "bytes": 5082,
+      "sha256": "1a2cc8d7c93246deaf5fb1ae6d43b4dd63ffaf81380932836f3a7161af1715b4"
     },
     {
       "filename": "background-043-scarf.webp",
       "sourcePath": "assets/Scarf/Flat/scarf_flat.svg",
       "sourceSha1": "552c827ce5ba39250d13a19cb1fb4e6782fd2206",
-      "bytes": 1938,
-      "sha256": "1b07678feddeb84b9edaa3910e05ac9a3da840ef1029b6dc13a086d12f04682d"
+      "bytes": 4758,
+      "sha256": "f31487da7268ba5dcb7aff974ae59bc10f7647597eee44e951f20ac15103fb30"
     },
     {
       "filename": "background-044-t-shirt.webp",
       "sourcePath": "assets/T-shirt/Flat/t-shirt_flat.svg",
       "sourceSha1": "857302fadbce11f16b1780809c791337b22ceb4f",
-      "bytes": 908,
-      "sha256": "1b30967879f7ada3388dda5404caee97d0f14bf4817b0eb47d070d931c406e51"
+      "bytes": 2230,
+      "sha256": "2cb8cec4edad8dd20afdeba4bac69e0a119601b6c14b23f6ebd11b476dcbe868"
     },
     {
       "filename": "background-045-dress.webp",
       "sourcePath": "assets/Dress/Flat/dress_flat.svg",
       "sourceSha1": "d093ff74803e21d359bfb0ff16d1389f8db63797",
-      "bytes": 1252,
-      "sha256": "5c004c59011a66dd6643f571fd0146d914a4c5375b1faf6d65c2e05cc3f72954"
+      "bytes": 2338,
+      "sha256": "e28367eb95be6fb0e6a8f10796092047e3546ead7384e3e7dbfe454eaa41948d"
     },
     {
       "filename": "background-046-jeans.webp",
       "sourcePath": "assets/Jeans/Flat/jeans_flat.svg",
       "sourceSha1": "9cc3e356acccea843ca430737a81a5925d1778c3",
-      "bytes": 1406,
-      "sha256": "6cc2e640695ecf358342e446408d961b18d5d73dd562f838f20671a6fc312b7f"
+      "bytes": 4216,
+      "sha256": "0f55143fc730c71180f3e598a16e70c151c0fa1e77f76cff8b54e1a3f3a3a443"
     },
     {
       "filename": "background-047-lab-coat.webp",
       "sourcePath": "assets/Lab coat/Flat/lab_coat_flat.svg",
       "sourceSha1": "a2b0a357dfb6cacae23bfb6ed06dd946e981100b",
-      "bytes": 1442,
-      "sha256": "b2db5a1a3f10e4bb2780a55f956a65a0a1e321ce962073b017bcd141a6d640f0"
+      "bytes": 4500,
+      "sha256": "ce76c937fc2adc06886b9141abd59611ea40838e5cdf3c19d9ae76966a653a72"
     },
     {
       "filename": "background-048-coat.webp",
       "sourcePath": "assets/Coat/Flat/coat_flat.svg",
       "sourceSha1": "2a4c877d4f19d95ea0ebf36fe058228ddf8a1957",
-      "bytes": 1214,
-      "sha256": "2ed748fa22b18406e1873838ba9c08c9ba89326019d0b2dd413c6de663419898"
+      "bytes": 4674,
+      "sha256": "a43fbdb7bd3899d3154ccde20c4f9ad58fa038a73d9f6521b6c56531c5931f7a"
     },
     {
       "filename": "background-049-chair.webp",
       "sourcePath": "assets/Chair/Flat/chair_flat.svg",
       "sourceSha1": "f47a3af04acfa4e7265be6dfeefccd18a8f8c617",
-      "bytes": 1382,
-      "sha256": "5ee70abcda4d59f40885f5b9da784af0fd96eba0976367a58585c334b31a887e"
+      "bytes": 3018,
+      "sha256": "f5facb10408bc3d45d7a881aaa7f745a1dd0cfc402a7bac44aee5b9c850d8d28"
     },
     {
       "filename": "background-050-couch-and-lamp.webp",
       "sourcePath": "assets/Couch and lamp/Flat/couch_and_lamp_flat.svg",
       "sourceSha1": "bfa21670bd3fe510464fe24da536937ed53bb9ba",
-      "bytes": 1144,
-      "sha256": "bb7ee52f6970f26915158cbab4ecef01e43e052b214d3fddfe8874be621ceb9a"
+      "bytes": 2466,
+      "sha256": "4d34150a400299f5c9eecbea64850a56d6a2373864cca540abc922fc6174db9a"
     },
     {
       "filename": "background-051-bed.webp",
       "sourcePath": "assets/Bed/Flat/bed_flat.svg",
       "sourceSha1": "882dff6891edc8d8f2d229930ab69617507d7daa",
-      "bytes": 882,
-      "sha256": "8897bb09484f531fd2d7b36057e9032b107a9bbd9cd7c5756c4a98e0fa1b8147"
+      "bytes": 1352,
+      "sha256": "199ae1e59da50594e7da1d17e9d57de20ac400242c863ca4913ee75503924b52"
     },
     {
       "filename": "background-052-bellhop-bell.webp",
       "sourcePath": "assets/Bellhop bell/Flat/bellhop_bell_flat.svg",
       "sourceSha1": "3ecb115ea63f0100596d78437bf3995c4be426d5",
-      "bytes": 1256,
-      "sha256": "1e9c327f317ec84140935405e286832e64c8769a647be282c5b8f320082f8eb6"
+      "bytes": 2624,
+      "sha256": "9feb97c05a8f6f5d98ab3fa0b903a219f9b831b3b0c6a0dbab7620d47a7b2a3f"
     },
     {
       "filename": "background-053-television.webp",
       "sourcePath": "assets/Television/Flat/television_flat.svg",
       "sourceSha1": "608565673cdd4d2823134638b5f4694e8014994a",
-      "bytes": 1246,
-      "sha256": "12a84d2e514275ece41be41a9bdd6c33b63ad6addec2b2cad0785cbbc3c84bc8"
+      "bytes": 2816,
+      "sha256": "0db340ba578c276b3e9d1e2036c18f8d0498727354cdc00bfa15a2d84a3f9d3f"
     },
     {
       "filename": "background-054-lotion-bottle.webp",
       "sourcePath": "assets/Lotion bottle/Flat/lotion_bottle_flat.svg",
       "sourceSha1": "10b4534430c13552c890dbe565ef1d33db010948",
-      "bytes": 830,
-      "sha256": "27002fe30512fa68ccfb109ca3552654b6c2768bcb169b5a25c2799f4bd15473"
+      "bytes": 2516,
+      "sha256": "3654943ead2772f6f83ed212a42f37db21b6c87bd72d1ba6c81aa8c48e816af6"
     },
     {
       "filename": "background-055-teddy-bear.webp",
       "sourcePath": "assets/Teddy bear/Flat/teddy_bear_flat.svg",
       "sourceSha1": "a7f4c38ae5925345937800bdb6583a8a193f066a",
-      "bytes": 2204,
-      "sha256": "ffe65149d5bd5b4f0cb3e8c1fac8504c8d8383cd06f9f71bed42e57ddefd359d"
+      "bytes": 7312,
+      "sha256": "aa397b1d414fe229fba9dd3e5d703af0c385b24b56be165ff55e9345a8d80b02"
     },
     {
       "filename": "background-056-balloon.webp",
       "sourcePath": "assets/Balloon/Flat/balloon_flat.svg",
       "sourceSha1": "8b4f5da770d5cbc349d5b0a96eb571231bdcb2a1",
-      "bytes": 1458,
-      "sha256": "8f474e73b60070edd4fae53db383f62847ef5c7cd15df9eabc92f01668ead5ca"
+      "bytes": 3664,
+      "sha256": "1d19b3e274976959a8eabacf3b65ff1037f5f4b9eab2d7d2b2044bc88f5f11c9"
     },
     {
       "filename": "background-057-wrapped-gift.webp",
       "sourcePath": "assets/Wrapped gift/Flat/wrapped_gift_flat.svg",
       "sourceSha1": "5442e24b43820491e13cadf0208e6dd632a628c1",
-      "bytes": 1226,
-      "sha256": "13f1d05074897defd8f0299e4f9bc122db1c0610baf911d2b0c819998c7166b4"
+      "bytes": 2098,
+      "sha256": "aafbe41666ac345791beba22384626af64a545411ab26d52dd8057ef5a2d98b1"
     },
     {
       "filename": "background-058-drum.webp",
       "sourcePath": "assets/Drum/Flat/drum_flat.svg",
       "sourceSha1": "6720d1f4ce22b8b23a3fd98170062e99a33fce84",
-      "bytes": 1874,
-      "sha256": "8b49a4792c35a109f23f8a44406ba3863a33e591a8d17c5307a2e68bb1268a8c"
+      "bytes": 8276,
+      "sha256": "91d8661f3d1750bb90b6d05f6e07df73cd116ec2be95170eeb314d615d0314b1"
     },
     {
       "filename": "background-059-camera.webp",
       "sourcePath": "assets/Camera/Flat/camera_flat.svg",
       "sourceSha1": "6c471cdb66eb41fefceac7fa999a78f54597af71",
-      "bytes": 1118,
-      "sha256": "03ef4f620c52f6fe2cb43eff12d0fc5018a34754ad7b57c7b87b8aeaeb60a348"
+      "bytes": 3258,
+      "sha256": "61bbe3efb5bc654b6ed96f2854ced5b6be0310f4786e4a8a0f14e3dd84a51d48"
     },
     {
       "filename": "background-060-cactus.webp",
       "sourcePath": "assets/Cactus/Flat/cactus_flat.svg",
       "sourceSha1": "66a881843fa314b14e4d55c34e60de1724c14cf5",
-      "bytes": 1620,
-      "sha256": "e8c232f0fbb0532e0484975701788939fcdd4617c89e625238876e89d88a3915"
+      "bytes": 4586,
+      "sha256": "9ffe350df14fddcdb62e0fdc4344d6ca429732eb324c57d1e68482aa094f1d7a"
     },
     {
       "filename": "background-061-potted-plant.webp",
       "sourcePath": "assets/Potted plant/Flat/potted_plant_flat.svg",
       "sourceSha1": "fc15c40fb8995926f6fcf4bddf8644446a6ebc88",
-      "bytes": 1636,
-      "sha256": "5ba722ed293ef36cac5c36e437cbd560e3599c434585e4ce3e2178f7dc72c121"
+      "bytes": 4234,
+      "sha256": "656b96731ff4db620ffc9f6cb64aa624e031020263edfd5d7ec436ad0fd24bc5"
     },
     {
       "filename": "background-062-seedling.webp",
       "sourcePath": "assets/Seedling/Flat/seedling_flat.svg",
       "sourceSha1": "541a51175d0aad261c0a2e5f446bb87797c84781",
-      "bytes": 980,
-      "sha256": "4bf36a44e615f2cd2df88624520be21d69ce26853da4ca0e1384beb409e8e995"
+      "bytes": 2282,
+      "sha256": "b9bda920d10993a5602c982d514cd86c3ac25456d24b504d84723099298ec945"
     },
     {
       "filename": "background-063-tulip.webp",
       "sourcePath": "assets/Tulip/Flat/tulip_flat.svg",
       "sourceSha1": "c7509e9d8e3aeaa1fba9b96b5f1d62a41334732a",
-      "bytes": 1230,
-      "sha256": "9e14fae79347e9f20fdbc29e0c104f2fc0130cd2bc27aa8d7e998a8a8c0f7395"
+      "bytes": 3484,
+      "sha256": "97fc2b510cabcd5f3f616a69119b1f4ac9230a17829f2f9e0004046f2a86e928"
     },
     {
       "filename": "background-064-sunflower.webp",
       "sourcePath": "assets/Sunflower/Flat/sunflower_flat.svg",
       "sourceSha1": "1083cf63748b82cb7ca52069f76c9aa6d37b486c",
-      "bytes": 1810,
-      "sha256": "35bce5df6e988a1dca64d00d7a8ce0421dc9a48703991067f949e170e6204622"
+      "bytes": 6496,
+      "sha256": "3a9a119ee2c60db6b1b2afd13f94af175d44d466bafdfe9469a6e7cc26cd4338"
     },
     {
       "filename": "background-065-cat-face.webp",
       "sourcePath": "assets/Cat face/Flat/cat_face_flat.svg",
       "sourceSha1": "a29d581e56e9f69afea40949dffc7284dbe1f218",
-      "bytes": 1708,
-      "sha256": "dedad6d9bfd3f140170d6cb2e88d87022459741b2ca45491006ab6cba6ed5f5f"
+      "bytes": 3780,
+      "sha256": "934cae961a0fa61e6a4248dc4610c36a2338d68f110168a16707c8a2da9797c6"
     },
     {
       "filename": "background-066-dog-face.webp",
       "sourcePath": "assets/Dog face/Flat/dog_face_flat.svg",
       "sourceSha1": "03056a1f301482b8a56337125070ec4275857849",
-      "bytes": 1988,
-      "sha256": "d0ba927bbbe2a289ae58bf32116b22228c2459d7482a8e47a09c9ad24ab52332"
+      "bytes": 5562,
+      "sha256": "50ef380ad9736a2952f2b45bbdf5334c159f7bf007b8781c7e5bd2eee7564022"
     },
     {
       "filename": "background-067-bear.webp",
       "sourcePath": "assets/Bear/Flat/bear_flat.svg",
       "sourceSha1": "0fdb887bbaf786e7fbb88ade0fc2dc070c448029",
-      "bytes": 2146,
-      "sha256": "3ee60d5e015cb2e7caffdf2e96ea047f58f6a52054793d43e88b1aa01114d4be"
+      "bytes": 6064,
+      "sha256": "cdc12900e8dd14d4d22f38a04d43e3da9c83e06f920c86af50a90b710a9d52f2"
     },
     {
       "filename": "background-068-panda.webp",
       "sourcePath": "assets/Panda/Flat/panda_flat.svg",
       "sourceSha1": "e01f4ecfc34a073aeed6b29a72c604043d9b191d",
-      "bytes": 2770,
-      "sha256": "690997f5d6cd73364e33aceb39b6281550d5445e74db706d3300dfc57a236242"
+      "bytes": 7534,
+      "sha256": "8db1a968afd2147540147e097b845ce35aa98022240afa73a6480e0c15895116"
     },
     {
       "filename": "background-069-koala.webp",
       "sourcePath": "assets/Koala/Flat/koala_flat.svg",
       "sourceSha1": "f75adeec8d462db0c4c1be5abc690c0f1df1cfc7",
-      "bytes": 1300,
-      "sha256": "0d81ed77dd9e19dcc5a3d727092d71affb6989feacb5aa38b8528de03f70df5a"
+      "bytes": 4046,
+      "sha256": "c84fe6586a7833402844ceedfea1592876d4938e7ab6d3f48d20eb0cdbbb8955"
     },
     {
       "filename": "background-070-hamster.webp",
       "sourcePath": "assets/Hamster/Flat/hamster_flat.svg",
       "sourceSha1": "9e09b831fb45f8c768647b0bc60623463ef99657",
-      "bytes": 1884,
-      "sha256": "fbabc7bf381b5975e50bfd35508842002841a4453e82b56f51e832a3bfa06391"
+      "bytes": 6034,
+      "sha256": "d909389da28a8199f1829e8d0b68bb1459c8635400fa6562511ec0733ed9c9c5"
     },
     {
       "filename": "background-071-rabbit-face.webp",
       "sourcePath": "assets/Rabbit face/Flat/rabbit_face_flat.svg",
       "sourceSha1": "e9949e20c11c3ca9a603576c1bbf992ebefe6fd2",
-      "bytes": 1622,
-      "sha256": "a3a94e0dd9978271fb6e6fe08891a2a26c6b5aae80b41dda1c09ea85f4b5fde2"
+      "bytes": 5092,
+      "sha256": "a6ff11281556e8e11b5d68819b4a0a4268121964415b91a98d479a003a879cc4"
     },
     {
       "filename": "background-072-mouse-face.webp",
       "sourcePath": "assets/Mouse face/Flat/mouse_face_flat.svg",
       "sourceSha1": "d84f8d1347190168101dd11b169f4da68ed36f6a",
-      "bytes": 1382,
-      "sha256": "d3fd777da6bfee1df8d34222ad64a2b0c641ca0ccef58bed76f0c9d0764ece59"
+      "bytes": 5332,
+      "sha256": "7ed46a552b8fd6f8de2b0852274bfb8ea174fff570b13e62604ad9b1301fa5f8"
     },
     {
       "filename": "background-073-pig-face.webp",
       "sourcePath": "assets/Pig face/Flat/pig_face_flat.svg",
       "sourceSha1": "c6c23bdacc9bb54fa0d9b3237e250fe8e22c7159",
-      "bytes": 1388,
-      "sha256": "16711c5c37c556593dd45a6d976cf3298459e0b8c23c2cca33733b5e86606de5"
+      "bytes": 4144,
+      "sha256": "d8b18b2457123669a65ae613e3c9ef0b3f0c03e8e24f856510655539a36e9369"
     },
     {
       "filename": "background-074-cow-face.webp",
       "sourcePath": "assets/Cow face/Flat/cow_face_flat.svg",
       "sourceSha1": "4f8fba3e3f6f5e8efa4bc60caa16cfbdd32187a0",
-      "bytes": 1442,
-      "sha256": "bffecffeb81c8a3fb5a20a108837a56e239cbd0d4cffeaec9b0dc1023aefa038"
+      "bytes": 4542,
+      "sha256": "ce963807b3dcc6aeeed65d55884d96b5c425d203b5ce221e6e9eabd2f03f7f6c"
     },
     {
       "filename": "background-075-tiger-face.webp",
       "sourcePath": "assets/Tiger face/Flat/tiger_face_flat.svg",
       "sourceSha1": "34c9697cb5c5f0e3ad2357d61cddd0dcfd8ab93c",
-      "bytes": 2666,
-      "sha256": "4611852553fd8fde50b81ec49ced50e25851fc0e71ac636fcf8a4ae6e64ef8e3"
+      "bytes": 7450,
+      "sha256": "5ab4cb3af246d41c03e62f2776d2b37889457186fb73e41c3706e411c986ff93"
     },
     {
       "filename": "background-076-lion.webp",
       "sourcePath": "assets/Lion/Flat/lion_flat.svg",
       "sourceSha1": "446ff6411a83b3a1d704b770e99f04366c14ae42",
-      "bytes": 2544,
-      "sha256": "5f29f912e3c021a947946ab83b0c5274c05859a7d40b6bc122d04ec72b2f6af6"
+      "bytes": 6822,
+      "sha256": "a8f5e643df6f9f9235403f9dcb6ab15ecd2c9c596ac087b0571a8bd605f118ae"
     },
     {
       "filename": "background-077-fox.webp",
       "sourcePath": "assets/Fox/Flat/fox_flat.svg",
       "sourceSha1": "d3c4ce6b6123bf47f613ec9a6d90188159dfeafa",
-      "bytes": 1796,
-      "sha256": "e65cbd356ef14562d8c5ac9f28065fb40386aeddf70407d9008af39fd4c0bd71"
+      "bytes": 5118,
+      "sha256": "18327cd4079a7f28f84301a6e456403a1a7e0c6d82e8a4ec24ef3fc043665ea4"
     },
     {
       "filename": "background-078-dragon-face.webp",
       "sourcePath": "assets/Dragon face/Flat/dragon_face_flat.svg",
       "sourceSha1": "fe5206d943ed1d4514d0809d546c24d188eab185",
-      "bytes": 1924,
-      "sha256": "f52f05d787e78c62c8777786c40392bee33c53af45ff18700584dc3252cdbdc8"
+      "bytes": 5618,
+      "sha256": "2c67cc2552272b0b6133a0d9ee847a628118a9f7119d8b5bdf8e0e3d111d392d"
     },
     {
       "filename": "background-079-monkey-face.webp",
       "sourcePath": "assets/Monkey face/Flat/monkey_face_flat.svg",
       "sourceSha1": "fdbe4507980a7d89bdebd27a1526c76ba74d6c1c",
-      "bytes": 1810,
-      "sha256": "c4460b56e28499756389e5eb7b9f9bbf6f9203673c56ae95a905975ff4824c8f"
+      "bytes": 5792,
+      "sha256": "71b69f1299b0f75d13730d21532de7f1aba4ab8ef3543849917fc3722b3c5b69"
     },
     {
       "filename": "background-080-horse-face.webp",
       "sourcePath": "assets/Horse face/Flat/horse_face_flat.svg",
       "sourceSha1": "1883c34c94e3be71b8f4c23048ce59ddee8c10f5",
-      "bytes": 1958,
-      "sha256": "a0233c8edb66688556dd4e35604878ef10278375d54d971103cdd671ef0d4772"
+      "bytes": 6928,
+      "sha256": "3a355810814c4586fdcdee4a34843dee941290bb9b7407834b62a56930726bb2"
     },
     {
       "filename": "background-081-robot.webp",
       "sourcePath": "assets/Robot/Flat/robot_flat.svg",
       "sourceSha1": "5cd1f010af2a7a2c180f80dd5aa4ecfb37d4985b",
-      "bytes": 1710,
-      "sha256": "310a2c63a2a78027c01a288c97bb55b5252efa5a5d100690046d388cf979c929"
+      "bytes": 4300,
+      "sha256": "cd375b28db36be507a024fe5699c3e11421f8ee3c84b2dbd4818a2b7312957bc"
     },
     {
       "filename": "background-082-penguin.webp",
       "sourcePath": "assets/Penguin/Flat/penguin_flat.svg",
       "sourceSha1": "90123a6b0a3c0def103ff4192811e383b2737cae",
-      "bytes": 2476,
-      "sha256": "d222668e00b54f39c8add7d063e7658137577bc66e68a2d5ac67c15983e5425c"
+      "bytes": 6170,
+      "sha256": "e1618b080ade5f061fd625d60e1cb995e2445a98652a47b45f6357782d4d9c83"
     },
     {
       "filename": "background-083-owl.webp",
       "sourcePath": "assets/Owl/Flat/owl_flat.svg",
       "sourceSha1": "0956883c9bc8f05f6ad3bd737e370b01723f3206",
-      "bytes": 2672,
-      "sha256": "bb20c0a7d36a5ba156b7adbe2428ebb0e44816c2c45afdff675a41b445b8d8fe"
+      "bytes": 7710,
+      "sha256": "916a04be947e788f4af743b6b0eae137fa7eaa3170503f3138bc5c5c9687b107"
     },
     {
       "filename": "background-084-duck.webp",
       "sourcePath": "assets/Duck/Flat/duck_flat.svg",
       "sourceSha1": "0f1e34d350a6beb3d7daebbb55ff9ad13b4f6d01",
-      "bytes": 1382,
-      "sha256": "71f556a4eef6159dc70251163837531c0121dd9385639283c2fe6b09b13bb8c7"
+      "bytes": 4328,
+      "sha256": "34cdd3ef7ce617a10bb140379a06bf6e369550abc38a66234dfdc90d63ef4075"
     },
     {
       "filename": "background-085-chicken.webp",
       "sourcePath": "assets/Chicken/Flat/chicken_flat.svg",
       "sourceSha1": "e9f148e1fd9497a0a62f79a3d7b751bf827f13bd",
-      "bytes": 1980,
-      "sha256": "317bd8878dd937fff42d4f751678f212ae457d76094e7bb88605705646b02e26"
+      "bytes": 5360,
+      "sha256": "769958bca5ee4099cb06f69ddc524a5003e29bf586b240c17d763ca968d4e305"
     },
     {
       "filename": "background-086-baby-chick.webp",
       "sourcePath": "assets/Baby chick/Flat/baby_chick_flat.svg",
       "sourceSha1": "fbcd73e8f167c6d4393af9185d56a336ee031a60",
-      "bytes": 1288,
-      "sha256": "4649d180d2ab644002ec29040556a504e36e81063345fe002c7a4866d65883ff"
+      "bytes": 4260,
+      "sha256": "ed602ed8fbad7f7647b4d4c856932c19c9efd740faeff2e51f1fa5b6f73082c5"
     },
     {
       "filename": "background-087-hatching-chick.webp",
       "sourcePath": "assets/Hatching chick/Flat/hatching_chick_flat.svg",
       "sourceSha1": "f7ba75de54ec36abd881a6178983c8f188b88df0",
-      "bytes": 1198,
-      "sha256": "b423739e7abcbd1ac3d8b3851a8a9ac2cd623d87a815537e7833b94495745cca"
+      "bytes": 3348,
+      "sha256": "9cc863ef8ba29c42af379455ba50decc819f1d38819111728f88b1fb97aeba9c"
     },
     {
       "filename": "background-088-front-facing-baby-chick.webp",
       "sourcePath": "assets/Front-facing baby chick/Flat/front-facing_baby_chick_flat.svg",
       "sourceSha1": "4835396bac6130cd18082611e4336888c3ea21f7",
-      "bytes": 1168,
-      "sha256": "d8e3a4d6594fa328f48cf1f3d89e78d283f0492814597d7aecea9b25db9ff8dd"
+      "bytes": 3536,
+      "sha256": "bf307d5960f1fe2a76d8d437df7fcb28dbd74a3b311167612f1b26bbc8fddf77"
     },
     {
       "filename": "background-089-frog.webp",
       "sourcePath": "assets/Frog/Flat/frog_flat.svg",
       "sourceSha1": "2970d891d50db0d2fbc5c5df6a524ac4732cd68f",
-      "bytes": 2188,
-      "sha256": "3ce95009be9cd9ddd78458b1c03e58b912523f2d1f7cc920a3aac0c0edacb78c"
+      "bytes": 6140,
+      "sha256": "bd1662a3528bbdd2b8f2d62fcda02b2f3284bd452c73901a129c02d9c65f3fba"
     },
     {
       "filename": "background-090-cat.webp",
       "sourcePath": "assets/Cat/Flat/cat_flat.svg",
       "sourceSha1": "45336596470049a784ea75c1ac2d750c5a4158af",
-      "bytes": 1772,
-      "sha256": "6a121a0bb786ae17952731dc7a9a2f6211d6a966f5ff5ea27c31b3e302348be1"
+      "bytes": 5636,
+      "sha256": "c03251b94b648fc46c3cdbecf653a2e53436d6d28331d10ddfaddb8af1ce30a9"
     },
     {
       "filename": "background-091-dog.webp",
       "sourcePath": "assets/Dog/Flat/dog_flat.svg",
       "sourceSha1": "05877f12210b6cec3ce51781bd4eda0a23f5d942",
-      "bytes": 1764,
-      "sha256": "d1a2843515066f8f16e2f46174ac11bb2d7885cc9d78bfff82f14f5d480f1d21"
+      "bytes": 4990,
+      "sha256": "61c24fbee5ef5129c57b9fcc6f6a7d4484f54620acebefb566480d0e76c3f3e9"
     },
     {
       "filename": "background-092-elephant.webp",
       "sourcePath": "assets/Elephant/Flat/elephant_flat.svg",
       "sourceSha1": "3f96a89a8057472c971e8058bf59efd662ca91ca",
-      "bytes": 972,
-      "sha256": "a7cd7244c3f3072e5aec7e305acaba6d86eac6bcc1a2758ef7a070bd0189b8b4"
+      "bytes": 3062,
+      "sha256": "e1bae9204c3df8957cb6b21c9662bce66ddc3ba015d65d2c9a373767ac266628"
     },
     {
       "filename": "background-093-deer.webp",
       "sourcePath": "assets/Deer/Flat/deer_flat.svg",
       "sourceSha1": "21ad1a6a8fe6daf9de61b5a6f0efd94545ccd50c",
-      "bytes": 1956,
-      "sha256": "b9464254509991d99a43dd5a9f9dc6ab2286c343e21f86abd2d856b56af25c9e"
+      "bytes": 4580,
+      "sha256": "27ba10db9334dd6aa5a1409af114f2630a1fcdf046e246250d240e268d50defa"
     },
     {
       "filename": "background-094-horse.webp",
       "sourcePath": "assets/Horse/Flat/horse_flat.svg",
       "sourceSha1": "9641f6910d32f3f15e9af27830ad88d25c3b426e",
-      "bytes": 1860,
-      "sha256": "c0d39e921454a8551591fdfa732115e9574b7ddb36fc102861aa6bde8246306d"
+      "bytes": 4796,
+      "sha256": "7894caebc2401bc6cfd3105c19d67dbef3c5006b21749203b679af0acd189bdc"
     },
     {
       "filename": "background-095-zebra.webp",
       "sourcePath": "assets/Zebra/Flat/zebra_flat.svg",
       "sourceSha1": "d91761c66b776d254bce5478684b4c6edffb76c6",
-      "bytes": 2382,
-      "sha256": "abce7844ae8d3341fceee797688b28bce0458b930d36ef90da7fd5cf655c1f6f"
+      "bytes": 6356,
+      "sha256": "2c35e6d9398c18a5a685070d3de12d1d05f85895d3f0df07bdfb4cacb4b62e77"
     },
     {
       "filename": "background-096-giraffe.webp",
       "sourcePath": "assets/Giraffe/Flat/giraffe_flat.svg",
       "sourceSha1": "8363157c08d1180b44eb037feedc4a5b8b3f4acd",
-      "bytes": 1968,
-      "sha256": "f3929d21c3e76469aa91a98938be396ee6e10e7fd8227cf6170e3c68a37b68f2"
+      "bytes": 5092,
+      "sha256": "31598ac03fcbe4ddd53c1d39ecb2ac2cbe54d49038c58304c2edaf2bbb17b8e4"
     },
     {
       "filename": "background-097-rabbit.webp",
       "sourcePath": "assets/Rabbit/Flat/rabbit_flat.svg",
       "sourceSha1": "7477645f4cdae16f8d5d1bb34a2005b32f5d5004",
-      "bytes": 1650,
-      "sha256": "0bb71183ca1f6c5801d6c46ed463a39fe53cb451c204794dbf7eead1466b1ec9"
+      "bytes": 4644,
+      "sha256": "0263462a8e2bd4c71249773d03a6bf7279e8b1dffc40ce6ad0429af7397dffb0"
     },
     {
       "filename": "background-098-black-cat.webp",
       "sourcePath": "assets/Black cat/Flat/black_cat_flat.svg",
       "sourceSha1": "93410afc89b70d105724862f8e10a7f1aa73e302",
-      "bytes": 1662,
-      "sha256": "344d538ce0307a63509c704f7a0f83717b4c286dfa50964c4c1156b21381cae1"
+      "bytes": 4346,
+      "sha256": "bade3aeb62e5a962e4e9fdd90027ce6483060956123e6b03160ea1e1ba71ba70"
     },
     {
       "filename": "background-099-goat.webp",
       "sourcePath": "assets/Goat/Flat/goat_flat.svg",
       "sourceSha1": "16d3bf7b0776fb58c7934048faf5daf506137abb",
-      "bytes": 1348,
-      "sha256": "31580a8b9f9081212ad286642016902bfd7b5fef6b00ba7422abe3fe11ec961e"
+      "bytes": 3474,
+      "sha256": "a8b5894a929202f7e710d401ea4ec4e0925b22274f0d419c7d1e1c0ea4bcefca"
     },
     {
       "filename": "background-100-ewe.webp",
       "sourcePath": "assets/Ewe/Flat/ewe_flat.svg",
       "sourceSha1": "58b55051dc1d96c17436b469c43f8fb3f24b5a8a",
-      "bytes": 1192,
-      "sha256": "02d9a8e3d839b11823a5451ad337dbc1a257645d38543ec13bfc7efbdb4b78ee"
+      "bytes": 3630,
+      "sha256": "b8e3c2dbd6cbbdd3b21cdfbba23dd055224d6ca2ca8f17853fb8c4eef3c90327"
     }
   ]
 }

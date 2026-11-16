@@ -216,7 +216,7 @@ const PuzzleCaptchaModal = ({
       overflow="hidden"
       boxShadow="0 20px 80px rgba(16, 24, 40, 0.16)"
     >
-      <ModalBody p="20px" pb="22px">
+      <ModalBody px="20px" pt="20px" pb="22px">
         <Flex align="flex-start" justify="space-between" gap={2} mb="20px">
           <Box pt="3px">
             <Text fontSize="13px" lineHeight="20px" color="myGray.400">
@@ -320,170 +320,174 @@ const PuzzleCaptchaModal = ({
             }}
           />
         </Flex>
-        <Box position="relative" h="44px" mt="23px" role="group">
-          <Box
-            position="absolute"
-            left={0}
-            right={0}
-            top="14px"
-            h="16px"
-            borderRadius="full"
-            bg="#F0F0F2"
-            overflow="hidden"
-          >
+        <Box mt="23px" role="group">
+          <Box position="relative" h="44px">
             <Box
-              h="100%"
-              w={`calc(${progress}% + ${thumbWidth * (1 - progress / 100)}px)`}
-              bg={sliderUnavailable ? 'myGray.200' : passed ? '#D2F1E1' : '#E5E2FF'}
-              opacity={x > 0 || passed ? 1 : 0}
+              position="absolute"
+              left={0}
+              right={0}
+              top="14px"
+              h="16px"
+              borderRadius="full"
+              bg="#F0F0F2"
+              overflow="hidden"
+            >
+              <Box
+                h="100%"
+                w={`calc(${progress}% + ${thumbWidth * (1 - progress / 100)}px)`}
+                bg={sliderUnavailable ? 'myGray.200' : passed ? '#D2F1E1' : '#E5E2FF'}
+                opacity={x > 0 || passed ? 1 : 0}
+              />
+            </Box>
+            <Flex
+              pointerEvents="none"
+              position="absolute"
+              left={`calc(${progress}% - ${(progress / 100) * thumbWidth}px)`}
+              top="3px"
+              w={`${thumbWidth}px`}
+              h="38px"
+              align="center"
+              justify="center"
+              gap="5px"
+              bg={passed ? '#24A36A' : sliderUnavailable ? 'myGray.300' : '#5D54FF'}
+              color={sliderUnavailable && !passed ? 'myGray.700' : 'white'}
+              borderRadius="full"
+              boxShadow={
+                sliderUnavailable
+                  ? 'none'
+                  : dragging
+                    ? '0 4px 12px rgba(93,84,255,.28)'
+                    : '0 2px 5px rgba(93,84,255,.12)'
+              }
+              transition="background-color .15s, box-shadow .15s"
+              sx={{ '@media (prefers-reduced-motion: reduce)': { transition: 'none' } }}
+            >
+              {busy && challenge ? (
+                <Spinner size="xs" color="currentColor" />
+              ) : passed ? (
+                <Icon viewBox="0 0 24 24" boxSize="22px" color="white">
+                  <path
+                    d="m5 12 4 4L19 6"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </Icon>
+              ) : (
+                [0, 1, 2].map((line) => (
+                  <Box key={line} w="2px" h="17px" borderRadius="full" bg="currentColor" />
+                ))
+              )}
+            </Flex>
+            <Box
+              as="input"
+              type="range"
+              aria-label={t('common:puzzle_captcha_slider')}
+              aria-describedby="puzzle-captcha-keyboard"
+              aria-valuetext={`${Math.round(x)}°`}
+              min={0}
+              max={max}
+              step={1}
+              value={x}
+              disabled={busy || sliderUnavailable}
+              position="absolute"
+              inset={0}
+              w="100%"
+              h="44px"
+              m={0}
+              p={0}
+              border={0}
+              bg="transparent"
+              cursor={dragging ? 'grabbing' : 'grab'}
+              style={{ touchAction: 'none' }}
+              sx={{
+                appearance: 'none',
+                '&::-webkit-slider-runnable-track': { height: '44px', background: 'transparent' },
+                '&::-moz-range-track': { height: '44px', background: 'transparent' },
+                '&::-webkit-slider-thumb': {
+                  appearance: 'none',
+                  width: `${thumbWidth}px`,
+                  height: '44px',
+                  background: 'transparent',
+                  border: 0
+                },
+                '&::-moz-range-thumb': {
+                  width: `${thumbWidth}px`,
+                  height: '44px',
+                  background: 'transparent',
+                  border: 0
+                },
+                '&:focus-visible': {
+                  outline: '2px solid #A8A2FF',
+                  outlineOffset: '4px',
+                  borderRadius: '999px'
+                },
+                '&:disabled': { cursor: 'not-allowed' }
+              }}
+              onPointerDown={(event: React.PointerEvent<HTMLInputElement>) => {
+                begin(event.clientY);
+                event.currentTarget.setPointerCapture(event.pointerId);
+              }}
+              onPointerMove={(event: React.PointerEvent<HTMLInputElement>) => {
+                pointerY.current = event.clientY;
+              }}
+              onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
+                record(Number(event.target.value))
+              }
+              onPointerUp={() => void submit()}
+              onPointerCancel={() => {
+                track.current = [];
+                setX(0);
+                value.current = 0;
+                setDragging(false);
+              }}
+              onBlur={() => setDragging(false)}
+              onKeyDown={(event: React.KeyboardEvent<HTMLInputElement>) => {
+                event.stopPropagation();
+                if (
+                  ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(
+                    event.key
+                  ) &&
+                  !track.current.length
+                )
+                  begin();
+                if (event.key === 'Enter') {
+                  event.preventDefault();
+                  void submit();
+                }
+              }}
             />
           </Box>
-          <Flex
-            pointerEvents="none"
-            position="absolute"
-            left={`calc(${progress}% - ${(progress / 100) * thumbWidth}px)`}
-            top="3px"
-            w={`${thumbWidth}px`}
-            h="38px"
-            align="center"
-            justify="center"
-            gap="5px"
-            bg={passed ? '#24A36A' : sliderUnavailable ? 'myGray.300' : '#5D54FF'}
-            color={sliderUnavailable && !passed ? 'myGray.700' : 'white'}
-            borderRadius="full"
-            boxShadow={
-              sliderUnavailable
-                ? 'none'
-                : dragging
-                  ? '0 4px 12px rgba(93,84,255,.28)'
-                  : '0 2px 5px rgba(93,84,255,.12)'
-            }
-            transition="background-color .15s, box-shadow .15s"
-            sx={{ '@media (prefers-reduced-motion: reduce)': { transition: 'none' } }}
-          >
-            {busy && challenge ? (
-              <Spinner size="xs" color="currentColor" />
-            ) : passed ? (
-              <Icon viewBox="0 0 24 24" boxSize="22px" color="white">
-                <path
-                  d="m5 12 4 4L19 6"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </Icon>
-            ) : (
-              [0, 1, 2].map((line) => (
-                <Box key={line} w="2px" h="17px" borderRadius="full" bg="currentColor" />
-              ))
-            )}
-          </Flex>
-          <Box
-            as="input"
-            type="range"
-            aria-label={t('common:puzzle_captcha_slider')}
-            aria-describedby="puzzle-captcha-keyboard"
-            aria-valuetext={`${Math.round(x)}°`}
-            min={0}
-            max={max}
-            step={1}
-            value={x}
-            disabled={busy || sliderUnavailable}
-            position="absolute"
-            inset={0}
-            w="100%"
-            h="44px"
-            m={0}
-            p={0}
-            border={0}
-            bg="transparent"
-            cursor={dragging ? 'grabbing' : 'grab'}
-            style={{ touchAction: 'none' }}
-            sx={{
-              appearance: 'none',
-              '&::-webkit-slider-runnable-track': { height: '44px', background: 'transparent' },
-              '&::-moz-range-track': { height: '44px', background: 'transparent' },
-              '&::-webkit-slider-thumb': {
-                appearance: 'none',
-                width: `${thumbWidth}px`,
-                height: '44px',
-                background: 'transparent',
-                border: 0
-              },
-              '&::-moz-range-thumb': {
-                width: `${thumbWidth}px`,
-                height: '44px',
-                background: 'transparent',
-                border: 0
-              },
-              '&:focus-visible': {
-                outline: '2px solid #A8A2FF',
-                outlineOffset: '4px',
-                borderRadius: '999px'
-              },
-              '&:disabled': { cursor: 'not-allowed' }
-            }}
-            onPointerDown={(event: React.PointerEvent<HTMLInputElement>) => {
-              begin(event.clientY);
-              event.currentTarget.setPointerCapture(event.pointerId);
-            }}
-            onPointerMove={(event: React.PointerEvent<HTMLInputElement>) => {
-              pointerY.current = event.clientY;
-            }}
-            onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
-              record(Number(event.target.value))
-            }
-            onPointerUp={() => void submit()}
-            onPointerCancel={() => {
-              track.current = [];
-              setX(0);
-              value.current = 0;
-              setDragging(false);
-            }}
-            onBlur={() => setDragging(false)}
-            onKeyDown={(event: React.KeyboardEvent<HTMLInputElement>) => {
-              event.stopPropagation();
-              if (
-                ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(
-                  event.key
-                ) &&
-                !track.current.length
-              )
-                begin();
-              if (event.key === 'Enter') {
-                event.preventDefault();
-                void submit();
-              }
-            }}
-          />
-          <Text
-            id="puzzle-captcha-keyboard"
-            position="absolute"
-            top="calc(100% + 5px)"
-            w="100%"
-            fontSize="10px"
-            textAlign="center"
-            color="myGray.500"
-            opacity={0}
-            pointerEvents="none"
-            _groupFocusWithin={{ opacity: message ? 0 : 1 }}
-          >
-            {t('common:puzzle_captcha_keyboard')}
-          </Text>
+          {/* 提示和错误共用文档流中的反馈区，撑开底部间距并避免切换时弹窗跳动。 */}
+          <Box display="grid" minH="16px" mt="8px">
+            <Text
+              id="puzzle-captcha-keyboard"
+              gridArea="1 / 1"
+              lineHeight="16px"
+              fontSize="10px"
+              textAlign="center"
+              color="myGray.500"
+              opacity={0}
+              pointerEvents="none"
+              _groupFocusWithin={{ opacity: message ? 0 : 1 }}
+            >
+              {t('common:puzzle_captcha_keyboard')}
+            </Text>
+            <Text
+              gridArea="1 / 1"
+              role="status"
+              aria-live="polite"
+              fontSize="11px"
+              lineHeight="16px"
+              textAlign="center"
+              color={passed ? 'green.600' : 'red.500'}
+            >
+              {message}
+            </Text>
+          </Box>
         </Box>
-        <Text
-          role="status"
-          aria-live="polite"
-          fontSize="11px"
-          lineHeight="16px"
-          textAlign="center"
-          color={passed ? 'green.600' : 'red.500'}
-          mt={message ? '8px' : 0}
-        >
-          {message}
-        </Text>
       </ModalBody>
     </MyModal>
   );
