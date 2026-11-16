@@ -1,6 +1,6 @@
 import { WorkflowBufferDataContext } from '../context/workflowInitContext';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { Box, CloseButton, Flex } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
@@ -21,6 +21,7 @@ import { useSandboxEditor, useSandboxStatus } from '@/pageComponents/chat/Sandbo
 import { getAppChatConfig } from '@fastgpt/global/common/app/chat';
 import RunPreviewHeader from './RunPreviewHeader';
 import AppDetailPanelModal from '../../components/AppDetailPanelModal';
+import FullscreenButton from '@/components/common/FullscreenButton';
 
 type Props = {
   isOpen: boolean;
@@ -32,6 +33,12 @@ type Props = {
 
 const ChatTest = ({ isOpen, nodes = [], edges = [], onClose, chatId }: Props) => {
   const { t } = useTranslation();
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [wasOpen, setWasOpen] = useState(isOpen);
+  if (wasOpen !== isOpen) {
+    setWasOpen(isOpen);
+    if (!isOpen) setIsFullscreen(false);
+  }
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
   const isPlugin = appDetail.type === AppTypeEnum.workflowTool;
   const { copyData } = useCopyData();
@@ -68,6 +75,7 @@ const ChatTest = ({ isOpen, nodes = [], edges = [], onClose, chatId }: Props) =>
 
   const handleClose = useCallback(() => {
     setCiteModalData(undefined);
+    setIsFullscreen(false);
     onClose();
   }, [onClose, setCiteModalData]);
 
@@ -88,8 +96,31 @@ const ChatTest = ({ isOpen, nodes = [], edges = [], onClose, chatId }: Props) =>
       <AppDetailPanelModal
         isOpen={isOpen}
         onClose={handleClose}
-        width={datasetCiteData ? ['100%', '960px'] : ['100%', '460px']}
-        height={'100vh'}
+        onEscape={isFullscreen ? () => setIsFullscreen(false) : undefined}
+        width={
+          isFullscreen
+            ? 'calc(100vw - 32px)'
+            : datasetCiteData
+              ? ['100%', '960px']
+              : ['100%', '460px']
+        }
+        height={isFullscreen ? 'calc(100vh - 32px)' : '100vh'}
+        position={isFullscreen ? 'fixed' : 'absolute'}
+        top={isFullscreen ? '16px' : 0}
+        contentProps={
+          isFullscreen
+            ? {
+                right: '16px',
+                zIndex: 1300,
+                role: 'dialog',
+                'aria-modal': true,
+                'aria-label': t('common:core.chat.Run test'),
+                'data-debug-fullscreen': true
+              }
+            : undefined
+        }
+        maskProps={isFullscreen ? { zIndex: 1299, bg: 'blackAlpha.600' } : undefined}
+        trapFocus={isFullscreen && isOpen}
         header={
           isPlugin ? (
             <Flex w={'100%'} alignItems={'center'} justifyContent={'space-between'}>
@@ -110,7 +141,13 @@ const ChatTest = ({ isOpen, nodes = [], edges = [], onClose, chatId }: Props) =>
                 py={0}
                 fontSize={'sm'}
               />
-              <CloseButton flexShrink={0} size={'sm'} onClick={handleClose} />
+              <Flex alignItems={'center'} gap={1}>
+                <FullscreenButton
+                  isFullscreen={isFullscreen}
+                  onClick={() => setIsFullscreen((value) => !value)}
+                />
+                <CloseButton flexShrink={0} size={'sm'} onClick={handleClose} />
+              </Flex>
             </Flex>
           ) : (
             <RunPreviewHeader
@@ -123,6 +160,8 @@ const ChatTest = ({ isOpen, nodes = [], edges = [], onClose, chatId }: Props) =>
               onCopyChatId={() => copyData(chatId)}
               onOpenSandboxModal={onOpenSandboxModal}
               onRestart={restartChat}
+              isFullscreen={isFullscreen}
+              onToggleFullscreen={() => setIsFullscreen((value) => !value)}
               onClose={handleClose}
             />
           )
