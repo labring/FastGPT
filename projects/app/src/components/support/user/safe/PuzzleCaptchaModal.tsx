@@ -8,6 +8,7 @@ import type {
 } from '@fastgpt/global/support/user/account/captcha/type';
 import type { CaptchaVerificationPurpose } from '@fastgpt/global/support/user/account/verification/type';
 import { verifyPuzzleCaptcha } from '@/web/support/user/api';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 
 /**
  * 圆形图片转正交互：滑块从 0 到 360 度，鼠标、触摸与键盘使用相同的服务端角度校验。
@@ -57,8 +58,10 @@ const PuzzleCaptchaModal = ({
     try {
       const result = await getCaptcha();
       if (mounted.current && version === requestVersion.current) setChallenge(result);
-    } catch {
-      if (mounted.current) setMessage(t('common:puzzle_captcha_load_failed'));
+    } catch (error) {
+      if (mounted.current && version === requestVersion.current) {
+        setMessage(t(getErrText(error, t('common:puzzle_captcha_load_failed'))));
+      }
     } finally {
       if (mounted.current && version === requestVersion.current) setBusy(false);
     }
@@ -147,9 +150,10 @@ const PuzzleCaptchaModal = ({
       setPassed(true);
       setMessage(t('common:puzzle_captcha_passed'));
       await onVerified(result.captcha);
-    } catch {
-      if (mounted.current) {
-        setMessage(t('common:puzzle_captcha_retry'));
+    } catch (error) {
+      if (mounted.current && currentGeneration === generation.current) {
+        // 保留接口的具体原因；重新取题成功后仍展示本次错误，方便用户判断何时重试。
+        setMessage(t(getErrText(error, t('common:puzzle_captcha_retry'))));
         await refresh();
       }
     } finally {
