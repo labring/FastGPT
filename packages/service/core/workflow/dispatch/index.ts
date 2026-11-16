@@ -40,7 +40,6 @@ import { WorkflowQueue } from './queue';
 import type { WorkflowRuntimeControl } from './context';
 import type { WorkflowResponseType } from '@fastgpt/global/core/workflow/runtime/sse';
 import { WORKFLOW_MAX_RUN_TIMES } from '../constants';
-import { markProfileError, profileStage } from '../../../common/profiling';
 import { checkEntryModeration, consumeEntryModerationChecked } from '../../plugin/moderation/entry';
 
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.DISPATCH);
@@ -135,11 +134,11 @@ export async function dispatchWorkFlow({
   try {
     // 锚点 1：信息接入平台（Entry Guard）- 校验用户输入与全局变量/表单输入，违规直接阻断且不写入节点响应
     const entryChecked = consumeEntryModerationChecked({ chatId, responseChatItemId });
-    if (!entryChecked.queryChecked || (!entryChecked.variablesChecked && data.variables)) {
+    if (!entryChecked.queryChecked || (!entryChecked.variablesChecked && variables)) {
       const entryNode = data.runtimeNodes?.find((item) => item.isEntry) || data.runtimeNodes?.[0];
       await checkEntryModeration({
         query: entryChecked.queryChecked ? undefined : query,
-        variables: entryChecked.variablesChecked ? undefined : data.variables,
+        variables: entryChecked.variablesChecked ? undefined : variables,
         context: {
           teamId: runningUserInfo.teamId,
           tmbId: runningUserInfo.tmbId,
@@ -149,8 +148,8 @@ export async function dispatchWorkFlow({
           nodeId: entryNode?.nodeId,
           nodeName: entryNode?.name,
           requestId:
-            typeof data.req?.headers?.['x-request-id'] === 'string'
-              ? data.req.headers['x-request-id']
+            typeof req?.headers?.['x-request-id'] === 'string'
+              ? req.headers['x-request-id']
               : undefined
         }
       });
@@ -335,7 +334,6 @@ export async function dispatchWorkFlow({
     await stopController?.cleanup();
   }
 }
-
 
 /** 执行当前层工作流，维护独立摘要，并在返回或抛出前完成本层错误上报。 */
 export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowResponse> => {

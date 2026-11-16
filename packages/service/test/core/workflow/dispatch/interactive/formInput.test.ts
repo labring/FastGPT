@@ -428,48 +428,50 @@ describe('dispatchFormInput', () => {
       });
 
     // Case 1: toxic description in formItem
-    const resultWithToxicDesc = await runWithContext({ mcpClientMemory: {} }, () =>
-      dispatchFormInput({
-        histories: [{ obj: 'Human', value: [] }],
-        node: { isEntry: true },
-        params: {
-          [NodeInputKeyEnum.description]: 'normal description',
-          [NodeInputKeyEnum.userInputForms]: [
-            {
-              key: 'input1',
-              label: 'normal label',
-              description: 'toxic-desc',
-              type: FlowNodeInputTypeEnum.input,
-              valueType: WorkflowIOValueTypeEnum.string,
-              required: false
-            }
-          ]
-        }
-      } as any)
+    const resultWithToxicDesc = await dispatchFormInput({
+      histories: [{ obj: 'Human', value: [] }],
+      node: { isEntry: true },
+      params: {
+        [NodeInputKeyEnum.description]: 'normal description',
+        [NodeInputKeyEnum.userInputForms]: [
+          {
+            key: 'input1',
+            label: 'normal label',
+            description: 'toxic-desc',
+            type: FlowNodeInputTypeEnum.input,
+            valueType: WorkflowIOValueTypeEnum.string,
+            required: false
+          }
+        ]
+      }
+    } as any);
+    expect(resultWithToxicDesc.error?.[NodeOutputKeyEnum.errorText]).toBe(
+      'blocked: formInput.input1.description'
     );
-    expect(resultWithToxicDesc[DispatchNodeResponseKeyEnum.nodeDispatchResult]).toBeUndefined();
+    expect(resultWithToxicDesc[DispatchNodeResponseKeyEnum.interactive]).toBeUndefined();
 
     // Case 2: toxic value in formItem
-    const resultWithToxicVal = await runWithContext({ mcpClientMemory: {} }, () =>
-      dispatchFormInput({
-        histories: [{ obj: 'Human', value: [] }],
-        node: { isEntry: true },
-        params: {
-          [NodeInputKeyEnum.description]: 'normal description',
-          [NodeInputKeyEnum.userInputForms]: [
-            {
-              key: 'input2',
-              label: 'normal label',
-              value: 'toxic-val',
-              type: FlowNodeInputTypeEnum.input,
-              valueType: WorkflowIOValueTypeEnum.string,
-              required: false
-            }
-          ]
-        }
-      } as any)
+    const resultWithToxicVal = await dispatchFormInput({
+      histories: [{ obj: 'Human', value: [] }],
+      node: { isEntry: true },
+      params: {
+        [NodeInputKeyEnum.description]: 'normal description',
+        [NodeInputKeyEnum.userInputForms]: [
+          {
+            key: 'input2',
+            label: 'normal label',
+            value: 'toxic-val',
+            type: FlowNodeInputTypeEnum.input,
+            valueType: WorkflowIOValueTypeEnum.string,
+            required: false
+          }
+        ]
+      }
+    } as any);
+    expect(resultWithToxicVal.error?.[NodeOutputKeyEnum.errorText]).toBe(
+      'blocked: formInput.input2.value'
     );
-    expect(resultWithToxicVal[DispatchNodeResponseKeyEnum.nodeDispatchResult]).toBeUndefined();
+    expect(resultWithToxicVal[DispatchNodeResponseKeyEnum.interactive]).toBeUndefined();
 
     spy.mockRestore();
   });

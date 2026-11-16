@@ -317,8 +317,10 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
     });
 
     // 详情由子流程独立发布，父流程需要从摘要显式接收未捕获错误，才能触发自己的错误分支。
-    const isToolModerationBlocked = Boolean(props.isToolCall && runtimeSummary.hasModerationBlock);
-    if (props.isToolCall) {
+    const isToolModerationBlocked = Boolean(
+      getWorkflowContext().runtimeControl.isToolCall && runtimeSummary.hasModerationBlock
+    );
+    if (getWorkflowContext().runtimeControl.isToolCall) {
       props.nodeSummary?.mergeNodeSummary({
         ...(runtimeSummary.hasModerationBlock ? { hasModerationBlock: true } : {}),
         ...(runtimeSummary.hasToolResultModerated ? { hasToolResultModerated: true } : {})

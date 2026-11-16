@@ -444,7 +444,6 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       sandboxEnabled: !!sandboxClient
     });
 
-
     // 3. 运行单主 loop。
     // 如果上一轮因 ask_user 暂停，这里会把用户回答作为 ask tool response 接回原 messages。
     const { result: coreResult, summary: outputSummary } = await runAgentLoopCoreWithSummary({

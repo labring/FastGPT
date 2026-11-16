@@ -53,7 +53,6 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     lastInteractive,
     runningAppInfo,
     runningUserInfo,
-    externalProvider,
     responseChatItemId,
     params: {
       modelId,

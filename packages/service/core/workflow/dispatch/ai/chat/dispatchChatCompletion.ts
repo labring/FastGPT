@@ -33,7 +33,6 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     node: { name, version, inputs },
     runningAppInfo,
     runningUserInfo,
-    workflowStreamResponse,
     chatConfig,
     usageId,
     params: {

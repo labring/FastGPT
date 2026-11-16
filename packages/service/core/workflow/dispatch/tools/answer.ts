@@ -17,7 +17,6 @@ export type AnswerResponse = DispatchNodeResultType<{
 
 export const dispatchAnswer = async (props: Record<string, any>): Promise<AnswerResponse> => {
   const {
-
     params: { text = '' }
   } = props as AnswerProps;
   const { workflowStreamResponse } = getWorkflowContext();

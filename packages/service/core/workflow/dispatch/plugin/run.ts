@@ -338,7 +338,9 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
     });
     // 系统级 workflow tool 的内部模型调用对用户不可见，不计入当前用户 workflow/chat
     // 的 token summary；普通 plugin workflow 仍按 child summary 归属一次。
-    const isToolModerationBlocked = Boolean(props.isToolCall && runtimeSummary.hasModerationBlock);
+    const isToolModerationBlocked = Boolean(
+      getWorkflowContext().runtimeControl.isToolCall && runtimeSummary.hasModerationBlock
+    );
     const pluginOutput = isToolModerationBlocked ? undefined : runtimeSummary.pluginOutput;
     const pluginOutputError = isToolModerationBlocked
       ? undefined
@@ -374,10 +376,10 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
         ? { citeCollectionIds: runtimeSummary.citeCollectionIds }
         : {}),
       hasAgentSandbox: runtimeSummary.hasAgentSandbox,
-      ...(props.isToolCall && runtimeSummary.hasModerationBlock
+      ...(getWorkflowContext().runtimeControl.isToolCall && runtimeSummary.hasModerationBlock
         ? { hasModerationBlock: true }
         : {}),
-      ...(props.isToolCall && runtimeSummary.hasToolResultModerated
+      ...(getWorkflowContext().runtimeControl.isToolCall && runtimeSummary.hasToolResultModerated
         ? { hasToolResultModerated: true }
         : {})
     });
