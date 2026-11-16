@@ -81,6 +81,7 @@ const buildAdminItem = ({
     pluginId: detail.pluginId,
     source: detail.source,
     version: detail.version,
+    etag: detail.etag,
     isLatestVersion: detail.isLatestVersion,
     name: parseI18nString(detail.name, lang),
     description: detail.description ? parseI18nString(detail.description, lang) : undefined,
@@ -157,6 +158,7 @@ export const getAdminModerationPluginList = async ({
           pluginId: plugin.pluginId,
           source: plugin.source,
           version: plugin.version,
+          etag: plugin.etag,
           name: parseI18nString(plugin.name, lang),
           description: plugin.description ? parseI18nString(plugin.description, lang) : undefined,
           icon: plugin.icon,
@@ -272,9 +274,11 @@ const syncPolicyContentionRecord = async ({
  * 保存审查插件配置。
  *
  * 启用是全局互斥的：传 `enabled: true` 会先把其他插件置为停用。
+ * 未显式传入 `enabled` 时，若当前尚无任何启用插件且全局策略未指定生效插件，
+ * 则默认自动启用首个完成配置的插件。
  * Saving synchronously probes the resolved configuration before any writes or enablement.
  * A block/suspected verdict is a healthy response; provider errors and runtime failures reject the save.
- * 返回脱敏配置与同一事务内的审计前态；只有提交成功后调用方才可记录审计。
+ * 返回脱敏配置、同一事务内的审计前态与是否触发了首次配置自动启用；只有提交成功后调用方才可记录审计。
  */
 export const saveModerationConfig = async ({
   pluginId,
@@ -293,6 +297,7 @@ export const saveModerationConfig = async ({
 }): Promise<{
   item: AdminModerationPluginItemType;
   auditSnapshot: ModerationConfigAuditSnapshot;
+  autoEnabled: boolean;
 }> => {
   // 1. 读取插件详情：拿 secretSchema 判断哪些字段要加密，同时验证插件真实存在
   const detail = await getModerationPluginDetail({ pluginId, source, version, lang });
@@ -340,39 +345,46 @@ export const saveModerationConfig = async ({
 
   const data = {
     version: detail.version,
-    ...(encrypted !== undefined ? { secretsVal: encrypted } : {}),
-    ...(enabled !== undefined ? { enabled } : {})
+    ...(encrypted !== undefined ? { secretsVal: encrypted } : {})
   };
 
   // 3. 写入。启用时在同一事务内停用其他插件，避免出现两个同时启用的窗口
-  const { saved, auditSnapshot } = await mongoSessionRun(async (session) => {
+  const { saved, auditSnapshot, autoEnabled } = await mongoSessionRun(async (session) => {
     // 前态必须与写入共享 session；写冲突重试时重新读取，不能复用事务外的旧快照。
     const prevTarget = await findModerationConfig({ pluginId, source: detail.source }, session);
     const prevActive = await findEnabledModerationConfig(session);
+    const policyState = await readModerationPolicyState(session);
+    // 未显式指定启停状态时，若系统尚无任何启用或生效中的审核插件，则默认自动启用首个配置完成的插件。
+    const shouldAutoEnable =
+      enabled === undefined && !prevActive && !policyState.policy.activePluginId;
+    const resolvedEnabled = enabled ?? (shouldAutoEnable ? true : undefined);
     const auditSnapshot: ModerationConfigAuditSnapshot = {
       prevTargetEnabled: Boolean(prevTarget?.enabled),
       prevActivePluginId: prevActive?.pluginId
     };
 
-    if (enabled === true) {
+    if (resolvedEnabled === true) {
       await syncPolicyContentionRecord({ session, activePluginId: pluginId });
     }
 
     const record = await upsertModerationConfig({
       pluginId,
       source: detail.source,
-      data,
+      data: {
+        ...data,
+        ...(resolvedEnabled !== undefined ? { enabled: resolvedEnabled } : {})
+      },
       session
     });
 
-    if (enabled === true) {
+    if (resolvedEnabled === true) {
       await disableOtherModerationConfigs({ exceptPluginId: pluginId, session });
     }
 
-    return { saved: record, auditSnapshot };
+    return { saved: record, auditSnapshot, autoEnabled: shouldAutoEnable };
   });
 
-  return { item: buildAdminItem({ detail, config: saved, lang }), auditSnapshot };
+  return { item: buildAdminItem({ detail, config: saved, lang }), auditSnapshot, autoEnabled };
 };
 
 /**

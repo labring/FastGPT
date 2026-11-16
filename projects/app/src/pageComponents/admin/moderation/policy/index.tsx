@@ -17,6 +17,7 @@ import {
   getAdminModerationPluginList,
   getAdminModerationPolicy,
   postAdminDeleteModerationPlugin,
+  postAdminSaveModerationConfig,
   postAdminUpdateModerationPolicy
 } from '@/web/core/plugin/admin/moderation/api';
 import {
@@ -30,6 +31,8 @@ import {
   type SystemModerationPolicyType
 } from '@fastgpt/global/core/plugin/moderation/type';
 import { useModerationPolicyDraftStore } from '@/web/core/plugin/admin/moderation/policyDraft';
+import { PluginErrEnum } from '@fastgpt/global/common/error/code/plugin';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 import PluginItemRow from './PluginItemRow';
 import EditPluginModal from './EditPluginModal';
 import ModerationTestCard from './ModerationTestCard';
@@ -49,6 +52,8 @@ export const ModerationPolicy = () => {
   const marketplaceDraft = useRef(useModerationPolicyDraftStore.getState().draft);
 
   const [editingPlugin, setEditingPlugin] = useState<AdminModerationPluginItemType | null>(null);
+  const [activatingPluginId, setActivatingPluginId] = useState<string | null>(null);
+  const persistedPolicyRef = useRef<SystemModerationPolicyType | null>(null);
 
   const { isOpen: isImportOpen, onOpen: onOpenImport, onClose: onCloseImport } = useDisclosure();
   const [uninstallingLastPlugin, setUninstallingLastPlugin] = useState(false);
@@ -61,6 +66,7 @@ export const ModerationPolicy = () => {
   const { loading: loadingPolicy, runAsync: fetchPolicy } = useRequest(getAdminModerationPolicy, {
     onSuccess: (data) => {
       if (data) {
+        persistedPolicyRef.current = data;
         const restoredPolicy = marketplaceDraft.current ?? data;
         setPolicy(restoredPolicy);
         marketplaceDraft.current = undefined;
@@ -116,12 +122,78 @@ export const ModerationPolicy = () => {
     void savePolicy(policy);
   };
 
-  // 单选切换当前生效服务
-  const handleToggleActivePlugin = (pluginId: string) => {
-    setPolicy((prev) => ({
-      ...prev,
-      activePluginId: prev.activePluginId === pluginId ? undefined : pluginId
-    }));
+  /**
+   * 同步已启用插件到全局策略：
+   * 若用户已在页面打开“是否开启内容审核”但尚未点击右侧“保存”，
+   * 自动启用或手动点击启用时同步持久化开关状态，避免刷新或离开页面后丢失开启状态。
+   */
+  const syncActivePluginPolicy = async (activePluginId: string) => {
+    const nextPolicy: SystemModerationPolicyType = {
+      ...policy,
+      activePluginId
+    };
+    setPolicy(nextPolicy);
+
+    if (nextPolicy.enabled && !persistedPolicyRef.current?.enabled) {
+      const updated = await postAdminUpdateModerationPolicy(nextPolicy);
+      if (updated) {
+        persistedPolicyRef.current = updated;
+        setPolicy(updated);
+        return;
+      }
+      persistedPolicyRef.current = nextPolicy;
+      return;
+    }
+
+    if (persistedPolicyRef.current) {
+      persistedPolicyRef.current = {
+        ...persistedPolicyRef.current,
+        activePluginId
+      };
+    }
+  };
+
+  // 点击操作栏“启用”按钮切换到目标插件（已启用插件不可取消启用）
+  const handleActivatePlugin = async (plugin: AdminModerationPluginItemType) => {
+    if (
+      !plugin.hasConfiguredSecrets ||
+      policy.activePluginId === plugin.pluginId ||
+      activatingPluginId
+    ) {
+      return;
+    }
+
+    setActivatingPluginId(plugin.pluginId);
+    try {
+      const savedPlugin = await postAdminSaveModerationConfig({
+        pluginId: plugin.pluginId,
+        enabled: true
+      });
+      await syncActivePluginPolicy(savedPlugin?.pluginId ?? plugin.pluginId);
+      await fetchPlugins();
+    } catch (err: any) {
+      toast({
+        status: 'error',
+        title: err?.message || t('admin:moderation.save_error')
+      });
+    } finally {
+      setActivatingPluginId(null);
+    }
+  };
+
+  // 首个插件配置完成时后端会默认自动启用，前端同步更新生效服务并刷新列表
+  const handlePluginConfigSuccess = async (savedPlugin?: AdminModerationPluginItemType) => {
+    if (savedPlugin?.enabled && !policy.activePluginId) {
+      try {
+        await syncActivePluginPolicy(savedPlugin.pluginId);
+      } catch (err: any) {
+        toast({
+          status: 'error',
+          title: err?.message || t('admin:moderation.save_error')
+        });
+      }
+    }
+    await fetchPlugins();
   };
 
   // 执行删除插件请求
@@ -155,10 +227,12 @@ export const ModerationPolicy = () => {
       });
       await Promise.all([fetchPolicy(), fetchPlugins()]);
     } catch (err: any) {
+      const errText = getErrText(err);
       const errorTitle =
-        err?.message === 'Disable the moderation plugin before deleting it'
+        errText === PluginErrEnum.disableModerationBeforeDelete ||
+        errText === 'admin:moderation.disable_before_delete'
           ? t('admin:moderation.disable_before_delete')
-          : err?.message || t('admin:moderation.delete_plugin_error');
+          : errText || t('admin:moderation.delete_plugin_error');
       toast({
         status: 'error',
         title: errorTitle
@@ -341,7 +415,7 @@ export const ModerationPolicy = () => {
                         bg={'white'}
                         overflow={'hidden'}
                       >
-                        {/* 表头 (5列) */}
+                        {/* 表头 (4列) */}
                         <Flex
                           h={'40px'}
                           bg={'myGray.50'}
@@ -352,7 +426,6 @@ export const ModerationPolicy = () => {
                           fontWeight={'medium'}
                           color={'myGray.600'}
                         >
-                          <Box w={'48px'} flexShrink={0} />
                           <Box w={'180px'} flexShrink={0} px={6}>
                             {t('admin:moderation.table_plugin_name')}
                           </Box>
@@ -362,7 +435,7 @@ export const ModerationPolicy = () => {
                           <Box w={'100px'} flexShrink={0} px={6}>
                             {t('admin:moderation.table_status')}
                           </Box>
-                          <Box w={'100px'} flexShrink={0} px={6}>
+                          <Box w={'180px'} flexShrink={0} px={6} textAlign={'right'}>
                             {t('admin:moderation.table_actions')}
                           </Box>
                         </Flex>
@@ -376,7 +449,8 @@ export const ModerationPolicy = () => {
                               isActive={policy.activePluginId === plugin.pluginId}
                               isModerationEnabled={policy.enabled}
                               isLastPlugin={plugins.length <= 1}
-                              onSelect={() => handleToggleActivePlugin(plugin.pluginId)}
+                              isActivating={activatingPluginId === plugin.pluginId}
+                              onActivate={() => void handleActivatePlugin(plugin)}
                               onEdit={() => setEditingPlugin(plugin)}
                               onDelete={() => handleDeletePlugin(plugin)}
                             />
@@ -633,8 +707,8 @@ export const ModerationPolicy = () => {
         <EditPluginModal
           plugin={editingPlugin}
           onClose={() => setEditingPlugin(null)}
-          onSuccess={() => {
-            void fetchPlugins();
+          onSuccess={(savedPlugin) => {
+            void handlePluginConfigSuccess(savedPlugin);
           }}
         />
       )}

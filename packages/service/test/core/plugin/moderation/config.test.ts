@@ -2,9 +2,11 @@ import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import {
   saveModerationConfig,
   getAdminModerationPluginList,
-  getModerationPolicy
+  getModerationPolicy,
+  deleteModerationPlugin
 } from '../../../../core/plugin/moderation/service';
 import * as remote from '../../../../thirdProvider/fastgptPlugin/moderation';
+import * as lifecycle from '../../../../thirdProvider/fastgptPlugin/lifecycle';
 import { MongoSystemModerationPlugin } from '../../../../core/plugin/moderation/schema';
 import { MongoSystemConfigs } from '../../../../common/system/config/schema';
 import { SystemConfigsTypeEnum } from '@fastgpt/global/common/system/config/constants';
@@ -256,5 +258,54 @@ describe('moderation configuration save and reload', () => {
     expect(
       await MongoSystemConfigs.countDocuments({ type: SystemConfigsTypeEnum.moderationPolicy })
     ).toBe(1);
+  });
+
+  it('auto-enables the first configured plugin, keeps subsequent configured plugins inactive, and auto-enables again after last plugin uninstall', async () => {
+    const secondDetail = {
+      ...detail,
+      pluginId: 'second-moderation-plugin',
+      name: 'Second Moderation'
+    };
+    vi.spyOn(remote, 'getModerationPluginDetail').mockImplementation(async ({ pluginId }) =>
+      pluginId === secondDetail.pluginId ? secondDetail : detail
+    );
+    vi.spyOn(remote, 'listModerationPlugins').mockResolvedValue([detail, secondDetail]);
+    vi.spyOn(lifecycle, 'disableSystemPlugin').mockResolvedValue(undefined);
+
+    // 1. 首个插件配置完成时（未显式传 enabled）应自动启用并写入全局 activePluginId
+    const firstResult = await saveModerationConfig({
+      pluginId: detail.pluginId,
+      secretsVal: { enableDefaultDict: true }
+    });
+    expect(firstResult.autoEnabled).toBe(true);
+    expect(firstResult.item.enabled).toBe(true);
+    expect(await getModerationPolicy()).toMatchObject({
+      activePluginId: detail.pluginId
+    });
+
+    // 2. 已有生效插件时再配置第二个插件，不应自动抢占启用状态
+    const secondResult = await saveModerationConfig({
+      pluginId: secondDetail.pluginId,
+      secretsVal: { enableDefaultDict: true }
+    });
+    expect(secondResult.autoEnabled).toBe(false);
+    expect(secondResult.item.enabled).toBe(false);
+    expect(await getModerationPolicy()).toMatchObject({
+      activePluginId: detail.pluginId
+    });
+
+    // 3. 卸载全部插件后，再次配置首个新插件仍应自动启用
+    await deleteModerationPlugin({ pluginId: secondDetail.pluginId, source: 'system' });
+    await deleteModerationPlugin({ pluginId: detail.pluginId, source: 'system' });
+
+    const reconfigured = await saveModerationConfig({
+      pluginId: 'third-moderation-plugin',
+      secretsVal: { enableDefaultDict: true }
+    });
+    expect(reconfigured.autoEnabled).toBe(true);
+    expect(reconfigured.item.enabled).toBe(true);
+    expect(await getModerationPolicy()).toMatchObject({
+      activePluginId: 'third-moderation-plugin'
+    });
   });
 });

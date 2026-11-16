@@ -14,7 +14,12 @@ const mocks = vi.hoisted(() => ({
   policyData: undefined as SystemModerationPolicyType | undefined,
   pluginsData: [] as AdminModerationPluginItemType[],
   lastTitles: [] as Array<{ mainTitle: string; subTitles: string[] }>,
-  lastNumberInputVariant: undefined as string | undefined
+  lastNumberInputVariant: undefined as string | undefined,
+  saveModerationConfig: vi.fn(),
+  updateModerationPolicy: vi.fn(),
+  lastModalOnSuccess: undefined as
+    | ((savedPlugin: AdminModerationPluginItemType) => void)
+    | undefined
 }));
 
 vi.mock('next/router', () => ({
@@ -59,7 +64,8 @@ vi.mock('@/web/core/plugin/admin/moderation/api', () => ({
   getAdminModerationPolicy: () => Promise.resolve(mocks.policyData),
   getAdminModerationPluginList: () => Promise.resolve(mocks.pluginsData),
   postAdminDeleteModerationPlugin: vi.fn(),
-  postAdminUpdateModerationPolicy: vi.fn()
+  postAdminSaveModerationConfig: mocks.saveModerationConfig,
+  postAdminUpdateModerationPolicy: mocks.updateModerationPolicy
 }));
 vi.mock('@chakra-ui/react', () => ({
   Box: ({ children }: React.PropsWithChildren) => React.createElement('div', null, children),
@@ -121,19 +127,35 @@ vi.mock('@fastgpt/web/components/common/MyTooltip/QuestionTip', () => ({
 vi.mock('@/pageComponents/admin/moderation/policy/PluginItemRow', () => ({
   default: ({
     plugin,
-    onSelect
+    isActive,
+    onActivate,
+    onEdit
   }: {
     plugin: AdminModerationPluginItemType;
-    onSelect: () => void;
+    isActive: boolean;
+    onActivate: () => void;
+    onEdit: () => void;
   }) =>
     React.createElement(
-      'button',
-      { 'data-plugin-select': plugin.pluginId, onClick: onSelect },
-      plugin.name
+      'div',
+      { 'data-plugin-row': plugin.pluginId },
+      React.createElement(
+        'button',
+        { 'data-plugin-activate': plugin.pluginId, disabled: isActive, onClick: onActivate },
+        isActive ? 'in_use' : 'enable'
+      ),
+      React.createElement(
+        'button',
+        { 'data-plugin-edit': plugin.pluginId, onClick: onEdit },
+        'edit'
+      )
     )
 }));
 vi.mock('@/pageComponents/admin/moderation/policy/EditPluginModal', () => ({
-  default: () => null
+  default: ({ onSuccess }: { onSuccess: (savedPlugin: AdminModerationPluginItemType) => void }) => {
+    mocks.lastModalOnSuccess = onSuccess;
+    return React.createElement('div', { 'data-edit-modal': 'true' });
+  }
 }));
 vi.mock('@/pageComponents/admin/moderation/policy/ModerationTestCard', () => ({
   default: ({ activePlugin }: { activePlugin?: AdminModerationPluginItemType }) =>
@@ -162,6 +184,9 @@ describe('ModerationPolicy page', () => {
     mocks.pluginsData = [];
     mocks.lastTitles = [];
     mocks.lastNumberInputVariant = undefined;
+    mocks.lastModalOnSuccess = undefined;
+    mocks.saveModerationConfig.mockReset();
+    mocks.updateModerationPolicy.mockReset();
   });
 
   afterEach(() => {
@@ -208,17 +233,17 @@ describe('ModerationPolicy page', () => {
     });
   });
 
-  it('shows test section and right-side anchor once an active moderation service is selected', async () => {
-    mocks.pluginsData = [
-      {
-        pluginId: 'baidu',
-        source: 'system',
-        name: 'Baidu Moderation',
-        provider: 'baidu',
-        enabled: false,
-        hasConfiguredSecrets: true
-      }
-    ];
+  it('activates a configured plugin via the action button, forbids un-enabling, and shows test section', async () => {
+    const baiduPlugin: AdminModerationPluginItemType = {
+      pluginId: 'baidu',
+      source: 'system',
+      name: 'Baidu Moderation',
+      provider: 'baidu',
+      enabled: false,
+      hasConfiguredSecrets: true
+    };
+    mocks.pluginsData = [baiduPlugin];
+    mocks.saveModerationConfig.mockResolvedValueOnce({ ...baiduPlugin, enabled: true });
 
     const host = document.createElement('div');
     document.body.appendChild(host);
@@ -231,15 +256,22 @@ describe('ModerationPolicy page', () => {
       await Promise.resolve();
     });
 
-    // Still hidden before selecting active plugin
+    // Still hidden before activating a plugin
     expect(host.querySelector('[data-test-card]')).toBeNull();
 
-    // Select plugin as active service
-    const selectBtn = host.querySelector('[data-plugin-select="baidu"]') as HTMLButtonElement;
+    // Activate plugin via action button
+    const activateBtn = host.querySelector('[data-plugin-activate="baidu"]') as HTMLButtonElement;
+    expect(activateBtn.disabled).toBe(false);
     await act(async () => {
-      selectBtn.click();
+      activateBtn.click();
     });
 
+    expect(mocks.saveModerationConfig).toHaveBeenCalledWith({
+      pluginId: 'baidu',
+      enabled: true
+    });
+    expect(activateBtn.disabled).toBe(true);
+    expect(activateBtn.textContent).toBe('in_use');
     expect(host.querySelector('[data-test-card="baidu"]')).not.toBeNull();
     expect(host.querySelector('[data-first-title="admin:moderation.test_title"]')).not.toBeNull();
     expect(mocks.lastTitles.map((item) => item.mainTitle)).toEqual([
@@ -248,6 +280,78 @@ describe('ModerationPolicy page', () => {
       'admin:moderation.strategy_title',
       'admin:moderation.test_title'
     ]);
+
+    // Clicking an already active plugin button cannot un-enable it
+    await act(async () => {
+      activateBtn.click();
+    });
+    expect(mocks.saveModerationConfig).toHaveBeenCalledTimes(1);
+    expect(host.querySelector('[data-test-card="baidu"]')).not.toBeNull();
+
+    await act(async () => {
+      root.unmount();
+    });
+  });
+
+  it('auto-enables the first configured plugin upon saving configuration and persists policy switch', async () => {
+    mocks.policyData = {
+      ...DefaultSystemModerationPolicy,
+      enabled: false
+    };
+    const unconfiguredPlugin: AdminModerationPluginItemType = {
+      pluginId: 'keyword',
+      source: 'system',
+      name: 'Keyword Moderation',
+      provider: 'keyword',
+      enabled: false,
+      hasConfiguredSecrets: false
+    };
+    mocks.pluginsData = [unconfiguredPlugin];
+    mocks.updateModerationPolicy.mockResolvedValue({
+      ...DefaultSystemModerationPolicy,
+      enabled: true,
+      activePluginId: 'keyword'
+    });
+
+    const host = document.createElement('div');
+    document.body.appendChild(host);
+    const root = createRoot(host);
+
+    await act(async () => {
+      root.render(React.createElement(ModerationPolicy));
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    // Turn on global moderation switch before configuring the first plugin
+    const totalSwitch = host.querySelector('input[type="checkbox"]') as HTMLInputElement;
+    await act(async () => {
+      totalSwitch.click();
+    });
+
+    // Open EditPluginModal and simulate backend returning auto-enabled first plugin
+    const editBtn = host.querySelector('[data-plugin-edit="keyword"]') as HTMLButtonElement;
+    await act(async () => {
+      editBtn.click();
+    });
+    expect(host.querySelector('[data-edit-modal="true"]')).not.toBeNull();
+
+    mocks.pluginsData = [{ ...unconfiguredPlugin, hasConfiguredSecrets: true, enabled: true }];
+    await act(async () => {
+      mocks.lastModalOnSuccess?.({
+        ...unconfiguredPlugin,
+        hasConfiguredSecrets: true,
+        enabled: true
+      });
+    });
+
+    expect(mocks.updateModerationPolicy).toHaveBeenCalledWith({
+      ...DefaultSystemModerationPolicy,
+      enabled: true,
+      activePluginId: 'keyword'
+    });
+    expect(host.querySelector('[data-test-card="keyword"]')).not.toBeNull();
 
     await act(async () => {
       root.unmount();
