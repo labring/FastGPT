@@ -91,6 +91,7 @@ describe('Instance config OpenAPI schemas', () => {
         name: 'FastGPT'
       },
       secretKeys: [],
+      configuredSecretKeys: [],
       updatedAt: new Date(),
       updatedBy: {
         actor: 'admin',
@@ -100,6 +101,7 @@ describe('Instance config OpenAPI schemas', () => {
 
     expect(response.domain).toBe('site');
     expect(response.revision).toBe(2);
+    expect(response.configuredSecretKeys).toEqual([]);
     expect(response.updatedBy?.username).toBe('root');
   });
 
