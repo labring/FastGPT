@@ -10,6 +10,109 @@ export type BatchUpdateFailure = {
   reason: string;
 };
 
+type ParsedSemver = {
+  major: number;
+  minor: number;
+  patch: number;
+  prerelease: string[];
+};
+
+const SEMVER_REGEX = /^v?(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?(?:\+[0-9A-Za-z.-]+)?$/;
+
+const parseSemver = (version: string): ParsedSemver | undefined => {
+  const match = SEMVER_REGEX.exec(version.trim());
+  if (!match) return undefined;
+
+  return {
+    major: Number(match[1]),
+    minor: Number(match[2]),
+    patch: Number(match[3]),
+    prerelease: match[4] ? match[4].split('.') : []
+  };
+};
+
+const comparePrereleaseIdentifiers = (a: string[], b: string[]): number => {
+  if (a.length === 0 && b.length === 0) return 0;
+  // 按 SemVer 规范，正式版优先级高于同主次补丁号的预发布版
+  if (a.length === 0) return 1;
+  if (b.length === 0) return -1;
+
+  const length = Math.max(a.length, b.length);
+  for (let i = 0; i < length; i++) {
+    const idA = a[i];
+    const idB = b[i];
+    if (idA === undefined) return -1;
+    if (idB === undefined) return 1;
+    if (idA === idB) continue;
+
+    const isNumericA = /^\d+$/.test(idA);
+    const isNumericB = /^\d+$/.test(idB);
+    if (isNumericA && isNumericB) {
+      return Number(idA) - Number(idB);
+    }
+    if (isNumericA !== isNumericB) {
+      return isNumericA ? -1 : 1;
+    }
+    return idA < idB ? -1 : 1;
+  }
+
+  return 0;
+};
+
+/**
+ * 比较两个插件语义化版本号；任一非标准 SemVer 时返回 `undefined`，由调用方回退到字符串对比。
+ */
+export const comparePluginVersion = (versionA: string, versionB: string): number | undefined => {
+  const parsedA = parseSemver(versionA);
+  const parsedB = parseSemver(versionB);
+  if (!parsedA || !parsedB) return undefined;
+
+  if (parsedA.major !== parsedB.major) return parsedA.major - parsedB.major;
+  if (parsedA.minor !== parsedB.minor) return parsedA.minor - parsedB.minor;
+  if (parsedA.patch !== parsedB.patch) return parsedA.patch - parsedB.patch;
+
+  return comparePrereleaseIdentifiers(parsedA.prerelease, parsedB.prerelease);
+};
+
+/**
+ * 判断市场插件相对已安装版本是否存在更新：
+ * - 市场版本高于已安装版本时返回 true；
+ * - 已安装版本高于市场版本时不提示降级更新；
+ * - 同版本时通过双方非空 `etag` 识别同版本包内容替换。
+ */
+export const hasMarketplaceToolUpdate = ({
+  installedVersion,
+  installedEtag,
+  marketplaceVersion,
+  marketplaceEtag
+}: {
+  installedVersion?: string;
+  installedEtag?: string;
+  marketplaceVersion?: string;
+  marketplaceEtag?: string;
+}) => {
+  const hasDifferentEtag = Boolean(
+    marketplaceEtag && installedEtag && installedEtag !== marketplaceEtag
+  );
+
+  if (!marketplaceVersion) {
+    return hasDifferentEtag;
+  }
+  if (!installedVersion) {
+    return true;
+  }
+
+  const versionDiff = comparePluginVersion(marketplaceVersion, installedVersion);
+  if (versionDiff !== undefined) {
+    if (versionDiff > 0) return true;
+    if (versionDiff < 0) return false;
+    return hasDifferentEtag;
+  }
+
+  if (installedVersion !== marketplaceVersion) return true;
+  return hasDifferentEtag;
+};
+
 /** 根据安装后的刷新结果生成详情页安装状态。 */
 export const getMarketplaceToolStateAfterInstall = ({
   targetVersion,

@@ -302,4 +302,47 @@ describe('moderation plugin deletion and filtering', () => {
       }
     });
   });
+
+  it('preserves package etag from moderation detail and list fallback', async () => {
+    vi.spyOn(fastgptPluginMod, 'listModerationPlugins').mockResolvedValue([
+      {
+        pluginId: 'keyword',
+        source: 'system',
+        type: 'moderation' as any,
+        version: '1.0.0',
+        etag: 'etag-keyword-list'
+      },
+      {
+        pluginId: 'broken-plugin',
+        source: 'system',
+        type: 'moderation' as any,
+        version: '1.0.0',
+        etag: 'etag-broken-list'
+      }
+    ] as any);
+
+    vi.spyOn(fastgptPluginMod, 'getModerationPluginDetail').mockImplementation(
+      async ({ pluginId }) => {
+        if (pluginId === 'broken-plugin') {
+          throw new Error('detail unavailable');
+        }
+        return {
+          pluginId,
+          source: 'system',
+          version: '1.0.0',
+          etag: 'etag-keyword-detail',
+          name: pluginId,
+          type: 'moderation',
+          meta: { provider: 'keyword' },
+          secretSchema: {}
+        } as any;
+      }
+    );
+
+    vi.spyOn(entity, 'findAllModerationConfigs').mockResolvedValue([]);
+
+    const list = await getAdminModerationPluginList();
+    expect(list.find((item) => item.pluginId === 'keyword')?.etag).toBe('etag-keyword-detail');
+    expect(list.find((item) => item.pluginId === 'broken-plugin')?.etag).toBe('etag-broken-list');
+  });
 });

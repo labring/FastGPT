@@ -124,7 +124,8 @@ describe('admin moderation config handler', () => {
     mocks.getLocale.mockReturnValue('zh-CN');
     mocks.saveModerationConfig.mockResolvedValue({
       item: { pluginId: 'x', source: 'system', name: 'X Moderation', provider: 'x' },
-      auditSnapshot: { prevTargetEnabled: false, prevActivePluginId: 'old-plugin' }
+      auditSnapshot: { prevTargetEnabled: false, prevActivePluginId: 'old-plugin' },
+      autoEnabled: false
     });
   });
 
@@ -165,6 +166,40 @@ describe('admin moderation config handler', () => {
       configHandler(makeReq({ body: { pluginId: 'test-plugin', enabled: true } }), res)
     ).rejects.toThrow('transaction aborted');
     expect(mocks.recordModerationConfigAudit).not.toHaveBeenCalled();
+  });
+
+  it('audits enablement when the first configured plugin is auto-enabled without explicit enabled flag', async () => {
+    mocks.saveModerationConfig.mockResolvedValueOnce({
+      item: {
+        pluginId: 'first-moderation',
+        source: 'system',
+        name: 'First Moderation',
+        provider: 'keyword',
+        enabled: true
+      },
+      auditSnapshot: { prevTargetEnabled: false, prevActivePluginId: undefined },
+      autoEnabled: true
+    });
+
+    await configHandler(
+      makeReq({
+        body: {
+          pluginId: 'first-moderation',
+          secretsVal: { enableDefaultDict: true }
+        }
+      }),
+      res
+    );
+
+    expect(mocks.recordModerationConfigAudit).toHaveBeenCalledWith({
+      operator: { tmbId: 'tmb-1', userId: 'user-1' },
+      snapshot: { prevTargetEnabled: false, prevActivePluginId: undefined },
+      pluginId: 'first-moderation',
+      pluginName: 'First Moderation',
+      secretsUpdated: true,
+      nextEnabled: true,
+      lang: 'zh-CN'
+    });
   });
 
   it('rejects a body without pluginId', async () => {

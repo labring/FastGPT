@@ -20,7 +20,7 @@ import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 type EditPluginModalProps = {
   plugin: AdminModerationPluginItemType;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (savedPlugin: AdminModerationPluginItemType) => void;
 };
 
 const isJSONSchemaInput = (value: unknown): value is JSONSchemaInputType =>
@@ -90,7 +90,7 @@ const EditPluginModal: React.FC<EditPluginModalProps> = ({ plugin, onClose, onSu
         }
       }
 
-      await postAdminSaveModerationConfig({
+      const savedPlugin = await postAdminSaveModerationConfig({
         pluginId: plugin.pluginId,
         secretsVal: formValues
       });
@@ -99,7 +99,7 @@ const EditPluginModal: React.FC<EditPluginModalProps> = ({ plugin, onClose, onSu
         status: 'success',
         title: t('admin:moderation.config_saved')
       });
-      onSuccess();
+      onSuccess(savedPlugin);
       onClose();
     },
     {
