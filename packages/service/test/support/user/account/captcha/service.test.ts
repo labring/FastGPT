@@ -300,3 +300,135 @@ describe('per-image retry budget', () => {
     ).toBeNull();
   });
 });
+
+describe('process-wide captcha rendering concurrency', () => {
+  const rendered = {
+    angle: 140,
+    captchaImage: 'background',
+    mode: 'rotate' as const,
+    width: 448,
+    height: 448
+  };
+
+  it.each(['success', 'failure'])(
+    'shares ten slots across service instances and releases on %s',
+    async (outcome) => {
+      const waiting: { resolve: () => void; reject: (error: Error) => void }[] = [];
+      let draining = false;
+      let running = 0;
+      let peak = 0;
+      const failure = new Error('render failed');
+      const render = vi.fn(async () => {
+        running += 1;
+        peak = Math.max(peak, running);
+        try {
+          if (!draining) {
+            await new Promise<void>((resolve, reject) => waiting.push({ resolve, reject }));
+          }
+          return rendered;
+        } finally {
+          running -= 1;
+        }
+      });
+      const persist = vi.fn(async () => true);
+      const dependencies = {
+        render,
+        assertCreateFrequency: async () => undefined,
+        materials: { ...verification, createIfInactive: persist }
+      };
+      const services = [
+        new PuzzleCaptchaService(dependencies),
+        new PuzzleCaptchaService(dependencies)
+      ];
+      const finished = Promise.allSettled(
+        Array.from({ length: 25 }, (_, index) =>
+          services[index % services.length].create({
+            username: `user-${index}@example.com`,
+            purpose: 'register'
+          })
+        )
+      );
+
+      try {
+        await vi.waitFor(() => expect(render).toHaveBeenCalledTimes(10));
+        expect(running).toBe(10);
+        expect(persist).not.toHaveBeenCalled();
+        if (outcome === 'failure') waiting[0].reject(failure);
+        else waiting[0].resolve();
+
+        await vi.waitFor(() => expect(render).toHaveBeenCalledTimes(11));
+        expect(running).toBe(10);
+        expect(peak).toBe(10);
+      } finally {
+        // 断言失败时也排空任务，避免进程共享的名额污染后续测试。
+        draining = true;
+        waiting.forEach(({ resolve }) => resolve());
+        await finished;
+      }
+
+      const results = await finished;
+      expect(results.filter(({ status }) => status === 'rejected')).toEqual(
+        outcome === 'failure' ? [{ status: 'rejected', reason: failure }] : []
+      );
+      expect(render).toHaveBeenCalledTimes(25);
+      expect(persist).toHaveBeenCalledTimes(outcome === 'failure' ? 24 : 25);
+      expect(peak).toBe(10);
+      expect(running).toBe(0);
+    }
+  );
+
+  it('releases synchronous failures and does not hold slots while persisting materials', async () => {
+    const failure = new Error('synchronous render failure');
+    let first = true;
+    let releaseRenders = () => {};
+    const renders = new Promise<void>((resolve) => {
+      releaseRenders = resolve;
+    });
+    let releaseWrites = () => {};
+    const writes = new Promise<void>((resolve) => {
+      releaseWrites = resolve;
+    });
+    const render = vi.fn(() => {
+      if (first) {
+        first = false;
+        throw failure;
+      }
+      return renders.then(() => rendered);
+    });
+    const persist = vi.fn(async () => {
+      await writes;
+      return true;
+    });
+    const service = new PuzzleCaptchaService({
+      render,
+      assertCreateFrequency: async () => undefined,
+      materials: { ...verification, createIfInactive: persist }
+    });
+    const finished = Promise.allSettled(
+      Array.from({ length: 25 }, (_, index) =>
+        service.create({
+          username: `user-${index}@example.com`,
+          purpose: 'register'
+        })
+      )
+    );
+
+    try {
+      // 同步失败释放后，仍能同时运行十个成功任务，不能泄漏一个名额。
+      await vi.waitFor(() => expect(render).toHaveBeenCalledTimes(11));
+      expect(persist).not.toHaveBeenCalled();
+      releaseRenders();
+
+      // 写入全部阻塞时，第十一张及后续图片仍能生成，名额仅覆盖渲染。
+      await vi.waitFor(() => expect(render).toHaveBeenCalledTimes(25));
+      expect(persist).toHaveBeenCalledTimes(24);
+    } finally {
+      releaseRenders();
+      releaseWrites();
+      await finished;
+    }
+    expect((await finished).filter(({ status }) => status === 'rejected')).toEqual([
+      { status: 'rejected', reason: failure }
+    ]);
+  });
+});

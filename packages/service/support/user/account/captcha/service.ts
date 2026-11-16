@@ -1,4 +1,5 @@
 import { randomBytes } from 'node:crypto';
+import pLimit from 'p-limit';
 import type {
   PuzzleCaptchaChallenge,
   PuzzleCaptchaSubmission,
@@ -18,6 +19,13 @@ import { isPlausiblePuzzleTrack, renderPuzzleCaptcha } from './utils';
 import { claimCaptchaAttempt } from './entity';
 import type { ClientSession } from '../../../../common/mongo';
 import { mongoSessionRun } from '../../../../common/mongo/sessionRun';
+
+declare global {
+  var puzzleCaptchaRenderLimit: ReturnType<typeof pLimit> | undefined;
+}
+
+// 放在进程全局，避免路由打包或模块重载各自创建独立的 10 个生成名额。
+const renderLimit = (global.puzzleCaptchaRenderLimit ??= pLimit(10));
 
 const defaultDependencies = {
   render: renderPuzzleCaptcha,
@@ -40,7 +48,10 @@ export class PuzzleCaptchaService {
     this.dependencies = { ...defaultDependencies, ...dependencies };
   }
 
-  /** 可传入调用方事务；图片计算先完成，数据库材料写入使用同一 session。 */
+  /**
+   * 限流通过后按进程共享的 10 个名额异步生成图片，超出部分排队，成功或失败均释放名额。
+   * 仅限制图片计算；等待结束后再分配材料与 TTL，数据库写入使用调用方可选 session。
+   */
   async create(
     {
       username,
@@ -50,7 +61,7 @@ export class PuzzleCaptchaService {
     session?: ClientSession
   ): Promise<PuzzleCaptchaChallenge> {
     await this.dependencies.assertCreateFrequency({ account: username, scene: purpose });
-    const { angle, ...image } = await this.dependencies.render();
+    const { angle, ...image } = await renderLimit(() => this.dependencies.render());
     const challengeId = this.dependencies.randomToken();
     const createdAt = this.dependencies.now();
     const created = await this.dependencies.materials.createIfInactive({
