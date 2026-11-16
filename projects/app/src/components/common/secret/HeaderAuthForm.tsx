@@ -7,7 +7,7 @@ import {
   formatSecretReference,
   getSecretPlainValue,
   getSecretReferenceValue,
-  isSecretValueConfigured
+  getSecretCipherValue
 } from '@fastgpt/global/common/secret/utils';
 import type { HeaderSecretConfigType, HeaderSecretValueType } from './HeaderAuthConfig';
 import { HeaderSecretTypeEnum } from '@fastgpt/global/common/secret/constants';
@@ -15,6 +15,7 @@ import MySelect from '@fastgpt/web/components/common/MySelect';
 import NodeInputSelect from '@fastgpt/web/components/core/workflow/NodeInputSelect';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import SecretValueInput from './SecretValueInput';
 
 /** 选择器只编辑单个引用；历史引用数组保留为只读摘要。 */
 export const getSingleReference = (
@@ -30,20 +31,6 @@ const toSecretReference = (value?: ReferenceItemValueType): [string, string] | u
   value && typeof value[0] === 'string' && typeof value[1] === 'string'
     ? [value[0], value[1]]
     : undefined;
-
-export const getShowInput = ({
-  secretValue,
-  editingIndex,
-  index
-}: {
-  secretValue?: HeaderSecretValueType;
-  editingIndex?: number;
-  index: number;
-}) => {
-  const isEditing = editingIndex === index;
-
-  return !isSecretValueConfigured(secretValue) || isEditing;
-};
 
 export type SecretReferenceRenderer = (params: {
   value?: ReferenceItemValueType;
@@ -105,7 +92,7 @@ const CustomHeaderModeSelect = ({
       >
         <HStack
           w={'4rem'}
-          h={10}
+          h={9}
           border={'1px solid'}
           borderRight={'none'}
           borderColor={'myGray.200'}
@@ -136,26 +123,22 @@ const CustomHeaderModeSelect = ({
 
 /** 编辑前隐藏已保存的密钥，避免明文回显。 */
 export const AuthValueDisplay = ({
-  showInput,
-  index = 0,
-  onEdit,
   value = '',
   onChange,
   onReferenceChange,
   bg,
   secretValue,
+  isConfigured = !!getSecretCipherValue(secretValue),
   mode = 'manual',
   renderReference,
   modeSelect
 }: {
-  showInput: boolean;
-  index?: number;
-  onEdit: (index?: number) => void;
   value?: string;
   onChange: (value: string) => void;
   onReferenceChange?: (value?: ReferenceItemValueType) => void;
   bg: string;
   secretValue?: HeaderSecretValueType;
+  isConfigured?: boolean;
   mode?: ValueMode;
   renderReference?: SecretReferenceRenderer;
   modeSelect?: React.ReactNode;
@@ -164,25 +147,26 @@ export const AuthValueDisplay = ({
   const singleReference = getSingleReference(secretValue);
   const hasModeSelect = !!modeSelect;
 
-  const showEditButton = mode === 'manual' && !showInput;
-
   return (
     <Flex w={'full'} minW={0} alignItems={'center'}>
       <Flex flex={1} minW={0} alignItems={'center'}>
         {modeSelect}
-        <Box flex={1} minW={0} mr={showEditButton ? 1 : 0}>
+        <Box flex={1} minW={0}>
           {renderReference && shouldRenderReferenceSelector({ mode, secretValue }) ? (
             renderReference({
               value: singleReference,
               onChange: onReferenceChange || (() => undefined),
-              buttonProps: hasModeSelect
-                ? {
-                    borderRadius: 'sm',
-                    borderLeftRadius: 'none',
-                    borderColor: 'myGray.200',
-                    w: '100%'
-                  }
-                : undefined
+              buttonProps: {
+                h: 9,
+                ...(hasModeSelect
+                  ? {
+                      borderRadius: 'sm',
+                      borderLeftRadius: 'none',
+                      borderColor: 'myGray.200',
+                      w: '100%'
+                    }
+                  : {})
+              }
             })
           ) : mode === 'reference' ? (
             <Box
@@ -192,7 +176,7 @@ export const AuthValueDisplay = ({
               border={'0.5px solid'}
               borderColor={'primary.200'}
               bg={'primary.50'}
-              h={10}
+              h={9}
               px={3}
               alignItems={'center'}
               display={'flex'}
@@ -203,55 +187,19 @@ export const AuthValueDisplay = ({
             >
               {formatSecretReference(secretValue) || t('common:core.workflow.inputType.Reference')}
             </Box>
-          ) : showInput ? (
-            <Input
+          ) : (
+            <SecretValueInput
               placeholder={'Value'}
               bg={bg}
-              h={10}
               maxLength={50000}
-              minW={0}
-              overflow={'hidden'}
-              textOverflow={'ellipsis'}
               borderLeftRadius={hasModeSelect ? 'none' : undefined}
-              onFocus={() => onEdit(index)}
-              onBlur={() => onEdit(undefined)}
               value={value}
-              onChange={(e) => onChange(e.target.value)}
+              isConfigured={isConfigured}
+              onChange={onChange}
             />
-          ) : (
-            <Flex
-              flex={1}
-              borderRadius={'6px'}
-              borderLeftRadius={hasModeSelect ? 'none' : undefined}
-              border={'0.5px solid'}
-              borderColor={'primary.200'}
-              bg={'primary.50'}
-              h={10}
-              px={3}
-              alignItems={'center'}
-              gap={1}
-              minW={0}
-              overflow={'hidden'}
-            >
-              <MyIcon name="checkCircle" w={'16px'} color={'primary.600'} />
-              <Box fontSize={'sm'} fontWeight={'medium'} color={'primary.600'}>
-                {t('common:had_auth_value')}
-              </Box>
-            </Flex>
           )}
         </Box>
       </Flex>
-      {showEditButton && (
-        <IconButton
-          aria-label="Edit header"
-          icon={<MyIcon name="edit" w={'16px'} />}
-          size="sm"
-          variant="ghost"
-          color={'myGray.500'}
-          _hover={{ color: 'primary.600' }}
-          onClick={() => onEdit(index)}
-        />
-      )}
     </Flex>
   );
 };
@@ -302,7 +250,6 @@ const HeaderAuthForm = ({
   const currentAuthType = useMemo(() => {
     return getSecretType(headerSecretValue);
   }, [headerSecretValue]);
-  const [editingIndex, setEditingIndex] = useState<number>();
 
   const BearerValue = headerSecretValue.Bearer;
   const BasicValue = headerSecretValue.Basic;
@@ -338,7 +285,6 @@ const HeaderAuthForm = ({
         {t('common:auth_type')}
       </Box>
       <MySelect
-        h={10}
         bg={bg}
         value={currentAuthType}
         onChange={(val) => {
@@ -385,13 +331,6 @@ const HeaderAuthForm = ({
           currentAuthType === HeaderSecretTypeEnum.Basic ? (
             <AuthValueDisplay
               key={currentAuthType}
-              showInput={getShowInput({
-                secretValue:
-                  currentAuthType === HeaderSecretTypeEnum.Bearer ? BearerValue : BasicValue,
-                editingIndex,
-                index: 0
-              })}
-              onEdit={setEditingIndex}
               value={
                 currentAuthType === HeaderSecretTypeEnum.Bearer
                   ? getManualValue(BearerValue)
@@ -437,7 +376,6 @@ const HeaderAuthForm = ({
                         flex={1}
                         minW={0}
                         w={'full'}
-                        h={10}
                         bg={bg}
                         overflow={'hidden'}
                         textOverflow={'ellipsis'}
@@ -456,11 +394,7 @@ const HeaderAuthForm = ({
                     <Flex flex={'7 1 0'} minW={0} alignItems={'center'}>
                       <Box flex={1} minW={0}>
                         <AuthValueDisplay
-                          showInput={getShowInput({
-                            secretValue: item.value,
-                            editingIndex,
-                            index
-                          })}
+                          key={item.key}
                           value={getManualValue(item.value)}
                           onChange={(value) => {
                             onChange({
@@ -500,8 +434,6 @@ const HeaderAuthForm = ({
                               />
                             ) : undefined
                           }
-                          index={index}
-                          onEdit={setEditingIndex}
                           bg={bg}
                         />
                       </Box>

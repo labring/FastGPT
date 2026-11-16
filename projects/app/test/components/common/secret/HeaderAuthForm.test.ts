@@ -4,7 +4,6 @@ import { createRoot } from 'react-dom/client';
 import { describe, expect, it, vi } from 'vitest';
 import type { HeaderSecretConfigType } from '@/components/common/secret/HeaderAuthConfig';
 import {
-  getShowInput,
   getSingleReference,
   shouldRenderReferenceSelector
 } from '@/components/common/secret/HeaderAuthForm';
@@ -46,15 +45,6 @@ describe('shouldRenderReferenceSelector', () => {
   });
 });
 
-describe('getShowInput', () => {
-  it('shows empty or actively edited inputs', () => {
-    expect(getShowInput({ secretValue: { value: '' }, index: 0 })).toBe(true);
-    expect(getShowInput({ secretValue: { value: 'token' }, index: 0 })).toBe(false);
-    expect(getShowInput({ secretValue: { secret: 'cipher' }, index: 0 })).toBe(false);
-    expect(getShowInput({ secretValue: { value: 'token' }, editingIndex: 0, index: 0 })).toBe(true);
-  });
-});
-
 describe('HeaderAuthForm', () => {
   it('keeps remaining custom headers in their own mode after deleting a reference row', async () => {
     const dom = new JSDOM('<!doctype html><html><body></body></html>', {
@@ -73,7 +63,7 @@ describe('HeaderAuthForm', () => {
       const [headerSecretValue, setHeaderSecretValue] = useState<HeaderSecretConfigType>({
         customs: [
           { key: 'X-Reference', value: { value: 'replace-me' } },
-          { key: 'X-Static', value: { value: 'static-token' } }
+          { key: 'X-Static', value: { secret: 'static-cipher' } }
         ]
       });
 

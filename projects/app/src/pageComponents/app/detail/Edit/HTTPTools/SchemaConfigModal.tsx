@@ -34,7 +34,7 @@ import {
 } from '@/components/common/secret/HeaderAuthConfig';
 import HeaderAuthForm, { AuthValueDisplay } from '@/components/common/secret/HeaderAuthForm';
 import type { StoreSecretValueType } from '@fastgpt/global/common/secret/type';
-import { getSecretPlainValue, isSecretValueConfigured } from '@fastgpt/global/common/secret/utils';
+import { getSecretPlainValue, getSecretCipherValue } from '@fastgpt/global/common/secret/utils';
 import {
   HttpToolSetRuntimeConfigSchema,
   type HttpToolSetNodeConfigType
@@ -169,7 +169,6 @@ const SchemaConfigModal = ({
       return [];
     }
   });
-  const [editingHeaderIndex, setEditingHeaderIndex] = useState<number>();
   const headerSecret = watch('headerSecret') ?? {};
   const apiSchemaStr = watch('apiSchemaStr');
   const requestHeaderKeys = new Set(initialRequestHeaderKeys);
@@ -495,13 +494,6 @@ const SchemaConfigModal = ({
               <Tbody>
                 {customHeaders?.map((item, index) => {
                   const storedValue = headerSecret[item.secretKey ?? item.key];
-                  const hasValue = item.edited
-                    ? Boolean(item.value)
-                    : Boolean(
-                        isSecretValueConfigured(storedValue) ||
-                        getSecretPlainValue(storedValue) ||
-                        item.value
-                      );
 
                   return (
                     <Tr key={`${index}`}>
@@ -525,10 +517,13 @@ const SchemaConfigModal = ({
                         <Box display={'flex'} alignItems={'center'}>
                           {isWorkflowNodeConfig ? (
                             <AuthValueDisplay
-                              showInput={editingHeaderIndex === index || !hasValue}
-                              index={index}
-                              onEdit={setEditingHeaderIndex}
-                              value={item.edited ? item.value : ''}
+                              key={item.secretKey ?? item.key}
+                              isConfigured={!item.edited && !!getSecretCipherValue(storedValue)}
+                              value={
+                                item.edited
+                                  ? item.value
+                                  : (getSecretPlainValue(storedValue) ?? item.value)
+                              }
                               onChange={(value) =>
                                 setCustomHeaders((prev) => {
                                   const newHeaders = prev.map((h, i) =>
