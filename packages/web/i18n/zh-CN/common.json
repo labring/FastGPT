@@ -1411,5 +1411,9 @@
   "core.workflow.check.node_missing": "节点 {{nodeId}} 已不存在，请删除残留连线",
   "core.workflow.check.option_keys_invalid": "选项或分类的键名缺失或重复，请检查配置",
   "core.workflow.check.form_configuration_invalid": "表单字段的键名或对应输出配置不完整：{{fieldKeys}}",
-  "Version": "版本"
+  "Version": "版本",
+  "api_error.request_failed": "请求错误",
+  "api_error.network_error": "网络连接异常",
+  "api_error.validation_error": "数据校验失败",
+  "api_error.resume_requires_sse": "当前对话仍在生成，请携带 Accept: text/event-stream 重试 /api/core/chat/resume。"
 }

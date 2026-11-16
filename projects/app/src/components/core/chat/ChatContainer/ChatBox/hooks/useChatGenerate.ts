@@ -771,7 +771,7 @@ export const useChatGenerate = ({
                   type: file.type,
                   name: file.name,
                   url: file.url,
-                  key: file.key || ''
+                  key: file.key || undefined
                 }
               })),
               ...(select

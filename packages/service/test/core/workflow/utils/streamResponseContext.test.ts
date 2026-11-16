@@ -12,6 +12,8 @@ import {
 } from '@fastgpt/service/core/workflow/utils/streamResponseContext';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
+import { createApiI18n } from '@fastgpt/service/common/i18n/request';
+import { generatedLoaders } from '@fastgpt/web/i18n/resourceLoaders.generated';
 import {
   ChatSourceTypeEnum,
   STREAM_RESUME_REQUEST_HEADER
@@ -375,6 +377,38 @@ describe('createWorkflowStreamResponseContext', () => {
         event: SseResponseEventEnum.error,
         data: expect.stringContaining(ERROR_ENUM.unAuthorization)
       })
+    );
+  });
+
+  it('mirrors the translated error payload before writing it, even outside the request scope', async () => {
+    const req = createReq({
+      'x-fastgpt-language': 'zh-CN',
+      [STREAM_RESUME_REQUEST_HEADER]: 'true'
+    });
+    const res = createRes();
+    const context = await createApiI18n(generatedLoaders)({ req, res }, () =>
+      createWorkflowStreamResponseContext({
+        req,
+        res,
+        stream: true,
+        detail: true,
+        teamId,
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId,
+        chatId
+      })
+    );
+    context.writeStreamError(ERROR_ENUM.unAuthorization);
+    await context.flushResume();
+    res.emit('finish');
+
+    const redis = getRedisRuntime().getCommandConnection() as any;
+    const raw = redis.call.mock.calls.find(([command]: string[]) => command === 'XADD')?.at(-1);
+    expect(raw).toContain('"message":"凭证错误"');
+    expect(raw).not.toContain('common:code_error.error_message.401');
+    const payload = raw.split('data: ')[1].trim();
+    expect(responseWrite).toHaveBeenCalledWith(
+      expect.objectContaining({ event: SseResponseEventEnum.error, data: payload })
     );
   });
 

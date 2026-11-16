@@ -32,7 +32,7 @@ describe('upload team plugin package handler', () => {
   });
 
   it('returns forbidden before reading an uploaded package when installation is disabled', async () => {
-    const req = { method: 'POST' } as any;
+    const req = { method: 'POST', headers: {} } as any;
     const res = {} as any;
 
     await handler(req, res);

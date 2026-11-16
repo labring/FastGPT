@@ -1,3 +1,4 @@
+import { NextAPI } from '@/service/middleware/entry';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
@@ -89,4 +90,4 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   }
 }
 
-export default handler;
+export default NextAPI(handler);

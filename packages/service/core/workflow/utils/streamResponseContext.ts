@@ -176,7 +176,7 @@ export async function createWorkflowStreamResponseContext({
     writeStreamError(error: unknown) {
       if (!stream) return;
 
-      const { event, data, shouldClearCookie } = getSseErrorResponse(error);
+      const { event, data, shouldClearCookie } = getSseErrorResponse(error, res);
       if (shouldClearCookie) {
         clearCookie(res);
       }

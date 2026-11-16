@@ -6,6 +6,7 @@ import type { CliFetchFn } from '../../shared/types';
 import { createNodeTlsFetch } from './tls-fetch';
 
 export const DEFAULT_TIMEOUT_MS = 15_000;
+export const LONG_OPERATION_TIMEOUT_MS = 120_000;
 
 export type HttpRequestAuth = {
   authType: 'token' | 'apikey';
@@ -21,6 +22,7 @@ export type SseEvent = {
 export type RawHttpResponse = {
   status: number;
   headers: Headers;
+  body?: ReadableStream<Uint8Array> | null;
   text: () => Promise<string>;
   arrayBuffer: () => Promise<ArrayBuffer>;
 };
@@ -594,6 +596,7 @@ export function createFastGptHttpClient({
       return {
         status: response.status,
         headers: response.headers,
+        body: response.body,
         text: () => response.text(),
         arrayBuffer: () => response.arrayBuffer()
       };

@@ -1,7 +1,6 @@
 import { z } from 'zod';
 import { ObjectIdSchema } from '@fastgpt/global/common/type/mongo';
 import { IntSchema } from '@fastgpt/global/common/zod';
-import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import { SystemMigrationStatusEnum } from '@fastgpt/global/migration/constants';
 import type { SystemMigrationFailedRecord } from '@fastgpt/global/migration/schema';
 import { Types } from '@fastgpt/service/common/mongo';
@@ -10,6 +9,7 @@ import type { SystemMigrationContext } from '@/migration/registry';
 import {
   backfillPublishSourceBatch,
   getPublishSourceMigrationModel,
+  readPublishSourceValidationBatch,
   type PublishSourceMigrationStage
 } from './service';
 
@@ -18,9 +18,18 @@ const CursorSchema = z.object({
   lastId: ObjectIdSchema.nullable(),
   scanned: IntSchema
 });
+const ValidationCursorSchema = z.object({
+  lastId: ObjectIdSchema.nullable(),
+  scanned: IntSchema,
+  missingChannelIds: IntSchema
+});
 const CheckpointSchema = z.object({
   chats: CursorSchema.extend({ total: IntSchema.optional() }),
-  chatLogs: CursorSchema
+  chatLogs: CursorSchema,
+  // 旧断点只需从头开始校验，不重置已完成的回填游标。
+  validation: z
+    .object({ chats: ValidationCursorSchema, chatLogs: ValidationCursorSchema })
+    .optional()
 });
 
 /**
@@ -28,6 +37,8 @@ const CheckpointSchema = z.object({
  * 每条条件写入可重放；完整错误快照先于 checkpoint 保存，避免跳过坏数据后永久遗漏。
  * 仅追加来源，不修改旧字段、身份、消息或统计计数；无依赖，不阻塞业务启动。
  * 对话总量保存在断点中，旧断点按已处理数加剩余数补齐；统计桶仍仅上报已处理数量。
+ * 完成校验按 _id 分批读取最小来源字段，同一遍扫描完成两项统计；校验游标与累计值一起保存。
+ * 校验失败批次不推进断点，修复后重读该批；数据库异常同样保留此前已完成的校验进度。
  */
 export const backfillChatPublishSource = async (context: SystemMigrationContext) => {
   const stages = ['chats', 'chatLogs'] as const;
@@ -59,8 +70,14 @@ export const backfillChatPublishSource = async (context: SystemMigrationContext)
     await context.saveCheckpoint(checkpoint);
   }
   const failures = new Map<string, SystemMigrationFailedRecord>();
+  let validationFailures: SystemMigrationFailedRecord[] = [];
   for (const failure of await context.getFailedRecords()) {
-    failures.set(`${failure.stageKey}:${failure.data.id}`, failure);
+    // 校验坏数据没有越过断点，留待原批次重新检查；重读前保留明细，避免查询异常时丢失。
+    if (failure.stageKey === 'validation') {
+      validationFailures.push(failure);
+    } else {
+      failures.set(`${failure.stageKey}:${failure.data.id}`, failure);
+    }
   }
 
   /** 只保存必要 ID 与原因；达到错误上界即中止，避免一次扫描积累无界错误列表。 */
@@ -93,9 +110,9 @@ export const backfillChatPublishSource = async (context: SystemMigrationContext)
       .map((failure) => String(failure.data.id));
     for (let offset = 0; offset < retryIds.length; offset += systemMigrationBatchSize) {
       await processBatch(stage, retryIds.slice(offset, offset + systemMigrationBatchSize));
-      await context.reportFailedRecords([...failures.values()]);
+      await context.reportFailedRecords([...failures.values(), ...validationFailures]);
     }
-    await context.reportFailedRecords([...failures.values()]);
+    await context.reportFailedRecords([...failures.values(), ...validationFailures]);
     while (checkpoint[stage].endId) {
       context.signal.throwIfAborted();
       await context.assertActive();
@@ -121,11 +138,11 @@ export const backfillChatPublishSource = async (context: SystemMigrationContext)
       if (failures.size >= systemMigrationBatchSize * 10) {
         await context.fail({
           message: 'Too many invalid legacy sources; repair reported records before retrying',
-          failedRecords: [...failures.values()]
+          failedRecords: [...failures.values(), ...validationFailures]
         });
       }
       // 失败快照在断点之前持久化，提交后中断时重扫该批仍保持正确。
-      await context.reportFailedRecords([...failures.values()]);
+      await context.reportFailedRecords([...failures.values(), ...validationFailures]);
       checkpoint[stage] = {
         ...cursor,
         lastId: String(records.at(-1)!._id),
@@ -156,46 +173,74 @@ export const backfillChatPublishSource = async (context: SystemMigrationContext)
     });
   }
 
-  await context.reportProgress({ key: 'validation', status: SystemMigrationStatusEnum.running });
+  await context.reportProgress({
+    key: 'validation',
+    status: SystemMigrationStatusEnum.running,
+    current:
+      (checkpoint.validation?.chats.scanned ?? 0) + (checkpoint.validation?.chatLogs.scanned ?? 0)
+  });
   if (failures.size)
     await context.fail({
       message: 'Some legacy publish sources require repair',
-      failedRecords: [...failures.values()]
+      failedRecords: [...failures.values(), ...validationFailures]
     });
-  let missingChannelIds = 0;
+  const validation = (checkpoint.validation ??= {
+    chats: { lastId: null, scanned: 0, missingChannelIds: 0 },
+    chatLogs: { lastId: null, scanned: 0, missingChannelIds: 0 }
+  });
   for (const stage of stages) {
-    await context.assertActive();
     const endId = checkpoint[stage].endId;
-    if (!endId) continue;
-    const collection = getPublishSourceMigrationModel(stage);
-    const range = { _id: { $lte: new Types.ObjectId(endId) } };
-    const invalid = await collection.countDocuments({
-      ...range,
-      'publishSource.type': { $nin: Object.values(ChatSourceEnum) }
-    });
-    if (invalid)
-      await context.fail({
-        message: `${stage} still contains ${invalid} records without a valid publish source`,
-        failedRecords: [...failures.values()]
+    while (endId) {
+      context.signal.throwIfAborted();
+      await context.assertActive();
+      const cursor = validation[stage];
+      const batch = await readPublishSourceValidationBatch({
+        stage,
+        endId,
+        lastId: cursor.lastId,
+        limit: systemMigrationBatchSize
       });
-    missingChannelIds += await collection.countDocuments({
-      ...range,
-      'publishSource.type': {
-        $nin: [
-          ChatSourceEnum.online,
-          ChatSourceEnum.test,
-          ChatSourceEnum.cronJob,
-          // 未知来源没有可确认的渠道，不计入已知外部渠道缺失 ID 的数量。
-          ChatSourceEnum.unknown
-        ]
-      },
-      'publishSource.id': null
-    });
+      if (!batch.scanned) break;
+
+      const invalid: SystemMigrationFailedRecord[] = batch.invalidIds.map((id) => ({
+        stageKey: 'validation',
+        data: { collection: stage, id },
+        reason: { message: 'Publish source type is missing or invalid; repair before retrying' }
+      }));
+      if (invalid.length) {
+        // 整批校验通过才保存累计值，失败重试不会漏检或重复计数。
+        await context.fail({
+          message: `${stage} contains records without a valid publish source`,
+          failedRecords: invalid
+        });
+      }
+      validation[stage] = {
+        lastId: batch.lastId,
+        scanned: cursor.scanned + batch.scanned,
+        missingChannelIds: cursor.missingChannelIds + batch.missingChannelIds
+      };
+      await context.saveCheckpoint(checkpoint);
+      await context.reportProgress({
+        key: 'validation',
+        status: SystemMigrationStatusEnum.running,
+        current: validation.chats.scanned + validation.chatLogs.scanned
+      });
+    }
+    // 当前集合复核完成后再清除旧校验错误；失败批次已重读，物理删除也视为问题已消失。
+    const remaining = validationFailures.filter((failure) => failure.data.collection !== stage);
+    if (remaining.length !== validationFailures.length) {
+      validationFailures = remaining;
+      await context.reportFailedRecords([...failures.values(), ...validationFailures]);
+    }
   }
-  await context.reportProgress({ key: 'validation', status: SystemMigrationStatusEnum.succeeded });
+  await context.reportProgress({
+    key: 'validation',
+    status: SystemMigrationStatusEnum.succeeded,
+    current: validation.chats.scanned + validation.chatLogs.scanned
+  });
   return {
     chats: checkpoint.chats.scanned,
     chatLogs: checkpoint.chatLogs.scanned,
-    missingChannelIds
+    missingChannelIds: validation.chats.missingChannelIds + validation.chatLogs.missingChannelIds
   };
 };

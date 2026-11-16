@@ -1,5 +1,6 @@
 import picocolors from 'picocolors';
 import { CliError } from '../../shared/errors';
+import { pickDotPath } from '../../shared/output-transform';
 import { redactText, redactValue } from '../../shared/redact';
 import type { CliFormat, CliResult } from '../../shared/types';
 
@@ -12,7 +13,7 @@ export type CliSuccessEnvelope = {
   changed: boolean;
   data?: unknown;
   meta?: Record<string, unknown>;
-  warnings: string[];
+  warnings?: string[];
 };
 
 export type CliErrorEnvelope = {
@@ -29,14 +30,21 @@ export type CliErrorEnvelope = {
 };
 
 export type OutputRenderer = {
-  renderSuccess: (params: { command: string; result: CliResult; quiet?: boolean }) => string;
+  renderSuccess: (params: {
+    command: string;
+    result: CliResult;
+    quiet?: boolean;
+    pick?: string;
+    raw?: boolean;
+  }) => string;
   renderError: (params: { command: string; error: unknown }) => string;
 };
 
 /**
- * 构建带统一 schemaVersion 的成功响应结构，并强制执行敏感字段脱敏。
+ * 构建带统一 schemaVersion 的成功响应结构，并强制执行敏感字段脱敏（无警告时省略空 warnings 数组以节省 Token）。
  */
 export function createSuccessEnvelope(command: string, result: CliResult): CliSuccessEnvelope {
+  const safeWarnings = (result.warnings ?? []).map((item) => redactText(item));
   return {
     schemaVersion: CLI_OUTPUT_SCHEMA_VERSION,
     ok: true,
@@ -44,7 +52,7 @@ export function createSuccessEnvelope(command: string, result: CliResult): CliSu
     changed: result.changed,
     ...(result.data !== undefined ? { data: redactValue(result.data) } : {}),
     ...(result.meta !== undefined ? { meta: redactValue(result.meta) } : {}),
-    warnings: (result.warnings ?? []).map((item) => redactText(item))
+    ...(safeWarnings.length > 0 ? { warnings: safeWarnings } : {})
   };
 }
 
@@ -73,7 +81,27 @@ export function normalizeCliError(error: unknown): {
  */
 export function createJsonRenderer(): OutputRenderer {
   return {
-    renderSuccess: ({ command, result }) => JSON.stringify(createSuccessEnvelope(command, result)),
+    renderSuccess: ({ command, result, pick, raw }) => {
+      const envelope = createSuccessEnvelope(command, result);
+      if (pick) {
+        const picked = pickDotPath({
+          envelope: envelope as unknown as Record<string, unknown>,
+          path: pick
+        });
+        if (raw) {
+          return typeof picked === 'string' ? picked : JSON.stringify(picked);
+        }
+        return JSON.stringify({
+          ...envelope,
+          data: picked
+        });
+      }
+      if (raw) {
+        const payload = envelope.data !== undefined ? envelope.data : envelope;
+        return typeof payload === 'string' ? payload : JSON.stringify(payload);
+      }
+      return JSON.stringify(envelope);
+    },
     renderError: ({ command, error }) => {
       const envelope: CliErrorEnvelope = {
         schemaVersion: CLI_OUTPUT_SCHEMA_VERSION,
@@ -135,7 +163,27 @@ export function createTextRenderer({ color }: { color: boolean }): OutputRendere
   }
 
   return {
-    renderSuccess: ({ result, quiet = false }) => {
+    renderSuccess: ({ command, result, quiet = false, pick, raw }) => {
+      if (pick) {
+        const envelope = createSuccessEnvelope(command, result);
+        const picked = pickDotPath({
+          envelope: envelope as unknown as Record<string, unknown>,
+          path: pick
+        });
+        if (raw || typeof picked !== 'object' || picked === null) {
+          return typeof picked === 'string' ? picked : JSON.stringify(picked);
+        }
+        return JSON.stringify(picked, null, 2);
+      }
+
+      if (raw) {
+        const safeData = result.data !== undefined ? redactValue(result.data) : undefined;
+        if (safeData === undefined) {
+          return '';
+        }
+        return typeof safeData === 'string' ? safeData : JSON.stringify(safeData);
+      }
+
       const lines: string[] = [];
       if (!quiet && result.message) {
         lines.push(pc.green(redactText(result.message)));
