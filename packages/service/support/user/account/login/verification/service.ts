@@ -1,4 +1,3 @@
-import { PuzzleCaptchaChallengeSchema } from '@fastgpt/global/support/user/account/captcha/type';
 import { randomBytes } from 'node:crypto';
 import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
 import { UserError } from '@fastgpt/global/common/error/utils';
@@ -11,6 +10,7 @@ import {
   type VerificationMaterial
 } from '@fastgpt/global/support/user/account/verification/type';
 import {
+  LoginVerificationCaptchaResponseSchema,
   LoginVerificationResolveResponseSchema,
   LoginVerificationSendCodeResponseSchema,
   type LoginVerificationCaptchaResponseType,
@@ -182,7 +182,7 @@ export const createLoginVerificationCaptcha = async ({
     { challengeHash }
   );
 
-  return PuzzleCaptchaChallengeSchema.parse(result);
+  return LoginVerificationCaptchaResponseSchema.parse(result);
 };
 
 /** 由主仓库从 Challenge 恢复目标和渠道，再请求 Pro 投递登录验证码。 */

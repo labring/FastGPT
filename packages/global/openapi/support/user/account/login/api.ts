@@ -1,8 +1,4 @@
 import { z } from 'zod';
-import {
-  CaptchaProofSchema,
-  type PuzzleCaptchaChallengeSchema
-} from '../../../../../support/user/account/captcha/type';
 import { OAuthEnum } from '../../../../../support/user/constant';
 import { LanguageSchema } from '../../../../../common/i18n/type';
 import { UserSchema } from '../../../../../support/user/type';
@@ -147,7 +143,10 @@ export type LoginVerificationChallengeBodyType = z.infer<
 >;
 
 export const LoginVerificationSendCodeBodySchema = LoginVerificationChallengeBodySchema.extend({
-  captcha: CaptchaProofSchema
+  captcha: ShortAuthStringSchema.max(64).meta({
+    description: '图片验证码答案',
+    example: 'A1B2C3'
+  })
 });
 export type LoginVerificationSendCodeBodyType = z.infer<typeof LoginVerificationSendCodeBodySchema>;
 
@@ -180,7 +179,10 @@ export const LoginVerificationSendCodeInternalBodySchema =
       example: 'user@example.com'
     }),
     channel: AccountContactChannelSchema,
-    captcha: CaptchaProofSchema,
+    captcha: ShortAuthStringSchema.max(64).meta({
+      description: '图片验证码答案',
+      example: 'A1B2C3'
+    }),
     lang: LanguageSchema.meta({
       description: '验证码消息语言',
       example: 'zh-CN'
@@ -190,7 +192,15 @@ export type LoginVerificationSendCodeInternalBodyType = z.infer<
   typeof LoginVerificationSendCodeInternalBodySchema
 >;
 
-export type LoginVerificationCaptchaResponseType = z.infer<typeof PuzzleCaptchaChallengeSchema>;
+export const LoginVerificationCaptchaResponseSchema = z.object({
+  captchaImage: z.string().meta({
+    description: 'Base64 编码的图片验证码',
+    example: 'data:image/png;base64,...'
+  })
+});
+export type LoginVerificationCaptchaResponseType = z.infer<
+  typeof LoginVerificationCaptchaResponseSchema
+>;
 
 export const LoginVerificationSendCodeResponseSchema = z.object({
   message: z.string().meta({ description: '发送结果说明', example: '发送验证码成功' })

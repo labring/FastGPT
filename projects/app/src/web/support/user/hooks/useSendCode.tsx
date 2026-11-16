@@ -113,6 +113,7 @@ export const useSendCode = (params: UseSendCodeParams) => {
             onClose={onCloseCodeAuthModal}
             username={username}
             purpose={verificationParams.purpose}
+            onSending={codeSending}
             onSendCode={sendCode}
           />
         )}
