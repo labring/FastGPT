@@ -339,7 +339,88 @@ const PuzzleCaptchaModal = ({
                 opacity={x > 0 || passed ? 1 : 0}
               />
             </Box>
+            <Box
+              as="input"
+              type="range"
+              aria-label={t('common:puzzle_captcha_slider')}
+              aria-describedby="puzzle-captcha-keyboard"
+              aria-valuetext={`${Math.round(x)}°`}
+              min={0}
+              max={max}
+              step={1}
+              value={x}
+              disabled={busy || sliderUnavailable}
+              position="absolute"
+              zIndex={1}
+              inset={0}
+              w="100%"
+              h="44px"
+              m={0}
+              p={0}
+              border={0}
+              bg="transparent"
+              cursor={dragging ? 'grabbing' : 'grab'}
+              style={{ touchAction: 'none' }}
+              sx={{
+                appearance: 'none',
+                '&::-webkit-slider-runnable-track': { height: '44px', background: 'transparent' },
+                '&::-moz-range-track': { height: '44px', background: 'transparent' },
+                '&::-webkit-slider-thumb': {
+                  appearance: 'none',
+                  width: `${thumbWidth}px`,
+                  height: '44px',
+                  background: 'transparent',
+                  border: 0
+                },
+                '&::-moz-range-thumb': {
+                  width: `${thumbWidth}px`,
+                  height: '44px',
+                  background: 'transparent',
+                  border: 0
+                },
+                '&:focus-visible': { outline: 'none' },
+                // 键盘焦点独立于错误提示，仅切换拖动块图标，不给轨道添加外圈。
+                '&:focus-visible + [data-captcha-thumb] [data-captcha-grip]': { display: 'none' },
+                '&:focus-visible + [data-captcha-thumb] [data-captcha-keyboard-focus]': {
+                  display: 'block'
+                },
+                '&:disabled': { cursor: 'not-allowed' }
+              }}
+              onPointerDown={(event: React.PointerEvent<HTMLInputElement>) => {
+                begin(event.clientY);
+                event.currentTarget.setPointerCapture(event.pointerId);
+              }}
+              onPointerMove={(event: React.PointerEvent<HTMLInputElement>) => {
+                pointerY.current = event.clientY;
+              }}
+              onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
+                record(Number(event.target.value))
+              }
+              onPointerUp={() => void submit()}
+              onPointerCancel={() => {
+                track.current = [];
+                setX(0);
+                value.current = 0;
+                setDragging(false);
+              }}
+              onBlur={() => setDragging(false)}
+              onKeyDown={(event: React.KeyboardEvent<HTMLInputElement>) => {
+                event.stopPropagation();
+                if (
+                  ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(
+                    event.key
+                  ) &&
+                  !track.current.length
+                )
+                  begin();
+                if (event.key === 'Enter') {
+                  event.preventDefault();
+                  void submit();
+                }
+              }}
+            />
             <Flex
+              data-captcha-thumb=""
               pointerEvents="none"
               position="absolute"
               left={`calc(${progress}% - ${(progress / 100) * thumbWidth}px)`}
@@ -376,85 +457,31 @@ const PuzzleCaptchaModal = ({
                   />
                 </Icon>
               ) : (
-                [0, 1, 2].map((line) => (
-                  <Box key={line} w="2px" h="17px" borderRadius="full" bg="currentColor" />
-                ))
+                <>
+                  <Flex data-captcha-grip="" gap="5px" aria-hidden>
+                    {[0, 1, 2].map((line) => (
+                      <Box key={line} w="2px" h="17px" borderRadius="full" bg="currentColor" />
+                    ))}
+                  </Flex>
+                  <Icon
+                    data-captcha-keyboard-focus=""
+                    display="none"
+                    viewBox="0 0 24 24"
+                    boxSize="24px"
+                    aria-hidden
+                  >
+                    <path
+                      d="m8 7-5 5 5 5m8-10 5 5-5 5M3 12h18"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </Icon>
+                </>
               )}
             </Flex>
-            <Box
-              as="input"
-              type="range"
-              aria-label={t('common:puzzle_captcha_slider')}
-              aria-describedby="puzzle-captcha-keyboard"
-              aria-valuetext={`${Math.round(x)}°`}
-              min={0}
-              max={max}
-              step={1}
-              value={x}
-              disabled={busy || sliderUnavailable}
-              position="absolute"
-              inset={0}
-              w="100%"
-              h="44px"
-              m={0}
-              p={0}
-              border={0}
-              bg="transparent"
-              cursor={dragging ? 'grabbing' : 'grab'}
-              style={{ touchAction: 'none' }}
-              sx={{
-                appearance: 'none',
-                '&::-webkit-slider-runnable-track': { height: '44px', background: 'transparent' },
-                '&::-moz-range-track': { height: '44px', background: 'transparent' },
-                '&::-webkit-slider-thumb': {
-                  appearance: 'none',
-                  width: `${thumbWidth}px`,
-                  height: '44px',
-                  background: 'transparent',
-                  border: 0
-                },
-                '&::-moz-range-thumb': {
-                  width: `${thumbWidth}px`,
-                  height: '44px',
-                  background: 'transparent',
-                  border: 0
-                },
-                '&:focus-visible': { outline: 'none' },
-                '&:disabled': { cursor: 'not-allowed' }
-              }}
-              onPointerDown={(event: React.PointerEvent<HTMLInputElement>) => {
-                begin(event.clientY);
-                event.currentTarget.setPointerCapture(event.pointerId);
-              }}
-              onPointerMove={(event: React.PointerEvent<HTMLInputElement>) => {
-                pointerY.current = event.clientY;
-              }}
-              onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
-                record(Number(event.target.value))
-              }
-              onPointerUp={() => void submit()}
-              onPointerCancel={() => {
-                track.current = [];
-                setX(0);
-                value.current = 0;
-                setDragging(false);
-              }}
-              onBlur={() => setDragging(false)}
-              onKeyDown={(event: React.KeyboardEvent<HTMLInputElement>) => {
-                event.stopPropagation();
-                if (
-                  ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(
-                    event.key
-                  ) &&
-                  !track.current.length
-                )
-                  begin();
-                if (event.key === 'Enter') {
-                  event.preventDefault();
-                  void submit();
-                }
-              }}
-            />
           </Box>
           {/* 提示和错误共用文档流中的反馈区，撑开底部间距并避免切换时弹窗跳动。 */}
           <Box display="grid" minH="16px" mt="8px">
