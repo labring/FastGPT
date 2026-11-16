@@ -13,7 +13,7 @@ const createMigration = (id: string): SystemMigration => ({
 });
 
 describe('validateSystemMigrationRegistry', () => {
-  it('prioritizes the independent system configuration migration without blocking startup', () => {
+  it('runs the system configuration migration first and blocks startup until it succeeds', () => {
     expect(systemMigrations.map(({ id }) => id)).toEqual([
       '20261116_migrate_system_configs',
       '20261022_initialize_dataset_vector_indexes',
@@ -22,13 +22,15 @@ describe('validateSystemMigrationRegistry', () => {
       '20261112_backfill_stt_pricing_type'
     ]);
     const tasks: readonly SystemMigration[] = systemMigrations;
-    expect(tasks.filter((task) => task.blockStartup)).toEqual([]);
+    expect(tasks.filter((task) => task.blockStartup).map(({ id }) => id)).toEqual([
+      '20261116_migrate_system_configs'
+    ]);
     expect(tasks.filter((task) => task.delay || task.manual || task.resumable)).toEqual([]);
 
     const configMigration = tasks.find(({ id }) => id === '20261116_migrate_system_configs');
     expect(configMigration).toMatchObject({
       version: '4.18.0',
-      independent: true,
+      blockStartup: true,
       progressSteps: [
         { key: 'inspect' },
         { key: 'migrate' },
@@ -38,7 +40,7 @@ describe('validateSystemMigrationRegistry', () => {
       ]
     });
     expect(configMigration).not.toHaveProperty('dependsOn');
-    expect(configMigration).not.toHaveProperty('blockStartup', true);
+    expect(configMigration).not.toHaveProperty('independent');
     expect(configMigration).not.toHaveProperty('resumable', true);
     expect(() => validateSystemMigrationRegistry(systemMigrations)).not.toThrow();
   });
@@ -107,7 +109,6 @@ describe('validateSystemMigrationRegistry', () => {
   it('runs only the selected production tasks independently', () => {
     const independentTasks = systemMigrations.filter((task: SystemMigration) => task.independent);
     expect(independentTasks.map((task) => task.id)).toEqual([
-      '20261116_migrate_system_configs',
       '20261104_backfill_chat_publish_source',
       '20261104_backfill_openapi_key_type'
     ]);

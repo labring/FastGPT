@@ -128,8 +128,8 @@ export const systemMigrations = [
         labelKey: i18nT('system_migration:migrations.20261116_migrate_system_configs.validate')
       }
     ],
-    // 尚未发布的配置任务优先独立调度，不阻塞业务启动；成功后不再读取旧 ENV 或文件。
-    independent: true,
+    // 系统配置先迁移成功，后续模型加载与业务启动才能读取完整的生效配置。
+    blockStartup: true,
     run: migrateSystemConfigs
   },
   {

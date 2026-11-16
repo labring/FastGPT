@@ -669,7 +669,9 @@ describe('migration env wiring', () => {
    * 故另用最小可断言条数兜底，防止表格被悄悄清空。
    */
   it('maps every domain field back to the exact environment variable it reads', () => {
-    const overrides = buildLegacyDomainOverrides({ feConfigs: {}, systemEnv: {} });
+    // FE_DOMAIN 已改为可选；显式提供夹具，避免绑定数量依赖运行测试的机器配置。
+    const legacyEnv = { ...readLegacyInstanceConfigEnv(), FE_DOMAIN: 'https://migration.test' };
+    const overrides = buildFromLegacy({ feConfigs: {}, systemEnv: {}, legacyEnv });
     const cases: [string, unknown][] = [
       // site
       ['site.publicUrl', legacyEnv.FE_DOMAIN],
