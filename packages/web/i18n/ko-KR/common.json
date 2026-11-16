@@ -852,7 +852,7 @@
   "error.sso_password_unavailable": "비밀번호를 사용할 수 없습니다. ID 공급자를 사용하여 로그인하세요.",
   "error.send_auth_code_too_frequently": "인증번호를 너무 자주 요청하지 마세요",
   "error.verification_channel_unavailable": "현재 이 인증 방법을 사용할 수 없습니다.",
-  "error.verify_code_too_frequently": "인증을 너무 자주 시도했습니다. 잠시 후 다시 시도하세요.",
+  "error.verify_code_too_frequently": "작업이 너무 많습니다. 잠시 후 다시 시도하세요.",
   "error.too_many_request": "요청이 너무 많습니다",
   "error.tool_not_exist": "제거됨",
   "error.unAuthFile": "이 파일을 읽을 권한이 없습니다",

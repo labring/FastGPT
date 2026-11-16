@@ -7,12 +7,9 @@ import { verifyPuzzleCaptcha } from '@/web/support/user/api';
 import { puzzleCaptchaFixture } from '@test/datas/captcha';
 
 vi.mock('@/web/support/user/api', () => ({ verifyPuzzleCaptcha: vi.fn() }));
-vi.mock('next-i18next', () => {
-  const messages: Record<string, string> = {
-    'common:puzzle_captcha_load_failed': '图片加载失败，请点击换一张',
-    'common:puzzle_captcha_retry': '验证失败，请重新验证'
-  };
-  const t = (key: string) => messages[key] ?? key;
+vi.mock('next-i18next', async () => {
+  const { default: messages } = await import('@fastgpt/web/i18n/zh-CN/common.json');
+  const t = (key: string) => messages[key.replace(/^common:/, '') as keyof typeof messages] ?? key;
   return { useTranslation: () => ({ t }) };
 });
 vi.mock('@fastgpt/web/components/common/MyModal', () => ({
@@ -107,8 +104,17 @@ describe('PuzzleCaptchaModal errors', () => {
 
   it.each([
     {
-      error: { code: 503006, message: '验证过于频繁，请稍后再试' },
-      expected: '验证过于频繁，请稍后再试'
+      error: { code: 503006, message: '操作过于频繁，请稍后重试' },
+      expected: '操作过于频繁，请稍后重试'
+    },
+    {
+      error: {
+        response: {
+          status: 429,
+          data: { message: 'common:error.verify_code_too_frequently' }
+        }
+      },
+      expected: '操作过于频繁，请稍后重试'
     },
     { error: undefined, expected: '图片加载失败，请点击换一张' }
   ])('shows the image request error with a fallback: $expected', async ({ error, expected }) => {
@@ -117,9 +123,7 @@ describe('PuzzleCaptchaModal errors', () => {
     expect(container.querySelector('[role=status]')?.textContent).toBe(expected);
     expect(container.querySelector('input')?.disabled).toBe(true);
 
-    const refresh = container.querySelector<HTMLButtonElement>(
-      '[aria-label="common:puzzle_captcha_refresh"]'
-    )!;
+    const refresh = container.querySelector<HTMLButtonElement>('[aria-label="换一张"]')!;
     expect(refresh.disabled).toBe(false);
     await act(async () => refresh.click());
     expect(getCaptcha).toHaveBeenCalledTimes(2);
@@ -130,11 +134,11 @@ describe('PuzzleCaptchaModal errors', () => {
   it.each([
     {
       phase: 'verification',
-      error: { message: '校验过于频繁，请稍后重试' },
-      expected: '校验过于频繁，请稍后重试'
+      error: { message: '操作过于频繁，请稍后重试' },
+      expected: '操作过于频繁，请稍后重试'
     },
     { phase: 'delivery', error: { message: '邮件服务暂不可用' }, expected: '邮件服务暂不可用' },
-    { phase: 'verification', error: undefined, expected: '验证失败，请重新验证' }
+    { phase: 'verification', error: undefined, expected: '未能完成验证，请重新拖动' }
   ])(
     'preserves the $phase error after refreshing: $expected',
     async ({ phase, error, expected }) => {
