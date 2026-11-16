@@ -84,6 +84,27 @@ describe('loadSystemModels', () => {
     expect(getCachedSystemModelHandle()?.getAllModels()).toBeUndefined();
   });
 
+  it('loads provider metadata when an early request has already populated the installed catalog', async () => {
+    const previousProviders = global.ModelProviderRawCache;
+    try {
+      global.ModelProviderRawCache = undefined;
+      await loadInstalledModels();
+      expect(getCachedSystemModelHandle()).toBeDefined();
+      vi.mocked(preloadModelProviders).mockImplementationOnce(async () => {
+        global.ModelProviderRawCache = [];
+      });
+
+      await loadSystemModels();
+
+      expect(preloadModelProviders).toHaveBeenCalledOnce();
+      expect(global.ModelProviderRawCache).toEqual([]);
+      await loadSystemModels();
+      expect(preloadModelProviders).toHaveBeenCalledOnce();
+    } finally {
+      global.ModelProviderRawCache = previousProviders;
+    }
+  });
+
   it('loads installed models without requesting plugin templates', async () => {
     const model = await MongoAIModel.create({
       type: ModelTypeEnum.llm,
