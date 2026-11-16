@@ -17,17 +17,14 @@ import {
   Th,
   Thead,
   Tr,
-  Checkbox,
-  Menu,
-  MenuButton,
-  MenuList,
-  MenuItem
+  Checkbox
 } from '@chakra-ui/react';
 import { ChatSourceMap, type ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import DateRangePicker from '@fastgpt/web/components/common/DateRangePicker';
 import {
   FilterInput,
   MultiSelectFilter,
+  SingleSelectFilter,
   createMultiSelectFilter,
   toMultiSelectFilterQuery,
   useCommonFilterLabels
@@ -100,35 +97,42 @@ const LogSearchInput = React.memo(
     }, [debouncedValue, onSearch, searchType]);
 
     return (
-      <FilterInput
-        flex={'0 1 230px'}
-        label={
-          <Menu>
-            <MenuButton
-              as={Button}
-              variant={'unstyled'}
-              h={'auto'}
-              fontSize={'sm'}
-              aria-label={`${t('app:logs_search_type')}: ${t(searchType === 'chatId' ? 'app:logs_keys_sessionId' : 'app:logs_title')}`}
-            >
-              {t(searchType === 'chatId' ? 'app:logs_keys_sessionId' : 'app:logs_title')} ▾
-            </MenuButton>
-            <MenuList zIndex={10}>
-              <MenuItem onClick={() => setSearchType('title')}>{t('app:logs_title')}</MenuItem>
-              <MenuItem onClick={() => setSearchType('chatId')}>
-                {t('app:logs_keys_sessionId')}
-              </MenuItem>
-            </MenuList>
-          </Menu>
-        }
-        placeholder={t(
-          searchType === 'chatId'
-            ? 'app:logs_search_chat_id_placeholder'
-            : 'app:logs_search_title_placeholder'
-        )}
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-      />
+      <Flex
+        flex={'0 1 340px'}
+        minW={0}
+        sx={{
+          '&:hover:not(:focus-within) > div > button:not([aria-expanded="true"]), &:hover:not(:focus-within) > div + div':
+            {
+              borderColor: 'primary.300'
+            },
+          '& > div > button:hover:not([aria-expanded="true"])': { boxShadow: 'none' }
+        }}
+      >
+        <Box flexShrink={0} sx={{ '& > button': { borderRightRadius: 0 } }}>
+          <SingleSelectFilter
+            title={null}
+            value={searchType}
+            onChange={setSearchType}
+            options={[
+              { value: 'title', label: t('app:logs_title') },
+              { value: 'chatId', label: t('app:logs_keys_sessionId') }
+            ]}
+          />
+        </Box>
+        <FilterInput
+          flex={1}
+          minW={0}
+          ml={'-1px'}
+          borderLeftRadius={0}
+          placeholder={t(
+            searchType === 'chatId'
+              ? 'app:logs_search_chat_id_placeholder'
+              : 'app:logs_search_title_placeholder'
+          )}
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+        />
+      </Flex>
     );
   }
 );

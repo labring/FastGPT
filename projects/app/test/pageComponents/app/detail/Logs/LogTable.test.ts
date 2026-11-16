@@ -102,6 +102,15 @@ vi.mock('@fastgpt/web/components/common/TagFilter', async () => {
         )
       ),
     MultiSelectFilter: () => null,
+    SingleSelectFilter: ({ value, options, onChange }: any) =>
+      React.createElement(
+        'button',
+        {
+          'aria-label': 'app:logs_search_type',
+          onClick: () => onChange(value === 'title' ? 'chatId' : 'title')
+        },
+        options.find((option: any) => option.value === value)?.label
+      ),
     createMultiSelectFilter: () => ({ mode: 'all', values: [] }),
     toMultiSelectFilterQuery: () => undefined,
     useCommonFilterLabels: () => ({})
@@ -435,14 +444,7 @@ describe('LogTable identity columns UI', () => {
   });
   it('switches the search mode and remembers it', async () => {
     await render();
-    await click(
-      container.querySelector('button[aria-label="app:logs_search_type: app:logs_title"]')
-    );
-    await click(
-      [...document.querySelectorAll('[role="menuitem"]')].find(
-        (item) => item.textContent === 'app:logs_keys_sessionId'
-      )
-    );
+    await click(container.querySelector('button[aria-label="app:logs_search_type"]'));
     expect(JSON.parse(localStorage.getItem('app_log_search_type_app-1') || 'null')).toBe('chatId');
     expect(searchAppChatLogs).toHaveBeenLastCalledWith(
       expect.objectContaining({ searchType: 'chatId', cursor: undefined }),
