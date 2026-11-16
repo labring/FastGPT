@@ -19,10 +19,11 @@ import { ko } from 'date-fns/locale/ko';
 import { zhCN } from 'date-fns/locale/zh-CN';
 import { zhTW } from 'date-fns/locale/zh-TW';
 import type { Locale } from 'date-fns';
-import { addMonths, format, isValid, parse } from 'date-fns';
+import { format, isSameMonth, isValid, parse } from 'date-fns';
 import { useTranslation } from 'next-i18next';
 import { LangEnum } from '@fastgpt/global/common/i18n/type';
 import MyIcon from '../Icon';
+import { CalendarNavigation } from './CalendarNavigation';
 
 const DATE_INPUT_FORMAT = 'yyyy-MM-dd';
 const TIME_INPUT_FORMAT = 'HH:mm';
@@ -116,7 +117,7 @@ export const SingleDateTimePicker = ({
   const popoverContent = (
     <PopoverContent
       className="nowheel"
-      w={'242px'}
+      w={'calc(18.75rem + 2px)'}
       p={0}
       bg={'white'}
       borderRadius={'12px'}
@@ -127,155 +128,111 @@ export const SingleDateTimePicker = ({
       overflow={'hidden'}
       zIndex={1500}
     >
-      <Flex
-        h={'40px'}
-        pt={'12px'}
-        pb={'4px'}
-        px={'16px'}
-        alignItems={'center'}
-        justifyContent={'space-between'}
-        w={'100%'}
+      <CalendarNavigation
+        month={tempMonth}
+        onMonthChange={setTempMonth}
+        selected={tempDate}
+        locale={resolvedLocale}
       >
-        <Flex
-          as={'button'}
-          type={'button'}
-          w={'24px'}
-          h={'24px'}
-          borderRadius={'6px'}
-          alignItems={'center'}
-          justifyContent={'center'}
-          cursor={'pointer'}
-          color={'myGray.600'}
-          _hover={{ bg: 'myGray.100' }}
-          onClick={() => setTempMonth((prev) => addMonths(prev, -1))}
+        <Box
+          userSelect={'none'}
+          sx={{
+            '.rdp-root': {
+              '--rdp-accent-color': '#3370FF',
+              '--rdp-accent-background-color': '#E1EAFF',
+              margin: 0,
+              width: '15.75rem'
+            },
+            '.rdp-months': {
+              width: '100%'
+            },
+            '.rdp-month': {
+              width: '100%'
+            },
+            '.rdp-month_grid': {
+              width: '15.75rem',
+              margin: 0,
+              borderCollapse: 'separate',
+              borderSpacing: 0
+            },
+            '.rdp-weekdays': {
+              height: '2.25rem'
+            },
+            '.rdp-weekday': {
+              width: '2.25rem',
+              height: '28px',
+              fontSize: '14px',
+              fontWeight: '500',
+              color: '#111824',
+              textAlign: 'center',
+              padding: 0,
+              opacity: 1
+            },
+            '.rdp-weeks': {
+              paddingBottom: '8px'
+            },
+            '.rdp-week': {
+              height: '2.25rem'
+            },
+            '.rdp-day': {
+              width: '2.25rem',
+              height: '2.25rem',
+              padding: 0,
+              textAlign: 'center'
+            },
+            '.rdp-day.rdp-outside, .rdp-day.rdp-hidden': {
+              visibility: 'hidden'
+            },
+            '.rdp-day_button': {
+              width: '2.25rem',
+              height: '2.25rem',
+              borderRadius: '6px',
+              fontSize: '14px',
+              color: '#111824',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              border: 'none',
+              background: 'none',
+              cursor: 'pointer'
+            },
+            '.rdp-day_button:hover:not(:disabled)': {
+              backgroundColor: '#E1EAFF'
+            },
+            '.rdp-selected': { fontWeight: 'normal' },
+            '.rdp-selected .rdp-day_button, .rdp-day.rdp-selected .rdp-day_button': {
+              backgroundColor: '#3370FF !important',
+              color: 'white !important'
+            },
+            '.rdp-today:not(.rdp-selected) .rdp-day_button': {
+              backgroundColor: '#E1EAFF',
+              color: '#3370FF',
+              fontWeight: '500'
+            }
+          }}
         >
-          <MyIcon
-            name={'core/chat/chevronRight'}
-            w={'16px'}
-            h={'16px'}
-            transform={'rotate(180deg)'}
+          <DayPicker
+            locale={resolvedLocale}
+            weekStartsOn={weekStartsOn}
+            mode={'single'}
+            month={tempMonth}
+            onMonthChange={setTempMonth}
+            selected={tempDate}
+            onSelect={(date) => {
+              if (date) applyDraftDate(date);
+            }}
+            components={{
+              Nav: () => <></>,
+              MonthCaption: () => <></>
+            }}
+            formatters={{
+              formatWeekdayName: (date) => format(date, 'EEEEEE', { locale: resolvedLocale })
+            }}
           />
-        </Flex>
-
-        <Box fontSize={'14px'} fontWeight={'500'} color={'#111824'} textAlign={'center'}>
-          {format(tempMonth, 'LLLL  yyyy', { locale: resolvedLocale })}
         </Box>
+      </CalendarNavigation>
 
-        <Flex
-          as={'button'}
-          type={'button'}
-          w={'24px'}
-          h={'24px'}
-          borderRadius={'6px'}
-          alignItems={'center'}
-          justifyContent={'center'}
-          cursor={'pointer'}
-          color={'myGray.600'}
-          _hover={{ bg: 'myGray.100' }}
-          onClick={() => setTempMonth((prev) => addMonths(prev, 1))}
-        >
-          <MyIcon name={'core/chat/chevronRight'} w={'16px'} h={'16px'} />
-        </Flex>
-      </Flex>
-
-      <Box
-        userSelect={'none'}
-        sx={{
-          '.rdp-root': {
-            '--rdp-accent-color': '#3370FF',
-            '--rdp-accent-background-color': '#E1EAFF',
-            margin: 0,
-            width: '242px'
-          },
-          '.rdp-months': {
-            width: '100%'
-          },
-          '.rdp-month': {
-            width: '100%'
-          },
-          '.rdp-month_grid': {
-            width: '210px',
-            margin: '0 16px 8px 16px',
-            borderCollapse: 'separate',
-            borderSpacing: '0 4px'
-          },
-          '.rdp-weekdays': {
-            height: '30px'
-          },
-          '.rdp-weekday': {
-            width: '30px',
-            height: '28px',
-            fontSize: '12px',
-            fontWeight: '500',
-            color: '#111824',
-            textAlign: 'center',
-            padding: 0,
-            opacity: 1
-          },
-          '.rdp-weeks': {
-            paddingBottom: '8px'
-          },
-          '.rdp-week': {
-            height: '30px'
-          },
-          '.rdp-day': {
-            width: '30px',
-            height: '30px',
-            padding: 0,
-            textAlign: 'center'
-          },
-          '.rdp-day.rdp-outside, .rdp-day.rdp-hidden': {
-            visibility: 'hidden'
-          },
-          '.rdp-day_button': {
-            width: '30px',
-            height: '30px',
-            borderRadius: '6px',
-            fontSize: '12px',
-            color: '#111824',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            border: 'none',
-            background: 'none',
-            cursor: 'pointer'
-          },
-          '.rdp-day_button:hover:not(:disabled)': {
-            backgroundColor: '#E1EAFF'
-          },
-          '.rdp-selected .rdp-day_button, .rdp-day.rdp-selected .rdp-day_button': {
-            backgroundColor: '#3370FF !important',
-            color: 'white !important',
-            fontWeight: '500'
-          },
-          '.rdp-today:not(.rdp-selected) .rdp-day_button': {
-            backgroundColor: '#E1EAFF',
-            color: '#3370FF',
-            fontWeight: '500'
-          }
-        }}
-      >
-        <DayPicker
-          locale={resolvedLocale}
-          weekStartsOn={weekStartsOn}
-          mode={'single'}
-          month={tempMonth}
-          onMonthChange={setTempMonth}
-          selected={tempDate}
-          onSelect={(date) => {
-            if (date) applyDraftDate(date);
-          }}
-          components={{
-            Nav: () => <></>,
-            MonthCaption: () => <></>
-          }}
-          formatters={{
-            formatWeekdayName: (date) => format(date, 'EEEEEE', { locale: resolvedLocale })
-          }}
-        />
-      </Box>
-
-      <Box borderTop={'1px solid'} borderColor={'myGray.150'} px={'16px'} pt={'8px'} pb={'12px'}>
+      <Box borderTop={'1px solid'} borderColor={'myGray.150'} px={'1.5rem'} pt={'8px'} pb={'12px'}>
         <HStack spacing={'4px'} w={'100%'}>
           <Input
             h={'32px'}
@@ -322,12 +279,11 @@ export const SingleDateTimePicker = ({
       </Box>
 
       <Flex
-        h={'52px'}
         borderTop={'1px solid'}
         borderColor={'myGray.150'}
-        px={'16px'}
+        px={'1.5rem'}
         pt={'8px'}
-        pb={'12px'}
+        pb={'1.25rem'}
         alignItems={'center'}
         justifyContent={'flex-end'}
         gap={'8px'}
@@ -360,6 +316,7 @@ export const SingleDateTimePicker = ({
           fontWeight={'medium'}
           boxShadow={'0px 1px 2px rgba(19, 51, 107, 0.05)'}
           _hover={{ bg: 'primary.700' }}
+          isDisabled={!isSameMonth(tempMonth, tempDate)}
           onClick={handleConfirm}
         >
           {t('common:Confirm')}

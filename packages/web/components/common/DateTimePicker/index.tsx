@@ -6,6 +6,7 @@ import { DayPicker, type Matcher } from 'react-day-picker';
 import 'react-day-picker/dist/style.css';
 import { zhCN } from 'date-fns/locale/zh-CN';
 import MyIcon from '../Icon';
+import { CalendarNavigation } from './CalendarNavigation';
 import { useCloseOnFlowNodeDragAreaPointerDown } from '../../../hooks/useCloseOnFlowNodeDragAreaPointerDown';
 
 export * from './SingleDateTimePicker';
@@ -45,6 +46,7 @@ const DateTimePicker = (rawProps: DateTimePickerProps) => {
   const [internalSelectedDate, setInternalSelectedDate] = useState<Date | undefined>(defaultDate);
   const selectedDate = isControlled ? selectedDateTime : internalSelectedDate;
   const [showSelected, setShowSelected] = useState(false);
+  const [month, setMonth] = useState(() => selectedDate ?? new Date());
   const [position, setPosition] = useState({ top: 0, left: 0 });
 
   useEffect(() => {
@@ -133,7 +135,10 @@ const DateTimePicker = (rawProps: DateTimePickerProps) => {
           : {
               cursor: 'pointer',
               bg: 'myGray.50',
-              onClick: () => setShowSelected((state) => !state)
+              onClick: () => {
+                if (!showSelected) setMonth(selectedDate ?? new Date());
+                setShowSelected((state) => !state);
+              }
             })}
         {...props}
       >
@@ -150,20 +155,46 @@ const DateTimePicker = (rawProps: DateTimePickerProps) => {
             top={`${position.top}px`}
             left={`${position.left}px`}
             zIndex={1500}
-            p={3}
+            w={'calc(18.75rem + 2px)'}
+            p={0}
+            borderRadius={'12px'}
+            boxShadow={
+              '0px 24px 48px -12px rgba(19, 51, 107, 0.2), 0px 0px 1px rgba(19, 51, 107, 0.2)'
+            }
           >
             <Box
               sx={{
+                '.rdp-root': { margin: 0 },
+                '.rdp-month_grid': {
+                  width: '15.75rem',
+                  margin: 0,
+                  borderCollapse: 'separate',
+                  borderSpacing: 0
+                },
+                '.rdp-weekday, .rdp-day': {
+                  width: '2.25rem',
+                  height: '2.25rem',
+                  padding: 0,
+                  textAlign: 'center',
+                  fontSize: '14px'
+                },
+                '.rdp-day_button': {
+                  width: '2.25rem',
+                  height: '2.25rem',
+                  borderRadius: '6px',
+                  fontSize: '14px'
+                },
                 '.rdp-day_button:hover:not(:disabled)': {
                   backgroundColor: '#E1EAFF'
                 },
+                '.rdp-selected': { fontWeight: 'normal' },
                 '.rdp-selected .rdp-day_button': {
                   backgroundColor: '#3370FF',
                   color: 'white',
                   border: 'none'
                 },
-                '.rdp-selected .rdp-day_button:hover': {
-                  backgroundColor: '#2860E0'
+                '.rdp-selected .rdp-day_button:hover:not(:disabled)': {
+                  backgroundColor: '#3370FF'
                 },
                 '.rdp-button_previous:hover, .rdp-button_next:hover': {
                   backgroundColor: '#F0F4FF',
@@ -171,25 +202,36 @@ const DateTimePicker = (rawProps: DateTimePickerProps) => {
                 }
               }}
             >
-              <DayPicker
-                locale={zhCN}
-                mode="single"
-                style={
-                  {
-                    '--rdp-accent-color': '#3370FF'
-                  } as React.CSSProperties
-                }
-                defaultMonth={selectedDate}
-                selected={selectedDate}
+              <CalendarNavigation
+                month={month}
+                onMonthChange={setMonth}
                 disabled={disabled}
-                onSelect={(date) => {
-                  if (!isControlled) {
-                    setInternalSelectedDate(date);
+                selected={selectedDate}
+                locale={zhCN}
+              >
+                <DayPicker
+                  locale={zhCN}
+                  mode="single"
+                  required
+                  style={
+                    {
+                      '--rdp-accent-color': '#3370FF'
+                    } as React.CSSProperties
                   }
-                  onChange?.(date);
-                  setShowSelected(false);
-                }}
-              />
+                  month={month}
+                  onMonthChange={setMonth}
+                  components={{ Nav: () => <></>, MonthCaption: () => <></> }}
+                  selected={selectedDate}
+                  disabled={disabled}
+                  onSelect={(date) => {
+                    if (!isControlled) {
+                      setInternalSelectedDate(date);
+                    }
+                    onChange?.(date);
+                    setShowSelected(false);
+                  }}
+                />
+              </CalendarNavigation>
             </Box>
           </Card>
         </Portal>
