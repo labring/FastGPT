@@ -79,6 +79,35 @@ describe('SystemInstanceConfigManager', () => {
     expect(await MongoSystemInstanceConfig.countDocuments({ domain: 'site' })).toBe(0);
     expect(systemInstanceConfig.get()).toBe(previous);
   });
+  it('merges consecutive updates from the same outer transaction before publishing', async () => {
+    const previous = systemInstanceConfig.get();
+    await mongoSessionRun(async (session) => {
+      await systemInstanceConfig.update(
+        {
+          items: [{ domain: 'site', expectedRevision: 0, overrides: { name: 'first' } }],
+          actor: { actor: 'admin' }
+        },
+        session
+      );
+      await systemInstanceConfig.update(
+        {
+          items: [
+            { domain: 'site', expectedRevision: 1, overrides: { description: 'second' } },
+            { domain: 'security', expectedRevision: 0, overrides: { checkExternalFile: true } }
+          ],
+          actor: { actor: 'admin' }
+        },
+        session
+      );
+      expect(systemInstanceConfig.get()).toBe(previous);
+    });
+    const doc = await MongoSystemInstanceConfig.findOne({ domain: 'site' }).lean();
+    expect(doc).toMatchObject({ revision: 2, overrides: { name: 'first', description: 'second' } });
+    expect(systemInstanceConfig.get()).toBe(previous);
+    const current = await systemInstanceConfig.refresh();
+    expect(current.site).toMatchObject({ name: 'first', description: 'second' });
+    expect(current.security.checkExternalFile).toBe(true);
+  });
   it('loads all scopes with defaults without consulting migration state or importing old snapshots', async () => {
     await MongoSystemConfigs.create({
       type: 'fastgpt',

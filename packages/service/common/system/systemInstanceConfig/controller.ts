@@ -425,112 +425,118 @@ export const batchUpdateDomainConfigs = async (
         })();
 
   // 1. 预校验与准备阶段：对所有域执行局部合并、敏感字段恢复、形态校验、终审校验和默认值剪枝
-  const preparedItems = await Promise.all(
-    resolvedItems.map(async ({ domain, expectedRevision, overrides: submittedOverrides }) => {
-      if (domain === 'commercial' && Object.hasOwn(submittedOverrides, 'subPlans')) {
-        throw new ApiHttpError(
-          400,
-          'Use the dedicated subPlans input with subPlansExpectedRevision'
-        );
-      }
-      const existing = await MongoSystemInstanceConfig.findOne({ domain }).lean();
-      const currentRevision = existing?.revision ?? 0;
-      if (currentRevision !== expectedRevision) {
-        throw new ApiHttpError(
-          409,
-          `Revision conflict for domain "${domain}": current revision is ${currentRevision}, expected ${expectedRevision}`
-        );
-      }
+  const prepareItem = async ({
+    domain,
+    expectedRevision,
+    overrides: submittedOverrides
+  }: BatchUpdateItemInput) => {
+    if (domain === 'commercial' && Object.hasOwn(submittedOverrides, 'subPlans')) {
+      throw new ApiHttpError(400, 'Use the dedicated subPlans input with subPlansExpectedRevision');
+    }
+    const existing = await MongoSystemInstanceConfig.findOne({ domain })
+      .session(session ?? null)
+      .lean();
+    const currentRevision = existing?.revision ?? 0;
+    if (currentRevision !== expectedRevision) {
+      throw new ApiHttpError(
+        409,
+        `Revision conflict for domain "${domain}": current revision is ${currentRevision}, expected ${expectedRevision}`
+      );
+    }
 
-      // overrides 内容是 record<string, unknown>，外壳 Schema 不校验域内叶子。
-      // 先在请求边界用域 override Schema 校验本次提交，非法值归为 400；
-      // 合并后的校验仍保留普通 ZodError，用于暴露数据库坏记录或内部不变量错误（500）。
-      try {
-        parseDomainOverrides({ domain, overrides: submittedOverrides });
-      } catch (error) {
-        if (error instanceof ZodError) {
+    // overrides 内容是 record<string, unknown>，外壳 Schema 不校验域内叶子。
+    // 先在请求边界用域 override Schema 校验本次提交，非法值归为 400；
+    // 合并后的校验仍保留普通 ZodError，用于暴露数据库坏记录或内部不变量错误（500）。
+    try {
+      parseDomainOverrides({ domain, overrides: submittedOverrides });
+    } catch (error) {
+      if (error instanceof ZodError) {
+        throw new ApiRequestInputParseError(error, { inputSource: 'body' });
+      }
+      throw error;
+    }
+
+    const mergedOverrides = mergeSubmittedOverrides({
+      domain,
+      existingOverrides: existing?.overrides,
+      submittedOverrides
+    });
+    const rawOverrides = restorePreservedSecrets({
+      domain,
+      submitted: mergedOverrides,
+      previous: existing?.overrides
+    });
+    const parsedOverrides = parseDomainOverrides({ domain, overrides: rawOverrides });
+    let effectiveConfig;
+    try {
+      effectiveConfig = resolveDomainEffectiveConfig({ domain, overrides: parsedOverrides });
+    } catch (error) {
+      // 有效配置由默认值 + 库中现值 + 本次补丁共同决定，错误展示路径不一定出现在补丁里。
+      // 用同一份库中现值单独校验一次：基线有效而合并后失败，说明是本次提交触发，归为 400；
+      // 基线本身无效则是数据库坏记录或内部不变量错误，保留 500。
+      if (error instanceof ZodError) {
+        let previousConfigValid = false;
+        try {
+          const previousOverrides = parseDomainOverrides({
+            domain,
+            overrides: existing?.overrides ?? {},
+            options: { strict: false }
+          });
+          resolveDomainEffectiveConfig({ domain, overrides: previousOverrides });
+          previousConfigValid = true;
+        } catch {
+          // 基线校验失败属于内部数据问题，保留下面原始 merged 校验错误。
+        }
+        if (previousConfigValid) {
           throw new ApiRequestInputParseError(error, { inputSource: 'body' });
         }
-        throw error;
       }
+      throw error;
+    }
 
-      const mergedOverrides = mergeSubmittedOverrides({
-        domain,
-        existingOverrides: existing?.overrides,
-        submittedOverrides
-      });
-      const rawOverrides = restorePreservedSecrets({
-        domain,
-        submitted: mergedOverrides,
-        previous: existing?.overrides
-      });
-      const parsedOverrides = parseDomainOverrides({ domain, overrides: rawOverrides });
-      let effectiveConfig;
+    // 下载策略依赖同域多个字段：必须校验合并后的完整配置，局部补丁既不能绕过校验，
+    // 也不能因为省略库中已有的 endpoint 而被误拒绝。校验失败前不启动事务。
+    if (domain === 'storage') {
       try {
-        effectiveConfig = resolveDomainEffectiveConfig({ domain, overrides: parsedOverrides });
+        assertStorageDownloadConfig(effectiveConfig);
       } catch (error) {
-        // 有效配置由默认值 + 库中现值 + 本次补丁共同决定，错误展示路径不一定出现在补丁里。
-        // 用同一份库中现值单独校验一次：基线有效而合并后失败，说明是本次提交触发，归为 400；
-        // 基线本身无效则是数据库坏记录或内部不变量错误，保留 500。
-        if (error instanceof ZodError) {
-          let previousConfigValid = false;
-          try {
-            const previousOverrides = parseDomainOverrides({
-              domain,
-              overrides: existing?.overrides ?? {},
-              options: { strict: false }
-            });
-            resolveDomainEffectiveConfig({ domain, overrides: previousOverrides });
-            previousConfigValid = true;
-          } catch {
-            // 基线校验失败属于内部数据问题，保留下面原始 merged 校验错误。
-          }
-          if (previousConfigValid) {
-            throw new ApiRequestInputParseError(error, { inputSource: 'body' });
-          }
-        }
-        throw error;
+        throw new ApiHttpError(
+          400,
+          error instanceof Error ? error.message : 'Invalid storage download config'
+        );
       }
+    }
 
-      // 下载策略依赖同域多个字段：必须校验合并后的完整配置，局部补丁既不能绕过校验，
-      // 也不能因为省略库中已有的 endpoint 而被误拒绝。校验失败前不启动事务。
-      if (domain === 'storage') {
-        try {
-          assertStorageDownloadConfig(effectiveConfig);
-        } catch (error) {
-          throw new ApiHttpError(
-            400,
-            error instanceof Error ? error.message : 'Invalid storage download config'
-          );
-        }
-      }
+    if (domain === 'commercial' && normalizedSubPlans !== undefined) {
+      // 专用套餐输入是整表替换，不能按一般对象补丁合并，否则清空套餐会保留旧权益。
+      (parsedOverrides as DeepPartial<SystemInstanceConfigDomainMap['commercial']>).subPlans =
+        normalizedSubPlans;
+      (effectiveConfig as SystemInstanceConfigDomainMap['commercial']).subPlans =
+        normalizedSubPlans;
+    }
 
-      if (domain === 'commercial' && normalizedSubPlans !== undefined) {
-        // 专用套餐输入是整表替换，不能按一般对象补丁合并，否则清空套餐会保留旧权益。
-        (parsedOverrides as DeepPartial<SystemInstanceConfigDomainMap['commercial']>).subPlans =
-          normalizedSubPlans;
-        (effectiveConfig as SystemInstanceConfigDomainMap['commercial']).subPlans =
-          normalizedSubPlans;
-      }
+    const defaultValues = getDomainDefaultConfig(domain);
+    const cleanOverrides = pruneDefaultOverrides(parsedOverrides, defaultValues) ?? {};
 
-      const defaultValues = getDomainDefaultConfig(domain);
-      const cleanOverrides = pruneDefaultOverrides(parsedOverrides, defaultValues) ?? {};
-
-      return {
-        domain,
-        existing,
-        expectedRevision,
-        cleanOverrides,
-        effectiveConfig,
-        syntheticCommercial: hasSyntheticCommercialItem && domain === 'commercial',
-        explicitDefaultPaths: resolveExplicitDefaultPaths({
-          previousPaths: readExplicitDefaultPaths(existing),
-          parsedOverrides,
-          cleanOverrides
-        })
-      };
-    })
-  );
+    return {
+      domain,
+      existing,
+      expectedRevision,
+      cleanOverrides,
+      effectiveConfig,
+      syntheticCommercial: hasSyntheticCommercialItem && domain === 'commercial',
+      explicitDefaultPaths: resolveExplicitDefaultPaths({
+        previousPaths: readExplicitDefaultPaths(existing),
+        parsedOverrides,
+        cleanOverrides
+      })
+    };
+  };
+  // 外层事务需读到自身先前的写入；同一 session 内顺序预读，避免事务内并行查询。
+  const preparedItems: Awaited<ReturnType<typeof prepareItem>>[] = [];
+  for (const item of resolvedItems) {
+    preparedItems.push(await prepareItem(item));
+  }
 
   // 2. 事务执行阶段：在同一个 session 中执行所有文档的新建、带 revision 限制的更新以及套餐写入
   const write = async (session: ClientSession) => {
