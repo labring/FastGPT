@@ -77,7 +77,7 @@ dry-run 中的迁移预览基于清理前的当前权限数据；如果 `cleanup
 3. S3 分块上传网络抖动优化。
 4. 文件上传错误提示统一文案。
 5. 优化技能保存时，结构化提取 name 和 description，允许空 description。
-6. 连续工具调用异常检查，提高判断精确性，不再只判断调用次数和工具数量，改成判断相同工具且相同参数，连续调用超过 5 次，认为是模型幻觉异常。
+6. 连续 5 轮都没有回答正文，且每轮调用的工具名称、顺序和对应参数字符串长度都相同时，下一轮请求会默认设为 `tool_choice: none`。
 7. Agent 调用工具报错时保留完整工具响应，并在 `nodeResponse`、`toolResponse` 及流式事件中同步展示失败信息。
 8. 统一 Workflow Tool 与 ToolCall/Agent 的子工作流输出和计费归集：商业版工具执行失败不收取调用费或 Token 费用，个人 Workflow Tool 的 `pluginOutput.error` 保留为业务字段。
 9. 将增强 PDF 解析费用归集到 `read_files` 工具节点并保留页数明细；知识库外部文件和 API 文件解析传递 `usageId`，避免费用归属丢失。
