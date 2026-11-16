@@ -67,6 +67,7 @@ export const AppLogPath: OpenAPIPath = {
   },
   '/core/app/logs/list': {
     post: {
+      deprecated: true,
       summary: '获取应用日志列表',
       description: '分页获取应用的对话日志列表，支持按时间范围、来源、用户等条件筛选',
       tags: [DevApiTagsMap.appLog, SystemOpenApiTagMap.appLog],

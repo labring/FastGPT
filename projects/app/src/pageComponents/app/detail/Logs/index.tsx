@@ -93,8 +93,6 @@ const Logs = () => {
       </Flex>
       {viewMode === 'table' ? (
         <LogTable
-          pageSizeCacheKey={'app-detail-logs'}
-          cursorSearch
           appId={appId}
           sourceFilter={sourceFilter}
           setSourceFilter={setSourceFilter}

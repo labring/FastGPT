@@ -6,7 +6,6 @@ import { downloadFetch } from '@/web/common/system/utils';
 import { getLogKeys, searchAppChatLogs, updateLogKeys } from '@/web/core/app/api/log';
 
 const getLogRows = vi.hoisted(() => vi.fn());
-const getPaginationOptions = vi.hoisted(() => vi.fn());
 const translate = vi.hoisted(() => vi.fn());
 
 vi.mock('next-i18next', () => ({ useTranslation: () => ({ t: translate }) }));
@@ -23,7 +22,6 @@ vi.mock('use-context-selector', () => ({ useContextSelector: () => 'App' }));
 vi.mock('@/web/common/system/utils', () => ({ downloadFetch: vi.fn() }));
 vi.mock('@/web/core/app/api/log', () => ({
   getLogKeys: vi.fn(async () => ({ logKeys: [] })),
-  getAppChatLogs: vi.fn(),
   searchAppChatLogs: vi.fn(),
   updateLogKeys: vi.fn()
 }));
@@ -46,19 +44,6 @@ vi.mock('@fastgpt/web/hooks/useRequest', async () => {
     }
   };
 });
-vi.mock('@fastgpt/web/hooks/usePagination', () => ({
-  usePagination: (_api: unknown, options: unknown) => {
-    getPaginationOptions(options);
-    return {
-      data: getLogRows(),
-      Pagination: () => null,
-      getData: vi.fn(),
-      pageNum: 1,
-      total: 1,
-      pageSize: 20
-    };
-  }
-}));
 vi.mock('@fastgpt/web/hooks/useTableMultipleSelect', () => ({
   useTableMultipleSelect: () => ({
     selectedItems: [],
@@ -194,6 +179,7 @@ describe('LogTable identity columns UI', () => {
     vi.clearAllMocks();
     translate.mockImplementation((key: string) => key);
     vi.mocked(getLogKeys).mockResolvedValue({ logKeys: [] });
+    vi.mocked(searchAppChatLogs).mockImplementation(async () => ({ list: getLogRows() }));
     getLogRows.mockReturnValue([
       {
         _id: 'row',
@@ -224,7 +210,6 @@ describe('LogTable identity columns UI', () => {
           {},
           React.createElement(LogTable, {
             appId: 'app-1',
-            pageSizeCacheKey: 'test',
             sourceFilter: { mode: 'all', values: [] },
             setSourceFilter: () => {},
             dateRange: { from: new Date(), to: new Date() },
@@ -388,8 +373,7 @@ describe('LogTable identity columns UI', () => {
     vi.mocked(searchAppChatLogs)
       .mockRejectedValueOnce(new Error('503'))
       .mockResolvedValueOnce({ list: [], nextCursor: undefined });
-    await render({ cursorSearch: true });
-    await setSearch();
+    await render();
 
     expect(container.textContent).toContain('common:load_failed');
     expect(container.textContent).not.toContain('common:request_end');
@@ -405,26 +389,18 @@ describe('LogTable identity columns UI', () => {
     expect(container.textContent).toContain('common:request_end');
   });
   it('uses the export confirmation without total in search mode', async () => {
-    await render({ cursorSearch: true });
+    await render();
     await setSearch();
     expect(container.querySelector('[data-testid="export-confirm-content"]')?.textContent).toBe(
       'app:logs_export_confirm_tip_without_total'
     );
   });
-  it('keeps the total in the export confirmation on paginated logs', async () => {
+  it('loads logs without a search term', async () => {
     await render();
-    expect(container.querySelector('[data-testid="export-confirm-content"]')?.textContent).toBe(
-      'app:logs_export_confirm_tip'
+    expect(searchAppChatLogs).toHaveBeenCalledWith(
+      expect.objectContaining({ chatSearch: '', cursor: undefined }),
+      expect.any(AbortController)
     );
-    expect(translate).toHaveBeenCalledWith('app:logs_export_confirm_tip', { total: 1 });
-  });
-  it('connects pagination to the actual table body scroll container', async () => {
-    await render();
-    const scrollContainerRef = getPaginationOptions.mock.calls.at(-1)?.[0].scrollContainerRef as {
-      current: HTMLDivElement | null;
-    };
-    const tableBody = container.querySelector('table')?.parentElement;
-    expect(scrollContainerRef.current).toBeTruthy();
-    expect(scrollContainerRef.current).toBe(tableBody);
+    expect(container.querySelector('tbody')?.textContent).toContain('customer-42');
   });
 });

@@ -148,6 +148,10 @@ describe('application API key targets across dialogue APIs', () => {
     }
   );
 
+  it('marks the public application log list API as deprecated', () => {
+    expect(openAPIDocument.paths?.['/core/app/logs/list']?.post?.deprecated).toBe(true);
+  });
+
   it('documents the application log search cursor contract', () => {
     const operation = openAPIDocument.paths?.['/core/app/logs/search']?.post;
     expect(operation).toMatchObject({

@@ -53,7 +53,7 @@ export const buildAppChatLogFilter = ({
     ];
     conditions.push(users.length ? { $or: users } : { _id: { $in: [] } });
   }
-  if (chatSearch) {
+  if (chatSearch?.trim()) {
     const regex = new RegExp(replaceRegChars(chatSearch), 'i');
     conditions.push({ $or: [{ chatId: regex }, { title: regex }, { customTitle: regex }] });
   }
@@ -81,6 +81,8 @@ export const buildAppChatLogSearchFilter = ({
   const { updateTime, id } = parseCursor(cursor);
 
   return {
+    // 保留原日期范围，同时显式限制游标上界，帮助优化器缩小索引扫描范围。
+    updateTime: { $lte: updateTime },
     $and: [
       where,
       {

@@ -44,15 +44,12 @@ import SyncLogKeysPopover from './SyncLogKeysPopover';
 import LogKeysConfigPopover from './LogKeysConfigPopover';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 import { downloadFetch } from '@/web/common/system/utils';
-import { usePagination } from '@fastgpt/web/hooks/usePagination';
-import { getAppChatLogs, searchAppChatLogs } from '@/web/core/app/api/log';
+import { searchAppChatLogs } from '@/web/core/app/api/log';
 import { useStaticVirtualList } from '@fastgpt/web/hooks/useVirtualList';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import type {
   AppChatLogsSearchCursor,
-  AppLogsListItemType,
-  getAppChatLogsBody,
-  getAppChatLogsResponseType
+  AppLogsListItemType
 } from '@fastgpt/global/openapi/core/app/log/api';
 import dayjs from 'dayjs';
 import UserBox from '@fastgpt/web/components/common/UserBox';
@@ -99,10 +96,7 @@ const LogSearchInput = React.memo(({ onSearch }: { onSearch: (value: string) => 
 });
 LogSearchInput.displayName = 'LogSearchInput';
 
-type LogTableProps = HeaderControlProps & {
-  pageSizeCacheKey: string;
-  cursorSearch?: boolean;
-};
+type LogTableProps = HeaderControlProps;
 
 const LogTable = ({
   appId,
@@ -110,8 +104,6 @@ const LogTable = ({
   setSourceFilter,
   dateRange,
   setDateRange,
-  pageSizeCacheKey,
-  cursorSearch = false,
   showSourceSelector = true,
   px = [4, 8]
 }: LogTableProps) => {
@@ -143,7 +135,6 @@ const LogTable = ({
 
   // chat
   const [searchQuery, setSearchQuery] = useState('');
-  const isCursorSearchMode = cursorSearch && searchQuery.length > 0;
   const [searchResult, setSearchResult] = useState<{
     list: AppLogsListItemType[];
     nextCursor?: AppChatLogsSearchCursor;
@@ -252,26 +243,9 @@ const LogTable = ({
     ]
   );
 
-  const listApi = useCallback(
-    async (data: getAppChatLogsBody): Promise<getAppChatLogsResponseType> => {
-      if (isCursorSearchMode) return { list: [], total: 0 };
-      return getAppChatLogs(data);
-    },
-    [isCursorSearchMode]
-  );
-
   // @types/react 18 的 DOM ref 与 FixedTable 的 RefObject<HTMLDivElement> 签名兼容。
   const virtualContainerRef = useRef<HTMLDivElement>(null!);
-  const pagination = usePagination(listApi, {
-    defaultPageSize: 20,
-    pageSizeCacheKey,
-    params,
-    refreshDeps: [params, isCursorSearchMode],
-    scrollContainerRef: virtualContainerRef
-  });
-
-  const { data: listLogs, isLoading, Pagination, getData, pageNum, total, pageSize } = pagination;
-  const logs = isCursorSearchMode ? searchResult.list : listLogs;
+  const logs = searchResult.list;
   const { virtualDataList, topPlaceholderHeight, bottomPlaceholderHeight } = useStaticVirtualList({
     data: logs,
     itemHeight: logRowHeight,
@@ -285,7 +259,6 @@ const LogTable = ({
    */
   const loadSearchPage = useCallback(
     async ({ reset = false }: { reset?: boolean } = {}) => {
-      if (!searchQuery) return;
       if (!reset && (searchLoadingRef.current || !searchNextCursorRef.current)) return;
 
       if (reset) {
@@ -336,22 +309,19 @@ const LogTable = ({
 
   React.useEffect(() => {
     searchNextCursorRef.current = undefined;
-    if (!isCursorSearchMode) return;
-
     loadSearchPage({ reset: true });
     return () => {
       searchRequestIdRef.current += 1;
       searchControllerRef.current?.abort();
       searchLoadingRef.current = false;
     };
-  }, [isCursorSearchMode, loadSearchPage]);
+  }, [loadSearchPage]);
 
   useEventListener(
     'scroll',
     () => {
       const container = virtualContainerRef.current;
       if (
-        !isCursorSearchMode ||
         !container ||
         searchLoadingRef.current ||
         searchResult.error ||
@@ -383,13 +353,7 @@ const LogTable = ({
     setSelectedItems([]);
   }, [params, setSelectedItems]);
   const chatIds = useMemoEnhance(() => selectedItems.map((item) => item.chatId), [selectedItems]);
-  const refreshCurrentList = useCallback(async () => {
-    if (isCursorSearchMode) {
-      await loadSearchPage({ reset: true });
-    } else {
-      await getData(pageNum);
-    }
-  }, [getData, isCursorSearchMode, loadSearchPage, pageNum]);
+  const refreshCurrentList = useCallback(() => loadSearchPage({ reset: true }), [loadSearchPage]);
 
   const { openConfirm: openConfirmDelete, ConfirmModal: ConfirmDeleteModal } = useConfirm({
     type: 'delete'
@@ -682,11 +646,7 @@ const LogTable = ({
         <PopoverConfirm
           Trigger={<Button size={'md'}>{t('common:Export')}</Button>}
           showCancel
-          content={
-            isCursorSearchMode
-              ? t('app:logs_export_confirm_tip_without_total')
-              : t('app:logs_export_confirm_tip', { total })
-          }
+          content={t('app:logs_export_confirm_tip_without_total')}
           onConfirm={exportLogs}
         />
       </Flex>
@@ -717,13 +677,7 @@ const LogTable = ({
                   </Button>
                 </HStack>
               }
-            >
-              {!isCursorSearchMode && total > pageSize && (
-                <Flex justifyContent={'center'}>
-                  <Pagination />
-                </Flex>
-              )}
-            </FloatingActionBar>
+            />
           </>
         }
       >
@@ -801,29 +755,27 @@ const LogTable = ({
             )}
           </Tbody>
         </Table>
-        {isCursorSearchMode && (
-          <Box mt={2} h={8} position={'relative'} fontSize={'xs'} color={'blackAlpha.500'}>
-            {searchResult.loading ? (
-              <MyLoading fixed={false} bg={'transparent'} size={'md'} />
-            ) : searchResult.error ? (
-              <Flex alignItems={'center'} justifyContent={'center'} gap={1}>
-                <Box>{t('common:load_failed')}</Box>
-                <Box
-                  as={'button'}
-                  type={'button'}
-                  color={'primary.600'}
-                  cursor={'pointer'}
-                  onClick={() => loadSearchPage({ reset: searchResult.list.length === 0 })}
-                >
-                  {t('common:refresh')}
-                </Box>
-              </Flex>
-            ) : (
-              !searchResult.nextCursor && <Box textAlign={'center'}>{t('common:request_end')}</Box>
-            )}
-          </Box>
-        )}
-        {!isCursorSearchMode && logs.length === 0 && !isLoading && (
+        <Box mt={2} h={8} position={'relative'} fontSize={'xs'} color={'blackAlpha.500'}>
+          {searchResult.loading ? (
+            <MyLoading fixed={false} bg={'transparent'} size={'md'} />
+          ) : searchResult.error ? (
+            <Flex alignItems={'center'} justifyContent={'center'} gap={1}>
+              <Box>{t('common:load_failed')}</Box>
+              <Box
+                as={'button'}
+                type={'button'}
+                color={'primary.600'}
+                cursor={'pointer'}
+                onClick={() => loadSearchPage({ reset: searchResult.list.length === 0 })}
+              >
+                {t('common:refresh')}
+              </Box>
+            </Flex>
+          ) : (
+            !searchResult.nextCursor && <Box textAlign={'center'}>{t('common:request_end')}</Box>
+          )}
+        </Box>
+        {logs.length === 0 && !searchResult.loading && !searchResult.error && (
           <EmptyTip text={t('app:logs_empty')}></EmptyTip>
         )}
       </FixedTableContainer>
