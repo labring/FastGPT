@@ -28,6 +28,9 @@ import { replaceEditorVariable } from '../utils/replaceEditorVariable';
 import { checkStrOversize, logOversizeString } from '../../../../common/string/replaceVariable';
 import { getWorkflowAppId } from '../utils/source';
 import { getErrText, UserConfigError } from '@fastgpt/global/common/error/utils';
+import type { HttpFormFieldType } from '@fastgpt/global/core/workflow/http/type';
+import { buildHttpFormData } from './httpFormData';
+import { runWithHttpAbort } from './httpAbort';
 
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.TOOLS);
 
@@ -60,11 +63,7 @@ export const getWorkflowHttpNodeHttpsAgentConfig = (
   };
 };
 
-type PropsArrType = {
-  key: string;
-  type: string;
-  value: string;
-};
+type PropsArrType = HttpFormFieldType;
 type HttpRequestProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.abandon_httpUrl]: string;
   [NodeInputKeyEnum.headerSecret]?: StoreSecretValueType;
@@ -201,75 +200,117 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
     return acc;
   }, {});
 
-  const requestBody = await (() => {
-    if (httpContentType === ContentTypes.none) return {};
-    try {
-      if (httpContentType === ContentTypes.formData) {
-        if (!Array.isArray(httpFormBody)) return {};
-        const formBody = formatHttpProps(httpFormBody);
-        const formData = new FormData();
-        for (const { key, value } of formBody) {
-          formData.append(key, value);
-        }
-        return formData;
-      }
-      if (httpContentType === ContentTypes.xWwwFormUrlencoded) {
-        if (!Array.isArray(httpFormBody)) return {};
-        const formBody = formatHttpProps(httpFormBody);
-        const urlSearchParams = new URLSearchParams();
-        for (const { key, value } of formBody) {
-          urlSearchParams.append(key, value);
-        }
-        return urlSearchParams;
-      }
-      if (!httpJsonBody) return {};
-      if (httpContentType === ContentTypes.json) {
-        const jsonBody = replaceJsonBodyString(
-          { text: httpJsonBody },
-          {
-            allVariables,
-            runtimeNodesMap
-          }
-        );
-        return json5.parse(jsonBody);
-      }
-
-      // Raw text, xml
-      const rawBody = replaceStringVariables(httpJsonBody);
-      return rawBody.replaceAll(UNDEFINED_SIGN, 'null');
-    } catch (error) {
-      return Promise.reject(
-        new UserConfigError(`Invalid JSON body: ${httpJsonBody}`, undefined, { cause: error })
-      );
-    }
-  })();
-
-  // Just show
-  const formattedRequestBody: Record<string, any> = (() => {
-    if (requestBody instanceof FormData || requestBody instanceof URLSearchParams) {
-      return Object.fromEntries(requestBody);
-    } else if (typeof requestBody === 'string') {
-      try {
-        return json5.parse(requestBody);
-      } catch {
-        return { content: requestBody };
-      }
-    } else if (typeof requestBody === 'object' && requestBody !== null) {
-      return requestBody;
-    }
-    return {};
-  })();
+  const hasFileFields =
+    httpContentType === ContentTypes.formData &&
+    Array.isArray(httpFormBody) &&
+    httpFormBody.some((field) => field.type === 'file' && replaceStringVariables(field.key));
+  const controller = new AbortController();
+  const checkStopping = () => {
+    if (props.checkIsStopping())
+      controller.abort(new UserConfigError('HTTP file request was stopped'));
+  };
+  const stopTimer = hasFileFields ? setInterval(checkStopping, 100) : undefined;
+  const timeoutTimer = hasFileFields
+    ? setTimeout(
+        () => controller.abort(new UserConfigError('HTTP file request timed out')),
+        httpTimeout * 1000
+      )
+    : undefined;
+  let formattedRequestBody: Record<string, any> = {};
+  let requestPrepared = false;
 
   try {
+    if (hasFileFields) {
+      checkStopping();
+      controller.signal.throwIfAborted();
+      if (!['POST', 'PUT', 'PATCH'].includes(httpMethod)) {
+        throw new UserConfigError('HTTP file fields require POST, PUT or PATCH');
+      }
+    }
+    const requestBody = await (async () => {
+      if (httpContentType === ContentTypes.none) return {};
+      try {
+        if (httpContentType === ContentTypes.formData) {
+          if (!Array.isArray(httpFormBody)) return {};
+          const formBody = formatHttpProps(httpFormBody);
+          const { formData, body } = await buildHttpFormData({
+            fields: formBody,
+            signal: controller.signal
+          });
+          formattedRequestBody = body;
+          return formData;
+        }
+        if (httpContentType === ContentTypes.xWwwFormUrlencoded) {
+          if (!Array.isArray(httpFormBody)) return {};
+          const formBody = formatHttpProps(httpFormBody);
+          const urlSearchParams = new URLSearchParams();
+          for (const { key, value } of formBody) {
+            urlSearchParams.append(key, value);
+          }
+          return urlSearchParams;
+        }
+        if (!httpJsonBody) return {};
+        if (httpContentType === ContentTypes.json) {
+          const jsonBody = replaceJsonBodyString(
+            { text: httpJsonBody },
+            {
+              allVariables,
+              runtimeNodesMap
+            }
+          );
+          return json5.parse(jsonBody);
+        }
+
+        // Raw text, xml
+        const rawBody = replaceStringVariables(httpJsonBody);
+        return rawBody.replaceAll(UNDEFINED_SIGN, 'null');
+      } catch (error) {
+        if (hasFileFields)
+          throw error instanceof UserConfigError
+            ? error
+            : new UserConfigError(getErrText(error), undefined, { cause: error });
+        return Promise.reject(
+          new UserConfigError(`Invalid JSON body: ${httpJsonBody}`, undefined, { cause: error })
+        );
+      }
+    })();
+
+    // Just show
+    formattedRequestBody = (() => {
+      if (requestBody instanceof FormData) return formattedRequestBody;
+      if (requestBody instanceof URLSearchParams) {
+        return Object.fromEntries(requestBody);
+      } else if (typeof requestBody === 'string') {
+        try {
+          return json5.parse(requestBody);
+        } catch {
+          return { content: requestBody };
+        }
+      } else if (typeof requestBody === 'object' && requestBody !== null) {
+        return requestBody;
+      }
+      return {};
+    })();
+
+    requestPrepared = true;
+    if (hasFileFields) {
+      checkStopping();
+      controller.signal.throwIfAborted();
+    }
     // 只转换请求边界的失败，避免将后续输出处理中的内部异常一起降级。
-    const { formatResponse, rawResponse } = await fetchData({
-      method: httpMethod,
-      url: requestUrl,
-      headers: { ...sensitiveHeaders, ...publicHeaders },
-      body: requestBody,
-      params,
-      timeout: httpTimeout
-    }).catch((error: unknown) => {
+    const sendRequest = () =>
+      fetchData({
+        method: httpMethod,
+        url: requestUrl,
+        headers: { ...sensitiveHeaders, ...publicHeaders },
+        body: requestBody,
+        params,
+        timeout: httpTimeout,
+        ...(hasFileFields ? { signal: controller.signal } : {})
+      });
+    const { formatResponse, rawResponse } = await (
+      hasFileFields ? runWithHttpAbort(sendRequest, controller.signal) : sendRequest()
+    ).catch((error: unknown) => {
       throw new UserConfigError(getErrText(error), undefined, { cause: error });
     });
 
@@ -321,6 +362,8 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
         Object.keys(results).length > 0 ? results : rawResponse
     };
   } catch (error) {
+    // 原有文本/JSON 配置错误仍由外层 dispatcher 接管。
+    if (!hasFileFields && !requestPrepared) throw error;
     logger.warn('HTTP tool request failed', {
       error,
       httpReqUrl: requestUrl,
@@ -345,6 +388,9 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
         httpErrorResult: errObj
       }
     });
+  } finally {
+    clearInterval(stopTimer);
+    clearTimeout(timeoutTimer);
   }
 };
 
@@ -558,7 +604,8 @@ async function fetchData({
   headers,
   body,
   params,
-  timeout
+  timeout,
+  signal
 }: {
   method: string;
   url: string;
@@ -566,9 +613,23 @@ async function fetchData({
   body: Record<string, any> | string;
   params: Record<string, any>;
   timeout: number;
+  signal?: AbortSignal;
 }) {
-  if (await isInternalAddress(url)) {
+  signal?.throwIfAborted();
+  const blocked = await isInternalAddress(url);
+  // DNS 预检本身不可取消；迟到返回后仍需阻止进入 Axios，且不能跳过原有 SSRF 校验。
+  signal?.throwIfAborted();
+  if (blocked) {
     return Promise.reject(PRIVATE_URL_TEXT);
+  }
+
+  // 文件请求由 Axios 按实际 FormData 生成 boundary 和长度，旧的手填头不能覆盖它们。
+  const requestHeaders = { ...headers };
+  if (signal && body instanceof FormData) {
+    for (const key of Object.keys(requestHeaders)) {
+      if (['content-type', 'content-length'].includes(key.toLowerCase()))
+        delete requestHeaders[key];
+    }
   }
 
   // 都认为是用户的请求，强制 SSRF 检查
@@ -576,10 +637,10 @@ async function fetchData({
     method,
     maxContentLength: serviceRequestMaxContentLength,
     url,
-    headers: {
-      ...headers
-    },
+    headers: requestHeaders,
     timeout: timeout * 1000,
+    signal,
+    ...(signal ? { maxBodyLength: serviceRequestMaxContentLength } : {}),
     params: params,
     data: ['POST', 'PUT', 'PATCH'].includes(method) ? body : undefined,
     ...getWorkflowHttpNodeHttpsAgentConfig(url)

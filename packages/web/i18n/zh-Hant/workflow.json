@@ -1,4 +1,7 @@
 {
+  "http_field_type": "欄位類型",
+  "http_field_text": "文字",
+  "http_file_field_placeholder": "引用目前工作流中的檔案位址",
   "tool_target_already_attached": "此節點已屬於另一個工具呼叫，請先刪除原有工具連線。",
   "tool_connection_has_normal_edges": "目標節點已有一般輸入連線，請先刪除這些連線，再連接工具連接埠。",
   "Array_element": "陣列元素",

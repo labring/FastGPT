@@ -130,9 +130,9 @@ export const createS3FileSource = ({
   kind: 's3',
   sizeBytes: Math.max(0, sizeBytes),
   metadata,
-  materialize: async ({ signal }) => {
+  materialize: async ({ signal, onReadBytes }) => {
     const stream = await getStream(signal);
-    const buffer = await readStreamToBuffer({ stream, signal });
+    const buffer = await readStreamToBuffer({ stream, signal, onReadBytes });
     return { buffer, metadata };
   }
 });
