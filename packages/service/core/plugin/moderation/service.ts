@@ -300,14 +300,27 @@ export const saveModerationConfig = async ({
   autoEnabled: boolean;
 }> => {
   // 1. 读取插件详情：拿 secretSchema 判断哪些字段要加密，同时验证插件真实存在
-  const detail = await getModerationPluginDetail({ pluginId, source, version, lang });
+  // 仅切换启停状态（未显式传 version 且未修改 secretsVal）时沿用已保存的运行版本，避免隐式升级插件版本
+  const preloadedConfig =
+    version === undefined && secretsVal === undefined
+      ? await findModerationConfig({ pluginId, source })
+      : undefined;
+  const detail = await getModerationPluginDetail({
+    pluginId,
+    source,
+    version: version ?? preloadedConfig?.version,
+    lang
+  });
 
   if (detail.type !== 'moderation') {
     return Promise.reject(`Plugin ${pluginId} is not a moderation plugin`);
   }
 
   const secretKeys = getModerationSecretKeys(detail.secretSchema);
-  const existing = await findModerationConfig({ pluginId, source: detail.source });
+  const existing =
+    preloadedConfig && (preloadedConfig.source ?? 'system') === (detail.source ?? 'system')
+      ? preloadedConfig
+      : await findModerationConfig({ pluginId, source: detail.source });
 
   // 2. 合并并加密配置值：掩码不回写，空值删除，真实值加密
   const merged = mergeModerationSecretsForUpdate({

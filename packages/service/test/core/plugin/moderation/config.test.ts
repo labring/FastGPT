@@ -308,4 +308,84 @@ describe('moderation configuration save and reload', () => {
       activePluginId: 'third-moderation-plugin'
     });
   });
+
+  it('preserves saved plugin version when toggling enablement without version or secrets, while allowing explicit version and secret updates', async () => {
+    const v1Detail = {
+      ...detail,
+      pluginId: 'versioned-moderation',
+      version: '1.0.0'
+    };
+    const v2Detail = {
+      ...detail,
+      pluginId: 'versioned-moderation',
+      version: '2.0.0'
+    };
+    vi.spyOn(remote, 'getModerationPluginDetail').mockImplementation(async ({ version }) =>
+      version === '1.0.0' ? v1Detail : v2Detail
+    );
+
+    await MongoSystemModerationPlugin.create({
+      pluginId: 'versioned-moderation',
+      source: 'system',
+      version: '1.0.0',
+      enabled: false,
+      secretsVal: { enableDefaultDict: true }
+    });
+
+    // 1. 仅切换启用状态（不传 version 和 secretsVal）时，必须保留已保存的 1.0.0 完成探测并写回
+    const toggled = await saveModerationConfig({
+      pluginId: 'versioned-moderation',
+      enabled: true
+    });
+    expect(remote.getModerationPluginDetail).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        pluginId: 'versioned-moderation',
+        version: '1.0.0'
+      })
+    );
+    expect(remote.checkModerationContent).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        pluginId: 'versioned-moderation',
+        version: '1.0.0'
+      })
+    );
+    expect(toggled.item.version).toBe('1.0.0');
+    expect(
+      await MongoSystemModerationPlugin.findOne({ pluginId: 'versioned-moderation' }).lean()
+    ).toMatchObject({
+      version: '1.0.0',
+      enabled: true
+    });
+
+    // 2. 显式传 version 时仍允许切换到指定版本
+    const upgraded = await saveModerationConfig({
+      pluginId: 'versioned-moderation',
+      version: '2.0.0',
+      enabled: true
+    });
+    expect(remote.checkModerationContent).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        pluginId: 'versioned-moderation',
+        version: '2.0.0'
+      })
+    );
+    expect(upgraded.item.version).toBe('2.0.0');
+
+    // 3. 重新回退为 1.0.0 后，更新 secretsVal（未指定 version）按最新版本 2.0.0 解析
+    await MongoSystemModerationPlugin.updateOne(
+      { pluginId: 'versioned-moderation' },
+      { $set: { version: '1.0.0' } }
+    );
+    const updatedSecrets = await saveModerationConfig({
+      pluginId: 'versioned-moderation',
+      secretsVal: { enableDefaultDict: false }
+    });
+    expect(remote.getModerationPluginDetail).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        pluginId: 'versioned-moderation',
+        version: undefined
+      })
+    );
+    expect(updatedSecrets.item.version).toBe('2.0.0');
+  });
 });

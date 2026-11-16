@@ -357,4 +357,170 @@ describe('ModerationPolicy page', () => {
       root.unmount();
     });
   });
+
+  it('preserves draft edits made while plugin activation probe and policy sync are pending', async () => {
+    mocks.policyData = {
+      ...DefaultSystemModerationPolicy,
+      enabled: false
+    };
+    const baiduPlugin: AdminModerationPluginItemType = {
+      pluginId: 'baidu',
+      source: 'system',
+      name: 'Baidu Moderation',
+      provider: 'baidu',
+      enabled: false,
+      hasConfiguredSecrets: true
+    };
+    mocks.pluginsData = [baiduPlugin];
+
+    let resolveSave!: (value: AdminModerationPluginItemType) => void;
+    mocks.saveModerationConfig.mockReturnValueOnce(
+      new Promise<AdminModerationPluginItemType>((resolve) => {
+        resolveSave = resolve;
+      })
+    );
+    let resolvePolicyUpdate!: (value: SystemModerationPolicyType) => void;
+    mocks.updateModerationPolicy.mockReturnValueOnce(
+      new Promise<SystemModerationPolicyType>((resolve) => {
+        resolvePolicyUpdate = resolve;
+      })
+    );
+
+    const host = document.createElement('div');
+    document.body.appendChild(host);
+    const root = createRoot(host);
+
+    await act(async () => {
+      root.render(React.createElement(ModerationPolicy));
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    // 1. 打开总开关并点击启用插件（此时探测请求处于等待中）
+    const totalSwitch = host.querySelector('input[type="checkbox"]') as HTMLInputElement;
+    await act(async () => {
+      totalSwitch.click();
+    });
+    const activateBtn = host.querySelector('[data-plugin-activate="baidu"]') as HTMLButtonElement;
+    await act(async () => {
+      activateBtn.click();
+    });
+
+    // 2. 在探测返回前关闭“用户输入”审核开关
+    const checkboxesDuringSave = host.querySelectorAll('input[type="checkbox"]');
+    const userInputSwitch = checkboxesDuringSave[1] as HTMLInputElement;
+    expect(userInputSwitch.checked).toBe(true);
+    await act(async () => {
+      userInputSwitch.click();
+    });
+    expect(userInputSwitch.checked).toBe(false);
+
+    // 3. 探测返回后应保留 userInput: false 并将其提交给策略接口
+    await act(async () => {
+      resolveSave({ ...baiduPlugin, enabled: true });
+      await Promise.resolve();
+    });
+    expect(mocks.updateModerationPolicy).toHaveBeenCalledWith({
+      ...DefaultSystemModerationPolicy,
+      enabled: true,
+      activePluginId: 'baidu',
+      hooks: {
+        ...DefaultSystemModerationPolicy.hooks,
+        userInput: false
+      }
+    });
+
+    // 4. 在策略接口返回前继续关闭“模型输入”开关，返回后不应被旧响应覆盖
+    const checkboxesDuringSync = host.querySelectorAll('input[type="checkbox"]');
+    const modelInputSwitch = checkboxesDuringSync[2] as HTMLInputElement;
+    await act(async () => {
+      modelInputSwitch.click();
+    });
+    expect(modelInputSwitch.checked).toBe(false);
+
+    await act(async () => {
+      resolvePolicyUpdate({
+        ...DefaultSystemModerationPolicy,
+        enabled: true,
+        activePluginId: 'baidu',
+        hooks: {
+          ...DefaultSystemModerationPolicy.hooks,
+          userInput: false,
+          modelInput: true
+        }
+      });
+      await Promise.resolve();
+    });
+
+    const finalCheckboxes = host.querySelectorAll('input[type="checkbox"]');
+    expect((finalCheckboxes[0] as HTMLInputElement).checked).toBe(true);
+    expect((finalCheckboxes[1] as HTMLInputElement).checked).toBe(false);
+    expect((finalCheckboxes[2] as HTMLInputElement).checked).toBe(false);
+
+    await act(async () => {
+      root.unmount();
+    });
+  });
+
+  it('keeps global switch disabled and skips policy persistence when user turns it off while activation probe is pending', async () => {
+    mocks.policyData = {
+      ...DefaultSystemModerationPolicy,
+      enabled: false
+    };
+    const baiduPlugin: AdminModerationPluginItemType = {
+      pluginId: 'baidu',
+      source: 'system',
+      name: 'Baidu Moderation',
+      provider: 'baidu',
+      enabled: false,
+      hasConfiguredSecrets: true
+    };
+    mocks.pluginsData = [baiduPlugin];
+
+    let resolveSave!: (value: AdminModerationPluginItemType) => void;
+    mocks.saveModerationConfig.mockReturnValueOnce(
+      new Promise<AdminModerationPluginItemType>((resolve) => {
+        resolveSave = resolve;
+      })
+    );
+
+    const host = document.createElement('div');
+    document.body.appendChild(host);
+    const root = createRoot(host);
+
+    await act(async () => {
+      root.render(React.createElement(ModerationPolicy));
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    const totalSwitch = host.querySelector('input[type="checkbox"]') as HTMLInputElement;
+    await act(async () => {
+      totalSwitch.click();
+    });
+    const activateBtn = host.querySelector('[data-plugin-activate="baidu"]') as HTMLButtonElement;
+    await act(async () => {
+      activateBtn.click();
+    });
+
+    // 在探测返回前关闭总开关
+    await act(async () => {
+      totalSwitch.click();
+    });
+    expect(totalSwitch.checked).toBe(false);
+
+    await act(async () => {
+      resolveSave({ ...baiduPlugin, enabled: true });
+      await Promise.resolve();
+    });
+
+    expect(mocks.updateModerationPolicy).not.toHaveBeenCalled();
+    expect((host.querySelector('input[type="checkbox"]') as HTMLInputElement).checked).toBe(false);
+
+    await act(async () => {
+      root.unmount();
+    });
+  });
 });

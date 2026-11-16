@@ -46,6 +46,8 @@ export const ModerationPolicy = () => {
   const { t } = useSafeTranslation();
 
   const [policy, setPolicy] = useState<SystemModerationPolicyType>(DefaultSystemModerationPolicy);
+  const policyRef = useRef<SystemModerationPolicyType>(DefaultSystemModerationPolicy);
+  const draftRevisionRef = useRef(0);
   const [plugins, setPlugins] = useState<AdminModerationPluginItemType[]>([]);
   const [isListCollapsed, setIsListCollapsed] = useState(false);
   const hasInitializedCollapse = useRef(false);
@@ -62,13 +64,31 @@ export const ModerationPolicy = () => {
       type: 'delete'
     });
 
+  /**
+   * 同步更新 policy 状态与最新草稿 ref，避免异步回调读取到过期闭包或覆盖请求期间的编辑。
+   */
+  const updatePolicy = (
+    updater:
+      | SystemModerationPolicyType
+      | ((prev: SystemModerationPolicyType) => SystemModerationPolicyType),
+    options?: { markDraftDirty?: boolean }
+  ) => {
+    if (options?.markDraftDirty !== false) {
+      draftRevisionRef.current += 1;
+    }
+    const next = typeof updater === 'function' ? updater(policyRef.current) : updater;
+    policyRef.current = next;
+    setPolicy(next);
+    return next;
+  };
+
   // 1. 获取全局策略与插件列表
   const { loading: loadingPolicy, runAsync: fetchPolicy } = useRequest(getAdminModerationPolicy, {
     onSuccess: (data) => {
       if (data) {
         persistedPolicyRef.current = data;
         const restoredPolicy = marketplaceDraft.current ?? data;
-        setPolicy(restoredPolicy);
+        updatePolicy(restoredPolicy, { markDraftDirty: false });
         marketplaceDraft.current = undefined;
         useModerationPolicyDraftStore.getState().setDraft(undefined);
         // 标注 2 特殊状态规则：若当前有审核服务在生效，列表默认收起；若未选择，默认展开
@@ -115,33 +135,38 @@ export const ModerationPolicy = () => {
   );
 
   const handleSubmit = () => {
-    if (policy.enabled && !activePlugin) {
+    const currentPolicy = policyRef.current;
+    if (currentPolicy.enabled && !activePlugin) {
       toast({ status: 'error', title: t('admin:moderation.select_plugin_required') });
       return;
     }
-    void savePolicy(policy);
+    void savePolicy(currentPolicy);
   };
 
   /**
    * 同步已启用插件到全局策略：
    * 若用户已在页面打开“是否开启内容审核”但尚未点击右侧“保存”，
-   * 自动启用或手动点击启用时同步持久化开关状态，避免刷新或离开页面后丢失开启状态。
+   * 自动启用或手动点击启用时同步持久化最新草稿中的开关状态，避免刷新或离开页面后丢失开启状态，
+   * 同时避免异步请求返回后覆盖等待期间的新增编辑。
    */
   const syncActivePluginPolicy = async (activePluginId: string) => {
-    const nextPolicy: SystemModerationPolicyType = {
-      ...policy,
-      activePluginId
-    };
-    setPolicy(nextPolicy);
+    // 1. 从最新草稿 ref 合并本次确认生效的插件 ID，保留等待期间的其他字段修改
+    const nextPolicy = updatePolicy(
+      (prev) => ({
+        ...prev,
+        activePluginId
+      }),
+      { markDraftDirty: false }
+    );
 
+    // 2. 仅当最新草稿仍处于开启状态且尚未持久化开启时，提交策略持久化并防止响应覆盖更晚编辑
     if (nextPolicy.enabled && !persistedPolicyRef.current?.enabled) {
+      const revisionAtSubmit = draftRevisionRef.current;
       const updated = await postAdminUpdateModerationPolicy(nextPolicy);
-      if (updated) {
-        persistedPolicyRef.current = updated;
-        setPolicy(updated);
-        return;
+      persistedPolicyRef.current = updated ?? nextPolicy;
+      if (updated && draftRevisionRef.current === revisionAtSubmit) {
+        updatePolicy(updated, { markDraftDirty: false });
       }
-      persistedPolicyRef.current = nextPolicy;
       return;
     }
 
@@ -157,7 +182,7 @@ export const ModerationPolicy = () => {
   const handleActivatePlugin = async (plugin: AdminModerationPluginItemType) => {
     if (
       !plugin.hasConfiguredSecrets ||
-      policy.activePluginId === plugin.pluginId ||
+      policyRef.current.activePluginId === plugin.pluginId ||
       activatingPluginId
     ) {
       return;
@@ -183,7 +208,7 @@ export const ModerationPolicy = () => {
 
   // 首个插件配置完成时后端会默认自动启用，前端同步更新生效服务并刷新列表
   const handlePluginConfigSuccess = async (savedPlugin?: AdminModerationPluginItemType) => {
-    if (savedPlugin?.enabled && !policy.activePluginId) {
+    if (savedPlugin?.enabled && !policyRef.current.activePluginId) {
       try {
         await syncActivePluginPolicy(savedPlugin.pluginId);
       } catch (err: any) {
@@ -211,15 +236,15 @@ export const ModerationPolicy = () => {
         source: plugin.source
       });
       if (isLastPlugin) {
-        setPolicy((prev) => ({
+        updatePolicy((prev) => ({
           ...prev,
           enabled: false,
           activePluginId: undefined
         }));
         setIsListCollapsed(false);
         useModerationPolicyDraftStore.getState().setDraft(undefined);
-      } else if (policy.activePluginId === plugin.pluginId) {
-        setPolicy((prev) => ({ ...prev, activePluginId: undefined }));
+      } else if (policyRef.current.activePluginId === plugin.pluginId) {
+        updatePolicy((prev) => ({ ...prev, activePluginId: undefined }));
       }
       toast({
         status: 'success',
@@ -268,7 +293,7 @@ export const ModerationPolicy = () => {
 
   /** Preserve all unsaved fields while visiting the marketplace to install a plugin. */
   const handleAddFromMarket = () => {
-    useModerationPolicyDraftStore.getState().setDraft(policy);
+    useModerationPolicyDraftStore.getState().setDraft(policyRef.current);
     void router.push('/config/tool/marketplace?type=moderation');
   };
 
@@ -309,7 +334,7 @@ export const ModerationPolicy = () => {
               size={'md'}
               isChecked={policy.enabled}
               onChange={(e) => {
-                setPolicy((prev) => ({
+                updatePolicy((prev) => ({
                   ...prev,
                   enabled: e.target.checked
                 }));
@@ -514,7 +539,7 @@ export const ModerationPolicy = () => {
                     size={'md'}
                     isChecked={policy.hooks.userInput}
                     onChange={(e) => {
-                      setPolicy((prev) => ({
+                      updatePolicy((prev) => ({
                         ...prev,
                         hooks: { ...prev.hooks, userInput: e.target.checked }
                       }));
@@ -542,7 +567,7 @@ export const ModerationPolicy = () => {
                     size={'md'}
                     isChecked={policy.hooks.modelInput}
                     onChange={(e) => {
-                      setPolicy((prev) => ({
+                      updatePolicy((prev) => ({
                         ...prev,
                         hooks: { ...prev.hooks, modelInput: e.target.checked }
                       }));
@@ -570,7 +595,7 @@ export const ModerationPolicy = () => {
                     size={'md'}
                     isChecked={policy.hooks.finalOutput}
                     onChange={(e) => {
-                      setPolicy((prev) => ({
+                      updatePolicy((prev) => ({
                         ...prev,
                         hooks: { ...prev.hooks, finalOutput: e.target.checked }
                       }));
@@ -601,7 +626,7 @@ export const ModerationPolicy = () => {
                       variant={'whiteOutline'}
                       value={policy.strategy.streamInterval}
                       onChange={(val) => {
-                        setPolicy((prev) => ({
+                        updatePolicy((prev) => ({
                           ...prev,
                           strategy: {
                             ...prev.strategy,
@@ -641,7 +666,7 @@ export const ModerationPolicy = () => {
                       }
                     ]}
                     onChange={(val) => {
-                      setPolicy((prev) => ({
+                      updatePolicy((prev) => ({
                         ...prev,
                         strategy: {
                           ...prev.strategy,
@@ -675,7 +700,7 @@ export const ModerationPolicy = () => {
                       }
                     ]}
                     onChange={(val) => {
-                      setPolicy((prev) => ({
+                      updatePolicy((prev) => ({
                         ...prev,
                         strategy: {
                           ...prev.strategy,
