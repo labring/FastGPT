@@ -1,16 +1,56 @@
-import { it, expect } from 'vitest'; // 必须显式导入
+import { it, expect, vi } from 'vitest'; // 必须显式导入
 import {
   getMaxPrefixByLength,
   getMaxSuffixByLength,
   splitText2Chunks
 } from '@fastgpt/service/common/string/textSplitter';
 import { countPromptTokensInWorker } from '@fastgpt/service/worker/countGptMessagesTokens/count';
+import * as tokenCounter from '@fastgpt/service/worker/countGptMessagesTokens/count';
 import fs from 'fs';
 
 const simpleChunks = (chunks: string[]) => {
   return chunks.map((chunk) => chunk.replace(/\s+/g, ''));
 };
 const getValidLength = (text: string) => text.replaceAll(/[\s\n]/g, '').length;
+
+it('token count cache evicts the oldest 100 entries after reaching 10000 entries', () => {
+  const countTokens = vi.spyOn(tokenCounter, 'countPromptTokensInWorker');
+  const uniqueTexts = Array.from({ length: 10000 }, (_, i) => `cache entry ${i}`);
+  const texts = [
+    ...uniqueTexts,
+    uniqueTexts[98],
+    uniqueTexts[99],
+    uniqueTexts[9999],
+    uniqueTexts[0]
+  ];
+
+  try {
+    const result = splitText2Chunks({
+      text: texts.join('::cache-separator::'),
+      chunkSize: 512,
+      maxSize: 512,
+      customReg: ['::cache-separator::'],
+      lengthUnit: 'token'
+    });
+
+    expect(result.chunks).toEqual(texts);
+    const countedTexts = countTokens.mock.calls.map(([text]) => text);
+    // 空文本也占一个缓存位：到达上限后会被淘汰，随后重新计数并缓存 0。
+    expect(countedTexts.filter((text) => text === '')).toHaveLength(2);
+    expect(countedTexts.filter((text) => text === uniqueTexts[0])).toHaveLength(2);
+    // 首批淘汰包含空文本和第 0～98 项，第 99 项及近期文本仍命中。
+    expect(countedTexts.filter((text) => text === uniqueTexts[98])).toHaveLength(2);
+    expect(countedTexts.filter((text) => text === uniqueTexts[99])).toHaveLength(1);
+    expect(countedTexts.filter((text) => text === uniqueTexts[9999])).toHaveLength(1);
+
+    // 缓存不会跨切分调用复用。
+    countTokens.mockClear();
+    splitText2Chunks({ text: uniqueTexts[9999], chunkSize: 512, lengthUnit: 'token' });
+    expect(countTokens).toHaveBeenCalledWith(uniqueTexts[9999]);
+  } finally {
+    countTokens.mockRestore();
+  }
+});
 
 // 简单的嵌套测试
 it(`Test splitText2Chunks 1`, () => {

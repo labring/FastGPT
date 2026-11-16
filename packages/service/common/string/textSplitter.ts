@@ -277,17 +277,28 @@ const splitTextByCounterLengthLimit: SplitTextByLengthLimit = ({
  * token 模式下，同一段文本在一次切分里会被反复计数：Markdown 每一层标题、代码块和表格
  * 步骤都会先统计一次整段正文，上一项的 newText 也会在下一项作为 lastText 再统计一次。
  * tokenizer 编码远比字符计数昂贵，所以在单次切分内按文本缓存 token 数；计数是纯函数，
- * 缓存不会改变切分结果。字符模式计数本身很便宜，直接使用原函数。
+ * 缓存不会改变切分结果。每个计数器最多缓存 10000 项，满额后按写入顺序淘汰最早的 100 项，
+ * 避免大文本切分时持续保留中间候选文本。字符模式计数本身很便宜，直接使用原函数。
  */
 const getTextLengthCounter = (props: SplitProps): TextLengthCounter => {
   if (props.lengthUnit !== 'token') return getTextValidLength;
 
+  const maxCacheEntries = 10000;
+  const cacheEvictionBatchSize = 100;
   const tokenCountCache = new Map<string, number>();
   return (text) => {
     const cached = tokenCountCache.get(text);
     if (cached !== undefined) return cached;
 
     const count = countPromptTokensInWorker(text);
+
+    // 重复计数通常发生在相邻步骤，保留近期写入的文本即可，无需在每次命中时调整顺序。
+    if (tokenCountCache.size >= maxCacheEntries) {
+      for (const key of tokenCountCache.keys()) {
+        tokenCountCache.delete(key);
+        if (tokenCountCache.size <= maxCacheEntries - cacheEvictionBatchSize) break;
+      }
+    }
     tokenCountCache.set(text, count);
     return count;
   };
