@@ -40,6 +40,7 @@ import {
   type HttpToolSetNodeConfigType
 } from '@fastgpt/global/core/workflow/type/node';
 import { buildWorkflowCustomHeaders, type CustomHeaderItem } from './utils';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
 
 export type HttpToolsType = {
   id?: string;
@@ -156,10 +157,12 @@ const SchemaConfigModal = ({
       return [];
     }
   });
-  const [customHeaders, setCustomHeaders] = useState<CustomHeaderItem[]>(() => {
+  // 行 ID 只用于界面身份；改名和删除其他行时保留密钥草稿，不写入请求头配置。
+  const [customHeaders, setCustomHeaders] = useState<(CustomHeaderItem & { id: string })[]>(() => {
     try {
       const keyValue = JSON.parse(watchedCustomHeaders || '{}');
       return Object.keys(keyValue).map((key) => ({
+        id: getNanoid(),
         key,
         value: String(keyValue[key] ?? ''),
         secretKey: key
@@ -496,7 +499,7 @@ const SchemaConfigModal = ({
                   const storedValue = headerSecret[item.secretKey ?? item.key];
 
                   return (
-                    <Tr key={`${index}`}>
+                    <Tr key={item.id}>
                       <Td p={0} w={'150px'}>
                         <HttpInput
                           placeholder={t('common:core.module.http.Props name')}
@@ -517,7 +520,6 @@ const SchemaConfigModal = ({
                         <Box display={'flex'} alignItems={'center'}>
                           {isWorkflowNodeConfig ? (
                             <AuthValueDisplay
-                              key={item.secretKey ?? item.key}
                               isConfigured={!item.edited && !!getSecretCipherValue(storedValue)}
                               value={
                                 item.edited
@@ -582,7 +584,7 @@ const SchemaConfigModal = ({
                       onBlur={(val) => {
                         if (!val) return;
                         setCustomHeaders((prev) => {
-                          const newHeaders = [...prev, { key: val, value: '' }];
+                          const newHeaders = [...prev, { id: getNanoid(), key: val, value: '' }];
                           setValue('customHeaders', stringifyCustomHeaders(newHeaders));
                           return newHeaders;
                         });
