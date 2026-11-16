@@ -15,6 +15,19 @@ export function resolvePageSeoTitle(params: {
   const cleanTitle = title.trim();
   const isZh = lang === 'zh-CN';
 
+  if (
+    path === 'guide/getting-started' ||
+    path === 'guide/getting-started/index.mdx' ||
+    path === 'guide/getting-started/index.en.mdx'
+  ) {
+    if (isZh && cleanTitle === '使用 FastGPT') {
+      return 'FastGPT 官方文档 - AI Agent、知识库 RAG 与可视化工作流构建指南';
+    }
+    if (!isZh && cleanTitle === 'Use FastGPT') {
+      return 'FastGPT Documentation - AI Agent, RAG Knowledge Base & Workflow Guide';
+    }
+  }
+
   if (path.startsWith('guide/build/workflow/nodes/')) {
     if (isZh) {
       return cleanTitle.includes('节点') ? cleanTitle : `${cleanTitle}工作流节点`;
@@ -56,6 +69,7 @@ export function generateArticleSchema(params: {
 }): WithContext<TechArticle> {
   const { title, description, url, datePublished, dateModified, lang } = params;
   const origin = new URL(url).origin;
+  const mainSiteOrigin = lang === 'zh-CN' ? 'https://fastgpt.cn' : 'https://fastgpt.io';
   const effectivePublished = datePublished ?? dateModified;
 
   return {
@@ -75,7 +89,9 @@ export function generateArticleSchema(params: {
     },
     publisher: {
       '@type': 'Organization',
+      '@id': `${mainSiteOrigin}/#organization`,
       name: 'FastGPT',
+      url: mainSiteOrigin,
       logo: {
         '@type': 'ImageObject',
         url: `${origin}/favicon/android-chrome-512x512.png`
@@ -87,31 +103,34 @@ export function generateArticleSchema(params: {
 /** Build Organization and WebSite JSON-LD entities for the documentation home page. */
 export function generateWebSiteSchema(params: { url: string; lang: string }): Graph {
   const { url, lang } = params;
-  const origin = new URL(url).origin;
+  const parsedUrl = new URL(url);
+  const origin = parsedUrl.origin;
   const isZh = lang === 'zh-CN';
+  const mainSiteOrigin = isZh ? 'https://fastgpt.cn' : 'https://fastgpt.io';
+  const websiteUrl = parsedUrl.pathname === '/' ? `${origin}/guide/getting-started` : url;
 
   return {
     '@context': 'https://schema.org',
     '@graph': [
       {
         '@type': 'Organization',
-        '@id': `${origin}/#organization`,
+        '@id': `${mainSiteOrigin}/#organization`,
         name: 'FastGPT',
-        url: isZh ? 'https://fastgpt.cn' : 'https://fastgpt.io',
+        url: mainSiteOrigin,
         logo: {
           '@type': 'ImageObject',
           url: `${origin}/favicon/android-chrome-512x512.png`
         },
-        sameAs: ['https://github.com/labring/FastGPT']
+        sameAs: ['https://github.com/labring/FastGPT', 'https://fastgpt.io', 'https://fastgpt.cn']
       },
       {
         '@type': 'WebSite',
         '@id': `${origin}/#website`,
         name: isZh ? 'FastGPT 文档' : 'FastGPT Documentation',
-        url: origin,
+        url: websiteUrl,
         inLanguage: lang,
         publisher: {
-          '@id': `${origin}/#organization`
+          '@id': `${mainSiteOrigin}/#organization`
         }
       }
     ]
