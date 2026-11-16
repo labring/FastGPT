@@ -638,13 +638,14 @@ export const useChatResume = ({
     resumeRequestVersion
   ]);
 
-  /** 等待当前正在执行的恢复流自然收尾。 */
-  const waitForResumeStreamSettle = useMemoizedFn(async () => {
-    await activeResumePromiseRef.current;
-  });
+  /** 获取点击停止瞬间正在执行的恢复请求控制器与收敛 Promise，避免切会话后误读新会话 ref。 */
+  const getActiveResumeStopTarget = useMemoizedFn(() => ({
+    controller: resumeControllerRef.current,
+    streamPromise: activeResumePromiseRef.current
+  }));
 
   return {
     recoverChatGeneratingConflict,
-    waitForResumeStreamSettle
+    getActiveResumeStopTarget
   };
 };

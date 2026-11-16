@@ -5,7 +5,7 @@
  */
 import z from 'zod';
 import { defineTool } from './type';
-import { STOPPED_TOOL_RESPONSE_TEXT } from '../../../../chat/stop';
+import { ensureSandboxAvailableWithSignal } from './utils';
 
 export const SandboxEditFileToolSchema = z.object({
   entries: z.array(
@@ -20,10 +20,7 @@ export const SandboxEditFileToolSchema = z.object({
 export const sandboxEditFileTool = defineTool({
   zodSchema: SandboxEditFileToolSchema,
   execute: async ({ sandboxInstance, params, signal }) => {
-    if (signal?.aborted) {
-      throw new Error(STOPPED_TOOL_RESPONSE_TEXT);
-    }
-    await sandboxInstance.ensureAvailable();
+    await ensureSandboxAvailableWithSignal({ sandboxInstance, signal });
     await sandboxInstance.provider.replaceContent(
       params.entries.map((entry) => ({
         path: sandboxInstance.resolveRuntimePath(entry.path, { allowAbsolutePath: true }),

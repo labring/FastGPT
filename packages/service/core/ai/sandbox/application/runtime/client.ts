@@ -149,15 +149,22 @@ export class SandboxClient {
     }
 
     return await this.prepareWorkDirectory()
-      .then(() =>
-        this.provider.execute(command, {
+      .then(() => {
+        if (signal?.aborted) {
+          return {
+            stdout: '',
+            stderr: 'Command execution aborted',
+            exitCode: -1
+          };
+        }
+        return this.provider.execute(command, {
           timeoutMs: timeout ? timeout * 1000 : undefined,
           ...(isAppSandboxSourceType(this.query.sourceType)
             ? { workingDirectory: this.runtimePaths.sessionWorkDirectory }
             : {}),
           ...(signal ? { signal } : {})
-        })
-      )
+        });
+      })
       .catch((err: unknown) => {
         if (signal?.aborted) {
           return {

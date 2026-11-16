@@ -11,6 +11,11 @@ import { useChatInputForm } from '@/components/core/chat/ChatContainer/ChatBox/h
 import { useChatGenerate } from '@/components/core/chat/ChatContainer/ChatBox/hooks/useChatGenerate';
 import { useChatResume } from '@/components/core/chat/ChatContainer/ChatBox/hooks/useChatResume';
 import { useChatRecordActions } from '@/components/core/chat/ChatContainer/ChatBox/hooks/useChatRecordActions';
+import {
+  createCapturedStopHandlers,
+  requestStopAndAbortClient
+} from '@/components/core/chat/ChatContainer/ChatBox/utils/stop';
+import { safeAbortController } from '@/components/core/chat/ChatContainer/ChatBox/utils/generate';
 import { getInteractiveByHistories } from '@/components/core/chat/ChatContainer/ChatBox/utils/interactive';
 import ChatInput from '@/components/core/chat/ChatContainer/ChatBox/Input/ChatInput';
 import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
@@ -101,6 +106,7 @@ describe('useChatGenerate.sendPrompt', () => {
   let root: Root;
   let input: ReturnType<typeof useChatInputForm>;
   let generate: ReturnType<typeof useChatGenerate>;
+  let resumeHook: ReturnType<typeof useChatResume>;
   let recordActions: ReturnType<typeof useChatRecordActions>;
   let records: ChatSiteItemType[];
   let setRecords: React.Dispatch<React.SetStateAction<ChatSiteItemType[]>>;
@@ -161,7 +167,7 @@ describe('useChatGenerate.sendPrompt', () => {
       finishChatGenerateStatus: mocks.finishStatus,
       onChatGeneratingConflict: resume ? setConflict : undefined
     });
-    const { recoverChatGeneratingConflict } = useChatResume({
+    resumeHook = useChatResume({
       enableAutoResume: resume,
       isReady: true,
       resumeTargetAiDataId: records.at(-1)?.dataId,
@@ -174,6 +180,7 @@ describe('useChatGenerate.sendPrompt', () => {
       scrollToBottom: mocks.scroll,
       finishChatGenerateStatus: mocks.finishStatus
     });
+    const { recoverChatGeneratingConflict } = resumeHook;
     useEffect(() => {
       if (!conflict) return;
       setConflict(undefined);
@@ -1133,6 +1140,64 @@ describe('useChatGenerate.sendPrompt', () => {
     );
     expect(records.at(-1)?.status).toBe(ChatStatusEnum.finish);
     expect(JSON.stringify(records.at(-1)?.value)).toContain('partial resumed text');
+  });
+
+  it('does not abort or settle switched generating chat B when chat A stop settles after switching', async () => {
+    const streamADeferred = Promise.withResolvers<void>();
+    let controllerB: AbortController | undefined;
+    mocks.start.mockImplementationOnce(
+      ({ controller }: { controller: AbortController }) =>
+        new Promise((resolve) => {
+          controller.signal.addEventListener(
+            'abort',
+            () => {
+              streamADeferred.resolve();
+              resolve({ responseText: '' });
+            },
+            { once: true }
+          );
+        })
+    );
+    mocks.resume.mockImplementationOnce(
+      ({ controller }: Parameters<typeof streamResumeFetch>[0]) => {
+        controllerB = controller;
+        return new Promise(() => {});
+      }
+    );
+
+    await render({ chatId: 'A' });
+    await edit('hello A');
+    await send({ text: 'hello A' });
+
+    const generateTarget = generate.getActiveGenerateStopTarget();
+    const resumeTarget = resumeHook.getActiveResumeStopTarget();
+    const { waitForStreamSettle, abortClientRequest } = createCapturedStopHandlers({
+      controllers: [...generateTarget.controllers, resumeTarget.controller],
+      streamPromises: [generateTarget.streamPromise, resumeTarget.streamPromise],
+      abortController: safeAbortController
+    });
+    const stopConfirmation = Promise.withResolvers<void>();
+    const stopPromise = requestStopAndAbortClient({
+      requestStop: () => stopConfirmation.promise,
+      waitForStreamSettle,
+      settleTimeoutMs: 1000,
+      abortClientRequest
+    });
+
+    // 停止确认尚未返回前切换到正在生成的会话 B（B 触发 Resume）。
+    await render({ chatId: 'B', resume: true });
+    await vi.waitFor(() => expect(controllerB).toBeDefined());
+
+    stopConfirmation.resolve();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1100);
+      await stopPromise;
+    });
+
+    expect(controllerB?.signal.aborted).toBe(false);
+    expect(mocks.finishStatus).not.toHaveBeenCalledWith(
+      expect.objectContaining({ targetChatId: 'B' })
+    );
   });
 
   it.each([{ chatId: 'B' }, { tmbId: 'other member' }])(

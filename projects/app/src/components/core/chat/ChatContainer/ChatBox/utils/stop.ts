@@ -1,11 +1,45 @@
 export const STOP_STREAM_SETTLE_TIMEOUT_MS = 4000;
 
+type StopTargetSnapshot = {
+  controllers: Array<AbortController | undefined>;
+  streamPromises: Array<Promise<void> | undefined>;
+};
+
 type RequestStopAndAbortClientParams = {
   requestStop: () => Promise<unknown>;
   abortClientRequest: () => void;
   /** 等待当前打开的 SSE 生成或恢复流在服务端落库并释放租约后自然收尾。 */
   waitForStreamSettle?: () => Promise<unknown>;
   settleTimeoutMs?: number;
+};
+
+/**
+ * 按点击停止瞬间捕获的 controller 与流 Promise 创建隔离收尾器。
+ *
+ * 切换会话后共享 ref 会被新会话的生成/恢复流覆盖；这里固定本次点击所属的流与 controller，
+ * 避免旧会话等待结束或超时后读取最新 ref，误杀切入会话的在途请求。
+ */
+export const createCapturedStopHandlers = ({
+  controllers,
+  streamPromises,
+  abortController
+}: StopTargetSnapshot & {
+  abortController: (controller: AbortController | undefined, reason: Error) => void;
+}) => {
+  const capturedControllers = controllers.filter(Boolean);
+  const capturedPromises = streamPromises.filter((promise): promise is Promise<void> =>
+    Boolean(promise)
+  );
+
+  return {
+    waitForStreamSettle: () => Promise.all(capturedPromises),
+    abortClientRequest: () => {
+      const reason = new Error('stop');
+      capturedControllers.forEach((controller) => {
+        abortController(controller, reason);
+      });
+    }
+  };
 };
 
 /**

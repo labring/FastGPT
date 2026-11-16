@@ -69,7 +69,8 @@ import {
 } from '../context/quickReplyContext';
 import type { ResolvedChatAuthTargetInput } from '@/web/core/chat/type';
 import { useChatAuthApiTarget } from '@/web/core/chat/utils';
-import { requestStopAndAbortClient } from './utils/stop';
+import { createCapturedStopHandlers, requestStopAndAbortClient } from './utils/stop';
+import { safeAbortController } from './utils/generate';
 import { getLastAiDataId } from './utils/resume';
 import ComplianceTip from '@/components/common/ComplianceTip/index';
 import { ChatInstanceActionsContext } from '../context/chatInstanceActionsContext';
@@ -389,7 +390,7 @@ const ChatBox = ({
 
   const {
     abortRequest,
-    waitForChatStreamSettle,
+    getActiveGenerateStopTarget,
     flushGeneratingMessages,
     generatingMessage,
     sendPrompt
@@ -480,7 +481,7 @@ const ChatBox = ({
     });
   });
 
-  const { recoverChatGeneratingConflict, waitForResumeStreamSettle } = useChatResume({
+  const { recoverChatGeneratingConflict, getActiveResumeStopTarget } = useChatResume({
     enableAutoResume: resolvedFeatures.autoResume,
     isReady,
     resumeTargetAiDataId,
@@ -495,15 +496,24 @@ const ChatBox = ({
     onChatGeneratingConflictRecovered
   });
   const requestStopChat = useMemoizedFn(async () => {
+    const targetChatId = chatId;
+    const targetChatAuthTarget = chatAuthTarget;
+    const generateTarget = getActiveGenerateStopTarget();
+    const resumeTarget = getActiveResumeStopTarget();
+    const { waitForStreamSettle, abortClientRequest } = createCapturedStopHandlers({
+      controllers: [...generateTarget.controllers, resumeTarget.controller],
+      streamPromises: [generateTarget.streamPromise, resumeTarget.streamPromise],
+      abortController: safeAbortController
+    });
+
     await requestStopAndAbortClient({
       requestStop: () =>
         postStopV2Chat({
-          ...chatAuthTarget,
-          chatId
+          ...targetChatAuthTarget,
+          chatId: targetChatId
         }),
-      waitForStreamSettle: () =>
-        Promise.all([waitForChatStreamSettle(), waitForResumeStreamSettle()]),
-      abortClientRequest: () => abortRequest('stop')
+      waitForStreamSettle,
+      abortClientRequest
     });
   });
 

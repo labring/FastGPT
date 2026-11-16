@@ -1,4 +1,54 @@
 import { SANDBOX_TOOL_MAX_LINES, SANDBOX_TOOL_MAX_BYTES } from '../../constants';
+import type { SandboxClient } from '../runtime/client';
+import { STOPPED_TOOL_RESPONSE_TEXT } from '../../../../chat/stop';
+
+/**
+ * 校验沙箱工具取消信号；若已触发停止则立即抛出统一中断文本，阻止发起后续副作用。
+ */
+export const throwIfSandboxToolAborted = (signal?: AbortSignal) => {
+  if (signal?.aborted) {
+    throw new Error(STOPPED_TOOL_RESPONSE_TEXT);
+  }
+};
+
+/**
+ * 等待沙箱连接恢复并响应取消信号。
+ *
+ * 只让当前工具等待提前脱身，不取消底层共享的 ensureAvailablePromise，并在返回后再次复核信号，
+ * 避免宽限期脱钩后迟到的连接恢复继续发起写入或会话创建等副作用。
+ */
+export const ensureSandboxAvailableWithSignal = async ({
+  sandboxInstance,
+  signal
+}: {
+  sandboxInstance: SandboxClient;
+  signal?: AbortSignal;
+}) => {
+  throwIfSandboxToolAborted(signal);
+
+  if (!signal) {
+    await sandboxInstance.ensureAvailable();
+    return;
+  }
+
+  let cleanupAbortListener: (() => void) | undefined;
+  const abortPromise = new Promise<never>((_, reject) => {
+    const onAbort = () => reject(new Error(STOPPED_TOOL_RESPONSE_TEXT));
+    signal.addEventListener('abort', onAbort, { once: true });
+    cleanupAbortListener = () => signal.removeEventListener('abort', onAbort);
+  });
+  const ensurePromise = sandboxInstance.ensureAvailable();
+  // 防止工具因取消提前脱身后，迟到的 ensureAvailable 拒绝演变为未捕获异常。
+  void ensurePromise.catch(() => {});
+
+  try {
+    await Promise.race([ensurePromise, abortPromise]);
+  } finally {
+    cleanupAbortListener?.();
+  }
+
+  throwIfSandboxToolAborted(signal);
+};
 
 export type SandboxToolOutputTruncation = {
   content: string;

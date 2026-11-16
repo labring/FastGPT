@@ -6,7 +6,7 @@
 import z from 'zod';
 import path from 'path';
 import { defineTool } from './type';
-import { STOPPED_TOOL_RESPONSE_TEXT } from '../../../../chat/stop';
+import { ensureSandboxAvailableWithSignal, throwIfSandboxToolAborted } from './utils';
 import {
   buildSandboxPreviewFileUrl,
   createSandboxPreviewSession,
@@ -23,9 +23,6 @@ export const sandboxGetFileUrlTool = defineTool({
     if (params.paths.length === 0) {
       return { response: '[]' };
     }
-    if (signal?.aborted) {
-      throw new Error(STOPPED_TOOL_RESPONSE_TEXT);
-    }
 
     const sandboxId = sandboxInstance.getSandboxId();
     const { sourceType, sourceId, userId, chatId } = sandboxInstance.getContext();
@@ -34,7 +31,7 @@ export const sandboxGetFileUrlTool = defineTool({
       return { response: 'Sandbox file preview context is not available.' };
     }
 
-    await sandboxInstance.ensureAvailable();
+    await ensureSandboxAvailableWithSignal({ sandboxInstance, signal });
 
     const files = params.paths.map((inputPath) => {
       const filePath = sandboxInstance.resolveRuntimePath(inputPath, {
@@ -54,6 +51,8 @@ export const sandboxGetFileUrlTool = defineTool({
         throw new Error(`Sandbox preview file not found: ${providerPath}`);
       }
     }
+
+    throwIfSandboxToolAborted(signal);
 
     const sessionId = await createSandboxPreviewSession({
       sandboxId,

@@ -663,10 +663,15 @@ export const useChatGenerate = ({
     safeAbortController(resumeControllerRef.current, abortReason);
   });
 
-  /** 等待当前正在执行的对话 SSE 流自然收尾。 */
-  const waitForChatStreamSettle = useMemoizedFn(async () => {
-    await activeStreamPromiseRef.current;
-  });
+  /** 获取点击停止瞬间正在执行的生成请求控制器与收敛 Promise，避免切会话后误读新会话 ref。 */
+  const getActiveGenerateStopTarget = useMemoizedFn(() => ({
+    controllers: [
+      chatControllerRef.current,
+      questionGuideControllerRef.current,
+      pluginControllerRef.current
+    ],
+    streamPromise: activeStreamPromiseRef.current
+  }));
 
   useEffect(() => {
     // 刷新不保证触发 React 卸载；先标记为离开，避免断流被当作发送失败而复活已清理的草稿。
@@ -1042,7 +1047,7 @@ export const useChatGenerate = ({
 
   return {
     abortRequest,
-    waitForChatStreamSettle,
+    getActiveGenerateStopTarget,
     flushGeneratingMessages: flushGeneratingMessageQueue,
     generatingMessage,
     sendPrompt
