@@ -120,6 +120,13 @@ export const runStorageAdapterContract = (provider: StorageIntegrationProvider) 
         expect(download).toMatchObject({ bucket: context.bucket, key });
         await expect(readBody(download.body)).resolves.toEqual(content);
 
+        const partial = await context.storage.downloadObject({
+          key,
+          range: { start: 4, end: 10 }
+        });
+        expect(partial).toMatchObject({ bucket: context.bucket, key });
+        await expect(readBody(partial.body)).resolves.toEqual(content.subarray(4, 11));
+
         const signedGet = await context.storage.generatePresignedGetUrl({ key });
         const signedGetResponse = await fetch(signedGet.url);
         expect(signedGetResponse.ok).toBe(true);

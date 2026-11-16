@@ -98,13 +98,14 @@ const getRenderedFields = (route: string): Set<string> => {
             providers.push(entry.initializer.text);
           ts.forEachChild(entry, collectProviders);
         };
-        const declaration = source.statements.find(
-          (statement) =>
-            ts.isVariableStatement(statement) &&
-            statement.declarationList.declarations.some(
-              (d) => d.name.getText(source) === 'providers'
-            )
-        );
+        let declaration: ts.VariableDeclaration | undefined;
+        const findProviders = (entry: ts.Node) => {
+          if (ts.isVariableDeclaration(entry) && entry.name.getText(source) === 'providers') {
+            declaration = entry;
+          }
+          ts.forEachChild(entry, findProviders);
+        };
+        findProviders(source);
         expect(declaration).toBeDefined();
         collectProviders(declaration!);
         for (const key of providers) add(`customDomain.${name.head.text}${key}`);

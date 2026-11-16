@@ -7,8 +7,14 @@ import TopBanner from '@/components/docs/TopBanner';
 import Script from 'next/script';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { getFastGPTDocsOriginForLocale } from '@/lib/fastgpt-home-url';
-import { i18n } from '@/lib/i18n';
+import {
+  getFastGPTDocsOriginForLocale,
+  getProductionDocsUrl,
+  getPublishedDocsLocales,
+  isPreviewDocsSite,
+  type FastGPTDocsLocale
+} from '@/lib/fastgpt-home-url';
+import { defaultHomePath, getLocalizedPath, i18n } from '@/lib/i18n';
 
 const zh_CN: Partial<Translations> = {
   search: '搜索',
@@ -44,10 +50,12 @@ const locales = [
   }
 ];
 
+/** Generate static route params restricted to locales published by the active site variant. */
 export function generateStaticParams() {
-  return i18n.languages.map((lang) => ({ lang }));
+  return getPublishedDocsLocales().map((lang) => ({ lang }));
 }
 
+/** Build root locale metadata including canonical home OpenGraph URL, preview indexing guard, and site verification tags. */
 export async function generateMetadata({
   params
 }: {
@@ -56,7 +64,37 @@ export async function generateMetadata({
   const { lang } = await params;
   if (!i18n.languages.includes(lang)) notFound();
 
-  const domain = getFastGPTDocsOriginForLocale(lang === 'en' ? 'en' : 'zh-CN');
+  const locale: FastGPTDocsLocale = lang === 'en' ? 'en' : 'zh-CN';
+  const domain = getFastGPTDocsOriginForLocale(locale);
+  const isPreview = isPreviewDocsSite();
+  const homeUrl = isPreview
+    ? `${domain}${getLocalizedPath(defaultHomePath, locale)}`
+    : getProductionDocsUrl(locale, defaultHomePath);
+
+  const verification = (() => {
+    const google = process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION?.trim() ?? '';
+    const bing = process.env.NEXT_PUBLIC_BING_SITE_VERIFICATION?.trim() ?? '';
+    const baidu = process.env.NEXT_PUBLIC_BAIDU_SITE_VERIFICATION?.trim() ?? '';
+    const other: Record<string, string> = {};
+
+    if (bing !== '') {
+      other['msvalidate.01'] = bing;
+    }
+    if (baidu !== '') {
+      other['baidu-site-verification'] = baidu;
+    }
+
+    const hasGoogle = google !== '';
+    const hasOther = Object.keys(other).length > 0;
+    if (!hasGoogle && !hasOther) {
+      return undefined;
+    }
+
+    return {
+      ...(hasGoogle ? { google } : {}),
+      ...(hasOther ? { other } : {})
+    };
+  })();
 
   const title =
     lang === 'zh-CN' ? 'FastGPT 文档 - 快速开始' : 'FastGPT Documentation - Getting Started';
@@ -79,7 +117,7 @@ export async function generateMetadata({
     openGraph: {
       type: 'website',
       locale: lang === 'zh-CN' ? 'zh_CN' : 'en_US',
-      url: domain,
+      url: homeUrl,
       title: lang === 'zh-CN' ? 'FastGPT 快速开始' : 'Getting Started with FastGPT',
       description:
         lang === 'zh-CN'
@@ -104,17 +142,23 @@ export async function generateMetadata({
           : 'Learn how to build AI agents with FastGPT. Explore guides to Datasets, visual workflows, RAG systems, and API integrations.',
       images: ['/og-image.png']
     },
-    robots: {
-      index: true,
-      follow: true,
-      googleBot: {
-        index: true,
-        follow: true,
-        'max-video-preview': -1,
-        'max-image-preview': 'large',
-        'max-snippet': -1
-      }
-    },
+    robots: isPreview
+      ? {
+          index: false,
+          follow: false
+        }
+      : {
+          index: true,
+          follow: true,
+          googleBot: {
+            index: true,
+            follow: true,
+            'max-video-preview': -1,
+            'max-image-preview': 'large',
+            'max-snippet': -1
+          }
+        },
+    ...(verification !== undefined ? { verification } : {}),
     icons: {
       icon: [
         { url: '/favicon/favicon.ico' },
@@ -127,6 +171,7 @@ export async function generateMetadata({
   };
 }
 
+/** Render the root HTML shell, analytics script, and Fumadocs provider for the active locale. */
 export default async function Layout({
   children,
   params

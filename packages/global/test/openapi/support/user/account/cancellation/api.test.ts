@@ -10,7 +10,7 @@ describe('account cancellation API contracts', () => {
     expect(
       CreateAccountCancellationVerificationBodySchema.parse({
         method: 'code',
-        payload: { captcha: 'A1B2C3' }
+        payload: { captcha: 'a'.repeat(64) }
       }).method
     ).toBe('code');
     expect(() =>

@@ -1,3 +1,4 @@
+import { Readable } from 'node:stream';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { NotFound } from '@aws-sdk/client-s3';
 import {
@@ -454,5 +455,40 @@ describe('MinioStorageAdapter.removeBucketLifecycle', () => {
         input: { Bucket: 'fastgpt-private' }
       })
     );
+  });
+});
+
+describe('MinioStorageAdapter.downloadObject', () => {
+  it('inherits byte range downloads and rejects invalid ranges before dispatch', async () => {
+    const adapter = createAdapter();
+    const body = Readable.from([Buffer.from('minio-slice')]);
+    const send = vi.fn().mockResolvedValue({ Body: body });
+    (adapter as any).client.send = send;
+
+    const result = await adapter.downloadObject({
+      key: 'dataset/team/file.zip',
+      range: { start: 0, end: 10 }
+    });
+
+    expect(result.body).toBe(body);
+    expect(send).toHaveBeenCalledWith(
+      expect.objectContaining({
+        input: {
+          Bucket: 'fastgpt-private',
+          Key: 'dataset/team/file.zip',
+          Range: 'bytes=0-10'
+        }
+      }),
+      { abortSignal: undefined }
+    );
+
+    send.mockClear();
+    await expect(
+      adapter.downloadObject({
+        key: 'dataset/team/file.zip',
+        range: { start: -1, end: 5 }
+      })
+    ).rejects.toThrow('Download range start must be a non-negative safe integer');
+    expect(send).not.toHaveBeenCalled();
   });
 });

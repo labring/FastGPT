@@ -7,12 +7,14 @@ import { DEFAULT_PRESIGNED_URL_EXPIRED_SECONDS } from '../constants';
 import {
   bindAbortSignalToReadable,
   encodeObjectKeyPath,
+  formatHttpByteRangeHeader,
   throwIfStorageAborted,
   throwIfStorageDownloadAborted
 } from '../utils';
 import {
   assertStorageObjectKey,
   assertStorageObjectKeys,
+  assertStorageDownloadRange,
   assertStorageObjectPrefix,
   assertRequiredStorageObjectPrefix,
   assertMultipartContentLength,
@@ -260,11 +262,18 @@ export class OssStorageAdapter implements IStorage {
   async downloadObject(
     params: Storage.DownloadObjectParams
   ): Promise<Storage.DownloadObjectResult> {
-    const { key, abortSignal } = params;
+    const { key, range, abortSignal } = params;
     assertStorageObjectKey(key);
+    assertStorageDownloadRange(range);
     throwIfStorageDownloadAborted(abortSignal);
 
-    const result = await this.client.getStream(key);
+    const result = range
+      ? await this.client.getStream(key, {
+          headers: {
+            Range: formatHttpByteRangeHeader(range)
+          }
+        })
+      : await this.client.getStream(key);
     const stream = result.stream as Readable;
     bindAbortSignalToReadable({ readable: stream, abortSignal });
 

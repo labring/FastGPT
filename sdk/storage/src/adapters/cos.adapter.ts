@@ -7,12 +7,14 @@ import { DEFAULT_PRESIGNED_URL_EXPIRED_SECONDS } from '../constants';
 import {
   bindAbortSignalToReadable,
   encodeObjectKeyPath,
+  formatHttpByteRangeHeader,
   throwIfStorageAborted,
   throwIfStorageDownloadAborted
 } from '../utils';
 import {
   assertStorageObjectKey,
   assertStorageObjectKeys,
+  assertStorageDownloadRange,
   assertStorageObjectPrefix,
   assertRequiredStorageObjectPrefix,
   assertMultipartContentLength,
@@ -350,6 +352,7 @@ export class CosStorageAdapter implements IStorage {
     params: Storage.DownloadObjectParams
   ): Promise<Storage.DownloadObjectResult> {
     assertStorageObjectKey(params.key);
+    assertStorageDownloadRange(params.range);
     throwIfStorageDownloadAborted(params.abortSignal);
 
     // COS returns the output stream before reporting a missing-object error.
@@ -376,6 +379,7 @@ export class CosStorageAdapter implements IStorage {
         Bucket: this.options.bucket,
         Region: this.options.region,
         Key: params.key,
+        ...(params.range ? { Range: formatHttpByteRangeHeader(params.range) } : {}),
         Output: passThrough
       },
       (err, _data) => {

@@ -2,6 +2,7 @@ import { useToast } from './useToast';
 import { useMutation } from '@tanstack/react-query';
 import type { UseMutationOptions } from '@tanstack/react-query';
 import { getErrText, ToastHandledError } from '@fastgpt/global/common/error/utils';
+import type { localeType } from '@fastgpt/global/common/i18n/type';
 import { useTranslation } from 'next-i18next';
 import { useRequest as ahooksUseRequest } from 'ahooks';
 
@@ -22,7 +23,7 @@ export const useRequest = <TData, TParams extends any[]>(
   } = {},
   plugin?: UseRequestFunProps<TData, TParams>[2]
 ) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { errorToast = 'Error', successToast, ...rest } = options || {};
   const { toast } = useToast();
 
@@ -35,7 +36,9 @@ export const useRequest = <TData, TParams extends any[]>(
         rest?.onError?.(err, params);
         if (err instanceof ToastHandledError) return;
         if (errorToast !== '') {
-          const errText = t(getErrText(err, errorToast || '') as any);
+          const errText = t(
+            getErrText(err, errorToast || '', i18n?.language as localeType | undefined) as any
+          );
           if (errText) {
             toast({
               title: errText,

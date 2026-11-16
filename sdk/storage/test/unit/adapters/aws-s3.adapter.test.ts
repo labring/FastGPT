@@ -92,6 +92,37 @@ describe('AwsS3StorageAdapter.downloadObject', () => {
     expect(result.body.errored).toBe(abortReason);
     expect(result.body.destroyed).toBe(true);
   });
+
+  it('forwards HTTP byte range header when range is provided and rejects invalid range', async () => {
+    const adapter = createAdapter();
+    const body = Readable.from([Buffer.from('cd')]);
+    const send = vi.fn().mockResolvedValue({ Body: body });
+    (adapter as any).client.send = send;
+
+    const result = await adapter.downloadObject({
+      key: 'dataset/team/file.txt',
+      range: { start: 2, end: 3 }
+    });
+
+    expect(result.body).toBe(body);
+    expect(send).toHaveBeenCalledWith(
+      expect.objectContaining({
+        input: {
+          Bucket: 'fastgpt-private',
+          Key: 'dataset/team/file.txt',
+          Range: 'bytes=2-3'
+        }
+      }),
+      { abortSignal: undefined }
+    );
+
+    await expect(
+      adapter.downloadObject({
+        key: 'dataset/team/file.txt',
+        range: { start: 5, end: 3 }
+      })
+    ).rejects.toThrow('Download range end must be a safe integer >= start');
+  });
 });
 
 describe('AwsS3StorageAdapter.multipartUpload', () => {

@@ -17,6 +17,7 @@ import {
   getAdminModerationPluginList,
   getAdminModerationPolicy,
   postAdminDeleteModerationPlugin,
+  postAdminSaveModerationConfig,
   postAdminUpdateModerationPolicy
 } from '@/web/core/plugin/admin/moderation/api';
 import {
@@ -30,6 +31,8 @@ import {
   type SystemModerationPolicyType
 } from '@fastgpt/global/core/plugin/moderation/type';
 import { useModerationPolicyDraftStore } from '@/web/core/plugin/admin/moderation/policyDraft';
+import { PluginErrEnum } from '@fastgpt/global/common/error/code/plugin';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 import PluginItemRow from './PluginItemRow';
 import EditPluginModal from './EditPluginModal';
 import ModerationTestCard from './ModerationTestCard';
@@ -43,12 +46,16 @@ export const ModerationPolicy = () => {
   const { t } = useSafeTranslation();
 
   const [policy, setPolicy] = useState<SystemModerationPolicyType>(DefaultSystemModerationPolicy);
+  const policyRef = useRef<SystemModerationPolicyType>(DefaultSystemModerationPolicy);
+  const draftRevisionRef = useRef(0);
   const [plugins, setPlugins] = useState<AdminModerationPluginItemType[]>([]);
   const [isListCollapsed, setIsListCollapsed] = useState(false);
   const hasInitializedCollapse = useRef(false);
   const marketplaceDraft = useRef(useModerationPolicyDraftStore.getState().draft);
 
   const [editingPlugin, setEditingPlugin] = useState<AdminModerationPluginItemType | null>(null);
+  const [activatingPluginId, setActivatingPluginId] = useState<string | null>(null);
+  const persistedPolicyRef = useRef<SystemModerationPolicyType | null>(null);
 
   const { isOpen: isImportOpen, onOpen: onOpenImport, onClose: onCloseImport } = useDisclosure();
   const [uninstallingLastPlugin, setUninstallingLastPlugin] = useState(false);
@@ -57,12 +64,31 @@ export const ModerationPolicy = () => {
       type: 'delete'
     });
 
+  /**
+   * 同步更新 policy 状态与最新草稿 ref，避免异步回调读取到过期闭包或覆盖请求期间的编辑。
+   */
+  const updatePolicy = (
+    updater:
+      | SystemModerationPolicyType
+      | ((prev: SystemModerationPolicyType) => SystemModerationPolicyType),
+    options?: { markDraftDirty?: boolean }
+  ) => {
+    if (options?.markDraftDirty !== false) {
+      draftRevisionRef.current += 1;
+    }
+    const next = typeof updater === 'function' ? updater(policyRef.current) : updater;
+    policyRef.current = next;
+    setPolicy(next);
+    return next;
+  };
+
   // 1. 获取全局策略与插件列表
   const { loading: loadingPolicy, runAsync: fetchPolicy } = useRequest(getAdminModerationPolicy, {
     onSuccess: (data) => {
       if (data) {
+        persistedPolicyRef.current = data;
         const restoredPolicy = marketplaceDraft.current ?? data;
-        setPolicy(restoredPolicy);
+        updatePolicy(restoredPolicy, { markDraftDirty: false });
         marketplaceDraft.current = undefined;
         useModerationPolicyDraftStore.getState().setDraft(undefined);
         // 标注 2 特殊状态规则：若当前有审核服务在生效，列表默认收起；若未选择，默认展开
@@ -109,19 +135,90 @@ export const ModerationPolicy = () => {
   );
 
   const handleSubmit = () => {
-    if (policy.enabled && !activePlugin) {
+    const currentPolicy = policyRef.current;
+    if (currentPolicy.enabled && !activePlugin) {
       toast({ status: 'error', title: t('admin:moderation.select_plugin_required') });
       return;
     }
-    void savePolicy(policy);
+    void savePolicy(currentPolicy);
   };
 
-  // 单选切换当前生效服务
-  const handleToggleActivePlugin = (pluginId: string) => {
-    setPolicy((prev) => ({
-      ...prev,
-      activePluginId: prev.activePluginId === pluginId ? undefined : pluginId
-    }));
+  /**
+   * 同步已启用插件到全局策略：
+   * 若用户已在页面打开“是否开启内容审核”但尚未点击右侧“保存”，
+   * 自动启用或手动点击启用时同步持久化最新草稿中的开关状态，避免刷新或离开页面后丢失开启状态，
+   * 同时避免异步请求返回后覆盖等待期间的新增编辑。
+   */
+  const syncActivePluginPolicy = async (activePluginId: string) => {
+    // 1. 从最新草稿 ref 合并本次确认生效的插件 ID，保留等待期间的其他字段修改
+    const nextPolicy = updatePolicy(
+      (prev) => ({
+        ...prev,
+        activePluginId
+      }),
+      { markDraftDirty: false }
+    );
+
+    // 2. 仅当最新草稿仍处于开启状态且尚未持久化开启时，提交策略持久化并防止响应覆盖更晚编辑
+    if (nextPolicy.enabled && !persistedPolicyRef.current?.enabled) {
+      const revisionAtSubmit = draftRevisionRef.current;
+      const updated = await postAdminUpdateModerationPolicy(nextPolicy);
+      persistedPolicyRef.current = updated ?? nextPolicy;
+      if (updated && draftRevisionRef.current === revisionAtSubmit) {
+        updatePolicy(updated, { markDraftDirty: false });
+      }
+      return;
+    }
+
+    if (persistedPolicyRef.current) {
+      persistedPolicyRef.current = {
+        ...persistedPolicyRef.current,
+        activePluginId
+      };
+    }
+  };
+
+  // 点击操作栏“启用”按钮切换到目标插件（已启用插件不可取消启用）
+  const handleActivatePlugin = async (plugin: AdminModerationPluginItemType) => {
+    if (
+      !plugin.hasConfiguredSecrets ||
+      policyRef.current.activePluginId === plugin.pluginId ||
+      activatingPluginId
+    ) {
+      return;
+    }
+
+    setActivatingPluginId(plugin.pluginId);
+    try {
+      const savedPlugin = await postAdminSaveModerationConfig({
+        pluginId: plugin.pluginId,
+        enabled: true
+      });
+      await syncActivePluginPolicy(savedPlugin?.pluginId ?? plugin.pluginId);
+      await fetchPlugins();
+    } catch (err: any) {
+      toast({
+        status: 'error',
+        title: err?.message || t('admin:moderation.save_error')
+      });
+    } finally {
+      setActivatingPluginId(null);
+    }
+  };
+
+  // 首个插件配置完成时后端会默认自动启用，前端同步更新生效服务并刷新列表
+  const handlePluginConfigSuccess = async (savedPlugin?: AdminModerationPluginItemType) => {
+    if (savedPlugin?.enabled && !policyRef.current.activePluginId) {
+      try {
+        await syncActivePluginPolicy(savedPlugin.pluginId);
+      } catch (err: any) {
+        toast({
+          status: 'error',
+          title: err?.message || t('admin:moderation.save_error')
+        });
+      }
+    }
+    await fetchPlugins();
   };
 
   // 执行删除插件请求
@@ -139,15 +236,15 @@ export const ModerationPolicy = () => {
         source: plugin.source
       });
       if (isLastPlugin) {
-        setPolicy((prev) => ({
+        updatePolicy((prev) => ({
           ...prev,
           enabled: false,
           activePluginId: undefined
         }));
         setIsListCollapsed(false);
         useModerationPolicyDraftStore.getState().setDraft(undefined);
-      } else if (policy.activePluginId === plugin.pluginId) {
-        setPolicy((prev) => ({ ...prev, activePluginId: undefined }));
+      } else if (policyRef.current.activePluginId === plugin.pluginId) {
+        updatePolicy((prev) => ({ ...prev, activePluginId: undefined }));
       }
       toast({
         status: 'success',
@@ -155,10 +252,12 @@ export const ModerationPolicy = () => {
       });
       await Promise.all([fetchPolicy(), fetchPlugins()]);
     } catch (err: any) {
+      const errText = getErrText(err);
       const errorTitle =
-        err?.message === 'Disable the moderation plugin before deleting it'
+        errText === PluginErrEnum.disableModerationBeforeDelete ||
+        errText === 'admin:moderation.disable_before_delete'
           ? t('admin:moderation.disable_before_delete')
-          : err?.message || t('admin:moderation.delete_plugin_error');
+          : errText || t('admin:moderation.delete_plugin_error');
       toast({
         status: 'error',
         title: errorTitle
@@ -194,7 +293,7 @@ export const ModerationPolicy = () => {
 
   /** Preserve all unsaved fields while visiting the marketplace to install a plugin. */
   const handleAddFromMarket = () => {
-    useModerationPolicyDraftStore.getState().setDraft(policy);
+    useModerationPolicyDraftStore.getState().setDraft(policyRef.current);
     void router.push('/config/tool/marketplace?type=moderation');
   };
 
@@ -235,7 +334,7 @@ export const ModerationPolicy = () => {
               size={'md'}
               isChecked={policy.enabled}
               onChange={(e) => {
-                setPolicy((prev) => ({
+                updatePolicy((prev) => ({
                   ...prev,
                   enabled: e.target.checked
                 }));
@@ -341,7 +440,7 @@ export const ModerationPolicy = () => {
                         bg={'white'}
                         overflow={'hidden'}
                       >
-                        {/* 表头 (5列) */}
+                        {/* 表头 (4列) */}
                         <Flex
                           h={'40px'}
                           bg={'myGray.50'}
@@ -352,7 +451,6 @@ export const ModerationPolicy = () => {
                           fontWeight={'medium'}
                           color={'myGray.600'}
                         >
-                          <Box w={'48px'} flexShrink={0} />
                           <Box w={'180px'} flexShrink={0} px={6}>
                             {t('admin:moderation.table_plugin_name')}
                           </Box>
@@ -362,7 +460,7 @@ export const ModerationPolicy = () => {
                           <Box w={'100px'} flexShrink={0} px={6}>
                             {t('admin:moderation.table_status')}
                           </Box>
-                          <Box w={'100px'} flexShrink={0} px={6}>
+                          <Box w={'180px'} flexShrink={0} px={6} textAlign={'right'}>
                             {t('admin:moderation.table_actions')}
                           </Box>
                         </Flex>
@@ -376,7 +474,8 @@ export const ModerationPolicy = () => {
                               isActive={policy.activePluginId === plugin.pluginId}
                               isModerationEnabled={policy.enabled}
                               isLastPlugin={plugins.length <= 1}
-                              onSelect={() => handleToggleActivePlugin(plugin.pluginId)}
+                              isActivating={activatingPluginId === plugin.pluginId}
+                              onActivate={() => void handleActivatePlugin(plugin)}
                               onEdit={() => setEditingPlugin(plugin)}
                               onDelete={() => handleDeletePlugin(plugin)}
                             />
@@ -440,7 +539,7 @@ export const ModerationPolicy = () => {
                     size={'md'}
                     isChecked={policy.hooks.userInput}
                     onChange={(e) => {
-                      setPolicy((prev) => ({
+                      updatePolicy((prev) => ({
                         ...prev,
                         hooks: { ...prev.hooks, userInput: e.target.checked }
                       }));
@@ -468,7 +567,7 @@ export const ModerationPolicy = () => {
                     size={'md'}
                     isChecked={policy.hooks.modelInput}
                     onChange={(e) => {
-                      setPolicy((prev) => ({
+                      updatePolicy((prev) => ({
                         ...prev,
                         hooks: { ...prev.hooks, modelInput: e.target.checked }
                       }));
@@ -496,7 +595,7 @@ export const ModerationPolicy = () => {
                     size={'md'}
                     isChecked={policy.hooks.finalOutput}
                     onChange={(e) => {
-                      setPolicy((prev) => ({
+                      updatePolicy((prev) => ({
                         ...prev,
                         hooks: { ...prev.hooks, finalOutput: e.target.checked }
                       }));
@@ -527,7 +626,7 @@ export const ModerationPolicy = () => {
                       variant={'whiteOutline'}
                       value={policy.strategy.streamInterval}
                       onChange={(val) => {
-                        setPolicy((prev) => ({
+                        updatePolicy((prev) => ({
                           ...prev,
                           strategy: {
                             ...prev.strategy,
@@ -567,7 +666,7 @@ export const ModerationPolicy = () => {
                       }
                     ]}
                     onChange={(val) => {
-                      setPolicy((prev) => ({
+                      updatePolicy((prev) => ({
                         ...prev,
                         strategy: {
                           ...prev.strategy,
@@ -601,7 +700,7 @@ export const ModerationPolicy = () => {
                       }
                     ]}
                     onChange={(val) => {
-                      setPolicy((prev) => ({
+                      updatePolicy((prev) => ({
                         ...prev,
                         strategy: {
                           ...prev.strategy,
@@ -633,8 +732,8 @@ export const ModerationPolicy = () => {
         <EditPluginModal
           plugin={editingPlugin}
           onClose={() => setEditingPlugin(null)}
-          onSuccess={() => {
-            void fetchPlugins();
+          onSuccess={(savedPlugin) => {
+            void handlePluginConfigSuccess(savedPlugin);
           }}
         />
       )}
