@@ -95,12 +95,14 @@ async function createSyncedServices() {
     includeReceipt: true,
     normalizeOnSave: false,
     overwriteAfterReceipt: false,
+    detailReadCount: 0,
     saveCount: 0
   };
   const fetchFn: CliFetchFn = vi.fn(async (input, init) => {
     const request = new Request(input, init);
     const path = new URL(request.url).pathname;
     if (path === '/api/core/app/detail') {
+      remote.detailReadCount += 1;
       return jsonResponse({
         _id: APP_ID,
         name: 'Remote App',
@@ -564,17 +566,11 @@ describe('WorkflowSyncService', () => {
     }
   );
 
-  it.each([
-    { action: 'push' as const, includeReceipt: true },
-    { action: 'publish' as const, includeReceipt: true },
-    { action: 'push' as const, includeReceipt: false },
-    { action: 'publish' as const, includeReceipt: false }
-  ])(
-    'uses normalized server content for consecutive $action calls (receipt=$includeReceipt)',
-    async ({ action, includeReceipt }) => {
+  it.each(['push', 'publish'] as const)(
+    'uses normalized save receipts for consecutive %s calls',
+    async (action) => {
       const { dir, local, sync, client, remote } = await createSyncedServices();
       remote.normalizeOnSave = true;
-      remote.includeReceipt = includeReceipt;
       await local.configSet({
         dir,
         locale: 'en',
@@ -605,9 +601,81 @@ describe('WorkflowSyncService', () => {
   );
 
   it.each(['push', 'publish'] as const)(
-    'does not absorb another user save into the baseline after %s returns its receipt',
+    'supports consecutive %s calls without a receipt when saved content is unchanged',
     async (action) => {
       const { dir, local, sync, client, remote } = await createSyncedServices();
+      remote.includeReceipt = false;
+      const readsBeforeSave = remote.detailReadCount;
+      const saved = await sync[action]({ client, dir });
+
+      expect(saved).toMatchObject({
+        changed: true,
+        warnings: [expect.stringContaining('did not return a saved workflow snapshot')]
+      });
+      expect(remote.detailReadCount).toBe(readsBeforeSave + 1);
+
+      await local.configSet({
+        dir,
+        locale: 'en',
+        path: 'welcomeText',
+        valueInput: { value: 'Next local edit' }
+      });
+      await expect(sync[action]({ client, dir })).resolves.toMatchObject({ changed: true });
+      expect(remote.saveCount).toBe(2);
+      expect(remote.detailReadCount).toBe(readsBeforeSave + 2);
+    }
+  );
+
+  it.each(['push', 'publish'] as const)(
+    'requires an explicit pull after %s is normalized without a save receipt',
+    async (action) => {
+      const { dir, local, sync, client, remote } = await createSyncedServices();
+      remote.includeReceipt = false;
+      remote.normalizeOnSave = true;
+      await local.configSet({
+        dir,
+        locale: 'en',
+        path: 'questionGuide',
+        valueInput: { valueJson: '{"open":true}' }
+      });
+      const saved = await sync[action]({ client, dir });
+      expect(saved.warnings).toEqual([
+        expect.stringContaining('did not return a saved workflow snapshot')
+      ]);
+      expect(remote.workflow.chatConfig?.questionGuide?.modelId).toBe('system-llm');
+
+      const statePath = join(dir, WORKFLOW_SYNC_FILE_NAME);
+      const savedStateText = await readFile(statePath, 'utf8');
+      const savedState = JSON.parse(savedStateText) as WorkflowSyncState;
+      expect(savedState.lastRemoteChecksum).not.toBe(
+        await getWorkflowChecksum(decompileStoreWorkflow({ workflow: remote.workflow }))
+      );
+      await expect(sync[action]({ client, dir })).rejects.toBeInstanceOf(CliArgumentError);
+      expect(remote.saveCount).toBe(1);
+      expect(await readFile(statePath, 'utf8')).toBe(savedStateText);
+
+      await sync.pull({ client, dir, locale: 'en' });
+      await local.configSet({
+        dir,
+        locale: 'en',
+        path: 'welcomeText',
+        valueInput: { value: 'Local edit after reviewing normalized content' }
+      });
+      await expect(sync[action]({ client, dir })).resolves.toMatchObject({ changed: true });
+      expect(remote.saveCount).toBe(2);
+    }
+  );
+
+  it.each([
+    { action: 'push' as const, includeReceipt: true },
+    { action: 'publish' as const, includeReceipt: true },
+    { action: 'push' as const, includeReceipt: false },
+    { action: 'publish' as const, includeReceipt: false }
+  ])(
+    'does not absorb another user save after $action (receipt=$includeReceipt)',
+    async ({ action, includeReceipt }) => {
+      const { dir, local, sync, client, remote } = await createSyncedServices();
+      remote.includeReceipt = includeReceipt;
       remote.overwriteAfterReceipt = true;
       await sync[action]({ client, dir });
       const savedState = JSON.parse(
@@ -625,6 +693,7 @@ describe('WorkflowSyncService', () => {
       });
       await expect(sync[action]({ client, dir })).rejects.toBeInstanceOf(CliArgumentError);
       expect(remote.saveCount).toBe(1);
+      expect(remote.workflow.chatConfig?.welcomeText).toBe('Concurrent edit');
     }
   );
 

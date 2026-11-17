@@ -55,6 +55,8 @@
 
 ### 3.3 并发保护
 - `workflow pull` 在工作区根目录记录远端快照信息（如 `appId`、`pulledAt`、`checksum`）；`workflow push` 前先比对远端是否有其他人更新（`updateTime` 或远端节点 checksum），若远端已变更且未传 `--force` / `--yes`，阻断覆盖并提示先 `diff` / `pull`。
+- `workflow push` / `publish` 使用 `returnWorkflow` 返回的本次保存快照更新远端内容基线，禁止回读最新草稿并将其当作本次保存回执，以免吸收其他成员的并发保存。
+- 旧服务端不支持保存回执时，仅以本次提交内容的 checksum 建立保守基线，并返回兼容性警告。若服务端归一化改变了内容，后续写入会触发冲突保护，需要先 `diff` / `pull` 明确接收远端内容后再继续；客户端不自动采纳来源不确定的远端状态。
 
 ### 3.4 目录落点
 - `src/domain/workflow/workflow-sync-service.ts`

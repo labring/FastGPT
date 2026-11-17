@@ -551,24 +551,32 @@ export function createWorkflowSyncService(deps: WorkflowSyncServiceDeps): Workfl
     }
   }
 
-  /** 优先使用本次保存回执建立基线；旧服务端未提供回执时，回读其已归一化的草稿。 */
-  async function getSavedRemoteChecksum({
-    client,
-    appId,
-    response
+  /** 优先使用本次保存回执；无回执时仅记录提交内容，避免将其他成员的并发保存纳入基线。 */
+  async function resolveSavedRemoteBaseline({
+    response,
+    submittedChecksum
   }: {
-    client: FastGptHttpClient;
-    appId: string;
     response: PublishAppResponseType;
-  }): Promise<string> {
+    submittedChecksum: string;
+  }): Promise<{ checksum: string; warnings: string[] }> {
     const saved = PublishAppResponseSchema.parse(response ?? undefined);
-    const workflow = saved?.workflow ?? (await fetchAppDetailOrThrow(client, appId));
-    return getWorkflowChecksum(
-      decompileStoreWorkflow({
-        workflow,
-        app: {}
-      })
-    );
+    if (!saved) {
+      return {
+        checksum: submittedChecksum,
+        warnings: [
+          'The server did not return a saved workflow snapshot. The sync baseline uses submitted content; if the server normalized it, inspect with "fastgpt workflow diff" and run "fastgpt workflow pull" before the next write.'
+        ]
+      };
+    }
+    return {
+      checksum: await getWorkflowChecksum(
+        decompileStoreWorkflow({
+          workflow: saved.workflow,
+          app: {}
+        })
+      ),
+      warnings: []
+    };
   }
 
   async function resolveWorkflowForExecution({
@@ -769,7 +777,10 @@ export function createWorkflowSyncService(deps: WorkflowSyncServiceDeps): Workfl
             returnWorkflow: true
           }
         });
-        const savedRemoteChecksum = await getSavedRemoteChecksum({ client, appId, response });
+        const { checksum: savedRemoteChecksum, warnings } = await resolveSavedRemoteBaseline({
+          response,
+          submittedChecksum: localContentChecksum
+        });
 
         await writeWorkflowSyncState({
           fileIo,
@@ -793,7 +804,8 @@ export function createWorkflowSyncService(deps: WorkflowSyncServiceDeps): Workfl
             autoSave: true,
             nodeCount: compiled.nodes.length,
             edgeCount: compiled.edges.length
-          }
+          },
+          warnings
         });
       }),
 
@@ -852,7 +864,10 @@ export function createWorkflowSyncService(deps: WorkflowSyncServiceDeps): Workfl
             returnWorkflow: true
           }
         });
-        const savedRemoteChecksum = await getSavedRemoteChecksum({ client, appId, response });
+        const { checksum: savedRemoteChecksum, warnings } = await resolveSavedRemoteBaseline({
+          response,
+          submittedChecksum: localContentChecksum
+        });
 
         await writeWorkflowSyncState({
           fileIo,
@@ -877,7 +892,8 @@ export function createWorkflowSyncService(deps: WorkflowSyncServiceDeps): Workfl
             versionName: resolvedVersionName,
             nodeCount: compiled.nodes.length,
             edgeCount: compiled.edges.length
-          }
+          },
+          warnings
         });
       }),
 
