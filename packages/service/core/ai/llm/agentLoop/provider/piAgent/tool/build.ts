@@ -9,6 +9,17 @@ import type {
   ChatCompletionToolMessageContentPart
 } from '@fastgpt/global/core/ai/llm/type';
 import { getErrText } from '@fastgpt/global/common/error/utils';
+import {
+  checkToolResultModeration,
+  isToolResultModerated,
+  markToolResultModerated,
+  sanitizeModeratedToolNodeResponse
+} from '../../../../../../plugin/moderation/modelInput';
+import { checkToolParamsModeration } from '../../../../../../plugin/moderation/output';
+import {
+  isModerationBlockErrorMessage,
+  MODERATION_BLOCKED_REPLACE_TEXT
+} from '@fastgpt/global/core/plugin/moderation/constants';
 import { createAskUserAgentTool } from '../../../domain/systemTool/ask';
 import {
   applyPlanUpdate,
@@ -83,7 +94,8 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
   onToolStop,
   getMessages,
   onToolCall,
-  onToolResult
+  onToolResult,
+  isToolCallParamsAllowed
 }: {
   runtime: AgentLoopRuntime<TChildrenResponse>;
   getActivePlan: () => AgentPlanType | undefined;
@@ -101,8 +113,20 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
     continuationMessage?: string;
     content?: string | ChatCompletionToolMessageContentPart[];
   }) => void;
+  isToolCallParamsAllowed?: (call: ChatCompletionMessageToolCall) => Promise<boolean>;
 }): Promise<AgentTool[]> => {
   const tools: AgentTool[] = [];
+
+  const checkParamsAllowed = async (call: ChatCompletionMessageToolCall): Promise<boolean> => {
+    if (isToolCallParamsAllowed) {
+      return isToolCallParamsAllowed(call);
+    }
+    const paramCheck = await checkToolParamsModeration({
+      toolCalls: [call],
+      context: { teamId: runtime.teamId }
+    });
+    return paramCheck.isPass;
+  };
 
   // 与 loadRequestMessages 对齐：模型不支持视觉时，工具图片 part 降级为占位文本。
   // 显式转布尔，避免 useVision 缺省时被转换器默认值当成 true。
@@ -128,6 +152,40 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
       continuationMessage?: string;
     }>;
   }) => {
+    // 工具参数违规时不派发原始敏感参数、不执行底层工具，直接向 Agent Loop 回填统一审核结果
+    const isParamsAllowed = await checkParamsAllowed(call);
+    if (!isParamsAllowed) {
+      const maskedCall: ChatCompletionMessageToolCall = {
+        ...call,
+        function: {
+          ...call.function,
+          arguments: '{}'
+        }
+      };
+      onToolCall(maskedCall);
+      runtime.emitEvent?.({
+        type: 'tool_run_end',
+        call: maskedCall,
+        response: MODERATION_BLOCKED_REPLACE_TEXT,
+        assistantMessages: [],
+        usages: [],
+        seconds: 0
+      });
+      onToolResult({
+        call: maskedCall,
+        response: MODERATION_BLOCKED_REPLACE_TEXT,
+        assistantMessages: []
+      });
+      return {
+        response: MODERATION_BLOCKED_REPLACE_TEXT,
+        assistantMessages: [],
+        usages: [],
+        content: undefined,
+        interactive: undefined,
+        stop: false
+      };
+    }
+
     const startedAt = Date.now();
     onToolCall(call);
     runtime.emitEvent?.({ type: 'tool_run_start', call });
@@ -136,10 +194,39 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
       try {
         return await execute();
       } catch (error) {
-        const errorMessage = `Tool error: ${getErrText(error)}`;
+        const errText = getErrText(error);
+        if (isModerationBlockErrorMessage(errText)) {
+          return {
+            response: MODERATION_BLOCKED_REPLACE_TEXT,
+            assistantMessages: [],
+            usages: []
+          };
+        }
+        const errorMessage = `Tool error: ${errText}`;
         return { response: errorMessage, assistantMessages: [], usages: [], errorMessage };
       }
     })();
+
+    if (!isToolResultModerated(result)) {
+      const originalResponse = result.response;
+      const moderatedResponse = originalResponse
+        ? await checkToolResultModeration({
+            response: originalResponse,
+            context: { teamId: runtime.teamId }
+          })
+        : originalResponse;
+      const hitModeration =
+        moderatedResponse !== originalResponse ||
+        isModerationBlockErrorMessage(result.errorMessage);
+      if (hitModeration) {
+        result.response = MODERATION_BLOCKED_REPLACE_TEXT;
+        result.errorMessage = undefined;
+        result.assistantMessages = [];
+        result.assistantResponses = undefined;
+        result.metadata = sanitizeModeratedToolNodeResponse(result.metadata);
+      }
+      markToolResultModerated(result);
+    }
     const normalizedResponse = normalizeToolResponseContent(result.response);
     const assistantMessages = result.assistantMessages ?? [];
     const usages = normalizeAgentLoopUsages(result.usages);
@@ -220,7 +307,22 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
         parameters: toPiToolParameters(planTool.function.parameters),
         execute: async (callId: string, args: unknown) => {
           const toolArgs = normalizeToolArgs(args);
-          const call = createToolCall({ id: callId, name: planTool.function.name, args: toolArgs });
+          const call = createToolCall({
+            id: callId,
+            name: planTool.function.name,
+            args: toolArgs
+          });
+          const isAllowed = await checkParamsAllowed(call);
+          if (!isAllowed) {
+            onToolResult({
+              call: createToolCall({ id: callId, name: planTool.function.name, args: {} }),
+              response: MODERATION_BLOCKED_REPLACE_TEXT
+            });
+            return {
+              content: [{ type: 'text' as const, text: MODERATION_BLOCKED_REPLACE_TEXT }],
+              details: {}
+            };
+          }
           const params = stringifyJson(toolArgs);
           const isSetPlan = planTool.function.name === setPlanToolName;
           runtime.emitEvent?.({
@@ -285,6 +387,18 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
       parameters: toPiToolParameters(askTool.function.parameters),
       execute: async (callId: string, args: unknown) => {
         const toolArgs = normalizeToolArgs(args);
+        const rawCall = createToolCall({ id: callId, name: askTool.function.name, args: toolArgs });
+        const isAllowed = await checkParamsAllowed(rawCall);
+        if (!isAllowed) {
+          onToolResult({
+            call: createToolCall({ id: callId, name: askTool.function.name, args: {} }),
+            response: MODERATION_BLOCKED_REPLACE_TEXT
+          });
+          return {
+            content: [{ type: 'text' as const, text: MODERATION_BLOCKED_REPLACE_TEXT }],
+            details: {}
+          };
+        }
         const params = stringifyJson(toolArgs);
         const parsed = AgentAskPayloadSchema.safeParse(toolArgs);
         if (!parsed.success) {
