@@ -1,7 +1,7 @@
-import { Box, IconButton } from '@chakra-ui/react';
+import { IconButton } from '@chakra-ui/react';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
-import { useRouter } from 'next/router';
 
 /** 在普通尺寸和全屏尺寸之间切换。 */
 const FullscreenButton = ({
@@ -12,9 +12,7 @@ const FullscreenButton = ({
   onClick: () => void;
 }) => {
   const { t } = useTranslation();
-  const { basePath } = useRouter();
   const label = isFullscreen ? t('common:exit_fullscreen') : t('common:enter_fullscreen');
-  const icon = isFullscreen ? 'icon-exit-fullscreen' : 'icon-fullscreen';
 
   return (
     <MyTooltip label={label}>
@@ -27,19 +25,15 @@ const FullscreenButton = ({
         minH={'30px'}
         variant={'ghost'}
         bg={'transparent'}
-        color={'#111824'}
+        color={'myGray.900'}
         borderRadius={'8px'}
         _hover={{ bg: 'myGray.05', color: 'primary.600' }}
         onClick={onClick}
         icon={
-          <Box
+          <MyIcon
+            name={isFullscreen ? 'common/exitFullscreen' : 'fullScreen'}
             w={'16px'}
             h={'16px'}
-            bg={'currentColor'}
-            sx={{
-              mask: `url("${basePath}/${icon}.svg") center / contain no-repeat`,
-              WebkitMask: `url("${basePath}/${icon}.svg") center / contain no-repeat`
-            }}
           />
         }
       />

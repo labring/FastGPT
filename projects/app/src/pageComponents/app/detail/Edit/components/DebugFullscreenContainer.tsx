@@ -12,10 +12,11 @@ const DebugFullscreenContainer = ({
   children: React.ReactNode;
 }) => {
   const { t } = useTranslation();
-  const { isFullscreen, isClosing, prefersReducedMotion, animation, onAnimationEnd } = fullscreen;
+  const { isFullscreen, isClosing, prefersReducedMotion, animation, onAnimationEnd, close } =
+    fullscreen;
 
   return (
-    <Box h={'full'} w={'full'} sx={{ '& > div': { display: 'contents' } }}>
+    <Box h={'full'} w={'full'} sx={{ '& > div:not([data-focus-guard])': { display: 'contents' } }}>
       <Portal>
         <Box
           position={'fixed'}
@@ -25,6 +26,7 @@ const DebugFullscreenContainer = ({
           opacity={isFullscreen && !isClosing ? 1 : 0}
           pointerEvents={isFullscreen && !isClosing ? 'auto' : 'none'}
           transition={`opacity ${prefersReducedMotion ? '0ms' : '200ms'} ease`}
+          onClick={close}
         />
       </Portal>
       <FocusLock isDisabled={!isFullscreen} autoFocus={false}>

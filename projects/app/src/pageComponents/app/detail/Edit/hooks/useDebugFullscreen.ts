@@ -32,6 +32,7 @@ export const useDebugFullscreen = () => {
     isFullscreen,
     isClosing,
     prefersReducedMotion,
+    close,
     animation:
       isFullscreen && !prefersReducedMotion
         ? `${isClosing ? exit : enter} 200ms ease both`

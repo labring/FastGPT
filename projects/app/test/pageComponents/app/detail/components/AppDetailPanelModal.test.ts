@@ -190,4 +190,30 @@ describe('调试侧栏 Escape', () => {
       document.querySelector('[data-pointer-events="none"]')?.getAttribute('data-opacity')
     ).toBe('0');
   });
+
+  it('全屏遮罩可退出全屏而不关闭侧栏', () => {
+    act(() =>
+      root.render(
+        React.createElement(
+          AppDetailPanelModal,
+          {
+            isOpen: true,
+            onClose: close,
+            onEscape: exitFullscreen,
+            maskProps: { onClick: exitFullscreen },
+            width: '400px',
+            height: '100vh',
+            header: '调试'
+          },
+          '聊天'
+        )
+      )
+    );
+    const mask = document.querySelector('[data-pointer-events="auto"]');
+    act(() => {
+      mask?.dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true }));
+    });
+    expect(exitFullscreen).toHaveBeenCalledTimes(1);
+    expect(close).not.toHaveBeenCalled();
+  });
 });

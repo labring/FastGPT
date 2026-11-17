@@ -11,12 +11,27 @@ vi.mock('@chakra-ui/react', async () => {
   const Container = ({
     children,
     onAnimationEnd,
-    role
+    onClick,
+    role,
+    sx
   }: {
     children?: React.ReactNode;
     onAnimationEnd?: React.AnimationEventHandler;
+    onClick?: React.MouseEventHandler;
     role?: string;
-  }) => createElement('div', { onAnimationEnd, role }, children);
+    sx?: Record<string, unknown>;
+  }) =>
+    createElement(
+      'div',
+      {
+        onAnimationEnd,
+        onClick,
+        role,
+        'data-mask': onClick ? 'true' : undefined,
+        'data-focus-guard-rule': sx?.['& > div:not([data-focus-guard])'] ? 'true' : undefined
+      },
+      children
+    );
   return {
     Box: Container,
     Flex: Container,
@@ -43,11 +58,14 @@ describe('DebugFullscreenContainer', () => {
       );
     };
     act(() => root.render(React.createElement(Preview)));
+    expect(document.querySelector('[data-focus-guard-rule="true"]')).not.toBeNull();
     const input = document.querySelector('input')!;
     const button = document.querySelector('button')!;
     act(() => button.click());
     expect(document.querySelector('[role="dialog"]')?.contains(input)).toBe(true);
-    act(() => button.click());
+    const mask = document.querySelector('[data-mask="true"]');
+    expect(mask).toBeDefined();
+    act(() => mask?.dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true })));
     expect(document.querySelector('[role="dialog"]')).not.toBeNull();
     act(() =>
       document
