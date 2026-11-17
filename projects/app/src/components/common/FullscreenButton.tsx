@@ -1,9 +1,9 @@
-import { Box, IconButton, Image } from '@chakra-ui/react';
+import { Box, IconButton } from '@chakra-ui/react';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
 import { useRouter } from 'next/router';
 
-/** 在普通尺寸和全屏尺寸之间切换，并保留设计稿的悬停图标。 */
+/** 在普通尺寸和全屏尺寸之间切换。 */
 const FullscreenButton = ({
   isFullscreen,
   onClick
@@ -27,29 +27,20 @@ const FullscreenButton = ({
         minH={'30px'}
         variant={'ghost'}
         bg={'transparent'}
+        color={'#111824'}
         borderRadius={'8px'}
-        _hover={{
-          bg: 'myGray.05',
-          '.fullscreen-default': { display: 'none' },
-          '.fullscreen-hover': { display: 'block' }
-        }}
+        _hover={{ bg: 'myGray.05', color: 'primary.600' }}
         onClick={onClick}
         icon={
           <Box
-            w={'20px'}
-            h={'20px'}
-            display={'flex'}
-            alignItems={'center'}
-            justifyContent={'center'}
-          >
-            <Image className={'fullscreen-default'} src={`${basePath}/${icon}.svg`} alt={''} />
-            <Image
-              className={'fullscreen-hover'}
-              src={`${basePath}/${icon}-hover.svg`}
-              alt={''}
-              display={'none'}
-            />
-          </Box>
+            w={'16px'}
+            h={'16px'}
+            bg={'currentColor'}
+            sx={{
+              mask: `url("${basePath}/${icon}.svg") center / contain no-repeat`,
+              WebkitMask: `url("${basePath}/${icon}.svg") center / contain no-repeat`
+            }}
+          />
         }
       />
     </MyTooltip>
