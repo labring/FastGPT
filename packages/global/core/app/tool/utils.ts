@@ -3,6 +3,7 @@ import { NodeInputKeyEnum } from '../../workflow/constants';
 import { FlowNodeTypeEnum } from '../../workflow/node/constant';
 import type { NodeToolConfigType, StoreNodeItemType } from '../../workflow/type/node';
 import type { SelectedToolItemType } from '../formEdit/type';
+import { hashStr } from '../../../common/string/tools';
 
 /**
   Tool id rule:
@@ -306,4 +307,19 @@ export const mergeToolSetChildDescriptions = ({
         }
       : {})
   } as NodeToolConfigType;
+};
+
+/** 内联 MCP/HTTP 子工具使用远端稳定标识生成模型 function name。 */
+const getInlineToolSetChildIdentity = (
+  tool: { name: string } | { method: string; path: string }
+) => ('method' in tool ? `${tool.method.toUpperCase()}:${tool.path}` : `mcp:${tool.name}`);
+
+export const getInlineToolSetChildNodeId = ({
+  toolSetNodeId,
+  tool
+}: {
+  toolSetNodeId: string;
+  tool: { name: string } | { method: string; path: string };
+}) => {
+  return `t${hashStr(`${toolSetNodeId}:${getInlineToolSetChildIdentity(tool)}`).slice(0, 32)}`;
 };

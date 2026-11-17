@@ -2,7 +2,6 @@ import type { NextConfig } from 'next';
 import path from 'path';
 
 import { webEnv } from '@fastgpt/web/env';
-import { appEnv } from './src/env';
 
 const securityHeaders = [
   {
@@ -38,11 +37,6 @@ const optimizedPackageImports = [
 const nextConfig: NextConfig = {
   agentRules: false,
   basePath: webEnv.NEXT_PUBLIC_BASE_URL || undefined,
-  env: {
-    SYSTEM_NAME: appEnv.SYSTEM_NAME,
-    SYSTEM_DESCRIPTION: appEnv.SYSTEM_DESCRIPTION,
-    SYSTEM_FAVICON: appEnv.SYSTEM_FAVICON
-  },
   i18n: {
     defaultLocale: 'en',
     locales: ['en', 'zh-CN', 'zh-Hant', 'ko-KR'],
@@ -78,7 +72,8 @@ const nextConfig: NextConfig = {
     '@zilliz/milvus2-sdk-node',
     '@opentelemetry/api-logs',
     '@mariozechner/pi-agent-core',
-    '@mariozechner/pi-ai'
+    '@mariozechner/pi-ai',
+    '@fastgpt-plugin/sdk-client'
   ],
   // 优化大库的 barrel exports tree-shaking
   experimental: {

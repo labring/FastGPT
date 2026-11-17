@@ -1,3 +1,4 @@
+import { assertAppDatasetIndexModelsAvailable } from '@fastgpt/service/core/dataset/model';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import {
   getAppDraftResourceBaseline,
@@ -187,6 +188,121 @@ describe('resource snapshots stay within their team', () => {
     await expect(
       resolveAppResourcesByPermission({ ...args, teamId: otherTeamId, blockOnUnauthorized: true })
     ).resolves.toEqual(resources);
+  });
+});
+
+describe('App dataset references require an available index model', () => {
+  const teamId = '65f000000000000000000022';
+  const tmbId = '65f000000000000000000021';
+
+  it('rejects a knowledge base whose embedding model is unavailable', async () => {
+    const dataset = await MongoDataset.create({
+      name: 'Dataset without an available index model',
+      teamId,
+      tmbId,
+      vectorModelId: 'missing-embedding-model'
+    });
+    const handle = createModelHandle({
+      models: [],
+      configuredDefaultModelIds: {},
+      revision: 1,
+      version: 'missing-dataset-index-model'
+    });
+
+    await expect(
+      assertAppDatasetIndexModelsAvailable({
+        resources: [{ type: 'dataset', id: String(dataset._id) }],
+        teamId,
+        modelHandle: handle,
+        authorizedIds: new Set<string>()
+      })
+    ).rejects.toMatchObject({ message: ModelErrEnum.unExist });
+  });
+
+  it('rejects an active embedding model outside the actor authorized set', async () => {
+    const modelId = 'unauthorized-embedding-model';
+    const dataset = await MongoDataset.create({
+      name: 'Dataset with an unauthorized index model',
+      teamId,
+      tmbId,
+      vectorModelId: modelId
+    });
+    const handle = createModelHandle({
+      models: [
+        AIModelDataSchema.parse({
+          scope: 'system',
+          modelId,
+          model: 'text-embedding-3-small',
+          name: 'Text embedding 3 small',
+          provider: 'openai',
+          type: 'embedding',
+          isActive: true,
+          config: { defaultToken: 100, maxToken: 100, weight: 0 }
+        })
+      ],
+      configuredDefaultModelIds: {},
+      revision: 1,
+      version: 'unauthorized-dataset-index-model'
+    });
+
+    await expect(
+      assertAppDatasetIndexModelsAvailable({
+        resources: [{ type: 'dataset', id: String(dataset._id) }],
+        teamId,
+        modelHandle: handle,
+        authorizedIds: new Set<string>()
+      })
+    ).rejects.toMatchObject({ message: ModelErrEnum.unAuthModel });
+  });
+
+  it('rejects a disabled embedding model', async () => {
+    const modelId = 'disabled-embedding-model';
+    const dataset = await MongoDataset.create({
+      name: 'Dataset with an unauthorized index model',
+      teamId,
+      tmbId,
+      vectorModelId: modelId
+    });
+    const handle = createModelHandle({
+      models: [
+        AIModelDataSchema.parse({
+          scope: 'system',
+          modelId,
+          model: 'text-embedding-3-small',
+          name: 'Text embedding 3 small',
+          provider: 'openai',
+          type: 'embedding',
+          isActive: false,
+          config: { defaultToken: 100, maxToken: 100, weight: 0 }
+        })
+      ],
+      configuredDefaultModelIds: {},
+      revision: 1,
+      version: 'unauthorized-dataset-index-model'
+    });
+
+    await expect(
+      assertAppDatasetIndexModelsAvailable({
+        resources: [{ type: 'dataset', id: String(dataset._id) }],
+        teamId,
+        modelHandle: handle,
+        authorizedIds: new Set([modelId])
+      })
+    ).rejects.toMatchObject({ message: ModelErrEnum.unExist });
+  });
+
+  it('skips model lookup when no knowledge base is referenced', async () => {
+    const getModelData = vi.fn();
+
+    await expect(
+      assertAppDatasetIndexModelsAvailable({
+        resources: [],
+        teamId,
+        modelHandle: { getModelData } as unknown as ModelHandle,
+        authorizedIds: new Set<string>()
+      })
+    ).resolves.toEqual(new Map());
+    expect(getModelData).not.toHaveBeenCalled();
   });
 });
 

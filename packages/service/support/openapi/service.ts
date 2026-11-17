@@ -30,7 +30,7 @@ export const transferAppApiKeys = async ({
       teamId,
       ...getOpenApiTypeFilter(ApiKeyTypeEnum.app),
       tmbId: { $in: fromTmbIds },
-      ...(appIds ? { appId: getOpenApiAppIdFilter(appIds) } : {})
+      ...(appIds ? getOpenApiAppIdFilter(appIds) : {})
     },
     '_id name appId tmbId',
     { session }
@@ -49,11 +49,12 @@ export const transferAppApiKeys = async ({
   const ownerIds = new Set(owners.map((owner) => String(owner._id)));
   const changes: ApiKeyAuditParams[] = [];
   for (const key of keys) {
-    const nextOwner = appMap.get(key.appId!.toLowerCase());
+    const appId = String(key.appId).toLowerCase();
+    const nextOwner = appMap.get(appId);
     if (!nextOwner || !ownerIds.has(nextOwner)) throw new Error('Application Key owner is invalid');
     if (nextOwner === String(key.tmbId)) continue;
     const result = await MongoOpenApi.updateOne(
-      { _id: key._id, teamId, tmbId: key.tmbId, appId: key.appId },
+      { _id: key._id, teamId, tmbId: key.tmbId, ...getOpenApiAppIdFilter([appId]) },
       { $set: { tmbId: nextOwner } },
       { session }
     );
@@ -62,7 +63,7 @@ export const transferAppApiKeys = async ({
       keyId: String(key._id),
       keyName: key.name,
       keyType: ApiKeyTypeEnum.app,
-      appId: key.appId!.toLowerCase(),
+      appId,
       fromTmbId: String(key.tmbId),
       toTmbId: nextOwner
     });

@@ -1,4 +1,11 @@
 import {
+  getTestInstanceConfig,
+  createDefaultInstanceConfig
+} from '@test/utils/instanceConfigSnapshot';
+
+(global as any).systemInstanceConfig = createDefaultInstanceConfig();
+
+import {
   loadRequestMessages,
   filterGPTMessageByMaxContext,
   isSandboxPreviewFileUrl,
@@ -43,7 +50,6 @@ vi.mock('@fastgpt/service/common/api/axios', () => ({
 
 import { countGptMessagesTokens } from '@fastgpt/service/common/string/tiktoken/index';
 import { getImageBase64 } from '@fastgpt/service/common/file/image/utils';
-import { serviceEnv } from '@fastgpt/service/env';
 import { axios } from '@fastgpt/service/common/api/axios';
 import { createFileClassificationContext } from '@fastgpt/service/common/file/classification';
 
@@ -51,18 +57,14 @@ const mockCountGptMessagesTokens = vi.mocked(countGptMessagesTokens);
 const mockGetImageBase64 = vi.mocked(getImageBase64);
 const mockAxiosHead = vi.mocked(axios.head);
 const mockAxiosGet = vi.mocked(axios.get);
-const originalMultipleDataToBase64 = serviceEnv.MULTIPLE_DATA_TO_BASE64;
-const originalPreviewProxyUrl = serviceEnv.AGENT_SANDBOX_PREVIEW_PROXY_URL;
-const multimediaEnv: {
-  MULTIPLE_DATA_TO_BASE64: boolean;
-  AGENT_SANDBOX_PREVIEW_PROXY_URL?: string | undefined;
-} = serviceEnv;
+const originalMultipleDataToBase64 = getTestInstanceConfig().feature.multipleDataToBase64;
+const originalPreviewProxyUrl = getTestInstanceConfig().subservice.agentSandbox.proxy.previewUrl;
 
 describe('filterGPTMessageByMaxContext function tests', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    multimediaEnv.MULTIPLE_DATA_TO_BASE64 = originalMultipleDataToBase64;
-    multimediaEnv.AGENT_SANDBOX_PREVIEW_PROXY_URL = originalPreviewProxyUrl;
+    getTestInstanceConfig().feature.multipleDataToBase64 = originalMultipleDataToBase64;
+    getTestInstanceConfig().subservice.agentSandbox.proxy.previewUrl = originalPreviewProxyUrl;
     mockCountGptMessagesTokens.mockResolvedValue(10);
   });
 
@@ -442,9 +444,9 @@ describe('filterGPTMessageByMaxContext function tests', () => {
 describe('loadRequestMessages function tests', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    multimediaEnv.MULTIPLE_DATA_TO_BASE64 = originalMultipleDataToBase64;
+    getTestInstanceConfig().feature.multipleDataToBase64 = originalMultipleDataToBase64;
     // 预览代理地址也被本组用例改动，逐例复位，避免后续用例继承配置。
-    multimediaEnv.AGENT_SANDBOX_PREVIEW_PROXY_URL = originalPreviewProxyUrl;
+    getTestInstanceConfig().subservice.agentSandbox.proxy.previewUrl = originalPreviewProxyUrl;
     mockGetImageBase64.mockResolvedValue({
       completeBase64: 'data:image/png;base64,test',
       base64: 'test',
@@ -627,7 +629,7 @@ describe('loadRequestMessages function tests', () => {
     });
 
     it('should extract audio and video links when enabled', async () => {
-      multimediaEnv.MULTIPLE_DATA_TO_BASE64 = false;
+      getTestInstanceConfig().feature.multipleDataToBase64 = false;
 
       const messages: ChatCompletionMessageParam[] = [
         {
@@ -678,7 +680,7 @@ describe('loadRequestMessages function tests', () => {
     });
 
     it('should convert extracted audio and video links when MULTIPLE_DATA_TO_BASE64 is enabled', async () => {
-      multimediaEnv.MULTIPLE_DATA_TO_BASE64 = true;
+      getTestInstanceConfig().feature.multipleDataToBase64 = true;
       mockAxiosGet.mockResolvedValue({
         data: Buffer.from('media bytes')
       });
@@ -737,7 +739,7 @@ describe('loadRequestMessages function tests', () => {
     ] as const)(
       '显式 audio 类型保持不变，格式优先按名称、再按 URL：%s / %s',
       async (url, name, format) => {
-        multimediaEnv.MULTIPLE_DATA_TO_BASE64 = false;
+        getTestInstanceConfig().feature.multipleDataToBase64 = false;
         const result = await loadRequestMessages({
           messages: [
             {
@@ -763,7 +765,7 @@ describe('loadRequestMessages function tests', () => {
     );
 
     it('无文件名音频转 base64 时仍保留附件，不猜测 format', async () => {
-      multimediaEnv.MULTIPLE_DATA_TO_BASE64 = true;
+      getTestInstanceConfig().feature.multipleDataToBase64 = true;
       const url = 'https://files.example.com/opaque';
       const buffer = Buffer.from('audio bytes');
       mockAxiosGet.mockResolvedValue({ data: buffer });
@@ -791,7 +793,7 @@ describe('loadRequestMessages function tests', () => {
     )(
       '保留显式 $fileType data URL，强制 base64=$base64 时也不重复下载',
       async ({ fileType, base64 }) => {
-        multimediaEnv.MULTIPLE_DATA_TO_BASE64 = base64;
+        getTestInstanceConfig().feature.multipleDataToBase64 = base64;
         const url = `data:${fileType}/${fileType === 'audio' ? 'wav' : 'mp4'};base64,YWJj`;
         const result = await loadRequestMessages({
           messages: [
@@ -819,7 +821,7 @@ describe('loadRequestMessages function tests', () => {
         [false, true].map((base64) => [type, base64] as const)
       )
     )('无后缀视频按协议转换，类型=%s、转 base64=%s', async (type, base64) => {
-      multimediaEnv.MULTIPLE_DATA_TO_BASE64 = base64;
+      getTestInstanceConfig().feature.multipleDataToBase64 = base64;
       const url = 'https://files.example.com/opaque?token=video';
       const buffer = Buffer.from('video bytes');
       mockAxiosGet.mockResolvedValue({ data: buffer });
@@ -848,7 +850,7 @@ describe('loadRequestMessages function tests', () => {
     });
 
     it('should ignore file keys and normalize audio and video file_url from existing urls', async () => {
-      multimediaEnv.MULTIPLE_DATA_TO_BASE64 = false;
+      getTestInstanceConfig().feature.multipleDataToBase64 = false;
       const audioUrl = 'https://cdn.example.com/preview/audio.mp3';
       const videoUrl = 'https://cdn.example.com/preview/video.mp4';
       const messages: ChatCompletionMessageParam[] = [
@@ -911,7 +913,7 @@ describe('loadRequestMessages function tests', () => {
     it.each([ChatFileTypeEnum.unknown, ChatFileTypeEnum.file])(
       '待分类类型 %s 按传入名称识别媒体，不被下载接口后缀覆盖',
       async (fileType) => {
-        multimediaEnv.MULTIPLE_DATA_TO_BASE64 = false;
+        getTestInstanceConfig().feature.multipleDataToBase64 = false;
         const result = await loadRequestMessages({
           messages: [
             {
@@ -999,7 +1001,7 @@ describe('loadRequestMessages function tests', () => {
     });
 
     it('should extract clean image url from markdown link in json-like text', async () => {
-      multimediaEnv.MULTIPLE_DATA_TO_BASE64 = false;
+      getTestInstanceConfig().feature.multipleDataToBase64 = false;
       const imageUrl =
         'https://proxy.file.fastgpt.io/chat/image.png?X-Amz-Signature=test&x-id=GetObject';
       const messages: ChatCompletionMessageParam[] = [
@@ -1020,7 +1022,7 @@ describe('loadRequestMessages function tests', () => {
     });
 
     it('should extract image url before newline terminators', async () => {
-      multimediaEnv.MULTIPLE_DATA_TO_BASE64 = false;
+      getTestInstanceConfig().feature.multipleDataToBase64 = false;
       const imageUrl =
         'https://proxy.file.fastgpt.io/chat/%E7%AE%80%E5%8E%86.png?X-Amz-Signature=test&x-id=GetObject';
       const messages: ChatCompletionMessageParam[] = [
@@ -1052,7 +1054,7 @@ describe('loadRequestMessages function tests', () => {
     });
 
     it('should ignore <system-reminder> length and internal URLs when extracting user media links', async () => {
-      multimediaEnv.MULTIPLE_DATA_TO_BASE64 = false;
+      getTestInstanceConfig().feature.multipleDataToBase64 = false;
       const reminder = `<system-reminder>\n${'Skill description '.repeat(40)}\n<url>https://example.com/already-uploaded.png</url>\n</system-reminder>\n`;
       const userQuestion = '请看这张图 https://example.com/user-question.png';
       const fullContent = `${reminder}${userQuestion}`;
@@ -1077,7 +1079,7 @@ describe('loadRequestMessages function tests', () => {
     });
 
     it('should classify extensionless short links via parseUrlToChatFileType when extracting files', async () => {
-      multimediaEnv.MULTIPLE_DATA_TO_BASE64 = false;
+      getTestInstanceConfig().feature.multipleDataToBase64 = false;
       const imageShortUrl =
         'https://testdev.fastgpt.cn/api/system/file/d/q7aJkh7F0FB2FI3C.hskff.6JjpblHZ0hOyMbEq4frV0A';
       const audioShortUrl =
@@ -1180,7 +1182,7 @@ describe('loadRequestMessages function tests', () => {
       'https://example.com/download?filename=photo%231.png',
       'https://example.com/download?filename=photo%3F1.png'
     ])('保留编码了 # 或 ? 的图片文件名后缀：%s', async (imageUrl) => {
-      multimediaEnv.MULTIPLE_DATA_TO_BASE64 = false;
+      getTestInstanceConfig().feature.multipleDataToBase64 = false;
       const result = await loadRequestMessages({
         messages: [{ role: ChatCompletionRequestMessageRoleEnum.User, content: imageUrl }],
         useVision: true
@@ -1297,7 +1299,7 @@ describe('loadRequestMessages function tests', () => {
     });
 
     it('should pass through remote image URLs in array content without axios.head validation', async () => {
-      multimediaEnv.MULTIPLE_DATA_TO_BASE64 = false;
+      getTestInstanceConfig().feature.multipleDataToBase64 = false;
       const messages: ChatCompletionMessageParam[] = [
         {
           role: ChatCompletionRequestMessageRoleEnum.User,
@@ -1319,7 +1321,7 @@ describe('loadRequestMessages function tests', () => {
     });
 
     it('should preserve absolute image URLs', async () => {
-      multimediaEnv.MULTIPLE_DATA_TO_BASE64 = false;
+      getTestInstanceConfig().feature.multipleDataToBase64 = false;
       const messages: ChatCompletionMessageParam[] = [
         {
           role: ChatCompletionRequestMessageRoleEnum.User,
@@ -1507,7 +1509,7 @@ describe('loadRequestMessages function tests', () => {
     });
 
     it('should keep tool text and move image parts into a following user message', async () => {
-      multimediaEnv.MULTIPLE_DATA_TO_BASE64 = false;
+      getTestInstanceConfig().feature.multipleDataToBase64 = false;
       const messages: ChatCompletionMessageParam[] = [
         { role: ChatCompletionRequestMessageRoleEnum.User, content: 'Hello' },
         {
@@ -1532,7 +1534,7 @@ describe('loadRequestMessages function tests', () => {
     });
 
     it('keeps each value next to its images in the provider vision message', async () => {
-      multimediaEnv.MULTIPLE_DATA_TO_BASE64 = false;
+      getTestInstanceConfig().feature.multipleDataToBase64 = false;
       const content = [
         { type: 'text' as const, text: '{"jobId":"1"}' },
         { type: 'text' as const, text: '[1]' },
@@ -1555,7 +1557,7 @@ describe('loadRequestMessages function tests', () => {
     });
 
     it('preserves the order of complete multi-text tool content', async () => {
-      multimediaEnv.MULTIPLE_DATA_TO_BASE64 = false;
+      getTestInstanceConfig().feature.multipleDataToBase64 = false;
       const image = { type: 'image_url' as const, image_url: { url: 'https://example.com/1.png' } };
       const result = await loadRequestMessages({
         useVision: true,
@@ -1576,7 +1578,7 @@ describe('loadRequestMessages function tests', () => {
     });
 
     it('should drop a tool image that fails to load and keep the tool text', async () => {
-      multimediaEnv.MULTIPLE_DATA_TO_BASE64 = true;
+      getTestInstanceConfig().feature.multipleDataToBase64 = true;
       mockGetImageBase64.mockRejectedValue(new Error('download failed'));
       const messages: ChatCompletionMessageParam[] = [
         { role: ChatCompletionRequestMessageRoleEnum.User, content: 'Hello' },
@@ -1599,7 +1601,7 @@ describe('loadRequestMessages function tests', () => {
     });
 
     it('should append tool images after every tool result of the same assistant turn', async () => {
-      multimediaEnv.MULTIPLE_DATA_TO_BASE64 = false;
+      getTestInstanceConfig().feature.multipleDataToBase64 = false;
       const messages: ChatCompletionMessageParam[] = [
         { role: ChatCompletionRequestMessageRoleEnum.User, content: 'Hello' },
         {
@@ -1651,7 +1653,7 @@ describe('loadRequestMessages function tests', () => {
     });
 
     it('should convert tool image urls to base64 when configured', async () => {
-      multimediaEnv.MULTIPLE_DATA_TO_BASE64 = true;
+      getTestInstanceConfig().feature.multipleDataToBase64 = true;
       mockGetImageBase64.mockResolvedValue({
         completeBase64: 'data:image/png;base64,converted',
         base64: 'converted',
@@ -1679,8 +1681,9 @@ describe('loadRequestMessages function tests', () => {
     });
 
     it('should inline sandbox preview image urls before sending', async () => {
-      multimediaEnv.MULTIPLE_DATA_TO_BASE64 = false;
-      multimediaEnv.AGENT_SANDBOX_PREVIEW_PROXY_URL = 'https://sandbox-preview.example.com';
+      getTestInstanceConfig().feature.multipleDataToBase64 = false;
+      getTestInstanceConfig().subservice.agentSandbox.proxy.previewUrl =
+        'https://sandbox-preview.example.com';
       mockGetImageBase64.mockResolvedValue({
         completeBase64: 'data:image/png;base64,inlined',
         base64: 'inlined',
@@ -1717,9 +1720,9 @@ describe('loadRequestMessages function tests', () => {
     });
 
     it('should recognize preview urls when the configured base carries query or default port', async () => {
-      multimediaEnv.MULTIPLE_DATA_TO_BASE64 = false;
+      getTestInstanceConfig().feature.multipleDataToBase64 = false;
       // builder 会规范化 base：host 小写、去掉默认端口与 query；识别逻辑必须一致。
-      multimediaEnv.AGENT_SANDBOX_PREVIEW_PROXY_URL =
+      getTestInstanceConfig().subservice.agentSandbox.proxy.previewUrl =
         'https://Sandbox-Preview.Example.com:443/?v=1#x';
       mockGetImageBase64.mockResolvedValue({
         completeBase64: 'data:image/png;base64,inlined',
@@ -1753,8 +1756,9 @@ describe('loadRequestMessages function tests', () => {
     });
 
     it('should drop sandbox preview images when inlining fails', async () => {
-      multimediaEnv.MULTIPLE_DATA_TO_BASE64 = false;
-      multimediaEnv.AGENT_SANDBOX_PREVIEW_PROXY_URL = 'https://sandbox-preview.example.com';
+      getTestInstanceConfig().feature.multipleDataToBase64 = false;
+      getTestInstanceConfig().subservice.agentSandbox.proxy.previewUrl =
+        'https://sandbox-preview.example.com';
       mockGetImageBase64.mockRejectedValue(new Error('download failed'));
 
       const messages: ChatCompletionMessageParam[] = [
@@ -1782,8 +1786,9 @@ describe('loadRequestMessages function tests', () => {
     });
 
     it('should not inline non-preview remote image urls', async () => {
-      multimediaEnv.MULTIPLE_DATA_TO_BASE64 = false;
-      multimediaEnv.AGENT_SANDBOX_PREVIEW_PROXY_URL = 'https://sandbox-preview.example.com';
+      getTestInstanceConfig().feature.multipleDataToBase64 = false;
+      getTestInstanceConfig().subservice.agentSandbox.proxy.previewUrl =
+        'https://sandbox-preview.example.com';
 
       const messages: ChatCompletionMessageParam[] = [
         { role: ChatCompletionRequestMessageRoleEnum.User, content: 'Hello' },
@@ -1895,7 +1900,7 @@ describe('loadRequestMessages function tests', () => {
     });
 
     it('should handle environment variable MULTIPLE_DATA_TO_BASE64', async () => {
-      multimediaEnv.MULTIPLE_DATA_TO_BASE64 = true;
+      getTestInstanceConfig().feature.multipleDataToBase64 = true;
 
       const messages: ChatCompletionMessageParam[] = [
         {
@@ -1919,7 +1924,7 @@ describe('loadRequestMessages function tests', () => {
     });
 
     it('should preserve private upload URLs when MULTIPLE_DATA_TO_BASE64 is disabled', async () => {
-      multimediaEnv.MULTIPLE_DATA_TO_BASE64 = false;
+      getTestInstanceConfig().feature.multipleDataToBase64 = false;
       const imageUrl = 'http://localhost:9000/fastgpt-private/chat/image.png?X-Amz-Signature=test';
       const messages: ChatCompletionMessageParam[] = [
         {
@@ -1946,11 +1951,12 @@ describe('loadRequestMessages function tests', () => {
 
 describe('sandbox preview url helpers', () => {
   beforeEach(() => {
-    multimediaEnv.AGENT_SANDBOX_PREVIEW_PROXY_URL = originalPreviewProxyUrl;
+    getTestInstanceConfig().subservice.agentSandbox.proxy.previewUrl = originalPreviewProxyUrl;
   });
 
   it('should detect sandbox preview file urls by env prefix', () => {
-    multimediaEnv.AGENT_SANDBOX_PREVIEW_PROXY_URL = 'https://sandbox-preview.example.com/';
+    getTestInstanceConfig().subservice.agentSandbox.proxy.previewUrl =
+      'https://sandbox-preview.example.com/';
 
     expect(isSandboxPreviewFileUrl('https://sandbox-preview.example.com/preview/s/a/b.png')).toBe(
       true
@@ -1960,7 +1966,7 @@ describe('sandbox preview url helpers', () => {
   });
 
   it('should treat every url as non-preview when the env is unset', () => {
-    multimediaEnv.AGENT_SANDBOX_PREVIEW_PROXY_URL = undefined;
+    getTestInstanceConfig().subservice.agentSandbox.proxy.previewUrl = '';
 
     expect(isSandboxPreviewFileUrl('https://sandbox-preview.example.com/preview/s/a/b.png')).toBe(
       false
@@ -1968,7 +1974,8 @@ describe('sandbox preview url helpers', () => {
   });
 
   it('should mask sandbox preview urls in image placeholders', () => {
-    multimediaEnv.AGENT_SANDBOX_PREVIEW_PROXY_URL = 'https://sandbox-preview.example.com';
+    getTestInstanceConfig().subservice.agentSandbox.proxy.previewUrl =
+      'https://sandbox-preview.example.com';
 
     expect(maskImagePlaceholderUrl('https://sandbox-preview.example.com/preview/s/a/b.png')).toBe(
       'sandbox preview file'
@@ -1977,7 +1984,7 @@ describe('sandbox preview url helpers', () => {
   });
 
   it('should leave remote urls untouched in image placeholders when the env is unset', () => {
-    multimediaEnv.AGENT_SANDBOX_PREVIEW_PROXY_URL = undefined;
+    getTestInstanceConfig().subservice.agentSandbox.proxy.previewUrl = '';
 
     expect(maskImagePlaceholderUrl('https://example.com/a.png')).toBe('https://example.com/a.png');
   });

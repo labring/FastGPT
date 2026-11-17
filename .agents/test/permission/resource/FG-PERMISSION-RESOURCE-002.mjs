@@ -253,12 +253,7 @@ async function execute(context) {
             stream: false,
             messages: [{ role: 'user', content: chatId }]
           });
-        const health = await c.request({
-          role: 'owner',
-          kind: 'state',
-          method: 'GET',
-          route: '/api/support/openapi/health?apiKey=' + encodeURIComponent(key.value)
-        });
+        const health = await w.keyRequest(key, '/api/support/openapi/health', undefined, 'GET');
         if (mode === 'valid') {
           success(response);
           assert.ok(response.text?.includes(chatId));

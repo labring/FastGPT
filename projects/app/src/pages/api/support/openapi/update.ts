@@ -36,6 +36,10 @@ async function handler(
     throw OpenApiErrEnum.unAuth;
   }
   if (authProxy !== undefined) {
+    // 历史默认应用不是强绑定，但仍保留旧协议禁止成员代理的限制。
+    if (authProxy && scope.type === ApiKeyTypeEnum.personal && scope.defaultAppId) {
+      throw OpenApiErrEnum.unAuth;
+    }
     if (authProxy && !permission.isOwner) {
       return Promise.reject(TeamErrEnum.unPermission);
     }

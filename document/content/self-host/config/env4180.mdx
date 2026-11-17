@@ -1,0 +1,227 @@
+---
+title: 环境变量说明（V4.18.0+）
+description: FastGPT V4.18.0 及后续版本的 App、Pro、Code Sandbox 和 Volume Manager 环境变量说明
+---
+
+V4.18.0 起，环境变量已简化，业务配置集中到管理员页面维护。本页仅列出仍保留的环境变量。请在对应服务中设置，修改后重启该服务；构建期变量需要重新构建。
+
+登录 Cookie 的 Secure 属性在管理员「安全设置」中配置，共享 HTTP 客户端响应体上限在「资源限制」中配置（默认 20 MiB，0 仅允许空响应）。旧 `AUTH_COOKIE_SECURE`、`SERVICE_AXIOS_MAX_CONTENT_LENGTH` 仅从 App 进程 ENV 在升级迁移时导入，Pro 同名 ENV 不参与迁移，已有表单值优先；升级后修改这些 ENV 不再生效。Cookie 属性在重新签发时应用，HTTP 上限作用于后续请求。
+
+## App / Pro 共用环境变量
+
+### 基础与密钥
+
+| 变量                  | 默认值             | 说明                                                                                                  |
+| --------------------- | ------------------ | ----------------------------------------------------------------------------------------------------- |
+| `DB_MAX_LINK`         | `10`               | MongoDB、PG、OceanBase、openGauss 等数据库连接池最大连接数，自动限制在 10～1000。                     |
+| `FILE_TOKEN_KEY`      | 无，**必填**       | 文件读取、文件鉴权相关密钥，长度至少 6 位。                                                           |
+| `AES256_SECRET_KEY`   | 无，**必填**       | AES 加解密密钥，长度至少 6 位。                                                                       |
+| `INVOKE_TOKEN_SECRET` | 无，**必填**       | Invoke 反向调用 JWT 密钥，长度至少 32 位。                                                            |
+| `ROOT_KEY`            | `fastgpt_root_key` | 当前系统管理员 API 密钥，可用于调用 `/api/admin/**` 接口，长度至少 6 位。                             |
+| `PRO_TOKEN`           | 空                 | FastGPT app 服务端调用 pro/admin 内部接口的凭证，需与 pro/admin 配置一致；App 配置 `PRO_URL` 时必填。 |
+| `PRO_URL`             | 空                 | 商业版服务地址，配置后 App 可调用 Pro API，也会作为文件 URL 安全校验允许域名。                        |
+| `AGENT_USERS`         | 未设置             | 预置 Agent 账号用户名列表，使用英文逗号分隔；配置后必须同时设置 `DEFAULT_AGENT_PSW`。                 |
+| `DEFAULT_AGENT_PSW`   | 未设置             | 预置 Agent 账号初始密码，与 `AGENT_USERS` 配合使用。                                                  |
+
+### 服务地址与集成
+
+| 变量                            | 默认值                  | 说明                                                                                     |
+| ------------------------------- | ----------------------- | ---------------------------------------------------------------------------------------- |
+| `PLUGIN_BASE_URL`               | `http://localhost:3004` | FastGPT Plugin 服务地址，运行时由环境变量提供；修改后需重启服务。                        |
+| `PLUGIN_TOKEN`                  | `token`                 | 调用 Plugin 服务使用的认证 Token，运行时由环境变量提供，需与插件服务 `AUTH_TOKEN` 一致。 |
+| `AIPROXY_API_ENDPOINT`          | 空                      | AI Proxy 服务根地址，例如 `http://aiproxy:3000`，不要附加 `/v1`。                        |
+| `AIPROXY_API_TOKEN`             | 空                      | AI Proxy 管理员 Token；使用代理时须与服务端配置一致且不能为空。                          |
+| `CRM_API_URL`                   | 空                      | 官网访客归因 CRM 的 API 基础地址（包含 `/api/v1`）；为空时不进行身份上报。               |
+| `CRM_API_KEY`                   | 空                      | CRM 管理 API Key，用于注册或登录成功后按 `visitor_id` 绑定 FastGPT 用户。                |
+| `SANGFOR_CHUNK_URL`             | 未设置                  | Sangfor 智能分块服务地址，用于智能分块请求。                                             |
+| `SANGFOR_CHUNK_KEY`             | 未设置                  | Sangfor 智能分块服务的 Bearer Token。                                                    |
+| `SANGFOR_CHUNK_TIMEOUT_MINUTES` | `60`                    | 智能分块服务超时时间，单位分钟。                                                         |
+
+### Agent Sandbox
+
+| 变量                          | 默认值  | 说明                                  |
+| ----------------------------- | ------- | ------------------------------------- |
+| `AGENT_SANDBOX_SHOW_FREE_TIP` | `false` | 前端是否展示 Agent Sandbox 免费提示。 |
+
+### 数据库、缓存与向量库
+
+| 变量                         | 默认值                                      | 说明                                                                                                                                                              |
+| ---------------------------- | ------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `REDIS_URL`                  | `redis://default:mypassword@localhost:6379` | Redis 连接地址。                                                                                                                                                  |
+| `MONGODB_URI`                | 本地 MongoDB 示例地址                       | 主业务 MongoDB 连接地址。                                                                                                                                         |
+| `MONGODB_LOG_URI`            | 同 `MONGODB_URI` 示例地址                   | 日志 MongoDB 连接地址；不配置时可复用主库。                                                                                                                       |
+| `VECTOR_VQ_LEVEL`            | `32`                                        | 向量量化等级；不同向量库支持范围不同。                                                                                                                            |
+| `PG_URL`                     | 空                                          | PostgreSQL/pgvector 向量库连接地址。                                                                                                                              |
+| `OCEANBASE_URL`              | 空                                          | OceanBase 向量库连接地址。                                                                                                                                        |
+| `SEEKDB_URL`                 | 空                                          | SeekDB 向量库连接地址。                                                                                                                                           |
+| `MILVUS_ADDRESS`             | 空                                          | Milvus/Zilliz 连接地址。                                                                                                                                          |
+| `MILVUS_TOKEN`               | 空                                          | Milvus/Zilliz 访问 Token。                                                                                                                                        |
+| `MILVUS_LANGUAGE_IDENTIFIER` | `lingua`                                    | Milvus BM25 全文检索的语言识别引擎：`lingua`（默认）\| `whatlang`。当向量库为 Milvus 时全文检索走 BM25（`modeldata_v2` 单表）；其他向量库全文走 MongoDB `$text`。 |
+| `OPENGAUSS_URL`              | 空                                          | openGauss 向量库连接地址。                                                                                                                                        |
+
+### 对象存储
+
+| 变量                                   | 默认值                  | 说明                                                                                      |
+| -------------------------------------- | ----------------------- | ----------------------------------------------------------------------------------------- |
+| `STORAGE_VENDOR`                       | `minio`                 | 对象存储类型，可选 `minio`、`aws-s3`、`r2`、`cos`、`oss`。                                |
+| `STORAGE_PUBLIC_BUCKET`                | `fastgpt-public`        | 公开文件 Bucket。                                                                         |
+| `STORAGE_PRIVATE_BUCKET`               | `fastgpt-private`       | 私有文件 Bucket。                                                                         |
+| `STORAGE_REGION`                       | `us-east-1`             | 对象存储 Region。                                                                         |
+| `STORAGE_R2_PUBLIC_ENDPOINT`           | 空                      | Cloudflare R2 公开 bucket 的 HTTPS 公网域名；`STORAGE_VENDOR=r2` 时必填。                 |
+| `STORAGE_S3_ENDPOINT`                  | `http://localhost:9000` | S3/MinIO 兼容 API 地址。                                                                  |
+| `STORAGE_PUBLIC_ACCESS_EXTRA_SUB_PATH` | 空                      | 公开文件访问路径的额外子路径。                                                            |
+| `STORAGE_ACCESS_KEY_ID`                | `minioadmin`            | 对象存储 Access Key。                                                                     |
+| `STORAGE_SECRET_ACCESS_KEY`            | `minioadmin`            | 对象存储 Secret Key。                                                                     |
+| `STORAGE_S3_FORCE_PATH_STYLE`          | `false`                 | S3 是否强制 path-style 访问，MinIO 通常需要开启。                                         |
+| `STORAGE_S3_MAX_RETRIES`               | `3`                     | S3 客户端最大重试次数。                                                                   |
+| `STORAGE_COS_PROTOCOL`                 | `https:`                | 腾讯云 COS 访问协议，可选 `https:` 或 `http:`。                                           |
+| `STORAGE_COS_USE_ACCELERATE`           | `false`                 | 腾讯云 COS 是否使用全球加速域名。                                                         |
+| `STORAGE_COS_CNAME_DOMAIN`             | 空                      | 腾讯云 COS 自定义 CNAME 域名。                                                            |
+| `STORAGE_COS_PROXY`                    | 空                      | 腾讯云 COS 代理地址。                                                                     |
+| `STORAGE_OSS_ENDPOINT`                 | 空                      | 阿里云 OSS Endpoint。                                                                     |
+| `STORAGE_OSS_CNAME`                    | `false`                 | 阿里云 OSS 是否使用 CNAME。                                                               |
+| `STORAGE_OSS_INTERNAL`                 | `false`                 | 阿里云 OSS 是否使用内网 Endpoint。                                                        |
+| `STORAGE_OSS_SECURE`                   | `false`                 | 阿里云 OSS 是否使用 HTTPS。                                                               |
+| `FILE_DOWNLOAD_PUBLIC_URL_PREFIX`      | 未设置                  | 文件下载短链的公开 URL 前缀；代理需将此前缀转发到 FastGPT 的 `/api/system/file/d/` 路由。 |
+
+文件服务域名在后台「核心配置 → 下载链接」中设置（`storage.fileDomain`），地址指向 FastGPT，同时用于上传和下载短链。留空沿用 `FE_DOMAIN`；保存后对新生成的链接生效，无需重启。已配置的 `FILE_DOWNLOAD_PUBLIC_URL_PREFIX` 对下载仍有更高优先级。旧 `FILE_DOMAIN` 只在升级时一次性回填，保留已有配置与显式清空，运行时不再读取该 ENV。
+
+### 日志、指标与追踪
+
+| 变量                        | 默认值           | 说明                                                                                                                              |
+| --------------------------- | ---------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `LOG_ENABLE_CONSOLE`        | `true`           | 是否输出控制台日志。                                                                                                              |
+| `LOG_CONSOLE_LEVEL`         | `debug`          | 控制台日志等级，可选 `trace`、`debug`、`info`、`warning`、`error`、`fatal`。                                                      |
+| `LOG_ENABLE_OTEL`           | `false`          | 是否启用 OpenTelemetry 日志上报。                                                                                                 |
+| `LOG_OTEL_LEVEL`            | `info`           | OTEL 日志等级。                                                                                                                   |
+| `LOG_OTEL_SERVICE_NAME`     | `fastgpt-client` | OTEL 日志服务名。                                                                                                                 |
+| `LOG_OTEL_URL`              | 空               | OTEL 日志上报地址。                                                                                                               |
+| `METRICS_ENABLE_OTEL`       | `false`          | 是否启用 OpenTelemetry 指标上报。                                                                                                 |
+| `METRICS_EXPORT_INTERVAL`   | `30000`          | 指标导出间隔，单位毫秒。                                                                                                          |
+| `METRICS_OTEL_SERVICE_NAME` | `fastgpt-client` | OTEL 指标服务名。                                                                                                                 |
+| `METRICS_OTEL_URL`          | 空               | OTEL 指标上报地址。                                                                                                               |
+| `TRACING_ENABLE_OTEL`       | `false`          | 是否启用 OpenTelemetry 链路追踪。                                                                                                 |
+| `TRACING_OTEL_SERVICE_NAME` | `fastgpt-client` | OTEL 追踪服务名。                                                                                                                 |
+| `TRACING_OTEL_URL`          | 空               | OTEL 追踪上报地址。                                                                                                               |
+| `TRACING_OTEL_SAMPLE_RATIO` | 空               | 追踪采样比例，范围 `0` 到 `1`。                                                                                                   |
+| `CHAT_LOG_URL`              | 空               | 对话日志服务基础地址，每条日志独立 POST 到 `{CHAT_LOG_URL}/api/chat/push`；须同时配置大于 `0` 的 `CHAT_LOG_INTERVAL` 才启用推送。 |
+| `CHAT_LOG_INTERVAL`         | 空               | 每条对话日志独立延迟发送的时间，单位毫秒，不合并批量；未配置、小于等于 `0` 或 `CHAT_LOG_URL` 为空时不推送。                       |
+| `CHAT_LOG_SOURCE_ID_PREFIX` | `fastgpt-`       | 对话日志来源 ID 前缀。                                                                                                            |
+| `RETRIEVAL_RESULTS_LIMIT`   | `0`              | 知识库检索启用重排时，日志详情记录的重排前召回候选集数量上限；0 表示不记录。仅通过环境变量配置，修改后重启生效。                  |
+| `LANGFUSE_SECRET_KEY`       | 未设置           | Langfuse Secret Key。                                                                                                             |
+| `LANGFUSE_PUBLIC_KEY`       | 未设置           | Langfuse Public Key。                                                                                                             |
+| `LANGFUSE_BASE_URL`         | 未设置           | Langfuse 服务地址。                                                                                                               |
+
+### 域名、前端与运行时
+
+| 变量                   | 默认值 | 说明                                                                                                                                  |
+| ---------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `FE_DOMAIN`            | 必填   | 客户端访问 FastGPT 时使用的地址（由协议、主机和可选端口组成），用于补全文件、图片等资源路径；本地开发可使用 `http://localhost:3000`。 |
+| `NEXT_PUBLIC_BASE_URL` | 空     | Next.js 子路径部署前缀，例如 `/fastgpt`；需要在构建镜像时确定。                                                                       |
+| `PORT`                 | `3000` | Next.js 服务监听端口，也用于本地地址识别。                                                                                            |
+
+### 安全配置
+
+| 变量                   | 默认值  | 说明                                                                                               |
+| ---------------------- | ------- | -------------------------------------------------------------------------------------------------- |
+| `TRUSTED_PROXY_ENABLE` | `false` | 是否校验反向代理传入的客户端 IP。                                                                  |
+| `TRUSTED_PROXY_IPS`    | 空      | 可信反向代理 IP/CIDR 列表，逗号或空白分隔。                                                        |
+| `HTTP_PROXY`           | 空      | Node/worker 出站 HTTP 代理。                                                                       |
+| `HTTPS_PROXY`          | 空      | Node/worker 出站 HTTPS 代理。                                                                      |
+| `NO_PROXY`             | 空      | 不走代理的地址列表。                                                                               |
+| `ALL_PROXY`            | 未设置  | 支持此变量的出站客户端所用代理；普通 fetch/OpenAI 默认客户端需使用 `HTTP_PROXY` 或 `HTTPS_PROXY`。 |
+
+### 功能开关与限制
+
+| 变量                                     | 默认值  | 说明                                                                                                                                                                |
+| ---------------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DEFAULT_TEAM_BASIC_PERMISSIONS_ENABLED` | `false` | 新建团队时是否为默认全员组授予应用、Skill、知识库和 API Key 创建权限，不影响已有团队。仅通过环境变量配置，修改后重启生效；FastGPT 与 Pro Admin 服务应保持配置一致。 |
+| `SYSTEM_MIGRATION_BATCH_SIZE`            | `100`   | 系统升级任务每批处理的记录数，范围 `50`～`1000`。                                                                                                                   |
+| `SYSTEM_MIGRATION_DELAY_SECONDS`         | `0`     | 延迟型系统升级任务的等待时间，单位秒；`0` 为不延迟。                                                                                                                |
+| `AUXILIARY_GENERATION_SHOW_RUN_DETAIL`   | `false` | 是否展示 Skill、Agent 和工作流辅助生成的运行详情。                                                                                                                  |
+| `DATASET_SYNONYM_ENABLED`                | `false` | 是否启用知识库同义词检索能力。                                                                                                                                      |
+
+## App 环境变量
+
+| 变量                                 | 默认值  | 说明                                                                                                              |
+| ------------------------------------ | ------- | ----------------------------------------------------------------------------------------------------------------- |
+| `CHINESE_IP_REDIRECT_URL`            | 未设置  | 中国大陆 IP 的跳转提示目标地址，用户点击后跳转；留空不显示提示。                                                  |
+| `SHOW_GIT`                           | `false` | 仅在 App 配置。配置 `PRO_URL` 即按此开关展示 Git 信息，与 License 是否激活无关；开源版忽略此变量，固定展示。      |
+| `SHOW_OUTLINK_BRAND`                 | `false` | 仅在 App 配置。配置 `PRO_URL` 即按此开关展示免登录品牌标识，与 License 是否激活无关；开源版忽略此变量，固定开启。 |
+| `DISABLE_MARKETPLACE`                | `false` | 是否隐藏插件市场安装入口；设为 `true` 时仅保留本地文件安装。                                                      |
+| `ENABLE_SAAS_ADMIN_CONFIG`           | `false` | 是否展示管理员页面中的 SaaS 专用配置项；仅在 App 设置。                                                           |
+| `NEXT_PUBLIC_WORKFLOW_LEAVE_CONFIRM` | `true`  | 工作流编辑页离开确认提示；仅字面值 `false` 关闭，需要在构建时设置。                                               |
+
+## Pro / Admin 环境变量
+
+| 变量                                  | 默认值                   | 说明                                                                                                                                                                        |
+| ------------------------------------- | ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `PRO_TOKEN`                           | 无，**必填**             | FastGPT app 服务端调用 pro/admin 内部接口的服务间凭证，至少 32 位，需与 App 一致。                                                                                          |
+| `BATCH_UPDATE_TIME`                   | `3000`                   | 钱包余额批量更新间隔，单位毫秒。                                                                                                                                            |
+| `INVOICE_FEISHU_WEBHOOK_URL`          | 空                       | 发票申请通知飞书 Webhook 地址。                                                                                                                                             |
+| `INVOICE_FEISHU_WEBHOOK_CALLBACK_URL` | 空                       | 发票通知中按钮回调地址。                                                                                                                                                    |
+| `SMS_PROXY`                           | 空                       | 短信发送代理服务地址。                                                                                                                                                      |
+| `MAX_CRAWL_PAGE`                      | `2000`                   | 网站同步最大抓取页面数。                                                                                                                                                    |
+| `CRAWL_MAX_HTML_SIZE`                 | `10`                     | 静态网页爬虫单页 HTML 估算大小上限，单位 MB。                                                                                                                               |
+| `CRAWL_EXCLUDE_LIST`                  | 空                       | 爬虫排除域名或路径规则，多个值使用英文逗号分隔。                                                                                                                            |
+| `CLEAR_FREE_ACCOUNT`                  | `false`                  | 是否启用免费账号资源清理任务。                                                                                                                                              |
+| `SYNC_MEMBER_CRON`                    | 空                       | 成员自动同步 Cron 表达式；为空则不启动同步任务。                                                                                                                            |
+| `WORKORDER_BASE_URL`                  | 空                       | 工单系统地址；与 `WORKORDER_JWT_SECRET` 同时配置后才展示工单入口。                                                                                                          |
+| `WORKORDER_JWT_SECRET`                | 空                       | 创建工单时签发 JWT 使用的密钥。                                                                                                                                             |
+| `EXTERNAL_USER_SYSTEM_BASE_URL`       | 空                       | 外部用户系统地址。                                                                                                                                                          |
+| `EXTERNAL_USER_SYSTEM_AUTH_TOKEN`     | 空                       | 外部用户系统认证 Token。                                                                                                                                                    |
+| `BAIDU_CONVERSION_TOKEN`              | 空                       | 百度转化跟踪 Token。                                                                                                                                                        |
+| `BAIDU_CONVERSION_BASE_URL`           | 空                       | 百度转化跟踪的落地页 URL，填写不带查询参数的地址；代码追加 `?bd_vid=...` 后作为载荷中的 `logidUrl`。上传接口固定为 `https://ocpc.baidu.com/ocpcapi/api/uploadConvertData`。 |
+| `BING_ADS_DEVELOPER_TOKEN`            | 空                       | Bing Ads Developer Token。                                                                                                                                                  |
+| `BING_ADS_CUSTOMER_ID`                | 空                       | Bing Ads Customer ID。                                                                                                                                                      |
+| `BING_ADS_CUSTOMER_ACCOUNT_ID`        | 空                       | Bing Ads Customer Account ID。                                                                                                                                              |
+| `BING_ADS_CONVERSION_NAME`            | `fastgptcn`              | Bing Ads 转化目标名称。                                                                                                                                                     |
+| `BING_OAUTH_CLIENT_ID`                | 空                       | Bing OAuth Client ID。                                                                                                                                                      |
+| `BING_OAUTH_CLIENT_SECRET`            | 空                       | Bing OAuth Client Secret。                                                                                                                                                  |
+| `BING_OAUTH_REFRESH_TOKEN`            | 空                       | Bing OAuth Refresh Token。                                                                                                                                                  |
+| `SHOW_WECOM_CONFIG`                   | `false`                  | 是否展示企业微信相关配置。                                                                                                                                                  |
+| `WECOM_DEV`                           | `false`                  | 企业微信支付相关开发模式开关。                                                                                                                                              |
+| `LICENSE_PUBLIC_KEY`                  | 未设置                   | License 验签公钥内容；未设置时使用镜像内置公钥。                                                                                                                            |
+| `LICENSE_PUBLIC_KEY_PATH`             | 未设置                   | License 验签公钥文件路径；用于覆盖镜像内置公钥。                                                                                                                            |
+| `TEAM_MODE`                           | `single`                 | 团队模式：`single` 单团队、`multi` 多团队、`sync` 外部账号同步；修改后重启 Pro。                                                                                            |
+| `LOGIN_2FA_ENABLED`                   | `false`                  | 是否启用密码登录后的邮箱或短信二次验证；仅在 Pro 配置。                                                                                                                     |
+| `WECHAT_AUTH_TOKEN`                   | `THEAIDATASETPLATFORM`   | 微信公众号回调签名 Token，需与公众号后台配置一致。                                                                                                                          |
+| `TRANSFER_RESOURCE_ON_MEMBER_LEAVE`   | `true`                   | 外部成员同步离职时，是否将其资源转移给 root。                                                                                                                               |
+| `LICENSE_AUTH_METHOD`                 | 未设置                   | 设置为 `sangfor` 时使用 Sangfor License 服务；其他值使用内置 License 验证。                                                                                                 |
+| `LICENSE_BASE_URL`                    | `http://127.0.0.1:10003` | Sangfor License 服务地址。                                                                                                                                                  |
+
+## Code Sandbox 环境变量
+
+| 变量                              | 默认值                                                  | 说明                                                                                          |
+| --------------------------------- | ------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| `SANDBOX_PORT`                    | `3000`                                                  | Code Sandbox 服务监听端口。                                                                   |
+| `SANDBOX_TOKEN`                   | 空                                                      | `/sandbox` 接口 Bearer Token；为空时不启用接口认证。仅允许 ASCII 可打印字符且不能包含空格。   |
+| `SANDBOX_POOL_SIZE`               | `5`                                                     | JS/Python 预热 worker 数量，范围 `1` 到 `100`。                                               |
+| `SANDBOX_QUEUE_ID_CONCURRENCY`    | 空                                                      | 同一个 `queueId` 同时可进入执行流程的请求数；为空时不启用 `queueId` 排队，范围 `1` 到 `100`。 |
+| `SANDBOX_API_MAX_BODY_MB`         | `8`                                                     | `/sandbox` API JSON 请求体总大小上限，包含 `variables`，单位 MB，范围 `1` 到 `100`。          |
+| `SANDBOX_MAX_TIMEOUT`             | `60000`                                                 | 单次代码执行超时时间，单位毫秒，范围 `1000` 到 `600000`。                                     |
+| `SANDBOX_MAX_MEMORY_MB`           | `256`                                                   | 单个沙箱最大内存，单位 MB，范围 `32` 到 `4096`；运行时会额外预留 `50` MB 开销。               |
+| `SANDBOX_MAX_OUTPUT_MB`           | `10`                                                    | 单次代码执行输出 JSON 大小上限，包含返回值和日志，单位 MB，范围 `1` 到 `100`。                |
+| `CHECK_INTERNAL_IP`               | `true`                                                  | 是否在沙箱网络请求中启用内网 IP 检查。                                                        |
+| `SANDBOX_REQUEST_MAX_COUNT`       | `30`                                                    | 单次代码执行允许发起的最大网络请求数，范围 `1` 到 `1000`。                                    |
+| `SANDBOX_REQUEST_TIMEOUT`         | `60000`                                                 | 沙箱内单次网络请求超时时间，单位毫秒，范围 `1000` 到 `300000`。                               |
+| `SANDBOX_REQUEST_MAX_RESPONSE_MB` | `10`                                                    | 沙箱内单次网络响应体最大大小，单位 MB，范围 `1` 到 `100`。                                    |
+| `SANDBOX_REQUEST_MAX_BODY_MB`     | `5`                                                     | 沙箱内单次网络请求体最大大小，单位 MB，范围 `1` 到 `100`。                                    |
+| `SANDBOX_JS_ALLOWED_MODULES`      | `lodash,dayjs,moment,uuid,crypto-js,qs,url,querystring` | JS 代码允许导入的模块白名单，使用英文逗号分隔。                                               |
+| `SANDBOX_PYTHON_ALLOWED_MODULES`  | 内置常用标准库与 `numpy,pandas,matplotlib`              | Python 代码允许导入的模块白名单，使用英文逗号分隔。                                           |
+| `PORT`                            | `3000`                                                  | 沙箱本地服务端口识别；实际监听优先使用 `SANDBOX_PORT`。                                       |
+| `SANDBOX_DISABLE_SECCOMP`         | `false`                                                 | 是否关闭 Linux seccomp 系统调用过滤。                                                         |
+| `SANDBOX_MAX_TMP_MB`              | `16`                                                    | 单个 Python 沙箱临时目录大小上限，单位 MB，范围 `1`～`1024`。                                 |
+
+## Volume Manager 环境变量
+
+| 变量                       | 默认值                 | 说明                                                                        |
+| -------------------------- | ---------------------- | --------------------------------------------------------------------------- |
+| `PORT`                     | `3000`                 | Volume Manager 服务监听端口。                                               |
+| `VM_AUTH_TOKEN`            | 无，**必填**           | Volume Manager API 鉴权 Token。                                             |
+| `VM_RUNTIME`               | `kubernetes`           | 运行时类型，可选 `docker` 或 `kubernetes`。                                 |
+| `VM_DOCKER_SOCKET`         | `/var/run/docker.sock` | Docker socket 路径，仅 `docker` 模式需要。                                  |
+| `VM_DOCKER_API_VERSION`    | `v1.44`                | Docker API 版本，仅 `docker` 模式需要。                                     |
+| `VM_K8S_NAMESPACE`         | `opensandbox`          | Kubernetes 命名空间，仅 `kubernetes` 模式需要。                             |
+| `VM_K8S_PVC_STORAGE_CLASS` | 未设置                 | Kubernetes PVC StorageClass；留空使用集群默认值，仅 `kubernetes` 模式需要。 |
+| `VM_LOG_LEVEL`             | `info`                 | 日志等级，可选 `debug`、`info` 或 `none`。                                  |

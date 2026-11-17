@@ -1,3 +1,4 @@
+import { CaptchaProofSchema } from '../../../../../support/user/account/captcha/type';
 import { z } from 'zod';
 import { AccountExternalVerificationMethodSchema } from '../../../../../support/user/account/verification/type';
 import { createOAuthVerificationSchemaTuple } from '../../../../../support/user/account/verification/constants';
@@ -57,7 +58,7 @@ export type AccountCancellationStatusResponse = z.infer<
 const CodeVerificationCreateSchema = z.object({
   method: z.literal('code').meta({ description: '邮箱或手机验证码', example: 'code' }),
   payload: z.object({
-    captcha: z.string().min(1).max(64).meta({ description: '图片验证码答案', example: 'A1B2C3' })
+    captcha: CaptchaProofSchema
   })
 });
 

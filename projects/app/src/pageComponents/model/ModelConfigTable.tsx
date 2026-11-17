@@ -44,6 +44,7 @@ import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import AddModel from './AddModel';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 import TestModeBetaTag from '@/components/core/ai/TestModeBetaTag';
+import DeprecationTag from '@/components/core/ai/DeprecationTag';
 import ModelCapabilityTags from '@/components/core/ai/ModelCapabilityTags';
 import { accountContentScrollStyles, accountPageRootStyles } from '@/pageComponents/account/styles';
 import ModelTabHeader from '@/components/core/ai/ModelTabHeader';
@@ -58,6 +59,8 @@ import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { FixedTableLayout } from '@fastgpt/web/components/common/FixedTable';
 import JsonModelConfigModal from './JsonModelConfigModal';
 import DefaultModelModal from './DefaultModelModal';
+import ModelDeprecationInformModal from './ModelDeprecationInformModal';
+import ModelDeprecationHistoryModal from './ModelDeprecationHistoryModal';
 import ModelListFilters from '@/components/core/ai/ModelListFilters';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useModelTableFormat } from '@/components/core/ai/hooks/useModelTableFormat';
@@ -365,6 +368,16 @@ const ModelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType: C
     onClose: onCloseDefaultModel,
     isOpen: isOpenDefaultModel
   } = useDisclosure();
+  const {
+    isOpen: isOpenDeprecationInform,
+    onOpen: onOpenDeprecationInform,
+    onClose: onCloseDeprecationInform
+  } = useDisclosure();
+  const {
+    isOpen: isOpenDeprecationHistory,
+    onOpen: onOpenDeprecationHistory,
+    onClose: onCloseDeprecationHistory
+  } = useDisclosure();
 
   // 渠道是列表的补充数据，模型详情和更新也都有独立操作反馈；只有模型首次加载阻塞整表。
   const isInitialLoading = loadingModels && modelConfigData === undefined;
@@ -449,7 +462,10 @@ const ModelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType: C
               isSortMode
                 ? ['repeat(2, minmax(0, 1fr))', 'repeat(2, auto)']
                 : !isTeam && isRoot
-                  ? ['repeat(2, minmax(0, 1fr))', 'repeat(4, minmax(0, 1fr))']
+                  ? [
+                      'repeat(2, minmax(0, 1fr))',
+                      `repeat(${feConfigs?.isPlus ? 5 : 4}, minmax(0, 1fr))`
+                    ]
                   : ['repeat(2, minmax(0, 1fr))', 'repeat(2, minmax(0, 1fr))']
             }
             gap={2}
@@ -457,6 +473,7 @@ const ModelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType: C
             {isSortMode ? (
               <>
                 <Button
+                  size={'sm'}
                   w={['100%', '81px']}
                   minW={0}
                   px={[2, 4]}
@@ -468,6 +485,7 @@ const ModelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType: C
                   {t('config_model:model.cancel_sort')}
                 </Button>
                 <Button
+                  size={'sm'}
                   w={['100%', '123px']}
                   minW={0}
                   px={[2, 4]}
@@ -483,6 +501,7 @@ const ModelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType: C
             ) : (
               <>
                 <Button
+                  size={'sm'}
                   w={'100%'}
                   minW={0}
                   px={[2, 4]}
@@ -494,7 +513,20 @@ const ModelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType: C
                 </Button>
                 {!isTeam && isRoot && (
                   <>
+                    {feConfigs?.isPlus && (
+                      <Button
+                        size={'sm'}
+                        w={'100%'}
+                        minW={0}
+                        px={[2, 4]}
+                        variant={'whiteBase'}
+                        onClick={onOpenDeprecationInform}
+                      >
+                        {t('config_model:model_deprecation.send_entry')}
+                      </Button>
+                    )}
                     <Button
+                      size={'sm'}
                       w={'100%'}
                       minW={0}
                       px={[2, 4]}
@@ -504,6 +536,7 @@ const ModelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType: C
                       {t('config_model:model.default_model')}
                     </Button>
                     <Button
+                      size={'sm'}
                       w={'100%'}
                       minW={0}
                       px={[2, 4]}
@@ -515,6 +548,7 @@ const ModelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType: C
                   </>
                 )}
                 <AddModel
+                  size={'sm'}
                   installedModels={modelItems}
                   channels={channelList}
                   providers={modelProviders}
@@ -790,10 +824,12 @@ const ModelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType: C
                               />
                             </Td>
                             <Td fontSize={'sm'}>
-                              <HStack>
+                              <HStack minW={0}>
                                 <Avatar src={item.avatar} w={'1.2rem'} borderRadius={'50%'} />
-                                <Flex alignItems={'center'} gap={1} minW={0}>
+                                <Flex alignItems={'center'} gap={1} minW={0} flex={'1 1 0'}>
                                   <CopyBox
+                                    minW={0}
+                                    flex={'1 1 auto'}
                                     value={showModelId ? item.model : item.name}
                                     data-row-action
                                     color={'myGray.900'}
@@ -802,12 +838,20 @@ const ModelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType: C
                                   >
                                     {showModelId ? item.model : item.name}
                                   </CopyBox>
+                                  {item.scope === ModelScopeEnum.system &&
+                                    item.isUpcomingDeprecation === true && (
+                                      <DeprecationTag size={'sm'} />
+                                    )}
+                                  {item.testMode &&
+                                    !(
+                                      item.scope === ModelScopeEnum.system &&
+                                      item.isUpcomingDeprecation === true
+                                    ) && <TestModeBetaTag />}
                                   {isTeam && item.scope === ModelScopeEnum.system && (
                                     <MyTag type={'borderFill'} colorSchema={'gray'}>
                                       {t('config_model:system_model_tag')}
                                     </MyTag>
                                   )}
-                                  {item.testMode && <TestModeBetaTag />}
                                 </Flex>
                               </HStack>
                               <HStack mt={2} spacing={2} flexWrap={'nowrap'}>
@@ -1003,6 +1047,19 @@ const ModelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType: C
           onClose={onCloseDefaultModel}
           onSuccess={refreshModels}
         />
+      )}
+      {isOpenDeprecationInform && (
+        <ModelDeprecationInformModal
+          models={modelItems}
+          onClose={onCloseDeprecationInform}
+          onShowHistory={() => {
+            onCloseDeprecationInform();
+            onOpenDeprecationHistory();
+          }}
+        />
+      )}
+      {isOpenDeprecationHistory && (
+        <ModelDeprecationHistoryModal models={modelItems} onClose={onCloseDeprecationHistory} />
       )}
       <BatchDeleteConfirmModal isLoading={deletingModels} />
     </>

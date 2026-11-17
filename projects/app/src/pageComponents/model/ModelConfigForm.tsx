@@ -1,3 +1,4 @@
+import { STT_PRICE_UNITS } from '@fastgpt/global/core/ai/audio/constants';
 import MyTextarea from '@/components/common/Textarea/MyTextarea';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { Box, Flex, Grid, GridItem, HStack, Input, Switch } from '@chakra-ui/react';
@@ -11,6 +12,7 @@ import { MAX_MODEL_PRICE_TIERS } from '@fastgpt/global/core/ai/model/pricing';
 import type { ModelProviderItemType } from '@fastgpt/global/core/ai/model/provider';
 import {
   getRuntimeResolvedPriceTiers,
+  resolveSTTPricing,
   roundModelPrice,
   normalizeModelPricingForRead,
   normalizeModelPricingForSave
@@ -397,6 +399,8 @@ const ModelConfigForm = ({
     formState: { isDirty }
   } = useForm<AIModelDocumentDataType>({
     defaultValues: (() => {
+      if (initialModelData.type === ModelTypeEnum.stt)
+        return { ...initialModelData, pricing: resolveSTTPricing(initialModelData.pricing) };
       if (initialModelData.type !== ModelTypeEnum.llm) return initialModelData;
       const tiers: Partial<ModelPriceTierType>[] = (initialModelData.pricing?.tiers ?? []).slice(
         0,
@@ -430,6 +434,7 @@ const ModelConfigForm = ({
   }, [getValues, getValuesRef]);
   const reasoningEnabled = useWatch({ control, name: 'config.reasoning' });
   const model = useWatch({ control, name: 'model' });
+  const sttPriceType = useWatch({ control, name: 'pricing.type' }) ?? 'duration';
 
   useEffect(() => {
     onModelChange?.(model);
@@ -465,9 +470,12 @@ const ModelConfigForm = ({
   const priceUnit = useMemo(() => {
     if (isLLMModel || isEmbeddingModel || isRerankModel) return '/ M Tokens';
     if (isTTSModel) return `/ 1M ${t('common:unit.character')}`;
-    if (isSTTModel) return `/ 60 ${t('common:unit.seconds')}`;
+    if (isSTTModel)
+      return sttPriceType === 'tokens'
+        ? '/ 1M Tokens'
+        : `/ ${STT_PRICE_UNITS.duration} ${t('common:unit.seconds')}`;
     return '';
-  }, [isLLMModel, isEmbeddingModel, isTTSModel, t, isSTTModel, isRerankModel]);
+  }, [isLLMModel, isEmbeddingModel, isTTSModel, t, isSTTModel, isRerankModel, sttPriceType]);
 
   const { runAsync: submitModelRequest, loading: submittingModel } = useRequest(
     async (data: AIModelDocumentDataType) => {
@@ -501,6 +509,7 @@ const ModelConfigForm = ({
       }
       if (isTeamModel) {
         delete modelData.testMode;
+        delete modelData.isUpcomingDeprecation;
       }
 
       return onSubmit(normalizeModelPricingForSave(data));
@@ -749,14 +758,6 @@ const ModelConfigForm = ({
                 register={register}
               />
             )}
-            {feConfigs?.isPlus && (
-              <SwitchField
-                label={t('config_model:model.censor')}
-                tip={t('config_model:model.censor_tip')}
-                field={'config.censor'}
-                register={register}
-              />
-            )}
           </Grid>
         </Section>
       )}
@@ -785,38 +786,72 @@ const ModelConfigForm = ({
             />
           ) : (
             <Grid templateColumns={['1fr', 'repeat(2, minmax(0, 1fr))']} gap={4}>
-              <Field
-                label={`${t('config_model:model.unitPrice')}`}
-                tip={t('config_model:model.unitPrice_tip')}
-              >
-                <Flex alignItems={'center'} gap={2}>
-                  <Input
-                    type="number"
-                    step={0.01}
-                    {...register('pricing.unitPrice', {
-                      setValueAs: (value) =>
-                        value === '' ? undefined : roundModelPrice(Number(value)),
-                      onBlur: (event) => {
-                        const price =
-                          event.target.value === '' ? undefined : Number(event.target.value);
-                        if (price !== undefined && !Number.isFinite(price)) return;
-                        // 与阶梯单价共用十进制舍入，避免 Chakra precision 提前压低中点。
-                        setValue(
-                          'pricing.unitPrice',
-                          price === undefined ? undefined : roundModelPrice(price),
-                          {
-                            shouldDirty: true
-                          }
-                        );
-                      }
-                    })}
-                    {...InputStyles}
-                  />
-                  <Box flexShrink={0} fontSize={'12px'} color={'myGray.900'}>
-                    {priceUnit}
-                  </Box>
-                </Flex>
-              </Field>
+              {isSTTModel && (
+                <GridItem colSpan={sttPriceType === 'tokens' ? [1, 2] : 1}>
+                  <Field label={t('config_model:model.stt_billing_type')}>
+                    <MySelect
+                      value={sttPriceType}
+                      list={[
+                        { label: t('config_model:model.stt_billing_duration'), value: 'duration' },
+                        { label: t('config_model:model.stt_billing_tokens'), value: 'tokens' }
+                      ]}
+                      onChange={(value) => {
+                        setValue('pricing.type', value === 'tokens' ? 'tokens' : 'duration', {
+                          shouldDirty: true
+                        });
+                      }}
+                    />
+                  </Field>
+                </GridItem>
+              )}
+              {(isSTTModel && sttPriceType === 'tokens'
+                ? [
+                    {
+                      priceKey: 'pricing.inputPrice' as const,
+                      label: t('config_model:model.stt_input_price')
+                    },
+                    {
+                      priceKey: 'pricing.outputPrice' as const,
+                      label: t('config_model:model.stt_output_price')
+                    }
+                  ]
+                : [
+                    {
+                      priceKey: 'pricing.unitPrice' as const,
+                      label: t('config_model:model.unitPrice')
+                    }
+                  ]
+              ).map(({ priceKey, label }) => (
+                <Field key={priceKey} label={label}>
+                  <Flex alignItems={'center'} gap={2}>
+                    <Input
+                      type="number"
+                      step={0.01}
+                      {...register(priceKey, {
+                        setValueAs: (value) =>
+                          value === '' ? undefined : roundModelPrice(Number(value)),
+                        onBlur: (event) => {
+                          const price =
+                            event.target.value === '' ? undefined : Number(event.target.value);
+                          if (price !== undefined && !Number.isFinite(price)) return;
+                          // 与阶梯单价共用十进制舍入，避免 Chakra precision 提前压低中点。
+                          setValue(
+                            priceKey,
+                            price === undefined ? undefined : roundModelPrice(price),
+                            {
+                              shouldDirty: true
+                            }
+                          );
+                        }
+                      })}
+                      {...InputStyles}
+                    />
+                    <Box flexShrink={0} fontSize={'12px'} color={'myGray.900'}>
+                      {priceUnit}
+                    </Box>
+                  </Flex>
+                </Field>
+              ))}
             </Grid>
           )}
         </Section>
@@ -871,6 +906,11 @@ const ModelConfigForm = ({
                   label={t('config_model:model.test_mode')}
                   tip={t('config_model:model.test_mode_tip')}
                   field={'testMode'}
+                  register={register}
+                />
+                <SwitchField
+                  label={t('config_model:model.upcoming_deprecation')}
+                  field={'isUpcomingDeprecation'}
                   register={register}
                 />
               </>

@@ -1,3 +1,4 @@
+import { getSystemInstanceConfig } from '../../common/system/systemInstanceConfig/runtime';
 import { getFileSizeLimitBytes } from '@fastgpt/global/core/workflow/fileLimit';
 import { getTeamPlanStatus } from '../wallet/sub/utils';
 
@@ -7,6 +8,6 @@ export const getTeamFileSizeLimitBytes = async ({ teamId }: { teamId: string }) 
 
   return getFileSizeLimitBytes({
     teamMaxFileSize: planStatus.standard?.maxUploadFileSize,
-    systemMaxFileSize: global.feConfigs.limit.uploadFileMaxSize
+    systemMaxFileSize: getSystemInstanceConfig().resource.uploadFileMaxSize
   });
 };

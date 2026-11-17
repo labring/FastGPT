@@ -65,11 +65,37 @@ describe('replace invalid model references API', () => {
     vi.mocked(replaceInvalidModelReferences).mockResolvedValue(result);
   });
 
-  it('rejects a root account that is not the actual team owner', async () => {
+  it('allows root in a managed foreign team where role is empty and rechecks active membership', async () => {
+    const foreignRootTmb = {
+      ...owner,
+      role: undefined,
+      permission: { isOwner: true }
+    };
     vi.mocked(authUserPer).mockResolvedValue({
       ...owner,
-      tmb: { ...owner, role: null },
+      tmb: foreignRootTmb,
       isRoot: true
+    } as any);
+    vi.mocked(getTmbInfoByTmbId).mockResolvedValue(foreignRootTmb as any);
+    vi.mocked(replaceInvalidModelReferences).mockImplementation(async ({ assertCanContinue }) => {
+      await assertCanContinue();
+      return result;
+    });
+
+    await expect(handler(request())).resolves.toEqual(result);
+    expect(replaceInvalidModelReferences).toHaveBeenCalledTimes(1);
+    expect(getAuthorizedModelIds).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actor: expect.objectContaining({ isRoot: true })
+      })
+    );
+  });
+
+  it('rejects a non-root team admin who is not the actual team owner', async () => {
+    vi.mocked(authUserPer).mockResolvedValue({
+      ...owner,
+      tmb: { ...owner, role: 'admin', permission: { isOwner: false } },
+      isRoot: false
     } as any);
 
     await expect(handler(request())).rejects.toBeDefined();

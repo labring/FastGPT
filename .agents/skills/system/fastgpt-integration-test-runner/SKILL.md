@@ -13,6 +13,14 @@ description: 筛选并执行 FastGPT 集成用例，优先运行 Node 或无头 
 
 系统升级迁移与历史回填不通过本用例库执行；相关验证归迁移代码及专项 Vitest 测试。业务接口的历史数据兼容不因此移除。
 
+## Worktree 页面测试环境
+
+- 在 worktree 执行页面测试时，优先在该 worktree 根目录用仓库指定的 Node/pnpm 版本执行 `pnpm install --frozen-lockfile`，保持自己的 `node_modules/.pnpm` 和 workspace 链接。可以复用 pnpm store，但不要把主仓库的 `node_modules` 或其依赖目录整体软链接过来；安装前检查已有链接，备份本轮创建的复用目录，不能沿链接改动其他工作树的依赖。
+- 安装前检查依赖的安装钩子及 `AGENTS.md` 环境限制；禁止本地测试数据库时设置 `MONGOMS_DISABLE_POSTINSTALL=1 MONGOMS_RUNTIME_DOWNLOAD=0`，防止 mongodb-memory-server 在安装或运行时下载二进制。已有可用浏览器时可设置 `PUPPETEER_SKIP_DOWNLOAD=1`，再使用明确选择的浏览器；不要用 `--ignore-scripts` 跳过全部必要构建。
+- 按项目 `package.json` 的 dev 脚本启动，沿用默认 Turbopack；例如 `PORT=<空闲端口> pnpm --dir projects/app dev`，保留脚本中的 worker 等前置构建。检查 `next/package.json` 实际解析路径及 workspace 包链接均落在当前 worktree 内；无需单独安装 Turbopack。
+- `turbopack.root` 与 `outputFileTracingRoot` 应覆盖当前仓库并保持一致。出现依赖软链接越界时先修正依赖布局；不要为复用其他工作树的依赖而长期扩大到整个代码目录，也不要未经验证改用 Webpack。确需切换构建器时检查对应的 SVG loader 等配置，并记录实际启动方式。
+- 先串行预热本轮页面并确认可交互、必要 API 成功，再执行场景。记录冷启动编译耗时、页面响应及浏览器错误；页面超时需区分编译、接口和渲染阻塞，不能只增加超时或据此判业务失败。端口及构建目录仅由本轮进程使用，不停止其他任务的服务；环境修复后新建复测报告，保留旧失败与阻塞证据。
+
 ## 筛选本轮用例
 
 先读取仓库 `AGENTS.md`、`.agents/code/syntax.md`，沿用会话中已确认的环境和授权。以下命令在仓库根目录运行，需要已安装仓库依赖；复用相邻 [用例生成 skill](../fastgpt-integration-test-case/SKILL.md) 的扫描器和 `.agents/test/index.html` 的离线渲染库。

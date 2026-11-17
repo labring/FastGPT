@@ -9,6 +9,7 @@ import {
 } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/domain/toolContent';
 import { dispatchUpdateVariable } from '@fastgpt/service/core/workflow/dispatch/tools/runUpdateVar';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 
 const createCall = ({
   id = 'call_1',
@@ -99,6 +100,25 @@ describe('createAgentLoopCoreWorkflowToolRunner', () => {
       )
     );
     expect(result.response).not.toContain('AAAA');
+  });
+
+  it('does not attach images when the workflow already blocked its result', async () => {
+    const { MODERATION_BLOCKED_REPLACE_TEXT } =
+      await import('@fastgpt/global/core/plugin/moderation/constants');
+    const runner = createRunner({
+      runtimeNodes: [{ nodeId: 'search', inputs: [], outputs: [] }],
+      getToolInfo: () => ({ type: 'user', rawData: { nodeId: 'search' } }),
+      runWorkflowTool: vi.fn().mockResolvedValue({
+        flowResponses: [],
+        flowUsages: [],
+        assistantResponses: [],
+        toolResponses: { content: [{ type: 'image', data: 'AAAA', mimeType: 'image/png' }] },
+        workflowRuntimeSummary: { hasModerationBlock: true }
+      })
+    });
+    const result = await runner.runTool({ call: createCall() });
+    expect(result.response).toBe(MODERATION_BLOCKED_REPLACE_TEXT);
+    expect(result.content).toBeUndefined();
   });
 
   it.each([0, 1])(
@@ -649,7 +669,16 @@ describe('createAgentLoopCoreWorkflowToolRunner', () => {
     const runtimeNodes = [
       { nodeId: 'search', inputs: [], outputs: [{ id: 'result', key: 'result', value: 'parent' }] }
     ];
-    const runtimeEdges = [{ source: 'before', target: 'search', status: 'waiting' }];
+    const runtimeEdges = [
+      { source: 'before', target: 'search', status: 'waiting' },
+      {
+        source: 'tool-call',
+        sourceHandle: NodeOutputKeyEnum.selectedTools,
+        target: 'tool-set',
+        targetHandle: NodeOutputKeyEnum.selectedTools,
+        status: 'waiting'
+      }
+    ];
     let received: any;
     const { runInteractiveTool } = createRunner({
       runtimeNodes,
@@ -671,7 +700,14 @@ describe('createAgentLoopCoreWorkflowToolRunner', () => {
     } as any);
 
     expect(received.runtimeEdges).toEqual([
-      { source: 'before', target: 'search', status: 'active' }
+      { source: 'before', target: 'search', status: 'active' },
+      {
+        source: 'tool-call',
+        sourceHandle: NodeOutputKeyEnum.selectedTools,
+        target: 'tool-set',
+        targetHandle: NodeOutputKeyEnum.selectedTools,
+        status: 'waiting'
+      }
     ]);
     expect(received.runtimeNodes[0].outputs[0].value).toBe(false);
     expect(runtimeEdges[0].status).toBe('waiting');

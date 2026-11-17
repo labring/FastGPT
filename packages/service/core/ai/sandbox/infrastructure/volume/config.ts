@@ -1,9 +1,9 @@
 /**
  * 沙盒原子层：读取 volume-manager 连接配置。
  *
- * 只做环境变量校验和配置返回，不发起 volume 或 sandbox 操作。
+ * 只做实例配置校验和配置返回，不发起 volume 或 sandbox 操作。
  */
-import { serviceEnv } from '../../../../../env';
+import { getAgentSandboxCommonConfig, getAgentSandboxOpenSandboxConfig } from '../../config';
 
 export type VolumeManagerConfig = {
   url: string;
@@ -13,17 +13,22 @@ export type VolumeManagerConfig = {
 };
 
 /**
- * 读取 volume-manager 的环境配置。
+ * 读取 volume-manager 配置。
  *
+ * 连接信息以实例配置 subservice.agentSandbox 为权威；
  * volume-manager 只负责分配持久卷，OpenSandbox 的挂载路径由运行态固定为 /workspace。
  */
 export function getVolumeManagerEnvConfig(): VolumeManagerConfig {
-  const url = serviceEnv.AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL;
-  if (!url) throw new Error('AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL is required');
+  const opensandbox = getAgentSandboxOpenSandboxConfig();
+  const { storageSizeGi } = getAgentSandboxCommonConfig();
+  if (!opensandbox.volumeManagerUrl) {
+    throw new Error('Configure the volume manager URL in Agent Sandbox admin settings');
+  }
+
   return {
-    url,
-    token: serviceEnv.AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN,
-    volumeNamePrefix: serviceEnv.AGENT_SANDBOX_OPENSANDBOX_VOLUME_NAME_PREFIX,
-    storageSize: `${serviceEnv.AGENT_SANDBOX_STORAGE_SIZE_GI}Gi`
+    url: opensandbox.volumeManagerUrl,
+    token: opensandbox.volumeManagerToken,
+    volumeNamePrefix: opensandbox.volumeNamePrefix,
+    storageSize: `${storageSizeGi}Gi`
   };
 }

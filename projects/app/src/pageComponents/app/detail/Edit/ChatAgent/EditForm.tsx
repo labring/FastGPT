@@ -228,7 +228,7 @@ const EditForm = ({
           </Flex>
           <Flex alignItems={'center'} mt={5}>
             <FormLabel w={['60px', '100px']}>{t('common:core.ai.Model')}</FormLabel>
-            <Box flex={'1 0 0'}>
+            <Box flex={'1 1 0'} minW={0}>
               <SettingLLMModel
                 appId={appId || undefined}
                 bg="myGray.50"

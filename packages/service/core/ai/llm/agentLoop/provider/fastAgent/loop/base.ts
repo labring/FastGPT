@@ -7,7 +7,12 @@ import type {
   ChatCompletionToolMessageContentPart,
   CompletionFinishReason
 } from '@fastgpt/global/core/ai/llm/type';
-import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
+import {
+  ChatCompletionRequestMessageRoleEnum,
+  LLM_TOOL_CALL_ARGUMENTS_TRUNCATED_RESPONSE
+} from '@fastgpt/global/core/ai/constants';
+import type { localeType } from '@fastgpt/global/common/i18n/type';
+import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import type { CreateLLMResponseProps } from '../../../../request';
 import { createLLMResponse } from '../../../../request';
 import { compressRequestMessages, compressToolResponse } from '../../../../compress';
@@ -29,6 +34,7 @@ import { batchRun } from '@fastgpt/global/common/system/utils';
 import { normalizeToolResponseContent } from '@fastgpt/global/core/ai/llm/utils';
 import type { AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
+import { MODERATION_BLOCKED_REPLACE_TEXT } from '@fastgpt/global/core/plugin/moderation/constants';
 import {
   createFileClassificationContext,
   type FileClassificationContext
@@ -36,6 +42,7 @@ import {
 
 type RunAgentCallProps<TChildrenResponse = unknown> = {
   maxRunAgentTimes: number;
+  lang?: localeType;
   completionPolicy?: AgentLoopCompletionPolicy;
   getCheckpointContext?: () => Promise<string>;
   batchToolSize?: number;
@@ -211,6 +218,7 @@ export const onCompressContext = async ({
  */
 export const runAgentLoop = async <TChildrenResponse = unknown>({
   maxRunAgentTimes,
+  lang,
   completionPolicy,
   getCheckpointContext,
   batchToolSize = 1,
@@ -464,6 +472,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
       answerText: answer,
       reasoningText: reasoning,
       toolCalls = [],
+      moderatedToolCallIds = [],
       usage,
       responseEmptyTip,
       assistantMessage: llmAssistantMessage,
@@ -567,6 +576,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
     }
 
     if (toolCalls.length) {
+      const moderatedToolCallIdSet = new Set(moderatedToolCallIds);
       // 3. Call tools
       const continuationMessages: string[] = [];
       type ToolRunResult = {
@@ -583,6 +593,32 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
       }: {
         tool: ChatCompletionMessageToolCall;
       }): Promise<ToolRunResult> => {
+        // length 无法保证同轮任何工具参数完整，不能交给 JSON 修复后执行。
+        // 按请求语言补齐工具结果后继续模型循环，不把截断升级为请求失败。
+        if (finishReason === 'length' || moderatedToolCallIdSet.has(tool.id)) {
+          const response =
+            finishReason === 'length'
+              ? parseI18nString(LLM_TOOL_CALL_ARGUMENTS_TRUNCATED_RESPONSE, lang)
+              : MODERATION_BLOCKED_REPLACE_TEXT;
+          onToolRunEnd?.({
+            call: tool,
+            response,
+            ...(finishReason === 'length' ? { errorMessage: response } : {}),
+            assistantMessages: [],
+            seconds: 0,
+            usages: []
+          });
+          return {
+            tool,
+            toolMessage: {
+              tool_call_id: tool.id,
+              role: ChatCompletionRequestMessageRoleEnum.Tool,
+              content: response
+            } as ChatCompletionMessageParam,
+            toolAssistantMessages: []
+          };
+        }
+
         const toolStartTime = Date.now();
         let toolErrorMessage: string | undefined;
         onToolRunStart?.({

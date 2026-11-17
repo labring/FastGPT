@@ -3,7 +3,7 @@ import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import type { ChatAuthProxy, OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
-import { serviceEnv } from '@fastgpt/service/env';
+import { getAgentSandboxProxyConfig } from '@fastgpt/service/core/ai/sandbox/config';
 import { timingSafeEqual } from 'crypto';
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
@@ -90,9 +90,9 @@ export const AGENT_SANDBOX_PROXY_HEADER = 'x-proxy-token';
  * 这层只服务 proxy 到 Next API 的反向通道，浏览器侧访问仍走 ticket 鉴权。
  */
 export function authAgentSandboxProxy(req: ApiRequestProps): string {
-  const secret = serviceEnv.AGENT_SANDBOX_PROXY_SECRET;
+  const { secret } = getAgentSandboxProxyConfig();
   if (!secret) {
-    throw new Error('AGENT_SANDBOX_PROXY_SECRET environment variable is missing');
+    throw new Error('Agent Sandbox proxy secret is not configured');
   }
 
   const proxyToken = req.headers[AGENT_SANDBOX_PROXY_HEADER];

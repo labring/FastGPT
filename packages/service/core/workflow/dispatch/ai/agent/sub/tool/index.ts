@@ -66,6 +66,7 @@ export type Props = {
   runningUserInfo: ChatDispatchProps['runningUserInfo'];
   runningAppInfo: ChatDispatchProps['runningAppInfo'];
   chatId: ChatDispatchProps['chatId'];
+  usageId?: ChatDispatchProps['usageId'];
   uid: ChatDispatchProps['uid'];
   variableState: ChatDispatchProps['variableState'];
   runtimeNodesMap?: Map<string, RuntimeNodeItemType>;
@@ -79,6 +80,7 @@ export const dispatchTool = async ({
   runningUserInfo,
   runningAppInfo,
   chatId,
+  usageId,
   uid,
   variableState,
   runtimeNodesMap,
@@ -206,7 +208,8 @@ export const dispatchTool = async ({
             uId: uid,
             permissions: tool.permissions ?? [],
             teamId: String(runningUserInfo.teamId),
-            tmbId: String(runningUserInfo.tmbId)
+            tmbId: String(runningUserInfo.tmbId),
+            usageId
           }).generateToken()
         : undefined;
 
@@ -226,10 +229,12 @@ export const dispatchTool = async ({
           },
           chat: {
             chatId,
-            uid
+            uid,
+            usageId
           },
           time: String(variableState.get('cTime') ?? ''),
-          invokeToken: invokeToken || ''
+          invokeToken: invokeToken || '',
+          usageId
         },
         onMessage: ({ type, content }) => {
           if (!workflowStreamResponse || !content || !isPluginAnswerType(type)) return;
@@ -285,7 +290,7 @@ export const dispatchTool = async ({
           }
         ]
       };
-    } else if (toolConfig?.mcpTool?.toolId) {
+    } else if (toolConfig?.mcpTool && 'toolId' in toolConfig.mcpTool) {
       const { parentId, toolName } = parseToolId(toolConfig.mcpTool.toolId);
       if (!parentId || !toolName) {
         return Promise.reject(`Invalid MCP tool id: ${toolConfig.mcpTool.toolId}`);
@@ -342,7 +347,7 @@ export const dispatchTool = async ({
           ...(errorMessage !== undefined ? { errorText: errorMessage } : {})
         }
       };
-    } else if (toolConfig?.httpTool?.toolId) {
+    } else if (toolConfig?.httpTool && 'toolId' in toolConfig.httpTool) {
       const { parentId, toolName } = parseToolId(toolConfig.httpTool.toolId);
       if (!parentId || !toolName) {
         return Promise.reject(`Invalid HTTP tool id: ${toolConfig.httpTool.toolId}`);

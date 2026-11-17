@@ -44,6 +44,7 @@ import { loadChildWorkflowWithResource } from '../../resource/service';
 import type { WorkflowResourceContext } from '@fastgpt/global/core/workflow/runtime/type';
 import { withWorkflowNodeResponseOutputPolicy } from '../nodeResponseSink';
 import { WorkflowMemoryState } from '../../memory/state';
+import { MODERATION_BLOCKED_REPLACE_TEXT } from '@fastgpt/global/core/plugin/moderation/constants';
 
 type RunPluginProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.forbidStream]?: boolean;
@@ -330,25 +331,29 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
     });
     // 系统级 workflow tool 的内部模型调用对用户不可见，不计入当前用户 workflow/chat
     // 的 token summary；普通 plugin workflow 仍按 child summary 归属一次。
-    const pluginOutput = runtimeSummary.pluginOutput;
-    const pluginOutputError = getAppToolOutputError({
-      plugin: workflowTool,
-      pluginOutput
-    });
-    // 执行失败优先于工具业务输出；子流程已捕获的错误不继续向父流程传播。
-    const errorText =
-      runtimeSummary.errorCount > 0
+    const isToolModerationBlocked = Boolean(props.isToolCall && runtimeSummary.hasModerationBlock);
+    const pluginOutput = isToolModerationBlocked ? undefined : runtimeSummary.pluginOutput;
+    const pluginOutputError = isToolModerationBlocked
+      ? undefined
+      : getAppToolOutputError({
+          plugin: workflowTool,
+          pluginOutput
+        });
+    // 执行失败优先于工具业务输出；子流程已捕获的错误不继续向父流程传播；工具调用子流程命中内容审核时不作为错误上报。
+    const errorText = isToolModerationBlocked
+      ? undefined
+      : runtimeSummary.errorCount > 0
         ? runtimeSummary.errorText || 'Run workflow tool failed'
         : pluginOutputError;
 
     const usagePoints = await computedAppToolUsage({
       plugin: workflowTool,
       childrenUsage: flowUsages,
-      error: errorText !== undefined || !pluginOutput
+      error: !isToolModerationBlocked && (errorText !== undefined || !pluginOutput)
     });
     const ownUsagePoints = getAppToolOwnUsage({
       plugin: workflowTool,
-      error: errorText !== undefined || !pluginOutput
+      error: !isToolModerationBlocked && (errorText !== undefined || !pluginOutput)
     });
     props.nodeSummary.mergeNodeSummary({
       ...(shouldStoreChildNodeResponses
@@ -361,7 +366,13 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
       ...(shouldStoreChildNodeResponses
         ? { citeCollectionIds: runtimeSummary.citeCollectionIds }
         : {}),
-      hasAgentSandbox: runtimeSummary.hasAgentSandbox
+      hasAgentSandbox: runtimeSummary.hasAgentSandbox,
+      ...(props.isToolCall && runtimeSummary.hasModerationBlock
+        ? { hasModerationBlock: true }
+        : {}),
+      ...(props.isToolCall && runtimeSummary.hasToolResultModerated
+        ? { hasToolResultModerated: true }
+        : {})
     });
     // Child run not push usage
     props.usagePush([
@@ -371,14 +382,16 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
       }
     ]);
     const childResponseCount = runtimeSummary.childResponseCount;
-    const toolResponse = pluginOutput
-      ? Object.keys(pluginOutput)
-          .filter((key) => outputFilterMap[key])
-          .reduce<Record<string, any>>((acc, key) => {
-            acc[key] = pluginOutput[key];
-            return acc;
-          }, {})
-      : undefined;
+    const toolResponse = isToolModerationBlocked
+      ? MODERATION_BLOCKED_REPLACE_TEXT
+      : pluginOutput
+        ? Object.keys(pluginOutput)
+            .filter((key) => outputFilterMap[key])
+            .reduce<Record<string, any>>((acc, key) => {
+              acc[key] = pluginOutput[key];
+              return acc;
+            }, {})
+        : undefined;
     return {
       data: pluginOutput || {},
       ...(errorText !== undefined
@@ -389,7 +402,7 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
           }
         : {}),
       // 嵌套运行时，如果 childApp stream=false，实际上不会有任何内容输出给用户，所以不需要存储
-      assistantResponses: system_forbid_stream ? [] : assistantResponses,
+      assistantResponses: system_forbid_stream || isToolModerationBlocked ? [] : assistantResponses,
       system_memories,
       // responseData, // debug
       [DispatchNodeResponseKeyEnum.runTimes]: runTimes,
@@ -397,12 +410,16 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
         moduleLogo: workflowTool.avatar,
         totalPoints: ownUsagePoints,
         toolInput: workflowToolVariables,
-        pluginOutput,
+        ...(isToolModerationBlocked
+          ? { toolRes: MODERATION_BLOCKED_REPLACE_TEXT }
+          : { pluginOutput }),
         childResponseCount,
         ...(errorText !== undefined ? { errorText } : {})
       },
       [DispatchNodeResponseKeyEnum.toolResponse]:
-        errorText !== undefined ? { ...toolResponse, error: errorText } : toolResponse,
+        errorText !== undefined
+          ? { ...(typeof toolResponse === 'object' ? toolResponse : {}), error: errorText }
+          : toolResponse,
       [DispatchNodeResponseKeyEnum.customFeedbacks]: customFeedbacks
     };
   } catch (error) {

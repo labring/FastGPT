@@ -119,7 +119,13 @@ export const refreshModelHandle = async () => {
  * 历史模型迁移由启动阻塞任务负责，各节点在业务启动前重载；运行期仍由读取入口按修订号刷新。
  */
 export const loadSystemModels = async (refresh = false, language = 'en') => {
-  if (!refresh && getCachedSystemModelHandle()) return;
+  // 冷启动前的请求可能已加载安装目录；目录存在不代表 Provider 元数据也已初始化。
+  if (
+    !refresh &&
+    getCachedSystemModelHandle() &&
+    getModelProviderMetadata().providers !== undefined
+  )
+    return;
 
   try {
     await preloadModelProviders();

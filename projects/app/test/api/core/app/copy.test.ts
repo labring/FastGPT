@@ -1,3 +1,4 @@
+import { getTestInstanceConfig } from '@test/utils/instanceConfigSnapshot';
 import * as copyapi from '@/pages/api/core/app/copy';
 import * as createapi from '@/pages/api/core/app/create';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
@@ -5,6 +6,8 @@ import { configureAgentQuota } from './quotaTestUtils';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { getHTTPToolSetRuntimeNode } from '@fastgpt/global/core/app/tool/httpTool/utils';
+import { getMCPToolSetRuntimeNode } from '@fastgpt/global/core/app/tool/mcpTool/utils';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   FlowNodeInputTypeEnum,
@@ -274,19 +277,67 @@ describe('Copy', () => {
           type: AppTypeEnum.chatAgent
         }))
       );
+      const inputSchema = {
+        type: 'object',
+        properties: { query: { type: 'string' } }
+      };
+      const nodes = (() => {
+        if (type === AppTypeEnum.mcpToolSet) {
+          return [
+            getMCPToolSetRuntimeNode({
+              url: 'https://mcp.example.com',
+              toolList: [{ name: 'search', description: 'Search', inputSchema }]
+            })
+          ];
+        }
+        if (type === AppTypeEnum.httpToolSet) {
+          return [
+            getHTTPToolSetRuntimeNode({
+              baseUrl: 'https://api.example.com',
+              apiSchemaStr: '{"openapi":"3.0.0"}',
+              toolList: [
+                {
+                  name: 'search',
+                  description: 'Search',
+                  path: '/search',
+                  method: 'GET',
+                  inputSchema
+                }
+              ]
+            })
+          ];
+        }
+        return [];
+      })();
       const sourceId = await createapi.onCreateApp({
         teamId: owner.teamId,
         tmbId: owner.tmbId,
         name: 'tool',
         type,
-        nodes: []
+        nodes
       });
       const copy = () =>
         Call<CopyAppBodyType, Record<string, never>, CopyAppResponseType>(copyapi.default, {
           auth: owner,
           body: { appId: sourceId }
         });
-      expect((await copy()).code).toBe(200);
+      const copied = await copy();
+      expect(copied.code).toBe(200);
+      if (type === AppTypeEnum.mcpToolSet || type === AppTypeEnum.httpToolSet) {
+        const copiedVersion = await MongoAppVersion.findOne({
+          appId: copied.data?.appId,
+          isPublish: true
+        }).lean();
+        const toolSet =
+          type === AppTypeEnum.mcpToolSet
+            ? copiedVersion?.nodes[0].toolConfig?.mcpToolSet
+            : copiedVersion?.nodes[0].toolConfig?.httpToolSet;
+        expect(toolSet?.toolList[0]).toMatchObject({
+          name: 'search',
+          description: 'Search',
+          inputSchema: JSON.stringify(inputSchema)
+        });
+      }
       await MongoApp.insertMany(
         Array.from({ length: 998 }, () => ({
           teamId: owner.teamId,
@@ -326,7 +377,7 @@ describe('Copy', () => {
         });
       expect((await copy()).code).toBe(200);
       await MongoApp.insertMany(
-        Array.from({ length: serviceEnv.APP_FOLDER_MAX_AMOUNT - 2 }, () => ({
+        Array.from({ length: getTestInstanceConfig().resource.appFolderMaxAmount - 2 }, () => ({
           teamId: owner.teamId,
           tmbId: owner.tmbId,
           name: 'existing folder',
@@ -335,7 +386,7 @@ describe('Copy', () => {
       );
       expect((await copy()).error).toBe(TeamErrEnum.appFolderAmountNotEnough);
       expect(await MongoApp.countDocuments({ teamId: owner.teamId, type })).toBe(
-        serviceEnv.APP_FOLDER_MAX_AMOUNT
+        getTestInstanceConfig().resource.appFolderMaxAmount
       );
     }
   );

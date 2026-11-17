@@ -31,7 +31,10 @@ async function handler(
     per: OwnerPermissionVal
   });
   const teamId = String(app.teamId);
-  const draftWorkflow = await getAppDraftWorkflow(app._id);
+
+  // 当前前端只从 Simple App 表单调用；不在 API 层限制应用类型转换。
+
+  const draftWorkflow = await getAppDraftWorkflow(app._id, app);
   if (createNew) {
     const { appId } = await mongoSessionRun(async (session) => {
       // Copy avatar

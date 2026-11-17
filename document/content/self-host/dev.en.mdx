@@ -1,6 +1,6 @@
 ---
 title: Local Development Setup
-description: Develop and debug FastGPT locally
+description: "Set up a local FastGPT development and debugging environment with Node.js, pnpm, database dependencies, environment variables, and plugin services."
 ---
 
 import { Alert } from '@/components/docs/Alert';
@@ -14,8 +14,8 @@ Install and configure these dependencies on your machine to build <FastGPTLink c
 
 - [Git](https://git-scm.com/)
 - [Docker](https://www.docker.com/)
-- [Node.js >=20](https://nodejs.org) (keep development environments on the same version; use [nvm](https://github.com/nvm-sh/nvm) to manage Node.js versions)
-- [pnpm](https://pnpm.io/) 10.x
+- [Node.js 22.23.4+ / 24.22.1+ / 26.12.1+](https://nodejs.org) (Node.js 24.x matching the Dockerfile is recommended; use [nvm](https://github.com/nvm-sh/nvm) to manage Node versions)
+- [pnpm](https://pnpm.io/) 10.x, matching the repository packageManager version
 
 We recommend developing on \*nix environments (Linux, macOS, Windows WSL).
 
@@ -45,9 +45,8 @@ docker compose up -d
 ```
 
 <Alert context="warning">
-  1. If you can't pull images, use the China mirror version: `docker compose -f
-  docker-compose.cn.yml up -d` 2. For MongoDB, add the `directConnection=true` parameter to your
-  connection string to connect to the replica set.
+  1. If you cannot pull images, use the China mirror file `docker-compose.cn.yml`: `docker compose -f docker-compose.cn.yml up -d`.
+  2. For MongoDB, add the `directConnection=true` parameter to your connection string to connect to the replica set.
 </Alert>
 
 ### 4. Initial Configuration
@@ -64,26 +63,21 @@ pwd
 
 Copy `.env.template` to create `.env.local` in the same directory. Only changes in `.env.local` take effect.
 See `.env.template` for variable descriptions.
-If you haven't modified variables in docker-compose.yaml, the defaults in `.env.template` work as-is. Otherwise, match the values in your `yml` file.
+`FILE_TOKEN_KEY=` is empty in the template but required (at least 6 characters). Set it to a random string in `.env.local` first, or startup fails with `Invalid environment variables`. For the other variables, if you haven't modified them in docker-compose.yaml, the defaults in `.env.template` work as-is. Otherwise, match the values in your `yml` file.
+Also update `PLUGIN_TOKEN` in `.env.local` to match `x-plugin-auth-token` in `deploy/dev/docker-compose.yml` (`fastgpt-plugin-dev-token-12345678`). For all other variables, the `.env.template` defaults work when `docker-compose.yml` is unchanged.
 
 ```bash
 cp .env.template .env.local
 ```
 
-**2. config.json Configuration File**
+**2. System Parameters**
 
-Copy `data/config.json` to create `data/config.local.json`. For detailed parameters, see [Configuration Guide](/en/self-host/config/model/intro).
+Starting with 4.15.0, the open-source edition reads environment variables for system parameters; set them in `.env.local` as needed. See [Environment Variables](/en/self-host/config/env) for the full list:
 
-```bash
-cp data/config.json data/config.local.json
-```
-
-This file usually doesn't need changes. Key `systemEnv` parameters:
-
-- `vectorMaxProcess`: Max vector generation processes. Depends on database and key concurrency — for a 2c4g server, set to 10–15.
-- `qaMaxProcess`: Max QA generation processes
-- `vlmMaxProcess`: Max image understanding model processes
-- `hnswEfSearch`: HNSW vector search width, defaulting to `200`, for PG, Milvus, OceanBase, SeekDB, and openGauss. Higher values generally improve recall but increase search latency.
+- `VECTOR_MAX_PROCESS`: Max vector generation processes (defaults to `10`). Adjust based on database and model key concurrency; 10–15 is recommended for a 2c4g server.
+- `QA_MAX_PROCESS`: Max QA generation processes
+- `VLM_MAX_PROCESS`: Max image understanding model processes
+- `HNSW_EF_SEARCH`: HNSW vector search width (defaults to `200`) for PG, Milvus, OceanBase, SeekDB, and openGauss. Higher values generally improve recall with increased search latency.
 
 ### 5. Run
 
@@ -106,9 +100,9 @@ We recommend using Docker for builds.
 
 ```bash
 # Without proxy
-docker build -f ./projects/app/Dockerfile -t fastgpt . --build-arg name=app
-# With Taobao proxy
-docker build -f ./projects/app/Dockerfile -t fastgpt. --build-arg name=app --build-arg proxy=taobao
+docker build -f ./projects/app/Dockerfile -t fastgpt .
+# With China mirrors (any non-empty proxy switches to the ustc apt mirror and npmmirror registry)
+docker build -f ./projects/app/Dockerfile -t fastgpt . --build-arg proxy=1
 ```
 
 Without Docker, you'd need to manually execute all the run-stage commands from the `Dockerfile` (not recommended).
@@ -121,7 +115,7 @@ Without Docker, you'd need to manually execute all the run-stage commands from t
 
 If you run into issues like merge conflicts, check GitHub's [pull request tutorial](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests). Once your PR is merged, you'll be listed in the [contributors table](https://github.com/labring/FastGPT/graphs/contributors).
 
-## QA
+## Local Development Troubleshooting
 
 ### System Time Anomaly
 
@@ -132,23 +126,26 @@ If your default timezone is `Asia/Shanghai`, system time may be incorrect in non
 1. For remote databases, check if the port is open.
 2. For local databases, try changing `host` to `localhost` or `127.0.0.1`.
 3. For local connections to remote MongoDB, add `directConnection=true` to connect to replica sets.
-4. Use `mongocompass` for MongoDB connection testing and visual management.
-5. Use `navicat` for PostgreSQL connection and management.
+4. Use MongoDB Compass for MongoDB connection testing and visual management.
+5. Use Navicat or another PostgreSQL client for PostgreSQL connection and management.
 
-### sh ./scripts/postinstall.sh Permission Denied
+<span id="sh-scriptspostinstallsh-permission-denied" />
 
-FastGPT runs a `postinstall` script after `pnpm i` to auto-generate ChakraUI types. If you get a permission error, run `chmod -R +x ./scripts/` first, then `pnpm i`.
+### postinstall Script Fails
 
-If that doesn't work, manually execute the contents of `./scripts/postinstall.sh`.
-_On Windows, use git bash to add execute permissions and run the script._
+FastGPT runs the `postinstall` script from the root `package.json` after `pnpm i` to generate Chakra UI types and build the SDK and workflow subpackages. If `postinstall` fails, run the steps manually from the repository root:
+
+```bash
+pnpm gen:theme-typings && pnpm run build:sdks && pnpm run build:workflow-packages
+```
 
 ### TypeError: Cannot read properties of null (reading 'useMemo')
 
-An earlier workaround for this error was to delete all `node_modules` directories and reinstall with Node 18. Current development requires Node.js >=20 as listed above; check the requirements for the FastGPT version you are working on before changing runtimes. The local development steps are:
+Verify the repository requirements (Node.js `22.23.4+` / `24.22.1+` / `26.12.1+` and pnpm 10.x), check React dependency consistency, and reinstall from the lockfile. Local dev workflow:
 
 1. Root directory: `pnpm i`
-2. Copy `config.json` -> `config.local.json`
-3. Copy `.env.template` -> `.env.local`
+2. Copy `.env.template` -> `.env.local` and set `FILE_TOKEN_KEY`
+3. Configure other environment variables in `.env.local` as needed
 4. `cd projects/app`
 5. `pnpm dev`
 
@@ -162,6 +159,7 @@ Having trouble? Join the Lark group to connect with developers and users.
 
 <img
   width="400px"
+  alt="QR code for joining the FastGPT Lark community group"
   src="https://oss.laf.run/otnvvf-imgs/fastgpt-feishu1.png"
   className="medium-zoom-image"
 />
@@ -176,12 +174,12 @@ FastGPT uses Next.js page routing. To separate frontend and backend code, direct
 
 FastGPT uses pnpm workspace for its monorepo structure, with two main parts:
 
-- projects/app - FastGPT main project
+- projects/ - Application projects: `app` is the FastGPT main project, alongside services such as code-sandbox, agent-sandbox, agent-sandbox-proxy, volume-manager, mcp_server, and marketplace
 - packages/ - Submodules
   - global - Shared code: functions, type declarations, and constants usable on both frontend and backend
   - service - Server-side code
   - web - Frontend code
-  - plugin - Custom workflow plugin code
+  - dal, next, workflow-cli, workflow-core - Other shared subpackages
 
 ### Domain-Driven Design (DDD)
 
@@ -198,28 +196,38 @@ FastGPT's code modules follow DDD principles, divided into these domains:
 .
 ├── .github                      // GitHub config
 ├── .husky                       // Formatting config
-├── document                      // Documentation
-├── files                        // External files, e.g., docker-compose, helm
+├── deploy                       // Deployment template sources (docker-compose, k8s, etc.)
+├── document                     // Documentation
 ├── packages                     // Subpackages
+│   ├── dal
 │   ├── global                   // Frontend/backend shared subpackage
-│   ├── plugins                  // Workflow plugins (for custom packages)
+│   ├── next
 │   ├── service                  // Backend subpackage
-│   └── web                      // Frontend subpackage
+│   ├── web                      // Frontend subpackage
+│   ├── workflow-cli
+│   └── workflow-core
 ├── projects
-│   └── app                      // FastGPT main project
-├── python                       // Model code, unrelated to FastGPT itself
-└── scripts                      // Automation scripts
-    ├── icon                     // Icon scripts: pnpm initIcon (write SVG to code), pnpm previewIcon (preview icons)
-    └── postinstall.sh           // ChakraUI custom theme TS type initialization
+│   ├── app                      // FastGPT main project
+│   ├── agent-sandbox            // Agent sandbox image
+│   ├── agent-sandbox-proxy      // Agent sandbox proxy
+│   ├── code-sandbox             // Code run sandbox
+│   ├── fastgpt-ide-agent
+│   ├── marketplace              // Plugin marketplace
+│   ├── mcp_server               // MCP Server
+│   └── volume-manager           // OpenSandbox volume manager
+├── sdk                          // SDKs such as otel, sandbox-adapter, and storage
+├── scripts                      // Automation scripts
+│   ├── icon                     // Icon scripts: pnpm initIcon (write SVG to code), pnpm previewIcon (preview icons)
+│   └── postinstall.sh           // ChakraUI custom theme TS type initialization
+├── test                         // Tests
 ├── package.json                 // Top-level monorepo
 ├── pnpm-lock.yaml
 ├── pnpm-workspace.yaml          // Monorepo declaration
-├── Dockerfile
 ├── LICENSE
 ├── README.md
 ├── README_en.md
 ├── README_ja.md
-├── dev.md
+└── dev.md
 ```
 
 </details>

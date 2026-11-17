@@ -19,7 +19,7 @@ FE_DOMAIN=https://fastgpt.example.com
 
 ### MongoDB 索引同步调整
 
-V4.15.4 起，`SYNC_INDEX` 弃用，新增 `MONGO_DEPRECATE_INDEX` 环境变量，用于控制是否清理 Schema 显式标记的废弃索引，默认值为 `true`。设置为 `false` 时只跳过废弃索引清理，不影响当前 Schema 缺失索引的创建。
+V4.15.4 起，移除旧索引同步开关，新增 `MONGO_DEPRECATE_INDEX` 环境变量，用于控制是否清理 Schema 显式标记的废弃索引，默认值为 `true`。设置为 `false` 时只跳过废弃索引清理，不影响当前 Schema 缺失索引的创建。
 
 FastGPT 启动时会自动执行安全的主动同步：
 
@@ -35,7 +35,7 @@ FastGPT 启动时会自动执行安全的主动同步：
 
 如需在升级 V4.15.4 前请按以下顺序操作完整历史索引清理：
 
-1. 设置 `SYNC_INDEX=true`，重启服务并等待索引同步完成。
+1. 启用该旧版本的索引同步功能，重启服务并等待索引同步完成。
 2. 先升级并启动一次 V4.15.3。
 3. 确认索引同步成功后，再升级至 V4.15.4。
 

@@ -1,4 +1,3 @@
-import { formatToISOWithTimezone } from '@fastgpt/global/common/string/time';
 import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import { Box, Button, Flex, Table, Tbody, Td, Th, Thead, Tr } from '@chakra-ui/react';
 import { formatNumber } from '@fastgpt/global/common/math/tools';
@@ -7,95 +6,44 @@ import { type UsageListItemType } from '@fastgpt/global/support/wallet/usage/typ
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import dayjs from 'dayjs';
-import React, { useMemo, useRef, useState } from 'react';
-import Avatar from '@fastgpt/web/components/common/Avatar';
+import React, { useRef, useState } from 'react';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
-import { getUserUsages } from '@/web/support/wallet/usage/api';
 import dynamic from 'next/dynamic';
-import { type UsageFilterParams } from './type';
-import { toMultiSelectFilterQuery } from '@fastgpt/web/components/common/TagFilter';
-import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
-import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { downloadFetch } from '@/web/common/system/utils';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
-import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { accountContentScrollStyles, accountPageRootStyles } from '@/pageComponents/account/styles';
+import type { UsageFilterController } from './useUsageFilterController';
+import UsageExportButton from './UsageExportButton';
+import { UsageMember } from './UsageMember';
 
 const UsageDetail = dynamic(() => import('./UsageDetail'));
 
 const UsageTableList = ({
-  filterParams,
+  controller,
   Tabs,
   Selectors
 }: {
   Tabs: React.ReactNode;
   Selectors: React.ReactNode;
-  filterParams: UsageFilterParams;
+  controller: UsageFilterController;
 }) => {
   const { t } = useSafeTranslation();
-
-  const { dateRange, memberFilter, sourceFilter, projectName } = filterParams;
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const requestParams = useMemo(() => {
-    return {
-      dateStart: formatToISOWithTimezone(dateRange.from),
-      dateEnd: formatToISOWithTimezone(dateRange.to),
-      sources: toMultiSelectFilterQuery(sourceFilter),
-      teamMemberIds: toMultiSelectFilterQuery(memberFilter),
-      projectName
-    };
-  }, [dateRange.from, dateRange.to, memberFilter, projectName, sourceFilter]);
 
   const {
     data: usages,
     isLoading,
     Pagination,
     total
-  } = usePagination(getUserUsages, {
+  } = usePagination(controller.fetchUsages, {
     defaultPageSize: 20,
     pageSizeOptions: [20, 50, 100, 200],
     pageSizeCacheKey: 'account-usage-detail',
-    params: requestParams,
-    refreshDeps: [requestParams],
+    params: controller.requestParams,
+    refreshDeps: [controller.queryKey],
     scrollContainerRef
   });
 
   const [usageDetail, setUsageDetail] = useState<UsageListItemType>();
-
-  const { runAsync: exportUsage } = useRequest(
-    async () => {
-      await downloadFetch({
-        url: `/api/proApi/support/wallet/usage/exportUsage`,
-        filename: `usage.csv`,
-        body: {
-          ...requestParams,
-          appNameMap: {
-            ['core.app.Question Guide']: t('common:core.app.Question Guide'),
-            [i18nT('common:support.wallet.usage.Audio Speech')]: t(
-              'common:support.wallet.usage.Audio Speech'
-            ),
-            ['support.wallet.usage.Whisper']: t('common:support.wallet.usage.Whisper'),
-            [i18nT('account_usage:embedding_index')]: t('account_usage:embedding_index'),
-            [i18nT('account_usage:qa')]: t('account_usage:qa'),
-            ['core.dataset.training.Auto mode']: t('common:core.dataset.training.Auto mode'),
-            [i18nT('common:core.module.template.ai_chat')]: t('common:core.module.template.ai_chat')
-          },
-          sourcesMap: Object.fromEntries(
-            Object.entries(UsageSourceMap).map(([key, config]) => [
-              key,
-              {
-                label: t(config.label as any)
-              }
-            ])
-          ),
-          title: t('account_usage:export_title')
-        }
-      });
-    },
-    {
-      refreshDeps: [requestParams]
-    }
-  );
 
   return (
     <MyBox
@@ -126,26 +74,12 @@ const UsageTableList = ({
             {Selectors}
           </Box>
           <Box display={['none', 'block']} flexShrink={0}>
-            <PopoverConfirm
-              Trigger={<Button size={'md'}>{t('common:Export')}</Button>}
-              showCancel
-              content={t('account_usage:export_confirm_tip', { total })}
-              onConfirm={exportUsage}
-            />
+            <UsageExportButton controller={controller} total={total} />
           </Box>
         </Flex>
       </Flex>
       <Flex display={['flex', 'none']} mt={3} px={3} w={'100%'}>
-        <PopoverConfirm
-          Trigger={
-            <Button w={'100%'} size={'md'}>
-              {t('common:Export')}
-            </Button>
-          }
-          showCancel
-          content={t('account_usage:export_confirm_tip', { total })}
-          onConfirm={exportUsage}
-        />
+        <UsageExportButton controller={controller} total={total} w={'100%'} />
       </Flex>
       <FixedTableContainer
         maxH="none"
@@ -154,11 +88,9 @@ const UsageTableList = ({
         mt={3}
         px={[3, 4]}
         footer={
-          <>
-            <Flex mt={3} justifyContent={'center'}>
-              <Pagination />
-            </Flex>
-          </>
+          <Flex mt={3} justifyContent={'center'}>
+            <Pagination />
+          </Flex>
         }
         h={['60dvh', 0]}
       >
@@ -178,10 +110,7 @@ const UsageTableList = ({
               <Tr key={item.id}>
                 <Td>{dayjs(item.time).format('YYYY/MM/DD HH:mm:ss')}</Td>
                 <Td>
-                  <Flex alignItems={'center'} color={'myGray.500'}>
-                    <Avatar src={item.sourceMember.avatar} w={'20px'} mr={1} rounded={'full'} />
-                    {item.sourceMember.name}
-                  </Flex>
+                  <UsageMember member={item.sourceMember} />
                 </Td>
                 <Td>{t(UsageSourceMap[item.source]?.label as any) || '-'}</Td>
                 <Td className="textEllipsis" maxW={'400px'} title={t(item.appName as any)}>
@@ -198,11 +127,20 @@ const UsageTableList = ({
           </Tbody>
         </Table>
         {!isLoading && usages.length === 0 && (
-          <EmptyTip text={t('account_usage:no_usage_records')}></EmptyTip>
+          <EmptyTip
+            text={
+              <Box color={'myGray.500'}>
+                {t('account_usage:no_matching_members')}
+                <Box as={'button'} type={'button'} color={'primary.700'} onClick={controller.clear}>
+                  {t('account_usage:clear_filters')}
+                </Box>
+              </Box>
+            }
+          />
         )}
       </FixedTableContainer>
 
-      {!!usageDetail && (
+      {!!usageDetail && usages.some((item) => item.id === usageDetail.id) && (
         <UsageDetail usage={usageDetail} onClose={() => setUsageDetail(undefined)} />
       )}
     </MyBox>

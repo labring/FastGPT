@@ -1,0 +1,118 @@
+---
+title: "Case 2: Dataset + Conversational Agent — Civil Code Q&A Assistant"
+description: "Case 2: Dataset + Conversational Agent — Civil Code Q&A Assistant"
+---
+
+This example imports a local statutory excerpt and uses your team's built-in embedding and chat models without requiring external API credentials.
+
+## Case 2: Dataset + Conversational Agent — Civil Code Q&A Assistant
+
+### 2.1 Use Cases
+
+A Dataset is ideal for scenarios where answers must be based on provided materials, such as policy Q&A, product manual Q&A, legal article retrieval, and customer service knowledge support. Without a Dataset, the AI primarily relies on its own model capabilities to answer questions. Once a Dataset is connected, the AI first searches your materials and then organizes answers based on the search results.
+
+In this case, we import the _Civil Code of the People's Republic of China_ into the Dataset and create a Civil Code Q&A assistant. When users ask questions in natural language, the assistant should prioritize citing the original Civil Code text to reduce fabricated responses.
+
+Think of the Dataset as a "reference room" configured for the AI. The model itself has general knowledge but doesn't know your company policies, product details, internal processes, or specific regulatory versions. The Dataset turns these materials into searchable content, allowing the AI to look up information before organizing an answer. For legal, policy, customer service, and after-sales scenarios, this is more controllable than relying solely on the model's memory.
+
+### 2.2 Preparation
+
+- Example file: [civil-code-lease.txt](/examples/civil-code-lease.txt), containing Articles 725–728 from Book III, Contracts, Chapter XIV, Lease Contracts. It uses the Civil Code adopted on May 28, 2020, effective January 1, 2021, from the [full text republished by the Supreme People’s Court](https://www.court.gov.cn/zixun/xiangqing/233181.html). The Chinese excerpt demonstrates retrieval; check current law and applicable interpretations for production use.
+- A usable conversation model and vector model.
+- A legal question for testing, e.g., "My lease isn't up yet, but the landlord wants to sell the house. What should I do?"
+
+### 2.3 Configuration Steps
+
+1. **Create a Dataset**
+
+   Click **Dataset** in the left navigation bar, click **New** in the upper-right corner, and select **General Dataset** from the dropdown menu. Name the Dataset `Civil Code Lease Articles`, select an available **Embedding model** and **File read model** for your team, and click **Create**.
+
+   ![Create a general dataset and select the embedding model](/imgs/optimized/current/knowledge-create.png.webp)
+
+2. **Create a Text Collection**
+
+   Click **Create/Import**, then select **Text Collection** to import local documents.
+
+3. **Upload a Local File**
+
+   Select **Local File** and confirm, then click the upload area and select the example file. In real use, you can upload multiple files at once; for this case, we upload only one file as a demonstration.
+
+4. **Set Parsing Parameters**
+
+   After entering the parameter settings page, choose the parsing method based on the file type.
+
+   Recommended common settings:
+   - **File Parsing Settings**: Enable when uploading PDFs; for regular Word, Markdown, TXT files, start with the default configuration.
+   - **Processing Method**: For most scenarios, choose chunked storage — it's lower cost and faster for retrieval.
+   - **Chunking Parameters**: Controls the splitting mode (default or custom by paragraph, length, or delimiter) and chunk size. Use the default values for quick testing.
+   - **Index Enhancement**: Keep the current interface defaults initially. Enable "Add title to index", "Auto-generate supplementary indexes", or "Auto-index images" as needed based on retrieval results, checking their model and quota requirements.
+
+   These parameters directly affect the quality of subsequent Q&A. If chunks are too large, search results may include too much irrelevant content, making answers verbose. If chunks are too small, key context may be split, causing answers to lack supporting evidence. For the quick-start phase, use the default configuration. When officially integrating enterprise policies, contracts, or product manuals, adjust these parameters gradually based on Q&A performance.
+
+5. **Preview Chunking Results**
+
+   After reaching the data preview step, check whether the chunks are complete and readable. If chunks are too long or too short, go back and adjust the parameters.
+
+   When previewing chunks, focus on three things: whether paragraphs are abnormally cut off, whether titles and body text remain within the same semantic range, and whether tables, clauses, or numbering are still readable. If the quality of these knowledge fragments is unstable, even a well-written Prompt in the app will struggle to consistently produce accurate answers.
+
+   ![Lease article source, version, and chunk preview](/imgs/optimized/current/civil-code-preview.png.webp)
+
+6. **Wait for the Dataset to Be Ready**
+
+   Once the data status changes to "Ready," apps can use the Dataset.
+
+7. **Create and Link a Conversational Agent**
+
+   Go to **Studio → Agents**, click the first **New** card in the list (or **Create your first Agent** in the center of the page when the list is empty), select **Chat Agent**, enter `Civil Code Q&A Assistant` in the name box, and click **Create** to the right of the name box. In the **Dataset** section on the left, click **+ Choose** and link the Dataset created in Step 1.
+
+   After linking the Dataset, the app's response flow changes from simple chat to "user question → Dataset search → model summarizes answer." This is the key difference between Case 1 and Case 2: Case 1 emphasizes content generation, while Case 2 emphasizes answering based on provided materials.
+
+8. **Configure the Q&A Prompt**
+
+   The Civil Code Q&A assistant needs to answer from the Dataset and cite original articles. Enter the concise prompt shown in the verification screenshot below:
+
+   ```md
+   Answer based on the Civil Code lease articles in the Dataset. Give a concise conclusion first, then cite the article numbers and key original text, explaining applicable conditions and exceptions. Use only retrieved evidence and state any missing evidence when the material is insufficient. Remind the user to consult a professional lawyer with their contract and case facts for specific cases. Keep the Chinese answer within 300 characters.
+   ```
+
+   For legal Q&A scenarios, clear boundaries keep responses traceable and compliant: provide general explanations grounded in retrieved articles, cite article numbers, identify missing evidence, and include a reminder to consult a lawyer.
+
+9. **Configure the Opening Message**
+
+   Expand the **Conversation Opening** collapsible section on the left side of the configuration page and enter the greeting text in the message box:
+
+   ```text
+   Hello! I'm the Civil Code Q&A Assistant ⚖️
+
+   I answer legal questions based on the original text of the *Civil Code of the People's Republic of China*.
+
+   ⚠️ Note: My answers are for reference only. For specific legal issues, please consult a professional lawyer.
+   ```
+
+   Below the opening message box, click **Add preset question** to enter each example question on its own row:
+   - `My lease isn't up yet, but the landlord wants to sell the house. What should I do?`
+   - `I received a product I bought online and it was broken, but the seller won't accept a return. What does the law say?`
+   - `The upstairs neighbor's leak soaked my ceiling. Can I claim compensation?`
+
+   ![Configure conversation opening text and preset questions (section location example)](/imgs/optimized/current/welcome-config.png.webp)
+
+10. **Verify Q&A Performance**
+
+    Ask a question related to the Civil Code and check whether the answer includes a concise conclusion, article numbers and key original text, applicable conditions and exceptions, and a reminder to consult a professional lawyer.
+
+    When verifying, assess two key indicators: structural completeness of the legal citation, and genuine references to Dataset content. Test with questions covered by the materials, questions outside the materials, and ambiguous questions: covered questions should cite the original text; out-of-scope questions should state that a direct confirmation is not possible; ambiguous questions should ask the user for more facts.
+
+### Sample acceptance
+
+![The Civil Code assistant answers a landlord-sale question using the lease excerpt](/imgs/optimized/current/civil-code-answer.png.webp)
+
+Ask: “My lease isn't up yet, but the landlord wants to sell the house. What should I do?” Expect Article 725 on ownership changes and lease validity, plus Article 726 on the right of first refusal and its exceptions. Check Articles 727 and 728 for auction notice and compensation. An out-of-scope question such as “What is the longest employment probation period?” should identify the missing evidence in this lease-only sample.
+
+### 2.4 Business Value
+
+- **Lower the barrier to material retrieval**: Turn lengthy regulations, policies, and manuals into a natural language Q&A entry point, allowing business users to quickly find relevant content without needing to know keywords or directory locations first.
+- **Improve answer credibility**: Through Dataset retrieval and original text citations, answers have a source basis, reducing the risk of the model fabricating or giving vague responses based on experience.
+- **Accumulate organizational knowledge**: Internal company policies, product FAQs, after-sales SOPs, contract templates, and other materials can be continuously added to the Dataset, forming maintainable and reusable knowledge assets.
+- **Adapt to high-frequency support scenarios**: Legal, HR, administrative, customer service, and delivery teams can all use a similar model to turn repetitive inquiries into self-service Q&A, improving response efficiency.
+
+[Back to getting started](/en/guide/getting-started)

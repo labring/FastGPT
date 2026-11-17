@@ -219,6 +219,22 @@ describe('setRequiredRequestExamples', () => {
     ).toEqual({ left: 'left', right: 1 });
   });
 
+  it('preserves the selected branch from each independent union in an intersection', () => {
+    const schema = z.intersection(
+      z.union([
+        z.object({ appId: z.string().meta({ example: 'app' }) }),
+        z.object({ skillId: z.string().meta({ example: 'skill' }) })
+      ]),
+      z.union([
+        z.object({ prevId: z.string().meta({ example: 'before' }) }),
+        z.object({ nextId: z.string().meta({ example: 'after' }) })
+      ])
+    );
+    const example = build(schema);
+    expect(example).toEqual({ appId: 'app', prevId: 'before' });
+    expect(schema.safeParse(example).success).toBe(true);
+  });
+
   it('keeps an empty body when every field is optional', () => {
     expect(build(z.object({ optional: z.string().default('omit') }))).toEqual({});
   });
@@ -306,7 +322,7 @@ describe('conditional required API examples', () => {
   it.each([
     ['/core/app/tool/getPreviewNode', 'get', ['appId', 'versionId']],
     ['/proApi/support/user/team/collaborator/delete', 'delete', ['tmbId']],
-    ['/core/dataset/collection/delete', 'post', ['id']],
+    ['/core/dataset/collection/delete', 'post', []],
     ['/core/ai/sandbox/verifyTicket', 'get', ['ticket', 'x-proxy-token']]
   ] as const)('enables only the first parameter alternative for %s', (path, method, expected) => {
     const operation = openAPIDocument.paths![path]![method]!;
@@ -321,7 +337,7 @@ describe('conditional required API examples', () => {
     });
     expect(enabled.map((parameter) => parameter.name).sort()).toEqual([...expected].sort());
     // A choice remains optional individually; only its example is selected.
-    if (path !== '/core/app/tool/getPreviewNode') {
+    if (expected.length > 0 && path !== '/core/app/tool/getPreviewNode') {
       expect(parameters.find((parameter) => parameter.name === expected[0])?.required).not.toBe(
         true
       );

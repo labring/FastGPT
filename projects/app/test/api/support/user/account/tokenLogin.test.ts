@@ -1,3 +1,5 @@
+import { getTestInstanceConfig } from '@test/utils/instanceConfigSnapshot';
+import { getSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/runtime';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import * as tokenLoginApi from '@/pages/api/support/user/account/tokenLogin';
 import { MongoUser } from '@fastgpt/service/support/user/schema';
@@ -52,6 +54,47 @@ describe('tokenLogin API', () => {
     expect(res.data.team).toBeDefined();
     expect(res.data.team.teamId).toBe(String(testTeam._id));
     expect(res.data.team.tmbId).toBe(String(testTmb._id));
+  });
+
+  it('reports password availability from Pro rather than the legacy URL', async () => {
+    const oldFeConfigs = global.feConfigs;
+    const oldSystemEnv = getSystemInstanceConfig().proEnv.ssoUrl;
+    const oldHandler = global.getSsoConfiguredHandler;
+    try {
+      await MongoUser.updateOne({ _id: testUser._id }, { username: 'tenant-user' });
+      getTestInstanceConfig().auth.sso.disablePasswordForSsoUsers = true;
+      getSystemInstanceConfig().proEnv.ssoUrl = '';
+      global.getSsoConfiguredHandler = () => true;
+      const auth = {
+        userId: String(testUser._id),
+        teamId: String(testTeam._id),
+        tmbId: String(testTmb._id),
+        isRoot: false,
+        sessionId: 'session123'
+      } as any;
+
+      const restricted = await Call(tokenLoginApi.default, { auth });
+      expect(restricted.code).toBe(200);
+      expect(restricted.data.passwordAvailable).toBe(false);
+
+      getSystemInstanceConfig().proEnv.ssoUrl = 'http://legacy.invalid';
+      global.getSsoConfiguredHandler = () => false;
+      const unrestricted = await Call(tokenLoginApi.default, { auth });
+      expect(unrestricted.code).toBe(200);
+      expect(unrestricted.data.passwordAvailable).toBe(true);
+
+      global.getSsoConfiguredHandler = () => {
+        throw new Error('synthetic-private-token');
+      };
+      const unavailable = await Call(tokenLoginApi.default, { auth });
+      expect(unavailable.code).toBe(200);
+      expect(unavailable.data.passwordAvailable).toBe(false);
+      expect(JSON.stringify(unavailable.data)).not.toContain('synthetic-private-token');
+    } finally {
+      global.feConfigs = oldFeConfigs;
+      getSystemInstanceConfig().proEnv.ssoUrl = oldSystemEnv;
+      global.getSsoConfiguredHandler = oldHandler;
+    }
   });
 
   it('should return user detail when user and team notification contacts are null', async () => {

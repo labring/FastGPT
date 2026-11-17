@@ -1,4 +1,4 @@
 {
   "title": "本地模型使用",
-  "pages": ["oxr", "mineru", "xinference", "ollama"]
+  "pages": ["oxr", "mineru", "xinference", "ollama", "legacy"]
 }

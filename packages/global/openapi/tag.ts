@@ -148,8 +148,7 @@ export const SystemOpenApiTagMap = {
   datasetCollection: 'systemOpenAPI:datasetCollection',
   datasetCollectionCreate: 'systemOpenAPI:datasetCollectionCreate',
   datasetData: 'systemOpenAPI:datasetData',
-  datasetDataIndex: 'systemOpenAPI:datasetDataIndex',
-  datasetOther: 'systemOpenAPI:datasetOther',
+  datasetSearch: 'systemOpenAPI:datasetSearch',
 
   model: 'systemOpenAPI:model'
 };

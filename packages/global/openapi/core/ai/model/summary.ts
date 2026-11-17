@@ -1,3 +1,4 @@
+import { LLMModelDocumentSchema } from '../../../../core/ai/model/schema';
 import { z } from 'zod';
 import { ModelTypeEnum } from '../../../../core/ai/constants';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
@@ -32,7 +33,8 @@ export const GetModelSummariesBodySchema = z.object({
 export type GetModelSummariesBody = z.infer<typeof GetModelSummariesBodySchema>;
 
 const DisplayModelIdentitySchema = z.object({
-  modelId: z.string().meta({ description: '模型稳定 ID', example: '68ad85a7463006c963799a01' })
+  modelId: z.string().meta({ description: '模型稳定 ID', example: '68ad85a7463006c963799a01' }),
+  isUpcomingDeprecation: LLMModelDocumentSchema.shape.isUpcomingDeprecation
 });
 
 export const ModelSummarySchema = z.discriminatedUnion('status', [

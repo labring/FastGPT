@@ -3,6 +3,7 @@ import { createContext } from 'use-context-selector';
 import type { EditTeamFormDataType } from './EditInfoModal';
 import dynamic from 'next/dynamic';
 import { getTeamList, getTeamMemberCount, putSwitchTeam } from '@/web/support/user/team/api';
+import { putAdminSwitchTeam } from '@/web/admin/team/api';
 import { TeamMemberStatusEnum } from '@fastgpt/global/support/user/team/constant';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import type { TeamTmbItemType } from '@fastgpt/global/support/user/team/type';
@@ -67,13 +68,20 @@ export const TeamModalContextProvider = ({ children }: { children: ReactNode }) 
 
   const { runAsync: onSwitchTeam, loading: isSwitchingTeam } = useRequest(
     async (teamId: string) => {
+      const isRoot = userInfo?.username === 'root';
       const targetTeam = myTeams.find((team) => team.teamId === teamId);
-      await putSwitchTeam(teamId);
+      if (isRoot) {
+        await putAdminSwitchTeam({ teamId });
+      } else {
+        await putSwitchTeam(teamId);
+      }
       resetChatCache();
-      const isAccountCancellationPending = accountCancellationActiveStatuses.includes(
-        targetTeam?.accountCancellation
-          ?.status as (typeof accountCancellationActiveStatuses)[number]
-      );
+      const isAccountCancellationPending =
+        !isRoot &&
+        accountCancellationActiveStatuses.includes(
+          targetTeam?.accountCancellation
+            ?.status as (typeof accountCancellationActiveStatuses)[number]
+        );
       if (isAccountCancellationPending) {
         await router.replace('/account/cancel');
       } else if (router.pathname === '/account/cancel') {

@@ -11,12 +11,16 @@ import type {
 import type { CreateAppResponseType } from '@fastgpt/global/openapi/core/app/common/api';
 
 /* ============ http tools ============== */
-export const getApiSchemaByUrl = (url: GetApiSchemaByUrlBodyType['url']) =>
+export const getApiSchemaByUrl = (
+  url: GetApiSchemaByUrlBodyType['url'],
+  cancelToken?: AbortController
+) =>
   POST<GetApiSchemaByUrlResponseType>(
     '/core/app/httpTools/getApiSchemaByUrl',
     { url },
     {
-      timeout: 30000
+      timeout: 30000,
+      cancelToken
     }
   );
 

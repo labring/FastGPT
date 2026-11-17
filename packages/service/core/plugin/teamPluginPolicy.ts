@@ -1,3 +1,4 @@
+import { getSystemInstanceConfig } from '../../common/system/systemInstanceConfig/runtime';
 import { SystemToolCodec } from '@fastgpt/global/core/app/tool/systemTool/codec';
 import { SystemToolSystemSecretStatusEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
 import type { SystemToolListItemType } from '@fastgpt/global/core/app/tool/systemTool/type';
@@ -41,7 +42,7 @@ export const normalizeTeamPluginStatus = (status?: PluginStatusType) =>
 
 /** Reject team plugin installation endpoints unless the feature is explicitly enabled. */
 export function assertTeamPluginInstallEnabled() {
-  if (global.feConfigs?.enable_team_plugin_upload !== true) {
+  if (getSystemInstanceConfig().feature.enableTeamPluginUpload !== true) {
     throw TeamErrEnum.teamPluginInstallDisabled;
   }
 }

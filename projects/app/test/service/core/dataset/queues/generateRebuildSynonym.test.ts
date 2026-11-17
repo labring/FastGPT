@@ -1,3 +1,39 @@
+import { getSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/runtime';
+// 同义词队列消费点已接管实例配置（94ae033d7）：isDatasetSynonymEnabled 读快照叶子 ?? serviceEnv。
+// 本文件通过改写 serviceEnv.DATASET_SYNONYM_ENABLED 驱动，预置"域存在、叶子缺省"种子快照走兜底分支。
+(global as any).systemInstanceConfig = {
+  site: {},
+  auth: {},
+  security: {},
+  feature: {},
+  commercial: {},
+  resource: {},
+  performance: {
+    workflow: {},
+    parse: {},
+    dataset: {},
+    chat: {},
+    streamResume: {},
+    tracking: {},
+    task: {},
+    channel: {}
+  },
+  storage: {},
+  vector: {},
+  providers: {
+    documentParse: { customPdf: {}, sangfor: {} },
+    dataSource: {},
+    externalProviderWorkflowVariables: []
+  },
+  subservice: {
+    plugin: {},
+    codeSandbox: {},
+    aiProxy: {},
+    mcp: {},
+    agentSandbox: { provider: '', common: {}, sealosdevbox: {}, opensandbox: {}, proxy: {} }
+  }
+};
+
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import { getModelTestDefaults, addModelTestModel } from '@test/modelCache';
 import { getRootUser } from '@test/datas/users';
@@ -96,7 +132,7 @@ const createContext = async ({ enabled = true, count = 1 } = {}) => {
 describe('generateRebuildSynonym', () => {
   beforeEach(() => {
     serviceEnv.DATASET_SYNONYM_ENABLED = true;
-    global.systemEnv = { ...global.systemEnv, vectorMaxProcess: 1 };
+    getSystemInstanceConfig().performance.dataset.vectorMaxProcess = 1;
     global.vectorQueueLen = 0;
     global.synonymQueueLen = 0;
     global.preCreatedQueueLen = 0;

@@ -1,6 +1,6 @@
 ---
 title: 对象存储配置
-description: 如何通过环境变量配置并连接个各厂商的对象存储
+description: 如何通过环境变量配置并连接各厂商的对象存储
 ---
 
 import { Alert } from '@/components/docs/Alert';
@@ -8,9 +8,7 @@ import FastGPTLink from '@/components/docs/linkFastGPT';
 
 ## 对象存储服务配置介绍
 
-这里提供了 FastGPT 目前支持的对象存储厂商，包括自部署的 MinIO、AWS S3、Cloudflare R2、阿里云 OSS 和腾讯云 COS 的环境变量配置说明
-
-FastGPT 支持 MinIO、AWS S3、Alibaba Cloud OSS、Tencent Cloud COS 和 Cloudflare R2。除 MinIO 本地开发外，建议提前创建 `STORAGE_PUBLIC_BUCKET` 和 `STORAGE_PRIVATE_BUCKET`，并确保 FastGPT 使用的 Access Key 对两个桶都有读写权限。
+FastGPT 支持自建 MinIO / RustFS 以及 AWS S3、阿里云 OSS、腾讯云 COS、Cloudflare R2 对象存储。使用 MinIO 以外的厂商时，必须提前创建 `STORAGE_PUBLIC_BUCKET` 和 `STORAGE_PRIVATE_BUCKET` 两个存储桶（非 MinIO 适配器启动时仅校验桶存在，缺失会导致启动失败），并确保 Access Key 对两个桶均具备读写权限。
 
 ## 访问模式说明
 
@@ -28,17 +26,17 @@ FastGPT 支持 MinIO、AWS S3、Alibaba Cloud OSS、Tencent Cloud COS 和 Cloudf
 
 > MinIO 对 AWS S3 协议支持比较完整，适合本地开发和自部署场景。理论上任何对 AWS S3 协议的支持程度至少和 MinIO 相当的对象存储服务也可以使用，比如 SeaweedFS、RustFS。
 
-- `STORAGE_S3_ENDPOINT` 内网连接地址，可以是容器 ID 连接，比如 `http://fastgpt-minio:9000`
+- `STORAGE_S3_ENDPOINT` 内网连接地址，可以使用 Compose 服务名或容器名连接，比如官方模板自带 RustFS 的 `http://fastgpt-rustfs:9000`
 - `STORAGE_EXTERNAL_ENDPOINT` 一个**服务器**和**客户端**均可访问到存储桶的地址，可以是固定的宿主机 IP 或者域名，注意不要填写成 127.0.0.1 或者 localhost 等本地回环地址(因为容器里无法使用)。该变量不会自动改变下载模式。
 - `STORAGE_S3_CDN_ENDPOINT`【可选】`short-redirect` 临时下载地址使用的 CDN 地址。该变量不会改变默认下载模式，且配置时必须同时配置 `STORAGE_EXTERNAL_ENDPOINT`。上传仍走 FastGPT 后端代理，不会使用 CDN。
-- `STORAGE_S3_FORCE_PATH_STYLE`【可选】虚拟主机风格路由或路径路由风格，其中如果厂商填写了 `minio` 的话，该值被固定为 `true`
-- `STORAGE_S3_MAX_RETRIES`【可选】请求最大尝试次数，默认为 3 次
+- `STORAGE_S3_FORCE_PATH_STYLE`【可选】虚拟主机风格路由或路径路由风格，默认 `false`（虚拟主机风格）。自建 MinIO / RustFS 通常需要显式设置为 `true`，官方模板已设置
+- `STORAGE_S3_MAX_RETRIES`【可选】S3 客户端最大重试次数，默认为 3 次
 
-若在 Kubernetes 中通过 NodePort 暴露 MinIO，需同时暴露其 S3 API（9000 端口），并将 `STORAGE_EXTERNAL_ENDPOINT` 配置为浏览器和 FastGPT 均可访问的地址。集群内地址或服务器本机的 `localhost:9000` 不能用于浏览器访问插件 Logo 等公开桶资源。Docker 部署同样以浏览器能否访问该地址为准。
+若在 Kubernetes 或 Docker 中暴露 MinIO，需将 `STORAGE_EXTERNAL_ENDPOINT` 配置为客户端浏览器与 FastGPT 服务均可解析的静态宿主机 IP 或独立域名，确保插件 Logo 等公开桶资源正常访问。
 
 **完整示例**
 
-> 如果使用的是 Sealos 的对象存储服务请将 `STORAGE_VENDOR` 填写为 `minio`
+> 如果使用 Sealos 对象存储服务：已提前在控制台创建好两个存储桶时可将 `STORAGE_VENDOR` 设为 `aws-s3`；需要由 FastGPT 自动创建存储桶时可设为 `minio`。
 
 ```dotenv
 STORAGE_VENDOR=minio
@@ -47,14 +45,14 @@ STORAGE_ACCESS_KEY_ID=your_access_key
 STORAGE_SECRET_ACCESS_KEY=your_secret_key
 STORAGE_PUBLIC_BUCKET=fastgpt-public
 STORAGE_PRIVATE_BUCKET=fastgpt-private
-STORAGE_S3_ENDPOINT=http://127.0.0.1:9000
+STORAGE_S3_ENDPOINT=http://fastgpt-rustfs:9000
 STORAGE_S3_FORCE_PATH_STYLE=true
 STORAGE_S3_MAX_RETRIES=3
 ```
 
 ### AWS S3
 
-AWS S3 与 MinIO 使用同一套 S3 兼容变量。生产环境建议提前创建 public/private 两个 bucket，并为 public bucket 配置公开读取策略或 CloudFront/自定义域名。
+AWS S3 与 MinIO 使用同一套 S3 兼容变量。使用 `STORAGE_VENDOR=aws-s3` 时必须提前创建 public 和 private 两个 bucket，并为 public bucket 配置公开读取策略或 CloudFront/自定义域名。
 
 ```dotenv
 STORAGE_VENDOR=aws-s3
@@ -124,7 +122,7 @@ STORAGE_COS_PROXY=
 
 R2 使用 S3 兼容 API。`STORAGE_REGION` 固定填写 `auto`，`STORAGE_S3_ENDPOINT` 填写 Cloudflare 控制台提供的账户级 S3 endpoint。R2 不支持通过 FastGPT 的 `STORAGE_S3_CDN_ENDPOINT` 重写预签名 URL；私有对象仍建议使用默认的 `short-proxy` 下载模式。
 
-`STORAGE_R2_PUBLIC_ENDPOINT` 必须配置为公开 bucket 的自定义域名（或其他已绑定到该 bucket 的公开 HTTPS 域名），用于生成公开文件 URL。该地址不是 R2 S3 API endpoint，也不应包含查询参数。
+`STORAGE_R2_PUBLIC_ENDPOINT` 必须配置为公开 bucket 的自定义域名（或其他已绑定到该 bucket 的公开 HTTPS 域名），用于生成公开文件 URL。该地址专用于生成对外静态资源链接，必须为纯净的 HTTPS 域名且不包含查询参数。
 
 R2 生产环境建议使用自定义域名，不建议使用受速率限制的 `r2.dev` 公共开发 URL。R2 public/private bucket 都应提前创建；FastGPT 启动时只检查 bucket 是否存在，不会自动创建生产 bucket。
 

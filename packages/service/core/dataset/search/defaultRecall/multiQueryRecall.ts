@@ -14,6 +14,7 @@ export const multiQueryRecall = async ({
   model,
   imageQueries,
   collectionFilterMatch,
+  metadataFilterEnabled,
   readableCollectionIdList,
   embeddingLimit,
   fullTextLimit,
@@ -25,6 +26,7 @@ export const multiQueryRecall = async ({
   model: EmbeddingModelDataType;
   imageQueries: string[];
   collectionFilterMatch?: string;
+  metadataFilterEnabled: boolean;
   readableCollectionIdList?: string[];
   embeddingLimit: number;
   fullTextLimit: number;
@@ -36,7 +38,7 @@ export const multiQueryRecall = async ({
       teamId,
       datasetIds
     }),
-    filterCollectionByMetadata({ teamId, datasetIds, collectionFilterMatch })
+    filterCollectionByMetadata({ teamId, datasetIds, collectionFilterMatch, metadataFilterEnabled })
   ]);
 
   // 权限可读集合 ∩ 用户 metadata 过滤集合 → 有效过滤集合（AND 语义）。

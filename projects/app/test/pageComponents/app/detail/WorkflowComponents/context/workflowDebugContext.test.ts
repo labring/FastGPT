@@ -29,6 +29,7 @@ vi.mock('@/components/core/chat/ChatContainer/context/workflowRuntimeContext', (
 import {
   createNextWorkflowDebugData,
   createWorkflowDebugData,
+  getWorkflowDebugNodeStatus,
   getWorkflowDebugRuntimeContext
 } from '@/pageComponents/app/detail/WorkflowComponents/context/workflowDebugContext';
 
@@ -36,6 +37,43 @@ const runtimeNodes = [
   { nodeId: 'entry-node', inputs: [] },
   { nodeId: 'next-node', inputs: [] }
 ] as any;
+
+describe('getWorkflowDebugNodeStatus', () => {
+  it('marks execution errors as failed, including errors captured by a branch', () => {
+    expect(
+      getWorkflowDebugNodeStatus({
+        nodeId: 'mcp',
+        type: 'run',
+        response: { errorText: 'MCP isError', errorCaptured: true } as any
+      })
+    ).toBe('failed');
+    expect(
+      getWorkflowDebugNodeStatus({
+        nodeId: 'http',
+        type: 'run',
+        response: { error: 'HTTP 500' } as any
+      })
+    ).toBe('failed');
+  });
+
+  it('keeps skipped nodes skipped and does not interpret tool result data as node errors', () => {
+    expect(
+      getWorkflowDebugNodeStatus({
+        nodeId: 'skipped',
+        type: 'skip',
+        response: { errorText: 'stale error' } as any
+      })
+    ).toBe('skipped');
+    expect(
+      getWorkflowDebugNodeStatus({
+        nodeId: 'ok',
+        type: 'run',
+        response: { toolRes: { error: 'ordinary business data' } } as any
+      })
+    ).toBe('success');
+    expect(getWorkflowDebugNodeStatus({ nodeId: 'empty', type: 'run' })).toBe('success');
+  });
+});
 
 describe('getWorkflowDebugRuntimeContext', () => {
   it('uses draft upload mode and exposes the generated debug chatId', () => {

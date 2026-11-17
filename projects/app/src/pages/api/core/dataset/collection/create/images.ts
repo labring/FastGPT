@@ -1,3 +1,8 @@
+import { getSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/runtime';
+import {
+  assertAppDatasetIndexModelsAvailable,
+  getAssertedDatasetEmbeddingModel
+} from '@fastgpt/service/core/dataset/model';
 import { getFileUploadLimits } from '@fastgpt/global/common/file/limit';
 import { NextAPI } from '@/service/middleware/entry';
 import { datasetImageCollectionFileType } from '@fastgpt/global/common/file/constants';
@@ -20,6 +25,7 @@ import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/catalog/servi
 import { createCollectionAndInsertData } from '@fastgpt/service/core/dataset/collection/controller';
 import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
 import { authDatasetCollectionCreate } from '@fastgpt/service/support/permission/dataset/auth';
+import { getAuthorizedModelIds } from '@fastgpt/service/support/permission/model/auth';
 import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { addDays } from 'date-fns';
 import fs from 'node:fs';
@@ -35,7 +41,7 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResult
   try {
     const result = await multer.resolveMultipleFormData({
       request: req,
-      maxFileSize: global.feConfigs.limit.uploadFileMaxSize,
+      maxFileSize: getSystemInstanceConfig().resource.uploadFileMaxSize,
       allowedExtensions: parseAllowedExtensions(datasetImageCollectionFileType)
     });
     filepaths.push(...result.fileMetadata.map((item) => item.path));
@@ -43,7 +49,7 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResult
       result.data
     );
 
-    const { dataset, teamId, tmbId } = await authDatasetCollectionCreate({
+    const { dataset, teamId, tmbId, isRoot } = await authDatasetCollectionCreate({
       datasetId,
       parentId,
       req,
@@ -60,7 +66,7 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResult
     const planStatus = await getTeamPlanStatus({ teamId });
     const uploadLimits = getFileUploadLimits({
       teamPlan: planStatus.standard,
-      systemLimit: global.feConfigs.limit
+      systemLimit: getSystemInstanceConfig().resource
     });
     await assertUploadRateLimit({
       identity: String(tmbId),
@@ -68,10 +74,18 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResult
       increment: result.fileMetadata.length
     });
     const modelHandle = await getTeamModelHandle({ teamId });
+    const authorizedIds = await getAuthorizedModelIds({
+      actor: { teamId, tmbId, isRoot },
+      handle: modelHandle
+    });
+    const embeddingModels = await assertAppDatasetIndexModelsAvailable({
+      resources: [{ type: 'dataset', id: String(datasetId) }],
+      teamId,
+      modelHandle,
+      authorizedIds
+    });
     const { supportVlm, supportImageEmbedding } = getDatasetImageIndexCapability({
-      vectorModel: modelHandle.getModelData(getDatasetModelReference(dataset, 'embedding'), {
-        type: 'embedding'
-      }),
+      vectorModel: getAssertedDatasetEmbeddingModel(embeddingModels, String(datasetId)),
       vlmModel: modelHandle.getModelData(getDatasetModelReference(dataset, 'vlm'), {
         type: 'llm',
         vision: true,
@@ -108,6 +122,7 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResult
     return createCollectionAndInsertData({
       dataset,
       imageIds,
+      modelAuthContext: { modelHandle, authorizedIds },
       createCollectionParams: {
         parentId,
         teamId,

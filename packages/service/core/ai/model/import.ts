@@ -1,7 +1,9 @@
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { ModelScopeEnum } from '@fastgpt/global/core/ai/constants';
+import { NEW_MODEL_SORT_ORDER } from '@fastgpt/global/core/ai/model/order';
 import { normalizeModelPricingForSave } from '@fastgpt/global/core/ai/model/pricing';
 import { type ParsedSystemModelsWithJsonBody } from '@fastgpt/global/openapi/core/ai/model/api';
+import { Types } from '../../../common/mongo';
 import { runModelTransaction } from './catalog/transaction';
 import { deleteModelRecords } from './cleanup';
 import { MongoAIModel } from './schema';
@@ -9,8 +11,8 @@ import { updatedReloadSystemModel } from './catalog/service';
 import { getModelConfigUpdate } from './utils';
 
 /**
- * 用导入配置替换系统模型集合，保留可匹配实例的稳定 ID 与展示 rank，并在同一事务内清理派生权限与探测记录。
- * 输入中的 sortOrder 始终忽略，新建模型也不从配置继承 rank。
+ * 用导入配置替换系统模型集合，保留可匹配实例的稳定 ID 与原有展示顺序，并在同一事务内清理派生权限与探测记录。
+ * 输入中的 sortOrder 始终忽略；新建模型写入置顶位 `0`，无需修改存量模型的 sortOrder。
  */
 export const importSystemModels = async ({ config }: ParsedSystemModelsWithJsonBody) => {
   const latestRecords = config.map((record) => ({ record, modelId: record.modelId }));
@@ -114,7 +116,13 @@ export const importSystemModels = async ({ config }: ParsedSystemModelsWithJsonB
             filter: isExistingModel
               ? { _id: modelId, scope: ModelScopeEnum.system }
               : { scope: ModelScopeEnum.system, model },
-            update: isExistingModel ? getModelConfigUpdate(modelData) : { $set: modelData },
+            update: isExistingModel
+              ? getModelConfigUpdate(modelData)
+              : {
+                  $set: { ...modelData, sortOrder: NEW_MODEL_SORT_ORDER },
+                  // 与 create/insertMany 共用本进程 ObjectId 序列，避免同一秒内与 mongod 进程随机前缀混排导致 _id DESC 次序反转。
+                  $setOnInsert: { _id: String(new Types.ObjectId()) }
+                },
             upsert: !isExistingModel
           }
         })),

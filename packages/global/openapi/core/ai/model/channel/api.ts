@@ -162,6 +162,10 @@ export const ChannelListItemSchema = z.object({
   status: z.number().int().meta({ description: '1=启用 / 2=禁用' }),
   models: z.array(z.string()).meta({ description: '上游模型名列表' }),
   model_mapping: z.record(z.string(), z.string()).optional(),
+  configs: ChannelConfigSchema.shape.configs.meta({
+    description: '可公开的渠道配置，仅包含聊天上游协议，不返回其他提供商配置',
+    example: { chat_upstream_protocol: 'responses' }
+  }),
   base_url: z.string().optional(),
   priority: z.number().int().optional(),
   sets: z.array(z.string()).optional(),

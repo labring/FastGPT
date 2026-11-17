@@ -220,6 +220,7 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
         isModerationBlockErrorMessage(result.errorMessage);
       if (hitModeration) {
         result.response = MODERATION_BLOCKED_REPLACE_TEXT;
+        result.content = undefined;
         result.errorMessage = undefined;
         result.assistantMessages = [];
         result.assistantResponses = undefined;

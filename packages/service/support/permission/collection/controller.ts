@@ -419,6 +419,7 @@ export const syncRootCollections = async ({
         _id: childId,
         type: DatasetCollectionTypeEnum.folder,
         teamId,
+        datasetId,
         parentId: null,
         inheritPermission: true
       },

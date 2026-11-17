@@ -8,7 +8,7 @@ import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { getRunningUserInfoByTmbId } from '@fastgpt/service/support/user/team/utils';
 import { NextAPI } from '@/service/middleware/entry';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
-import { WORKFLOW_MAX_RUN_TIMES } from '@fastgpt/service/core/workflow/constants';
+import { getWorkflowMaxRunTimes } from '@fastgpt/service/core/workflow/constants';
 import { getLastInteractiveValue } from '@fastgpt/global/core/workflow/runtime/utils';
 import { getLocale } from '@fastgpt/service/common/middle/i18n';
 import { createChatUsageRecord } from '@fastgpt/service/support/wallet/usage/controller';
@@ -51,7 +51,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse): Promise<Workf
     authApp({ req, authToken: true, appId, per: WritePermissionVal })
   ]);
   // 兼容未传 chatConfig 的旧客户端；App 主表不再保存工作流配置，默认值从草稿 Version 读取。
-  const workflowChatConfig = chatConfig ?? (await getAppDraftWorkflow(appId)).chatConfig;
+  const workflowChatConfig = chatConfig ?? (await getAppDraftWorkflow(appId, app)).chatConfig;
 
   const interactive = getLastInteractiveValue(history);
   const newUsageId = usageId
@@ -116,7 +116,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse): Promise<Workf
     chatConfig: workflowChatConfig,
     histories: history,
     stream: false,
-    maxRunTimes: WORKFLOW_MAX_RUN_TIMES,
+    maxRunTimes: getWorkflowMaxRunTimes(),
     nodeResponseWriteConfig: {
       persistToDb: false,
       retainInMemory: true

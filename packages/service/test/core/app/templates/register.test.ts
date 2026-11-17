@@ -20,7 +20,10 @@ vi.mock('@fastgpt/service/core/app/templates/templateSchema', () => ({
   }
 }));
 
-import { getAppTemplatesAndLoadThem } from '@fastgpt/service/core/app/templates/register';
+import {
+  getAppTemplatesAndLoadThem,
+  pickPluginSystemTemplateDbConfig
+} from '@fastgpt/service/core/app/templates/register';
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -232,5 +235,16 @@ describe('getAppTemplatesAndLoadThem', () => {
     const [template] = await getAppTemplatesAndLoadThem(true);
 
     expect(template?.workflow.chatConfig).not.toHaveProperty('_id');
+  });
+});
+
+describe('pickPluginSystemTemplateDbConfig', () => {
+  it('keeps experienceUrl when picking editable plugin template config', () => {
+    expect(
+      pickPluginSystemTemplateDbConfig({
+        templateId: `${AppToolSourceEnum.community}-demo`,
+        experienceUrl: 'https://demo.example.com'
+      })
+    ).toEqual({ experienceUrl: 'https://demo.example.com' });
   });
 });

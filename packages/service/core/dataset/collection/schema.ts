@@ -112,21 +112,22 @@ defineIndex(DatasetCollectionSchema, {
   }
 });
 
-// scan subtree by inherit state (permission sync / collection list)
+// 文件夹枚举、非目录计数和根目录继承筛选共用；_id/parentId 投影可直接由索引返回。
 defineIndex(DatasetCollectionSchema, {
   key: {
     teamId: 1,
     datasetId: 1,
+    type: 1,
     parentId: 1,
-    inheritPermission: 1
+    inheritPermission: 1,
+    _id: 1
   }
 });
-
-// Tag filter
+// 同一 tags 元素内按 ID 和值筛选，兼容标量和多选数组。
 defineIndex(DatasetCollectionSchema, {
-  key: { teamId: 1, datasetId: 1, tags: 1 }
+  key: { teamId: 1, datasetId: 1, 'tags.tagId': 1, 'tags.value': 1 }
 });
-// New format tags.tagId filter
+// 保留旧检索实例显式 hint 的索引，避免滚动更新期间旧查询失败。
 defineIndex(DatasetCollectionSchema, {
   key: { teamId: 1, datasetId: 1, 'tags.tagId': 1 }
 });
@@ -146,12 +147,30 @@ defineIndex(DatasetCollectionSchema, {
   }
 });
 
-// Clear invalid image
+// 每次召回只读取禁用集合 ID；仅维护 forbid=true 的记录并覆盖查询投影。
+defineIndex(DatasetCollectionSchema, {
+  key: { teamId: 1, datasetId: 1, forbid: 1, _id: 1 },
+  options: { partialFilterExpression: { forbid: true } }
+});
+
+// 废弃索引集中登记，启动时按名称和 key 精确清理。
+// 原继承状态索引已合并到上方类型/目录索引。
+defineIndex(DatasetCollectionSchema, {
+  key: { teamId: 1, datasetId: 1, parentId: 1, inheritPermission: 1 },
+  deprecated: true
+});
+// 旧格式标签索引不支持结构化字段定位；team/dataset 前缀由当前索引继续提供。
+defineIndex(DatasetCollectionSchema, {
+  key: { teamId: 1, datasetId: 1, tags: 1 },
+  deprecated: true
+});
+// 旧图片清理任务已删除，当前不再按 relatedImgId 查询 Collection。
 defineIndex(DatasetCollectionSchema, {
   key: {
     teamId: 1,
     'metadata.relatedImgId': 1
-  }
+  },
+  deprecated: true
 });
 
 export const MongoDatasetCollection = getMongoModel<DatasetCollectionSchemaType>(

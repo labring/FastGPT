@@ -6,6 +6,7 @@ export enum FlowNodeTemplateTypeEnum {
   ai = 'ai',
   interactive = 'interactive',
   tools = 'tools',
+  toolCall = 'toolCall',
   other = 'other',
 
   // Team app type

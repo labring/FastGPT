@@ -142,6 +142,7 @@ import {
   createCollections,
   createOneCollection,
   createApiFileCollectionsBatch,
+  findCollectionAndAllChildren,
   formatCollectionParamsByDataset
 } from '@fastgpt/service/core/dataset/collection/controller';
 import { chunkAutoChunkSize } from '@fastgpt/global/core/dataset/training/utils';
@@ -213,6 +214,41 @@ const mockParentFolder = (id: string) => {
     })
   });
 };
+
+describe('findCollectionAndAllChildren', () => {
+  beforeEach(() => vi.resetAllMocks());
+
+  it('uses the root team and dataset scope at every descendant level', async () => {
+    const root = { _id: 'root', teamId, datasetId };
+    mockFindOne.mockReturnValue({ lean: vi.fn().mockResolvedValue(root) });
+    const lean = vi
+      .fn()
+      .mockResolvedValueOnce([{ _id: 'child', datasetId }])
+      .mockResolvedValueOnce([{ _id: 'grandchild', datasetId }])
+      .mockResolvedValueOnce([]);
+    mockFind.mockReturnValue({ lean });
+
+    await expect(findCollectionAndAllChildren({ teamId, collectionId: 'root' })).resolves.toEqual([
+      root,
+      { _id: 'child', datasetId },
+      { _id: 'grandchild', datasetId }
+    ]);
+    expect(mockFindOne).toHaveBeenCalledWith({ _id: 'root', teamId });
+    expect(mockFind.mock.calls.map(([match]) => match)).toEqual([
+      { teamId, datasetId, parentId: 'root' },
+      { teamId, datasetId, parentId: 'child' },
+      { teamId, datasetId, parentId: 'grandchild' }
+    ]);
+  });
+
+  it('rejects a missing or cross-team root before querying children', async () => {
+    mockFindOne.mockReturnValue({ lean: vi.fn().mockResolvedValue(null) });
+    await expect(findCollectionAndAllChildren({ teamId, collectionId: 'missing' })).rejects.toThrow(
+      'Collection not found'
+    );
+    expect(mockFind).not.toHaveBeenCalled();
+  });
+});
 
 describe('bulkInsertFolderCollections', () => {
   beforeEach(() => {

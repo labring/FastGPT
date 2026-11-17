@@ -11,12 +11,16 @@ import {
   FlowNodeInputTypeEnum,
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
-import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import {
+  HttpToolSetRuntimeConfigSchema,
+  type StoreNodeItemType
+} from '@fastgpt/global/core/workflow/type/node';
 import {
   PerResourceTypeEnum,
   ReadPermissionVal
 } from '@fastgpt/global/support/permission/constant';
 import { Types } from '@fastgpt/service/common/mongo';
+import { getSecretValue } from '@fastgpt/service/common/secret/utils';
 import { getCachedSystemModelHandle } from '@fastgpt/service/core/ai/model/catalog/cache';
 import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
 import { beforeUpdateAppFormat } from '@fastgpt/service/core/app/controller';
@@ -38,6 +42,155 @@ const mocks = vi.hoisted(() => ({
 vi.mock('@fastgpt/service/core/app/tool/utils/client', () => mocks);
 
 describe('beforeUpdateAppFormat', () => {
+  it('encrypts Agent selected tool credentials even when previews are unavailable', async () => {
+    const tools = ['mcpTool', 'httpTool', 'mcpToolSet', 'httpToolSet'].map((key) => ({
+      id: `mcp-unavailable-${key}`,
+      config: {},
+      toolConfig: {
+        [key]: {
+          headerSecret: {
+            Authorization: { value: `plain-${key}` },
+            Reference: { ref: ['VARIABLE_NODE_ID', 'token'] }
+          },
+          toolList: [{ name: 'child', headerSecret: { 'X-Key': { value: `child-${key}` } } }]
+        }
+      }
+    }));
+    const businessValue = { headerSecret: 'ordinary-business-value' };
+    const nodes = [
+      {
+        flowNodeType: FlowNodeTypeEnum.agent,
+        inputs: [
+          { key: NodeInputKeyEnum.selectedTools, renderTypeList: [], value: tools },
+          { key: 'business', renderTypeList: [], value: businessValue }
+        ]
+      }
+    ] as unknown as StoreNodeItemType[];
+    tools.forEach(() => mocks.getClientToolPreviewNode.mockRejectedValueOnce(new Error('missing')));
+
+    await beforeUpdateAppFormat({ nodes });
+
+    tools.forEach((tool, index) => {
+      const key = ['mcpTool', 'httpTool', 'mcpToolSet', 'httpToolSet'][index];
+      const config = tool.toolConfig[key as keyof typeof tool.toolConfig];
+      expect(
+        getSecretValue({ storeSecret: { Authorization: config.headerSecret.Authorization } })
+      ).toEqual({
+        Authorization: `plain-${key}`
+      });
+      expect(config.headerSecret.Reference).toEqual({ ref: ['VARIABLE_NODE_ID', 'token'] });
+      expect(getSecretValue({ storeSecret: config.toolList[0].headerSecret })).toEqual({
+        'X-Key': `child-${key}`
+      });
+    });
+    expect(JSON.stringify(nodes)).not.toContain('plain-mcpTool');
+    expect(JSON.stringify(nodes)).not.toContain('child-httpToolSet');
+    expect(nodes[0].inputs[1].value).toEqual(businessValue);
+
+    const encrypted = JSON.stringify(tools);
+    tools.forEach(() => mocks.getClientToolPreviewNode.mockRejectedValueOnce(new Error('missing')));
+    await beforeUpdateAppFormat({ nodes });
+    expect(JSON.stringify(tools)).toBe(encrypted);
+  });
+
+  it.each(['mcpToolSet', 'httpToolSet'] as const)(
+    'encrypts node-local %s auth and preserves it on repeat saves',
+    async (toolSetKey) => {
+      const nodes = [
+        {
+          flowNodeType: FlowNodeTypeEnum.toolSet,
+          inputs: [],
+          toolConfig: {
+            [toolSetKey]: {
+              ...(toolSetKey === 'mcpToolSet'
+                ? { url: 'https://mcp.example.com' }
+                : {
+                    apiSchemaUrl: 'https://api.example.com/openapi.json',
+                    customHeaders: '{}'
+                  }),
+              headerSecret: { 'X-API-Key': { value: 'temporary-secret' } },
+              toolList: []
+            }
+          }
+        } as StoreNodeItemType
+      ];
+
+      await beforeUpdateAppFormat({ nodes });
+
+      const toolSet = nodes[0].toolConfig?.[toolSetKey];
+      if (!toolSet) throw new Error('Toolset config is missing');
+      const encryptedValue = toolSet.headerSecret?.['X-API-Key'];
+      expect(encryptedValue).toMatchObject({ secret: expect.any(String) });
+      expect(JSON.stringify(nodes)).not.toContain('temporary-secret');
+      expect(getSecretValue({ storeSecret: toolSet.headerSecret ?? undefined })).toEqual({
+        'X-API-Key': 'temporary-secret'
+      });
+
+      await beforeUpdateAppFormat({ nodes });
+
+      const savedAgain = nodes[0].toolConfig?.[toolSetKey];
+      if (!savedAgain) throw new Error('Toolset config is missing');
+      expect(savedAgain.headerSecret?.['X-API-Key']?.secret).toBe(encryptedValue?.secret);
+    }
+  );
+
+  it('encrypts HTTP per-tool secrets only for complete runtime configs', async () => {
+    const nodes = [
+      {
+        flowNodeType: FlowNodeTypeEnum.toolSet,
+        inputs: [],
+        toolConfig: {
+          httpToolSet: {
+            apiSchemaUrl: 'https://api.example.com/openapi.json',
+            customHeaders: '{}',
+            headerSecret: { 'X-API-Key': { value: 'summary-secret' } },
+            toolList: [{ name: 'search', description: 'Summary only' }]
+          }
+        }
+      },
+      {
+        flowNodeType: FlowNodeTypeEnum.toolSet,
+        inputs: [],
+        toolConfig: {
+          httpToolSet: {
+            customHeaders: '{}',
+            headerSecret: { 'X-API-Key': { value: 'collection-secret' } },
+            toolList: [
+              {
+                name: 'search',
+                description: 'Runtime tool',
+                path: '/search',
+                method: 'GET',
+                headerSecret: { Authorization: { value: 'tool-secret' } }
+              }
+            ]
+          }
+        }
+      }
+    ] as StoreNodeItemType[];
+
+    await beforeUpdateAppFormat({ nodes });
+
+    const summaryConfig = nodes[0].toolConfig?.httpToolSet;
+    if (!summaryConfig || 'toolId' in summaryConfig) throw new Error('HTTP summary config missing');
+    expect(summaryConfig.toolList).toEqual([{ name: 'search', description: 'Summary only' }]);
+    expect(getSecretValue({ storeSecret: summaryConfig.headerSecret ?? undefined })).toEqual({
+      'X-API-Key': 'summary-secret'
+    });
+
+    const runtimeConfig = HttpToolSetRuntimeConfigSchema.safeParse(
+      nodes[1].toolConfig?.httpToolSet
+    );
+    expect(runtimeConfig.success).toBe(true);
+    if (!runtimeConfig.success) throw new Error('HTTP runtime config missing');
+    expect(getSecretValue({ storeSecret: runtimeConfig.data.headerSecret ?? undefined })).toEqual({
+      'X-API-Key': 'collection-secret'
+    });
+    expect(
+      getSecretValue({ storeSecret: runtimeConfig.data.toolList[0].headerSecret ?? undefined })
+    ).toEqual({ Authorization: 'tool-secret' });
+  });
+
   it.each([
     ['systemTool-weather', true],
     ['business-app-id', false]

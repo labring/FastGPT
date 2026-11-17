@@ -1,3 +1,8 @@
+import { getSystemInstanceConfig } from '../../../../common/system/systemInstanceConfig/runtime';
+import {
+  listRetainedTools,
+  getRetainedToolDetail
+} from '../../../../thirdProvider/fastgptPlugin/lifecycle';
 import { PluginErrEnum } from '@fastgpt/global/common/error/code/plugin';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import type { LangEnum } from '@fastgpt/global/common/i18n/type';
@@ -305,8 +310,10 @@ export class SystemToolRepo {
     op,
     sources,
     tags,
-    lang
+    lang,
+    includeDisabled
   }: {
+    includeDisabled?: boolean;
     tags?: string[];
     op?: PluginListParamsType['op'];
     sources?: PluginListParamsType['sources'];
@@ -315,11 +322,13 @@ export class SystemToolRepo {
     // 1. get all tools from plugin by sources
     const filteredTags = tags ? filterPluginTags(tags) : undefined;
     const tools = await withPluginClientLocale(lang, () =>
-      pluginClient.listTools({
-        op,
-        sources,
-        tags: filteredTags
-      })
+      includeDisabled
+        ? listRetainedTools()
+        : pluginClient.listTools({
+            op,
+            sources,
+            tags: filteredTags
+          })
     );
 
     // 2. 加载数据库中的插件配置，将所有插件 normalize
@@ -337,7 +346,10 @@ export class SystemToolRepo {
       return {
         ...item,
         status: getVisiblePluginStatus({
-          status: item.status,
+          status:
+            'installationStatus' in tool && tool.installationStatus === 'disabled'
+              ? PluginStatusEnum.Offline
+              : item.status,
           source: tool.source
         })
       };
@@ -366,7 +378,8 @@ export class SystemToolRepo {
     source: toolSource = 'system',
     lang,
     fallbackLatestVersion = false,
-    maskSecrets = false
+    maskSecrets = false,
+    includeDisabled = false
   }: {
     pluginId: string;
     version?: string;
@@ -374,6 +387,7 @@ export class SystemToolRepo {
     lang?: `${LangEnum}`;
     fallbackLatestVersion?: boolean;
     maskSecrets?: boolean;
+    includeDisabled?: boolean;
   }): Promise<SystemToolDetailType> => {
     const isIsolatedSource = isIsolatedPluginSource(toolSource);
     const { pluginId: rawPluginId, source: idSource } = parseSystemToolId({
@@ -418,7 +432,7 @@ export class SystemToolRepo {
         versionLabel: appVersion.versionName,
         intro: dbTool.customConfig.intro ?? '',
         tags: dbTool.customConfig.tags ?? [],
-        author: dbTool.customConfig.author ?? global.feConfigs.systemTitle ?? '',
+        author: dbTool.customConfig.author ?? getSystemInstanceConfig().site.name ?? '',
         avatar: dbTool.customConfig.avatar ?? app.avatar ?? '',
         hasSystemSecret: false,
         systemSecretStatus: SystemToolCodec.getSystemSecretStatus({ hasSecret: false }),
@@ -442,12 +456,14 @@ export class SystemToolRepo {
     // System tool
     const pluginSource = getPluginClientSource({ idSource, runtimeSource: toolSource });
     const tool: SDKToolDetailType = await withPluginClientLocale(lang, () =>
-      pluginClient.getTool({
-        pluginId: parentPluginId,
-        version,
-        source: pluginSource,
-        ...(fallbackLatestVersion ? { fallbackLatestVersion: true } : {})
-      })
+      includeDisabled
+        ? getRetainedToolDetail(parentPluginId, version)
+        : pluginClient.getTool({
+            pluginId: parentPluginId,
+            version,
+            source: pluginSource,
+            ...(fallbackLatestVersion ? { fallbackLatestVersion: true } : {})
+          })
     );
 
     const getToolParent = tool.isToolset && !getChildToolDetail;
@@ -525,7 +541,7 @@ export class SystemToolRepo {
 
     const toolDetail: SystemToolDetailType = {
       id: pluginId,
-      author: tool.author ?? global.feConfigs.systemTitle ?? '',
+      author: tool.author ?? getSystemInstanceConfig().site.name ?? '',
       avatar: childPluginId ? (child?.icon ?? tool.icon) : tool.icon,
       currentCost: dbTool?.currentCost ?? 0,
       hasSystemSecret,
@@ -600,7 +616,7 @@ export class SystemToolRepo {
         avatar: exactDbTool.customConfig.avatar ?? '',
         name: exactDbTool.customConfig.name,
         intro: exactDbTool.customConfig.intro ?? '',
-        author: exactDbTool.customConfig.author ?? global.feConfigs.systemTitle ?? '',
+        author: exactDbTool.customConfig.author ?? getSystemInstanceConfig().site.name ?? '',
         tags: exactDbTool.customConfig.tags ?? [],
         userGuide: exactDbTool.customConfig.userGuide,
         pluginOrder: exactDbTool.pluginOrder ?? 0,

@@ -1,6 +1,6 @@
 ---
 title: 团队模式说明文档
-description: FastGPT 团队模式说明文档
+description: "配置 FastGPT 多团队协作模式，管理团队创建、成员邀请、角色权限划分与企业组织架构同步。"
 ---
 
 ## 介绍
@@ -9,7 +9,7 @@ description: FastGPT 团队模式说明文档
 
 1. 单团队模式（默认模式，全局只有一个团队）
 2. 多团队模式
-3. 成员同步模式（所有成员自外部同步）
+3. 成员同步模式（所有成员自外部同步，需已配置商业版 License 与 SSO 服务地址后才显示该选项）
 
 <table className="table-hover table-striped-columns" style={{ textAlign: 'center' }}>
   <thead>
@@ -73,16 +73,16 @@ description: FastGPT 团队模式说明文档
 
 ### 单团队模式
 
-单团队模式是 v4.9 推出的新功能。为了简化企业进行人员和资源的管理，开启单团队模式后，所有新增的用户都不再创建自己的默认团队，而是加入 root 用户所在的团队。
+为了简化企业进行人员和资源的集中管理，开启单团队模式后，所有新增用户均直接加入 `root` 用户所在的团队。
 
 ### 同步模式
 
-在完成系统配置，开启同步模式的情况下，外部成员系统的成员会自动同步到 FastGPT 中。
+在已配置商业版 License 与 SSO 服务地址、并开启同步模式的情况下，外部成员系统的成员会自动同步到 FastGPT 中。
 
-具体的同步方式和规则请参考 [SSO & 外部成员同步](./sso.mdx)。
+具体的同步方式和规则请参考 [SSO & 外部成员同步](/zh-CN/guide/admin/sso)。
 
 ## 配置
 
 在 FastGPT 前台的 `管理员` -> `系统配置` -> `用户配置` 中，可以配置团队模式。
 
-![](/imgs/teammode.png)
+![配置：界面示例](/imgs/optimized/teammode.png.webp)

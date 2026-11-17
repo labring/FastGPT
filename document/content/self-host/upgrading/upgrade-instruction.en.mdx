@@ -1,16 +1,16 @@
 ---
 title: Upgrade Guide
-description: FastGPT version upgrade guide
+description: "Follow the standard FastGPT self-hosted upgrade procedure covering image tag conventions, startup migrations, background migrations, and version steps."
 ---
 
 ## Version Policy
 
 Starting with 4.14.11, FastGPT uses separate version names for stable releases and rapid-development releases:
 
-1. Two stable release lines are maintained. For example, while new features are developed in 4.16.x, fixes are maintained for 4.14.x and 4.15.x.
-2. Stable releases have no suffix, such as 4.14.11, 4.14.12, 4.15.0, and 4.15.1. A fix for 4.14.11 is released as 4.14.12 and applied to the 4.15.x stable line. These maintenance releases contain fixes and preserve the existing feature set.
-3. Rapid-development releases use a beta suffix, such as 4.16.0-beta.1, 4.16.0-beta.2, and 4.16.0-beta.3.
-4. A development line becomes a stable release approximately every 2 months. A consolidated upgrade script lets you apply all migrations from that development cycle with one request.
+1. Two stable release lines are maintained. For example, while new features are developed in 4.17.x, fixes are maintained for 4.14.x and 4.15.x.
+2. Stable releases have no suffix, such as 4.15.0, 4.15.1, 4.17.0, and 4.17.3. A fix for 4.15.0 is released as 4.15.1 and applied to the active stable lines. These maintenance releases contain fixes and preserve the existing feature set.
+3. Rapid-development releases use a beta suffix, such as 4.17.0-beta1, 4.17.0-beta2, and 4.17.0-beta3.
+4. A development line becomes a stable release approximately every 2 months. Starting with 4.17.0, registered system migration tasks run automatically when the main app starts; for 4.16.x and earlier, a consolidated upgrade script applies all migrations from that development cycle with one request.
 
 For stable deployments, choose releases without a beta suffix. Dedicated maintenance releases provide fixes while preserving the existing feature set.
 
@@ -27,57 +27,62 @@ If you use FastGPT's bundled MongoDB 5.x and want to move to 8.x, see [Migrate M
 
 **GitHub Container Registry**
 
-- FastGPT main image: ghcr.io/labring/fastgpt:latest
+- FastGPT main image: ghcr.io/labring/fastgpt
 - Plugin image: ghcr.io/labring/fastgpt-plugin
 - Code sandbox image: ghcr.io/labring/fastgpt-code-sandbox
-- MCP SSE server image: ghcr.io/labring/fastgpt-mcp_server
-- Commercial edition image: ghcr.io/c121914yu/fastgpt-pro:latest
+- AI Proxy image: ghcr.io/labring/aiproxy
+- Agent Sandbox Volume Manager image: ghcr.io/labring/fastgpt-agent-volume-manager
+- Agent Sandbox image: ghcr.io/labring/fastgpt-agent-sandbox
+- Agent Sandbox Proxy image: ghcr.io/labring/fastgpt-agent-sandbox-proxy
+- Commercial edition image: ghcr.io/c121914yu/fastgpt-pro
 
 **Alibaba Cloud**
 
 - FastGPT main image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt
 - Plugin image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-plugin
 - Code sandbox image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-code-sandbox
-- MCP SSE server image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-mcp_server
-- Commercial edition image: ghcr:registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-pro
+- AI Proxy image: registry.cn-hangzhou.aliyuncs.com/labring/aiproxy
+- Agent Sandbox Volume Manager image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-volume-manager
+- Agent Sandbox image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-sandbox
+- Agent Sandbox Proxy image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-sandbox-proxy
+- Commercial edition image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-pro
 
-An image consists of the image name and a `Tag`. For example, registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.6.1 refers to the `4.6.3` version image. Check Docker Hub or the GitHub repository for details.
+Pin each service to the image tag specified in the target release deployment template. Companion services may use different version tags; record the complete image set and configuration before upgrading.
 
 ## Updating Images on Sealos
 
 1. Open [Sealos Cloud](https://cloud.sealos.io?uid=fnWRt09fZP) and find App Management on the desktop.
 
-![Sealos desktop with App Management](../../../public/imgs/updateImageSealos1.jpg)
+![Sealos desktop with App Management](/imgs/optimized/updateImageSealos1.jpg.webp)
 
 2. Select the corresponding app - click the three dots on the right - Update.
 
-![App menu for changing a deployment](../../../public/imgs/updateImageSealos2.png)
+![App menu for changing a deployment](/imgs/optimized/updateImageSealos2.png.webp)
 
 3. Update the image - Confirm changes.
 
    If you need to modify the configuration file, scroll down to the `Configuration File` section to make changes.
 
-![Image and configuration settings](../../../public/imgs/updateImageSealos3.png)
+![Image and configuration settings](/imgs/optimized/updateImageSealos3.png.webp)
 
 ## Updating Images with Docker Compose
 
 Simply modify the `image:` field in the `yml` file, then run:
 
 ```bash
-docker-compose pull
-docker-compose up -d
+docker compose pull
+docker compose up -d
 ```
 
 ## Running the Upgrade Initialization Script
 
-After updating the images, check the version notes in the documentation. Versions that require an upgrade script are typically labeled with "includes upgrade script". Open the corresponding documentation and follow the instructions to run the **upgrade script** -- in most cases, you just need to send a `POST` request.
+After updating the images, check the release notes for the target version. Versions that require an upgrade script carry the `MIGRATION` tag. Open the corresponding page and follow its instructions: starting with 4.17.0, registered migration tasks run automatically after the main app starts, and manual tasks are run from **Admin > System upgrade**. For 4.16.x and earlier, most upgrade scripts require sending a `POST` request.
 
-## FAQ
+## Upgrade Execution and Rollback Notes
 
 ### Why do I need to run an upgrade script?
 
-When there are significant changes to the database schema that cannot be handled through default values, or when the migration logic is complex, an upgrade script is used to update certain database fields.
-Following the initialization steps carefully will not cause any data loss. However, if the data volume is large, the initialization may take a while, during which the service may be temporarily unavailable.
+Upgrade scripts migrate and backfill existing data into the structures used by the new version. Starting with FastGPT 4.17+, the application automatically runs a distributed startup migration executor. Nodes coordinate via MongoDB leases to run registered schema transformations sequentially with checkpoint cursors. For large datasets, schedule upgrades during maintenance windows to allow sufficient time for data backfill.
 
 ### What is `{{host}}`?
 
@@ -85,24 +90,18 @@ Following the initialization steps carefully will not cause any data loss. Howev
 
 On Sealos, open the app details and look under **Network Configuration**. The **External Address** column shows the public URL; use its domain name for `{{host}}` when the request already includes `https://`.
 
-![App details showing the external address and environment variables](../../../public/imgs/updateImageSealos4.png)
+![App details showing the external address and environment variables](/imgs/optimized/updateImageSealos4.png.webp)
 
 ### How to get the rootkey
 
-You can find it in the `environment` section of your `docker-compose.yml` file -- it's the value of `ROOT_KEY`.
+Find the value of `ROOT_KEY` in your `docker-compose.yml` file. The official template sets `ROOT_KEY: *x-system-key`; the actual value is on the `x-system-key` line at the top of the file.
 
 On Sealos, you can find it in the environment variables panel shown in the image above.
 
 ### How to upgrade across multiple versions
 
-Back up your data first!
-
-You can upgrade to the latest version and then run all the upgrade scripts in order. However, for stability, we recommend upgrading one version at a time. For example, if your current version is 4.4.7 and you need to upgrade to 4.6:
-
-1. Update the image to 4.5, run the upgrade script
-2. Update the image to 4.5.1, run the upgrade script
-3. Update the image to 4.5.2, run the upgrade script
-4. Update the image to 4.6, run the upgrade script
-5. .....
-
-Upgrade one version at a time.
+1. Read every intervening release note and follow the documented upgrade path, including required intermediate versions.
+2. Back up MongoDB, vector storage, object storage, and configuration consistently; verify restoration in a separate environment.
+3. Rehearse the upgrade with a copy of production data. Check startup migrations and run only the manual steps required by those releases.
+4. Upgrade during a maintenance window and verify login, ingestion, retrieval, chat, and file downloads before restoring traffic.
+5. Prepare a rollback using compatible application images and data backups. Data migrations can require restoring the prior data state together with the prior version.

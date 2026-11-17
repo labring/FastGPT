@@ -1,38 +1,39 @@
 ---
-title: Configure Custom Domain
-description: How to configure a custom domain in FastGPT
+title: Custom Domain
+description: Bind a custom domain, DNS records, and TLS certificate to your FastGPT team workspace and shared links.
 ---
 
-FastGPT Cloud supports custom domain configuration starting from v4.14.4.
+FastGPT Cloud and self-hosted Commercial Edition deployments with `customDomain` enabled support custom domain configuration.
 
 ## How to Configure a Custom Domain
 
 ### 1. Open the "Custom Domain" Page
 
-In the sidebar, go to "Account" -> "Custom Domain" to open the configuration page.
+In the left sidebar, go to **Account → Custom Domain** (visible in FastGPT Cloud and Commercial Edition deployments with `customDomain` enabled) to open the configuration page.
 
 If your plan does not support this feature, follow the on-screen instructions to upgrade.
 
-![Open configuration page](/imgs/guide/team_permissions/customDomain/1.png)
+![Open configuration page](/imgs/optimized/current/custom-domain-list.png.webp)
 
 ### 2. Add a Custom Domain
 
 1. Have your domain ready. Your domain must have an ICP filing. Currently supported filing providers are Alibaba Cloud, Tencent Cloud, and Volcano Engine.
-2. Click the "Edit" button to enter edit mode.
-3. Enter your domain, e.g. www.example.com
-4. In your domain provider's DNS management console, add the CNAME record shown on the screen.
-5. After adding the DNS record, click "Save". The system will automatically verify the DNS configuration -- this usually takes less than a minute. If verification takes too long, try again.
-6. Once the status shows "Active", click "Confirm" to finish.
+2. Click **Add** to create a domain binding. For a domain that is not yet active, open **Edit** for that row.
+3. In the dialog, select your ICP filing provider under **Domain Filing Provider** (Tencent Cloud, Alibaba Cloud, or Volcano Engine).
+4. Enter your domain, such as `www.example.com`.
+5. In your domain provider's DNS management console, add the `CNAME` record shown on the screen.
+6. After adding the DNS record, click **Save**. The system automatically verifies the DNS configuration within about a minute; if verification times out, click retry.
+7. Once the status next to the domain input shows **Verified**, click **Confirm** to finish.
 
-![Configure custom domain](/imgs/guide/team_permissions/customDomain/2.png)
+![Configure custom domain](/imgs/optimized/current/custom-domain-form.png.webp)
 
 You can now access FastGPT services and call FastGPT APIs using your own domain.
 
 ## DNS Resolution Failure
 
-The system checks DNS resolution daily. If the DNS record becomes invalid, the custom domain will be disabled. You can re-verify it by clicking "Edit" on the "Custom Domain" management page.
+The system checks DNS resolution daily. If the DNS record becomes invalid, the custom domain status changes to **Inactive**. Click **Edit** on the **Custom Domain** management page to re-verify the DNS record.
 
-![Edit](/imgs/guide/team_permissions/customDomain/3.png)
+![Edit](/imgs/optimized/guide/team_permissions/customDomain/3.png.webp)
 
 To change your custom domain or switch providers, delete the existing configuration and set it up again.
 

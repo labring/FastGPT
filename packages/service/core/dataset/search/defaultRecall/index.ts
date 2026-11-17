@@ -2,7 +2,6 @@ import {
   DatasetSearchModeEnum,
   DatasetSearchModeMap
 } from '@fastgpt/global/core/dataset/constants';
-import { pushTrack } from '../../../../common/middle/tracks/utils';
 import type { SearchDatasetDataProps, SearchDatasetDataResponse } from '../type';
 import { formatDatasetDataValues } from '../../data/controller';
 import { getImageCaptionQueries } from './imageCaption';
@@ -14,8 +13,8 @@ import {
   removeDuplicateSearchResults
 } from './result';
 import { countRecallLimit, filterDatasetDataByMaxTokens } from './utils';
-import { serviceEnv } from '../../../../env';
 import { attachSynonymMappingsToSearchResults } from '../../synonym/searchResult';
+import { serviceEnv } from '../../../../env';
 
 /**
  * 执行默认知识库召回主流程。
@@ -28,7 +27,7 @@ import { attachSynonymMappingsToSearchResults } from '../../synonym/searchResult
  * 3. 融合阶段：先分别合并“用户文本”“图片 caption”“图片向量”三类结果，再按图文混合权重合成
  *    最终候选集；这样文本搜索保持主导，图片结果作为视觉补充，纯图片搜索则由图片结果主导。
  * 4. 精排与过滤阶段：rerank 只作用于用户文本召回，避免文本 rerank 误伤视觉相似结果；最终统一做
- *    去重、相似度阈值过滤和 token 上限裁剪。
+ *    去重、相似度阈值过滤和条数/token 预算裁剪。
  * 5. 输出阶段：只在返回前把 chunk 内容里的内部图片 key 替换为预览 URL，避免动态 URL 干扰中间去重
  *    和召回融合。
  */
@@ -45,6 +44,7 @@ export async function searchDatasetData(
     vlmModel,
     similarity = 0,
     limit: maxTokens,
+    topk,
     searchMode: inputSearchMode = DatasetSearchModeEnum.embedding,
     embeddingWeight = 0.5,
     usingReRank: inputUsingReRank = false,
@@ -53,6 +53,7 @@ export async function searchDatasetData(
     rerankCandidateNum,
     datasetIds = [],
     collectionFilterMatch,
+    metadataFilterEnabled,
     readableCollectionIdList
   } = props;
 
@@ -102,6 +103,7 @@ export async function searchDatasetData(
     model,
     imageQueries,
     collectionFilterMatch,
+    metadataFilterEnabled,
     readableCollectionIdList,
     embeddingLimit,
     fullTextLimit,
@@ -128,11 +130,10 @@ export async function searchDatasetData(
 
   // 重排前取快照：保存 textRecallResults，即重排前的文本召回候选集，
   // 仅用于日志详情对比召回与重排。仅重排开启时产出，避免未开启重排时切了切片又没人用。
-  // 上限由 RETRIEVAL_RESULTS_LIMIT 控制，0 表示不产出。
+  // 上限由部署环境变量 RETRIEVAL_RESULTS_LIMIT 控制，0 表示不产出。
+  const retrievalLimit = serviceEnv.RETRIEVAL_RESULTS_LIMIT;
   const retrievalResults =
-    usingReRank && serviceEnv.RETRIEVAL_RESULTS_LIMIT > 0
-      ? textRecallResults.slice(0, serviceEnv.RETRIEVAL_RESULTS_LIMIT)
-      : undefined;
+    usingReRank && retrievalLimit > 0 ? textRecallResults.slice(0, retrievalLimit) : undefined;
 
   // Step 4: rerank 只处理文本召回。
   // 图片向量结果和 caption 结果仍按 RRF 融合，避免用文本 rerank 把视觉相似结果误杀。
@@ -176,7 +177,7 @@ export async function searchDatasetData(
     }
   ]);
 
-  // Step 7: 最终过滤顺序固定为：同内容去重 -> 相似度阈值 -> token 上限。
+  // Step 7: 最终过滤顺序固定为：同内容去重 -> 相似度阈值 -> 条数或 token 预算。
   // 先去重可以避免同一 chunk 因多路召回重复占用相似度过滤和 token 预算。
   const filterSameDataResults = removeDuplicateSearchResults(rrfConcatResults);
   const { results: scoreFilter, usingSimilarityFilter } = filterSearchResultsByScore({
@@ -186,12 +187,16 @@ export async function searchDatasetData(
     similarity
   });
 
-  const filterMaxTokensResult = await filterDatasetDataByMaxTokens(scoreFilter, maxTokens);
+  // topk 优先且不计 token；截断发生在同义词装饰和图片签名前，避免处理未入选结果。
+  const filteredResults =
+    topk === undefined
+      ? await filterDatasetDataByMaxTokens(scoreFilter, maxTokens)
+      : scoreFilter.slice(0, topk);
   // 同义词只装饰最终入选结果：被前面过滤掉的候选不会产生 alias 查询。
   const decoratedFinal = await attachSynonymMappingsToSearchResults({
     teamId,
     datasetIds,
-    results: filterMaxTokensResult
+    results: filteredResults
   });
   // Step 8: 返回前一次收集最终结果中的 q、a、imageId，并批量签发唯一 dataset 对象 key。
   // 最终输出不暴露仅供格式化使用的 imageId。
@@ -209,8 +214,6 @@ export async function searchDatasetData(
       ...formattedValues[index]!
     };
   });
-
-  pushTrack.datasetSearch({ datasetIds, teamId });
 
   return {
     searchRes: finalResult,

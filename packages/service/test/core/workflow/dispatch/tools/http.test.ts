@@ -1,4 +1,5 @@
-import { afterEach, describe, it, expect } from 'vitest';
+import { afterEach, beforeEach, describe, it, expect } from 'vitest';
+import { resolveSystemInstanceConfig } from '@fastgpt/global/common/system/config/schema';
 import {
   getWorkflowHttpNodeHttpsAgentConfig,
   replaceJsonBodyString
@@ -645,30 +646,24 @@ describe('replaceJsonBodyString', () => {
 });
 
 describe('getWorkflowHttpNodeHttpsAgentConfig', () => {
-  const originalSystemEnv = global.systemEnv;
+  const originalInstanceConfig = global.systemInstanceConfig;
 
-  afterEach(() => {
-    global.systemEnv = originalSystemEnv;
+  beforeEach(() => {
+    global.systemInstanceConfig = resolveSystemInstanceConfig({});
   });
 
-  it('should not inject safe axios TLS option when ignoreHttpsCertificate is disabled', () => {
-    global.systemEnv = {
-      ...originalSystemEnv,
-      workflowHttpNode: {
-        ignoreHttpsCertificate: false
-      }
-    };
+  afterEach(() => {
+    global.systemInstanceConfig = originalInstanceConfig;
+  });
+
+  it('uses the disabled instance setting', () => {
+    global.systemInstanceConfig!.security.workflowHttpNode.ignoreHttpsCertificate = false;
 
     expect(getWorkflowHttpNodeHttpsAgentConfig('https://example.com')).toEqual({});
   });
 
-  it('should inject safe axios TLS option only for HTTPS requests when enabled', () => {
-    global.systemEnv = {
-      ...originalSystemEnv,
-      workflowHttpNode: {
-        ignoreHttpsCertificate: true
-      }
-    };
+  it('uses the enabled instance setting only for HTTPS', () => {
+    global.systemInstanceConfig!.security.workflowHttpNode.ignoreHttpsCertificate = true;
 
     const httpsConfig = getWorkflowHttpNodeHttpsAgentConfig('https://example.com');
     expect(httpsConfig.__safeAxios).toEqual({ rejectUnauthorized: false });
@@ -677,13 +672,8 @@ describe('getWorkflowHttpNodeHttpsAgentConfig', () => {
     expect(getWorkflowHttpNodeHttpsAgentConfig('http://example.com')).toEqual({});
   });
 
-  it('should ignore invalid urls and let request layer report url errors', () => {
-    global.systemEnv = {
-      ...originalSystemEnv,
-      workflowHttpNode: {
-        ignoreHttpsCertificate: true
-      }
-    };
+  it('ignores invalid urls and lets the request layer report url errors', () => {
+    global.systemInstanceConfig!.security.workflowHttpNode.ignoreHttpsCertificate = true;
 
     expect(getWorkflowHttpNodeHttpsAgentConfig('invalid-url')).toEqual({});
   });

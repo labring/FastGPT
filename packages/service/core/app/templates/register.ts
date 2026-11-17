@@ -15,6 +15,7 @@ type PluginSystemTemplateDbConfig = Pick<AppTemplateSchemaType, 'templateId'> &
       | 'promoteTags'
       | 'hideTags'
       | 'recommendText'
+      | 'experienceUrl'
       | 'isQuickTemplate'
       | 'order'
     >
@@ -55,6 +56,7 @@ export const pickPluginSystemTemplateDbConfig = (config: PluginSystemTemplateDbC
       promoteTags: config.promoteTags,
       hideTags: config.hideTags,
       recommendText: config.recommendText,
+      experienceUrl: config.experienceUrl,
       isQuickTemplate: config.isQuickTemplate,
       order: config.order
     }).filter(([, value]) => value !== undefined)

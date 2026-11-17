@@ -228,9 +228,7 @@ describe('channel controller — delete protection / refs', () => {
       ...GROUP_A_SCOPE
     });
 
-    expect(affected).toEqual([
-      { modelId: 'own-a-1', name: 'A Qwen Plus', model: 'qwen-plus' }
-    ]);
+    expect(affected).toEqual([{ modelId: 'own-a-1', name: 'A Qwen Plus', model: 'qwen-plus' }]);
   });
 
   it('group bucket counts ignore other members channels (route scope isolation)', async () => {
@@ -325,6 +323,36 @@ describe('channel controller — list views with relatedModelCount', () => {
     setupModels();
     mockChannels();
   });
+
+  it.each(['system', 'team'] as const)(
+    'exposes only the public protocol config in the %s list',
+    async (scope) => {
+      axiosMock.mockResolvedValue(
+        okEnvelope({
+          channels: [
+            makeChannel(1, {
+              configs: { chat_upstream_protocol: 'chat_completions', vendor_secret: 'hidden' }
+            }),
+            makeChannel(2, { configs: undefined }),
+            makeChannel(3, { type: 4, configs: { chat_upstream_protocol: 'responses' } }),
+            makeChannel(4, { type: 14, configs: { vendor_secret: 'hidden' } })
+          ],
+          total: 4
+        })
+      );
+      const result =
+        scope === 'system'
+          ? await getSystemChannelList()
+          : await getMemberChannelList({ teamId: TEAM_ID, tmbId: TMB_A });
+      expect(result.list.map((channel) => channel.configs)).toEqual([
+        { chat_upstream_protocol: 'chat_completions' },
+        undefined,
+        { chat_upstream_protocol: 'responses' },
+        undefined
+      ]);
+      expect(JSON.stringify(result)).not.toContain('hidden');
+    }
+  );
 
   it('system channel view counts the system model bucket', async () => {
     const { list, total } = await getSystemChannelList();

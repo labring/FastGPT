@@ -1,9 +1,10 @@
 ---
 title: V4.6.8
-description: FastGPT V4.6.8更新说明
+description: 'FastGPT V4.6.8 版本更新说明，涵盖镜像升级步骤、兼容性变更与功能优化详情。'
 releaseTime: '2024-02-16'
 upgradeTags:
   - 升级脚本
+deprecated: true
 ---
 
 ## docker 部署 - 手动更新 Mongo
@@ -46,13 +47,13 @@ mongo:
       exec docker-entrypoint.sh "$@" &
 
       # 等待MongoDB服务启动
-      until mongo -u myusername -p mypassword --authenticationDatabase admin --eval "print('waited for connection')" > /dev/null 2>&1; do
+      until mongo -u username -p password --authenticationDatabase admin --eval "print('waited for connection')" > /dev/null 2>&1; do
         echo "Waiting for MongoDB to start..."
         sleep 2
       done
 
       # 执行初始化副本集的脚本
-      mongo -u myusername -p mypassword --authenticationDatabase admin /data/initReplicaSet.js
+      mongo -u username -p password --authenticationDatabase admin /data/initReplicaSet.js
 
       # 等待docker-entrypoint.sh脚本执行的MongoDB服务进程
       wait $!
@@ -70,7 +71,7 @@ docker-compose up -d
 
 ## 修改配置文件
 
-去除了重复的模型配置，LLM 模型都合并到一个属性中。旧版 `config.json` 配置说明已不再维护，当前版本请参考[模型配置方案](../../config/model/intro.mdx)。
+去除了重复的模型配置，LLM 模型都合并到一个属性中。旧版 `config.json` 配置说明已不再维护，当前版本请参考[模型配置方案](/zh-CN/self-host/config/model/intro)。
 
 ## 商业版初始化
 
@@ -90,7 +91,7 @@ curl --location --request POST 'https://{{host}}/api/init/v468' \
 
 1. 新增 - 知识库搜索合并模块。
 2. 新增 - 新的 Http 模块，支持更加灵活的参数传入。同时支持了输入输出自动数据类型转化，例如：接口输出的 JSON 类型会自动转成字符串类型，直接给其他模块使用。此外，还补充了一些例子，可在文档中查看。
-3. 优化 - 内容补全。将内容补全内置到【知识库搜索】中，并实现了一次内容补全，即可完成“指代消除”和“问题扩展”。FastGPT 知识库搜索详细流程可查看：[知识库搜索介绍](../../../guide/build/workflow/nodes/dataset_search.mdx)
+3. 优化 - 内容补全。将内容补全内置到【知识库搜索】中，并实现了一次内容补全，即可完成“指代消除”和“问题扩展”。FastGPT 知识库搜索详细流程可查看：[知识库搜索介绍](/zh-CN/guide/build/workflow/nodes/dataset_search)
 4. 优化 - LLM 模型配置，不再区分对话、分类、提取模型。同时支持模型的默认参数，避免不同模型参数冲突，可通过 `defaultConfig` 传入默认的配置。
 5. 优化 - 流响应，参考了 `ChatNextWeb` 的流，更加丝滑。此外，之前提到的乱码、中断，刷新后又正常了，可能会修复。
 6. 修复 - 语音输入文件无法上传。

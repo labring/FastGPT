@@ -6,10 +6,25 @@ import {
   GetUsageBodySchema,
   GetUsageDashboardBodySchema,
   GetUsageDashboardResponseSchema,
-  GetUsageResponseSchema
+  GetUsageResponseSchema,
+  UsageFilterOptionsBodySchema,
+  UsageFilterOptionsResponseSchema
 } from './api';
 
 export const WalletUsagePath: OpenAPIPath = {
+  '/proApi/support/wallet/usage/filterOptions': {
+    post: {
+      summary: '浏览使用记录筛选选项或校验导出范围',
+      tags: [DevApiTagsMap.walletUsage],
+      requestBody: { content: { 'application/json': { schema: UsageFilterOptionsBodySchema } } },
+      responses: {
+        200: {
+          description: '只读选项及筛选上下文',
+          content: { 'application/json': { schema: UsageFilterOptionsResponseSchema } }
+        }
+      }
+    }
+  },
   '/proApi/support/wallet/usage/exportUsage': {
     post: {
       summary: '导出使用记录',

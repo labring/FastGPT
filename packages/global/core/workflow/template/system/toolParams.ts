@@ -6,7 +6,7 @@ import { i18nT } from '../../../../common/i18n/utils';
 
 export const ToolParamsNode: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.toolParams,
-  templateType: FlowNodeTemplateTypeEnum.ai,
+  templateType: FlowNodeTemplateTypeEnum.toolCall,
   flowNodeType: FlowNodeTypeEnum.toolParams,
   showSourceHandle: true,
   showTargetHandle: true,

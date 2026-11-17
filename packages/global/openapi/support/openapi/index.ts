@@ -1,6 +1,6 @@
 import { type OpenAPIPath } from '../../type';
 import {
-  ApiKeyHealthParamsSchema,
+  ApiKeyHealthHeaderSchema,
   ApiKeyHealthErrorResponseSchema,
   ApiKeyHealthResponseSchema,
   CopyApiKeyBodySchema,
@@ -147,7 +147,7 @@ export const ApiKeyPath: OpenAPIPath = {
       summary: '检查 API Key 是否健康',
       tags: [DevApiTagsMap.apiKey],
       requestParams: {
-        query: ApiKeyHealthParamsSchema
+        header: ApiKeyHealthHeaderSchema
       },
       responses: {
         200: {

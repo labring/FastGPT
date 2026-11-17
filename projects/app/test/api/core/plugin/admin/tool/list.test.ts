@@ -94,6 +94,7 @@ describe('admin system tool list handler', () => {
     expect(mocks.authSystemAdmin).toHaveBeenCalledTimes(1);
     expect(mocks.getSystemToolList).toHaveBeenCalledWith({
       sources: ['system'],
+      includeDisabled: true,
       lang: 'zh-CN'
     });
     expect(result).toEqual([

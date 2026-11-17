@@ -13,6 +13,7 @@ export enum QueueNames {
   agentSkillDelete = 'agentSkillDelete',
   teamDelete = 'teamDelete',
   accountCancellation = 'accountCancellation',
+  modelDeprecationInform = 'modelDeprecationInform',
 
   // Publish
   wechatPoll = 'wechatPoll',

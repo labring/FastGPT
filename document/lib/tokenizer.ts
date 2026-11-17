@@ -131,8 +131,13 @@ export const enhancedTokenizer = () => {
     'Sandbox',
     '插件',
     'Plugin',
+    '技能',
+    'Skill',
     '模板',
     '权限管理',
+    '团队',
+    '团队管理',
+    '成员组',
     '团队协作',
     '用户角色',
     '访问控制',
@@ -144,6 +149,10 @@ export const enhancedTokenizer = () => {
     'Dashboard',
     '调试预览',
     '发布分享',
+    '发布渠道',
+    '免登录窗口',
+    '数据看板',
+    '模型提供商',
     '对话窗口',
     '聊天界面',
     '引用展示',
@@ -258,6 +267,8 @@ export const enhancedTokenizer = () => {
 
     // 权限管理
     权限管理: ['权限管理', '访问控制', '用户权限', '权限控制', '授权管理'],
+    团队: ['团队', '团队管理', '团队协作', '成员组'],
+    团队管理: ['团队管理', '团队', '团队协作', '成员组', '权限管理'],
     团队协作: ['团队协作', '多人协作', '协同工作', '团队管理'],
     用户角色: ['用户角色', '角色管理', '权限角色', '用户权限'],
 
@@ -299,22 +310,32 @@ export const enhancedTokenizer = () => {
   };
 
   const baseTokenizer = createTokenizer();
+  const sortedWholeWords = [...wholeWords].sort((a, b) => b.length - a.length);
+  const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const normalizedSynonyms = new Map<string, string[]>(
+    Object.entries(synonymsMap).map(([key, values]) => [
+      key.toLowerCase(),
+      values.map((item) => item.toLowerCase())
+    ])
+  );
 
   return {
     ...baseTokenizer,
     tokenize: (text: string) => {
       // 先处理整词，用特殊标记保护它们
       let processedText = text;
-      const protectedTokens = new Map();
+      const protectedTokens = new Map<string, string>();
       let tokenIndex = 0;
 
-      wholeWords.forEach((word) => {
-        const regex = new RegExp(`\\b${word}\\b`, 'gi');
+      sortedWholeWords.forEach((word) => {
+        const escaped = escapeRegExp(word);
+        const isAsciiWord = /^[a-z0-9_.-]+$/i.test(word);
+        const regex = new RegExp(isAsciiWord ? `\\b${escaped}\\b` : escaped, 'gi');
         processedText = processedText.replace(regex, (match) => {
           const placeholder = `__PROTECTED_TOKEN_${tokenIndex}__`;
           protectedTokens.set(placeholder, match.toLowerCase());
           tokenIndex++;
-          return placeholder;
+          return ` ${placeholder} `;
         });
       });
 
@@ -325,8 +346,10 @@ export const enhancedTokenizer = () => {
       tokens = tokens
         .map((token) => {
           if (protectedTokens.has(token)) {
-            const originalWord = protectedTokens.get(token);
-            return synonymsMap[originalWord] || [originalWord];
+            const originalWord = protectedTokens.get(token)!;
+            const synonyms = normalizedSynonyms.get(originalWord) ?? [originalWord];
+            const subTokens = baseTokenizer.tokenize(originalWord);
+            return [originalWord, ...synonyms, ...subTokens];
           }
           return token;
         })

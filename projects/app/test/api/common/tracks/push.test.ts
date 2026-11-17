@@ -1,3 +1,4 @@
+import { setTestLicenseActive } from '@test/utils/instanceConfigSnapshot';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import handler from '@/pages/api/common/tracks/push';
 import { TrackEnum } from '@fastgpt/global/common/middle/tracks/constants';
@@ -71,7 +72,7 @@ describe('client track reporting', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     global.countTrackQueue = new Map();
-    global.feConfigs = { ...global.feConfigs, isPlus: true };
+    setTestLicenseActive(true);
   });
 
   it('stores every supported client event with the authenticated identity', async () => {
@@ -298,7 +299,7 @@ describe('client track reporting', () => {
   });
 
   it('skips reporting outside the Plus edition', async () => {
-    global.feConfigs = { ...global.feConfigs, isPlus: false };
+    setTestLicenseActive(false);
     const response = await Call(handler, {
       auth,
       body: { event: TrackEnum.clientError, data: { route: '/dashboard', log: 'Render failed' } }

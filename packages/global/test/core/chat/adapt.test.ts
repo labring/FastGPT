@@ -13,8 +13,11 @@ import {
 } from '@fastgpt/global/core/chat/adapt';
 import { ChatRoleEnum, ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
-import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
-import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/llm/type';
+import { ChatItemMiniSchema, type ChatItemMiniType } from '@fastgpt/global/core/chat/type';
+import {
+  ChatCompletionMessageParamSchema,
+  type ChatCompletionMessageParam
+} from '@fastgpt/global/core/ai/llm/type';
 import type {
   WorkflowBuilderPreviewInteractive,
   WorkflowBuilderPreviewAction
@@ -1053,6 +1056,38 @@ describe('normalizeAIChatValue', () => {
 });
 
 describe('chats2GPTMessages', () => {
+  it.each([null, undefined, '', 'chat/file-key'])(
+    'keeps historical image and document keys compatible with request validation: %j',
+    (key) => {
+      const messages: ChatItemMiniType[] = [
+        ChatItemMiniSchema.parse({
+          obj: ChatRoleEnum.Human,
+          value: [ChatFileTypeEnum.image, ChatFileTypeEnum.document].map((type) => ({
+            file: { type, name: 'attachment', url: 'https://example.com/download', key }
+          }))
+        })
+      ];
+
+      const transport = chats2GPTMessages({ messages, reserveId: false });
+      expect(ChatCompletionMessageParamSchema.array().safeParse(transport).success).toBe(true);
+      expect(transport[0].content).toEqual([
+        {
+          type: 'image_url',
+          image_url: { url: 'https://example.com/download' },
+          key: key || undefined
+        },
+        {
+          type: 'file_url',
+          fileType: ChatFileTypeEnum.document,
+          name: 'attachment',
+          url: 'https://example.com/download',
+          key: key || undefined
+        }
+      ]);
+      expect(messages[0].value[0]).toMatchObject({ file: { key: key ?? undefined } });
+    }
+  );
+
   it('should convert system message', () => {
     const messages: ChatItemMiniType[] = [
       {

@@ -10,6 +10,7 @@ import { assertCancellation } from '../../../support/user/account/cancellation/g
 import { getUserIdByTmbId } from '../../../support/user/team/utils';
 import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { serviceEnv } from '../../../env';
+import { getSystemInstanceConfig } from '../../../common/system/systemInstanceConfig/runtime';
 import { ApiKeyTypeEnum } from '@fastgpt/global/support/openapi/constants';
 
 export const authCert = async (props: AuthModeType) => {
@@ -113,6 +114,7 @@ export async function parseHeaderCert({
     isRoot,
     sourceName,
     sessionId,
+    sessionCreatedAt,
     legacyAppId,
     parsedAppId,
     apiKeyAuthProxy,
@@ -141,17 +143,18 @@ export async function parseHeaderCert({
     }
     if (authToken && (token || cookie)) {
       // user token(from fastgpt web)
-      const res = await authCookieToken(cookie, token);
+      const sessionData = await authCookieToken(cookie, token);
 
       return {
-        uid: res.userId,
-        teamId: res.teamId,
-        tmbId: res.tmbId,
+        uid: sessionData.userId,
+        teamId: sessionData.teamId,
+        tmbId: sessionData.tmbId,
         appId: '',
         openApiKey: '',
         authType: AuthUserTypeEnum.token,
-        isRoot: res.isRoot,
-        sessionId: res.sessionId
+        isRoot: sessionData.isRoot,
+        sessionId: sessionData.sessionId,
+        sessionCreatedAt: sessionData.createdAt
       };
     }
     if (authRoot && rootkey) {
@@ -175,9 +178,11 @@ export async function parseHeaderCert({
     return Promise.reject(ERROR_ENUM.unAuthorization);
   }
 
+  // 系统 root 代管进入处于注销冷静期的租户团队时需允许正常排查与管理，不受租户注销门禁阻断。
   const shouldAssertCancellation =
-    authType === AuthUserTypeEnum.apikey ||
-    (authType === AuthUserTypeEnum.token && !allowAccountCancellation);
+    !isRoot &&
+    (authType === AuthUserTypeEnum.apikey ||
+      (authType === AuthUserTypeEnum.token && !allowAccountCancellation));
   if (shouldAssertCancellation) {
     await assertCancellation({
       teamId: String(teamId),
@@ -201,7 +206,8 @@ export async function parseHeaderCert({
     boundAppId,
     apikey: openApiKey,
     isRoot: !!isRoot,
-    sessionId
+    sessionId,
+    sessionCreatedAt
   };
 }
 
@@ -212,11 +218,11 @@ const getAuthCookieOptions = () => ({
   path: '/',
   httpOnly: true,
   sameSite: 'strict' as const,
-  secure: serviceEnv.AUTH_COOKIE_SECURE
+  secure: getSystemInstanceConfig().security.authCookieSecure
 });
 
 /**
- * 写入登录凭证 Cookie；启用 AUTH_COOKIE_SECURE 后，浏览器只会通过 HTTPS 发送凭证。
+ * 写入登录凭证 Cookie；读取当前实例策略，开启后浏览器只会通过 HTTPS 发送凭证。
  */
 export const setCookie = (res: NodeHttpResponse, token: string) => {
   res.setHeader(

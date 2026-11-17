@@ -14,16 +14,10 @@ describe('marketplace env', () => {
     vi.stubEnv('SYNC_INDEX', originalSyncIndex);
   });
 
-  it('enables MongoDB index synchronization by default and supports disabling it', async () => {
-    vi.stubEnv('SYNC_INDEX', undefined);
-    await expect(importEnv()).resolves.toMatchObject({
-      marketplaceEnv: { SYNC_INDEX: true }
-    });
-
-    vi.stubEnv('SYNC_INDEX', 'false');
-    await expect(importEnv()).resolves.toMatchObject({
-      marketplaceEnv: { SYNC_INDEX: false }
-    });
+  it.each([undefined, 'false', 'invalid'])('ignores retired SYNC_INDEX=%s', async (value) => {
+    vi.stubEnv('SYNC_INDEX', value);
+    const { marketplaceEnv } = await importEnv();
+    expect('SYNC_INDEX' in marketplaceEnv).toBe(false);
   });
 
   it('parses optional community auth token', async () => {

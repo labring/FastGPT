@@ -134,7 +134,11 @@ describe('formatFormData2ConfigStore', () => {
         loginSettings: {
           email: {},
           phone: {},
-          sms: { LOGIN: 'SMS_LOGIN', LOGIN_EN: 'SMS_LOGIN_EN' },
+          sms: {
+            LOGIN: 'SMS_LOGIN',
+            LOGIN_EN: 'SMS_LOGIN_EN',
+            MODEL_DEPRECATION: 'SMS_MODEL_DEPRECATION'
+          },
           github: {},
           wechat: {},
           wecom: {},
@@ -149,7 +153,8 @@ describe('formatFormData2ConfigStore', () => {
 
     expect(result.fastgptPro.auth?.sms).toMatchObject({
       LOGIN: 'SMS_LOGIN',
-      LOGIN_EN: 'SMS_LOGIN_EN'
+      LOGIN_EN: 'SMS_LOGIN_EN',
+      MODEL_DEPRECATION: 'SMS_MODEL_DEPRECATION'
     });
   });
 
@@ -178,6 +183,44 @@ describe('formatFormData2ConfigStore', () => {
       })
     );
     expect(result.fastgpt.feConfigs.enable_team_model).toBe(true);
+  });
+
+  it('round-trips the stored subscription plans through the full configuration form', () => {
+    const subPlans = {
+      standard: {
+        basic: {
+          name: '基础版',
+          price: 99,
+          totalPoints: 4000,
+          maxTeamMember: 5,
+          maxAppAmount: 50,
+          maxDatasetAmount: 30,
+          maxDatasetSize: 6000,
+          chatHistoryStoreDuration: 180
+        }
+      },
+      extraDatasetSize: { price: 0 },
+      extraPoints: { packages: [{ points: 1000, month: 1, price: 15 }] },
+      planDescriptionUrl: 'https://example.com/plan',
+      appRegistrationUrl: 'https://example.com/register',
+      communitySupportTip: '支持说明',
+      activityExpirationTime: new Date('2026-12-01T00:00:00Z')
+    };
+    const form = formatConfigStore2FormSchema({
+      fastgpt: { feConfigs: {}, systemEnv: {}, subPlans } as any,
+      fastgptPro: {}
+    });
+
+    expect(form.paySettings.subPlans).toEqual({
+      standard: subPlans.standard,
+      extraDatasetSizePrice: 0,
+      extraPointsPackages: subPlans.extraPoints.packages,
+      planDescriptionUrl: subPlans.planDescriptionUrl,
+      appRegistrationUrl: subPlans.appRegistrationUrl,
+      communitySupportTip: subPlans.communitySupportTip,
+      activityExpirationTime: subPlans.activityExpirationTime
+    });
+    expect(formatFormData2ConfigStore(form).fastgpt.subPlans).toEqual(subPlans);
   });
 });
 
@@ -219,8 +262,8 @@ describe('backend configuration boundary', () => {
         fastgpt: {
           feConfigs: {
             fileUrlWhitelist: ['private.internal'],
-            ip_whitelist: '10.0.0.1',
-            evalFileMaxLines: 100
+            evalFileMaxLines: 100,
+            openAPIDocUrl: 'https://legacy-docs.example.com'
           },
           systemEnv: { fileUrlWhitelist: configured }
         } as any,
@@ -228,10 +271,9 @@ describe('backend configuration boundary', () => {
       });
       const stored = formatFormData2ConfigStore(form);
       expect(stored.fastgpt.systemEnv.fileUrlWhitelist).toEqual(configured ?? ['private.internal']);
-      expect(stored.fastgpt.systemEnv.ip_whitelist).toBe('10.0.0.1');
       for (const key of [
         'fileUrlWhitelist',
-        'ip_whitelist',
+        'openAPIDocUrl',
         'evalFileMaxLines',
         'uploadFileMaxAmount',
         'uploadFileMaxSize'

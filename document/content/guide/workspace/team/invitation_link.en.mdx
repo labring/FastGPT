@@ -1,25 +1,23 @@
 ---
-title: Invitation Links
-description: How to use invitation links to invite team members
+title: Member Invitation Links
+description: Create, manage, and revoke team invitation links to onboard collaborators into a FastGPT workspace.
 ---
 
-Starting from v4.9.1, team member invitations use the **invitation link** method, replacing the previous username-based approach.
-
-After upgrading, any pending invitations that haven't been accepted will be automatically cleared. Please use invitation links to re-invite members.
+Team Owners and members granted the Team **Admin** permission (verified in the **Admin** column under **Account → Team management → Permissions**; see [Members, Departments, Groups, and Permissions](/en/guide/workspace/team/team_roles_permissions)) can invite collaborators by generating **member invitation links**. Teams running in Sync mode or WeCom mode are managed by external directory synchronization and do not display the **Invite Members** button.
 
 ## How to Use
 
-1. **On the team management page, admins can click the "Invite Members" button to open the invitation dialog**
+1. **Navigate to "Account → Team management → Members" in the left navigation bar and click the "Invite Members" button in the upper-right corner.**
 
-![Open Invite Members from team management](/imgs/guide/team_permissions/invitation_link/image1.png)
+![How to Use — interface example](/imgs/optimized/current/team-invitation-empty.png.webp)
 
 2. **In the invitation dialog, click "Create Invitation Link" to generate a new link**
 
-![Create an invitation link](/imgs/guide/team_permissions/invitation_link/image2.png)
+![How to Use — interface example](/imgs/optimized/current/team-invitation-create.png.webp)
 
 3. **Fill in the details**
 
-![Set the link description, expiration, and usage limit](/imgs/guide/team_permissions/invitation_link/image3.png)
+![How to Use — interface example](/imgs/optimized/current/team-invitation-expiration.png.webp)
 
 Link description: We recommend describing the intended use case or purpose. The description cannot be changed after creation.
 
@@ -29,27 +27,25 @@ Usage limit: 1 person or unlimited
 
 4. **Click "Copy Link" and send it to the people you want to invite**
 
-![Copy the invitation link](/imgs/guide/team_permissions/invitation_link/image4.png)
+![How to Use — interface example](/imgs/optimized/current/team-invitation-result.png.webp)
 
 5. **When a user visits the link, they will be redirected to the login page if not logged in or registered. After logging in, they will be taken to the team page to handle the invitation.**
 
 > Invitation links look like: fastgpt.cn/account/team?invitelinkid=xxxx
 
-![Accept or ignore the team invitation](/imgs/guide/team_permissions/invitation_link/image5.png)
+![Accept or ignore the team invitation](/imgs/optimized/guide/team_permissions/invitation_link/image5.png.webp)
 
-Click "Accept" to join the team.
+Enter a "Team member name" (20 characters max) in the dialog and click "Join team" to join the team.
 
-Click "Ignore" to close the dialog. The user can still accept the invitation by visiting the link again later.
+Click "Reject invitation" to close the dialog. The user can still accept the invitation by visiting the link again later.
 
 ## Link Expiration and Auto-Cleanup
 
 ### Why Links Expire
 
-Links are manually disabled by an admin.
-
-The invitation link reaches its expiration date and is automatically disabled.
-
-A single-use link (1 person limit) has already been used.
+- Manually disabled by a Team Admin.
+- Automatically disabled upon reaching its expiration time.
+- A single-use link (1-person limit) has already been used by a member to join the team.
 
 Disabled links cannot be accessed or re-enabled.
 

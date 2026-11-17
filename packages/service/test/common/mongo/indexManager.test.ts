@@ -1,3 +1,5 @@
+import { MongoSystemConfigs } from '@fastgpt/service/common/system/config/schema';
+import { MongoSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/schema';
 import { randomUUID } from 'node:crypto';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
@@ -9,6 +11,7 @@ import {
 import type { DeprecatedMongoIndexDefinition } from '@fastgpt/service/common/mongo/schemaIndexes';
 import { MongoIndexManager } from '@fastgpt/service/common/mongo/indexManager';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
+import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import {
   MongoDatasetSynonym,
@@ -56,6 +59,47 @@ const legacyDefinition = {
   indexName: 'legacy_field_1',
   key: { legacyField: 1 }
 } as const;
+
+describe('runtime configuration scope indexes', () => {
+  it('uses the domain unique index for the Pro ENV scope alongside business domains', async () => {
+    const model = createModel({
+      schema: MongoSystemInstanceConfig.schema,
+      prefix: 'InstanceScopeIndexes'
+    });
+    await model.createIndexes();
+    await model.create([
+      { domain: 'site', overrides: {} },
+      { domain: 'proEnv', overrides: { teamMode: 'multi' } }
+    ]);
+    await expect(model.create({ domain: 'proEnv', overrides: {} })).rejects.toMatchObject({
+      code: 11000
+    });
+    expect(await model.countDocuments()).toBe(2);
+    expect(getSchemaDeprecatedMongoIndexes(MongoSystemInstanceConfig.schema)).toEqual([]);
+  });
+  it('removes only the deprecated legacy scope index and retains migration source records', async () => {
+    const model = createModel({ schema: MongoSystemConfigs.schema, prefix: 'RuntimeScopeIndexes' });
+    await model.collection.createIndex({ type: 1 });
+    await model.collection.createIndex(
+      { type: 1 },
+      {
+        name: 'runtime_scope_type_unique',
+        unique: true,
+        partialFilterExpression: { type: { $in: ['proEnv', 'subPlans', 'langfuse'] } }
+      }
+    );
+    await model.create({ type: 'subPlans', value: { extraDatasetSize: { price: 4 } } });
+    await MongoIndexManager.syncModelIndexes({ model, logger });
+    expect(await getIndexNames(model)).not.toContain('runtime_scope_type_unique');
+    expect(await getIndexNames(model)).toContain('type_1');
+    expect(await model.countDocuments()).toBe(1);
+    expect(getSchemaDeprecatedMongoIndexes(MongoSystemConfigs.schema)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ indexName: 'runtime_scope_type_unique', key: { type: 1 } })
+      ])
+    );
+  });
+});
 
 describe('dataset synonym index declarations', () => {
   it('declares strict version uniqueness without legacy compatibility metadata', () => {
@@ -627,6 +671,43 @@ describe('MongoIndexManager.cleanupModelDeprecatedIndexes', () => {
       errors: 1
     });
     expect(MongoIndexManager.formatCleanupReport(report)).toContain('error=test error');
+  });
+});
+
+describe('dataset collection index consolidation', () => {
+  it('replaces three managed indexes without growing the index count or breaking legacy hints', async () => {
+    const schema = new Schema({}, { autoIndex: false });
+    MongoDatasetCollection.schema.indexes().forEach(([key, options]) => {
+      defineIndex(schema, { key, options });
+    });
+    defineDeprecatedTestIndexes(
+      schema,
+      getSchemaDeprecatedMongoIndexes(MongoDatasetCollection.schema)
+    );
+    const model = createModel({ schema, prefix: 'CollectionConsolidatedIndex' });
+    await model.collection.createIndex({
+      teamId: 1,
+      datasetId: 1,
+      parentId: 1,
+      inheritPermission: 1
+    });
+    await model.collection.createIndex({ teamId: 1, datasetId: 1, tags: 1 });
+    await model.collection.createIndex({ teamId: 1, 'metadata.relatedImgId': 1 });
+    await model.collection.createIndex({ fileId: 1 }, { name: 'customer_file_lookup' });
+
+    const result = await MongoIndexManager.syncModelIndexes({ model, logger });
+    const names = await getIndexNames(model);
+    expect(names.size).toBe(10); // 9 条内置索引（含 _id）及 1 条客户索引。
+    expect(names).toContain('teamId_1_fileId_1');
+    expect(names).toContain('teamId_1_datasetId_1_tags.tagId_1');
+    expect(names).toContain('teamId_1_datasetId_1_tags.tagId_1_tags.value_1');
+    expect(names).toContain('teamId_1_datasetId_1_type_1_parentId_1_inheritPermission_1__id_1');
+    expect(names).toContain('teamId_1_datasetId_1_forbid_1__id_1');
+    expect(names).toContain('customer_file_lookup');
+    expect(result.cleanupReport.items.filter(({ action }) => action === 'drop')).toHaveLength(3);
+    expect(names).not.toContain('teamId_1_datasetId_1_tags_1');
+    expect(names).not.toContain('teamId_1_metadata.relatedImgId_1');
+    expect(names).not.toContain('teamId_1_datasetId_1_parentId_1_inheritPermission_1');
   });
 });
 

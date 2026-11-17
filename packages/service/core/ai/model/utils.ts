@@ -1,3 +1,4 @@
+import { getSystemInstanceConfig } from '../../../common/system/systemInstanceConfig/runtime';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { SystemErrEnum } from '@fastgpt/global/common/error/code/system';
 import { UserError } from '@fastgpt/global/common/error/utils';
@@ -68,15 +69,16 @@ export const getModelConfigUpdate = (
 };
 
 /**
- * 团队私有模型不允许配置测试模式；
+ * 团队私有模型不允许配置测试模式、下架预警等运营字段；
  * 自定义请求地址与鉴权 (requestUrl/requestAuth) 作为升级过渡期能力保留。
  * 返回剔除这些字段后的新对象，不修改入参。
  */
 export const sanitizeTeamModelData = <T extends object>(
   modelData: T
-): Omit<T, 'testMode' | 'tmbId' | 'teamId'> => {
-  const { testMode, tmbId, teamId, ...rest } = modelData as T & {
+): Omit<T, 'testMode' | 'tmbId' | 'teamId' | 'isUpcomingDeprecation'> => {
+  const { testMode, tmbId, teamId, isUpcomingDeprecation, ...rest } = modelData as T & {
     testMode?: unknown;
+    isUpcomingDeprecation?: unknown;
     tmbId?: unknown;
     teamId?: unknown;
   };
@@ -86,7 +88,8 @@ export const sanitizeTeamModelData = <T extends object>(
 /** 团队私有模型与渠道是商业版功能；停用时拒绝管理入口，系统模型不受此开关限制。 */
 export const assertTeamModelEnabled = async () => {
   if (!isProVersion()) throw SystemErrEnum.commercialFeature;
-  if (global.feConfigs?.enable_team_model === false) throw ModelErrEnum.teamModelDisabled;
+  if (getSystemInstanceConfig().feature.enableTeamModel === false)
+    throw ModelErrEnum.teamModelDisabled;
 };
 
 /**

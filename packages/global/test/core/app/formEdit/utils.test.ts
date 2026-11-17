@@ -424,6 +424,90 @@ describe('checkNeedsUserConfiguration', () => {
 });
 
 describe('isToolInputValueConfigured', () => {
+  it.each([
+    [{ type: 'manual', value: { token: { ref: ['node', 'token'] } } }, true],
+    [
+      {
+        type: 'manual',
+        value: { token: { ref: ['node', 'token'] }, count: { value: 1 } }
+      },
+      true
+    ],
+    [
+      {
+        type: 'manual',
+        value: {
+          smtpHost: { value: '23' },
+          smtpPort: { value: '12313' },
+          SSL: { value: true },
+          smtpUser: { ref: ['448745', 'userChatInput'] },
+          smtpPass: { secret: 'cipher' }
+        }
+      },
+      true
+    ],
+    [{ type: 'system' }, true],
+    [{ type: 'system', value: { token: { value: '' } } }, true]
+  ])('ignores refs when checking system config: %j', (value, expected) => {
+    expect(
+      isToolInputValueConfigured({
+        input: {
+          key: NodeInputKeyEnum.systemInputConfig,
+          renderTypeList: [FlowNodeInputTypeEnum.custom],
+          value
+        }
+      })
+    ).toBe(expected);
+  });
+
+  it.each([
+    [{ value: { type: 'manual', value: {} } }, false],
+    [{ value: { type: 'manual', value: { token: { ref: ['node', 'token'] } } } }, true],
+    [{ value: { type: 'manual', value: { token: { ref: [] } } } }, false],
+    [
+      {
+        value: { type: 'manual', value: { optional: { value: '' } } },
+        inputList: [{ key: 'optional', label: 'Optional', inputType: 'input', required: false }]
+      },
+      true
+    ],
+    [
+      {
+        value: { type: 'manual', value: {} },
+        inputList: [{ key: 'required', label: 'Required', inputType: 'input', required: true }]
+      },
+      false
+    ],
+    [
+      {
+        value: { type: 'manual', value: { optional: { value: 1 } } },
+        inputList: [
+          { key: 'optional', label: 'Optional', inputType: 'input', required: false },
+          { key: 'required', label: 'Required', inputType: 'input', required: true }
+        ]
+      },
+      false
+    ],
+    [
+      {
+        value: { type: 'manual', value: { required: { ref: ['node', 'value'] } } },
+        inputList: [{ key: 'required', label: 'Required', inputType: 'input', required: true }]
+      },
+      true
+    ]
+  ])('checks required system input entries: %j', ({ value, inputList }, expected) => {
+    expect(
+      isToolInputValueConfigured({
+        input: {
+          key: NodeInputKeyEnum.systemInputConfig,
+          renderTypeList: [FlowNodeInputTypeEnum.custom],
+          inputList,
+          value
+        }
+      })
+    ).toBe(expected);
+  });
+
   it('checks the selected mode when password inputs also support references', () => {
     const input = createMockInput({
       renderTypeList: [FlowNodeInputTypeEnum.password, FlowNodeInputTypeEnum.reference],

@@ -7,12 +7,15 @@ description: FastGPT 插件系统中的模型预设说明
 
 本文基于 1.0 版本以上的插件系统代码结构，旧版 `modules/model/*` 路径已经不再作为主要维护入口。
 
+此类扩展通过修改静态配置并提交仓库变更完成贡献，验证步骤见本文的[校验](#校验)章节。
+
 ## 相关目录
 
 ```text
 packages/infrastructure/src/static-data/models/
 ├── index.ts
-├── model.ts
+├── model-static.ts
+├── providers.ts
 ├── type.ts
 ├── channel-avatar/
 └── provider/
@@ -22,8 +25,9 @@ packages/infrastructure/src/static-data/models/
 ```
 
 - `provider/{Provider}/index.ts`：单个模型供应商的模型预设列表。
-- `index.ts`：注册所有供应商，生成 `staticModelList` 和供应商列表。
-- `model.ts`：维护供应商显示名 `ModelProviderMap` 和 AIProxy 渠道 `aiproxyChannels`。
+- `index.ts`：导出静态模型预设、供应商列表与渠道声明。
+- `model-static.ts`：注册所有供应商，汇总生成 `staticModelList`。
+- `providers.ts`：维护供应商显示名 `ModelProviderMap` 和 AIProxy 渠道 `aiproxyChannels`。
 - `type.ts`：定义供应商配置和模型预设的输入 schema。
 - `provider/{Provider}/logo.svg`：模型供应商 Logo。
 - `channel-avatar/`：AIProxy 渠道头像。
@@ -202,7 +206,7 @@ export const staticModelProviderConfigs: ProviderConfigType[] = [newProvider];
 
 ### 3. 增加供应商显示名
 
-在 `packages/infrastructure/src/static-data/models/model.ts` 的 `ModelProviderMap` 中增加多语言显示名：
+在 `packages/infrastructure/src/static-data/models/providers.ts` 的 `ModelProviderMap` 中增加多语言显示名：
 
 ```ts
 NewProvider: {
@@ -250,7 +254,7 @@ rg -n "ChannelType.*=" core/model/chtype.go
 
 ### 2. 在 fastgpt-plugin 中增加协议声明
 
-确认 AIProxy 已经支持该协议后，在 `packages/infrastructure/src/static-data/models/model.ts` 的 `aiproxyChannels` 中增加声明：
+确认 AIProxy 已经支持该协议后，在 `packages/infrastructure/src/static-data/models/providers.ts` 的 `aiproxyChannels` 中增加声明：
 
 ```ts
 export const aiproxyChannels: AIProxyChannelsType = [
@@ -261,7 +265,8 @@ export const aiproxyChannels: AIProxyChannelsType = [
       'zh-CN': '蚂蚁百灵',
       'zh-Hant': '螞蟻百靈'
     },
-    avatar: 'antling'
+    avatar: 'antling',
+    website: 'https://ant-ling.com'
   }
 ];
 ```
@@ -273,6 +278,7 @@ export const aiproxyChannels: AIProxyChannelsType = [
 | `channelId` | AIProxy `ChannelType` 对应的数字 ID，必须和 `core/model/chtype.go` 一致 |
 | `name`      | FastGPT 渠道列表中的多语言显示名                                        |
 | `avatar`    | 渠道头像文件名，不包含扩展名                                            |
+| `website`   | 渠道供应商官方网站地址                                                  |
 
 同时在 `channel-avatar/` 下增加头像文件：
 
@@ -299,3 +305,14 @@ pnpm test
 ```
 
 提交前检查 `packages/infrastructure/src/static-data/models/` 的 diff，确认没有误删其他供应商模型、没有填错模型类型，并且新增的 `provider` Logo 或 `channel-avatar` 头像文件已经提交。
+
+
+## FastGPT 实例加载与端到端验证
+
+完成代码校验后，在 FastGPT 实例中加载并验证模型：
+
+1. **重启插件服务**：更新并重启 `fastgpt-plugin` 部署实例，使新的静态模型预设生效。在自部署环境重启 `fastgpt-plugin` 容器。
+2. **从模板新增模型**：使用 `root` 系统管理员账号登录 FastGPT，进入**管理员 →（商业版：系统资源 →）系统模型**，在**模型配置**标签页点击右上角**新增模型 → 从模板新建**。
+3. **选择新预设**：在**选择模型模板**弹窗表格中搜索并勾选刚添加的模型预设，点击确认导入，系统会自动带入预设的上下文长度、最大 token 等参数。
+4. **配置模型渠道**：切换到**模型渠道**标签页（或在弹窗引导中点击**配置模型渠道**），新增或编辑 AIProxy 渠道，填写对应的 API Key、代理地址与模型映射。
+5. **发起请求验证**：进入任意 Agent 应用或调试对话窗口，选择该模型并发送提示词，确认能正常收到模型流式回复。

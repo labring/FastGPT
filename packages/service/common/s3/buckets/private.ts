@@ -90,8 +90,7 @@ export class S3PrivateBucket extends S3BaseBucket {
             endpoint: storageOptions.endpoint,
             cname: storageOptions.cname,
             internal: storageOptions.internal,
-            secure: storageOptions.secure,
-            enableProxy: storageOptions.enableProxy
+            secure: storageOptions.secure
           } as Omit<IOssStorageOptions, 'bucket'>
         };
       }

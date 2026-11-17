@@ -60,13 +60,13 @@ export const postAdminCreateAppTypeTool = (data: CreateAppToolBodyType) =>
 
 /* ===== Tool tag ===== */
 export const createPluginToolTag = (data: CreatePluginToolTagBody) =>
-  POST<{}>(`/core/plugin/admin/tool/tag/create`, data);
+  POST<NonNullable<unknown>>(`/core/plugin/admin/tool/tag/create`, data);
 
 export const updatePluginToolTag = (data: UpdatePluginToolTagBody) =>
-  PUT<{}>(`/core/plugin/admin/tool/tag/update`, data);
+  PUT<NonNullable<unknown>>(`/core/plugin/admin/tool/tag/update`, data);
 
 export const deletePluginToolTag = (data: DeletePluginToolTagQuery) =>
-  DELETE<{}>(`/core/plugin/admin/tool/tag/delete`, data);
+  DELETE<NonNullable<unknown>>(`/core/plugin/admin/tool/tag/delete`, data);
 
 export const updatePluginToolTagOrder = (data: UpdatePluginToolTagOrderBody) =>
-  PUT<{}>(`/core/plugin/admin/tool/tag/updateOrder`, data);
+  PUT<NonNullable<unknown>>(`/core/plugin/admin/tool/tag/updateOrder`, data);

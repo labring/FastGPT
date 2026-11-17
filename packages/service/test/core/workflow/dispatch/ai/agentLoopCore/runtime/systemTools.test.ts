@@ -18,28 +18,28 @@ describe('createAgentLoopCoreSystemTools', () => {
     });
   });
 
-  it('attaches sandbox, read file and dataset search executors when provided', () => {
+  it('attaches sandbox, read file and dataset search executors when provided', async () => {
     const sandboxClient = {} as any;
-    const readFileExecute = vi.fn();
-    const datasetSearchExecute = vi.fn();
+    const readFileExecute = vi.fn().mockResolvedValue({ response: 'file content' });
+    const datasetSearchExecute = vi.fn().mockResolvedValue({ response: 'search content' });
 
-    expect(
-      createAgentLoopCoreSystemTools({
-        planEnabled: false,
-        askEnabled: false,
-        sandboxClient,
-        readFile: {
-          enabled: true,
-          maxFileAmount: 6,
-          execute: readFileExecute as any
-        },
-        datasetSearch: {
-          enabled: true,
-          execute: datasetSearchExecute as any,
-          currentInputFiles: ['https://files/a.png']
-        }
-      })
-    ).toEqual({
+    const tools = createAgentLoopCoreSystemTools({
+      planEnabled: false,
+      askEnabled: false,
+      sandboxClient,
+      readFile: {
+        enabled: true,
+        maxFileAmount: 6,
+        execute: readFileExecute as any
+      },
+      datasetSearch: {
+        enabled: true,
+        execute: datasetSearchExecute as any,
+        currentInputFiles: ['https://files/a.png']
+      }
+    });
+
+    expect(tools).toEqual({
       plan: {
         enabled: false
       },
@@ -53,13 +53,28 @@ describe('createAgentLoopCoreSystemTools', () => {
       readFile: {
         enabled: true,
         maxFileAmount: 6,
-        execute: readFileExecute
+        execute: expect.any(Function)
       },
       datasetSearch: {
         enabled: true,
-        execute: datasetSearchExecute,
+        execute: expect.any(Function),
         currentInputFiles: ['https://files/a.png']
       }
     });
+
+    const sampleCall = {
+      call: {
+        id: 'call_1',
+        type: 'function' as const,
+        function: { name: 'tool', arguments: '{}' }
+      },
+      messages: []
+    };
+
+    await tools.readFile?.execute(sampleCall);
+    expect(readFileExecute).toHaveBeenCalledWith(sampleCall);
+
+    await tools.datasetSearch?.execute(sampleCall);
+    expect(datasetSearchExecute).toHaveBeenCalledWith(sampleCall);
   });
 });

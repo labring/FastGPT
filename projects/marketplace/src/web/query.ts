@@ -3,10 +3,13 @@ export type MarketplaceDetailQuery = {
   version?: string;
 };
 
+export type MarketplaceTab = 'tool' | 'moderation';
+
 export type MarketplacePageQuery = MarketplaceDetailQuery & {
   search?: string;
   tags?: string[];
   source?: string;
+  type?: MarketplaceTab;
 };
 
 export type NextQueryValue = string | string[] | undefined;
@@ -22,15 +25,19 @@ export const buildMarketplaceQueryString = ({
   search,
   tags,
   source,
+  type,
   pluginId,
   version
 }: MarketplacePageQuery) => {
   const params: Array<[string, string]> = [];
 
+  if (type === 'moderation') {
+    params.push(['type', 'moderation']);
+  }
   if (search) {
     params.push(['search', search]);
   }
-  if (tags && tags.length > 0) {
+  if (type !== 'moderation' && tags && tags.length > 0) {
     params.push(['tags', tags.join(',')]);
   }
   if (source) {

@@ -16,6 +16,7 @@ import { ParallelRunNode } from '@fastgpt/global/core/workflow/template/system/p
 import { LoopRunNode } from '@fastgpt/global/core/workflow/template/system/loopRun/loopRun';
 import { HttpNode468 } from '@fastgpt/global/core/workflow/template/system/http468';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
+import { McpToolSetNode } from '@fastgpt/global/core/workflow/template/system/mcpToolSet';
 import { CanonicalWorkflowDataSchema } from '@fastgpt/global/core/workflow/migration';
 import { PublishAppBodySchema } from '@fastgpt/global/openapi/core/app/version/api';
 import {
@@ -228,6 +229,31 @@ describe('workflow tool node templates', () => {
       canAgentGenerated: true,
       selectedType: FlowNodeInputTypeEnum.agentGenerated
     });
+  });
+
+  it('prefers external toolset avatars and falls back to the MCP icon', () => {
+    const createExternalToolSetNode = (avatar?: string) =>
+      storeNode2FlowNode({
+        item: {
+          nodeId: 'external-tool-set',
+          pluginId: 'external-plugin',
+          flowNodeType: FlowNodeTypeEnum.toolSet,
+          name: 'External tools',
+          avatar,
+          inputs: [],
+          outputs: [],
+          toolConfig: {
+            httpToolSet: {
+              toolId: 'http-tool-id',
+              toolList: []
+            }
+          }
+        } as any,
+        t: ((key: string) => key) as any
+      }).data;
+
+    expect(createExternalToolSetNode('external/avatar').avatar).toBe('external/avatar');
+    expect(createExternalToolSetNode().avatar).toBe(McpToolSetNode.avatar);
   });
 
   it('only exposes custom tool params for HTTP and Code nodes', () => {

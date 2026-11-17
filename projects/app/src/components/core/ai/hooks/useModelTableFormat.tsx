@@ -1,3 +1,4 @@
+import { STT_PRICE_UNITS } from '@fastgpt/global/core/ai/audio/constants';
 import React, { useMemo } from 'react';
 import { Box, Flex } from '@chakra-ui/react';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
@@ -6,7 +7,7 @@ import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { ColorSchemaType } from '@fastgpt/web/components/common/Tag/index';
 import type { PriceType } from '@fastgpt/global/core/ai/model/schema';
 import PriceTiersLabel from '@/components/core/ai/PriceTiersLabel';
-import { roundModelPrice } from '@fastgpt/global/core/ai/model/pricing';
+import { roundModelPrice, resolveSTTPricing } from '@fastgpt/global/core/ai/model/pricing';
 
 type ModelConfigCapabilityFields = {
   maxContext?: number;
@@ -92,9 +93,14 @@ export const formatModelTableList = <T extends BaseFormatModelItem>({
         [ModelTypeEnum.rerank]: { typeLabel: t('common:model.type.reRank'), color: 'red' }
       } as const;
       const { typeLabel, color } = presentation[item.type];
+      const sttPricing = resolveSTTPricing(
+        item.type === ModelTypeEnum.stt ? item.pricing : undefined
+      );
       const unit =
         item.type === ModelTypeEnum.stt
-          ? `60${t('common:unit.seconds')}`
+          ? sttPricing.type === 'tokens'
+            ? '1M Tokens'
+            : `${STT_PRICE_UNITS.duration}${t('common:unit.seconds')}`
           : item.type === ModelTypeEnum.tts
             ? `1M ${t('common:unit.character')}`
             : 'M Tokens';
@@ -106,6 +112,17 @@ export const formatModelTableList = <T extends BaseFormatModelItem>({
             config={item}
             unitLabel={`${t('common:support.wallet.subscription.point')} / ${unit}`}
           />
+        ) : item.type === ModelTypeEnum.stt && sttPricing.type === 'tokens' ? (
+          <Box color={'myGray.700'}>
+            {[
+              { label: t('common:Input'), price: sttPricing.inputPrice },
+              { label: t('common:Output'), price: sttPricing.outputPrice }
+            ].map(({ label, price }) => (
+              <Box key={label}>
+                {`${label}: ${roundModelPrice(price)} ${t('common:support.wallet.subscription.point')} / 1M Tokens`}
+              </Box>
+            ))}
+          </Box>
         ) : typeof item.pricing?.unitPrice === 'number' ? (
           <Flex color={'myGray.700'}>
             {(item.type === ModelTypeEnum.embedding || item.type === ModelTypeEnum.rerank) &&

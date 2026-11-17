@@ -18,6 +18,7 @@ import {
 import { valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
 import { normalizeToolInputValue } from '@fastgpt/global/core/app/tool/systemTool/codec';
 import { getWorkflowSecretInputKind } from '@fastgpt/global/common/workflow/input';
+import { StoreSecretValueTypeSchema } from '@fastgpt/global/common/secret/type';
 
 const inputTypeValueTypeMap: Record<InputConfigType['inputType'], WorkflowIOValueTypeEnum> = {
   input: WorkflowIOValueTypeEnum.string,
@@ -25,6 +26,34 @@ const inputTypeValueTypeMap: Record<InputConfigType['inputType'], WorkflowIOValu
   secret: WorkflowIOValueTypeEnum.string,
   switch: WorkflowIOValueTypeEnum.boolean,
   select: WorkflowIOValueTypeEnum.string
+};
+
+/**
+ * 保护工具专用配置中的鉴权头，包括工具集与历史子工具的配置。
+ * 密文和引用保持不变；无法识别的历史鉴权数据不向外返回，普通业务字段不参与处理。
+ */
+export const formatToolConfigHeaderSecrets = (toolConfig: unknown) => {
+  const isRecord = (value: unknown): value is Record<string, unknown> =>
+    typeof value === 'object' && value !== null && !Array.isArray(value);
+  if (!isRecord(toolConfig)) return;
+
+  const formatHeaders = (value: unknown) => {
+    if (!isRecord(value) || value.headerSecret === undefined || value.headerSecret === null) return;
+    const parsed = StoreSecretValueTypeSchema.safeParse(value.headerSecret);
+    if (parsed.success) {
+      value.headerSecret = storeSecretValue(parsed.data);
+    } else {
+      delete value.headerSecret;
+    }
+  };
+
+  (['mcpTool', 'httpTool', 'mcpToolSet', 'httpToolSet'] as const).forEach((key) => {
+    const tool = toolConfig[key];
+    formatHeaders(tool);
+    if (isRecord(tool) && Array.isArray(tool.toolList)) {
+      tool.toolList.forEach(formatHeaders);
+    }
+  });
 };
 
 /** 解析系统工具手工输入；未配置的静态项省略，显式 0/false 和引用结果保留。 */

@@ -28,6 +28,65 @@ const toPermissionMap = (collaborators: { tmbId?: string; permission: number }[]
   new Map(collaborators.map((collaborator) => [collaborator.tmbId, collaborator.permission]));
 
 describe.sequential('resource permission inheritance', () => {
+  it.each([true, false])(
+    'scopes collection descendants to one dataset (root carries dataset=%s)',
+    async (hasDataset) => {
+      let calls = 0;
+      const find = vi.fn((_match: unknown) => ({
+        lean: () => ({
+          session: vi
+            .fn()
+            .mockResolvedValue(
+              calls++ === 0 ? [{ _id: 'child', parentId: 'root', inheritPermission: true }] : []
+            )
+        })
+      }));
+      const findOne = vi.fn(() => ({
+        lean: () => ({ session: vi.fn().mockResolvedValue({ datasetId: 'dataset-id' }) })
+      }));
+      vi.spyOn(resourcePermissionRepo, 'findByResourceIdsAndCollaborators').mockResolvedValue([]);
+      vi.spyOn(resourcePermissionRepo, 'patchResources').mockResolvedValue(undefined);
+      try {
+        await syncResourceTreePermissions({
+          resource: {
+            _id: 'root',
+            teamId: 'team-id',
+            type: 'folder',
+            ...(hasDataset ? { datasetId: 'dataset-id' } : {})
+          },
+          resourceModel: { find, findOne } as any,
+          resourceType: PerResourceTypeEnum.collection,
+          oldParentCollaborators: [],
+          newParentCollaborators: [{ tmbId: 'owner-id', permission: OwnerRoleVal }],
+          session: {} as any
+        });
+        expect(find.mock.calls.map(([match]) => match)).toEqual([
+          { teamId: 'team-id', datasetId: 'dataset-id', parentId: { $in: ['root'] } },
+          { teamId: 'team-id', datasetId: 'dataset-id', parentId: { $in: ['child'] } }
+        ]);
+        expect(findOne).toHaveBeenCalledTimes(hasDataset ? 0 : 1);
+      } finally {
+        vi.restoreAllMocks();
+      }
+    }
+  );
+
+  it('does not traverse the team when the collection root cannot resolve a dataset', async () => {
+    const find = vi.fn();
+    const findOne = vi.fn(() => ({ lean: () => ({ session: vi.fn().mockResolvedValue(null) }) }));
+    await expect(
+      syncResourceTreePermissions({
+        resource: { _id: 'missing-root', teamId: 'team-id', type: 'folder' },
+        resourceModel: { find, findOne } as any,
+        resourceType: PerResourceTypeEnum.collection,
+        oldParentCollaborators: [],
+        newParentCollaborators: [{ tmbId: 'owner-id', permission: OwnerRoleVal }],
+        session: {} as any
+      })
+    ).rejects.toThrow('Collection dataset not found');
+    expect(find).not.toHaveBeenCalled();
+  });
+
   const createApp = async ({
     user,
     name,

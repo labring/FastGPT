@@ -294,5 +294,10 @@
   "process.Synonym_Rebuild": "동의어 재구축",
   "data_index_status_synonym_pending": "동의어 재구축 대기",
   "data_index_status_synonym_running": "동의어 재구축 중",
-  "data_index_status_synonym_failed": "동의어 재구축 실패"
+  "data_index_status_synonym_failed": "동의어 재구축 실패",
+  "search_targets_required": "지식베이스를 하나 이상 선택하세요.",
+  "search_targets_must_be_datasets": "검색 대상은 폴더가 아닌 지식베이스여야 합니다.",
+  "search_query_images_must_belong_to_team": "검색 이미지는 현재 팀이 업로드한 임시 이미지여야 합니다.",
+  "search_filters_unsupported": "현재 버전에서는 지식베이스 검색 필터를 지원하지 않습니다.",
+  "search_embedding_models_must_match": "여러 지식베이스의 벡터 검색에는 동일한 임베딩 모델이 필요합니다."
 }

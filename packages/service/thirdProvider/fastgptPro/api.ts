@@ -10,16 +10,7 @@ import type {
 } from '@fastgpt/global/support/wallet/usage/api';
 import type { SendInform2UserProps } from '@fastgpt/global/support/user/inform/type';
 import { POST, plusRequest } from './plusRequest';
-
-export type FastGPTProHealthResponse = {
-  auth: boolean;
-  data: string;
-};
-
-export type FastGPTProCensorResponse = {
-  code: number;
-  message?: string;
-};
+import type { ProHealthResponse } from '@fastgpt/global/openapi/common/system/api';
 
 export type FastGPTProOutLinkRequest = {
   token: string;
@@ -33,9 +24,6 @@ export type CreateParagraphTitleRequest = Omit<AdminLlmParagraphBody, 'modelId'>
   modelId?: string;
 };
 
-export const postCheckCensor = (data: { text: string }) =>
-  POST<FastGPTProCensorResponse>('/common/censor/check', data);
-
 export const postCreateUsage = (data: CreateUsageProps) =>
   POST<string>('/support/wallet/usage/createUsage', data);
 
@@ -45,7 +33,8 @@ export const postConcatUsage = (data: ConcatUsageProps) =>
 export const postPushUsageItems = (data: PushUsageItemsProps) =>
   POST('/support/wallet/usage/pushUsageItems', data);
 
-export const postHealth = () => POST<FastGPTProHealthResponse>('/health');
+export const postHealth = (config?: { timeout?: number }) =>
+  POST<ProHealthResponse>('/health', {}, config);
 
 export const postSendInform = (data: SendInform2UserProps) =>
   POST('/support/user/inform/create', data);

@@ -1,7 +1,9 @@
 ---
 title: 免登录窗口发布
-description: FastGPT 免登录窗口发布
+description: 创建分享链接，在新会话核对发布配置、答案和引用。
 ---
+
+免登录窗口发布为已发布的 FastGPT 应用生成可独立设置有效期、QPM 限流、积分额度上限与引用可见性的公开访问链接，外部访客无需注册账号即可直接通过浏览器发起对话或以 `iframe` 嵌入业务网页。
 
 ## 介绍
 
@@ -9,35 +11,50 @@ description: FastGPT 免登录窗口发布
 
 系统会为每个用户生成一个 localId，用于标识用户，从云端拉取对话记录。但是这种方式仅能保障用户在同一设备同一浏览器中使用，如果切换设备或者清空浏览器缓存则会丢失这些记录。这种方式存在一定的风险，因此我们仅允许用户拉取近 `30天` 的 `20条` 记录。
 
+## 开始前
+
+准备应用编辑和发布渠道管理权限、可用模型与额度，并先[发布已验证的配置](/zh-CN/guide/build/publish/versions)。链接使用量由所属团队承担；演示建议使用虚构资料并按可用能力设置有效期和用量限制。入口和选项以团队版本与权限为准。
+
 ## 使用流程
 
 ### 1. 创建链接
 
-在 `应用详情` - `发布渠道` - `免登录窗口` 中，创建新链接。
+在 `应用详情` - `发布渠道` - `免登录窗口` 页面点击右上角 **创建新链接**，在弹出的 **创建链接** 弹窗中填写配置。
 
-填写名称后即可创建，该名称仅用于记录展示。
+填写便于识别的名称，设置所需的过期时间、QPM 和积分上限。本任务需要核对原文，在可见度配置中开启 **查看引用片段**，然后确认创建。创建后核对列表显示的过期时间和积分上限。名称仅用于记录展示。
 
-![alt text](/imgs/image.png)
+![创建分享链接并配置访问限制](/imgs/optimized/current/publish-link.png.webp)
 
 ### 2. 复制链接
 
-点击开始使用，即可打开使用链接，复制后即可使用。
+在链接列表右侧操作栏点击 **开始使用**（旁边的 **……** 菜单支持 **编辑** 与 **删除**），在 **选择使用方式** 弹窗中选择使用方式，复制分享链接或获取 iframe / script 嵌入代码。
 
-![alt text](/imgs/image-1.png)
+### 3. 验证新会话与引用
+
+打开链接并创建新对话，重复调试时使用的已知问题。差旅示例应回答 15 个自然日（界面示例为 15 个日历日）、发票和已批准差旅申请；询问两份差旅资料均未涵盖的事项（如境外签证办理费用如何报销）时，应说明资料缺失。打开引用片段，核对来源和支持答案的原文。
+
+如果引用入口不可见，检查该链接的引用展示设置以及当前访问权限。根据使用者需要开启允许的查看能力，再从链接新建对话复核。
+
+### 4. 恢复访问或结果差异
+
+链接无法打开时检查有效期、用量限制、可用额度和已配置的身份验证。能打开但回答有差异时核对链接所属应用、发布版本、知识库索引及会话历史。修复后从同一链接新建对话，重跑事实与引用检查，详见[知识库排障](/zh-CN/guide/dataset/faq)。
 
 ## 参数配置
 
 部分参数仅商业版支持配置。
 
-- 名称：仅用于记录该链接的名称，用于展示
-- 过期时间：超过该时间后，链接无法使用。
-- QPM: 每个用户每分钟最大访问次数。
-- 积分上限：该链接产生的最大计费数据。
-- 身份验证：便于接入第三方系统进行身份认证和对话回调。
-- 实时运行状态：是否展示当前运行的节点。
-- 查看引用片段：见系统介绍
-- 查看引用全文：见系统介绍
-- 下载/打开来源原文：见系统介绍
+- **名称**：用于记录与展示该分享链接的标识名称。
+- **过期时间**：超过该时间后，链接停止提供访问。
+- **QPM**：每个 IP 每分钟最大提问次数。
+- **积分上限**：该链接可消耗的最大 AI 积分额度。
+- **身份验证**：接入第三方业务系统进行身份鉴权与对话回调。
+- **实时运行状态**：控制对话过程中是否实时展示当前运行的节点状态。
+- **查看技能引用**：控制访问者是否可查看技能调用引用详情。
+- **查看引用片段**：控制访问者查看知识库检索引用片段的入口，用于核对答案依据。
+- **查看引用全文**：允许访问者查看引用内容所属的完整文档正文。
+- **下载/打开来源原文**：允许访问者下载知识库原始文件或跳转来源网站；开启前请核对资料的可分享范围。
+
+<span id="分享链接身份鉴权" />
 
 ## 身份验证说明
 
@@ -45,7 +62,7 @@ description: FastGPT 免登录窗口发布
 
 ### 使用说明
 
-免登录链接配置中，你可以选择填写 `身份验证` 栏。这是一个 `POST` 请求的根地址。在填写该地址后，分享链接的初始化、开始对话以及对话结束都会向该地址的特定接口发送一条请求。下面以 `host` 来表示 `凭身份验证根地址`。服务器接口仅需返回是否校验成功即可，不需要返回其他数据，格式如下：
+免登录链接配置中，你可以选择填写 `身份验证` 栏。这是一个 `POST` 请求的根地址。在填写该地址后，分享链接的初始化、开始对话以及对话结束都会向该地址的特定接口发送一条请求。下面以 `host` 来表示 `身份验证根地址`。服务器接口仅需返回是否校验成功即可，不需要返回其他数据，格式如下：
 
 #### 接口统一响应格式
 
@@ -66,13 +83,13 @@ description: FastGPT 免登录窗口发布
 
 #### 触发流程
 
-![](/imgs/sharelink_process.png)
+![配置身份验证后的分享链接流程](/imgs/diagrams/share-link-auth.zh-CN.light.svg)
+
+初始化要求 `success=true` 且 `uid` 为有效字符串。商业版对话入口会在开始回调前校验到期时间、用量和 QPM；完成回调用于结果通知。受保护链接还会验证登录成员与应用读取权限。
 
 ### 配置教程
 
 #### 1. 配置身份校验地址
-
-![](/imgs/share-setlink.png)
 
 配置校验地址后，在每次分享链接使用时，都会向对应的地址发起校验和上报请求。
 
@@ -114,7 +131,7 @@ curl --location --request POST '{{host}}/shareAuth/init' \
 }
 ```
 
-系统会拉取该分享链接下，uid 为 username123 的对话记录。
+系统会拉取该分享链接下，uid 为接口返回值（示例中的“用户唯一凭证”）的对话记录。
 
   </Tab>
 
@@ -140,7 +157,7 @@ curl --location --request POST '{{host}}/shareAuth/start' \
 --header 'Content-Type: application/json' \
 --data-raw '{
     "token": "[authToken]",
-    "question": "用户问题",
+    "question": "用户问题"
 }'
 ```
 
@@ -182,28 +199,29 @@ curl --location --request POST '{{host}}/shareAuth/start' \
 
 该接口无规定返回值。
 
-响应值与 [chat 接口格式相同](../../../openapi/chat.mdx#响应)，仅多了一个 `token`。
+FastGPT 发送的请求 body 为 `{ token, appName, responseData, chatId }`：`responseData` 与 [chat 接口](/zh-CN/openapi/intro#响应) 返回的响应详情格式相同，`appName` 为应用名称，`chatId` 为对话 ID。
 
-重点关注：`totalPoints` (总消耗 AI 积分)，`token` (Token 消耗总数)
+重点关注 `responseData` 中的 `totalPoints`（AI 积分）与 `tokens`（模型上下文 token 数）。顶层 `token` 是业务身份凭证，按鉴权约定处理。以下示例中的模型名称与模块名称仅作字段结构示意：
 
 ```bash
 curl --location --request POST '{{host}}/shareAuth/finish' \
 --header 'Content-Type: application/json' \
 --data-raw '{
     "token": "[authToken]",
+    "appName": "[应用名称]",
     "responseData": [
         {
-            "moduleName": "core.module.template.Dataset search",
+            "moduleName": "知识库搜索",
             "moduleType": "datasetSearchNode",
             "totalPoints": 1.5278,
             "query": "导演是谁\n《铃芽之旅》的导演是谁？\n这部电影的导演是谁？\n谁是《铃芽之旅》的导演？",
-            "model": "Embedding-2(旧版，不推荐使用)",
+            "model": "text-embedding-v4",
             "tokens": 1524,
             "similarity": 0.83,
             "limit": 400,
             "searchMode": "embedding",
             "searchUsingReRank": false,
-            "extensionModel": "FastAI-4k",
+            "extensionModel": "qwen3.8-flash",
             "extensionResult": "《铃芽之旅》的导演是谁？\n这部电影的导演是谁？\n谁是《铃芽之旅》的导演？",
             "runningTime": 2.15
         },
@@ -211,7 +229,7 @@ curl --location --request POST '{{host}}/shareAuth/finish' \
             "moduleName": "AI 对话",
             "moduleType": "chatNode",
             "totalPoints": 0.593,
-            "model": "FastAI-4k",
+            "model": "qwen3.8-flash",
             "tokens": 593,
             "query": "导演是谁",
             "maxToken": 2000,
@@ -252,9 +270,8 @@ curl --location --request POST '{{host}}/shareAuth/finish' \
             "contextTotalLen": 2,
             "runningTime": 1.32
         }
-    ]
-
-
+    ],
+    "chatId": "[chatId]"
 }'
 ```
 
@@ -310,8 +327,6 @@ type ResponseType = {
 我们以 [Laf 作为服务器为例](https://laf.dev/)，简单展示这 3 个接口的使用方式。
 
 #### 1. 创建 3 个 Laf 接口
-
-![](/imgs/share-auth1.png)
 
 <Tabs items={['/shareAuth/init','/shareAuth/start','/shareAuth/finish']}>
   <Tab value="/shareAuth/init" >
@@ -370,12 +385,11 @@ import cloud from '@lafjs/cloud';
 export default async function (ctx: FunctionContext) {
   const { token, responseData } = ctx.body;
 
-  const total = responseData.reduce((sum, item) => sum + item.price, 0);
-  const amount = total / 100000;
+  const totalPoints = responseData.reduce((sum, item) => sum + (item.totalPoints ?? 0), 0);
 
-  // 省略数据库操作
-
-  return {};
+  // Authenticate the callback and record points with an idempotency key.
+  // Currency conversion follows your own billing contract.
+  return { totalPoints };
 }
 ```
 
@@ -384,9 +398,7 @@ export default async function (ctx: FunctionContext) {
 
 #### 2. 配置校验地址
 
-我们随便复制 3 个地址中一个接口: `https://d8dns0.laf.dev/shareAuth/finish` , 去除 `/shareAuth/finish` 后填入 `身份校验` : `https://d8dns0.laf.dev`
-
-![](/imgs/share-auth2.jpg)
+复制任一接口地址（如 `https://d8dns0.laf.dev/shareAuth/finish`），去掉路径部分 `/shareAuth/finish` 后，将根地址 `https://d8dns0.laf.dev` 填入 **身份验证**。
 
 #### 3. 修改分享链接参数
 

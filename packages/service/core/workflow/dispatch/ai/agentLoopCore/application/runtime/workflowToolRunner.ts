@@ -25,11 +25,16 @@ import type { AgentLoopCoreToolRunFlowResponse } from '../../adapter/nodeRespons
 import { normalizeAgentLoopCoreDatasetSearchResult } from './systemToolHelpers';
 import { cloneDeep } from 'lodash-es';
 import { compileToolRuntime, mergeToolRuntimeParams } from '@fastgpt/global/core/app/tool/runtime';
-import { rewriteNodeOutputByHistories } from '@fastgpt/global/core/workflow/runtime/utils';
+import {
+  rewriteNodeOutputByHistories,
+  storeEdges2RuntimeEdges
+} from '@fastgpt/global/core/workflow/runtime/utils';
 import {
   createContainerRunStateSnapshot,
   syncContainerRunState
 } from '../../../../utils/containerRunState';
+import { MODERATION_BLOCKED_REPLACE_TEXT } from '@fastgpt/global/core/plugin/moderation/constants';
+import { markToolResultModerated } from '../../../../../../plugin/moderation/modelInput';
 
 export type AgentLoopCoreWorkflowToolRunResponse<TChildrenResponse = unknown> = {
   flowResponses: NonNullable<DispatchFlowResponse['flatNodeResponses']>;
@@ -174,9 +179,11 @@ const toToolRunResult = <TChildrenResponse = unknown>(
   result: AgentLoopCoreToolRunResult<TChildrenResponse>;
   flowResponse: AgentLoopCoreToolRunFlowResponse;
 } => {
-  const errorMessage = !!toolRunResponse.workflowRuntimeSummary?.errorCount
-    ? toolRunResponse.workflowRuntimeSummary?.errorText || 'Tool execution failed'
-    : undefined;
+  const hasModerationBlock = !!toolRunResponse.workflowRuntimeSummary?.hasModerationBlock;
+  const errorMessage =
+    !hasModerationBlock && !!toolRunResponse.workflowRuntimeSummary?.errorCount
+      ? toolRunResponse.workflowRuntimeSummary?.errorText || 'Tool execution failed'
+      : undefined;
 
   const { response, content } = (() => {
     const pluginResponse = unwrapPluginToolResponse(toolRunResponse.toolResponses);
@@ -217,21 +224,29 @@ const toToolRunResult = <TChildrenResponse = unknown>(
     };
   })();
 
+  const result: AgentLoopCoreToolRunResult<TChildrenResponse> = {
+    // 工具失败时把错误原因返回给模型；'none' 会掩盖失败原因；内容审核命中时返回统一脱敏提示且不携带 errorMessage。
+    response: hasModerationBlock ? MODERATION_BLOCKED_REPLACE_TEXT : response,
+    ...(!hasModerationBlock && content ? { content } : {}),
+    ...(errorMessage ? { errorMessage } : {}),
+    assistantMessages: hasModerationBlock
+      ? []
+      : getAssistantMessages(toolRunResponse.assistantResponses),
+    ...(!hasModerationBlock && toolRunResponse.assistantResponses?.length
+      ? { assistantResponses: toolRunResponse.assistantResponses }
+      : {}),
+    usages: toolRunResponse.flowUsages,
+    interactive: toolRunResponse.workflowInteractiveResponse as TChildrenResponse | undefined,
+    stop:
+      !!toolRunResponse.workflowRuntimeSummary?.hasToolStop ||
+      toolRunResponse.flowResponses.some((item) => item.toolStop)
+  };
+  if (hasModerationBlock || toolRunResponse.workflowRuntimeSummary?.hasToolResultModerated) {
+    markToolResultModerated(result);
+  }
+
   return {
-    result: {
-      response,
-      ...(errorMessage ? { errorMessage } : {}),
-      ...(content ? { content } : {}),
-      assistantMessages: getAssistantMessages(toolRunResponse.assistantResponses),
-      ...(toolRunResponse.assistantResponses?.length
-        ? { assistantResponses: toolRunResponse.assistantResponses }
-        : {}),
-      usages: toolRunResponse.flowUsages,
-      interactive: toolRunResponse.workflowInteractiveResponse as TChildrenResponse | undefined,
-      stop:
-        !!toolRunResponse.workflowRuntimeSummary?.hasToolStop ||
-        toolRunResponse.flowResponses.some((item) => item.toolStop)
-    },
+    result,
     flowResponse: toFlowResponse(toolRunResponse)
   };
 };
@@ -337,17 +352,29 @@ export const createAgentLoopCoreWorkflowSystemToolExecutor = <TChildrenResponse 
     const datasetNodeResponses = mergedFlowResponse.flowResponses.filter((item) =>
       entryNodeIds.includes(item.nodeId)
     );
+    const hasModerationBlock = toolRunResponses.some(
+      (item) => item.workflowRuntimeSummary?.hasModerationBlock
+    );
+    const allModerated =
+      toolRunResponses.length > 0 &&
+      toolRunResponses.every((item) => item.workflowRuntimeSummary?.hasToolResultModerated);
 
-    return normalizeAgentLoopCoreDatasetSearchResult({
+    const normalizedDatasetResult = normalizeAgentLoopCoreDatasetSearchResult({
       callId: call.id,
       startTime,
-      response: formatDatasetSearchToolResponses({
-        entryNodeIds,
-        toolRunResponses
-      }),
+      response: hasModerationBlock
+        ? MODERATION_BLOCKED_REPLACE_TEXT
+        : formatDatasetSearchToolResponses({
+            entryNodeIds,
+            toolRunResponses
+          }),
       usages: mergedFlowResponse.flowUsages,
       nodeResponse: mergeDatasetSearchNodeResponses(datasetNodeResponses)
     });
+    if (hasModerationBlock || allModerated) {
+      markToolResultModerated(normalizedDatasetResult);
+    }
+    return normalizedDatasetResult;
   };
 
   return execute;
@@ -399,11 +426,8 @@ export const createAgentLoopCoreWorkflowToolRunner = <TChildrenResponse = unknow
       const restoredNodes = rewriteNodeOutputByHistories(isolatedRuntimeNodes, interactive as any);
       isolatedRuntimeNodes.splice(0, isolatedRuntimeNodes.length, ...restoredNodes);
       if (interactive.memoryEdges?.length) {
-        isolatedRuntimeEdges.splice(
-          0,
-          isolatedRuntimeEdges.length,
-          ...cloneDeep(interactive.memoryEdges)
-        );
+        const restoredEdges = storeEdges2RuntimeEdges(isolatedRuntimeEdges, interactive as any);
+        isolatedRuntimeEdges.splice(0, isolatedRuntimeEdges.length, ...cloneDeep(restoredEdges));
       }
     }
     initAgentLoopCoreWorkflowToolNodes(isolatedRuntimeNodes, entryNodeIds, startParams);

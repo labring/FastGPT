@@ -5,7 +5,7 @@ description: '将 Milvus 升级到 2.5.16+ 并启用 FastGPT BM25 全文检索'
 
 ## 背景
 
-FastGPT 的全文检索默认走 MongoDB `$text`。当使用 **Milvus 作为向量库**时，全文检索自动切换到 Milvus BM25（`modeldata_v2` 单表，向量 + 全文同表），不再写 MongoDB 全文表。这要求 Milvus 版本 **≥ 2.5.16**；低于 2.5.16 时 FastGPT 启动会直接报错退出，不会降级运行。
+本文适用于使用 Milvus 向量库并从 FastGPT V4.16.2 之前版本升级到 V4.16.2 及以上版本的部署。FastGPT 的全文检索默认走 MongoDB `$text`；当使用 **Milvus 作为向量库**时，自 V4.16.2 起全文检索自动切换到 Milvus BM25（`modeldata_v2` 单表，向量与全文同表存储）。这要求 Milvus 版本 **≥ 2.5.16**；低于 2.5.16 时 FastGPT 启动会直接报错退出以保障索引一致性。
 
 > 全文后端跟随实际向量库：向量库是 Milvus 时用 BM25；其他向量库（PG/OceanBase/SeekDB/openGauss）全文仍走 MongoDB `$text`。无需配置独立的全文本引擎开关。
 
@@ -25,11 +25,11 @@ FastGPT 的全文检索默认走 MongoDB `$text`。当使用 **Milvus 作为向�
 
 ### 3. 升级 Milvus 到 2.5.16+
 
-升级必须保留原有 Milvus 数据卷和旧集合 `modeldata`。直接替换镜像 tag 后重启：
+升级必须保留原有 Milvus 数据卷和旧集合 `modeldata`。建议升级到当前官方模板版本（`v2.6.22`，最低要求 `v2.5.16`），替换镜像 tag 后重启：
 
 ```yaml
 # docker-compose 中 Milvus 服务
-image: milvusdb/milvus:v2.5.16
+image: milvusdb/milvus:v2.6.22
 ```
 
 > 旧 `modeldata` 是后续迁移的向量数据源。升级后应先确认该集合存在且非空；如果集合缺失或为空，请停止迁移并从备份恢复 Milvus 数据。
@@ -39,12 +39,14 @@ image: milvusdb/milvus:v2.5.16
 启动 FastGPT，Milvus 初始化时会调用 `getVersion()` 校验版本；低于 2.5.16、无法获取或无法解析版本会**终止启动**。也可以手动验证：
 
 ```bash
-# 通过 milvus-cli / attu / SDK getVersion 确认服务端版本 >= v2.5.16
+# 查看当前运行的 Milvus 容器镜像版本与服务端版本（需 >= v2.5.16）
+docker inspect -f '{{.Config.Image}}' fastgpt-milvus-standalone
+docker exec fastgpt-milvus-standalone milvus --version
 ```
 
 ### 5. 迁移
 
-确认旧 Milvus `modeldata` 集合存在且有向量后，调用迁移接口（纯拷贝，不重嵌入）：
+确认旧 Milvus `modeldata` 集合存在且有向量后，调用迁移接口执行纯数据拷贝：
 
 ```bash
 # 1. dry-run 先看统计
@@ -88,7 +90,7 @@ curl 'http://host/api/admin/4162/milvus?resumeMigrationId=<uuid>' \
 - 已执行 `removeOld`（旧表已删）：需从备份恢复 Milvus 数据卷后再降级。
 - 迁移可重复执行（幂等 upsert），迁移失败后用 `resumeMigrationId` 续跑。
 
-## 常见问题
+## 迁移异常排查
 
 - **启动报 `Milvus version ... is not supported`**：Milvus 版本低于 2.5.16，升级到 2.5.16+。
 - **迁移报旧 `modeldata` 缺失或为空**：停止迁移并检查是否连接了错误的 Milvus 实例、数据卷是否正确挂载；确认数据丢失时从备份恢复。

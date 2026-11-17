@@ -37,6 +37,10 @@ export const OpenApiKeySchema = z.object({
     description: '应用 Key 绑定的应用 ID',
     example: '68ad85a7463006c963799a05'
   }),
+  defaultAppId: ObjectIdSchema.optional().meta({
+    description: '历史个人密钥的默认应用 ID，仅作为对话接口的目标兜底，不授予应用权限',
+    example: '68ad85a7463006c963799a05'
+  }),
   sourceMember: SourceMemberSchema.optional().meta({ description: '密钥当前归属成员' }),
   createTime: z.coerce.date().meta({ description: '创建时间' }),
   lastUsedTime: z.coerce.date().optional().meta({ description: '最后使用时间' }),
@@ -279,13 +283,21 @@ export const CopyApiKeyResponseSchema = z.string().meta({
 });
 export type CopyApiKeyResponseType = z.infer<typeof CopyApiKeyResponseSchema>;
 
-export const ApiKeyHealthParamsSchema = z.object({
-  apiKey: z.string().nonempty().meta({
-    example: 'fastgpt-xxxxxxxx',
-    description: '待校验的 API Key 明文'
+/* ============================================================================
+ * API: 检查 API Key 是否健康
+ * Route: GET /api/support/openapi/health
+ * Method: GET
+ * Description: 通过 Authorization 请求头校验 API Key 是否有效，并返回用量信息。
+ * Tags: ['API Key 管理']
+ * ============================================================================ */
+
+export const ApiKeyHealthHeaderSchema = z.object({
+  authorization: z.string().trim().min(1).meta({
+    example: 'Bearer fastgpt-xxxxxxxx',
+    description: '待校验的 API Key 凭证，格式为 Bearer <apiKey>'
   })
 });
-export type ApiKeyHealthParamsType = z.infer<typeof ApiKeyHealthParamsSchema>;
+export type ApiKeyHealthHeaderType = z.infer<typeof ApiKeyHealthHeaderSchema>;
 
 export const ApiKeyHealthResponseSchema = z.object({
   type: ApiKeyTypeSchema,

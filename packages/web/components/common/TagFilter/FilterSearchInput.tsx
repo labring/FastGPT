@@ -1,4 +1,4 @@
-import React, { forwardRef } from 'react';
+import React, { forwardRef, useEffect, useRef, useState } from 'react';
 import { Flex, Input } from '@chakra-ui/react';
 import MyIconButton from '../Icon/button';
 import { shadowLight } from '../../../styles/theme';
@@ -28,11 +28,18 @@ type Props = {
   onChange: (next: string) => void;
 };
 
-/** TagFilter 下拉里 32px 搜索框，有内容时显示清空。 */
+/** TagFilter 下拉里 32px 搜索框，有内容时显示清空，并在中文输入法组合结束后再触发搜索。 */
 const FilterSearchInput = forwardRef<HTMLInputElement, Props>(function FilterSearchInput(
   { value, placeholder, onChange },
   ref
 ) {
+  const [inputValue, setInputValue] = useState(value);
+  const isComposingRef = useRef(false);
+
+  useEffect(() => {
+    setInputValue(value);
+  }, [value]);
+
   return (
     <Flex
       w={'100%'}
@@ -49,8 +56,8 @@ const FilterSearchInput = forwardRef<HTMLInputElement, Props>(function FilterSea
         bg: 'white'
       }}
       onKeyDown={(e) => {
-        // 文本输入由搜索框处理，方向键和 Escape 交给菜单导航、关闭。
-        if (!['ArrowDown', 'ArrowUp', 'Escape'].includes(e.key)) {
+        // 组合输入期间按键均交给输入法候选框；非组合状态下方向键和 Escape 交给外层菜单。
+        if (e.nativeEvent.isComposing || !['ArrowDown', 'ArrowUp', 'Escape'].includes(e.key)) {
           e.stopPropagation();
         }
       }}
@@ -65,11 +72,26 @@ const FilterSearchInput = forwardRef<HTMLInputElement, Props>(function FilterSea
         variant={'unstyled'}
         fontSize={'xs'}
         lineHeight={'16px'}
-        value={value}
+        value={inputValue}
         placeholder={placeholder}
-        onChange={(e) => onChange(e.target.value)}
+        onCompositionStart={() => {
+          isComposingRef.current = true;
+        }}
+        onCompositionEnd={(e) => {
+          isComposingRef.current = false;
+          const next = e.currentTarget.value;
+          setInputValue(next);
+          onChange(next);
+        }}
+        onChange={(e) => {
+          const next = e.target.value;
+          setInputValue(next);
+          if (!isComposingRef.current) {
+            onChange(next);
+          }
+        }}
       />
-      {!!value && (
+      {!!inputValue && (
         <MyIconButton
           icon={'common/closeLight'}
           flex={'0 0 auto'}
@@ -77,7 +99,11 @@ const FilterSearchInput = forwardRef<HTMLInputElement, Props>(function FilterSea
           zIndex={1}
           size={'14px'}
           hoverColor={'myGray.700'}
-          onClick={() => onChange('')}
+          onClick={() => {
+            isComposingRef.current = false;
+            setInputValue('');
+            onChange('');
+          }}
         />
       )}
     </Flex>

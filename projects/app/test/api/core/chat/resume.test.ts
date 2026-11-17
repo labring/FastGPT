@@ -1,3 +1,4 @@
+import { apiI18n } from '@/service/middleware/i18n';
 import { getChatGenerationStatuses } from '@fastgpt/service/core/chat/generationLease';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Call } from '@test/utils/request';
@@ -27,9 +28,9 @@ import {
   mirrorChatStream,
   resetStreamResumeMirrorGuardForTest,
   getStreamResumeRedisKeys,
-  STREAM_RESUME_POST_COMPLETE_TTL_SECONDS,
-  STREAM_RESUME_REDIS_MAXMEMORY_RATIO,
-  STREAM_RESUME_TTL_SECONDS,
+  getStreamResumePostCompleteTtlSeconds,
+  getStreamResumeRedisMaxmemoryRatio,
+  getStreamResumeTtlSeconds,
   STREAM_RESUME_TTL_TOUCH_INTERVAL_MS
 } from '@fastgpt/service/core/chat/resume';
 
@@ -170,7 +171,7 @@ const invokeStreamingHandler = async (
 
   const req = {
     query,
-    headers: reqHeaders,
+    headers: reqHeaders ?? {},
     on: vi.fn((event: string, callback: () => void) => {
       if (event === 'close') {
         closeHandler = callback;
@@ -209,7 +210,7 @@ const invokeStreamingHandler = async (
     destroyed: false
   } as any;
 
-  const result = await handler(req, res);
+  const result = await apiI18n({ req, res }, () => handler(req, res));
 
   if (closeHandler && !res.writableEnded) {
     closeHandler();
@@ -328,6 +329,61 @@ describe('stream resume api', () => {
     expect(res.end).toHaveBeenCalledTimes(1);
     expect(closeHandler).toBeDefined();
     expect(res.writableEnded).toBe(true);
+  });
+
+  it('strips moderationRecords from flowNodeResponse when reader has no write permission', async () => {
+    vi.mocked(getChatGenerationStatuses).mockResolvedValue(
+      new Map([[chatId, ChatGenerateStatusEnum.generating]])
+    );
+    vi.mocked(MongoChat.findOne).mockReturnValue(
+      createFindOneResult({
+        hasBeenRead: false,
+        chatGenerateStatus: ChatGenerateStatusEnum.generating
+      })
+    );
+    vi.mocked(authChatTargetCrud).mockResolvedValue({
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: appId,
+      teamId,
+      tmbId: 'tmb-reader',
+      canWrite: false,
+      showCite: true
+    } as any);
+
+    const historyItems = [
+      createStreamEntry(
+        '1-0',
+        `event: flowNodeResponse\ndata: ${JSON.stringify({
+          nodeId: 'node-1',
+          moderationRecords: [{ verdict: 'block', content: 'toxic raw content' }],
+          moduleName: 'AI Chat'
+        })}\n\n`
+      ),
+      createStreamEntry('2-0', 'event: done\ndata: [DONE]\n\n')
+    ];
+
+    const { redis, call, blockingRedis } = setupRedisStreamMock({
+      historyItems,
+      liveResponses: []
+    });
+
+    const { chunks } = await invokeStreamingHandler(
+      {
+        teamId,
+        appId,
+        chatId
+      },
+      {
+        headers: {
+          accept: 'text/event-stream'
+        }
+      }
+    );
+
+    const joined = chunks.join('');
+    expect(joined).not.toContain('toxic raw content');
+    expect(joined).not.toContain('moderationRecords');
+    expect(joined).toContain('"nodeId":"node-1"');
   });
 
   it('ends an existing resume connection when the lease disappears without a terminal stream event', async () => {
@@ -651,7 +707,7 @@ describe('stream resume api', () => {
       } as any);
 
       const redis = getRedisRuntime().getCommandConnection() as any;
-      const usedMemory = Math.ceil(STREAM_RESUME_REDIS_MAXMEMORY_RATIO * 100) + 1;
+      const usedMemory = Math.ceil(getStreamResumeRedisMaxmemoryRatio() * 100) + 1;
       redis.info = vi.fn().mockResolvedValue(`used_memory:${usedMemory}\r\nmaxmemory:100\r\n`);
 
       await getStreamResumeMirror({
@@ -747,7 +803,7 @@ describe('stream resume api', () => {
       );
 
       const redis = getRedisRuntime().getCommandConnection() as any;
-      const usedMemory = Math.ceil(STREAM_RESUME_REDIS_MAXMEMORY_RATIO * 100) + 1;
+      const usedMemory = Math.ceil(getStreamResumeRedisMaxmemoryRatio() * 100) + 1;
       redis.info = vi.fn().mockResolvedValue(`used_memory:${usedMemory}\r\nmaxmemory:100\r\n`);
 
       await getStreamResumeMirror({
@@ -773,7 +829,7 @@ describe('stream resume api', () => {
         }
       );
 
-      await vi.advanceTimersByTimeAsync(STREAM_RESUME_TTL_SECONDS * 1000 + 1);
+      await vi.advanceTimersByTimeAsync(getStreamResumeTtlSeconds() * 1000 + 1);
 
       const { chunks, res } = await responsePromise;
 
@@ -896,14 +952,14 @@ describe('stream resume helpers', () => {
 
       expect(redis.expire).toHaveBeenCalledWith(
         `${FASTGPT_REDIS_PREFIX}${keys.keyOfStream}`,
-        STREAM_RESUME_TTL_SECONDS
+        getStreamResumeTtlSeconds()
       );
       expect(redis.expire).toHaveBeenCalledTimes(1);
       expect(redis.set).toHaveBeenCalledWith(
         `${FASTGPT_REDIS_PREFIX}${keys.keyOfActive}`,
         expect.stringMatching(/^\{"updatedAt":\d+\}$/),
         'PX',
-        STREAM_RESUME_TTL_SECONDS * 1000
+        getStreamResumeTtlSeconds() * 1000
       );
 
       vi.advanceTimersByTime(STREAM_RESUME_TTL_TOUCH_INTERVAL_MS);
@@ -927,11 +983,11 @@ describe('stream resume helpers', () => {
     await mirror.shrinkTTLAfterComplete();
     expect(redis.expire).toHaveBeenCalledWith(
       `${FASTGPT_REDIS_PREFIX}${keys.keyOfStream}`,
-      STREAM_RESUME_POST_COMPLETE_TTL_SECONDS
+      getStreamResumePostCompleteTtlSeconds()
     );
     expect(redis.expire).toHaveBeenCalledWith(
       `${FASTGPT_REDIS_PREFIX}${keys.keyOfActive}`,
-      STREAM_RESUME_POST_COMPLETE_TTL_SECONDS
+      getStreamResumePostCompleteTtlSeconds()
     );
     expect(redis.expire).toHaveBeenCalledTimes(2);
   });
@@ -993,6 +1049,29 @@ describe('stream resume helpers', () => {
     expect(redis.call).toHaveBeenNthCalledWith(2, 'XADD', rawStream, '*', 'raw', 'data: hello\n\n');
   });
 
+  it('uses the fixed system defaults for stream recovery', () => {
+    expect(getStreamResumeTtlSeconds()).toBe(300);
+    expect(getStreamResumePostCompleteTtlSeconds()).toBe(30);
+    expect(getStreamResumeRedisMaxmemoryRatio()).toBe(0.5);
+  });
+
+  it('caches memory pressure for five seconds and blocks at the fixed 50% watermark', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    const redis = getRedisRuntime().getCommandConnection() as any;
+    redis.info = vi.fn().mockResolvedValue('used_memory:49\r\nmaxmemory:100\r\n');
+    const request = { resumeRequestHeaderValue: '1', teamId, ...appSource, chatId };
+
+    expect(await getStreamResumeMirror(request)).toBeDefined();
+    redis.info.mockResolvedValue('used_memory:50\r\nmaxmemory:100\r\n');
+    vi.advanceTimersByTime(4_999);
+    expect(await getStreamResumeMirror(request)).toBeDefined();
+    expect(redis.info).toHaveBeenCalledTimes(1);
+
+    vi.advanceTimersByTime(1);
+    expect(await getStreamResumeMirror(request)).toBeUndefined();
+    expect(redis.info).toHaveBeenCalledTimes(2);
+  });
+
   it('should require the opt-in header before creating a mirror', async () => {
     const redis = getRedisRuntime().getCommandConnection() as any;
     redis.info = vi.fn().mockResolvedValue('used_memory:10\r\nmaxmemory:100\r\n');
@@ -1017,7 +1096,7 @@ describe('stream resume helpers', () => {
 
   it('should skip creating a mirror when redis memory usage crosses the watermark', async () => {
     const redis = getRedisRuntime().getCommandConnection() as any;
-    const usedMemory = Math.ceil(STREAM_RESUME_REDIS_MAXMEMORY_RATIO * 100) + 1;
+    const usedMemory = Math.ceil(getStreamResumeRedisMaxmemoryRatio() * 100) + 1;
     redis.set.mockClear?.();
     redis.info = vi.fn().mockResolvedValue(`used_memory:${usedMemory}\r\nmaxmemory:100\r\n`);
 
@@ -1036,7 +1115,7 @@ describe('stream resume helpers', () => {
         reason: StreamResumeUnavailableReasonEnum.memoryPressure
       }),
       'PX',
-      STREAM_RESUME_TTL_SECONDS * 1000
+      getStreamResumeTtlSeconds() * 1000
     );
   });
 

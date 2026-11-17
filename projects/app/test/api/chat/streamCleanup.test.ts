@@ -63,7 +63,10 @@ vi.mock('@fastgpt/service/core/chat/title', () => ({
     close: vi.fn()
   })
 }));
-vi.mock('@fastgpt/service/core/workflow/utils/streamResponseContext', () => ({
+vi.mock('@fastgpt/service/core/workflow/utils/streamResponseContext', async (importOriginal) => ({
+  ...(await importOriginal<
+    typeof import('@fastgpt/service/core/workflow/utils/streamResponseContext')
+  >()),
   createWorkflowStreamResponseContext: vi.fn(async () => ({
     responseWrite: mocks.responseWrite,
     writeStreamError: mocks.writeStreamError,

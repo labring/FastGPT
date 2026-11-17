@@ -1,3 +1,7 @@
+import {
+  createDefaultInstanceConfig,
+  getTestInstanceConfig
+} from '@test/utils/instanceConfigSnapshot';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
 import type { UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
@@ -23,17 +27,18 @@ const createFile = (name: string): UserChatItemValueItemType => ({
 });
 
 describe('prepareWorkflowFileQuery', () => {
-  const originalFeConfigs = global.feConfigs;
+  const originalConfig = global.systemInstanceConfig;
 
   beforeEach(() => {
-    global.feConfigs = {
-      ...originalFeConfigs,
-      limit: { uploadFileMaxAmount: 20, uploadFileMaxSize: 100 }
-    };
+    global.systemInstanceConfig = createDefaultInstanceConfig();
+    Object.assign(getTestInstanceConfig().resource, {
+      uploadFileMaxAmount: 20,
+      uploadFileMaxSize: 100
+    });
   });
 
   afterEach(() => {
-    global.feConfigs = originalFeConfigs;
+    global.systemInstanceConfig = originalConfig;
     vi.clearAllMocks();
   });
 

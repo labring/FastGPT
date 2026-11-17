@@ -109,7 +109,7 @@ docker compose up -d
 
 ## 💪 プロジェクトとリンク
 
-- [クイックスタート ローカル開発](https://doc.fastgpt.io/self-host/dev/)
+- [クイックスタート ローカル開発](https://doc.fastgpt.io/self-host/dev)
 - [OpenAPI ドキュメント](https://cloud.fastgpt.io/apidoc/systemopenapi)
 - [FastGPT-plugin](https://github.com/labring/fastgpt-plugin)
 - [AI Proxy: モデル集約ロードバランシングサービス](https://github.com/labring/aiproxy)
