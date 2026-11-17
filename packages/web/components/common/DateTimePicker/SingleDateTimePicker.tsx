@@ -368,7 +368,7 @@ export const SingleDateTimePicker = ({
             lineHeight={'20px'}
             letterSpacing={'0.25px'}
           >
-            {displayText || placeholder || t('common:datetime_picker.placeholder')}
+            {displayText || (placeholder ?? t('common:date_picker.placeholder'))}
           </Box>
           {!hideCalendarIcon && (
             <Box data-date-calendar flexShrink={0} display={'flex'} alignItems={'center'}>

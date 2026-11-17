@@ -28,6 +28,7 @@
   "Delete": "Delete",
   "Documents": "Documents",
   "Done": "Done",
+  "date_picker.placeholder": "Please select a date",
   "datetime_picker.placeholder": "YYYY-MM-DD --:--",
   "Download": "Download",
   "Edit": "Edit",

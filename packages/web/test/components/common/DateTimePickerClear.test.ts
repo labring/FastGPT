@@ -166,3 +166,24 @@ it.each(['date', 'date-time'])(
     host.remove();
   }
 );
+
+it.each(['date', 'date-time'])(
+  'shows the default and custom placeholder for an empty %s picker',
+  async (kind) => {
+    const host = document.createElement('div');
+    document.body.appendChild(host);
+    const root = createRoot(host);
+    const picker = (placeholder?: string) =>
+      kind === 'date'
+        ? React.createElement(DateTimePicker, { placeholder })
+        : React.createElement(SingleDateTimePicker, { placeholder, usePortal: false });
+    await act(async () => root.render(React.createElement(ChakraProvider, null, picker())));
+    expect(host.textContent).toContain('common:date_picker.placeholder');
+    await act(async () =>
+      root.render(React.createElement(ChakraProvider, null, picker('Custom date')))
+    );
+    expect(host.textContent).toContain('Custom date');
+    await act(async () => root.unmount());
+    host.remove();
+  }
+);

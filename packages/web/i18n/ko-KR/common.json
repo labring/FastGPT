@@ -28,6 +28,7 @@
   "Delete": "삭제",
   "Documents": "문서",
   "Done": "완료",
+  "date_picker.placeholder": "날짜를 선택해 주세요",
   "datetime_picker.placeholder": "연-월-일 --:--",
   "Download": "다운로드",
   "Edit": "편집",

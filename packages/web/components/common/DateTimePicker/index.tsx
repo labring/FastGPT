@@ -5,6 +5,7 @@ import { format } from 'date-fns';
 import { DayPicker, type Matcher } from 'react-day-picker';
 import 'react-day-picker/dist/style.css';
 import { zhCN } from 'date-fns/locale/zh-CN';
+import { useTranslation } from 'next-i18next';
 import MyIcon from '../Icon';
 import { CalendarNavigation } from './CalendarNavigation';
 import { DatePickerClearButton, datePickerClearStyles } from './DatePickerClearButton';
@@ -14,6 +15,7 @@ export * from './SingleDateTimePicker';
 
 type DateTimePickerProps = {
   onChange?: (dateTime: Date | undefined) => void;
+  placeholder?: string;
   popPosition?: 'bottom' | 'top';
   defaultDate?: Date;
   selectedDateTime?: Date;
@@ -31,11 +33,13 @@ type DateTimePickerProps = {
  * - 非受控模式下：内部维护选中日期，支持 defaultDate 初始化，用户选择后更新内部状态。
  */
 const DateTimePicker = (rawProps: DateTimePickerProps) => {
+  const { t } = useTranslation();
   const isControlled = 'selectedDateTime' in rawProps;
   const {
     onChange,
     popPosition = 'bottom',
     defaultDate,
+    placeholder,
     selectedDateTime,
     disabled,
     isDisabled,
@@ -146,8 +150,14 @@ const DateTimePicker = (rawProps: DateTimePickerProps) => {
             })}
         {...props}
       >
-        <Box color={'myGray.600'} fontWeight={'400'} flex={1} minW={0} noOfLines={1}>
-          {formatSelected}
+        <Box
+          color={formatSelected ? 'myGray.600' : 'myGray.500'}
+          fontWeight={'400'}
+          flex={1}
+          minW={0}
+          noOfLines={1}
+        >
+          {formatSelected || (placeholder ?? t('common:date_picker.placeholder'))}
         </Box>
         <Box data-date-calendar ml={2} flexShrink={0} display={'flex'} alignItems={'center'}>
           <MyIcon name={'date'} w={'16px'} h={'16px'} color={'myGray.600'} />
