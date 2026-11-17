@@ -1,10 +1,9 @@
 import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
-import { Box, Image, Flex, ModalBody } from '@chakra-ui/react';
+import { Box, Flex, ModalBody } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
 import MyImage from '@fastgpt/web/components/common/Image/MyImage';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { listCustomDomain } from '@/web/support/customDomain/api';
 import { useState, useMemo, useEffect } from 'react';
@@ -80,6 +79,8 @@ export const ShareLinkContainer = ({
   // 当 defaultDomain=false 时，自动选择第一个自定义域名
   useEffect(() => {
     if (!defaultDomain && domainOptions.length > 0 && customDomain === undefined) {
+      // 异步域名列表首个值作为默认选择，属于对外部加载数据的同步。
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setCustomDomain(domainOptions[0].value || undefined);
     }
   }, [defaultDomain, domainOptions, customDomain]);
@@ -123,30 +124,6 @@ export const ShareLinkContainer = ({
       <Box mt="4" borderRadius="0.5rem" border="1px" borderStyle="solid" borderColor="myGray.200">
         <MyImage src={img} borderRadius="0.5rem" alt="" />
       </Box>
-
-      {/*<Box borderRadius={'md'} bg={'myGray.100'} overflow={'hidden'} fontSize={'sm'} mt="4">
-      <Flex
-        p={3}
-        bg={'myWhite.500'}
-        border="base"
-        borderTopLeftRadius={'md'}
-        borderTopRightRadius={'md'}
-      >
-        <Box flex="1">{t('publish:ip_whitelist')}</Box>
-        <MyIcon
-          name={'copy'}
-          w={'16px'}
-          color={'myGray.600'}
-          cursor={'pointer'}
-          _hover={{ color: 'primary.500' }}
-          onClick={() => copyData(feConfigs?.ip_whitelist || '')}
-        />
-      </Flex>
-
-      <Box p={3} wordBreak={'break-all'}>
-        {feConfigs.ip_whitelist}
-      </Box>
-    </Box>*/}
     </>
   );
 };

@@ -1,3 +1,4 @@
+import { getSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/runtime';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { checkExportDatasetLimit } from '@fastgpt/service/support/user/utils';
@@ -29,7 +30,7 @@ async function handler(req: ApiRequestProps): Promise<ExportDatasetLimitResponse
 
   await checkExportDatasetLimit({
     teamId,
-    limitMinutes: global.feConfigs?.limit?.exportDatasetLimitMinutes
+    limitMinutes: getSystemInstanceConfig().resource.exportDatasetLimitMinutes
   });
 
   (async () => {

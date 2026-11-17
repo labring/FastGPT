@@ -1,8 +1,15 @@
+import {
+  getTestInstanceConfig,
+  createDefaultInstanceConfig
+} from '@test/utils/instanceConfigSnapshot';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+
+(global as any).systemInstanceConfig = createDefaultInstanceConfig();
+
 import { getHTTPToolList, runHTTPTool } from '@fastgpt/service/core/app/http';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { PRIVATE_URL_TEXT } from '@fastgpt/service/common/system/utils';
-import { serviceEnv } from '@fastgpt/service/env';
+
 import { ContentTypes } from '@fastgpt/global/core/workflow/constants';
 
 const { axiosMock } = vi.hoisted(() => ({ axiosMock: vi.fn() }));
@@ -12,16 +19,16 @@ vi.mock('@fastgpt/service/common/api/axios', async (importOriginal) => ({
 }));
 
 describe('runHTTPTool request routing', () => {
-  const originalCheckInternalIp = serviceEnv.CHECK_INTERNAL_IP;
+  const originalCheckInternalIp = getTestInstanceConfig().security.checkInternalIp;
   beforeEach(() => {
-    serviceEnv.CHECK_INTERNAL_IP = false;
+    getTestInstanceConfig().security.checkInternalIp = false;
     axiosMock.mockReset();
     axiosMock.mockImplementation(async (request) => ({
       data: { json: request.data, query: request.params }
     }));
   });
   afterEach(() => {
-    serviceEnv.CHECK_INTERNAL_IP = originalCheckInternalIp;
+    getTestInstanceConfig().security.checkInternalIp = originalCheckInternalIp;
   });
 
   it.each(['POST', 'PUT', 'PATCH'])(
@@ -155,15 +162,15 @@ describe('runHTTPTool request routing', () => {
 });
 
 describe('SSRF Vulnerability Fix Tests', () => {
-  const originalCheckInternalIp = serviceEnv.CHECK_INTERNAL_IP;
+  const originalCheckInternalIp = getTestInstanceConfig().security.checkInternalIp;
 
   beforeEach(() => {
     // 确保测试环境启用内部 IP 检查
-    serviceEnv.CHECK_INTERNAL_IP = true;
+    getTestInstanceConfig().security.checkInternalIp = true;
   });
 
   afterEach(() => {
-    serviceEnv.CHECK_INTERNAL_IP = originalCheckInternalIp;
+    getTestInstanceConfig().security.checkInternalIp = originalCheckInternalIp;
   });
 
   describe('getHTTPToolList', () => {
@@ -519,7 +526,7 @@ describe('SSRF Vulnerability Fix Tests', () => {
 
   describe('Environment Variable Control', () => {
     it('should always block cloud metadata endpoints even when CHECK_INTERNAL_IP=false', async () => {
-      serviceEnv.CHECK_INTERNAL_IP = false;
+      getTestInstanceConfig().security.checkInternalIp = false;
 
       // 云服务商元数据端点应该始终被阻止，这是安全的关键
       const result = await runHTTPTool({
@@ -533,7 +540,7 @@ describe('SSRF Vulnerability Fix Tests', () => {
     });
 
     it('should always block localhost even when CHECK_INTERNAL_IP=false', async () => {
-      serviceEnv.CHECK_INTERNAL_IP = false;
+      getTestInstanceConfig().security.checkInternalIp = false;
 
       // localhost 应该始终被阻止
       const result = await runHTTPTool({
@@ -547,7 +554,7 @@ describe('SSRF Vulnerability Fix Tests', () => {
     });
 
     it('should block internal addresses by default (no env var)', async () => {
-      serviceEnv.CHECK_INTERNAL_IP = false;
+      getTestInstanceConfig().security.checkInternalIp = false;
 
       const result = await runHTTPTool({
         baseUrl: 'http://localhost',
@@ -560,7 +567,7 @@ describe('SSRF Vulnerability Fix Tests', () => {
     });
 
     it('should block internal addresses when CHECK_INTERNAL_IP=true', async () => {
-      serviceEnv.CHECK_INTERNAL_IP = true;
+      getTestInstanceConfig().security.checkInternalIp = true;
 
       const result = await runHTTPTool({
         baseUrl: 'http://localhost',

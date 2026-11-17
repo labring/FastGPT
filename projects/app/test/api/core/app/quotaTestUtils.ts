@@ -1,9 +1,10 @@
+import { getSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/runtime';
 import { onTestFinished } from 'vitest';
 
 /** 为配额回归测试配置真实免费套餐，测试结束后恢复配置，避免污染其他用例。 */
 export const configureAgentQuota = () => {
-  const previousSubPlans = global.subPlans;
-  global.subPlans = {
+  const previousSubPlans = getSystemInstanceConfig().commercial.subPlans;
+  getSystemInstanceConfig().commercial.subPlans = {
     standard: {
       free: {
         price: 0,
@@ -17,6 +18,6 @@ export const configureAgentQuota = () => {
     }
   };
   onTestFinished(() => {
-    global.subPlans = previousSubPlans;
+    getSystemInstanceConfig().commercial.subPlans = previousSubPlans;
   });
 };

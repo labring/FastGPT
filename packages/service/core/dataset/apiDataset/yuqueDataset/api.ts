@@ -14,6 +14,7 @@ import { type Method } from 'axios';
 import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { createProxyAxios } from '../../../../common/api/axios';
 import { getLogger, LogCategories } from '../../../../common/logger';
+import { getSafeHttpErrorLog } from '../../../../common/api/httpError';
 import { serviceEnv } from '../../../../env';
 import type { AsyncCache } from '../../../../common/cache/type';
 import { hashStr } from '@fastgpt/global/common/string/tools';
@@ -52,7 +53,6 @@ type YuqueTocListResponse = {
 
 // 同一进程内，使用同一个缓存对象的浏览请求合并首次加载；结束后清除，不保存长期内存快照。
 const pendingSnapshots = new WeakMap<AsyncCache, Map<string, Promise<unknown>>>();
-
 /** 语雀 Provider 可注入浏览缓存；默认只复用本轮快照，不依赖缓存后端或持久化 TTL。 */
 export const useYuqueDatasetRequest = ({
   yuqueServer,
@@ -90,7 +90,7 @@ export const useYuqueDatasetRequest = ({
     return data.data;
   };
   const responseError = (err: any) => {
-    logger.error('Yuque dataset request failed', { error: err });
+    logger.error('Yuque dataset request failed', getSafeHttpErrorLog(err));
 
     if (!err) {
       return Promise.reject({ message: '未知错误' });

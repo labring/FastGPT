@@ -66,7 +66,8 @@ export const getDocPath = (path: string) => {
           : `//${CANONICAL_DOC_HOSTS[locale]}`;
 
       if (/^\/(?:deploy|examples)(?:\/|$|[?#])/.test(path)) {
-        const assetLocale: 'zh-CN' | 'en' = explicitBaseLocale === 'en' ? 'en' : explicitBaseLocale ? 'zh-CN' : hostLocale;
+        const assetLocale: 'zh-CN' | 'en' =
+          explicitBaseLocale === 'en' ? 'en' : explicitBaseLocale ? 'zh-CN' : hostLocale;
         return getWebReqUrl(`${buildOfficialOrigin(assetLocale)}${path}`);
       }
 
@@ -77,11 +78,7 @@ export const getDocPath = (path: string) => {
           : 'zh-CN'
         : undefined;
       const resolvedOfficialBaseLocale: 'zh-CN' | 'en' | undefined =
-        explicitBaseLocale === undefined
-          ? undefined
-          : explicitBaseLocale === 'en'
-            ? 'en'
-            : 'zh-CN';
+        explicitBaseLocale === undefined ? undefined : explicitBaseLocale === 'en' ? 'en' : 'zh-CN';
       const effectiveLocale = explicitPathLocale ?? resolvedOfficialBaseLocale ?? hostLocale;
       const remainder = pathLocaleMatch ? path.slice(pathLocaleMatch[0].length) : path;
       const cleanPath =

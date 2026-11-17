@@ -1,4 +1,5 @@
-import { serviceEnv } from '@fastgpt/service/env';
+import { getTestInstanceConfig } from '@test/utils/instanceConfigSnapshot';
+
 import { defaultSubtreeMaxDepth } from '@fastgpt/global/common/parentFolder/subtree';
 import { describe, expect, it } from 'vitest';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
@@ -311,7 +312,7 @@ describe('checkCreateResourceParent', () => {
       checkCreateResourceParent({
         ...queries,
         isFolderType: folderType,
-        parentId: `level-${serviceEnv.MAX_FOLDER_DEPTH}`,
+        parentId: `level-${getTestInstanceConfig().resource.maxFolderDepth}`,
         isFolder: true
       })
     ).rejects.toBe(CommonErrEnum.folderDepthLimit);
@@ -347,7 +348,7 @@ describe('checkCreateResourceParent', () => {
 
   it('allows leaves at the configured depth and rejects historical deeper parents', async () => {
     const docs: TestFolderDoc[] = Array.from(
-      { length: serviceEnv.MAX_FOLDER_DEPTH + 1 },
+      { length: getTestInstanceConfig().resource.maxFolderDepth + 1 },
       (_, i) => ({
         _id: `level-${i + 1}`,
         parentId: i ? `level-${i}` : null,
@@ -358,7 +359,7 @@ describe('checkCreateResourceParent', () => {
     const { queries } = createQueries(docs);
     await expect(
       checkCreateResourceParent({
-        parentId: `level-${serviceEnv.MAX_FOLDER_DEPTH}`,
+        parentId: `level-${getTestInstanceConfig().resource.maxFolderDepth}`,
         ...queries,
         isFolder: false,
         isFolderType: folderType
@@ -366,7 +367,7 @@ describe('checkCreateResourceParent', () => {
     ).resolves.toBeUndefined();
     await expect(
       checkCreateResourceParent({
-        parentId: `level-${serviceEnv.MAX_FOLDER_DEPTH + 1}`,
+        parentId: `level-${getTestInstanceConfig().resource.maxFolderDepth + 1}`,
         ...queries,
         isFolder: false,
         isFolderType: folderType

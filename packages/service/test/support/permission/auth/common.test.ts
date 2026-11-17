@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { NodeHttpResponse } from '@fastgpt/service/types/http';
-import { serviceEnv } from '@fastgpt/service/env';
+import { getTestInstanceConfig } from '@test/utils/instanceConfigSnapshot';
 import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
 
 const mocks = vi.hoisted(() => ({
@@ -82,10 +82,10 @@ describe('token auth cancellation access', () => {
 });
 
 describe('auth cookie', () => {
-  const originalAuthCookieSecure = serviceEnv.AUTH_COOKIE_SECURE;
+  const originalAuthCookieSecure = getTestInstanceConfig().security.authCookieSecure;
 
   afterEach(() => {
-    serviceEnv.AUTH_COOKIE_SECURE = originalAuthCookieSecure;
+    getTestInstanceConfig().security.authCookieSecure = originalAuthCookieSecure;
   });
 
   const createResponse = () =>
@@ -94,7 +94,7 @@ describe('auth cookie', () => {
     }) as unknown as NodeHttpResponse;
 
   it('默认不添加 Secure 属性以兼容 HTTP 自部署环境', () => {
-    serviceEnv.AUTH_COOKIE_SECURE = false;
+    getTestInstanceConfig().security.authCookieSecure = false;
     const response = createResponse();
 
     setCookie(response, 'test-token');
@@ -106,7 +106,7 @@ describe('auth cookie', () => {
   });
 
   it('启用配置后为登录 Cookie 添加 Secure 属性', () => {
-    serviceEnv.AUTH_COOKIE_SECURE = true;
+    getTestInstanceConfig().security.authCookieSecure = true;
     const response = createResponse();
 
     setCookie(response, 'test-token');
@@ -117,8 +117,18 @@ describe('auth cookie', () => {
     );
   });
 
+  it('同一模块按最新配置签发 Cookie，不需要重新加载模块', () => {
+    const response = createResponse();
+    for (const secure of [false, true, false]) {
+      getTestInstanceConfig().security.authCookieSecure = secure;
+      setCookie(response, 'test-token');
+      const value = (response.setHeader as ReturnType<typeof vi.fn>).mock.lastCall?.[1];
+      expect(value.includes('; Secure;')).toBe(secure);
+    }
+  });
+
   it('清理 Cookie 时复用 Secure 配置', () => {
-    serviceEnv.AUTH_COOKIE_SECURE = true;
+    getTestInstanceConfig().security.authCookieSecure = true;
     const response = createResponse();
 
     clearCookie(response);

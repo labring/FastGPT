@@ -1,3 +1,4 @@
+import { getTestInstanceConfig } from '@test/utils/instanceConfigSnapshot';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { Readable } from 'node:stream';
 import {
@@ -384,13 +385,24 @@ describe('getImageBase64', () => {
 });
 
 describe('addEndpointToImageUrl', () => {
+  it('uses the current scope on each call and retains relative paths when unconfigured', async () => {
+    vi.stubEnv('FE_DOMAIN', 'https://ignored-legacy.test');
+    const { addEndpointToImageUrl } = await loadUtilsModule();
+    const image = '/api/system/img/test.png';
+    getTestInstanceConfig().site.publicUrl = 'https://first.test';
+    expect(addEndpointToImageUrl(image)).toBe(`https://first.test${image}`);
+    getTestInstanceConfig().site.publicUrl = 'https://second.test';
+    expect(addEndpointToImageUrl(image)).toBe(`https://second.test${image}`);
+    getTestInstanceConfig().site.publicUrl = '';
+    expect(addEndpointToImageUrl(image)).toBe(image);
+  });
   beforeEach(() => {
-    vi.stubEnv('FE_DOMAIN', 'https://example.com');
+    getTestInstanceConfig().site.publicUrl = 'https://example.com';
     vi.stubEnv('NEXT_PUBLIC_BASE_URL', undefined);
   });
 
   afterEach(() => {
-    vi.stubEnv('FE_DOMAIN', 'https://example.com');
+    getTestInstanceConfig().site.publicUrl = 'https://example.com';
     vi.stubEnv('NEXT_PUBLIC_BASE_URL', undefined);
   });
 
@@ -399,8 +411,8 @@ describe('addEndpointToImageUrl', () => {
     return addEndpointToImageUrl;
   };
 
-  it('should prepend FE_DOMAIN to matching image URLs without subRoute', async () => {
-    vi.stubEnv('FE_DOMAIN', 'https://example.com');
+  it('should prepend site.publicUrl to matching image URLs without subRoute', async () => {
+    getTestInstanceConfig().site.publicUrl = 'https://example.com';
     const addEndpointToImageUrl = await loadAddEndpointToImageUrl();
 
     const text = 'Here is an image: /api/system/img/abc123.png in the text';
@@ -411,8 +423,8 @@ describe('addEndpointToImageUrl', () => {
     );
   });
 
-  it('should prepend FE_DOMAIN to matching image URLs with subRoute', async () => {
-    vi.stubEnv('FE_DOMAIN', 'https://example.com');
+  it('should prepend site.publicUrl to matching image URLs with subRoute', async () => {
+    getTestInstanceConfig().site.publicUrl = 'https://example.com';
     vi.stubEnv('NEXT_PUBLIC_BASE_URL', '/fastgpt');
     const addEndpointToImageUrl = await loadAddEndpointToImageUrl();
 
@@ -423,7 +435,7 @@ describe('addEndpointToImageUrl', () => {
   });
 
   it('should not modify URLs that already have a full http(s) prefix', async () => {
-    vi.stubEnv('FE_DOMAIN', 'https://example.com');
+    getTestInstanceConfig().site.publicUrl = 'https://example.com';
     const addEndpointToImageUrl = await loadAddEndpointToImageUrl();
 
     const text = 'Already full: https://cdn.example.com/api/system/img/abc123.png';
@@ -433,7 +445,7 @@ describe('addEndpointToImageUrl', () => {
   });
 
   it('should handle multiple image URLs in the same text', async () => {
-    vi.stubEnv('FE_DOMAIN', 'https://example.com');
+    getTestInstanceConfig().site.publicUrl = 'https://example.com';
     const addEndpointToImageUrl = await loadAddEndpointToImageUrl();
 
     const text = 'First /api/system/img/img1.png and second /api/system/img/img2.jpg here';
@@ -445,7 +457,7 @@ describe('addEndpointToImageUrl', () => {
   });
 
   it('should not modify non-matching paths', async () => {
-    vi.stubEnv('FE_DOMAIN', 'https://example.com');
+    getTestInstanceConfig().site.publicUrl = 'https://example.com';
     const addEndpointToImageUrl = await loadAddEndpointToImageUrl();
 
     const text = 'This is /api/other/endpoint and /some/path.png';
@@ -455,21 +467,21 @@ describe('addEndpointToImageUrl', () => {
   });
 
   it('should return empty string unchanged', async () => {
-    vi.stubEnv('FE_DOMAIN', 'https://example.com');
+    getTestInstanceConfig().site.publicUrl = 'https://example.com';
     const addEndpointToImageUrl = await loadAddEndpointToImageUrl();
     expect(addEndpointToImageUrl('')).toBe('');
   });
 
   it('should handle text with no image URLs', async () => {
-    vi.stubEnv('FE_DOMAIN', 'https://example.com');
+    getTestInstanceConfig().site.publicUrl = 'https://example.com';
     const addEndpointToImageUrl = await loadAddEndpointToImageUrl();
 
     const text = 'This is plain text with no image references at all.';
     expect(addEndpointToImageUrl(text)).toBe(text);
   });
 
-  it('should not double-prepend FE_DOMAIN to already-prefixed URLs with http', async () => {
-    vi.stubEnv('FE_DOMAIN', 'https://example.com');
+  it('should not double-prepend site.publicUrl to already-prefixed URLs with http', async () => {
+    getTestInstanceConfig().site.publicUrl = 'https://example.com';
     const addEndpointToImageUrl = await loadAddEndpointToImageUrl();
 
     const text = 'http://other.com/api/system/img/abc123.png';
@@ -478,8 +490,8 @@ describe('addEndpointToImageUrl', () => {
     expect(result).toBe(text);
   });
 
-  it('should handle FE_DOMAIN with trailing slash gracefully', async () => {
-    vi.stubEnv('FE_DOMAIN', 'https://example.com/');
+  it('should handle a normalized site URL', async () => {
+    getTestInstanceConfig().site.publicUrl = 'https://example.com';
     const { addEndpointToImageUrl: addEndpointToImageUrlWithBase } = await loadUtilsModule();
 
     const text = '/api/system/img/file-name_123.webp';
@@ -489,7 +501,7 @@ describe('addEndpointToImageUrl', () => {
   });
 
   it('should handle image URLs with various file extensions', async () => {
-    vi.stubEnv('FE_DOMAIN', 'https://example.com');
+    getTestInstanceConfig().site.publicUrl = 'https://example.com';
     const addEndpointToImageUrl = await loadAddEndpointToImageUrl();
 
     expect(addEndpointToImageUrl('/api/system/img/test.jpg')).toBe(
@@ -507,7 +519,7 @@ describe('addEndpointToImageUrl', () => {
   });
 
   it('should escape special characters in subRoute', async () => {
-    vi.stubEnv('FE_DOMAIN', 'https://example.com');
+    getTestInstanceConfig().site.publicUrl = 'https://example.com';
     vi.stubEnv('NEXT_PUBLIC_BASE_URL', '/fast.gpt');
     const addEndpointToImageUrl = await loadAddEndpointToImageUrl();
 

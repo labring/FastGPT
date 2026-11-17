@@ -24,6 +24,17 @@ export const isValidHttpUrl = (url?: string): boolean => {
   }
 };
 
+/** 子服务基地址会追加固定路径，因此不能包含认证信息、查询参数或片段。 */
+export const isValidServiceBaseUrl = (url?: string): boolean => {
+  const trimmed = url?.trim();
+  if (!trimmed || !isValidHttpUrl(trimmed) || /[?#\\"\u0000-\u001f\u007f]/.test(trimmed)) {
+    return false;
+  }
+
+  const parsed = new URL(trimmed);
+  return parsed.username === '' && parsed.password === '';
+};
+
 /**
  * 为缺少协议头的地址补全 `https://`。
  *

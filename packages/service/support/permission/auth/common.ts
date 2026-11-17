@@ -10,6 +10,7 @@ import { assertCancellation } from '../../../support/user/account/cancellation/g
 import { getUserIdByTmbId } from '../../../support/user/team/utils';
 import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { serviceEnv } from '../../../env';
+import { getSystemInstanceConfig } from '../../../common/system/systemInstanceConfig/runtime';
 import { ApiKeyTypeEnum } from '@fastgpt/global/support/openapi/constants';
 
 export const authCert = async (props: AuthModeType) => {
@@ -217,11 +218,11 @@ const getAuthCookieOptions = () => ({
   path: '/',
   httpOnly: true,
   sameSite: 'strict' as const,
-  secure: serviceEnv.AUTH_COOKIE_SECURE
+  secure: getSystemInstanceConfig().security.authCookieSecure
 });
 
 /**
- * 写入登录凭证 Cookie；启用 AUTH_COOKIE_SECURE 后，浏览器只会通过 HTTPS 发送凭证。
+ * 写入登录凭证 Cookie；读取当前实例策略，开启后浏览器只会通过 HTTPS 发送凭证。
  */
 export const setCookie = (res: NodeHttpResponse, token: string) => {
   res.setHeader(

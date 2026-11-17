@@ -34,7 +34,6 @@ const WorkflowEdit = () => {
     systemInitialized,
     isPlus: !!feConfigs?.isPlus,
     showAgentSandbox: !!feConfigs?.show_agent_sandbox,
-    showWorkflowBuilder: feConfigs?.show_workflow_builder !== false,
     canEdit
   });
 

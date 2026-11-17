@@ -1,7 +1,7 @@
+import { serviceEnv } from '@fastgpt/service/env';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useYuqueDatasetRequest } from '@fastgpt/service/core/dataset/apiDataset/yuqueDataset/api';
 import { createProxyAxios } from '@fastgpt/service/common/api/axios';
-import { serviceEnv } from '@fastgpt/service/env';
 
 const { request } = vi.hoisted(() => ({ request: vi.fn() }));
 vi.mock('@fastgpt/service/common/api/axios', () => ({

@@ -1,3 +1,4 @@
+import { isProVersion } from '../../../../common/system/constants';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
@@ -222,7 +223,7 @@ export const dispatchDatasetSearch = async (
       rerankWeight,
       rerankCandidateNum,
       collectionFilterMatch,
-      metadataFilterEnabled: Boolean(global.feConfigs.isPlus),
+      metadataFilterEnabled: isProVersion(),
       readableCollectionIdList
     };
     const {

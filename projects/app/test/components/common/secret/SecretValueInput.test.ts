@@ -5,6 +5,7 @@ import { createRoot, type Root } from 'react-dom/client';
 import { Simulate } from 'react-dom/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import SecretValueInput from '@/components/common/secret/SecretValueInput';
+import AdminSecretInput from '@/pageComponents/admin/settings/AdminSecretInput';
 
 vi.mock('@fastgpt/web/components/common/Icon', () => ({ default: () => null }));
 vi.mock('@fastgpt/web/hooks/useSafeTranslation', () => ({
@@ -45,7 +46,12 @@ describe('SecretValueInput', () => {
     vi.unstubAllGlobals();
   });
 
-  const render = async ({ isConfigured = false, isDisabled = false, value = '' } = {}) => {
+  const render = async ({
+    isConfigured = false,
+    isDisabled = false,
+    value = '',
+    multiline = false
+  } = {}) => {
     const Harness = () => {
       const [current, setCurrent] = useState({ value, isConfigured });
       return React.createElement(
@@ -54,6 +60,7 @@ describe('SecretValueInput', () => {
         React.createElement(SecretValueInput, {
           ...current,
           isDisabled,
+          multiline,
           onChange: (value) => {
             onChange(value);
             setCurrent({ value, isConfigured: false });
@@ -127,6 +134,53 @@ describe('SecretValueInput', () => {
     expect(onChange).toHaveBeenCalledExactlyOnceWith('');
     expect(container.querySelector('input')?.value).toBe('');
     expect(container.querySelector('button')).toBeNull();
+  });
+
+  it('preserves line breaks while replacing a configured multiline secret', async () => {
+    await render({ isConfigured: true, multiline: true });
+    await act(async () =>
+      container.querySelector<HTMLButtonElement>('[aria-label="common:Edit"]')!.click()
+    );
+    const textarea = container.querySelector('textarea');
+    expect(textarea?.value).toBe('');
+    await act(async () =>
+      Simulate.change(textarea!, { target: { value: 'first line\nsecond line' } } as any)
+    );
+    await click('Save');
+    expect(onChange).toHaveBeenCalledExactlyOnceWith('first line\nsecond line');
+    expect(container.querySelector('textarea')).toBeNull();
+  });
+
+  it('treats an untouched configured admin secret differently from an explicit clear', async () => {
+    const Harness = () => {
+      const [value, setValue] = useState<string>();
+      return React.createElement(AdminSecretInput, {
+        value,
+        isConfigured: true,
+        onChange: (next) => {
+          onChange(next);
+          setValue(next);
+        }
+      });
+    };
+    await act(async () =>
+      root.render(React.createElement(ChakraProvider, null, React.createElement(Harness)))
+    );
+    expect(container.textContent).toContain('common:had_auth_value');
+    await click('Edit');
+    await type('cancelled');
+    await click('Close');
+    expect(onChange).not.toHaveBeenCalled();
+    await click('Edit');
+    await type('replacement');
+    await click('Save');
+    expect(onChange).toHaveBeenLastCalledWith('replacement');
+    expect(container.textContent).toContain('common:had_auth_value');
+    await click('Edit');
+    await click('Save');
+    expect(onChange).toHaveBeenLastCalledWith('');
+    expect(container.querySelector('input')?.value).toBe('');
+    expect(container.textContent).not.toContain('common:had_auth_value');
   });
 
   it.each([false, true])(

@@ -1,4 +1,6 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { getTestInstanceConfig, setTestLicenseActive } from '@test/utils/instanceConfigSnapshot';
+import { getSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/runtime';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import type { UpdatePasswordBody } from '@fastgpt/global/openapi/support/user/account/password/api';
 import { createPasswordChangeSession } from '@fastgpt/service/support/user/account/password/service';
@@ -34,6 +36,7 @@ vi.mock('@fastgpt/service/support/user/lock', () => ({
 }));
 
 describe('password/update API', () => {
+  let originalSsoHandler: typeof global.getSsoConfiguredHandler;
   let testUser: any;
   let testTeam: any;
   let testTmb: any;
@@ -41,10 +44,12 @@ describe('password/update API', () => {
   const OLD_PASSWORD = 'old-password';
 
   beforeEach(async () => {
+    originalSsoHandler = global.getSsoConfiguredHandler;
     mocks.withUserLock.mockImplementation((_userId: string, fn: () => Promise<unknown>) => fn());
     mocks.assertPasswordUpdateRateLimit.mockResolvedValue(undefined);
-    global.feConfigs = { ...global.feConfigs, sso: undefined, isPlus: false };
-    global.systemEnv = { ...global.systemEnv, sso: undefined };
+    getTestInstanceConfig().auth.sso.disablePasswordForSsoUsers = false;
+    setTestLicenseActive(false);
+    getSystemInstanceConfig().proEnv.ssoUrl = '';
     testUser = await MongoUser.create({
       username: 'password-update-user',
       password: hashStr(OLD_PASSWORD)
@@ -61,6 +66,10 @@ describe('password/update API', () => {
       role: 'owner'
     });
     vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    global.getSsoConfiguredHandler = originalSsoHandler;
   });
 
   const getAuth = (userId = String(testUser._id), isRoot = false) =>
@@ -311,14 +320,10 @@ describe('password/update API', () => {
   });
 
   it('rejects a restricted SSO user before changing password or sessions', async () => {
+    global.getSsoConfiguredHandler = () => true;
     await MongoUser.updateOne({ _id: testUser._id }, { username: 'tenant-user' });
-    global.systemEnv = { ...global.systemEnv, sso: { url: 'https://sso.example.com' } };
-    global.feConfigs = {
-      ...global.feConfigs,
-      sso: {
-        disablePasswordForSsoUsers: true
-      }
-    };
+    getSystemInstanceConfig().proEnv.ssoUrl = 'https://sso.example.com';
+    getTestInstanceConfig().auth.sso.disablePasswordForSsoUsers = true;
     vi.mocked(delUserAllSession).mockClear();
 
     const response = await Call<UpdatePasswordBody, Record<string, never>, undefined>(

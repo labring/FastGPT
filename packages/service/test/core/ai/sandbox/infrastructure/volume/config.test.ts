@@ -1,3 +1,7 @@
+import {
+  createDefaultInstanceConfig,
+  getTestInstanceConfig
+} from '@test/utils/instanceConfigSnapshot';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const loadVolumeConfigModule = async () => {
@@ -11,15 +15,14 @@ describe('sandbox volume config', () => {
     vi.resetModules();
   });
 
-  it('reads volume-manager configuration from service env', async () => {
-    vi.doMock('@fastgpt/service/env', () => ({
-      serviceEnv: {
-        AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL: 'http://volume-manager.local',
-        AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN: 'volume-token',
-        AGENT_SANDBOX_OPENSANDBOX_VOLUME_NAME_PREFIX: 'custom-volume',
-        AGENT_SANDBOX_STORAGE_SIZE_GI: 5
-      }
-    }));
+  it('reads volume-manager configuration from instance config', async () => {
+    global.systemInstanceConfig = createDefaultInstanceConfig();
+    Object.assign(getTestInstanceConfig().subservice.agentSandbox.opensandbox, {
+      volumeManagerUrl: 'http://volume-manager.local',
+      volumeManagerToken: 'volume-token',
+      volumeNamePrefix: 'custom-volume'
+    });
+    getTestInstanceConfig().subservice.agentSandbox.common.storageSizeGi = 5;
 
     const { getVolumeManagerEnvConfig } = await loadVolumeConfigModule();
 
@@ -31,10 +34,10 @@ describe('sandbox volume config', () => {
     });
   });
   it('requires the volume-manager URL at the configuration boundary', async () => {
-    vi.doMock('@fastgpt/service/env', () => ({ serviceEnv: {} }));
+    global.systemInstanceConfig = createDefaultInstanceConfig();
     const { getVolumeManagerEnvConfig } = await loadVolumeConfigModule();
     expect(getVolumeManagerEnvConfig).toThrow(
-      'AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL is required'
+      'Configure the volume manager URL in Agent Sandbox admin settings'
     );
   });
 });

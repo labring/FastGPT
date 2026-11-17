@@ -1,4 +1,7 @@
-import { SystemMigrationStatusEnum } from '@fastgpt/global/migration/constants';
+import {
+  SystemMigrationStatusEnum,
+  systemMigrationStateCollectionName
+} from '@fastgpt/global/migration/constants';
 import type {
   SystemMigrationError,
   SystemMigrationFailedRecord,
@@ -9,7 +12,6 @@ import { connectionMongo, defineIndex, getMongoModel } from '@fastgpt/service/co
 
 const { Schema } = connectionMongo;
 
-export const SystemMigrationCollectionName = 'system_migration_states';
 export const SystemMigrationFailedRecordCollectionName = 'system_migration_failed_records';
 
 /**
@@ -161,7 +163,7 @@ const SystemMigrationStateSchema = new Schema<SystemMigrationStateSchemaType>(
 );
 
 export const MongoSystemMigrationState = getMongoModel<SystemMigrationStateSchemaType>(
-  SystemMigrationCollectionName,
+  systemMigrationStateCollectionName,
   SystemMigrationStateSchema
 );
 

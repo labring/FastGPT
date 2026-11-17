@@ -120,10 +120,9 @@ describe('PlanEditModal boolean overrides', () => {
       });
       expect(select.value).toBe(selection);
     }
-    const submit = Array.from(container.querySelectorAll('button')).find(
-      (button) => button.textContent === '确定'
-    );
-    await act(async () => submit!.click());
+    const buttons = container.querySelectorAll('button');
+    const submit = buttons[buttons.length - 1];
+    await act(async () => submit.click());
     expect(mocks.update).toHaveBeenCalledWith(
       expect.objectContaining({ canHideShareBrandOverride: expected, enableSandbox: expected })
     );
@@ -151,10 +150,8 @@ describe('PlanEditModal boolean overrides', () => {
     expect(select.value).toBe('inherit');
     expect((container.querySelector(`#${unchanged}`) as HTMLSelectElement).value).toBe('enabled');
 
-    const submit = Array.from(container.querySelectorAll('button')).find(
-      (button) => button.textContent === '确定'
-    );
-    await act(async () => submit!.click());
+    const buttons = container.querySelectorAll('button');
+    await act(async () => buttons[buttons.length - 1].click());
     expect(mocks.update).toHaveBeenCalledWith(
       expect.objectContaining({ [changed]: undefined, [unchanged]: true })
     );
@@ -179,10 +176,8 @@ describe('PlanEditModal boolean overrides', () => {
         select.dispatchEvent(new dom.window.Event('change', { bubbles: true }));
       });
     }
-    const submit = Array.from(container.querySelectorAll('button')).find(
-      (button) => button.textContent === '确定'
-    );
-    await act(async () => submit!.click());
+    const buttons = container.querySelectorAll('button');
+    await act(async () => buttons[buttons.length - 1].click());
     expect(getData).toHaveBeenCalledWith(1);
     expect(mocks.update).toHaveBeenCalledWith(
       expect.objectContaining({ canHideShareBrandOverride: undefined, enableSandbox: undefined })

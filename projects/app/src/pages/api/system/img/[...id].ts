@@ -6,7 +6,7 @@ import { readMongoImg } from '@fastgpt/service/common/file/image/controller';
 import { Types } from '@fastgpt/service/common/mongo';
 import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
 import { encodeS3ObjectKey } from '@fastgpt/service/common/s3/keySanitizer';
-import { storageDownloadUrlMode } from '@fastgpt/service/common/s3/config/constants';
+import { getStorageDownloadUrlMode } from '@fastgpt/service/common/s3/config/constants';
 import { handleS3ProxyDownload, handleS3ProxyRouteError } from '@/service/common/s3/proxy';
 
 // get the models available to the system
@@ -29,7 +29,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     // Next.js 已将动态路由参数解码，重新编码后才能命中存储中的 canonical key。
     const canonicalKey = encodeS3ObjectKey(joined);
 
-    if (storageDownloadUrlMode === 'short-redirect') {
+    if (getStorageDownloadUrlMode() === 'short-redirect') {
       const resolvedKey = await avatarSource.resolveExistingObjectKey(canonicalKey);
       if (!resolvedKey) {
         res.status(404).end();
