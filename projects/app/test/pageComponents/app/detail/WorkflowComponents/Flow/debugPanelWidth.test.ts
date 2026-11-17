@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getDebugPanelWidth } from '@/pageComponents/app/detail/WorkflowComponents/Flow/debugPanelWidth';
+import { getDebugPanelWidth } from '@/pageComponents/app/detail/WorkflowComponents/Flow/utils/debugPanelWidth';
 
 describe('调试面板宽度', () => {
   it('以热区左沿计算上限，并在左侧面板打开时收缩', () => {

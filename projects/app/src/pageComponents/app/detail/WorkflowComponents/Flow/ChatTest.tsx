@@ -24,7 +24,7 @@ import RunPreviewHeader from './RunPreviewHeader';
 import AppDetailPanelModal from '../../components/AppDetailPanelModal';
 import FullscreenButton from '@/components/common/FullscreenButton';
 import { WorkflowModalContext } from '../context/workflowModalContext';
-import { getDebugPanelWidth } from './debugPanelWidth';
+import { getDebugPanelWidth } from './utils/debugPanelWidth';
 
 type Props = {
   isOpen: boolean;
