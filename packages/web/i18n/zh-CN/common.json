@@ -1431,5 +1431,6 @@
   "puzzle_captcha_refreshed": "当前图片已失效，请尝试新图片",
   "puzzle_captcha_retry": "未能完成验证，请重新拖动",
   "puzzle_captcha_expired": "图片已过期，请换一张",
-  "puzzle_captcha_load_failed": "图片加载失败，请点击换一张"
+  "puzzle_captcha_load_failed": "图片加载失败，请点击换一张",
+  "core.dataset.error.permissionSyncManaged": "该知识库的文件权限由外部 API 文件库同步维护，无法在此修改"
 }

@@ -1,4 +1,5 @@
 import { bullMQ, type BullMQBinding } from '../binding';
+import { removeSupersededFailedJobs } from '../failed-job-cleanup';
 import { QueueNames } from '../names';
 import { defaultWorkerOptions, fastRetryJobOptions } from '../options';
 import type { Processor, Queue, Worker } from '../types';
@@ -21,12 +22,45 @@ export class DatasetSyncMQService {
     });
   }
 
-  /** 创建 dataset sync Worker；实际同步 processor 由 app/pro 注入。 */
+  /**
+   * 创建 dataset sync Worker；实际同步 processor 由 app/pro 注入。
+   *
+   * processor 成功后清理同库的历史失败记录：失败任务保留 1 万条且无 TTL，不回清只增不减。
+   * 清理异常只告警，不能把已成功的同步判失败。
+   */
   getWorker(processor: Processor<DatasetSyncJobData>): Worker<DatasetSyncJobData> {
-    return this.binding.getWorker<DatasetSyncJobData>(QueueNames.datasetSync, processor, {
-      concurrency: 1,
-      ...defaultWorkerOptions
-    });
+    return this.binding.getWorker<DatasetSyncJobData>(
+      QueueNames.datasetSync,
+      async (job, token) => {
+        const result = await processor(job, token);
+        const datasetId = String(job.data.datasetId);
+
+        await removeSupersededFailedJobs({
+          queue: this.getQueue(),
+          job,
+          match: (failedJob) => String(failedJob.data?.datasetId ?? '') === datasetId,
+          onRemoveError: (failedJob, error) => {
+            this.binding.getLogger().warn('[datasetSync] remove failed job failed', {
+              datasetId,
+              jobId: failedJob.id,
+              error
+            });
+          }
+        }).catch((error) => {
+          this.binding.getLogger().warn('[datasetSync] remove failed jobs failed', {
+            datasetId,
+            jobId: job.id,
+            error
+          });
+        });
+
+        return result;
+      },
+      {
+        concurrency: 1,
+        ...defaultWorkerOptions
+      }
+    );
   }
 
   /** 投递以 datasetId 去重的同步任务。 */

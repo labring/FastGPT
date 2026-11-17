@@ -193,6 +193,10 @@ export const serviceEnv = createEnv({
     DATASET_SYNONYM_ENABLED: BoolSchema.default(false).meta({
       description: '是否启用知识库同义词能力；关闭时不读取同义词配置或执行查询扩展'
     }),
+    DISABLE_APIDATASET_SUPER_ADMIN: BoolSchema.default(false).meta({
+      description:
+        '是否要求 root / 团队 owner 在 API 文件库（配置了 apiDatasetServer 的知识库）管理侧遵守文件 ACL；不影响普通知识库与检索'
+    }),
 
     // ==================== 并发控制与限制 ====================
     SYSTEM_MIGRATION_BATCH_SIZE: IntSchema.min(50).max(1000).default(100).meta({

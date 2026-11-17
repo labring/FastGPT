@@ -1431,5 +1431,6 @@
   "puzzle_captcha_refreshed": "현재 이미지는 더 이상 유효하지 않습니다. 새 이미지로 시도하세요.",
   "puzzle_captcha_retry": "확인에 실패했습니다. 새 이미지로 다시 시도하세요.",
   "puzzle_captcha_expired": "이미지가 만료되었습니다. 새 이미지를 받으세요.",
-  "puzzle_captcha_load_failed": "이미지를 불러오지 못했습니다. 새 이미지를 선택하세요."
+  "puzzle_captcha_load_failed": "이미지를 불러오지 못했습니다. 새 이미지를 선택하세요.",
+  "core.dataset.error.permissionSyncManaged": "이 지식 베이스의 파일 권한은 외부 API 파일 라이브러리에서 동기화되므로 여기서 수정할 수 없습니다"
 }

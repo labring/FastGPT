@@ -1431,5 +1431,6 @@
   "puzzle_captcha_refreshed": "This image is no longer valid. Try the new image.",
   "puzzle_captcha_retry": "Verification failed. Try the new image.",
   "puzzle_captcha_expired": "This image expired. Get a new image.",
-  "puzzle_captcha_load_failed": "Could not load the image. Select New image."
+  "puzzle_captcha_load_failed": "Could not load the image. Select New image.",
+  "core.dataset.error.permissionSyncManaged": "File permissions of this knowledge base are managed by the external API file library and cannot be edited here"
 }

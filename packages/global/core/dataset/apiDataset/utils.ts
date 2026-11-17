@@ -119,12 +119,21 @@ export const classifyApiDatasetError = (
   return toApiDatasetError({ code: 'UNKNOWN_ERROR', message: msg || '未知错误', status });
 };
 
+/** 外部文件权限同步是否开启。字段缺失（旧数据）视为关闭。 */
+export const isPermissionSyncDataset = (apiDatasetServer?: ApiDatasetServerType) =>
+  apiDatasetServer?.permissionSync === true;
+
 export const filterApiDatasetServerPublicData = (apiDatasetServer?: ApiDatasetServerType) => {
   if (!apiDatasetServer) return undefined;
 
-  const { apiServer, yuqueServer, feishuServer, dingtalkServer } = apiDatasetServer;
+  const { apiServer, yuqueServer, feishuServer, dingtalkServer, permissionSync, syncAllFiles } =
+    apiDatasetServer;
 
   return {
+    // 白名单重建：新增开关必须同时加在这里，否则详情接口会静默丢掉字段，
+    // 前端开关永远显示 false，且下次保存时把真实配置覆盖掉。
+    permissionSync: permissionSync === true,
+    syncAllFiles: syncAllFiles === true,
     apiServer: apiServer
       ? {
           baseUrl: apiServer.baseUrl,

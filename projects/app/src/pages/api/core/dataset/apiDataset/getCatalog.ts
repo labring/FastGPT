@@ -18,10 +18,10 @@ async function handler(
 
   await authCert({ req, authToken: true });
 
-  // Remove basePath from apiDatasetServer
+  // Remove basePath from apiDatasetServer（顶层的开关字段是布尔值，只有 provider 子对象才带 basePath）
   if (apiDatasetServer) {
     Object.values(apiDatasetServer).forEach((server) => {
-      if (server && 'basePath' in server && server.basePath) {
+      if (server && typeof server === 'object' && 'basePath' in server && server.basePath) {
         delete server.basePath;
       }
     });
