@@ -48,6 +48,8 @@ export type DatasetSynonymMatcher = {
   ): {
     transformedText: string;
     usedMappings: DatasetSynonymMappingMetadataType[];
+    /** 以标准词形式命中的词条（no-op 端子）：normalizedStandardizedTerm → standardizedTerm。 */
+    matchedStandardTerms?: [string, string][];
   };
 };
 
@@ -523,6 +525,7 @@ export const buildSynonymMatcher = (
       const normalizedCharacters = characters.map(normalizeMatchCharacter);
       const output: string[] = [];
       const usedMappings = new Map<string, DatasetSynonymMappingMetadataType>();
+      const matchedStandardTerms = new Map<string, string>();
 
       for (let start = 0; start < characters.length; ) {
         let current = root;
@@ -562,6 +565,12 @@ export const buildSynonymMatcher = (
 
         if (!matched.terminal.isSynonym) {
           output.push(matched.matchedTerm);
+          // 标准词命中（no-op terminal）也记录下来：问题侧反向匹配需要知道
+          // 分块正文以标准词形式命中了哪些词条（含最长匹配语义）。
+          matchedStandardTerms.set(
+            matched.terminal.mapping.normalizedStandardizedTerm,
+            matched.terminal.mapping.standardizedTerm
+          );
         } else {
           const { mapping } = matched.terminal;
           output.push(mapping.standardizedTerm);
@@ -582,7 +591,10 @@ export const buildSynonymMatcher = (
 
       return {
         transformedText: output.join(''),
-        usedMappings: [...usedMappings.values()]
+        usedMappings: [...usedMappings.values()],
+        // 标准词命中（no-op 端子）：normalizedStandardizedTerm → standardizedTerm。
+        // 供问题侧反向匹配判断「分块正文是否以标准词形式命中某词条」。
+        matchedStandardTerms: [...matchedStandardTerms.entries()]
       };
     }
   };

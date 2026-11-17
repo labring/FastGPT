@@ -370,4 +370,84 @@ describe('synonym search result enrichment', () => {
     });
     expect(standalone[0].synonymMappings).toEqual({ alias: 'standard-1' });
   });
+  it('respects longest-match semantics for query-side reverse matching', async () => {
+    mocks.matcher.mockImplementation(async ({ fileVersion }: { fileVersion: number }) => ({
+      ...buildSynonymMatcher([
+        {
+          logicalMappingId: `${id}-refund`,
+          datasetId,
+          fileVersion,
+          standardizedTerm: '退款',
+          normalizedStandardizedTerm: '退款',
+          synonymTerms: ['退钱'],
+          normalizedSynonymTerms: ['退钱']
+        },
+        {
+          logicalMappingId: `${id}-refuse`,
+          datasetId,
+          fileVersion,
+          standardizedTerm: '拒绝退费',
+          normalizedStandardizedTerm: '拒绝退费',
+          synonymTerms: ['不退款'],
+          normalizedSynonymTerms: ['不退款']
+        }
+      ]),
+      hasMappings: true
+    }));
+
+    // 正文「概不退款」：最长匹配命中「不退款」（转为拒绝退费），「退款」作为其
+    // 子串不再独立命中 → 问题侧「退钱 → 退款」被过滤，不误注入肯定对齐。
+    const compound = await attachSynonymMappingsToSearchResults({
+      teamId,
+      datasetIds: [datasetId],
+      results: [item('特价商品概不退款')],
+      queries: ['怎么退钱']
+    });
+    expect(compound[0].synonymMappings).toEqual({ 不退款: '拒绝退费' });
+
+    // 正文以标准词形式独立出现：问题侧映射正常保留
+    const standalone = await attachSynonymMappingsToSearchResults({
+      teamId,
+      datasetIds: [datasetId],
+      results: [item('支持退款')],
+      queries: ['怎么退钱']
+    });
+    expect(standalone[0].synonymMappings).toEqual({ 退钱: '退款' });
+  });
+
+  it('does not inject query mappings whose standard term is a substring of a longer matched term', async () => {
+    mocks.matcher.mockImplementation(async ({ fileVersion }: { fileVersion: number }) => ({
+      ...buildSynonymMatcher([
+        {
+          logicalMappingId: `${id}-apple`,
+          datasetId,
+          fileVersion,
+          standardizedTerm: '苹果',
+          normalizedStandardizedTerm: '苹果',
+          synonymTerms: ['林檎'],
+          normalizedSynonymTerms: ['林檎']
+        },
+        {
+          logicalMappingId: `${id}-iphone`,
+          datasetId,
+          fileVersion,
+          standardizedTerm: '苹果手机',
+          normalizedStandardizedTerm: '苹果手机',
+          synonymTerms: ['iPhone'],
+          normalizedSynonymTerms: ['iPhone']
+        }
+      ]),
+      hasMappings: true
+    }));
+
+    // 正文「苹果手机」按最长匹配只命中「苹果手机」标准词；「林檎 → 苹果」
+    // 不得因「苹果」是「苹果手机」子串而误注入。
+    const results = await attachSynonymMappingsToSearchResults({
+      teamId,
+      datasetIds: [datasetId],
+      results: [item('苹果手机维修指南')],
+      queries: ['林檎怎么挑']
+    });
+    expect(results[0].synonymMappings).toEqual({});
+  });
 });

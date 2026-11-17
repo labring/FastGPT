@@ -2,14 +2,7 @@ import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/ty
 import { MongoDatasetData } from '../data/schema';
 import { formatDatasetDataTextValue } from '../data/controller';
 import { getCachedDatasetSynonymConfig, getDatasetSynonymMatcher } from './entity';
-import { buildSynonymMatcher, normalizeSynonymTerm, type DatasetSynonymMatcher } from './utils';
-
-/**
- * 问题侧反向匹配的探针哨兵：把「标准词」插成同义词侧、标准词本身用哨兵占位，
- * 从而复用 matcher 的归一化与词边界语义判定标准词是否出现在正文里。
- * 哨兵字符不可能出现在正文中，避免与 no-op 标准词端子同节点互相遮蔽。
- */
-const SYNONYM_TERM_PROBE_SENTINEL = '\u0000';
+import { normalizeSynonymTerm, type DatasetSynonymMatcher } from './utils';
 import { getLogger, LogCategories } from '../../../common/logger';
 import { serviceEnv } from '../../../env';
 
@@ -109,8 +102,6 @@ export const attachSynonymMappingsToSearchResults = async ({
     string,
     ReturnType<DatasetSynonymMatcher['transform']>['usedMappings']
   >();
-  // 单标准词条 matcher 缓存（问题侧反向匹配的词边界判定用）
-  const termMatchers = new Map<string, DatasetSynonymMatcher>();
   const queryText = queries
     .map((query) => query.trim())
     .filter(Boolean)
@@ -161,43 +152,27 @@ export const attachSynonymMappingsToSearchResults = async ({
         }
 
         const chunkText = `${snapshot.q}\n${snapshot.a ?? ''}`;
-        const { usedMappings: chunkMappings } = matcher.transform(chunkText, {
+        const matchResult = matcher.transform(chunkText, {
           preserveMatchedTermCase: true
         });
-        // 问题侧映射：只保留标准词确实出现在本分块正文里的条目。
-        // 例：用户问「枕瓜排骨汤」、命中分块正文只写「冬瓜」，仍然附上「枕瓜 → 冬瓜」，
-        // 让回答模型能把问题措辞和引用内容对齐；无关分块不会拿到这组映射。
+        const chunkMappings = matchResult.usedMappings;
+        // 标准词命中集合：同一次 transform 扫描里，标准词作为 no-op 端子命中时
+        // 会被记录（见 buildSynonymMatcher 的 matchedStandardTerms）——命中判定
+        // 完全复用原 matcher 算法（最长匹配 + hasValidBoundary 词边界 + 大小写
+        // 归一化），不引入任何二次扫描或独立判定逻辑。
+        // 问题侧映射的保留条件：问题里的别名所对应的标准词，确实以标准词形式
+        // 命中了本分块正文（例：用户问「枕瓜排骨汤」、命中分块正文只写「冬瓜」，
+        // 仍附上「枕瓜 → 冬瓜」让回答模型对齐措辞；无关分块不会拿到这组映射）。
+        const standardHits = new Set(matchResult.matchedStandardTerms?.map(([, term]) => term) ?? []);
         if (queryText && !queryMappingsByMatcher.has(matcherKey)) {
           queryMappingsByMatcher.set(
             matcherKey,
             matcher.transform(queryText, { preserveMatchedTermCase: true }).usedMappings
           );
         }
-        // 标准词在正文中的命中判断必须复用 matcher 的归一化与词边界语义，不能用
-        // includes：大小写变体（「REFUND」vs「Refund」）会漏配，词中子串
-        // （cat ⊂ concatenate）会误配。用「把标准词当作同义词侧」的单词条 matcher
-        // 做命中判定，天然继承上述约定；按 matcher 版本+标准词缓存，避免重复建 trie。
-        const queryMappings = (queryMappingsByMatcher.get(matcherKey) ?? []).filter((mapping) => {
-          const termMatcherKey = `${matcherKey}:${mapping.standardizedTerm}`;
-          let termMatcher = termMatchers.get(termMatcherKey);
-          if (!termMatcher) {
-            termMatcher = buildSynonymMatcher([
-              {
-                logicalMappingId: mapping.mappingId,
-                datasetId: mapping.datasetId,
-                fileVersion: mapping.fileVersion,
-                // 标准词用哨兵占位：若把标准词同时插成同义词侧，它会与 no-op 的
-                // 标准词端子落在同一 trie 节点、被先命中的 no-op 端子遮蔽（产出 0 命中）。
-                standardizedTerm: SYNONYM_TERM_PROBE_SENTINEL,
-                normalizedStandardizedTerm: SYNONYM_TERM_PROBE_SENTINEL,
-                synonymTerms: [mapping.standardizedTerm],
-                normalizedSynonymTerms: [normalizeSynonymTerm(mapping.standardizedTerm)]
-              }
-            ]);
-            termMatchers.set(termMatcherKey, termMatcher);
-          }
-          return termMatcher.transform(chunkText).usedMappings.length > 0;
-        });
+        const queryMappings = (queryMappingsByMatcher.get(matcherKey) ?? []).filter((mapping) =>
+          standardHits.has(normalizeSynonymTerm(mapping.standardizedTerm))
+        );
 
         const mappings: Record<string, string> = Object.create(null);
 
