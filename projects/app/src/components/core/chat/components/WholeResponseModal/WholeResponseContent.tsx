@@ -8,12 +8,14 @@ export const WholeResponseContent = ({
   hideTabs,
   dataId,
   contentHeight,
+  isFullscreen = false,
   onOpenRequestIdDetail
 }: {
   activeModule: ChatHistoryItemResType;
   hideTabs?: boolean;
   dataId?: string;
   contentHeight?: number;
+  isFullscreen?: boolean;
   onOpenRequestIdDetail?: (requestId: string) => void;
 }) => {
   const contentRef = useRef<HTMLDivElement>(null);
@@ -45,10 +47,19 @@ export const WholeResponseContent = ({
             overflow: 'auto'
           })}
     >
-      <CommonInfoRows activeModule={activeModule} />
-      <AiChatRows activeModule={activeModule} onOpenRequestIdDetail={onOpenRequestIdDetail} />
-      <DatasetSearchRows activeModule={activeModule} dataId={dataId} />
-      <WorkflowResultRows activeModule={activeModule} contentHeight={contentHeight} />
+      <Box
+        w={'100%'}
+        maxW={isFullscreen ? '610px' : undefined}
+        mx={'auto'}
+        display={isFullscreen ? 'flex' : 'contents'}
+        flexDirection={'column'}
+        gap={3}
+      >
+        <CommonInfoRows activeModule={activeModule} />
+        <AiChatRows activeModule={activeModule} onOpenRequestIdDetail={onOpenRequestIdDetail} />
+        <DatasetSearchRows activeModule={activeModule} dataId={dataId} />
+        <WorkflowResultRows activeModule={activeModule} contentHeight={contentHeight} />
+      </Box>
     </Box>
   );
 };

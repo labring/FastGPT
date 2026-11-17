@@ -19,6 +19,7 @@ export type MyModalProps = Omit<ModalContentProps, 'title'> & {
   isLoading?: boolean;
   isOpen?: boolean;
   onClose?: () => void;
+  onCloseComplete?: () => void;
   closeOnOverlayClick?: boolean;
   blockScrollOnMount?: boolean;
   size?: 'sm' | 'md' | 'lg' | 'xl';
@@ -48,6 +49,7 @@ const sizeMap = {
 const MyModal = ({
   isOpen = true,
   onClose,
+  onCloseComplete,
   title,
   children,
   isCentered,
@@ -74,6 +76,7 @@ const MyModal = ({
     <Modal
       isOpen={isOpen}
       onClose={() => onClose?.()}
+      onCloseComplete={onCloseComplete}
       size={size}
       autoFocus={false}
       isCentered={isPc ? isCentered : true}

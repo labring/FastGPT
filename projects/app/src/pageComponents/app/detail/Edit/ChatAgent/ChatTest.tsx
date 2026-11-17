@@ -5,6 +5,9 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
 import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+import FullscreenButton from '@/components/common/FullscreenButton';
+import { useDebugFullscreen } from '../hooks/useDebugFullscreen';
+import DebugFullscreenContainer from '../components/DebugFullscreenContainer';
 
 import type { ChatAgentHelperRefType } from '@/components/core/chat/ChatAgentHelper';
 import ChatAgentHelper from '@/components/core/chat/ChatAgentHelper';
@@ -46,6 +49,8 @@ type Props = {
 };
 const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props) => {
   const { t } = useTranslation();
+  const fullscreen = useDebugFullscreen();
+  const { isFullscreen, toggle } = fullscreen;
   const { toast } = useToast();
   const { chatId, agentChatTestTab, setAgentChatTestTab } = useChatStore();
   const { feConfigs } = useSystemStore();
@@ -199,7 +204,7 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
   );
 
   return (
-    <Flex h={'full'} gap={2}>
+    <DebugFullscreenContainer fullscreen={fullscreen}>
       <MyBox
         flex={'1 0 0'}
         w={0}
@@ -210,7 +215,8 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
         pt={4}
         pb={0}
         {...cardStyles}
-        boxShadow={'3'}
+        bg={isFullscreen ? 'myGray.25' : cardStyles.bg}
+        boxShadow={isFullscreen ? 'none' : '3'}
       >
         <Flex px={[2, 5]} pb={2} alignItems={'center'}>
           <FillRowTabs<AgentChatTestTabEnum>
@@ -255,6 +261,7 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
                 }}
               />
             </MyTooltip>
+            <FullscreenButton isFullscreen={isFullscreen} onClick={toggle} />
           </Flex>
         </Flex>
         <Box flex={1} minH={0}>
@@ -339,7 +346,7 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
       {!feConfigs?.isPlus && (
         <ProModal isOpen={proModalOpen} onClose={() => setProModalOpen(false)} />
       )}
-    </Flex>
+    </DebugFullscreenContainer>
   );
 };
 
