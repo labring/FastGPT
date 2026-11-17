@@ -659,11 +659,9 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
 
         // 工具返回结构化 content 时，保留最终展示/计费文本作为 text part，
         // 事件、聊天记录和下一轮模型请求必须使用同一份内容。
-        const toolMessageContent = buildToolMessageContent({
-          content: toolContent,
-          text: toolFinalResponse,
-          preserveImageParts: !isCompressed
-        });
+        const toolMessageContent = isCompressed
+          ? toolFinalResponse
+          : buildToolMessageContent({ content: toolContent, text: toolFinalResponse });
 
         onToolRunEnd?.({
           call: tool,

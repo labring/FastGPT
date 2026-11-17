@@ -44,6 +44,7 @@ import {
 import {
   convertMcpToolContentToToolContent,
   extractAgentLoopCoreToolContent,
+  projectPluginModelContent,
   maskToolImagePayload
 } from '../../../agentLoopCore/domain/toolContent';
 
@@ -263,16 +264,17 @@ export const dispatchTool = async ({
         msg: result[NodeOutputKeyEnum.systemError]
       });
 
-      // 插件输出若显式声明了结构化 content，透传给 agent-loop 作为下一轮模型输入；
-      // response 仍是完整业务输出，两者互不替代。图片数据只保留在 content 通道里一份。
-      const content = extractAgentLoopCoreToolContent(result);
-      const responsePayload = content
-        ? maskToolImagePayload(result, { maskDataUrlParts: true })
-        : result;
+      // 插件多模态字段由当前执行版本的 outputSchema 标记。
+      const projected = projectPluginModelContent({
+        result,
+        outputSchema: toolDetail?.outputSchema,
+        onInvalidField: (field, reason) =>
+          logger.warn('Invalid plugin model content field', { field, reason })
+      });
 
       return {
-        response: JSON.stringify(responsePayload),
-        ...(content ? { content } : {}),
+        response: JSON.stringify(projected.responseResult),
+        ...(projected.content ? { content: projected.content } : {}),
         nodeResponse: getNodeResponse({
           result
         }),
@@ -329,10 +331,11 @@ export const dispatchTool = async ({
       const content = convertMcpToolContentToToolContent(
         (result as { content?: unknown } | undefined)?.content
       );
+      // 图片走 image_url part；文本里把 base64 换成占位。
+      const response = JSON.stringify(maskToolImagePayload(result));
       return {
-        // 图片走 image_url part；文本里把 base64 换成占位，避免同一张图在上下文里出现两份。
-        response: JSON.stringify(maskToolImagePayload(result)),
-        ...(content ? { content } : {}),
+        response,
+        ...(content ? { content: [{ type: 'text' as const, text: response }, ...content] } : {}),
         ...(errorMessage !== undefined ? { errorMessage } : {}),
         nodeResponse: {
           ...getNodeResponse({ result }),
@@ -407,7 +410,18 @@ export const dispatchTool = async ({
           result: data
         }),
         response: typeof responseData === 'object' ? JSON.stringify(responseData) : responseData,
-        ...(content ? { content } : {})
+        ...(content
+          ? {
+              content: [
+                {
+                  type: 'text' as const,
+                  text:
+                    typeof responseData === 'object' ? JSON.stringify(responseData) : responseData
+                },
+                ...content.filter((part) => part.type === 'image_url')
+              ]
+            }
+          : {})
       };
     } else {
       return getErrResponse("Can't find the tool");

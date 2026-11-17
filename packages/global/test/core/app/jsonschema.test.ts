@@ -898,6 +898,57 @@ describe('jsonSchema2NodeInput with anyOf/oneOf (union types)', () => {
 });
 
 describe('jsonSchema2NodeOutput', () => {
+  it('does not expose defaults for multimodal outputs', () => {
+    const output = jsonSchema2NodeOutput({
+      jsonSchema: {
+        properties: {
+          result: {
+            type: 'object',
+            'x-fastgpt-output-kind': 'model-content',
+            default: { value: [{ id: '1' }], images: ['secret'] },
+            'x-fastgpt-node-output': { defaultValue: { value: ['other'], images: ['secret'] } },
+            properties: { value: { type: 'array', items: { type: 'object' } } }
+          }
+        }
+      }
+    });
+    expect(output[0].valueType).toBe(WorkflowIOValueTypeEnum.arrayObject);
+    expect(output[0]).not.toHaveProperty('defaultValue');
+  });
+
+  it('does not follow references when checking the output marker', () => {
+    const output = jsonSchema2NodeOutput({
+      jsonSchema: {
+        properties: { result: { type: 'object', $ref: '#/$defs/content' } },
+        $defs: {
+          content: {
+            'x-fastgpt-output-kind': 'model-content',
+            properties: { value: { type: 'string' } }
+          }
+        }
+      }
+    });
+    expect(output[0].valueType).toBe(WorkflowIOValueTypeEnum.object);
+  });
+
+  it('uses the value schema of a marked multimodal output', () => {
+    const output = jsonSchema2NodeOutput({
+      jsonSchema: {
+        properties: {
+          result: {
+            type: 'object',
+            'x-fastgpt-output-kind': 'model-content',
+            properties: {
+              value: { type: 'array', items: { type: 'object' } },
+              images: { type: 'array' }
+            }
+          }
+        }
+      }
+    });
+    expect(output[0].valueType).toBe(WorkflowIOValueTypeEnum.arrayObject);
+  });
+
   it('should return empty array when properties is undefined', () => {
     const jsonSchema: JSONSchemaOutputType = {
       type: 'object'

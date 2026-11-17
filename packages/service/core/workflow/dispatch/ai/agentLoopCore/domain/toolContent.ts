@@ -1,8 +1,114 @@
 import {
+  MODEL_CONTENT_SCHEMA_KIND,
+  MODEL_CONTENT_SCHEMA_META_KEY
+} from '@fastgpt/global/core/app/tool/systemTool/constants';
+import {
   ChatCompletionToolMessageContentPartSchema,
   type ChatCompletionToolMessageContentPart
 } from '@fastgpt/global/core/ai/llm/type';
 import { providerImageMimeType } from '@fastgpt/global/common/file/constants';
+
+type JsonSchemaRecord = Record<string, unknown>;
+const PLUGIN_TOOL_RESPONSE_KEY = '__fastgptPluginModelContent' as const;
+
+export type PluginToolResponse = {
+  [PLUGIN_TOOL_RESPONSE_KEY]: true;
+  result: unknown;
+  content: ChatCompletionToolMessageContentPart[];
+};
+
+export const createPluginToolResponse = ({
+  result,
+  content
+}: {
+  result: unknown;
+  content?: ChatCompletionToolMessageContentPart[];
+}): PluginToolResponse => ({
+  [PLUGIN_TOOL_RESPONSE_KEY]: true,
+  result,
+  content: content ?? []
+});
+
+export const unwrapPluginToolResponse = (value: unknown): PluginToolResponse | undefined => {
+  if (!isPlainRecord(value) || value[PLUGIN_TOOL_RESPONSE_KEY] !== true) return;
+
+  const content = ChatCompletionToolMessageContentPartSchema.array().safeParse(value.content);
+  if (!content.success || !('result' in value)) return;
+  return {
+    [PLUGIN_TOOL_RESPONSE_KEY]: true,
+    result: value.result,
+    content: content.data
+  };
+};
+
+const isPlainRecord = (value: unknown): value is JsonSchemaRecord =>
+  !!value && typeof value === 'object' && !Array.isArray(value);
+
+/** 将标记字段投影为工作流值、模型文本及按字段顺序排列的内容。 */
+export const projectPluginModelContent = ({
+  result,
+  outputSchema,
+  onInvalidField
+}: {
+  result: unknown;
+  outputSchema?: unknown;
+  onInvalidField?: (field: string, reason: 'invalid-shape' | 'invalid-part') => void;
+}): {
+  workflowResult: unknown;
+  responseResult: unknown;
+  content?: ChatCompletionToolMessageContentPart[];
+} => {
+  if (
+    !isPlainRecord(result) ||
+    !isPlainRecord(outputSchema) ||
+    !isPlainRecord(outputSchema.properties)
+  ) {
+    return { workflowResult: result, responseResult: result };
+  }
+
+  const workflowResult = { ...result };
+  const responseResult = { ...result };
+  const ordinary = { ...result };
+  const parts: ChatCompletionToolMessageContentPart[] = [];
+  let marked = false;
+  for (const [key, property] of Object.entries(outputSchema.properties)) {
+    if (
+      !isPlainRecord(property) ||
+      property[MODEL_CONTENT_SCHEMA_META_KEY] !== MODEL_CONTENT_SCHEMA_KIND ||
+      !Object.hasOwn(result, key)
+    )
+      continue;
+    const field = result[key];
+    if (!isPlainRecord(field) || !Object.hasOwn(field, 'value')) {
+      // 标记字段不合法时不能把潜在图片原样泄露到工作流或模型文本。
+      delete workflowResult[key];
+      delete responseResult[key];
+      delete ordinary[key];
+      marked = true;
+      onInvalidField?.(key, 'invalid-shape');
+      continue;
+    }
+    marked = true;
+    workflowResult[key] = field.value;
+    const valueText = JSON.stringify(field.value);
+    responseResult[key] = valueText;
+    delete ordinary[key];
+    parts.push({ type: 'text', text: valueText ?? 'null' });
+    const parsed = ChatCompletionToolMessageContentPartSchema.array().safeParse(field.images);
+    if (!parsed.success || parsed.data.some((part) => part.type !== 'image_url')) {
+      onInvalidField?.(key, 'invalid-part');
+      continue;
+    }
+    parts.push(...parsed.data);
+  }
+  return {
+    workflowResult,
+    responseResult,
+    ...(marked
+      ? { content: [{ type: 'text' as const, text: JSON.stringify(ordinary) }, ...parts] }
+      : {})
+  };
+};
 
 /**
  * 从工具输出中提取结构化 tool content。
@@ -65,7 +171,7 @@ export const maskToolImagePayload = (
   toolResponses: unknown,
   options: { maskDataUrlParts?: boolean } = {}
 ): unknown => {
-  if (!toolResponses || typeof toolResponses !== 'object') return toolResponses;
+  if (!isPlainRecord(toolResponses)) return toolResponses;
 
   const content = (toolResponses as { content?: unknown }).content;
   if (!Array.isArray(content)) return toolResponses;

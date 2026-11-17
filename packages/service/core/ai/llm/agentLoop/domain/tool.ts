@@ -17,39 +17,23 @@ export type AgentLoopToolCatalog = {
   batchToolSize?: number;
 };
 
-/**
- * 构造写入 tool message 的 content：
- * - 无结构化 parts 时直接用文本字符串；
- * - 保留 images 时把最终要发送的文本作为 text part 拼在图片前；
- * - 压缩改写正文时只返回最终文本，避免原图重新进入展示和模型上下文。
- *
- * fastAgent 与 piAgent 共用这层组合规则，避免两条 provider 路径对同一个工具结果
- * 给出不同的内容。
- *
- * 图片数量按 `maxToolImagePartAmount` 截断：一次工具调用列出很多文件时，每轮请求都会重复
- * 下载并内联这些图片，必须限制单个工具结果的视觉输入量。
- */
+/** 保留完整模型内容，校验 parts 并限制单次工具返回的图片数量。 */
 export const buildToolMessageContent = ({
   content,
-  text,
-  preserveImageParts = true
+  text
 }: {
   content?: ChatCompletionToolMessageContentPart[];
   text: string;
-  preserveImageParts?: boolean;
 }): string | ChatCompletionToolMessageContentPart[] => {
-  if (!content?.length || !preserveImageParts) return text;
-
-  const images = content
-    .map((part) => ChatCompletionToolMessageContentPartSchema.safeParse(part))
-    .filter(
-      (parsed): parsed is { success: true; data: ChatCompletionToolMessageContentPart } =>
-        parsed.success && parsed.data.type === 'image_url'
-    )
-    .map((parsed) => parsed.data)
-    .slice(0, maxToolImagePartAmount);
-
-  return images.length ? [{ type: 'text', text }, ...images] : text;
+  if (!content?.length) return text;
+  let imageCount = 0;
+  const parts = content.flatMap((part) => {
+    const parsed = ChatCompletionToolMessageContentPartSchema.safeParse(part);
+    if (!parsed.success) return [];
+    if (parsed.data.type === 'image_url' && ++imageCount > maxToolImagePartAmount) return [];
+    return [parsed.data];
+  });
+  return parts.length ? parts : text;
 };
 
 /**

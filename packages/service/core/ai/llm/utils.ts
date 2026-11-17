@@ -788,7 +788,31 @@ export const loadRequestMessages = async ({
    * 这时的图片消息必须排在全部 tool 结果之后，否则会打断 tool_call 结果回填顺序。
    * 这里先给 tool 消息登记图片，拼装阶段再按“整轮 tool 结果”统一追加。
    */
-  const toolImageParts = new WeakMap<ChatCompletionMessageParam, ChatCompletionContentPart[]>();
+  const toolMediaParts = new WeakMap<ChatCompletionMessageParam, ChatCompletionContentPart[]>();
+
+  /** 拆分工具文本和多模态内容，保留媒体与对应文本的顺序。 */
+  const extractToolMediaContent = async (content: ChatCompletionContentPart[]) => {
+    const supportedContent = content
+      .map(filterSupportedUserContentPart)
+      .filter((part): part is ChatCompletionContentPart => part !== undefined);
+    const textParts = supportedContent.filter(
+      (part): part is ChatCompletionContentPartText => part.type === 'text'
+    );
+    const mediaParts = supportedContent.filter((part) => part.type !== 'text');
+
+    // 多段文本需要随媒体一起发送，才能保留字段值与媒体的对应关系。
+    const orderedParts = textParts.length > 1 ? supportedContent : mediaParts;
+    let imageCount = 0;
+    const normalizedMediaParts = (
+      await normalizeToolMediaContentParts(
+        (await Promise.all(orderedParts.map(inlineSandboxPreviewImage))).filter(
+          (part): part is ChatCompletionContentPart => Boolean(part)
+        )
+      )
+    ).filter((part) => part.type !== 'image_url' || ++imageCount <= maxToolImagePartAmount);
+
+    return { textParts, mediaParts: normalizedMediaParts };
+  };
 
   const loadMessages = (
     await Promise.all(
@@ -856,44 +880,26 @@ export const loadRequestMessages = async ({
           };
         } else if (item.role === ChatCompletionRequestMessageRoleEnum.Tool) {
           // 供应商接口的 tool content 只接受字符串或文本 parts，图片不能放进 tool 消息。
-          // 文本保留在 tool 消息里；图片先按模型能力过滤、再归一化，登记到 toolImageParts，
+          // 文本保留在 tool 消息里；图片先按模型能力过滤、再归一化，登记到 toolMediaParts，
           // 由拼装阶段转换成这一轮 tool 结果之后的 user 视觉消息。
           if (!Array.isArray(item.content)) {
             return item;
           }
 
-          const supportedContent = item.content
-            .map((part) => filterSupportedUserContentPart(part as ChatCompletionContentPart))
-            .filter(Boolean) as ChatCompletionContentPart[];
-
-          const textParts = supportedContent.filter(
-            (part): part is ChatCompletionContentPartText => part.type === 'text'
-          );
-          const mediaParts = supportedContent.filter((part) => part.type !== 'text');
-
-          const normalizedTextParts = (await normalizeMediaContentParts(
-            textParts
-          )) as ChatCompletionContentPartText[];
-          const normalizedMediaParts = (
-            await normalizeToolMediaContentParts(
-              (await Promise.all(mediaParts.map(inlineSandboxPreviewImage))).filter(
-                (part): part is ChatCompletionContentPart => Boolean(part)
-              )
-            )
-          ).slice(0, maxToolImagePartAmount);
+          const { textParts, mediaParts } = await extractToolMediaContent(item.content);
 
           const toolMessage = {
             ...item,
             content:
-              normalizedTextParts.length === 0
+              textParts.length === 0
                 ? 'none'
-                : normalizedTextParts.length === 1
-                  ? normalizedTextParts[0].text
-                  : normalizedTextParts
+                : textParts.length === 1
+                  ? textParts[0].text
+                  : textParts
           } as ChatCompletionMessageParam;
 
-          if (normalizedMediaParts.length > 0) {
-            toolImageParts.set(toolMessage, normalizedMediaParts);
+          if (mediaParts.some((part) => part.type !== 'text')) {
+            toolMediaParts.set(toolMessage, mediaParts);
           }
 
           return toolMessage;
@@ -908,36 +914,36 @@ export const loadRequestMessages = async ({
    * 同一轮的全部 tool 结果必须连续回填，工具图片消息统一追加在这一轮 tool 结果之后。
    * 否则 assistant(A,B) 的回填会变成 tool A → user(image) → tool B，打断协议顺序。
    */
-  const appendToolImagesAfterToolRun = (messages: ChatCompletionMessageParam[]) => {
+  const appendToolMediaAfterToolRun = (messages: ChatCompletionMessageParam[]) => {
     const result: ChatCompletionMessageParam[] = [];
-    let pendingToolImages: ChatCompletionContentPart[] = [];
+    let pendingToolMedia: ChatCompletionContentPart[] = [];
 
-    const flushToolImages = () => {
-      if (pendingToolImages.length === 0) return;
+    const flushToolMedia = () => {
+      if (pendingToolMedia.length === 0) return;
       result.push({
         role: ChatCompletionRequestMessageRoleEnum.User,
-        content: pendingToolImages
+        content: pendingToolMedia
       } as ChatCompletionMessageParam);
-      pendingToolImages = [];
+      pendingToolMedia = [];
     };
 
     messages.forEach((message) => {
       if (message.role === ChatCompletionRequestMessageRoleEnum.Tool) {
         result.push(message);
-        const images = toolImageParts.get(message);
-        if (images?.length) {
-          pendingToolImages.push(...images);
+        const media = toolMediaParts.get(message);
+        if (media?.length) {
+          pendingToolMedia.push(...media);
         }
         return;
       }
 
-      flushToolImages();
+      flushToolMedia();
       result.push(message);
     });
-    flushToolImages();
+    flushToolMedia();
 
     return result;
   };
 
-  return appendToolImagesAfterToolRun(loadMessages);
+  return appendToolMediaAfterToolRun(loadMessages);
 };

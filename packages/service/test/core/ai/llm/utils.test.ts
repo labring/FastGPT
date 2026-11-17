@@ -1531,6 +1531,50 @@ describe('loadRequestMessages function tests', () => {
       ]);
     });
 
+    it('keeps each value next to its images in the provider vision message', async () => {
+      multimediaEnv.MULTIPLE_DATA_TO_BASE64 = false;
+      const content = [
+        { type: 'text' as const, text: '{"jobId":"1"}' },
+        { type: 'text' as const, text: '[1]' },
+        { type: 'image_url' as const, image_url: { url: 'https://example.com/1.png' } },
+        { type: 'text' as const, text: '[2]' },
+        { type: 'image_url' as const, image_url: { url: 'https://example.com/2.png' } }
+      ];
+      const result = await loadRequestMessages({
+        useVision: true,
+        messages: [
+          { role: ChatCompletionRequestMessageRoleEnum.User, content: 'Hello' },
+          {
+            role: ChatCompletionRequestMessageRoleEnum.Tool,
+            tool_call_id: 'call1',
+            content
+          }
+        ]
+      });
+      expect(result[2].content).toEqual(content);
+    });
+
+    it('preserves the order of complete multi-text tool content', async () => {
+      multimediaEnv.MULTIPLE_DATA_TO_BASE64 = false;
+      const image = { type: 'image_url' as const, image_url: { url: 'https://example.com/1.png' } };
+      const result = await loadRequestMessages({
+        useVision: true,
+        messages: [
+          { role: ChatCompletionRequestMessageRoleEnum.User, content: 'Hello' },
+          {
+            role: ChatCompletionRequestMessageRoleEnum.Tool,
+            tool_call_id: 'call1',
+            content: [{ type: 'text', text: 'one' }, { type: 'text', text: 'two' }, image]
+          }
+        ]
+      });
+      expect(result[2].content).toEqual([
+        { type: 'text', text: 'one' },
+        { type: 'text', text: 'two' },
+        image
+      ]);
+    });
+
     it('should drop a tool image that fails to load and keep the tool text', async () => {
       multimediaEnv.MULTIPLE_DATA_TO_BASE64 = true;
       mockGetImageBase64.mockRejectedValue(new Error('download failed'));

@@ -2,10 +2,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createAgentLoopCoreWorkflowToolRunner } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/application/runtime/workflowToolRunner';
 import {
   convertMcpToolContentToToolContent,
+  createPluginToolResponse,
   extractAgentLoopCoreToolContent,
+  projectPluginModelContent,
   maskToolImagePayload
 } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/domain/toolContent';
 import { dispatchUpdateVariable } from '@fastgpt/service/core/workflow/dispatch/tools/runUpdateVar';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 
 const createCall = ({
   id = 'call_1',
@@ -79,6 +82,7 @@ describe('createAgentLoopCoreWorkflowToolRunner', () => {
 
     // ToolCall 节点里的 MCP 工具同样要能把原生图片块变成视觉输入。
     expect(result.content).toEqual([
+      { type: 'text', text: result.response },
       { type: 'image_url', image_url: { url: 'data:image/png;base64,AAAA' } }
     ]);
     // 文本里不能再带一份 base64：图片已经由 content part 承载。
@@ -540,6 +544,69 @@ describe('createAgentLoopCoreWorkflowToolRunner', () => {
     expect(runtimeEdges[0]).not.toHaveProperty('status');
   });
 
+  it('preserves the projected plugin content through the workflow tool runner', async () => {
+    const content = [
+      { type: 'text' as const, text: '{}' },
+      { type: 'text' as const, text: '"summary"' },
+      { type: 'image_url' as const, image_url: { url: 'https://files.example.com/chart.png' } }
+    ];
+    const { runTool } = createRunner({
+      runtimeNodes: [{ nodeId: 'plugin', inputs: [], outputs: [] }],
+      runtimeEdges: [],
+      getToolInfo: () => ({ type: 'user', name: 'Plugin', rawData: { nodeId: 'plugin' } }),
+      runWorkflowTool: vi.fn(async () => ({
+        flowResponses: [],
+        flowUsages: [],
+        assistantResponses: [],
+        toolResponses: createPluginToolResponse({ result: { summary: '"summary"' }, content })
+      }))
+    });
+    await expect(runTool({ call: createCall({ name: 'plugin' }) })).resolves.toEqual(
+      expect.objectContaining({
+        response: '{\n  "summary": "\\"summary\\""\n}',
+        content
+      })
+    );
+  });
+
+  it('does not fall back to legacy content shape for a plugin without schema', async () => {
+    const { runTool } = createRunner({
+      runtimeNodes: [{ nodeId: 'plugin', inputs: [], outputs: [] }],
+      runtimeEdges: [],
+      getToolInfo: () => ({
+        type: 'user',
+        name: 'Plugin',
+        rawData: {
+          nodeId: 'plugin',
+          flowNodeType: FlowNodeTypeEnum.tool,
+          toolConfig: { systemTool: { toolId: 'systemTool-plugin' } }
+        }
+      }),
+      runWorkflowTool: vi.fn(async () => ({
+        flowResponses: [],
+        flowUsages: [],
+        assistantResponses: [],
+        toolResponses: createPluginToolResponse({
+          result: {
+            content: [
+              { type: 'text', text: 'legacy' },
+              { type: 'image_url', image_url: { url: '[image omitted]' } }
+            ]
+          }
+        })
+      }))
+    });
+
+    const result = await runTool({ call: createCall({ name: 'plugin' }) });
+    expect(result.content).toBeUndefined();
+    expect(JSON.parse(result.response)).toEqual({
+      content: [
+        { type: 'text', text: 'legacy' },
+        { type: 'image_url', image_url: { url: '[image omitted]' } }
+      ]
+    });
+  });
+
   it('isolates input values between repeated calls to the same tool', async () => {
     const runtimeNodes = [
       {
@@ -697,6 +764,77 @@ describe('extractAgentLoopCoreToolContent', () => {
         ]
       })
     ).toBeUndefined();
+  });
+});
+
+describe('projectPluginModelContent', () => {
+  it('projects workflow and response values and keeps each value beside its images', () => {
+    const image = { type: 'image_url', image_url: { url: 'https://files.example.com/chart.png' } };
+    const result = {
+      jobId: 'job-1',
+      first: { value: [1, 2], images: [image] },
+      second: { value: 'ok', images: [] }
+    };
+    const marked = { 'x-fastgpt-output-kind': 'model-content' };
+    expect(
+      projectPluginModelContent({
+        result,
+        outputSchema: {
+          properties: { jobId: {}, first: marked, second: marked }
+        }
+      })
+    ).toEqual({
+      workflowResult: { jobId: 'job-1', first: [1, 2], second: 'ok' },
+      responseResult: { jobId: 'job-1', first: '[1,2]', second: '"ok"' },
+      content: [
+        { type: 'text', text: '{"jobId":"job-1"}' },
+        { type: 'text', text: '[1,2]' },
+        image,
+        { type: 'text', text: '"ok"' }
+      ]
+    });
+    expect(result.first.images).toEqual([image]);
+  });
+
+  it('does not follow references to find a marker', () => {
+    const result = { field: { value: 'ok', images: [] } };
+    expect(
+      projectPluginModelContent({
+        result,
+        outputSchema: {
+          properties: { field: { $ref: '#/$defs/marked' } },
+          $defs: { marked: { 'x-fastgpt-output-kind': 'model-content' } }
+        }
+      })
+    ).toEqual({ workflowResult: result, responseResult: result });
+  });
+
+  it('does not infer unmarked content and excludes invalid images', () => {
+    const onInvalidField = vi.fn();
+    const result = {
+      plain: { value: 1, images: [] },
+      marked: {
+        value: false,
+        images: [{ type: 'image_url', image_url: { url: 'javascript:alert(1)' } }]
+      }
+    };
+    expect(
+      projectPluginModelContent({
+        result,
+        outputSchema: {
+          properties: { plain: {}, marked: { 'x-fastgpt-output-kind': 'model-content' } }
+        },
+        onInvalidField
+      })
+    ).toEqual({
+      workflowResult: { plain: result.plain, marked: false },
+      responseResult: { plain: result.plain, marked: 'false' },
+      content: [
+        { type: 'text', text: JSON.stringify({ plain: result.plain }) },
+        { type: 'text', text: 'false' }
+      ]
+    });
+    expect(onInvalidField).toHaveBeenCalledWith('marked', 'invalid-part');
   });
 });
 

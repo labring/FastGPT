@@ -988,11 +988,12 @@ export const GPTMessages2Chats = ({
           const toolCalls = item.tool_calls as ChatCompletionMessageToolCall[];
 
           const tools = toolCalls.flatMap<ToolModuleResponseItemType>((tool) => {
-            const toolContent = normalizedMessages.find(
+            const toolMessage = normalizedMessages.find(
               (msg) =>
                 msg.role === ChatCompletionRequestMessageRoleEnum.Tool &&
                 msg.tool_call_id === tool.id
-            )?.content;
+            );
+            const toolContent = toolMessage?.content;
             const toolResponse = getToolResponseText(toolContent);
             const parsedContent =
               ChatCompletionToolMessageContentPartSchema.array().safeParse(toolContent);

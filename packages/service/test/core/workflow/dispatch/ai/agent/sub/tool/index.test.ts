@@ -17,6 +17,7 @@ const {
   mcpToolCallMock,
   runToolStreamMock,
   getSystemToolRuntimeMock,
+  getSystemToolDetailMock,
   mockLogger
 } = vi.hoisted(() => ({
   authAppByTmbIdMock: vi.fn(),
@@ -27,6 +28,7 @@ const {
   mcpToolCallMock: vi.fn(),
   runToolStreamMock: vi.fn(),
   getSystemToolRuntimeMock: vi.fn(),
+  getSystemToolDetailMock: vi.fn(),
   mockLogger: {
     debug: vi.fn(),
     info: vi.fn(),
@@ -82,7 +84,8 @@ vi.mock('@fastgpt/service/thirdProvider/fastgptPlugin', () => ({
 vi.mock('@fastgpt/service/core/app/tool/systemTool/systemTool.repo', () => ({
   SystemToolRepo: {
     getInstance: vi.fn(() => ({
-      getSystemToolRuntime: getSystemToolRuntimeMock
+      getSystemToolRuntime: getSystemToolRuntimeMock,
+      getSystemToolDetail: getSystemToolDetailMock
     }))
   }
 }));
@@ -120,6 +123,10 @@ const createDispatchToolProps = (
   }) as any;
 
 describe('dispatchTool runtime toolset auth', () => {
+  beforeEach(() => {
+    getSystemToolDetailMock.mockResolvedValue({ outputSchema: undefined });
+  });
+
   it.each([false, true])('preserves Agent MCP results and detects isError=%s', async (isError) => {
     const tool = { name: 'search', description: 'Search' };
     const nodes = [
@@ -141,15 +148,54 @@ describe('dispatchTool runtime toolset auth', () => {
     expect(JSON.parse(result.response)).toEqual(toolResult);
   });
 
-  it('extracts structured content from plugin output and keeps inline image data out of the text', async () => {
-    const imagePart = {
+  it('projects plugin values and orders each value before its images', async () => {
+    const marked = { type: 'object', 'x-fastgpt-output-kind': 'model-content' };
+    getSystemToolDetailMock.mockResolvedValueOnce({
+      outputSchema: { properties: { summary: marked, charts: marked } }
+    });
+    getSystemToolRuntimeMock.mockResolvedValueOnce({
+      id: 'search',
+      version: '2.0.0',
+      currentCost: 0,
+      systemKeyCost: 0
+    });
+    const image = {
       type: 'image_url' as const,
-      image_url: { url: 'data:image/png;base64,AAAA' }
+      image_url: { url: 'https://files.example.com/chart.png' }
     };
     runToolStreamMock.mockResolvedValueOnce({
       output: {
         jobId: 'task-123',
-        content: [{ type: 'text', text: '{"jobId":"task-123"}' }, imagePart]
+        summary: { value: 'ready', images: [image] },
+        charts: { value: [42], images: [] }
+      }
+    });
+    const props = createDispatchToolProps({ systemTool: { toolId: 'systemTool-search' } });
+    props.tool.version = '2.0.0';
+    const result = await dispatchTool(props);
+    expect(getSystemToolDetailMock).toHaveBeenCalledWith(
+      expect.objectContaining({ pluginId: 'systemTool-search', version: '2.0.0' })
+    );
+    expect(JSON.parse(result.response)).toEqual({
+      jobId: 'task-123',
+      summary: '"ready"',
+      charts: '[42]'
+    });
+    expect(result.content).toEqual([
+      { type: 'text', text: '{"jobId":"task-123"}' },
+      { type: 'text', text: '"ready"' },
+      image,
+      { type: 'text', text: '[42]' }
+    ]);
+  });
+
+  it('does not infer legacy content when plugin output schema is unavailable', async () => {
+    runToolStreamMock.mockResolvedValueOnce({
+      output: {
+        content: [
+          { type: 'text', text: 'legacy' },
+          { type: 'image_url', image_url: { url: '[image omitted]' } }
+        ]
       }
     });
 
@@ -157,10 +203,15 @@ describe('dispatchTool runtime toolset auth', () => {
       createDispatchToolProps({ systemTool: { toolId: 'systemTool-search' } })
     );
 
-    // content 通道承载图片，业务字段仍留在 response 文本里。
-    expect(result.content).toEqual([{ type: 'text', text: '{"jobId":"task-123"}' }, imagePart]);
-    expect(JSON.parse(result.response).jobId).toBe('task-123');
-    expect(result.response).not.toContain('AAAA');
+    expect(result.content).toBeUndefined();
+    expect(mockLogger.warn).not.toHaveBeenCalledWith(
+      'Plugin output schema unavailable; skip model content extraction',
+      { toolId: 'systemTool-search' }
+    );
+    expect(JSON.parse(result.response).content).toEqual([
+      { type: 'text', text: 'legacy' },
+      { type: 'image_url', image_url: { url: '[image omitted]' } }
+    ]);
   });
 
   it('converts MCP image blocks into image parts and masks the base64 text', async () => {
@@ -184,6 +235,7 @@ describe('dispatchTool runtime toolset auth', () => {
     );
 
     expect(result.content).toEqual([
+      { type: 'text', text: result.response },
       { type: 'image_url', image_url: { url: 'data:image/png;base64,AAAA' } }
     ]);
     // 文本里不再带一份 base64；原始结果仍保留在节点响应里供详情展示。

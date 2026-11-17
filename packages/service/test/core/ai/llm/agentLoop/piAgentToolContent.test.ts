@@ -46,7 +46,10 @@ describe('piAgent tool content composition', () => {
     const response = '{"jobId":"task-123"}';
     const executeTool = vi.fn(async () => ({
       response,
-      content: [{ type: 'image_url', image_url: { url: 'data:image/png;base64,AAAA' } }],
+      content: [
+        { type: 'text', text: response },
+        { type: 'image_url', image_url: { url: 'data:image/png;base64,AAAA' } }
+      ],
       assistantMessages: [],
       usages: [],
       stop: false
@@ -67,7 +70,10 @@ describe('piAgent tool content composition', () => {
     const response = '{"jobId":"task-123"}';
     const executeTool = vi.fn(async () => ({
       response,
-      content: [{ type: 'image_url', image_url: { url: 'https://files.example.com/chart.png' } }],
+      content: [
+        { type: 'text', text: response },
+        { type: 'image_url', image_url: { url: 'https://files.example.com/chart.png' } }
+      ],
       assistantMessages: [],
       usages: [],
       stop: false

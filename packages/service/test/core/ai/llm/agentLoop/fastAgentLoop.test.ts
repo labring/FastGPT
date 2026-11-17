@@ -775,7 +775,7 @@ describe('runFastAgentMainLoop', () => {
 
     const executeTool = vi.fn(async () => ({
       response: '{"jobId":"task-123"}',
-      content: [imagePart],
+      content: [{ type: 'text' as const, text: '{"jobId":"task-123"}' }, imagePart],
       assistantMessages: [],
       usages: [],
       stop: false
@@ -815,7 +815,7 @@ describe('runFastAgentMainLoop', () => {
     ]);
     const executeTool = vi.fn(async () => ({
       response: JSON.stringify({ image: imagePart.image_url.url }),
-      content: [imagePart],
+      content: [{ type: 'text' as const, text: '{"jobId":"task-123"}' }, imagePart],
       assistantMessages: [],
       usages: [],
       stop: false
@@ -862,7 +862,7 @@ describe('runFastAgentMainLoop', () => {
       ]);
       const executeTool = vi.fn(async () => ({
         response: '{"jobId":"task-123"}',
-        content: [imagePart],
+        content: [{ type: 'text' as const, text: '{"jobId":"task-123"}' }, imagePart],
         assistantMessages: [],
         usages: [],
         stop: false
@@ -1000,74 +1000,30 @@ describe('runFastAgentMainLoop', () => {
 });
 
 describe('buildToolMessageContent', () => {
-  it('returns the final text when no content parts are provided', () => {
-    expect(buildToolMessageContent({ text: 'summary' })).toBe('summary');
-    expect(buildToolMessageContent({ content: [], text: 'summary' })).toBe('summary');
-  });
-
-  it('prepends the final text and keeps image parts', () => {
-    const content: ChatCompletionToolMessageContentPart[] = [
-      { type: 'image_url', image_url: { url: 'data:image/png;base64,aW1hZ2U=' } }
-    ];
-
-    expect(buildToolMessageContent({ content, text: 'summary' })).toEqual([
-      { type: 'text', text: 'summary' },
-      { type: 'image_url', image_url: { url: 'data:image/png;base64,aW1hZ2U=' } }
-    ]);
-  });
-
-  it('caps the image parts so one tool result cannot flood the request', () => {
-    const content: ChatCompletionToolMessageContentPart[] = Array.from(
-      { length: 6 },
-      (_, index) => ({
-        type: 'image_url' as const,
-        image_url: { url: `data:image/png;base64,IMG${index}` }
-      })
-    );
-
-    const result = buildToolMessageContent({ content, text: 'summary' });
-
-    expect(Array.isArray(result)).toBe(true);
-    expect(result).toHaveLength(1 + 4);
-  });
-
-  it('replaces raw text parts with the final text', () => {
-    const content: ChatCompletionToolMessageContentPart[] = [
-      { type: 'text', text: 'raw uncompressed output' },
-      { type: 'image_url', image_url: { url: 'data:image/png;base64,aW1hZ2U=' } }
-    ];
-
-    expect(buildToolMessageContent({ content, text: 'summary' })).toEqual([
-      { type: 'text', text: 'summary' },
-      { type: 'image_url', image_url: { url: 'data:image/png;base64,aW1hZ2U=' } }
-    ]);
-  });
-
-  it('drops image parts when compression produced the final text', () => {
-    const content: ChatCompletionToolMessageContentPart[] = [
-      { type: 'image_url', image_url: { url: 'data:image/png;base64,aW1hZ2U=' } }
-    ];
-
-    expect(buildToolMessageContent({ content, text: 'summary', preserveImageParts: false })).toBe(
-      'summary'
-    );
-  });
-
-  it('keeps valid images and drops unsupported image values', () => {
+  it('rejects invalid image parts while retaining complete text', () => {
     const content = [
-      { type: 'text' as const, text: 'raw output' },
-      { type: 'image_url' as const, image_url: { url: 'https://example.com/chart.png' } },
+      { type: 'text' as const, text: 'result' },
       { type: 'image_url' as const, image_url: { url: 'not-a-url' } },
-      {
-        type: 'image_url' as const,
-        image_url: { url: 'data:image/png;base64,aW1hZ2U=' }
-      }
+      { type: 'image_url' as const, image_url: { url: 'https://example.com/image.png' } }
     ];
-
-    expect(buildToolMessageContent({ content, text: 'summary' })).toEqual([
-      { type: 'text', text: 'summary' },
-      { type: 'image_url', image_url: { url: 'https://example.com/chart.png' } },
-      { type: 'image_url', image_url: { url: 'data:image/png;base64,aW1hZ2U=' } }
+    expect(buildToolMessageContent({ content, text: 'fallback' })).toEqual([
+      content[0],
+      content[2]
     ]);
+    expect(buildToolMessageContent({ content: [], text: 'fallback' })).toBe('fallback');
+  });
+
+  it('keeps complete content in order and limits valid images', () => {
+    const image = { type: 'image_url' as const, image_url: { url: 'https://example.com/a.png' } };
+    const content = [
+      { type: 'text' as const, text: '{}' },
+      { type: 'text' as const, text: 'one' },
+      image,
+      { type: 'text' as const, text: 'two' },
+      ...Array(5).fill(image)
+    ];
+    const result = buildToolMessageContent({ content, text: 'fallback' });
+    expect(result).toEqual(content.slice(0, 7));
+    expect(buildToolMessageContent({ text: 'fallback' })).toBe('fallback');
   });
 });
