@@ -203,3 +203,4 @@ These migrations run automatically; no manual execution is required.
 7. **[System and operations]** Removed standalone evaluation workspace configuration and related Pro scripts, commands, and historical assets to simplify development tooling.
 8. **[System and operations]** The Marketplace’s default type-check scope now excludes the Workflow core and CLI packages, reducing interference from type checks across workspaces.
 9. **[System and operations]** Upgraded Mongoose to `8.24.8` and the Plugin SDK to `1.2.0-beta.2`, updating Plugin streaming response types.
+10. **[System and operations]** Development deployment templates now use Node.js or Python commands to check the health of Code Sandbox, OpenSandbox, and the volume manager. The development Plugin service uses a dedicated database and waits for MongoDB to become healthy before starting.
