@@ -8,7 +8,7 @@ type TopBannerProps = {
 };
 
 /**
- * Renders the Sealos Desktop launch banner for Chinese docs and syncs the desktop sticky nav offset.
+ * Renders the Sealos Desktop launch banner for Chinese docs and syncs `--fd-banner-height`.
  */
 export default function TopBanner({ lang }: TopBannerProps) {
   const ref = useRef<HTMLElement>(null);
@@ -21,13 +21,7 @@ export default function TopBanner({ lang }: TopBannerProps) {
       return;
     }
 
-    const desktop = window.matchMedia('(min-width: 768px)');
     const updateHeight = () => {
-      // The banner scrolls with the page on mobile, so only desktop needs the sticky nav offset.
-      if (!desktop.matches) {
-        document.documentElement.style.removeProperty('--fd-banner-height');
-        return;
-      }
       document.documentElement.style.setProperty(
         '--fd-banner-height',
         `${Math.ceil(element.getBoundingClientRect().height)}px`
@@ -37,11 +31,9 @@ export default function TopBanner({ lang }: TopBannerProps) {
     updateHeight();
     const observer = new ResizeObserver(updateHeight);
     observer.observe(element);
-    desktop.addEventListener('change', updateHeight);
 
     return () => {
       observer.disconnect();
-      desktop.removeEventListener('change', updateHeight);
       document.documentElement.style.removeProperty('--fd-banner-height');
     };
   }, [visible]);
@@ -52,11 +44,11 @@ export default function TopBanner({ lang }: TopBannerProps) {
     <aside
       ref={ref}
       aria-label="Sealos Desktop 正式上线"
-      className="relative z-40 border-b border-fd-border/60 bg-fd-background/95 px-2 py-1 backdrop-blur-md md:sticky md:top-0 md:px-6 md:py-2"
+      className="sticky top-0 z-40 border-b border-fd-border/60 bg-fd-background/95 px-2 py-1 backdrop-blur-md md:px-6 md:py-2"
     >
       <style>
         {
-          ':root { --fd-banner-height: 0px; } @media (min-width: 768px) { :root { --fd-banner-height: 76px; } }'
+          ':root { --fd-banner-height: 56px; } @media (min-width: 768px) { :root { --fd-banner-height: 76px; } }'
         }
       </style>
       <div className="mx-auto flex w-full items-center justify-between gap-2 rounded-[12px] border border-[#DCE6F7] bg-[linear-gradient(90deg,#F4F6FF_0%,#F8FAFF_45%,#EAF3FF_100%)] px-2.5 py-1.5 shadow-[0_1px_2px_rgba(15,23,42,0.03)] md:gap-3 md:rounded-[14px] md:px-5 md:py-3 dark:border-[#1E3A5F]/70 dark:bg-[linear-gradient(90deg,#0F172A_0%,#111C35_45%,#0F213E_100%)] dark:shadow-[0_1px_2px_rgba(0,0,0,0.4)]">
