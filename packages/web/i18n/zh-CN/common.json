@@ -402,7 +402,7 @@
   "core.chat.Run test": "调试",
   "resize_debug_panel": "调整调试面板宽度",
   "enter_fullscreen": "进入全屏",
-  "exit_fullscreen": "退出全屏",
+  "exit_fullscreen": "ESC 退出全屏",
   "core.chat.Select dataset": "选择知识库",
   "core.chat.Select dataset Desc": "选择一个知识库存储预期答案",
   "core.chat.Send Message": "发送",

@@ -402,7 +402,7 @@
   "core.chat.Run test": "Debug",
   "resize_debug_panel": "Resize debug panel",
   "enter_fullscreen": "Enter fullscreen",
-  "exit_fullscreen": "Exit fullscreen",
+  "exit_fullscreen": "ESC Exit fullscreen",
   "core.chat.Select dataset": "Select Dataset",
   "core.chat.Select dataset Desc": "Select a Dataset to store the expected answer",
   "core.chat.Send Message": "Send",

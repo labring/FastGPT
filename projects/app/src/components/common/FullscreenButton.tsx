@@ -19,10 +19,6 @@ const FullscreenButton = ({
       <IconButton
         aria-label={label}
         size={'smSquare'}
-        w={'30px'}
-        h={'30px'}
-        minW={'30px'}
-        minH={'30px'}
         variant={'ghost'}
         bg={'transparent'}
         color={'myGray.900'}
@@ -32,8 +28,8 @@ const FullscreenButton = ({
         icon={
           <MyIcon
             name={isFullscreen ? 'common/exitFullscreen' : 'fullScreen'}
-            w={'16px'}
-            h={'16px'}
+            w={'14px'}
+            h={'14px'}
           />
         }
       />

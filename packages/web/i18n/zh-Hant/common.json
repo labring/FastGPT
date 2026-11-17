@@ -402,7 +402,7 @@
   "core.chat.Run test": "除錯",
   "resize_debug_panel": "調整除錯面板寬度",
   "enter_fullscreen": "進入全螢幕",
-  "exit_fullscreen": "退出全螢幕",
+  "exit_fullscreen": "ESC 退出全螢幕",
   "core.chat.Select dataset": "選擇知識庫",
   "core.chat.Select dataset Desc": "選擇一個知識庫來儲存預期回答",
   "core.chat.Send Message": "傳送",

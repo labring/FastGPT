@@ -10,7 +10,6 @@ import { useChatTest } from '../../useChatTest';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
 import { PluginRunBoxTabEnum } from '@/components/core/chat/ChatContainer/PluginRunBox/constants';
-import { ChatBoxContentMaxWidth } from '@/components/core/chat/ChatContainer/ChatBox/constants';
 import ChatItemContextProvider, { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import ChatRecordContextProvider, {
   ChatRecordContext
@@ -204,12 +203,7 @@ const ChatTest = ({ isOpen, nodes = [], edges = [], onClose, chatId }: Props) =>
             overflowY={isPlugin ? 'hidden' : 'auto'}
             overflowX={'hidden'}
           >
-            <Box
-              w={'100%'}
-              maxW={isPlugin ? '700px' : ChatBoxContentMaxWidth}
-              h={'100%'}
-              mx={'auto'}
-            >
+            <Box w={'100%'} maxW={isPlugin ? '700px' : undefined} h={'100%'} mx={'auto'}>
               <ChatContainer />
             </Box>
           </Box>

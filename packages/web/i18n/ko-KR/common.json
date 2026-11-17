@@ -400,7 +400,7 @@
   "core.chat.Run test": "디버그",
   "resize_debug_panel": "디버그 패널 너비 조절",
   "enter_fullscreen": "전체 화면으로 보기",
-  "exit_fullscreen": "전체 화면 종료",
+  "exit_fullscreen": "ESC 전체 화면 종료",
   "core.chat.Select dataset": "데이터셋 선택",
   "core.chat.Select dataset Desc": "예상 답변을 저장할 데이터셋을 선택하세요",
   "core.chat.Send Message": "전송",
