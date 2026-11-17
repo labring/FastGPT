@@ -8,6 +8,8 @@
 | V2 | 2026-11-17 | 评审后修订 | 不新增集合，身份绑定内嵌为 `users.accounts`；SSO/注册用户随机 username + 开放修改 |
 | **V2.1（本文）** | 2026-11-17 | 当前有效版本 | **username 生成策略延后**：本期沿用现有代码逻辑（同步账号 = 同步下来的 externalId），不做随机生成；把"username 生成"抽象为**可替换策略位**，为后续切换随机生成预留空间。username 修改功能与 `accounts` 模型不变 |
 
+> 注：V1 全文存档于内部评审文档《单同步源多SSO通用设计.md》，未随代码仓库提交；本文中 "V1 §x" 引用仅作评审对照。
+
 ### 0.1 评审意见与本文响应
 
 | # | 评审意见 | V2 响应 | 对应章节 |
@@ -217,19 +219,20 @@ accounts: UserAccountBinding[];    // 默认 []；存量账号回填前视为空
 index({ 'accounts.source': 1, 'accounts.externalId': 1 })
 ```
 
-登录解析查询：
+登录解析查询（`status` 不进查询条件，先判歧义再判行状态）：
 
 ```ts
-const user = await MongoUser.findOne(
-  { accounts: { $elemMatch: { source, externalId, status: 'active' } } },
+const users = await MongoUser.find(
+  { accounts: { $elemMatch: { source, externalId } } },
   { projection: { username: 1, contact: 1, status: 1, accounts: 1 } }
-);
+).limit(2);
 ```
 
-- 命中且行 `status=active` → 得到 userId；
-- 命中但行 `status=disabled` → 拒绝（该身份已禁用）；
-- 未命中 → 首绑（6.2）；
-- **查询返回多个文档（同人两行/串号）→ 不猜，拒绝并告警**（P6），进去重审计处理（5.4.3）。
+- **返回 2 个文档（跨账号重复绑定/串号）→ 不猜，拒绝并告警**（P6），进去重审计处理（5.4.3）；
+- 唯一命中且行 `status=active` → 得到 userId；
+- 唯一命中但行 `status=disabled` → 拒绝（该身份已禁用）——disabled 不能靠查询过滤，
+  否则禁用身份会被误判成「未绑定」而重新走回退/首绑；
+- 未命中 → 过渡期回退（6.1）→ 首绑（6.2）。
 
 #### 5.3.4 为什么内嵌数组在 V2 可行（逐条回应 V1 5.3.3）
 
@@ -323,19 +326,27 @@ bindAccount(userId, row):
 
 ```text
 1. sso 返回 source + externalId + profile
-2. 查 MongoUser: { accounts: { $elemMatch: { source, externalId, status } } }
-   - 命中且 active   → 得到 userId
-   - 命中但 disabled → 拒绝（该身份已禁用）
-   - 多文档命中      → 拒绝 + 告警（去重审计处理，P6）
-   - 未命中          → 回退判定（过渡期兼容）→ 首绑策略（6.2）
+2. 查 MongoUser.find({ accounts: { $elemMatch: { source, externalId } } }, projection).limit(2)
+   （status **不进查询条件**：disabled 必须显式拒绝，若进过滤会把禁用身份误判成
+    「未绑定」而重新走回退/首绑；limit(2) 用于发现跨账号重复绑定）
+   - 2 个文档命中     → 拒绝 + 告警（去重审计处理，P6），先判歧义再判状态
+   - 唯一命中 active  → 得到 userId
+   - 唯一命中 disabled → 拒绝（该身份已禁用）
+   - 未命中           → 回退判定（过渡期兼容）→ 首绑策略（6.2）
 2.5 回退判定（过渡期兼容，回填完成前生效）
-   - 按现有逻辑用 username（= externalId 形态）命中账号
+   - **范围**：仅限 sso 显式声明了存量 username（legacyUsername）的来源——即旧单实例
+     部署中 username = externalId（或旧前缀形态）的那批存量账号。候选只有
+     legacyUsername 本身，**不做 externalId 形态的泛化推导**：同类型多实例的
+     externalId 会重名（A、B 两家公司都有 userid 001），username 全局唯一不构成
+     「同人」证据；未声明 legacyUsername 的新来源一律遵守首绑／人工绑定
    - 命中 → 走既有 usernameLoginCore 语义，并补写 (source, externalId) 的 accounts 行
         补写不加跨账号锁（useLock=false）：目标账号已被 username 唯一确定，
         条件原子 $push 自身幂等；并发重复登录时后到者走 matchedCount=0 重读仲裁
    - 未命中 → 首绑策略
-   ※ 该分支刻意放在首绑策略之前：存量账号必须收敛到 username 锚点，
-     否则会被 matchKeys 误匹配成别的账号或被 admin_bind 拒绝——过渡期设计意图
+   ※ 该分支刻意放在首绑策略之前（仅对进入本分支的旧来源）：存量账号必须收敛到
+     username 锚点，否则会被 matchKeys 误匹配成别的账号或被 admin_bind 拒绝
+   ※ **退出条件**：回填（5.5）完成后 accounts 点查先命中，本分支自然失效；
+     username 生成策略切换（6.3 随机化）时整体移除
 3. 首绑策略
    - auto_link：按该来源的 matchKeys（mobile/email）依次查 MongoUser
         唯一命中 → bindAccount 写行（记录 matchKey/matchValue）

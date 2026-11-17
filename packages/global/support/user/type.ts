@@ -60,6 +60,8 @@ export type UserModelSchema = {
   meta?: UserMetaType;
   /** 外部身份绑定数组；存量账号回填前视为空，读写走统一 helper */
   accounts?: UserAccountBindingType[];
+  /** 外部同步来源；设置后同步按来源匹配成员，不再依赖 username 前缀。旧账号无来源时不落该字段 */
+  syncSource?: string;
 };
 
 export const UserSchema = z.object({
