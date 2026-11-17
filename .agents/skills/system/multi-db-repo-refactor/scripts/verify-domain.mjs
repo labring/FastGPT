@@ -110,13 +110,17 @@ const legacySource = (() => {
 if (legacySource !== null && fs.existsSync(mongoSchemaPath)) {
   const oldIndexes = extractDefineIndexes(legacySource);
   const newIndexes = extractDefineIndexes(fs.readFileSync(mongoSchemaPath, 'utf8'));
-  const toSignature = (idx) => `${idx.deprecated ? 'DEP' : 'ACT'}:${idx.keySummary}`;
-  const newSigs = new Set(newIndexes.map(toSignature));
+  const newSigs = new Set(newIndexes.map((idx) => idx.signature));
 
   for (const oldIdx of oldIndexes) {
-    const sig = toSignature(oldIdx);
-    if (!newSigs.has(sig)) {
-      failures.push(`[Indexes] Missing defineIndex from legacy schema: ${sig}`);
+    if (!newSigs.has(oldIdx.signature)) {
+      const optsText =
+        Object.keys(oldIdx.criticalOptions).length > 0
+          ? `, options=${JSON.stringify(oldIdx.criticalOptions)}`
+          : '';
+      failures.push(
+        `[Indexes] Missing or altered defineIndex from legacy schema: ${oldIdx.deprecated ? 'DEP' : 'ACT'} name=${oldIdx.name ?? '(unknown)'}, key=${oldIdx.keySummary}${optsText}`
+      );
     }
   }
 } else if (legacySchemaArg === undefined && gitLegacyArg === undefined) {
