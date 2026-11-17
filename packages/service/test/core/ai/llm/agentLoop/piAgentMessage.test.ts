@@ -1,8 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { convertMessages } from '@mariozechner/pi-ai/openai-completions';
-import { serviceEnv } from '@fastgpt/service/env';
-
-const previewProxyEnv: { AGENT_SANDBOX_PREVIEW_PROXY_URL?: string | undefined } = serviceEnv;
+import { getTestInstanceConfig } from '@test/utils/instanceConfigSnapshot';
 import {
   convertChatMessagesToPiAgentMessages,
   convertPiAgentMessagesToChatMessages,
@@ -645,8 +643,9 @@ describe('piAgent message conversion', () => {
   });
 
   it('masks sandbox preview urls in image placeholders when vision is disabled', async () => {
-    const original = previewProxyEnv.AGENT_SANDBOX_PREVIEW_PROXY_URL;
-    previewProxyEnv.AGENT_SANDBOX_PREVIEW_PROXY_URL = 'https://sandbox-preview.example.com';
+    const proxy = getTestInstanceConfig().subservice.agentSandbox.proxy;
+    const original = proxy.previewUrl;
+    proxy.previewUrl = 'https://sandbox-preview.example.com';
     try {
       const result = await convertToolResponseContentToPiContent(
         [
@@ -662,14 +661,15 @@ describe('piAgent message conversion', () => {
 
       expect(result).toEqual([{ type: 'text', text: '[Image: sandbox preview file]' }]);
     } finally {
-      previewProxyEnv.AGENT_SANDBOX_PREVIEW_PROXY_URL = original;
+      proxy.previewUrl = original;
     }
   });
 
   it('masks sandbox preview urls when image download fails', async () => {
-    const original = previewProxyEnv.AGENT_SANDBOX_PREVIEW_PROXY_URL;
-    previewProxyEnv.AGENT_SANDBOX_PREVIEW_PROXY_URL = 'https://sandbox-preview.example.com';
-    vi.mocked(getImageBase64).mockRejectedValue(new Error('download failed'));
+    const proxy = getTestInstanceConfig().subservice.agentSandbox.proxy;
+    const original = proxy.previewUrl;
+    proxy.previewUrl = 'https://sandbox-preview.example.com';
+    vi.mocked(getImageBase64).mockRejectedValueOnce(new Error('download failed'));
     try {
       const result = await convertToolResponseContentToPiContent(
         [
@@ -685,7 +685,7 @@ describe('piAgent message conversion', () => {
 
       expect(result).toEqual([{ type: 'text', text: '[Image: sandbox preview file]' }]);
     } finally {
-      previewProxyEnv.AGENT_SANDBOX_PREVIEW_PROXY_URL = original;
+      proxy.previewUrl = original;
     }
   });
 

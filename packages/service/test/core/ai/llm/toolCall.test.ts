@@ -7,9 +7,7 @@ import type {
   ChatCompletionTool
 } from '@fastgpt/global/core/ai/llm/type';
 import { describe, expect, it } from 'vitest';
-import { serviceEnv } from '@fastgpt/service/env';
-
-const previewProxyEnv: { AGENT_SANDBOX_PREVIEW_PROXY_URL?: string | undefined } = serviceEnv;
+import { getTestInstanceConfig } from '@test/utils/instanceConfigSnapshot';
 
 describe('parsePromptToolCall function tests', () => {
   describe('Basic scenarios', () => {
@@ -740,8 +738,9 @@ describe('promptToolCallMessageRewrite function tests', () => {
     });
 
     it('should mask sandbox preview urls in tool image placeholders', () => {
-      const original = previewProxyEnv.AGENT_SANDBOX_PREVIEW_PROXY_URL;
-      previewProxyEnv.AGENT_SANDBOX_PREVIEW_PROXY_URL = 'https://sandbox-preview.example.com';
+      const proxy = getTestInstanceConfig().subservice.agentSandbox.proxy;
+      const original = proxy.previewUrl;
+      proxy.previewUrl = 'https://sandbox-preview.example.com';
       try {
         const messages: ChatCompletionMessageParam[] = [
           { role: 'user', content: 'Test' },
@@ -766,7 +765,7 @@ describe('promptToolCallMessageRewrite function tests', () => {
           '<ToolResponse>\n[Image: sandbox preview file]\n</ToolResponse>'
         );
       } finally {
-        previewProxyEnv.AGENT_SANDBOX_PREVIEW_PROXY_URL = original;
+        proxy.previewUrl = original;
       }
     });
 
