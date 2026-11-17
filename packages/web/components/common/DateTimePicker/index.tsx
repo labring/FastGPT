@@ -5,9 +5,9 @@ import { format } from 'date-fns';
 import { DayPicker, type Matcher } from 'react-day-picker';
 import 'react-day-picker/dist/style.css';
 import { zhCN } from 'date-fns/locale/zh-CN';
-import { useTranslation } from 'next-i18next';
 import MyIcon from '../Icon';
 import { CalendarNavigation } from './CalendarNavigation';
+import { DatePickerClearButton, datePickerClearStyles } from './DatePickerClearButton';
 import { useCloseOnFlowNodeDragAreaPointerDown } from '../../../hooks/useCloseOnFlowNodeDragAreaPointerDown';
 
 export * from './SingleDateTimePicker';
@@ -31,7 +31,6 @@ type DateTimePickerProps = {
  * - 非受控模式下：内部维护选中日期，支持 defaultDate 初始化，用户选择后更新内部状态。
  */
 const DateTimePicker = (rawProps: DateTimePickerProps) => {
-  const { t } = useTranslation();
   const isControlled = 'selectedDateTime' in rawProps;
   const {
     onChange,
@@ -130,28 +129,7 @@ const DateTimePicker = (rawProps: DateTimePickerProps) => {
         pr={3}
         position={'relative'}
         data-picker-open={showSelected ? '' : undefined}
-        sx={
-          selectedDate
-            ? {
-                '&[data-picker-open], &:hover, &:focus-within': { paddingRight: '4px' },
-                '&[data-picker-open] [data-clear-button], &:hover [data-clear-button], &:focus-within [data-clear-button]':
-                  {
-                    opacity: 1,
-                    pointerEvents: 'auto',
-                    position: 'static'
-                  },
-                '&[data-picker-open] [data-date-calendar], &:hover [data-date-calendar], &:focus-within [data-date-calendar]':
-                  {
-                    display: 'none'
-                  },
-                '@media (hover: none)': {
-                  paddingRight: '4px',
-                  '[data-clear-button]': { opacity: 1, pointerEvents: 'auto', position: 'static' },
-                  '[data-date-calendar]': { display: 'none' }
-                }
-              }
-            : undefined
-        }
+        sx={selectedDate ? datePickerClearStyles : undefined}
         py={1}
         borderRadius={'sm'}
         fontSize={'sm'}
@@ -175,35 +153,16 @@ const DateTimePicker = (rawProps: DateTimePickerProps) => {
           <MyIcon name={'date'} w={'16px'} h={'16px'} color={'myGray.600'} />
         </Box>
         {selectedDate && (
-          <Box
-            as={'button'}
-            type={'button'}
-            aria-label={t('common:Clear')}
-            data-clear-button
-            position={'absolute'}
-            right={'4px'}
-            opacity={0}
-            pointerEvents={'none'}
-            flexShrink={0}
-            w={'1.75rem'}
-            h={'1.75rem'}
-            borderRadius={'full'}
-            _hover={{ bg: 'rgba(17, 24, 36, 0.05)' }}
-            display={'flex'}
-            alignItems={'center'}
-            justifyContent={'center'}
-            disabled={isDisabled}
-            onKeyDown={(event: React.KeyboardEvent<HTMLButtonElement>) => event.stopPropagation()}
+          <DatePickerClearButton
+            isDisabled={isDisabled}
+            color={'myGray.600'}
             ml={2}
-            onClick={(event: React.MouseEvent<HTMLButtonElement>) => {
-              event.stopPropagation();
+            onClear={() => {
               if (!isControlled) setInternalSelectedDate(undefined);
               onChange?.(undefined);
               setShowSelected(false);
             }}
-          >
-            <MyIcon name={'common/closeLight'} w={'16px'} h={'16px'} color={'myGray.600'} />
-          </Box>
+          />
         )}
       </Flex>
       {showSelected && (
