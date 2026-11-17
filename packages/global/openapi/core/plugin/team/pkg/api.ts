@@ -1,5 +1,9 @@
 import z from 'zod';
-import { UploadPkgPluginResponseSchema, UploadPkgPluginResponseItemSchema } from '../../admin/api';
+import {
+  InstallPluginFromUrlResponseSchema,
+  UploadPkgPluginResponseSchema,
+  UploadPkgPluginResponseItemSchema
+} from '../../admin/api';
 import { TeamPluginEmptyResponseSchema } from '../common';
 
 /* ============================================================================
@@ -91,3 +95,11 @@ export type InstallTeamPluginFromUrlBodyType = z.infer<typeof InstallTeamPluginF
 
 export const TeamPkgEmptyResponseSchema = TeamPluginEmptyResponseSchema;
 export type TeamPkgEmptyResponseType = z.infer<typeof TeamPkgEmptyResponseSchema>;
+
+export const InstallTeamPluginFromUrlResponseSchema = z.union([
+  TeamPkgEmptyResponseSchema,
+  InstallPluginFromUrlResponseSchema.pick({ failed: true })
+]);
+export type InstallTeamPluginFromUrlResponseType = z.infer<
+  typeof InstallTeamPluginFromUrlResponseSchema
+>;

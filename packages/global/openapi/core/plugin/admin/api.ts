@@ -82,3 +82,22 @@ export const InstallPluginFromUrlBodySchema = z.object({
   downloadUrls: z.array(z.string())
 });
 export type InstallPluginFromUrlBodyType = z.infer<typeof InstallPluginFromUrlBodySchema>;
+
+export const InstallPluginFromUrlFailureSchema = z.object({
+  url: z.string(),
+  reason: I18nStringSchema
+});
+
+export const InstallPluginFromUrlResponseSchema = z.object({
+  installed: z
+    .array(
+      z.object({
+        pluginId: z.string(),
+        version: z.string().optional(),
+        etag: z.string().optional()
+      })
+    )
+    .optional(),
+  failed: z.array(InstallPluginFromUrlFailureSchema).optional()
+});
+export type InstallPluginFromUrlResponseType = z.infer<typeof InstallPluginFromUrlResponseSchema>;

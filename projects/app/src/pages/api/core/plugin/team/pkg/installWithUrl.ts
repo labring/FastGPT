@@ -3,12 +3,14 @@ import {
   InstallTeamPluginFromUrlBodySchema,
   TeamPkgEmptyResponseSchema,
   type InstallTeamPluginFromUrlBodyType,
-  type TeamPkgEmptyResponseType
+  type InstallTeamPluginFromUrlResponseType
 } from '@fastgpt/global/openapi/core/plugin/team/pkg/api';
 import { TeamPluginInstallSourceEnum } from '@fastgpt/global/core/plugin/schema/type';
 import { getTeamPluginSource } from '@fastgpt/global/core/app/tool/utils';
 import { TeamManagePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { createPluginInstallFailureError } from '@fastgpt/service/core/plugin/installResult';
+import { getLocale } from '@fastgpt/service/common/middle/i18n';
 import {
   assertTeamPluginInstallEnabled,
   assertTeamPluginSourceReady,
@@ -21,7 +23,7 @@ import type { ApiRequestProps } from '@fastgpt/next/type';
 import crypto from 'node:crypto';
 
 export type InstallTeamPluginFromUrlBody = InstallTeamPluginFromUrlBodyType;
-export type InstallTeamPluginFromUrlResponse = TeamPkgEmptyResponseType;
+export type InstallTeamPluginFromUrlResponse = InstallTeamPluginFromUrlResponseType;
 
 const getDownloadUrlHash = (url?: string) =>
   url ? crypto.createHash('sha256').update(url).digest('hex') : undefined;
@@ -86,7 +88,12 @@ async function handler(
   );
 
   if (failed.length > 0) {
-    return Promise.reject(JSON.stringify(failed));
+    // 全量失败时返回可读的 HTTP 500 业务异常；部分成功则与 admin 接口对齐，返回 200 + failed 供前端展示明细。
+    if (installedPluginEntries.length === 0) {
+      const lang = req.headers ? getLocale(req) : undefined;
+      throw createPluginInstallFailureError({ failed, lang });
+    }
+    return { failed };
   }
 
   return TeamPkgEmptyResponseSchema.parse(undefined);
