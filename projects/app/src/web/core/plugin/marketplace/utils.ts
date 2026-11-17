@@ -2,6 +2,7 @@ import { getErrText, getErrorMessage } from '@fastgpt/global/common/error/utils'
 import type { localeType } from '@fastgpt/global/common/i18n/type';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import { PluginStatusEnum, type PluginStatusType } from '@fastgpt/global/core/plugin/type';
+import { formatPluginInstallFailureReasons } from '@fastgpt/global/core/plugin/utils';
 import type {
   PluginInstallFailureType,
   PluginInstallResultType
@@ -264,11 +265,7 @@ export const getInstallFailureMessage = ({
   const failed = installResult?.failed;
   if (!failed || failed.length === 0) return undefined;
 
-  const reasons = Array.from(
-    new Set(failed.map((item) => parseI18nString(item.reason, language).trim()).filter(Boolean))
-  );
-
-  return reasons.join('; ') || fallback;
+  return formatPluginInstallFailureReasons({ failed, lang: language }) || fallback;
 };
 
 /** 提取插件安装/更新失败的可读错误提示，优先解析结构化 `failed` 明细。 */

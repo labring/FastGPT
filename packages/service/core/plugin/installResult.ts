@@ -1,5 +1,5 @@
 import { UserError } from '@fastgpt/global/common/error/utils';
-import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
+import { formatPluginInstallFailureReasons } from '@fastgpt/global/core/plugin/utils';
 import type { PluginInstallFailureType } from '@fastgpt/global/sdk/fastgpt-plugin';
 
 /**
@@ -13,10 +13,7 @@ export const createPluginInstallFailureError = ({
   failed: PluginInstallFailureType[];
   lang?: string;
 }): UserError => {
-  const reasons = Array.from(
-    new Set(failed.map((item) => parseI18nString(item.reason, lang).trim()).filter(Boolean))
-  );
-  const message = reasons.join('; ') || 'Install plugin failed';
+  const message = formatPluginInstallFailureReasons({ failed, lang }) || 'Install plugin failed';
 
   return new UserError(message, message);
 };
