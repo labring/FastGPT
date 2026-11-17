@@ -54,6 +54,7 @@ export const iconPaths = {
   'common/error': () => import('./icons/common/error.svg'),
   'common/errorFill': () => import('./icons/common/errorFill.svg'),
   'common/exclamationMark': () => import('./icons/common/exclamationMark.svg'),
+  'common/exitFullscreen': () => import('./icons/common/exitFullscreen.svg'),
   'common/file/move': () => import('./icons/common/file/move.svg'),
   'common/fileNotFound': () => import('./icons/common/fileNotFound.svg'),
   'common/filter': () => import('./icons/common/filter.svg'),
