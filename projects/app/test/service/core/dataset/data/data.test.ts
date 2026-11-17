@@ -1,3 +1,41 @@
+import { getTestInstanceConfig } from '@test/utils/instanceConfigSnapshot';
+// 消费点已接管实例配置（94ae033d7）：isDatasetSynonymEnabled / MULTIPLE_DATA_TO_BASE64 等
+// 改为 getSystemInstanceConfig().<域>.<字段> ?? serviceEnv.X。真实快照由 schema 默认值填满，
+// ?? serviceEnv 兜底只在快照叶子缺省时生效。本文件通过改写 serviceEnv 驱动行为，
+// 故预置"域对象存在、叶子全部缺省"的种子快照，让 getSystemInstanceConfig 首次调用采纳它并缓存。
+(global as any).systemInstanceConfig = {
+  site: {},
+  auth: {},
+  security: {},
+  feature: {},
+  commercial: {},
+  resource: {},
+  performance: {
+    workflow: {},
+    parse: {},
+    dataset: {},
+    chat: {},
+    streamResume: {},
+    tracking: {},
+    task: {},
+    channel: {}
+  },
+  storage: {},
+  vector: {},
+  providers: {
+    documentParse: { customPdf: {}, sangfor: {} },
+    dataSource: {},
+    externalProviderWorkflowVariables: []
+  },
+  subservice: {
+    plugin: {},
+    codeSandbox: {},
+    aiProxy: {},
+    mcp: {},
+    agentSandbox: { provider: '', common: {}, sealosdevbox: {}, opensandbox: {}, proxy: {} }
+  }
+};
+
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Types } from '@fastgpt/service/common/mongo';
 import { jiebaSplit } from '@fastgpt/service/common/string/jieba/index';
@@ -45,7 +83,7 @@ import { DatasetDataIndexOperation } from '@/service/core/dataset/data/dataIndex
 vi.unmock(import('@fastgpt/service/common/mongo/sessionRun'));
 
 const originalDatasetSynonymEnabled = serviceEnv.DATASET_SYNONYM_ENABLED;
-const originalMultipleDataToBase64 = serviceEnv.MULTIPLE_DATA_TO_BASE64;
+const originalMultipleDataToBase64 = getTestInstanceConfig().feature.multipleDataToBase64;
 
 const { mockDeleteDatasetFileByKey, mockGetDatasetBase64Image, mockCountPromptTokens } = vi.hoisted(
   () => ({
@@ -743,10 +781,10 @@ describe('Dataset data service', () => {
 
   describe('updateDatasetDataByIndexes', () => {
     beforeEach(() => {
-      serviceEnv.MULTIPLE_DATA_TO_BASE64 = true;
+      getTestInstanceConfig().feature.multipleDataToBase64 = true;
     });
     afterEach(() => {
-      serviceEnv.MULTIPLE_DATA_TO_BASE64 = originalMultipleDataToBase64;
+      getTestInstanceConfig().feature.multipleDataToBase64 = originalMultipleDataToBase64;
     });
 
     it('updates data only after vector generation when the feature is disabled', async () => {
@@ -1334,8 +1372,8 @@ describe('Dataset data service', () => {
     });
 
     it.each([true, false])('uses only the stored image index with vision=%s', async (vision) => {
-      const previousBase64 = serviceEnv.MULTIPLE_DATA_TO_BASE64;
-      Object.assign(serviceEnv, { MULTIPLE_DATA_TO_BASE64: false });
+      const previousBase64 = getTestInstanceConfig().feature.multipleDataToBase64;
+      Object.assign(getTestInstanceConfig().feature, { multipleDataToBase64: false });
       try {
         const source = 'https://example.com/saved.png';
         const { data } = await createMongoData({
@@ -1367,7 +1405,7 @@ describe('Dataset data service', () => {
           (await MongoDatasetDataText.findOne({ dataId: data._id }).lean())?.fullTextToken
         ).toBe('');
       } finally {
-        Object.assign(serviceEnv, { MULTIPLE_DATA_TO_BASE64: previousBase64 });
+        Object.assign(getTestInstanceConfig().feature, { multipleDataToBase64: previousBase64 });
       }
     });
 

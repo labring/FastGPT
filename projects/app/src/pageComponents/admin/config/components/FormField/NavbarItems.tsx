@@ -1,3 +1,4 @@
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { Box, Button, Flex, Input, Switch } from '@chakra-ui/react';
 import React, { useCallback, useEffect, useState } from 'react';
 import FormLabel from '../FormLabel';
@@ -6,7 +7,7 @@ import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import DndDrag, { Draggable } from '@fastgpt/web/components/common/DndDrag';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import Avatar from '@fastgpt/web/components/common/Avatar';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import type { NavbarItemType } from '@fastgpt/global/common/system/types';
@@ -32,6 +33,7 @@ const NavbarItems = ({
   title: string;
   description: string;
 }) => {
+  const { t } = useSafeTranslation();
   const [currentNavbarItem, setCurrentNavbarItem] = useState<NavbarItemType>();
 
   const onSubmit = (data: NavbarItemType) => {
@@ -62,7 +64,7 @@ const NavbarItems = ({
           leftIcon={<MyIcon name={'common/addLight'} width={4} />}
           onClick={() => setCurrentNavbarItem(defaultNavbarItem)}
         >
-          新增
+          {t('admin:add')}
         </Button>
       </Flex>
 
@@ -76,12 +78,12 @@ const NavbarItems = ({
         fontSize={'mini'}
         fontWeight={'medium'}
       >
-        <Box w={3 / 10}>名称</Box>
+        <Box w={3 / 10}>{t('admin:name')}</Box>
         <Box w={1 / 10} pl={4}>
-          启用
+          {t('admin:enable')}
         </Box>
-        <Box w={4 / 10}>跳转链接</Box>
-        <Box w={2 / 10}>操作</Box>
+        <Box w={4 / 10}>{t('admin:redirect_link')}</Box>
+        <Box w={2 / 10}>{t('admin:actions')}</Box>
       </Flex>
       <Box mt={2}>
         <DndDrag<NavbarItemType>
@@ -97,110 +99,113 @@ const NavbarItems = ({
               {...provided.droppableProps}
               ref={provided.innerRef}
             >
-              {navbarList.map((item, index) => (
-                <Draggable key={item.name} draggableId={item.name} index={index}>
-                  {(provided, snapshot) => (
-                    <MyBox
-                      display={'flex'}
-                      ref={provided.innerRef}
-                      {...provided.draggableProps}
-                      style={{
-                        ...provided.draggableProps.style,
-                        opacity: snapshot.isDragging ? 0.8 : 1
-                      }}
-                      alignItems={'center'}
-                      h={12}
-                      _hover={{
-                        bg: 'primary.50'
-                      }}
-                    >
-                      <Box display={'flex'} alignItems={'center'} w={3 / 10} pr={6}>
-                        <Flex
-                          h={'full'}
-                          rounded={'xs'}
-                          ml={2}
-                          mr={2.5}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                          }}
-                          _hover={{ bg: 'myGray.05' }}
-                          {...provided.dragHandleProps}
-                        >
-                          <MyIcon name="drag" w={'14px'} color={'myGray.500'} cursor={'grab'} />
-                        </Flex>
-                        <Avatar src={item.avatar} borderRadius={'xs'} w={'20px'} />
+              {navbarList.map((item, index) => {
+                const itemKey = item.id || `${item.name}-${index}`;
+                return (
+                  <Draggable key={itemKey} draggableId={itemKey} index={index}>
+                    {(provided, snapshot) => (
+                      <MyBox
+                        display={'flex'}
+                        ref={provided.innerRef}
+                        {...provided.draggableProps}
+                        style={{
+                          ...provided.draggableProps.style,
+                          opacity: snapshot.isDragging ? 0.8 : 1
+                        }}
+                        alignItems={'center'}
+                        h={12}
+                        _hover={{
+                          bg: 'primary.50'
+                        }}
+                      >
+                        <Box display={'flex'} alignItems={'center'} w={3 / 10} pr={6}>
+                          <Flex
+                            h={'full'}
+                            rounded={'xs'}
+                            ml={2}
+                            mr={2.5}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                            }}
+                            _hover={{ bg: 'myGray.05' }}
+                            {...provided.dragHandleProps}
+                          >
+                            <MyIcon name="drag" w={'14px'} color={'myGray.500'} cursor={'grab'} />
+                          </Flex>
+                          <Avatar src={item.avatar} borderRadius={'xs'} w={'20px'} />
+                          <Box
+                            pl={1.5}
+                            fontWeight={'medium'}
+                            whiteSpace={'nowrap'}
+                            overflow={'hidden'}
+                            textOverflow={'ellipsis'}
+                          >
+                            {item.name}
+                          </Box>
+                        </Box>
+                        <Box w={1 / 10} pl={9}>
+                          <Box as={'span'}>
+                            <Switch
+                              isChecked={item.isActive}
+                              size={'sm'}
+                              onChange={(e) => {
+                                const newNavbarItems = navbarList.map((currentItem) => ({
+                                  ...currentItem,
+                                  isActive:
+                                    currentItem.id === item.id
+                                      ? e.target.checked
+                                      : currentItem.isActive
+                                }));
+                                onChange(newNavbarItems);
+                              }}
+                            />
+                          </Box>
+                        </Box>
                         <Box
-                          pl={1.5}
-                          fontWeight={'medium'}
-                          whiteSpace={'nowrap'}
+                          w={4 / 10}
                           overflow={'hidden'}
                           textOverflow={'ellipsis'}
+                          whiteSpace={'nowrap'}
+                          pl={5}
+                          color={'myGray.600'}
+                          fontSize={'sm'}
                         >
-                          {item.name}
+                          {item?.url}
                         </Box>
-                      </Box>
-                      <Box w={1 / 10} pl={9}>
-                        <Box as={'span'}>
-                          <Switch
-                            isChecked={item.isActive}
-                            size={'sm'}
-                            onChange={(e) => {
-                              const newNavbarItems = navbarList.map((currentItem) => ({
-                                ...currentItem,
-                                isActive:
-                                  currentItem.id === item.id
-                                    ? e.target.checked
-                                    : currentItem.isActive
-                              }));
+                        <Box w={2 / 10} pl={2} display={'flex'} gap={4}>
+                          <Flex
+                            color={'myGray.500'}
+                            _hover={{ bg: 'myGray.05', color: 'primary.600' }}
+                            rounded={'xs'}
+                            p={1}
+                            cursor={'pointer'}
+                            onClick={() => {
+                              setCurrentNavbarItem(item);
+                            }}
+                          >
+                            <MyIcon name={'edit'} w={'16px'} />
+                          </Flex>
+                          <Flex
+                            color={'myGray.500'}
+                            _hover={{ bg: 'myGray.05', color: 'red.500' }}
+                            rounded={'xs'}
+                            p={1}
+                            cursor={'pointer'}
+                            onClick={() => {
+                              const newNavbarItems = navbarList.filter(
+                                (currentItem) => currentItem.id !== item.id
+                              );
                               onChange(newNavbarItems);
                             }}
-                          />
+                          >
+                            <MyIcon name={'delete'} w={'16px'} />
+                          </Flex>
                         </Box>
-                      </Box>
-                      <Box
-                        w={4 / 10}
-                        overflow={'hidden'}
-                        textOverflow={'ellipsis'}
-                        whiteSpace={'nowrap'}
-                        pl={5}
-                        color={'myGray.600'}
-                        fontSize={'sm'}
-                      >
-                        {item?.url}
-                      </Box>
-                      <Box w={2 / 10} pl={2} display={'flex'} gap={4}>
-                        <Flex
-                          color={'myGray.500'}
-                          _hover={{ bg: 'myGray.05', color: 'primary.600' }}
-                          rounded={'xs'}
-                          p={1}
-                          cursor={'pointer'}
-                          onClick={() => {
-                            setCurrentNavbarItem(item);
-                          }}
-                        >
-                          <MyIcon name={'edit'} w={'16px'} />
-                        </Flex>
-                        <Flex
-                          color={'myGray.500'}
-                          _hover={{ bg: 'myGray.05', color: 'red.500' }}
-                          rounded={'xs'}
-                          p={1}
-                          cursor={'pointer'}
-                          onClick={() => {
-                            const newNavbarItems = navbarList.filter(
-                              (currentItem) => currentItem.id !== item.id
-                            );
-                            onChange(newNavbarItems);
-                          }}
-                        >
-                          <MyIcon name={'delete'} w={'16px'} />
-                        </Flex>
-                      </Box>
-                    </MyBox>
-                  )}
-                </Draggable>
-              ))}
+                      </MyBox>
+                    )}
+                  </Draggable>
+                );
+              })}
             </Flex>
           )}
         </DndDrag>
@@ -227,11 +232,12 @@ const NavbarItemModal = ({
   onClose: () => void;
   onSubmit: (data: NavbarItemType) => void;
 }) => {
-  const { register, setValue, watch, handleSubmit } = useForm({
+  const { t } = useSafeTranslation();
+  const { register, setValue, control, handleSubmit } = useForm({
     defaultValues: currentNavbarItem
   });
 
-  const avatar = watch('avatar');
+  const avatar = useWatch({ control, name: 'avatar' });
 
   const afterUploadAvatar = useCallback(
     (avatar: string) => {
@@ -248,21 +254,22 @@ const NavbarItemModal = ({
 
   return (
     <MyModal
-      title={'新增侧边项'}
+      title={t('admin:add_sidebar_item')}
+      onClose={onClose}
       footer={
         <>
           <Button variant={'whiteBase'} onClick={onClose}>
-            取消
+            {t('admin:cancel')}
           </Button>
-          <Button onClick={handleSubmit(onSubmit)}>确定</Button>
+          <Button onClick={handleSubmit(onSubmit)}>{t('admin:ok')}</Button>
         </>
       }
     >
       <Box color={'myGray.800'} fontWeight={'bold'} mb={2}>
-        头像 & 名称
+        {t('admin:avatar_name')}
       </Box>
       <Flex>
-        <MyTooltip label={'点击上传头像'}>
+        <MyTooltip label={t('admin:click_to_upload_avatar')}>
           {avatar ? (
             <Avatar
               flexShrink={0}
@@ -296,22 +303,22 @@ const NavbarItemModal = ({
           flex={1}
           ml={3}
           autoFocus
-          placeholder={'侧边项名'}
+          placeholder={t('admin:navbar_item_name_placeholder')}
           bg={'myWhite.600'}
           {...register('name', {
-            required: '侧边项名不能为空'
+            required: t('admin:navbar_item_name_required')
           })}
         />
       </Flex>
       <Box color={'myGray.800'} fontWeight={'bold'} mt={6} mb={2}>
-        跳转链接
+        {t('admin:redirect_link')}
       </Box>
       <Input
         flex={1}
         bg={'myWhite.600'}
-        placeholder={'跳转链接'}
+        placeholder={t('admin:navbar_item_url_placeholder')}
         {...register('url', {
-          required: '跳转链接不能为空'
+          required: t('admin:navbar_item_url_required')
         })}
       />
 

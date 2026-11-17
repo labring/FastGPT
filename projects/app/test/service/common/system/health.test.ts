@@ -1,9 +1,11 @@
+import { setTestLicenseActive } from '@test/utils/instanceConfigSnapshot';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   checkRedisHealth: vi.fn(),
   loadModelProviders: vi.fn(),
   runCode: vi.fn(),
+  isCodeSandboxConfigured: vi.fn(),
   postHealth: vi.fn()
 }));
 
@@ -15,7 +17,8 @@ vi.mock('@fastgpt/service/thirdProvider/fastgptPlugin/model', () => ({
   loadModelProviders: mocks.loadModelProviders
 }));
 vi.mock('@fastgpt/service/thirdProvider/codeSandbox', () => ({
-  codeSandbox: { runCode: mocks.runCode }
+  codeSandbox: { runCode: mocks.runCode },
+  isCodeSandboxConfigured: mocks.isCodeSandboxConfigured
 }));
 vi.mock('@fastgpt/service/thirdProvider/fastgptPro/api', () => ({
   postHealth: mocks.postHealth
@@ -34,6 +37,7 @@ describe('instrumentationCheck', () => {
     mocks.checkRedisHealth.mockResolvedValue(undefined);
     mocks.loadModelProviders.mockResolvedValue(undefined);
     mocks.runCode.mockResolvedValue(undefined);
+    mocks.isCodeSandboxConfigured.mockReturnValue(true);
     mocks.postHealth.mockResolvedValue({ auth: true, data: '' });
     publicBucketHealth.mockResolvedValue(undefined);
     privateBucketHealth.mockResolvedValue(undefined);
@@ -41,7 +45,7 @@ describe('instrumentationCheck', () => {
       [S3Buckets.public]: { checkBucketHealth: publicBucketHealth },
       [S3Buckets.private]: { checkBucketHealth: privateBucketHealth }
     } as any;
-    global.feConfigs = { isPlus: false } as any;
+    setTestLicenseActive(false);
   });
 
   it('checks Redis before the remaining production dependencies', async () => {
@@ -86,7 +90,7 @@ describe('instrumentationCheck', () => {
   });
 
   it('validates the Pro service only for Plus deployments', async () => {
-    global.feConfigs = { isPlus: true } as any;
+    setTestLicenseActive(true);
     mocks.postHealth.mockResolvedValueOnce({ auth: false, data: '' });
 
     await expect(instrumentationCheck()).rejects.toContain(`[${InitialErrorEnum.PRO_ERROR}]`);
@@ -97,5 +101,11 @@ describe('instrumentationCheck', () => {
     mocks.runCode.mockRejectedValueOnce(new Error('sandbox unavailable'));
 
     await expect(instrumentationCheck()).resolves.toBeUndefined();
+  });
+
+  it('skips the sandbox check when it is not configured', async () => {
+    mocks.isCodeSandboxConfigured.mockReturnValue(false);
+    await expect(instrumentationCheck()).resolves.toBeUndefined();
+    expect(mocks.runCode).not.toHaveBeenCalled();
   });
 });

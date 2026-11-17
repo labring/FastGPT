@@ -1,7 +1,10 @@
+import { createDefaultInstanceConfig } from '@test/utils/instanceConfigSnapshot';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { WorkerNameEnum } from '@fastgpt/service/worker/utils';
 import { countPromptTokensInWorker } from '@fastgpt/service/worker/countGptMessagesTokens/count';
 import { availableParallelism } from 'node:os';
+
+(global as any).systemInstanceConfig = createDefaultInstanceConfig();
 
 // hoisted: 这些 mock 必须在 vi.mock 工厂里可见
 const { mockRun, mockGetWorkerController, mockUploadImage2S3Bucket, mockEnv } = vi.hoisted(() => {
@@ -47,6 +50,8 @@ const { htmlToMarkdown } = await import('@fastgpt/service/common/string/utils');
 
 describe('worker/function', () => {
   beforeEach(() => {
+    (global as any).systemInstanceConfig = createDefaultInstanceConfig();
+    (global as any).systemInstanceConfig.performance.parse.fileTimeoutSeconds = 300;
     mockRun.mockReset();
     mockGetWorkerController.mockReset();
     mockGetWorkerController.mockImplementation(() => ({ run: mockRun }));
@@ -247,6 +252,7 @@ describe('worker/function', () => {
 
     it('PARSE_FILE_TIMEOUT_SECONDS 自定义值生效（秒 -> 毫秒）', async () => {
       mockEnv.PARSE_FILE_TIMEOUT_SECONDS = 120;
+      (global as any).systemInstanceConfig.performance.parse.fileTimeoutSeconds = 120;
       mockRun.mockResolvedValueOnce({ rawText: '' });
 
       await readRawContentFromBuffer({
@@ -540,6 +546,28 @@ describe('worker/function', () => {
       expect(poolCfg.minIdleWorkers).toBe(1);
 
       expect(mockRun).toHaveBeenCalledWith({ html: '<h1>Title</h1>' });
+    });
+
+    it('随 HTML 解析阈值更新 worker 环境版本，保留零值', async () => {
+      mockRun.mockResolvedValue({ rawText: 'content' });
+      const config = createDefaultInstanceConfig();
+      global.systemInstanceConfig = config;
+
+      config.performance.parse.maxHtmlTransformChars = 5;
+      await htmlToMarkdown('content');
+      await htmlToMarkdown('content');
+      config.performance.parse.maxHtmlTransformChars = 0;
+      await htmlToMarkdown('content');
+      config.performance.parse.maxHtmlTransformChars = 1000;
+      await htmlToMarkdown('content');
+
+      expect(mockGetWorkerController).toHaveBeenCalledTimes(4);
+      ['5', '5', '0', '1000'].forEach((workerEnvVersion, index) => {
+        expect(mockGetWorkerController).toHaveBeenNthCalledWith(
+          index + 1,
+          expect.objectContaining({ workerEnvVersion })
+        );
+      });
     });
 
     it('空 html 统一传空字符串', async () => {

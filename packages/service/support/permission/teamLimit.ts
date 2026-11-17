@@ -8,10 +8,11 @@ import { AppTypeList, ToolTypeList, AppFolderTypeList } from '@fastgpt/global/co
 import { countEffectiveTeamMembers } from '../user/team/controller';
 import { getVectorCountByTeamId } from '../../common/vectorDB/controller';
 import { ReadPreference } from '../../common/mongo';
-import { serviceEnv } from '../../env';
+import { getSystemInstanceConfig } from '../../common/system/systemInstanceConfig/runtime';
+import { logInstanceConfigRead } from '../../common/system/migrationCoverageLog';
 
 export const checkTeamAIPoints = async (teamId: string) => {
-  if (!global.subPlans?.standard) return;
+  if (!getSystemInstanceConfig().commercial.subPlans?.standard) return;
 
   const { totalPoints, usedPoints } = await teamPoint.getTeamPoints({ teamId });
 
@@ -51,7 +52,12 @@ export const checkTeamDatasetFolderLimit = async ({
     teamId,
     type: DatasetTypeEnum.folder
   });
-  if (folderCount + amount > serviceEnv.DATASET_FOLDER_MAX_AMOUNT) {
+  const maxDatasetFolderAmount = getSystemInstanceConfig().resource.datasetFolderMaxAmount;
+  logInstanceConfigRead({
+    callsite: 'runtime.support.permission.teamLimit.checkTeamDatasetFolderLimit',
+    fields: [{ path: 'resource.datasetFolderMaxAmount', value: maxDatasetFolderAmount }]
+  });
+  if (folderCount + amount > maxDatasetFolderAmount) {
     return Promise.reject(TeamErrEnum.datasetFolderAmountNotEnough);
   }
 };
@@ -81,14 +87,15 @@ export const checkTeamAppTypeLimit = async ({
       return Promise.reject(TeamErrEnum.appAmountNotEnough);
     }
 
-    // System check
-    if (global?.licenseData?.maxApps && typeof global?.licenseData?.maxApps === 'number') {
+    // 同一次校验使用同一份授权快照，避免查询期间配置更新导致上限前后不一致。
+    const maxApps = getSystemInstanceConfig().license.data?.maxApps;
+    if (maxApps && typeof maxApps === 'number') {
       const totalApps = await MongoApp.countDocuments({
         type: {
           $in: AppTypeList
         }
       });
-      if (totalApps + amount > global.licenseData.maxApps) {
+      if (totalApps + amount > maxApps) {
         return Promise.reject(SystemErrEnum.licenseAppAmountLimit);
       }
     }
@@ -110,7 +117,11 @@ export const checkTeamAppTypeLimit = async ({
         $in: AppFolderTypeList
       }
     });
-    const maxAppFolderAmount = serviceEnv.APP_FOLDER_MAX_AMOUNT;
+    const maxAppFolderAmount = getSystemInstanceConfig().resource.appFolderMaxAmount;
+    logInstanceConfigRead({
+      callsite: 'runtime.support.permission.teamLimit.checkTeamAppTypeLimit',
+      fields: [{ path: 'resource.appFolderMaxAmount', value: maxAppFolderAmount }]
+    });
     if (folderCount + amount > maxAppFolderAmount) {
       return Promise.reject(TeamErrEnum.appFolderAmountNotEnough);
     }
@@ -153,12 +164,13 @@ export const checkTeamDatasetLimit = async (teamId: string) => {
     return Promise.reject(TeamErrEnum.datasetAmountNotEnough);
   }
 
-  // System check
-  if (global?.licenseData?.maxDatasets && typeof global?.licenseData?.maxDatasets === 'number') {
+  // 同一次校验使用同一份授权快照，避免查询期间配置更新导致上限前后不一致。
+  const maxDatasets = getSystemInstanceConfig().license.data?.maxDatasets;
+  if (maxDatasets && typeof maxDatasets === 'number') {
     const totalDatasets = await MongoDataset.countDocuments({
       type: { $ne: DatasetTypeEnum.folder }
     });
-    if (totalDatasets >= global.licenseData.maxDatasets) {
+    if (totalDatasets >= maxDatasets) {
       return Promise.reject(SystemErrEnum.licenseDatasetAmountLimit);
     }
   }
@@ -175,7 +187,7 @@ export const checkTeamDatasetSyncPermission = async (teamId: string) => {
 };
 
 export const checkTeamSandboxPermission = async (teamId: string) => {
-  if (!global.subPlans?.standard) return;
+  if (!getSystemInstanceConfig().commercial.subPlans?.standard) return;
 
   const { standard } = await getTeamStandPlan({
     teamId

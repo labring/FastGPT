@@ -1,3 +1,8 @@
+import {
+  createDefaultInstanceConfig,
+  getTestInstanceConfig
+} from '@test/utils/instanceConfigSnapshot';
+import { setTestProLicense } from '../../utils/instanceConfig';
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import {
   mockVectorInsert,
@@ -83,8 +88,8 @@ vi.mock('@fastgpt/service/common/logger', async (importOriginal) => {
 describe('VectorDB Controller', () => {
   beforeEach(() => {
     resetVectorMocks();
-    global.feConfigs = { ...global.feConfigs, isPlus: false };
-    global.systemEnv = { ...global.systemEnv, vectorRecallConcurrency: 0 };
+    global.systemInstanceConfig = createDefaultInstanceConfig();
+    setTestProLicense(false);
     withConcurrency.mockReset().mockImplementation(({ fn }) => fn());
     mockVectorInsert.mockReset().mockResolvedValue({ insertIds: ['id_1', 'id_2', 'id_3'] });
     mockVectorDelete.mockReset().mockResolvedValue(undefined);
@@ -140,6 +145,7 @@ describe('VectorDB Controller', () => {
       datasetIds: ['dataset'],
       vector: [0.1],
       limit: 100,
+      hnswEfSearch: 200,
       forbidCollectionIdList: []
     };
 
@@ -156,8 +162,8 @@ describe('VectorDB Controller', () => {
             embRecall = mockVectorEmbRecall;
           }
         }));
-        global.feConfigs.isPlus = true;
-        global.systemEnv.vectorRecallConcurrency = 8;
+        setTestProLicense(true);
+        getTestInstanceConfig().vector.vectorRecallConcurrency = 8;
         try {
           const { recallFromVectorStore: recall } =
             await import('@fastgpt/service/common/vectorDB/controller');
@@ -179,17 +185,26 @@ describe('VectorDB Controller', () => {
       }
     );
 
+    it.each([false, true])(
+      'uses configured recall concurrency with Pro license=%s',
+      async (isPlus) => {
+        setTestProLicense(isPlus);
+        getTestInstanceConfig().vector.vectorRecallConcurrency = 8;
+        await recallFromVectorStore(props);
+        expect(withConcurrency.mock.calls[0][0].concurrency()).toBe(8);
+        expect(mockVectorEmbRecall).toHaveBeenCalledOnce();
+      }
+    );
+
     it.each([
-      { isPlus: false, concurrency: 8 },
+      { isPlus: false, concurrency: 0 },
       { isPlus: true, concurrency: 0 },
       { isPlus: true, concurrency: undefined }
     ])(
       'bypasses coordination for edition/default configuration %j',
       async ({ isPlus, concurrency }) => {
-        global.feConfigs.isPlus = isPlus;
-        if (concurrency === undefined)
-          Reflect.deleteProperty(global.systemEnv, 'vectorRecallConcurrency');
-        else global.systemEnv.vectorRecallConcurrency = concurrency;
+        setTestProLicense(isPlus);
+        getTestInstanceConfig().vector.vectorRecallConcurrency = concurrency ?? 0;
         await recallFromVectorStore(props);
         expect(withConcurrency).toHaveBeenCalledOnce();
         expect(withConcurrency.mock.calls[0][0].concurrency()).toBe(0);
@@ -198,11 +213,11 @@ describe('VectorDB Controller', () => {
     );
 
     it('exposes the latest Admin limit to queued work', async () => {
-      global.feConfigs.isPlus = true;
-      global.systemEnv.vectorRecallConcurrency = 4;
+      setTestProLicense(true);
+      getTestInstanceConfig().vector.vectorRecallConcurrency = 4;
       withConcurrency.mockImplementation(async ({ concurrency, fn }) => {
         expect(concurrency()).toBe(4);
-        global.systemEnv.vectorRecallConcurrency = 1;
+        getTestInstanceConfig().vector.vectorRecallConcurrency = 1;
         expect(concurrency()).toBe(1);
         return fn();
       });
@@ -215,8 +230,8 @@ describe('VectorDB Controller', () => {
       new RedisLeaseLostError({ key: 'recall', label: 'recall' }),
       new RedisLeaseAcquireError({ key: 'recall', label: 'recall', cause: new Error('Redis down') })
     ])('does not start or retry recall when coordination fails: $name', async (error) => {
-      global.feConfigs.isPlus = true;
-      global.systemEnv.vectorRecallConcurrency = 8;
+      setTestProLicense(true);
+      getTestInstanceConfig().vector.vectorRecallConcurrency = 8;
       withConcurrency.mockRejectedValueOnce(error);
       await expect(recallFromVectorStore(props)).rejects.toBe(error);
       expect(withConcurrency).toHaveBeenCalledOnce();
@@ -225,8 +240,8 @@ describe('VectorDB Controller', () => {
 
     it('reacquires shared capacity for every database retry', async () => {
       vi.useFakeTimers();
-      global.feConfigs.isPlus = true;
-      global.systemEnv.vectorRecallConcurrency = 8;
+      setTestProLicense(true);
+      getTestInstanceConfig().vector.vectorRecallConcurrency = 8;
       mockVectorEmbRecall.mockRejectedValueOnce(new Error('temporary database failure'));
       const result = recallFromVectorStore(props);
       await vi.advanceTimersByTimeAsync(500);
@@ -248,6 +263,7 @@ describe('VectorDB Controller', () => {
           datasetIds: ['dataset'],
           vector: [0.1],
           limit: 100,
+          hnswEfSearch: 200,
           forbidCollectionIdList: []
         })
       ).rejects.toBe(error);
@@ -263,6 +279,7 @@ describe('VectorDB Controller', () => {
           datasetIds: ['dataset'],
           vector: [0.1],
           limit: 100,
+          hnswEfSearch: 200,
           forbidCollectionIdList: []
         })
       ).resolves.toHaveProperty('results');
@@ -275,6 +292,7 @@ describe('VectorDB Controller', () => {
         datasetIds: ['dataset_1', 'dataset_2'],
         vector: [0.1, 0.2, 0.3],
         limit: 10,
+        hnswEfSearch: 200,
         forbidCollectionIdList: ['col_forbidden']
       };
 
@@ -295,6 +313,7 @@ describe('VectorDB Controller', () => {
         datasetIds: ['dataset_1'],
         vector: [0.1, 0.2],
         limit: 5,
+        hnswEfSearch: 200,
         forbidCollectionIdList: [],
         filterCollectionIdList: ['col_1', 'col_2']
       };
@@ -407,6 +426,25 @@ describe('VectorDB Controller', () => {
   });
 
   describe('getVectorCount', () => {
+    it('keeps startup count notifications available to independently loaded route modules', async () => {
+      const onDatasetCounted = vi.fn(async () => {});
+      await initVectorStore({ onDatasetCounted });
+
+      // Next 的 instrumentation 和 API bundle 分别加载模块，但必须使用同一进程级回调。
+      vi.resetModules();
+      const routeController = await import('@fastgpt/service/common/vectorDB/controller');
+      await expect(
+        routeController.getVectorCount({ teamId: 'team', datasetId: 'dataset' })
+      ).resolves.toBe(50);
+      await vi.waitFor(() =>
+        expect(onDatasetCounted).toHaveBeenCalledExactlyOnceWith({
+          teamId: 'team',
+          datasetId: 'dataset',
+          rows: 50
+        })
+      );
+    });
+
     it('notifies fresh dataset counts once, excluding cache hits, team and collection totals', async () => {
       const onDatasetCounted = vi.fn(async () => {});
       await initVectorStore({ onDatasetCounted });

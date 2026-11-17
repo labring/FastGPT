@@ -1,3 +1,4 @@
+import { getSystemInstanceConfig } from '../../../../common/system/systemInstanceConfig/runtime';
 import {
   listRetainedTools,
   getRetainedToolDetail
@@ -431,7 +432,7 @@ export class SystemToolRepo {
         versionLabel: appVersion.versionName,
         intro: dbTool.customConfig.intro ?? '',
         tags: dbTool.customConfig.tags ?? [],
-        author: dbTool.customConfig.author ?? global.feConfigs.systemTitle ?? '',
+        author: dbTool.customConfig.author ?? getSystemInstanceConfig().site.name ?? '',
         avatar: dbTool.customConfig.avatar ?? app.avatar ?? '',
         hasSystemSecret: false,
         systemSecretStatus: SystemToolCodec.getSystemSecretStatus({ hasSecret: false }),
@@ -540,7 +541,7 @@ export class SystemToolRepo {
 
     const toolDetail: SystemToolDetailType = {
       id: pluginId,
-      author: tool.author ?? global.feConfigs.systemTitle ?? '',
+      author: tool.author ?? getSystemInstanceConfig().site.name ?? '',
       avatar: childPluginId ? (child?.icon ?? tool.icon) : tool.icon,
       currentCost: dbTool?.currentCost ?? 0,
       hasSystemSecret,
@@ -615,7 +616,7 @@ export class SystemToolRepo {
         avatar: exactDbTool.customConfig.avatar ?? '',
         name: exactDbTool.customConfig.name,
         intro: exactDbTool.customConfig.intro ?? '',
-        author: exactDbTool.customConfig.author ?? global.feConfigs.systemTitle ?? '',
+        author: exactDbTool.customConfig.author ?? getSystemInstanceConfig().site.name ?? '',
         tags: exactDbTool.customConfig.tags ?? [],
         userGuide: exactDbTool.customConfig.userGuide,
         pluginOrder: exactDbTool.pluginOrder ?? 0,

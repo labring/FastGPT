@@ -231,7 +231,7 @@ export const ApiKeyTableHeader = ({
         {feConfigs?.docUrl && (
           <Button
             as={Link}
-            href={feConfigs.openAPIDocUrl || getDocPath('/openapi/intro')}
+            href={getDocPath('/openapi/intro')}
             target={'_blank'}
             size={'sm'}
             variant={'whitePrimary'}

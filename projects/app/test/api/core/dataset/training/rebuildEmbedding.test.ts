@@ -1,3 +1,4 @@
+import { getSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/runtime';
 import handler from '@/pages/api/core/dataset/training/rebuildEmbedding';
 import type {
   EmbeddingModelDataType,
@@ -61,10 +62,7 @@ const createDatasetContext = async ({
 describe('POST /api/core/dataset/training/rebuildEmbedding', () => {
   beforeEach(async () => {
     testRoot = await getRootUser();
-    global.systemEnv = {
-      ...global.systemEnv,
-      vectorMaxProcess: 1
-    };
+    getSystemInstanceConfig().performance.dataset.vectorMaxProcess = 1;
     const { llm, embedding: defaultEmbeddingModel } = getModelTestDefaults();
     if (!llm || !defaultEmbeddingModel) throw new Error('Default test models are not initialized');
     agentModel = llm;

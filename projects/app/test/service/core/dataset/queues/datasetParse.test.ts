@@ -1,3 +1,4 @@
+import { setTestLicenseActive } from '@test/utils/instanceConfigSnapshot';
 import {
   DatasetCollectionDataProcessModeEnum,
   DatasetCollectionTypeEnum,
@@ -103,7 +104,7 @@ describe('datasetParseQueue model validation', () => {
     mocks.read.mockResolvedValue({ rawText: 'Original source text.' });
     mocks.paragraph.mockReset();
     global.datasetParseQueueLen = 0;
-    global.feConfigs.isPlus = true;
+    setTestLicenseActive(true);
   });
 
   it.each(['missing', 'disabled', 'wrong-type', 'unconfigured'])(
@@ -223,7 +224,7 @@ describe('datasetParseQueue CSV structured collections', () => {
     mocks.read.mockResolvedValue({ rawText: templateCsv });
     mocks.paragraph.mockReset();
     global.datasetParseQueueLen = 0;
-    global.feConfigs.isPlus = true;
+    setTestLicenseActive(true);
   });
 
   it.each([

@@ -41,10 +41,7 @@ export class OssStorageAdapter implements IStorage {
       bucket: options.bucket,
       cname: options.cname,
       internal: options.internal,
-      secure: options.secure,
-
-      // @ts-expect-error ali-oss SDK 类型未定义但存在此属性
-      enableProxy: options.proxy ? true : false
+      secure: options.secure
     });
   }
 

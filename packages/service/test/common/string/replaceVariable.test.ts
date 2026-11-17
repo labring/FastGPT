@@ -1,17 +1,25 @@
+import {
+  createDefaultInstanceConfig,
+  getTestInstanceConfig
+} from '@test/utils/instanceConfigSnapshot';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+(global as any).systemInstanceConfig = createDefaultInstanceConfig();
+
 import { valToStr, replaceVariable } from '@fastgpt/service/common/string/replaceVariable';
+import { SYSTEM_STRING_LENGTH_UNIT } from '@fastgpt/service/env.const';
 
 const { loggerInfoMock } = vi.hoisted(() => ({
   loggerInfoMock: vi.fn()
 }));
 
-vi.mock('@fastgpt/service/common/logger', () => ({
+// replaceVariable 接管实例配置后会经 controller 引入 Mongo schema 链路（indexManager 需要
+// LogCategories.INFRA），因此只覆盖 getLogger，保留真实 LogCategories。
+vi.mock('@fastgpt/service/common/logger', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fastgpt/service/common/logger')>()),
   getLogger: () => ({
     info: loggerInfoMock
-  }),
-  LogCategories: {
-    SYSTEM: ['system']
-  }
+  })
 }));
 
 describe('service replaceVariable', () => {
@@ -71,47 +79,64 @@ describe('service replaceVariable', () => {
     expect(stringifyCount).toBe(0);
   });
 
-  it('should stop replacement rounds when the result exceeds the system string limit', async () => {
-    vi.resetModules();
-    vi.doMock('@fastgpt/service/env', () => ({
-      SYSTEM_MAX_STRING_LENGTH: 20
-    }));
-    const { replaceVariable: replaceVariableWithSmallLimit } =
-      await import('@fastgpt/service/common/string/replaceVariable');
+  it('should stop replacement rounds when the result exceeds the system string limit', () => {
+    // 缩小私有单测阈值覆盖多轮替换；完整表单取值的百万字符边界另行验证。
+    const snapshot = getTestInstanceConfig();
+    const original = snapshot.resource.systemMaxStringLengthM;
+    snapshot.resource.systemMaxStringLengthM = 20 / SYSTEM_STRING_LENGTH_UNIT;
+    try {
+      expect(
+        replaceVariable('{{large}}', {
+          large: `${'x'.repeat(21)}{{next}}`,
+          next: 'should not be scanned'
+        })
+      ).toBe(`${'x'.repeat(21)}{{next}}`);
+      expect(loggerInfoMock).toHaveBeenCalledWith(
+        'Oversize string detected during synchronous string processing',
+        {
+          source: 'replaceVariable',
+          reason: 'replacement_result',
+          length: 29,
+          maxLength: 20
+        }
+      );
 
-    expect(
-      replaceVariableWithSmallLimit('{{large}}', {
-        large: `${'x'.repeat(21)}{{next}}`,
-        next: 'should not be scanned'
-      })
-    ).toBe(`${'x'.repeat(21)}{{next}}`);
-    expect(loggerInfoMock).toHaveBeenCalledWith(
-      'Oversize string detected during synchronous string processing',
-      {
-        source: 'replaceVariable',
-        reason: 'replacement_result',
-        length: 29,
-        maxLength: 20
-      }
-    );
+      loggerInfoMock.mockClear();
 
-    loggerInfoMock.mockClear();
+      expect(replaceVariable(`${'x'.repeat(21)}{{next}}`, { next: 'value' })).toBe(
+        `${'x'.repeat(21)}{{next}}`
+      );
+      expect(loggerInfoMock).toHaveBeenCalledWith(
+        'Oversize string detected during synchronous string processing',
+        {
+          source: 'replaceVariable',
+          reason: 'input',
+          length: 29,
+          maxLength: 20
+        }
+      );
+    } finally {
+      snapshot.resource.systemMaxStringLengthM = original;
+    }
+  });
 
-    expect(replaceVariableWithSmallLimit(`${'x'.repeat(21)}{{next}}`, { next: 'value' })).toBe(
-      `${'x'.repeat(21)}{{next}}`
-    );
-    expect(loggerInfoMock).toHaveBeenCalledWith(
-      'Oversize string detected during synchronous string processing',
-      {
-        source: 'replaceVariable',
-        reason: 'input',
-        length: 29,
-        maxLength: 20
-      }
-    );
-
-    vi.doUnmock('@fastgpt/service/env');
-    vi.resetModules();
+  it('applies legal one- and two-million-character settings to the same real replacement input', () => {
+    const config = getTestInstanceConfig().resource;
+    const original = config.systemMaxStringLengthM;
+    const marker = '{{value}}';
+    const exact = 'x'.repeat(SYSTEM_STRING_LENGTH_UNIT - marker.length) + marker;
+    const above = 'x' + exact;
+    try {
+      config.systemMaxStringLengthM = 1;
+      expect(replaceVariable(exact, { value: 'done' })).toBe(exact.replace(marker, 'done'));
+      expect(replaceVariable(above, { value: 'done' })).toBe(above);
+      config.systemMaxStringLengthM = 2;
+      expect(replaceVariable(above, { value: 'done' })).toBe(above.replace(marker, 'done'));
+      config.systemMaxStringLengthM = 1;
+      expect(replaceVariable(above, { value: 'done' })).toBe(above);
+    } finally {
+      config.systemMaxStringLengthM = original;
+    }
   });
 
   it('should stringify the same referenced variable once per replacement round', () => {

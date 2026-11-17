@@ -10,11 +10,7 @@ import type {
 } from '@fastgpt/global/support/wallet/usage/api';
 import type { SendInform2UserProps } from '@fastgpt/global/support/user/inform/type';
 import { POST, plusRequest } from './plusRequest';
-
-export type FastGPTProHealthResponse = {
-  auth: boolean;
-  data: string;
-};
+import type { ProHealthResponse } from '@fastgpt/global/openapi/common/system/api';
 
 export type FastGPTProOutLinkRequest = {
   token: string;
@@ -37,7 +33,8 @@ export const postConcatUsage = (data: ConcatUsageProps) =>
 export const postPushUsageItems = (data: PushUsageItemsProps) =>
   POST('/support/wallet/usage/pushUsageItems', data);
 
-export const postHealth = () => POST<FastGPTProHealthResponse>('/health');
+export const postHealth = (config?: { timeout?: number }) =>
+  POST<ProHealthResponse>('/health', {}, config);
 
 export const postSendInform = (data: SendInform2UserProps) =>
   POST('/support/user/inform/create', data);

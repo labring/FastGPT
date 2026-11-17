@@ -68,6 +68,9 @@ type State = {
   setAppType: (e?: string) => void;
 };
 
+// 防止版本信息变化或新请求开始后，较早的 License 响应覆盖当前状态。
+let licenseRequestVersion = 0;
+
 export const useSystemStore = create<State>()(
   devtools(
     persist(
@@ -144,6 +147,16 @@ export const useSystemStore = create<State>()(
         licenseData: undefined,
         licenseLoading: true,
         async initLicenseData() {
+          const requestVersion = ++licenseRequestVersion;
+          // 社区版没有 Pro 服务，未知版本也不能提前发起请求。
+          if (get().feConfigs.isProService !== true) {
+            set((state) => {
+              state.licenseData = undefined;
+              state.licenseLoading = false;
+            });
+            return;
+          }
+
           set((state) => {
             state.licenseLoading = true;
           });
@@ -151,11 +164,16 @@ export const useSystemStore = create<State>()(
             const { getLicenseData } = await import('@/web/admin/license/api');
             const licenseData = await getLicenseData();
             set((state) => {
+              // 初始化配置可能已切换到匿名或社区版，旧请求不能覆盖新的状态。
+              if (requestVersion !== licenseRequestVersion || state.feConfigs.isProService !== true)
+                return;
               state.licenseData = licenseData;
               state.licenseLoading = false;
             });
           } catch (error) {
             set((state) => {
+              if (requestVersion !== licenseRequestVersion || state.feConfigs.isProService !== true)
+                return;
               state.licenseData = undefined;
               state.licenseLoading = false;
             });
@@ -188,9 +206,16 @@ export const useSystemStore = create<State>()(
         },
         /** 整体替换接口返回的配置，避免未登录响应与上次登录配置合并后残留字段。 */
         initStaticData(res) {
+          if (
+            res.feConfigs &&
+            (res.feConfigs.isProService !== true || get().feConfigs.isProService !== true)
+          ) {
+            licenseRequestVersion++;
+          }
           set((state) => {
             state.initDataBufferId = res.bufferId;
             if (res.feConfigs) {
+              const previousIsProService = state.feConfigs.isProService;
               // 只补客户端既有上传默认值，不合并上一页字段；响应中的 0 也必须保留。
               state.feConfigs = {
                 ...res.feConfigs,
@@ -200,6 +225,11 @@ export const useSystemStore = create<State>()(
                   uploadFileMaxSize: res.feConfigs.limit?.uploadFileMaxSize || 1000
                 }
               };
+              // 匿名响应没有版本信息；重新获得商业版信息前不得沿用上次 License。
+              if (res.feConfigs.isProService !== true || previousIsProService !== true) {
+                state.licenseData = undefined;
+                state.licenseLoading = res.feConfigs.isProService !== false;
+              }
             }
             state.subPlans = res.subPlans ?? state.subPlans;
             state.systemVersion = res.systemVersion ?? state.systemVersion;

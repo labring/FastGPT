@@ -1,6 +1,7 @@
 'use client';
-import { Box, Button, Flex, HStack, Input, Textarea } from '@chakra-ui/react';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import React from 'react';
+import { Box, Button, HStack, Input, Textarea, Text } from '@chakra-ui/react';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import {
@@ -12,21 +13,29 @@ import {
   postUpdateActivityAd,
   getActivityAd
 } from '@/web/admin/system/inform/api';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { InformLevelEnum } from '@fastgpt/global/support/user/inform/constants';
-import BoxCard from '@/components/admin/BoxContainer/Card';
-import BoxPageRoot from '@/components/admin/BoxContainer/PageRoot';
 import ImageInput from '@/pageComponents/admin/settings/ImageInput';
 import { useMount } from 'ahooks';
-import { accountTitleTextStyles } from '@/pageComponents/account/styles';
+import AdminSettingPage from '@/pageComponents/admin/settings/AdminSettingPage';
+import AdminSettingSection from '@/pageComponents/admin/settings/AdminSettingSection';
+import AdminFormItem from '@/pageComponents/admin/settings/AdminFormItem';
+import type { SettingTOCItem } from '@/pageComponents/admin/settings/AdminSettingTOC';
 
 const InformSetting = () => {
-  // 系统公告
+  const { t } = useSafeTranslation();
+  const tocItems: SettingTOCItem[] = [
+    { id: 'systemModal', label: t('admin:system_announcement_config') },
+    { id: 'sendInform', label: t('admin:send_system_notification') },
+    { id: 'operationalAd', label: t('admin:points_area_ad_config') },
+    { id: 'activityAd', label: t('admin:fullscreen_campaign_ad_config') }
+  ];
 
+  // 1. 系统公告
   const { ConfirmModal: ConfirmSettingSystemModal, openConfirm: onOpenConfirmSystemModal } =
     useConfirm({
-      content: '确认修改系统公告？'
+      content: t('admin:confirm_update_system_announcement')
     });
   const {
     register: registerSystemMsgModal,
@@ -40,7 +49,7 @@ const InformSetting = () => {
   const { runAsync: onUpdateSystemModal, loading: isUpdatingSystemModal } = useRequest(
     postUpdateSystemMsgModal,
     {
-      successToast: '修改成功'
+      successToast: t('common:update_success')
     }
   );
   useMount(async () => {
@@ -50,16 +59,16 @@ const InformSetting = () => {
     });
   });
 
-  // 系统通知
+  // 2. 系统通知
   const { ConfirmModal: ConfirmSendSystemMsg, openConfirm: onOpenConfirmSendSystemMsg } =
     useConfirm({
-      content: '确认发送系统通知？'
+      content: t('admin:confirm_send_system_notification')
     });
   const {
+    control: controlSystemInform,
     setValue,
     register: registerSystemInform,
-    handleSubmit: handleSubmitSendSystemInform,
-    watch
+    handleSubmit: handleSubmitSendSystemInform
   } = useForm({
     defaultValues: {
       level: InformLevelEnum.common,
@@ -67,22 +76,22 @@ const InformSetting = () => {
       content: ''
     }
   });
-  const informLevel = watch('level');
+  const informLevel = useWatch({ control: controlSystemInform, name: 'level' });
   const { runAsync: onUpdateSendSystemMsg, loading: isUpdatingSendSystemMsg } = useRequest(
     postSendSystemMsg,
     {
-      successToast: '发送成功，通知会逐步推送'
+      successToast: t('admin:sent_notifications_delivered_gradually')
     }
   );
 
-  // 全屏广告
+  // 3. 积分区广告
   const { ConfirmModal: ConfirmOperationalAd, openConfirm: onOpenConfirmOperationalAd } =
     useConfirm({
-      content: '确认保存运营广告配置？'
+      content: t('admin:confirm_save_operations_ad_config')
     });
   const { ConfirmModal: ConfirmClearOperationalAd, openConfirm: onOpenConfirmClearOperationalAd } =
     useConfirm({
-      content: '确认清除运营广告配置？'
+      content: t('admin:confirm_clear_operations_ad_config')
     });
   const {
     control: controlOperationalAd,
@@ -98,8 +107,8 @@ const InformSetting = () => {
   const { runAsync: onUpdateOperationalAd, loading: isUpdatingOperationalAd } = useRequest(
     postUpdateOperationalAd,
     {
-      successToast: '保存成功',
-      errorToast: '保存失败'
+      successToast: t('common:save_success'),
+      errorToast: t('admin:save_failed')
     }
   );
   const { runAsync: onClearOperationalAd, loading: isClearingOperationalAd } = useRequest(
@@ -115,8 +124,8 @@ const InformSetting = () => {
       return result;
     },
     {
-      successToast: '清除成功',
-      errorToast: '清除失败'
+      successToast: t('admin:clear_success'),
+      errorToast: t('admin:clear_failed')
     }
   );
   useMount(async () => {
@@ -127,13 +136,13 @@ const InformSetting = () => {
     });
   });
 
-  // 底部广告
+  // 4. 底部活动全屏广告
   const { ConfirmModal: ConfirmActivityAd, openConfirm: onOpenConfirmActivityAd } = useConfirm({
-    content: '确认保存活动广告配置？'
+    content: t('admin:confirm_save_campaign_ad_config')
   });
   const { ConfirmModal: ConfirmClearActivityAd, openConfirm: onOpenConfirmClearActivityAd } =
     useConfirm({
-      content: '确认清除活动广告配置？'
+      content: t('admin:confirm_clear_campaign_ad_config')
     });
   const {
     control: controlActivityAd,
@@ -149,8 +158,8 @@ const InformSetting = () => {
   const { runAsync: onUpdateActivityAd, loading: isUpdatingActivityAd } = useRequest(
     postUpdateActivityAd,
     {
-      successToast: '保存成功',
-      errorToast: '保存失败'
+      successToast: t('common:save_success'),
+      errorToast: t('admin:save_failed')
     }
   );
   const { runAsync: onClearActivityAd, loading: isClearingActivityAd } = useRequest(
@@ -163,8 +172,8 @@ const InformSetting = () => {
       return result;
     },
     {
-      successToast: '清除成功',
-      errorToast: '清除失败'
+      successToast: t('admin:clear_success'),
+      errorToast: t('admin:clear_failed')
     }
   );
   useMount(async () => {
@@ -176,181 +185,156 @@ const InformSetting = () => {
   });
 
   return (
-    <BoxPageRoot display={'flex'} flexDirection={'column'} h={'100%'} p={0}>
-      <Flex
-        h={'64px'}
-        flexShrink={0}
-        px={6}
-        alignItems={'center'}
-        borderBottom={'1px solid'}
-        borderColor={'myGray.200'}
-      >
-        <Box as={'h1'} {...accountTitleTextStyles}>
-          通知管理
-        </Box>
-      </Flex>
-      <Box flex={'1 0 0'} minH={0} overflow={'auto'} px={[4, 6]} py={[4, 6]} bg={'myGray.25'}>
-        <BoxCard border={'1px solid'} borderColor={'myGray.200'} boxShadow={'1'} bg={'white'}>
-          <HStack>
-            <Box fontSize={'2xl'}>系统公告配置</Box>
-            <Button
-              variant={'whitePrimary'}
-              size={'sm'}
-              ml={2}
-              isLoading={isUpdatingSystemModal}
-              onClick={handleSubmitUpdateSystemMsgModal((data) =>
-                onOpenConfirmSystemModal({ onConfirm: () => onUpdateSystemModal(data) })()
-              )}
-            >
-              保存
-            </Button>
-          </HStack>
-          <Box py={2}>
-            设置该内容，会在用户登录系统后，通过弹窗形式进行强提示。用户关闭后，下次不再提示。只能设置1个该类型通知。支持
-            markdown 格式。
-          </Box>
-          <Textarea rows={10} {...registerSystemMsgModal('content', {})} />
-        </BoxCard>
-        <BoxCard
-          mt={4}
-          border={'1px solid'}
-          borderColor={'myGray.200'}
-          boxShadow={'1'}
-          bg={'white'}
-        >
-          <HStack>
-            <Box fontSize={'2xl'}>发送系统通知</Box>
-            <Button
-              variant={'whitePrimary'}
-              size={'sm'}
-              ml={2}
-              isLoading={isUpdatingSendSystemMsg}
-              onClick={handleSubmitSendSystemInform((data) =>
-                onOpenConfirmSendSystemMsg({ onConfirm: () => onUpdateSendSystemMsg(data) })()
-              )}
-            >
-              确认发送
-            </Button>
-          </HStack>
-          <Box py={2}>为所有用户发送一个通知，不同等级通知，会有不同提示。</Box>
-          <Flex alignItems={'center'}>
-            <Box flex={'0 0 100px'} mr={2}>
-              消息等级
-            </Box>
-            <MySelect
-              list={[
-                { label: '一般(仅发站内信)', value: InformLevelEnum.common },
-                { label: '重要（站内信+登录通知）', value: InformLevelEnum.important },
-                { label: '紧急（站内信+登录通知+邮件/短信提醒）', value: InformLevelEnum.emergency }
-              ]}
-              value={informLevel}
-              onChange={(value) => setValue('level', value)}
-            />
-          </Flex>
-          <Flex alignItems={'center'} mt={3}>
-            <Box flex={'0 0 100px'} mr={2}>
-              通知标题
-            </Box>
-            <Input
-              placeholder="通知标题"
-              {...registerSystemInform('title', {
-                required: true
-              })}
-            ></Input>
-          </Flex>
-          <Textarea
-            mt={2}
-            rows={10}
-            placeholder="通知内容"
-            {...registerSystemInform('content', {
-              required: true
-            })}
-          />
-        </BoxCard>
-        <BoxCard
-          mt={4}
-          border={'1px solid'}
-          borderColor={'myGray.200'}
-          boxShadow={'1'}
-          bg={'white'}
-        >
-          <HStack>
-            <Box fontSize={'2xl'}>配置底部广告(积分区)</Box>
-            <Button
-              variant={'primary'}
-              size={'sm'}
-              ml={2}
-              isLoading={isUpdatingOperationalAd}
-              onClick={handleSubmitOperationalAd((data) =>
-                onOpenConfirmOperationalAd({ onConfirm: () => onUpdateOperationalAd(data) })()
-              )}
-            >
-              保存
-            </Button>
-            <Button
-              variant={'dangerFill'}
-              size={'sm'}
-              isLoading={isClearingOperationalAd}
-              onClick={() =>
-                onOpenConfirmClearOperationalAd({ onConfirm: () => onClearOperationalAd() })()
-              }
-            >
-              清除
-            </Button>
-          </HStack>
-          <Box py={2}>配置运营活动广告，会常驻在工作台左下角用量卡片处</Box>
+    <AdminSettingPage
+      headerTitle={t('admin:page_title_inform')}
+      headerDescription={t('admin:page_description_inform')}
+      tocItems={tocItems}
+    >
+      {/* 1. 系统公告配置 */}
+      <AdminSettingSection id="systemModal" title={t('admin:system_announcement_config')}>
+        <Text fontSize={'xs'} color={'myGray.500'} mb={4}>
+          {t('admin:after_an_announcement_is_set_users_see_a_modal_prompt_when_t')}
+        </Text>
 
-          <Box fontSize={'18px'} color={'myGray.700'}>
-            运营图片
-          </Box>
-          <Box mt={4} mb={4}>
+        {/* 清空内容 = 关闭公告（前端弹窗按 content 真值判定），因此不能加必填校验 */}
+        <AdminFormItem label={t('admin:announcement_content_markdown')} mb={4}>
+          <Textarea
+            rows={8}
+            {...registerSystemMsgModal('content')}
+            placeholder={t('admin:markdown_supported_e_g_system_maintenance_notice')}
+          />
+        </AdminFormItem>
+
+        <Box mb={2}>
+          <Button
+            colorScheme={'blue'}
+            size={'sm'}
+            px={6}
+            isLoading={isUpdatingSystemModal}
+            onClick={handleSubmitUpdateSystemMsgModal((data) =>
+              onOpenConfirmSystemModal({ onConfirm: () => onUpdateSystemModal(data) })()
+            )}
+          >
+            {t('admin:save_announcement')}
+          </Button>
+        </Box>
+      </AdminSettingSection>
+
+      {/* 2. 发送系统通知 */}
+      <AdminSettingSection id="sendInform" title={t('admin:send_system_notification')} showDivider>
+        <Text fontSize={'xs'} color={'myGray.500'} mb={4}>
+          {t('admin:broadcast_a_notification_to_all_registered_users_different_l')}
+        </Text>
+
+        <AdminFormItem label={t('admin:notification_level')} isRequired mb={4}>
+          <MySelect
+            width={'100%'}
+            maxW={'400px'}
+            list={[
+              { label: t('admin:normal_in_app_message_only'), value: InformLevelEnum.common },
+              { label: t('admin:important_in_app_login_modal'), value: InformLevelEnum.important },
+              {
+                label: t('admin:urgent_in_app_login_modal_email_sms'),
+                value: InformLevelEnum.emergency
+              }
+            ]}
+            value={informLevel}
+            onChange={(value) => setValue('level', value)}
+          />
+        </AdminFormItem>
+
+        <AdminFormItem label={t('admin:notification_title')} isRequired mb={4}>
+          <Input
+            placeholder={t('admin:enter_the_notification_title')}
+            {...registerSystemInform('title', { required: true })}
+          />
+        </AdminFormItem>
+
+        <AdminFormItem label={t('admin:notification_body')} isRequired mb={4}>
+          <Textarea
+            rows={6}
+            placeholder={t('admin:enter_the_notification_body')}
+            {...registerSystemInform('content', { required: true })}
+          />
+        </AdminFormItem>
+
+        <Box mb={2}>
+          <Button
+            colorScheme={'blue'}
+            size={'sm'}
+            px={6}
+            isLoading={isUpdatingSendSystemMsg}
+            onClick={handleSubmitSendSystemInform((data) =>
+              onOpenConfirmSendSystemMsg({ onConfirm: () => onUpdateSendSystemMsg(data) })()
+            )}
+          >
+            {t('admin:confirm_broadcast')}
+          </Button>
+        </Box>
+      </AdminSettingSection>
+
+      {/* 3. 积分区广告配置 */}
+      <AdminSettingSection id="operationalAd" title={t('admin:points_area_ad_config')} showDivider>
+        <Text fontSize={'xs'} color={'myGray.500'} mb={4}>
+          {t('admin:configure_the_operations_ad_shown_persistently_in_the_points')}
+        </Text>
+
+        <AdminFormItem label={t('admin:ad_banner_image')} mb={4}>
+          <Box maxW={'360px'}>
             <ImageInput control={controlOperationalAd} name="operationalAdImage" />
           </Box>
-          <Box fontSize={'18px'} color={'myGray.700'} mb={2}>
-            跳转链接
-          </Box>
+        </AdminFormItem>
+
+        <AdminFormItem
+          label={t('admin:click_to_open_link')}
+          tooltip={t('admin:destination_url_external_or_internal_after_a_user_clicks_the')}
+          mb={4}
+        >
           <Input
             {...registerOperationalAd('operationalAdLink')}
-            placeholder="请输入完整的 URL，例如: https://example.com"
+            placeholder={t('admin:enter_a_full_url_e_g_https_example_com_promo')}
           />
-        </BoxCard>
-        <BoxCard
-          mt={4}
-          border={'1px solid'}
-          borderColor={'myGray.200'}
-          boxShadow={'1'}
-          bg={'white'}
-        >
-          <HStack>
-            <Box fontSize={'2xl'}>配置全屏广告</Box>
-            <Button
-              variant={'primary'}
-              size={'sm'}
-              ml={2}
-              isLoading={isUpdatingActivityAd}
-              onClick={handleSubmitActivityAd((data) =>
-                onOpenConfirmActivityAd({ onConfirm: () => onUpdateActivityAd(data) })()
-              )}
-            >
-              保存
-            </Button>
-            <Button
-              variant={'dangerFill'}
-              size={'sm'}
-              isLoading={isClearingActivityAd}
-              onClick={() =>
-                onOpenConfirmClearActivityAd({ onConfirm: () => onClearActivityAd() })()
-              }
-            >
-              清除
-            </Button>
-          </HStack>
-          <Box py={2}>配置活动广告，会在用户登录进入时展示开屏弹窗</Box>
+        </AdminFormItem>
 
-          <Box fontSize={'18px'} color={'myGray.700'}>
-            活动图片
-          </Box>
-          <Box mt={4} mb={4}>
+        <HStack spacing={3} mb={2}>
+          <Button
+            colorScheme={'blue'}
+            size={'sm'}
+            px={6}
+            isLoading={isUpdatingOperationalAd}
+            onClick={handleSubmitOperationalAd((data) =>
+              onOpenConfirmOperationalAd({ onConfirm: () => onUpdateOperationalAd(data) })()
+            )}
+          >
+            {t('admin:save_ad_config')}
+          </Button>
+          <Button
+            variant={'outline'}
+            colorScheme={'red'}
+            size={'sm'}
+            px={5}
+            isLoading={isClearingOperationalAd}
+            onClick={() =>
+              onOpenConfirmClearOperationalAd({ onConfirm: () => onClearOperationalAd() })()
+            }
+          >
+            {t('admin:clear_ad')}
+          </Button>
+        </HStack>
+      </AdminSettingSection>
+
+      {/* 4. 全屏活动广告配置 */}
+      <AdminSettingSection
+        id="activityAd"
+        title={t('admin:fullscreen_campaign_ad_config')}
+        showDivider
+      >
+        <Text fontSize={'xs'} color={'myGray.500'} mb={4}>
+          {t('admin:configure_the_fullscreen_campaign_ad_shown_as_a_centered_mod')}
+        </Text>
+
+        <AdminFormItem label={t('admin:fullscreen_campaign_image')} mb={4}>
+          <Box maxW={'420px'}>
             <ImageInput
               control={controlActivityAd}
               name="activityAdImage"
@@ -359,22 +343,52 @@ const InformSetting = () => {
               uploadMaxSize={1024 * 1024 * 5}
             />
           </Box>
-          <Box fontSize={'18px'} color={'myGray.700'} mb={2}>
-            跳转链接
-          </Box>
+        </AdminFormItem>
+
+        <AdminFormItem
+          label={t('admin:click_to_open_link')}
+          tooltip={t('admin:destination_url_after_a_user_clicks_the_campaign_image')}
+          mb={4}
+        >
           <Input
             {...registerActivityAd('activityAdLink')}
-            placeholder="请输入完整的 URL，例如: https://example.com"
+            placeholder={t('admin:enter_a_full_url_e_g_https_example_com_activity')}
           />
-        </BoxCard>
-        <ConfirmSendSystemMsg />
-        <ConfirmSettingSystemModal />
-        <ConfirmOperationalAd />
-        <ConfirmClearOperationalAd />
-        <ConfirmActivityAd />
-        <ConfirmClearActivityAd />
-      </Box>
-    </BoxPageRoot>
+        </AdminFormItem>
+
+        <HStack spacing={3} mb={2}>
+          <Button
+            colorScheme={'blue'}
+            size={'sm'}
+            px={6}
+            isLoading={isUpdatingActivityAd}
+            onClick={handleSubmitActivityAd((data) =>
+              onOpenConfirmActivityAd({ onConfirm: () => onUpdateActivityAd(data) })()
+            )}
+          >
+            {t('admin:save_campaign_config')}
+          </Button>
+          <Button
+            variant={'outline'}
+            colorScheme={'red'}
+            size={'sm'}
+            px={5}
+            isLoading={isClearingActivityAd}
+            onClick={() => onOpenConfirmClearActivityAd({ onConfirm: () => onClearActivityAd() })()}
+          >
+            {t('admin:clear_campaign')}
+          </Button>
+        </HStack>
+      </AdminSettingSection>
+
+      {/* 二次确认弹窗 */}
+      <ConfirmSendSystemMsg />
+      <ConfirmSettingSystemModal />
+      <ConfirmOperationalAd />
+      <ConfirmClearOperationalAd />
+      <ConfirmActivityAd />
+      <ConfirmClearActivityAd />
+    </AdminSettingPage>
   );
 };
 

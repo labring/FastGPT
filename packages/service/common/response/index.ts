@@ -1,4 +1,6 @@
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
+import { isAxiosError } from 'axios';
+import { getSafeHttpErrorLog } from '../api/httpError';
 import type { NodeApiResponse, NodeHttpResponse } from '../../types/http';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { proxyError, ERROR_RESPONSE, ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
@@ -57,11 +59,6 @@ function resolveHttpStatusForApiError(
     processedError.httpStatus <= 599
   ) {
     return processedError.httpStatus;
-  }
-
-  // packages/global/common/error/code/s3.ts：510000 段为上传校验类客户端错误
-  if (typeof bc === 'number' && bc >= 510000 && bc < 511000) {
-    return 400;
   }
 
   const raw = typeof error === 'string' ? error : error?.message;
@@ -166,6 +163,8 @@ export function processError(params: {
     }
 
     msg = error.message;
+  } else if (isAxiosError(error)) {
+    logger.error('System unexpected error', getSafeHttpErrorLog(error));
   } else {
     logger.error('System unexpected error', { url, message: msg, error });
   }

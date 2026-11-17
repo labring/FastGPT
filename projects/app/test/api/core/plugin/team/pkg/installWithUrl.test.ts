@@ -1,3 +1,7 @@
+import {
+  createDefaultInstanceConfig,
+  getTestInstanceConfig
+} from '@test/utils/instanceConfigSnapshot';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Call } from '@test/utils/request';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
@@ -14,13 +18,20 @@ vi.mock('@fastgpt/service/support/permission/user/auth', () => ({
   authUserPer: mocks.authUserPer
 }));
 
-vi.mock('@fastgpt/service/core/plugin/teamPluginPolicy', () => ({
-  assertTeamPluginInstallEnabled: mocks.assertTeamPluginInstallEnabled,
-  assertTeamPluginSourceReady: mocks.assertTeamPluginSourceReady,
-  getRawPluginIdFromSystemToolId: (toolId: string) =>
-    toolId.replace(/^systemTool-/, '').split('/')[0],
-  upsertTeamInstalledPluginPolicy: mocks.upsertTeamInstalledPluginPolicy
-}));
+vi.mock('@fastgpt/service/core/plugin/teamPluginPolicy', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@fastgpt/service/core/plugin/teamPluginPolicy')>();
+  return {
+    assertTeamPluginInstallEnabled: () => {
+      actual.assertTeamPluginInstallEnabled();
+      mocks.assertTeamPluginInstallEnabled();
+    },
+    assertTeamPluginSourceReady: mocks.assertTeamPluginSourceReady,
+    getRawPluginIdFromSystemToolId: (toolId: string) =>
+      toolId.replace(/^systemTool-/, '').split('/')[0],
+    upsertTeamInstalledPluginPolicy: mocks.upsertTeamInstalledPluginPolicy
+  };
+});
 
 vi.mock('@fastgpt/service/thirdProvider/fastgptPlugin', () => ({
   pluginClient: {
@@ -40,6 +51,8 @@ const plugin = {
 describe('install team plugin from URL handler', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    global.systemInstanceConfig = createDefaultInstanceConfig();
+    getTestInstanceConfig().feature.enableTeamPluginUpload = true;
     mocks.assertTeamPluginInstallEnabled.mockImplementation(() => undefined);
     mocks.authUserPer.mockResolvedValue({ teamId: 'team-1', tmbId: 'tmb-1' });
     mocks.installPlugins.mockResolvedValue({ failed: [] });
@@ -61,12 +74,20 @@ describe('install team plugin from URL handler', () => {
       ['https://marketplace.fastgpt.io/plugin/weather.pkg'],
       { source: 'teamId:team-1' }
     );
+
+    getTestInstanceConfig().feature.enableTeamPluginUpload = false;
+    const disabled = await Call(handler, {
+      body: {
+        downloadUrls: ['https://marketplace.fastgpt.io/plugin/weather.pkg'],
+        plugins: [plugin]
+      }
+    });
+    expect(disabled.error).toBe(TeamErrEnum.teamPluginInstallDisabled);
+    expect(mocks.installPlugins).toHaveBeenCalledOnce();
   });
 
   it('does not call the plugin service when team installation is disabled', async () => {
-    mocks.assertTeamPluginInstallEnabled.mockImplementationOnce(() => {
-      throw TeamErrEnum.teamPluginInstallDisabled;
-    });
+    getTestInstanceConfig().feature.enableTeamPluginUpload = false;
 
     const res = await Call(handler, {
       body: {

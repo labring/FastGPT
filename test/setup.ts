@@ -1,4 +1,6 @@
 import './mocks';
+import { getSystemConfigRuntimeState } from '@fastgpt/service/common/system/systemInstanceConfig/runtime';
+import { resolveSystemInstanceConfig } from '@fastgpt/global/common/system/config/schema';
 
 import { connectMongo } from '@fastgpt/service/common/mongo/init';
 import { initGlobalVariables } from '@/service/common/system';
@@ -33,7 +35,8 @@ beforeAll(async () => {
 
   initGlobalVariables();
   global.agentUserTmbIds = new Set();
-  global.systemEnv = {} as any;
+  global.systemInstanceConfig = resolveSystemInstanceConfig();
+  getSystemConfigRuntimeState().frontendContext = {};
 
   global.feConfigs = {
     limit: { uploadFileMaxAmount: 1000, uploadFileMaxSize: 1000 },

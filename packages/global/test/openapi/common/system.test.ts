@@ -22,11 +22,11 @@ const desensitizedEmbeddingModel = {
 };
 
 describe('system initialization OpenAPI contract', () => {
-  it.each([true, false])('preserves the Workflow Builder visibility setting: %s', (enabled) => {
+  it('drops the retired Workflow Builder visibility setting', () => {
     const result = GetSystemInitDataResponseSchema.parse({
-      feConfigs: { show_workflow_builder: enabled }
+      feConfigs: { show_workflow_builder: false }
     });
-    expect(result.feConfigs?.show_workflow_builder).toBe(enabled);
+    expect(result.feConfigs).not.toHaveProperty('show_workflow_builder');
   });
 
   it('declares SSO capabilities without returning the stored root address', () => {

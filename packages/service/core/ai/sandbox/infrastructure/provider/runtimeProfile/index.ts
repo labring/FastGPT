@@ -4,7 +4,7 @@
  * 只维护 provider 到 profile 的路由，不执行 sandbox 生命周期或业务状态判断。
  */
 import type { SandboxProviderType } from '@fastgpt-sdk/sandbox-adapter';
-import { serviceEnv } from '../../../../../../env';
+import { getAgentSandboxProvider } from '../../../config';
 import { buildOpenSandboxRuntimeProfile } from './opensandbox';
 import { buildSealosRuntimeProfile } from './sealosdevbox';
 import type { SandboxRuntimeProfile } from './types';
@@ -14,9 +14,9 @@ function assertNever(value: never): never {
 }
 
 function getConfiguredProvider(): SandboxProviderType {
-  const provider = serviceEnv.AGENT_SANDBOX_PROVIDER;
-  if (!provider) {
-    throw new Error('AGENT_SANDBOX_PROVIDER is required when Agent Sandbox is used');
+  const provider = getAgentSandboxProvider();
+  if (provider === 'none') {
+    throw new Error('Configure the provider in Agent Sandbox admin settings before using it');
   }
   return provider;
 }

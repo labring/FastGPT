@@ -19,14 +19,15 @@ import {
 } from './entity';
 import type { ModerationConfigRecord } from './entity';
 import type { AdminModerationPluginItemType } from '@fastgpt/global/core/plugin/moderation/type';
-import { DEFAULT_MODERATION_POLICY_CONFIG_ID } from '@fastgpt/global/core/plugin/moderation/constants';
 import {
   DefaultSystemModerationPolicy,
   SystemModerationPolicySchema,
   type SystemModerationPolicyType
 } from '@fastgpt/global/core/plugin/moderation/type';
-import { MongoSystemConfigs } from '../../../common/system/config/schema';
-import { SystemConfigsTypeEnum } from '@fastgpt/global/common/system/config/constants';
+import { MongoSystemInstanceConfig } from '../../../common/system/systemInstanceConfig/schema';
+import { getSystemInstanceConfig } from '../../../common/system/systemInstanceConfig/runtime';
+import { systemInstanceConfig } from '../../../common/system/systemInstanceConfig/service';
+import { getLogger, LogCategories } from '../../../common/logger';
 import type { LangEnum } from '@fastgpt/global/common/i18n/type';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import type { ModerationCheckInputType } from '@fastgpt/global/sdk/fastgpt-plugin';
@@ -43,6 +44,15 @@ import {
   getModerationPluginDetail,
   listModerationPlugins
 } from '../../../thirdProvider/fastgptPlugin/moderation';
+
+const logger = getLogger(LogCategories.SYSTEM);
+
+/** 事务提交后刷新策略快照，失败交由版本轮询重试，不能误报已提交的变更。 */
+const refreshModerationPolicySnapshot = async () => {
+  await systemInstanceConfig.refresh().catch((error) => {
+    logger.error('Failed to refresh moderation policy config; polling will retry', { error });
+  });
+};
 
 /** 与成功提交的策略变更对应的前态，不包含操作者或外部插件元数据。 */
 export type ModerationPolicyAuditSnapshot = {
@@ -200,8 +210,8 @@ export const getAdminModerationPluginList = async ({
 
 /**
  * 权威策略记录竞争点：所有启用操作均争用同一条 moderationPolicy 记录，
- * 通过在同一事务内更新合法字段（value / createTime）产生排他行锁或写冲突，避免并发双启用。
- * 若存在历史重复记录，则以最新策略值为准收敛至单条权威记录。
+ * domain 唯一索引保证所有操作竞争同一条记录；同一事务内递增 revision 产生写冲突，
+ * 使并发事务重读前态后重试，避免并发双启用。
  */
 const syncPolicyContentionRecord = async ({
   session,
@@ -212,24 +222,18 @@ const syncPolicyContentionRecord = async ({
   activePluginId?: string;
   policy?: SystemModerationPolicyType;
 }) => {
-  const records = await MongoSystemConfigs.find({
-    type: SystemConfigsTypeEnum.moderationPolicy
-  })
-    .sort({ createTime: -1, _id: -1 })
-    .select('_id value')
-    .session(session ?? null)
-    .lean();
+  const record = policy
+    ? undefined
+    : await MongoSystemInstanceConfig.findOne({ domain: 'moderationPolicy' })
+        .session(session ?? null)
+        .lean();
 
-  const latest = records[0];
-  const canonicalRecord =
-    records.find((item) => String(item._id) === DEFAULT_MODERATION_POLICY_CONFIG_ID) ?? latest;
-  const targetId = canonicalRecord?._id ?? DEFAULT_MODERATION_POLICY_CONFIG_ID;
   const rawValue = (() => {
     if (policy) return policy;
-    if (latest?.value && typeof latest.value === 'object') {
+    if (record?.overrides && typeof record.overrides === 'object') {
       return {
         ...DefaultSystemModerationPolicy,
-        ...latest.value,
+        ...record.overrides,
         ...(activePluginId ? { activePluginId } : {})
       };
     }
@@ -244,30 +248,15 @@ const syncPolicyContentionRecord = async ({
     ? { ...restValue, activePluginId: resolvedActivePluginId }
     : restValue;
 
-  await MongoSystemConfigs.findOneAndUpdate(
-    { _id: targetId },
+  await MongoSystemInstanceConfig.findOneAndUpdate(
+    { domain: 'moderationPolicy' },
     {
-      $set: {
-        type: SystemConfigsTypeEnum.moderationPolicy,
-        value: resolvedValue,
-        createTime: new Date()
-      },
-      $setOnInsert: {
-        _id: targetId
-      }
+      $set: { overrides: resolvedValue },
+      $inc: { revision: 1 },
+      $setOnInsert: { schemaVersion: 1, explicitDefaultPaths: [] }
     },
-    { upsert: true, new: true, session }
+    { upsert: true, new: true, setDefaultsOnInsert: false, session }
   );
-
-  const duplicateIds = records
-    .map((item) => item._id)
-    .filter((id) => String(id) !== String(targetId));
-  if (duplicateIds.length > 0) {
-    await MongoSystemConfigs.deleteMany(
-      { _id: { $in: duplicateIds }, type: SystemConfigsTypeEnum.moderationPolicy },
-      { session: session ?? undefined }
-    );
-  }
 };
 
 /**
@@ -397,6 +386,8 @@ export const saveModerationConfig = async ({
     return { saved: record, auditSnapshot, autoEnabled: shouldAutoEnable };
   });
 
+  if (enabled === true || autoEnabled) await refreshModerationPolicySnapshot();
+
   return { item: buildAdminItem({ detail, config: saved, lang }), auditSnapshot, autoEnabled };
 };
 
@@ -450,7 +441,7 @@ export const deleteModerationPlugin = async ({
   await disableSystemPlugin(pluginId);
 
   // 3. 在同一事务内读取实际停用前态、软删除本地配置，并在停用最后插件（或并发刚被启用的目标插件）时关闭全局策略。
-  const auditSnapshot = await mongoSessionRun(async (session) => {
+  const { auditSnapshot, policyChanged } = await mongoSessionRun(async (session) => {
     const prevTarget = await findModerationConfig({ pluginId, source }, session);
     const policyState =
       isLastModerationPlugin || prevTarget?.enabled
@@ -470,12 +461,13 @@ export const deleteModerationPlugin = async ({
       ...(session ? { session } : {})
     });
 
-    if (
+    const policyChanged = Boolean(
       policyState &&
       (isLastModerationPlugin ||
         policyState.enabledPluginId === pluginId ||
         policyState.policy.activePluginId === pluginId)
-    ) {
+    );
+    if (policyChanged && policyState) {
       await syncPolicyContentionRecord({
         session,
         policy: {
@@ -489,8 +481,10 @@ export const deleteModerationPlugin = async ({
       }
     }
 
-    return { wasEnabled };
+    return { auditSnapshot: { wasEnabled }, policyChanged };
   });
+
+  if (policyChanged) await refreshModerationPolicySnapshot();
 
   return { auditSnapshot };
 };
@@ -614,23 +608,22 @@ export const checkModerationForTest = async ({
 };
 
 /**
- * 读取全局策略及实际启用插件，供查询与事务内审计共同使用。
+ * 在事务中读取全局策略及实际启用插件，作为更新的审计前态。
  *
- * 从 MongoSystemConfigs 读取，若不存在或校验失败则回退到默认值，
+ * 从实例配置读取，若不存在或校验失败则回退到默认值，
  * 优先使用数据库中实际启用的审查插件作为 activePluginId。
  */
 const readModerationPolicyState = async (session?: ClientSession) => {
   // 同一 session 内顺序查询，确保前态与后续写入处于同一事务快照。
-  const configRecord = await MongoSystemConfigs.findOne({
-    type: SystemConfigsTypeEnum.moderationPolicy
-  })
-    .sort({ createTime: -1, _id: -1 })
+  const configRecord = await MongoSystemInstanceConfig.findOne({ domain: 'moderationPolicy' })
     .session(session ?? null)
     .lean();
   const enabledPlugin = await findEnabledModerationConfig(session);
 
   const rawConfigValue =
-    configRecord?.value && typeof configRecord.value === 'object' ? configRecord.value : {};
+    configRecord?.overrides && typeof configRecord.overrides === 'object'
+      ? configRecord.overrides
+      : {};
   const parsed = SystemModerationPolicySchema.safeParse({
     ...DefaultSystemModerationPolicy,
     ...rawConfigValue,
@@ -653,14 +646,15 @@ const readModerationPolicyState = async (session?: ClientSession) => {
 
 /** 获取全局内容审核策略，以实际启用的插件校正生效插件，缺失或无效配置回退到默认值。 */
 export const getModerationPolicy = async (): Promise<SystemModerationPolicyType> => {
-  const { policy } = await readModerationPolicyState();
-  return policy;
+  const policy = getSystemInstanceConfig().moderationPolicy;
+  const enabledPlugin = await findEnabledModerationConfig();
+  return { ...policy, activePluginId: enabledPlugin?.pluginId ?? policy.activePluginId };
 };
 
 /**
  * 更新全局内容审核策略配置。
  *
- * 保存策略（生效环节、处理策略等）到 MongoSystemConfigs，
+ * 保存策略（生效环节、处理策略等）到实例配置，
  * 并同步更新 system_moderation_plugins 的启用状态（保持全局互斥）。
  * 返回策略和提交事务实际覆盖的前态，审计写入由调用方在提交成功后执行。
  */
@@ -677,7 +671,7 @@ export const updateModerationPolicy = async (
     throw new Error('请选择一个审核插件后再保存');
   }
 
-  return await mongoSessionRun(async (session) => {
+  const result = await mongoSessionRun(async (session) => {
     // 1. 在更新事务内读取前态，冲突重试时重新生成，避免并发切换或策略恢复漏记日志。
     const { policy: prevPolicy, enabledPluginId } = await readModerationPolicyState(session);
     const auditSnapshot: ModerationPolicyAuditSnapshot = {
@@ -697,4 +691,7 @@ export const updateModerationPolicy = async (
 
     return { policy: validated, auditSnapshot };
   });
+
+  await refreshModerationPolicySnapshot();
+  return result;
 };
