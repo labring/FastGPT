@@ -11,22 +11,12 @@ import type { AiproxyChannelModel } from '../../../thirdProvider/aiproxy/type';
 type LocalModel = Pick<AIModelDocumentDataType, 'model'> & { modelId: string };
 type LocalMatchCategory = Extract<ImportPreviewItem, { modelId: string }>['category'];
 
-type ModelMatch =
-  | {
-      key: string;
-      model: string;
-      category: LocalMatchCategory;
-      modelId: string;
-      rank: number;
-    }
-  | {
-      key: string;
-      model: string;
-      category: 'template';
-      template: { type: AIModelDocumentDataType['type']; model: string };
-      templateData: AIModelDocumentDataType;
-      rank: number;
-    };
+type ModelMatch = {
+  key: string;
+  template: { type: AIModelDocumentDataType['type']; model: string };
+  templateData: AIModelDocumentDataType;
+  rank: number;
+};
 
 /** 仅当渠道协议名唯一匹配 FastGPT provider 展示名时返回稳定 provider ID。 */
 export const inferFastGPTProvider = ({
@@ -241,8 +231,6 @@ export const classifyChannelModels = ({
       if (rank !== undefined) {
         matches.push({
           key: `template:${template.type}:${template.model}`,
-          model: template.model,
-          category: 'template',
           template: { type: template.type, model: template.model },
           templateData: template,
           rank
@@ -252,24 +240,19 @@ export const classifyChannelModels = ({
     const orderedMatches = [...new Map(matches.map((match) => [match.key, match])).values()].sort(
       (left, right) => left.rank - right.rank
     );
-    const blankDraft = orderedMatches.some((match) => match.category === 'template')
+    const blankDraft = orderedMatches.length
       ? createBlankModelData(channelModel, provider)
       : undefined;
     const candidates: ImportPreviewItem[] = orderedMatches.length
-      ? orderedMatches.map((match) => {
-          if (match.category !== 'template') {
-            return { category: match.category, modelId: match.modelId };
-          }
-          return {
-            category: 'template',
-            template: match.template,
-            modelData: mergeTemplateModelData(match.templateData, channelModel),
-            ...(blankDraft?.contextLength === undefined
-              ? {}
-              : { contextLength: blankDraft.contextLength }),
-            ...(blankDraft?.modelData === undefined ? {} : { blankModelData: blankDraft.modelData })
-          };
-        })
+      ? orderedMatches.map((match) => ({
+          category: 'template',
+          template: match.template,
+          modelData: mergeTemplateModelData(match.templateData, channelModel),
+          ...(blankDraft?.contextLength === undefined
+            ? {}
+            : { contextLength: blankDraft.contextLength }),
+          ...(blankDraft?.modelData === undefined ? {} : { blankModelData: blankDraft.modelData })
+        }))
       : [createBlankModelData(channelModel, provider)];
 
     return { ...rowData, candidates };

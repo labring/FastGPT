@@ -12,10 +12,10 @@ export enum ModelErrEnum {
   rootOnlyPermit = 'rootOnlyPermit',
   unAuthChannel = 'unAuthChannel',
   channelNotExist = 'channelNotExist',
-  channelCatalogUnsupported = 'modelChannelCatalogUnsupported',
   channelNameConflict = 'channelNameConflict',
   noAvailableChannel = 'modelNoAvailableChannel',
-  teamModelDisabled = 'teamModelDisabled'
+  teamModelDisabled = 'teamModelDisabled',
+  channelCatalogUnsupported = 'modelChannelCatalogUnsupported'
 }
 
 const modelErrList = [
@@ -60,11 +60,6 @@ const modelErrList = [
     httpStatus: 404
   },
   {
-    statusText: ModelErrEnum.channelCatalogUnsupported,
-    message: i18nT('config_model:channel_import_unsupported'),
-    httpStatus: 501
-  },
-  {
     statusText: ModelErrEnum.channelNameConflict,
     message: i18nT('config_model:channel_name_duplicate'),
     httpStatus: 409
@@ -78,6 +73,11 @@ const modelErrList = [
     statusText: ModelErrEnum.teamModelDisabled,
     message: i18nT('common:code_error.model_error.team_model_disabled'),
     httpStatus: 403
+  },
+  {
+    statusText: ModelErrEnum.channelCatalogUnsupported,
+    message: i18nT('config_model:channel_import_unsupported'),
+    httpStatus: 501
   }
 ];
 

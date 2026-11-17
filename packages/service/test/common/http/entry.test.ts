@@ -253,8 +253,20 @@ describe('createApiEntry response lifecycle', () => {
 
     expect(res.statusCode).toBe(501);
     expect(res.json).toHaveBeenCalledWith(
-      expect.objectContaining({ statusText: ModelErrEnum.channelCatalogUnsupported })
+      expect.objectContaining({ code: 513012, statusText: ModelErrEnum.channelCatalogUnsupported })
     );
+  });
+
+  it.each([
+    [ModelErrEnum.channelNameConflict, 513009],
+    [ModelErrEnum.noAvailableChannel, 513010],
+    [ModelErrEnum.teamModelDisabled, 513011]
+  ])('preserves the error code for %s', async (statusText, code) => {
+    const { req, res } = createHttpObjects();
+    await createApiEntry({ requestI18n })(async () => {
+      throw statusText;
+    })(req, res);
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ code, statusText }));
   });
 
   it('keeps request validation at 400 across separately loaded module instances', async () => {
