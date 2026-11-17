@@ -35,7 +35,7 @@ upgradeTags:
 - **Content moderation Plugin migration**: The legacy built-in Baidu text moderation (`censor.BAIDU_TEXT_CENSOR_CLIENTID` / `censor.BAIDU_TEXT_CENSOR_CLIENTSECRET`), custom censor URL (`censor.customCensorURL`), and per-model `censor` flag in the commercial edition are deprecated and replaced by the `moderation` Plugin system managed by `fastgpt-plugin`.
   - If you used legacy Baidu moderation, go to **Admin Console > Content Moderation > Moderation Policy** to configure and enable the official **Baidu Content Security (`baidu`)** Plugin.
   - If you used a custom moderation URL (`customCensorURL`), install the official **Legacy Custom Moderation (`legacy-custom-censor`)** Plugin to connect your existing HTTP service without code changes, or build a native `moderation` Plugin with `@fastgpt-plugin/sdk-factory`.
-  - For a full comparison of legacy and new behavior, field mappings, and Plugin development steps, see the [Content moderation upgrade and migration guide](/en/self-host/migration/content-moderation).
+  - See the [Content moderation upgrade and migration guide](/en/self-host/migration/content-moderation) for legacy behavior comparisons and field mappings, and the [Content moderation guide](/en/plugin/moderation) for day-to-day configuration, testing, and custom Plugin development.
 
 - **New deployments**: The default MongoDB version in the `main` Compose templates is now `8.0.34`. Startup and health checks use `mongosh`, and dependent services wait for the replica set primary to become ready.
 
