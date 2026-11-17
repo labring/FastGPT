@@ -1,10 +1,9 @@
 import React from 'react';
-import { Box, Flex, HStack, Radio, Text } from '@chakra-ui/react';
+import { Box, Button, Flex, HStack, Text } from '@chakra-ui/react';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
-import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import type { AdminModerationPluginItemType } from '@fastgpt/global/core/plugin/moderation/type';
 
@@ -13,7 +12,8 @@ type PluginItemRowProps = {
   isActive: boolean;
   isModerationEnabled?: boolean;
   isLastPlugin?: boolean;
-  onSelect: () => void;
+  isActivating?: boolean;
+  onActivate: () => void;
   onEdit: () => void;
   onDelete: () => void;
 };
@@ -23,29 +23,16 @@ const PluginItemRow: React.FC<PluginItemRowProps> = ({
   isActive,
   isModerationEnabled = false,
   isLastPlugin = false,
-  onSelect,
+  isActivating = false,
+  onActivate,
   onEdit,
   onDelete
 }) => {
-  const { toast } = useToast();
   const { t } = useSafeTranslation();
 
   const isConfigured = !!plugin.hasConfiguredSecrets;
   const shouldBypassConfirm =
     isLastPlugin || Boolean(plugin.enabled) || Boolean(isModerationEnabled && isActive);
-
-  const handleCheckboxClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    // 待配置状态不允许单选，点击提示配置参数
-    if (!isConfigured) {
-      toast({
-        status: 'warning',
-        title: t('admin:moderation.configure_params_first')
-      });
-      return;
-    }
-    onSelect();
-  };
 
   return (
     <Flex
@@ -57,16 +44,6 @@ const PluginItemRow: React.FC<PluginItemRowProps> = ({
       _hover={{ bg: 'myGray.50' }}
       transition={'background 0.2s'}
     >
-      {/* Selection column (48px). */}
-      <Flex w={'48px'} alignItems={'center'} justifyContent={'center'} flexShrink={0}>
-        <Radio
-          isChecked={isActive}
-          aria-label={plugin.name || plugin.pluginId}
-          isReadOnly
-          onClick={handleCheckboxClick}
-        />
-      </Flex>
-
       {/* Plugin name column (180px). */}
       <Flex w={'180px'} alignItems={'center'} gap={2} flexShrink={0} px={6} minW={0}>
         <Avatar src={plugin.icon} w={'20px'} h={'20px'} borderRadius={'md'} flexShrink={0} />
@@ -108,9 +85,48 @@ const PluginItemRow: React.FC<PluginItemRowProps> = ({
             : t('admin:moderation.status_unconfigured')}
         </Text>
       </Flex>
-      {/* Actions column (100px). */}
-      <Flex w={'100px'} justifyContent={'center'} alignItems={'center'} flexShrink={0}>
+      {/* Actions column (180px). */}
+      <Flex w={'180px'} px={6} justifyContent={'flex-end'} alignItems={'center'} flexShrink={0}>
         <HStack spacing={2}>
+          {/* 启用 / 使用中按钮：已启用插件不可直接取消启用，只能关闭内容审核服务或切换其他插件 */}
+          {isActive ? (
+            <Button variant={'whiteBase'} size={'sm'} h={'32px'} px={3} fontSize={'xs'} isDisabled>
+              {t('admin:moderation.in_use')}
+            </Button>
+          ) : isConfigured ? (
+            <Button
+              variant={'whiteBase'}
+              size={'sm'}
+              h={'32px'}
+              px={3}
+              fontSize={'xs'}
+              isLoading={isActivating}
+              onClick={(e) => {
+                e.stopPropagation();
+                onActivate();
+              }}
+            >
+              {t('admin:moderation.enable')}
+            </Button>
+          ) : (
+            <MyTooltip
+              label={t('admin:moderation.configure_params_first')}
+              placement="bottom"
+              shouldWrapChildren
+            >
+              <Button
+                variant={'whiteBase'}
+                size={'sm'}
+                h={'32px'}
+                px={3}
+                fontSize={'xs'}
+                isDisabled
+              >
+                {t('admin:moderation.enable')}
+              </Button>
+            </MyTooltip>
+          )}
+
           {/* 编辑配置按钮 */}
           <MyIconButton
             icon="common/setting"

@@ -76,6 +76,25 @@ describe('BaseSandboxAdapter', () => {
     await expect(adapter.interrupt('session')).rejects.toBeInstanceOf(FeatureNotSupportedError);
   });
 
+  it('returns normalized replacement paths and skips requests after a miss', async () => {
+    const execute = vi.fn<() => Promise<ExecuteResult>>();
+    execute
+      .mockResolvedValueOnce({ stdout: '3', stderr: '', exitCode: 0 })
+      .mockResolvedValueOnce({ stdout: 'b2xk', stderr: '', exitCode: 0 });
+    const adapter = new TestAdapter(execute, true);
+
+    await expect(
+      adapter.replaceContent([
+        { path: './file.txt', oldContent: 'missing', newContent: 'unused' },
+        { path: 'file.txt', oldContent: 'old', newContent: 'new' }
+      ])
+    ).resolves.toEqual([
+      { path: '/workspace/file.txt', status: 'unmatched' },
+      { path: '/workspace/file.txt', status: 'skipped' }
+    ]);
+    expect(execute).toHaveBeenCalledTimes(2);
+  });
+
   it('keeps relative paths normalized while streaming through the command polyfill', async () => {
     const execute = vi.fn(
       async (command: string): Promise<ExecuteResult> => ({

@@ -3,8 +3,8 @@ import type { OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
 import type { ThinkingLevel } from '@mariozechner/pi-agent-core';
 import {
   defaultUserOpenAIBaseUrl,
-  openaiBaseUrl,
-  openaiBaseKey,
+  getOpenaiBaseUrl,
+  getOpenaiBaseKey,
   getAiproxyScopeHeaders
 } from '../../../../config';
 import { getLegacyModelEndpoint } from '../../../../legacy/requestUrl';
@@ -53,18 +53,21 @@ export function buildPiModel(
   const hasUserOpenAIKey = !!userKey?.key;
   const legacyEndpoint = !hasUserOpenAIKey ? getLegacyModelEndpoint(modelData) : undefined;
 
+  const fallbackBaseUrl = getOpenaiBaseUrl();
+  const fallbackBaseKey = getOpenaiBaseKey();
+
   const baseUrl = hasUserOpenAIKey
-    ? normalizeBaseUrl(userKey?.baseUrl || defaultUserOpenAIBaseUrl) || openaiBaseUrl
+    ? normalizeBaseUrl(userKey?.baseUrl || defaultUserOpenAIBaseUrl) || fallbackBaseUrl
     : legacyEndpoint
-      ? normalizeBaseUrl(legacyEndpoint.baseUrl) || openaiBaseUrl
-      : openaiBaseUrl;
+      ? normalizeBaseUrl(legacyEndpoint.baseUrl) || fallbackBaseUrl
+      : fallbackBaseUrl;
 
   const authorization = hasUserOpenAIKey
     ? `Bearer ${userKey.key}`
     : legacyEndpoint
       ? (legacyEndpoint.authorization ?? null)
-      : openaiBaseKey
-        ? `Bearer ${openaiBaseKey}`
+      : fallbackBaseKey
+        ? `Bearer ${fallbackBaseKey}`
         : undefined;
 
   const scopeHeaders = getAiproxyScopeHeaders(modelData, baseUrl);
@@ -111,5 +114,5 @@ export function getModelApiKey(modelData: LLMModelDataType, userKey?: OpenaiAcco
   const legacyEndpoint = getLegacyModelEndpoint(modelData);
   // 命中自定义端点时不能回退到 AIPROXY_API_TOKEN；
   // 无鉴权端点返回哨兵值，避免 pi-ai 继续回退宿主 OPENAI_API_KEY。
-  return legacyEndpoint ? legacyEndpoint.apiKey || NO_AUTH_API_KEY : openaiBaseKey || '';
+  return legacyEndpoint ? legacyEndpoint.apiKey || NO_AUTH_API_KEY : getOpenaiBaseKey() || '';
 }

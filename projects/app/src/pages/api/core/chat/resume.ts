@@ -1,3 +1,4 @@
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { getChatGenerationStatuses } from '@fastgpt/service/core/chat/generationLease';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import {
@@ -15,7 +16,7 @@ import {
   StreamResumeUnavailableEvent
 } from '@fastgpt/global/core/workflow/runtime/constants';
 import {
-  STREAM_RESUME_TTL_SECONDS,
+  getStreamResumeTtlSeconds,
   catchUpAllHistoryItems,
   _resume,
   getStreamResumeUnavailableState
@@ -30,13 +31,12 @@ import { stripModerationRecordsFromNodeResponses } from '@fastgpt/global/core/ch
 import { delay } from '@fastgpt/global/common/system/utils';
 import { buildChatSourceQuery } from '@fastgpt/service/core/chat/source';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { translateApiMessage } from '@fastgpt/service/common/i18n/request';
 
 const completedChatPageSize = 10;
 const resumeUnavailablePollIntervalMs = 3000;
-const resumeUnavailableMaxWaitMs = STREAM_RESUME_TTL_SECONDS * 1000;
 type CurrentChatState = Pick<StreamNoNeedToBeResumeType, 'chatGenerateStatus' | 'hasBeenRead'>;
-const resumeGeneratingRequiresSseMessage =
-  'This chat is still generating. Retry /api/core/chat/resume with Accept: text/event-stream.';
+const resumeGeneratingRequiresSseMessage = i18nT('common:api_error.resume_requires_sse');
 
 const isResponseClosed = (res: NextApiResponse) =>
   !!(res.closed || res.writableEnded || res.destroyed);
@@ -178,7 +178,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   };
 
   const waitForCompletedChat = async () => {
-    const deadlineAt = Date.now() + resumeUnavailableMaxWaitMs;
+    const deadlineAt = Date.now() + getStreamResumeTtlSeconds() * 1000;
 
     while (!isResponseClosed(res)) {
       const chat = await findCurrentChat();
@@ -220,7 +220,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     res.status(406).json({
       code: 406,
       statusText: 'error',
-      message: resumeGeneratingRequiresSseMessage,
+      message: translateApiMessage(resumeGeneratingRequiresSseMessage, res),
       data: null
     });
     return;

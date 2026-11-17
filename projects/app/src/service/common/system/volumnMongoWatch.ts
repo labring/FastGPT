@@ -1,10 +1,7 @@
-import { initSystemConfig } from '.';
 import { createDatasetTrainingMongoWatch } from '@/service/core/dataset/training/utils';
-import { MongoSystemConfigs } from '@fastgpt/service/common/system/config/schema';
 import { debounce } from 'lodash-es';
 import { MongoAppTemplate } from '@fastgpt/service/core/app/templates/templateSchema';
 import { getAppTemplatesAndLoadThem } from '@fastgpt/service/core/app/templates/register';
-import { SystemConfigsTypeEnum } from '@fastgpt/global/common/system/config/constants';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import {
   createResilientChangeStream,
@@ -12,48 +9,16 @@ import {
   type ResilientChangeStream
 } from '@fastgpt/service/common/mongo/watch';
 
-type SystemConfigChange = {
-  operationType?: string;
-  fullDocument?: { type?: `${SystemConfigsTypeEnum}` };
-};
-
 let changeStreams: ResilientChangeStream[] = [];
 const logger = getLogger(LogCategories.INFRA.MONGO);
 
-/** 只监听系统配置、训练和模板；模型目录通过 revision 按需刷新，不订阅集合变化。 */
+/** 配置由常驻轮询刷新；这里仅保留训练任务和模板的 Mongo 监听。 */
 export const startMongoWatch = async () => {
   await cleanupMongoWatch();
-  logger.info('Mongo change stream watch started');
-  changeStreams.push(reloadConfigWatch());
   changeStreams.push(createDatasetTrainingMongoWatch());
   changeStreams.push(refetchAppTemplates());
+  return cleanupMongoWatch;
 };
-
-/**
- * 重载系统配置。既用于配置变更事件，也用于断线重连后的补偿：
- * 停机期间写入的配置不会重放，只能重新读一次最新值。
- */
-const refreshSystemConfig = async () => {
-  await initSystemConfig();
-  logger.info('System config refreshed via Mongo change stream');
-};
-
-const reloadConfigWatch = () =>
-  createResilientChangeStream<SystemConfigChange>({
-    name: 'app-system-configs',
-    createStream: () => MongoSystemConfigs.watch([], { fullDocument: 'updateLookup' }),
-    onChange: (change) => {
-      const { operationType, fullDocument } = change;
-      const shouldRefresh =
-        operationType === 'update' ||
-        (operationType === 'insert' &&
-          (fullDocument?.type === SystemConfigsTypeEnum.fastgptPro ||
-            fullDocument?.type === SystemConfigsTypeEnum.license));
-
-      if (shouldRefresh) return refreshSystemConfig();
-    },
-    onResume: refreshSystemConfig
-  });
 
 const refetchAppTemplates = () => {
   /**

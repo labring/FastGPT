@@ -3,6 +3,7 @@ import { serverRequestBaseUrl } from '../../api/serverRequest';
 import { getAxiosContentType, getAxiosHeaderValue } from '@fastgpt/global/common/axios/utils';
 import { getLogger, LogCategories } from '../../logger';
 import { serviceEnv } from '../../../env';
+import { getSystemInstanceConfig } from '../../system/systemInstanceConfig/runtime';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.FILE);
 
@@ -234,7 +235,7 @@ export const getImageBase64 = async (
 };
 
 export const addEndpointToImageUrl = (text: string) => {
-  const baseURL = serviceEnv.FE_DOMAIN;
+  const baseURL = getSystemInstanceConfig().site.publicUrl;
   const subRoute = serviceEnv.NEXT_PUBLIC_BASE_URL;
   if (!baseURL) return text;
   const escapedSubRoute = subRoute.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');

@@ -1,3 +1,4 @@
+import { getSystemInstanceConfig } from '../../../common/system/systemInstanceConfig/runtime';
 import { findActiveTeamStandardPlans } from './entity';
 import { getPlansCanHideShareBrand } from './utils';
 
@@ -6,7 +7,7 @@ export const getTeamCanHideShareBrand = async (teamId: string): Promise<boolean>
   const plans = await findActiveTeamStandardPlans(teamId);
   return getPlansCanHideShareBrand({
     plans,
-    standardPlans: global.subPlans?.standard,
+    standardPlans: getSystemInstanceConfig().commercial.subPlans?.standard,
     now: Date.now()
   });
 };

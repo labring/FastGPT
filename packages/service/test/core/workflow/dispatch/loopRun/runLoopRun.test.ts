@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { createDefaultInstanceConfig } from '@test/utils/instanceConfigSnapshot';
 import {
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
@@ -22,12 +23,6 @@ const runWorkflowMock = vi.fn();
 vi.mock('@fastgpt/service/core/workflow/dispatch', () => ({
   runWorkflow: (args: any) => runWorkflowMock(args)
 }));
-
-// Shrink max iterations so overflow tests run fast.
-vi.mock('@fastgpt/service/env', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@fastgpt/service/env')>();
-  return { ...actual, serviceEnv: { ...actual.serviceEnv, WORKFLOW_MAX_LOOP_TIMES: 5 } };
-});
 
 // Import after mocks so runLoopRun pulls the mocked modules.
 import { dispatchLoopRun } from '@fastgpt/service/core/workflow/dispatch/loopRun/runLoopRun';
@@ -214,6 +209,12 @@ const makeProps = (
 describe('runLoopRun (integration with mocked runWorkflow)', () => {
   beforeEach(() => {
     runWorkflowMock.mockReset();
+    global.systemInstanceConfig = createDefaultInstanceConfig();
+    // 缩小实例配置中的迭代上限，保留溢出边界覆盖并避免依赖已退役的 ENV。
+    Object.assign(global.systemInstanceConfig.performance.workflow, {
+      maxLoopTimes: 5,
+      parallelMaxConcurrency: 5
+    });
   });
 
   afterEach(() => {

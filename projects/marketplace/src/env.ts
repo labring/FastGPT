@@ -37,7 +37,6 @@ export const marketplaceEnv = createEnv({
     STORAGE_OSS_CNAME: BoolSchema.default(false),
     STORAGE_OSS_INTERNAL: BoolSchema.default(false),
     STORAGE_OSS_SECURE: BoolSchema.default(false),
-    STORAGE_OSS_ENABLE_PROXY: BoolSchema.default(true),
     S3_BUCKET: z.string().optional(),
     S3_ENDPOINT: z.string().optional(),
     S3_ACCESS_KEY: z.string().optional(),

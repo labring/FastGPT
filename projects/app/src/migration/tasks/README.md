@@ -1,94 +1,42 @@
-# 系统升级任务目录
+# 系统升级任务
 
-每个生产升级任务必须按发布版本归类放入独立目录，路径格式为 `tasks/<version>/<migration-id>/`（例如版本 4.18.0 对应 `4180`），由 `index.ts` 暴露任务入口，相关 service、数据转换和私有工具都放在该任务目录内。严禁在 `tasks/` 根目录下直接平铺创建迁移任务目录。版本级共享逻辑收纳在对应版本目录下。任务由上级 `registry.ts` 按发布顺序显式导入。迁移专属实现不得放入正常业务目录；确实被运行期业务复用的能力仍归业务模块所有。任务分为启动链和后台阶段：启动链成功且本节点模型重载完成后，才放行业务与后台任务。
+任务按首次发布版本与稳定任务 ID 组织。4.18 配置相关任务尚未发布，已统一为 `4180/20261116_migrate_system_configs`（系统配置迁移），注册表中仅保留一个配置任务。
 
-任务发布后必须遵守以下约束：
+| 任务 | 调度 | 职责 |
+| --- | --- | --- |
+| `20261022_initialize_dataset_vector_indexes` | 普通自动 | 初始化知识库向量索引 |
+| `20261104_backfill_chat_publish_source` | 独立执行 | 回填聊天发布来源 |
+| `20261104_backfill_openapi_key_type` | 独立执行 | 回填 OpenAPI Key 类型 |
+| `20261112_backfill_stt_pricing_type` | 普通自动 | 回填 STT 计价类型 |
+| `20261116_migrate_system_configs` | 启动阻塞 | 统一导入、清理、补齐并校验系统配置 |
 
-- 只能在注册表末尾追加，不得修改已有任务的 ID、顺序、调度模式、依赖或执行语义；
-- 业务写入必须幂等，优先使用唯一键、`$setOnInsert`、确定性目标值或 compare-and-set；
-- 每个任务必须明确选择一种恢复策略：数据量较大或无法原子完成时使用“分批断点续跑”；数据量确定较小且整次写入可以保持原子、确定、幂等时允许使用“全量重跑”；
-- 分批任务统一从 `@/migration/constants` 导入 `systemMigrationBatchSize`，由环境变量 `SYSTEM_MIGRATION_BATCH_SIZE` 控制；允许范围为 50～1000，默认 100，任务内不得另行硬编码读取批大小；
-- 分批任务在每批开始前调用 `context.assertActive()`；业务提交后若错误快照发生变化，先通过 `context.reportFailedRecords()` 替换当前完整未解决错误快照，再保存 checkpoint。重试时先通过 `context.getFailedRecords()` 处理上次已跳过的坏数据，再从 checkpoint 继续；
-- 全量任务不保存伪 checkpoint，每次管理员重试或 lease 接管都重新读取、校验并处理完整数据集；如果需要清空目标数据，目标必须是完全由权威源重建的派生数据，且清空与重建必须位于同一事务；
-- 任务默认只追加或回填数据，不删除旧字段、旧集合或不可恢复的数据；
-- 注册项使用 `i18nT(...)` 声明 `nameKey`、`descriptionKey`、`resultKey` 以及全部 `progressSteps: [{ key, labelKey }]`；阶段 `key` 是永久稳定的机器标识，所有展示文案位于 client-only `system_migration` namespace；
-- i18n key 只存在于静态注册表和列表接口的展示 DTO，不写入 Mongo。任务状态只保存进度数值和成功结果参数；错误状态与错误明细只保存原始 `message`；
-- 任务进入阶段时通过 `reportProgress` 上报 `running`，完成后上报 `succeeded`；框架按 key 更新对应阶段并要求全部阶段完成后才能成功，脚本不得主动上报 `failed`；
-- 任务成功时可以返回有限标量的业务参数对象；Runner 校验后与 `succeeded` 原子写入。列表接口再使用注册表 `resultKey` 组装客户端展示结果。不要从任务返回 i18n key，也不要把最终结果伪装成最后一条 progress；
-- 任务可跳过的坏数据应按批维护“完整未解决错误快照”，每批业务提交后立即通过 `context.reportFailedRecords()` 覆盖持久化，再推进 checkpoint；扫描结束仍有错误时通过 `context.fail({ failedRecords })` 写入相同最终快照并结束。每条记录必须包含所属的 `stageKey`，且只保存定位字段及对应原因，不保存正文、凭证或完整错误栈；
-- 已上报错误快照后又发生普通异常时，Runner 保留该快照；只有脚本通过 `context.fail` 显式携带 `failedRecords`（包括空数组）时才替换或清空。
-- 后台失败只影响当前任务及其显式依赖，不提供 onFailure 配置；启动链失败则所有新版本 App 节点保持未就绪，后台任务不得开始。
-- 后台明确失败停止续租并等待管理员重试；启动链明确失败持续续租并通过日志排障，修复后重启持有租约的 App 节点，租约过期后由一个节点接管。两类任务的 running 过期均可接管，恢复保留断点与失败快照。
+## 系统配置迁移
 
-  4.18 分支仅保留 4.18.x 的升级任务。升级前需在 4.17.x 完成对应历史迁移；旧任务不再注册或执行，数据库中的历史迁移状态及错误明细不做删除。
+本任务追加在 v4.18.0 注册表末尾，由启动计划按 `blockStartup` 提取并优先执行，不依赖注册项排在首位。所有 App 节点等待迁移成功后重新加载配置与模型，再启动业务和其他后台迁移。迁移失败时不放行业务启动，修复原因并重启迁移 owner 后接管重试。
 
-## 执行模式
+同一个任务、同一个 lease/runId，依次执行以下阶段，任一阶段失败均不得标记任务成功：
 
-| 模式     | 注册配置             | 调度行为                                                                                      |
-| -------- | -------------------- | --------------------------------------------------------------------------------------------- |
-| 启动阻塞 | `blockStartup: true` | 自身及完整依赖链在业务启动前优先串行执行                                                      |
-| 普通自动 | 不声明额外模式       | 启动链完成后进入普通队列，按注册顺序串行执行                                                  |
-| 延迟自动 | `delay: true`        | 在普通队列获得 lease 后等待 `SYSTEM_MIGRATION_DELAY_SECONDS` 秒；默认 0，等待期间占用普通队列 |
-| 手动触发 | `manual: true`       | 初始 `waiting`，管理员触发后进入普通队列                                                      |
-| 独立执行 | `independent: true`  | 不受普通队列顺序约束；先竞争集群共享的 3 个并发名额，再领取任务 lease                         |
+1. `inspect`：检查旧 Mongo 配置与历史 ENV；仅当实例集合为空时读取 App 工作目录下可选的 `defaultConfig.json`。异常配置只记录字段路径，保留脱敏跳过项统计。
+2. `migrate`：按域创建缺失文档或补充缺失叶子，保留管理员已有值和显式默认意图。文件使用当前实例配置域格式，仅参与首次初始化。
+3. `cleanup`：清理当前 Schema 明确废弃的字段及相应默认值标记。现行字段不得登记为废弃项。
+4. `backfill`：先将旧套餐合入 `commercial.subPlans`，公告及两类广告合入 `operations`，迁入其他辅助 scope；再补齐外链检查、模型下架短信、Code Sandbox/MCP SSE、Agent Sandbox 代理及超卖系数、文件域名、HTTP/Cookie 策略、自定义域名部署参数。先校验再按 revision CAS 写入，保留已有值与显式清空。
+   最后按 secret 注册表将已有非空明文加密为 `{ secret: 密文 }`，所有回填读写统一通过解密/加密边界；revision CAS 保留并发修改，已有密文复用，重复执行不改变 revision。
+5. `validate`：重新检查全部域、旧值缺口、废弃字段及各补齐目标的持久化依据。Schema 默认值本身不等于迁移完成。
 
-独立任务不能同时声明 `blockStartup`、`manual`、`delay` 或非空 `dependsOn`。任务必须在数据与业务语义上独立，不能读写仍依赖其他迁移完成的结构。独立任务失败不会暂停其他任务。普通任务可以通过 `dependsOn` 等待更早注册的独立任务成功。
+旧配置中的数值字段先通过 `NumSchema` 兼容数字字符串（如 `"4"` → `4`），再执行目标域的整数、范围等校验；空值、非数字类型与非有限值不强制转成 `0`。已有实例值和显式默认意图仍优先。
 
-当前注册表没有启动阻塞任务。历史成功状态不重跑；启动链失败通过重启 owner 恢复，后台失败通过管理员重试恢复。
+Pro 启动及轮询始终按已有 scope 与 Schema 默认值合成完整快照，不以迁移状态阻塞读取；本任务写入后由版本变化驱动刷新。Pro ENV 独立按差异发布，实例 ID 首建及授权变更等写入保留必要迁移检查。刷新失败保留上一有效快照并重试。旧 Mongo 配置统一按类型筛选、`_id` 倒序选取，不以 `createTime` 决定迁移来源。
 
-### 启动链优先级
+旧 `EVAL_CONCURRENCY` 不导入，评估并发的新配置默认 `3`；Cookie Secure、共享 HTTP 响应上限和 Sandbox 两个超卖系数只从 App 进程 ENV 导入，Pro 同名 ENV 不参与。已有实例值和显式默认意图仍优先。
 
-`plan.ts` 递归收集所有阻塞任务及其依赖，排除无关任务。注册表只允许引用更早的任务，因此筛选后的注册顺序就是稳定拓扑顺序。原本独立的前置也会提升为启动任务，串行执行且不占后台 Redis 并发名额；启动链禁止包含手动或延迟任务。
+采用幂等全量重跑，不保存 checkpoint。失败后由框架使用新 runId 从检查阶段重试；成功步骤可安全重复执行，已写入配置不被重放覆盖。开发期已有成功记录不会自动重跑新增的加密步骤，需在备份后重跑本任务。成功后 Runner 跳过整个任务，不在后续启动重新导入旧 ENV，也不保留开发期拆分任务的注册或状态兼容层。未来已发布后的变更应追加新任务。
 
-每个节点都等待整个启动链持久化为 succeeded，随后由 `startup.ts` 先重载该节点模型缓存，再启动 HTTP 对应的业务初始化、worker/cron/watch，最后启用后台迁移。共享状态成功不等于跟随节点的内存缓存已刷新，不能省略本地重载。启动链失败时页面不可用，查看日志并重启失败的 lease owner；其他存活节点不能越过有效租约重试。
+实现均归属同一目录：`index.ts` 编排五阶段，`service.ts` 处理旧值转换与域迁移，`cleanup.ts` 清理废弃字段，`subservices.ts` / `backfill.ts` 处理域内补缺，`env.ts` 读取历史环境变量，`defaultConfig.ts` 负责首次文件初始化。对应测试在 `projects/app/test/migration/tasks/4180/20261116_migrate_system_configs/`。
 
-例如注册顺序为普通 A、前置 B、独立 C、阻塞 D（依赖 B）：实际启动顺序为 B → D，之后才启动 A 与 C。
+配置权威边界与字段说明见 [Admin 实例配置与环境变量边界](../../../../../.agents/design/common/admin-instance-config-env-boundary.md)。状态、进度和错误数据由 Runner/Context 管理，开发约定见[系统升级脚本技能](../../../../../.agents/skills/system/system-migration-development/SKILL.md)。
 
-## 独立任务并发上限
+`proEnv` 是同集合中的特殊 scope，仅由 Pro 启动根据 ENV 发布；不属于 11 个可配置业务域，defaultConfig.json 和管理 API 不允许写入。Pro 先发布不会影响 App 业务域的首次初始化或迁移完成判断。
 
-启动链完成后，所有 App 节点通过同一个 Redis 并发租约 key `system-migration:independent` 共享 3 个名额。普通串行队列不占这些名额。共享租约复用 LeaseCache.withConcurrency 的原子获取、续租和释放机制，默认 90 秒过期、15 秒续租；计时与任务 lease 使用相同的 Runner timing。
+`system_instance_configs` 共 17 个 scope：上述 11 个业务域，以及 proEnv、license、instanceId、modelStatusProbe、moderationPolicy、operations 六个辅助 scope。套餐保存为 `commercial.subPlans`，与商业配置共用 revision；`operations` 包含 systemMsgModal、operationalAd、activityAd 三个子对象，局部保存不会覆盖其他子项。license 保持独立，proEnv 仍只由 ENV 发布。
 
-- 先取得共享名额，再竞争该任务的 Mongo lease；等待期间不领取新的任务 lease；首次执行保持 pending，待接管的 running 保留原状态和断点。
-- 成功、明确失败或领取不到任务 lease 时释放名额，其他等待任务继续竞争。
-- 等待超过一轮扫描周期不标记失败，下轮扫描继续；Redis 故障时不绕过上限、不开始任务。
-- 共享租约失效时中止任务信号并停止 Mongo heartbeat；任务保留 running 和 checkpoint，待任务 lease 过期后接管。
-- Runner 停止时取消等待并中止活跃执行；节点异常退出后，共享名额由 TTL 回收。脚本仍须响应 signal，并在每批业务写入前调用 assertActive。
-
-## 当前独立任务
-
-以下任务声明 `independent: true`，启动链成功后在集群共享的 3 个名额内分别竞争自己的 lease，可与普通队列并发执行；成功后不因切换模式重新执行，失败仍通过统一页面重试：
-
-| 脚本 ID                               | 任务                             |
-| ------------------------------------- | -------------------------------- |
-| 20261104_backfill_chat_publish_source | 回填历史对话与统计桶的调用来源   |
-| 20261104_backfill_openapi_key_type    | 补齐 API Key 类型并规范化应用 ID |
-
-4.18.0 的调用来源回填无迁移前置，仅回填缺失的 `publishSource`，不修改或删除旧字段；Chat.shareId 标记弃用，旧索引及 OutLink 凭证保留；分批条件写入允许与新版本业务并发。本次按快速滚动升级交付，不处理升级期间新建分享会话的旧版读取兼容，不为此恢复双写。
-
-最终校验按原固定上界和 `_id` 索引分批读取最小来源字段，同一遍扫描检查来源类型并累计缺失渠道 ID，不再执行全范围来源计数。校验游标、已检查条数和累计值随批次一起保存，页面显示已检查数量；旧断点从头开始分批校验，保留已完成回填。校验坏数据按集合与 ID 定位，失败批次不推进断点，修复后重试原批次。
-
-同版本的 API Key 迁移按固定上界分批遍历全部 Key：缺少 `type` 的补为 `personal`，已有合法类型保持不变；非空的合法字符串 `appId` 统一转为 BSON ObjectId，保留原默认目标或绑定语义，空默认目标保持原状，不改变凭证、归属、额度或成员权限。写入通过 CAS 同时核对源类型与应用 ID，冲突后重读；旧版仅补类型的断点会从同一范围起点重扫一次，此后按新断点续跑。迁移完成后，列表、限额、标签和资源清理按显式类型及 BSON ObjectId 直接查询。现有索引的 key/options 不变，无需废弃或重建索引。正常模型要求 `type` 必填；完成校验同时要求类型、绑定及非空应用 ID 的 BSON 存储类型合法，校验阶段异常同样记录 ID，修复后重试可越过已保存的游标恢复。
-
-## 手动触发任务
-
-需要管理员确认升级前提的任务可声明 `manual: true`。存在执行依赖时，通过 `dependsOn` 声明注册表中更早的前置任务 ID；启动、重试和 runner 执行均要求前置任务已成功。默认自动任务不受影响。
-
-- 首次原子初始化为 `waiting`，管理端显示“待手动执行”；runner 跳过该任务继续后续自动任务，不占用 lease、不阻塞 readiness。
-- 管理员确认任务说明中的前提后点击“执行迁移”，API 原子把 `waiting` 改为 `pending` 并唤醒 runner。重复点击不会重置执行中的任务。
-- 首次入队后复用标准 lease、checkpoint 和进度机制；进程中断自动接管，明确失败由管理员修复后使用“重试”。
-- `manual` 不得与 `independent` 或 `delay` 同时启用。后续自动任务不得依赖尚未手动执行的任务。
-- 手动触发不会自动检测集群升级完成，执行前需按任务说明确认升级前提。
-
-## 前置依赖
-
-`dependsOn` 是成功前提，不是额外的执行模式。任务可以声明多个更早注册的任务 ID，只有它们全部 succeeded 才能执行。前置为 waiting、pending、running、failed 或状态缺失时都不能越过；后台前置修复并重试成功后，等待的自动任务会继续执行；启动链前置失败则需修复并重启 owner。
-
-当前 4.18.0 任务均未声明前置依赖。
-
-## STT 价格类型后台迁移
-
-`20261112_backfill_stt_pricing_type` 是普通后台任务，不阻塞启动。按固定上界分批回填系统及团队 STT 价格缺少的 `type: duration`，不换算单价、不覆盖已有 Tokens 类型。模型与目录修订号在同一事务提交，失败记录先于 checkpoint 保存，修复后优先重试错误 ID；任务失败通过管理员重试，不影响业务就绪。
-
-回填前的缺类型价格在数据库读取时默认按时长解释，运行目录和管理员 JSON 导出复用读取规则，保留原单价，不回写数据库；null 或无法识别的数据库价格暂按免费处理，避免阻断业务。新 API/JSON 写入仍要求明确类型；升级期间允许临时免费或计费偏差，不增加 STT 专属启动屏障或版本协调。
-
-不要用数组中的相邻位置代替业务成功依赖，也不要把所有任务链式关联来模拟旧的全队列暂停。普通队列仍按注册顺序串行选择可执行任务，独立模式仍与非空 dependsOn 互斥。
+合并迁移优先保留新目标，其次读取开发期旧 `system_instance_configs` scope，最后读取旧 `systemconfigs`；完整校验后，在同一事务中迁入并删除四个开发期旧 scope，保留原始 `systemconfigs` 作为迁移来源。配置更新只轮询 `domain/_id/revision`，不保留配置 Change Stream 监听。

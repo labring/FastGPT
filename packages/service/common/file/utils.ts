@@ -1,3 +1,4 @@
+import { getSystemInstanceConfig } from '../system/systemInstanceConfig/runtime';
 import { isProduction } from '@fastgpt/global/common/system/constants';
 import fs from 'fs';
 import path from 'path';
@@ -6,7 +7,7 @@ import { getLogger, LogCategories } from '../logger';
 const logger = getLogger(LogCategories.INFRA.FILE);
 
 export const getFileMaxSize = () => {
-  const mb = global.feConfigs.limit?.uploadFileMaxSize || 1000;
+  const mb = getSystemInstanceConfig().resource.uploadFileMaxSize || 1000;
   return mb * 1024 * 1024;
 };
 

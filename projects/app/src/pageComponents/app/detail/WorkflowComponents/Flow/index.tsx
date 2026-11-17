@@ -1,6 +1,6 @@
 import dynamic from 'next/dynamic';
 import ButtonEdge, { CustomConnectionLine } from './components/ButtonEdge';
-import NodeTemplatesModal from './NodeTemplatesModal';
+import NodeTemplatesModal, { sliderWidth } from './NodeTemplatesModal';
 import 'reactflow/dist/style.css';
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { defaultEdgeOptions, maxZoom, minZoom } from '../constants';
@@ -18,13 +18,21 @@ import { useWorkflow } from './hooks/useWorkflow';
 import { EDGE_TYPE, FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { NodeProps } from 'reactflow';
 import ReactFlow, { SelectionMode, useReactFlow } from 'reactflow';
-import { Box, Flex, IconButton, usePrefersReducedMotion } from '@chakra-ui/react';
+import {
+  Box,
+  Flex,
+  IconButton,
+  useBreakpointValue,
+  usePrefersReducedMotion
+} from '@chakra-ui/react';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { WorkflowUIContext } from '../context/workflowUIContext';
 import { useTranslation } from 'next-i18next';
 import WorkflowBuilderEntry from '../WorkflowBuilder/WorkflowBuilderEntry';
 import { useWorkflowBuilderUI } from '../WorkflowBuilder/hooks/useWorkflowBuilderUI';
 import WorkflowToolbarTooltip from '../WorkflowBuilder/presentation/WorkflowToolbarTooltip';
+import { WorkflowModalContext } from '../context/workflowModalContext';
+import { APP_DETAIL_PANEL_WIDTH_PX } from '../../components/AppDetailPanelModal';
 
 const NodeSimple = dynamic(() => import('./nodes/NodeSimple'));
 const NodeStopTool = React.memo((props: NodeProps<FlowNodeItemType>) => (
@@ -104,6 +112,42 @@ const Workflow = () => {
   const isOpenTemplate = activeLeftPanel === 'nodeTemplates';
   const isLeftPanelOpen = Boolean(activeLeftPanel);
   const prefersReducedMotion = usePrefersReducedMotion();
+  const isDesktop = useBreakpointValue({ base: false, sm: true });
+  const toolbarRef = useRef<HTMLDivElement>(null);
+  const setDebugLeftBoundary = useContextSelector(
+    WorkflowModalContext,
+    (v) => v.setDebugLeftBoundary
+  );
+
+  useEffect(() => {
+    const updateBoundary = () => {
+      const gap = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+      const toolbarRight =
+        (workflowCanvasRef.current?.getBoundingClientRect().left ?? 0) +
+        (toolbarRef.current?.offsetLeft ?? 20) +
+        (toolbarRef.current?.offsetWidth ?? 48);
+      const panelRight =
+        activeLeftPanel && !isDesktop
+          ? window.innerWidth
+          : activeLeftPanel === 'nodeTemplates'
+            ? sliderWidth
+            : activeLeftPanel === 'systemConfig'
+              ? APP_DETAIL_PANEL_WIDTH_PX
+              : activeLeftPanel === 'workflowBuilder'
+                ? Math.max(488, window.innerWidth / 3)
+                : 0;
+      setDebugLeftBoundary(Math.max(toolbarRight, panelRight) + gap);
+    };
+    updateBoundary();
+    window.addEventListener('resize', updateBoundary);
+    const observer =
+      typeof ResizeObserver === 'undefined' ? undefined : new ResizeObserver(updateBoundary);
+    if (workflowCanvasRef.current) observer?.observe(workflowCanvasRef.current);
+    return () => {
+      window.removeEventListener('resize', updateBoundary);
+      observer?.disconnect();
+    };
+  }, [activeLeftPanel, isDesktop, setDebugLeftBoundary, workflowCanvasRef]);
 
   const [movingCanvas, setMovingCanvas] = useState(false);
 
@@ -145,6 +189,7 @@ const Workflow = () => {
         {/* 非搜索入口打开面板时保留工具栏节点并向左退出，避免条件卸载造成图标逐个跳动。 */}
         <>
           <Flex
+            ref={toolbarRef}
             position={'absolute'}
             top={'50%'}
             left={5}

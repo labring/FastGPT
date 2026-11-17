@@ -28,8 +28,6 @@ PARSE_FILE_TIMEOUT_SECONDS=600
 HTML_TO_MARKDOWN_WORKERS=10
 # 文本切块 worker 并发数(可选)
 TEXT_TO_CHUNKS_WORKERS=10
-# 自动同步 mongo 数据库索引, 改成 boolean 字符串值，而不是 0 和 1(可选)
-SYNC_INDEX=true
 # 是否启用可信反向代理客户端 IP 校验(可选)
 TRUSTED_PROXY_ENABLE=false
 # 可信反向代理 IP/CIDR 列表，逗号或空白分隔。仅 TRUSTED_PROXY_ENABLE=true 时生效；仅显式可信代理传入的 X-Forwarded-For/X-Real-IP 会用于客户端 IP 解析(可选)

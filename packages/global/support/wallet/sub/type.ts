@@ -4,7 +4,7 @@ import { ObjectIdSchema } from '../../../common/type/mongo';
 import { BoolSchema, IntSchema, NumSchema } from '../../../common/zod';
 
 /**
- * Static plan config, stored in global.subPlans
+ * Static plan config, stored in global.systemInstanceConfig.commercial.subPlans
  */
 export const TeamStandardSubPlanItemSchema = z.object({
   name: z.string().optional(),

@@ -243,13 +243,17 @@ describe('STT pricing', () => {
     for (const pricing of [
       { type: 'unknown' },
       { type: 'duration', unitPrice: -1 },
-      { type: 'tokens', unitPrice: -1 }
+      { type: 'tokens', inputPrice: -1 },
+      { type: 'tokens', outputPrice: -1 }
     ]) {
       expect(STTModelPricingSchema.safeParse(pricing).success).toBe(false);
     }
-    expect(STTModelPricingSchema.parse({ type: 'tokens', unitPrice: 10 })).toEqual({
+    expect(
+      STTModelPricingSchema.parse({ type: 'tokens', inputPrice: 10, outputPrice: 20 })
+    ).toEqual({
       type: 'tokens',
-      unitPrice: 10
+      inputPrice: 10,
+      outputPrice: 20
     });
   });
   it('calculates fractional seconds per 60 seconds without rounding up', () => {
@@ -277,13 +281,44 @@ describe('STT pricing', () => {
       ).toBeCloseTo(0.1, 12);
     }
   );
-  it('uses total tokens with the million-token denominator', () => {
+  it('prices input and output independently with the million-token denominator', () => {
     expect(
       calculateModelPrice({
-        config: { ...config, pricing: { type: 'tokens', unitPrice: 10 } },
-        sttUsage: { type: 'tokens', totalTokens: 77 }
+        config: { ...config, pricing: { type: 'tokens', inputPrice: 10, outputPrice: 20 } },
+        sttUsage: { type: 'tokens', inputTokens: 60, outputTokens: 17 }
       }).totalPoints
-    ).toBeCloseTo(0.00077, 12);
+    ).toBeCloseTo(0.00094, 12);
+  });
+  it.each([
+    { inputTokens: 125, outputTokens: 17, expected: 0.0001459 },
+    { inputTokens: 125, outputTokens: 0, expected: 0.0001 },
+    { inputTokens: 0, outputTokens: 17, expected: 0.0000459 },
+    { inputTokens: NaN, outputTokens: 17, expected: 0.0000459 },
+    { inputTokens: 125, outputTokens: -1, expected: 0.0001 }
+  ])(
+    'uses distinct STT prices for $inputTokens/$outputTokens',
+    ({ inputTokens, outputTokens, expected }) => {
+      expect(
+        calculateModelPrice({
+          config: { ...config, pricing: { type: 'tokens', inputPrice: 0.8, outputPrice: 2.7 } },
+          sttUsage: { type: 'tokens', inputTokens, outputTokens }
+        }).totalPoints
+      ).toBeCloseTo(expected, 12);
+    }
+  );
+  it('rounds each configured price while leaving call amounts precise', () => {
+    expect(
+      normalizeModelPricingForSave({
+        ...sttModel,
+        pricing: { type: 'tokens', inputPrice: 1.005, outputPrice: 2.675 }
+      }).pricing
+    ).toEqual({ type: 'tokens', inputPrice: 1.01, outputPrice: 2.68 });
+    expect(
+      calculateModelPrice({
+        config: { ...config, pricing: { type: 'tokens', inputPrice: 0, outputPrice: 2 } },
+        sttUsage: { type: 'tokens', inputTokens: 10, outputTokens: 3 }
+      }).totalPoints
+    ).toBe(0.000006);
   });
   it('does not use inputTokens or a mismatching meter to bill STT', () => {
     expect(
@@ -294,7 +329,7 @@ describe('STT pricing', () => {
     ).toBe(0);
     expect(
       calculateModelPrice({
-        config: { ...config, pricing: { type: 'tokens', unitPrice: 2 } },
+        config: { ...config, pricing: { type: 'tokens', inputPrice: 2, outputPrice: 3 } },
         sttUsage: { type: 'duration', seconds: 77 }
       }).totalPoints
     ).toBe(0);
@@ -311,9 +346,9 @@ describe('STT pricing', () => {
         config: {
           ...config,
           scope: ModelScopeEnum.team,
-          pricing: { type: 'tokens', unitPrice: 2 }
+          pricing: { type: 'tokens', inputPrice: 2, outputPrice: 3 }
         },
-        sttUsage: { type: 'tokens', totalTokens: 77 }
+        sttUsage: { type: 'tokens', inputTokens: 60, outputTokens: 17 }
       }).totalPoints
     ).toBe(0);
     expect(

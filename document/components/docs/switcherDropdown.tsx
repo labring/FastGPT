@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Check, ChevronDown } from 'lucide-react';
-import { useState, type ReactNode } from 'react';
+import { useState, type MouseEvent, type ReactNode } from 'react';
 import {
   Popover,
   PopoverContent,
@@ -17,6 +17,9 @@ export type SwitcherDropdownOption = {
   label: ReactNode;
   icon?: ReactNode;
   href?: string;
+  hrefLang?: string;
+  lang?: string;
+  external?: boolean;
   active?: boolean;
   onSelect?: () => void;
 };
@@ -32,6 +35,7 @@ type SwitcherDropdownProps = {
   keepSidebarOpenOnSelect?: boolean;
 };
 
+/** Render an accessible popover listbox supporting crawlable internal and cross-host links. */
 export function SwitcherDropdown({
   options,
   className,
@@ -51,6 +55,13 @@ export function SwitcherDropdown({
     item.onSelect?.();
     setOpen(false);
   };
+
+  const isUnmodifiedPrimaryClick = (event: MouseEvent<HTMLAnchorElement>): boolean =>
+    event.button === 0 &&
+    !event.metaKey &&
+    !event.ctrlKey &&
+    !event.shiftKey &&
+    !event.altKey;
 
   const renderOption = (item: SwitcherDropdownOption) => {
     const active = item === selected;
@@ -77,15 +88,28 @@ export function SwitcherDropdown({
       optionClassName
     );
 
-    if (item.href) {
+    if (item.href !== undefined && item.href !== '') {
       if (/^https?:\/\//i.test(item.href)) {
         return (
           <a
             key={item.key}
             href={item.href}
-            target="_blank"
-            rel="noreferrer noopener"
-            onClick={() => selectItem(item)}
+            target={item.external === false ? undefined : '_blank'}
+            rel={item.external === false ? undefined : 'noreferrer noopener'}
+            hrefLang={item.hrefLang}
+            lang={item.lang}
+            onClick={(event) => {
+              if (item.external === false && item.onSelect !== undefined) {
+                if (isUnmodifiedPrimaryClick(event)) {
+                  event.preventDefault();
+                  selectItem(item);
+                  return;
+                }
+                setOpen(false);
+                return;
+              }
+              selectItem(item);
+            }}
             className={className}
             role="option"
             aria-selected={active}
@@ -99,13 +123,26 @@ export function SwitcherDropdown({
         <Link
           key={item.key}
           href={item.href}
+          hrefLang={item.hrefLang}
+          lang={item.lang}
           onNavigate={() => {
             // Next calls this only for same-tab navigation, preserving modified-click behavior.
             if (keepSidebarOpenOnSelect && item.href !== pathname) {
               closeOnRedirect.current = false;
             }
           }}
-          onClick={() => selectItem(item)}
+          onClick={(event) => {
+            if (item.onSelect !== undefined) {
+              if (isUnmodifiedPrimaryClick(event)) {
+                event.preventDefault();
+                selectItem(item);
+                return;
+              }
+              setOpen(false);
+              return;
+            }
+            selectItem(item);
+          }}
           className={className}
           role="option"
           aria-selected={active}

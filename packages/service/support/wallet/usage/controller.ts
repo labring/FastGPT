@@ -15,6 +15,7 @@ import { UsageItemTypeEnum, UsageSourceEnum } from '@fastgpt/global/support/wall
 import { getLogger, LogCategories } from '../../../common/logger';
 import { type ClientSession } from '../../../common/mongo';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
+import { getSystemInstanceConfig } from '../../../common/system/systemInstanceConfig/runtime';
 import { MongoUsage } from './schema';
 import { MongoUsageItem } from './usageItemSchema';
 import { formatModelChars2Points } from './utils';
@@ -54,7 +55,7 @@ export const createPdfParseUsage = async ({
   pages: number;
   usageId?: string;
 }) => {
-  const unitPrice = global.systemEnv?.customPdfParse?.price || 0;
+  const unitPrice = getSystemInstanceConfig().providers.documentParse.customPdf.price;
   const totalPoints = pages * unitPrice;
 
   if (usageId) {
@@ -196,8 +197,6 @@ export const pushSTTUsage = async ({
   if (pricing.type !== billableUsage.type)
     throw new Error('STT pricing and usage types do not match');
   const { totalPoints } = calculateModelPrice({ config: model, sttUsage: billableUsage });
-  const quantity =
-    billableUsage.type === 'duration' ? billableUsage.seconds : billableUsage.totalTokens;
 
   const name = i18nT('common:support.wallet.usage.Whisper');
 
@@ -212,7 +211,9 @@ export const pushSTTUsage = async ({
         moduleName: name,
         amount: totalPoints,
         modelId: model.modelId,
-        ...(billableUsage.type === 'duration' ? { duration: quantity } : { totalTokens: quantity })
+        ...(billableUsage.type === 'duration'
+          ? { duration: billableUsage.seconds }
+          : { inputTokens: billableUsage.inputTokens, outputTokens: billableUsage.outputTokens })
       }
     ]
   });

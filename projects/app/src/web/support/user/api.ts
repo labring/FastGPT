@@ -27,17 +27,25 @@ import type { UpdateContactBodyType } from '@fastgpt/global/openapi/support/user
 import type { AccountRegisterBodyType } from '@fastgpt/global/openapi/support/user/account/register/api';
 import type { CaptchaVerificationPurpose } from '@fastgpt/global/support/user/account/verification/type';
 import type { GetImgCaptchaResponse } from '@fastgpt/global/openapi/support/user/account/captcha/api';
+import type {
+  VerifyPuzzleCaptchaBody,
+  VerifyPuzzleCaptchaResponse
+} from '@fastgpt/global/openapi/support/user/account/captcha/api';
 
 export type UserVerificationPurpose = CaptchaVerificationPurpose;
 
 /* ===== Auth code ===== */
 export const sendAuthCode = (data: SendAuthCodeBodyType) =>
   POST<SendAuthCodeResponseType>('/proApi/support/user/inform/sendAuthCode', data);
+/** 为服务端最长 60 秒排队及生成/传输留出余量，保留接口返回的具体超时原因。 */
 export const getCaptchaPic = (username: string, purpose: UserVerificationPurpose) =>
-  GET<GetImgCaptchaResponse>('/proApi/support/user/account/captcha/getImgCaptcha', {
-    username,
-    purpose
-  });
+  GET<GetImgCaptchaResponse>(
+    '/support/user/account/captcha/getImgCaptcha',
+    { username, purpose },
+    { timeout: 90_000 }
+  );
+export const verifyPuzzleCaptcha = (data: VerifyPuzzleCaptchaBody) =>
+  POST<VerifyPuzzleCaptchaResponse>('/support/user/account/captcha/verify', data);
 
 /* ===== login ===== */
 export const getPreLogin = (username: string) =>

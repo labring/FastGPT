@@ -1,4 +1,5 @@
 'use client';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import React, { useMemo, useRef, useState } from 'react';
 import { Button, Table, Thead, Tbody, Tr, Th, Td, Flex, Box } from '@chakra-ui/react';
 import dayjs from 'dayjs';
@@ -21,7 +22,6 @@ import UserAddModal from './components/UserAddModal';
 import BoxPageRoot from '@/components/admin/BoxContainer/PageRoot';
 import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import { accountTitleTextStyles } from '@/pageComponents/account/styles';
-import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 
 const userStatusColorMap = {
   [UserStatusEnum.active]: 'green',
@@ -95,7 +95,7 @@ const UserTable = () => {
         borderColor={'myGray.200'}
       >
         <Box as={'h1'} {...accountTitleTextStyles}>
-          用户信息
+          {t('admin:user_info')}
         </Box>
         <Box flexGrow={1} />
         <AdminCompositeSearch
@@ -138,9 +138,9 @@ const UserTable = () => {
         <Table>
           <Thead>
             <Tr>
-              <Th>用户名</Th>
-              <Th>创建时间</Th>
-              <Th>{t('common:Status')}</Th>
+              <Th>{t('admin:username')}</Th>
+              <Th>{t('admin:created_at')}</Th>
+              <Th>{t('admin:status')}</Th>
               <Th></Th>
             </Tr>
           </Thead>
@@ -170,7 +170,7 @@ const UserTable = () => {
                       mr={2}
                       onClick={() => setUserDetail(item)}
                     >
-                      详情
+                      {t('admin:details')}
                     </Button>
                     <UserEditModal
                       data={item}
@@ -193,7 +193,7 @@ const UserTable = () => {
           >
             <MyIcon name="empty" w={'48px'} h={'48px'} color={'transparent'} />
             <Box mt={2} color={'myGray.500'}>
-              无用户记录～
+              {t('admin:no_users')}
             </Box>
           </Flex>
         )}
@@ -209,22 +209,23 @@ const UserTable = () => {
 export default UserTable;
 
 function UserDetailModal({ user, onClose }: { user: UserItemType; onClose: () => void }) {
+  const { t } = useSafeTranslation();
   return (
     <MyModal isOpen={true} onClose={onClose} title={'用户详情'} maxW={['90vw', '700px']}>
       <Flex alignItems={'center'} pb={4}>
-        <Box flex={'0 0 120px'}>用户名</Box>
+        <Box flex={'0 0 120px'}>{t('admin:username')}</Box>
         <Box>{user.username}</Box>
       </Flex>
       <Flex alignItems={'center'} pb={4}>
-        <Box flex={'0 0 120px'}>创建时间:</Box>
+        <Box flex={'0 0 120px'}>{t('admin:created_at_2')}</Box>
         <Box>{dayjs(user.createTime).format('YYYY/MM/DD HH:mm:ss')}</Box>
       </Flex>
       <Flex alignItems={'center'} pb={4}>
-        <Box flex={'0 0 120px'}>联系方式:</Box>
+        <Box flex={'0 0 120px'}>{t('admin:contact')}</Box>
         <Box>{user.contact || '-'}</Box>
       </Flex>
       <Flex alignItems={'center'} pb={4}>
-        <Box flex={'0 0 120px'}>状态:</Box>
+        <Box flex={'0 0 120px'}>{t('admin:status_2')}</Box>
         <Box>{user.status}</Box>
       </Flex>
       <Flex alignItems={'center'} pb={4}>

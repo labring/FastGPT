@@ -6,7 +6,12 @@ import type {
   ChatCompletionTool,
   CompletionFinishReason
 } from '@fastgpt/global/core/ai/llm/type';
-import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
+import {
+  ChatCompletionRequestMessageRoleEnum,
+  LLM_TOOL_CALL_ARGUMENTS_TRUNCATED_RESPONSE
+} from '@fastgpt/global/core/ai/constants';
+import type { localeType } from '@fastgpt/global/common/i18n/type';
+import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import type { CreateLLMResponseProps } from '../../../../request';
 import { createLLMResponse } from '../../../../request';
 import { compressRequestMessages, compressToolResponse } from '../../../../compress';
@@ -35,6 +40,7 @@ import {
 
 type RunAgentCallProps<TChildrenResponse = unknown> = {
   maxRunAgentTimes: number;
+  lang?: localeType;
   completionPolicy?: AgentLoopCompletionPolicy;
   getCheckpointContext?: () => Promise<string>;
   batchToolSize?: number;
@@ -209,6 +215,7 @@ export const onCompressContext = async ({
  */
 export const runAgentLoop = async <TChildrenResponse = unknown>({
   maxRunAgentTimes,
+  lang,
   completionPolicy,
   getCheckpointContext,
   batchToolSize = 1,
@@ -576,10 +583,17 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
       }: {
         tool: ChatCompletionMessageToolCall;
       }): Promise<ToolRunResult> => {
-        if (moderatedToolCallIdSet.has(tool.id)) {
+        // length 无法保证同轮任何工具参数完整，不能交给 JSON 修复后执行。
+        // 按请求语言补齐工具结果后继续模型循环，不把截断升级为请求失败。
+        if (finishReason === 'length' || moderatedToolCallIdSet.has(tool.id)) {
+          const response =
+            finishReason === 'length'
+              ? parseI18nString(LLM_TOOL_CALL_ARGUMENTS_TRUNCATED_RESPONSE, lang)
+              : MODERATION_BLOCKED_REPLACE_TEXT;
           onToolRunEnd?.({
             call: tool,
-            response: MODERATION_BLOCKED_REPLACE_TEXT,
+            response,
+            ...(finishReason === 'length' ? { errorMessage: response } : {}),
             assistantMessages: [],
             seconds: 0,
             usages: []
@@ -589,7 +603,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
             toolMessage: {
               tool_call_id: tool.id,
               role: ChatCompletionRequestMessageRoleEnum.Tool,
-              content: MODERATION_BLOCKED_REPLACE_TEXT
+              content: response
             } as ChatCompletionMessageParam,
             toolAssistantMessages: []
           };

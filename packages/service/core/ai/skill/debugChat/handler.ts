@@ -42,7 +42,7 @@ import {
   updateInteractiveChat
 } from '../../../chat/saveChat';
 import { preChatRound, type PreChatRoundResult } from '../../../chat/utils/prepare';
-import { WORKFLOW_MAX_RUN_TIMES } from '../../../workflow/constants';
+import { getWorkflowMaxRunTimes } from '../../../workflow/constants';
 import { dispatchWorkFlow } from '../../../workflow/dispatch';
 import type { AgentSandboxPrepareAction } from '../../../workflow/dispatch/ai/agent/sub/sandbox';
 import { prepareWorkflowFileQuery } from '../../../workflow/utils/fileLimits';
@@ -260,7 +260,7 @@ export async function runSkillDebugChat({
       chatConfig,
       histories: newHistories,
       stream: true,
-      maxRunTimes: WORKFLOW_MAX_RUN_TIMES,
+      maxRunTimes: getWorkflowMaxRunTimes(),
       workflowStreamResponse: streamResponseContext.responseWrite,
       responseDetail: true,
       nodeResponseWriteConfig: {

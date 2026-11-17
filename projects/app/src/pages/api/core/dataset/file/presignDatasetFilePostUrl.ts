@@ -1,3 +1,4 @@
+import { getSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/runtime';
 import { getFileUploadLimits } from '@fastgpt/global/common/file/limit';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
@@ -33,7 +34,7 @@ async function handler(
   const planStatus = await getTeamPlanStatus({ teamId });
   const uploadLimits = getFileUploadLimits({
     teamPlan: planStatus.standard,
-    systemLimit: global.feConfigs.limit
+    systemLimit: getSystemInstanceConfig().resource
   });
   await assertUploadRateLimit({
     identity: String(userId),

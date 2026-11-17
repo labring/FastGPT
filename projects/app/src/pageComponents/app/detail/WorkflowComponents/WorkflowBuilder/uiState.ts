@@ -34,30 +34,28 @@ export const getWorkflowBuilderWatchChatId = (value?: string | string[]) => {
 
 /**
  * 决定 Builder 入口展示方式。
- * 社区版保留升级入口；无编辑权限或商业版管理员关闭依赖能力时直接隐藏。
+ * 社区版保留商业功能提示入口；商业版未配置 Sandbox 或无编辑权限时隐藏。
  */
 export const getWorkflowBuilderEntryAccess = ({
   systemInitialized,
   isPlus,
   showAgentSandbox,
-  showWorkflowBuilder,
   canEdit
 }: {
   systemInitialized: boolean;
   isPlus: boolean;
   showAgentSandbox: boolean;
-  showWorkflowBuilder: boolean;
   canEdit: boolean;
 }): WorkflowBuilderEntryAccess => {
   if (!systemInitialized || !canEdit) return 'hidden';
   if (!isPlus) return 'upgrade';
-  if (!showAgentSandbox || !showWorkflowBuilder) return 'hidden';
+  if (!showAgentSandbox) return 'hidden';
   return 'enabled';
 };
 
 /**
  * 根据编辑权限、入口可见性和 Builder 可用性决定首次进入时的面板状态。
- * 入口可见时统一执行两步引导；仅入口被管理员关闭时回退旧版系统配置行为。
+ * 入口可见时统一执行两步引导；入口隐藏时回退旧版系统配置行为。
  */
 export const getWorkflowBuilderInitialState = ({
   canEdit,

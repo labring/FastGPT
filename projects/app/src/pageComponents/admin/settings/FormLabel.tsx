@@ -1,23 +1,10 @@
 import type { StackProps } from '@chakra-ui/react';
 import { Box, HStack } from '@chakra-ui/react';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
-import MarkdownModal from '@/components/admin/markdown/MarkDownModal';
 
-export const Description: React.FC<any> = ({ description }: { description?: string }) => {
-  if (description) {
-    return (
-      <MarkdownModal source={description}>
-        <QuestionTip
-          display={'flex'}
-          alignItems={'center'}
-          label={`${description}\n\n点击查看详情`}
-          cursor={'pointer'}
-        />
-      </MarkdownModal>
-    );
-  } else {
-    return null;
-  }
+/** 配置说明统一使用悬停提示，不提供额外的详情弹窗。 */
+export const Description = ({ description }: { description?: string }) => {
+  return description ? <QuestionTip label={description} /> : null;
 };
 const FormLabel = ({
   title,

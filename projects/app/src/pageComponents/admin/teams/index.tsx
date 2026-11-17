@@ -1,4 +1,5 @@
 'use client';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import React, { useRef, useState } from 'react';
 import { Table, Thead, Tbody, Tr, Th, Td, Flex, Box, Button, HStack } from '@chakra-ui/react';
 import dayjs from 'dayjs';
@@ -11,7 +12,6 @@ import AdminCompositeSearch, {
 } from '@/components/admin/CompositeSearch';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import DetailTeamModal from './components/DetailTeamModal';
 import { getTeams, putAdminSwitchTeam } from '@/web/admin/team/api';
 import BoxPageRoot from '@/components/admin/BoxContainer/PageRoot';
@@ -76,7 +76,7 @@ const TeamTable = () => {
         borderColor={'myGray.200'}
       >
         <Box as={'h1'} {...accountTitleTextStyles}>
-          团队管理
+          {t('admin:team_management')}
         </Box>
         <Box flexGrow={1} />
         <AdminCompositeSearch
@@ -107,10 +107,10 @@ const TeamTable = () => {
         <Table>
           <Thead>
             <Tr>
-              <Th>团队id</Th>
-              <Th>团队名</Th>
-              <Th>用户名</Th>
-              <Th>创建时间</Th>
+              <Th>{t('admin:team_id_3')}</Th>
+              <Th>{t('admin:team_name_2')}</Th>
+              <Th>{t('admin:username')}</Th>
+              <Th>{t('admin:created_at')}</Th>
               <Th></Th>
             </Tr>
           </Thead>
@@ -150,7 +150,7 @@ const TeamTable = () => {
           >
             <MyIcon name="empty" w={'48px'} h={'48px'} color={'transparent'} />
             <Box mt={2} color={'myGray.500'}>
-              无团队记录～
+              {t('admin:no_teams')}
             </Box>
           </Flex>
         )}

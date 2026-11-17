@@ -4,6 +4,7 @@ import { DocsLayout } from 'fumadocs-ui/layouts/docs';
 import { LargeSearchToggle } from 'fumadocs-ui/components/layout/search-toggle';
 import { ThemeToggle } from 'fumadocs-ui/components/layout/theme-toggle';
 import { baseOptions } from '@/app/layout.config';
+import { buildFastGPTWebsiteUrl } from '@/lib/fastgpt-home-url';
 import { getLocalizedPath, i18n, t } from '@/lib/i18n';
 import '@/app/global.css';
 import { CustomSidebarComponents } from '@/components/sideBar';
@@ -13,6 +14,7 @@ import { MobileNav } from '@/components/docs/mobileNav';
 import { LanguageSwitcher } from '@/components/docs/languageSwitcher';
 import { BookOpen, Code, Handshake, History, Server } from 'lucide-react';
 
+/** Render the documentation layout with localized section tabs and navigation controls. */
 export default async function Layout({
   params,
   children
@@ -35,6 +37,18 @@ export default async function Layout({
     };
     visit(section);
     return urls;
+  });
+
+  const contactEmbedUrl = buildFastGPTWebsiteUrl({
+    locale: lang === 'en' ? 'en' : 'zh-CN',
+    pathname: '/contact/embed',
+    query: {
+      source: 'docs',
+      utm_source: 'docs',
+      utm_medium: 'referral',
+      utm_campaign: 'docs_navigation',
+      utm_content: 'business_consultation'
+    }
   });
 
   const iconClass = 'size-4';
@@ -66,9 +80,9 @@ export default async function Layout({
     {
       icon: <Handshake className={iconClass} />,
       title: t('common:businessConsultation', lang),
-      url: `https://fastgpt.cn/${lang === 'en' ? 'en' : 'zh'}/contact/embed?source=docs&utm_source=docs&utm_medium=referral&utm_campaign=docs_navigation&utm_content=business_consultation`,
+      url: contactEmbedUrl,
       dialog: {
-        url: `https://fastgpt.cn/${lang === 'en' ? 'en' : 'zh'}/contact/embed?source=docs&utm_source=docs&utm_medium=referral&utm_campaign=docs_navigation&utm_content=business_consultation`,
+        url: contactEmbedUrl,
         title: lang === 'en' ? 'Contact FastGPT' : '联系 FastGPT',
         description:
           lang === 'en'

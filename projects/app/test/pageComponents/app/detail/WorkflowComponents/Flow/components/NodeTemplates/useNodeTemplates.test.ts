@@ -18,6 +18,10 @@ vi.mock('@/web/core/app/api/tool', () => ({
   getAppToolTemplates: mocks.getAppToolTemplates
 }));
 vi.mock('@/web/core/plugin/toolTag/api', () => ({ getPluginToolTags: vi.fn() }));
+vi.mock('@/web/common/system/useSystemStore', () => ({
+  useSystemStore: (selector: (state: { feConfigs: { codeSandboxEnabled: boolean } }) => unknown) =>
+    selector({ feConfigs: { codeSandboxEnabled: false } })
+}));
 vi.mock('react', () => ({
   useState: (initialValue: unknown) => {
     const index = hookRuntime.cursor++;

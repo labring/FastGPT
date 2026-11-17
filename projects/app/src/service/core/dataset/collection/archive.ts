@@ -15,7 +15,7 @@ import {
 } from '@fastgpt/service/core/dataset/collection/archive/service';
 import { findArchiveCollectionPermissionItems } from '@fastgpt/service/core/dataset/collection/archive/entity';
 import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
-import { serviceEnv } from '@fastgpt/service/env';
+import { getSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/runtime';
 import {
   canShortCircuitCollectionPermission,
   getReadableCollectionIds
@@ -163,6 +163,7 @@ export const withDatasetArchiveResources = createDatasetArchiveResourceRunner();
 /**
  * 在统一期限和取消信号下预检集合树与 S3 metadata。不可取消的外部请求可自然结束，
  * 但本执行器立即退出，迟到结果通过 assertActive 阻止继续调度下一层或下一项。
+ * 开始时固定本次归档的限额和超时；配置更新只影响后续归档。
  */
 export const prepareDatasetArchive = async ({
   teamId,
@@ -179,7 +180,9 @@ export const prepareDatasetArchive = async ({
   signal: AbortSignal;
   assertCollectionsReadable?: (collectionIds: string[]) => Promise<void>;
 }) => {
-  const prepareDeadlineAt = Date.now() + serviceEnv.DATASET_ARCHIVE_PREPARE_TIMEOUT_SECONDS * 1000;
+  const { maxFiles, maxSourceSizeMiB, prepareTimeoutSeconds } =
+    getSystemInstanceConfig().resource.datasetArchive;
+  const prepareDeadlineAt = Date.now() + prepareTimeoutSeconds * 1000;
   const assertActive = () => {
     signal.throwIfAborted();
     if (Date.now() >= prepareDeadlineAt) throw DatasetErrEnum.archiveUnavailable;
@@ -205,7 +208,7 @@ export const prepareDatasetArchive = async ({
         datasetName,
         collectionIds,
         assertActive,
-        maxFiles: serviceEnv.DATASET_ARCHIVE_MAX_FILES
+        maxFiles
       });
       assertActive();
       await assertCollectionsReadable?.(plan.permissionCollectionIds);
@@ -216,8 +219,8 @@ export const prepareDatasetArchive = async ({
         assertActive,
         getFileMetadata: (key) => datasetSource.getFileMetadata(key),
         limits: {
-          maxFiles: serviceEnv.DATASET_ARCHIVE_MAX_FILES,
-          maxSourceSizeBytes: serviceEnv.DATASET_ARCHIVE_MAX_SOURCE_SIZE_MB * 1024 * 1024,
+          maxFiles,
+          maxSourceSizeBytes: maxSourceSizeMiB * 1024 * 1024,
           prepareDeadlineAt
         }
       });

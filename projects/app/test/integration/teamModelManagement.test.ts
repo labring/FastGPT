@@ -1,3 +1,4 @@
+import { setTestLicenseActive, getTestInstanceConfig } from '@test/utils/instanceConfigSnapshot';
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
 import {
@@ -172,7 +173,8 @@ describe('team model management integration: permission, member isolation and AI
 
   beforeEach(async () => {
     // 团队模型/渠道仅商业版可用
-    global.feConfigs = { isPlus: true } as typeof global.feConfigs;
+    setTestLicenseActive(true);
+    getTestInstanceConfig().feature.enableTeamModel = true;
     buckets = new Map();
     requests = [];
     external.listModels.mockReset().mockResolvedValue([]);
@@ -321,7 +323,7 @@ describe('team model management integration: permission, member isolation and AI
 
     it('rejects team scope entirely on the open-source edition', async () => {
       const { installer } = await createMembers();
-      global.feConfigs = { isPlus: false } as typeof global.feConfigs;
+      setTestLicenseActive(false);
 
       const responses = await Promise.all([
         Call(createHandler, {

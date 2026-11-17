@@ -1,3 +1,4 @@
+import { getSystemInstanceConfig } from '../system/systemInstanceConfig/runtime';
 /* vector crud */
 import { VectorCountCache, type VectorCountScope } from '@fastgpt/dal/redis/caches/vectorCount';
 import { PgVectorCtrl } from './pg';
@@ -19,7 +20,6 @@ import { MilvusCtrl } from './milvus';
 import { retryFn, withTimeout } from '@fastgpt/global/common/system/utils';
 import { getLogger, LogCategories } from '../logger';
 import { isRedisLeaseError, LeaseCache } from '@fastgpt/dal/redis/caches/lease';
-import { isProVersion } from '../system/constants';
 
 const getVectorObj = (): VectorControllerType => {
   switch (getVectorType()) {
@@ -45,16 +45,17 @@ const vectorCountCache = new VectorCountCache({
   logger: getLogger(LogCategories.INFRA.REDIS)
 });
 
-let vectorStoreHooks: VectorStoreHooks = {};
+// 启动入口和 API 可能属于不同 Next bundle，回调不能保存在各自的模块副本中。
+const vectorStoreHooksKey = Symbol.for('fastgpt.vectorStore.hooks');
 
 /** 启动时由业务入口注入计数通知；provider 保持不依赖 MQ 的纯向量存取职责。 */
 export const initVectorStore = async (hooks: VectorStoreHooks = {}) => {
-  vectorStoreHooks = hooks;
+  Reflect.set(globalThis, vectorStoreHooksKey, hooks);
   await Vector.init();
 };
 /**
  * 所有向量库召回共用跨实例并发额度；每次数据库重试都重新获取额度并读取最新配置。
- * 商业版未配置或开源版直接召回；lease 协调错误直接上抛，避免重复排队加重过载。
+ * 未配置并发上限时直接召回；lease 协调错误直接上抛，避免重复排队加重过载。
  */
 export const recallFromVectorStore: VectorControllerType['embRecall'] = async (props) => {
   const result = await retryFn(async () => {
@@ -64,8 +65,7 @@ export const recallFromVectorStore: VectorControllerType['embRecall'] = async (p
         value: await recallLease.withConcurrency({
           key: 'vector:recall',
           label: 'vector-recall',
-          concurrency: () =>
-            isProVersion() ? (global.systemEnv?.vectorRecallConcurrency ?? 0) : 0,
+          concurrency: () => getSystemInstanceConfig().vector.vectorRecallConcurrency ?? 0,
           ttlMs: RECALL_LEASE_TTL_MS,
           renewIntervalMs: 10_000,
           fn: () => Vector.embRecall(props)
@@ -196,7 +196,8 @@ const getCachedVectorCount = async (
     const count = await Vector.getVectorCount(scope);
     void vectorCountCache.set({ ...scope, count });
     const datasetId = scope.datasetId;
-    const onDatasetCounted = vectorStoreHooks.onDatasetCounted;
+    const hooks = Reflect.get(globalThis, vectorStoreHooksKey) as VectorStoreHooks | undefined;
+    const onDatasetCounted = hooks?.onDatasetCounted;
     if (notifyDatasetCounted && datasetId && onDatasetCounted) {
       // 通知失败不改变统计结果；下一次真实统计仍会再通知，缓存命中不重复投递。
       void withTimeout(
