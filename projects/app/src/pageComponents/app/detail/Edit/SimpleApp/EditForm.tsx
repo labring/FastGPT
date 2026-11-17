@@ -527,6 +527,7 @@ const EditForm = ({
       {configTool && (
         <ConfigToolModal
           configTool={configTool}
+          chatConfig={appForm.chatConfig}
           onCloseConfigTool={() => setConfigTool(undefined)}
           onAddTool={(tool) => {
             setAppForm((state) => ({

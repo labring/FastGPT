@@ -423,6 +423,7 @@ const RenderList = React.memo(function RenderList({
       {!!configTool && (
         <ConfigToolModal
           configTool={configTool}
+          chatConfig={chatConfig}
           onCloseConfigTool={onCloseConfigTool}
           onAddTool={onAddTool}
         />

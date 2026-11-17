@@ -46,6 +46,11 @@ import type { AppResourcesType } from '@fastgpt/global/core/app/type';
 import { formatToolConfigHeaderSecrets, formatToolInputSecrets } from './tool/secretConfig';
 import { storeSecretValue } from '../../common/secret/utils';
 import { StoreSecretValueTypeSchema } from '@fastgpt/global/common/secret/type';
+import {
+  buildToolSetManualInput,
+  getToolSetConfigToolNames,
+  isToolSetInputBindingKey
+} from '@fastgpt/global/core/app/tool/toolSet/utils';
 import z from 'zod';
 
 type DetailWorkflowNode = StoreNodeItemType;
@@ -541,6 +546,18 @@ export async function rewriteAppWorkflowToDetail({
                 });
 
                 formatToolInputSecrets({ inputs: mergedInputs, flowNodeType: data.flowNodeType });
+                // 工具集预览不包含子工具输入，手工参数保存在 config 中，这里补回输入供再次编辑。
+                const toolSetToolNames =
+                  data.flowNodeType === FlowNodeTypeEnum.toolSet
+                    ? getToolSetConfigToolNames(data.toolConfig)
+                    : [];
+                const toolSetManualInputs: FlowNodeInputItemType[] = Object.entries(
+                  tool.config ?? {}
+                ).flatMap(([key, value]) =>
+                  isToolSetInputBindingKey(key, toolSetToolNames)
+                    ? [buildToolSetManualInput({ key, value })]
+                    : []
+                );
                 // 旧工具用英文重建缺失文案，但不把回退语言写成历史 metadataLocale。
                 const { metadataLocale: previewLocale, ...toolData } = data;
                 void previewLocale;
@@ -559,7 +576,7 @@ export async function rewriteAppWorkflowToDetail({
                     (tool.toolConfig?.httpToolSet && 'toolId' in tool.toolConfig.httpToolSet)
                       ? data.toolConfig
                       : (tool.toolConfig ?? data.toolConfig),
-                  inputs: mergedInputs
+                  inputs: [...mergedInputs, ...toolSetManualInputs]
                 };
               } else {
                 return {

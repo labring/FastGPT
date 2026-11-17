@@ -39,6 +39,10 @@ import {
   validateToolConfiguration
 } from '@fastgpt/global/core/app/formEdit/utils';
 import { compileToolRuntime } from '@fastgpt/global/core/app/tool/runtime';
+import {
+  applyToolSetInputValues,
+  pickToolSetChildValues
+} from '@fastgpt/global/core/app/tool/toolSet/utils';
 import { getLogger, LogCategories } from '../../../../../../../common/logger';
 import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
@@ -685,7 +689,7 @@ export const getAgentRuntimeTools = async ({
         const buildSubApp = (child: RuntimeNodeItemType, id = child.nodeId): SubAppInitType => {
           const runtimeId = getAgentRuntimeToolId({ pluginId: id, source: runtimeSource });
           const isHttpToolChild = Boolean(child.toolConfig?.httpTool);
-          const inputs = initToolInputsTypeByDefaultMode(
+          const normalizedInputs = initToolInputsTypeByDefaultMode(
             child.inputs.map((input) => ({
               ...input,
               ...(isHttpToolChild ? {} : { defaultToAgentGenerated: true })
@@ -695,13 +699,24 @@ export const getAgentRuntimeTools = async ({
               allowUserChatInputAgentGenerated: true
             }
           );
+          // 工具集参数按子工具名从 config 中取出；子工具节点名带工具集前缀。
+          const childToolName = child.name.startsWith(`${toolNode.name}/`)
+            ? child.name.slice(toolNode.name.length + 1)
+            : child.name;
+          const childInputKeys = new Set(normalizedInputs.map((input) => input.key));
+          const childValues = Object.fromEntries(
+            Object.entries(
+              pickToolSetChildValues({ toolName: childToolName, values: configuredParams })
+            ).filter(([key]) => childInputKeys.has(key))
+          );
+          const inputs = applyToolSetInputValues({ inputs: normalizedInputs, values: childValues });
           const compiledRuntime = compileRuntimeTool({
             toolId: runtimeId,
             inputs,
             name: child.name,
             intro: child.intro,
             jsonSchema: child.jsonSchema,
-            fixedInputBindings: filterToolConfiguredParams({ params: configuredParams, inputs })
+            fixedInputBindings: filterToolConfiguredParams({ params: childValues, inputs })
           });
 
           return {

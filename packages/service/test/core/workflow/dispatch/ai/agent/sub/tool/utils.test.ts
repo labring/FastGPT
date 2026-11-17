@@ -8,6 +8,7 @@ import {
 } from '@fastgpt/global/core/workflow/node/constant';
 import {
   NodeInputKeyEnum,
+  VARIABLE_NODE_ID,
   VariableInputEnum,
   WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
@@ -961,6 +962,34 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(tools[0].promptReference).toEqual({
       id: 'http_app',
       name: 'http_app name'
+    });
+  });
+
+  it('applies HTTP toolset child manual params from tool config', async () => {
+    const tools = await getAgentRuntimeTools({
+      tmbId: 'tmb_1',
+      tools: [{ id: 'http_app', config: { 'create.keyword': '{{$VARIABLE_NODE_ID.keyword$}}' } }]
+    });
+
+    expect(tools).toHaveLength(1);
+    expect(tools[0].params).toEqual({ keyword: '{{$VARIABLE_NODE_ID.keyword$}}' });
+    expect(tools[0].inputs.find((input) => input.key === 'keyword')).toMatchObject({
+      selectedType: FlowNodeInputTypeEnum.input,
+      value: '{{$VARIABLE_NODE_ID.keyword$}}'
+    });
+  });
+
+  it('applies HTTP toolset child global variable references from tool config', async () => {
+    const tools = await getAgentRuntimeTools({
+      tmbId: 'tmb_1',
+      tools: [{ id: 'http_app', config: { 'create.keyword': [VARIABLE_NODE_ID, 'keyword'] } }]
+    });
+
+    expect(tools).toHaveLength(1);
+    expect(tools[0].params).toEqual({ keyword: [VARIABLE_NODE_ID, 'keyword'] });
+    expect(tools[0].inputs.find((input) => input.key === 'keyword')).toMatchObject({
+      selectedType: FlowNodeInputTypeEnum.reference,
+      value: [VARIABLE_NODE_ID, 'keyword']
     });
   });
 

@@ -11,7 +11,11 @@ import {
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
-import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  NodeInputKeyEnum,
+  VARIABLE_NODE_ID,
+  WorkflowIOValueTypeEnum
+} from '@fastgpt/global/core/workflow/constants';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import type {
   AppFormEditFormType,
@@ -1733,6 +1737,72 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
           }
         ]
       }
+    ]);
+  });
+
+  it('刷新 Agent 中的 HTTP 工具集时补回手工参数输入', async () => {
+    const toolSetAppId = '507f1f77bcf86cd799439015';
+    getClientToolPreviewNodeMock.mockResolvedValue({
+      id: toolSetAppId,
+      flowNodeType: FlowNodeTypeEnum.toolSet,
+      name: 'HTTP toolset',
+      avatar: '',
+      intro: '',
+      inputs: [],
+      outputs: [],
+      toolConfig: {
+        httpToolSet: {
+          toolId: toolSetAppId,
+          toolList: [{ name: 'getOrders', description: 'Get orders' }]
+        }
+      },
+      version: ''
+    });
+    authAppByTmbIdMock.mockResolvedValue({});
+
+    const nodes = [
+      {
+        nodeId: 'agent',
+        flowNodeType: FlowNodeTypeEnum.agent,
+        inputs: [
+          {
+            key: NodeInputKeyEnum.selectedTools,
+            value: [
+              {
+                id: toolSetAppId,
+                config: {
+                  'getOrders.userId': 'u-1',
+                  'getOrders.note': [VARIABLE_NODE_ID, 'note']
+                }
+              }
+            ]
+          }
+        ],
+        outputs: []
+      } as StoreNodeItemType
+    ];
+
+    await rewriteAppWorkflowToDetail({
+      nodes,
+      teamId: 'team-1',
+      ownerTmbId: 'tmb-1',
+      isRoot: false
+    });
+
+    const tool = (
+      nodes[0].inputs.find((input) => input.key === NodeInputKeyEnum.selectedTools)?.value as any[]
+    )[0];
+    expect(tool.inputs).toEqual([
+      expect.objectContaining({
+        key: 'getOrders.userId',
+        value: 'u-1',
+        selectedType: FlowNodeInputTypeEnum.input
+      }),
+      expect.objectContaining({
+        key: 'getOrders.note',
+        value: [VARIABLE_NODE_ID, 'note'],
+        selectedType: FlowNodeInputTypeEnum.reference
+      })
     ]);
   });
 

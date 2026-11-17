@@ -1,5 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { dispatchTool } from '@fastgpt/service/core/workflow/dispatch/ai/agent/sub/tool';
+import {
+  dispatchTool,
+  resolveToolParamValue
+} from '@fastgpt/service/core/workflow/dispatch/ai/agent/sub/tool';
+import { VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
@@ -115,9 +119,41 @@ const createDispatchToolProps = (
     chatId: 'chat',
     uid: 'uid',
     variableState: {
-      get: vi.fn()
+      get: vi.fn(),
+      toRuntimeRecord: vi.fn(() => ({}))
     }
   }) as any;
+
+describe('resolveToolParamValue', () => {
+  const variables = { city: 'Hangzhou', count: 2 };
+
+  it('resolves global variable references', () => {
+    expect(
+      resolveToolParamValue({
+        value: [VARIABLE_NODE_ID, 'city'],
+        nodesMap: new Map(),
+        variables
+      })
+    ).toBe('Hangzhou');
+  });
+
+  it('replaces reference text inserted by the prompt editor', () => {
+    expect(
+      resolveToolParamValue({
+        value: 'city={{$VARIABLE_NODE_ID.city$}}',
+        nodesMap: new Map(),
+        variables
+      })
+    ).toBe('city=Hangzhou');
+  });
+
+  it('keeps ordinary strings, including plain {{name}} text', () => {
+    expect(resolveToolParamValue({ value: 'hello {{name}}', nodesMap: new Map(), variables })).toBe(
+      'hello {{name}}'
+    );
+    expect(resolveToolParamValue({ value: 42, nodesMap: new Map(), variables })).toBe(42);
+  });
+});
 
 describe('dispatchTool runtime toolset auth', () => {
   it.each([false, true])('preserves Agent MCP results and detects isError=%s', async (isError) => {
