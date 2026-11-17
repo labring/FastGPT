@@ -1,13 +1,18 @@
 ---
 title: Third-Party Dataset Development
 description: Integrate external document repositories and custom file APIs into FastGPT knowledge bases.
-sidebarTag: DEV
 ---
 
 import { Alert } from '@/components/docs/Alert';
 
 <Alert icon="📖" context="info">
-  **Online API Reference**: Always refer to the latest online API documentation for dataset collection and sync endpoint schemas (Mainland China Cloud: [System OpenAPI](https://cloud.fastgpt.cn/apidoc/systemopenapi), International Cloud: [System OpenAPI](https://cloud.fastgpt.io/apidoc/systemopenapi), Self-Hosted: `<instance>/apidoc/systemopenapi`).
+
+**Online API reference**: See the online API documentation for current Collection creation and sync parameters:
+
+- Mainland China cloud: [System OpenAPI](https://cloud.fastgpt.cn/apidoc/systemopenapi)
+- International cloud: [System OpenAPI](https://cloud.fastgpt.io/apidoc/systemopenapi)
+- Self-hosted: `<instance>/apidoc/systemopenapi`
+
 </Alert>
 
 There are many document libraries available online, such as Lark, Yuque, DingTalk, and others. FastGPT has built-in support for Lark, Yuque, and DingTalk datasets (as well as the generic API Dataset); if you need to integrate other document libraries, follow this guide.
@@ -105,8 +110,8 @@ In `FastGPT\packages\web\components\common\Icon\constants.ts`, register your ico
 
 In `FastGPT\packages\global\core\dataset\constants.ts`, add your Dataset type to both `DatasetTypeEnum` and `ApiDatasetTypeMap`.
 
-|                               |                                |
-| ----------------------------- | ------------------------------ |
+|                                                                    |                                                                                         |
+| ------------------------------------------------------------------ | --------------------------------------------------------------------------------------- |
 | ![Extend DatasetTypeEnum](/imgs/optimized/thirddataset-9.png.webp) | ![Configure the Dataset type display mapping](/imgs/optimized/thirddataset-10.png.webp) |
 
 <Alert icon="🤖" context="success">
@@ -124,16 +129,16 @@ In `FastGPT\projects\app\src\pages\dataset\list\index.tsx`, add the following. T
 
 In `FastGPT\projects\app\src\pageComponents\dataset\detail\Info\index.tsx`, render a configuration section for the new Dataset type. Show its translated configuration title and account or app identifier. Wire the edit icon to `setEditedAPIDataset`, passing the Dataset ID and its server configuration.
 
-|                                |                                |
-| ------------------------------ | ------------------------------ |
+|                                                                                               |                                                                                               |
+| --------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
 | ![Render the Dataset configuration and edit action](/imgs/optimized/thirddataset-12.png.webp) | ![Configuration section on the Dataset detail page](/imgs/optimized/thirddataset-13.png.webp) |
 
 ## Adding the Configuration Form
 
 In `FastGPT\projects\app\src\pageComponents\dataset\ApiDatasetForm.tsx`, add the following. This file handles the field input form when creating a Dataset. Import the new server type, add it to the form data type, and render its credential fields when the corresponding Dataset type is selected. Register each required field with validation. The pictured form uses App ID and App Secret; token-based adapters should expose the token fields defined by their server type.
 
-|                                |                                |                                |
-| ------------------------------ | ------------------------------ | ------------------------------ |
+|                                                                                                 |                                                                                  |                                                                                                                  |
+| ----------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
 | ![Import the server type into the configuration form](/imgs/optimized/thirddataset-14.png.webp) | ![Register required credential inputs](/imgs/optimized/thirddataset-15.png.webp) | ![Dataset creation form with credentials and root directory selection](/imgs/optimized/thirddataset-16.png.webp) |
 
 For adapters with root directory support, include `renderBaseUrlSelector()` and `renderDirectoryModal()` to display the current path and folder picker. Directory details come from the adapter's `getFileDetail` implementation. The user clicks **Select**, chooses a folder, and clicks **Confirm**; the selected path then appears in the form.
@@ -143,9 +148,9 @@ For adapters with root directory support, include `renderBaseUrlSelector()` and 
 {renderDirectoryModal()} // The `Select Root Directory` modal that appears when clicking `Select` (see image)
 ```
 
-|                                |                                |
-| ------------------------------ | ------------------------------ |
-| ![Adding the Configuration Form — interface example](/imgs/optimized/thirddataset-17.png.webp) |  |
+|                                                                                                |     |
+| ---------------------------------------------------------------------------------------------- | --- |
+| ![Adding the Configuration Form — interface example](/imgs/optimized/thirddataset-17.png.webp) |     |
 
 If the Dataset needs root directory support, also add the following in the `ApiDatasetForm` file.
 

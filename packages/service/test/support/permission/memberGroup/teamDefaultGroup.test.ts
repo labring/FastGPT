@@ -1,3 +1,4 @@
+import { serviceEnv } from '@fastgpt/service/env';
 import { TeamPermission } from '@fastgpt/global/support/permission/user/controller';
 import {
   TeamApikeyCreateRoleVal,
@@ -5,11 +6,12 @@ import {
   TeamDatasetCreateRoleVal,
   TeamSkillCreateRoleVal
 } from '@fastgpt/global/support/permission/user/constant';
+
 import { DefaultGroupName } from '@fastgpt/global/support/user/team/group/constant';
 import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { Types } from '@fastgpt/service/common/mongo';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
-import { serviceEnv } from '@fastgpt/service/env';
+
 import { getTmbPermission } from '@fastgpt/service/support/permission/controller';
 import { MongoMemberGroupModel } from '@fastgpt/service/support/permission/memberGroup/memberGroupSchema';
 import { createTeamDefaultGroup } from '@fastgpt/service/support/permission/memberGroup/teamDefaultGroup';

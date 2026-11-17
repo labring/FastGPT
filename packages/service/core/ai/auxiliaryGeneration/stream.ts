@@ -73,7 +73,7 @@ export const createAuxiliaryGenerationStream = async ({
   return {
     write,
     writeError(error) {
-      const { data, shouldClearCookie } = getSseErrorResponse(error);
+      const { data, shouldClearCookie } = getSseErrorResponse(error, res);
       if (shouldClearCookie) {
         clearCookie(res);
       }

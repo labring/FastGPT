@@ -1,3 +1,4 @@
+import { isProVersion } from '@fastgpt/service/common/system/constants';
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import {
@@ -9,7 +10,7 @@ import { UserError } from '@fastgpt/global/common/error/utils';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { hasStoredPassword } from '@fastgpt/global/support/user/utils';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import { serviceEnv } from '@fastgpt/service/env';
+import { getPasswordLoginMinuteLimitCount } from '@fastgpt/service/common/system/constants';
 import { assertPasswordUpdateRateLimit } from '@fastgpt/service/common/rateLimit/interface/accountVerification';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { updateRootPassword } from '@fastgpt/service/support/user/account/password/service';
@@ -29,13 +30,14 @@ async function handler(req: ApiRequestProps<UpdateRootPasswordBody>): Promise<vo
     req,
     authToken: true
   });
-  if (!sessionId || !isRoot || global.feConfigs?.isPlus) {
+  if (!sessionId || !isRoot || isProVersion()) {
     return Promise.reject(ERROR_ENUM.unAuthorization);
   }
 
   await assertPasswordUpdateRateLimit({
     account: userId,
-    limit: serviceEnv.PASSWORD_LOGIN_MINUTE_LIMIT_COUNT
+    // 与验证码 create/consume 限流共用 helper：运行期只读实例配置
+    limit: getPasswordLoginMinuteLimitCount()
   });
 
   await withUserLock(userId, async () => {

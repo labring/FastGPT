@@ -4,13 +4,37 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import matter from 'gray-matter';
+import docsLocale from '../lib/docs-locale.js';
+
+const { resolveDocsSiteVariant } = docsLocale;
 
 /**
  * 对真实文档服务检查公开页、草稿与发现入口。
  * 先验证公开介绍页和搜索正对照，避免未部署文档站时把统一 404 误判为草稿通过。
  */
-export async function checkDocumentPublication({ baseUrl }) {
+export async function checkDocumentPublication({ baseUrl, siteVariant }) {
   const base = baseUrl.replace(/\/$/, '');
+  const hostname = new URL(base).hostname.toLowerCase();
+  const resolvedVariant = (() => {
+    if (siteVariant !== undefined) {
+      return resolveDocsSiteVariant({ siteVariant });
+    }
+    if (hostname === 'doc.fastgpt.cn') {
+      return 'cn';
+    }
+    if (hostname === 'doc.fastgpt.io') {
+      return 'io';
+    }
+    return resolveDocsSiteVariant();
+  })();
+  const isPreview = resolvedVariant === 'preview';
+  const locales = (() => {
+    if (resolvedVariant === 'cn') return ['zh-CN'];
+    if (resolvedVariant === 'io') return ['en'];
+    return ['zh-CN', 'en'];
+  })();
+  const toRoute = (locale, routePath) => (isPreview ? `/${locale}${routePath}` : routePath);
+
   const checks = [];
   const targets = [];
   const request = async (route, { status, label, localeCookie }) => {
@@ -25,13 +49,13 @@ export async function checkDocumentPublication({ baseUrl }) {
     return body;
   };
 
-  for (const locale of ['zh-CN', 'en']) {
+  for (const locale of locales) {
     const suffix = locale === 'en' ? '.en' : '';
     const frontmatter = async (name) => matter(await readFile(new URL(`../content/openapi/${name}${suffix}.mdx`, import.meta.url), 'utf8')).data;
     const intro = await frontmatter('intro');
     const target = await frontmatter('best-practices/app-integration');
-    const introRoute = `/${locale}/openapi/intro`;
-    const targetRoute = `/${locale}/openapi/best-practices/app-integration`;
+    const introRoute = toRoute(locale, '/openapi/intro');
+    const targetRoute = toRoute(locale, '/openapi/best-practices/app-integration');
     const draft = target.draft === true;
     targets.push({ route: targetRoute, draft });
 
@@ -42,7 +66,7 @@ export async function checkDocumentPublication({ baseUrl }) {
     const page = await request(targetRoute, { status: draft ? 404 : 200, label: '教程发布状态' });
     if (!draft) assert.ok(page.includes(target.title), `已发布教程正文缺失: ${targetRoute}`);
 
-    const toc = await request(`/${locale}/toc`, { status: 200, label: '公开目录页' });
+    const toc = await request(toRoute(locale, '/toc'), { status: 200, label: '公开目录页' });
     assert.equal(toc.includes(targetRoute), !draft, `目录与发布状态不符: ${targetRoute}`);
 
     const search = async (query) => {
@@ -55,14 +79,18 @@ export async function checkDocumentPublication({ baseUrl }) {
     assert.ok((await search(intro.title)).includes(introRoute), `公开介绍页未进入搜索: ${introRoute}`);
     assert.equal((await search(target.title)).includes(targetRoute), !draft, `搜索与发布状态不符: ${targetRoute}`);
 
-    const llms = await request(`/${locale}/llms.txt`, { status: 200, label: 'LLM 文档导出' });
+    const llmsRoute = isPreview ? `/${locale}/llms.txt` : '/llms.txt';
+    const llms = await request(llmsRoute, { status: 200, label: 'LLM 文档导出' });
     assert.match(llms, /^# FastGPT/m);
     assert.ok(llms.includes('openapi/intro'), `LLM 导出缺少公开介绍页: ${locale}`);
     assert.equal(llms.includes('openapi/best-practices/app-integration'), !draft, `LLM 导出与发布状态不符: ${locale}`);
   }
 
   const sitemap = await request('/sitemap.xml', { status: 200, label: '站点地图' });
-  assert.ok(sitemap.includes('<urlset') && sitemap.includes('/openapi/intro'), '站点地图缺少公开介绍页');
+  assert.ok(sitemap.includes('<urlset'), '站点地图缺少根标签');
+  if (!isPreview) {
+    assert.ok(sitemap.includes('/openapi/intro'), '站点地图缺少公开介绍页');
+  }
   const staticIndex = await request('/static.json', { status: 200, label: '静态搜索索引' });
   assert.ok(Array.isArray(JSON.parse(staticIndex)) && staticIndex.includes('/openapi/intro'), '静态索引缺少公开介绍页');
   for (const target of targets.filter((target) => target.draft)) {

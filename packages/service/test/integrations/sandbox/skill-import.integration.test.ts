@@ -1,3 +1,4 @@
+import { getTestInstanceConfig } from '@test/utils/instanceConfigSnapshot';
 import { randomUUID } from 'node:crypto';
 import { Readable } from 'node:stream';
 import JSZip from 'jszip';
@@ -33,22 +34,26 @@ const createImportedSkillPackage = async (): Promise<Buffer> => {
 };
 
 describe.skipIf(!integrationProvider).sequential('Skill import Sandbox Integration', () => {
-  const originalFeConfigs = global.feConfigs;
+  const originalConfig = global.systemInstanceConfig;
   const originalSandboxBucket = global.sandboxBucket;
   const originalSkillBucket = global.skillBucket;
   const cleanupArchive = vi.fn(async () => undefined);
 
   afterEach(async () => {
-    global.feConfigs = originalFeConfigs;
+    global.systemInstanceConfig = originalConfig;
     global.sandboxBucket = originalSandboxBucket;
     global.skillBucket = originalSkillBucket;
   });
 
   it('creates the Skill Edit sandbox for an imported package without .gitignore', async () => {
-    global.feConfigs = {
-      ...(originalFeConfigs ?? {}),
-      show_agent_sandbox: true
-    } as typeof global.feConfigs;
+    const snapshot = getTestInstanceConfig();
+    global.systemInstanceConfig = {
+      ...snapshot,
+      subservice: {
+        ...snapshot.subservice,
+        agentSandbox: { ...snapshot.subservice.agentSandbox, provider: integrationProvider! }
+      }
+    };
     global.sandboxBucket = {
       deleteWorkspaceArchiveNow: cleanupArchive
     } as unknown as typeof global.sandboxBucket;

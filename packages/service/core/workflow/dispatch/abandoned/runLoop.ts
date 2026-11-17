@@ -8,8 +8,8 @@ import { type AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { cloneDeep } from 'lodash-es';
 import { type WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { storeEdges2RuntimeEdges } from '@fastgpt/global/core/workflow/runtime/utils';
-import { serviceEnv } from '../../../../env';
 import { getNestedEndOutputValue } from '../loop/service';
+import { getWorkflowMaxLoopTimes } from '../../constants';
 import { collectResponseFeedbacks, injectNestedStartInputs, pushSubWorkflowUsage } from '../utils';
 import { getWorkflowRuntimeSummary } from '../utils/summary';
 
@@ -36,8 +36,8 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
     return Promise.reject('Input value is not an array');
   }
 
-  // Max loop times
-  const maxLength = serviceEnv.WORKFLOW_MAX_LOOP_TIMES;
+  // Max loop times：与 loopRun/parallelRun 共用实例配置 getter
+  const maxLength = getWorkflowMaxLoopTimes();
   if (loopInputArray.length > maxLength) {
     return Promise.reject(`Input array length cannot be greater than ${maxLength}`);
   }

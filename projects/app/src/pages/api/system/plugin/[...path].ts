@@ -1,9 +1,10 @@
+import { withApiI18n } from '@/service/middleware/i18n';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { S3Buckets } from '@fastgpt/service/common/s3/config/constants';
 import type { S3PublicBucket } from '@fastgpt/service/common/s3/buckets/public';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     const { path = [] } = req.query as { path: ['models' | 'tools', string] };
 
@@ -26,3 +27,5 @@ export const config = {
     bodyParser: false
   }
 };
+
+export default withApiI18n(handler);

@@ -5,6 +5,11 @@ import { renderToString } from 'react-dom/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AppProps } from 'next/app';
 import AppShell from '@/web/context/AppShell';
+import {
+  resolveSystemInstanceConfig,
+  getDomainDefaultConfig
+} from '@fastgpt/global/common/system/config/schema';
+import { buildSystemFrontendConfig } from '@fastgpt/service/common/system/systemInstanceConfig/frontend';
 
 const mocks = vi.hoisted(() => ({
   router: {
@@ -15,6 +20,7 @@ const mocks = vi.hoisted(() => ({
   initializeApp: vi.fn(),
   initializeLayout: vi.fn(),
   languageReady: true,
+  feConfigs: {} as Record<string, unknown>,
   subscribeLanguage: vi.fn(() => ({ i18n: { language: 'en' } }))
 }));
 
@@ -25,7 +31,7 @@ vi.mock('@/web/context/useInitApp', () => ({
     useEffect(() => {
       mocks.initializeApp(mocks.router.query);
     }, []);
-    return { feConfigs: {}, scripts: [], title: 'FastGPT' };
+    return { feConfigs: mocks.feConfigs, scripts: [], title: 'FastGPT' };
   }
 }));
 vi.mock('@/components/Layout', () => ({
@@ -55,7 +61,12 @@ vi.mock('@fastgpt/web/hooks/useSafeTranslation', () => ({
   useSafeTranslation: () => ({ t: (key: string) => key, i18n: { language: 'en' } })
 }));
 vi.mock('next-i18next', () => ({ useTranslation: mocks.subscribeLanguage }));
-vi.mock('@/components/common/NextHead', () => ({ default: () => null }));
+vi.mock('next/head', async () => {
+  const { createPortal } = await import('react-dom');
+  return {
+    default: ({ children }: { children: React.ReactNode }) => createPortal(children, document.head)
+  };
+});
 vi.mock('@fastgpt/web/common/system/utils', () => ({ getWebReqUrl: (url: string) => url }));
 vi.mock('@/web/common/utils/errorLogger', () => ({ errorLogger: { init: vi.fn() } }));
 vi.mock('@/web/common/system/env', () => ({ appClientEnv: {} }));
@@ -87,6 +98,7 @@ describe('AppShell startup boundaries', () => {
     mocks.router.query = {};
     mocks.router.pathname = '/dashboard/agent';
     mocks.languageReady = true;
+    mocks.feConfigs = {};
     container = document.createElement('div');
     document.body.appendChild(container);
     root = createRoot(container);
@@ -145,4 +157,18 @@ describe('AppShell startup boundaries', () => {
       ).toContain('business-page');
     }
   );
+
+  it('renders the current projected description as metadata and clears the prior value', async () => {
+    mocks.router.isReady = true;
+    for (const description of ['owned-description-a', 'owned-description-b', '']) {
+      mocks.feConfigs = buildSystemFrontendConfig(
+        resolveSystemInstanceConfig({ site: { description } }),
+        { commercialService: true }
+      );
+      await render(true);
+      expect(document.querySelector('meta[name="description"]')?.getAttribute('content')).toBe(
+        description || getDomainDefaultConfig('site').description || 'common:system_intro'
+      );
+    }
+  });
 });

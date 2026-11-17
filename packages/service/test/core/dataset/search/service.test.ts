@@ -1,3 +1,4 @@
+import { setTestProLicense } from '../../../utils/instanceConfig';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
@@ -82,7 +83,7 @@ const run = (
 
 beforeEach(() => {
   vi.clearAllMocks();
-  global.feConfigs.isPlus = false;
+  setTestProLicense(false);
   mocks.auth.mockImplementation(async ({ datasetId }) => ({
     _id: datasetId,
     teamId: actor.teamId,

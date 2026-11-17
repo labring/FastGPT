@@ -229,11 +229,12 @@ describe('AppChatMain pagination through memo and chat context', () => {
           hasMoreNext: false
         });
     });
-    expect(records.chatRecords.map(({ id }) => id)).toEqual([
+    expect(records.chatRecords.map(({ dataId }) => dataId)).toEqual([
       'previous-record',
       'record',
       'next-record'
     ]);
+    expect(records.chatRecords.every((record) => !Object.hasOwn(record, 'id'))).toBe(true);
     expect(records.paginationLoading).toEqual({ prev: false, next: false });
     await act(async () => vi.advanceTimersByTimeAsync(500));
     expect(requests).toHaveLength(3);

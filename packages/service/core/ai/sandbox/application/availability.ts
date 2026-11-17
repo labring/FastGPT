@@ -1,3 +1,4 @@
+import { getAgentSandboxProvider } from '../config';
 import { SandboxUnavailableReasonEnum } from '@fastgpt/global/core/ai/sandbox/constants';
 import { getLogger, LogCategories } from '../../../../common/logger';
 import { checkTeamSandboxPermission } from '../../../../support/permission/teamLimit';
@@ -25,7 +26,7 @@ export async function resolveAppSandboxAvailability({
   appEnabled: boolean;
   teamId: string;
 }): Promise<AppSandboxAvailability> {
-  if (!global.feConfigs?.show_agent_sandbox) {
+  if (getAgentSandboxProvider() === 'none') {
     logger.info('App sandbox unavailable', {
       reason: SandboxUnavailableReasonEnum.systemDisabled
     });
@@ -66,7 +67,7 @@ export async function resolveAppSandboxAvailability({
  * Sandbox 权限错误；普通 App Chat 应使用 resolveAppSandboxAvailability。
  */
 export async function assertSandboxAvailable(teamId: string): Promise<void> {
-  if (!global.feConfigs?.show_agent_sandbox) {
+  if (getAgentSandboxProvider() === 'none') {
     throw createAgentSandboxPermissionDeniedError();
   }
 

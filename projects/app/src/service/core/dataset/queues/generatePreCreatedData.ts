@@ -1,9 +1,11 @@
+import { getSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/runtime';
 import { updateDatasetDataByIndexes } from '@/service/core/dataset/data/data';
 import { pushGenerateVectorUsage } from '@/service/support/wallet/usage/push';
 import { delay } from '@fastgpt/global/common/system/utils';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import type { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { isDatasetDataIndexed } from '@fastgpt/global/core/dataset/data/utils';
+import { logInstanceConfigRead } from '@fastgpt/service/common/system/migrationCoverageLog';
 import { getMaxIndexSize } from '@fastgpt/global/core/dataset/training/utils';
 import type {
   DatasetDataSchemaType,
@@ -48,7 +50,12 @@ type TrainingDataType = DatasetTrainingSchemaType & PopulateType;
  * 该队列与普通 vector/rebuild 队列隔离，避免一个 worker 根据 dataId 和状态猜测任务类型。
  */
 export async function generatePreCreatedData(): Promise<any> {
-  const max = global.systemEnv?.vectorMaxProcess || 10;
+  const max = getSystemInstanceConfig().performance.dataset.vectorMaxProcess || 10;
+  logInstanceConfigRead({
+    callsite: 'runtime.app.dataset.queue.generatePreCreatedData',
+    source: 'bridged-system-env',
+    fields: [{ path: 'performance.dataset.vectorMaxProcess', value: max }]
+  });
   logger.debug('Pre-created data queue size check', {
     queueSize: global.preCreatedQueueLen,
     max
@@ -59,7 +66,11 @@ export async function generatePreCreatedData(): Promise<any> {
   global.preCreatedQueueLen++;
 
   try {
-    while (true) {
+    // 配置下调后先完成在途任务，再让超额循环退出；每次领取前重新读取上限。
+    while (
+      global.preCreatedQueueLen <=
+      (getSystemInstanceConfig().performance.dataset.vectorMaxProcess || 10)
+    ) {
       const start = Date.now();
       let claimed;
       try {

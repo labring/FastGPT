@@ -217,7 +217,6 @@ describe('useChatGenerate.sendPrompt', () => {
       resume
         ? [
             {
-              id: 'resumed-ai',
               dataId: 'resumed-ai',
               obj: ChatRoleEnum.AI,
               status: ChatStatusEnum.loading,
@@ -360,6 +359,25 @@ describe('useChatGenerate.sendPrompt', () => {
     vi.unstubAllGlobals();
   });
 
+  it.each([undefined, ''])('omits an empty file key from the chat request: %j', async (key) => {
+    await render();
+    await act(async () => {
+      generate.sendPrompt({ text: 'question', files: [{ ...file, key }] });
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    expect(mocks.start).toHaveBeenCalledOnce();
+    const human = records.find((item) => item.obj === ChatRoleEnum.Human);
+    expect(human?.value[0]).toMatchObject({ file: { url: file.url, key: undefined } });
+    const request = JSON.parse(JSON.stringify(mocks.start.mock.calls[0][0]));
+    expect(request.messages[0].content[0]).toEqual({
+      type: 'file_url',
+      name: file.name,
+      url: file.url,
+      fileType: 'document'
+    });
+  });
+
   it.each(['streaming', 'completed', 'interactive'] as const)(
     'restores a rejected send and recovers the already loaded original AI: %s',
     async (mode) => {
@@ -425,6 +443,7 @@ describe('useChatGenerate.sendPrompt', () => {
       expect(mocks.resume).toHaveBeenCalledTimes(2);
       expect(records).toHaveLength(1);
       expect(records[0].dataId).toBe('resumed-ai');
+      if (mode === 'completed') expect(Object.hasOwn(records[0], 'id')).toBe(false);
       expect(JSON.stringify(records[0].value)).toContain('original A answer');
       expect(JSON.stringify(records)).not.toContain('rejected B text');
     }
@@ -465,6 +484,7 @@ describe('useChatGenerate.sendPrompt', () => {
         expect.objectContaining(event)
       );
       expect(records.at(-1)?.value).toEqual(expect.arrayContaining([{ chatAgentBuilderVersion }]));
+      expect(records.every((item) => !Object.hasOwn(item, 'id'))).toBe(true);
       expect(mode === 'resume' ? mocks.resume : mocks.start).toHaveBeenCalledOnce();
       expect(mode === 'resume' ? mocks.start : mocks.resume).not.toHaveBeenCalled();
     }

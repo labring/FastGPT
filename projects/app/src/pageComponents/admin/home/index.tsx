@@ -7,6 +7,7 @@ import LicenseInput from '@/components/admin/License/Input';
 import { commercialDocUrl } from '@/components/admin/constants';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import type { LicenseFunctionKey } from '@fastgpt/global/common/system/types';
+import type { LicenseType } from '@fastgpt/global/common/system/license/schema';
 import { getLicenseStatus, LicenseStatusEnum } from '@fastgpt/global/common/system/license/utils';
 
 const formatDate = (value?: string) => {
@@ -16,60 +17,61 @@ const formatDate = (value?: string) => {
   return date.toISOString().slice(0, 10);
 };
 
-/**
- * 授权能力的展示顺序与文案 key，键取自决策版函数清单（licenseFunctionKeys）。
- *
- * 顺序即界面顺序：先给客户最关心的登录与计费，再是增强类能力。
- * 新增能力时在 licenseFunctionKeys 与本清单各补一项即可，两个清单不一致时由
- * typing 报错提醒，不会静默漏展示某一项授权。
- */
-const FUNCTION_CAPABILITY_ITEMS: Array<{
-  key: LicenseFunctionKey;
-  labelKey: string;
-}> = [
-  { key: 'sso', labelKey: 'license_sso' },
-  { key: 'pay', labelKey: 'license_pay' },
-  { key: 'eval', labelKey: 'license_eval' },
-  { key: 'datasetEnhance', labelKey: 'license_dataset_enhance' },
-  { key: 'assistantGenerate', labelKey: 'license_assistant_generate' },
-  { key: 'portal', labelKey: 'license_portal' },
-  { key: 'sandboxSkills', labelKey: 'license_sandbox_skills' }
-];
-
 /** 无有效授权（尚未激活/已到期）时统一使用的占位符，避免把「不限」误读为真实额度。 */
 const PLACEHOLDER = '--';
 
-/** 四态对应的徽标文案与配色；「即将过期」用橙色提示续期。 */
-const LICENSE_STATUS_DISPLAY: Record<
-  LicenseStatusEnum,
-  { labelKey: string; color: string; dot: string }
-> = {
-  [LicenseStatusEnum.inactive]: {
-    labelKey: 'license_inactive',
-    color: 'red.600',
-    dot: 'red.500'
-  },
-  [LicenseStatusEnum.active]: {
-    labelKey: 'license_active',
-    color: 'primary.600',
-    dot: 'primary.500'
-  },
-  [LicenseStatusEnum.expiring]: {
-    labelKey: 'license_expiring_soon',
-    color: 'orange.600',
-    dot: 'orange.500'
-  },
-  [LicenseStatusEnum.expired]: {
-    labelKey: 'license_expired',
-    color: 'red.600',
-    dot: 'red.500'
-  }
-};
-
-/** 管理员首页的 License 概览，按设计稿展示租户信息、额度和授权能力。 */
+/** 管理员首页的 License 概览，按设计稿展示版本信息、租户信息、额度和授权能力。 */
 const AdminHome = () => {
-  const { licenseData, licenseLoading, feConfigs } = useSystemStore();
+  const { licenseData, licenseLoading, feConfigs, systemVersion } = useSystemStore();
   const { t } = useSafeTranslation();
+  // 文案先通过静态字面量翻译，避免动态key被语言包清理遗漏；切换语言时同步重建。
+  const functionCapabilityItems = useMemo(
+    () =>
+      [
+        { key: 'sso', label: t('admin:license_sso') },
+        { key: 'pay', label: t('admin:license_pay') },
+        { key: 'eval', label: t('admin:license_eval') },
+        { key: 'datasetEnhance', label: t('admin:license_dataset_enhance') },
+        { key: 'assistantGenerate', label: t('admin:license_assistant_generate') },
+        { key: 'portal', label: t('admin:license_portal') },
+        { key: 'sandboxSkills', label: t('admin:license_sandbox_skills') }
+      ] satisfies Array<{ key: LicenseFunctionKey; label: string }>,
+    [t]
+  );
+  const licenseTypeDisplay = useMemo(
+    () =>
+      ({
+        trial: t('admin:license_trial'),
+        official: t('admin:license_business')
+      }) satisfies Record<LicenseType, string>,
+    [t]
+  );
+  const licenseStatusDisplay = useMemo(
+    () =>
+      ({
+        [LicenseStatusEnum.inactive]: {
+          label: t('admin:license_inactive'),
+          color: 'red.600',
+          dot: 'red.500'
+        },
+        [LicenseStatusEnum.active]: {
+          label: t('admin:license_active'),
+          color: 'primary.600',
+          dot: 'primary.500'
+        },
+        [LicenseStatusEnum.expiring]: {
+          label: t('admin:license_expiring_soon'),
+          color: 'orange.600',
+          dot: 'orange.500'
+        },
+        [LicenseStatusEnum.expired]: {
+          label: t('admin:license_expired'),
+          color: 'red.600',
+          dot: 'red.500'
+        }
+      }) satisfies Record<LicenseStatusEnum, { label: string; color: string; dot: string }>,
+    [t]
+  );
   const [showLicenseInput, setShowLicenseInput] = useState(false);
   // 未接入 pro 服务 = 社区版部署，没有授权概念：不展示租户名、额度与激活状态，只保留功能能力清单。
   const isCommunityEdition = !feConfigs?.isProService;
@@ -84,11 +86,9 @@ const AdminHome = () => {
   const isLicenseValid = isActivated;
   const company = isLicenseValid ? licenseData?.company : undefined;
   const limits = isLicenseValid ? licenseData?.limits : undefined;
-  const licenseTypeKey = !isLicenseValid
-    ? undefined
-    : licenseData?.licenseType === 'trial'
-      ? 'license_trial'
-      : 'license_business';
+  const licenseTypeLabel = isLicenseValid
+    ? licenseTypeDisplay[licenseData?.licenseType ?? 'official']
+    : undefined;
   const avatarText = useMemo(() => {
     const latin = company
       ?.match(/[A-Za-z]/g)
@@ -99,9 +99,9 @@ const AdminHome = () => {
 
   // 展示顺序与文案由展示清单决定；每一项都从授权状态实际取值。
   // 未激活/已过期时全部显示为未授权（不隐藏任何能力项），避免过期授权继续显示为已开通。
-  const capabilities = FUNCTION_CAPABILITY_ITEMS.map(({ key, labelKey }) => ({
+  const capabilities = functionCapabilityItems.map(({ key, label }) => ({
     key,
-    label: t(`admin:${labelKey}`),
+    label,
     enabled: isLicenseValid && Boolean(licenseData?.functions?.[key])
   }));
 
@@ -116,7 +116,7 @@ const AdminHome = () => {
 
   // 状态徽标：四态各有文案与配色，「已到期」与「尚未激活」都不可授权，
   // 但前者需要指向续期、后者需要引导激活，因此分开呈现。
-  const statusDisplay = LICENSE_STATUS_DISPLAY[licenseStatus];
+  const statusDisplay = licenseStatusDisplay[licenseStatus];
 
   return (
     <Box h="100%" overflow="auto" bg="white" color="myGray.900">
@@ -131,21 +131,38 @@ const AdminHome = () => {
         <Box fontSize="16px" fontWeight="600" lineHeight="1.2" whiteSpace="nowrap">
           {t('admin:license_admin_home')}
         </Box>
-        <Box color="myGray.500" fontSize="12px">
-          {isCommunityEdition
-            ? t('admin:license_admin_home_community_description')
-            : t('admin:license_admin_home_description')}
-        </Box>
       </Flex>
 
       <Box p={6}>
+        {/* 版本信息：只展示 app 自身版本，来源为 app package.json 的 version（getInitData 下发） */}
+        <Box mb={4}>
+          <Box fontSize="16px" fontWeight="600" color="myGray.700" mb={2}>
+            {t('admin:license_version_info')}
+          </Box>
+          <Box border="1px solid" borderColor="myGray.200" borderRadius="8px" px={6} py={5}>
+            <Flex alignItems="center" gap={4} flexWrap="wrap">
+              <Box color="myGray.500" fontSize="12px">
+                {t('admin:license_current_version')}
+              </Box>
+              <Box fontSize="24px" fontWeight="600" lineHeight="1.2">
+                V{systemVersion}
+              </Box>
+            </Flex>
+          </Box>
+        </Box>
+
+        {/* 商业版信息：租户、License 状态、资源额度与授权能力 */}
+        <Box fontSize="16px" fontWeight="600" color="myGray.700" mb={2}>
+          {t('admin:license_commercial_info')}
+        </Box>
+
         <Box border="1px solid" h="104px" borderColor="myGray.200" borderRadius="8px" p={6}>
           {isCommunityEdition ? (
-            /* 社区版：没有授权概念，只展示版本标识与商业版引导 */
+            /* 社区版：没有授权概念，只展示版本类型标识与商业版引导 */
             <Flex alignItems="center" justifyContent="space-between" h="100%" gap={4}>
               <Flex minW={0} gap={2} alignItems={'center'}>
                 <Box color="myGray.500" fontWeight={500} fontSize="12px" mb={0.5}>
-                  {t('admin:license_current_version')}
+                  {t('admin:license_edition')}
                 </Box>
                 <Box
                   as="span"
@@ -212,7 +229,7 @@ const AdminHome = () => {
                     <Box fontSize="24px" fontWeight="600" lineHeight="1.25" noOfLines={1}>
                       {licenseLoading ? <Skeleton w="260px" h="38px" /> : company || PLACEHOLDER}
                     </Box>
-                    {licenseTypeKey && (
+                    {licenseTypeLabel && (
                       <Box
                         px={3}
                         py={1}
@@ -223,7 +240,7 @@ const AdminHome = () => {
                         fontWeight={500}
                         whiteSpace="nowrap"
                       >
-                        {t(`admin:${licenseTypeKey}`)}
+                        {licenseTypeLabel}
                       </Box>
                     )}
                   </Flex>
@@ -237,58 +254,81 @@ const AdminHome = () => {
                 display={{ base: 'none', md: 'block' }}
               />
               <Box flex="1 1 360px">
-                <Box color={statusDisplay.color} fontSize="11px" mb={4} h={'16px'}>
-                  <Box
-                    as="span"
-                    display="inline-block"
-                    w="6px"
-                    h="6px"
-                    mr={2}
-                    borderRadius="50%"
-                    bg={statusDisplay.dot}
-                  />
-                  {t(`admin:${statusDisplay.labelKey}`)}
-                </Box>
-                <Flex alignItems="center" gap={4}>
-                  <Box color="myGray.500" fontSize="12px">
-                    {t('admin:license_expires_at')}
-                  </Box>
-                  <Box fontSize="24px" fontWeight="500" lineHeight="1">
-                    {formatDate(licenseData?.expiredTime)}
-                  </Box>
-                </Flex>
+                {licenseLoading ? (
+                  /* License 检测中：状态徽标与有效期数值用骨架占位，
+                     避免先渲染「尚未激活」/「--」再跳变为真实状态（与租户名骨架屏体验一致） */
+                  <>
+                    <Skeleton h="16px" w="110px" mb={4} />
+                    <Flex alignItems="center" gap={4}>
+                      <Box color="myGray.500" fontSize="12px">
+                        {t('admin:license_expires_at')}
+                      </Box>
+                      <Skeleton h="24px" w="150px" />
+                    </Flex>
+                  </>
+                ) : (
+                  <>
+                    <Box color={statusDisplay.color} fontSize="11px" mb={4} h={'16px'}>
+                      <Box
+                        as="span"
+                        display="inline-block"
+                        w="6px"
+                        h="6px"
+                        mr={2}
+                        borderRadius="50%"
+                        bg={statusDisplay.dot}
+                      />
+                      {statusDisplay.label}
+                    </Box>
+                    <Flex alignItems="center" gap={4}>
+                      <Box color="myGray.500" fontSize="12px">
+                        {t('admin:license_expires_at')}
+                      </Box>
+                      <Box fontSize="24px" fontWeight="500" lineHeight="1">
+                        {formatDate(licenseData?.expiredTime)}
+                      </Box>
+                    </Flex>
+                  </>
+                )}
               </Box>
               <Flex alignItems="center" gap={3} justifyContent="flex-end">
-                {!isActivated && (
-                  <Link
-                    href={commercialDocUrl}
-                    isExternal
-                    color="myGray.500"
-                    fontSize="12px"
-                    textDecoration="underline"
-                    whiteSpace="nowrap"
-                    _hover={{ color: 'primary.600' }}
-                  >
-                    {t('admin:license_learn_commercial')}
-                  </Link>
+                {licenseLoading ? (
+                  /* 按钮文案依赖授权状态，检测中同样骨架占位，避免「激活」跳变为「变更 License」 */
+                  <Skeleton h="36px" w="130px" borderRadius="6px" />
+                ) : (
+                  <>
+                    {!isActivated && (
+                      <Link
+                        href={commercialDocUrl}
+                        isExternal
+                        color="myGray.500"
+                        fontSize="12px"
+                        textDecoration="underline"
+                        whiteSpace="nowrap"
+                        _hover={{ color: 'primary.600' }}
+                      >
+                        {t('admin:license_learn_commercial')}
+                      </Link>
+                    )}
+                    <Button
+                      variant={isLicenseActionPrimary ? 'primary' : 'outline'}
+                      color={isLicenseActionPrimary ? 'white' : 'primary.600'}
+                      borderColor={isLicenseActionPrimary ? 'primary.500' : 'primary.300'}
+                      borderRadius="6px"
+                      py={2}
+                      px={'14px'}
+                      fontSize="14px"
+                      leftIcon={<MyIcon name="common/settingLight" w="18px" />}
+                      onClick={onLicenseButtonClick}
+                    >
+                      {isExpired
+                        ? t('admin:license_renew')
+                        : isActivated
+                          ? t('admin:license_change')
+                          : t('admin:license_activate')}
+                    </Button>
+                  </>
                 )}
-                <Button
-                  variant={isLicenseActionPrimary ? 'primary' : 'outline'}
-                  color={isLicenseActionPrimary ? 'white' : 'primary.600'}
-                  borderColor={isLicenseActionPrimary ? 'primary.500' : 'primary.300'}
-                  borderRadius="6px"
-                  py={2}
-                  px={'14px'}
-                  fontSize="14px"
-                  leftIcon={<MyIcon name="common/settingLight" w="18px" />}
-                  onClick={onLicenseButtonClick}
-                >
-                  {isExpired
-                    ? t('admin:license_renew')
-                    : isActivated
-                      ? t('admin:license_change')
-                      : t('admin:license_activate')}
-                </Button>
               </Flex>
             </Grid>
           )}

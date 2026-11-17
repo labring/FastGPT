@@ -1,3 +1,4 @@
+import { NextAPI } from '@/service/middleware/entry';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/catalog/service';
 import type { NextApiResponse } from 'next';
@@ -20,6 +21,15 @@ import { authTargetModelResource } from '@fastgpt/service/core/app/resource/serv
 4. push bill
 */
 async function handler(req: ApiRequestProps, res: NextApiResponse) {
+  /** 音频开始输出后只能关闭失效连接，不能向音频字节中追加 JSON 错误。 */
+  const writeSpeechError = (error: unknown) => {
+    if (res.headersSent || res.writableEnded || res.destroyed) {
+      if (!res.writableEnded && !res.destroyed) res.destroy();
+      return;
+    }
+    jsonRes(res, { code: 500, error });
+  };
+
   try {
     const {
       chatId,
@@ -92,6 +102,9 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
       'buffer'
     );
 
+    // 声明音频类型即可让 NextAPI 跳过默认 JSON；不提前 flush，首包前失败仍可返回 JSON。
+    res.setHeader('Content-Type', 'audio/mpeg');
+
     if (ttsBuffer?.buffer) {
       return res.end(new Uint8Array(ttsBuffer.buffer.buffer));
     }
@@ -122,20 +135,11 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
           });
         } catch {}
       },
-      onError: (err) => {
-        jsonRes(res, {
-          code: 500,
-          error: err
-        });
-      }
+      onError: writeSpeechError
     });
   } catch (err) {
-    jsonRes(res, {
-      code: 500,
-      error: err
-    });
+    writeSpeechError(err);
   }
 }
 
-// 不能使用 NextApiResponse
-export default handler;
+export default NextAPI(handler);

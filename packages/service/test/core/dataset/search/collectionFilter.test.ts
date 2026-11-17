@@ -1,3 +1,4 @@
+import { setTestProLicense } from '../../../utils/instanceConfig';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const collectionFindMock = vi.hoisted(() => vi.fn());
@@ -303,18 +304,18 @@ describe('filterCollectionByKeyValueTags', () => {
 describe('filterCollectionByMetadata', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    (global as any).feConfigs = { isPlus: false };
+    setTestProLicense(false);
     mockTagsAndCollections({
       tags: [{ _id: 'tag-1', datasetId: 'dataset-1', tag: 'field', tagType: 'string' }],
       collections: [{ _id: 'match', tags: [{ tagId: 'tag-1', value: 'A' }] }]
     });
   });
   afterEach(() => {
-    (global as any).feConfigs = {};
+    setTestProLicense(false);
   });
 
   it('honors explicit disabled capability even when the global edition allows filters', async () => {
-    global.feConfigs.isPlus = true;
+    setTestProLicense(true);
     await expect(
       filterCollectionByMetadata({
         teamId: 'team-1',

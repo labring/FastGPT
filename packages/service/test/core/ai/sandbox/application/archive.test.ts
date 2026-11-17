@@ -1,5 +1,9 @@
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  createDefaultInstanceConfig,
+  getTestInstanceConfig
+} from '@test/utils/instanceConfigSnapshot';
 
 const mocks = vi.hoisted(() => ({
   checkSandboxQuota: vi.fn(),
@@ -85,8 +89,9 @@ vi.mock('@fastgpt/service/common/s3/sources/sandbox', () => ({
   })
 }));
 
-vi.mock('@fastgpt/service/core/ai/sandbox/config', () => ({
-  getAgentSandboxArchiveInactiveDays: () => 7,
+vi.mock('@fastgpt/service/core/ai/sandbox/config', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fastgpt/service/core/ai/sandbox/config')>()),
+  // 此文件保留归档体积故障夹具，仅闲置天数贯穿真实配置读取。
   getAgentSandboxArchiveMaxBytes: () => 1024 * 1024
 }));
 
@@ -171,6 +176,7 @@ const restoreSandbox = () =>
 describe('sandbox archive lifecycle', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    global.systemInstanceConfig = createDefaultInstanceConfig();
     lease.assertValid.mockReset();
     mocks.checkSandboxQuota.mockResolvedValue(undefined);
     mocks.withSandboxLifecycleLease.mockImplementation(async ({ fn }: any) => fn(lease));
@@ -261,6 +267,16 @@ describe('sandbox archive lifecycle', () => {
     );
     expect(mocks.withSandboxLifecycleLease).toHaveBeenCalledTimes(2);
     expect(close).toHaveBeenCalledTimes(1);
+
+    getTestInstanceConfig().subservice.agentSandbox.common.archiveInactiveDays = 3;
+    mocks.createSandboxResourcesToArchiveCursor.mockReturnValueOnce({
+      async *[Symbol.asyncIterator]() {},
+      close
+    });
+    await archiveInactiveSandboxes(new Date('2026-07-10T00:00:00.000Z'));
+    expect(mocks.createSandboxResourcesToArchiveCursor).toHaveBeenLastCalledWith(
+      new Date('2026-07-07T00:00:00.000Z')
+    );
   });
 
   it('rechecks inactivity under the lease before claiming', async () => {

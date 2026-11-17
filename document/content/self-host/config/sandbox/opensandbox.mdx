@@ -38,18 +38,20 @@ Docker Compose YAML 文件中已包含默认值，下文说明各变量的含义
 
 ### Agent Sandbox Proxy 服务
 
-| 变量                               | 默认值                                   | 说明                                                                                                    |
-| ---------------------------------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| `PORT`                             | `1006`                                   | Proxy 容器监听端口，默认映射到宿主机 `3006`。                                                           |
-| `PREVIEW_PORT`                     | 与 `PORT` 相同                           | 自 4.16 起可单独指定 HTTP 预览监听端口；修改后需同步调整宿主机端口映射和 `AGENT_SANDBOX_PREVIEW_PROXY_URL`。 |
-| `AGENT_SANDBOX_PROXY_SECRET`       | 无                                       | 与 FastGPT 主服务共用的密钥，至少 32 位。                                                               |
-| `FASTGPT_APP_URL`                  | `http://localhost:3000`                  | Proxy 回源 FastGPT 主服务的内网地址；官方 Compose 模板设置为 `http://fastgpt-app:3000`。                |
-| `FASTGPT_APP_REQUEST_TIMEOUT_SECS` | `10`                                     | Proxy 回源请求超时时间，单位秒；官方 Compose 模板设置为 `60`，沙盒冷启动较慢时可适当调大。              |
-| `RUST_LOG`                         | `info,fastgpt_agent_sandbox_proxy=debug` | Proxy 服务日志级别。                                                                                    |
+| 变量                               | 默认值                                   | 说明                                                                                                            |
+| ---------------------------------- | ---------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `PORT`                             | `1006`                                   | Proxy 容器监听端口，默认映射到宿主机 `3006`。                                                                   |
+| `PREVIEW_PORT`                     | 与 `PORT` 相同                           | 自 4.16 起可单独指定 HTTP 预览监听端口；修改后需同步调整宿主机端口映射和 Agent Sandbox 管理页中的文件预览地址。 |
+| `AGENT_SANDBOX_PROXY_SECRET`       | 无                                       | 与 FastGPT 主服务共用的密钥，至少 32 位。                                                                       |
+| `FASTGPT_APP_URL`                  | `http://localhost:3000`                  | Proxy 回源 FastGPT 主服务的内网地址；官方 Compose 模板设置为 `http://fastgpt-app:3000`。                        |
+| `FASTGPT_APP_REQUEST_TIMEOUT_SECS` | `10`                                     | Proxy 回源请求超时时间，单位秒；官方 Compose 模板设置为 `60`，沙盒冷启动较慢时可适当调大。                      |
+| `RUST_LOG`                         | `info,fastgpt_agent_sandbox_proxy=debug` | Proxy 服务日志级别。                                                                                            |
 
-自 4.16 起默认使用同一个端口提供 WebSocket 和 HTTP 预览。如果网关不支持同端口转发，可设置 `PREVIEW_PORT` 为其他容器端口（例如 `1007`），并将 Compose 端口映射改为 `3007:1007`，同时把 `AGENT_SANDBOX_PREVIEW_PROXY_URL` 指向新的 3007 端口。
+自 4.16 起默认使用同一个端口提供 WebSocket 和 HTTP 预览。如果网关不支持同端口转发，可设置 `PREVIEW_PORT` 为其他容器端口（例如 `1007`），并将 Compose 端口映射改为 `3007:1007`，同时把 Agent Sandbox 管理页中的文件预览地址指向新的 3007 端口。
 
 ### fastgpt-app 服务
+
+代理 WebSocket 地址、HTTP 预览地址和共享密钥统一在后台「子服务 → Agent Sandbox」配置。旧 Proxy ENV 仅在升级时一次性回填，此后运行读取页面配置。独立 Proxy 服务仍需设置与页面一致的 `AGENT_SANDBOX_PROXY_SECRET` ENV。
 
 在 Compose 文件的 `x-agent-sandbox-config` 中配置以下变量，使 `fastgpt-app` 和 `fastgpt-pro` 共用 OpenSandbox 配置：
 
@@ -68,18 +70,12 @@ AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL=http://fastgpt-volume-manager:3000
 AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN=replace_with_volume_manager_token
 AGENT_SANDBOX_OPENSANDBOX_VOLUME_NAME_PREFIX=fastgpt-session
 
-# Agent Sandbox Proxy 配置
-AGENT_SANDBOX_PROXY_SECRET=replace_with_32_chars_random_secret
-AGENT_SANDBOX_PROXY_URL=wss://sandbox-proxy.example.com
-AGENT_SANDBOX_PREVIEW_PROXY_URL=https://sandbox-proxy.example.com
+# 代理地址和共享密钥统一在 Agent Sandbox 管理页配置。
 
 # 单个沙盒的资源限制
 AGENT_SANDBOX_CPU_COUNT=1
 AGENT_SANDBOX_MEMORY_MIB=2048
 AGENT_SANDBOX_STORAGE_SIZE_GI=1
-# Kubernetes 运行态超卖倍数（CPU / 内存独立）：requests = limits / 对应值（1 = 该维度不超卖）
-AGENT_SANDBOX_CPU_OVERCOMMIT_FACTOR=1
-AGENT_SANDBOX_MEMORY_OVERCOMMIT_FACTOR=1
 ```
 
 ### 运行态镜像与 CPU 架构
@@ -95,9 +91,9 @@ AGENT_SANDBOX_MEMORY_OVERCOMMIT_FACTOR=1
 
 全球镜像源将 `registry.cn-hangzhou.aliyuncs.com/fastgpt` 替换为 `ghcr.io/labring`。如果使用私有镜像仓库，请确保镜像 tag 保留 `amd64` 和 `arm64` manifest；如果仓库只提供单架构镜像，请将 `AGENT_SANDBOX_OPENSANDBOX_IMAGE` 配置为与 OpenSandbox Server 宿主机架构匹配的镜像地址。
 
-`AGENT_SANDBOX_OPENSANDBOX_API_KEY` 必须与 `[server].api_key` 一致，`AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN` 必须与 `x-volume-manager-auth-token` 一致，`AGENT_SANDBOX_PROXY_SECRET` 必须与 Agent Sandbox Proxy 中的同名变量一致。
+`AGENT_SANDBOX_OPENSANDBOX_API_KEY` 必须与 `[server].api_key` 一致，`AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN` 必须与 `x-volume-manager-auth-token` 一致，Agent Sandbox 管理页的共享密钥必须与独立 Proxy 服务的 `AGENT_SANDBOX_PROXY_SECRET` 一致。
 
-`fastgpt-pro` 不提供 Sandbox Editor 和 WebSocket Proxy 链路，因此不要求 `AGENT_SANDBOX_PROXY_SECRET` 和 `AGENT_SANDBOX_PROXY_URL`，但必须配置 `AGENT_SANDBOX_PREVIEW_PROXY_URL`。
+请在后台「子服务 → Agent Sandbox」统一配置 WebSocket 地址（`ws://` 或 `wss://`）、文件预览地址（`http://` 或 `https://`）和共享密钥。App 与 Pro 共用该数据库配置；密钥至少 32 个字符，且须与独立 Proxy 服务的 `AGENT_SANDBOX_PROXY_SECRET` 一致。
 
 <Alert icon="⚠️" context="warning">
   预览代理应部署在与 FastGPT 主站不同的 origin（协议、域名或端口至少一项不同）。Sandbox 中的 HTML
@@ -139,21 +135,21 @@ AGENT_SANDBOX_APT_MIRROR=https://mirrors.tuna.tsinghua.edu.cn/ubuntu-ports
 
 ### 资源与生命周期
 
-超卖配置仅在 `AGENT_SANDBOX_PROVIDER=opensandbox`、`AGENT_SANDBOX_OPENSANDBOX_RUNTIME=kubernetes` 且 OpenSandbox Server 版本不低于 `v0.2.1` 时生效。CPU 和内存倍率必须为不小于 `1` 的有限数值；CPU requests 向下取整到毫核，最低为 `1m`，内存 requests 向下取整到 MiB，最低为 `1Mi`，limits 保持不变。
+在后台 Agent Sandbox 表单中选择 OpenSandbox，并将运行时设为 Kubernetes 后，才显示「CPU 超卖倍数」与「内存超卖倍数」，默认均为 `1`。配置存储在 `subservice.agentSandbox.opensandbox.cpuOvercommitFactor` 和 `memoryOvercommitFactor`。仅在 OpenSandbox Server 版本不低于 `v0.2.1` 时生效。倍率必须是不小于 `1` 的有限数值；CPU requests 向下取整到毫核、最低 `1m`，内存 requests 向下取整到 MiB、最低 `1Mi`，limits 保持不变。旧 `AGENT_SANDBOX_CPU_OVERCOMMIT_FACTOR` 和 `AGENT_SANDBOX_MEMORY_OVERCOMMIT_FACTOR` 仅在 App 升级迁移阶段读取一次，已有表单值优先；迁移完成后不再作为运行时来源。
 
 修改倍率后，已启动的沙盒保持原资源配置；后续创建的沙盒会自动使用当前倍率，包括删除或归档后重新创建的沙盒。连接或恢复已有沙盒不会重新应用倍率。
 
-| 变量                                     | 默认值     | 说明                                                                                                                          |
-| ---------------------------------------- | ---------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| `AGENT_SANDBOX_CPU_COUNT`                | `1`        | 单个 Agent Sandbox 的 CPU 核数上限。                                                                                          |
-| `AGENT_SANDBOX_MEMORY_MIB`               | `2048`     | 单个 Agent Sandbox 的内存上限，单位 MiB。                                                                                     |
-| `AGENT_SANDBOX_STORAGE_SIZE_GI`          | `1`        | 沙盒存储容量，单位 Gi。                                                                                                       |
-| `AGENT_SANDBOX_CPU_OVERCOMMIT_FACTOR`    | `1`        | Kubernetes 运行态 CPU 超卖倍数：CPU requests = limits / 该值；大于 1 时创建 Burstable QoS Pod。仅 opensandbox provider 生效。 |
-| `AGENT_SANDBOX_MEMORY_OVERCOMMIT_FACTOR` | `1`        | Kubernetes 运行态内存超卖倍数：内存 requests = limits / 该值；大于 1 时创建 Burstable QoS Pod。仅 opensandbox provider 生效。 |
-| `AGENT_SANDBOX_WS_MAX_MESSAGE_BYTES`     | `67108864` | IDE Agent WebSocket 单消息大小上限。                                                                                          |
-| `AGENT_SANDBOX_WS_MAX_FRAME_BYTES`       | `16777216` | IDE Agent WebSocket 单帧大小上限。                                                                                            |
-| `AGENT_SANDBOX_SUSPEND_MINUTES`          | `60`       | 运行中的沙盒持续未活跃多少分钟后自动暂停。                                                                                    |
-| `AGENT_SANDBOX_ARCHIVE_INACTIVE_DAYS`    | `7`        | 已暂停的沙盒持续未活跃多少天后自动归档。                                                                                      |
+| 变量                                                         | 默认值     | 说明                                                                                                                          |
+| ------------------------------------------------------------ | ---------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `AGENT_SANDBOX_CPU_COUNT`                                    | `1`        | 单个 Agent Sandbox 的 CPU 核数上限。                                                                                          |
+| `AGENT_SANDBOX_MEMORY_MIB`                                   | `2048`     | 单个 Agent Sandbox 的内存上限，单位 MiB。                                                                                     |
+| `AGENT_SANDBOX_STORAGE_SIZE_GI`                              | `1`        | 沙盒存储容量，单位 Gi。                                                                                                       |
+| `subservice.agentSandbox.opensandbox.cpuOvercommitFactor`    | `1`        | Kubernetes 运行态 CPU 超卖倍数：CPU requests = limits / 该值；大于 1 时创建 Burstable QoS Pod。仅 opensandbox provider 生效。 |
+| `subservice.agentSandbox.opensandbox.memoryOvercommitFactor` | `1`        | Kubernetes 运行态内存超卖倍数：内存 requests = limits / 该值；大于 1 时创建 Burstable QoS Pod。仅 opensandbox provider 生效。 |
+| `AGENT_SANDBOX_WS_MAX_MESSAGE_BYTES`                         | `67108864` | IDE Agent WebSocket 单消息大小上限。                                                                                          |
+| `AGENT_SANDBOX_WS_MAX_FRAME_BYTES`                           | `16777216` | IDE Agent WebSocket 单帧大小上限。                                                                                            |
+| `AGENT_SANDBOX_SUSPEND_MINUTES`                              | `60`       | 运行中的沙盒持续未活跃多少分钟后自动暂停。                                                                                    |
+| `AGENT_SANDBOX_ARCHIVE_INACTIVE_DAYS`                        | `7`        | 已暂停的沙盒持续未活跃多少天后自动归档。                                                                                      |
 
 ## 配置与连接排障
 
@@ -167,21 +163,21 @@ AGENT_SANDBOX_APT_MIRROR=https://mirrors.tuna.tsinghua.edu.cn/ubuntu-ports
 
 <span id="提示-agent_sandbox_proxy_url-或-agent_sandbox_preview_proxy_url-is-required" />
 
-### 提示 Invalid Agent Sandbox proxy environment variables: AGENT_SANDBOX_PROXY_SECRET, AGENT_SANDBOX_PROXY_URL, AGENT_SANDBOX_PREVIEW_PROXY_URL are required when AGENT_SANDBOX_PROVIDER is opensandbox
+### 提示 Agent Sandbox proxy configuration is missing
 
-`fastgpt-app` 必须配置 `AGENT_SANDBOX_PROXY_SECRET`、`AGENT_SANDBOX_PROXY_URL` 和 `AGENT_SANDBOX_PREVIEW_PROXY_URL`；`fastgpt-pro` 必须配置 `AGENT_SANDBOX_PREVIEW_PROXY_URL`。
+请在后台「子服务 → Agent Sandbox」统一配置 WebSocket 地址（`ws://` 或 `wss://`）、文件预览地址（`http://` 或 `https://`）和共享密钥。App 与 Pro 共用该数据库配置；密钥至少 32 个字符，且须与独立 Proxy 服务的 `AGENT_SANDBOX_PROXY_SECRET` 一致。
 
 ### 浏览器 WebSocket 连接失败
 
-检查 Proxy 是否可从浏览器访问，并确认反向代理支持 WebSocket Upgrade。如果 FastGPT 使用 HTTPS，`AGENT_SANDBOX_PROXY_URL` 也应使用 `wss://`。
+检查 Proxy 是否可从浏览器访问，并确认反向代理支持 WebSocket Upgrade。如果 FastGPT 使用 HTTPS，Agent Sandbox 管理页中的 WebSocket 地址也应使用 `wss://`。
 
 ### Proxy 校验失败或返回 401
 
-确认 FastGPT 主服务和 Agent Sandbox Proxy 中的 `AGENT_SANDBOX_PROXY_SECRET` 完全一致，且长度不少于 32 位。
+确认 Agent Sandbox 管理页的共享密钥与独立 Proxy 服务的 `AGENT_SANDBOX_PROXY_SECRET` 完全一致，且至少 32 个字符。
 
 ### 沙盒创建成功，但文件树或终端连接失败
 
-确认 `AGENT_SANDBOX_PROXY_URL` 是浏览器可访问的 `ws://` 或 `wss://` 地址，并检查宿主机 `3006` 端口或对应域名是否已开放。
+确认 Agent Sandbox 管理页中的 WebSocket 地址是浏览器可访问的 `ws://` 或 `wss://` 地址，并检查宿主机 `3006` 端口或对应域名是否已开放。
 
 ### Proxy 无法连接沙盒 endpoint
 

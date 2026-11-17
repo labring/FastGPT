@@ -2,7 +2,7 @@ import { type StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 import type { SecretValueReferenceResolver } from '@fastgpt/global/common/secret/utils';
 import { getSecretValue } from '../../common/secret/utils';
 import { axios } from '../../common/api/axios';
-import { formatHttpError } from '../../common/api/httpError';
+import { formatHttpError, getSafeHttpErrorFields } from '../../common/api/httpError';
 import type { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import {
@@ -208,7 +208,12 @@ export const runHTTPTool = async ({
 
     return { data };
   } catch (error) {
-    logger.warn('HTTP tool request failed', { error });
+    // 保留 HTTP Tool 只采集响应状态的边界，不把异常上的直接 status 新增为日志来源。
+    logger.warn('HTTP tool request failed', {
+      name: 'HttpToolRequestError',
+      message: 'HTTP tool request failed',
+      ...getSafeHttpErrorFields({ error, statusSource: 'response' })
+    });
     // 与 HTTP 节点保持一致：非 2xx 时把响应体中的具体原因附加到错误文本，避免只剩状态行。
     return { errorMsg: formatHttpError(error).rawText };
   }

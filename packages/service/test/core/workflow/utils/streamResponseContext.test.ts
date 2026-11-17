@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { createDefaultInstanceConfig } from '@test/utils/instanceConfigSnapshot';
 import { getRedisRuntime } from '@fastgpt/dal/redis/runtime';
 import { responseWrite } from '@fastgpt/service/common/response';
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
@@ -12,6 +13,8 @@ import {
 } from '@fastgpt/service/core/workflow/utils/streamResponseContext';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
+import { createApiI18n } from '@fastgpt/service/common/i18n/request';
+import { generatedLoaders } from '@fastgpt/web/i18n/resourceLoaders.generated';
 import {
   ChatSourceTypeEnum,
   STREAM_RESUME_REQUEST_HEADER
@@ -20,7 +23,7 @@ import {
 const {
   getStreamResumeRedisKeys,
   STREAM_RESUME_MIRROR_KEEPALIVE_INTERVAL_MS,
-  STREAM_RESUME_TTL_SECONDS
+  startStreamResumeMirrorKeepAlive
 } = streamResume;
 
 const clearCookieMock = vi.hoisted(() => vi.fn());
@@ -84,6 +87,7 @@ const createRes = () => {
 describe('createWorkflowStreamResponseContext', () => {
   beforeEach(async () => {
     vi.clearAllMocks();
+    global.systemInstanceConfig = createDefaultInstanceConfig();
     streamResume.resetStreamResumeMirrorGuardForTest();
 
     const redis = getRedisRuntime().getCommandConnection() as any;
@@ -126,14 +130,14 @@ describe('createWorkflowStreamResponseContext', () => {
     );
     expect(responseWrite).not.toHaveBeenCalled();
     const completionExpirations = redis.expire.mock.calls.filter(
-      ([, ttl]: [string, number]) => ttl === streamResume.STREAM_RESUME_POST_COMPLETE_TTL_SECONDS
+      ([, ttl]: [string, number]) => ttl === streamResume.getStreamResumePostCompleteTtlSeconds()
     );
     expect(completionExpirations).toHaveLength(2);
 
     await context.flushResume();
     expect(
       redis.expire.mock.calls.filter(
-        ([, ttl]: [string, number]) => ttl === streamResume.STREAM_RESUME_POST_COMPLETE_TTL_SECONDS
+        ([, ttl]: [string, number]) => ttl === streamResume.getStreamResumePostCompleteTtlSeconds()
       )
     ).toHaveLength(2);
   });
@@ -216,7 +220,7 @@ describe('createWorkflowStreamResponseContext', () => {
       );
       expect(redis.expire).toHaveBeenCalledWith(
         `${FASTGPT_REDIS_PREFIX}${keys.keyOfStream}`,
-        streamResume.STREAM_RESUME_POST_COMPLETE_TTL_SECONDS
+        streamResume.getStreamResumePostCompleteTtlSeconds()
       );
     }
   );
@@ -294,13 +298,28 @@ describe('createWorkflowStreamResponseContext', () => {
     await vi.advanceTimersByTimeAsync(STREAM_RESUME_MIRROR_KEEPALIVE_INTERVAL_MS);
     expect(redis.expire).toHaveBeenCalledWith(
       `${FASTGPT_REDIS_PREFIX}${keys.keyOfStream}`,
-      STREAM_RESUME_TTL_SECONDS
+      streamResume.getStreamResumeTtlSeconds()
     );
 
     await context.flushResume();
     redis.expire.mockClear();
     await vi.advanceTimersByTimeAsync(STREAM_RESUME_MIRROR_KEEPALIVE_INTERVAL_MS);
     expect(redis.expire).not.toHaveBeenCalled();
+  });
+
+  it('uses the fixed keepalive interval', async () => {
+    vi.useFakeTimers();
+    const touch = vi.fn().mockResolvedValue(undefined);
+    const stop = startStreamResumeMirrorKeepAlive({ touch });
+
+    try {
+      await vi.advanceTimersByTimeAsync(STREAM_RESUME_MIRROR_KEEPALIVE_INTERVAL_MS - 1);
+      expect(touch).not.toHaveBeenCalled();
+      await vi.advanceTimersByTimeAsync(1);
+      expect(touch).toHaveBeenCalledTimes(1);
+    } finally {
+      stop();
+    }
   });
 
   it('should stop the resume mirror keepalive when the response finishes', async () => {
@@ -375,6 +394,38 @@ describe('createWorkflowStreamResponseContext', () => {
         event: SseResponseEventEnum.error,
         data: expect.stringContaining(ERROR_ENUM.unAuthorization)
       })
+    );
+  });
+
+  it('mirrors the translated error payload before writing it, even outside the request scope', async () => {
+    const req = createReq({
+      'x-fastgpt-language': 'zh-CN',
+      [STREAM_RESUME_REQUEST_HEADER]: 'true'
+    });
+    const res = createRes();
+    const context = await createApiI18n(generatedLoaders)({ req, res }, () =>
+      createWorkflowStreamResponseContext({
+        req,
+        res,
+        stream: true,
+        detail: true,
+        teamId,
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId,
+        chatId
+      })
+    );
+    context.writeStreamError(ERROR_ENUM.unAuthorization);
+    await context.flushResume();
+    res.emit('finish');
+
+    const redis = getRedisRuntime().getCommandConnection() as any;
+    const raw = redis.call.mock.calls.find(([command]: string[]) => command === 'XADD')?.at(-1);
+    expect(raw).toContain('"message":"凭证错误"');
+    expect(raw).not.toContain('common:code_error.error_message.401');
+    const payload = raw.split('data: ')[1].trim();
+    expect(responseWrite).toHaveBeenCalledWith(
+      expect.objectContaining({ event: SseResponseEventEnum.error, data: payload })
     );
   });
 

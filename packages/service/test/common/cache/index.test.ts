@@ -1,8 +1,8 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
 import { getCachedData, getVersionKey, refreshVersionKey } from '@fastgpt/service/common/cache';
 import { initCache } from '@fastgpt/service/common/cache/init';
 import { SystemCacheKeyEnum } from '@fastgpt/service/common/cache/type';
-import { serviceEnv } from '@fastgpt/service/env';
 
 const { mockSystemVersionCache } = vi.hoisted(() => ({
   mockSystemVersionCache: {
@@ -14,8 +14,6 @@ const { mockSystemVersionCache } = vi.hoisted(() => ({
 vi.mock('@fastgpt/dal/redis/caches', () => ({
   systemVersionCache: mockSystemVersionCache
 }));
-
-const originalDisableCache = serviceEnv.DISABLE_CACHE;
 
 beforeEach(() => {
   delete (global as any).systemCache;
@@ -85,11 +83,6 @@ describe('getCachedData', () => {
 
   beforeEach(() => {
     mockRefreshFunc.mockReset();
-    serviceEnv.DISABLE_CACHE = false;
-  });
-
-  afterEach(() => {
-    serviceEnv.DISABLE_CACHE = originalDisableCache;
   });
 
   it('initializes systemCache on first access', async () => {
@@ -125,21 +118,6 @@ describe('getCachedData', () => {
 
     expect(mockRefreshFunc).not.toHaveBeenCalled();
     expect(result).toEqual(mockData);
-  });
-
-  it('refreshes when DISABLE_CACHE is true', async () => {
-    serviceEnv.DISABLE_CACHE = true;
-    mockRefreshFunc.mockResolvedValue({ permission: 'first' });
-    initCache();
-    global.systemCache[SystemCacheKeyEnum.modelPermission].refreshFunc = mockRefreshFunc;
-
-    await getCachedData(SystemCacheKeyEnum.modelPermission);
-    mockRefreshFunc.mockClear();
-    mockRefreshFunc.mockResolvedValue({ permission: 'second' });
-    const result = await getCachedData(SystemCacheKeyEnum.modelPermission);
-
-    expect(mockRefreshFunc).toHaveBeenCalled();
-    expect(result).toEqual({ permission: 'second' });
   });
 
   it('uses cache for modelPermission when the version matches', async () => {

@@ -48,7 +48,6 @@ describe('getWorkflowBuilderEntryAccess', () => {
         systemInitialized: true,
         isPlus: false,
         showAgentSandbox: false,
-        showWorkflowBuilder: false,
         canEdit: true
       })
     ).toBe('upgrade');
@@ -59,8 +58,7 @@ describe('getWorkflowBuilderEntryAccess', () => {
       getWorkflowBuilderEntryAccess({
         systemInitialized: true,
         isPlus: false,
-        showAgentSandbox: true,
-        showWorkflowBuilder: true,
+        showAgentSandbox: false,
         canEdit: false
       })
     ).toBe('hidden');
@@ -72,37 +70,28 @@ describe('getWorkflowBuilderEntryAccess', () => {
         systemInitialized: false,
         isPlus: false,
         showAgentSandbox: false,
-        showWorkflowBuilder: false,
         canEdit: true
       })
     ).toBe('hidden');
   });
 
-  it.each([
-    { showAgentSandbox: false, showWorkflowBuilder: true },
-    { showAgentSandbox: true, showWorkflowBuilder: false }
-  ])(
-    'hides the commercial entry when an administrator disables a dependency',
-    ({ showAgentSandbox, showWorkflowBuilder }) => {
-      expect(
-        getWorkflowBuilderEntryAccess({
-          systemInitialized: true,
-          isPlus: true,
-          showAgentSandbox,
-          showWorkflowBuilder,
-          canEdit: true
-        })
-      ).toBe('hidden');
-    }
-  );
+  it('hides the commercial entry when Sandbox is not configured', () => {
+    expect(
+      getWorkflowBuilderEntryAccess({
+        systemInitialized: true,
+        isPlus: true,
+        showAgentSandbox: false,
+        canEdit: true
+      })
+    ).toBe('hidden');
+  });
 
-  it('enables the entry when all Builder requirements are met', () => {
+  it('enables the commercial entry when Sandbox is configured', () => {
     expect(
       getWorkflowBuilderEntryAccess({
         systemInitialized: true,
         isPlus: true,
         showAgentSandbox: true,
-        showWorkflowBuilder: true,
         canEdit: true
       })
     ).toBe('enabled');

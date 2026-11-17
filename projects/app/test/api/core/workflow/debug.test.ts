@@ -67,6 +67,7 @@ vi.mock('@/service/core/workflow/nodeResponse', () => ({
 }));
 
 import handler from '@/pages/api/core/workflow/debug';
+import { resolveSystemInstanceConfig } from '@fastgpt/global/common/system/config/schema';
 
 const appId = '68ad85a7463006c963799a05';
 const app = {
@@ -228,5 +229,25 @@ describe('workflow debug API chatId', () => {
         runtimeEdges: requestEdges
       })
     );
+  });
+
+  it('passes the current instance execution budget to each debug run', async () => {
+    const previousConfig = global.systemInstanceConfig;
+
+    try {
+      for (const maxRunTimes of [0, 1, 3]) {
+        global.systemInstanceConfig = resolveSystemInstanceConfig({
+          performance: { workflow: { maxRunTimes } }
+        });
+
+        await handler({ body: { appId, usageId: 'usage-id' }, headers: {} } as any, {} as any);
+
+        expect(mocks.dispatchWorkFlow).toHaveBeenLastCalledWith(
+          expect.objectContaining({ maxRunTimes })
+        );
+      }
+    } finally {
+      global.systemInstanceConfig = previousConfig;
+    }
   });
 });

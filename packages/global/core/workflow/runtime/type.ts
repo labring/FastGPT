@@ -1,6 +1,9 @@
-import type { FlowNodeInputItemType, FlowNodeOutputItemType } from '../type/io';
+import {
+  FlowNodeOutputItemTypeSchema,
+  type FlowNodeInputItemType,
+  type FlowNodeOutputItemType
+} from '../type/io';
 import type { StoreNodeItemType } from '../type/node';
-import { NodeOutputKeyEnum } from '../constants';
 import { ClassifyQuestionAgentItemSchema } from '../template/system/classifyQuestion/type';
 import { ReadFileNodeResponseSchema } from '../template/system/readFiles/type';
 import { CompletionFinishReasonSchema } from '../../ai/llm/type';
@@ -301,7 +304,8 @@ export type DispatchNodeResponseType = Omit<
 /* ---------- node outputs ------------ */
 export const NodeOutputItemSchema = z.object({
   nodeId: z.string(),
-  key: z.enum(Object.values(NodeOutputKeyEnum)),
+  // 快照用于续跑恢复，键名必须与节点定义一致，包含用户自定义输出。
+  key: FlowNodeOutputItemTypeSchema.shape.key,
   value: z.any().meta({ ...JsonValueOpenApiMeta, description: '节点输出值' })
 });
 export type NodeOutputItemType = z.infer<typeof NodeOutputItemSchema>;

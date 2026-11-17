@@ -376,6 +376,7 @@ export function createAuthService({
 
       const probe = await runWhoamiProbeChain({
         handlers: probeHandlers,
+        requireWhoami: true,
         client,
         auth: {
           authType: credential.authType,

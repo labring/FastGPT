@@ -185,6 +185,7 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
 
   const result = await runAgentLoop({
     maxRunAgentTimes: runtime.maxRunAgentTimes ?? 100,
+    lang: runtime.lang,
     completionPolicy: runtime.completionPolicy,
     getCheckpointContext: runtime.getCheckpointContext,
     batchToolSize: runtime.batchToolSize ?? 5,

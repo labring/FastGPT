@@ -750,7 +750,6 @@ export const useChatGenerate = ({
           }
 
           const currentHumanChat: HumanChatSiteItemType = {
-            id: humanChatId,
             dataId: humanChatId,
             obj: ChatRoleEnum.Human,
             time: new Date(),
@@ -761,7 +760,7 @@ export const useChatGenerate = ({
                   type: file.type,
                   name: file.name,
                   url: file.url,
-                  key: file.key || ''
+                  key: file.key || undefined
                 }
               })),
               ...(select
@@ -783,7 +782,6 @@ export const useChatGenerate = ({
             ...history,
             currentHumanChat,
             {
-              id: responseChatId,
               dataId: responseChatId,
               obj: ChatRoleEnum.AI,
               value: [

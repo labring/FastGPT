@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
 import {
+  comparePluginVersion,
   getBatchUpdateFailures,
   getMarketplaceToolStateAfterInstall,
+  hasMarketplaceToolUpdate,
   shouldReinstallOfflineMarketplaceTool,
   updateMarketplaceInstalledPluginStatus
 } from '@/web/core/plugin/marketplace/utils';
@@ -178,5 +180,85 @@ describe('marketplace installed plugin cache', () => {
     expect(result?.ids).toEqual(new Set(['weather']));
     expect(result?.map.get('weather')?.status).toBe(PluginStatusEnum.Normal);
     expect(result?.list).toHaveLength(1);
+  });
+});
+
+describe('comparePluginVersion', () => {
+  it('compares semver versions including prereleases and v-prefixes', () => {
+    expect(comparePluginVersion('1.2.0', '1.1.9')).toBeGreaterThan(0);
+    expect(comparePluginVersion('v1.0.10', '1.0.2')).toBeGreaterThan(0);
+    expect(comparePluginVersion('1.0.0', '1.0.0-beta.1')).toBeGreaterThan(0);
+    expect(comparePluginVersion('1.0.0-beta.2', '1.0.0-beta.10')).toBeLessThan(0);
+    expect(comparePluginVersion('1.0.0', '1.0.0')).toBe(0);
+    expect(comparePluginVersion('latest', '1.0.0')).toBeUndefined();
+  });
+});
+
+describe('hasMarketplaceToolUpdate', () => {
+  it('detects updates when marketplace semver is newer', () => {
+    expect(
+      hasMarketplaceToolUpdate({
+        installedVersion: '1.0.0',
+        installedEtag: 'etag-1',
+        marketplaceVersion: '1.0.1',
+        marketplaceEtag: 'etag-2'
+      })
+    ).toBe(true);
+  });
+
+  it('does not prompt downgrade when installed semver is newer than marketplace', () => {
+    expect(
+      hasMarketplaceToolUpdate({
+        installedVersion: '1.1.0',
+        installedEtag: 'etag-2',
+        marketplaceVersion: '1.0.0',
+        marketplaceEtag: 'etag-1'
+      })
+    ).toBe(false);
+  });
+
+  it('detects same-version package replacements when both etags exist and differ', () => {
+    expect(
+      hasMarketplaceToolUpdate({
+        installedVersion: '1.0.0',
+        installedEtag: 'etag-old',
+        marketplaceVersion: '1.0.0',
+        marketplaceEtag: 'etag-new'
+      })
+    ).toBe(true);
+    expect(
+      hasMarketplaceToolUpdate({
+        installedVersion: '1.0.0',
+        installedEtag: 'etag-same',
+        marketplaceVersion: '1.0.0',
+        marketplaceEtag: 'etag-same'
+      })
+    ).toBe(false);
+  });
+
+  it('requires non-empty installed etag to treat same-version packages as updatable', () => {
+    expect(
+      hasMarketplaceToolUpdate({
+        installedVersion: '1.0.0',
+        installedEtag: '',
+        marketplaceVersion: '1.0.0',
+        marketplaceEtag: 'etag-new'
+      })
+    ).toBe(false);
+  });
+
+  it('falls back to string inequality for non-semver versions', () => {
+    expect(
+      hasMarketplaceToolUpdate({
+        installedVersion: '2026.01',
+        marketplaceVersion: '2026.02'
+      })
+    ).toBe(true);
+    expect(
+      hasMarketplaceToolUpdate({
+        installedVersion: '',
+        marketplaceVersion: '1.0.0'
+      })
+    ).toBe(true);
   });
 });

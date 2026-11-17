@@ -1,3 +1,7 @@
+import {
+  createDefaultInstanceConfig,
+  getTestInstanceConfig
+} from '@test/utils/instanceConfigSnapshot';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { mockGetTeamPlanStatus } = vi.hoisted(() => ({
@@ -13,7 +17,8 @@ const { getTeamFileSizeLimitBytes } = await import('@fastgpt/service/support/per
 describe('support/permission/fileLimit', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    global.feConfigs = { limit: { uploadFileMaxSize: 500 } } as any;
+    global.systemInstanceConfig = createDefaultInstanceConfig();
+    getTestInstanceConfig().resource.uploadFileMaxSize = 500;
   });
 
   it('团队套餐配置覆盖系统上限，并只在边界转换一次 MB 到字节', async () => {

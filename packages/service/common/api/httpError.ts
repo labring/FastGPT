@@ -48,3 +48,58 @@ export const formatHttpError = (error: any) => {
     status: error?.status
   };
 };
+
+/**
+ * 提取不可信 HTTP 异常中可记录的 code/status，不复制原对象或调用序列化。
+ * 调用方明确选择状态来源；只有响应状态缺省时才允许回退，非法响应状态不能被直接状态覆盖。
+ * 属性不可读时返回空诊断，避免日志处理替换原业务异常。
+ */
+export const getSafeHttpErrorFields = ({
+  error,
+  statusSource
+}: {
+  error: unknown;
+  statusSource: 'response' | 'responseOrDirect';
+}) => {
+  try {
+    const details = typeof error === 'object' && error !== null ? error : undefined;
+    const code = details && 'code' in details ? details.code : undefined;
+    const response = details && 'response' in details ? details.response : undefined;
+    const responseStatus =
+      typeof response === 'object' && response !== null && 'status' in response
+        ? response.status
+        : undefined;
+    const status =
+      statusSource === 'responseOrDirect'
+        ? (responseStatus ?? (details && 'status' in details ? details.status : undefined))
+        : responseStatus;
+    const safeCodes = [
+      'ECONNABORTED',
+      'ETIMEDOUT',
+      'ECONNRESET',
+      'ECONNREFUSED',
+      'ENOTFOUND',
+      'EHOSTUNREACH',
+      'ENETUNREACH',
+      'ERR_NETWORK',
+      'ERR_BAD_REQUEST',
+      'ERR_BAD_RESPONSE',
+      'ERR_CANCELED'
+    ];
+    return {
+      ...(typeof code === 'string' && safeCodes.includes(code) ? { code } : {}),
+      ...(typeof status === 'number' && Number.isInteger(status) && status >= 100 && status <= 599
+        ? { status }
+        : {})
+    };
+  } catch {
+    return {};
+  }
+};
+
+/** API 与数据源使用固定日志标签，并保留原有的直接状态回退，不改变业务响应。 */
+export const getSafeHttpErrorLog = (error: unknown) => ({
+  name: 'HttpRequestError',
+  message: 'HTTP request failed',
+  ...getSafeHttpErrorFields({ error, statusSource: 'responseOrDirect' })
+});

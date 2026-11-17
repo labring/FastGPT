@@ -1,3 +1,4 @@
+import { setTestLicenseActive } from '@test/utils/instanceConfigSnapshot';
 vi.unmock('@fastgpt/service/support/permission/auth/common');
 
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -200,7 +201,7 @@ describe('GET /api/support/user/account/whoami', () => {
     expect(unauthRes.code).toBe(500);
     expect(unauthRes.error).toBe(ERROR_ENUM.unAuthorization);
 
-    global.feConfigs = { ...global.feConfigs, isPlus: true } as any;
+    setTestLicenseActive(true);
     await expect(
       handler({ headers: { authorization: 'Bearer fastgpt-expired-key' } } as any)
     ).rejects.toThrow('API Key is expired');

@@ -52,7 +52,7 @@
       "row": 1,
       "col": 2.5,
       "kind": "store",
-      "sub": "选择一种后端",
+      "sub": "PG / OceanBase / …",
       "illustration": "vector"
     },
     {
@@ -61,7 +61,7 @@
       "row": 1,
       "col": 3.5,
       "kind": "store",
-      "sub": "文件与对象",
+      "sub": "RustFS / OSS / …",
       "illustration": "files"
     },
     {
@@ -83,54 +83,14 @@
     }
   ],
   "edges": [
-    [
-      "client",
-      "gateway",
-      "",
-      "primary"
-    ],
-    [
-      "gateway",
-      "app",
-      "",
-      "primary"
-    ],
-    [
-      "app",
-      "mongo",
-      "",
-      "default"
-    ],
-    [
-      "app",
-      "redis",
-      "",
-      "default"
-    ],
-    [
-      "app",
-      "vector",
-      "",
-      "default"
-    ],
-    [
-      "app",
-      "s3",
-      "",
-      "default"
-    ],
-    [
-      "app",
-      "proxy",
-      "",
-      "primary"
-    ],
-    [
-      "proxy",
-      "model",
-      "",
-      "primary"
-    ]
+    ["client", "gateway", "", "primary"],
+    ["gateway", "app", "", "primary"],
+    ["app", "mongo", "", "default"],
+    ["app", "redis", "", "default"],
+    ["app", "vector", "", "default"],
+    ["app", "s3", "", "default"],
+    ["app", "proxy", "", "primary"],
+    ["proxy", "model", "", "primary"]
   ],
   "evidence": [
     {

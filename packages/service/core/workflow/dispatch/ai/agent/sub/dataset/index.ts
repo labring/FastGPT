@@ -1,3 +1,4 @@
+import { isProVersion } from '../../../../../../../common/system/constants';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import type { LLMModelDataType } from '@fastgpt/global/core/ai/model/schema';
@@ -295,7 +296,7 @@ export const dispatchAgentDatasetSearch = async ({
         value: datasetParams.collectionFilterMatch
       }),
       readableCollectionIdList,
-      metadataFilterEnabled: Boolean(global.feConfigs.isPlus),
+      metadataFilterEnabled: isProVersion(),
       userKey
     };
     // retrievalResults：重排前的候选快照，由检索层在 usingReRank 成立且

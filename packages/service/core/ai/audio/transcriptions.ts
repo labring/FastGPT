@@ -4,6 +4,7 @@ import { normalizeRelayNoChannelError } from '../../../thirdProvider/aiproxy/err
 import FormData from 'form-data';
 import { type STTModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import { UserError } from '@fastgpt/global/common/error/utils';
+import type { STTUpstreamUsageType } from '@fastgpt/global/core/ai/audio/type';
 
 export const aiTranscriptions = async ({
   model: modelData,
@@ -43,7 +44,7 @@ export const aiTranscriptions = async ({
   try {
     const { data: result } = await getModelRequestClient(modelData).post<{
       text: string;
-      usage?: { total_tokens: number };
+      usage?: STTUpstreamUsageType;
     }>(axiosConfig.url, data, {
       headers: axiosConfig.headers,
       ...(timeoutMs === undefined ? {} : { timeout: timeoutMs }),

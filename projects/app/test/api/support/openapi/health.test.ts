@@ -25,7 +25,15 @@ import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { getRootUser } from '@test/datas/users';
 
 describe('support/openapi/health', () => {
-  it('returns appId for legacy app APIKey', async () => {
+  it.each([
+    { label: 'legacy personal key with a default App', type: undefined, expectedType: 'personal' },
+    {
+      label: 'migrated personal key with a default App',
+      type: ApiKeyTypeEnum.personal,
+      expectedType: 'personal'
+    },
+    { label: 'explicit App key', type: ApiKeyTypeEnum.app, expectedType: 'app' }
+  ])('reports the actual scope for a $label', async ({ type, expectedType }) => {
     const user = await getRootUser();
     const app = await MongoApp.create({
       teamId: user.teamId,
@@ -33,20 +41,23 @@ describe('support/openapi/health', () => {
       name: 'legacy app',
       type: AppTypeEnum.simple
     });
-    // 用原始集合模拟旧版缺少 type 的记录，保留历史数据兼容验证。
-    await MongoOpenApi.collection.insertOne(
-      new MongoOpenApi({
-        teamId: user.teamId,
-        tmbId: user.tmbId,
-        appId: String(app._id),
-        apiKey: 'fastgpt-legacy-app-key',
-        name: 'legacy app key',
-        usagePoints: 25,
-        limit: {
-          maxUsagePoints: 1000
-        }
-      }).toObject({ getters: false })
-    );
+    // 保留旧版字符串 appId，迁移后记录及新应用 Key 则沿用当前 BSON 存储。
+    const openapi = new MongoOpenApi({
+      ...(type === undefined ? {} : { type }),
+      teamId: user.teamId,
+      tmbId: user.tmbId,
+      appId: String(app._id),
+      apiKey: 'fastgpt-legacy-app-key',
+      name: 'legacy app key',
+      usagePoints: 25,
+      limit: {
+        maxUsagePoints: 1000
+      }
+    });
+    await MongoOpenApi.collection.insertOne({
+      ...openapi.toObject({ getters: false }),
+      ...(type === undefined ? { appId: String(app._id) } : {})
+    });
 
     const result = await handler({
       headers: {
@@ -56,10 +67,10 @@ describe('support/openapi/health', () => {
 
     expect(result).toEqual({
       valid: true,
-      type: 'app',
+      type: expectedType,
       usagePoints: 25,
       maxUsagePoints: 1000,
-      appId: String(app._id)
+      ...(expectedType === 'app' ? { appId: String(app._id) } : {})
     });
   });
 

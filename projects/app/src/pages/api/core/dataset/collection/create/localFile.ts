@@ -1,3 +1,4 @@
+import { getSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/runtime';
 import { authDatasetCollectionCreate } from '@fastgpt/service/support/permission/dataset/auth';
 import {
   CreateCollectionByLocalFileBodySchema,
@@ -26,7 +27,7 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResult
   try {
     const formData = await multer.resolveFormData({
       request: req,
-      maxFileSize: global.feConfigs.limit.uploadFileMaxSize,
+      maxFileSize: getSystemInstanceConfig().resource.uploadFileMaxSize,
       allowedExtensions: parseAllowedExtensions(documentFileType)
     });
     filepaths.push(formData.fileMetadata.path);

@@ -6,6 +6,7 @@ import type { CliFetchFn } from '../../shared/types';
 import { createNodeTlsFetch } from './tls-fetch';
 
 export const DEFAULT_TIMEOUT_MS = 15_000;
+export const LONG_OPERATION_TIMEOUT_MS = 120_000;
 
 export type HttpRequestAuth = {
   authType: 'token' | 'apikey';
@@ -21,6 +22,7 @@ export type SseEvent = {
 export type RawHttpResponse = {
   status: number;
   headers: Headers;
+  body?: ReadableStream<Uint8Array> | null;
   text: () => Promise<string>;
   arrayBuffer: () => Promise<ArrayBuffer>;
 };
@@ -117,6 +119,16 @@ function mapServerError({
 }): CliAuthError | CliApiError {
   const safeMessage = redactText(message);
   const safeUrl = redactText(url);
+
+  // 会话身份/权限拒绝是业务码 504000，HTTP 可能是 500；不能误导用户重试生成或重新登录。
+  if (statusText === 'unAuthChat' || serverCode === 504000) {
+    return new CliAuthError({
+      code: 'AUTH_FORBIDDEN',
+      message: safeMessage,
+      hint: 'Check App access and keep customUid or authProxy consistent with the original conversation.',
+      details: { httpStatus, serverCode, statusText, url: safeUrl }
+    });
+  }
 
   if (/API Key is expired/i.test(safeMessage)) {
     return new CliAuthError({
@@ -584,6 +596,7 @@ export function createFastGptHttpClient({
       return {
         status: response.status,
         headers: response.headers,
+        body: response.body,
         text: () => response.text(),
         arrayBuffer: () => response.arrayBuffer()
       };

@@ -6,7 +6,8 @@ vi.mock('@fastgpt/service/support/permission/teamLimit', () => ({
 
 const runCodeMock = vi.fn();
 vi.mock('@fastgpt/service/thirdProvider/codeSandbox', () => ({
-  codeSandbox: { runCode: (...args: any[]) => runCodeMock(...args) }
+  codeSandbox: { runCode: (...args: any[]) => runCodeMock(...args) },
+  isCodeSandboxConfigured: () => true
 }));
 
 import { runWorkflow } from '@fastgpt/service/core/workflow/dispatch';

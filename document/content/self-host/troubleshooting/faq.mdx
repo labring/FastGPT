@@ -78,7 +78,7 @@ description: 汇总 FastGPT 私有部署启动、端口占用、向量库切换�
 
 ### 为什么页面对话正常回复但调用 API 报错？
 
-比较两次调用的应用、身份、请求体和 `stream` 设置。分别测试流式与非流式请求，并记录 HTTP 状态、错误体和服务端 requestId；继续沿 FastGPT、AI Proxy、模型上游逐层定位。参见[对话接口](/zh-CN/openapi/chat)。
+比较两次调用的应用、身份、请求体和 `stream` 设置。分别测试流式与非流式请求，并记录 HTTP 状态、错误体和服务端 requestId；继续沿 FastGPT、AI Proxy、模型上游逐层定位。
 
 ---
 
@@ -247,3 +247,11 @@ for o in "" "--security-opt seccomp=unconfined"; do docker run --rm $o -v <卷�
 使用官方 `main` 版 docker-compose（官网部署页和 `install.sh` 默认使用）部署 4.15.0 到 4.17.4 时，`fastgpt-plugin` 默认未显式配置 `FASTGPT_BASE_URL`（`v4.15` / `v4.16` 模板自 4.15.2 起已配置）。插件工具（例如基础图表）生成文件后通过该变量反向调用 FastGPT 的 `/api/invoke/fileUpload` 上传文件；默认 `http://localhost:3000` 会指向插件容器自身并触发鉴权 401（日志含 `HTTP Exception: Unauthorized`），工具随之报“反向调用上传文件失败”。
 
 解决方法：在 `fastgpt-plugin` 的环境变量中增加 `FASTGPT_BASE_URL: http://fastgpt-app:3000`（按你的 compose 中 FastGPT 主服务名填写），执行 `docker compose up -d fastgpt-plugin` 重建容器后重新运行工具。
+
+---
+
+### 工具调用几轮后，为什么日志里出现 `tool_choice: none`？
+
+使用原生工具调用时，v4.14.19 的工具调用节点默认在连续 6 轮调用工具且模型都没有输出回答正文后，把第 7 轮的 `tool_choice` 设为 `none`。一轮里调多个工具也只计一次。模型输出回答正文时，计数归零。长任务可以拆给两个工具调用节点，把前一节点的 AI 回复传给后一节点，在调试中检查每段结果。
+
+v4.16.2 至 v4.17.4 的触发条件不同。连续 5 轮都没有回答正文，且每轮的工具名称、顺序和对应的参数字符串长度都相同，下一轮才触发这项保护。参数值变了但长度相同，也会计为重复。

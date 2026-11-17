@@ -1,4 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  createDefaultInstanceConfig,
+  getTestInstanceConfig
+} from '@test/utils/instanceConfigSnapshot';
 
 const cronMocks = vi.hoisted(() => ({
   setCron: vi.fn(),
@@ -8,8 +12,7 @@ const cronMocks = vi.hoisted(() => ({
   stopSandboxResources: vi.fn(),
   retryStaleStoppingSandboxes: vi.fn(),
   archiveInactiveSandboxes: vi.fn(),
-  retryStaleArchivingSandboxes: vi.fn(),
-  getAgentSandboxSuspendMinutes: vi.fn()
+  retryStaleArchivingSandboxes: vi.fn()
 }));
 
 vi.mock('@fastgpt/service/common/system/cron', () => ({
@@ -46,15 +49,12 @@ vi.mock('@fastgpt/service/core/ai/sandbox/application/lifecycle/service', () => 
   retryStaleSandboxActivations: cronMocks.retryStaleSandboxActivations
 }));
 
-vi.mock('@fastgpt/service/core/ai/sandbox/config', () => ({
-  getAgentSandboxSuspendMinutes: cronMocks.getAgentSandboxSuspendMinutes
-}));
-
 import { cronJob } from '@fastgpt/service/core/ai/sandbox/application/cron';
 
 describe('sandbox cron application', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    global.systemInstanceConfig = createDefaultInstanceConfig();
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-06-24T01:00:00.000Z'));
     cronMocks.checkTimerLock.mockResolvedValue(true);
@@ -62,7 +62,6 @@ describe('sandbox cron application', () => {
     cronMocks.retryStaleArchivingSandboxes.mockResolvedValue(undefined);
     cronMocks.retryStaleStoppingSandboxes.mockResolvedValue(undefined);
     cronMocks.retryStaleSandboxActivations.mockResolvedValue(undefined);
-    cronMocks.getAgentSandboxSuspendMinutes.mockReturnValue(60);
   });
 
   afterEach(() => {
@@ -86,6 +85,14 @@ describe('sandbox cron application', () => {
       new Date('2026-06-24T00:00:00.000Z')
     );
     expect(cronMocks.stopSandboxResources).toHaveBeenCalledWith(resources);
+
+    // 同一个已注册回调应在下一轮读取新快照，不保留注册时的闲置阈值。
+    getTestInstanceConfig().subservice.agentSandbox.common.suspendMinutes = 30;
+    cronMocks.findInactiveRunningSandboxResources.mockResolvedValueOnce(resources);
+    await callback();
+    expect(cronMocks.findInactiveRunningSandboxResources).toHaveBeenLastCalledWith(
+      new Date('2026-06-24T00:30:00.000Z')
+    );
   });
 
   it('does not query resources when the scheduler timer lock is held', async () => {

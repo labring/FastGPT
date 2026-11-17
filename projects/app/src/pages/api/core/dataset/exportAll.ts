@@ -1,3 +1,4 @@
+import { getSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/runtime';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { responseWriteController } from '@fastgpt/service/common/response';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
@@ -59,7 +60,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
 
   await checkExportDatasetLimit({
     teamId: datasetTeamId,
-    limitMinutes: global.feConfigs?.limit?.exportDatasetLimitMinutes
+    limitMinutes: getSystemInstanceConfig().resource.exportDatasetLimitMinutes
   });
 
   // 文件级权限：只导出当前成员可读的 Collection；undefined 表示无需过滤（团队 owner /

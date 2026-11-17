@@ -17,7 +17,9 @@ export enum UserErrEnum {
   newPasswordSameAsOld = 'newPasswordSameAsOld',
   oldPasswordError = 'oldPasswordError',
   ssoPasswordUnavailable = 'ssoPasswordUnavailable',
-  verificationChannelUnavailable = 'verificationChannelUnavailable'
+  verificationChannelUnavailable = 'verificationChannelUnavailable',
+  captchaRenderQueueFull = 'captchaRenderQueueFull',
+  captchaRenderQueueTimeout = 'captchaRenderQueueTimeout'
 }
 const errList = [
   {
@@ -89,6 +91,16 @@ const errList = [
     statusText: UserErrEnum.oldPasswordError,
     message: i18nT('common:user.Old password is error'),
     httpStatus: 400
+  },
+  {
+    statusText: UserErrEnum.captchaRenderQueueFull,
+    message: i18nT('common:error.captcha_queue_full'),
+    httpStatus: 429
+  },
+  {
+    statusText: UserErrEnum.captchaRenderQueueTimeout,
+    message: i18nT('common:error.captcha_queue_timeout'),
+    httpStatus: 503
   }
 ];
 export default errList.reduce((acc, cur, index) => {
