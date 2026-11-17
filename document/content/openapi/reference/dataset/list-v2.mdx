@@ -1,0 +1,155 @@
+---
+title: '获取知识库列表 V2'
+seoTitle: '获取知识库列表 V2 - POST /api/core/dataset/listV2 | FastGPT OpenAPI'
+description: '分页查询或按 datasetIds 精确检索当前成员可访问的知识库与文件夹列表，支持类型过滤、关键词搜索与集合文件数统计。'
+---
+
+## 端点概览
+
+- **HTTP 方法**：`POST`
+- **请求路径**：`/api/core/dataset/listV2`
+- **所属模块**：知识库 / 知识库管理
+- **鉴权方式**：`Authorization: Bearer <apiKey>`—个人密钥（按归属团队成员资源权限校验）（详见 [API 入门：完成首次请求](/zh-CN/openapi/intro)）
+- **在线调试**：[在云服务 Scalar 调试台打开](https://cloud.fastgpt.cn/apidoc/systemopenapi#tag/%E7%9F%A5%E8%AF%86%E5%BA%93%E7%AE%A1%E7%90%86/POST/core/dataset/listV2)（自部署实例请将域名替换为 `<instance>/apidoc/systemopenapi#tag/%E7%9F%A5%E8%AF%86%E5%BA%93%E7%AE%A1%E7%90%86/POST/core/dataset/listV2`）
+
+## 接口说明与注意事项
+
+分页获取或按 datasetIds 精确查询当前用户有权限访问的知识库；提供 datasetIds 时优先按 ID 查询，解析时过滤 parentId 和分页参数，保留公共筛选字段
+
+## 请求参数
+
+### Request Body 请求体（`application/json`）
+
+#### 各分支公共字段
+
+| 字段            | 类型              | 必填 | 默认值             | 约束与说明                                                                                                                                                                                                       |
+| --------------- | ----------------- | ---- | ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `type`          | `string \| array` | 否   | -                  | 知识库类型筛选                                                                                                                                                                                                   |
+| `searchKey`     | `string`          | 否   | -                  | 搜索关键词,按名称和简介模糊匹配                                                                                                                                                                                  |
+| `sort`          | `string` (enum)   | 否   | `"updateTimeDesc"` | 列表排序，缺省按最近修改倒序。可选值：`updateTimeDesc` (按修改时间倒序，最近修改的排在前面（默认）), `createTimeDesc` (按创建时间倒序，最新创建的排在前面), `createTimeAsc` (按创建时间升序，最早创建的排在前面) |
+| `tmbIds`        | `string[]`        | 否   | -                  | 按创建者筛选；空数组返回空列表                                                                                                                                                                                   |
+| `withAppCount`  | `boolean`         | 否   | -                  | 是否返回被正式应用引用的数量；默认不统计，仅非文件夹资源的 Owner 可查看                                                                                                                                          |
+| `withFileCount` | `boolean`         | 否   | -                  | 是否计算并返回知识库文件总数，默认不计算；统计所有层级的非目录集合，不按文件权限过滤                                                                                                                             |
+
+**互斥参数分支（`anyOf` 选填其一）**
+
+- **按 IDs 获取**
+
+| 字段         | 类型       | 必填 | 默认值 | 约束与说明                                                                                                                              |
+| ------------ | ---------- | ---- | ------ | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `datasetIds` | `string[]` | 是   | -      | 按知识库或文件夹 ID 精确查询，最多 500 个；优先匹配该分支，解析时过滤 parentId 和分页参数，保留公共筛选字段。最少项数：1；最多项数：500 |
+
+- **分页获取**
+
+| 字段       | 类型             | 必填 | 默认值 | 约束与说明                                                                                       |
+| ---------- | ---------------- | ---- | ------ | ------------------------------------------------------------------------------------------------ |
+| `parentId` | `string \| null` | 否   | -      | 父级文件夹 ID；null 或空字符串表示根目录；搜索时限定在指定目录及其子树，不传则搜索全部可读知识库 |
+
+**按偏移量获取**: 通过 offset 指定起始位置，从 0 开始；同时传入页码时优先使用 offset。
+
+| 字段       | 类型      | 必填 | 默认值 | 约束与说明                                                                              |
+| ---------- | --------- | ---- | ------ | --------------------------------------------------------------------------------------- |
+| `offset`   | `integer` | 是   | -      | **互斥参数组：分页参数**。偏移量，从 0 开始。最小值：0；最大值：9007199254740991        |
+| `pageSize` | `integer` | 否   | `20`   | **互斥参数组：分页参数**。每页条数，默认 20，最大 500，超出自动按 500 处理。最大值：500 |
+
+**按页码获取**: 通过页码获取，默认第 1 页；pageSize 控制每页条数。
+
+| 字段       | 类型      | 必填 | 默认值 | 约束与说明                                                                              |
+| ---------- | --------- | ---- | ------ | --------------------------------------------------------------------------------------- |
+| `pageNum`  | `integer` | 否   | `1`    | **互斥参数组：分页参数**。页码，从 1 开始；传入 offset 时忽略。最大值：9007199254740991 |
+| `pageSize` | `integer` | 否   | `20`   | **互斥参数组：分页参数**。每页条数，默认 20，最大 500，超出自动按 500 处理。最大值：500 |
+
+## 请求示例
+
+调用前请将 `YOUR_API_KEY` 与示例 ID 替换为真实值；私有化部署实例请将基础域名替换为 `<instance>/api`。
+
+### cURL 请求示例
+
+```bash
+curl --fail-with-body -X POST "https://cloud.fastgpt.cn/api/core/dataset/listV2" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  --data-raw '{
+  "datasetIds": [
+    "68ad85a7463006c963799a05"
+  ]
+}'
+```
+
+### 最小合法 JSON 请求体示例
+
+```json
+{
+  "datasetIds": ["68ad85a7463006c963799a05"]
+}
+```
+
+## 响应结构与示例
+
+除兼容 OpenAI 协议的对话补全或二进制下载接口外，成功响应统一包裹在 `{ "code": 200, "statusText": "", "message": "", "data": ... }` 标准结构中；下方 `200` 字段表对应 `data` 载荷结构（无数据返回时 `data` 为 `null`）。
+
+### HTTP 200
+
+成功返回知识库列表
+
+**Content-Type** : `application/json`
+
+| 字段                                       | 类型             | 必填 | 默认值             | 约束与说明                                                                                                                                    |
+| ------------------------------------------ | ---------------- | ---- | ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `total`                                    | `number`         | 是   | `0`                | -                                                                                                                                             |
+| `list`                                     | `object[]`       | 是   | `[]`               | -                                                                                                                                             |
+| `list[]._id`                               | `string`         | 是   | -                  | 数据集 ID。正则：`^[0-9a-fA-F]{24}$`                                                                                                          |
+| `list[].tmbId`                             | `string`         | 是   | -                  | 团队成员 ID。正则：`^[0-9a-fA-F]{24}$`                                                                                                        |
+| `list[].avatar`                            | `string`         | 是   | `"/icon/logo.svg"` | 头像                                                                                                                                          |
+| `list[].createTime`                        | `string`         | 是   | -                  | 创建时间                                                                                                                                      |
+| `list[].updateTime`                        | `string`         | 是   | -                  | 更新时间                                                                                                                                      |
+| `list[].name`                              | `string`         | 是   | -                  | 名称                                                                                                                                          |
+| `list[].intro`                             | `string`         | 是   | -                  | 简介                                                                                                                                          |
+| `list[].type`                              | `string` (enum)  | 是   | -                  | 数据集类型。可选值：`folder` , `dataset` , `websiteDataset` , `externalFile` , `apiDataset` , `feishu` , `yuque` , `dingtalk`                 |
+| `list[].permission`                        | `object`         | 是   | -                  | 权限对象序列化后的 JSON 结构                                                                                                                  |
+| `list[].permission.role`                   | `integer`        | 是   | -                  | 权限角色值。最小值：-9007199254740991；最大值：9007199254740991                                                                               |
+| `list[].permission.isOwner`                | `boolean`        | 是   | -                  | 是否为所有者                                                                                                                                  |
+| `list[].permission.hasManagePer`           | `boolean`        | 是   | -                  | 是否拥有管理权限                                                                                                                              |
+| `list[].permission.hasWritePer`            | `boolean`        | 是   | -                  | 是否拥有写权限                                                                                                                                |
+| `list[].permission.hasReadPer`             | `boolean`        | 是   | -                  | 是否拥有读权限                                                                                                                                |
+| `list[].permission.hasManageRole`          | `boolean`        | 是   | -                  | 是否包含管理角色                                                                                                                              |
+| `list[].permission.hasWriteRole`           | `boolean`        | 是   | -                  | 是否包含写角色                                                                                                                                |
+| `list[].permission.hasReadRole`            | `boolean`        | 是   | -                  | 是否包含读角色                                                                                                                                |
+| `list[].appCount`                          | `integer`        | 否   | -                  | 被正式应用引用的数量，开启引用统计时仅非文件夹资源的 Owner 返回。最小值：0；最大值：9007199254740991                                          |
+| `list[].fileCount`                         | `integer`        | 否   | -                  | 知识库所有层级的非目录集合数量，不按文件权限过滤；仅 listV2 请求 withFileCount 时返回，folder 类型不返回。最小值：0；最大值：9007199254740991 |
+| `list[].vectorModel`                       | `object`         | 否   | -                  | 向量模型；目录或模型已删除时为空，已停用模型仍返回展示数据                                                                                    |
+| `list[].vectorModel.pricing`               | `object`         | 否   | -                  | 每固定计价单位的积分单价；缺省免费                                                                                                            |
+| `list[].vectorModel.pricing.unitPrice`     | `number`         | 否   | -                  | 综合单价；Token/TTS 每百万数量，STT 时长模式固定为每 60 秒。最小值：0                                                                         |
+| `list[].vectorModel.provider`              | `string`         | 是   | -                  | 最小长度：1                                                                                                                                   |
+| `list[].vectorModel.model`                 | `string`         | 是   | -                  | 最小长度：1                                                                                                                                   |
+| `list[].vectorModel.name`                  | `string`         | 是   | -                  | 最小长度：1                                                                                                                                   |
+| `list[].vectorModel.scope`                 | `string` (enum)  | 是   | `"system"`         | 可选值：`system` , `team`                                                                                                                     |
+| `list[].vectorModel.sortOrder`             | `integer`        | 否   | -                  | 同一作用域内的模型展示 rank，数值越小越靠前。最小值：0；最大值：9007199254740991                                                              |
+| `list[].vectorModel.tmbId`                 | `string \| null` | 否   | -                  | -                                                                                                                                             |
+| `list[].vectorModel.teamId`                | `string \| null` | 否   | -                  | -                                                                                                                                             |
+| `list[].vectorModel.isActive`              | `boolean`        | 否   | -                  | -                                                                                                                                             |
+| `list[].vectorModel.isUpcomingDeprecation` | `boolean`        | 否   | -                  | 模型是否即将下架                                                                                                                              |
+| `list[].vectorModel.requestUrl`            | `string`         | 否   | -                  | -                                                                                                                                             |
+| `list[].vectorModel.requestAuth`           | `string`         | 否   | -                  | -                                                                                                                                             |
+| `list[].vectorModel.testMode`              | `boolean`        | 否   | -                  | -                                                                                                                                             |
+| `list[].vectorModel.type`                  | `"embedding"`    | 是   | -                  | 固定值：`"embedding"`                                                                                                                         |
+| `list[].vectorModel.config`                | `object`         | 是   | -                  | -                                                                                                                                             |
+| `list[].vectorModel.config.defaultToken`   | `number`         | 是   | -                  | -                                                                                                                                             |
+| `list[].vectorModel.config.maxToken`       | `number`         | 是   | -                  | -                                                                                                                                             |
+| `list[].vectorModel.config.weight`         | `number`         | 是   | `0`                | -                                                                                                                                             |
+| `list[].vectorModel.config.hidden`         | `boolean`        | 否   | -                  | -                                                                                                                                             |
+| `list[].vectorModel.config.vision`         | `boolean`        | 否   | -                  | -                                                                                                                                             |
+| `list[].vectorModel.config.normalization`  | `boolean`        | 否   | -                  | -                                                                                                                                             |
+| `list[].vectorModel.config.batchSize`      | `number`         | 否   | -                  | -                                                                                                                                             |
+| `list[].vectorModel.config.defaultConfig`  | `object`         | 否   | -                  | -                                                                                                                                             |
+| `list[].vectorModel.config.dbConfig`       | `object`         | 否   | -                  | -                                                                                                                                             |
+| `list[].vectorModel.config.queryConfig`    | `object`         | 否   | -                  | -                                                                                                                                             |
+| `list[].vectorModel.modelId`               | `string`         | 是   | -                  | -                                                                                                                                             |
+| `list[].vectorModel.avatar`                | `string`         | 否   | -                  | -                                                                                                                                             |
+| `list[].inheritPermission`                 | `boolean`        | 是   | -                  | 继承权限                                                                                                                                      |
+| `list[].private`                           | `boolean`        | 否   | -                  | 是否私有                                                                                                                                      |
+| `list[].folderAccessMode`                  | `string` (enum)  | 否   | -                  | 文件夹访问方式；navigate 仅允许浏览可读后代，不授予真实读取权限。可选值：`read` , `navigate`                                                  |
+| `list[].sourceMember`                      | `object`         | 否   | -                  | 来源成员                                                                                                                                      |
+| `list[].sourceMember.name`                 | `string`         | 是   | -                  | 成员名称                                                                                                                                      |
+| `list[].sourceMember.avatar`               | `string \| null` | 否   | -                  | 成员头像                                                                                                                                      |
+| `list[].sourceMember.status`               | `string` (enum)  | 是   | -                  | 成员状态。可选值：`active` , `leave` , `forbidden`                                                                                            |

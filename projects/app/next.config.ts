@@ -26,6 +26,13 @@ const securityHeaders = [
   }
 ];
 
+const noIndexHeaders = [
+  {
+    key: 'X-Robots-Tag',
+    value: 'noindex, nofollow'
+  }
+];
+
 const optimizedPackageImports = [
   '@chakra-ui/react',
   '@chakra-ui/icons',
@@ -53,6 +60,14 @@ const nextConfig: NextConfig = {
       {
         source: '/((?!chat/share$).*)',
         headers: securityHeaders
+      },
+      {
+        source: '/apidoc/:path*',
+        headers: noIndexHeaders
+      },
+      {
+        source: '/api/apidoc/:path*',
+        headers: noIndexHeaders
       }
     ];
   },

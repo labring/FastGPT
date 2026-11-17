@@ -1,0 +1,95 @@
+---
+title: 'Clear Chat Histories'
+seoTitle: 'Clear Chat Histories - DELETE /api/core/chat/history/clearHistories | FastGPT OpenAPI'
+description: 'Soft-delete all conversation histories under the specified app, skill debug session, customUid, or share link context.'
+---
+
+## Endpoint Overview
+
+- **Method** : `DELETE`
+- **Path** : `/api/core/chat/history/clearHistories`
+- **Module** : Chat / Chat History
+- **Authentication** : `Authorization: Bearer <apiKey>`—Supports **App API Key** ( `appId` optional) and **Personal API Key** ( `appId` required); also supports `authProxy` team member proxy and `outLinkAuthData` share link (see [API Getting Started](/en/openapi/intro) )
+- **Interactive Try-It-Out** : [Open in Scalar API Explorer](https://cloud.fastgpt.io/apidoc/systemopenapi#tag/%E4%BC%9A%E8%AF%9D%E7%AE%A1%E7%90%86/DELETE/core/chat/history/clearHistories) (self-hosted instances: replace the origin with `<instance>/apidoc/systemopenapi#tag/%E4%BC%9A%E8%AF%9D%E7%AE%A1%E7%90%86/DELETE/core/chat/history/clearHistories` )
+
+## Description & Notes
+
+Soft-deletes all chat sessions under the target context.
+
+## Request Parameters
+
+### Query Parameters
+
+**Mutually Exclusive Branches ( `anyOf` )**
+
+- **App Chat**
+
+Identify the conversation via `appId` . When both API Key and login session are supported, `Authorization` takes precedence over token/Cookie.
+
+| Field        | Type            | Required | Default | Constraints & Description                                                                                                                                                                        |
+| ------------ | --------------- | -------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `appId`      | `string`        | Yes      | -       | Application ID authenticated with the request header credentials allowed by this endpoint. pattern: `^[0-9a-fA-F]{24}$`                                                                          |
+| `sourceType` | `string` (enum) | No       | -       | Session resource type associated with `appId` . Defaults to `app` ; pass the matching `sourceType` for assistant builder sessions. Allowed values: `app` , `chatAgentHelper` , `workflowBuilder` |
+
+**Default Identity** : Omit `customUid` and `authProxy` to execute using the team member identity associated with the credential.
+
+**Custom end user ( `customUid` )**: Tag end users from your own system via `customUid` without changing the authenticating member or permissions. Passed as workflow `userId` and used to scope chat management.
+
+| Field       | Type     | Required | Default | Constraints & Description                                                                                                                                                                                                                                                                                      |
+| ----------- | -------- | -------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `customUid` | `string` | Yes      | -       | Supported only for standard app API Key calls. Exact match against the external user ID ( `outLinkUid` , not `tmbId` ). Omit to keep full scope or pass to restrict reads, updates, and deletions (max 1024 chars, cannot be empty or `null` , does not change member identity). minLength: 1; maxLength: 1024 |
+
+**Proxy Team Member ( `authProxy` )**: Act on behalf of another member in the same team via `authProxy` . Available only on personal API keys with `authProxy` enabled; mutually exclusive with `customUid` .
+
+| Field       | Type     | Required | Default | Constraints & Description                                                              |
+| ----------- | -------- | -------- | ------- | -------------------------------------------------------------------------------------- |
+| `authProxy` | `string` | Yes      | -       | JSON-serialized proxy identity, e.g. `{"tmbId":"member-id"}` or `{"username":"alice"}` |
+
+- **Skill Debug Session**
+
+Identify the debug session via `skillId` (takes precedence over `appId` and ignores `sourceType` ), authenticated with allowed request header credentials.
+
+| Field     | Type     | Required | Default | Constraints & Description                                                                               |
+| --------- | -------- | -------- | ------- | ------------------------------------------------------------------------------------------------------- |
+| `skillId` | `string` | Yes      | -       | Skill Edit debug ID authenticated with allowed request header credentials. pattern: `^[0-9a-fA-F]{24}$` |
+
+- **Share-Link Chat**
+
+Resolves the underlying app via `outLinkAuthData` , taking precedence over `skillId` and `appId` (ignoring `sourceType` ). Protected links still validate login cookies/tokens and never fall back to standard auth on failure.
+
+| Field             | Type     | Required | Default | Constraints & Description                                                                                                                                                   |
+| ----------------- | -------- | -------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `outLinkAuthData` | `string` | Yes      | -       | JSON-serialized share-link auth payload containing `shareId` and `outLinkUid` . Overrides `skillId` and `appId` ; protected links still check login session cookies/tokens. |
+
+- **App API Key (no appId required)**
+
+When authorizing with an app-bound App API Key, omit `appId` and `sourceType` ; the server resolves the bound app with `sourceType` fixed to `app` . Personal keys and login sessions cannot omit `appId` , and an explicit `appId` does not override an App API Key binding.
+
+**Default Identity** : Omit `customUid` and `authProxy` to execute using the team member identity associated with the credential.
+
+**Custom end user ( `customUid` )**: Tag end users from your own system via `customUid` without changing the authenticating member or permissions. Passed as workflow `userId` and used to scope chat management.
+
+| Field       | Type     | Required | Default | Constraints & Description                                                                                                                                                                                                                                                                                      |
+| ----------- | -------- | -------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `customUid` | `string` | Yes      | -       | Supported only for standard app API Key calls. Exact match against the external user ID ( `outLinkUid` , not `tmbId` ). Omit to keep full scope or pass to restrict reads, updates, and deletions (max 1024 chars, cannot be empty or `null` , does not change member identity). minLength: 1; maxLength: 1024 |
+
+## Request Examples
+
+Replace `YOUR_API_KEY` and placeholder IDs before running. Self-hosted users should replace the base URL with `<instance>/api` .
+
+### cURL Example
+
+```bash
+curl --fail-with-body -X DELETE "https://cloud.fastgpt.io/api/core/chat/history/clearHistories?appId=68ad85a7463006c963799a05" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+## Response Schema & Examples
+
+Successful `/api/*` calls return the standard FastGPT envelope `{ "code": 200, "statusText": "", "message": "", "data": ... }` , where `data` matches the `200` schema below (and `null` when no payload schema is declared).
+
+### HTTP 200
+
+Successfully cleared chat histories
+
+Returns standard success envelope with `data: null` .

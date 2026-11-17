@@ -28,7 +28,7 @@ Keep API keys on a trusted server. Identity proxy is optional and requires endpo
 
 ## Credential Types and Authentication
 
-Each endpoint declares the credentials it accepts. Check the authentication method for each endpoint in `/apidoc/systemopenapi` or `/apidoc/devapi` before integrating.
+Each endpoint declares the credentials it accepts. Check the authentication method for each endpoint in the [System OpenAPI Reference Overview](/en/openapi/api-reference) or your deployment's `/apidoc/systemopenapi` or `/apidoc/devapi` before integrating.
 
 | Credential                 | Transport Location                       | Permission Scope                                                                                     | Recommended Scenario                                                       |
 | -------------------------- | ---------------------------------------- | ---------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
@@ -56,9 +56,10 @@ Each endpoint declares the credentials it accepts. Check the authentication meth
 
 ## Machine-Readable OpenAPI Contracts
 
-Each FastGPT deployment generates OpenAPI 3.1 specification files locally:
+Read the static reference and OpenAPI 3.1 contract on the official documentation site, or open the interactive Scalar console on any FastGPT deployment:
 
-- **System OpenAPI (API Key Operations)**: Access `/apidoc/systemopenapi` (UI) or `/api/apidoc/systemopenapi.json` (JSON).
-- **Dev API (Full Developer Operations)**: Access `/apidoc/devapi` (UI) or `/api/apidoc/devapi.json` (JSON).
+- **Official System OpenAPI Reference & Spec**: Browse the [System OpenAPI Reference Overview](/en/openapi/api-reference), or fetch the CORS-enabled [OpenAPI 3.1 JSON Spec](https://doc.fastgpt.io/openapi.json) (`/openapi.json`) and [OpenAPI LLM Corpus](https://doc.fastgpt.io/llms-openapi.txt) (`/llms-openapi.txt`).
+- **Instance System OpenAPI (Interactive Try-It-Out)**: Access `/apidoc/systemopenapi` (UI) or `/api/apidoc/systemopenapi.json` (JSON) on your FastGPT deployment.
+- **Instance Dev API (Full Internal Developer Operations)**: Access `/apidoc/devapi` (UI) or `/api/apidoc/devapi.json` (JSON) on your FastGPT deployment.
 
 When maintaining older integrations, refer to [Historical API Parameters and Migration](/en/openapi/legacy).

@@ -1,0 +1,137 @@
+---
+title: '知识库搜索 API'
+seoTitle: '知识库搜索 API - POST /api/core/dataset/search | FastGPT OpenAPI'
+description: '联合检索一个或多个可读知识库，支持语义、全文与混合召回、重排、查询扩展、集合与标签过滤以及 topk/maxTokens 预算控制。'
+---
+
+## 端点概览
+
+- **HTTP 方法**：`POST`
+- **请求路径**：`/api/core/dataset/search`
+- **所属模块**：知识库 / 知识库搜索
+- **鉴权方式**：`Authorization: Bearer <apiKey>`—个人密钥（按归属团队成员资源权限校验）（详见 [API 入门：完成首次请求](/zh-CN/openapi/intro)）
+- **在线调试**：[在云服务 Scalar 调试台打开](https://cloud.fastgpt.cn/apidoc/systemopenapi#tag/%E7%9F%A5%E8%AF%86%E5%BA%93%E6%90%9C%E7%B4%A2/POST/core/dataset/search)（自部署实例请将域名替换为 `<instance>/apidoc/systemopenapi#tag/%E7%9F%A5%E8%AF%86%E5%BA%93%E6%90%9C%E7%B4%A2/POST/core/dataset/search`）
+
+## 接口说明与注意事项
+
+使用 API Key 或登录态联合检索多个可读知识库。向量召回要求有效 embedding 模型一致；结果按集合权限过滤。`result.topk` 与 `result.maxTokens` 二选一；都不传时默认 topk=20，不设置 token 预算。topk 返回排序后的前 1–100 条，不做 token 过滤；maxTokens 按完整数据块 token 预算截断，无业务上限。为兼容同时传入两种预算的请求，HTTP 入口优先保留 topk 并忽略 maxTokens。响应 meta 只包含实际执行信息。
+
+## 请求参数
+
+### Request Body 请求体（`application/json`）
+
+| 字段                          | 类型            | 必填 | 默认值              | 约束与说明                                                                                                                                                                                                                                                                                                                                            |
+| ----------------------------- | --------------- | ---- | ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `scope`                       | `object`        | 是   | -                   | 搜索范围                                                                                                                                                                                                                                                                                                                                              |
+| `scope.datasetIds`            | `string[]`      | 是   | -                   | 目标知识库 ID，最多 100 个；服务端去重，逐个校验读取权限。最少项数：1；最多项数：100                                                                                                                                                                                                                                                                  |
+| `scope.filter`                | `object`        | 否   | -                   | 集合与标签筛选，需要服务端提供筛选能力                                                                                                                                                                                                                                                                                                                |
+| `scope.filter.collectionIds`  | `string[]`      | 否   | -                   | 限制在这些集合或目录内搜索，与其他筛选条件求交集。最少项数：1；最多项数：500                                                                                                                                                                                                                                                                          |
+| `scope.filter.createTime`     | `object`        | 否   | -                   | 集合创建时间范围                                                                                                                                                                                                                                                                                                                                      |
+| `scope.filter.createTime.gte` | `string`        | 否   | -                   | 创建时间下界，含边界。正则：`^(?:(?:\d\d[2468][048]\|\d\d[13579][26]\|\d\d0[48]\|[02468][048]00\|[13579][26]00)-02-29\|\d{4}-(?:(?:0[13578]\|1[02])-(?:0[1-9]\|[12]\d\|3[01])\|(?:0[469]\|11)-(?:0[1-9]\|[12]\d\|30)\|(?:02)-(?:0[1-9]\|1\d\|2[0-8])))T(?:(?:[01]\d\|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z\|([+-](?:[01]\d\|2[0-3]):[0-5]\d)))$` |
+| `scope.filter.createTime.lte` | `string`        | 否   | -                   | 创建时间上界，含边界。正则：`^(?:(?:\d\d[2468][048]\|\d\d[13579][26]\|\d\d0[48]\|[02468][048]00\|[13579][26]00)-02-29\|\d{4}-(?:(?:0[13578]\|1[02])-(?:0[1-9]\|[12]\d\|3[01])\|(?:0[469]\|11)-(?:0[1-9]\|[12]\d\|30)\|(?:02)-(?:0[1-9]\|1\d\|2[0-8])))T(?:(?:[01]\d\|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z\|([+-](?:[01]\d\|2[0-3]):[0-5]\d)))$` |
+| `scope.filter.tags`           | `object`        | 否   | -                   | 标签条件；and 与 or 两组之间求交集                                                                                                                                                                                                                                                                                                                    |
+| `scope.filter.tags.and`       | `object[]`      | 否   | -                   | 全部满足的标签条件。最少项数：1；最多项数：50                                                                                                                                                                                                                                                                                                         |
+| `scope.filter.tags.or`        | `object[]`      | 否   | -                   | 至少满足一项的标签条件。最少项数：1；最多项数：50                                                                                                                                                                                                                                                                                                     |
+| `query`                       | `object`        | 是   | -                   | 搜索内容                                                                                                                                                                                                                                                                                                                                              |
+| `retrieval`                   | `object`        | 否   | `{}`                | 召回配置                                                                                                                                                                                                                                                                                                                                              |
+| `retrieval.mode`              | `string` (enum) | 否   | `"embedding"`       | embedding、fullTextRecall 或 mixedRecall。可选值：`embedding` , `fullTextRecall` , `mixedRecall`                                                                                                                                                                                                                                                      |
+| `retrieval.embeddingWeight`   | `number`        | 否   | `0.5`               | 混合检索中向量结果的融合权重。最小值：0；最大值：1                                                                                                                                                                                                                                                                                                    |
+| `rerank`                      | `object`        | 否   | `{"enabled":false}` | 重排配置；关闭时不能传模型或权重                                                                                                                                                                                                                                                                                                                      |
+| `queryExtension`              | `object`        | 否   | `{"enabled":false}` | 查询扩展配置                                                                                                                                                                                                                                                                                                                                          |
+| `result`                      | `object`        | 否   | `{}`                | 条数和 token 预算二选一；未指定时默认 topk=20，不设置 token 预算                                                                                                                                                                                                                                                                                      |
+| `usageScene`                  | `string` (enum) | 否   | `"search"`          | 账单用途：search 显示知识库搜索，searchTest 显示搜索测试；不影响检索和权限。可选值：`search` , `searchTest`                                                                                                                                                                                                                                           |
+
+#### 多态字段明细：`query`
+
+- **变体 1** : `text` , `imageKeys`
+- **变体 2** : `imageKeys` , `text`
+
+#### 多态字段明细：`rerank`
+
+- **变体 1** ( `enabled=false` ): `enabled`
+- **变体 2** ( `enabled=true` ): `enabled` , `modelId` , `candidateNum` , `weight`
+
+#### 多态字段明细：`queryExtension`
+
+- **变体 1** ( `enabled=false` ): `enabled`
+- **变体 2** ( `enabled=true` ): `enabled` , `modelId` , `background`
+
+#### 多态字段明细：`result`
+
+- **变体 1** : `maxTokens` , `similarity`
+- **变体 2** : `topk` , `similarity`
+
+## 请求示例
+
+调用前请将 `YOUR_API_KEY` 与示例 ID 替换为真实值；私有化部署实例请将基础域名替换为 `<instance>/api`。
+
+### cURL 请求示例
+
+```bash
+curl --fail-with-body -X POST "https://cloud.fastgpt.cn/api/core/dataset/search" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  --data-raw '{
+  "scope": {
+    "datasetIds": [
+      "507f1f77bcf86cd799439011"
+    ]
+  },
+  "query": {
+    "text": "如何创建知识库？"
+  }
+}'
+```
+
+### 最小合法 JSON 请求体示例
+
+```json
+{
+  "scope": {
+    "datasetIds": ["507f1f77bcf86cd799439011"]
+  },
+  "query": {
+    "text": "如何创建知识库？"
+  }
+}
+```
+
+## 响应结构与示例
+
+除兼容 OpenAI 协议的对话补全或二进制下载接口外，成功响应统一包裹在 `{ "code": 200, "statusText": "", "message": "", "data": ... }` 标准结构中；下方 `200` 字段表对应 `data` 载荷结构（无数据返回时 `data` 为 `null`）。
+
+### HTTP 200
+
+命中片段和实际检索配置
+
+**Content-Type** : `application/json`
+
+| 字段                         | 类型            | 必填 | 默认值 | 约束与说明                                                                                                                                                                                                                           |
+| ---------------------------- | --------------- | ---- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `list`                       | `object[]`      | 是   | -      | 合并排序后的知识库数据块                                                                                                                                                                                                             |
+| `list[].q`                   | `string`        | 是   | -      | 问题/主文本                                                                                                                                                                                                                          |
+| `list[].a`                   | `string`        | 否   | -      | 回答/补充文本                                                                                                                                                                                                                        |
+| `list[].imageId`             | `string`        | 否   | -      | 图片 ID                                                                                                                                                                                                                              |
+| `list[].id`                  | `string`        | 是   | -      | 数据 ID。正则：`^[0-9a-fA-F]{24}$`                                                                                                                                                                                                   |
+| `list[].datasetId`           | `string`        | 是   | -      | 数据集 ID。正则：`^[0-9a-fA-F]{24}$`                                                                                                                                                                                                 |
+| `list[].collectionId`        | `string`        | 是   | -      | 集合 ID。正则：`^[0-9a-fA-F]{24}$`                                                                                                                                                                                                   |
+| `list[].imagePreivewUrl`     | `string`        | 否   | -      | 图片预览 URL                                                                                                                                                                                                                         |
+| `list[].updateTime`          | `string`        | 是   | -      | 更新时间                                                                                                                                                                                                                             |
+| `list[].sourceName`          | `string`        | 是   | -      | 来源名称                                                                                                                                                                                                                             |
+| `list[].sourceId`            | `string`        | 否   | -      | 来源 ID                                                                                                                                                                                                                              |
+| `list[].chunkIndex`          | `number`        | 是   | -      | 块索引                                                                                                                                                                                                                               |
+| `list[].indexStatus`         | `string` (enum) | 否   | -      | 索引状态，字段缺失表示已索引的历史数据。可选值：`indexing` , `indexed` , `error` , `rebuildIndexPending` , `rebuildIndexRunning` , `rebuildIndexFailed` , `rebuildSynonymPending` , `rebuildSynonymRunning` , `rebuildSynonymFailed` |
+| `list[].indexErrorMsg`       | `string`        | 否   | -      | 索引错误信息                                                                                                                                                                                                                         |
+| `list[].imageDescMap`        | `object`        | 否   | -      | 图片描述映射                                                                                                                                                                                                                         |
+| `list[].score`               | `object[]`      | 是   | -      | 评分列表                                                                                                                                                                                                                             |
+| `list[].score[].type`        | `string` (enum) | 是   | -      | 评分类型。可选值：`embedding` , `fullText` , `reRank` , `rrf`                                                                                                                                                                        |
+| `list[].score[].value`       | `number`        | 是   | -      | 评分值                                                                                                                                                                                                                               |
+| `list[].score[].index`       | `number`        | 是   | -      | 索引                                                                                                                                                                                                                                 |
+| `list[].metadata`            | `object`        | 否   | -      | 自定义元数据                                                                                                                                                                                                                         |
+| `list[].retrievalRank`       | `number`        | 否   | -      | 检索排名                                                                                                                                                                                                                             |
+| `list[].synonymMappings`     | `object`        | 否   | -      | 分块实际命中的原词到标准词映射                                                                                                                                                                                                       |
+| `meta`                       | `object`        | 是   | -      | -                                                                                                                                                                                                                                    |
+| `meta.durationMs`            | `number`        | 是   | -      | 搜索耗时，毫秒。最小值：0                                                                                                                                                                                                            |
+| `meta.usingSimilarityFilter` | `boolean`       | 是   | -      | 本次是否实际启用相似度过滤                                                                                                                                                                                                           |
+| `meta.usingReRank`           | `boolean`       | 是   | -      | 本次是否实际执行重排                                                                                                                                                                                                                 |
+| `meta.queryExtensionModelId` | `string`        | 否   | -      | 实际执行查询扩展的模型 ID                                                                                                                                                                                                            |

@@ -1,0 +1,95 @@
+---
+title: 'Delete Dataset Collections'
+seoTitle: 'Delete Dataset Collections - POST /api/core/dataset/collection/delete | FastGPT OpenAPI'
+description: 'Delete one or more collections and their child collections by ID, ID list, or external API file IDs (owner only).'
+---
+
+## Endpoint Overview
+
+- **Method** : `POST`
+- **Path** : `/api/core/dataset/collection/delete`
+- **Module** : Datasets / Collections
+- **Authentication** : `Authorization: Bearer <apiKey>`—Personal API Key (access scoped by team member permissions) (see [API Getting Started](/en/openapi/intro) )
+- **Interactive Try-It-Out** : [Open in Scalar API Explorer](https://cloud.fastgpt.io/apidoc/systemopenapi#tag/%E9%9B%86%E5%90%88%E7%AE%A1%E7%90%86/POST/core/dataset/collection/delete) (self-hosted instances: replace the origin with `<instance>/apidoc/systemopenapi#tag/%E9%9B%86%E5%90%88%E7%AE%A1%E7%90%86/POST/core/dataset/collection/delete` )
+
+## Description & Notes
+
+Delete one or more collections and their child collections. Choose one body selector: `body.id` (single), `body.collectionIds` (batch), or `body.datasetId` + `body.apiFileIds` (external API dataset IDs). Owner permission is required (collaborators with manage/write cannot delete). Returns collection-not-found if no `apiFileIds` match. Legacy `query.id` remains supported for compatibility (takes precedence over valid body if both are sent, though deprecated in favor of `body.id` ).
+
+## Request Parameters
+
+> **Parameter Alternatives** : Provide one of the following locator sets: `body.id` OR `body.collectionIds` OR `body.datasetId` + `body.apiFileIds` OR `query.id` .
+
+### Query Parameters
+
+| Field | Type     | Required | Default | Constraints & Description                                                                        |
+| ----- | -------- | -------- | ------- | ------------------------------------------------------------------------------------------------ |
+| `id`  | `string` | No       | -       | **Deprecated** . Legacy single collection ID query parameter (deprecated; use `body.id` instead) |
+
+### Request Body ( `application/json` )
+
+**Mutually Exclusive Branches ( `anyOf` )**
+
+- **Delete by Collection ID**
+
+Delete a single collection and all nested child collections
+
+| Field | Type     | Required | Default | Constraints & Description                                              |
+| ----- | -------- | -------- | ------- | ---------------------------------------------------------------------- |
+| `id`  | `string` | Yes      | -       | Collection ID to delete along with all child collections. minLength: 1 |
+
+- **Delete by Collection ID List**
+
+Batch delete multiple collections and all nested child collections
+
+| Field           | Type       | Required | Default | Constraints & Description                                                        |
+| --------------- | ---------- | -------- | ------- | -------------------------------------------------------------------------------- |
+| `collectionIds` | `string[]` | Yes      | -       | List of collection IDs to delete along with their child collections. minItems: 1 |
+
+- **Delete by API File IDs**
+
+For external integrations targeting files/folders by `apiFileId` inside a dataset, deleting matched collections and their children.
+
+| Field        | Type       | Required | Default | Constraints & Description                                                             |
+| ------------ | ---------- | -------- | ------- | ------------------------------------------------------------------------------------- |
+| `datasetId`  | `string`   | Yes      | -       | Target dataset ID backed by an API file store. minLength: 1                           |
+| `apiFileIds` | `string[]` | Yes      | -       | List of external API file or folder IDs; returns not-found if none match. minItems: 1 |
+
+- **Legacy `query.id` Compatibility**
+
+Allows an empty body when targeting via deprecated `query.id` ; rejected if no target selector is provided.
+
+No extra branch-specific fields are required.
+
+## Request Examples
+
+Replace `YOUR_API_KEY` and placeholder IDs before running. Self-hosted users should replace the base URL with `<instance>/api` .
+
+### cURL Example
+
+```bash
+curl --fail-with-body -X POST "https://cloud.fastgpt.io/api/core/dataset/collection/delete" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  --data-raw '{
+  "id": "68ad85a7463006c963799a05"
+}'
+```
+
+### Minimal Valid JSON Body
+
+```json
+{
+  "id": "68ad85a7463006c963799a05"
+}
+```
+
+## Response Schema & Examples
+
+Successful `/api/*` calls return the standard FastGPT envelope `{ "code": 200, "statusText": "", "message": "", "data": ... }` , where `data` matches the `200` schema below (and `null` when no payload schema is declared).
+
+### HTTP 200
+
+Successfully deleted collection(s)
+
+Returns standard success envelope with `data: null` .

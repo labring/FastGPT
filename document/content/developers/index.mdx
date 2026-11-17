@@ -28,7 +28,7 @@ API Key 保存在可信服务端。身份代理按需启用，要求接口支持
 
 ## 凭证体系与鉴权方式
 
-各接口分别声明接受的凭证类型，接入前在 `/apidoc/systemopenapi` 或 `/apidoc/devapi` 中确认该接口的鉴权方式。
+各接口分别声明接受的凭证类型，接入前在 [System OpenAPI 参考总览](/zh-CN/openapi/api-reference) 或实例 `/apidoc/systemopenapi`、`/apidoc/devapi` 中确认该接口的鉴权方式。
 
 | 凭证类型                     | 传输位置                             | 权限作用域                                                           | 适用场景                                            |
 | ---------------------------- | ------------------------------------ | -------------------------------------------------------------------- | --------------------------------------------------- |
@@ -56,9 +56,10 @@ API Key 保存在可信服务端。身份代理按需启用，要求接口支持
 
 ## 机器可读 OpenAPI 契约
 
-FastGPT 每个部署实例均在本地动态生成最新的 OpenAPI 3.1 规范文档：
+可以通过官方文档站查阅静态接口参考与 OpenAPI 3.1 契约，也可以在部署实例本地访问动态调试台：
 
-- **System OpenAPI（API Key 开放接口）**：访问 `/apidoc/systemopenapi`（页面）或 `/api/apidoc/systemopenapi.json`（JSON 契约）。
-- **Dev API（完整开发接口）**：访问 `/apidoc/devapi`（页面）或 `/api/apidoc/devapi.json`（JSON 契约）。
+- **官方 System OpenAPI 参考与契约**：查阅 [System OpenAPI 参考总览](/zh-CN/openapi/api-reference)，或直接拉取开放 CORS 的 [OpenAPI 3.1 JSON 契约](https://doc.fastgpt.cn/openapi.json)（`/openapi.json`）与 [OpenAPI 语料索引](https://doc.fastgpt.cn/llms-openapi.txt)（`/llms-openapi.txt`）。
+- **部署实例 System OpenAPI（在线调试）**：访问 `<instance>/apidoc/systemopenapi`（页面）或 `<instance>/api/apidoc/systemopenapi.json`（JSON 契约）。
+- **部署实例 Dev API（完整内部开发接口）**：访问 `<instance>/apidoc/devapi`（页面）或 `<instance>/api/apidoc/devapi.json`（JSON 契约）。
 
 维护历史已有集成时，参考 [历史 API 参数与迁移](/zh-CN/openapi/legacy)。

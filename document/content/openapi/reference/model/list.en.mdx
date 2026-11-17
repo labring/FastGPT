@@ -1,0 +1,60 @@
+---
+title: 'List Public System Models'
+seoTitle: 'List Public System Models - GET /api/core/ai/model/list | FastGPT OpenAPI'
+description: 'Fetch active public system models and pricing metadata for pricing tables or public catalogs without requiring authentication.'
+---
+
+## Endpoint Overview
+
+- **Method** : `GET`
+- **Path** : `/api/core/ai/model/list`
+- **Module** : Core Features / Models
+- **Authentication** : No authentication required (public endpoint) (see [API Getting Started](/en/openapi/intro) )
+- **Interactive Try-It-Out** : [Open in Scalar API Explorer](https://cloud.fastgpt.io/apidoc/systemopenapi#tag/%E6%A8%A1%E5%9E%8B%E7%AE%A1%E7%90%86/GET/core/ai/model/list) (self-hosted instances: replace the origin with `<instance>/apidoc/systemopenapi#tag/%E6%A8%A1%E5%9E%8B%E7%AE%A1%E7%90%86/GET/core/ai/model/list` )
+
+## Description & Notes
+
+Return minimal active system model and pricing metadata for public pricing pages without authentication.
+
+## Request Parameters
+
+This endpoint does not require request parameters or a request body.
+
+## Request Examples
+
+Replace `YOUR_API_KEY` and placeholder IDs before running. Self-hosted users should replace the base URL with `<instance>/api` .
+
+### cURL Example
+
+```bash
+curl --fail-with-body -X GET "https://cloud.fastgpt.io/api/core/ai/model/list"
+```
+
+## Response Schema & Examples
+
+Successful `/api/*` calls return the standard FastGPT envelope `{ "code": 200, "statusText": "", "message": "", "data": ... }` , where `data` matches the `200` schema below (and `null` when no payload schema is declared).
+
+### HTTP 200
+
+Successfully returned public system model list
+
+**Content-Type** : `application/json`
+
+| Field                       | Type       | Required | Default | Constraints & Description |
+| --------------------------- | ---------- | -------- | ------- | ------------------------- |
+| `models`                    | `object[]` | Yes      | -       | -                         |
+| `providers`                 | `object[]` | Yes      | -       | -                         |
+| `providers[].provider`      | `string`   | Yes      | -       | Model provider identifier |
+| `providers[].value`         | `object`   | Yes      | -       | -                         |
+| `providers[].value.en`      | `string`   | Yes      | -       | -                         |
+| `providers[].value.zh-CN`   | `string`   | Yes      | -       | -                         |
+| `providers[].value.zh-Hant` | `string`   | Yes      | -       | -                         |
+| `providers[].avatar`        | `string`   | Yes      | -       | Model provider icon URL   |
+
+#### Polymorphic Field: `models`
+
+- **Variant 1** ( `type="llm"` ): `type` , `pricing` , `config` , `name` , `provider` , `testMode`
+- **Variant 2** ( `type="embedding"` ): `type` , `pricing` , `config` , `name` , `provider` , `testMode`
+- **Variant 3** ( `type="rerank"` ): `type` , `pricing` , `config` , `name` , `provider` , `testMode`
+- **Variant 4** ( `type="tts"` ): `type` , `pricing` , `name` , `provider` , `testMode`
+- **Variant 5** ( `type="stt"` ): `type` , `pricing` , `name` , `provider` , `testMode`

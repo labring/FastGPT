@@ -1,0 +1,71 @@
+---
+title: '获取当前成员可用模型清单'
+seoTitle: '获取当前成员可用模型清单 - GET /api/core/ai/model/catalog | FastGPT OpenAPI'
+description: '一次性获取当前成员或分享链接身份可用的模型列表、Provider 与默认模型 ID，支持基于版本号的目录缓存协商与自定义排序。'
+---
+
+## 端点概览
+
+- **HTTP 方法**：`GET`
+- **请求路径**：`/api/core/ai/model/catalog`
+- **所属模块**：基础功能 / 模型管理
+- **鉴权方式**：`Authorization: Bearer <apiKey>`—个人密钥（按归属团队成员资源权限校验）（详见 [API 入门：完成首次请求](/zh-CN/openapi/intro)）
+- **在线调试**：[在云服务 Scalar 调试台打开](https://cloud.fastgpt.cn/apidoc/systemopenapi#tag/%E6%A8%A1%E5%9E%8B%E7%AE%A1%E7%90%86/GET/core/ai/model/catalog)（自部署实例请将域名替换为 `<instance>/apidoc/systemopenapi#tag/%E6%A8%A1%E5%9E%8B%E7%AE%A1%E7%90%86/GET/core/ai/model/catalog`）
+
+## 接口说明与注意事项
+
+通过登录态或外链身份一次返回对应成员完整可用模型、Provider 和有效默认模型 ID；支持内容版本协商。orderBy=custom 时按自己的团队模型、共享给我的团队模型、系统模型依次展示，各组按自定义 rank 排列；省略时保留运行时顺序，默认模型不受展示排序影响。成员展示页可通过 includeSourceMember=true 补充创建人资料，此时始终返回完整目录；外链忽略该参数
+
+## 请求参数
+
+### Query 查询参数
+
+| 字段                  | 类型       | 必填 | 默认值 | 约束与说明                                                                                                                                 |
+| --------------------- | ---------- | ---- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `version`             | `string`   | 否   | -      | 客户端已有目录版本。最小长度：1                                                                                                            |
+| `includeSourceMember` | `boolean`  | 否   | -      | 补充创建人资料；仅成员生效，开启后始终返回完整目录，不使用版本缓存                                                                         |
+| `orderBy`             | `"custom"` | 否   | -      | 可用模型页展示排序：自己的团队模型、共享给我的团队模型、系统模型依次展示，各组按自定义 rank 排列；省略时保留运行时顺序。固定值：`"custom"` |
+| `outLinkAuthData`     | `string`   | 否   | -      | 分享链接鉴权数据；存在时使用发布链接绑定的成员身份计算模型权限                                                                             |
+
+## 请求示例
+
+调用前请将 `YOUR_API_KEY` 与示例 ID 替换为真实值；私有化部署实例请将基础域名替换为 `<instance>/api`。
+
+### cURL 请求示例
+
+```bash
+curl --fail-with-body -X GET "https://cloud.fastgpt.cn/api/core/ai/model/catalog" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+## 响应结构与示例
+
+除兼容 OpenAI 协议的对话补全或二进制下载接口外，成功响应统一包裹在 `{ "code": 200, "statusText": "", "message": "", "data": ... }` 标准结构中；下方 `200` 字段表对应 `data` 载荷结构（无数据返回时 `data` 为 `null`）。
+
+### HTTP 200
+
+版本变化或成员显式请求创建人资料时返回完整目录，否则未变化时仅返回版本
+
+**Content-Type** : `application/json`
+
+| 字段                                   | 类型       | 必填 | 默认值 | 约束与说明                                                         |
+| -------------------------------------- | ---------- | ---- | ------ | ------------------------------------------------------------------ |
+| `version`                              | `string`   | 是   | -      | 当前成员模型目录内容版本                                           |
+| `data`                                 | `object`   | 否   | -      | 版本变化或成员显式请求创建人资料时返回完整目录；否则版本一致时省略 |
+| `data.models`                          | `object[]` | 是   | -      | -                                                                  |
+| `data.providers`                       | `object[]` | 是   | -      | -                                                                  |
+| `data.providers[].provider`            | `string`   | 是   | -      | 模型提供商标识                                                     |
+| `data.providers[].value`               | `object`   | 是   | -      | -                                                                  |
+| `data.providers[].value.en`            | `string`   | 是   | -      | -                                                                  |
+| `data.providers[].value.zh-CN`         | `string`   | 是   | -      | -                                                                  |
+| `data.providers[].value.zh-Hant`       | `string`   | 是   | -      | -                                                                  |
+| `data.providers[].avatar`              | `string`   | 是   | -      | 模型提供商图标                                                     |
+| `data.defaultModelIds`                 | `object`   | 是   | -      | -                                                                  |
+| `data.defaultModelIds.llm`             | `string`   | 否   | -      | -                                                                  |
+| `data.defaultModelIds.embedding`       | `string`   | 否   | -      | -                                                                  |
+| `data.defaultModelIds.tts`             | `string`   | 否   | -      | -                                                                  |
+| `data.defaultModelIds.stt`             | `string`   | 否   | -      | -                                                                  |
+| `data.defaultModelIds.rerank`          | `string`   | 否   | -      | -                                                                  |
+| `data.defaultModelIds.datasetTextLLM`  | `string`   | 否   | -      | -                                                                  |
+| `data.defaultModelIds.datasetImageLLM` | `string`   | 否   | -      | -                                                                  |
+| `data.defaultModelIds.chatTitleLLM`    | `string`   | 否   | -      | -                                                                  |

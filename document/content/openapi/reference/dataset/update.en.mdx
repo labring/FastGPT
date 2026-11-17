@@ -1,0 +1,114 @@
+---
+title: 'Update Dataset'
+seoTitle: 'Update Dataset - PUT /api/core/dataset/update | FastGPT OpenAPI'
+description: 'Update dataset name, introduction, model settings, website sync rules, PDF parse options, or move it to another folder.'
+---
+
+## Endpoint Overview
+
+- **Method** : `PUT`
+- **Path** : `/api/core/dataset/update`
+- **Module** : Datasets / Datasets
+- **Authentication** : `Authorization: Bearer <apiKey>`—Personal API Key (access scoped by team member permissions) (see [API Getting Started](/en/openapi/intro) )
+- **Interactive Try-It-Out** : [Open in Scalar API Explorer](https://cloud.fastgpt.io/apidoc/systemopenapi#tag/%E7%9F%A5%E8%AF%86%E5%BA%93%E7%AE%A1%E7%90%86/PUT/core/dataset/update) (self-hosted instances: replace the origin with `<instance>/apidoc/systemopenapi#tag/%E7%9F%A5%E8%AF%86%E5%BA%93%E7%AE%A1%E7%90%86/PUT/core/dataset/update` )
+
+## Description & Notes
+
+Update dataset metadata, model settings, sync configuration, or move it to another folder.
+
+## Request Parameters
+
+### Request Body ( `application/json` )
+
+| Field                                           | Type             | Required | Default | Constraints & Description                                                                                                                     |
+| ----------------------------------------------- | ---------------- | -------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`                                            | `string`         | Yes      | -       | Dataset ID. pattern: `^[0-9a-fA-F]{24}$`                                                                                                      |
+| `parentId`                                      | `string \| null` | No       | -       | Parent folder ID; pass `null` to move to the root directory                                                                                   |
+| `name`                                          | `string`         | No       | -       | Dataset name                                                                                                                                  |
+| `avatar`                                        | `string`         | No       | -       | Dataset avatar URL                                                                                                                            |
+| `intro`                                         | `string`         | No       | -       | Dataset introduction                                                                                                                          |
+| `agentModelId`                                  | `string`         | No       | -       | Dataset Agent model ID; omitted leaves unchanged, cannot be cleared. minLength: 1                                                             |
+| `agentModel`                                    | `string`         | No       | -       | **Deprecated** . Legacy dataset Agent model identifier; used only when `agentModelId` is omitted. minLength: 1                                |
+| `vlmModelId`                                    | `string \| null` | No       | -       | VLM model ID; omitted leaves unchanged, `null` or empty string clears it                                                                      |
+| `vlmModel`                                      | `string \| null` | No       | -       | **Deprecated** . Legacy VLM model identifier; used only when `vlmModelId` is omitted ( `null` or empty string clears it)                      |
+| `websiteConfig`                                 | `object`         | No       | -       | Site dataset configuration                                                                                                                    |
+| `websiteConfig.url`                             | `string`         | Yes      | -       | Site URL                                                                                                                                      |
+| `websiteConfig.selector`                        | `string`         | Yes      | -       | CSS selector for site scraping                                                                                                                |
+| `externalReadUrl`                               | `string`         | No       | -       | External source URL                                                                                                                           |
+| `apiDatasetServer`                              | `object`         | No       | -       | Third-party dataset server configuration (API / Lark / Yuque / DingTalk)                                                                      |
+| `apiDatasetServer.apiServer`                    | `object`         | No       | -       | API dataset server configuration                                                                                                              |
+| `apiDatasetServer.apiServer.baseUrl`            | `string`         | Yes      | -       | -                                                                                                                                             |
+| `apiDatasetServer.apiServer.authorization`      | `string`         | No       | -       | -                                                                                                                                             |
+| `apiDatasetServer.apiServer.basePath`           | `string`         | No       | -       | -                                                                                                                                             |
+| `apiDatasetServer.feishuServer`                 | `object`         | No       | -       | Lark (Feishu) server configuration                                                                                                            |
+| `apiDatasetServer.feishuServer.appId`           | `string`         | Yes      | -       | -                                                                                                                                             |
+| `apiDatasetServer.feishuServer.appSecret`       | `string`         | No       | -       | -                                                                                                                                             |
+| `apiDatasetServer.feishuServer.folderToken`     | `string`         | Yes      | -       | -                                                                                                                                             |
+| `apiDatasetServer.yuqueServer`                  | `object`         | No       | -       | Yuque server configuration                                                                                                                    |
+| `apiDatasetServer.yuqueServer.userId`           | `string`         | Yes      | -       | -                                                                                                                                             |
+| `apiDatasetServer.yuqueServer.token`            | `string`         | No       | -       | -                                                                                                                                             |
+| `apiDatasetServer.yuqueServer.basePath`         | `string`         | No       | -       | -                                                                                                                                             |
+| `apiDatasetServer.dingtalkServer`               | `object`         | No       | -       | DingTalk dataset configuration                                                                                                                |
+| `apiDatasetServer.dingtalkServer.appKey`        | `string`         | Yes      | -       | -                                                                                                                                             |
+| `apiDatasetServer.dingtalkServer.appSecret`     | `string`         | No       | -       | -                                                                                                                                             |
+| `apiDatasetServer.dingtalkServer.userId`        | `string`         | Yes      | -       | -                                                                                                                                             |
+| `apiDatasetServer.dingtalkServer.operatorId`    | `string`         | No       | -       | -                                                                                                                                             |
+| `apiDatasetServer.dingtalkServer.workspaceId`   | `string`         | No       | -       | -                                                                                                                                             |
+| `apiDatasetServer.dingtalkServer.rootNodeId`    | `string`         | No       | -       | -                                                                                                                                             |
+| `apiDatasetServer.dingtalkServer.workspaceName` | `string`         | No       | -       | -                                                                                                                                             |
+| `autoSync`                                      | `boolean`        | No       | -       | Whether auto-sync is enabled                                                                                                                  |
+| `chunkSettings`                                 | `object`         | No       | -       | Chunking configuration                                                                                                                        |
+| `chunkSettings.trainingType`                    | `string` (enum)  | No       | -       | Training mode. Allowed values: `chunk` , `qa` , `imageParse` , `backup` , `template` , `auto`                                                 |
+| `chunkSettings.chunkTriggerType`                | `string` (enum)  | No       | -       | Chunk trigger mode. Allowed values: `minSize` , `forceChunk` , `maxSize`                                                                      |
+| `chunkSettings.chunkTriggerMinSize`             | `number`         | No       | -       | Minimum size threshold to trigger chunking                                                                                                    |
+| `chunkSettings.dataEnhanceCollectionName`       | `boolean`        | No       | -       | Prepend collection name to chunks                                                                                                             |
+| `chunkSettings.imageIndex`                      | `boolean`        | No       | -       | Enable image indexing                                                                                                                         |
+| `chunkSettings.autoIndexes`                     | `boolean`        | No       | -       | Auto-generate vector indexes                                                                                                                  |
+| `chunkSettings.indexPrefixTitle`                | `boolean`        | No       | -       | Prefix title for indexes                                                                                                                      |
+| `chunkSettings.chunkSettingMode`                | `string` (enum)  | No       | -       | Chunk setting preset ( `auto` , `custom` , or `intelligent` ). Allowed values: `auto` , `custom` , `intelligent`                              |
+| `chunkSettings.chunkSplitMode`                  | `string` (enum)  | No       | -       | Chunk splitting mode. Allowed values: `paragraph` , `size` , `char`                                                                           |
+| `chunkSettings.paragraphChunkAIMode`            | `string` (enum)  | No       | -       | AI paragraph chunking mode. Allowed values: `auto` , `force` , `forbid`                                                                       |
+| `chunkSettings.paragraphChunkDeep`              | `number`         | No       | -       | Paragraph heading split depth                                                                                                                 |
+| `chunkSettings.paragraphChunkMinSize`           | `number`         | No       | -       | Minimum paragraph chunk size                                                                                                                  |
+| `chunkSettings.chunkSize`                       | `number`         | No       | -       | Target chunk size                                                                                                                             |
+| `chunkSettings.chunkSplitter`                   | `string`         | No       | -       | Custom primary chunk separator                                                                                                                |
+| `chunkSettings.indexSize`                       | `number`         | No       | -       | Vector index chunk size                                                                                                                       |
+| `chunkSettings.qaPrompt`                        | `string`         | No       | -       | Custom prompt for Q&A extraction                                                                                                              |
+| `sangforFileParseConfig`                        | `object`         | No       | -       | External PDF parsing switches (headers/footers, appendix, image OCR, chart-to-table); applies only to `customPdfParse` for newly parsed files |
+| `sangforFileParseConfig.keep_header_footer`     | `boolean`        | No       | -       | Whether to keep page headers and footers (default `false` , strips headers/footers)                                                           |
+| `sangforFileParseConfig.keep_appendix`          | `boolean`        | No       | -       | Whether to keep appendix sections (default `true` )                                                                                           |
+| `sangforFileParseConfig.image_analysis`         | `boolean`        | No       | -       | Whether to retain OCR/image recognition results including stamps (default `false` )                                                           |
+| `sangforFileParseConfig.chart_analysis`         | `boolean`        | No       | -       | Whether to keep chart-to-table extraction results alongside original images (default `false` )                                                |
+
+## Request Examples
+
+Replace `YOUR_API_KEY` and placeholder IDs before running. Self-hosted users should replace the base URL with `<instance>/api` .
+
+### cURL Example
+
+```bash
+curl --fail-with-body -X PUT "https://cloud.fastgpt.io/api/core/dataset/update" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  --data-raw '{
+  "id": "68ad85a7463006c963799a05"
+}'
+```
+
+### Minimal Valid JSON Body
+
+```json
+{
+  "id": "68ad85a7463006c963799a05"
+}
+```
+
+## Response Schema & Examples
+
+Successful `/api/*` calls return the standard FastGPT envelope `{ "code": 200, "statusText": "", "message": "", "data": ... }` , where `data` matches the `200` schema below (and `null` when no payload schema is declared).
+
+### HTTP 200
+
+Successfully updated dataset
+
+Returns standard success envelope with `data: null` .

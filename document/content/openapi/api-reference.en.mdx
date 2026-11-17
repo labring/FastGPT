@@ -1,12 +1,69 @@
 ---
-title: API reference addresses
-description: Find System OpenAPI and Dev API documentation for China Mainland cloud, International cloud, and self-hosted deployments.
+title: System OpenAPI Reference Overview
+seoTitle: System OpenAPI Reference Overview & Index | FastGPT OpenAPI
+description: Browse FastGPT System OpenAPI across 4 groups and 11 modules, including auth rules, base URLs, OpenAPI 3.1 JSON specs, and Scalar consoles.
 ---
 
-Following the documentation transition in 4.15.0, generated references maintain current endpoint contracts. System OpenAPI covers operations explicitly accessible with API keys. Dev API covers internal development interfaces; follow each operation's authentication requirements.
+This documentation portal provides static, structured reference pages for FastGPT **System OpenAPI**—covering 50 operations organized into 4 groups and 11 modules explicitly exposed for API key authentication. It is designed for browser navigation, single-page Markdown retrieval, and AI coding agents.
 
-- Self-hosted: `<instance>/apidoc/systemopenapi` and `<instance>/apidoc/devapi`.
-- China Mainland cloud: [System OpenAPI](https://cloud.fastgpt.cn/apidoc/systemopenapi) and [Dev API](https://cloud.fastgpt.cn/apidoc/devapi).
-- International cloud: [System OpenAPI](https://cloud.fastgpt.io/apidoc/systemopenapi) and [Dev API](https://cloud.fastgpt.io/apidoc/devapi).
+To run same-origin **Try it out** requests in a browser or inspect internal **Dev API** operations, open the `/apidoc/*` interactive consoles on FastGPT Cloud or your self-hosted deployment.
 
-For your first integration, start with [API getting started: make your first request](/en/openapi/intro).
+## Base URLs and Endpoints
+
+| Environment          | API Request Base URL           | Instance Interactive Console (Scalar)                                                                               |
+| -------------------- | ------------------------------ | ------------------------------------------------------------------------------------------------------------------- |
+| International Cloud  | `https://cloud.fastgpt.io/api` | [System OpenAPI](https://cloud.fastgpt.io/apidoc/systemopenapi) · [Dev API](https://cloud.fastgpt.io/apidoc/devapi) |
+| Mainland China Cloud | `https://cloud.fastgpt.cn/api` | [System OpenAPI](https://cloud.fastgpt.cn/apidoc/systemopenapi) · [Dev API](https://cloud.fastgpt.cn/apidoc/devapi) |
+| Self-Hosted Instance | `<instance>/api`               | `<instance>/apidoc/systemopenapi` · `<instance>/apidoc/devapi`                                                      |
+
+## Authentication and Identity Rules
+
+Pass your API key in the standard `Authorization` HTTP header:
+
+```http
+Authorization: Bearer <apiKey>
+```
+
+- **Personal API Key**: Created under **Account → API Keys**, executing with the issuing team member's resource permissions. Pass `appId` explicitly when calling application chat endpoints (or use the OpenAI SDK compatibility suffix `Bearer <apiKey>-<appId>`). Supports `authProxy` (FastGPT >= v4.15.0) to delegate identity to another active team member; see [API and MCP identity proxy](/en/openapi/identity-proxy).
+- **App API Key** (FastGPT >= v4.18.0): Created under **Studio → Target App → Publish Channels → API Access → App keys**. Bound to a single application for chat, history, and log endpoints without passing `appId`, and supports `customUid` to identify external end users.
+- **First Integration**: Start with [API getting started: make your first request](/en/openapi/intro) for end-to-end cURL and OpenAI SDK examples.
+
+## 4 Groups and 11 Modules
+
+### 1. Foundation
+
+- **Models (`model`)**: [Get Model Display Summaries](/en/openapi/reference/model/summary) · [List Public System Models](/en/openapi/reference/model/list) · [Get Available Model Catalog](/en/openapi/reference/model/catalog)
+
+### 2. Applications
+
+- **App Logs (`app-log`)**: [List App Chat Logs](/en/openapi/reference/app-log/list) · [Get App Total Statistics](/en/openapi/reference/app-log/get-total-data) · [Get App Chart Analytics](/en/openapi/reference/app-log/get-chart-data) · [List App Log Users](/en/openapi/reference/app-log/get-users)
+
+### 3. Chat
+
+- **Chat Completions & Control (`chat-controller`)**: [Create Chat Completion (v2)](/en/openapi/reference/chat-controller/v2-chat-completions) · [Stop Chat Completion](/en/openapi/reference/chat-controller/v2-chat-stop)
+- **Chat History (`chat-history`)**: [List Chat Histories](/en/openapi/reference/chat-history/get-histories) · [Batch Get Chat History Status](/en/openapi/reference/chat-history/get-history-status) · [Mark Chat History Read](/en/openapi/reference/chat-history/mark-read) · [Update Chat History](/en/openapi/reference/chat-history/update-history) · [Delete Chat History](/en/openapi/reference/chat-history/del-history) · [Clear Chat Histories](/en/openapi/reference/chat-history/clear-histories) · [Batch Delete Chat Histories](/en/openapi/reference/chat-history/batch-delete) · [Initialize Chat Session](/en/openapi/reference/chat-history/init)
+- **Chat Records (`chat-record`)**: [List Chat Records (Paginated)](/en/openapi/reference/chat-record/get-pagination-records) · [List Chat Records by Cursor](/en/openapi/reference/chat-record/get-records-v2) · [Get Chat Record Response Details](/en/openapi/reference/chat-record/get-res-data) · [Get Chat Record Citations](/en/openapi/reference/chat-record/get-quote) · [Get Collection Citation Chunks](/en/openapi/reference/chat-record/get-collection-quote) · [Delete Chat Records](/en/openapi/reference/chat-record/delete)
+- **Chat Feedback (`chat-feedback`)**: [Update User Chat Feedback](/en/openapi/reference/chat-feedback/update-user-feedback)
+
+### 4. Knowledge Base
+
+- **Datasets (`dataset`)**: [Create Dataset](/en/openapi/reference/dataset/create) · [List Datasets (V2)](/en/openapi/reference/dataset/list-v2) · [Get Dataset Details](/en/openapi/reference/dataset/detail) · [Update Dataset](/en/openapi/reference/dataset/update) · [Delete Dataset](/en/openapi/reference/dataset/delete) · [Batch Move Datasets](/en/openapi/reference/dataset/batch-move) · [Batch Delete Datasets](/en/openapi/reference/dataset/batch-delete)
+- **Collections (`dataset-collection`)**: [List Dataset Collections (V2)](/en/openapi/reference/dataset-collection/list-v2) · [Get Collection Details](/en/openapi/reference/dataset-collection/detail) · [Update Dataset Collection](/en/openapi/reference/dataset-collection/update) · [Delete Dataset Collections](/en/openapi/reference/dataset-collection/delete) · [Create Collection Download Ticket](/en/openapi/reference/dataset-collection/get-download-ticket) · [Download Collections Archive](/en/openapi/reference/dataset-collection/batch-download)
+- **Create Collections (`dataset-collection-create`)**: [Create Empty Collection or Folder](/en/openapi/reference/dataset-collection-create/create) · [Create Collection from Local File](/en/openapi/reference/dataset-collection-create/local-file) · [Create Collection from Link](/en/openapi/reference/dataset-collection-create/link) · [Create Collection from Text](/en/openapi/reference/dataset-collection-create/text)
+- **Dataset Data (`dataset-data`)**: [List Dataset Data Items](/en/openapi/reference/dataset-data/v2-list) · [Get Dataset Data Item Details](/en/openapi/reference/dataset-data/detail) · [Update Dataset Data Item](/en/openapi/reference/dataset-data/update) · [Delete Dataset Data Item](/en/openapi/reference/dataset-data/delete) · [Push Data Items to Training Queue](/en/openapi/reference/dataset-data/push-data)
+- **Dataset Search (`dataset-search`)**: [Search Datasets API](/en/openapi/reference/dataset-search/search)
+
+## Machine-Readable Discovery (GEO & Tooling)
+
+For coding agents, SDK generators, and HTTP schema importers, the official documentation portal publishes machine-readable contracts:
+
+- **OpenAPI 3.1 JSON Spec**: [https://doc.fastgpt.io/openapi.json](https://doc.fastgpt.io/openapi.json) (`/openapi.json`, served with `Access-Control-Allow-Origin: *` for direct cross-origin tool ingestion).
+- **OpenAPI Markdown Corpus**: [https://doc.fastgpt.io/llms-openapi.txt](https://doc.fastgpt.io/llms-openapi.txt) (`/llms-openapi.txt`, full clean Markdown for all active System OpenAPI pages, parameter schemas, and SSE examples).
+- **Root LLM Index**: [https://doc.fastgpt.io/llms.txt](https://doc.fastgpt.io/llms.txt) (`/llms.txt`).
+- **Single-Page Markdown**: Append `.md` to any endpoint reference URL (for example, `https://doc.fastgpt.io/openapi/reference/dataset-search/search.md`) or send `Accept: text/markdown`.
+
+## Interactive Scalar Consoles and Dev API
+
+- **Scalar API Explorer**: Each endpoint reference page includes a direct anchor link to the cloud Scalar explorer so you can supply an API key and test requests interactively. On self-hosted deployments, open `<instance>/apidoc/systemopenapi` (or `<instance>/api/apidoc/systemopenapi.json` for the instance-local JSON).
+- **Dev API (Internal & Administrative Operations)**: Covers source-code customization, web UI RPCs, and root maintenance operations secured by session cookies (`fastgpt_token`) or `rootkey`. To keep authentication scopes unambiguous, Dev API is excluded from static public docs and default AI corpora; inspect it directly on your deployment at `<instance>/apidoc/devapi` (or on FastGPT Cloud `/apidoc/devapi`).
+- **Legacy Reference**: Handwritten historical parameter docs remain archived in [Historical API parameters and migration](/en/openapi/legacy).

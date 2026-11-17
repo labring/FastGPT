@@ -1,0 +1,759 @@
+---
+title: '发起会话 v1'
+seoTitle: '发起会话 v1 - POST /api/v1/chat/completions | FastGPT OpenAPI'
+description: '旧版 v1 对话补全接口（已弃用，建议迁移至 v2），保留对存量 OpenAI 兼容调用方与汇总事件 flowResponses 协议的支持。'
+deprecated: true
+---
+
+import { Alert } from '@/components/docs/Alert';
+
+<Alert icon="⚠️" context="warning">
+  **接口已弃用**：`POST /api/v1/chat/completions` 为旧版兼容接口。新接入请迁移至 [发起会话
+  v2](/zh-CN/openapi/reference/chat-controller/v2-chat-completions)（`POST
+  /api/v2/chat/completions`），支持逐节点 `flowNodeResponse` SSE 事件流与完整的 `authProxy`
+  代理能力。
+</Alert>
+
+## 端点概览
+
+- **HTTP 方法**：`POST`
+- **请求路径**：`/api/v1/chat/completions`
+- **所属模块**：对话 / 会话操作
+- **鉴权方式**：`Authorization: Bearer <apiKey>`—支持 **应用 API Key**（无需 `appId`）与 **个人密钥**（需传 `appId`）；另支持 `authProxy` 团队成员代理与 `outLinkAuthData` 外链分享（详见 [API 入门：完成首次请求](/zh-CN/openapi/intro)）
+- **在线调试**：[在云服务 Scalar 调试台打开](https://cloud.fastgpt.cn/apidoc/systemopenapi#tag/%E4%BC%9A%E8%AF%9D%E6%93%8D%E4%BD%9C/POST/v1/chat/completions)（自部署实例请将域名替换为 `<instance>/apidoc/systemopenapi#tag/%E4%BC%9A%E8%AF%9D%E6%93%8D%E4%BD%9C/POST/v1/chat/completions`）
+
+## 接口说明与注意事项
+
+v1 对话接口兼容 GPT 的接口。如果你的项目使用的是标准的 GPT 官方接口，可以直接通过修改 BaseUrl 和 Authorization 来访问 FastGPT 应用。
+
+**注意事项**
+
+- 接入方后端可传入 `customUid` 标记自己的使用者，值会传递给工作流的 `userId`；它不改变 API Key 的鉴权成员，且与 `authProxy` 互斥。最长 1024 字符，空字符串使用默认成员身份。（FastGPT 4.18.0 及以上版本支持）
+- 传入的 `model`、`temperature` 等参数字段均无效，这些字段由编排决定，不会根据 API 参数改变。
+- 不会返回实际消耗 `Token` 值。如果需要，可以设置 `detail=true`，并手动计算 `responseData` 里的 `tokens` 值。
+
+**chatId 行为**
+
+- 不传入（或为空）：不使用 FastGPT 提供的上下文功能，完全通过传入的 `messages` 构建上下文。
+- 非空字符串：使用 chatId 进行对话，自动从 FastGPT 数据库取会话中的对话，并使用 `messages` 数组最后一个内容作为用户问题，其余 message 会被忽略。请自行确保 chatId 唯一，长度最多 1024 字符。
+
+**stream / detail 组合**
+
+- `detail=false, stream=false`：返回精简 JSON（仅 `choices/usage/id` 等）。
+- `detail=false, stream=true`：返回兼容 GPT 的 SSE 流，只包含答案 chunk 和结束标记。
+- `detail=true, stream=false`：在 JSON 中额外包含 `responseData`（各节点详细信息）和 `newVariables`。
+- `detail=true, stream=true`：返回多 event 的 SSE 流（`answer` / `flowNodeStatus` / `flowResponses` 等）。
+
+**交互节点**
+
+如果工作流中包含交互节点，需要设置 `detail=true`：
+
+- `stream=true`：可从 `event=interactive` 数据中获取交互节点的配置。
+- `stream=false`：可从 `choices[].message.content` 中获取包含 `interactive` 字段的元素。
+
+非流式响应中的 `interactive` 只包含 `type` 和 `params`，会向下提取 children / loop / tool 包装中最深层的交互，并过滤 `entryNodeIds` / `memoryEdges` / `nodeOutputs` 等内部运行态字段。SSE 可能保留子流程包装，可沿 `params.childrenResponse` 读取内层交互；event 示例省略内部运行态字段，并分别展示不同载荷分支。
+
+接收到交互节点信息后，可以根据数据进行 UI 渲染并引导用户输入/选择，然后再次调用本接口继续工作流：
+
+- 用户选择：直接将选择结果作为 user message 的 content 传入。
+- 表单输入：将输入内容以对象形式序列化为字符串，作为 user message 的 content 传入；务必确保 `chatId` 一致。
+
+## 请求参数
+
+### Request Body 请求体（`application/json`）
+
+#### 各分支公共字段
+
+| 字段                  | 类型       | 必填 | 默认值  | 约束与说明                                                       |
+| --------------------- | ---------- | ---- | ------- | ---------------------------------------------------------------- |
+| `chatId`              | `string`   | 否   | -       | 会话 ID；未传入或传入空字符串时自动生成新会话 ID。最大长度：1024 |
+| `metadata`            | `object`   | 否   | -       | 元数据                                                           |
+| `messages`            | `object[]` | 否   | `[]`    | 消息列表                                                         |
+| `stream`              | `boolean`  | 否   | `false` | 是否流式返回                                                     |
+| `variables`           | `object`   | 否   | `{}`    | 全局变量或插件输入                                               |
+| `responseChatItemId`  | `string`   | 否   | -       | 自定义响应的 assistant 的消息 ID，如果不传入，则自动生成一个     |
+| `detail`              | `boolean`  | 否   | `false` | 是否返回详细信息，包括 reasoning_content, tool_calls, usage 等   |
+| `retainDatasetCite`   | `boolean`  | 否   | `false` | 是否保留数据集引用                                               |
+| `showSkillReferences` | `boolean`  | 否   | `false` | 是否显示技能引用                                                 |
+
+**互斥参数分支（`anyOf` 选填其一）**
+
+- **应用会话**
+
+通过 appId 定位应用，使用 API Key 或登录态鉴权。API Key 调用可省略 `body.appId`，由请求头的 apiKey-appId 后缀或旧 API Key 绑定应用补足；登录态调用必须传 appId。应用 Key 不支持代理团队成员。
+
+| 字段    | 类型     | 必填 | 默认值 | 约束与说明                                                                                                                                                                   |
+| ------- | -------- | ---- | ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `appId` | `string` | 是   | -      | 应用 ID。APP API Key 忽略该字段及 SDK 后缀，以 Key 绑定应用为准；个人密钥按 `body.appId` \> Authorization 的 key-appId 后缀解析。后缀不写入数据库。正则：`^[0-9a-fA-F]{24}$` |
+
+**默认身份**: 不传 customUid 和 authProxy，沿用凭证对应的团队成员身份。适用于直接以当前鉴权成员调用应用。
+
+**自定义使用者**: 通过 customUid 对接自己平台的使用者，不改变鉴权成员及权限。发起对话时作为使用者和工作流 userId；管理对话时按该值限制使用者范围。
+
+| 字段        | 类型     | 必填 | 默认值 | 约束与说明                                                                                                                                                                                                                                                                                              |
+| ----------- | -------- | ---- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `customUid` | `string` | 是   | -      | API Key 调用时由接入方后端提供的使用者 ID，FastGPT 4.18.0 及以上支持，最长 1024 字符；不改变鉴权成员，与 authProxy 互斥。新会话空字符串沿用默认使用者；已有会话必须与首次使用者一致，已绑定 customUid 后漏传、传空或更换均拒绝；分享链接使用 `outLinkAuthData.outLinkUid`，不使用此字段。最大长度：1024 |
+
+**代理团队成员**: 通过 authProxy 代表同团队成员执行，解析出有效 tmbId 后按该成员权限校验。仅开启代理权限的个人密钥可用，与 customUid 互斥。
+
+| 字段        | 类型     | 必填 | 默认值 | 约束与说明                                                                                                                                                         |
+| ----------- | -------- | ---- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `authProxy` | `object` | 是   | -      | API Key 代理调用身份，与 customUid 互斥，外链会话不支持。按团队成员 ID 或用户名指定；二者同时传入时优先使用 tmbId，解析时过滤 username；tmbId 无效时不回退到用户名 |
+
+- **APP API Key（无需 appId）**
+
+使用绑定应用的 APP API Key 时不需要 appId，直接使用 Key 的绑定；身份支持默认身份或 customUid，不支持 authProxy。兼容个人密钥的 OpenAI SDK key-appId 后缀，其代理身份规则同应用会话；普通个人密钥或登录态必须显式提供 appId。
+
+**默认身份**: 不传 customUid 和 authProxy，沿用凭证对应的团队成员身份。适用于直接以当前鉴权成员调用应用。
+
+**自定义使用者**: 通过 customUid 对接自己平台的使用者，不改变鉴权成员及权限。发起对话时作为使用者和工作流 userId；管理对话时按该值限制使用者范围。
+
+| 字段        | 类型     | 必填 | 默认值 | 约束与说明                                                                                                                                                                                                                                                                                              |
+| ----------- | -------- | ---- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `customUid` | `string` | 是   | -      | API Key 调用时由接入方后端提供的使用者 ID，FastGPT 4.18.0 及以上支持，最长 1024 字符；不改变鉴权成员，与 authProxy 互斥。新会话空字符串沿用默认使用者；已有会话必须与首次使用者一致，已绑定 customUid 后漏传、传空或更换均拒绝；分享链接使用 `outLinkAuthData.outLinkUid`，不使用此字段。最大长度：1024 |
+
+- **外链会话**
+
+通过 outLinkAuthData 解析真实应用，使用者由 outLinkUid 及外链鉴权结果决定；优先于 appId 和请求头身份，受保护外链仍需 token/Cookie 校验登录态。外链校验失败时不会回退到普通应用鉴权，且不支持 authProxy。
+
+| 字段                         | 类型     | 必填 | 默认值 | 约束与说明                                                                                                                      |
+| ---------------------------- | -------- | ---- | ------ | ------------------------------------------------------------------------------------------------------------------------------- |
+| `outLinkAuthData`            | `object` | 是   | -      | 外链鉴权对象，包含 shareId 和 outLinkUid。优先于 appId，忽略低优先级字段；允许同时携带 token/Cookie，受保护外链仍需校验登录态。 |
+| `outLinkAuthData.shareId`    | `string` | 是   | -      | 分享链接 ID。最小长度：1                                                                                                        |
+| `outLinkAuthData.outLinkUid` | `string` | 是   | -      | 外链用户 ID。最小长度：1                                                                                                        |
+
+#### 多态字段明细：`messages`
+
+- **变体 1** ( `role="system"` ): `role` , `content` , `name` , `reasoning_content` , `dataId` , `hideInUI`
+- **变体 2** ( `role="developer"` ): `role` , `content` , `name` , `reasoning_content` , `dataId` , `hideInUI`
+- **变体 3** ( `role="user"` ): `role` , `content` , `name` , `reasoning_content` , `dataId` , `hideInUI`
+- **变体 4** ( `role="assistant"` ): `role` , `content` , `tool_calls` , `interactive` , `audio` , `function_call` , `refusal` , `name`
+- **变体 5** ( `role="tool"` ): `role` , `content` , `tool_call_id` , `name` , `reasoning_content` , `dataId` , `hideInUI`
+- **变体 6** ( `role="function"` ): `role` , `content` , `name` , `reasoning_content` , `dataId` , `hideInUI`
+
+## 请求示例
+
+调用前请将 `YOUR_API_KEY` 与示例 ID 替换为真实值；私有化部署实例请将基础域名替换为 `<instance>/api`。
+
+### cURL 请求示例
+
+```bash
+curl --fail-with-body -X POST "https://cloud.fastgpt.cn/api/v1/chat/completions" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  --data-raw '{
+  "appId": "68ad85a7463006c963799a05"
+}'
+```
+
+### 最小合法 JSON 请求体示例
+
+```json
+{
+  "appId": "68ad85a7463006c963799a05"
+}
+```
+
+## 响应结构与示例
+
+### HTTP 200
+
+**Content-Type** : `application/json`
+
+| 字段                                  | 类型              | 必填 | 默认值 | 约束与说明                                                                                                                                                                                                                                                                                                                                                         |
+| ------------------------------------- | ----------------- | ---- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `id`                                  | `string`          | 是   | -      | 对话 ID（chatId）                                                                                                                                                                                                                                                                                                                                                  |
+| `title`                               | `string`          | 否   | -      | 未命名会话标题生成成功时返回的对话标题                                                                                                                                                                                                                                                                                                                             |
+| `model`                               | `""`              | 是   | -      | 模型名称，v1 接口固定为空字符串。固定值：`""`                                                                                                                                                                                                                                                                                                                      |
+| `usage`                               | `object`          | 是   | -      | Token 用量。v1 接口为占位值，需要时请从 responseData 计算                                                                                                                                                                                                                                                                                                          |
+| `usage.prompt_tokens`                 | `1`               | 是   | -      | 固定为 1，需要从 detail 中计算每一个节点的 token 数。固定值：`1`                                                                                                                                                                                                                                                                                                   |
+| `usage.completion_tokens`             | `1`               | 是   | -      | 固定为 1，需要从 detail 中计算每一个节点的 token 数。固定值：`1`                                                                                                                                                                                                                                                                                                   |
+| `usage.total_tokens`                  | `1`               | 是   | -      | 固定为 1，需要从 detail 中计算每一个节点的 token 数。固定值：`1`                                                                                                                                                                                                                                                                                                   |
+| `choices`                             | `object[]`        | 是   | -      | 回复选项列表                                                                                                                                                                                                                                                                                                                                                       |
+| `choices[].message`                   | `object`          | 是   | -      | 助手消息                                                                                                                                                                                                                                                                                                                                                           |
+| `choices[].message.role`              | `"assistant"`     | 是   | -      | 消息角色。固定值：`"assistant"`                                                                                                                                                                                                                                                                                                                                    |
+| `choices[].message.content`           | `string \| array` | 是   | -      | 消息内容。普通对话为字符串；detail=true 或工作流命中交互节点时，可能为按字段名区分的对象数组（如 text / interactive / tool / file / reasoning）。v1 会额外补充 type 字段，取值为 text / interactive / tool / file / reasoning；v2 不补充 type。当元素包含 interactive 字段时，只返回交互展示配置，不返回 entryNodeIds / memoryEdges / nodeOutputs 等内部运行态字段 |
+| `choices[].message.reasoning_content` | `string`          | 否   | -      | 思考过程内容（仅推理模型有）                                                                                                                                                                                                                                                                                                                                       |
+| `choices[].finish_reason`             | `string`          | 是   | -      | 完成原因，例如 stop                                                                                                                                                                                                                                                                                                                                                |
+| `choices[].index`                     | `number`          | 是   | -      | 选项索引                                                                                                                                                                                                                                                                                                                                                           |
+| `responseData`                        | `object[]`        | 否   | -      | 各节点详细响应数据（仅 detail=true 时返回）。每项是一个节点的执行结果，常见字段如 moduleName / moduleType / runningTime / quoteList 等                                                                                                                                                                                                                             |
+| `newVariables`                        | `object`          | 否   | -      | 工作流执行后更新的变量（仅 detail=true 时返回）                                                                                                                                                                                                                                                                                                                    |
+
+**Content-Type** : `text/event-stream`
+
+### HTTP 409
+
+同会话已有生成时拒绝本次发送，本次消息不会写入数据库。非流式请求返回 HTTP 409；流式请求通过 error 事件返回同一错误结构。`data.responseChatItemId` 是应恢复的已有 AI 消息 ID；交互续跑返回 `data.reusePreviousAi` =true，表示刷新记录后复用最新 AI。客户端应先回填被拒绝的输入，再恢复原有轮次。
+
+**Content-Type** : `application/json`
+
+| 字段                      | 类型                 | 必填 | 默认值 | 约束与说明                                                                                                                |
+| ------------------------- | -------------------- | ---- | ------ | ------------------------------------------------------------------------------------------------------------------------- |
+| `code`                    | `504001`             | 是   | -      | 固定值：`504001`                                                                                                          |
+| `statusText`              | `"chatIsGenerating"` | 是   | -      | 固定值：`"chatIsGenerating"`                                                                                              |
+| `message`                 | `string`             | 是   | -      | 错误展示文案，已知词条按请求语言翻译；业务判断应使用 code 或 statusText。缺省语言为英文，翻译不可用时保留原文或词条 key。 |
+| `data`                    | `object`             | 是   | -      | -                                                                                                                         |
+| `data.responseChatItemId` | `string`             | 否   | -      | 当前服务端生成轮次的 AI 消息 ID；被拒绝的新发送未创建消息，客户端应恢复此 ID。最小长度：1                                 |
+| `data.reusePreviousAi`    | `true`               | 否   | -      | 当前执行是复用最新 AI 消息的交互续跑；恢复前刷新记录，允许复用该 AI。固定值：`true`                                       |
+
+### 非流式 JSON 响应示例（v1）
+
+#### 精简 JSON
+
+detail=false, stream=false；仅包含基础回复字段。
+
+```json
+{
+  "id": "adsfasf",
+  "title": "铃芽之旅导演",
+  "model": "",
+  "usage": {
+    "prompt_tokens": 1,
+    "completion_tokens": 1,
+    "total_tokens": 1
+  },
+  "choices": [
+    {
+      "message": {
+        "role": "assistant",
+        "content": "电影《铃芽之旅》的导演是新海诚。"
+      },
+      "finish_reason": "stop",
+      "index": 0
+    }
+  ]
+}
+```
+
+#### 详细 JSON
+
+detail=true, stream=false；包含 responseData 和 newVariables。
+
+```json
+{
+  "responseData": [
+    {
+      "moduleName": "Dataset Search",
+      "price": 1.2000000000000002,
+      "model": "Embedding-2",
+      "tokens": 6,
+      "similarity": 0.61,
+      "limit": 3
+    },
+    {
+      "moduleName": "AI Chat",
+      "price": 454.5,
+      "model": "FastAI-4k",
+      "tokens": 303,
+      "question": "导演是谁",
+      "answer": "电影《铃芽之旅》的导演是新海诚。",
+      "maxToken": 2050,
+      "quoteList": [
+        {
+          "dataset_id": "646627f4f7b896cfd8910e38",
+          "id": "8099",
+          "q": "本作的主人公是谁？",
+          "a": "本作的主人公是名叫铃芽的少女。",
+          "source": "手动修改"
+        },
+        {
+          "dataset_id": "646627f4f7b896cfd8910e38",
+          "id": "19339",
+          "q": "电影《铃芽之旅》的导演是谁？",
+          "a": "电影《铃芽之旅》的导演是新海诚。",
+          "source": "手动修改"
+        }
+      ],
+      "completeMessages": [
+        {
+          "obj": "System",
+          "value": "下面是知识库内容:\n1. [本作的主人公是谁？\n本作的主人公是名叫铃芽的少女。]\n2. [电影《铃芽之旅》的导演是谁？\n电影《铃芽之旅》的导演是新海诚。]\n"
+        },
+        {
+          "obj": "Human",
+          "value": "导演是谁"
+        },
+        {
+          "obj": "AI",
+          "value": "电影《铃芽之旅》的导演是新海诚。"
+        }
+      ]
+    }
+  ],
+  "newVariables": {
+    "uid": "asdfadsfasfd2323",
+    "name": "张三"
+  },
+  "id": "",
+  "title": "铃芽之旅导演",
+  "model": "",
+  "usage": {
+    "prompt_tokens": 1,
+    "completion_tokens": 1,
+    "total_tokens": 1
+  },
+  "choices": [
+    {
+      "message": {
+        "role": "assistant",
+        "content": "电影《铃芽之旅》的导演是新海诚。"
+      },
+      "finish_reason": "stop",
+      "index": 0
+    }
+  ]
+}
+```
+
+#### 用户选择
+
+detail=true；从 choices[].message.content 获取 interactive 展示配置。
+
+```json
+{
+  "id": "chatId",
+  "model": "",
+  "usage": {
+    "prompt_tokens": 1,
+    "completion_tokens": 1,
+    "total_tokens": 1
+  },
+  "choices": [
+    {
+      "message": {
+        "role": "assistant",
+        "content": [
+          {
+            "type": "interactive",
+            "interactive": {
+              "type": "userSelect",
+              "params": {
+                "description": "测试",
+                "userSelectOptions": [
+                  {
+                    "value": "Confirm",
+                    "key": "option1"
+                  },
+                  {
+                    "value": "Cancel",
+                    "key": "option2"
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "finish_reason": "stop",
+      "index": 0
+    }
+  ]
+}
+```
+
+#### 表单输入
+
+detail=true；按表单字段名提交序列化 JSON，并保持 chatId。
+
+```json
+{
+  "id": "chatId",
+  "model": "",
+  "usage": {
+    "prompt_tokens": 1,
+    "completion_tokens": 1,
+    "total_tokens": 1
+  },
+  "choices": [
+    {
+      "message": {
+        "role": "assistant",
+        "content": [
+          {
+            "type": "interactive",
+            "interactive": {
+              "type": "userInput",
+              "params": {
+                "description": "测试",
+                "inputForm": [
+                  {
+                    "type": "input",
+                    "key": "测试 1",
+                    "label": "测试 1",
+                    "description": "",
+                    "value": "",
+                    "defaultValue": "",
+                    "valueType": "string",
+                    "required": false,
+                    "list": [
+                      {
+                        "label": "",
+                        "value": ""
+                      }
+                    ]
+                  },
+                  {
+                    "type": "numberInput",
+                    "key": "测试 2",
+                    "label": "测试 2",
+                    "description": "",
+                    "value": "",
+                    "defaultValue": "",
+                    "valueType": "number",
+                    "required": false,
+                    "list": [
+                      {
+                        "label": "",
+                        "value": ""
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "finish_reason": "stop",
+      "index": 0
+    }
+  ]
+}
+```
+
+### 流式 SSE 完整过程示例（v1）
+
+#### 精简 SSE
+
+detail=false, stream=true；普通成功回答仅包含 data 帧，最后为 [DONE]。
+
+```text
+data: {"choices":[{"delta":{"role":"assistant","content":""},"index":0,"finish_reason":null}]}
+
+data: {"choices":[{"delta":{"role":"assistant","content":"电影"},"index":0,"finish_reason":null}]}
+
+data: {"choices":[{"delta":{"role":"assistant","content":"《铃芽之旅》的导演是新海诚。"},"index":0,"finish_reason":null}]}
+
+data: {"choices":[{"delta":{"role":"assistant","content":null},"index":0,"finish_reason":"stop"}]}
+
+data: [DONE]
+```
+
+#### 完整过程
+
+detail=true, stream=true；节点详情汇总为 flowResponses。示意顺序不代表固定时序，标题可能提前产生。
+
+```text
+event: flowNodeStatus
+data: {"status":"running","name":"知识库搜索"}
+
+event: answer
+data: {"choices":[{"delta":{"role":"assistant","content":"电影"},"index":0,"finish_reason":null}]}
+
+event: answer
+data: {"choices":[{"delta":{"role":"assistant","content":"《铃芽之旅》的导演是新海诚。"},"index":0,"finish_reason":null}]}
+
+event: updateVariables
+data: {"lastQuestion":"导演是谁","searchCount":1,"found":true,"movieNames":["铃芽之旅"],"director":{"name":"新海诚"},"nextPage":null}
+
+event: workflowDuration
+data: {"durationSeconds":2.41}
+
+event: chatTitle
+data: {"title":"铃芽之旅导演"}
+
+event: answer
+data: {"choices":[{"delta":{"role":"assistant","content":null},"index":0,"finish_reason":"stop"}]}
+
+event: flowResponses
+data: [{"id":"response-ai-1","nodeId":"ai-1","moduleType":"chatNode","moduleName":"AI 对话","runningTime":1.86,"textOutput":"电影《铃芽之旅》的导演是新海诚。"}]
+
+event: answer
+data: [DONE]
+```
+
+#### 用户选择
+
+detail=true；收到 interactive 后展示选项，提交选择值继续执行。
+
+```text
+event: interactive
+data: {"interactive":{"type":"userSelect","params":{"description":"测试","userSelectOptions":[{"value":"Confirm","key":"option1"},{"value":"Cancel","key":"option2"}]}}}
+
+event: answer
+data: [DONE]
+```
+
+#### 表单输入
+
+detail=true；收到 interactive 后展示表单，提交表单 JSON 字符串继续执行。
+
+```text
+event: interactive
+data: {"interactive":{"type":"userInput","params":{"description":"测试","inputForm":[{"type":"input","key":"测试 1","label":"测试 1","description":"","value":"","defaultValue":"","valueType":"string","required":false,"list":[{"label":"","value":""}]},{"type":"numberInput","key":"测试 2","label":"测试 2","description":"","value":"","defaultValue":"","valueType":"number","required":false,"list":[{"label":"","value":""}]}]}}}
+
+event: answer
+data: [DONE]
+```
+
+### SSE `event` 事件类型详细示例（v1）
+
+#### `answer` · 回答增量
+
+包括空文本心跳、回答文本、reasoning_content 思考增量、stop 片段和 [DONE] 结束标记；下方分别展示。
+
+```text
+: 1. 空文本心跳
+event: answer
+data: {"choices":[{"delta":{"role":"assistant","content":""},"index":0,"finish_reason":null}]}
+
+: 2. 回答文本
+event: answer
+data: {"choices":[{"delta":{"role":"assistant","content":"电影《铃芽之旅》的导演是新海诚。"},"index":0,"finish_reason":null}]}
+
+: 3. 思考增量
+event: answer
+data: {"choices":[{"delta":{"role":"assistant","reasoning_content":"先核对电影的导演信息。"},"index":0,"finish_reason":null}]}
+
+: 4. 回答停止片段
+event: answer
+data: {"choices":[{"delta":{"role":"assistant","content":null},"index":0,"finish_reason":"stop"}]}
+
+: 5. 整轮流结束
+event: answer
+data: [DONE]
+```
+
+#### `fastAnswer` · 指定回复
+
+用于指定回复等即时输出；分别展示文本增量和停止片段。
+
+```text
+: 1. 指定回复文本
+event: fastAnswer
+data: {"choices":[{"delta":{"role":"assistant","content":"正在查询相关资料。"},"index":0,"finish_reason":null}]}
+
+: 2. 指定回复停止片段
+event: fastAnswer
+data: {"choices":[{"delta":{"role":"assistant","content":null},"index":0,"finish_reason":"stop"}]}
+```
+
+#### `flowNodeStatus` · 节点状态
+
+节点开始运行时发送；分享调用受运行状态展示权限控制。
+
+```text
+event: flowNodeStatus
+data: {"status":"running","name":"知识库搜索"}
+```
+
+#### `flowResponses` · 节点响应汇总
+
+v1 在本轮结束时发送节点响应数组，位于 [DONE] 之前。
+
+```text
+event: flowResponses
+data: [{"id":"response-ai-1","nodeId":"ai-1","moduleType":"chatNode","moduleName":"AI 对话","runningTime":1.86,"textOutput":"电影《铃芽之旅》的导演是新海诚。"}]
+```
+
+#### `toolCall` · 工具调用
+
+初始化工具卡片；分别展示普通调用和 hideDetails 隐藏详情的调用。
+
+```text
+: 1. 普通工具调用
+event: toolCall
+data: {"tool":{"id":"call-search-1","toolName":"知识库搜索","toolAvatar":"/imgs/workflow/db.png","functionName":"dataset_search","params":"{\"query\":\"铃芽之旅导演\"}"},"responseValueId":"call-search-1"}
+
+: 2. 隐藏工具参数和响应详情
+event: toolCall
+data: {"tool":{"id":"call-search-1","toolName":"知识库搜索","toolAvatar":"/imgs/workflow/db.png","functionName":"dataset_search","params":"","hideDetails":true},"responseValueId":"call-search-1"}
+```
+
+#### `toolParams` · 工具参数增量
+
+按 tool.ID 追加或合并工具参数，不代表工具已执行完成。
+
+```text
+event: toolParams
+data: {"tool":{"id":"call-search-1","params":"{\"query\":\"铃芽之旅导演\"}"},"responseValueId":"call-search-1"}
+```
+
+#### `toolResponse` · 工具响应
+
+按 tool.ID 关联工具执行结果；response 支持字符串或 null。
+
+```text
+: 1. 字符串响应
+event: toolResponse
+data: {"tool":{"id":"call-search-1","response":"导演：新海诚"},"responseValueId":"call-search-1"}
+
+: 2. 空响应
+event: toolResponse
+data: {"tool":{"id":"call-search-1","response":null},"responseValueId":"call-search-1"}
+```
+
+#### `updateVariables` · 变量更新
+
+更新本轮工作流变量；变量值可以是字符串、数字、布尔值、数组、对象或 null。
+
+```text
+event: updateVariables
+data: {"lastQuestion":"导演是谁","searchCount":1,"found":true,"movieNames":["铃芽之旅"],"director":{"name":"新海诚"},"nextPage":null}
+```
+
+#### `workflowDuration` · 执行耗时
+
+本轮工作流总耗时，durationSeconds 的单位为秒。
+
+```text
+event: workflowDuration
+data: {"durationSeconds":2.41}
+```
+
+#### `chatTitle` · 会话标题
+
+仅 detail=true、未命名会话标题生成成功时发送；不会覆盖手动标题。
+
+```text
+event: chatTitle
+data: {"title":"铃芽之旅导演"}
+```
+
+#### `interactive` · 交互配置
+
+分别展示用户选择、表单、Agent 追问、欠费暂停及子流程包装。包装类型通过 `params.childrenResponse` 取内层交互；示例省略工作流运行态字段，各分支不会在同一轮依次出现。
+
+```text
+: 1. 用户选择：userSelect
+event: interactive
+data: {"interactive":{"type":"userSelect","params":{"description":"测试","userSelectOptions":[{"value":"Confirm","key":"option1"},{"value":"Cancel","key":"option2"}]}}}
+
+: 2. 表单输入：userInput
+event: interactive
+data: {"interactive":{"type":"userInput","params":{"description":"测试","inputForm":[{"type":"input","key":"测试 1","label":"测试 1","description":"","value":"","defaultValue":"","valueType":"string","required":false,"list":[{"label":"","value":""}]},{"type":"numberInput","key":"测试 2","label":"测试 2","description":"","value":"","defaultValue":"","valueType":"number","required":false,"list":[{"label":"","value":""}]}]}}}
+
+: 3. Agent 追问：agentAsk
+event: interactive
+data: {"interactive":{"type":"agentAsk","params":{"toolCallId":"ask-1","arguments":"{\"reason\":\"需要确认查询范围后继续。\",\"blockerType\":\"user_choice\",\"questions\":[{\"question\":\"要查询哪个范围？\",\"options\":[{\"summary\":\"只查询当前电影\",\"value\":\"current_movie\"},{\"summary\":\"查询导演的全部作品\",\"value\":\"all_movies\"}]}]}"}}}
+
+: 4. 欠费暂停：paymentPause
+event: interactive
+data: {"interactive":{"type":"paymentPause","params":{"description":"积分不足，请充值后继续。"}}}
+
+: 5. 子工作流包装：childrenInteractive
+event: interactive
+data: {"interactive":{"type":"childrenInteractive","params":{"childrenResponse":{"type":"userSelect","params":{"description":"测试","userSelectOptions":[{"value":"Confirm","key":"option1"},{"value":"Cancel","key":"option2"}]}}}}}
+
+: 6. 工具子流程包装：toolChildrenInteractive
+event: interactive
+data: {"interactive":{"type":"toolChildrenInteractive","params":{"childrenResponse":{"type":"userInput","params":{"description":"测试","inputForm":[{"type":"input","key":"测试 1","label":"测试 1","description":"","value":"","defaultValue":"","valueType":"string","required":false,"list":[{"label":"","value":""}]},{"type":"numberInput","key":"测试 2","label":"测试 2","description":"","value":"","defaultValue":"","valueType":"number","required":false,"list":[{"label":"","value":""}]}]}},"toolCallId":"call-search-1"}}}
+
+: 7. 循环子流程包装：loopInteractive
+event: interactive
+data: {"interactive":{"type":"loopInteractive","params":{"childrenResponse":{"type":"userSelect","params":{"description":"测试","userSelectOptions":[{"value":"Confirm","key":"option1"},{"value":"Cancel","key":"option2"}]}},"currentIndex":0,"loopResult":[]}}}
+
+: 8. 循环运行包装：loopRunInteractive
+event: interactive
+data: {"interactive":{"type":"loopRunInteractive","params":{"childrenResponse":{"type":"userInput","params":{"description":"测试","inputForm":[{"type":"input","key":"测试 1","label":"测试 1","description":"","value":"","defaultValue":"","valueType":"string","required":false,"list":[{"label":"","value":""}]},{"type":"numberInput","key":"测试 2","label":"测试 2","description":"","value":"","defaultValue":"","valueType":"number","required":false,"list":[{"label":"","value":""}]}]}},"iteration":1,"loopHistory":[]}}}
+```
+
+#### `planStatus` · 计划生成状态
+
+仅相关能力启用时发送；分别展示 generating 生成中和 updating 更新中。
+
+```text
+: 1. 生成计划
+event: planStatus
+data: {"planStatus":{"status":"generating"}}
+
+: 2. 更新计划
+event: planStatus
+data: {"planStatus":{"status":"updating"}}
+```
+
+#### `plan` · Agent 计划
+
+使用 plan.planId 标识计划，steps[].ID 标识步骤，步骤状态随运行更新。
+
+```text
+event: plan
+data: {"plan":{"planId":"plan-1","name":"查询导演信息","steps":[{"id":"step-1","name":"确认电影名称","status":"done"},{"id":"step-2","name":"检索电影资料","status":"in_progress"},{"id":"step-3","name":"整理导演信息","status":"pending"},{"id":"step-4","name":"核对付费资料","status":"blocked","note":"等待用户授权"},{"id":"step-5","name":"补充无关作品","status":"skipped","note":"不在本次范围内"}]}}
+```
+
+#### `skillCall` · 技能调用
+
+加载技能说明时发送技能展示信息，仅相关能力启用时出现。
+
+```text
+event: skillCall
+data: {"skill":{"id":"skill-call-1","skillName":"资料检索","skillAvatar":"/icon/logo.svg","description":"查询相关资料","skillMdPath":"/skills/search/SKILL.md"}}
+```
+
+#### `sandboxStatus` · 沙箱状态
+
+展示各个可见 phase；ready 表示可执行工具，failed 可携带 message，技能部署阶段可携带 skillName。这些是可选分支，并非固定执行顺序。
+
+```text
+: 1. 阶段：checkExisting
+event: sandboxStatus
+data: {"sandboxId":"sandbox-1","phase":"checkExisting"}
+
+: 2. 阶段：connecting
+event: sandboxStatus
+data: {"sandboxId":"sandbox-1","phase":"connecting","isWarmStart":true}
+
+: 3. 阶段：fetchSkills
+event: sandboxStatus
+data: {"sandboxId":"sandbox-1","phase":"fetchSkills"}
+
+: 4. 阶段：creatingContainer
+event: sandboxStatus
+data: {"sandboxId":"sandbox-1","phase":"creatingContainer"}
+
+: 5. 阶段：deployingSkills
+event: sandboxStatus
+data: {"sandboxId":"sandbox-1","phase":"deployingSkills","skillName":"资料检索"}
+
+: 6. 阶段：downloadingPackage
+event: sandboxStatus
+data: {"sandboxId":"sandbox-1","phase":"downloadingPackage","skillName":"资料检索"}
+
+: 7. 阶段：uploadingPackage
+event: sandboxStatus
+data: {"sandboxId":"sandbox-1","phase":"uploadingPackage","skillName":"资料检索"}
+
+: 8. 阶段：extractingPackage
+event: sandboxStatus
+data: {"sandboxId":"sandbox-1","phase":"extractingPackage","skillName":"资料检索"}
+
+: 9. 阶段：lazyInit
+event: sandboxStatus
+data: {"sandboxId":"sandbox-1","phase":"lazyInit"}
+
+: 10. 阶段：upgrading
+event: sandboxStatus
+data: {"sandboxId":"sandbox-1","phase":"upgrading"}
+
+: 11. 阶段：ready
+event: sandboxStatus
+data: {"sandboxId":"sandbox-1","phase":"ready","isWarmStart":true}
+
+: 12. 阶段：failed
+event: sandboxStatus
+data: {"sandboxId":"sandbox-1","phase":"failed","message":"沙箱初始化失败，请稍后重试。"}
+```
+
+#### `error` · 流式错误
+
+流已建立后的错误，包括仅 message 的通用错误，以及含 code / statusText / data 的业务错误；不能仅凭 HTTP 200 判断成功。
+
+```text
+: 1. 通用错误
+event: error
+data: {"message":"模型请求失败，请稍后重试"}
+
+: 2. 业务错误
+event: error
+data: {"code":510003,"statusText":"runtimeUpgradeInProgress","message":"沙箱正在升级，请稍后重试","data":null,"httpStatus":409}
+```

@@ -1,0 +1,68 @@
+---
+title: 'Create Collection Download Ticket'
+seoTitle: 'Create Collection Download Ticket - POST /api/core/dataset/collection/getDownloadTicket | FastGPT OpenAPI'
+description: 'Validate access permissions and issue a short-lived single-use ticket for batch downloading dataset collection files.'
+---
+
+## Endpoint Overview
+
+- **Method** : `POST`
+- **Path** : `/api/core/dataset/collection/getDownloadTicket`
+- **Module** : Datasets / Collections
+- **Authentication** : `Authorization: Bearer <apiKey>`—Personal API Key (access scoped by team member permissions) (see [API Getting Started](/en/openapi/intro) )
+- **Interactive Try-It-Out** : [Open in Scalar API Explorer](https://cloud.fastgpt.io/apidoc/systemopenapi#tag/%E9%9B%86%E5%90%88%E7%AE%A1%E7%90%86/POST/core/dataset/collection/getDownloadTicket) (self-hosted instances: replace the origin with `<instance>/apidoc/systemopenapi#tag/%E9%9B%86%E5%90%88%E7%AE%A1%E7%90%86/POST/core/dataset/collection/getDownloadTicket` )
+
+## Description & Notes
+
+Validate access permissions and issue a short-lived single-use ticket for batch downloading dataset collections.
+
+## Request Parameters
+
+### Request Body ( `application/json` )
+
+| Field           | Type       | Required | Default | Constraints & Description                       |
+| --------------- | ---------- | -------- | ------- | ----------------------------------------------- |
+| `datasetId`     | `string`   | Yes      | -       | Dataset ID. pattern: `^[0-9a-fA-F]{24}$`        |
+| `collectionIds` | `string[]` | Yes      | -       | List of collection IDs to download. minItems: 1 |
+
+## Request Examples
+
+Replace `YOUR_API_KEY` and placeholder IDs before running. Self-hosted users should replace the base URL with `<instance>/api` .
+
+### cURL Example
+
+```bash
+curl --fail-with-body -X POST "https://cloud.fastgpt.io/api/core/dataset/collection/getDownloadTicket" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  --data-raw '{
+  "datasetId": "68ad85a7463006c963799a05",
+  "collectionIds": [
+    "68ad85a7463006c963799a06"
+  ]
+}'
+```
+
+### Minimal Valid JSON Body
+
+```json
+{
+  "datasetId": "68ad85a7463006c963799a05",
+  "collectionIds": ["68ad85a7463006c963799a06"]
+}
+```
+
+## Response Schema & Examples
+
+Successful `/api/*` calls return the standard FastGPT envelope `{ "code": 200, "statusText": "", "message": "", "data": ... }` , where `data` matches the `200` schema below (and `null` when no payload schema is declared).
+
+### HTTP 200
+
+Successfully returned short-lived single-use download ticket
+
+**Content-Type** : `application/json`
+
+| Field       | Type     | Required | Default | Constraints & Description                                                                                                                                                                                                                                                                                                     |
+| ----------- | -------- | -------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ticket`    | `string` | Yes      | -       | Short-lived single-use download ticket. minLength: 1                                                                                                                                                                                                                                                                          |
+| `expiresAt` | `string` | Yes      | -       | Ticket expiration timestamp. pattern: `^(?:(?:\d\d[2468][048]\|\d\d[13579][26]\|\d\d0[48]\|[02468][048]00\|[13579][26]00)-02-29\|\d{4}-(?:(?:0[13578]\|1[02])-(?:0[1-9]\|[12]\d\|3[01])\|(?:0[469]\|11)-(?:0[1-9]\|[12]\d\|30)\|(?:02)-(?:0[1-9]\|1\d\|2[0-8])))T(?:(?:[01]\d\|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$` |

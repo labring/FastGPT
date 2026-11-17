@@ -1,0 +1,81 @@
+---
+title: 'Create Collection from Link'
+seoTitle: 'Create Collection from Link - POST /api/core/dataset/collection/create/link | FastGPT OpenAPI'
+description: 'Fetch web page content from a specified URL, split it using chunking settings, and create a dataset collection.'
+---
+
+## Endpoint Overview
+
+- **Method** : `POST`
+- **Path** : `/api/core/dataset/collection/create/link`
+- **Module** : Datasets / Create Collections
+- **Authentication** : `Authorization: Bearer <apiKey>`—Personal API Key (access scoped by team member permissions) (see [API Getting Started](/en/openapi/intro) )
+- **Interactive Try-It-Out** : [Open in Scalar API Explorer](https://cloud.fastgpt.io/apidoc/systemopenapi#tag/%E9%9B%86%E5%90%88%E5%88%9B%E5%BB%BA/POST/core/dataset/collection/create/link) (self-hosted instances: replace the origin with `<instance>/apidoc/systemopenapi#tag/%E9%9B%86%E5%90%88%E5%88%9B%E5%BB%BA/POST/core/dataset/collection/create/link` )
+
+## Description & Notes
+
+Fetch content from a specified web URL, create a collection, and trigger indexing training.
+
+## Request Parameters
+
+### Request Body ( `application/json` )
+
+| Field                       | Type                 | Required | Default | Constraints & Description                                                                                                  |
+| --------------------------- | -------------------- | -------- | ------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `trainingType`              | `string` (enum)      | No       | -       | Training mode. Allowed values: `chunk` , `qa` , `imageParse` , `backup` , `template` , `auto`                              |
+| `chunkTriggerType`          | `string` (enum)      | No       | -       | Chunk trigger mode. Allowed values: `minSize` , `forceChunk` , `maxSize`                                                   |
+| `chunkTriggerMinSize`       | `number`             | No       | -       | Minimum size threshold to trigger chunking                                                                                 |
+| `dataEnhanceCollectionName` | `boolean`            | No       | -       | Prepend collection name to chunks                                                                                          |
+| `imageIndex`                | `boolean`            | No       | -       | Enable image indexing                                                                                                      |
+| `autoIndexes`               | `boolean`            | No       | -       | Auto-generate vector indexes                                                                                               |
+| `indexPrefixTitle`          | `boolean`            | No       | -       | Prefix title for indexes                                                                                                   |
+| `chunkSettingMode`          | `string` (enum)      | No       | -       | Chunk setting preset ( `auto` , `custom` , or `intelligent` ). Allowed values: `auto` , `custom` , `intelligent`           |
+| `chunkSplitMode`            | `string` (enum)      | No       | -       | Chunk splitting mode. Allowed values: `paragraph` , `size` , `char`                                                        |
+| `paragraphChunkAIMode`      | `string` (enum)      | No       | -       | AI paragraph chunking mode. Allowed values: `auto` , `force` , `forbid`                                                    |
+| `paragraphChunkDeep`        | `number`             | No       | -       | Paragraph heading split depth                                                                                              |
+| `paragraphChunkMinSize`     | `number`             | No       | -       | Minimum paragraph chunk size                                                                                               |
+| `chunkSize`                 | `number`             | No       | -       | Target chunk size                                                                                                          |
+| `chunkSplitter`             | `string`             | No       | -       | Custom primary chunk separator                                                                                             |
+| `indexSize`                 | `number`             | No       | -       | Vector index chunk size                                                                                                    |
+| `qaPrompt`                  | `string`             | No       | -       | Custom prompt for Q&A extraction                                                                                           |
+| `parentId`                  | `string \| null`     | No       | -       | Parent folder ID                                                                                                           |
+| `metadata`                  | `object`             | No       | -       | Metadata                                                                                                                   |
+| `customPdfParse`            | `boolean`            | No       | -       | Custom PDF parser                                                                                                          |
+| `datasetId`                 | `string`             | Yes      | -       | Dataset ID                                                                                                                 |
+| `tags`                      | `string \| object[]` | No       | -       | List of collection tags. String items map to legacy `default_tag` tags; object items `{ tag, value }` resolve by tag name. |
+| `link`                      | `string`             | Yes      | -       | Source web page URL                                                                                                        |
+
+## Request Examples
+
+Replace `YOUR_API_KEY` and placeholder IDs before running. Self-hosted users should replace the base URL with `<instance>/api` .
+
+### cURL Example
+
+```bash
+curl --fail-with-body -X POST "https://cloud.fastgpt.io/api/core/dataset/collection/create/link" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  --data-raw '{
+  "datasetId": "string",
+  "link": "string"
+}'
+```
+
+### Minimal Valid JSON Body
+
+```json
+{
+  "datasetId": "string",
+  "link": "string"
+}
+```
+
+## Response Schema & Examples
+
+Successful `/api/*` calls return the standard FastGPT envelope `{ "code": 200, "statusText": "", "message": "", "data": ... }` , where `data` matches the `200` schema below (and `null` when no payload schema is declared).
+
+### HTTP 200
+
+Successfully returned collection ID and chunk insertion results
+
+Returns standard success envelope with `data: null` .

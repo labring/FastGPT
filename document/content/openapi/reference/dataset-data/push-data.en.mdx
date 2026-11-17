@@ -1,0 +1,78 @@
+---
+title: 'Push Data Items to Training Queue'
+seoTitle: 'Push Data Items to Training Queue - POST /api/core/dataset/data/pushData | FastGPT OpenAPI'
+description: 'Batch insert up to 200 structured data items with optional custom indexes into a dataset collection training queue.'
+---
+
+## Endpoint Overview
+
+- **Method** : `POST`
+- **Path** : `/api/core/dataset/data/pushData`
+- **Module** : Datasets / Dataset Data
+- **Authentication** : `Authorization: Bearer <apiKey>`—Personal API Key (access scoped by team member permissions) (see [API Getting Started](/en/openapi/intro) )
+- **Interactive Try-It-Out** : [Open in Scalar API Explorer](https://cloud.fastgpt.io/apidoc/systemopenapi#tag/%E6%95%B0%E6%8D%AE%E7%AE%A1%E7%90%86/POST/core/dataset/data/pushData) (self-hosted instances: replace the origin with `<instance>/apidoc/systemopenapi#tag/%E6%95%B0%E6%8D%AE%E7%AE%A1%E7%90%86/POST/core/dataset/data/pushData` )
+
+## Description & Notes
+
+Batch insert up to 200 data items into the collection training queue.
+
+## Request Parameters
+
+### Request Body ( `application/json` )
+
+| Field                   | Type            | Required | Default    | Constraints & Description                                                                                                                                                         |
+| ----------------------- | --------------- | -------- | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `collectionId`          | `string`        | Yes      | -          | Collection ID. pattern: `^[0-9a-fA-F]{24}$`                                                                                                                                       |
+| `data`                  | `object[]`      | Yes      | -          | List of data items (up to 200 per request). maxItems: 200                                                                                                                         |
+| `data[].q`              | `string`        | No       | -          | Primary chunk content / question                                                                                                                                                  |
+| `data[].a`              | `string`        | No       | -          | Supplementary answer / text                                                                                                                                                       |
+| `data[].imageId`        | `string`        | No       | -          | Image ID                                                                                                                                                                          |
+| `data[].chunkIndex`     | `number`        | No       | -          | Chunk index                                                                                                                                                                       |
+| `data[].indexes`        | `object[]`      | No       | -          | Additional vector indexes                                                                                                                                                         |
+| `data[].indexes[].type` | `string` (enum) | No       | `"custom"` | Index type (external callers omit or use `custom` ; other types are system-generated). Allowed values: `default` , `imageEmbedding` , `summary` , `question` , `image` , `custom` |
+| `data[].indexes[].text` | `string`        | Yes      | -          | Indexed text content by default; for `imageEmbedding` , the image `objectKey` or URL                                                                                              |
+| `data[].metadata`       | `object`        | No       | -          | Custom metadata                                                                                                                                                                   |
+| `trainingType`          | `string` (enum) | No       | -          | Training mode. Allowed values: `chunk` , `qa` , `imageParse` , `backup` , `template` , `auto`                                                                                     |
+| `indexSize`             | `number`        | No       | -          | Index chunk size limit                                                                                                                                                            |
+| `autoIndexes`           | `boolean`       | No       | -          | Whether to auto-generate vector indexes                                                                                                                                           |
+| `imageIndex`            | `boolean`       | No       | -          | Whether to generate image indexes                                                                                                                                                 |
+| `prompt`                | `string`        | No       | -          | Custom prompt                                                                                                                                                                     |
+| `billId`                | `string`        | No       | -          | Optional training billing ID; created automatically when omitted                                                                                                                  |
+| `trainingMode`          | `string` (enum) | No       | -          | **Deprecated** . Training mode. Allowed values: `chunk` , `qa` , `imageParse` , `backup` , `template` , `auto`                                                                    |
+
+## Request Examples
+
+Replace `YOUR_API_KEY` and placeholder IDs before running. Self-hosted users should replace the base URL with `<instance>/api` .
+
+### cURL Example
+
+```bash
+curl --fail-with-body -X POST "https://cloud.fastgpt.io/api/core/dataset/data/pushData" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  --data-raw '{
+  "collectionId": "68ad85a7463006c963799a06",
+  "data": [
+    {}
+  ]
+}'
+```
+
+### Minimal Valid JSON Body
+
+```json
+{
+  "collectionId": "68ad85a7463006c963799a06",
+  "data": [{}]
+}
+```
+
+## Response Schema & Examples
+
+Successful `/api/*` calls return the standard FastGPT envelope `{ "code": 200, "statusText": "", "message": "", "data": ... }` , where `data` matches the `200` schema below (and `null` when no payload schema is declared).
+
+### HTTP 200
+
+Successfully returned inserted item count
+
+Returns standard success envelope with `data: null` .

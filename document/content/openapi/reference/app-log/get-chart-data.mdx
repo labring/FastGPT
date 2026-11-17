@@ -1,0 +1,121 @@
+---
+title: '获取应用图表数据'
+seoTitle: '获取应用图表数据 - POST /api/proApi/core/app/logs/getChartData | FastGPT OpenAPI'
+description: '按绝对起止时间与固定时区偏移分组统计应用的用户增长、对话趋势与效果图表数据，支持按来源过滤与用户留存分析。'
+---
+
+## 端点概览
+
+- **HTTP 方法**：`POST`
+- **请求路径**：`/api/proApi/core/app/logs/getChartData`
+- **所属模块**：应用管理 / 应用日志
+- **鉴权方式**：`Authorization: Bearer <apiKey>`—支持 **应用 API Key**（无需 `appId`）与 **个人密钥**（需传 `appId`）（详见 [API 入门：完成首次请求](/zh-CN/openapi/intro)）
+- **在线调试**：[在云服务 Scalar 调试台打开](https://cloud.fastgpt.cn/apidoc/systemopenapi#tag/%E5%BA%94%E7%94%A8%E6%97%A5%E5%BF%97/POST/proApi/core/app/logs/getChartData)（自部署实例请将域名替换为 `<instance>/apidoc/systemopenapi#tag/%E5%BA%94%E7%94%A8%E6%97%A5%E5%BF%97/POST/proApi/core/app/logs/getChartData`）
+
+## 接口说明与注意事项
+
+严格按起止绝对时间查询，不扩展查询窗口；用户、对话及应用数据统一按开始时间自带的固定偏移分组，无偏移时使用服务器时区，不接收独立时区参数。
+
+## 请求参数
+
+### Request Body 请求体（`application/json`）
+
+#### 各分支公共字段
+
+| 字段           | 类型               | 必填 | 默认值 | 约束与说明                                                                                           |
+| -------------- | ------------------ | ---- | ------ | ---------------------------------------------------------------------------------------------------- |
+| `dateStart`    | `string`           | 是   | -      | 开始时间（包含），ISO 字符串保留时区偏移及毫秒；统计使用该固定偏移，未带偏移时按服务器时区，Z 为 UTC |
+| `dateEnd`      | `string`           | 是   | -      | 结束时间（包含），未带偏移时按服务器时区；保持客户端选择的边界，不额外扩展日期                       |
+| `source`       | `string` (enum)[]` | 否   | -      | 对话来源筛选；省略表示全部来源，空数组表示无匹配                                                     |
+| `offset`       | `number`           | 否   | `1`    | 用户留存偏移量，单位随 userTimespan 变化；未传时默认 1；仅统计所选时间范围内的后续活跃               |
+| `userTimespan` | `string` (enum)    | 是   | -      | 用户数据时间跨度。可选值：`day` , `week` , `month` , `quarter`                                       |
+| `chatTimespan` | `string` (enum)    | 是   | -      | 对话数据时间跨度。可选值：`day` , `week` , `month` , `quarter`                                       |
+| `appTimespan`  | `string` (enum)    | 是   | -      | 应用数据时间跨度。可选值：`day` , `week` , `month` , `quarter`                                       |
+
+**互斥参数分支（`anyOf` 选填其一）**
+
+- **显式指定应用**
+
+个人密钥或登录态必须传 appId；应用 Key 始终以 Key 绑定的应用为准。
+
+| 字段    | 类型     | 必填 | 默认值 | 约束与说明           |
+| ------- | -------- | ---- | ------ | -------------------- |
+| `appId` | `string` | 是   | -      | 应用 ID。最小长度：1 |
+
+- **应用 API Key（无需 appId）**
+
+Authorization 使用绑定应用的 APP API Key 时无需传 appId 或 sourceType，服务端从 Key 绑定取得应用，sourceType 固定为 app。个人密钥和登录态不能使用此省略方式；显式传入 appId 时仍以 Key 绑定为准。
+
+该分支无需额外字段。
+
+## 请求示例
+
+调用前请将 `YOUR_API_KEY` 与示例 ID 替换为真实值；私有化部署实例请将基础域名替换为 `<instance>/api`。
+
+### cURL 请求示例
+
+```bash
+curl --fail-with-body -X POST "https://cloud.fastgpt.cn/api/proApi/core/app/logs/getChartData" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  --data-raw '{
+  "appId": "68ad85a7463006c963799a05",
+  "dateStart": "2024-01-01T00:00:00.000Z",
+  "dateEnd": "2024-12-31T23:59:59.999Z",
+  "userTimespan": "day",
+  "chatTimespan": "day",
+  "appTimespan": "day"
+}'
+```
+
+### 最小合法 JSON 请求体示例
+
+```json
+{
+  "appId": "68ad85a7463006c963799a05",
+  "dateStart": "2024-01-01T00:00:00.000Z",
+  "dateEnd": "2024-12-31T23:59:59.999Z",
+  "userTimespan": "day",
+  "chatTimespan": "day",
+  "appTimespan": "day"
+}
+```
+
+## 响应结构与示例
+
+除兼容 OpenAI 协议的对话补全或二进制下载接口外，成功响应统一包裹在 `{ "code": 200, "statusText": "", "message": "", "data": ... }` 标准结构中；下方 `200` 字段表对应 `data` 载荷结构（无数据返回时 `data` 为 `null`）。
+
+### HTTP 200
+
+成功获取应用图表数据
+
+**Content-Type** : `application/json`
+
+| 字段                                    | 类型       | 必填 | 默认值 | 约束与说明                     |
+| --------------------------------------- | ---------- | ---- | ------ | ------------------------------ |
+| `userData`                              | `object[]` | 是   | -      | 用户统计数据                   |
+| `userData[].timestamp`                  | `number`   | 是   | -      | 时间戳                         |
+| `userData[].summary`                    | `object`   | 是   | -      | 当前时间桶内的用户统计汇总     |
+| `userData[].summary.userCount`          | `number`   | 是   | -      | 用户总数                       |
+| `userData[].summary.newUserCount`       | `number`   | 是   | -      | 新用户数                       |
+| `userData[].summary.retentionUserCount` | `number`   | 是   | -      | 留存用户数                     |
+| `userData[].summary.points`             | `number`   | 是   | -      | 积分消耗                       |
+| `userData[].summary.inputTokens`        | `number`   | 是   | -      | 输入 Token 消耗                |
+| `userData[].summary.outputTokens`       | `number`   | 是   | -      | 输出 Token 消耗                |
+| `userData[].summary.sourceCountMap`     | `object`   | 是   | -      | 各来源用户数量                 |
+| `chatData`                              | `object[]` | 是   | -      | 对话统计数据                   |
+| `chatData[].timestamp`                  | `number`   | 是   | -      | 时间戳                         |
+| `chatData[].summary`                    | `object`   | 是   | -      | 当前时间桶内的对话统计汇总     |
+| `chatData[].summary.chatItemCount`      | `number`   | 是   | -      | 消息总数                       |
+| `chatData[].summary.chatCount`          | `number`   | 是   | -      | 对话会话总数                   |
+| `chatData[].summary.errorCount`         | `number`   | 是   | -      | 报错消息数量                   |
+| `chatData[].summary.points`             | `number`   | 是   | -      | 积分消耗                       |
+| `chatData[].summary.inputTokens`        | `number`   | 是   | -      | 输入 Token 消耗                |
+| `chatData[].summary.outputTokens`       | `number`   | 是   | -      | 输出 Token 消耗                |
+| `appData`                               | `object[]` | 是   | -      | 应用统计数据                   |
+| `appData[].timestamp`                   | `number`   | 是   | -      | 时间戳                         |
+| `appData[].summary`                     | `object`   | 是   | -      | 当前时间桶内的应用效果统计汇总 |
+| `appData[].summary.goodFeedBackCount`   | `number`   | 是   | -      | 好评反馈数量                   |
+| `appData[].summary.badFeedBackCount`    | `number`   | 是   | -      | 差评反馈数量                   |
+| `appData[].summary.chatCount`           | `number`   | 是   | -      | 对话数量                       |
+| `appData[].summary.totalResponseTime`   | `number`   | 是   | -      | 总响应时间(毫秒)               |

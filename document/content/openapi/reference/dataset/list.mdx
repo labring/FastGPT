@@ -1,0 +1,67 @@
+---
+title: '获取知识库列表'
+seoTitle: '获取知识库列表 - POST /api/core/dataset/list | FastGPT OpenAPI'
+description: '旧版知识库列表查询接口（已弃用，请使用 listV2），一次性返回当前成员在指定目录下有权限访问的知识库数组。'
+deprecated: true
+---
+
+import { Alert } from '@/components/docs/Alert';
+
+<Alert icon="⚠️" context="warning">
+  **接口已弃用**：`POST /api/core/dataset/list` 为旧版无分页接口。新接入请迁移至 [获取知识库列表
+  V2](/zh-CN/openapi/reference/dataset/list-v2)（`POST /api/core/dataset/listV2`），支持分页查询与
+  `datasetIds` 批量检索。
+</Alert>
+
+## 端点概览
+
+- **HTTP 方法**：`POST`
+- **请求路径**：`/api/core/dataset/list`
+- **所属模块**：知识库 / 知识库管理
+- **鉴权方式**：`Authorization: Bearer <apiKey>`—个人密钥（按归属团队成员资源权限校验）（详见 [API 入门：完成首次请求](/zh-CN/openapi/intro)）
+- **在线调试**：[在云服务 Scalar 调试台打开](https://cloud.fastgpt.cn/apidoc/systemopenapi#tag/%E7%9F%A5%E8%AF%86%E5%BA%93%E7%AE%A1%E7%90%86/POST/core/dataset/list)（自部署实例请将域名替换为 `<instance>/apidoc/systemopenapi#tag/%E7%9F%A5%E8%AF%86%E5%BA%93%E7%AE%A1%E7%90%86/POST/core/dataset/list`）
+
+## 接口说明与注意事项
+
+已弃用，请使用 POST /core/dataset/listV2。旧接口保留兼容，返回当前用户有权限访问的知识库数组，支持按类型和关键词筛选；V2 返回分页结构 \{ list, total \}
+
+## 请求参数
+
+### Request Body 请求体（`application/json`）
+
+| 字段        | 类型              | 必填 | 默认值             | 约束与说明                                                                                                                                                                                                       |
+| ----------- | ----------------- | ---- | ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `parentId`  | `string \| null`  | 否   | -                  | 父级文件夹 ID,null 或不传表示根目录                                                                                                                                                                              |
+| `type`      | `string \| array` | 否   | -                  | 知识库类型筛选                                                                                                                                                                                                   |
+| `searchKey` | `string`          | 否   | -                  | 搜索关键词,按名称和简介模糊匹配                                                                                                                                                                                  |
+| `sort`      | `string` (enum)   | 否   | `"updateTimeDesc"` | 列表排序，缺省按最近修改倒序。可选值：`updateTimeDesc` (按修改时间倒序，最近修改的排在前面（默认）), `createTimeDesc` (按创建时间倒序，最新创建的排在前面), `createTimeAsc` (按创建时间升序，最早创建的排在前面) |
+| `tmbIds`    | `string[]`        | 否   | -                  | 按创建者筛选；空数组返回空列表                                                                                                                                                                                   |
+
+## 请求示例
+
+调用前请将 `YOUR_API_KEY` 与示例 ID 替换为真实值；私有化部署实例请将基础域名替换为 `<instance>/api`。
+
+### cURL 请求示例
+
+```bash
+curl --fail-with-body -X POST "https://cloud.fastgpt.cn/api/core/dataset/list" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  --data-raw '{}'
+```
+
+### 最小合法 JSON 请求体示例
+
+```json
+{}
+```
+
+## 响应结构与示例
+
+除兼容 OpenAI 协议的对话补全或二进制下载接口外，成功响应统一包裹在 `{ "code": 200, "statusText": "", "message": "", "data": ... }` 标准结构中；下方 `200` 字段表对应 `data` 载荷结构（无数据返回时 `data` 为 `null`）。
+
+### HTTP 200
+
+成功返回知识库列表
+
+**Content-Type** : `application/json`

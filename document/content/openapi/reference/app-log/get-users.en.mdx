@@ -1,0 +1,115 @@
+---
+title: 'List App Log Users'
+seoTitle: 'List App Log Users - POST /api/core/app/logs/getUsers | FastGPT OpenAPI'
+description: 'List team members and external users appearing in application chat logs, sorted by chat volume with search and pagination support.'
+---
+
+## Endpoint Overview
+
+- **Method** : `POST`
+- **Path** : `/api/core/app/logs/getUsers`
+- **Module** : Applications / App Logs
+- **Authentication** : `Authorization: Bearer <apiKey>`—Supports **App API Key** ( `appId` optional) and **Personal API Key** ( `appId` required); also supports `authProxy` team member proxy (see [API Getting Started](/en/openapi/intro) )
+- **Interactive Try-It-Out** : [Open in Scalar API Explorer](https://cloud.fastgpt.io/apidoc/systemopenapi#tag/%E5%BA%94%E7%94%A8%E6%97%A5%E5%BF%97/POST/core/app/logs/getUsers) (self-hosted instances: replace the origin with `<instance>/apidoc/systemopenapi#tag/%E5%BA%94%E7%94%A8%E6%97%A5%E5%BF%97/POST/core/app/logs/getUsers` )
+
+## Description & Notes
+
+Retrieve external users and team members from application chat logs, sorted by chat count with search and pagination.
+
+## Request Parameters
+
+### Request Body ( `application/json` )
+
+**Mutually Exclusive Branches ( `anyOf` )**
+
+- **Explicit App ID**
+
+Personal API keys and login sessions must pass `appId` ; an App API Key always uses the bound application.
+
+| Field   | Type     | Required | Default | Constraints & Description    |
+| ------- | -------- | -------- | ------- | ---------------------------- |
+| `appId` | `string` | Yes      | -       | Application ID. minLength: 1 |
+
+- **App API Key (no appId required)**
+
+When authorizing with an app-bound App API Key, omit `appId` and `sourceType` ; the server resolves the bound app with `sourceType` fixed to `app` . Personal keys and login sessions cannot omit `appId` , and an explicit `appId` does not override an App API Key binding.
+
+No extra branch-specific fields are required.
+
+#### Shared Parameters Across Branches
+
+| Field       | Type       | Required | Default | Constraints & Description |
+| ----------- | ---------- | -------- | ------- | ------------------------- |
+| `dateStart` | `string`   | Yes      | -       | Start time                |
+| `dateEnd`   | `string`   | Yes      | -       | End time                  |
+| `searchKey` | `string`   | No       | -       | Search by username        |
+| `sources`   | `string[]` | No       | -       | Source filter             |
+
+**Mutually Exclusive Branches ( `anyOf` )**
+
+- **Offset Pagination**
+
+Specify the 0-based starting offset; when both `offset` and `pageNum` are provided, `offset` takes precedence.
+
+| Field      | Type      | Required | Default | Constraints & Description                                                                                                                        |
+| ---------- | --------- | -------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `offset`   | `integer` | Yes      | -       | **Mutually Exclusive Group: Pagination Parameters** . 0-based offset. min: 0; max: 9007199254740991                                              |
+| `pageSize` | `integer` | No       | `20`    | **Mutually Exclusive Group: Pagination Parameters** . Items per page. Defaults to 20, capped at 500 (larger values are clamped to 500). max: 500 |
+
+- **Page-Number Pagination**
+
+Paginate by page number (starts at page 1); `pageSize` controls items per page.
+
+| Field      | Type      | Required | Default | Constraints & Description                                                                                                                        |
+| ---------- | --------- | -------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `pageNum`  | `integer` | No       | `1`     | **Mutually Exclusive Group: Pagination Parameters** . 1-based page number; ignored when `offset` is provided. max: 9007199254740991              |
+| `pageSize` | `integer` | No       | `20`    | **Mutually Exclusive Group: Pagination Parameters** . Items per page. Defaults to 20, capped at 500 (larger values are clamped to 500). max: 500 |
+
+## Request Examples
+
+Replace `YOUR_API_KEY` and placeholder IDs before running. Self-hosted users should replace the base URL with `<instance>/api` .
+
+### cURL Example
+
+```bash
+curl --fail-with-body -X POST "https://cloud.fastgpt.io/api/core/app/logs/getUsers" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  --data-raw '{
+  "appId": "68ad85a7463006c963799a05",
+  "offset": 0,
+  "dateStart": "2024-01-01T00:00:00.000Z",
+  "dateEnd": "2024-12-31T23:59:59.999Z"
+}'
+```
+
+### Minimal Valid JSON Body
+
+```json
+{
+  "appId": "68ad85a7463006c963799a05",
+  "offset": 0,
+  "dateStart": "2024-01-01T00:00:00.000Z",
+  "dateEnd": "2024-12-31T23:59:59.999Z"
+}
+```
+
+## Response Schema & Examples
+
+Successful `/api/*` calls return the standard FastGPT envelope `{ "code": 200, "statusText": "", "message": "", "data": ... }` , where `data` matches the `200` schema below (and `null` when no payload schema is declared).
+
+### HTTP 200
+
+Successfully retrieved application log users
+
+**Content-Type** : `application/json`
+
+| Field               | Type             | Required | Default | Constraints & Description                                                                               |
+| ------------------- | ---------------- | -------- | ------- | ------------------------------------------------------------------------------------------------------- |
+| `total`             | `number`         | Yes      | `0`     | -                                                                                                       |
+| `list`              | `object[]`       | Yes      | `[]`    | -                                                                                                       |
+| `list[].outLinkUid` | `string \| null` | Yes      | -       | End user ID from a share link visitor or API `customUid` ; takes precedence over `tmbId` when non-empty |
+| `list[].tmbId`      | `string \| null` | Yes      | -       | Effective authenticated team member ID (or proxied member ID when using `authProxy` )                   |
+| `list[].name`       | `string`         | Yes      | -       | User display name                                                                                       |
+| `list[].avatar`     | `string`         | No       | -       | Avatar                                                                                                  |
+| `list[].count`      | `number`         | Yes      | -       | Chat item count                                                                                         |

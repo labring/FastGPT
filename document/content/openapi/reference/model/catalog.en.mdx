@@ -1,0 +1,71 @@
+---
+title: 'Get Available Model Catalog'
+seoTitle: 'Get Available Model Catalog - GET /api/core/ai/model/catalog | FastGPT OpenAPI'
+description: 'Retrieve all models, providers, and default model IDs available to the caller with optional version caching and custom sorting.'
+---
+
+## Endpoint Overview
+
+- **Method** : `GET`
+- **Path** : `/api/core/ai/model/catalog`
+- **Module** : Core Features / Models
+- **Authentication** : `Authorization: Bearer <apiKey>`—Personal API Key (access scoped by team member permissions) (see [API Getting Started](/en/openapi/intro) )
+- **Interactive Try-It-Out** : [Open in Scalar API Explorer](https://cloud.fastgpt.io/apidoc/systemopenapi#tag/%E6%A8%A1%E5%9E%8B%E7%AE%A1%E7%90%86/GET/core/ai/model/catalog) (self-hosted instances: replace the origin with `<instance>/apidoc/systemopenapi#tag/%E6%A8%A1%E5%9E%8B%E7%AE%A1%E7%90%86/GET/core/ai/model/catalog` )
+
+## Description & Notes
+
+Returns available models, providers, and effective default model IDs for the authenticated member or share-link identity in a single request, with content version negotiation. Passing `orderBy=custom` orders by own team models, shared team models, and system models sorted by `rank` ; omitting preserves runtime order. Members may pass `includeSourceMember=true` to attach creator details (always returning the full catalog; ignored for share links).
+
+## Request Parameters
+
+### Query Parameters
+
+| Field                 | Type       | Required | Default | Constraints & Description                                                                                                                |
+| --------------------- | ---------- | -------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `version`             | `string`   | No       | -       | Client-cached catalog version hash. minLength: 1                                                                                         |
+| `includeSourceMember` | `boolean`  | No       | -       | Attach source member metadata (members only; always returns the full catalog without version cache)                                      |
+| `orderBy`             | `"custom"` | No       | -       | Catalog display sorting: `custom` orders own team, shared team, and system models by rank; omit to keep runtime order. Fixed: `"custom"` |
+| `outLinkAuthData`     | `string`   | No       | -       | Share-link auth payload used to evaluate permissions via the link publisher identity                                                     |
+
+## Request Examples
+
+Replace `YOUR_API_KEY` and placeholder IDs before running. Self-hosted users should replace the base URL with `<instance>/api` .
+
+### cURL Example
+
+```bash
+curl --fail-with-body -X GET "https://cloud.fastgpt.io/api/core/ai/model/catalog" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+## Response Schema & Examples
+
+Successful `/api/*` calls return the standard FastGPT envelope `{ "code": 200, "statusText": "", "message": "", "data": ... }` , where `data` matches the `200` schema below (and `null` when no payload schema is declared).
+
+### HTTP 200
+
+Returns the full catalog when the version changes or `includeSourceMember=true` ; otherwise returns only `version`
+
+**Content-Type** : `application/json`
+
+| Field                                  | Type       | Required | Default | Constraints & Description                                                                        |
+| -------------------------------------- | ---------- | -------- | ------- | ------------------------------------------------------------------------------------------------ |
+| `version`                              | `string`   | Yes      | -       | Current model catalog version hash                                                               |
+| `data`                                 | `object`   | No       | -       | Full catalog payload (omitted when client version matches and creator details are not requested) |
+| `data.models`                          | `object[]` | Yes      | -       | -                                                                                                |
+| `data.providers`                       | `object[]` | Yes      | -       | -                                                                                                |
+| `data.providers[].provider`            | `string`   | Yes      | -       | Model provider identifier                                                                        |
+| `data.providers[].value`               | `object`   | Yes      | -       | -                                                                                                |
+| `data.providers[].value.en`            | `string`   | Yes      | -       | -                                                                                                |
+| `data.providers[].value.zh-CN`         | `string`   | Yes      | -       | -                                                                                                |
+| `data.providers[].value.zh-Hant`       | `string`   | Yes      | -       | -                                                                                                |
+| `data.providers[].avatar`              | `string`   | Yes      | -       | Model provider icon URL                                                                          |
+| `data.defaultModelIds`                 | `object`   | Yes      | -       | -                                                                                                |
+| `data.defaultModelIds.llm`             | `string`   | No       | -       | -                                                                                                |
+| `data.defaultModelIds.embedding`       | `string`   | No       | -       | -                                                                                                |
+| `data.defaultModelIds.tts`             | `string`   | No       | -       | -                                                                                                |
+| `data.defaultModelIds.stt`             | `string`   | No       | -       | -                                                                                                |
+| `data.defaultModelIds.rerank`          | `string`   | No       | -       | -                                                                                                |
+| `data.defaultModelIds.datasetTextLLM`  | `string`   | No       | -       | -                                                                                                |
+| `data.defaultModelIds.datasetImageLLM` | `string`   | No       | -       | -                                                                                                |
+| `data.defaultModelIds.chatTitleLLM`    | `string`   | No       | -       | -                                                                                                |

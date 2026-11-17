@@ -1,0 +1,68 @@
+---
+title: '申请知识库集合批量下载凭证'
+seoTitle: '申请知识库集合批量下载凭证 - POST /api/core/dataset/collection/getDownloadTicket | FastGPT OpenAPI'
+description: '预检选定集合的下载权限与文件状态，并生成用于调用批量打包下载接口的短效一次性安全凭证（ticket）。'
+---
+
+## 端点概览
+
+- **HTTP 方法**：`POST`
+- **请求路径**：`/api/core/dataset/collection/getDownloadTicket`
+- **所属模块**：知识库 / 集合管理
+- **鉴权方式**：`Authorization: Bearer <apiKey>`—个人密钥（按归属团队成员资源权限校验）（详见 [API 入门：完成首次请求](/zh-CN/openapi/intro)）
+- **在线调试**：[在云服务 Scalar 调试台打开](https://cloud.fastgpt.cn/apidoc/systemopenapi#tag/%E9%9B%86%E5%90%88%E7%AE%A1%E7%90%86/POST/core/dataset/collection/getDownloadTicket)（自部署实例请将域名替换为 `<instance>/apidoc/systemopenapi#tag/%E9%9B%86%E5%90%88%E7%AE%A1%E7%90%86/POST/core/dataset/collection/getDownloadTicket`）
+
+## 接口说明与注意事项
+
+校验并准备通用知识库集合批量下载所需的短效一次性凭证
+
+## 请求参数
+
+### Request Body 请求体（`application/json`）
+
+| 字段            | 类型       | 必填 | 默认值 | 约束与说明                           |
+| --------------- | ---------- | ---- | ------ | ------------------------------------ |
+| `datasetId`     | `string`   | 是   | -      | 知识库 ID。正则：`^[0-9a-fA-F]{24}$` |
+| `collectionIds` | `string[]` | 是   | -      | 需要下载的集合 ID 列表。最少项数：1  |
+
+## 请求示例
+
+调用前请将 `YOUR_API_KEY` 与示例 ID 替换为真实值；私有化部署实例请将基础域名替换为 `<instance>/api`。
+
+### cURL 请求示例
+
+```bash
+curl --fail-with-body -X POST "https://cloud.fastgpt.cn/api/core/dataset/collection/getDownloadTicket" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  --data-raw '{
+  "datasetId": "68ad85a7463006c963799a05",
+  "collectionIds": [
+    "68ad85a7463006c963799a06"
+  ]
+}'
+```
+
+### 最小合法 JSON 请求体示例
+
+```json
+{
+  "datasetId": "68ad85a7463006c963799a05",
+  "collectionIds": ["68ad85a7463006c963799a06"]
+}
+```
+
+## 响应结构与示例
+
+除兼容 OpenAI 协议的对话补全或二进制下载接口外，成功响应统一包裹在 `{ "code": 200, "statusText": "", "message": "", "data": ... }` 标准结构中；下方 `200` 字段表对应 `data` 载荷结构（无数据返回时 `data` 为 `null`）。
+
+### HTTP 200
+
+成功返回短效一次性下载凭证
+
+**Content-Type** : `application/json`
+
+| 字段        | 类型     | 必填 | 默认值 | 约束与说明                                                                                                                                                                                                                                                                                                  |
+| ----------- | -------- | ---- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ticket`    | `string` | 是   | -      | 短效一次性下载凭证。最小长度：1                                                                                                                                                                                                                                                                             |
+| `expiresAt` | `string` | 是   | -      | 凭证过期时间。正则：`^(?:(?:\d\d[2468][048]\|\d\d[13579][26]\|\d\d0[48]\|[02468][048]00\|[13579][26]00)-02-29\|\d{4}-(?:(?:0[13578]\|1[02])-(?:0[1-9]\|[12]\d\|3[01])\|(?:0[469]\|11)-(?:0[1-9]\|[12]\d\|30)\|(?:02)-(?:0[1-9]\|1\d\|2[0-8])))T(?:(?:[01]\d\|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$` |

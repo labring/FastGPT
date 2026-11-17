@@ -60,9 +60,13 @@ for (const locale of activeLocales) {
     assert.equal(response.status, 200);
     const body = await response.text();
     assert.ok(body.includes(`https://${host}/llms-full.txt`));
+    assert.ok(body.includes(`https://${host}/openapi.json`));
+    assert.ok(body.includes(`https://${host}/openapi/api-reference`));
+    assert.ok(body.includes(`https://${host}/openapi/reference/dataset-search/search`));
     assert.ok(body.includes(`https://${host}/guide/getting-started`));
     assert.ok(!body.includes('/toc'));
     assert.ok(!body.includes('/openapi/legacy/'));
+    assert.ok(!body.includes('/openapi/reference/chat-controller/v1-chat-completions'));
     assert.ok(!body.includes('/self-host/upgrading/outdated/'));
     assert.match(response.headers.get('content-type'), /text\/plain/);
 
@@ -92,6 +96,17 @@ for (const locale of activeLocales) {
     assert.ok(!/<MermaidDiagram[\s>]/.test(fullBody), 'MermaidDiagram JSX converted to code block');
     assert.ok(!/<FastGPTLink[\s>]/.test(fullBody), 'FastGPTLink JSX unwrapped in llms-full.txt');
     assert.match(fullResponse.headers.get('content-type'), /text\/plain/);
+
+    const searchEntryStart = fullBody.indexOf('url: https://' + host + '/openapi/reference/dataset-search/search');
+    assert.ok(searchEntryStart !== -1, 'llms-full.txt includes dataset-search/search entry');
+    const searchEntryNext = fullBody.indexOf('\n\nfile: ', searchEntryStart);
+    const searchEntry = fullBody.slice(
+      searchEntryStart,
+      searchEntryNext === -1 ? undefined : searchEntryNext
+    );
+    assert.ok(searchEntry.includes(`https://${host}/openapi/reference/dataset-search/search.md`));
+    assert.ok(searchEntry.includes(`https://${host}/llms-openapi.txt`));
+    assert.ok(!searchEntry.includes('| `scope.datasetIds`'), 'llms-full.txt keeps /openapi/reference/** compact');
   });
 }
 
@@ -441,4 +456,124 @@ test('social preview image and static search export satisfy discovery contracts'
         !record.url.includes('/self-host/upgrading/outdated/')
     )
   );
+});
+
+test('OpenAPI discovery JSON, robots.txt comment, reference redirects, and generated endpoint pages satisfy SEO/GEO contracts', async () => {
+  const openApiResponse = await fetch(`${origin}/openapi.json`, { redirect: 'manual' });
+  assert.equal(openApiResponse.status, 200);
+  assert.match(openApiResponse.headers.get('content-type') ?? '', /application\/json/);
+  assert.equal(openApiResponse.headers.get('access-control-allow-origin'), '*');
+  assert.equal(
+    openApiResponse.headers.get('x-robots-tag'),
+    isPreview ? 'noindex, nofollow' : 'noindex'
+  );
+  const openApiText = await openApiResponse.text();
+  const openApiJson = JSON.parse(openApiText);
+  assert.equal(openApiJson.openapi, '3.1.0');
+  assert.equal(Object.keys(openApiJson.paths ?? {}).length, 50);
+
+  if (!isPreview) {
+    const expectedServer =
+      ownerLocale === 'en' ? 'https://cloud.fastgpt.io/api' : 'https://cloud.fastgpt.cn/api';
+    const forbiddenServer =
+      ownerLocale === 'en' ? 'https://cloud.fastgpt.cn/api' : 'https://cloud.fastgpt.io/api';
+    assert.equal(openApiResponse.headers.get('content-language'), ownerLocale);
+    assert.equal(openApiJson.servers?.[0]?.url, expectedServer);
+    assert.ok(!openApiText.includes(forbiddenServer));
+    if (ownerLocale === 'en') {
+      assert.ok(!/\p{Script=Han}/u.test(openApiText));
+    }
+
+    const otherLocale = ownerLocale === 'en' ? 'zh-CN' : 'en';
+    const sameHostPrefixedJson = await fetch(`${origin}/${ownerLocale}/openapi.json`, {
+      redirect: 'manual'
+    });
+    assert.equal(sameHostPrefixedJson.status, 301);
+    assert.equal(
+      new URL(sameHostPrefixedJson.headers.get('location'), origin).pathname,
+      '/openapi.json'
+    );
+
+    const crossHostPrefixedJson = await fetch(`${origin}/${otherLocale}/openapi.json`, {
+      redirect: 'manual'
+    });
+    assert.equal(crossHostPrefixedJson.status, 301);
+    const crossDestination = new URL(crossHostPrefixedJson.headers.get('location'), origin);
+    assert.equal(crossDestination.origin, expectedRedirectOrigin(otherLocale));
+    assert.equal(crossDestination.pathname, '/openapi.json');
+
+    const robotsResponse = await fetch(`${origin}/robots.txt`);
+    assert.equal(robotsResponse.status, 200);
+    const robotsText = await robotsResponse.text();
+    const expectedOrigin = docsLocale.getFastGPTDocsOriginForLocale(ownerLocale);
+    assert.ok(robotsText.includes(`# OpenAPI 3.1 Spec: ${expectedOrigin}/openapi.json`));
+  } else {
+    for (const [locale, expectedServer] of [
+      ['zh-CN', 'https://cloud.fastgpt.cn/api'],
+      ['en', 'https://cloud.fastgpt.io/api']
+    ]) {
+      const locRes = await fetch(`${origin}/${locale}/openapi.json`, { redirect: 'manual' });
+      assert.equal(locRes.status, 200);
+      assert.equal(locRes.headers.get('access-control-allow-origin'), '*');
+      assert.equal(locRes.headers.get('content-language'), locale);
+      assert.equal(locRes.headers.get('x-robots-tag'), 'noindex, nofollow');
+      const locText = await locRes.text();
+      assert.equal(JSON.parse(locText).servers?.[0]?.url, expectedServer);
+      if (locale === 'en') {
+        assert.ok(!/\p{Script=Han}/u.test(locText));
+      }
+    }
+  }
+
+  const sampleLocale = activeLocales.includes('en') ? 'en' : 'zh-CN';
+  const refRedirect = await fetch(`${origin}${toRoute(sampleLocale, '/openapi/reference')}`, {
+    redirect: 'manual'
+  });
+  assert.equal(refRedirect.status, 301);
+  const refDestination = new URL(refRedirect.headers.get('location'), origin);
+  assert.equal(refDestination.pathname, toRoute(sampleLocale, '/openapi/api-reference'));
+  const overviewRes = await fetch(`${origin}${refDestination.pathname}`);
+  assert.equal(overviewRes.status, 200);
+  const overviewHtml = await overviewRes.text();
+  assert.ok(overviewHtml.includes('/openapi.json'));
+
+  const searchPageRoute = toRoute(sampleLocale, '/openapi/reference/dataset-search/search');
+  const searchPageRes = await fetch(`${origin}${searchPageRoute}`);
+  assert.equal(searchPageRes.status, 200);
+  const searchHtml = await searchPageRes.text();
+  assert.ok(searchHtml.includes('/api/core/dataset/search'));
+  if (!isPreview) {
+    assert.ok(searchHtml.includes('"@type":"TechArticle"'));
+    assert.ok(/<link\b[^>]*\shreflang=/i.test(searchHtml));
+  }
+
+  const searchMdRes = await fetch(`${origin}${searchPageRoute}.md`, { redirect: 'manual' });
+  assert.equal(searchMdRes.status, 200);
+  assert.match(searchMdRes.headers.get('content-type') ?? '', /text\/markdown/);
+  assert.ok((await searchMdRes.text()).includes('/api/core/dataset/search'));
+
+  const deprecatedRoute = toRoute(
+    sampleLocale,
+    '/openapi/reference/chat-controller/v1-chat-completions'
+  );
+  const deprecatedRes = await fetch(`${origin}${deprecatedRoute}`);
+  assert.equal(deprecatedRes.status, 200);
+  const deprecatedHtml = await deprecatedRes.text();
+  assert.ok(deprecatedHtml.includes('noindex'));
+  assert.ok(!deprecatedHtml.includes('"@type":"TechArticle"'));
+
+  const llmsOpenApiPath = isPreview ? `/${sampleLocale}/llms-openapi.txt` : '/llms-openapi.txt';
+  const llmsOpenApiRes = await fetch(`${origin}${llmsOpenApiPath}`);
+  assert.equal(llmsOpenApiRes.status, 200);
+  const llmsOpenApiText = await llmsOpenApiRes.text();
+  assert.ok(llmsOpenApiText.includes('/openapi/reference/dataset-search/search'));
+  assert.ok(llmsOpenApiText.includes('`scope.datasetIds`'));
+  assert.ok(!llmsOpenApiText.includes('/openapi/reference/chat-controller/v1-chat-completions'));
+
+  const datasetGuideRes = await fetch(`${origin}${toRoute(sampleLocale, '/openapi/dataset')}`);
+  assert.equal(datasetGuideRes.status, 200);
+  const datasetGuideHtml = await datasetGuideRes.text();
+  assert.ok(datasetGuideHtml.includes('https://doc.fastgpt.cn/openapi/api-reference'));
+  assert.ok(datasetGuideHtml.includes('https://doc.fastgpt.io/openapi/api-reference'));
+  assert.ok(datasetGuideHtml.includes('https://cloud.fastgpt.cn/apidoc/systemopenapi'));
 });

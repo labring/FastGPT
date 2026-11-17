@@ -1,0 +1,46 @@
+---
+title: 'Delete Dataset'
+seoTitle: 'Delete Dataset - DELETE /api/core/dataset/delete | FastGPT OpenAPI'
+description: 'Delete a dataset or folder along with all nested child datasets, collections, and vector indexes (requires owner role).'
+---
+
+## Endpoint Overview
+
+- **Method** : `DELETE`
+- **Path** : `/api/core/dataset/delete`
+- **Module** : Datasets / Datasets
+- **Authentication** : `Authorization: Bearer <apiKey>`—Personal API Key (access scoped by team member permissions) (see [API Getting Started](/en/openapi/intro) )
+- **Interactive Try-It-Out** : [Open in Scalar API Explorer](https://cloud.fastgpt.io/apidoc/systemopenapi#tag/%E7%9F%A5%E8%AF%86%E5%BA%93%E7%AE%A1%E7%90%86/DELETE/core/dataset/delete) (self-hosted instances: replace the origin with `<instance>/apidoc/systemopenapi#tag/%E7%9F%A5%E8%AF%86%E5%BA%93%E7%AE%A1%E7%90%86/DELETE/core/dataset/delete` )
+
+## Description & Notes
+
+Delete a dataset or folder and all nested child datasets (requires owner permission).
+
+## Request Parameters
+
+### Query Parameters
+
+| Field | Type     | Required | Default | Constraints & Description                |
+| ----- | -------- | -------- | ------- | ---------------------------------------- |
+| `id`  | `string` | Yes      | -       | Dataset ID. pattern: `^[0-9a-fA-F]{24}$` |
+
+## Request Examples
+
+Replace `YOUR_API_KEY` and placeholder IDs before running. Self-hosted users should replace the base URL with `<instance>/api` .
+
+### cURL Example
+
+```bash
+curl --fail-with-body -X DELETE "https://cloud.fastgpt.io/api/core/dataset/delete?id=68ad85a7463006c963799a05" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+## Response Schema & Examples
+
+Successful `/api/*` calls return the standard FastGPT envelope `{ "code": 200, "statusText": "", "message": "", "data": ... }` , where `data` matches the `200` schema below (and `null` when no payload schema is declared).
+
+### HTTP 200
+
+Successfully deleted dataset
+
+Returns standard success envelope with `data: null` .

@@ -1,0 +1,203 @@
+---
+title: 'List Chat Histories'
+seoTitle: 'List Chat Histories - POST /api/core/chat/history/getHistories | FastGPT OpenAPI'
+description: 'Retrieve paginated chat history records for an app, skill debug session, or share link with date range and source filtering.'
+---
+
+## Endpoint Overview
+
+- **Method** : `POST`
+- **Path** : `/api/core/chat/history/getHistories`
+- **Module** : Chat / Chat History
+- **Authentication** : `Authorization: Bearer <apiKey>`—Supports **App API Key** ( `appId` optional) and **Personal API Key** ( `appId` required); also supports `authProxy` team member proxy and `outLinkAuthData` share link (see [API Getting Started](/en/openapi/intro) )
+- **Interactive Try-It-Out** : [Open in Scalar API Explorer](https://cloud.fastgpt.io/apidoc/systemopenapi#tag/%E4%BC%9A%E8%AF%9D%E7%AE%A1%E7%90%86/POST/core/chat/history/getHistories) (self-hosted instances: replace the origin with `<instance>/apidoc/systemopenapi#tag/%E4%BC%9A%E8%AF%9D%E7%AE%A1%E7%90%86/POST/core/chat/history/getHistories` )
+
+## Description & Notes
+
+Retrieve paginated chat conversation histories.
+
+## Request Parameters
+
+### Request Body ( `application/json` )
+
+#### Shared Parameters Across Branches
+
+| Field             | Type     | Required | Default | Constraints & Description |
+| ----------------- | -------- | -------- | ------- | ------------------------- |
+| `startCreateTime` | `string` | No       | -       | Creation time range start |
+| `endCreateTime`   | `string` | No       | -       | Creation time range end   |
+| `startUpdateTime` | `string` | No       | -       | Update time range start   |
+| `endUpdateTime`   | `string` | No       | -       | Update time range end     |
+
+**Mutually Exclusive Branches ( `anyOf` )**
+
+- **App Chat**
+
+Identify the conversation via `appId` . When both API Key and login session are supported, `Authorization` takes precedence over token/Cookie.
+
+| Field        | Type            | Required | Default | Constraints & Description                                                                                                                                                                                                                                  |
+| ------------ | --------------- | -------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `appId`      | `string`        | Yes      | -       | Application ID authenticated with the request header credentials allowed by this endpoint. pattern: `^[0-9a-fA-F]{24}$`                                                                                                                                    |
+| `sourceType` | `string` (enum) | No       | -       | Session resource type associated with `appId` . Defaults to `app` ; pass the matching `sourceType` for assistant builder sessions. Allowed values: `app` , `chatAgentHelper` , `workflowBuilder`                                                           |
+| `source`     | `string` (enum) | No       | -       | Chat source filter; App API Key requests automatically query the `api` source and ignore this field. Allowed values: `test` , `online` , `share` , `api` , `cronJob` , `feishu` , `official_account` , `wecom` , `wechat` , `mcp` , `dingtalk` , `unknown` |
+
+**Default Identity** : Omit `customUid` and `authProxy` to execute using the team member identity associated with the credential.
+
+**Custom end user ( `customUid` )**: Tag end users from your own system via `customUid` without changing the authenticating member or permissions. Passed as workflow `userId` and used to scope chat management.
+
+| Field       | Type     | Required | Default | Constraints & Description                                                                                                                                                                                                                                                                                      |
+| ----------- | -------- | -------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `customUid` | `string` | Yes      | -       | Supported only for standard app API Key calls. Exact match against the external user ID ( `outLinkUid` , not `tmbId` ). Omit to keep full scope or pass to restrict reads, updates, and deletions (max 1024 chars, cannot be empty or `null` , does not change member identity). minLength: 1; maxLength: 1024 |
+
+**Proxy Team Member ( `authProxy` )**: Act on behalf of another member in the same team via `authProxy` . Available only on personal API keys with `authProxy` enabled; mutually exclusive with `customUid` .
+
+| Field       | Type     | Required | Default | Constraints & Description                                                                                                                                                                             |
+| ----------- | -------- | -------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `authProxy` | `object` | Yes      | -       | API Key proxy caller identity. Available only for personal keys with `authProxy` enabled; specify `tmbId` or `username` ( `tmbId` takes precedence without falling back to `username` on invalid ID). |
+
+**Mutually Exclusive Branches ( `anyOf` )**
+
+- **Offset Pagination**
+
+Specify the 0-based starting offset; when both `offset` and `pageNum` are provided, `offset` takes precedence.
+
+| Field      | Type      | Required | Default | Constraints & Description                                                                                                                        |
+| ---------- | --------- | -------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `offset`   | `integer` | Yes      | -       | **Mutually Exclusive Group: Pagination Parameters** . 0-based offset. min: 0; max: 9007199254740991                                              |
+| `pageSize` | `integer` | No       | `20`    | **Mutually Exclusive Group: Pagination Parameters** . Items per page. Defaults to 20, capped at 500 (larger values are clamped to 500). max: 500 |
+
+- **Page-Number Pagination**
+
+Paginate by page number (starts at page 1); `pageSize` controls items per page.
+
+| Field      | Type      | Required | Default | Constraints & Description                                                                                                                        |
+| ---------- | --------- | -------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `pageNum`  | `integer` | No       | `1`     | **Mutually Exclusive Group: Pagination Parameters** . 1-based page number; ignored when `offset` is provided. max: 9007199254740991              |
+| `pageSize` | `integer` | No       | `20`    | **Mutually Exclusive Group: Pagination Parameters** . Items per page. Defaults to 20, capped at 500 (larger values are clamped to 500). max: 500 |
+
+- **Skill Debug Session**
+
+Identify the debug session via `skillId` (takes precedence over `appId` and ignores `sourceType` ), authenticated with allowed request header credentials.
+
+| Field     | Type            | Required | Default | Constraints & Description                                                                                                                                                                                                                                  |
+| --------- | --------------- | -------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `skillId` | `string`        | Yes      | -       | Skill Edit debug ID authenticated with allowed request header credentials. pattern: `^[0-9a-fA-F]{24}$`                                                                                                                                                    |
+| `source`  | `string` (enum) | No       | -       | Chat source filter; App API Key requests automatically query the `api` source and ignore this field. Allowed values: `test` , `online` , `share` , `api` , `cronJob` , `feishu` , `official_account` , `wecom` , `wechat` , `mcp` , `dingtalk` , `unknown` |
+
+**Offset Pagination** : Specify the 0-based starting offset; when both `offset` and `pageNum` are provided, `offset` takes precedence.
+
+| Field      | Type      | Required | Default | Constraints & Description                                                                                                                        |
+| ---------- | --------- | -------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `offset`   | `integer` | Yes      | -       | **Mutually Exclusive Group: Pagination Parameters** . 0-based offset. min: 0; max: 9007199254740991                                              |
+| `pageSize` | `integer` | No       | `20`    | **Mutually Exclusive Group: Pagination Parameters** . Items per page. Defaults to 20, capped at 500 (larger values are clamped to 500). max: 500 |
+
+**Page-Number Pagination** : Paginate by page number (starts at page 1); `pageSize` controls items per page.
+
+| Field      | Type      | Required | Default | Constraints & Description                                                                                                                        |
+| ---------- | --------- | -------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `pageNum`  | `integer` | No       | `1`     | **Mutually Exclusive Group: Pagination Parameters** . 1-based page number; ignored when `offset` is provided. max: 9007199254740991              |
+| `pageSize` | `integer` | No       | `20`    | **Mutually Exclusive Group: Pagination Parameters** . Items per page. Defaults to 20, capped at 500 (larger values are clamped to 500). max: 500 |
+
+- **Share-Link Chat**
+
+Resolves the underlying app via `outLinkAuthData` , taking precedence over `skillId` and `appId` (ignoring `sourceType` ). Protected links still validate login cookies/tokens and never fall back to standard auth on failure.
+
+| Field                        | Type            | Required | Default | Constraints & Description                                                                                                                                                                                                                                  |
+| ---------------------------- | --------------- | -------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `outLinkAuthData`            | `object`        | Yes      | -       | Share-link auth payload ( `shareId` / `outLinkUid` ). Overrides `skillId` and `appId` ; protected links still validate login session cookies/tokens.                                                                                                       |
+| `outLinkAuthData.shareId`    | `string`        | Yes      | -       | Share link ID. minLength: 1                                                                                                                                                                                                                                |
+| `outLinkAuthData.outLinkUid` | `string`        | Yes      | -       | External share user ID. minLength: 1                                                                                                                                                                                                                       |
+| `source`                     | `string` (enum) | No       | -       | Chat source filter; App API Key requests automatically query the `api` source and ignore this field. Allowed values: `test` , `online` , `share` , `api` , `cronJob` , `feishu` , `official_account` , `wecom` , `wechat` , `mcp` , `dingtalk` , `unknown` |
+
+**Offset Pagination** : Specify the 0-based starting offset; when both `offset` and `pageNum` are provided, `offset` takes precedence.
+
+| Field      | Type      | Required | Default | Constraints & Description                                                                                                                        |
+| ---------- | --------- | -------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `offset`   | `integer` | Yes      | -       | **Mutually Exclusive Group: Pagination Parameters** . 0-based offset. min: 0; max: 9007199254740991                                              |
+| `pageSize` | `integer` | No       | `20`    | **Mutually Exclusive Group: Pagination Parameters** . Items per page. Defaults to 20, capped at 500 (larger values are clamped to 500). max: 500 |
+
+**Page-Number Pagination** : Paginate by page number (starts at page 1); `pageSize` controls items per page.
+
+| Field      | Type      | Required | Default | Constraints & Description                                                                                                                        |
+| ---------- | --------- | -------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `pageNum`  | `integer` | No       | `1`     | **Mutually Exclusive Group: Pagination Parameters** . 1-based page number; ignored when `offset` is provided. max: 9007199254740991              |
+| `pageSize` | `integer` | No       | `20`    | **Mutually Exclusive Group: Pagination Parameters** . Items per page. Defaults to 20, capped at 500 (larger values are clamped to 500). max: 500 |
+
+- **App API Key (no appId required)**
+
+When authorizing with an app-bound App API Key, omit `appId` and `sourceType` ; the server resolves the bound app with `sourceType` fixed to `app` . Personal keys and login sessions cannot omit `appId` , and an explicit `appId` does not override an App API Key binding.
+
+**Default Identity** : Omit `customUid` and `authProxy` to execute using the team member identity associated with the credential.
+
+**Custom end user ( `customUid` )**: Tag end users from your own system via `customUid` without changing the authenticating member or permissions. Passed as workflow `userId` and used to scope chat management.
+
+| Field       | Type     | Required | Default | Constraints & Description                                                                                                                                                                                                                                                                                      |
+| ----------- | -------- | -------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `customUid` | `string` | Yes      | -       | Supported only for standard app API Key calls. Exact match against the external user ID ( `outLinkUid` , not `tmbId` ). Omit to keep full scope or pass to restrict reads, updates, and deletions (max 1024 chars, cannot be empty or `null` , does not change member identity). minLength: 1; maxLength: 1024 |
+
+**Mutually Exclusive Branches ( `anyOf` )**
+
+- **Offset Pagination**
+
+Specify the 0-based starting offset; when both `offset` and `pageNum` are provided, `offset` takes precedence.
+
+| Field      | Type      | Required | Default | Constraints & Description                                                                                                                        |
+| ---------- | --------- | -------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `offset`   | `integer` | Yes      | -       | **Mutually Exclusive Group: Pagination Parameters** . 0-based offset. min: 0; max: 9007199254740991                                              |
+| `pageSize` | `integer` | No       | `20`    | **Mutually Exclusive Group: Pagination Parameters** . Items per page. Defaults to 20, capped at 500 (larger values are clamped to 500). max: 500 |
+
+- **Page-Number Pagination**
+
+Paginate by page number (starts at page 1); `pageSize` controls items per page.
+
+| Field      | Type      | Required | Default | Constraints & Description                                                                                                                        |
+| ---------- | --------- | -------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `pageNum`  | `integer` | No       | `1`     | **Mutually Exclusive Group: Pagination Parameters** . 1-based page number; ignored when `offset` is provided. max: 9007199254740991              |
+| `pageSize` | `integer` | No       | `20`    | **Mutually Exclusive Group: Pagination Parameters** . Items per page. Defaults to 20, capped at 500 (larger values are clamped to 500). max: 500 |
+
+## Request Examples
+
+Replace `YOUR_API_KEY` and placeholder IDs before running. Self-hosted users should replace the base URL with `<instance>/api` .
+
+### cURL Example
+
+```bash
+curl --fail-with-body -X POST "https://cloud.fastgpt.io/api/core/chat/history/getHistories" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  --data-raw '{
+  "appId": "68ad85a7463006c963799a05",
+  "offset": 0
+}'
+```
+
+### Minimal Valid JSON Body
+
+```json
+{
+  "appId": "68ad85a7463006c963799a05",
+  "offset": 0
+}
+```
+
+## Response Schema & Examples
+
+Successful `/api/*` calls return the standard FastGPT envelope `{ "code": 200, "statusText": "", "message": "", "data": ... }` , where `data` matches the `200` schema below (and `null` when no payload schema is declared).
+
+### HTTP 200
+
+Successfully retrieved chat history list
+
+**Content-Type** : `application/json`
+
+| Field                       | Type            | Required | Default | Constraints & Description                                                                                      |
+| --------------------------- | --------------- | -------- | ------- | -------------------------------------------------------------------------------------------------------------- |
+| `total`                     | `number`        | Yes      | `0`     | -                                                                                                              |
+| `list`                      | `object[]`      | Yes      | `[]`    | -                                                                                                              |
+| `list[].chatId`             | `string`        | Yes      | -       | maxLength: 1024                                                                                                |
+| `list[].updateTime`         | `string`        | Yes      | -       | -                                                                                                              |
+| `list[].customTitle`        | `string`        | No       | -       | -                                                                                                              |
+| `list[].title`              | `string`        | Yes      | -       | -                                                                                                              |
+| `list[].top`                | `boolean`       | No       | -       | -                                                                                                              |
+| `list[].chatGenerateStatus` | `number` (enum) | No       | -       | Live generation status from Redis lease: `0` ( `generating` ), `1` ( `done` / idle). Allowed values: `0` , `1` |
+| `list[].hasBeenRead`        | `boolean`       | No       | -       | -                                                                                                              |

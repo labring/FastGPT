@@ -1,0 +1,759 @@
+---
+title: 'Create Chat Completion (v1)'
+seoTitle: 'Create Chat Completion (v1) - POST /api/v1/chat/completions | FastGPT OpenAPI'
+description: 'Legacy v1 chat completions endpoint (deprecated in favor of v2) retained for backward compatibility with aggregated flowResponses.'
+deprecated: true
+---
+
+import { Alert } from '@/components/docs/Alert';
+
+<Alert icon="⚠️" context="warning">
+  **Deprecated Endpoint** : `POST /api/v1/chat/completions` is deprecated. Migrate to [Create Chat
+  Completion (v2)](/en/openapi/reference/chat-controller/v2-chat-completions) ( `POST
+  /api/v2/chat/completions` ), which delivers per-node `flowNodeResponse` SSE events and full
+  `authProxy` support.
+</Alert>
+
+## Endpoint Overview
+
+- **Method** : `POST`
+- **Path** : `/api/v1/chat/completions`
+- **Module** : Chat / Chat Completions & Control
+- **Authentication** : `Authorization: Bearer <apiKey>`—Supports **App API Key** ( `appId` optional) and **Personal API Key** ( `appId` required); also supports `authProxy` team member proxy and `outLinkAuthData` share link (see [API Getting Started](/en/openapi/intro) )
+- **Interactive Try-It-Out** : [Open in Scalar API Explorer](https://cloud.fastgpt.io/apidoc/systemopenapi#tag/%E4%BC%9A%E8%AF%9D%E6%93%8D%E4%BD%9C/POST/v1/chat/completions) (self-hosted instances: replace the origin with `<instance>/apidoc/systemopenapi#tag/%E4%BC%9A%E8%AF%9D%E6%93%8D%E4%BD%9C/POST/v1/chat/completions` )
+
+## Description & Notes
+
+The v1 chat completions endpoint follows the OpenAI Chat Completions format. Standard OpenAI clients can point `baseURL` and `Authorization` to a FastGPT app.
+
+**Important Notes**
+
+- Backend callers can pass `customUid` to identify end users (forwarded to workflow `userId` ). It does not change the authenticating member and is mutually exclusive with `authProxy` (max 1024 chars; empty string uses the default member; FastGPT \>= 4.18.0).
+- Request parameters such as `model` and `temperature` are ignored because model settings are defined by the published workflow.
+- Standard `usage` tokens are placeholder values; set `detail=true` and sum `tokens` in `responseData` if needed.
+
+**`chatId` Behavior**
+
+- Omitted or empty: Server-side conversation memory is disabled; context comes solely from `messages` .
+- Non-empty string: Loads existing conversation context for `chatId` and reads only the final entry of `messages` as the user prompt (earlier messages are ignored). Ensure `chatId` is unique (max 1024 chars).
+
+**`stream` / `detail` Combinations**
+
+- `detail=false, stream=false` : Returns compact OpenAI-compatible JSON ( `choices` , `usage` , `id` ).
+- `detail=false, stream=true` : Returns an OpenAI-compatible SSE stream with answer deltas and `[DONE]` .
+- `detail=true, stream=false` : Includes `responseData` and `newVariables` in the JSON payload.
+- `detail=true, stream=true` : Returns a multi-event SSE stream ( `answer` , `flowNodeStatus` , `flowResponses` , etc.).
+
+**Interactive Nodes**
+
+If the workflow includes interactive nodes, set `detail=true` :
+
+- `stream=true` : Read interactive payloads from `event: interactive` .
+- `stream=false` : Read the `interactive` entry inside `choices[].message.content` .
+
+Non-streaming `interactive` payloads unwrap nested `children` / `loop` / `tool` wrappers down to the innermost prompt and strip internal runtime fields ( `entryNodeIds` , `memoryEdges` , `nodeOutputs` ). SSE frames may preserve wrapper envelopes whose inner payload sits under `params.childrenResponse` .
+
+To resume execution after rendering the interactive UI, call this endpoint again with the same `chatId` :
+
+- User selection: Pass the selected value directly as the user message `content` .
+- Form input: Serialize the form object as a JSON string in the user message `content` .
+
+## Request Parameters
+
+### Request Body ( `application/json` )
+
+#### Shared Parameters Across Branches
+
+| Field                 | Type       | Required | Default | Constraints & Description                                                                                                       |
+| --------------------- | ---------- | -------- | ------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `chatId`              | `string`   | No       | -       | Chat session ID; automatically generated if omitted or empty. maxLength: 1024                                                   |
+| `metadata`            | `object`   | No       | -       | Metadata                                                                                                                        |
+| `messages`            | `object[]` | No       | `[]`    | Messages list                                                                                                                   |
+| `stream`              | `boolean`  | No       | `false` | Whether to stream the response via SSE                                                                                          |
+| `variables`           | `object`   | No       | `{}`    | Global workflow variables or plugin inputs                                                                                      |
+| `responseChatItemId`  | `string`   | No       | -       | Custom ID for the assistant response message; auto-generated if omitted                                                         |
+| `detail`              | `boolean`  | No       | `false` | Whether to include detailed execution metadata such as `responseData` , `reasoning_content` , `tool_calls` , and `newVariables` |
+| `retainDatasetCite`   | `boolean`  | No       | `false` | Whether to retain dataset citations                                                                                             |
+| `showSkillReferences` | `boolean`  | No       | `false` | Whether to include skill references                                                                                             |
+
+**Mutually Exclusive Branches ( `anyOf` )**
+
+- **App Chat**
+
+Identify the application via `appId` and authenticate with an API Key or login session. Personal API Key requests may omit `body.appId` when using an `apiKey-appId` header suffix or legacy bound key; login sessions must provide `appId` . App API Keys do not support `authProxy` .
+
+| Field   | Type     | Required | Default | Constraints & Description                                                                                                                                                                                                                  |
+| ------- | -------- | -------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `appId` | `string` | Yes      | -       | Application ID. App API Keys ignore this field and SDK suffixes in favor of the bound app; personal keys resolve in order: `body.appId` \> `Authorization` `key-appId` suffix. The suffix is never persisted. pattern: `^[0-9a-fA-F]{24}$` |
+
+**Default Identity** : Omit `customUid` and `authProxy` to execute using the team member identity associated with the credential.
+
+**Custom end user ( `customUid` )**: Tag end users from your own system via `customUid` without changing the authenticating member or permissions. Passed as workflow `userId` and used to scope chat management.
+
+| Field       | Type     | Required | Default | Constraints & Description                                                                                                                                                                                                                                                                                                                                                                  |
+| ----------- | -------- | -------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `customUid` | `string` | Yes      | -       | End user ID supplied by your backend during API Key calls (FastGPT \>= 4.18.0, max 1024 chars); does not alter member permissions and is mutually exclusive with `authProxy` . New chats treat empty string as default user; existing chats bound to a `customUid` reject missing, empty, or mismatched values. Share-link calls use `outLinkAuthData.outLinkUid` instead. maxLength: 1024 |
+
+**Proxy Team Member ( `authProxy` )**: Act on behalf of another member in the same team via `authProxy` . Available only on personal API keys with `authProxy` enabled; mutually exclusive with `customUid` .
+
+| Field       | Type     | Required | Default | Constraints & Description                                                                                                                                                                                                                       |
+| ----------- | -------- | -------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `authProxy` | `object` | Yes      | -       | Team member identity to proxy via API Key (mutually exclusive with `customUid` ; unsupported on share-link chats). Specify `tmbId` or `username` ; if both are sent, `tmbId` takes precedence without falling back to `username` on invalid ID. |
+
+- **App API Key (no appId required)**
+
+When using an app-bound App API Key, `appId` is omitted and resolved from the key binding; supports default identity or `customUid` (not `authProxy` ). Compatible with personal key `key-appId` SDK suffixes (which follow App Chat proxy rules); regular personal keys and login sessions require `appId` .
+
+**Default Identity** : Omit `customUid` and `authProxy` to execute using the team member identity associated with the credential.
+
+**Custom end user ( `customUid` )**: Tag end users from your own system via `customUid` without changing the authenticating member or permissions. Passed as workflow `userId` and used to scope chat management.
+
+| Field       | Type     | Required | Default | Constraints & Description                                                                                                                                                                                                                                                                                                                                                                  |
+| ----------- | -------- | -------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `customUid` | `string` | Yes      | -       | End user ID supplied by your backend during API Key calls (FastGPT \>= 4.18.0, max 1024 chars); does not alter member permissions and is mutually exclusive with `authProxy` . New chats treat empty string as default user; existing chats bound to a `customUid` reject missing, empty, or mismatched values. Share-link calls use `outLinkAuthData.outLinkUid` instead. maxLength: 1024 |
+
+- **Share-Link Chat**
+
+Resolves the app via `outLinkAuthData` , scoping the end user by `outLinkUid` . Takes precedence over `appId` and header auth without fallback on failure; protected share links still require login token/cookie and do not support `authProxy` .
+
+| Field                        | Type     | Required | Default | Constraints & Description                                                                                                                      |
+| ---------------------------- | -------- | -------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `outLinkAuthData`            | `object` | Yes      | -       | Share-link auth payload containing `shareId` and `outLinkUid` . Overrides `appId` ; protected links still verify login session cookies/tokens. |
+| `outLinkAuthData.shareId`    | `string` | Yes      | -       | Share link ID. minLength: 1                                                                                                                    |
+| `outLinkAuthData.outLinkUid` | `string` | Yes      | -       | External share user ID. minLength: 1                                                                                                           |
+
+#### Polymorphic Field: `messages`
+
+- **Variant 1** ( `role="system"` ): `role` , `content` , `name` , `reasoning_content` , `dataId` , `hideInUI`
+- **Variant 2** ( `role="developer"` ): `role` , `content` , `name` , `reasoning_content` , `dataId` , `hideInUI`
+- **Variant 3** ( `role="user"` ): `role` , `content` , `name` , `reasoning_content` , `dataId` , `hideInUI`
+- **Variant 4** ( `role="assistant"` ): `role` , `content` , `tool_calls` , `interactive` , `audio` , `function_call` , `refusal` , `name`
+- **Variant 5** ( `role="tool"` ): `role` , `content` , `tool_call_id` , `name` , `reasoning_content` , `dataId` , `hideInUI`
+- **Variant 6** ( `role="function"` ): `role` , `content` , `name` , `reasoning_content` , `dataId` , `hideInUI`
+
+## Request Examples
+
+Replace `YOUR_API_KEY` and placeholder IDs before running. Self-hosted users should replace the base URL with `<instance>/api` .
+
+### cURL Example
+
+```bash
+curl --fail-with-body -X POST "https://cloud.fastgpt.io/api/v1/chat/completions" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  --data-raw '{
+  "appId": "68ad85a7463006c963799a05"
+}'
+```
+
+### Minimal Valid JSON Body
+
+```json
+{
+  "appId": "68ad85a7463006c963799a05"
+}
+```
+
+## Response Schema & Examples
+
+### HTTP 200
+
+**Content-Type** : `application/json`
+
+| Field                                 | Type              | Required | Default | Constraints & Description                                                                                                                                                                                                                                                                                                    |
+| ------------------------------------- | ----------------- | -------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`                                  | `string`          | Yes      | -       | Conversation ID ( `chatId` )                                                                                                                                                                                                                                                                                                 |
+| `title`                               | `string`          | No       | -       | Auto-generated title returned when naming an untitled conversation                                                                                                                                                                                                                                                           |
+| `model`                               | `""`              | Yes      | -       | Model name (always empty string in v1). Fixed: `""`                                                                                                                                                                                                                                                                          |
+| `usage`                               | `object`          | Yes      | -       | Token usage summary (placeholder in v1; compute actual tokens from `responseData` when `detail=true` )                                                                                                                                                                                                                       |
+| `usage.prompt_tokens`                 | `1`               | Yes      | -       | Fixed placeholder `1` ; compute per-node token usage from `responseData` when `detail=true` . Fixed: `1`                                                                                                                                                                                                                     |
+| `usage.completion_tokens`             | `1`               | Yes      | -       | Fixed placeholder `1` ; compute per-node token usage from `responseData` when `detail=true` . Fixed: `1`                                                                                                                                                                                                                     |
+| `usage.total_tokens`                  | `1`               | Yes      | -       | Fixed placeholder `1` ; compute per-node token usage from `responseData` when `detail=true` . Fixed: `1`                                                                                                                                                                                                                     |
+| `choices`                             | `object[]`        | Yes      | -       | Completion choices list                                                                                                                                                                                                                                                                                                      |
+| `choices[].message`                   | `object`          | Yes      | -       | Assistant message                                                                                                                                                                                                                                                                                                            |
+| `choices[].message.role`              | `"assistant"`     | Yes      | -       | Message role. Fixed: `"assistant"`                                                                                                                                                                                                                                                                                           |
+| `choices[].message.content`           | `string \| array` | Yes      | -       | Message content. Plain string for standard replies, or an array of typed blocks ( `text` , `interactive` , `tool` , `file` , `reasoning` ) when `detail=true` or an interactive Node.js pauses execution. v1 adds an explicit `type` field on each block while v2 omits it; interactive items strip internal runtime fields. |
+| `choices[].message.reasoning_content` | `string`          | No       | -       | Reasoning trace content (for reasoning models only)                                                                                                                                                                                                                                                                          |
+| `choices[].finish_reason`             | `string`          | Yes      | -       | Completion finish reason, e.g. `stop`                                                                                                                                                                                                                                                                                        |
+| `choices[].index`                     | `number`          | Yes      | -       | Choice index                                                                                                                                                                                                                                                                                                                 |
+| `responseData`                        | `object[]`        | No       | -       | Per-node workflow execution details (returned only when `detail=true` ), including `moduleName` , `moduleType` , `runningTime` , `quoteList` , etc.                                                                                                                                                                          |
+| `newVariables`                        | `object`          | No       | -       | Workflow variables updated during execution (returned only when `detail=true` )                                                                                                                                                                                                                                              |
+
+**Content-Type** : `text/event-stream`
+
+### HTTP 409
+
+Rejects the request when the conversation already has an active generation without persisting the rejected message. Non-streaming calls return HTTP 409; streaming calls emit the same payload on `event: error` . Use `data.responseChatItemId` to resume the active assistant message (or reuse the latest AI message when `data.reusePreviousAi=true` ).
+
+**Content-Type** : `application/json`
+
+| Field                     | Type                 | Required | Default | Constraints & Description                                                                                                                    |
+| ------------------------- | -------------------- | -------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `code`                    | `504001`             | Yes      | -       | Fixed: `504001`                                                                                                                              |
+| `statusText`              | `"chatIsGenerating"` | Yes      | -       | Fixed: `"chatIsGenerating"`                                                                                                                  |
+| `message`                 | `string`             | Yes      | -       | Localized display error message; use `code` or `statusText` for programmatic handling. Defaults to English when no translation is available. |
+| `data`                    | `object`             | Yes      | -       | -                                                                                                                                            |
+| `data.responseChatItemId` | `string`             | No       | -       | Active assistant message ID currently generating on the server; clients should resume tracking this ID. minLength: 1                         |
+| `data.reusePreviousAi`    | `true`               | No       | -       | Indicates an interactive resume reusing the latest assistant message; refresh records before resuming. Fixed: `true`                         |
+
+### Non-Streaming JSON Response Examples (v1)
+
+#### Compact JSON
+
+`detail=false, stream=false` ; returns only core reply fields.
+
+```json
+{
+  "id": "adsfasf",
+  "title": "Suzume Director",
+  "model": "",
+  "usage": {
+    "prompt_tokens": 1,
+    "completion_tokens": 1,
+    "total_tokens": 1
+  },
+  "choices": [
+    {
+      "message": {
+        "role": "assistant",
+        "content": "Makoto Shinkai directed the film Suzume."
+      },
+      "finish_reason": "stop",
+      "index": 0
+    }
+  ]
+}
+```
+
+#### Detailed JSON
+
+`detail=true, stream=false` ; includes `responseData` and `newVariables` .
+
+```json
+{
+  "responseData": [
+    {
+      "moduleName": "Dataset Search",
+      "price": 1.2000000000000002,
+      "model": "Embedding-2",
+      "tokens": 6,
+      "similarity": 0.61,
+      "limit": 3
+    },
+    {
+      "moduleName": "AI Chat",
+      "price": 454.5,
+      "model": "FastAI-4k",
+      "tokens": 303,
+      "question": "Who is the director?",
+      "answer": "Makoto Shinkai directed the film Suzume.",
+      "maxToken": 2050,
+      "quoteList": [
+        {
+          "dataset_id": "646627f4f7b896cfd8910e38",
+          "id": "8099",
+          "q": "Who is the protagonist of this film?",
+          "a": "The protagonist is a young girl named Suzume.",
+          "source": "Manual Edit"
+        },
+        {
+          "dataset_id": "646627f4f7b896cfd8910e38",
+          "id": "19339",
+          "q": "Who directed the film Suzume?",
+          "a": "Makoto Shinkai directed the film Suzume.",
+          "source": "Manual Edit"
+        }
+      ],
+      "completeMessages": [
+        {
+          "obj": "System",
+          "value": "Knowledge base context:\n1. [Who is the protagonist of this film?\nThe protagonist is a young girl named Suzume.]\n2. [Who directed the film Suzume?\nMakoto Shinkai directed the film Suzume.]\n"
+        },
+        {
+          "obj": "Human",
+          "value": "Who is the director?"
+        },
+        {
+          "obj": "AI",
+          "value": "Makoto Shinkai directed the film Suzume."
+        }
+      ]
+    }
+  ],
+  "newVariables": {
+    "uid": "asdfadsfasfd2323",
+    "name": "Alice"
+  },
+  "id": "",
+  "title": "Suzume Director",
+  "model": "",
+  "usage": {
+    "prompt_tokens": 1,
+    "completion_tokens": 1,
+    "total_tokens": 1
+  },
+  "choices": [
+    {
+      "message": {
+        "role": "assistant",
+        "content": "Makoto Shinkai directed the film Suzume."
+      },
+      "finish_reason": "stop",
+      "index": 0
+    }
+  ]
+}
+```
+
+#### User Selection
+
+`detail=true` ; read the `interactive` display configuration from `choices[].message.content` .
+
+```json
+{
+  "id": "chatId",
+  "model": "",
+  "usage": {
+    "prompt_tokens": 1,
+    "completion_tokens": 1,
+    "total_tokens": 1
+  },
+  "choices": [
+    {
+      "message": {
+        "role": "assistant",
+        "content": [
+          {
+            "type": "interactive",
+            "interactive": {
+              "type": "userSelect",
+              "params": {
+                "description": "Test prompt",
+                "userSelectOptions": [
+                  {
+                    "value": "Confirm",
+                    "key": "option1"
+                  },
+                  {
+                    "value": "Cancel",
+                    "key": "option2"
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "finish_reason": "stop",
+      "index": 0
+    }
+  ]
+}
+```
+
+#### Form Input
+
+`detail=true` ; submit serialized JSON keyed by form field names while keeping the same `chatId` .
+
+```json
+{
+  "id": "chatId",
+  "model": "",
+  "usage": {
+    "prompt_tokens": 1,
+    "completion_tokens": 1,
+    "total_tokens": 1
+  },
+  "choices": [
+    {
+      "message": {
+        "role": "assistant",
+        "content": [
+          {
+            "type": "interactive",
+            "interactive": {
+              "type": "userInput",
+              "params": {
+                "description": "Test prompt",
+                "inputForm": [
+                  {
+                    "type": "input",
+                    "key": "Test 1",
+                    "label": "Test 1",
+                    "description": "",
+                    "value": "",
+                    "defaultValue": "",
+                    "valueType": "string",
+                    "required": false,
+                    "list": [
+                      {
+                        "label": "",
+                        "value": ""
+                      }
+                    ]
+                  },
+                  {
+                    "type": "numberInput",
+                    "key": "Test 2",
+                    "label": "Test 2",
+                    "description": "",
+                    "value": "",
+                    "defaultValue": "",
+                    "valueType": "number",
+                    "required": false,
+                    "list": [
+                      {
+                        "label": "",
+                        "value": ""
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "finish_reason": "stop",
+      "index": 0
+    }
+  ]
+}
+```
+
+### Streaming SSE Flow Examples (v1)
+
+#### Compact SSE
+
+`detail=false, stream=true` ; standard replies emit only `data:` frames followed by `[DONE]` .
+
+```text
+data: {"choices":[{"delta":{"role":"assistant","content":""},"index":0,"finish_reason":null}]}
+
+data: {"choices":[{"delta":{"role":"assistant","content":"Makoto Shinkai "},"index":0,"finish_reason":null}]}
+
+data: {"choices":[{"delta":{"role":"assistant","content":"directed the film Suzume."},"index":0,"finish_reason":null}]}
+
+data: {"choices":[{"delta":{"role":"assistant","content":null},"index":0,"finish_reason":"stop"}]}
+
+data: [DONE]
+```
+
+#### Full Execution Stream
+
+`detail=true, stream=true` ; Node.js details are summarized in `flowResponses` . Frame ordering is illustrative and `chatTitle` may arrive earlier.
+
+```text
+event: flowNodeStatus
+data: {"status":"running","name":"Dataset Search"}
+
+event: answer
+data: {"choices":[{"delta":{"role":"assistant","content":"Makoto Shinkai "},"index":0,"finish_reason":null}]}
+
+event: answer
+data: {"choices":[{"delta":{"role":"assistant","content":"directed the film Suzume."},"index":0,"finish_reason":null}]}
+
+event: updateVariables
+data: {"lastQuestion":"Who is the director?","searchCount":1,"found":true,"movieNames":["Suzume"],"director":{"name":"Makoto Shinkai"},"nextPage":null}
+
+event: workflowDuration
+data: {"durationSeconds":2.41}
+
+event: chatTitle
+data: {"title":"Suzume Director"}
+
+event: answer
+data: {"choices":[{"delta":{"role":"assistant","content":null},"index":0,"finish_reason":"stop"}]}
+
+event: flowResponses
+data: [{"id":"response-ai-1","nodeId":"ai-1","moduleType":"chatNode","moduleName":"AI Chat","runningTime":1.86,"textOutput":"Makoto Shinkai directed the film Suzume."}]
+
+event: answer
+data: [DONE]
+```
+
+#### User Selection
+
+`detail=true` ; display options upon receiving `interactive` , then submit the chosen value to resume.
+
+```text
+event: interactive
+data: {"interactive":{"type":"userSelect","params":{"description":"Test prompt","userSelectOptions":[{"value":"Confirm","key":"option1"},{"value":"Cancel","key":"option2"}]}}}
+
+event: answer
+data: [DONE]
+```
+
+#### Form Input
+
+`detail=true` ; render the form upon receiving `interactive` , then submit a serialized JSON string to resume.
+
+```text
+event: interactive
+data: {"interactive":{"type":"userInput","params":{"description":"Test prompt","inputForm":[{"type":"input","key":"Test 1","label":"Test 1","description":"","value":"","defaultValue":"","valueType":"string","required":false,"list":[{"label":"","value":""}]},{"type":"numberInput","key":"Test 2","label":"Test 2","description":"","value":"","defaultValue":"","valueType":"number","required":false,"list":[{"label":"","value":""}]}]}}}
+
+event: answer
+data: [DONE]
+```
+
+### SSE `event` Types Reference (v1)
+
+#### `answer` · Answer Delta
+
+Includes empty heartbeat deltas, answer text, `reasoning_content` deltas, `stop` finish chunks, and `[DONE]` markers.
+
+```text
+: 1. Empty heartbeat
+event: answer
+data: {"choices":[{"delta":{"role":"assistant","content":""},"index":0,"finish_reason":null}]}
+
+: 2. Answer text
+event: answer
+data: {"choices":[{"delta":{"role":"assistant","content":"Makoto Shinkai directed the film Suzume."},"index":0,"finish_reason":null}]}
+
+: 3. Reasoning delta
+event: answer
+data: {"choices":[{"delta":{"role":"assistant","reasoning_content":"Verify the director of Suzume first."},"index":0,"finish_reason":null}]}
+
+: 4. Stop finish chunk
+event: answer
+data: {"choices":[{"delta":{"role":"assistant","content":null},"index":0,"finish_reason":"stop"}]}
+
+: 5. End of stream
+event: answer
+data: [DONE]
+```
+
+#### `fastAnswer` · Specified Reply
+
+Emitted for immediate outputs such as Specified Reply nodes; includes text deltas and a stop chunk.
+
+```text
+: 1. Specified reply text
+event: fastAnswer
+data: {"choices":[{"delta":{"role":"assistant","content":"Looking up relevant resources."},"index":0,"finish_reason":null}]}
+
+: 2. Specified reply stop chunk
+event: fastAnswer
+data: {"choices":[{"delta":{"role":"assistant","content":null},"index":0,"finish_reason":"stop"}]}
+```
+
+#### `flowNodeStatus` · Node.js Status
+
+Emitted when a workflow Node.js starts running; governed by `showRunningStatus` on share links.
+
+```text
+event: flowNodeStatus
+data: {"status":"running","name":"Dataset Search"}
+```
+
+#### `flowResponses` · Node.js Responses Summary
+
+Emitted by v1 at the end of the turn before `[DONE]` as an array of Node.js responses.
+
+```text
+event: flowResponses
+data: [{"id":"response-ai-1","nodeId":"ai-1","moduleType":"chatNode","moduleName":"AI Chat","runningTime":1.86,"textOutput":"Makoto Shinkai directed the film Suzume."}]
+```
+
+#### `toolCall` · Tool Call
+
+Initializes a tool call card; shows both standard calls and `hideDetails` calls with hidden parameters.
+
+```text
+: 1. Standard tool call
+event: toolCall
+data: {"tool":{"id":"call-search-1","toolName":"Dataset Search","toolAvatar":"/imgs/workflow/db.png","functionName":"dataset_search","params":"{\"query\":\"Suzume director\"}"},"responseValueId":"call-search-1"}
+
+: 2. Tool call hiding params and response details
+event: toolCall
+data: {"tool":{"id":"call-search-1","toolName":"Dataset Search","toolAvatar":"/imgs/workflow/db.png","functionName":"dataset_search","params":"","hideDetails":true},"responseValueId":"call-search-1"}
+```
+
+#### `toolParams` · Tool Params Delta
+
+Appends or merges tool arguments keyed by `tool.id` ; does not indicate execution completion.
+
+```text
+event: toolParams
+data: {"tool":{"id":"call-search-1","params":"{\"query\":\"Suzume director\"}"},"responseValueId":"call-search-1"}
+```
+
+#### `toolResponse` · Tool Response
+
+Delivers the tool execution result keyed by `tool.id` ; `response` can be a string or `null` .
+
+```text
+: 1. String response
+event: toolResponse
+data: {"tool":{"id":"call-search-1","response":"Director: Makoto Shinkai"},"responseValueId":"call-search-1"}
+
+: 2. Empty response
+event: toolResponse
+data: {"tool":{"id":"call-search-1","response":null},"responseValueId":"call-search-1"}
+```
+
+#### `updateVariables` · Variable Updates
+
+Updates workflow variables for the current turn; values may be strings, numbers, booleans, arrays, objects, or `null` .
+
+```text
+event: updateVariables
+data: {"lastQuestion":"Who is the director?","searchCount":1,"found":true,"movieNames":["Suzume"],"director":{"name":"Makoto Shinkai"},"nextPage":null}
+```
+
+#### `workflowDuration` · Workflow Duration
+
+Total elapsed execution time for the turn, with `durationSeconds` measured in seconds.
+
+```text
+event: workflowDuration
+data: {"durationSeconds":2.41}
+```
+
+#### `chatTitle` · Chat Title
+
+Emitted only when `detail=true` and an untitled conversation receives an auto-generated title; never overwrites manual titles.
+
+```text
+event: chatTitle
+data: {"title":"Suzume Director"}
+```
+
+#### `interactive` · Interactive Prompt
+
+Demonstrates user selection, form input, agent follow-up questions, billing pause, and sub-workflow wrappers (read inner prompts from `params.childrenResponse` ). Internal runtime fields are omitted, and variants are mutually exclusive.
+
+```text
+: 1. User selection: userSelect
+event: interactive
+data: {"interactive":{"type":"userSelect","params":{"description":"Test prompt","userSelectOptions":[{"value":"Confirm","key":"option1"},{"value":"Cancel","key":"option2"}]}}}
+
+: 2. Form input: userInput
+event: interactive
+data: {"interactive":{"type":"userInput","params":{"description":"Test prompt","inputForm":[{"type":"input","key":"Test 1","label":"Test 1","description":"","value":"","defaultValue":"","valueType":"string","required":false,"list":[{"label":"","value":""}]},{"type":"numberInput","key":"Test 2","label":"Test 2","description":"","value":"","defaultValue":"","valueType":"number","required":false,"list":[{"label":"","value":""}]}]}}}
+
+: 3. Agent follow-up: agentAsk
+event: interactive
+data: {"interactive":{"type":"agentAsk","params":{"toolCallId":"ask-1","arguments":"{\"reason\":\"Confirm the search scope to continue.\",\"blockerType\":\"user_choice\",\"questions\":[{\"question\":\"Which scope should be queried?\",\"options\":[{\"summary\":\"Current film only\",\"value\":\"current_movie\"},{\"summary\":\"All works by this director\",\"value\":\"all_movies\"}]}]}"}}}
+
+: 4. Payment pause: paymentPause
+event: interactive
+data: {"interactive":{"type":"paymentPause","params":{"description":"Insufficient credits. Please top up to continue."}}}
+
+: 5. Sub-workflow wrapper: childrenInteractive
+event: interactive
+data: {"interactive":{"type":"childrenInteractive","params":{"childrenResponse":{"type":"userSelect","params":{"description":"Test prompt","userSelectOptions":[{"value":"Confirm","key":"option1"},{"value":"Cancel","key":"option2"}]}}}}}
+
+: 6. Tool sub-workflow wrapper: toolChildrenInteractive
+event: interactive
+data: {"interactive":{"type":"toolChildrenInteractive","params":{"childrenResponse":{"type":"userInput","params":{"description":"Test prompt","inputForm":[{"type":"input","key":"Test 1","label":"Test 1","description":"","value":"","defaultValue":"","valueType":"string","required":false,"list":[{"label":"","value":""}]},{"type":"numberInput","key":"Test 2","label":"Test 2","description":"","value":"","defaultValue":"","valueType":"number","required":false,"list":[{"label":"","value":""}]}]}},"toolCallId":"call-search-1"}}}
+
+: 7. Loop sub-workflow wrapper: loopInteractive
+event: interactive
+data: {"interactive":{"type":"loopInteractive","params":{"childrenResponse":{"type":"userSelect","params":{"description":"Test prompt","userSelectOptions":[{"value":"Confirm","key":"option1"},{"value":"Cancel","key":"option2"}]}},"currentIndex":0,"loopResult":[]}}}
+
+: 8. Loop run wrapper: loopRunInteractive
+event: interactive
+data: {"interactive":{"type":"loopRunInteractive","params":{"childrenResponse":{"type":"userInput","params":{"description":"Test prompt","inputForm":[{"type":"input","key":"Test 1","label":"Test 1","description":"","value":"","defaultValue":"","valueType":"string","required":false,"list":[{"label":"","value":""}]},{"type":"numberInput","key":"Test 2","label":"Test 2","description":"","value":"","defaultValue":"","valueType":"number","required":false,"list":[{"label":"","value":""}]}]}},"iteration":1,"loopHistory":[]}}}
+```
+
+#### `planStatus` · Plan Generation Status
+
+Emitted only when planning is enabled; shows `generating` and `updating` statuses.
+
+```text
+: 1. Generating plan
+event: planStatus
+data: {"planStatus":{"status":"generating"}}
+
+: 2. Updating plan
+event: planStatus
+data: {"planStatus":{"status":"updating"}}
+```
+
+#### `plan` · Agent Plan
+
+Identifies the plan with `plan.planId` and each step with `steps[].id` ; step statuses update during execution.
+
+```text
+event: plan
+data: {"plan":{"planId":"plan-1","name":"Look up director info","steps":[{"id":"step-1","name":"Confirm film title","status":"done"},{"id":"step-2","name":"Search film references","status":"in_progress"},{"id":"step-3","name":"Compile director details","status":"pending"},{"id":"step-4","name":"Verify paid sources","status":"blocked","note":"Waiting for user authorization"},{"id":"step-5","name":"Add unrelated works","status":"skipped","note":"Out of scope"}]}}
+```
+
+#### `skillCall` · Skill Call
+
+Emitted when loading skill instructions, only when skill capabilities are enabled.
+
+```text
+event: skillCall
+data: {"skill":{"id":"skill-call-1","skillName":"Reference Lookup","skillAvatar":"/icon/logo.svg","description":"Search related reference documents","skillMdPath":"/skills/search/SKILL.md"}}
+```
+
+#### `sandboxStatus` · Sandbox Status
+
+Shows visible sandbox lifecycle phases ( `ready` allows tool execution, `failed` may carry `message` , skill deployment phases may include `skillName` ). Phases represent distinct states rather than a fixed sequence.
+
+```text
+: 1. Phase: checkExisting
+event: sandboxStatus
+data: {"sandboxId":"sandbox-1","phase":"checkExisting"}
+
+: 2. Phase: connecting
+event: sandboxStatus
+data: {"sandboxId":"sandbox-1","phase":"connecting","isWarmStart":true}
+
+: 3. Phase: fetchSkills
+event: sandboxStatus
+data: {"sandboxId":"sandbox-1","phase":"fetchSkills"}
+
+: 4. Phase: creatingContainer
+event: sandboxStatus
+data: {"sandboxId":"sandbox-1","phase":"creatingContainer"}
+
+: 5. Phase: deployingSkills
+event: sandboxStatus
+data: {"sandboxId":"sandbox-1","phase":"deployingSkills","skillName":"Reference Lookup"}
+
+: 6. Phase: downloadingPackage
+event: sandboxStatus
+data: {"sandboxId":"sandbox-1","phase":"downloadingPackage","skillName":"Reference Lookup"}
+
+: 7. Phase: uploadingPackage
+event: sandboxStatus
+data: {"sandboxId":"sandbox-1","phase":"uploadingPackage","skillName":"Reference Lookup"}
+
+: 8. Phase: extractingPackage
+event: sandboxStatus
+data: {"sandboxId":"sandbox-1","phase":"extractingPackage","skillName":"Reference Lookup"}
+
+: 9. Phase: lazyInit
+event: sandboxStatus
+data: {"sandboxId":"sandbox-1","phase":"lazyInit"}
+
+: 10. Phase: upgrading
+event: sandboxStatus
+data: {"sandboxId":"sandbox-1","phase":"upgrading"}
+
+: 11. Phase: ready
+event: sandboxStatus
+data: {"sandboxId":"sandbox-1","phase":"ready","isWarmStart":true}
+
+: 12. Phase: failed
+event: sandboxStatus
+data: {"sandboxId":"sandbox-1","phase":"failed","message":"Sandbox initialization failed. Please retry shortly."}
+```
+
+#### `error` · Stream Error
+
+Error emitted after the SSE stream opens, including plain `message` errors or structured business errors with `code` , `statusText` , and `data` . Do not rely on HTTP 200 alone.
+
+```text
+: 1. Generic error
+event: error
+data: {"message":"Model request failed. Please retry shortly."}
+
+: 2. Business error
+event: error
+data: {"code":510003,"statusText":"runtimeUpgradeInProgress","message":"Sandbox upgrade in progress. Please retry shortly.","data":null,"httpStatus":409}
+```

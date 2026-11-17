@@ -1,0 +1,73 @@
+---
+title: '更新数据'
+seoTitle: '更新数据 - PUT /api/core/dataset/data/update | FastGPT OpenAPI'
+description: '更新知识库单条数据的 q、a 文本内容及自定义向量索引列表，并在内容变更时自动触发重新向量化写入。'
+---
+
+## 端点概览
+
+- **HTTP 方法**：`PUT`
+- **请求路径**：`/api/core/dataset/data/update`
+- **所属模块**：知识库 / 数据管理
+- **鉴权方式**：`Authorization: Bearer <apiKey>`—个人密钥（按归属团队成员资源权限校验）（详见 [API 入门：完成首次请求](/zh-CN/openapi/intro)）
+- **在线调试**：[在云服务 Scalar 调试台打开](https://cloud.fastgpt.cn/apidoc/systemopenapi#tag/%E6%95%B0%E6%8D%AE%E7%AE%A1%E7%90%86/PUT/core/dataset/data/update)（自部署实例请将域名替换为 `<instance>/apidoc/systemopenapi#tag/%E6%95%B0%E6%8D%AE%E7%AE%A1%E7%90%86/PUT/core/dataset/data/update`）
+
+## 接口说明与注意事项
+
+更新数据集数据的 q、a 和向量索引，触发重新向量化
+
+## 请求参数
+
+### Request Body 请求体（`application/json`）
+
+| 字段               | 类型            | 必填 | 默认值     | 约束与说明                                                                                                                                            |
+| ------------------ | --------------- | ---- | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `dataId`           | `string`        | 是   | -          | 数据 ID。正则：`^[0-9a-fA-F]{24}$`                                                                                                                    |
+| `q`                | `string`        | 是   | -          | 问题/主文本                                                                                                                                           |
+| `a`                | `string`        | 否   | -          | 回答/补充文本                                                                                                                                         |
+| `indexes`          | `object[]`      | 否   | -          | 向量索引列表                                                                                                                                          |
+| `indexes[].type`   | `string` (enum) | 否   | `"custom"` | 索引类型, 外部接口不需要传，都 custom，其他 type 是系统自动生成的。可选值：`default` , `imageEmbedding` , `summary` , `question` , `image` , `custom` |
+| `indexes[].text`   | `string`        | 是   | -          | 默认就是索引的文本内容，特殊的：imageEmbedding - 图片的 objectKey/URL                                                                                 |
+| `indexes[].dataId` | `string`        | 否   | -          | 向量库里数据 ID（可选），可用于相同索引不重复创建，节省一次向量更新                                                                                   |
+| `imageId`          | `string`        | 否   | -          | 图片 ID                                                                                                                                               |
+| `indexPrefix`      | `string`        | 否   | -          | 索引前缀标题                                                                                                                                          |
+
+## 请求示例
+
+调用前请将 `YOUR_API_KEY` 与示例 ID 替换为真实值；私有化部署实例请将基础域名替换为 `<instance>/api`。
+
+### cURL 请求示例
+
+```bash
+curl --fail-with-body -X PUT "https://cloud.fastgpt.cn/api/core/dataset/data/update" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  --data-raw '{
+  "dataId": "68ad85a7463006c963799a05",
+  "q": "什么是 FastGPT？"
+}'
+```
+
+### 最小合法 JSON 请求体示例
+
+```json
+{
+  "dataId": "68ad85a7463006c963799a05",
+  "q": "什么是 FastGPT？"
+}
+```
+
+## 响应结构与示例
+
+除兼容 OpenAI 协议的对话补全或二进制下载接口外，成功响应统一包裹在 `{ "code": 200, "statusText": "", "message": "", "data": ... }` 标准结构中；下方 `200` 字段表对应 `data` 载荷结构（无数据返回时 `data` 为 `null`）。
+
+### HTTP 200
+
+更新成功
+
+**Content-Type** : `application/json`
+
+| 字段 | 类型     | 必填 | 默认值 | 约束与说明                                            |
+| ---- | -------- | ---- | ------ | ----------------------------------------------------- |
+| `q`  | `string` | 否   | -      | 展示态问题/主文本，内部 S3 图片会替换为签名访问地址   |
+| `a`  | `string` | 否   | -      | 展示态回答/补充文本，内部 S3 图片会替换为签名访问地址 |

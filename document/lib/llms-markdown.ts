@@ -352,8 +352,8 @@ export function buildLlmsIndexText(lang: FastGPTDocsLocale): string {
   ];
 
   const header = isEn
-    ? `# FastGPT Documentation\n\n> Official documentation for FastGPT: AI agent building, knowledge base RAG, visual workflow orchestration, System OpenAPI, plugins, and self-hosted operations. Append \`.md\` to any canonical page URL (for example \`${domain}/openapi/intro.md\`) to fetch standalone Markdown.\n\n- [Full Documentation Corpus](${domain}/llms-full.txt): Complete Markdown text of all active FastGPT documentation topics.\n- [Product & RAG Guides Corpus](${domain}/llms-guide.txt): Focused corpus covering Agent building, workflows, datasets, and FAQs.\n- [Developers & OpenAPI Corpus](${domain}/llms-openapi.txt): Focused corpus covering System OpenAPI, authentication, and plugin development.\n- [Self-Hosted Operations Corpus](${domain}/llms-self-host.txt): Focused corpus covering Docker/Sealos deployment, model configuration, migrations, and troubleshooting.\n- [Pricing & Editions](${domain}/pricing.md): Structured comparison of Community, Cloud, and Commercial editions and resource pricing.`
-    : `# FastGPT 文档\n\n> FastGPT 官方文档：涵盖 AI Agent 构建、知识库 RAG、可视化工作流编排、System OpenAPI、插件开发与私有化部署运维。在任意规范文档 URL 后追加 \`.md\`（例如 \`${domain}/openapi/intro.md\`）可直接拉取单页纯净 Markdown。\n\n- [完整文档语料库](${domain}/llms-full.txt): 全部现行 FastGPT 文档页面的完整 Markdown 正文。\n- [产品与知识库语料分卷](${domain}/llms-guide.txt): 聚焦应用构建、工作流、知识库 RAG 与常见问题的精简语料。\n- [开发者与 OpenAPI 语料分卷](${domain}/llms-openapi.txt): 聚焦 System OpenAPI、鉴权代理与插件开发的接口语料。\n- [私有化部署与运维语料分卷](${domain}/llms-self-host.txt): 聚焦 Docker/Sealos 部署、模型配置、数据迁移与排障的运维语料。\n- [版本与定价清单](${domain}/pricing.md): 社区版、云服务版与商业版功能边界及资源计费标准。`;
+    ? `# FastGPT Documentation\n\n> Official documentation for FastGPT: AI agent building, knowledge base RAG, visual workflow orchestration, System OpenAPI, plugins, and self-hosted operations. Append \`.md\` to any canonical page URL (for example \`${domain}/openapi/intro.md\`) to fetch standalone Markdown.\n\n- [Full Documentation Corpus](${domain}/llms-full.txt): Complete Markdown text of all active FastGPT documentation topics.\n- [Product & RAG Guides Corpus](${domain}/llms-guide.txt): Focused corpus covering Agent building, workflows, datasets, and FAQs.\n- [Developers & OpenAPI Corpus](${domain}/llms-openapi.txt): Focused corpus covering System OpenAPI, authentication, and plugin development.\n- [System OpenAPI 3.1 JSON Spec](${domain}/openapi.json): Machine-readable OpenAPI 3.1 specification for all API-key-authenticated System OpenAPI endpoints.\n- [Self-Hosted Operations Corpus](${domain}/llms-self-host.txt): Focused corpus covering Docker/Sealos deployment, model configuration, migrations, and troubleshooting.\n- [Pricing & Editions](${domain}/pricing.md): Structured comparison of Community, Cloud, and Commercial editions and resource pricing.`
+    : `# FastGPT 文档\n\n> FastGPT 官方文档：涵盖 AI Agent 构建、知识库 RAG、可视化工作流编排、System OpenAPI、插件开发与私有化部署运维。在任意规范文档 URL 后追加 \`.md\`（例如 \`${domain}/openapi/intro.md\`）可直接拉取单页纯净 Markdown。\n\n- [完整文档语料库](${domain}/llms-full.txt): 全部现行 FastGPT 文档页面的完整 Markdown 正文。\n- [产品与知识库语料分卷](${domain}/llms-guide.txt): 聚焦应用构建、工作流、知识库 RAG 与常见问题的精简语料。\n- [开发者与 OpenAPI 语料分卷](${domain}/llms-openapi.txt): 聚焦 System OpenAPI、鉴权代理与插件开发的接口语料。\n- [System OpenAPI 3.1 JSON 契约](${domain}/openapi.json): 全部开放给 API Key 鉴权的 System OpenAPI 标准 OpenAPI 3.1 规范。\n- [私有化部署与运维语料分卷](${domain}/llms-self-host.txt): 聚焦 Docker/Sealos 部署、模型配置、数据迁移与排障的运维语料。\n- [版本与定价清单](${domain}/pricing.md): 社区版、云服务版与商业版功能边界及资源计费标准。`;
 
   const sections = sectionDefs
     .map((section) => {
@@ -370,6 +370,32 @@ export function buildLlmsIndexText(lang: FastGPTDocsLocale): string {
     .join('\n\n');
 
   return `${header}\n\n${sections}\n`;
+}
+
+/**
+ * Build a compact endpoint summary for `/openapi/reference/**` entries inside `/llms-full.txt`
+ * so full parameter tables and SSE payloads stay in `/llms-openapi.txt` and `<slug>.md`.
+ */
+function buildCompactOpenApiReferenceBody(params: {
+  body: string;
+  canonicalUrl: string;
+  description?: unknown;
+  lang: FastGPTDocsLocale;
+}): string {
+  const { body, canonicalUrl, description, lang } = params;
+  const domain = getFastGPTDocsOriginForLocale(lang);
+  const overviewEndRe =
+    /\n## (?:接口说明与注意事项|Description & Notes|请求参数|Request Parameters)(?=\s|$)/;
+  const match = overviewEndRe.exec(body);
+  const overviewSection = match ? body.slice(0, match.index).trim() : body.trim();
+  const descText = typeof description === 'string' ? description.trim() : '';
+  const descBlock = descText ? `\n\n${descText}` : '';
+
+  if (lang === 'en') {
+    return `${overviewSection}${descBlock}\n\nFull request/response schemas and examples: [Single-Page Markdown](${canonicalUrl}.md) | [OpenAPI Corpus](${domain}/llms-openapi.txt) | [OpenAPI 3.1 JSON](${domain}/openapi.json)`;
+  }
+
+  return `${overviewSection}${descBlock}\n\n完整入参、出参 Schema 与请求响应示例请查阅：[单页纯净 Markdown](${canonicalUrl}.md) | [OpenAPI 专项语料](${domain}/llms-openapi.txt) | [OpenAPI 3.1 JSON](${domain}/openapi.json)`;
 }
 
 /** Build the clean Markdown corpus for all active topics or a focused section bundle in the given language. */
@@ -403,13 +429,25 @@ export async function buildLlmsFullText(
         const { content, data } = matter(fileContent);
         if (data.deprecated || data.draft) return null;
 
-        const body = await renderCleanMdxBody(file, content);
+        const relSlug = fileToRelSlug(file);
+        const canonicalUrl = fileToCanonicalUrl(file);
+        const rawBody = await renderCleanMdxBody(file, content);
+        // 仅在全局 /llms-full.txt 中对 /openapi/reference/** 启用摘要模式，避免大表挤占通用语料上下文；/llms-openapi.txt 保持完整正文。
+        const body =
+          bundle === undefined && relSlug.startsWith('/openapi/reference/')
+            ? buildCompactOpenApiReferenceBody({
+                body: rawBody,
+                canonicalUrl,
+                description: data.description,
+                lang
+              })
+            : rawBody;
         const contentKey = file.replace(/^\.\//, '');
         const lastUpdated = resolveDocLastModified(contentKey, data.lastModified);
         const lastUpdatedLine =
           lastUpdated !== undefined ? `\nlast_updated: ${lastUpdated}` : '';
         return `file: ${file}
-url: ${fileToCanonicalUrl(file)}
+url: ${canonicalUrl}
 title: ${String(data.title ?? '')}${lastUpdatedLine}
 meta: ${JSON.stringify(data, null, 2)}
 

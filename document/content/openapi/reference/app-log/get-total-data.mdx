@@ -1,0 +1,66 @@
+---
+title: '获取应用总体数据统计'
+seoTitle: '获取应用总体数据统计 - GET /api/proApi/core/app/logs/getTotalData | FastGPT OpenAPI'
+description: '获取指定 FastGPT 应用的累计统计指标，包括总用户数、总对话数、总积分消耗以及输入输出 Token 累计用量。'
+---
+
+## 端点概览
+
+- **HTTP 方法**：`GET`
+- **请求路径**：`/api/proApi/core/app/logs/getTotalData`
+- **所属模块**：应用管理 / 应用日志
+- **鉴权方式**：`Authorization: Bearer <apiKey>`—支持 **应用 API Key**（无需 `appId`）与 **个人密钥**（需传 `appId`）（详见 [API 入门：完成首次请求](/zh-CN/openapi/intro)）
+- **在线调试**：[在云服务 Scalar 调试台打开](https://cloud.fastgpt.cn/apidoc/systemopenapi#tag/%E5%BA%94%E7%94%A8%E6%97%A5%E5%BF%97/GET/proApi/core/app/logs/getTotalData)（自部署实例请将域名替换为 `<instance>/apidoc/systemopenapi#tag/%E5%BA%94%E7%94%A8%E6%97%A5%E5%BF%97/GET/proApi/core/app/logs/getTotalData`）
+
+## 接口说明与注意事项
+
+获取应用的总体数据统计，包括总用户数、总对话数、总积分消耗
+
+## 请求参数
+
+### Query 查询参数
+
+**互斥参数分支（`anyOf` 选填其一）**
+
+- **显式指定应用**
+
+个人密钥或登录态必须传 appId；应用 Key 始终以 Key 绑定的应用为准。
+
+| 字段    | 类型     | 必填 | 默认值 | 约束与说明           |
+| ------- | -------- | ---- | ------ | -------------------- |
+| `appId` | `string` | 是   | -      | 应用 ID。最小长度：1 |
+
+- **应用 API Key（无需 appId）**
+
+Authorization 使用绑定应用的 APP API Key 时无需传 appId 或 sourceType，服务端从 Key 绑定取得应用，sourceType 固定为 app。个人密钥和登录态不能使用此省略方式；显式传入 appId 时仍以 Key 绑定为准。
+
+该分支无需额外字段。
+
+## 请求示例
+
+调用前请将 `YOUR_API_KEY` 与示例 ID 替换为真实值；私有化部署实例请将基础域名替换为 `<instance>/api`。
+
+### cURL 请求示例
+
+```bash
+curl --fail-with-body -X GET "https://cloud.fastgpt.cn/api/proApi/core/app/logs/getTotalData?appId=68ad85a7463006c963799a05" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+## 响应结构与示例
+
+除兼容 OpenAI 协议的对话补全或二进制下载接口外，成功响应统一包裹在 `{ "code": 200, "statusText": "", "message": "", "data": ... }` 标准结构中；下方 `200` 字段表对应 `data` 载荷结构（无数据返回时 `data` 为 `null`）。
+
+### HTTP 200
+
+成功获取应用总体数据
+
+**Content-Type** : `application/json`
+
+| 字段                | 类型     | 必填 | 默认值 | 约束与说明        |
+| ------------------- | -------- | ---- | ------ | ----------------- |
+| `totalUsers`        | `number` | 是   | -      | 总用户数          |
+| `totalChats`        | `number` | 是   | -      | 总对话数          |
+| `totalPoints`       | `number` | 是   | -      | 总积分消耗        |
+| `totalInputTokens`  | `number` | 是   | -      | 总输入 Token 消耗 |
+| `totalOutputTokens` | `number` | 是   | -      | 总输出 Token 消耗 |

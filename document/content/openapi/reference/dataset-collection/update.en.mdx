@@ -1,0 +1,82 @@
+---
+title: 'Update Dataset Collection'
+seoTitle: 'Update Dataset Collection - POST /api/core/dataset/collection/update | FastGPT OpenAPI'
+description: 'Update collection name, parent folder, disabled flag, or tags by collection ID or by datasetId and externalFileId.'
+---
+
+## Endpoint Overview
+
+- **Method** : `POST`
+- **Path** : `/api/core/dataset/collection/update`
+- **Module** : Datasets / Collections
+- **Authentication** : `Authorization: Bearer <apiKey>`—Personal API Key (access scoped by team member permissions) (see [API Getting Started](/en/openapi/intro) )
+- **Interactive Try-It-Out** : [Open in Scalar API Explorer](https://cloud.fastgpt.io/apidoc/systemopenapi#tag/%E9%9B%86%E5%90%88%E7%AE%A1%E7%90%86/POST/core/dataset/collection/update) (self-hosted instances: replace the origin with `<instance>/apidoc/systemopenapi#tag/%E9%9B%86%E5%90%88%E7%AE%A1%E7%90%86/POST/core/dataset/collection/update` )
+
+## Description & Notes
+
+Update collection metadata by collection ID or `datasetId` + `externalFileId` (requires collection write permission). Changing `parentId` moves the collection, requiring manage permissions on source and target parents (plus team dataset creation permission when moving between root and a folder); `inheritPermission` is not accepted and existing inheritance mode is preserved.
+
+## Request Parameters
+
+### Request Body ( `application/json` )
+
+#### Shared Parameters Across Branches
+
+| Field        | Type                 | Required | Default | Constraints & Description                                           |
+| ------------ | -------------------- | -------- | ------- | ------------------------------------------------------------------- |
+| `parentId`   | `string \| null`     | No       | -       | Parent folder ID                                                    |
+| `name`       | `string`             | No       | -       | Collection name                                                     |
+| `tags`       | `string \| object[]` | No       | -       | Tag list (supports legacy string names or `{ tag, value }` objects) |
+| `forbid`     | `boolean`            | No       | -       | Whether the collection is disabled                                  |
+| `createTime` | `string`             | No       | -       | Creation time                                                       |
+
+**Mutually Exclusive Branches ( `anyOf` )**
+
+- **Identify by `id`**
+
+| Field            | Type     | Required | Default | Constraints & Description                                                                             |
+| ---------------- | -------- | -------- | ------- | ----------------------------------------------------------------------------------------------------- |
+| `id`             | `string` | Yes      | -       | Collection ID (mutually exclusive with `datasetId` + `externalFileId` ). pattern: `^[0-9a-fA-F]{24}$` |
+| `datasetId`      | `string` | No       | -       | Dataset ID used together with `externalFileId`                                                        |
+| `externalFileId` | `string` | No       | -       | External file ID used together with `datasetId`                                                       |
+
+- **Identify by `datasetId` & `externalFileId`**
+
+| Field            | Type     | Required | Default | Constraints & Description                                                                             |
+| ---------------- | -------- | -------- | ------- | ----------------------------------------------------------------------------------------------------- |
+| `datasetId`      | `string` | Yes      | -       | Dataset ID used together with `externalFileId`                                                        |
+| `externalFileId` | `string` | Yes      | -       | External file ID used together with `datasetId`                                                       |
+| `id`             | `string` | No       | -       | Collection ID (mutually exclusive with `datasetId` + `externalFileId` ). pattern: `^[0-9a-fA-F]{24}$` |
+
+## Request Examples
+
+Replace `YOUR_API_KEY` and placeholder IDs before running. Self-hosted users should replace the base URL with `<instance>/api` .
+
+### cURL Example
+
+```bash
+curl --fail-with-body -X POST "https://cloud.fastgpt.io/api/core/dataset/collection/update" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  --data-raw '{
+  "id": "68ee0bd23d17260b7829b137"
+}'
+```
+
+### Minimal Valid JSON Body
+
+```json
+{
+  "id": "68ee0bd23d17260b7829b137"
+}
+```
+
+## Response Schema & Examples
+
+Successful `/api/*` calls return the standard FastGPT envelope `{ "code": 200, "statusText": "", "message": "", "data": ... }` , where `data` matches the `200` schema below (and `null` when no payload schema is declared).
+
+### HTTP 200
+
+Successfully updated collection metadata
+
+Returns standard success envelope with `data: null` .

@@ -1,0 +1,121 @@
+---
+title: 'Get App Chart Analytics'
+seoTitle: 'Get App Chart Analytics - POST /api/proApi/core/app/logs/getChartData | FastGPT OpenAPI'
+description: 'Query time-series analytics for users, chats, and app performance grouped by fixed timezone offset within an exact time range.'
+---
+
+## Endpoint Overview
+
+- **Method** : `POST`
+- **Path** : `/api/proApi/core/app/logs/getChartData`
+- **Module** : Applications / App Logs
+- **Authentication** : `Authorization: Bearer <apiKey>`—Supports **App API Key** ( `appId` optional) and **Personal API Key** ( `appId` required) (see [API Getting Started](/en/openapi/intro) )
+- **Interactive Try-It-Out** : [Open in Scalar API Explorer](https://cloud.fastgpt.io/apidoc/systemopenapi#tag/%E5%BA%94%E7%94%A8%E6%97%A5%E5%BF%97/POST/proApi/core/app/logs/getChartData) (self-hosted instances: replace the origin with `<instance>/apidoc/systemopenapi#tag/%E5%BA%94%E7%94%A8%E6%97%A5%E5%BF%97/POST/proApi/core/app/logs/getChartData` )
+
+## Description & Notes
+
+Queries strictly within the exact absolute start and end timestamps without expanding the window. User, chat, and app buckets are grouped by the fixed timezone offset carried in `dateStart` (or server timezone if omitted); no separate timezone parameter is accepted.
+
+## Request Parameters
+
+### Request Body ( `application/json` )
+
+#### Shared Parameters Across Branches
+
+| Field          | Type               | Required | Default | Constraints & Description                                                                                                                                       |
+| -------------- | ------------------ | -------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `dateStart`    | `string`           | Yes      | -       | Inclusive start timestamp as an ISO string preserving timezone offset and milliseconds; buckets use this fixed offset (server timezone if omitted, `Z` for UTC) |
+| `dateEnd`      | `string`           | Yes      | -       | Inclusive end timestamp (server timezone if offset is omitted); preserves the exact boundary without date expansion                                             |
+| `source`       | `string` (enum)[]` | No       | -       | Chat source filter; omit for all sources, pass an empty array to match nothing                                                                                  |
+| `offset`       | `number`           | No       | `1`     | Retention offset measured in `userTimespan` units (defaults to 1); counts subsequent activity within the selected range only                                    |
+| `userTimespan` | `string` (enum)    | Yes      | -       | User analytics timespan. Allowed values: `day` , `week` , `month` , `quarter`                                                                                   |
+| `chatTimespan` | `string` (enum)    | Yes      | -       | Chat analytics timespan. Allowed values: `day` , `week` , `month` , `quarter`                                                                                   |
+| `appTimespan`  | `string` (enum)    | Yes      | -       | App analytics timespan. Allowed values: `day` , `week` , `month` , `quarter`                                                                                    |
+
+**Mutually Exclusive Branches ( `anyOf` )**
+
+- **Explicit App ID**
+
+Personal API keys and login sessions must pass `appId` ; an App API Key always uses the bound application.
+
+| Field   | Type     | Required | Default | Constraints & Description    |
+| ------- | -------- | -------- | ------- | ---------------------------- |
+| `appId` | `string` | Yes      | -       | Application ID. minLength: 1 |
+
+- **App API Key (no appId required)**
+
+When authorizing with an app-bound App API Key, omit `appId` and `sourceType` ; the server resolves the bound app with `sourceType` fixed to `app` . Personal keys and login sessions cannot omit `appId` , and an explicit `appId` does not override an App API Key binding.
+
+No extra branch-specific fields are required.
+
+## Request Examples
+
+Replace `YOUR_API_KEY` and placeholder IDs before running. Self-hosted users should replace the base URL with `<instance>/api` .
+
+### cURL Example
+
+```bash
+curl --fail-with-body -X POST "https://cloud.fastgpt.io/api/proApi/core/app/logs/getChartData" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  --data-raw '{
+  "appId": "68ad85a7463006c963799a05",
+  "dateStart": "2024-01-01T00:00:00.000Z",
+  "dateEnd": "2024-12-31T23:59:59.999Z",
+  "userTimespan": "day",
+  "chatTimespan": "day",
+  "appTimespan": "day"
+}'
+```
+
+### Minimal Valid JSON Body
+
+```json
+{
+  "appId": "68ad85a7463006c963799a05",
+  "dateStart": "2024-01-01T00:00:00.000Z",
+  "dateEnd": "2024-12-31T23:59:59.999Z",
+  "userTimespan": "day",
+  "chatTimespan": "day",
+  "appTimespan": "day"
+}
+```
+
+## Response Schema & Examples
+
+Successful `/api/*` calls return the standard FastGPT envelope `{ "code": 200, "statusText": "", "message": "", "data": ... }` , where `data` matches the `200` schema below (and `null` when no payload schema is declared).
+
+### HTTP 200
+
+Successfully retrieved application chart analytics
+
+**Content-Type** : `application/json`
+
+| Field                                   | Type       | Required | Default | Constraints & Description                                   |
+| --------------------------------------- | ---------- | -------- | ------- | ----------------------------------------------------------- |
+| `userData`                              | `object[]` | Yes      | -       | User statistics                                             |
+| `userData[].timestamp`                  | `number`   | Yes      | -       | Timestamp                                                   |
+| `userData[].summary`                    | `object`   | Yes      | -       | User summary metrics for the current time bucket            |
+| `userData[].summary.userCount`          | `number`   | Yes      | -       | Total user count                                            |
+| `userData[].summary.newUserCount`       | `number`   | Yes      | -       | New user count                                              |
+| `userData[].summary.retentionUserCount` | `number`   | Yes      | -       | Retained user count                                         |
+| `userData[].summary.points`             | `number`   | Yes      | -       | Credit points consumed                                      |
+| `userData[].summary.inputTokens`        | `number`   | Yes      | -       | Input tokens consumed                                       |
+| `userData[].summary.outputTokens`       | `number`   | Yes      | -       | Output tokens consumed                                      |
+| `userData[].summary.sourceCountMap`     | `object`   | Yes      | -       | User count by source                                        |
+| `chatData`                              | `object[]` | Yes      | -       | Chat statistics                                             |
+| `chatData[].timestamp`                  | `number`   | Yes      | -       | Timestamp                                                   |
+| `chatData[].summary`                    | `object`   | Yes      | -       | Chat summary metrics for the current time bucket            |
+| `chatData[].summary.chatItemCount`      | `number`   | Yes      | -       | Total message count                                         |
+| `chatData[].summary.chatCount`          | `number`   | Yes      | -       | Total chat sessions                                         |
+| `chatData[].summary.errorCount`         | `number`   | Yes      | -       | Error message count                                         |
+| `chatData[].summary.points`             | `number`   | Yes      | -       | Credit points consumed                                      |
+| `chatData[].summary.inputTokens`        | `number`   | Yes      | -       | Input tokens consumed                                       |
+| `chatData[].summary.outputTokens`       | `number`   | Yes      | -       | Output tokens consumed                                      |
+| `appData`                               | `object[]` | Yes      | -       | App statistics                                              |
+| `appData[].timestamp`                   | `number`   | Yes      | -       | Timestamp                                                   |
+| `appData[].summary`                     | `object`   | Yes      | -       | App performance summary metrics for the current time bucket |
+| `appData[].summary.goodFeedBackCount`   | `number`   | Yes      | -       | Positive feedback count                                     |
+| `appData[].summary.badFeedBackCount`    | `number`   | Yes      | -       | Negative feedback count                                     |
+| `appData[].summary.chatCount`           | `number`   | Yes      | -       | Chat item count                                             |
+| `appData[].summary.totalResponseTime`   | `number`   | Yes      | -       | Total response time (ms)                                    |

@@ -1,0 +1,70 @@
+---
+title: '获取数据详情'
+seoTitle: '获取数据详情 - GET /api/core/dataset/data/detail | FastGPT OpenAPI'
+description: '根据数据 ID 获取单条知识库数据块的完整主文本、补充答案、关联图片地址以及所有向量检索索引详情。'
+---
+
+## 端点概览
+
+- **HTTP 方法**：`GET`
+- **请求路径**：`/api/core/dataset/data/detail`
+- **所属模块**：知识库 / 数据管理
+- **鉴权方式**：`Authorization: Bearer <apiKey>`—个人密钥（按归属团队成员资源权限校验）（详见 [API 入门：完成首次请求](/zh-CN/openapi/intro)）
+- **在线调试**：[在云服务 Scalar 调试台打开](https://cloud.fastgpt.cn/apidoc/systemopenapi#tag/%E6%95%B0%E6%8D%AE%E7%AE%A1%E7%90%86/GET/core/dataset/data/detail)（自部署实例请将域名替换为 `<instance>/apidoc/systemopenapi#tag/%E6%95%B0%E6%8D%AE%E7%AE%A1%E7%90%86/GET/core/dataset/data/detail`）
+
+## 接口说明与注意事项
+
+获取单条数据集数据的详细信息，包括向量索引
+
+## 请求参数
+
+### Query 查询参数
+
+| 字段 | 类型     | 必填 | 默认值 | 约束与说明                         |
+| ---- | -------- | ---- | ------ | ---------------------------------- |
+| `id` | `string` | 是   | -      | 数据 ID。正则：`^[0-9a-fA-F]{24}$` |
+
+## 请求示例
+
+调用前请将 `YOUR_API_KEY` 与示例 ID 替换为真实值；私有化部署实例请将基础域名替换为 `<instance>/api`。
+
+### cURL 请求示例
+
+```bash
+curl --fail-with-body -X GET "https://cloud.fastgpt.cn/api/core/dataset/data/detail?id=68ad85a7463006c963799a05" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+## 响应结构与示例
+
+除兼容 OpenAI 协议的对话补全或二进制下载接口外，成功响应统一包裹在 `{ "code": 200, "statusText": "", "message": "", "data": ... }` 标准结构中；下方 `200` 字段表对应 `data` 载荷结构（无数据返回时 `data` 为 `null`）。
+
+### HTTP 200
+
+成功返回数据详情
+
+**Content-Type** : `application/json`
+
+| 字段               | 类型            | 必填 | 默认值     | 约束与说明                                                                                                                                                                                                                           |
+| ------------------ | --------------- | ---- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `q`                | `string`        | 是   | -          | 问题/主文本                                                                                                                                                                                                                          |
+| `a`                | `string`        | 否   | -          | 回答/补充文本                                                                                                                                                                                                                        |
+| `imageId`          | `string`        | 否   | -          | 图片 ID                                                                                                                                                                                                                              |
+| `id`               | `string`        | 是   | -          | 数据 ID。正则：`^[0-9a-fA-F]{24}$`                                                                                                                                                                                                   |
+| `teamId`           | `string`        | 是   | -          | 团队 ID。正则：`^[0-9a-fA-F]{24}$`                                                                                                                                                                                                   |
+| `datasetId`        | `string`        | 是   | -          | 数据集 ID。正则：`^[0-9a-fA-F]{24}$`                                                                                                                                                                                                 |
+| `collectionId`     | `string`        | 是   | -          | 集合 ID。正则：`^[0-9a-fA-F]{24}$`                                                                                                                                                                                                   |
+| `imagePreivewUrl`  | `string`        | 否   | -          | 图片预览 URL                                                                                                                                                                                                                         |
+| `updateTime`       | `string`        | 是   | -          | 更新时间                                                                                                                                                                                                                             |
+| `sourceName`       | `string`        | 是   | -          | 来源名称                                                                                                                                                                                                                             |
+| `sourceId`         | `string`        | 否   | -          | 来源 ID                                                                                                                                                                                                                              |
+| `chunkIndex`       | `number`        | 是   | -          | 块索引                                                                                                                                                                                                                               |
+| `indexes`          | `object[]`      | 是   | -          | 向量索引                                                                                                                                                                                                                             |
+| `indexes[].type`   | `string` (enum) | 是   | `"custom"` | 索引类型, 外部接口不需要传，都 custom，其他 type 是系统自动生成的。可选值：`default` , `imageEmbedding` , `summary` , `question` , `image` , `custom`                                                                                |
+| `indexes[].dataId` | `string`        | 是   | -          | 向量库里数据 ID（可选），可用于相同索引不重复创建，节省一次向量更新                                                                                                                                                                  |
+| `indexes[].text`   | `string`        | 是   | -          | 默认就是索引的文本内容，特殊的：imageEmbedding - 图片的 objectKey/URL                                                                                                                                                                |
+| `indexStatus`      | `string` (enum) | 否   | -          | 索引状态，字段缺失表示已索引的历史数据。可选值：`indexing` , `indexed` , `error` , `rebuildIndexPending` , `rebuildIndexRunning` , `rebuildIndexFailed` , `rebuildSynonymPending` , `rebuildSynonymRunning` , `rebuildSynonymFailed` |
+| `indexErrorMsg`    | `string`        | 否   | -          | 索引错误信息                                                                                                                                                                                                                         |
+| `imageDescMap`     | `object`        | 否   | -          | 图片描述映射                                                                                                                                                                                                                         |
+| `isOwner`          | `boolean`       | 是   | -          | 是否为 owner                                                                                                                                                                                                                         |
+| `metadata`         | `object`        | 否   | -          | 自定义元数据                                                                                                                                                                                                                         |

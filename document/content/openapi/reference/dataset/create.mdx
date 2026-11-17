@@ -1,0 +1,99 @@
+---
+title: '创建知识库'
+seoTitle: '创建知识库 - POST /api/core/dataset/create | FastGPT OpenAPI'
+description: '创建一个新的 FastGPT 知识库或文件夹，支持通用知识库、网站同步、外部文件库与第三方数据源配置及权限继承设置。'
+---
+
+## 端点概览
+
+- **HTTP 方法**：`POST`
+- **请求路径**：`/api/core/dataset/create`
+- **所属模块**：知识库 / 知识库管理
+- **鉴权方式**：`Authorization: Bearer <apiKey>`—个人密钥（按归属团队成员资源权限校验）（详见 [API 入门：完成首次请求](/zh-CN/openapi/intro)）
+- **在线调试**：[在云服务 Scalar 调试台打开](https://cloud.fastgpt.cn/apidoc/systemopenapi#tag/%E7%9F%A5%E8%AF%86%E5%BA%93%E7%AE%A1%E7%90%86/POST/core/dataset/create)（自部署实例请将域名替换为 `<instance>/apidoc/systemopenapi#tag/%E7%9F%A5%E8%AF%86%E5%BA%93%E7%AE%A1%E7%90%86/POST/core/dataset/create`）
+
+## 接口说明与注意事项
+
+创建新的知识库,支持多种类型(普通知识库、文件夹、网站知识库等)
+
+## 请求参数
+
+### Request Body 请求体（`application/json`）
+
+| 字段                                            | 类型             | 必填 | 默认值 | 约束与说明                                                                                                                                                                        |
+| ----------------------------------------------- | ---------------- | ---- | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `parentId`                                      | `string \| null` | 否   | -      | 父级文件夹 ID,不传则创建在根目录                                                                                                                                                  |
+| `type`                                          | `string` (enum)  | 是   | -      | 知识库类型。可选值：`folder` , `dataset` , `websiteDataset` , `externalFile` , `apiDataset` , `feishu` , `yuque` , `dingtalk`                                                     |
+| `name`                                          | `string`         | 是   | -      | 知识库名称                                                                                                                                                                        |
+| `intro`                                         | `string`         | 是   | -      | 知识库简介                                                                                                                                                                        |
+| `avatar`                                        | `string`         | 否   | -      | 知识库头像，可不传，返回时使用默认图标                                                                                                                                            |
+| `vectorModelId`                                 | `string`         | 否   | -      | 向量模型 ID，不传则使用默认向量模型                                                                                                                                               |
+| `vectorModel`                                   | `string`         | 否   | -      | **已弃用**。向量模型标识，不传则使用默认向量模型                                                                                                                                  |
+| `agentModelId`                                  | `string`         | 否   | -      | 知识库 Agent 模型 ID，不传则使用默认模型                                                                                                                                          |
+| `agentModel`                                    | `string`         | 否   | -      | **已弃用**。知识库 Agent 模型标识，不传则使用默认模型                                                                                                                             |
+| `vlmModelId`                                    | `string \| null` | 否   | -      | 视觉语言模型 ID；未传沿用默认，null 或空字符串表示不设置                                                                                                                          |
+| `vlmModel`                                      | `string`         | 否   | -      | **已弃用**。视觉语言模型标识                                                                                                                                                      |
+| `apiDatasetServer`                              | `object`         | 否   | -      | 第三方知识库服务器配置(API/飞书/语雀/钉钉)                                                                                                                                        |
+| `apiDatasetServer.apiServer`                    | `object`         | 否   | -      | API 服务器配置                                                                                                                                                                    |
+| `apiDatasetServer.apiServer.baseUrl`            | `string`         | 是   | -      | -                                                                                                                                                                                 |
+| `apiDatasetServer.apiServer.authorization`      | `string`         | 否   | -      | -                                                                                                                                                                                 |
+| `apiDatasetServer.apiServer.basePath`           | `string`         | 否   | -      | -                                                                                                                                                                                 |
+| `apiDatasetServer.feishuServer`                 | `object`         | 否   | -      | 飞书服务器配置                                                                                                                                                                    |
+| `apiDatasetServer.feishuServer.appId`           | `string`         | 是   | -      | -                                                                                                                                                                                 |
+| `apiDatasetServer.feishuServer.appSecret`       | `string`         | 否   | -      | -                                                                                                                                                                                 |
+| `apiDatasetServer.feishuServer.folderToken`     | `string`         | 是   | -      | -                                                                                                                                                                                 |
+| `apiDatasetServer.yuqueServer`                  | `object`         | 否   | -      | 语雀服务器配置                                                                                                                                                                    |
+| `apiDatasetServer.yuqueServer.userId`           | `string`         | 是   | -      | -                                                                                                                                                                                 |
+| `apiDatasetServer.yuqueServer.token`            | `string`         | 否   | -      | -                                                                                                                                                                                 |
+| `apiDatasetServer.yuqueServer.basePath`         | `string`         | 否   | -      | -                                                                                                                                                                                 |
+| `apiDatasetServer.dingtalkServer`               | `object`         | 否   | -      | 钉钉知识库配置                                                                                                                                                                    |
+| `apiDatasetServer.dingtalkServer.appKey`        | `string`         | 是   | -      | -                                                                                                                                                                                 |
+| `apiDatasetServer.dingtalkServer.appSecret`     | `string`         | 否   | -      | -                                                                                                                                                                                 |
+| `apiDatasetServer.dingtalkServer.userId`        | `string`         | 是   | -      | -                                                                                                                                                                                 |
+| `apiDatasetServer.dingtalkServer.operatorId`    | `string`         | 否   | -      | -                                                                                                                                                                                 |
+| `apiDatasetServer.dingtalkServer.workspaceId`   | `string`         | 否   | -      | -                                                                                                                                                                                 |
+| `apiDatasetServer.dingtalkServer.rootNodeId`    | `string`         | 否   | -      | -                                                                                                                                                                                 |
+| `apiDatasetServer.dingtalkServer.workspaceName` | `string`         | 否   | -      | -                                                                                                                                                                                 |
+| `sangforFileParseConfig`                        | `object`         | 否   | -      | 外部文档解析开关(页眉页脚/附录/图片识别/图转表),仅对 customPdfParse 解析路径生效                                                                                                  |
+| `sangforFileParseConfig.keep_header_footer`     | `boolean`        | 否   | -      | 是否保留页眉页脚，默认关闭（删除页眉页脚）                                                                                                                                        |
+| `sangforFileParseConfig.keep_appendix`          | `boolean`        | 否   | -      | 是否保留附录，默认开启                                                                                                                                                            |
+| `sangforFileParseConfig.image_analysis`         | `boolean`        | 否   | -      | 是否保留图片识别（含印章）结果，默认关闭                                                                                                                                          |
+| `sangforFileParseConfig.chart_analysis`         | `boolean`        | 否   | -      | 是否保留图表转表格结果（同时保留原图片），默认关闭                                                                                                                                |
+| `inheritPermission`                             | `boolean`        | 否   | -      | 是否继承父级权限（默认 true）：true = 创建时合并父级权限快照，并跟随父级后续权限变更；false = 独立创建，仅写创建者 owner 权限，不合并父级权限，父级后续权限变更也不再传播到该节点 |
+
+## 请求示例
+
+调用前请将 `YOUR_API_KEY` 与示例 ID 替换为真实值；私有化部署实例请将基础域名替换为 `<instance>/api`。
+
+### cURL 请求示例
+
+```bash
+curl --fail-with-body -X POST "https://cloud.fastgpt.cn/api/core/dataset/create" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  --data-raw '{
+  "type": "folder",
+  "name": "我的知识库",
+  "intro": "这是一个用于存储产品文档的知识库"
+}'
+```
+
+### 最小合法 JSON 请求体示例
+
+```json
+{
+  "type": "folder",
+  "name": "我的知识库",
+  "intro": "这是一个用于存储产品文档的知识库"
+}
+```
+
+## 响应结构与示例
+
+除兼容 OpenAI 协议的对话补全或二进制下载接口外，成功响应统一包裹在 `{ "code": 200, "statusText": "", "message": "", "data": ... }` 标准结构中；下方 `200` 字段表对应 `data` 载荷结构（无数据返回时 `data` 为 `null`）。
+
+### HTTP 200
+
+成功返回新创建的知识库 ID
+
+返回标准成功响应（`data: null`）。

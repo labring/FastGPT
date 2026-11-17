@@ -1,0 +1,70 @@
+---
+title: 'Get Dataset Data Item Details'
+seoTitle: 'Get Dataset Data Item Details - GET /api/core/dataset/data/detail | FastGPT OpenAPI'
+description: 'Retrieve full question, answer, signed image URLs, and vector index entries for a single dataset data item by ID.'
+---
+
+## Endpoint Overview
+
+- **Method** : `GET`
+- **Path** : `/api/core/dataset/data/detail`
+- **Module** : Datasets / Dataset Data
+- **Authentication** : `Authorization: Bearer <apiKey>`—Personal API Key (access scoped by team member permissions) (see [API Getting Started](/en/openapi/intro) )
+- **Interactive Try-It-Out** : [Open in Scalar API Explorer](https://cloud.fastgpt.io/apidoc/systemopenapi#tag/%E6%95%B0%E6%8D%AE%E7%AE%A1%E7%90%86/GET/core/dataset/data/detail) (self-hosted instances: replace the origin with `<instance>/apidoc/systemopenapi#tag/%E6%95%B0%E6%8D%AE%E7%AE%A1%E7%90%86/GET/core/dataset/data/detail` )
+
+## Description & Notes
+
+Retrieve detailed content and vector indexes for a single dataset data item.
+
+## Request Parameters
+
+### Query Parameters
+
+| Field | Type     | Required | Default | Constraints & Description                  |
+| ----- | -------- | -------- | ------- | ------------------------------------------ |
+| `id`  | `string` | Yes      | -       | Data item ID. pattern: `^[0-9a-fA-F]{24}$` |
+
+## Request Examples
+
+Replace `YOUR_API_KEY` and placeholder IDs before running. Self-hosted users should replace the base URL with `<instance>/api` .
+
+### cURL Example
+
+```bash
+curl --fail-with-body -X GET "https://cloud.fastgpt.io/api/core/dataset/data/detail?id=68ad85a7463006c963799a05" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+## Response Schema & Examples
+
+Successful `/api/*` calls return the standard FastGPT envelope `{ "code": 200, "statusText": "", "message": "", "data": ... }` , where `data` matches the `200` schema below (and `null` when no payload schema is declared).
+
+### HTTP 200
+
+Successfully returned data item details
+
+**Content-Type** : `application/json`
+
+| Field              | Type            | Required | Default    | Constraints & Description                                                                                                                                                                                                                                     |
+| ------------------ | --------------- | -------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `q`                | `string`        | Yes      | -          | Primary chunk content / question                                                                                                                                                                                                                              |
+| `a`                | `string`        | No       | -          | Supplementary answer / text                                                                                                                                                                                                                                   |
+| `imageId`          | `string`        | No       | -          | Image ID                                                                                                                                                                                                                                                      |
+| `id`               | `string`        | Yes      | -          | Data item ID. pattern: `^[0-9a-fA-F]{24}$`                                                                                                                                                                                                                    |
+| `teamId`           | `string`        | Yes      | -          | Team ID. pattern: `^[0-9a-fA-F]{24}$`                                                                                                                                                                                                                         |
+| `datasetId`        | `string`        | Yes      | -          | Dataset ID. pattern: `^[0-9a-fA-F]{24}$`                                                                                                                                                                                                                      |
+| `collectionId`     | `string`        | Yes      | -          | Collection ID. pattern: `^[0-9a-fA-F]{24}$`                                                                                                                                                                                                                   |
+| `imagePreivewUrl`  | `string`        | No       | -          | Image preview URL                                                                                                                                                                                                                                             |
+| `updateTime`       | `string`        | Yes      | -          | Update time                                                                                                                                                                                                                                                   |
+| `sourceName`       | `string`        | Yes      | -          | Source name                                                                                                                                                                                                                                                   |
+| `sourceId`         | `string`        | No       | -          | Source ID                                                                                                                                                                                                                                                     |
+| `chunkIndex`       | `number`        | Yes      | -          | Chunk index                                                                                                                                                                                                                                                   |
+| `indexes`          | `object[]`      | Yes      | -          | Vector indexes                                                                                                                                                                                                                                                |
+| `indexes[].type`   | `string` (enum) | Yes      | `"custom"` | Index type (external callers omit or use `custom` ; other types are system-generated). Allowed values: `default` , `imageEmbedding` , `summary` , `question` , `image` , `custom`                                                                             |
+| `indexes[].dataId` | `string`        | Yes      | -          | Optional vector store ID used to reuse matching indexes without re-embedding                                                                                                                                                                                  |
+| `indexes[].text`   | `string`        | Yes      | -          | Indexed text content by default; for `imageEmbedding` , the image `objectKey` or URL                                                                                                                                                                          |
+| `indexStatus`      | `string` (enum) | No       | -          | Index status (absent on legacy already-indexed records). Allowed values: `indexing` , `indexed` , `error` , `rebuildIndexPending` , `rebuildIndexRunning` , `rebuildIndexFailed` , `rebuildSynonymPending` , `rebuildSynonymRunning` , `rebuildSynonymFailed` |
+| `indexErrorMsg`    | `string`        | No       | -          | Indexing error details                                                                                                                                                                                                                                        |
+| `imageDescMap`     | `object`        | No       | -          | Image description mapping                                                                                                                                                                                                                                     |
+| `isOwner`          | `boolean`       | Yes      | -          | Whether the caller is the owner                                                                                                                                                                                                                               |
+| `metadata`         | `object`        | No       | -          | Custom metadata                                                                                                                                                                                                                                               |

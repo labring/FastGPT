@@ -1,0 +1,73 @@
+---
+title: 'Get Model Display Summaries'
+seoTitle: 'Get Model Display Summaries - POST /api/core/ai/model/summary | FastGPT OpenAPI'
+description: 'Batch retrieve model display names, icons, types, and availability status for the current identity or app baseline via API Key.'
+---
+
+## Endpoint Overview
+
+- **Method** : `POST`
+- **Path** : `/api/core/ai/model/summary`
+- **Module** : Core Features / Models
+- **Authentication** : `Authorization: Bearer <apiKey>`—Personal API Key (access scoped by team member permissions) (see [API Getting Started](/en/openapi/intro) )
+- **Interactive Try-It-Out** : [Open in Scalar API Explorer](https://cloud.fastgpt.io/apidoc/systemopenapi#tag/%E6%A8%A1%E5%9E%8B%E7%AE%A1%E7%90%86/POST/core/ai/model/summary) (self-hosted instances: replace the origin with `<instance>/apidoc/systemopenapi#tag/%E6%A8%A1%E5%9E%8B%E7%AE%A1%E7%90%86/POST/core/ai/model/summary` )
+
+## Description & Notes
+
+Return model names, icons, types, and availability status for the current identity or app baseline without execution credentials.
+
+## Request Parameters
+
+### Request Body ( `application/json` )
+
+| Field                        | Type       | Required | Default | Constraints & Description                                                                             |
+| ---------------------------- | ---------- | -------- | ------- | ----------------------------------------------------------------------------------------------------- |
+| `modelIds`                   | `string[]` | Yes      | -       | Stable model IDs to look up (max 100). minItems: 1; maxItems: 100                                     |
+| `appId`                      | `string`   | No       | -       | Optional application ID; treats models in the app baseline as permitted. pattern: `^[0-9a-fA-F]{24}$` |
+| `outLinkAuthData`            | `object`   | No       | -       | Share-link auth payload; evaluates model permissions under the publisher identity                     |
+| `outLinkAuthData.shareId`    | `string`   | Yes      | -       | Share link ID. minLength: 1                                                                           |
+| `outLinkAuthData.outLinkUid` | `string`   | Yes      | -       | External share user ID. minLength: 1                                                                  |
+
+## Request Examples
+
+Replace `YOUR_API_KEY` and placeholder IDs before running. Self-hosted users should replace the base URL with `<instance>/api` .
+
+### cURL Example
+
+```bash
+curl --fail-with-body -X POST "https://cloud.fastgpt.io/api/core/ai/model/summary" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  --data-raw '{
+  "modelIds": [
+    "68ad85a7463006c963799a01"
+  ]
+}'
+```
+
+### Minimal Valid JSON Body
+
+```json
+{
+  "modelIds": ["68ad85a7463006c963799a01"]
+}
+```
+
+## Response Schema & Examples
+
+Successful `/api/*` calls return the standard FastGPT envelope `{ "code": 200, "statusText": "", "message": "", "data": ... }` , where `data` matches the `200` schema below (and `null` when no payload schema is declared).
+
+### HTTP 200
+
+Display status entries for active, inactive, deprecated, or unauthorized models
+
+**Content-Type** : `application/json`
+
+| Field    | Type       | Required | Default | Constraints & Description                         |
+| -------- | ---------- | -------- | ------- | ------------------------------------------------- |
+| `models` | `object[]` | Yes      | -       | Model display summaries returned in request order |
+
+#### Polymorphic Field: `models`
+
+- **Variant 1** ( `status="deleted"` ): `status` , `modelId` , `isUpcomingDeprecation`
+- **Variant 2** : `type` , `name` , `avatar` , `status` , `modelId` , `isUpcomingDeprecation`

@@ -1,0 +1,90 @@
+---
+title: 'Batch Delete Chat Histories'
+seoTitle: 'Batch Delete Chat Histories - POST /api/core/chat/history/batchDelete | FastGPT OpenAPI'
+description: 'Permanently delete multiple chat sessions along with their messages, response records, and uploaded chat files.'
+---
+
+## Endpoint Overview
+
+- **Method** : `POST`
+- **Path** : `/api/core/chat/history/batchDelete`
+- **Module** : Chat / Chat History
+- **Authentication** : `Authorization: Bearer <apiKey>`—Supports **App API Key** ( `appId` optional) and **Personal API Key** ( `appId` required) (see [API Getting Started](/en/openapi/intro) )
+- **Interactive Try-It-Out** : [Open in Scalar API Explorer](https://cloud.fastgpt.io/apidoc/systemopenapi#tag/%E4%BC%9A%E8%AF%9D%E7%AE%A1%E7%90%86/POST/core/chat/history/batchDelete) (self-hosted instances: replace the origin with `<instance>/apidoc/systemopenapi#tag/%E4%BC%9A%E8%AF%9D%E7%AE%A1%E7%90%86/POST/core/chat/history/batchDelete` )
+
+## Description & Notes
+
+Permanently deletes selected chat sessions along with their messages, response logs, and uploaded chat files (requires log management permission).
+
+## Request Parameters
+
+### Request Body ( `application/json` )
+
+#### Shared Parameters Across Branches
+
+| Field     | Type       | Required | Default | Constraints & Description     |
+| --------- | ---------- | -------- | ------- | ----------------------------- |
+| `chatIds` | `string[]` | Yes      | -       | List of chat IDs. minItems: 1 |
+
+**Mutually Exclusive Branches ( `anyOf` )**
+
+- **App Chat**
+
+Identify the conversation via `appId` . When both API Key and login session are supported, `Authorization` takes precedence over token/Cookie.
+
+| Field        | Type            | Required | Default | Constraints & Description                                                                                                                                                                        |
+| ------------ | --------------- | -------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `appId`      | `string`        | Yes      | -       | Application ID authenticated with the request header credentials allowed by this endpoint. pattern: `^[0-9a-fA-F]{24}$`                                                                          |
+| `sourceType` | `string` (enum) | No       | -       | Session resource type associated with `appId` . Defaults to `app` ; pass the matching `sourceType` for assistant builder sessions. Allowed values: `app` , `chatAgentHelper` , `workflowBuilder` |
+
+- **Skill Debug Session**
+
+Identify the debug session via `skillId` (takes precedence over `appId` and ignores `sourceType` ), authenticated with allowed request header credentials.
+
+| Field     | Type     | Required | Default | Constraints & Description                                                                               |
+| --------- | -------- | -------- | ------- | ------------------------------------------------------------------------------------------------------- |
+| `skillId` | `string` | Yes      | -       | Skill Edit debug ID authenticated with allowed request header credentials. pattern: `^[0-9a-fA-F]{24}$` |
+
+- **App API Key (no appId required)**
+
+When authorizing with an app-bound App API Key, omit `appId` and `sourceType` ; the server resolves the bound app with `sourceType` fixed to `app` . Personal keys and login sessions cannot omit `appId` , and an explicit `appId` does not override an App API Key binding.
+
+No extra branch-specific fields are required.
+
+## Request Examples
+
+Replace `YOUR_API_KEY` and placeholder IDs before running. Self-hosted users should replace the base URL with `<instance>/api` .
+
+### cURL Example
+
+```bash
+curl --fail-with-body -X POST "https://cloud.fastgpt.io/api/core/chat/history/batchDelete" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  --data-raw '{
+  "appId": "68ad85a7463006c963799a05",
+  "chatIds": [
+    "chat_123456",
+    "chat_789012"
+  ]
+}'
+```
+
+### Minimal Valid JSON Body
+
+```json
+{
+  "appId": "68ad85a7463006c963799a05",
+  "chatIds": ["chat_123456", "chat_789012"]
+}
+```
+
+## Response Schema & Examples
+
+Successful `/api/*` calls return the standard FastGPT envelope `{ "code": 200, "statusText": "", "message": "", "data": ... }` , where `data` matches the `200` schema below (and `null` when no payload schema is declared).
+
+### HTTP 200
+
+Successfully deleted chat session
+
+Returns standard success envelope with `data: null` .

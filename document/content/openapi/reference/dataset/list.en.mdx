@@ -1,0 +1,67 @@
+---
+title: 'List Datasets (Deprecated)'
+seoTitle: 'List Datasets (Deprecated) - POST /api/core/dataset/list | FastGPT OpenAPI'
+description: 'Legacy endpoint to list accessible datasets without pagination (deprecated; migrate to POST /api/core/dataset/listV2).'
+deprecated: true
+---
+
+import { Alert } from '@/components/docs/Alert';
+
+<Alert icon="⚠️" context="warning">
+  **Deprecated Endpoint** : `POST /api/core/dataset/list` is deprecated. Migrate to [List Datasets
+  (V2)](/en/openapi/reference/dataset/list-v2) ( `POST /api/core/dataset/listV2` ) for paginated
+  queries and `datasetIds` batch lookup.
+</Alert>
+
+## Endpoint Overview
+
+- **Method** : `POST`
+- **Path** : `/api/core/dataset/list`
+- **Module** : Datasets / Datasets
+- **Authentication** : `Authorization: Bearer <apiKey>`—Personal API Key (access scoped by team member permissions) (see [API Getting Started](/en/openapi/intro) )
+- **Interactive Try-It-Out** : [Open in Scalar API Explorer](https://cloud.fastgpt.io/apidoc/systemopenapi#tag/%E7%9F%A5%E8%AF%86%E5%BA%93%E7%AE%A1%E7%90%86/POST/core/dataset/list) (self-hosted instances: replace the origin with `<instance>/apidoc/systemopenapi#tag/%E7%9F%A5%E8%AF%86%E5%BA%93%E7%AE%A1%E7%90%86/POST/core/dataset/list` )
+
+## Description & Notes
+
+Deprecated; use `POST /core/dataset/listV2` instead. Retained for backward compatibility and returns an array of accessible datasets filtered by type or keyword, whereas V2 returns `{ list, total }` .
+
+## Request Parameters
+
+### Request Body ( `application/json` )
+
+| Field       | Type              | Required | Default            | Constraints & Description                                                                                                                                                                                                                                                                                 |
+| ----------- | ----------------- | -------- | ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `parentId`  | `string \| null`  | No       | -                  | Parent folder ID; `null` or omitted queries the root folder                                                                                                                                                                                                                                               |
+| `type`      | `string \| array` | No       | -                  | Dataset type filter                                                                                                                                                                                                                                                                                       |
+| `searchKey` | `string`          | No       | -                  | Search keyword matching dataset name and introduction                                                                                                                                                                                                                                                     |
+| `sort`      | `string` (enum)   | No       | `"updateTimeDesc"` | Sort order; defaults to most recently updated descending. Allowed values: `updateTimeDesc` (Sort by update time descending (most recently modified first, default)), `createTimeDesc` (Sort by creation time descending (newest first)), `createTimeAsc` (Sort by creation time ascending (oldest first)) |
+| `tmbIds`    | `string[]`        | No       | -                  | Filter by creator member IDs; an empty array returns an empty list                                                                                                                                                                                                                                        |
+
+## Request Examples
+
+Replace `YOUR_API_KEY` and placeholder IDs before running. Self-hosted users should replace the base URL with `<instance>/api` .
+
+### cURL Example
+
+```bash
+curl --fail-with-body -X POST "https://cloud.fastgpt.io/api/core/dataset/list" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  --data-raw '{}'
+```
+
+### Minimal Valid JSON Body
+
+```json
+{}
+```
+
+## Response Schema & Examples
+
+Successful `/api/*` calls return the standard FastGPT envelope `{ "code": 200, "statusText": "", "message": "", "data": ... }` , where `data` matches the `200` schema below (and `null` when no payload schema is declared).
+
+### HTTP 200
+
+Successfully returned dataset list
+
+**Content-Type** : `application/json`
