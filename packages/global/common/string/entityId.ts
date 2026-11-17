@@ -57,16 +57,22 @@ export const normalizeEntityId = (value: string): string =>
   ENTITY_ID_REGEX.test(value) ? value.toLowerCase() : value;
 
 /**
- * 构建支持自动归一化 BSON ObjectId 类对象与十六进制大小写的实体 ID Zod Schema。
+ * 构建支持自动归一化 BSON ObjectId 类对象与可选十六进制大小写的实体 ID Zod Schema。
  *
- * 供 Repository 出口校验、领域模型与 OpenAPI 入参契约统一复用。
+ * 供 Repository 出口校验、领域模型与 OpenAPI 入参契约统一复用；历史 `ObjectIdSchema` 可关闭
+ * `normalizeCase` 以保持大小写透传兼容。
  */
-export const createEntityIdSchema = (meta?: { example?: string; description?: string }) =>
-  z.preprocess(
+export const createEntityIdSchema = (meta?: {
+  example?: string;
+  description?: string;
+  normalizeCase?: boolean;
+}) => {
+  const normalizeCase = meta?.normalizeCase ?? true;
+  return z.preprocess(
     (value) => {
       const raw =
         value !== null && value !== undefined && typeof value === 'object' ? String(value) : value;
-      return typeof raw === 'string' ? normalizeEntityId(raw) : raw;
+      return normalizeCase && typeof raw === 'string' ? normalizeEntityId(raw) : raw;
     },
     z
       .string()
@@ -76,6 +82,7 @@ export const createEntityIdSchema = (meta?: { example?: string; description?: st
         description: meta?.description ?? '实体 ID'
       })
   );
+};
 
 /** 严格字符串实体 ID Schema（`z.input` 与 `z.output` 均为 `string`），用于仓储 Write Schema 严进校验并统一规范为小写 hex。 */
 export const EntityIdStringSchema = z
