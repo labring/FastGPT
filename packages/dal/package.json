@@ -13,13 +13,26 @@
     "./redis/bullmq/types": "./redis/bullmq/types.ts",
     "./redis/bullmq/services/*": "./redis/bullmq/services/*.ts",
     "./redis/caches": "./redis/caches/index.ts",
+    "./redis/caches/pubSubSync": "./redis/caches/pubSubSync.ts",
     "./redis/caches/workflowStopSignal": "./redis/caches/workflowStopSignal.ts",
     "./redis/lease/chat/chatGenerationLease": "./redis/lease/chat/chatGenerationLease.ts",
     "./redis/lease/chat/streamResume": "./redis/lease/chat/streamResume.ts",
     "./redis/caches/lease": "./redis/caches/lease.ts",
     "./redis/caches/vectorCount": "./redis/caches/vectorCount.ts",
     "./redis/types": "./redis/types.ts",
-    "./redis/runtime": "./redis/runtime/index.ts"
+    "./redis/runtime": "./redis/runtime/index.ts",
+    "./db/types": "./db/types.ts",
+    "./db/errors": "./db/errors.ts",
+    "./db/runtime": "./db/runtime.ts",
+    "./db/parse": "./db/parse.ts",
+    "./db/transaction": "./db/transaction.ts",
+    "./db/container": "./db/container.ts",
+    "./db/mongo/base": "./db/mongo/base.ts",
+    "./db/sql/base": "./db/sql/base.ts",
+    "./db/sql/ddl": "./db/sql/ddl.ts",
+    "./db/sql/dialects/postgres": "./db/sql/dialects/postgres.ts",
+    "./db/sql/dialects/mysql": "./db/sql/dialects/mysql.ts",
+    "./db/testing": "./db/testing.ts"
   },
   "scripts": {
     "test": "vitest run -c vitest.config.ts",
@@ -36,10 +49,16 @@
     "@fastgpt/global": "workspace:*",
     "bullmq": "5.52.2",
     "ioredis": "^5.11.1",
+    "kysely": "^0.29.9",
+    "mongoose": "catalog:",
+    "mysql2": "^3.23.1",
+    "pg": "^8.10.0",
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.16",
     "@types/node": "catalog:",
+    "@types/pg": "^8.6.6",
     "typescript": "catalog:",
     "vitest": "catalog:"
   }

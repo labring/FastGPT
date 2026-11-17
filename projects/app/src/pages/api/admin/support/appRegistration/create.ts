@@ -1,88 +1,62 @@
 import type { NextApiResponse } from 'next';
-import { authCert } from '@fastgpt/service/support/permission/auth/common';
-import { NextAPI } from '@/service/middleware/entry';
-import { MongoAppRegistration } from '@fastgpt/service/support/appRegistration/schema';
-import { MongoApp } from '@fastgpt/service/core/app/schema';
+import z from 'zod';
+import { EntityIdStringSchema } from '@fastgpt/global/common/string/entityId';
 import type { ApiRequestProps } from '@fastgpt/next/type';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { MongoApp } from '@fastgpt/service/core/app/schema';
+import { appRegistrationService } from '@fastgpt/service/support/appRegistration/service';
+import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { getTeamPlanStatus } from '@fastgpt/service/support/wallet/sub/utils';
+import { NextAPI } from '@/service/middleware/entry';
 
-type CreateAppRegistrationBody = {
-  appId: string;
-};
+const CreateAppRegistrationBodySchema = z.object({
+  appId: EntityIdStringSchema
+});
+
+type CreateAppRegistrationBody = z.infer<typeof CreateAppRegistrationBodySchema>;
 
 /**
  * Admin API - 创建应用备案记录
  *
  * 功能说明:
  * 1. 使用 rootkey 认证（需要超级管理员权限）
- * 2. 检查应用是否存在
- * 3. 检查该应用是否已经备案（避免重复备案）
- * 4. 检查团队的备案应用配额是否已满
- * 5. 如果配额未满，创建备案记录
+ * 2. 查找应用信息获取 teamId 与 tmbId
+ * 3. 在事务内完成查重、配额上限校验并创建备案记录
  *
  * 使用方式:
  * curl -X POST http://localhost:3000/api/admin/support/appRegistration/create \
  *   -H "Content-Type: application/json" \
  *   -H "rootkey: your-root-key" \
  *   -d '{"appId": "your-app-id"}'
- *
  */
 async function handler(
   req: ApiRequestProps<CreateAppRegistrationBody>,
-  _res: NextApiResponse<any>
+  _res: NextApiResponse
 ): Promise<{ success: boolean }> {
-  const { appId } = req.body;
-
-  if (!appId) {
-    return Promise.reject('appId is required');
-  }
-
-  // 使用 rootkey 认证
+  // 1. 先校验超级管理员（rootkey）权限与合法的 appId 入参
   await authCert({
     req,
     authRoot: true
   });
+  const { appId } = parseApiInput({
+    req,
+    bodySchema: CreateAppRegistrationBodySchema
+  }).body;
 
-  // 查找应用信息获取 teamId 和 tmbId
+  // 2. 查应用与套餐限额（在事务外完成只读元信息获取，避免拉长写事务）
   const app = await MongoApp.findById(appId);
   if (!app) {
     return Promise.reject('App not found');
   }
+  const teamId = String(app.teamId);
+  const teamPlanStatus = await getTeamPlanStatus({ teamId });
 
-  // 检查是否已存在备案记录
-  const existingRegistration = await MongoAppRegistration.findOne({
-    teamId: app.teamId,
-    appId: app._id
-  });
-  if (existingRegistration) {
-    return Promise.reject('Registration already exists for this app');
-  }
-
-  // 获取团队套餐信息
-  const teamPlanStatus = await getTeamPlanStatus({ teamId: String(app.teamId) });
-  const appRegistrationLimit = teamPlanStatus?.standard?.appRegistrationCount;
-
-  // 检查是否有配额限制
-  if (appRegistrationLimit && appRegistrationLimit > 0) {
-    // 统计当前团队已有的备案记录数
-    const currentRegistrationCount = await MongoAppRegistration.countDocuments({
-      teamId: app.teamId
-    });
-
-    // 检查是否已达到配额上限
-    if (currentRegistrationCount >= appRegistrationLimit) {
-      return Promise.reject(
-        `Registration quota exceeded. Current: ${currentRegistrationCount}, Limit: ${appRegistrationLimit}`
-      );
-    }
-  }
-
-  // 创建备案记录
-  await MongoAppRegistration.create({
-    teamId: app.teamId,
-    tmbId: app.tmbId,
-    appId: app._id,
-    createdAt: new Date()
+  // 3. 在事务内校验重复备案与配额限制并落库
+  await appRegistrationService.registerApp({
+    teamId,
+    tmbId: String(app.tmbId),
+    appId: String(app._id),
+    quotaLimit: teamPlanStatus?.standard?.appRegistrationCount
   });
 
   return {

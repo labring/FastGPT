@@ -1,0 +1,254 @@
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { createEntityId } from '@fastgpt/global/common/string/entityId';
+import { injectRepo } from '@fastgpt/dal/db/container';
+import { DbRecordCorruptedError } from '@fastgpt/dal/db/errors';
+import { closeDbRuntime } from '@fastgpt/dal/db/runtime';
+import { compileSqlTableDDL } from '@fastgpt/dal/db/sql/ddl';
+import {
+  createPGliteSqlTestHarness,
+  registerDualDialectContractSuite,
+  type SqlTestHarness
+} from '@fastgpt/dal/db/testing';
+import { runInTransaction } from '@fastgpt/dal/db/transaction';
+import { Types } from '@fastgpt/service/common/mongo';
+import { configureMongoDalRuntime } from '@fastgpt/service/common/mongo/dalRuntime';
+import { getAppRegistrationMongoModel } from '@fastgpt/service/support/appRegistration/mongo/schema';
+import { AppRegistrationRepoToken } from '@fastgpt/service/support/appRegistration/repo';
+import { appRegistrationSqlTable } from '@fastgpt/service/support/appRegistration/sql/table';
+
+describe('AppRegistration portable SQL DDL', () => {
+  it('compiles cleanly for PostgreSQL and OceanBase/MySQL without dialect leaks', () => {
+    const pgSql = compileSqlTableDDL(appRegistrationSqlTable, 'postgres').join('\n');
+    expect(pgSql).toContain('CREATE TABLE IF NOT EXISTS "app_registrations"');
+    expect(pgSql).toContain('"created_at" TIMESTAMPTZ');
+    expect(pgSql).toContain('CREATE INDEX IF NOT EXISTS "idx_app_registrations_team"');
+
+    const obSql = compileSqlTableDDL(appRegistrationSqlTable, 'oceanbase').join('\n');
+    expect(obSql).toContain('CREATE TABLE IF NOT EXISTS `app_registrations`');
+    expect(obSql).toContain('`created_at` DATETIME(3)');
+    expect(obSql).toContain('KEY `idx_app_registrations_team` (`team_id`)');
+    expect(obSql).not.toContain('CREATE INDEX IF NOT EXISTS');
+  });
+});
+
+describe('AppRegistrationRepository dual-dialect contract', () => {
+  let sqlHarness: SqlTestHarness | undefined;
+
+  registerDualDialectContractSuite({
+    describeFn: describe,
+    beforeAllFn: beforeAll,
+    beforeEachFn: beforeEach,
+    afterAllFn: afterAll,
+    backends: [
+      {
+        label: 'MongoDB',
+        dialect: 'mongo',
+        setup: async () => {
+          await closeDbRuntime();
+          const uri = process.env.MONGODB_URI ?? 'mongodb://127.0.0.1:27017/test';
+          configureMongoDalRuntime({
+            mainWriteUrl: uri
+          });
+          await getAppRegistrationMongoModel()
+            .createCollection()
+            .catch(() => undefined);
+        },
+        cleanupEach: async () => {
+          await getAppRegistrationMongoModel().deleteMany({});
+        },
+        teardown: async () => {
+          await closeDbRuntime();
+        }
+      },
+      {
+        label: 'SQL (PGlite)',
+        dialect: 'postgres',
+        setup: async () => {
+          sqlHarness = await createPGliteSqlTestHarness({
+            tables: [appRegistrationSqlTable]
+          });
+        },
+        cleanupEach: async () => {
+          await sqlHarness?.truncateAll();
+        },
+        teardown: async () => {
+          await sqlHarness?.close();
+        }
+      }
+    ],
+    registerTests: (getDialect) => {
+      const repo = injectRepo(AppRegistrationRepoToken);
+
+      it('normalizes IDs, dates, and nullable fields identically across dialects', async () => {
+        const teamId = createEntityId();
+        const tmbId = createEntityId();
+        const appId = createEntityId();
+        const createdAt = new Date('2026-06-01T10:00:00.123Z');
+
+        const created = await repo.create({
+          data: { teamId, tmbId, appId, createdAt }
+        });
+        expect(created).toEqual({
+          _id: created._id,
+          teamId,
+          tmbId,
+          appId,
+          createdAt
+        });
+
+        const found = await repo.findById({ id: created._id, teamId });
+        expect(found).toEqual(created);
+
+        // 校验历史可空字段（appId / createdAt）在 SQL null 与 Mongo 缺失/null 时统一归一为 undefined
+        const nullableRowId = createEntityId();
+        if (getDialect() === 'mongo') {
+          await getAppRegistrationMongoModel().collection.insertOne({
+            _id: new Types.ObjectId(nullableRowId),
+            teamId: new Types.ObjectId(teamId),
+            tmbId: new Types.ObjectId(tmbId),
+            appId: null,
+            createdAt: null
+          });
+        } else {
+          await sqlHarness!.db
+            .insertInto('app_registrations')
+            .values({
+              _id: nullableRowId,
+              team_id: teamId,
+              tmb_id: tmbId,
+              app_id: null,
+              created_at: null
+            })
+            .execute();
+        }
+
+        const nullableRow = await repo.findById({ id: nullableRowId, teamId });
+        expect(nullableRow).toEqual({
+          _id: nullableRowId,
+          teamId,
+          tmbId,
+          appId: undefined,
+          createdAt: undefined
+        });
+      });
+
+      it('enforces tenant isolation for findByTeamAndApp, countByTeam, listByTeam, and deleteByApp', async () => {
+        const teamA = createEntityId();
+        const teamB = createEntityId();
+        const tmbA = createEntityId();
+        const tmbB = createEntityId();
+        const appA1 = createEntityId();
+        const appA2 = createEntityId();
+        const appB1 = createEntityId();
+
+        const regA1 = await repo.create({ data: { teamId: teamA, tmbId: tmbA, appId: appA1 } });
+        const regA2 = await repo.create({ data: { teamId: teamA, tmbId: tmbA, appId: appA2 } });
+        const regB1 = await repo.create({ data: { teamId: teamB, tmbId: tmbB, appId: appB1 } });
+
+        expect(await repo.findByTeamAndApp({ teamId: teamA, appId: appA1 })).toEqual(regA1);
+        expect(await repo.findByTeamAndApp({ teamId: teamB, appId: appA1 })).toBeNull();
+        expect(await repo.findById({ id: regA1._id, teamId: teamB })).toBeNull();
+
+        expect(await repo.countByTeam({ teamId: teamA })).toBe(2);
+        expect(await repo.countByTeam({ teamId: teamB })).toBe(1);
+
+        const listA = await repo.listByTeam({ teamId: teamA });
+        expect(listA.map((item) => item._id)).toEqual([regA2._id, regA1._id]);
+
+        // 跨团队删除不会影响目标数据
+        expect(await repo.deleteByApp({ teamId: teamB, appId: appA1 })).toBe(0);
+        expect(await repo.countByTeam({ teamId: teamA })).toBe(2);
+
+        // 本团队按应用删除精准清理对应记录
+        expect(await repo.deleteByApp({ teamId: teamA, appId: appA1 })).toBe(1);
+        expect(await repo.findByTeamAndApp({ teamId: teamA, appId: appA1 })).toBeNull();
+        expect(await repo.countByTeam({ teamId: teamA })).toBe(1);
+        expect(await repo.countByTeam({ teamId: teamB })).toBe(1);
+        expect(await repo.findById({ id: regB1._id, teamId: teamB })).toEqual(regB1);
+      });
+
+      it('fails fast on corrupted single row and skips corrupted rows in listByTeam', async () => {
+        const teamId = createEntityId();
+        const valid = await repo.create({
+          data: { teamId, tmbId: createEntityId(), appId: createEntityId() }
+        });
+        const corruptedId = createEntityId();
+
+        if (getDialect() === 'mongo') {
+          await getAppRegistrationMongoModel().collection.insertOne({
+            _id: new Types.ObjectId(corruptedId),
+            teamId: new Types.ObjectId(teamId),
+            tmbId: 'legacy-corrupted-tmb',
+            appId: new Types.ObjectId(createEntityId()),
+            createdAt: new Date()
+          });
+        } else {
+          await sqlHarness!.db
+            .insertInto('app_registrations')
+            .values({
+              _id: corruptedId,
+              team_id: teamId,
+              tmb_id: 'legacy-corrupted-tmb',
+              app_id: createEntityId(),
+              created_at: new Date()
+            })
+            .execute();
+        }
+
+        await expect(repo.findById({ id: corruptedId, teamId })).rejects.toBeInstanceOf(
+          DbRecordCorruptedError
+        );
+
+        const list = await repo.listByTeam({ teamId });
+        expect(list).toEqual([valid]);
+
+        await expect(
+          repo.create({
+            data: { teamId: 'invalid-team-id', tmbId: createEntityId(), appId: createEntityId() }
+          })
+        ).rejects.toThrow();
+      });
+
+      it('commits with ordered afterCommit hooks and rolls back cleanly on error', async () => {
+        const teamId = createEntityId();
+        const tmbId = createEntityId();
+        const appId1 = createEntityId();
+        const appId2 = createEntityId();
+        const events: string[] = [];
+
+        const committed = await runInTransaction(async (tx) => {
+          const record = await repo.create({
+            data: { teamId, tmbId, appId: appId1 },
+            tx
+          });
+          tx.afterCommit(() => {
+            events.push(`first:${record._id}`);
+          });
+          tx.afterCommit(() => {
+            events.push(`second:${record.appId}`);
+          });
+          return record;
+        });
+
+        expect(events).toEqual([`first:${committed._id}`, `second:${appId1}`]);
+        expect(await repo.countByTeam({ teamId })).toBe(1);
+
+        const abortedHook = vi.fn();
+        await expect(
+          runInTransaction(async (tx) => {
+            await repo.create({
+              data: { teamId, tmbId, appId: appId2 },
+              tx
+            });
+            tx.afterCommit(abortedHook);
+            throw new Error('simulated failure');
+          })
+        ).rejects.toThrow('simulated failure');
+
+        expect(abortedHook).not.toHaveBeenCalled();
+        expect(await repo.findByTeamAndApp({ teamId, appId: appId2 })).toBeNull();
+        expect(await repo.countByTeam({ teamId })).toBe(1);
+      });
+    }
+  });
+});

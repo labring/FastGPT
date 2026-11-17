@@ -4,41 +4,28 @@ import { generateRebuildIndex } from '@/service/core/dataset/queues/generateRebu
 import { generateRebuildSynonym } from '@/service/core/dataset/queues/generateRebuildSynonym';
 import { generatePreCreatedData } from '@/service/core/dataset/queues/generatePreCreatedData';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
-import { type DatasetTrainingSchemaType } from '@fastgpt/global/core/dataset/type';
-import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
-import { createResilientChangeStream } from '@fastgpt/service/common/mongo/watch';
+import { subscribeTrainingWakeup } from '@fastgpt/service/core/dataset/training/wakeup';
 import { datasetParseQueue } from '../queues/datasetParse';
 import { logInstanceConfigRead } from '@fastgpt/service/common/system/migrationCoverageLog';
 
-type DatasetTrainingChange = {
-  operationType?: string;
-  /** insert 事件一定带 fullDocument，这里只在该分支读取。 */
-  fullDocument?: DatasetTrainingSchemaType;
+const trainingQueueRunnerByMode: Partial<Record<TrainingModeEnum, () => unknown>> = {
+  [TrainingModeEnum.qa]: () => generateQA(),
+  [TrainingModeEnum.index]: () => generatePreCreatedData(),
+  [TrainingModeEnum.rebuildIndex]: () => generateRebuildIndex(),
+  [TrainingModeEnum.rebuildSynonym]: () => generateRebuildSynonym(),
+  [TrainingModeEnum.parse]: () => datasetParseQueue()
 };
 
 /**
- * 监听训练记录写入并唤醒对应队列。
+ * 订阅 Redis 训练唤醒信号并拉起对应的开源训练队列。
  *
- * 队列本身有每分钟的兜底 cron，因此断线重连不需要补偿回调：漏掉的事件会被下一轮 cron 补上。
+ * 队列本身有每分钟的兜底 Cron，因此 Redis 推送失败或断线期间漏掉的信号会在下一轮 Cron 自动补齐。
  */
-export const createDatasetTrainingMongoWatch = () =>
-  createResilientChangeStream<DatasetTrainingChange>({
-    name: 'app-dataset-training',
-    createStream: () => MongoDatasetTraining.watch(),
-    onChange: (change) => {
-      if (change.operationType !== 'insert') return;
-
-      const { mode } = change.fullDocument as DatasetTrainingSchemaType;
-      if (mode === TrainingModeEnum.qa) {
-        generateQA();
-      } else if (mode === TrainingModeEnum.index) {
-        generatePreCreatedData();
-      } else if (mode === TrainingModeEnum.rebuildIndex) {
-        generateRebuildIndex();
-      } else if (mode === TrainingModeEnum.rebuildSynonym) {
-        generateRebuildSynonym();
-      } else if (mode === TrainingModeEnum.parse) {
-        datasetParseQueue();
+export const subscribeDatasetTrainingQueue = () =>
+  subscribeTrainingWakeup({
+    onModes: (modes) => {
+      for (const mode of modes) {
+        trainingQueueRunnerByMode[mode]?.();
       }
     }
   });

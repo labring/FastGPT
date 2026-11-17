@@ -3,6 +3,8 @@ import { getSystemConfigRuntimeState } from '@fastgpt/service/common/system/syst
 import { resolveSystemInstanceConfig } from '@fastgpt/global/common/system/config/schema';
 
 import { connectMongo } from '@fastgpt/service/common/mongo/init';
+import { configureMongoDalRuntime } from '@fastgpt/service/common/mongo/dalRuntime';
+import { closeDbRuntime } from '@fastgpt/dal/db/runtime';
 import { initGlobalVariables } from '@/service/common/system';
 import { afterAll, beforeAll, beforeEach, inject, onTestFinished, vi } from 'vitest';
 import setupModels from './setupModels';
@@ -29,9 +31,16 @@ const clearMongoCollections = async (db: Mongoose | undefined) => {
 };
 
 beforeAll(async () => {
-  vi.stubEnv('MONGODB_URI', inject('MONGODB_URI'));
-  await connectMongo({ db: connectionMongo, url: inject('MONGODB_URI') });
-  await connectMongo({ db: connectionLogMongo, url: inject('MONGODB_URI') });
+  const mongoUri = inject('MONGODB_URI');
+  vi.stubEnv('MONGODB_URI', mongoUri);
+  configureMongoDalRuntime({
+    mainWriteUrl: mongoUri,
+    logWriteUrl: process.env.MONGODB_LOG_URI,
+    // 单机/测试默认跳过底层 startSession 同时保留 DbSession.afterCommit 行为（显式事务契约测试可覆盖此配置）
+    transactionRunner: async ({ execute }) => execute(undefined)
+  });
+  await connectMongo({ db: connectionMongo, url: mongoUri });
+  await connectMongo({ db: connectionLogMongo, url: mongoUri });
 
   initGlobalVariables();
   global.agentUserTmbIds = new Set();
@@ -46,6 +55,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  await closeDbRuntime();
   await connectionMongo?.connection.db?.dropDatabase();
   await connectionLogMongo?.connection.db?.dropDatabase();
   await connectionMongo?.disconnect();

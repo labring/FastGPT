@@ -16,7 +16,7 @@ import {
   PositiveSafeIntegerSchema
 } from './runtime/schema';
 import { z } from 'zod';
-import type { RedisMemoryInfo } from './types';
+import type { RedisCacheLogger, RedisMemoryInfo } from './types';
 
 export type { RedisMemoryInfo, RedisStreamEntry } from './types';
 
@@ -26,10 +26,20 @@ type RedisCommandClient = RedisClient;
 /** Blocking reader 只允许发出 XREAD 类 command，连接释放仍由 Runtime 负责。 */
 type RedisBlockingClient = Pick<RedisClient, 'call'>;
 
+/** Pub/Sub subscriber 使用独立连接，避免进入订阅模式后污染共享 command 连接。 */
+type RedisSubscriberClient = Pick<RedisClient, 'on' | 'subscribe'> &
+  Partial<Pick<RedisClient, 'off' | 'removeListener' | 'unsubscribe'>>;
+
+export type RedisChannelSubscription = {
+  ready: Promise<void>;
+  close: () => Promise<void>;
+};
+
 export type RedisCacheAdapterDependencies = {
   getCommandClient: () => RedisCommandClient;
   createBlockingConnection?: () => RedisBlockingClient;
-  releaseConnection?: (client: RedisBlockingClient) => Promise<void> | void;
+  createSubscriberConnection?: () => RedisSubscriberClient;
+  releaseConnection?: (client: RedisBlockingClient | RedisSubscriberClient) => Promise<void> | void;
 };
 
 const DEFAULT_SCAN_BATCH_SIZE = 1_000;
@@ -66,16 +76,21 @@ return value
 export class RedisCacheAdapter {
   private readonly getCommandClient: () => RedisCommandClient;
   private readonly createBlockingConnection?: () => RedisBlockingClient;
-  private readonly releaseConnection?: (client: RedisBlockingClient) => Promise<void> | void;
+  private readonly createSubscriberConnection?: () => RedisSubscriberClient;
+  private readonly releaseConnection?: (
+    client: RedisBlockingClient | RedisSubscriberClient
+  ) => Promise<void> | void;
   private readonly operationExecutor = new RedisOperationExecutor();
 
   constructor({
     getCommandClient,
     createBlockingConnection,
+    createSubscriberConnection,
     releaseConnection
   }: RedisCacheAdapterDependencies) {
     this.getCommandClient = getCommandClient;
     this.createBlockingConnection = createBlockingConnection;
+    this.createSubscriberConnection = createSubscriberConnection;
     this.releaseConnection = releaseConnection;
     this.iterateByPrefix = this.iterateByPrefix.bind(this);
   }
@@ -1057,6 +1072,178 @@ export class RedisCacheAdapter {
     };
   };
 
+  /** 原子递增无 TTL 的整数版本号，供多实例配置/模板修订号使用。 */
+  incr = (key: RedisLogicalKey) => {
+    const operation = 'number.incr';
+    return this.operationExecutor.uncertainWrite({
+      operation,
+      execute: async () => {
+        const result = await this.getCommandClient().incr(toPhysicalRedisKey(key));
+        const parsed = NonNegativeSafeIntegerSchema.safeParse(result);
+        if (!parsed.success) {
+          throw new RedisInvalidResponseError({
+            operation,
+            message: 'Redis INCR returned an invalid integer'
+          });
+        }
+        return parsed.data;
+      }
+    });
+  };
+
+  /** 向指定 logical channel 发布 Pub/Sub 消息，返回接收到消息的订阅方数量。 */
+  publish = ({ channel, message }: { channel: RedisLogicalKey; message: string }) => {
+    const operation = 'pubsub.publish';
+    if (typeof message !== 'string') {
+      throw new RedisInvalidArgumentError({
+        operation,
+        message: 'pubsub message must be a string'
+      });
+    }
+
+    return this.operationExecutor.uncertainWrite({
+      operation,
+      execute: async () => {
+        const receivers = await this.getCommandClient().publish(
+          toPhysicalRedisKey(channel),
+          message
+        );
+        const parsed = NonNegativeSafeIntegerSchema.safeParse(receivers);
+        if (!parsed.success) {
+          throw new RedisInvalidResponseError({
+            operation,
+            message: 'Redis PUBLISH returned an invalid receiver count'
+          });
+        }
+        return parsed.data;
+      }
+    });
+  };
+
+  /**
+   * 创建基于独立订阅连接的 Pub/Sub 订阅器。
+   *
+   * `ioredis` 进入 SUBSCRIBE 模式后无法继续执行普通命令，且断线重连后会自动重新订阅并触发 `ready`；
+   * 仅在曾发生过断线后的再次 `ready` 时触发 `onReconnect` 补偿回调，避免启动时重复执行。
+   */
+  createChannelSubscriber = ({
+    channels,
+    onMessage,
+    onReconnect,
+    logger
+  }: {
+    channels: readonly RedisLogicalKey[];
+    onMessage: (event: { channel: RedisLogicalKey; message: string }) => Promise<void> | void;
+    onReconnect?: () => Promise<void> | void;
+    logger?: RedisCacheLogger<'warn' | 'error'>;
+  }): RedisChannelSubscription => {
+    const operation = 'pubsub.subscribe';
+    const physicalToLogical = new Map<string, RedisLogicalKey>();
+    for (const channel of channels) {
+      physicalToLogical.set(toPhysicalRedisKey(channel), channel);
+    }
+    if (physicalToLogical.size === 0) {
+      throw new RedisInvalidArgumentError({
+        operation,
+        message: 'pubsub channels must not be empty'
+      });
+    }
+
+    const createSubscriber =
+      this.createSubscriberConnection ?? (() => getRedisRuntime().createSubscriberConnection());
+    const releaseSubscriber =
+      this.releaseConnection ??
+      ((subscriber: RedisSubscriberClient) =>
+        getRedisRuntime().releaseConnection(subscriber as RedisClient));
+    const client = createSubscriber();
+    const physicalChannels = Array.from(physicalToLogical.keys());
+
+    let stopped = false;
+    let subscribedOnce = false;
+    let sawDisconnect = false;
+    let closePromise: Promise<void> | undefined;
+
+    const invokeSafe = (label: string, callback: () => Promise<void> | void) => {
+      try {
+        void Promise.resolve(callback()).catch((error) => {
+          logger?.error(`Redis pubsub ${label} failed`, { error });
+        });
+      } catch (error) {
+        logger?.error(`Redis pubsub ${label} failed`, { error });
+      }
+    };
+
+    const detachListener = (event: string, listener: (...args: any[]) => void) => {
+      if (typeof client.off === 'function') {
+        client.off(event, listener);
+      } else {
+        client.removeListener?.(event, listener);
+      }
+    };
+
+    const handleMessage = (rawChannel: unknown, rawMessage: unknown) => {
+      if (stopped || typeof rawChannel !== 'string' || typeof rawMessage !== 'string') {
+        return;
+      }
+      const logicalChannel = physicalToLogical.get(rawChannel);
+      if (logicalChannel === undefined) {
+        return;
+      }
+      invokeSafe('message handler', () =>
+        onMessage({ channel: logicalChannel, message: rawMessage })
+      );
+    };
+
+    const handleDisconnect = () => {
+      if (!stopped && subscribedOnce) {
+        sawDisconnect = true;
+      }
+    };
+
+    const handleReady = () => {
+      if (stopped || !subscribedOnce || !sawDisconnect) {
+        return;
+      }
+      sawDisconnect = false;
+      if (onReconnect !== undefined) {
+        invokeSafe('reconnect handler', onReconnect);
+      }
+    };
+
+    client.on('message', handleMessage);
+    client.on('close', handleDisconnect);
+    client.on('reconnecting', handleDisconnect);
+    client.on('ready', handleReady);
+
+    const ready = Promise.resolve(client.subscribe(...physicalChannels)).then(() => {
+      if (!stopped) {
+        subscribedOnce = true;
+        sawDisconnect = false;
+      }
+    });
+
+    return {
+      ready,
+      close: () => {
+        closePromise ??= (async () => {
+          stopped = true;
+          detachListener('message', handleMessage);
+          detachListener('close', handleDisconnect);
+          detachListener('reconnecting', handleDisconnect);
+          detachListener('ready', handleReady);
+
+          try {
+            await client.unsubscribe?.(...physicalChannels);
+          } catch {
+            // 连接已关闭或释放期间忽略取消订阅失败，交由 releaseConnection 彻底回收。
+          }
+          await releaseSubscriber(client);
+        })();
+        return closePromise;
+      }
+    };
+  };
+
   delete = (key: RedisLogicalKey) =>
     this.operationExecutor.uncertainWrite({
       operation: 'string.delete',
@@ -1096,6 +1283,7 @@ export class RedisCacheAdapter {
 export const redisCacheAdapter = new RedisCacheAdapter({
   getCommandClient: () => getRedisRuntime().getCommandConnection(),
   createBlockingConnection: () => getRedisRuntime().createBlockingConnection(),
+  createSubscriberConnection: () => getRedisRuntime().createSubscriberConnection(),
   releaseConnection: (client) => getRedisRuntime().releaseConnection(client as RedisClient)
 });
 

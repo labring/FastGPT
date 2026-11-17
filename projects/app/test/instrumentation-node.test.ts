@@ -79,7 +79,7 @@ vi.mock('@fastgpt/service/common/s3', async () => {
     })
   };
 });
-vi.mock('@/service/common/system/volumnMongoWatch', () => ({ startMongoWatch: mocks.watch }));
+vi.mock('@/service/common/system/sync', () => ({ startSystemSync: mocks.watch }));
 vi.mock('@/service/common/system/configPolling', () => ({
   startAppConfigPolling: mocks.configPolling
 }));

@@ -77,4 +77,7 @@ export {
 } from './wechatPollingFailure';
 export type { WechatPollingFailureCacheOptions } from './wechatPollingFailure';
 
+export { RevisionSyncChannel, SignalPubSubChannel } from './pubSubSync';
+export type { RevisionSyncChannelOptions, SignalPubSubChannelOptions } from './pubSubSync';
+
 export type { RedisCacheLogger } from '../types';
