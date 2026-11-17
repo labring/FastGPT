@@ -1,4 +1,4 @@
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -10,6 +10,15 @@ import { createNonTtyPrompter } from '../../src/infra/ui/prompter';
 import { createWorkflowTemplateLoader } from '../../src/infra/workflow/template-loader';
 import { CliApiError, CliArgumentError, CliAuthError } from '../../src/shared/errors';
 import type { CliFetchFn } from '../../src/shared/types';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { formatModels } from '@fastgpt/global/common/workflow/model';
+import type { WorkflowTemplateBasicType } from '@fastgpt/global/core/workflow/type';
+import { getWorkflowChecksum } from '@fastgpt/workflow-core/domain/checksum';
+import { decompileStoreWorkflow } from '@fastgpt/workflow-core/store/decompile';
+import {
+  WORKFLOW_SYNC_FILE_NAME,
+  type WorkflowSyncState
+} from '../../src/domain/workflow/workflow-workspace';
 
 const APP_ID = '68ad85a7463006c963799a05';
 const VERSION_ID = '68ad85a7463006c963799a09';
@@ -66,6 +75,76 @@ function createServices(dir: string, fetchFn: CliFetchFn) {
       baseClient.streamSse({ ...params, auth })
   };
   return { local, sync, client };
+}
+
+/** 运行真实同步服务，仅模拟远端保存、模型归一化和其他成员的并发写入。 */
+async function createSyncedServices() {
+  const dir = await makeDir();
+  const seed = createServices(dir, vi.fn());
+  await seed.local.init({ dir, locale: 'en', name: 'Remote App' });
+  await seed.local.nodeAdd({
+    dir,
+    locale: 'en',
+    nodeId: 'chat',
+    template: 'builtin:ai-chat',
+    after: 'start@next'
+  });
+  const built = await seed.local.build({ dir, output: join(dir, 'seed.json') });
+  const remote = {
+    workflow: (built.data as { workflow: WorkflowTemplateBasicType }).workflow,
+    includeReceipt: true,
+    normalizeOnSave: false,
+    overwriteAfterReceipt: false,
+    saveCount: 0
+  };
+  const fetchFn: CliFetchFn = vi.fn(async (input, init) => {
+    const request = new Request(input, init);
+    const path = new URL(request.url).pathname;
+    if (path === '/api/core/app/detail') {
+      return jsonResponse({
+        _id: APP_ID,
+        name: 'Remote App',
+        intro: '',
+        ...remote.workflow,
+        permission: { hasWritePer: true }
+      });
+    }
+    if (path === '/api/core/app/version/publish') {
+      const body = (await request.json()) as WorkflowTemplateBasicType & {
+        returnWorkflow?: boolean;
+      };
+      expect(body.returnWorkflow).toBe(true);
+      remote.saveCount += 1;
+      const saved = structuredClone({
+        nodes: body.nodes,
+        edges: body.edges,
+        chatConfig: body.chatConfig ?? {}
+      });
+      if (remote.normalizeOnSave) {
+        formatModels({
+          ...saved,
+          models: [{ modelId: 'system-llm', model: 'mock-llm', type: ModelTypeEnum.llm }],
+          defaultModelIds: { [ModelTypeEnum.llm]: 'system-llm' },
+          modelReferencePolicy: 'preserve'
+        });
+      }
+      remote.workflow = structuredClone(saved);
+      if (remote.overwriteAfterReceipt) {
+        remote.workflow.chatConfig = { ...saved.chatConfig, welcomeText: 'Concurrent edit' };
+      }
+      return jsonResponse(remote.includeReceipt ? { workflow: saved } : null);
+    }
+    throw new Error(`Unexpected endpoint ${path}`);
+  });
+  const services = createServices(dir, fetchFn);
+  await services.sync.pull({
+    client: services.client,
+    dir,
+    locale: 'en',
+    appId: APP_ID,
+    force: true
+  });
+  return { dir, ...services, remote };
 }
 
 describe('WorkflowSyncService', () => {
@@ -314,6 +393,321 @@ describe('WorkflowSyncService', () => {
     expect(smokeRes.data as { passed: number; failed: number }).toMatchObject({
       passed: 1,
       failed: 0
+    });
+  });
+
+  it('keeps remote sync baseline consistent across metadata edits and unbound init->push flows', async () => {
+    const seedDir = await makeDir();
+    const seedServices = createServices(seedDir, vi.fn());
+    await seedServices.local.init({ dir: seedDir, locale: 'en', name: 'Server Name' });
+    await seedServices.local.nodeAdd({
+      dir: seedDir,
+      locale: 'en',
+      nodeId: 'chat0',
+      template: 'builtin:ai-chat',
+      after: 'start@next'
+    });
+    const seedBuilt = await seedServices.local.build({
+      dir: seedDir,
+      output: join(seedDir, 'seed.json')
+    });
+    let remoteStore = (
+      seedBuilt.data as { workflow: { nodes: unknown[]; edges: unknown[]; chatConfig: unknown } }
+    ).workflow;
+
+    const fetchFn: CliFetchFn = vi.fn(async (input, init) => {
+      const url =
+        typeof input === 'string' ? input : input instanceof Request ? input.url : input.toString();
+      if (url.includes('/api/core/app/detail')) {
+        return jsonResponse({
+          _id: APP_ID,
+          name: 'Server Name',
+          intro: 'Server Intro',
+          nodes: remoteStore.nodes,
+          edges: remoteStore.edges,
+          chatConfig: remoteStore.chatConfig,
+          permission: { hasWritePer: true }
+        });
+      }
+      if (url.includes('/api/core/app/version/publish')) {
+        const rawBody =
+          init?.body !== undefined
+            ? String(init.body)
+            : input instanceof Request
+              ? await input.clone().text()
+              : '{}';
+        const body = JSON.parse(rawBody || '{}') as {
+          nodes: unknown[];
+          edges: unknown[];
+          chatConfig: unknown;
+        };
+        remoteStore = {
+          nodes: body.nodes,
+          edges: body.edges,
+          chatConfig: body.chatConfig
+        };
+        return jsonResponse({ workflow: remoteStore });
+      }
+      throw new Error(`Unexpected fetch: ${url}`);
+    });
+
+    // 场景 1：pull -> meta set -> push -> 修改 welcomeText -> push，不应误报远端冲突
+    const pullDir = await makeDir();
+    const pullServices = createServices(pullDir, fetchFn);
+    await pullServices.sync.pull({
+      client: pullServices.client,
+      dir: pullDir,
+      locale: 'en',
+      appId: APP_ID
+    });
+    await pullServices.local.metaSet({ dir: pullDir, locale: 'en', name: 'Renamed Locally' });
+    await pullServices.sync.push({ client: pullServices.client, dir: pullDir });
+
+    await pullServices.local.configSet({
+      dir: pullDir,
+      locale: 'en',
+      path: 'welcomeText',
+      valueInput: { value: 'Updated welcome' }
+    });
+    const secondPush = await pullServices.sync.push({ client: pullServices.client, dir: pullDir });
+    expect(secondPush.changed).toBe(true);
+
+    // 场景 2：init -> node add -> push <appId> -> 编辑 -> push <appId>，本地无 appId 时同样不应误报冲突
+    const initDir = await makeDir();
+    const initServices = createServices(initDir, fetchFn);
+    await initServices.local.init({ dir: initDir, locale: 'en', name: 'Local Only Name' });
+    await initServices.local.nodeAdd({
+      dir: initDir,
+      locale: 'en',
+      nodeId: 'chat1',
+      template: 'builtin:ai-chat',
+      after: 'start@next'
+    });
+    await initServices.sync.push({ client: initServices.client, dir: initDir, appId: APP_ID });
+    await initServices.local.configSet({
+      dir: initDir,
+      locale: 'en',
+      path: 'welcomeText',
+      valueInput: { value: 'Second edit' }
+    });
+    const initSecondPush = await initServices.sync.push({
+      client: initServices.client,
+      dir: initDir,
+      appId: APP_ID
+    });
+    expect(initSecondPush.changed).toBe(true);
+
+    // 若远端确实被他人修改，仍必须触发冲突保护
+    remoteStore = {
+      ...remoteStore,
+      chatConfig: { welcomeText: 'External remote change' }
+    };
+    await initServices.local.configSet({
+      dir: initDir,
+      locale: 'en',
+      path: 'welcomeText',
+      valueInput: { value: 'Conflicting local edit' }
+    });
+    await expect(
+      initServices.sync.push({ client: initServices.client, dir: initDir, appId: APP_ID })
+    ).rejects.toBeInstanceOf(CliArgumentError);
+  });
+
+  it.each(['push', 'publish'] as const)(
+    'migrates legacy sync state after %s while preserving dry-run and conflict protection',
+    async (action) => {
+      const { dir, local, sync, client, remote } = await createSyncedServices();
+      const statePath = join(dir, WORKFLOW_SYNC_FILE_NAME);
+      const legacyState = JSON.parse(await readFile(statePath, 'utf8')) as WorkflowSyncState;
+      delete legacyState.lastRemoteChecksum;
+      await writeFile(statePath, JSON.stringify(legacyState));
+      await local.configSet({
+        dir,
+        locale: 'en',
+        path: 'welcomeText',
+        valueInput: { value: 'Local edit after upgrade' }
+      });
+
+      await sync[action]({ client, dir, dryRun: true });
+      expect(remote.saveCount).toBe(0);
+      expect(JSON.parse(await readFile(statePath, 'utf8'))).toEqual(legacyState);
+
+      await expect(sync[action]({ client, dir })).resolves.toMatchObject({ changed: true });
+      const migrated = JSON.parse(await readFile(statePath, 'utf8')) as WorkflowSyncState;
+      expect(migrated.lastRemoteChecksum).toBe(
+        await getWorkflowChecksum(decompileStoreWorkflow({ workflow: remote.workflow }))
+      );
+      remote.workflow.chatConfig = { welcomeText: 'Changed by another user' };
+      await expect(sync[action]({ client, dir })).rejects.toBeInstanceOf(CliArgumentError);
+    }
+  );
+
+  it.each(['push', 'publish'] as const)(
+    'still rejects a changed remote when a legacy sync state is used for %s',
+    async (action) => {
+      const { dir, local, sync, client, remote } = await createSyncedServices();
+      const statePath = join(dir, WORKFLOW_SYNC_FILE_NAME);
+      const legacyState = JSON.parse(await readFile(statePath, 'utf8')) as WorkflowSyncState;
+      delete legacyState.lastRemoteChecksum;
+      await writeFile(statePath, JSON.stringify(legacyState));
+      await local.configSet({
+        dir,
+        locale: 'en',
+        path: 'welcomeText',
+        valueInput: { value: 'Unpushed local edit' }
+      });
+      remote.workflow.chatConfig = { welcomeText: 'Remote edit before upgrading' };
+
+      await expect(sync[action]({ client, dir })).rejects.toBeInstanceOf(CliArgumentError);
+      expect(remote.saveCount).toBe(0);
+      expect(JSON.parse(await readFile(statePath, 'utf8'))).toEqual(legacyState);
+    }
+  );
+
+  it.each([
+    { action: 'push' as const, includeReceipt: true },
+    { action: 'publish' as const, includeReceipt: true },
+    { action: 'push' as const, includeReceipt: false },
+    { action: 'publish' as const, includeReceipt: false }
+  ])(
+    'uses normalized server content for consecutive $action calls (receipt=$includeReceipt)',
+    async ({ action, includeReceipt }) => {
+      const { dir, local, sync, client, remote } = await createSyncedServices();
+      remote.normalizeOnSave = true;
+      remote.includeReceipt = includeReceipt;
+      await local.configSet({
+        dir,
+        locale: 'en',
+        path: 'questionGuide',
+        valueInput: { valueJson: '{"open":true}' }
+      });
+      await sync[action]({ client, dir });
+      expect(remote.workflow.chatConfig?.questionGuide?.modelId).toBe('system-llm');
+      const savedState = JSON.parse(
+        await readFile(join(dir, WORKFLOW_SYNC_FILE_NAME), 'utf8')
+      ) as WorkflowSyncState;
+      expect(savedState.lastRemoteChecksum).toBe(
+        await getWorkflowChecksum(decompileStoreWorkflow({ workflow: remote.workflow }))
+      );
+
+      await local.configSet({
+        dir,
+        locale: 'en',
+        path: 'welcomeText',
+        valueInput: { value: 'Another local edit' }
+      });
+      await expect(sync[action]({ client, dir })).resolves.toMatchObject({ changed: true });
+      expect(remote.saveCount).toBe(2);
+
+      remote.workflow.chatConfig = { welcomeText: 'Another user changed the remote' };
+      await expect(sync[action]({ client, dir })).rejects.toBeInstanceOf(CliArgumentError);
+    }
+  );
+
+  it.each(['push', 'publish'] as const)(
+    'does not absorb another user save into the baseline after %s returns its receipt',
+    async (action) => {
+      const { dir, local, sync, client, remote } = await createSyncedServices();
+      remote.overwriteAfterReceipt = true;
+      await sync[action]({ client, dir });
+      const savedState = JSON.parse(
+        await readFile(join(dir, WORKFLOW_SYNC_FILE_NAME), 'utf8')
+      ) as WorkflowSyncState;
+      expect(savedState.lastRemoteChecksum).not.toBe(
+        await getWorkflowChecksum(decompileStoreWorkflow({ workflow: remote.workflow }))
+      );
+
+      await local.configSet({
+        dir,
+        locale: 'en',
+        path: 'welcomeText',
+        valueInput: { value: 'Local edit after concurrent save' }
+      });
+      await expect(sync[action]({ client, dir })).rejects.toBeInstanceOf(CliArgumentError);
+      expect(remote.saveCount).toBe(1);
+    }
+  );
+
+  it('fails workflow test when array vs plain object types mismatch in either direction or nested', async () => {
+    const dir = await makeDir();
+    const casesFile = join(dir, 'type-mismatch-cases.json');
+    const buildCases = (expectedVariables: Record<string, unknown>) =>
+      JSON.stringify({
+        appId: APP_ID,
+        cases: [{ name: 'mismatch', query: 'hi', expect: { variables: expectedVariables } }]
+      });
+
+    let responseVariables: Record<string, unknown> = { payload: {} };
+    const fetchFn: CliFetchFn = vi.fn(async (input) => {
+      const url =
+        typeof input === 'string' ? input : input instanceof Request ? input.url : input.toString();
+      if (url.includes('/api/core/workflow/debug')) {
+        return jsonResponse({
+          memoryEdges: [],
+          memoryNodes: [],
+          entryNodeIds: ['start'],
+          nodeResponses: { start: { nodeId: 'start', type: 'run' } },
+          newVariables: responseVariables
+        });
+      }
+      throw new Error(`Unexpected fetch: ${url}`);
+    });
+
+    const { local, sync, client } = createServices(dir, fetchFn);
+    await local.init({ dir, locale: 'en', name: 'Type Check Flow' });
+    await local.nodeAdd({
+      dir,
+      locale: 'en',
+      nodeId: 'chat1',
+      template: 'builtin:ai-chat',
+      after: 'start@next'
+    });
+
+    // actual={}, expected=[]
+    await writeFile(casesFile, buildCases({ payload: [] }));
+    await expect(sync.test({ client, dir, casesSource: casesFile })).rejects.toBeInstanceOf(
+      CliApiError
+    );
+
+    // actual=[], expected={}
+    responseVariables = { payload: [] };
+    await writeFile(casesFile, buildCases({ payload: {} }));
+    await expect(sync.test({ client, dir, casesSource: casesFile })).rejects.toBeInstanceOf(
+      CliApiError
+    );
+
+    // 嵌套结构差异：actual={ nested: {} }, expected={ nested: [] }
+    responseVariables = { payload: { nested: {} } };
+    await writeFile(casesFile, buildCases({ payload: { nested: [] } }));
+    await expect(sync.test({ client, dir, casesSource: casesFile })).rejects.toBeInstanceOf(
+      CliApiError
+    );
+  });
+
+  it('classifies an optimizeCode SSE stream ending without [DONE] as a network failure', async () => {
+    const dir = await makeDir();
+    const fetchFn: CliFetchFn = vi.fn(async () => {
+      const partialSse =
+        'event: answer\ndata: {"choices":[{"delta":{"content":"function main() {"}}]}\n\n';
+      return new Response(partialSse, {
+        status: 200,
+        headers: { 'content-type': 'text/event-stream' }
+      });
+    });
+    const { sync, client } = createServices(dir, fetchFn);
+    await expect(
+      sync.optimizeCode({
+        client,
+        prompt: 'return empty object',
+        modelId: 'gpt-4o-mini'
+      })
+    ).rejects.toMatchObject({
+      code: 'NETWORK_ERROR',
+      exitCode: 5,
+      details: {
+        modelId: 'gpt-4o-mini',
+        partialContentLength: 'function main() {'.length
+      }
     });
   });
 });

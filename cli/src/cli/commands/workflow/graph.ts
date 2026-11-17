@@ -1,5 +1,6 @@
 import { CliArgumentError } from '../../../shared/errors';
 import type { CliCommandSpec } from '../../pipeline';
+import { parseOptionalBooleanFlag } from '../dataset/shared';
 import {
   WORKFLOW_DIR_OPTION,
   WORKFLOW_DRY_RUN_OPTION,
@@ -74,7 +75,11 @@ export function createWorkflowGraphCommandSpecs(): CliCommandSpec[] {
       execute: ({ options, container }) =>
         container.workflowLocalService.templateShow({
           locale: resolveWorkflowLocale(options, container.env),
-          template: requireNonEmptyOption(options, 'template', '--template')
+          template: requireNonEmptyOption({
+            options,
+            key: 'template',
+            flagName: '--template'
+          })
         })
     },
 
@@ -124,7 +129,7 @@ export function createWorkflowGraphCommandSpecs(): CliCommandSpec[] {
         container.workflowLocalService.nodeShow({
           dir: resolveWorkflowDir(options, container.env),
           locale: resolveWorkflowLocale(options, container.env),
-          nodeId: requireNonEmptyOption(options, 'node', '--node')
+          nodeId: requireNonEmptyOption({ options, key: 'node', flagName: '--node' })
         })
     },
 
@@ -189,8 +194,12 @@ export function createWorkflowGraphCommandSpecs(): CliCommandSpec[] {
         container.workflowLocalService.nodeAdd({
           dir: resolveWorkflowDir(options, container.env),
           locale: resolveWorkflowLocale(options, container.env),
-          nodeId: requireNonEmptyOption(options, 'node', '--node'),
-          template: requireNonEmptyOption(options, 'template', '--template'),
+          nodeId: requireNonEmptyOption({ options, key: 'node', flagName: '--node' }),
+          template: requireNonEmptyOption({
+            options,
+            key: 'template',
+            flagName: '--template'
+          }),
           name: optionalNonEmptyOption(options, 'name'),
           after: optionalNonEmptyOption(options, 'after'),
           parent: optionalNonEmptyOption(options, 'parent'),
@@ -239,11 +248,10 @@ export function createWorkflowGraphCommandSpecs(): CliCommandSpec[] {
         if (options.catchError === true && options.noCatchError === true) {
           throw new CliArgumentError('--catch-error and --no-catch-error are mutually exclusive.');
         }
-        const catchError = (() => {
-          if (options.catchError === true) return true;
-          if (options.noCatchError === true) return false;
-          return undefined;
-        })();
+        const catchError = parseOptionalBooleanFlag({
+          positive: options.catchError,
+          negative: options.noCatchError
+        });
         const name = optionalNonEmptyOption(options, 'name');
         const position = optionalNonEmptyOption(options, 'position');
         if (name === undefined && position === undefined && catchError === undefined) {
@@ -254,7 +262,7 @@ export function createWorkflowGraphCommandSpecs(): CliCommandSpec[] {
         return container.workflowLocalService.nodeUpdate({
           dir: resolveWorkflowDir(options, container.env),
           locale: resolveWorkflowLocale(options, container.env),
-          nodeId: requireNonEmptyOption(options, 'node', '--node'),
+          nodeId: requireNonEmptyOption({ options, key: 'node', flagName: '--node' }),
           name,
           position,
           catchError,
@@ -313,7 +321,7 @@ export function createWorkflowGraphCommandSpecs(): CliCommandSpec[] {
         return container.workflowLocalService.nodeMove({
           dir: resolveWorkflowDir(options, container.env),
           locale: resolveWorkflowLocale(options, container.env),
-          nodeId: requireNonEmptyOption(options, 'node', '--node'),
+          nodeId: requireNonEmptyOption({ options, key: 'node', flagName: '--node' }),
           position,
           parent,
           root,
@@ -379,10 +387,14 @@ export function createWorkflowGraphCommandSpecs(): CliCommandSpec[] {
         container.workflowLocalService.nodeInsert({
           dir: resolveWorkflowDir(options, container.env),
           locale: resolveWorkflowLocale(options, container.env),
-          from: requireNonEmptyOption(options, 'from', '--from'),
-          to: requireNonEmptyOption(options, 'to', '--to'),
-          template: requireNonEmptyOption(options, 'template', '--template'),
-          id: requireNonEmptyOption(options, 'id', '--id'),
+          from: requireNonEmptyOption({ options, key: 'from', flagName: '--from' }),
+          to: requireNonEmptyOption({ options, key: 'to', flagName: '--to' }),
+          template: requireNonEmptyOption({
+            options,
+            key: 'template',
+            flagName: '--template'
+          }),
+          id: requireNonEmptyOption({ options, key: 'id', flagName: '--id' }),
           position: optionalNonEmptyOption(options, 'position'),
           dryRun: options.dryRun === true
         })
@@ -437,8 +449,8 @@ export function createWorkflowGraphCommandSpecs(): CliCommandSpec[] {
         return container.workflowLocalService.nodeClone({
           dir: resolveWorkflowDir(options, container.env),
           locale: resolveWorkflowLocale(options, container.env),
-          sourceNodeId: requireNonEmptyOption(options, 'node', '--node'),
-          id: requireNonEmptyOption(options, 'id', '--id'),
+          sourceNodeId: requireNonEmptyOption({ options, key: 'node', flagName: '--node' }),
+          id: requireNonEmptyOption({ options, key: 'id', flagName: '--id' }),
           position,
           offset,
           dryRun: options.dryRun === true
@@ -467,7 +479,7 @@ export function createWorkflowGraphCommandSpecs(): CliCommandSpec[] {
         container.workflowLocalService.nodeRemove({
           dir: resolveWorkflowDir(options, container.env),
           locale: resolveWorkflowLocale(options, container.env),
-          nodeId: requireNonEmptyOption(options, 'node', '--node'),
+          nodeId: requireNonEmptyOption({ options, key: 'node', flagName: '--node' }),
           dryRun: options.dryRun === true
         })
     },
@@ -533,8 +545,8 @@ export function createWorkflowGraphCommandSpecs(): CliCommandSpec[] {
         container.workflowLocalService.edgeConnect({
           dir: resolveWorkflowDir(options, container.env),
           locale: resolveWorkflowLocale(options, container.env),
-          from: requireNonEmptyOption(options, 'from', '--from'),
-          to: requireNonEmptyOption(options, 'to', '--to'),
+          from: requireNonEmptyOption({ options, key: 'from', flagName: '--from' }),
+          to: requireNonEmptyOption({ options, key: 'to', flagName: '--to' }),
           dryRun: options.dryRun === true
         })
     },
@@ -571,8 +583,8 @@ export function createWorkflowGraphCommandSpecs(): CliCommandSpec[] {
         container.workflowLocalService.edgeDisconnect({
           dir: resolveWorkflowDir(options, container.env),
           locale: resolveWorkflowLocale(options, container.env),
-          from: requireNonEmptyOption(options, 'from', '--from'),
-          to: requireNonEmptyOption(options, 'to', '--to'),
+          from: requireNonEmptyOption({ options, key: 'from', flagName: '--from' }),
+          to: requireNonEmptyOption({ options, key: 'to', flagName: '--to' }),
           dryRun: options.dryRun === true
         })
     },
@@ -625,9 +637,9 @@ export function createWorkflowGraphCommandSpecs(): CliCommandSpec[] {
         container.workflowLocalService.edgeReconnect({
           dir: resolveWorkflowDir(options, container.env),
           locale: resolveWorkflowLocale(options, container.env),
-          from: requireNonEmptyOption(options, 'from', '--from'),
-          oldTo: requireNonEmptyOption(options, 'oldTo', '--old-to'),
-          to: requireNonEmptyOption(options, 'to', '--to'),
+          from: requireNonEmptyOption({ options, key: 'from', flagName: '--from' }),
+          oldTo: requireNonEmptyOption({ options, key: 'oldTo', flagName: '--old-to' }),
+          to: requireNonEmptyOption({ options, key: 'to', flagName: '--to' }),
           dryRun: options.dryRun === true
         })
     },
@@ -655,7 +667,7 @@ export function createWorkflowGraphCommandSpecs(): CliCommandSpec[] {
       execute: ({ options, container }) =>
         container.workflowLocalService.containerChildren({
           dir: resolveWorkflowDir(options, container.env),
-          nodeId: requireNonEmptyOption(options, 'node', '--node')
+          nodeId: requireNonEmptyOption({ options, key: 'node', flagName: '--node' })
         })
     }
   ];

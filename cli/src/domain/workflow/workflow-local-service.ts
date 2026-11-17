@@ -90,7 +90,7 @@ export type WorkflowLocalService = {
     name?: string;
     dryRun?: boolean;
   }) => Promise<CliResult>;
-  build: (params: { dir: string; output: string }) => Promise<CliResult>;
+  build: (params: { dir: string; output: string; dryRun?: boolean }) => Promise<CliResult>;
   importWorkflow: (params: {
     dir: string;
     locale: string;
@@ -344,6 +344,7 @@ export type WorkflowLocalService = {
     locale: string;
     inputSource: string;
     output?: string;
+    dryRun?: boolean;
   }) => Promise<CliResult>;
   changesetApply: (params: {
     dir: string;
@@ -721,7 +722,7 @@ export function createWorkflowLocalService(deps: WorkflowLocalServiceDeps): Work
         });
       }),
 
-    build: ({ dir, output }) =>
+    build: ({ dir, output, dryRun }) =>
       withWorkflowErrorMapping(async () => {
         const document = await readWorkflowDocument({ fileIo, dir });
         const diagnostics = validateWorkflow(document, { invalidReferencePolicy: 'error' });
@@ -729,11 +730,25 @@ export function createWorkflowLocalService(deps: WorkflowLocalServiceDeps): Work
         const bindings = collectWorkflowBindings(document);
         const bindingDiagnostics = getWorkflowBindingDiagnostics(bindings);
         const workflow = compileStoreWorkflow(document);
+        const warnings = formatWorkflowWarnings(bindingDiagnostics);
+        if (dryRun) {
+          return createDryRunResult({
+            operation: 'workflow build',
+            risk: 'write',
+            preview: {
+              output: fileIo.resolvePath(output),
+              workflow,
+              diagnostics,
+              bindings
+            },
+            warnings
+          });
+        }
         const outputPath = await writeJsonArtifact({ fileIo, filePath: output, value: workflow });
         return createSuccessResult({
           message: `Built StoreWorkflow to ${outputPath}`,
           data: { output: outputPath, workflow, diagnostics, bindings },
-          warnings: formatWorkflowWarnings(bindingDiagnostics)
+          warnings
         });
       }),
 
@@ -1461,7 +1476,7 @@ export function createWorkflowLocalService(deps: WorkflowLocalServiceDeps): Work
         });
       }),
 
-    changesetPlan: ({ dir, locale, inputSource, output }) =>
+    changesetPlan: ({ dir, locale, inputSource, output, dryRun }) =>
       withWorkflowErrorMapping(async () => {
         const changeSet = WorkflowChangeSetSchema.parse(
           await readJsonFromSource({ source: inputSource, label: 'ChangeSet input' })
@@ -1473,17 +1488,31 @@ export function createWorkflowLocalService(deps: WorkflowLocalServiceDeps): Work
           changeSet,
           dependencies
         });
+        const warnings = formatWorkflowWarnings(result.warnings);
+        const meta = {
+          checksum: result.plan.targetChecksum,
+          changedNodeIds: getChangedNodeIds(result.plan),
+          changedEdgeCount: getChangedEdgeCount(document, result.document)
+        };
+        if (dryRun) {
+          return createDryRunResult({
+            operation: 'workflow changeset plan',
+            risk: 'write',
+            preview: {
+              ...(output !== undefined ? { output: fileIo.resolvePath(output) } : {}),
+              plan: result.plan,
+              ...meta
+            },
+            warnings
+          });
+        }
         if (output !== undefined) {
           await writeJsonArtifact({ fileIo, filePath: output, value: result.plan });
         }
         return createSuccessResult({
           data: result.plan,
-          warnings: formatWorkflowWarnings(result.warnings),
-          meta: {
-            checksum: result.plan.targetChecksum,
-            changedNodeIds: getChangedNodeIds(result.plan),
-            changedEdgeCount: getChangedEdgeCount(document, result.document)
-          }
+          warnings,
+          meta
         });
       }),
 

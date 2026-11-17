@@ -17,7 +17,7 @@ export function createWorkflowChangesetCommandSpecs(): CliCommandSpec[] {
     {
       path: ['workflow', 'changeset', 'plan'],
       summary: 'Compute and validate a deterministic WorkflowPlan from a ChangeSet JSON',
-      risk: 'read',
+      risk: 'write',
       authModes: ['none'],
       options: [
         WORKFLOW_DIR_OPTION,
@@ -33,7 +33,8 @@ export function createWorkflowChangesetCommandSpecs(): CliCommandSpec[] {
           flags: '--output <path>',
           takesValue: true,
           description: 'Optional output path to write WorkflowPlan JSON'
-        }
+        },
+        WORKFLOW_DRY_RUN_OPTION
       ],
       examples: [
         {
@@ -53,8 +54,9 @@ export function createWorkflowChangesetCommandSpecs(): CliCommandSpec[] {
         container.workflowLocalService.changesetPlan({
           dir: resolveWorkflowDir(options, container.env),
           locale: resolveWorkflowLocale(options, container.env),
-          inputSource: requireNonEmptyOption(options, 'input', '--input'),
-          output: optionalNonEmptyOption(options, 'output')
+          inputSource: requireNonEmptyOption({ options, key: 'input', flagName: '--input' }),
+          output: optionalNonEmptyOption(options, 'output'),
+          dryRun: options.dryRun === true
         })
     },
 
@@ -104,7 +106,7 @@ export function createWorkflowChangesetCommandSpecs(): CliCommandSpec[] {
         container.workflowLocalService.changesetApply({
           dir: resolveWorkflowDir(options, container.env),
           locale: resolveWorkflowLocale(options, container.env),
-          planSource: requireNonEmptyOption(options, 'plan', '--plan'),
+          planSource: requireNonEmptyOption({ options, key: 'plan', flagName: '--plan' }),
           confirm: optionalNonEmptyOption(options, 'confirm'),
           yes: options.yes === true,
           dryRun: options.dryRun === true

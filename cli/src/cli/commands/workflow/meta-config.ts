@@ -175,7 +175,7 @@ export function createWorkflowMetaConfigCommandSpecs(): CliCommandSpec[] {
         container.workflowLocalService.configGet({
           dir: resolveWorkflowDir(options, container.env),
           locale: resolveWorkflowLocale(options, container.env),
-          path: requireNonEmptyOption(options, 'path', '--path')
+          path: requireNonEmptyOption({ options, key: 'path', flagName: '--path' })
         })
     },
 
@@ -211,7 +211,7 @@ export function createWorkflowMetaConfigCommandSpecs(): CliCommandSpec[] {
         return container.workflowLocalService.configSet({
           dir: resolveWorkflowDir(options, container.env),
           locale: resolveWorkflowLocale(options, container.env),
-          path: requireNonEmptyOption(options, 'path', '--path'),
+          path: requireNonEmptyOption({ options, key: 'path', flagName: '--path' }),
           valueInput: extractValueInput(options),
           dryRun: options.dryRun === true
         });
@@ -244,7 +244,7 @@ export function createWorkflowMetaConfigCommandSpecs(): CliCommandSpec[] {
         container.workflowLocalService.configUnset({
           dir: resolveWorkflowDir(options, container.env),
           locale: resolveWorkflowLocale(options, container.env),
-          path: requireNonEmptyOption(options, 'path', '--path'),
+          path: requireNonEmptyOption({ options, key: 'path', flagName: '--path' }),
           dryRun: options.dryRun === true
         })
     },
@@ -323,8 +323,12 @@ export function createWorkflowMetaConfigCommandSpecs(): CliCommandSpec[] {
         }
       ],
       execute: ({ options, container }) => {
-        const key = requireNonEmptyOption(options, 'key', '--key');
-        const valueType = requireNonEmptyOption(options, 'valueType', '--value-type');
+        const key = requireNonEmptyOption({ options, key: 'key', flagName: '--key' });
+        const valueType = requireNonEmptyOption({
+          options,
+          key: 'valueType',
+          flagName: '--value-type'
+        });
         if (!VALUE_TYPE_SET.has(valueType)) {
           throw new CliArgumentError(`Invalid --value-type "${valueType}".`);
         }
@@ -415,7 +419,7 @@ export function createWorkflowMetaConfigCommandSpecs(): CliCommandSpec[] {
         }
       ],
       execute: ({ options, container }) => {
-        const key = requireNonEmptyOption(options, 'key', '--key');
+        const key = requireNonEmptyOption({ options, key: 'key', flagName: '--key' });
         if (options.required === true && options.optional === true) {
           throw new CliArgumentError('--required and --optional are mutually exclusive.');
         }
@@ -494,7 +498,7 @@ export function createWorkflowMetaConfigCommandSpecs(): CliCommandSpec[] {
         container.workflowLocalService.variableRemove({
           dir: resolveWorkflowDir(options, container.env),
           locale: resolveWorkflowLocale(options, container.env),
-          key: requireNonEmptyOption(options, 'key', '--key'),
+          key: requireNonEmptyOption({ options, key: 'key', flagName: '--key' }),
           dryRun: options.dryRun === true
         })
     }

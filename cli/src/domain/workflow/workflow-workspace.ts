@@ -14,6 +14,7 @@ export const WorkflowSyncStateSchema = z.object({
   baseUrl: z.string().optional(),
   lastSyncedAt: z.string(),
   lastChecksum: z.string().min(1),
+  lastRemoteChecksum: z.string().min(1).optional(),
   lastAction: z.enum(['pull', 'push', 'publish']),
   lastVersionId: z.string().optional(),
   lastVersionName: z.string().optional()

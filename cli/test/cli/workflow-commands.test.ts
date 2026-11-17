@@ -597,4 +597,145 @@ describe('Workflow CLI commands', () => {
       ).exitCode
     ).toBe(0);
   });
+
+  it('handles --no-catch-error standalone and alongside --name via Commander', async () => {
+    const dir = await makeDir();
+    await exec({ args: ['workflow', 'init', '--name', 'Catch Flow'], cwd: dir });
+    await exec({
+      args: [
+        'workflow',
+        'node',
+        'add',
+        '--node',
+        'chat1',
+        '--template',
+        'builtin:ai-chat',
+        '--after',
+        'start@next'
+      ],
+      cwd: dir
+    });
+
+    const enableRes = await exec({
+      args: ['workflow', 'node', 'update', '--node', 'chat1', '--catch-error'],
+      cwd: dir
+    });
+    expect(enableRes.exitCode).toBe(0);
+
+    // 仅传 --no-catch-error 必须生效且退出码为 0
+    const disableAloneRes = await exec({
+      args: ['workflow', 'node', 'update', '--node', 'chat1', '--no-catch-error'],
+      cwd: dir
+    });
+    expect(disableAloneRes.exitCode).toBe(0);
+    const showAfterDisable = await exec({
+      args: ['workflow', 'node', 'show', '--node', 'chat1'],
+      cwd: dir
+    });
+    expect(JSON.parse(showAfterDisable.stdout).data.node.catchError).toBe(false);
+
+    // 再次开启后同时传 --name 和 --no-catch-error
+    await exec({
+      args: ['workflow', 'node', 'update', '--node', 'chat1', '--catch-error'],
+      cwd: dir
+    });
+    const disableWithNameRes = await exec({
+      args: [
+        'workflow',
+        'node',
+        'update',
+        '--node',
+        'chat1',
+        '--name',
+        'Renamed Chat',
+        '--no-catch-error'
+      ],
+      cwd: dir
+    });
+    expect(disableWithNameRes.exitCode).toBe(0);
+    const showAfterCombo = await exec({
+      args: ['workflow', 'node', 'show', '--node', 'chat1'],
+      cwd: dir
+    });
+    const nodeData = JSON.parse(showAfterCombo.stdout).data as {
+      node: {
+        name: string;
+        catchError: boolean;
+      };
+    };
+    expect(nodeData.node.name).toBe('Renamed Chat');
+    expect(nodeData.node.catchError).toBe(false);
+  });
+
+  it('supports --dry-run on workflow build and marks workflow changeset plan as write with --dry-run', async () => {
+    const dir = await makeDir();
+    await exec({ args: ['workflow', 'init', '--name', 'Artifact Flow'], cwd: dir });
+    await exec({
+      args: [
+        'workflow',
+        'node',
+        'add',
+        '--node',
+        'chat1',
+        '--template',
+        'builtin:ai-chat',
+        '--after',
+        'start@next'
+      ],
+      cwd: dir
+    });
+
+    const buildDryPath = join(dir, 'dry-store.json');
+    const buildDryRes = await exec({
+      args: ['workflow', 'build', '--output', buildDryPath, '--dry-run'],
+      cwd: dir
+    });
+    expect(buildDryRes.exitCode).toBe(0);
+    expect(JSON.parse(buildDryRes.stdout).data).toMatchObject({
+      dryRun: true,
+      operation: 'workflow build',
+      risk: 'write'
+    });
+    await expect(readFile(buildDryPath, 'utf8')).rejects.toThrow();
+
+    const changeSetPath = join(dir, 'changeset.json');
+    const planDryPath = join(dir, 'dry-plan.json');
+    const inspectRes = await exec({ args: ['workflow', 'inspect'], cwd: dir });
+    expect(inspectRes.exitCode).toBe(0);
+    const baseChecksum = (JSON.parse(inspectRes.stdout).data as { checksum: string }).checksum;
+    await writeFile(
+      changeSetPath,
+      JSON.stringify({
+        schemaVersion: 'fastgpt-workflow-changeset/v1',
+        baseChecksum,
+        commands: [{ type: 'meta.update', intro: 'Dry plan intro' }]
+      })
+    );
+    const planDryRes = await exec({
+      args: [
+        'workflow',
+        'changeset',
+        'plan',
+        '--input',
+        changeSetPath,
+        '--output',
+        planDryPath,
+        '--dry-run'
+      ],
+      cwd: dir
+    });
+    expect(planDryRes.exitCode).toBe(0);
+    expect(JSON.parse(planDryRes.stdout).data).toMatchObject({
+      dryRun: true,
+      operation: 'workflow changeset plan',
+      risk: 'write'
+    });
+    await expect(readFile(planDryPath, 'utf8')).rejects.toThrow();
+
+    const writeSpecs = createWorkflowCommandSpecs()
+      .filter((spec) => spec.risk === 'write')
+      .map((spec) => spec.path.join(' '));
+    expect(writeSpecs).toContain('workflow changeset plan');
+    expect(writeSpecs).toContain('workflow build');
+  });
 });

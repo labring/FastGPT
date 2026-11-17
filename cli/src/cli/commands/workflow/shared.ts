@@ -69,11 +69,15 @@ export function resolveWorkflowLocale(
   return 'en';
 }
 
-export function requireNonEmptyOption(
-  options: Record<string, unknown>,
-  key: string,
-  flagName: string
-): string {
+export function requireNonEmptyOption({
+  options,
+  key,
+  flagName
+}: {
+  options: Record<string, unknown>;
+  key: string;
+  flagName: string;
+}): string {
   const val = options[key];
   if (typeof val !== 'string' || val.trim().length === 0) {
     throw new CliArgumentError(`${flagName} is required.`);

@@ -9,7 +9,11 @@ import {
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import type { WorkflowDocument } from '@fastgpt/global/core/workflow/type/document';
 import type { GetAppDetailResponseType } from '@fastgpt/global/openapi/core/app/common/api';
-import type { GetAppVersionDetailResponseType } from '@fastgpt/global/openapi/core/app/version/api';
+import {
+  PublishAppResponseSchema,
+  type GetAppVersionDetailResponseType,
+  type PublishAppResponseType
+} from '@fastgpt/global/openapi/core/app/version/api';
 import {
   OptimizeCodeBodySchema,
   type GetSandboxPackagesResponse,
@@ -25,7 +29,7 @@ import { validateWorkflow } from '@fastgpt/workflow-core/validation';
 import type { FileIoAdapter } from '../../infra/fs/file-io';
 import type { FastGptHttpClient } from '../../infra/http/fastgpt-http-client';
 import type { WorkflowTemplateLoader } from '../../infra/workflow/template-loader';
-import { CliApiError, CliArgumentError, CliAuthError } from '../../shared/errors';
+import { CliApiError, CliArgumentError, CliAuthError, CliNetworkError } from '../../shared/errors';
 import { createChangedResult, createDryRunResult, createSuccessResult } from '../../shared/result';
 import type { CliResult } from '../../shared/types';
 import { formatWorkflowWarnings, withWorkflowErrorMapping } from './workflow-error';
@@ -162,8 +166,8 @@ function isDeepEqual(actual: unknown, expected: unknown): boolean {
   if (actual === null || expected === null || typeof actual !== typeof expected) {
     return false;
   }
-  if (Array.isArray(actual)) {
-    if (!Array.isArray(expected) || actual.length !== expected.length) {
+  if (Array.isArray(actual) || Array.isArray(expected)) {
+    if (!Array.isArray(actual) || !Array.isArray(expected) || actual.length !== expected.length) {
       return false;
     }
     return actual.every((item, idx) => isDeepEqual(item, expected[idx]));
@@ -432,6 +436,7 @@ export function createWorkflowSyncService(deps: WorkflowSyncServiceDeps): Workfl
   }): Promise<{
     detail: GetAppDetailResponseType;
     document: WorkflowDocument;
+    remoteContentChecksum: string;
     warnings: string[];
   }> {
     const detail = await fetchAppDetailOrThrow(client, appId);
@@ -455,6 +460,14 @@ export function createWorkflowSyncService(deps: WorkflowSyncServiceDeps): Workfl
       };
     })();
 
+    // 远端版本保存接口仅持久化 nodes/edges/chatConfig，因此远端基线须排除服务端 app 元数据。
+    const remoteContentChecksum = await getWorkflowChecksum(
+      decompileStoreWorkflow({
+        workflow: workflowPayload as never,
+        app: {}
+      })
+    );
+
     const document = decompileStoreWorkflow({
       workflow: workflowPayload as never,
       app: {
@@ -477,21 +490,23 @@ export function createWorkflowSyncService(deps: WorkflowSyncServiceDeps): Workfl
     return {
       detail,
       document,
+      remoteContentChecksum,
       warnings: formatWorkflowWarnings(systemConfigResult.warnings)
     };
   }
 
+  /** 新状态校验内容基线；旧状态沿用含 app 元信息的完整文档基线，成功保存后再迁移。 */
   async function assertNoRemoteConflict({
     client,
     dir,
     appId,
-    localChecksum,
+    localContentChecksum,
     force
   }: {
     client: FastGptHttpClient;
     dir: string;
     appId: string;
-    localChecksum: string;
+    localContentChecksum: string;
     force?: boolean;
   }): Promise<void> {
     if (force) {
@@ -508,25 +523,52 @@ export function createWorkflowSyncService(deps: WorkflowSyncServiceDeps): Workfl
         edges: detail.edges ?? [],
         chatConfig: detail.chatConfig ?? {}
       } as never,
-      app: {
-        appId: detail._id,
-        name: detail.name,
-        intro: detail.intro ?? ''
-      }
+      app: {}
     });
-    const remoteChecksum = await getWorkflowChecksum(remoteDoc);
-    if (remoteChecksum !== syncState.lastChecksum && remoteChecksum !== localChecksum) {
+    const remoteContentChecksum = await getWorkflowChecksum(remoteDoc);
+    const expectedRemoteChecksum = syncState.lastRemoteChecksum ?? syncState.lastChecksum;
+    const remoteBaselineChecksum =
+      syncState.lastRemoteChecksum === undefined
+        ? await getWorkflowChecksum({
+            ...remoteDoc,
+            app: { appId: detail._id, name: detail.name, intro: detail.intro ?? '' }
+          })
+        : remoteContentChecksum;
+    if (
+      remoteBaselineChecksum !== expectedRemoteChecksum &&
+      remoteContentChecksum !== localContentChecksum
+    ) {
       throw new CliArgumentError(
         'Remote workflow has changed since your last sync.',
         {
           appId,
-          expectedRemoteChecksum: syncState.lastChecksum,
-          actualRemoteChecksum: remoteChecksum,
-          localChecksum
+          expectedRemoteChecksum,
+          actualRemoteChecksum: remoteBaselineChecksum,
+          localChecksum: localContentChecksum
         },
         'Inspect changes with: fastgpt workflow diff or pass --force to overwrite remote draft.'
       );
     }
+  }
+
+  /** 优先使用本次保存回执建立基线；旧服务端未提供回执时，回读其已归一化的草稿。 */
+  async function getSavedRemoteChecksum({
+    client,
+    appId,
+    response
+  }: {
+    client: FastGptHttpClient;
+    appId: string;
+    response: PublishAppResponseType;
+  }): Promise<string> {
+    const saved = PublishAppResponseSchema.parse(response ?? undefined);
+    const workflow = saved?.workflow ?? (await fetchAppDetailOrThrow(client, appId));
+    return getWorkflowChecksum(
+      decompileStoreWorkflow({
+        workflow,
+        app: {}
+      })
+    );
   }
 
   async function resolveWorkflowForExecution({
@@ -560,12 +602,13 @@ export function createWorkflowSyncService(deps: WorkflowSyncServiceDeps): Workfl
     pull: ({ client, dir, locale, appId: explicitAppId, versionId, force, dryRun }) =>
       withWorkflowErrorMapping(async () => {
         const appId = await resolveAppId({ explicitAppId, dir });
-        const { detail, document, warnings } = await fetchRemoteWorkflowDocument({
-          client,
-          appId,
-          versionId,
-          locale
-        });
+        const { detail, document, remoteContentChecksum, warnings } =
+          await fetchRemoteWorkflowDocument({
+            client,
+            appId,
+            versionId,
+            locale
+          });
         const pulledChecksum = await getWorkflowChecksum(document);
 
         if (!force && (await fileIo.exists(WORKFLOW_FILE_NAME, dir))) {
@@ -609,6 +652,7 @@ export function createWorkflowSyncService(deps: WorkflowSyncServiceDeps): Workfl
             baseUrl: client.baseUrl,
             lastSyncedAt: new Date().toISOString(),
             lastChecksum: pulledChecksum,
+            lastRemoteChecksum: remoteContentChecksum,
             lastAction: 'pull',
             ...(versionId ? { lastVersionId: versionId } : {})
           }
@@ -682,12 +726,18 @@ export function createWorkflowSyncService(deps: WorkflowSyncServiceDeps): Workfl
 
         const localChecksum = await getWorkflowChecksum(document);
         const compiled = compileStoreWorkflow(document);
+        const localContentChecksum = await getWorkflowChecksum(
+          decompileStoreWorkflow({
+            workflow: compiled as never,
+            app: {}
+          })
+        );
 
         await assertNoRemoteConflict({
           client,
           dir,
           appId,
-          localChecksum,
+          localContentChecksum,
           force
         });
 
@@ -706,7 +756,7 @@ export function createWorkflowSyncService(deps: WorkflowSyncServiceDeps): Workfl
           });
         }
 
-        await client.request({
+        const response = await client.request<PublishAppResponseType>({
           method: 'POST',
           path: '/core/app/version/publish',
           query: { appId },
@@ -715,9 +765,11 @@ export function createWorkflowSyncService(deps: WorkflowSyncServiceDeps): Workfl
             edges: compiled.edges,
             chatConfig: compiled.chatConfig,
             isPublish: false,
-            autoSave: true
+            autoSave: true,
+            returnWorkflow: true
           }
         });
+        const savedRemoteChecksum = await getSavedRemoteChecksum({ client, appId, response });
 
         await writeWorkflowSyncState({
           fileIo,
@@ -727,6 +779,7 @@ export function createWorkflowSyncService(deps: WorkflowSyncServiceDeps): Workfl
             baseUrl: client.baseUrl,
             lastSyncedAt: new Date().toISOString(),
             lastChecksum: localChecksum,
+            lastRemoteChecksum: savedRemoteChecksum,
             lastAction: 'push'
           }
         });
@@ -755,13 +808,19 @@ export function createWorkflowSyncService(deps: WorkflowSyncServiceDeps): Workfl
 
         const localChecksum = await getWorkflowChecksum(document);
         const compiled = compileStoreWorkflow(document);
+        const localContentChecksum = await getWorkflowChecksum(
+          decompileStoreWorkflow({
+            workflow: compiled as never,
+            app: {}
+          })
+        );
         const resolvedVersionName = versionName ?? `CLI publish ${new Date().toISOString()}`;
 
         await assertNoRemoteConflict({
           client,
           dir,
           appId,
-          localChecksum,
+          localContentChecksum,
           force
         });
 
@@ -780,7 +839,7 @@ export function createWorkflowSyncService(deps: WorkflowSyncServiceDeps): Workfl
           });
         }
 
-        await client.request({
+        const response = await client.request<PublishAppResponseType>({
           method: 'POST',
           path: '/core/app/version/publish',
           query: { appId },
@@ -789,9 +848,11 @@ export function createWorkflowSyncService(deps: WorkflowSyncServiceDeps): Workfl
             edges: compiled.edges,
             chatConfig: compiled.chatConfig,
             isPublish: true,
-            versionName: resolvedVersionName
+            versionName: resolvedVersionName,
+            returnWorkflow: true
           }
         });
+        const savedRemoteChecksum = await getSavedRemoteChecksum({ client, appId, response });
 
         await writeWorkflowSyncState({
           fileIo,
@@ -801,6 +862,7 @@ export function createWorkflowSyncService(deps: WorkflowSyncServiceDeps): Workfl
             baseUrl: client.baseUrl,
             lastSyncedAt: new Date().toISOString(),
             lastChecksum: localChecksum,
+            lastRemoteChecksum: savedRemoteChecksum,
             lastAction: 'publish',
             lastVersionName: resolvedVersionName
           }
@@ -932,14 +994,20 @@ export function createWorkflowSyncService(deps: WorkflowSyncServiceDeps): Workfl
       }
 
       let content = '';
+      let completed = false;
       for await (const event of client.streamSse({
         method: 'POST',
         path: '/core/workflow/optimizeCode',
-        body: validatedBody
+        body: validatedBody,
+        includeDone: true
       })) {
         const raw = event.data.trim();
-        if (!raw || raw === '[DONE]') {
+        if (!raw) {
           continue;
+        }
+        if (raw === '[DONE]') {
+          completed = true;
+          break;
         }
         try {
           const parsed = JSON.parse(raw) as {
@@ -952,6 +1020,17 @@ export function createWorkflowSyncService(deps: WorkflowSyncServiceDeps): Workfl
         } catch {
           // 忽略非标准心跳或未预期片段，保留已累积的流式代码文本
         }
+      }
+
+      if (!completed) {
+        throw new CliNetworkError(
+          'Code optimization stream ended before completion.',
+          'Retry the optimize-code request or check server logs for stream termination errors.',
+          {
+            modelId: validatedBody.modelId,
+            partialContentLength: content.length
+          }
+        );
       }
 
       return createChangedResult({

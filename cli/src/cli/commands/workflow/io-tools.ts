@@ -41,7 +41,7 @@ export function createWorkflowIoToolCommandSpecs(): CliCommandSpec[] {
       execute: ({ options, container }) =>
         container.workflowLocalService.inputList({
           dir: resolveWorkflowDir(options, container.env),
-          nodeId: requireNonEmptyOption(options, 'node', '--node')
+          nodeId: requireNonEmptyOption({ options, key: 'node', flagName: '--node' })
         })
     },
 
@@ -64,8 +64,8 @@ export function createWorkflowIoToolCommandSpecs(): CliCommandSpec[] {
       execute: ({ options, container }) =>
         container.workflowLocalService.inputShow({
           dir: resolveWorkflowDir(options, container.env),
-          nodeId: requireNonEmptyOption(options, 'node', '--node'),
-          key: requireNonEmptyOption(options, 'key', '--key')
+          nodeId: requireNonEmptyOption({ options, key: 'node', flagName: '--node' }),
+          key: requireNonEmptyOption({ options, key: 'key', flagName: '--key' })
         })
     },
 
@@ -125,19 +125,23 @@ export function createWorkflowIoToolCommandSpecs(): CliCommandSpec[] {
         }
       ],
       execute: ({ options, container }) => {
-        const valueType = requireNonEmptyOption(options, 'valueType', '--value-type');
+        const valueType = requireNonEmptyOption({
+          options,
+          key: 'valueType',
+          flagName: '--value-type'
+        });
         if (!VALUE_TYPE_SET.has(valueType)) {
           throw new CliArgumentError(`Invalid --value-type "${valueType}".`);
         }
-        const mode = requireNonEmptyOption(options, 'mode', '--mode');
+        const mode = requireNonEmptyOption({ options, key: 'mode', flagName: '--mode' });
         if (!INPUT_MODE_SET.has(mode)) {
           throw new CliArgumentError('--mode must be one of: literal, reference, both.');
         }
         return container.workflowLocalService.inputAdd({
           dir: resolveWorkflowDir(options, container.env),
           locale: resolveWorkflowLocale(options, container.env),
-          nodeId: requireNonEmptyOption(options, 'node', '--node'),
-          key: requireNonEmptyOption(options, 'key', '--key'),
+          nodeId: requireNonEmptyOption({ options, key: 'node', flagName: '--node' }),
+          key: requireNonEmptyOption({ options, key: 'key', flagName: '--key' }),
           valueType: z.enum(WorkflowIOValueTypeEnum).parse(valueType),
           mode: mode as 'literal' | 'reference' | 'both',
           label: optionalNonEmptyOption(options, 'label'),
@@ -175,8 +179,8 @@ export function createWorkflowIoToolCommandSpecs(): CliCommandSpec[] {
         container.workflowLocalService.inputRemove({
           dir: resolveWorkflowDir(options, container.env),
           locale: resolveWorkflowLocale(options, container.env),
-          nodeId: requireNonEmptyOption(options, 'node', '--node'),
-          key: requireNonEmptyOption(options, 'key', '--key'),
+          nodeId: requireNonEmptyOption({ options, key: 'node', flagName: '--node' }),
+          key: requireNonEmptyOption({ options, key: 'key', flagName: '--key' }),
           dryRun: options.dryRun === true
         })
     },
@@ -219,8 +223,8 @@ export function createWorkflowIoToolCommandSpecs(): CliCommandSpec[] {
         return container.workflowLocalService.inputSet({
           dir: resolveWorkflowDir(options, container.env),
           locale: resolveWorkflowLocale(options, container.env),
-          nodeId: requireNonEmptyOption(options, 'node', '--node'),
-          key: requireNonEmptyOption(options, 'key', '--key'),
+          nodeId: requireNonEmptyOption({ options, key: 'node', flagName: '--node' }),
+          key: requireNonEmptyOption({ options, key: 'key', flagName: '--key' }),
           valueInput: extractValueInput(options),
           dryRun: options.dryRun === true
         });
@@ -265,9 +269,9 @@ export function createWorkflowIoToolCommandSpecs(): CliCommandSpec[] {
         container.workflowLocalService.inputRef({
           dir: resolveWorkflowDir(options, container.env),
           locale: resolveWorkflowLocale(options, container.env),
-          nodeId: requireNonEmptyOption(options, 'node', '--node'),
-          key: requireNonEmptyOption(options, 'key', '--key'),
-          from: requireNonEmptyOption(options, 'from', '--from'),
+          nodeId: requireNonEmptyOption({ options, key: 'node', flagName: '--node' }),
+          key: requireNonEmptyOption({ options, key: 'key', flagName: '--key' }),
+          from: requireNonEmptyOption({ options, key: 'from', flagName: '--from' }),
           dryRun: options.dryRun === true
         })
     },
@@ -294,8 +298,8 @@ export function createWorkflowIoToolCommandSpecs(): CliCommandSpec[] {
         container.workflowLocalService.inputUnset({
           dir: resolveWorkflowDir(options, container.env),
           locale: resolveWorkflowLocale(options, container.env),
-          nodeId: requireNonEmptyOption(options, 'node', '--node'),
-          key: requireNonEmptyOption(options, 'key', '--key'),
+          nodeId: requireNonEmptyOption({ options, key: 'node', flagName: '--node' }),
+          key: requireNonEmptyOption({ options, key: 'key', flagName: '--key' }),
           dryRun: options.dryRun === true
         })
     },
@@ -319,8 +323,8 @@ export function createWorkflowIoToolCommandSpecs(): CliCommandSpec[] {
       execute: ({ options, container }) =>
         container.workflowLocalService.inputAvailable({
           dir: resolveWorkflowDir(options, container.env),
-          nodeId: requireNonEmptyOption(options, 'node', '--node'),
-          key: requireNonEmptyOption(options, 'key', '--key')
+          nodeId: requireNonEmptyOption({ options, key: 'node', flagName: '--node' }),
+          key: requireNonEmptyOption({ options, key: 'key', flagName: '--key' })
         })
     },
 
@@ -342,7 +346,7 @@ export function createWorkflowIoToolCommandSpecs(): CliCommandSpec[] {
       execute: ({ options, container }) =>
         container.workflowLocalService.outputList({
           dir: resolveWorkflowDir(options, container.env),
-          nodeId: requireNonEmptyOption(options, 'node', '--node')
+          nodeId: requireNonEmptyOption({ options, key: 'node', flagName: '--node' })
         })
     },
 
@@ -388,15 +392,19 @@ export function createWorkflowIoToolCommandSpecs(): CliCommandSpec[] {
         }
       ],
       execute: ({ options, container }) => {
-        const valueType = requireNonEmptyOption(options, 'valueType', '--value-type');
+        const valueType = requireNonEmptyOption({
+          options,
+          key: 'valueType',
+          flagName: '--value-type'
+        });
         if (!VALUE_TYPE_SET.has(valueType)) {
           throw new CliArgumentError(`Invalid --value-type "${valueType}".`);
         }
         return container.workflowLocalService.outputAdd({
           dir: resolveWorkflowDir(options, container.env),
           locale: resolveWorkflowLocale(options, container.env),
-          nodeId: requireNonEmptyOption(options, 'node', '--node'),
-          key: requireNonEmptyOption(options, 'key', '--key'),
+          nodeId: requireNonEmptyOption({ options, key: 'node', flagName: '--node' }),
+          key: requireNonEmptyOption({ options, key: 'key', flagName: '--key' }),
           valueType: z.enum(WorkflowIOValueTypeEnum).parse(valueType),
           label: optionalNonEmptyOption(options, 'label'),
           description: typeof options.description === 'string' ? options.description : undefined,
@@ -427,8 +435,8 @@ export function createWorkflowIoToolCommandSpecs(): CliCommandSpec[] {
         container.workflowLocalService.outputRemove({
           dir: resolveWorkflowDir(options, container.env),
           locale: resolveWorkflowLocale(options, container.env),
-          nodeId: requireNonEmptyOption(options, 'node', '--node'),
-          key: requireNonEmptyOption(options, 'key', '--key'),
+          nodeId: requireNonEmptyOption({ options, key: 'node', flagName: '--node' }),
+          key: requireNonEmptyOption({ options, key: 'key', flagName: '--key' }),
           dryRun: options.dryRun === true
         })
     },
@@ -456,7 +464,11 @@ export function createWorkflowIoToolCommandSpecs(): CliCommandSpec[] {
       execute: ({ options, container }) =>
         container.workflowLocalService.toolList({
           dir: resolveWorkflowDir(options, container.env),
-          toolCallNodeId: requireNonEmptyOption(options, 'toolCall', '--tool-call')
+          toolCallNodeId: requireNonEmptyOption({
+            options,
+            key: 'toolCall',
+            flagName: '--tool-call'
+          })
         })
     },
 
@@ -532,7 +544,11 @@ export function createWorkflowIoToolCommandSpecs(): CliCommandSpec[] {
         return container.workflowLocalService.toolAttach({
           dir: resolveWorkflowDir(options, container.env),
           locale: resolveWorkflowLocale(options, container.env),
-          toolCallNodeId: requireNonEmptyOption(options, 'toolCall', '--tool-call'),
+          toolCallNodeId: requireNonEmptyOption({
+            options,
+            key: 'toolCall',
+            flagName: '--tool-call'
+          }),
           template,
           toolNodeId: toolNode,
           id,
@@ -574,8 +590,16 @@ export function createWorkflowIoToolCommandSpecs(): CliCommandSpec[] {
         container.workflowLocalService.toolDetach({
           dir: resolveWorkflowDir(options, container.env),
           locale: resolveWorkflowLocale(options, container.env),
-          toolCallNodeId: requireNonEmptyOption(options, 'toolCall', '--tool-call'),
-          toolNodeId: requireNonEmptyOption(options, 'toolNode', '--tool-node'),
+          toolCallNodeId: requireNonEmptyOption({
+            options,
+            key: 'toolCall',
+            flagName: '--tool-call'
+          }),
+          toolNodeId: requireNonEmptyOption({
+            options,
+            key: 'toolNode',
+            flagName: '--tool-node'
+          }),
           dryRun: options.dryRun === true
         })
     }

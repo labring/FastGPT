@@ -438,7 +438,7 @@ export function createWorkflowSyncCommandSpecs(): CliCommandSpec[] {
         if (!prompt || !prompt.trim()) {
           throw new CliArgumentError('A prompt is required via --prompt, --file, or --stdin.');
         }
-        const modelId = requireNonEmptyOption(options, 'model', '--model');
+        const modelId = requireNonEmptyOption({ options, key: 'model', flagName: '--model' });
         const rawHistory = await resolveJsonPayload({
           filePath: typeof options.historyFile === 'string' ? options.historyFile : undefined,
           readTextFile: container.fileIo.readTextFile,

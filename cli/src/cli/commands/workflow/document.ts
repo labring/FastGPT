@@ -56,7 +56,8 @@ export function createWorkflowDocumentCommandSpecs(): CliCommandSpec[] {
           flags: '--output <path>',
           takesValue: true,
           description: 'Output file path for compiled StoreWorkflow JSON'
-        }
+        },
+        WORKFLOW_DRY_RUN_OPTION
       ],
       examples: [
         {
@@ -67,7 +68,8 @@ export function createWorkflowDocumentCommandSpecs(): CliCommandSpec[] {
       execute: ({ options, container }) =>
         container.workflowLocalService.build({
           dir: resolveWorkflowDir(options, container.env),
-          output: requireNonEmptyOption(options, 'output', '--output')
+          output: requireNonEmptyOption({ options, key: 'output', flagName: '--output' }),
+          dryRun: options.dryRun === true
         })
     },
 
@@ -97,7 +99,7 @@ export function createWorkflowDocumentCommandSpecs(): CliCommandSpec[] {
         container.workflowLocalService.importWorkflow({
           dir: resolveWorkflowDir(options, container.env),
           locale: resolveWorkflowLocale(options, container.env),
-          inputPath: requireNonEmptyOption(options, 'input', '--input'),
+          inputPath: requireNonEmptyOption({ options, key: 'input', flagName: '--input' }),
           dryRun: options.dryRun === true
         })
     },
