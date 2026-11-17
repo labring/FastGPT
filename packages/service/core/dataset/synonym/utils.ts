@@ -367,6 +367,62 @@ export const serializeSynonymMappingsToCsv = (
     .join('\r\n')}\r\n`;
 };
 
+/**
+ * \u6309\u4E0A\u4F20\u683C\u5F0F\uFF08xlsx/xls\uFF09\u751F\u6210\u540C\u4E49\u8BCD\u5DE5\u4F5C\u7C3F Buffer\uFF0C\u4FDD\u6301\u4E0B\u8F7D\u683C\u5F0F\u4E0E\u4E0A\u4F20\u4E00\u81F4\u3002
+ * \u8868\u5934\u4E0E\u89E3\u6790\u7AEF\uFF08standardizedTermHeaders / synonymHeaderReg\uFF09\u517C\u5BB9\uFF0C\u4EA7\u7269\u53EF\u76F4\u63A5\u56DE\u4F20\u3002
+ */
+export const serializeSynonymMappingsToExcelBuffer = (
+  mappings: Array<Pick<NormalizedSynonymMappingType, 'standardizedTerm' | 'synonymTerms'>>,
+  extension: 'xlsx' | 'xls'
+) => {
+  // \u5355\u8868\u5217\u4E0A\u9650\uFF1Axls(biff8) 256 \u5217\uFF08IV\uFF09\u3001xlsx 16384 \u5217\uFF1B\u6263\u9664\u6807\u51C6\u672F\u8BED\u5217\u540E\u4E3A\u6BCF\u884C\u522B\u540D\u4E0A\u9650\u3002
+  // \u540C\u4E00\u6807\u51C6\u8BCD\u7684\u522B\u540D\u8D85\u8FC7\u4E0A\u9650\u65F6\u62C6\u6210\u591A\u884C\uFF08\u91CD\u590D\u6807\u51C6\u8BCD\uFF09\uFF0C\u89E3\u6790\u7AEF\u4F1A\u6309\u6807\u51C6\u8BCD\u5408\u5E76\uFF0C\u4FDD\u8BC1\u5F80\u8FD4\u65E0\u635F\u3002
+  const maxColumns = extension === 'xls' ? 256 : 16384;
+  const maxSynonymsPerRow = maxColumns - 1;
+
+  const dataRows: string[][] = [];
+  let maxSynonymCount = 1;
+  for (const mapping of mappings) {
+    for (let offset = 0; offset < Math.max(1, mapping.synonymTerms.length); offset += maxSynonymsPerRow) {
+      const group = mapping.synonymTerms.slice(offset, offset + maxSynonymsPerRow);
+      dataRows.push([mapping.standardizedTerm, ...group]);
+      maxSynonymCount = Math.max(maxSynonymCount, group.length);
+    }
+  }
+
+  const aoa: (string | number)[][] = [
+    ['\u6807\u51C6\u672F\u8BED', ...Array.from({ length: maxSynonymCount }, () => '\u540C\u4E49\u8BCD')],
+    ...dataRows
+  ];
+  const worksheet = XLSX.utils.aoa_to_sheet(aoa);
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, 'Synonyms');
+  return XLSX.write(workbook, {
+    type: 'buffer',
+    bookType: extension === 'xls' ? 'biff8' : 'xlsx'
+  }) as Buffer;
+};
+
+/** \u4E0B\u8F7D\u65F6\u6309\u4E0A\u4F20\u683C\u5F0F\u56DE\u4F20\uFF1Axlsx/xls \u751F\u6210\u5DE5\u4F5C\u7C3F\uFF0Ccsv \u751F\u6210 BOM CSV \u6587\u672C\u3002 */
+export const serializeSynonymMappingsToFile = (
+  mappings: Array<Pick<NormalizedSynonymMappingType, 'standardizedTerm' | 'synonymTerms'>>,
+  extension: string
+): { buffer: Buffer; contentType: string } => {
+  if (extension === 'xlsx' || extension === 'xls') {
+    return {
+      buffer: serializeSynonymMappingsToExcelBuffer(mappings, extension),
+      contentType:
+        extension === 'xlsx'
+          ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+          : 'application/vnd.ms-excel'
+    };
+  }
+  return {
+    buffer: Buffer.from(serializeSynonymMappingsToCsv(mappings), 'utf-8'),
+    contentType: 'text/csv; charset=utf-8'
+  };
+};
+
 /** 解析并规范化 CSV、XLS 或 XLSX 同义词文件。 */
 export const parseSynonymFile = (params: {
   buffer: Buffer;

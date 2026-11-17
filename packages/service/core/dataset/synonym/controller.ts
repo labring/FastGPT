@@ -27,6 +27,22 @@ export const cleanupUnusedDatasetSynonymMappings = async (
     { session }
   );
   if (deletedCount) invalidateDatasetSynonymMatcherCache({ teamId, datasetId });
+
+  // 数据都已追上当前版本，更早的空词表版本不会再被引用，顺手回收。
+  // 写入带读取时版本条件、且只 $pull 旧标记：清理与删除词表事务并发交错时
+  // （旧清理读到 v3、删除事务随后提交 v4 并登记空版本 4），无条件覆盖会用 v3
+  // 的旧数组吞掉 v4 的新标记——标记丢失会让 v5 重建无法识别 v4 向量来自原文，
+  // 触发全量重算并刷新更新时间，抵消差量重建修复。
+  const staleMarkers = (config.emptyVersions ?? []).filter(
+    (version) => version !== config.version
+  );
+  if (staleMarkers.length > 0) {
+    await MongoDatasetSynonym.updateOne(
+      { _id: config._id, version: config.version },
+      { $pull: { emptyVersions: { $in: staleMarkers } } },
+      { session }
+    );
+  }
 };
 
 /**

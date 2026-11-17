@@ -366,7 +366,8 @@ describe('createDatasetSynonymMutation', () => {
 
     await expect(MongoDatasetSynonym.findById(synonym._id).lean()).resolves.toMatchObject({
       enabled: false,
-      version: 2
+      version: 2,
+      emptyVersions: [2]
     });
     await expect(MongoDatasetSynonymMapping.countDocuments({ datasetId })).resolves.toBe(1);
     await MongoDatasetData.updateMany({ datasetId }, { $set: { synonymVersion: 2 } });
@@ -375,6 +376,10 @@ describe('createDatasetSynonymMutation', () => {
       datasetId: String(datasetId)
     });
     await expect(MongoDatasetSynonymMapping.countDocuments({ datasetId })).resolves.toBe(0);
+    // 当前空版本仍被数据引用，必须保留，供下一次上传做差量比较。
+    await expect(MongoDatasetSynonym.findById(synonym._id).lean()).resolves.toMatchObject({
+      emptyVersions: [2]
+    });
   });
 
   it('rejects updates while the existing rebuild queue is busy', async () => {
