@@ -429,7 +429,7 @@ describe('migrateLegacyConfigScopes', () => {
     expect(commercial?.overrides.subPlans).not.toHaveProperty('communitySupportTip');
   });
 
-  it('aborts before changes and preserves old instance scopes when any selected source is invalid', async () => {
+  it('migrates selected invalid source fields without discarding valid sibling scopes', async () => {
     await MongoSystemInstanceConfig.create({
       domain: 'commercial',
       overrides: { showCoupon: true },
@@ -443,9 +443,15 @@ describe('migrateLegacyConfigScopes', () => {
       explicitDefaultPaths: []
     } as any);
     await MongoSystemConfigs.create({ type: 'activityAd', value: { activityAdLink: 123 } });
-    const before = await readTargets();
-    await expect(migrateLegacyConfigScopes()).rejects.toThrow('activityAdLink');
-    expect(await readTargets()).toEqual(before);
+    await migrateLegacyConfigScopes();
+    expect(
+      (await MongoSystemInstanceConfig.findOne({ domain: 'operations' }).lean())?.overrides
+        .activityAd.activityAdLink
+    ).toBe(123);
+    expect(
+      (await MongoSystemInstanceConfig.findOne({ domain: 'commercial' }).lean())?.overrides
+        .showCoupon
+    ).toBe(true);
   });
 
   it('retries a concurrent administrator update and never overwrites it with an older source', async () => {
@@ -504,18 +510,36 @@ describe('migrateLegacyConfigScopes', () => {
   });
 
   it.each(invalidValues)(
-    'rejects invalid %s before any write and reports paths only',
+    'retains invalid %s while reporting only field paths',
     async (domain, value, path) => {
       const validDomain = domain === 'subPlans' ? 'activityAd' : 'subPlans';
       await MongoSystemConfigs.create([
         { type: validDomain, value: scopeValues[validDomain] },
         { type: domain, value }
       ]);
-      const error = await migrateLegacyConfigScopes().catch((error: Error) => error);
-      expect(error).toBeInstanceOf(Error);
-      expect(error.message).toContain(path);
-      expect(error.message).not.toContain('private-invalid-value');
-      expect(await readTargets()).toEqual([]);
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      try {
+        await migrateLegacyConfigScopes();
+        const targetDomain =
+          domain === 'subPlans'
+            ? 'commercial'
+            : ['systemMsgModal', 'operationalAd', 'activityAd'].includes(domain)
+              ? 'operations'
+              : domain;
+        const target = (await MongoSystemInstanceConfig.findOne({ domain: targetDomain }).lean())
+          ?.overrides;
+        expect(
+          domain === 'subPlans'
+            ? target.subPlans
+            : targetDomain === 'operations'
+              ? target[domain]
+              : target
+        ).toEqual(value);
+        expect(JSON.stringify(warn.mock.calls)).toContain(path);
+        expect(JSON.stringify(warn.mock.calls)).not.toContain('private-invalid-value');
+      } finally {
+        warn.mockRestore();
+      }
     }
   );
 
@@ -605,7 +629,7 @@ describe('verifyLegacyConfigScopes', () => {
     }),
     ['proEnv', { teamMode: 'private-invalid-value' }, 'teamMode'] as const
   ])(
-    'rejects an invalid %s target without disclosing its value',
+    'warns about an invalid %s target without rejecting or rewriting it',
     async (domain, overrides, path) => {
       await MongoSystemInstanceConfig.collection.insertOne({
         domain,
@@ -615,10 +639,17 @@ describe('verifyLegacyConfigScopes', () => {
         createdAt: new Date(),
         updatedAt: new Date()
       });
-      const error = await verifyLegacyConfigScopes().catch((error: Error) => error);
-      expect(error).toBeInstanceOf(Error);
-      expect(error.message).toContain(path);
-      expect(error.message).not.toContain('private-invalid-value');
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      try {
+        await expect(verifyLegacyConfigScopes()).resolves.toBeUndefined();
+        expect((await MongoSystemInstanceConfig.collection.findOne({ domain }))?.overrides).toEqual(
+          overrides
+        );
+        expect(JSON.stringify(warn.mock.calls)).toContain(path);
+        expect(JSON.stringify(warn.mock.calls)).not.toContain('private-invalid-value');
+      } finally {
+        warn.mockRestore();
+      }
     }
   );
 });

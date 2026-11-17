@@ -1,3 +1,4 @@
+import { readMigrationConfigValue } from './validation';
 import z from 'zod';
 import { BoolSchema, IntSchema, NumSchema, UrlSchema } from '@fastgpt/global/common/zod';
 import { DEFAULT_MAX_FOLDER_DEPTH } from '@fastgpt/global/common/parentFolder/depth';
@@ -7,7 +8,7 @@ import { SandboxVolumeNameSchema } from '@fastgpt/global/core/ai/sandbox/volume'
 const defaultableIntSchema = (defaultValue: number) =>
   z.preprocess((value) => (value === '' || value === undefined ? defaultValue : value), IntSchema);
 
-// 公共 BoolSchema 会把未知字符串解析成 false，迁移时必须拒绝拼写错误以免静默关闭安全设置。
+// 公共 BoolSchema 会把未知字符串解析成 false；迁移单独识别拼写错误并保留原值告警。
 const legacyBooleanValues = new Set([
   'true',
   '1',
@@ -250,12 +251,10 @@ export const readLegacyInstanceConfigEnv = () => {
   const env = Object.fromEntries(
     Object.entries(process.env).map(([key, value]) => [key, value === '' ? undefined : value])
   );
-  const result = LegacyInstanceConfigEnvSchema.safeParse(env);
-  if (!result.success) {
-    throw new Error(
-      'Invalid legacy instance config environment variables: ' +
-        result.error.issues.map((issue) => issue.path.join('.')).join(', ')
-    );
-  }
-  return result.data;
+  return Object.fromEntries(
+    Object.entries(LegacyInstanceConfigEnvSchema.shape).map(([key, schema]) => [
+      key,
+      readMigrationConfigValue({ name: key, schema, value: env[key] })
+    ])
+  ) as z.infer<typeof LegacyInstanceConfigEnvSchema>;
 };

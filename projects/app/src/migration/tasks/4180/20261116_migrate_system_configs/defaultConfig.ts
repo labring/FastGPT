@@ -1,17 +1,16 @@
+import { readMigrationDomainConfig, readMigrationConfigValue } from './validation';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import z from 'zod';
 import {
   SYSTEM_INSTANCE_CONFIG_DOMAINS,
   SYSTEM_INSTANCE_CONFIG_SCHEMA_VERSION,
-  resolveDomainEffectiveConfig,
   systemInstanceConfigDomainOverrideSchemaMap,
   type SystemInstanceConfigDomainKey
 } from '@fastgpt/global/common/system/config/schema';
 import { MongoSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/schema';
 import { encryptDomainSecrets } from '@fastgpt/service/common/system/systemInstanceConfig/secrets';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
-import { resolveDomainConfigBeforeProxyBackfill } from './cleanup';
 
 type DefaultConfigOverrides = Partial<
   Record<SystemInstanceConfigDomainKey, Record<string, unknown>>
@@ -53,20 +52,14 @@ export const readDefaultInstanceConfig = async (
       ])
     )
   );
-  const parsed = schema.safeParse(raw);
-  if (!parsed.success) {
-    const paths = parsed.error.issues.map((issue) => issue.path.join('.') || '<root>');
-    throw new Error(`Invalid defaultConfig.json fields: ${paths.join(', ')}`);
-  }
-
-  const overrides = parsed.data as DefaultConfigOverrides;
+  const overrides = readMigrationConfigValue({
+    name: 'defaultConfig',
+    schema,
+    value: raw
+  }) as DefaultConfigOverrides;
   for (const domain of SYSTEM_INSTANCE_CONFIG_DOMAINS) {
     if (overrides[domain] === undefined) continue;
-    try {
-      resolveDomainEffectiveConfig({ domain, overrides: overrides[domain] });
-    } catch {
-      throw new Error(`Invalid defaultConfig.json configuration: ${domain}`);
-    }
+    readMigrationDomainConfig({ domain, overrides: overrides[domain] });
   }
   return overrides;
 };
@@ -83,7 +76,7 @@ export const initializeEmptyInstanceConfig = async ({
   const now = new Date();
   const documents = SYSTEM_INSTANCE_CONFIG_DOMAINS.map((domain) => {
     const domainOverrides = overrides[domain] ?? {};
-    resolveDomainConfigBeforeProxyBackfill({ domain, overrides: domainOverrides });
+    readMigrationDomainConfig({ domain, overrides: domainOverrides });
     return {
       domain,
       schemaVersion: SYSTEM_INSTANCE_CONFIG_SCHEMA_VERSION,

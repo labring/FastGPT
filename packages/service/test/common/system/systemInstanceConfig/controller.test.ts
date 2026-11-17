@@ -713,7 +713,7 @@ describe('systemInstanceConfig controller', () => {
   });
 
   describe('getSystemInstanceConfigSnapshot', () => {
-    it('does not publish any new scope when stored ciphertext cannot be authenticated', async () => {
+    it('publishes other scopes while retaining a damaged credential for repair', async () => {
       await batchUpdateDomainConfigs({
         items: [
           { domain: 'site', expectedRevision: 0, overrides: { name: 'Published site' } },
@@ -745,14 +745,14 @@ describe('systemInstanceConfig controller', () => {
         }
       );
 
-      await expect(reloadSystemInstanceConfig()).rejects.toThrow(
-        'Unable to decrypt configuration secret: providers.documentParse.customPdf.key'
-      );
-      expect(getSystemInstanceConfig()).toBe(published);
-      expect(getSystemInstanceConfig().site.name).toBe('Published site');
-      expect(getSystemInstanceConfig().providers.documentParse.customPdf.key).toBe('valid-key');
-      expect(global.feConfigs).toBe(frontend);
-      expect(global.systemInitBufferId).toBe(version);
+      await expect(reloadSystemInstanceConfig()).resolves.toBeDefined();
+      expect(getSystemInstanceConfig()).not.toBe(published);
+      expect(getSystemInstanceConfig().site.name).toBe('Unpublished site');
+      expect(getSystemInstanceConfig().providers.documentParse.customPdf.key).toEqual({
+        secret: `${'0'.repeat(32)}:00:${'0'.repeat(32)}`
+      });
+      expect(global.feConfigs).not.toBe(frontend);
+      expect(global.systemInitBufferId).not.toBe(version);
     });
 
     it.each([undefined, { readPreference: 'primary' as const }])(
@@ -984,30 +984,47 @@ describe('systemInstanceConfig controller', () => {
       }
     );
 
-    it('keeps database-originated invalid values as internal errors', async () => {
-      // 直接写 collection 模拟历史坏记录，绕过当前 Schema 的写入校验。
+    it('reads an invalid historical value, reports its save error, and allows a repair', async () => {
       await MongoSystemInstanceConfig.collection.insertOne({
         domain: 'performance',
         schemaVersion: 1,
         revision: 1,
-        overrides: { task: { evalConcurrency: 0 } },
-        updatedBy: { actor: 'system' },
-        createdAt: new Date(),
-        updatedAt: new Date()
+        overrides: { workflow: { maxLoopTimes: -1 } }
       });
-
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      expect((await getDomainConfig('performance')).effectiveConfig.workflow.maxLoopTimes).toBe(-1);
+      expect(warn).toHaveBeenCalled();
       await expect(
         batchUpdateDomainConfigs({
           items: [
             {
               domain: 'performance',
               expectedRevision: 1,
-              overrides: { workflow: { maxLoopTimes: 2 } }
+              overrides: { dataset: { parseMaxProcess: 3 } }
             }
           ],
           actor: { actor: 'admin' }
         })
-      ).rejects.not.toBeInstanceOf(ApiRequestInputParseError);
+      ).rejects.toMatchObject({
+        name: 'ApiRequestInputParseError',
+        cause: {
+          issues: expect.arrayContaining([
+            expect.objectContaining({ path: ['performance', 'workflow', 'maxLoopTimes'] })
+          ])
+        }
+      });
+      const [repaired] = await batchUpdateDomainConfigs({
+        items: [
+          {
+            domain: 'performance',
+            expectedRevision: 1,
+            overrides: { workflow: { maxLoopTimes: 100 } }
+          }
+        ],
+        actor: { actor: 'admin' }
+      });
+      expect(repaired.effectiveConfig.workflow.maxLoopTimes).toBe(100);
+      warn.mockRestore();
     });
 
     it('rolls back completely if any domain in the batch encounters a revision conflict', async () => {

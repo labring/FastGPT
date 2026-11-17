@@ -87,13 +87,7 @@ const CoreSettingComponent = () => {
     storage.isLoading ||
     providers.isLoading;
 
-  const {
-    control,
-    handleSubmit,
-    reset,
-    register,
-    formState: { errors }
-  } = useForm<CoreConfigForm>({
+  const form = useForm<CoreConfigForm>({
     defaultValues: {
       publicUrl: '',
       documentParse: providers.effectiveConfig.documentParse,
@@ -112,6 +106,13 @@ const CoreSettingComponent = () => {
       phone: { accessKeyId: '', signName: '' }
     }
   });
+  const {
+    control,
+    handleSubmit,
+    reset,
+    register,
+    formState: { errors }
+  } = form;
 
   const documentParseProvider = useWatch({ control, name: 'documentParse.provider' });
   const downloadMode = useWatch({ control, name: 'downloadMode' });
@@ -268,6 +269,8 @@ const CoreSettingComponent = () => {
 
   return (
     <AdminSettingPage
+      form={form}
+      fieldAliases={{ 'auth.loginProviders.email': 'email', 'auth.loginProviders.phone': 'phone' }}
       headerTitle={t('admin:page_title_core')}
       tocItems={tocItems}
       isLoading={isLoading}
@@ -309,6 +312,7 @@ const CoreSettingComponent = () => {
               control={control}
               render={({ field }) => (
                 <MySelect<string>
+                  isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
                   width={'100%'}
                   maxW={'400px'}
                   list={[
@@ -391,6 +395,7 @@ const CoreSettingComponent = () => {
             control={control}
             render={({ field }) => (
               <MySelect<'short-proxy' | 'short-redirect'>
+                isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
                 width={'400px'}
                 list={[
                   {
@@ -413,7 +418,11 @@ const CoreSettingComponent = () => {
               tooltip={t('admin:storage_external_endpoint_tip')}
               mb={0}
             >
-              <Input {...register('externalEndpoint')} placeholder="https://storage.example.com" />
+              <Input
+                isInvalid={Boolean(form.getFieldState('externalEndpoint', form.formState).error)}
+                {...register('externalEndpoint')}
+                placeholder="https://storage.example.com"
+              />
             </AdminFormItem>
             <AdminFormItem
               label={t('admin:storage_cdn_endpoint')}
@@ -425,6 +434,7 @@ const CoreSettingComponent = () => {
                 control={control}
                 render={({ field }) => (
                   <ConnectivityTestInput
+                    isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
                     {...field}
                     isEditable
                     service="cdn"
@@ -455,6 +465,7 @@ const CoreSettingComponent = () => {
               control={control}
               render={({ field }) => (
                 <MySelect
+                  isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
                   width={'full'}
                   maxW={'400px'}
                   placeholder={t('admin:select_a_parsing_provider')}
@@ -488,6 +499,7 @@ const CoreSettingComponent = () => {
                   control={control}
                   render={({ field }) => (
                     <AdminNumberInput
+                      isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
                       name={field.name}
                       flex={1}
                       minW={0}
@@ -528,6 +540,7 @@ const CoreSettingComponent = () => {
                 control={control}
                 render={({ field }) => (
                   <AdminSecretInput
+                    isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
                     name={field.name}
                     value={field.value}
                     onChange={field.onChange}
@@ -559,6 +572,7 @@ const CoreSettingComponent = () => {
                 control={control}
                 render={({ field }) => (
                   <AdminSecretInput
+                    isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
                     name={field.name}
                     value={field.value}
                     onChange={field.onChange}
@@ -590,6 +604,7 @@ const CoreSettingComponent = () => {
                   control={control}
                   render={({ field }) => (
                     <AdminSecretInput
+                      isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
                       name={field.name}
                       value={field.value}
                       onChange={field.onChange}
@@ -609,6 +624,7 @@ const CoreSettingComponent = () => {
                   control={control}
                   render={({ field }) => (
                     <AdminSecretInput
+                      isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
                       name={field.name}
                       value={field.value}
                       onChange={field.onChange}
@@ -635,6 +651,7 @@ const CoreSettingComponent = () => {
               control={control}
               render={({ field }) => (
                 <ConnectivityTestInput
+                  isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
                   {...field}
                   isEditable
                   placeholder="https://pdf-parser.example.com/api"
@@ -665,6 +682,9 @@ const CoreSettingComponent = () => {
                             control={control}
                             render={({ field }) => (
                               <AdminSecretInput
+                                isInvalid={Boolean(
+                                  form.getFieldState(field.name, form.formState).error
+                                )}
                                 name={field.name}
                                 value={field.value}
                                 onChange={field.onChange}
@@ -698,6 +718,7 @@ const CoreSettingComponent = () => {
               control={control}
               render={({ field }) => (
                 <ConnectivityTestInput
+                  isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
                   {...field}
                   isEditable
                   placeholder="https://sangfor-parse.example.com"
@@ -726,6 +747,9 @@ const CoreSettingComponent = () => {
                             control={control}
                             render={({ field }) => (
                               <AdminSecretInput
+                                isInvalid={Boolean(
+                                  form.getFieldState(field.name, form.formState).error
+                                )}
                                 name={field.name}
                                 value={field.value}
                                 onChange={field.onChange}
@@ -748,7 +772,13 @@ const CoreSettingComponent = () => {
                 label={t('admin:supported_file_extensions')}
                 tooltip={t('admin:comma_separated_extensions_e_g_pdf_docx')}
               >
-                <Input {...register('documentParse.sangfor.extensions')} placeholder="pdf" />
+                <Input
+                  isInvalid={Boolean(
+                    form.getFieldState('documentParse.sangfor.extensions', form.formState).error
+                  )}
+                  {...register('documentParse.sangfor.extensions')}
+                  placeholder="pdf"
+                />
               </AdminFormItem>
             </SimpleGrid>
 
@@ -762,6 +792,7 @@ const CoreSettingComponent = () => {
                 control={control}
                 render={({ field }) => (
                   <NumberInput
+                    isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
                     variant={'whiteOutline'}
                     maxW={'400px'}
                     min={10}
@@ -790,13 +821,21 @@ const CoreSettingComponent = () => {
               label={t('admin:smtp_server_address')}
               tooltip={t('admin:mail_server_address_e_g_smtp_example_com')}
             >
-              <Input {...register('email.smtp')} placeholder="smtp.example.com" />
+              <Input
+                isInvalid={Boolean(form.getFieldState('email.smtp', form.formState).error)}
+                {...register('email.smtp')}
+                placeholder="smtp.example.com"
+              />
             </AdminFormItem>
             <AdminFormItem
               label={t('admin:sender_email_account')}
               tooltip={t('admin:account_used_to_send_system_notification_emails')}
             >
-              <Input {...register('email.user')} placeholder="no-reply@example.com" />
+              <Input
+                isInvalid={Boolean(form.getFieldState('email.user', form.formState).error)}
+                {...register('email.user')}
+                placeholder="no-reply@example.com"
+              />
             </AdminFormItem>
             <AdminFormItem
               label={t('admin:email_auth_code_password')}
@@ -807,6 +846,7 @@ const CoreSettingComponent = () => {
                 control={control}
                 render={({ field }) => (
                   <AdminSecretInput
+                    isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
                     name={field.name}
                     value={field.value}
                     onChange={field.onChange}
@@ -824,6 +864,7 @@ const CoreSettingComponent = () => {
                 control={control}
                 render={({ field }) => (
                   <NumberInput
+                    isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
                     {...numberInputProps}
                     min={1}
                     max={65535}
@@ -847,6 +888,7 @@ const CoreSettingComponent = () => {
               control={control}
               render={({ field }) => (
                 <AdminSwitchRow
+                  name={field.name}
                   label={t('admin:enable_ssl')}
                   tooltip={t('admin:port_465_is_usually_enabled_port_587_recommends_starttls')}
                   isChecked={field.value}
@@ -866,7 +908,11 @@ const CoreSettingComponent = () => {
               label={t('admin:aliyun_accesskeyid')}
               tooltip={t('admin:sms_accesskey_id')}
             >
-              <Input {...register('phone.accessKeyId')} placeholder="******" />
+              <Input
+                isInvalid={Boolean(form.getFieldState('phone.accessKeyId', form.formState).error)}
+                {...register('phone.accessKeyId')}
+                placeholder="******"
+              />
             </AdminFormItem>
             <AdminFormItem
               label={t('admin:aliyun_accesskeysecret')}
@@ -877,6 +923,7 @@ const CoreSettingComponent = () => {
                 control={control}
                 render={({ field }) => (
                   <AdminSecretInput
+                    isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
                     name={field.name}
                     value={field.value}
                     onChange={field.onChange}
@@ -889,7 +936,11 @@ const CoreSettingComponent = () => {
               label={t('admin:sms_signature')}
               tooltip={t('admin:signature_name_approved_in_the_aliyun_sms_console')}
             >
-              <Input {...register('phone.signName')} placeholder="FastGPT" />
+              <Input
+                isInvalid={Boolean(form.getFieldState('phone.signName', form.formState).error)}
+                {...register('phone.signName')}
+                placeholder="FastGPT"
+              />
             </AdminFormItem>
           </SimpleGrid>
         </AdminSettingSection>

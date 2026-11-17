@@ -118,12 +118,13 @@ describe('backfillExternalFileCheck', () => {
     expect(mocks.updateOne).toHaveBeenCalledTimes(5);
   });
 
-  it('rejects missing or invalid source data without writing', async () => {
+  it('rejects missing documents but retains invalid fields during backfill', async () => {
     mocks.doc = undefined;
     await expect(run()).rejects.toThrow('Security instance config is missing');
     mocks.doc = { domain: 'security', revision: 3, overrides: { fileUrlWhitelist: [123] } };
-    await expect(run()).rejects.toThrow();
-    expect(mocks.updateOne).not.toHaveBeenCalled();
+    await expect(run()).resolves.toEqual({ updatedDocuments: 1 });
+    expect(mocks.doc.overrides.fileUrlWhitelist).toEqual([123]);
+    await expect(verifyExternalFileCheck()).resolves.toBeUndefined();
   });
 });
 

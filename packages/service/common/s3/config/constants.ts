@@ -8,7 +8,6 @@ import type {
 import { serviceEnv } from '../../../env';
 import { getSystemInstanceConfig } from '../../system/systemInstanceConfig/runtime';
 import { logInstanceConfigRead } from '../../system/migrationCoverageLog';
-import { StorageDownloadUrlModeSchema } from '../contracts/type';
 
 export const S3Buckets = {
   public: serviceEnv.STORAGE_PUBLIC_BUCKET,
@@ -115,7 +114,7 @@ export const applyRuntimeStorageConfig = (config: RuntimeStorageConfig | undefin
 /** 对外暴露的下载模式：仅取实例配置，未初始化时使用 Schema 默认值 short-proxy。 */
 export const getStorageDownloadUrlMode = () => {
   // 请求期读 global 快照：注入只发生在启动链路的模块实例里，路由 bundle 读不到那份状态
-  const value = StorageDownloadUrlModeSchema.parse(getSystemInstanceConfig().storage.downloadMode);
+  const value = getSystemInstanceConfig().storage.downloadMode;
   logInstanceConfigRead({
     callsite: 'runtime.common.s3.constants.getStorageDownloadUrlMode',
     source: 'instance-config',

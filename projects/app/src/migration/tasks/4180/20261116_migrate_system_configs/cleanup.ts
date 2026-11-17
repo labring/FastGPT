@@ -1,49 +1,14 @@
-import { deepMergeConfig } from '@fastgpt/global/common/system/config/merge';
 import {
   SYSTEM_INSTANCE_CONFIG_DOMAINS,
-  type SystemInstanceConfigDomainKey,
-  type SystemInstanceConfigDomainMap,
-  getDomainDefaultConfig,
-  parseDomainOverrides,
-  resolveDomainEffectiveConfig
+  type SystemInstanceConfigDomainKey
 } from '@fastgpt/global/common/system/config/schema';
-import {
-  SubserviceConfigBaseSchema,
-  applySubserviceBaseRules
-} from '@fastgpt/global/common/system/config/schemas/subservice';
+import { readMigrationDomainConfig } from './validation';
 import { MongoSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/schema';
 import {
   decryptDomainSecrets,
   encryptDomainSecrets
 } from '@fastgpt/service/common/system/systemInstanceConfig/secrets';
 import type { SystemMigrationLogger } from '@/migration/registry';
-
-/** 仅用于本迁移任务在代理回填之前的过渡校验；运行时与终验必须使用 SubserviceConfigSchema。 */
-const SubserviceConfigBeforeProxySchema =
-  SubserviceConfigBaseSchema.superRefine(applySubserviceBaseRules);
-
-/**
- * 代理连接迁移（rehomeAgentSandboxProxy）在 backfill 阶段才导入环境变量，
- * 之前的迁移、清理和前置读取阶段对 subservice 暂缓「provider 启用时 proxy 必填」校验，
- * 避免既有非 none 供应商在 proxy 尚未落库时阻断迁移或被误判整域丢弃。
- */
-export const resolveDomainConfigBeforeProxyBackfill = <T extends SystemInstanceConfigDomainKey>({
-  domain,
-  overrides,
-  options
-}: {
-  domain: T;
-  overrides?: unknown;
-  options?: { strict?: boolean };
-}): SystemInstanceConfigDomainMap[T] => {
-  if (domain !== 'subservice') {
-    return resolveDomainEffectiveConfig({ domain, overrides, options });
-  }
-  const defaultValues = getDomainDefaultConfig('subservice');
-  const parsedOverrides = parseDomainOverrides({ domain: 'subservice', overrides, options });
-  const merged = deepMergeConfig(defaultValues, parsedOverrides);
-  return SubserviceConfigBeforeProxySchema.parse(merged) as SystemInstanceConfigDomainMap[T];
-};
 
 /**
  * 已从 Schema 移除、但仍可能存在于存量 overrides 中的字段路径。
@@ -277,10 +242,9 @@ export const cleanupInstanceConfigDeprecatedFields = async ({
     const removed = removedOverrides + removedMarkers;
     if (removed === 0) continue;
 
-    // 写回前先按新 Schema 校验（代理迁移尚未执行时暂缓非 none 供应商代理必填）。
-    // 失败时补充 domain 上下文：blockStartup 下该错误会直接阻塞启动，需能定位到具体域。
+    // 写回前诊断保存约束；无效历史字段保留，告警不会阻断清理。
     try {
-      resolveDomainConfigBeforeProxyBackfill({ domain, overrides });
+      readMigrationDomainConfig({ domain, overrides });
     } catch (error) {
       throw new Error(
         `Instance config cleanup rejected by schema for domain "${domain}": ${
@@ -327,7 +291,7 @@ export const cleanupInstanceConfigDeprecatedFields = async ({
       if (retryRemoved > 0 && retry.overrides) {
         // 与首次路径一致：写回前完成清理校验（代理必填留待回填后终验）。
         try {
-          resolveDomainConfigBeforeProxyBackfill({ domain, overrides: retry.overrides });
+          readMigrationDomainConfig({ domain, overrides: retry.overrides });
         } catch (error) {
           throw new Error(
             `Instance config cleanup rejected by schema for domain "${domain}": ${
@@ -400,7 +364,7 @@ export const verifyInstanceConfigDeprecatedFields = async () => {
     }
 
     try {
-      resolveDomainEffectiveConfig({
+      readMigrationDomainConfig({
         domain,
         overrides: decryptDomainSecrets(domain, doc.overrides)
       });

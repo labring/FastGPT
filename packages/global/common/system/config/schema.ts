@@ -185,7 +185,7 @@ export const getDomainDefaultConfig = <T extends SystemInstanceConfigDomainKey>(
 /**
  * 阶段 1 校验：校验提交的 overrides 形态与字段类型。
  * - 默认 strict 模式：拒绝未知字段，用于 Admin API 输入检验；
- * - strict: false 模式：剥离未知字段，用于数据库快照读取。
+ * - strict: false 模式：正常值剥离未知字段；无效旧值保留原值并告警，不阻断数据库读取。
  */
 export const parseDomainOverrides = <T extends SystemInstanceConfigDomainKey>({
   domain,
@@ -200,14 +200,26 @@ export const parseDomainOverrides = <T extends SystemInstanceConfigDomainKey>({
     options?.strict === false
       ? systemInstanceConfigDomainLenientOverrideSchemaMap[domain]
       : systemInstanceConfigDomainOverrideSchemaMap[domain];
-  return schema.parse(overrides ?? {}) as DeepPartial<SystemInstanceConfigDomainMap[T]>;
+  const result = schema.safeParse(overrides ?? {});
+  if (result.success) return result.data as DeepPartial<SystemInstanceConfigDomainMap[T]>;
+  if (options?.strict !== false) throw result.error;
+  warnConfigValidation(domain, result.error);
+  return structuredClone(overrides ?? {}) as DeepPartial<SystemInstanceConfigDomainMap[T]>;
+};
+
+/** 读取旧配置只报告字段位置和错误类型，绝不输出可能包含凭据的值或完整 Zod issue。 */
+const warnConfigValidation = (scope: string, error: z.ZodError) => {
+  console.warn('Invalid system configuration retained for administrator repair', {
+    scope,
+    issues: error.issues.map(({ path, code }) => ({ path: path.join('.'), code }))
+  });
 };
 
 /**
  * 两阶段校验核心：
  * 1. 阶段 1 校验 overrides 自身形态；
  * 2. 深度合并默认值与 overrides；
- * 3. 阶段 2 执行完整 DomainSchema（含 superRefine 跨字段校验）终审并返回生效配置。
+ * 3. 保存时执行完整 DomainSchema；读取模式只告警，保留非法旧值供管理员修复。
  */
 export const resolveDomainEffectiveConfig = <T extends SystemInstanceConfigDomainKey>({
   domain,
@@ -222,7 +234,11 @@ export const resolveDomainEffectiveConfig = <T extends SystemInstanceConfigDomai
   const parsedOverrides = parseDomainOverrides({ domain, overrides, options });
   const merged = deepMergeConfig(defaultValues, parsedOverrides);
   const fullSchema = systemInstanceConfigDomainSchemaMap[domain];
-  return fullSchema.parse(merged) as SystemInstanceConfigDomainMap[T];
+  const result = fullSchema.safeParse(merged);
+  if (result.success) return result.data as SystemInstanceConfigDomainMap[T];
+  if (options?.strict !== false) throw result.error;
+  warnConfigValidation(domain, result.error);
+  return merged as SystemInstanceConfigDomainMap[T];
 };
 
 /**
@@ -264,6 +280,30 @@ export const resolveSystemInstanceConfig = (
   }> = {},
   options?: { strict?: boolean }
 ): SystemInstanceConfig => {
+  /** 辅助 scope 与业务域遵循同一读取边界；只有缺省字段合并默认值。 */
+  const readScope = <
+    K extends Exclude<SystemInstanceConfigScopeKey, SystemInstanceConfigDomainKey>
+  >(
+    scope: K
+  ): SystemInstanceConfig[K] => {
+    const schema = SystemInstanceConfigSchema.shape[scope];
+    const value = domainOverridesMap[scope];
+    const result = schema.safeParse(value);
+    if (result.success) return result.data as SystemInstanceConfig[K];
+    if (options?.strict !== false) throw result.error;
+    warnConfigValidation(scope, result.error);
+    const retained = deepMergeConfig(schema.parse(undefined), value);
+    if (scope === 'license' && retained && typeof retained === 'object') {
+      // 授权缓存仍须遵循原有失效规则；配置容错不能恢复无效授权能力。
+      const license = retained as SystemInstanceConfig['license'];
+      const cache = RuntimeLicenseDataSchema.safeParse(license.data);
+      return {
+        ...license,
+        data: cache.success ? cache.data : undefined
+      } as SystemInstanceConfig[K];
+    }
+    return retained as SystemInstanceConfig[K];
+  };
   return {
     site: resolveDomainEffectiveConfig({
       domain: 'site',
@@ -320,16 +360,12 @@ export const resolveSystemInstanceConfig = (
       overrides: domainOverridesMap.subservice,
       options
     }),
-    proEnv: SystemInstanceConfigSchema.shape.proEnv.parse(domainOverridesMap.proEnv),
-    license: SystemInstanceConfigSchema.shape.license.parse(domainOverridesMap.license),
-    instanceId: SystemInstanceConfigSchema.shape.instanceId.parse(domainOverridesMap.instanceId),
-    modelStatusProbe: SystemInstanceConfigSchema.shape.modelStatusProbe.parse(
-      domainOverridesMap.modelStatusProbe
-    ),
-    moderationPolicy: SystemInstanceConfigSchema.shape.moderationPolicy.parse(
-      domainOverridesMap.moderationPolicy
-    ),
-    operations: SystemInstanceConfigSchema.shape.operations.parse(domainOverridesMap.operations)
+    proEnv: readScope('proEnv'),
+    license: readScope('license'),
+    instanceId: readScope('instanceId'),
+    modelStatusProbe: readScope('modelStatusProbe'),
+    moderationPolicy: readScope('moderationPolicy'),
+    operations: readScope('operations')
   };
 };
 

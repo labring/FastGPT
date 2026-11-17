@@ -45,15 +45,16 @@ const AgentSandboxSubserviceComponent = () => {
     { id: 'mirrors', label: t('admin:package_mirror_acceleration') }
   ];
 
+  const form = useForm<SubserviceConfigForm>({
+    defaultValues: effectiveConfig
+  });
   const {
     control,
     handleSubmit,
     reset,
     register,
     formState: { errors }
-  } = useForm<SubserviceConfigForm>({
-    defaultValues: effectiveConfig
-  });
+  } = form;
 
   useEffect(() => {
     if (effectiveConfig && Object.keys(effectiveConfig).length > 0) {
@@ -141,6 +142,7 @@ const AgentSandboxSubserviceComponent = () => {
 
   return (
     <AdminSettingPage
+      form={form}
       headerTitle={t('admin:page_title_agent_sandbox')}
       tocItems={tocItems.filter(({ id }) => id !== 'proxy' || isSandboxEnabled)}
       isLoading={isLoading}
@@ -160,6 +162,7 @@ const AgentSandboxSubserviceComponent = () => {
             control={control}
             render={({ field }) => (
               <MySelect<'none' | 'sealosdevbox' | 'opensandbox'>
+                isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
                 width={'400px'}
                 list={[
                   { label: t('admin:disabled_none'), value: 'none' },
@@ -207,6 +210,7 @@ const AgentSandboxSubserviceComponent = () => {
               control={control}
               render={({ field }) => (
                 <ConnectivityTestInput
+                  isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
                   {...field}
                   isEditable
                   placeholder="https://devbox.cloud.sealos.io"
@@ -234,6 +238,9 @@ const AgentSandboxSubserviceComponent = () => {
                             control={control}
                             render={({ field }) => (
                               <AdminSecretInput
+                                isInvalid={Boolean(
+                                  form.getFieldState(field.name, form.formState).error
+                                )}
                                 name={field.name}
                                 value={field.value}
                                 onChange={field.onChange}
@@ -258,6 +265,9 @@ const AgentSandboxSubserviceComponent = () => {
                 isRequired
               >
                 <Input
+                  isInvalid={Boolean(
+                    form.getFieldState('agentSandbox.sealosdevbox.image', form.formState).error
+                  )}
                   {...register('agentSandbox.sealosdevbox.image')}
                   placeholder="ghcr.io/labring-actions/devbox:v0.1"
                 />
@@ -268,6 +278,10 @@ const AgentSandboxSubserviceComponent = () => {
                 tooltip={t('admin:default_workspace_mount_path_in_the_container')}
               >
                 <Input
+                  isInvalid={Boolean(
+                    form.getFieldState('agentSandbox.sealosdevbox.workDirectory', form.formState)
+                      .error
+                  )}
                   {...register('agentSandbox.sealosdevbox.workDirectory')}
                   placeholder="/home/devbox/workspace"
                 />
@@ -289,6 +303,7 @@ const AgentSandboxSubserviceComponent = () => {
               control={control}
               render={({ field }) => (
                 <ConnectivityTestInput
+                  isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
                   {...field}
                   isEditable
                   placeholder="http://opensandbox:8080"
@@ -316,6 +331,9 @@ const AgentSandboxSubserviceComponent = () => {
                             control={control}
                             render={({ field }) => (
                               <AdminSecretInput
+                                isInvalid={Boolean(
+                                  form.getFieldState(field.name, form.formState).error
+                                )}
                                 name={field.name}
                                 value={field.value}
                                 onChange={field.onChange}
@@ -344,6 +362,7 @@ const AgentSandboxSubserviceComponent = () => {
                   control={control}
                   render={({ field }) => (
                     <MySelect<'docker' | 'kubernetes'>
+                      isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
                       list={[
                         { label: 'Docker', value: 'docker' },
                         { label: 'Kubernetes (K8s)', value: 'kubernetes' }
@@ -361,6 +380,9 @@ const AgentSandboxSubserviceComponent = () => {
                 isRequired
               >
                 <Input
+                  isInvalid={Boolean(
+                    form.getFieldState('agentSandbox.opensandbox.image', form.formState).error
+                  )}
                   {...register('agentSandbox.opensandbox.image')}
                   placeholder="opensandbox/runtime:latest"
                 />
@@ -372,6 +394,7 @@ const AgentSandboxSubserviceComponent = () => {
                   control={control}
                   render={({ field }) => (
                     <AdminSwitchRow
+                      name={field.name}
                       label={t('admin:use_reverse_proxy_mode')}
                       tooltip={t(
                         'admin:traffic_is_tunneled_to_the_sandbox_through_the_main_site_pro'
@@ -445,6 +468,10 @@ const AgentSandboxSubserviceComponent = () => {
                 tooltip={t('admin:dynamic_volume_name_prefix')}
               >
                 <Input
+                  isInvalid={Boolean(
+                    form.getFieldState('agentSandbox.opensandbox.volumeNamePrefix', form.formState)
+                      .error
+                  )}
                   {...register('agentSandbox.opensandbox.volumeNamePrefix')}
                   placeholder="fastgpt-session"
                 />
@@ -456,6 +483,7 @@ const AgentSandboxSubserviceComponent = () => {
               control={control}
               render={({ field }) => (
                 <ConnectivityTestInput
+                  isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
                   {...field}
                   isEditable
                   placeholder="http://volume-manager:8081"
@@ -484,6 +512,9 @@ const AgentSandboxSubserviceComponent = () => {
                             control={control}
                             render={({ field }) => (
                               <AdminSecretInput
+                                isInvalid={Boolean(
+                                  form.getFieldState(field.name, form.formState).error
+                                )}
                                 name={field.name}
                                 value={field.value}
                                 onChange={field.onChange}
@@ -600,6 +631,7 @@ const AgentSandboxSubserviceComponent = () => {
               control={control}
               render={({ field }) => (
                 <AdminNumberInput
+                  isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
                   min={0.5}
                   max={32}
                   step={0.5}
@@ -621,6 +653,7 @@ const AgentSandboxSubserviceComponent = () => {
               control={control}
               render={({ field }) => (
                 <NumberInput
+                  isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
                   variant={'whiteOutline'}
                   min={512}
                   max={65536}
@@ -648,6 +681,7 @@ const AgentSandboxSubserviceComponent = () => {
               control={control}
               render={({ field }) => (
                 <NumberInput
+                  isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
                   variant={'whiteOutline'}
                   min={1}
                   max={200}
@@ -679,6 +713,7 @@ const AgentSandboxSubserviceComponent = () => {
               control={control}
               render={({ field }) => (
                 <NumberInput
+                  isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
                   variant={'whiteOutline'}
                   min={5}
                   max={1440}
@@ -705,6 +740,7 @@ const AgentSandboxSubserviceComponent = () => {
               control={control}
               render={({ field }) => (
                 <NumberInput
+                  isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
                   variant={'whiteOutline'}
                   min={1}
                   max={365}
@@ -731,6 +767,7 @@ const AgentSandboxSubserviceComponent = () => {
               control={control}
               render={({ field }) => (
                 <AdminNumberInput
+                  isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
                   min={0}
                   max={500}
                   precision={0}
@@ -751,6 +788,7 @@ const AgentSandboxSubserviceComponent = () => {
               control={control}
               render={({ field }) => (
                 <NumberInput
+                  isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
                   variant={'whiteOutline'}
                   min={1}
                   max={100000}
@@ -781,6 +819,9 @@ const AgentSandboxSubserviceComponent = () => {
             tooltip={t('admin:npm_mirror_url_for_installing_node_js_packages_inside_the_sa')}
           >
             <Input
+              isInvalid={Boolean(
+                form.getFieldState('agentSandbox.common.npmRegistry', form.formState).error
+              )}
               {...register('agentSandbox.common.npmRegistry')}
               placeholder="https://registry.npmmirror.com"
             />
@@ -791,6 +832,9 @@ const AgentSandboxSubserviceComponent = () => {
             tooltip={t('admin:python_index_url_for_pip_install_inside_the_sandbox')}
           >
             <Input
+              isInvalid={Boolean(
+                form.getFieldState('agentSandbox.common.pypiIndexUrl', form.formState).error
+              )}
               {...register('agentSandbox.common.pypiIndexUrl')}
               placeholder="https://pypi.tuna.tsinghua.edu.cn/simple"
             />
@@ -801,6 +845,9 @@ const AgentSandboxSubserviceComponent = () => {
             tooltip={t('admin:apt_mirror_url_for_linux_package_installation')}
           >
             <Input
+              isInvalid={Boolean(
+                form.getFieldState('agentSandbox.common.aptMirror', form.formState).error
+              )}
               {...register('agentSandbox.common.aptMirror')}
               placeholder="https://mirrors.aliyun.com"
             />

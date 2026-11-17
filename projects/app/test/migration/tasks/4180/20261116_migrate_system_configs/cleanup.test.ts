@@ -1,10 +1,10 @@
+import { readMigrationDomainConfig } from '@/migration/tasks/4180/20261116_migrate_system_configs/validation';
 import { describe, expect, it, beforeEach, vi } from 'vitest';
 import {
   deprecatedOverridePaths,
   hasDeprecatedOverrides,
   stripDeprecatedOverrides,
   cleanupInstanceConfigDeprecatedFields,
-  resolveDomainConfigBeforeProxyBackfill,
   verifyInstanceConfigDeprecatedFields
 } from '@/migration/tasks/4180/20261116_migrate_system_configs/cleanup';
 import { MongoSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/schema';
@@ -322,7 +322,7 @@ describe('cleanupInstanceConfigDeprecatedFields (integration)', () => {
     expect((await cleanupInstanceConfigDeprecatedFields({ logger })).updatedDomains).toEqual([]);
   });
 
-  it('wraps schema rejection with the domain name for diagnosability', async () => {
+  it('cleans deprecated fields while retaining invalid current fields with warnings', async () => {
     // logUrl 属废弃字段会被剔除，但残留的 maxRunTimes=-1 违反 nonNegativeInteger
     // （0 是合法的"禁用"取值，不能用作非法样例）；
     // 后台任务的终审错误必须能定位到具体域，便于管理员修复后重试。
@@ -332,9 +332,10 @@ describe('cleanupInstanceConfigDeprecatedFields (integration)', () => {
       overrides: { workflow: { maxRunTimes: -1 }, chat: { logUrl: 'http://legacy' } }
     });
 
-    await expect(cleanupInstanceConfigDeprecatedFields({ logger })).rejects.toThrow(
-      /domain "performance"/
-    );
+    await cleanupInstanceConfigDeprecatedFields({ logger });
+    const doc = await MongoSystemInstanceConfig.findOne({ domain: 'performance' }).lean();
+    expect(doc?.overrides.workflow.maxRunTimes).toBe(-1);
+    expect(doc?.overrides.chat?.logUrl).toBeUndefined();
   });
 
   it('retries cleanup against the latest doc after a concurrent revision bump', async () => {
@@ -449,12 +450,12 @@ describe('cleanupInstanceConfigDeprecatedFields (integration)', () => {
     // verify 阶段在 backfill 之后运行，仍要求完整代理配置
     const beforeProxyBackfill = await verifyInstanceConfigDeprecatedFields();
     expect(beforeProxyBackfill.remainingDocuments).toEqual([]);
-    expect(beforeProxyBackfill.invalidDomains).toEqual(['subservice']);
+    expect(beforeProxyBackfill.invalidDomains).toEqual([]);
   });
 
-  it('keeps validating provider baseUrl and proxy secret length before proxy backfill', () => {
+  it('warns without rejecting invalid provider baseUrl or proxy secret length', () => {
     expect(() =>
-      resolveDomainConfigBeforeProxyBackfill({
+      readMigrationDomainConfig({
         domain: 'subservice',
         overrides: {
           agentSandbox: {
@@ -463,10 +464,10 @@ describe('cleanupInstanceConfigDeprecatedFields (integration)', () => {
           }
         }
       })
-    ).toThrow();
+    ).not.toThrow();
 
     expect(() =>
-      resolveDomainConfigBeforeProxyBackfill({
+      readMigrationDomainConfig({
         domain: 'subservice',
         overrides: {
           agentSandbox: {
@@ -476,6 +477,6 @@ describe('cleanupInstanceConfigDeprecatedFields (integration)', () => {
           }
         }
       })
-    ).toThrow();
+    ).not.toThrow();
   });
 });

@@ -1,14 +1,14 @@
+import { readMigrationDomainConfig } from './validation';
 import { readLegacyInstanceConfigEnv } from './env';
 import { SystemConfigsTypeEnum } from '@fastgpt/global/common/system/config/constants';
-import z from 'zod';
 import { NumSchema } from '@fastgpt/global/common/zod';
 import {
   SYSTEM_INSTANCE_CONFIG_SCHEMA_VERSION,
   SYSTEM_INSTANCE_CONFIG_DOMAINS,
   type SystemInstanceConfigDomainKey,
-  getDomainDefaultConfig
+  getDomainDefaultConfig,
+  systemInstanceConfigDomainSchemaMap
 } from '@fastgpt/global/common/system/config/schema';
-import { resolveDomainConfigBeforeProxyBackfill } from './cleanup';
 import {
   collectPrunedLeafPaths,
   deepMergeConfig,
@@ -35,33 +35,35 @@ type LegacyProConfig = Record<string, any>;
 type DomainOverrides = Partial<Record<SystemInstanceConfigDomainKey, Record<string, unknown>>>;
 type DomainExplicitDefaultPaths = Partial<Record<SystemInstanceConfigDomainKey, string[]>>;
 
-/** 迁移时被 Schema 校验剔除的项；只保留路径，不记录字段值。 */
+/** 迁移时发现的配置告警；保留原值，只记录路径。 */
 export type SchemaSanitizedIssue = {
   domain: SystemInstanceConfigDomainKey;
-  /** 具体字段相对路径；undefined 表示整个域被跳过并回落默认值。 */
+  /** 具体字段相对路径；undefined 表示域本身的结构不符合保存约束。 */
   path?: string;
 };
 
 const isNonEmpty = (value: unknown): value is string =>
   typeof value === 'string' && value.trim().length > 0;
 
-/** 仅保留非空字符串，避免把空值写成覆盖项。 */
+/** 空串按未配置处理；其他历史值原样保留，交由保存校验提示管理员修复。 */
 const optionalText = (value: unknown): string | undefined =>
-  isNonEmpty(value) ? value : undefined;
+  value === undefined || value === '' ? undefined : (value as string);
 
 /** 保留显式空串：旧配置中的清空操作不能被迁移成新 Schema 的非空默认值。 */
 const optionalString = (value: unknown): string | undefined =>
-  typeof value === 'string' ? value : undefined;
+  value === undefined ? undefined : (value as string);
 
-/** 兼容旧配置的数字字符串；空值及其他类型不转成 0，数值范围仍由目标域 Schema 校验。 */
+/** 兼容数字字符串；未配置值跳过，其他无法解析的历史值保留，避免迁移丢失配置。 */
 const optionalNumber = (value: unknown): number | undefined => {
-  if (typeof value !== 'number' && !isNonEmpty(value)) return undefined;
+  if (value === undefined || value === null || (typeof value === 'string' && !value.trim()))
+    return undefined;
+  if (typeof value !== 'number' && typeof value !== 'string') return value as number;
   const result = NumSchema.safeParse(value);
-  return result.success ? result.data : undefined;
+  return result.success ? result.data : (value as number);
 };
 
 const optionalBool = (value: unknown): boolean | undefined =>
-  typeof value === 'boolean' ? value : undefined;
+  value === undefined ? undefined : (value as boolean);
 
 /**
  * 解析一组 url/key 凭据：旧库任一字段存在时整组采用旧库。
@@ -777,10 +779,8 @@ export const collectEnvRehomedWarnings = ({
 };
 
 /**
- * 迁移容错：旧值可能不满足当前 Schema 的收紧校验（例如环境变量侧允许 0，
- * 新 Schema 要求正整数）。若直接写入会让 blockStartup 迁移抛错、节点永久无法启动。
- * 这里逐域剔除校验不过的叶子值并记录告警，让升级继续可用；管理员可依据告警重新配置。
- * 贪心策略：先整域校验，失败后按报错路径逐个剔除叶子并重试，直到通过或全部剔完。
+ * 迁移只报告保存约束问题，不删除、替换或拒绝历史配置。
+ * 告警只含域和字段路径，避免 URL、凭据等原值进入日志。
  */
 export const sanitizeOverridesForSchema = ({
   overrides,
@@ -791,65 +791,20 @@ export const sanitizeOverridesForSchema = ({
   warnings: string[];
   issues?: SchemaSanitizedIssue[];
 }): DomainOverrides => {
-  const removePath = (target: Record<string, unknown>, path: (string | number)[]): boolean => {
-    const [head, ...rest] = path;
-    if (head === undefined) return false;
-    if (rest.length === 0) {
-      if (Array.isArray(target)) {
-        if (typeof head === 'number' && head < target.length) {
-          target.splice(head, 1);
-          return true;
-        }
-        return false;
-      }
-      if (typeof head === 'string' && head in target) {
-        delete target[head];
-        return true;
-      }
-      return false;
-    }
-    const child = target[head as string];
-    if (child && typeof child === 'object') {
-      return removePath(child as Record<string, unknown>, rest);
-    }
-    return false;
-  };
-
-  const result: DomainOverrides = {};
-
   for (const domain of SYSTEM_INSTANCE_CONFIG_DOMAINS) {
-    const raw = overrides[domain];
-    if (!raw) continue;
-
-    let candidate = structuredClone(raw) as Record<string, unknown>;
-    // 循环剔除：每轮校验拿到一个非法叶子路径就删掉重试，直到整域通过
-    for (;;) {
-      try {
-        resolveDomainConfigBeforeProxyBackfill({ domain, overrides: candidate });
-        break;
-      } catch (error) {
-        const zodIssues = (error as { issues?: { path?: (string | number)[] }[] })?.issues ?? [];
-        const badPath = zodIssues.find(
-          (issue) => Array.isArray(issue.path) && issue.path.length > 0
-        )?.path;
-        if (!badPath || !removePath(candidate, badPath)) {
-          // 无法定位或无法剔除（如整域形态错误）：丢弃整个域，保证迁移不阻塞启动
-          warnings.push(`${domain} 配置与当前 Schema 不兼容，已整体跳过迁移并回落默认值`);
-          issues.push({ domain });
-          candidate = {};
-          break;
-        }
-        warnings.push(`${domain}.${badPath.join('.')} 值不满足当前校验，已跳过该项`);
-        issues.push({ domain, path: badPath.join('.') });
+    if (overrides[domain] === undefined) continue;
+    const result = systemInstanceConfigDomainSchemaMap[domain].safeParse(
+      deepMergeConfig(getDomainDefaultConfig(domain), overrides[domain])
+    );
+    if (!result.success) {
+      for (const issue of result.error.issues) {
+        const path = issue.path.join('.');
+        warnings.push(`${domain}${path ? `.${path}` : ''} 配置不满足保存校验，已保留原值`);
+        issues.push({ domain, ...(path ? { path } : {}) });
       }
-    }
-
-    if (Object.keys(candidate).length > 0) {
-      result[domain] = candidate;
     }
   }
-
-  return result;
+  return structuredClone(overrides);
 };
 
 const isPlainObject = (value: unknown): value is Record<string, unknown> =>
@@ -1109,113 +1064,7 @@ export const applyInstanceConfigMigration = async ({
   const backfilledPaths: string[] = [];
   const backfillSkippedPaths: string[] = [];
 
-  /** 从对象中按路径删除嵌套叶子；返回是否发生删除。用于回填跨字段冲突时剔除坏叶子。 */
-  const removeNestedPath = (
-    target: Record<string, unknown>,
-    path: (string | number)[]
-  ): boolean => {
-    const [head, ...rest] = path;
-    if (head === undefined) return false;
-    if (rest.length === 0) {
-      if (typeof head === 'string' && head in target) {
-        delete target[head];
-        return true;
-      }
-      return false;
-    }
-    const child = target[head as string];
-    if (child && typeof child === 'object' && !Array.isArray(child)) {
-      const removed = removeNestedPath(child as Record<string, unknown>, rest);
-      if (removed && Object.keys(child).length === 0) {
-        delete target[head as string];
-      }
-      return removed;
-    }
-    return false;
-  };
-
-  /**
-   * 采用「试删 + 复验」策略确定性定位导致冲突的候选叶子字段：
-   * 1. 优先对待补集合中与 badPath 拥有最长公共父路径的候选叶子（如 badPath 为 workflow.parallelMaxConcurrency，
-   *    优先测试同属 workflow 的 maxLoopTimes）逐一试删复验；
-   * 2. 只有当剔除某个待补叶子后，原 badPath 报错确实消解时，才确认该叶子为冲突根因并正式剔除；
-   * 3. 杜绝盲目剔除首个叶子导致合法的同胞字段（如 maxRunTimes）被误删丢失。
-   */
-  const tryResolveConflictLeaf = ({
-    domain,
-    existingOverrides,
-    candidateMissing,
-    badPath
-  }: {
-    domain: SystemInstanceConfigDomainKey;
-    existingOverrides: Record<string, unknown>;
-    candidateMissing: Record<string, unknown>;
-    badPath: (string | number)[];
-  }): string | undefined => {
-    const badPathStr = badPath.join('.');
-
-    // 若 badPath 本身就是待补集合中的叶子，直接试删复验
-    if (flattenOverridePaths(candidateMissing).includes(badPathStr)) {
-      const cloned = structuredClone(candidateMissing);
-      if (removeNestedPath(cloned, badPath)) {
-        removeNestedPath(candidateMissing, badPath);
-        return badPathStr;
-      }
-    }
-
-    // 收集所有待补叶子路径，按与 badPath 的公共父路径长度降序排列
-    const allCandidatePaths = flattenOverridePaths(candidateMissing);
-    if (allCandidatePaths.length === 0) return undefined;
-
-    const candidates = [...allCandidatePaths].sort((a, b) => {
-      const aParts = a.split('.');
-      const bParts = b.split('.');
-      const aCommon = badPath.filter((seg, idx) => String(seg) === aParts[idx]).length;
-      const bCommon = badPath.filter((seg, idx) => String(seg) === bParts[idx]).length;
-      return bCommon - aCommon;
-    });
-
-    for (const testPathStr of candidates) {
-      const testPath = testPathStr.split('.');
-      const cloned = structuredClone(candidateMissing);
-      if (!removeNestedPath(cloned, testPath)) continue;
-
-      const testMerged = mergeMissingOverrides(existingOverrides, cloned);
-      try {
-        // 试删后复验：若完全通过或不再报出当前 badPath，说明此待补字段即为冲突源
-        resolveDomainConfigBeforeProxyBackfill({
-          domain,
-          overrides: testMerged,
-          options: { strict: false }
-        });
-        removeNestedPath(candidateMissing, testPath);
-        return testPathStr;
-      } catch (err: any) {
-        const remainingIssues =
-          (err as { issues?: { path?: (string | number)[] }[] })?.issues ?? [];
-        const stillFailsBadPath = remainingIssues.some(
-          (issue) => Array.isArray(issue.path) && issue.path.join('.') === badPathStr
-        );
-        if (!stillFailsBadPath) {
-          removeNestedPath(candidateMissing, testPath);
-          return testPathStr;
-        }
-      }
-    }
-
-    return undefined;
-  };
-
-  /**
-   * 回填单个域：revision 乐观锁重试，只写缺失字段。
-   * 返回本次补写的叶子路径，空数组表示无需写入（不递增 revision）。
-   *
-   * 跨字段冲突解决（P1-6）：补进来的字段可能与管理员的既有值冲突（例如
-   * parallelMaxConcurrency > maxLoopTimes）。此时不能整域跳过（否则独立的合法字段如
-   * parseMaxProcess 也被连带丢弃），而应逐个剔除与既有值冲突的待补叶子，
-   * 让独立合法的字段正常迁入，冲突项记录告警并登记入 explicitDefaultPaths，
-   * 避免后置的 validate 终验判定未完工引发无限重启死锁。
-   */
+  /** 回填只补缺失字段，保留管理员值和显式默认；业务规则冲突仅告警，CAS 冲突继续重试。 */
   const backfillDomain = async (
     domain: SystemInstanceConfigDomainKey,
     targetOverrides: Record<string, unknown>
@@ -1253,86 +1102,12 @@ export const applyInstanceConfigMigration = async ({
         return { acceptedPaths: [], skippedPaths: [] };
       }
 
-      // 循环剔除待补字段中的冲突叶子，直到与既有值合并后能通过终审校验
-      const candidateMissing = missing ? structuredClone(missing) : {};
-      const skippedConflictPaths: string[] = [];
-      let unresolvableConflict = false;
-
-      for (;;) {
-        const merged = mergeMissingOverrides(existingOverrides, candidateMissing);
-        try {
-          resolveDomainConfigBeforeProxyBackfill({
-            domain,
-            overrides: merged,
-            options: { strict: false }
-          });
-          break;
-        } catch (error) {
-          const isZod = error instanceof z.ZodError || Array.isArray((error as any)?.issues);
-          if (!isZod) {
-            // 非 Schema 校验错误（如系统级异常/断言错误），不作为冲突处理，直接抛出重试
-            throw error;
-          }
-
-          const issues = (error as { issues?: { path?: (string | number)[] }[] })?.issues ?? [];
-          const badPath = issues.find(
-            (issue) => Array.isArray(issue.path) && issue.path.length > 0
-          )?.path;
-          const removedField = badPath
-            ? tryResolveConflictLeaf({ domain, existingOverrides, candidateMissing, badPath })
-            : undefined;
-
-          if (!removedField) {
-            // 无法定位具体叶子（例如整域类型矛盾）：将全部待补路径记入 explicitDefaultPaths 并告警跳过
-            const unresolvable = missing ? flattenOverridePaths(missing) : missingExplicitPaths;
-            logger.warn(
-              'Instance config backfill skipped: unresolvable conflict with existing values',
-              { domain, missingPaths: unresolvable, error }
-            );
-            const updateRes = await MongoSystemInstanceConfig.updateOne(
-              { domain, revision: doc.revision },
-              {
-                $set: {
-                  explicitDefaultPaths: Array.from(
-                    new Set([
-                      ...existingExplicitDefaultPaths,
-                      ...missingExplicitPaths,
-                      ...unresolvable
-                    ])
-                  ),
-                  updatedAt: new Date()
-                },
-                $inc: { revision: 1 }
-              }
-            );
-            if (updateRes.modifiedCount > 0) {
-              return { acceptedPaths: [], skippedPaths: unresolvable };
-            }
-            skippedConflictPaths.push(...unresolvable);
-            unresolvableConflict = true;
-            break;
-          }
-
-          skippedConflictPaths.push(removedField);
-          logger.warn(
-            'Instance config backfill skipped conflicting field: conflicts with existing values',
-            { domain, field: removedField }
-          );
-        }
-      }
-
-      if (unresolvableConflict) {
-        continue;
-      }
-
-      const mergedOverrides = mergeMissingOverrides(existingOverrides, candidateMissing);
-      const allMissingPaths = missing ? flattenOverridePaths(missing) : [];
-      const acceptedPaths = flattenOverridePaths(candidateMissing);
-      const acceptedSet = new Set(acceptedPaths);
-      const autoSkipped = allMissingPaths.filter((p) => !acceptedSet.has(p));
-      const skippedPaths = Array.from(new Set([...skippedConflictPaths, ...autoSkipped]));
+      const mergedOverrides = mergeMissingOverrides(existingOverrides, missing ?? {});
+      readMigrationDomainConfig({ domain, overrides: mergedOverrides });
+      const acceptedPaths = missing ? flattenOverridePaths(missing) : [];
+      const skippedPaths: string[] = [];
       const nextExplicitDefaultPaths = Array.from(
-        new Set([...existingExplicitDefaultPaths, ...missingExplicitPaths, ...skippedPaths])
+        new Set([...existingExplicitDefaultPaths, ...missingExplicitPaths])
       );
 
       const updated = await MongoSystemInstanceConfig.updateOne(
@@ -1367,9 +1142,8 @@ export const applyInstanceConfigMigration = async ({
   // 11 个 domain 必须全部初始化：空 overrides 也要落库，否则全新安装会因 Pro 启动断言缺域而无法就绪。
   for (const domain of domains) {
     const targetOverrides = overrides[domain] ?? {};
-    // 先执行预检校验，确保写入值与运行时结构一致（proxy 必填留待 backfill 阶段检验，
-    // updateOne 不跑 schema validator，由这里显式校验兜底）。
-    resolveDomainConfigBeforeProxyBackfill({ domain, overrides: targetOverrides });
+    // 迁入前只诊断配置，不因新的保存规则剔除历史值。
+    readMigrationDomainConfig({ domain, overrides: targetOverrides });
 
     const inserted = await MongoSystemInstanceConfig.updateOne(
       { domain },

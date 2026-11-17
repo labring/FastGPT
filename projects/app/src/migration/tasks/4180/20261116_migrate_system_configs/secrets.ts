@@ -81,7 +81,7 @@ export const encryptStoredConfigSecrets = async ({
   }
 };
 
-/** 终验逐域复验密文可解密，并拒绝仍可转换的非空明文密钥。 */
+/** 终验拒绝仍可加密的非空明文密钥；损坏旧凭据保留并告警，供管理员替换。 */
 export const verifyStoredConfigSecrets = async () => {
   const documents = await MongoSystemInstanceConfig.collection
     .find({}, { readPreference: 'primary' })

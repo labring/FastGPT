@@ -21,7 +21,8 @@ function ImageInput<T extends FieldValues>({
   uploadMaxSize
 }: ImageInputProps<T>) {
   const {
-    field: { onChange, value }
+    field: { onChange, value },
+    fieldState: { invalid }
   } = useController({ control, name });
 
   const afterUploadAvatar = useCallback((avatar: string) => onChange(avatar), [onChange]);
@@ -48,7 +49,8 @@ function ImageInput<T extends FieldValues>({
             cursor="pointer"
             borderWidth={1}
             borderStyle="solid"
-            borderColor="#CED5E4"
+            borderColor={invalid ? 'red.500' : '#CED5E4'}
+            aria-invalid={invalid || undefined}
             onClick={handleFileSelectorOpen}
             objectFit={'contain'}
           />
@@ -78,6 +80,8 @@ function ImageInput<T extends FieldValues>({
           cursor="pointer"
           borderWidth={1}
           borderStyle="solid"
+          borderColor={invalid ? 'red.500' : undefined}
+          aria-invalid={invalid || undefined}
           display="flex"
           justifyContent="center"
           alignItems="center"

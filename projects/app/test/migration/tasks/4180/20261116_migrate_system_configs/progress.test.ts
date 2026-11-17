@@ -344,7 +344,16 @@ describe('system configuration migration with the real runner', () => {
 
   it('blocks startup on migration failure and preserves administrator values after owner restart', async () => {
     await seedLegacySources();
-    vi.stubEnv('FILE_DOMAIN', 'not a valid url');
+    const collection = MongoSystemInstanceConfig.collection;
+    const updateOne = collection.updateOne.bind(collection);
+    const backfillFailure = vi
+      .spyOn(collection, 'updateOne')
+      .mockImplementation(async (filter, update, options) => {
+        if ((filter as any).domain === 'storage') {
+          throw new Error('Synthetic database failure');
+        }
+        return updateOne(filter, update, options);
+      });
     const failedOwner = createRunner('system-config-failed-owner');
     const retry = createRunner('system-config-retry');
     const startupReady = vi.fn();
@@ -360,7 +369,7 @@ describe('system configuration migration with the real runner', () => {
         async () => {
           expect(await MongoSystemMigrationState.findById(migration.id).lean()).toMatchObject({
             status: SystemMigrationStatusEnum.failed,
-            lastError: { stageKey: 'backfill' }
+            lastError: { stageKey: expect.any(String) }
           });
         },
         { timeout: 30_000, interval: 100 }
@@ -370,9 +379,8 @@ describe('system configuration migration with the real runner', () => {
         'Startup migrations have not completed'
       );
       const failed = await MongoSystemMigrationState.findById(migration.id).lean();
-      expect(failed?.progress?.find(({ key }) => key === 'backfill')?.status).toBe(
-        SystemMigrationStatusEnum.failed
-      );
+      expect(failed?.lastError?.message).toContain('Synthetic database failure');
+      backfillFailure.mockRestore();
       expect(failed?.progress?.find(({ key }) => key === 'validate')).toBeUndefined();
 
       failedOwner.stop();
@@ -417,6 +425,7 @@ describe('system configuration migration with the real runner', () => {
         status: SystemMigrationStatusEnum.succeeded
       });
     } finally {
+      backfillFailure.mockRestore();
       failedOwner.stop();
       retry.stop();
       await failedOwner.tick();

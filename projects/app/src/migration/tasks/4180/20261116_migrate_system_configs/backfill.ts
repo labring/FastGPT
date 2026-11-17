@@ -1,4 +1,4 @@
-import { resolveDomainEffectiveConfig } from '@fastgpt/global/common/system/config/schema';
+import { readMigrationDomainConfig, readMigrationConfigValue } from './validation';
 import { MongoSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/schema';
 import {
   decryptDomainSecrets,
@@ -8,6 +8,7 @@ import { hasOverridePath } from '@fastgpt/global/common/system/config/merge';
 import { SystemConfigsTypeEnum } from '@fastgpt/global/common/system/config/constants';
 import { MongoSystemConfigs } from '@fastgpt/service/common/system/config/schema';
 import { StorageConfigSchema } from '@fastgpt/global/common/system/config/schemas/storage';
+import { z } from 'zod';
 import { BoolSchema, IntSchema } from '@fastgpt/global/common/zod';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 
@@ -44,7 +45,7 @@ export const backfillExternalFileCheck = async ({
     if (!doc) throw new Error('Security instance config is missing');
 
     const overrides = decryptDomainSecrets('security', doc.overrides ?? {});
-    const security = resolveDomainEffectiveConfig({ domain: 'security', overrides });
+    const security = readMigrationDomainConfig({ domain: 'security', overrides });
     if (
       Object.hasOwn(overrides, 'checkExternalFile') ||
       hasExplicitFileCheckDefault(doc.explicitDefaultPaths)
@@ -79,7 +80,7 @@ export const verifyExternalFileCheck = async () => {
   const doc = await readSecurityConfig();
   if (!doc) throw new Error('Security instance config is missing');
   const overrides = decryptDomainSecrets('security', doc.overrides ?? {});
-  resolveDomainEffectiveConfig({ domain: 'security', overrides });
+  readMigrationDomainConfig({ domain: 'security', overrides });
   if (
     !Object.hasOwn(overrides, 'checkExternalFile') &&
     !hasExplicitFileCheckDefault(doc.explicitDefaultPaths)
@@ -130,7 +131,7 @@ export const backfillModelDeprecationSms = async ({
     if (!doc) throw new Error('Auth instance config is missing');
 
     const overrides = decryptDomainSecrets('auth', doc.overrides ?? {});
-    resolveDomainEffectiveConfig({ domain: 'auth', overrides });
+    readMigrationDomainConfig({ domain: 'auth', overrides });
     if (
       hasOverridePath(overrides, templatePath) ||
       hasExplicitSmsDefault(doc.explicitDefaultPaths)
@@ -154,7 +155,7 @@ export const backfillModelDeprecationSms = async ({
     };
     // 迁移失败信息不包含短信模板原值。
     try {
-      resolveDomainEffectiveConfig({ domain: 'auth', overrides: target });
+      readMigrationDomainConfig({ domain: 'auth', overrides: target });
     } catch {
       throw new Error('Invalid legacy model deprecation SMS template');
     }
@@ -192,7 +193,7 @@ export const verifyModelDeprecationSms = async () => {
   ]);
   if (!doc) throw new Error('Auth instance config is missing');
   const overrides = decryptDomainSecrets('auth', doc.overrides ?? {});
-  resolveDomainEffectiveConfig({ domain: 'auth', overrides });
+  readMigrationDomainConfig({ domain: 'auth', overrides });
   const present =
     hasOverridePath(overrides, templatePath) || hasExplicitSmsDefault(doc.explicitDefaultPaths);
   if (legacyTemplate !== undefined && !present) {
@@ -220,7 +221,7 @@ export const rehomeFileDomain = async ({
       throw new Error('Invalid storage explicit-default metadata');
     }
     try {
-      resolveDomainEffectiveConfig({ domain: 'storage', overrides });
+      readMigrationDomainConfig({ domain: 'storage', overrides });
     } catch {
       throw new Error('Invalid existing storage configuration');
     }
@@ -228,9 +229,11 @@ export const rehomeFileDomain = async ({
 
     let fileDomain: string;
     try {
-      fileDomain = StorageConfigSchema.shape.fileDomain.parse(
-        paths.includes('fileDomain') ? '' : (legacyEnv.FILE_DOMAIN ?? '')
-      );
+      fileDomain = readMigrationConfigValue({
+        name: 'storage.fileDomain',
+        schema: StorageConfigSchema.shape.fileDomain,
+        value: paths.includes('fileDomain') ? '' : (legacyEnv.FILE_DOMAIN ?? '')
+      });
     } catch {
       throw new Error('Invalid legacy file service domain');
     }
@@ -260,7 +263,7 @@ export const verifyFileDomainMigration = async () => {
   );
   if (!doc) throw new Error('Storage instance config is missing');
   try {
-    resolveDomainEffectiveConfig({
+    readMigrationDomainConfig({
       domain: 'storage',
       overrides: decryptDomainSecrets('storage', doc.overrides)
     });
@@ -302,7 +305,7 @@ const readPolicyDocuments = async () => {
       throw new Error(`Invalid HTTP policy explicit-default metadata: ${policy.domain}`);
     }
     try {
-      resolveDomainEffectiveConfig({ domain: policy.domain, overrides });
+      readMigrationDomainConfig({ domain: policy.domain, overrides });
     } catch {
       throw new Error(`Invalid existing HTTP policy configuration: ${policy.domain}`);
     }
@@ -334,16 +337,27 @@ export const rehomeHttpRuntimePolicies = async ({
       .map(({ policy, doc, overrides }) => {
         const raw = legacyEnv[policy.env];
         // 保持旧 ENV 的布尔及非负整数语义，0 仍代表仅允许空响应，不解释为不限量。
-        const parsed =
-          policy.domain === 'security'
-            ? BoolSchema.safeParse(raw?.trim() ? raw : false)
-            : IntSchema.safeParse(raw?.trim() ? raw : 20);
-        if (!parsed.success) {
-          throw new Error(`Invalid HTTP policy migration input: ${policy.env}`);
-        }
-        const target = { ...overrides, [policy.field]: parsed.data };
+        const value = readMigrationConfigValue({
+          name: policy.env,
+          schema:
+            policy.domain === 'security'
+              ? z
+                  .unknown()
+                  .refine(
+                    (value) =>
+                      typeof value === 'boolean' ||
+                      (typeof value === 'string' &&
+                        ['true', 'false', '1', '0', 'yes', 'no', 'y', 'n', 'on', 'off'].includes(
+                          value.trim().toLowerCase()
+                        ))
+                  )
+                  .pipe(BoolSchema)
+              : IntSchema,
+          value: raw?.trim() ? raw : policy.domain === 'security' ? false : 20
+        });
+        const target = { ...overrides, [policy.field]: value };
         try {
-          resolveDomainEffectiveConfig({ domain: policy.domain, overrides: target });
+          readMigrationDomainConfig({ domain: policy.domain, overrides: target });
         } catch {
           throw new Error(`Invalid HTTP policy migration target: ${policy.domain}`);
         }
@@ -424,7 +438,7 @@ export const restoreCustomDomainConfig = async ({
       throw new Error('Invalid site explicit-default metadata');
     }
     try {
-      resolveDomainEffectiveConfig({ domain: 'site', overrides });
+      readMigrationDomainConfig({ domain: 'site', overrides });
     } catch {
       throw new Error('Invalid existing site configuration');
     }
@@ -438,7 +452,9 @@ export const restoreCustomDomainConfig = async ({
         if (hasOverridePath(overrides, field) || explicit.has(field)) continue;
         const value = source[group]?.[provider] ?? '';
         if (typeof value !== 'string') {
-          throw new Error(`Invalid legacy custom domain field: ${group}.${provider}`);
+          console.warn('Invalid migrated custom domain field retained', {
+            path: `${group}.${provider}`
+          });
         }
         if (value === '') {
           explicit.add(field);
@@ -453,7 +469,7 @@ export const restoreCustomDomainConfig = async ({
     if (updatedFields === 0) return { updatedFields: 0 };
 
     try {
-      resolveDomainEffectiveConfig({ domain: 'site', overrides: merged });
+      readMigrationDomainConfig({ domain: 'site', overrides: merged });
     } catch {
       throw new Error('Invalid restored custom domain configuration');
     }
@@ -491,7 +507,7 @@ export const verifyCustomDomainConfig = async () => {
     throw new Error('Invalid site explicit-default metadata');
   }
   try {
-    resolveDomainEffectiveConfig({
+    readMigrationDomainConfig({
       domain: 'site',
       overrides: decryptDomainSecrets('site', doc.overrides)
     });

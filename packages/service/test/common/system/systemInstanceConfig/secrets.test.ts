@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { encryptSecret } from '../../../../common/secret/aes256gcm';
 import {
   markDomainSecrets,
@@ -101,30 +101,31 @@ describe('system instance configuration secret codec', () => {
     expect(decryptDomainSecrets('providers', replaced)).toEqual(replacement);
   });
 
-  it('rejects malformed or unauthenticated wrappers without exposing their contents', () => {
+  it('preserves malformed credentials and reports only field paths', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const validCipher = encryptSecret('sensitive-value');
     const invalidTag = validCipher.replace(/.$/, validCipher.endsWith('0') ? '1' : '0');
     for (const wrapper of [
       { secret: 'not-a-ciphertext' },
       { secret: validCipher, extra: 'unexpected' },
-      { secret: invalidTag }
+      { secret: invalidTag },
+      7
     ]) {
       const stored = { documentParse: { customPdf: { key: wrapper } } };
-      expect(() => decryptDomainSecrets('providers', stored)).toThrow(
-        /(?:Invalid stored|Unable to decrypt) configuration secret: providers\.documentParse\.customPdf\.key/
-      );
-      try {
-        decryptDomainSecrets('providers', stored);
-      } catch (error) {
-        expect(String(error)).not.toContain(validCipher);
-        expect(String(error)).not.toContain('sensitive-value');
-      }
-    }
-    expect(() =>
-      encryptDomainSecrets({
+      expect(decryptDomainSecrets('providers', stored)).toEqual(stored);
+      expect(encryptDomainSecrets({ domain: 'providers', data: stored })).toEqual(stored);
+      const replacement = encryptDomainSecrets({
         domain: 'providers',
-        data: { documentParse: { customPdf: { key: 7 } } }
-      })
-    ).toThrow('Invalid configuration secret: providers.documentParse.customPdf.key');
+        data: { documentParse: { customPdf: { key: 'replacement' } } },
+        previousStored: stored
+      });
+      expect(decryptDomainSecrets('providers', replacement).documentParse.customPdf.key).toBe(
+        'replacement'
+      );
+    }
+    expect(warn).toHaveBeenCalled();
+    expect(JSON.stringify(warn.mock.calls)).not.toContain(validCipher);
+    expect(JSON.stringify(warn.mock.calls)).not.toContain('sensitive-value');
+    warn.mockRestore();
   });
 });

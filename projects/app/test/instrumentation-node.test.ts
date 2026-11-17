@@ -336,7 +336,7 @@ describe('registerNodeInstrumentation', () => {
     }
   );
 
-  it('defers real getInitConfig until startup system config migration cleans and backfills subservice', async () => {
+  it('loads configuration before migration and refreshes it after backfill without blocking on missing proxy', async () => {
     vi.clearAllMocks();
     mocks.loadModels.mockReset();
     mocks.reloadModels.mockReset();
@@ -352,11 +352,13 @@ describe('registerNodeInstrumentation', () => {
     // 只有 Redis 分布式锁脚本使用假实现；配置加载与 Mongo 迁移全程真实执行。
     vi.spyOn(redisCacheAdapter, 'evalScript').mockResolvedValue(1);
     mocks.getInitConfig.mockImplementation(async (options) => {
-      // 真实 getInitConfig 在迁移前调用会因缺少 agentSandbox.proxy 直接 ZodError 崩溃。
+      // 首次读取允许旧配置缺少 proxy，迁移完成后再刷新快照。
       const state = await MongoSystemMigrationState.findById(
         '20261116_migrate_system_configs'
       ).lean();
-      expect(state?.status).toBe(SystemMigrationStatusEnum.succeeded);
+      if (mocks.getInitConfig.mock.calls.length > 1) {
+        expect(state?.status).toBe(SystemMigrationStatusEnum.succeeded);
+      }
       return mocks.actualGetInitConfig!(options);
     });
 
@@ -390,7 +392,7 @@ describe('registerNodeInstrumentation', () => {
 
     try {
       await registerNodeInstrumentation();
-      expect(mocks.getInitConfig).toHaveBeenCalledTimes(1);
+      expect(mocks.getInitConfig).toHaveBeenCalledTimes(2);
       expect(mocks.exit).not.toHaveBeenCalled();
       expect(getSystemInstanceConfig().subservice.agentSandbox).toMatchObject({
         provider: 'sealosdevbox',

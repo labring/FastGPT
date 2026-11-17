@@ -1,8 +1,6 @@
+import { readMigrationDomainConfig, readMigrationConfigValue } from './validation';
 import { SystemConfigsTypeEnum } from '@fastgpt/global/common/system/config/constants';
-import {
-  SYSTEM_INSTANCE_CONFIG_SCHEMA_VERSION,
-  resolveDomainEffectiveConfig
-} from '@fastgpt/global/common/system/config/schema';
+import { SYSTEM_INSTANCE_CONFIG_SCHEMA_VERSION } from '@fastgpt/global/common/system/config/schema';
 import {
   ActivityAdConfigSchema,
   OperationalAdConfigSchema,
@@ -78,12 +76,7 @@ const validateSchema = ({
   schema: z.ZodType;
   value: unknown;
 }) => {
-  const result = schema.safeParse(value);
-  if (!result.success) {
-    const paths = result.error.issues.map((issue) => issue.path.join('.') || '<root>');
-    throw new Error(`Invalid configuration scope ${name} fields: ${paths.join(', ')}`);
-  }
-  return result.data;
+  return readMigrationConfigValue({ name, schema, value });
 };
 
 /** 校验整份目标配置，包括商业域的稀疏结构与合并默认值后的完整结构。 */
@@ -94,7 +87,7 @@ const validateTarget = (domain: TargetScope | 'proEnv', overrides: unknown) => {
       : overrides;
   if (domain === 'commercial') {
     try {
-      resolveDomainEffectiveConfig({ domain, overrides: decoded });
+      readMigrationDomainConfig({ domain, overrides: decoded });
     } catch (error) {
       const issues = (error as { issues?: { path: PropertyKey[] }[] }).issues;
       const paths = issues?.map((issue) => issue.path.join('.') || '<root>') ?? ['<root>'];
@@ -369,7 +362,7 @@ export const migrateLegacyConfigScopes = async (session?: ClientSession) => {
               upsert: true,
               session,
               timestamps: false,
-              runValidators: true,
+              runValidators: false,
               setDefaultsOnInsert: false
             }
           );

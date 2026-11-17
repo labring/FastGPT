@@ -56,13 +56,24 @@ describe('readDefaultInstanceConfig', () => {
     '{"providers":{"documentParse":{"customPdf":{"price":-1,"key":"secret-value"}}}}',
     '{"performance":{"workflow":{"parallelMaxConcurrency":10000}}}'
   ])(
-    'rejects malformed or invalid configuration without exposing its contents',
+    'warns and retains invalid fields; malformed JSON still reports a syntax error',
     async (content) => {
       await fs.writeFile(filePath, content);
-      const error = await defaultConfig.readDefaultInstanceConfig(filePath).catch((error) => error);
-      expect(error).toBeInstanceOf(Error);
-      expect(error.message).toContain('Invalid defaultConfig.json');
-      expect(error.message).not.toContain('secret-value');
+      if (content.startsWith('{invalid')) {
+        await expect(defaultConfig.readDefaultInstanceConfig(filePath)).rejects.toThrow(
+          'Invalid defaultConfig.json'
+        );
+      } else {
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        try {
+          expect(await defaultConfig.readDefaultInstanceConfig(filePath)).toEqual(
+            JSON.parse(content)
+          );
+          expect(JSON.stringify(warn.mock.calls)).not.toContain('secret-value');
+        } finally {
+          warn.mockRestore();
+        }
+      }
     }
   );
 

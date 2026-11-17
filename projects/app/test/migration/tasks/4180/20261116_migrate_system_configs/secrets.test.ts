@@ -94,7 +94,7 @@ describe('encryptStoredConfigSecrets', () => {
     );
   });
 
-  it('does not write after a lost lease and rejects corrupt ciphertext without disclosing values', async () => {
+  it('refuses writes after lease loss but retains corrupt ciphertext with path-only warnings', async () => {
     await collection.insertOne({
       domain: 'auth',
       revision: 1,
@@ -114,9 +114,14 @@ describe('encryptStoredConfigSecrets', () => {
       { domain: 'auth' },
       { $set: { 'overrides.loginProviders.github.secret': { secret: 'private-value' } } }
     );
-    const error = await verifyStoredConfigSecrets().catch((error: Error) => error);
-    expect(error.message).toContain('auth.loginProviders.github.secret');
-    expect(error.message).not.toContain('private-value');
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    await expect(verifyStoredConfigSecrets()).resolves.toBeUndefined();
+    const invalid = await collection.findOne({ domain: 'auth' });
+    await encryptStoredConfigSecrets({ assertActive: async () => {} });
+    expect(await collection.findOne({ domain: 'auth' })).toEqual(invalid);
+    expect(JSON.stringify(warn.mock.calls)).toContain('auth.loginProviders.github.secret');
+    expect(JSON.stringify(warn.mock.calls)).not.toContain('private-value');
+    warn.mockRestore();
   });
 
   it('preserves historical BSON and date metadata outside registry secret paths', async () => {

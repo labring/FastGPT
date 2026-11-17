@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { vi, describe, expect, it } from 'vitest';
 import { AuthConfigSchema } from '@fastgpt/global/common/system/config/schemas/auth';
 import {
   getDomainDefaultConfig,
@@ -731,6 +731,52 @@ describe('agentSandbox.common.storageSizeGi validation', () => {
         resolveDomainEffectiveConfig({ domain: 'subservice', overrides: withStorageSize(size) })
           .agentSandbox.common.storageSizeGi
       ).toBe(size);
+    }
+  });
+});
+
+describe('warning-only instance config reads', () => {
+  it('retains invalid known fields and incomplete provider config on reads while rejecting saves', () => {
+    const raw = { agentSandbox: { provider: 'sealosdevbox', common: { memoryMiB: -1 } } };
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      const read = resolveDomainEffectiveConfig({
+        domain: 'subservice',
+        overrides: raw,
+        options: { strict: false }
+      });
+      expect(read.agentSandbox.provider).toBe('sealosdevbox');
+      expect(read.agentSandbox.common.memoryMiB).toBe(-1);
+      expect(read.agentSandbox.proxy.wsUrl).toBe('');
+      expect(warn).toHaveBeenCalled();
+      expect(() =>
+        resolveDomainEffectiveConfig({ domain: 'subservice', overrides: raw })
+      ).toThrow();
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it('keeps valid sibling domains when a read contains wrong types and never logs input values', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      const snapshot = resolveSystemInstanceConfig(
+        {
+          site: { name: 'Existing' },
+          providers: {
+            documentParse: { provider: 'custom', customPdf: { key: 'private-synthetic-secret' } }
+          },
+          performance: { dataset: { qaMaxProcess: 'invalid-number' } }
+        },
+        { strict: false }
+      );
+      expect(snapshot.site.name).toBe('Existing');
+      expect(snapshot.providers.documentParse.customPdf.key).toBe('private-synthetic-secret');
+      expect(snapshot.performance.dataset.qaMaxProcess).toBe('invalid-number');
+      expect(JSON.stringify(warn.mock.calls)).not.toContain('private-synthetic-secret');
+      expect(JSON.stringify(warn.mock.calls)).not.toContain('invalid-number');
+    } finally {
+      warn.mockRestore();
     }
   });
 });
