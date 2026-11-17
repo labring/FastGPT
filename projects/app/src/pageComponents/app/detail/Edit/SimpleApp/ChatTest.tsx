@@ -80,7 +80,8 @@ const ChatTest = ({ appForm, setRenderEdit, form2WorkflowFn }: Props) => {
         pt={4}
         pb={0}
         {...cardStyles}
-        boxShadow={'3'}
+        bg={isFullscreen ? 'myGray.25' : cardStyles.bg}
+        boxShadow={isFullscreen ? 'none' : '3'}
       >
         <Flex px={[2, 5]} pb={2} alignItems={'center'}>
           <Box fontSize={['md', 'lg']} fontWeight={'bold'} color={'myGray.900'} mr={3}>

@@ -16,6 +16,7 @@ export { WholeResponseContent } from './WholeResponseContent';
 const WholeResponseModal = ({ onClose, dataId }: { onClose: () => void; dataId: string }) => {
   const { t } = useSafeTranslation();
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isOpen, setIsOpen] = useState(true);
   const prefersReducedMotion = usePrefersReducedMotion();
   const { getHistoryResponseData } = useContextSelector(ChatBoxContext, (v) => v);
   const { loading: isLoading, data: response } = useRequest(
@@ -28,15 +29,25 @@ const WholeResponseModal = ({ onClose, dataId }: { onClose: () => void; dataId: 
   return (
     <MyModal
       isCentered
-      isOpen={true}
-      onClose={isFullscreen ? () => setIsFullscreen(false) : onClose}
+      isOpen={isOpen}
+      onClose={isFullscreen ? () => setIsFullscreen(false) : () => setIsOpen(false)}
+      onCloseComplete={onClose}
       showCloseButton={false}
       isLoading={isLoading}
       size={'xl'}
-      w={isFullscreen ? 'calc(100vw - 32px)' : ['90vw', '880px']}
-      maxW={isFullscreen ? 'calc(100vw - 32px)' : ['90vw', '880px']}
-      h={isFullscreen ? 'calc(100vh - 32px)' : ['90vh', '80vh']}
-      maxH={isFullscreen ? 'calc(100vh - 32px)' : ['90vh', '80vh']}
+      w={isFullscreen ? 'calc(100vw - 2.5rem)' : ['90vw', '880px']}
+      maxW={isFullscreen ? 'calc(100vw - 2.5rem)' : ['90vw', '880px']}
+      h={isFullscreen ? 'calc(100vh - 2.5rem)' : ['90vh', '80vh']}
+      maxH={isFullscreen ? 'calc(100vh - 2.5rem)' : ['90vh', '80vh']}
+      {...(isFullscreen
+        ? {
+            borderRadius: '1rem',
+            border: '1px solid',
+            borderColor: 'myGray.250',
+            bg: 'myGray.25',
+            boxShadow: '1.5'
+          }
+        : {})}
       sx={{
         transition: prefersReducedMotion
           ? 'none'
@@ -62,14 +73,18 @@ const WholeResponseModal = ({ onClose, dataId }: { onClose: () => void; dataId: 
               isFullscreen={isFullscreen}
               onClick={() => setIsFullscreen((value) => !value)}
             />
-            <CloseButton size={'sm'} aria-label={t('common:Close')} onClick={onClose} />
+            <CloseButton
+              size={'sm'}
+              aria-label={t('common:Close')}
+              onClick={() => setIsOpen(false)}
+            />
           </Flex>
         </Flex>
       }
     >
       {!isLoading &&
         (!!response?.length ? (
-          <ResponseBox response={response} dataId={dataId} />
+          <ResponseBox response={response} dataId={dataId} isFullscreen={isFullscreen} />
         ) : (
           <EmptyTip text={t('chat:response.no_workflow_response')} />
         ))}

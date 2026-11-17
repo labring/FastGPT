@@ -22,7 +22,7 @@ const DebugFullscreenContainer = ({
           position={'fixed'}
           inset={0}
           zIndex={1299}
-          bg={'blackAlpha.600'}
+          bg={'myGray.100'}
           opacity={isFullscreen && !isClosing ? 1 : 0}
           pointerEvents={isFullscreen && !isClosing ? 'auto' : 'none'}
           transition={`opacity ${prefersReducedMotion ? '0ms' : '200ms'} ease`}
@@ -31,17 +31,27 @@ const DebugFullscreenContainer = ({
       </Portal>
       <FocusLock isDisabled={!isFullscreen} autoFocus={false}>
         <Flex
-          h={isFullscreen ? 'calc(100vh - 32px)' : 'full'}
-          w={isFullscreen ? 'calc(100vw - 32px)' : undefined}
+          h={isFullscreen ? 'calc(100vh - 2.5rem)' : 'full'}
+          w={isFullscreen ? 'calc(100vw - 2.5rem)' : undefined}
           position={isFullscreen ? 'fixed' : undefined}
-          top={isFullscreen ? '16px' : undefined}
-          left={isFullscreen ? '16px' : undefined}
+          top={isFullscreen ? '1.25rem' : undefined}
+          left={isFullscreen ? '1.25rem' : undefined}
           zIndex={isFullscreen ? 1300 : undefined}
           role={isFullscreen ? 'dialog' : undefined}
           aria-modal={isFullscreen ? true : undefined}
           aria-label={isFullscreen ? t('app:chat_debug') : undefined}
           data-debug-fullscreen={isFullscreen ? true : undefined}
           gap={2}
+          {...(isFullscreen
+            ? {
+                borderRadius: '1rem',
+                border: '1px solid',
+                borderColor: 'myGray.250',
+                bg: 'myGray.25',
+                boxShadow: '1.5',
+                overflow: 'hidden'
+              }
+            : {})}
           animation={animation}
           onAnimationEnd={onAnimationEnd}
         >

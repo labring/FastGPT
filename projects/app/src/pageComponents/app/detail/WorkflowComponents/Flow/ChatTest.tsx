@@ -119,15 +119,20 @@ const ChatTest = ({ isOpen, nodes = [], edges = [], onClose, chatId }: Props) =>
         isOpen={isOpen}
         onClose={handleClose}
         onEscape={isFullscreen ? () => setIsFullscreen(false) : undefined}
-        width={isFullscreen ? 'calc(100vw - 32px)' : `${currentWidth}px`}
-        height={isFullscreen ? 'calc(100vh - 32px)' : '100vh'}
+        width={isFullscreen ? 'calc(100vw - 2.5rem)' : `${currentWidth}px`}
+        height={isFullscreen ? 'calc(100vh - 2.5rem)' : '100vh'}
         position={'fixed'}
-        top={isFullscreen ? '16px' : 0}
+        top={isFullscreen ? '1.25rem' : 0}
         contentProps={
           isFullscreen
             ? {
-                right: '16px',
+                right: '1.25rem',
                 zIndex: 1300,
+                borderRadius: '1rem',
+                border: '1px solid',
+                borderColor: 'myGray.250',
+                bg: 'myGray.25',
+                boxShadow: '1.5',
                 role: 'dialog',
                 'aria-modal': true,
                 'aria-label': t('common:core.chat.Run test'),
@@ -137,12 +142,13 @@ const ChatTest = ({ isOpen, nodes = [], edges = [], onClose, chatId }: Props) =>
         }
         maskProps={{
           zIndex: isFullscreen ? 1299 : 300,
-          bg: 'blackAlpha.600',
+          bg: 'myGray.100',
           opacity: isOpen && isFullscreen ? 1 : 0,
           pointerEvents: isFullscreen ? 'auto' : 'none',
           onClick: isFullscreen ? () => setIsFullscreen(false) : undefined
         }}
         trapFocus={isFullscreen && isOpen}
+        headerProps={isFullscreen ? { bg: 'myGray.25' } : undefined}
         header={
           isPlugin ? (
             <Flex w={'100%'} alignItems={'center'} justifyContent={'space-between'}>
@@ -241,7 +247,8 @@ const ChatTest = ({ isOpen, nodes = [], edges = [], onClose, chatId }: Props) =>
         zIndex={301}
         alignItems={'center'}
         justifyContent={'center'}
-        cursor={'col-resize'}
+        cursor={currentWidth >= maxWidth ? 'e-resize' : 'col-resize'}
+        _hover={{ '.debug-resize-indicator': { h: 'calc(100vh - 2rem)', bg: 'primary.600' } }}
         opacity={isOpen && !isFullscreen ? 1 : 0}
         visibility={isOpen && !isFullscreen ? 'visible' : 'hidden'}
         pointerEvents={isOpen && !isFullscreen ? 'auto' : 'none'}
@@ -279,6 +286,7 @@ const ChatTest = ({ isOpen, nodes = [], edges = [], onClose, chatId }: Props) =>
         }}
       >
         <Box
+          className={'debug-resize-indicator'}
           w={'4px'}
           h={isResizing ? 'calc(100vh - 2rem)' : '2.5rem'}
           bg={isResizing ? 'primary.600' : 'myGray.300'}
