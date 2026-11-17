@@ -252,12 +252,16 @@ const ModelPreviewRow = memo(function ModelPreviewRow({
   selection?: RowSelection;
   catalog: RowCatalog;
   onToggleSelected: (slug: string) => void;
-  onModelTypeChange: (
-    slug: string,
-    selectedType: ModelTypeEnum,
-    selectedPresetData: PreviewModelData
-  ) => void;
-  onPresetChange: (slug: string, selectedKey: string, selectedPresetData: PreviewModelData) => void;
+  onModelTypeChange: (params: {
+    providerModelSlug: string;
+    selectedType: ModelTypeEnum;
+    selectedPresetData: PreviewModelData;
+  }) => void;
+  onPresetChange: (params: {
+    providerModelSlug: string;
+    selectedKey: string;
+    selectedPresetData: PreviewModelData;
+  }) => void;
   onActiveChange: (slug: string, isActive: boolean) => void;
 }) {
   const { t } = useSafeTranslation();
@@ -341,7 +345,11 @@ const ModelPreviewRow = memo(function ModelPreviewRow({
           isInvalid={selection?.selected && isBlank && !modelType}
           aria-label={t('common:model.model_type')}
           onChange={(selectedType) =>
-            onModelTypeChange(row.providerModelSlug, selectedType, selectedPresetData)
+            onModelTypeChange({
+              providerModelSlug: row.providerModelSlug,
+              selectedType,
+              selectedPresetData
+            })
           }
         />
       </Td>
@@ -365,7 +373,11 @@ const ModelPreviewRow = memo(function ModelPreviewRow({
                   key: selectedKey,
                   templateMap: catalog.templateMap
                 });
-            onPresetChange(row.providerModelSlug, selectedKey, nextPresetData);
+            onPresetChange({
+              providerModelSlug: row.providerModelSlug,
+              selectedKey,
+              selectedPresetData: nextPresetData
+            });
           }}
         />
       </Td>
@@ -596,11 +608,15 @@ const ModelPreviewStep = ({
   );
 
   const handleModelTypeChange = useCallback(
-    (
-      providerModelSlug: string,
-      selectedType: ModelTypeEnum,
-      selectedPresetData: PreviewModelData
-    ) => {
+    ({
+      providerModelSlug,
+      selectedType,
+      selectedPresetData
+    }: {
+      providerModelSlug: string;
+      selectedType: ModelTypeEnum;
+      selectedPresetData: PreviewModelData;
+    }) => {
       updateState((draft) => {
         const current = draft.rowSelections.get(providerModelSlug);
         if (selectedPresetData && selectedPresetData.type !== selectedType) {
@@ -618,7 +634,15 @@ const ModelPreviewStep = ({
   );
 
   const handlePresetChange = useCallback(
-    (providerModelSlug: string, selectedKey: string, selectedPresetData: PreviewModelData) => {
+    ({
+      providerModelSlug,
+      selectedKey,
+      selectedPresetData
+    }: {
+      providerModelSlug: string;
+      selectedKey: string;
+      selectedPresetData: PreviewModelData;
+    }) => {
       updateState((draft) => {
         draft.rowSelections.set(providerModelSlug, {
           ...draft.rowSelections.get(providerModelSlug),

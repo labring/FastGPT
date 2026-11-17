@@ -213,11 +213,11 @@ describe('channel model import matching', () => {
       expect(templateItem.blankModelData).not.toHaveProperty('inputPrice');
       expect(templateItem.blankModelData).not.toHaveProperty('outputPrice');
     }
-    if (items[4].category === 'blank') {
-      expect(items[4]).toMatchObject({ contextLength: 48000 });
-      expect(items[4].modelData?.provider).toBe('provider-from-channel');
-      expect(items[4].modelData).not.toHaveProperty('config');
-    }
+    const blankItem = items[4].candidates[0];
+    expect(items[4].contextLength).toBe(48000);
+    expect(blankItem.category).toBe('blank');
+    expect(blankItem).toMatchObject({ modelData: { provider: 'provider-from-channel' } });
+    if (blankItem.category === 'blank') expect(blankItem.modelData).not.toHaveProperty('config');
   });
 
   it('falls back to model IDs for blank upstream names in mixed directories', () => {
