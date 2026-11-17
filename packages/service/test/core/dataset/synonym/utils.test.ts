@@ -438,7 +438,12 @@ describe('buildSynonymMatcher', () => {
       })
     ]);
 
-    expect(matcher.transform('')).toEqual({ transformedText: '', usedMappings: [] });
+    // transform 空输入：matchedStandardTerms 为新字段（标准词命中集合），空输入时为空数组
+    expect(matcher.transform('')).toEqual({
+      transformedText: '',
+      usedMappings: [],
+      matchedStandardTerms: []
+    });
     expect(matcher.transform('苹果手机').transformedText).toBe('苹果手机');
   });
 });

@@ -163,7 +163,7 @@ export const attachSynonymMappingsToSearchResults = async ({
         // 问题侧映射的保留条件：问题里的别名所对应的标准词，确实以标准词形式
         // 命中了本分块正文（例：用户问「枕瓜排骨汤」、命中分块正文只写「冬瓜」，
         // 仍附上「枕瓜 → 冬瓜」让回答模型对齐措辞；无关分块不会拿到这组映射）。
-        const standardHits = new Set(matchResult.matchedStandardTerms?.map(([, term]) => term) ?? []);
+        const standardHits = new Set(matchResult.matchedStandardTerms?.map(([key]) => key) ?? []);
         if (queryText && !queryMappingsByMatcher.has(matcherKey)) {
           queryMappingsByMatcher.set(
             matcherKey,

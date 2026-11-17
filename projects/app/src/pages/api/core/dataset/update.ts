@@ -16,10 +16,6 @@ import {
   upsertDatasetSyncJobScheduler
 } from '@fastgpt/service/core/dataset/datasetSync';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
-import {
-  MongoDatasetSynonym,
-  MongoDatasetSynonymMapping
-} from '@fastgpt/service/core/dataset/synonym/schema';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { assertAuthModels } from '@fastgpt/service/support/permission/model/auth';
 import { addAuditLogs } from '@fastgpt/service/support/user/audit/util';
@@ -213,29 +209,10 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
         }
       )
     ) {
-      // 同义词配置与映射是 dataset 级配置（上传的原始词表解析而来），不属于本次要清理
-      // 的"数据"。场景：web 站点改分块大小会级联清空全部数据重建（TD #2026111600233），
-      // 若不快照恢复，同义词文件会随级联删除而丢失、问答失去同义词能力。
-      // 快照 → 清空 → 原样恢复（同事务内），真实删除知识库的路径不受影响。
-      const synonymSnapshot = {
-        configs: await MongoDatasetSynonym.find({ datasetId: dataset._id }, null, { session })
-          .lean()
-          .exec(),
-        mappings: await MongoDatasetSynonymMapping.find({ datasetId: dataset._id }, null, {
-          session
-        })
-          .lean()
-          .exec()
-      };
-
-      await delDatasetRelevantData({ datasets: [dataset], session });
-
-      if (synonymSnapshot.configs.length > 0) {
-        await MongoDatasetSynonym.insertMany(synonymSnapshot.configs, { session });
-      }
-      if (synonymSnapshot.mappings.length > 0) {
-        await MongoDatasetSynonymMapping.insertMany(synonymSnapshot.mappings, { session });
-      }
+      // web 站点改分块大小 = 数据重建而非删除知识库：传 keepSynonyms 让
+      // delDatasetRelevantData 跳过同义词配置与映射的删除（配置与当前版本映射
+      // 原地保留，历史残留映射由清理器按版本条件回收）。真实删除知识库路径不变。
+      await delDatasetRelevantData({ datasets: [dataset], session }, { keepSynonyms: true });
     }
 
     const apiDatasetParams = apiDatasetServerPatch?.updateFields ?? {};
