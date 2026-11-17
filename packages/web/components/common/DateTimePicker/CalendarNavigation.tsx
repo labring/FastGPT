@@ -191,9 +191,9 @@ export const CalendarNavigation = ({
                 key={direction}
                 as={'button'}
                 type={'button'}
-                aria-label={t(
-                  direction < 0 ? 'common:date_picker.previous' : 'common:date_picker.next'
-                )}
+                aria-label={
+                  direction < 0 ? t('common:date_picker.previous') : t('common:date_picker.next')
+                }
                 p={'6px'}
                 color={'myGray.900'}
                 disabled={isDisabled}
