@@ -214,8 +214,16 @@ const EditModal = ({ onClose, ...props }: RenderInputProps & { onClose: () => vo
     [nodeId, onChangeNode, onClose]
   );
 
-  const quotePromptTemplates =
-    aiChatQuoteRole === 'user' ? Prompt_userQuotePromptList : Prompt_systemQuotePromptList;
+  // D2：quotePrompt 与 quoteTemplate 成对装饰——content: false 给提示词模板
+  // 追加词汇映射说明，约束模型只在本条引用内对齐术语。
+  const quotePromptTemplates = useMemo(
+    () =>
+      withSynonymQuoteTemplates(
+        aiChatQuoteRole === 'user' ? Prompt_userQuotePromptList : Prompt_systemQuotePromptList,
+        { enabled: datasetSynonymEnabled, content: false }
+      ),
+    [aiChatQuoteRole, datasetSynonymEnabled]
+  );
 
   return (
     <>

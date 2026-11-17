@@ -111,7 +111,7 @@ const parseCsvRows = (buffer: Buffer): unknown[][] => {
       throw new DatasetSynonymValidationError('CSV 文件必须使用 UTF-8 编码', 'invalid_file');
     }
   })();
-  const result = Papa.parse<unknown[]>(text.replace(/^\uFEFF/, ''), {
+  const result = Papa.parse<unknown[]>(text.replace(/^﻿/, ''), {
     delimiter: ',',
     skipEmptyLines: false
   });
@@ -364,21 +364,21 @@ export const serializeSynonymMappingsToCsv = (
   const maxSynonymCount = Math.max(1, ...mappings.map((mapping) => mapping.synonymTerms.length));
   const header = ['标准术语', ...Array.from({ length: maxSynonymCount }, () => '同义词')];
   const rows = mappings.map((mapping) => [mapping.standardizedTerm, ...mapping.synonymTerms]);
-  return `\uFEFF${[header, ...rows]
+  return `﻿${[header, ...rows]
     .map((row) => row.map((cell) => escapeCsvCell(cell)).join(','))
     .join('\r\n')}\r\n`;
 };
 
 /**
- * \u6309\u4E0A\u4F20\u683C\u5F0F\uFF08xlsx/xls\uFF09\u751F\u6210\u540C\u4E49\u8BCD\u5DE5\u4F5C\u7C3F Buffer\uFF0C\u4FDD\u6301\u4E0B\u8F7D\u683C\u5F0F\u4E0E\u4E0A\u4F20\u4E00\u81F4\u3002
- * \u8868\u5934\u4E0E\u89E3\u6790\u7AEF\uFF08standardizedTermHeaders / synonymHeaderReg\uFF09\u517C\u5BB9\uFF0C\u4EA7\u7269\u53EF\u76F4\u63A5\u56DE\u4F20\u3002
+ * 按上传格式（xlsx/xls）生成同义词工作簿 Buffer，保持下载格式与上传一致。
+ * 表头与解析端（standardizedTermHeaders / synonymHeaderReg）兼容，产物可直接回传。
  */
 export const serializeSynonymMappingsToExcelBuffer = (
   mappings: Array<Pick<NormalizedSynonymMappingType, 'standardizedTerm' | 'synonymTerms'>>,
   extension: 'xlsx' | 'xls'
 ) => {
-  // \u5355\u8868\u5217\u4E0A\u9650\uFF1Axls(biff8) 256 \u5217\uFF08IV\uFF09\u3001xlsx 16384 \u5217\uFF1B\u6263\u9664\u6807\u51C6\u672F\u8BED\u5217\u540E\u4E3A\u6BCF\u884C\u522B\u540D\u4E0A\u9650\u3002
-  // \u540C\u4E00\u6807\u51C6\u8BCD\u7684\u522B\u540D\u8D85\u8FC7\u4E0A\u9650\u65F6\u62C6\u6210\u591A\u884C\uFF08\u91CD\u590D\u6807\u51C6\u8BCD\uFF09\uFF0C\u89E3\u6790\u7AEF\u4F1A\u6309\u6807\u51C6\u8BCD\u5408\u5E76\uFF0C\u4FDD\u8BC1\u5F80\u8FD4\u65E0\u635F\u3002
+  // 单表列上限：xls(biff8) 256 列（IV）、xlsx 16384 列；扣除标准术语列后为每行别名上限。
+  // 同一标准词的别名超过上限时拆成多行（重复标准词），解析端会按标准词合并，保证往返无损。
   const maxColumns = extension === 'xls' ? 256 : 16384;
   const maxSynonymsPerRow = maxColumns - 1;
 
@@ -393,7 +393,7 @@ export const serializeSynonymMappingsToExcelBuffer = (
   }
 
   const aoa: (string | number)[][] = [
-    ['\u6807\u51C6\u672F\u8BED', ...Array.from({ length: maxSynonymCount }, () => '\u540C\u4E49\u8BCD')],
+    ['标准术语', ...Array.from({ length: maxSynonymCount }, () => '同义词')],
     ...dataRows
   ];
   const worksheet = XLSX.utils.aoa_to_sheet(aoa);
@@ -405,7 +405,7 @@ export const serializeSynonymMappingsToExcelBuffer = (
   }) as Buffer;
 };
 
-/** \u4E0B\u8F7D\u65F6\u6309\u4E0A\u4F20\u683C\u5F0F\u56DE\u4F20\uFF1Axlsx/xls \u751F\u6210\u5DE5\u4F5C\u7C3F\uFF0Ccsv \u751F\u6210 BOM CSV \u6587\u672C\u3002 */
+/** 下载时按上传格式回传：xlsx/xls 生成工作簿，csv 生成 BOM CSV 文本。 */
 export const serializeSynonymMappingsToFile = (
   mappings: Array<Pick<NormalizedSynonymMappingType, 'standardizedTerm' | 'synonymTerms'>>,
   extension: string
