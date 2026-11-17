@@ -263,7 +263,13 @@ services:
       # Python allowed modules whitelist (comma-separated)
       SANDBOX_PYTHON_ALLOWED_MODULES: math,cmath,decimal,fractions,random,statistics,collections,array,heapq,bisect,queue,copy,itertools,functools,operator,string,re,difflib,textwrap,unicodedata,codecs,datetime,time,calendar,_strptime,json,csv,base64,binascii,struct,hashlib,hmac,secrets,uuid,typing,abc,enum,dataclasses,contextlib,pprint,weakref,numpy,pandas,matplotlib
     healthcheck:
-      test: ['CMD', 'curl', '-f', 'http://localhost:3000/health']
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://localhost:3000/health').then((res) => { if (!res.ok) throw new Error(String(res.status)); })"
+        ]
       interval: 30s
       timeout: 20s
       retries: 3
@@ -277,7 +283,8 @@ services:
       AUTH_TOKEN: *x-plugin-auth-token
       PORT: 3004
       FASTGPT_BASE_URL: http://127.0.0.1:3000
-      MONGODB_URI: mongodb://myusername:mypassword@127.0.0.1:27017/fastgpt?authSource=admin&directConnection=true
+      # plugin 服务使用独立数据库，避免和 FastGPT 主库集合冲突。
+      MONGODB_URI: mongodb://myusername:mypassword@127.0.0.1:27017/fastgpt-plugin?authSource=admin&directConnection=true
       REDIS_URL: redis://default:mypassword@127.0.0.1:6379
       STORAGE_S3_ENDPOINT: http://127.0.0.1:9000
       # 工具网络请求，最大请求和响应体
@@ -287,6 +294,8 @@ services:
       # 传递给 OTLP 收集器的服务名称
       LOG_OTEL_SERVICE_NAME: fastgpt-plugin
     depends_on:
+      fastgpt-mongo:
+        condition: service_healthy
       fastgpt-rustfs:
         condition: service_healthy
     healthcheck:
@@ -320,9 +329,9 @@ services:
       test:
         [
           'CMD',
-          'python3',
+          'python',
           '-c',
-          "import urllib.request; urllib.request.urlopen('http://localhost:8090/health').read()"
+          "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8090/health',timeout=3).status==200 else 1)"
         ]
       interval: 10s
       timeout: 5s
@@ -330,7 +339,7 @@ services:
 
   # 浏览器与 OpenSandbox 之间的 WebSocket 鉴权代理
   fastgpt-agent-sandbox-proxy:
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-sandbox-proxy:v0.3.0
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-sandbox-proxy:v0.4.0
     container_name: fastgpt-agent-sandbox-proxy
     restart: always
     ports:
@@ -344,6 +353,7 @@ services:
       PORT: 1006
       AGENT_SANDBOX_PROXY_SECRET: *x-agent-sandbox-proxy-secret
       FASTGPT_APP_URL: http://host.docker.internal:3000
+      FASTGPT_APP_REQUEST_TIMEOUT_SECS: 60
       AGENT_SANDBOX_PROXY_REWRITE_HOST: opensandbox-server
       RUST_LOG: info,fastgpt_agent_sandbox_proxy
     depends_on:
@@ -352,7 +362,7 @@ services:
 
   # Pre-pull only: not started by `docker compose up` (uses profile `prepull`).
   opensandbox-agent-sandbox-image:
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-sandbox:v0.3.1
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-sandbox:v0.4.0
     profiles:
       - prepull
   opensandbox-execd-image:
@@ -365,7 +375,7 @@ services:
       - prepull
   # 卷管理微服务：负责幂等创建/删除 Docker named volume 或 k8s PVC
   fastgpt-volume-manager:
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-volume-manager:v0.3.0
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-volume-manager:v0.4.0
     container_name: fastgpt-volume-manager
     restart: always
     ports:
@@ -384,9 +394,9 @@ services:
       test:
         [
           'CMD',
-          'bun',
+          'node',
           '-e',
-          "fetch('http://localhost:3000/health').then((res) => { if (!res.ok) throw new Error(String(res.status)); })"
+          "fetch('http://localhost:3000/health').then((res) => { if (!res.ok) process.exit(1); }).catch(() => process.exit(1));"
         ]
       interval: 10s
       timeout: 5s
