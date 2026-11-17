@@ -1,12 +1,13 @@
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { Box, Flex, FocusLock, IconButton, Portal } from '@chakra-ui/react';
+import { Box, Flex, IconButton } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
 import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import FullscreenButton from '@/components/common/FullscreenButton';
 import { useDebugFullscreen } from '../hooks/useDebugFullscreen';
+import DebugFullscreenContainer from '../components/DebugFullscreenContainer';
 
 import type { ChatAgentHelperRefType } from '@/components/core/chat/ChatAgentHelper';
 import ChatAgentHelper from '@/components/core/chat/ChatAgentHelper';
@@ -48,8 +49,8 @@ type Props = {
 };
 const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props) => {
   const { t } = useTranslation();
-  const { isFullscreen, isClosing, prefersReducedMotion, animation, toggle, onAnimationEnd } =
-    useDebugFullscreen();
+  const fullscreen = useDebugFullscreen();
+  const { isFullscreen, toggle } = fullscreen;
   const { toast } = useToast();
   const { chatId, agentChatTestTab, setAgentChatTestTab } = useChatStore();
   const { feConfigs } = useSystemStore();
@@ -203,181 +204,148 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
   );
 
   return (
-    <Box h={'full'} w={'full'} sx={{ '& > div': { display: 'contents' } }}>
-      <Portal>
-        <Box
-          position={'fixed'}
-          inset={0}
-          zIndex={1299}
-          bg={'blackAlpha.600'}
-          opacity={isFullscreen && !isClosing ? 1 : 0}
-          pointerEvents={isFullscreen && !isClosing ? 'auto' : 'none'}
-          transition={`opacity ${prefersReducedMotion ? '0ms' : '200ms'} ease`}
-        />
-      </Portal>
-      <FocusLock isDisabled={!isFullscreen} autoFocus={false}>
-        <Flex
-          h={isFullscreen ? 'calc(100vh - 32px)' : 'full'}
-          w={isFullscreen ? 'calc(100vw - 32px)' : undefined}
-          position={isFullscreen ? 'fixed' : undefined}
-          top={isFullscreen ? '16px' : undefined}
-          left={isFullscreen ? '16px' : undefined}
-          zIndex={isFullscreen ? 1300 : undefined}
-          role={isFullscreen ? 'dialog' : undefined}
-          aria-modal={isFullscreen ? true : undefined}
-          aria-label={isFullscreen ? t('app:chat_debug') : undefined}
-          data-debug-fullscreen={isFullscreen ? true : undefined}
-          gap={2}
-          animation={animation}
-          onAnimationEnd={onAnimationEnd}
-        >
-          <MyBox
-            flex={'1 0 0'}
-            w={0}
-            display={'flex'}
-            position={'relative'}
-            flexDirection={'column'}
-            h={'full'}
-            pt={4}
-            pb={0}
-            {...cardStyles}
-            boxShadow={'3'}
-          >
-            <Flex px={[2, 5]} pb={2} alignItems={'center'}>
-              <FillRowTabs<AgentChatTestTabEnum>
-                py={1}
-                list={[
-                  {
-                    label: t('app:helper_bot'),
-                    value: AgentChatTestTabEnum.helper
-                  },
-                  {
-                    label: t('app:chat_debug'),
-                    value: AgentChatTestTabEnum.chatDebug
-                  }
-                ]}
-                value={activeTab}
-                onChange={(value) => {
-                  if (value === AgentChatTestTabEnum.helper && !canUseHelper) {
-                    setProModalOpen(true);
-                    return;
-                  }
-                  updateActiveTab(value);
+    <DebugFullscreenContainer fullscreen={fullscreen}>
+      <MyBox
+        flex={'1 0 0'}
+        w={0}
+        display={'flex'}
+        position={'relative'}
+        flexDirection={'column'}
+        h={'full'}
+        pt={4}
+        pb={0}
+        {...cardStyles}
+        boxShadow={'3'}
+      >
+        <Flex px={[2, 5]} pb={2} alignItems={'center'}>
+          <FillRowTabs<AgentChatTestTabEnum>
+            py={1}
+            list={[
+              {
+                label: t('app:helper_bot'),
+                value: AgentChatTestTabEnum.helper
+              },
+              {
+                label: t('app:chat_debug'),
+                value: AgentChatTestTabEnum.chatDebug
+              }
+            ]}
+            value={activeTab}
+            onChange={(value) => {
+              if (value === AgentChatTestTabEnum.helper && !canUseHelper) {
+                setProModalOpen(true);
+                return;
+              }
+              updateActiveTab(value);
+            }}
+          />
+
+          <Box flex={1} />
+          <Flex alignItems={'center'} gap={2}>
+            <SandboxEntryIcon size={'smSquare'} onOpen={onOpenSandboxModal} />
+            {activeTab === AgentChatTestTabEnum.chatDebug && (
+              <ChatVariableButton chatType={ChatTypeEnum.test} />
+            )}
+            <MyTooltip label={restartChatLabel}>
+              <IconButton
+                className="chat"
+                size={'smSquare'}
+                icon={<MyIcon name={'core/chat/chatLight'} w={'14px'} />}
+                variant={'whitePrimary'}
+                borderRadius={'md'}
+                aria-label={restartChatLabel}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onRestartChat();
                 }}
               />
+            </MyTooltip>
+            <FullscreenButton isFullscreen={isFullscreen} onClick={toggle} />
+          </Flex>
+        </Flex>
+        <Box flex={1} minH={0}>
+          {hasRenderedHelper && (
+            <Box h={'100%'} display={activeTab === AgentChatTestTabEnum.helper ? 'block' : 'none'}>
+              <ChatAgentHelper
+                ChatBoxRef={ChatAgentHelperRef}
+                appId={appDetail._id}
+                type={ChatAgentHelperTypeEnum.chatAgent}
+                metadata={chatAgentHelperMetadata}
+                InputLeftComponent={HelperModelSelectorInput}
+                onApply={async (formData) => {
+                  // Filter internal tools
+                  const filteredTools = (formData.tools || []).filter(
+                    (tool) => !((typeof tool === 'string' ? tool : tool.id) in systemSubInfo)
+                  );
 
-              <Box flex={1} />
-              <Flex alignItems={'center'} gap={2}>
-                <SandboxEntryIcon size={'smSquare'} onOpen={onOpenSandboxModal} />
-                {activeTab === AgentChatTestTabEnum.chatDebug && (
-                  <ChatVariableButton chatType={ChatTypeEnum.test} />
-                )}
-                <MyTooltip label={restartChatLabel}>
-                  <IconButton
-                    className="chat"
-                    size={'smSquare'}
-                    icon={<MyIcon name={'core/chat/chatLight'} w={'14px'} />}
-                    variant={'whitePrimary'}
-                    borderRadius={'md'}
-                    aria-label={restartChatLabel}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onRestartChat();
-                    }}
-                  />
-                </MyTooltip>
-                <FullscreenButton isFullscreen={isFullscreen} onClick={toggle} />
-              </Flex>
-            </Flex>
-            <Box flex={1} minH={0}>
-              {hasRenderedHelper && (
-                <Box
-                  h={'100%'}
-                  display={activeTab === AgentChatTestTabEnum.helper ? 'block' : 'none'}
-                >
-                  <ChatAgentHelper
-                    ChatBoxRef={ChatAgentHelperRef}
-                    appId={appDetail._id}
-                    type={ChatAgentHelperTypeEnum.chatAgent}
-                    metadata={chatAgentHelperMetadata}
-                    InputLeftComponent={HelperModelSelectorInput}
-                    onApply={async (formData) => {
-                      // Filter internal tools
-                      const filteredTools = (formData.tools || []).filter(
-                        (tool) => !((typeof tool === 'string' ? tool : tool.id) in systemSubInfo)
-                      );
+                  const newTools = await loadGeneratedTools({
+                    newToolIds: filteredTools,
+                    existsTools: appForm.selectedTools,
+                    fileSelectConfig: appForm.chatConfig.fileSelectConfig
+                  });
 
-                      const newTools = await loadGeneratedTools({
-                        newToolIds: filteredTools,
-                        existsTools: appForm.selectedTools,
-                        fileSelectConfig: appForm.chatConfig.fileSelectConfig
-                      });
+                  setAppForm((prev) => {
+                    const fileUploadEnabled = !!formData.fileUploadEnabled;
+                    const enableSandboxEnabled = !!formData.enableSandboxEnabled;
 
-                      setAppForm((prev) => {
-                        const fileUploadEnabled = !!formData.fileUploadEnabled;
-                        const enableSandboxEnabled = !!formData.enableSandboxEnabled;
-
-                        const newForm: AppFormEditFormType = {
-                          ...prev,
-                          selectedTools: [...newTools],
-                          selectedAgentSkills: formData.selectedAgentSkills || [],
-                          dataset: {
-                            ...prev.dataset,
-                            datasets: formData.datasets ?? []
-                          },
-                          aiSettings: {
-                            ...prev.aiSettings,
-                            systemPrompt: formData.systemPrompt || prev.aiSettings.systemPrompt,
-                            useAgentSandbox:
-                              enableSandboxEnabled ||
-                              (formData.selectedAgentSkills?.length || 0) > 0
-                          },
-                          chatConfig: {
-                            ...prev.chatConfig,
-                            fileSelectConfig: fileUploadEnabled
-                              ? {
-                                  ...prev.chatConfig.fileSelectConfig,
-                                  canSelectFile: true
-                                }
-                              : {
-                                  maxFiles: undefined,
-                                  canSelectFile: false,
-                                  customPdfParse: false,
-                                  canSelectImg: false,
-                                  canSelectVideo: false,
-                                  canSelectAudio: false,
-                                  canSelectCustomFileExtension: false,
-                                  customFileExtensionList: []
-                                }
-                          }
-                        };
-                        return newForm;
-                      });
-                    }}
-                  />
-                </Box>
-              )}
-              {activeTab === AgentChatTestTabEnum.chatDebug && <ChatContainer />}
-            </Box>
-          </MyBox>
-          {datasetCiteData && (
-            <Box flex={'1 0 0'} w={0} maxW={'560px'} {...cardStyles} boxShadow={'3'}>
-              <ChatQuoteList
-                rawSearch={datasetCiteData.rawSearch}
-                metadata={datasetCiteData.metadata}
-                singleQuote={datasetCiteData.singleQuote}
-                onClose={() => setCiteModalData(undefined)}
+                    const newForm: AppFormEditFormType = {
+                      ...prev,
+                      selectedTools: [...newTools],
+                      selectedAgentSkills: formData.selectedAgentSkills || [],
+                      dataset: {
+                        ...prev.dataset,
+                        datasets: formData.datasets ?? []
+                      },
+                      aiSettings: {
+                        ...prev.aiSettings,
+                        systemPrompt: formData.systemPrompt || prev.aiSettings.systemPrompt,
+                        useAgentSandbox:
+                          enableSandboxEnabled || (formData.selectedAgentSkills?.length || 0) > 0
+                      },
+                      chatConfig: {
+                        ...prev.chatConfig,
+                        fileSelectConfig: fileUploadEnabled
+                          ? {
+                              ...prev.chatConfig.fileSelectConfig,
+                              canSelectFile: true
+                            }
+                          : {
+                              maxFiles: undefined,
+                              canSelectFile: false,
+                              customPdfParse: false,
+                              canSelectImg: false,
+                              canSelectVideo: false,
+                              canSelectAudio: false,
+                              canSelectCustomFileExtension: false,
+                              customFileExtensionList: []
+                            }
+                      }
+                    };
+                    return newForm;
+                  });
+                }}
               />
             </Box>
           )}
+          {activeTab === AgentChatTestTabEnum.chatDebug && <ChatContainer />}
+        </Box>
+      </MyBox>
+      {datasetCiteData && (
+        <Box flex={'1 0 0'} w={0} maxW={'560px'} {...cardStyles} boxShadow={'3'}>
+          <ChatQuoteList
+            rawSearch={datasetCiteData.rawSearch}
+            metadata={datasetCiteData.metadata}
+            singleQuote={datasetCiteData.singleQuote}
+            onClose={() => setCiteModalData(undefined)}
+          />
+        </Box>
+      )}
 
-          <SandboxEditorModal />
-          {!feConfigs?.isPlus && (
-            <ProModal isOpen={proModalOpen} onClose={() => setProModalOpen(false)} />
-          )}
-        </Flex>
-      </FocusLock>
-    </Box>
+      <SandboxEditorModal />
+      {!feConfigs?.isPlus && (
+        <ProModal isOpen={proModalOpen} onClose={() => setProModalOpen(false)} />
+      )}
+    </DebugFullscreenContainer>
   );
 };
 

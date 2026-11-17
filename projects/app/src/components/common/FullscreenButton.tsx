@@ -13,7 +13,7 @@ const FullscreenButton = ({
 }) => {
   const { t } = useTranslation();
   const { basePath } = useRouter();
-  const label = t(isFullscreen ? 'common:exit_fullscreen' : 'common:enter_fullscreen');
+  const label = isFullscreen ? t('common:exit_fullscreen') : t('common:enter_fullscreen');
   const icon = isFullscreen ? 'icon-exit-fullscreen' : 'icon-fullscreen';
 
   return (
