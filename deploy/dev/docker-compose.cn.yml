@@ -330,7 +330,7 @@ services:
 
   # 浏览器与 OpenSandbox 之间的 WebSocket 鉴权代理
   fastgpt-agent-sandbox-proxy:
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-sandbox-proxy:v0.3.0
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-sandbox-proxy:v0.4.0
     container_name: fastgpt-agent-sandbox-proxy
     restart: always
     ports:
@@ -352,7 +352,7 @@ services:
 
   # Pre-pull only: not started by `docker compose up` (uses profile `prepull`).
   opensandbox-agent-sandbox-image:
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-sandbox:v0.3.1
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-sandbox:v0.4.0
     profiles:
       - prepull
   opensandbox-execd-image:
@@ -365,7 +365,7 @@ services:
       - prepull
   # 卷管理微服务：负责幂等创建/删除 Docker named volume 或 k8s PVC
   fastgpt-volume-manager:
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-volume-manager:v0.3.0
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-volume-manager:v0.4.0
     container_name: fastgpt-volume-manager
     restart: always
     ports:
