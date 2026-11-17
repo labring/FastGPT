@@ -13,7 +13,9 @@ const mocks = vi.hoisted(() => ({
   training: vi.fn(),
   tracks: vi.fn(),
   loadModels: vi.fn(),
-  reloadModels: vi.fn()
+  reloadModels: vi.fn(),
+  getInitConfig: vi.fn(),
+  actualGetInitConfig: undefined as undefined | ((options?: any) => Promise<void>)
 }));
 
 // 隔离外部依赖和消费者；启动编排、迁移 runner 与 MongoDB 事务使用实际实现。
@@ -27,12 +29,16 @@ vi.mock('@fastgpt/service/thirdProvider/fastgptPro/api', async (importOriginal) 
   ...(await importOriginal<typeof import('@fastgpt/service/thirdProvider/fastgptPro/api')>()),
   postHealth: mocks.postHealth
 }));
-vi.mock('@/service/common/system', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/common/system')>()),
-  getInitConfig: vi.fn(),
-  initSystemPluginTags: vi.fn(),
-  initAppTemplateTypes: vi.fn()
-}));
+vi.mock('@/service/common/system', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/common/system')>();
+  mocks.actualGetInitConfig = actual.getInitConfig;
+  return {
+    ...actual,
+    getInitConfig: mocks.getInitConfig,
+    initSystemPluginTags: vi.fn(),
+    initAppTemplateTypes: vi.fn()
+  };
+});
 vi.mock('@fastgpt/service/common/system/tools', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@fastgpt/service/common/system/tools')>()),
   systemStartCb: vi.fn()
@@ -106,12 +112,16 @@ import { redisCacheAdapter } from '@fastgpt/dal/redis/adapter';
 import { registerNodeInstrumentation } from '@/instrumentation-node';
 import { MongoSystemMigrationState } from '@/migration/mongoSchema';
 import { MongoSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/schema';
+import { getSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/runtime';
+import { FastGPTPluginClient } from '@fastgpt/global/sdk/fastgpt-plugin';
 
 afterEach(async () => {
   const runner = global.systemMigrationRunner;
   runner?.stop();
   await runner?.tick();
   global.systemMigrationRunner = undefined;
+  mocks.getInitConfig.mockReset();
+  vi.unstubAllEnvs();
   vi.restoreAllMocks();
 });
 
@@ -325,4 +335,73 @@ describe('registerNodeInstrumentation', () => {
       }
     }
   );
+
+  it('defers real getInitConfig until startup system config migration cleans and backfills subservice', async () => {
+    vi.clearAllMocks();
+    mocks.loadModels.mockReset();
+    mocks.reloadModels.mockReset();
+    const previousSnapshot = global.systemInstanceConfig;
+    mocks.postHealth.mockResolvedValue({ auth: true, data: 'success' });
+    setTestLicenseActive(true);
+    vi.stubEnv('AGENT_SANDBOX_PROXY_URL', 'wss://proxy.example.test');
+    vi.stubEnv('AGENT_SANDBOX_PREVIEW_PROXY_URL', 'https://preview.example.test');
+    vi.stubEnv('AGENT_SANDBOX_PROXY_SECRET', 'synthetic-proxy-secret-32-characters');
+    vi.spyOn(FastGPTPluginClient.prototype, 'getPluginServiceFeatures').mockResolvedValue({
+      remoteDebug: false
+    } as any);
+    // 只有 Redis 分布式锁脚本使用假实现；配置加载与 Mongo 迁移全程真实执行。
+    vi.spyOn(redisCacheAdapter, 'evalScript').mockResolvedValue(1);
+    mocks.getInitConfig.mockImplementation(async (options) => {
+      // 真实 getInitConfig 在迁移前调用会因缺少 agentSandbox.proxy 直接 ZodError 崩溃。
+      const state = await MongoSystemMigrationState.findById(
+        '20261116_migrate_system_configs'
+      ).lean();
+      expect(state?.status).toBe(SystemMigrationStatusEnum.succeeded);
+      return mocks.actualGetInitConfig!(options);
+    });
+
+    await MongoSystemMigrationState.insertMany([
+      {
+        _id: '20261022_initialize_dataset_vector_indexes',
+        status: SystemMigrationStatusEnum.succeeded
+      },
+      {
+        _id: '20261104_backfill_chat_publish_source',
+        status: SystemMigrationStatusEnum.succeeded
+      },
+      {
+        _id: '20261112_backfill_stt_pricing_type',
+        status: SystemMigrationStatusEnum.succeeded
+      }
+    ]);
+    await MongoSystemInstanceConfig.collection.insertOne({
+      domain: 'subservice',
+      schemaVersion: 1,
+      revision: 6,
+      overrides: {
+        plugin: { remoteDebug: true },
+        agentSandbox: {
+          provider: 'sealosdevbox',
+          sealosdevbox: { baseUrl: 'https://devbox.example.test' }
+        }
+      },
+      explicitDefaultPaths: []
+    });
+
+    try {
+      await registerNodeInstrumentation();
+      expect(mocks.getInitConfig).toHaveBeenCalledTimes(1);
+      expect(mocks.exit).not.toHaveBeenCalled();
+      expect(getSystemInstanceConfig().subservice.agentSandbox).toMatchObject({
+        provider: 'sealosdevbox',
+        proxy: {
+          wsUrl: 'wss://proxy.example.test',
+          previewUrl: 'https://preview.example.test',
+          secret: 'synthetic-proxy-secret-32-characters'
+        }
+      });
+    } finally {
+      global.systemInstanceConfig = previousSnapshot;
+    }
+  });
 });

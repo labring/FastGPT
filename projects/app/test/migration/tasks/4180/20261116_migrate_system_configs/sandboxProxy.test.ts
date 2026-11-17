@@ -42,6 +42,54 @@ describe('rehomeAgentSandboxProxy', () => {
     await verifyAgentSandboxProxyMigration();
   });
 
+  it('imports proxy config for an enabled sandbox provider whose stored subservice lacks proxy fields', async () => {
+    await collection.updateOne(
+      { domain: 'subservice' },
+      {
+        $set: {
+          overrides: {
+            agentSandbox: {
+              provider: 'sealosdevbox',
+              sealosdevbox: { baseUrl: 'https://devbox.example.test' }
+            }
+          }
+        }
+      }
+    );
+
+    expect(await run()).toEqual({ updatedDocuments: 1 });
+    expect(decryptDomainSecrets('subservice', (await read())?.overrides).agentSandbox).toEqual({
+      provider: 'sealosdevbox',
+      sealosdevbox: { baseUrl: 'https://devbox.example.test' },
+      proxy: {
+        wsUrl: legacyEnv.AGENT_SANDBOX_PROXY_URL,
+        previewUrl: legacyEnv.AGENT_SANDBOX_PREVIEW_PROXY_URL,
+        secret: legacyEnv.AGENT_SANDBOX_PROXY_SECRET
+      }
+    });
+    await verifyAgentSandboxProxyMigration();
+  });
+
+  it('rejects enabled sandbox provider migration when proxy environment variables are missing', async () => {
+    await collection.updateOne(
+      { domain: 'subservice' },
+      {
+        $set: {
+          overrides: {
+            agentSandbox: {
+              provider: 'sealosdevbox',
+              sealosdevbox: { baseUrl: 'https://devbox.example.test' }
+            }
+          }
+        }
+      }
+    );
+
+    await expect(run({})).rejects.toThrow(
+      'Invalid Agent Sandbox proxy configuration during migration'
+    );
+  });
+
   it('preserves administrator values and explicit clears, including absent ENV', async () => {
     await collection.updateOne(
       { domain: 'subservice' },

@@ -20,7 +20,7 @@ import {
   MongoTransactionConflictError,
   mongoSessionRun
 } from '@fastgpt/service/common/mongo/sessionRun';
-import type { ClientSession } from '@fastgpt/service/common/mongo';
+import type { ClientSession, Types } from '@fastgpt/service/common/mongo';
 import type { z } from 'zod';
 
 const LEGACY_INSTANCE_ID = '000000000000000000000001';
@@ -194,11 +194,20 @@ const withoutExplicitDefaults = ({
 
 /** 为一次事务准备全部校验后的确定性补缺，终验使用同一规则检测遗漏。 */
 const prepareScopeMigration = async (session?: ClientSession) => {
-  const targets = await MongoSystemInstanceConfig.find({
-    domain: { $in: [...STANDALONE_SCOPES, 'commercial', 'operations', 'proEnv'] }
-  })
-    .session(session ?? null)
-    .lean();
+  type RawScopeDoc = {
+    _id: Types.ObjectId | string;
+    domain: string;
+    revision?: number;
+    overrides?: Record<string, unknown>;
+    explicitDefaultPaths?: unknown;
+  };
+  // 早期文档可能以域名字符串作 _id，原生读取才能保留真实 BSON 身份用于后续 CAS 更新。
+  const targets = await MongoSystemInstanceConfig.collection
+    .find<RawScopeDoc>(
+      { domain: { $in: [...STANDALONE_SCOPES, 'commercial', 'operations', 'proEnv'] } },
+      { session }
+    )
+    .toArray();
   // 开发期间已写入的旧 scope 不再属于新模型枚举，直接读取原始集合。
   const legacyInstances = await MongoSystemInstanceConfig.collection
     .find({ domain: { $in: [...MERGED_SCOPES] } }, { session })
@@ -315,8 +324,9 @@ export const migrateLegacyConfigScopes = async (session?: ClientSession) => {
       const target = targets.get(domain);
       const now = new Date();
       if (target) {
-        const result = await MongoSystemInstanceConfig.updateOne(
-          { _id: target._id, domain, revision: target.revision },
+        // 开发期早期文档可能以域名字符串作 _id，走原生集合更新避免 Mongoose 将 _id 强制转为 ObjectId。
+        const result = await MongoSystemInstanceConfig.collection.updateOne(
+          { _id: target._id as Types.ObjectId, domain, revision: target.revision },
           {
             $set: {
               overrides:
@@ -333,7 +343,7 @@ export const migrateLegacyConfigScopes = async (session?: ClientSession) => {
             },
             $inc: { revision: 1 }
           },
-          { session, timestamps: false, runValidators: false }
+          { session }
         );
         if (result.matchedCount !== 1) throw new MongoTransactionConflictError(domain);
       } else {

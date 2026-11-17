@@ -89,7 +89,13 @@ const createRunner = (runnerId: string) =>
 const waitForSuccess = async (runner: ReturnType<typeof createRunner>) => {
   await vi.waitFor(
     async () => {
-      expect(await MongoSystemMigrationState.findById(migration.id).lean()).toMatchObject({
+      const state = await MongoSystemMigrationState.findById(migration.id).lean();
+      if (state?.status === SystemMigrationStatusEnum.failed) {
+        throw new Error(
+          `Migration failed unexpectedly at ${state.lastError?.stageKey}: ${state.lastError?.message}`
+        );
+      }
+      expect(state).toMatchObject({
         status: SystemMigrationStatusEnum.succeeded
       });
     },
@@ -415,6 +421,76 @@ describe('system configuration migration with the real runner', () => {
       retry.stop();
       await failedOwner.tick();
       await startupWait;
+    }
+  });
+
+  it('migrates 4.17 env with enabled agentSandbox provider without dropping subservice before proxy backfill', async () => {
+    await seedLegacySources();
+    vi.stubEnv('AGENT_SANDBOX_PROVIDER', 'sealosdevbox');
+    vi.stubEnv('AGENT_SANDBOX_SEALOS_BASEURL', 'https://devbox.example.test');
+    const runner = createRunner('system-config-417-enabled-sandbox');
+    try {
+      await runner.start();
+      await waitForSuccess(runner);
+      const subservice = await MongoSystemInstanceConfig.findOne({ domain: 'subservice' }).lean();
+      expect(decryptDomainSecrets('subservice', subservice?.overrides)).toMatchObject({
+        agentSandbox: {
+          provider: 'sealosdevbox',
+          sealosdevbox: { baseUrl: 'https://devbox.example.test' },
+          proxy: {
+            wsUrl: 'wss://proxy.example.test',
+            previewUrl: 'https://preview.example.test',
+            secret: proxySecret
+          }
+        }
+      });
+    } finally {
+      runner.stop();
+      await runner.tick();
+    }
+  });
+
+  it('migrates existing pre-proxy subservice with enabled sandbox provider and deprecated fields', async () => {
+    await seedLegacySources();
+    await MongoSystemInstanceConfig.collection.insertOne({
+      domain: 'subservice',
+      schemaVersion: 1,
+      revision: 6,
+      overrides: {
+        plugin: { remoteDebug: true },
+        agentSandbox: {
+          provider: 'sealosdevbox',
+          sealosdevbox: { baseUrl: 'https://devbox.example.test' },
+          common: { entrypointTimeoutSeconds: 15 }
+        }
+      },
+      explicitDefaultPaths: []
+    });
+    const runner = createRunner('system-config-existing-enabled-sandbox');
+    try {
+      await runner.start();
+      await waitForSuccess(runner);
+      const subservice = await MongoSystemInstanceConfig.findOne({ domain: 'subservice' }).lean();
+      expect(subservice?.overrides).not.toHaveProperty('plugin');
+      expect(decryptDomainSecrets('subservice', subservice?.overrides)).toMatchObject({
+        codeSandbox: {
+          enabled: true,
+          url: 'https://code.example.test',
+          token: 'synthetic-code-token'
+        },
+        agentSandbox: {
+          provider: 'sealosdevbox',
+          sealosdevbox: { baseUrl: 'https://devbox.example.test' },
+          proxy: {
+            wsUrl: 'wss://proxy.example.test',
+            previewUrl: 'https://preview.example.test',
+            secret: proxySecret
+          }
+        }
+      });
+    } finally {
+      runner.stop();
+      await runner.tick();
     }
   });
 });

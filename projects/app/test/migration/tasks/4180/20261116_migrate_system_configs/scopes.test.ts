@@ -535,6 +535,36 @@ describe('migrateLegacyConfigScopes', () => {
     expect(await readTargets()).toEqual([]);
     expect(await MongoSystemConfigs.countDocuments()).toBe(3);
   });
+
+  it('merges plans into an existing commercial document keyed by legacy string _id without ObjectId cast failure', async () => {
+    await MongoSystemInstanceConfig.collection.insertOne({
+      _id: 'commercial' as any,
+      domain: 'commercial',
+      schemaVersion: 1,
+      revision: 3,
+      overrides: { showCoupon: true },
+      explicitDefaultPaths: [],
+      createdAt: new Date(),
+      updatedAt: new Date()
+    });
+    await MongoSystemConfigs.create({
+      type: 'fastgpt',
+      value: { subPlans: scopeValues.subPlans }
+    });
+
+    await migrateLegacyConfigScopes();
+    await verifyLegacyConfigScopes();
+
+    const doc = await MongoSystemInstanceConfig.collection.findOne({ domain: 'commercial' });
+    expect(doc).toMatchObject({
+      _id: 'commercial',
+      revision: 4,
+      overrides: {
+        showCoupon: true,
+        subPlans: normalizedPlans
+      }
+    });
+  });
 });
 
 describe('verifyLegacyConfigScopes', () => {

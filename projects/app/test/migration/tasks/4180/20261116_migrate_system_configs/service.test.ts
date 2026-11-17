@@ -230,6 +230,32 @@ describe('sanitizeOverridesForSchema', () => {
     expect(config.agentSandbox.common.memoryMiB).toBe(4096);
   });
 
+  it('preserves enabled subservice provider settings during 4.17 sanitization before proxy backfill', () => {
+    const warnings: string[] = [];
+    const issues: SchemaSanitizedIssue[] = [];
+    const overrides = sanitizeOverridesForSchema({
+      overrides: {
+        subservice: {
+          agentSandbox: {
+            provider: 'sealosdevbox',
+            sealosdevbox: { baseUrl: 'https://devbox.example.test' }
+          }
+        }
+      },
+      warnings,
+      issues
+    });
+
+    expect(issues).toEqual([]);
+    expect(warnings).toEqual([]);
+    expect(overrides.subservice).toEqual({
+      agentSandbox: {
+        provider: 'sealosdevbox',
+        sealosdevbox: { baseUrl: 'https://devbox.example.test' }
+      }
+    });
+  });
+
   it('drops values that violate the tightened schema and keeps the rest', () => {
     const warnings: string[] = [];
     const issues: SchemaSanitizedIssue[] = [];
@@ -699,5 +725,44 @@ describe('applyInstanceConfigMigration (field-level backfill)', () => {
       logger
     });
     expect(rerun.domains).toEqual([]);
+  });
+
+  it('inserts and backfills enabled subservice config before proxy backfill completes', async () => {
+    const first = await applyInstanceConfigMigration({
+      overrides: {
+        subservice: {
+          agentSandbox: {
+            provider: 'sealosdevbox',
+            sealosdevbox: { baseUrl: 'https://devbox.example.test' }
+          }
+        }
+      },
+      logger
+    });
+    expect(first.domains).toContain('subservice');
+
+    const backfill = await applyInstanceConfigMigration({
+      overrides: {
+        subservice: {
+          codeSandbox: { url: 'https://code.example.test' },
+          agentSandbox: {
+            provider: 'sealosdevbox',
+            sealosdevbox: { baseUrl: 'https://devbox.example.test' }
+          }
+        }
+      },
+      logger
+    });
+    expect(backfill.backfilledDomains).toEqual(['subservice']);
+
+    const doc = await MongoSystemInstanceConfig.findOne({ domain: 'subservice' }).lean();
+    expect(doc?.overrides).toMatchObject({
+      codeSandbox: { url: 'https://code.example.test' },
+      agentSandbox: {
+        provider: 'sealosdevbox',
+        sealosdevbox: { baseUrl: 'https://devbox.example.test' }
+      }
+    });
+    expect(doc?.explicitDefaultPaths ?? []).not.toContain('codeSandbox.url');
   });
 });

@@ -6,9 +6,9 @@ import {
   SYSTEM_INSTANCE_CONFIG_SCHEMA_VERSION,
   SYSTEM_INSTANCE_CONFIG_DOMAINS,
   type SystemInstanceConfigDomainKey,
-  getDomainDefaultConfig,
-  resolveDomainEffectiveConfig
+  getDomainDefaultConfig
 } from '@fastgpt/global/common/system/config/schema';
+import { resolveDomainConfigBeforeProxyBackfill } from './cleanup';
 import {
   collectPrunedLeafPaths,
   deepMergeConfig,
@@ -825,7 +825,7 @@ export const sanitizeOverridesForSchema = ({
     // 循环剔除：每轮校验拿到一个非法叶子路径就删掉重试，直到整域通过
     for (;;) {
       try {
-        resolveDomainEffectiveConfig({ domain, overrides: candidate });
+        resolveDomainConfigBeforeProxyBackfill({ domain, overrides: candidate });
         break;
       } catch (error) {
         const zodIssues = (error as { issues?: { path?: (string | number)[] }[] })?.issues ?? [];
@@ -1183,7 +1183,11 @@ export const applyInstanceConfigMigration = async ({
       const testMerged = mergeMissingOverrides(existingOverrides, cloned);
       try {
         // 试删后复验：若完全通过或不再报出当前 badPath，说明此待补字段即为冲突源
-        resolveDomainEffectiveConfig({ domain, overrides: testMerged, options: { strict: false } });
+        resolveDomainConfigBeforeProxyBackfill({
+          domain,
+          overrides: testMerged,
+          options: { strict: false }
+        });
         removeNestedPath(candidateMissing, testPath);
         return testPathStr;
       } catch (err: any) {
@@ -1257,7 +1261,11 @@ export const applyInstanceConfigMigration = async ({
       for (;;) {
         const merged = mergeMissingOverrides(existingOverrides, candidateMissing);
         try {
-          resolveDomainEffectiveConfig({ domain, overrides: merged, options: { strict: false } });
+          resolveDomainConfigBeforeProxyBackfill({
+            domain,
+            overrides: merged,
+            options: { strict: false }
+          });
           break;
         } catch (error) {
           const isZod = error instanceof z.ZodError || Array.isArray((error as any)?.issues);
@@ -1359,9 +1367,9 @@ export const applyInstanceConfigMigration = async ({
   // 11 个 domain 必须全部初始化：空 overrides 也要落库，否则全新安装会因 Pro 启动断言缺域而无法就绪。
   for (const domain of domains) {
     const targetOverrides = overrides[domain] ?? {};
-    // 先执行两阶段校验，确保写入值与运行时解析结果一致（与 controller 写入路径一致，
+    // 先执行预检校验，确保写入值与运行时结构一致（proxy 必填留待 backfill 阶段检验，
     // updateOne 不跑 schema validator，由这里显式校验兜底）。
-    resolveDomainEffectiveConfig({ domain, overrides: targetOverrides });
+    resolveDomainConfigBeforeProxyBackfill({ domain, overrides: targetOverrides });
 
     const inserted = await MongoSystemInstanceConfig.updateOne(
       { domain },

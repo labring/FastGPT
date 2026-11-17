@@ -7,7 +7,7 @@ import {
 import { isDeepStrictEqual } from 'node:util';
 import z from 'zod';
 import { isValidServiceBaseUrl } from '@fastgpt/global/common/string/url';
-import { stripDeprecatedOverrides } from './cleanup';
+import { resolveDomainConfigBeforeProxyBackfill, stripDeprecatedOverrides } from './cleanup';
 import { NumSchema } from '@fastgpt/global/common/zod';
 
 const LegacyConnectionEnvSchema = z.object({
@@ -44,7 +44,7 @@ export const rehomeSubserviceConnections = async ({
     // 既有地址可能包含凭据，解析失败时不能将原始配置带入迁移错误。
     const config = (() => {
       try {
-        return resolveDomainEffectiveConfig({ domain: 'subservice', overrides });
+        return resolveDomainConfigBeforeProxyBackfill({ domain: 'subservice', overrides });
       } catch {
         throw new Error('Invalid existing subservice configuration');
       }
@@ -82,7 +82,7 @@ export const rehomeSubserviceConnections = async ({
       codeSandbox: { ...config.codeSandbox, enabled, url, token },
       mcp: { ...config.mcp, enabled: mcpEnabled }
     };
-    resolveDomainEffectiveConfig({ domain: 'subservice', overrides: target });
+    resolveDomainConfigBeforeProxyBackfill({ domain: 'subservice', overrides: target });
     if (isDeepStrictEqual(target, decodedOverrides)) return { updatedDocuments: 0 };
 
     await assertActive();
@@ -164,7 +164,7 @@ export const rehomeAgentSandboxProxy = async ({
       throw new Error('Invalid subservice explicit-default metadata');
     }
     try {
-      resolveDomainEffectiveConfig({ domain: 'subservice', overrides });
+      resolveDomainConfigBeforeProxyBackfill({ domain: 'subservice', overrides });
     } catch {
       throw new Error('Invalid existing subservice configuration');
     }
@@ -242,7 +242,9 @@ const legacyKeys = {
 } as const;
 
 /** 迁移和完成校验共用的读取边界；错误仅报告配置位置，不复制原配置或源值。 */
-const readOvercommitDocument = async () => {
+const readOvercommitDocument = async ({
+  allowPendingProxy = false
+}: { allowPendingProxy?: boolean } = {}) => {
   const doc = await MongoSystemInstanceConfig.collection.findOne(
     { domain: 'subservice' },
     { readPreference: 'primary' }
@@ -253,8 +255,11 @@ const readOvercommitDocument = async () => {
   if (!Array.isArray(explicitPaths) || !explicitPaths.every((path) => typeof path === 'string')) {
     throw new Error('Invalid subservice explicit-default metadata');
   }
+  const validate = allowPendingProxy
+    ? resolveDomainConfigBeforeProxyBackfill
+    : resolveDomainEffectiveConfig;
   try {
-    resolveDomainEffectiveConfig({ domain: 'subservice', overrides });
+    validate({ domain: 'subservice', overrides });
   } catch {
     throw new Error('Invalid existing subservice configuration');
   }
@@ -273,7 +278,9 @@ export const rehomeSandboxOvercommit = async ({
   legacyEnv?: Record<string, string | undefined>;
 }) => {
   for (let attempt = 0; attempt < 5; attempt += 1) {
-    const { doc, overrides, explicitPaths } = await readOvercommitDocument();
+    const { doc, overrides, explicitPaths } = await readOvercommitDocument({
+      allowPendingProxy: true
+    });
     const previous = overrides.agentSandbox?.opensandbox ?? {};
     const missingKeys = (Object.keys(legacyKeys) as (keyof typeof legacyKeys)[]).filter(
       (key) =>
@@ -299,7 +306,7 @@ export const rehomeSandboxOvercommit = async ({
       }
     };
     try {
-      resolveDomainEffectiveConfig({ domain: 'subservice', overrides: target });
+      resolveDomainConfigBeforeProxyBackfill({ domain: 'subservice', overrides: target });
     } catch {
       throw new Error('Invalid sandbox overcommit configuration during migration');
     }

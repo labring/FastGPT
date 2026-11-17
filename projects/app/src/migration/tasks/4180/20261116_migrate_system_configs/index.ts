@@ -170,12 +170,12 @@ export const migrateSystemConfigs = async (context: SystemMigrationContext) => {
   });
 
   const backfills = [
-    // 先完成业务域初始化和废弃字段清理，再合并套餐与运营配置，避免遮蔽文件或严格校验失败。
+    // 先完成业务域初始化和废弃字段清理，再先导入代理连接，保证后续 subservice 校验完整通过。
     () => migrateLegacyConfigScopes(),
     backfillExternalFileCheck,
+    rehomeAgentSandboxProxy,
     rehomeSubserviceConnections,
     backfillModelDeprecationSms,
-    rehomeAgentSandboxProxy,
     rehomeSandboxOvercommit,
     rehomeFileDomain,
     rehomeHttpRuntimePolicies,

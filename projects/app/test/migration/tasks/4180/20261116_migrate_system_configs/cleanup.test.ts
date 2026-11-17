@@ -418,4 +418,36 @@ describe('cleanupInstanceConfigDeprecatedFields (integration)', () => {
     expect(doc?.explicitDefaultPaths).toEqual(['checkExternalFile']);
     expect((await verifyInstanceConfigDeprecatedFields()).remainingDocuments).toEqual([]);
   });
+
+  it('cleans deprecated subservice fields for an enabled sandbox provider before proxy backfill', async () => {
+    await seedDirtyDoc({
+      domain: 'subservice',
+      revision: 1,
+      overrides: {
+        plugin: { remoteDebug: true },
+        agentSandbox: {
+          provider: 'sealosdevbox',
+          sealosdevbox: { baseUrl: 'https://devbox.example.test' },
+          proxy: { httpUrl: 'https://legacy-http-proxy.example.test' }
+        }
+      }
+    });
+
+    const result = await cleanupInstanceConfigDeprecatedFields({ logger });
+    expect(result.updatedDomains).toEqual(['subservice']);
+    expect(result.removedFieldCount).toBe(2);
+
+    const doc = await MongoSystemInstanceConfig.findOne({ domain: 'subservice' }).lean();
+    expect(doc?.overrides).toEqual({
+      agentSandbox: {
+        provider: 'sealosdevbox',
+        sealosdevbox: { baseUrl: 'https://devbox.example.test' }
+      }
+    });
+
+    // verify 阶段在 backfill 之后运行，仍要求完整代理配置
+    const beforeProxyBackfill = await verifyInstanceConfigDeprecatedFields();
+    expect(beforeProxyBackfill.remainingDocuments).toEqual([]);
+    expect(beforeProxyBackfill.invalidDomains).toEqual(['subservice']);
+  });
 });

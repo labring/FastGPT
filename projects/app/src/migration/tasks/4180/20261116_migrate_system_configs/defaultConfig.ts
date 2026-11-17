@@ -11,6 +11,7 @@ import {
 import { MongoSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/schema';
 import { encryptDomainSecrets } from '@fastgpt/service/common/system/systemInstanceConfig/secrets';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
+import { resolveDomainConfigBeforeProxyBackfill } from './cleanup';
 
 type DefaultConfigOverrides = Partial<
   Record<SystemInstanceConfigDomainKey, Record<string, unknown>>
@@ -79,16 +80,19 @@ export const initializeEmptyInstanceConfig = async ({
   overrides,
   explicitDefaultPaths
 }: DefaultConfigInitialization): Promise<SystemInstanceConfigDomainKey[]> => {
+  const now = new Date();
   const documents = SYSTEM_INSTANCE_CONFIG_DOMAINS.map((domain) => {
     const domainOverrides = overrides[domain] ?? {};
-    resolveDomainEffectiveConfig({ domain, overrides: domainOverrides });
+    resolveDomainConfigBeforeProxyBackfill({ domain, overrides: domainOverrides });
     return {
       domain,
       schemaVersion: SYSTEM_INSTANCE_CONFIG_SCHEMA_VERSION,
       revision: 1,
       overrides: encryptDomainSecrets({ domain, data: domainOverrides }),
       explicitDefaultPaths: explicitDefaultPaths?.[domain] ?? [],
-      updatedBy: { actor: 'migration' as const }
+      updatedBy: { actor: 'migration' as const },
+      createdAt: now,
+      updatedAt: now
     };
   });
 
@@ -99,7 +103,12 @@ export const initializeEmptyInstanceConfig = async ({
           domain: { $in: SYSTEM_INSTANCE_CONFIG_DOMAINS }
         }).session(session);
         if (count > 0) return [];
-        await MongoSystemInstanceConfig.insertMany(documents, { session, ordered: true });
+        // 前面已执行前置 Schema 校验；跳过 Mongoose 终审 validator，避免在代理 backfill 前提前拒绝非 none 沙箱。
+        await MongoSystemInstanceConfig.insertMany(documents, {
+          session,
+          ordered: true,
+          lean: true
+        });
         return [...SYSTEM_INSTANCE_CONFIG_DOMAINS];
       },
       { readPreference: 'primary' }

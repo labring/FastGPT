@@ -152,23 +152,6 @@ export async function registerNodeInstrumentation() {
       })
     ]);
 
-    // 加载初始化配置
-    await runInitializationStep({
-      step: 'get-init-config',
-      action: () => getInitConfig({ refreshLLMRequestRecordTTL: false }),
-      logger,
-      getErrText
-    });
-
-    // S3 bucket 的下载模式与公开地址依赖实例配置，必须在 get-init-config 之后构造。
-    await runInitializationStep({
-      step: 'init-s3-buckets',
-      stage: InitialErrorEnum.S3_ERROR,
-      action: () => initS3Buckets(),
-      logger,
-      getErrText
-    });
-
     // 初始化系统用户
     await runInitializationStep({
       step: 'init-system-user',
@@ -278,22 +261,26 @@ export async function registerNodeInstrumentation() {
       logger.info('System business services are ready');
     };
 
+    /** 配置迁移完成后加载全量实例配置、校验代理配置并重建 S3 bucket；不提前在迁移前强校验旧库。 */
+    const applyPostMigrationSystemConfig = () =>
+      runInitializationStep({
+        step: 'reload-system-config-after-startup-migrations',
+        action: async () => {
+          await getInitConfig();
+          validateAgentSandboxProxyConfig(
+            getSystemInstanceConfig().subservice.agentSandbox.provider
+          );
+          initS3Buckets();
+        },
+        logger,
+        getErrText
+      });
+
     await startBusinessAfterSystemMigrations({
       runner: migrationRunner,
       reloadModels: async () => {
         // 实例配置迁移可能改变存储策略；每个节点都需在业务启动前重新应用，不能只依赖 lease owner。
-        await runInitializationStep({
-          step: 'reload-system-config-after-startup-migrations',
-          action: async () => {
-            await getInitConfig();
-            validateAgentSandboxProxyConfig(
-              getSystemInstanceConfig().subservice.agentSandbox.provider
-            );
-            initS3Buckets();
-          },
-          logger,
-          getErrText
-        });
+        await applyPostMigrationSystemConfig();
 
         /**
          * 系统模型必须在配置迁移之后加载：旧部署的插件地址/凭据要等迁移写入实例配置后才是权威值，
@@ -317,7 +304,7 @@ export async function registerNodeInstrumentation() {
         });
       },
       onMigrationsSettled: async () => {
-        await getInitConfig();
+        await applyPostMigrationSystemConfig();
       },
       startBusinessServices
     });
