@@ -16,12 +16,13 @@ import {
   Flex,
   Box,
   HStack,
-  InputGroup,
-  Input,
-  InputLeftElement,
   Button,
   FormLabel
 } from '@chakra-ui/react';
+import AdminCompositeSearch, {
+  useAdminCompositeSearch,
+  useAdminTeamSearchOptions
+} from '@/components/admin/CompositeSearch';
 import type { InvoiceSchemaType } from '@fastgpt/global/support/wallet/bill/type';
 import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import { formatStorePrice2Read } from '@fastgpt/global/support/wallet/usage/tools';
@@ -38,11 +39,13 @@ import { downloadFetch } from '@/web/common/system/utils';
 
 const InvoiceManageTable = () => {
   const { t } = useSafeTranslation();
-  const [search, setSearch] = useState<string>();
+  const invoiceSearchOptions = useAdminTeamSearchOptions();
   // 保存选中记录的快照，避免列表刷新、排序或翻页后查找不到弹窗数据。
   const [uploadInvoiceData, setUploadInvoiceData] = useState<InvoiceSchemaType>();
   const [invoiceDetailData, setInvoiceDetailData] = useState<InvoiceSchemaType>();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const { searchField, inputValue, isInvalid, searchParams, onFieldChange, onInputChange } =
+    useAdminCompositeSearch({ options: invoiceSearchOptions });
 
   const {
     data: invoices,
@@ -54,10 +57,8 @@ const InvoiceManageTable = () => {
   } = usePagination(getInvoiceList, {
     defaultPageSize: 20,
     pageSizeCacheKey: 'users-invoice-list',
-    params: {
-      search
-    },
-    refreshDeps: [search],
+    params: searchParams,
+    refreshDeps: [searchParams],
     scrollContainerRef
   });
 
@@ -76,16 +77,14 @@ const InvoiceManageTable = () => {
           {t('admin:invoice_management')}
         </Box>
         <Box flexGrow={1}></Box>
-        <InputGroup w={['100%', '250px']} h={'36px'}>
-          <InputLeftElement h={'full'}>
-            <MyIcon name="common/searchLight" w={4} color={'myGray.400'} />
-          </InputLeftElement>
-          <Input
-            placeholder={t('admin:enter_a_username_press_enter_to_search')}
-            h={'36px'}
-            onChange={(e) => setSearch(e.target.value)}
-          ></Input>
-        </InputGroup>
+        <AdminCompositeSearch
+          options={invoiceSearchOptions}
+          field={searchField}
+          value={inputValue}
+          isInvalid={isInvalid}
+          onFieldChange={onFieldChange}
+          onValueChange={onInputChange}
+        />
       </Flex>
 
       <FixedTableContainer

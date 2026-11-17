@@ -10,7 +10,7 @@ export const AdminInvoicePath: OpenAPIPath = {
   '/proApi/admin/wallet/bill/invoice/list': {
     post: {
       summary: '获取发票列表',
-      description: '分页获取发票申请列表，支持按团队名称搜索',
+      description: '分页获取发票申请列表，支持按团队所有者用户名、团队名称模糊搜索及团队ID精确搜索',
       tags: [DevApiTagsMap.adminWalletInvoice],
       requestBody: {
         content: {

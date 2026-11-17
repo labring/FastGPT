@@ -41,12 +41,19 @@ export type PlanItemType = z.infer<typeof PlanItemSchema>;
  * API: 获取套餐列表
  * Route: POST /proApi/admin/wallet/plan/getPlans
  * Method: POST
- * Description: 分页获取套餐订阅列表，支持按团队所有者用户名搜索
+ * Description: 分页获取套餐订阅列表，支持按团队所有者用户名、团队名称模糊搜索及团队ID精确搜索
  * Tags: ['Admin', 'Plans', 'Read']
  * ============================================================================ */
 
 export const GetPlansBodySchema = createPaginationSchema({
-  search: z.string().trim().max(100).optional().meta({ description: '搜索关键词（用户名）' })
+  username: z
+    .string()
+    .trim()
+    .max(100)
+    .optional()
+    .meta({ description: '团队所有者用户名（模糊匹配）' }),
+  teamName: z.string().trim().max(100).optional().meta({ description: '团队名称（模糊匹配）' }),
+  teamId: optionalEmptyToUndefined(ObjectIdSchema).meta({ description: '团队ID（精确匹配）' })
 });
 export type GetPlansBodyType = z.infer<typeof GetPlansBodySchema>;
 

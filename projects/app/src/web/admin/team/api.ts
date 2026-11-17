@@ -6,11 +6,11 @@ import type {
   AdminTeamSelectorQueryType,
   AdminTeamSelectorResponseType,
   GetTeamMembersResponseType,
+  GetTeamsBodyType,
   GetTeamsResponseType
 } from '@fastgpt/global/openapi/admin/team/api';
-import type { PaginationProps } from '@fastgpt/global/openapi/api';
 
-export const getTeams = (data: PaginationProps<{ search?: string }>) =>
+export const getTeams = (data: GetTeamsBodyType) =>
   POST<GetTeamsResponseType>('/proApi/admin/team/getTeams', data, { maxQuantity: 1 });
 
 export const getTeamMembers = (teamId: string) =>
