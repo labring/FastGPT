@@ -4,6 +4,7 @@ import {
   hasDeprecatedOverrides,
   stripDeprecatedOverrides,
   cleanupInstanceConfigDeprecatedFields,
+  resolveDomainConfigBeforeProxyBackfill,
   verifyInstanceConfigDeprecatedFields
 } from '@/migration/tasks/4180/20261116_migrate_system_configs/cleanup';
 import { MongoSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/schema';
@@ -449,5 +450,32 @@ describe('cleanupInstanceConfigDeprecatedFields (integration)', () => {
     const beforeProxyBackfill = await verifyInstanceConfigDeprecatedFields();
     expect(beforeProxyBackfill.remainingDocuments).toEqual([]);
     expect(beforeProxyBackfill.invalidDomains).toEqual(['subservice']);
+  });
+
+  it('keeps validating provider baseUrl and proxy secret length before proxy backfill', () => {
+    expect(() =>
+      resolveDomainConfigBeforeProxyBackfill({
+        domain: 'subservice',
+        overrides: {
+          agentSandbox: {
+            provider: 'sealosdevbox',
+            sealosdevbox: { baseUrl: '' }
+          }
+        }
+      })
+    ).toThrow();
+
+    expect(() =>
+      resolveDomainConfigBeforeProxyBackfill({
+        domain: 'subservice',
+        overrides: {
+          agentSandbox: {
+            provider: 'sealosdevbox',
+            sealosdevbox: { baseUrl: 'https://devbox.example.test' },
+            proxy: { secret: 'too-short' }
+          }
+        }
+      })
+    ).toThrow();
   });
 });

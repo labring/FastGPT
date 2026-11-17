@@ -7,13 +7,20 @@ import {
   parseDomainOverrides,
   resolveDomainEffectiveConfig
 } from '@fastgpt/global/common/system/config/schema';
-import { SubserviceConfigBeforeProxySchema } from '@fastgpt/global/common/system/config/schemas/subservice';
+import {
+  SubserviceConfigBaseSchema,
+  applySubserviceBaseRules
+} from '@fastgpt/global/common/system/config/schemas/subservice';
 import { MongoSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/schema';
 import {
   decryptDomainSecrets,
   encryptDomainSecrets
 } from '@fastgpt/service/common/system/systemInstanceConfig/secrets';
 import type { SystemMigrationLogger } from '@/migration/registry';
+
+/** 仅用于本迁移任务在代理回填之前的过渡校验；运行时与终验必须使用 SubserviceConfigSchema。 */
+const SubserviceConfigBeforeProxySchema =
+  SubserviceConfigBaseSchema.superRefine(applySubserviceBaseRules);
 
 /**
  * 代理连接迁移（rehomeAgentSandboxProxy）在 backfill 阶段才导入环境变量，

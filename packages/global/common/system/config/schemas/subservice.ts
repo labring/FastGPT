@@ -112,8 +112,8 @@ export const SubserviceConfigBaseSchema = z.strictObject({
   mcp: McpSubserviceConfigSchema.prefault({})
 });
 
-/** 校验除「启用供应商时代理必填」之外的跨字段约束，供迁移前阶段与正式 Schema 复用。 */
-const applySubserviceBaseRules = (
+/** 校验除「启用供应商时代理必填」之外的跨字段通用约束，供正式终审 Schema 与外部基础校验组装复用。 */
+export const applySubserviceBaseRules = (
   subservice: z.infer<typeof SubserviceConfigBaseSchema>,
   ctx: z.RefinementCtx
 ) => {
@@ -150,10 +150,6 @@ const applySubserviceBaseRules = (
     }
   }
 };
-
-/** 仅用于系统配置迁移在代理回填之前的过渡校验；运行时读取与管理保存必须使用 SubserviceConfigSchema。 */
-export const SubserviceConfigBeforeProxySchema =
-  SubserviceConfigBaseSchema.superRefine(applySubserviceBaseRules);
 
 export const SubserviceConfigSchema = SubserviceConfigBaseSchema.superRefine((subservice, ctx) => {
   applySubserviceBaseRules(subservice, ctx);
