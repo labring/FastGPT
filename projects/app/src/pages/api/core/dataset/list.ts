@@ -30,7 +30,7 @@ import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   isDisableSuperAdmin,
   isSuperAdminBypassDisabled
-} from '@fastgpt/global/core/dataset/apiDataset/utils';
+} from '@fastgpt/service/support/permission/dataset/disableSuperAdmin';
 import { getResourcePermissionsByTeam } from '@fastgpt/service/support/permission/resourcePermissionService';
 
 async function handler(req: ApiRequestProps): Promise<GetDatasetListResponse> {

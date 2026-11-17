@@ -20,6 +20,7 @@ import {
 import { parseHeaderCert } from '@fastgpt/service/support/permission/auth/common';
 import { getFakeUsers } from '@test/datas/users';
 import { Types } from '@fastgpt/service/common/mongo';
+import { setDisableApiDatasetSuperAdmin } from '@test/utils/serviceEnv';
 
 /** 真实资源/ACL，只复用全局身份替身；便于比较批量与单条入口的权限语义和实际查询规模。 */
 const fixture = async (enabled = true) => {
@@ -84,7 +85,7 @@ const fixture = async (enabled = true) => {
 };
 
 afterEach(() => {
-  vi.unstubAllEnvs();
+  setDisableApiDatasetSuperAdmin(false);
 });
 
 describe('authDatasetCollectionMoves', () => {
@@ -265,7 +266,7 @@ describe('authDatasetCollectionMoves', () => {
     );
   });
   it('disableSuperAdmin 关闭 API 文件库移动鉴权里的团队 owner 旁路', async () => {
-    vi.stubEnv('DISABLE_SUPER_ADMIN', 'true');
+    setDisableApiDatasetSuperAdmin(true);
     const { auth, move, datasetId, owner } = await fixture();
     await MongoDataset.updateOne(
       { _id: datasetId },
@@ -282,7 +283,7 @@ describe('authDatasetCollectionMoves', () => {
     ).rejects.toBe(DatasetErrEnum.unAuthDataset);
   });
   it('disableSuperAdmin 不影响普通知识库的团队 owner 旁路', async () => {
-    vi.stubEnv('DISABLE_SUPER_ADMIN', 'true');
+    setDisableApiDatasetSuperAdmin(true);
     const { auth, move, datasetId, owner } = await fixture();
     await MongoDataset.updateOne({ _id: datasetId }, { tmbId: new Types.ObjectId() });
 

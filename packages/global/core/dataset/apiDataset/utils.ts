@@ -123,23 +123,6 @@ export const classifyApiDatasetError = (
 export const isPermissionSyncDataset = (apiDatasetServer?: ApiDatasetServerType) =>
   apiDatasetServer?.permissionSync === true;
 
-/**
- * 部署开关是否要求超管（root / 团队 owner）在知识库管理侧遵守外部文件权限。
- * 环境变量 `DISABLE_SUPER_ADMIN=true`，对所有 API 文件库生效、默认关闭。
- */
-export const isSuperAdminBypassDisabled = () => process.env.DISABLE_SUPER_ADMIN === 'true';
-
-/**
- * 该知识库是否需要关闭超管旁路：开关打开且是 API 文件库（配置了 apiDatasetServer）。
- *
- * 作用范围只有本地 Dataset / Collection 鉴权（authDatasetByTmbId、authDatasetCollection、
- * listV2、exportAll 等），普通知识库仍保留 root / 团队 owner 旁路。检索 / RAG 召回**不读取**
- * 该开关：工作流检索、Agent 知识库仍按团队 owner 短路。这是产品取舍——该开关用来让管理员在
- * 管理界面上也遵守外部文件权限，不是用来限制检索范围，也不是用来收紧站内知识库。
- */
-export const isDisableSuperAdmin = (apiDatasetServer?: ApiDatasetServerType) =>
-  isSuperAdminBypassDisabled() && !!apiDatasetServer;
-
 export const filterApiDatasetServerPublicData = (apiDatasetServer?: ApiDatasetServerType) => {
   if (!apiDatasetServer) return undefined;
 

@@ -44,7 +44,7 @@ import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import {
   isDisableSuperAdmin,
   isSuperAdminBypassDisabled
-} from '@fastgpt/global/core/dataset/apiDataset/utils';
+} from '@fastgpt/service/support/permission/dataset/disableSuperAdmin';
 import type { DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
 
 /**

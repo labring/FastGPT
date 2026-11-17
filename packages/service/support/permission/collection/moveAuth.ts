@@ -31,10 +31,8 @@ import {
   shouldInheritResourcePermission,
   toInheritedPermissionValue
 } from '../resourcePermissionPolicy';
-import {
-  isDisableSuperAdmin,
-  isPermissionSyncDataset
-} from '@fastgpt/global/core/dataset/apiDataset/utils';
+import { isPermissionSyncDataset } from '@fastgpt/global/core/dataset/apiDataset/utils';
+import { isDisableSuperAdmin } from '../dataset/disableSuperAdmin';
 import type { AuthModeType } from '../type';
 
 export type CollectionMoveAuthItem = { collectionId: string; targetParentId: string | null };

@@ -21,7 +21,7 @@ import {
 } from '@fastgpt/global/core/dataset/data/utils';
 import { sanitizeCsvField } from '@fastgpt/service/common/file/csv';
 import { ExportDatasetQuerySchema } from '@fastgpt/global/openapi/core/dataset/api';
-import { isDisableSuperAdmin } from '@fastgpt/global/core/dataset/apiDataset/utils';
+import { isDisableSuperAdmin } from '@fastgpt/service/support/permission/dataset/disableSuperAdmin';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.DATA);
@@ -65,7 +65,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   // 文件级权限：只导出当前成员可读的 Collection；undefined 表示无需过滤（团队 owner /
   // 未启用 collection 权限）。
   // root 可读全部 Collection（与列表、collection 鉴权短路一致），这里返回的 isRoot 已按
-  // 全局开关 DISABLE_SUPER_ADMIN 折成有效值，开关开启时 root 仍必须走文件 ACL。
+  // 全局开关 DISABLE_APIDATASET_SUPER_ADMIN 折成有效值，开关开启时 root 仍必须走文件 ACL。
   // 该开关下团队 owner 也必须按文件 ACL 收敛，否则导出会成为绕过文件权限的旁路。
   const readableCollectionIds = isRoot
     ? undefined

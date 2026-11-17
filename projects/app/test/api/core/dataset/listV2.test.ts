@@ -18,6 +18,7 @@ import * as resourceLookup from '@fastgpt/service/core/app/resourceLookup';
 import { getFakeUsers, getUser } from '@test/datas/users';
 import { Call } from '@test/utils/request';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { setDisableApiDatasetSuperAdmin } from '@test/utils/serviceEnv';
 
 describe('POST /api/core/dataset/listV2 - datasetIds', () => {
   it.each(['pagination', 'ids'] as const)(
@@ -296,13 +297,13 @@ describe('POST /api/core/dataset/listV2 - datasetIds', () => {
   });
 });
 
-describe('POST /api/core/dataset/listV2 - team owner under DISABLE_SUPER_ADMIN', () => {
+describe('POST /api/core/dataset/listV2 - team owner under DISABLE_APIDATASET_SUPER_ADMIN', () => {
   afterEach(() => {
-    vi.unstubAllEnvs();
+    setDisableApiDatasetSuperAdmin(false);
   });
 
   it('只按 ACL 暴露 API 文件库：无 ACL 时隐藏，授权后可见且不是 owner', async () => {
-    vi.stubEnv('DISABLE_SUPER_ADMIN', 'true');
+    setDisableApiDatasetSuperAdmin(true);
     const { owner, members } = await getFakeUsers(1);
     const member = members[0];
     const [apiDataset, ordinaryDataset] = await MongoDataset.create([
@@ -359,7 +360,7 @@ describe('POST /api/core/dataset/listV2 - team owner under DISABLE_SUPER_ADMIN',
   });
 
   it('API 文件库的 dataset 所有者即使没有 ACL 行也保留可见性和 owner 身份', async () => {
-    vi.stubEnv('DISABLE_SUPER_ADMIN', 'true');
+    setDisableApiDatasetSuperAdmin(true);
     const { owner, members } = await getFakeUsers(1);
     const member = members[0];
     const [ownedByTeamOwner, ownedByMember] = await MongoDataset.create([

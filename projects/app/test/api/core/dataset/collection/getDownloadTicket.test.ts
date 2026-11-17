@@ -4,6 +4,7 @@ import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { MemberRateLimitPolicy } from '@fastgpt/service/common/rateLimit/interface/member';
+import { setDisableApiDatasetSuperAdmin } from '@test/utils/serviceEnv';
 
 const mocks = vi.hoisted(() => ({
   assertDatasetArchiveCollectionsReadable: vi.fn(),
@@ -47,7 +48,7 @@ const createRequest = (body = { datasetId, collectionIds }) =>
   Object.assign(new EventEmitter(), { body });
 
 afterEach(() => {
-  vi.unstubAllEnvs();
+  setDisableApiDatasetSuperAdmin(false);
 });
 
 describe('POST /core/dataset/collection/getDownloadTicket', () => {
@@ -125,7 +126,7 @@ describe('POST /core/dataset/collection/getDownloadTicket', () => {
   });
 
   it('forwards the effective root flag and disableSuperAdmin to the readability check', async () => {
-    vi.stubEnv('DISABLE_SUPER_ADMIN', 'true');
+    setDisableApiDatasetSuperAdmin(true);
     mocks.authDataset.mockResolvedValueOnce({
       dataset: {
         _id: datasetId,

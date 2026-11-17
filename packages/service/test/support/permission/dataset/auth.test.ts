@@ -1,6 +1,7 @@
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { setDisableApiDatasetSuperAdmin } from '@test/utils/serviceEnv';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { TeamPermission } from '@fastgpt/global/support/permission/user/controller';
 import {
@@ -97,7 +98,7 @@ const mockDatasetQuery = (dataset: Record<string, unknown>) => {
 };
 
 afterEach(() => {
-  vi.unstubAllEnvs();
+  setDisableApiDatasetSuperAdmin(false);
 });
 
 describe('authDatasetCollection', () => {
@@ -438,7 +439,7 @@ describe('authDatasetCollection', () => {
   });
 
   it('disableSuperAdmin applies to the dataset gate and the collection bypass alike', async () => {
-    vi.stubEnv('DISABLE_SUPER_ADMIN', 'true');
+    setDisableApiDatasetSuperAdmin(true);
     mockParseHeaderCert.mockResolvedValue({
       teamId: 'team-a',
       tmbId: 'tmb-a',
@@ -497,7 +498,7 @@ describe('authDatasetCollection', () => {
   });
 
   it('disableSuperAdmin also removes the team-owner bypass on the dataset', async () => {
-    vi.stubEnv('DISABLE_SUPER_ADMIN', 'true');
+    setDisableApiDatasetSuperAdmin(true);
     mockDatasetQuery({
       _id: datasetId,
       teamId: 'team-a',
@@ -510,14 +511,14 @@ describe('authDatasetCollection', () => {
     ).rejects.toBe(DatasetErrEnum.unAuthDataset);
 
     // 未开启时团队 owner 仍按 owner 处理
-    vi.unstubAllEnvs();
+    setDisableApiDatasetSuperAdmin(false);
     mockDatasetQuery({ _id: datasetId, teamId: 'team-a', tmbId: 'tmb-other' });
     const result = await authDatasetByTmbId({ tmbId: 'tmb-a', datasetId, per: ReadPermissionVal });
     expect(result.dataset.permission.isOwner).toBe(true);
   });
 
   it('只收紧 API 文件库：普通知识库的团队 owner 仍旁路', async () => {
-    vi.stubEnv('DISABLE_SUPER_ADMIN', 'true');
+    setDisableApiDatasetSuperAdmin(true);
     mockDatasetQuery({ _id: datasetId, teamId: 'team-a', tmbId: 'tmb-other' });
 
     const result = await authDatasetByTmbId({ tmbId: 'tmb-a', datasetId, per: ReadPermissionVal });
@@ -652,7 +653,7 @@ describe('authDataset isRoot', () => {
   });
 
   it('返回有效 root 标记：disableSuperAdmin 关闭了 header 旁路', async () => {
-    vi.stubEnv('DISABLE_SUPER_ADMIN', 'true');
+    setDisableApiDatasetSuperAdmin(true);
     mockDatasetQuery({
       _id: datasetId,
       teamId: 'team-b',

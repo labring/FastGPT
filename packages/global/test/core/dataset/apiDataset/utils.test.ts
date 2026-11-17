@@ -1,8 +1,6 @@
-import { afterEach, describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import {
   filterApiDatasetServerPublicData,
-  isDisableSuperAdmin,
-  isSuperAdminBypassDisabled,
   toApiDatasetSuccess,
   toApiDatasetError,
   classifyApiDatasetError
@@ -13,25 +11,6 @@ const defaultSwitches = {
   permissionSync: false,
   syncAllFiles: false
 };
-
-afterEach(() => {
-  vi.unstubAllEnvs();
-});
-
-describe('isDisableSuperAdmin', () => {
-  const apiDatasetServer = { apiServer: { baseUrl: 'https://api.example.com' } };
-
-  it('only applies to API file libraries when the global switch is on', () => {
-    vi.stubEnv('DISABLE_SUPER_ADMIN', '');
-    expect(isDisableSuperAdmin(apiDatasetServer)).toBe(false);
-
-    vi.stubEnv('DISABLE_SUPER_ADMIN', 'true');
-    expect(isDisableSuperAdmin(apiDatasetServer)).toBe(true);
-    // 普通知识库没有 apiDatasetServer，部署开关不收紧它们的超管旁路
-    expect(isDisableSuperAdmin()).toBe(false);
-    expect(isSuperAdminBypassDisabled()).toBe(true);
-  });
-});
 
 describe('filterApiDatasetServerPublicData', () => {
   it('should return undefined when apiDatasetServer is undefined', () => {

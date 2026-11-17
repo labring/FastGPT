@@ -50,10 +50,8 @@ import { getGroupsByTmbId } from '@fastgpt/service/support/permission/memberGrou
 import { getTmbInfoByTmbId } from '@fastgpt/service/support/user/team/controller';
 import { getOrgIdSetWithParentByTmbId } from '@fastgpt/service/support/permission/org/controllers';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
-import {
-  isDisableSuperAdmin,
-  isPermissionSyncDataset
-} from '@fastgpt/global/core/dataset/apiDataset/utils';
+import { isPermissionSyncDataset } from '@fastgpt/global/core/dataset/apiDataset/utils';
+import { isDisableSuperAdmin } from '@fastgpt/service/support/permission/dataset/disableSuperAdmin';
 import { CollectionPermission } from '@fastgpt/global/support/permission/collection/controller';
 import type { FolderAccessMode } from '@fastgpt/global/common/parentFolder/type';
 import {
@@ -228,7 +226,7 @@ async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseTy
   let orgIds: string[] = [];
   // 复用同一次 tmb 查询：短路判定与逐 Collection 返回权限都依赖是否团队 owner。
   const tmbInfo = await getTmbInfoByTmbId({ tmbId });
-  // 全局开关 DISABLE_SUPER_ADMIN 要求超管同样遵守文件 ACL：root 与团队 owner 的旁路全部关闭。
+  // 全局开关 DISABLE_APIDATASET_SUPER_ADMIN 要求超管同样遵守文件 ACL：root 与团队 owner 的旁路全部关闭。
   const disableSuperAdmin = isDisableSuperAdmin(dataset.apiDatasetServer);
   const permissionSync = isPermissionSyncDataset(dataset.apiDatasetServer);
   const isTeamOwner =

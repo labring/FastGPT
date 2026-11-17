@@ -37,10 +37,8 @@ import {
   toInheritedPermissionValue
 } from '../resourcePermissionPolicy';
 import { resolveCollectionPermission } from '../collection/auth';
-import {
-  isDisableSuperAdmin,
-  isPermissionSyncDataset
-} from '@fastgpt/global/core/dataset/apiDataset/utils';
+import { isPermissionSyncDataset } from '@fastgpt/global/core/dataset/apiDataset/utils';
+import { isDisableSuperAdmin } from './disableSuperAdmin';
 import { assertDatasetPermission } from './utils';
 import type { TeamTmbItemType } from '@fastgpt/global/support/user/team/type';
 
@@ -74,7 +72,7 @@ export const authDatasetByTmbId = async ({
       return Promise.reject(DatasetErrEnum.unExist);
     }
 
-    // 全局开关 DISABLE_SUPER_ADMIN 对 API 文件库生效时，超管也遵守本地 ACL：root 和团队 owner 都不再旁路，
+    // 全局开关 DISABLE_APIDATASET_SUPER_ADMIN 对 API 文件库生效时，超管也遵守本地 ACL：root 和团队 owner 都不再旁路，
     // Dataset 级权限与其他成员一样只来自 ACL 行（dataset owner 仍由 assertDatasetPermission 兜底）。
     const disableSuperAdmin = isDisableSuperAdmin(dataset.apiDatasetServer);
     const effectiveIsRoot = isRoot && !disableSuperAdmin;

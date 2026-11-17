@@ -14,6 +14,7 @@ import { MongoResourcePermission } from '@fastgpt/service/support/permission/sch
 import { getFakeUsers, getUser } from '@test/datas/users';
 import { StreamCall, Call } from '@test/utils/request';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { setDisableApiDatasetSuperAdmin } from '@test/utils/serviceEnv';
 
 // 全局 mock 把 responseWriteController 变成了返回 undefined 的空函数，流式导出需要真实实现。
 vi.unmock('@fastgpt/service/common/response');
@@ -117,7 +118,7 @@ const grantCollection = async ({
   });
 
 afterEach(() => {
-  vi.unstubAllEnvs();
+  setDisableApiDatasetSuperAdmin(false);
 });
 
 describe('export dataset respects collection permission', () => {
@@ -213,7 +214,7 @@ describe('export dataset respects collection permission', () => {
   });
 
   it('filters collections for the team owner when disableSuperAdmin is on', async () => {
-    vi.stubEnv('DISABLE_SUPER_ADMIN', 'true');
+    setDisableApiDatasetSuperAdmin(true);
     const users = await getFakeUsers(1);
     const teamOwner = users.owner;
     const member = users.members[0];
@@ -246,7 +247,7 @@ describe('export dataset respects collection permission', () => {
   });
 
   it('keeps the team-owner bypass for ordinary datasets when disableSuperAdmin is on', async () => {
-    vi.stubEnv('DISABLE_SUPER_ADMIN', 'true');
+    setDisableApiDatasetSuperAdmin(true);
     const users = await getFakeUsers(1);
     const teamOwner = users.owner;
     const member = users.members[0];

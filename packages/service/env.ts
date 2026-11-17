@@ -391,6 +391,10 @@ export const serviceEnv = createEnv({
     DEFAULT_TEAM_BASIC_PERMISSIONS_ENABLED: BoolSchema.default(false).meta({
       description: '新建团队时是否为默认全员组授予应用、Skill、知识库和 API Key 创建权限'
     }),
+    DISABLE_APIDATASET_SUPER_ADMIN: BoolSchema.default(false).meta({
+      description:
+        '是否要求 root / 团队 owner 在 API 文件库（配置了 apiDatasetServer 的知识库）管理侧遵守文件 ACL；不影响普通知识库与检索'
+    }),
 
     // ==================== 并发控制与限制 ====================
     WECHAT_CHANNEL_CONCURRENCY: IntSchema.min(10).default(1000).meta({
