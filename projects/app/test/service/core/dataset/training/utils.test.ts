@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
+import { getSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/runtime';
 import { publishTrainingWakeup } from '@fastgpt/service/core/dataset/training/wakeup';
 
 const mocks = vi.hoisted(() => ({
@@ -27,22 +28,37 @@ vi.mock('@/service/core/dataset/queues/datasetParse', () => ({
 import { subscribeDatasetTrainingQueue } from '@/service/core/dataset/training/utils';
 
 describe('subscribeDatasetTrainingQueue', () => {
+  const prevPerformance = { ...getSystemInstanceConfig().performance.dataset };
+
   beforeEach(() => {
     vi.clearAllMocks();
+    global.qaQueueLen = 0;
+    global.preCreatedQueueLen = 0;
+    global.datasetParseQueueLen = 0;
+    global.vectorQueueLen = 0;
+    global.synonymQueueLen = 0;
+    getSystemInstanceConfig().performance.dataset.qaMaxProcess = 3;
+    getSystemInstanceConfig().performance.dataset.vectorMaxProcess = 4;
+    getSystemInstanceConfig().performance.dataset.parseMaxProcess = 2;
   });
 
   let activeSub: ReturnType<typeof subscribeDatasetTrainingQueue> | undefined;
   afterEach(async () => {
     await activeSub?.close();
     activeSub = undefined;
+    Object.assign(getSystemInstanceConfig().performance.dataset, prevPerformance);
   });
 
-  it('按 Redis 唤醒信号拉起对应的开源训练队列并忽略商业版模式', async () => {
+  it('按 Redis 唤醒信号补满对应开源队列剩余并发槽位，保留重建单并发并忽略商业版模式', async () => {
+    global.qaQueueLen = 1; // 3 - 1 = 2 remaining
+    global.vectorQueueLen = 1; // 1 - 1 = 0 remaining
+
     activeSub = subscribeDatasetTrainingQueue();
     await activeSub.ready;
 
     await publishTrainingWakeup({
       modes: [
+        TrainingModeEnum.qa,
         TrainingModeEnum.qa,
         TrainingModeEnum.index,
         TrainingModeEnum.rebuildIndex,
@@ -52,10 +68,10 @@ describe('subscribeDatasetTrainingQueue', () => {
       ]
     });
 
-    await vi.waitFor(() => expect(mocks.datasetParseQueue).toHaveBeenCalledOnce());
-    expect(mocks.generateQA).toHaveBeenCalledOnce();
-    expect(mocks.generatePreCreatedData).toHaveBeenCalledOnce();
-    expect(mocks.generateRebuildIndex).toHaveBeenCalledOnce();
+    await vi.waitFor(() => expect(mocks.datasetParseQueue).toHaveBeenCalledTimes(2));
+    expect(mocks.generateQA).toHaveBeenCalledTimes(2);
+    expect(mocks.generatePreCreatedData).toHaveBeenCalledTimes(4);
+    expect(mocks.generateRebuildIndex).not.toHaveBeenCalled();
     expect(mocks.generateRebuildSynonym).toHaveBeenCalledOnce();
   });
 });

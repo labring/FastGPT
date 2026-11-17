@@ -1,4 +1,4 @@
-import { execFileSync, execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -232,11 +232,35 @@ export const runRg = (args, cwd) => {
   }
 };
 
-/** 从 git HEAD 读取历史文件文本（用于验证删除后的旧 schema 索引未丢失）。 */
-export const readGitHeadFile = (repoRoot, relPath) => {
+/**
+ * 从 git 历史对象读取文件文本（支持 `<ref>:<path>` 或仅传 `<path>` 时默认使用 `HEAD:<path>`）。
+ * 读取失败时返回包含错误信息的结果对象，调用方不得静默跳过索引比对。
+ */
+export const readGitLegacyFile = (repoRoot, spec) => {
+  const normalized = toPosixPath(spec).trim();
+  const separatorIdx = normalized.indexOf(':');
+  const relPath = (
+    separatorIdx > 0 ? normalized.slice(separatorIdx + 1) : normalized
+  ).replace(/^\.\//, '');
+  const objectSpec =
+    separatorIdx > 0 ? `${normalized.slice(0, separatorIdx).trim()}:${relPath}` : `HEAD:${relPath}`;
+
   try {
-    return execSync(`git show HEAD:${relPath}`, { cwd: repoRoot, encoding: 'utf8' });
-  } catch {
-    return null;
+    const content = execFileSync('git', ['show', objectSpec], {
+      cwd: repoRoot,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe']
+    });
+    return { ok: true, objectSpec, relPath, content };
+  } catch (error) {
+    const stderr =
+      error && typeof error === 'object' && 'stderr' in error ? String(error.stderr).trim() : '';
+    const message = error instanceof Error ? error.message : String(error);
+    return {
+      ok: false,
+      objectSpec,
+      relPath,
+      error: stderr || message
+    };
   }
 };

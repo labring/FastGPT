@@ -18,11 +18,15 @@ type SynonymRebuildContext = Pick<
   'teamId' | 'tmbId' | 'datasetId' | 'billId'
 >;
 
-const enqueueOneSynonymRebuildTask = async (
-  context: SynonymRebuildContext,
-  session?: ClientSession,
+const enqueueOneSynonymRebuildTask = async ({
+  context,
+  session,
   emitWakeup = true
-) => {
+}: {
+  context: SynonymRebuildContext;
+  session?: ClientSession;
+  emitWakeup?: boolean;
+}) => {
   if (!isDatasetSynonymEnabled()) return false;
   const enqueue = async (activeSession: ClientSession) => {
     const config = await MongoDatasetSynonym.findOne({
@@ -111,7 +115,7 @@ const enqueueOneSynonymRebuildTask = async (
 export const enqueueNextDatasetSynonymRebuildTask = async (
   context: SynonymRebuildContext,
   session?: ClientSession
-) => enqueueOneSynonymRebuildTask(context, session, true);
+) => enqueueOneSynonymRebuildTask({ context, session, emitWakeup: true });
 
 /** 创建同义词重建首批任务，后续由同义词 Worker 续接；与词表和待重建状态同事务提交。 */
 export const seedDatasetSynonymRebuildTasks = async (
@@ -127,7 +131,14 @@ export const seedDatasetSynonymRebuildTasks = async (
     });
     let createdCount = 0;
     for (let i = 0; i < seedCount; i++) {
-      if (!(await enqueueOneSynonymRebuildTask(context, activeSession, false))) break;
+      if (
+        !(await enqueueOneSynonymRebuildTask({
+          context,
+          session: activeSession,
+          emitWakeup: false
+        }))
+      )
+        break;
       createdCount += 1;
     }
     if (createdCount > 0) {

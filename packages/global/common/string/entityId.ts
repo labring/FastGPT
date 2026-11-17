@@ -52,15 +52,22 @@ export const createEntityId = (timestampMs = Date.now()): string => {
 export const isValidEntityId = (value: unknown): value is string =>
   typeof value === 'string' && ENTITY_ID_REGEX.test(value);
 
+/** 将合法的 24 位十六进制实体 ID 规范为小写；其余值原样返回，交由校验或调用方处理。 */
+export const normalizeEntityId = (value: string): string =>
+  ENTITY_ID_REGEX.test(value) ? value.toLowerCase() : value;
+
 /**
- * 构建支持自动归一化 BSON ObjectId 类对象为纯字符串的实体 ID Zod Schema。
+ * 构建支持自动归一化 BSON ObjectId 类对象与十六进制大小写的实体 ID Zod Schema。
  *
  * 供 Repository 出口校验、领域模型与 OpenAPI 入参契约统一复用。
  */
 export const createEntityIdSchema = (meta?: { example?: string; description?: string }) =>
   z.preprocess(
-    (value) =>
-      value !== null && value !== undefined && typeof value === 'object' ? String(value) : value,
+    (value) => {
+      const raw =
+        value !== null && value !== undefined && typeof value === 'object' ? String(value) : value;
+      return typeof raw === 'string' ? normalizeEntityId(raw) : raw;
+    },
     z
       .string()
       .regex(ENTITY_ID_REGEX)
@@ -70,11 +77,15 @@ export const createEntityIdSchema = (meta?: { example?: string; description?: st
       })
   );
 
-/** 严格字符串实体 ID Schema（`z.input` 与 `z.output` 均为 `string`），用于仓储 Write Schema 严进校验。 */
-export const EntityIdStringSchema = z.string().regex(ENTITY_ID_REGEX).meta({
-  example: DEFAULT_ENTITY_ID_EXAMPLE,
-  description: '实体 ID'
-});
+/** 严格字符串实体 ID Schema（`z.input` 与 `z.output` 均为 `string`），用于仓储 Write Schema 严进校验并统一规范为小写 hex。 */
+export const EntityIdStringSchema = z
+  .string()
+  .regex(ENTITY_ID_REGEX)
+  .transform(normalizeEntityId)
+  .meta({
+    example: DEFAULT_ENTITY_ID_EXAMPLE,
+    description: '实体 ID'
+  });
 
 /** 默认实体 ID Schema（自动将 BSON ObjectId 类对象归一化为纯 string，用于 Read Schema 与接口边界）。 */
 export const EntityIdSchema = createEntityIdSchema();

@@ -1,6 +1,10 @@
 import type { NextApiResponse } from 'next';
-import z from 'zod';
-import { EntityIdStringSchema } from '@fastgpt/global/common/string/entityId';
+import {
+  CreateAppRegistrationBodySchema,
+  CreateAppRegistrationResponseSchema,
+  type CreateAppRegistrationBody,
+  type CreateAppRegistrationResponse
+} from '@fastgpt/global/openapi/admin/support/appRegistration/api';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
@@ -8,12 +12,6 @@ import { appRegistrationService } from '@fastgpt/service/support/appRegistration
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { getTeamPlanStatus } from '@fastgpt/service/support/wallet/sub/utils';
 import { NextAPI } from '@/service/middleware/entry';
-
-const CreateAppRegistrationBodySchema = z.object({
-  appId: EntityIdStringSchema
-});
-
-type CreateAppRegistrationBody = z.infer<typeof CreateAppRegistrationBodySchema>;
 
 /**
  * Admin API - 创建应用备案记录
@@ -32,7 +30,7 @@ type CreateAppRegistrationBody = z.infer<typeof CreateAppRegistrationBodySchema>
 async function handler(
   req: ApiRequestProps<CreateAppRegistrationBody>,
   _res: NextApiResponse
-): Promise<{ success: boolean }> {
+): Promise<CreateAppRegistrationResponse> {
   // 1. 先校验超级管理员（rootkey）权限与合法的 appId 入参
   await authCert({
     req,
@@ -59,9 +57,9 @@ async function handler(
     quotaLimit: teamPlanStatus?.standard?.appRegistrationCount
   });
 
-  return {
+  return CreateAppRegistrationResponseSchema.parse({
     success: true
-  };
+  });
 }
 
 export default NextAPI(handler);

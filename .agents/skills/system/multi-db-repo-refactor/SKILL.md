@@ -95,10 +95,10 @@ node .agents/skills/system/multi-db-repo-refactor/scripts/scaffold-repo.mjs \
 - [ ] **可移植 SQL**：`sql/table.ts` 与 `sql/repo.ts` 未使用 `pgTable`、`ARRAY[]`、`GIN`/`GIST`、`ILIKE`、`RETURNING`、部分唯一索引 `WHERE` 与 JSON 路径查询；可空唯一列与软删除使用确定性哨兵值（`''` / `0`）。
 
 ```bash
-# 1. 结构、索引零丢失比对、旧 schema 收口与双库契约单测
+# 1. 结构、索引零丢失比对、旧 schema 收口与双库契约单测（若删除已提交，传入 origin/main:<旧schema相对路径> 或 <merge-base>:<旧schema相对路径>）
 node .agents/skills/system/multi-db-repo-refactor/scripts/verify-domain.mjs \
   --dir <packages/service/...> \
-  --git-legacy <旧schema相对路径> \
+  --git-legacy <[ref:]旧schema相对路径> \
   --test <合同与业务测试文件...>
 
 # 2. 复查全局重构进度与残留引用（确认旧 model 名 0 引用且 WIP=1 已清零）

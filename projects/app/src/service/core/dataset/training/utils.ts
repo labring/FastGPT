@@ -8,24 +8,63 @@ import { subscribeTrainingWakeup } from '@fastgpt/service/core/dataset/training/
 import { datasetParseQueue } from '../queues/datasetParse';
 import { logInstanceConfigRead } from '@fastgpt/service/common/system/migrationCoverageLog';
 
-const trainingQueueRunnerByMode: Partial<Record<TrainingModeEnum, () => unknown>> = {
-  [TrainingModeEnum.qa]: () => generateQA(),
-  [TrainingModeEnum.index]: () => generatePreCreatedData(),
-  [TrainingModeEnum.rebuildIndex]: () => generateRebuildIndex(),
-  [TrainingModeEnum.rebuildSynonym]: () => generateRebuildSynonym(),
-  [TrainingModeEnum.parse]: () => datasetParseQueue()
+type TrainingQueueDescriptor = {
+  run: () => unknown;
+  getRemainingSlots: () => number;
+};
+
+const trainingQueueByMode: Partial<Record<TrainingModeEnum, TrainingQueueDescriptor>> = {
+  [TrainingModeEnum.qa]: {
+    run: () => generateQA(),
+    getRemainingSlots: () => {
+      const max = getSystemInstanceConfig().performance.dataset.qaMaxProcess || 10;
+      return Math.max(0, max - (global.qaQueueLen ?? 0));
+    }
+  },
+  [TrainingModeEnum.index]: {
+    run: () => generatePreCreatedData(),
+    getRemainingSlots: () => {
+      const max = getSystemInstanceConfig().performance.dataset.vectorMaxProcess || 10;
+      return Math.max(0, max - (global.preCreatedQueueLen ?? 0));
+    }
+  },
+  // 索引/同义词重建按单 worker 串行消费，唤醒时保留各自 1 并发上限。
+  [TrainingModeEnum.rebuildIndex]: {
+    run: () => generateRebuildIndex(),
+    getRemainingSlots: () => Math.max(0, 1 - (global.vectorQueueLen ?? 0))
+  },
+  [TrainingModeEnum.rebuildSynonym]: {
+    run: () => generateRebuildSynonym(),
+    getRemainingSlots: () => Math.max(0, 1 - (global.synonymQueueLen ?? 0))
+  },
+  [TrainingModeEnum.parse]: {
+    run: () => datasetParseQueue(),
+    getRemainingSlots: () => {
+      const max = getSystemInstanceConfig().performance.dataset.parseMaxProcess || 10;
+      return Math.max(0, max - (global.datasetParseQueueLen ?? 0));
+    }
+  }
 };
 
 /**
- * 订阅 Redis 训练唤醒信号并拉起对应的开源训练队列。
+ * 订阅 Redis 训练唤醒信号并按对应队列剩余并发额度补满消费者槽位。
  *
- * 队列本身有每分钟的兜底 Cron，因此 Redis 推送失败或断线期间漏掉的信号会在下一轮 Cron 自动补齐。
+ * 写入方按事务去重后每个 mode 仅广播一次；此处按剩余并发额度拉起循环，
+ * 同时保留重建队列（rebuildIndex / rebuildSynonym）自身的单并发限制。
+ * 队列本身仍有每分钟的兜底 Cron，因此断线或推送失败会在下一轮 Cron 自动补齐。
  */
 export const subscribeDatasetTrainingQueue = () =>
   subscribeTrainingWakeup({
     onModes: (modes) => {
-      for (const mode of modes) {
-        trainingQueueRunnerByMode[mode]?.();
+      for (const mode of new Set(modes)) {
+        const descriptor = trainingQueueByMode[mode];
+        if (!descriptor) {
+          continue;
+        }
+        const remainingSlots = descriptor.getRemainingSlots();
+        for (let i = 0; i < remainingSlots; i += 1) {
+          descriptor.run();
+        }
       }
     }
   });

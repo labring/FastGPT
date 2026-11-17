@@ -91,7 +91,14 @@ describe('appRegistration create & plan integration', () => {
     expect(planAfterCreate.code).toBe(200);
     expect(planAfterCreate.data?.usedRegistrationCount).toBe(1);
 
-    // 4. 重复备案同一应用与超额备案另一应用均被拒绝
+    // 4. 大写 hex 入参经 OpenAPI BodySchema 规范化后同样命中防重与配额拦截，不重复入库
+    const duplicateUpperRes = await Call(createAppRegistrationHandler, {
+      auth: owner,
+      body: { appId: String(app1._id).toUpperCase() }
+    });
+    expect(duplicateUpperRes.code).not.toBe(200);
+    expect(duplicateUpperRes.error).toBe('Registration already exists for this app');
+
     const duplicateRes = await Call(createAppRegistrationHandler, {
       auth: owner,
       body: { appId: String(app1._id) }

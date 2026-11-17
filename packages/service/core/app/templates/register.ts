@@ -4,8 +4,14 @@ import { type AppTemplateSchemaType } from '@fastgpt/global/core/app/type';
 import { MongoAppTemplate } from './templateSchema';
 import { pluginClient } from '../../../thirdProvider/fastgptPlugin';
 import { addMinutes } from 'date-fns';
-import { readAppTemplateRevision } from '../../../common/system/syncSignal';
+import {
+  flushPendingSystemSync,
+  hasPendingSystemSync,
+  readAppTemplateRevision
+} from '../../../common/system/syncSignal';
 import { migrateAppTemplateWorkflowToCurrent } from './utils';
+
+const APP_TEMPLATE_CACHE_TTL_MINUTES = 5;
 
 type PluginSystemTemplateDbConfig = Pick<AppTemplateSchemaType, 'templateId'> &
   Partial<
@@ -133,15 +139,20 @@ export const getAppTemplatesAndLoadThem = async (refresh = false) => {
     global.appTemplates = [];
   }
 
+  if (hasPendingSystemSync('appTemplates')) {
+    await flushPendingSystemSync(['appTemplates']);
+  }
+
   const remoteRevision = await readAppTemplateRevision();
   const isRevisionFresh =
-    remoteRevision === undefined || global.appTemplatesRevision === remoteRevision;
+    !hasPendingSystemSync('appTemplates') &&
+    (remoteRevision === undefined || global.appTemplatesRevision === remoteRevision);
 
   if (
     isProduction &&
     // 有模板缓存
     global.appTemplates.length > 0 &&
-    // 缓存时间未过期且远端修订号未变更
+    // 缓存时间未过期（有界兜底）且远端修订号未变更
     global.templatesRefreshTime > Date.now() &&
     isRevisionFresh &&
     !refresh
@@ -154,7 +165,7 @@ export const getAppTemplatesAndLoadThem = async (refresh = false) => {
     const loadedRevision = remoteRevision ?? (await readAppTemplateRevision());
     const appTemplates = await getAppTemplates();
     global.appTemplates = appTemplates;
-    global.templatesRefreshTime = addMinutes(new Date(), 30).getTime(); // 缓存30分钟
+    global.templatesRefreshTime = addMinutes(new Date(), APP_TEMPLATE_CACHE_TTL_MINUTES).getTime();
     global.appTemplatesRevision = loadedRevision;
     return appTemplates;
   } catch {

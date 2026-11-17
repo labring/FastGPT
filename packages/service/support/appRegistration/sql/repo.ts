@@ -1,4 +1,4 @@
-import { createEntityId } from '@fastgpt/global/common/string/entityId';
+import { createEntityId, isValidEntityId } from '@fastgpt/global/common/string/entityId';
 import { SqlRepositoryBase } from '@fastgpt/dal/db/sql/base';
 import type { DbSession } from '@fastgpt/dal/db/types';
 import {
@@ -41,11 +41,15 @@ export class SqlAppRegistrationRepository
     teamId: string;
     tx?: DbSession;
   }): Promise<AppRegistrationDomainDTO | null> {
+    if (!isValidEntityId(id) || !isValidEntityId(teamId)) {
+      return null;
+    }
+
     const row = await this.readDb(tx)
       .selectFrom('app_registrations')
       .selectAll()
-      .where('_id', '=', id)
-      .where('team_id', '=', teamId)
+      .where('_id', '=', this.normalizeId(id))
+      .where('team_id', '=', this.normalizeId(teamId))
       .executeTakeFirst();
 
     return this.parseNullable(row !== undefined ? this.mapRow(row) : undefined);
@@ -60,11 +64,15 @@ export class SqlAppRegistrationRepository
     appId: string;
     tx?: DbSession;
   }): Promise<AppRegistrationDomainDTO | null> {
+    if (!isValidEntityId(teamId) || !isValidEntityId(appId)) {
+      return null;
+    }
+
     const row = await this.readDb(tx)
       .selectFrom('app_registrations')
       .selectAll()
-      .where('team_id', '=', teamId)
-      .where('app_id', '=', appId)
+      .where('team_id', '=', this.normalizeId(teamId))
+      .where('app_id', '=', this.normalizeId(appId))
       .limit(1)
       .executeTakeFirst();
 
@@ -78,10 +86,14 @@ export class SqlAppRegistrationRepository
     teamId: string;
     tx?: DbSession;
   }): Promise<AppRegistrationDomainDTO[]> {
+    if (!isValidEntityId(teamId)) {
+      return [];
+    }
+
     const rows = await this.readDb(tx)
       .selectFrom('app_registrations')
       .selectAll()
-      .where('team_id', '=', teamId)
+      .where('team_id', '=', this.normalizeId(teamId))
       .orderBy('_id', 'desc')
       .execute();
 
@@ -89,10 +101,14 @@ export class SqlAppRegistrationRepository
   }
 
   async countByTeam({ teamId, tx }: { teamId: string; tx?: DbSession }): Promise<number> {
+    if (!isValidEntityId(teamId)) {
+      return 0;
+    }
+
     const row = await this.readDb(tx)
       .selectFrom('app_registrations')
       .select((eb) => eb.fn.countAll<string>().as('count'))
-      .where('team_id', '=', teamId)
+      .where('team_id', '=', this.normalizeId(teamId))
       .executeTakeFirstOrThrow();
 
     return Number(row.count);
@@ -138,10 +154,14 @@ export class SqlAppRegistrationRepository
     appId: string;
     tx?: DbSession;
   }): Promise<number> {
+    if (!isValidEntityId(teamId) || !isValidEntityId(appId)) {
+      return 0;
+    }
+
     const res = await this.db(tx)
       .deleteFrom('app_registrations')
-      .where('team_id', '=', teamId)
-      .where('app_id', '=', appId)
+      .where('team_id', '=', this.normalizeId(teamId))
+      .where('app_id', '=', this.normalizeId(appId))
       .executeTakeFirst();
 
     return Number(res.numDeletedRows ?? 0);

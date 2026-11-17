@@ -249,6 +249,54 @@ describe('AppRegistrationRepository dual-dialect contract', () => {
         expect(await repo.findByTeamAndApp({ teamId, appId: appId2 })).toBeNull();
         expect(await repo.countByTeam({ teamId })).toBe(1);
       });
+
+      it('normalizes mixed-case hex entity IDs identically across writes, lookups, counts, and deletes', async () => {
+        const teamId = createEntityId();
+        const tmbId = createEntityId();
+        const appId = createEntityId();
+        const id = createEntityId();
+
+        // Mixed/uppercase hex inputs normalize to lowercase in DTOs and prevent duplicate-key divergence.
+        const created = await repo.create({
+          data: {
+            _id: id.toUpperCase(),
+            teamId: teamId.toUpperCase(),
+            tmbId: tmbId.toUpperCase(),
+            appId: appId.toUpperCase()
+          }
+        });
+        expect(created._id).toBe(id);
+        expect(created.teamId).toBe(teamId);
+        expect(created.tmbId).toBe(tmbId);
+        expect(created.appId).toBe(appId);
+
+        await expect(
+          repo.create({
+            data: {
+              _id: id.toUpperCase(),
+              teamId: createEntityId(),
+              tmbId: createEntityId(),
+              appId: createEntityId()
+            }
+          })
+        ).rejects.toThrow();
+
+        expect(await repo.findById({ id: id.toUpperCase(), teamId: teamId.toUpperCase() })).toEqual(
+          created
+        );
+        expect(
+          await repo.findByTeamAndApp({ teamId: teamId.toUpperCase(), appId: appId.toUpperCase() })
+        ).toEqual(created);
+        expect(await repo.listByTeam({ teamId: teamId.toUpperCase() })).toEqual([created]);
+        expect(await repo.countByTeam({ teamId: teamId.toUpperCase() })).toBe(1);
+        expect(await repo.findById({ id: 'invalid-id', teamId })).toBeNull();
+        expect(await repo.countByTeam({ teamId: 'invalid-id' })).toBe(0);
+
+        expect(
+          await repo.deleteByApp({ teamId: teamId.toUpperCase(), appId: appId.toUpperCase() })
+        ).toBe(1);
+        expect(await repo.countByTeam({ teamId })).toBe(0);
+      });
     }
   });
 });

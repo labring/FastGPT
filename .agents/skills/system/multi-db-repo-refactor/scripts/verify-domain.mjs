@@ -5,7 +5,7 @@ import path from 'node:path';
 import {
   extractDefineIndexes,
   findRepoRoot,
-  readGitHeadFile,
+  readGitLegacyFile,
   toPosixPath
 } from './common.mjs';
 
@@ -31,7 +31,7 @@ const hasFlag = (flag) => args.includes(flag);
 
 if (hasFlag('--help') || hasFlag('-h') || args.length === 0) {
   console.log(`Usage:
-  node verify-domain.mjs --dir <domain-dir> [--legacy-schema <path>] [--git-legacy <git-head-path>] [--test <test-file...>] [--allow-wip-slice1]`);
+  node verify-domain.mjs --dir <domain-dir> [--legacy-schema <path>] [--git-legacy <[ref:]repo-rel-path>] [--test <test-file...>] [--allow-wip-slice1]`);
   process.exit(0);
 }
 
@@ -82,12 +82,27 @@ if (/\bdefineLogRepoToken\b/.test(repoTsText) && !checkFileExists('noop/repo.ts'
 // 2. defineIndex 零丢失比对（防止迁移漏掉历史 deprecated 索引）
 const mongoSchemaPath = path.join(domainAbs, 'mongo/schema.ts');
 const legacySource = (() => {
+  if (legacySchemaArg !== undefined && gitLegacyArg !== undefined) {
+    failures.push('[Indexes] Specify at most one of --legacy-schema or --git-legacy');
+    return null;
+  }
   if (legacySchemaArg !== undefined) {
     const abs = path.resolve(repoRoot, legacySchemaArg);
-    return fs.existsSync(abs) ? fs.readFileSync(abs, 'utf8') : null;
+    if (!fs.existsSync(abs) || !fs.statSync(abs).isFile()) {
+      failures.push(`[Indexes] Failed to read --legacy-schema file: ${legacySchemaArg}`);
+      return null;
+    }
+    return fs.readFileSync(abs, 'utf8');
   }
   if (gitLegacyArg !== undefined) {
-    return readGitHeadFile(repoRoot, toPosixPath(gitLegacyArg).replace(/^\.\//, ''));
+    const res = readGitLegacyFile(repoRoot, gitLegacyArg);
+    if (!res.ok) {
+      failures.push(
+        `[Indexes] Failed to read --git-legacy "${gitLegacyArg}" (resolved git object "${res.objectSpec}": ${res.error}). Pass an explicit <ref>:<path> (e.g. origin/main:${res.relPath}) when comparing against a committed deletion.`
+      );
+      return null;
+    }
+    return res.content;
   }
   return null;
 })();

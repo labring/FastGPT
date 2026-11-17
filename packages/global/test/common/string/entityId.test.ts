@@ -3,7 +3,8 @@ import {
   createEntityId,
   EntityIdSchema,
   EntityIdStringSchema,
-  isValidEntityId
+  isValidEntityId,
+  normalizeEntityId
 } from '@fastgpt/global/common/string/entityId';
 
 describe('entityId utilities', () => {
@@ -43,9 +44,13 @@ describe('entityId utilities', () => {
 
       const bsonLike = {
         _bsontype: 'ObjectId',
-        toString: () => rawId
+        toString: () => rawId.toUpperCase()
       };
       expect(EntityIdSchema.parse(bsonLike)).toBe(rawId);
+      expect(EntityIdSchema.parse(rawId.toUpperCase())).toBe(rawId);
+      expect(EntityIdStringSchema.parse(rawId.toUpperCase())).toBe(rawId);
+      expect(normalizeEntityId(rawId.toUpperCase())).toBe(rawId);
+      expect(normalizeEntityId('not-an-id')).toBe('not-an-id');
       expect(typeof EntityIdSchema.parse(bsonLike)).toBe('string');
     });
 

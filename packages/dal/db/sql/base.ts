@@ -1,5 +1,6 @@
 import { sql, type Kysely, type RawBuilder } from 'kysely';
 import type z from 'zod';
+import { normalizeEntityId } from '@fastgpt/global/common/string/entityId';
 import { parseRepoRow, parseRepoRows } from '../parse';
 import { getDbDialect, getDbLogger, getDbRuntime } from '../runtime';
 import { unwrapNativeDbSession } from '../transaction';
@@ -104,6 +105,15 @@ export abstract class SqlRepositoryBase<
       rows,
       logger: getDbLogger()
     });
+  }
+
+  /** 将合法 24 位十六进制实体 ID 统一规范为小写，保证 SQL 查询/写入与 Mongo ObjectId 语义一致。 */
+  protected normalizeId(id: string): string {
+    return normalizeEntityId(id);
+  }
+
+  protected normalizeIds(ids: readonly string[]): string[] {
+    return ids.map((id) => normalizeEntityId(id));
   }
 
   /**

@@ -16,11 +16,15 @@ type DatasetRebuildContext = {
   billId: string;
 };
 
-const enqueueOneRebuildTask = async (
-  context: DatasetRebuildContext,
-  session?: ClientSession,
+const enqueueOneRebuildTask = async ({
+  context,
+  session,
   emitWakeup = true
-) => {
+}: {
+  context: DatasetRebuildContext;
+  session?: ClientSession;
+  emitWakeup?: boolean;
+}) => {
   const enqueue = async (activeSession: ClientSession) => {
     while (true) {
       const data = await MongoDatasetData.findOneAndUpdate(
@@ -91,7 +95,7 @@ const enqueueOneRebuildTask = async (
 export const enqueueNextDatasetRebuildTask = async (
   context: DatasetRebuildContext,
   session?: ClientSession
-) => enqueueOneRebuildTask(context, session, true);
+) => enqueueOneRebuildTask({ context, session, emitWakeup: true });
 
 /**
  * 创建受 vector worker 并发上限约束的种子任务，后续任务由 worker 链式补充。
@@ -110,7 +114,8 @@ export const seedDatasetRebuildTasks = async (
     });
     let createdCount = 0;
     for (let i = 0; i < seedCount; i++) {
-      if (!(await enqueueOneRebuildTask(context, activeSession, false))) break;
+      if (!(await enqueueOneRebuildTask({ context, session: activeSession, emitWakeup: false })))
+        break;
       createdCount += 1;
     }
     if (createdCount > 0) {
@@ -133,7 +138,7 @@ export const seedDatasetRebuildTasks = async (
   let createdCount = 0;
   for (let i = 0; i < seedCount; i++) {
     try {
-      if (!(await enqueueOneRebuildTask(context, undefined, false))) break;
+      if (!(await enqueueOneRebuildTask({ context, emitWakeup: false }))) break;
       createdCount += 1;
     } catch {}
   }

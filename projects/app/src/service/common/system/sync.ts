@@ -28,8 +28,12 @@ const triggerAppTemplatesReload = () => {
 
 const debouncedAppTemplatesReload = debounce(triggerAppTemplatesReload, 500);
 
+const SYSTEM_SYNC_FALLBACK_INTERVAL_MS = 5 * 60 * 1000;
+
 const syncCoordinator = createSystemSyncRevisionCoordinator({
   watchedTopics: ['appTemplates'] as const,
+  // 跨进程场景若写端递增 Redis revision 失败后进程退出，由 5 分钟有界兜底截断最长陈旧窗口。
+  fallbackIntervalMs: SYSTEM_SYNC_FALLBACK_INTERVAL_MS,
   onTopicChanged: async () => {
     debouncedAppTemplatesReload();
   }
