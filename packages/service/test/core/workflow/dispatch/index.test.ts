@@ -34,6 +34,8 @@ import { callbackMap } from '@fastgpt/service/core/workflow/dispatch/constants';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { UserConfigError } from '@fastgpt/global/common/error/utils';
 import { getNodeErrResponse } from '@fastgpt/service/core/workflow/dispatch/utils';
+import { resolveSystemInstanceConfig } from '@fastgpt/global/common/system/config/schema';
+import { getWorkflowMaxRunTimes } from '@fastgpt/service/core/workflow/constants';
 
 const waitWithTimeout = async <T>(promise: Promise<T>, timeoutMs: number, label: string) => {
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -67,6 +69,86 @@ const createWorkflowVariableState = (
   toRuntimeRecord: () => ({ ...variables }),
   toStoreRecord: () => ({ ...variables }),
   clone: () => createWorkflowVariableState({ ...variables })
+});
+
+describe('runWorkflow instance execution budget', () => {
+  it.each([0, 1, 3])(
+    'executes only %i sequential text nodes for that instance budget',
+    async (budget) => {
+      const previousConfig = global.systemInstanceConfig;
+      const balanceCheck = vi.spyOn(teamLimit, 'checkTeamAIPoints').mockResolvedValue(undefined);
+      const nodes = ['first', 'second', 'third'].map((id, index) => ({
+        ...createNode(id, FlowNodeTypeEnum.textEditor),
+        isEntry: index === 0,
+        inputs: [
+          {
+            key: NodeInputKeyEnum.textareaInput,
+            renderTypeList: [FlowNodeInputTypeEnum.textarea],
+            valueType: WorkflowIOValueTypeEnum.string,
+            value: id
+          }
+        ],
+        outputs: [
+          {
+            id: NodeOutputKeyEnum.text,
+            key: NodeOutputKeyEnum.text,
+            type: FlowNodeOutputTypeEnum.static,
+            valueType: WorkflowIOValueTypeEnum.string,
+            value: undefined
+          }
+        ]
+      }));
+
+      try {
+        global.systemInstanceConfig = resolveSystemInstanceConfig({
+          performance: { workflow: { maxRunTimes: budget } }
+        });
+
+        const result = await runWorkflow({
+          apiVersion: 'v2',
+          mode: 'chat',
+          runningAppInfo: {
+            sourceType: ChatSourceTypeEnum.app,
+            sourceId: '507f1f77bcf86cd799439012',
+            name: 'Execution budget test',
+            teamId: '507f1f77bcf86cd799439013'
+          },
+          runningUserInfo: {
+            teamId: '507f1f77bcf86cd799439013',
+            tmbId: '507f1f77bcf86cd799439014'
+          },
+          uid: 'execution-budget-test',
+          lang: 'zh-CN',
+          histories: [],
+          query: [],
+          variables: {},
+          chatConfig: {},
+          runtimeNodes: nodes,
+          runtimeEdges: [createEdge('first', 'second'), createEdge('second', 'third')],
+          variableState: createWorkflowVariableState(),
+          externalProvider: {},
+          workflowDispatchDeep: 0,
+          maxRunTimes: getWorkflowMaxRunTimes(),
+          stream: false,
+          responseDetail: true,
+          responseAllData: true,
+          checkIsStopping: () => false
+        } as any);
+
+        expect(result.runTimes).toBe(budget);
+        expect(result.workflowRuntimeSummary.finishedNodeIds).toEqual(
+          nodes.slice(0, budget).map((node) => node.nodeId)
+        );
+        expect(nodes.map((node) => node.outputs[0].value)).toEqual(
+          nodes.map((node, index) => (index < budget ? node.nodeId : undefined))
+        );
+        expect(balanceCheck).toHaveBeenCalledTimes(budget);
+      } finally {
+        global.systemInstanceConfig = previousConfig;
+        balanceCheck.mockRestore();
+      }
+    }
+  );
 });
 
 describe('dispatchWorkFlow SSE initialization guard', () => {

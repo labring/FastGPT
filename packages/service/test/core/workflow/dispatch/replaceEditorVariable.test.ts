@@ -1,7 +1,10 @@
-import { createDefaultInstanceConfig } from '@test/utils/instanceConfigSnapshot';
+import {
+  createDefaultInstanceConfig,
+  getTestInstanceConfig
+} from '@test/utils/instanceConfigSnapshot';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-// 需要小上限的用例直接改写 resource 叶子，其余用例走 env 兜底，保持原有测试意图。
+// 所有用例使用完整快照；缩小单测阈值后恢复原值，运行期不再从 ENV 兜底。
 (global as any).systemInstanceConfig = createDefaultInstanceConfig();
 
 import { VARIABLE_NODE_ID, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
@@ -209,10 +212,8 @@ describe('replaceEditorVariable', () => {
 
   it('should stop node reference replacement rounds when the result exceeds the system string limit', () => {
     const text = 'Result: {{$node1.out1$}}';
-    // getSystemMaxStringLength = (快照 resource.systemMaxStringLengthM ?? env) * SYSTEM_STRING_LENGTH_UNIT。
-    // 原先用 vi.doMock('@fastgpt/service/env') 只暴露 SYSTEM_MAX_STRING_LENGTH 会破坏接管后的
-    // import 链（env 模块级常量、controller → Mongo schema 都从该模块取值），改为操作快照。
-    const snapshot = (global as any).systemInstanceConfig;
+    const snapshot = getTestInstanceConfig();
+    const original = snapshot.resource.systemMaxStringLengthM;
     snapshot.resource.systemMaxStringLengthM = text.length / SYSTEM_STRING_LENGTH_UNIT;
     try {
       const nodesMap: Record<string, RuntimeNodeItemType> = {
@@ -250,7 +251,7 @@ describe('replaceEditorVariable', () => {
         }
       );
     } finally {
-      delete snapshot.resource.systemMaxStringLengthM;
+      snapshot.resource.systemMaxStringLengthM = original;
     }
   });
 

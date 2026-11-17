@@ -1,4 +1,7 @@
-import { createDefaultInstanceConfig } from '@test/utils/instanceConfigSnapshot';
+import {
+  createDefaultInstanceConfig,
+  getTestInstanceConfig
+} from '@test/utils/instanceConfigSnapshot';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 (global as any).systemInstanceConfig = createDefaultInstanceConfig();
@@ -77,9 +80,9 @@ describe('service replaceVariable', () => {
   });
 
   it('should stop replacement rounds when the result exceeds the system string limit', () => {
-    // getSystemMaxStringLength = (快照 resource.systemMaxStringLengthM ?? env.SYSTEM_MAX_STRING_LENGTH_M) * SYSTEM_STRING_LENGTH_UNIT。
-    // 用例结束后删掉叶子，恢复"缺省回落 env"的种子语义，避免影响同文件其他用例。
-    const snapshot = (global as any).systemInstanceConfig;
+    // 缩小私有单测阈值覆盖多轮替换；完整表单取值的百万字符边界另行验证。
+    const snapshot = getTestInstanceConfig();
+    const original = snapshot.resource.systemMaxStringLengthM;
     snapshot.resource.systemMaxStringLengthM = 20 / SYSTEM_STRING_LENGTH_UNIT;
     try {
       expect(
@@ -113,7 +116,26 @@ describe('service replaceVariable', () => {
         }
       );
     } finally {
-      delete snapshot.resource.systemMaxStringLengthM;
+      snapshot.resource.systemMaxStringLengthM = original;
+    }
+  });
+
+  it('applies legal one- and two-million-character settings to the same real replacement input', () => {
+    const config = getTestInstanceConfig().resource;
+    const original = config.systemMaxStringLengthM;
+    const marker = '{{value}}';
+    const exact = 'x'.repeat(SYSTEM_STRING_LENGTH_UNIT - marker.length) + marker;
+    const above = 'x' + exact;
+    try {
+      config.systemMaxStringLengthM = 1;
+      expect(replaceVariable(exact, { value: 'done' })).toBe(exact.replace(marker, 'done'));
+      expect(replaceVariable(above, { value: 'done' })).toBe(above);
+      config.systemMaxStringLengthM = 2;
+      expect(replaceVariable(above, { value: 'done' })).toBe(above.replace(marker, 'done'));
+      config.systemMaxStringLengthM = 1;
+      expect(replaceVariable(above, { value: 'done' })).toBe(above);
+    } finally {
+      config.systemMaxStringLengthM = original;
     }
   });
 

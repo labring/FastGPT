@@ -51,7 +51,7 @@ routes:
 related:
   - "FG-ADMIN-CONFIG-002"
   - "FG-ADMIN-MAINTENANCE-002"
-baseline: "afc92e5f5d8cd3978e5d3865a5770119e00908da"
+baseline: "897611e5cdd2b4d5617c5104d0d9bb5b9ebd8a6c"
 ---
 
 # 实例配置 API：版本边界、脱敏与原子保存
@@ -64,12 +64,12 @@ baseline: "afc92e5f5d8cd3978e5d3865a5770119e00908da"
 
 - 环境与版本：准备同 commit 的两个部署状态，A 不设置 `PRO_URL`（社区版），B 设置 `PRO_URL`（商业版）。API 的版本判定只看 `PRO_URL`，不要求 License 已激活；无法切换/准备两种状态时仅 C7 的版本对照阻塞。除 C7 的社区版对照外，其余涉及品牌、账号或套餐的场景使用 B；也可在独占实例按顺序切换部署版本并分别重启验证，不要求同时启动两套服务。记录 `BASE_URL`、App/Pro 实际 commit、存储 vendor（MinIO/R2/其他）、`STORAGE_EXTERNAL_ENDPOINT` 是否存在，不在文档保存真实凭证。
 - 身份与权限：root 账号用于成功路径；一个用户名不是 `root` 的管理员或普通成员用于越权路径。root 与普通成员使用各自的真实登录态，不复用他人 Cookie。
-- 基线 D0：使用本轮明确授权、无其他配置写者的 dev 实例，不新建测试数据库；4.18 迁移已完成。记录 `system_instance_configs` 当前全部 scope 文档：11 个管理域以及 proEnv/license/instanceId/modelStatusProbe/moderationPolicy/operations，缺失 scope 保留为缺失，不为凑数写入。快照完整 BSON、各管理域 API 结果、`commercial.overrides.subPlans` 和旧 `systemconfigs` 只读对照；套餐权威来源是 commercial，旧集合不再写入。快照加密保存，报告不得包含原始密钥。执行 C1 时使用单独的可销毁隔离夹具：在已完成迁移且无其他写者的隔离库中，按快照的 `_id`、revision 和原文档精确匹配移除 `site` 文档，读后恢复该文档；不得对共享业务库执行此夹具操作。
+- 基线 D0：使用本轮明确授权、无其他配置写者的 dev 实例，不新建测试数据库；4.18 迁移已完成。记录 `system_instance_configs` 当前全部 scope 文档：11 个管理域以及 proEnv/license/instanceId/modelStatusProbe/moderationPolicy/operations，缺失 scope 保留为缺失，不为凑数写入。快照完整 BSON、各管理域 API 结果、`commercial.overrides.subPlans` 和旧 `systemconfigs` 只读对照；套餐权威来源是 commercial，旧集合不再写入。快照加密保存，必须保留 ObjectId、Date、Binary 等原有 BSON 类型，不以普通 JSON 往返作为精确恢复基线；报告只写脱敏差集或布尔结果。C1 仅在明确授权可临时移除 `site`、无其他读写任务的独占窗口执行：先取得公共配置锁并落盘完整 BSON，再按 `_id`、revision 和原文档精确匹配移除，读取后 CAS 恢复；不删除其他 scope，不要求另建库。无法保证独占或精确恢复时仅阻塞 C1。
 - 测试夹具：providers 域写入仅用于本轮的测试密钥；C5a 先通过 API 将该密钥清空；密钥只在进程内比较，DB 中检查 `{secret: cipher}` 包装及解密后的等值结果，不输出 cipher 或明文。准备合法与非法 `subPlans` 各一份、可控本机服务（分别返回 200/404/500 和延迟超过 500ms）、一个关闭端口、一个 `file://` URL。所有站点、域名、账号和文件标识带本次 run 前缀。
-- 复位约定：各子场景使用自己的最新 revision；C6b/C6c 承接 C6a 的成功结果，其他子场景从 D0 生效值开始。测试和断言只能通过真实 API 和只读查询完成；仅在经授权的隔离库中，恢复阶段使用已加密的快照，对本轮状态做全 BSON 比对后以事务和 CAS 恢复原始字段（revision 单调递增、`updatedAt` 更新），不覆盖其他写入。套餐场景恢复同一 commercial 文档的原始 subPlans；恢复后核对 11 域、套餐和运行时刷新。若写请求结果未知或恢复无法确认，保留锁与快照，禁止盲目重试或继续下一场景。
+- 复位约定：各子场景使用自己的最新 revision；C6b/C6c 承接 C6a 的成功结果，其他子场景从 D0 生效值开始。业务断言通过真实 API 和只读查询完成；仅在明确授权的独占恢复窗口，对本轮已知写入做全 BSON 比对后以事务和 CAS 恢复原始字段（revision 单调递增、`updatedAt` 更新），不覆盖其他写入。套餐场景恢复同一 commercial 文档的原始 subPlans；恢复后核对 11 域、套餐和运行时刷新。短请求拒绝窗口仍要求全部目标 BSON/revision 精确零写；长 UI/重启窗口若遇已确认的正常 License 定时验签，只允许 license 的 revision 单调递增及 `updatedAt` 不回退，剔除这两字段后的完整业务 BSON 必须精确不变。单独记录该 metadata 差异，不回滚它，不将此特例用于其他 scope 或掩盖 License 业务变化。若写请求结果未知或恢复无法确认，保留锁与快照，禁止盲目重试或继续下一场景。
 - 验证能力：HTTP 客户端保存每次请求的 method、HTTP status、响应 body（`code`、`message/statusText`、`data`）、响应头 `x-request-id` 和请求时间；Mongo 只读连接按本次 domain/revision 查询；服务日志按 requestId 和时间窗检索。
 - 场景条件：C6c/C8 的 MinIO 变体需要 `STORAGE_VENDOR=minio`，C8 的 R2 变体需要独立 R2 环境；缺少某个环境时仅阻塞相应变体。C11 使用商业版环境。C12 的字段集合以目标版本的 registry 为准，构造两组合规的合成值 A/B；`showOpenaiAccount`、`auth.fastLogin`、`providers.externalProviderWorkflowVariables` 只允许延续已有非空/已开启配置，若要覆盖其编辑/关闭变体，必须在本轮可恢复的历史夹具中预置并记录原状态，不能通过 API 重新启用。缺少历史夹具时仅阻塞这些变体，不删除字段或把重新启用拒绝当保存失败。地址只指向本轮受控服务，不使用真实第三方凭据。
-- 执行入口：本例尚无关联的完整 Node 自动化，全部子场景由 AI 通过真实 HTTP 与只读 Mongo 查询执行。缺失 site 文档、历史弃用项和 BSON 恢复仅在可销毁或可精确恢复的授权夹具执行；没有安全夹具时对应变体阻塞，其他场景继续。
+- 执行入口：本例尚无关联的完整 Node 自动化，全部子场景由 AI 通过真实 HTTP 与只读 Mongo 查询执行。缺失 site 文档、历史弃用项和 BSON 恢复仅在可精确恢复的授权夹具执行；没有安全夹具时对应变体阻塞，其他场景继续。保存/回读、存活进程的配置快照、独立业务消费分别记录，不能将字段保存 A/B 或运行快照 baseline 匹配称作全部字段已实际消费 A/B。
 
 ## 测试步骤
 
@@ -105,4 +105,4 @@ baseline: "afc92e5f5d8cd3978e5d3865a5770119e00908da"
 | C9 | API | 通用探测的 200/404/500 均返回 `connected=true` 且 status 对应；关闭端口返回 `connected=false` 和非空 error；`file://` 返回 `connected=false` 且 error 含 “Only HTTP and HTTPS”；500ms 慢服务返回 `connected=false`、`errorCode=timeout`；非 root 被拒绝；probe 不因内部地址被 SSRF 拦截。 | 各探测响应、受控服务路径/请求计数及超时耗时。 |
 | C10 | API | 上述非法输入均由入参校验拒绝（400 语义），不得进入业务写入；DB revision 不变。 | 每个非法输入的脱敏响应、DB/revision 不变的精确差集。 |
 | C11 | API + DB | 非法套餐返回 HTTP/业务 400，所有域与套餐文档不变。合法套餐与 site 修改同一事务成功：site 与 commercial revision 各加一，返回结果只包含请求的 site；同一 commercial 文档的 `overrides.subPlans.extraDatasetSize.price=5`，`overrides.subPlans.extraPoints.packages` 为提交的积分包数组，不保留对应扁平键，不新增旧 systemconfigs 文档；subPlans 是整表替换，省略专用输入时保留原值，不能按对象补丁残留旧权益。 | 失败/成功事务响应、commercial.subPlans 及 site 的前后查询、旧集合不变对照。 |
-| C12 | API + DB | A、B 两轮每次全部 11 域 revision 各加一；registry 每个已具备夹具字段的非敏感 GET 生效值和由 Mongo 文档解密还原的生效值均匹配合成输入；非空敏感值在 API 完全省略，仅状态路径与预期一致，DB 加密且进程内解密比对一致。退役字段按已记录的历史初态验证，未具备夹具的变体明确阻塞；六个非管理 scope 和旧 systemconfigs 不变。快照恢复后除 revision 和 `updatedAt` 外 11 域原始字段完全一致。此项只证明保存、脱敏与回读，不代表全部运行时消费、重载或重启路径已验证。 | registry 字段覆盖清单、每字段等值布尔结果、辅助 scope/旧集合差集与恢复校验。 |
+| C12 | API + DB | A、B 两轮每次全部 11 域 revision 各加一；registry 每个已具备夹具字段的非敏感 GET 生效值和由 Mongo 文档解密还原的生效值均匹配合成输入；非空敏感值在 API 完全省略，仅状态路径与预期一致，DB 加密且进程内解密比对一致。退役字段按已记录的历史初态验证，未具备夹具的变体明确阻塞；六个非管理 scope 的业务 BSON和旧 systemconfigs 不变，长窗口内正常 License metadata变化按公共约定单列。快照恢复后除 revision 和 `updatedAt` 外 11 域原始字段完全一致。此项只证明保存、脱敏与回读，不代表全部运行时消费、重载或重启路径已验证。 | registry 字段覆盖清单、每字段等值布尔结果、辅助 scope/旧集合差集与恢复校验。 |

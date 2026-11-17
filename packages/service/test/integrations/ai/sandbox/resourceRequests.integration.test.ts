@@ -27,6 +27,7 @@ type ResourceRequestCase = {
 // 此处验证发送的请求，不模拟 Kubernetes 调度，也不据此断言真实 Pod 的 QoS。
 describe.sequential('OpenSandbox resource requests HTTP integration', () => {
   const createRequests: unknown[] = [];
+  const endpointProxySelections: string[] = [];
   let baseUrl: string;
   const server = createServer(async (req, res) => {
     try {
@@ -42,6 +43,9 @@ describe.sequential('OpenSandbox resource requests HTTP integration', () => {
         req.method === 'GET' &&
         req.url?.startsWith('/v1/sandboxes/sandbox-1/endpoints/')
       ) {
+        endpointProxySelections.push(
+          new URL(req.url, baseUrl).searchParams.get('use_server_proxy') ?? 'missing'
+        );
         res.end(JSON.stringify({ endpoint: new URL(baseUrl).host }));
       } else {
         res.writeHead(404);
@@ -67,6 +71,7 @@ describe.sequential('OpenSandbox resource requests HTTP integration', () => {
 
   afterEach(() => {
     createRequests.length = 0;
+    endpointProxySelections.length = 0;
     vi.unstubAllEnvs();
   });
 
@@ -133,16 +138,10 @@ describe.sequential('OpenSandbox resource requests HTTP integration', () => {
     getTestInstanceConfig().subservice.agentSandbox.provider = 'none';
     getTestInstanceConfig().subservice.agentSandbox.opensandbox.baseUrl =
       baseUrl ?? createDefaultInstanceConfig().subservice.agentSandbox.opensandbox.baseUrl;
-    getTestInstanceConfig().subservice.agentSandbox.opensandbox.apiKey =
-      'integration-api-key' ??
-      createDefaultInstanceConfig().subservice.agentSandbox.opensandbox.apiKey;
-    getTestInstanceConfig().subservice.agentSandbox.opensandbox.image =
-      'runtime:integration' ??
-      createDefaultInstanceConfig().subservice.agentSandbox.opensandbox.image;
+    getTestInstanceConfig().subservice.agentSandbox.opensandbox.apiKey = 'integration-api-key';
+    getTestInstanceConfig().subservice.agentSandbox.opensandbox.image = 'runtime:integration';
     getTestInstanceConfig().subservice.agentSandbox.opensandbox.runtime =
-      testCase.runtime ??
-      'kubernetes' ??
-      createDefaultInstanceConfig().subservice.agentSandbox.opensandbox.runtime;
+      testCase.runtime ?? 'kubernetes';
     getTestInstanceConfig().subservice.agentSandbox.common.cpuCount = 2;
     getTestInstanceConfig().subservice.agentSandbox.common.memoryMiB = 4096;
     getTestInstanceConfig().subservice.agentSandbox.opensandbox.cpuOvercommitFactor = Number(
@@ -177,6 +176,64 @@ describe.sequential('OpenSandbox resource requests HTTP integration', () => {
       }
     } finally {
       await adapter.close();
+    }
+  });
+  it('uses current common CPU and memory defaults for the next HTTP create request', async () => {
+    const config = getTestInstanceConfig().subservice.agentSandbox;
+    config.provider = 'none';
+    Object.assign(config.opensandbox, {
+      baseUrl,
+      apiKey: 'integration-api-key',
+      image: 'runtime:integration',
+      runtime: 'kubernetes',
+      cpuOvercommitFactor: 1,
+      memoryOvercommitFactor: 1
+    });
+    const { buildRuntimeSandboxAdapter } =
+      await import('@fastgpt/service/core/ai/sandbox/infrastructure/provider/adapter');
+    for (const [cpuCount, memoryMiB] of [
+      [2, 4096],
+      [4, 8192]
+    ]) {
+      Object.assign(config.common, { cpuCount, memoryMiB });
+      const adapter = buildRuntimeSandboxAdapter('opensandbox', 'live-common-config', {
+        createConfig: { skipHealthCheck: true }
+      });
+      try {
+        await adapter.create();
+        expect(createRequests.at(-1)).toMatchObject({
+          resourceLimits: { cpu: String(cpuCount), memory: `${memoryMiB}Mi` }
+        });
+      } finally {
+        await adapter.close();
+      }
+    }
+  });
+
+  it('selects server proxy mode in actual SDK endpoint HTTP requests', async () => {
+    const config = getTestInstanceConfig().subservice.agentSandbox;
+    config.provider = 'none';
+    Object.assign(config.opensandbox, {
+      baseUrl,
+      apiKey: 'integration-api-key',
+      image: 'runtime:integration',
+      runtime: 'docker'
+    });
+    const { buildRuntimeSandboxAdapter } =
+      await import('@fastgpt/service/core/ai/sandbox/infrastructure/provider/adapter');
+    for (const useServerProxy of [false, true]) {
+      config.opensandbox.useServerProxy = useServerProxy;
+      endpointProxySelections.length = 0;
+      const adapter = buildRuntimeSandboxAdapter('opensandbox', 'server-proxy-mode', {
+        createConfig: { skipHealthCheck: true }
+      });
+      try {
+        await adapter.create();
+        expect(endpointProxySelections.length).toBeGreaterThan(0);
+        expect(new Set(endpointProxySelections)).toEqual(new Set([String(useServerProxy)]));
+      } finally {
+        await adapter.close();
+      }
     }
   });
 });

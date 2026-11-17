@@ -29,7 +29,8 @@ import { axios, type SafeAxiosRequestConfig } from '../../../../common/api/axios
 import { replaceEditorVariable } from '../utils/replaceEditorVariable';
 import { checkStrOversize, logOversizeString } from '../../../../common/string/replaceVariable';
 import { getWorkflowAppId } from '../utils/source';
-import { getErrText, UserConfigError } from '@fastgpt/global/common/error/utils';
+import { getErrText, isUserConfigError, UserConfigError } from '@fastgpt/global/common/error/utils';
+import { getSafeHttpErrorLog } from '../../../../common/api/httpError';
 
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.TOOLS);
 
@@ -334,16 +335,21 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
         Object.keys(results).length > 0 ? results : rawResponse
     };
   } catch (error) {
-    logger.warn('HTTP tool request failed', {
-      error,
-      httpReqUrl: requestUrl,
-      ignoreHttpsCertificate:
-        getSystemInstanceConfig().security.workflowHttpNode.ignoreHttpsCertificate
-    });
-
     // 分类包装不改变 HTTP 输出字段，摘要仍从原始异常提取状态码、响应体等信息。
     const httpError =
       error instanceof UserConfigError && Object.hasOwn(error, 'cause') ? error.cause : error;
+    const logProperties = {
+      ...getSafeHttpErrorLog(httpError),
+      ignoreHttpsCertificate:
+        getSystemInstanceConfig().security.workflowHttpNode.ignoreHttpsCertificate
+    };
+    // 安全摘要不再携带 error，显式保留 logger 对用户配置错误的降噪与禁止导出策略。
+    if (isUserConfigError(error)) {
+      logger.info('HTTP tool request failed', { ...logProperties, otel: false });
+    } else {
+      logger.warn('HTTP tool request failed', logProperties);
+    }
+
     const { rawText, ...errObj } = formatHttpError(httpError);
     return getNodeErrResponse({
       error,

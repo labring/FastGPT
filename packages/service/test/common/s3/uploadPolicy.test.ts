@@ -4,8 +4,40 @@ import {
   getUploadInspectBytes
 } from '@fastgpt/service/common/s3/uploadPolicy/service';
 import { createUploadExtensionRulesFromFileSelectConfig } from '@fastgpt/service/common/s3/uploadPolicy/utils';
+import { getTestInstanceConfig } from '@test/utils/instanceConfigSnapshot';
+import { validateUploadFile } from '@fastgpt/service/common/s3/validation/upload';
+import { S3ErrEnum } from '@fastgpt/global/common/error/code/s3';
 
 describe('createUploadPolicy', () => {
+  it('uses the current scope to accept or reject the same mismatched bytes without bypassing the extension allowlist', async () => {
+    const config = getTestInstanceConfig().security;
+    const original = config.skipFileTypeCheck;
+    const input = {
+      buffer: Buffer.from(
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+        'base64'
+      ),
+      filename: 'owned.jpg',
+      uploadConstraints: { allowedExtensions: ['.jpg'] }
+    };
+    try {
+      config.skipFileTypeCheck = false;
+      await expect(validateUploadFile(input)).rejects.toThrow(S3ErrEnum.uploadFileTypeMismatch);
+      config.skipFileTypeCheck = true;
+      await expect(validateUploadFile(input)).resolves.toMatchObject({
+        filename: 'owned.jpg',
+        contentType: 'image/jpeg'
+      });
+      await expect(validateUploadFile({ ...input, filename: 'owned.exe' })).rejects.toThrow(
+        'InvalidUploadFileType'
+      );
+      config.skipFileTypeCheck = false;
+      await expect(validateUploadFile(input)).rejects.toThrow(S3ErrEnum.uploadFileTypeMismatch);
+    } finally {
+      config.skipFileTypeCheck = original;
+    }
+  });
+
   it('does not reject missing extension and uses contentType as fallback hint', () => {
     expect(
       createUploadPolicy({
