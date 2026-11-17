@@ -294,5 +294,10 @@
   "process.Synonym_Rebuild": "同義詞重建",
   "data_index_status_synonym_pending": "同義詞待重建",
   "data_index_status_synonym_running": "同義詞重建中",
-  "data_index_status_synonym_failed": "同義詞重建失敗"
+  "data_index_status_synonym_failed": "同義詞重建失敗",
+  "search_targets_required": "至少選擇一個知識庫",
+  "search_targets_must_be_datasets": "搜尋目標必須是知識庫，不能選擇資料夾",
+  "search_query_images_must_belong_to_team": "搜尋圖片必須是目前團隊上傳的暫存圖片",
+  "search_filters_unsupported": "目前版本不支援知識庫搜尋篩選",
+  "search_embedding_models_must_match": "聯合向量搜尋要求知識庫使用相同的向量模型"
 }

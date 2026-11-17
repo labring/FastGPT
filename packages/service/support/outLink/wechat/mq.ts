@@ -12,7 +12,6 @@ import type { OutLinkSchemaType, WechatAppType } from '@fastgpt/global/support/o
 import { MongoOutLink } from '../../../support/outLink/schema';
 import { wechatPollingFailureCache } from '@fastgpt/dal/redis/caches';
 import { groupMessagesByUser } from './messageParser';
-import { serviceEnv } from '../../../env';
 import { batchRun, retryFn } from '@fastgpt/global/common/system/utils';
 import { wechatOutlinkProvider } from './provider';
 
@@ -24,6 +23,7 @@ const FAILURE_BACKOFF_MS = 10_000;
 const EMPTY_POLL_DELAY_MS = 10_000;
 const POLL_LOCK_MS = 120_000;
 const REPLY_LOCK_MS = 30 * 60_000;
+const WECHAT_WORKER_CONCURRENCY = 1000;
 // Poll processor 硬超时：防止 worker 活着但 processor hang 导致确定 jobId 永远阻塞
 // 应 > LONG_POLL_TIMEOUT_MS(35s) + Mongo/Redis 操作余量
 const POLL_HARD_TIMEOUT_MS = 120_000;
@@ -228,7 +228,7 @@ async function shouldContinuePolling(shareId: string): Promise<boolean> {
 export const initWechatPollWorker = async () => {
   const pollWorker = wechatMQService.getPollWorker(processWechatPollJob, {
     // poll job 主要阻塞在 getUpdates 长轮询 I/O（~30s），不吃 CPU
-    concurrency: serviceEnv.WECHAT_CHANNEL_CONCURRENCY,
+    concurrency: WECHAT_WORKER_CONCURRENCY,
     lockDuration: POLL_LOCK_MS, // 120s 防止 job 被误判为 stalled
     stalledInterval: 30_000, // 30s 检查下是否活跃
     removeOnComplete: { count: 0 },
@@ -267,7 +267,7 @@ export const initWechatPollWorker = async () => {
   });
 
   wechatMQService.getReplyWorker(processWechatReplyJob, {
-    concurrency: serviceEnv.WECHAT_CHANNEL_CONCURRENCY,
+    concurrency: WECHAT_WORKER_CONCURRENCY,
     lockDuration: REPLY_LOCK_MS,
     stalledInterval: 60_000,
     removeOnComplete: { count: 0 },

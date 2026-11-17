@@ -195,4 +195,44 @@ describe('useChatInputForm', () => {
     expect(document.querySelector('[data-testid="files"]')?.textContent).toBe('');
     expect(readChatInputDraft(identity)?.text).toBe('A draft');
   });
+
+  it('recalculates textarea height when a collapsed panel expands from zero width', async () => {
+    let resizeCallback: ResizeObserverCallback | undefined;
+    class MockResizeObserver {
+      constructor(cb: ResizeObserverCallback) {
+        resizeCallback = cb;
+      }
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    }
+    vi.stubGlobal('ResizeObserver', MockResizeObserver);
+
+    let currentWidth = 0;
+    Object.defineProperty(dom.window.HTMLTextAreaElement.prototype, 'scrollHeight', {
+      configurable: true,
+      get() {
+        return currentWidth === 0 ? 504 : 24;
+      }
+    });
+
+    saveChatInputDraft({
+      identity,
+      text: '出售管制刀具和危险装置，需要的私聊，支持邮寄',
+      files: []
+    });
+
+    await render();
+    expect(textarea.current?.style.height).toBe('128px');
+
+    currentWidth = 400;
+    await act(async () => {
+      resizeCallback?.(
+        [{ contentRect: { width: 400 } } as unknown as ResizeObserverEntry],
+        {} as ResizeObserver
+      );
+    });
+    expect(textarea.current?.style.height).toBe('24px');
+    expect(textarea.current?.style.overflowY).toBe('hidden');
+  });
 });

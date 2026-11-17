@@ -18,7 +18,11 @@ async function handler(
 
   const user = await MongoUser.findById(userId).select('+password username passwordUpdateTime');
 
-  if (!user || !getUserPasswordAvailability(user.username) || !hasStoredPassword(user.password)) {
+  if (
+    !user ||
+    !(await getUserPasswordAvailability(user.username)) ||
+    !hasStoredPassword(user.password)
+  ) {
     return false;
   }
 

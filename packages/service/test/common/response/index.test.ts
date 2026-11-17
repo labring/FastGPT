@@ -9,8 +9,17 @@ import { SandboxErrEnum } from '@fastgpt/global/common/error/code/sandbox';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { EventEmitter } from 'node:events';
-import { ChatGeneratingConflictError } from '@fastgpt/global/core/chat/error';
+import {
+  ChatEntryModerationError,
+  ChatGeneratingConflictError,
+  isChatEntryModerationError
+} from '@fastgpt/global/core/chat/error';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
+import { S3ErrEnum } from '@fastgpt/global/common/error/code/s3';
+import {
+  MODERATION_BLOCKED_ERROR_MESSAGE,
+  MODERATION_ERROR_BLOCKED_MESSAGE
+} from '@fastgpt/global/core/plugin/moderation/constants';
 
 vi.unmock('@fastgpt/service/common/response');
 
@@ -68,6 +77,34 @@ describe('chat generating conflict recovery target', () => {
       }).data
     ).toBeNull();
   });
+
+  it.each([MODERATION_BLOCKED_ERROR_MESSAGE, MODERATION_ERROR_BLOCKED_MESSAGE])(
+    'marks ChatEntryModerationError with chatEntryModerationBlocked in JSON and SSE while keeping ordinary moderation errors distinct: %s',
+    (moderationMessage) => {
+      const entryError = new ChatEntryModerationError(moderationMessage);
+      const res = { status: vi.fn().mockReturnThis(), json: vi.fn() };
+      jsonRes(res as unknown as Parameters<typeof jsonRes>[0], { code: 500, error: entryError });
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          statusText: ChatErrEnum.chatEntryModerationBlocked,
+          message: moderationMessage
+        })
+      );
+
+      const ssePayload = JSON.parse(getSseErrorResponse(entryError).data);
+      expect(ssePayload).toMatchObject({
+        statusText: ChatErrEnum.chatEntryModerationBlocked,
+        message: moderationMessage
+      });
+      expect(isChatEntryModerationError(ssePayload)).toBe(true);
+
+      const postPersistError = new UserError(moderationMessage);
+      const postPersistSsePayload = JSON.parse(getSseErrorResponse(postPersistError).data);
+      expect(postPersistSsePayload).toEqual({ message: moderationMessage });
+      expect(isChatEntryModerationError(postPersistSsePayload)).toBe(false);
+    }
+  );
 });
 
 function buildZodError() {
@@ -244,6 +281,8 @@ describe('jsonRes HTTP status mapping', () => {
     [UserErrEnum.invalidVerificationCode, 400],
     [UserErrEnum.sendVerificationCodeTooFrequently, 429],
     [UserErrEnum.verifyCodeTooFrequently, 429],
+    [UserErrEnum.captchaRenderQueueFull, 429],
+    [UserErrEnum.captchaRenderQueueTimeout, 503],
     [SandboxErrEnum.agentSandboxInitializing, 409],
     [SandboxErrEnum.agentSandboxLimitReached, 409],
     [SandboxErrEnum.agentSandboxTeamLimitReached, 409],
@@ -263,6 +302,44 @@ describe('jsonRes HTTP status mapping', () => {
         errorType: 'UserError'
       })
     );
+  });
+
+  it.each([
+    [S3ErrEnum.invalidUploadFileType, 510000],
+    [S3ErrEnum.uploadFileTypeMismatch, 510001],
+    [S3ErrEnum.fileUploadDisabled, 510002],
+    [S3ErrEnum.emptyUploadFile, 510003]
+  ] as const)('returns HTTP 400 for registered upload validation error %s', (errorKey, code) => {
+    const res = createResponse();
+
+    // 上传代理已经将这些错误分类为 400，JSON 包装不能再覆盖成默认 500。
+    jsonRes(res, { code: 400, error: new Error(errorKey) });
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ code, statusText: errorKey }));
+  });
+
+  it('keeps an explicitly configured server status for an S3 business error', () => {
+    const entry = ERROR_RESPONSE[S3ErrEnum.uploadFileTypeMismatch];
+    const original = entry.httpStatus;
+    const res = createResponse();
+
+    try {
+      entry.httpStatus = 503;
+      jsonRes(res, { code: 400, error: new Error(S3ErrEnum.uploadFileTypeMismatch) });
+      expect(res.status).toHaveBeenCalledWith(503);
+    } finally {
+      if (original === undefined) delete entry.httpStatus;
+      else entry.httpStatus = original;
+    }
+  });
+
+  it('keeps unregistered internal errors at HTTP 500 even with an S3-range fallback code', () => {
+    const res = createResponse();
+
+    jsonRes(res, { code: 510001, error: new Error('Unexpected storage failure') });
+
+    expect(res.status).toHaveBeenCalledWith(500);
   });
 
   it.each(['httpStatus', 'statusCode'] as const)(

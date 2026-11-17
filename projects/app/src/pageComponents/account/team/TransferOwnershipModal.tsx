@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Box, Flex, HStack, Input, Button, useDisclosure } from '@chakra-ui/react';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
+import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
 import { type TeamMemberItemType } from '@fastgpt/global/support/user/team/type';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
@@ -39,8 +40,8 @@ export function TransferOwnershipModal({
     throttleWait: 500
   });
 
-  // Filter out current owner
-  const filteredMembers = members.filter((m) => m.userId !== userInfo?._id);
+  // 排除当前团队真实所有者；root 跨团队代管时允许选择任意其他活跃成员或将所有权转给 root 本人。
+  const filteredMembers = members.filter((m) => m.role !== TeamMemberRoleEnum.owner);
 
   const {
     isOpen: isOpenMemberListMenu,

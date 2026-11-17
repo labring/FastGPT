@@ -1,6 +1,6 @@
 ---
 title: 'V4.15.1'
-description: 'FastGPT V4.15.1 Release Notes'
+description: "FastGPT V4.15.1 release notes covering container image updates, upgrade steps, and feature changes."
 releaseTime: '2026-07-03'
 upgradeTags:
   - CONFIG
@@ -11,13 +11,14 @@ upgradeTags:
 
 ### 1. fastgpt-pro Environment Variable Updates
 
-Community Edition users can skip this step.
+Community Edition users can skip this step. Starting with V4.15.4, `FE_DOMAIN` is also required for the Community Edition; see [V4.15.4](/en/self-host/upgrading/4-15/4154).
 
 Starting from v4.15.1, the FastGPT main app no longer uses `rootkey` when calling Pro/Admin internal APIs. These internal service-to-service calls now use a dedicated `PRO_TOKEN`. `FE_DOMAIN` is also required. If you deploy the Pro edition, configure the same `PRO_TOKEN` in both the FastGPT main app and the Pro/Admin service:
 
 ```bash
 PRO_TOKEN=your_pro_token_at_least_32_chars
-FE_DOMAIN=fastgpt_domain
+# FastGPT access URL, including the protocol
+FE_DOMAIN=https://fastgpt.example.com
 ```
 
 Notes:

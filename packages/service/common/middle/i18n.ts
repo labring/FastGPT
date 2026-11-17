@@ -15,7 +15,7 @@ const getHeaderValue = (value: string | string[] | undefined) =>
  * 客户端封装会发送对应页面的语言请求头，以便服务端使用 localStorage、memory 或
  * navigator.language 推导出的语言；分享页请求头独立于主站语言链路。
  */
-export const getLocale = (req: NodeHttpRequest): localeType => {
+export const getLocale = (req: Pick<NodeHttpRequest, 'headers'>): localeType => {
   const cookies = Cookie.parse(req.headers.cookie ?? '');
   const locale = parseLocale(cookies.NEXT_LOCALE);
   const shareHeaderValue = getHeaderValue(req.headers[FASTGPT_SHARE_LANGUAGE_HEADER]);

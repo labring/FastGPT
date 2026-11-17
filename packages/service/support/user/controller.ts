@@ -9,6 +9,7 @@ import { getActiveAccountCancellationByUserId } from './account/cancellation/rea
 import { formatTeamAccountCancellationSummary } from './account/cancellation/formatter';
 import { hasStoredPassword } from '@fastgpt/global/support/user/utils';
 import { getUserPasswordAvailability } from './account/password/service';
+import { SsoConfigurationUnavailableError } from '../../common/system/sso';
 
 export async function authUserExist({ userId, username }: { userId?: string; username?: string }) {
   if (userId) {
@@ -93,6 +94,10 @@ export async function getUserDetail({
       ? { accountCancellation: formatTeamAccountCancellationSummary(accountCancellation) }
       : {}),
     hasPassword: hasStoredPassword(user.password),
-    passwordAvailable: getUserPasswordAvailability(user.username)
+    // 详情展示遇到 Pro 短暂不可用时保守隐藏密码入口，不能阻断已登录用户的普通操作。
+    passwordAvailable: await getUserPasswordAvailability(user.username).catch((error: unknown) => {
+      if (error instanceof SsoConfigurationUnavailableError) return false;
+      throw error;
+    })
   };
 }

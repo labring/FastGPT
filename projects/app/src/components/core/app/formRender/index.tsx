@@ -1,10 +1,9 @@
 import React from 'react';
-import { Box, Flex, IconButton, Input, Switch } from '@chakra-ui/react';
-import { getSecretPlainValue, isSecretValueConfigured } from '@fastgpt/global/common/secret/utils';
+import { Box, Switch } from '@chakra-ui/react';
+import { getSecretPlainValue, getSecretCipherValue } from '@fastgpt/global/common/secret/utils';
 import { formatTime2YMDHMS, formatToISOWithTimezone } from '@fastgpt/global/common/string/time';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { SelectedDatasetType } from '@fastgpt/global/core/workflow/type/io';
-import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import MultipleSelect from '@fastgpt/web/components/common/MySelect/MultipleSelect';
@@ -12,11 +11,12 @@ import JSONEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';
 import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import AIModelSelector from '../../../Select/AIModelSelector';
 import FileSelector from '../FileSelector/index';
 import { InputTypeEnum } from './constant';
 import TimeInput from './TimeInput';
+import SecretValueInput from '@/components/common/secret/SecretValueInput';
 import type { InputRenderProps } from './type';
 import { getFileSelectRenderProps } from './utils';
 
@@ -33,8 +33,6 @@ const InputRender = (props: InputRenderProps) => {
   } = props;
 
   const { t } = useSafeTranslation();
-  // Password
-  const [isPasswordEditing, setIsPasswordEditing] = useState(false);
 
   const multipleSelectList = useMemo(() => {
     if (inputType !== InputTypeEnum.multipleSelect) return [];
@@ -91,56 +89,13 @@ const InputRender = (props: InputRenderProps) => {
   }
 
   if (inputType === InputTypeEnum.password) {
-    const isPasswordConfigured = isSecretValueConfigured(value);
-    const val = getSecretPlainValue(value) ?? '';
-
-    return !isPasswordConfigured || isPasswordEditing ? (
-      <Input
+    return (
+      <SecretValueInput
         {...commonProps}
-        onChange={(e) => {
-          const val = e.target.value;
-          onChange?.({ value: val });
-        }}
-        value={val}
-        type="password"
-        autoFocus={isPasswordEditing}
-        onFocus={() => setIsPasswordEditing(true)}
-        onBlur={() => setIsPasswordEditing(false)}
-        autoComplete="new-password"
-        data-form-type="other"
-        data-lpignore="true"
+        value={getSecretPlainValue(value) ?? ''}
+        isConfigured={!!getSecretCipherValue(value)}
+        onChange={(value) => onChange?.({ value })}
       />
-    ) : (
-      <Flex alignItems="center" gap={2}>
-        <Flex
-          flex={1}
-          borderRadius={'6px'}
-          border={'0.5px solid'}
-          borderColor={'primary.200'}
-          bg={'primary.50'}
-          h={9}
-          px={3}
-          alignItems={'center'}
-          gap={1}
-          opacity={isDisabled ? 0.6 : 1}
-        >
-          <MyIcon name="checkCircle" w={'16px'} color={'primary.600'} />
-          <Box fontSize={'sm'} fontWeight={'medium'} color={'primary.600'}>
-            {t('common:had_auth_value')}
-          </Box>
-        </Flex>
-        {!isDisabled && (
-          <IconButton
-            aria-label="Edit password"
-            icon={<MyIcon name="edit" w={'16px'} />}
-            size="sm"
-            variant="ghost"
-            color={'myGray.500'}
-            _hover={{ color: 'primary.600' }}
-            onClick={() => setIsPasswordEditing(true)}
-          />
-        )}
-      </Flex>
     );
   }
 

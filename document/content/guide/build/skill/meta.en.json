@@ -2,10 +2,11 @@
   "title": "Skills",
   "root": false,
   "pages": [
-    "intro",
-    "development",
+    "!intro",
     "initialization",
+    "development",
     "version",
-    "integration"
+    "integration",
+    "package-reference"
   ]
 }

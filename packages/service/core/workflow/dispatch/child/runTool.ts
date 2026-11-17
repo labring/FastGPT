@@ -280,6 +280,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
             uId,
             teamId: String(runningUserInfo.teamId),
             tmbId: String(runningUserInfo.tmbId),
+            usageId: props.usageId,
             permissions: tool.permissions ?? []
           }).generateToken()
         : undefined;
@@ -302,10 +303,12 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
           },
           chat: {
             chatId,
-            uid: uId
+            uid: uId,
+            usageId: props.usageId
           },
           invokeToken: invokeToken || '',
-          time: cTime
+          time: cTime,
+          usageId: props.usageId
         },
         onMessage: ({ type, content }) => {
           if (!workflowStreamResponse || !content || !isPluginAnswerType(type)) return;

@@ -1,9 +1,9 @@
 ---
 title: Troubleshooting Notes
-description: FastGPT usage notes
+description: "Review essential self-hosted FastGPT troubleshooting practices covering version checks, diagnostic steps, reverse-proxy client IP forwarding, and support."
 ---
 
-# Troubleshooting Notes
+## Troubleshooting Notes
 
 If you encounter issues while using FastGPT, follow the steps below to troubleshoot and resolve them.
 
@@ -11,8 +11,8 @@ If you encounter issues while using FastGPT, follow the steps below to troublesh
 
 Many known issues are fixed in newer releases. Before reporting a problem, verify your version first:
 
-- **Check version:** View the current running version on the FastGPT homepage or in the admin panel.
-- **Upgrade recommendation:** If you are not on the latest version, follow the [Upgrade Guide](/en/self-host/upgrading/upgrade-instruction) to update to the latest stable release.
+- **Check version:** View the current running FastGPT version at the bottom of the left navigation bar, under **Admin → System upgrade**, or in the `fastgpt-app` image tag in `docker-compose.yml`.
+- **Version recommendation:** Follow the [Upgrade Guide](/en/self-host/upgrading/upgrade-instruction) to keep the deployment on the latest stable release.
 
 ## 2. Troubleshooting Steps
 
@@ -49,7 +49,7 @@ server {
     server_name fastgpt.example.com;
 
     location / {
-        proxy_pass http://fastgpt:3000;
+        proxy_pass http://fastgpt-app:3000;
 
         proxy_http_version 1.1;
         proxy_set_header Host $host;
@@ -77,7 +77,7 @@ server {
     real_ip_recursive on;
 
     location / {
-        proxy_pass http://fastgpt:3000;
+        proxy_pass http://fastgpt-app:3000;
 
         proxy_http_version 1.1;
         proxy_set_header Host $host;
@@ -105,7 +105,7 @@ You can verify the setup with spoofed headers:
 curl -H 'X-Forwarded-For: 6.6.6.6' -H 'X-Real-IP: 6.6.6.6' https://fastgpt.example.com
 ```
 
-If the configuration is correct, FastGPT should still record and validate the real client IP, not the spoofed value `6.6.6.6` from the request.
+Then inspect the client IP in the App's **Chat logs** or server request logs; with the configuration active, FastGPT records the real egress IP of the client and ignores the spoofed `6.6.6.6` value.
 
 ## 4. Contact Technical Support
 

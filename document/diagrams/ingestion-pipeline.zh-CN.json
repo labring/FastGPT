@@ -1,0 +1,147 @@
+{
+  "type": "flowchart",
+  "title": "文件处理阶段与重试",
+  "nodes": [
+    {
+      "id": "source",
+      "label": "来源入库",
+      "row": 0,
+      "col": 1,
+      "kind": "input",
+      "illustration": "files"
+    },
+    {
+      "id": "queue",
+      "label": "等待处理",
+      "row": 1,
+      "col": 1,
+      "kind": "backend",
+      "sub": "积压时继续等待",
+      "illustration": "queue"
+    },
+    {
+      "id": "parse",
+      "label": "解析与分块",
+      "row": 2,
+      "col": 0,
+      "kind": "backend",
+      "illustration": "chunk"
+    },
+    {
+      "id": "enhance",
+      "label": "内容增强",
+      "row": 3,
+      "col": 0,
+      "kind": "backend",
+      "sub": "按处理配置",
+      "illustration": "enrich"
+    },
+    {
+      "id": "index",
+      "label": "构建索引",
+      "row": 4,
+      "col": 0,
+      "kind": "backend",
+      "focal": true,
+      "illustration": "vector"
+    },
+    {
+      "id": "ready",
+      "label": "可检索",
+      "row": 5,
+      "col": 0,
+      "kind": "store",
+      "illustration": "ready"
+    },
+    {
+      "id": "error",
+      "label": "异常处理",
+      "row": 3,
+      "col": 1,
+      "kind": "backend",
+      "sub": "退避 / 阻塞 / 排障",
+      "illustration": "error"
+    }
+  ],
+  "edges": [
+    [
+      "source",
+      "queue",
+      "",
+      "primary"
+    ],
+    [
+      "queue",
+      "parse",
+      "",
+      "primary"
+    ],
+    [
+      "parse",
+      "enhance",
+      "",
+      "primary"
+    ],
+    [
+      "enhance",
+      "index",
+      "",
+      "primary"
+    ],
+    [
+      "index",
+      "ready",
+      "",
+      "primary"
+    ],
+    [
+      "parse",
+      "error",
+      "失败",
+      "async"
+    ],
+    [
+      "enhance",
+      "error",
+      "失败",
+      "async"
+    ],
+    [
+      "index",
+      "error",
+      "失败",
+      "async"
+    ],
+    [
+      "error",
+      "queue",
+      "重试",
+      "async"
+    ]
+  ],
+  "evidence": [
+    {
+      "id": "parse",
+      "file": "projects/app/src/service/core/dataset/queues/datasetParse.ts",
+      "line": 248
+    },
+    {
+      "id": "index",
+      "file": "projects/app/src/service/core/dataset/queues/generatePreCreatedData.ts",
+      "line": 124
+    },
+    {
+      "id": "error",
+      "file": "packages/service/core/dataset/training/service.ts",
+      "line": 182
+    }
+  ],
+  "dir": "TB",
+  "lang": "zh-CN",
+  "eyebrow": "",
+  "legend": false,
+  "motion": "trace",
+  "fonts": "system",
+  "watermark": false,
+  "skin": "light"
+}

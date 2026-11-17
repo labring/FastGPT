@@ -9,8 +9,7 @@ import { AppTypeList } from '@fastgpt/global/core/app/constants';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { getVectorCountByTeamId } from '@fastgpt/service/common/vectorDB/controller';
-import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
-import { TeamMemberStatusEnum } from '@fastgpt/global/support/user/team/constant';
+import { countEffectiveTeamMembers } from '@fastgpt/service/support/user/team/controller';
 import { MongoAppRegistration } from '@fastgpt/service/support/appRegistration/schema';
 import {
   GetTeamPlanStatusQuerySchema,
@@ -54,10 +53,7 @@ async function handler(
         getTeamPlanStatus({
           teamId
         }),
-        MongoTeamMember.countDocuments({
-          teamId,
-          status: { $ne: TeamMemberStatusEnum.leave }
-        }),
+        countEffectiveTeamMembers(teamId),
         MongoApp.countDocuments({
           teamId,
           type: {

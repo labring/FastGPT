@@ -1,3 +1,4 @@
+import { UsageListItemSchema } from '../../../../openapi/support/wallet/usage/api';
 import { describe, expect, it } from 'vitest';
 import { openAPIDocument } from '../../../../openapi/provider/devapi';
 import { openAPIPaths, openAPITagGroups } from '../../../../openapi/path';
@@ -40,6 +41,19 @@ describe('wallet OpenAPI contracts', () => {
     '/proApi/support/wallet/bill/invoice/account/getTeamHeader': 'get',
     '/proApi/support/wallet/bill/invoice/account/updateHeader': 'post'
   } as const;
+
+  it.each([{ totalTokens: 77 }, { totalTokens: 0 }, { duration: 3 }, { duration: 0 }])(
+    'preserves only the STT usage and charged amount: %j',
+    (quantity) => {
+      const item = UsageListItemSchema.shape.list.element;
+      const record = {
+        moduleName: 'STT',
+        amount: 0.00077,
+        ...quantity
+      };
+      expect(item.parse(record)).toEqual(record);
+    }
+  );
 
   it('registers all wallet routes with their real proApi paths and methods', () => {
     for (const [path, method] of Object.entries(routes)) {

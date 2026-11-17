@@ -30,6 +30,11 @@ import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/cons
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import type { UserChatSelectType } from '@fastgpt/global/core/chat/input/type';
 import { AuxiliaryGenerationEventEnum } from '@fastgpt/global/core/ai/auxiliaryGeneration/constants';
+import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
+import {
+  MODERATION_BLOCKED_ERROR_MESSAGE,
+  MODERATION_ERROR_BLOCKED_MESSAGE
+} from '@fastgpt/global/core/plugin/moderation/constants';
 import { ChatAgentConfigFormDataSchema } from '@fastgpt/global/core/ai/auxiliaryGeneration/type';
 import type { generatingMessageProps } from '@/components/core/chat/ChatContainer/type';
 import { createStreamFetchError, type streamResumeFetch } from '@/web/common/api/fetch';
@@ -212,7 +217,6 @@ describe('useChatGenerate.sendPrompt', () => {
       resume
         ? [
             {
-              id: 'resumed-ai',
               dataId: 'resumed-ai',
               obj: ChatRoleEnum.AI,
               status: ChatStatusEnum.loading,
@@ -355,6 +359,25 @@ describe('useChatGenerate.sendPrompt', () => {
     vi.unstubAllGlobals();
   });
 
+  it.each([undefined, ''])('omits an empty file key from the chat request: %j', async (key) => {
+    await render();
+    await act(async () => {
+      generate.sendPrompt({ text: 'question', files: [{ ...file, key }] });
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    expect(mocks.start).toHaveBeenCalledOnce();
+    const human = records.find((item) => item.obj === ChatRoleEnum.Human);
+    expect(human?.value[0]).toMatchObject({ file: { url: file.url, key: undefined } });
+    const request = JSON.parse(JSON.stringify(mocks.start.mock.calls[0][0]));
+    expect(request.messages[0].content[0]).toEqual({
+      type: 'file_url',
+      name: file.name,
+      url: file.url,
+      fileType: 'document'
+    });
+  });
+
   it.each(['streaming', 'completed', 'interactive'] as const)(
     'restores a rejected send and recovers the already loaded original AI: %s',
     async (mode) => {
@@ -420,6 +443,7 @@ describe('useChatGenerate.sendPrompt', () => {
       expect(mocks.resume).toHaveBeenCalledTimes(2);
       expect(records).toHaveLength(1);
       expect(records[0].dataId).toBe('resumed-ai');
+      if (mode === 'completed') expect(Object.hasOwn(records[0], 'id')).toBe(false);
       expect(JSON.stringify(records[0].value)).toContain('original A answer');
       expect(JSON.stringify(records)).not.toContain('rejected B text');
     }
@@ -460,6 +484,7 @@ describe('useChatGenerate.sendPrompt', () => {
         expect.objectContaining(event)
       );
       expect(records.at(-1)?.value).toEqual(expect.arrayContaining([{ chatAgentBuilderVersion }]));
+      expect(records.every((item) => !Object.hasOwn(item, 'id'))).toBe(true);
       expect(mode === 'resume' ? mocks.resume : mocks.start).toHaveBeenCalledOnce();
       expect(mode === 'resume' ? mocks.start : mocks.resume).not.toHaveBeenCalled();
     }
@@ -1114,4 +1139,64 @@ describe('useChatGenerate.sendPrompt', () => {
       expect(readChatInputDraft(identity)?.text).toBe('submitted');
     }
   );
+
+  it.each([MODERATION_BLOCKED_ERROR_MESSAGE, MODERATION_ERROR_BLOCKED_MESSAGE])(
+    'shows a warning toast, rolls back optimistic messages, and restores input when entry moderation blocks: %s',
+    async (moderationMessage) => {
+      mocks.start.mockRejectedValueOnce(
+        createStreamFetchError({
+          error: {
+            statusText: ChatErrEnum.chatEntryModerationBlocked,
+            message: moderationMessage
+          },
+          fallbackMessage: 'Error',
+          responseText: ''
+        })
+      );
+
+      await render();
+      await edit('甲基苯丙胺', [file]);
+      await send({ text: '甲基苯丙胺' });
+
+      expect(mocks.start).toHaveBeenCalledOnce();
+      expect(mocks.toast).toHaveBeenCalledWith({
+        title: moderationMessage,
+        status: 'warning'
+      });
+      expect(records).toEqual([]);
+      expect(input.chatForm.getValues('input')).toBe('甲基苯丙胺');
+      expect(input.chatForm.getValues('files')[0].key).toBe(file.key);
+      expect(readChatInputDraft(identity)?.text).toBe('甲基苯丙胺');
+      expect(mocks.finishStatus).toHaveBeenCalledWith(
+        expect.objectContaining({
+          status: ChatGenerateStatusEnum.done,
+          finishedInActiveChat: true
+        })
+      );
+    }
+  );
+
+  it('preserves persisted chat round and sets errorMsg when post-persistence moderation fails with empty responseText', async () => {
+    mocks.start.mockRejectedValueOnce(
+      createStreamFetchError({
+        error: {
+          statusText: 'error',
+          message: MODERATION_BLOCKED_ERROR_MESSAGE
+        },
+        fallbackMessage: 'Error',
+        responseText: ''
+      })
+    );
+
+    await render();
+    await edit('build a workflow', [file]);
+    await send({ text: 'build a workflow' });
+
+    expect(mocks.start).toHaveBeenCalledOnce();
+    expect(records).toHaveLength(2);
+    expect(records[1]).toMatchObject({
+      status: 'finish',
+      errorMsg: MODERATION_BLOCKED_ERROR_MESSAGE
+    });
+  });
 });

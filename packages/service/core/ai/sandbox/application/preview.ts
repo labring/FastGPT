@@ -15,7 +15,7 @@ import z from 'zod';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { asRedisLogicalKey, redisCacheAdapter } from '@fastgpt/dal/redis/adapter';
-import { serviceEnv } from '../../../../env';
+import { getAgentSandboxProxyConfig } from '../config';
 import { resolveSandboxWorkspacePath } from './file';
 import { getSandboxRuntimeProfile } from '../infrastructure/provider/runtimeProfile';
 import { trimSandboxPathRight } from '../utils';
@@ -176,9 +176,9 @@ export function resolveSandboxPreviewPath(filePath: string): {
 }
 
 const getSandboxPreviewProxyBaseUrl = () => {
-  const rawUrl = serviceEnv.AGENT_SANDBOX_PREVIEW_PROXY_URL;
+  const rawUrl = getAgentSandboxProxyConfig().previewUrl;
   if (!rawUrl) {
-    throw new Error('AGENT_SANDBOX_PREVIEW_PROXY_URL environment variable is missing');
+    throw new Error('Agent Sandbox preview proxy URL is not configured');
   }
 
   const url = new URL(rawUrl);

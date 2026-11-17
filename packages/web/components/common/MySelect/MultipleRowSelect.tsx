@@ -79,7 +79,7 @@ const RenderList = React.memo(function RenderList({
           MenuRef.current[index] = ref;
         }}
         className="nowheel"
-        flex={'1 1 0'}
+        flex={'1 1 auto'}
         px={2}
         borderLeft={index !== 0 ? 'base' : 'none'}
         minW={index !== 0 ? '80px' : rowMinWidth === 'auto' ? 0 : rowMinWidth}
@@ -215,7 +215,6 @@ export const MultipleRowSelect = ({
         onOpen={onOpenSelect}
         onClose={onClose}
         strategy={'fixed'}
-        matchWidth
       >
         <MenuButton
           as={Button}
@@ -275,7 +274,8 @@ export const MultipleRowSelect = ({
               ? width.map((item) => `${item} !important`)
               : `${width} !important`;
           })()}
-          w={'auto'}
+          // 菜单按各列内容展开；触发器宽度仅作下限，避免音色等子列被挤压裁切。
+          w={'max-content'}
           maxW={'calc(100vw - 24px)'}
           py={'6px'}
           border={'1px solid #fff'}

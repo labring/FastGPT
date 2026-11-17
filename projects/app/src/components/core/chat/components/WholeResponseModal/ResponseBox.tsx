@@ -172,7 +172,12 @@ export const ResponseBox = React.memo(function ResponseBox({
                   borderRadius={'sm'}
                 />
 
-                <Box ml={1.5} lineHeight={'1.25rem'} alignItems={'center'}>
+                <Box
+                  ml={1.5}
+                  lineHeight={'1.25rem'}
+                  alignItems={'center'}
+                  color={activeModule.error || activeModule.errorText ? 'red.500' : 'myGray.900'}
+                >
                   {t(activeModule.moduleName as any, activeModule.moduleNameArgs)}
                 </Box>
               </Flex>

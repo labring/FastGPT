@@ -267,6 +267,29 @@ export const filterNodeResponseTreeData = ({
     keepTreeFields: true
   });
 
+/**
+ * 递归剔除节点响应中的内容审核详情记录（moderationRecords）。
+ *
+ * 用于无应用写权限（仅读权限或公开分享）的场景，避免向非写权限成员暴露审核命中标签、分数、敏感词及被审原文。
+ */
+export const stripModerationRecordsFromNodeResponses = (
+  nodeResponses: ChatHistoryItemResType[] = []
+): ChatHistoryItemResType[] => {
+  return nodeResponses.map((item) => {
+    const { moderationRecords: _removed, ...rest } = item;
+    const nextItem: ChatHistoryItemResType = { ...rest };
+
+    for (const childField of childrenResponseFields) {
+      const childList = nextItem[childField] as ChatHistoryItemResType[] | undefined;
+      if (Array.isArray(childList)) {
+        nextItem[childField] = stripModerationRecordsFromNodeResponses(childList);
+      }
+    }
+
+    return nextItem;
+  });
+};
+
 // Remove dataset cite in ai response
 export const removeAIResponseCite = <T extends AIChatItemValueItemType[] | string>(
   value: T,

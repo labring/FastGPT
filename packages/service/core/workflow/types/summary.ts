@@ -31,6 +31,10 @@ export type WorkflowRuntimeSummaryFields = {
   childResponseCount?: number;
   /** 当前 workflow 或子应用/子工具是否启用了 Agent Sandbox。 */
   hasAgentSandbox?: boolean;
+  /** 工具调用子流程内是否命中了未捕获的内容审核拦截（由上层工具适配层转换为统一脱敏工具返回结果，不作为节点失败上报）。 */
+  hasModerationBlock?: boolean;
+  /** 工具调用子流程内的输出是否已完成工具结果内容审核（用于避免外层重复触发审核插件调用）。 */
+  hasToolResultModerated?: boolean;
   /** 当前 workflow 已归属到本统计链路的 LLM 输入 token。 */
   llmInputTokens: number;
   /** 当前 workflow 已归属到本统计链路的 LLM 输出 token。 */

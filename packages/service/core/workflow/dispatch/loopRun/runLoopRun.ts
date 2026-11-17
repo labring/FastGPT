@@ -11,9 +11,9 @@ import {
   storeEdges2RuntimeEdges
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import { LoopRunModeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { serviceEnv } from '../../../../env';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { runWorkflow } from '..';
+import { getWorkflowMaxLoopTimes } from '../../constants';
 import type { DispatchFlowResponse } from '../type';
 import {
   collectResponseFeedbacks,
@@ -55,7 +55,8 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
   const childrenNodeIdList = params[NodeInputKeyEnum.childrenNodeIdList] ?? [];
   const inputArray = params[NodeInputKeyEnum.loopRunInputArray] ?? [];
 
-  const maxLength = serviceEnv.WORKFLOW_MAX_LOOP_TIMES;
+  // 最大循环次数由统一 getter 从实例配置读取，ENV 只在迁移时 seed
+  const maxLength = getWorkflowMaxLoopTimes();
   const maxIterationsMessage = i18nT('workflow:loop_run_max_iterations_exceeded');
 
   // Surface precheck failures through `errorText` to match the max-iterations

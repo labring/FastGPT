@@ -8,6 +8,7 @@ import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import { formatNumber } from '@fastgpt/global/common/math/tools';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
+import { UsageMember } from './UsageMember';
 
 const UsageDetail = ({ usage, onClose }: { usage: UsageListItemType; onClose: () => void }) => {
   const { t } = useSafeTranslation();
@@ -40,7 +41,7 @@ const UsageDetail = ({ usage, onClose }: { usage: UsageListItemType; onClose: ()
         hasModel = true;
       }
 
-      if (typeof item.tokens === 'number') {
+      if (typeof item.totalTokens === 'number' || typeof item.tokens === 'number') {
         hasToken = true;
       }
       if (typeof item.inputTokens === 'number') {
@@ -86,6 +87,10 @@ const UsageDetail = ({ usage, onClose }: { usage: UsageListItemType; onClose: ()
         <Box>{dayjs(usage.time).format('YYYY/MM/DD HH:mm:ss')}</Box>
       </Flex>
       <Flex alignItems={'center'} pb={4}>
+        <FormLabel flex={'0 0 80px'}>{t('account_usage:member')}:</FormLabel>
+        <UsageMember member={usage.sourceMember} />
+      </Flex>
+      <Flex alignItems={'center'} pb={4}>
         <FormLabel flex={'0 0 80px'}>{t('account_usage:app_name')}:</FormLabel>
         <Box>{t(usage.appName as any) || '-'}</Box>
       </Flex>
@@ -122,7 +127,7 @@ const UsageDetail = ({ usage, onClose }: { usage: UsageListItemType; onClose: ()
                 <Tr key={i}>
                   <Td>{t(item.moduleName as any)}</Td>
                   {hasModel && <Td>{item.model ?? '-'}</Td>}
-                  {hasToken && <Td>{item.tokens ?? '-'}</Td>}
+                  {hasToken && <Td>{item.totalTokens ?? item.tokens ?? '-'}</Td>}
                   {hasInputToken && <Td>{item.inputTokens ?? '-'}</Td>}
                   {hasOutputToken && <Td>{item.outputTokens ?? '-'}</Td>}
                   {hasCount && <Td>{item.count ?? '-'}</Td>}

@@ -9,6 +9,7 @@ const oid = () => new Types.ObjectId();
 const seed = async (overrides: Record<string, unknown> = {}) => {
   const record = {
     _id: oid(),
+    chatId: String(oid()),
     teamId: oid(),
     appId: oid(),
     source: 'api',
@@ -20,6 +21,62 @@ const seed = async (overrides: Record<string, unknown> = {}) => {
 };
 
 describe('backfillPublishSourceBatch', () => {
+  it.each(['chats', 'chatLogs'] as const)(
+    '%s 的历史名称及无效来源统一归为 unknown，保留原值且不推断渠道 ID，重放不改结果',
+    async (stage) => {
+      const collection = stage === 'chats' ? MongoChat.collection : MongoAppChatLog.collection;
+      const records = [];
+      for (const source of [
+        '1111',
+        '111',
+        'dev',
+        '网页读取',
+        'lake',
+        undefined,
+        null,
+        '',
+        0,
+        false,
+        { $ne: null },
+        ['api']
+      ]) {
+        const record = {
+          _id: oid(),
+          teamId: oid(),
+          appId: oid(),
+          ...(source === undefined ? {} : { source }),
+          shareId: 'legacy-channel',
+          sourceName: '历史渠道名',
+          totalPoints: 4
+        };
+        await collection.insertOne(record as any);
+        records.push(record);
+      }
+      const channels = vi.spyOn(MongoOutLink, 'find');
+      try {
+        for (let attempt = 0; attempt < 2; attempt++) {
+          expect(
+            (
+              await backfillPublishSourceBatch({
+                stage,
+                ids: records.map((record) => String(record._id))
+              })
+            ).size
+          ).toBe(0);
+          for (const record of records) {
+            expect(await collection.findOne({ _id: record._id })).toEqual({
+              ...record,
+              publishSource: { type: 'unknown' }
+            });
+          }
+        }
+        expect(channels).not.toHaveBeenCalled();
+      } finally {
+        channels.mockRestore();
+      }
+    }
+  );
+
   it('旧资源类型不阻断来源回填，仅明确归属应用的记录恢复外链 ID，旧值保持不变', async () => {
     const channel = await MongoOutLink.create({
       teamId: oid(),
@@ -108,8 +165,8 @@ describe('backfillPublishSourceBatch', () => {
 
   it('已有新来源不受旧字段影响；无待回填数据不写库，坏数据按 ID 返回', async () => {
     const existing = await seed({ source: 'unknown', publishSource: { type: 'api', id: oid() } });
-    const invalid = await seed({ publishSource: { type: 'unknown' } });
-    const invalidLegacy = await seed({ source: 'unknown', sourceType: 'legacy-resource' });
+    const invalid = await seed({ publishSource: { type: 'invalid' } });
+    const invalidLegacy = await seed({ source: '历史渠道名', teamId: null });
     const write = vi.spyOn(MongoChat.collection, 'bulkWrite');
     try {
       expect((await backfillPublishSourceBatch({ stage: 'chats', ids: [] })).size).toBe(0);

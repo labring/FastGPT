@@ -49,6 +49,30 @@ const seed = async (overrides: Record<string, unknown> = {}) => {
   return record;
 };
 describe('backfillOpenApiKeyType', () => {
+  it('validates binding structure after backfill and preserves repaired explicit application keys', async () => {
+    const key = await seed({ appId: new Types.ObjectId().toString() });
+    const state = createContext();
+    state.context.reportProgress.mockImplementation(async ({ key: stage, status }) => {
+      if (stage === 'validation' && status === 'running') {
+        await MongoOpenApi.collection.updateOne(
+          { _id: key._id },
+          { $set: { type: 'app', appId: [key.appId] } }
+        );
+      }
+    });
+    await expect(backfillOpenApiKeyType(state.context)).rejects.toThrow('incomplete');
+    expect(state.failures()).toEqual([
+      expect.objectContaining({ stageKey: 'validation', data: { id: String(key._id) } })
+    ]);
+    state.context.reportProgress.mockReset();
+    await MongoOpenApi.collection.updateOne({ _id: key._id }, { $set: { appId: key.appId } });
+    await expect(backfillOpenApiKeyType(state.context)).resolves.toEqual({ keys: 1 });
+    expect(await MongoOpenApi.collection.findOne({ _id: key._id })).toMatchObject({
+      type: 'app',
+      appId: new Types.ObjectId(key.appId)
+    });
+  });
+
   it('keeps validation failures behind the cursor recoverable until every type is valid', async () => {
     const key = await seed();
     const state = createContext();
@@ -70,9 +94,15 @@ describe('backfillOpenApiKeyType', () => {
     expect((await MongoOpenApi.collection.findOne({ _id: key._id }))?.type).toBe('personal');
     expect(state.failures()).toEqual([]);
   });
-  it('classifies legacy keys without changing credentials, metadata or explicit types; replay is idempotent', async () => {
+  it('normalizes IDs for every key type while preserving all other fields; replay is idempotent', async () => {
     const records = [];
-    for (const appId of [undefined, null, '', new Types.ObjectId().toString()])
+    for (const appId of [
+      undefined,
+      null,
+      '',
+      new Types.ObjectId().toString().toUpperCase(),
+      new Types.ObjectId()
+    ])
       records.push(await seed(appId === undefined ? {} : { appId }));
     records.push(
       await seed({
@@ -80,16 +110,68 @@ describe('backfillOpenApiKeyType', () => {
         appId: new Types.ObjectId().toString(),
         tagIds: [new Types.ObjectId()],
         authProxy: true
-      })
+      }),
+      await seed({ type: 'personal', appId: new Types.ObjectId().toString() }),
+      await seed({ type: 'app', appId: new Types.ObjectId() })
     );
     const { context } = createContext();
-    expect(await backfillOpenApiKeyType(context)).toEqual({ keys: 5 });
+    expect(await backfillOpenApiKeyType(context)).toEqual({ keys: records.length });
     for (const raw of records) {
       const after = await MongoOpenApi.collection.findOne({ _id: raw._id });
-      expect(after?.type).toBe(raw.appId ? 'app' : 'personal');
-      expect({ ...after, type: undefined }).toEqual({ ...raw, type: undefined });
+      expect(after).toEqual({
+        ...raw,
+        type: raw.type ?? 'personal',
+        ...(raw.appId ? { appId: new Types.ObjectId(String(raw.appId)) } : {})
+      });
     }
-    expect(await backfillOpenApiKeyType(context)).toEqual({ keys: 5 });
+    const update = vi.spyOn(MongoOpenApi.collection, 'updateOne');
+    try {
+      expect(await backfillOpenApiKeyType(createContext().context)).toEqual({
+        keys: records.length
+      });
+      expect(update).not.toHaveBeenCalled();
+    } finally {
+      update.mockRestore();
+    }
+  });
+  it('rescans the original range when resuming an old type-only checkpoint', async () => {
+    const key = await seed({ type: 'personal', appId: new Types.ObjectId().toString() });
+    const state = createContext();
+    await state.context.saveCheckpoint({
+      endId: String(key._id),
+      lastId: String(key._id),
+      scanned: 1
+    });
+    expect(await backfillOpenApiKeyType(state.context)).toEqual({ keys: 1 });
+    expect((await MongoOpenApi.collection.findOne({ _id: key._id }))?.appId).toEqual(
+      new Types.ObjectId(key.appId)
+    );
+    expect(state.context.saveCheckpoint).toHaveBeenLastCalledWith({
+      endId: String(key._id),
+      lastId: String(key._id),
+      scanned: 1,
+      appIdStorageVersion: 1
+    });
+  });
+  it('does not declare success for an ID changed back to a string after scanning, and repairs it on retry', async () => {
+    const key = await seed({ type: 'app', appId: new Types.ObjectId() });
+    const state = createContext();
+    state.context.reportProgress.mockImplementation(async ({ key: stage, status }) => {
+      if (stage === 'validation' && status === 'running') {
+        await MongoOpenApi.collection.updateOne(
+          { _id: key._id },
+          { $set: { appId: String(key.appId) } }
+        );
+      }
+    });
+    await expect(backfillOpenApiKeyType(state.context)).rejects.toThrow('incomplete');
+    expect(state.failures()).toEqual([
+      expect.objectContaining({ stageKey: 'validation', data: { id: String(key._id) } })
+    ]);
+    state.context.reportProgress.mockReset();
+    await expect(backfillOpenApiKeyType(state.context)).resolves.toEqual({ keys: 1 });
+    expect((await MongoOpenApi.collection.findOne({ _id: key._id }))?.appId).toEqual(key.appId);
+    expect(state.failures()).toEqual([]);
   });
   it('replays writes committed before a checkpoint crash and retries repaired failures before the saved cursor', async () => {
     const bad = await seed({ appId: 'invalid' });
@@ -112,12 +194,16 @@ describe('backfillOpenApiKeyType', () => {
     expect(state.failures()).toEqual([]);
     expect(await MongoOpenApi.countDocuments({ type: 'personal' })).toBe(3);
   });
-  it('reports malformed explicit bindings and non-string appId without degrading them to personal', async () => {
+});
+
+describe('backfillOpenApiKeyTypeRecord', () => {
+  it('rejects malformed bindings and unsupported BSON values without changing key types', async () => {
     for (const raw of [
       { type: 'unexpected' },
-      { type: 'personal', appId: new Types.ObjectId().toString() },
+      { type: 'unexpected', appId: new Types.ObjectId().toString() },
+      { type: 'personal', appId: 'invalid' },
       { type: 'app' },
-      { appId: new Types.ObjectId() },
+      { appId: [new Types.ObjectId()] },
       { appId: 42 }
     ]) {
       const key = await seed(raw);
@@ -127,18 +213,70 @@ describe('backfillOpenApiKeyType', () => {
   });
   it('CAS miss re-reads the changed binding and never overwrites a concurrent explicit type', async () => {
     const key = await seed();
+    const changedAppId = new Types.ObjectId();
     const collection = MongoOpenApi.collection;
     const update = collection.updateOne.bind(collection);
     const spy = vi.spyOn(collection, 'updateOne').mockImplementationOnce(async (...args: any[]) => {
-      await update(
-        { _id: key._id },
-        { $set: { appId: new Types.ObjectId().toString(), type: 'app' } }
-      );
+      await update({ _id: key._id }, { $set: { appId: String(changedAppId), type: 'app' } });
       return await update(...(args as Parameters<typeof update>));
     });
     try {
       await backfillOpenApiKeyTypeRecord(String(key._id));
-      expect((await collection.findOne({ _id: key._id }))?.type).toBe('app');
+      expect(await collection.findOne({ _id: key._id })).toMatchObject({
+        type: 'app',
+        appId: changedAppId
+      });
+    } finally {
+      spy.mockRestore();
+    }
+  });
+  it('re-reads explicit bindings on CAS miss and keeps the newer application target', async () => {
+    const key = await seed({ type: 'app', appId: new Types.ObjectId().toString() });
+    const changedAppId = new Types.ObjectId();
+    const collection = MongoOpenApi.collection;
+    const update = collection.updateOne.bind(collection);
+    const spy = vi.spyOn(collection, 'updateOne').mockImplementationOnce(async (...args: any[]) => {
+      await update({ _id: key._id }, { $set: { appId: changedAppId } });
+      return update(...(args as Parameters<typeof update>));
+    });
+    try {
+      await backfillOpenApiKeyTypeRecord(String(key._id));
+      expect((await collection.findOne({ _id: key._id }))?.appId).toEqual(changedAppId);
+    } finally {
+      spy.mockRestore();
+    }
+  });
+  it('does not recreate a key deleted during normalization', async () => {
+    const key = await seed({ type: 'personal', appId: new Types.ObjectId().toString() });
+    const collection = MongoOpenApi.collection;
+    const update = collection.updateOne.bind(collection);
+    const spy = vi.spyOn(collection, 'updateOne').mockImplementationOnce(async (...args: any[]) => {
+      await collection.deleteOne({ _id: key._id });
+      return update(...(args as Parameters<typeof update>));
+    });
+    try {
+      await backfillOpenApiKeyTypeRecord(String(key._id));
+      expect(await collection.findOne({ _id: key._id })).toBeNull();
+    } finally {
+      spy.mockRestore();
+    }
+  });
+  it('stops after three CAS misses without overwriting the source record', async () => {
+    const key = await seed({ type: 'app', appId: new Types.ObjectId().toString() });
+    const collection = MongoOpenApi.collection;
+    const update = collection.updateOne.bind(collection);
+    const missingId = new Types.ObjectId();
+    const spy = vi
+      .spyOn(collection, 'updateOne')
+      .mockImplementation(async (...args: any[]) =>
+        update({ ...args[0], _id: missingId }, args[1])
+      );
+    try {
+      await expect(backfillOpenApiKeyTypeRecord(String(key._id))).rejects.toThrow(
+        'changed repeatedly'
+      );
+      expect(spy).toHaveBeenCalledTimes(3);
+      expect(await collection.findOne({ _id: key._id })).toEqual(key);
     } finally {
       spy.mockRestore();
     }

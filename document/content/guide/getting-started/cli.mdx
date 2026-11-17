@@ -1,0 +1,107 @@
+---
+title: '实操指南：使用 CLI 操作 FastGPT'
+description: 通过官方命令行工具（fastgpt）与 AI Agent 快速在终端管理 FastGPT 资源。
+---
+
+import { Alert } from '@/components/docs/Alert';
+import { CurrentOriginCodeBlockUpdater } from '@/components/docs/CurrentOriginCodeBlockUpdater';
+
+FastGPT CLI（`fastgpt`）是 FastGPT 官方推出的终端命令行工具，旨在为开发者、DevOps 工程师以及 AI 编程助手（如 **Codex**、**Claude Code**、**Cursor**、**Windsurf** 等）提供稳定、安全、可编程的终端管理能力。
+
+无论是通过人类终端直接操作，还是让 AI Agent 协助自动化执行，你都可以无需打开浏览器，直接在终端中完成身份认证、团队切换、知识库管理、效果测试及 App 对话管理。
+
+---
+
+## AI Agent 一键接入引导
+
+如果你正在使用 AI 编程助手（如 **Codex** 或 **Claude Code**），无需手动执行安装命令，直接将以下引导指令发送给你的 Agent。Agent 将自动获取官方 Skill 规范，并全自动完成 CLI 安装、登录引导、环境诊断与能力发现：
+
+<Alert context="info">在 Codex / Claude Code 对话框中直接发送以下提示词：</Alert>
+
+```text
+帮我根据 https://doc.fastgpt.cn/cli/skill.md 安装 FastGPT CLI 并完成引导。
+```
+
+<CurrentOriginCodeBlockUpdater />
+
+---
+
+## ⚡ 开发者快速上手（3 步初始化）
+
+如果你习惯在终端手动操作，只需 3 步即可完成就绪：
+
+### 1. 安装 CLI
+
+需要 Node.js `>= 20.12.0` 环境，执行全局安装：
+
+```bash
+npm install -g @fastgpt/cli@beta
+# 或使用 pnpm: pnpm add -g @fastgpt/cli@beta
+
+# 确认安装就绪
+fastgpt --version
+```
+
+### 2. 身份认证与登录
+
+运行登录命令完成身份鉴权：
+
+```bash
+# 方案 A：在交互终端中执行交互式登录（公有云或私有化部署）
+fastgpt login
+# 若为自建实例：fastgpt login --base-url https://your-domain.com/api
+
+# 方案 B：使用 API Key 登录（适合 CI / 容器 / Agent 脚本环境）
+fastgpt login --api-key <FASTGPT_API_KEY>
+
+# 方案 C：通过标准输入传入密码
+echo "<PASSWORD>" | fastgpt login --username <USERNAME> --password-stdin
+```
+
+登录成功后，可随时查看当前认证上下文与所属团队：
+
+```bash
+fastgpt whoami
+```
+
+> **凭据存储与会话有效期**：凭据优先存储在系统安全密钥环（macOS Keychain / Linux Secret Service）中。Session 自创建起 7 天后到期，到期后请执行 `fastgpt login` 重新登录。
+
+### 3. 环境体检（Doctor）
+
+执行一键自检，诊断本地环境、配置文件权限及服务端连通性：
+
+```bash
+fastgpt doctor
+```
+
+---
+
+## 核心操作能力概览
+
+FastGPT CLI 采用领域驱动（DDD）设计，命令结构精炼清晰：
+
+| 功能分类         | 常用命令示例                                                                                                                                                | 说明                                                                    |
+| :--------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------- | :---------------------------------------------------------------------- |
+| **身份与团队**   | `fastgpt whoami`<br/>`fastgpt auth switch-team --team-id <id>`                                                                                              | 查看当前用户身份及团队空间，或快速切换工作团队                          |
+| **知识库检索**   | `fastgpt dataset list`<br/>`fastgpt dataset search <id1,id2> "关键词"`                                                                                      | 分页查询知识库列表，或统一搜索一个或多个知识库，默认返回前 20 条        |
+| **知识库管理**   | `fastgpt dataset create --name "文档库"`<br/>`fastgpt dataset update <id> --parent-id null`<br/>`fastgpt dataset delete <id> --dry-run`                     | 知识库全生命周期 CRUD，支持移至根目录及 `--dry-run` 安全预览            |
+| **系统配置**     | `fastgpt config list`<br/>`fastgpt commands --format json`                                                                                                  | 查看客户端本地配置，或探测获取完整的可编程命令元数据                    |
+| **App 对话**     | `fastgpt chat run --appId <id> --text "你好"`<br/>`fastgpt chat init --appId <id> --chatId <chatId>`<br/>`fastgpt chat stop --appId <id> --chatId <chatId>` | 调用 App 并返回 JSON，读取配置与状态，或发送停止信号                    |
+| **App 对话记录** | `fastgpt chat history list --appId <id>`<br/>`fastgpt chat record list --appId <id> --chatId <chatId>`                                                      | 查询、更新和软删除 App 对话，批量查状态、标记已读，并读取消息及响应详情 |
+
+App 对话命令仅对接 OpenAPI。应用 API Key 可省略 `--appId`；个人 API Key 和登录态需指定 App。`chat run` 支持 `--file <path>` 或 `--stdin` 读取 JSON 请求，写操作均支持 `--dry-run`。
+
+`chat record list` 默认读取最新一页，消息按时间正序返回，每次只查询一页。将 `meta.prevCursor` 传给 `--prevId` 读取更早的轮次，或将 `meta.nextCursor` 传给 `--nextId` 读取更新的轮次；`--initialId` 定位指定 `dataId` 的 AI 回复附近。三个 ID 参数互斥，角色由服务端按方向确定。`--pageSize` 是参考消息条数，为补齐轮次边界，实际返回条数可能略超。
+
+接口直接返回 `prevCursor`、`nextCursor`，CLI 原样放入 `meta`；无对应方向的下一页时为 `null`。
+
+消息详情等业务操作使用 `dataId`；消息中的 `id` 是已弃用的兼容别名。
+
+`chat run` 默认 HTTP 超时为 300000 毫秒，可通过 `--timeoutMs` 调整；超时不会自动停止 App，生成失败也不会自动重试。`chat stop` 写入停止信号后立即返回，不等待后台收尾。完整参数通过各命令的 `--help` 查看。
+
+---
+
+## 自动化与脚本规范建议
+
+- **机器与 Agent 调用**：附加 `--format json` 参数，命令将输出确定性的结构化 JSON 信封，日志严格走 `stderr`，确保 `stdout` 纯净便于管道解析。
+- **高危操作保护**：删除操作（如 `dataset delete`）支持 `--dry-run` 预览；在非交互式脚本或 CI 中执行破坏性操作必须显式附加 `--yes` 确认。

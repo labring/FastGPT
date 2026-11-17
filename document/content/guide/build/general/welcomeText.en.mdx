@@ -1,15 +1,15 @@
 ---
 title: Welcome Text
-description: FastGPT welcome text configuration
+description: "Configure conversation welcome messages, starter questions, and pre-chat variable forms to guide first-time users in FastGPT applications."
 ---
 
 Welcome Text is the initial message sent automatically before each new conversation starts. Use it to introduce what the app can do, clarify the question scope, or provide common entry points.
 
 ## Configuration Entry
 
-In the app editor, find **Welcome Text** and click the settings button on the right to edit the content.
+In the app editor, find **Conversation Opening** and expand the section to edit the message. Use **Add preset question** below it to add common questions.
 
-![Welcome text settings](../../../../public/imgs/image-2.png)
+![Welcome text settings](/imgs/optimized/current/welcome-config.png.webp)
 
 ## Markdown Support
 
@@ -17,21 +17,15 @@ Welcome Text supports standard Markdown syntax, including headings, lists, links
 
 ## Quick Questions
 
-Welcome Text supports the special `[Quick Question]` format. FastGPT displays these items as clickable buttons, and users can send the preset question with one click.
+In the app editor, expand the **Conversation Opening** section and click **Add preset question** below the message field to add input rows and enter one starter question per row:
 
-Example:
+- `What are the service hours?`
+- `How do I request support?`
+- `What scenarios does this product support?`
 
-```md
-Hello, I can help you look up product information and support policies.
+When users start a new conversation, they see the welcome message along with clickable preset question buttons. Clicking a preset question button sends that question directly as the user's message.
 
-[How do I request support?]
-[What scenarios does this product support?]
-[Recommend a starter plan]
-```
-
-When users start a new conversation, they will see the welcome message and quick question buttons. After a user clicks a quick question, FastGPT sends that question as the user's message.
-
-![Quick questions in chat](../../../../public/imgs/image-27.png)
+![Quick questions in chat](/imgs/optimized/current/welcome-preview.png.webp)
 
 ## Recommendations
 

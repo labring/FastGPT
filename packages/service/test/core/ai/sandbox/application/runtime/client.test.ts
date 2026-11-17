@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   stop: vi.fn(),
   delete: vi.fn(),
   exists: vi.fn(),
+  provider: vi.fn(),
   log: { error: vi.fn() }
 }));
 vi.mock('@fastgpt/service/core/ai/sandbox/application/runtime/service', () => ({
@@ -25,8 +26,8 @@ vi.mock('@fastgpt/service/core/ai/sandbox/application/resource', () => ({
 vi.mock('@fastgpt/service/core/ai/sandbox/infrastructure/instance/repository', () => ({
   existsSandboxInstanceBySandboxId: mocks.exists
 }));
-vi.mock('@fastgpt/service/core/ai/sandbox/infrastructure/provider/config', () => ({
-  getConfiguredSandboxProvider: () => 'opensandbox'
+vi.mock('@fastgpt/service/core/ai/sandbox/config', () => ({
+  getAgentSandboxProvider: mocks.provider
 }));
 vi.mock('@fastgpt/service/core/ai/sandbox/infrastructure/provider/runtimeProfile', () => ({
   getSandboxRuntimeProfile: (provider: string) => ({
@@ -56,6 +57,7 @@ const makeRuntime = (provider = 'opensandbox') => ({
 let runtime: ReturnType<typeof makeRuntime>;
 beforeEach(() => {
   vi.clearAllMocks();
+  mocks.provider.mockReturnValue('opensandbox');
   runtime = makeRuntime();
   mocks.ensure.mockResolvedValue(runtime);
   mocks.connect.mockResolvedValue(runtime);
@@ -153,7 +155,31 @@ describe('SandboxClient', () => {
   );
 });
 describe('checkSandboxRuntimeInstanceExists', () => {
+  it('reads historical records when the current provider is disabled', async () => {
+    mocks.provider.mockReturnValue('none');
+    mocks.exists.mockResolvedValueOnce(false).mockResolvedValueOnce(true);
+    expect(await checkSandboxRuntimeInstanceExists(query)).toBe(true);
+    expect(mocks.exists).toHaveBeenCalledTimes(2);
+    expect(mocks.exists).toHaveBeenCalledWith({
+      provider: 'sealosdevbox',
+      sandboxId: query.sandboxId
+    });
+    expect(mocks.exists).toHaveBeenCalledWith({
+      provider: 'opensandbox',
+      sandboxId: query.sandboxId
+    });
+    expect(mocks.ensure).not.toHaveBeenCalled();
+  });
+
+  it('returns false for disabled provider when no historical record exists', async () => {
+    mocks.provider.mockReturnValue('none');
+    mocks.exists.mockResolvedValue(false);
+    expect(await checkSandboxRuntimeInstanceExists(query)).toBe(false);
+    expect(mocks.exists).toHaveBeenCalledTimes(2);
+  });
+
   it('queries the requested provider without preparing a runtime', async () => {
+    mocks.provider.mockReturnValue('none');
     mocks.exists.mockResolvedValue(true);
     expect(await checkSandboxRuntimeInstanceExists(query, { providerName: 'sealosdevbox' })).toBe(
       true
@@ -163,5 +189,15 @@ describe('checkSandboxRuntimeInstanceExists', () => {
       sandboxId: query.sandboxId
     });
     expect(mocks.ensure).not.toHaveBeenCalled();
+  });
+
+  it('limits normal queries to the configured provider', async () => {
+    mocks.exists.mockResolvedValue(true);
+    expect(await checkSandboxRuntimeInstanceExists(query)).toBe(true);
+    expect(mocks.exists).toHaveBeenCalledOnce();
+    expect(mocks.exists).toHaveBeenCalledWith({
+      provider: 'opensandbox',
+      sandboxId: query.sandboxId
+    });
   });
 });

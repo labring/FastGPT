@@ -34,6 +34,7 @@ export type UsageItemCountType = {
   model?: string;
   inputTokens?: number;
   outputTokens?: number;
+  totalTokens?: number;
   charsLength?: number;
   duration?: number;
   pages?: number;

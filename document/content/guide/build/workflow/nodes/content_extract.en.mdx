@@ -1,6 +1,6 @@
 ---
 title: Text Content Extraction
-description: FastGPT Text Content Extraction node overview
+description: Extract structured fields and JSON parameters from unstructured conversation text using the FastGPT Content Extraction node.
 ---
 
 ## Characteristics
@@ -8,10 +8,10 @@ description: FastGPT Text Content Extraction node overview
 - Can be added multiple times
 - Requires manual configuration
 - Trigger-based execution
-- function_call node
+- Constrains the model to output JSON through the prompt
 - Core node
 
-![Configure the extraction requirements and target fields](/imgs/extract1.png)
+![Characteristics — interface example](/imgs/optimized/current/node-content-extract.png.webp)
 
 ## What It Does
 
@@ -35,19 +35,29 @@ Set a goal for the model describing what content needs to be extracted.
 
 > Translate my question directly into English without answering it.
 
-### Chat History
+### Chat History (`history`)
 
-Some chat history is usually needed for more complete extraction. For example, if the task requires a name, time, and lab name, the user might initially provide only the time and lab name. After being prompted for the missing info, the user provides their name. At that point, the previous record is needed to extract all 3 fields completely.
+Configure the number of context turns or reference an upstream chat-history array so multi-turn conversations can complete missing fields across turns.
 
-### Target Fields
+### Text to Extract (`content`)
 
-Target fields correspond to extraction results. As shown above, each new field adds a corresponding output.
+Required input. Typically references the Start node's **User Question** (`userChatInput`) or an upstream text output.
 
-- **key**: Unique identifier for the field. Must not be duplicated.
-- **Field description**: Describes what the field represents, e.g., name, time, search keyword, etc.
-- **Required**: Whether the model is forced to extract this field. It may still return an empty string.
+### Target Fields (`extractKeys`)
+
+Each target field adds an output handle whose key equals the field name and whose label is `Extraction Results-{key}`:
+
+- **Must Return**: Marks the field as required and lets you configure a **Default Value** when the field is absent from the input.
+- **Data Type**: Supports 7 types: `string`, `number`, `boolean`, `array<string>`, `array<number>`, `array<boolean>`, and `object`.
+- **Field Name (`key`)**: Unique identifier for the field and its output port.
+- **Field Description**: Semantic and format instructions for the field (such as name, appointment time, or search keyword).
+- **Enum Value (optional)**: Shown only for `string` or `number` fields; enter one allowed value per line.
 
 ## Output
 
-- **Complete extraction result**: A JSON string containing all extracted fields.
-- **Target field extraction results**: All returned as string type.
+| Output Port | Internal Key | Value Type | Description |
+| --- | --- | --- | --- |
+| **Complete Extraction Result** | `fields` | `String` | JSON string containing all extracted key-value pairs |
+| **Full Field Extraction** | `success` | `Boolean` | `true` when all required target fields are extracted or populated by default values |
+| **Extraction Results-`{key}`** | Field name `key` | Configured **Data type** | Individual output port for each declared target field |
+| **Error text** | `system_error_text` | `String` | Available when **Error catch** is enabled; outputs the error reason when model execution fails |

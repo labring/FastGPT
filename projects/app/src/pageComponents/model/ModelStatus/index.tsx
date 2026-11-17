@@ -2,7 +2,6 @@ import {
   Badge,
   Box,
   Button,
-  Checkbox,
   Flex,
   FormControl,
   FormHelperText,
@@ -42,6 +41,7 @@ import {
 } from '@/web/core/ai/model/statusApi';
 import { accountContentScrollStyles } from '@/pageComponents/account/styles';
 import ModelTabHeader from '@/components/core/ai/ModelTabHeader';
+import SecretValueInput from '@/components/common/secret/SecretValueInput';
 
 const statusColorMap = {
   green: 'green',
@@ -341,8 +341,8 @@ const ProbeConfigModal = ({
     config.intervalMinutes
   );
   const [webhookUrl, setWebhookUrl] = useState(config.webhookUrl ?? '');
-  const [webhookToken, setWebhookToken] = useState('');
-  const [clearWebhookToken, setClearWebhookToken] = useState(false);
+  // undefined 表示保留已存令牌，空字符串表示用户明确清空。
+  const [webhookToken, setWebhookToken] = useState<string>();
 
   const { runAsync, loading } = useRequest(
     async (data: UpdateModelStatusProbeConfigBody) => putModelStatusProbeConfig(data),
@@ -364,7 +364,7 @@ const ProbeConfigModal = ({
       }
       return postTestModelStatusWebhook({
         ...(trimmedUrl ? { webhookUrl: trimmedUrl } : {}),
-        ...(webhookToken ? { webhookToken } : {})
+        ...(webhookToken !== undefined ? { webhookToken } : {})
       });
     },
     {
@@ -395,7 +395,7 @@ const ProbeConfigModal = ({
       intervalMinutes,
       webhookUrl,
       ...(webhookToken ? { webhookToken } : {}),
-      clearWebhookToken
+      clearWebhookToken: webhookToken === ''
     });
   };
 
@@ -473,30 +473,16 @@ const ProbeConfigModal = ({
             {t('config_model:model_status_webhook_token')}
             <QuestionTip ml={1} label={t('config_model:model_status_webhook_token_tip')} />
           </FormLabel>
-          <Input
+          <SecretValueInput
             h={'36px'}
             bg={'white'}
-            type={'password'}
-            autoComplete={'new-password'}
             name={'model-status-webhook-token'}
-            placeholder={
-              config.webhookTokenConfigured
-                ? t('config_model:model_status_token_configured')
-                : t('config_model:model_status_token_placeholder')
-            }
-            value={webhookToken}
-            onChange={(event) => setWebhookToken(event.target.value)}
+            placeholder={t('config_model:model_status_token_placeholder')}
+            value={webhookToken ?? ''}
+            isConfigured={config.webhookTokenConfigured && webhookToken === undefined}
+            onChange={setWebhookToken}
           />
         </FormControl>
-
-        {config.webhookTokenConfigured && (
-          <Checkbox
-            isChecked={clearWebhookToken}
-            onChange={(event) => setClearWebhookToken(event.target.checked)}
-          >
-            {t('config_model:model_status_clear_token')}
-          </Checkbox>
-        )}
       </Stack>
     </MyModal>
   );

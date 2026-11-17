@@ -1,3 +1,8 @@
+import {
+  disableSystemPlugin,
+  restoreSystemPlugin
+} from '@fastgpt/service/thirdProvider/fastgptPlugin/lifecycle';
+import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { MongoSystemTool } from '@fastgpt/service/core/plugin/tool/systemToolSchema';
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/type';
@@ -10,6 +15,8 @@ import {
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { jsonSchema2SecretInput } from '@fastgpt/global/core/app/jsonschema';
 import { SystemToolCodec } from '@fastgpt/global/core/app/tool/systemTool/codec';
+import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
+import { splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
 import { SystemToolRepo } from '@fastgpt/service/core/app/tool/systemTool/systemTool.repo';
 import {
   encryptSystemToolSecrets,
@@ -45,6 +52,19 @@ export async function handler(
 
   if (plugin?.customConfig?.associatedPluginId) {
     return Promise.reject('Workflow tool should be updated through app update api');
+  }
+
+  // Remote lifecycle must succeed before committing the local business status.
+  // Only bundle-level system tools invoke remote lifecycle; child tools only update local state.
+  const { source, pluginId: rawPluginId } = splitCombineToolId(pluginId);
+  const isChildTool = rawPluginId.includes('/');
+  if (source === AppToolSourceEnum.systemTool && !isChildTool) {
+    if (updateFields.status === PluginStatusEnum.Offline) await disableSystemPlugin(rawPluginId);
+    else if (
+      updateFields.status === PluginStatusEnum.Normal &&
+      plugin?.status === PluginStatusEnum.Offline
+    )
+      await restoreSystemPlugin(rawPluginId);
   }
 
   const storedSecretsVal = await (async () => {

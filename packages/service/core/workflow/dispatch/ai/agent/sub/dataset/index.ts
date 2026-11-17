@@ -1,3 +1,4 @@
+import { isProVersion } from '../../../../../../../common/system/constants';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import type { LLMModelDataType } from '@fastgpt/global/core/ai/model/schema';
@@ -10,6 +11,7 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import { getLogger, LogCategories } from '../../../../../../../common/logger';
+import { pushTrack } from '../../../../../../../common/middle/tracks/utils';
 import { countPromptTokens } from '../../../../../../../common/string/tiktoken/index';
 import { resolveReadableCollectionIds } from '../../../../../../../support/permission/collection/auth';
 import { formatModelChars2Points } from '../../../../../../../support/wallet/usage/utils';
@@ -17,10 +19,8 @@ import { calculateCompressionThresholds } from '../../../../../../ai/llm/compres
 import { createLLMResponse } from '../../../../../../ai/llm/request';
 import { getTeamModelHandle } from '../../../../../../ai/model/catalog/service';
 import { parseJsonArgs } from '../../../../../../ai/utils';
-import {
-  defaultSearchDatasetData,
-  type DefaultSearchDatasetDataProps
-} from '../../../../../../dataset/search';
+import { defaultSearchDatasetData } from '../../../../../../dataset/search';
+import type { DefaultSearchDatasetDataProps } from '../../../../../../dataset/search/type';
 import { getDatasetSearchVlmModel } from '../../../../../../dataset/search/vlm';
 import { filterDatasetsByTmbId } from '../../../../../../dataset/utils';
 import {
@@ -295,6 +295,7 @@ export const dispatchAgentDatasetSearch = async ({
         value: datasetParams.collectionFilterMatch
       }),
       readableCollectionIdList,
+      metadataFilterEnabled: isProVersion(),
       userKey
     };
     // retrievalResults：重排前的候选快照，由检索层在 usingReRank 成立且
@@ -309,6 +310,7 @@ export const dispatchAgentDatasetSearch = async ({
       imageCaptionResult,
       retrievalResults
     } = await defaultSearchDatasetData(searchData);
+    pushTrack.datasetSearch({ datasetIds, teamId });
 
     // count bill results
     const usages: ChatNodeUsageType[] = [];

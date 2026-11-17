@@ -9,7 +9,8 @@ export enum AppErrEnum {
   canNotEditAdminPermission = 'canNotEditAdminPermission',
   workflowBuilderVersionExpired = 'workflowBuilderVersionExpired',
   workflowBuilderVersionNotFound = 'workflowBuilderVersionNotFound',
-  parentFolderTypeMismatch = 'parentFolderTypeMismatch'
+  parentFolderTypeMismatch = 'parentFolderTypeMismatch',
+  invalidEvaluationFile = 'invalidEvaluationFile'
 }
 const appErrList = [
   {
@@ -45,6 +46,11 @@ const appErrList = [
   {
     statusText: AppErrEnum.parentFolderTypeMismatch,
     message: i18nT('common:code_error.app_error.parent_folder_type_mismatch')
+  },
+  {
+    statusText: AppErrEnum.invalidEvaluationFile,
+    message: i18nT('dashboard_evaluation:eval_file_check_error'),
+    httpStatus: 400
   }
 ];
 export default appErrList.reduce((acc, cur, index) => {

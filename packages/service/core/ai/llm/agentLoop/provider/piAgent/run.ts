@@ -8,7 +8,22 @@ import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/co
 import { isTeamModel } from '@fastgpt/global/core/ai/model/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import type { AgentAskPayload } from '@fastgpt/global/core/ai/agent/type';
-import { getErrText } from '@fastgpt/global/common/error/utils';
+import { getErrText, UserError } from '@fastgpt/global/common/error/utils';
+import {
+  isModerationBlockErrorMessage,
+  MODERATION_BLOCKED_ERROR_MESSAGE,
+  MODERATION_BLOCKED_REPLACE_TEXT
+} from '@fastgpt/global/core/plugin/moderation/constants';
+import {
+  checkToolResultModeration,
+  isToolResultModerated,
+  markToolResultModerated,
+  sanitizeModeratedToolNodeResponse
+} from '../../../../../plugin/moderation/modelInput';
+import {
+  createStreamModerationBuffer,
+  checkToolParamsModeration
+} from '../../../../../plugin/moderation/output';
 import {
   normalizeToolResponseContent,
   removeDatasetCiteText
@@ -212,6 +227,35 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
   // 只有新 User 输入才拆出最后一条消息交给 prompt，避免重复发送原始需求或丢失工具结果。
   const shouldContinueFromMessages =
     requestMessages.at(-1)?.role === ChatCompletionRequestMessageRoleEnum.Tool;
+  const moderatedParamToolCallIds = new Set<string>();
+  const toolParamPassCache = new Map<string, Promise<boolean>>();
+  const isToolCallParamsAllowed = (call: ChatCompletionMessageToolCall): Promise<boolean> => {
+    const cached = toolParamPassCache.get(call.id);
+    if (cached) return cached;
+    const checkPromise = checkToolParamsModeration({
+      toolCalls: [call],
+      context: { teamId: runtime.teamId }
+    }).then((res) => {
+      if (!res.isPass) {
+        moderatedParamToolCallIds.add(call.id);
+        const maskToolCallArgs = (messages: ChatCompletionMessageParam[]) => {
+          messages.forEach((msg) => {
+            if (msg.role === ChatCompletionRequestMessageRoleEnum.Assistant && msg.tool_calls) {
+              msg.tool_calls = msg.tool_calls.map((tc) =>
+                tc.id === call.id ? { ...tc, function: { ...tc.function, arguments: '{}' } } : tc
+              );
+            }
+          });
+        };
+        maskToolCallArgs(completeMessages);
+        maskToolCallArgs(assistantMessages);
+      }
+      return res.isPass;
+    });
+    toolParamPassCache.set(call.id, checkPromise);
+    return checkPromise;
+  };
+  let isRunBlocked = false;
   const lastUserMessageIndex = requestMessages.findLastIndex(
     (message) => message.role === ChatCompletionRequestMessageRoleEnum.User
   );
@@ -318,7 +362,16 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
           messages: input.messages
         });
       } catch (error) {
-        const errorMessage = `Tool error: ${getErrText(error)}`;
+        const errText = getErrText(error);
+        if (isModerationBlockErrorMessage(errText)) {
+          return {
+            response: MODERATION_BLOCKED_REPLACE_TEXT,
+            assistantMessages: [],
+            usages: [],
+            stop: false
+          };
+        }
+        const errorMessage = `Tool error: ${errText}`;
         return {
           response: errorMessage,
           assistantMessages: [],
@@ -328,6 +381,26 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
         };
       }
     })();
+    if (!isToolResultModerated(result)) {
+      const originalResponse = result.response;
+      const moderatedResponse = originalResponse
+        ? await checkToolResultModeration({
+            response: originalResponse,
+            context: { teamId: runtime.teamId }
+          })
+        : originalResponse;
+      const hitModeration =
+        moderatedResponse !== originalResponse ||
+        isModerationBlockErrorMessage(result.errorMessage);
+      if (hitModeration) {
+        result.response = MODERATION_BLOCKED_REPLACE_TEXT;
+        result.errorMessage = undefined;
+        result.assistantMessages = [];
+        result.assistantResponses = undefined;
+        result.metadata = sanitizeModeratedToolNodeResponse(result.metadata);
+      }
+      markToolResultModerated(result);
+    }
     const normalizedResponse = normalizeToolResponseContent(result.response);
     pushAgentLoopUsages(runtime, result.usages);
     runtime.emitEvent?.({
@@ -427,7 +500,8 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
         childAssistantMessages: assistantMessages
       });
       if (continuationMessage) toolContinuationMessages.push(continuationMessage);
-    }
+    },
+    isToolCallParamsAllowed
   });
 
   const pendingRequests: Array<{
@@ -539,10 +613,47 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
       }
     }
   });
+  const streamModerationBuffer = await createStreamModerationBuffer({
+    context: { teamId: runtime.teamId },
+    onApprovedText: (text) => {
+      runtime.emitEvent?.({
+        type: 'answer_delta',
+        text
+      });
+    },
+    onBlocked: () => {
+      isRunBlocked = true;
+      agent.abort();
+    }
+  });
+
+  const reasoningModerationBuffer = streamModerationBuffer.enabled
+    ? await createStreamModerationBuffer({
+        context: { teamId: runtime.teamId },
+        onApprovedText: (text) => {
+          runtime.emitEvent?.({
+            type: 'reasoning_delta',
+            text
+          });
+        },
+        onBlocked: () => {
+          agent.abort();
+        }
+      })
+    : undefined;
+
   abortCurrentRunRef.current = () => agent.abort();
 
-  agent.subscribe((event: AgentEvent) => {
+  let subscriberQueue = Promise.resolve();
+  const handleAgentEvent = async (event: AgentEvent) => {
     if (event.type === 'tool_execution_start') {
+      if (
+        isRunBlocked ||
+        streamModerationBuffer.enabled ||
+        moderatedParamToolCallIds.has(event.toolCallId)
+      ) {
+        return;
+      }
       emitOrdinaryToolExecution({
         id: event.toolCallId,
         type: 'function',
@@ -560,23 +671,32 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
         const request = pendingRequests[0];
         if (request) request.firstTokenAt ??= Date.now();
         answerText += assistantEvent.delta;
-        runtime.emitEvent?.({
-          type: 'answer_delta',
-          text: assistantEvent.delta
-        });
+        if (streamModerationBuffer.enabled) {
+          await streamModerationBuffer.push(assistantEvent.delta);
+        } else {
+          runtime.emitEvent?.({
+            type: 'answer_delta',
+            text: assistantEvent.delta
+          });
+        }
         return;
       }
       if (assistantEvent.type === 'thinking_delta') {
         const request = pendingRequests[0];
         if (request) request.firstTokenAt ??= Date.now();
         reasoningText += assistantEvent.delta;
-        runtime.emitEvent?.({
-          type: 'reasoning_delta',
-          text: assistantEvent.delta
-        });
+        if (reasoningModerationBuffer?.enabled) {
+          await reasoningModerationBuffer.push(assistantEvent.delta);
+        } else {
+          runtime.emitEvent?.({
+            type: 'reasoning_delta',
+            text: assistantEvent.delta
+          });
+        }
         return;
       }
       if (assistantEvent.type === 'toolcall_start' || assistantEvent.type === 'toolcall_delta') {
+        if (isRunBlocked) return;
         const toolCall = assistantEvent.partial.content[assistantEvent.contentIndex];
         if (toolCall?.type !== 'toolCall') return;
 
@@ -594,11 +714,13 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
           emittedToolCallIds.has(toolCall.id) &&
           !controlToolNames.has(toolCall.name)
         ) {
-          emitOrdinaryToolParams({
-            callId: toolCall.id,
-            toolName: toolCall.name,
-            argsDelta: assistantEvent.delta
-          });
+          if (!streamModerationBuffer.enabled) {
+            emitOrdinaryToolParams({
+              callId: toolCall.id,
+              toolName: toolCall.name,
+              argsDelta: assistantEvent.delta
+            });
+          }
         }
       }
       return;
@@ -614,6 +736,16 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
         requestIds.push(request.requestId);
       }
 
+      if (streamModerationBuffer.enabled) {
+        try {
+          await Promise.all([streamModerationBuffer.flush(), reasoningModerationBuffer?.flush()]);
+        } catch (err) {
+          latestError = err;
+        }
+      }
+
+      const isContentBlocked = streamModerationBuffer.blocked || reasoningModerationBuffer?.blocked;
+
       const [normalizedMessage] = normalizePiAgentMessages({
         messages: [event.message],
         completionTools: normalizationTools
@@ -622,23 +754,63 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
         ? normalizedMessage
         : event.message;
       const messageData = readAssistantMessage(assistantMessage);
-      messageData.toolCalls.forEach(emitOrdinaryToolCall);
-      if (!answerText && messageData.answerText) {
-        answerText = messageData.answerText;
+
+      if (messageData.toolCalls.length && streamModerationBuffer.enabled) {
+        const allowedList = await Promise.all(
+          messageData.toolCalls.map((call) => isToolCallParamsAllowed(call))
+        );
+        messageData.toolCalls = messageData.toolCalls.map((call, idx) =>
+          allowedList[idx]
+            ? call
+            : {
+                ...call,
+                function: {
+                  ...call.function,
+                  arguments: '{}'
+                }
+              }
+        );
+        event.message.content.forEach((item) => {
+          if (item.type === 'toolCall' && moderatedParamToolCallIds.has(item.id)) {
+            item.arguments = {};
+          }
+        });
       }
-      latestAnswerText = messageData.answerText;
-      if (!reasoningText && messageData.reasoningText) {
-        reasoningText = messageData.reasoningText;
+      const isBlocked = isContentBlocked;
+      if (isBlocked) {
+        isRunBlocked = true;
+        answerText = '';
+        latestAnswerText = '';
+        reasoningText = '';
+        messageData.answerText = '';
+        messageData.reasoningText = '';
+        messageData.toolCalls = [];
+        latestError ||= new UserError(MODERATION_BLOCKED_ERROR_MESSAGE);
+        agent.abort();
+      } else {
+        messageData.toolCalls.forEach(emitOrdinaryToolCall);
+        if (!answerText && messageData.answerText) {
+          answerText = messageData.answerText;
+        }
+        latestAnswerText = messageData.answerText;
+        if (!reasoningText && messageData.reasoningText) {
+          reasoningText = messageData.reasoningText;
+        }
       }
+
       const standardAssistantMessage: ChatCompletionMessageParam = {
         role: ChatCompletionRequestMessageRoleEnum.Assistant,
-        content: removeDatasetCiteText(messageData.answerText, retainDatasetCite) || null,
-        ...(modelData.config.reasoning || messageData.reasoningText
+        content: isBlocked
+          ? null
+          : removeDatasetCiteText(messageData.answerText, retainDatasetCite) || null,
+        ...(modelData.config.reasoning || (!isBlocked && messageData.reasoningText)
           ? {
-              reasoning_content: removeDatasetCiteText(messageData.reasoningText, retainDatasetCite)
+              reasoning_content: isBlocked
+                ? undefined
+                : removeDatasetCiteText(messageData.reasoningText, retainDatasetCite)
             }
           : {}),
-        ...(messageData.toolCalls.length ? { tool_calls: messageData.toolCalls } : {})
+        ...(!isBlocked && messageData.toolCalls.length ? { tool_calls: messageData.toolCalls } : {})
       };
       const toolCallIds = new Set(messageData.toolCalls.map((call) => call.id));
       const completeToolResponseIndex = completeMessages.findIndex(
@@ -679,23 +851,23 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
       };
       pushAgentLoopUsages(runtime, [usage]);
 
-      finishReason = mapStopReason(event.message.stopReason);
+      finishReason = isBlocked ? 'error' : mapStopReason(event.message.stopReason);
       runtime.emitEvent?.({
         type: 'llm_request_end',
         requestIndex: request.requestIndex,
         modelName: modelData.name,
         requestId: request.requestId,
         finishReason,
-        answerText: messageData.answerText,
-        reasoningText: messageData.reasoningText,
-        toolCalls: messageData.toolCalls,
+        answerText: isBlocked ? '' : messageData.answerText,
+        reasoningText: isBlocked ? '' : messageData.reasoningText,
+        toolCalls: isBlocked ? [] : messageData.toolCalls,
         usages: [usage],
         seconds: +((Date.now() - request.startedAt) / 1000).toFixed(2),
         firstTokenTime:
           request.firstTokenAt === undefined
             ? undefined
             : +((request.firstTokenAt - request.startedAt) / 1000).toFixed(2),
-        error: event.message.errorMessage
+        error: isBlocked ? latestError : event.message.errorMessage
       });
       return;
     }
@@ -704,6 +876,13 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
       const errMsg = (event.message as { errorMessage?: string }).errorMessage;
       if (errMsg) latestError = errMsg;
     }
+  };
+  agent.subscribe((event: AgentEvent) => {
+    const task = handleAgentEvent(event);
+    subscriberQueue = subscriberQueue.then(
+      () => task,
+      () => task
+    );
   });
 
   const stopPoller = setInterval(() => {
@@ -771,6 +950,35 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
     latestError = error;
   } finally {
     clearInterval(stopPoller);
+    await subscriberQueue;
+  }
+
+  if (streamModerationBuffer.enabled) {
+    try {
+      await Promise.all([streamModerationBuffer.flush(), reasoningModerationBuffer?.flush()]);
+    } catch (err) {
+      latestError = err;
+    }
+    if (isRunBlocked || streamModerationBuffer.blocked || reasoningModerationBuffer?.blocked) {
+      isRunBlocked = true;
+      answerText = '';
+      reasoningText = '';
+      latestError ||= new UserError(MODERATION_BLOCKED_ERROR_MESSAGE);
+      completeMessages.forEach((msg) => {
+        if (msg.role === ChatCompletionRequestMessageRoleEnum.Assistant) {
+          msg.content = '';
+          delete msg.reasoning_content;
+          delete msg.tool_calls;
+        }
+      });
+      assistantMessages.forEach((msg) => {
+        if (msg.role === ChatCompletionRequestMessageRoleEnum.Assistant) {
+          msg.content = '';
+          delete msg.reasoning_content;
+          delete msg.tool_calls;
+        }
+      });
+    }
   }
 
   if (pendingRequests.length > 0) {
@@ -829,7 +1037,18 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
         activePlan
       };
 
-  if (pendingAsk && resolvedPendingAskId) {
+  const isModerationBlocked =
+    isRunBlocked ||
+    streamModerationBuffer.blocked ||
+    reasoningModerationBuffer?.blocked ||
+    (latestError instanceof UserError && latestError.message === MODERATION_BLOCKED_ERROR_MESSAGE);
+
+  if (
+    !isModerationBlocked &&
+    pendingAsk &&
+    resolvedPendingAskId &&
+    !moderatedParamToolCallIds.has(resolvedPendingAskId)
+  ) {
     runtime.emitEvent?.({
       type: 'ask',
       ask: pendingAsk,
@@ -863,7 +1082,11 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
     };
   }
 
-  if (pendingToolChild) {
+  if (
+    !isModerationBlocked &&
+    pendingToolChild &&
+    !moderatedParamToolCallIds.has(pendingToolChild.toolCallId)
+  ) {
     return {
       status: 'paused',
       pause: {
@@ -881,7 +1104,7 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
     };
   }
 
-  if (pendingToolStop) {
+  if (!isModerationBlocked && pendingToolStop) {
     return {
       status: 'done',
       activePlan,
@@ -895,7 +1118,7 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
     };
   }
 
-  if (runtime.checkIsStopping?.()) {
+  if (!isModerationBlocked && runtime.checkIsStopping?.()) {
     return {
       status: 'aborted',
       activePlan,
@@ -906,6 +1129,21 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
       contextCheckpoint: latestContextCheckpoint,
       finishReason,
       usages: resultUsages
+    };
+  }
+
+  if (isModerationBlocked) {
+    return {
+      status: 'error',
+      activePlan,
+      providerState: nextProviderState,
+      completeMessages,
+      assistantMessages,
+      requestIds,
+      contextCheckpoint: latestContextCheckpoint,
+      finishReason: 'error',
+      usages: resultUsages,
+      error: latestError || new UserError(MODERATION_BLOCKED_ERROR_MESSAGE)
     };
   }
 

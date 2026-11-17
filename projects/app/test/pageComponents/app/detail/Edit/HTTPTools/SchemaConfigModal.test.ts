@@ -15,13 +15,16 @@ const mocks = vi.hoisted(() => ({
   remoteTools: [{ name: 'remote-tool', description: 'Remote tool' }]
 }));
 
-vi.mock('@chakra-ui/react', async () => {
+vi.mock('@chakra-ui/react', async (importOriginal) => {
+  const original = await importOriginal<typeof import('@chakra-ui/react')>();
   const react = await import('react');
   const wrapper = ({ children }: { children?: ReactNode }) =>
     react.createElement('div', null, children);
   const input = react.forwardRef<HTMLInputElement, any>((props, ref) =>
     react.createElement('input', {
       'aria-label': props['aria-label'],
+      autoFocus: props.autoFocus,
+      type: props.type,
       placeholder: props.placeholder,
       value: props.value,
       onChange: props.onChange,
@@ -44,8 +47,12 @@ vi.mock('@chakra-ui/react', async () => {
   );
 
   return {
+    ...original,
     Box: wrapper,
     Flex: wrapper,
+    HStack: wrapper,
+    IconButton: ({ onClick, 'aria-label': label }: any) =>
+      react.createElement('button', { type: 'button', onClick, 'aria-label': label }),
     ModalBody: wrapper,
     ModalFooter: wrapper,
     Table: wrapper,
@@ -70,6 +77,14 @@ vi.mock('@chakra-ui/react', async () => {
 });
 
 vi.mock('next-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
+vi.mock('@fastgpt/web/hooks/useSafeTranslation', () => ({
+  useSafeTranslation: () => ({ t: (key: string) => key })
+}));
+vi.mock('@fastgpt/web/components/common/MySelect', () => ({ default: () => null }));
+vi.mock('@fastgpt/web/components/common/MyTooltip', () => ({
+  default: ({ children }: { children?: ReactNode }) => children
+}));
+vi.mock('@fastgpt/web/components/core/workflow/NodeInputSelect', () => ({ default: () => null }));
 vi.mock('use-context-selector', () => ({
   useContextSelector: (_context: unknown, selector: (value: unknown) => unknown) =>
     selector({ appDetail: { _id: 'app-id', name: 'App', nodes: [] }, reloadApp: mocks.reloadApp })
@@ -123,17 +138,21 @@ vi.mock('@fastgpt/web/components/common/Input/HttpInput', async () => {
 });
 vi.mock('@fastgpt/web/components/common/Icon', async () => {
   const react = await import('react');
-  return { default: () => react.createElement('span') };
+  return {
+    default: ({ name, onClick }: any) => react.createElement('span', { 'data-icon': name, onClick })
+  };
 });
 vi.mock('@/components/common/secret/HeaderAuthConfig', () => ({
   headerValue2StoreHeader: (value: unknown) => value,
   storeHeader2HeaderValue: (value: unknown) => value
 }));
-vi.mock('@/components/common/secret/HeaderAuthForm', async () => {
+vi.mock('@/components/common/secret/HeaderAuthForm', async (importOriginal) => {
+  const original =
+    await importOriginal<typeof import('@/components/common/secret/HeaderAuthForm')>();
   const react = await import('react');
   return {
     default: () => react.createElement('div'),
-    AuthValueDisplay: () => react.createElement('div')
+    AuthValueDisplay: original.AuthValueDisplay
   };
 });
 vi.mock('@fastgpt/global/core/app/jsonschema', () => ({
@@ -142,27 +161,18 @@ vi.mock('@fastgpt/global/core/app/jsonschema', () => ({
 vi.mock('@fastgpt/global/core/app/tool/httpTool/utils', () => ({
   pathData2ToolList: mocks.pathData2ToolList
 }));
-vi.mock('@fastgpt/global/core/workflow/node/constant', () => ({
-  FlowNodeTypeEnum: { toolSet: 'toolSet' }
-}));
 vi.mock('@fastgpt/global/core/workflow/type/node', () => ({
   HttpToolSetRuntimeConfigSchema: { safeParse: () => ({ data: undefined }) }
 }));
-vi.mock('@fastgpt/global/common/secret/utils', () => ({
-  getSecretPlainValue: () => undefined,
-  isSecretValueConfigured: (value: unknown) => Boolean(value)
-}));
-vi.mock('@/pageComponents/app/detail/Edit/HTTPTools/utils', () => ({
-  buildWorkflowCustomHeaders: () => ({ customHeaders: '{}', headerSecret: {} })
-}));
-
-describe('SchemaConfigModal OpenAPI parsing', () => {
+describe('SchemaConfigModal', () => {
   let dom: JSDOM;
   let container: HTMLDivElement;
   let root: Root;
 
   beforeEach(() => {
     dom = new JSDOM('<!doctype html><html><body></body></html>', { url: 'http://localhost/' });
+    // React 先于 JSDOM 加载，补齐旧输入事件接口以保留真实自动聚焦。
+    Object.assign(dom.window.HTMLElement.prototype, { attachEvent: vi.fn(), detachEvent: vi.fn() });
     vi.stubGlobal('window', dom.window);
     vi.stubGlobal('document', dom.window.document);
     vi.stubGlobal('location', dom.window.location);
@@ -221,6 +231,61 @@ describe('SchemaConfigModal OpenAPI parsing', () => {
       Simulate.change(input);
     });
   };
+
+  it('preserves the surviving header editor and saves only its confirmed replacement after deleting another row', async () => {
+    const onSaveConfig = vi.fn();
+    await renderModal({
+      initialConfig: {
+        apiSchemaUrl: 'https://api.example/openapi.json',
+        customHeaders: JSON.stringify({ 'X-First': '', 'X-Keep': '' }),
+        headerSecret: {
+          'X-First': { secret: 'first-cipher' },
+          'X-Keep': { secret: 'keep-cipher' }
+        },
+        toolList: []
+      },
+      onSaveConfig
+    });
+    const editButtons = container.querySelectorAll<HTMLButtonElement>('[aria-label="common:Edit"]');
+    await act(async () => editButtons[1].click());
+    const draftInput = inputByPlaceholder('Value');
+    expect(draftInput.value).toBe('');
+    await setInputValue(draftInput, 'replacement');
+    await act(async () => Simulate.blur(draftInput));
+    await act(async () =>
+      container
+        .querySelector('[data-icon="delete"]')!
+        .dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true }))
+    );
+
+    expect(inputByPlaceholder('Value')).toBe(draftInput);
+    expect(draftInput.value).toBe('replacement');
+    await click('common:Save');
+    expect(onSaveConfig).toHaveBeenLastCalledWith({
+      apiSchemaUrl: 'https://api.example/openapi.json',
+      customHeaders: JSON.stringify({ 'X-Keep': '' }, null, 2),
+      headerSecret: { 'X-Keep': { secret: 'keep-cipher' } },
+      toolList: []
+    });
+    await act(async () =>
+      container.querySelector<HTMLButtonElement>('[aria-label="common:Save"]')!.click()
+    );
+    expect(container.querySelector('input[placeholder="Value"]')).toBeNull();
+    const nameInput = inputByPlaceholder('common:core.module.http.Props name');
+    await act(async () => Simulate.blur(nameInput, { target: { value: 'X-Renamed' } } as any));
+    expect(container.querySelector('input[placeholder="Value"]')).toBeNull();
+    await click('common:Save');
+    expect(onSaveConfig).toHaveBeenLastCalledWith({
+      apiSchemaUrl: 'https://api.example/openapi.json',
+      customHeaders: JSON.stringify({ 'X-Renamed': '' }, null, 2),
+      headerSecret: { 'X-Renamed': { value: 'replacement' } },
+      toolList: []
+    });
+    await act(async () =>
+      container.querySelector<HTMLButtonElement>('[aria-label="common:Edit"]')!.click()
+    );
+    expect(inputByPlaceholder('Value').value).toBe('');
+  });
 
   it('aborts and ignores a workflow parse after its URL changes', async () => {
     const pending: Array<{

@@ -1,18 +1,18 @@
 ---
 title: 版本&升级说明
-description: FastGPT 版本&升级说明
+description: "阅读 FastGPT 自部署版本升级标准操作指南，掌握镜像版本号规则、启动迁移、后台迁移与跨版本升级流程。"
 ---
 
 ## 版本说明
 
 从 4.14.11 开始，为了区分稳定版和快速迭代版，对版本命名进行了调整，未来将按以下方式进行版本命名：
 
-1. 维护 2 个稳定版本。例如当前迭代功能处于 4.16.x 版本，则会维护 4.14.x 和 4.15.x 两个文档版本。
-2. 稳定版本命名不带后缀，例如：4.14.11, 4.14.12, 4.15.0, 4.15.1。如果 4.14.11 有问题，会修复后发布 4.14.12，并同步修复到 4.15.x 的稳定版，以确保修复问题同时不引入新的功能。
-3. 快速迭代版本命名带后缀，例如：4.16.0-beta.1, 4.16.0-beta.2, 4.16.0-beta.3。
-4. 迭代版本约 2 个月发布一次稳定版，并且会提供一个聚合的升级脚本，用户只需要执行一次请求，即可完成所有迭代版本的升级。
+1. 维护 2 个稳定版本。例如当前迭代功能处于 4.17.x 版本，同时维护 4.14.x 和 4.15.x 两个历史稳定版本。
+2. 稳定版本命名不带后缀，例如：4.15.0, 4.15.1, 4.17.0, 4.17.3。某稳定版发现问题时，会修复后发布同系列补丁版本，并同步修复到相邻稳定版，在保持既有功能范围的前提下完成修复。
+3. 快速迭代版本命名带后缀，例如：4.17.0-beta1, 4.17.0-beta2, 4.17.0-beta3。
+4. 迭代版本约 2 个月发布一次稳定版。4.17.0 起登记的系统迁移任务在主应用启动后自动执行；4.16.x 及更早版本提供聚合升级脚本，可通过一次请求完成该周期的升级迁移。
 
-总结来说，后续用户可以直接升级不带 beta 后缀的稳定版本，以确保稳定性，官方会单独发布修复版本并确保不会引入新功能。
+生产环境建议直接升级不带 beta 后缀的稳定版本，以确保系统平稳可靠。
 
 ## 升级说明
 
@@ -21,62 +21,68 @@ FastGPT 升级通常包括两个步骤：
 1. 修改镜像名
 2. 执行升级初始化脚本
 
-如果使用 FastGPT 自带的 MongoDB 5.x 并希望迁移到 8.x，请参考 [MongoDB 5.x 迁移到 8.x（导出/恢复）](./mongodb-8.mdx)。
+如果使用 FastGPT 自带的 MongoDB 5.x 并希望迁移到 8.x，请参考 [MongoDB 5.x 迁移到 8.x（导出/恢复）](/zh-CN/self-host/upgrading/mongodb-8)。
 
 ## 镜像名
 
 **git 版**
 
-- FastGPT 主镜像: ghcr.io/labring/fastgpt:latest
+- FastGPT 主镜像: ghcr.io/labring/fastgpt
 - Plugin 镜像: ghcr.io/labring/fastgpt-plugin
 - 代码沙箱镜像: ghcr.io/labring/fastgpt-code-sandbox
-- MCP SSE server 镜像: ghcr.io/labring/fastgpt-mcp_server
-- 商业版镜像: ghcr.io/c121914yu/fastgpt-pro:latest
+- AI Proxy 镜像: ghcr.io/labring/aiproxy
+- Agent Sandbox Volume Manager 镜像: ghcr.io/labring/fastgpt-agent-volume-manager
+- Agent Sandbox 镜像: ghcr.io/labring/fastgpt-agent-sandbox
+- Agent Sandbox Proxy 镜像: ghcr.io/labring/fastgpt-agent-sandbox-proxy
+- 商业版镜像: ghcr.io/c121914yu/fastgpt-pro
 
 **阿里云**
 
 - FastGPT 主镜像: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt
 - Plugin 镜像: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-plugin
 - 代码沙箱镜像: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-code-sandbox
-- MCP SSE server 镜像: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-mcp_server
-- 商业版镜像: ghcr:registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-pro
+- AI Proxy 镜像: registry.cn-hangzhou.aliyuncs.com/labring/aiproxy
+- Agent Sandbox Volume Manager 镜像: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-volume-manager
+- Agent Sandbox 镜像: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-sandbox
+- Agent Sandbox Proxy 镜像: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-sandbox-proxy
+- 商业版镜像: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-pro
 
-镜像由镜像名和 `Tag` 组成，例如: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.6.1 代表 `4.6.3` 版本镜像，具体可以看 docker hub, GitHub 仓库。
+各服务使用目标版本部署模板指定的镜像 Tag。配套服务的版本号可能各自独立，升级前记录完整镜像组合与配置。
 
 ## Sealos 修改镜像
 
 1. 打开 [Sealos Cloud](https://cloud.sealos.io?uid=fnWRt09fZP)，找到桌面上的应用管理
 
-![](../../../public/imgs/updateImageSealos1.jpg)
+![打开 Sealos 桌面应用管理](/imgs/optimized/updateImageSealos1.jpg.webp)
 
 2. 选择对应的应用 - 点击右边三个点 - 变更
 
-![](../../../public/imgs/updateImageSealos2.png)
+![进入 Sealos 应用变更配置页面](/imgs/optimized/updateImageSealos2.png.webp)
 
 3. 修改镜像 - 确认变更
 
    如果要修改配置文件，可以拉到下面的 `配置文件` 进行修改。
 
-![](../../../public/imgs/updateImageSealos3.png)
+![修改容器镜像版本并确认变更](/imgs/optimized/updateImageSealos3.png.webp)
 
 ## Docker-Compose 修改镜像
 
 直接修改 `yml` 文件中的 `image: ` 即可。随后执行:
 
 ```bash
-docker-compose pull
-docker-compose up -d
+docker compose pull
+docker compose up -d
 ```
 
 ## 执行升级初始化脚本
 
-镜像更新完后，可以查看文档中的 `版本介绍`，通常需要执行升级脚本的版本都会标明 `包含升级脚本`，打开对应的文档，参考说明执行**升级脚本**即可，大部分时候都是需要发送一个 `POST` 请求。
+镜像更新完后，查看文档中对应版本的发布说明。需要执行升级脚本的版本会带 `升级脚本` 标签，打开对应的文档，按说明执行即可：4.17.0 起，登记的迁移任务在主应用启动后自动执行，需手动触发的任务在「管理员 > 版本升级」页面执行；4.16.x 及更早版本的升级脚本，大部分需要发送一个 `POST` 请求。
 
-## QA
+## 升级执行与回退要点
 
 ### 为什么需要执行升级脚本
 
-数据表出现大幅度变更，无法通过设置默认值，或复杂度较高时，会通过升级脚本来更新部分数据表字段。严格按初始化步骤进行操作，不会造成旧数据丢失。但在初始化过程中，如果数据量大，需要初始化的时间较长，这段时间可能会造成服务无法正常使用。
+升级脚本负责把历史数据迁移、回填为新版本使用的数据结构。在 FastGPT 4.17+ 中，主应用启动时自动调用分布式数据迁移执行器。多个副本通过 MongoDB 租约竞选执行权，按序自动执行注册的结构回填与迁移任务，并记录断点游标支持中断重试。面对大数据量业务库迁移，建议在维护窗口期执行并预留时间。
 
 ### `{{host}}` 是什么
 
@@ -84,24 +90,18 @@ docker-compose up -d
 
 Sealos 中，你可以在下图中找到你的域名：
 
-![](../../../public/imgs/updateImageSealos4.png)
+![在 Sealos 应用详情中查看公网访问域名](/imgs/optimized/updateImageSealos4.png.webp)
 
 ### 如何获取 rootkey
 
-从 `docker-compose.yml` 中的 `environment` 中获取，对应的是 `ROOT_KEY` 的值。
+从 `docker-compose.yml` 中获取 `ROOT_KEY` 的值。官方模板中写的是 `ROOT_KEY: *x-system-key`，实际值在文件顶部的 `x-system-key` 一行。
 
 sealos 中可以从上图左侧的环境变量中获取。
 
 ### 如何跨版本升级
 
-先进行数据备份！
-
-可以升级至最新版本，然后将所有升级脚本的版本都执行一遍。不过为了稳定，建议逐一版本升级。例如，当前版本是 4.4.7，需要升级到 4.6。
-
-1. 修改镜像到 4.5，执行升级脚本
-2. 修改镜像到 4.5.1，执行升级脚本
-3. 修改镜像到 4.5.2，执行升级脚本
-4. 修改镜像到 4.6，执行升级脚本
-5. ……
-
-逐一升级
+1. 阅读跨越版本的发布说明，遵循指定升级路径及必需的中间版本。
+2. 一致性备份 MongoDB、向量库、对象存储和配置，并在独立环境验证恢复。
+3. 使用生产数据副本演练，检查启动迁移状态，执行对应版本明确要求的手动步骤。
+4. 在维护窗口升级，验证登录、导入、检索、对话和文件下载后再恢复流量。
+5. 准备相互兼容的应用镜像与数据备份作为回退方案。涉及数据迁移时，回退可能需要同时恢复旧版数据状态。

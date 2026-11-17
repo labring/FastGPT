@@ -57,7 +57,9 @@ import {
 
 describe('initLangfuseTracing', () => {
   beforeEach(() => {
-    global.systemEnv = {} as typeof global.systemEnv;
+    mocks.serviceEnv.LANGFUSE_PUBLIC_KEY = 'public-key';
+    mocks.serviceEnv.LANGFUSE_SECRET_KEY = 'secret-key';
+    mocks.serviceEnv.LANGFUSE_BASE_URL = 'https://langfuse.example.com';
   });
 
   it('deduplicates facade registration and rebuilds the processor after shutdown', async () => {
@@ -127,17 +129,24 @@ describe('initLangfuseTracing', () => {
     expect(mocks.shutdown).toHaveBeenCalledTimes(1);
     expect(mocks.construct).toHaveBeenCalledTimes(2);
 
-    global.systemEnv = {
-      langfuse: {
+    mocks.serviceEnv.LANGFUSE_SECRET_KEY = 'runtime-secret';
+    mocks.serviceEnv.LANGFUSE_PUBLIC_KEY = 'runtime-public';
+    mocks.serviceEnv.LANGFUSE_BASE_URL = 'https://runtime.example.com';
+    await refreshLangfuseTracing();
+    expect(mocks.construct).toHaveBeenCalledTimes(3);
+    expect(mocks.construct).toHaveBeenLastCalledWith(
+      expect.objectContaining({
         secretKey: 'runtime-secret',
         publicKey: 'runtime-public',
         baseUrl: 'https://runtime.example.com'
-      }
-    } as typeof global.systemEnv;
-    await refreshLangfuseTracing();
-    expect(mocks.construct).toHaveBeenCalledTimes(3);
+      })
+    );
 
-    global.systemEnv.langfuse = { baseUrl: 'https://disabled.example.com' };
+    mocks.serviceEnv.LANGFUSE_SECRET_KEY = '   ';
+    expect(isLangfuseEnabled()).toBe(false);
+    mocks.serviceEnv.LANGFUSE_SECRET_KEY = undefined;
+    mocks.serviceEnv.LANGFUSE_PUBLIC_KEY = undefined;
+    mocks.serviceEnv.LANGFUSE_BASE_URL = 'https://disabled.example.com';
     await refreshLangfuseTracing();
     expect(isLangfuseEnabled()).toBe(false);
     expect(mocks.shutdown).toHaveBeenCalledTimes(3);

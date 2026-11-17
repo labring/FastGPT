@@ -6,6 +6,7 @@ import { openApiDocumentOptions } from '../../openapi/generation';
 import { setRequiredRequestExamples } from '../../openapi/requiredExamples';
 import { openAPIDocument } from '../../openapi/provider/devapi';
 import { apiDocOpenAPIDocument } from '../../openapi/provider/systemopenapi';
+import { getErrorResponse } from '../../openapi/type';
 
 const id = '507f1f77bcf86cd799439011';
 const fields = z.object({
@@ -16,6 +17,32 @@ const fields = z.object({
   optionalDefaultId: ObjectIdSchema.default(id).optional(),
   title: z.string(),
   optionalTitle: z.string().optional()
+});
+
+describe('localized API error contract', () => {
+  it('accepts localized messages while keeping code and statusText fixed in validation and OpenAPI', () => {
+    const schema = getErrorResponse({
+      code: 401,
+      statusText: 'unAuthorization',
+      message: 'common:code_error.error_message.401'
+    });
+    for (const message of ['凭证错误', 'Unauthorized', '憑證錯誤', '인증 정보 오류']) {
+      expect(schema.safeParse({ code: 401, statusText: 'unAuthorization', message }).success).toBe(
+        true
+      );
+    }
+    expect(
+      schema.safeParse({ code: 500, statusText: 'unAuthorization', message: 'Unauthorized' })
+        .success
+    ).toBe(false);
+    const { schema: document } = createSchema(schema, { io: 'output' });
+    if ('$ref' in document) throw new Error('Expected inline error schema');
+    expect(document.properties!.message).toMatchObject({ type: 'string' });
+    expect(document.properties!.message).not.toHaveProperty('const');
+    expect(document.properties!.message).not.toHaveProperty('enum');
+    expect(document.properties!.code).toMatchObject({ const: 401 });
+    expect(document.properties!.statusText).toMatchObject({ const: 'unAuthorization' });
+  });
 });
 
 describe('OpenAPI ObjectId generation', () => {

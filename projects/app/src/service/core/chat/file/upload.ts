@@ -1,3 +1,4 @@
+import { getSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/runtime';
 import { getFileUploadLimits } from '@fastgpt/global/common/file/limit';
 import type { CreatePostPresignedUrlResponseType } from '@fastgpt/global/common/file/s3/type';
 import { S3ErrEnum } from '@fastgpt/global/common/error/code/s3';
@@ -51,7 +52,7 @@ export const createAuthorizedChatFileUploadUrl = async ({
   const planStatus = await getTeamPlanStatus({ teamId });
   const uploadLimits = getFileUploadLimits({
     teamPlan: planStatus.standard,
-    systemLimit: global.feConfigs.limit
+    systemLimit: getSystemInstanceConfig().resource
   });
   await assertUploadRateLimit({
     identity: uid,

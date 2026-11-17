@@ -21,7 +21,7 @@ export type ResponseEvents = ToolCallEventType & {
   // 普通回答文本增量。非 stream 响应也会在解析完成后触发一次，保持上层处理一致。
   onStreaming?: (e: { text: string }) => void;
   // reasoning 增量，来源可能是 reasoning_content，也可能是 <think> 标签解析结果。
-  onReasoning?: (e: { text: string }) => void;
+  onReasoning?: (e: { text: string }) => void | Promise<any>;
 };
 
 // 根据 stream 字段把请求体收窄到 SDK 对应类型，避免调用 create 时丢失 stream 类型信息。
@@ -90,6 +90,7 @@ export type LLMResponse = {
   answerText: string;
   reasoningText: string;
   toolCalls?: ChatCompletionMessageToolCall[];
+  moderatedToolCallIds?: string[];
   finish_reason: CompletionFinishReason;
   responseEmptyTip?: string;
   usage: {

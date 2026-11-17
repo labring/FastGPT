@@ -294,5 +294,10 @@
   "process.Synonym_Rebuild": "同义词重建",
   "data_index_status_synonym_pending": "同义词待重建",
   "data_index_status_synonym_running": "同义词重建中",
-  "data_index_status_synonym_failed": "同义词重建失败"
+  "data_index_status_synonym_failed": "同义词重建失败",
+  "search_targets_required": "至少选择一个知识库",
+  "search_targets_must_be_datasets": "搜索目标必须是知识库，不能选择文件夹",
+  "search_query_images_must_belong_to_team": "检索图片必须是当前团队上传的临时图片",
+  "search_filters_unsupported": "当前版本不支持知识库搜索筛选",
+  "search_embedding_models_must_match": "联合向量检索要求知识库使用相同的向量模型"
 }

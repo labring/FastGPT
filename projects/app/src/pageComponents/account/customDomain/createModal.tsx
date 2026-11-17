@@ -297,7 +297,7 @@ function CreateCustomDomainModal<T extends 'create' | 'refresh'>({
 
           <Flex>
             <Link
-              href={feConfigs.openAPIDocUrl || getDocPath('/guide/workspace/customDomain')}
+              href={getDocPath('/guide/workspace/customDomain')}
               target={'_blank'}
               mt="2"
               ml="2"

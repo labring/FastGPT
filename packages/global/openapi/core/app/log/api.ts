@@ -5,7 +5,7 @@ import z from 'zod';
 import { PaginationResponseSchema, createPaginationSchema } from '../../../api';
 import { AppLogKeysEnum, AppLogTimespanEnum } from '../../../../core/app/logs/constants';
 import { ChatSourceEnum } from '../../../../core/chat/constants';
-import { AppLogKeysSchema } from '../../../../core/app/logs/type';
+import { AppChatLogSchema, AppLogKeysSchema } from '../../../../core/app/logs/type';
 import { SourceMemberSchema } from '../../../../support/user/type';
 import { BoolSchema, DateSchema, IntSchema, NumSchema } from '../../../../common/zod';
 
@@ -76,7 +76,7 @@ export const ChatLogItemSchema = z.object({
   chatId: ChatIdSchema.meta({ example: 'chat123', description: '对话 ID' }),
   title: z.string().nullish().meta({ example: '用户对话', description: '对话标题' }),
   customTitle: z.string().nullish().meta({ example: '自定义标题', description: '自定义对话标题' }),
-  source: z.enum(ChatSourceEnum).meta({
+  source: AppChatLogSchema.shape.source.meta({
     example: ChatSourceEnum.api,
     deprecated: true,
     description: '旧调用渠道类型，兼容保留；使用 publishSource.type'

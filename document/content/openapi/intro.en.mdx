@@ -1,102 +1,150 @@
 ---
-title: API Documentation Introduction
-description: Introduction to FastGPT API Documentation
+title: 'API getting started: make your first request'
+description: Configure a service address, member API key, and application ID, then call a published application.
 ---
 
-Starting with `4.15.0`, FastGPT API documentation is generated automatically with `zod-openapi`. You can view the latest endpoint status by opening the API documentation URL. The manually edited endpoint descriptions in the left sidebar of this documentation are no longer updated.
+{/* Preserve incoming bookmarks for reorganized sections. */}
 
-FastGPT API documentation is split into two sets:
+<span id="api-reference-addresses" />
+<span id="next-steps" />
 
-- Dev API: all development APIs. Not every endpoint can be called with an API Key.
-- System OpenAPI: all system public endpoints, callable with a system API Key.
+{/* Preserve incoming bookmarks for reorganized sections. */}
 
-## API Documentation URL
+<span id="api-documentation-url" />
+<span id="cloud-api-documentation-url" />
+<span id="usage-notes" />
+<span id="how-to-get-an-api-key" />
+<span id="api-key-scope" />
+<span id="api-key-usage" />
+<span id="how-to-find-the-app-id-appid" />
+<span id="how-to-find-dataset-and-collection-ids" />
+<span id="basic-configuration" />
 
-`endpoint` is your FastGPT access URL. Append the corresponding path to open the documentation.
+## Prerequisites
 
-- Dev API: `{{endpoint}}/apidoc/devapi`
-- System OpenAPI: `{{endpoint}}/apidoc/systemopenapi`
+Find the current endpoint contracts and documentation links on [API reference addresses](/en/openapi/api-reference).
 
-## Cloud API Documentation URL
+Prepare a debugged, published application and available model quota, then create or manage API keys in either location:
 
-**Dev API:**
+1. **Account → API Keys**: manage personal keys for the current member (visible to members granted the **Create API Keys** permission under **Account → Team management → Permissions**).
+2. **Studio → Target App → Publish Channels → API Access**: switch between **App keys** (FastGPT 4.18.0 or later) and **Personal keys**.
 
-- [Mainland China documentation](https://cloud.fastgpt.cn/apidoc/devapi)
-- [International documentation](https://cloud.fastgpt.io/apidoc/devapi)
+Legacy keys that store an `appId` remain personal keys. That ID is only the default App for `chat/completions`; the request body or SDK suffix can override it, and the owning member’s permissions still apply. Only explicitly created App keys enforce the App binding described below.
 
-**System OpenAPI**
+| Type         | Scope                                                                                                    | Management                                                           |
+| ------------ | -------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| App key      | Chat and chat management endpoints for its bound app, including chat logs, chat files, and Sandbox files | App administrators view, create, and manage all keys on the same app |
+| Personal key | Team resources accessible to the owning member on endpoints that accept API keys                         | Members manage their own keys                                        |
 
-- [Mainland China documentation](https://cloud.fastgpt.cn/apidoc/systemopenapi)
-- [International documentation](https://cloud.fastgpt.io/apidoc/systemopenapi)
+An app key grants access independently of its owning member's app permissions as long as the key, member, team, and bound app remain valid. Personal keys support `authProxy` when enabled by the team owner (FastGPT >= v4.15.0; see [identity proxy](/en/openapi/identity-proxy)), while app keys identify external users via `customUid`. When the team has an active subscription usage plan, you can configure **Max usage points** and **Expiration time** when creating or editing a key. Store keys on a trusted server or in a secret manager.
 
-## Usage Notes
+## First request
 
-FastGPT OpenAPI endpoints let you authenticate with an API Key to operate related FastGPT services and resources, such as calling app chat endpoints, uploading Dataset data, and running search tests. For compatibility and security reasons, not all endpoints can be accessed with an API Key.
+Set `FASTGPT_ORIGIN` to your FastGPT instance and copy `appId` from the application details URL (with a 4.18.0+ app key, `appId` can be omitted because the server uses the bound app). This request calls the published version through `/api/v2/chat/completions` (`v2` is recommended; `/api/v1/chat/completions` is retained for legacy compatibility):
 
-### How to Get an API Key
+```bash
+export FASTGPT_ORIGIN='https://cloud.fastgpt.io'
+export FASTGPT_API_KEY='YOUR_API_KEY'
+export FASTGPT_APP_ID='YOUR_APP_ID'
+curl --fail-with-body "$FASTGPT_ORIGIN/api/v2/chat/completions" \
+  -H "Authorization: Bearer $FASTGPT_API_KEY" \
+  -H 'Content-Type: application/json' \
+  --data @- <<EOF
+{"appId":"$FASTGPT_APP_ID","stream":false,"messages":[{"role":"user","content":"Hello"}]}
+EOF
+```
 
-You can find API Keys in two places:
+## Response
 
-1. `Account` - `API Keys`: manage your personal keys.
-2. `App` - `Publishing Channels` - `API Access`: switch between app keys and personal keys.
+A successful call returns JSON. Plain-text output is in `choices[0].message.content`, and `id` identifies the conversation. Content depends on the published application; parse multimodal or detailed results according to the current generated contract. Inspect `error` and the business result. Use usage records for billing information.
 
-### API Key Scope
+| Symptom                            | Check                                                           |
+| ---------------------------------- | --------------------------------------------------------------- |
+| Authentication or permission error | Key, team, member status, and resource permissions              |
+| Invalid application ID             | Complete `appId` and access to the selected resource            |
+| 404                                | FastGPT instance address and `/api/v2/chat/completions` path    |
+| Model or quota failure             | Application model settings, service status, and available quota |
 
-**App keys require FastGPT 4.18.0 or later.**
+## Application selection and SDKs
 
-| Type         | Scope                                                                                                                                                                                   | Management                                                                                                                                 |
-| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| App key      | Chat and chat management for its bound app, including chat logs and supporting chat file and Sandbox file endpoints. App configuration, publishing channels, and Datasets are excluded. | Only app administrators can view, create, and manage keys. Administrators can manage keys created by other administrators of the same app. |
-| Personal key | Resources the member can access within the current team, subject to each endpoint's API key support.                                                                                    | Members manage only their own keys.                                                                                                        |
+The chat completions endpoint supports OpenAI-compatible requests and ordinary text responses. Detailed events and other endpoints follow FastGPT contracts. When integrating via the official OpenAI SDK, set `baseURL` to your FastGPT instance address plus `/api/v2` and supply `appId`:
 
-An app key grants access independently of its owning member's app permissions. If the key, member, team, and bound app remain valid, the key continues to work when the member loses access to the app. Managing the key still requires app administrator permissions.
+<Tabs items={['Python SDK', 'Node.js SDK']}>
+  <Tab value="Python SDK">
 
-### API key usage
+```python
+import os
+from openai import OpenAI
 
-- Authenticate with `Authorization: Bearer <apiKey>`.
-- **App key**: omit `appId` from any chat or chat management endpoint that supports app keys. The server uses the key's bound app, even if a different `appId` is provided in the request or the `apiKey-appId` suffix.
-- **Personal key**: pass `body.appId` when calling `chat/completions` whenever possible. The `Authorization: Bearer <apiKey>-<appId>` format is also supported for OpenAI SDK compatibility, with `body.appId` taking precedence. Other endpoints that need an app target still require an explicit `appId`.
-- In the generated API documentation, select the **app API key (no appId required)** format to view its request parameters. The server fixes `sourceType` to `app`; omit it from the request.
-- Some SDKs require adding `v1` to the `BaseURL`. If you get a 404 error, try adding `v1` and retry.
-- Personal keys support `authProxy` when the team owner enables it while creating or editing the key. The proxied member must still have permission to access the target app and session. (FastGPT >= v4.15.0) App keys do not support `authProxy`.
+client = OpenAI(
+    api_key=os.environ["FASTGPT_API_KEY"],
+    base_url=f"{os.environ['FASTGPT_ORIGIN'].rstrip('/')}/api/v2"
+)
+
+response = client.chat.completions.create(
+    model="fastgpt",  # The published application selects the model.
+    messages=[{"role": "user", "content": "Introduce yourself"}],
+    stream=False,
+    extra_body={"appId": os.environ["FASTGPT_APP_ID"]}
+)
+
+print(response.choices[0].message.content)
+```
+
+  </Tab>
+  <Tab value="Node.js SDK">
+
+```typescript
+import OpenAI from 'openai';
+
+const client = new OpenAI({
+  apiKey: process.env.FASTGPT_API_KEY!,
+  baseURL: `${process.env.FASTGPT_ORIGIN!.replace(/\/$/, '')}/api/v2`
+});
+
+async function main() {
+  const request: OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming & {
+    appId: string;
+  } = {
+    model: 'fastgpt',
+    messages: [{ role: 'user', content: 'Introduce yourself' }],
+    appId: process.env.FASTGPT_APP_ID!,
+    stream: false
+  };
+  const response = await client.chat.completions.create(request);
+  console.log(response.choices[0].message.content);
+}
+
+main().catch(console.error);
+```
+
+  </Tab>
+</Tabs>
+
+With an app key, omit `appId` and `sourceType` on supported chat and chat management endpoints (the server uses the bound app and fixes `sourceType` to `app`; select **app API key (no appId required)** in the generated API reference to inspect its parameters). With a personal key in third-party tools that accept only a single API key string, use the `<apiKey>-<appId>` composite format; FastGPT resolves target applications in order of request body `body.appId` -> Bearer header suffix -> default application saved on a legacy personal key.
 
 ### List sessions with an app key
 
-With an app key, `getHistories` lists only API-source sessions in the bound app. You cannot use `source` to select another channel. Omit `appId`, `sourceType`, and `source`:
+With an app key, `/api/core/chat/history/getHistories` queries API-source sessions for the bound app. Omit `appId`, `sourceType`, and `source`:
 
 ```bash
-curl --request POST 'http://localhost:3000/api/core/chat/history/getHistories' \
-  --header 'Authorization: Bearer YOUR_APP_API_KEY' \
-  --header 'Content-Type: application/json' \
-  --data '{"offset": 0, "pageSize": 20}'
+export FASTGPT_ORIGIN='https://cloud.fastgpt.io'
+export FASTGPT_APP_API_KEY='YOUR_APP_API_KEY'
+curl --fail-with-body "$FASTGPT_ORIGIN/api/core/chat/history/getHistories" \
+  -H "Authorization: Bearer $FASTGPT_APP_API_KEY" \
+  -H 'Content-Type: application/json' \
+  --data @- <<EOF
+{"offset":0,"pageSize":20}
+EOF
 ```
 
-- Offset pagination: pass `offset`, starting at `0`.
-- Page pagination: omit `offset` and pass `pageNum`, starting at `1`. For example: `{"pageNum": 2, "pageSize": 20}`. If both are provided, `offset` takes precedence.
-- `pageSize` defaults to `20` and is capped at `500`. Larger values are reduced to `500`. Omitting pagination parameters returns the first page.
-- Optionally filter by time with `startCreateTime`, `endCreateTime`, `startUpdateTime`, and `endUpdateTime`.
+- Offset pagination: pass `offset` starting at `0`.
+- Page pagination: omit `offset` and pass `pageNum` starting at `1` (for example `{"pageNum": 2, "pageSize": 20}`); `offset` takes precedence when both are provided.
+- `pageSize` defaults to `20` and caps at `500` (larger values clamp to `500`); omitting pagination parameters returns the first page.
+- Filter time ranges optionally with `startCreateTime`, `endCreateTime`, `startUpdateTime`, and `endUpdateTime`.
 
-**BaseURL is the shared root URL for API requests. Append the endpoint path before sending a request.** For a local deployment, the example below uses `http://localhost:3000/api`.
+## Next steps
 
-### How to find the app ID (appId)
+[Business system app integration](/en/openapi/best-practices/app-integration): connect your product with an app key and the OpenAI SDK, identify users with `customUid`, and manage chat history.
 
-Open the app details page and find `appId` in the URL in your browser's address bar.
-
-![](../../public/imgs/appid.png)
-
-### How to find Dataset and Collection IDs
-
-| Dataset ID (datasetId)                  | Collection ID (collectionId)               |
-| --------------------------------------- | ------------------------------------------ |
-| ![](../../public/imgs/getDatasetId.png) | ![](../../public/imgs/getCollectionId.png) |
-
-### Basic Configuration
-
-In OpenAPI, all endpoints authenticate through `Header.Authorization`.
-
-```
-baseUrl: "http://localhost:3000/api"
-headers: {
-    Authorization: "Bearer {{apikey}}"
-}
-```
+[Datasets](/en/openapi/dataset) and [identity proxy](/en/openapi/identity-proxy). Historical handwritten parameters remain in the [archive](/en/openapi/legacy).

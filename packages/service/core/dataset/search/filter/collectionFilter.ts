@@ -470,13 +470,15 @@ export const getForbidCollectionIdList = async ({
 export const filterCollectionByMetadata = async ({
   teamId,
   datasetIds,
-  collectionFilterMatch
+  collectionFilterMatch,
+  metadataFilterEnabled
 }: {
   teamId: string;
   datasetIds: string[];
   collectionFilterMatch?: string;
+  metadataFilterEnabled: boolean;
 }): Promise<string[] | undefined> => {
-  if (!collectionFilterMatch || !global.feConfigs.isPlus) return;
+  if (!collectionFilterMatch || !metadataFilterEnabled) return;
 
   const normalizedMatchParam = formatCollectionFilterMatchParam({
     value: collectionFilterMatch

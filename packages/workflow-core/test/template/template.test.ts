@@ -10,6 +10,7 @@ import { createWorkflowDocument } from '../../src/domain/document';
 import { formatNodeTemplateRef, parseNodeTemplateRef } from '../../src/template/type';
 import { instantiateNodeFromTemplate } from '../../src/template/instantiate';
 import { normalizeNodeTemplateDescriptor } from '../../src/template/descriptor';
+import enWorkflow from '../../../web/i18n/en/workflow.json';
 
 import { describe, expect, it } from 'vitest';
 
@@ -184,6 +185,10 @@ describe('builtinTemplateProvider', () => {
     // 参考格式说明已下沉到 packages/web/i18n/*/workflow.json，这里只校验可翻译 key，
     // 避免描述重新变回硬编码文本。
     expect(input?.description).toBe('workflow:cli.input.text_editor');
+    // 英文资源仍保留完整引用格式说明，避免只校验 key 而丢失文案内容。
+    expect(enWorkflow['cli.input.text_editor']).toContain(
+      'global variables use {{$VARIABLE_NODE_ID.variableKey$}}'
+    );
   });
 
   it('keeps automation metadata aligned with template inputs and explicit for resources', async () => {

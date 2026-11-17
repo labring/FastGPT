@@ -8,7 +8,9 @@ import { normalizeDatasetSelectValue } from '../../../common/workflow/input';
 import type { SelectedToolItemType } from './type';
 import { AgentToolInputModeEnum } from '../tool/constants';
 import { isSecretValueConfigured } from '../../../common/secret/utils';
+import { SecretRefValueSchema } from '../../../common/secret/type';
 import { normalizeToolInputValue } from '../tool/systemTool/codec';
+import { SystemToolSecretInputTypeEnum } from '../tool/systemTool/constants';
 import { PluginStatusEnum } from '../../plugin/type';
 
 const formRenderTypesMap: Record<string, boolean> = {
@@ -552,6 +554,20 @@ export const initToolInputsTypeByDefaultMode = <T extends FlowNodeInputItemType>
   options?: ToolInputDefaultModeOptions
 ): T[] => inputs.map((input) => initToolInputTypeByDefaultMode(input, options));
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+/** 配置值是否已填写；ref 是合法绑定，对象和数组递归检查，空值不参与判定。 */
+const hasConfiguredValue = (value: unknown): boolean => {
+  if (value === undefined || value === null || value === '') return false;
+  if (isRecord(value)) {
+    if ('ref' in value) return SecretRefValueSchema.safeParse(value).success;
+    return Object.values(value).some(hasConfiguredValue);
+  }
+  if (Array.isArray(value)) return value.some(hasConfiguredValue);
+  return true;
+};
+
 /**
  * 判断开发者手动配置的工具入参是否已有有效值。
  * 节点上未显式覆盖时，工作流/工作流工具会在运行时使用 defaultValue，
@@ -562,10 +578,26 @@ export const isToolInputValueConfigured = ({
   input,
   value = input.value
 }: {
-  input: Pick<FlowNodeInputItemType, 'renderTypeList' | 'selectedType' | 'value' | 'defaultValue'>;
+  input: Pick<
+    FlowNodeInputItemType,
+    'key' | 'renderTypeList' | 'selectedType' | 'value' | 'defaultValue' | 'inputList'
+  >;
   value?: FlowNodeInputItemType['value'];
 }) => {
   const configuredValue = value ?? input.defaultValue;
+  if (input.key === NodeInputKeyEnum.systemInputConfig && isRecord(configuredValue)) {
+    // 平台托管优先，旧数据残留的空 value 表不影响已激活状态。
+    if (configuredValue.type === SystemToolSecretInputTypeEnum.system) return true;
+
+    const configValue = configuredValue.value;
+    if (!isRecord(configValue)) return false;
+    if (!Array.isArray(input.inputList)) return hasConfiguredValue(configValue);
+
+    // 引用和静态值都满足对应项；只有必填项缺少有效来源时才需要重新配置。
+    return input.inputList.every(
+      (config) => config.required !== true || hasConfiguredValue(configValue[config.key])
+    );
+  }
   // 候选控件中包含 password 不代表当前在手动密码模式；普通引用仍保存原始 tuple。
   if (getSelectedInputRenderType(input) === FlowNodeInputTypeEnum.password) {
     return isSecretValueConfigured(

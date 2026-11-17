@@ -1,11 +1,10 @@
-import { ChatIdSchema } from './schema';
+import { ChatIdSchema, ChatSourceSchema } from './schema';
 import { ChatPublishSourceSchema } from './publishSource/type';
 import { SearchDataResponseQuoteListItemSchema } from '../dataset/type';
 import {
   ChatFileTypeEnum,
   ChatGenerateStatusEnum,
   ChatRoleEnum,
-  ChatSourceEnum,
   ChatSourceTypeEnum
 } from './constants';
 import { FlowNodeTypeEnum } from '../workflow/node/constant';
@@ -23,7 +22,7 @@ import {
   AgentPlanStatusSchema
 } from '../ai/agent/type';
 import { ObjectIdSchema } from '../../common/type/mongo';
-import { BoolSchema, NumSchema } from '../../common/zod';
+import { BoolSchema, NumSchema, optionalNullToUndefined } from '../../common/zod';
 import { WorkflowBuilderVersionSchema } from '../workflow/builder/type';
 import { ChatAgentBuilderVersionSchema } from '../ai/auxiliaryGeneration/chatAgentBuilderVersion';
 import { UserChatSelectSchema } from './input/type';
@@ -129,7 +128,7 @@ export const ChatSchema = z.object({
   customTitle: z.string().optional(),
   top: z.boolean().default(false),
   publishSource: ChatPublishSourceSchema.optional(),
-  source: z.enum(ChatSourceEnum).meta({
+  source: ChatSourceSchema.meta({
     deprecated: true,
     description: '旧调用渠道类型，仅作兼容；使用 publishSource.type'
   }),
@@ -175,7 +174,8 @@ export type ChatWithAppSchema = z.infer<typeof ChatWithAppSchema>;
 export const UserChatItemFileItemSchema = z.object({
   type: z.enum(ChatFileTypeEnum),
   name: z.string().optional(),
-  key: z.string().optional(),
+  // 外链附件的 null key 按缺省处理，解析后仍保持 string | undefined。
+  key: optionalNullToUndefined(z.string()),
   url: z.string()
 });
 export type UserChatItemFileItemType = z.infer<typeof UserChatItemFileItemSchema>;

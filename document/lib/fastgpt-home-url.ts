@@ -1,4 +1,10 @@
-import { getFastGPTDocsLocaleFromHomeOrigin } from './docs-locale';
+import {
+  getFastGPTDocsLocaleFromHomeOrigin,
+  getFastGPTDocsOriginForLocale as getFixedFastGPTDocsOriginForLocale,
+  getProductionDocsUrl as buildProductionDocsUrl,
+  resolveDocsSiteVariant,
+  stripDocsLocalePrefix as stripRawDocsLocalePrefix
+} from './docs-locale';
 
 const DEFAULT_FASTGPT_HOME_ORIGIN = 'https://fastgpt.io';
 
@@ -10,20 +16,36 @@ export const DOCS_UTM_CAMPAIGNS = {
 } as const;
 
 export type DocsUtmCampaign = (typeof DOCS_UTM_CAMPAIGNS)[keyof typeof DOCS_UTM_CAMPAIGNS];
+export type DocsSiteVariant = 'cn' | 'io' | 'preview';
 export type FastGPTSite = 'configured' | 'cn' | 'io';
+export type FastGPTDocsLocale = 'zh-CN' | 'en';
 
 const normalizeOrigin = (value?: string): string => {
   try {
-    return new URL(value || DEFAULT_FASTGPT_HOME_ORIGIN).origin;
+    return new URL(value ?? DEFAULT_FASTGPT_HOME_ORIGIN).origin;
   } catch {
     return DEFAULT_FASTGPT_HOME_ORIGIN;
   }
 };
 
-export const getFastGPTHomeOrigin = (): string =>
-  normalizeOrigin(
-    process.env.NEXT_PUBLIC_FASTGPT_HOME_DOMAIN || process.env.FASTGPT_HOME_DOMAIN
-  );
+/** Resolve the active documentation site variant (`cn`, `io`, or `preview`). */
+export const getDocsSiteVariant = (): DocsSiteVariant =>
+  resolveDocsSiteVariant({
+    siteVariant: process.env.NEXT_PUBLIC_DOCS_SITE_VARIANT ?? process.env.DOCS_SITE_VARIANT,
+    homeOrigin: process.env.NEXT_PUBLIC_FASTGPT_HOME_DOMAIN ?? process.env.FASTGPT_HOME_DOMAIN
+  });
+
+/** Check whether the current documentation build runs as a multi-locale preview container. */
+export const isPreviewDocsSite = (): boolean => getDocsSiteVariant() === 'preview';
+
+export const getFastGPTHomeOrigin = (): string => {
+  const configured =
+    process.env.NEXT_PUBLIC_FASTGPT_HOME_DOMAIN ?? process.env.FASTGPT_HOME_DOMAIN;
+  if (configured !== undefined && configured.trim() !== '') {
+    return normalizeOrigin(configured);
+  }
+  return getDocsSiteVariant() === 'cn' ? 'https://fastgpt.cn' : DEFAULT_FASTGPT_HOME_ORIGIN;
+};
 
 export const getFastGPTDocsOrigin = (): string => {
   const homeUrl = new URL(getFastGPTHomeOrigin());
@@ -31,8 +53,63 @@ export const getFastGPTDocsOrigin = (): string => {
   return homeUrl.origin;
 };
 
-export const getFastGPTDocsLocale = (): 'zh-CN' | 'en' =>
-  getFastGPTDocsLocaleFromHomeOrigin(getFastGPTHomeOrigin());
+export const getFastGPTDocsLocale = (): FastGPTDocsLocale => {
+  const variant = getDocsSiteVariant();
+  if (variant === 'cn') {
+    return 'zh-CN';
+  }
+  if (variant === 'io') {
+    return 'en';
+  }
+  return getFastGPTDocsLocaleFromHomeOrigin(getFastGPTHomeOrigin());
+};
+
+/** Return the locales rendered and indexed by the current documentation build variant. */
+export const getPublishedDocsLocales = (): FastGPTDocsLocale[] => {
+  const variant = getDocsSiteVariant();
+  if (variant === 'cn') {
+    return ['zh-CN'];
+  }
+  if (variant === 'io') {
+    return ['en'];
+  }
+  return ['zh-CN', 'en'];
+};
+
+/**
+ * Resolve the docs origin that owns a locale while keeping the configured image host for its
+ * primary locale. Cross-host alternates always point at the corresponding production owner.
+ */
+export const getFastGPTDocsOriginForLocale = (locale: FastGPTDocsLocale): string =>
+  locale === getFastGPTDocsLocale()
+    ? getFastGPTDocsOrigin()
+    : getFixedFastGPTDocsOriginForLocale(locale);
+
+/** Strip a leading `/zh-CN` or `/en` locale prefix while preserving query strings and hashes. */
+export const stripDocsLocalePrefix = (rawPath: string) => stripRawDocsLocalePrefix(rawPath);
+
+/** Build the unprefixed canonical production documentation URL for a locale and path. */
+export const getProductionDocsUrl = (locale: FastGPTDocsLocale, rawPath: string): string =>
+  buildProductionDocsUrl(locale, rawPath);
+
+/** Build an unprefixed main-site URL on `fastgpt.cn` (`zh-CN`) or `fastgpt.io` (`en`). */
+export const buildFastGPTWebsiteUrl = (params: {
+  locale: FastGPTDocsLocale;
+  pathname: string;
+  query?: Record<string, string>;
+}): string => {
+  const origin = params.locale === 'zh-CN' ? 'https://fastgpt.cn' : 'https://fastgpt.io';
+  const normalizedPath = params.pathname.startsWith('/')
+    ? params.pathname
+    : `/${params.pathname}`;
+  const url = new URL(normalizedPath, origin);
+
+  for (const [key, value] of Object.entries(params.query ?? {})) {
+    url.searchParams.set(key, value);
+  }
+
+  return url.toString();
+};
 
 export const buildFastGPTHomeUrl = ({
   campaign,
@@ -43,12 +120,15 @@ export const buildFastGPTHomeUrl = ({
   content: string;
   site?: FastGPTSite;
 }): string => {
-  const origin =
-    site === 'cn'
-      ? 'https://fastgpt.cn'
-      : site === 'io'
-        ? 'https://fastgpt.io'
-        : getFastGPTHomeOrigin();
+  const origin = (() => {
+    if (site === 'cn') {
+      return 'https://fastgpt.cn';
+    }
+    if (site === 'io') {
+      return 'https://fastgpt.io';
+    }
+    return getFastGPTHomeOrigin();
+  })();
   const url = new URL('/', origin);
 
   url.searchParams.set('utm_source', 'docs');

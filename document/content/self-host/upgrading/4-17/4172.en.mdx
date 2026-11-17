@@ -1,7 +1,9 @@
 ---
 title: 'V4.17.2'
-description: 'FastGPT V4.17.2 release notes'
+description: "FastGPT V4.17.2 release notes covering container image updates, upgrade steps, and feature changes."
 releaseTime: '2026-10-09'
+upgradeTags:
+  - MIGRATION
 ---
 
 ## 📦 Upgrade Guide
@@ -13,11 +15,11 @@ releaseTime: '2026-10-09'
 
 ### Upgrade scripts
 
-This upgrade includes two **manual** system migration scripts. After upgrading, administrators can inspect and run them under **Admin > Version Upgrades**. Both tasks support batched transactional commits and checkpoint resumption without blocking FastGPT startup or everyday operations.
+This upgrade includes two **manual** system migration scripts (both tasks show `4.17.1` in the **Introduced version** column of the migration registry). After upgrading, administrators can inspect and run them under **Admin > System upgrade**. Both tasks support batched transactional commits and checkpoint resumption without blocking FastGPT startup or everyday operations.
 
 > **⚠️ Execution Order and Page Display Notice**:
 > These two manual migration scripts have a strict prerequisite dependency. **You must run step 1 ("Migrate legacy dataset training tasks") first. Only after it succeeds can you run step 2 ("Migrate index rebuild statuses").**
-> On the **Admin > Version Upgrades** page, tasks are listed in reverse chronological order by default, meaning **"Migrate index rebuild statuses" appears above "Migrate legacy dataset training tasks"**. Please execute them from bottom to top; if executed out of order, the system will prompt the incomplete prerequisite task and prevent execution.
+> On the **Admin > System upgrade** page, tasks are listed in reverse chronological order by default, meaning **"Migrate index rebuild statuses" appears above "Migrate legacy dataset training tasks"**. Please execute them from bottom to top; if executed out of order, the system will prompt the incomplete prerequisite task and prevent execution.
 
 #### 1. Migrate legacy dataset training tasks (`20261008_migrate_chunk_training`)
 

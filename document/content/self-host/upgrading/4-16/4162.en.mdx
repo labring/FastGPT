@@ -1,6 +1,6 @@
 ---
 title: 'V4.16.2'
-description: 'FastGPT V4.16.2 release notes'
+description: 'FastGPT V4.16.2 release notes covering container image updates, upgrade steps, and feature changes.'
 releaseTime: '2026-09-01'
 upgradeTags:
   - CONFIG
@@ -77,7 +77,7 @@ Follow [Milvus BM25 full-text search configuration and migration](/en/self-host/
 3. Improved the resilience of S3 multipart uploads on unstable networks.
 4. Standardized file upload error messages.
 5. Improved Skill saving by extracting `name` and `description` into structured fields and allowing an empty `description`.
-6. Improved repeated tool call anomaly detection. Instead of checking only the call count and number of tools, FastGPT now treats more than five consecutive calls to the same tool with the same arguments as a model hallucination.
+6. After five consecutive rounds without answer text, if the tool names, order, and corresponding argument-string lengths match across all five rounds, the next request defaults to `tool_choice: none`.
 7. Preserved complete failed tool responses from Agent tool calls and exposed failure details in `nodeResponse`, `toolResponse`, and streaming events.
 8. Unified sub-workflow output and billing across Workflow Tool, ToolCall, and Agent runs. Commercial tool failures no longer incur call or token fees, while `pluginOutput.error` from personal Workflow Tools remains a business field.
 9. Attributed enhanced PDF parsing charges to the `read_files` tool Node and preserved page-count details. Propagated `usageId` through external-file and API-file Dataset parsing so charges are attributed correctly.

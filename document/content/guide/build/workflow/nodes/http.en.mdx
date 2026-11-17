@@ -1,6 +1,6 @@
 ---
 title: HTTP Request
-description: FastGPT HTTP Request node overview
+description: "Configure the FastGPT Workflow HTTP Request node to call external REST APIs, pass authentication headers, and handle response payloads."
 ---
 
 import { Alert } from '@/components/docs/Alert';
@@ -12,7 +12,7 @@ import { Alert } from '@/components/docs/Alert';
 - Trigger-based execution
 - Core node for integrating external services
 
-![HTTP Request node configuration](/imgs/http1.jpg)
+![Characteristics — interface example](/imgs/optimized/current/node-http.png.webp)
 
 ## Overview
 
@@ -21,20 +21,18 @@ The HTTP node sends an `HTTP` request to a specified URL. It works similarly to 
 - Params are query parameters, commonly used in GET requests.
 - Body is the request body, commonly used in POST/PUT requests.
 - Headers are request headers for passing additional information.
-- Custom variables can receive outputs from upstream nodes.
-- All 3 data types support variable references via `{{}}`.
-- The URL also supports `{{}}` variable references.
-- Variables come from `global variables`, `system variables`, and `upstream node outputs`.
+- Type `/` or `{` inside the URL, Params, Body, or Headers inputs to open the variable picker (`{{variable}}`) and reference **global variables**, **system variables**, and **upstream node outputs** directly.
 
 ## Parameter Structure
 
 ### System Variables
 
-Hover over the question mark next to `Request Parameters` to see available variables.
+You can reference the following runtime system variables in the URL, Headers, Params, and Body:
 
+- userId: Current user ID
 - appId: App ID
-- chatId: Current conversation ID (not available in test mode)
-- responseChatItemId: Response message ID in the current conversation (not available in test mode)
+- chatId: Current conversation ID (generated in both live chats and debug runs)
+- responseChatItemId: Response message ID in the current conversation (generated in both live chats and debug runs)
 - variables: Global variables for the current conversation
 - cTime: Current time
 - histories: Chat history (defaults to max 10 entries, length is not configurable)
@@ -168,14 +166,20 @@ Configure the `key` to extract values from FastGPT's parsed format, following st
 2. To get the user's name, set the `key` to `data.user.name`.
 3. To get the second element in the list, set the `key` to `data.list[1]`. If you select string as the output type, it will automatically return the JSON string `[ { "test": 22 } ]`.
 
+### Node Output Ports
+
+- **Raw response** (`httpRawResponse`, `Any`): Built-in output port containing the complete raw response payload.
+- **Custom extracted fields**: Output ports configured via JSONPath expressions.
+- **Error text** (`error`, `String`): Available when **Error catch** is enabled; outputs the failure reason string.
+- **Full error** (`system_httpRawError`, `Object`): Available when **Error catch** is enabled; outputs the structured error object.
+
+### Error responses and troubleshooting
+
+When the HTTP node receives a non-2xx response whose body lacks `message` or `msg`, the node error text includes a capped snippet of that response body (up to 2000 characters) to help troubleshoot the failure.
+
 ### Auto-format Output
 
-Starting from FastGPT v4.6.8, output formatting was added, primarily converting `JSON` to `string`. If you select `string` as the output type, the HTTP node will convert the corresponding key's value to a JSON string. This lets you pipe HTTP output directly into a `Text Processing` node, append appropriate prompts, and feed the result into `AI Chat`.
-
-<Alert context="warning">
-  The HTTP node is extremely versatile. You can integrate public APIs to extend your workflow
-  capabilities.
-</Alert>
+Starting from FastGPT v4.6.8, output formatting was added, primarily converting `JSON` to `string`. If you select `string` as the output type, the HTTP node will convert the corresponding key's value to a JSON string. This lets you pipe HTTP output directly into a `Text Editor` node, append appropriate prompts, and feed the result into `AI Chat`.
 
 ## HTTP Service Integration Example
 

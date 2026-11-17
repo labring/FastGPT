@@ -9,6 +9,8 @@ export const InvokeSessionSchema = z.object({
   uId: z.string().nonempty(),
   teamId: z.string().nonempty(),
   tmbId: z.string().nonempty(),
+  /** Current chat usage record; injected for backend-side plugin usage push. */
+  usageId: z.string().optional(),
   permissions: PluginPermissionListSchema.default([])
 });
 

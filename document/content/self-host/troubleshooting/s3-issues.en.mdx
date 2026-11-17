@@ -3,42 +3,38 @@ title: S3 Issues Troubleshooting
 description: Diagnose object storage connection and upload errors in self-hosted FastGPT
 ---
 
-## 1. Log shows ERR level "Failed to ensure external public/private bucket exists", resulting in inability to connect to object storage
+## 1. Log shows ERR level "Failed to ensure (external) public/private bucket exists"
 
-### 1.1 Error Stack Display
+### 1.1 Symptom
 
-- error: Error: getaddrinfo ENOTFOUND
+Startup logs report `Failed to ensure public/private bucket exists` (internal endpoint `STORAGE_S3_ENDPOINT`) or `Failed to ensure external public/private bucket exists` (external endpoint `STORAGE_EXTERNAL_ENDPOINT`), accompanied by `Error: getaddrinfo ENOTFOUND` or `Deserialization error`:
 
-Example
+![1.1 Symptom — interface example](/imgs/optimized/faq4.png.webp)
 
-- ![](../../../public/imgs/faq4.png)
+### 1.2 Cause
 
-### Possible Errors
+- The hostname in `STORAGE_S3_ENDPOINT` or `STORAGE_EXTERNAL_ENDPOINT` cannot be resolved from the container, or the client uses virtual-hosted bucket addressing (`<bucket>.<endpoint>`) that the storage service does not support.
+- The external endpoint points to a reverse proxy or gateway that returns a non-S3 response (such as an HTML 404 page), causing XML deserialization to fail.
 
-- `STORAGE_S3_FORCE_PATH_STYLE` is configured incorrectly.
+### 1.3 Resolution
 
-### Solution
-
-- Set `STORAGE_S3_FORCE_PATH_STYLE=true` so the client can resolve the object storage service using path-style addressing.
+- Check DNS resolution and network reachability for both `STORAGE_S3_ENDPOINT` and `STORAGE_EXTERNAL_ENDPOINT` from the `fastgpt-app` container.
+- For services that use path-style addressing (such as RustFS, MinIO, or IP-based endpoints), set `STORAGE_S3_FORCE_PATH_STYLE` to `true` so the client avoids prepending the bucket name as a subdomain.
 
 ---
 
 ## 2. Upload conversation file / Dataset file error
 
-Example
+### 2.1 Symptom (SignatureDoesNotMatch)
 
-- ![](../../../public/imgs/faq5.png)
+File uploads fail with `SignatureDoesNotMatch`. FastGPT's backend proxies file uploads to object storage, so the Nginx in front of FastGPT does not participate in S3 signing. Inspect the reverse proxy sitting between FastGPT and the object storage service.
 
-### 2.1 SignatureDoesNotMatched
+### 2.2 Cause
 
-- A signature mismatch is often caused by the Nginx proxy configuration.
+- The reverse proxy in front of the object storage (such as Nginx) does not preserve the original `Host` header (including port), so the host received by object storage differs from the `STORAGE_S3_ENDPOINT` host FastGPT used for signing.
 
-### Possible Errors
+### 2.3 Resolution
 
-- Check whether Nginx forwards the required request headers, especially `Host`.
-
-### Solution
-
-- Set `proxy_set_header Host $http_host;` in Nginx to preserve the original host and port used to sign the request. Nginx's `$host` variable strips the port.
+- Set `proxy_set_header Host $http_host;` in the Nginx in front of the object storage to preserve the original host and port used to sign the request (Nginx's `$host` variable strips the port).
 
 ---

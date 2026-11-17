@@ -5,9 +5,9 @@ description: FastGPT 飞书知识库功能介绍和使用方式
 
 | | |
 | --- | --- |
-| ![alt text](/imgs/image-39.png) | ![alt text](/imgs/image-40.png) |
+| ![飞书知识库：界面示例](/imgs/optimized/current/lark-dataset-create.png.webp) | ![飞书知识库：界面示例](/imgs/optimized/image-40.png.webp) |
 
-FastGPT v4.8.16 版本开始，商业版用户支持飞书知识库导入，用户可以通过配置飞书应用的 appId 和 appSecret，并选中一个**文档空间的顶层文件夹**来导入飞书知识库。目前处于测试阶段，部分交互有待优化。
+FastGPT v4.8.16 版本起，商业版支持飞书知识库导入。用户可通过配置飞书应用的 App ID 和 App Secret，并指定一个**云空间文件夹的 Folder Token** 来导入飞书云文档。
 
 由于飞书限制，无法直接获取所有文档内容，目前仅可以获取共享空间下文件目录的内容，无法获取个人空间和知识库里的内容。 
 
@@ -26,11 +26,11 @@ FastGPT v4.8.16 版本开始，商业版用户支持飞书知识库导入，用�
 2. 查看新版文档
 3. 查看、评论、编辑和管理云空间中所有文件
 
-![alt text](/imgs/image-41.png)
+![2. 配置应用权限：界面示例](/imgs/optimized/image-41.png.webp)
 
 ## 3. 获取 appId 和 appSecret
 
-![alt text](/imgs/image-42.png)
+![3. 获取 appId 和 appSecret：界面示例](/imgs/optimized/image-42.png.webp)
 
 ## 4. 给 Folder 增加权限
 
@@ -43,16 +43,12 @@ FastGPT v4.8.16 版本开始，商业版用户支持飞书知识库导入，用�
 
 如果你的目录已经给全员组增加权限了，则可以跳过上面步骤，直接获取 Folder Token。
 
-![alt text](/imgs/image-43.png)
+![4. 给 Folder 增加权限：界面示例](/imgs/optimized/image-43.png.webp)
 
 ## 5. 获取 Folder Token
 
-可以页面路径上获取 Folder Token，注意不要把问号复制进来。
-
-![alt text](/imgs/image-44.png)
+在浏览器中打开目标飞书云空间文件夹，从页面 URL 路径末尾获取 `Folder Token`（例如 `https://example.feishu.cn/drive/folder/fldcnxxxxxx` 中的 `fldcnxxxxxx`），注意不要将 `?` 及后面的查询参数复制进来。
 
 ## 6. 创建知识库
 
-根据 3 和 5 获取到的 3 个参数，创建知识库，选择飞书文件库类型，然后填入对应的参数，点击创建。
-
-![alt text](/imgs/image-39.png)
+根据步骤 3 和步骤 5 获取到的 3 个参数，进入 **知识库 → 新建 → 第三方知识库 → 飞书知识库**，填入 App ID、App Secret 与 Folder Token，点击创建。

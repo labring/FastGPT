@@ -1,6 +1,6 @@
 ---
 title: OpenSandbox Configuration
-description: Configure OpenSandbox and Agent Sandbox Proxy for FastGPT
+description: Deploy and configure OpenSandbox and Agent Sandbox Proxy for isolated code execution in FastGPT.
 ---
 
 import { Alert } from '@/components/docs/Alert';
@@ -39,18 +39,20 @@ If the host uses `HTTP_PROXY` or `HTTPS_PROXY`, explicitly set `NO_PROXY` and `n
 
 ### Agent Sandbox Proxy Service
 
-| Variable                           | Default                                  | Description                                                                                                                     |
-| ---------------------------------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| `PORT`                             | `1006`                                   | Proxy container port, mapped to port `3006` on the host by default.                                                             |
-| `PREVIEW_PORT`                     | Same as `PORT`                           | In 4.16, sets a separate HTTP preview listener; update the host port mapping and `AGENT_SANDBOX_PREVIEW_PROXY_URL` accordingly. |
-| `AGENT_SANDBOX_PROXY_SECRET`       | None                                     | Secret shared with the FastGPT main service. Must be at least 32 characters.                                                    |
-| `FASTGPT_APP_URL`                  | `http://fastgpt-app:3000`                | Internal FastGPT URL used by the proxy.                                                                                         |
-| `FASTGPT_APP_REQUEST_TIMEOUT_SECS` | `10`                                     | Timeout for proxy requests to FastGPT, in seconds. Increase for slow cold starts.                                               |
-| `RUST_LOG`                         | `info,fastgpt_agent_sandbox_proxy=debug` | Proxy service log level.                                                                                                        |
+| Variable                           | Default                                  | Description                                                                                                                                            |
+| ---------------------------------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `PORT`                             | `1006`                                   | Proxy container port, mapped to port `3006` on the host by default.                                                                                    |
+| `PREVIEW_PORT`                     | Same as `PORT`                           | Starting in 4.16, sets a separate HTTP preview listener; update the host port mapping and the preview URL on the Agent Sandbox admin page accordingly. |
+| `AGENT_SANDBOX_PROXY_SECRET`       | None                                     | Secret shared with the FastGPT main service. Must be at least 32 characters.                                                                           |
+| `FASTGPT_APP_URL`                  | `http://localhost:3000`                  | Internal FastGPT URL used by the proxy. The official Compose template sets it to `http://fastgpt-app:3000`.                                            |
+| `FASTGPT_APP_REQUEST_TIMEOUT_SECS` | `10`                                     | Timeout for proxy requests to FastGPT, in seconds. The official Compose template sets it to `60`. Increase for slow cold starts.                       |
+| `RUST_LOG`                         | `info,fastgpt_agent_sandbox_proxy=debug` | Proxy service log level.                                                                                                                               |
 
-In 4.16, WebSocket and HTTP preview traffic use the same port by default. If your gateway cannot route both protocols on one port, set `PREVIEW_PORT` to another container port (for example, `1007`), change the Compose mapping to `3007:1007`, and point `AGENT_SANDBOX_PREVIEW_PROXY_URL` to port 3007.
+Starting in 4.16, WebSocket and HTTP preview traffic use the same port by default. If your gateway cannot route both protocols on one port, set `PREVIEW_PORT` to another container port (for example, `1007`), change the Compose mapping to `3007:1007`, and point the preview URL on the Agent Sandbox admin page to port 3007.
 
 ### fastgpt-app Service
+
+Configure the proxy WebSocket URL, HTTP preview URL, and shared secret together in **Admin → Subservices → Agent Sandbox**. Legacy proxy ENV values are imported once during upgrade; runtime then uses the saved configuration. The standalone Proxy still requires its own matching `AGENT_SANDBOX_PROXY_SECRET` ENV value.
 
 Configure these variables in the Compose file's `x-agent-sandbox-config` anchor so `fastgpt-app` and `fastgpt-pro` share the OpenSandbox settings:
 
@@ -69,18 +71,12 @@ AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL=http://fastgpt-volume-manager:3000
 AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN=replace_with_volume_manager_token
 AGENT_SANDBOX_OPENSANDBOX_VOLUME_NAME_PREFIX=fastgpt-session
 
-# Agent Sandbox Proxy settings
-AGENT_SANDBOX_PROXY_SECRET=replace_with_32_chars_random_secret
-AGENT_SANDBOX_PROXY_URL=wss://sandbox-proxy.example.com
-AGENT_SANDBOX_PREVIEW_PROXY_URL=https://sandbox-proxy.example.com
+# Configure proxy URLs and the shared secret on the Agent Sandbox admin page.
 
 # Per-sandbox resource limits
 AGENT_SANDBOX_CPU_COUNT=1
 AGENT_SANDBOX_MEMORY_MIB=2048
 AGENT_SANDBOX_STORAGE_SIZE_GI=1
-# Kubernetes runtime overcommit factors (cpu / memory): requests = limits / factor (1 = no overcommit)
-AGENT_SANDBOX_CPU_OVERCOMMIT_FACTOR=1
-AGENT_SANDBOX_MEMORY_OVERCOMMIT_FACTOR=1
 ```
 
 ### Runtime Images and CPU Architectures
@@ -96,9 +92,9 @@ Each official image tag includes both `amd64` and `arm64` variants. Both archite
 
 For China Mainland registries, replace `ghcr.io/labring` with `registry.cn-hangzhou.aliyuncs.com/fastgpt`. If you use a private registry, make sure each tag preserves both the `amd64` and `arm64` manifests. If the registry provides only a single-architecture image, set `AGENT_SANDBOX_OPENSANDBOX_IMAGE` to an image matching the architecture of the OpenSandbox Server host.
 
-`AGENT_SANDBOX_OPENSANDBOX_API_KEY` must match `[server].api_key`, `AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN` must match `x-volume-manager-auth-token`, and `AGENT_SANDBOX_PROXY_SECRET` must match the same variable in Agent Sandbox Proxy.
+`AGENT_SANDBOX_OPENSANDBOX_API_KEY` must match `[server].api_key`, `AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN` must match `x-volume-manager-auth-token`, and the shared secret on the Agent Sandbox admin page must match the standalone Proxy service's `AGENT_SANDBOX_PROXY_SECRET`.
 
-`fastgpt-pro` does not provide the Sandbox Editor or WebSocket proxy path, so it does not require `AGENT_SANDBOX_PROXY_SECRET` or `AGENT_SANDBOX_PROXY_URL`. It still requires `AGENT_SANDBOX_PREVIEW_PROXY_URL`.
+Configure the WebSocket URL (`ws://` or `wss://`), HTTP preview URL (`http://` or `https://`), and shared secret in **Admin → Subservices → Agent Sandbox**. App and Pro read the same saved configuration. The secret must contain at least 32 characters and match the standalone Proxy service's `AGENT_SANDBOX_PROXY_SECRET`.
 
 <Alert icon="⚠️" context="warning">
   Host the preview proxy on an origin separate from the FastGPT application, using a different
@@ -123,7 +119,7 @@ AGENT_SANDBOX_PYPI_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple
 AGENT_SANDBOX_APT_MIRROR=https://mirrors.tuna.tsinghua.edu.cn/ubuntu
 ```
 
-`AGENT_SANDBOX_NPM_REGISTRY` and `AGENT_SANDBOX_PYPI_INDEX_URL` apply to all runtime images. `AGENT_SANDBOX_APT_MIRROR` is effective only for root Agent sandboxes and must point to the apt repository root, not a `dists` path or a specific release directory.
+`AGENT_SANDBOX_NPM_REGISTRY` and `AGENT_SANDBOX_PYPI_INDEX_URL` apply to all runtime images. `AGENT_SANDBOX_APT_MIRROR` is effective only for root Agent sandboxes and must point directly to the apt repository root.
 
 The apt mirror URL is not selected automatically based on the runtime image architecture. Select the corresponding Ubuntu repository path:
 
@@ -141,23 +137,23 @@ FastGPT reads `/etc/os-release` and generates or overwrites `/etc/apt/sources.li
 
 ### Resource and Lifecycle Settings
 
-Overcommit settings apply only when `AGENT_SANDBOX_PROVIDER=opensandbox`, `AGENT_SANDBOX_OPENSANDBOX_RUNTIME=kubernetes`, and OpenSandbox Server is `v0.2.1` or later. CPU and memory factors must be finite numbers greater than or equal to `1`. CPU requests are rounded down to millicores with a minimum of `1m`; memory requests are rounded down to MiB with a minimum of `1Mi`. Limits stay unchanged.
+In the Agent Sandbox admin form, select OpenSandbox and the Kubernetes runtime to show the CPU and memory overcommit factors, both defaulting to `1`. They are stored as `subservice.agentSandbox.opensandbox.cpuOvercommitFactor` and `memoryOvercommitFactor`. OpenSandbox Server v0.2.1 or later is required. Factors must be finite numbers of at least `1`. CPU requests are rounded down to millicores with a minimum of `1m`; memory requests are rounded down to MiB with a minimum of `1Mi`. Limits stay unchanged. The legacy `AGENT_SANDBOX_CPU_OVERCOMMIT_FACTOR` and `AGENT_SANDBOX_MEMORY_OVERCOMMIT_FACTOR` variables are read only once during the App upgrade migration, preserving existing form values. After migration, they are no longer runtime configuration sources.
 
 After you change the factors, running sandboxes keep their existing resource settings. Newly created sandboxes automatically use the current factors, including sandboxes recreated after deletion or archival. Connecting to or resuming an existing sandbox does not reapply the factors.
 
-| Variable                                 | Default    | Description                                                                                                                                                                |
-| ---------------------------------------- | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `AGENT_SANDBOX_CPU_COUNT`                | `1`        | Maximum CPU count for each Agent Sandbox.                                                                                                                                  |
-| `AGENT_SANDBOX_MEMORY_MIB`               | `2048`     | Maximum memory for each Agent Sandbox, in MiB.                                                                                                                             |
-| `AGENT_SANDBOX_STORAGE_SIZE_GI`          | `1`        | Sandbox storage capacity, in Gi.                                                                                                                                           |
-| `AGENT_SANDBOX_CPU_OVERCOMMIT_FACTOR`    | `1`        | Kubernetes runtime CPU overcommit factor: cpu requests = limits / factor. Values greater than 1 create Burstable QoS pods. Only applies to the opensandbox provider.       |
-| `AGENT_SANDBOX_MEMORY_OVERCOMMIT_FACTOR` | `1`        | Kubernetes runtime memory overcommit factor: memory requests = limits / factor. Values greater than 1 create Burstable QoS pods. Only applies to the opensandbox provider. |
-| `AGENT_SANDBOX_WS_MAX_MESSAGE_BYTES`     | `67108864` | Maximum IDE Agent WebSocket message size.                                                                                                                                  |
-| `AGENT_SANDBOX_WS_MAX_FRAME_BYTES`       | `16777216` | Maximum IDE Agent WebSocket frame size.                                                                                                                                    |
-| `AGENT_SANDBOX_SUSPEND_MINUTES`          | `60`       | Inactive minutes before a running sandbox is suspended.                                                                                                                    |
-| `AGENT_SANDBOX_ARCHIVE_INACTIVE_DAYS`    | `7`        | Inactive days before a suspended sandbox is archived.                                                                                                                      |
+| Variable                                                     | Default    | Description                                                                                                                                                                |
+| ------------------------------------------------------------ | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `AGENT_SANDBOX_CPU_COUNT`                                    | `1`        | Maximum CPU count for each Agent Sandbox.                                                                                                                                  |
+| `AGENT_SANDBOX_MEMORY_MIB`                                   | `2048`     | Maximum memory for each Agent Sandbox, in MiB.                                                                                                                             |
+| `AGENT_SANDBOX_STORAGE_SIZE_GI`                              | `1`        | Sandbox storage capacity, in Gi.                                                                                                                                           |
+| `subservice.agentSandbox.opensandbox.cpuOvercommitFactor`    | `1`        | Kubernetes runtime CPU overcommit factor: cpu requests = limits / factor. Values greater than 1 create Burstable QoS pods. Only applies to the opensandbox provider.       |
+| `subservice.agentSandbox.opensandbox.memoryOvercommitFactor` | `1`        | Kubernetes runtime memory overcommit factor: memory requests = limits / factor. Values greater than 1 create Burstable QoS pods. Only applies to the opensandbox provider. |
+| `AGENT_SANDBOX_WS_MAX_MESSAGE_BYTES`                         | `67108864` | Maximum IDE Agent WebSocket message size.                                                                                                                                  |
+| `AGENT_SANDBOX_WS_MAX_FRAME_BYTES`                           | `16777216` | Maximum IDE Agent WebSocket frame size.                                                                                                                                    |
+| `AGENT_SANDBOX_SUSPEND_MINUTES`                              | `60`       | Inactive minutes before a running sandbox is suspended.                                                                                                                    |
+| `AGENT_SANDBOX_ARCHIVE_INACTIVE_DAYS`                        | `7`        | Inactive days before a suspended sandbox is archived.                                                                                                                      |
 
-## FAQ
+## Configuration and Connection Troubleshooting
 
 ### Sandbox provider apiKey is required for opensandbox
 
@@ -167,21 +163,23 @@ Check `AGENT_SANDBOX_OPENSANDBOX_API_KEY` and make sure it matches `[server].api
 
 Check `AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL` and `AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN`, and make sure Volume Manager is running.
 
-### AGENT_SANDBOX_PROXY_URL or AGENT_SANDBOX_PREVIEW_PROXY_URL is required
+<span id="agent_sandbox_proxy_url-or-agent_sandbox_preview_proxy_url-is-required" />
 
-`fastgpt-app` requires `AGENT_SANDBOX_PROXY_SECRET`, `AGENT_SANDBOX_PROXY_URL`, and `AGENT_SANDBOX_PREVIEW_PROXY_URL`. `fastgpt-pro` requires `AGENT_SANDBOX_PREVIEW_PROXY_URL`.
+### Agent Sandbox proxy configuration is missing
+
+Configure the WebSocket URL (`ws://` or `wss://`), HTTP preview URL (`http://` or `https://`), and shared secret in **Admin → Subservices → Agent Sandbox**. App and Pro read the same saved configuration. The secret must contain at least 32 characters and match the standalone Proxy service's `AGENT_SANDBOX_PROXY_SECRET`.
 
 ### Browser WebSocket connection fails
 
-Check that the proxy is reachable from the browser and that your reverse proxy supports WebSocket Upgrade. If FastGPT uses HTTPS, `AGENT_SANDBOX_PROXY_URL` should use `wss://`.
+Check that the proxy is reachable from the browser and that your reverse proxy supports WebSocket Upgrade. If FastGPT uses HTTPS, the WebSocket URL on the Agent Sandbox admin page should use `wss://`.
 
 ### Proxy validation fails or returns 401
 
-Make sure `AGENT_SANDBOX_PROXY_SECRET` is identical in FastGPT and Agent Sandbox Proxy and contains at least 32 characters.
+Make sure the shared secret saved on the Agent Sandbox admin page matches the standalone Proxy service's `AGENT_SANDBOX_PROXY_SECRET` and contains at least 32 characters.
 
 ### The sandbox is created, but the file tree or terminal does not connect
 
-Make sure `AGENT_SANDBOX_PROXY_URL` is a browser-accessible `ws://` or `wss://` URL, and verify that host port `3006` or the corresponding domain is accessible.
+Make sure the WebSocket URL on the Agent Sandbox admin page is a browser-accessible `ws://` or `wss://` URL, and verify that host port `3006` or the corresponding domain is accessible.
 
 ### Proxy cannot connect to the sandbox endpoint
 

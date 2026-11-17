@@ -1,3 +1,7 @@
+import {
+  createDefaultInstanceConfig,
+  getTestInstanceConfig
+} from '@test/utils/instanceConfigSnapshot';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Call } from '@test/utils/request';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
@@ -15,13 +19,20 @@ vi.mock('@fastgpt/service/support/permission/user/auth', () => ({
   authUserPer: mocks.authUserPer
 }));
 
-vi.mock('@fastgpt/service/core/plugin/teamPluginPolicy', () => ({
-  assertTeamPluginInstallEnabled: mocks.assertTeamPluginInstallEnabled,
-  assertTeamPluginSourceReady: mocks.assertTeamPluginSourceReady,
-  getRawPluginIdFromSystemToolId: (toolId: string) =>
-    toolId.replace(/^systemTool-/, '').split('/')[0],
-  upsertTeamInstalledPluginPolicy: mocks.upsertTeamInstalledPluginPolicy
-}));
+vi.mock('@fastgpt/service/core/plugin/teamPluginPolicy', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@fastgpt/service/core/plugin/teamPluginPolicy')>();
+  return {
+    assertTeamPluginInstallEnabled: () => {
+      actual.assertTeamPluginInstallEnabled();
+      mocks.assertTeamPluginInstallEnabled();
+    },
+    assertTeamPluginSourceReady: mocks.assertTeamPluginSourceReady,
+    getRawPluginIdFromSystemToolId: (toolId: string) =>
+      toolId.replace(/^systemTool-/, '').split('/')[0],
+    upsertTeamInstalledPluginPolicy: mocks.upsertTeamInstalledPluginPolicy
+  };
+});
 
 vi.mock('@fastgpt/service/thirdProvider/fastgptPlugin', () => ({
   pluginClient: {
@@ -43,6 +54,8 @@ describe('confirm team plugin package handler', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    global.systemInstanceConfig = createDefaultInstanceConfig();
+    getTestInstanceConfig().feature.enableTeamPluginUpload = true;
     global.feConfigs = {
       ...global.feConfigs,
       enable_team_plugin_upload: true
@@ -103,9 +116,7 @@ describe('confirm team plugin package handler', () => {
   });
 
   it('does not confirm plugins when the installation feature is disabled', async () => {
-    mocks.assertTeamPluginInstallEnabled.mockImplementationOnce(() => {
-      throw TeamErrEnum.teamPluginInstallDisabled;
-    });
+    getTestInstanceConfig().feature.enableTeamPluginUpload = false;
 
     const res = await Call(handler, { body: { toolIds: [tool] } });
 

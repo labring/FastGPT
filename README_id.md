@@ -109,7 +109,7 @@ Jika Anda menghadapi masalah, Anda dapat [melihat tutorial penyebaran Docker len
 
 ## 💪 Proyek & Tautan Kami
 
-- [Mulai Cepat Pengembangan Lokal](https://doc.fastgpt.io/self-host/dev/)
+- [Mulai Cepat Pengembangan Lokal](https://doc.fastgpt.io/self-host/dev)
 - [Dokumentasi OpenAPI](https://cloud.fastgpt.io/apidoc/systemopenapi)
 - [FastGPT-plugin](https://github.com/labring/fastgpt-plugin)
 - [AI Proxy: Layanan Load Balancing Agregasi Model](https://github.com/labring/aiproxy)

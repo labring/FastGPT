@@ -1,3 +1,7 @@
+import {
+  createDefaultInstanceConfig,
+  getTestInstanceConfig
+} from '@test/utils/instanceConfigSnapshot';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { SANDBOX_SYSTEM_PROMPT } from '@fastgpt/global/core/ai/sandbox/constants';
@@ -40,11 +44,11 @@ describe('useToolCatalog', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     getSandboxToolInfoMock.mockReturnValue(undefined);
-    (global as any).feConfigs = {};
+    global.systemInstanceConfig = createDefaultInstanceConfig();
   });
 
   afterEach(() => {
-    delete (global as any).feConfigs;
+    global.systemInstanceConfig = createDefaultInstanceConfig();
   });
 
   it('creates user tool schemas, read-file tool and tool info lookup', async () => {
@@ -318,9 +322,7 @@ describe('useToolCatalog', () => {
   });
 
   it('appends sandbox prompt when sandbox is enabled', async () => {
-    (global as any).feConfigs = {
-      show_agent_sandbox: true
-    };
+    getTestInstanceConfig().subservice.agentSandbox.provider = 'opensandbox';
     getSandboxToolInfoMock.mockReturnValue({
       name: 'Run shell',
       avatar: 'sandbox-avatar'
@@ -355,9 +357,7 @@ describe('useToolCatalog', () => {
   });
 
   it('prepends sandbox system prompt when original messages have no system message', async () => {
-    (global as any).feConfigs = {
-      show_agent_sandbox: true
-    };
+    getTestInstanceConfig().subservice.agentSandbox.provider = 'opensandbox';
 
     const result = await useToolCatalog({
       messages: [

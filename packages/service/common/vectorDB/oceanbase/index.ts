@@ -114,8 +114,15 @@ export class ObVectorCtrl implements VectorControllerType {
     });
   };
   embRecall: VectorControllerType['embRecall'] = async (props) => {
-    const { teamId, datasetIds, vector, limit, forbidCollectionIdList, filterCollectionIdList } =
-      props;
+    const {
+      teamId,
+      datasetIds,
+      vector,
+      limit,
+      hnswEfSearch,
+      forbidCollectionIdList,
+      filterCollectionIdList
+    } = props;
 
     // Get forbid collection
     const formatForbidCollectionIdList = (() => {
@@ -155,7 +162,7 @@ export class ObVectorCtrl implements VectorControllerType {
         } & RowDataPacket)[][]
       >(
         `BEGIN;
-          SET ob_hnsw_ef_search = ${global.systemEnv?.hnswEfSearch || 200};
+          SET ob_hnsw_ef_search = ${hnswEfSearch};
           SELECT id, collection_id, ${OceanBaseIndexConfig.distanceFunc}(vector, [${vector}]) AS score
             FROM ${DatasetVectorTableName}
             WHERE team_id='${teamId}'

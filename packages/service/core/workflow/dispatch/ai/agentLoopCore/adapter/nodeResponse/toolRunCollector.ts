@@ -11,6 +11,8 @@ import {
   createWorkflowRuntimeSummary,
   mergeWorkflowRuntimeSummary
 } from '../../../../utils/summary';
+import { MODERATION_BLOCKED_REPLACE_TEXT } from '@fastgpt/global/core/plugin/moderation/constants';
+import { sanitizeModeratedToolNodeResponse } from '../../../../../../plugin/moderation/modelInput';
 
 export type AgentLoopCoreToolRunFlowResponse = {
   flowResponses: NonNullable<DispatchFlowResponse['flatNodeResponses']>;
@@ -259,7 +261,16 @@ export const createAgentLoopCoreToolRunResponseCollector = ({
         }
       : fallbackFlowResponse.flowResponses[0];
     const completedPendingFlowResponse = (() => {
-      if (!pendingFlowResponse || !errorMessage) return pendingFlowResponse;
+      if (!pendingFlowResponse) return pendingFlowResponse;
+      if (response === MODERATION_BLOCKED_REPLACE_TEXT && !errorMessage) {
+        return {
+          ...pendingFlowResponse,
+          flowResponses: pendingFlowResponse.flowResponses.map((item) =>
+            sanitizeModeratedToolNodeResponse(item)
+          )
+        };
+      }
+      if (!errorMessage) return pendingFlowResponse;
       if (pendingFlowResponse.flowResponses.some((item) => item.errorText)) {
         return pendingFlowResponse;
       }

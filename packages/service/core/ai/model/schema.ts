@@ -49,7 +49,10 @@ const AIModelSchema = new Schema(
             type: [{ _id: false, maxInputTokens: Number, inputPrice: Number, outputPrice: Number }],
             default: undefined
           },
-          unitPrice: Number
+          unitPrice: Number,
+          inputPrice: Number,
+          outputPrice: Number,
+          type: { type: String, enum: ['duration', 'tokens'] }
         },
         { _id: false, minimize: false }
       ),

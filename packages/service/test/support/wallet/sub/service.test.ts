@@ -1,8 +1,16 @@
+import {
+  createDefaultInstanceConfig,
+  getTestInstanceConfig
+} from '@test/utils/instanceConfigSnapshot';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { StandardSubLevelEnum, SubTypeEnum } from '@fastgpt/global/support/wallet/sub/constants';
 import { getTeamCanHideShareBrand } from '@fastgpt/service/support/wallet/sub/service';
 import { MongoTeamSub } from '@fastgpt/service/support/wallet/sub/schema';
 import { Types } from '@fastgpt/service/common/mongo';
+
+beforeEach(() => {
+  global.systemInstanceConfig = createDefaultInstanceConfig();
+});
 
 const teamId = '507f1f77bcf86cd799439011';
 const planConfig = {
@@ -16,7 +24,7 @@ const planConfig = {
 };
 
 beforeEach(() => {
-  global.subPlans = {
+  getTestInstanceConfig().commercial.subPlans = {
     standard: {
       basic: { ...planConfig, canHideShareBrand: true },
       advanced: { ...planConfig, canHideShareBrand: true },
@@ -41,7 +49,7 @@ describe('getTeamCanHideShareBrand', () => {
     );
 
     expect(await getTeamCanHideShareBrand(teamId)).toBe(true);
-    global.subPlans!.standard!.basic!.canHideShareBrand = false;
+    getTestInstanceConfig().commercial.subPlans!.standard!.basic!.canHideShareBrand = false;
     expect(await getTeamCanHideShareBrand(teamId)).toBe(false);
   });
 
@@ -56,12 +64,12 @@ describe('getTeamCanHideShareBrand', () => {
     expect(await getTeamCanHideShareBrand(teamId)).toBe(false);
 
     await MongoTeamSub.updateOne({ _id: plan._id }, { $set: { canHideShareBrandOverride: true } });
-    global.subPlans!.standard!.basic!.canHideShareBrand = false;
+    getTestInstanceConfig().commercial.subPlans!.standard!.basic!.canHideShareBrand = false;
     expect(await getTeamCanHideShareBrand(teamId)).toBe(true);
 
     await MongoTeamSub.updateOne({ _id: plan._id }, { $unset: { canHideShareBrandOverride: 1 } });
     expect(await getTeamCanHideShareBrand(teamId)).toBe(false);
-    global.subPlans!.standard!.basic!.canHideShareBrand = true;
+    getTestInstanceConfig().commercial.subPlans!.standard!.basic!.canHideShareBrand = true;
     expect(await getTeamCanHideShareBrand(teamId)).toBe(true);
   });
 
@@ -93,7 +101,7 @@ describe('getTeamCanHideShareBrand', () => {
         expiredTime: new Date('2099-01-01')
       }
     ]);
-    global.subPlans!.standard!.advanced!.canHideShareBrand = false;
+    getTestInstanceConfig().commercial.subPlans!.standard!.advanced!.canHideShareBrand = false;
     expect(await getTeamCanHideShareBrand(teamId)).toBe(false);
 
     await MongoTeamSub.updateOne(
@@ -111,9 +119,9 @@ describe('getTeamCanHideShareBrand', () => {
       currentSubLevel: StandardSubLevelEnum.basic,
       expiredTime: new Date('2099-01-01')
     });
-    delete global.subPlans!.standard;
+    delete getTestInstanceConfig().commercial.subPlans!.standard;
     expect(await getTeamCanHideShareBrand(teamId)).toBe(false);
-    delete global.subPlans;
+    getTestInstanceConfig().commercial.subPlans = undefined;
     expect(await getTeamCanHideShareBrand(teamId)).toBe(false);
   });
 

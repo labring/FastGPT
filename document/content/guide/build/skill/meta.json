@@ -2,10 +2,11 @@
   "title": "技能",
   "root": false,
   "pages": [
-    "intro",
-    "development",
+    "!intro",
     "initialization",
+    "development",
     "version",
-    "integration"
+    "integration",
+    "package-reference"
   ]
 }

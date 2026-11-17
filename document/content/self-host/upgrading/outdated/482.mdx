@@ -1,9 +1,10 @@
 ---
 title: V4.8.2
-description: FastGPT V4.8.2 更新说明
+description: 'FastGPT V4.8.2 版本更新说明，涵盖镜像升级步骤、兼容性变更与功能优化详情。'
 releaseTime: '2024-05-28'
 upgradeTags:
   - 配置变更
+deprecated: true
 ---
 
 ## Sealos 升级说明
@@ -11,7 +12,7 @@ upgradeTags:
 1. 在应用管理中新建一个应用，镜像为：registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sandbox:v4.8.1
 2. 无需外网访问地址，端口号为 3000
 3. 部署完后，复制应用的内网地址
-4. 点击变更`FastGPT - 修改环境变量，增加下面的环境变量即可
+4. 点击 FastGPT 应用的“变更”，修改环境变量，增加下面的环境变量即可
 
 ```
 SANDBOX_URL=内网地址
@@ -19,7 +20,7 @@ SANDBOX_URL=内网地址
 
 ## Docker 部署
 
-可以拉取最新 [docker-compose.yml](https://github.com/labring/FastGPT/blob/main/document/public/deploy/docker/main/global/docker-compose.pg.yml) 文件参考
+可以参考 v4.8.2 版本的 [docker-compose.yml](https://github.com/labring/FastGPT/blob/v4.8.2/files/deploy/fastgpt/docker-compose.yml) 文件
 
 1. 新增一个容器 `sandbox`
 2. fastgpt 和 fastgpt-pro(商业版) 容器新增环境变量: `SANDBOX_URL`

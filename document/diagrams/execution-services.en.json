@@ -1,0 +1,123 @@
+{
+  "type": "architecture",
+  "title": "Plugin and sandbox execution",
+  "nodes": [
+    {
+      "id": "app",
+      "label": "FastGPT",
+      "row": 0,
+      "col": 1,
+      "kind": "backend",
+      "focal": true,
+      "illustration": "core"
+    },
+    {
+      "id": "plugin",
+      "label": "Plugin service",
+      "row": 1,
+      "col": 0,
+      "kind": "backend",
+      "illustration": "plugin"
+    },
+    {
+      "id": "code",
+      "label": "Code Sandbox",
+      "row": 1,
+      "col": 1,
+      "kind": "backend",
+      "illustration": "code"
+    },
+    {
+      "id": "provider",
+      "label": "Sandbox provider",
+      "row": 1,
+      "col": 2,
+      "kind": "backend",
+      "sub": "Configured provider",
+      "illustration": "runtime"
+    },
+    {
+      "id": "workspace",
+      "label": "Workspace",
+      "row": 2,
+      "col": 2,
+      "kind": "store",
+      "illustration": "files"
+    },
+    {
+      "id": "browser",
+      "label": "Browser",
+      "row": 3,
+      "col": 0,
+      "kind": "external",
+      "illustration": "browser"
+    },
+    {
+      "id": "proxy",
+      "label": "Sandbox Proxy",
+      "row": 3,
+      "col": 2,
+      "kind": "backend",
+      "sub": "Controlled file access",
+      "illustration": "router"
+    }
+  ],
+  "edges": [
+    [
+      "app",
+      "plugin",
+      "",
+      "default"
+    ],
+    [
+      "app",
+      "code",
+      "",
+      "default"
+    ],
+    [
+      "app",
+      "provider",
+      "",
+      "primary"
+    ],
+    [
+      "provider",
+      "workspace",
+      "",
+      "primary"
+    ],
+    [
+      "browser",
+      "proxy",
+      "Access",
+      "link"
+    ],
+    [
+      "proxy",
+      "workspace",
+      "Proxy",
+      "link"
+    ]
+  ],
+  "evidence": [
+    {
+      "id": "app",
+      "file": "deploy/version/main/docker-compose.template.yml",
+      "line": 232
+    },
+    {
+      "id": "provider",
+      "file": "deploy/version/main/docker-compose.template.yml",
+      "line": 56
+    }
+  ],
+  "dir": "TB",
+  "lang": "en",
+  "eyebrow": "",
+  "legend": false,
+  "motion": "trace",
+  "fonts": "system",
+  "watermark": false,
+  "skin": "light"
+}

@@ -10,6 +10,7 @@ import type { ToolDetailExtendedType } from './types';
 
 type ToolDetailBodyProps = {
   parentTool?: Partial<ToolDetailExtendedType>;
+  pluginType?: 'tool' | 'moderation';
   isToolSet: boolean;
   subTools: ToolDetailExtendedType[];
   readmeContent: string;
@@ -24,6 +25,7 @@ type ToolDetailBodyProps = {
  */
 const ToolDetailBody = ({
   parentTool,
+  pluginType,
   isToolSet,
   subTools,
   readmeContent,
@@ -33,7 +35,12 @@ const ToolDetailBody = ({
   systemTitle
 }: ToolDetailBodyProps) => {
   const { t, i18n } = useTranslation();
-  const [activeTab, setActiveTab] = useState<'guide' | 'params'>('params');
+  const isModeration = (pluginType ?? parentTool?.type) === 'moderation';
+  const hasGuide = Boolean(parentTool?.courseUrl || parentTool?.readme || parentTool?.userGuide);
+  const [activeTab, setActiveTab] = useState<'guide' | 'params'>(() =>
+    isModeration ? 'guide' : 'params'
+  );
+  const effectiveTab = isModeration ? 'guide' : activeTab;
   const author = [parentTool?.author, systemTitle].find((value) => value?.trim()) ?? 'FastGPT';
   const readmeSource = [readmeContent, parentTool?.userGuide].find((value) => value?.trim()) ?? '';
 
@@ -90,37 +97,43 @@ const ToolDetailBody = ({
         </Box>
       </Flex>
 
-      <Box mt={4}>
-        <LightRowTabs
-          list={[
-            {
-              label: isToolSet ? t('app:toolkit_tool_list') : t('app:toolkit_params_description'),
-              value: 'params'
-            },
-            ...(parentTool?.courseUrl || parentTool?.readme || parentTool?.userGuide
-              ? [{ label: t('app:toolkit_user_guide'), value: 'guide' }]
-              : [])
-          ]}
-          value={activeTab}
-          onChange={(value) => {
-            if (
-              value === 'guide' &&
-              parentTool?.courseUrl &&
-              !parentTool?.readme &&
-              !parentTool?.userGuide
-            ) {
-              window.open(parentTool.courseUrl, '_blank');
-            } else {
-              setActiveTab(value as 'guide' | 'params');
-            }
-          }}
-          gap={4}
-        />
-        <Box h={'1px'} w={'full'} bg={'myGray.200'} mt={'-5px'} mx={1} />
-      </Box>
+      {(!isModeration || hasGuide) && (
+        <Box mt={4}>
+          <LightRowTabs
+            list={[
+              ...(!isModeration
+                ? [
+                    {
+                      label: isToolSet
+                        ? t('app:toolkit_tool_list')
+                        : t('app:toolkit_params_description'),
+                      value: 'params'
+                    }
+                  ]
+                : []),
+              ...(hasGuide ? [{ label: t('app:toolkit_user_guide'), value: 'guide' }] : [])
+            ]}
+            value={effectiveTab}
+            onChange={(value) => {
+              if (
+                value === 'guide' &&
+                parentTool?.courseUrl &&
+                !parentTool?.readme &&
+                !parentTool?.userGuide
+              ) {
+                window.open(parentTool.courseUrl, '_blank');
+              } else {
+                setActiveTab(value as 'guide' | 'params');
+              }
+            }}
+            gap={4}
+          />
+          <Box h={'1px'} w={'full'} bg={'myGray.200'} mt={'-5px'} mx={1} />
+        </Box>
+      )}
 
       <Box mt={4}>
-        {activeTab === 'guide' && (
+        {effectiveTab === 'guide' && (
           <VStack align="stretch" spacing={4} flex="1" minH="0">
             {loadingReadme ? (
               <SkeletonText noOfLines={8} spacing={3} skeletonHeight={3} />
@@ -132,7 +145,7 @@ const ToolDetailBody = ({
           </VStack>
         )}
 
-        {activeTab === 'params' && (
+        {!isModeration && effectiveTab === 'params' && (
           <VStack align="stretch" spacing={4}>
             {isToolSet && subTools.length > 0 && (
               <Accordion allowMultiple {...(subTools.length === 1 ? { defaultIndex: [0] } : {})}>

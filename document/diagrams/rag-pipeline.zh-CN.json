@@ -1,0 +1,110 @@
+{
+  "type": "flowchart",
+  "title": "RAG 问答链路",
+  "nodes": [
+    {
+      "id": "query",
+      "label": "用户提问",
+      "row": 0,
+      "col": 0,
+      "kind": "input",
+      "illustration": "chat"
+    },
+    {
+      "id": "rewrite",
+      "label": "可选问题改写",
+      "row": 1,
+      "col": 0,
+      "kind": "backend",
+      "illustration": "enrich"
+    },
+    {
+      "id": "search",
+      "label": "按配置检索",
+      "row": 2,
+      "col": 0,
+      "kind": "backend",
+      "sub": "向量 / 全文 / 混合",
+      "illustration": "search"
+    },
+    {
+      "id": "context",
+      "label": "上下文筛选",
+      "row": 3,
+      "col": 0,
+      "kind": "backend",
+      "sub": "重排 / 过滤 / 预算",
+      "illustration": "files"
+    },
+    {
+      "id": "prompt",
+      "label": "装配引用与提示",
+      "row": 4,
+      "col": 0,
+      "kind": "backend",
+      "focal": true,
+      "illustration": "document"
+    },
+    {
+      "id": "answer",
+      "label": "生成回答",
+      "row": 5,
+      "col": 0,
+      "kind": "backend",
+      "sub": "按应用配置展示引用",
+      "illustration": "model"
+    }
+  ],
+  "edges": [
+    [
+      "query",
+      "rewrite",
+      "",
+      "primary"
+    ],
+    [
+      "rewrite",
+      "search",
+      "",
+      "primary"
+    ],
+    [
+      "search",
+      "context",
+      "",
+      "primary"
+    ],
+    [
+      "context",
+      "prompt",
+      "",
+      "primary"
+    ],
+    [
+      "prompt",
+      "answer",
+      "",
+      "primary"
+    ]
+  ],
+  "evidence": [
+    {
+      "id": "rewrite",
+      "file": "packages/service/core/dataset/search/index.ts",
+      "line": 18
+    },
+    {
+      "id": "prompt",
+      "file": "packages/service/core/workflow/dispatch/ai/chat/datasetCite.ts",
+      "line": 33
+    }
+  ],
+  "dir": "TB",
+  "lang": "zh-CN",
+  "eyebrow": "",
+  "legend": false,
+  "motion": "trace",
+  "fonts": "system",
+  "watermark": false,
+  "skin": "light"
+}

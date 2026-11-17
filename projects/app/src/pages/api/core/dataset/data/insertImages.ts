@@ -1,3 +1,4 @@
+import { getSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/runtime';
 import {
   assertAppDatasetIndexModelsAvailable,
   getAssertedDatasetEmbeddingModel
@@ -41,7 +42,7 @@ async function handler(req: ApiRequestProps): Promise<InsertImagesResponse> {
   try {
     const result = await multer.resolveMultipleFormData({
       request: req,
-      maxFileSize: global.feConfigs.limit.uploadFileMaxSize,
+      maxFileSize: getSystemInstanceConfig().resource.uploadFileMaxSize,
       allowedExtensions: parseAllowedExtensions(datasetImageCollectionFileType)
     });
     filepaths.push(...result.fileMetadata.map((item) => item.path));
@@ -89,7 +90,7 @@ async function handler(req: ApiRequestProps): Promise<InsertImagesResponse> {
     const planStatus = await getTeamPlanStatus({ teamId });
     const uploadLimits = getFileUploadLimits({
       teamPlan: planStatus.standard,
-      systemLimit: global.feConfigs.limit
+      systemLimit: getSystemInstanceConfig().resource
     });
     await assertUploadRateLimit({
       identity: String(tmbId),

@@ -1,28 +1,45 @@
 ---
-title: FAQ
-description: FastGPT Cloud FAQ
+title: FastGPT Cloud FAQ
+description: Answers to common FastGPT Cloud questions about account sign-in, subscription plans, AI points billing, invoicing, and data security.
 ---
 
-import FastGPTLink from '@/components/docs/linkFastGPT';
+## Account and Workspace Questions
 
-## Account and Login Issues
+### Why are my previously created Apps or Datasets missing after signing in?
 
-FastGPT has two versions, and accounts are not shared between them:
+Verify your current sign-in context using the following three checks:
+1. **Check the active team workspace**: Navigate to **Account → Team management** in the left navigation bar and check the team switcher dropdown next to the "Team management" heading in the upper-left area. If you joined a colleague's team via an invitation link, switch to that team to view shared resources.
+2. **Check the sign-in method**: Signing in via WeChat QR code versus mobile SMS or email creates separate accounts unless they have been explicitly linked under **Account → Profile**.
+3. **Check the regional site**: Account systems and workspaces are isolated across regional sites (see [Regional Sites and Access Entry Points](/en/guide/version/cloud/intro#regional-sites-and-access-entry-points)). Confirm that the domain in your browser matches the site where you registered.
 
-Mainland China: <FastGPTLink campaign="docs_cloud_faq" content="login_help_cn" site="cn">{'https://fastgpt.cn'}</FastGPTLink> (supports WeChat and phone number login)
+### How do I invite colleagues to collaborate on the same App or Dataset?
 
-International: <FastGPTLink campaign="docs_cloud_faq" content="login_help_io" site="io">{'https://fastgpt.io'}</FastGPTLink> (supports email, Google, and GitHub login; phone number sign-up was available before September 2024)
+With a multi-member plan (Basic, Advanced, or Custom), open **Account → Team management → Members** and click **Invite Members** in the upper-right corner to generate an invitation link. Once colleagues join the workspace, assign Read, Write, or Administrator permissions on the **Permissions** tab or in the **Collaborators** dialog of the App or Dataset (see [Members, Departments, Groups, and Permissions](/en/guide/workspace/team/team_roles_permissions)).
 
-If you have used FastGPT before but cannot log in, try switching between the two versions.
+## Subscription Plans and Billing
 
-### Still Can't Log In? Contact Us
+### How are AI Points calculated and deducted?
 
-Contact an administrator in the Lark community.
+Built-in LLM completions, vector embedding generation, Rerank calls, and enhanced PDF parsing on FastGPT Cloud consume **AI Points** based on actual usage:
+- **Model usage**: Calculated from input and output token volume (priced per million tokens, `M Tokens`) multiplied by the model rate shown in the model catalog.
+- **Deduction order**: AI Points are deducted from the earliest-expiring resource pack first. Detailed breakdowns by member, usage source, project, and date range are available under **Account → Usage Records**.
 
-![Lark community](https://oss.laf.run/otnvvf-imgs/fastgpt-feishu1.png)
+### When do plan upgrades, downgrades, or add-on packs take effect?
 
-## Basics
+- **Add-on resource packs**: Take effect immediately upon payment and stack on top of your subscription quota for the validity period specified on the order.
+- **Plan upgrades and downgrades**: Upgrading to a higher tier takes effect immediately; switching to a lower tier keeps the current plan active until the current billing cycle ends.
+- **Plan expiration and Free-tier cleanup**: Unrenewed workspaces transition to Free plan limits. If a Free-tier team remains inactive (no sign-in) for 30 consecutive days, all dataset contents in that team are automatically cleared.
+
+### How do I download billing statements or apply for VAT invoices?
+
+Team Owners and Team Admins can navigate to **Account → Bills & Invoices** in the left navigation bar, save company tax details under **Default Header**, and click **Apply Invoice** under **Invoices** to select paid bills (see [Usage Records, Billing, and Invoices](/en/guide/workspace/usage-and-billing)).
+
+## Model Provisioning and Data Security
 
 ### Does FastGPT Cloud Support Bringing Your Own Model?
 
-FastGPT Cloud currently does not support bringing your own model. You can only use the unified models provided by FastGPT.
+FastGPT Cloud provides official unified models by default. When team model management is enabled and your account holds the **Install Models** permission under **Account → Team management → Permissions**, you can configure team-specific models and channels under **Account → Model provider**; requests routed through your own API keys are free of platform AI Points (see [Model Providers](/en/guide/workspace/models)).
+
+### Are uploaded Dataset documents and chat logs used to train foundation models?
+
+Uploaded files, indexed chunks, and conversation logs are strictly isolated at the tenant workspace level and used exclusively to serve retrieval and chat requests for your authorized applications. FastGPT never uses tenant data to train foundation models or share with third parties. Organizations with strict on-premises data residency mandates can deploy [FastGPT Commercial Edition](/en/guide/version/commercial) within their own private infrastructure.

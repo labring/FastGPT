@@ -1,6 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { createServer } from 'node:http';
+import {
+  createDefaultInstanceConfig,
+  getTestInstanceConfig
+} from '@test/utils/instanceConfigSnapshot';
 
 const volumeConfigMock = vi.hoisted(() => ({
+  readLive: false,
   config: {
     enable: true,
     url: 'http://volume-manager.local',
@@ -10,9 +16,16 @@ const volumeConfigMock = vi.hoisted(() => ({
   }
 }));
 
-vi.mock('@fastgpt/service/core/ai/sandbox/infrastructure/volume/config', () => ({
-  getVolumeManagerEnvConfig: () => volumeConfigMock.config
-}));
+vi.mock('@fastgpt/service/core/ai/sandbox/infrastructure/volume/config', async (importOriginal) => {
+  const actual =
+    await importOriginal<
+      typeof import('@fastgpt/service/core/ai/sandbox/infrastructure/volume/config')
+    >();
+  return {
+    getVolumeManagerEnvConfig: () =>
+      volumeConfigMock.readLive ? actual.getVolumeManagerEnvConfig() : volumeConfigMock.config
+  };
+});
 
 import {
   buildVolumeConfig,
@@ -34,6 +47,64 @@ describe('sandbox volume service', () => {
       volumeNamePrefix: 'fastgpt-session',
       storageSize: '1Gi'
     };
+  });
+
+  it('sends live storage size and credentials to the volume-manager HTTP boundary', async () => {
+    const requests: Array<{ method?: string; path?: string; token?: string; body: any }> = [];
+    const server = createServer(async (req, res) => {
+      const chunks: Buffer[] = [];
+      for await (const chunk of req) chunks.push(Buffer.from(chunk));
+      const body = chunks.length ? JSON.parse(Buffer.concat(chunks).toString()) : undefined;
+      requests.push({ method: req.method, path: req.url, token: req.headers.authorization, body });
+      res.setHeader('content-type', 'application/json');
+      res.end(JSON.stringify(body ? { claimName: body.claimName, created: false } : {}));
+    });
+    const original = global.systemInstanceConfig;
+    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+    try {
+      const address = server.address();
+      if (!address || typeof address === 'string')
+        throw new Error('Missing volume fixture address');
+      global.systemInstanceConfig = createDefaultInstanceConfig();
+      volumeConfigMock.readLive = true;
+      const config = getTestInstanceConfig().subservice.agentSandbox;
+      config.opensandbox.volumeManagerUrl = `http://127.0.0.1:${address.port}`;
+      for (const size of [2, 5]) {
+        config.common.storageSizeGi = size;
+        config.opensandbox.volumeManagerToken = `synthetic-${size}`;
+        config.opensandbox.volumeNamePrefix = `owned-${size}`;
+        const claim = createSessionVolumeClaimName({
+          sandboxId: 'abc123',
+          generationId: 'generation1'
+        });
+        expect(claim).toBe(`owned-${size}-abc123-generation1`);
+        await expect(getSessionVolumeConfig(claim)).resolves.toMatchObject({
+          storage: { volumes: [{ claimName: claim }] }
+        });
+        await deleteSessionVolume(claim);
+        expect(requests.slice(-2)).toEqual([
+          {
+            method: 'POST',
+            path: '/v1/volumes/ensure',
+            token: `Bearer synthetic-${size}`,
+            body: { claimName: claim, storageSize: `${size}Gi` }
+          },
+          {
+            method: 'DELETE',
+            path: `/v1/volumes/${claim}`,
+            token: `Bearer synthetic-${size}`,
+            body: undefined
+          }
+        ]);
+      }
+    } finally {
+      volumeConfigMock.readLive = false;
+      global.systemInstanceConfig = original;
+      server.closeAllConnections();
+      await new Promise<void>((resolve, reject) =>
+        server.close((error) => (error ? reject(error) : resolve()))
+      );
+    }
   });
 
   it('builds provider volume config and persisted storage metadata', () => {
