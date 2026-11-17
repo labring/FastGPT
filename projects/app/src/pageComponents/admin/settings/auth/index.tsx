@@ -471,9 +471,7 @@ const AuthSettingComponent = () => {
                     name={field.name}
                     value={field.value}
                     onChange={field.onChange}
-                    isConfigured={auth.configuredSecretKeys.includes(
-                      'loginProviders.wechat.appSecret'
-                    )}
+                    isConfigured={auth.isSecretConfigured('loginProviders.wechat.appSecret')}
                   />
                 )}
               />
@@ -505,7 +503,7 @@ const AuthSettingComponent = () => {
                     name={field.name}
                     value={field.value}
                     onChange={field.onChange}
-                    isConfigured={auth.configuredSecretKeys.includes('loginProviders.wecom.secret')}
+                    isConfigured={auth.isSecretConfigured('loginProviders.wecom.secret')}
                   />
                 )}
               />
@@ -519,7 +517,7 @@ const AuthSettingComponent = () => {
                     name={field.name}
                     value={field.value}
                     onChange={field.onChange}
-                    isConfigured={auth.configuredSecretKeys.includes('loginProviders.wecom.token')}
+                    isConfigured={auth.isSecretConfigured('loginProviders.wecom.token')}
                   />
                 )}
               />
@@ -533,9 +531,7 @@ const AuthSettingComponent = () => {
                     name={field.name}
                     value={field.value}
                     onChange={field.onChange}
-                    isConfigured={auth.configuredSecretKeys.includes(
-                      'loginProviders.wecom.encodingAESKey'
-                    )}
+                    isConfigured={auth.isSecretConfigured('loginProviders.wecom.encodingAESKey')}
                   />
                 )}
               />
@@ -559,9 +555,7 @@ const AuthSettingComponent = () => {
                       name={field.name}
                       value={field.value}
                       onChange={field.onChange}
-                      isConfigured={auth.configuredSecretKeys.includes(
-                        'loginProviders.wecom.providerSecret'
-                      )}
+                      isConfigured={auth.isSecretConfigured('loginProviders.wecom.providerSecret')}
                     />
                   )}
                 />
@@ -593,9 +587,7 @@ const AuthSettingComponent = () => {
                         name={field.name}
                         value={field.value}
                         onChange={field.onChange}
-                        isConfigured={auth.configuredSecretKeys.includes(
-                          'loginProviders.wecom.paySecret'
-                        )}
+                        isConfigured={auth.isSecretConfigured('loginProviders.wecom.paySecret')}
                       />
                     )}
                   />
@@ -625,9 +617,7 @@ const AuthSettingComponent = () => {
                     name={field.name}
                     value={field.value}
                     onChange={field.onChange}
-                    isConfigured={auth.configuredSecretKeys.includes(
-                      'loginProviders.github.secret'
-                    )}
+                    isConfigured={auth.isSecretConfigured('loginProviders.github.secret')}
                   />
                 )}
               />
@@ -653,9 +643,7 @@ const AuthSettingComponent = () => {
                     name={field.name}
                     value={field.value}
                     onChange={field.onChange}
-                    isConfigured={auth.configuredSecretKeys.includes(
-                      'loginProviders.google.secret'
-                    )}
+                    isConfigured={auth.isSecretConfigured('loginProviders.google.secret')}
                   />
                 )}
               />
@@ -684,9 +672,7 @@ const AuthSettingComponent = () => {
                     name={field.name}
                     value={field.value}
                     onChange={field.onChange}
-                    isConfigured={auth.configuredSecretKeys.includes(
-                      'loginProviders.microsoft.secret'
-                    )}
+                    isConfigured={auth.isSecretConfigured('loginProviders.microsoft.secret')}
                   />
                 )}
               />

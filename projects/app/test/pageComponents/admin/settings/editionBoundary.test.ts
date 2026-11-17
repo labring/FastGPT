@@ -32,7 +32,7 @@ vi.mock('@fastgpt/web/hooks/useSafeTranslation', () => ({
 vi.mock('@/web/common/system/useDomainConfig', () => ({
   useDomainConfig: (domain: SystemInstanceConfigDomainKey) => ({
     revision: 1,
-    configuredSecretKeys: [],
+    isSecretConfigured: () => false,
     isLoading: false,
     overrides: domain === 'auth' ? mocks.authOverrides : {},
     effectiveConfig: filterDomainDataByEdition({

@@ -30,14 +30,14 @@ describe('service edition gating for Admin config APIs', () => {
     expect(community.effectiveConfig.teamMode).toBeUndefined();
     expect(community.overrides.teamMode).toBeUndefined();
     expect(community.effectiveConfig.openApiKeyMaxCount).toBe(200);
-    expect(community.secretKeys).not.toContain('teamMode');
+    expect(community).not.toHaveProperty('secretKeys');
 
     const pro = await getDomainConfigForAdmin('auth', 'pro');
     expect(pro.effectiveConfig.teamMode).toBeUndefined();
     expect(pro.overrides.teamMode).toBeUndefined();
   });
 
-  it('omits secret values and reports configured paths only for the current edition', async () => {
+  it('returns inline secret markers only for the current edition', async () => {
     await updateDomainConfig({
       domain: 'auth',
       expectedRevision: 0,
@@ -51,15 +51,14 @@ describe('service edition gating for Admin config APIs', () => {
     // pro-only 的 loginProviders 在社区版读取中被整体剔除
     expect((community.effectiveConfig as any).loginProviders?.github?.secret).toBeUndefined();
     expect((community.overrides as any).loginProviders).toBeUndefined();
-    expect(community.secretKeys).not.toContain('loginProviders.github.secret');
-    expect(community.configuredSecretKeys).not.toContain('loginProviders.github.secret');
+    expect(community).not.toHaveProperty('configuredSecretKeys');
 
     const pro = await getDomainConfigForAdmin('auth', 'pro');
-    expect(pro.effectiveConfig).not.toHaveProperty('loginProviders.github.secret');
-    expect(pro.overrides).not.toHaveProperty('loginProviders.github.secret');
+    expect(pro.effectiveConfig).toHaveProperty('loginProviders.github.secret', { isSecret: true });
+    expect(pro.overrides).toHaveProperty('loginProviders.github.secret', { isSecret: true });
     expect(pro.effectiveConfig).toHaveProperty('loginProviders.github.clientId', 'cid');
-    expect(pro.secretKeys).toContain('loginProviders.github.secret');
-    expect(pro.configuredSecretKeys).toContain('loginProviders.github.secret');
+    expect(pro).not.toHaveProperty('secretKeys');
+    expect(pro).not.toHaveProperty('configuredSecretKeys');
     const stored = await MongoSystemInstanceConfig.findOne({ domain: 'auth' }).lean();
     const storedOverrides = stored?.overrides as
       | { loginProviders?: { github?: { secret?: { secret: string } } } }
@@ -77,9 +76,7 @@ describe('service edition gating for Admin config APIs', () => {
       actor: { actor: 'system' }
     });
     const cleared = await getDomainConfigForAdmin('auth', 'pro');
-    expect(cleared.secretKeys).toContain('loginProviders.github.secret');
-    expect(cleared.configuredSecretKeys).not.toContain('loginProviders.github.secret');
-    expect(cleared.effectiveConfig).not.toHaveProperty('loginProviders.github.secret');
+    expect(cleared.effectiveConfig).toHaveProperty('loginProviders.github.secret', '');
   });
 
   it('lists pro-only keys as offenders for community submissions', () => {

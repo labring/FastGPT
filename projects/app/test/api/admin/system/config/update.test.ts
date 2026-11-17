@@ -90,13 +90,13 @@ describe('instance config update API', () => {
         memoryOvercommitFactor: 3
       }
     });
-    expect(config.configuredSecretKeys).toEqual(
-      expect.arrayContaining([
-        'agentSandbox.proxy.secret',
-        'agentSandbox.opensandbox.apiKey',
-        'agentSandbox.sealosdevbox.token'
-      ])
-    );
+    for (const path of [
+      'agentSandbox.proxy.secret',
+      'agentSandbox.opensandbox.apiKey',
+      'agentSandbox.sealosdevbox.token'
+    ]) {
+      expect(config.effectiveConfig).toHaveProperty(path, { isSecret: true });
+    }
     const stored = await MongoSystemInstanceConfig.findOne({ domain: 'subservice' }).lean();
     expect(stored?.overrides).toHaveProperty(
       'agentSandbox.proxy.secret.secret',
@@ -258,10 +258,12 @@ describe('instance config update API', () => {
       body: { items: [{ domain: 'providers', expectedRevision: 0, overrides }] }
     } as any);
     const firstResult = first.results[0];
-    expect(firstResult.overrides).not.toHaveProperty('documentParse.customPdf.key');
-    expect(firstResult.effectiveConfig).not.toHaveProperty('documentParse.customPdf.key');
-    expect(firstResult.secretKeys).toContain('documentParse.customPdf.key');
-    expect(firstResult.configuredSecretKeys).toContain('documentParse.customPdf.key');
+    expect(firstResult.overrides).toHaveProperty('documentParse.customPdf.key', { isSecret: true });
+    expect(firstResult.effectiveConfig).toHaveProperty('documentParse.customPdf.key', {
+      isSecret: true
+    });
+    expect(firstResult).not.toHaveProperty('secretKeys');
+    expect(firstResult).not.toHaveProperty('configuredSecretKeys');
     const stored = await MongoSystemInstanceConfig.findOne({ domain: 'providers' }).lean();
     const storedOverrides = stored?.overrides as
       | { documentParse?: { customPdf?: { key?: { secret: string } } } }
@@ -293,8 +295,9 @@ describe('instance config update API', () => {
         ]
       }
     } as any);
-    expect(replaced.results[0].configuredSecretKeys).toContain('documentParse.customPdf.key');
-    expect(replaced.results[0].effectiveConfig).not.toHaveProperty('documentParse.customPdf.key');
+    expect(replaced.results[0].effectiveConfig).toHaveProperty('documentParse.customPdf.key', {
+      isSecret: true
+    });
     expect(JSON.stringify(replaced)).not.toContain('******');
 
     const cleared = await callUpdate({
@@ -308,9 +311,7 @@ describe('instance config update API', () => {
         ]
       }
     } as any);
-    expect(cleared.results[0].secretKeys).toContain('documentParse.customPdf.key');
-    expect(cleared.results[0].configuredSecretKeys).not.toContain('documentParse.customPdf.key');
-    expect(cleared.results[0].effectiveConfig).not.toHaveProperty('documentParse.customPdf.key');
+    expect(cleared.results[0].effectiveConfig).toHaveProperty('documentParse.customPdf.key', '');
     expect(
       (await MongoSystemInstanceConfig.findOne({ domain: 'providers' }).lean())?.overrides
     ).not.toHaveProperty('documentParse.customPdf.key');
@@ -328,6 +329,47 @@ describe('instance config update API', () => {
       expect(JSON.stringify(auditLogs)).not.toContain('private-key');
       expect(JSON.stringify(auditLogs)).not.toContain(firstCipher?.secret ?? '');
     });
+  });
+
+  it.each([
+    { isSecret: false },
+    { isSecret: 'true' },
+    { isSecret: true, secret: 'client-cipher' },
+    { isSecret: true, extra: 'unexpected' },
+    { secret: 'client-cipher' }
+  ])('rejects malformed preservation markers without writing configuration: %j', async (key) => {
+    await expect(
+      callUpdate({
+        body: {
+          items: [
+            {
+              domain: 'providers',
+              expectedRevision: 0,
+              overrides: { documentParse: { customPdf: { key } } }
+            }
+          ]
+        }
+      })
+    ).rejects.toBeInstanceOf(ApiRequestInputParseError);
+    expect(await MongoSystemInstanceConfig.countDocuments({ domain: 'providers' })).toBe(0);
+  });
+
+  it('accepts a preservation marker for an unconfigured secret without storing the marker', async () => {
+    const result = await callUpdate({
+      body: {
+        items: [
+          {
+            domain: 'providers',
+            expectedRevision: 0,
+            overrides: { documentParse: { customPdf: { key: { isSecret: true } } } }
+          }
+        ]
+      }
+    });
+    expect(result.results[0].effectiveConfig).toHaveProperty('documentParse.customPdf.key', '');
+    const stored = await MongoSystemInstanceConfig.findOne({ domain: 'providers' }).lean();
+    expect(stored?.overrides).not.toHaveProperty('documentParse.customPdf.key');
+    expect(stored?.explicitDefaultPaths ?? []).not.toContain('documentParse.customPdf.key');
   });
 
   it('returns the committed config when audit writing fails', async () => {

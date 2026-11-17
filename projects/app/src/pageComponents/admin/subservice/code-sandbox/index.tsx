@@ -32,9 +32,9 @@ const nodeBuiltins = ['crypto', 'path', 'url', 'lodash', 'dayjs', 'axios', 'qs']
 
 const CodeSandboxSubserviceComponent = () => {
   const { t } = useSafeTranslation();
-  const { effectiveConfig, configuredSecretKeys, isLoading, isUpdating, patchConfig } =
+  const { effectiveConfig, isSecretConfigured, isLoading, isUpdating, patchConfig } =
     useDomainConfig('subservice');
-  const isTokenConfigured = configuredSecretKeys.includes('codeSandbox.token');
+  const isTokenConfigured = isSecretConfigured('codeSandbox.token');
 
   const {
     control,

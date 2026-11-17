@@ -5,16 +5,17 @@ import { JSDOM } from 'jsdom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { resolveSystemInstanceConfig } from '@fastgpt/global/common/system/config/schema';
 import {
-  getConfiguredDomainSecretKeys,
+  markDomainSecrets,
   omitDomainSecrets
 } from '@fastgpt/global/common/system/config/permission';
+import { isConfiguredSecret } from '@fastgpt/global/common/system/config/secret';
 import type { SystemInstanceConfigDomainKey } from '@fastgpt/global/common/system/config/schema';
 
 const mocks = vi.hoisted(() => ({
   isPro: true,
   subPlans: undefined as undefined | { standard?: Record<string, unknown> },
   configs: {} as Record<string, any>,
-  configured: {} as Record<string, string[]>,
+  configured: {} as Record<string, Record<string, unknown>>,
   update: vi.fn(),
   patch: vi.fn(),
   updateSystemStore: vi.fn(),
@@ -35,7 +36,10 @@ vi.mock('@/web/common/system/useDomainConfig', () => ({
     }, []);
     return {
       effectiveConfig: mocks.configs[domain],
-      configuredSecretKeys: mocks.configured[domain],
+      isSecretConfigured: (path: string) =>
+        isConfiguredSecret(
+          path.split('.').reduce<any>((value, key) => value?.[key], mocks.configured[domain])
+        ),
       overrides: {},
       revision: 1,
       isLoading: false,
@@ -211,7 +215,7 @@ beforeEach(() => {
   full.site.customDomain.kc.tencent = 'stored-tencent';
   for (const domain of Object.keys(full) as SystemInstanceConfigDomainKey[]) {
     mocks.configs[domain] = omitDomainSecrets(domain, full[domain]);
-    mocks.configured[domain] = getConfiguredDomainSecretKeys(domain, full[domain]);
+    mocks.configured[domain] = markDomainSecrets(domain, full[domain]);
   }
 });
 

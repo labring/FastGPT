@@ -10,7 +10,7 @@ import {
  * API: 获取指定 Domain 的配置与生效快照
  * Route: GET /api/admin/system/config/get
  * Method: GET
- * Description: 获取指定配置域的当前乐观锁版本、稀疏 Overrides、生效配置快照以及脱敏密钥键
+ * Description: 获取指定配置域的当前乐观锁版本、稀疏 Overrides、生效配置快照；密钥仅返回已配置标记
  * Tags: ['Admin', 'InstanceConfig', 'Read']
  * ============================================================================ */
 
@@ -29,24 +29,15 @@ export const GetDomainConfigResponseSchema = z.object({
   }),
   revision: z.number().int().nonnegative().meta({ description: '当前乐观锁版本号', example: 12 }),
   effectiveConfig: z.record(z.string(), z.unknown()).meta({
-    description: '当前生效的配置，敏感字段完全省略，不返回明文、密文或掩码',
+    description:
+      '当前生效配置；已配置密钥返回 { isSecret: true }，未配置返回空串，不返回明文、密文或掩码',
     example: {
-      favicon: 'https://example.com/avatar/team-1/site.png',
-      navbarItems: []
+      codeSandbox: { enabled: true, url: 'http://code-sandbox:3000', token: { isSecret: true } }
     }
   }),
   overrides: z.record(z.string(), z.unknown()).meta({
-    description: '稀疏覆盖配置；敏感字段完全省略',
-    example: { favicon: 'https://example.com/avatar/team-1/site.png' }
-  }),
-  secretKeys: z.array(z.string()).meta({
-    description: '该 Domain 下允许访问的敏感字段相对路径',
-    example: ['auth.loginProviders.email.smtp']
-  }),
-  configuredSecretKeys: z.array(z.string()).meta({
-    description:
-      '已经配置密钥的相对路径，仅提供状态；更新时省略字段表示保留、字符串表示替换、空字符串表示清空',
-    example: ['codeSandbox.token']
+    description: '稀疏覆盖配置；已配置密钥在原字段位置返回 { isSecret: true }',
+    example: { codeSandbox: { token: { isSecret: true } } }
   }),
   updatedAt: z.date().optional().meta({
     description: '最后更新时间',
@@ -78,7 +69,7 @@ export const UpdateDomainConfigItemSchema = z.object({
   }),
   overrides: z.record(z.string(), z.unknown()).meta({
     description:
-      '需要覆盖修改的稀疏配置对象；只提交当前页面编辑的字段。提交显式默认值（如空数组）表示清空该字段',
+      '需要修改的稀疏配置对象；密钥省略或精确 { isSecret: true } 表示保留，字符串表示替换，空串表示清空。提交显式默认值（如空数组）表示清空该字段',
     example: { favicon: 'https://example.com/avatar/team-1/site.png', scripts: [] }
   })
 });
@@ -156,7 +147,8 @@ export const AdminInstanceConfigPath: OpenAPIPath = {
   '/api/admin/system/config/get': {
     get: {
       summary: '获取指定 Domain 的实例配置',
-      description: '获取指定配置域的当前乐观锁版本、稀疏 Overrides、生效配置快照以及脱敏密钥键',
+      description:
+        '获取指定配置域的当前乐观锁版本、稀疏 Overrides、生效配置快照及字段内密钥状态标记',
       tags: [DevApiTagsMap.adminSettings],
       parameters: [
         {

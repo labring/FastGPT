@@ -1,11 +1,67 @@
 import { describe, expect, it } from 'vitest';
 import { encryptSecret } from '../../../../common/secret/aes256gcm';
 import {
+  markDomainSecrets,
+  stripDomainSecretMarkers
+} from '@fastgpt/global/common/system/config/permission';
+import { deepMergeConfig } from '@fastgpt/global/common/system/config/merge';
+import {
+  formatDomainConfigForAdmin,
+  findOverridesNotAllowedByEdition
+} from '../../../../common/system/systemInstanceConfig/controller';
+import { resolveDomainEffectiveConfig } from '@fastgpt/global/common/system/config/schema';
+import {
   decryptDomainSecrets,
   encryptDomainSecrets
 } from '../../../../common/system/systemInstanceConfig/secrets';
 
 describe('system instance configuration secret codec', () => {
+  it('round-trips the admin marker without persisting it or changing the original ciphertext', () => {
+    const input = { documentParse: { customPdf: { key: 'owned-secret', price: 2 } } };
+    const stored = encryptDomainSecrets({ domain: 'providers', data: input });
+    const decoded = decryptDomainSecrets('providers', stored);
+    const response = formatDomainConfigForAdmin(
+      {
+        domain: 'providers',
+        revision: 3,
+        overrides: decoded,
+        effectiveConfig: resolveDomainEffectiveConfig({ domain: 'providers', overrides: decoded })
+      },
+      'community'
+    );
+    expect(response.overrides).toHaveProperty('documentParse.customPdf.key', { isSecret: true });
+    expect(response.effectiveConfig).toHaveProperty('documentParse.customPdf.key', {
+      isSecret: true
+    });
+    expect(response.effectiveConfig).toHaveProperty('documentParse.customPdf.doc2xKey', '');
+    expect(response).not.toHaveProperty('configuredSecretKeys');
+    const patch = stripDomainSecretMarkers('providers', response.overrides);
+    const merged = deepMergeConfig(decoded, patch);
+    const saved = encryptDomainSecrets({
+      domain: 'providers',
+      data: merged,
+      previousStored: stored
+    });
+    expect(saved).toEqual(stored);
+    expect(JSON.stringify(response)).not.toContain('owned-secret');
+    expect(JSON.stringify(response)).not.toContain(
+      JSON.stringify(stored.documentParse.customPdf.key)
+    );
+    expect(markDomainSecrets('providers', { documentParse: { customPdf: { key: '' } } })).toEqual({
+      documentParse: { customPdf: { key: '' } }
+    });
+  });
+
+  it('treats secret markers as the original field for edition checks', () => {
+    const submittedOverrides = { loginProviders: { github: { secret: { isSecret: true } } } };
+    expect(
+      findOverridesNotAllowedByEdition({ domain: 'auth', submittedOverrides, edition: 'community' })
+    ).toEqual(['loginProviders.github.secret']);
+    expect(
+      findOverridesNotAllowedByEdition({ domain: 'auth', submittedOverrides, edition: 'pro' })
+    ).toEqual([]);
+  });
+
   it('encrypts registered nonempty leaves and decodes them without changing other data', () => {
     const input = {
       documentParse: {

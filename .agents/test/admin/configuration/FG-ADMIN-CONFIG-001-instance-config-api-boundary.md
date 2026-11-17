@@ -76,33 +76,33 @@ baseline: "897611e5cdd2b4d5617c5104d0d9bb5b9ebd8a6c"
 | 子场景 | 类型与起始状态 | 输入与操作 |
 | --- | --- | --- |
 | C1 | 基础；无 site 文档的隔离实例 | 以 root 调用 `GET /api/admin/system/config/get?domain=site`，记录响应；再查询 DB 确认该 domain 是否仍无文档。 |
-| C2 | 基础；providers 测试密钥已写入 | root 读取 `domain=providers`，记录 `overrides`、`effectiveConfig`、`secretKeys/configuredSecretKeys`；同时用只读 DB 查询确认库内原始值。 |
+| C2 | 基础；providers 测试密钥已写入 | root 读取 `domain=providers`，记录 `overrides`、`effectiveConfig` 中密钥字段的 `{isSecret:true}` 标记；同时用只读 DB 查询确认库内原始值。 |
 | C3 | 异常；D0 | 用非 root 会话分别调用 get、update、probe，分别保存响应；再查 DB revision。 |
 | C4 | 基础；site revision=r | root 保存 `{name:"RUN-SITE"}`，并特意提交一个等于内置默认值的字段（如 `docUrl` 默认值）；记录响应与 DB 文档。 |
-| C5 | 边界；providers 无既有密钥 / 有既有密钥 | 5a：首次保存 `documentParse.customPdf.key:"******"`，读取配置状态并在内存核对解密值。5b：先保存本轮合成密钥，只改 `documentParse.customPdf.url` 并省略 key；再显式提交 key 为 `"******"` 替换，最后提交 `key:""` 清空。逐步读取状态、DB 包装和 revision。 |
+| C5 | 边界；providers 无既有密钥 / 有既有密钥 | 5a：首次保存 `documentParse.customPdf.key:"******"`，读取配置状态并在内存核对解密值。5b：先保存本轮合成密钥，只改 `documentParse.customPdf.url` 并省略 key；再原样回提交 GET 返回的 key 标记；再显式提交 key 为 `"******"` 替换，最后提交 `key:""` 清空。逐步读取状态、DB 包装和 revision。 |
 | C6 | 基础/异常；site、resource、storage 均为 D0，MinIO | 6a：以正确 revision 一次提交 site 的 name/description 和 resource 的 maxFolderDepth/uploadFileMaxSize。6b：承接 6a，用当前 site revision 和过期 resource revision 提交不同值。6c：继续以当前 revision 一次提交 site 和 storage；storage 设置 `downloadMode=short-redirect` 且 externalEndpoint、cdnEndpoint 均为空。每次检查 11 域与套餐快照。 |
-| C7 | 边界；社区版/商业版各一状态 | 社区版 root 读取 auth，记录返回字段和 `secretKeys`；再提交 `loginProviders.email.register=true`，以及一个带 `subPlans:{}` 和当前 commercial `subPlansExpectedRevision` 的合法 `site.publicUrl` 更新。商业版重复读取 auth，并分别保存同一 Pro 字段和 `subPlans`。 |
+| C7 | 边界；社区版/商业版各一状态 | 社区版 root 读取 auth，记录返回字段和字段内密钥状态标记；再提交 `loginProviders.email.register=true`，以及一个带 `subPlans:{}` 和当前 commercial `subPlansExpectedRevision` 的合法 `site.publicUrl` 更新。商业版重复读取 auth，并分别保存同一 Pro 字段和 `subPlans`。 |
 | C8 | 边界；MinIO，或 R2 的独立环境 | 在 storage 域分别提交：MinIO `downloadMode=short-redirect` 且 externalEndpoint 为空；配置 cdnEndpoint 但 externalEndpoint 为空；R2 配置 cdnEndpoint；最后提交带非空 externalEndpoint 的 MinIO short-redirect。每次保存后查 revision。 |
 | C9 | 边界；本机测试服务 | root 依次探测可达 200、可达 404、可达 500、关闭端口、`file:///etc/passwd`、超时 500ms 的可控慢服务；用非 root 再探测一次；记录 `connected/status/error`。 |
-| C10 | 异常；D0 | root 提交 `items: []`、非法 domain、负 expectedRevision、旧 `auth.teamMode`、非法 `site.publicUrl`（空值、非 HTTP(S)、含凭据/query/hash）、密钥传入 `{secret:"..."}` 对象、`timeoutMs=100` 的 probe body，分别记录入口响应。 |
+| C10 | 异常；D0 | root 提交 `items: []`、非法 domain、负 expectedRevision、旧 `auth.teamMode`、非法 `site.publicUrl`（空值、非 HTTP(S)、含凭据/query/hash）、密钥传入 `{secret:"..."}`、`{isSecret:false}`、含额外键的标记对象，以及普通 URL 字段传入 `{isSecret:true}`、`timeoutMs=100` 的 probe body，分别记录入口响应。 |
 | C11 | 基础/异常；商业版 D0 | 使用 site 的当前 revision 和 commercial 的当前 revision（作为 `subPlansExpectedRevision`）分别提交两次：先提交 `{extraPointsPackages:[{points:"not-a-number",month:1,price:1}]}`，再提交 `{extraDatasetSizePrice:5,extraPointsPackages:[{points:1000,month:12,price:10}]}`；每次同时提交不同的合法 site name，并检查配置域与套餐文档。 |
 | C12 | 边界；商业版 D0 | 根据当前 registry 为各可修改字段准备两组合法合成值 A/B（历史退役字段依前置夹具，固定值不要求伪造差异）；每组以 11 域当前 revision 一次调用 update（commercial.subPlans 仍走 C11 的专用输入，不塞入 overrides），随后逐域 GET 并只读查询 Mongo，逐字段比较 A/B 与实际值，敏感字段仅在内存比较明文。完整记录字段集合、每字段布尔结果及恢复结果。 |
 
 ## 预期结果
 
-公共断言：所有成功响应均为 HTTP 200、`code=200`，业务数据位于 `data`；所有写请求必须由 root 完成。任何冲突、版本边界或校验拒绝都不得产生部分 domain 写入，revision 只能随成功提交递增。响应和日志不得出现真实密钥；`GET` 不得用环境变量补齐已迁移字段。敏感叶子在 GET/保存响应的 overrides、effectiveConfig 中完全省略；secretKeys 表示允许访问的敏感路径，configuredSecretKeys 仅表示非空凭据已配置。省略密钥保留原值，字符串替换（含字面量 `******`），空字符串清空；非空凭据持久化为 `{secret: cipher}`，不能以明文落库。
+公共断言：所有成功响应均为 HTTP 200、`code=200`，业务数据位于 `data`；所有写请求必须由 root 完成。任何冲突、版本边界或校验拒绝都不得产生部分 domain 写入，revision 只能随成功提交递增。响应和日志不得出现真实密钥；`GET` 不得用环境变量补齐已迁移字段。GET/保存响应的 overrides、effectiveConfig 在已配置密钥原字段位置返回精确 `{isSecret:true}`，未配置生效值返回空串，不再返回 secretKeys/configuredSecretKeys 路径列表。省略密钥或回提交精确标记保留原值，字符串替换（含字面量 `******`），空字符串清空；非空凭据持久化为 `{secret: cipher}`，不能以明文落库。
 
 | 子场景 | 验证方式 | 特有预期 | 证据获取方式 |
 | --- | --- | --- | --- |
-| C1 | API + DB | `data.domain=site`、`data.revision=0`、`data.overrides={}`，`effectiveConfig` 等于按部署版本过滤的内置默认值；`secretKeys/configuredSecretKeys` 不含无关域字段；`updatedAt/updatedBy` 缺失。 | 脱敏 GET 响应、移除/读取/恢复的 site 精确查询与夹具记录。 |
-| C2 | API + DB | `overrides` 与 `effectiveConfig` 均不存在敏感叶子；`secretKeys` 和 `configuredSecretKeys` 含 `documentParse.customPdf.key`；DB 非空凭据是仅含 secret 的加密包装，进程内解密与测试密钥相等，读取不改写 BSON/revision。 | 脱敏 GET、secret 路径集合、加密形态及内存等值布尔结果、读取前后 BSON 比较。 |
+| C1 | API + DB | `data.domain=site`、`data.revision=0`、`data.overrides={}`，`effectiveConfig` 等于按部署版本过滤的内置默认值；不返回密钥路径列表或无关域字段；`updatedAt/updatedBy` 缺失。 | 脱敏 GET 响应、移除/读取/恢复的 site 精确查询与夹具记录。 |
+| C2 | API + DB | `overrides` 与 `effectiveConfig` 的 `documentParse.customPdf.key` 均为精确 `{isSecret:true}`，均不含明文、密文或掩码；未配置密钥的 effectiveConfig 字段为空串；DB 非空凭据是仅含 secret 的加密包装，进程内解密与测试密钥相等，读取不改写 BSON/revision。 | 脱敏 GET、secret 路径集合、加密形态及内存等值布尔结果、读取前后 BSON 比较。 |
 | C3 | API + DB | 三个入口均被拒绝，返回未授权/禁止访问语义；DB revision 与 overrides 完全不变；不得出现仅有 HTTP 200 但 `data` 为空的假成功。 | 三条拒绝响应、操作者角色及全部 scope 的前后差集。 |
 | C4 | API + DB | 响应 `data.results[0].revision=r+1`；`effectiveConfig.name=RUN-SITE`，默认字段仍为默认值；DB overrides 不冗余保存等于默认值的字段，`explicitDefaultPaths` 记录被显式提交的默认值路径（若该字段被剪枝）。 | update/GET 响应、site revision/overrides/explicitDefaultPaths 查询。 |
-| C5 | API + DB | 5a：字面量 `******` 被当成真实新凭据加密保存，configuredSecretKeys 包含该路径。5b：省略 key 时原密文保持、URL 更新；显式提交 `******` 后解密值为该字面量；显式空串后该路径不在 configuredSecretKeys，生效为空串，DB 可被默认值剪枝且 explicitDefaultPaths 保留清空意图。每次成功 revision+1，响应始终不回传密钥叶子。 | 各次脱敏请求/响应、密文保持及解密等值布尔结果、清空标记与 revision。 |
+| C5 | API + DB | 5a：字面量 `******` 被当成真实新凭据加密保存，该字段返回 `{isSecret:true}`。5b：省略 key 或回提交精确标记时原密文保持、URL 更新；显式提交 `******` 后解密值为该字面量；显式空串后该字段不再返回标记，生效为空串，DB 可被默认值剪枝且 explicitDefaultPaths 保留清空意图。每次成功 revision+1，响应始终不回传密钥明文、密文或掩码。 | 各次脱敏请求/响应、密文保持及解密等值布尔结果、清空标记与 revision。 |
 | C6 | API + DB | 6a 两域四字段均为提交值、各 revision+1，响应按提交顺序返回两域，其余九域和套餐快照不变。6b 返回 HTTP/业务 409；6c 返回 HTTP/业务 400；两次拒绝后 11 域 BSON 与套餐快照均不变。 | 每次事务响应、提交前后全部 scope 与旧 systemconfigs 的精确差集。 |
-| C7 | API + DB | 社区版 GET 过滤掉商业字段及对应 secretKeys/configuredSecretKeys；POST Pro 字段返回 403，message 包含越界字段路径（至少 `loginProviders.email.register`）；POST 带 `subPlans`（含空对象）同样返回 403 且在任何读取/写入前拒绝，site revision 不变；Agent Sandbox 等 all 字段仍可读写。商业版 GET 返回该非敏感字段，POST 与 subPlans 保存成功，commercial 内的套餐和 revision 按预期更新，旧 systemconfigs 不写入。 | 两部署状态、允许字段/敏感路径集合、拒绝与成功响应、commercial/site 查询。 |
+| C7 | API + DB | 社区版 GET 过滤掉商业字段及对应字段内密钥标记；POST Pro 字段返回 403，message 包含越界字段路径（至少 `loginProviders.email.register`）；POST 带 `subPlans`（含空对象）同样返回 403 且在任何读取/写入前拒绝，site revision 不变；Agent Sandbox 等 all 字段仍可读写。商业版 GET 返回该非敏感字段，POST 与 subPlans 保存成功，commercial 内的套餐和 revision 按预期更新，旧 systemconfigs 不写入。 | 两部署状态、允许字段/敏感路径集合、拒绝与成功响应、commercial/site 查询。 |
 | C8 | API + DB | 三类非法组合均返回 HTTP/业务 400 且 storage revision 不变：MinIO short-redirect 无 externalEndpoint、CDN 无 externalEndpoint、R2 配 CDN。合法组合成功并保存 `downloadMode/externalEndpoint`。 | 各 vendor 配置摘要、update 响应、storage revision 前后查询。 |
 | C9 | API | 通用探测的 200/404/500 均返回 `connected=true` 且 status 对应；关闭端口返回 `connected=false` 和非空 error；`file://` 返回 `connected=false` 且 error 含 “Only HTTP and HTTPS”；500ms 慢服务返回 `connected=false`、`errorCode=timeout`；非 root 被拒绝；probe 不因内部地址被 SSRF 拦截。 | 各探测响应、受控服务路径/请求计数及超时耗时。 |
 | C10 | API | 上述非法输入均由入参校验拒绝（400 语义），不得进入业务写入；DB revision 不变。 | 每个非法输入的脱敏响应、DB/revision 不变的精确差集。 |
 | C11 | API + DB | 非法套餐返回 HTTP/业务 400，所有域与套餐文档不变。合法套餐与 site 修改同一事务成功：site 与 commercial revision 各加一，返回结果只包含请求的 site；同一 commercial 文档的 `overrides.subPlans.extraDatasetSize.price=5`，`overrides.subPlans.extraPoints.packages` 为提交的积分包数组，不保留对应扁平键，不新增旧 systemconfigs 文档；subPlans 是整表替换，省略专用输入时保留原值，不能按对象补丁残留旧权益。 | 失败/成功事务响应、commercial.subPlans 及 site 的前后查询、旧集合不变对照。 |
-| C12 | API + DB | A、B 两轮每次全部 11 域 revision 各加一；registry 每个已具备夹具字段的非敏感 GET 生效值和由 Mongo 文档解密还原的生效值均匹配合成输入；非空敏感值在 API 完全省略，仅状态路径与预期一致，DB 加密且进程内解密比对一致。退役字段按已记录的历史初态验证，未具备夹具的变体明确阻塞；六个非管理 scope 的业务 BSON和旧 systemconfigs 不变，长窗口内正常 License metadata变化按公共约定单列。快照恢复后除 revision 和 `updatedAt` 外 11 域原始字段完全一致。此项只证明保存、脱敏与回读，不代表全部运行时消费、重载或重启路径已验证。 | registry 字段覆盖清单、每字段等值布尔结果、辅助 scope/旧集合差集与恢复校验。 |
+| C12 | API + DB | A、B 两轮每次全部 11 域 revision 各加一；registry 每个已具备夹具字段的非敏感 GET 生效值和由 Mongo 文档解密还原的生效值均匹配合成输入；非空敏感值在 API 只返回字段内 `{isSecret:true}`，配置状态与预期一致，DB 加密且进程内解密比对一致。退役字段按已记录的历史初态验证，未具备夹具的变体明确阻塞；六个非管理 scope 的业务 BSON和旧 systemconfigs 不变，长窗口内正常 License metadata变化按公共约定单列。快照恢复后除 revision 和 `updatedAt` 外 11 域原始字段完全一致。此项只证明保存、脱敏与回读，不代表全部运行时消费、重载或重启路径已验证。 | registry 字段覆盖清单、每字段等值布尔结果、辅助 scope/旧集合差集与恢复校验。 |

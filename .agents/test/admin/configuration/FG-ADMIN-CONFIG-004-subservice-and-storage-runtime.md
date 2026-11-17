@@ -158,7 +158,7 @@ baseline: "897611e5cdd2b4d5617c5104d0d9bb5b9ebd8a6c"
 | C16 | 边界；生产 sandbox adapter/SDK与回环 Lifecycle/VolumeManager | 切换 common CPU/内存和 storageSizeGi，实际 create/ensure/delete捕获请求；以 CPU-only、memory-only、组合 factor、显式 request、最小取整与 Docker 对照检查 requests/limits。useServerProxy false/true分别实际创建 adapter并观察 SDK endpoint GET参数。用相同注册 suspend callback、archive入口和真实 quota逻辑切换 suspendMinutes/archiveInactiveDays/maxEditDebug/maxPerTeam；quota覆盖零与nullable，不扫描真实共享实例。 |
 ## 预期结果
 
-公共断言：Code Sandbox 和 MCP SSE 的连接及开关保存后只由实例配置决定；Agent Sandbox 同属 all 字段，社区版可用。沙箱 Token 与代理 secret 的 GET/保存响应完全省略，仅由 secretKeys/configuredSecretKeys 标记类型与已配置状态；省略保留、字符串替换（`******` 也是真实新凭据）、空串清空，非空值以 `{secret: cipher}` 加密存储，日志/证据不得暴露密钥。AI Proxy 和 Plugin 连接仍由 ENV 提供，不写入 `system_instance_configs`。缺少 AI Proxy endpoint 或 Token 时，不访问代理 mock，回落外呼也不携带代理 Token。S3 下载模式、externalEndpoint、cdnEndpoint 以 DB 为准，重定向预签名 TTL 固定最多 30 秒，不再提供 redirectTtlSeconds 配置字段，环境变量只在首次迁移时 seed；配置保存成功不得被 S3 清理、头像生命周期或后台刷新失败误报为失败。
+公共断言：Code Sandbox 和 MCP SSE 的连接及开关保存后只由实例配置决定；Agent Sandbox 同属 all 字段，社区版可用。沙箱 Token 与代理 secret 的 GET/保存响应在原字段位置只返回 `{isSecret:true}` 标记，未配置返回空串，不返回密钥路径列表；省略或精确标记保留、字符串替换（`******` 也是真实新凭据）、空串清空，非空值以 `{secret: cipher}` 加密存储，日志/证据不得暴露密钥。AI Proxy 和 Plugin 连接仍由 ENV 提供，不写入 `system_instance_configs`。缺少 AI Proxy endpoint 或 Token 时，不访问代理 mock，回落外呼也不携带代理 Token。S3 下载模式、externalEndpoint、cdnEndpoint 以 DB 为准，重定向预签名 TTL 固定最多 30 秒，不再提供 redirectTtlSeconds 配置字段，环境变量只在首次迁移时 seed；配置保存成功不得被 S3 清理、头像生命周期或后台刷新失败误报为失败。
 
 | 子场景 | 验证方式 | 特有预期 | 证据获取方式 |
 | --- | --- | --- | --- |

@@ -78,7 +78,7 @@ const CoreSettingComponent = () => {
   const feature = useDomainConfig('feature');
   const storage = useDomainConfig('storage');
   const providers = useDomainConfig('providers');
-  const configuredSecretKeys = providers.configuredSecretKeys;
+  const isSecretConfigured = providers.isSecretConfigured;
 
   const isLoading =
     site.isLoading ||
@@ -531,9 +531,7 @@ const CoreSettingComponent = () => {
                     name={field.name}
                     value={field.value}
                     onChange={field.onChange}
-                    isConfigured={configuredSecretKeys.includes(
-                      'documentParse.customPdf.somarkApiKey'
-                    )}
+                    isConfigured={isSecretConfigured('documentParse.customPdf.somarkApiKey')}
                   />
                 )}
               />
@@ -564,7 +562,7 @@ const CoreSettingComponent = () => {
                     name={field.name}
                     value={field.value}
                     onChange={field.onChange}
-                    isConfigured={configuredSecretKeys.includes('documentParse.customPdf.doc2xKey')}
+                    isConfigured={isSecretConfigured('documentParse.customPdf.doc2xKey')}
                   />
                 )}
               />
@@ -595,9 +593,7 @@ const CoreSettingComponent = () => {
                       name={field.name}
                       value={field.value}
                       onChange={field.onChange}
-                      isConfigured={configuredSecretKeys.includes(
-                        'documentParse.customPdf.textinAppId'
-                      )}
+                      isConfigured={isSecretConfigured('documentParse.customPdf.textinAppId')}
                     />
                   )}
                 />
@@ -616,9 +612,7 @@ const CoreSettingComponent = () => {
                       name={field.name}
                       value={field.value}
                       onChange={field.onChange}
-                      isConfigured={configuredSecretKeys.includes(
-                        'documentParse.customPdf.textinSecretCode'
-                      )}
+                      isConfigured={isSecretConfigured('documentParse.customPdf.textinSecretCode')}
                     />
                   )}
                 />
@@ -674,9 +668,7 @@ const CoreSettingComponent = () => {
                                 name={field.name}
                                 value={field.value}
                                 onChange={field.onChange}
-                                isConfigured={configuredSecretKeys.includes(
-                                  'documentParse.customPdf.key'
-                                )}
+                                isConfigured={isSecretConfigured('documentParse.customPdf.key')}
                               />
                             )}
                           />
@@ -737,9 +729,7 @@ const CoreSettingComponent = () => {
                                 name={field.name}
                                 value={field.value}
                                 onChange={field.onChange}
-                                isConfigured={configuredSecretKeys.includes(
-                                  'documentParse.sangfor.key'
-                                )}
+                                isConfigured={isSecretConfigured('documentParse.sangfor.key')}
                               />
                             )}
                           />
@@ -820,7 +810,7 @@ const CoreSettingComponent = () => {
                     name={field.name}
                     value={field.value}
                     onChange={field.onChange}
-                    isConfigured={auth.configuredSecretKeys.includes('loginProviders.email.pass')}
+                    isConfigured={auth.isSecretConfigured('loginProviders.email.pass')}
                   />
                 )}
               />
@@ -890,9 +880,7 @@ const CoreSettingComponent = () => {
                     name={field.name}
                     value={field.value}
                     onChange={field.onChange}
-                    isConfigured={auth.configuredSecretKeys.includes(
-                      'loginProviders.phone.accessKeySecret'
-                    )}
+                    isConfigured={auth.isSecretConfigured('loginProviders.phone.accessKeySecret')}
                   />
                 )}
               />

@@ -48,7 +48,7 @@ const CommercialSettingComponent = () => {
   const {
     revision,
     effectiveConfig,
-    configuredSecretKeys,
+    isSecretConfigured,
     overrides: commercialOverrides,
     isLoading,
     isUpdating,
@@ -231,7 +231,7 @@ const CommercialSettingComponent = () => {
                   name={field.name}
                   value={field.value}
                   onChange={field.onChange}
-                  isConfigured={configuredSecretKeys.includes('payment.wx.apiV3Key')}
+                  isConfigured={isSecretConfigured('payment.wx.apiV3Key')}
                 />
               )}
             />
@@ -259,7 +259,7 @@ const CommercialSettingComponent = () => {
                 name={field.name}
                 value={field.value}
                 onChange={field.onChange}
-                isConfigured={configuredSecretKeys.includes('payment.wx.privateKey')}
+                isConfigured={isSecretConfigured('payment.wx.privateKey')}
                 multiline
                 rows={6}
                 placeholder="-----BEGIN PRIVATE KEY-----"
@@ -299,7 +299,7 @@ const CommercialSettingComponent = () => {
                   name={field.name}
                   value={field.value}
                   onChange={field.onChange}
-                  isConfigured={configuredSecretKeys.includes('payment.alipay.appPrivateKey')}
+                  isConfigured={isSecretConfigured('payment.alipay.appPrivateKey')}
                   multiline
                   rows={5}
                   placeholder="-----BEGIN RSA PRIVATE KEY-----"
@@ -319,7 +319,7 @@ const CommercialSettingComponent = () => {
                   name={field.name}
                   value={field.value}
                   onChange={field.onChange}
-                  isConfigured={configuredSecretKeys.includes('payment.alipay.appCertContent')}
+                  isConfigured={isSecretConfigured('payment.alipay.appCertContent')}
                   multiline
                   rows={5}
                   placeholder="-----BEGIN CERTIFICATE-----"
@@ -339,7 +339,7 @@ const CommercialSettingComponent = () => {
                   name={field.name}
                   value={field.value}
                   onChange={field.onChange}
-                  isConfigured={configuredSecretKeys.includes('payment.alipay.rootCertContent')}
+                  isConfigured={isSecretConfigured('payment.alipay.rootCertContent')}
                   multiline
                   rows={5}
                   placeholder="-----BEGIN CERTIFICATE-----"
@@ -359,7 +359,7 @@ const CommercialSettingComponent = () => {
                   name={field.name}
                   value={field.value}
                   onChange={field.onChange}
-                  isConfigured={configuredSecretKeys.includes('payment.alipay.publicCertContent')}
+                  isConfigured={isSecretConfigured('payment.alipay.publicCertContent')}
                   multiline
                   rows={5}
                   placeholder="-----BEGIN CERTIFICATE-----"

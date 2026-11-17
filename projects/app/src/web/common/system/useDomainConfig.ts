@@ -7,12 +7,14 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { ToastHandledError } from '@fastgpt/global/common/error/utils';
 import type { SystemInstanceConfigDomainKey } from '@fastgpt/global/common/system/config/schema';
 import type { SystemInstanceConfigDomainMap } from '@fastgpt/global/common/system/config/schema';
-import type { DeepPartial } from '@fastgpt/global/common/system/config/type';
 import { deepMergeConfig } from '@fastgpt/global/common/system/config/merge';
 import {
   filterDomainDataByEdition,
-  getSystemEdition
+  getSystemEdition,
+  getDomainSecretKeys,
+  omitDomainSecrets
 } from '@fastgpt/global/common/system/config/permission';
+import { isConfiguredSecret } from '@fastgpt/global/common/system/config/secret';
 import type {
   GetDomainConfigResponse,
   UpdateDomainConfigBody,
@@ -39,7 +41,6 @@ export const updateDomainConfigApi = (
 };
 
 const EMPTY_OBJECT: Record<string, never> = {};
-const EMPTY_SECRET_KEYS: string[] = [];
 
 /**
  * 前端配置页面专用的 React Hook：
@@ -105,18 +106,26 @@ export const useDomainConfig = <T extends SystemInstanceConfigDomainKey>(domain:
   // 密钥保存后公开字段可能完全相同；服务端快照（含 revision）变化时发布新对象，
   // 让页面 reset 清除本地明文草稿。同一快照仍复用对象，避免覆盖未保存编辑。
   const effectiveConfig = useMemo(
-    () => (data ? { ...data.effectiveConfig } : EMPTY_OBJECT),
-    [data]
+    () => (data ? omitDomainSecrets(domain, data.effectiveConfig) : EMPTY_OBJECT),
+    [data, domain]
   );
-  const overrides = (data?.overrides ?? EMPTY_OBJECT) as DeepPartial<
-    SystemInstanceConfigDomainMap[T]
-  >;
+  const overrides = data?.overrides ?? EMPTY_OBJECT;
+
+  /** 从字段内标记读取状态；标记不进入字符串表单草稿，编辑时仍从空草稿开始。 */
+  const isSecretConfigured = (path: string) => {
+    if (!getDomainSecretKeys(domain).has(path)) return false;
+    const value = path.split('.').reduce<unknown>((parent, key) => {
+      if (typeof parent !== 'object' || parent === null || Array.isArray(parent)) return undefined;
+      return (parent as Record<string, unknown>)[key];
+    }, data?.effectiveConfig);
+    return isConfiguredSecret(value);
+  };
 
   /**
    * 页面补丁先与当前公开快照中的稀疏 overrides 合并，再交给服务端保存。
    *
    * 服务端还会与数据库现值合并：普通对象递归合并，数组、标量和 null 整体覆盖，
-   * 未提交的字段保持不变。公开快照不包含密钥，省略的密钥同样由服务端保留。
+   * 未提交字段保持不变；原字段内的密钥标记可直接回提交，由服务端保留现值。
    */
   const patchConfig = (partial: Record<string, unknown>, options?: { silent?: boolean }) =>
     submitOverrides({
@@ -133,8 +142,7 @@ export const useDomainConfig = <T extends SystemInstanceConfigDomainKey>(domain:
     revision,
     effectiveConfig: effectiveConfig as SystemInstanceConfigDomainMap[T],
     overrides,
-    secretKeys: data?.secretKeys ?? EMPTY_SECRET_KEYS,
-    configuredSecretKeys: data?.configuredSecretKeys ?? EMPTY_SECRET_KEYS,
+    isSecretConfigured,
     updatedAt: data?.updatedAt,
     updatedBy: data?.updatedBy,
     isLoading,

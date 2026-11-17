@@ -30,7 +30,7 @@ describe('instance config get API', () => {
     expect(result.overrides).toEqual({ publicUrl: 'https://fastgpt.example.com' });
   });
 
-  it('reports configured paths without returning stored or plaintext secrets', async () => {
+  it('returns inline configured markers without returning stored or plaintext secrets', async () => {
     await updateDomainConfig({
       domain: 'providers',
       expectedRevision: 0,
@@ -55,11 +55,13 @@ describe('instance config get API', () => {
       'documentParse.customPdf.url',
       'https://pdf.example.com'
     );
-    expect(result.overrides).not.toHaveProperty('documentParse.customPdf.key');
-    expect(result.effectiveConfig).not.toHaveProperty('documentParse.customPdf.key');
-    expect(result.secretKeys).toContain('documentParse.customPdf.key');
-    expect(result.configuredSecretKeys).toContain('documentParse.customPdf.key');
-    expect(result.configuredSecretKeys).not.toContain('documentParse.customPdf.doc2xKey');
+    expect(result.overrides).toHaveProperty('documentParse.customPdf.key', { isSecret: true });
+    expect(result.effectiveConfig).toHaveProperty('documentParse.customPdf.key', {
+      isSecret: true
+    });
+    expect(result.effectiveConfig).toHaveProperty('documentParse.customPdf.doc2xKey', '');
+    expect(result).not.toHaveProperty('secretKeys');
+    expect(result).not.toHaveProperty('configuredSecretKeys');
     const response = JSON.stringify(result);
     expect(response).not.toContain('private-api-key');
     expect(response).not.toContain(cipher?.secret ?? '');

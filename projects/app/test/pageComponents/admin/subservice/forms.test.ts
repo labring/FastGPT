@@ -6,9 +6,11 @@ import { resolveDomainEffectiveConfig } from '@fastgpt/global/common/system/conf
 import { SubserviceConfigSchema } from '@fastgpt/global/common/system/config/schemas/subservice';
 import { deepMergeConfig } from '@fastgpt/global/common/system/config/merge';
 import {
-  getConfiguredDomainSecretKeys,
+  markDomainSecrets,
   omitDomainSecrets
 } from '@fastgpt/global/common/system/config/permission';
+
+import { isConfiguredSecret } from '@fastgpt/global/common/system/config/secret';
 
 const mocks = vi.hoisted(() => ({
   patch: vi.fn(),
@@ -27,7 +29,15 @@ vi.mock('@/web/common/system/useDomainConfig', () => ({
         () => omitDomainSecrets('subservice', effectiveConfig),
         [effectiveConfig]
       ),
-      configuredSecretKeys: getConfiguredDomainSecretKeys('subservice', mocks.effectiveConfig),
+      isSecretConfigured: (path: string) =>
+        isConfiguredSecret(
+          path
+            .split('.')
+            .reduce<any>(
+              (value, key) => value?.[key],
+              markDomainSecrets('subservice', mocks.effectiveConfig)
+            )
+        ),
       isLoading: false,
       isUpdating: false,
       patchConfig: mocks.patch

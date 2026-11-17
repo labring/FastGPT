@@ -1,10 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { resolveSystemInstanceConfig } from '../../../../common/system/config/schema';
 import { buildCustomDomainFeConfig } from '../../../../common/system/config/frontendProjection';
-import {
-  omitDomainSecrets,
-  getConfiguredDomainSecretKeys
-} from '../../../../common/system/config/permission';
+import { omitDomainSecrets, markDomainSecrets } from '../../../../common/system/config/permission';
 import {
   adminConfigPageFieldsMap,
   countPageVisibleFields
@@ -30,11 +27,15 @@ describe('SaaS custom domain configuration', () => {
     });
   });
 
-  it('omits saved kubeconfig and exposes only configured paths', () => {
+  it('omits kubeconfig from public data and returns an inline marker for admin data', () => {
     const projected = omitDomainSecrets('site', site);
     expect(projected.customDomain.kc).not.toHaveProperty('aliyun');
     expect(projected.customDomain.issuerServiceName.aliyun).toBe('issuer');
-    expect(getConfiguredDomainSecretKeys('site', site)).toEqual(['customDomain.kc.aliyun']);
+    expect(markDomainSecrets('site', site)).toHaveProperty('customDomain.kc', {
+      aliyun: { isSecret: true },
+      tencent: '',
+      volcengine: ''
+    });
   });
 
   it.each([

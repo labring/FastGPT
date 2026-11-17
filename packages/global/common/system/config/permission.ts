@@ -1,5 +1,6 @@
 import { type SystemInstanceConfigEdition, systemInstanceConfigRegistry } from './registry';
 import type { SystemInstanceConfigDomainKey, SystemInstanceConfigScopeKey } from './schema';
+import { isConfiguredSecret } from './secret';
 
 /**
  * 判断当前系统部署版本。
@@ -135,7 +136,9 @@ const filterDomainDataByAllowedKeys = <T>(
 
       const path = currentPath ? `${currentPath}.${key}` : key;
 
-      if (isPlainObject(value)) {
+      if (isConfiguredSecret(value) && allowedRelativeKeys.has(path)) {
+        result[key] = { isSecret: true };
+      } else if (isPlainObject(value)) {
         const cleanedNested = cleanObject(value, path);
         if (Object.keys(cleanedNested).length > 0) {
           result[key] = cleanedNested;
@@ -207,7 +210,7 @@ export const getDomainSecretKeys = (domain: SystemInstanceConfigScopeKey): Set<s
   return secretKeysByDomain[domain as SystemInstanceConfigDomainKey] ?? new Set();
 };
 
-/** 管理响应完全省略敏感叶子，不返回明文、密文或可回提交的掩码。 */
+/** 公开投影或表单草稿完全省略敏感叶子，不返回明文、密文或掩码。 */
 export const omitDomainSecrets = <T>(domain: SystemInstanceConfigDomainKey, data: T): T => {
   const keys = getDomainSecretKeys(domain);
   const walk = (value: unknown, path = ''): unknown => {
@@ -222,14 +225,46 @@ export const omitDomainSecrets = <T>(domain: SystemInstanceConfigDomainKey, data
   return walk(data) as T;
 };
 
-/** 只返回已配置密钥的相对路径；值由服务端解密后判断，默认凭据也能显示配置状态。 */
-export const getConfiguredDomainSecretKeys = (
+/** 管理表单响应在原字段位置返回已配置标记；未配置返回空串，稀疏 overrides 不补字段。 */
+export const markDomainSecrets = (
   domain: SystemInstanceConfigDomainKey,
   data: unknown
-): string[] =>
-  [...getDomainSecretKeys(domain)].filter((path) => {
-    const value = path
-      .split('.')
-      .reduce<unknown>((parent, key) => (isPlainObject(parent) ? parent[key] : undefined), data);
-    return typeof value === 'string' && value.trim().length > 0;
-  });
+): Record<string, unknown> => {
+  const keys = getDomainSecretKeys(domain);
+  const walk = (value: unknown, path = ''): unknown => {
+    if (keys.has(path)) {
+      return typeof value === 'string' && value.trim().length > 0 ? { isSecret: true } : '';
+    }
+    if (!isPlainObject(value)) return value;
+    return Object.fromEntries(
+      Object.entries(value)
+        .filter(([, child]) => child !== undefined)
+        .map(([key, child]) => [key, walk(child, path ? `${path}.${key}` : key)])
+    );
+  };
+  return walk(data) as Record<string, unknown>;
+};
+
+/**
+ * 精确密钥标记等价于未提交，由服务端与当前库中值合并后保留；不接受客户端提供的密文。
+ * 仅处理注册的密钥叶子，其余对象原样交给域 Schema 拒绝，避免标记绕过普通字段校验。
+ */
+export const stripDomainSecretMarkers = (
+  domain: SystemInstanceConfigDomainKey,
+  data: Record<string, unknown>
+): Record<string, unknown> => {
+  const keys = getDomainSecretKeys(domain);
+  const walk = (value: unknown, path = ''): unknown => {
+    if (!isPlainObject(value)) return value;
+    return Object.fromEntries(
+      Object.entries(value).flatMap(([key, child]) => {
+        const nextPath = path ? `${path}.${key}` : key;
+        if (keys.has(nextPath)) {
+          return isConfiguredSecret(child) ? [] : [[key, child]];
+        }
+        return [[key, walk(child, nextPath)]];
+      })
+    );
+  };
+  return walk(data) as Record<string, unknown>;
+};

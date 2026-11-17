@@ -3,6 +3,7 @@ import type { ApiRequestProps } from '@fastgpt/next/type';
 import { imageBaseUrl } from '@fastgpt/global/common/file/image/constants';
 import { deepMergeConfig } from '@fastgpt/global/common/system/config/merge';
 import { parseDomainOverrides } from '@fastgpt/global/common/system/config/schema';
+import { stripDomainSecretMarkers } from '@fastgpt/global/common/system/config/permission';
 import { ApiRequestInputParseError } from '@fastgpt/service/common/zod/requestParseError';
 import { ZodError } from 'zod';
 import { NextAPI } from '@/service/middleware/entry';
@@ -135,7 +136,10 @@ async function handler(
   );
   if (siteItem) {
     try {
-      parseDomainOverrides({ domain: 'site', overrides: siteItem.overrides });
+      parseDomainOverrides({
+        domain: 'site',
+        overrides: stripDomainSecretMarkers('site', siteItem.overrides)
+      });
     } catch (error) {
       if (error instanceof ZodError) {
         throw new ApiRequestInputParseError(error, { inputSource: 'body' });
@@ -145,7 +149,10 @@ async function handler(
   }
   if (authAvatarItem) {
     try {
-      parseDomainOverrides({ domain: 'auth', overrides: authAvatarItem.overrides });
+      parseDomainOverrides({
+        domain: 'auth',
+        overrides: stripDomainSecretMarkers('auth', authAvatarItem.overrides)
+      });
     } catch (error) {
       if (error instanceof ZodError) {
         throw new ApiRequestInputParseError(error, { inputSource: 'body' });

@@ -35,8 +35,6 @@ async function handler(req: ApiRequestProps): Promise<GetDomainConfigResponse> {
     revision: result.revision,
     effectiveConfig: result.effectiveConfig,
     overrides: result.overrides,
-    secretKeys: result.secretKeys,
-    configuredSecretKeys: result.configuredSecretKeys,
     updatedAt: result.updatedAt,
     updatedBy: result.updatedBy
   });

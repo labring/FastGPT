@@ -26,7 +26,7 @@ const CustomDomainSettingComponent = () => {
     [t]
   );
   const { filterConfigData } = useAdminPermission();
-  const { effectiveConfig, configuredSecretKeys, isLoading, isUpdating, patchConfig } =
+  const { effectiveConfig, isSecretConfigured, isLoading, isUpdating, patchConfig } =
     useDomainConfig('site');
   const { register, control, handleSubmit, reset } = useForm<CustomDomainForm>({
     defaultValues: effectiveConfig.customDomain
@@ -94,7 +94,7 @@ const CustomDomainSettingComponent = () => {
                     name={field.name}
                     value={field.value}
                     onChange={field.onChange}
-                    isConfigured={configuredSecretKeys.includes(`customDomain.kc.${key}`)}
+                    isConfigured={isSecretConfigured(`customDomain.kc.${key}`)}
                     multiline
                     rows={8}
                     spellCheck={false}

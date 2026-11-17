@@ -34,7 +34,7 @@ const isValidOptionalUrl = (url?: string) => !url || isValidHttpUrl(url);
 
 const AgentSandboxSubserviceComponent = () => {
   const { t } = useSafeTranslation();
-  const { effectiveConfig, configuredSecretKeys, isLoading, isUpdating, patchConfig } =
+  const { effectiveConfig, isSecretConfigured, isLoading, isUpdating, patchConfig } =
     useDomainConfig('subservice');
 
   const tocItems: SettingTOCItem[] = [
@@ -237,9 +237,7 @@ const AgentSandboxSubserviceComponent = () => {
                                 name={field.name}
                                 value={field.value}
                                 onChange={field.onChange}
-                                isConfigured={configuredSecretKeys.includes(
-                                  'agentSandbox.sealosdevbox.token'
-                                )}
+                                isConfigured={isSecretConfigured('agentSandbox.sealosdevbox.token')}
                               />
                             )}
                           />
@@ -321,9 +319,7 @@ const AgentSandboxSubserviceComponent = () => {
                                 name={field.name}
                                 value={field.value}
                                 onChange={field.onChange}
-                                isConfigured={configuredSecretKeys.includes(
-                                  'agentSandbox.opensandbox.apiKey'
-                                )}
+                                isConfigured={isSecretConfigured('agentSandbox.opensandbox.apiKey')}
                               />
                             )}
                           />
@@ -491,7 +487,7 @@ const AgentSandboxSubserviceComponent = () => {
                                 name={field.name}
                                 value={field.value}
                                 onChange={field.onChange}
-                                isConfigured={configuredSecretKeys.includes(
+                                isConfigured={isSecretConfigured(
                                   'agentSandbox.opensandbox.volumeManagerToken'
                                 )}
                               />
@@ -537,7 +533,7 @@ const AgentSandboxSubserviceComponent = () => {
                       if (isSecret) {
                         if (
                           value === undefined &&
-                          configuredSecretKeys.includes('agentSandbox.proxy.secret')
+                          isSecretConfigured('agentSandbox.proxy.secret')
                         ) {
                           return true;
                         }
@@ -558,7 +554,7 @@ const AgentSandboxSubserviceComponent = () => {
                         name={field.name}
                         value={field.value}
                         onChange={field.onChange}
-                        isConfigured={configuredSecretKeys.includes('agentSandbox.proxy.secret')}
+                        isConfigured={isSecretConfigured('agentSandbox.proxy.secret')}
                         isInvalid={Boolean(error)}
                       />
                     ) : (

@@ -19,6 +19,7 @@ describe('useDomainConfig', () => {
   let container: HTMLDivElement;
   let client: QueryClient;
   let config: ReturnType<typeof useDomainConfig<'site'>>;
+  let providerConfig: ReturnType<typeof useDomainConfig<'providers'>>;
   let edit: (value: string) => void;
   let save: () => Promise<unknown>;
 
@@ -35,14 +36,49 @@ describe('useDomainConfig', () => {
     return React.createElement('input', { value: draft, readOnly: true });
   };
 
-  const render = async () => {
+  /** 密钥只存在于本地草稿；真实 hook 发布新快照后清除草稿，状态从字段内标记读取。 */
+  const ProviderForm = () => {
+    const current = useDomainConfig('providers');
+    providerConfig = current;
+    const [draft, setDraft] = useState('');
+    edit = setDraft;
+    useEffect(() => setDraft(''), [current.effectiveConfig]);
+    return React.createElement('input', { value: draft, readOnly: true });
+  };
+
+  const providerSnapshot = (revision: number, configured = true, price = 0) => ({
+    domain: 'providers',
+    revision,
+    overrides: {
+      documentParse: {
+        customPdf: {
+          url: 'https://pdf.example.com',
+          ...(configured ? { key: { isSecret: true } } : {}),
+          ...(price ? { price } : {})
+        }
+      }
+    },
+    effectiveConfig: {
+      documentParse: {
+        customPdf: {
+          url: 'https://pdf.example.com',
+          key: configured ? { isSecret: true } : '',
+          price
+        }
+      }
+    }
+  });
+
+  const render = async (Component: React.ComponentType = Form) => {
     await act(async () => {
-      root.render(React.createElement(QueryClientProvider, { client }, React.createElement(Form)));
+      root.render(
+        React.createElement(QueryClientProvider, { client }, React.createElement(Component))
+      );
     });
     await act(async () => {
       await new Promise((resolve) => setTimeout(resolve, 10));
     });
-    expect(config.isLoading).toBe(false);
+    expect(Component === Form ? config.isLoading : providerConfig.isLoading).toBe(false);
   };
 
   beforeEach(async () => {
@@ -56,8 +92,7 @@ describe('useDomainConfig', () => {
     mocks.get.mockResolvedValue({
       revision: 3,
       overrides: { name: 'Original' },
-      effectiveConfig: { name: 'Original' },
-      secretKeys: []
+      effectiveConfig: { name: 'Original' }
     });
     client = new QueryClient({ defaultOptions: { queries: { retry: false, cacheTime: 0 } } });
     container = document.createElement('div');
@@ -96,8 +131,7 @@ describe('useDomainConfig', () => {
     mocks.get.mockResolvedValue({
       revision: 4,
       overrides: { name: 'Changed elsewhere' },
-      effectiveConfig: { name: 'Changed elsewhere' },
-      secretKeys: []
+      effectiveConfig: { name: 'Changed elsewhere' }
     });
     mocks.post.mockRejectedValue(new Error('Revision conflict: current revision is 4'));
 
@@ -129,8 +163,7 @@ describe('useDomainConfig', () => {
     mocks.get.mockResolvedValue({
       revision: 4,
       overrides: { name: 'Latest' },
-      effectiveConfig: { name: 'Latest' },
-      secretKeys: []
+      effectiveConfig: { name: 'Latest' }
     });
     await act(async () => {
       await config.refetch();
@@ -170,33 +203,95 @@ describe('useDomainConfig', () => {
   });
 
   it('publishes a new form snapshot when a secret-only save advances the revision', async () => {
-    await render();
-    const previousSnapshot = config.effectiveConfig;
+    mocks.get.mockResolvedValue(providerSnapshot(3));
+    await render(ProviderForm);
+    const previousSnapshot = providerConfig.effectiveConfig;
     await act(async () => edit('Local plaintext draft'));
     mocks.post.mockResolvedValue({ results: [] });
-    // 密钥不在公开配置中，保存后只有 revision 和已配置标记发生变化。
-    mocks.get.mockResolvedValue({
-      revision: 4,
-      overrides: { name: 'Original' },
-      effectiveConfig: { name: 'Original' },
-      secretKeys: ['kcServerAuth'],
-      configuredSecretKeys: ['kcServerAuth']
-    });
+    // 密钥替换后标记仍为 true；revision 必须让只含公开字段的表单快照更新。
+    mocks.get.mockResolvedValue(providerSnapshot(4));
 
     await act(async () => {
-      await config.patchConfig({ kcServerAuth: 'synthetic-secret' });
+      await providerConfig.patchConfig({
+        documentParse: { customPdf: { key: 'synthetic-secret' } }
+      });
       await new Promise((resolve) => setTimeout(resolve, 0));
     });
 
-    expect(config.effectiveConfig).toEqual(previousSnapshot);
-    expect(config.effectiveConfig).not.toBe(previousSnapshot);
-    expect(container.querySelector('input')?.value).toBe('Original');
+    expect(mocks.post.mock.calls[0][1].items[0]).toMatchObject({
+      domain: 'providers',
+      expectedRevision: 3,
+      overrides: { documentParse: { customPdf: { key: 'synthetic-secret' } } }
+    });
+    expect(providerConfig.effectiveConfig.documentParse.customPdf.url).toBe(
+      previousSnapshot.documentParse.customPdf.url
+    );
+    expect(providerConfig.effectiveConfig).toEqual(previousSnapshot);
+    expect(providerConfig.effectiveConfig).not.toHaveProperty('documentParse.customPdf.key');
+    expect(providerConfig.isSecretConfigured('documentParse.customPdf.key')).toBe(true);
+    expect(providerConfig.effectiveConfig).not.toBe(previousSnapshot);
+    expect(container.querySelector('input')?.value).toBe('');
 
-    const savedSnapshot = config.effectiveConfig;
+    const savedSnapshot = providerConfig.effectiveConfig;
+    await act(async () => edit('New unsaved plaintext draft'));
     await act(async () => {
-      await config.refetch();
+      await providerConfig.refetch();
       await new Promise((resolve) => setTimeout(resolve, 0));
     });
-    expect(config.effectiveConfig).toBe(savedSnapshot);
+    expect(providerConfig.effectiveConfig).toBe(savedSnapshot);
+    expect(container.querySelector('input')?.value).toBe('New unsaved plaintext draft');
+  });
+
+  it('round-trips a configured marker but lets explicit clear and replacement override it', async () => {
+    mocks.get.mockResolvedValue(providerSnapshot(3));
+    mocks.post.mockResolvedValue({ results: [] });
+    await render(ProviderForm);
+    expect(providerConfig.isSecretConfigured('documentParse.customPdf.key')).toBe(true);
+    expect(providerConfig.effectiveConfig).not.toHaveProperty('documentParse.customPdf.key');
+
+    mocks.get.mockResolvedValue(providerSnapshot(4, true, 2));
+    await act(async () => {
+      await providerConfig.patchConfig({ documentParse: { customPdf: { price: 2 } } });
+    });
+    expect(mocks.post.mock.calls[0][1].items[0]).toEqual({
+      domain: 'providers',
+      expectedRevision: 3,
+      overrides: {
+        documentParse: {
+          customPdf: { url: 'https://pdf.example.com', key: { isSecret: true }, price: 2 }
+        }
+      }
+    });
+
+    mocks.get.mockResolvedValue(providerSnapshot(5, true, 2));
+    await act(async () => {
+      await providerConfig.patchConfig({
+        documentParse: { customPdf: { key: 'synthetic-replacement' } }
+      });
+    });
+    expect(mocks.post.mock.calls[1][1].items[0]).toEqual({
+      domain: 'providers',
+      expectedRevision: 4,
+      overrides: {
+        documentParse: {
+          customPdf: { url: 'https://pdf.example.com', key: 'synthetic-replacement', price: 2 }
+        }
+      }
+    });
+    expect(providerConfig.isSecretConfigured('documentParse.customPdf.key')).toBe(true);
+
+    mocks.get.mockResolvedValue(providerSnapshot(6, false, 2));
+    await act(async () => {
+      await providerConfig.patchConfig({ documentParse: { customPdf: { key: '' } } });
+    });
+    expect(mocks.post.mock.calls[2][1].items[0]).toEqual({
+      domain: 'providers',
+      expectedRevision: 5,
+      overrides: {
+        documentParse: { customPdf: { url: 'https://pdf.example.com', key: '', price: 2 } }
+      }
+    });
+    expect(providerConfig.isSecretConfigured('documentParse.customPdf.key')).toBe(false);
+    expect(providerConfig.effectiveConfig).not.toHaveProperty('documentParse.customPdf.key');
   });
 });

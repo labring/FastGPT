@@ -22,7 +22,7 @@ vi.mock('@/web/common/system/useDomainConfig', () => ({
         site: { name: 'Unrelated site name', customDomain: { enable: mocks.enabled } }
       }).site
     ),
-    configuredSecretKeys: ['customDomain.kc.aliyun'],
+    isSecretConfigured: (path: string) => path === 'customDomain.kc.aliyun',
     isLoading: false,
     isUpdating: false,
     patchConfig: mocks.patch

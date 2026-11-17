@@ -3,7 +3,10 @@ import {
   adminConfigPageFieldsMap,
   countPageVisibleFields
 } from '@fastgpt/global/common/system/config/pageFields';
-import { resolveSystemInstanceConfig } from '@fastgpt/global/common/system/config/schema';
+import {
+  parseDomainOverrides,
+  resolveSystemInstanceConfig
+} from '@fastgpt/global/common/system/config/schema';
 import {
   getSystemEdition,
   isCommunityEdition,
@@ -12,7 +15,8 @@ import {
   getDomainAllowedKeys,
   filterDomainDataByEdition,
   omitDomainSecrets,
-  getConfiguredDomainSecretKeys
+  markDomainSecrets,
+  stripDomainSecretMarkers
 } from '@fastgpt/global/common/system/config/permission';
 
 describe('Edition detection', () => {
@@ -185,15 +189,69 @@ describe('Field permissions by edition', () => {
 });
 
 describe('configuration secret projection', () => {
-  it('omits sensitive leaves entirely and reports only configured paths', () => {
+  it('returns inline state without values and preserves edition filtering', () => {
+    const input = {
+      loginProviders: { github: { clientId: 'client-id', secret: 'private-key' } }
+    };
+    const projected = markDomainSecrets('auth', input);
+    expect(projected).toEqual({
+      loginProviders: { github: { clientId: 'client-id', secret: { isSecret: true } } }
+    });
+    expect(
+      filterDomainDataByEdition({ domain: 'auth', data: projected, edition: 'community' })
+    ).toEqual({});
+    expect(filterDomainDataByEdition({ domain: 'auth', data: projected, edition: 'pro' })).toEqual(
+      projected
+    );
+    expect(input.loginProviders.github.secret).toBe('private-key');
+    expect(
+      markDomainSecrets('providers', {
+        documentParse: { customPdf: { key: '', doc2xKey: '  ', price: 2 } }
+      })
+    ).toEqual({ documentParse: { customPdf: { key: '', doc2xKey: '', price: 2 } } });
+  });
+
+  it('accepts only exact markers at registered secret leaves and keeps clear/replace values', () => {
+    const data = {
+      documentParse: {
+        customPdf: {
+          key: { isSecret: true },
+          doc2xKey: '',
+          somarkApiKey: 'new-key'
+        }
+      }
+    };
+    expect(stripDomainSecretMarkers('providers', data)).toEqual({
+      documentParse: { customPdf: { doc2xKey: '', somarkApiKey: 'new-key' } }
+    });
+    expect(data.documentParse.customPdf.key).toEqual({ isSecret: true });
+    for (const invalid of [
+      { isSecret: false },
+      { isSecret: 'true' },
+      { isSecret: true, secret: 'injected' },
+      { isSecret: true, extra: 1 },
+      { secret: 'client-cipher' },
+      null,
+      []
+    ]) {
+      const overrides = stripDomainSecretMarkers('providers', {
+        documentParse: { customPdf: { key: invalid } }
+      });
+      expect(() => parseDomainOverrides({ domain: 'providers', overrides })).toThrow();
+    }
+    const nonSecret = stripDomainSecretMarkers('providers', {
+      documentParse: { customPdf: { url: { isSecret: true } } }
+    });
+    expect(nonSecret).toHaveProperty('documentParse.customPdf.url', { isSecret: true });
+    expect(() => parseDomainOverrides({ domain: 'providers', overrides: nonSecret })).toThrow();
+  });
+
+  it('omits all secret leaves from public projections and form drafts', () => {
     const input = {
       documentParse: { customPdf: { key: 'plain', somarkApiKey: '', doc2xKey: '  ', price: 2 } }
     };
     const projected = omitDomainSecrets('providers', input);
     expect(projected).toEqual({ documentParse: { customPdf: { price: 2 } } });
-    expect(getConfiguredDomainSecretKeys('providers', input)).toEqual([
-      'documentParse.customPdf.key'
-    ]);
     expect(input.documentParse.customPdf.key).toBe('plain');
     expect(omitDomainSecrets('site', { name: 'Test' })).toEqual({ name: 'Test' });
   });

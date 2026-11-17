@@ -12,12 +12,11 @@ import {
   type SystemInstanceConfig
 } from '@fastgpt/global/common/system/config/schema';
 import {
-  omitDomainSecrets,
-  getConfiguredDomainSecretKeys,
+  markDomainSecrets,
+  stripDomainSecretMarkers,
   getSystemEdition,
   getDomainSecretKeys,
   getDomainAllowedKeys,
-  isConfigFieldAllowed,
   filterDomainDataByEdition
 } from '@fastgpt/global/common/system/config/permission';
 import {
@@ -52,14 +51,12 @@ export type GetDomainConfigResult<T extends SystemInstanceConfigDomainKey> = {
   updatedBy?: SystemInstanceConfigUpdatedByType;
 };
 
-/** Admin API 读取结果：配置数据按部署版本过滤，并附带可见的敏感字段路径列表。 */
+/** Admin API 读取结果：按部署版本过滤，密钥叶子只返回已配置标记。 */
 export type AdminDomainConfigResult<T extends SystemInstanceConfigDomainKey> = {
   domain: T;
   revision: number;
-  overrides: Partial<DeepPartial<SystemInstanceConfigDomainMap[T]>>;
-  effectiveConfig: Partial<SystemInstanceConfigDomainMap[T]>;
-  secretKeys: string[];
-  configuredSecretKeys: string[];
+  overrides: Record<string, unknown>;
+  effectiveConfig: Record<string, unknown>;
   updatedAt?: Date;
   updatedBy?: SystemInstanceConfigUpdatedByType;
 };
@@ -91,6 +88,7 @@ export const findOverridesNotAllowedByEdition = ({
   }
 
   const allowedKeys = getDomainAllowedKeys(domain, edition);
+  const secretKeys = getDomainSecretKeys(domain);
   const offenders: string[] = [];
 
   const walk = (obj: Record<string, unknown>, currentPath = '') => {
@@ -98,7 +96,9 @@ export const findOverridesNotAllowedByEdition = ({
       if (value === undefined) continue;
       const path = currentPath ? `${currentPath}.${key}` : key;
       // 与 filterDomainDataByEdition 一致：仅对普通对象下钻，数组和标量按叶子处理
-      if (
+      if (secretKeys.has(path)) {
+        if (!allowedKeys.has(path)) offenders.push(path);
+      } else if (
         typeof value === 'object' &&
         value !== null &&
         !Array.isArray(value) &&
@@ -122,7 +122,7 @@ export const findOverridesNotAllowedByEdition = ({
 /**
  * Admin API 专用的 Domain 配置读取：在 getDomainConfig 基础上按部署版本过滤。
  * - effectiveConfig / overrides 剔除当前版本不允许的字段（防止社区版通过手工请求读取商业配置）
- * - secretKeys 同样按版本过滤，避免泄露商业字段路径
+ * - 密钥状态标记同样按版本过滤，避免泄露商业字段路径
  * 版本边界必须由后端强制，不能只依赖前端隐藏（设计文档 §6 规则 2、§12 第 6 条）。
  * @param edition 缺省取服务端权威部署版本（PRO_URL 判定）
  */
@@ -139,12 +139,8 @@ export const formatDomainConfigForAdmin = <T extends SystemInstanceConfigDomainK
   edition: SystemInstanceConfigEdition
 ): AdminDomainConfigResult<T> => {
   const { domain } = result;
-  const overrides = omitDomainSecrets(domain, result.overrides);
-  const effectiveConfig = omitDomainSecrets(domain, result.effectiveConfig);
-
-  const allowedSecretKeys = Array.from(getDomainSecretKeys(domain)).filter((relativeKey) =>
-    isConfigFieldAllowed(`${domain}.${relativeKey}`, edition)
-  );
+  const overrides = markDomainSecrets(domain, result.overrides);
+  const effectiveConfig = markDomainSecrets(domain, result.effectiveConfig);
 
   // Pro 也只暴露注册字段，避免已退役的兼容字段重新进入管理表单。
   return {
@@ -152,10 +148,6 @@ export const formatDomainConfigForAdmin = <T extends SystemInstanceConfigDomainK
     revision: result.revision,
     overrides: filterDomainDataByEdition({ domain, data: overrides, edition }),
     effectiveConfig: filterDomainDataByEdition({ domain, data: effectiveConfig, edition }),
-    secretKeys: allowedSecretKeys,
-    configuredSecretKeys: getConfiguredDomainSecretKeys(domain, result.effectiveConfig).filter(
-      (key) => allowedSecretKeys.includes(key)
-    ),
     updatedAt: result.updatedAt,
     updatedBy: result.updatedBy
   };
@@ -424,8 +416,9 @@ export const batchUpdateDomainConfigs = async (
   const prepareItem = async ({
     domain,
     expectedRevision,
-    overrides: submittedOverrides
+    overrides: rawSubmittedOverrides
   }: BatchUpdateItemInput) => {
+    const submittedOverrides = stripDomainSecretMarkers(domain, rawSubmittedOverrides);
     if (domain === 'commercial' && Object.hasOwn(submittedOverrides, 'subPlans')) {
       throw new ApiHttpError(400, 'Use the dedicated subPlans input with subPlansExpectedRevision');
     }

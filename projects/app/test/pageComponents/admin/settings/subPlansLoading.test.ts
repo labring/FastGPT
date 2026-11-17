@@ -18,7 +18,7 @@ vi.mock('@/web/common/system/useDomainConfig', () => ({
   useDomainConfig: () => ({
     revision: mocks.revision,
     effectiveConfig: mocks.effectiveConfig,
-    configuredSecretKeys: [],
+    isSecretConfigured: () => false,
     overrides: {},
     isLoading: false,
     isUpdating: false,

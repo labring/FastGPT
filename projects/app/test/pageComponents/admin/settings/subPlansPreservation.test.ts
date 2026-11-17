@@ -5,6 +5,7 @@ import { SystemConfigsTypeEnum } from '@fastgpt/global/common/system/config/cons
 import { SubTypeEnum } from '@fastgpt/global/support/wallet/sub/constants';
 import { MongoSystemConfigs } from '@fastgpt/service/common/system/config/schema';
 import { MongoSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/schema';
+import { markDomainSecrets } from '@fastgpt/global/common/system/config/permission';
 
 const mocks = vi.hoisted(() => ({
   /** 套餐来源接口的返回值；为 null 表示读取被拒（未激活/已到期的 Pro） */
@@ -15,6 +16,7 @@ const mocks = vi.hoisted(() => ({
   planReads: 0,
   /** 批量保存控制器完成写入的次数 */
   saved: 0,
+  pendingSave: undefined as Promise<unknown> | undefined,
   /** 配置域读取已结算次数：挂载一次 + 保存后刷新一次 */
   loads: 0,
   toast: vi.fn()
@@ -59,20 +61,21 @@ vi.mock('@/web/common/api/request', async (importOriginal) => {
       return {
         revision: 0,
         overrides: {},
-        effectiveConfig: resolveSystemInstanceConfig({}).commercial,
-        secretKeys: []
+        effectiveConfig: markDomainSecrets('commercial', resolveSystemInstanceConfig({}).commercial)
       };
     },
-    POST: async (_url: string, data: any) => {
+    POST: (_url: string, data: any) => {
       mocks.posts.push(data);
-      const results = await batchUpdateDomainConfigs({
+      mocks.pendingSave = batchUpdateDomainConfigs({
         items: data.items,
         subPlans: data.subPlans,
         subPlansExpectedRevision: data.subPlansExpectedRevision,
         actor: { actor: 'admin', userId: 'root' }
+      }).then((results) => {
+        mocks.saved += 1;
+        return results;
       });
-      mocks.saved += 1;
-      return results;
+      return mocks.pendingSave;
     }
   };
 });
@@ -191,6 +194,7 @@ beforeEach(() => {
   mocks.posts = [];
   mocks.planReads = 0;
   mocks.saved = 0;
+  mocks.pendingSave = undefined;
   mocks.loads = 0;
   mocks.toast.mockClear();
 });
@@ -258,6 +262,9 @@ const clickSave = async () => {
   const button = container.querySelector<HTMLButtonElement>('button[data-action="save"]')!;
   await act(async () => {
     button.click();
+    // 等待真实事务 Promise；远端 Mongo 的完成时间不能用 UI 轮询默认的 1 秒上限代替。
+    await vi.waitFor(() => expect(mocks.pendingSave).toBeDefined());
+    await mocks.pendingSave;
     // 保存写入与保存后的并行刷新（配置 refetch、套餐 reload）都在 act 内结算，避免状态更新外泄
     await vi.waitFor(() => {
       expect(mocks.saved).toBe(1);
