@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { Box, Flex, Input } from '@chakra-ui/react';
 import {
   addMonths,
@@ -31,6 +31,7 @@ export const CalendarNavigation = ({
   locale: Locale;
   children: React.ReactNode;
 }) => {
+  const headerRef = useRef<HTMLDivElement>(null);
   const [view, setView] = useState<'day' | 'month' | 'year'>('day');
   const [editing, setEditing] = useState(false);
   const [yearText, setYearText] = useState('');
@@ -80,7 +81,13 @@ export const CalendarNavigation = ({
 
   return (
     <Box px={'1.5rem'} py={'1.25rem'}>
-      <Flex alignItems={'center'} justifyContent={'space-between'}>
+      <Flex
+        ref={headerRef}
+        tabIndex={-1}
+        outline={'none'}
+        alignItems={'center'}
+        justifyContent={'space-between'}
+      >
         <Flex
           gap={'4px'}
           alignItems={'center'}
@@ -99,6 +106,8 @@ export const CalendarNavigation = ({
                 fontWeight={'500'}
                 _hover={{ color: 'primary.700', bg: 'rgba(17, 24, 36, 0.05)' }}
                 onClick={() => {
+                  // 面板切换会移除当前按钮，先保留焦点以免弹窗焦点锁跳到年份输入框。
+                  headerRef.current?.focus({ preventScroll: true });
                   setYearPageOffset(0);
                   setView('year');
                 }}
@@ -112,7 +121,10 @@ export const CalendarNavigation = ({
                 borderRadius={'4px'}
                 fontWeight={'500'}
                 _hover={{ color: 'primary.700', bg: 'rgba(17, 24, 36, 0.05)' }}
-                onClick={() => setView('month')}
+                onClick={() => {
+                  headerRef.current?.focus({ preventScroll: true });
+                  setView('month');
+                }}
               >
                 {format(month, locale.code?.startsWith('zh') ? 'M 月' : 'LLLL', { locale })}
               </Box>

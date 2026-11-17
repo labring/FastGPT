@@ -37,7 +37,7 @@ const DATE_FNS_LOCALE_BY_LANG: Record<string, Locale> = {
 
 type SingleDateTimePickerProps = {
   value?: Date | number;
-  onChange?: (val: number) => void;
+  onChange?: (val: number | undefined) => void;
   placeholder?: string;
   isDisabled?: boolean;
   locale?: Locale;
@@ -349,6 +349,35 @@ export const SingleDateTimePicker = ({
           alignItems={'center'}
           justifyContent={'space-between'}
           px={3}
+          pr={3}
+          position={'relative'}
+          data-picker-open={isOpen ? '' : undefined}
+          sx={
+            selectedDate
+              ? {
+                  '&[data-picker-open], &:hover, &:focus-within': { paddingRight: '4px' },
+                  '&[data-picker-open] [data-clear-button], &:hover [data-clear-button], &:focus-within [data-clear-button]':
+                    {
+                      opacity: 1,
+                      pointerEvents: 'auto',
+                      position: 'static'
+                    },
+                  '&[data-picker-open] [data-date-calendar], &:hover [data-date-calendar], &:focus-within [data-date-calendar]':
+                    {
+                      display: 'none'
+                    },
+                  '@media (hover: none)': {
+                    paddingRight: '4px',
+                    '[data-clear-button]': {
+                      opacity: 1,
+                      pointerEvents: 'auto',
+                      position: 'static'
+                    },
+                    '[data-date-calendar]': { display: 'none' }
+                  }
+                }
+              : undefined
+          }
           overflow={'hidden'}
           cursor={isDisabled ? 'not-allowed' : 'pointer'}
           opacity={isDisabled ? 0.6 : 1}
@@ -366,13 +395,38 @@ export const SingleDateTimePicker = ({
             {displayText || placeholder || t('common:datetime_picker.placeholder')}
           </Box>
           {!hideCalendarIcon && (
-            <MyIcon
-              name={'common/calendar'}
-              w={'16px'}
-              h={'16px'}
-              color={'myGray.500'}
+            <Box data-date-calendar flexShrink={0} display={'flex'} alignItems={'center'}>
+              <MyIcon name={'common/calendar'} w={'16px'} h={'16px'} color={'myGray.500'} />
+            </Box>
+          )}
+          {selectedDate && (
+            <Box
+              as={'button'}
+              type={'button'}
+              aria-label={t('common:Clear')}
+              data-clear-button
+              position={'absolute'}
+              right={'4px'}
+              opacity={0}
+              pointerEvents={'none'}
+              w={'1.75rem'}
+              h={'1.75rem'}
+              borderRadius={'full'}
+              _hover={{ bg: 'rgba(17, 24, 36, 0.05)' }}
+              display={'flex'}
+              alignItems={'center'}
+              justifyContent={'center'}
+              disabled={isDisabled}
+              onKeyDown={(event: React.KeyboardEvent<HTMLButtonElement>) => event.stopPropagation()}
               flexShrink={0}
-            />
+              onClick={(event: React.MouseEvent<HTMLButtonElement>) => {
+                event.stopPropagation();
+                onChange?.(undefined);
+                onClose();
+              }}
+            >
+              <MyIcon name={'common/closeLight'} w={'16px'} h={'16px'} color={'myGray.500'} />
+            </Box>
           )}
         </Flex>
       </PopoverTrigger>
