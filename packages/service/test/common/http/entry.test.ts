@@ -247,7 +247,7 @@ describe('createApiEntry response lifecycle', () => {
   it('preserves 501 for an unsupported channel model catalog', async () => {
     const { req, res } = createHttpObjects();
 
-    await createApiEntry({})(async () => {
+    await createApiEntry({ requestI18n })(async () => {
       throw ModelErrEnum.channelCatalogUnsupported;
     })(req, res);
 
