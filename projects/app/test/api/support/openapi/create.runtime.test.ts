@@ -2,6 +2,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { resolveSystemInstanceConfig } from '@fastgpt/global/common/system/config/schema';
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 
+// 全局 setup 会预加载鉴权调用链；清理模块缓存后，生产消费者才能使用本文件的私有 Model 边界。
+vi.hoisted(() => vi.resetModules());
+
 const fixture = vi.hoisted(() => ({
   records: [] as Record<string, any>[],
   authorized: true,

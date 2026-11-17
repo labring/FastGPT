@@ -1,13 +1,11 @@
-// @vitest-environment jsdom
+import { JSDOM } from 'jsdom';
 import React, { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { resolveSystemInstanceConfig } from '@fastgpt/global/common/system/config/schema';
 import { buildCustomDomainFeConfig } from '@fastgpt/global/common/system/config/frontendProjection';
 
 const state = vi.hoisted(() => ({ feConfigs: {} as any }));
-vi.stubGlobal('React', React);
-vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
 vi.mock('@/web/common/system/useSystemStore', () => ({ useSystemStore: () => state }));
 vi.mock('@fastgpt/web/hooks/useSafeTranslation', () => ({
   useSafeTranslation: () => ({ t: (key: string) => key })
@@ -86,6 +84,16 @@ import AccountContainer from '@/pageComponents/account/AccountContainer';
 describe('custom domain frontend configuration consumption', () => {
   let root: Root;
   let container: HTMLDivElement;
+  let dom: JSDOM;
+  beforeEach(() => {
+    // 共享 setup 先在 Node 中初始化服务端配置，DOM 只用于组件渲染阶段。
+    dom = new JSDOM('<!doctype html><html><body></body></html>');
+    vi.stubGlobal('window', dom.window);
+    vi.stubGlobal('document', dom.window.document);
+    vi.stubGlobal('MouseEvent', dom.window.MouseEvent);
+    vi.stubGlobal('React', React);
+    vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
+  });
   const mount = async (element: React.ReactNode) => {
     container = document.createElement('div');
     root = createRoot(container);
@@ -93,6 +101,8 @@ describe('custom domain frontend configuration consumption', () => {
   };
   afterEach(async () => {
     if (root) await act(async () => root.unmount());
+    dom.window.close();
+    vi.unstubAllGlobals();
   });
 
   it('uses each provider CNAME from the current projected snapshot', async () => {

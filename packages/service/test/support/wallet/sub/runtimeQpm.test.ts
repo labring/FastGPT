@@ -6,6 +6,9 @@ import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import { asRedisLogicalKey, redisCacheAdapter } from '@fastgpt/dal/redis/adapter';
 import { teamQpmCache } from '@fastgpt/dal/redis/caches/teamQpm';
 
+// 全局 setup 会预加载钱包模块；保持真实消费者，同时让其依赖重新绑定到本文件的内存 Model。
+vi.hoisted(() => vi.resetModules());
+
 const fixture = vi.hoisted(() => ({
   plans: new Map<string, Record<string, any>[]>(),
   created: vi.fn(),
