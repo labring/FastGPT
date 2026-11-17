@@ -4,10 +4,10 @@ import { Box, Card, Flex, Portal } from '@chakra-ui/react';
 import { format } from 'date-fns';
 import { DayPicker, type Matcher } from 'react-day-picker';
 import 'react-day-picker/dist/style.css';
-import { zhCN } from 'date-fns/locale/zh-CN';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '../Icon';
 import { CalendarNavigation } from './CalendarNavigation';
+import { getDatePickerLocale } from './locale';
 import { DatePickerClearButton, datePickerClearStyles } from './DatePickerClearButton';
 import { useCloseOnFlowNodeDragAreaPointerDown } from '../../../hooks/useCloseOnFlowNodeDragAreaPointerDown';
 
@@ -33,7 +33,8 @@ type DateTimePickerProps = {
  * - 非受控模式下：内部维护选中日期，支持 defaultDate 初始化，用户选择后更新内部状态。
  */
 const DateTimePicker = (rawProps: DateTimePickerProps) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const locale = getDatePickerLocale(i18n.language);
   const isControlled = 'selectedDateTime' in rawProps;
   const {
     onChange,
@@ -235,10 +236,10 @@ const DateTimePicker = (rawProps: DateTimePickerProps) => {
                 onMonthChange={setMonth}
                 disabled={disabled}
                 selected={selectedDate}
-                locale={zhCN}
+                locale={locale}
               >
                 <DayPicker
-                  locale={zhCN}
+                  locale={locale}
                   mode="single"
                   required
                   style={

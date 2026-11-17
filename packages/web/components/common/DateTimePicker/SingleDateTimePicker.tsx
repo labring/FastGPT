@@ -14,27 +14,16 @@ import {
 } from '@chakra-ui/react';
 import { DayPicker } from 'react-day-picker';
 import 'react-day-picker/dist/style.css';
-import { enUS } from 'date-fns/locale/en-US';
-import { ko } from 'date-fns/locale/ko';
-import { zhCN } from 'date-fns/locale/zh-CN';
-import { zhTW } from 'date-fns/locale/zh-TW';
 import type { Locale } from 'date-fns';
 import { format, isSameMonth, isValid, parse } from 'date-fns';
 import { useTranslation } from 'next-i18next';
-import { LangEnum } from '@fastgpt/global/common/i18n/type';
 import MyIcon from '../Icon';
 import { CalendarNavigation } from './CalendarNavigation';
+import { getDatePickerLocale } from './locale';
 import { DatePickerClearButton, datePickerClearStyles } from './DatePickerClearButton';
 
 const DATE_INPUT_FORMAT = 'yyyy-MM-dd';
 const TIME_INPUT_FORMAT = 'HH:mm';
-
-const DATE_FNS_LOCALE_BY_LANG: Record<string, Locale> = {
-  [LangEnum.zh_CN]: zhCN,
-  [LangEnum.zh_Hant]: zhTW,
-  [LangEnum.en]: enUS,
-  [LangEnum.ko_KR]: ko
-};
 
 type SingleDateTimePickerProps = {
   value?: Date | number;
@@ -75,7 +64,7 @@ export const SingleDateTimePicker = ({
   ...triggerProps
 }: SingleDateTimePickerProps) => {
   const { t, i18n } = useTranslation();
-  const resolvedLocale = locale ?? DATE_FNS_LOCALE_BY_LANG[i18n.language] ?? zhCN;
+  const resolvedLocale = locale ?? getDatePickerLocale(i18n.language);
   const weekStartsOn = resolvedLocale.options?.weekStartsOn ?? 0;
   const { isOpen, onOpen, onClose } = useDisclosure();
 

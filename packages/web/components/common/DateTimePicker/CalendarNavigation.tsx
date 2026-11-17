@@ -14,6 +14,7 @@ import {
 import type { Locale } from 'date-fns';
 import { dateMatchModifiers, type Matcher } from 'react-day-picker';
 import MyIcon from '../Icon';
+import { useTranslation } from 'next-i18next';
 
 /** 年月浏览不改变已选日期；只有周期内没有可选日期时才禁用该项。 */
 export const CalendarNavigation = ({
@@ -31,6 +32,7 @@ export const CalendarNavigation = ({
   locale: Locale;
   children: React.ReactNode;
 }) => {
+  const { t } = useTranslation();
   const headerRef = useRef<HTMLDivElement>(null);
   const [view, setView] = useState<'day' | 'month' | 'year'>('day');
   const [editing, setEditing] = useState(false);
@@ -144,7 +146,7 @@ export const CalendarNavigation = ({
             >
               <Input
                 type={'number'}
-                aria-label={'Year'}
+                aria-label={t('common:date_picker.year')}
                 value={editing ? yearText : String(year)}
                 w={editing ? '100%' : 'calc(4ch + 18px)'}
                 minW={'calc(4ch + 18px)'}
@@ -189,7 +191,9 @@ export const CalendarNavigation = ({
                 key={direction}
                 as={'button'}
                 type={'button'}
-                aria-label={direction < 0 ? 'Previous' : 'Next'}
+                aria-label={t(
+                  direction < 0 ? 'common:date_picker.previous' : 'common:date_picker.next'
+                )}
                 p={'6px'}
                 color={'myGray.900'}
                 disabled={isDisabled}
@@ -258,7 +262,7 @@ export const CalendarNavigation = ({
                   }
                 }}
               >
-                {view === 'year' ? value : format(date, 'LLLL', { locale })}
+                {view === 'year' ? value : format(date, 'LLL', { locale })}
               </Box>
             );
           })}

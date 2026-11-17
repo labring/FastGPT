@@ -9,6 +9,10 @@ const reactGlobals = globalThis as typeof globalThis & {
 };
 reactGlobals.IS_REACT_ACT_ENVIRONMENT = true;
 
+vi.mock('next-i18next', () => ({
+  useTranslation: () => ({ t: (key: string) => key, i18n: { language: 'zh-CN' } })
+}));
+
 vi.mock('@chakra-ui/react', () => ({
   Box: React.forwardRef<HTMLDivElement, React.PropsWithChildren<Record<string, unknown>>>(
     function MockBox({ children, as, ...props }, ref) {
@@ -285,9 +289,9 @@ it('browses years and months without changing the selected date, respecting disa
       .at(-1)
       ?.click();
   });
-  expect(button('一月')).toBeTruthy();
+  expect(button('1月')).toBeTruthy();
   await act(async () => {
-    button('一月')?.click();
+    button('1月')?.click();
   });
   expect(host.textContent).toContain('2026/09/11');
   expect(onChange).not.toHaveBeenCalled();
@@ -320,21 +324,23 @@ it('keeps the selected year and month unchanged while paging', async () => {
   });
   expect(button('2026')?.getAttribute('bg')).toBe('primary.600');
   await act(async () => {
-    arrow('Next')?.click();
+    arrow('common:date_picker.next')?.click();
   });
   expect(button('2038')?.getAttribute('bg')).not.toBe('primary.600');
-  expect(host.querySelector<HTMLInputElement>('input[aria-label="Year"]')?.value).toBe('2026');
+  expect(
+    host.querySelector<HTMLInputElement>('input[aria-label="common:date_picker.year"]')?.value
+  ).toBe('2026');
   await act(async () => {
-    arrow('Previous')?.click();
+    arrow('common:date_picker.previous')?.click();
   });
   await act(async () => {
     button('2026')?.click();
   });
-  expect(button('九月')?.getAttribute('bg')).toBe('primary.600');
+  expect(button('9月')?.getAttribute('bg')).toBe('primary.600');
   await act(async () => {
-    arrow('Next')?.click();
+    arrow('common:date_picker.next')?.click();
   });
-  expect(button('九月')?.getAttribute('bg')).not.toBe('primary.600');
+  expect(button('9月')?.getAttribute('bg')).not.toBe('primary.600');
   expect(host.textContent).toContain('2026/09/11');
   expect(onChange).not.toHaveBeenCalled();
   await act(async () => {
@@ -360,7 +366,7 @@ it('submits the year input and allows it to be edited again', async () => {
       .find((item) => item.textContent === '2026 年')
       ?.click();
   });
-  const input = host.querySelector<HTMLInputElement>('input[aria-label="Year"]');
+  const input = host.querySelector<HTMLInputElement>('input[aria-label="common:date_picker.year"]');
   expect(input).toBeTruthy();
   await act(async () => {
     input?.focus();
@@ -368,7 +374,7 @@ it('submits the year input and allows it to be edited again', async () => {
   await act(async () => {
     input?.form?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
   });
-  expect(host.textContent).toContain('一月');
+  expect(host.textContent).toContain('1月');
   expect(document.activeElement).not.toBe(input);
   await act(async () => {
     input?.focus();
@@ -397,23 +403,23 @@ it('disables paging past date bounds in day, month and year views', async () => 
   await act(async () => {
     (host.querySelector('[data-testid="datetime-trigger"]') as HTMLElement).click();
   });
-  expect(arrow('Previous')?.disabled).toBe(true);
-  expect(arrow('Next')?.disabled).toBe(false);
+  expect(arrow('common:date_picker.previous')?.disabled).toBe(true);
+  expect(arrow('common:date_picker.next')?.disabled).toBe(false);
   await act(async () => {
     button('2026 年')?.click();
   });
-  expect(arrow('Previous')?.disabled).toBe(true);
-  expect(arrow('Next')?.disabled).toBe(true);
+  expect(arrow('common:date_picker.previous')?.disabled).toBe(true);
+  expect(arrow('common:date_picker.next')?.disabled).toBe(true);
   await act(async () => {
     button('2026')?.click();
   });
-  expect(arrow('Previous')?.disabled).toBe(true);
-  expect(arrow('Next')?.disabled).toBe(false);
+  expect(arrow('common:date_picker.previous')?.disabled).toBe(true);
+  expect(arrow('common:date_picker.next')?.disabled).toBe(false);
   await act(async () => {
-    arrow('Next')?.click();
+    arrow('common:date_picker.next')?.click();
   });
-  expect(arrow('Previous')?.disabled).toBe(false);
-  expect(arrow('Next')?.disabled).toBe(true);
+  expect(arrow('common:date_picker.previous')?.disabled).toBe(false);
+  expect(arrow('common:date_picker.next')?.disabled).toBe(true);
   await act(async () => {
     root.unmount();
   });
@@ -438,7 +444,7 @@ it('closes and resets the year input after an invalid submission', async () => {
       .find((item) => item.textContent === '2026 年')
       ?.click();
   });
-  const input = host.querySelector<HTMLInputElement>('input[aria-label="Year"]');
+  const input = host.querySelector<HTMLInputElement>('input[aria-label="common:date_picker.year"]');
   await act(async () => {
     input?.focus();
   });

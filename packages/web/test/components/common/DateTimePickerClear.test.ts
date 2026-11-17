@@ -4,8 +4,9 @@ import { createRoot } from 'react-dom/client';
 import { ChakraProvider } from '@chakra-ui/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+const uiLanguage = vi.hoisted(() => ({ language: 'zh-CN' }));
 vi.mock('next-i18next', () => ({
-  useTranslation: () => ({ t: (key: string) => key, i18n: { language: 'zh-CN' } })
+  useTranslation: () => ({ t: (key: string) => key, i18n: uiLanguage })
 }));
 vi.mock('../../../components/common/Icon', () => ({
   default: ({ name }: { name: string }) => React.createElement('span', { 'data-icon': name })
@@ -130,7 +131,7 @@ it.each(['2026 年', '9 月'])('does not focus year input when opening %s', asyn
     header?.focus();
     header?.click();
   });
-  const input = host.querySelector<HTMLInputElement>('input[aria-label="Year"]');
+  const input = host.querySelector<HTMLInputElement>('input[aria-label="common:date_picker.year"]');
   expect(input).toBeTruthy();
   expect(document.activeElement).not.toBe(input);
   await act(async () => {
@@ -184,6 +185,44 @@ it.each(['date', 'date-time'])(
     );
     expect(host.textContent).toContain('Custom date');
     await act(async () => root.unmount());
+    host.remove();
+  }
+);
+
+it.each(['date', 'date-time'])(
+  'updates %s calendar labels when the UI language changes',
+  async (kind) => {
+    const host = document.createElement('div');
+    document.body.appendChild(host);
+    const root = createRoot(host);
+    const date = new Date(2026, 8, 11);
+    const picker = () =>
+      kind === 'date'
+        ? React.createElement(DateTimePicker, { selectedDateTime: date })
+        : React.createElement(SingleDateTimePicker, { value: date, usePortal: false });
+    uiLanguage.language = 'zh-CN';
+    await act(async () => root.render(React.createElement(ChakraProvider, null, picker())));
+    const clear = host.querySelector<HTMLButtonElement>('button[aria-label="common:Clear"]');
+    await act(async () => {
+      clear?.parentElement?.click();
+    });
+    expect(document.body.textContent).toContain('9 月');
+    uiLanguage.language = 'en-US';
+    await act(async () => root.render(React.createElement(ChakraProvider, null, picker())));
+    expect(document.body.textContent).toContain('September');
+    expect(document.body.textContent).toContain('Su');
+    await act(async () => {
+      Array.from(document.body.querySelectorAll('button'))
+        .find((button) => button.textContent === 'September')
+        ?.click();
+    });
+    expect(
+      Array.from(document.body.querySelectorAll('button')).some(
+        (button) => button.textContent === 'Sep'
+      )
+    ).toBe(true);
+    await act(async () => root.unmount());
+    uiLanguage.language = 'zh-CN';
     host.remove();
   }
 );
