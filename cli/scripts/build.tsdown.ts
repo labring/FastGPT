@@ -16,6 +16,8 @@ export default defineConfig({
   deps: {
     alwaysBundle: [
       /^@fastgpt\/global/,
+      /^@fastgpt\/workflow-core/,
+      /^crypto-js/,
       /^zod/,
       /^commander/,
       /^@clack\/prompts/,

@@ -133,6 +133,30 @@ try {
   assert.equal(logoutOut.ok, true);
   assert.equal(logoutOut.data.purged, true);
 
+  const wfDir = join(configDir, 'wf-smoke');
+  const wfInitOut = JSON.parse(await run(['workflow', 'init', '--dir', wfDir, '--name', 'Smoke Flow']));
+  assert.equal(wfInitOut.ok, true);
+  assert.equal(wfInitOut.command, 'workflow init');
+  const wfAddOut = JSON.parse(
+    await run([
+      'workflow',
+      'node',
+      'add',
+      '--dir',
+      wfDir,
+      '--node',
+      'chat1',
+      '--template',
+      'builtin:ai-chat',
+      '--after',
+      'start@next'
+    ])
+  );
+  assert.equal(wfAddOut.ok, true);
+  const wfValidateOut = JSON.parse(await run(['workflow', 'validate', '--dir', wfDir]));
+  assert.equal(wfValidateOut.ok, true);
+  assert.equal(wfValidateOut.data.valid, true);
+
   process.stdout.write('fastgpt cli built bin smoke passed\n');
 } finally {
   server.close();

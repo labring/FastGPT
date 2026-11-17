@@ -8,6 +8,7 @@ import { createDoctorCommandSpec } from './commands/doctor';
 import { createLoginCommandSpec } from './commands/login';
 import { createLogoutCommandSpec } from './commands/logout';
 import { createModelCommandSpecs } from './commands/model';
+import { createWorkflowCommandSpecs } from './commands/workflow';
 import { createWhoamiCommandSpec } from './commands/whoami';
 import type { CliCommandSpec } from './pipeline';
 
@@ -32,6 +33,7 @@ export function getCliCommandSpecs(): CliCommandSpec[] {
     ...createDatasetCommandSpecs(),
     ...createChatCommandSpecs(),
     ...createModelCommandSpecs(),
+    ...createWorkflowCommandSpecs(),
     createDoctorCommandSpec(),
     createCommandsManifestCommandSpec()
   ];
