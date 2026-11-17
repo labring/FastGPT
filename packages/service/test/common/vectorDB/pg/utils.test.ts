@@ -6,6 +6,7 @@ const props = {
   datasetIds: ['large', 'small', 'pending', 'large'],
   vector: [0.1, 0.2],
   limit: 100,
+  hnswEfSearch: 200,
   forbidCollectionIdList: []
 };
 

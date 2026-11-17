@@ -1,3 +1,40 @@
+import { getSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/runtime';
+// 同义词开关已接管实例配置（94ae033d7）：assertDatasetSynonymEnabled → isDatasetSynonymEnabled
+// 读快照叶子 ?? serviceEnv。本文件通过改写 serviceEnv.DATASET_SYNONYM_ENABLED 驱动，
+// 预置"域存在、叶子缺省"种子快照走兜底分支。
+(global as any).systemInstanceConfig = {
+  site: {},
+  auth: {},
+  security: {},
+  feature: {},
+  commercial: {},
+  resource: {},
+  performance: {
+    workflow: {},
+    parse: {},
+    dataset: {},
+    chat: {},
+    streamResume: {},
+    tracking: {},
+    task: {},
+    channel: {}
+  },
+  storage: {},
+  vector: {},
+  providers: {
+    documentParse: { customPdf: {}, sangfor: {} },
+    dataSource: {},
+    externalProviderWorkflowVariables: []
+  },
+  subservice: {
+    plugin: {},
+    codeSandbox: {},
+    aiProxy: {},
+    mcp: {},
+    agentSandbox: { provider: '', common: {}, sealosdevbox: {}, opensandbox: {}, proxy: {} }
+  }
+};
+
 import {
   DatasetCollectionTypeEnum,
   TrainingModeEnum
@@ -98,7 +135,7 @@ describe('createDatasetSynonymMutation', () => {
     serviceEnv.DATASET_SYNONYM_ENABLED = true;
     vi.clearAllMocks();
     invalidateDatasetSynonymMatcherCache({ teamId: String(teamId), datasetId: String(datasetId) });
-    global.systemEnv = { ...global.systemEnv, vectorMaxProcess: 1 };
+    getSystemInstanceConfig().performance.dataset.vectorMaxProcess = 1;
     mockAuthDataset.mockResolvedValue({
       teamId: String(teamId),
       tmbId: String(tmbId),

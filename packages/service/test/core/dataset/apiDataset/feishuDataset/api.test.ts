@@ -1,7 +1,7 @@
+import { serviceEnv } from '@fastgpt/service/env';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useFeishuDatasetRequest } from '@fastgpt/service/core/dataset/apiDataset/feishuDataset/api';
 import { createProxyAxios } from '@fastgpt/service/common/api/axios';
-import { serviceEnv } from '@fastgpt/service/env';
 
 const mocks = vi.hoisted(() => ({ request: vi.fn(), post: vi.fn(), use: vi.fn() }));
 vi.mock('@fastgpt/service/common/api/axios', () => ({

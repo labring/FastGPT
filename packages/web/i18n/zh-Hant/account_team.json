@@ -437,5 +437,6 @@
   "log_admin_install_moderation_plugin": "【{{name}}】安裝了內容審核插件【{{pluginName}}】",
   "log_admin_uninstall_moderation_plugin": "【{{name}}】解除安裝了內容審核插件【{{pluginName}}】",
   "log_admin_update_moderation_plugin_config": "【{{name}}】更新了內容審核插件【{{pluginName}}】的配置",
-  "log_admin_update_moderation_policy": "【{{name}}】更新了內容審核策略配置"
+  "log_admin_update_moderation_policy": "【{{name}}】更新了內容審核策略配置",
+  "my_team": "我的團隊"
 }

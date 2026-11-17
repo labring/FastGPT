@@ -1,3 +1,4 @@
+import { getSystemInstanceConfig } from '../../../common/system/systemInstanceConfig/runtime';
 import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import type { UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import {
@@ -46,11 +47,11 @@ export const getWorkflowFileLimits = async ({
   return {
     maxFileAmount: getUserFileAmountLimit({
       teamMaxFileAmount: planStatus.standard?.maxUploadFileCount,
-      systemMaxFileAmount: global.feConfigs.limit.uploadFileMaxAmount
+      systemMaxFileAmount: getSystemInstanceConfig().resource.uploadFileMaxAmount
     }),
     maxBytesPerFile: getFileSizeLimitBytes({
       teamMaxFileSize: planStatus.standard?.maxUploadFileSize,
-      systemMaxFileSize: global.feConfigs.limit.uploadFileMaxSize
+      systemMaxFileSize: getSystemInstanceConfig().resource.uploadFileMaxSize
     })
   };
 };

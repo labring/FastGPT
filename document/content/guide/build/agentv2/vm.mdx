@@ -4,10 +4,12 @@ description: 掌握 Agent 虚拟机执行环境配置、会话工作目录隔离
 ---
 
 {/* Preserve incoming bookmarks for reorganized sections. */}
+
 <span id="虚拟机设计" />
 <span id="虚拟机调试" />
 
 {/* Preserve incoming bookmarks for reorganized sections. */}
+
 <span id="1-会话级隔离与生命周期管理" />
 <span id="2-状态存续session-persistence" />
 <span id="3-安全防逃逸与限制" />
@@ -60,7 +62,9 @@ Agent 在分析复杂表格、执行数学计算、生成动态图表或调用�
 ![Agent 沙箱初始化](/imgs/diagrams/sandbox-initialization.zh-CN.light.svg)
 
 ### 启动脚本与依赖管理
+
 应用配置中的“启动脚本”在运行态、初始化锁、配置与文件准备完成后执行，用于预装 Python 依赖包（如 `pip install matplotlib pandas`）或系统工具：
+
 - **准备顺序与原子部署**：准备阶段依次执行“技能包注入 → 文件注入 → 应用启动脚本 → 技能入口脚本”：
   1. **技能包注入**：若 Agent 关联了已发布的技能包，技能包先解压至临时目录（`.tmp-<versionId>-<random>`），解压完全成功后原子替换为正式版本目录 `projects/<versionId>`。
   2. **文件注入**：将当前对话上传的文件写入虚拟机。
@@ -73,7 +77,7 @@ Agent 在分析复杂表格、执行数学计算、生成动态图表或调用�
 ### 执行限制与容错机制
 
 - **准备失败**：运行态获取或初始化锁失败时，本轮准备返回错误。Skill 编辑调试使用独立准备分支。
-- **启动超时防护**：启动脚本执行超时时间由环境变量 `AGENT_SANDBOX_ENTRYPOINT_TIMEOUT_SECONDS` 控制（默认 30 秒，系统允许设置范围为 1 ~ 600 秒）。
+- **启动超时防护**：启动脚本执行超时时间固定为 60 秒。
 - **非阻塞容错**：启动脚本发生非零退出或超时不会强行中断主流程，系统记录警告日志并继续执行后续对话，由开发者在调试面板中核验依赖情况。
 - **输出截断限制**：单次脚本输出保留最后 8 KiB，后台服务日志最多保留 4000 字符；大体积结果应写入文件并通过产物检查。
 

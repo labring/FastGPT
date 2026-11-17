@@ -1,3 +1,4 @@
+import { getSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/runtime';
 import { getChatPublishSourceType } from '@fastgpt/global/common/chat/publishSource';
 import { APP_SANDBOX_ENABLED_CHAT_METADATA_KEY } from '@fastgpt/global/core/ai/sandbox/constants';
 import { ChatSourceEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
@@ -34,7 +35,7 @@ export async function resolveSandboxSessionAvailability(
     return { available: true };
   }
 
-  if (!global.feConfigs?.show_agent_sandbox) {
+  if (getSystemInstanceConfig().subservice.agentSandbox.provider === 'none') {
     return resolveAppSandboxAvailability({ appEnabled: true, teamId: session.teamId });
   }
 

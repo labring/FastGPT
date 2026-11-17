@@ -7,6 +7,8 @@ type SecretValueInputProps = {
   value: string;
   isConfigured: boolean;
   onChange?: (value: string) => void;
+  multiline?: boolean;
+  rows?: number;
 } & Omit<InputProps, 'value' | 'onChange' | 'type' | 'onBlur' | 'onFocus'>;
 
 /**
@@ -17,6 +19,8 @@ const SecretValueInput = ({
   value,
   isConfigured,
   onChange,
+  multiline = false,
+  rows = 5,
   isDisabled,
   h = 9,
   borderLeftRadius,
@@ -53,11 +57,14 @@ const SecretValueInput = ({
       ) : (
         <Input
           {...inputProps}
+          as={multiline ? 'textarea' : 'input'}
+          {...(multiline ? { rows } : {})}
           flex={1}
           minW={0}
-          h={h}
+          h={multiline ? 'auto' : h}
+          resize={multiline ? 'vertical' : undefined}
           borderLeftRadius={borderLeftRadius}
-          type="text"
+          type={multiline ? undefined : 'text'}
           autoFocus={isEditing}
           autoComplete="off"
           data-form-type="other"

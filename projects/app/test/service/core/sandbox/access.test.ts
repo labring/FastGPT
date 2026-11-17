@@ -1,3 +1,4 @@
+import { getTestInstanceConfig } from '@test/utils/instanceConfigSnapshot';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   APP_SANDBOX_ENABLED_CHAT_METADATA_KEY,
@@ -68,7 +69,7 @@ const appSession = {
 describe('resolveSandboxSessionAvailability', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    global.feConfigs = { ...global.feConfigs, show_agent_sandbox: true };
+    getTestInstanceConfig().subservice.agentSandbox.provider = 'opensandbox';
     mocks.resolveAppSandboxAvailability.mockImplementation(async ({ appEnabled }) =>
       appEnabled
         ? { available: true }
@@ -82,7 +83,7 @@ describe('resolveSandboxSessionAvailability', () => {
   });
 
   it('short-circuits before App queries when the system feature is disabled', async () => {
-    global.feConfigs = { ...global.feConfigs, show_agent_sandbox: false };
+    getTestInstanceConfig().subservice.agentSandbox.provider = 'none';
     mocks.resolveAppSandboxAvailability.mockResolvedValueOnce({
       available: false,
       reason: SandboxUnavailableReasonEnum.systemDisabled
@@ -241,7 +242,7 @@ describe('authSandboxRuntimeSession', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    global.feConfigs = { ...global.feConfigs, show_agent_sandbox: true };
+    getTestInstanceConfig().subservice.agentSandbox.provider = 'opensandbox';
     mocks.authSandboxSession.mockResolvedValue({
       ...appSession,
       chat: {

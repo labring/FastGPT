@@ -1,3 +1,7 @@
+import {
+  getTestInstanceConfig,
+  createDefaultInstanceConfig
+} from '@test/utils/instanceConfigSnapshot';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   ChatFileTypeEnum,
@@ -6,7 +10,6 @@ import {
 } from '@fastgpt/global/core/chat/constants';
 import type { LLMModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import { axios } from '@fastgpt/service/common/api/axios';
-import { serviceEnv } from '@fastgpt/service/env';
 import { loadRequestMessages } from '@fastgpt/service/core/ai/llm/utils';
 import { getChatMessages } from '@fastgpt/service/core/workflow/dispatch/ai/chat/chatMessages';
 import { getInputFiles } from '@fastgpt/service/core/workflow/dispatch/ai/chat/fileContext';
@@ -28,21 +31,21 @@ vi.mock('@fastgpt/service/common/s3/sources/rawText', () => ({
 }));
 
 describe('getChatMessages', () => {
-  let originalSystemEnv: typeof global.systemEnv;
-  const multimediaEnv: { MULTIPLE_DATA_TO_BASE64: boolean } = serviceEnv;
-  const originalMultipleDataToBase64 = serviceEnv.MULTIPLE_DATA_TO_BASE64;
+  let originalSystemEnv: typeof global.systemInstanceConfig;
+
+  const originalMultipleDataToBase64 = getTestInstanceConfig().feature.multipleDataToBase64;
 
   beforeEach(() => {
-    originalSystemEnv = global.systemEnv;
-    global.systemEnv = { ...originalSystemEnv, fileUrlWhitelist: [] };
-    multimediaEnv.MULTIPLE_DATA_TO_BASE64 = false;
+    originalSystemEnv = global.systemInstanceConfig;
+    global.systemInstanceConfig = createDefaultInstanceConfig();
+    getTestInstanceConfig().feature.multipleDataToBase64 = false;
     vi.spyOn(axios, 'head').mockResolvedValue({ headers: { 'content-type': 'audio/wav' } });
     vi.spyOn(axios, 'get');
   });
 
   afterEach(() => {
-    global.systemEnv = originalSystemEnv;
-    multimediaEnv.MULTIPLE_DATA_TO_BASE64 = originalMultipleDataToBase64;
+    global.systemInstanceConfig = originalSystemEnv;
+    getTestInstanceConfig().feature.multipleDataToBase64 = originalMultipleDataToBase64;
     vi.restoreAllMocks();
   });
 

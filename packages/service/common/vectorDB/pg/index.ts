@@ -146,10 +146,7 @@ export class PgVectorCtrl implements VectorControllerType {
           `SELECT set_config('hnsw.ef_search', $1, true),
                   set_config('hnsw.max_scan_tuples', $2, true),
                   set_config('hnsw.iterative_scan', 'relaxed_order', true)`,
-          [
-            String(Math.min(1000, Math.max(props.limit, global.systemEnv?.hnswEfSearch || 200))),
-            String(query.maxScanTuples)
-          ]
+          [String(props.hnswEfSearch), String(query.maxScanTuples)]
         );
         const result = await client.query<{ id: string; collection_id: string; score: number }>(
           recallQuery,

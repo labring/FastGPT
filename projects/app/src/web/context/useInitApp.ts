@@ -17,7 +17,7 @@ import {
 } from '../support/marketing/utils';
 import { type ShortUrlParams } from '@fastgpt/global/support/marketing/type';
 import { setCouponCode } from '@/web/support/marketing/utils';
-import { appClientEnv } from '@/web/common/system/env';
+import { getDomainDefaultConfig } from '@fastgpt/global/common/system/config/schema';
 
 type MarketingQueryParams = {
   bd_vid?: string;
@@ -52,7 +52,7 @@ export const useInitApp = () => {
   const { loadGitStar, setInitd, feConfigs } = useSystemStore();
   const { userInfo } = useUserStore();
   const [scripts, setScripts] = useState<FastGPTFeConfigsType['scripts']>([]);
-  const [title, setTitle] = useState(appClientEnv.systemName);
+  const [title, setTitle] = useState(getDomainDefaultConfig('site').name);
 
   const getPathWithoutMarketingParams = useMemoizedFn(() => {
     const filteredQuery = { ...router.query };

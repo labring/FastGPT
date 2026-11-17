@@ -1,3 +1,4 @@
+import { getSystemInstanceConfig } from '../../../../common/system/systemInstanceConfig/runtime';
 import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import type { LangEnum } from '@fastgpt/global/common/i18n/type';
@@ -88,7 +89,7 @@ export const completePasswordLogin = async ({
     isRoot: username === 'root',
     session,
     createTeamIfUnavailable:
-      username !== 'root' && global.feConfigs?.teamMode === 'multi'
+      username !== 'root' && getSystemInstanceConfig().proEnv.teamMode === 'multi'
         ? ({ userId }) =>
             createUserLoginTeam({
               userId,

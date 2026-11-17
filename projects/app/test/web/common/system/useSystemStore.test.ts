@@ -1,8 +1,11 @@
+import { getSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/runtime';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import handler from '@/pages/api/common/system/getInitData';
 import { Call } from '@test/utils/request';
 import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
-import { authCert } from '@fastgpt/service/support/permission/auth/common';
+import { systemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/service';
+import { serviceEnv } from '@fastgpt/service/env';
+import { setTestLicenseActive } from '@test/utils/instanceConfigSnapshot';
 
 const auth = {
   userId: 'user-1',
@@ -35,9 +38,13 @@ describe('initStaticData through the real initialization pipeline', () => {
   let clientInitData: typeof import('@/web/common/system/staticData').clientInitData;
   let getDocPath: typeof import('@/web/common/system/doc').getDocPath;
   let initialState: ReturnType<typeof useSystemStore.getState>;
+  let originalSsoHandler: typeof global.getSsoConfiguredHandler;
   const storage = new Map<string, string>();
+  const originalProUrl = serviceEnv.PRO_URL;
+  let configVersion: string;
 
   beforeAll(async () => {
+    originalSsoHandler = global.getSsoConfiguredHandler;
     vi.stubGlobal('localStorage', {
       getItem: (key: string) => storage.get(key) ?? null,
       setItem: (key: string, value: string) => storage.set(key, value),
@@ -50,6 +57,7 @@ describe('initStaticData through the real initialization pipeline', () => {
   });
 
   beforeEach(() => {
+    global.getSsoConfiguredHandler = () => false;
     vi.clearAllMocks();
     useSystemStore.setState(initialState, true);
     storage.clear();
@@ -57,7 +65,26 @@ describe('initStaticData through the real initialization pipeline', () => {
     mocks.referer = 'https://app.example.com/login';
     global.systemInitBufferId = 'config-1';
     global.systemVersion = '4.17.3';
-    global.subPlans = { extraDatasetSize: { price: 4 } };
+    serviceEnv.PRO_URL = 'https://pro.example.com';
+    setTestLicenseActive(true);
+    const snapshot = getSystemInstanceConfig();
+    snapshot.site.name = 'Custom FastGPT';
+    snapshot.site.docUrl = 'https://docs.example.com';
+    snapshot.resource.uploadFileMaxAmount = 7;
+    snapshot.resource.uploadFileMaxSize = 32;
+    snapshot.resource.maxFolderDepth = 4;
+    snapshot.feature.showComplianceCopywriting = true;
+    snapshot.feature.enableTeamModel = true;
+    snapshot.commercial.subPlans = { extraDatasetSize: { price: 4 } };
+    Object.assign(snapshot.commercial.payment.wx, {
+      appId: 'app',
+      mchId: 'merchant',
+      serialNo: 'serial',
+      apiV3Key: 'key',
+      notifyUrl: 'https://app.example.com/pay',
+      privateKey: 'synthetic-private-key'
+    });
+    configVersion = systemInstanceConfig.getClientConfig().version;
     global.aiproxyChannelsCache = [
       {
         channelId: 1,
@@ -92,6 +119,8 @@ describe('initStaticData through the real initialization pipeline', () => {
   });
 
   afterAll(() => {
+    global.getSsoConfiguredHandler = originalSsoHandler;
+    serviceEnv.PRO_URL = originalProUrl;
     useSystemStore.setState(initialState, true);
     vi.unstubAllGlobals();
   });
@@ -107,7 +136,7 @@ describe('initStaticData through the real initialization pipeline', () => {
     expect(publicConfig.limit).toEqual({ uploadFileMaxAmount: 7, uploadFileMaxSize: 32 });
     expect(publicConfig.limit?.uploadFileMaxSize).toBe(32);
     expect(useSystemStore.getState().feConfigs).toEqual(publicConfig);
-    expect(useSystemStore.getState().initDataBufferId).toBe('unAuth_v9_config-1');
+    expect(useSystemStore.getState().initDataBufferId).toBe(`unAuth_v11_sso_0_${configVersion}`);
     expect(JSON.parse(storage.get('globalStore')!).state.feConfigs).toEqual(publicConfig);
 
     const cached = await clientInitData();
@@ -118,13 +147,13 @@ describe('initStaticData through the real initialization pipeline', () => {
     mocks.authenticated = true;
     await clientInitData();
     const authenticated = useSystemStore.getState();
-    expect(authenticated.feConfigs.payConfig).toEqual({ wx: true });
+    expect(authenticated.feConfigs.payConfig).toEqual({ wx: true, alipay: false, bank: false });
     expect(authenticated.feConfigs).toMatchObject({
       limit: { uploadFileMaxAmount: 7, uploadFileMaxSize: 32, maxFolderDepth: 4 },
       show_compliance_copywriting: true,
       enable_team_model: true
     });
-    expect(authenticated.initDataBufferId).toBe('config-1');
+    expect(authenticated.initDataBufferId).toBe(configVersion);
     expect(authenticated.systemVersion).toBe('4.17.3');
     expect(authenticated).not.toHaveProperty('aiproxyChannels');
     expect(JSON.parse(storage.get('globalStore')!).state.feConfigs).toEqual(
@@ -140,14 +169,18 @@ describe('initStaticData through the real initialization pipeline', () => {
     const anonymous = await clientInitData();
     expect(anonymous.feConfigs).toEqual(publicConfig);
     expect(useSystemStore.getState().feConfigs).toEqual(publicConfig);
-    expect(useSystemStore.getState().initDataBufferId).toBe('unAuth_v9_config-1');
+    expect(useSystemStore.getState().initDataBufferId).toBe(`unAuth_v11_sso_0_${configVersion}`);
     expect(useSystemStore.getState().systemVersion).toBe('4.17.3');
     expect(JSON.parse(storage.get('globalStore')!).state.feConfigs).toEqual(publicConfig);
 
     expect(mocks.GET.mock.calls).toEqual(
-      ['unAuth_config-1', 'unAuth_v9_config-1', 'unAuth_v9_config-1', 'config-1', 'config-1'].map(
-        (bufferId) => ['/common/system/getInitData', { bufferId }]
-      )
+      [
+        'unAuth_config-1',
+        `unAuth_v11_sso_0_${configVersion}`,
+        `unAuth_v11_sso_0_${configVersion}`,
+        configVersion,
+        configVersion
+      ].map((bufferId) => ['/common/system/getInitData', { bufferId }])
     );
   });
 
@@ -193,7 +226,7 @@ describe('initStaticData through the real initialization pipeline', () => {
       includeSubPlans: true
     });
     const { subPlans } = useSystemStore.getState();
-    expect(subPlans).toEqual(global.subPlans);
+    expect(subPlans).toEqual(getSystemInstanceConfig().commercial.subPlans);
 
     mocks.referer = 'https://app.example.com/chat/share?shareId=share-1';
     await clientInitData();
@@ -270,16 +303,18 @@ describe('initStaticData through the real initialization pipeline', () => {
       state.feConfigs.docUrl = 'https://docs.example.com';
     });
 
-    global.subPlans = { extraDatasetSize: { price: 8 } };
+    getSystemInstanceConfig().commercial.subPlans = { extraDatasetSize: { price: 8 } };
     mocks.referer = '';
     await clientInitData({ includeSubPlans: true });
-    expect(useSystemStore.getState().subPlans).toEqual(global.subPlans);
+    expect(useSystemStore.getState().subPlans).toEqual(
+      getSystemInstanceConfig().commercial.subPlans
+    );
     expect(useSystemStore.getState().feConfigs.docUrl).toBe('https://docs.example.com');
   });
 
   it('falls back from zero upload limits in memory and persistence across an anonymous cache hit', async () => {
-    global.feConfigs.limit.uploadFileMaxAmount = 0;
-    global.feConfigs.limit.uploadFileMaxSize = 0;
+    getSystemInstanceConfig().resource.uploadFileMaxAmount = 0;
+    getSystemInstanceConfig().resource.uploadFileMaxSize = 0;
     await clientInitData();
     await clientInitData();
     expect(useSystemStore.getState().feConfigs).toMatchObject({

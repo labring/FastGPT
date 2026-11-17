@@ -50,6 +50,9 @@ const TeamMemberSchema = new Schema({
   updateTime: {
     type: Date
   },
+  lastSwitchTime: {
+    type: Date
+  },
 
   /** @deprecated
    * But some code still use this to judge whether the member is a owner.

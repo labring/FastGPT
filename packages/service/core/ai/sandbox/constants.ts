@@ -117,6 +117,11 @@ export const DEFAULT_FIND_LIMIT = 1000;
 export const DEFAULT_GREP_LIMIT = 100;
 export const MAX_GREP_LINE_CHARS = 500;
 
+// 入口超时及 WebSocket 容量采用固定策略，Proxy 与 IDE Agent 使用相同上限。
+export const SANDBOX_ENTRYPOINT_TIMEOUT_SECONDS = 60;
+export const SANDBOX_WS_MAX_MESSAGE_BYTES = 64 * 1024 * 1024;
+export const SANDBOX_WS_MAX_FRAME_BYTES = 16 * 1024 * 1024;
+
 // 运行初始化
 export const SANDBOX_ENTRYPOINT_STATE_HASH_KEY = 'sandboxEntrypoint';
 export const SKILL_ENTRYPOINT_STATE_LIST_KEY = 'skillEntrypoints';

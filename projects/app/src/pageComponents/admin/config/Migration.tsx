@@ -194,8 +194,19 @@ const MigrationCard = ({
   const displayStatus = getSystemMigrationDisplayStatus({ migration, serverTime });
   const visual = statusVisual[displayStatus];
   const resultText = migration.result
-    ? t(migration.result.key as any, migration.result.params as any)
+    ? t(migration.result.key as any, {
+        // 旧版本已成功的迁移结果没有该参数，避免页面直接显示未替换的占位符
+        skippedConfigCount: 0,
+        ...(migration.result.params as any)
+      })
     : undefined;
+  const skippedConfigCount = migration.result?.params?.skippedConfigCount;
+  const skippedPaths = migration.result?.params?.skippedPaths;
+  const showSkippedConfigs =
+    typeof skippedConfigCount === 'number' &&
+    skippedConfigCount > 0 &&
+    typeof skippedPaths === 'string' &&
+    skippedPaths.length > 0;
   const unscopedError = migration.lastError?.stageKey ? undefined : migration.lastError;
   const errorText = unscopedError?.message;
 
@@ -302,6 +313,22 @@ const MigrationCard = ({
           {resultText}
         </Box>
       )}
+
+      {migration.result &&
+        migration.status === SystemMigrationStatusEnum.succeeded &&
+        showSkippedConfigs && (
+          <Box
+            mx={[4, 5]}
+            mb={4}
+            p={3}
+            bg={'yellow.50'}
+            borderRadius={'sm'}
+            fontSize={'sm'}
+            color={'yellow.700'}
+          >
+            {t('system_migration:skipped_configs', { paths: skippedPaths })}
+          </Box>
+        )}
 
       <Box mx={[4, 5]} mb={4}>
         <Box mb={2} fontSize={'xs'} fontWeight={'medium'} color={'myGray.500'}>

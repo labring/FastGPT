@@ -5,7 +5,6 @@ import { MongoAppTemplate } from './templateSchema';
 import { pluginClient } from '../../../thirdProvider/fastgptPlugin';
 import { VersionedDataCache } from '../../../common/cache/versionedDataCache';
 import { SystemCacheKeyEnum } from '../../../common/cache/type';
-import { serviceEnv } from '../../../env';
 import { getLogger, LogCategories } from '../../../common/logger';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
 import type { ClientSession } from '../../../common/mongo';
@@ -154,7 +153,7 @@ export class AppTemplateData extends VersionedDataCache<AppTemplateSchemaType[]>
   constructor() {
     super({
       key: SystemCacheKeyEnum.appTemplates,
-      maxAgeMs: isProduction && !serviceEnv.DISABLE_CACHE ? 30 * 60 * 1000 : 0
+      maxAgeMs: isProduction ? 30 * 60 * 1000 : 0
     });
   }
 
