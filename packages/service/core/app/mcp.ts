@@ -24,7 +24,7 @@ import $RefParser from '@apidevtools/json-schema-ref-parser';
 import { getLogger, LogCategories } from '../../common/logger';
 import dns from 'dns/promises';
 import { isIP, type LookupFunction } from 'net';
-import { Agent, type Dispatcher } from 'undici';
+import { Agent, ProxyAgent, type Dispatcher } from 'undici';
 import { getProxyForUrl } from 'proxy-from-env';
 import {
   isInternalAddress,
@@ -271,8 +271,10 @@ const getMcpRedirectRequestInit = ({
  * 这会让“初始 URL 合法，Location 跳到内网地址”的场景绕过 SSRF 防护。
  * 该 fetch 通过 `redirect: manual` 接管重定向流程，并对每一跳目标重新执行
  * 内网地址校验；跨 host/protocol 跳转时还会移除鉴权类 header，避免 MCP 密钥泄露。
- * 直连请求还会把最终校验过的 DNS 地址固定到 undici dispatcher，避免
- * “检查时是公网 IP、建连时变成内网 IP”的 DNS rebinding TOCTOU。
+ * 直连请求（含命中 NO_PROXY 的目标）还会把最终校验过的 DNS 地址固定到 undici Agent，
+ * 避免“检查时是公网 IP、建连时变成内网 IP”的 DNS rebinding TOCTOU；
+ * 命中环境代理时先在本机完成域名/IP 预检，再通过 undici ProxyAgent 转发，
+ * 但代理端会重新解析目标域名并建连，无法像直连 Agent 那样固定连接 IP。
  */
 export const createMcpSafeFetch = ({
   maxRedirects = MCP_SAFE_FETCH_MAX_REDIRECTS,
@@ -290,9 +292,18 @@ export const createMcpSafeFetch = ({
       throw new Error('MCP URL only supports http/https protocol');
     }
 
-    // 代理端会重新解析目标域名，本进程无法保证它连接的是已校验的 IP；必须拒绝。
-    if (getProxyForUrl(url)) {
-      throw new Error('MCP requests through an HTTP proxy are not supported by SSRF protection');
+    // 优先按 proxy-from-env 判断是否走环境代理（已内置 NO_PROXY / no_proxy 匹配）；命中直连返回空串。
+    const proxyUrl = getProxyForUrl(url);
+    if (proxyUrl !== '') {
+      const key = `proxy|${proxyUrl}`;
+      const existing = dispatchers.get(key);
+      if (existing) return existing;
+
+      // 代理路径在 safeFetch 中已逐跳执行 assertMCPUrlNotInternal 本机预检，但代理端会自行解析目标域名并建连，
+      // 无法通过 pinned lookup 固定连接 IP，仍存在代理侧 DNS rebinding 风险。
+      const dispatcher = new ProxyAgent(proxyUrl);
+      dispatchers.set(key, dispatcher);
+      return dispatcher;
     }
 
     const resolved = await resolveMcpConnectAddress(parsedUrl.hostname);

@@ -1,9 +1,10 @@
 import { getTestInstanceConfig } from '@test/utils/instanceConfigSnapshot';
 import { afterEach, describe, it, expect, vi, beforeEach } from 'vitest';
 import http from 'http';
+import net from 'net';
 import os from 'os';
 import dns from 'dns/promises';
-import { Agent, fetch as undiciFetch } from 'undici';
+import { Agent, ProxyAgent, fetch as undiciFetch } from 'undici';
 
 // --- Hoisted mocks ---
 const { mockDereference } = vi.hoisted(() => ({
@@ -62,6 +63,7 @@ const listen = (handler: http.RequestListener, host = '127.0.0.1') =>
 
 const closeServer = (server: http.Server) =>
   new Promise<void>((resolve, reject) => {
+    server.closeAllConnections?.();
     server.close((err) => (err ? reject(err) : resolve()));
   });
 
@@ -1055,19 +1057,137 @@ describe('createMcpSafeFetch', () => {
     }
   });
 
-  it('should fail closed when an HTTP proxy would resolve the target', async () => {
+  const startConnectProxy = async (targetPort: number) => {
+    let connectedTarget: string | undefined;
+    const tunnelSockets = new Set<net.Socket>();
+    const proxyServer = await listen((_req, res) => {
+      res.statusCode = 405;
+      res.end();
+    });
+    proxyServer.on('connect', (req, clientSocket, head) => {
+      connectedTarget = req.url;
+      tunnelSockets.add(clientSocket);
+      const upstreamSocket = net.connect(targetPort, '127.0.0.1', () => {
+        tunnelSockets.add(upstreamSocket);
+        clientSocket.write('HTTP/1.1 200 Connection Established\r\n\r\n');
+        if (head.length > 0) upstreamSocket.write(head);
+        upstreamSocket.pipe(clientSocket);
+        clientSocket.pipe(upstreamSocket);
+      });
+      upstreamSocket.on('error', () => clientSocket.destroy());
+      clientSocket.on('close', () => {
+        tunnelSockets.delete(clientSocket);
+        tunnelSockets.delete(upstreamSocket);
+        upstreamSocket.destroy();
+      });
+    });
+
+    return {
+      port: getServerPort(proxyServer),
+      getConnectedTarget: () => connectedTarget,
+      close: async () => {
+        for (const socket of tunnelSockets) socket.destroy();
+        await closeServer(proxyServer);
+      }
+    };
+  };
+
+  it('should route public targets through ProxyAgent when an HTTP proxy is configured', async () => {
+    vi.spyOn(dns, 'resolve4').mockResolvedValue(['198.51.100.12']);
+    vi.spyOn(dns, 'resolve6').mockResolvedValue([]);
+    const lookup = vi.spyOn(dns, 'lookup');
+    const targetServer = await listen((req, res) => {
+      res.end(JSON.stringify({ ok: true, host: req.headers.host, url: req.url }));
+    });
+    const proxy = await startConnectProxy(getServerPort(targetServer));
+    const safeFetch = createMcpSafeFetch();
+
+    try {
+      vi.stubEnv('HTTP_PROXY', `http://127.0.0.1:${proxy.port}`);
+      vi.stubEnv('NO_PROXY', '');
+      vi.stubEnv('no_proxy', '');
+
+      const response = await safeFetch('http://proxy.example.test/mcp');
+      expect(await response.json()).toEqual({
+        ok: true,
+        host: 'proxy.example.test',
+        url: '/mcp'
+      });
+      expect(proxy.getConnectedTarget()).toBe('proxy.example.test:80');
+      expect(lookup).not.toHaveBeenCalled();
+    } finally {
+      await safeFetch.close();
+      await Promise.all([proxy.close(), closeServer(targetServer)]);
+    }
+  });
+
+  it('should still reject private or loopback targets when an HTTP proxy is configured', async () => {
+    getTestInstanceConfig().security.checkInternalIp = true;
     vi.stubEnv('HTTP_PROXY', 'http://127.0.0.1:3128');
     vi.stubEnv('NO_PROXY', '');
-    vi.spyOn(dns, 'resolve4').mockResolvedValue(['198.51.100.12']);
+    vi.stubEnv('no_proxy', '');
+    vi.spyOn(dns, 'resolve4').mockResolvedValue(['10.0.0.8']);
     vi.spyOn(dns, 'resolve6').mockResolvedValue([]);
     const fetchImpl = vi.fn();
     const safeFetch = createMcpSafeFetch({ fetchImpl });
 
     try {
-      await expect(safeFetch('http://proxy.example.test/mcp')).rejects.toThrow(
-        'MCP requests through an HTTP proxy are not supported by SSRF protection'
+      await expect(safeFetch('http://127.0.0.1/mcp')).rejects.toBe(PRIVATE_URL_TEXT);
+      await expect(safeFetch('http://169.254.169.254/latest/meta-data')).rejects.toBe(
+        PRIVATE_URL_TEXT
       );
+      await expect(safeFetch('http://private.example.test/mcp')).rejects.toBe(PRIVATE_URL_TEXT);
       expect(fetchImpl).not.toHaveBeenCalled();
+    } finally {
+      await safeFetch.close();
+    }
+  });
+
+  it('should block redirects to internal targets when using an HTTP proxy', async () => {
+    getTestInstanceConfig().security.checkInternalIp = true;
+    vi.spyOn(dns, 'resolve4').mockResolvedValue(['198.51.100.12']);
+    vi.spyOn(dns, 'resolve6').mockResolvedValue([]);
+    const targetServer = await listen((_req, res) => {
+      res.statusCode = 302;
+      res.setHeader('Location', 'http://127.0.0.1:8080/mcp');
+      res.end('redirect');
+    });
+    const proxy = await startConnectProxy(getServerPort(targetServer));
+    const safeFetch = createMcpSafeFetch();
+
+    try {
+      vi.stubEnv('HTTP_PROXY', `http://127.0.0.1:${proxy.port}`);
+      vi.stubEnv('NO_PROXY', '');
+      vi.stubEnv('no_proxy', '');
+
+      await expect(safeFetch('http://proxy.example.test/mcp')).rejects.toBe(PRIVATE_URL_TEXT);
+    } finally {
+      await safeFetch.close();
+      await Promise.all([proxy.close(), closeServer(targetServer)]);
+    }
+  });
+
+  it('should bypass the HTTP proxy and keep pinned-DNS direct fetch when NO_PROXY matches', async () => {
+    getTestInstanceConfig().security.checkInternalIp = true;
+    vi.stubEnv('HTTP_PROXY', 'http://127.0.0.1:3128');
+    vi.stubEnv('NO_PROXY', 'direct.example.test');
+    vi.stubEnv('no_proxy', '');
+    vi.spyOn(dns, 'resolve4').mockResolvedValue(['8.8.8.8']);
+    vi.spyOn(dns, 'resolve6').mockResolvedValue([]);
+    const lookup = vi
+      .spyOn(dns, 'lookup')
+      .mockResolvedValue([{ address: '93.184.216.34', family: 4 }]);
+    const fetchImpl = vi.fn().mockResolvedValue(new Response('ok'));
+    const safeFetch = createMcpSafeFetch({ fetchImpl });
+
+    try {
+      const response = await safeFetch('http://direct.example.test/mcp');
+      expect(await response.text()).toBe('ok');
+      expect(fetchImpl).toHaveBeenCalledTimes(1);
+      const dispatcher = fetchImpl.mock.calls[0]?.[1]?.dispatcher;
+      expect(dispatcher).toBeInstanceOf(Agent);
+      expect(dispatcher).not.toBeInstanceOf(ProxyAgent);
+      expect(lookup).toHaveBeenCalledTimes(1);
     } finally {
       await safeFetch.close();
     }
