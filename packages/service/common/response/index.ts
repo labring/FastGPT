@@ -7,10 +7,14 @@ import { proxyError, ERROR_RESPONSE, ERROR_ENUM } from '@fastgpt/global/common/e
 import { replaceSensitiveText } from '@fastgpt/global/common/string/tools';
 import { getErrorMessage, isUserConfigError, UserError } from '@fastgpt/global/common/error/utils';
 import { clearCookie } from '../../support/permission/auth/common';
-import { ZodError } from 'zod';
+import type { ZodError } from 'zod';
 import type Stream from 'node:stream';
 import { getLogger, LogCategories } from '../logger';
-import { ApiRequestInputParseError, getZodError } from '../zod/requestParseError';
+import {
+  type ApiRequestInputParseError,
+  getZodError,
+  getZodParseErrorInputSource
+} from '../zod/requestParseError';
 import { markProfileError } from '../profiling';
 import { ChatGeneratingConflictError } from '@fastgpt/global/core/chat/error';
 import { translateApiMessage } from '../i18n/request';
@@ -155,10 +159,11 @@ export function processError(params: {
   } else if (error instanceof UserError) {
     msg = error.displayMessage || msg;
     logger.info('Request error', { url, message: msg });
-  } else if (error instanceof ZodError || error instanceof ApiRequestInputParseError) {
+  } else if (getZodError(error)) {
     zodError = parseZodErrorMessage(error);
 
-    if (!(error instanceof ApiRequestInputParseError)) {
+    // Next/Turbopack 的多个 bundle 可能持有不同类实例，沿用请求错误的稳定标识。
+    if (!getZodParseErrorInputSource(error)) {
       logger.error('Zod validation error', { url, data: zodError, error });
     }
 
