@@ -1,6 +1,5 @@
 import z from 'zod';
 import { ObjectIdSchema } from '@fastgpt/global/common/type/mongo';
-import type { ChatCompletionMessageParamSchema } from '@fastgpt/global/core/ai/llm/type';
 import { ChatItemMiniSchema, UserChatItemValueItemSchema } from '@fastgpt/global/core/chat/type';
 import {
   getWorkflowEntryNodeIds,
@@ -14,22 +13,19 @@ import {
   type GetAppVersionDetailResponseType,
   type PublishAppResponseType
 } from '@fastgpt/global/openapi/core/app/version/api';
-import {
-  OptimizeCodeBodySchema,
-  type GetSandboxPackagesResponse,
-  type WorkflowDebugResponse
-} from '@fastgpt/global/openapi/core/workflow/api';
+import type { WorkflowDebugResponse } from '@fastgpt/global/openapi/core/workflow/api';
 import { getWorkflowChecksum } from '@fastgpt/workflow-core/domain/checksum';
 import { ensureSystemConfigNode } from '@fastgpt/workflow-core/domain/defaults';
 import { WorkflowValidationError } from '@fastgpt/workflow-core/domain/diagnostic';
 import { compileStoreWorkflow } from '@fastgpt/workflow-core/store/compile';
 import { decompileStoreWorkflow } from '@fastgpt/workflow-core/store/decompile';
 import { createTranslator } from '@fastgpt/workflow-core/template/i18n';
+import { createWorkflowTemplateBundleProvider } from '@fastgpt/workflow-core/template/provider';
 import { validateWorkflow } from '@fastgpt/workflow-core/validation';
 import type { FileIoAdapter } from '../../infra/fs/file-io';
 import type { FastGptHttpClient } from '../../infra/http/fastgpt-http-client';
 import type { WorkflowTemplateLoader } from '../../infra/workflow/template-loader';
-import { CliApiError, CliArgumentError, CliAuthError, CliNetworkError } from '../../shared/errors';
+import { CliApiError, CliArgumentError, CliAuthError } from '../../shared/errors';
 import { createChangedResult, createDryRunResult, createSuccessResult } from '../../shared/result';
 import type { CliResult } from '../../shared/types';
 import { formatWorkflowWarnings, withWorkflowErrorMapping } from './workflow-error';
@@ -88,7 +84,7 @@ export type WorkflowSyncService = {
     dryRun?: boolean;
   }) => Promise<CliResult>;
   diff: (params: { client: FastGptHttpClient; dir: string; appId?: string }) => Promise<CliResult>;
-  push: (params: {
+  save: (params: {
     client: FastGptHttpClient;
     dir: string;
     appId?: string;
@@ -115,14 +111,6 @@ export type WorkflowSyncService = {
     chatId?: string;
     usageId?: string;
     timeoutMs?: number;
-    dryRun?: boolean;
-  }) => Promise<CliResult>;
-  sandboxPackages: (params: { client: FastGptHttpClient }) => Promise<CliResult>;
-  optimizeCode: (params: {
-    client: FastGptHttpClient;
-    prompt: string;
-    modelId: string;
-    conversationHistory?: z.infer<typeof ChatCompletionMessageParamSchema>[];
     dryRun?: boolean;
   }) => Promise<CliResult>;
   test: (params: {
@@ -419,7 +407,7 @@ export function createWorkflowSyncService(deps: WorkflowSyncServiceDeps): Workfl
     throw new CliArgumentError(
       'App ID is required.',
       undefined,
-      'Pass <appId> / --app-id <id>, or pull a workflow first with: fastgpt workflow pull <appId>'
+      'Pass <appId> / --app-id <id>, or pull a workflow first with: fastgpt app pull <appId>'
     );
   }
 
@@ -427,12 +415,14 @@ export function createWorkflowSyncService(deps: WorkflowSyncServiceDeps): Workfl
     client,
     appId,
     versionId,
-    locale
+    locale,
+    dir
   }: {
     client: FastGptHttpClient;
     appId: string;
     versionId?: string;
     locale: string;
+    dir: string;
   }): Promise<{
     detail: GetAppDetailResponseType;
     document: WorkflowDocument;
@@ -477,7 +467,9 @@ export function createWorkflowSyncService(deps: WorkflowSyncServiceDeps): Workfl
       }
     });
 
-    const templateProvider = await templateLoader.loadProvider({ locale, env });
+    const templateProvider = createWorkflowTemplateBundleProvider(
+      await templateLoader.loadBundle({ locale, env, dir })
+    );
     const systemConfigResult = await ensureSystemConfigNode({
       document,
       dependencies: {
@@ -564,7 +556,7 @@ export function createWorkflowSyncService(deps: WorkflowSyncServiceDeps): Workfl
       return {
         checksum: submittedChecksum,
         warnings: [
-          'The server did not return a saved workflow snapshot. The sync baseline uses submitted content; if the server normalized it, inspect with "fastgpt workflow diff" and run "fastgpt workflow pull" before the next write.'
+          'The server did not return a saved workflow snapshot. The sync baseline uses submitted content; if the server normalized it, inspect with "fastgpt workflow diff" and run "fastgpt app pull" before the next write.'
         ]
       };
     }
@@ -615,7 +607,8 @@ export function createWorkflowSyncService(deps: WorkflowSyncServiceDeps): Workfl
             client,
             appId,
             versionId,
-            locale
+            locale,
+            dir
           });
         const pulledChecksum = await getWorkflowChecksum(document);
 
@@ -637,7 +630,7 @@ export function createWorkflowSyncService(deps: WorkflowSyncServiceDeps): Workfl
 
         if (dryRun) {
           return createDryRunResult({
-            operation: 'workflow pull',
+            operation: 'app pull',
             risk: 'write',
             preview: {
               appId,
@@ -723,7 +716,7 @@ export function createWorkflowSyncService(deps: WorkflowSyncServiceDeps): Workfl
         });
       }),
 
-    push: ({ client, dir, appId: explicitAppId, force, dryRun }) =>
+    save: ({ client, dir, appId: explicitAppId, force, dryRun }) =>
       withWorkflowErrorMapping(async () => {
         const appId = await resolveAppId({ explicitAppId, dir });
         const document = await readWorkflowDocument({ fileIo, dir });
@@ -751,7 +744,7 @@ export function createWorkflowSyncService(deps: WorkflowSyncServiceDeps): Workfl
 
         if (dryRun) {
           return createDryRunResult({
-            operation: 'workflow push',
+            operation: 'app save',
             risk: 'write',
             preview: {
               appId,
@@ -791,12 +784,13 @@ export function createWorkflowSyncService(deps: WorkflowSyncServiceDeps): Workfl
             lastSyncedAt: new Date().toISOString(),
             lastChecksum: localChecksum,
             lastRemoteChecksum: savedRemoteChecksum,
+            // 旧同步文件使用 push 表示保存草稿，保留磁盘字段值以兼容已有工作区。
             lastAction: 'push'
           }
         });
 
         return createChangedResult({
-          message: `Pushed draft workflow to App ${appId}`,
+          message: `Saved workflow draft for App ${appId}`,
           data: {
             appId,
             checksum: localChecksum,
@@ -838,7 +832,7 @@ export function createWorkflowSyncService(deps: WorkflowSyncServiceDeps): Workfl
 
         if (dryRun) {
           return createDryRunResult({
-            operation: 'workflow publish',
+            operation: 'app publish',
             risk: 'write',
             preview: {
               appId,
@@ -980,84 +974,6 @@ export function createWorkflowSyncService(deps: WorkflowSyncServiceDeps): Workfl
         });
       }),
 
-    sandboxPackages: async ({ client }) => {
-      const data = await client.request<GetSandboxPackagesResponse>({
-        method: 'GET',
-        path: '/core/workflow/getSandboxPackages'
-      });
-      return createSuccessResult({ data });
-    },
-
-    optimizeCode: async ({ client, prompt, modelId, conversationHistory, dryRun }) => {
-      const validatedBody = OptimizeCodeBodySchema.parse({
-        optimizerInput: prompt,
-        modelId,
-        ...(conversationHistory ? { conversationHistory } : {})
-      });
-
-      if (dryRun) {
-        return createDryRunResult({
-          operation: 'workflow optimize-code',
-          risk: 'write',
-          preview: {
-            method: 'POST',
-            path: '/core/workflow/optimizeCode',
-            modelId: validatedBody.modelId,
-            promptLength: validatedBody.optimizerInput.length,
-            historyLength: validatedBody.conversationHistory?.length ?? 0
-          }
-        });
-      }
-
-      let content = '';
-      let completed = false;
-      for await (const event of client.streamSse({
-        method: 'POST',
-        path: '/core/workflow/optimizeCode',
-        body: validatedBody,
-        includeDone: true
-      })) {
-        const raw = event.data.trim();
-        if (!raw) {
-          continue;
-        }
-        if (raw === '[DONE]') {
-          completed = true;
-          break;
-        }
-        try {
-          const parsed = JSON.parse(raw) as {
-            choices?: Array<{ delta?: { content?: string } }>;
-          };
-          const delta = parsed.choices?.[0]?.delta?.content;
-          if (typeof delta === 'string') {
-            content += delta;
-          }
-        } catch {
-          // 忽略非标准心跳或未预期片段，保留已累积的流式代码文本
-        }
-      }
-
-      if (!completed) {
-        throw new CliNetworkError(
-          'Code optimization stream ended before completion.',
-          'Retry the optimize-code request or check server logs for stream termination errors.',
-          {
-            modelId: validatedBody.modelId,
-            partialContentLength: content.length
-          }
-        );
-      }
-
-      return createChangedResult({
-        message: `Generated optimized code using model ${validatedBody.modelId}`,
-        data: {
-          modelId: validatedBody.modelId,
-          content
-        }
-      });
-    },
-
     test: ({
       client,
       dir,
@@ -1100,9 +1016,9 @@ export function createWorkflowSyncService(deps: WorkflowSyncServiceDeps): Workfl
             };
           }
           throw new CliArgumentError(
-            'Either --cases <path> or --query <text> is required for workflow test.',
+            'Either --cases <path> or --query <text> is required for app test.',
             undefined,
-            'Run: fastgpt workflow test --cases ./cases.json or --query "Hello"'
+            'Run: fastgpt app test --cases ./cases.json or --query "Hello"'
           );
         })();
 
@@ -1132,7 +1048,7 @@ export function createWorkflowSyncService(deps: WorkflowSyncServiceDeps): Workfl
 
         if (dryRun) {
           return createDryRunResult({
-            operation: 'workflow test',
+            operation: 'app test',
             risk: 'write',
             preview: {
               appId,

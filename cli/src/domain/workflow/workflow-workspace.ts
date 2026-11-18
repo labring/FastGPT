@@ -56,7 +56,7 @@ export async function readWorkflowDocument({
     throw new CliArgumentError(
       `Workflow file "${filePath}" does not exist.`,
       { filePath },
-      'Run: fastgpt workflow init or fastgpt workflow pull <appId>'
+      'Run: fastgpt workflow-build init or fastgpt app pull <appId>'
     );
   }
 
@@ -124,7 +124,7 @@ export async function readWorkflowSyncState({
     throw new CliArgumentError(
       `Sync state file "${WORKFLOW_SYNC_FILE_NAME}" is invalid JSON or schema.`,
       undefined,
-      `Re-sync with: fastgpt workflow pull <appId> --force`
+      `Re-sync with: fastgpt app pull <appId> --force`
     );
   }
 }

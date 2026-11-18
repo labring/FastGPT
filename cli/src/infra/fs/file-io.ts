@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { access, mkdir, open, readFile, rename, rm } from 'node:fs/promises';
+import { access, link, mkdir, open, readFile, rename, rm } from 'node:fs/promises';
 import { basename, dirname, extname, join, resolve } from 'node:path';
 import { CliArgumentError } from '../../shared/errors';
 
@@ -16,6 +16,10 @@ export type FileIoAdapter = {
   readTextFile: (filePath: string, baseDir?: string) => Promise<string>;
   readBinaryFile: (filePath: string, baseDir?: string) => Promise<LoadedBinaryFile>;
   writeTextAtomic: (filePath: string, content: string, baseDir?: string) => Promise<string>;
+  createTextFiles: (params: {
+    baseDir: string;
+    files: Array<{ filePath: string; content: string }>;
+  }) => Promise<void>;
 };
 
 const MIME_BY_EXT: Record<string, string> = {
@@ -86,27 +90,65 @@ export function createNodeFileIoAdapter({ cwd }: { cwd: string }): FileIoAdapter
         throw new CliArgumentError(`Failed to read file "${filePath}": ${msg}`);
       }
     },
-    writeTextAtomic: async (filePath, content, baseDir) => {
-      const absolutePath = resolvePath(filePath, baseDir);
-      const directory = dirname(absolutePath);
-      const temporaryPath = join(
-        directory,
-        `.${basename(absolutePath)}.${process.pid}.${Date.now()}.${randomUUID()}.tmp`
-      );
-      await mkdir(directory, { recursive: true });
-
-      const handle = await open(temporaryPath, 'wx');
+    writeTextAtomic: (filePath, content, baseDir) =>
+      writeTextFile({ absolutePath: resolvePath(filePath, baseDir), content }),
+    createTextFiles: async ({ baseDir, files }) => {
+      const created: string[] = [];
       try {
-        await handle.writeFile(content, 'utf8');
-        await handle.sync();
-        await handle.close();
-        await rename(temporaryPath, absolutePath);
-        return absolutePath;
+        for (const { filePath, content } of files) {
+          const path = await writeTextFile({
+            absolutePath: resolvePath(filePath, baseDir),
+            content,
+            exclusive: true
+          });
+          created.push(path);
+        }
       } catch (error) {
-        await handle.close().catch(() => {});
-        await rm(temporaryPath, { force: true }).catch(() => {});
+        // 只清理本次初始化成功创建的文件，保留已存在的工作区文件。
+        await Promise.allSettled(created.map((path) => rm(path, { force: true })));
         throw error;
       }
     }
   };
+}
+
+/** 将完整内容从临时文件发布到目标路径，初始化时使用独占写入防止覆盖现有文件。 */
+async function writeTextFile({
+  absolutePath,
+  content,
+  exclusive = false
+}: {
+  absolutePath: string;
+  content: string;
+  exclusive?: boolean;
+}): Promise<string> {
+  const directory = dirname(absolutePath);
+  const temporaryPath = join(
+    directory,
+    `.${basename(absolutePath)}.${process.pid}.${Date.now()}.${randomUUID()}.tmp`
+  );
+  await mkdir(directory, { recursive: true });
+
+  const handle = await open(temporaryPath, 'wx');
+  try {
+    await handle.writeFile(content, 'utf8');
+    await handle.sync();
+    await handle.close();
+    if (exclusive) {
+      await link(temporaryPath, absolutePath);
+    } else {
+      await rename(temporaryPath, absolutePath);
+    }
+    return absolutePath;
+  } catch (error) {
+    await handle.close().catch(() => {});
+    if (exclusive && error instanceof Error && 'code' in error && error.code === 'EEXIST') {
+      throw new CliArgumentError(`File already exists: "${absolutePath}".`, {
+        filePath: absolutePath
+      });
+    }
+    throw error;
+  } finally {
+    await rm(temporaryPath, { force: true }).catch(() => {});
+  }
 }

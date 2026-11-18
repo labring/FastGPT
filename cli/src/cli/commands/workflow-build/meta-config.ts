@@ -16,7 +16,7 @@ import {
   requireNonEmptyOption,
   resolveWorkflowDir,
   resolveWorkflowLocale
-} from './shared';
+} from '../workflow/shared';
 
 const VARIABLE_TYPE_VALUES = [...Object.values(VariableInputEnum), 'external'] as const;
 const VARIABLE_TYPE_SET = new Set<string>(VARIABLE_TYPE_VALUES);
@@ -83,12 +83,14 @@ function parseVariableConfigOptions(options: Record<string, unknown>) {
 export function createWorkflowMetaConfigCommandSpecs(): CliCommandSpec[] {
   return [
     {
-      path: ['workflow', 'meta', 'show'],
+      path: ['workflow-build', 'meta', 'show'],
       summary: 'Show application metadata stored in workflow.json',
       risk: 'read',
       authModes: ['none'],
       options: [WORKFLOW_DIR_OPTION],
-      examples: [{ description: 'Show workflow metadata', args: ['workflow', 'meta', 'show'] }],
+      examples: [
+        { description: 'Show workflow metadata', args: ['workflow-build', 'meta', 'show'] }
+      ],
       execute: ({ options, container }) =>
         container.workflowLocalService.metaShow({
           dir: resolveWorkflowDir(options, container.env)
@@ -96,7 +98,7 @@ export function createWorkflowMetaConfigCommandSpecs(): CliCommandSpec[] {
     },
 
     {
-      path: ['workflow', 'meta', 'set'],
+      path: ['workflow-build', 'meta', 'set'],
       summary: 'Update application name or intro in local workflow.json',
       risk: 'write',
       authModes: ['none'],
@@ -115,7 +117,7 @@ export function createWorkflowMetaConfigCommandSpecs(): CliCommandSpec[] {
       examples: [
         {
           description: 'Update local workflow app name',
-          args: ['workflow', 'meta', 'set', '--name', 'Order Assistant']
+          args: ['workflow-build', 'meta', 'set', '--name', 'Order Assistant']
         }
       ],
       execute: ({ options, container }) => {
@@ -135,13 +137,13 @@ export function createWorkflowMetaConfigCommandSpecs(): CliCommandSpec[] {
     },
 
     {
-      path: ['workflow', 'config', 'list'],
+      path: ['workflow-build', 'config', 'list'],
       summary: 'List allowlisted ChatConfig paths and their current values',
       risk: 'read',
       authModes: ['none'],
       options: [WORKFLOW_DIR_OPTION, WORKFLOW_LOCALE_OPTION],
       examples: [
-        { description: 'List chatConfig descriptors', args: ['workflow', 'config', 'list'] }
+        { description: 'List chatConfig descriptors', args: ['workflow-build', 'config', 'list'] }
       ],
       execute: ({ options, container }) =>
         container.workflowLocalService.configList({
@@ -151,7 +153,7 @@ export function createWorkflowMetaConfigCommandSpecs(): CliCommandSpec[] {
     },
 
     {
-      path: ['workflow', 'config', 'get'],
+      path: ['workflow-build', 'config', 'get'],
       summary: 'Get a single allowlisted ChatConfig field descriptor and value',
       risk: 'read',
       authModes: ['none'],
@@ -168,7 +170,7 @@ export function createWorkflowMetaConfigCommandSpecs(): CliCommandSpec[] {
       examples: [
         {
           description: 'Get welcomeText config',
-          args: ['workflow', 'config', 'get', '--path', 'welcomeText']
+          args: ['workflow-build', 'config', 'get', '--path', 'welcomeText']
         }
       ],
       execute: ({ options, container }) =>
@@ -180,7 +182,7 @@ export function createWorkflowMetaConfigCommandSpecs(): CliCommandSpec[] {
     },
 
     {
-      path: ['workflow', 'config', 'set'],
+      path: ['workflow-build', 'config', 'set'],
       summary: 'Set an allowlisted ChatConfig path in local workflow.json',
       risk: 'write',
       authModes: ['none'],
@@ -199,7 +201,7 @@ export function createWorkflowMetaConfigCommandSpecs(): CliCommandSpec[] {
       examples: [
         {
           description: 'Set welcomeText',
-          args: ['workflow', 'config', 'set', '--path', 'welcomeText', '--value', 'Hello!']
+          args: ['workflow-build', 'config', 'set', '--path', 'welcomeText', '--value', 'Hello!']
         }
       ],
       execute: ({ options, container }) => {
@@ -219,7 +221,7 @@ export function createWorkflowMetaConfigCommandSpecs(): CliCommandSpec[] {
     },
 
     {
-      path: ['workflow', 'config', 'unset'],
+      path: ['workflow-build', 'config', 'unset'],
       summary: 'Unset an allowlisted ChatConfig path in local workflow.json',
       risk: 'write',
       authModes: ['none'],
@@ -237,7 +239,7 @@ export function createWorkflowMetaConfigCommandSpecs(): CliCommandSpec[] {
       examples: [
         {
           description: 'Unset welcomeText',
-          args: ['workflow', 'config', 'unset', '--path', 'welcomeText']
+          args: ['workflow-build', 'config', 'unset', '--path', 'welcomeText']
         }
       ],
       execute: ({ options, container }) =>
@@ -250,13 +252,13 @@ export function createWorkflowMetaConfigCommandSpecs(): CliCommandSpec[] {
     },
 
     {
-      path: ['workflow', 'variable', 'list'],
+      path: ['workflow-build', 'variable', 'list'],
       summary: 'List global workflow variables defined in workflow.json',
       risk: 'read',
       authModes: ['none'],
       options: [WORKFLOW_DIR_OPTION],
       examples: [
-        { description: 'List workflow variables', args: ['workflow', 'variable', 'list'] }
+        { description: 'List workflow variables', args: ['workflow-build', 'variable', 'list'] }
       ],
       execute: ({ options, container }) =>
         container.workflowLocalService.variableList({
@@ -265,7 +267,7 @@ export function createWorkflowMetaConfigCommandSpecs(): CliCommandSpec[] {
     },
 
     {
-      path: ['workflow', 'variable', 'add'],
+      path: ['workflow-build', 'variable', 'add'],
       summary: 'Add a global variable to local workflow.json',
       risk: 'write',
       authModes: ['none'],
@@ -311,7 +313,7 @@ export function createWorkflowMetaConfigCommandSpecs(): CliCommandSpec[] {
         {
           description: 'Add a required string variable',
           args: [
-            'workflow',
+            'workflow-build',
             'variable',
             'add',
             '--key',
@@ -358,7 +360,7 @@ export function createWorkflowMetaConfigCommandSpecs(): CliCommandSpec[] {
     },
 
     {
-      path: ['workflow', 'variable', 'update'],
+      path: ['workflow-build', 'variable', 'update'],
       summary: 'Update a global variable in local workflow.json',
       risk: 'write',
       authModes: ['none'],
@@ -415,7 +417,7 @@ export function createWorkflowMetaConfigCommandSpecs(): CliCommandSpec[] {
       examples: [
         {
           description: 'Update variable label',
-          args: ['workflow', 'variable', 'update', '--key', 'city', '--label', 'Target City']
+          args: ['workflow-build', 'variable', 'update', '--key', 'city', '--label', 'Target City']
         }
       ],
       execute: ({ options, container }) => {
@@ -478,7 +480,7 @@ export function createWorkflowMetaConfigCommandSpecs(): CliCommandSpec[] {
     },
 
     {
-      path: ['workflow', 'variable', 'remove'],
+      path: ['workflow-build', 'variable', 'remove'],
       summary: 'Remove a global variable from local workflow.json',
       risk: 'write',
       authModes: ['none'],
@@ -491,7 +493,7 @@ export function createWorkflowMetaConfigCommandSpecs(): CliCommandSpec[] {
       examples: [
         {
           description: 'Remove variable "city"',
-          args: ['workflow', 'variable', 'remove', '--key', 'city']
+          args: ['workflow-build', 'variable', 'remove', '--key', 'city']
         }
       ],
       execute: ({ options, container }) =>

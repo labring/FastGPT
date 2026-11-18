@@ -69,6 +69,30 @@ export const CustomFieldConfigTypeSchema = z.object({
 });
 export type CustomFieldConfigType = z.infer<typeof CustomFieldConfigTypeSchema>;
 
+const InputEnumOptionSchema = z.object({
+  value: z.string().meta({
+    description: '枚举项实际值'
+  }),
+  label: z.string().optional().meta({
+    description: '枚举项展示名称'
+  })
+});
+
+const InputSelectOptionSchema = z.object({
+  label: z.string().optional().meta({
+    description: '变量选项展示名称'
+  }),
+  value: z.string().meta({
+    description: '变量选项实际值'
+  }),
+  icon: z.string().optional().meta({
+    description: '变量选项图标'
+  }),
+  description: z.string().optional().meta({
+    description: '变量选项说明'
+  })
+});
+
 export const InputComponentPropsTypeSchema = z.object({
   key: z.enum(NodeInputKeyEnum).or(z.string()).meta({
     description: '变量键名，用于在提示词或工作流中引用该输入'
@@ -109,25 +133,10 @@ export const InputComponentPropsTypeSchema = z.object({
   }), // password
   list: z
     .array(
-      z
-        .object({
-          label: z.string().optional().meta({
-            description: '变量选项展示名称'
-          }),
-          value: z.string().meta({
-            description: '变量选项实际值'
-          }),
-          icon: z.string().optional().meta({
-            description: '变量选项图标'
-          }),
-          description: z.string().optional().meta({
-            description: '变量选项说明'
-          })
-        })
-        .transform((item) => ({
-          ...item,
-          label: item.label ?? item.value
-        }))
+      InputSelectOptionSchema.transform((item) => ({
+        ...item,
+        label: item.label ?? item.value
+      })).pipe(InputSelectOptionSchema.required({ label: true }))
     )
     .optional()
     .meta({
@@ -212,19 +221,10 @@ export const InputComponentPropsTypeSchema = z.object({
 
   enums: z
     .array(
-      z
-        .object({
-          value: z.string().meta({
-            description: '枚举项实际值'
-          }),
-          label: z.string().optional().meta({
-            description: '枚举项展示名称'
-          })
-        })
-        .transform((item) => ({
-          ...item,
-          label: item.label ?? item.value
-        }))
+      InputEnumOptionSchema.transform((item) => ({
+        ...item,
+        label: item.label ?? item.value
+      })).pipe(InputEnumOptionSchema.required({ label: true }))
     )
     .optional()
     .meta({

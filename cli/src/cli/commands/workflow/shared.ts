@@ -20,7 +20,7 @@ export const WORKFLOW_DRY_RUN_OPTION: CommandOptionMeta = {
   name: 'dryRun',
   flags: '--dry-run',
   takesValue: false,
-  description: 'Validate and preview changes without modifying workflow.json or calling remote APIs'
+  description: 'Validate and preview changes without writing local files or saving remotely'
 };
 
 export const WORKFLOW_VALUE_OPTIONS: readonly CommandOptionMeta[] = [
@@ -94,6 +94,28 @@ export function optionalNonEmptyOption(
     return val;
   }
   return undefined;
+}
+
+/** 读取工作区命令的显式应用 ID，位置参数优先。 */
+export function resolveWorkflowAppId(
+  positional: readonly string[],
+  options: Record<string, unknown>
+): string | undefined {
+  const pos = positional[0];
+  const flag = optionalNonEmptyOption(options, 'appId');
+  return pos ?? flag;
+}
+
+/** 将工作区调试或测试的超时参数解析为正整数毫秒。 */
+export function parseWorkflowTimeoutMs(raw: unknown): number | undefined {
+  if (raw === undefined) {
+    return undefined;
+  }
+  const num = typeof raw === 'number' ? raw : Number(String(raw));
+  if (!Number.isInteger(num) || num <= 0) {
+    throw new CliArgumentError('--timeout must be a positive integer in milliseconds.');
+  }
+  return num;
 }
 
 export function extractValueInput(options: Record<string, unknown>): WorkflowValueInput {

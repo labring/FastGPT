@@ -1,6 +1,8 @@
 import type { CliAuthModeRequirement, CliRiskLevel, CommandMeta } from '../shared/types';
+import { createAppCommandSpecs } from './commands/app';
 import { createAuthCommandSpecs } from './commands/auth';
 import { createChatCommandSpecs } from './commands/chat';
+import { createCodeSandboxCommandSpec } from './commands/code-sandbox';
 import { createCommandsManifestCommandSpec } from './commands/commands';
 import { createConfigCommandSpecs } from './commands/config';
 import { createDatasetCommandSpecs } from './commands/dataset';
@@ -8,7 +10,9 @@ import { createDoctorCommandSpec } from './commands/doctor';
 import { createLoginCommandSpec } from './commands/login';
 import { createLogoutCommandSpec } from './commands/logout';
 import { createModelCommandSpecs } from './commands/model';
-import { createWorkflowCommandSpecs } from './commands/workflow';
+import { createPluginToolListCommandSpec } from './commands/plugin';
+import { createWorkflowBuildCommandSpecs } from './commands/workflow-build';
+import { createWorkflowSyncCommandSpecs } from './commands/workflow/sync';
 import { createWhoamiCommandSpec } from './commands/whoami';
 import type { CliCommandSpec } from './pipeline';
 
@@ -31,9 +35,13 @@ export function getCliCommandSpecs(): CliCommandSpec[] {
     ...createAuthCommandSpecs(),
     ...createConfigCommandSpecs(),
     ...createDatasetCommandSpecs(),
+    ...createAppCommandSpecs(),
     ...createChatCommandSpecs(),
+    createCodeSandboxCommandSpec(),
     ...createModelCommandSpecs(),
-    ...createWorkflowCommandSpecs(),
+    createPluginToolListCommandSpec(),
+    ...createWorkflowBuildCommandSpecs(),
+    ...createWorkflowSyncCommandSpecs(),
     createDoctorCommandSpec(),
     createCommandsManifestCommandSpec()
   ];

@@ -1,5 +1,6 @@
 import { CliArgumentError } from '../../../shared/errors';
 import type { CliCommandSpec } from '../../pipeline';
+import { requireActiveClient } from '../dataset/shared';
 import { parseOptionalBooleanFlag } from '../dataset/shared';
 import {
   WORKFLOW_DIR_OPTION,
@@ -9,7 +10,7 @@ import {
   requireNonEmptyOption,
   resolveWorkflowDir,
   resolveWorkflowLocale
-} from './shared';
+} from '../workflow/shared';
 
 const TEMPLATE_KIND_SET = new Set<string>(['builtin', 'teamApp', 'systemTool', 'tool']);
 
@@ -19,7 +20,7 @@ const TEMPLATE_KIND_SET = new Set<string>(['builtin', 'teamApp', 'systemTool', '
 export function createWorkflowGraphCommandSpecs(): CliCommandSpec[] {
   return [
     {
-      path: ['workflow', 'template', 'list'],
+      path: ['workflow-build', 'template', 'list'],
       summary: 'List available node templates from the active template bundle',
       risk: 'read',
       authModes: ['none'],
@@ -36,7 +37,7 @@ export function createWorkflowGraphCommandSpecs(): CliCommandSpec[] {
       examples: [
         {
           description: 'List builtin node templates',
-          args: ['workflow', 'template', 'list', '--kind', 'builtin']
+          args: ['workflow-build', 'template', 'list', '--kind', 'builtin']
         }
       ],
       execute: ({ options, container }) => {
@@ -45,6 +46,7 @@ export function createWorkflowGraphCommandSpecs(): CliCommandSpec[] {
           throw new CliArgumentError('--kind must be one of: builtin, teamApp, systemTool, tool.');
         }
         return container.workflowLocalService.templateList({
+          dir: resolveWorkflowDir(options, container.env),
           locale: resolveWorkflowLocale(options, container.env),
           kind: kind as 'builtin' | 'teamApp' | 'systemTool' | 'tool' | undefined
         });
@@ -52,7 +54,7 @@ export function createWorkflowGraphCommandSpecs(): CliCommandSpec[] {
     },
 
     {
-      path: ['workflow', 'template', 'show'],
+      path: ['workflow-build', 'template', 'show'],
       summary: 'Inspect inputs, outputs, and defaults of a node template reference',
       risk: 'read',
       authModes: ['none'],
@@ -69,11 +71,12 @@ export function createWorkflowGraphCommandSpecs(): CliCommandSpec[] {
       examples: [
         {
           description: 'Show ai-chat template descriptor',
-          args: ['workflow', 'template', 'show', '--template', 'builtin:ai-chat']
+          args: ['workflow-build', 'template', 'show', '--template', 'builtin:ai-chat']
         }
       ],
       execute: ({ options, container }) =>
         container.workflowLocalService.templateShow({
+          dir: resolveWorkflowDir(options, container.env),
           locale: resolveWorkflowLocale(options, container.env),
           template: requireNonEmptyOption({
             options,
@@ -84,7 +87,28 @@ export function createWorkflowGraphCommandSpecs(): CliCommandSpec[] {
     },
 
     {
-      path: ['workflow', 'node', 'list'],
+      path: ['workflow-build', 'template', 'load'],
+      summary: 'Refresh the workspace template bundle from FastGPT',
+      risk: 'write',
+      authModes: ['token', 'personalKey'],
+      options: [WORKFLOW_DIR_OPTION, WORKFLOW_LOCALE_OPTION, WORKFLOW_DRY_RUN_OPTION],
+      examples: [
+        {
+          description: 'Refresh templates without changing workflow.json',
+          args: ['workflow-build', 'template', 'load', '--dir', './my-flow']
+        }
+      ],
+      execute: ({ options, client, container }) =>
+        container.workflowLocalService.templateLoad({
+          client: requireActiveClient(client, 'workflow-build template load'),
+          dir: resolveWorkflowDir(options, container.env),
+          locale: resolveWorkflowLocale(options, container.env),
+          dryRun: options.dryRun === true
+        })
+    },
+
+    {
+      path: ['workflow-build', 'node', 'list'],
       summary: 'List nodes in local workflow.json',
       risk: 'read',
       authModes: ['none'],
@@ -103,7 +127,7 @@ export function createWorkflowGraphCommandSpecs(): CliCommandSpec[] {
           description: 'Filter by parent node ID'
         }
       ],
-      examples: [{ description: 'List all nodes', args: ['workflow', 'node', 'list'] }],
+      examples: [{ description: 'List all nodes', args: ['workflow-build', 'node', 'list'] }],
       execute: ({ options, container }) =>
         container.workflowLocalService.nodeList({
           dir: resolveWorkflowDir(options, container.env),
@@ -113,7 +137,7 @@ export function createWorkflowGraphCommandSpecs(): CliCommandSpec[] {
     },
 
     {
-      path: ['workflow', 'node', 'show'],
+      path: ['workflow-build', 'node', 'show'],
       summary: 'Show node details, template descriptor, and connected execution edges',
       risk: 'read',
       authModes: ['none'],
@@ -123,7 +147,10 @@ export function createWorkflowGraphCommandSpecs(): CliCommandSpec[] {
         { name: 'node', flags: '--node <nodeId>', takesValue: true, description: 'Node ID' }
       ],
       examples: [
-        { description: 'Show node details', args: ['workflow', 'node', 'show', '--node', 'chat1'] }
+        {
+          description: 'Show node details',
+          args: ['workflow-build', 'node', 'show', '--node', 'chat1']
+        }
       ],
       execute: ({ options, container }) =>
         container.workflowLocalService.nodeShow({
@@ -134,7 +161,7 @@ export function createWorkflowGraphCommandSpecs(): CliCommandSpec[] {
     },
 
     {
-      path: ['workflow', 'node', 'add'],
+      path: ['workflow-build', 'node', 'add'],
       summary: 'Add a node instantiated from a template to local workflow.json',
       risk: 'write',
       authModes: ['none'],
@@ -178,7 +205,7 @@ export function createWorkflowGraphCommandSpecs(): CliCommandSpec[] {
         {
           description: 'Add an AI chat node after workflowStart',
           args: [
-            'workflow',
+            'workflow-build',
             'node',
             'add',
             '--node',
@@ -209,7 +236,7 @@ export function createWorkflowGraphCommandSpecs(): CliCommandSpec[] {
     },
 
     {
-      path: ['workflow', 'node', 'update'],
+      path: ['workflow-build', 'node', 'update'],
       summary: 'Update node name, position, or catch-error setting in local workflow.json',
       risk: 'write',
       authModes: ['none'],
@@ -241,7 +268,7 @@ export function createWorkflowGraphCommandSpecs(): CliCommandSpec[] {
       examples: [
         {
           description: 'Rename a node',
-          args: ['workflow', 'node', 'update', '--node', 'chat1', '--name', 'Answer Agent']
+          args: ['workflow-build', 'node', 'update', '--node', 'chat1', '--name', 'Answer Agent']
         }
       ],
       execute: ({ options, container }) => {
@@ -272,7 +299,7 @@ export function createWorkflowGraphCommandSpecs(): CliCommandSpec[] {
     },
 
     {
-      path: ['workflow', 'node', 'move'],
+      path: ['workflow-build', 'node', 'move'],
       summary: 'Move a node position or parent container scope in local workflow.json',
       risk: 'write',
       authModes: ['none'],
@@ -303,7 +330,16 @@ export function createWorkflowGraphCommandSpecs(): CliCommandSpec[] {
       examples: [
         {
           description: 'Move node to root scope at (300, 180)',
-          args: ['workflow', 'node', 'move', '--node', 'chat1', '--root', '--position', '300,180']
+          args: [
+            'workflow-build',
+            'node',
+            'move',
+            '--node',
+            'chat1',
+            '--root',
+            '--position',
+            '300,180'
+          ]
         }
       ],
       execute: ({ options, container }) => {
@@ -331,7 +367,7 @@ export function createWorkflowGraphCommandSpecs(): CliCommandSpec[] {
     },
 
     {
-      path: ['workflow', 'node', 'insert'],
+      path: ['workflow-build', 'node', 'insert'],
       summary: 'Insert a new node between two connected execution ports',
       risk: 'write',
       authModes: ['none'],
@@ -369,7 +405,7 @@ export function createWorkflowGraphCommandSpecs(): CliCommandSpec[] {
         {
           description: 'Insert a node between start and chat1',
           args: [
-            'workflow',
+            'workflow-build',
             'node',
             'insert',
             '--from',
@@ -401,7 +437,7 @@ export function createWorkflowGraphCommandSpecs(): CliCommandSpec[] {
     },
 
     {
-      path: ['workflow', 'node', 'clone'],
+      path: ['workflow-build', 'node', 'clone'],
       summary: 'Clone an existing node with a new ID',
       risk: 'write',
       authModes: ['none'],
@@ -428,7 +464,7 @@ export function createWorkflowGraphCommandSpecs(): CliCommandSpec[] {
         {
           description: 'Clone chat1 to chat2 with offset',
           args: [
-            'workflow',
+            'workflow-build',
             'node',
             'clone',
             '--node',
@@ -459,7 +495,7 @@ export function createWorkflowGraphCommandSpecs(): CliCommandSpec[] {
     },
 
     {
-      path: ['workflow', 'node', 'remove'],
+      path: ['workflow-build', 'node', 'remove'],
       summary: 'Remove a node and its incident edges from local workflow.json',
       risk: 'write',
       authModes: ['none'],
@@ -472,7 +508,7 @@ export function createWorkflowGraphCommandSpecs(): CliCommandSpec[] {
       examples: [
         {
           description: 'Remove node chat1',
-          args: ['workflow', 'node', 'remove', '--node', 'chat1']
+          args: ['workflow-build', 'node', 'remove', '--node', 'chat1']
         }
       ],
       execute: ({ options, container }) =>
@@ -485,7 +521,7 @@ export function createWorkflowGraphCommandSpecs(): CliCommandSpec[] {
     },
 
     {
-      path: ['workflow', 'edge', 'list'],
+      path: ['workflow-build', 'edge', 'list'],
       summary: 'List execution edges in local workflow.json',
       risk: 'read',
       authModes: ['none'],
@@ -504,7 +540,9 @@ export function createWorkflowGraphCommandSpecs(): CliCommandSpec[] {
           description: 'Filter by source kind'
         }
       ],
-      examples: [{ description: 'List all execution edges', args: ['workflow', 'edge', 'list'] }],
+      examples: [
+        { description: 'List all execution edges', args: ['workflow-build', 'edge', 'list'] }
+      ],
       execute: ({ options, container }) =>
         container.workflowLocalService.edgeList({
           dir: resolveWorkflowDir(options, container.env),
@@ -514,7 +552,7 @@ export function createWorkflowGraphCommandSpecs(): CliCommandSpec[] {
     },
 
     {
-      path: ['workflow', 'edge', 'connect'],
+      path: ['workflow-build', 'edge', 'connect'],
       summary: 'Connect two execution ports in local workflow.json',
       risk: 'write',
       authModes: ['none'],
@@ -538,7 +576,15 @@ export function createWorkflowGraphCommandSpecs(): CliCommandSpec[] {
       examples: [
         {
           description: 'Connect start@next to chat1@target',
-          args: ['workflow', 'edge', 'connect', '--from', 'start@next', '--to', 'chat1@target']
+          args: [
+            'workflow-build',
+            'edge',
+            'connect',
+            '--from',
+            'start@next',
+            '--to',
+            'chat1@target'
+          ]
         }
       ],
       execute: ({ options, container }) =>
@@ -552,7 +598,7 @@ export function createWorkflowGraphCommandSpecs(): CliCommandSpec[] {
     },
 
     {
-      path: ['workflow', 'edge', 'disconnect'],
+      path: ['workflow-build', 'edge', 'disconnect'],
       summary: 'Disconnect an execution edge in local workflow.json',
       risk: 'write',
       authModes: ['none'],
@@ -576,7 +622,15 @@ export function createWorkflowGraphCommandSpecs(): CliCommandSpec[] {
       examples: [
         {
           description: 'Disconnect start@next from chat1@target',
-          args: ['workflow', 'edge', 'disconnect', '--from', 'start@next', '--to', 'chat1@target']
+          args: [
+            'workflow-build',
+            'edge',
+            'disconnect',
+            '--from',
+            'start@next',
+            '--to',
+            'chat1@target'
+          ]
         }
       ],
       execute: ({ options, container }) =>
@@ -590,7 +644,7 @@ export function createWorkflowGraphCommandSpecs(): CliCommandSpec[] {
     },
 
     {
-      path: ['workflow', 'edge', 'reconnect'],
+      path: ['workflow-build', 'edge', 'reconnect'],
       summary: 'Redirect an existing execution edge to a new target port',
       risk: 'write',
       authModes: ['none'],
@@ -621,7 +675,7 @@ export function createWorkflowGraphCommandSpecs(): CliCommandSpec[] {
         {
           description: 'Reconnect start@next from chat1 to chat2',
           args: [
-            'workflow',
+            'workflow-build',
             'edge',
             'reconnect',
             '--from',
@@ -645,7 +699,7 @@ export function createWorkflowGraphCommandSpecs(): CliCommandSpec[] {
     },
 
     {
-      path: ['workflow', 'container', 'children'],
+      path: ['workflow-build', 'container', 'children'],
       summary: 'List child nodes inside a container node (e.g. loop)',
       risk: 'read',
       authModes: ['none'],
@@ -661,7 +715,7 @@ export function createWorkflowGraphCommandSpecs(): CliCommandSpec[] {
       examples: [
         {
           description: 'List children of loop1',
-          args: ['workflow', 'container', 'children', '--node', 'loop1']
+          args: ['workflow-build', 'container', 'children', '--node', 'loop1']
         }
       ],
       execute: ({ options, container }) =>

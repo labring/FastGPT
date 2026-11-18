@@ -76,7 +76,7 @@ export function rethrowMappedWorkflowError(error: unknown): never {
         code: error.code,
         diagnostics: error.diagnostics
       },
-      'Run: fastgpt workflow inspect --format json'
+      'Run: fastgpt workflow-build inspect --format json'
     );
   }
   if (error instanceof WorkflowValidationError) {
@@ -86,7 +86,7 @@ export function rethrowMappedWorkflowError(error: unknown): never {
         code: error.code,
         diagnostics: error.diagnostics
       },
-      'Fix the reported diagnostics and re-run: fastgpt workflow validate --format json'
+      'Fix the reported diagnostics and re-run: fastgpt workflow-build validate --format json'
     );
   }
   throw error;

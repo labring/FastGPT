@@ -15,7 +15,10 @@ import {
 } from '@fastgpt/global/core/workflow/node/constant';
 import type { WorkflowDocument } from '@fastgpt/global/core/workflow/type/document';
 import type { WorkflowExecutionEdge } from '@fastgpt/global/core/workflow/type/edge';
-import type { NodeTemplateRef } from '@fastgpt/global/core/workflow/template/type';
+import type {
+  NodeTemplateRef,
+  WorkflowTemplateBundle
+} from '@fastgpt/global/core/workflow/template/type';
 import {
   collectWorkflowBindings,
   getWorkflowBindingDiagnostics
@@ -52,18 +55,25 @@ import { compileStoreWorkflow } from '@fastgpt/workflow-core/store/compile';
 import { decompileStoreWorkflow } from '@fastgpt/workflow-core/store/decompile';
 import { normalizeNodeTemplateDescriptor } from '@fastgpt/workflow-core/template/descriptor';
 import { createTranslator } from '@fastgpt/workflow-core/template/i18n';
+import { createWorkflowTemplateBundleProvider } from '@fastgpt/workflow-core/template/provider';
 import { formatNodeTemplateRef, parseNodeTemplateRef } from '@fastgpt/workflow-core/template/type';
 import { validateWorkflow } from '@fastgpt/workflow-core/validation';
 import type { FileIoAdapter } from '../../infra/fs/file-io';
+import type { FastGptHttpClient } from '../../infra/http/fastgpt-http-client';
 import type { Prompter } from '../../infra/ui/prompter';
-import type { WorkflowTemplateLoader } from '../../infra/workflow/template-loader';
+import {
+  WORKFLOW_TEMPLATE_BUNDLE_FILE_NAME,
+  type WorkflowTemplateLoader
+} from '../../infra/workflow/template-loader';
 import { CliArgumentError } from '../../shared/errors';
 import { createChangedResult, createDryRunResult, createSuccessResult } from '../../shared/result';
 import type { CliResult } from '../../shared/types';
 import { formatWorkflowWarnings, withWorkflowErrorMapping } from './workflow-error';
+import { fetchWorkflowTemplateBundle } from './workflow-template-service';
 import {
   WORKFLOW_FILE_NAME,
   readWorkflowDocument,
+  serializeWorkflowDocument,
   writeJsonArtifact,
   writeWorkflowDocument
 } from './workflow-workspace';
@@ -87,7 +97,14 @@ export type WorkflowLocalService = {
   init: (params: {
     dir: string;
     locale: string;
+    client?: FastGptHttpClient;
     name?: string;
+    dryRun?: boolean;
+  }) => Promise<CliResult>;
+  templateLoad: (params: {
+    dir: string;
+    locale: string;
+    client: FastGptHttpClient;
     dryRun?: boolean;
   }) => Promise<CliResult>;
   build: (params: { dir: string; output: string; dryRun?: boolean }) => Promise<CliResult>;
@@ -174,10 +191,11 @@ export type WorkflowLocalService = {
     dryRun?: boolean;
   }) => Promise<CliResult>;
   templateList: (params: {
+    dir?: string;
     locale: string;
     kind?: 'builtin' | 'teamApp' | 'systemTool' | 'tool';
   }) => Promise<CliResult>;
-  templateShow: (params: { locale: string; template: string }) => Promise<CliResult>;
+  templateShow: (params: { dir?: string; locale: string; template: string }) => Promise<CliResult>;
   nodeList: (params: { dir: string; type?: string; parent?: string }) => Promise<CliResult>;
   nodeShow: (params: { dir: string; locale: string; nodeId: string }) => Promise<CliResult>;
   nodeAdd: (params: {
@@ -482,12 +500,16 @@ function getChangedEdgeCount(base: WorkflowDocument, target: WorkflowDocument): 
 export function createWorkflowLocalService(deps: WorkflowLocalServiceDeps): WorkflowLocalService {
   const { fileIo, templateLoader, env, prompter, readStdin } = deps;
 
-  async function buildDependencies(locale: string) {
+  function createDependencies(bundle: WorkflowTemplateBundle, locale: string) {
     return {
-      templateProvider: await templateLoader.loadProvider({ locale, env }),
+      templateProvider: createWorkflowTemplateBundleProvider(bundle),
       locale,
       translate: createTranslator(locale)
     };
+  }
+
+  async function buildDependencies(locale: string, dir?: string) {
+    return createDependencies(await templateLoader.loadBundle({ locale, env, dir }), locale);
   }
 
   async function readJsonFromSource({
@@ -625,7 +647,7 @@ export function createWorkflowLocalService(deps: WorkflowLocalServiceDeps): Work
   }): Promise<CliResult> {
     return withWorkflowErrorMapping(async () => {
       const document = await readWorkflowDocument({ fileIo, dir });
-      const dependencies = await buildDependencies(locale);
+      const dependencies = await buildDependencies(locale, dir);
       const result = await applyWorkflowCommand({
         document,
         command,
@@ -661,21 +683,28 @@ export function createWorkflowLocalService(deps: WorkflowLocalServiceDeps): Work
   }: {
     ref: NodeTemplateRef;
     locale: string;
-    dependencies?: Awaited<ReturnType<typeof buildDependencies>>;
+    dependencies: Awaited<ReturnType<typeof buildDependencies>>;
   }) {
-    const resolvedDeps = dependencies ?? (await buildDependencies(locale));
-    const resolved = await resolvedDeps.templateProvider.resolve(ref, { locale });
+    const resolved = await dependencies.templateProvider.resolve(ref, { locale });
     return normalizeNodeTemplateDescriptor({
       template: resolved.template,
       templateRef: ref,
       automationMeta: resolved.automationMeta,
       validatedInputDefaults: resolved.validatedInputDefaults,
-      translate: resolvedDeps.translate
+      translate: dependencies.translate
     });
   }
 
-  async function findDescriptorForNode(flowNodeType: string, locale: string) {
-    const dependencies = await buildDependencies(locale);
+  async function findDescriptorForNode({
+    flowNodeType,
+    locale,
+    dir
+  }: {
+    flowNodeType: string;
+    locale: string;
+    dir: string;
+  }) {
+    const dependencies = await buildDependencies(locale, dir);
     const refs = await dependencies.templateProvider.list({ locale });
     for (const ref of refs) {
       const descriptor = await resolveDescriptor({ ref, locale, dependencies });
@@ -687,14 +716,19 @@ export function createWorkflowLocalService(deps: WorkflowLocalServiceDeps): Work
   }
 
   return {
-    init: ({ dir, locale, name, dryRun }) =>
+    init: ({ dir, locale, client, name, dryRun }) =>
       withWorkflowErrorMapping(async () => {
         const exists = await fileIo.exists(WORKFLOW_FILE_NAME, dir);
         if (exists) {
           const filePath = fileIo.resolvePath(WORKFLOW_FILE_NAME, dir);
           throw new CliArgumentError('workflow.json already exists.', { filePath });
         }
-        const dependencies = await buildDependencies(locale);
+        const bundle = client
+          ? await fetchWorkflowTemplateBundle(client, locale)
+          : await templateLoader.loadBundle({ locale, env, dir });
+        const dependencies = createDependencies(bundle, locale);
+        const bundlePath = fileIo.resolvePath(WORKFLOW_TEMPLATE_BUNDLE_FILE_NAME, dir);
+        const filePath = fileIo.resolvePath(WORKFLOW_FILE_NAME, dir);
         const result = await createDefaultWorkflowDocument({
           app: name ? { name } : {},
           dependencies
@@ -704,21 +738,60 @@ export function createWorkflowLocalService(deps: WorkflowLocalServiceDeps): Work
         const warnings = formatWorkflowWarnings(result.warnings);
         if (dryRun) {
           return createDryRunResult({
-            operation: 'workflow init',
+            operation: 'workflow-build init',
             risk: 'write',
-            preview: { checksum, changes },
+            preview: {
+              filePath,
+              bundlePath,
+              templateCount: bundle.items.length,
+              checksum,
+              changes
+            },
             warnings
           });
         }
-        const filePath = await writeWorkflowDocument({
-          fileIo,
-          dir,
-          document: result.document
+        // 最后发布工作流文件，使其他命令只会看到已写入模板的工作区。
+        await fileIo.createTextFiles({
+          baseDir: dir,
+          files: [
+            {
+              filePath: WORKFLOW_TEMPLATE_BUNDLE_FILE_NAME,
+              content: `${JSON.stringify(bundle, null, 2)}\n`
+            },
+            { filePath: WORKFLOW_FILE_NAME, content: serializeWorkflowDocument(result.document) }
+          ]
         });
         return createChangedResult({
-          message: `Initialized ${WORKFLOW_FILE_NAME}`,
-          data: { filePath, checksum, changes },
+          message: `Initialized ${WORKFLOW_FILE_NAME} and ${WORKFLOW_TEMPLATE_BUNDLE_FILE_NAME}`,
+          data: { filePath, bundlePath, templateCount: bundle.items.length, checksum, changes },
           warnings
+        });
+      }),
+
+    templateLoad: ({ dir, locale, client, dryRun }) =>
+      withWorkflowErrorMapping(async () => {
+        await readWorkflowDocument({ fileIo, dir });
+        const bundle = await fetchWorkflowTemplateBundle(client, locale);
+        // 拒绝重复引用等无法构建模板 Provider 的响应，保留工作区已有模板。
+        createWorkflowTemplateBundleProvider(bundle);
+        const bundlePath = fileIo.resolvePath(WORKFLOW_TEMPLATE_BUNDLE_FILE_NAME, dir);
+        const templateCount = bundle.items.length;
+        if (dryRun) {
+          return createDryRunResult({
+            operation: 'workflow-build template load',
+            risk: 'write',
+            preview: { bundlePath, templateCount }
+          });
+        }
+        await writeJsonArtifact({
+          fileIo,
+          baseDir: dir,
+          filePath: WORKFLOW_TEMPLATE_BUNDLE_FILE_NAME,
+          value: bundle
+        });
+        return createChangedResult({
+          message: `Loaded ${templateCount} workflow templates`,
+          data: { bundlePath, templateCount }
         });
       }),
 
@@ -733,7 +806,7 @@ export function createWorkflowLocalService(deps: WorkflowLocalServiceDeps): Work
         const warnings = formatWorkflowWarnings(bindingDiagnostics);
         if (dryRun) {
           return createDryRunResult({
-            operation: 'workflow build',
+            operation: 'workflow-build build',
             risk: 'write',
             preview: {
               output: fileIo.resolvePath(output),
@@ -761,7 +834,7 @@ export function createWorkflowLocalService(deps: WorkflowLocalServiceDeps): Work
           () => ({})
         );
         const document = decompileStoreWorkflow({ workflow: raw as never, app: currentApp });
-        const dependencies = await buildDependencies(locale);
+        const dependencies = await buildDependencies(locale, dir);
         const systemConfigResult = await ensureSystemConfigNode({
           document,
           dependencies
@@ -774,7 +847,7 @@ export function createWorkflowLocalService(deps: WorkflowLocalServiceDeps): Work
         const warnings = formatWorkflowWarnings(systemConfigResult.warnings);
         if (dryRun) {
           return createDryRunResult({
-            operation: 'workflow import',
+            operation: 'workflow-build import',
             risk: 'write',
             preview: { input: resolvedInput, checksum, changes, document },
             warnings
@@ -855,7 +928,7 @@ export function createWorkflowLocalService(deps: WorkflowLocalServiceDeps): Work
 
     metaSet: ({ dir, locale, name, intro, dryRun }) =>
       runMutation({
-        operation: 'workflow meta set',
+        operation: 'workflow-build meta set',
         dir,
         locale,
         dryRun,
@@ -888,7 +961,7 @@ export function createWorkflowLocalService(deps: WorkflowLocalServiceDeps): Work
     configSet: async ({ dir, locale, path, valueInput, dryRun }) => {
       const value = await readValueFromInput({ valueInput });
       return runMutation({
-        operation: 'workflow config set',
+        operation: 'workflow-build config set',
         dir,
         locale,
         dryRun,
@@ -898,7 +971,7 @@ export function createWorkflowLocalService(deps: WorkflowLocalServiceDeps): Work
 
     configUnset: ({ dir, locale, path, dryRun }) =>
       runMutation({
-        operation: 'workflow config unset',
+        operation: 'workflow-build config unset',
         dir,
         locale,
         dryRun,
@@ -946,7 +1019,7 @@ export function createWorkflowLocalService(deps: WorkflowLocalServiceDeps): Work
         defaultValue
       };
       return runMutation({
-        operation: 'workflow variable add',
+        operation: 'workflow-build variable add',
         dir,
         locale,
         dryRun,
@@ -1018,7 +1091,7 @@ export function createWorkflowLocalService(deps: WorkflowLocalServiceDeps): Work
         Object.entries(patch).filter(([, value]) => value !== undefined)
       ) as Partial<VariableItemType>;
       return runMutation({
-        operation: 'workflow variable update',
+        operation: 'workflow-build variable update',
         dir,
         locale,
         dryRun,
@@ -1028,16 +1101,16 @@ export function createWorkflowLocalService(deps: WorkflowLocalServiceDeps): Work
 
     variableRemove: ({ dir, locale, key, dryRun }) =>
       runMutation({
-        operation: 'workflow variable remove',
+        operation: 'workflow-build variable remove',
         dir,
         locale,
         dryRun,
         command: { type: 'variable.remove', key }
       }),
 
-    templateList: ({ locale, kind }) =>
+    templateList: ({ dir, locale, kind }) =>
       withWorkflowErrorMapping(async () => {
-        const dependencies = await buildDependencies(locale);
+        const dependencies = await buildDependencies(locale, dir);
         const refs = (await dependencies.templateProvider.list({ locale })).filter(
           (ref) => kind === undefined || ref.kind === kind
         );
@@ -1063,12 +1136,17 @@ export function createWorkflowLocalService(deps: WorkflowLocalServiceDeps): Work
         });
       }),
 
-    templateShow: ({ locale, template }) =>
-      withWorkflowErrorMapping(async () =>
-        createSuccessResult({
-          data: await resolveDescriptor({ ref: parseNodeTemplateRef(template), locale })
-        })
-      ),
+    templateShow: ({ dir, locale, template }) =>
+      withWorkflowErrorMapping(async () => {
+        const dependencies = await buildDependencies(locale, dir);
+        return createSuccessResult({
+          data: await resolveDescriptor({
+            ref: parseNodeTemplateRef(template),
+            locale,
+            dependencies
+          })
+        });
+      }),
 
     nodeList: ({ dir, type, parent }) =>
       withWorkflowErrorMapping(async () => {
@@ -1092,7 +1170,11 @@ export function createWorkflowLocalService(deps: WorkflowLocalServiceDeps): Work
         return createSuccessResult({
           data: {
             node,
-            descriptor: await findDescriptorForNode(node.flowNodeType, locale),
+            descriptor: await findDescriptorForNode({
+              flowNodeType: node.flowNodeType,
+              locale,
+              dir
+            }),
             executionEdges: document.executionEdges.filter(
               (edge) => edge.source.nodeId === nodeId || edge.target.nodeId === nodeId
             )
@@ -1103,7 +1185,7 @@ export function createWorkflowLocalService(deps: WorkflowLocalServiceDeps): Work
     nodeAdd: async ({ dir, locale, nodeId, template, name, after, parent, position, dryRun }) =>
       withWorkflowErrorMapping(async () =>
         runMutation({
-          operation: 'workflow node add',
+          operation: 'workflow-build node add',
           dir,
           locale,
           dryRun,
@@ -1121,7 +1203,7 @@ export function createWorkflowLocalService(deps: WorkflowLocalServiceDeps): Work
 
     nodeUpdate: ({ dir, locale, nodeId, name, position, catchError, dryRun }) =>
       runMutation({
-        operation: 'workflow node update',
+        operation: 'workflow-build node update',
         dir,
         locale,
         dryRun,
@@ -1136,7 +1218,7 @@ export function createWorkflowLocalService(deps: WorkflowLocalServiceDeps): Work
 
     nodeMove: ({ dir, locale, nodeId, position, parent, root, dryRun }) =>
       runMutation({
-        operation: 'workflow node move',
+        operation: 'workflow-build node move',
         dir,
         locale,
         dryRun,
@@ -1155,7 +1237,7 @@ export function createWorkflowLocalService(deps: WorkflowLocalServiceDeps): Work
           throw new CliArgumentError('node insert only supports a normal target port.');
         }
         return runMutation({
-          operation: 'workflow node insert',
+          operation: 'workflow-build node insert',
           dir,
           locale,
           dryRun,
@@ -1172,7 +1254,7 @@ export function createWorkflowLocalService(deps: WorkflowLocalServiceDeps): Work
 
     nodeClone: ({ dir, locale, sourceNodeId, id, position, offset, dryRun }) =>
       runMutation({
-        operation: 'workflow node clone',
+        operation: 'workflow-build node clone',
         dir,
         locale,
         dryRun,
@@ -1187,7 +1269,7 @@ export function createWorkflowLocalService(deps: WorkflowLocalServiceDeps): Work
 
     nodeRemove: ({ dir, locale, nodeId, dryRun }) =>
       runMutation({
-        operation: 'workflow node remove',
+        operation: 'workflow-build node remove',
         dir,
         locale,
         dryRun,
@@ -1211,7 +1293,7 @@ export function createWorkflowLocalService(deps: WorkflowLocalServiceDeps): Work
     edgeConnect: ({ dir, locale, from, to, dryRun }) =>
       withWorkflowErrorMapping(async () =>
         runMutation({
-          operation: 'workflow edge connect',
+          operation: 'workflow-build edge connect',
           dir,
           locale,
           dryRun,
@@ -1225,7 +1307,7 @@ export function createWorkflowLocalService(deps: WorkflowLocalServiceDeps): Work
     edgeDisconnect: ({ dir, locale, from, to, dryRun }) =>
       withWorkflowErrorMapping(async () =>
         runMutation({
-          operation: 'workflow edge disconnect',
+          operation: 'workflow-build edge disconnect',
           dir,
           locale,
           dryRun,
@@ -1239,7 +1321,7 @@ export function createWorkflowLocalService(deps: WorkflowLocalServiceDeps): Work
     edgeReconnect: ({ dir, locale, from, oldTo, to, dryRun }) =>
       withWorkflowErrorMapping(async () =>
         runMutation({
-          operation: 'workflow edge reconnect',
+          operation: 'workflow-build edge reconnect',
           dir,
           locale,
           dryRun,
@@ -1299,7 +1381,7 @@ export function createWorkflowLocalService(deps: WorkflowLocalServiceDeps): Work
         return [FlowNodeInputTypeEnum.input];
       })();
       return runMutation({
-        operation: 'workflow input add',
+        operation: 'workflow-build input add',
         dir,
         locale,
         dryRun,
@@ -1321,7 +1403,7 @@ export function createWorkflowLocalService(deps: WorkflowLocalServiceDeps): Work
 
     inputRemove: ({ dir, locale, nodeId, key, dryRun }) =>
       runMutation({
-        operation: 'workflow input remove',
+        operation: 'workflow-build input remove',
         dir,
         locale,
         dryRun,
@@ -1339,7 +1421,7 @@ export function createWorkflowLocalService(deps: WorkflowLocalServiceDeps): Work
         ?.inputs.find((item) => item.key === key);
       const value = await readValueFromInput({ valueInput, valueType: nodeInput?.valueType });
       return runMutation({
-        operation: 'workflow input set',
+        operation: 'workflow-build input set',
         dir,
         locale,
         dryRun,
@@ -1350,7 +1432,7 @@ export function createWorkflowLocalService(deps: WorkflowLocalServiceDeps): Work
     inputRef: ({ dir, locale, nodeId, key, from, dryRun }) =>
       withWorkflowErrorMapping(async () =>
         runMutation({
-          operation: 'workflow input ref',
+          operation: 'workflow-build input ref',
           dir,
           locale,
           dryRun,
@@ -1365,7 +1447,7 @@ export function createWorkflowLocalService(deps: WorkflowLocalServiceDeps): Work
 
     inputUnset: ({ dir, locale, nodeId, key, dryRun }) =>
       runMutation({
-        operation: 'workflow input unset',
+        operation: 'workflow-build input unset',
         dir,
         locale,
         dryRun,
@@ -1398,7 +1480,7 @@ export function createWorkflowLocalService(deps: WorkflowLocalServiceDeps): Work
 
     outputAdd: ({ dir, locale, nodeId, key, valueType, label, description, dryRun }) =>
       runMutation({
-        operation: 'workflow output add',
+        operation: 'workflow-build output add',
         dir,
         locale,
         dryRun,
@@ -1418,7 +1500,7 @@ export function createWorkflowLocalService(deps: WorkflowLocalServiceDeps): Work
 
     outputRemove: ({ dir, locale, nodeId, key, dryRun }) =>
       runMutation({
-        operation: 'workflow output remove',
+        operation: 'workflow-build output remove',
         dir,
         locale,
         dryRun,
@@ -1440,7 +1522,7 @@ export function createWorkflowLocalService(deps: WorkflowLocalServiceDeps): Work
     toolAttach: ({ dir, locale, toolCallNodeId, template, toolNodeId, id, position, dryRun }) =>
       withWorkflowErrorMapping(async () =>
         runMutation({
-          operation: 'workflow tool attach',
+          operation: 'workflow-build tool attach',
           dir,
           locale,
           dryRun,
@@ -1457,7 +1539,7 @@ export function createWorkflowLocalService(deps: WorkflowLocalServiceDeps): Work
 
     toolDetach: ({ dir, locale, toolCallNodeId, toolNodeId, dryRun }) =>
       runMutation({
-        operation: 'workflow tool detach',
+        operation: 'workflow-build tool detach',
         dir,
         locale,
         dryRun,
@@ -1482,7 +1564,7 @@ export function createWorkflowLocalService(deps: WorkflowLocalServiceDeps): Work
           await readJsonFromSource({ source: inputSource, label: 'ChangeSet input' })
         );
         const document = await readWorkflowDocument({ fileIo, dir });
-        const dependencies = await buildDependencies(locale);
+        const dependencies = await buildDependencies(locale, dir);
         const result = await planWorkflowChangeSet({
           document,
           changeSet,
@@ -1496,7 +1578,7 @@ export function createWorkflowLocalService(deps: WorkflowLocalServiceDeps): Work
         };
         if (dryRun) {
           return createDryRunResult({
-            operation: 'workflow changeset plan',
+            operation: 'workflow-build changeset plan',
             risk: 'write',
             preview: {
               ...(output !== undefined ? { output: fileIo.resolvePath(output) } : {}),
@@ -1522,7 +1604,7 @@ export function createWorkflowLocalService(deps: WorkflowLocalServiceDeps): Work
           await readJsonFromSource({ source: planSource, label: 'Workflow plan' })
         );
         const document = await readWorkflowDocument({ fileIo, dir });
-        const dependencies = await buildDependencies(locale);
+        const dependencies = await buildDependencies(locale, dir);
         const recomputed = await planWorkflowChangeSet({
           document,
           changeSet: suppliedPlan.changeSet,
@@ -1562,7 +1644,7 @@ export function createWorkflowLocalService(deps: WorkflowLocalServiceDeps): Work
 
         if (dryRun) {
           return createDryRunResult({
-            operation: 'workflow changeset apply',
+            operation: 'workflow-build changeset apply',
             risk: 'write',
             preview: {
               baseChecksum: recomputed.plan.baseChecksum,

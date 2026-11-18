@@ -64,7 +64,6 @@ export type FastGptHttpClient = {
     headers?: Record<string, string>;
     signal?: AbortSignal;
     timeoutMs?: number;
-    includeDone?: boolean;
   }) => AsyncIterable<SseEvent>;
 };
 
@@ -255,13 +254,7 @@ function unpackFastGptResponse<T>({
   return parsed as T;
 }
 
-async function* parseSseStream({
-  stream,
-  includeDone = false
-}: {
-  stream: ReadableStream<Uint8Array>;
-  includeDone?: boolean;
-}): AsyncIterable<SseEvent> {
+async function* parseSseStream(stream: ReadableStream<Uint8Array>): AsyncIterable<SseEvent> {
   const reader = stream.getReader();
   const decoder = new TextDecoder('utf-8');
   let buffer = '';
@@ -287,13 +280,6 @@ async function* parseSseStream({
           if (currentDataLines.length > 0) {
             const data = currentDataLines.join('\n');
             if (data === '[DONE]') {
-              if (includeDone) {
-                yield {
-                  ...(currentEvent !== undefined ? { event: currentEvent } : {}),
-                  ...(currentId !== undefined ? { id: currentId } : {}),
-                  data
-                };
-              }
               return;
             }
             yield {
@@ -326,7 +312,7 @@ async function* parseSseStream({
     // 处理末尾残留块
     if (currentDataLines.length > 0) {
       const data = currentDataLines.join('\n');
-      if (data !== '[DONE]' || includeDone) {
+      if (data !== '[DONE]') {
         yield {
           ...(currentEvent !== undefined ? { event: currentEvent } : {}),
           ...(currentId !== undefined ? { id: currentId } : {}),
@@ -674,8 +660,7 @@ export function createFastGptHttpClient({
       auth,
       headers: extraHeaders,
       signal,
-      timeoutMs: requestTimeout = timeoutMs,
-      includeDone = false
+      timeoutMs: requestTimeout = timeoutMs
     }): AsyncIterable<SseEvent> {
       const relativePath = path.replace(/^\/+/, '');
       const searchParams = filterQuery(query);
@@ -710,7 +695,7 @@ export function createFastGptHttpClient({
         return;
       }
 
-      yield* parseSseStream({ stream: response.body, includeDone });
+      yield* parseSseStream(response.body);
     }
   };
 }

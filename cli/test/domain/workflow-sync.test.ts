@@ -169,7 +169,7 @@ describe('WorkflowSyncService', () => {
     );
   });
 
-  it('executes pull -> local edit -> diff -> push -> publish and detects remote conflicts', async () => {
+  it('executes pull -> local edit -> diff -> save -> publish and detects remote conflicts', async () => {
     const dir = await makeDir();
     const seedDir = await makeDir();
     const seedServices = createServices(seedDir, vi.fn());
@@ -254,7 +254,7 @@ describe('WorkflowSyncService', () => {
     expect((diffAfter.data as { inSync: boolean }).inSync).toBe(false);
     expect((diffAfter.data as { summary: { addedNodes: number } }).summary.addedNodes).toBe(1);
 
-    const pushRes = await sync.push({ client, dir });
+    const pushRes = await sync.save({ client, dir });
     expect(pushRes.changed).toBe(true);
     expect(publishedCalls[0]).toMatchObject({ isPublish: false, autoSave: true });
 
@@ -268,10 +268,10 @@ describe('WorkflowSyncService', () => {
       chatConfig: { welcomeText: 'Changed remotely' }
     };
     await local.metaSet({ dir, locale: 'en', intro: 'Local edit' });
-    await expect(sync.push({ client, dir })).rejects.toBeInstanceOf(CliArgumentError);
+    await expect(sync.save({ client, dir })).rejects.toBeInstanceOf(CliArgumentError);
 
     // 带 --force 可强制覆盖
-    const forcedPush = await sync.push({ client, dir, force: true });
+    const forcedPush = await sync.save({ client, dir, force: true });
     expect(forcedPush.changed).toBe(true);
 
     // 支持拉取指定历史版本
@@ -286,7 +286,7 @@ describe('WorkflowSyncService', () => {
     expect((pullVersion.data as { versionId: string }).versionId).toBe(VERSION_ID);
   });
 
-  it('runs debug, sandbox-packages, optimize-code SSE, and structured workflow test assertions', async () => {
+  it('runs debug and evaluates structured App test assertions', async () => {
     const dir = await makeDir();
     const casesFile = join(dir, 'cases.json');
     await writeFile(
@@ -319,20 +319,6 @@ describe('WorkflowSyncService', () => {
     const fetchFn: CliFetchFn = vi.fn(async (input) => {
       const url =
         typeof input === 'string' ? input : input instanceof Request ? input.url : input.toString();
-      if (url.includes('/api/core/workflow/getSandboxPackages')) {
-        return jsonResponse({ js: ['lodash'], python: ['numpy'], builtinGlobals: ['URL'] });
-      }
-      if (url.includes('/api/core/workflow/optimizeCode')) {
-        const ssePayload = [
-          'event: answer\ndata: {"choices":[{"delta":{"content":"function main() {"}}]}\n\n',
-          'event: answer\ndata: {"choices":[{"delta":{"content":" return {}; }"}}]}\n\n',
-          'event: answer\ndata: [DONE]\n\n'
-        ].join('');
-        return new Response(ssePayload, {
-          status: 200,
-          headers: { 'content-type': 'text/event-stream' }
-        });
-      }
       if (url.includes('/api/core/workflow/debug')) {
         return jsonResponse({
           memoryEdges: [],
@@ -364,16 +350,6 @@ describe('WorkflowSyncService', () => {
       after: 'start@next'
     });
 
-    const pkgRes = await sync.sandboxPackages({ client });
-    expect((pkgRes.data as { js: string[] }).js).toEqual(['lodash']);
-
-    const optRes = await sync.optimizeCode({
-      client,
-      prompt: 'return empty object',
-      modelId: 'gpt-4o-mini'
-    });
-    expect((optRes.data as { content: string }).content).toBe('function main() { return {}; }');
-
     const debugRes = await sync.debug({
       client,
       dir,
@@ -398,7 +374,7 @@ describe('WorkflowSyncService', () => {
     });
   });
 
-  it('keeps remote sync baseline consistent across metadata edits and unbound init->push flows', async () => {
+  it('keeps remote sync baseline consistent across metadata edits and unbound init-to-save flows', async () => {
     const seedDir = await makeDir();
     const seedServices = createServices(seedDir, vi.fn());
     await seedServices.local.init({ dir: seedDir, locale: 'en', name: 'Server Name' });
@@ -453,7 +429,7 @@ describe('WorkflowSyncService', () => {
       throw new Error(`Unexpected fetch: ${url}`);
     });
 
-    // 场景 1：pull -> meta set -> push -> 修改 welcomeText -> push，不应误报远端冲突
+    // 场景 1：pull -> meta set -> save -> 修改 welcomeText -> save，不应误报远端冲突
     const pullDir = await makeDir();
     const pullServices = createServices(pullDir, fetchFn);
     await pullServices.sync.pull({
@@ -463,7 +439,7 @@ describe('WorkflowSyncService', () => {
       appId: APP_ID
     });
     await pullServices.local.metaSet({ dir: pullDir, locale: 'en', name: 'Renamed Locally' });
-    await pullServices.sync.push({ client: pullServices.client, dir: pullDir });
+    await pullServices.sync.save({ client: pullServices.client, dir: pullDir });
 
     await pullServices.local.configSet({
       dir: pullDir,
@@ -471,10 +447,10 @@ describe('WorkflowSyncService', () => {
       path: 'welcomeText',
       valueInput: { value: 'Updated welcome' }
     });
-    const secondPush = await pullServices.sync.push({ client: pullServices.client, dir: pullDir });
+    const secondPush = await pullServices.sync.save({ client: pullServices.client, dir: pullDir });
     expect(secondPush.changed).toBe(true);
 
-    // 场景 2：init -> node add -> push <appId> -> 编辑 -> push <appId>，本地无 appId 时同样不应误报冲突
+    // 场景 2：init -> node add -> save <appId> -> 编辑 -> save <appId>，本地无 appId 时同样不应误报冲突
     const initDir = await makeDir();
     const initServices = createServices(initDir, fetchFn);
     await initServices.local.init({ dir: initDir, locale: 'en', name: 'Local Only Name' });
@@ -485,14 +461,14 @@ describe('WorkflowSyncService', () => {
       template: 'builtin:ai-chat',
       after: 'start@next'
     });
-    await initServices.sync.push({ client: initServices.client, dir: initDir, appId: APP_ID });
+    await initServices.sync.save({ client: initServices.client, dir: initDir, appId: APP_ID });
     await initServices.local.configSet({
       dir: initDir,
       locale: 'en',
       path: 'welcomeText',
       valueInput: { value: 'Second edit' }
     });
-    const initSecondPush = await initServices.sync.push({
+    const initSecondPush = await initServices.sync.save({
       client: initServices.client,
       dir: initDir,
       appId: APP_ID
@@ -511,11 +487,11 @@ describe('WorkflowSyncService', () => {
       valueInput: { value: 'Conflicting local edit' }
     });
     await expect(
-      initServices.sync.push({ client: initServices.client, dir: initDir, appId: APP_ID })
+      initServices.sync.save({ client: initServices.client, dir: initDir, appId: APP_ID })
     ).rejects.toBeInstanceOf(CliArgumentError);
   });
 
-  it.each(['push', 'publish'] as const)(
+  it.each(['save', 'publish'] as const)(
     'migrates legacy sync state after %s while preserving dry-run and conflict protection',
     async (action) => {
       const { dir, local, sync, client, remote } = await createSyncedServices();
@@ -544,7 +520,7 @@ describe('WorkflowSyncService', () => {
     }
   );
 
-  it.each(['push', 'publish'] as const)(
+  it.each(['save', 'publish'] as const)(
     'still rejects a changed remote when a legacy sync state is used for %s',
     async (action) => {
       const { dir, local, sync, client, remote } = await createSyncedServices();
@@ -566,7 +542,7 @@ describe('WorkflowSyncService', () => {
     }
   );
 
-  it.each(['push', 'publish'] as const)(
+  it.each(['save', 'publish'] as const)(
     'uses normalized save receipts for consecutive %s calls',
     async (action) => {
       const { dir, local, sync, client, remote } = await createSyncedServices();
@@ -600,7 +576,7 @@ describe('WorkflowSyncService', () => {
     }
   );
 
-  it.each(['push', 'publish'] as const)(
+  it.each(['save', 'publish'] as const)(
     'supports consecutive %s calls without a receipt when saved content is unchanged',
     async (action) => {
       const { dir, local, sync, client, remote } = await createSyncedServices();
@@ -626,7 +602,7 @@ describe('WorkflowSyncService', () => {
     }
   );
 
-  it.each(['push', 'publish'] as const)(
+  it.each(['save', 'publish'] as const)(
     'requires an explicit pull after %s is normalized without a save receipt',
     async (action) => {
       const { dir, local, sync, client, remote } = await createSyncedServices();
@@ -667,9 +643,9 @@ describe('WorkflowSyncService', () => {
   );
 
   it.each([
-    { action: 'push' as const, includeReceipt: true },
+    { action: 'save' as const, includeReceipt: true },
     { action: 'publish' as const, includeReceipt: true },
-    { action: 'push' as const, includeReceipt: false },
+    { action: 'save' as const, includeReceipt: false },
     { action: 'publish' as const, includeReceipt: false }
   ])(
     'does not absorb another user save after $action (receipt=$includeReceipt)',
@@ -697,7 +673,7 @@ describe('WorkflowSyncService', () => {
     }
   );
 
-  it('fails workflow test when array vs plain object types mismatch in either direction or nested', async () => {
+  it('fails app test when array vs plain object types mismatch in either direction or nested', async () => {
     const dir = await makeDir();
     const casesFile = join(dir, 'type-mismatch-cases.json');
     const buildCases = (expectedVariables: Record<string, unknown>) =>
@@ -751,32 +727,5 @@ describe('WorkflowSyncService', () => {
     await expect(sync.test({ client, dir, casesSource: casesFile })).rejects.toBeInstanceOf(
       CliApiError
     );
-  });
-
-  it('classifies an optimizeCode SSE stream ending without [DONE] as a network failure', async () => {
-    const dir = await makeDir();
-    const fetchFn: CliFetchFn = vi.fn(async () => {
-      const partialSse =
-        'event: answer\ndata: {"choices":[{"delta":{"content":"function main() {"}}]}\n\n';
-      return new Response(partialSse, {
-        status: 200,
-        headers: { 'content-type': 'text/event-stream' }
-      });
-    });
-    const { sync, client } = createServices(dir, fetchFn);
-    await expect(
-      sync.optimizeCode({
-        client,
-        prompt: 'return empty object',
-        modelId: 'gpt-4o-mini'
-      })
-    ).rejects.toMatchObject({
-      code: 'NETWORK_ERROR',
-      exitCode: 5,
-      details: {
-        modelId: 'gpt-4o-mini',
-        partialContentLength: 'function main() {'.length
-      }
-    });
   });
 });

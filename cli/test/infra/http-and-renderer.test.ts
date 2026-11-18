@@ -215,30 +215,6 @@ describe('FastGptHttpClient (ky) & OutputRenderer (picocolors)', () => {
     ]);
   });
 
-  it('yields [DONE] event only when includeDone is enabled', async () => {
-    const sseBody = 'event: answer\ndata: Hello\n\nevent: answer\ndata: [DONE]\n\n';
-    const client = createFastGptHttpClient({
-      baseUrl: 'http://127.0.0.1:3000/api',
-      cliVersion: '0.1.0',
-      fetchFn: async () =>
-        new Response(sseBody, { headers: { 'content-type': 'text/event-stream' } })
-    });
-
-    const events: Array<{ event?: string; data: string; id?: string }> = [];
-    for await (const evt of client.streamSse({
-      path: '/core/workflow/optimizeCode',
-      body: {},
-      includeDone: true
-    })) {
-      events.push(evt);
-    }
-
-    expect(events).toEqual([
-      { event: 'answer', data: 'Hello' },
-      { event: 'answer', data: '[DONE]' }
-    ]);
-  });
-
   it('supports uploadMultipart and requestRaw methods', async () => {
     let capturedFormData: FormData | undefined;
     const client = createFastGptHttpClient({

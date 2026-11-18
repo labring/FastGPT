@@ -344,14 +344,14 @@ describe('WorkflowLocalService', () => {
     );
   });
 
-  it('loads template provider once in templateList instead of reloading per item', async () => {
+  it('loads the template bundle once per template list', async () => {
     const dir = await makeDir();
     const fileIo = createNodeFileIoAdapter({ cwd: dir });
     const baseLoader = createWorkflowTemplateLoader({ fileIo });
-    const loadProviderSpy = vi.fn(baseLoader.loadProvider);
+    const loadBundleSpy = vi.fn(baseLoader.loadBundle);
     const service = createWorkflowLocalService({
       fileIo,
-      templateLoader: { loadProvider: loadProviderSpy },
+      templateLoader: { loadBundle: loadBundleSpy },
       env: {},
       prompter: createNonTtyPrompter(),
       readStdin: async () => ''
@@ -359,6 +359,6 @@ describe('WorkflowLocalService', () => {
 
     const res = await service.templateList({ locale: 'en' });
     expect((res.data as { total: number }).total).toBeGreaterThan(1);
-    expect(loadProviderSpy).toHaveBeenCalledTimes(1);
+    expect(loadBundleSpy).toHaveBeenCalledTimes(1);
   });
 });

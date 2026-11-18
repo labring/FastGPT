@@ -70,7 +70,7 @@
    - 仅调用 `authCert({ authToken: true })` 或 `authApp` / `authDataset` / `authUserPer` 未传 `authApiKey: true` → **`authModes: ['token']`**
    - 传入 `authApiKey: true` 且未传 `authAppApiKey: true` → **`authModes: ['token', 'personalKey']`**
    - 同时传入 `authApiKey: true, authAppApiKey: true`（如 `/v2/chat/completions`、`/core/app/logs/list`）→ **`authModes: ['token', 'personalKey', 'appKey']`**
-   - 纯本地操作（如 `config`、`skills`、`workflow validate`）→ **`authModes: ['none']`**
+   - 纯本地操作（如 `config`、`skills`、`workflow-build validate`）→ **`authModes: ['none']`**
 2. 对于同一个命令行下不同子命令支持不同凭据的情况，允许不同子命令声明各自的 `authModes`（例如 `app list` 为 `['token', 'personalKey']`，而 `app detail` / `app update` / `app version publish` 必须为 `['token']`）。
 
 ### 3.3 统一 HTTP 客户端规范
@@ -124,7 +124,7 @@
 
 ### 4.4 大载荷与分页标准
 
-- **JSON 载荷输入**：涉及复杂结构体的写命令（如 `app create/import`、`workflow push`、`dataset data insert`）统一支持 `--file <path>` 与 `--stdin`（读取文件或 `-`），避免超长 JSON 塞进命令行参数。
+- **JSON 载荷输入**：涉及复杂结构体的写命令（如 `app create/import`、`dataset data insert`）统一支持 `--file <path>` 与 `--stdin`（读取文件或 `-`），避免超长 JSON 塞进命令行参数。
 - **分页规范**：列表命令统一暴露 `--page <n>`、`--page-size <n>`（或游标接口用 `--next-id` / `--prev-id`），并在 `CliResult.meta` 中标准化回传 `{ total, page, pageSize, hasMore }`（有游标时补充 `nextCursor`）。
 
 ### 4.5 退出码语义规范

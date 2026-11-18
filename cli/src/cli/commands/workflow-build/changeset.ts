@@ -7,7 +7,7 @@ import {
   requireNonEmptyOption,
   resolveWorkflowDir,
   resolveWorkflowLocale
-} from './shared';
+} from '../workflow/shared';
 
 /**
  * ChangeSet 事务计划与校验应用命令组：changeset plan / changeset apply。
@@ -15,7 +15,7 @@ import {
 export function createWorkflowChangesetCommandSpecs(): CliCommandSpec[] {
   return [
     {
-      path: ['workflow', 'changeset', 'plan'],
+      path: ['workflow-build', 'changeset', 'plan'],
       summary: 'Compute and validate a deterministic WorkflowPlan from a ChangeSet JSON',
       risk: 'write',
       authModes: ['none'],
@@ -40,7 +40,7 @@ export function createWorkflowChangesetCommandSpecs(): CliCommandSpec[] {
         {
           description: 'Generate a validated workflow plan from changeset.json',
           args: [
-            'workflow',
+            'workflow-build',
             'changeset',
             'plan',
             '--input',
@@ -61,7 +61,7 @@ export function createWorkflowChangesetCommandSpecs(): CliCommandSpec[] {
     },
 
     {
-      path: ['workflow', 'changeset', 'apply'],
+      path: ['workflow-build', 'changeset', 'apply'],
       summary: 'Recompute, verify checksums, and atomically apply a WorkflowPlan to workflow.json',
       risk: 'write',
       authModes: ['none'],
@@ -92,7 +92,7 @@ export function createWorkflowChangesetCommandSpecs(): CliCommandSpec[] {
         {
           description: 'Apply a plan non-interactively with target checksum confirmation',
           args: [
-            'workflow',
+            'workflow-build',
             'changeset',
             'apply',
             '--plan',

@@ -13,7 +13,7 @@ import {
   requireNonEmptyOption,
   resolveWorkflowDir,
   resolveWorkflowLocale
-} from './shared';
+} from '../workflow/shared';
 
 const VALUE_TYPE_SET = new Set<string>(Object.values(WorkflowIOValueTypeEnum));
 const INPUT_MODE_SET = new Set<string>(['literal', 'reference', 'both']);
@@ -24,7 +24,7 @@ const INPUT_MODE_SET = new Set<string>(['literal', 'reference', 'both']);
 export function createWorkflowIoToolCommandSpecs(): CliCommandSpec[] {
   return [
     {
-      path: ['workflow', 'input', 'list'],
+      path: ['workflow-build', 'input', 'list'],
       summary: 'List all inputs of a workflow node',
       risk: 'read',
       authModes: ['none'],
@@ -35,7 +35,7 @@ export function createWorkflowIoToolCommandSpecs(): CliCommandSpec[] {
       examples: [
         {
           description: 'List inputs on chat1',
-          args: ['workflow', 'input', 'list', '--node', 'chat1']
+          args: ['workflow-build', 'input', 'list', '--node', 'chat1']
         }
       ],
       execute: ({ options, container }) =>
@@ -46,7 +46,7 @@ export function createWorkflowIoToolCommandSpecs(): CliCommandSpec[] {
     },
 
     {
-      path: ['workflow', 'input', 'show'],
+      path: ['workflow-build', 'input', 'show'],
       summary: 'Show details of a single node input (redacting password values)',
       risk: 'read',
       authModes: ['none'],
@@ -58,7 +58,7 @@ export function createWorkflowIoToolCommandSpecs(): CliCommandSpec[] {
       examples: [
         {
           description: 'Inspect userChatInput on chat1',
-          args: ['workflow', 'input', 'show', '--node', 'chat1', '--key', 'userChatInput']
+          args: ['workflow-build', 'input', 'show', '--node', 'chat1', '--key', 'userChatInput']
         }
       ],
       execute: ({ options, container }) =>
@@ -70,7 +70,7 @@ export function createWorkflowIoToolCommandSpecs(): CliCommandSpec[] {
     },
 
     {
-      path: ['workflow', 'input', 'add'],
+      path: ['workflow-build', 'input', 'add'],
       summary: 'Add a dynamic input field to a workflow node',
       risk: 'write',
       authModes: ['none'],
@@ -110,7 +110,7 @@ export function createWorkflowIoToolCommandSpecs(): CliCommandSpec[] {
         {
           description: 'Add a dynamic string input to code1',
           args: [
-            'workflow',
+            'workflow-build',
             'input',
             'add',
             '--node',
@@ -153,7 +153,7 @@ export function createWorkflowIoToolCommandSpecs(): CliCommandSpec[] {
     },
 
     {
-      path: ['workflow', 'input', 'remove'],
+      path: ['workflow-build', 'input', 'remove'],
       summary: 'Remove a dynamic input field from a workflow node',
       risk: 'write',
       authModes: ['none'],
@@ -172,7 +172,7 @@ export function createWorkflowIoToolCommandSpecs(): CliCommandSpec[] {
       examples: [
         {
           description: 'Remove dynamic input query from code1',
-          args: ['workflow', 'input', 'remove', '--node', 'code1', '--key', 'query']
+          args: ['workflow-build', 'input', 'remove', '--node', 'code1', '--key', 'query']
         }
       ],
       execute: ({ options, container }) =>
@@ -186,7 +186,7 @@ export function createWorkflowIoToolCommandSpecs(): CliCommandSpec[] {
     },
 
     {
-      path: ['workflow', 'input', 'set'],
+      path: ['workflow-build', 'input', 'set'],
       summary: 'Set a literal value on a workflow node input',
       risk: 'write',
       authModes: ['none'],
@@ -202,7 +202,7 @@ export function createWorkflowIoToolCommandSpecs(): CliCommandSpec[] {
         {
           description: 'Set systemPrompt on chat1',
           args: [
-            'workflow',
+            'workflow-build',
             'input',
             'set',
             '--node',
@@ -232,7 +232,7 @@ export function createWorkflowIoToolCommandSpecs(): CliCommandSpec[] {
     },
 
     {
-      path: ['workflow', 'input', 'ref'],
+      path: ['workflow-build', 'input', 'ref'],
       summary: 'Bind a node input to an upstream node output reference (node.output)',
       risk: 'write',
       authModes: ['none'],
@@ -253,7 +253,7 @@ export function createWorkflowIoToolCommandSpecs(): CliCommandSpec[] {
         {
           description: 'Bind userChatInput to workflowStart userChatInput',
           args: [
-            'workflow',
+            'workflow-build',
             'input',
             'ref',
             '--node',
@@ -277,7 +277,7 @@ export function createWorkflowIoToolCommandSpecs(): CliCommandSpec[] {
     },
 
     {
-      path: ['workflow', 'input', 'unset'],
+      path: ['workflow-build', 'input', 'unset'],
       summary: 'Clear the configured value or reference of a node input',
       risk: 'write',
       authModes: ['none'],
@@ -291,7 +291,7 @@ export function createWorkflowIoToolCommandSpecs(): CliCommandSpec[] {
       examples: [
         {
           description: 'Unset systemPrompt on chat1',
-          args: ['workflow', 'input', 'unset', '--node', 'chat1', '--key', 'systemPrompt']
+          args: ['workflow-build', 'input', 'unset', '--node', 'chat1', '--key', 'systemPrompt']
         }
       ],
       execute: ({ options, container }) =>
@@ -305,7 +305,7 @@ export function createWorkflowIoToolCommandSpecs(): CliCommandSpec[] {
     },
 
     {
-      path: ['workflow', 'input', 'available'],
+      path: ['workflow-build', 'input', 'available'],
       summary: 'List valid upstream variable references available for a node input',
       risk: 'read',
       authModes: ['none'],
@@ -317,7 +317,15 @@ export function createWorkflowIoToolCommandSpecs(): CliCommandSpec[] {
       examples: [
         {
           description: 'List available references for chat1 userChatInput',
-          args: ['workflow', 'input', 'available', '--node', 'chat1', '--key', 'userChatInput']
+          args: [
+            'workflow-build',
+            'input',
+            'available',
+            '--node',
+            'chat1',
+            '--key',
+            'userChatInput'
+          ]
         }
       ],
       execute: ({ options, container }) =>
@@ -329,7 +337,7 @@ export function createWorkflowIoToolCommandSpecs(): CliCommandSpec[] {
     },
 
     {
-      path: ['workflow', 'output', 'list'],
+      path: ['workflow-build', 'output', 'list'],
       summary: 'List outputs of a workflow node',
       risk: 'read',
       authModes: ['none'],
@@ -340,7 +348,7 @@ export function createWorkflowIoToolCommandSpecs(): CliCommandSpec[] {
       examples: [
         {
           description: 'List outputs on code1',
-          args: ['workflow', 'output', 'list', '--node', 'code1']
+          args: ['workflow-build', 'output', 'list', '--node', 'code1']
         }
       ],
       execute: ({ options, container }) =>
@@ -351,7 +359,7 @@ export function createWorkflowIoToolCommandSpecs(): CliCommandSpec[] {
     },
 
     {
-      path: ['workflow', 'output', 'add'],
+      path: ['workflow-build', 'output', 'add'],
       summary: 'Add a dynamic output field to a workflow node',
       risk: 'write',
       authModes: ['none'],
@@ -379,7 +387,7 @@ export function createWorkflowIoToolCommandSpecs(): CliCommandSpec[] {
         {
           description: 'Add a dynamic string output to code1',
           args: [
-            'workflow',
+            'workflow-build',
             'output',
             'add',
             '--node',
@@ -414,7 +422,7 @@ export function createWorkflowIoToolCommandSpecs(): CliCommandSpec[] {
     },
 
     {
-      path: ['workflow', 'output', 'remove'],
+      path: ['workflow-build', 'output', 'remove'],
       summary: 'Remove a dynamic output field from a workflow node',
       risk: 'write',
       authModes: ['none'],
@@ -428,7 +436,7 @@ export function createWorkflowIoToolCommandSpecs(): CliCommandSpec[] {
       examples: [
         {
           description: 'Remove dynamic output summary from code1',
-          args: ['workflow', 'output', 'remove', '--node', 'code1', '--key', 'summary']
+          args: ['workflow-build', 'output', 'remove', '--node', 'code1', '--key', 'summary']
         }
       ],
       execute: ({ options, container }) =>
@@ -442,7 +450,7 @@ export function createWorkflowIoToolCommandSpecs(): CliCommandSpec[] {
     },
 
     {
-      path: ['workflow', 'tool', 'list'],
+      path: ['workflow-build', 'tool', 'list'],
       summary: 'List tool nodes attached to a tool-call node',
       risk: 'read',
       authModes: ['none'],
@@ -458,7 +466,7 @@ export function createWorkflowIoToolCommandSpecs(): CliCommandSpec[] {
       examples: [
         {
           description: 'List attached tools for tools1',
-          args: ['workflow', 'tool', 'list', '--tool-call', 'tools1']
+          args: ['workflow-build', 'tool', 'list', '--tool-call', 'tools1']
         }
       ],
       execute: ({ options, container }) =>
@@ -473,7 +481,7 @@ export function createWorkflowIoToolCommandSpecs(): CliCommandSpec[] {
     },
 
     {
-      path: ['workflow', 'tool', 'attach'],
+      path: ['workflow-build', 'tool', 'attach'],
       summary: 'Attach a new or existing tool node to a tool-call node',
       risk: 'write',
       authModes: ['none'],
@@ -516,7 +524,7 @@ export function createWorkflowIoToolCommandSpecs(): CliCommandSpec[] {
         {
           description: 'Attach a new dataset-search tool to tools1',
           args: [
-            'workflow',
+            'workflow-build',
             'tool',
             'attach',
             '--tool-call',
@@ -559,7 +567,7 @@ export function createWorkflowIoToolCommandSpecs(): CliCommandSpec[] {
     },
 
     {
-      path: ['workflow', 'tool', 'detach'],
+      path: ['workflow-build', 'tool', 'detach'],
       summary: 'Detach a tool node from a tool-call node',
       risk: 'write',
       authModes: ['none'],
@@ -583,7 +591,7 @@ export function createWorkflowIoToolCommandSpecs(): CliCommandSpec[] {
       examples: [
         {
           description: 'Detach tool kb1 from tools1',
-          args: ['workflow', 'tool', 'detach', '--tool-call', 'tools1', '--tool-node', 'kb1']
+          args: ['workflow-build', 'tool', 'detach', '--tool-call', 'tools1', '--tool-node', 'kb1']
         }
       ],
       execute: ({ options, container }) =>

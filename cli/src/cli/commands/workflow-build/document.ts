@@ -1,4 +1,5 @@
 import type { CliCommandSpec } from '../../pipeline';
+import { requireActiveClient } from '../dataset/shared';
 import {
   WORKFLOW_DIR_OPTION,
   WORKFLOW_DRY_RUN_OPTION,
@@ -7,7 +8,7 @@ import {
   requireNonEmptyOption,
   resolveWorkflowDir,
   resolveWorkflowLocale
-} from './shared';
+} from '../workflow/shared';
 
 /**
  * 工作流文档生命周期命令：init / build / import / inspect / validate。
@@ -15,28 +16,44 @@ import {
 export function createWorkflowDocumentCommandSpecs(): CliCommandSpec[] {
   return [
     {
-      path: ['workflow', 'init'],
-      summary: 'Initialize a new local workflow.json workspace',
+      path: ['workflow-build', 'init'],
+      summary: 'Initialize a workflow workspace and load its templates from FastGPT',
       risk: 'write',
-      authModes: ['none'],
+      authModes: ['token', 'personalKey'],
+      skipAuth: (options) => options.offline === true,
       options: [
         WORKFLOW_DIR_OPTION,
         WORKFLOW_LOCALE_OPTION,
         { name: 'name', flags: '--name <name>', takesValue: true, description: 'Workflow name' },
+        {
+          name: 'offline',
+          flags: '--offline',
+          takesValue: false,
+          description:
+            'Initialize using local templates without authentication or a network request'
+        },
         WORKFLOW_DRY_RUN_OPTION
       ],
       examples: [
         {
           description: 'Initialize workflow.json in current directory',
-          args: ['workflow', 'init']
+          args: ['workflow-build', 'init']
         },
         {
           description: 'Initialize a named workflow in ./my-flow',
-          args: ['workflow', 'init', '--dir', './my-flow', '--name', 'Customer Support']
+          args: ['workflow-build', 'init', '--dir', './my-flow', '--name', 'Customer Support']
+        },
+        {
+          description: 'Initialize an offline workspace with built-in templates',
+          args: ['workflow-build', 'init', '--offline', '--dir', './my-flow']
         }
       ],
-      execute: ({ options, container }) =>
+      execute: ({ options, client, container }) =>
         container.workflowLocalService.init({
+          client:
+            options.offline === true
+              ? undefined
+              : requireActiveClient(client, 'workflow-build init'),
           dir: resolveWorkflowDir(options, container.env),
           locale: resolveWorkflowLocale(options, container.env),
           name: optionalNonEmptyOption(options, 'name'),
@@ -45,7 +62,7 @@ export function createWorkflowDocumentCommandSpecs(): CliCommandSpec[] {
     },
 
     {
-      path: ['workflow', 'build'],
+      path: ['workflow-build', 'build'],
       summary: 'Validate local workflow.json and compile it to StoreWorkflow JSON',
       risk: 'write',
       authModes: ['none'],
@@ -62,7 +79,7 @@ export function createWorkflowDocumentCommandSpecs(): CliCommandSpec[] {
       examples: [
         {
           description: 'Build workflow.json into store-workflow.json',
-          args: ['workflow', 'build', '--output', './store-workflow.json']
+          args: ['workflow-build', 'build', '--output', './store-workflow.json']
         }
       ],
       execute: ({ options, container }) =>
@@ -74,7 +91,7 @@ export function createWorkflowDocumentCommandSpecs(): CliCommandSpec[] {
     },
 
     {
-      path: ['workflow', 'import'],
+      path: ['workflow-build', 'import'],
       summary: 'Decompile a StoreWorkflow JSON file into local workflow.json',
       risk: 'write',
       authModes: ['none'],
@@ -92,7 +109,7 @@ export function createWorkflowDocumentCommandSpecs(): CliCommandSpec[] {
       examples: [
         {
           description: 'Import StoreWorkflow JSON into workflow.json',
-          args: ['workflow', 'import', '--input', './store-workflow.json']
+          args: ['workflow-build', 'import', '--input', './store-workflow.json']
         }
       ],
       execute: ({ options, container }) =>
@@ -105,7 +122,7 @@ export function createWorkflowDocumentCommandSpecs(): CliCommandSpec[] {
     },
 
     {
-      path: ['workflow', 'inspect'],
+      path: ['workflow-build', 'inspect'],
       summary: 'Inspect local workflow.json structure, bindings, references, and diagnostics',
       risk: 'read',
       authModes: ['none'],
@@ -113,7 +130,7 @@ export function createWorkflowDocumentCommandSpecs(): CliCommandSpec[] {
       examples: [
         {
           description: 'Inspect local workflow in JSON format',
-          args: ['workflow', 'inspect', '--format', 'json']
+          args: ['workflow-build', 'inspect', '--format', 'json']
         }
       ],
       execute: ({ options, container }) =>
@@ -123,7 +140,7 @@ export function createWorkflowDocumentCommandSpecs(): CliCommandSpec[] {
     },
 
     {
-      path: ['workflow', 'validate'],
+      path: ['workflow-build', 'validate'],
       summary: 'Validate local workflow.json graph, references, and bindings',
       risk: 'read',
       authModes: ['none'],
@@ -131,7 +148,7 @@ export function createWorkflowDocumentCommandSpecs(): CliCommandSpec[] {
       examples: [
         {
           description: 'Validate workflow.json before pushing or publishing',
-          args: ['workflow', 'validate']
+          args: ['workflow-build', 'validate']
         }
       ],
       execute: ({ options, container }) =>
