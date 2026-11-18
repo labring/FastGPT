@@ -15,7 +15,7 @@ type UpgradeVersionTimelineProps = {
 /**
  * 展示升级文档的版本时间轴。
  * 没有 releaseTime 的版本放在最前面；其余版本按发布时间倒序排列。
- * 没有 releaseTime 的版本视为进行中的版本，并使用强调色标识。
+ * 没有 releaseTime 的版本视为开发中的版本，并使用强调色标识。
  */
 export function UpgradeVersionTimeline({ items, language }: UpgradeVersionTimelineProps) {
   const isEnglish = language === 'en';
@@ -23,13 +23,13 @@ export function UpgradeVersionTimeline({ items, language }: UpgradeVersionTimeli
     ? {
         count: 'versions',
         latest: 'Latest release',
-        inProgress: 'In progress',
+        inProgress: 'In dev',
         description: 'A chronological record of FastGPT self-hosted releases.'
       }
     : {
         count: '个版本',
         latest: '最新发布',
-        inProgress: '进行中',
+        inProgress: '开发中',
         description: 'FastGPT 自部署版本的发布时间记录。'
       };
 
