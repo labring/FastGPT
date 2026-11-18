@@ -13,6 +13,8 @@ import { type StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 const Edit = ({
   url,
   setUrl,
+  toolSourceUrl,
+  setToolSourceUrl,
   toolList,
   setToolList,
   currentTool,
@@ -22,6 +24,8 @@ const Edit = ({
 }: {
   url: string;
   setUrl: (url: string) => void;
+  toolSourceUrl: string;
+  setToolSourceUrl: (url: string) => void;
   toolList: McpToolConfigType[];
   setToolList: (toolList: McpToolConfigType[]) => void;
   currentTool?: McpToolConfigType;
@@ -61,6 +65,8 @@ const Edit = ({
             setCurrentTool={setCurrentTool}
             url={url}
             setUrl={setUrl}
+            toolSourceUrl={toolSourceUrl}
+            setToolSourceUrl={setToolSourceUrl}
             headerSecret={headerSecret}
             setHeaderSecret={setHeaderSecret}
           />
@@ -68,7 +74,12 @@ const Edit = ({
       </Flex>
       {isPc && (
         <Box flex={'2 0 0'} w={0} mb={3}>
-          <ChatTest currentTool={currentTool} url={url} headerSecret={headerSecret} />
+          <ChatTest
+            currentTool={currentTool}
+            url={url}
+            headerSecret={headerSecret}
+            toolSourceUrl={toolSourceUrl}
+          />
         </Box>
       )}
     </MyBox>

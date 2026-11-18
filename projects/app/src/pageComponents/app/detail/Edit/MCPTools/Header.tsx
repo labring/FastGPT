@@ -16,10 +16,12 @@ import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 const Header = ({
   url,
   toolList,
+  toolSourceUrl,
   headerSecret
 }: {
   url: string;
   toolList: McpToolConfigType[];
+  toolSourceUrl: string;
   headerSecret: StoreSecretValueType;
 }) => {
   const { t } = useTranslation();
@@ -51,6 +53,8 @@ const Header = ({
 
   const { runAsync: saveMCPTools, loading: isSavingMCPTools } = useRequest(
     async () => {
+      // 新地址尚未成功解析时，不得将旧服务的工具和上下文绑定到新地址。
+      if (toolSourceUrl !== url) return;
       return await postUpdateMCPTools({ appId, url, toolList, headerSecret });
     },
     {
@@ -80,7 +84,12 @@ const Header = ({
             <RouteTab />
           </Box>
         )} */}
-        <Button size={'sm'} isLoading={isSavingMCPTools} onClick={() => saveMCPTools()}>
+        <Button
+          size={'sm'}
+          isLoading={isSavingMCPTools}
+          isDisabled={toolSourceUrl !== url}
+          onClick={() => saveMCPTools()}
+        >
           {t('common:Save')}
         </Button>
       </Flex>

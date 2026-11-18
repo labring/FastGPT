@@ -15,7 +15,7 @@ async function handler(req: ApiRequestProps<RunMcpToolBodyType>): Promise<RunMcp
   await authCert({ req, authToken: true });
 
   const {
-    body: { url, toolName, headerSecret, params }
+    body: { url, toolName, headerSecret, params, requestMeta }
   } = parseApiInput({
     req,
     bodySchema: RunMcpToolBodySchema
@@ -30,7 +30,9 @@ async function handler(req: ApiRequestProps<RunMcpToolBodyType>): Promise<RunMcp
     })
   });
 
-  return RunMcpToolResponseSchema.parse(await mcpClient.toolCall({ toolName, params }));
+  return RunMcpToolResponseSchema.parse(
+    await mcpClient.toolCall({ toolName, params, requestMeta })
+  );
 }
 
 export default NextAPI(handler);

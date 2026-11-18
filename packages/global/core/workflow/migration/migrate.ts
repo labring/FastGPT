@@ -1,5 +1,10 @@
 import type { CanonicalWorkflowData } from './schema';
-import { CanonicalSelectedToolsValueSchema, CanonicalWorkflowDataSchema } from './schema';
+import {
+  CanonicalSelectedToolsValueSchema,
+  CanonicalWorkflowDataSchema,
+  PersistedWorkflowDataSchema
+} from './schema';
+import { AppTypeEnum } from '../../app/constants';
 import type { LegacyWorkflowDataInput } from './legacy/schema';
 import { migrateLegacyWorkflowStructureToCurrent } from './legacy/workflow';
 import { migrateLegacyWorkflowStructureData } from './legacy/structure';
@@ -24,7 +29,10 @@ export const isLegacyV1Workflow = (nodes: unknown): boolean => {
   });
 };
 
-export const migrateWorkflowToCurrent = (input: LegacyWorkflowDataInput): CanonicalWorkflowData => {
+export const migrateWorkflowToCurrent = (
+  input: LegacyWorkflowDataInput,
+  options?: { appType?: AppTypeEnum }
+): CanonicalWorkflowData => {
   // V1 工作流已不再支持，普通入口只接受 V2/current 数据。
   if (isLegacyV1Workflow(input.nodes)) {
     throw new Error('V1 workflows are no longer supported');
@@ -98,5 +106,10 @@ export const migrateWorkflowToCurrent = (input: LegacyWorkflowDataInput): Canoni
     };
   });
 
-  return CanonicalWorkflowDataSchema.parse({ ...workflow, nodes });
+  // 只有已鉴权的 MCP 工具本体保留其配置；默认的工作流保存、导入、迁移边界不保存 meta 快照。
+  const schema =
+    options?.appType === AppTypeEnum.mcpToolSet
+      ? CanonicalWorkflowDataSchema
+      : PersistedWorkflowDataSchema;
+  return schema.parse({ ...workflow, nodes });
 };

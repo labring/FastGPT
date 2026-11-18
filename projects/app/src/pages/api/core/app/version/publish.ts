@@ -25,6 +25,7 @@ import {
 import { assertAppDatasetIndexModelsAvailable } from '@fastgpt/service/core/dataset/model';
 import { extractAppResources } from '@fastgpt/service/core/app/resource/utils';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
+import { encodeMcpToolSetNodesForStorage } from '@fastgpt/service/core/app/jsonSchemaStorage';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { getAuthorizedModelIds } from '@fastgpt/service/support/permission/model/auth';
@@ -88,6 +89,11 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>) {
     nodes: normalizedWorkflow.nodes,
     chatConfig: normalizedWorkflow.chatConfig
   });
+  // 工具本体沿用专用更新入口的 JSON 编码；普通工作流已经在规范化时移除 meta 快照。
+  const storageNodes =
+    app.type === AppTypeEnum.mcpToolSet
+      ? encodeMcpToolSetNodesForStorage(normalizedWorkflow.nodes)
+      : normalizedWorkflow.nodes;
   if (autoSave) {
     await mongoSessionRun(async (session) => {
       // baseline 必须在事务内读取，事务重试时才能按最新草稿重新计算资源快照。
@@ -110,7 +116,7 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>) {
           tmbId,
           appId,
           isAutoSave: true,
-          nodes: normalizedWorkflow.nodes,
+          nodes: storageNodes,
           edges: normalizedWorkflow.edges,
           chatConfig: normalizedWorkflow.chatConfig,
           versionName: i18nT('app:auto_save'),
@@ -175,7 +181,7 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>) {
       [
         {
           appId,
-          nodes: normalizedWorkflow.nodes,
+          nodes: storageNodes,
           edges: normalizedWorkflow.edges,
           chatConfig: normalizedWorkflow.chatConfig,
           isPublish,

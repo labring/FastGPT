@@ -143,7 +143,8 @@ export const RunMcpToolBodySchema = z
     params: z.record(z.string(), z.any()).meta({
       example: { query: 'hello' },
       description: '工具调用参数'
-    })
+    }),
+    requestMeta: McpToolConfigSchema.shape.requestMeta
   })
   .meta({
     example: {

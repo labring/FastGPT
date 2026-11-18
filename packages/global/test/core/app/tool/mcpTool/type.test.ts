@@ -7,6 +7,21 @@ import {
 
 describe('mcpTool type schemas', () => {
   describe('McpToolConfigSchema', () => {
+    it('preserves per-tool request metadata separately from the input schema', () => {
+      const requestMeta = { 'example/context': { locale: 'zh-CN', flags: [false, 0, null] } };
+      expect(
+        McpToolConfigSchema.parse({ name: 'search', description: '', requestMeta })
+      ).toHaveProperty('requestMeta', requestMeta);
+    });
+
+    it.each(
+      [null, [], 'metadata', 1, { invalid: undefined }].map((requestMeta) => ({ requestMeta }))
+    )('rejects non-JSON-object request metadata: $requestMeta', ({ requestMeta }) => {
+      expect(
+        McpToolConfigSchema.safeParse({ name: 'search', description: '', requestMeta }).success
+      ).toBe(false);
+    });
+
     it('should validate valid tool config', () => {
       const validConfig = {
         name: 'searchTool',
