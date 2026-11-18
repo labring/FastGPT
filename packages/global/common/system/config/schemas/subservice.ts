@@ -112,12 +112,21 @@ export const SubserviceConfigBaseSchema = z.strictObject({
   mcp: McpSubserviceConfigSchema.prefault({})
 });
 
-/** 校验除「启用供应商时代理必填」之外的跨字段通用约束，供正式终审 Schema 与外部基础校验组装复用。 */
-export const applySubserviceBaseRules = (
-  subservice: z.infer<typeof SubserviceConfigBaseSchema>,
-  ctx: z.RefinementCtx
-) => {
+export const SubserviceConfigSchema = SubserviceConfigBaseSchema.superRefine((subservice, ctx) => {
   const { agentSandbox } = subservice;
+
+  // 启用任一供应商都依赖完整代理配置，必须在保存前拒绝不完整状态。
+  if (agentSandbox.provider !== 'none') {
+    for (const key of ['wsUrl', 'previewUrl', 'secret'] as const) {
+      if (!agentSandbox.proxy[key].trim()) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['agentSandbox', 'proxy', key],
+          message: `${key} is required when Agent Sandbox is enabled`
+        });
+      }
+    }
+  }
 
   // 配置服务先解密已有凭据并合并补丁，终审始终校验实际生效的明文。
   if (agentSandbox.proxy.secret && agentSandbox.proxy.secret.length < 32) {
@@ -147,25 +156,6 @@ export const applySubserviceBaseRules = (
         path: ['agentSandbox', 'opensandbox', 'baseUrl'],
         message: 'baseUrl is required for opensandbox'
       });
-    }
-  }
-};
-
-export const SubserviceConfigSchema = SubserviceConfigBaseSchema.superRefine((subservice, ctx) => {
-  applySubserviceBaseRules(subservice, ctx);
-
-  const { agentSandbox } = subservice;
-
-  // 启用任一供应商都依赖完整代理配置，必须在保存前拒绝不完整状态。
-  if (agentSandbox.provider !== 'none') {
-    for (const key of ['wsUrl', 'previewUrl', 'secret'] as const) {
-      if (!agentSandbox.proxy[key].trim()) {
-        ctx.addIssue({
-          code: 'custom',
-          path: ['agentSandbox', 'proxy', key],
-          message: `${key} is required when Agent Sandbox is enabled`
-        });
-      }
     }
   }
 });

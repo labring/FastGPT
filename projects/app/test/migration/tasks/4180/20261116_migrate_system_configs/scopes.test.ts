@@ -632,7 +632,7 @@ describe('verifyLegacyConfigScopes', () => {
     }),
     ['proEnv', { teamMode: 'private-invalid-value' }, 'teamMode'] as const
   ])(
-    'warns about an invalid %s target without rejecting or rewriting it',
+    'accepts an invalid %s target without rejecting or rewriting it',
     async (domain, overrides, path) => {
       await MongoSystemInstanceConfig.collection.insertOne({
         domain,
@@ -642,7 +642,7 @@ describe('verifyLegacyConfigScopes', () => {
         createdAt: new Date(),
         updatedAt: new Date()
       });
-      // commercial 使用跨端 resolver；其他 scope 使用服务端迁移校验器。
+      // commercial 走无校验的跨端读取；其他辅助 scope 走服务端迁移转换日志。
       const warn = vi
         .spyOn(domain === 'commercial' ? console : getLogger(LogCategories.SYSTEM.UPGRADE), 'warn')
         .mockImplementation(() => {});
@@ -651,7 +651,11 @@ describe('verifyLegacyConfigScopes', () => {
         expect((await MongoSystemInstanceConfig.collection.findOne({ domain }))?.overrides).toEqual(
           overrides
         );
-        expect(JSON.stringify(warn.mock.calls)).toContain(path);
+        if (domain === 'commercial') {
+          expect(warn).not.toHaveBeenCalled();
+        } else {
+          expect(JSON.stringify(warn.mock.calls)).toContain(path);
+        }
         expect(JSON.stringify(warn.mock.calls)).not.toContain('private-invalid-value');
       } finally {
         warn.mockRestore();

@@ -735,8 +735,8 @@ describe('agentSandbox.common.storageSizeGi validation', () => {
   });
 });
 
-describe('warning-only instance config reads', () => {
-  it('retains invalid known fields and incomplete provider config on reads while rejecting saves', () => {
+describe('unvalidated instance config reads and strict saves', () => {
+  it('retains invalid known fields and incomplete provider config on reads without warning while rejecting saves', () => {
     const raw = { agentSandbox: { provider: 'sealosdevbox', common: { memoryMiB: -1 } } };
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     try {
@@ -748,7 +748,7 @@ describe('warning-only instance config reads', () => {
       expect(read.agentSandbox.provider).toBe('sealosdevbox');
       expect(read.agentSandbox.common.memoryMiB).toBe(-1);
       expect(read.agentSandbox.proxy.wsUrl).toBe('');
-      expect(warn).toHaveBeenCalled();
+      expect(warn).not.toHaveBeenCalled();
       expect(() =>
         resolveDomainEffectiveConfig({ domain: 'subservice', overrides: raw })
       ).toThrow();
@@ -757,7 +757,21 @@ describe('warning-only instance config reads', () => {
     }
   });
 
-  it('keeps valid sibling domains when a read contains wrong types and never logs input values', () => {
+  it('strips retired unknown fields even when sibling known fields are invalid', () => {
+    const parsed = parseDomainOverrides({
+      domain: 'performance',
+      overrides: {
+        legacyTopLevelKey: true,
+        tracking: { batchUpdateTime: 5, retentionHours: -1 }
+      },
+      options: { strict: false }
+    });
+    expect(parsed).toEqual({
+      tracking: { retentionHours: -1 }
+    });
+  });
+
+  it('keeps valid sibling domains when a read contains wrong types without logging warnings', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     try {
       const snapshot = resolveSystemInstanceConfig(
@@ -773,8 +787,7 @@ describe('warning-only instance config reads', () => {
       expect(snapshot.site.name).toBe('Existing');
       expect(snapshot.providers.documentParse.customPdf.key).toBe('private-synthetic-secret');
       expect(snapshot.performance.dataset.qaMaxProcess).toBe('invalid-number');
-      expect(JSON.stringify(warn.mock.calls)).not.toContain('private-synthetic-secret');
-      expect(JSON.stringify(warn.mock.calls)).not.toContain('invalid-number');
+      expect(warn).not.toHaveBeenCalled();
     } finally {
       warn.mockRestore();
     }

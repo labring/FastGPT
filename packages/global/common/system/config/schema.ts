@@ -154,23 +154,88 @@ export const systemInstanceConfigDomainOverrideSchemaMap = {
   subservice: makeDomainOverrideSchema(SubserviceConfigBaseSchema)
 } as const;
 
-/**
- * 宽容模式（lenient）稀疏 Overrides 校验 Schema 映射表。
- * 用于读取数据库存量文档：剥离未识别或废弃字段，防止启动阶段因存量旧字段未清理而崩溃死锁。
- */
-export const systemInstanceConfigDomainLenientOverrideSchemaMap = {
-  site: makeDomainOverrideSchema(SiteConfigSchema, { strict: false }),
-  auth: makeDomainOverrideSchema(AuthConfigSchema, { strict: false }),
-  security: makeDomainOverrideSchema(SecurityConfigSchema, { strict: false }),
-  feature: makeDomainOverrideSchema(FeatureConfigSchema, { strict: false }),
-  commercial: makeDomainOverrideSchema(CommercialConfigSchema, { strict: false }),
-  resource: makeDomainOverrideSchema(ResourceConfigSchema, { strict: false }),
-  performance: makeDomainOverrideSchema(PerformanceConfigBaseSchema, { strict: false }),
-  storage: makeDomainOverrideSchema(StorageConfigSchema, { strict: false }),
-  vector: makeDomainOverrideSchema(VectorConfigSchema, { strict: false }),
-  providers: makeDomainOverrideSchema(ProvidersConfigBaseSchema, { strict: false }),
-  subservice: makeDomainOverrideSchema(SubserviceConfigBaseSchema, { strict: false })
+const systemInstanceConfigDomainBaseSchemaMap = {
+  site: SiteConfigSchema,
+  auth: AuthConfigSchema,
+  security: SecurityConfigSchema,
+  feature: FeatureConfigSchema,
+  commercial: CommercialConfigSchema,
+  resource: ResourceConfigSchema,
+  performance: PerformanceConfigBaseSchema,
+  storage: StorageConfigSchema,
+  vector: VectorConfigSchema,
+  providers: ProvidersConfigBaseSchema,
+  subservice: SubserviceConfigBaseSchema
 } as const;
+
+const isPlainRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' &&
+  value !== null &&
+  !Array.isArray(value) &&
+  !(value instanceof Date) &&
+  !(value instanceof RegExp);
+
+const unwrapFieldSchema = (fieldSchema: z.ZodTypeAny): z.ZodTypeAny => {
+  const type = (fieldSchema as any)?.type ?? (fieldSchema as any)?._def?.type;
+  if (type === 'default' || type === 'prefault' || type === 'optional' || type === 'nullable') {
+    const inner = (fieldSchema as any)?.def?.innerType ?? (fieldSchema as any)?._def?.innerType;
+    return inner ? unwrapFieldSchema(inner) : fieldSchema;
+  }
+  if (type === 'effects' || type === 'transform') {
+    const inner = (fieldSchema as any)?.def?.schema ?? (fieldSchema as any)?._def?.schema;
+    return inner ? unwrapFieldSchema(inner) : fieldSchema;
+  }
+  return fieldSchema;
+};
+
+/**
+ * 读取模式下仅按 Schema 已知字段树剥离未知/废弃字段，不做业务约束校验。
+ * 这样即便同域内同时残留未知旧键与不合规旧值，读取也不会报错或丢弃待修字段，
+ * 保存前合并时也始终能剔除未知旧键，避免管理员无法保存修复。
+ */
+const pickKnownFieldValue = (fieldSchema: z.ZodTypeAny, value: unknown): unknown => {
+  if (value === null || value === undefined) return value;
+
+  const inner = unwrapFieldSchema(fieldSchema);
+  const type = (inner as any)?.type ?? (inner as any)?._def?.type;
+
+  if (type === 'object') {
+    return isPlainRecord(value)
+      ? pickKnownObjectFields(inner as z.ZodObject<any>, value)
+      : structuredClone(value);
+  }
+
+  if (type === 'array') {
+    if (!Array.isArray(value)) return structuredClone(value);
+    const element =
+      (inner as any)?.element ?? (inner as any)?.def?.type ?? (inner as any)?._def?.type;
+    return element
+      ? value.map((item) => pickKnownFieldValue(element, item))
+      : structuredClone(value);
+  }
+
+  if (type === 'pipe') {
+    const parsed = inner.safeParse(value);
+    return parsed.success ? parsed.data : structuredClone(value);
+  }
+
+  return structuredClone(value);
+};
+
+const pickKnownObjectFields = (
+  schema: z.ZodObject<any>,
+  input: unknown
+): Record<string, unknown> => {
+  if (!isPlainRecord(input)) return {};
+
+  const shape = schema.shape;
+  const output: Record<string, unknown> = {};
+  for (const key of Object.keys(shape)) {
+    if (!Object.hasOwn(input, key) || input[key] === undefined) continue;
+    output[key] = pickKnownFieldValue(shape[key], input[key]);
+  }
+  return output;
+};
 
 /**
  * 获取指定 Domain 的完整内置默认配置。
@@ -184,8 +249,8 @@ export const getDomainDefaultConfig = <T extends SystemInstanceConfigDomainKey>(
 
 /**
  * 阶段 1 校验：校验提交的 overrides 形态与字段类型。
- * - 默认 strict 模式：拒绝未知字段，用于 Admin API 输入检验；
- * - strict: false 模式：正常值剥离未知字段；无效旧值保留原值并告警，不阻断数据库读取。
+ * - 默认 strict 模式：拒绝未知字段与非法类型，用于 Admin 保存边界；
+ * - strict: false 模式：仅按已知字段树剥离未知字段并保留原值，不做 Schema 校验。
  */
 export const parseDomainOverrides = <T extends SystemInstanceConfigDomainKey>({
   domain,
@@ -196,30 +261,21 @@ export const parseDomainOverrides = <T extends SystemInstanceConfigDomainKey>({
   overrides: unknown;
   options?: { strict?: boolean };
 }): DeepPartial<SystemInstanceConfigDomainMap[T]> => {
-  const schema =
-    options?.strict === false
-      ? systemInstanceConfigDomainLenientOverrideSchemaMap[domain]
-      : systemInstanceConfigDomainOverrideSchemaMap[domain];
-  const result = schema.safeParse(overrides ?? {});
-  if (result.success) return result.data as DeepPartial<SystemInstanceConfigDomainMap[T]>;
-  if (options?.strict !== false) throw result.error;
-  warnConfigValidation(domain, result.error);
-  return structuredClone(overrides ?? {}) as DeepPartial<SystemInstanceConfigDomainMap[T]>;
-};
-
-/** 读取旧配置只报告字段位置和错误类型，绝不输出可能包含凭据的值或完整 Zod issue。 */
-const warnConfigValidation = (scope: string, error: z.ZodError) => {
-  console.warn('Invalid system configuration retained for administrator repair', {
-    scope,
-    issues: error.issues.map(({ path, code }) => ({ path: path.join('.'), code }))
-  });
+  if (options?.strict === false) {
+    return pickKnownObjectFields(
+      systemInstanceConfigDomainBaseSchemaMap[domain],
+      overrides
+    ) as DeepPartial<SystemInstanceConfigDomainMap[T]>;
+  }
+  return systemInstanceConfigDomainOverrideSchemaMap[domain].parse(overrides ?? {}) as DeepPartial<
+    SystemInstanceConfigDomainMap[T]
+  >;
 };
 
 /**
- * 两阶段校验核心：
- * 1. 阶段 1 校验 overrides 自身形态；
- * 2. 深度合并默认值与 overrides；
- * 3. 保存时执行完整 DomainSchema；读取模式只告警，保留非法旧值供管理员修复。
+ * 合成单个 Domain 的生效配置：
+ * - strict: false（启动/轮询/读取）：剥离未知字段并合并默认值，不做 Schema 校验；
+ * - 默认 strict（保存边界）：严格校验 overrides 形态及合并后的完整 DomainSchema。
  */
 export const resolveDomainEffectiveConfig = <T extends SystemInstanceConfigDomainKey>({
   domain,
@@ -233,12 +289,12 @@ export const resolveDomainEffectiveConfig = <T extends SystemInstanceConfigDomai
   const defaultValues = getDomainDefaultConfig(domain);
   const parsedOverrides = parseDomainOverrides({ domain, overrides, options });
   const merged = deepMergeConfig(defaultValues, parsedOverrides);
-  const fullSchema = systemInstanceConfigDomainSchemaMap[domain];
-  const result = fullSchema.safeParse(merged);
-  if (result.success) return result.data as SystemInstanceConfigDomainMap[T];
-  if (options?.strict !== false) throw result.error;
-  warnConfigValidation(domain, result.error);
-  return merged as SystemInstanceConfigDomainMap[T];
+  if (options?.strict === false) {
+    return merged as SystemInstanceConfigDomainMap[T];
+  }
+  return systemInstanceConfigDomainSchemaMap[domain].parse(
+    merged
+  ) as SystemInstanceConfigDomainMap[T];
 };
 
 /**
@@ -288,10 +344,11 @@ export const resolveSystemInstanceConfig = (
   ): SystemInstanceConfig[K] => {
     const schema = SystemInstanceConfigSchema.shape[scope];
     const value = domainOverridesMap[scope];
+    if (options?.strict !== false) {
+      return schema.parse(value) as SystemInstanceConfig[K];
+    }
     const result = schema.safeParse(value);
     if (result.success) return result.data as SystemInstanceConfig[K];
-    if (options?.strict !== false) throw result.error;
-    warnConfigValidation(scope, result.error);
     const retained = deepMergeConfig(schema.parse(undefined), value);
     if (scope === 'license' && retained && typeof retained === 'object') {
       // 授权缓存仍须遵循原有失效规则；配置容错不能恢复无效授权能力。

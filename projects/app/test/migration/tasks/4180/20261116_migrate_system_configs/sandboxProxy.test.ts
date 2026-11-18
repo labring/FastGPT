@@ -125,24 +125,16 @@ describe('rehomeAgentSandboxProxy', () => {
     { AGENT_SANDBOX_PREVIEW_PROXY_URL: 'ws://wrong-protocol.test' },
     { AGENT_SANDBOX_PROXY_URL: 'wss://%invalid' },
     { AGENT_SANDBOX_PROXY_SECRET: 'private-short' }
-  ])('retains malformed source fields with path-only warnings: %j', async (invalid) => {
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    try {
-      await expect(run({ ...legacyEnv, ...invalid })).resolves.toEqual({ updatedDocuments: 1 });
-      await expect(verifyAgentSandboxProxyMigration()).resolves.toBeUndefined();
-      const proxy = decryptDomainSecrets('subservice', (await read())?.overrides).agentSandbox
-        .proxy;
-      if (invalid.AGENT_SANDBOX_PROXY_URL !== undefined)
-        expect(proxy.wsUrl).toBe(invalid.AGENT_SANDBOX_PROXY_URL);
-      if (invalid.AGENT_SANDBOX_PREVIEW_PROXY_URL !== undefined)
-        expect(proxy.previewUrl).toBe(invalid.AGENT_SANDBOX_PREVIEW_PROXY_URL);
-      if (invalid.AGENT_SANDBOX_PROXY_SECRET !== undefined)
-        expect(proxy.secret).toBe(invalid.AGENT_SANDBOX_PROXY_SECRET);
-      expect(warn).toHaveBeenCalled();
-      expect(JSON.stringify(warn.mock.calls)).not.toContain('private-short');
-    } finally {
-      warn.mockRestore();
-    }
+  ])('retains malformed source fields without rejecting migration: %j', async (invalid) => {
+    await expect(run({ ...legacyEnv, ...invalid })).resolves.toEqual({ updatedDocuments: 1 });
+    await expect(verifyAgentSandboxProxyMigration()).resolves.toBeUndefined();
+    const proxy = decryptDomainSecrets('subservice', (await read())?.overrides).agentSandbox.proxy;
+    if (invalid.AGENT_SANDBOX_PROXY_URL !== undefined)
+      expect(proxy.wsUrl).toBe(invalid.AGENT_SANDBOX_PROXY_URL);
+    if (invalid.AGENT_SANDBOX_PREVIEW_PROXY_URL !== undefined)
+      expect(proxy.previewUrl).toBe(invalid.AGENT_SANDBOX_PREVIEW_PROXY_URL);
+    if (invalid.AGENT_SANDBOX_PROXY_SECRET !== undefined)
+      expect(proxy.secret).toBe(invalid.AGENT_SANDBOX_PROXY_SECRET);
   });
 
   it.each([null, 'invalid', { secret: null }])(

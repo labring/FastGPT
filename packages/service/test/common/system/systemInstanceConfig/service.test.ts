@@ -183,21 +183,19 @@ describe('SystemInstanceConfigManager', () => {
     expect(await MongoSystemInstanceConfig.countDocuments()).toBe(4);
   });
 
-  it('publishes invalid stored fields with warnings and accepts the administrator repair', async () => {
+  it('publishes invalid stored fields without throwing and accepts the administrator repair', async () => {
     await MongoSystemInstanceConfig.create({
       domain: 'site',
       revision: 1,
       overrides: { name: 'valid' }
     });
     await systemInstanceConfig.refresh();
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     await MongoSystemInstanceConfig.collection.updateOne(
       { domain: 'site' },
       { $set: { 'overrides.name': 7 }, $inc: { revision: 1 } }
     );
     expect((await systemInstanceConfig.refresh()).site.name).toBe(7);
     expect(global.feConfigs.systemTitle).toBe(7);
-    expect(warn).toHaveBeenCalled();
     await MongoSystemInstanceConfig.collection.updateOne(
       { domain: 'site' },
       { $set: { 'overrides.name': 'recovered' }, $inc: { revision: 1 } }

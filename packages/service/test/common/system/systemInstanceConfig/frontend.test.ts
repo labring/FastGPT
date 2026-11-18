@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { resolveSystemInstanceConfig } from '@fastgpt/global/common/system/config/schema';
 import { buildSystemFrontendConfig } from '../../../../common/system/systemInstanceConfig/frontend';
 import { serviceEnv } from '../../../../env';
@@ -141,7 +141,6 @@ describe('buildSystemFrontendConfig', () => {
   });
 
   it('can project invalid persisted service fields without throwing', () => {
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const config = resolveSystemInstanceConfig(
       {
         auth: { loginProviders: { sms: { register: { zh: 7 } } } },
@@ -156,8 +155,6 @@ describe('buildSystemFrontendConfig', () => {
       codeSandboxEnabled: false,
       mcpServerProxyEndpoint: undefined
     });
-    expect(warn).toHaveBeenCalled();
-    warn.mockRestore();
   });
 
   it('does not show a configured Code Sandbox when its token is only whitespace', () => {

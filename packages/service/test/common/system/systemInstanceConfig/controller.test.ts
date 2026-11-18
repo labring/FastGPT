@@ -984,16 +984,18 @@ describe('systemInstanceConfig controller', () => {
       }
     );
 
-    it('reads an invalid historical value, reports its save error, and allows a repair', async () => {
+    it('reads an invalid historical value without throwing, reports its save error, and allows a repair even alongside retired keys', async () => {
       await MongoSystemInstanceConfig.collection.insertOne({
         domain: 'performance',
         schemaVersion: 1,
         revision: 1,
-        overrides: { workflow: { maxLoopTimes: -1 } }
+        overrides: {
+          streamResume: { ttlSeconds: 10 },
+          tracking: { batchUpdateTime: 5 },
+          workflow: { maxLoopTimes: -1 }
+        }
       });
-      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
       expect((await getDomainConfig('performance')).effectiveConfig.workflow.maxLoopTimes).toBe(-1);
-      expect(warn).toHaveBeenCalled();
       await expect(
         batchUpdateDomainConfigs({
           items: [
@@ -1024,7 +1026,8 @@ describe('systemInstanceConfig controller', () => {
         actor: { actor: 'admin' }
       });
       expect(repaired.effectiveConfig.workflow.maxLoopTimes).toBe(100);
-      warn.mockRestore();
+      expect(repaired.overrides).not.toHaveProperty('streamResume');
+      expect(repaired.overrides.tracking).toBeUndefined();
     });
 
     it('rolls back completely if any domain in the batch encounters a revision conflict', async () => {

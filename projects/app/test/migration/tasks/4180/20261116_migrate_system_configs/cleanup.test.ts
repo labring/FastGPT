@@ -453,7 +453,7 @@ describe('cleanupInstanceConfigDeprecatedFields (integration)', () => {
     expect(beforeProxyBackfill.invalidDomains).toEqual([]);
   });
 
-  it('warns without rejecting invalid provider baseUrl or proxy secret length', () => {
+  it('does not reject invalid provider baseUrl or proxy secret length on migration reads', () => {
     expect(() =>
       readMigrationDomainConfig({
         domain: 'subservice',

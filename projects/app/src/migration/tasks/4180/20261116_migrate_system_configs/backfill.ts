@@ -56,6 +56,12 @@ export const backfillExternalFileCheck = async ({
       return { updatedDocuments: 0 };
     }
 
+    // 历史名单可能是数组，也可能在宽容读取下保留为 null/字符串/对象；非空即继续开启检查。
+    const rawWhitelist: unknown = security.fileUrlWhitelist;
+    const hasLegacyFileWhitelist = Array.isArray(rawWhitelist)
+      ? rawWhitelist.length > 0
+      : rawWhitelist !== undefined && rawWhitelist !== null && rawWhitelist !== '';
+
     await assertActive();
     const result = await MongoSystemInstanceConfig.collection.updateOne(
       { _id: doc._id, revision: doc.revision },
@@ -63,8 +69,8 @@ export const backfillExternalFileCheck = async ({
         $set: {
           // Mongo 无法给 null 的父字段写入子字段；缺失或已有对象仍按路径增量更新。
           ...(doc.overrides === null
-            ? { overrides: { checkExternalFile: security.fileUrlWhitelist.length > 0 } }
-            : { 'overrides.checkExternalFile': security.fileUrlWhitelist.length > 0 }),
+            ? { overrides: { checkExternalFile: hasLegacyFileWhitelist } }
+            : { 'overrides.checkExternalFile': hasLegacyFileWhitelist }),
           updatedBy: { actor: 'migration' },
           updatedAt: new Date()
         },
