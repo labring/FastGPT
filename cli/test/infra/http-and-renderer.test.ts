@@ -443,7 +443,9 @@ describe('FastGptHttpClient (ky) & OutputRenderer (picocolors)', () => {
     const fileIo = createNodeFileIoAdapter({ cwd: dir });
 
     const payloads = Array.from({ length: 8 }, (_, idx) => JSON.stringify({ index: idx }));
-    await Promise.all(payloads.map((content) => fileIo.writeTextAtomic('workflow.json', content)));
+    await Promise.all(
+      payloads.map((content) => fileIo.writeTextAtomic({ filePath: 'workflow.json', content }))
+    );
 
     const finalContent = await readFile(join(dir, 'workflow.json'), 'utf8');
     expect(payloads).toContain(finalContent);

@@ -83,7 +83,11 @@ export async function writeWorkflowDocument({
   dir: string;
   document: WorkflowDocument;
 }): Promise<string> {
-  return fileIo.writeTextAtomic(WORKFLOW_FILE_NAME, serializeWorkflowDocument(document), dir);
+  return fileIo.writeTextAtomic({
+    filePath: WORKFLOW_FILE_NAME,
+    content: serializeWorkflowDocument(document),
+    baseDir: dir
+  });
 }
 
 /**
@@ -100,7 +104,11 @@ export async function writeJsonArtifact({
   value: unknown;
   baseDir?: string;
 }): Promise<string> {
-  return fileIo.writeTextAtomic(filePath, `${JSON.stringify(value, null, 2)}\n`, baseDir);
+  return fileIo.writeTextAtomic({
+    filePath,
+    content: `${JSON.stringify(value, null, 2)}\n`,
+    baseDir
+  });
 }
 
 /**
@@ -142,9 +150,9 @@ export async function writeWorkflowSyncState({
   state: WorkflowSyncState;
 }): Promise<string> {
   const validated = WorkflowSyncStateSchema.parse(state);
-  return fileIo.writeTextAtomic(
-    WORKFLOW_SYNC_FILE_NAME,
-    `${JSON.stringify(validated, null, 2)}\n`,
-    dir
-  );
+  return fileIo.writeTextAtomic({
+    filePath: WORKFLOW_SYNC_FILE_NAME,
+    content: `${JSON.stringify(validated, null, 2)}\n`,
+    baseDir: dir
+  });
 }

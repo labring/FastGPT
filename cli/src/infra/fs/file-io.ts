@@ -15,7 +15,11 @@ export type FileIoAdapter = {
   exists: (targetPath: string, baseDir?: string) => Promise<boolean>;
   readTextFile: (filePath: string, baseDir?: string) => Promise<string>;
   readBinaryFile: (filePath: string, baseDir?: string) => Promise<LoadedBinaryFile>;
-  writeTextAtomic: (filePath: string, content: string, baseDir?: string) => Promise<string>;
+  writeTextAtomic: (params: {
+    filePath: string;
+    content: string;
+    baseDir?: string;
+  }) => Promise<string>;
   createTextFiles: (params: {
     baseDir: string;
     files: Array<{ filePath: string; content: string }>;
@@ -90,7 +94,7 @@ export function createNodeFileIoAdapter({ cwd }: { cwd: string }): FileIoAdapter
         throw new CliArgumentError(`Failed to read file "${filePath}": ${msg}`);
       }
     },
-    writeTextAtomic: (filePath, content, baseDir) =>
+    writeTextAtomic: ({ filePath, content, baseDir }) =>
       writeTextFile({ absolutePath: resolvePath(filePath, baseDir), content }),
     createTextFiles: async ({ baseDir, files }) => {
       const created: string[] = [];

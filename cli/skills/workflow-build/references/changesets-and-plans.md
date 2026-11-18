@@ -94,6 +94,7 @@ Use exactly one `tool.attach` mode.
 ### Metadata, configuration, and variables
 
 ```text
+meta.update      { name?, intro? }
 config.set       { path, value }
 config.unset     { path }
 variable.add     { variable }
