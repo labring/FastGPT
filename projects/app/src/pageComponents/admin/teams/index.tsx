@@ -1,25 +1,15 @@
 'use client';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import React, { useRef, useState } from 'react';
-import {
-  Table,
-  Thead,
-  Tbody,
-  Tr,
-  Th,
-  Td,
-  Flex,
-  Box,
-  Button,
-  HStack,
-  InputGroup,
-  Input,
-  InputLeftElement
-} from '@chakra-ui/react';
+import { Table, Thead, Tbody, Tr, Th, Td, Flex, Box, Button, HStack } from '@chakra-ui/react';
 import dayjs from 'dayjs';
 import { useRouter } from 'next/router';
 import { useQueryClient } from '@tanstack/react-query';
 import MyIcon from '@fastgpt/web/components/common/Icon';
+import AdminCompositeSearch, {
+  useAdminCompositeSearch,
+  useAdminTeamSearchOptions
+} from '@/components/admin/CompositeSearch';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import DetailTeamModal from './components/DetailTeamModal';
@@ -32,13 +22,15 @@ import { useUserStore } from '@/web/support/user/useUserStore';
 
 const TeamTable = () => {
   const { t } = useSafeTranslation();
+  const teamSearchOptions = useAdminTeamSearchOptions();
   const router = useRouter();
   const queryClient = useQueryClient();
   const { resetChatCache } = useChatStore();
   const { initUserInfo } = useUserStore();
-  const [search, setSearch] = useState<string>();
   const [switchingTeamId, setSwitchingTeamId] = useState<string>();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const { searchField, inputValue, isInvalid, searchParams, onFieldChange, onInputChange } =
+    useAdminCompositeSearch({ options: teamSearchOptions });
 
   const { runAsync: onEnterTeam } = useRequest(
     async (teamId: string) => {
@@ -67,10 +59,8 @@ const TeamTable = () => {
   } = usePagination(getTeams, {
     defaultPageSize: 20,
     pageSizeCacheKey: 'users-teams-list',
-    params: {
-      search
-    },
-    refreshDeps: [search],
+    params: searchParams,
+    refreshDeps: [searchParams],
     scrollContainerRef
   });
 
@@ -89,16 +79,14 @@ const TeamTable = () => {
           {t('admin:team_management')}
         </Box>
         <Box flexGrow={1} />
-        <InputGroup w={['100%', '250px']} h={'36px'}>
-          <InputLeftElement h={'full'}>
-            <MyIcon name="common/searchLight" w={4} color={'myGray.400'} />
-          </InputLeftElement>
-          <Input
-            placeholder={t('admin:search_by_username')}
-            h={'36px'}
-            onChange={(e) => setSearch(e.target.value)}
-          ></Input>
-        </InputGroup>
+        <AdminCompositeSearch
+          options={teamSearchOptions}
+          field={searchField}
+          value={inputValue}
+          isInvalid={isInvalid}
+          onFieldChange={onFieldChange}
+          onValueChange={onInputChange}
+        />
       </Flex>
 
       <FixedTableContainer

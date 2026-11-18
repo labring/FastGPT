@@ -38,11 +38,14 @@ async function handler(req: NextApiRequest, res: NextApiResponse): Promise<void>
       }
     }
 
+    const isFileRoute = path[0] === 'system' && (path[1] === 'img' || path[1] === 'file');
     const request = new Request(targetUrl, {
       // @ts-ignore
       duplex: 'half',
       method: req.method,
       headers,
+      // 文件跳转交给浏览器，避免主站代理把存储域响应当成主站页面输出。
+      redirect: isFileRoute ? 'manual' : 'follow',
       body: req.method === 'GET' || req.method === 'HEAD' ? null : (req as any)
     });
 

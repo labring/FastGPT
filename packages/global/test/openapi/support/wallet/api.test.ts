@@ -3,8 +3,13 @@ import { describe, expect, it } from 'vitest';
 import { openAPIDocument } from '../../../../openapi/provider/devapi';
 import { openAPIPaths, openAPITagGroups } from '../../../../openapi/path';
 import { DevApiTagsMap } from '../../../../openapi/tag';
-import { BillItemSchema } from '../../../../openapi/support/wallet/bill/api';
+import {
+  BillDetailResponseSchema,
+  BillItemSchema,
+  CreateBillPropsSchema
+} from '../../../../openapi/support/wallet/bill/api';
 import { GetPaysResponseSchema } from '../../../../openapi/admin/wallet/pay/api';
+import { CreateCouponBodySchema } from '../../../../openapi/admin/wallet/coupon/api';
 import {
   GetTeamHeaderResponseSchema,
   InvoiceRecordsResponseSchema,
@@ -19,6 +24,8 @@ import {
 } from '../../../../support/wallet/bill/constants';
 import { BillSchema } from '../../../../support/wallet/bill/type';
 import { InvoiceStatusEnum } from '../../../../support/wallet/bill/invoice/constants';
+import { SubTypeEnum } from '../../../../support/wallet/sub/constants';
+import { CouponTypeEnum } from '../../../../support/wallet/sub/coupon/constants';
 
 describe('wallet OpenAPI contracts', () => {
   const routes = {
@@ -114,6 +121,53 @@ describe('wallet OpenAPI contracts', () => {
     });
 
     expect(bill.metadata.month).toBe(12.17);
+  });
+
+  it('preserves decimal points when reading legacy order metadata and coupon details', () => {
+    const bill = BillDetailResponseSchema.parse({
+      _id: '68ee0bd23d17260b7829b137',
+      teamId: '68ee0bd23d17260b7829b138',
+      tmbId: '68ee0bd23d17260b7829b139',
+      createTime: '2026-01-01T00:00:00.000Z',
+      orderId: 'decimal-coupon-order',
+      status: BillStatusEnum.SUCCESS,
+      type: BillTypeEnum.extraPoints,
+      price: 0,
+      metadata: { payWay: BillPayWayEnum.coupon, extraPoints: 10000.5, totalPoints: 0.125 },
+      couponDetail: {
+        key: 'decimal-coupon',
+        type: CouponTypeEnum.activity,
+        subscriptions: [{ type: SubTypeEnum.extraPoints, durationDay: 30, totalPoints: 10000.5 }]
+      }
+    });
+
+    expect(bill.metadata).toMatchObject({ extraPoints: 10000.5, totalPoints: 0.125 });
+    expect(bill.couponDetail?.subscriptions[0].totalPoints).toBe(10000.5);
+  });
+
+  it('requires nonnegative safe integer amounts when purchasing points or creating coupons', () => {
+    const createOrder = (extraPoints: number | string) => ({
+      type: BillTypeEnum.extraPoints,
+      extraPoints,
+      month: 1
+    });
+    const createCoupon = (totalPoints: number | string) => ({
+      type: CouponTypeEnum.activity,
+      subscriptions: [{ type: SubTypeEnum.extraPoints, durationDay: 30, totalPoints }]
+    });
+    expect(CreateBillPropsSchema.parse(createOrder('666667'))).toMatchObject({
+      extraPoints: 666667
+    });
+    expect(CreateCouponBodySchema.parse(createCoupon('666667')).subscriptions[0].totalPoints).toBe(
+      666667
+    );
+    for (const points of [666666.7, -1, NaN, Infinity, Number.MAX_SAFE_INTEGER + 1]) {
+      expect(CreateBillPropsSchema.safeParse(createOrder(points)).success).toBe(false);
+      expect(CreateCouponBodySchema.safeParse(createCoupon(points)).success).toBe(false);
+    }
+    expect(CreateBillPropsSchema.safeParse({ ...createOrder(666667), month: 1.5 }).success).toBe(
+      false
+    );
   });
 
   it('preserves paid amount across the database and admin response contracts', () => {

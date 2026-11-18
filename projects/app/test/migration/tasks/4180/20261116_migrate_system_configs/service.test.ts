@@ -79,21 +79,7 @@ describe('legacy numeric configuration migration', () => {
     expect(overrides.subservice?.agentSandbox?.common?.maxPerTeam).toBeNull();
   });
 
-  it.each([
-    undefined,
-    null,
-    '',
-    '  ',
-    'invalid',
-    'NaN',
-    'Infinity',
-    NaN,
-    Infinity,
-    true,
-    [],
-    ['4'],
-    {}
-  ])('does not coerce empty, non-finite or non-numeric values: %j', (value) => {
+  it.each([undefined, null, '', '  '])('skips absent numeric configuration: %j', (value) => {
     const overrides = buildLegacyDomainOverrides({
       feConfigs: { limit: { exportDatasetLimitMinutes: value } },
       systemEnv: { customPdfParse: { price: value } }
@@ -101,6 +87,18 @@ describe('legacy numeric configuration migration', () => {
     expect(overrides.resource?.exportDatasetLimitMinutes).toBeUndefined();
     expect(overrides.providers?.documentParse?.customPdf?.price).toBeUndefined();
   });
+
+  it.each(['invalid', 'NaN', 'Infinity', NaN, Infinity, true, [], ['4'], {}])(
+    'retains malformed numeric values without coercing them to zero: %j',
+    (value) => {
+      const overrides = buildLegacyDomainOverrides({
+        feConfigs: { limit: { exportDatasetLimitMinutes: value } },
+        systemEnv: { customPdfParse: { price: value } }
+      });
+      expect(overrides.resource?.exportDatasetLimitMinutes).toEqual(value);
+      expect(overrides.providers?.documentParse?.customPdf?.price).toEqual(value);
+    }
+  );
 
   it('still reports converted numeric values that violate target domain constraints', () => {
     const overrides = buildLegacyDomainOverrides({
@@ -115,8 +113,8 @@ describe('legacy numeric configuration migration', () => {
         { domain: 'providers', path: 'documentParse.customPdf.price' }
       ])
     );
-    expect(sanitized.performance?.dataset?.parseMaxProcess).toBeUndefined();
-    expect(sanitized.providers?.documentParse?.customPdf?.price).toBeUndefined();
+    expect(sanitized.performance?.dataset?.parseMaxProcess).toBe(1.5);
+    expect(sanitized.providers?.documentParse?.customPdf?.price).toBe(-1);
   });
 });
 
@@ -179,7 +177,7 @@ describe('legacy CORS allowlist migration', () => {
 });
 
 describe('sanitizeOverridesForSchema', () => {
-  it('drops unsafe legacy subservice URLs with path-only warnings', () => {
+  it('retains invalid legacy subservice URLs with path-only warnings', () => {
     const warnings: string[] = [];
     const issues: SchemaSanitizedIssue[] = [];
     const overrides = sanitizeOverridesForSchema({
@@ -192,8 +190,8 @@ describe('sanitizeOverridesForSchema', () => {
       warnings,
       issues
     });
-    expect(overrides.subservice?.codeSandbox?.url).toBeUndefined();
-    expect(overrides.subservice?.mcp?.sseProxyUrl).toBeUndefined();
+    expect(overrides.subservice?.codeSandbox?.url).toBe('https://user:secret@sandbox.test');
+    expect(overrides.subservice?.mcp?.sseProxyUrl).toBe('https://mcp.test?private=secret');
     expect(issues).toEqual(
       expect.arrayContaining([
         { domain: 'subservice', path: 'codeSandbox.url' },
@@ -202,7 +200,7 @@ describe('sanitizeOverridesForSchema', () => {
     );
     expect(JSON.stringify(warnings)).not.toContain('secret');
   });
-  it('drops undersized sandbox storage while keeping other values refreshable', () => {
+  it('retains undersized sandbox storage alongside valid siblings', () => {
     const warnings: string[] = [];
     const issues: SchemaSanitizedIssue[] = [];
     const overrides = sanitizeOverridesForSchema({
@@ -224,13 +222,40 @@ describe('sanitizeOverridesForSchema', () => {
     );
     const config = resolveDomainEffectiveConfig({
       domain: 'subservice',
-      overrides: overrides.subservice
+      overrides: overrides.subservice,
+      options: { strict: false }
     });
-    expect(config.agentSandbox.common.storageSizeGi).toBe(1);
+    expect(config.agentSandbox.common.storageSizeGi).toBe(0.1);
     expect(config.agentSandbox.common.memoryMiB).toBe(4096);
   });
 
-  it('drops values that violate the tightened schema and keeps the rest', () => {
+  it('preserves enabled subservice provider settings during 4.17 sanitization before proxy backfill', () => {
+    const warnings: string[] = [];
+    const issues: SchemaSanitizedIssue[] = [];
+    const overrides = sanitizeOverridesForSchema({
+      overrides: {
+        subservice: {
+          agentSandbox: {
+            provider: 'sealosdevbox',
+            sealosdevbox: { baseUrl: 'https://devbox.example.test' }
+          }
+        }
+      },
+      warnings,
+      issues
+    });
+
+    expect(issues.length).toBeGreaterThan(0);
+    expect(warnings.length).toBeGreaterThan(0);
+    expect(overrides.subservice).toEqual({
+      agentSandbox: {
+        provider: 'sealosdevbox',
+        sealosdevbox: { baseUrl: 'https://devbox.example.test' }
+      }
+    });
+  });
+
+  it('retains values that violate tightened constraints and reports their paths', () => {
     const warnings: string[] = [];
     const issues: SchemaSanitizedIssue[] = [];
     // maxLoginSession 收紧为 positiveInteger，历史 env 允许 0
@@ -242,7 +267,7 @@ describe('sanitizeOverridesForSchema', () => {
       issues
     });
 
-    expect(result.security?.maxLoginSession).toBeUndefined();
+    expect(result.security?.maxLoginSession).toBe(0);
     // 合法项保留
     expect(result.security?.csrfEnabled).toBe(false);
     expect(warnings.some((w) => w.includes('maxLoginSession'))).toBe(true);
@@ -263,7 +288,7 @@ describe('sanitizeOverridesForSchema', () => {
     expect(issues).toEqual([]);
   });
 
-  it('resolves cross-field conflicts by dropping the offending leaf', () => {
+  it('reports cross-field conflicts without deleting either leaf', () => {
     const warnings: string[] = [];
     const issues: SchemaSanitizedIssue[] = [];
     // performance superRefine：parallelMaxConcurrency 不得大于 maxLoopTimes。
@@ -278,8 +303,8 @@ describe('sanitizeOverridesForSchema', () => {
 
     const workflow = (result.performance as any)?.workflow ?? {};
     expect(workflow.maxLoopTimes).toBe(200);
-    // 冲突项被剔除，回落默认值，迁移不阻塞启动
-    expect(workflow.parallelMaxConcurrency).toBeUndefined();
+    // 历史值保留，管理员在保存时修复关联约束。
+    expect(workflow.parallelMaxConcurrency).toBe(500);
     expect(warnings.some((w) => w.includes('parallelMaxConcurrency'))).toBe(true);
     expect(issues).toContainEqual({
       domain: 'performance',
@@ -287,7 +312,7 @@ describe('sanitizeOverridesForSchema', () => {
     });
   });
 
-  it('reports the whole domain when no removable leaf can be located', () => {
+  it('retains a malformed domain and reports its path', () => {
     const warnings: string[] = [];
     const issues: SchemaSanitizedIssue[] = [];
     const result = sanitizeOverridesForSchema({
@@ -296,7 +321,7 @@ describe('sanitizeOverridesForSchema', () => {
       issues
     });
 
-    expect(result.site).toBeUndefined();
+    expect(result.site).toBe('not-an-object');
     expect(issues).toEqual([{ domain: 'site' }]);
     expect(warnings.some((w) => w.includes('site'))).toBe(true);
   });
@@ -583,11 +608,8 @@ describe('applyInstanceConfigMigration (field-level backfill)', () => {
     expect(doc?.overrides).toEqual({ name: 'Keep', docUrl: 'https://keep.example.com' });
   });
 
-  it('drops conflicting leaves, backfills valid siblings, and marks skipped paths in explicitDefaultPaths', async () => {
-    // 管理员既有 parallelMaxConcurrency=100（自身合法：默认 maxLoopTimes=100），
-    // 待补的 maxLoopTimes=20 合并后违反 superRefine（100 > 20）；
-    // 但合法的独立同胞字段 maxRunTimes=600 以及独立对象字段 parseMaxProcess=12 应正常迁入，
-    // 只有真正的冲突项 maxLoopTimes 记入 explicitDefaultPaths 防死锁
+  it('backfills conflicting legacy leaves without overwriting administrator values', async () => {
+    // 冲突由保存边界约束；迁移补齐旧值并保留管理员的并发配置。
     await MongoSystemInstanceConfig.create({
       domain: 'performance',
       schemaVersion: 1,
@@ -609,22 +631,21 @@ describe('applyInstanceConfigMigration (field-level backfill)', () => {
       logger: { ...logger, warn }
     });
 
-    // 冲突项 maxLoopTimes 被剔除，同胞项 maxRunTimes 与独立项 parseMaxProcess 成功回填
+    // 所有缺失字段均回填，告警不作为显式清空标记。
     expect(result.backfilledDomains).toEqual(['performance']);
     expect(result.backfilledPaths).toContain('performance.workflow.maxRunTimes');
     expect(result.backfilledPaths).toContain('performance.dataset.parseMaxProcess');
-    expect(result.backfilledPaths).not.toContain('performance.workflow.maxLoopTimes');
-    expect(result.backfillSkippedPaths).toContain('performance.workflow.maxLoopTimes');
-    expect(warn).toHaveBeenCalledWith(
-      expect.stringContaining('conflicts with existing values'),
-      expect.objectContaining({ domain: 'performance', field: 'workflow.maxLoopTimes' })
-    );
+    expect(result.backfilledPaths).toContain('performance.workflow.maxLoopTimes');
+    expect(result.backfillSkippedPaths).toEqual([]);
 
     const doc = await MongoSystemInstanceConfig.findOne({ domain: 'performance' }).lean();
-    expect(doc?.overrides.workflow).toEqual({ parallelMaxConcurrency: 100, maxRunTimes: 600 });
+    expect(doc?.overrides.workflow).toEqual({
+      parallelMaxConcurrency: 100,
+      maxRunTimes: 600,
+      maxLoopTimes: 20
+    });
     expect((doc?.overrides as any).dataset?.parseMaxProcess).toBe(12);
-    // 冲突项被登记入 explicitDefaultPaths，同胞项绝不被误伤
-    expect(doc?.explicitDefaultPaths).toContain('workflow.maxLoopTimes');
+    expect(doc?.explicitDefaultPaths).not.toContain('workflow.maxLoopTimes');
     expect(doc?.explicitDefaultPaths).not.toContain('workflow.maxRunTimes');
 
     // 终验：inspect 不再认为该字段缺失
@@ -659,7 +680,7 @@ describe('applyInstanceConfigMigration (field-level backfill)', () => {
     expect(afterSecond?.overrides).toEqual(afterFirst?.overrides);
   });
 
-  it('does not truncate newly added explicit default or skipped conflict markers past 200 existing entries', async () => {
+  it('preserves explicit default metadata past 200 entries while retaining conflicting values', async () => {
     const legacyMarkers = Array.from({ length: 205 }, (_, i) => `legacy.marker.${i}`);
     await MongoSystemInstanceConfig.create({
       domain: 'performance',
@@ -682,9 +703,10 @@ describe('applyInstanceConfigMigration (field-level backfill)', () => {
     });
 
     const doc = await MongoSystemInstanceConfig.findOne({ domain: 'performance' }).lean();
-    expect(doc?.explicitDefaultPaths).toContain('workflow.maxLoopTimes');
+    expect(doc?.explicitDefaultPaths).not.toContain('workflow.maxLoopTimes');
+    expect(doc?.overrides.workflow.maxLoopTimes).toBe(20);
     expect(doc?.explicitDefaultPaths).toContain('dataset.parseMaxProcess');
-    expect(doc?.explicitDefaultPaths).toHaveLength(207);
+    expect(doc?.explicitDefaultPaths).toHaveLength(206);
 
     // 重跑同一计划验证标记幂等；inspect 只读取真实旧来源，不接受测试计划参数。
     const rerun = await applyInstanceConfigMigration({
@@ -699,5 +721,44 @@ describe('applyInstanceConfigMigration (field-level backfill)', () => {
       logger
     });
     expect(rerun.domains).toEqual([]);
+  });
+
+  it('inserts and backfills enabled subservice config before proxy backfill completes', async () => {
+    const first = await applyInstanceConfigMigration({
+      overrides: {
+        subservice: {
+          agentSandbox: {
+            provider: 'sealosdevbox',
+            sealosdevbox: { baseUrl: 'https://devbox.example.test' }
+          }
+        }
+      },
+      logger
+    });
+    expect(first.domains).toContain('subservice');
+
+    const backfill = await applyInstanceConfigMigration({
+      overrides: {
+        subservice: {
+          codeSandbox: { url: 'https://code.example.test' },
+          agentSandbox: {
+            provider: 'sealosdevbox',
+            sealosdevbox: { baseUrl: 'https://devbox.example.test' }
+          }
+        }
+      },
+      logger
+    });
+    expect(backfill.backfilledDomains).toEqual(['subservice']);
+
+    const doc = await MongoSystemInstanceConfig.findOne({ domain: 'subservice' }).lean();
+    expect(doc?.overrides).toMatchObject({
+      codeSandbox: { url: 'https://code.example.test' },
+      agentSandbox: {
+        provider: 'sealosdevbox',
+        sealosdevbox: { baseUrl: 'https://devbox.example.test' }
+      }
+    });
+    expect(doc?.explicitDefaultPaths ?? []).not.toContain('codeSandbox.url');
   });
 });

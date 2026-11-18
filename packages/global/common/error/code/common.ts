@@ -40,7 +40,8 @@ const datasetErr = [
   },
   {
     statusText: CommonErrEnum.unAuthFile,
-    message: i18nT('common:error.unAuthFile')
+    message: i18nT('common:error.unAuthFile'),
+    httpStatus: 403
   },
   {
     statusText: CommonErrEnum.missingParams,

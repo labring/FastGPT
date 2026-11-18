@@ -21,17 +21,16 @@ vi.mock('@fastgpt/service/core/app/templates/templateSchema', () => ({
 }));
 
 import {
-  getAppTemplatesAndLoadThem,
+  getAppTemplateData,
   pickPluginSystemTemplateDbConfig
-} from '@fastgpt/service/core/app/templates/register';
+} from '@fastgpt/service/core/app/templates/service';
 
 beforeEach(() => {
   vi.clearAllMocks();
-  global.appTemplates = [];
-  global.templatesRefreshTime = 0;
+  global.appTemplateData = undefined;
 });
 
-describe('getAppTemplatesAndLoadThem', () => {
+describe('getAppTemplateData', () => {
   it('passes through plugin avatar URL unchanged', async () => {
     mocks.listWorkflows.mockResolvedValue([
       {
@@ -49,11 +48,13 @@ describe('getAppTemplatesAndLoadThem', () => {
       }
     ]);
     mocks.findTemplates.mockReturnValue({
+      read: vi.fn().mockReturnThis(),
       lean: vi.fn().mockResolvedValue([])
     });
 
-    const [template] = await getAppTemplatesAndLoadThem(true);
+    const [template] = await getAppTemplateData().get();
 
+    expect(mocks.findTemplates.mock.results[0].value.read).toHaveBeenCalledWith('primary');
     expect(template?.avatar).toBe(
       'http://localhost:9000/fastgpt-public/system/plugin/workflow/templates/question-classify/logo'
     );
@@ -116,6 +117,7 @@ describe('getAppTemplatesAndLoadThem', () => {
       }
     ]);
     mocks.findTemplates.mockReturnValue({
+      read: vi.fn().mockReturnThis(),
       lean: vi.fn().mockResolvedValue([
         {
           templateId: `${AppToolSourceEnum.community}-githubIssue`,
@@ -137,7 +139,7 @@ describe('getAppTemplatesAndLoadThem', () => {
       ])
     });
 
-    const [template] = await getAppTemplatesAndLoadThem(true);
+    const [template] = await getAppTemplateData().get();
 
     expect(template).toMatchObject({
       templateId: `${AppToolSourceEnum.community}-githubIssue`,
@@ -168,6 +170,7 @@ describe('getAppTemplatesAndLoadThem', () => {
   it('migrates legacy workflow fields before returning templates', async () => {
     mocks.listWorkflows.mockResolvedValue([]);
     mocks.findTemplates.mockReturnValue({
+      read: vi.fn().mockReturnThis(),
       lean: vi.fn().mockResolvedValue([
         {
           templateId: `${AppToolSourceEnum.commercial}-legacy-workflow`,
@@ -207,7 +210,7 @@ describe('getAppTemplatesAndLoadThem', () => {
       ])
     });
 
-    const [template] = await getAppTemplatesAndLoadThem(true);
+    const [template] = await getAppTemplateData().get();
 
     expect(template?.workflow.nodes).toHaveLength(1);
     expect(template?.workflow.nodes[0].inputs[0]).not.toHaveProperty('llmModelType');
@@ -217,6 +220,7 @@ describe('getAppTemplatesAndLoadThem', () => {
   it('cleans legacy chat config fields in simple templates', async () => {
     mocks.listWorkflows.mockResolvedValue([]);
     mocks.findTemplates.mockReturnValue({
+      read: vi.fn().mockReturnThis(),
       lean: vi.fn().mockResolvedValue([
         {
           templateId: `${AppToolSourceEnum.commercial}-legacy-simple`,
@@ -232,7 +236,7 @@ describe('getAppTemplatesAndLoadThem', () => {
       ])
     });
 
-    const [template] = await getAppTemplatesAndLoadThem(true);
+    const [template] = await getAppTemplateData().get();
 
     expect(template?.workflow.chatConfig).not.toHaveProperty('_id');
   });

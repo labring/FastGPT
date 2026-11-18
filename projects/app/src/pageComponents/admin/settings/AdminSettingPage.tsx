@@ -5,6 +5,8 @@ import MyLoading from '@fastgpt/web/components/common/MyLoading';
 import AdminHeader from '../AdminHeader';
 import AdminSettingTOC, { type SettingTOCItem } from './AdminSettingTOC';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
+import { FormProvider, type UseFormReturn } from 'react-hook-form';
+import { getConfigFormErrors } from '@/web/common/system/configFormErrors';
 
 type AdminSettingPageProps = {
   headerTitle?: string;
@@ -13,7 +15,10 @@ type AdminSettingPageProps = {
   tocItems: SettingTOCItem[];
   isLoading?: boolean;
   isSaving?: boolean;
-  onSave?: () => void;
+  onSave?: () => void | Promise<unknown>;
+  form?: UseFormReturn<any>;
+  fieldAliases?: Record<string, string>;
+  onSaveError?: (error: unknown) => void;
   children: React.ReactNode;
   maxW?: string;
 };
@@ -32,10 +37,30 @@ const AdminSettingPage = ({
   isLoading = false,
   isSaving = false,
   onSave,
+  form,
+  fieldAliases,
+  onSaveError,
   children,
   maxW = '840px'
 }: AdminSettingPageProps) => {
   const { t } = useSafeTranslation();
+  /** 保存失败保留草稿和 revision，把后端字段错误落到当前页面，提示由请求层统一展示。 */
+  const save = async () => {
+    form?.clearErrors();
+    try {
+      await onSave?.();
+    } catch (error) {
+      onSaveError?.(error);
+      if (!form) return;
+      const errors = getConfigFormErrors({
+        error,
+        values: form.getValues(),
+        aliases: fieldAliases
+      });
+      errors.forEach(({ name, message }) => form.setError(name, { type: 'server', message }));
+      if (errors[0]) form.setFocus(errors[0].name);
+    }
+  };
   const [activeId, setActiveId] = useState<string>('');
   const currentActiveId = activeId || tocItems[0]?.id || '';
 
@@ -73,12 +98,12 @@ const AdminSettingPage = ({
   const headerActions =
     headerRightContent ||
     (onSave && (
-      <Button colorScheme={'blue'} size={'sm'} px={6} isLoading={isSaving} onClick={onSave}>
+      <Button colorScheme={'blue'} size={'sm'} px={6} isLoading={isSaving} onClick={save}>
         {t('common:Save')}
       </Button>
     ));
 
-  return (
+  const content = (
     <>
       {isLoading && <MyLoading />}
       <Flex flexDirection={'column'} h={'100%'} w={'100%'} overflow={'hidden'}>
@@ -129,6 +154,7 @@ const AdminSettingPage = ({
       </Flex>
     </>
   );
+  return form ? <FormProvider {...form}>{content}</FormProvider> : content;
 };
 
 export default React.memo(AdminSettingPage);

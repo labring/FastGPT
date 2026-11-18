@@ -400,3 +400,18 @@ export const checkInteractiveResponseStatus = ({
   const finalInteractive = extractDeepestInteractive(interactive);
   return isAskInteractive(finalInteractive) ? 'query' : 'submit';
 };
+
+/**
+ * 提取一组用户消息值里的纯文本（file/select 等非文本项忽略），多段以换行拼接。
+ *
+ * 场景：同义词映射装饰需要「用户原始问题」——Agent 生成的检索词往往已被 LLM
+ * 改写成标准词（例：问题「枕瓜排骨汤」→ 检索词「冬瓜排骨汤的做法」），别名只
+ * 存在于用户原始输入里；工作流 dispatch、agent 工具 provider、agentic 路由
+ * 三处共用本函数，避免各写一份提取逻辑在结构变化时互相漂移。
+ */
+export const getChatItemTextContent = (values?: UserChatItemValueItemType[]): string => {
+  return (values ?? [])
+    .map((item) => ('text' in item && item.text?.content ? item.text.content : ''))
+    .filter(Boolean)
+    .join('\n');
+};

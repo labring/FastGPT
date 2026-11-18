@@ -1,21 +1,13 @@
 'use client';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
-import React, { useRef, useState } from 'react';
-import {
-  Table,
-  Thead,
-  Tbody,
-  Tr,
-  Th,
-  Td,
-  Flex,
-  Box,
-  InputGroup,
-  Input,
-  InputLeftElement
-} from '@chakra-ui/react';
+import React, { useRef } from 'react';
+import { Table, Thead, Tbody, Tr, Th, Td, Flex, Box } from '@chakra-ui/react';
 import dayjs from 'dayjs';
 import MyIcon from '@fastgpt/web/components/common/Icon';
+import AdminCompositeSearch, {
+  useAdminCompositeSearch,
+  useAdminTeamSearchOptions
+} from '@/components/admin/CompositeSearch';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import { getPlans } from '@/web/admin/wallet/plan/api';
 import { SubTypeEnum } from '@fastgpt/global/support/wallet/sub/constants';
@@ -59,8 +51,10 @@ export type PlanType = {
 
 const PlanTable = () => {
   const { t } = useSafeTranslation();
-  const [search, setSearch] = useState<string>();
+  const planSearchOptions = useAdminTeamSearchOptions();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const { searchField, inputValue, isInvalid, searchParams, onFieldChange, onInputChange } =
+    useAdminCompositeSearch({ options: planSearchOptions });
   const standardSubLevelMap = {
     [StandardSubLevelEnum.free]: {
       label: t('admin:free_short')
@@ -97,10 +91,8 @@ const PlanTable = () => {
   } = usePagination(getPlans, {
     defaultPageSize: 20,
     pageSizeCacheKey: 'users-plans-list',
-    params: {
-      search
-    },
-    refreshDeps: [search],
+    params: searchParams,
+    refreshDeps: [searchParams],
     scrollContainerRef
   });
 
@@ -119,16 +111,14 @@ const PlanTable = () => {
           {t('admin:plan_management')}
         </Box>
         <Box flexGrow={1}></Box>
-        <InputGroup w={['100%', '250px']} h={'36px'}>
-          <InputLeftElement h={'full'}>
-            <MyIcon name="common/searchLight" w={4} color={'myGray.400'} />
-          </InputLeftElement>
-          <Input
-            placeholder={t('admin:search_by_username')}
-            h={'36px'}
-            onChange={(e) => setSearch(e.target.value)}
-          ></Input>
-        </InputGroup>
+        <AdminCompositeSearch
+          options={planSearchOptions}
+          field={searchField}
+          value={inputValue}
+          isInvalid={isInvalid}
+          onFieldChange={onFieldChange}
+          onValueChange={onInputChange}
+        />
         <PlanAddModal
           updateData={() => {
             getData(1);

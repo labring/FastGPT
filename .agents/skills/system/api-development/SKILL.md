@@ -1,6 +1,6 @@
 ---
 name: api-development
-description: FastGPT API 开发规范。重点强调使用 zod schema 定义入参和出参,在 API 文档中声明路由信息,编写对应的 OpenAPI 文档,以及在 API 路由中使用 schema.parse 进行验证。
+description: 开发或审查 FastGPT Next.js API 路由，同步 Zod 入参和响应合约、权限校验与 OpenAPI 文档。
 ---
 
 # FastGPT API 开发规范
@@ -53,6 +53,7 @@ description: FastGPT API 开发规范。重点强调使用 zod schema 定义入�
 
 ```typescript
 import { z } from 'zod';
+import { createPaginationSchema } from '@fastgpt/global/openapi/api';
 
 /* ============================================================================
  * API: 获取应用对话日志列表
@@ -63,7 +64,7 @@ import { z } from 'zod';
  * ============================================================================ */
 
 // 入参 Schema
-export const GetAppChatLogsBodySchema = PaginationSchema.extend({
+export const GetAppChatLogsBodySchema = createPaginationSchema({
   appId: z.string().meta({
     example: '68ad85a7463006c963799a05',
     description: '应用 ID'
@@ -211,17 +212,17 @@ export const UpdateUserSchema = z.object({
 #### ✅ 分页 Schema
 
 ```typescript
-import { PaginationSchema } from '@fastgpt/global/openapi/api';
+import { createPaginationSchema } from '@fastgpt/global/openapi/api';
 
-// 继承分页 Schema
-export const GetUserListSchema = PaginationSchema.extend({
+// 两种分页方式共享筛选条件
+export const GetUserListSchema = createPaginationSchema({
   // 添加额外的筛选字段
   keyword: z.string().optional().meta({ description: '搜索关键词' }),
   status: z.enum(['active', 'inactive']).optional().meta({ description: '状态筛选' })
 });
 ```
 
-分页请求参数必须优先复用 `@fastgpt/global/openapi/api` 导出的 `PaginationSchema`，不要在业务域或单个接口中重复声明同构的分页 Schema（例如再次定义 `UserPaginationBodySchema`）。如果接口确实需要额外筛选条件，使用 `PaginationSchema.extend(...)`；只有存在明确的兼容性或协议差异时，才允许定义专用 wrapper，并在附近说明原因。分页响应优先复用 `PaginationResponseSchema`。
+标准分页请求复用 `PaginationSchema`。有额外筛选条件时用 `createPaginationSchema({ ... })`，保留 offset 和 pageNum 两种分支。分页响应优先复用 `PaginationResponseSchema(itemSchema)`。协议确实需要兼容时在专用 wrapper 旁说明原因。
 
 #### ✅ 多个 API 的 Schema 文件
 
@@ -258,233 +259,43 @@ export const UpdateLogKeysBodySchema = z.object({
 
 ### 步骤 2: 实现 API 路由
 
-**文件位置**: `projects/app/src/pages/api/[path]/[route].ts`
-
-**标准实现模板**:
+路由位于 `projects/app/src/pages/api/`。下面摘自[获取应用基本信息](../../../../projects/app/src/pages/api/core/app/getBasicInfo.ts)，展示有入参和业务返回值时的校验顺序。
 
 ```typescript
-import type { NextApiResponse } from 'next';
+import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
-import type { ApiRequestProps } from '@fastgpt/service/types/next';
+import { authCert } from '@fastgpt/service/support/permission/auth/common';
+import { getAppBasicInfoByIds } from '@fastgpt/service/core/app/controller';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
-  GetAppChatLogsBodySchema,
-  GetAppChatLogsResponseSchema,
-  type getAppChatLogsResponseType
-} from '@fastgpt/global/openapi/...';
+  GetAppBasicInfoBodySchema,
+  GetAppBasicInfoResponseSchema,
+  type GetAppBasicInfoBodyType,
+  type GetAppBasicInfoResponseType
+} from '@fastgpt/global/openapi/core/app/common/api';
 
 async function handler(
-  req: ApiRequestProps,
-  _res: NextApiResponse
-): Promise<getAppChatLogsResponseType> {
-  // 🔴 步骤 1: 使用 schema.parse() 验证入参
-  const { appId, dateStart, dateEnd, sources } = GetAppChatLogsBodySchema.parse(req.body);
+  req: ApiRequestProps<GetAppBasicInfoBodyType>
+): Promise<GetAppBasicInfoResponseType> {
+  const { body } = parseApiInput({ req, bodySchema: GetAppBasicInfoBodySchema });
+  const { teamId } = await authCert({ req, authToken: true });
+  const apps = await getAppBasicInfoByIds({ teamId, ids: body.ids });
 
-  // 或对于 query 参数
-  // const { param1, param2 } = YourAPIQuerySchema.parse(req.query);
-
-  // 🔴 步骤 2: 业务逻辑处理
-  const result = await yourBusinessLogic({ appId, dateStart, dateEnd, sources });
-
-  // 🔴 步骤 3: 使用 schema.parse() 验证出参
-  return GetAppChatLogsResponseSchema.parse({
-    list: result.list,
-    total: result.total
-  });
+  return GetAppBasicInfoResponseSchema.parse(apps);
 }
 
 export default NextAPI(handler);
 ```
 
-**完整示例**:
+有 query 或 params 时，向同一次 `parseApiInput` 调用传入 `querySchema` 或 `paramsSchema`，从结果的 `query` 或 `params` 取值。数据库记录、模型输出和业务响应使用各自的 Schema 校验。让异常传给 `NextAPI` 的[共享错误处理](../../../../packages/service/common/http/entry.ts)，由入口区分客户端入参错误与内部错误。
 
-```typescript
-import type { NextApiResponse } from 'next';
-import type { ApiRequestProps } from '@fastgpt/service/types/next';
-import { NextAPI } from '@/service/middleware/entry';
-import { authApp } from '@fastgpt/service/support/permission/app/auth';
-import {
-  GetAppChatLogsBodySchema,
-  GetAppChatLogsResponseSchema,
-  type getAppChatLogsResponseType
-} from '@fastgpt/global/openapi/core/app/log/api';
+### 步骤 3: 校验资源权限
 
-async function handler(
-  req: ApiRequestProps,
-  _res: NextApiResponse
-): Promise<getAppChatLogsResponseType> {
-  // 🔴 1. 验证入参
-  const { appId, dateStart, dateEnd, sources } = GetAppChatLogsBodySchema.parse(req.body);
+按操作选用资源对应的鉴权函数和权限值，将鉴权结果中的团队、资源 ID 用于后续查询。例如[应用日志列表](../../../../projects/app/src/pages/api/core/app/logs/list.ts)通过 `authApp` 检查 `AppReadChatLogPerVal`。
 
-  // 2. 权限验证 (如果需要)
-  await authApp({
-    req,
-    authToken: true,
-    appId,
-    per: AppReadChatLogPerVal
-  });
+### 步骤 4: 登记 OpenAPI Path
 
-  // 3. 业务逻辑
-  const { list, total } = await getChatLogsFromDB({
-    appId,
-    dateStart,
-    dateEnd,
-    sources
-  });
-
-  // 🔴 4. 验证出参
-  return GetAppChatLogsResponseSchema.parse({
-    list,
-    total
-  });
-}
-
-export default NextAPI(handler);
-```
-
-### 步骤 3: 权限验证 (如需要)
-
-**使用 `authApp` 或其他权限验证函数**:
-
-```typescript
-import { authApp } from '@fastgpt/service/support/permission/app/auth';
-import { AppWritePerVal } from '@fastgpt/global/support/permission/app/constant';
-
-async function handler(req: ApiRequestProps, res: NextApiResponse) {
-  const { appId } = YourAPIBodySchema.parse(req.body);
-
-  // 权限验证
-  await authApp({
-    req,
-    authToken: true,
-    appId,
-    per: AppWritePerVal  // 权限常量
-  });
-
-  // 继续处理...
-}
-```
-
-### 步骤 4: 错误处理
-
-**使用统一的错误处理**:
-
-```typescript
-import { APIError } from '@fastgpt/service/core/error/controller';
-import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
-
-async function handler(req: ApiRequestProps, res: NextApiResponse) {
-  try {
-    const { appId } = YourAPIBodySchema.parse(req.body);
-
-    if (!appId) {
-      return Promise.reject(CommonErrEnum.missingParams);
-    }
-
-    // 业务逻辑...
-
-  } catch (error) {
-    // 统一错误处理
-    return APIError(error)(req, res);
-  }
-}
-```
-
-## 完整开发示例
-
-### 场景: 创建用户 API
-
-**1. 定义 Schema** (`packages/global/openapi/core/user/api.ts`):
-
-```typescript
-import { z } from 'zod';
-
-/* ============================================================================
- * API: 创建用户
- * Route: POST /api/core/user/create
- * Method: POST
- * Description: 创建新用户,返回创建的用户信息
- * Tags: ['User', 'Write']
- * ============================================================================ */
-
-// 入参
-export const CreateUserBodySchema = z.object({
-  name: z.string().min(2).max(50).meta({
-    example: 'Alice',
-    description: '用户名 (2-50 字符)'
-  }),
-  email: z.string().email().meta({
-    example: 'alice@example.com',
-    description: '用户邮箱'
-  }),
-  age: z.number().int().positive().optional().meta({
-    example: 25,
-    description: '用户年龄'
-  }),
-  avatar: z.string().url().optional().meta({
-    example: 'https://example.com/avatar.jpg',
-    description: '头像 URL'
-  })
-});
-
-export type createUserBodyType = z.infer<typeof CreateUserBodySchema>;
-
-// 出参
-export const CreateUserResponseSchema = z.object({
-  userId: z.string().meta({ example: '68ad85a7463006c963799a05', description: '用户 ID' }),
-  name: z.string().meta({ example: 'Alice', description: '用户名' }),
-  email: z.string().meta({ example: 'alice@example.com', description: '用户邮箱' }),
-  createdAt: z.date().meta({ example: '2024-01-01T00:00:00.000Z', description: '创建时间' })
-});
-
-export type createUserResponseType = z.infer<typeof CreateUserResponseSchema>;
-```
-
-**2. 实现 API** (`projects/app/src/pages/api/core/user/create.ts`):
-
-```typescript
-import type { NextApiResponse } from 'next';
-import { NextAPI } from '@/service/middleware/entry';
-import type { ApiRequestProps } from '@fastgpt/service/types/next';
-import { MongoUser } from '@fastgpt/service/core/user/schema';
-import {
-  CreateUserBodySchema,
-  CreateUserResponseSchema,
-  type createUserResponseType
-} from '@fastgpt/global/openapi/core/user/api';
-
-async function handler(
-  req: ApiRequestProps,
-  _res: NextApiResponse
-): Promise<createUserResponseType> {
-  // 🔴 验证入参
-  const { name, email, age, avatar } = CreateUserBodySchema.parse(req.body);
-
-  // 检查邮箱是否已存在
-  const existingUser = await MongoUser.findOne({ email });
-  if (existingUser) {
-    return Promise.reject('Email already exists');
-  }
-
-  // 创建用户
-  const user = await MongoUser.create({
-    name,
-    email,
-    age,
-    avatar,
-    createdAt: new Date()
-  });
-
-  // 🔴 验证出参
-  return CreateUserResponseSchema.parse({
-    userId: user._id.toString(),
-    name: user.name,
-    email: user.email,
-    createdAt: user.createdAt
-  });
-}
-
-export default NextAPI(handler);
-```
+在所属模块的 Path 中注册实际方法、路径、标签、请求与成功响应。确认该模块已接入 [openAPIPaths](../../../../packages/global/openapi/path.ts)。例如[日志模块的 Path](../../../../packages/global/openapi/core/app/log/index.ts)直接引用接口的请求与响应 Schema。
 
 ## 审查检查清单
 
@@ -505,11 +316,11 @@ export default NextAPI(handler);
 
 ### 🟡 推荐检查项 (建议性)
 
-- [ ] **错误处理**: 使用 `APIError` 统一错误处理
+- [ ] **错误处理**: 由 `NextAPI` 统一分类并处理请求校验和内部错误
 - [ ] **字段验证**: 使用 zod 的验证方法 (.min(), .max(), .email() 等)
 - [ ] **可空字段**: 正确使用 `.optional()` 或 `.nullish()`
 - [ ] **复用 Schema**: 相同结构抽取为独立 Schema
-- [ ] **分页支持**: 列表 API 继承 `PaginationSchema`
+- [ ] **分页支持**: 标准分页复用 `PaginationSchema`，业务筛选通过 `createPaginationSchema` 组合
 - [ ] **Schema 复用**: 分页及其他通用结构优先复用全局 Schema，未重复声明同构的业务专用 Schema
 
 ### 🟢 可选检查项 (优化性)
@@ -559,7 +370,7 @@ export const GetUserSchema = z.object({
 ```typescript
 // ❌ 错误: 函数返回类型未声明
 async function handler(req: ApiRequestProps, res: NextApiResponse) {
-  const data = YourAPIBodySchema.parse(req.body);
+  const { body: data } = parseApiInput({ req, bodySchema: YourAPIBodySchema });
   return { success: true, data };  // 类型未声明
 }
 ```
@@ -571,7 +382,7 @@ async function handler(
   req: ApiRequestProps,
   _res: NextApiResponse
 ): Promise<yourAPIResponseType> {
-  const data = YourAPIBodySchema.parse(req.body);
+  const { body: data } = parseApiInput({ req, bodySchema: YourAPIBodySchema });
 
   return YourAPIResponseSchema.parse({
     success: true,
@@ -617,7 +428,7 @@ export const UserSchema = z.object({
 ```typescript
 // ❌ 错误: 直接返回数据
 async function handler(req: ApiRequestProps, res: NextApiResponse) {
-  const { appId } = YourAPIBodySchema.parse(req.body);
+  const { appId } = parseApiInput({ req, bodySchema: YourAPIBodySchema }).body;
   const result = await getData(appId);
 
   return result;  // 未验证出参结构
@@ -628,7 +439,7 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
 ```typescript
 // ✅ 正确: 验证出参
 async function handler(req: ApiRequestProps, res: NextApiResponse) {
-  const { appId } = YourAPIBodySchema.parse(req.body);
+  const { appId } = parseApiInput({ req, bodySchema: YourAPIBodySchema }).body;
   const result = await getData(appId);
 
   return YourAPIResponseSchema.parse(result);
@@ -735,17 +546,14 @@ z.object({                    // 对象
   age: z.number()
 })
 
-// 继承
-PaginationSchema.extend({     // 扩展
+// 分页筛选
+createPaginationSchema({
   keyword: z.string()
 })
 
 // 联合类型
 z.union([z.string(), z.number()])  // 字符串或数字
-z.discriminator('type', {          // 判别联合
-  type1: Type1Schema,
-  type2: Type2Schema
-})
+z.discriminatedUnion('type', [Type1Schema, Type2Schema])
 ```
 
 ### Meta 字段说明
@@ -775,20 +583,5 @@ export type UserType = z.infer<typeof UserSchema>;
 
 ## 参考资源
 
-### 项目内示例
-
-- **API Schema 示例**: `/Volumes/code/fastgpt-pro/FastGPT/packages/global/openapi/core/app/log/api.ts`
-- **API 实现示例**: `/Volumes/code/fastgpt-pro/FastGPT/projects/app/src/pages/api/core/app/logs/list.ts`
-- **分页 Schema**: `packages/global/openapi/api.ts`
-
-### 相关文档
-
-- **Zod 官方文档**: https://zod.dev/
-- **FastGPT API 规范**: `.claude/skills/pr-review/fastgpt-style-guide.md`
-- **PR Review 审查维度**: `.claude/skills/pr-review/code-quality-standards.md`
-
----
-
-**Version**: 1.0
-**Last Updated**: 2026-01-27
-**Maintainer**: FastGPT Development Team
+- [应用日志接口合约](../../../../packages/global/openapi/core/app/log/api.ts)与[分页 Schema](../../../../packages/global/openapi/api.ts)。
+- [Zod Schema 与 OpenAPI 风格](../../../code/syntax.md#zod-schema-与-openapi-风格)及[请求校验错误分类](../../../design/api/zod-request-parse-error-handling.md)。

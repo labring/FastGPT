@@ -5,12 +5,13 @@ import {
   standardSubLevelMap
 } from '@fastgpt/global/support/wallet/sub/constants';
 import { MongoTeamSub } from './schema';
-import type {
-  TeamStandardSubPlanItemType,
-  TeamPlanStatusType,
-  TeamPlanStandardType,
-  TeamSubSchemaType,
-  StandSubPlanLevelMapType
+import {
+  SubscriptionGrantPointsSchema,
+  type TeamStandardSubPlanItemType,
+  type TeamPlanStatusType,
+  type TeamPlanStandardType,
+  type TeamSubSchemaType,
+  type StandSubPlanLevelMapType
 } from '@fastgpt/global/support/wallet/sub/type';
 import dayjs from 'dayjs';
 import { type ClientSession } from '../../../common/mongo';
@@ -121,12 +122,14 @@ export const initTeamFreePlan = async ({
   isWecomTeam?: boolean;
   session?: ClientSession;
 }) => {
-  const freePoints = isWecomTeam
-    ? Math.round(
-        (getSystemInstanceConfig().commercial.subPlans?.standard?.basic?.totalPoints ?? 4000) / 2
-      )
-    : getSystemInstanceConfig().commercial.subPlans?.standard?.[StandardSubLevelEnum.free]
-        ?.totalPoints || 100;
+  const freePoints = SubscriptionGrantPointsSchema.parse(
+    isWecomTeam
+      ? Math.round(
+          (getSystemInstanceConfig().commercial.subPlans?.standard?.basic?.totalPoints ?? 4000) / 2
+        )
+      : getSystemInstanceConfig().commercial.subPlans?.standard?.[StandardSubLevelEnum.free]
+          ?.totalPoints || 100
+  );
 
   const freePlan = await MongoTeamSub.findOne({
     teamId,
