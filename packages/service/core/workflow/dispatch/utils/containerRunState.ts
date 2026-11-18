@@ -1,4 +1,9 @@
 import { cloneDeep, isEqual } from 'lodash-es';
+import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import {
+  workflowSseEvent,
+  type WorkflowResponseType
+} from '@fastgpt/global/core/workflow/runtime/sse';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import type { WorkflowVariableStateLike } from '../context/variables';
 
@@ -11,6 +16,8 @@ type NodeOutputState = {
 type SnapshotProps = {
   /** 父变量实例；构造时自动克隆，执行期间通过 snapshot.variableContext 访问副本。 */
   variableContext?: WorkflowVariableStateLike;
+  /** 父层通道；只在变量副本提交成功后发布全量父值。 */
+  workflowStreamResponse?: WorkflowResponseType;
   /** 图隔离及交互恢复由执行器负责；这里只跟踪指定运行图的 output 差量。 */
   nodeOutputs?: NodeOutputState;
 };
@@ -33,10 +40,20 @@ export class WorkflowRunStateSnapshot {
   private readonly childrenNodeIds: Set<string>;
   private readonly outputSnapshot = new Map<string, unknown>();
   private settled = false;
+  private pendingVariableEvent = false;
+  private readonly parentWriter?: WorkflowResponseType;
+  readonly workflowStreamResponse?: WorkflowResponseType;
 
-  constructor({ variableContext, nodeOutputs }: SnapshotProps) {
+  constructor({ variableContext, nodeOutputs, workflowStreamResponse }: SnapshotProps) {
     if (!variableContext && !nodeOutputs) {
       throw new Error('Workflow run state snapshot requires variables or node outputs');
+    }
+    this.parentWriter = workflowStreamResponse;
+    if (workflowStreamResponse && variableContext) {
+      this.workflowStreamResponse = (event) => {
+        if (event.event === SseResponseEventEnum.updateVariables) this.pendingVariableEvent = true;
+        else workflowStreamResponse(event);
+      };
     }
     this.parentVariableContext = variableContext;
     this.childVariableContext = variableContext?.clone();
@@ -87,6 +104,9 @@ export class WorkflowRunStateSnapshot {
         continue;
       }
       await parent.set(key, cloneDeep(value));
+    }
+    if (this.pendingVariableEvent) {
+      this.parentWriter?.(workflowSseEvent.updateVariables(parent.toStoreRecord()));
     }
   }
 

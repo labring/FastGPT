@@ -21,6 +21,9 @@ sources:
   - packages/global/openapi/core/ai/index.ts
   - packages/global/core/workflow/runtime/constants.ts
   - projects/app/src/pages/api/core/chat/resume.ts
+  - .agents/test/support/private.mjs
+  - .agents/test/support/private-environment.mjs
+  - .agents/test/app/workflow/execution/isolated-dependencies.test.mjs
   - projects/app/src/pages/api/v1/chat/completions.ts
   - projects/app/src/pages/api/v2/chat/completions.ts
   - projects/app/src/components/core/chat/ChatContainer/ChatBox/hooks/useChatResume.ts
@@ -30,7 +33,7 @@ routes:
   - "POST /api/v2/chat/completions"
   - "GET /api/core/chat/resume"
 related: [FG-CHAT-CONVERSATION-001, FG-CHAT-CONVERSATION-002, FG-INFRA-RUNTIME-001]
-baseline: "5a5211f70998f5311cd40b0e5362a1414be6fbdf"
+baseline: "cd4fea54d75c013464761450262dfb7ef135edb2"
 ---
 
 # 流镜像按需启用与断线后的完整恢复
@@ -47,7 +50,7 @@ baseline: "5a5211f70998f5311cd40b0e5362a1414be6fbdf"
 - 记录 `STREAM_RESUME_TTL_SECONDS`、`STREAM_RESUME_POST_COMPLETE_TTL_SECONDS`、内存阈值和检查缓存间隔；不把 mirror TTL 写成 lease 的 60 秒。使用 `getStreamResumeRedisKeys`/adapter 确认物理 key，读取 `XRANGE/XLEN/TTL` 和 active/unavailable 状态。
 - App 请求使用实际 appId，Skill 使用 skillId，辅助生成使用 appId 加实际 sourceType；分享恢复 GET 的 `outLinkAuthData` 按真实页面请求 JSON 序列化。凭证不写进证据正文。
 - 恢复请求带 `Accept: text/event-stream`；独立变体不带该 Accept。浏览器优先使用无扩展干扰的干净会话，保存原始 SSE 与页面截图。
-- 只在私有 Redis/专用实例模拟内存压力或缓存缺失；先保存本轮 key 和配置快照，测试后还原。进程退出与 Redis 读取故障的时序集中在 FG-INFRA-RUNTIME-001，不在本例重复注入。
+- C5 只使用操作者确认独占的 Redis 实例：从独立的管理配置提供其 `FASTGPT_TEST_DEDICATED_REDIS_RUN_ID`，不可由脚本从当前连接自动赋值。专用 DB 编号或 nonce 不等于独占实例。预先准备好已达到内存保护阈值的专用实例；脚本只读 INFO，不改 maxmemory。不满足时报告阻塞，准入自检 C7 不需要 Redis。
 - 正常流程最长 120 秒；无镜像等待最长按已记录 stream TTL 加 10 秒；正常收尾后的空 XREAD 状态检查允许一个 30 秒阻塞周期加 5 秒网络余量。
 
 ## 测试步骤
@@ -60,6 +63,7 @@ baseline: "5a5211f70998f5311cd40b0e5362a1414be6fbdf"
 | C4 | 边界场景；A 已保存并释放 lease | 在镜像尚未过期、已经过期两种状态分别恢复；另在生成中及结束后分别用无 SSE Accept 的 GET 请求恢复。 |
 | C5 | 边界场景；lease 有效、未创建 mirror | 从 C1 的未启用 v2 发起 SSE 恢复，先保持 gate 再放行；另在私有 Redis 达到配置的内存阈值时启动新镜像请求，记录 unavailable reason，恢复后放行。 |
 | C6 | 异常场景；新 D0、mirror 已建立 | gate 返回可控错误使生成正常走错误收尾；分别查看原流、恢复流和刷新后的消息错误信息，再开启正常下一轮。 |
+| C7 | 边界；不连接真实 Redis | 运行 `node --test .agents/test/app/workflow/execution/isolated-dependencies.test.mjs`。对照显式 local-dev 和仅持有同端点非默认 DB/正确 nonce 的隔离夹具；只调用压力用例的准入函数，marker 读取由内存替代。 |
 
 ## 预期结果
 
@@ -73,3 +77,4 @@ baseline: "5a5211f70998f5311cd40b0e5362a1414be6fbdf"
 | C4 | API、数据库 | 已空闲时直接返回持久化 records，SSE 发送 `resumeCompleted` 和 `event: done / data: [DONE]`，不依赖缓存存活。普通 JSON GET 在空闲时返回记录；生成中不带 SSE Accept 为 HTTP 406，不启动实时等待。 |
 | C5 | API、缓存、数据库 | 未启用镜像时可为空 catchup 后等待，不能把没有 stream 当作 lease 已空闲；结束后补持久化结果。内存保护不阻止生成/lease，只拒绝新镜像并发送实际 `resumeUnavailable`，等待期间有 ping，最终返回完成 records；保留阈值、reason 和完成事件。 |
 | C6 | API、UI、数据库 | 错误消息/SSE 错误仍可展示，已有有效内容不被无意义空占位替换；收尾后会话状态空闲，不产生会话 error 状态或 Builder 状态错误红点。下一轮可执行，实际错误和用量允许保存。 |
+| C7 | 夹具准入 | 两种环境都必须在实例级操作前返回 Blocked；仅持有逻辑 DB 的正确标记不得放行。不读取或修改真实 Redis 实例配置。保留准入断言的实际返回或异常。 |

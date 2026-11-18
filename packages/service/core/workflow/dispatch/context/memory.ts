@@ -9,6 +9,8 @@ import {
   type WorkflowMemorySource
 } from '../../memory/utils';
 
+type VariableCheckpointEntry = [string] | [string, unknown];
+
 type ForkWorkflowMemoryOptions = {
   history?: ChatItemMiniType[] | number;
   histories?: ChatItemMiniType[];
@@ -134,7 +136,21 @@ export class WorkflowMemoryContext {
   readVariableCheckpoint({ runningAppInfo }: { runningAppInfo: WorkflowMemorySource }) {
     const key = this.getVariableCheckpointKey(runningAppInfo);
     const variables = Object.hasOwn(this.delta, key) ? this.delta[key] : this.baseline[key];
-    return variables !== null && typeof variables === 'object' && !Array.isArray(variables)
+    // 普通旧快照是全量对象；含清空值的快照用 [key] 表示 undefined，和 [key, null] 区分。
+    if (Array.isArray(variables)) {
+      if (
+        !variables.length ||
+        !variables.every(
+          (entry) =>
+            Array.isArray(entry) &&
+            (entry.length === 1 || entry.length === 2) &&
+            typeof entry[0] === 'string'
+        )
+      )
+        return undefined;
+      return cloneDeep(Object.fromEntries(variables) as Record<string, unknown>);
+    }
+    return variables !== null && typeof variables === 'object'
       ? cloneDeep(variables as Record<string, unknown>)
       : undefined;
   }
@@ -149,7 +165,7 @@ export class WorkflowMemoryContext {
   }: {
     runningAppInfo: WorkflowMemorySource;
     variables?: Record<string, unknown>;
-  }): Record<string, Record<string, unknown> | undefined> {
+  }): Record<string, Record<string, unknown> | VariableCheckpointEntry[] | undefined> {
     const key = this.getVariableCheckpointKey(runningAppInfo);
     if (
       variables === undefined &&
@@ -157,6 +173,13 @@ export class WorkflowMemoryContext {
       !Object.hasOwn(this.baseline, key)
     ) {
       return {};
+    }
+    if (variables && Object.values(variables).some((value) => value === undefined)) {
+      return {
+        [key]: Object.entries(variables).map<VariableCheckpointEntry>(([name, value]) =>
+          value === undefined ? [name] : [name, cloneDeep(value)]
+        )
+      };
     }
     return { [key]: cloneDeep(variables) };
   }

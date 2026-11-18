@@ -14,11 +14,7 @@ import {
 } from '../../agentLoopCore/interface';
 import { runWorkflow } from '../../../index';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import {
-  DispatchNodeResponseKeyEnum,
-  SseResponseEventEnum
-} from '@fastgpt/global/core/workflow/runtime/constants';
-import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
+import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { dispatchWorkflowReadFiles } from '../../readFiles';
 import { getWorkflowContext, runWithContext } from '../../../context';
 import type { DispatchFlowResponse } from '../../../type';
@@ -80,21 +76,12 @@ export const createToolCallToolProvider = async ({
    */
   const runWorkflowTool: CreateAgentLoopCoreWorkflowToolRunnerParams<WorkflowInteractiveResponseType>['runWorkflowTool'] =
     async ({ runtimeNodes, runtimeEdges, lastInteractive }) => {
-      let hasVariableUpdate = false;
       const stateSnapshot = new WorkflowRunStateSnapshot({
+        workflowStreamResponse: parentContext.workflowStreamResponse,
         variableContext: parentVariableContext
       });
       const childContext = parentContext.getChildContext({
-        // 子副本不能发送全量变量；其他事件（包括节点详情）沿当前父通道输出。
-        workflowStreamResponse: parentContext.workflowStreamResponse
-          ? (event) => {
-              if (event.event === SseResponseEventEnum.updateVariables) {
-                hasVariableUpdate = true;
-              } else {
-                parentContext.workflowStreamResponse?.(event);
-              }
-            }
-          : undefined,
+        workflowStreamResponse: stateSnapshot.workflowStreamResponse,
         memoryContext: memoryContext.fork(),
         runtimeControl: { isToolCall: true },
         variableContext: stateSnapshot.variableContext,
@@ -122,15 +109,7 @@ export const createToolCallToolProvider = async ({
 
       if (!result.workflowRuntimeSummary.errorCount && !parentContext.checkIsStopping()) {
         // 在父 Context 中提交变量差量；节点输出仍由 tool runner 独立提交。
-        await runWithContext(parentContext, async () => {
-          await stateSnapshot.commit();
-          // 每个调用按完成顺序发布合并后的父级记录，包含先完成兄弟已提交的无关变量。
-          if (hasVariableUpdate) {
-            parentContext.workflowStreamResponse?.(
-              workflowSseEvent.updateVariables(parentVariableContext.toStoreRecord())
-            );
-          }
-        });
+        await runWithContext(parentContext, () => stateSnapshot.commit());
       } else {
         stateSnapshot.discard();
       }

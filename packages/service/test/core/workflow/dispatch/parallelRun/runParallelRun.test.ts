@@ -2,9 +2,11 @@ import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import {
   createTestWorkflowDispatch,
   captureTestWorkflowContext,
+  createTestVariableContext,
   getCapturedTestWorkflowContext
 } from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { createContainerVariableProbe } from '../utils/containerVariableProbe';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import {
   FlowNodeOutputTypeEnum,
@@ -613,18 +615,12 @@ describe('dispatchParallelRun', () => {
   });
 
   it('失败 attempt 不提交全局变量更新，重试成功后只提交成功 attempt 的更新', async () => {
-    const failedClone = makeVariableState({ count: 0 });
-    const successClone = makeVariableState({ count: 0 });
-    const parentVariableState = makeVariableState({ count: 0 });
-    const originalSet = parentVariableState.set;
-    parentVariableState.clone = vi
-      .fn()
-      .mockReturnValueOnce(failedClone)
-      .mockReturnValueOnce(successClone);
-    parentVariableState.set = vi.fn((key: string, value: unknown) => originalSet(key, value));
+    const parentVariableState = createTestVariableContext({ count: 0 });
+    const commit = vi.spyOn(parentVariableState, 'set');
+    const probe = createContainerVariableProbe(parentVariableState);
     runWorkflowMock
       .mockImplementationOnce(async (args: any) => {
-        await getCapturedTestWorkflowContext(args).variableContext.set('count', 1);
+        await probe.writeCount(args, 1);
         return makeDispatchFlowResponse({
           nodeResponses: [
             makeResponseItem('failed-node', {
@@ -634,7 +630,7 @@ describe('dispatchParallelRun', () => {
         });
       })
       .mockImplementationOnce(async (args: any) => {
-        await getCapturedTestWorkflowContext(args).variableContext.set('count', 2);
+        await probe.writeCount(args, 2);
         return makeDispatchFlowResponse({
           nodeResponses: [
             makeResponseItem('nestedEnd', {
@@ -653,13 +649,15 @@ describe('dispatchParallelRun', () => {
           [NodeInputKeyEnum.parallelRunMaxConcurrency]: 1,
           [NodeInputKeyEnum.parallelRunMaxRetryTimes]: 1
         },
+        runningAppInfo: { isChildApp: false },
+        workflowStreamResponse: probe.writer,
         variableContext: parentVariableState
       })
     );
 
-    expect(parentVariableState.set).toHaveBeenCalledTimes(1);
-    expect(parentVariableState.set).toHaveBeenCalledWith('count', 2);
+    expect(commit).toHaveBeenCalledExactlyOnceWith('count', 2);
     expect(parentVariableState.get('count')).toBe(2);
+    expect(probe.updates).toEqual([{ sent: { count: 2 }, committed: 2 }]);
   });
 
   it('并发任务各自 fork 独立 memoryContext，重试与失败隔离，并按任务索引顺序确定性合并成功任务的 system_memories', async () => {

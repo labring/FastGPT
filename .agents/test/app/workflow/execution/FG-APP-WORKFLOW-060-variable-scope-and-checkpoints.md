@@ -24,6 +24,9 @@ sources:
   - packages/service/core/workflow/dispatch/loopRun/runLoopRun.ts
   - packages/service/core/workflow/dispatch/parallelRun/runParallelRun.ts
   - packages/service/core/workflow/dispatch/child/runApp.ts
+  - packages/service/core/workflow/dispatch/context/memory.ts
+  - packages/service/core/chat/chatItemSchema.ts
+  - projects/app/src/components/core/chat/ChatContainer/ChatBox/hooks/useChatGenerate.ts
   - projects/app/src/pageComponents/app/detail/useChatTest.tsx
   - projects/app/src/pages/api/core/workflow/debug.ts
   - packages/global/openapi/core/workflow/api.ts
@@ -34,7 +37,7 @@ routes:
   - "POST /api/core/chat/chatTest"
   - "POST /api/v2/chat/completions"
 related: [FG-APP-WORKFLOW-066, FG-APP-WORKFLOW-067, FG-APP-AGENTV2-001]
-baseline: "37b271c759eda4e3134c88d98939f81f053a8553"
+baseline: "cd4fea54d75c013464761450262dfb7ef135edb2"
 ---
 
 # 子运行变量隔离、差量提交与交互检查点
@@ -48,7 +51,7 @@ baseline: "37b271c759eda4e3134c88d98939f81f053a8553"
 - 本轮 JSON 拓扑基线：root-variables、special-variables、tool-concurrent、loop-checkpoint、parallel-retry、child-leaf/child-parent；统一绑定说明见 `.agents/test/app/workflow/execution/fixtures/README.md`。资源、权限、失败和并发变体须完成真实绑定并保存最终 JSON，不能将模板校验算作业务通过。
 
 - 部署上述主仓库基线；使用专用团队 T、可编辑并运行应用的用户 U、真实 Mongo/Redis 和代码沙箱。数据库统一使用 Mac Mini 的独立测试库及 Redis DB，不新建本机数据库或容器；主站、Pro 和服务入口须指向同一测试隔离环境。准备普通工作流 W、子应用 A，以及由界面配置导出的 ToolCall、循环、并行三个变体；不导入测试专用 `internal/runtimeNode`，不替换生产 Queue、Context 或变量 setter。
-- 当前无已核验可在该隔离环境完整执行的自动化映射；由执行方按各子场景独立取证，旧脚本不得以共享 dev 数据库或本机数据库代替。
+- C7、C8 的发布聊天链路由执行方单独取证；服务级 Vitest 只覆盖持久化恢复和节点 writer 行为，不等同于浏览器或 HTTP 端到端验收。
 - 公共基线 D0：定义 `a="A0"`、`b="B0"`、`stamp="S0"`、数值 `n=9`、布尔 `flag=true`、字符串 `text="seed"`、对象 `obj={items:[1]}`、文件变量 `files`、密码变量 `password`。所有输入都使用变量配置支持的实际类型；准备无敏感价值的测试密码。
 - 工具内部用真实 HTTP 节点访问测试 gate。C3 的聊天链路采用外部受控模型，依据请求中的真实工具名称产生确定调用。C2 则使用真实 `createToolCallToolProvider` 的服务集成入口并发调用 `executeTool`，构建完整 Context、真实 Queue 和数据库 writer；初态等价于父 Queue 已完成 Start 并进入 ToolCall callback，所有根 isEntry 已复位。当前聊天外壳明确 `batchToolSize=1`，不能将 C2 的服务并发结果宣传为聊天入口支持并发，也不能为测例改成并发配置。
 - 快工具 F 只写 `b="B1", stamp="fast"`，慢工具 S 只写 `a="A1", stamp="slow"`；两者先到 gate 再修改。末尾消费者输出上述变量和指定节点输出的 JSON。失败变体在写变量、产出一个带 RUN 标记的节点输出后，再由受控 HTTP 节点触发可复现错误。
@@ -66,6 +69,8 @@ baseline: "37b271c759eda4e3134c88d98939f81f053a8553"
 | C4 | 边界；D0，循环只含一项 | 循环内先写 `a="checkpoint"` 并请求一次 RUN gate，再暂停于表单节点；记录暂停结果，提交表单恢复，执行后续消费者。不得把恢复当成新会话。 |
 | C5 | 异常/恢复；D0 | 并行容器两个任务：任务 0 第一次写入 `a="failed"` 后失败、重试成功写 `a="retry-ok"`；任务 1 独立写 `b="B1"`。启用一次重试，验证每次尝试的 gate 记录和最终结果；另以不重试的失败副本作对照。 |
 | C6 | 边界；D0 | 通过子应用节点调用 A，显式传入同名变量 `a="child-input"`；A 将其改为 `child-output` 并作为业务输出返回，父消费者同时读取父 `a` 和 A 输出。 |
+| C7 | 边界；新子应用会话，父变量不参与提交 | 给子应用传入字符串 `clearMe="before-clear"` 和普通变量 `a`。在子运行中用未产出的可选节点输出作为变量更新节点的引用，将 clearMe 写为 `undefined`（不是 JSON null 或空串），同时写 `a="checkpoint"`；暂停于表单，确认 AI 聊天项已落库。用同一 chatId 提交表单，恢复后在子运行消费者处读取两个值。 |
+| C8 | 异常/恢复；顶层流式聊天，父 count=0 | 并行容器只放一个任务：第一次通过变量更新节点写 1 后失败，重试写 2 后正常结束。另开会话改成单轮 Loop：写 1 后失败、不重试。从开始到结束收集所有 `updateVariables`，不要只取最后一条。 |
 
 ## 预期结果
 
@@ -79,3 +84,5 @@ baseline: "37b271c759eda4e3134c88d98939f81f053a8553"
 | C4 | 循环交互暂停是 checkpoint：暂停前修改可保留；恢复后仍为 checkpoint，已完成 gate 不重放，后续消费者只执行应续跑部分。 | 暂停/恢复响应、gate 精确次数、会话 variables 与节点运行记录。 |
 | C5 | 只有成功尝试写入父状态，最终 `a=retry-ok,b=B1`；重试成功时已恢复的失败 attempt 保留详情并标记 `errorCaptured=true`，本轮 `errorCount=0`。无重试的失败任务不写 failed，若另一个任务成功则并行状态为部分成功，未恢复的失败仍可见且计入错误；用量允许累计真实失败尝试。 | 并行任务/attempt 明细、消费者 JSON、gate 清单、chat.errorCount 及最终变量差集。 |
 | C6 | A 消费 child-input、返回 child-output；父 a 保持 A0，只有明确映射的业务输出变化。子应用的变量实例不能因共享 Context 能力而与父实例合并。 | A 输入/输出、父消费者输出与最终会话快照。 |
+| C7 | 首轮确实清空；经过 Mongo 重载后，子应用普通变量仍为 checkpoint，clearMe 仍是 undefined，不重新取 before-clear 或默认值；父变量不变。 | 保留同一 chatId 的暂停/恢复、限定到该 AI 消息的 memories，以及子流程恢复后的实际取值；不限定 checkpoint 私有编码。 |
+| C8 | 并行只在成功提交后发布 count=2；失败分支的 1 从未发出。Loop 的父值保持 0，且不发任何本轮变量事件。失败详情等其他 SSE 不在禁止范围内。 | 按到达顺序保存原始变量事件、最终父值和失败/重试详情；服务级回归另外记录每次 writer 调用当时的父值，避免把提前发布的成功值误认为提交后发布。 |

@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
+import { assertPrivateRedisInstance } from '../../../support/private.mjs';
+import { Blocked } from '../../../support/runtime.mjs';
 import {
   assertIsolatedMongoTarget,
   deriveIsolatedConnections
@@ -35,6 +37,51 @@ describe('workflow integration dependency isolation', () => {
     ]) {
       assert.throws(() => deriveIsolatedConnections({ ...input, ...overrides }));
     }
+  });
+
+  it('rejects Redis instance-wide pressure testing when only a logical DB is reserved', async () => {
+    const marker = 'owned-db-marker';
+    const { redisUri } = deriveIsolatedConnections(input);
+    const c = {
+      fixture: {
+        isolated: true,
+        redis: { uriEnv: 'TEST_REDIS' },
+        privateEnvironment: { id: input.runId, nonceEnv: 'TEST_NONCE' }
+      },
+      secret: (key) => ({ TEST_REDIS: redisUri, TEST_NONCE: marker })[key]
+    };
+    const runId = 'a'.repeat(40);
+    const redis = {
+      info: async (section) => {
+        assert.equal(section, 'server');
+        return '# Server\r\nrun_id:' + runId + '\r\n';
+      },
+      get: async (key) => {
+        assert.equal(key, 'fgtest:environment:' + input.runId);
+        return marker;
+      }
+    };
+    const approved = (runId) => ({
+      ...c,
+      secret: (key) => (key === 'FASTGPT_TEST_DEDICATED_REDIS_RUN_ID' ? runId : c.secret(key))
+    });
+    await assert.rejects(() => assertPrivateRedisInstance(c, redis), Blocked);
+    await assert.rejects(
+      () => assertPrivateRedisInstance(approved('b'.repeat(40)), redis),
+      Blocked
+    );
+    await assert.rejects(
+      () =>
+        assertPrivateRedisInstance(
+          {
+            ...approved(runId),
+            fixture: { ...c.fixture, environment: 'local-dev' }
+          },
+          redis
+        ),
+      Blocked
+    );
+    await assertPrivateRedisInstance(approved(runId), redis);
   });
 
   it('refuses a fixture that does not point to its own random Mongo database', () => {

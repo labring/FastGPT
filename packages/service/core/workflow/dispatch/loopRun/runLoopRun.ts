@@ -53,6 +53,7 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
   const {
     checkIsStopping,
     variableContext: parentVariableContext,
+    workflowStreamResponse,
     nodeResponseSink
   } = getWorkflowContext();
   const { params, runtimeNodes, runtimeEdges, node, lastInteractive } = props;
@@ -199,6 +200,7 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
     const iterationMemoryContext = loopMemoryContext.fork();
     const iterationStateSnapshot = new WorkflowRunStateSnapshot({
       variableContext: parentVariableContext,
+      workflowStreamResponse,
       nodeOutputs: {
         sourceNodes: isolatedNodes,
         targetNodes: runtimeNodes,
@@ -207,6 +209,7 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
     });
     const iterationVariableState = iterationStateSnapshot.variableContext;
     const iterationContext = getWorkflowContext().getChildContext({
+      workflowStreamResponse: iterationStateSnapshot.workflowStreamResponse,
       memoryContext: iterationMemoryContext,
       variableContext: iterationVariableState,
       nodeResponseSink: getWorkflowContext().nodeResponseSink.getChildContext({

@@ -5,6 +5,8 @@ import {
 } from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { Types } from 'mongoose';
+import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   DispatchNodeResponseKeyEnum,
@@ -341,12 +343,19 @@ describe('dispatchRunAppNode', () => {
     ]);
   });
 
-  it('restores an isolated child variable checkpoint without reusing the original label input', async () => {
+  it('Mongo 暂停恢复保留普通变量与显式清空值，不复用原始子应用入参', async ({ onTestFinished }) => {
     const parent = await createParentVariableState();
     await parent.set('a', 'parent');
     const resource = await mocks.loadChildWorkflowWithResource();
     resource.childVersion.chatConfig.variables = [
-      { key: 'a', label: 'displayed', type: 'input', valueType: 'string', defaultValue: 'A0' }
+      { key: 'a', label: 'displayed', type: 'input', valueType: 'string', defaultValue: 'A0' },
+      {
+        key: 'clearMe',
+        label: 'originalLabel',
+        type: 'input',
+        valueType: 'string',
+        defaultValue: 'fallback'
+      }
     ];
     mocks.loadChildWorkflowWithResource.mockResolvedValue(resource);
     const completed = await mocks.runWorkflow();
@@ -355,6 +364,9 @@ describe('dispatchRunAppNode', () => {
       const child = getCapturedTestWorkflowContext(args).variableContext;
       expect(child.get('a')).toBe('original');
       await child.set('a', 'checkpoint');
+      expect(child.get('clearMe')).toBe('before-clear');
+      await child.set('clearMe', undefined);
+      expect(child.get('clearMe')).toBeUndefined();
       return {
         ...completed,
         workflowInteractiveResponse: {
@@ -376,7 +388,11 @@ describe('dispatchRunAppNode', () => {
       },
       runningUserInfo: { teamId: 'team', tmbId: 'caller' },
       node: { nodeId: 'child-node', pluginId: 'child-app-id' },
-      params: { userChatInput: 'original question', displayed: 'original' },
+      params: {
+        userChatInput: 'original question',
+        displayed: 'original',
+        originalLabel: 'before-clear'
+      },
       query: [{ text: { content: 'original question' } }],
       histories: [],
       variableContext: parent,
@@ -388,13 +404,29 @@ describe('dispatchRunAppNode', () => {
     };
     const paused = await dispatchRunAppNode(props);
     expect(paused.error).toBeUndefined();
-    expect(paused.system_memories).toEqual({
-      'workflow-variable-checkpoint/node:child-node/app:child-app-id:': { a: 'checkpoint' }
+    // 持久化后重新读取；不约束 checkpoint 如何编码“已清空”，只验收恢复结果。
+    const appId = new Types.ObjectId();
+    const saved = await MongoChatItem.create({
+      sourceType: ChatSourceTypeEnum.app,
+      appId,
+      teamId: new Types.ObjectId(),
+      tmbId: new Types.ObjectId(),
+      chatId: props.chatId,
+      obj: ChatRoleEnum.AI,
+      value: [],
+      memories: paused.system_memories
     });
+    onTestFinished(async () => {
+      await MongoChatItem.deleteOne({ _id: saved._id });
+    });
+    const history = await MongoChatItem.findById(saved._id).lean().orFail();
+    if (history.obj !== ChatRoleEnum.AI) throw new Error('Expected persisted AI checkpoint');
     expect(parent.get('a')).toBe('parent');
 
+    const resumedVariables = vi.fn();
     mocks.runWorkflow.mockImplementationOnce(async (args: any) => {
-      expect(getCapturedTestWorkflowContext(args).variableContext.get('a')).toBe('checkpoint');
+      const variables = getCapturedTestWorkflowContext(args).variableContext;
+      resumedVariables(variables.get('a'), variables.get('clearMe'));
       expect(args.query).toEqual([{ text: { content: '{"value":"RESUME"}' } }]);
       return completed;
     });
@@ -404,7 +436,7 @@ describe('dispatchRunAppNode', () => {
         {
           obj: ChatRoleEnum.AI,
           value: [],
-          memories: JSON.parse(JSON.stringify(paused.system_memories))
+          memories: history.memories
         }
       ],
       query: [{ text: { content: '{"value":"RESUME"}' } }],
@@ -417,6 +449,7 @@ describe('dispatchRunAppNode', () => {
     );
     expect(mocks.runWorkflow).toHaveBeenCalledTimes(2);
     expect(parent.get('a')).toBe('parent');
+    expect(resumedVariables).toHaveBeenCalledExactlyOnceWith('checkpoint', undefined);
   });
 
   it('propagates full histories, toolResponse text, and sandbox usage for nested chatAgent', async () => {

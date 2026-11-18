@@ -4,6 +4,7 @@ import {
   getCapturedTestWorkflowContext
 } from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { createContainerVariableProbe } from '../utils/containerVariableProbe';
 import { createDefaultInstanceConfig } from '@test/utils/instanceConfigSnapshot';
 import {
   FlowNodeOutputTypeEnum,
@@ -488,10 +489,12 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
   it('失败轮不会把 clone 中的全局变量和外部节点 output 提交回父状态', async () => {
     const parentVariableState = makeVariableState({ count: 0 });
 
+    const probe = createContainerVariableProbe(parentVariableState);
     runWorkflowMock.mockImplementation(async (args: any) => {
       const externalNode = args.runtimeNodes.find((node: any) => node.nodeId === 'externalText');
       externalNode.outputs[0].value = 'failed-update';
-      await getCapturedTestWorkflowContext(args).variableContext.set('count', 1);
+      await probe.writeCount(args, 1);
+      expect(getCapturedTestWorkflowContext(args).variableContext.get('count')).toBe(1);
 
       return makeDispatchFlowResponse({
         nodeResponses: [makeResponseItem('startNode', { error: 'boom' })]
@@ -503,6 +506,8 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
       [NodeInputKeyEnum.loopRunInputArray]: ['first']
     });
     props.variableContext = parentVariableState;
+    props.runningAppInfo = { isChildApp: false };
+    props.workflowStreamResponse = probe.writer;
     props.params[NodeInputKeyEnum.childrenNodeIdList] = [
       'startNode',
       'chatNode',
@@ -545,8 +550,10 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
     const externalNode = props.runtimeNodes.find(
       (node: RuntimeNodeItemType) => node.nodeId === 'externalText'
     );
+    expect(runWorkflowMock).toHaveBeenCalledTimes(1);
     expect(externalNode?.outputs[0].value).toBe('before-loop');
     expect(parentVariableState.get('count')).toBe(0);
+    expect(probe.updates).toEqual([]);
   });
 
   it('array mode 第 2 轮节点出错 → 本轮 success:false, 失败轮快照对未跑节点返回 undefined', async () => {

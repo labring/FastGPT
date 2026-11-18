@@ -91,12 +91,30 @@ describe('WorkflowMemoryContext & unified node memory helpers', () => {
       ).toEqual({});
     });
 
-    it.each([null, [], false])('ignores malformed variable checkpoints: %j', (value) => {
-      const state = WorkflowMemoryContext.fromRecord({
-        'workflow-variable-checkpoint/app:shared_child_app:': value
-      });
-      expect(state.readVariableCheckpoint({ runningAppInfo: sharedChildAppInfo })).toBeUndefined();
+    it('restores legacy records and distinguishes cleared, null and absent keys after serialization', () => {
+      const source = { runningAppInfo: sharedChildAppInfo };
+      const key = 'workflow-variable-checkpoint/app:shared_child_app:';
+      const state = WorkflowMemoryContext.fromRecord({ [key]: { value: 'legacy' } });
+      expect(state.readVariableCheckpoint(source)).toEqual({ value: 'legacy' });
+      const variables = { cleared: undefined, nullable: null };
+      const saved = state.createVariableCheckpoint({ ...source, variables });
+      const restored = WorkflowMemoryContext.fromRecord(
+        JSON.parse(JSON.stringify(saved))
+      ).readVariableCheckpoint(source);
+      expect(restored).toStrictEqual(variables);
     });
+
+    it.each([null, [], false, [[1]], [['key', 1, 2]]].map((value) => ({ value })))(
+      'ignores malformed variable checkpoint: $value',
+      ({ value }) => {
+        const state = WorkflowMemoryContext.fromRecord({
+          'workflow-variable-checkpoint/app:shared_child_app:': value
+        });
+        expect(
+          state.readVariableCheckpoint({ runningAppInfo: sharedChildAppInfo })
+        ).toBeUndefined();
+      }
+    );
   });
 
   describe('baseline / delta separation & unified key scoping', () => {

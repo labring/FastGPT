@@ -40,6 +40,7 @@ export const dispatchParallelRun = async (props: Props): Promise<Response> => {
   const {
     checkIsStopping,
     variableContext: parentVariableContext,
+    workflowStreamResponse,
     nodeResponseSink
   } = getWorkflowContext();
   const { params, runtimeNodes, runtimeEdges, node } = props;
@@ -102,6 +103,7 @@ export const dispatchParallelRun = async (props: Props): Promise<Response> => {
           const taskMemoryContext = parentMemoryContext.fork();
           const taskStateSnapshot = new WorkflowRunStateSnapshot({
             variableContext: parentVariableContext,
+            workflowStreamResponse,
             nodeOutputs: {
               sourceNodes: taskRuntimeNodes,
               targetNodes: runtimeNodes,
@@ -109,6 +111,7 @@ export const dispatchParallelRun = async (props: Props): Promise<Response> => {
             }
           });
           const taskContext = getWorkflowContext().getChildContext({
+            workflowStreamResponse: taskStateSnapshot.workflowStreamResponse,
             memoryContext: taskMemoryContext,
             variableContext: taskStateSnapshot.variableContext,
             nodeResponseSink: getWorkflowContext().nodeResponseSink.getChildContext({
