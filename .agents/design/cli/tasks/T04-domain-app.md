@@ -35,6 +35,11 @@
 | | `app folder create` | `/core/app/folder/create` | `write` | `['token']` |
 | **导出导入** | `app export <appId>` | **客户端编排**：`GET /core/app/detail`（或 `version/detail`）抽取出可导入 JSON 写入 `--output` | `read` | `['token']` |
 | | `app import <file>` | **客户端编排**：调 `/core/app/create`（可选 `--publish` 再调 `/core/app/version/publish`） | `write` | `['token']` |
+| **工作区** | `app pull <appId>` | `GET /core/app/detail` 或 `GET /core/app/version/detail`，写入本地 `workflow.json` | `write` | `['token']` |
+| | `app save [appId]` | `POST /core/app/version/publish`，保存本地工作流为远端草稿（`autoSave: true`） | `write` | `['token']` |
+| | `app publish [appId]` | `POST /core/app/version/publish`，发布本地工作流为正式版本 | `write` | `['token']` |
+| **运行和测试** | `app run` | `POST /v2/chat/completions`，与 `chat run` 共用参数与执行逻辑 | `write` | `['token', 'personalKey', 'appKey']` |
+| | `app test [appId]` | `POST /core/workflow/debug`，每个用例执行一个调试步骤并检查断言 | `write` | `['token']` |
 | **版本** | `app version list <appId>` | `/core/app/version/list` | `read` | `['token']` |
 | | `app version get <appId> <versionId>` | `/core/app/version/detail` / `latest` | `read` | `['token']` |
 | | `app version publish <appId>` | `/core/app/version/publish` | `write` | `['token']` |

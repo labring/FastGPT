@@ -24,7 +24,8 @@ import { storeNodes2RuntimeNodes } from '@fastgpt/global/core/workflow/runtime/u
 import type {
   GetAppVersionDetailQueryType,
   GetAppVersionDetailResponseType,
-  PublishAppBodyType
+  PublishAppBodyType,
+  PublishAppResponseType
 } from '@fastgpt/global/openapi/core/app/version/api';
 import type {
   GetDatasetListV2Body,
@@ -920,6 +921,51 @@ describe('publish optional model defaults', () => {
       );
       expect(version?.chatConfig?.questionGuide?.modelId).toBe(previousDefaults.llm!.modelId);
       expect(version?.chatConfig?.ttsConfig?.modelId).toBe('default-tts');
+    }
+  );
+
+  it.each([
+    { autoSave: true, isPublish: false },
+    { autoSave: false, isPublish: false },
+    { autoSave: false, isPublish: true }
+  ])(
+    'returns the normalized saved workflow when requested (autoSave=$autoSave, isPublish=$isPublish)',
+    async ({ autoSave, isPublish }) => {
+      const root = await getRootUser();
+      const app = await MongoApp.create({
+        name: 'Save receipt',
+        type: AppTypeEnum.workflow,
+        teamId: root.teamId,
+        tmbId: root.tmbId
+      });
+      const result = await Call<PublishAppBodyType, { appId: string }, PublishAppResponseType>(
+        handler,
+        {
+          auth: root,
+          headers: {},
+          query: { appId: String(app._id) },
+          body: { ...makeBody(true), autoSave, isPublish, returnWorkflow: true }
+        }
+      );
+
+      expect(result.code, String(result.error ?? JSON.stringify(result))).toBe(200);
+      const version = await MongoAppVersion.findOne({ appId: app._id }).lean();
+      expect(result.data?.workflow.chatConfig.questionGuide?.modelId).toBe(
+        previousDefaults.llm!.modelId
+      );
+      const loaded = await Call<
+        Record<string, never>,
+        GetAppVersionDetailQueryType,
+        GetAppVersionDetailResponseType
+      >(versionDetailHandler, {
+        auth: root,
+        headers: {},
+        query: { appId: String(app._id), versionId: String(version?._id) }
+      });
+      expect(loaded.code, JSON.stringify(loaded)).toBe(200);
+      expect(result.data?.workflow.chatConfig).toEqual(loaded.data.chatConfig);
+      expect(result.data?.workflow.nodes).toEqual(loaded.data.nodes);
+      expect(result.data?.workflow.edges).toEqual(loaded.data.edges);
     }
   );
 

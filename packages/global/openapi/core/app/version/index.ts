@@ -18,7 +18,8 @@ export const AppVersionPath: OpenAPIPath = {
   '/core/app/version/publish': {
     post: {
       summary: '发布或保存应用版本',
-      description: '保存应用版本，支持自动保存、普通保存和发布',
+      description:
+        '保存应用版本，支持自动保存、普通保存和发布；returnWorkflow 为 true 时返回本次保存后的工作流快照，供客户端建立同步基线',
       tags: [DevApiTagsMap.appVersion],
       requestParams: {
         query: PublishAppQuerySchema
