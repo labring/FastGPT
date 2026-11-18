@@ -144,7 +144,14 @@ describe('install team plugin from URL handler', () => {
         reason: { en: 'Checksum mismatch', 'zh-CN': '校验失败' }
       }
     ];
-    mocks.installPlugins.mockResolvedValueOnce({ failed });
+    mocks.installPlugins.mockResolvedValueOnce({
+      failed: [
+        {
+          ...failed[0],
+          extraField: 'should-be-stripped-by-schema'
+        }
+      ]
+    });
 
     const res = await Call(handler, {
       body: {

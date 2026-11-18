@@ -1,6 +1,7 @@
 import { NextAPI } from '@/service/middleware/entry';
 import {
   InstallTeamPluginFromUrlBodySchema,
+  InstallTeamPluginFromUrlResponseSchema,
   TeamPkgEmptyResponseSchema,
   type InstallTeamPluginFromUrlBodyType,
   type InstallTeamPluginFromUrlResponseType
@@ -93,7 +94,7 @@ async function handler(
       const lang = req.headers ? getLocale(req) : undefined;
       throw createPluginInstallFailureError({ failed, lang });
     }
-    return { failed };
+    return InstallTeamPluginFromUrlResponseSchema.parse({ failed });
   }
 
   return TeamPkgEmptyResponseSchema.parse(undefined);

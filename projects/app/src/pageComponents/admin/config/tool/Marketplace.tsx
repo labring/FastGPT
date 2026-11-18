@@ -72,6 +72,7 @@ import { isTeamPluginSource, splitCombineToolId } from '@fastgpt/global/core/app
 import { PluginStatusEnum, type PluginStatusType } from '@fastgpt/global/core/plugin/type';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useToast } from '@fastgpt/web/hooks/useToast';
+import { ToastHandledError } from '@fastgpt/global/common/error/utils';
 
 type QueryValue = string | string[] | undefined;
 type QueryRecord = Record<string, QueryValue>;
@@ -429,6 +430,9 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
             return Promise.reject(failureMessage);
           }
         } catch (error) {
+          if (error instanceof ToastHandledError) {
+            throw error;
+          }
           return Promise.reject(
             getInstallErrorReason({
               error,
@@ -503,6 +507,9 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
             try {
               await postAdminRestoreModerationPlugin({ pluginId: tool.id });
             } catch (err) {
+              if (err instanceof ToastHandledError) {
+                throw err;
+              }
               const downloadUrl = await getMarketplaceDownloadURL({
                 toolId: tool.id,
                 version,
@@ -882,6 +889,9 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
               })
             : [];
         } catch (error) {
+          if (error instanceof ToastHandledError) {
+            throw error;
+          }
           const failed = parseTeamInstallFailure(error);
           if (!failed) throw error;
           failures = getBatchUpdateFailures({
