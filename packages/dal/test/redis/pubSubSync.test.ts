@@ -211,4 +211,25 @@ describe('Redis Pub/Sub & RevisionSyncChannel', () => {
     expect(logger.warn).toHaveBeenCalledOnce();
     await sub.close();
   });
+
+  it('releases subscriber connection and detaches listeners when initial subscribe fails', async () => {
+    const subscriberClient = new FakeSubscriberEmitter();
+    subscriberClient.subscribe = vi.fn().mockRejectedValueOnce(new Error('subscribe boom'));
+    const releaseConnection = vi.fn();
+    const adapter = new RedisCacheAdapter({
+      getCommandClient: () => ({}) as any,
+      createSubscriberConnection: () => subscriberClient as any,
+      releaseConnection
+    });
+
+    const sub = adapter.createChannelSubscriber({
+      channels: [asRedisLogicalKey('sync:ch')],
+      onMessage: vi.fn()
+    });
+
+    await expect(sub.ready).rejects.toThrow('subscribe boom');
+    expect(releaseConnection).toHaveBeenCalledTimes(1);
+    expect(subscriberClient.listenerCount('message')).toBe(0);
+    expect(subscriberClient.listenerCount('ready')).toBe(0);
+  });
 });

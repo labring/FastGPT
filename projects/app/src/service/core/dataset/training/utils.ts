@@ -4,12 +4,15 @@ import { generateRebuildIndex } from '@/service/core/dataset/queues/generateRebu
 import { generateRebuildSynonym } from '@/service/core/dataset/queues/generateRebuildSynonym';
 import { generatePreCreatedData } from '@/service/core/dataset/queues/generatePreCreatedData';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { subscribeTrainingWakeup } from '@fastgpt/service/core/dataset/training/wakeup';
 import { datasetParseQueue } from '../queues/datasetParse';
 import { logInstanceConfigRead } from '@fastgpt/service/common/system/migrationCoverageLog';
 
+const logger = getLogger(LogCategories.MODULE.DATASET.TRAINING);
+
 type TrainingQueueDescriptor = {
-  run: () => unknown;
+  run: () => Promise<unknown> | void;
   getRemainingSlots: () => number;
 };
 
@@ -63,7 +66,14 @@ export const subscribeDatasetTrainingQueue = () =>
         }
         const remainingSlots = descriptor.getRemainingSlots();
         for (let i = 0; i < remainingSlots; i += 1) {
-          descriptor.run();
+          try {
+            // 同步调用以立即占用 global.*QueueLen 并发槽位，同时兜底异步 Promise 拒绝避免中断后续模式。
+            void Promise.resolve(descriptor.run()).catch((error) => {
+              logger.error('Dataset training queue wakeup execution failed', { mode, error });
+            });
+          } catch (error) {
+            logger.error('Dataset training queue wakeup failed synchronously', { mode, error });
+          }
         }
       }
     }

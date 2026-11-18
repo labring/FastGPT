@@ -179,6 +179,10 @@ export const createTrainingTaskLease = (task: TrainingLeaseTask) => {
         lose();
         throw new TrainingLeaseLostError();
       }
+      await publishTrainingWakeup({
+        modes: [next.mode],
+        session
+      });
     });
   const fail = async (
     error: unknown,

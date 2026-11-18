@@ -74,4 +74,22 @@ describe('subscribeDatasetTrainingQueue', () => {
     expect(mocks.generateRebuildIndex).not.toHaveBeenCalled();
     expect(mocks.generateRebuildSynonym).toHaveBeenCalledOnce();
   });
+
+  it('单个队列同步抛错或返回拒绝 Promise 时不中断同批次其余模式的槽位唤醒', async () => {
+    mocks.generateQA
+      .mockImplementationOnce(() => {
+        throw new Error('sync boom');
+      })
+      .mockRejectedValueOnce(new Error('async boom'));
+
+    activeSub = subscribeDatasetTrainingQueue();
+    await activeSub.ready;
+
+    await publishTrainingWakeup({
+      modes: [TrainingModeEnum.qa, TrainingModeEnum.parse]
+    });
+
+    await vi.waitFor(() => expect(mocks.datasetParseQueue).toHaveBeenCalledTimes(2));
+    expect(mocks.generateQA).toHaveBeenCalledTimes(3);
+  });
 });

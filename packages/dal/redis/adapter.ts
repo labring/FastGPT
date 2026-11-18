@@ -1210,37 +1210,52 @@ export class RedisCacheAdapter {
       }
     };
 
+    const cleanupSubscriber = () => {
+      closePromise ??= (async () => {
+        stopped = true;
+        detachListener('message', handleMessage);
+        detachListener('close', handleDisconnect);
+        detachListener('reconnecting', handleDisconnect);
+        detachListener('ready', handleReady);
+
+        try {
+          await client.unsubscribe?.(...physicalChannels);
+        } catch {
+          // 连接已关闭或释放期间忽略取消订阅失败，交由 releaseConnection 彻底回收。
+        }
+        await releaseSubscriber(client);
+      })();
+      return closePromise;
+    };
+
     client.on('message', handleMessage);
     client.on('close', handleDisconnect);
     client.on('reconnecting', handleDisconnect);
     client.on('ready', handleReady);
 
-    const ready = Promise.resolve(client.subscribe(...physicalChannels)).then(() => {
-      if (!stopped) {
-        subscribedOnce = true;
-        sawDisconnect = false;
-      }
-    });
+    const ready = Promise.resolve()
+      .then(() => client.subscribe(...physicalChannels))
+      .then(
+        () => {
+          if (!stopped) {
+            subscribedOnce = true;
+            sawDisconnect = false;
+          }
+        },
+        async (error) => {
+          const wasStopped = stopped;
+          await cleanupSubscriber().catch(() => undefined);
+          if (wasStopped) {
+            return;
+          }
+          throw error;
+        }
+      );
+    ready.catch(() => undefined);
 
     return {
       ready,
-      close: () => {
-        closePromise ??= (async () => {
-          stopped = true;
-          detachListener('message', handleMessage);
-          detachListener('close', handleDisconnect);
-          detachListener('reconnecting', handleDisconnect);
-          detachListener('ready', handleReady);
-
-          try {
-            await client.unsubscribe?.(...physicalChannels);
-          } catch {
-            // 连接已关闭或释放期间忽略取消订阅失败，交由 releaseConnection 彻底回收。
-          }
-          await releaseSubscriber(client);
-        })();
-        return closePromise;
-      }
+      close: cleanupSubscriber
     };
   };
 

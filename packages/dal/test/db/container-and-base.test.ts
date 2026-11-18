@@ -75,7 +75,11 @@ type ItemRepo = {
     teamId: string;
     keyword: string;
   }) => Promise<z.output<typeof ItemReadSchema>[]>;
-  bulkInsert: (rows: ItemRow[]) => Promise<void>;
+  bulkInsert: (
+    rows: Array<
+      Partial<ItemRow> & Pick<ItemRow, '_id' | 'team_id' | 'parent_id' | 'name' | 'ancestor_path'>
+    >
+  ) => Promise<void>;
   countAll: () => Promise<number>;
 };
 
@@ -179,10 +183,17 @@ class SqlItemRepo
     return this.parseList(rows);
   }
 
-  async bulkInsert(rows: ItemRow[]) {
+  async bulkInsert(
+    rows: Array<
+      Partial<ItemRow> & Pick<ItemRow, '_id' | 'team_id' | 'parent_id' | 'name' | 'ancestor_path'>
+    >
+  ) {
     await this.insertChunked({
-      rows: rows.map((r) => ({ ...r, tags: this.toJsonParam(r.tags) })),
-      maxParamsPerBatch: 21 // 7 列 * 3 行，强制验证自动分片逻辑
+      rows: rows.map((r) => ({
+        ...r,
+        ...(r.tags !== undefined ? { tags: this.toJsonParam(r.tags) } : {})
+      })),
+      maxParamsPerBatch: 21 // 最大 7 列 * 3 行，强制验证异构行键数下的自动分片逻辑
     });
   }
 
@@ -353,17 +364,27 @@ describe('@fastgpt/dal/db DI container, portable SQL DDL, and PGlite integration
       expect(rolledBackSpy).not.toHaveBeenCalled();
       expect(await repo.countAll()).toBe(1);
 
-      // 5. 验证 insertChunked 分批写入突破单批参数上限
+      // 5. 验证 insertChunked 分批写入突破单批参数上限（含首行省略可选键的异构对象场景）
       await repo.bulkInsert(
-        Array.from({ length: 7 }, (_, i) => ({
-          _id: createEntityId(),
-          team_id: teamId,
-          parent_id: rootFolderId,
-          name: `Batch-${i}`,
-          enabled: true,
-          tags: ['b'],
-          ancestor_path: ''
-        }))
+        Array.from({ length: 7 }, (_, i) =>
+          i === 0
+            ? {
+                _id: createEntityId(),
+                team_id: teamId,
+                parent_id: rootFolderId,
+                name: `Batch-${i}`,
+                ancestor_path: ''
+              }
+            : {
+                _id: createEntityId(),
+                team_id: teamId,
+                parent_id: rootFolderId,
+                name: `Batch-${i}`,
+                enabled: true,
+                tags: ['b'],
+                ancestor_path: ''
+              }
+        )
       );
       expect(await repo.countAll()).toBe(8);
     } finally {

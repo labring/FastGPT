@@ -192,7 +192,13 @@ export abstract class SqlRepositoryBase<
       return;
     }
     const targetTable = table ?? this.tableName;
-    const colCount = Math.max(1, Object.keys(rows[0]!).length);
+    let colCount = 1;
+    for (const row of rows) {
+      const keyCount = Object.keys(row).length;
+      if (keyCount > colCount) {
+        colCount = keyCount;
+      }
+    }
     const chunkSize = Math.max(1, Math.floor(maxParamsPerBatch / colCount));
     const executor = this.db(tx);
 
