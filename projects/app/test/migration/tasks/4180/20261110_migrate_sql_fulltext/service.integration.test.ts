@@ -191,6 +191,7 @@ describe.skipIf(!target)('PG full-text real migration', () => {
 
   beforeAll(async () => {
     await admin.connect();
+    await admin.query('CREATE EXTENSION IF NOT EXISTS vector');
     await admin.query(`CREATE SCHEMA ${target!.schema}`);
     pool = new Pool({
       connectionString: target!.address,
@@ -740,6 +741,53 @@ describe.skipIf(!target)('PG full-text real migration', () => {
     await pool.query('CREATE INDEX modeldata_fulltext ON modeldata (team_id)');
     await expect(assertPgFullTextCapability()).rejects.toThrow('supported configuration');
     await expect(preparePgFullText()).rejects.toThrow('supported configuration');
+  });
+
+  it('builds PG full text only on manual preparation and recovers an interrupted online index', async () => {
+    await ctrl.init();
+    const readIndex = () =>
+      pool.query<{ indisvalid: boolean }>(
+        "SELECT indisvalid FROM pg_index WHERE indexrelid = to_regclass('modeldata_fulltext')"
+      );
+    expect((await readIndex()).rows).toEqual([]);
+    const writer = await pool.connect();
+    let build: ReturnType<typeof preparePgFullText> | undefined;
+    try {
+      await writer.query('BEGIN');
+      await writer.query('LOCK TABLE modeldata IN ROW EXCLUSIVE MODE');
+      build = preparePgFullText();
+      void build.catch(() => {});
+      const pid = await vi.waitFor(
+        async () => {
+          const { rows } = await pool.query<{ pid: number }>(
+            `SELECT pid FROM pg_stat_progress_create_index
+             WHERE relid = 'modeldata'::regclass AND phase = 'waiting for writers before build'`
+          );
+          expect(rows).toHaveLength(1);
+          return rows[0].pid;
+        },
+        { timeout: 3000, interval: 25 }
+      );
+      expect((await readIndex()).rows).toEqual([{ indisvalid: false }]);
+      const inserted = await ctrl.insert({
+        teamId,
+        datasetId,
+        collectionId,
+        vectors: [vector],
+        texts: ['线上数据库']
+      });
+      expect((await snapshot()).map(({ id }) => id)).toEqual(inserted.insertIds);
+      await pool.query('SELECT pg_cancel_backend($1)', [pid]);
+      await expect(build).rejects.toMatchObject({ code: '57014' });
+    } finally {
+      await writer.query('ROLLBACK');
+      writer.release();
+      await build?.catch(() => {});
+    }
+    expect((await readIndex()).rows).toEqual([{ indisvalid: false }]);
+    await preparePgFullText();
+    expect((await readIndex()).rows).toEqual([{ indisvalid: true }]);
+    expect(await searchPgFullText(props('数据库'))).toHaveLength(1);
   });
 
   it('writes, updates and deletes through the real business path with compatibility dual-writes', async () => {

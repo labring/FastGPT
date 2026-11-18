@@ -42,7 +42,7 @@ const CheckpointSchema = z.object({
 
 /**
  * 手动迁移 SQL 全文，采用分批断点续跑；执行前必须排空旧 App/Pro/训练写入方。
- * 每条记录先校验源文本与历史同义词，再补 NULL；物理缺失行通过 embedding 补建并 CAS 更新引用。
+ * 每条记录先校验源文本与历史同义词，再补 NULL；PG 物理缺失行通过 embedding 补建并 CAS 更新引用。
  * 坏记录按批保存并在重试时优先处理；回填结束后完整重验，全部通过才登记目标 ready。
  * TMP_MIGRATE_FULL_TEXT 开启时固定读 Mongo；验收只发布证据，读路由必须再等 Runner 成功终态。
  */
@@ -63,7 +63,7 @@ export const migrateSqlFullTextMigration = async (
     await context.assertActive();
   };
 
-  // 1. 复用启动期在途构建，核验目标身份；回填和验收期间不允许使用旧 ready 证据。
+  // 1. 准备并核验目标身份；回填和验收期间清除旧 ready 证据。
   await assertActive();
   await context.reportProgress({ key: 'prepare', status: SystemMigrationStatusEnum.running });
   const adapter = getSqlFullTextAdapter();
@@ -116,7 +116,7 @@ export const migrateSqlFullTextMigration = async (
         if (stage !== 'validation' || !(error instanceof SqlFullTextMigrationRecordError)) {
           throw error;
         }
-        // 中断或并发变更可能留下 NULL 或缺失行，补齐后重验；已有冲突值始终不会覆盖。
+        // 中断或并发变更可能留下 NULL 或 PG 缺失行，补齐后重验。
         await assertActive();
         await migrateSqlFullTextRecord(id, { assertActive });
         await migrateSqlFullTextRecord(id, { validateOnly: true, assertActive });

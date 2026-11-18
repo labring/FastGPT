@@ -21,6 +21,7 @@ const mockReRankRecall = vi.hoisted(() => vi.fn());
 const mockMongoDatasetCollectionFind = vi.hoisted(() => vi.fn());
 const mockMongoDatasetDataFind = vi.hoisted(() => vi.fn());
 const mockSearchSqlFullText = vi.hoisted(() => vi.fn());
+const mockSqlFullTextReady = vi.hoisted(() => ({ value: true }));
 const mockGetImageBase64 = vi.hoisted(() => vi.fn());
 // ISSUE-015:getFullTextStore 为可切换 mock。mockUseMilvusStore 为独立开关(默认 false),
 // milvus 用例置 true 后经 mockFullTextStoreSearch 覆盖,不走 SQL 原生全文检索。
@@ -125,7 +126,7 @@ vi.mock('@fastgpt/service/core/dataset/fullText/sql/store', () => ({
   searchSqlFullText: mockSearchSqlFullText
 }));
 vi.mock('@fastgpt/service/core/dataset/fullText/sql/readiness', () => ({
-  isSqlFullTextTargetReady: () => true
+  isSqlFullTextTargetReady: () => mockSqlFullTextReady.value
 }));
 
 // 覆盖 test/mocks/common/vector.ts 的全局 constants mock(其缺 getVectorType 导出)。
@@ -173,6 +174,7 @@ vi.mock('@fastgpt/service/common/vectorDB/fullText/config', () => ({
 
 afterEach(() => {
   getTestInstanceConfig().feature.multipleDataToBase64 = originalMultipleDataToBase64;
+  mockSqlFullTextReady.value = true;
 });
 
 describe('default recall dataset search', () => {
@@ -706,6 +708,18 @@ describe('default recall dataset search', () => {
         rerankModel: rerankModel as any,
         ...params
       });
+
+    it('preserves vector results in mixed mode while the opt-out node waits for SQL migration', async () => {
+      arrangeTwoCandidates();
+      mockSqlFullTextReady.value = false;
+
+      const mixed = await runSearch({ searchMode: DatasetSearchModeEnum.mixedRecall });
+      expect(mixed.searchRes.map(({ id }) => id)).toEqual(['data-a', 'data-b']);
+      await expect(runSearch({ searchMode: DatasetSearchModeEnum.fullTextRecall })).rejects.toThrow(
+        'SQL full-text search is not ready'
+      );
+      expect(mockSearchSqlFullText).not.toHaveBeenCalled();
+    });
 
     const originalLimit = serviceEnv.RETRIEVAL_RESULTS_LIMIT;
     const originalSynonymEnabled = serviceEnv.DATASET_SYNONYM_ENABLED;

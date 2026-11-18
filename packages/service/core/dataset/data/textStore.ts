@@ -147,18 +147,19 @@ export class MongoFullTextStore implements FullTextStore {
   }
 }
 
-/**
- * SQL 向量库的兼容模式固定读写旧 Mongo 全文，原生模式仅在已验收目标就绪后读 SQL。
- */
+/** 原生全文尚未验收，混合召回可在这个阶段保留向量结果。 */
+export class SqlFullTextNotReadyError extends UserError {
+  constructor() {
+    super('SQL full-text search is not ready. Complete the SQL full-text migration.');
+  }
+}
+
+/** SQL 向量库的兼容模式固定读写旧 Mongo 全文，原生模式仅在已验收目标就绪后读 SQL。 */
 export class SqlFullTextStore extends MongoFullTextStore {
   override async search(props: FullTextSearchProps): Promise<FullTextSearchItem[]> {
     if (getFullTextProvider() === 'mongo') return super.search(props);
     if (props.limit <= 0 || !props.query.trim() || !props.datasetIds.length) return [];
-    if (!isSqlFullTextTargetReady()) {
-      throw new UserError(
-        'SQL full-text search is not ready. Complete the SQL full-text migration.'
-      );
-    }
+    if (!isSqlFullTextTargetReady()) throw new SqlFullTextNotReadyError();
     return searchSqlFullText(props);
   }
 

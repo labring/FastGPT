@@ -18,9 +18,12 @@ import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/catalog/service';
 import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
 import { DatasetDataIndexOperation } from '@/service/core/dataset/data/dataIndex';
-import { checkTeamAIPoints } from '@fastgpt/service/support/permission/teamLimit';
-import { pushGenerateVectorUsage } from '@/service/support/wallet/usage/push';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
+
+type SqlFullTextSource = Pick<DatasetDataSchemaType, 'indexes' | 'synonymVersion'> &
+  Record<'teamId' | 'datasetId' | 'collectionId', string | Types.ObjectId>;
+type SqlFullTextSnapshot = SqlFullTextSource &
+  Pick<DatasetDataSchemaType, 'indexStatus' | 'updateTime'> & { _id: Types.ObjectId };
 
 /**
  * 标记单条业务记录的数据完整性、归属或历史同义词快照错误。
@@ -46,9 +49,7 @@ const withRecordDataErrorBoundary = async <T>(action: () => Promise<T>): Promise
 };
 
 /** 按索引记录的历史同义词版本重建输入，图片全文为空；不能用当前词表猜测历史。 */
-export const buildSqlFullTextRows = async (
-  data: DatasetDataSchemaType
-): Promise<SqlFullTextRow[]> =>
+export const buildSqlFullTextRows = async (data: SqlFullTextSource): Promise<SqlFullTextRow[]> =>
   withRecordDataErrorBoundary(async () => {
     const teamId = String(data.teamId);
     const datasetId = String(data.datasetId);
@@ -140,7 +141,11 @@ const processSqlFullTextRecord = async ({
     const expected = await buildSqlFullTextRows(data);
     const adapter = getSqlFullTextAdapter();
     const invalid = new Set(await adapter.fill(expected, validateOnly));
-    const current = await MongoDatasetData.findById(id).read('primary').lean();
+    // 模型的 find 中间件会把 ObjectId 转成字符串，CAS 快照需直接保留 BSON。
+    const current = await MongoDatasetData.collection.findOne<SqlFullTextSnapshot>(
+      { _id: new Types.ObjectId(id) },
+      { readPreference: 'primary' }
+    );
     if (!current) return 0;
     const snapshot = current;
     const currentRows = await buildSqlFullTextRows(current);
@@ -171,6 +176,11 @@ const processSqlFullTextRecord = async ({
       if (invalidActiveIds.some((vectorId) => !missingIds.has(vectorId))) {
         throw new SqlFullTextMigrationRecordError(
           'Active vector row has wrong ownership or conflicting full text'
+        );
+      }
+      if (adapter.provider !== 'pg') {
+        throw new SqlFullTextMigrationRecordError(
+          'Active vector row is missing; rebuild this data before migrating'
         );
       }
       await repairMissingVectors();
@@ -212,8 +222,6 @@ const processSqlFullTextRecord = async ({
         }
       })();
       // PG 缺行补建属于升级修复，免团队积分检查和用量扣费。
-      const shouldBillRepair = adapter.provider !== 'pg';
-      if (shouldBillRepair) await checkTeamAIPoints(String(snapshot.teamId));
       await assertActive();
       const operation = new DatasetDataIndexOperation(model);
       const missing = new Set(invalidActiveIds);
@@ -260,7 +268,8 @@ const processSqlFullTextRecord = async ({
               'Dataset embedding model changed; retry repair'
             );
           const replacements = new Map(indexes.map((index, n) => [index.dataId, newIds[n]]));
-          const updated = await MongoDatasetData.updateOne(
+          // 原生 BSON 过滤避免 Mongoose 给历史子文档补入 type 等默认字段。
+          const updated = await MongoDatasetData.collection.updateOne(
             {
               _id: snapshot._id,
               teamId: snapshot.teamId,
@@ -273,10 +282,14 @@ const processSqlFullTextRecord = async ({
             },
             {
               $set: {
-                indexes: snapshot.indexes.map((index) => ({
-                  ...index,
-                  dataId: replacements.get(index.dataId) ?? index.dataId
-                })),
+                ...Object.fromEntries(
+                  snapshot.indexes.flatMap((index, position) => {
+                    const replacement = replacements.get(index.dataId);
+                    return replacement === undefined
+                      ? []
+                      : [[`indexes.${position}.dataId`, replacement]];
+                  })
+                ),
                 updateTime: new Date()
               }
             },
@@ -303,14 +316,6 @@ const processSqlFullTextRecord = async ({
           });
         })().catch(() => {});
         throw error;
-      }
-      if (shouldBillRepair) {
-        pushGenerateVectorUsage({
-          teamId: String(snapshot.teamId),
-          tmbId: String(snapshot.tmbId),
-          inputTokens: result.tokens,
-          model
-        });
       }
     }
   });

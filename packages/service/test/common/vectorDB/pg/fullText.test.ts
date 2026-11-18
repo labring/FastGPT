@@ -19,10 +19,25 @@ import { PgVectorCtrl } from '@fastgpt/service/common/vectorDB/pg';
 
 // 测试环境默认替换 PG 向量控制器，这里需要真实实现来检查写入的词串
 vi.unmock('@fastgpt/service/common/vectorDB/pg');
-const client = vi.hoisted(() => ({ query: vi.fn(), release: vi.fn() }));
+const client = vi.hoisted(() => ({
+  query: vi.fn(),
+  connect: vi.fn(),
+  end: vi.fn(),
+  on: vi.fn(),
+  release: vi.fn()
+}));
+vi.mock('pg', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('pg')>()),
+  Client: class {
+    query = client.query;
+    connect = client.connect;
+    end = client.end;
+    on = client.on;
+  }
+}));
 vi.mock('@fastgpt/service/common/vectorDB/pg/controller', () => ({
   PgClient: { query: vi.fn() },
-  connectPg: async () => ({ connect: async () => client })
+  connectPg: async () => ({ options: {}, connect: async () => client })
 }));
 const identity = {
   targetId: randomUUID(),
@@ -42,8 +57,10 @@ beforeEach(() => {
   client.query.mockReset().mockImplementation(async (sql: string) => {
     if (sql.startsWith('SHOW')) return { rows: [{ server_version_num: '150019' }] };
     if (sql.startsWith('SELECT extversion')) return { rows: [{ extversion: '0.26.6' }] };
+    if (sql.includes('target_id AS "targetId"')) return { rows: [identity] };
     return { rows: [] };
   });
+  client.end.mockReset();
   client.release.mockReset();
 });
 
@@ -93,67 +110,78 @@ describe('PG full-text contracts', () => {
     await expect(assertPgFullTextCapability()).rejects.toThrow('supported configuration');
   });
 
-  it('prepares append-only DDL for the token column and whitespace index', async () => {
-    vi.mocked(PgClient.query)
-      .mockResolvedValueOnce({
-        rows: [{ extversion: '0.26.6', indisvalid: true, definition }]
-      } as never)
-      .mockResolvedValueOnce({ rows: [identity] } as never);
-    expect(await preparePgFullText()).toEqual(identity);
-    const statements = client.query.mock.calls.map(([sql]) => String(sql));
-    expect(statements).toContain(
-      'ALTER TABLE modeldata ADD COLUMN IF NOT EXISTS fulltext_tokens TEXT'
-    );
-    const createIndex = statements.find((sql) => sql.startsWith('CREATE INDEX'))!;
-    expect(createIndex).toContain('modeldata_fulltext');
-    expect(createIndex).toContain('fulltext_tokens::pdb.whitespace');
-    expect(createIndex).not.toContain('key_field');
-    expect(client.query).toHaveBeenCalledWith(
-      expect.stringContaining('VALUES (true, $1, $2, $3)'),
-      [expect.any(String), 1, SQL_FULL_TEXT_ANALYZER_VERSION]
-    );
-    expect(statements).toContain('COMMIT');
-    expect(statements.some((sql) => /DROP|DELETE|TRUNCATE/.test(sql))).toBe(false);
-    expect(client.release).toHaveBeenCalledOnce();
-  });
+  it.each([undefined, true, false])(
+    'uses online index DDL and only replaces a matching invalid index (existing validity: %s)',
+    async (existingValidity) => {
+      const query = client.query.getMockImplementation()!;
+      const current = { extversion: '0.26.6', indisvalid: true, definition };
+      const indexes = [
+        existingValidity === undefined ? [] : [{ ...current, indisvalid: existingValidity }],
+        [current]
+      ];
+      client.query.mockImplementation(async (sql: string) =>
+        sql.includes('pg_get_indexdef') ? { rows: indexes.shift() } : query(sql)
+      );
 
-  it('rolls back before building the index when existing metadata has an incompatible generation', async () => {
+      expect(await preparePgFullText()).toEqual(identity);
+      const statements = client.query.mock.calls.map(([sql]) => String(sql));
+      const build = statements.find((sql) => sql.startsWith('CREATE INDEX'));
+      expect(statements).toContain('SELECT pg_advisory_lock(20261110, 1)');
+      expect(statements.some((sql) => sql.startsWith('BEGIN'))).toBe(false);
+      if (existingValidity === true) {
+        expect(build).toBeUndefined();
+      } else {
+        expect(build).toContain('CONCURRENTLY IF NOT EXISTS modeldata_fulltext');
+        expect(build).toContain('fulltext_tokens::pdb.whitespace');
+        expect(build).not.toContain('key_field');
+      }
+      expect(statements.includes('DROP INDEX CONCURRENTLY modeldata_fulltext')).toBe(
+        existingValidity === false
+      );
+      expect(client.query).toHaveBeenCalledWith(
+        expect.stringContaining('VALUES (true, $1, $2, $3)'),
+        [expect.any(String), 1, SQL_FULL_TEXT_ANALYZER_VERSION]
+      );
+      expect(client.end).toHaveBeenCalledOnce();
+    }
+  );
+
+  it('rejects incompatible metadata before building the index', async () => {
     const query = client.query.getMockImplementation()!;
     client.query.mockImplementation(async (sql: string) => {
-      if (sql.includes('to_regclass')) return { rows: [{ regclass: 'fastgpt_fulltext_metadata' }] };
+      if (sql.includes('AS regclass')) return { rows: [{ regclass: 'fastgpt_fulltext_metadata' }] };
       if (sql.includes('target_id AS "targetId"'))
         return { rows: [{ ...identity, targetId: 'invalid-uuid' }] };
       return query(sql);
     });
     await expect(preparePgFullText()).rejects.toThrow();
-    expect(client.query).toHaveBeenCalledWith('ROLLBACK');
     expect(client.query.mock.calls.some(([sql]) => String(sql).startsWith('CREATE INDEX'))).toBe(
       false
     );
-    expect(client.release).toHaveBeenCalledOnce();
+    expect(client.end).toHaveBeenCalledOnce();
   });
 
   it.each(['150014', '160000'])(
-    'rolls back unsupported PG version %s before changing modeldata',
+    'rejects unsupported PG version %s before changing modeldata',
     async (server_version_num) => {
       client.query.mockImplementation(async (sql: string) => ({
         rows: sql.startsWith('SHOW') ? [{ server_version_num }] : []
       }));
       await expect(preparePgFullText()).rejects.toThrow('15.19');
-      expect(client.query).toHaveBeenCalledWith('ROLLBACK');
-      expect(client.query.mock.calls.some(([sql]) => sql.startsWith('ALTER TABLE'))).toBe(false);
-      expect(client.release).toHaveBeenCalledOnce();
+      expect(client.query.mock.calls.some(([sql]) => sql.includes('ALTER TABLE'))).toBe(false);
+      expect(client.end).toHaveBeenCalledOnce();
     }
   );
 
-  it('rolls back when the extension version differs', async () => {
+  it('rejects an incompatible extension before changing modeldata', async () => {
     const query = client.query.getMockImplementation()!;
     client.query.mockImplementation(async (sql: string) => {
       if (sql.startsWith('SELECT extversion')) return { rows: [{ extversion: '0.25.0' }] };
       return query(sql);
     });
     await expect(preparePgFullText()).rejects.toThrow('0.26.6');
-    expect(client.query).toHaveBeenCalledWith('ROLLBACK');
+    expect(client.query.mock.calls.some(([sql]) => sql.includes('ALTER TABLE'))).toBe(false);
+    expect(client.end).toHaveBeenCalledOnce();
   });
 
   it('fills only NULL tokens with bound values, classifies mismatches and can validate without writing', async () => {

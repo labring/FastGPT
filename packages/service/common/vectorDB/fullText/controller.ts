@@ -52,7 +52,7 @@ export const getSqlFullTextAdapter = (
       };
     return new OceanBaseFullTextAdapter(provider);
   })();
-  // 启动后台构建与手动迁移可能同时准备同一目标，共享当次 Promise，避免本进程重复 DDL。
+  // 同一目标共享当次准备 Promise，避免本进程重复 DDL。
   const prepare = adapter.prepare.bind(adapter);
   let preparing: ReturnType<SqlFullTextAdapter['prepare']> | undefined;
   adapter.prepare = () => {
@@ -66,11 +66,11 @@ export const getSqlFullTextAdapter = (
 };
 
 /**
- * 基础表和词串列就绪后异步准备全文索引，不让重型 DDL 延长节点启动等待。
+ * OceanBase、SeekDB 和 openGauss 在基础表和词串列就绪后异步准备全文索引。
  * 失败仅记录告警，迁移仍会重新准备并严格核验；索引构建不代表允许原生切读。
  * 此处仅解除应用启动等待，数据库自身的建索引锁仍由各 provider 管理。
  */
-export const startSqlFullTextIndexBuild = (provider: SqlFullTextProvider): void => {
+export const startSqlFullTextIndexBuild = (provider: Exclude<SqlFullTextProvider, 'pg'>): void => {
   void getSqlFullTextAdapter(provider)
     .prepare()
     .catch((error) => {

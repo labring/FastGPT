@@ -7,7 +7,7 @@ import { getLogger, LogCategories } from '../../logger';
 import { buildPgVectorRecallQuery } from './utils';
 import { SQL_FULL_TEXT_COLUMN } from '../fullText/utils';
 import { insertPostgresVectorFullTextRows } from '../fullText/postgres';
-import { startSqlFullTextIndexBuild } from '../fullText/controller';
+import { ensurePgFullTextColumnSql } from './fullText';
 
 const logger = getLogger(LogCategories.INFRA.POSTGRES);
 
@@ -33,8 +33,8 @@ export class PgVectorCtrl implements VectorControllerType {
             ${SQL_FULL_TEXT_COLUMN} TEXT,
             createtime TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
-        ALTER TABLE ${DatasetVectorTableName} ADD COLUMN IF NOT EXISTS ${SQL_FULL_TEXT_COLUMN} TEXT;
       `);
+      await PgClient.query(ensurePgFullTextColumnSql);
 
       await PgClient.query(
         `CREATE INDEX CONCURRENTLY IF NOT EXISTS team_dataset_collection_index ON ${DatasetVectorTableName} USING btree(team_id, dataset_id, collection_id);`
@@ -42,7 +42,6 @@ export class PgVectorCtrl implements VectorControllerType {
       await PgClient.query(
         `CREATE INDEX CONCURRENTLY IF NOT EXISTS create_time_index ON ${DatasetVectorTableName} USING btree(createtime);`
       );
-      startSqlFullTextIndexBuild('pg');
       // 10w rows
       // await PgClient.query(`
       //   ALTER TABLE modeldata SET (

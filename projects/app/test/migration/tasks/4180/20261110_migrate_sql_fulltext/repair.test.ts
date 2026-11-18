@@ -169,6 +169,28 @@ describe('SQL full-text missing vector repair', () => {
     expect(state.matcher).toHaveBeenCalledWith(expect.objectContaining({ fileVersion: 3 }));
   });
 
+  it('repairs a historical BSON index without adding defaults or rewriting healthy index fields', async () => {
+    const { id } = await seed();
+    const _id = new Types.ObjectId(id);
+    const missing = {
+      defaultIndex: true,
+      dataId: '1',
+      text: '缺失的索引',
+      _id: new Types.ObjectId()
+    };
+    const healthy = { text: '现有的索引', _id: new Types.ObjectId(), dataId: '2' };
+    const original = (await MongoDatasetData.collection.findOne({ _id }))!;
+    await MongoDatasetData.collection.deleteOne({ _id });
+    await MongoDatasetData.collection.insertOne({
+      ...original,
+      indexes: [missing, healthy]
+    });
+
+    expect(await migrateSqlFullTextRecord(id)).toBe(2);
+    const raw = await MongoDatasetData.collection.findOne({ _id });
+    expect(raw?.indexes).toEqual([{ ...missing, dataId: '100' }, healthy]);
+  });
+
   it.each(['ownership', 'text'] as const)(
     'rejects existing-row %s conflicts without generating replacements',
     async (kind) => {
@@ -279,24 +301,16 @@ describe('SQL full-text missing vector repair', () => {
   );
 
   it.each(['oceanbase', 'seekdb', 'opengauss'] as const)(
-    'retains balance checks and billing for %s repairs',
+    'reports missing %s rows for explicit rebuild without calling the model or billing',
     async (provider) => {
       state.provider = provider;
-      const { data, id } = await seed();
-      state.points.mockRejectedValueOnce(new Error('insufficient points'));
-      await expect(migrateSqlFullTextRecord(id)).rejects.toThrow('insufficient points');
-      expect(mockGetVectors).not.toHaveBeenCalled();
-      expect(state.usage).not.toHaveBeenCalled();
-
-      expect(await migrateSqlFullTextRecord(id)).toBe(2);
-      expect(state.points).toHaveBeenCalledWith(String(data.teamId));
-      expect(state.usage).toHaveBeenCalledExactlyOnceWith(
-        expect.objectContaining({
-          teamId: String(data.teamId),
-          tmbId: String(data.tmbId),
-          inputTokens: expect.any(Number)
-        })
+      const { id } = await seed();
+      await expect(migrateSqlFullTextRecord(id)).rejects.toThrow(
+        'rebuild this data before migrating'
       );
+      expect(mockGetVectors).not.toHaveBeenCalled();
+      expect(state.points).not.toHaveBeenCalled();
+      expect(state.usage).not.toHaveBeenCalled();
     }
   );
 

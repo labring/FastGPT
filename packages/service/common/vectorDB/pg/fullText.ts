@@ -3,6 +3,7 @@ import {
   SQL_FULL_TEXT_SCHEMA_VERSION
 } from '@fastgpt/global/core/dataset/fullText/constants';
 import { randomUUID } from 'node:crypto';
+import { Client } from 'pg';
 import {
   SqlFullTextMetadataSchema,
   type SqlFullTextMetadata
@@ -18,11 +19,13 @@ import {
 } from '../fullText/utils';
 import { executePostgresFullTextRows, findMissingPostgresVectorIds } from '../fullText/postgres';
 import { toSqlFullTextQueryTerms } from '../fullText/analyzer';
+import { getLogger, LogCategories } from '../../logger';
 
 export const PG_FULL_TEXT_EXTENSION_VERSION = '0.26.6';
 const metadataTable = 'fastgpt_fulltext_metadata';
 const indexName = SQL_FULL_TEXT_INDEX;
 const column = SQL_FULL_TEXT_COLUMN;
+const logger = getLogger(LogCategories.INFRA.POSTGRES);
 
 /** 读取目标库自身的持久身份；不使用连接串或主机名作为迁移身份。 */
 export const getPgFullTextMetadata = async (): Promise<SqlFullTextMetadata> => {
@@ -33,39 +36,66 @@ export const getPgFullTextMetadata = async (): Promise<SqlFullTextMetadata> => {
   return SqlFullTextMetadataSchema.parse(rows[0]);
 };
 
-/** 精确核对已安装扩展和全文索引；同名错误索引不能被 IF NOT EXISTS 当作成功。 */
-export const assertPgFullTextCapability = async () => {
-  const { rows } = await PgClient.query<{
-    extversion: string;
-    indisvalid: boolean;
-    definition: string;
-  }>(`SELECT e.extversion, i.indisvalid, pg_get_indexdef(i.indexrelid) AS definition
-    FROM pg_extension e, pg_index i
-    WHERE e.extname = 'pg_search' AND i.indexrelid = to_regclass('${indexName}')
-      AND i.indrelid = to_regclass('${DatasetVectorTableName}')`);
-  const row = rows[0];
-  const definition = row?.definition.replace(/\s+/g, ' ');
-  if (
-    row?.extversion !== PG_FULL_TEXT_EXTENSION_VERSION ||
-    !row.indisvalid ||
-    definition?.split(' USING ')[1] !==
-      `paradedb (id, ((${column})::pdb.whitespace), ((team_id)::pdb.literal), ((dataset_id)::pdb.literal), ((collection_id)::pdb.literal))`
-  ) {
-    throw new Error('PG full-text extension or index does not match the supported configuration');
-  }
+type PgFullTextIndex = {
+  extversion: string;
+  indisvalid: boolean;
+  definition: string;
 };
 
+const readIndexSql = `SELECT e.extversion, i.indisvalid, pg_get_indexdef(i.indexrelid) AS definition
+  FROM pg_extension e, pg_index i
+  WHERE e.extname = 'pg_search' AND i.indexrelid = to_regclass('${indexName}')
+    AND i.indrelid = to_regclass('${DatasetVectorTableName}')`;
+const capabilityError =
+  'PG full-text extension or index does not match the supported configuration';
+
+const hasExpectedDefinition = (row: PgFullTextIndex) =>
+  row.extversion === PG_FULL_TEXT_EXTENSION_VERSION &&
+  row.definition.replace(/\s+/g, ' ').split(' USING ')[1] ===
+    `paradedb (id, ((${column})::pdb.whitespace), ((team_id)::pdb.literal), ((dataset_id)::pdb.literal), ((collection_id)::pdb.literal))`;
+
+/** 精确核对已安装扩展和全文索引；同名错误索引不能被 IF NOT EXISTS 当作成功。 */
+export const assertPgFullTextCapability = async () => {
+  const {
+    rows: [index]
+  } = await PgClient.query<PgFullTextIndex>(readIndexSql);
+  if (!index?.indisvalid || !hasExpectedDefinition(index)) throw new Error(capabilityError);
+};
+
+/** 仅旧表缺列时才申请短暂的表排他锁，重启和建索引都复用这个检查。 */
+export const ensurePgFullTextColumnSql = `DO $fulltext$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_attribute
+    WHERE attrelid = '${DatasetVectorTableName}'::regclass AND attname = '${column}'
+      AND attnum > 0 AND NOT attisdropped
+  ) THEN
+    PERFORM set_config('lock_timeout', '5s', true);
+    ALTER TABLE ${DatasetVectorTableName} ADD COLUMN IF NOT EXISTS ${column} TEXT;
+  END IF;
+END
+$fulltext$`;
+
 /**
- * 准备阶段确保可空词串列、按空格切词的全文索引和目标身份就绪，不修改旧向量或 Mongo 业务数据。
- * 一张表只能有一个 ParadeDB 索引；建重型索引前先核对既有目标的分词规则，避免不兼容目标白建索引。
- * DDL 在事务中串行执行并限制锁等待；扩展二进制及 preload 由部署者提前准备。
+ * 手动迁移准备列、物理目标和索引。用会话级锁串行化跨节点准备，
+ * 列 DDL 独立提交后再在线建索引，避免建索引时持有表排他锁。
  */
 export const preparePgFullText = async (): Promise<SqlFullTextMetadata> => {
-  const client = await (await connectPg()).connect();
+  // 独立会话沿用目标库配置，避免连接池的短查询超时中断大型索引构建。
+  const { options } = await connectPg();
+  const client = new Client({
+    ...options,
+    application_name: 'fastgpt-pg-fulltext-prepare',
+    query_timeout: 0,
+    statement_timeout: 0
+  });
+  client.on('error', (error) =>
+    logger.warn('PG full-text preparation connection failed', { error })
+  );
   try {
-    await client.query('BEGIN');
-    await client.query("SET LOCAL lock_timeout = '5s'");
-    await client.query('SELECT pg_advisory_xact_lock(20261110, 1)');
+    await client.connect();
+    await client.query("SET lock_timeout = '5s'");
+    await client.query('SELECT pg_advisory_lock(20261110, 1)');
     const version = await client.query<{ server_version_num: string }>('SHOW server_version_num');
     const serverVersion = Number(version.rows[0].server_version_num);
     if (serverVersion < 150019 || serverVersion >= 160000) {
@@ -92,16 +122,27 @@ export const preparePgFullText = async (): Promise<SqlFullTextMetadata> => {
         `SELECT target_id AS "targetId", schema_version AS "schemaVersion",
           analyzer_version AS "analyzerVersion" FROM ${metadataTable} WHERE singleton = true`
       );
-      if (existingMeta.rows[0]) {
-        SqlFullTextMetadataSchema.parse(existingMeta.rows[0]);
-      }
+      if (existingMeta.rows[0]) SqlFullTextMetadataSchema.parse(existingMeta.rows[0]);
     }
-    await client.query(
-      `ALTER TABLE ${DatasetVectorTableName} ADD COLUMN IF NOT EXISTS ${column} TEXT`
-    );
-    await client.query(`CREATE INDEX IF NOT EXISTS ${indexName} ON ${DatasetVectorTableName}
-      USING paradedb (id, (${column}::pdb.whitespace),
-        (team_id::pdb.literal), (dataset_id::pdb.literal), (collection_id::pdb.literal))`);
+
+    const {
+      rows: [index]
+    } = await client.query<PgFullTextIndex>(readIndexSql);
+    if (index && !hasExpectedDefinition(index)) throw new Error(capabilityError);
+    await client.query(ensurePgFullTextColumnSql);
+    if (!index?.indisvalid) {
+      // 并发建索引被中断时可能留下无效索引。仅重建同表、同名且定义完全匹配的索引。
+      if (index) await client.query(`DROP INDEX CONCURRENTLY ${indexName}`);
+      await client.query(`CREATE INDEX CONCURRENTLY IF NOT EXISTS ${indexName} ON ${DatasetVectorTableName}
+        USING paradedb (id, (${column}::pdb.whitespace),
+          (team_id::pdb.literal), (dataset_id::pdb.literal), (collection_id::pdb.literal))`);
+    }
+    const {
+      rows: [preparedIndex]
+    } = await client.query<PgFullTextIndex>(readIndexSql);
+    if (!preparedIndex?.indisvalid || !hasExpectedDefinition(preparedIndex))
+      throw new Error(capabilityError);
+
     await client.query(`CREATE TABLE IF NOT EXISTS ${metadataTable} (
       singleton BOOLEAN PRIMARY KEY CHECK (singleton), target_id UUID NOT NULL,
       schema_version INTEGER NOT NULL, analyzer_version TEXT NOT NULL
@@ -112,15 +153,15 @@ export const preparePgFullText = async (): Promise<SqlFullTextMetadata> => {
       ON CONFLICT (singleton) DO NOTHING`,
       [randomUUID(), SQL_FULL_TEXT_SCHEMA_VERSION, SQL_FULL_TEXT_ANALYZER_VERSION]
     );
-    await client.query('COMMIT');
-  } catch (error) {
-    await client.query('ROLLBACK');
-    throw error;
+    const result = await client.query(
+      `SELECT target_id AS "targetId", schema_version AS "schemaVersion",
+        analyzer_version AS "analyzerVersion" FROM ${metadataTable} WHERE singleton = true`
+    );
+    return SqlFullTextMetadataSchema.parse(result.rows[0]);
   } finally {
-    client.release();
+    // 关闭独立会话，同时释放 advisory lock。
+    await client.end();
   }
-  await assertPgFullTextCapability();
-  return getPgFullTextMetadata();
 };
 
 /**

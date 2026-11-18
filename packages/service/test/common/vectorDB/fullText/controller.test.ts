@@ -44,7 +44,7 @@ beforeEach(() => {
 
 describe('getSqlFullTextAdapter', () => {
   it.each(['pg', 'opengauss', 'oceanbase', 'seekdb'] as const)(
-    'shares an in-flight %s preparation between startup and migration, then permits revalidation',
+    'shares an in-flight %s preparation, then permits revalidation',
     async (provider) => {
       const adapter = getSqlFullTextAdapter(provider);
       expect(getSqlFullTextAdapter(provider)).toBe(adapter);
@@ -78,10 +78,10 @@ describe('startSqlFullTextIndexBuild', () => {
         resolve = done;
       })
     );
-    expect(startSqlFullTextIndexBuild('pg')).toBeUndefined();
+    expect(startSqlFullTextIndexBuild('opengauss')).toBeUndefined();
     expect(mocks.prepare).toHaveBeenCalledOnce();
     expect(mocks.warn).not.toHaveBeenCalled();
-    const pending = getSqlFullTextAdapter('pg').prepare();
+    const pending = getSqlFullTextAdapter('opengauss').prepare();
     resolve(mocks.metadata);
     await pending;
   });
@@ -89,12 +89,12 @@ describe('startSqlFullTextIndexBuild', () => {
   it('handles background rejection and allows a subsequent migration retry', async () => {
     const error = new Error('extension unavailable');
     mocks.prepare.mockRejectedValueOnce(error);
-    startSqlFullTextIndexBuild('pg');
-    await expect(getSqlFullTextAdapter('pg').prepare()).rejects.toBe(error);
+    startSqlFullTextIndexBuild('opengauss');
+    await expect(getSqlFullTextAdapter('opengauss').prepare()).rejects.toBe(error);
     expect(mocks.warn).toHaveBeenCalledWith('SQL full-text background index build failed', {
-      provider: 'pg',
+      provider: 'opengauss',
       error
     });
-    await expect(getSqlFullTextAdapter('pg').prepare()).resolves.toEqual(mocks.metadata);
+    await expect(getSqlFullTextAdapter('opengauss').prepare()).resolves.toEqual(mocks.metadata);
   });
 });

@@ -1,6 +1,7 @@
 import { getForbidCollectionIdList, filterCollectionByMetadata } from '../filter/collectionFilter';
 import { embeddingRecall } from './embeddingRecall';
 import { fullTextRecall } from './fullTextRecall';
+import { SqlFullTextNotReadyError } from '../../data/textStore';
 import type { EmbeddingModelDataType } from '@fastgpt/global/core/ai/model/schema';
 
 /**
@@ -92,6 +93,10 @@ export const multiQueryRecall = async ({
       limit: fullTextLimit,
       filterCollectionIdList,
       forbidCollectionIdList
+    }).catch((error: unknown) => {
+      // 选择等待 SQL 迁移期间，混合模式保留向量召回结果，纯全文提示等待迁移。
+      if (embeddingLimit === 0 || !(error instanceof SqlFullTextNotReadyError)) throw error;
+      return { textFullTextRecallResults: [], imageCaptionFullTextRecallResults: [] };
     })
   ]);
 
