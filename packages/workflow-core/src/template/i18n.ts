@@ -12,7 +12,7 @@ export const workflowTemplateResources: Record<string, TranslationDictionary> = 
       'When enabled, the AI receives a virtual machine where it can run commands, manage files, and execute code. Each session shares one virtual machine.',
     'app:variable.internal_type_desc': 'Used only inside the Workflow and not shown in the Chat',
     'app:variable.select type_desc':
-      'The input box will be displayed in the site conversation and run preview, and this variable will not be displayed in the sharing link.',
+      'The input box is displayed in site conversations and debugging, but not in sharing links.',
     'app:variable.textarea_type_desc':
       'Allows users to input up to 4000 characters in the chat box.',
     'app:workflow.file_url': 'Document Link',
@@ -358,8 +358,7 @@ export const workflowTemplateResources: Record<string, TranslationDictionary> = 
     'app:use_computer_desc':
       '开启后，AI 将获得一个虚拟机环境，可执行命令、操作文件、运行代码。每个会话共享一个虚拟机环境。',
     'app:variable.internal_type_desc': '仅在工作流内部使用，不会出现在对话框中',
-    'app:variable.select type_desc':
-      '会在站内对话和运行预览中显示输入框，在分享链接中不会显示此变量',
+    'app:variable.select type_desc': '会在站内对话和调试中显示输入框，在分享链接中不会显示此变量',
     'app:variable.textarea_type_desc': '允许用户最多输入4000字的对话框。',
     'app:workflow.file_url': '文档链接',
     'app:workflow.form_input': '表单输入',
@@ -680,8 +679,7 @@ export const workflowTemplateResources: Record<string, TranslationDictionary> = 
     'app:use_computer_desc':
       '開啟後，AI 會獲得可執行指令、管理檔案及執行程式碼的虛擬機器環境。每個工作階段共用一個虛擬機器。',
     'app:variable.internal_type_desc': '僅在工作流內部使用，不會出現在對話框中',
-    'app:variable.select type_desc':
-      '會在站內對話和運行預覽中顯示輸入框，在分享鏈接中不會顯示此變量',
+    'app:variable.select type_desc': '會在站內對話和除錯中顯示輸入框，在分享連結中不會顯示此變數',
     'app:variable.textarea_type_desc': '允許使用者最多輸入 4000 字的對話框。',
     'app:workflow.file_url': '檔案連結',
     'app:workflow.form_input': '表單輸入',
@@ -1006,7 +1004,7 @@ export const workflowTemplateResources: Record<string, TranslationDictionary> = 
       '활성화하면 AI가 명령을 실행하고, 파일을 조작하고, 코드를 실행할 수 있는 가상 머신 환경을 갖게 됩니다. 각 세션은 하나의 가상 머신 환경을 공유합니다.',
     'app:variable.internal_type_desc': '워크플로 내부에서만 사용되며 대화창에는 표시되지 않습니다',
     'app:variable.select type_desc':
-      '입력란은 사이트 대화 및 실행 미리보기에 표시되며, 이 변수는 공유 링크에는 표시되지 않습니다.',
+      '입력란은 사이트 대화와 디버그에 표시되며 공유 링크에는 표시되지 않습니다.',
     'app:variable.textarea_type_desc': '사용자가 대화창에 최대 4000자까지 입력할 수 있습니다.',
     'app:workflow.file_url': '문서 링크',
     'app:workflow.form_input': '폼 입력',
