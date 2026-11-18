@@ -55,12 +55,24 @@ const SecuritySettingComponent = () => {
 
   useEffect(() => {
     if (effectiveConfig && Object.keys(effectiveConfig).length > 0) {
+      /** 读取保留的非法旧值也要能显示和编辑；不在页面初始化时丢弃或写回数据库。 */
+      const toListText = (value: unknown): string => {
+        if (value === undefined) return '';
+        if (typeof value === 'string') return value;
+        if (Array.isArray(value)) {
+          return value
+            .map((item) => (typeof item === 'string' ? item : JSON.stringify(item)))
+            .join('\n');
+        }
+        return JSON.stringify(value) ?? '';
+      };
+
       reset({
         ...effectiveConfig,
         allowedOriginsEnabled:
           effectiveConfig.allowedOriginsEnabled ?? Boolean(effectiveConfig.allowedOrigins?.length),
-        allowedOriginsText: (effectiveConfig.allowedOrigins ?? []).join('\n'),
-        fileUrlWhitelistText: (effectiveConfig.fileUrlWhitelist ?? []).join('\n')
+        allowedOriginsText: toListText(effectiveConfig.allowedOrigins),
+        fileUrlWhitelistText: toListText(effectiveConfig.fileUrlWhitelist)
       });
     }
   }, [effectiveConfig, reset]);
