@@ -68,19 +68,79 @@ const inputTypeFormKey = (key: string) => `__input_type__${key}`;
 // developerInputType 即全局的 manualRenderType：Agent 配置里“手动输入”实际使用的那个控件。
 const developerInputTypeFormKey = (key: string) => `__developer_input_type__${key}`;
 
-/** 工具配置中的 JSON Editor 保留编辑文本，校验时解析，运行边界再转换为原生 JSON 值。 */
-const parseConfigInputValue = ({
+/** 工具配置中的 JSON Editor 和数字输入框在空白时按未配置处理；JSON Editor 保留编辑文本，校验和提交时解析。 */
+export const parseConfigInputValue = ({
   inputType,
   value
 }: {
   inputType?: FlowNodeInputTypeEnum;
   value: unknown;
-}) =>
-  inputType === FlowNodeInputTypeEnum.JSONEditor
-    ? typeof value === 'string' && value.trim() === ''
+}) => {
+  if (inputType === FlowNodeInputTypeEnum.JSONEditor) {
+    return typeof value === 'string' && value.trim() === ''
       ? { success: true as const, value: undefined }
-      : parseJsonEditorValue(value)
-    : { success: true as const, value };
+      : parseJsonEditorValue(value);
+  }
+
+  if (
+    inputType === FlowNodeInputTypeEnum.numberInput &&
+    typeof value === 'string' &&
+    value.trim() === ''
+  ) {
+    return { success: true as const, value: undefined };
+  }
+
+  return { success: true as const, value };
+};
+
+/** 校验工具配置表单项；空白 JSON Editor 或清空后的数字输入框在非必填时按未配置放行。 */
+export const validateConfigInputValue = ({
+  input,
+  inputType,
+  value,
+  jsonParseErrorText
+}: {
+  input: FlowNodeTemplateType['inputs'][number];
+  inputType?: FlowNodeInputTypeEnum;
+  value: unknown;
+  jsonParseErrorText: string;
+}) => {
+  if (input.required && !isToolInputValueConfigured({ input, value })) return false;
+
+  const configuredValue = value ?? input.defaultValue;
+  if (configuredValue === undefined) return true;
+
+  const parsedValue = parseConfigInputValue({ inputType, value: configuredValue });
+  if (!parsedValue.success) return jsonParseErrorText;
+  if (parsedValue.value === undefined) return !input.required;
+
+  const validationResult = validateToolInputValue({
+    schema: input.customJsonSchema,
+    value: parsedValue.value
+  });
+  return validationResult.success || validationResult.errors.join('; ');
+};
+
+/** 归一化工具配置提交值；空白数字输入与空白 JSON Editor 统一存为 undefined。 */
+export const resolveConfigInputSubmitValue = ({
+  inputType,
+  formValue,
+  fallbackValue
+}: {
+  inputType?: FlowNodeInputTypeEnum;
+  formValue: unknown;
+  fallbackValue: unknown;
+}) => {
+  if (inputType === FlowNodeInputTypeEnum.agentGenerated) return undefined;
+
+  const configuredValue = formValue ?? fallbackValue;
+  const parsedValue = parseConfigInputValue({
+    inputType,
+    value: configuredValue
+  });
+  // 编辑文本持久化以兼容历史配置；空白输入统一表示未配置。
+  return parsedValue.success && parsedValue.value === undefined ? undefined : configuredValue;
+};
 
 type ToolSetListItemType = {
   name: string;
@@ -455,22 +515,13 @@ const ConfigValueInput = ({
       control={control}
       name={input.key}
       rules={{
-        validate: (value) => {
-          if (input.required && !isToolInputValueConfigured({ input, value })) return false;
-
-          const configuredValue = value ?? input.defaultValue;
-          if (configuredValue === undefined) return true;
-
-          const parsedValue = parseConfigInputValue({ inputType, value: configuredValue });
-          if (!parsedValue.success) return t('common:json_parse_error');
-          if (parsedValue.value === undefined) return !input.required;
-
-          const validationResult = validateToolInputValue({
-            schema: input.customJsonSchema,
-            value: parsedValue.value
-          });
-          return validationResult.success || validationResult.errors.join('; ');
-        }
+        validate: (value) =>
+          validateConfigInputValue({
+            input,
+            inputType,
+            value,
+            jsonParseErrorText: t('common:json_parse_error')
+          })
       }}
       render={({ field: { onChange, value }, fieldState: { error } }) => {
         return (
@@ -946,20 +997,11 @@ const ConfigToolModal = ({
         return stripToolInputDefaultMode({
           ...input,
           ...inputTypeState,
-          value:
-            inputTypeState.selectedType === FlowNodeInputTypeEnum.agentGenerated
-              ? undefined
-              : (() => {
-                  const configuredValue = data[input.key] ?? input.value;
-                  const parsedValue = parseConfigInputValue({
-                    inputType: inputTypeState.selectedType,
-                    value: configuredValue
-                  });
-                  // 编辑文本持久化以兼容历史配置；空白输入统一表示未配置。
-                  return parsedValue.success && parsedValue.value === undefined
-                    ? undefined
-                    : configuredValue;
-                })()
+          value: resolveConfigInputSubmitValue({
+            inputType: inputTypeState.selectedType,
+            formValue: data[input.key],
+            fallbackValue: input.value
+          })
         });
       })
     };
