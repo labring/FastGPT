@@ -57,7 +57,7 @@ export const backfillExternalFileCheck = async ({
     }
 
     // 历史名单可能是数组，也可能在宽容读取下保留为 null/字符串/对象；非空即继续开启检查。
-    const rawWhitelist: unknown = security.fileUrlWhitelist;
+    const rawWhitelist: unknown = security?.fileUrlWhitelist;
     const hasLegacyFileWhitelist = Array.isArray(rawWhitelist)
       ? rawWhitelist.length > 0
       : rawWhitelist !== undefined && rawWhitelist !== null && rawWhitelist !== '';

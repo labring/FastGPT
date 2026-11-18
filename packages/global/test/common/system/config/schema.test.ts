@@ -771,6 +771,79 @@ describe('unvalidated instance config reads and strict saves', () => {
     });
   });
 
+  it('distinguishes unset domain overrides from corrupted non-object root values', () => {
+    expect(
+      resolveDomainEffectiveConfig({
+        domain: 'security',
+        overrides: undefined,
+        options: { strict: false }
+      }).checkExternalFile
+    ).toBe(false);
+
+    for (const corrupted of ['invalid-domain', ['unexpected-array'], null, 42]) {
+      expect(
+        parseDomainOverrides({
+          domain: 'security',
+          overrides: corrupted,
+          options: { strict: false }
+        })
+      ).toEqual(corrupted);
+      expect(
+        resolveDomainEffectiveConfig({
+          domain: 'security',
+          overrides: corrupted,
+          options: { strict: false }
+        })
+      ).toEqual(corrupted);
+    }
+  });
+
+  it('fills missing element defaults for sparse array items while retaining invalid fields', () => {
+    const site = resolveDomainEffectiveConfig({
+      domain: 'site',
+      overrides: {
+        navbarItems: [
+          { id: 'nav-1', name: 'Docs', url: 'https://docs.example.test' },
+          { id: 'nav-2', name: 'Broken', isActive: 'invalid-flag' }
+        ]
+      },
+      options: { strict: false }
+    });
+    expect(site.navbarItems).toEqual([
+      {
+        id: 'nav-1',
+        name: 'Docs',
+        avatar: '',
+        url: 'https://docs.example.test',
+        isActive: true
+      },
+      {
+        id: 'nav-2',
+        name: 'Broken',
+        avatar: '',
+        url: '',
+        isActive: 'invalid-flag'
+      }
+    ]);
+
+    const providers = resolveDomainEffectiveConfig({
+      domain: 'providers',
+      overrides: {
+        externalProviderWorkflowVariables: [{ key: 'EXT_KEY', name: 'External Key' }]
+      },
+      options: { strict: false }
+    });
+    expect(providers.externalProviderWorkflowVariables).toEqual([
+      {
+        key: 'EXT_KEY',
+        name: 'External Key',
+        intro: '',
+        url: '',
+        isOpen: true
+      }
+    ]);
+  });
+
   it('keeps valid sibling domains when a read contains wrong types without logging warnings', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     try {

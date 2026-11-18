@@ -139,8 +139,18 @@ export const formatDomainConfigForAdmin = <T extends SystemInstanceConfigDomainK
   edition: SystemInstanceConfigEdition
 ): AdminDomainConfigResult<T> => {
   const { domain } = result;
-  const overrides = markDomainSecrets(domain, result.overrides);
-  const effectiveConfig = markDomainSecrets(domain, result.effectiveConfig);
+  const isRecord = (value: unknown): value is Record<string, unknown> =>
+    typeof value === 'object' &&
+    value !== null &&
+    !Array.isArray(value) &&
+    !(value instanceof Date) &&
+    !(value instanceof RegExp);
+
+  // 根值损坏时运行期快照仍保留异常形态以触发安全拒绝；管理读取降级为可编辑空对象供管理员覆盖修复。
+  const overrides = isRecord(result.overrides) ? markDomainSecrets(domain, result.overrides) : {};
+  const effectiveConfig = isRecord(result.effectiveConfig)
+    ? markDomainSecrets(domain, result.effectiveConfig)
+    : markDomainSecrets(domain, getDomainDefaultConfig(domain));
 
   // Pro 也只暴露注册字段，避免已退役的兼容字段重新进入管理表单。
   return {
@@ -234,7 +244,7 @@ export const getDomainConfig = async <T extends SystemInstanceConfigDomainKey>(
   const doc = await MongoSystemInstanceConfig.findOne({ domain }).lean();
 
   const revision = doc?.revision ?? 0;
-  const overrides = decryptDomainSecrets(domain, doc?.overrides ?? {}) as DeepPartial<
+  const overrides = decryptDomainSecrets(domain, doc ? doc.overrides : {}) as DeepPartial<
     SystemInstanceConfigDomainMap[T]
   >;
   const effectiveConfig = resolveDomainEffectiveConfig({

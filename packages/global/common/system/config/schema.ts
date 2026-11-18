@@ -238,6 +238,52 @@ const pickKnownObjectFields = (
 };
 
 /**
+ * 生效配置合成时递归补齐数组元素与嵌套子对象上缺失的 Schema 默认值，
+ * 同时原样保留已存在的合法或异常字段值，不做整域抛错。
+ */
+const fillMissingFieldDefaults = (fieldSchema: z.ZodTypeAny, value: unknown): unknown => {
+  if (value === undefined) {
+    const defaultParsed = fieldSchema.safeParse(undefined);
+    return defaultParsed.success ? defaultParsed.data : undefined;
+  }
+  if (value === null) return null;
+
+  const inner = unwrapFieldSchema(fieldSchema);
+  const type = (inner as any)?.type ?? (inner as any)?._def?.type;
+
+  if (type === 'object') {
+    return isPlainRecord(value)
+      ? fillMissingObjectDefaults(inner as z.ZodObject<any>, value)
+      : value;
+  }
+
+  if (type === 'array') {
+    if (!Array.isArray(value)) return value;
+    const element =
+      (inner as any)?.element ?? (inner as any)?.def?.type ?? (inner as any)?._def?.type;
+    return element ? value.map((item) => fillMissingFieldDefaults(element, item)) : value;
+  }
+
+  return value;
+};
+
+const fillMissingObjectDefaults = (
+  schema: z.ZodObject<any>,
+  input: Record<string, unknown>
+): Record<string, unknown> => {
+  const shape = schema.shape;
+  const output: Record<string, unknown> = { ...input };
+  for (const key of Object.keys(shape)) {
+    const existing = Object.hasOwn(input, key) ? input[key] : undefined;
+    const filled = fillMissingFieldDefaults(shape[key], existing);
+    if (filled !== undefined) {
+      output[key] = filled;
+    }
+  }
+  return output;
+};
+
+/**
  * 获取指定 Domain 的完整内置默认配置。
  */
 export const getDomainDefaultConfig = <T extends SystemInstanceConfigDomainKey>(
@@ -250,7 +296,8 @@ export const getDomainDefaultConfig = <T extends SystemInstanceConfigDomainKey>(
 /**
  * 阶段 1 校验：校验提交的 overrides 形态与字段类型。
  * - 默认 strict 模式：拒绝未知字段与非法类型，用于 Admin 保存边界；
- * - strict: false 模式：仅按已知字段树剥离未知字段并保留原值，不做 Schema 校验。
+ * - strict: false 模式：未配置返回空对象，普通对象按已知字段树剥离未知键；
+ *   非普通对象的损坏根值原样保留，避免被当成合法空配置而关闭运行时安全限制。
  */
 export const parseDomainOverrides = <T extends SystemInstanceConfigDomainKey>({
   domain,
@@ -262,6 +309,12 @@ export const parseDomainOverrides = <T extends SystemInstanceConfigDomainKey>({
   options?: { strict?: boolean };
 }): DeepPartial<SystemInstanceConfigDomainMap[T]> => {
   if (options?.strict === false) {
+    if (overrides === undefined) {
+      return {} as DeepPartial<SystemInstanceConfigDomainMap[T]>;
+    }
+    if (!isPlainRecord(overrides)) {
+      return structuredClone(overrides) as DeepPartial<SystemInstanceConfigDomainMap[T]>;
+    }
     return pickKnownObjectFields(
       systemInstanceConfigDomainBaseSchemaMap[domain],
       overrides
@@ -274,7 +327,7 @@ export const parseDomainOverrides = <T extends SystemInstanceConfigDomainKey>({
 
 /**
  * 合成单个 Domain 的生效配置：
- * - strict: false（启动/轮询/读取）：剥离未知字段并合并默认值，不做 Schema 校验；
+ * - strict: false（启动/轮询/读取）：剥离未知字段并合并默认值（含数组元素默认字段），保留损坏根值；
  * - 默认 strict（保存边界）：严格校验 overrides 形态及合并后的完整 DomainSchema。
  */
 export const resolveDomainEffectiveConfig = <T extends SystemInstanceConfigDomainKey>({
@@ -290,7 +343,11 @@ export const resolveDomainEffectiveConfig = <T extends SystemInstanceConfigDomai
   const parsedOverrides = parseDomainOverrides({ domain, overrides, options });
   const merged = deepMergeConfig(defaultValues, parsedOverrides);
   if (options?.strict === false) {
-    return merged as SystemInstanceConfigDomainMap[T];
+    return (
+      isPlainRecord(merged)
+        ? fillMissingObjectDefaults(systemInstanceConfigDomainBaseSchemaMap[domain], merged)
+        : merged
+    ) as SystemInstanceConfigDomainMap[T];
   }
   return systemInstanceConfigDomainSchemaMap[domain].parse(
     merged

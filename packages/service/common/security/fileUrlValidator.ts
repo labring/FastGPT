@@ -42,7 +42,9 @@ const getSystemWhiteList = () => {
 /** 校验外链域名准入；仅明确关闭或合法空名单时不限域名，异常配置及校验失败一律拒绝。 */
 export const validateFileUrlDomain = (url: string): boolean => {
   try {
-    const { checkExternalFile, fileUrlWhitelist } = getSystemInstanceConfig().security;
+    const security = getSystemInstanceConfig().security;
+    const checkExternalFile = security?.checkExternalFile;
+    const fileUrlWhitelist = security?.fileUrlWhitelist;
     logInstanceConfigRead({
       callsite: 'runtime.common.security.fileUrlValidator',
       source: 'instance-config',
