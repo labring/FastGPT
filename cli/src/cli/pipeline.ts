@@ -46,6 +46,7 @@ export type CliCommandSpec = {
   readonly summary: string;
   readonly risk: CliRiskLevel;
   readonly authModes: readonly CliAuthModeRequirement[];
+  readonly skipAuth?: (options: Readonly<Record<string, unknown>>) => boolean;
   readonly positionalArgs?: readonly CommandPositionalMeta[];
   readonly options: readonly CommandOptionMeta[];
   readonly inputSchema?: z.ZodTypeAny;
@@ -192,7 +193,7 @@ export async function executeCommandWithPipeline({
   };
 
   const resolvedAuth: ResolvedAuthContext | undefined = await (async () => {
-    if (spec.authModes.includes('none')) {
+    if (spec.authModes.includes('none') || spec.skipAuth?.(rawOptions)) {
       return undefined;
     }
     const resolved = await resolveEffectiveAuth({
