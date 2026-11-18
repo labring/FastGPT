@@ -13,6 +13,7 @@ import type {
 import type {
   ConfirmTeamUploadPkgPluginBodyType,
   InstallTeamPluginFromUrlBodyType,
+  InstallTeamPluginFromUrlResponseType,
   UploadTeamPkgPluginResponseType
 } from '@fastgpt/global/openapi/core/plugin/team/pkg/api';
 
@@ -37,4 +38,4 @@ export const confirmTeamPkgPluginUpload = (data: ConfirmTeamUploadPkgPluginBodyT
   POST(`/core/plugin/team/pkg/confirm`, data);
 
 export const installTeamPluginWithUrl = (data: InstallTeamPluginFromUrlBodyType) =>
-  POST(`/core/plugin/team/pkg/installWithUrl`, data);
+  POST<InstallTeamPluginFromUrlResponseType>(`/core/plugin/team/pkg/installWithUrl`, data);
