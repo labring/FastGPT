@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { Types } from '@fastgpt/service/common/mongo';
 import { MongoSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/schema';
 import {
@@ -517,7 +518,9 @@ describe('migrateLegacyConfigScopes', () => {
         { type: validDomain, value: scopeValues[validDomain] },
         { type: domain, value }
       ]);
-      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const warn = vi
+        .spyOn(getLogger(LogCategories.SYSTEM.UPGRADE), 'warn')
+        .mockImplementation(() => {});
       try {
         await migrateLegacyConfigScopes();
         const targetDomain =
@@ -639,7 +642,10 @@ describe('verifyLegacyConfigScopes', () => {
         createdAt: new Date(),
         updatedAt: new Date()
       });
-      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      // commercial 使用跨端 resolver；其他 scope 使用服务端迁移校验器。
+      const warn = vi
+        .spyOn(domain === 'commercial' ? console : getLogger(LogCategories.SYSTEM.UPGRADE), 'warn')
+        .mockImplementation(() => {});
       try {
         await expect(verifyLegacyConfigScopes()).resolves.toBeUndefined();
         expect((await MongoSystemInstanceConfig.collection.findOne({ domain }))?.overrides).toEqual(
