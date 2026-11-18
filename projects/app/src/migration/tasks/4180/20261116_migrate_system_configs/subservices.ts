@@ -195,7 +195,7 @@ export const rehomeAgentSandboxProxy = async ({
       agentSandbox: { ...overrides.agentSandbox, proxy }
     };
 
-    // 整域验证完成后才能写入；错误不携带可能含凭据的源值或 Zod 原始 issue。
+    // 诊断整域保存约束后保留历史值；告警不携带可能含凭据的源值或 Zod 原始 issue。
     try {
       readMigrationDomainConfig({ domain: 'subservice', overrides: target });
     } catch {

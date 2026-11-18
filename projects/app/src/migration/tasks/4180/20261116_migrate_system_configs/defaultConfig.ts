@@ -23,7 +23,7 @@ export type DefaultConfigInitialization = {
 
 /**
  * 读取 App 工作目录下可选的首次初始化增量；文件缺失等价于没有自定义默认值。
- * 使用当前实例配置域格式，拒绝未知字段和非法值；错误只返回字段路径，不暴露凭据。
+ * 使用当前实例配置域格式；配置约束失败保留原值并告警，文件读取及 JSON 语法错误仍失败。
  * 调用方必须先确认业务域为空；Pro ENV 不属于文件可配置范围，也不影响首次导入。
  */
 export const readDefaultInstanceConfig = async (

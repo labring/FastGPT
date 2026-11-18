@@ -289,7 +289,7 @@ export const cleanupInstanceConfigDeprecatedFields = async ({
         : { explicitDefaultPaths: undefined, removedPathCount: 0 };
       const retryRemoved = retry.removedFieldCount + retryMarkers.removedPathCount;
       if (retryRemoved > 0 && retry.overrides) {
-        // 与首次路径一致：写回前完成清理校验（代理必填留待回填后终验）。
+        // 与首次路径一致：诊断保存约束但保留历史值，清理只删除已声明的废弃字段。
         try {
           readMigrationDomainConfig({ domain, overrides: retry.overrides });
         } catch (error) {
