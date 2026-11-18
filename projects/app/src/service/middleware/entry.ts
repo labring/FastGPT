@@ -1,5 +1,6 @@
 import { checkCsrf } from '@fastgpt/next/middle/csrf';
 import { withNextCors } from '@fastgpt/next/middle/cors';
+import { resolveAllowedOrigins } from '@fastgpt/global/common/system/config/security';
 import type { NextApiRequest, NextApiResponse } from '@fastgpt/next/type';
 import { createApiEntry, type ApiHandler } from '@fastgpt/service/common/http/entry';
 import { getSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/runtime';
@@ -44,14 +45,14 @@ export const NextAPI = (
       ]
     });
     // 未设置开关的旧 scope 继续沿用非空名单；显式关闭则保留名单但不限制跨域来源。
-    const allowedOrigins =
-      security.allowedOriginsEnabled !== false && security.allowedOrigins.length > 0
-        ? security.allowedOrigins
-        : undefined;
+    const allowedOrigins = resolveAllowedOrigins({
+      enabled: security.allowedOriginsEnabled,
+      origins: security.allowedOrigins
+    });
 
     await withNextCors({ req, res, allowedOrigins });
 
-    if (options.csrf !== false && security.csrfEnabled) {
+    if (options.csrf !== false && security.csrfEnabled !== false) {
       await checkCsrf({ req, res });
     }
   };
