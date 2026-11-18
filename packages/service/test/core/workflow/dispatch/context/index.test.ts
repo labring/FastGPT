@@ -1,3 +1,4 @@
+import { createDefaultInstanceConfig } from '@test/utils/instanceConfigSnapshot';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { Readable } from 'node:stream';
 import { axios } from '@fastgpt/service/common/api/axios';
@@ -384,15 +385,15 @@ describe('runWithDerivedWorkflowFileContext', () => {
 
   const prepare = () =>
     prepareWorkflowFileContext({ query: [], histories: [], scope, maxFileAmount: 20 });
-  let savedEnv: typeof global.systemEnv;
+  let savedEnv: typeof global.systemInstanceConfig;
   beforeEach(() => {
-    savedEnv = global.systemEnv;
-    global.systemEnv = { ...savedEnv, fileUrlWhitelist: [] };
+    savedEnv = global.systemInstanceConfig;
+    global.systemInstanceConfig = createDefaultInstanceConfig();
     vi.spyOn(axios, 'head').mockResolvedValue({ headers: { 'content-type': 'image/png' } });
     vi.spyOn(axios, 'get').mockResolvedValue({ headers: {}, data: Readable.from([]) });
   });
   afterEach(() => {
-    global.systemEnv = savedEnv;
+    global.systemInstanceConfig = savedEnv;
     vi.restoreAllMocks();
   });
   it.each(['replace', 'inherit'])('空文件 Context 中资源快照可替换或继承（%s）', async (mode) => {

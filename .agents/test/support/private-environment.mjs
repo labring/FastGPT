@@ -263,11 +263,7 @@ export async function startPrivateEnvironment({
       // 上传和预览链接必须回到本轮主站，不能沿用共享 Dev 的 3000 端口。
       FE_DOMAIN: `http://127.0.0.1:${port}`,
       AGENT_USERS: '',
-      SYNC_INDEX: 'false',
-      STREAM_RESUME_TTL_SECONDS: '30',
-      STREAM_RESUME_POST_COMPLETE_TTL_SECONDS: '4',
-      STREAM_RESUME_REDIS_MEMORY_CHECK_INTERVAL_MS: '20',
-      STREAM_RESUME_REDIS_MAXMEMORY_RATIO: '0.5'
+      SYNC_INDEX: 'false'
     };
     const env = {
       ...process.env,
@@ -583,7 +579,8 @@ export async function startPrivateEnvironment({
         serviceEnvFileEnv: 'FASTGPT_TEST_SERVICE_ENV',
         controlUrl: `http://127.0.0.1:${control.address().port}`
       },
-      stream: { prefixPieces: 55, postCompleteTtl: 4, streamTtl: 30 },
+      // 主站续流使用固定策略；验收完成后的 30 秒窗口，不再通过环境变量缩短它。
+      stream: { prefixPieces: 55, postCompleteTtl: 30, streamTtl: 300 },
       history: {
         appId: apps.history,
         switchAppId: apps.historySwitch,

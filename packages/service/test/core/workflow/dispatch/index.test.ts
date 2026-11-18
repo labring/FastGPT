@@ -21,7 +21,6 @@ import {
   runWorkflow as runWorkflowWithoutContext
 } from '@fastgpt/service/core/workflow/dispatch/index';
 import { WorkflowQueue } from '@fastgpt/service/core/workflow/dispatch/queue';
-import { WORKFLOW_MAX_RUN_TIMES } from '@fastgpt/service/core/workflow/constants';
 import { getWorkflowNodeRunParams } from '@fastgpt/service/core/workflow/dispatch/utils/runtime';
 import { createClientAbortTracker } from '@fastgpt/service/core/workflow/dispatch/utils/clientAbort';
 import { getWorkflowResponseWrite } from '@fastgpt/service/core/workflow/dispatch/utils';
@@ -127,7 +126,6 @@ describe('runWorkflow instance execution budget', () => {
           chatConfig: {},
           runtimeNodes: nodes,
           runtimeEdges: [createEdge('first', 'second'), createEdge('second', 'third')],
-          
           externalProvider: {},
           workflowDispatchDeep: 0,
           maxRunTimes: getWorkflowMaxRunTimes(),
@@ -422,7 +420,7 @@ describe('dispatchWorkFlow entry context isolation', () => {
       expect(contextRun).toHaveBeenCalledTimes(2);
       expect(runtimeControls[0]).toMatchObject({
         mode: 'test',
-        maxRunTimes: WORKFLOW_MAX_RUN_TIMES,
+        maxRunTimes: getWorkflowMaxRunTimes(),
         workflowDispatchDeep: 1,
         isToolCall: false
       });

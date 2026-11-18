@@ -212,7 +212,7 @@ describe('createWorkflowStreamResponseContext', () => {
     await vi.advanceTimersByTimeAsync(STREAM_RESUME_MIRROR_KEEPALIVE_INTERVAL_MS);
     expect(redis.expire).toHaveBeenCalledWith(
       `${FASTGPT_REDIS_PREFIX}${keys.keyOfStream}`,
-      STREAM_RESUME_TTL_SECONDS
+      streamResume.getStreamResumeTtlSeconds()
     );
 
     context.responseWrite(workflowSseEvent.done(SseResponseEventEnum.answer));

@@ -39,7 +39,7 @@ import type { WorkflowResourceContext } from '@fastgpt/global/core/workflow/runt
 import { WorkflowQueue } from './queue';
 import type { WorkflowRuntimeControl } from './context';
 import type { WorkflowResponseType } from '@fastgpt/global/core/workflow/runtime/sse';
-import { WORKFLOW_MAX_RUN_TIMES } from '../constants';
+import { getWorkflowMaxRunTimes } from '../constants';
 import { checkEntryModeration, consumeEntryModerationChecked } from '../../plugin/moderation/entry';
 
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.DISPATCH);
@@ -271,7 +271,7 @@ export async function dispatchWorkFlow({
       {
         runtimeControl: {
           mode,
-          maxRunTimes: WORKFLOW_MAX_RUN_TIMES,
+          maxRunTimes: getWorkflowMaxRunTimes(),
           workflowDispatchDeep: 0,
           isToolCall: false
         },

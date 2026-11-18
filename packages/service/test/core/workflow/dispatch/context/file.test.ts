@@ -56,15 +56,15 @@ const createHistory = (file: UserChatItemValueItemType): ChatItemMiniType => ({
 });
 
 describe('WorkflowFileContext 文件操作', () => {
-  let originalSystemEnv: typeof global.systemEnv;
+  let originalSystemEnv: typeof global.systemInstanceConfig;
   beforeEach(() => {
-    originalSystemEnv = global.systemEnv;
-    global.systemEnv = { ...originalSystemEnv, fileUrlWhitelist: [] };
+    originalSystemEnv = global.systemInstanceConfig;
+    global.systemInstanceConfig = createDefaultInstanceConfig();
     axiosGetMock.mockReset();
     axiosHeadMock.mockReset();
   });
   afterEach(() => {
-    global.systemEnv = originalSystemEnv;
+    global.systemInstanceConfig = originalSystemEnv;
     vi.restoreAllMocks();
   });
 
@@ -189,7 +189,8 @@ describe('WorkflowFileContext 文件操作', () => {
       scope,
       maxFileAmount: 2
     });
-    global.systemEnv.fileUrlWhitelist = ['allowed.example.com'];
+    getTestInstanceConfig().security.checkExternalFile = true;
+    getTestInstanceConfig().security.fileUrlWhitelist = ['allowed.example.com'];
     await expect(
       fileContext.prepareFiles({ files: [{ url: 'https://blocked.example.com/a.pdf' }] })
     ).rejects.toThrow('Invalid file URL domain');
