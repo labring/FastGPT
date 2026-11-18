@@ -326,6 +326,8 @@ describe('dispatchWorkFlow entry context isolation', () => {
     const variableValues: unknown[] = [];
     const responseScopes: ReturnType<typeof getWorkflowContext>['nodeResponseSink'][] = [];
     const runtimeControls: ReturnType<typeof getWorkflowContext>['runtimeControl'][] = [];
+    const previousConfig = global.systemInstanceConfig;
+    const entryBudget = stream ? 2 : 3;
     const contextRun = vi.spyOn(WorkflowContext, 'run');
     const responseSinkFactory = vi.spyOn(
       WorkflowNodeResponse,
@@ -346,6 +348,9 @@ describe('dispatchWorkFlow entry context isolation', () => {
     });
 
     try {
+      global.systemInstanceConfig = resolveSystemInstanceConfig({
+        performance: { workflow: { maxRunTimes: entryBudget } }
+      });
       const result = await dispatchWorkFlow({
         req: req as any,
         res: res as any,
@@ -420,7 +425,7 @@ describe('dispatchWorkFlow entry context isolation', () => {
       expect(contextRun).toHaveBeenCalledTimes(2);
       expect(runtimeControls[0]).toMatchObject({
         mode: 'test',
-        maxRunTimes: getWorkflowMaxRunTimes(),
+        maxRunTimes: entryBudget,
         workflowDispatchDeep: 1,
         isToolCall: false
       });
@@ -443,6 +448,7 @@ describe('dispatchWorkFlow entry context isolation', () => {
       );
       expect(res.setHeader).toHaveBeenCalledTimes(stream ? 5 : 0);
     } finally {
+      global.systemInstanceConfig = previousConfig;
       activeSpan.mockRestore();
       responseSinkFactory.mockRestore();
       contextRun.mockRestore();
