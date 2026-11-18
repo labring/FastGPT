@@ -85,15 +85,26 @@ vi.unmock(import('@fastgpt/service/common/mongo/sessionRun'));
 const originalDatasetSynonymEnabled = serviceEnv.DATASET_SYNONYM_ENABLED;
 const originalMultipleDataToBase64 = getTestInstanceConfig().feature.multipleDataToBase64;
 
-const { mockDeleteDatasetFileByKey, mockGetDatasetBase64Image, mockCountPromptTokens } = vi.hoisted(
-  () => ({
-    mockDeleteDatasetFileByKey: vi.fn(),
-    mockGetDatasetBase64Image: vi.fn(
-      async (imageUrl: string) => `data:image/png;base64,${imageUrl}`
-    ),
-    mockCountPromptTokens: vi.fn(async (text: string) => text.length)
-  })
-);
+const {
+  mockDeleteDatasetFileByKey,
+  mockGetDatasetBase64Image,
+  mockCountPromptTokens,
+  mockPushCollectionUpdateJob
+} = vi.hoisted(() => ({
+  mockDeleteDatasetFileByKey: vi.fn(),
+  mockGetDatasetBase64Image: vi.fn(async (imageUrl: string) => `data:image/png;base64,${imageUrl}`),
+  mockCountPromptTokens: vi.fn(async (text: string) => text.length),
+  mockPushCollectionUpdateJob: vi.fn()
+}));
+
+vi.mock('@fastgpt/service/core/dataset/collection/mq', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@fastgpt/service/core/dataset/collection/mq')>();
+  return {
+    ...actual,
+    pushCollectionUpdateJob: mockPushCollectionUpdateJob
+  };
+});
 
 vi.mock('@fastgpt/service/common/s3/sources/dataset', () => ({
   getS3DatasetSource: vi.fn(() => ({
@@ -223,6 +234,7 @@ describe('Dataset data service', () => {
     mockDeleteDatasetFileByKey.mockReset();
     mockGetDatasetBase64Image.mockClear();
     mockCountPromptTokens.mockClear();
+    mockPushCollectionUpdateJob.mockClear();
     mockGetVectors.mockImplementation(async ({ inputs }) =>
       createMockVectorsResponse(inputs.map((input) => input.input))
     );
@@ -1249,6 +1261,105 @@ describe('Dataset data service', () => {
         );
       }
     });
+
+    it('keeps updateTime when synonym rebuild rewrites no index', async () => {
+      const { data } = await createSynonymRebuildData({
+        previousVersion: 1,
+        currentTerm: '返款'
+      });
+      const oldUpdateTime = new Date('2024-01-01T00:00:00.000Z');
+      await MongoDatasetData.updateOne({ _id: data._id }, { $set: { updateTime: oldUpdateTime } });
+
+      await rebuildDatasetDataIndexes({
+        dataId: String(data._id),
+        model: visionEmbeddingModel,
+        diffSynonym: true
+      });
+
+      const updated = await MongoDatasetData.findById(data._id).lean();
+      expect(updated?.synonymVersion).toBe(2);
+      expect(updated?.updateTime).toEqual(oldUpdateTime);
+      expect(mockPushCollectionUpdateJob).not.toHaveBeenCalled();
+    });
+
+    it('refreshes updateTime and collection stats when synonym rebuild rewrites indexes', async () => {
+      const { data } = await createSynonymRebuildData({ previousVersion: 1 });
+      const oldUpdateTime = new Date('2024-01-01T00:00:00.000Z');
+      await MongoDatasetData.updateOne({ _id: data._id }, { $set: { updateTime: oldUpdateTime } });
+
+      await rebuildDatasetDataIndexes({
+        dataId: String(data._id),
+        model: visionEmbeddingModel,
+        diffSynonym: true
+      });
+
+      const updated = await MongoDatasetData.findById(data._id).lean();
+      expect(updated?.updateTime.getTime()).toBeGreaterThan(oldUpdateTime.getTime());
+      expect(mockPushCollectionUpdateJob).toHaveBeenCalledExactlyOnceWith({
+        collectionId: String(data.collectionId),
+        datasetId: String(data.datasetId),
+        teamId: String(data.teamId)
+      });
+    });
+
+    it.each([
+      { name: 'recorded empty vocabulary version', recordEmpty: true, unchanged: true },
+      { name: 'unknown historical snapshot', recordEmpty: false, unchanged: false }
+    ])(
+      'diffs rebuilds against an empty word-list version: $name',
+      async ({ recordEmpty, unchanged }) => {
+        const { root, dataset, data } = await createMongoData({
+          q: 'stable text',
+          indexes: [
+            { type: DatasetDataIndexTypeEnum.default, text: '稳定文本', dataId: 'old_stable' }
+          ]
+        });
+        const config = await MongoDatasetSynonym.create({
+          teamId: root.teamId,
+          datasetId: dataset._id,
+          version: 3,
+          enabled: true,
+          schemaVersion: DatasetSynonymSchemaVersion,
+          // 版本 2 是删除词表后形成的空版本
+          ...(recordEmpty ? { emptyVersions: [2] } : {})
+        });
+        await MongoDatasetSynonymMapping.create({
+          logicalMappingId: new Types.ObjectId(),
+          teamId: root.teamId,
+          datasetId: dataset._id,
+          synonymFileId: config._id,
+          fileVersion: 3,
+          standardizedTerm: '新标准词',
+          normalizedStandardizedTerm: '新标准词',
+          synonymTerms: ['新别名'],
+          normalizedSynonymTerms: ['新别名'],
+          allTerms: '新标准词 新别名',
+          fingerprint: '新标准词:新别名'
+        });
+        const oldUpdateTime = new Date('2024-01-01T00:00:00.000Z');
+        await MongoDatasetData.updateOne(
+          { _id: data._id },
+          { $set: { synonymVersion: 2, updateTime: oldUpdateTime } }
+        );
+
+        await rebuildDatasetDataIndexes({
+          dataId: String(data._id),
+          model: visionEmbeddingModel,
+          diffSynonym: true
+        });
+
+        const updated = await MongoDatasetData.findById(data._id).lean();
+        expect(updated?.synonymVersion).toBe(3);
+        if (unchanged) {
+          expect(updated?.updateTime).toEqual(oldUpdateTime);
+          expect(updated?.indexes.map((index) => index.dataId)).toEqual(['old_stable']);
+          expect(mockVectorInsert).not.toHaveBeenCalled();
+        } else {
+          expect(updated?.updateTime.getTime()).toBeGreaterThan(oldUpdateTime.getTime());
+          expect(updated?.indexes.map((index) => index.dataId)).toEqual(['id_1']);
+        }
+      }
+    );
 
     it.each([
       { name: 'existing legacy body tokens', storedText: 'old question\nold answer' },

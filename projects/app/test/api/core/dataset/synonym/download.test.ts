@@ -27,21 +27,21 @@ const datasetId = '68ee0bd23d17260b7829b134';
 describe('dataset synonym download API', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockConfigLean.mockResolvedValue({
-      _id: synonymId,
-      teamId,
-      datasetId,
-      version: 1,
-      enabled: true,
-      fileName: 'legacy.xlsx'
-    });
     mockAuthDataset.mockResolvedValue({ teamId });
     mockGetDatasetSynonymMappings.mockResolvedValue([
       { standardizedTerm: '退款', synonymTerms: ['退,款'] }
     ]);
   });
 
-  it('generates normalized CSV from active Mongo mappings', async () => {
+  it('generates normalized CSV from active Mongo mappings (csv 配置)', async () => {
+    mockConfigLean.mockResolvedValue({
+      _id: synonymId,
+      teamId,
+      datasetId,
+      version: 1,
+      enabled: true,
+      fileName: 'legacy.csv'
+    });
     const res = { setHeader: vi.fn(), end: vi.fn() } as any;
     await downloadHandler({ query: { id: synonymId } } as any, res);
 
@@ -54,6 +54,35 @@ describe('dataset synonym download API', () => {
       'Content-Disposition',
       expect.stringContaining('legacy.csv')
     );
-    expect(res.end).toHaveBeenCalledWith('\uFEFF标准术语,同义词\r\n退款,"退,款"\r\n');
+    // serializeSynonymMappingsToFile 返回 Buffer，内容与旧 CSV 行为逐字节一致
+    const body = vi.mocked(res.end).mock.calls[0][0] as Buffer;
+    expect(body.toString('utf8')).toBe('﻿标准术语,同义词\r\n退款,"退,款"\r\n');
+  });
+
+  // 下载格式跟随上传格式：xlsx 配置回重新生成的工作簿（不再是强制 CSV）。
+  it('regenerates an xlsx workbook when the config was uploaded as xlsx', async () => {
+    mockConfigLean.mockResolvedValue({
+      _id: synonymId,
+      teamId,
+      datasetId,
+      version: 1,
+      enabled: true,
+      fileName: 'legacy.xlsx'
+    });
+    const res = { setHeader: vi.fn(), end: vi.fn() } as any;
+    await downloadHandler({ query: { id: synonymId } } as any, res);
+
+    expect(res.setHeader).toHaveBeenCalledWith(
+      'Content-Disposition',
+      expect.stringContaining('legacy.xlsx')
+    );
+    expect(res.setHeader).toHaveBeenCalledWith(
+      'Content-Type',
+      expect.stringContaining('spreadsheetml')
+    );
+    const buffer = vi.mocked(res.end).mock.calls[0][0] as Buffer;
+    // sheetjs 产物为 zip 容器（PK 头），且非空
+    expect(buffer.length).toBeGreaterThan(0);
+    expect(buffer.subarray(0, 2).toString('latin1')).toBe('PK');
   });
 });
