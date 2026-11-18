@@ -39,6 +39,7 @@ const getSystemWhiteList = () => {
   return list;
 };
 
+/** 校验外链域名准入；仅明确关闭或合法空名单时不限域名，异常配置及校验失败一律拒绝。 */
 export const validateFileUrlDomain = (url: string): boolean => {
   try {
     const { checkExternalFile, fileUrlWhitelist } = getSystemInstanceConfig().security;
@@ -57,8 +58,12 @@ export const validateFileUrlDomain = (url: string): boolean => {
       ]
     });
 
-    // 关闭时保留已保存名单但不执行域名限制；开启后空名单仍表示不限域名。
-    if (!checkExternalFile || fileUrlWhitelist.length === 0) {
+    // 宽容读取可能保留错误类型；不能把损坏的开关或名单解释为关闭限制。
+    if (checkExternalFile === false) return true;
+    if (checkExternalFile !== true || !Array.isArray(fileUrlWhitelist)) return false;
+
+    // 合法空名单沿用不限域名语义，不能用对象伪造的 length: 0 触发此分支。
+    if (fileUrlWhitelist.length === 0) {
       return true;
     }
 
@@ -77,6 +82,6 @@ export const validateFileUrlDomain = (url: string): boolean => {
 
     return true;
   } catch {
-    return true;
+    return false;
   }
 };
