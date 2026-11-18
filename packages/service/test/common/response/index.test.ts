@@ -268,6 +268,19 @@ describe('processError HTTP status mapping', () => {
     expect(processed.code).toBe(507002);
     expect(processed.httpStatus).toBe(404);
   });
+
+  it('returns HTTP 403 with the existing business code for unauthorized files', () => {
+    const res = { status: vi.fn().mockReturnThis(), json: vi.fn() };
+    jsonRes(res as unknown as Parameters<typeof jsonRes>[0], {
+      code: 403,
+      error: CommonErrEnum.unAuthFile
+    });
+
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ code: 507003, statusText: CommonErrEnum.unAuthFile })
+    );
+  });
 });
 
 describe('jsonRes HTTP status mapping', () => {
