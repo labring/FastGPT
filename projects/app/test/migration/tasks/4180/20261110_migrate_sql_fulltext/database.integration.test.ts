@@ -8,9 +8,11 @@ import type { SqlFullTextProvider } from '@fastgpt/global/core/dataset/fullText/
 const target = vi.hoisted(() => {
   const provider = process.env.FASTGPT_SQL_FULLTEXT_TEST_PROVIDER;
   const address = process.env.FASTGPT_SQL_FULLTEXT_TEST_URL;
-  if (!provider && !address) return;
+  const legacyPg = process.env.FASTGPT_SQL_FULLTEXT_TEST_LEGACY_PG === 'true';
+  if (!provider && !address && !legacyPg) return;
   if (!provider || !address || !['pg', 'oceanbase', 'seekdb', 'opengauss'].includes(provider))
     throw new Error('Specify a supported SQL full-text provider and its isolated test URL');
+  if (legacyPg && provider !== 'pg') throw new Error('The legacy image test requires PostgreSQL');
   const url = new URL(address);
   if (
     !['127.0.0.1', 'localhost', '[::1]'].includes(url.hostname) ||
@@ -31,6 +33,7 @@ const target = vi.hoisted(() => {
     provider: provider as SqlFullTextProvider,
     address,
     isMysql,
+    legacyPg,
     name: `fulltext_test_${provider}_${process.pid}_${Date.now()}`
   };
 });
@@ -193,7 +196,56 @@ describe.skipIf(!target)('selected SQL database real full-text migration', () =>
     await pgAdmin?.end();
   });
 
-  it('keeps Mongo reads and dual writes through a paused migration and switches reads and writes only after flag removal', async () => {
+  it.runIf(target?.legacyPg)(
+    'keeps Mongo full text available on the legacy PG image without pg_search',
+    async () => {
+      expect(
+        await query(
+          "SELECT EXISTS (SELECT 1 FROM pg_available_extensions WHERE name = 'pg_search') AS available"
+        )
+      ).toEqual([{ available: false }]);
+      await initVectorStore();
+      await ensureMigrationStates(
+        systemMigrations.filter((m) => m.id === '20261110_migrate_sql_fulltext')
+      );
+      await runner.tick();
+      expect(
+        await MongoSystemMigrationState.findById('20261110_migrate_sql_fulltext').lean()
+      ).toMatchObject({ status: 'waiting' });
+      const operation = new DatasetDataOperation(model);
+      const store = getFullTextStore();
+      const createAndSearch = async (term: string) => {
+        const row = await operation.create({
+          teamId,
+          datasetId,
+          collectionId,
+          tmbId: new Types.ObjectId().toString(),
+          q: term,
+          a: '',
+          embeddingModel: model
+        });
+        expect((await store.search(props(term))).map(({ dataId }) => dataId)).toEqual([
+          String(row.insertId)
+        ]);
+        expect(
+          await query('SELECT id FROM modeldata WHERE fulltext_tokens = $1', [term])
+        ).toHaveLength(1);
+      };
+      await createAndSearch('legacywaitingproof');
+
+      await enqueueManualMigration('20261110_migrate_sql_fulltext');
+      await runner.tick();
+      expect(
+        await MongoSystemMigrationState.findById('20261110_migrate_sql_fulltext').lean()
+      ).toMatchObject({ status: 'failed', lastError: { stageKey: 'prepare' } });
+      await createAndSearch('legacyfailedproof');
+    }
+  );
+
+  it('keeps Mongo reads and dual writes through a paused migration and switches reads and writes only after flag removal', async ({
+    skip
+  }) => {
+    if (target?.legacyPg) return skip();
     const examples = [
       ['南京市长江大桥通行指南', '长江大桥'],
       ['FastGPT authentication token', 'authentication'],

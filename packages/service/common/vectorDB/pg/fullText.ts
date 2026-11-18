@@ -80,20 +80,75 @@ $fulltext$`;
  * 手动迁移准备列、物理目标和索引。用会话级锁串行化跨节点准备，
  * 列 DDL 独立提交后再在线建索引，避免建索引时持有表排他锁。
  */
-export const preparePgFullText = async (): Promise<SqlFullTextMetadata> => {
+export const preparePgFullText = async ({
+  signal
+}: { signal?: AbortSignal } = {}): Promise<SqlFullTextMetadata> => {
+  signal?.throwIfAborted();
   // 独立会话沿用目标库配置，避免连接池的短查询超时中断大型索引构建。
   const { options } = await connectPg();
+  signal?.throwIfAborted();
+  const connection = { ...options, password: options.password };
   const client = new Client({
-    ...options,
+    ...connection,
     application_name: 'fastgpt-pg-fulltext-prepare',
     query_timeout: 0,
     statement_timeout: 0
   });
-  client.on('error', (error) =>
-    logger.warn('PG full-text preparation connection failed', { error })
-  );
+  client.on('error', (error) => {
+    if (!signal?.aborted) logger.warn('PG full-text preparation connection failed', { error });
+  });
+  let backend: { pid: number; startedAt: string } | undefined;
+  let closing: Promise<void> | undefined;
+  const close = () =>
+    (closing ??= (async () => {
+      try {
+        if (signal?.aborted && backend) {
+          // 仅终止本轮 DDL 会话。独立短连接等待服务端释放锁，PID 和启动时间必须同时匹配。
+          const control = new Client({
+            ...connection,
+            connectionTimeoutMillis: 3000,
+            query_timeout: 5000,
+            statement_timeout: 4000
+          });
+          control.on('error', (error) =>
+            logger.warn('PG full-text cancellation connection failed', { error })
+          );
+          try {
+            await control.connect();
+            const {
+              rows: [result]
+            } = await control.query<{ terminated: boolean }>(
+              `SELECT pg_terminate_backend(pid, 3000) AS terminated
+               FROM pg_stat_activity WHERE pid = $1 AND backend_start = $2::timestamptz`,
+              [backend.pid, backend.startedAt]
+            );
+            if (result?.terminated === false)
+              logger.warn('PG full-text preparation backend did not exit in time');
+          } finally {
+            await control.end();
+          }
+        }
+      } finally {
+        await client.end();
+      }
+    })().catch((error) => logger.warn('PG full-text preparation could not close', { error })));
+  const abort = () => void close();
+  const executeDdl = async (sql: string, values?: unknown[]) => {
+    signal?.throwIfAborted();
+    await client.query(sql, values);
+  };
+  signal?.addEventListener('abort', abort, { once: true });
   try {
     await client.connect();
+    signal?.throwIfAborted();
+    if (signal) {
+      const { rows } = await client.query<{ pid: number; startedAt: string }>(
+        `SELECT pg_backend_pid() AS pid, backend_start::text AS "startedAt"
+         FROM pg_stat_activity WHERE pid = pg_backend_pid()`
+      );
+      backend = rows[0];
+      signal.throwIfAborted();
+    }
     await client.query("SET lock_timeout = '5s'");
     await client.query('SELECT pg_advisory_lock(20261110, 1)');
     const version = await client.query<{ server_version_num: string }>('SHOW server_version_num');
@@ -103,7 +158,7 @@ export const preparePgFullText = async (): Promise<SqlFullTextMetadata> => {
         'PG full-text currently requires PostgreSQL 15.19+ within 15.x; verify the extension binary first'
       );
     }
-    await client.query('CREATE EXTENSION IF NOT EXISTS pg_search');
+    await executeDdl('CREATE EXTENSION IF NOT EXISTS pg_search');
     const extension = await client.query<{ extversion: string }>(
       "SELECT extversion FROM pg_extension WHERE extname = 'pg_search'"
     );
@@ -115,7 +170,7 @@ export const preparePgFullText = async (): Promise<SqlFullTextMetadata> => {
     );
     if (existingMetaTable.rows[0]?.regclass) {
       // 兼容曾创建过无结构版本字段的预览库，保留目标 ID 和词串签名。
-      await client.query(
+      await executeDdl(
         `ALTER TABLE ${metadataTable} ADD COLUMN IF NOT EXISTS schema_version INTEGER NOT NULL DEFAULT 1`
       );
       const existingMeta = await client.query(
@@ -129,11 +184,11 @@ export const preparePgFullText = async (): Promise<SqlFullTextMetadata> => {
       rows: [index]
     } = await client.query<PgFullTextIndex>(readIndexSql);
     if (index && !hasExpectedDefinition(index)) throw new Error(capabilityError);
-    await client.query(ensurePgFullTextColumnSql);
+    await executeDdl(ensurePgFullTextColumnSql);
     if (!index?.indisvalid) {
       // 并发建索引被中断时可能留下无效索引。仅重建同表、同名且定义完全匹配的索引。
-      if (index) await client.query(`DROP INDEX CONCURRENTLY ${indexName}`);
-      await client.query(`CREATE INDEX CONCURRENTLY IF NOT EXISTS ${indexName} ON ${DatasetVectorTableName}
+      if (index) await executeDdl(`DROP INDEX CONCURRENTLY ${indexName}`);
+      await executeDdl(`CREATE INDEX CONCURRENTLY IF NOT EXISTS ${indexName} ON ${DatasetVectorTableName}
         USING paradedb (id, (${column}::pdb.whitespace),
           (team_id::pdb.literal), (dataset_id::pdb.literal), (collection_id::pdb.literal))`);
     }
@@ -143,11 +198,11 @@ export const preparePgFullText = async (): Promise<SqlFullTextMetadata> => {
     if (!preparedIndex?.indisvalid || !hasExpectedDefinition(preparedIndex))
       throw new Error(capabilityError);
 
-    await client.query(`CREATE TABLE IF NOT EXISTS ${metadataTable} (
+    await executeDdl(`CREATE TABLE IF NOT EXISTS ${metadataTable} (
       singleton BOOLEAN PRIMARY KEY CHECK (singleton), target_id UUID NOT NULL,
       schema_version INTEGER NOT NULL, analyzer_version TEXT NOT NULL
     )`);
-    await client.query(
+    await executeDdl(
       `INSERT INTO ${metadataTable} (singleton, target_id, schema_version, analyzer_version)
       VALUES (true, $1, $2, $3)
       ON CONFLICT (singleton) DO NOTHING`,
@@ -157,10 +212,11 @@ export const preparePgFullText = async (): Promise<SqlFullTextMetadata> => {
       `SELECT target_id AS "targetId", schema_version AS "schemaVersion",
         analyzer_version AS "analyzerVersion" FROM ${metadataTable} WHERE singleton = true`
     );
+    signal?.throwIfAborted();
     return SqlFullTextMetadataSchema.parse(result.rows[0]);
   } finally {
-    // 关闭独立会话，同时释放 advisory lock。
-    await client.end();
+    signal?.removeEventListener('abort', abort);
+    await close();
   }
 };
 

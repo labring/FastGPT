@@ -25,7 +25,7 @@ export type SqlFullTextHit = { vectorId: string; collectionId: string; score: nu
 export type SqlFullTextAdapter = {
   provider: SqlFullTextProvider;
   /** 准备物理结构并核验能力后返回目标身份，失败不得返回可用元数据。 */
-  prepare: () => Promise<SqlFullTextMetadata>;
+  prepare: (options?: { signal?: AbortSignal }) => Promise<SqlFullTextMetadata>;
   assertCapability: () => Promise<void>;
   getMetadata: () => Promise<SqlFullTextMetadata>;
   fill: (rows: SqlFullTextRow[], validateOnly?: boolean) => Promise<string[]>;

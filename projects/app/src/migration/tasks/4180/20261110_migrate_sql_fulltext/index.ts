@@ -68,7 +68,7 @@ export const migrateSqlFullTextMigration = async (
   await context.reportProgress({ key: 'prepare', status: SystemMigrationStatusEnum.running });
   const adapter = getSqlFullTextAdapter();
   await clearSqlFullTextTargetReady(adapter.provider);
-  const metadata = await adapter.prepare();
+  const metadata = await adapter.prepare({ signal: context.signal });
   await context.reportProgress({ key: 'prepare', status: SystemMigrationStatusEnum.succeeded });
 
   // 2. 断点只能在相同物理目标、结构版本及分词规则下恢复。

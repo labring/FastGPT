@@ -52,15 +52,17 @@ export const getSqlFullTextAdapter = (
       };
     return new OceanBaseFullTextAdapter(provider);
   })();
-  // 同一目标共享当次准备 Promise，避免本进程重复 DDL。
-  const prepare = adapter.prepare.bind(adapter);
-  let preparing: ReturnType<SqlFullTextAdapter['prepare']> | undefined;
-  adapter.prepare = () => {
-    preparing ??= prepare().finally(() => {
-      preparing = undefined;
-    });
-    return preparing;
-  };
+  if (provider !== 'pg') {
+    // 共用后台准备任务。PG 用 SQL 会话锁串行化，并各自响应本轮迁移的中止信号。
+    const prepare = adapter.prepare.bind(adapter);
+    let preparing: ReturnType<SqlFullTextAdapter['prepare']> | undefined;
+    adapter.prepare = () => {
+      preparing ??= prepare().finally(() => {
+        preparing = undefined;
+      });
+      return preparing;
+    };
+  }
   adapters.set(provider, adapter);
   return adapter;
 };

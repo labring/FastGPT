@@ -43,7 +43,7 @@ beforeEach(() => {
 });
 
 describe('getSqlFullTextAdapter', () => {
-  it.each(['pg', 'opengauss', 'oceanbase', 'seekdb'] as const)(
+  it.each(['opengauss', 'oceanbase', 'seekdb'] as const)(
     'shares an in-flight %s preparation, then permits revalidation',
     async (provider) => {
       const adapter = getSqlFullTextAdapter(provider);
@@ -63,6 +63,14 @@ describe('getSqlFullTextAdapter', () => {
       expect(mocks.prepare).toHaveBeenCalledTimes(2);
     }
   );
+
+  it('gives each PG preparation its own cancellation signal', async () => {
+    const adapter = getSqlFullTextAdapter('pg');
+    const first = { signal: new AbortController().signal };
+    const second = { signal: new AbortController().signal };
+    await Promise.all([adapter.prepare(first), adapter.prepare(second)]);
+    expect(mocks.prepare.mock.calls).toEqual([[first], [second]]);
+  });
 
   it('uses the configured provider by default and rejects Milvus', () => {
     expect(getSqlFullTextAdapter()).toBe(getSqlFullTextAdapter('pg'));

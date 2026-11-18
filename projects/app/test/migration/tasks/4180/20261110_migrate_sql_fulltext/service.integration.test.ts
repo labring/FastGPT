@@ -743,20 +743,23 @@ describe.skipIf(!target)('PG full-text real migration', () => {
     await expect(preparePgFullText()).rejects.toThrow('supported configuration');
   });
 
-  it('builds PG full text only on manual preparation and recovers an interrupted online index', async () => {
+  it('stops an online index build when the Runner stops and lets another Runner recover', async () => {
     await ctrl.init();
     const readIndex = () =>
       pool.query<{ indisvalid: boolean }>(
         "SELECT indisvalid FROM pg_index WHERE indexrelid = to_regclass('modeldata_fulltext')"
       );
     expect((await readIndex()).rows).toEqual([]);
+    const migrations = systemMigrations.filter((m) => m.id === '20261110_migrate_sql_fulltext');
+    await ensureMigrationStates(migrations);
+    await enqueueManualMigration('20261110_migrate_sql_fulltext');
+    const firstRunner = createSystemMigrationRunner({ migrations });
     const writer = await pool.connect();
-    let build: ReturnType<typeof preparePgFullText> | undefined;
+    let running: ReturnType<typeof firstRunner.tick> | undefined;
     try {
       await writer.query('BEGIN');
       await writer.query('LOCK TABLE modeldata IN ROW EXCLUSIVE MODE');
-      build = preparePgFullText();
-      void build.catch(() => {});
+      running = firstRunner.tick();
       const pid = await vi.waitFor(
         async () => {
           const { rows } = await pool.query<{ pid: number }>(
@@ -769,23 +772,38 @@ describe.skipIf(!target)('PG full-text real migration', () => {
         { timeout: 3000, interval: 25 }
       );
       expect((await readIndex()).rows).toEqual([{ indisvalid: false }]);
-      const inserted = await ctrl.insert({
-        teamId,
-        datasetId,
-        collectionId,
-        vectors: [vector],
-        texts: ['线上数据库']
-      });
+      const inserted = await seed('线上数据库', { native: true });
       expect((await snapshot()).map(({ id }) => id)).toEqual(inserted.insertIds);
-      await pool.query('SELECT pg_cancel_backend($1)', [pid]);
-      await expect(build).rejects.toMatchObject({ code: '57014' });
+      firstRunner.stop();
+      await running;
+      // 旧业务写事务仍持有锁。Runner 退出时，DDL 自己的服务端会话已释放。
+      expect(
+        (await pool.query('SELECT pid FROM pg_stat_activity WHERE pid = $1', [pid])).rows
+      ).toEqual([]);
+      expect(
+        await MongoSystemMigrationState.findById('20261110_migrate_sql_fulltext').lean()
+      ).toMatchObject({ status: 'running' });
     } finally {
+      firstRunner.stop();
       await writer.query('ROLLBACK');
       writer.release();
-      await build?.catch(() => {});
+      await running;
     }
     expect((await readIndex()).rows).toEqual([{ indisvalid: false }]);
-    await preparePgFullText();
+    // 推进旧 lease 的到期时间，模拟另一节点接管，无需测试实际等待完整 lease。
+    await MongoSystemMigrationState.updateOne(
+      { _id: '20261110_migrate_sql_fulltext', status: 'running' },
+      { $set: { leaseExpireAt: new Date(0) } }
+    );
+    const nextRunner = createSystemMigrationRunner({ migrations });
+    try {
+      await nextRunner.tick();
+      expect(
+        await MongoSystemMigrationState.findById('20261110_migrate_sql_fulltext').lean()
+      ).toMatchObject({ status: 'succeeded', result: { scanned: 1, validated: 1 } });
+    } finally {
+      nextRunner.stop();
+    }
     expect((await readIndex()).rows).toEqual([{ indisvalid: true }]);
     expect(await searchPgFullText(props('数据库'))).toHaveLength(1);
   });
