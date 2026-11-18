@@ -14,6 +14,7 @@ import {
   getQuoteTemplate,
   getQuotePrompt
 } from '@fastgpt/global/core/ai/prompt/AIChat';
+import { withSynonymQuoteTemplates } from '@fastgpt/global/core/ai/prompt/synonymQuote';
 import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
 import PromptTemplate from '@/components/PromptTemplate';
 import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
@@ -41,6 +42,7 @@ import MySelect from '@fastgpt/web/components/common/MySelect';
 import LightTip from '@fastgpt/web/components/common/LightTip';
 import { WorkflowActionsContext } from '@/pageComponents/app/detail/WorkflowComponents/context/workflowActionsContext';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 const LabelStyles: BoxProps = {
   fontSize: ['sm', 'md']
@@ -53,6 +55,10 @@ const selectTemplateBtn: BoxProps = {
 const EditModal = ({ onClose, ...props }: RenderInputProps & { onClose: () => void }) => {
   const { inputs = [], nodeId } = props;
   const { t } = useSafeTranslation();
+  // The backend exposes this capability through feConfigs; keep the editor gated by the same flag.
+  const datasetSynonymEnabled = useSystemStore(
+    (state) => state.feConfigs?.datasetSynonymEnabled === true
+  );
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
   const node = useContextSelector(WorkflowBufferDataContext, (v) => v.getNodeById(nodeId));
   const nodeVersion = node?.version;
@@ -71,6 +77,20 @@ const EditModal = ({ onClose, ...props }: RenderInputProps & { onClose: () => vo
   const aiChatQuotePrompt = watch('quotePrompt');
   const aiChatQuoteRole = watch('quoteRole');
   const { appDetail } = useContextSelector(AppContext, (v) => v);
+
+  const quoteTemplateList = useMemo(
+    () =>
+      withSynonymQuoteTemplates(Prompt_QuoteTemplateList, {
+        enabled: datasetSynonymEnabled,
+        content: true
+      }),
+    [datasetSynonymEnabled]
+  );
+
+  const defaultQuoteTemplate = useMemo(() => {
+    const template = quoteTemplateList[0]?.value;
+    return (template && (template[nodeVersion || '4.9.7'] || Object.values(template)[0])) || '';
+  }, [nodeVersion, quoteTemplateList]);
 
   const variables = useMemoEnhance(() => {
     const globalVariables = getWorkflowGlobalVariables({
@@ -124,9 +144,19 @@ const EditModal = ({ onClose, ...props }: RenderInputProps & { onClose: () => vo
         label: t('common:core.dataset.search.Quote index'),
         icon: 'core/app/simpleMode/variable'
       },
+      // Do not remove this field: it is the only way to insert synonym mappings into a custom quote template.
+      ...(datasetSynonymEnabled
+        ? [
+            {
+              key: 'synonymMappings',
+              label: 'synonymMappings',
+              icon: 'core/app/simpleMode/variable'
+            }
+          ]
+        : []),
       ...variables
     ],
-    [t, variables]
+    [datasetSynonymEnabled, t, variables]
   );
   const quotePromptVariables = useMemo(
     () => [
@@ -184,8 +214,16 @@ const EditModal = ({ onClose, ...props }: RenderInputProps & { onClose: () => vo
     [nodeId, onChangeNode, onClose]
   );
 
-  const quotePromptTemplates =
-    aiChatQuoteRole === 'user' ? Prompt_userQuotePromptList : Prompt_systemQuotePromptList;
+  // D2：quotePrompt 与 quoteTemplate 成对装饰——content: false 给提示词模板
+  // 追加词汇映射说明，约束模型只在本条引用内对齐术语。
+  const quotePromptTemplates = useMemo(
+    () =>
+      withSynonymQuoteTemplates(
+        aiChatQuoteRole === 'user' ? Prompt_userQuotePromptList : Prompt_systemQuotePromptList,
+        { enabled: datasetSynonymEnabled, content: false }
+      ),
+    [aiChatQuoteRole, datasetSynonymEnabled]
+  );
 
   return (
     <>
@@ -234,7 +272,7 @@ const EditModal = ({ onClose, ...props }: RenderInputProps & { onClose: () => vo
               <QuestionTip
                 ml={1}
                 label={t('workflow:quote_content_tip', {
-                  default: getQuoteTemplate(nodeVersion)
+                  default: defaultQuoteTemplate || getQuoteTemplate(nodeVersion)
                 })}
               />
               <Box flex={1} />
@@ -244,7 +282,7 @@ const EditModal = ({ onClose, ...props }: RenderInputProps & { onClose: () => vo
                 onClick={() =>
                   setSelectTemplateData({
                     title: t('common:core.app.Select quote template'),
-                    templates: Prompt_QuoteTemplateList
+                    templates: quoteTemplateList
                   })
                 }
               >
@@ -329,6 +367,8 @@ const SettingQuotePrompt = (props: RenderInputProps) => {
           </FormLabel>
           <ValueTypeLabel
             valueType={WorkflowIOValueTypeEnum.datasetQuote}
+            // 传基础说明即可：ValueTypeLabel 会按 datasetSynonymEnabled 自行升级为
+            // WithSynonym 变体；此处不能引用 EditModal 内部的开关变量。
             valueDesc={datasetQuoteValueDesc}
           />
 

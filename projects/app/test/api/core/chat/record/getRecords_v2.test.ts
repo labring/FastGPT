@@ -148,6 +148,39 @@ describe('getRecords_v2 skill edit target', () => {
     });
   });
 
+  it('returns readable history when a persisted Preview reply has no recognized action', async () => {
+    const human = await MongoChatItem.create({
+      teamId: testUser.teamId,
+      tmbId: testUser.tmbId,
+      userId: testUser.userId,
+      sourceType: ChatSourceTypeEnum.skillEdit,
+      appId: skillId,
+      chatId,
+      dataId: getNanoid(),
+      obj: ChatRoleEnum.Human,
+      value: [
+        {
+          text: { content: 'Continue with the previous plan' },
+          select: {
+            type: 'workflowBuilderPreview',
+            questions: [{ question: 'Continue?', value: 'confirm' }]
+          }
+        }
+      ]
+    });
+    await createSkillItem({ text: 'Existing answer' });
+
+    const res = await Call<GetRecordsV2BodyType, any, GetRecordsV2ResponseType>(handler, {
+      auth: testUser,
+      body: { skillId, chatId, pageSize: 10 }
+    });
+
+    expect(res.code).toBe(200);
+    expect(res.data.total).toBe(2);
+    const message = res.data.list.find((item) => item.dataId === human.dataId);
+    expect(message?.value).toEqual([{ text: { content: 'Continue with the previous plan' } }]);
+  });
+
   it('should support linked pagination for skill edit records', async () => {
     const items = [];
     for (let index = 0; index < 5; index++) {
