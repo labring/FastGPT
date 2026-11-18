@@ -1,3 +1,4 @@
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MongoSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/schema';
 import { decryptDomainSecrets } from '@fastgpt/service/common/system/systemInstanceConfig/secrets';
@@ -110,7 +111,9 @@ describe('rehomeSubserviceConnections', () => {
     'https://sandbox.test#private-value',
     'https://user:private-value@sandbox.test'
   ])('retains an invalid legacy connection and only reports its field path: %s', async (url) => {
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const warn = vi
+      .spyOn(getLogger(LogCategories.SYSTEM.UPGRADE), 'warn')
+      .mockImplementation(() => {});
     try {
       await run({ CODE_SANDBOX_URL: url, CODE_SANDBOX_TOKEN: 'private-token' });
       expect((await read())?.overrides.codeSandbox.url).toBe(url);

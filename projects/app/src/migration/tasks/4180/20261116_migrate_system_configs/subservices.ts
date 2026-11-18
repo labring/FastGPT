@@ -1,3 +1,4 @@
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { readMigrationDomainConfig, readMigrationConfigValue } from './validation';
 import { MongoSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/schema';
 import {
@@ -9,6 +10,8 @@ import z from 'zod';
 import { isValidServiceBaseUrl } from '@fastgpt/global/common/string/url';
 import { stripDeprecatedOverrides } from './cleanup';
 import { NumSchema } from '@fastgpt/global/common/zod';
+
+const logger = getLogger(LogCategories.SYSTEM.UPGRADE);
 
 const LegacyConnectionEnvSchema = z.object({
   CODE_SANDBOX_URL: z
@@ -176,7 +179,7 @@ export const rehomeAgentSandboxProxy = async ({
       storedProxy !== undefined &&
       (storedProxy === null || typeof storedProxy !== 'object' || Array.isArray(storedProxy))
     ) {
-      console.warn('Invalid migrated proxy retained', { path: 'agentSandbox.proxy' });
+      logger.warn('Invalid migrated proxy retained', { path: 'agentSandbox.proxy' });
       return { updatedDocuments: 0 };
     }
     const previous = overrides.agentSandbox?.proxy ?? {};

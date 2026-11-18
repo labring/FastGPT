@@ -1,3 +1,4 @@
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { describe, expect, it, vi } from 'vitest';
 import { MongoSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/schema';
 import { Types } from '@fastgpt/service/common/mongo';
@@ -9,6 +10,9 @@ import {
   encryptStoredConfigSecrets,
   verifyStoredConfigSecrets
 } from '@/migration/tasks/4180/20261116_migrate_system_configs/secrets';
+
+// 密钥编解码由公共 setup 提前加载，使用同一真实 logger 检查迁移告警。
+vi.unmock('@fastgpt/service/common/logger');
 
 const collection = MongoSystemInstanceConfig.collection;
 const assertActive = async () => {};
@@ -114,7 +118,7 @@ describe('encryptStoredConfigSecrets', () => {
       { domain: 'auth' },
       { $set: { 'overrides.loginProviders.github.secret': { secret: 'private-value' } } }
     );
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const warn = vi.spyOn(getLogger(LogCategories.SYSTEM), 'warn').mockImplementation(() => {});
     await expect(verifyStoredConfigSecrets()).resolves.toBeUndefined();
     const invalid = await collection.findOne({ domain: 'auth' });
     await encryptStoredConfigSecrets({ assertActive: async () => {} });

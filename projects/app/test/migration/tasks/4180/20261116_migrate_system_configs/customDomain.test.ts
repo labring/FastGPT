@@ -1,3 +1,4 @@
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MongoSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/schema';
 import { decryptDomainSecrets } from '@fastgpt/service/common/system/systemInstanceConfig/secrets';
@@ -99,7 +100,9 @@ describe('restoreCustomDomainConfig', () => {
   });
 
   it('retains malformed legacy values and logs only the field path', async () => {
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const warn = vi
+      .spyOn(getLogger(LogCategories.SYSTEM.UPGRADE), 'warn')
+      .mockImplementation(() => {});
     await MongoSystemConfigs.updateMany(
       { type: SystemConfigsTypeEnum.fastgpt },
       { $set: { 'value.systemEnv.customDomain.kc.aliyun': { secret: 'synthetic-private-value' } } }

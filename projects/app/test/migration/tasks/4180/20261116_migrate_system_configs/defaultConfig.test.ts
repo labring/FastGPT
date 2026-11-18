@@ -1,3 +1,4 @@
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -64,7 +65,9 @@ describe('readDefaultInstanceConfig', () => {
           'Invalid defaultConfig.json'
         );
       } else {
-        const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        const warn = vi
+          .spyOn(getLogger(LogCategories.SYSTEM.UPGRADE), 'warn')
+          .mockImplementation(() => {});
         try {
           expect(await defaultConfig.readDefaultInstanceConfig(filePath)).toEqual(
             JSON.parse(content)

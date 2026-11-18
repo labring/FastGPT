@@ -1,6 +1,9 @@
+import { getLogger, LogCategories } from '../../logger';
 import type { SystemInstanceConfigScopeKey } from '@fastgpt/global/common/system/config/schema';
 import { getDomainSecretKeys } from '@fastgpt/global/common/system/config/permission';
 import { decryptSecret, encryptSecret } from '../../secret/aes256gcm';
+
+const logger = getLogger(LogCategories.SYSTEM);
 
 const isObject = (value: unknown): value is Record<string, unknown> =>
   value !== null &&
@@ -54,7 +57,7 @@ export const decryptDomainSecrets = <T>(domain: SystemInstanceConfigScopeKey, da
       try {
         return decryptStoredSecret(value, `${domain}.${path}`);
       } catch {
-        console.warn('Invalid stored configuration secret retained', { path: `${domain}.${path}` });
+        logger.warn('Invalid stored configuration secret retained', { path: `${domain}.${path}` });
         return value;
       }
     }
@@ -85,14 +88,14 @@ export const encryptDomainSecrets = <T>({
         try {
           decryptStoredSecret(value, `${domain}.${path}`);
         } catch {
-          console.warn('Invalid migrated configuration secret retained', {
+          logger.warn('Invalid migrated configuration secret retained', {
             path: `${domain}.${path}`
           });
         }
         return { ...value };
       }
       if (typeof value !== 'string') {
-        console.warn('Invalid migrated configuration secret retained', {
+        logger.warn('Invalid migrated configuration secret retained', {
           path: `${domain}.${path}`
         });
         return value;

@@ -1,3 +1,4 @@
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { describe, expect, it, vi } from 'vitest';
 import { encryptSecret } from '../../../../common/secret/aes256gcm';
 import {
@@ -14,6 +15,9 @@ import {
   decryptDomainSecrets,
   encryptDomainSecrets
 } from '../../../../common/system/systemInstanceConfig/secrets';
+
+// 配置模块由公共 setup 提前加载，使用同一真实 logger 实例检查脱敏边界。
+vi.unmock('@fastgpt/service/common/logger');
 
 describe('system instance configuration secret codec', () => {
   it('round-trips the admin marker without persisting it or changing the original ciphertext', () => {
@@ -102,7 +106,7 @@ describe('system instance configuration secret codec', () => {
   });
 
   it('preserves malformed credentials and reports only field paths', () => {
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const warn = vi.spyOn(getLogger(LogCategories.SYSTEM), 'warn').mockImplementation(() => {});
     const validCipher = encryptSecret('sensitive-value');
     const invalidTag = validCipher.replace(/.$/, validCipher.endsWith('0') ? '1' : '0');
     for (const wrapper of [

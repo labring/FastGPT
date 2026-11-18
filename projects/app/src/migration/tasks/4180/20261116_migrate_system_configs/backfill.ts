@@ -1,3 +1,4 @@
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { readMigrationDomainConfig, readMigrationConfigValue } from './validation';
 import { MongoSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/schema';
 import {
@@ -11,6 +12,8 @@ import { StorageConfigSchema } from '@fastgpt/global/common/system/config/schema
 import { z } from 'zod';
 import { BoolSchema, IntSchema } from '@fastgpt/global/common/zod';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
+
+const logger = getLogger(LogCategories.SYSTEM.UPGRADE);
 
 /** 使用原生集合兼容早期字符串 _id 域文档，避免 Mongoose 将 security 强制转换为 ObjectId。 */
 const readSecurityConfig = () =>
@@ -451,8 +454,9 @@ export const restoreCustomDomainConfig = async ({
         const field = `customDomain.${group}.${provider}`;
         if (hasOverridePath(overrides, field) || explicit.has(field)) continue;
         const value = source[group]?.[provider] ?? '';
+
         if (typeof value !== 'string') {
-          console.warn('Invalid migrated custom domain field retained', {
+          logger.warn('Invalid migrated custom domain field retained', {
             path: `${group}.${provider}`
           });
         }
