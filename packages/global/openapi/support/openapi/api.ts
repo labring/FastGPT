@@ -37,6 +37,10 @@ export const OpenApiKeySchema = z.object({
     description: '应用 Key 绑定的应用 ID',
     example: '68ad85a7463006c963799a05'
   }),
+  defaultAppId: ObjectIdSchema.optional().meta({
+    description: '历史个人密钥的默认应用 ID，仅作为对话接口的目标兜底，不授予应用权限',
+    example: '68ad85a7463006c963799a05'
+  }),
   sourceMember: SourceMemberSchema.optional().meta({ description: '密钥当前归属成员' }),
   createTime: z.coerce.date().meta({ description: '创建时间' }),
   lastUsedTime: z.coerce.date().optional().meta({ description: '最后使用时间' }),

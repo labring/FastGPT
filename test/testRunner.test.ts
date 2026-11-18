@@ -14,7 +14,7 @@ describe('resolveTestPlan', () => {
         '--filter=@fastgpt/app',
         '--filter=@fastgpt/web',
         '--filter=@fastgpt/workflow-core',
-        '--filter=@fastgpt/workflow-cli'
+        '--filter=@fastgpt/cli'
       ])
     );
     expect(plan[1]?.args).toContain('vitest.config.mts');
@@ -26,8 +26,8 @@ describe('resolveTestPlan', () => {
       filters: ['--filter=@fastgpt/global', '--filter=@fastgpt/service']
     },
     {
-      scopeValue: 'workflow-core,workflow-cli',
-      filters: ['--filter=@fastgpt/workflow-core', '--filter=@fastgpt/workflow-cli']
+      scopeValue: 'workflow-core,cli',
+      filters: ['--filter=@fastgpt/workflow-core', '--filter=@fastgpt/cli']
     }
   ])('filters unit tests to the requested $scopeValue scopes', ({ scopeValue, filters }) => {
     const plan = resolveTestPlan({ scopeValue });
@@ -39,7 +39,7 @@ describe('resolveTestPlan', () => {
   });
 
   it('supports optional workflow package scopes used by the CI workflows', () => {
-    const workflowScopes = ['workflow-core', 'workflow-cli'];
+    const workflowScopes = ['workflow-core'];
     const availableScopes = workflowScopes.filter((scope) =>
       existsSync(resolve(process.cwd(), 'packages', scope, 'package.json'))
     );

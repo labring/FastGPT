@@ -1,3 +1,4 @@
+import { getTestInstanceConfig } from '@test/utils/instanceConfigSnapshot';
 import { SandboxErrEnum } from '@fastgpt/global/common/error/code/sandbox';
 import { getErrText, UserConfigError } from '@fastgpt/global/common/error/utils';
 import { ChatRoleEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
@@ -181,7 +182,7 @@ describe('dispatchRunTools', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    global.feConfigs = { ...global.feConfigs, show_agent_sandbox: true };
+    getTestInstanceConfig().subservice.agentSandbox.provider = 'opensandbox';
     vi.mocked(checkTeamSandboxPermission).mockResolvedValue(undefined);
     ensureAppSandboxRuntimeReadyMock.mockResolvedValue(false);
     markChatSandboxEnabledMock.mockResolvedValue(undefined);
@@ -420,7 +421,7 @@ describe('dispatchRunTools', () => {
   });
 
   it('initializes sandbox client and injects input files before running toolcall', async () => {
-    global.feConfigs = { ...global.feConfigs, show_agent_sandbox: true };
+    getTestInstanceConfig().subservice.agentSandbox.provider = 'opensandbox';
     const sandboxClient = {
       provider: {},
       exec: vi.fn()

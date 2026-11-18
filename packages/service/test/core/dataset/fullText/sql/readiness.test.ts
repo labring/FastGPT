@@ -4,7 +4,7 @@ import {
   SQL_FULL_TEXT_ANALYZER_VERSION,
   SQL_FULL_TEXT_MIGRATION_ID
 } from '@fastgpt/global/core/dataset/fullText/constants';
-import { SystemMigrationCollectionName } from '@fastgpt/global/migration/constants';
+import { systemMigrationStateCollectionName } from '@fastgpt/global/migration/constants';
 import { connectionMongo } from '@fastgpt/service/common/mongo';
 import { activateSqlFullTextTarget } from '@fastgpt/service/core/dataset/fullText/sql/entity';
 import {
@@ -36,7 +36,7 @@ it('requires committed success and the exact target versions, then shares readin
     _id: string;
     status: string;
     result: unknown;
-  }>(SystemMigrationCollectionName);
+  }>(systemMigrationStateCollectionName);
   const stateId = { _id: SQL_FULL_TEXT_MIGRATION_ID };
   await states.insertOne({ ...stateId, status: 'running', result: accepted });
   expect(await refreshSqlFullTextTargetReady()).toBe(false);

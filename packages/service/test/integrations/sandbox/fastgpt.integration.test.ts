@@ -1,3 +1,4 @@
+import { getTestInstanceConfig } from '@test/utils/instanceConfigSnapshot';
 import { randomUUID } from 'node:crypto';
 import {
   SANDBOX_EDIT_FILE_TOOL_NAME,
@@ -814,7 +815,7 @@ describe.skipIf(!integrationProvider).sequential('FastGPT Sandbox Integration', 
     it('retains restore quota until rollback and preserves the archive for a fresh generation', async () => {
       await withSandboxFixture(provider, 'failed-restore', async (fixture) => {
         const { query } = fixture;
-        const originalSystemEnv = global.systemEnv;
+        const originalSystemConfig = global.systemInstanceConfig;
         // 同一 App 的另一用户具有独立 sandboxId，但必须竞争同一团队配额。
         const userId = `integration-contender-${randomUUID()}`;
         const contender = {
@@ -824,7 +825,17 @@ describe.skipIf(!integrationProvider).sequential('FastGPT Sandbox Integration', 
         };
         let competingSandbox: SandboxClient | undefined;
         try {
-          global.systemEnv = { ...originalSystemEnv, agentSandboxMaxPerTeam: 1 };
+          const snapshot = getTestInstanceConfig();
+          global.systemInstanceConfig = {
+            ...snapshot,
+            subservice: {
+              ...snapshot.subservice,
+              agentSandbox: {
+                ...snapshot.subservice.agentSandbox,
+                common: { ...snapshot.subservice.agentSandbox.common, maxPerTeam: 1 }
+              }
+            }
+          };
           expect(
             await fixture.sandbox.exec('printf archive-original > failed-restore.txt')
           ).toMatchObject({ exitCode: 0 });
@@ -909,7 +920,7 @@ describe.skipIf(!integrationProvider).sequential('FastGPT Sandbox Integration', 
           }
         } finally {
           downloadWorkspaceArchive.mockReset();
-          global.systemEnv = originalSystemEnv;
+          global.systemInstanceConfig = originalSystemConfig;
           await cleanupSandboxFixture(provider, contender, competingSandbox);
         }
       });

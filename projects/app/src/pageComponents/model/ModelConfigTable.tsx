@@ -473,6 +473,7 @@ const ModelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType: C
             {isSortMode ? (
               <>
                 <Button
+                  size={'sm'}
                   w={['100%', '81px']}
                   minW={0}
                   px={[2, 4]}
@@ -484,6 +485,7 @@ const ModelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType: C
                   {t('config_model:model.cancel_sort')}
                 </Button>
                 <Button
+                  size={'sm'}
                   w={['100%', '123px']}
                   minW={0}
                   px={[2, 4]}
@@ -499,6 +501,7 @@ const ModelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType: C
             ) : (
               <>
                 <Button
+                  size={'sm'}
                   w={'100%'}
                   minW={0}
                   px={[2, 4]}
@@ -512,6 +515,7 @@ const ModelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType: C
                   <>
                     {feConfigs?.isPlus && (
                       <Button
+                        size={'sm'}
                         w={'100%'}
                         minW={0}
                         px={[2, 4]}
@@ -522,6 +526,7 @@ const ModelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType: C
                       </Button>
                     )}
                     <Button
+                      size={'sm'}
                       w={'100%'}
                       minW={0}
                       px={[2, 4]}
@@ -531,6 +536,7 @@ const ModelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType: C
                       {t('config_model:model.default_model')}
                     </Button>
                     <Button
+                      size={'sm'}
                       w={'100%'}
                       minW={0}
                       px={[2, 4]}
@@ -542,6 +548,7 @@ const ModelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType: C
                   </>
                 )}
                 <AddModel
+                  size={'sm'}
                   installedModels={modelItems}
                   channels={channelList}
                   providers={modelProviders}

@@ -1,147 +1,43 @@
-# AGENTS.md
+# FastGPT 仓库协作指南
 
-本文件为 Agent 在本仓库中工作时提供指导说明。
+FastGPT 是使用 pnpm workspaces 的 AI Agent 构建平台。开发环境按根 [package.json](./package.json) 的 `engines.node` 和 `packageManager` 配置。启动、构建和测试入口见[开发命令](./.agents/code/commands.md)。
 
-## 项目概述
+## 代码放在哪里
 
-FastGPT 是一个 AI Agent 构建平台,提供开箱即用的数据处理、模型调用能力和可视化工作流编排。这是一个基于 NextJS 构建的全栈 TypeScript 应用,后端使用 MongoDB/PostgreSQL。
+| 改动 | 位置 |
+| --- | --- |
+| 主应用页面、API 与应用侧服务 | `projects/app/src/`，其中 Next.js API 路由在 `pages/api/`，业务页面组件在 `pageComponents/` |
+| 共享业务类型与 API 合约 | `packages/global/`，接口专用 Schema 和 OpenAPI Path 在 `packages/global/openapi/` |
+| 服务端业务、MongoDB 模型、向量库与工作流执行 | `packages/service/`。Redis 数据访问在 `packages/dal/`，工作流定义与编辑工具在 `packages/workflow-core/` |
+| 共享 UI 与翻译 | `packages/web/`。语言资源在 `i18n/`，支持的语言以 [LocaleList](./packages/global/common/i18n/type.ts) 为准 |
+| CLI、SDK 与独立服务 | 官方 CLI 在 `cli/`，SDK 在 `sdk/`。代码沙箱在 `projects/code-sandbox/`，MCP 服务在 `projects/mcp_server/`，插件市场在 `projects/marketplace/`。外部插件见 [FastGPT-plugin](https://github.com/labring/fastgpt-plugin) |
+| 商业版、产品文档与部署 | `pro/` 是 Git 子模块，文档站在 `document/`，Compose 模板、生成脚本和 Kubernetes 清单在 [deploy/](./deploy/) |
 
-**技术栈**: NextJS + TypeScript + ChakraUI + MongoDB + VectorDB(PG, Milvus, Zilliz, OceanBase, SeekDB, OpenGauss......)
+## 开发约定
 
-## 设计文档
+- 改代码或测试前先读[代码规范](./.agents/code/syntax.md)，核对调用方和已有[设计](./.agents/design/)。现有实现与规范冲突时优先按规范执行，因业务或兼容性需要例外时说明原因。
+- 对导出函数、核心业务函数、hook 和复杂工具优先用 `/** ... */` 说明职责和输入输出。在计费、权限、并发、重试等容易误解的分支旁用中文解释原因。
+- 单一调用方的 helper 优先放在调用函数内部。跨函数复用、需独立导出测试或属于模块公共能力时放到模块级，并说明职责和边界。
+- 先用代码和调用方核实假设。影响行为的需求歧义或破坏性操作需向用户确认。**修改任何部署相关的 `.yml` 或 `.yaml` 文件前，必须获得用户明确确认。**
 
-你可以参考 [项目设计文档](./.agents/design/) 来了解 FastGPT 已有的设计方案。
+## 按改动查规范
 
-## 架构
+- **API 路由**按 [API 开发规范](./.agents/skills/system/api-development/SKILL.md) 同步合约与 OpenAPI。外部请求的 body、query、params 用 `parseApiInput` 校验。普通业务响应、数据库记录和模型输出用对应的 `Schema.parse`。无入参或无业务返回值时省略相应的占位 Schema。错误分类见[请求入参错误设计](./.agents/design/api/zod-request-parse-error-handling.md)。
+- **历史兼容与升级**涉及 Zod 枚举或判别联合变更时，按[历史兼容规范](./.agents/code/syntax.md#zod-枚举变更与历史兼容)核对旧数据和旧客户端，同时保留新写入的校验。新增或修改自动升级任务时遵循[系统迁移规范](./.agents/skills/system/system-migration-development/SKILL.md)。
+- **CI** 修改 GitHub Actions workflow 时按[双轨同步规则](./.agents/skills/system/ci-workflow-sync/SKILL.md)核对 Forgejo 对应项。
 
-这是一个使用 pnpm workspaces 的 monorepo,主要结构如下:
+### MongoDB 索引
 
-### Packages (库代码)
-- `packages/global/` - 所有项目共享的类型、常量、工具函数
-- `packages/service/` - 后端服务、数据库模型、API 控制器、工作流引擎
-- `packages/web/` - 共享的前端组件、hooks、样式、国际化
-
-### Projects (应用程序)
-- `projects/app/` - 主 NextJS Web 应用(前端 + API 路由)
-- `projects/code-sandbox/` - Bun + Hono 代码执行沙箱服务
-- `projects/mcp_server/` - Model Context Protocol 服务器实现
-
-### 关键目录
-- `document/` - 文档站点(NextJS 应用及内容)
-- `plugins/` - 外部插件(模型、爬虫等)
-- `deploy/` - Docker 和 Helm 部署配置
-- `test/` - 集中的测试文件和工具
-
-## 开发命令
-
-常用开发命令见 [FastGPT 开发命令](./.agents/code/commands.md)。
+- 当前索引与废弃索引统一用 `defineIndex` 声明。当前索引省略 `deprecated`，禁止直接调用 `schema.index()` 或用字段级 `index: true`、`unique: true` 隐式建索引。
+- 字段或索引变化时核对历史版本。只在所属 Schema 的当前索引旁用 `deprecated: true` 登记 FastGPT 明确创建且已废弃的索引，并补充或调整[清理测试](./packages/service/test/common/mongo/indexManager.test.ts)。保留客户自建和来源不明的索引。
+- 清理器按名称和 key 匹配。同名同 key 仅改变 TTL、唯一性或 partial filter 等选项时需显式迁移。详见[索引同步设计](./.agents/design/common/mongo-index-sync-strategy.md)。
 
 ## 测试
 
-项目使用 Vitest 进行测试并生成覆盖率报告。主要测试命令:
-- `pnpm test` - 运行所有测试
-- `pnpm test <file-path...>` - 顺序运行跨 workspace 的局部测试，关闭覆盖率并限制为单 worker，避免多个 Vitest/Mongo 实例争抢本地资源
-- `FASTGPT_TEST_SCOPE=app pnpm test` - 只运行指定 workspace；支持逗号分隔多个 scope，以及 `workspace`、`repo`
-- `FASTGPT_TEST_MODE=integration pnpm test` - 运行 service 集成测试；`sandbox` 运行沙箱集成测试，`all` 运行 workspace 单测和 service 集成测试
-- 测试文件位于 `test/` 目录和 `projects/{{name}}/test/`，代表这`packages`和`单个 project`的测试文件目录。
-- 覆盖率报告生成在 `coverage/` 目录
+- 开发时只运行覆盖改动及受影响行为的测试，根目录执行 `pnpm test <测试文件或目录>`。用户完成最终验收后才运行完整测试。
+- 使用公共 Mongo 初始化的套件默认在本机启动临时副本集。要复用专用测试副本集，在运行前设置 `FASTGPT_TEST_MONGODB_URI`。
+- 单测优先放在所属 workspace 的 `test/`，根 `test/` 存放仓库级测试和共享初始化。编写单测见[单测规范](./.agents/skills/system/test-case/SKILL.md)。业务验收用例在 [.agents/test/](./.agents/test/)，按[用例编写](./.agents/skills/system/fastgpt-integration-test-case/SKILL.md)和[执行规则](./.agents/skills/system/fastgpt-integration-test-runner/SKILL.md)维护。
 
-测试范围要求：
+## 文档输出
 
-- 默认只测试本次改动的代码及可能受影响的代码，根据依赖关系选择最小且足以验证改动的测试范围。
-- 在开发和交付过程中不主动运行全量测试。
-- 只有用户完成最终验收后，才运行完整测试。
-
-## 代码组织模式
-
-### Monorepo 结构
-- 共享代码存放在 `packages/` 中,通过 workspace 引用导入
-- `projects/` 中的每个项目都是独立的应用程序
-- 使用 `@fastgpt/global`、`@fastgpt/service`、`@fastgpt/web` 导入共享包
-
-### API 结构
-- NextJS API 路由在 `projects/app/src/pages/api/`
-- API 路由合约定义在`packages/global/openapi/`, 对应的
-- 通用服务端业务逻辑在 `packages/service/`和`projects/app/src/service`
-- 数据库模型在 `packages/service/` 中,使用 MongoDB/Mongoose
-
-### 前端架构
-- React 组件在 `projects/app/src/components/` 和 `packages/web/components/`
-- 使用 Chakra UI 进行样式设计,自定义主题在 `packages/web/styles/theme.ts`
-- 国际化支持文件在 `packages/web/i18n/`
-- 使用 React Context 和 Zustand 进行状态管理
-
-## 开发注意事项
-
-- **包管理器**: 使用 pnpm 及 workspace 配置
-- **Node 版本**: 需要 Node.js >=20.x, pnpm =10.x
-- **数据库**: 支持 MongoDB、带 pgvector 的 PostgreSQL 或 Milvus 向量存储
-- **AI 集成**: 通过统一接口支持多个 AI 提供商
-- **国际化**: 完整支持中文、英文和日文
-- **部署配置保护**: 修改代码过程中不得修改任何部署相关的 `.yml` 或 `.yaml` 文件；如果需求确实需要调整部署配置，必须先获得用户明确确认。
-
-## 关键文件模式
-
-- `.ts` 和 `.tsx` 文件全部使用 TypeScript
-- 数据库模型使用 Mongoose 配合 TypeScript
-- API 路由遵循 NextJS 约定
-- 组件文件使用 React 函数式组件和 hooks
-- 共享类型定义在 `packages/global/`中
-
-## 代码规范
-
-- 所有代码编写、修改、重构和测试调整都必须遵守 [FastGPT 代码规范](./.agents/code/syntax.md)。开始改动前先查看相关规范；如果规范与当前实现习惯冲突，优先按规范执行，并只在有明确业务或兼容性理由时说明例外。
-
-### MongoDB Schema 与索引维护
-
-- 所有由 FastGPT 管理的当前索引和废弃索引都必须通过 `defineIndex(schema, { key, options, deprecated })` 声明：`deprecated` 默认是 `false`，当前索引省略该字段；只有废弃索引显式使用 `deprecated: true`。不要直接调用 `schema.index()`，也不要在字段定义中使用 `index: true` 或 `unique: true` 隐式创建索引。
-- 每当新增、修改、删除或重命名 MongoDB/Mongoose Schema 字段、索引定义、唯一约束、TTL、partialFilterExpression、collation 等索引相关配置时，必须同步检查是否有 FastGPT 旧版本创建的索引不再被当前 Schema 使用。
-- 如果历史索引可能继续影响写入约束、查询计划或存储成本，应在所属 Schema 文件中通过 `defineIndex(schema, { key, options, deprecated: true })` 紧邻当前索引声明登记删除定义，并补充/调整 `packages/service/test/common/mongo/indexManager.test.ts` 的清理行为覆盖。索引名默认由 key 推导，也可通过 `options.name` 显式指定；删除前按 name 定位，再精确匹配 key（text 索引兼容 `_fts/_ftsx` 与 weights）；options 不参与匹配。
-- 不要登记客户自建索引、无法确认来源的索引，或仅凭当前 Schema 未声明就推断为废弃的索引。主动同步只允许删除 FastGPT 明确创建过、明确废弃且与 Schema 本地声明精确匹配的历史索引。
-
-### API 入参校验
-
-- 编写或修改 NextJS API 路由时，如果需要校验接口入参（`req.body`、`req.query`、`req.params`），必须使用 `parseApiInput`，不要直接写 `SomeSchema.parse(req.body)`、`SomeSchema.parse(req.query)` 或 `SomeSchema.parse(req.params)`。
-- `parseApiInput` 从 `@fastgpt/service/common/zod/requestParseError` 导入，用法示例：
-
-```ts
-import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-
-const { body, query } = parseApiInput({
-  req,
-  bodySchema: CreateSomethingBodySchema,
-  querySchema: GetSomethingQuerySchema
-});
-```
-
-- 这个 helper 只用于 API 边界的请求入参校验。内部业务数据、数据库记录、模型返回、工具调用参数等 schema 校验仍使用普通 `Schema.parse(...)`，因为这些错误应按内部 bug 上报。
-- 相关设计见 [Zod 请求入参错误降噪设计](./.agents/design/api/zod-request-parse-error-handling.md)。
-
-### 函数注释
-
-- 编写或拆分函数时，必须关注函数注释。对导出函数、核心业务函数、hook、复杂工具函数、跨模块复用函数，优先使用 `/** ... */` 形式补充函数级注释。
-- 函数注释应说明函数职责、输入输出约定、关键分支、边界行为和设计原因，尤其是容易误解的计费、权限、requestId、错误处理、流式响应、缓存、并发、兼容逻辑。
-- 避免写无意义注释，例如只复述“设置变量”“返回结果”。如果函数逻辑简单且语义已经完全由命名表达，可以不写冗余注释。
-- 对复杂函数内部的关键判断，也应补充简短中文注释，说明为什么这样处理，而不是逐行解释代码。
-
-### 子函数位置
-
-- 拆分子函数时，优先把只被单个函数使用的 helper 放在该函数内部，减少模块级私有函数的暴露范围和阅读负担。
-- 只有跨函数复用、需要单独导出测试、或语义上属于模块公共能力的 helper，才放到模块级；放到模块级时应补充函数级注释说明职责和边界。
-- 对于递归、错误处理、权限校验、路径处理、计费/requestId 等容易误解的局部 helper，应在局部函数或关键分支旁补充简短中文注释说明设计原因。
-
-## 运行要求
-
-### 基础要求
-
-1. 保持怀疑态度，要深入思考和分析现有代码，提出问题，并让用户确认。
-2. 编写单个需求时，只运行覆盖改动代码和可能受影响代码的局部测试；用户完成最终验收前，不主动运行全量测试。
-
-### 输出规范
-
-1. 输出文档位置:
-   1.1. 设计文档: [.agents/design](.agents/design)，todo 跟在设计文档后面。
-   1.2. 问题分析文档: [.agents/issue](.agents/issue)
-2. 相同需求文档，尽量写在一起（内容超过 500 行，可以分批写入），或者创建要给目录一起管理，不要随意平铺一堆不同版本的相同问题的文档。
-3. 文件输出，使用正确的编码格式，例如UTF-8。
-4. 除非用户指明，否则不要编写总结报告。
+设计与待办放在 [.agents/design/](./.agents/design/)，待办附在对应设计后。问题分析放在 [.agents/issue/](./.agents/issue/)。同一需求优先维护一份 UTF-8 文档，内容较多时按目录归档。仅在用户要求时编写总结报告。

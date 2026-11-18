@@ -1,26 +1,41 @@
 ---
-title: 应用对接
-draft: true
+title: 业务系统集成应用
 description: 使用应用 Key 将 FastGPT 接入自己的系统，对接用户身份并管理聊天记录。
 ---
 
+import { ApiReferenceNotice } from '@/components/docs/ApiReferenceNotice';
+
+<ApiReferenceNotice />
+
+**版本适配：FastGPT v4.18.0 及以上。** 旧版本不支持本文使用的 **应用 Key**（绑定应用 `appId`）及 `customUid` 参数。
+
 本文以“在自己的系统中提供 AI 助手”为例，串起应用调用、用户身份和聊天记录管理。
 
-**版本要求：FastGPT 4.18.0 及以上。** 示例使用绑定应用的 **应用 Key**，不需要传 `appId`；个人密钥的用法见 [API 文档介绍](/zh-CN/openapi/intro)。接口参数以你部署版本的 `/apidoc/systemopenapi` 为准。
+示例使用绑定应用的 **应用 Key**，不需要传 `appId`；个人密钥的用法见 [API 文档介绍](/zh-CN/openapi/intro)。接口参数以你部署版本的 `/apidoc/systemopenapi` 为准。
+
+FastGPT 的对话补全接口支持使用 **OpenAI SDK** 接入。将 SDK 的 `base_url` 指向 FastGPT 实例，通过 `extra_body` 传入 `chatId` 和 `customUid`，即可调用应用并管理多轮对话，见下文的 [Python SDK 示例](#使用-openai-sdk)。
 
 ## 接入结构
 
-```text
-你的前端 → 你的后端（登录校验、会话归属、应用 Key）→ FastGPT 应用
-```
+![前端通过业务后端调用 FastGPT，应用 Key 保存在后端](/imgs/diagrams/app-integration.zh-CN.light.svg)
 
 前端继续使用你的登录系统。由后端读取当前用户，调用 FastGPT，再将结果返回前端。应用 Key 只保存在后端配置中。
-
-> **配图占位：** 前端、业务后端与 FastGPT 之间的调用流程图。
 
 ## 1. 创建应用 Key
 
 发布应用后，进入 **应用 → 发布渠道 → API 访问 → 应用 Key**，创建一个用于业务后端的 Key。创建、查看和管理需要应用管理员权限。
+
+![API 访问页面中的应用 Key 页签与新建应用 Key 入口](/imgs/optimized/current/app-integration-api-key.zh-CN.png.webp)
+
+在 **API 访问** 中选择 **应用 Key**，点击 **新建应用 Key**。
+
+<img
+  src="/imgs/optimized/current/app-integration-create-key.zh-CN.png.webp"
+  alt="创建应用 Key 的名称、绑定应用、积分上限与过期时间设置"
+  width={480}
+/>
+
+应用 Key 固定绑定当前应用。为业务后端设置易于识别的名称，并按需设置积分上限和过期时间。
 
 ```bash
 export FASTGPT_BASE_URL='http://localhost:3000/api'
@@ -28,8 +43,6 @@ export FASTGPT_APP_KEY='YOUR_APP_API_KEY'
 ```
 
 `FASTGPT_BASE_URL` 包含 `/api`。下面的对话接口再追加 `/v1/chat/completions`，聊天记录接口则追加 `/core/chat/...`，不要统一再加 `/v1`。
-
-> **配图占位：** 应用发布页中创建应用 Key 的入口，隐藏真实密钥。
 
 ## 2. 对接自己的用户
 
@@ -82,6 +95,42 @@ curl "$FASTGPT_BASE_URL/v1/chat/completions" \
 
 需要打字机效果时，将 `stream` 改为 `true`，由后端处理并转发 SSE 流。完成当前轮次后再发送下一轮，具体流事件见部署版本的接口文档。
 
+### 使用 OpenAI SDK
+
+以 [OpenAI Python SDK](https://developers.openai.com/api/reference/python) 为例，先安装依赖：
+
+```bash
+python -m pip install openai
+```
+
+沿用前文的 `FASTGPT_BASE_URL` 和 `FASTGPT_APP_KEY`。SDK 的 `base_url` 在 `/api` 后追加 `/v2`，最终请求 `/api/v2/chat/completions`：
+
+```python
+import os
+from uuid import uuid4
+
+from openai import OpenAI
+
+client = OpenAI(
+    api_key=os.environ["FASTGPT_APP_KEY"],
+    base_url=f"{os.environ['FASTGPT_BASE_URL'].rstrip('/')}/v2",
+)
+
+chat_id = str(uuid4())
+custom_uid = "tenant-01:user-42"  # 由业务后端根据登录态确定。
+
+response = client.chat.completions.create(
+    model="fastgpt",
+    messages=[{"role": "user", "content": "你好，请介绍一下你能提供的帮助。"}],
+    stream=False,
+    extra_body={"chatId": chat_id, "customUid": custom_uid},
+)
+
+print(response.choices[0].message.content)
+```
+
+`model` 是 SDK 必填的占位参数，实际模型由 FastGPT 应用配置决定。`chatId`、`customUid` 是 FastGPT 扩展字段，通过 `extra_body` 传递。新建会话时生成并保存 `chat_id`；续聊时复用同一个 `chat_id`、`custom_uid`，只替换本轮 `messages`。
+
 ## 4. 展示与管理聊天记录
 
 ### 会话列表
@@ -117,8 +166,6 @@ curl "$FASTGPT_BASE_URL/core/chat/record/getPaginationRecords" \
 
 从 `data.list` 读取消息，从 `data.total` 判断是否还有更多。消息通过 `obj` 区分 `Human`、`AI`，`value` 包含文本、文件等内容块；前端需按内容类型渲染。
 
-> **配图占位：** 你的系统中的会话列表、消息区，以及 FastGPT 对话日志中的使用者。
-
 ### 其他常用操作
 
 以下接口同样使用应用 Key，省略 `appId`；每次操作前都由业务后端校验会话归属，并传入当前用户的 `customUid`。Query 中的 `customUid` 为普通字符串，由 URLSearchParams 等工具编码。
@@ -138,5 +185,9 @@ curl "$FASTGPT_BASE_URL/core/chat/record/getPaginationRecords" \
 - **使用者**：展示 `customUid`，方便对应到你的平台用户。
 - **鉴权者**：表示本次调用的团队成员身份，默认隐藏，可在字段配置中开启。
 - **调用渠道 / 渠道名**：可识别 API 调用及对应的密钥渠道。
+
+![对话日志中的使用者筛选与字段配置，可按需显示鉴权者和渠道名](/imgs/optimized/current/app-integration-log-fields.zh-CN.png.webp)
+
+图中为测试记录；在 **字段配置** 中可按需显示 **鉴权者**、**渠道名** 等列。
 
 先跑通“新建会话 → 多轮续聊 → 读取消息 → 删除会话”，再扩展文件上传、反馈和流式展示。字段和返回值详情统一查阅你部署版本的 System OpenAPI 文档。

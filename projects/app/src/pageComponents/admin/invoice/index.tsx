@@ -1,4 +1,5 @@
 'use client';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import BoxPageRoot from '@/components/admin/BoxContainer/PageRoot';
 import {
   finishInvoice,
@@ -15,12 +16,13 @@ import {
   Flex,
   Box,
   HStack,
-  InputGroup,
-  Input,
-  InputLeftElement,
   Button,
   FormLabel
 } from '@chakra-ui/react';
+import AdminCompositeSearch, {
+  useAdminCompositeSearch,
+  useAdminTeamSearchOptions
+} from '@/components/admin/CompositeSearch';
 import type { InvoiceSchemaType } from '@fastgpt/global/support/wallet/bill/type';
 import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import { formatStorePrice2Read } from '@fastgpt/global/support/wallet/usage/tools';
@@ -36,11 +38,14 @@ import { accountTitleTextStyles } from '@/pageComponents/account/styles';
 import { downloadFetch } from '@/web/common/system/utils';
 
 const InvoiceManageTable = () => {
-  const [search, setSearch] = useState<string>();
+  const { t } = useSafeTranslation();
+  const invoiceSearchOptions = useAdminTeamSearchOptions();
   // 保存选中记录的快照，避免列表刷新、排序或翻页后查找不到弹窗数据。
   const [uploadInvoiceData, setUploadInvoiceData] = useState<InvoiceSchemaType>();
   const [invoiceDetailData, setInvoiceDetailData] = useState<InvoiceSchemaType>();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const { searchField, inputValue, isInvalid, searchParams, onFieldChange, onInputChange } =
+    useAdminCompositeSearch({ options: invoiceSearchOptions });
 
   const {
     data: invoices,
@@ -52,10 +57,8 @@ const InvoiceManageTable = () => {
   } = usePagination(getInvoiceList, {
     defaultPageSize: 20,
     pageSizeCacheKey: 'users-invoice-list',
-    params: {
-      search
-    },
-    refreshDeps: [search],
+    params: searchParams,
+    refreshDeps: [searchParams],
     scrollContainerRef
   });
 
@@ -71,19 +74,17 @@ const InvoiceManageTable = () => {
         borderColor={'myGray.200'}
       >
         <Box as={'h1'} {...accountTitleTextStyles}>
-          开票管理
+          {t('admin:invoice_management')}
         </Box>
         <Box flexGrow={1}></Box>
-        <InputGroup w={['100%', '250px']} h={'36px'}>
-          <InputLeftElement h={'full'}>
-            <MyIcon name="common/searchLight" w={4} color={'myGray.400'} />
-          </InputLeftElement>
-          <Input
-            placeholder="请输入用户名，回车搜索"
-            h={'36px'}
-            onChange={(e) => setSearch(e.target.value)}
-          ></Input>
-        </InputGroup>
+        <AdminCompositeSearch
+          options={invoiceSearchOptions}
+          field={searchField}
+          value={inputValue}
+          isInvalid={isInvalid}
+          onFieldChange={onFieldChange}
+          onValueChange={onInputChange}
+        />
       </Flex>
 
       <FixedTableContainer
@@ -104,12 +105,12 @@ const InvoiceManageTable = () => {
         <Table>
           <Thead>
             <Tr>
-              <Th>提交状态</Th>
-              <Th>提交时间/完成时间</Th>
-              <Th>金额</Th>
-              <Th>抬头</Th>
-              <Th>联系方式</Th>
-              <Th>操作</Th>
+              <Th>{t('admin:submission_status')}</Th>
+              <Th>{t('admin:submitted_completed')}</Th>
+              <Th>{t('admin:amount')}</Th>
+              <Th>{t('admin:invoice_title_2')}</Th>
+              <Th>{t('admin:contact_info')}</Th>
+              <Th>{t('admin:actions')}</Th>
               <Th>Team Id</Th>
             </Tr>
           </Thead>
@@ -150,7 +151,7 @@ const InvoiceManageTable = () => {
                       size={'sm'}
                       onClick={() => setInvoiceDetailData(item)}
                     >
-                      详情
+                      {t('admin:details')}
                     </Button>
                   )}
                 </Td>
@@ -168,7 +169,7 @@ const InvoiceManageTable = () => {
           >
             <MyIcon name="empty" w={'48px'} h={'48px'} color={'transparent'} />
             <Box mt={2} color={'myGray.500'}>
-              无开票记录～
+              {t('admin:no_invoices')}
             </Box>
           </Flex>
         )}
@@ -201,6 +202,7 @@ function InvoiceDetailModal({
   onClose: () => void;
   flashData: () => void;
 }) {
+  const { t } = useSafeTranslation();
   const { File, onOpen: onOpenSelectFile } = useSelectFile({});
 
   const { loading, run: uploadInvoice } = useRequest(
@@ -263,10 +265,10 @@ function InvoiceDetailModal({
         <LabelItem label={'是否需要专票'} value={invoice?.needSpecialInvoice ? '是' : '否'} />
         <LabelItem label={'邮箱地址'} value={invoice?.emailAddress} />
         <Flex alignItems={'center'} justify={'space-between'}>
-          <FormLabel flex={'0 0 120px'}>发票文件</FormLabel>
+          <FormLabel flex={'0 0 120px'}>{t('admin:invoice_file')}</FormLabel>
           <HStack spacing={4}>
             <Button variant={'whiteBase'} size={'sm'} onClick={onOpenSelectFile}>
-              修改发票
+              {t('admin:edit_invoice')}
             </Button>
             <Button
               variant={'primary'}
@@ -274,7 +276,7 @@ function InvoiceDetailModal({
               isLoading={isDownloading}
               onClick={() => downloadInvoice()}
             >
-              点击下载
+              {t('admin:click_to_download')}
             </Button>
           </HStack>
         </Flex>
@@ -286,6 +288,7 @@ function InvoiceDetailModal({
 }
 
 function LabelItem({ label, value }: { label: string; value?: string }) {
+  const { t } = useSafeTranslation();
   return (
     <Flex alignItems={'center'} justify={'space-between'}>
       <FormLabel flex={'0 0 120px'}>{label}</FormLabel>
@@ -304,6 +307,7 @@ function InvoiceFinishModal({
   flashData: () => void;
   invoice: InvoiceSchemaType;
 }) {
+  const { t } = useSafeTranslation();
   const [selectedFile, setSelectedFile] = useState<File>();
   const { File, onOpen: onOpenSelectFile } = useSelectFile({});
   const { loading, run: uploadInvoice } = useRequest(
@@ -337,7 +341,7 @@ function InvoiceFinishModal({
       footer={
         <Flex justify={'space-between'} gap={'1rem'} w={'100%'}>
           <Button variant={'whiteBase'} onClick={onClose}>
-            关闭
+            {t('admin:close')}
           </Button>
           <Button
             isDisabled={!selectedFile}
@@ -347,13 +351,13 @@ function InvoiceFinishModal({
               uploadInvoice(selectedFile);
             }}
           >
-            确认提交
+            {t('admin:confirm_submit')}
           </Button>
         </Flex>
       }
     >
       <Box fontWeight={'600'} fontSize={'1rem'}>
-        请上传发票的PDF文件
+        {t('admin:please_upload_the_invoice_pdf_file')}
       </Box>
       <Flex flexDir={'column'} gap={'4'} w={'100%'}>
         <LabelItem label={'开票金额'} value={formatStorePrice2Read(invoice?.amount) + '元'} />
@@ -368,7 +372,7 @@ function InvoiceFinishModal({
       </Flex>
 
       <Flex w={'100%'} mt={4}>
-        <FormLabel flex={'0 0 120px'}>发票文件</FormLabel>
+        <FormLabel flex={'0 0 120px'}>{t('admin:invoice_file')}</FormLabel>
         <Box
           textAlign={'end'}
           flex={'1 0 0'}

@@ -72,6 +72,7 @@ describe('PgVectorCtrl.embRecall', () => {
       datasetIds: ['dataset-a', 'dataset-b'],
       vector: [0.1, 0.2],
       limit: 20,
+      hnswEfSearch: 200,
       forbidCollectionIdList: filters.forbidCollectionIdList,
       filterCollectionIdList: filters.filterCollectionIdList
     });
@@ -120,6 +121,7 @@ describe('PgVectorCtrl.embRecall', () => {
           datasetIds: ['dataset'],
           vector: [0.1],
           limit: 10,
+          hnswEfSearch: 200,
           forbidCollectionIdList: []
         })
         .finally(() => {
@@ -146,11 +148,11 @@ describe('PgVectorCtrl.embRecall indexed transactions', () => {
     datasetIds: ['large'],
     vector: [0.1, 0.2],
     limit: 100,
+    hnswEfSearch: 200,
     forbidCollectionIdList: [],
     datasetVectorData: [{ datasetId: 'large', rows: 10001, pgIndex: 'ready' as const }]
   };
   beforeEach(() => {
-    global.systemEnv = {} as any;
     poolClient.query.mockReset().mockResolvedValue({ rows: [] });
     poolClient.release.mockReset();
   });
@@ -172,14 +174,13 @@ describe('PgVectorCtrl.embRecall indexed transactions', () => {
   });
 
   it.each([
-    { configured: 100, limit: 100, expected: 100 },
-    { configured: 400, limit: 100, expected: 400 },
-    { configured: 100, limit: 300, expected: 300 },
-    { configured: 2000, limit: 100, expected: 1000 }
-  ])('bounds configured search width: %j', async ({ configured, limit, expected }) => {
-    global.systemEnv.hnswEfSearch = configured;
-    await new PgVectorCtrl().embRecall({ ...props, limit });
-    expect(poolClient.query.mock.calls[1][1]).toEqual([String(expected), '10001']);
+    { hnswEfSearch: 100, limit: 100 },
+    { hnswEfSearch: 400, limit: 100 },
+    { hnswEfSearch: 100, limit: 300 },
+    { hnswEfSearch: 1000, limit: 100 }
+  ])('uses the supplied search width unchanged: %j', async ({ hnswEfSearch, limit }) => {
+    await new PgVectorCtrl().embRecall({ ...props, limit, hnswEfSearch });
+    expect(poolClient.query.mock.calls[1][1]).toEqual([String(hnswEfSearch), '10001']);
   });
 
   it.each([false, true])(

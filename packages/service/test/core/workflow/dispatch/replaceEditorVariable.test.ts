@@ -1,4 +1,12 @@
+import {
+  createDefaultInstanceConfig,
+  getTestInstanceConfig
+} from '@test/utils/instanceConfigSnapshot';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+// 所有用例使用完整快照；缩小单测阈值后恢复原值，运行期不再从 ENV 兜底。
+(global as any).systemInstanceConfig = createDefaultInstanceConfig();
+
 import { VARIABLE_NODE_ID, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   FlowNodeOutputTypeEnum,
@@ -6,18 +14,19 @@ import {
 } from '@fastgpt/global/core/workflow/node/constant';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import { replaceEditorVariable } from '@fastgpt/service/core/workflow/dispatch/utils/replaceEditorVariable';
+import { SYSTEM_STRING_LENGTH_UNIT } from '@fastgpt/service/env.const';
 
 const { loggerInfoMock } = vi.hoisted(() => ({
   loggerInfoMock: vi.fn()
 }));
 
-vi.mock('@fastgpt/service/common/logger', () => ({
+// replaceEditorVariable 经 replaceVariable 引入实例配置 controller（→ Mongo schema → indexManager），
+// indexManager 模块级需要 LogCategories.INFRA，因此只覆盖 getLogger，保留真实 LogCategories。
+vi.mock('@fastgpt/service/common/logger', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fastgpt/service/common/logger')>()),
   getLogger: () => ({
     info: loggerInfoMock
-  }),
-  LogCategories: {
-    SYSTEM: ['system']
-  }
+  })
 }));
 
 describe('replaceEditorVariable', () => {
@@ -201,51 +210,49 @@ describe('replaceEditorVariable', () => {
     expect(result).toBe('Result: {{$node1.out1$}}');
   });
 
-  it('should stop node reference replacement rounds when the result exceeds the system string limit', async () => {
-    vi.resetModules();
+  it('should stop node reference replacement rounds when the result exceeds the system string limit', () => {
     const text = 'Result: {{$node1.out1$}}';
-    vi.doMock('@fastgpt/service/env', () => ({
-      SYSTEM_MAX_STRING_LENGTH: text.length
-    }));
-    const { replaceEditorVariable: replaceEditorVariableWithSmallLimit } =
-      await import('@fastgpt/service/core/workflow/dispatch/utils/replaceEditorVariable');
-    const nodesMap: Record<string, RuntimeNodeItemType> = {
-      node1: {
-        nodeId: 'node1',
-        name: 'test',
-        flowNodeType: FlowNodeTypeEnum.chatNode,
-        inputs: [],
-        outputs: [
-          {
-            id: 'out1',
-            key: 'output1',
-            type: FlowNodeOutputTypeEnum.static,
-            value: 'x'.repeat(text.length + 1),
-            valueType: WorkflowIOValueTypeEnum.string
-          }
-        ]
-      }
-    };
+    const snapshot = getTestInstanceConfig();
+    const original = snapshot.resource.systemMaxStringLengthM;
+    snapshot.resource.systemMaxStringLengthM = text.length / SYSTEM_STRING_LENGTH_UNIT;
+    try {
+      const nodesMap: Record<string, RuntimeNodeItemType> = {
+        node1: {
+          nodeId: 'node1',
+          name: 'test',
+          flowNodeType: FlowNodeTypeEnum.chatNode,
+          inputs: [],
+          outputs: [
+            {
+              id: 'out1',
+              key: 'output1',
+              type: FlowNodeOutputTypeEnum.static,
+              value: 'x'.repeat(text.length + 1),
+              valueType: WorkflowIOValueTypeEnum.string
+            }
+          ]
+        }
+      };
 
-    expect(
-      replaceEditorVariableWithSmallLimit({
-        text,
-        nodesMap,
-        variables: {}
-      })
-    ).toBe(`Result: ${'x'.repeat(text.length + 1)}`);
-    expect(loggerInfoMock).toHaveBeenCalledWith(
-      'Oversize string detected during synchronous string processing',
-      {
-        source: 'replaceEditorVariable',
-        reason: 'node_reference_result',
-        length: text.length + 9,
-        maxLength: text.length
-      }
-    );
-
-    vi.doUnmock('@fastgpt/service/env');
-    vi.resetModules();
+      expect(
+        replaceEditorVariable({
+          text,
+          nodesMap,
+          variables: {}
+        })
+      ).toBe(`Result: ${'x'.repeat(text.length + 1)}`);
+      expect(loggerInfoMock).toHaveBeenCalledWith(
+        'Oversize string detected during synchronous string processing',
+        {
+          source: 'replaceEditorVariable',
+          reason: 'node_reference_result',
+          length: text.length + 9,
+          maxLength: text.length
+        }
+      );
+    } finally {
+      snapshot.resource.systemMaxStringLengthM = original;
+    }
   });
 
   it('should handle node input as variable source', () => {

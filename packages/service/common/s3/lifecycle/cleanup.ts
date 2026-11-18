@@ -3,6 +3,7 @@ import { getLogger, LogCategories } from '../../logger';
 import { setCron } from '../../system/cron';
 import { checkTimerLock } from '../../system/timerLock/utils';
 import { TimerIdEnum } from '../../system/timerLock/constants';
+import { getCurrentSiteAvatarKeys, isSiteAvatarObject } from '../siteAvatarReferences';
 
 const logger = getLogger(LogCategories.INFRA.S3);
 
@@ -22,6 +23,14 @@ export async function clearExpiredMinioFiles() {
 
     logger.info('Found expired S3 files to clean', { count: expiredFiles.length });
 
+    // 仅当本轮存在普通头像 TTL 时读最新站点配置；Multipart 记录不代表最终对象。
+    const hasExpiredAvatar = expiredFiles.some(
+      (file) =>
+        isSiteAvatarObject(file.bucketName, file.minioKey) &&
+        (file.multipart === undefined || file.multipart === null)
+    );
+    const currentAvatarKeys = hasExpiredAvatar ? await getCurrentSiteAvatarKeys() : undefined;
+
     let success = 0;
     let fail = 0;
 
@@ -31,6 +40,26 @@ export async function clearExpiredMinioFiles() {
         const bucket = global.s3BucketMap[bucketName];
         const multipartUploadId = file.multipart?.uploadId?.trim();
         const hasMultipartMarker = file.multipart !== undefined && file.multipart !== null;
+
+        if (
+          !hasMultipartMarker &&
+          isSiteAvatarObject(file.bucketName, file.minioKey) &&
+          currentAvatarKeys === undefined
+        ) {
+          logger.warn('Deferred avatar TTL cleanup because current site config is unavailable', {
+            key: file.minioKey
+          });
+          continue;
+        }
+        if (
+          !hasMultipartMarker &&
+          isSiteAvatarObject(file.bucketName, file.minioKey) &&
+          currentAvatarKeys?.has(file.minioKey)
+        ) {
+          await MongoS3TTL.deleteOne({ _id: file._id });
+          logger.info('Kept referenced avatar and removed its TTL', { key: file.minioKey });
+          continue;
+        }
 
         if (bucket) {
           if (hasMultipartMarker) {

@@ -53,9 +53,13 @@ import {
 } from '@fastgpt/global/openapi/core/plugin/marketplace/api';
 import {
   getBatchUpdateFailures,
+  getInstallErrorReason,
+  getInstallFailureMessage,
+  hasMarketplaceToolUpdate,
+  parseTeamInstallFailure,
+  summarizeBatchUpdateResult,
   updateMarketplaceInstalledPluginStatus
 } from '@/web/core/plugin/marketplace/utils';
-import type { PluginInstallFailureType } from '@fastgpt/global/sdk/fastgpt-plugin';
 import { getAdminSystemTools, putAdminUpdateSystemTool } from '@/web/core/plugin/admin/tool/api';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import { parseI18nString, selectPluginText } from '@fastgpt/global/common/i18n/utils';
@@ -68,6 +72,7 @@ import { isTeamPluginSource, splitCombineToolId } from '@fastgpt/global/core/app
 import { PluginStatusEnum, type PluginStatusType } from '@fastgpt/global/core/plugin/type';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useToast } from '@fastgpt/web/hooks/useToast';
+import { ToastHandledError } from '@fastgpt/global/common/error/utils';
 
 type QueryValue = string | string[] | undefined;
 type QueryRecord = Record<string, QueryValue>;
@@ -160,37 +165,10 @@ const useSearchParams = () => {
   return { activeTab, searchText, tagIds, sourceFilter, updateParams };
 };
 
-const hasMarketplaceToolUpdate = ({
-  installedVersion,
-  installedEtag,
-  marketplaceVersion,
-  marketplaceEtag
-}: {
-  installedVersion?: string;
-  installedEtag?: string;
-  marketplaceVersion?: string;
-  marketplaceEtag?: string;
-}) => {
-  if (marketplaceVersion && installedVersion !== marketplaceVersion) return true;
-  if (marketplaceEtag && installedEtag && installedEtag !== marketplaceEtag) return true;
-
-  return false;
-};
-
 const getSystemToolRawPluginId = (toolId: string) => {
   try {
     const { source, pluginId } = splitCombineToolId(toolId);
     return source === AppToolSourceEnum.systemTool ? pluginId : undefined;
-  } catch {
-    return undefined;
-  }
-};
-
-const parseTeamInstallFailure = (error: unknown): PluginInstallFailureType[] | undefined => {
-  if (typeof error !== 'string') return;
-  try {
-    const parsed = JSON.parse(error);
-    return Array.isArray(parsed) ? (parsed as PluginInstallFailureType[]) : undefined;
   } catch {
     return undefined;
   }
@@ -320,9 +298,11 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
               id,
               type: 'tool' as 'tool' | 'moderation',
               systemToolId: tool.id,
+              source: tool.source,
+              enabled: false,
               status: tool.status,
-              version: tool.version,
-              etag: tool.etag,
+              version: teamTool.installedVersion ?? tool.version,
+              etag: teamTool.installedEtag ?? tool.etag,
               name: tool.name,
               description: tool.intro,
               icon: tool.avatar,
@@ -358,6 +338,8 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
             id,
             type: 'tool' as 'tool' | 'moderation',
             systemToolId: tool.id,
+            source: undefined as string | undefined,
+            enabled: false,
             status: tool.status,
             version: tool.version,
             etag: tool.etag,
@@ -374,9 +356,11 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
         id: item.pluginId,
         type: 'moderation' as 'tool' | 'moderation',
         systemToolId: item.pluginId,
+        source: item.source,
+        enabled: Boolean(item.enabled),
         status: item.deleted ? PluginStatusEnum.Offline : PluginStatusEnum.Normal,
         version: item.version || '',
-        etag: '',
+        etag: item.etag || '',
         name: { en: item.name, 'zh-CN': item.name },
         description: item.description ? { en: item.description, 'zh-CN': item.description } : '',
         icon: item.icon || '',
@@ -409,6 +393,70 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
       manual: false,
       refreshDeps: [activeTab]
     }
+  );
+
+  const installPluginByDownloadUrl = useCallback(
+    async ({
+      tool,
+      downloadUrl,
+      version,
+      fallbackError
+    }: {
+      tool: ToolCardItemType;
+      downloadUrl: string;
+      version?: string;
+      fallbackError: string;
+    }) => {
+      if (mode === 'team') {
+        try {
+          const installResult = await installTeamPluginWithUrl({
+            downloadUrls: [downloadUrl],
+            plugins: [
+              {
+                pluginId: tool.id,
+                version: version || tool.version || '',
+                etag: tool.etag || '',
+                marketplaceToolId: tool.id,
+                marketplaceSource: tool.source
+              }
+            ]
+          });
+          const failureMessage = getInstallFailureMessage({
+            installResult,
+            language: i18n.language,
+            fallback: fallbackError
+          });
+          if (failureMessage) {
+            return Promise.reject(failureMessage);
+          }
+        } catch (error) {
+          if (error instanceof ToastHandledError) {
+            throw error;
+          }
+          return Promise.reject(
+            getInstallErrorReason({
+              error,
+              language: i18n.language,
+              fallback: fallbackError
+            })
+          );
+        }
+        return;
+      }
+
+      const installResult = await intallPluginWithUrl({
+        downloadUrls: [downloadUrl]
+      });
+      const failureMessage = getInstallFailureMessage({
+        installResult,
+        language: i18n.language,
+        fallback: fallbackError
+      });
+      if (failureMessage) {
+        return Promise.reject(failureMessage);
+      }
+    },
+    [i18n.language, mode]
   );
 
   // Controler
@@ -446,23 +494,22 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
               version,
               type: tool.type
             });
-            if (!downloadUrl) return;
-            await installTeamPluginWithUrl({
-              downloadUrls: [downloadUrl],
-              plugins: [
-                {
-                  pluginId: tool.id,
-                  version: version || tool.version || '',
-                  etag: tool.etag || '',
-                  marketplaceToolId: tool.id,
-                  marketplaceSource: tool.source
-                }
-              ]
+            if (!downloadUrl) {
+              return Promise.reject(t('common:Error'));
+            }
+            await installPluginByDownloadUrl({
+              tool,
+              downloadUrl,
+              version,
+              fallbackError: t('common:Error')
             });
           } else if (activeTab === 'moderation' && shouldReinstallOfflineTool) {
             try {
               await postAdminRestoreModerationPlugin({ pluginId: tool.id });
             } catch (err) {
+              if (err instanceof ToastHandledError) {
+                throw err;
+              }
               const downloadUrl = await getMarketplaceDownloadURL({
                 toolId: tool.id,
                 version,
@@ -470,8 +517,11 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
               });
               if (!downloadUrl) throw err;
 
-              await intallPluginWithUrl({
-                downloadUrls: [downloadUrl]
+              await installPluginByDownloadUrl({
+                tool,
+                downloadUrl,
+                version,
+                fallbackError: t('common:Error')
               });
             }
           } else if (shouldReinstallOfflineTool && offlineTool) {
@@ -482,10 +532,15 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
               version,
               type: tool.type
             });
-            if (!downloadUrl) return;
+            if (!downloadUrl) {
+              return Promise.reject(t('common:Error'));
+            }
 
-            await intallPluginWithUrl({
-              downloadUrls: [downloadUrl]
+            await installPluginByDownloadUrl({
+              tool,
+              downloadUrl,
+              version,
+              fallbackError: t('common:Error')
             });
           }
 
@@ -533,25 +588,17 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
             version,
             type: tool.type
           });
-          if (!downloadUrl) return;
+          if (!downloadUrl) {
+            return Promise.reject(t('app:toolkit_update_failed'));
+          }
 
           // Call install interface for update
-          if (mode === 'team') {
-            await installTeamPluginWithUrl({
-              downloadUrls: [downloadUrl],
-              plugins: [
-                {
-                  pluginId: tool.id,
-                  version: version || tool.version || '',
-                  etag: tool.etag || '',
-                  marketplaceToolId: tool.id,
-                  marketplaceSource: tool.source
-                }
-              ]
-            });
-          } else {
-            await intallPluginWithUrl({ downloadUrls: [downloadUrl] });
-          }
+          await installPluginByDownloadUrl({
+            tool,
+            downloadUrl,
+            version,
+            fallbackError: t('app:toolkit_update_failed')
+          });
 
           // If the currently selected tool is the tool to be updated, update its status
           if (selectedTool?.id === tool.id) {
@@ -567,11 +614,11 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
       operatingPromisesRef.current.set(tool.id, operationPromise);
       await operationPromise;
     },
-    [mode, updatingToolIdsDispatch, selectedTool, refreshInstalledPlugins]
+    [installPluginByDownloadUrl, updatingToolIdsDispatch, selectedTool, refreshInstalledPlugins, t]
   );
 
-  const { runAsync: handleUpdateToolFromCard } = useRequest(
-    (tool: ToolCardItemType) => handleUpdateTool(tool),
+  const { runAsync: handleSingleUpdateTool } = useRequest(
+    (tool: ToolCardItemType, version?: string) => handleUpdateTool(tool, version),
     {
       manual: true,
       successToast: t('common:update_success')
@@ -586,7 +633,11 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
         return;
       }
 
-      const installedTool = systemInstalledPlugins?.map.get(tool.id);
+      const targetType = tool.type ?? activeTab;
+      const installedTool =
+        systemInstalledPlugins?.list.find(
+          (item) => item.id === tool.id && item.type === targetType
+        ) ?? systemInstalledPlugins?.map.get(tool.id);
       const systemToolId = tool.associatedPluginId || installedTool?.systemToolId;
       if (!systemToolId) return;
 
@@ -595,7 +646,10 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
 
         try {
           if (activeTab === 'moderation') {
-            await postAdminDeleteModerationPlugin({ pluginId: tool.id });
+            await postAdminDeleteModerationPlugin({
+              pluginId: tool.id,
+              ...(installedTool?.source ? { source: installedTool.source } : {})
+            });
           } else if (mode === 'team') {
             await deleteTeamPlugin({
               pluginId: systemToolId
@@ -638,10 +692,22 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
   const openMarketplaceUninstallConfirm = useCallback(
     (tool: ToolCardItemType) => {
       const toolName = selectPluginText(tool.name, i18n.language) || tool.id;
+      const targetType = tool.type ?? activeTab;
+      const installedTool = systemInstalledPlugins?.list.find(
+        (item) => item.id === tool.id && item.type === targetType
+      );
       const isLastModerationPlugin =
         activeTab === 'moderation' &&
         (systemInstalledPlugins?.list.filter((item) => item.type === 'moderation').length ?? 0) <=
           1;
+
+      if (activeTab === 'moderation' && !isLastModerationPlugin && installedTool?.enabled) {
+        toast({
+          status: 'warning',
+          title: t('admin:moderation.disable_before_delete')
+        });
+        return;
+      }
 
       openUninstallConfirm({
         title:
@@ -660,7 +726,15 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
         onConfirm: () => handleUninstallTool(tool)
       })();
     },
-    [activeTab, handleUninstallTool, i18n.language, openUninstallConfirm, systemInstalledPlugins, t]
+    [
+      activeTab,
+      handleUninstallTool,
+      i18n.language,
+      openUninstallConfirm,
+      systemInstalledPlugins,
+      t,
+      toast
+    ]
   );
 
   const heroSectionRef = useRef<HTMLDivElement>(null);
@@ -691,7 +765,11 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
       tools
         ?.map((tool) => {
           const toolId = tool.toolId || tool.pluginId;
-          const installedTool = systemInstalledPlugins?.map.get(toolId);
+          const targetType = tool.type ?? activeTab;
+          const installedTool =
+            systemInstalledPlugins?.list.find(
+              (item) => item.id === toolId && item.type === targetType
+            ) ?? systemInstalledPlugins?.map.get(toolId);
           const isInstalled = !!installedTool;
           const update = installedTool
             ? hasMarketplaceToolUpdate({
@@ -727,7 +805,7 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
           return !tool.installed;
         }) || []
     );
-  }, [tools, i18n.language, allTags, installedFilter, systemInstalledPlugins]);
+  }, [tools, i18n.language, allTags, installedFilter, systemInstalledPlugins, activeTab]);
 
   // Calculate updatable tools based on full version data from marketplace
   const updatableTools = useMemo(() => {
@@ -736,9 +814,10 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
     // Create a map for quick lookup of marketplace versions
     const marketplaceVersionMap = new Map(marketplaceVersions.map((item) => [item.toolId, item]));
 
-    // Filter installed plugins that have updates available
+    // Filter installed plugins that match the current tab and have updates available
     const updatableList = systemInstalledPlugins.list
       .filter((installedPlugin) => {
+        if ((installedPlugin.type ?? 'tool') !== activeTab) return false;
         const marketplaceTool = marketplaceVersionMap.get(installedPlugin.id);
         return hasMarketplaceToolUpdate({
           installedVersion: installedPlugin.version,
@@ -768,7 +847,7 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
       });
 
     return updatableList;
-  }, [systemInstalledPlugins, marketplaceVersions, i18n.language]);
+  }, [systemInstalledPlugins, marketplaceVersions, i18n.language, activeTab]);
 
   const { runAsync: handleBatchUpdate, loading: isBatchUpdating } = useRequest(
     async (toolIds: string[]) => {
@@ -776,13 +855,23 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
 
       // 1. Batch get download URLs
       const downloadUrls = await getMarketplaceDownloadURLs(toolIds);
-      const selectedTools = updatableTools.filter((tool) => toolIds.includes(tool.id));
+      if (
+        downloadUrls.length !== toolIds.length ||
+        downloadUrls.some((url) => typeof url !== 'string' || !url)
+      ) {
+        return Promise.reject(t('app:toolkit_update_failed'));
+      }
+
+      const updatableToolMap = new Map(updatableTools.map((tool) => [tool.id, tool]));
+      const selectedTools = toolIds
+        .map((id) => updatableToolMap.get(id))
+        .filter((tool): tool is NonNullable<typeof tool> => Boolean(tool));
 
       // 2. Batch install (update)
       let failures: ReturnType<typeof getBatchUpdateFailures> = [];
       if (mode === 'team') {
         try {
-          await installTeamPluginWithUrl({
+          const installResult = await installTeamPluginWithUrl({
             downloadUrls,
             plugins: selectedTools.map((tool) => ({
               pluginId: tool.id,
@@ -791,7 +880,18 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
               marketplaceToolId: tool.id
             }))
           });
+          failures = installResult?.failed
+            ? getBatchUpdateFailures({
+                toolIds,
+                downloadUrls,
+                installResult,
+                language: i18n.language
+              })
+            : [];
         } catch (error) {
+          if (error instanceof ToastHandledError) {
+            throw error;
+          }
           const failed = parseTeamInstallFailure(error);
           if (!failed) throw error;
           failures = getBatchUpdateFailures({
@@ -811,17 +911,40 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
         });
       }
 
-      // 3. Refresh installed plugins list
-      await refreshInstalledPlugins();
+      const summary = summarizeBatchUpdateResult({
+        totalCount: toolIds.length,
+        failures
+      });
 
-      // 4. Close Drawer
-      setShowBatchUpdateDrawer(false);
+      // 3. Refresh installed plugins list when any item succeeded
+      if (summary.status !== 'error') {
+        await refreshInstalledPlugins();
+      }
+
+      // 4. Show toast and close drawer only on full success
+      if (summary.status === 'success') {
+        setShowBatchUpdateDrawer(false);
+        toast({
+          title: t('common:update_success'),
+          status: 'success'
+        });
+      } else if (summary.status === 'partial') {
+        toast({
+          title: t('common:batch_partial_failed'),
+          description: summary.firstReason,
+          status: 'warning'
+        });
+      } else {
+        toast({
+          title: summary.firstReason || t('app:toolkit_update_failed'),
+          status: 'error'
+        });
+      }
 
       return failures;
     },
     {
-      manual: true,
-      successToast: t('common:Success')
+      manual: true
     }
   );
 
@@ -1276,7 +1399,7 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
                         openMarketplaceUninstallConfirm(tool);
                         return Promise.resolve();
                       }}
-                      onUpdate={() => handleUpdateToolFromCard(tool)}
+                      onUpdate={() => handleSingleUpdateTool(tool)}
                       onClickCard={() => setSelectedTool(tool)}
                       showActionButton={!tool.installed}
                     />
@@ -1300,7 +1423,7 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
             openMarketplaceUninstallConfirm(selectedTool);
             return Promise.resolve();
           }}
-          onUpdate={(version) => handleUpdateTool(selectedTool, version)}
+          onUpdate={(version) => handleSingleUpdateTool(selectedTool, version)}
           isUpdating={updatingToolIds.has(selectedTool.id)}
           isLoading={installingOrDeletingToolIds.has(selectedTool.id)}
           mode="admin"

@@ -36,6 +36,28 @@ import {
 
 const objectId = '68ad85a7463006c963799a05';
 
+it.each([
+  ['DevAPI', openAPIDocument],
+  ['System OpenAPI', apiDocOpenAPIDocument]
+] as const)('exposes dataset updates through PUT in %s', (_, document) => {
+  const operation = document.paths?.['/core/dataset/update']?.put;
+  expect(operation?.requestBody).toMatchObject({
+    content: {
+      'application/json': {
+        schema: {
+          required: ['id'],
+          properties: {
+            name: { type: 'string' },
+            autoSync: { type: 'boolean' }
+          }
+        }
+      }
+    }
+  });
+  expect(operation?.responses?.[200]).toBeDefined();
+  expect(document.paths?.['/core/dataset/update']?.post).toBeUndefined();
+});
+
 describe('structured dataset search OpenAPI', () => {
   it('rejects both budgets in the canonical input contract', () => {
     expectTypeOf<{ topk: number; maxTokens: number }>().not.toMatchTypeOf<
@@ -321,6 +343,20 @@ describe('SearchDatasetTestBodySchema', () => {
 });
 
 describe('Dataset OpenAPI contracts', () => {
+  it('keeps dataset search separate from management and hides unused index navigation', () => {
+    expect(apiDocOpenAPIDocument.paths?.['/core/dataset/search']?.post).toMatchObject({
+      summary: '知识库搜索',
+      tags: ['知识库搜索']
+    });
+    const group = apiDocOpenAPIDocument['x-tagGroups'].find(
+      (group: { name: string }) => group.name === '知识库'
+    );
+    expect(group.tags).toEqual(['知识库管理', '集合管理', '集合创建', '数据管理', '知识库搜索']);
+    for (const action of ['create', 'update', 'delete']) {
+      expect(apiDocOpenAPIDocument.paths).not.toHaveProperty(`/core/dataset/data/index/${action}`);
+    }
+  });
+
   it('keeps ancestor paths in storage types only and documents folder access modes', () => {
     expect(DatasetSchema.shape.ancestorIds).toBeDefined();
     expect(DatasetItemSchema.shape).not.toHaveProperty('ancestorIds');

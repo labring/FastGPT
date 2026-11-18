@@ -1,5 +1,5 @@
 import { type ChatSiteItemType } from '@/components/core/chat/ChatContainer/ChatBox/type';
-import type { LinkedPaginationProps, LinkedListResponse } from '@fastgpt/global/openapi/api';
+import type { LinkedPaginationProps } from '@fastgpt/global/openapi/api';
 import {
   useLinkedScroll,
   type LinkedScrollDataProps,
@@ -10,7 +10,10 @@ import { createContext } from 'use-context-selector';
 import { getChatRecords } from '../record/api';
 import { ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
-import type { GetRecordsV2ResponseType } from '@fastgpt/global/openapi/core/chat/record/api';
+import {
+  GetRecordsV2BodyRawSchema,
+  type GetRecordsV2ResponseType
+} from '@fastgpt/global/openapi/core/chat/record/api';
 import { hasChatAuthTargetInput, type ChatAuthTargetInput } from '../utils';
 import { useMemoizedFn } from 'ahooks';
 
@@ -73,7 +76,6 @@ const ChatRecordContextProvider = ({
   const [isChatRecordsLoaded, setIsChatRecordsLoaded] = useState(false);
   const [totalRecordsCount, setTotalRecordsCount] = useState(0);
 
-  const currentData = useMemoEnhance(() => ({ id: feedbackRecordId || '' }), [feedbackRecordId]);
   // 恢复待确认方案时对齐卡片顶部，避免分页列表的初始定位覆盖 ChatBox 的阅读起点。
   const getScrollTarget = useMemoizedFn(
     (element: HTMLElement) =>
@@ -94,10 +96,11 @@ const ChatRecordContextProvider = ({
   } = useLinkedScroll(
     async (
       data: LinkedPaginationProps<ChatRecordProviderParams>
-    ): Promise<LinkedListResponse<ChatSiteItemType>> => {
+    ): Promise<{ list: ChatSiteItemType[]; hasMorePrev: boolean; hasMoreNext: boolean }> => {
       const request = (() => {
         if (fetchFn) return () => fetchFn(data);
-        if (hasChatAuthTargetInput(data)) return () => getChatRecords(data);
+        if (hasChatAuthTargetInput(data))
+          return () => getChatRecords(GetRecordsV2BodyRawSchema.parse(data));
         return undefined;
       })();
       if (!request) {
@@ -116,9 +119,9 @@ const ChatRecordContextProvider = ({
       setTotalRecordsCount(res.total);
 
       return {
-        list: res.list.map((item) => ({
+        list: res.list.map(({ id: _deprecatedId, ...item }) => ({
           ...item,
-          dataId: item.dataId!,
+          dataId: item.dataId,
           status: ChatStatusEnum.finish
         })),
         hasMorePrev: res.hasMorePrev,
@@ -128,7 +131,8 @@ const ChatRecordContextProvider = ({
     {
       pageSize: 20,
       params,
-      currentData,
+      currentId: feedbackRecordId,
+      getItemId: (item) => item.dataId,
       defaultScroll: 'bottom',
       getScrollTarget,
       showErrorToast: false,

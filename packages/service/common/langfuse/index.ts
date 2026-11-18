@@ -1,8 +1,7 @@
+import { serviceEnv } from '../../env';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { trace, type AttributeValue } from '@opentelemetry/api';
 import { addSpanProcessor, type SpanProcessor } from '@fastgpt-sdk/otel/tracing';
-import type { LangfuseConfigType } from '@fastgpt/global/common/system/types';
-import { serviceEnv } from '../../env';
 
 type RuntimeConfig = { secretKey: string; publicKey: string; baseUrl?: string };
 /** trace：根 workflow span，承载 trace 级属性；observation：节点 span，承载 observation 级属性。 */
@@ -16,7 +15,7 @@ type LangfuseTracingState = {
   current: SpanProcessor | null;
   hash: string;
   pending: Promise<void> | null;
-  // refreshLangfuseTracing 也会由系统配置加载触发，避免 OTel 未启用时创建后台客户端。
+  // 仅在 OTel 已启用后创建 processor，未配置完整 ENV 时不创建客户端。
   initialized: boolean;
   initialAttributesStorage: AsyncLocalStorage<PendingLangfuseSpan>;
   spanAttributes: Map<string, Record<string, AttributeValue>>;
@@ -151,15 +150,9 @@ export const setActiveLangfuseTraceAttributes = (attributes: Record<string, Attr
 const value = (v?: string) => v?.trim() || undefined;
 
 function resolve(): RuntimeConfig | undefined {
-  const runtime = global.systemEnv?.langfuse as LangfuseConfigType | undefined;
-  const hasRuntime = !!(
-    value(runtime?.secretKey) ||
-    value(runtime?.publicKey) ||
-    value(runtime?.baseUrl)
-  );
-  const secretKey = hasRuntime ? value(runtime?.secretKey) : value(serviceEnv.LANGFUSE_SECRET_KEY);
-  const publicKey = hasRuntime ? value(runtime?.publicKey) : value(serviceEnv.LANGFUSE_PUBLIC_KEY);
-  const baseUrl = hasRuntime ? value(runtime?.baseUrl) : value(serviceEnv.LANGFUSE_BASE_URL);
+  const secretKey = value(serviceEnv.LANGFUSE_SECRET_KEY);
+  const publicKey = value(serviceEnv.LANGFUSE_PUBLIC_KEY);
+  const baseUrl = value(serviceEnv.LANGFUSE_BASE_URL);
   if (!secretKey || !publicKey) return;
   return { secretKey, publicKey, ...(baseUrl ? { baseUrl } : {}) };
 }
@@ -176,7 +169,7 @@ export async function initLangfuseTracing() {
   await refreshLangfuseTracing();
 }
 
-/** 根据最新系统配置替换 Langfuse processor，并在切换前刷新旧实例。 */
+/** 根据当前进程 ENV 创建 Langfuse processor，并在重新初始化时释放旧实例。 */
 export async function refreshLangfuseTracing() {
   if (!langfuseTracingState.initialized) return;
   if (langfuseTracingState.pending) return langfuseTracingState.pending;

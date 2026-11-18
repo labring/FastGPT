@@ -2,6 +2,8 @@ import { ChatIdSchema } from '../../../core/chat/schema';
 import z from 'zod';
 import { ChatCompletionMessageParamSchema } from '../../../core/ai/llm/type';
 import { ObjectIdSchema } from '../../../common/type/mongo';
+import { LanguageSchema } from '../../../common/i18n/type';
+import { WorkflowTemplateBundleSchema } from '../../../core/workflow/template/type';
 import {
   ChatItemMiniSchema,
   UserChatItemValueItemSchema,
@@ -193,3 +195,25 @@ export const GetSandboxPackagesResponseSchema = z.object({
   })
 });
 export type GetSandboxPackagesResponse = z.infer<typeof GetSandboxPackagesResponseSchema>;
+
+/* ============================================================================
+ * API: 获取工作流构建模板包
+ * Route: GET /api/core/workflow/getTemplateBundle
+ * Method: GET
+ * Description: 返回当前成员可用的完整工具模板、内置节点和团队模板默认值
+ * Tags: ['工作流辅助生成', '系统工具', 'Read']
+ * ============================================================================ */
+export const GetWorkflowTemplateBundleQuerySchema = z.object({
+  locale: LanguageSchema.optional().meta({
+    description: '模板文案语言。省略时使用请求语言',
+    example: 'zh-CN'
+  })
+});
+export type GetWorkflowTemplateBundleQuery = z.infer<typeof GetWorkflowTemplateBundleQuerySchema>;
+
+export const GetWorkflowTemplateBundleResponseSchema = WorkflowTemplateBundleSchema.meta({
+  description: '可供本地工作区和 Pro Builder 使用的完整工作流模板包'
+});
+export type GetWorkflowTemplateBundleResponse = z.infer<
+  typeof GetWorkflowTemplateBundleResponseSchema
+>;

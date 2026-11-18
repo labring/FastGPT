@@ -1,7 +1,6 @@
 import { NextAPI } from '@/service/middleware/entry';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { ModelScopeEnum } from '@fastgpt/global/core/ai/constants';
-import { AIModelDocumentDataSchema } from '@fastgpt/global/core/ai/model/schema';
 import {
   GetSystemModelConfigJsonResponseSchema,
   ImportedSystemModelSchema,
@@ -9,6 +8,7 @@ import {
 } from '@fastgpt/global/openapi/core/ai/model/api';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { MongoAIModel } from '@fastgpt/service/core/ai/model/schema';
+import { formatDbModelToDocumentData } from '@fastgpt/service/core/ai/model/transform';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 
 async function handler(req: ApiRequestProps): Promise<GetSystemModelConfigJsonResponse> {
@@ -21,7 +21,7 @@ async function handler(req: ApiRequestProps): Promise<GetSystemModelConfigJsonRe
     JSON.stringify(
       models.map((model) =>
         ImportedSystemModelSchema.parse({
-          ...AIModelDocumentDataSchema.parse(model),
+          ...formatDbModelToDocumentData(model),
           modelId: String(model._id)
         })
       ),

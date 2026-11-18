@@ -24,6 +24,7 @@ import type {
   SandboxStatus,
   SearchResult
 } from '../types';
+import type { ContentReplaceResult } from '../types/filesystem';
 
 /**
  * Abstract base class for all sandbox adapters.
@@ -255,13 +256,13 @@ export abstract class BaseSandboxAdapter implements ISandbox {
     );
   }
 
-  async replaceContent(entries: ContentReplaceEntry[]): Promise<void> {
+  async replaceContent(entries: ContentReplaceEntry[]): Promise<ContentReplaceResult[]> {
     const polyfillService = this.requirePolyfillService(
       'replaceContent',
       'Content replace not supported by this provider'
     );
 
-    await polyfillService.replaceContent(
+    return polyfillService.replaceContent(
       entries.map((entry) => ({ ...entry, path: this.normalizePath(entry.path) }))
     );
   }

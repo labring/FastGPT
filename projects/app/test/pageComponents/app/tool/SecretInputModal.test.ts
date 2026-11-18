@@ -1,5 +1,6 @@
 import React, { act, createElement } from 'react';
 import { createRoot } from 'react-dom/client';
+import { Simulate } from 'react-dom/test-utils';
 import { JSDOM } from 'jsdom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
@@ -36,6 +37,8 @@ vi.mock('@chakra-ui/react', async () => {
     Box: box,
     Flex: box,
     HStack: box,
+    IconButton: ({ onClick, 'aria-label': label }: any) =>
+      createElement('button', { type: 'button', onClick, 'aria-label': label }),
     Button: ({ children, onClick }: any) =>
       createElement('button', { type: 'button', onClick }, children),
     Input: forwardRef<HTMLInputElement, any>(
@@ -86,6 +89,9 @@ vi.mock('@fastgpt/web/components/core/workflow/NodeInputSelect', async () => {
   };
 });
 
+vi.mock('@fastgpt/web/hooks/useSafeTranslation', () => ({
+  useSafeTranslation: () => ({ t: (key: string) => key })
+}));
 vi.mock('@fastgpt/web/hooks/useRequest', () => ({ useRequest: () => ({ data: [] }) }));
 vi.mock('@/web/core/app/api/tool', () => ({ getAppToolTemplates: vi.fn() }));
 vi.mock('@fastgpt/web/components/common/MyBox/FormLabel', () => ({
@@ -186,6 +192,35 @@ describe('SecretInputForm authorization output', () => {
     );
     expect(onChange).toHaveBeenLastCalledWith({ type: 'system' });
     expect(await submit()).toEqual({ type: 'system' });
+  });
+
+  it('submits the original secret until the replacement is explicitly confirmed', async () => {
+    const original = { type: 'manual', value: { apiKey: { secret: 'existing-ciphertext' } } };
+    await render(original as ToolParamsFormType, false);
+    const click = async (label: string) => {
+      await act(async () =>
+        dom.window.document
+          .querySelector<HTMLButtonElement>(`[aria-label="common:${label}"]`)!
+          .click()
+      );
+    };
+    await click('Edit');
+    const input = dom.window.document.querySelector('input')!;
+    expect(input.value).toBe('');
+    await act(async () => Simulate.change(input, { target: { value: 'replacement' } } as any));
+    await act(async () => Simulate.blur(input));
+    expect(await submit()).toEqual(original);
+    await click('Close');
+    expect(await submit()).toEqual(original);
+
+    await click('Edit');
+    const replacement = dom.window.document.querySelector('input')!;
+    expect(replacement.value).toBe('');
+    await act(async () => Simulate.change(replacement, { target: { value: 'confirmed' } } as any));
+    await click('Save');
+    expect(await submit()).toEqual({ type: 'manual', value: { apiKey: { value: 'confirmed' } } });
+    await click('Edit');
+    expect(dom.window.document.querySelector('input')!.value).toBe('');
   });
 
   it('keeps default manual input wrappers when no platform credential exists', async () => {

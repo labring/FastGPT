@@ -13,8 +13,8 @@ import {
   removeDuplicateSearchResults
 } from './result';
 import { countRecallLimit, filterDatasetDataByMaxTokens } from './utils';
-import { serviceEnv } from '../../../../env';
 import { attachSynonymMappingsToSearchResults } from '../../synonym/searchResult';
+import { serviceEnv } from '../../../../env';
 
 /**
  * 执行默认知识库召回主流程。
@@ -39,6 +39,7 @@ export async function searchDatasetData(
     reRankQuery,
     textQueries,
     imageQueries = [],
+    rawQueries = [],
     userKey,
     model,
     vlmModel,
@@ -130,11 +131,10 @@ export async function searchDatasetData(
 
   // 重排前取快照：保存 textRecallResults，即重排前的文本召回候选集，
   // 仅用于日志详情对比召回与重排。仅重排开启时产出，避免未开启重排时切了切片又没人用。
-  // 上限由 RETRIEVAL_RESULTS_LIMIT 控制，0 表示不产出。
+  // 上限由部署环境变量 RETRIEVAL_RESULTS_LIMIT 控制，0 表示不产出。
+  const retrievalLimit = serviceEnv.RETRIEVAL_RESULTS_LIMIT;
   const retrievalResults =
-    usingReRank && serviceEnv.RETRIEVAL_RESULTS_LIMIT > 0
-      ? textRecallResults.slice(0, serviceEnv.RETRIEVAL_RESULTS_LIMIT)
-      : undefined;
+    usingReRank && retrievalLimit > 0 ? textRecallResults.slice(0, retrievalLimit) : undefined;
 
   // Step 4: rerank 只处理文本召回。
   // 图片向量结果和 caption 结果仍按 RRF 融合，避免用文本 rerank 把视觉相似结果误杀。
@@ -194,10 +194,15 @@ export async function searchDatasetData(
       ? await filterDatasetDataByMaxTokens(scoreFilter, maxTokens)
       : scoreFilter.slice(0, topk);
   // 同义词只装饰最终入选结果：被前面过滤掉的候选不会产生 alias 查询。
+  // 问题侧映射只扫「用户原始问题」（rawQueries）：textQueries 已过 query extension，
+  // 扩展模型生成的同义词和「原词出现在分块正文或用户问题里」的装饰语义无关，
+  // 带进来会让模型看到用户没提过的术语对应关系。未传 rawQueries 的旧入口回退到
+  // textQueries，保持原行为。
   const decoratedFinal = await attachSynonymMappingsToSearchResults({
     teamId,
     datasetIds,
-    results: filteredResults
+    results: filteredResults,
+    queries: rawQueries.length > 0 ? rawQueries : textQueries
   });
   // Step 8: 返回前一次收集最终结果中的 q、a、imageId，并批量签发唯一 dataset 对象 key。
   // 最终输出不暴露仅供格式化使用的 imageId。

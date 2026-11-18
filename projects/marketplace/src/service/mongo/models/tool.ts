@@ -1,6 +1,7 @@
 import { Schema } from 'mongoose';
 import z from 'zod';
-import { defineIndex, getMongoModel } from '..';
+import { getMongoModel } from '..';
+import { defineIndex } from '@fastgpt/service/common/mongo/schemaIndexes';
 import {
   MarketplaceOfficialSource,
   MarketplacePkgSourceSchema

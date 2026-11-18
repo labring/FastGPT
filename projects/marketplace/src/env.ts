@@ -16,7 +16,6 @@ export const marketplaceEnv = createEnv({
     COMMUNITY_AUTH_TOKEN: z.string().optional(),
     MONGODB_URI: z.string().optional().default(''),
     DB_MAX_LINK: IntSchema.default(20),
-    SYNC_INDEX: BoolSchema.default(true),
 
     // 对象存储。保持与主项目 packages/service/env.ts 同名,并兼容 marketplace 旧 S3_* 变量。
     STORAGE_VENDOR: StorageVendorSchema.default('minio'),
@@ -38,7 +37,6 @@ export const marketplaceEnv = createEnv({
     STORAGE_OSS_CNAME: BoolSchema.default(false),
     STORAGE_OSS_INTERNAL: BoolSchema.default(false),
     STORAGE_OSS_SECURE: BoolSchema.default(false),
-    STORAGE_OSS_ENABLE_PROXY: BoolSchema.default(true),
     S3_BUCKET: z.string().optional(),
     S3_ENDPOINT: z.string().optional(),
     S3_ACCESS_KEY: z.string().optional(),

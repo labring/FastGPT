@@ -5,6 +5,7 @@ import { CliArgumentError } from '../../src/shared/errors';
 import { createSuccessResult } from '../../src/shared/result';
 import type { CliContainer } from '../../src/cli/container';
 import type { Prompter } from '../../src/infra/ui/prompter';
+import { createModelService } from '../../src/domain/model/model-service';
 
 function createMockContainer(isInteractive = false): CliContainer {
   const dummyPrompter: Prompter = {
@@ -36,11 +37,21 @@ function createMockContainer(isInteractive = false): CliContainer {
       deleteSecret: async () => {}
     },
     prompter: dummyPrompter,
+    fileIo: {} as any,
+    readStdin: async () => '',
+    fetchFn: globalThis.fetch,
     createHttpClient: () => ({}) as any,
     authService: {} as any,
     profileService: {} as any,
     doctorService: {} as any,
     datasetService: {} as any,
+    datasetCollectionService: {} as any,
+    datasetDataService: {} as any,
+    chatService: {} as any,
+    modelService: createModelService(),
+    workflowLocalService: {} as any,
+    workflowSyncService: {} as any,
+    readJsonInput: async () => ({}),
     stdout: () => {},
     stderr: () => {}
   };

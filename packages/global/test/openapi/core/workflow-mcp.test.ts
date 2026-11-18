@@ -19,6 +19,7 @@ import { DevApiTagsMap } from '../../../openapi/tag';
 describe('Workflow debug and MCP runtime OpenAPI contracts', () => {
   it.each([
     ['/core/workflow/debug', 'post'],
+    ['/core/workflow/getTemplateBundle', 'get'],
     ['/support/mcp/server/toolCall', 'post'],
     ['/support/mcp/server/toolList', 'get']
   ] as const)('registers %s as %s', (path, method) => {

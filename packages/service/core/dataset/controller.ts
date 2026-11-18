@@ -67,13 +67,16 @@ export async function getCollectionWithDataset(collectionId: string) {
 }
 
 /* delete all data by datasetIds */
-export async function delDatasetRelevantData({
-  datasets,
-  session
-}: {
-  datasets: { _id: string; teamId: string }[];
-  session: ClientSession;
-}) {
+export async function delDatasetRelevantData(
+  {
+    datasets,
+    session
+  }: {
+    datasets: { _id: string; teamId: string }[];
+    session: ClientSession;
+  },
+  { keepSynonyms = false }: { keepSynonyms?: boolean } = {}
+) {
   if (!datasets.length) return;
 
   const teamId = datasets[0].teamId;
@@ -100,14 +103,29 @@ export async function delDatasetRelevantData({
   });
 
   // 同义词配置和映射属于 dataset 数据，即使功能关闭也必须随知识库删除。
-  await MongoDatasetSynonymMapping.deleteMany({
-    teamId,
-    datasetId: { $in: datasetIds }
-  }).session(session);
-  await MongoDatasetSynonym.deleteMany({
-    teamId,
-    datasetId: { $in: datasetIds }
-  }).session(session);
+  // 例外：web 站点改分块设置等「数据重建而非删除知识库」的调用方传
+  // keepSynonyms: true——配置与当前生效版本的映射原地保留（重建后的分块仍需
+  // 同义词对齐能力），仅顺手清理当前版本之前的历史残留映射，交给既有队列回收。
+  if (!keepSynonyms) {
+    await MongoDatasetSynonymMapping.deleteMany({
+      teamId,
+      datasetId: { $in: datasetIds }
+    }).session(session);
+    await MongoDatasetSynonym.deleteMany({
+      teamId,
+      datasetId: { $in: datasetIds }
+    }).session(session);
+  } else if (datasets.length === 1) {
+    const config = await MongoDatasetSynonym.findOne({ teamId, datasetId: datasetIds[0] }, null, {
+      session
+    }).lean();
+    if (config) {
+      await MongoDatasetSynonymMapping.deleteMany(
+        { teamId, datasetId: datasetIds[0], fileVersion: { $lt: config.version } },
+        { session }
+      );
+    }
+  }
 
   // Delete dataset_data_texts(兼容窗口内 SQL 向量库继续维护旧表;Milvus 空操作——全文随向量删除)
   await getFullTextStore().deleteByDatasetIds({ teamId, datasetIds }, session);
@@ -134,6 +152,7 @@ export async function delDatasetRelevantData({
   // Delete all dataset files
   for (const datasetId of datasetIds) {
     await getS3DatasetSource().deleteDatasetFilesByPrefix({ datasetId });
-    invalidateDatasetSynonymMatcherCache({ teamId, datasetId });
+    // keepSynonyms 时配置与映射原地保留，matcher 缓存仍然有效，无需失效。
+    if (!keepSynonyms) invalidateDatasetSynonymMatcherCache({ teamId, datasetId });
   }
 }

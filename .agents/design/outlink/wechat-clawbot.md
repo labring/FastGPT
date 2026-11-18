@@ -76,7 +76,7 @@ Worker 每次执行前读取 MongoOutLink。记录不存在、渠道非 online �
 | Job name | `wechatPublishPoll` |
 | Job data | `{ shareId }` |
 | Job ID | `wechat-poll:${shareId}` |
-| Concurrency | `WECHAT_CHANNEL_CONCURRENCY` |
+| Concurrency | 固定 `1000` |
 | Lock | 120 秒 |
 | Hard timeout | 120 秒 |
 | Stalled interval | 30 秒 |
@@ -94,7 +94,7 @@ Poll job 主要等待约 35 秒的长轮询，不执行工作流。拉到消息�
 | Job name | `wechatPublishReply` |
 | Job data | `shareId`、`userId`、`items`、`contextToken`、`lastMsgId` |
 | Job ID | `wechat-reply:${shareId}:${lastMsgId}` |
-| Concurrency | `WECHAT_CHANNEL_CONCURRENCY` |
+| Concurrency | 固定 `1000` |
 | Lock | 30 分钟 |
 | Stalled interval | 60 秒 |
 | Failed retention | 500 条或 7 天 |

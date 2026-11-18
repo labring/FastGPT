@@ -1,4 +1,8 @@
-import { describe, expect, it } from 'vitest';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { afterEach, describe, expect, it } from 'vitest';
+import { createNodeFileIoAdapter } from '../../src/infra/fs/file-io';
 import {
   buildAuthHeaders,
   createFastGptHttpClient
@@ -6,6 +10,12 @@ import {
 import { createOutputRenderer } from '../../src/infra/ui/renderer';
 import { CliApiError, CliArgumentError, CliNetworkError } from '../../src/shared/errors';
 import type { CliFetchFn } from '../../src/shared/types';
+
+const tempDirs: string[] = [];
+
+afterEach(async () => {
+  await Promise.all(tempDirs.splice(0).map((dir) => rm(dir, { recursive: true, force: true })));
+});
 
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -15,6 +25,28 @@ function jsonResponse(body: unknown, status = 200) {
 }
 
 describe('FastGptHttpClient (ky) & OutputRenderer (picocolors)', () => {
+  it.each([
+    { code: 504000, statusText: 'unAuthChat' },
+    { code: 504000 },
+    { code: 500, statusText: 'unAuthChat' }
+  ])(
+    'classifies conversation permission refusal without a session-expiry hint: %j',
+    async (error) => {
+      const client = createFastGptHttpClient({
+        baseUrl: 'http://localhost:3000/api',
+        cliVersion: '0.1.0',
+        fetchFn: async () =>
+          jsonResponse({ ...error, message: 'Conversation identity mismatch' }, 500)
+      });
+      await expect(
+        client.request({ method: 'POST', path: '/v2/chat/completions', body: {} })
+      ).rejects.toMatchObject({
+        code: 'AUTH_FORBIDDEN',
+        exitCode: 3,
+        hint: expect.stringContaining('customUid')
+      });
+    }
+  );
   it('builds token header without Cookie and Bearer header for API Keys', () => {
     const tokenHeaders = buildAuthHeaders({
       auth: { authType: 'token', secret: 'u1:sess' },
@@ -347,5 +379,75 @@ describe('FastGptHttpClient (ky) & OutputRenderer (picocolors)', () => {
 
     await client.request({ method: 'POST', path: '/redirect-post', body: { name: 'test' } });
     expect(receivedPostMethod).toBe('GET');
+  });
+
+  it('handles multipart Blob uploads without consuming request body and obeys redirect method rules', async () => {
+    let redirect307BodyText = '';
+    let redirect303Method = '';
+    let redirect303ContentType: string | null = null;
+    const client = createFastGptHttpClient({
+      baseUrl: 'http://127.0.0.1:3000/api',
+      cliVersion: '0.1.0',
+      fetchFn: async (input) => {
+        const req = input instanceof Request ? input : new Request(input);
+        if (req.url.endsWith('/upload-unconsumed')) {
+          // 故意不读取 req.body，验证 Node 24 下不会因 ky finally cancel() 触发未捕获异常
+          return jsonResponse({ code: 200, data: { ok: true } });
+        }
+        if (req.url.endsWith('/upload-307')) {
+          return new Response(null, { status: 307, headers: { location: '/upload-307-target' } });
+        }
+        if (req.url.endsWith('/upload-307-target')) {
+          const form = await req.formData();
+          redirect307BodyText = await (form.get('file') as File).text();
+          return jsonResponse({ code: 200, data: { preserved: true } });
+        }
+        if (req.url.endsWith('/upload-303')) {
+          return new Response(null, { status: 303, headers: { location: '/upload-303-target' } });
+        }
+        if (req.url.endsWith('/upload-303-target')) {
+          redirect303Method = req.method;
+          redirect303ContentType = req.headers.get('content-type');
+          return jsonResponse({ code: 200, data: { switched: true } });
+        }
+        return jsonResponse({}, 404);
+      }
+    });
+
+    const createSampleForm = () => {
+      const form = new FormData();
+      form.append('file', new Blob(['# Hello FastGPT'], { type: 'text/markdown' }), 'notes.md');
+      form.append('data', JSON.stringify({ name: 'notes.md' }));
+      return form;
+    };
+
+    await expect(
+      client.uploadMultipart({ path: '/upload-unconsumed', formData: createSampleForm() })
+    ).resolves.toEqual({ ok: true });
+
+    await expect(
+      client.uploadMultipart({ path: '/upload-307', formData: createSampleForm() })
+    ).resolves.toEqual({ preserved: true });
+    expect(redirect307BodyText).toBe('# Hello FastGPT');
+
+    await expect(
+      client.uploadMultipart({ path: '/upload-303', formData: createSampleForm() })
+    ).resolves.toEqual({ switched: true });
+    expect(redirect303Method).toBe('GET');
+    expect(redirect303ContentType).toBeNull();
+  });
+
+  it('supports concurrent writeTextAtomic calls targeting the same file without temp-name collision', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'fastgpt-cli-fileio-'));
+    tempDirs.push(dir);
+    const fileIo = createNodeFileIoAdapter({ cwd: dir });
+
+    const payloads = Array.from({ length: 8 }, (_, idx) => JSON.stringify({ index: idx }));
+    await Promise.all(
+      payloads.map((content) => fileIo.writeTextAtomic({ filePath: 'workflow.json', content }))
+    );
+
+    const finalContent = await readFile(join(dir, 'workflow.json'), 'utf8');
+    expect(payloads).toContain(finalContent);
   });
 });

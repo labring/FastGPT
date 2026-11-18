@@ -1042,6 +1042,88 @@ describe('system migration runner', () => {
     }
   });
 
+  it('re-runs succeeded resumable tasks and keeps other succeeded tasks terminal', async () => {
+    const executions: string[] = [];
+    const resumableTask = {
+      ...createMigration('20260903_runner_resumable_rerun', async () => {
+        executions.push('resumable');
+      }),
+      resumable: true
+    };
+    const terminalTask = createMigration('20260903_runner_resumable_terminal', async () => {
+      executions.push('terminal');
+    });
+    const migrations = [resumableTask, terminalTask];
+    const runner = createSystemMigrationRunner({
+      migrations,
+      runnerId: 'runner-resumable',
+      timing: { scanIntervalMs: 10_000 },
+      logger
+    });
+
+    // 模拟上一轮启动已全部成功：注册表后来新增声明成员时，只有 resumable 需要再跑一轮补写
+    await ensureMigrationStates(migrations);
+    await MongoSystemMigrationState.updateMany(
+      { _id: { $in: migrations.map((migration) => migration.id) } },
+      { $set: { status: SystemMigrationStatusEnum.succeeded, runId: 'previous-run' } }
+    );
+
+    try {
+      await runner.start();
+      await runner.tick();
+      // 同一轮 drain 里成功后不得再次被选中，否则退化成只读空转
+      expect(executions).toEqual(['resumable']);
+      expect(await MongoSystemMigrationState.findById(resumableTask.id).lean()).toMatchObject({
+        status: SystemMigrationStatusEnum.succeeded
+      });
+      // 非 resumable 任务不能被重新领取，runId 仍是上一轮写入的
+      expect(await MongoSystemMigrationState.findById(terminalTask.id).lean()).toMatchObject({
+        status: SystemMigrationStatusEnum.succeeded,
+        runId: 'previous-run'
+      });
+
+      // 新一轮 drain（等价于进程重启）再补跑一次
+      await runner.tick();
+      expect(executions).toEqual(['resumable', 'resumable']);
+    } finally {
+      runner.stop();
+    }
+  });
+
+  it('awaits the resumable startup drain instead of trusting a stale succeeded state', async () => {
+    const executions: string[] = [];
+    const resumableTask = {
+      ...createMigration('20260903_runner_resumable_startup', async () => {
+        executions.push('resumable');
+      }),
+      blockStartup: true,
+      resumable: true
+    };
+    // 残留成功态：只读门禁会立刻放行，因此 start 必须自己等本轮补跑结束
+    await ensureMigrationStates([resumableTask]);
+    await MongoSystemMigrationState.updateOne(
+      { _id: resumableTask.id },
+      { $set: { status: SystemMigrationStatusEnum.succeeded, runId: 'previous-run' } }
+    );
+    const runner = createSystemMigrationRunner({
+      migrations: [resumableTask],
+      runnerId: 'runner-resumable-startup',
+      timing: { scanIntervalMs: 10_000 },
+      logger
+    });
+
+    try {
+      await runner.start();
+      expect(executions).toEqual(['resumable']);
+      await runner.waitForBlockingMigrations();
+      expect(await MongoSystemMigrationState.findById(resumableTask.id).lean()).toMatchObject({
+        status: SystemMigrationStatusEnum.succeeded
+      });
+    } finally {
+      runner.stop();
+    }
+  });
+
   it.each(['throw', 'reported'] as const)(
     'continues unrelated tasks after a %s failure without auto retry',
     async (failureType) => {

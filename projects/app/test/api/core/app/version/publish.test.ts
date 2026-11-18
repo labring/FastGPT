@@ -1,4 +1,8 @@
 import handler from '@/pages/api/core/app/version/publish';
+import versionDetailHandler from '@/pages/api/core/app/version/detail';
+import { uiWorkflow2StoreWorkflow } from '@/pageComponents/app/detail/WorkflowComponents/utils';
+import { storeNode2FlowNode } from '@/web/core/workflow/utils';
+import type { TFunction } from 'i18next';
 import datasetListHandler from '@/pages/api/core/dataset/listV2';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import {
@@ -11,12 +15,18 @@ import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import type { SelectedToolItemType } from '@fastgpt/global/core/app/formEdit/type';
 import {
   FlowNodeInputTypeEnum,
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
 import { storeNodes2RuntimeNodes } from '@fastgpt/global/core/workflow/runtime/utils';
-import type { PublishAppBodyType } from '@fastgpt/global/openapi/core/app/version/api';
+import type {
+  GetAppVersionDetailQueryType,
+  GetAppVersionDetailResponseType,
+  PublishAppBodyType,
+  PublishAppResponseType
+} from '@fastgpt/global/openapi/core/app/version/api';
 import type {
   GetDatasetListV2Body,
   GetDatasetListV2Response
@@ -46,6 +56,119 @@ import { Call } from '@test/utils/request';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { getHTTPToolSetRuntimeNode } from '@fastgpt/global/core/app/tool/httpTool/utils';
 import { getMCPToolSetRuntimeNode } from '@fastgpt/global/core/app/tool/mcpTool/utils';
+
+describe('publish legacy Agent tool configuration', () => {
+  it('preserves a constructor parameter through publish, version hydration and canvas save', async () => {
+    const auth = await getRootUser();
+    const toolApp = await MongoApp.create({
+      name: 'Constructor workflow tool',
+      type: AppTypeEnum.workflowTool,
+      teamId: auth.teamId,
+      tmbId: auth.tmbId
+    });
+    const toolVersion = await MongoAppVersion.create({
+      appId: toolApp._id,
+      tmbId: auth.tmbId,
+      isPublish: true,
+      nodes: [
+        {
+          nodeId: 'tool-input',
+          name: 'Tool input',
+          flowNodeType: FlowNodeTypeEnum.pluginInput,
+          inputs: [
+            {
+              key: 'constructor',
+              label: 'Constructor',
+              valueType: 'string',
+              toolDescription: 'Constructor business parameter',
+              renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference]
+            }
+          ],
+          outputs: []
+        }
+      ]
+    });
+    await MongoApp.updateOne(
+      { _id: toolApp._id },
+      { $set: { publishedVersionId: toolVersion._id } }
+    );
+    const app = await MongoApp.create({
+      name: 'Agent with constructor parameter',
+      type: AppTypeEnum.workflow,
+      teamId: auth.teamId,
+      tmbId: auth.tmbId
+    });
+    const result = await Call<PublishAppBodyType>(handler, {
+      auth,
+      query: { appId: String(app._id) },
+      body: {
+        isPublish: true,
+        nodes: [
+          {
+            nodeId: 'agent',
+            name: 'Agent',
+            flowNodeType: FlowNodeTypeEnum.agent,
+            outputs: [],
+            inputs: [
+              {
+                key: NodeInputKeyEnum.selectedTools,
+                label: '',
+                renderTypeList: [FlowNodeInputTypeEnum.selectTool],
+                value: [
+                  {
+                    id: String(toolApp._id),
+                    inputs: [
+                      {
+                        key: 'constructor',
+                        selectedType: FlowNodeInputTypeEnum.input,
+                        value: 'fixed constructor value'
+                      }
+                    ],
+                    config: {}
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    });
+    expect(result.code, JSON.stringify(result)).toBe(200);
+    const workflow = await getAppLatestVersion(String(app._id));
+    expect(workflow.nodes[0].inputs[0].value).toEqual([
+      {
+        id: String(toolApp._id),
+        inputs: [{ key: 'constructor', mode: 'manual' }],
+        config: { constructor: 'fixed constructor value' }
+      }
+    ]);
+
+    const loaded = await Call<
+      Record<string, never>,
+      GetAppVersionDetailQueryType,
+      GetAppVersionDetailResponseType
+    >(versionDetailHandler, {
+      auth,
+      headers: {},
+      query: { appId: String(app._id), versionId: workflow.versionId! }
+    });
+    expect(loaded.code, JSON.stringify(loaded)).toBe(200);
+    const tools = loaded.data.nodes[0].inputs[0].value as SelectedToolItemType[];
+    expect(tools[0].pluginData?.error).toBeUndefined();
+    expect(tools[0].inputs.find(({ key }) => key === 'constructor')?.value).toBe(
+      'fixed constructor value'
+    );
+    const saved = uiWorkflow2StoreWorkflow({
+      nodes: loaded.data.nodes.map((item) =>
+        storeNode2FlowNode({ item, t: ((key: string) => key) as TFunction })
+      ),
+      edges: []
+    });
+    expect(
+      saved.nodes[0].inputs.find(({ key }) => key === NodeInputKeyEnum.selectedTools)?.value
+    ).toEqual([expect.objectContaining({ config: { constructor: 'fixed constructor value' } })]);
+  });
+});
 
 describe('publish toolset App workflow', () => {
   const createApp = (type: AppTypeEnum, user: Awaited<ReturnType<typeof getUser>>) =>
@@ -798,6 +921,51 @@ describe('publish optional model defaults', () => {
       );
       expect(version?.chatConfig?.questionGuide?.modelId).toBe(previousDefaults.llm!.modelId);
       expect(version?.chatConfig?.ttsConfig?.modelId).toBe('default-tts');
+    }
+  );
+
+  it.each([
+    { autoSave: true, isPublish: false },
+    { autoSave: false, isPublish: false },
+    { autoSave: false, isPublish: true }
+  ])(
+    'returns the normalized saved workflow when requested (autoSave=$autoSave, isPublish=$isPublish)',
+    async ({ autoSave, isPublish }) => {
+      const root = await getRootUser();
+      const app = await MongoApp.create({
+        name: 'Save receipt',
+        type: AppTypeEnum.workflow,
+        teamId: root.teamId,
+        tmbId: root.tmbId
+      });
+      const result = await Call<PublishAppBodyType, { appId: string }, PublishAppResponseType>(
+        handler,
+        {
+          auth: root,
+          headers: {},
+          query: { appId: String(app._id) },
+          body: { ...makeBody(true), autoSave, isPublish, returnWorkflow: true }
+        }
+      );
+
+      expect(result.code, String(result.error ?? JSON.stringify(result))).toBe(200);
+      const version = await MongoAppVersion.findOne({ appId: app._id }).lean();
+      expect(result.data?.workflow.chatConfig.questionGuide?.modelId).toBe(
+        previousDefaults.llm!.modelId
+      );
+      const loaded = await Call<
+        Record<string, never>,
+        GetAppVersionDetailQueryType,
+        GetAppVersionDetailResponseType
+      >(versionDetailHandler, {
+        auth: root,
+        headers: {},
+        query: { appId: String(app._id), versionId: String(version?._id) }
+      });
+      expect(loaded.code, JSON.stringify(loaded)).toBe(200);
+      expect(result.data?.workflow.chatConfig).toEqual(loaded.data.chatConfig);
+      expect(result.data?.workflow.nodes).toEqual(loaded.data.nodes);
+      expect(result.data?.workflow.edges).toEqual(loaded.data.edges);
     }
   );
 

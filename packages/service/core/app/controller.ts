@@ -320,7 +320,17 @@ export const cleanupAppDirectRefs = async ({
 
   // 应用凭证随绑定应用删除，不能解除绑定后提升为个人凭证。
   await MongoOpenApi.deleteMany(
-    { teamId, ...getOpenApiTypeFilter(ApiKeyTypeEnum.app), appId: getOpenApiAppIdFilter(appIds) },
+    { teamId, ...getOpenApiTypeFilter(ApiKeyTypeEnum.app), ...getOpenApiAppIdFilter(appIds) },
+    { session }
+  );
+  // 个人 Key 的历史 appId 只是默认目标；删除应用时解除默认值，保留凭证及其他资源权限。
+  await MongoOpenApi.updateMany(
+    {
+      teamId,
+      ...getOpenApiTypeFilter(ApiKeyTypeEnum.personal),
+      ...getOpenApiAppIdFilter(appIds)
+    },
+    { $unset: { appId: '', appName: '' } },
     { session }
   );
   // 删除分享链接

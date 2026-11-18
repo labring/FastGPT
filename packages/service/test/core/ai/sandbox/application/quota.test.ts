@@ -1,6 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { SandboxErrEnum } from '@fastgpt/global/common/error/code/sandbox';
+import {
+  createDefaultInstanceConfig,
+  getTestInstanceConfig
+} from '@test/utils/instanceConfigSnapshot';
 
 const mocks = vi.hoisted(() => ({
   findSandboxInstanceBySource: vi.fn(),
@@ -77,5 +81,37 @@ describe('checkSandboxQuota', () => {
     mocks.getAgentSandboxMaxPerTeam.mockReturnValue(undefined);
     await checkSandboxQuota(identity);
     expect(mocks.countActiveSandboxInstances).not.toHaveBeenCalled();
+  });
+
+  it('applies live snapshot quota changes, including zero and nullable team limits', async () => {
+    const actual = await vi.importActual<typeof import('@fastgpt/service/core/ai/sandbox/config')>(
+      '@fastgpt/service/core/ai/sandbox/config'
+    );
+    mocks.getAgentSandboxMax.mockImplementation(actual.getAgentSandboxMax);
+    mocks.getAgentSandboxMaxPerTeam.mockImplementation(actual.getAgentSandboxMaxPerTeam);
+    const original = global.systemInstanceConfig;
+    try {
+      global.systemInstanceConfig = createDefaultInstanceConfig();
+      const common = getTestInstanceConfig().subservice.agentSandbox.common;
+      common.maxEditDebug = 10;
+      common.maxPerTeam = 1;
+      mocks.countActiveSandboxInstances.mockResolvedValue(1);
+      await expect(checkSandboxQuota(identity)).rejects.toMatchObject({
+        message: SandboxErrEnum.agentSandboxTeamLimitReached
+      });
+      common.maxPerTeam = 2;
+      await expect(checkSandboxQuota(identity)).resolves.toBeUndefined();
+      common.maxPerTeam = null;
+      mocks.countActiveSandboxInstances.mockClear();
+      await expect(checkSandboxQuota(identity)).resolves.toBeUndefined();
+      expect(mocks.countActiveSandboxInstances.mock.calls).toEqual([[]]);
+      common.maxEditDebug = 0;
+      mocks.countActiveSandboxInstances.mockResolvedValue(0);
+      await expect(checkSandboxQuota(identity)).rejects.toMatchObject({
+        message: SandboxErrEnum.agentSandboxLimitReached
+      });
+    } finally {
+      global.systemInstanceConfig = original;
+    }
   });
 });

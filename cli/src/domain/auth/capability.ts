@@ -43,7 +43,7 @@ export function buildCapabilitySummary({
   if (kind === 'appKey') {
     return {
       credentialKind: 'appKey',
-      availableScopes: ['chat completions (bound app)', 'app logs (bound app)'],
+      availableScopes: ['chat (bound app)', 'app logs (bound app)'],
       restrictedScopes: ['dataset', 'app management/publish', 'team', 'other apps']
     };
   }

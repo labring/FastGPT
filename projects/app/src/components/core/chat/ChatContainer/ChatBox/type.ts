@@ -77,7 +77,8 @@ export type ComponentRef = {
 // Frontend type
 export type ChatSiteItemType = ChatItemObjItemType & {
   _id?: string;
-  id: string;
+  /** @deprecated 聊天业务统一使用 dataId，仅兼容旧消息对象。 */
+  id?: string;
   dataId: string;
   status: `${ChatStatusEnum}`;
   moduleName?: string;

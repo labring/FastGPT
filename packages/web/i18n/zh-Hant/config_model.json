@@ -109,7 +109,6 @@
   "video": "支援視頻識別",
   "video_tip": "如果模型支援視頻識別，則開啟該開關。",
   "waiting_test": "等待測試",
-  "active_model": "可用模型",
   "channel": "模型管道",
   "config_model": "模型設定",
   "create_model": "新增模型",
@@ -137,8 +136,7 @@
   "model.upcoming_deprecation": "即將下架",
   "model.censor": "啟用敏感校驗",
   "model.censor_tip": "如果需要進行敏感校驗，則開啟該開關",
-  "model.unitPrice": "模型綜合價格",
-  "model.unitPrice_tip": "Token 模型按 M Tokens、TTS 按 1M 字元、STT 按 60 秒計價。",
+  "model.unitPrice": "模型價格（積分）",
   "model.defaultConfig": "額外 Body 參數",
   "model.defaultConfig_tip": "每次請求時候，都會攜帶該額外 Body 參數",
   "model.default_config": "Body 額外欄位",
@@ -349,5 +347,10 @@
   "model_deprecation.error_plan_changed": "通知計畫狀態已變更，請重新整理後再試",
   "model_deprecation.error_recover_requires_incomplete": "只有失敗或中斷輪次可以恢復",
   "model_deprecation.error_plan_not_found": "通知計畫不存在",
-  "model_deprecation.error_no_terminable_runs": "通知計畫目前沒有可終止的輪次"
+  "model_deprecation.error_no_terminable_runs": "通知計畫目前沒有可終止的輪次",
+  "model.stt_billing_type": "計費類型",
+  "model.stt_billing_duration": "按時長",
+  "model.stt_billing_tokens": "按 Tokens",
+  "model.stt_input_price": "輸入價格（積分）",
+  "model.stt_output_price": "輸出價格（積分）"
 }

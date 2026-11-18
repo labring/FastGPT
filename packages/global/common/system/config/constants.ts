@@ -1,6 +1,10 @@
 export enum SystemConfigsTypeEnum {
   fastgpt = 'fastgpt',
   fastgptPro = 'fastgptPro',
+  /** @deprecated 历史开发期记录；Pro ENV 现存于 system_instance_configs 的 proEnv scope。 */
+  proEnv = 'proEnv',
+  subPlans = 'subPlans',
+  langfuse = 'langfuse',
   systemMsgModal = 'systemMsgModal',
   license = 'license',
   operationalAd = 'operationalAd',
@@ -11,6 +15,9 @@ export enum SystemConfigsTypeEnum {
 }
 
 export const SystemConfigsTypeMap = {
+  [SystemConfigsTypeEnum.proEnv]: { label: 'Pro 环境能力' },
+  [SystemConfigsTypeEnum.subPlans]: { label: '订阅套餐' },
+  [SystemConfigsTypeEnum.langfuse]: { label: 'Langfuse 追踪' },
   [SystemConfigsTypeEnum.fastgpt]: {
     label: 'fastgpt'
   },

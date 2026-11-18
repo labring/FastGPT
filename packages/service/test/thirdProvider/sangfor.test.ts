@@ -1,19 +1,21 @@
+import {
+  createDefaultInstanceConfig,
+  getTestInstanceConfig
+} from '@test/utils/instanceConfigSnapshot';
 import FormData from 'form-data';
+
+(global as any).systemInstanceConfig = createDefaultInstanceConfig();
+
 import { getDatasetIultmzhFileParseConfig } from '@fastgpt/service/thirdProvider/sangfor/parseConfig';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { postMock, parseMarkdownImagesMock, uploadParsedPdfImageMock, mockEnv } = vi.hoisted(() => ({
+const { postMock, parseMarkdownImagesMock, uploadParsedPdfImageMock } = vi.hoisted(() => ({
   postMock: vi.fn(),
   parseMarkdownImagesMock: vi.fn(
     async (markdown: string, _options?: Record<string, unknown>) => `normalized:${markdown}`
   ),
-  uploadParsedPdfImageMock: vi.fn().mockResolvedValue({ key: 'parsed/image.png' }),
-  mockEnv: {
-    DOCUMENT_PARSE_PROVIDER: '' as '' | 'sangfor',
-    SANGFOR_PARSE_EXTENSIONS: 'pdf',
-    SANGFOR_PARSE_TIMEOUT_SECONDS: 600
-  }
+  uploadParsedPdfImageMock: vi.fn().mockResolvedValue({ key: 'parsed/image.png' })
 }));
 
 vi.mock('@fastgpt/service/common/api/axios', () => ({
@@ -34,22 +36,19 @@ vi.mock('@fastgpt/service/common/file/read/image', () => ({
   uploadParsedPdfImage: uploadParsedPdfImageMock
 }));
 
-vi.mock('@fastgpt/service/env', () => ({
-  serviceEnv: mockEnv
-}));
-
 const { parseFromSangfor, useSangforParse } =
   await import('@fastgpt/service/thirdProvider/sangfor');
 
 describe('Sangfor provider', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockEnv.DOCUMENT_PARSE_PROVIDER = '';
-    mockEnv.SANGFOR_PARSE_EXTENSIONS = 'pdf';
-    mockEnv.SANGFOR_PARSE_TIMEOUT_SECONDS = 600;
-    vi.stubGlobal('systemEnv', {
-      customPdfParse: { url: 'http://sangfor-parser.test/parse', key: 'sangfor-key' }
-    });
+    global.systemInstanceConfig = createDefaultInstanceConfig();
+    getTestInstanceConfig().providers.documentParse.provider = 'none';
+    getTestInstanceConfig().providers.documentParse.sangfor.url =
+      'http://sangfor-parser.test/parse';
+    getTestInstanceConfig().providers.documentParse.sangfor.key = 'sangfor-key';
+    getTestInstanceConfig().providers.documentParse.sangfor.extensions = 'pdf';
+    getTestInstanceConfig().providers.documentParse.sangfor.timeoutSeconds = 600;
   });
 
   afterEach(() => vi.unstubAllGlobals());
@@ -75,42 +74,25 @@ describe('Sangfor provider', () => {
   it('requires provider selection, parser URL and a supported extension', () => {
     expect(useSangforParse('pdf')).toBe(false);
 
-    mockEnv.DOCUMENT_PARSE_PROVIDER = 'sangfor';
+    getTestInstanceConfig().providers.documentParse.provider = 'sangfor';
     expect(useSangforParse('pdf')).toBe(true);
     expect(useSangforParse('docx')).toBe(false);
     expect(useSangforParse('')).toBe(false);
 
-    vi.stubGlobal('systemEnv', { customPdfParse: { key: 'sangfor-key' } });
+    getTestInstanceConfig().providers.documentParse.sangfor.url = '';
     expect(useSangforParse('pdf')).toBe(false);
   });
 
   it('normalizes configured extensions and ignores empty entries', () => {
-    mockEnv.DOCUMENT_PARSE_PROVIDER = 'sangfor';
-    mockEnv.SANGFOR_PARSE_EXTENSIONS = ' .PDF, DocX, ,pdf ';
+    getTestInstanceConfig().providers.documentParse.provider = 'sangfor';
+    getTestInstanceConfig().providers.documentParse.sangfor.extensions = ' .PDF, DocX, ,pdf ';
     expect(useSangforParse(' .Pdf ')).toBe(true);
     expect(useSangforParse('DOCX')).toBe(true);
     expect(useSangforParse('xlsx')).toBe(false);
     expect(useSangforParse('')).toBe(false);
 
-    mockEnv.SANGFOR_PARSE_EXTENSIONS = ' , ';
+    getTestInstanceConfig().providers.documentParse.sangfor.extensions = ' , ';
     expect(useSangforParse('pdf')).toBe(false);
-  });
-
-  it('reads the parser URL and key from systemEnv at parse time', async () => {
-    vi.stubGlobal('systemEnv', {
-      customPdfParse: { url: 'http://legacy-parser.test/parse', key: 'legacy-key' }
-    });
-    postMock.mockResolvedValueOnce({ data: { pages: 1, markdown: 'legacy' } });
-
-    await parseFromSangfor({ fileBuffer: Buffer.from('pdf'), extension: 'pdf' });
-
-    expect(postMock).toHaveBeenCalledWith(
-      'http://legacy-parser.test/parse',
-      expect.any(FormData),
-      expect.objectContaining({
-        headers: expect.objectContaining({ Authorization: 'Bearer legacy-key' })
-      })
-    );
   });
 
   it('sends the compatible multipart request and returns normalized content', async () => {
@@ -148,7 +130,7 @@ describe('Sangfor provider', () => {
   });
 
   it('uses the dedicated Sangfor timeout in seconds', async () => {
-    mockEnv.SANGFOR_PARSE_TIMEOUT_SECONDS = 45;
+    getTestInstanceConfig().providers.documentParse.sangfor.timeoutSeconds = 45;
     postMock.mockResolvedValueOnce({ data: { pages: 1, markdown: 'parsed' } });
 
     await parseFromSangfor({ fileBuffer: Buffer.from('pdf'), extension: 'pdf' });
@@ -244,16 +226,80 @@ describe('Sangfor provider', () => {
   });
 
   it('rejects parsing when the provider URL is missing', async () => {
-    vi.stubGlobal('systemEnv', {});
+    getTestInstanceConfig().providers.documentParse.sangfor.url = '';
 
     await expect(
       parseFromSangfor({
         fileBuffer: Buffer.from('content'),
         extension: 'docx'
       })
-    ).rejects.toThrow('[sangfor] global.systemEnv.customPdfParse.url is required');
+    ).rejects.toThrow('[sangfor] providers.documentParse.sangfor.url is required');
 
     expect(postMock).not.toHaveBeenCalled();
+  });
+
+  it('reads the parser URL and key from instance config', async () => {
+    // 权威来源为 providers.documentParse.sangfor.*；Admin 只填 sangfor.url/key 也应生效。
+    // 注意 currentSnapshot 会被 controller 记忆化，这里在原对象上就地改写而非替换 global，
+    // 并在用例结束后恢复，避免污染同 worker 的其它文件。
+    const snapshot = (global as any).systemInstanceConfig;
+    const originalProvider = snapshot.providers.documentParse.provider;
+    const originalSangfor = snapshot.providers.documentParse.sangfor;
+    snapshot.providers.documentParse.provider = 'sangfor';
+    snapshot.providers.documentParse.sangfor = {
+      url: 'http://db-parser.test/parse',
+      key: 'db-key',
+      extensions: 'docx',
+      timeoutSeconds: 600
+    };
+    postMock.mockResolvedValueOnce({ data: { pages: 1, markdown: 'from-db' } });
+
+    try {
+      await parseFromSangfor({ fileBuffer: Buffer.from('docx'), extension: 'docx' });
+
+      expect(postMock).toHaveBeenCalledWith(
+        'http://db-parser.test/parse',
+        expect.any(FormData),
+        expect.objectContaining({
+          headers: expect.objectContaining({ Authorization: 'Bearer db-key' })
+        })
+      );
+    } finally {
+      snapshot.providers.documentParse.provider = originalProvider;
+      snapshot.providers.documentParse.sangfor = originalSangfor;
+    }
+  });
+
+  it('never borrows customPdf credentials when the sangfor key is empty', async () => {
+    // OCR 跨来源凭据风险：sangfor.url 已配置、sangfor.key 为空时，
+    // 不得把 customPdf 服务商的 Bearer Token 发给深信服服务。
+    const snapshot = (global as any).systemInstanceConfig;
+    const originalProvider = snapshot.providers.documentParse.provider;
+    const originalSangfor = snapshot.providers.documentParse.sangfor;
+    snapshot.providers.documentParse.provider = 'sangfor';
+    snapshot.providers.documentParse.sangfor = {
+      url: 'http://db-parser.test/parse',
+      key: '',
+      extensions: 'docx',
+      timeoutSeconds: 600
+    };
+    postMock.mockResolvedValueOnce({ data: { pages: 1, markdown: 'ok' } });
+
+    try {
+      await parseFromSangfor({ fileBuffer: Buffer.from('docx'), extension: 'docx' });
+
+      expect(postMock).toHaveBeenCalledWith(
+        'http://db-parser.test/parse',
+        expect.any(FormData),
+        expect.objectContaining({
+          // key 只取 sangfor 组内值（空），customPdf 的 secret 不得出现在请求头
+          headers: expect.not.objectContaining({ Authorization: 'Bearer custom-pdf-secret' })
+        })
+      );
+    } finally {
+      snapshot.providers.documentParse.provider = originalProvider;
+      snapshot.providers.documentParse.sangfor = originalSangfor;
+    }
   });
 });
 

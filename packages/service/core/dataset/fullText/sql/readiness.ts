@@ -4,7 +4,7 @@ import {
   SqlFullTextProviderSchema
 } from '@fastgpt/global/core/dataset/fullText/schema';
 import {
-  SystemMigrationCollectionName,
+  systemMigrationStateCollectionName,
   SystemMigrationStatusEnum
 } from '@fastgpt/global/migration/constants';
 import { connectionMongo } from '../../../../common/mongo';
@@ -46,7 +46,7 @@ export const refreshSqlFullTextTargetReady = (): Promise<boolean> => {
         _id: string;
         status: SystemMigrationStatusEnum;
         result?: unknown;
-      }>(SystemMigrationCollectionName)
+      }>(systemMigrationStateCollectionName)
       .findOne(
         { _id: SQL_FULL_TEXT_MIGRATION_ID, status: SystemMigrationStatusEnum.succeeded },
         { projection: { result: 1 }, readPreference: 'primary' }

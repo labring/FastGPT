@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { SystemMigration } from '@/migration/registry';
 import { systemMigrations, validateSystemMigrationRegistry } from '@/migration/registry';
+import { createSystemMigrationPlan } from '@/migration/plan';
 
 const createMigration = (id: string): SystemMigration => ({
   id,
@@ -13,20 +14,52 @@ const createMigration = (id: string): SystemMigration => ({
 });
 
 describe('validateSystemMigrationRegistry', () => {
-  it('keeps only the current release tasks without legacy startup dependencies', () => {
+  it('appends system configuration migration while prioritizing it in the startup plan', () => {
     expect(systemMigrations.map(({ id }) => id)).toEqual([
       '20261022_initialize_dataset_vector_indexes',
       '20261104_backfill_chat_publish_source',
       '20261104_backfill_openapi_key_type',
+      '20261112_backfill_stt_pricing_type',
+      '20261116_migrate_system_configs',
       '20261110_migrate_sql_fulltext'
     ]);
-    expect(
-      systemMigrations.filter((task: SystemMigration) => task.blockStartup || task.delay)
-    ).toEqual([]);
+    const tasks: readonly SystemMigration[] = systemMigrations;
+    expect(tasks.filter((task) => task.blockStartup).map(({ id }) => id)).toEqual([
+      '20261116_migrate_system_configs'
+    ]);
+    expect(tasks.filter((task) => task.delay || task.resumable)).toEqual([]);
+    expect(tasks.filter((task) => task.manual).map(({ id }) => id)).toEqual([
+      '20261110_migrate_sql_fulltext'
+    ]);
+
+    const configMigration = tasks.find(({ id }) => id === '20261116_migrate_system_configs');
+    expect(configMigration).toMatchObject({
+      version: '4.18.0',
+      blockStartup: true,
+      progressSteps: [
+        { key: 'inspect' },
+        { key: 'migrate' },
+        { key: 'cleanup' },
+        { key: 'backfill' },
+        { key: 'validate' }
+      ]
+    });
+    expect(configMigration).not.toHaveProperty('dependsOn');
+    expect(configMigration).not.toHaveProperty('independent');
+    expect(configMigration).not.toHaveProperty('resumable', true);
+    const plan = createSystemMigrationPlan(tasks);
+    expect(plan.startupMigrations.map(({ id }) => id)).toEqual(['20261116_migrate_system_configs']);
+    expect(plan.backgroundMigrations.map(({ id }) => id)).toEqual([
+      '20261022_initialize_dataset_vector_indexes',
+      '20261104_backfill_chat_publish_source',
+      '20261104_backfill_openapi_key_type',
+      '20261112_backfill_stt_pricing_type',
+      '20261110_migrate_sql_fulltext'
+    ]);
     expect(() => validateSystemMigrationRegistry(systemMigrations)).not.toThrow();
   });
 
-  it('appends dataset index initialization as a non-blocking automatic task', () => {
+  it('keeps dataset index initialization as a non-blocking automatic task', () => {
     const task = systemMigrations.find(
       ({ id }) => id === '20261022_initialize_dataset_vector_indexes'
     );
@@ -42,7 +75,21 @@ describe('validateSystemMigrationRegistry', () => {
     expect(task).not.toHaveProperty('onFailure');
   });
 
-  it('在4.18.0末尾登记独立自动 Key 类型回填，保持启动非阻塞且无依赖', () => {
+  it('保留聊天来源回填为无依赖的独立自动任务', () => {
+    const task = systemMigrations.find(({ id }) => id === '20261104_backfill_chat_publish_source');
+    expect(task).toMatchObject({
+      id: '20261104_backfill_chat_publish_source',
+      version: '4.18.0',
+      independent: true,
+      progressSteps: [{ key: 'chats' }, { key: 'chatLogs' }, { key: 'validation' }]
+    });
+    expect(task).not.toHaveProperty('blockStartup', true);
+    expect(task).not.toHaveProperty('dependsOn');
+    expect(task).not.toHaveProperty('manual');
+    expect(task).not.toHaveProperty('delay');
+  });
+
+  it('在4.18.0登记独立自动 Key 类型回填，保持启动非阻塞且无依赖', () => {
     const task = systemMigrations.find(({ id }) => id === '20261104_backfill_openapi_key_type');
     expect(task).toMatchObject({
       id: '20261104_backfill_openapi_key_type',
@@ -54,6 +101,23 @@ describe('validateSystemMigrationRegistry', () => {
     expect(task).not.toHaveProperty('dependsOn');
     expect(task).not.toHaveProperty('manual');
     expect(task).not.toHaveProperty('delay');
+  });
+
+  it('appends STT pricing backfill as non-blocking background work', () => {
+    expect(
+      systemMigrations.find(({ id }) => id === '20261112_backfill_stt_pricing_type')
+    ).toMatchObject({
+      id: '20261112_backfill_stt_pricing_type',
+      version: '4.18.0',
+      blockStartup: false,
+      progressSteps: [{ key: 'models' }, { key: 'validation' }]
+    });
+    expect(
+      systemMigrations.find(({ id }) => id === '20261112_backfill_stt_pricing_type')
+    ).not.toHaveProperty('dependsOn');
+    expect(
+      systemMigrations.find(({ id }) => id === '20261112_backfill_stt_pricing_type')
+    ).not.toHaveProperty('independent');
   });
 
   it('runs only the selected production tasks independently', () => {
@@ -84,6 +148,15 @@ describe('validateSystemMigrationRegistry', () => {
         { ...createMigration('20261008_manual'), manual: true, delay: true }
       ])
     ).toThrow('cannot be delayed');
+  });
+
+  it('rejects resumable manual execution', () => {
+    // manual 要求管理员显式入队，resumable 会让它每轮自动重跑，两者语义冲突
+    expect(() =>
+      validateSystemMigrationRegistry([
+        { ...createMigration('20261008_manual_resumable'), manual: true, resumable: true }
+      ])
+    ).toThrow('cannot be resumable');
   });
 
   it.each([{ keys: [''] }, { keys: ['repeated', 'repeated'] }])(

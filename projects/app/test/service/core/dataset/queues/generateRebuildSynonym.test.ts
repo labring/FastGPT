@@ -1,3 +1,39 @@
+import { getSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/runtime';
+// 同义词队列消费点已接管实例配置（94ae033d7）：isDatasetSynonymEnabled 读快照叶子 ?? serviceEnv。
+// 本文件通过改写 serviceEnv.DATASET_SYNONYM_ENABLED 驱动，预置"域存在、叶子缺省"种子快照走兜底分支。
+(global as any).systemInstanceConfig = {
+  site: {},
+  auth: {},
+  security: {},
+  feature: {},
+  commercial: {},
+  resource: {},
+  performance: {
+    workflow: {},
+    parse: {},
+    dataset: {},
+    chat: {},
+    streamResume: {},
+    tracking: {},
+    task: {},
+    channel: {}
+  },
+  storage: {},
+  vector: {},
+  providers: {
+    documentParse: { customPdf: {}, sangfor: {} },
+    dataSource: {},
+    externalProviderWorkflowVariables: []
+  },
+  subservice: {
+    plugin: {},
+    codeSandbox: {},
+    aiProxy: {},
+    mcp: {},
+    agentSandbox: { provider: '', common: {}, sealosdevbox: {}, opensandbox: {}, proxy: {} }
+  }
+};
+
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import { getModelTestDefaults, addModelTestModel } from '@test/modelCache';
 import { getRootUser } from '@test/datas/users';
@@ -85,16 +121,22 @@ const createContext = async ({ enabled = true, count = 1 } = {}) => {
       ]
     }))
   );
+  // 固定更新时间，便于断言领取任务时不会刷新它。
+  const fixedUpdateTime = new Date('2024-01-01T00:00:00.000Z');
+  await MongoDatasetData.updateMany(
+    { datasetId: dataset._id },
+    { $set: { updateTime: fixedUpdateTime } }
+  );
   const context = { ...scope, datasetId: String(dataset._id), billId: 'test' };
   await synonymQueue.enqueueNextDatasetSynonymRebuildTask(context);
   const task = await MongoDatasetTraining.findOne({ datasetId: dataset._id }).lean();
-  return { root, dataset, collection, config, datas, task: task!, context };
+  return { root, dataset, collection, config, datas, task: task!, context, fixedUpdateTime };
 };
 
 describe('generateRebuildSynonym', () => {
   beforeEach(() => {
     serviceEnv.DATASET_SYNONYM_ENABLED = true;
-    global.systemEnv = { ...global.systemEnv, vectorMaxProcess: 1 };
+    getSystemInstanceConfig().performance.dataset.vectorMaxProcess = 1;
     global.vectorQueueLen = 0;
     global.synonymQueueLen = 0;
     global.preCreatedQueueLen = 0;
@@ -143,6 +185,13 @@ describe('generateRebuildSynonym', () => {
       expect.objectContaining({ texts: ['我要退款 0'] })
     );
     expect(mockVectorDelete).toHaveBeenCalledWith(expect.objectContaining({ idList: ['old-0'] }));
+  });
+
+  it('claims synonym rebuild tasks without refreshing data updateTime', async () => {
+    const { datas, fixedUpdateTime } = await createContext();
+    const updated = await MongoDatasetData.findById(datas[0]._id).lean();
+    expect(updated?.indexStatus).toBe(DatasetDataIndexStatusEnum.rebuildSynonymRunning);
+    expect(updated?.updateTime).toEqual(fixedUpdateTime);
   });
 
   it('rebuilds original indexes after deleting the word list', async () => {

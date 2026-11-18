@@ -1,3 +1,5 @@
+import { MongoSystemConfigs } from '@fastgpt/service/common/system/config/schema';
+import { MongoSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/schema';
 import { randomUUID } from 'node:crypto';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
@@ -58,6 +60,47 @@ const legacyDefinition = {
   indexName: 'legacy_field_1',
   key: { legacyField: 1 }
 } as const;
+
+describe('runtime configuration scope indexes', () => {
+  it('uses the domain unique index for the Pro ENV scope alongside business domains', async () => {
+    const model = createModel({
+      schema: MongoSystemInstanceConfig.schema,
+      prefix: 'InstanceScopeIndexes'
+    });
+    await model.createIndexes();
+    await model.create([
+      { domain: 'site', overrides: {} },
+      { domain: 'proEnv', overrides: { teamMode: 'multi' } }
+    ]);
+    await expect(model.create({ domain: 'proEnv', overrides: {} })).rejects.toMatchObject({
+      code: 11000
+    });
+    expect(await model.countDocuments()).toBe(2);
+    expect(getSchemaDeprecatedMongoIndexes(MongoSystemInstanceConfig.schema)).toEqual([]);
+  });
+  it('removes only the deprecated legacy scope index and retains migration source records', async () => {
+    const model = createModel({ schema: MongoSystemConfigs.schema, prefix: 'RuntimeScopeIndexes' });
+    await model.collection.createIndex({ type: 1 });
+    await model.collection.createIndex(
+      { type: 1 },
+      {
+        name: 'runtime_scope_type_unique',
+        unique: true,
+        partialFilterExpression: { type: { $in: ['proEnv', 'subPlans', 'langfuse'] } }
+      }
+    );
+    await model.create({ type: 'subPlans', value: { extraDatasetSize: { price: 4 } } });
+    await MongoIndexManager.syncModelIndexes({ model, logger });
+    expect(await getIndexNames(model)).not.toContain('runtime_scope_type_unique');
+    expect(await getIndexNames(model)).toContain('type_1');
+    expect(await model.countDocuments()).toBe(1);
+    expect(getSchemaDeprecatedMongoIndexes(MongoSystemConfigs.schema)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ indexName: 'runtime_scope_type_unique', key: { type: 1 } })
+      ])
+    );
+  });
+});
 
 describe('dataset synonym index declarations', () => {
   it('declares strict version uniqueness without legacy compatibility metadata', () => {

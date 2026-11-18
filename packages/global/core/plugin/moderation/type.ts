@@ -53,6 +53,7 @@ export const AdminModerationPluginItemSchema = z.object({
   pluginId: z.string().meta({ description: '插件 ID', example: 'baidu-moderation' }),
   source: z.string().meta({ description: '插件来源', example: 'system' }),
   version: z.string().optional().meta({ description: '当前版本；为空表示未解析到' }),
+  etag: z.string().optional().meta({ description: '当前安装包内容标识' }),
   isLatestVersion: z.boolean().optional().meta({ description: '是否为最新版本' }),
   name: z.string().meta({ description: '插件名称', example: '百度内容审核' }),
   description: z.string().optional().meta({ description: '插件简介' }),

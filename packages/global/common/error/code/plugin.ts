@@ -3,7 +3,8 @@ import { i18nT } from '../../i18n/utils';
 /* dataset: 508000 */
 export enum PluginErrEnum {
   unExist = 'pluginUnExist',
-  unAuth = 'pluginUnAuth'
+  unAuth = 'pluginUnAuth',
+  disableModerationBeforeDelete = 'Disable the moderation plugin before deleting it'
 }
 
 const errList = [
@@ -14,6 +15,11 @@ const errList = [
   {
     statusText: PluginErrEnum.unAuth,
     message: i18nT('common:code_error.plugin_error.un_auth')
+  },
+  {
+    statusText: PluginErrEnum.disableModerationBeforeDelete,
+    message: i18nT('admin:moderation.disable_before_delete'),
+    httpStatus: 400
   }
 ];
 
@@ -24,7 +30,8 @@ export default errList.reduce((acc, cur, index) => {
       code: 508000 + index,
       statusText: cur.statusText,
       message: cur.message,
-      data: null
+      data: null,
+      ...(cur.httpStatus !== undefined ? { httpStatus: cur.httpStatus } : {})
     }
   };
 }, {} as ErrType<`${PluginErrEnum}`>);

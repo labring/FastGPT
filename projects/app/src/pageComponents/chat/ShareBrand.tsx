@@ -23,6 +23,10 @@ const ShareBrand = ({
   const { t } = useSafeTranslation();
   const { feConfigs } = useSystemStore();
   const element = useRef<HTMLDivElement>(null);
+  const brandUrl =
+    typeof window !== 'undefined' && window.location.hostname.includes('fastgpt.cn')
+      ? 'https://fastgpt.cn'
+      : 'https://fastgpt.io';
 
   const trackClick = useShareBrandTracking({
     element,
@@ -74,7 +78,7 @@ const ShareBrand = ({
         offset={[0, 12]}
       >
         <Link
-          href={getWebReqUrl('/')}
+          href={brandUrl}
           target="_blank"
           rel="noopener noreferrer"
           aria-label={t('common:share_brand_visit')}

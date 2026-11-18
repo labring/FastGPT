@@ -1,3 +1,4 @@
+import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import { Types } from '@fastgpt/service/common/mongo';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { MongoAppChatLog } from '@fastgpt/service/core/app/logs/chatLogsSchema';
@@ -159,4 +160,63 @@ export const backfillPublishSourceBatch = async ({
     }
   }
   return failures;
+};
+
+/**
+ * 在固定上界内按 _id 索引读取有限记录，只投影来源字段，同一遍扫描校验类型并统计缺失渠道 ID。
+ * 异常条件不能放进查询过滤器，否则 limit 只能限制命中数，仍可能扫描整个历史范围。
+ * 仅返回有界的异常 ID 与本批累计值；空批次 scanned 为 0，由编排层决定断点提交与失败处理。
+ */
+export const readPublishSourceValidationBatch = async ({
+  stage,
+  endId,
+  lastId,
+  limit
+}: {
+  stage: PublishSourceMigrationStage;
+  endId: string;
+  lastId: string | null;
+  limit: number;
+}) => {
+  const records = await getPublishSourceMigrationModel(stage)
+    .find(
+      {
+        _id: {
+          $lte: new Types.ObjectId(endId),
+          ...(lastId ? { $gt: new Types.ObjectId(lastId) } : {})
+        }
+      },
+      { projection: { _id: 1, 'publishSource.type': 1, 'publishSource.id': 1 } }
+    )
+    .sort({ _id: 1 })
+    .hint({ _id: 1 })
+    .limit(limit)
+    .toArray();
+
+  const internalSources = new Set<ChatSourceEnum>([
+    ChatSourceEnum.online,
+    ChatSourceEnum.test,
+    ChatSourceEnum.cronJob,
+    // 未知来源没有可确认的渠道，不计入已知外部渠道缺失 ID 的数量。
+    ChatSourceEnum.unknown
+  ]);
+  let missingChannelIds = 0;
+  const invalidIds: string[] = [];
+  for (const record of records) {
+    const type = StoredPublishSourceSchema.shape.type.safeParse(record.publishSource?.type);
+    if (!type.success) {
+      invalidIds.push(String(record._id));
+    } else if (
+      !internalSources.has(type.data) &&
+      (record.publishSource?.id === null || record.publishSource?.id === undefined)
+    ) {
+      missingChannelIds++;
+    }
+  }
+  return {
+    lastId: records.length ? String(records.at(-1)!._id) : null,
+    scanned: records.length,
+    missingChannelIds,
+    invalidIds
+  };
 };

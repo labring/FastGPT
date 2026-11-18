@@ -622,7 +622,7 @@ export const SearchDataResponseItemSchema = DatasetDataItemSchema.omit({
     synonymMappings: z
       .record(z.string(), z.string())
       .optional()
-      .meta({ description: '分块实际命中的原词到标准词映射' })
+      .meta({ description: '分块或用户问题中出现的原词到标准词映射' })
   })
   .meta({ description: '搜索数据响应项' });
 export type SearchDataResponseItemType = z.infer<typeof SearchDataResponseItemSchema>;

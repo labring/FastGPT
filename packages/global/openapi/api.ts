@@ -108,35 +108,68 @@ export type PaginationResponseType<T = any> = {
 
 /* 按 cursor 分页 */
 
-export const LinkedPaginationSchema = <TShape extends z.ZodRawShape>(extraShape?: TShape) =>
-  z.object({
-    pageSize: PaginationPageSizeSchema,
-    anchor: z
-      .any()
-      .optional()
-      .meta({ ...JsonValueOpenApiMeta, description: '当前锚点（如 chunkIndex）' }),
-    initialId: z.string().optional().meta({
-      example: '68ad85a7463006c963799a05',
-      description: '初始定位数据 ID'
-    }),
-    nextId: z.string().optional().meta({
-      example: '68ad85a7463006c963799a06',
-      description: '向后翻页的游标 ID'
-    }),
-    prevId: z.string().optional().meta({
-      example: '68ad85a7463006c963799a04',
-      description: '向前翻页的游标 ID'
-    }),
-    ...(extraShape ?? ({} as TShape))
-  });
+/**
+ * 链式分页只有前翻、后翻、初始定位、默认页四种互斥模式。
+ * 额外业务字段及分页限制应用于所有分支；未选中的 ID 显式禁止，避免 union 静默丢弃冲突参数。
+ */
+export const LinkedPaginationSchema = <TShape extends z.ZodRawShape = Record<never, never>>(
+  extraShape?: TShape
+) => {
+  const commonSchema = z
+    .object({
+      pageSize: PaginationPageSizeSchema,
+      anchor: z
+        .any()
+        .optional()
+        .meta({ ...JsonValueOpenApiMeta, description: '当前锚点（如 chunkIndex）' }),
+      initialId: z.string().optional().meta({
+        example: '68ad85a7463006c963799a05',
+        description: '初始定位数据 ID'
+      }),
+      nextId: z.string().optional().meta({
+        example: '68ad85a7463006c963799a06',
+        description: '向后翻页的游标 ID'
+      }),
+      prevId: z.string().optional().meta({
+        example: '68ad85a7463006c963799a04',
+        description: '向前翻页的游标 ID'
+      })
+    })
+    .extend(extraShape ?? ({} as TShape));
 
-export type LinkedPaginationProps<T = unknown, A = any> = T & {
-  pageSize: number;
-  anchor?: A;
-  initialId?: string;
-  nextId?: string;
-  prevId?: string;
+  const noPosition = {
+    prevId: z.never().optional(),
+    nextId: z.never().optional(),
+    initialId: z.never().optional()
+  };
+  return z
+    .union([
+      commonSchema
+        .extend({ ...noPosition, prevId: commonSchema.shape.prevId.nonoptional() })
+        .meta({ title: '向前翻页' }),
+      commonSchema
+        .extend({ ...noPosition, nextId: commonSchema.shape.nextId.nonoptional() })
+        .meta({ title: '向后翻页' }),
+      commonSchema
+        .extend({ ...noPosition, initialId: commonSchema.shape.initialId.nonoptional() })
+        .meta({ title: '定位记录' }),
+      commonSchema.extend(noPosition).meta({ title: '默认页' })
+    ])
+    .meta({
+      // OpenAPI 生成器会隐藏 never 字段，补充排斥约束以保留 union 的运行时互斥语义。
+      not: {
+        anyOf: [
+          { required: ['prevId', 'nextId'] },
+          { required: ['prevId', 'initialId'] },
+          { required: ['nextId', 'initialId'] }
+        ]
+      }
+    });
 };
+
+/** 从通用 schema 推导互斥参数，并保留业务自定义 anchor 类型的能力。 */
+export type LinkedPaginationProps<T = unknown, A = any> = T &
+  z.infer<ReturnType<typeof LinkedPaginationSchema<{ anchor: z.ZodOptional<z.ZodType<A>> }>>>;
 
 export const LinkedListResponseSchema = <T extends z.ZodTypeAny>(itemSchema: T) =>
   z.object({

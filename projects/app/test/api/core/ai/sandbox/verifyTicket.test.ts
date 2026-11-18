@@ -98,7 +98,9 @@ describe('sandbox verifyTicket API', () => {
   );
 
   it('keeps WebSocket tickets on the existing IDE Agent listener', async () => {
-    await handler(createReq(createTicket('fs')));
+    await expect(handler(createReq(createTicket('fs')))).resolves.toMatchObject({
+      ws_limits: { max_message_bytes: 64 * 1024 * 1024, max_frame_bytes: 16 * 1024 * 1024 }
+    });
     expect(mocks.getEndpoint).toHaveBeenCalledWith(1318);
   });
 

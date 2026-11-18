@@ -1,3 +1,7 @@
+import {
+  createDefaultInstanceConfig,
+  getTestInstanceConfig
+} from '@test/utils/instanceConfigSnapshot';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { SANDBOX_SHELL_TOOL_NAME } from '@fastgpt/global/core/ai/sandbox/tools';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
@@ -182,7 +186,7 @@ describe('createToolSchema', () => {
 describe('runToolCall compression node responses', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    (global as any).feConfigs = {};
+    global.systemInstanceConfig = createDefaultInstanceConfig();
     getSandboxToolInfoMock.mockImplementation((name: string) => {
       if (name !== SANDBOX_SHELL_TOOL_NAME) return undefined;
 
@@ -211,7 +215,7 @@ describe('runToolCall compression node responses', () => {
   });
 
   afterEach(() => {
-    delete (global as any).feConfigs;
+    global.systemInstanceConfig = createDefaultInstanceConfig();
   });
 
   it('passes the extracted system prompt separately from conversation messages', async () => {
@@ -990,9 +994,7 @@ describe('runToolCall compression node responses', () => {
   });
 
   it('executes sandbox as an agent-loop system tool and appends sandbox node response', async () => {
-    (global as any).feConfigs = {
-      show_agent_sandbox: true
-    };
+    getTestInstanceConfig().subservice.agentSandbox.provider = 'opensandbox';
     runAgentLoopMock.mockImplementation(async (options) => {
       expect(options.runtime.systemTools).toEqual(
         expect.objectContaining({

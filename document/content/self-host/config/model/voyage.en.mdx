@@ -1,0 +1,70 @@
+---
+title: Voyage AI Integration Example
+description: Configure Voyage AI embedding, multimodal embedding, and rerank models in a self-hosted FastGPT deployment through AI Proxy.
+---
+
+[Voyage AI](https://www.voyageai.com/) provides text embedding, multimodal embedding, and rerank models. FastGPT reaches them through the `Voyage` channel type of AI Proxy, which converts FastGPT's OpenAI-style embedding requests and its `/rerank` requests to the Voyage API, so no extra service is needed.
+
+Before reading this guide, make sure you've read the [Model Configuration Guide](/en/self-host/config/model/intro).
+
+> The `Voyage` channel type and the built-in Voyage model presets require an AI Proxy and a FastGPT Plugin version that include them. The contextualized embedding models (`voyage-context-*`) are served as ordinary embedding models, one input per document (see the notes below).
+
+## 1. Get an API Key
+
+1. Visit the [Voyage AI dashboard](https://dash.voyageai.com/) and sign in.
+2. Create an API key on the [API Keys page](https://dash.voyageai.com/api-keys) and store it securely.
+
+## 2. Add a Channel
+
+On the Model providers page, click "Add Channel" and configure the Voyage channel:
+
+- **Name**: Custom channel name, e.g., `Voyage AI`
+- **Protocol type**: Select **voyage**
+- **Proxy URL**: Leave empty to use the default `https://api.voyageai.com/v1`
+- **API Key**: Enter the Voyage API Key obtained in the previous step
+- **Models**: Select the Voyage models you want to use
+
+## 3. Models
+
+| Model ID                                       | Type                        | Context | Price (USD / 1M tokens)             |
+| ---------------------------------------------- | --------------------------- | ------- | ----------------------------------- |
+| `voyage-4-large`, `voyage-code-4`              | Embedding                   | 32K     | 0.12                                |
+| `voyage-4`, `voyage-3.5`                       | Embedding                   | 32K     | 0.06                                |
+| `voyage-4-lite`, `voyage-3.5-lite`             | Embedding                   | 32K     | 0.02                                |
+| `voyage-3-large`, `voyage-code-3`              | Embedding                   | 32K     | 0.18                                |
+| `voyage-context-4`                             | Embedding (contextualized)  | 32K     | 0.12                                |
+| `voyage-context-3`                             | Embedding (contextualized)  | 32K     | 0.18                                |
+| `voyage-finance-2`                             | Embedding                   | 32K     | 0.12                                |
+| `voyage-law-2`                                 | Embedding                   | 16K     | 0.12                                |
+| `voyage-multimodal-3.5`, `voyage-multimodal-3` | Embedding (text and images) | 32K     | 0.12 text, 0.60 per 1B image pixels |
+| `rerank-3`, `rerank-2.5`                       | Rerank                      | 32K     | 0.05                                |
+| `rerank-3-lite`, `rerank-2.5-lite`             | Rerank                      | 32K     | 0.02                                |
+
+Notes for embedding models:
+
+- FastGPT stores vectors with a fixed size of 1536. Voyage returns 1024 dimensions by default, and FastGPT pads them with zeros, which does not change cosine similarity. Keep the default dimension; other `output_dimension` values (256, 512, 2048) are not needed, and 2048 would be cut to 1536.
+- The built-in presets send `input_type: document` when text is indexed and `input_type: query` when it is searched. When you [add a custom model](/en/self-host/config/model/intro#add-a-custom-model), set the same in the model config:
+
+```json
+{
+  "type": "embedding",
+  "provider": "Voyage",
+  "model": "voyage-4",
+  "name": "voyage-4",
+  "isActive": true,
+  "pricing": { "unitPrice": 0 },
+  "config": {
+    "defaultToken": 512,
+    "maxToken": 32000,
+    "dbConfig": { "input_type": "document" },
+    "queryConfig": { "input_type": "query" }
+  }
+}
+```
+
+- `voyage-context-4` and `voyage-context-3` use the contextualized embeddings API. AI Proxy sends every input as its own document with `enable_auto_chunking: true` and `chunk_size: 32000`, and does not auto-chunk queries. FastGPT sends one chunk per input, so the vector of a chunk is not conditioned on the other chunks of its file. A request fails when Voyage splits an input into more than one chunk; the preset limit of 30000 tokens keeps inputs well below that. Voyage rejects these models without `input_type`, so their presets also set `input_type: document` as the default.
+- Mark `voyage-multimodal-3.5` and `voyage-multimodal-3` as accepting images (`vision`) to use them for image indexing.
+
+## 4. Test Models
+
+After configuration, click the test button in the channel list to verify channel connectivity and model availability.

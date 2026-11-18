@@ -34,6 +34,7 @@ import {
   serializeAgentTool
 } from '@fastgpt/global/core/app/formEdit/utils';
 import type { SelectedToolItemType } from '@fastgpt/global/core/app/formEdit/type';
+import { normalizeAgentToolInputs } from '@fastgpt/global/core/workflow/migration/agentToolInput';
 import { type TFunction } from 'i18next';
 import { type Edge, type Node } from 'reactflow';
 
@@ -86,10 +87,18 @@ export const uiWorkflow2StoreWorkflow = ({
       !nodeInputIsReference(selectedToolsInput) &&
       Array.isArray(selectedToolsInput.value)
     ) {
-      // 展开态独有 flowNodeType；保存只提取配置，存储态原样保留，不因展示字段缺失而丢工具。
+      // Agent 工具统一收敛为 { key, mode } 和 config，避免完整 NodeIO 混入持久化协议。
       selectedToolsInput.value = selectedToolsInput.value.map(
-        (tool: SelectedToolItemType | AgentToolType) =>
-          'flowNodeType' in tool ? serializeAgentTool({ tool }) : tool
+        (tool: SelectedToolItemType | AgentToolType) => {
+          if (!Array.isArray(tool.inputs)) return tool;
+          if ('flowNodeType' in tool) return serializeAgentTool({ tool });
+
+          const { inputs, config } = normalizeAgentToolInputs({
+            rawInputs: tool.inputs,
+            rawConfig: tool.config
+          });
+          return { ...tool, inputs, config };
+        }
       );
     }
 

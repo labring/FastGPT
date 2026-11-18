@@ -6,6 +6,7 @@ import type { CliFetchFn } from '../../shared/types';
 import { createNodeTlsFetch } from './tls-fetch';
 
 export const DEFAULT_TIMEOUT_MS = 15_000;
+export const LONG_OPERATION_TIMEOUT_MS = 120_000;
 
 export type HttpRequestAuth = {
   authType: 'token' | 'apikey';
@@ -21,6 +22,7 @@ export type SseEvent = {
 export type RawHttpResponse = {
   status: number;
   headers: Headers;
+  body?: ReadableStream<Uint8Array> | null;
   text: () => Promise<string>;
   arrayBuffer: () => Promise<ArrayBuffer>;
 };
@@ -117,6 +119,16 @@ function mapServerError({
 }): CliAuthError | CliApiError {
   const safeMessage = redactText(message);
   const safeUrl = redactText(url);
+
+  // 会话身份/权限拒绝是业务码 504000，HTTP 可能是 500；不能误导用户重试生成或重新登录。
+  if (statusText === 'unAuthChat' || serverCode === 504000) {
+    return new CliAuthError({
+      code: 'AUTH_FORBIDDEN',
+      message: safeMessage,
+      hint: 'Check App access and keep customUid or authProxy consistent with the original conversation.',
+      details: { httpStatus, serverCode, statusText, url: safeUrl }
+    });
+  }
 
   if (/API Key is expired/i.test(safeMessage)) {
     return new CliAuthError({
@@ -408,7 +420,7 @@ export function createFastGptHttpClient({
     searchParams,
     jsonBody,
     rawBody,
-    formData,
+    contentType,
     signal
   }: {
     client: any;
@@ -417,7 +429,7 @@ export function createFastGptHttpClient({
     searchParams?: Record<string, string | number | boolean>;
     jsonBody?: unknown;
     rawBody?: BodyInit | null;
-    formData?: FormData;
+    contentType?: string;
     signal?: AbortSignal;
   }): Promise<{ response: Response; finalUrl: string }> => {
     const baseWithSlash = normalizedBaseUrl.endsWith('/')
@@ -427,7 +439,7 @@ export function createFastGptHttpClient({
     let currentMethod = initialMethod;
     let currentJson = jsonBody;
     let currentRawBody = rawBody;
-    let currentFormData = formData;
+    let currentContentType = contentType;
     let currentSearchParams = searchParams;
 
     for (let hop = 0; hop <= 5; hop += 1) {
@@ -441,7 +453,11 @@ export function createFastGptHttpClient({
           ...(currentRawBody !== undefined && currentRawBody !== null
             ? { body: currentRawBody }
             : {}),
-          ...(currentFormData !== undefined ? { body: currentFormData } : {})
+          ...(currentRawBody !== undefined &&
+          currentRawBody !== null &&
+          currentContentType !== undefined
+            ? { headers: { 'content-type': currentContentType } }
+            : {})
         });
       } catch (error) {
         if (error instanceof CliNetworkError) throw error;
@@ -491,7 +507,7 @@ export function createFastGptHttpClient({
             currentMethod = 'GET';
             currentJson = undefined;
             currentRawBody = null;
-            currentFormData = undefined;
+            currentContentType = undefined;
           }
         } else if (response.status === 301 || response.status === 302) {
           // 301 / 302 仅对 POST 重写为 GET；PUT、DELETE 等保留原有方法和请求体
@@ -499,7 +515,7 @@ export function createFastGptHttpClient({
             currentMethod = 'GET';
             currentJson = undefined;
             currentRawBody = null;
-            currentFormData = undefined;
+            currentContentType = undefined;
           }
         }
         // 307 与 308 保留原始 HTTP 方法与请求载荷
@@ -584,6 +600,7 @@ export function createFastGptHttpClient({
       return {
         status: response.status,
         headers: response.headers,
+        body: response.body,
         text: () => response.text(),
         arrayBuffer: () => response.arrayBuffer()
       };
@@ -613,12 +630,18 @@ export function createFastGptHttpClient({
         stripAccept: true
       });
 
+      // 预先将 FormData 序列化为字节负载，避免未消费的 undici multipart 流在 ky finally cancel() 时于 Node 24 抛出 ERR_INVALID_STATE
+      const serializedForm = new Response(formData);
+      const multipartContentType = serializedForm.headers.get('content-type') ?? undefined;
+      const multipartBody = new Uint8Array(await serializedForm.arrayBuffer());
+
       const { response, finalUrl } = await executeWithRedirects({
         client,
         initialPath: relativePath,
         method: 'POST',
         searchParams,
-        formData
+        rawBody: multipartBody,
+        contentType: multipartContentType
       });
 
       const rawText = await response.text();

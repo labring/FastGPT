@@ -146,6 +146,25 @@ describe('OssStorageAdapter.downloadObject', () => {
     expect(result.body.errored).toBe(abortReason);
     expect(result.body.destroyed).toBe(true);
   });
+
+  it('passes Range request header to ali-oss getStream when range is provided', async () => {
+    const adapter = createAdapter();
+    const stream = new PassThrough();
+    const getStream = vi.fn().mockResolvedValue({ stream });
+    (adapter as any).client.getStream = getStream;
+
+    const result = await adapter.downloadObject({
+      key: 'dataset/file.txt',
+      range: { start: 1, end: 8 }
+    });
+
+    expect(result.body).toBe(stream);
+    expect(getStream).toHaveBeenCalledWith('dataset/file.txt', {
+      headers: {
+        Range: 'bytes=1-8'
+      }
+    });
+  });
 });
 
 describe('OssStorageAdapter.getObjectMetadata', () => {

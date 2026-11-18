@@ -1,8 +1,9 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, expectTypeOf, it } from 'vitest';
 import {
   createPaginationSchema,
   LinkedListResponseSchema,
   LinkedPaginationSchema,
+  type LinkedPaginationProps,
   PaginationPageNumSchema,
   PaginationPageSizeSchema,
   PaginationPageSizeLimit,
@@ -24,6 +25,7 @@ import { GetDatasetTrainingErrorBodySchema } from '../../openapi/core/dataset/tr
 import z from 'zod';
 import { createSchema } from 'zod-openapi';
 import { openApiDocumentOptions } from '../../openapi/generation';
+import Ajv2020 from 'ajv/dist/2020';
 import { GetUsersBodySchema } from '../../openapi/admin/user/api';
 import { GetTeamsBodySchema } from '../../openapi/admin/team/api';
 import { GetPaysBodySchema } from '../../openapi/admin/wallet/pay/api';
@@ -119,10 +121,13 @@ describe('shared API schemas', () => {
         io: 'input',
         opts: openApiDocumentOptions
       });
+      if ('$ref' in document) throw new Error('Expected inline pagination schema');
       // 日志把身份选择与分页相交，其他接口直接展示分页；两种结构都必须保留默认值。
       const pagination =
-        document.allOf?.find((part) =>
-          part.anyOf?.every((branch) => branch.properties?.pageSize)
+        document.allOf?.find(
+          (part) =>
+            !('$ref' in part) &&
+            part.anyOf?.every((branch) => !('$ref' in branch) && branch.properties?.pageSize)
         ) ?? document;
       expect(pagination).toMatchObject({
         anyOf: [
@@ -169,6 +174,78 @@ describe('shared API schemas', () => {
         hasMoreNext: true
       }).list[0].anchor
     ).toEqual(anchor);
+  });
+});
+
+describe('exclusive linked pagination', () => {
+  const schema = LinkedPaginationSchema({
+    resourceId: z.string(),
+    anchor: z.number().int().optional(),
+    pageSize: z.number().int().positive().max(30).default(10)
+  });
+
+  it.each([{}, { prevId: 'before' }, { nextId: 'after' }, { initialId: 'target' }])(
+    'retains common fields, defaults and business limits for %j',
+    (position) => {
+      expect(schema.parse({ resourceId: 'resource', anchor: 3, ...position })).toEqual({
+        resourceId: 'resource',
+        anchor: 3,
+        pageSize: 10,
+        ...position
+      });
+      expect(schema.safeParse({ resourceId: 'resource', ...position, pageSize: 31 }).success).toBe(
+        false
+      );
+    }
+  );
+
+  it.each([
+    { prevId: 'a', nextId: 'b' },
+    { prevId: 'a', initialId: 'b' },
+    { nextId: 'a', initialId: 'b' },
+    { prevId: 'a', nextId: 'b', initialId: 'c' },
+    { prevId: null },
+    { nextId: 1 },
+    { initialId: {} }
+  ])('rejects conflicting or invalid positions without discarding fields: %j', (position) => {
+    expect(schema.safeParse({ resourceId: 'resource', ...position }).success).toBe(false);
+  });
+
+  it('keeps OpenAPI pagination exclusivity aligned with runtime validation', () => {
+    const { schema: document } = createSchema(schema, {
+      io: 'input',
+      opts: openApiDocumentOptions
+    });
+    const validate = new Ajv2020({ strict: false, validateFormats: false }).compile({
+      ...document
+    });
+    expect(validate({ resourceId: 'resource' })).toBe(true);
+    for (const key of ['prevId', 'nextId', 'initialId']) {
+      expect(validate({ resourceId: 'resource', [key]: 'cursor' })).toBe(true);
+      for (const other of ['prevId', 'nextId', 'initialId'].filter((value) => value !== key)) {
+        expect(validate({ resourceId: 'resource', [key]: 'cursor', [other]: 'cursor' })).toBe(
+          false
+        );
+      }
+    }
+  });
+
+  it('derives exclusive TypeScript parameters and a typed anchor from the schema', () => {
+    type Params = LinkedPaginationProps<{ resourceId: string }, number>;
+    expectTypeOf<Params>().not.toBeAny();
+    expectTypeOf<Params['anchor']>().toEqualTypeOf<number | undefined>();
+    expectTypeOf<{
+      resourceId: string;
+      pageSize: number;
+      prevId: string;
+    }>().toMatchTypeOf<Params>();
+    expectTypeOf<{
+      resourceId: string;
+      pageSize: number;
+      prevId: string;
+      nextId: string;
+    }>().not.toMatchTypeOf<Params>();
+    expectTypeOf<Extract<Params, { prevId: string }>['nextId']>().toEqualTypeOf<undefined>();
   });
 });
 

@@ -1,31 +1,22 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-
-const { mockEnv } = vi.hoisted(() => ({
-  mockEnv: {
-    PARSE_FILE_TIMEOUT_SECONDS: 600
-  }
-}));
-
-vi.mock('@fastgpt/service/env', () => ({
-  serviceEnv: mockEnv
-}));
+import { beforeEach, describe, expect, it } from 'vitest';
+import { getTestInstanceConfig } from '@test/utils/instanceConfigSnapshot';
 
 const { getBackendFileOperationTimeoutMs } =
   await import('@fastgpt/service/common/file/parseTimeout');
 
 describe('getBackendFileOperationTimeoutMs', () => {
   beforeEach(() => {
-    mockEnv.PARSE_FILE_TIMEOUT_SECONDS = 600;
+    getTestInstanceConfig().performance.parse.fileTimeoutSeconds = 600;
   });
 
   it('配置小于 10 分钟时保留最小后端等待时间', () => {
-    mockEnv.PARSE_FILE_TIMEOUT_SECONDS = 300;
+    getTestInstanceConfig().performance.parse.fileTimeoutSeconds = 300;
 
     expect(getBackendFileOperationTimeoutMs()).toBe(600000);
   });
 
-  it.each([600, 1200, 6000])('按环境变量秒数转换为毫秒: %s', (seconds) => {
-    mockEnv.PARSE_FILE_TIMEOUT_SECONDS = seconds;
+  it.each([600, 1200, 6000])('按实例配置秒数转换为毫秒: %s', (seconds) => {
+    getTestInstanceConfig().performance.parse.fileTimeoutSeconds = seconds;
 
     expect(getBackendFileOperationTimeoutMs()).toBe(seconds * 1000);
   });

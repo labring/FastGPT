@@ -1,6 +1,6 @@
 import {
-  SystemMigrationCollectionName,
-  SystemMigrationStatusEnum
+  SystemMigrationStatusEnum,
+  systemMigrationStateCollectionName
 } from '@fastgpt/global/migration/constants';
 import type {
   SystemMigrationError,
@@ -163,7 +163,7 @@ const SystemMigrationStateSchema = new Schema<SystemMigrationStateSchemaType>(
 );
 
 export const MongoSystemMigrationState = getMongoModel<SystemMigrationStateSchemaType>(
-  SystemMigrationCollectionName,
+  systemMigrationStateCollectionName,
   SystemMigrationStateSchema
 );
 

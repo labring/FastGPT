@@ -1,27 +1,17 @@
 'use client';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import React, { useRef, useState } from 'react';
-import {
-  Table,
-  Thead,
-  Tbody,
-  Tr,
-  Th,
-  Td,
-  Flex,
-  Box,
-  Button,
-  HStack,
-  InputGroup,
-  Input,
-  InputLeftElement
-} from '@chakra-ui/react';
+import { Table, Thead, Tbody, Tr, Th, Td, Flex, Box, Button, HStack } from '@chakra-ui/react';
 import dayjs from 'dayjs';
 import { useRouter } from 'next/router';
 import { useQueryClient } from '@tanstack/react-query';
 import MyIcon from '@fastgpt/web/components/common/Icon';
+import AdminCompositeSearch, {
+  useAdminCompositeSearch,
+  useAdminTeamSearchOptions
+} from '@/components/admin/CompositeSearch';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import DetailTeamModal from './components/DetailTeamModal';
 import { getTeams, putAdminSwitchTeam } from '@/web/admin/team/api';
 import BoxPageRoot from '@/components/admin/BoxContainer/PageRoot';
@@ -32,13 +22,15 @@ import { useUserStore } from '@/web/support/user/useUserStore';
 
 const TeamTable = () => {
   const { t } = useSafeTranslation();
+  const teamSearchOptions = useAdminTeamSearchOptions();
   const router = useRouter();
   const queryClient = useQueryClient();
   const { resetChatCache } = useChatStore();
   const { initUserInfo } = useUserStore();
-  const [search, setSearch] = useState<string>();
   const [switchingTeamId, setSwitchingTeamId] = useState<string>();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const { searchField, inputValue, isInvalid, searchParams, onFieldChange, onInputChange } =
+    useAdminCompositeSearch({ options: teamSearchOptions });
 
   const { runAsync: onEnterTeam } = useRequest(
     async (teamId: string) => {
@@ -67,10 +59,8 @@ const TeamTable = () => {
   } = usePagination(getTeams, {
     defaultPageSize: 20,
     pageSizeCacheKey: 'users-teams-list',
-    params: {
-      search
-    },
-    refreshDeps: [search],
+    params: searchParams,
+    refreshDeps: [searchParams],
     scrollContainerRef
   });
 
@@ -86,19 +76,17 @@ const TeamTable = () => {
         borderColor={'myGray.200'}
       >
         <Box as={'h1'} {...accountTitleTextStyles}>
-          团队管理
+          {t('admin:team_management')}
         </Box>
         <Box flexGrow={1} />
-        <InputGroup w={['100%', '250px']} h={'36px'}>
-          <InputLeftElement h={'full'}>
-            <MyIcon name="common/searchLight" w={4} color={'myGray.400'} />
-          </InputLeftElement>
-          <Input
-            placeholder="请输入用户名搜索"
-            h={'36px'}
-            onChange={(e) => setSearch(e.target.value)}
-          ></Input>
-        </InputGroup>
+        <AdminCompositeSearch
+          options={teamSearchOptions}
+          field={searchField}
+          value={inputValue}
+          isInvalid={isInvalid}
+          onFieldChange={onFieldChange}
+          onValueChange={onInputChange}
+        />
       </Flex>
 
       <FixedTableContainer
@@ -119,10 +107,10 @@ const TeamTable = () => {
         <Table>
           <Thead>
             <Tr>
-              <Th>团队id</Th>
-              <Th>团队名</Th>
-              <Th>用户名</Th>
-              <Th>创建时间</Th>
+              <Th>{t('admin:team_id_3')}</Th>
+              <Th>{t('admin:team_name_2')}</Th>
+              <Th>{t('admin:username')}</Th>
+              <Th>{t('admin:created_at')}</Th>
               <Th></Th>
             </Tr>
           </Thead>
@@ -162,7 +150,7 @@ const TeamTable = () => {
           >
             <MyIcon name="empty" w={'48px'} h={'48px'} color={'transparent'} />
             <Box mt={2} color={'myGray.500'}>
-              无团队记录～
+              {t('admin:no_teams')}
             </Box>
           </Flex>
         )}

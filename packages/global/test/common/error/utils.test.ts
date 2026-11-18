@@ -9,8 +9,15 @@ import {
 } from '@fastgpt/global/common/error/utils';
 import { ERROR_ENUM, ERROR_RESPONSE } from '@fastgpt/global/common/error/errorCode';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
+import { PluginErrEnum } from '@fastgpt/global/common/error/code/plugin';
 
 describe('getErrText', () => {
+  it('maps the moderation uninstall refusal string to the admin i18n key', () => {
+    expect(getErrText('Disable the moderation plugin before deleting it')).toBe(
+      'admin:moderation.disable_before_delete'
+    );
+    expect(ERROR_RESPONSE[PluginErrEnum.disableModerationBeforeDelete].httpStatus).toBe(400);
+  });
   it('maps the model domain error code to the user-facing message', () => {
     expect(getErrText(ModelErrEnum.unExist)).toBe(ERROR_RESPONSE[ModelErrEnum.unExist].message);
     expect(getErrText(ModelErrEnum.unExist)).toBe('common:model_delisted');

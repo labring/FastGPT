@@ -5,7 +5,13 @@ import { createProxyAxios } from '../../common/api/axios';
 import { getLogger, LogCategories } from '../../common/logger';
 import { assertRelativePath } from '../../common/security/network';
 import { serviceEnv } from '../../env';
-import { FASTGPT_PRO_TOKEN_HEADER } from '@fastgpt/global/common/system/constants';
+import {
+  FASTGPT_PRO_TOKEN_HEADER,
+  FASTGPT_LANGUAGE_HEADER,
+  FASTGPT_SHARE_LANGUAGE_HEADER
+} from '@fastgpt/global/common/system/constants';
+import { ERROR_RESPONSE } from '@fastgpt/global/common/error/errorCode';
+import { getRequestLocale } from '../../common/i18n/request';
 
 const logger = getLogger(LogCategories.HTTP.ERROR);
 
@@ -19,6 +25,7 @@ type ResponseDataType = {
   message: string;
   data: any;
   errorType?: string;
+  statusText?: string;
 };
 
 /**
@@ -27,8 +34,31 @@ type ResponseDataType = {
 function requestStart(config: InternalAxiosRequestConfig): InternalAxiosRequestConfig {
   if (config.headers) {
     delete config.headers['content-length'];
+    const locale = getRequestLocale();
+    if (
+      locale &&
+      !config.headers.has(FASTGPT_LANGUAGE_HEADER) &&
+      !config.headers.has(FASTGPT_SHARE_LANGUAGE_HEADER)
+    ) {
+      config.headers.set(FASTGPT_LANGUAGE_HEADER, locale);
+    }
   }
   return config;
+}
+
+/** 保留 Pro 用户错误的机器标识和展示文案，不能把已翻译的 message 当成业务码。 */
+function parseProUserError(data: ResponseDataType) {
+  const errorKey =
+    data.statusText &&
+    Object.hasOwn(ERROR_RESPONSE, data.statusText) &&
+    ERROR_RESPONSE[data.statusText].code === data.code
+      ? data.statusText
+      : data.message;
+  return Object.assign(new UserError(errorKey, data.message), {
+    code: data.code,
+    statusText: data.statusText,
+    data: data.data
+  });
 }
 
 /**
@@ -39,7 +69,7 @@ function checkRes(data: ResponseDataType) {
     logger.error('Plus request response is empty', { data });
     return Promise.reject('服务器异常');
   } else if (data?.code && (data.code < 200 || data.code >= 400)) {
-    if (data.errorType === 'UserError') return Promise.reject(new UserError(data.message));
+    if (data.errorType === 'UserError') return Promise.reject(parseProUserError(data));
     return Promise.reject(data);
   }
   return data.data;
@@ -58,7 +88,7 @@ function responseError(err: any) {
 
   if (err?.response?.data) {
     if (err.response.data.errorType === 'UserError') {
-      return Promise.reject(new UserError(err.response.data.message));
+      return Promise.reject(parseProUserError(err.response.data));
     }
     return Promise.reject(err?.response?.data);
   }

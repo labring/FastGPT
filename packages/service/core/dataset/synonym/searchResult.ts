@@ -2,6 +2,7 @@ import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/ty
 import { MongoDatasetData } from '../data/schema';
 import { formatDatasetDataTextValue } from '../data/controller';
 import { getCachedDatasetSynonymConfig, getDatasetSynonymMatcher } from './entity';
+import { normalizeSynonymTerm, type DatasetSynonymMatcher } from './utils';
 import { getLogger, LogCategories } from '../../../common/logger';
 import { serviceEnv } from '../../../env';
 
@@ -23,11 +24,19 @@ const logger = getLogger(LogCategories.MODULE.DATASET.DATA);
 export const attachSynonymMappingsToSearchResults = async ({
   teamId,
   datasetIds,
-  results
+  results,
+  queries = []
 }: {
   teamId: string;
   datasetIds: string[];
   results: SearchDataResponseItemType[];
+  /**
+   * 本次检索的用户问题（含查询扩展/同义标准化的结果）。命中分块的正文可能只写标准词
+   * （用户问「枕瓜」、分块正文写「冬瓜」），此时分块自身没有原词，回答模型缺少术语对齐
+   * 信息；这里把「问题里的原词 → 标准词」并入命中分块，仅保留标准词确实出现在该分块
+   * 正文中的映射，避免把无关分块也标上同一组对应关系。
+   */
+  queries?: string[];
 }): Promise<SearchDataResponseItemType[]> => {
   // 1. 定义内部快照剥离工具；功能关闭时直接清理全部同义词字段并返回。
   // 上游可能已完成装饰且映射可信；只剥离内部快照 Symbol。
@@ -88,6 +97,15 @@ export const attachSynonymMappingsToSearchResults = async ({
 
   // 3. 按词表版本缓存 matcher，逐条装饰结果；已装饰的授权条目幂等透传。
   const matchers = new Map<string, ReturnType<typeof getDatasetSynonymMatcher>>();
+  // 问题侧映射按 matcher 缓存，避免每个分块重复扫描同一个问题
+  const queryMappingsByMatcher = new Map<
+    string,
+    ReturnType<DatasetSynonymMatcher['transform']>['usedMappings']
+  >();
+  const queryText = queries
+    .map((query) => query.trim())
+    .filter(Boolean)
+    .join('\n');
 
   return Promise.all(
     results.map(async (item: InternalSearchItem) => {
@@ -133,15 +151,35 @@ export const attachSynonymMappingsToSearchResults = async ({
           return clean;
         }
 
-        const { usedMappings } = matcher.transform(`${snapshot.q}\n${snapshot.a ?? ''}`, {
+        const chunkText = `${snapshot.q}\n${snapshot.a ?? ''}`;
+        const matchResult = matcher.transform(chunkText, {
           preserveMatchedTermCase: true
         });
+        const chunkMappings = matchResult.usedMappings;
+        // 标准词命中集合：同一次 transform 扫描里，标准词作为 no-op 端子命中时
+        // 会被记录（见 buildSynonymMatcher 的 matchedStandardTerms）——命中判定
+        // 完全复用原 matcher 算法（最长匹配 + hasValidBoundary 词边界 + 大小写
+        // 归一化），不引入任何二次扫描或独立判定逻辑。
+        // 问题侧映射的保留条件：问题里的别名所对应的标准词，确实以标准词形式
+        // 命中了本分块正文（例：用户问「枕瓜排骨汤」、命中分块正文只写「冬瓜」，
+        // 仍附上「枕瓜 → 冬瓜」让回答模型对齐措辞；无关分块不会拿到这组映射）。
+        const standardHits = new Set(matchResult.matchedStandardTerms?.map(([key]) => key) ?? []);
+        if (queryText && !queryMappingsByMatcher.has(matcherKey)) {
+          queryMappingsByMatcher.set(
+            matcherKey,
+            matcher.transform(queryText, { preserveMatchedTermCase: true }).usedMappings
+          );
+        }
+        const queryMappings = (queryMappingsByMatcher.get(matcherKey) ?? []).filter((mapping) =>
+          standardHits.has(normalizeSynonymTerm(mapping.standardizedTerm))
+        );
+
         const mappings: Record<string, string> = Object.create(null);
 
-        // 单分块最多保留 100 条映射，超出时按整条映射截断。
+        // 单分块最多保留 100 条映射，超出时按整条映射截断；分块侧映射优先于问题侧。
         let truncated = false;
         let mappingCount = 0;
-        for (const mapping of usedMappings) {
+        for (const mapping of [...chunkMappings, ...queryMappings]) {
           if (Object.hasOwn(mappings, mapping.matchedTerm)) continue;
           if (mappingCount >= 100) {
             truncated = true;

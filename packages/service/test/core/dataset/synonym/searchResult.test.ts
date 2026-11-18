@@ -216,4 +216,238 @@ describe('synonym search result enrichment', () => {
     mocks.config.mockResolvedValue({ teamId, datasetId, version: 2, enabled: false });
     expect((await run())[0].synonymMappings).toBeUndefined();
   });
+
+  /**
+   * 回归背景（2026-11 同义词验证）：用户问题命中同义词（如「枕瓜」→「冬瓜」），但分块
+   * 正文只写标准词「冬瓜」，分块自身不会命中任何原词，此前 synonymMappings 为空，
+   * 回答模型拿不到「问题措辞 → 正文标准词」的对齐信息。现在把问题侧命中的映射
+   * 反向匹配到分块：标准词确实出现在该分块正文里才加入，去重后并入 synonymMappings。
+   */
+  it('adds query-hit mappings to chunks whose body only contains the standard term', async () => {
+    const results = await attachSynonymMappingsToSearchResults({
+      teamId,
+      datasetIds: [datasetId],
+      results: [item('standard-1 body only')],
+      queries: ['alias question']
+    });
+    expect(results[0].synonymMappings).toEqual({ alias: 'standard-1' });
+  });
+
+  it('does not add query-hit mappings to chunks without the standard term', async () => {
+    const results = await attachSynonymMappingsToSearchResults({
+      teamId,
+      datasetIds: [datasetId],
+      results: [item('unrelated body')],
+      queries: ['alias question']
+    });
+    expect(results[0].synonymMappings).toEqual({});
+  });
+
+  it('merges query-hit mappings without duplicating chunk-side entries', async () => {
+    // 分块正文同时含原词 alias 与标准词 standard-1：分块侧给出 ALIAS/alias 两条，
+    // 问题侧 alias 与之分块侧重复，合并后不得出现第三条或覆盖分块侧大小写保留。
+    const results = await attachSynonymMappingsToSearchResults({
+      teamId,
+      datasetIds: [datasetId],
+      results: [item()],
+      queries: ['alias question']
+    });
+    expect(results[0].synonymMappings).toEqual({ ALIAS: 'standard-1', alias: 'standard-1' });
+  });
+
+  it('ignores empty or blank queries', async () => {
+    const results = await attachSynonymMappingsToSearchResults({
+      teamId,
+      datasetIds: [datasetId],
+      results: [item()],
+      queries: ['', '   ']
+    });
+    expect(results[0].synonymMappings).toEqual({ ALIAS: 'standard-1', alias: 'standard-1' });
+  });
+
+  /**
+   * 2x2 矩阵回归（2026-11 验证口径）：query 带不带标准词 × 分块带不带标准词。
+   * 锁住三条边界：①问题侧反向匹配只落到正文含标准词的分块；②问题只含标准词时
+   * 不产出自映射（冬瓜→冬瓜 这类噪音）；③问题原词+标准词同时出现时仍只一条映射。
+   */
+  it('adds query-hit mappings only when the chunk body contains the standard term (2x2)', async () => {
+    // query 带原词（不带标准词）
+    const aliasOnly = await attachSynonymMappingsToSearchResults({
+      teamId,
+      datasetIds: [datasetId],
+      results: [item('standard-1 body only'), item('unrelated body')],
+      queries: ['alias question']
+    });
+    expect(aliasOnly[0].synonymMappings).toEqual({ alias: 'standard-1' });
+    expect(aliasOnly[1].synonymMappings).toEqual({});
+
+    // query 只带标准词：标准词命中不产出映射（无 冬瓜→冬瓜 式自映射噪音）
+    const standardOnly = await attachSynonymMappingsToSearchResults({
+      teamId,
+      datasetIds: [datasetId],
+      results: [item('standard-1 body only'), item('unrelated body')],
+      queries: ['standard-1 question']
+    });
+    expect(standardOnly[0].synonymMappings).toEqual({});
+    expect(standardOnly[1].synonymMappings).toEqual({});
+
+    // query 原词 + 标准词都在：仍只一条，不因标准词命中多出条目
+    const mixed = await attachSynonymMappingsToSearchResults({
+      teamId,
+      datasetIds: [datasetId],
+      results: [item('standard-1 body only')],
+      queries: ['alias standard-1 question']
+    });
+    expect(mixed[0].synonymMappings).toEqual({ alias: 'standard-1' });
+  });
+
+  /**
+   * 回归背景（2026-11 同义词验证）：分块侧映射只由分块正文决定，与提问无关。
+   * 提问完全没命中词表、或只带标准词时，分块正文里的原词映射必须原样保留返回——
+   * 问题侧只追加、不清掉已有映射。
+   */
+  it('keeps chunk-side mappings when the query misses the vocabulary or has only the standard term', async () => {
+    // query 与词表完全无关
+    const unrelated = await attachSynonymMappingsToSearchResults({
+      teamId,
+      datasetIds: [datasetId],
+      results: [item()],
+      queries: ['unrelated question']
+    });
+    expect(unrelated[0].synonymMappings).toEqual({ ALIAS: 'standard-1', alias: 'standard-1' });
+
+    // query 只带标准词（标准词命中不产出映射，也不影响分块侧）
+    const standardOnly = await attachSynonymMappingsToSearchResults({
+      teamId,
+      datasetIds: [datasetId],
+      results: [item()],
+      queries: ['standard-1 question']
+    });
+    expect(standardOnly[0].synonymMappings).toEqual({ ALIAS: 'standard-1', alias: 'standard-1' });
+  });
+
+  /**
+   * F2 边界（2026-11-17 Codex review）：问题侧反向匹配的标准词命中必须复用
+   * matcher 的归一化与词边界语义，不能用 includes——否则英文大小写变体漏配
+   * （「REFUND」vs「Refund」），词中子串误配（cat ⊂ concatenate）。
+   * 测试用 standard-1 作为标准词、alias 作为别名的既有 mock matcher。
+   */
+  it('matches the standard term with matcher normalization and word boundaries', async () => {
+    // 大小写变体：正文写 STANDARD-1（大写），matcher 归一化后应命中
+    const caseVariant = await attachSynonymMappingsToSearchResults({
+      teamId,
+      datasetIds: [datasetId],
+      results: [item('STANDARD-1 policies')],
+      queries: ['alias question']
+    });
+    expect(caseVariant[0].synonymMappings).toEqual({ alias: 'standard-1' });
+
+    // 词中子串：正文 standard-10 里包含 standard-1 前缀，但边界不合法（后随数字）
+    // → 不得注入映射
+    const prefixInsideWord = await attachSynonymMappingsToSearchResults({
+      teamId,
+      datasetIds: [datasetId],
+      results: [item('standard-10 policies')],
+      queries: ['alias question']
+    });
+    expect(prefixInsideWord[0].synonymMappings).toEqual({});
+
+    // 连字符本身是边界的一部分：standard-1x 也不算命中
+    const letterSuffix = await attachSynonymMappingsToSearchResults({
+      teamId,
+      datasetIds: [datasetId],
+      results: [item('standard-1x policies')],
+      queries: ['alias question']
+    });
+    expect(letterSuffix[0].synonymMappings).toEqual({});
+
+    // 完整独立词：正常命中
+    const standalone = await attachSynonymMappingsToSearchResults({
+      teamId,
+      datasetIds: [datasetId],
+      results: [item('the standard-1 reference')],
+      queries: ['alias question']
+    });
+    expect(standalone[0].synonymMappings).toEqual({ alias: 'standard-1' });
+  });
+  it('respects longest-match semantics for query-side reverse matching', async () => {
+    mocks.matcher.mockImplementation(async ({ fileVersion }: { fileVersion: number }) => ({
+      ...buildSynonymMatcher([
+        {
+          logicalMappingId: `${id}-refund`,
+          datasetId,
+          fileVersion,
+          standardizedTerm: '退款',
+          normalizedStandardizedTerm: '退款',
+          synonymTerms: ['退钱'],
+          normalizedSynonymTerms: ['退钱']
+        },
+        {
+          logicalMappingId: `${id}-refuse`,
+          datasetId,
+          fileVersion,
+          standardizedTerm: '拒绝退费',
+          normalizedStandardizedTerm: '拒绝退费',
+          synonymTerms: ['不退款'],
+          normalizedSynonymTerms: ['不退款']
+        }
+      ]),
+      hasMappings: true
+    }));
+
+    // 正文「概不退款」：最长匹配命中「不退款」（转为拒绝退费），「退款」作为其
+    // 子串不再独立命中 → 问题侧「退钱 → 退款」被过滤，不误注入肯定对齐。
+    const compound = await attachSynonymMappingsToSearchResults({
+      teamId,
+      datasetIds: [datasetId],
+      results: [item('特价商品概不退款')],
+      queries: ['怎么退钱']
+    });
+    expect(compound[0].synonymMappings).toEqual({ 不退款: '拒绝退费' });
+
+    // 正文以标准词形式独立出现：问题侧映射正常保留
+    const standalone = await attachSynonymMappingsToSearchResults({
+      teamId,
+      datasetIds: [datasetId],
+      results: [item('支持退款')],
+      queries: ['怎么退钱']
+    });
+    expect(standalone[0].synonymMappings).toEqual({ 退钱: '退款' });
+  });
+
+  it('does not inject query mappings whose standard term is a substring of a longer matched term', async () => {
+    mocks.matcher.mockImplementation(async ({ fileVersion }: { fileVersion: number }) => ({
+      ...buildSynonymMatcher([
+        {
+          logicalMappingId: `${id}-apple`,
+          datasetId,
+          fileVersion,
+          standardizedTerm: '苹果',
+          normalizedStandardizedTerm: '苹果',
+          synonymTerms: ['林檎'],
+          normalizedSynonymTerms: ['林檎']
+        },
+        {
+          logicalMappingId: `${id}-iphone`,
+          datasetId,
+          fileVersion,
+          standardizedTerm: '苹果手机',
+          normalizedStandardizedTerm: '苹果手机',
+          synonymTerms: ['iPhone'],
+          normalizedSynonymTerms: ['iPhone']
+        }
+      ]),
+      hasMappings: true
+    }));
+
+    // 正文「苹果手机」按最长匹配只命中「苹果手机」标准词；「林檎 → 苹果」
+    // 不得因「苹果」是「苹果手机」子串而误注入。
+    const results = await attachSynonymMappingsToSearchResults({
+      teamId,
+      datasetIds: [datasetId],
+      results: [item('苹果手机维修指南')],
+      queries: ['林檎怎么挑']
+    });
+    expect(results[0].synonymMappings).toEqual({});
+  });
 });

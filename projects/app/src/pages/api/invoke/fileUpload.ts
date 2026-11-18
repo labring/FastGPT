@@ -1,3 +1,4 @@
+import { getSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/runtime';
 import type { NextApiRequest } from 'next';
 import { NextAPI } from '@/service/middleware/entry';
 import { multer } from '@fastgpt/service/common/file/multer';
@@ -28,7 +29,7 @@ async function handler(req: NextApiRequest): Promise<InvokeFileUploadResponseTyp
   try {
     const result = await multer.resolveFormData<InvokeFileUploadBodyType>({
       request: req,
-      maxFileSize: global.feConfigs?.limit?.uploadFileMaxSize
+      maxFileSize: getSystemInstanceConfig().resource.uploadFileMaxSize
     });
     filepaths.push(result.fileMetadata.path);
 

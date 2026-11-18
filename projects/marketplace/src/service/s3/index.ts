@@ -61,8 +61,7 @@ const getStorageConfig = (endpoint = marketplaceStorageEnv.endpoint): IStorageOp
       endpoint: marketplaceEnv.STORAGE_OSS_ENDPOINT,
       cname: marketplaceEnv.STORAGE_OSS_CNAME,
       internal: marketplaceEnv.STORAGE_OSS_INTERNAL,
-      secure: marketplaceEnv.STORAGE_OSS_SECURE,
-      enableProxy: marketplaceEnv.STORAGE_OSS_ENABLE_PROXY
+      secure: marketplaceEnv.STORAGE_OSS_SECURE
     };
   }
 

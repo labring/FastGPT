@@ -1,3 +1,40 @@
+import { getSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/runtime';
+// 同义词开关已接管实例配置（94ae033d7）：assertDatasetSynonymEnabled → isDatasetSynonymEnabled
+// 读快照叶子 ?? serviceEnv。本文件通过改写 serviceEnv.DATASET_SYNONYM_ENABLED 驱动，
+// 预置"域存在、叶子缺省"种子快照走兜底分支。
+(global as any).systemInstanceConfig = {
+  site: {},
+  auth: {},
+  security: {},
+  feature: {},
+  commercial: {},
+  resource: {},
+  performance: {
+    workflow: {},
+    parse: {},
+    dataset: {},
+    chat: {},
+    streamResume: {},
+    tracking: {},
+    task: {},
+    channel: {}
+  },
+  storage: {},
+  vector: {},
+  providers: {
+    documentParse: { customPdf: {}, sangfor: {} },
+    dataSource: {},
+    externalProviderWorkflowVariables: []
+  },
+  subservice: {
+    plugin: {},
+    codeSandbox: {},
+    aiProxy: {},
+    mcp: {},
+    agentSandbox: { provider: '', common: {}, sealosdevbox: {}, opensandbox: {}, proxy: {} }
+  }
+};
+
 import {
   DatasetCollectionTypeEnum,
   TrainingModeEnum
@@ -98,7 +135,7 @@ describe('createDatasetSynonymMutation', () => {
     serviceEnv.DATASET_SYNONYM_ENABLED = true;
     vi.clearAllMocks();
     invalidateDatasetSynonymMatcherCache({ teamId: String(teamId), datasetId: String(datasetId) });
-    global.systemEnv = { ...global.systemEnv, vectorMaxProcess: 1 };
+    getSystemInstanceConfig().performance.dataset.vectorMaxProcess = 1;
     mockAuthDataset.mockResolvedValue({
       teamId: String(teamId),
       tmbId: String(tmbId),
@@ -329,7 +366,8 @@ describe('createDatasetSynonymMutation', () => {
 
     await expect(MongoDatasetSynonym.findById(synonym._id).lean()).resolves.toMatchObject({
       enabled: false,
-      version: 2
+      version: 2,
+      emptyVersions: [2]
     });
     await expect(MongoDatasetSynonymMapping.countDocuments({ datasetId })).resolves.toBe(1);
     await MongoDatasetData.updateMany({ datasetId }, { $set: { synonymVersion: 2 } });
@@ -338,6 +376,10 @@ describe('createDatasetSynonymMutation', () => {
       datasetId: String(datasetId)
     });
     await expect(MongoDatasetSynonymMapping.countDocuments({ datasetId })).resolves.toBe(0);
+    // 当前空版本仍被数据引用，必须保留，供下一次上传做差量比较。
+    await expect(MongoDatasetSynonym.findById(synonym._id).lean()).resolves.toMatchObject({
+      emptyVersions: [2]
+    });
   });
 
   it('rejects updates while the existing rebuild queue is busy', async () => {

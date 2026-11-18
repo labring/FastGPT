@@ -188,6 +188,24 @@ describe('worker/utils WorkerPool', () => {
     }
   });
 
+  it('忙碌线程在配置版本变化后完成当前任务即回收，不再接单', async () => {
+    fs.writeFileSync(path.join(tmpDir, 'worker', 'workflowBuilderMermaid.js'), workerScript);
+    const pool = createPool<{ simple: true; delayMs: number }, { payload?: string }>({
+      name: WorkerNameEnum.workflowBuilderMermaid,
+      maxReservedThreads: 1,
+      workerEnvVersion: 'v1'
+    });
+
+    const task = pool.run({ simple: true, delayMs: 50 });
+    expect(pool.workerQueue[0]?.status).toBe('running');
+
+    // 任务运行期间切换环境版本：不能立刻杀掉任务，但完成后不能继续复用旧线程。
+    pool.refreshRuntimeConfig({ workerEnvVersion: 'v2' });
+    await expect(task).resolves.toEqual({ payload: undefined });
+
+    expect(pool.workerQueue).toHaveLength(0);
+  });
+
   it('处理 worker 通用 uploadFile 中间事件，不提前结束任务', async () => {
     const pool = createPool<{ payload: string }, { key: string }>({
       name: WorkerNameEnum.readFile,

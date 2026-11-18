@@ -1,26 +1,41 @@
 ---
-title: App integration
-draft: true
+title: Integrate apps into your business system
 description: Connect a FastGPT app to your product with an app key, your own user identities, and chat history APIs.
 ---
 
+import { ApiReferenceNotice } from '@/components/docs/ApiReferenceNotice';
+
+<ApiReferenceNotice language="en" />
+
+**Version compatibility: FastGPT v4.18.0 or later.** Earlier versions do not support the **app keys** (bound to an `appId`) or the `customUid` parameter used in this guide.
+
 This guide walks through adding an AI assistant to your product: calling an app, identifying your users, and managing chat history.
 
-**Requires FastGPT 4.18.0 or later.** The examples use an **app key** bound to one app, so `appId` is optional. For personal keys, see [API documentation introduction](/en/openapi/intro). Use `/apidoc/systemopenapi` on your deployment for the exact API contract.
+The examples use an **app key** bound to one app, so `appId` is optional. For personal keys, see [API documentation introduction](/en/openapi/intro). Use `/apidoc/systemopenapi` on your deployment for the exact API contract.
+
+FastGPT's chat completions endpoint supports the **OpenAI SDK**. Point the SDK's `base_url` at your FastGPT instance and pass `chatId` and `customUid` through `extra_body` to call your app and continue sessions. See the [Python SDK example](#using-the-openai-sdk) below.
 
 ## Integration flow
 
-```text
-Your frontend → Your backend (authentication, session ownership, app key) → FastGPT app
-```
+![The frontend calls FastGPT through a backend that stores the app key and validates session ownership](/imgs/diagrams/app-integration.en.light.svg)
 
 Keep your existing login system. Your backend identifies the signed-in user, calls FastGPT, and returns the result to the frontend. Store the app key only in your backend configuration.
-
-> **Image placeholder:** Request flow between the frontend, your backend, and FastGPT.
 
 ## 1. Create an app key
 
 Publish the app, then go to **App → Publishing channels → API access → App key** and create a key for your backend. Viewing, creating, and managing app keys requires app administrator permissions.
+
+![API access page with App key selected and the Create app key button](/imgs/optimized/current/app-integration-api-key.zh-CN.png.webp)
+
+Screenshots use the Chinese interface. Under **API access**, select **App key**, then click **Create app key**.
+
+<img
+  src="/imgs/optimized/current/app-integration-create-key.zh-CN.png.webp"
+  alt="Create an app key with a name, a bound app, a points limit, and an expiration time"
+  width={480}
+/>
+
+The key is bound to the current app. Set a name for your backend integration and configure a points limit and expiration time as needed.
 
 ```bash
 export FASTGPT_BASE_URL='http://localhost:3000/api'
@@ -28,8 +43,6 @@ export FASTGPT_APP_KEY='YOUR_APP_API_KEY'
 ```
 
 `FASTGPT_BASE_URL` includes `/api`. Append `/v1/chat/completions` for chat requests and `/core/chat/...` for chat history requests. Do not add `/v1` to every endpoint.
-
-> **Image placeholder:** Creating an app key on the publishing page, with the actual key hidden.
 
 ## 2. Map your users
 
@@ -82,6 +95,42 @@ Before continuing, verify that the current user owns the `chatId`. Reuse the sam
 
 For streaming text, set `stream` to `true` and handle or forward the SSE stream on your backend. Finish the current turn before starting the next one. See your deployment's API documentation for event details.
 
+### Using the OpenAI SDK
+
+To use the [OpenAI Python SDK](https://developers.openai.com/api/reference/python), install the package:
+
+```bash
+python -m pip install openai
+```
+
+Reuse `FASTGPT_BASE_URL` and `FASTGPT_APP_KEY` from above. Append `/v2` to the `/api` base URL so the SDK calls `/api/v2/chat/completions`:
+
+```python
+import os
+from uuid import uuid4
+
+from openai import OpenAI
+
+client = OpenAI(
+    api_key=os.environ["FASTGPT_APP_KEY"],
+    base_url=f"{os.environ['FASTGPT_BASE_URL'].rstrip('/')}/v2",
+)
+
+chat_id = str(uuid4())
+custom_uid = "tenant-01:user-42"  # Derive this from the authenticated user on your backend.
+
+response = client.chat.completions.create(
+    model="fastgpt",
+    messages=[{"role": "user", "content": "Hello, what can you help me with?"}],
+    stream=False,
+    extra_body={"chatId": chat_id, "customUid": custom_uid},
+)
+
+print(response.choices[0].message.content)
+```
+
+The SDK requires `model` as a placeholder; the FastGPT app configuration selects the actual model. Pass FastGPT's `chatId` and `customUid` fields through `extra_body`. Generate and save `chat_id` when starting a session. For subsequent turns, reuse the same `chat_id` and `custom_uid`, replacing only the current `messages`.
+
 ## 4. Display and manage chat history
 
 ### Session list
@@ -117,8 +166,6 @@ curl "$FASTGPT_BASE_URL/core/chat/record/getPaginationRecords" \
 
 Read messages from `data.list` and use `data.total` to determine whether more are available. The `obj` field distinguishes `Human` and `AI` messages. The `value` field contains text, files, and other content blocks; render each block according to its type.
 
-> **Image placeholder:** Your product's session list and chat view, alongside the user identity in FastGPT chat logs.
-
 ### Other common operations
 
 These endpoints also accept an app key without `appId`. Check session ownership on your backend and pass the current user's `customUid` with each operation. In Query parameters, `customUid` is a plain string; encode it with a tool such as URLSearchParams.
@@ -138,5 +185,9 @@ Open the app's **Chat logs** and search for the session ID:
 - **User:** Shows `customUid`, which maps back to a user of your product.
 - **Authorizer:** Identifies the team member used for authorization. This column is hidden by default; enable it in the column settings.
 - **Call channel / Channel name:** Identifies the API call and its key channel.
+
+![Chat log filters and Field Configuration showing User, Authorizer, and Channel name](/imgs/optimized/current/app-integration-log-fields.zh-CN.png.webp)
+
+The screenshot uses test records. In **Field Configuration**, show **Authorizer** and **Channel name** when needed.
 
 Start with creating a session, continuing it, reading messages, and deleting it. Then add file uploads, feedback, and streaming. Use your deployment's System OpenAPI documentation for field and response details.

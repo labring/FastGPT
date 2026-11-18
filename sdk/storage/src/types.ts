@@ -223,11 +223,23 @@ export type AbortMultipartUploadResult = {
 };
 
 /**
+ * 下载字节范围（闭区间 `[start, end]`，与 HTTP `Range: bytes=start-end` 一致）。
+ */
+export type StorageByteRange = {
+  /** 起始字节偏移（0-based，包含）。 */
+  start: number;
+  /** 结束字节偏移（0-based，包含，需 >= start）。 */
+  end: number;
+};
+
+/**
  * 下载对象入参。
  */
 export type DownloadObjectParams = {
   /** 对象 key。 */
   key: StorageObjectKey;
+  /** 可选字节范围（闭区间 `[start, end]`，用于 HTTP Range 分片读取）。 */
+  range?: StorageByteRange;
   /** 调用方停止消费时用于取消底层下载请求并释放连接。 */
   abortSignal?: AbortSignal;
 };

@@ -6,7 +6,30 @@ import { executeCommandWithPipeline, type CliCommandSpec } from './pipeline';
 const GROUP_DESCRIPTIONS: Record<string, string> = {
   auth: 'Manage profiles, auth status, and active team sessions',
   config: 'Inspect and update CLI configuration values',
-  dataset: 'Manage datasets and search knowledge chunks'
+  dataset: 'Manage datasets, collections, chunks, and OpenAPI search',
+  'dataset collection': 'Manage dataset collections and text/link/file imports',
+  'dataset data': 'List, inspect, push, update, and delete dataset chunks',
+  model: 'List models available to the current member',
+  chat: 'Run App conversations and manage their history and messages',
+  'chat history': 'Manage App conversations and their status',
+  'chat record': 'Read App messages and detailed responses',
+  app: 'List, pull, save, publish, run, and test FastGPT Apps',
+  plugin: 'Discover FastGPT plugins',
+  'plugin tool': 'Discover plugin-backed system tools',
+  'code-sandbox': 'Inspect the FastGPT code sandbox',
+  workflow: 'Compare and debug FastGPT workflows',
+  'workflow-build': 'Author, validate, and compile local workflows',
+  'workflow-build meta': 'Inspect and update workflow application metadata',
+  'workflow-build config': 'Inspect and update workflow ChatConfig settings',
+  'workflow-build variable': 'Manage global workflow variables',
+  'workflow-build template': 'Discover and inspect workflow node templates',
+  'workflow-build node': 'Inspect, add, update, move, insert, clone, and remove workflow nodes',
+  'workflow-build edge': 'Inspect and edit workflow execution edges',
+  'workflow-build input': 'Inspect, bind, and configure workflow node inputs',
+  'workflow-build output': 'Inspect and edit dynamic workflow node outputs',
+  'workflow-build tool': 'List, attach, and detach tool nodes on tool-call nodes',
+  'workflow-build container': 'Inspect child nodes inside workflow container nodes',
+  'workflow-build changeset': 'Plan and atomically apply validated workflow ChangeSets'
 };
 
 function attachCommandSpec({
@@ -103,6 +126,9 @@ export function buildCommanderProgram({
     .option('--insecure', 'Skip TLS certificate verification')
     .option('--ca-cert <path>', 'Path to custom CA PEM bundle')
     .option('--format <format>', 'Output format: text or json (defaults to json when not a TTY)')
+    .option('--fields <fields>', 'Select comma-separated output fields (e.g. _id,name)')
+    .option('--pick <path>', 'Extract a dot-path value from output (e.g. data.datasetId)')
+    .option('--raw', 'Output un-enveloped data or extracted --pick value directly')
     .option('--no-color', 'Disable ANSI color')
     .option('--quiet', 'Suppress banners and warnings')
     .showHelpAfterError(false)
@@ -133,7 +159,9 @@ export function buildCommanderProgram({
       if (!group) {
         group = current
           .command(seg)
-          .description(GROUP_DESCRIPTIONS[seg] ?? `Manage ${seg} resources`);
+          .description(
+            GROUP_DESCRIPTIONS[key] ?? GROUP_DESCRIPTIONS[seg] ?? `Manage ${seg} resources`
+          );
         groups.set(key, group);
       }
       current = group;

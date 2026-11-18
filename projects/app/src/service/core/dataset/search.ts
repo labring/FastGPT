@@ -1,3 +1,4 @@
+import { isProVersion } from '@fastgpt/service/common/system/constants';
 import type { DatasetSearchParams } from '@fastgpt/global/core/dataset/search/type';
 import type { DatasetSearchProps } from '@fastgpt/service/core/dataset/search/type';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
@@ -40,7 +41,7 @@ export const searchDatasetForApi = ({
     params,
     context: {
       actor: { teamId: auth.teamId, tmbId: auth.tmbId, isRoot: auth.isRoot },
-      capabilities: { metadataFilter: Boolean(global.feConfigs.isPlus) }
+      capabilities: { metadataFilter: Boolean(isProVersion()) }
     },
     deps: {
       ...createDatasetSearchRuntime({ modelHandle }),

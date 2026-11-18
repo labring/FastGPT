@@ -2,11 +2,11 @@ import type { OpenAPIPath } from '../../../type';
 import {
   ConfirmUploadPkgPluginBodySchema,
   InstallPluginFromUrlBodySchema,
+  InstallPluginFromUrlResponseSchema,
   UploadPkgPluginBodySchema,
   UploadPkgPluginResponseSchema
 } from './api';
 import { DevApiTagsMap } from '../../../tag';
-import z from 'zod';
 import { AdminPluginToolPath } from './tool';
 import { AdminPluginModerationPath } from './moderation';
 
@@ -75,10 +75,10 @@ export const PluginAdminPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成功安装插件',
+          description: '成功安装插件（批量安装允许部分成功，失败项在 failed 中返回）',
           content: {
             'application/json': {
-              schema: z.object({})
+              schema: InstallPluginFromUrlResponseSchema
             }
           }
         }

@@ -1,3 +1,5 @@
+import { getTestInstanceConfig, setTestLicenseActive } from '@test/utils/instanceConfigSnapshot';
+import { getSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/runtime';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import type { UpdateRootPasswordBody } from '@fastgpt/global/openapi/support/user/account/password/api';
@@ -41,8 +43,9 @@ describe('password/updateRoot API', () => {
   beforeEach(async () => {
     mocks.withUserLock.mockImplementation((_userId: string, fn: () => Promise<unknown>) => fn());
     mocks.assertPasswordUpdateRateLimit.mockResolvedValue(undefined);
-    global.feConfigs = { ...global.feConfigs, sso: undefined, isPlus: false };
-    global.systemEnv = { ...global.systemEnv, sso: undefined };
+    getTestInstanceConfig().auth.sso.disablePasswordForSsoUsers = false;
+    setTestLicenseActive(false);
+    getSystemInstanceConfig().proEnv.ssoUrl = '';
     await MongoUser.deleteMany({ username: 'root' });
     rootUser = await MongoUser.create({
       username: 'root',
@@ -149,7 +152,7 @@ describe('password/updateRoot API', () => {
   });
 
   it('rejects requests when commercial edition (isPlus) is active', async () => {
-    global.feConfigs = { ...global.feConfigs, isPlus: true };
+    setTestLicenseActive(true);
 
     const response = await Call<UpdateRootPasswordBody, Record<string, never>, undefined>(
       updateRootPasswordApi,

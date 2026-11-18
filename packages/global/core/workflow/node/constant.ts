@@ -326,6 +326,21 @@ export const datasetQuoteValueDesc = `{
   q: string;
   a: string
 }[]`;
+
+/**
+ * 同义词能力开启（feConfigs.datasetSynonymEnabled）时展示的类型说明。
+ * 关闭时使用上面的基础说明，避免向未启用该能力的部署暴露同义词字段。
+ */
+export const datasetQuoteValueDescWithSynonym = `{
+  id: string;
+  datasetId: string;
+  collectionId: string;
+  sourceName: string;
+  sourceId?: string;
+  q: string;
+  a: string;
+  synonymMappings?: Record<string, string>
+}[]`;
 export const datasetSelectValueDesc = `[
   {
     "datasetId": "6693a4a6b69b7a9b0e37d9b0"
