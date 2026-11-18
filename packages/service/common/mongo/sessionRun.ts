@@ -4,6 +4,7 @@ import type { DbDatasource, DbSession } from '@fastgpt/dal/db/types';
 import { getLogger, LogCategories } from '../logger';
 import { connectionMongo, type ClientSession } from './index';
 import {
+  afterMongoCommit,
   clearPendingMongoAfterCommit,
   flushMongoAfterCommit,
   registerManagedMongoSession
@@ -41,7 +42,10 @@ export const bridgeClientSessionToDbSession = (
   return createManagedDbSession({
     dialect: 'mongo',
     datasource,
-    nativeTx: session
+    nativeTx: session,
+    onAfterCommit: (callback) => {
+      void afterMongoCommit(session, callback);
+    }
   }).session;
 };
 

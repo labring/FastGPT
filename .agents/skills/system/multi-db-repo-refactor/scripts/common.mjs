@@ -377,10 +377,32 @@ const formatKeyValueToken = (value) => {
   return String(value);
 };
 
+const parseExpiresDurationSeconds = (val) => {
+  if (typeof val === 'number' && Number.isFinite(val)) {
+    return val;
+  }
+  if (typeof val !== 'string') {
+    return null;
+  }
+  const match = /^(\d+(?:\.\d+)?)\s*(s|sec|secs|second|seconds|m|min|mins|minute|minutes|h|hr|hrs|hour|hours|d|day|days)?$/i.exec(
+    val.trim()
+  );
+  if (!match) {
+    return null;
+  }
+  const amount = Number(match[1]);
+  const unit = (match[2] ?? 's').toLowerCase();
+  if (unit.startsWith('d')) return amount * 86400;
+  if (unit.startsWith('h')) return amount * 3600;
+  if (unit.startsWith('m')) return amount * 60;
+  return amount;
+};
+
 const CRITICAL_INDEX_OPTION_KEYS = [
   'unique',
   'sparse',
   'expireAfterSeconds',
+  'expires',
   'partialFilterExpression',
   'collation',
   'weights',
@@ -533,17 +555,30 @@ export const extractDefineIndexes = (sourceText) => {
       if ((optKey === 'unique' || optKey === 'sparse' || optKey === 'hidden') && val === false) {
         continue;
       }
+      if (optKey === 'expires' && val !== undefined) {
+        const normalizedSeconds = parseExpiresDurationSeconds(val);
+        if (normalizedSeconds !== null && !('expireAfterSeconds' in criticalOptions)) {
+          criticalOptions.expireAfterSeconds = normalizedSeconds;
+        } else {
+          criticalOptions.expires = val;
+        }
+        continue;
+      }
       if (val !== undefined) {
         criticalOptions[optKey] = val;
       }
     }
+
+    const orderedCriticalOptions = Object.fromEntries(
+      Object.entries(criticalOptions).sort(([a], [b]) => a.localeCompare(b))
+    );
 
     const keySummary = keyRaw ? keyRaw.replace(/\s+/g, ' ').trim() : '(complex)';
     const signature = JSON.stringify({
       deprecated,
       name: resolvedName ?? null,
       key: keyEntries ?? (parsedKey !== undefined ? parsedKey : keySummary),
-      options: criticalOptions
+      options: orderedCriticalOptions
     });
 
     results.push({
@@ -553,7 +588,7 @@ export const extractDefineIndexes = (sourceText) => {
       derivedName,
       keySummary,
       keyEntries,
-      criticalOptions,
+      criticalOptions: orderedCriticalOptions,
       signature,
       raw: block
     });
@@ -566,7 +601,75 @@ export const extractDefineIndexes = (sourceText) => {
 
 const srcCharNotNewline = (ch) => ch !== '\n';
 
-/** 检查全局 WIP=1 锁：查找同时存在 `mongo/schema.ts` 与同目录旧版 `*schema.ts` 的未合龙域。 */
+const MONGO_MODEL_REG_REGEX = /\b(?:getMongo(?:Log)?Model|connection(?:Log)?Mongo\.model|mongoose\.model)\b/;
+const STANDARD_DOMAIN_FILES = new Set([
+  'repo.ts',
+  'repo.type.ts',
+  'service.ts',
+  'utils.ts',
+  'auth.ts',
+  'constants.ts',
+  'constant.ts',
+  'type.ts',
+  'types.ts',
+  'index.ts'
+]);
+
+/** 从 Schema 源码中提取导出的 Mongoose Model 标识符或惰性工厂函数名。 */
+export const extractExportedModelNames = (content) => {
+  const clean = stripCommentsPreserveStrings(content);
+  const matches = new Set([
+    ...[
+      ...clean.matchAll(
+        /export\s+(?:const|let|function)\s+(Mongo[A-Z][A-Za-z0-9_]*|get[A-Z][A-Za-z0-9_]*MongoModel)\b/g
+      )
+    ].map((m) => m[1]),
+    ...[
+      ...clean.matchAll(
+        /export\s+(?:const|let|function)\s+([A-Za-z_][A-Za-z0-9_]*)\s*=[\s\S]{0,80}?\bgetMongo(?:Log)?Model\b/g
+      )
+    ].map((m) => m[1]),
+    ...[...clean.matchAll(/export\s+(?:const|function)\s+(get[A-Z][A-Za-z0-9_]*)\b/g)]
+      .filter(() => /\bgetMongo(?:Log)?Model\b/.test(clean))
+      .map((m) => m[1])
+  ]);
+  return [...matches];
+};
+
+/** 查找目标领域目录下尚未删除的旧版 Mongo Schema / Model 文件（覆盖 schemaV2.ts、ttl.ts 等非标准命名）。 */
+export const findSiblingLegacySchemas = (repoRoot, domainDirAbs) => {
+  if (!fs.existsSync(domainDirAbs)) {
+    return [];
+  }
+  const entries = fs.readdirSync(domainDirAbs, { withFileTypes: true });
+  const legacyRelPaths = [];
+
+  for (const entry of entries) {
+    if (!entry.isFile() || !entry.name.endsWith('.ts')) {
+      continue;
+    }
+    const fullPath = path.join(domainDirAbs, entry.name);
+    const relPath = toPosixPath(path.relative(repoRoot, fullPath));
+    if (isTestOrMigrationFile(relPath)) {
+      continue;
+    }
+    if (/schema[^/]*\.ts$/i.test(entry.name)) {
+      legacyRelPaths.push(relPath);
+      continue;
+    }
+    if (STANDARD_DOMAIN_FILES.has(entry.name)) {
+      continue;
+    }
+    const content = fs.readFileSync(fullPath, 'utf8');
+    if (MONGO_MODEL_REG_REGEX.test(stripCommentsPreserveStrings(content))) {
+      legacyRelPaths.push(relPath);
+    }
+  }
+
+  return legacyRelPaths.sort();
+};
+
+/** 检查全局 WIP=1 锁：查找同时存在 `mongo/schema.ts` 与同目录旧版 Mongo Schema/Model 文件的未合龙域。 */
 export const findWipIncompleteDomains = (repoRoot) => {
   const roots = [
     path.join(repoRoot, 'packages/service'),
@@ -578,10 +681,7 @@ export const findWipIncompleteDomains = (repoRoot) => {
     const mongoSchemas = walkFiles(base, (f) => toPosixPath(f).endsWith('/mongo/schema.ts'));
     for (const mongoSchemaAbs of mongoSchemas) {
       const domainDirAbs = path.dirname(path.dirname(mongoSchemaAbs));
-      const entries = fs.readdirSync(domainDirAbs, { withFileTypes: true });
-      const legacySchemas = entries
-        .filter((e) => e.isFile() && /schema\.ts$/i.test(e.name))
-        .map((e) => toPosixPath(path.relative(repoRoot, path.join(domainDirAbs, e.name))));
+      const legacySchemas = findSiblingLegacySchemas(repoRoot, domainDirAbs);
 
       if (legacySchemas.length > 0) {
         wipDomains.push({
@@ -596,7 +696,7 @@ export const findWipIncompleteDomains = (repoRoot) => {
   return wipDomains;
 };
 
-/** 发现全仓尚未迁移或已迁移的 Mongo Schema 与导出 Model 清单。 */
+/** 发现全仓尚未迁移或已迁移的 Mongo Schema 与导出 Model 清单（同时识别 schemaV2.ts、ttl.ts 等文件）。 */
 export const discoverMongoSchemas = (repoRoot) => {
   const roots = [
     path.join(repoRoot, 'packages/service'),
@@ -606,47 +706,34 @@ export const discoverMongoSchemas = (repoRoot) => {
   const models = [];
 
   for (const base of roots) {
-    const schemaFiles = walkFiles(
-      base,
-      (f) => /schema\.ts$/i.test(path.basename(f)) && !isTestOrMigrationFile(path.relative(repoRoot, f))
-    );
+    const candidateFiles = walkFiles(base, (f) => {
+      if (!f.endsWith('.ts')) return false;
+      const rel = toPosixPath(path.relative(repoRoot, f));
+      if (isTestOrMigrationFile(rel) || rel.startsWith('packages/service/common/mongo/')) {
+        return false;
+      }
+      if (/schema[^/]*\.ts$/i.test(path.basename(f))) {
+        return true;
+      }
+      const text = fs.readFileSync(f, 'utf8');
+      return MONGO_MODEL_REG_REGEX.test(text);
+    });
 
-    for (const absPath of schemaFiles) {
+    for (const absPath of candidateFiles) {
       const relPath = toPosixPath(path.relative(repoRoot, absPath));
-      if (relPath.startsWith('packages/service/common/mongo/')) {
-        continue;
-      }
-
       const content = fs.readFileSync(absPath, 'utf8');
+      const clean = stripCommentsPreserveStrings(content);
       const isMigrated = relPath.endsWith('/mongo/schema.ts');
-      const datasource = /\bgetMongoLogModel\b/.test(content) ? 'log' : 'main';
-      const indexes = extractDefineIndexes(content);
-      const hasSoftDelete = /\bdeleteTime\b/.test(content);
-      const hasTtl = /\bexpireAfterSeconds\b|\bexpires\s*:/.test(content);
+      const modelNames = extractExportedModelNames(content);
 
-      const exportMatches = new Set([
-        ...[
-          ...content.matchAll(
-            /export\s+(?:const|let|function)\s+(Mongo[A-Z][A-Za-z0-9_]*|get[A-Z][A-Za-z0-9_]*MongoModel)\b/g
-          )
-        ].map((m) => m[1]),
-        ...[
-          ...content.matchAll(
-            /export\s+(?:const|let|function)\s+([A-Za-z_][A-Za-z0-9_]*)\s*=[\s\S]{0,60}?\bgetMongo(?:Log)?Model\b/g
-          )
-        ].map((m) => m[1]),
-        ...[
-          ...content.matchAll(
-            /export\s+(?:const|function)\s+(get[A-Z][A-Za-z0-9_]*)\b/g
-          )
-        ]
-          .filter((m) => /\bgetMongo(?:Log)?Model\b/.test(content))
-          .map((m) => m[1])
-      ]);
-
-      if (exportMatches.size === 0 && !/getMongo(?:Log)?Model\b/.test(content)) {
+      if (modelNames.length === 0 && !MONGO_MODEL_REG_REGEX.test(clean)) {
         continue;
       }
+
+      const datasource = /\bgetMongoLogModel\b/.test(clean) ? 'log' : 'main';
+      const indexes = extractDefineIndexes(content);
+      const hasSoftDelete = /\bdeleteTime\b/.test(clean);
+      const hasTtl = /\bexpireAfterSeconds\b|\bexpires\s*:/.test(clean);
 
       models.push({
         relPath,
@@ -655,7 +742,7 @@ export const discoverMongoSchemas = (repoRoot) => {
         hasSoftDelete,
         hasTtl,
         indexes,
-        modelNames: [...exportMatches]
+        modelNames
       });
     }
   }
@@ -675,18 +762,54 @@ export const runRg = (args, cwd) => {
   }
 };
 
+const resolveMergeBaseCommit = (repoRoot) => {
+  for (const candidateRef of ['origin/main', 'main']) {
+    try {
+      const sha = execFileSync('git', ['merge-base', 'HEAD', candidateRef], {
+        cwd: repoRoot,
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'pipe']
+      }).trim();
+      if (sha.length > 0) {
+        return { ok: true, sha };
+      }
+    } catch {}
+  }
+  return {
+    ok: false,
+    error: 'Unable to resolve git merge-base against origin/main or main'
+  };
+};
+
 /**
- * 从 git 历史对象读取文件文本（支持 `<ref>:<path>` 或仅传 `<path>` 时默认使用 `HEAD:<path>`）。
+ * 从 git 历史对象读取文件文本（支持 `merge-base:<path>`、`<ref>:<path>`，或仅传 `<path>` 时使用 `HEAD:<path>`）。
  * 读取失败时返回包含错误信息的结果对象，调用方不得静默跳过索引比对。
  */
 export const readGitLegacyFile = (repoRoot, spec) => {
   const normalized = toPosixPath(spec).trim();
   const separatorIdx = normalized.indexOf(':');
+  const rawRef = separatorIdx > 0 ? normalized.slice(0, separatorIdx).trim() : 'HEAD';
   const relPath = (
     separatorIdx > 0 ? normalized.slice(separatorIdx + 1) : normalized
   ).replace(/^\.\//, '');
-  const objectSpec =
-    separatorIdx > 0 ? `${normalized.slice(0, separatorIdx).trim()}:${relPath}` : `HEAD:${relPath}`;
+
+  const resolvedRefResult = (() => {
+    if (rawRef === 'merge-base') {
+      return resolveMergeBaseCommit(repoRoot);
+    }
+    return { ok: true, sha: rawRef };
+  })();
+
+  if (!resolvedRefResult.ok) {
+    return {
+      ok: false,
+      objectSpec: `merge-base:${relPath}`,
+      relPath,
+      error: resolvedRefResult.error
+    };
+  }
+
+  const objectSpec = `${resolvedRefResult.sha}:${relPath}`;
 
   try {
     const content = execFileSync('git', ['show', objectSpec], {
@@ -707,3 +830,5 @@ export const readGitLegacyFile = (repoRoot, spec) => {
     };
   }
 };
+
+export { stripCommentsPreserveStrings };

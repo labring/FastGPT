@@ -37,11 +37,13 @@ const nativeSessionRegistry = new WeakMap<DbSession, InternalSessionRecord>();
 export const createManagedDbSession = ({
   dialect,
   datasource,
-  nativeTx
+  nativeTx,
+  onAfterCommit
 }: {
   dialect: DbDialect;
   datasource: DbDatasource;
   nativeTx: unknown;
+  onAfterCommit?: (callback: () => Promise<void> | void) => void;
 }): {
   session: DbSession;
   resetAfterCommit: () => void;
@@ -57,6 +59,10 @@ export const createManagedDbSession = ({
     family,
     datasource,
     afterCommit: (callback: () => Promise<void> | void) => {
+      if (onAfterCommit !== undefined) {
+        onAfterCommit(callback);
+        return;
+      }
       callbacks.push(callback);
     }
   } as unknown as DbSession;

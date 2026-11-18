@@ -21,11 +21,12 @@
 | --- | --- | --- |
 | `VARCHAR[]` 数组列 + `GIN` 索引 | OceanBase / MySQL 无数组列与 GIN | 层级树使用 `ancestor_path VARCHAR(1024)` + 标准 B-Tree（`LIKE 'rootId/%'`）；多对多拆关联表 |
 | `CREATE UNIQUE INDEX ... WHERE col IS NULL` | OceanBase / MySQL 不支持局部索引；且标准唯一索引中 `NULL != NULL` | 可空唯一列存哨兵值：`this.toParentSentinel(parentId)`（根目录存 `''`）、未删记录 `delete_time_ms = 0` |
-| `INSERT ... RETURNING *` | OceanBase / MySQL 不支持 `RETURNING` | 应用层通过 `createEntityId()` 预生成 24 位主键与时间戳，直接返回构造后的对象并过 `this.parseRow(...)` |
+| `INSERT ... RETURNING *` / `.returning()` | OceanBase / MySQL 不支持 `RETURNING` | 应用层通过 `createEntityId()` 预生成 24 位主键与时间戳，直接返回构造后的对象并过 `this.parseRow(...)` |
 | `ILIKE` 与反斜杠转义 | MySQL / OceanBase 无 `ILIKE`，且受 `NO_BACKSLASH_ESCAPES` 影响 | 统一调用 `this.caseInsensitiveLike(col, keyword)`（编译为 `LOWER(col) LIKE ? ESCAPE '|'`） |
 | 直接传 JS 数组写入 JSON 列 | `pg` 驱动把 JS 数组误序列化成 PG Array `{"a"}` | 统一包裹 `this.toJsonParam(value)`（显式 `JSON.stringify`），读出口用 `jsonColumnSchema(...)` |
 | `MERGE INTO` / `jsonb_path_exists` | 仅 PG 15+ 或方言特定语法 | 用 `this.upsertRow(...)`（PG `ON CONFLICT` / OB `ON DUPLICATE KEY UPDATE`）；JSON 黑盒存取 |
 | 一次性插上万行 `values(rows)` | 超出 PG `65,535` 绑定参数上限 | 统一调用 `this.insertChunked({ rows })` |
+| 纯读查询误调 `this.db(tx)` 或裸拼大写 ID | 绕过读副本路由；且 SQL `VARCHAR(24)` 大小写敏感而 Mongo `ObjectId` 大小写不敏感 | 纯读查询调 `this.readDb(tx)`；入口判 `isValidEntityId(id)`，SQL `WHERE` 参数调 `this.normalizeId(id)` |
 
 ## 3. 排序原子抢占 & 最早过期扣减（`FOR UPDATE SKIP LOCKED`）
 
@@ -79,12 +80,33 @@ async claimNextTask({ now, lockOwner, tx }: { now: Date; lockOwner: string; tx?:
 - **禁止**在 Service 或 Repo 里写 `try { insert } catch (unique) { update }`；
 - 幂等写入一律使用 `this.upsertRow({ values, conflictKeys, updateValues, tx })`（Mongo 侧对应 `findOneAndUpdate(..., { upsert: true })`）。
 
-## 5. 双库契约测试（Mongo + PGlite）必测矩阵
+## 5. 混合事务渐进桥接（`mongoSessionRun` -> `DbSession`）
 
-每张表生成测试时，必须通过 `@fastgpt/dal/db/testing` 的 `registerDualDialectContractSuite` 与 `createPGliteSqlTestHarness` 至少验证以下 5 类场景：
+当外层调用方在同一个 `mongoSessionRun(async (session) => ...)` 事务中同时编排了「尚未迁移的其他裸 `Mongo*` 表」与「已完成重构的新领域 Service/Repo」时：
+
+```ts
+import {
+  bridgeClientSessionToDbSession,
+  mongoSessionRun
+} from '@fastgpt/service/common/mongo/sessionRun';
+
+await mongoSessionRun(async (session) => {
+  await MongoUnmigratedSibling.updateOne({ _id: appId }, { $set: { ... } }, { session });
+  const tx = bridgeClientSessionToDbSession(session);
+  await appRegistrationService.deleteAppRegistrations({ teamId, appId, tx });
+});
+```
+
+- `bridgeClientSessionToDbSession` 会将原生 `ClientSession` 包装为 `DbSession`，并把内部 `tx.afterCommit(...)` 挂入外层 `afterMongoCommit` 队列（回滚/重试自动丢弃，提交后顺序执行）；
+- 待该事务内涉及的所有表均完成 DAL 重构后，再将外层 `mongoSessionRun` 整体替换为 `runInTransaction`。
+
+## 6. 双库契约测试（Mongo + PGlite）必测 6 项矩阵
+
+每张表生成测试时，必须通过 `@fastgpt/dal/db/testing` 的 `registerDualDialectContractSuite` 与 `createPGliteSqlTestHarness` 验证以下 6 类同构场景（注意：Mongo 端 `setup` 必须调用真实 `configureMongoDalRuntime({ mainWriteUrl })` + `model.createCollection()`，**严禁**覆盖 `transactionRunner: ({ execute }) => execute(undefined)` 绕过真实副本集回滚）：
 
 1. **空值与类型归一化对齐**：可选字段传 `undefined` / `null`、布尔、JSON 数组及日期在 Mongo 与 PGlite 返回结构与 `===` 值完全一致；
-2. **哨兵唯一键冲突**：例如同 `teamId` + 根目录 `parentId: null` + 同名创建，双库均触发唯一冲突或幂等更新；
-3. **租户隔离与软删除不可见性**：跨 `teamId` 不可查改，软删除后常规读接口返回 `null` / 空列表；
-4. **`parseRepoRows` 脏行隔离（Warn & Skip）**：向底层直插一条缺失必填列的历史坏记录，验证列表返回剩余正常行且不抛 500；
-5. **事务回滚 & `afterCommit`**：事务回调中途抛错时数据全回滚且不触发 `afterCommit`；提交成功后按注册顺序执行 `afterCommit`。
+2. **24 位 Hex ID 大小写与非法 ID 同构**：传入大写/混合大小写合法 24 位 Hex ID（写与查）双库均命中同一记录并返回小写归一化 ID；传入 `'not-an-object-id'` 等非法字符串双库均平缓返回 `null` / `[]` / `0` 而不抛驱动异常；
+3. **哨兵唯一键冲突**：例如同 `teamId` + 根目录 `parentId: null` + 同名创建，双库均触发唯一冲突或幂等更新；
+4. **租户隔离与软删除不可见性**：跨 `teamId` 不可查改，软删除后常规读接口返回 `null` / 空列表；
+5. **`parseRepoRows` 脏行隔离（Warn & Skip）**：向底层直插一条缺失必填列的历史坏记录，验证列表返回剩余正常行且不抛 500；
+6. **真实事务回滚 & `afterCommit`**：事务回调中途抛错时 Mongo 副本集与 PGlite 数据均真实回滚且不触发 `afterCommit`；提交成功后按注册顺序执行 `afterCommit`。

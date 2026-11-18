@@ -17,7 +17,7 @@ const hasFlag = (flag) => args.includes(flag);
 
 if (hasFlag('--help') || hasFlag('-h') || args.length === 0) {
   console.log(`Usage:
-  node scaffold-repo.mjs --dir <domain-dir> --entity <PascalName> --table <snake_table> [--datasource main|log] [--soft-delete] [--force] [--dry-run]
+  node scaffold-repo.mjs --dir <domain-dir> --entity <PascalName> --table <snake_table> [--datasource main|log] [--soft-delete] [--no-service] [--force] [--dry-run]
 
 Example:
   node scaffold-repo.mjs --dir packages/service/core/dataset/synonym --entity DatasetSynonym --table dataset_synonyms`);
@@ -29,6 +29,7 @@ const entityArg = getFlagValue('--entity');
 const tableArg = getFlagValue('--table');
 const datasource = getFlagValue('--datasource') ?? 'main';
 const softDelete = hasFlag('--soft-delete');
+const noService = hasFlag('--no-service');
 const force = hasFlag('--force');
 const dryRun = hasFlag('--dry-run');
 
@@ -58,6 +59,10 @@ const computeTestPath = () => {
   if (domainRel.startsWith('packages/service/')) {
     const sub = domainRel.slice('packages/service/'.length);
     return `packages/service/test/${sub}/repo.contract.test.ts`;
+  }
+  if (domainRel.startsWith('projects/app/src/')) {
+    const sub = domainRel.slice('projects/app/src/'.length);
+    return `projects/app/test/${sub}/repo.contract.test.ts`;
   }
   if (domainRel.startsWith('pro/admin/src/')) {
     const sub = domainRel.slice('pro/admin/src/'.length);
@@ -164,7 +169,7 @@ export const ${modelFnName} = (): Model<${entityArg}MongoDoc> => {
 };
 `;
 
-const mongoRepoContent = `import { createEntityId } from '@fastgpt/global/common/string/entityId';
+const mongoRepoContent = `import { createEntityId, isValidEntityId } from '@fastgpt/global/common/string/entityId';
 import { MongoRepositoryBase } from '@fastgpt/dal/db/mongo/base';
 import type { DbSession } from '@fastgpt/dal/db/types';
 import {
@@ -188,6 +193,10 @@ export class Mongo${entityArg}Repository
   }
 
   async findById({ id, teamId, tx }: { id: string; teamId: string; tx?: DbSession }) {
+    if (!isValidEntityId(id) || !isValidEntityId(teamId)) {
+      return null;
+    }
+
     const doc = await this.model
       .findOne(
         {
@@ -258,7 +267,7 @@ export const ${camelEntity}SqlTable = defineSqlTable({
 });
 `;
 
-const sqlRepoContent = `import { createEntityId } from '@fastgpt/global/common/string/entityId';
+const sqlRepoContent = `import { createEntityId, isValidEntityId } from '@fastgpt/global/common/string/entityId';
 import {
   ${softDelete ? 'SQL_ACTIVE_DELETE_TIME_MS,\n  ' : ''}SqlRepositoryBase
 } from '@fastgpt/dal/db/sql/base';
@@ -282,27 +291,31 @@ export class Sql${entityArg}Repository
   }
 
   async findById({ id, teamId, tx }: { id: string; teamId: string; tx?: DbSession }) {
-    const row = await this.db(tx)
+    if (!isValidEntityId(id) || !isValidEntityId(teamId)) {
+      return null;
+    }
+
+    const row = await this.readDb(tx)
       .selectFrom('${tableArg}')
       .selectAll()
-      .where('_id', '=', id)
-      .where('team_id', '=', teamId)${
+      .where('_id', '=', this.normalizeId(id))
+      .where('team_id', '=', this.normalizeId(teamId))${
         softDelete
           ? "\n      .where('delete_time_ms', '=', SQL_ACTIVE_DELETE_TIME_MS)"
           : ''
       }
       .executeTakeFirst();
 
-    if (row === undefined) {
-      return null;
-    }
-
-    return this.parseRow({
-      ...row,
-      teamId: row.team_id,
-      createTime: row.create_time,
-      updateTime: row.update_time${softDelete ? ',\n      deleteTime: row.delete_time' : ''}
-    });
+    return this.parseNullable(
+      row !== undefined
+        ? {
+            ...row,
+            teamId: row.team_id,
+            createTime: row.create_time,
+            updateTime: row.update_time${softDelete ? ',\n            deleteTime: row.delete_time' : ''}
+          }
+        : undefined
+    );
   }
 
   async create({ data, tx }: { data: Create${entityArg}WriteInput; tx?: DbSession }) {
@@ -337,6 +350,7 @@ export class Sql${entityArg}Repository
 const noopRepoContent = `import { createEntityId } from '@fastgpt/global/common/string/entityId';
 import {
   Create${entityArg}WriteSchema,
+  ${entityArg}DomainReadSchema,
   type Create${entityArg}WriteInput,
   type ${entityArg}Repository
 } from '../repo.type';
@@ -350,12 +364,12 @@ export class Noop${entityArg}Repository implements ${entityArg}Repository {
   async create({ data }: { data: Create${entityArg}WriteInput }) {
     const parsed = Create${entityArg}WriteSchema.parse(data);
     const now = new Date();
-    return {
+    return ${entityArg}DomainReadSchema.parse({
       _id: parsed._id ?? createEntityId(),
       teamId: parsed.teamId,
       createTime: now,
       updateTime: now
-    };
+    });
   }
 }
 `;
@@ -426,7 +440,7 @@ const domainImportPrefix = domainRel.startsWith('packages/service/')
   ? `@fastgpt/service/${domainRel.slice('packages/service/'.length)}`
   : `@/${domainRel.replace(/^projects\/app\/src\/|^pro\/admin\/src\//, '')}`;
 
-const contractTestContent = `import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+const contractTestContent = `import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createEntityId } from '@fastgpt/global/common/string/entityId';
 import { injectRepo } from '@fastgpt/dal/db/container';
 import { closeDbRuntime } from '@fastgpt/dal/db/runtime';
@@ -435,7 +449,9 @@ import {
   registerDualDialectContractSuite,
   type SqlTestHarness
 } from '@fastgpt/dal/db/testing';
+import { runInTransaction } from '@fastgpt/dal/db/transaction';
 import { configureMongoDalRuntime } from '@fastgpt/service/common/mongo/dalRuntime';
+import { ${modelFnName} } from '${domainImportPrefix}/mongo/schema';
 import { ${entityArg}RepoToken } from '${domainImportPrefix}/repo';
 import { ${camelEntity}SqlTable } from '${domainImportPrefix}/sql/table';
 
@@ -455,11 +471,16 @@ describe('${entityArg}Repository dual-dialect contract', () => {
           await closeDbRuntime();
           const uri = process.env.MONGODB_URI ?? 'mongodb://127.0.0.1:27017/test';
           configureMongoDalRuntime({
-            mainWriteUrl: uri,${
-              datasource === 'log' ? '\n            logWriteUrl: uri,' : ''
+            mainWriteUrl: uri${
+              datasource === 'log' ? ',\n            logWriteUrl: uri' : ''
             }
-            transactionRunner: async ({ execute }) => execute(undefined)
           });
+          await ${modelFnName}()
+            .createCollection()
+            .catch(() => undefined);
+        },
+        cleanupEach: async () => {
+          await ${modelFnName}().deleteMany({});
         },
         teardown: async () => {
           await closeDbRuntime();
@@ -486,18 +507,53 @@ describe('${entityArg}Repository dual-dialect contract', () => {
     registerTests: () => {
       const repo = injectRepo(${entityArg}RepoToken);
 
-      it('creates and retrieves record with normalized IDs and tenant isolation', async () => {
+      it('creates and retrieves record with normalized IDs, mixed-case parity, and tenant isolation', async () => {
+        const id = createEntityId();
         const teamId = createEntityId();
         const otherTeamId = createEntityId();
 
-        const created = await repo.create({ data: { teamId } });
+        const created = await repo.create({
+          data: { _id: id.toUpperCase(), teamId: teamId.toUpperCase() }
+        });
+        expect(created._id).toBe(id);
         expect(created.teamId).toBe(teamId);
 
-        const found = await repo.findById({ id: created._id, teamId });
-        expect(found).toEqual(created);
+        expect(
+          await repo.findById({ id: id.toUpperCase(), teamId: teamId.toUpperCase() })
+        ).toEqual(created);
+        expect(await repo.findById({ id: created._id, teamId: otherTeamId })).toBeNull();
+        expect(await repo.findById({ id: 'invalid-id', teamId })).toBeNull();
+      });
 
-        const crossTenant = await repo.findById({ id: created._id, teamId: otherTeamId });
-        expect(crossTenant).toBeNull();
+      it('commits afterCommit hooks in order and rolls back writes on transaction failure', async () => {
+        const teamId = createEntityId();
+        const hooks: string[] = [];
+
+        const committed = await runInTransaction(
+          async (tx) => {
+            const record = await repo.create({ data: { teamId }, tx });
+            tx.afterCommit(() => {
+              hooks.push(record._id);
+            });
+            return record;
+          }${datasource === 'log' ? ",\n          { datasource: 'log' }" : ''}
+        );
+        expect(hooks).toEqual([committed._id]);
+
+        const abortedId = createEntityId();
+        const abortedHook = vi.fn();
+        await expect(
+          runInTransaction(
+            async (tx) => {
+              await repo.create({ data: { _id: abortedId, teamId }, tx });
+              tx.afterCommit(abortedHook);
+              throw new Error('simulated rollback');
+            }${datasource === 'log' ? ",\n            { datasource: 'log' }" : ''}
+          )
+        ).rejects.toThrow('simulated rollback');
+
+        expect(abortedHook).not.toHaveBeenCalled();
+        expect(await repo.findById({ id: abortedId, teamId })).toBeNull();
       });
     }
   });
@@ -505,6 +561,9 @@ describe('${entityArg}Repository dual-dialect contract', () => {
 `;
 
 const testRel = computeTestPath();
+const serviceRelPath = `${domainRel}/service.ts`;
+const serviceAlreadyExists = fs.existsSync(path.resolve(repoRoot, serviceRelPath));
+const shouldEmitService = !noService && (force || !serviceAlreadyExists);
 
 const filesToCreate = [
   { relPath: `${domainRel}/repo.type.ts`, content: repoTypeContent },
@@ -516,7 +575,7 @@ const filesToCreate = [
     ? [{ relPath: `${domainRel}/noop/repo.ts`, content: noopRepoContent }]
     : []),
   { relPath: `${domainRel}/repo.ts`, content: repoTokenContent },
-  { relPath: `${domainRel}/service.ts`, content: serviceContent },
+  ...(shouldEmitService ? [{ relPath: serviceRelPath, content: serviceContent }] : []),
   { relPath: testRel, content: contractTestContent }
 ];
 
@@ -535,10 +594,17 @@ if (!force) {
 
 if (dryRun) {
   console.log('[dry-run] Would create the following files:');
+  if (!noService && serviceAlreadyExists && !force) {
+    console.log(`  (skipping existing ${serviceRelPath}; refactor constructor DI in place)`);
+  }
   for (const file of filesToCreate) {
     console.log(`  - ${file.relPath}`);
   }
   process.exit(0);
+}
+
+if (!noService && serviceAlreadyExists && !force) {
+  console.log(`Skipped existing: ${serviceRelPath} (refactor constructor DI in place)`);
 }
 
 for (const file of filesToCreate) {

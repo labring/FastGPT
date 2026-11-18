@@ -1,6 +1,7 @@
 import type { ClientSession } from '@fastgpt/service/common/mongo';
 import { connectionMongo } from '@fastgpt/service/common/mongo';
 import {
+  bridgeClientSessionToDbSession,
   MongoTransactionConflictError,
   mongoSessionRun
 } from '@fastgpt/service/common/mongo/sessionRun';
@@ -142,5 +143,52 @@ describe('mongoSessionRun', () => {
       events.push('immediate');
     });
     expect(events).toEqual(['attempt-2', 'second-hook', 'immediate']);
+  });
+
+  it('bridges ClientSession to DbSession with working tx.afterCommit and rollback isolation', async () => {
+    const firstSession = createSession();
+    const secondSession = createSession();
+    const events: string[] = [];
+
+    firstSession.withTransaction = vi.fn(async (callback) => callback());
+    secondSession.withTransaction = vi.fn(async (callback) => callback());
+
+    let attempt = 0;
+    vi.spyOn(connectionMongo, 'startSession')
+      .mockResolvedValueOnce(firstSession)
+      .mockResolvedValueOnce(secondSession);
+
+    await expect(
+      mongoSessionRun(async (session) => {
+        attempt += 1;
+        const tx = bridgeClientSessionToDbSession(session);
+        expect(tx?.dialect).toBe('mongo');
+        tx?.afterCommit(() => {
+          events.push(`bridged-attempt-${attempt}`);
+        });
+        if (attempt === 1) {
+          throw new MongoTransactionConflictError(new Error('retry me'));
+        }
+        return 'bridged-ok';
+      })
+    ).resolves.toBe('bridged-ok');
+    expect(events).toEqual(['bridged-attempt-2']);
+
+    const rollbackSession = createSession();
+    rollbackSession.withTransaction = vi.fn(async (callback) => callback());
+    vi.spyOn(connectionMongo, 'startSession').mockResolvedValueOnce(rollbackSession);
+
+    await expect(
+      mongoSessionRun(async (session) => {
+        const tx = bridgeClientSessionToDbSession(session);
+        tx?.afterCommit(() => {
+          events.push('bridged-aborted');
+        });
+        throw new Error('bridged-rollback');
+      })
+    ).rejects.toThrow('bridged-rollback');
+    expect(events).toEqual(['bridged-attempt-2']);
+    expect(bridgeClientSessionToDbSession(undefined)).toBeUndefined();
+    expect(bridgeClientSessionToDbSession(null)).toBeUndefined();
   });
 });
