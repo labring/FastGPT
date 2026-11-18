@@ -99,6 +99,7 @@ export const preparePgFullText = async ({
   });
   let backend: { pid: number; startedAt: string } | undefined;
   let closing: Promise<void> | undefined;
+  let rejectHandshake: ((reason: unknown) => void) | undefined;
   const close = () =>
     (closing ??= (async () => {
       try {
@@ -132,14 +133,24 @@ export const preparePgFullText = async ({
         await client.end();
       }
     })().catch((error) => logger.warn('PG full-text preparation could not close', { error })));
-  const abort = () => void close();
+  const abort = () => {
+    // pg 主动关闭握手中的 socket 后，connect() 可能仍不结算，单独结束等待。
+    rejectHandshake?.(signal?.reason);
+    void close();
+  };
   const executeDdl = async (sql: string, values?: unknown[]) => {
     signal?.throwIfAborted();
     await client.query(sql, values);
   };
   signal?.addEventListener('abort', abort, { once: true });
   try {
-    await client.connect();
+    await (signal
+      ? new Promise<void>((resolve, reject) => {
+          rejectHandshake = reject;
+          void client.connect().then(resolve, reject);
+        })
+      : client.connect());
+    rejectHandshake = undefined;
     signal?.throwIfAborted();
     if (signal) {
       const { rows } = await client.query<{ pid: number; startedAt: string }>(
