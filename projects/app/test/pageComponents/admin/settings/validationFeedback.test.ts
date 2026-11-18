@@ -1,12 +1,14 @@
-// @vitest-environment jsdom
+import { JSDOM } from 'jsdom';
 import React, { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { Simulate } from 'react-dom/test-utils';
-import { ChakraProvider, Input } from '@chakra-ui/react';
-import { useForm } from 'react-hook-form';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import AdminSettingPage from '@/pageComponents/admin/settings/AdminSettingPage';
-import AdminFormItem from '@/pageComponents/admin/settings/AdminFormItem';
+
+let ChakraProvider: typeof import('@chakra-ui/react').ChakraProvider;
+let Input: typeof import('@chakra-ui/react').Input;
+let useForm: typeof import('react-hook-form').useForm;
+let AdminSettingPage: typeof import('@/pageComponents/admin/settings/AdminSettingPage').default;
+let AdminFormItem: typeof import('@/pageComponents/admin/settings/AdminFormItem').default;
 
 vi.mock('@fastgpt/web/hooks/useSafeTranslation', () => ({
   useSafeTranslation: () => ({ t: (key: string) => key })
@@ -37,13 +39,40 @@ const Form = ({ save }: { save: (values: unknown) => Promise<void> }) => {
 };
 
 describe('admin config validation feedback', () => {
+  let dom: JSDOM;
   let root: Root;
   let container: HTMLDivElement;
-  beforeEach(() => {
+  beforeEach(async () => {
+    // 公共 setup 先在 Node 中加载服务端 ENV，再为当前交互用例安装 DOM。
+    dom = new JSDOM('<!doctype html><html><body></body></html>', { pretendToBeVisual: true });
+    // React 在 DOM 安装前加载；补齐旧输入事件接口，保留真实聚焦和编辑行为。
+    Object.assign(dom.window.HTMLElement.prototype, {
+      attachEvent: vi.fn(),
+      detachEvent: vi.fn()
+    });
+    vi.stubGlobal('window', dom.window);
+    vi.stubGlobal('document', dom.window.document);
+    vi.stubGlobal('HTMLElement', dom.window.HTMLElement);
+    vi.stubGlobal('HTMLInputElement', dom.window.HTMLInputElement);
+    vi.stubGlobal('FileList', dom.window.FileList);
+    vi.stubGlobal('requestAnimationFrame', dom.window.requestAnimationFrame.bind(dom.window));
+    vi.stubGlobal('cancelAnimationFrame', dom.window.cancelAnimationFrame.bind(dom.window));
     vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
     window.matchMedia = vi
       .fn()
       .mockReturnValue({ matches: false, addListener() {}, removeListener() {} });
+    // RHF 与 Chakra/Emotion 在模块加载时判断 DOM 能力，安装 window 后再加载以绑定真实输入 ref。
+    [
+      { ChakraProvider, Input },
+      { useForm },
+      { default: AdminSettingPage },
+      { default: AdminFormItem }
+    ] = await Promise.all([
+      import('@chakra-ui/react'),
+      import('react-hook-form'),
+      import('@/pageComponents/admin/settings/AdminSettingPage'),
+      import('@/pageComponents/admin/settings/AdminFormItem')
+    ]);
     container = document.createElement('div');
     document.body.appendChild(container);
     root = createRoot(container);
@@ -51,6 +80,7 @@ describe('admin config validation feedback', () => {
   afterEach(async () => {
     await act(async () => root.unmount());
     container.remove();
+    dom.window.close();
     vi.unstubAllGlobals();
   });
 
