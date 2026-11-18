@@ -1,4 +1,8 @@
-import { readMigrationDomainConfig } from './validation';
+import {
+  hasDamagedSecurityOverrides,
+  LegacyBooleanSchema,
+  readMigrationDomainConfig
+} from './validation';
 import { readLegacyInstanceConfigEnv } from './env';
 import { SystemConfigsTypeEnum } from '@fastgpt/global/common/system/config/constants';
 import { NumSchema } from '@fastgpt/global/common/zod';
@@ -64,8 +68,12 @@ const optionalNumber = (value: unknown): number | undefined => {
   return result.success ? result.data : (value as number);
 };
 
-const optionalBool = (value: unknown): boolean | undefined =>
-  value === undefined ? undefined : (value as boolean);
+/** 迁移接受明确的旧布尔编码，例如数字 0/1，其他已配置值保留供修复。 */
+const optionalBool = (value: unknown): boolean | undefined => {
+  if (value === undefined) return undefined;
+  const result = LegacyBooleanSchema.safeParse(value);
+  return result.success ? result.data : (value as boolean);
+};
 
 /**
  * 解析一组 url/key 凭据：旧库任一字段存在时整组采用旧库。
@@ -219,8 +227,8 @@ export const buildLegacyDomainOverrides = ({
     // 旧版只在名单非空时执行限制；显式开关优先。初始迁移同时写开关，
     // 避免 11 域已齐全但 backfill 尚未执行时 Pro 把缺失值解析成默认 false。
     checkExternalFile:
-      typeof systemEnv.checkExternalFile === 'boolean'
-        ? systemEnv.checkExternalFile
+      systemEnv.checkExternalFile !== undefined
+        ? optionalBool(systemEnv.checkExternalFile)
         : Array.isArray(systemEnv.fileUrlWhitelist)
           ? systemEnv.fileUrlWhitelist.length > 0
           : undefined,
@@ -973,7 +981,11 @@ export const inspectInstanceConfigMigration = async () => {
   // 已有域里仍缺失的字段：整域存在不代表迁移已完成，客户已配置的环境变量可能还没进来
   const existingDocsByDomain = new Map<
     string,
-    { overrides: Record<string, unknown>; explicitDefaultPaths: Set<string> }
+    {
+      overrides: Record<string, unknown>;
+      explicitDefaultPaths: Set<string>;
+      damagedSecurityOverrides: boolean;
+    }
   >(
     existingDocs.map((doc) => [
       String((doc as any).domain ?? doc._id),
@@ -984,7 +996,9 @@ export const inspectInstanceConfigMigration = async () => {
         ),
         explicitDefaultPaths: new Set(
           Array.isArray((doc as any).explicitDefaultPaths) ? (doc as any).explicitDefaultPaths : []
-        )
+        ),
+        damagedSecurityOverrides:
+          doc.domain === 'security' && hasDamagedSecurityOverrides(doc.overrides)
       }
     ])
   );
@@ -992,7 +1006,7 @@ export const inspectInstanceConfigMigration = async () => {
   const pendingBackfillDomainCount = SYSTEM_INSTANCE_CONFIG_DOMAINS.filter((domain) => {
     const targetOverrides = overrides[domain] ?? {};
     const existingEntry = existingDocsByDomain.get(domain);
-    if (!existingEntry) return false;
+    if (!existingEntry || existingEntry.damagedSecurityOverrides) return false;
 
     const declaredExplicit = legacyExplicitDefaultPaths[domain] ?? [];
     const missingExplicitPaths = missingLegacyDefaultPaths({
@@ -1075,6 +1089,10 @@ export const applyInstanceConfigMigration = async ({
       const doc = await MongoSystemInstanceConfig.findOne({ domain }).lean();
       // 文档被并发删除：本次不处理，交给下一轮迁移补齐
       if (!doc) return { acceptedPaths: [], skippedPaths: [] };
+      if (domain === 'security' && hasDamagedSecurityOverrides(doc.overrides)) {
+        logger.warn('Damaged security configuration retained for administrator repair', { domain });
+        return { acceptedPaths: [], skippedPaths: [] };
+      }
 
       const existingOverrides = decryptDomainSecrets(
         domain,

@@ -1,5 +1,10 @@
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
-import { readMigrationDomainConfig, readMigrationConfigValue } from './validation';
+import {
+  hasDamagedSecurityOverrides,
+  LegacyBooleanSchema,
+  readMigrationDomainConfig,
+  readMigrationConfigValue
+} from './validation';
 import { MongoSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/schema';
 import {
   decryptDomainSecrets,
@@ -9,8 +14,7 @@ import { hasOverridePath } from '@fastgpt/global/common/system/config/merge';
 import { SystemConfigsTypeEnum } from '@fastgpt/global/common/system/config/constants';
 import { MongoSystemConfigs } from '@fastgpt/service/common/system/config/schema';
 import { StorageConfigSchema } from '@fastgpt/global/common/system/config/schemas/storage';
-import { z } from 'zod';
-import { BoolSchema, IntSchema } from '@fastgpt/global/common/zod';
+import { IntSchema } from '@fastgpt/global/common/zod';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 
 const logger = getLogger(LogCategories.SYSTEM.UPGRADE);
@@ -46,6 +50,7 @@ export const backfillExternalFileCheck = async ({
   for (let attempt = 0; attempt < 5; attempt += 1) {
     const doc = await readSecurityConfig();
     if (!doc) throw new Error('Security instance config is missing');
+    if (hasDamagedSecurityOverrides(doc.overrides)) return { updatedDocuments: 0 };
 
     const overrides = decryptDomainSecrets('security', doc.overrides ?? {});
     const security = readMigrationDomainConfig({ domain: 'security', overrides });
@@ -67,10 +72,7 @@ export const backfillExternalFileCheck = async ({
       { _id: doc._id, revision: doc.revision },
       {
         $set: {
-          // Mongo 无法给 null 的父字段写入子字段；缺失或已有对象仍按路径增量更新。
-          ...(doc.overrides === null
-            ? { overrides: { checkExternalFile: hasLegacyFileWhitelist } }
-            : { 'overrides.checkExternalFile': hasLegacyFileWhitelist }),
+          'overrides.checkExternalFile': hasLegacyFileWhitelist,
           updatedBy: { actor: 'migration' },
           updatedAt: new Date()
         },
@@ -88,6 +90,8 @@ export const backfillExternalFileCheck = async ({
 export const verifyExternalFileCheck = async () => {
   const doc = await readSecurityConfig();
   if (!doc) throw new Error('Security instance config is missing');
+  // 保留坏根域的状态即为该分支的完成条件，等待管理端显式修复。
+  if (hasDamagedSecurityOverrides(doc.overrides)) return;
   const overrides = decryptDomainSecrets('security', doc.overrides ?? {});
   readMigrationDomainConfig({ domain: 'security', overrides });
   if (
@@ -318,7 +322,14 @@ const readPolicyDocuments = async () => {
     } catch {
       throw new Error(`Invalid existing HTTP policy configuration: ${policy.domain}`);
     }
-    return { policy, doc, overrides, explicitPaths: new Set<string>(paths) };
+    return {
+      policy,
+      doc,
+      overrides,
+      explicitPaths: new Set<string>(paths),
+      damagedSecurityOverrides:
+        policy.domain === 'security' && hasDamagedSecurityOverrides(doc.overrides)
+    };
   });
 };
 
@@ -340,28 +351,17 @@ export const rehomeHttpRuntimePolicies = async ({
     const documents = await readPolicyDocuments();
     const plans = documents
       .filter(
-        ({ policy, overrides, explicitPaths }) =>
-          !Object.hasOwn(overrides, policy.field) && !explicitPaths.has(policy.field)
+        ({ policy, overrides, explicitPaths, damagedSecurityOverrides }) =>
+          !damagedSecurityOverrides &&
+          !Object.hasOwn(overrides, policy.field) &&
+          !explicitPaths.has(policy.field)
       )
       .map(({ policy, doc, overrides }) => {
         const raw = legacyEnv[policy.env];
         // 保持旧 ENV 的布尔及非负整数语义，0 仍代表仅允许空响应，不解释为不限量。
         const value = readMigrationConfigValue({
           name: policy.env,
-          schema:
-            policy.domain === 'security'
-              ? z
-                  .unknown()
-                  .refine(
-                    (value) =>
-                      typeof value === 'boolean' ||
-                      (typeof value === 'string' &&
-                        ['true', 'false', '1', '0', 'yes', 'no', 'y', 'n', 'on', 'off'].includes(
-                          value.trim().toLowerCase()
-                        ))
-                  )
-                  .pipe(BoolSchema)
-              : IntSchema,
+          schema: policy.domain === 'security' ? LegacyBooleanSchema : IntSchema,
           value: raw?.trim() ? raw : policy.domain === 'security' ? false : 20
         });
         const target = { ...overrides, [policy.field]: value };
@@ -410,7 +410,13 @@ export const rehomeHttpRuntimePolicies = async ({
 
 /** 完成条件要求两个字段均有持久化依据，不能以 Schema 默认值证明已迁移。 */
 export const verifyHttpRuntimePolicyMigration = async () => {
-  for (const { policy, overrides, explicitPaths } of await readPolicyDocuments()) {
+  for (const {
+    policy,
+    overrides,
+    explicitPaths,
+    damagedSecurityOverrides
+  } of await readPolicyDocuments()) {
+    if (damagedSecurityOverrides) continue;
     if (!Object.hasOwn(overrides, policy.field) && !explicitPaths.has(policy.field)) {
       throw new Error(`HTTP policy migration is incomplete: ${policy.domain}.${policy.field}`);
     }

@@ -338,10 +338,12 @@ describe('model status probe configuration', () => {
     await expect(
       updateModelStatusProbeConfig({ enabled: false, intervalMinutes: 5, clearWebhookToken: false })
     ).rejects.toMatchObject({
-      name: 'ZodError',
-      issues: expect.arrayContaining([
-        expect.objectContaining({ path: ['webhookToken'], code: 'invalid_type' })
-      ])
+      name: 'ApiRequestInputParseError',
+      cause: {
+        issues: expect.arrayContaining([
+          expect.objectContaining({ path: ['webhookToken'], code: 'invalid_type' })
+        ])
+      }
     });
     expect(
       await MongoSystemInstanceConfig.findOne({ domain: 'modelStatusProbe' }).lean()
@@ -351,18 +353,31 @@ describe('model status probe configuration', () => {
     });
   });
 
-  it('rejects invalid stored configuration before overwriting its credentials', async () => {
+  it('rejects an invalid retained token and lets the administrator explicitly clear it', async () => {
+    const oldToken = 't'.repeat(2049);
     await MongoSystemInstanceConfig.collection.insertOne({
       domain: 'modelStatusProbe',
-      overrides: { enabled: true, intervalMinutes: 1, webhookToken: 'stored-token' },
+      overrides: { enabled: true, intervalMinutes: 1, webhookToken: oldToken },
       revision: 1
     } as any);
 
     await expect(
       updateModelStatusProbeConfig({ enabled: false, intervalMinutes: 5, clearWebhookToken: false })
-    ).rejects.toThrow();
-    const record = await MongoSystemInstanceConfig.findOne({ domain: 'modelStatusProbe' }).lean();
-    expect(record).toMatchObject({ revision: 1, overrides: { webhookToken: 'stored-token' } });
+    ).rejects.toMatchObject({
+      cause: { issues: [expect.objectContaining({ path: ['webhookToken'] })] }
+    });
+    const unchanged = await MongoSystemInstanceConfig.findOne({
+      domain: 'modelStatusProbe'
+    }).lean();
+    expect(unchanged?.revision).toBe(1);
+    expect(unchanged?.overrides.webhookToken === oldToken).toBe(true);
+
+    await expect(
+      updateModelStatusProbeConfig({ enabled: false, intervalMinutes: 5, clearWebhookToken: true })
+    ).resolves.toEqual({ enabled: false, intervalMinutes: 5, webhookTokenConfigured: false });
+    const repaired = await MongoSystemInstanceConfig.findOne({ domain: 'modelStatusProbe' }).lean();
+    expect(repaired).toMatchObject({ revision: 2, overrides: { intervalMinutes: 5 } });
+    expect(repaired?.overrides.webhookToken).toBeUndefined();
   });
 
   it('keeps the successful write when refreshing the snapshot fails', async () => {
