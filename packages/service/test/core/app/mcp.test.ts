@@ -5,7 +5,7 @@ import net from 'net';
 import os from 'os';
 import tls from 'tls';
 import dns from 'dns/promises';
-import { Agent, ProxyAgent, fetch as undiciFetch } from 'undici';
+import { Agent, Pool, ProxyAgent, fetch as undiciFetch } from 'undici';
 
 // --- Hoisted mocks ---
 const { mockDereference } = vi.hoisted(() => ({
@@ -1145,11 +1145,13 @@ describe('createMcpSafeFetch', () => {
     }
   });
 
-  it('should block DNS rebinding to loopback before contacting the HTTP proxy', async () => {
+  it('should block DNS rebinding to loopback or private 10.x network before contacting the HTTP proxy', async () => {
     getTestInstanceConfig().security.checkInternalIp = true;
     vi.spyOn(dns, 'resolve4').mockResolvedValue(['8.8.8.8']);
     vi.spyOn(dns, 'resolve6').mockResolvedValue([]);
-    vi.spyOn(dns, 'lookup').mockResolvedValue([{ address: '127.0.0.1', family: 4 }]);
+    vi.spyOn(dns, 'lookup')
+      .mockResolvedValueOnce([{ address: '127.0.0.1', family: 4 }])
+      .mockResolvedValueOnce([{ address: '10.0.0.8', family: 4 }]);
     const targetServer = await listen((_req, res) => res.end('should-not-reach'));
     const proxy = await startConnectProxy(getServerPort(targetServer));
     const safeFetch = createMcpSafeFetch();
@@ -1160,6 +1162,9 @@ describe('createMcpSafeFetch', () => {
       vi.stubEnv('no_proxy', '');
 
       await expect(safeFetch('http://rebind.example.test/mcp')).rejects.toThrow(PRIVATE_URL_TEXT);
+      await expect(safeFetch('http://rebind-private.example.test/mcp')).rejects.toThrow(
+        PRIVATE_URL_TEXT
+      );
       expect(proxy.getConnectCount()).toBe(0);
     } finally {
       await safeFetch.close();
@@ -1277,6 +1282,38 @@ describe('createMcpSafeFetch', () => {
     }
   });
 
+  it('should omit TLS SNI for IP-literal HTTPS targets over proxy CONNECT', async () => {
+    let receivedServername: string | undefined;
+    const tlsServer = tls.createServer({
+      SNICallback: (servername, cb) => {
+        receivedServername = servername;
+        cb(new Error('ip-sni-captured'));
+      }
+    });
+    await new Promise<void>((resolve) => tlsServer.listen(0, '127.0.0.1', resolve));
+    const tlsAddress = tlsServer.address();
+    if (!tlsAddress || typeof tlsAddress === 'string') {
+      throw new Error('Invalid TLS server address');
+    }
+
+    const proxy = await startConnectProxy(tlsAddress.port);
+    const safeFetch = createMcpSafeFetch();
+
+    try {
+      vi.stubEnv('HTTPS_PROXY', `http://127.0.0.1:${proxy.port}`);
+      vi.stubEnv('NO_PROXY', '');
+      vi.stubEnv('no_proxy', '');
+
+      await expect(safeFetch('https://198.51.100.12/mcp')).rejects.toThrow();
+      expect(proxy.getConnectedTarget()).toBe('198.51.100.12:443');
+      expect(receivedServername).toBeUndefined();
+    } finally {
+      await safeFetch.close();
+      await proxy.close();
+      await new Promise<void>((resolve) => tlsServer.close(() => resolve()));
+    }
+  });
+
   it('should surface an error when the HTTP proxy returns a non-200 CONNECT status', async () => {
     vi.spyOn(dns, 'resolve4').mockResolvedValue(['198.51.100.12']);
     vi.spyOn(dns, 'resolve6').mockResolvedValue([]);
@@ -1336,6 +1373,63 @@ describe('createMcpSafeFetch', () => {
       );
     } finally {
       await proxy.close();
+    }
+  });
+
+  it('should classify proxy CONNECT 407 Proxy Authentication Required as UserConfigError in MCPClient', async () => {
+    vi.spyOn(dns, 'resolve4').mockResolvedValue(['198.51.100.12']);
+    vi.spyOn(dns, 'resolve6').mockResolvedValue([]);
+    vi.spyOn(dns, 'lookup').mockResolvedValue([{ address: '198.51.100.12', family: 4 }]);
+    const proxy = await startConnectProxy(0, {
+      statusCode: 407,
+      statusText: 'Proxy Authentication Required'
+    });
+
+    try {
+      vi.stubEnv('HTTP_PROXY', `http://127.0.0.1:${proxy.port}`);
+      vi.stubEnv('NO_PROXY', '');
+      vi.stubEnv('no_proxy', '');
+
+      const mcpClient = new MCPClient({
+        url: 'http://auth-required.example.test/mcp',
+        headers: {}
+      });
+
+      await expect(mcpClient.getTools()).rejects.toMatchObject({
+        name: 'UserConfigError',
+        cause: expect.objectContaining({
+          code: 'MCP_PROXY_TUNNEL_ERROR',
+          statusCode: 407
+        })
+      });
+    } finally {
+      await proxy.close();
+    }
+  });
+
+  it('should wrap proxy TLS altname errors as SecureProxyConnectionError without retry loop on HTTP targets', async () => {
+    vi.spyOn(dns, 'resolve4').mockResolvedValue(['198.51.100.12']);
+    vi.spyOn(dns, 'resolve6').mockResolvedValue([]);
+    vi.spyOn(dns, 'lookup').mockResolvedValue([{ address: '198.51.100.12', family: 4 }]);
+    const altnameError = Object.assign(new Error('Hostname/IP does not match proxy certificate'), {
+      code: 'ERR_TLS_CERT_ALTNAME_INVALID'
+    });
+    const poolConnectSpy = vi.spyOn(Pool.prototype, 'connect').mockRejectedValue(altnameError);
+    const safeFetch = createMcpSafeFetch();
+
+    try {
+      vi.stubEnv('HTTP_PROXY', 'https://proxy.example.test:3128');
+      vi.stubEnv('NO_PROXY', '');
+      vi.stubEnv('no_proxy', '');
+
+      await expect(safeFetch('http://target.example.test/mcp')).rejects.toMatchObject({
+        name: 'SecureProxyConnectionError',
+        code: 'UND_ERR_PRX_TLS',
+        cause: altnameError
+      });
+      expect(poolConnectSpy).toHaveBeenCalledTimes(1);
+    } finally {
+      await safeFetch.close();
     }
   });
 
@@ -1498,6 +1592,46 @@ describe('createMcpSafeFetch', () => {
       expect(lookup).toHaveBeenCalledTimes(1);
     } finally {
       await safeFetch.close();
+    }
+  });
+
+  it('should evaluate NO_PROXY per hop across redirects from proxied host to NO_PROXY host', async () => {
+    getTestInstanceConfig().security.checkInternalIp = false;
+    const carrierHost = getReachablePrivateHost();
+    if (!carrierHost) return;
+
+    const directTarget = await listen((req, res) => {
+      res.end(JSON.stringify({ direct: true, host: req.headers.host }));
+    }, '0.0.0.0');
+    const directPort = getServerPort(directTarget);
+
+    const proxiedRedirect = await listen((_req, res) => {
+      res.statusCode = 302;
+      res.setHeader('Location', `http://${carrierHost}:${directPort}/mcp`);
+      res.end('redirect');
+    });
+    const proxy = await startConnectProxy(getServerPort(proxiedRedirect));
+
+    vi.spyOn(dns, 'resolve4').mockResolvedValue(['198.51.100.12']);
+    vi.spyOn(dns, 'resolve6').mockResolvedValue([]);
+    vi.spyOn(dns, 'lookup').mockResolvedValue([{ address: '198.51.100.12', family: 4 }]);
+
+    const safeFetch = createMcpSafeFetch();
+    try {
+      vi.stubEnv('HTTP_PROXY', `http://127.0.0.1:${proxy.port}`);
+      vi.stubEnv('NO_PROXY', carrierHost);
+      vi.stubEnv('no_proxy', '');
+
+      const response = await safeFetch('http://proxied.example.test/mcp');
+      expect(await response.json()).toEqual({
+        direct: true,
+        host: `${carrierHost}:${directPort}`
+      });
+      expect(proxy.getConnectCount()).toBe(1);
+      expect(proxy.getConnectedTarget()).toBe('198.51.100.12:80');
+    } finally {
+      await safeFetch.close();
+      await Promise.all([proxy.close(), closeServer(proxiedRedirect), closeServer(directTarget)]);
     }
   });
 
