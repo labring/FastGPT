@@ -20,6 +20,7 @@ import {
   type ChatItemMiniType
 } from '@fastgpt/global/core/chat/type';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { getUserChatSelect } from '@fastgpt/global/core/chat/input/utils';
 
 type FixtureChatItem = ChatItemDBSchemaType & { _id: Types.ObjectId };
 
@@ -158,6 +159,64 @@ describe('getChatItems', () => {
       tools: [{ params: '', response: '', hideDetails: true }]
     });
     expect(displayed.histories[1].value[0]).not.toHaveProperty('inputContext');
+  });
+
+  it('ignores invalid persisted selects in display and recovery without rewriting stored messages', async () => {
+    const invalidSelects = [
+      { type: 'workflowBuilderPreview', questions: [{ question: 'Continue?', value: 'confirm' }] },
+      { type: 'workflowBuilderPreview', action: 'unknown' },
+      { type: 'workflowBuilderPreview', action: 'revise' },
+      { type: 'agentAsk', questions: [] },
+      {},
+      null
+    ];
+    const validSelects = [
+      { type: 'agentAsk', questions: [{ question: 'Continue?', value: '' }] },
+      { type: 'workflowBuilderPreview', action: 'confirm' },
+      { type: 'workflowBuilderPreview', action: 'cancel' },
+      { type: 'workflowBuilderPreview', action: 'revise', reviseText: 'Add a review step' }
+    ];
+    const selects = [...invalidSelects, ...validSelects, undefined];
+    const messages = await MongoChatItem.create(
+      selects.map((select, index) => ({
+        teamId: testUser.teamId,
+        tmbId: testUser.tmbId,
+        userId: testUser.userId,
+        sourceType: ChatSourceTypeEnum.app,
+        appId,
+        chatId,
+        dataId: getNanoid(),
+        obj: ChatRoleEnum.Human,
+        value: [
+          { text: { content: `Message ${index}` }, ...(select === undefined ? {} : { select }) }
+        ]
+      }))
+    );
+
+    for (const limit of [20, 0]) {
+      const result = await getChatItems({
+        ...chatSource(),
+        chatId,
+        offset: 0,
+        limit,
+        field: 'obj value'
+      });
+
+      expect(result.histories).toHaveLength(selects.length);
+      result.histories.forEach((item, index) => {
+        expect(item.value[0].text?.content).toBe(`Message ${index}`);
+        expect(() => UserChatItemSchema.parse(item)).not.toThrow();
+        if (index < invalidSelects.length || selects[index] === undefined) {
+          expect(item.value[0]).not.toHaveProperty('select');
+          expect(getUserChatSelect(item.value)).toBeUndefined();
+        } else {
+          expect(getUserChatSelect(item.value)).toEqual(selects[index]);
+        }
+      });
+    }
+
+    const stored = await MongoChatItem.findById(messages[0]._id).lean();
+    expect(stored?.value[0]).toMatchObject({ select: invalidSelects[0] });
   });
 
   describe('complete round pagination', () => {
