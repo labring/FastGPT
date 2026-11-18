@@ -1,6 +1,7 @@
 import z from 'zod';
 import { SubTypeEnum, StandardSubLevelEnum } from '../constants';
 import { CouponTypeEnum } from './constants';
+import { SubscriptionGrantPointsSchema } from '../type';
 
 export const CustomSubConfigSchema = z.object({
   requestsPerMinute: z.number(),
@@ -23,7 +24,7 @@ const TeamCouponSubSchema = z.object({
   durationDay: z.number().meta({ description: '套餐时长' }),
   level: z.enum(StandardSubLevelEnum).optional().meta({ description: '套餐等级' }),
   extraDatasetSize: z.number().optional().meta({ description: '额外数据集大小' }),
-  totalPoints: z.number().optional().meta({ description: '总积分' }),
+  totalPoints: SubscriptionGrantPointsSchema.optional().meta({ description: '总积分' }),
   customConfig: CustomSubConfigSchema.optional().meta({ description: '自定义配置' })
 });
 export type TeamCouponSub = z.infer<typeof TeamCouponSubSchema>;

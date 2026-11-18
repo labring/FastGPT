@@ -1,6 +1,6 @@
 import z from 'zod';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
-import { BoolSchema, NumSchema, optionalEmptyToUndefined } from '../../../../common/zod';
+import { BoolSchema, IntSchema, NumSchema, optionalEmptyToUndefined } from '../../../../common/zod';
 import { PaginationResponseSchema, createPaginationSchema } from '../../../api';
 import { SubTypeEnum, StandardSubLevelEnum } from '../../../../support/wallet/sub/constants';
 
@@ -72,7 +72,7 @@ export const AddPlansBodySchema = z.discriminatedUnion('type', [
   AddPlansBaseSchema.extend({
     type: z.literal(SubTypeEnum.standard).meta({ description: '标准套餐' }),
     level: z.enum(StandardSubLevelEnum).meta({ description: '套餐等级' }),
-    totalPoints: NumSchema.optional().meta({ description: '总积分' }),
+    totalPoints: IntSchema.optional().meta({ description: '总积分，非负整数', example: 5000 }),
     surplusPoints: NumSchema.optional().meta({ description: '剩余积分' })
   }),
   AddPlansBaseSchema.extend({
@@ -81,7 +81,7 @@ export const AddPlansBodySchema = z.discriminatedUnion('type', [
   }),
   AddPlansBaseSchema.extend({
     type: z.literal(SubTypeEnum.extraPoints).meta({ description: '额外积分' }),
-    totalPoints: NumSchema.meta({ description: '总积分' }),
+    totalPoints: IntSchema.meta({ description: '总积分，非负整数', example: 5000 }),
     surplusPoints: NumSchema.meta({ description: '剩余积分' })
   })
 ]);
@@ -99,7 +99,7 @@ export const UpdatePlanBodySchema = z.discriminatedUnion('type', [
   UpdatePlanBaseSchema.extend({
     type: z.literal(SubTypeEnum.standard).meta({ description: '标准套餐' }),
     level: z.enum(StandardSubLevelEnum).meta({ description: '套餐等级' }),
-    totalPoints: NumSchema.optional().meta({ description: '总积分' }),
+    totalPoints: IntSchema.optional().meta({ description: '总积分，非负整数', example: 5000 }),
     surplusPoints: NumSchema.optional().meta({ description: '剩余积分' }),
     maxTeamMember: optionalEmptyToUndefined(NumSchema).meta({ description: '最大团队成员数' }),
     maxApp: optionalEmptyToUndefined(NumSchema).meta({ description: '最大应用数' }),
@@ -134,7 +134,7 @@ export const UpdatePlanBodySchema = z.discriminatedUnion('type', [
   }),
   UpdatePlanBaseSchema.extend({
     type: z.literal(SubTypeEnum.extraPoints).meta({ description: '额外积分' }),
-    totalPoints: NumSchema.meta({ description: '总积分' }),
+    totalPoints: IntSchema.meta({ description: '总积分，非负整数', example: 5000 }),
     surplusPoints: NumSchema.meta({ description: '剩余积分' })
   })
 ]);

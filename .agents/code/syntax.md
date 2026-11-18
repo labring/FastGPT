@@ -251,6 +251,7 @@ export const UpdateConfigSchema = z.object({
 
 - **变更 Zod 枚举时，默认必须兼容旧数据和旧客户端。** 新增、删除、重命名 `z.enum()` 枚举值，或调整 `z.literal()`、`z.discriminatedUnion()` 的判别值和分支结构时，都要检查数据库历史记录、缓存、旧客户端请求及上下游返回值，不能只验证当前版本生成的数据。
 - **优先使用 `.catch()` 为无法识别的旧值提供兜底，并在业务侧显式处理。** 可按语义降级为 `undefined` 或明确的 `unknown` 枚举值；不能把未知值自动映射为“确认”等有效业务动作。可选字段使用 `.optional().catch(undefined)`，保持缺省和无法识别时的语义一致。
+- **解析结果必须有值时，将 `'unknown'` 纳入枚举，并使用 `.catch('unknown')`。** 直接兜底也会将缺失值、`null` 和类型错误转成 `'unknown'`，仅在业务允许这些情况统一降级时使用。若输入字段必须存在且为非空字符串，先做该层校验，再用 `.pipe()` 对无法识别的枚举值兜底。业务侧应显式处理 `'unknown'`。
 - `.catch()` 应放在需要兼容的字段或最小子结构上，避免一处旧值导致整条记录、整页列表或整个对话不可读，也避免对整个响应兜底而掩盖其他错误。业务侧应保留仍可读取的内容，跳过无法识别的动作，并处理缺省分支，不能只让 Zod 校验通过后继续假定字段有效。
 - 区分历史读取兼容与新数据写入校验。共享 Schema 同时用于读写时，优先在读取边界派生兼容 Schema，明确兼容范围；不要因为兼容历史数据而意外放宽新请求的业务约束。
 - **只有在相关 Schema 或校验调用处明确注释“不兼容旧值”时，才允许有意拒绝旧数据。** 注释必须说明不兼容的原因、受影响的旧值或版本，以及迁移或拒绝策略；仅删除旧枚举值、修改类型或依赖测试通过，不视为已明确不兼容。
@@ -267,6 +268,16 @@ if (action === undefined) {
 } else {
   handleRecognizedAction(action);
 }
+```
+
+```typescript
+const StoredStatusEnum = z.enum(['active', 'archived', 'unknown']);
+
+// 历史读取允许缺失或无效状态统一降级，解析结果始终有值。
+const StoredStatusSchema = StoredStatusEnum.catch('unknown');
+
+// 输入仍须提供非空字符串，只对无法识别的枚举值兜底。
+const RequiredStoredStatusSchema = z.string().min(1).pipe(StoredStatusSchema);
 ```
 
 ---
