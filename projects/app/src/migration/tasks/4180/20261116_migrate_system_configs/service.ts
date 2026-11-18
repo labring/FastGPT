@@ -45,9 +45,11 @@ export type SchemaSanitizedIssue = {
 const isNonEmpty = (value: unknown): value is string =>
   typeof value === 'string' && value.trim().length > 0;
 
-/** 空串按未配置处理；其他历史值原样保留，交由保存校验提示管理员修复。 */
+/** 空白文本沿用旧版未配置语义；其他历史值原样保留，交由保存校验提示管理员修复。 */
 const optionalText = (value: unknown): string | undefined =>
-  value === undefined || value === '' ? undefined : (value as string);
+  value === undefined || (typeof value === 'string' && !value.trim())
+    ? undefined
+    : (value as string);
 
 /** 保留显式空串：旧配置中的清空操作不能被迁移成新 Schema 的非空默认值。 */
 const optionalString = (value: unknown): string | undefined =>

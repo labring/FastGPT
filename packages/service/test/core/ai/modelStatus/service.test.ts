@@ -337,7 +337,12 @@ describe('model status probe configuration', () => {
 
     await expect(
       updateModelStatusProbeConfig({ enabled: false, intervalMinutes: 5, clearWebhookToken: false })
-    ).rejects.toThrow('Unable to decrypt configuration secret: modelStatusProbe.webhookToken');
+    ).rejects.toMatchObject({
+      name: 'ZodError',
+      issues: expect.arrayContaining([
+        expect.objectContaining({ path: ['webhookToken'], code: 'invalid_type' })
+      ])
+    });
     expect(
       await MongoSystemInstanceConfig.findOne({ domain: 'modelStatusProbe' }).lean()
     ).toMatchObject({
