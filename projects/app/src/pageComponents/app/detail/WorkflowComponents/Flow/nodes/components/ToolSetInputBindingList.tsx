@@ -8,13 +8,15 @@ import { nodeInputTypeToInputType } from '@/components/core/app/formRender/utils
 import NodeInputSelect from '@fastgpt/web/components/core/workflow/NodeInputSelect';
 import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
 import GlobalVariableSelect, { useGlobalVariableLabels } from './GlobalVariableSelect';
-import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
+import { AppToolSourceEnum, AgentToolInputModeEnum } from '@fastgpt/global/core/app/tool/constants';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { VARIABLE_NODE_ID, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { areWorkflowValueTypesCompatible } from '@fastgpt/global/common/workflow/reference';
 import {
   canInputBeAgentGenerated,
-  getToolInputManualRenderType
+  getToolInputManualRenderType,
+  initToolInputTypeByDefaultMode,
+  isAgentGeneratedToolInput
 } from '@fastgpt/global/core/app/formEdit/utils';
 import { isGlobalVariableReferenceValue } from '@fastgpt/global/core/app/tool/toolSet/utils';
 import type {
@@ -37,6 +39,7 @@ const ToolSetParamRow = ({
   keyPrefix,
   value,
   hasValue,
+  mode,
   globalVariables,
   onChangeParameter
 }: {
@@ -44,17 +47,26 @@ const ToolSetParamRow = ({
   keyPrefix: string;
   value?: unknown;
   hasValue: boolean;
+  mode?: AgentToolInputModeEnum;
   globalVariables: EditorVariablePickerType[];
   onChangeParameter: (payload: {
     key: string;
     input: FlowNodeInputItemType;
+    mode?: AgentToolInputModeEnum;
     value?: unknown;
   }) => void;
 }) => {
   const { t } = useSafeTranslation();
   const key = `${keyPrefix}.${input.key}`;
-  const manualType = getToolInputManualRenderType(input) ?? FlowNodeInputTypeEnum.input;
+  // 与运行时一致：未显式选择时沿用工具定义声明的默认输入方式。
+  const normalizedInput = initToolInputTypeByDefaultMode(input, {
+    allowUserChatInputAgentGenerated: true
+  });
+  const manualType = getToolInputManualRenderType(normalizedInput) ?? FlowNodeInputTypeEnum.input;
   const isReference = isGlobalVariableReferenceValue(value);
+  const isAgentGenerated =
+    mode === AgentToolInputModeEnum.agentGenerated ||
+    (mode === undefined && isAgentGeneratedToolInput(normalizedInput));
   const canAgentGenerated = canInputBeAgentGenerated(input);
   const compatibleVariables = globalVariables.filter((variable) =>
     areWorkflowValueTypesCompatible({
@@ -71,7 +83,7 @@ const ToolSetParamRow = ({
     hasValue &&
     !isReference &&
     (value === undefined || (typeof value === 'string' && value.trim() === ''));
-  const selectedType = !hasValue
+  const selectedType = isAgentGenerated
     ? FlowNodeInputTypeEnum.agentGenerated
     : isReference
       ? FlowNodeInputTypeEnum.reference
@@ -114,7 +126,12 @@ const ToolSetParamRow = ({
           isAgentGeneratedMode
           onChange={(type) => {
             if (type === FlowNodeInputTypeEnum.agentGenerated) {
-              onChangeParameter({ key, input, value: undefined });
+              onChangeParameter({
+                key,
+                input,
+                mode: AgentToolInputModeEnum.agentGenerated,
+                value: undefined
+              });
               return;
             }
             if (type === FlowNodeInputTypeEnum.reference) {
@@ -123,6 +140,7 @@ const ToolSetParamRow = ({
               onChangeParameter({
                 key,
                 input,
+                mode: AgentToolInputModeEnum.manual,
                 value: isReference
                   ? value
                   : firstVariable
@@ -134,13 +152,14 @@ const ToolSetParamRow = ({
             onChangeParameter({
               key,
               input,
+              mode: AgentToolInputModeEnum.manual,
               value: hasValue && !isReference ? value : getManualDefaultValue(input)
             });
           }}
         />
       </Flex>
 
-      {hasValue && (
+      {!isAgentGenerated && (
         <Box pl={'12px'}>
           {isReference ? (
             <GlobalVariableSelect
@@ -201,23 +220,27 @@ const ToolSetInputBindingList = ({
   toolList,
   toolsetAppId,
   values,
+  modes,
   globalVariables,
   onChangeParameter
 }: {
   toolList: { name: string; description?: string }[];
   toolsetAppId?: string;
   values: Record<string, unknown>;
+  modes: Record<string, AgentToolInputModeEnum>;
   globalVariables: EditorVariablePickerType[];
   onChangeParameter: (payload: {
     key: string;
     input: FlowNodeInputItemType;
+    mode?: AgentToolInputModeEnum;
     value?: unknown;
   }) => void;
 }) => {
   const { t } = useSafeTranslation();
   const [expandedTool, setExpandedTool] = useState<string>();
   const [toolInputs, setToolInputs] = useState<Record<string, FlowNodeInputItemType[]>>({});
-  const { runAsync: loadToolInputs, loading: isLoadingInputs } = useRequest(
+  // run 会捕获失败（onError 已提示），避免预览请求失败时留下未处理的 rejection。
+  const { run: loadToolInputs, loading: isLoadingInputs } = useRequest(
     async (toolName: string) => {
       if (!toolsetAppId) return;
       const preview = await getClientToolPreviewNode({
@@ -300,6 +323,7 @@ const ToolSetInputBindingList = ({
                           keyPrefix={item.name}
                           hasValue={Object.prototype.hasOwnProperty.call(values, key)}
                           value={values[key]}
+                          mode={modes[key]}
                           globalVariables={globalVariables}
                           onChangeParameter={onChangeParameter}
                         />

@@ -57,12 +57,15 @@ import { getClientToolPreviewNode } from '@/web/core/app/api/tool';
 import { getAppVersionList } from '@/web/core/app/api/version';
 import { getTeamToolVersions } from '@/web/core/plugin/team/api';
 import type { SystemToolVersionType } from '@fastgpt/global/core/app/tool/systemTool/type/base';
-import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
+import { AgentToolInputModeEnum, AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import { isDebugToolSource, splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import type { SelectedToolItemType } from '@fastgpt/global/core/app/formEdit/type';
 import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
-import type { EditorVariablePickerType } from '@fastgpt/global/core/workflow/type/io';
+import type {
+  EditorVariablePickerType,
+  FlowNodeInputItemType
+} from '@fastgpt/global/core/workflow/type/io';
 import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
 import { getWorkflowGlobalVariables } from '@/web/core/workflow/utils';
 import { getNodeToolSetList } from '../../WorkflowComponents/Flow/nodes/components/ToolSetList';
@@ -72,6 +75,7 @@ import GlobalVariableSelect, {
 import ToolSetInputBindingList from '../../WorkflowComponents/Flow/nodes/components/ToolSetInputBindingList';
 import {
   buildToolSetManualInput,
+  getToolSetInputModesFromInputs,
   getToolSetInputValuesFromInputs,
   isGlobalVariableReferenceValue,
   isToolSetInputBindingKey
@@ -499,6 +503,11 @@ const ConfigValueInput = ({
           const parsedValue = parseConfigInputValue({ inputType, value: configuredValue });
           if (!parsedValue.success) return t('common:json_parse_error');
           if (parsedValue.value === undefined) return !input.required;
+
+          // 含变量占位符的文本保存时仍是模板，替换前无法按最终值校验。
+          if (typeof parsedValue.value === 'string' && parsedValue.value.includes('{{$')) {
+            return true;
+          }
 
           const validationResult = validateToolInputValue({
             schema: input.customJsonSchema,
@@ -1042,9 +1051,24 @@ const ConfigToolModal = ({
       )
     )
   }));
+  // 子参数的输入来源需要单独保存；缺失表示沿用工具定义默认方式。
+  const [toolSetModes, setToolSetModes] = useState<Record<string, AgentToolInputModeEnum>>(() =>
+    getToolSetInputModesFromInputs({ inputs: configTool.inputs, toolNames: toolSetToolNames })
+  );
 
-  /** 存在值表示手动/引用，删除表示回到模型生成。 */
-  const onChangeToolSetParameter = ({ key, value }: { key: string; value?: unknown }) => {
+  /** 记录子参数的输入来源；选择 AI 生成时删除手工/引用值。 */
+  const onChangeToolSetParameter = ({
+    key,
+    mode,
+    value
+  }: {
+    key: string;
+    mode?: AgentToolInputModeEnum;
+    value?: unknown;
+  }) => {
+    if (mode) {
+      setToolSetModes((state) => ({ ...state, [key]: mode }));
+    }
     setToolSetValues((state) => {
       const next = { ...state };
       if (value === undefined) delete next[key];
@@ -1103,19 +1127,24 @@ const ConfigToolModal = ({
     // 空白文本与单工具一致，视为未配置，避免必填参数以空字符串发给工具。
     const savedToolSetValues = Object.fromEntries(
       Object.entries(toolSetValues).filter(
-        ([, value]) => !(typeof value === 'string' && value.trim() === '')
+        ([key, value]) =>
+          toolSetModes[key] !== AgentToolInputModeEnum.agentGenerated &&
+          !(typeof value === 'string' && value.trim() === '')
       )
+    );
+    // 每个子参数只保留一个配置载体：AI 生成记录来源，手动/引用记录值。
+    const toolSetInputs: FlowNodeInputItemType[] = [
+      ...new Set([...Object.keys(savedToolSetValues), ...Object.keys(toolSetModes)])
+    ].map((key) =>
+      buildToolSetManualInput({
+        key,
+        mode: toolSetModes[key],
+        value: savedToolSetValues[key]
+      })
     );
     const nextTool: SelectedToolItemType = {
       ...editingTool,
-      inputs: [
-        ...nextInputs,
-        ...(isHttpToolSet
-          ? Object.entries(savedToolSetValues).map(([key, value]) =>
-              buildToolSetManualInput({ key, value })
-            )
-          : [])
-      ],
+      inputs: [...nextInputs, ...(isHttpToolSet ? toolSetInputs : [])],
       ...(isHttpToolSet
         ? {
             config: {
@@ -1207,6 +1236,7 @@ const ConfigToolModal = ({
                           : editingTool.pluginId
                       }
                       values={toolSetValues}
+                      modes={toolSetModes}
                       globalVariables={globalVariables}
                       onChangeParameter={onChangeToolSetParameter}
                     />

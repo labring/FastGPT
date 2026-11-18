@@ -546,17 +546,31 @@ export async function rewriteAppWorkflowToDetail({
                 });
 
                 formatToolInputSecrets({ inputs: mergedInputs, flowNodeType: data.flowNodeType });
-                // 工具集预览不包含子工具输入，手工参数保存在 config 中，这里补回输入供再次编辑。
+                // 工具集预览不包含子工具输入：手工值保存在 config，输入来源保存在 inputs，这里一并补回供再次编辑。
                 const toolSetToolNames =
                   data.flowNodeType === FlowNodeTypeEnum.toolSet
                     ? getToolSetConfigToolNames(data.toolConfig)
                     : [];
-                const toolSetManualInputs: FlowNodeInputItemType[] = Object.entries(
-                  tool.config ?? {}
-                ).flatMap(([key, value]) =>
-                  isToolSetInputBindingKey(key, toolSetToolNames)
-                    ? [buildToolSetManualInput({ key, value })]
-                    : []
+                const toolSetInputModes = new Map(
+                  savedToolInputs.flatMap((input) =>
+                    isToolSetInputBindingKey(input.key, toolSetToolNames)
+                      ? [[input.key, input.mode] as const]
+                      : []
+                  )
+                );
+                const toolSetBindingValues = Object.fromEntries(
+                  Object.entries(tool.config ?? {}).filter(([key]) =>
+                    isToolSetInputBindingKey(key, toolSetToolNames)
+                  )
+                );
+                const toolSetManualInputs: FlowNodeInputItemType[] = [
+                  ...new Set([...Object.keys(toolSetBindingValues), ...toolSetInputModes.keys()])
+                ].map((key) =>
+                  buildToolSetManualInput({
+                    key,
+                    value: toolSetBindingValues[key],
+                    mode: toolSetInputModes.get(key)
+                  })
                 );
                 // 旧工具用英文重建缺失文案，但不把回退语言写成历史 metadataLocale。
                 const { metadataLocale: previewLocale, ...toolData } = data;

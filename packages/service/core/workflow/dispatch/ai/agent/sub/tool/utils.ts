@@ -44,7 +44,7 @@ import {
   pickToolSetChildValues
 } from '@fastgpt/global/core/app/tool/toolSet/utils';
 import { getLogger, LogCategories } from '../../../../../../../common/logger';
-import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
+import { AgentToolInputModeEnum, AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import {
   appData2FlowNodeIO,
@@ -703,13 +703,35 @@ export const getAgentRuntimeTools = async ({
           const childToolName = child.name.startsWith(`${toolNode.name}/`)
             ? child.name.slice(toolNode.name.length + 1)
             : child.name;
-          const childInputKeys = new Set(normalizedInputs.map((input) => input.key));
+          const childInputMap = new Map(normalizedInputs.map((input) => [input.key, input]));
+          // 显式保存的子参数输入来源优先于工具定义的默认方式。
+          const getSavedChildMode = (key: string) =>
+            savedInputConfigMap.get(`${childToolName}.${key}`)?.mode;
           const childValues = Object.fromEntries(
             Object.entries(
               pickToolSetChildValues({ toolName: childToolName, values: configuredParams })
-            ).filter(([key]) => childInputKeys.has(key))
+            ).flatMap(([key, value]) => {
+              const input = childInputMap.get(key);
+              if (!input || getSavedChildMode(key) === AgentToolInputModeEnum.agentGenerated) {
+                return [];
+              }
+              // 与单工具一致：JSON Editor 的编辑文本在运行边界转成原生值。
+              const runtimeValue = getRuntimeConfiguredValue({ input, value });
+              return runtimeValue === undefined ? [] : [[key, runtimeValue] as const];
+            })
           );
-          const inputs = applyToolSetInputValues({ inputs: normalizedInputs, values: childValues });
+          const modeConfiguredInputs = normalizedInputs.map((input) => {
+            const mode = getSavedChildMode(input.key);
+            if (!mode) return input;
+            const nextInput = initAgentToolInputType({ input, mode });
+            return mode === AgentToolInputModeEnum.agentGenerated
+              ? { ...nextInput, value: undefined }
+              : nextInput;
+          });
+          const inputs = applyToolSetInputValues({
+            inputs: modeConfiguredInputs,
+            values: childValues
+          });
           const compiledRuntime = compileRuntimeTool({
             toolId: runtimeId,
             inputs,

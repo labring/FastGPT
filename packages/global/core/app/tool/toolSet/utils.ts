@@ -1,7 +1,8 @@
 import { FlowNodeInputTypeEnum } from '../../../workflow/node/constant';
 import { VARIABLE_NODE_ID, WorkflowIOValueTypeEnum } from '../../../workflow/constants';
 import type { FlowNodeInputItemType } from '../../../workflow/type/io';
-import { getToolInputManualRenderType } from '../../formEdit/utils';
+import { getAgentToolInputMode, getToolInputManualRenderType } from '../../formEdit/utils';
+import { AgentToolInputModeEnum } from '../constants';
 
 /** 参数 key 是否属于已知子工具，只按完整工具名匹配，不做拆分。 */
 export const isToolSetInputBindingKey = (key: string, toolNames: string[]) =>
@@ -47,16 +48,51 @@ export const getToolSetInputValuesFromInputs = ({
     return acc;
   }, {});
 
+/**
+ * 读取工具集子参数已保存的输入来源（key 为 `${toolName}.${paramKey}`）。
+ * 未出现表示沿用工具定义的默认方式；显式 AI 生成只记录来源，不携带值。
+ */
+export const getToolSetInputModesFromInputs = ({
+  inputs,
+  toolNames
+}: {
+  inputs: Pick<FlowNodeInputItemType, 'key' | 'renderTypeList' | 'selectedType'>[];
+  toolNames: string[];
+}) =>
+  Object.fromEntries(
+    inputs.flatMap((input) =>
+      isToolSetInputBindingKey(input.key, toolNames)
+        ? [[input.key, getAgentToolInputMode(input)] as const]
+        : []
+    )
+  ) as Record<string, AgentToolInputModeEnum>;
+
 /** 构造工具集参数配置输入；作为节点/工具上的配置载体，运行时按子工具输入控件注入。 */
 export const buildToolSetManualInput = ({
   key,
   value,
+  mode,
   valueType = WorkflowIOValueTypeEnum.any
 }: {
   key: string;
-  value: unknown;
+  value?: unknown;
+  mode?: AgentToolInputModeEnum;
   valueType?: WorkflowIOValueTypeEnum;
 }): FlowNodeInputItemType => {
+  // 显式选择 AI 生成时没有值；canAgentGenerated 让 Agent 工具持久化该 key 的输入来源。
+  if (mode === AgentToolInputModeEnum.agentGenerated) {
+    return {
+      key,
+      label: key,
+      valueType,
+      renderTypeList: [FlowNodeInputTypeEnum.agentGenerated],
+      selectedType: FlowNodeInputTypeEnum.agentGenerated,
+      canAgentGenerated: true,
+      canEdit: false,
+      required: false
+    };
+  }
+
   const isReference = isGlobalVariableReferenceValue(value);
   return {
     key,

@@ -2,9 +2,11 @@ import { describe, expect, it } from 'vitest';
 import {
   applyToolSetInputValues,
   buildToolSetManualInput,
+  getToolSetInputModesFromInputs,
   getToolSetInputValuesFromInputs,
   pickToolSetChildValues
 } from '@fastgpt/global/core/app/tool/toolSet/utils';
+import { AgentToolInputModeEnum } from '@fastgpt/global/core/app/tool/constants';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { VARIABLE_NODE_ID, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
@@ -80,5 +82,28 @@ describe('toolset input values', () => {
       'getOrders.note': [VARIABLE_NODE_ID, 'note']
     });
     expect(reference.selectedType).toBe(FlowNodeInputTypeEnum.reference);
+  });
+
+  it('records an explicit agent-generated mode without a value', () => {
+    const agentGenerated = buildToolSetManualInput({
+      key: 'getOrders.userId',
+      mode: AgentToolInputModeEnum.agentGenerated
+    });
+
+    expect(agentGenerated).toMatchObject({
+      key: 'getOrders.userId',
+      selectedType: FlowNodeInputTypeEnum.agentGenerated,
+      canAgentGenerated: true
+    });
+    expect(agentGenerated.value).toBeUndefined();
+    expect(
+      getToolSetInputModesFromInputs({
+        inputs: [agentGenerated, buildToolSetManualInput({ key: 'getOrders.note', value: 'n' })],
+        toolNames: ['getOrders']
+      })
+    ).toEqual({
+      'getOrders.userId': AgentToolInputModeEnum.agentGenerated,
+      'getOrders.note': AgentToolInputModeEnum.manual
+    });
   });
 });

@@ -1,4 +1,5 @@
 import { serializeAgentTool } from '@fastgpt/global/core/app/formEdit/utils';
+import { AgentToolInputModeEnum } from '@fastgpt/global/core/app/tool/constants';
 import { getModelTestDefaults } from '@test/modelCache';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
@@ -1802,6 +1803,69 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
         key: 'getOrders.note',
         value: [VARIABLE_NODE_ID, 'note'],
         selectedType: FlowNodeInputTypeEnum.reference
+      })
+    ]);
+  });
+
+  it('刷新 Agent 中的 HTTP 工具集时恢复子参数显式选择的 AI 生成', async () => {
+    const toolSetAppId = '507f1f77bcf86cd799439016';
+    getClientToolPreviewNodeMock.mockResolvedValue({
+      id: toolSetAppId,
+      flowNodeType: FlowNodeTypeEnum.toolSet,
+      name: 'HTTP toolset',
+      avatar: '',
+      intro: '',
+      inputs: [],
+      outputs: [],
+      toolConfig: {
+        httpToolSet: {
+          toolId: toolSetAppId,
+          toolList: [{ name: 'getOrders', description: 'Get orders' }]
+        }
+      },
+      version: ''
+    });
+    authAppByTmbIdMock.mockResolvedValue({});
+
+    const nodes = [
+      {
+        nodeId: 'agent',
+        flowNodeType: FlowNodeTypeEnum.agent,
+        inputs: [
+          {
+            key: NodeInputKeyEnum.selectedTools,
+            value: [
+              {
+                id: toolSetAppId,
+                inputs: [{ key: 'getOrders.query', mode: AgentToolInputModeEnum.agentGenerated }],
+                config: { 'getOrders.userId': 'u-1' }
+              }
+            ]
+          }
+        ],
+        outputs: []
+      } as StoreNodeItemType
+    ];
+
+    await rewriteAppWorkflowToDetail({
+      nodes,
+      teamId: 'team-1',
+      ownerTmbId: 'tmb-1',
+      isRoot: false
+    });
+
+    const tool = (
+      nodes[0].inputs.find((input) => input.key === NodeInputKeyEnum.selectedTools)?.value as any[]
+    )[0];
+    expect(tool.inputs).toEqual([
+      expect.objectContaining({
+        key: 'getOrders.userId',
+        value: 'u-1',
+        selectedType: FlowNodeInputTypeEnum.input
+      }),
+      expect.objectContaining({
+        key: 'getOrders.query',
+        selectedType: FlowNodeInputTypeEnum.agentGenerated
       })
     ]);
   });
