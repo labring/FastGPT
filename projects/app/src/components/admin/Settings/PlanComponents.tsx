@@ -1,3 +1,5 @@
+import { SubPlanInputSchema } from '@fastgpt/global/support/wallet/sub/type';
+import { getConfigFormErrors } from '@/web/common/system/configFormErrors';
 import { Box, Button, Flex, Grid, Input, Switch } from '@chakra-ui/react';
 import { standardSubLevelMap } from '@fastgpt/global/support/wallet/sub/constants';
 import type { StandardSubLevelEnum } from '@fastgpt/global/support/wallet/sub/constants';
@@ -56,12 +58,20 @@ export const EditPlanModal = ({
 }) => {
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
-  const { handleSubmit, watch, setValue } = useForm<TeamStandardSubPlanItemType>({
+  const form = useForm<TeamStandardSubPlanItemType>({
     defaultValues: value[level]
   });
+  const { handleSubmit, watch, setValue } = form;
   const label = value?.[level]?.name || t(standardSubLevelMap[level].label);
 
   const onSubmit = (data: TeamStandardSubPlanItemType) => {
+    const parsed = SubPlanInputSchema.safeParse({ standard: { [level]: data } });
+    if (!parsed.success) {
+      getConfigFormErrors({ error: parsed.error, values: form.getValues() }).forEach(
+        ({ name, message }) => form.setError(name as never, { type: 'validate', message })
+      );
+      return;
+    }
     onChange({
       ...value,
       [level]: data
@@ -81,7 +91,14 @@ export const EditPlanModal = ({
           <Button variant={'whiteBase'} onClick={onClose}>
             {t('admin:cancel')}
           </Button>
-          <Button onClick={handleSubmit(onSubmit)}>{t('admin:confirm')}</Button>
+          <Button
+            onClick={() => {
+              form.clearErrors();
+              void handleSubmit(onSubmit)();
+            }}
+          >
+            {t('admin:confirm')}
+          </Button>
         </>
       }
     >
@@ -93,6 +110,7 @@ export const EditPlanModal = ({
           <Box>
             <FormLabel mb={2}>{t('admin:plan_name') || '套餐名称'}</FormLabel>
             <Input
+              isInvalid={Boolean(form.getFieldState('name', form.formState).error)}
               bg={'myGray.50'}
               value={watch('name')}
               onChange={(e) => {
@@ -104,6 +122,7 @@ export const EditPlanModal = ({
           <Box>
             <FormLabel mb={2}>{t('admin:plan_monthly_price') || '每月价格'}</FormLabel>
             <MyNumberInput
+              isInvalid={Boolean(form.getFieldState('price', form.formState).error)}
               bg={'myGray.50'}
               value={watch('price')}
               h={9}
@@ -116,6 +135,7 @@ export const EditPlanModal = ({
           <Box gridColumn="span 2">
             <FormLabel mb={2}>{t('admin:plan_description') || '套餐描述'}</FormLabel>
             <Input
+              isInvalid={Boolean(form.getFieldState('desc', form.formState).error)}
               bg={'myGray.50'}
               value={watch('desc') as any}
               onChange={(e) => {
@@ -134,6 +154,7 @@ export const EditPlanModal = ({
           <Box>
             <FormLabel mb={2}>{t('admin:ai_points_amount')}</FormLabel>
             <MyNumberInput
+              isInvalid={Boolean(form.getFieldState('totalPoints', form.formState).error)}
               bg={'myGray.50'}
               value={watch('totalPoints')}
               min={0}
@@ -145,6 +166,7 @@ export const EditPlanModal = ({
           <Box>
             <FormLabel mb={2}>{t('admin:team_member_count')}</FormLabel>
             <MyNumberInput
+              isInvalid={Boolean(form.getFieldState('maxTeamMember', form.formState).error)}
               bg={'myGray.50'}
               value={watch('maxTeamMember')}
               min={0}
@@ -156,6 +178,7 @@ export const EditPlanModal = ({
           <Box>
             <FormLabel mb={2}>{t('admin:agent_count')}</FormLabel>
             <MyNumberInput
+              isInvalid={Boolean(form.getFieldState('maxAppAmount', form.formState).error)}
               bg={'myGray.50'}
               value={watch('maxAppAmount')}
               min={0}
@@ -167,6 +190,7 @@ export const EditPlanModal = ({
           <Box>
             <FormLabel mb={2}>{t('admin:dataset_count')}</FormLabel>
             <MyNumberInput
+              isInvalid={Boolean(form.getFieldState('maxDatasetAmount', form.formState).error)}
               bg={'myGray.50'}
               value={watch('maxDatasetAmount')}
               min={0}
@@ -178,6 +202,7 @@ export const EditPlanModal = ({
           <Box>
             <FormLabel mb={2}>{t('admin:dataset_index_count')}</FormLabel>
             <MyNumberInput
+              isInvalid={Boolean(form.getFieldState('maxDatasetSize', form.formState).error)}
               bg={'myGray.50'}
               value={watch('maxDatasetSize')}
               min={0}
@@ -196,6 +221,7 @@ export const EditPlanModal = ({
           <Box>
             <FormLabel mb={2}>{t('admin:requests_per_minute')}</FormLabel>
             <MyNumberInput
+              isInvalid={Boolean(form.getFieldState('requestsPerMinute', form.formState).error)}
               bg={'myGray.50'}
               value={watch('requestsPerMinute')}
               min={0}
@@ -208,6 +234,7 @@ export const EditPlanModal = ({
           <Box>
             <FormLabel mb={2}>{t('admin:website_sync_count_per_dataset_2')}</FormLabel>
             <MyNumberInput
+              isInvalid={Boolean(form.getFieldState('websiteSyncPerDataset', form.formState).error)}
               bg={'myGray.50'}
               value={watch('websiteSyncPerDataset')}
               min={0}
@@ -220,6 +247,7 @@ export const EditPlanModal = ({
           <Box>
             <FormLabel mb={2}>{t('admin:app_filing_count')}</FormLabel>
             <MyNumberInput
+              isInvalid={Boolean(form.getFieldState('appRegistrationCount', form.formState).error)}
               bg={'myGray.50'}
               value={watch('appRegistrationCount')}
               min={0}
@@ -233,6 +261,9 @@ export const EditPlanModal = ({
           <Box>
             <FormLabel mb={2}>{t('admin:chat_history_retention_days')}</FormLabel>
             <MyNumberInput
+              isInvalid={Boolean(
+                form.getFieldState('chatHistoryStoreDuration', form.formState).error
+              )}
               bg={'myGray.50'}
               value={watch('chatHistoryStoreDuration')}
               min={0}
@@ -246,6 +277,7 @@ export const EditPlanModal = ({
           <Box>
             <FormLabel mb={2}>{t('admin:audit_log_retention_days')}</FormLabel>
             <MyNumberInput
+              isInvalid={Boolean(form.getFieldState('auditLogStoreDuration', form.formState).error)}
               bg={'myGray.50'}
               value={watch('auditLogStoreDuration')}
               min={0}
@@ -258,6 +290,7 @@ export const EditPlanModal = ({
           <Box>
             <FormLabel mb={2}>{t('admin:ticket_support_response_time_hours')}</FormLabel>
             <MyNumberInput
+              isInvalid={Boolean(form.getFieldState('ticketResponseTime', form.formState).error)}
               bg={'myGray.50'}
               value={watch('ticketResponseTime')}
               min={0}
@@ -270,6 +303,7 @@ export const EditPlanModal = ({
           <Box>
             <FormLabel mb={2}>{t('admin:custom_domain_count')}</FormLabel>
             <MyNumberInput
+              isInvalid={Boolean(form.getFieldState('customDomain', form.formState).error)}
               bg={'myGray.50'}
               value={watch('customDomain')}
               min={0}
@@ -282,6 +316,7 @@ export const EditPlanModal = ({
           <Box>
             <FormLabel mb={2}>{t('admin:max_upload_file_size_mb')}</FormLabel>
             <MyNumberInput
+              isInvalid={Boolean(form.getFieldState('maxUploadFileSize', form.formState).error)}
               bg={'myGray.50'}
               value={watch('maxUploadFileSize')}
               min={0}
@@ -294,6 +329,7 @@ export const EditPlanModal = ({
           <Box>
             <FormLabel mb={2}>{t('admin:max_upload_file_count')}</FormLabel>
             <MyNumberInput
+              isInvalid={Boolean(form.getFieldState('maxUploadFileCount', form.formState).error)}
               bg={'myGray.50'}
               value={watch('maxUploadFileCount')}
               min={0}
@@ -331,6 +367,7 @@ export const EditPlanModal = ({
           <Box>
             <FormLabel mb={2}>{t('admin:annual_plan_bonus_points')}</FormLabel>
             <MyNumberInput
+              isInvalid={Boolean(form.getFieldState('annualBonusPoints', form.formState).error)}
               bg={'myGray.50'}
               value={watch('annualBonusPoints')}
               min={0}
@@ -351,6 +388,7 @@ export const EditPlanModal = ({
             <Box>
               <FormLabel mb={2}>{t('admin:annual_plan_price')}</FormLabel>
               <MyNumberInput
+                isInvalid={Boolean(form.getFieldState('wecom.price', form.formState).error)}
                 bg={'myGray.50'}
                 value={watch('wecom.price')}
                 min={0}
@@ -363,6 +401,7 @@ export const EditPlanModal = ({
             <Box>
               <FormLabel mb={2}>{t('admin:annual_plan_points')}</FormLabel>
               <MyNumberInput
+                isInvalid={Boolean(form.getFieldState('wecom.points', form.formState).error)}
                 bg={'myGray.50'}
                 value={watch('wecom.points')}
                 min={0}

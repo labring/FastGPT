@@ -2,11 +2,7 @@ import { migrateLegacyConfigScopes, verifyLegacyConfigScopes } from './scopes';
 import { SYSTEM_INSTANCE_CONFIG_DOMAINS } from '@fastgpt/global/common/system/config/schema';
 import { SystemMigrationStatusEnum } from '@fastgpt/global/migration/constants';
 import type { SystemMigrationContext } from '../../../registry';
-import {
-  applyInstanceConfigMigration,
-  inspectInstanceConfigMigration,
-  type SchemaSanitizedIssue
-} from './service';
+import { applyInstanceConfigMigration, inspectInstanceConfigMigration } from './service';
 import {
   cleanupInstanceConfigDeprecatedFields,
   verifyInstanceConfigDeprecatedFields
@@ -40,26 +36,20 @@ const MAX_SKIPPED_PATHS_TEXT_LENGTH = 1000;
  * 只拼接路径/变量名，不包含配置值，避免密钥进入迁移结果和页面。
  */
 const buildSkippedConfigSummary = ({
-  schemaSanitizedIssues,
   backfillSkippedPaths,
   envRehomedWarnings
 }: {
-  schemaSanitizedIssues: SchemaSanitizedIssue[];
   backfillSkippedPaths?: string[];
   envRehomedWarnings: string[];
 }) => {
   const paths = Array.from(
     new Set([
-      ...schemaSanitizedIssues.map((issue) =>
-        issue.path ? `${issue.domain}.${issue.path}` : `${issue.domain}.*`
-      ),
       ...(backfillSkippedPaths ?? []),
       ...envRehomedWarnings.map((warning) => `ENV: ${warning}`)
     ])
   );
 
   const domains = new Set<string>();
-  for (const issue of schemaSanitizedIssues) domains.add(issue.domain);
   for (const path of backfillSkippedPaths ?? []) {
     const domain = path.split('.')[0];
     if (domain) domains.add(domain);
@@ -97,9 +87,9 @@ export const migrateSystemConfigs = async (context: SystemMigrationContext) => {
     context.logger.warn(`Instance config env re-home required: ${warning}`);
   }
 
-  // 旧值不满足当前 Schema 收紧校验的项已被剔除，提示部署者按需重新配置
+  // 旧值不满足保存规则时保留原值，提示部署者在管理页修复。
   for (const warning of inspection.schemaSanitizedWarnings) {
-    context.logger.warn(`Instance config sanitized during migration: ${warning}`);
+    context.logger.warn(`Instance config validation warning: ${warning}`);
   }
 
   await context.reportProgress({
@@ -133,7 +123,6 @@ export const migrateSystemConfigs = async (context: SystemMigrationContext) => {
       })
     : { migratedCount: 0, backfilledDomains: [], backfilledPaths: [], backfillSkippedPaths: [] };
   const skippedSummary = buildSkippedConfigSummary({
-    schemaSanitizedIssues: inspection.schemaSanitizedIssues ?? [],
     backfillSkippedPaths: result.backfillSkippedPaths,
     envRehomedWarnings: inspection.envRehomedWarnings
   });
@@ -170,12 +159,12 @@ export const migrateSystemConfigs = async (context: SystemMigrationContext) => {
   });
 
   const backfills = [
-    // 先完成业务域初始化和废弃字段清理，再合并套餐与运营配置，避免遮蔽文件或严格校验失败。
+    // 先完成业务域初始化和废弃字段清理，再先导入代理连接，保证后续 subservice 校验完整通过。
     () => migrateLegacyConfigScopes(),
     backfillExternalFileCheck,
+    rehomeAgentSandboxProxy,
     rehomeSubserviceConnections,
     backfillModelDeprecationSms,
-    rehomeAgentSandboxProxy,
     rehomeSandboxOvercommit,
     rehomeFileDomain,
     rehomeHttpRuntimePolicies,

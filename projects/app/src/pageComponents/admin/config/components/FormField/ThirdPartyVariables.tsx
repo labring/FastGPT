@@ -1,3 +1,5 @@
+import { systemInstanceConfigDomainOverrideSchemaMap } from '@fastgpt/global/common/system/config/schema';
+import { getConfigFormErrors } from '@/web/common/system/configFormErrors';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { Box, Button, Flex, Input, Switch, Textarea } from '@chakra-ui/react';
 import type { ExternalProviderWorkflowVarType } from '@fastgpt/global/common/system/types';
@@ -192,9 +194,10 @@ const ThirdPartyVariableItemModal = ({
   onSubmit: (data: ExternalProviderWorkflowVarType) => void;
 }) => {
   const { t } = useSafeTranslation();
-  const { register, setValue, control, handleSubmit } = useForm({
+  const form = useForm({
     defaultValues: currentThirdPartyVariable
   });
+  const { register, setValue, control, handleSubmit } = form;
   const isOpen = useWatch({ control, name: 'isOpen' });
 
   return (
@@ -206,7 +209,22 @@ const ThirdPartyVariableItemModal = ({
           <Button onClick={onClose} variant={'whiteBase'}>
             {t('admin:cancel')}
           </Button>
-          <Button onClick={handleSubmit(onSubmit)}>{t('admin:ok')}</Button>
+          <Button
+            onClick={handleSubmit((data) => {
+              const result = systemInstanceConfigDomainOverrideSchemaMap.providers.safeParse({
+                externalProviderWorkflowVariables: [data]
+              });
+              if (!result.success) {
+                getConfigFormErrors({ error: result.error, values: form.getValues() }).forEach(
+                  ({ name, message }) => form.setError(name as never, { type: 'validate', message })
+                );
+                return;
+              }
+              onSubmit(data);
+            })}
+          >
+            {t('admin:ok')}
+          </Button>
         </>
       }
     >
@@ -214,14 +232,24 @@ const ThirdPartyVariableItemModal = ({
         <Box color={'myGray.900'} mb={2} fontWeight={'medium'} fontSize={'14px'}>
           {t('admin:variable_name')}
         </Box>
-        <Input {...register('name', { required: true })} bg={'myGray.50'} placeholder={'变量名'} />
+        <Input
+          isInvalid={Boolean(form.getFieldState('name', form.formState).error)}
+          {...register('name', { required: true })}
+          bg={'myGray.50'}
+          placeholder={'变量名'}
+        />
       </>
 
       <>
         <Box color={'myGray.900'} mt={6} mb={2} fontWeight={'medium'} fontSize={'14px'}>
           {t('admin:description_3')}
         </Box>
-        <Textarea {...register('intro')} bg={'myGray.50'} placeholder={'说明'} />
+        <Textarea
+          isInvalid={Boolean(form.getFieldState('intro', form.formState).error)}
+          {...register('intro')}
+          bg={'myGray.50'}
+          placeholder={'说明'}
+        />
       </>
 
       <Flex mt={6}>
@@ -239,7 +267,12 @@ const ThirdPartyVariableItemModal = ({
         <Box color={'myGray.900'} mt={6} mb={2} fontWeight={'medium'} fontSize={'14px'}>
           {t('admin:usage_query_url')}
         </Box>
-        <Input {...register('url')} bg={'myGray.50'} placeholder={'使用量查询地址'} />
+        <Input
+          isInvalid={Boolean(form.getFieldState('url', form.formState).error)}
+          {...register('url')}
+          bg={'myGray.50'}
+          placeholder={'使用量查询地址'}
+        />
       </>
     </MyModal>
   );

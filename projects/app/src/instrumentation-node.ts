@@ -1,4 +1,3 @@
-import { getSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/runtime';
 import { exit } from 'process';
 import {
   runBackgroundInitializationStep,
@@ -37,7 +36,6 @@ export async function registerNodeInstrumentation() {
       { configureRedisRuntime, registerRedisRuntimeShutdown },
       { serviceEnv },
       { InitialErrorEnum },
-      { validateAgentSandboxProxyConfig },
       { getReadableSystemResourceInfo },
       { startSystemMigrationRunner },
       { startBusinessAfterSystemMigrations },
@@ -66,7 +64,6 @@ export async function registerNodeInstrumentation() {
       import('@fastgpt/dal/redis/runtime'),
       import('@fastgpt/service/env'),
       import('@fastgpt/service/common/system/constants'),
-      import('@fastgpt/service/core/ai/sandbox/config'),
       import('@fastgpt/service/common/system/resource'),
       import('@/migration/runner'),
       import('@/migration/startup'),
@@ -286,9 +283,6 @@ export async function registerNodeInstrumentation() {
           step: 'reload-system-config-after-startup-migrations',
           action: async () => {
             await getInitConfig();
-            validateAgentSandboxProxyConfig(
-              getSystemInstanceConfig().subservice.agentSandbox.provider
-            );
             initS3Buckets();
           },
           logger,

@@ -28,9 +28,10 @@ const CustomDomainSettingComponent = () => {
   const { filterConfigData } = useAdminPermission();
   const { effectiveConfig, isSecretConfigured, isLoading, isUpdating, patchConfig } =
     useDomainConfig('site');
-  const { register, control, handleSubmit, reset } = useForm<CustomDomainForm>({
+  const form = useForm<CustomDomainForm>({
     defaultValues: effectiveConfig.customDomain
   });
+  const { register, control, handleSubmit, reset } = form;
   const enabled = useWatch({ control, name: 'enable' });
 
   useEffect(() => {
@@ -51,6 +52,7 @@ const CustomDomainSettingComponent = () => {
 
   return (
     <AdminSettingPage
+      form={form}
       headerTitle={t('admin:custom_domain')}
       tocItems={tocItems}
       isLoading={isLoading}
@@ -63,6 +65,7 @@ const CustomDomainSettingComponent = () => {
           control={control}
           render={({ field }) => (
             <AdminSwitchRow
+              name={field.name}
               label={t('admin:enable_custom_domain')}
               tooltip={t('admin:enable_custom_domain_tip')}
               isChecked={field.value}
@@ -76,13 +79,27 @@ const CustomDomainSettingComponent = () => {
           <AdminSettingSection key={key} id={key} title={label} showDivider>
             <SimpleGrid columns={[1, 1, 3]} spacing={5} mb={5}>
               <AdminFormItem label={t('admin:custom_domain_cname')}>
-                <Input {...register(`domain.${key}`)} placeholder="example.com" />
+                <Input
+                  isInvalid={Boolean(form.getFieldState(`domain.${key}`, form.formState).error)}
+                  {...register(`domain.${key}`)}
+                  placeholder="example.com"
+                />
               </AdminFormItem>
               <AdminFormItem label={t('admin:custom_domain_issuer_service_name')}>
-                <Input {...register(`issuerServiceName.${key}`)} />
+                <Input
+                  isInvalid={Boolean(
+                    form.getFieldState(`issuerServiceName.${key}`, form.formState).error
+                  )}
+                  {...register(`issuerServiceName.${key}`)}
+                />
               </AdminFormItem>
               <AdminFormItem label={t('admin:custom_domain_nginx_service_name')}>
-                <Input {...register(`nginxServiceName.${key}`)} />
+                <Input
+                  isInvalid={Boolean(
+                    form.getFieldState(`nginxServiceName.${key}`, form.formState).error
+                  )}
+                  {...register(`nginxServiceName.${key}`)}
+                />
               </AdminFormItem>
             </SimpleGrid>
             <AdminFormItem label={t('admin:custom_domain_kubeconfig')}>
@@ -91,6 +108,7 @@ const CustomDomainSettingComponent = () => {
                 control={control}
                 render={({ field }) => (
                   <AdminSecretInput
+                    isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
                     name={field.name}
                     value={field.value}
                     onChange={field.onChange}
