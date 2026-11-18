@@ -6,6 +6,7 @@ import {
 } from '@fastgpt/service/core/workflow/dispatch/child/runTool';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { NodeOutputKeyEnum, VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
+import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
 import { MCPClient } from '@fastgpt/service/core/app/mcp';
 import { getWorkflowResourceContext } from '@fastgpt/service/core/workflow/utils/context';
@@ -811,6 +812,45 @@ describe('dispatchRunTool runtime toolset auth', () => {
     const [, payload] = token.split('.');
     const tokenPayload = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
     expect(tokenPayload.usageId).toBe('usage-1');
+  });
+
+  it('strips null and non-string empty strings from optional system tool inputs while preserving raw nodeResponse', async () => {
+    getSystemToolDetailMock.mockResolvedValueOnce({
+      inputSchema: {
+        type: 'object',
+        properties: {
+          keyword: { type: 'string' },
+          limit: { type: 'number' },
+          offset: { type: 'number' },
+          note: { type: 'string' },
+          nullableMeta: { anyOf: [{ type: 'object' }, { type: 'null' }] }
+        },
+        required: ['keyword']
+      }
+    });
+
+    const rawParams = {
+      keyword: 'fastgpt',
+      limit: null,
+      offset: '',
+      note: '',
+      nullableMeta: null
+    };
+    const result = await dispatchRunTool(
+      createRunToolProps({ systemTool: { toolId: 'search' } }, rawParams)
+    );
+
+    expect(result.error).toBeUndefined();
+    expect(runToolStreamMock).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({
+        input: {
+          keyword: 'fastgpt',
+          note: '',
+          nullableMeta: null
+        }
+      })
+    );
+    expect(result[DispatchNodeResponseKeyEnum.nodeResponse]?.toolInput).toEqual(rawParams);
   });
 });
 

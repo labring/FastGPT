@@ -18,6 +18,7 @@ import type { McpToolDataType } from '@fastgpt/global/core/app/tool/mcpTool/type
 import { getMCPToolErrorText } from '@fastgpt/global/core/app/tool/mcpTool/utils';
 import type { HttpToolConfigType } from '@fastgpt/global/core/app/tool/httpTool/type';
 import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
+import { stripUnsetOptionalToolInputs } from '@fastgpt/global/core/app/tool/systemTool/utils';
 import type { StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 import type { ReferenceValueType } from '@fastgpt/global/core/workflow/type/io';
 import { pushTrack } from '../../../../common/middle/tracks/utils';
@@ -273,6 +274,10 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
       toolInput = Object.fromEntries(
         Object.entries(params).filter(([key]) => key !== NodeInputKeyEnum.systemInputConfig)
       );
+      const pluginInput = stripUnsetOptionalToolInputs({
+        input: toolInput,
+        inputSchema: toolDetail?.inputSchema
+      });
       const invokeToken = appId
         ? new InvokeProcessor({
             appId,
@@ -293,7 +298,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
         pluginId: formatToolId,
         version: tool.version ?? version ?? '',
         source: runtimeToolSource,
-        input: toolInput,
+        input: pluginInput,
         secrets: inputConfigParams,
         ...(childId ? { childId } : {}),
         systemVar: {

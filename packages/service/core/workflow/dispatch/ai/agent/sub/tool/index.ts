@@ -3,6 +3,7 @@ import type { ReferenceValueType } from '@fastgpt/global/core/workflow/type/io';
 import { getReferenceVariableValue } from '@fastgpt/global/core/workflow/runtime/utils';
 import { jsonSchema2SecretInput } from '@fastgpt/global/core/app/jsonschema';
 import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
+import { stripUnsetOptionalToolInputs } from '@fastgpt/global/core/app/tool/systemTool/utils';
 import type { DispatchSubAppResponse } from '../../type';
 import {
   getToolNameCandidates,
@@ -214,7 +215,10 @@ export const dispatchTool = async ({
         ...(childId ? { childId } : {}),
         version: tool.version ?? version ?? '',
         source: runtimeToolSource,
-        input: Object.fromEntries(Object.entries(params)),
+        input: stripUnsetOptionalToolInputs({
+          input: Object.fromEntries(Object.entries(params)),
+          inputSchema: toolDetail?.inputSchema
+        }),
         secrets: inputConfigParams,
         systemVar: {
           app: {
