@@ -318,6 +318,7 @@ describe('s3 short access link api', () => {
       global.s3BucketMap = {
         'fastgpt-private': {
           resolveExistingObjectKey: vi.fn().mockResolvedValue('dataset/team/page one.md'),
+          getFileMetadata: vi.fn().mockResolvedValue({ contentType: 'text/markdown' }),
           externalClient: {
             generatePresignedGetUrl
           }
