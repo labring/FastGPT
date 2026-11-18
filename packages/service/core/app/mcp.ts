@@ -25,7 +25,7 @@ import { getLogger, LogCategories } from '../../common/logger';
 import { AsyncLocalStorage } from 'async_hooks';
 import dns from 'dns/promises';
 import { isIP, type LookupFunction, type Socket } from 'net';
-import { Agent, Pool, buildConnector, fetch as undiciFetch, type Dispatcher } from 'undici';
+import { Agent, Pool, buildConnector, errors, fetch as undiciFetch, type Dispatcher } from 'undici';
 import { getProxyForUrl } from 'proxy-from-env';
 import {
   isInternalAddress,
@@ -65,6 +65,7 @@ const MCP_NETWORK_ERROR_CODES = new Set([
   'CERT_HAS_EXPIRED',
   'DEPTH_ZERO_SELF_SIGNED_CERT',
   'ERR_TLS_CERT_ALTNAME_INVALID',
+  'UND_ERR_PRX_TLS',
   'MCP_PROXY_TUNNEL_ERROR'
 ]);
 
@@ -331,15 +332,16 @@ export const createMcpSafeFetch = ({
       proxyHeaders['proxy-authorization'] = `Basic ${Buffer.from(credentials).toString('base64')}`;
     }
 
-    let proxyPool = proxyPools.get(parsedProxyUrl.origin);
-    if (!proxyPool) {
-      proxyPool = new Pool(parsedProxyUrl.origin, {
+    const activeProxyPool = (() => {
+      const existingPool = proxyPools.get(parsedProxyUrl.origin);
+      if (existingPool) return existingPool;
+
+      const newPool = new Pool(parsedProxyUrl.origin, {
         connectTimeout: MCP_PROXY_CONNECT_TIMEOUT
       });
-      proxyPools.set(parsedProxyUrl.origin, proxyPool);
-    }
-
-    const activeProxyPool = proxyPool;
+      proxyPools.set(parsedProxyUrl.origin, newPool);
+      return newPool;
+    })();
 
     return new Agent({
       connect: (connectOpts, callback) => {
@@ -361,22 +363,38 @@ export const createMcpSafeFetch = ({
             const resolved = await resolveMcpConnectAddress(connectOpts.hostname);
             tunnelSignal.throwIfAborted();
 
-            const targetPort =
-              connectOpts.port || (connectOpts.protocol === 'https:' ? '443' : '80');
+            const targetPort = connectOpts.port
+              ? String(connectOpts.port)
+              : connectOpts.protocol === 'https:'
+                ? '443'
+                : '80';
             const connectAuthority =
               resolved.family === 6
                 ? `[${resolved.address}]:${targetPort}`
                 : `${resolved.address}:${targetPort}`;
 
-            const { socket, statusCode } = await activeProxyPool.connect({
-              path: connectAuthority,
-              headers: {
-                ...proxyHeaders,
-                host: connectAuthority,
-                'proxy-connection': 'keep-alive'
-              },
-              signal: tunnelSignal
-            });
+            const { socket, statusCode } = await activeProxyPool
+              .connect({
+                path: connectAuthority,
+                headers: {
+                  ...proxyHeaders,
+                  host: connectAuthority,
+                  'proxy-connection': 'keep-alive'
+                },
+                signal: tunnelSignal
+              })
+              .catch((proxyConnectError: unknown) => {
+                // undici Client#handleConnectError 对 ERR_TLS_CERT_ALTNAME_INVALID 按目标 servername 匹配队列；
+                // 对 http:// 目标走 https:// 代理时两者不等会导致死循环重试，按 ProxyAgent 同款包装为 SecureProxyConnectionError。
+                if (
+                  proxyConnectError instanceof Error &&
+                  'code' in proxyConnectError &&
+                  proxyConnectError.code === 'ERR_TLS_CERT_ALTNAME_INVALID'
+                ) {
+                  throw new errors.SecureProxyConnectionError(proxyConnectError);
+                }
+                throw proxyConnectError;
+              });
 
             if (statusCode !== 200) {
               socket.on('error', () => {}).destroy();
@@ -387,11 +405,6 @@ export const createMcpSafeFetch = ({
                 ),
                 null
               );
-              return;
-            }
-
-            if (connectOpts.protocol !== 'https:') {
-              callback(null, socket as Socket);
               return;
             }
 
@@ -406,6 +419,11 @@ export const createMcpSafeFetch = ({
               return;
             }
 
+            if (connectOpts.protocol !== 'https:') {
+              callback(null, socket as Socket);
+              return;
+            }
+
             const onTunnelAbort = () => {
               socket.on('error', () => {}).destroy();
             };
@@ -413,8 +431,11 @@ export const createMcpSafeFetch = ({
 
             // IP 字面量不写入 SNI（RFC 6066），域名则保留原 servername 完成虚拟主机与证书校验。
             const rawHostname = connectOpts.hostname.replace(/^\[|\]$/g, '');
-            const servername =
-              connectOpts.servername || (isIP(rawHostname) ? undefined : rawHostname);
+            const servername = connectOpts.servername
+              ? connectOpts.servername
+              : isIP(rawHostname)
+                ? undefined
+                : rawHostname;
             endpointConnector(
               {
                 ...connectOpts,
