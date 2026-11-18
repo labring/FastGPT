@@ -211,7 +211,9 @@ const processSqlFullTextRecord = async ({
           throw new SqlFullTextMigrationRecordError('Dataset embedding model is unavailable');
         }
       })();
-      await checkTeamAIPoints(String(snapshot.teamId));
+      // PG 缺行补建属于升级修复，免团队积分检查和用量扣费。
+      const shouldBillRepair = adapter.provider !== 'pg';
+      if (shouldBillRepair) await checkTeamAIPoints(String(snapshot.teamId));
       await assertActive();
       const operation = new DatasetDataIndexOperation(model);
       const missing = new Set(invalidActiveIds);
@@ -302,12 +304,14 @@ const processSqlFullTextRecord = async ({
         })().catch(() => {});
         throw error;
       }
-      pushGenerateVectorUsage({
-        teamId: String(snapshot.teamId),
-        tmbId: String(snapshot.tmbId),
-        inputTokens: result.tokens,
-        model
-      });
+      if (shouldBillRepair) {
+        pushGenerateVectorUsage({
+          teamId: String(snapshot.teamId),
+          tmbId: String(snapshot.tmbId),
+          inputTokens: result.tokens,
+          model
+        });
+      }
     }
   });
 

@@ -251,13 +251,9 @@ export const serviceEnv = createEnv({
     MILVUS_ADDRESS: z.string().optional().meta({ description: 'Milvus 向量库连接参数' }),
     MILVUS_TOKEN: z.string().optional().meta({ description: 'Milvus 向量库Token' }),
     // ==================== 全文检索 ====================
-    DATASET_FULLTEXT_PROVIDER: z.enum(['mongo', 'native']).optional().meta({
+    TMP_MIGRATE_FULL_TEXT: BoolSchema.default(false).meta({
       description:
-        '全文读取方式，仅支持 mongo 或 native；native 自动使用当前向量库。SQL 部署默认 mongo，Milvus 默认 native，SQL 原生读取还需迁移验收通过'
-    }),
-    DATASET_FULLTEXT_DUAL_WRITE: BoolSchema.default(true).meta({
-      description:
-        'SQL 原生全文读取时是否继续维护 Mongo 全文，默认 true 以支持回退；读 mongo 时始终维护 Mongo，SQL 词串始终随向量写入。关闭后回退前需重建 Mongo 全文'
+        'SQL 全文迁移临时兼容开关。开启后读 Mongo 全文并持续双写，即使迁移成功也继续兼容。确认迁移成功后移除并重启以启用 SQL 全文'
     }),
     MILVUS_LANGUAGE_IDENTIFIER: z.enum(['lingua', 'whatlang']).default('lingua').meta({
       description: 'Milvus 语言识别引擎(BM25 analyzer): lingua(默认) | whatlang'

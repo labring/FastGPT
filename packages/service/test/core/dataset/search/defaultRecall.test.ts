@@ -114,8 +114,10 @@ vi.mock('@fastgpt/service/core/dataset/data/schema', () => ({
 }));
 
 vi.mock('@fastgpt/service/core/dataset/fullText/sql/store', () => ({
-  searchSqlFullText: mockSearchSqlFullText,
-  isSqlFullTextTargetReady: vi.fn(async () => true)
+  searchSqlFullText: mockSearchSqlFullText
+}));
+vi.mock('@fastgpt/service/core/dataset/fullText/sql/readiness', () => ({
+  isSqlFullTextTargetReady: () => true
 }));
 
 // 覆盖 test/mocks/common/vector.ts 的全局 constants mock(其缺 getVectorType 导出)。

@@ -7,6 +7,7 @@ import {
   DatasetDataIndexTypeEnum
 } from '@fastgpt/global/core/dataset/data/constants';
 import type { SqlFullTextRow } from '@fastgpt/service/common/vectorDB/fullText/type';
+import type { SqlFullTextProvider } from '@fastgpt/global/core/dataset/fullText/schema';
 import { migrateSqlFullTextRecord } from '@/migration/tasks/4180/20261110_migrate_sql_fulltext/service';
 import { mockVectorInsert, mockVectorDelete } from '@test/mocks/common/vector';
 import { mockGetVectors, createMockVectorsResponse } from '@test/mocks/core/ai/embedding';
@@ -15,6 +16,7 @@ import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 // 实际执行 Mongo 事务和索引生成编排，只隔离模型请求、物理 SQL 及用量上报。
 vi.unmock('@fastgpt/service/common/mongo/sessionRun');
 const state = vi.hoisted(() => ({
+  provider: 'pg' as SqlFullTextProvider,
   rows: new Map<string, SqlFullTextRow>(),
   fill: vi.fn(),
   missing: vi.fn(),
@@ -25,7 +27,11 @@ const state = vi.hoisted(() => ({
   matcher: vi.fn()
 }));
 vi.mock('@fastgpt/service/common/vectorDB/fullText/controller', () => ({
-  getSqlFullTextAdapter: () => ({ fill: state.fill, findMissingVectorIds: state.missing })
+  getSqlFullTextAdapter: () => ({
+    provider: state.provider,
+    fill: state.fill,
+    findMissingVectorIds: state.missing
+  })
 }));
 vi.mock('@fastgpt/service/core/ai/model/catalog/service', () => ({
   getTeamModelHandle: async () => ({ getModelData: state.model })
@@ -71,6 +77,7 @@ const seed = async () => {
 };
 
 beforeEach(() => {
+  state.provider = 'pg';
   state.rows.clear();
   state.fill
     .mockReset()
@@ -122,8 +129,9 @@ beforeEach(() => {
 });
 
 describe('SQL full-text missing vector repair', () => {
-  it('generates only missing vectors with full text, swaps references and does not repeat work on retry', async () => {
+  it('repairs only missing PG rows, without checking or charging points, and skips repaired rows on retry', async () => {
     const { data, id } = await seed();
+    state.points.mockRejectedValue(new Error('insufficient points'));
     expect(await migrateSqlFullTextRecord(id)).toBe(2);
     const current = (await MongoDatasetData.findById(id).lean())!;
     expect(current.indexes.map((index) => index.dataId)).toEqual(['100', '2']);
@@ -136,18 +144,12 @@ describe('SQL full-text missing vector repair', () => {
       })
     );
     expect(state.rows.get('100')?.text).toBe('缺失的索引');
-    expect(state.usage).toHaveBeenCalledOnce();
-    expect(state.usage).toHaveBeenCalledWith(
-      expect.objectContaining({
-        teamId: String(data.teamId),
-        tmbId: String(data.tmbId),
-        inputTokens: expect.any(Number)
-      })
-    );
     expect(await migrateSqlFullTextRecord(id)).toBe(2);
     expect(await migrateSqlFullTextRecord(id, { validateOnly: true })).toBe(2);
+    expect(mockGetVectors).toHaveBeenCalledOnce();
     expect(mockVectorInsert).toHaveBeenCalledOnce();
-    expect(state.usage).toHaveBeenCalledOnce();
+    expect(state.points).not.toHaveBeenCalled();
+    expect(state.usage).not.toHaveBeenCalled();
   });
 
   it('uses the recorded historical synonym input for both vector and full text', async () => {
@@ -276,13 +278,27 @@ describe('SQL full-text missing vector repair', () => {
     }
   );
 
-  it('stops before generating vectors when the team has insufficient points', async () => {
-    const { id } = await seed();
-    state.points.mockRejectedValueOnce(new Error('insufficient points'));
-    await expect(migrateSqlFullTextRecord(id)).rejects.toThrow('insufficient points');
-    expect(mockGetVectors).not.toHaveBeenCalled();
-    expect(state.usage).not.toHaveBeenCalled();
-  });
+  it.each(['oceanbase', 'seekdb', 'opengauss'] as const)(
+    'retains balance checks and billing for %s repairs',
+    async (provider) => {
+      state.provider = provider;
+      const { data, id } = await seed();
+      state.points.mockRejectedValueOnce(new Error('insufficient points'));
+      await expect(migrateSqlFullTextRecord(id)).rejects.toThrow('insufficient points');
+      expect(mockGetVectors).not.toHaveBeenCalled();
+      expect(state.usage).not.toHaveBeenCalled();
+
+      expect(await migrateSqlFullTextRecord(id)).toBe(2);
+      expect(state.points).toHaveBeenCalledWith(String(data.teamId));
+      expect(state.usage).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({
+          teamId: String(data.teamId),
+          tmbId: String(data.tmbId),
+          inputTokens: expect.any(Number)
+        })
+      );
+    }
+  );
 
   it('keeps old references when the embedding request fails', async () => {
     const { id } = await seed();

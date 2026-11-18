@@ -26,6 +26,7 @@ vi.mock('@fastgpt/service/common/vectorDB/pg/controller', () => ({
 }));
 const identity = {
   targetId: randomUUID(),
+  schemaVersion: 1,
   analyzerVersion: 'fastgpt-jieba-search-v1'
 };
 const definition =
@@ -65,6 +66,7 @@ describe('PG full-text contracts', () => {
     expect(await getPgFullTextMetadata()).toEqual(identity);
     for (const stale of [
       { ...identity, targetId: 'invalid-uuid' },
+      { ...identity, schemaVersion: 2 },
       { ...identity, analyzerVersion: 'future-rule' }
     ]) {
       vi.mocked(PgClient.query).mockResolvedValueOnce({ rows: [stale] } as never);
@@ -106,7 +108,10 @@ describe('PG full-text contracts', () => {
     expect(createIndex).toContain('modeldata_fulltext');
     expect(createIndex).toContain('fulltext_tokens::pdb.whitespace');
     expect(createIndex).not.toContain('key_field');
-    expect(statements.some((sql) => sql.includes('VALUES (true, $1, $2)'))).toBe(true);
+    expect(client.query).toHaveBeenCalledWith(
+      expect.stringContaining('VALUES (true, $1, $2, $3)'),
+      [expect.any(String), 1, SQL_FULL_TEXT_ANALYZER_VERSION]
+    );
     expect(statements).toContain('COMMIT');
     expect(statements.some((sql) => /DROP|DELETE|TRUNCATE/.test(sql))).toBe(false);
     expect(client.release).toHaveBeenCalledOnce();

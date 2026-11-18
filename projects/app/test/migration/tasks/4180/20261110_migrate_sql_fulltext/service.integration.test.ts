@@ -42,7 +42,9 @@ import {
 } from '@fastgpt/service/common/vectorDB/pg/fullText';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDatasetDataText } from '@fastgpt/service/core/dataset/data/dataTextSchema';
-import { getFullTextStore } from '@fastgpt/service/core/dataset/data/textStore';
+import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
+import { getFullTextStore, MongoFullTextStore } from '@fastgpt/service/core/dataset/data/textStore';
+import { refreshSqlFullTextTargetReady } from '@fastgpt/service/core/dataset/fullText/sql/readiness';
 import { searchSqlFullText } from '@fastgpt/service/core/dataset/fullText/sql/store';
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
 import type { SystemMigrationContext } from '@/migration/registry';
@@ -64,6 +66,8 @@ import { migrateSqlFullTextRecord } from '@/migration/tasks/4180/20261110_migrat
 import { DatasetDataOperation } from '@/service/core/dataset/data/data';
 import type { EmbeddingModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import { mockGetVectors } from '@test/mocks/core/ai/embedding';
+import * as teamLimit from '@fastgpt/service/support/permission/teamLimit';
+import * as vectorUsage from '@/service/support/wallet/usage/push';
 
 // 本用例验证显式选择原生读取后的业务行为；默认 Mongo 与手动回退由 textStore 用例覆盖。
 vi.mock('@fastgpt/service/common/vectorDB/fullText/config', () => ({
@@ -245,6 +249,7 @@ describe.skipIf(!target)('PG full-text real migration', () => {
           validated: 4
         }
       });
+      expect(await refreshSqlFullTextTargetReady()).toBe(true);
       for (const fixture of fixtures) {
         expect((await getFullTextStore().search(props(fixture.query)))[0]?.dataId).toBe(fixture.id);
       }
@@ -256,7 +261,7 @@ describe.skipIf(!target)('PG full-text real migration', () => {
     }
   });
 
-  it('fails the real Runner on a missing vector while backfilling healthy rows and blocking readiness until repaired', async () => {
+  it('retries a blocked PG repair with the dataset model, recreates the row and consumes no points', async () => {
     const fixture = await seed('缺失向量 missingvectorproof');
     await pool.query('DELETE FROM modeldata WHERE id=$1', [fixture.insertIds[0]]);
     const healthy = await seed('正常向量 healthyvectorproof');
@@ -264,6 +269,11 @@ describe.skipIf(!target)('PG full-text real migration', () => {
     const oldText = await MongoDatasetDataText.find().sort({ _id: 1 }).lean();
     const migrations = systemMigrations.filter((m) => m.id === '20261110_migrate_sql_fulltext');
     const runner = createSystemMigrationRunner({ migrations });
+    const points = vi
+      .spyOn(teamLimit, 'checkTeamAIPoints')
+      .mockRejectedValue(new Error('no points'));
+    const usage = vi.spyOn(vectorUsage, 'pushGenerateVectorUsage').mockImplementation(() => {});
+    mockGetVectors.mockClear();
     try {
       await ensureMigrationStates(migrations);
       await enqueueManualMigration('20261110_migrate_sql_fulltext');
@@ -285,11 +295,14 @@ describe.skipIf(!target)('PG full-text real migration', () => {
       ).toBe(await toSqlFullTextTokens('正常向量 healthyvectorproof'));
       expect((await snapshot()).map((row) => row.id)).toEqual(healthy.insertIds);
 
-      // 模拟管理员修复缺失向量后从保留断点重试。
-      await pool.query(
-        'INSERT INTO modeldata(id,vector,team_id,dataset_id,collection_id) VALUES($1,$2,$3,$4,$5)',
-        [fixture.insertIds[0], `[${vector.join(',')}]`, teamId, datasetId, collectionId]
-      );
+      // 恢复知识库模型配置后重试，必须由迁移自身调用模型并补齐整行。
+      await MongoDataset.create({
+        _id: datasetId,
+        teamId,
+        tmbId: new Types.ObjectId(),
+        name: 'Migration PG vector repair',
+        vectorModel: 'text-embedding-ada-002'
+      });
       expect(await resetFailedMigration('20261110_migrate_sql_fulltext')).toBe(true);
       await runner.tick();
       expect(
@@ -299,16 +312,35 @@ describe.skipIf(!target)('PG full-text real migration', () => {
         result: { scanned: 2, validated: 2 }
       });
       expect(await getMigrationFailedRecords('20261110_migrate_sql_fulltext')).toEqual([]);
+      const repaired = (await MongoDatasetData.findById(fixture.id).lean())!;
+      const repairedId = repaired.indexes[0].dataId;
+      expect(repairedId).not.toBe(fixture.insertIds[0]);
+      expect(repaired.q).toBe('缺失向量 missingvectorproof');
       expect(
         (
-          await pool.query('SELECT fulltext_tokens AS text FROM modeldata WHERE id=$1', [
-            fixture.insertIds[0]
-          ])
-        ).rows[0].text
-      ).toBe(await toSqlFullTextTokens('缺失向量 missingvectorproof'));
-      expect(await MongoDatasetData.find().sort({ _id: 1 }).lean()).toEqual(original);
+          await pool.query(
+            'SELECT fulltext_tokens AS text, vector_dims(vector) AS dims, team_id, dataset_id, collection_id FROM modeldata WHERE id=$1',
+            [repairedId]
+          )
+        ).rows
+      ).toEqual([
+        {
+          text: await toSqlFullTextTokens(repaired.q),
+          dims: 1536,
+          team_id: teamId,
+          dataset_id: datasetId,
+          collection_id: collectionId
+        }
+      ]);
+      expect((await snapshot()).map((row) => row.id)).toEqual([healthy.insertIds[0], repairedId]);
+      expect((await searchSqlFullText(props('missingvectorproof')))[0]?.dataId).toBe(fixture.id);
       expect(await MongoDatasetDataText.countDocuments()).toBe(2);
+      expect(mockGetVectors).toHaveBeenCalledOnce();
+      expect(points).not.toHaveBeenCalled();
+      expect(usage).not.toHaveBeenCalled();
     } finally {
+      points.mockRestore();
+      usage.mockRestore();
       runner.stop();
     }
   });
@@ -736,7 +768,7 @@ describe.skipIf(!target)('PG full-text real migration', () => {
     });
     expect(await MongoDatasetDataText.countDocuments()).toBe(1);
     expect((await searchSqlFullText(props('createproof')))[0]?.dataId).toBe(created.insertId);
-    expect((await getFullTextStore().search(props('createproof')))[0]?.dataId).toBe(
+    expect((await new MongoFullTextStore().search(props('createproof')))[0]?.dataId).toBe(
       created.insertId
     );
     const first = await MongoDatasetData.findById(created.insertId).lean();
@@ -782,6 +814,10 @@ describe.skipIf(!target)('PG full-text real migration', () => {
           [row.id, row.vector, row.team_id, row.dataset_id, row.collection_id, row.createtime]
         );
       }
+      // 手工恢复显式 ID 等价于还原备份数据，序列也需跟随快照，避免验收探测取到旧 ID。
+      await pool.query(
+        "SELECT setval(pg_get_serial_sequence('modeldata', 'id'), coalesce(max(id), 1), max(id) IS NOT NULL) FROM modeldata"
+      );
       const original = await snapshot();
       const originalDocs = await MongoDatasetData.find().sort({ _id: 1 }).lean();
       const state = createContext();

@@ -8,8 +8,7 @@ const mockSearchSqlFullText = vi.hoisted(() => vi.fn());
 const mockIsSqlFullTextTargetReady = vi.hoisted(() => vi.fn());
 const mockMilvusSearch = vi.hoisted(() => vi.fn());
 const fullTextConfig = vi.hoisted(() => ({
-  provider: undefined as 'mongo' | 'native' | undefined,
-  dualWrite: true
+  compatibility: true
 }));
 vi.mock('@fastgpt/service/env', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@fastgpt/service/env')>();
@@ -17,11 +16,8 @@ vi.mock('@fastgpt/service/env', async (importOriginal) => {
     ...actual,
     serviceEnv: {
       ...actual.serviceEnv,
-      get DATASET_FULLTEXT_PROVIDER() {
-        return fullTextConfig.provider;
-      },
-      get DATASET_FULLTEXT_DUAL_WRITE() {
-        return fullTextConfig.dualWrite;
+      get TMP_MIGRATE_FULL_TEXT() {
+        return fullTextConfig.compatibility;
       }
     }
   };
@@ -41,7 +37,9 @@ vi.mock('@fastgpt/service/common/string/jieba/index', () => ({
   jiebaSplit: mockJiebaSplit
 }));
 vi.mock('@fastgpt/service/core/dataset/fullText/sql/store', () => ({
-  searchSqlFullText: mockSearchSqlFullText,
+  searchSqlFullText: mockSearchSqlFullText
+}));
+vi.mock('@fastgpt/service/core/dataset/fullText/sql/readiness', () => ({
   isSqlFullTextTargetReady: mockIsSqlFullTextTargetReady
 }));
 vi.mock('@fastgpt/service/common/vectorDB/milvus/fullText', () => ({
@@ -70,8 +68,7 @@ const loadTextStore = async (provider: 'milvus' | 'pg' | 'oceanbase' | 'seekdb' 
 };
 
 beforeEach(() => {
-  fullTextConfig.provider = undefined;
-  fullTextConfig.dualWrite = true;
+  fullTextConfig.compatibility = true;
   mockAggregate
     .mockReset()
     .mockResolvedValue([{ dataId: '68ad85a7463006c963799a05', collectionId: 'col1', score: 1.5 }]);
@@ -83,7 +80,7 @@ beforeEach(() => {
   mockSearchSqlFullText
     .mockReset()
     .mockResolvedValue([{ dataId: '68ad85a7463006c963799a05', collectionId: 'col1', score: 2.5 }]);
-  mockIsSqlFullTextTargetReady.mockReset().mockResolvedValue(true);
+  mockIsSqlFullTextTargetReady.mockReset().mockReturnValue(true);
   mockMilvusSearch.mockReset().mockResolvedValue([]);
 });
 afterEach(() => {
@@ -109,7 +106,7 @@ describe('textStore', () => {
   });
 
   it.each(['pg', 'oceanbase', 'seekdb', 'opengauss'] as const)(
-    'TC-7.3 keeps %s on Mongo until explicitly selected and supports manual rollback',
+    'TC-7.3 keeps %s on Mongo until the compatibility flag is removed',
     async (provider) => {
       const { getFullTextStore, SqlFullTextStore } = await loadTextStore(provider);
       const store = getFullTextStore();
@@ -124,26 +121,17 @@ describe('textStore', () => {
         forbidCollectionIdList: []
       };
 
-      // 即使迁移已经完成，默认仍读 Mongo，管理员显式选择 provider 才允许切读。
+      // 验收已经就绪时，兼容开关仍优先选 Mongo，并跳过就绪状态读取。
       await store.search(props);
       expect(mockSearchSqlFullText).not.toHaveBeenCalled();
       expect(mockIsSqlFullTextTargetReady).not.toHaveBeenCalled();
       mockAggregate.mockClear();
-      fullTextConfig.provider = 'native';
-      mockIsSqlFullTextTargetReady.mockResolvedValueOnce(false);
-      const fallbackItems = await store.search(props);
+      fullTextConfig.compatibility = false;
+      mockIsSqlFullTextTargetReady.mockReturnValueOnce(false);
+      await expect(store.search(props)).rejects.toThrow('not ready');
       expect(mockSearchSqlFullText).not.toHaveBeenCalled();
-      expect(mockAggregate).toHaveBeenCalledOnce();
-      expect(fallbackItems).toEqual([
-        {
-          dataId: '68ad85a7463006c963799a05',
-          collectionId: 'col1',
-          score: 1.5
-        }
-      ]);
+      expect(mockAggregate).not.toHaveBeenCalled();
 
-      mockAggregate.mockClear();
-      mockIsSqlFullTextTargetReady.mockResolvedValueOnce(true);
       const nativeItems = await store.search(props);
       expect(mockSearchSqlFullText).toHaveBeenCalledExactlyOnceWith(props);
       expect(mockAggregate).not.toHaveBeenCalled();
@@ -155,7 +143,7 @@ describe('textStore', () => {
         }
       ]);
 
-      fullTextConfig.provider = 'mongo';
+      fullTextConfig.compatibility = true;
       mockAggregate.mockClear();
       mockSearchSqlFullText.mockClear();
       await store.search(props);
@@ -232,8 +220,7 @@ describe('textStore', () => {
 
   it('skips Mongo compatibility writes and deletes when native reads disable dual write', async () => {
     const { getFullTextStore } = await loadTextStore('pg');
-    fullTextConfig.provider = 'native';
-    fullTextConfig.dualWrite = false;
+    fullTextConfig.compatibility = false;
     const store = getFullTextStore();
     await store.write([
       { dataId: 'd', teamId: 't', datasetId: 'ds', collectionId: 'c', fullText: 'text' }
@@ -253,7 +240,7 @@ describe('textStore', () => {
       forbidCollectionIdList: []
     });
     expect(mockSearchSqlFullText).toHaveBeenCalledOnce();
-    mockIsSqlFullTextTargetReady.mockResolvedValueOnce(false);
+    mockIsSqlFullTextTargetReady.mockReturnValueOnce(false);
     await expect(
       store.search({
         teamId: 't',
@@ -262,22 +249,7 @@ describe('textStore', () => {
         limit: 10,
         forbidCollectionIdList: []
       })
-    ).rejects.toThrow('dual write is disabled');
+    ).rejects.toThrow('not ready');
     expect(mockAggregate).not.toHaveBeenCalled();
-  });
-
-  it('continues Mongo primary writes and deletes even when the compatibility switch is off', async () => {
-    const { getFullTextStore } = await loadTextStore('pg');
-    fullTextConfig.provider = 'mongo';
-    fullTextConfig.dualWrite = false;
-    const store = getFullTextStore();
-    await store.write([
-      { dataId: 'd', teamId: 't', datasetId: 'ds', collectionId: 'c', fullText: 'text' }
-    ]);
-    await store.deleteByDataId('d');
-    await store.deleteByDatasetIds({ teamId: 't', datasetIds: ['ds'] });
-    await store.deleteByCollectionIds({ teamId: 't', datasetIds: ['ds'], collectionIds: ['c'] });
-    expect(mockBulkWrite).toHaveBeenCalledOnce();
-    expect(mockDeleteMany).toHaveBeenCalledTimes(3);
   });
 });

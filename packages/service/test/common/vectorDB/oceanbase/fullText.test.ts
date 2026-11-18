@@ -15,7 +15,7 @@ vi.mock('@fastgpt/service/common/vectorDB/oceanbase/controller', () => ({
 describe.each(['oceanbase', 'seekdb'] as const)('%s native full text', (provider) => {
   let indexExists = false;
   const analyzer = 'fastgpt-jieba-search-v1';
-  const metadata = { targetId: randomUUID(), analyzerVersion: analyzer };
+  const metadata = { targetId: randomUUID(), schemaVersion: 1, analyzerVersion: analyzer };
   const version = provider === 'seekdb' ? 'OceanBase seekdb 1.0.1.0' : 'OceanBase_CE 4.3.5.1';
   const definition =
     'CREATE TABLE modeldata (fulltext_tokens longtext, FULLTEXT KEY `modeldata_fulltext` (`fulltext_tokens`) WITH PARSER space PARSER_PROPERTIES=(min_token_size=1))';
@@ -54,7 +54,7 @@ describe.each(['oceanbase', 'seekdb'] as const)('%s native full text', (provider
       )
     );
     expect(state.query).toHaveBeenCalledWith(
-      expect.stringContaining('VALUES(1,?,?)'),
+      expect.stringContaining('VALUES(1,?,?,?)'),
       expect.anything()
     );
     expect(
@@ -73,7 +73,9 @@ describe.each(['oceanbase', 'seekdb'] as const)('%s native full text', (provider
     await expect(adapter.prepare()).rejects.toThrow();
     expect(
       state.query.mock.calls.some(
-        ([sql]) => String(sql).startsWith('ALTER') || String(sql).startsWith('CREATE FULLTEXT')
+        ([sql]) =>
+          String(sql).startsWith('ALTER TABLE modeldata') ||
+          String(sql).startsWith('CREATE FULLTEXT')
       )
     ).toBe(false);
   });

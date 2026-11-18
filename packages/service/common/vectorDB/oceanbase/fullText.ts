@@ -1,4 +1,7 @@
-import { SQL_FULL_TEXT_ANALYZER_VERSION } from '@fastgpt/global/core/dataset/fullText/constants';
+import {
+  SQL_FULL_TEXT_ANALYZER_VERSION,
+  SQL_FULL_TEXT_SCHEMA_VERSION
+} from '@fastgpt/global/core/dataset/fullText/constants';
 import { randomUUID } from 'node:crypto';
 import type { RowDataPacket } from 'mysql2/promise';
 import {
@@ -59,7 +62,7 @@ export class OceanBaseFullTextAdapter implements SqlFullTextAdapter {
   /** 读取物理目标身份并核对共用的外置分词规则版本。 */
   getMetadata = async (): Promise<SqlFullTextMetadata> => {
     const [rows] = await this.client.query<RowDataPacket[]>(
-      `SELECT target_id AS targetId,analyzer_version AS analyzerVersion
+      `SELECT target_id AS targetId,schema_version AS schemaVersion,analyzer_version AS analyzerVersion
        FROM ${metadataTable} WHERE singleton=1`
     );
     return SqlFullTextMetadataSchema.parse(rows[0]);
@@ -124,8 +127,29 @@ export class OceanBaseFullTextAdapter implements SqlFullTextAdapter {
       [metadataTable]
     );
     if (existingMetaTables.length) {
+      const [versionColumns] = await this.client.query<RowDataPacket[]>(
+        `SELECT 1 FROM information_schema.columns
+         WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=? AND COLUMN_NAME='schema_version'`,
+        [metadataTable]
+      );
+      if (!versionColumns.length) {
+        try {
+          await this.client.query(
+            `ALTER TABLE ${metadataTable} ADD COLUMN schema_version INTEGER NOT NULL DEFAULT 1`
+          );
+        } catch (error) {
+          // 多节点并发准备时，其他节点已追加同一字段可以继续核验实际版本。
+          if (
+            typeof error !== 'object' ||
+            error === null ||
+            !('code' in error) ||
+            error.code !== 'ER_DUP_FIELDNAME'
+          )
+            throw error;
+        }
+      }
       const [existingMetaRows] = await this.client.query<RowDataPacket[]>(
-        `SELECT target_id AS targetId,analyzer_version AS analyzerVersion
+        `SELECT target_id AS targetId,schema_version AS schemaVersion,analyzer_version AS analyzerVersion
          FROM ${metadataTable} WHERE singleton=1`
       );
       if (existingMetaRows[0]) {
@@ -161,11 +185,11 @@ export class OceanBaseFullTextAdapter implements SqlFullTextAdapter {
     await this.assertCapability();
     await this.client.query(`CREATE TABLE IF NOT EXISTS ${metadataTable} (
       singleton TINYINT PRIMARY KEY,target_id VARCHAR(36) NOT NULL,
-      analyzer_version VARCHAR(96) NOT NULL)`);
+      schema_version INTEGER NOT NULL, analyzer_version VARCHAR(96) NOT NULL)`);
     await this.client.query(
-      `INSERT INTO ${metadataTable} (singleton, target_id, analyzer_version) VALUES(1,?,?)
+      `INSERT INTO ${metadataTable} (singleton, target_id, schema_version, analyzer_version) VALUES(1,?,?,?)
       ON DUPLICATE KEY UPDATE singleton=singleton`,
-      [randomUUID(), SQL_FULL_TEXT_ANALYZER_VERSION]
+      [randomUUID(), SQL_FULL_TEXT_SCHEMA_VERSION, SQL_FULL_TEXT_ANALYZER_VERSION]
     );
     return this.getMetadata();
   };

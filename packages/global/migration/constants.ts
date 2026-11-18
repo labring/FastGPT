@@ -21,3 +21,4 @@ export const systemMigrationLimits = {
   /** 单个 checkpoint 经 JSON 序列化后的最大 UTF-8 字节数。 */
   maxCheckpointBytes: 64 * 1024
 } as const;
+export const SystemMigrationCollectionName = 'system_migration_states';

@@ -9,7 +9,9 @@ import type {
   FullTextWriteProps
 } from '../../../common/vectorDB/type';
 import { getMilvusFullTextStore } from '../../../common/vectorDB/milvus/fullText';
-import { isSqlFullTextTargetReady, searchSqlFullText } from '../fullText/sql/store';
+import { UserError } from '@fastgpt/global/common/error/utils';
+import { searchSqlFullText } from '../fullText/sql/store';
+import { isSqlFullTextTargetReady } from '../fullText/sql/readiness';
 import { MongoDatasetDataText } from './dataTextSchema';
 import {
   getFullTextProvider,
@@ -146,25 +148,21 @@ export class MongoFullTextStore implements FullTextStore {
 }
 
 /**
- * SQL 向量库（PG / OceanBase / SeekDB / openGauss）平滑切换全文实现。
- * 默认读 Mongo；管理员选择 native 后自动使用当前 SQL provider，且目标通过验收时才读原生全文。
- * 双写开启时允许就绪失效后回退 Mongo；关闭双写后不能回退到已停止追平的旧全文。
+ * SQL 向量库的兼容模式固定读写旧 Mongo 全文，原生模式仅在已验收目标就绪后读 SQL。
  */
 export class SqlFullTextStore extends MongoFullTextStore {
   override async search(props: FullTextSearchProps): Promise<FullTextSearchItem[]> {
     if (getFullTextProvider() === 'mongo') return super.search(props);
-    if (await isSqlFullTextTargetReady()) {
-      return searchSqlFullText(props);
-    }
-    if (!shouldWriteMongoFullText()) {
-      throw new Error(
-        'SQL full-text target is not ready and Mongo full-text dual write is disabled'
+    if (props.limit <= 0 || !props.query.trim() || !props.datasetIds.length) return [];
+    if (!isSqlFullTextTargetReady()) {
+      throw new UserError(
+        'SQL full-text search is not ready. Complete the SQL full-text migration.'
       );
     }
-    return super.search(props);
+    return searchSqlFullText(props);
   }
 
-  /** Mongo 主读始终写入；原生读可关闭兼容写入，向量通道的同行词串写入不受影响。 */
+  /** 兼容模式维护旧 Mongo 全文，SQL 词串始终由向量写入通道同行保存。 */
   override async write(props: FullTextWriteProps[], session?: ClientSession): Promise<void> {
     if (shouldWriteMongoFullText()) await super.write(props, session);
   }
@@ -191,10 +189,9 @@ export class SqlFullTextStore extends MongoFullTextStore {
 
 let fullTextStore: FullTextStore | undefined;
 
-/** 先核验显式读取 provider 与向量库匹配，再按物理存储分发单例；SQL 内部处理手动读路由。 */
+/** 按物理存储分发单例，SQL Store 统一处理兼容模式和迁移就绪状态。 */
 export const getFullTextStore = (): FullTextStore => {
   if (fullTextStore) return fullTextStore;
-  getFullTextProvider();
   fullTextStore = getVectorType() === 'milvus' ? getMilvusFullTextStore() : new SqlFullTextStore();
   return fullTextStore;
 };

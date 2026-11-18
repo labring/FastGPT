@@ -1,4 +1,7 @@
-import { SQL_FULL_TEXT_ANALYZER_VERSION } from '@fastgpt/global/core/dataset/fullText/constants';
+import {
+  SQL_FULL_TEXT_ANALYZER_VERSION,
+  SQL_FULL_TEXT_SCHEMA_VERSION
+} from '@fastgpt/global/core/dataset/fullText/constants';
 import { randomUUID } from 'node:crypto';
 import {
   SqlFullTextMetadataSchema,
@@ -31,7 +34,8 @@ export const assertOpenGaussFullTextVersion = (version: string) => {
 /** 读取该物理库持久化的目标身份，同时检查分词配置版本。 */
 export const getOpenGaussFullTextMetadata = async (): Promise<SqlFullTextMetadata> => {
   const { rows } = await OgClient.query(
-    `SELECT target_id AS "targetId", analyzer_version AS "analyzerVersion" FROM ${metadataTable} WHERE singleton = true`
+    `SELECT target_id AS "targetId", schema_version AS "schemaVersion",
+      analyzer_version AS "analyzerVersion" FROM ${metadataTable} WHERE singleton = true`
   );
   return SqlFullTextMetadataSchema.parse(rows[0]);
 };
@@ -93,8 +97,19 @@ export const prepareOpenGaussFullText = async () => {
       [metadataTable]
     );
     if (existingMetaTable.rows.length) {
+      const versionColumn = await client.query(
+        `SELECT 1 FROM information_schema.columns
+         WHERE table_schema=current_schema() AND table_name=$1 AND column_name='schema_version'`,
+        [metadataTable]
+      );
+      if (!versionColumn.rows.length) {
+        await client.query(
+          `ALTER TABLE ${metadataTable} ADD COLUMN schema_version INTEGER NOT NULL DEFAULT 1`
+        );
+      }
       const existingMeta = await client.query(
-        `SELECT target_id AS "targetId",     analyzer_version AS "analyzerVersion" FROM ${metadataTable} WHERE singleton = true`
+        `SELECT target_id AS "targetId", schema_version AS "schemaVersion",
+          analyzer_version AS "analyzerVersion" FROM ${metadataTable} WHERE singleton = true`
       );
       if (existingMeta.rows[0]) {
         SqlFullTextMetadataSchema.parse(existingMeta.rows[0]);
@@ -121,11 +136,11 @@ export const prepareOpenGaussFullText = async () => {
       );
     await client.query(`CREATE TABLE IF NOT EXISTS ${metadataTable} (
       singleton BOOLEAN PRIMARY KEY CHECK(singleton), target_id UUID NOT NULL,
-      analyzer_version TEXT NOT NULL)`);
+      schema_version INTEGER NOT NULL, analyzer_version TEXT NOT NULL)`);
     await client.query(
-      `INSERT INTO ${metadataTable} (singleton, target_id, analyzer_version)
-      SELECT true,$1::uuid,$2::text WHERE NOT EXISTS (SELECT 1 FROM ${metadataTable} WHERE singleton=true)`,
-      [randomUUID(), SQL_FULL_TEXT_ANALYZER_VERSION]
+      `INSERT INTO ${metadataTable} (singleton, target_id, schema_version, analyzer_version)
+      SELECT true,$1::uuid,$2::integer,$3::text WHERE NOT EXISTS (SELECT 1 FROM ${metadataTable} WHERE singleton=true)`,
+      [randomUUID(), SQL_FULL_TEXT_SCHEMA_VERSION, SQL_FULL_TEXT_ANALYZER_VERSION]
     );
     await client.query('COMMIT');
   } catch (error) {

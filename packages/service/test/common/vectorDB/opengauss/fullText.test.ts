@@ -19,6 +19,7 @@ vi.mock('@fastgpt/service/common/vectorDB/opengauss/controller', () => ({
 }));
 const metadata = {
   targetId: randomUUID(),
+  schemaVersion: 1,
   analyzerVersion: 'fastgpt-jieba-search-v1'
 };
 const result = (rows: Record<string, unknown>[]) => ({
@@ -73,7 +74,9 @@ describe('OpenGauss native BM25', () => {
     expect(statements).toContain(
       'CREATE INDEX modeldata_fulltext ON modeldata USING bm25(fulltext_tokens)'
     );
-    expect(statements.some((sql) => sql.includes('SELECT true,$1::uuid,$2::text'))).toBe(true);
+    expect(
+      statements.some((sql) => sql.includes('SELECT true,$1::uuid,$2::integer,$3::text'))
+    ).toBe(true);
     expect(statements.some((sql) => /DROP|DELETE|TRUNCATE|SET vector/i.test(sql))).toBe(false);
     expect(statements).toContain('COMMIT');
     expect(client.release).toHaveBeenCalledOnce();

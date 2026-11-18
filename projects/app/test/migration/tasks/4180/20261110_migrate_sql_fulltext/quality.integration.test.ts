@@ -30,6 +30,7 @@ import { jiebaSplit } from '@fastgpt/service/common/string/jieba/index';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDatasetDataText } from '@fastgpt/service/core/dataset/data/dataTextSchema';
 import { getFullTextStore } from '@fastgpt/service/core/dataset/data/textStore';
+import { refreshSqlFullTextTargetReady } from '@fastgpt/service/core/dataset/fullText/sql/readiness';
 import { searchSqlFullText } from '@fastgpt/service/core/dataset/fullText/sql/store';
 import { getSqlFullTextAdapter } from '@fastgpt/service/common/vectorDB/fullText/controller';
 import { systemMigrations } from '@/migration/registry';
@@ -304,6 +305,7 @@ describe.skipIf(!target).each(qualityDatasets)(
             validated: corpus.length
           }
         });
+        expect(await refreshSqlFullTextTargetReady()).toBe(true);
         expect(await MongoDatasetDataText.countDocuments()).toBe(corpus.length);
         const after = await snapshot();
         expect(after).toEqual(before);

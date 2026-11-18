@@ -1,4 +1,7 @@
-import { SQL_FULL_TEXT_ANALYZER_VERSION } from '@fastgpt/global/core/dataset/fullText/constants';
+import {
+  SQL_FULL_TEXT_ANALYZER_VERSION,
+  SQL_FULL_TEXT_SCHEMA_VERSION
+} from '@fastgpt/global/core/dataset/fullText/constants';
 import { randomUUID } from 'node:crypto';
 import {
   SqlFullTextMetadataSchema,
@@ -24,7 +27,8 @@ const column = SQL_FULL_TEXT_COLUMN;
 /** 读取目标库自身的持久身份；不使用连接串或主机名作为迁移身份。 */
 export const getPgFullTextMetadata = async (): Promise<SqlFullTextMetadata> => {
   const { rows } = await PgClient.query(
-    `SELECT target_id AS "targetId", analyzer_version AS "analyzerVersion" FROM ${metadataTable} WHERE singleton = true`
+    `SELECT target_id AS "targetId", schema_version AS "schemaVersion",
+      analyzer_version AS "analyzerVersion" FROM ${metadataTable} WHERE singleton = true`
   );
   return SqlFullTextMetadataSchema.parse(rows[0]);
 };
@@ -80,8 +84,13 @@ export const preparePgFullText = async (): Promise<SqlFullTextMetadata> => {
       `SELECT to_regclass('${metadataTable}')::text AS regclass`
     );
     if (existingMetaTable.rows[0]?.regclass) {
+      // 兼容曾创建过无结构版本字段的预览库，保留目标 ID 和词串签名。
+      await client.query(
+        `ALTER TABLE ${metadataTable} ADD COLUMN IF NOT EXISTS schema_version INTEGER NOT NULL DEFAULT 1`
+      );
       const existingMeta = await client.query(
-        `SELECT target_id AS "targetId",     analyzer_version AS "analyzerVersion" FROM ${metadataTable} WHERE singleton = true`
+        `SELECT target_id AS "targetId", schema_version AS "schemaVersion",
+          analyzer_version AS "analyzerVersion" FROM ${metadataTable} WHERE singleton = true`
       );
       if (existingMeta.rows[0]) {
         SqlFullTextMetadataSchema.parse(existingMeta.rows[0]);
@@ -95,12 +104,13 @@ export const preparePgFullText = async (): Promise<SqlFullTextMetadata> => {
         (team_id::pdb.literal), (dataset_id::pdb.literal), (collection_id::pdb.literal))`);
     await client.query(`CREATE TABLE IF NOT EXISTS ${metadataTable} (
       singleton BOOLEAN PRIMARY KEY CHECK (singleton), target_id UUID NOT NULL,
-      analyzer_version TEXT NOT NULL
+      schema_version INTEGER NOT NULL, analyzer_version TEXT NOT NULL
     )`);
     await client.query(
-      `INSERT INTO ${metadataTable} (singleton, target_id, analyzer_version) VALUES (true, $1, $2)
+      `INSERT INTO ${metadataTable} (singleton, target_id, schema_version, analyzer_version)
+      VALUES (true, $1, $2, $3)
       ON CONFLICT (singleton) DO NOTHING`,
-      [randomUUID(), SQL_FULL_TEXT_ANALYZER_VERSION]
+      [randomUUID(), SQL_FULL_TEXT_SCHEMA_VERSION, SQL_FULL_TEXT_ANALYZER_VERSION]
     );
     await client.query('COMMIT');
   } catch (error) {

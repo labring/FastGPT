@@ -21,6 +21,7 @@ describe('SQL full-text target entity session propagation', () => {
           {
             provider: 'pg',
             targetId,
+            schemaVersion: 1,
             analyzerVersion
           },
           session
@@ -28,6 +29,7 @@ describe('SQL full-text target entity session propagation', () => {
         expect(await findSqlFullTextTargetById('pg', session)).toMatchObject({
           _id: 'pg',
           targetId,
+          schemaVersion: 1,
           analyzerVersion
         });
         throw new Error('abort readiness transaction');
@@ -41,6 +43,7 @@ describe('SQL full-text target entity session propagation', () => {
         {
           provider: 'pg',
           targetId,
+          schemaVersion: 1,
           analyzerVersion
         },
         session

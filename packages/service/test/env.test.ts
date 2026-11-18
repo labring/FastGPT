@@ -836,30 +836,16 @@ describe('MILVUS_LANGUAGE_IDENTIFIER', () => {
   });
 });
 
-describe('DATASET_FULLTEXT configuration', () => {
+describe('TMP_MIGRATE_FULL_TEXT configuration', () => {
   afterEach(() => vi.unstubAllEnvs());
 
-  it('defaults to manual provider selection with Mongo compatibility dual write enabled', async () => {
-    vi.stubEnv('DATASET_FULLTEXT_PROVIDER', undefined);
-    vi.stubEnv('DATASET_FULLTEXT_DUAL_WRITE', undefined);
+  it.each([
+    [undefined, false],
+    ['true', true],
+    ['false', false]
+  ])('parses %s into %s', async (raw, expected) => {
+    vi.stubEnv('TMP_MIGRATE_FULL_TEXT', raw);
     const { serviceEnv } = await importServiceEnv();
-    expect(serviceEnv.DATASET_FULLTEXT_PROVIDER).toBeUndefined();
-    expect(serviceEnv.DATASET_FULLTEXT_DUAL_WRITE).toBe(true);
+    expect(serviceEnv.TMP_MIGRATE_FULL_TEXT).toBe(expected);
   });
-
-  it('parses the explicit provider and false switch without string truthiness', async () => {
-    vi.stubEnv('DATASET_FULLTEXT_PROVIDER', 'native');
-    vi.stubEnv('DATASET_FULLTEXT_DUAL_WRITE', 'false');
-    const { serviceEnv } = await importServiceEnv();
-    expect(serviceEnv.DATASET_FULLTEXT_PROVIDER).toBe('native');
-    expect(serviceEnv.DATASET_FULLTEXT_DUAL_WRITE).toBe(false);
-  });
-
-  it.each(['pg', 'oceanbase', 'seekdb', 'opengauss', 'milvus', 'unknown'])(
-    'rejects explicit database provider %s at the env boundary',
-    async (provider) => {
-      vi.stubEnv('DATASET_FULLTEXT_PROVIDER', provider);
-      await expect(importServiceEnv()).rejects.toThrow('DATASET_FULLTEXT_PROVIDER');
-    }
-  );
 });

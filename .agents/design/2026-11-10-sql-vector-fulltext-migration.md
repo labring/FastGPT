@@ -1,7 +1,7 @@
 # SQL 向量库全文检索与存量回填
 
-> 更新：2026-11-15。范围：PG、OceanBase、SeekDB、OpenGauss；Milvus/Zilliz 保留现有路径。
-> 全文统一按 `index.text` 构建。读写配置、迁移完整性和数据库能力分别管理，不维护额外的结构版本或 provider 专属分词版本。
+> 更新：2026-11-19。范围：PG、OceanBase、SeekDB、OpenGauss；Milvus/Zilliz 保留现有路径。
+> 全文统一按 `index.text` 构建。临时兼容开关控制读写，迁移负责校验结构、分词版本和实际全文召回。
 
 ## 1. 目标与边界
 
@@ -17,43 +17,34 @@ index.text → 对应历史同义词处理 → 统一分析器 → modeldata.ful
 
 新写入通过向量通道将向量和词串同行提交，随后在 Mongo 事务中写主数据及兼容全文；两个数据库之间没有分布式事务。SQL 查询结果须按 Mongo 当前有效引用核对，孤儿及已替换的旧向量不能成为有效业务命中。
 
-## 2. 两个运行配置
+## 2. 临时兼容开关
 
-| 环境变量 | 默认值 | 行为 |
+| 环境变量 | 迁移验收前 | 迁移验收后 |
 | --- | --- | --- |
-| `DATASET_FULLTEXT_PROVIDER` | SQL 部署 `mongo`；Milvus 部署 `native` | 仅允许 `mongo/native`。`native` 自动使用当前向量库；SQL 目标还须通过回填验收并匹配 ready 记录。 |
-| `DATASET_FULLTEXT_DUAL_WRITE` | `true` | SQL 原生读期间是否继续维护 Mongo 全文写删。读 Mongo 时始终维护 Mongo；SQL 词串始终随向量写入。Milvus 不受该开关影响。 |
+| `TMP_MIGRATE_FULL_TEXT=true` | 读 Mongo，全量写删 SQL 和旧 Mongo 全文 | 继续读 Mongo、双写，等待管理员移除变量 |
+| 未设置 | SQL 同行写删，全文提示等待迁移 | 仅读原生 SQL 全文，继续 SQL 同行写删 |
 
-```text
-初始 / 回退：DATASET_FULLTEXT_PROVIDER=mongo；DATASET_FULLTEXT_DUAL_WRITE=true
-启用原生读： DATASET_FULLTEXT_PROVIDER=native；DATASET_FULLTEXT_DUAL_WRITE=true
-结束回退期： DATASET_FULLTEXT_PROVIDER=native；DATASET_FULLTEXT_DUAL_WRITE=false
-```
+为保持升级期间的全文服务，先在所有新版 App/Pro 和训练写入方统一配置 `TMP_MIGRATE_FULL_TEXT=true`。管理员确认迁移成功后，在统一切换窗口移除变量并重启相关进程。切换窗口可暂停写入并排空在途请求，避免只写 SQL 的节点和仍读 Mongo 的节点同时提供服务。Milvus/Zilliz 始终沿用原生路径。
 
-配置通过环境变量加载，修改后应在所有 App/Pro/训练节点一致更新并重启。迁移仅登记 ready，不更改这些配置。
-
-- 显式读 Mongo：直接使用兼容全文，不查询 SQL ready 元数据。
-- 显式读 native：目标就绪且身份匹配时走原生全文；未就绪且持续双写时回退 Mongo。
-- native 且关闭双写：目标失效直接报错，不自动返回停止更新的 Mongo 全文。原生查询本身的异常仍上抛。
-- 关闭双写后重新开启只能维护后续变化，不能补回关闭期间的历史缺口。完整回退前必须重建并验证 Mongo 全文。
-- 本轮不回填 Milvus 的 Mongo 兼容全文，因此不支持将 Milvus 配置为读 Mongo。
+未配置变量的节点可以直接等待迁移成功。每个进程在向量存储启动时检查一次，在未就绪期间每隔五秒后台复查，成功后停止。运行态只读本地缓存。迁移成功、验收记录与当前 SQL 目标完全匹配时才允许原生全文。未就绪返回明确错误，纯向量查询沿用已有路径。停双写后旧 Mongo 全文会落后，恢复 Mongo 查询前需补齐并验证增删改。
 
 ## 3. 分词规则与物理目标
 
-仅保留两个就绪约束：
+原生读取绑定三个目标字段。
 
 | 字段 | 作用 |
 | --- | --- |
 | `targetId` | SQL 目标库持久化 UUID，用于绑定 checkpoint 和 ready；换库不能沿用旧游标。 |
+| `schemaVersion` | 全文物理结构版本，当前为 1。 |
 | `analyzerVersion` | 所有 SQL provider 共用 `fastgpt-jieba-search-v1`，只表示词典、切词、清洗、停用词及归一化规则。 |
 
-删除固定为 1 的 `schemaVersion`，不再将数据库产品、扩展版本或 provider 名拼进分词版本。provider 在 checkpoint 与 Mongo ready 记录中单独保存，数据库引擎和索引配置由适配器核验。
+数据库引擎和索引配置由各适配器核验。provider 单独保存在 checkpoint 和 Mongo 验收记录中。
 
-SQL 的 `fastgpt_fulltext_metadata` 保存目标身份与分词规则；Mongo `dataset_sql_fulltext_targets` 以 provider 为 `_id` 保存通过完整验收的同一份身份。运行期两端必须匹配。
+SQL 的 `fastgpt_fulltext_metadata` 保存目标和版本。Mongo `dataset_sql_fulltext_targets` 记录已验收的目标，Runner 成功提交也带入同一结果。后台就绪检查必须同时看到成功终态和匹配的两端信息。
 
 分析器采用 jieba 搜索模式，共用词典、URL/Markdown 清洗与停用词，统一小写。写入、回填、验收和查询使用同一实现；查询词去重，清洗后没有词时不查询 SQL。原文上限 1 MiB，词串上限 16 MiB，拒绝 NUL，不静默截断。OpenGauss 仍会用内置分词处理词串，统一外置规则不表示四库查询语义完全相同。
 
-分词规则变更仍须新迁移代次或明确的重建流程；当前任务仅补 NULL，不能覆盖旧规则生成的非空词串。SQL 元数据格式属于本 PR 尚未发布的结构，不在本轮新增历史格式转换任务或破坏性 DDL。
+分词规则变更仍须新迁移代次或明确的重建流程；当前任务仅补 NULL，不能覆盖旧规则生成的非空词串。已存在的预览库元数据会幂等补上结构版本列，保留目标 ID 和分词签名。
 
 历史 `synonymVersion` 保留：词串必须还原索引生成时的同义词版本，不能使用最新词表猜测；历史快照无法确认时记录业务 ID 并阻断 ready。图片索引及明确版本 0 不额外依赖同义词快照。
 
@@ -68,7 +59,7 @@ SQL 的 `fastgpt_fulltext_metadata` 保存目标身份与分词规则；Mongo `d
 | SeekDB | 至少 1.0.1 | 与 OceanBase 共用 FULLTEXT 适配，独立解析产品版本。 |
 | OpenGauss | 7.0.x，至少 RC2，并具备 DataVec BM25 | 普通 astore 表、nullable TEXT、BM25 索引及对应执行计划。 |
 
-这些版本是当前适配范围，不表示厂商首次支持全文的版本，也不承诺所有更高版本均已验证。必要的产品/扩展约束保留，不能用两个运行配置代替能力检查。
+这些版本是当前适配范围，不表示厂商首次支持全文的版本，也不承诺所有更高版本均已验证。必要的产品/扩展约束保留，兼容开关不参与能力检查。
 
 启动只等待基础表、词串列及既有必要索引；`startSqlFullTextIndexBuild` 在后台准备全文索引与物理元数据。失败仅告警，不拒绝应用初始化；后台构建不代表 ready。
 
@@ -83,7 +74,7 @@ SQL 的 `fastgpt_fulltext_metadata` 保存目标身份与分词规则；Mongo `d
 ```text
 prepare：清除旧 ready → 等待/执行物理准备与能力核验
 scan：   校验源记录 → 条件补 NULL / 补建缺失向量 → 写后核对 → 保存错误快照 → 推进游标
-validation：完整重验当前有效引用 → 核验全文能力 → 登记 ready
+validation：完整重验当前有效引用 → 核对能力和目标版本 → 固定查询验收 → 登记验收结果
 ```
 
 ### 5.1 合并预检与回填
@@ -96,13 +87,13 @@ validation：完整重验当前有效引用 → 核验全文能力 → 登记 re
 
 提交前检查执行权，并在 Mongo 事务中核对模型引用、数据归属、完整 indexes、updateTime、indexStatus 和 synonymVersion，只替换缺失项的 ID。并发编辑、删除或模型重建使快照失效时不提交，清理未被引用的新向量；提交响应不确定时先查主库引用，主库不可读则保留派生行供孤儿清理。修复提交后重新读取并只读验收全部当前引用。原文、历史同义词版本及 Mongo 兼容全文不变；图片补建失败不能静默删除索引。
 
-已提交的修复重试不会再次生成向量；模型调用与 SQL/Mongo 之间没有跨系统事务，中断在提交前仍可能重做请求并产生外部成本。补建沿用余额检查和现有向量用量上报，仅成功提交后上报；它不能恢复原向量的逐位数值，也不能从缺失的 Mongo 索引、历史词表或失效图片猜测输入。模型不可用、待训练/重建的数据保留失败，基础设施异常由 Runner 处理。
+已提交的修复重试不会再次生成向量。PG 迁移补建免 FastGPT 团队积分检查和向量用量扣费，Embedding 服务仍可能按其自身规则收费。其他 SQL 向量库沿用余额检查，并仅在修复提交成功后上报用量。模型调用与 SQL/Mongo 之间没有跨系统事务，中断在提交前可能重做请求。补建不能恢复原向量的逐位数值，也不能从缺失的 Mongo 索引、历史词表或失效图片猜测输入。模型不可用、待训练/重建的数据保留失败，基础设施异常由 Runner 处理。
 
 这减少了一轮全库扫描与分词；所有有效记录仍需最终完整验收。不能只凭“没有异常抛出”“词串不为 NULL”或计数相同认定成功。
 
 ### 5.2 断点、错误与恢复
 
-- checkpoint 绑定 provider、targetId、analyzerVersion，记录 scan 游标、固定上界、阶段与计数；换目标或分词规则不允许续跑。
+- checkpoint 绑定 provider、targetId、schemaVersion、analyzerVersion，记录 scan 游标、固定上界、阶段与计数；换目标或分词规则不允许续跑。
 - scan 按 Mongo 主库 `_id` 稳定分页，每批有界；恢复 scan 时刷新上界以覆盖中断期间新增记录。
 - 重试先处理该阶段已保存的失败项，再继续游标后的记录；错误原因只保留有界消息和必要 ID。
 - 每个业务批次前确认 lease；批次处理后先报告完整未解决错误快照，再保存 checkpoint。提交后断点前退出可以幂等重放。
@@ -111,9 +102,9 @@ validation：完整重验当前有效引用 → 核验全文能力 → 登记 re
 - 验收本身只读；发现数据错误时进入回填入口补 NULL 或补建缺失向量，再重新只读验收；非空冲突始终失败，不覆盖。
 - 回填与验收都会再次读主库确认当前引用，并发删除或替换后的旧向量不要求复活。新增数据依靠升级后的业务写入通道直接写齐词串，不依赖历史扫描追赶。
 - 删除跨 Mongo/SQL 不具备分布式原子性：SQL 行已删除、Mongo 删除尚未提交时可能触发补建；引用提交的 CAS 与删除发生竞争，删除先提交则修复失败并清理新行，修复先提交后删除仍以 Mongo 当前引用为准，遗留 SQL 行由孤儿清理回收。绕过正常入口在同一向量 ID 下直接修改文本会作为冲突阻断 ready，不静默覆盖。
-- 所有未解决错误清零、全文能力检查通过后才登记 ready。运行状态由 Runner/Context 管理，脚本不直接修改任务状态表。
+- 所有未解决错误清零后，验证索引能力、目标版本以及固定探测数据的中英文匹配、集合允许和排除。探测使用隔离的临时 SQL 行和固定向量，无需调用模型。探测结束清理，Runner 成功提交后才可能读原生全文。
 
-返回值保留 applicable、provider、targetId、analyzerVersion、scanned、validated，不再返回 prechecked。Milvus 按相同三阶段报告不适用，不执行 SQL。
+返回值保留 applicable、provider、targetId、schemaVersion、analyzerVersion、scanned、validated，不再返回 prechecked。Milvus 按相同三阶段报告不适用，不执行 SQL。
 
 ## 6. 检索与兼容期
 
@@ -121,9 +112,9 @@ SQL 先按团队、知识库、集合允许/禁止范围过滤，再做相关性
 
 候选逐步扩展且最多 500 条；本轮按用户要求保留现有预算与去重行为，不额外实现分组 Top-K 或分页。
 
-兼容期持续双写时，管理员可以手动在 mongo/native 之间切换。迁移完成不等于正式启用：实际部署仍需对关键查询、质量、延迟和持续写入做验收，PG 回填后的维护也需纳入上线流程。
+开启兼容时，迁移成功后仍保持读 Mongo 和双写。管理员移除变量并重启后，进程核验目标并启用原生读写。
 
-本轮不删除旧 Mongo 集合、活动索引、正文、既有向量或文件；补建失败只回收本次新生成且未被引用的行。停止双写及清理须在后续明确结束回退窗口后安排；独立清理任务应核验范围并排空写入，不在本任务中加入清理状态机。
+本轮不删除旧 Mongo 集合、活动索引、正文、既有向量或文件；补建失败只回收本次新生成且未被引用的行。停双写由管理员移除变量完成。旧 Mongo 全文的退役留给后续独立任务。
 
 一个 Mongo 业务库内每 provider 仅绑定一个目标。多目标范围隔离、跨时间点备份恢复、分析器变更的非空词串重建均需独立设计，不能沿用旧成功状态。
 
@@ -137,10 +128,10 @@ SQL 先按团队、知识库、集合允许/禁止范围过滤，再做相关性
 - 只补建物理缺失项，向量和全文同写、新 ID 替换、重试不重复生成；历史同义词、并发编辑/删除/换模型、lease 丢失、图片生成失败及不确定提交后的保守清理。
 - checkpoint 提交前退出、取消、lease 失效、意外数据库错误、恢复验收重扫及条件补 NULL。
 - 目标/规则不匹配拒绝恢复，目标 ready 记录在 Mongo 事务中的提交和回滚。
-- 默认 Mongo、显式 native 自动选择当前 provider、持续双写回退、关闭双写后拒绝陈旧兼容读。
+- 迁移暂停期间读 Mongo 与双写、固定查询失败阻断、成功提交前拒绝原生、成功后仍保持兼容、移除变量后只读写 SQL。
 - 每库真实版本、DDL、索引属性、过滤和分词语义。缺少隔离实例时跳过，不能记作通过。
 
-真实 SQL 集成入口保留 database.integration.test.ts；PG 恢复演练为 service.integration.test.ts，公开语料为 quality.integration.test.ts。测试只可使用 Mac Mini Dev 服务的独立测试库/schema；需要 localhost 的测试通过 SSH 转发访问远端，禁止本机创建测试数据库或容器。
+真实 SQL 集成入口保留 database.integration.test.ts；PG 恢复演练为 service.integration.test.ts，公开语料为 quality.integration.test.ts。测试使用 Ubuntu 测试机上的独立容器与数据库/schema，通过 SSH 本地端口转发访问。
 
 ### 历史实验记录（作者既有证据）
 

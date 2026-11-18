@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { SQL_FULL_TEXT_ANALYZER_VERSION } from './constants';
+import { SQL_FULL_TEXT_ANALYZER_VERSION, SQL_FULL_TEXT_SCHEMA_VERSION } from './constants';
 
 export const SqlFullTextProviderSchema = z.enum(['pg', 'oceanbase', 'seekdb', 'opengauss']);
 export type SqlFullTextProvider = z.infer<typeof SqlFullTextProviderSchema>;
@@ -11,6 +11,7 @@ export type SqlFullTextProvider = z.infer<typeof SqlFullTextProviderSchema>;
  */
 export const SqlFullTextMetadataSchema = z.object({
   targetId: z.uuid(),
+  schemaVersion: z.literal(SQL_FULL_TEXT_SCHEMA_VERSION),
   analyzerVersion: z.literal(SQL_FULL_TEXT_ANALYZER_VERSION)
 });
 export type SqlFullTextMetadata = z.infer<typeof SqlFullTextMetadataSchema>;

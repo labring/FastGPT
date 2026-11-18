@@ -3,7 +3,6 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { Client, Pool } from 'pg';
 import { createMysqlFullTextTestTarget } from '@fastgpt/service/test/integrations/vectorDB/fullText/client';
 import type { SqlFullTextProvider } from '@fastgpt/global/core/dataset/fullText/schema';
-import type { VectorControllerType } from '@fastgpt/service/common/vectorDB/type';
 
 // 明确 opt-in；绝不读取 PG_URL 等业务连接，也不在已有业务表上创建测试数据。
 const target = vi.hoisted(() => {
@@ -49,9 +48,7 @@ vi.mock('@fastgpt/service/common/vectorDB/constants', async (importOriginal) => 
   OPENGAUSS_ADDRESS: target?.provider === 'opengauss' ? target.address : undefined
 }));
 
-import { PgVectorCtrl } from '@fastgpt/service/common/vectorDB/pg';
-import { ObVectorCtrl } from '@fastgpt/service/common/vectorDB/oceanbase';
-import { OpenGaussVectorCtrl } from '@fastgpt/service/common/vectorDB/opengauss';
+import { initVectorStore } from '@fastgpt/service/common/vectorDB/controller';
 import { Types } from '@fastgpt/service/common/mongo';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDatasetDataText } from '@fastgpt/service/core/dataset/data/dataTextSchema';
@@ -59,14 +56,48 @@ import { getFullTextStore } from '@fastgpt/service/core/dataset/data/textStore';
 import { getSqlFullTextAdapter } from '@fastgpt/service/common/vectorDB/fullText/controller';
 import { systemMigrations } from '@/migration/registry';
 import { createSystemMigrationRunner } from '@/migration/runner';
-import { enqueueManualMigration, ensureMigrationStates } from '@/migration/entity';
+import {
+  enqueueManualMigration,
+  ensureMigrationStates,
+  resetFailedMigration
+} from '@/migration/entity';
 import { MongoSystemMigrationState } from '@/migration/mongoSchema';
+import { DatasetDataOperation } from '@/service/core/dataset/data/data';
+import type { EmbeddingModelDataType } from '@fastgpt/global/core/ai/model/schema';
+import {
+  refreshSqlFullTextTargetReady,
+  startSqlFullTextReadiness
+} from '@fastgpt/service/core/dataset/fullText/sql/readiness';
 
-// 本用例验证显式选择原生读取后的业务行为；默认 Mongo 与手动回退由 textStore 用例覆盖。
-vi.mock('@fastgpt/service/common/vectorDB/fullText/config', () => ({
-  getFullTextProvider: () => target?.provider ?? 'pg',
-  shouldWriteMongoFullText: () => true
-}));
+// 保留真实配置逻辑，用 getter 模拟不同部署进程的环境，无需重启测试宿主。
+const env = vi.hoisted(() => ({ compatibility: true }));
+vi.mock('@fastgpt/service/env', async (importOriginal) => {
+  const original = await importOriginal<typeof import('@fastgpt/service/env')>();
+  return {
+    ...original,
+    serviceEnv: {
+      ...original.serviceEnv,
+      get TMP_MIGRATE_FULL_TEXT() {
+        return env.compatibility;
+      }
+    }
+  };
+});
+
+const model = {
+  modelId: '68ad85a7463006c963799a05',
+  model: 'text-embedding-3-small',
+  type: 'embedding',
+  config: { defaultToken: 512, maxToken: 512, weight: 100 }
+} as EmbeddingModelDataType;
+
+const deferred = () => {
+  let release!: () => void;
+  const promise = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  return { promise, release };
+};
 
 describe.skipIf(!target)('selected SQL database real full-text migration', () => {
   const teamId = new Types.ObjectId().toString();
@@ -79,9 +110,20 @@ describe.skipIf(!target)('selected SQL database real full-text migration', () =>
   let previousPg: typeof global.pgClient;
   let previousMysql: typeof global.obClient;
   let created = false;
-  let vectorStore: VectorControllerType;
+  const reachedCommit = deferred();
+  const continueCommit = deferred();
   const runner = createSystemMigrationRunner({
-    migrations: systemMigrations.filter((m) => m.id === '20261110_migrate_sql_fulltext')
+    migrations: systemMigrations
+      .filter((m) => m.id === '20261110_migrate_sql_fulltext')
+      .map((migration) => ({
+        ...migration,
+        run: async (context) => {
+          const result = await migration.run(context);
+          reachedCommit.release();
+          await continueCommit.promise;
+          return result;
+        }
+      }))
   });
   const query = async (sql: string, values?: unknown[]) => {
     if (mysqlTarget) return mysqlTarget.query(sql, values);
@@ -121,7 +163,6 @@ describe.skipIf(!target)('selected SQL database real full-text migration', () =>
     if (target!.isMysql) {
       mysqlTarget = await createMysqlFullTextTestTarget(target!.address, target!.name);
       global.obClient = mysqlTarget.pool;
-      vectorStore = new ObVectorCtrl({ type: target!.provider as 'oceanbase' | 'seekdb' });
     } else {
       pgAdmin = new Client({ connectionString: target!.address });
       await pgAdmin.connect();
@@ -134,7 +175,6 @@ describe.skipIf(!target)('selected SQL database real full-text migration', () =>
         max: 4
       });
       global.pgClient = pgPool;
-      vectorStore = target!.provider === 'pg' ? new PgVectorCtrl() : new OpenGaussVectorCtrl();
     }
     // 严格按升级前存量 modeldata 表定义创建旧表（不含 fulltext_tokens 列）。
     await query(`CREATE TABLE modeldata (id ${target!.isMysql ? 'BIGINT AUTO_INCREMENT' : 'BIGSERIAL'} PRIMARY KEY,
@@ -153,7 +193,7 @@ describe.skipIf(!target)('selected SQL database real full-text migration', () =>
     await pgAdmin?.end();
   });
 
-  it('automatically migrates legacy rows, retains legacy Mongo full-text table, cuts over reads and writes new rows natively', async () => {
+  it('keeps Mongo reads and dual writes through a paused migration and switches reads and writes only after flag removal', async () => {
     const examples = [
       ['南京市长江大桥通行指南', '长江大桥'],
       ['FastGPT authentication token', 'authentication'],
@@ -177,19 +217,116 @@ describe.skipIf(!target)('selected SQL database real full-text migration', () =>
         datasetId,
         collectionId,
         dataId: data._id,
-        fullTextToken: text
+        fullTextToken: `${text} legacyonlyproof`
       });
       fixtures.push({ id: String(data._id), search });
     }
     const before = await snapshot();
     const source = await MongoDatasetData.find().sort({ _id: 1 }).lean();
     expect(await MongoDatasetDataText.countDocuments()).toBe(3);
+    const operation = new DatasetDataOperation(model);
+    const store = getFullTextStore();
+    const hits = async (term: string) =>
+      (await store.search(props(term))).map(({ dataId }) => dataId);
+    const adapter = getSqlFullTextAdapter();
+    await initVectorStore();
 
     await ensureMigrationStates(
       systemMigrations.filter((m) => m.id === '20261110_migrate_sql_fulltext')
     );
-    await enqueueManualMigration('20261110_migrate_sql_fulltext');
     await runner.tick();
+    expect(await MongoSystemMigrationState.findById('20261110_migrate_sql_fulltext')).toMatchObject(
+      { status: 'waiting' }
+    );
+    expect(await hits('legacyonlyproof')).toEqual(
+      expect.arrayContaining(fixtures.map(({ id }) => id))
+    );
+
+    const reachedScan = deferred();
+    const continueScan = deferred();
+    const fill = adapter.fill.bind(adapter);
+    const pause = vi.spyOn(adapter, 'fill').mockImplementationOnce(async (...args) => {
+      reachedScan.release();
+      await continueScan.promise;
+      return fill(...args);
+    });
+    // 故意让一个固定搜索断言失败，实际 SQL 仍执行。必须阻断成功终态，且兼容读取继续可用。
+    const search = adapter.search.bind(adapter);
+    const probeFailure = vi.spyOn(adapter, 'search').mockImplementation(async (input) => {
+      const result = await search(input);
+      return input.query === '数据库' ? [] : result;
+    });
+    await enqueueManualMigration('20261110_migrate_sql_fulltext');
+    const running = runner.tick();
+    let concurrentId: string;
+    try {
+      await Promise.race([
+        reachedScan.promise,
+        running.then(() => {
+          throw new Error('Migration did not reach the scan gate');
+        })
+      ]);
+      expect(
+        await MongoSystemMigrationState.findById('20261110_migrate_sql_fulltext')
+      ).toMatchObject({
+        status: 'running',
+        progress: expect.arrayContaining([
+          expect.objectContaining({ key: 'scan', status: 'running' })
+        ])
+      });
+      const during = await operation.create({
+        teamId,
+        datasetId,
+        collectionId,
+        tmbId: new Types.ObjectId().toString(),
+        q: "中英并发写入 concurrentproof O'Reilly",
+        a: '',
+        embeddingModel: model
+      });
+      concurrentId = String(during.insertId);
+      expect(await hits('concurrentproof')).toEqual([concurrentId]);
+      expect(await MongoDatasetDataText.findOne({ dataId: concurrentId }).lean()).toBeTruthy();
+      expect(
+        await query("SELECT id FROM modeldata WHERE fulltext_tokens LIKE '%concurrentproof%'")
+      ).toHaveLength(1);
+      env.compatibility = false;
+      expect(await refreshSqlFullTextTargetReady()).toBe(false);
+      await expect(hits('legacyonlyproof')).rejects.toThrow('not ready');
+      // 模拟未配置兼容变量的节点启动。它的后台检查在成功提交前必须保持关闭。
+      startSqlFullTextReadiness();
+      env.compatibility = true;
+    } finally {
+      continueScan.release();
+      await running;
+      pause.mockRestore();
+      probeFailure.mockRestore();
+    }
+    expect(
+      await MongoSystemMigrationState.findById('20261110_migrate_sql_fulltext').lean()
+    ).toMatchObject({
+      status: 'failed',
+      lastError: { stageKey: 'validation', message: expect.stringContaining('smoke test failed') }
+    });
+    expect(await hits('concurrentproof')).toEqual([concurrentId]);
+    expect(await resetFailedMigration('20261110_migrate_sql_fulltext')).toBe(true);
+    const retrying = runner.tick();
+    try {
+      await Promise.race([
+        reachedCommit.promise,
+        retrying.then(() => {
+          throw new Error('Migration retry did not reach the success commit gate');
+        })
+      ]);
+      // 完整验收已经写入目标记录，但 Runner 仍未持久化 succeeded，原生读取继续拒绝。
+      env.compatibility = false;
+      expect(await refreshSqlFullTextTargetReady()).toBe(false);
+      await expect(hits('concurrentproof')).rejects.toThrow('not ready');
+      env.compatibility = true;
+      expect(await hits('concurrentproof')).toEqual([concurrentId]);
+    } finally {
+      continueCommit.release();
+      await retrying;
+    }
     expect(
       await MongoSystemMigrationState.findById('20261110_migrate_sql_fulltext').lean()
     ).toMatchObject({
@@ -197,43 +334,81 @@ describe.skipIf(!target)('selected SQL database real full-text migration', () =>
       result: {
         applicable: true,
         provider: target!.provider,
+        schemaVersion: 1,
         scanned: 3,
-        validated: 3
+        validated: 4
       }
     });
-    expect(await snapshot()).toEqual(before);
-    expect(await MongoDatasetData.find().sort({ _id: 1 }).lean()).toEqual(source);
-    expect(await MongoDatasetDataText.countDocuments()).toBe(3);
-
-    for (const fixture of fixtures) {
-      expect((await getFullTextStore().search(props(fixture.search)))[0]?.dataId).toBe(fixture.id);
-    }
-
-    const text = "O'Reilly 中文 incrementalproof";
-    const inserted = await vectorStore.insert({
-      teamId,
-      datasetId,
-      collectionId,
-      vectors: [vector],
-      texts: [text]
-    });
-    const data = await MongoDatasetData.create({
-      teamId,
-      datasetId,
-      collectionId,
-      tmbId: new Types.ObjectId(),
-      synonymVersion: 0,
-      q: text,
-      indexes: [{ dataId: inserted.insertIds[0], text, type: 'custom' }]
-    });
-    expect((await getFullTextStore().search(props('incrementalproof')))[0]?.dataId).toBe(
-      String(data._id)
-    );
+    expect(await snapshot()).toHaveLength(4);
+    expect((await snapshot()).slice(0, 3)).toEqual(before);
     expect(
-      await getSqlFullTextAdapter().fill(
-        [{ vectorId: inserted.insertIds[0], teamId, datasetId, collectionId, text }],
-        true
-      )
+      await MongoDatasetData.find({ _id: { $in: source.map(({ _id }) => _id) } })
+        .sort({ _id: 1 })
+        .lean()
+    ).toEqual(source);
+    expect(await MongoDatasetDataText.countDocuments()).toBe(4);
+    expect(await hits('legacyonlyproof')).toHaveLength(3);
+    expect(await hits('concurrentproof')).toEqual([concurrentId]);
+    const compatibilityWrite = await operation.create({
+      teamId,
+      datasetId,
+      collectionId,
+      tmbId: new Types.ObjectId().toString(),
+      q: '验收后仍双写 compatibilityproof',
+      a: '',
+      embeddingModel: model
+    });
+    expect(
+      await MongoDatasetDataText.findOne({ dataId: compatibilityWrite.insertId }).lean()
+    ).toBeTruthy();
+    expect(await hits('compatibilityproof')).toEqual([String(compatibilityWrite.insertId)]);
+
+    // 确认 Mongo 是已验收后的主读源，随后模拟移除变量并等待后台刷新。
+    env.compatibility = false;
+    await expect
+      .poll(() => hits('concurrentproof').catch(() => []), { timeout: 12_000 })
+      .toEqual([concurrentId]);
+    const metadataReads = vi.spyOn(adapter, 'getMetadata');
+    expect(await hits('legacyonlyproof')).toEqual([]);
+    for (const fixture of fixtures) expect(await hits(fixture.search)).toContain(fixture.id);
+    expect(
+      await store.search({ ...props('concurrentproof'), forbidCollectionIdList: [collectionId] })
+    ).toEqual([]);
+    expect(
+      await store.search({ ...props('concurrentproof'), filterCollectionIdList: [collectionId] })
+    ).toHaveLength(1);
+    expect(
+      await store.search({ ...props('concurrentproof'), teamId: new Types.ObjectId().toString() })
+    ).toEqual([]);
+    expect(metadataReads).not.toHaveBeenCalled();
+    metadataReads.mockRestore();
+
+    const created = await operation.create({
+      teamId,
+      datasetId,
+      collectionId,
+      tmbId: new Types.ObjectId().toString(),
+      q: '原生新增 nativecreateproof',
+      a: '',
+      embeddingModel: model
+    });
+    expect(await MongoDatasetDataText.exists({ dataId: created.insertId })).toBeNull();
+    expect(await hits('nativecreateproof')).toEqual([String(created.insertId)]);
+    await operation.updateByIndexes({
+      dataId: created.insertId,
+      q: '原生更新 nativeupdateproof',
+      a: '',
+      indexes: [],
+      model
+    });
+    expect(await hits('nativecreateproof')).toEqual([]);
+    expect(await hits('nativeupdateproof')).toEqual([String(created.insertId)]);
+    const current = (await MongoDatasetData.findById(created.insertId).lean())!;
+    await operation.delete({ ...current, id: String(created.insertId) });
+    expect(await hits('nativeupdateproof')).toEqual([]);
+    expect(await MongoDatasetDataText.countDocuments()).toBe(5);
+    expect(
+      await query("SELECT id FROM modeldata WHERE fulltext_tokens LIKE '%nativeupdateproof%'")
     ).toEqual([]);
   }, 120000);
 });

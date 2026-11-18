@@ -20,8 +20,10 @@ import { retryFn, withTimeout } from '@fastgpt/global/common/system/utils';
 import { getLogger, LogCategories } from '../logger';
 import { isRedisLeaseError, LeaseCache } from '@fastgpt/dal/redis/caches/lease';
 import { isProVersion } from '../system/constants';
+import { startSqlFullTextReadiness } from '../../core/dataset/fullText/sql/readiness';
 
-const getVectorObj = (): VectorControllerType => {
+/** 根据部署配置创建向量存储控制器，迁移验收也通过同一实现写入探测向量。 */
+export const createVectorController = (): VectorControllerType => {
   switch (getVectorType()) {
     case 'seekdb':
       return new SeekVectorCtrl({ type: 'seekdb' });
@@ -37,7 +39,7 @@ const getVectorObj = (): VectorControllerType => {
   }
 };
 
-const Vector = getVectorObj();
+const Vector = createVectorController();
 const recallLease = new LeaseCache();
 // 执行期间每 10 秒续租；释放失败时，额度在最后一次续租后 30 秒过期。
 const RECALL_LEASE_TTL_MS = 30_000;
@@ -51,6 +53,7 @@ let vectorStoreHooks: VectorStoreHooks = {};
 export const initVectorStore = async (hooks: VectorStoreHooks = {}) => {
   vectorStoreHooks = hooks;
   await Vector.init();
+  startSqlFullTextReadiness();
 };
 /**
  * 所有向量库召回共用跨实例并发额度；每次数据库重试都重新获取额度并读取最新配置。

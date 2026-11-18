@@ -23,10 +23,12 @@ import {
   listDatasetDataBatchIds,
   migrateSqlFullTextRecord
 } from './service';
+import { verifySqlFullTextSearch } from './probe';
 
 const STAGE_KEYS = ['prepare', 'scan', 'validation'] as const;
 const CheckpointSchema = z.object({
   provider: SqlFullTextProviderSchema,
+  schemaVersion: SqlFullTextMetadataSchema.shape.schemaVersion.default(1),
   analyzerVersion: SqlFullTextMetadataSchema.shape.analyzerVersion,
   targetId: z.uuid(),
   endId: ObjectIdSchema.nullable(),
@@ -42,7 +44,7 @@ const CheckpointSchema = z.object({
  * 手动迁移 SQL 全文，采用分批断点续跑；执行前必须排空旧 App/Pro/训练写入方。
  * 每条记录先校验源文本与历史同义词，再补 NULL；物理缺失行通过 embedding 补建并 CAS 更新引用。
  * 坏记录按批保存并在重试时优先处理；回填结束后完整重验，全部通过才登记目标 ready。
- * 读取仍由 DATASET_FULLTEXT_PROVIDER 决定，迁移不修改读写配置，也不删除 Mongo 兼容全文。
+ * TMP_MIGRATE_FULL_TEXT 开启时固定读 Mongo；验收只发布证据，读路由必须再等 Runner 成功终态。
  */
 export const migrateSqlFullTextMigration = async (
   context: SystemMigrationContext
@@ -69,12 +71,13 @@ export const migrateSqlFullTextMigration = async (
   const metadata = await adapter.prepare();
   await context.reportProgress({ key: 'prepare', status: SystemMigrationStatusEnum.succeeded });
 
-  // 2. 断点只能在相同物理目标及分词规则下恢复，防止换库后跳过尚未回填的记录。
+  // 2. 断点只能在相同物理目标、结构版本及分词规则下恢复。
   let checkpoint = await context.getCheckpoint(CheckpointSchema);
   if (
     checkpoint &&
     (checkpoint.targetId !== metadata.targetId ||
       checkpoint.provider !== adapter.provider ||
+      checkpoint.schemaVersion !== metadata.schemaVersion ||
       checkpoint.analyzerVersion !== metadata.analyzerVersion)
   ) {
     throw new Error('Checkpoint belongs to another SQL target or analyzer version');
@@ -82,6 +85,7 @@ export const migrateSqlFullTextMigration = async (
   if (!checkpoint) {
     checkpoint = {
       provider: adapter.provider,
+      schemaVersion: metadata.schemaVersion,
       analyzerVersion: metadata.analyzerVersion,
       targetId: metadata.targetId,
       endId: await getLatestDatasetDataId(),
@@ -218,6 +222,20 @@ export const migrateSqlFullTextMigration = async (
     if (stage === 'validation') {
       await assertActive();
       await adapter.assertCapability();
+      const current = await adapter.getMetadata();
+      if (
+        current.targetId !== metadata.targetId ||
+        current.schemaVersion !== metadata.schemaVersion ||
+        current.analyzerVersion !== metadata.analyzerVersion
+      )
+        throw new Error('SQL full-text target metadata changed during migration');
+      await verifySqlFullTextSearch({
+        adapter,
+        targetId: metadata.targetId,
+        runId: context.runId,
+        assertActive
+      });
+      await assertActive();
       await activateSqlFullTextTarget({ provider: adapter.provider, ...metadata });
     }
     await context.reportProgress({
@@ -230,6 +248,7 @@ export const migrateSqlFullTextMigration = async (
   return {
     applicable: true,
     provider: adapter.provider,
+    schemaVersion: metadata.schemaVersion,
     analyzerVersion: metadata.analyzerVersion,
     targetId: metadata.targetId,
     scanned: checkpoint.scanned,

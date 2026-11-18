@@ -21,6 +21,7 @@ export const activateSqlFullTextTarget = async (
   {
     provider,
     targetId,
+    schemaVersion,
     analyzerVersion
   }: {
     provider: SqlFullTextProvider;
@@ -32,6 +33,7 @@ export const activateSqlFullTextTarget = async (
     {
       $set: {
         targetId,
+        schemaVersion,
         analyzerVersion
       }
     },

@@ -1,30 +1,6 @@
-import { getVectorType } from '../../../../common/vectorDB/constants';
 import type { FullTextSearchProps, FullTextSearchItem } from '../../../../common/vectorDB/type';
 import { getSqlFullTextAdapter } from '../../../../common/vectorDB/fullText/controller';
 import { MongoDatasetData } from '../../data/schema';
-import { findSqlFullTextTargetById } from './entity';
-import { SqlFullTextTargetSchema } from './schema';
-
-/**
- * 核验当前 SQL 目标是否已通过回填与验收：既要求 Mongo 侧登记了该目标，
- * 也要求当前连接的 SQL 物理库身份及分词规则完全匹配。
- */
-export const isSqlFullTextTargetReady = async (): Promise<boolean> => {
-  const provider = getVectorType();
-  if (provider === 'milvus') return false;
-  try {
-    const record = await findSqlFullTextTargetById(provider);
-    if (!record) return false;
-    const target = SqlFullTextTargetSchema.parse(record);
-    const adapter = getSqlFullTextAdapter(provider);
-    const metadata = await adapter.getMetadata();
-    return (
-      metadata.targetId === target.targetId && metadata.analyzerVersion === target.analyzerVersion
-    );
-  } catch {
-    return false;
-  }
-};
 
 /**
  * 原生返回向量 ID，按当前主库引用、团队及知识库归属验证后映射为业务 ID。

@@ -9,6 +9,7 @@ import { MongoDatasetDataText } from '@fastgpt/service/core/dataset/data/dataTex
 import { migrateSqlFullTextMigration } from '@/migration/tasks/4180/20261110_migrate_sql_fulltext';
 import { getFullTextStore } from '@fastgpt/service/core/dataset/data/textStore';
 import { searchSqlFullText } from '@fastgpt/service/core/dataset/fullText/sql/store';
+import { refreshSqlFullTextTargetReady } from '@fastgpt/service/core/dataset/fullText/sql/readiness';
 import { findSqlFullTextTargetById } from '@fastgpt/service/core/dataset/fullText/sql/entity';
 import { systemMigrations, type SystemMigrationContext } from '@/migration/registry';
 import { createSystemMigrationRunner } from '@/migration/runner';
@@ -19,10 +20,13 @@ import type {
   SystemMigrationFailureInput
 } from '@fastgpt/global/migration/schema';
 
-// 本用例验证显式选择原生读取后的业务行为；默认 Mongo 与手动回退由 textStore 用例覆盖。
+// 兼容模式在迁移成功后仍固定读 Mongo；在测试中模拟启动时移除环境变量。
 vi.mock('@fastgpt/service/common/vectorDB/fullText/config', () => ({
-  getFullTextProvider: () => driver.provider,
-  shouldWriteMongoFullText: () => true
+  getFullTextProvider: () => (driver.compatibility ? 'mongo' : driver.provider),
+  shouldWriteMongoFullText: () => driver.compatibility
+}));
+vi.mock('@/migration/tasks/4180/20261110_migrate_sql_fulltext/probe', () => ({
+  verifySqlFullTextSearch: vi.fn(async () => undefined)
 }));
 
 vi.mock('@/migration/constants', async (importOriginal) => ({
@@ -33,6 +37,7 @@ vi.mock('@/migration/constants', async (importOriginal) => ({
 // 仅隔离物理驱动；Mongo 权威引用、断点、查询归一化与旧表清理执行真实代码。
 const driver = vi.hoisted(() => ({
   provider: 'pg' as SqlFullTextProvider,
+  compatibility: true,
   prepare: vi.fn(),
   assertCapability: vi.fn(),
   getMetadata: vi.fn(),
@@ -78,12 +83,14 @@ const createContext = () => {
 describe.each(['pg', 'oceanbase', 'seekdb', 'opengauss'] as const)(
   '%s unified automatic migration and native search',
   (provider) => {
-    let metadata: { targetId: string; analyzerVersion: string };
+    let metadata: { targetId: string; schemaVersion: number; analyzerVersion: string };
 
     beforeEach(() => {
       driver.provider = provider;
+      driver.compatibility = true;
       metadata = {
         targetId: randomUUID(),
+        schemaVersion: 1,
         analyzerVersion: SQL_FULL_TEXT_ANALYZER_VERSION
       };
       driver.prepare.mockReset().mockResolvedValue(metadata);
@@ -94,7 +101,7 @@ describe.each(['pg', 'oceanbase', 'seekdb', 'opengauss'] as const)(
       driver.search.mockReset().mockResolvedValue([]);
     });
 
-    it('prepares, backfills, validates, retains legacy Mongo rows and cuts over reads to native SQL search', async () => {
+    it('prepares, backfills and validates without changing compatibility reads', async () => {
       const teamId = new Types.ObjectId().toString();
       const datasetId = new Types.ObjectId().toString();
       const collectionId = new Types.ObjectId().toString();
@@ -132,6 +139,7 @@ describe.each(['pg', 'oceanbase', 'seekdb', 'opengauss'] as const)(
       expect(result).toEqual({
         applicable: true,
         provider,
+        schemaVersion: 1,
         analyzerVersion: SQL_FULL_TEXT_ANALYZER_VERSION,
         targetId: metadata.targetId,
         scanned: 1,
@@ -162,9 +170,12 @@ describe.each(['pg', 'oceanbase', 'seekdb', 'opengauss'] as const)(
         { dataId: String(doc._id), collectionId, score: 2.5 }
       ]);
       expect(await getFullTextStore().search(queryProps)).toEqual([
-        { dataId: String(doc._id), collectionId, score: 2.5 }
+        { dataId: String(doc._id), collectionId, score: expect.any(Number) }
       ]);
-      expect(driver.search).toHaveBeenCalledTimes(2);
+      expect(driver.search).toHaveBeenCalledOnce();
+      driver.compatibility = false;
+      expect(await refreshSqlFullTextTargetReady()).toBe(false);
+      await expect(getFullTextStore().search(queryProps)).rejects.toThrow('not ready');
     });
 
     it('records failed backfills before advancing the cursor and retries them before validation', async () => {
@@ -478,6 +489,8 @@ describe.each(['pg', 'oceanbase', 'seekdb', 'opengauss'] as const)(
           await MongoSystemMigrationState.findById('20261110_migrate_sql_fulltext').lean()
         ).toMatchObject({ status: 'succeeded' });
         driver.search.mockResolvedValue([{ vectorId: '1', collectionId, score: 3.1 }]);
+        driver.compatibility = false;
+        expect(await refreshSqlFullTextTargetReady()).toBe(true);
         expect(
           await getFullTextStore().search({
             teamId,
