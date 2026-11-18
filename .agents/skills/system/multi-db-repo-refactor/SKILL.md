@@ -103,12 +103,13 @@ node .agents/skills/system/multi-db-repo-refactor/scripts/scaffold-repo.mjs \
 
 [verify-domain.mjs](scripts/verify-domain.mjs) 会自动执行：目录完整性、分层隔离与 SQL 可移植性静态扫描、`defineIndex`（含名称/关键 options/TTL 及多旧文件合并）零丢失比对、同目录旧文件收口、全仓旧 `Mongo*` 生产零残留引用检查与目标单测。
 
-使用 `merge-base:<旧schema相对路径>` 可在 `git commit` 前后稳定对比分支基线（多旧文件合并时传多个路径）：
+使用 `merge-base:<旧schema相对路径>` 可在 `git commit` 前后稳定对比分支基线（多旧文件合并时传多个路径；若集合重命名显式传 `--collection-map old=new`）：
 
 ```bash
 node .agents/skills/system/multi-db-repo-refactor/scripts/verify-domain.mjs \
   --dir <packages/service/...> \
   --git-legacy merge-base:<旧schema相对路径...> \
+  [--collection-map <old=new...>] \
   --test <契约单测与受影响业务测试路径...>
 
 node .agents/skills/system/multi-db-repo-refactor/scripts/audit-domain.mjs --status

@@ -3,6 +3,7 @@ import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import {
+  analyzeSchemaIndexes,
   extractDefineIndexes,
   extractExportedModelNames,
   findRepoRoot,
@@ -37,6 +38,8 @@ if (hasFlag('--help') || hasFlag('-h') || args.length === 0) {
   node verify-domain.mjs --dir <domain-dir> \\
     [--legacy-schema <path...>] \\
     [--git-legacy <[merge-base:|ref:]repo-rel-path...>] \\
+    [--collection-map <oldCollection=newCollection...>] \\
+    [--schema-map <OldSchemaVar=NewSchemaVar...>] \\
     [--legacy-model <MongoModelName...>] \\
     [--test <test-file...>] \\
     [--allow-wip-slice1]`);
@@ -55,6 +58,8 @@ const domainAbs = path.resolve(repoRoot, domainRel);
 const allowWipSlice1 = hasFlag('--allow-wip-slice1');
 const legacySchemaArgs = getFlagValues('--legacy-schema');
 const gitLegacyArgs = getFlagValues('--git-legacy');
+const collectionMapArgs = getFlagValues('--collection-map');
+const schemaMapArgs = getFlagValues('--schema-map');
 const explicitLegacyModels = getFlagValues('--legacy-model');
 const testTargets = getFlagValues('--test');
 
@@ -66,6 +71,37 @@ if (!fs.existsSync(domainAbs)) {
 const failures = [];
 const warnings = [];
 const checkFileExists = (rel) => fs.existsSync(path.join(domainAbs, rel));
+
+/** 解析 `old=new` 显式重命名映射并校验一一对应（禁止多对一合并抵消）。 */
+const parseInjectivePairMap = ({ pairs, flagName }) => {
+  const forward = new Map();
+  const reverse = new Map();
+
+  for (const raw of pairs) {
+    const eqIdx = raw.indexOf('=');
+    const from = eqIdx > 0 ? raw.slice(0, eqIdx).trim() : '';
+    const to = eqIdx > 0 ? raw.slice(eqIdx + 1).trim() : '';
+    if (!from || !to) {
+      failures.push(`[Indexes] Invalid ${flagName} entry "${raw}" (expected <old>=<new>)`);
+      continue;
+    }
+    if (forward.has(from) && forward.get(from) !== to) {
+      failures.push(`[Indexes] Conflicting ${flagName} entries for "${from}"`);
+      continue;
+    }
+    const prevFrom = reverse.get(to);
+    if (prevFrom !== undefined && prevFrom !== from) {
+      failures.push(
+        `[Indexes] Non-injective ${flagName}: both "${prevFrom}" and "${from}" map to "${to}"`
+      );
+      continue;
+    }
+    forward.set(from, to);
+    reverse.set(to, from);
+  }
+
+  return forward;
+};
 
 /** 提取剥离注释后源码中的静态与动态 import 模块路径。 */
 const extractImportSpecifiers = (cleanCode) => {
@@ -119,7 +155,9 @@ const checkDomainStaticBoundaries = () => {
         /(?:^|\/)common\/mongo(?:\/|$)/.test(spec) ||
         /^\.\/(?:mongo|sql|noop)(?:\/|$)/.test(spec)
       ) {
-        failures.push(`[Boundary] ${domainRel}/repo.type.ts must not import driver/dialect module "${spec}"`);
+        failures.push(
+          `[Boundary] ${domainRel}/repo.type.ts must not import driver/dialect module "${spec}"`
+        );
       }
     }
     const leaked = repoType.clean.match(/\b(?:FilterQuery|ClientSession|UpdateQuery|PipelineStage)\b/);
@@ -197,7 +235,8 @@ const checkDomainStaticBoundaries = () => {
       },
       {
         regex: /\bjsonb_path_exists\b|\bMERGE\s+INTO\b/i,
-        reason: 'jsonb_path_exists / MERGE INTO is non-portable; use B-Tree columns or this.upsertRow(...)'
+        reason:
+          'jsonb_path_exists / MERGE INTO is non-portable; use B-Tree columns or this.upsertRow(...)'
       }
     ];
     for (const rule of nonPortableRules) {
@@ -247,8 +286,17 @@ const checkDomainStaticBoundaries = () => {
 
 checkDomainStaticBoundaries();
 
-// 3. defineIndex 零丢失比对（支持同目录多个旧 schema 合并至同一 mongo/schema.ts，及 merge-base:<path>）
+// 3. defineIndex 按集合（Schema/Collection）隔离零丢失比对
 const mongoSchemaPath = path.join(domainAbs, 'mongo/schema.ts');
+const collectionMap = parseInjectivePairMap({
+  pairs: collectionMapArgs,
+  flagName: '--collection-map'
+});
+const schemaMap = parseInjectivePairMap({
+  pairs: schemaMapArgs,
+  flagName: '--schema-map'
+});
+
 const legacySources = [];
 let legacyReadFailed = false;
 
@@ -265,6 +313,7 @@ if (legacySchemaArgs.length > 0 && gitLegacyArgs.length > 0) {
     }
     legacySources.push({
       label: toPosixPath(legacyArg),
+      relPath: toPosixPath(path.relative(repoRoot, abs)),
       content: fs.readFileSync(abs, 'utf8')
     });
   }
@@ -280,6 +329,7 @@ if (legacySchemaArgs.length > 0 && gitLegacyArgs.length > 0) {
     }
     legacySources.push({
       label: res.objectSpec,
+      relPath: res.relPath,
       content: res.content
     });
   }
@@ -289,25 +339,167 @@ const mongoSchemaRaw = fs.existsSync(mongoSchemaPath)
   ? fs.readFileSync(mongoSchemaPath, 'utf8')
   : null;
 
-if (!legacyReadFailed && legacySources.length > 0 && mongoSchemaRaw !== null) {
-  const newIndexes = extractDefineIndexes(mongoSchemaRaw);
-  const newSigs = new Set(newIndexes.map((idx) => idx.signature));
+const verifyIndexParityByOwner = ({ legacyItems, newContent }) => {
+  const legacyAnalyses = legacyItems.map((src) => ({
+    ...src,
+    ...analyzeSchemaIndexes({
+      sourceText: src.content,
+      repoRoot,
+      sourceRelPath: src.relPath
+    })
+  }));
+  const newAnalysis = analyzeSchemaIndexes({
+    sourceText: newContent,
+    repoRoot,
+    sourceRelPath: `${domainRel}/mongo/schema.ts`
+  });
 
-  for (const source of legacySources) {
-    const oldIndexes = extractDefineIndexes(source.content);
-    for (const oldIdx of oldIndexes) {
-      if (!newSigs.has(oldIdx.signature)) {
+  for (const src of legacyAnalyses) {
+    for (const err of src.ownershipErrors) {
+      failures.push(`[Indexes] Ambiguous ownership in legacy schema ${src.label}: ${err}`);
+    }
+  }
+  for (const err of newAnalysis.ownershipErrors) {
+    failures.push(`[Indexes] Ambiguous ownership in ${domainRel}/mongo/schema.ts: ${err}`);
+  }
+
+  const allLegacyIndexes = legacyAnalyses.flatMap((src) =>
+    src.indexes.map((idx) => ({ ...idx, sourceLabel: src.label }))
+  );
+  if (allLegacyIndexes.length === 0) {
+    return;
+  }
+
+  const legacyDistinctSchemas = new Set([
+    ...legacyAnalyses.flatMap((s) => s.declaredSchemas),
+    ...allLegacyIndexes.map((i) => i.schemaVar).filter(Boolean)
+  ]);
+  const newDistinctSchemas = new Set([
+    ...newAnalysis.declaredSchemas,
+    ...newAnalysis.indexes.map((i) => i.schemaVar).filter(Boolean)
+  ]);
+  const hasAnyModelRegistration =
+    legacyAnalyses.some((s) => s.modelRegistrations.length > 0) ||
+    newAnalysis.modelRegistrations.length > 0;
+
+  // 仅当单旧文件、单 Schema 且新旧两侧均未注册 getMongoModel 时（极简语法片段单测），允许按 Schema 变量名精确匹配
+  const canUseSingleSchemaVarFallback =
+    legacyAnalyses.length === 1 &&
+    !hasAnyModelRegistration &&
+    collectionMap.size === 0 &&
+    legacyDistinctSchemas.size <= 1 &&
+    newDistinctSchemas.size <= 1;
+
+  if (canUseSingleSchemaVarFallback) {
+    const newSigsBySchema = new Map();
+    for (const idx of newAnalysis.indexes) {
+      if (idx.schemaVar === null) {
+        continue;
+      }
+      if (!newSigsBySchema.has(idx.schemaVar)) {
+        newSigsBySchema.set(idx.schemaVar, new Set());
+      }
+      newSigsBySchema.get(idx.schemaVar).add(idx.signature);
+    }
+
+    for (const oldIdx of allLegacyIndexes) {
+      if (oldIdx.schemaVar === null) {
+        continue;
+      }
+      const targetSchemaVar = schemaMap.get(oldIdx.schemaVar) ?? oldIdx.schemaVar;
+      if (newDistinctSchemas.size > 0 && !newDistinctSchemas.has(targetSchemaVar)) {
+        failures.push(
+          `[Indexes] Cannot verify index ownership: legacy schema "${oldIdx.schemaVar}" has no collection binding and does not match new schema (${[...newDistinctSchemas].join(', ')}); bind getMongoModel or pass --schema-map ${oldIdx.schemaVar}=<NewSchema>`
+        );
+        continue;
+      }
+      const bucket = newSigsBySchema.get(targetSchemaVar);
+      if (!bucket || !bucket.has(oldIdx.signature)) {
         const optsText =
           Object.keys(oldIdx.criticalOptions).length > 0
             ? `, options=${JSON.stringify(oldIdx.criticalOptions)}`
             : '';
-        const fromText = legacySources.length > 1 ? ` (from ${source.label})` : '';
         failures.push(
-          `[Indexes] Missing or altered defineIndex${fromText}: ${oldIdx.deprecated ? 'DEP' : 'ACT'} name=${oldIdx.name ?? '(unknown)'}, key=${oldIdx.keySummary}${optsText}`
+          `[Indexes] Missing or altered defineIndex for schema "${targetSchemaVar}": ${oldIdx.deprecated ? 'DEP' : 'ACT'} name=${oldIdx.name ?? '(unknown)'}, key=${oldIdx.keySummary}${optsText}`
         );
       }
     }
+    return;
   }
+
+  // 正式与多集合模式：严格按 MongoDB Collection 归属隔离比对，任何无法判定归属的索引立即拒绝验收
+  let hasUnresolvedCollection = false;
+  for (const oldIdx of allLegacyIndexes) {
+    if (oldIdx.collection === null) {
+      failures.push(
+        `[Indexes] Cannot determine collection ownership for legacy defineIndex(${oldIdx.schemaVar ?? '(unknown)'}, key=${oldIdx.keySummary}) in ${oldIdx.sourceLabel}; bind schema to getMongoModel/getMongoLogModel`
+      );
+      hasUnresolvedCollection = true;
+    }
+  }
+  for (const newIdx of newAnalysis.indexes) {
+    if (newIdx.collection === null) {
+      failures.push(
+        `[Indexes] Cannot determine collection ownership for defineIndex(${newIdx.schemaVar ?? '(unknown)'}, key=${newIdx.keySummary}) in ${domainRel}/mongo/schema.ts; bind schema to getMongoModel/getMongoLogModel`
+      );
+      hasUnresolvedCollection = true;
+    }
+  }
+  if (hasUnresolvedCollection) {
+    return;
+  }
+
+  const legacyCollections = new Set(allLegacyIndexes.map((idx) => idx.collection));
+  for (const mappedOld of collectionMap.keys()) {
+    if (!legacyCollections.has(mappedOld)) {
+      failures.push(
+        `[Indexes] --collection-map source "${mappedOld}" not found among legacy indexed collections (${[...legacyCollections].join(', ')})`
+      );
+    }
+  }
+
+  const resolvedTargetToOld = new Map();
+  for (const oldCol of legacyCollections) {
+    const targetCol = collectionMap.get(oldCol) ?? oldCol;
+    const prevOld = resolvedTargetToOld.get(targetCol);
+    if (prevOld !== undefined && prevOld !== oldCol) {
+      failures.push(
+        `[Indexes] Collection mapping collision: legacy collections "${prevOld}" and "${oldCol}" both resolve to "${targetCol}"`
+      );
+    } else {
+      resolvedTargetToOld.set(targetCol, oldCol);
+    }
+  }
+
+  const newSigsByCollection = new Map();
+  for (const newIdx of newAnalysis.indexes) {
+    if (!newSigsByCollection.has(newIdx.collection)) {
+      newSigsByCollection.set(newIdx.collection, new Set());
+    }
+    newSigsByCollection.get(newIdx.collection).add(newIdx.signature);
+  }
+
+  for (const oldIdx of allLegacyIndexes) {
+    const oldCol = oldIdx.collection;
+    const targetCol = collectionMap.get(oldCol) ?? oldCol;
+    const targetSigs = newSigsByCollection.get(targetCol);
+
+    if (!targetSigs || !targetSigs.has(oldIdx.signature)) {
+      const optsText =
+        Object.keys(oldIdx.criticalOptions).length > 0
+          ? `, options=${JSON.stringify(oldIdx.criticalOptions)}`
+          : '';
+      const mapHint = targetCol !== oldCol ? ` (mapped from "${oldCol}")` : '';
+      const fromText = legacyAnalyses.length > 1 ? ` in ${oldIdx.sourceLabel}` : '';
+      failures.push(
+        `[Indexes] Missing or altered defineIndex for collection "${targetCol}"${mapHint}${fromText}: ${oldIdx.deprecated ? 'DEP' : 'ACT'} name=${oldIdx.name ?? '(unknown)'}, key=${oldIdx.keySummary}${optsText}`
+      );
+    }
+  }
+};
+
+if (!legacyReadFailed && legacySources.length > 0 && mongoSchemaRaw !== null) {
+  verifyIndexParityByOwner({ legacyItems: legacySources, newContent: mongoSchemaRaw });
 } else if (legacySchemaArgs.length === 0 && gitLegacyArgs.length === 0) {
   warnings.push('[Indexes] Neither --legacy-schema nor --git-legacy provided; skipped index diff check');
 }

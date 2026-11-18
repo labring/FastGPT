@@ -173,37 +173,126 @@ test('fails when explicit index name, partialFilterExpression, collation, or com
   );
 });
 
-test('supports multi-file --legacy-schema merging into one mongo/schema.ts', () => {
+test('isolates index comparison by collection across merged schemas (prevents identical key/name cross-collection masking)', () => {
+  // 1. Multi-file merge where both collections A ("evals") and B ("eval_items") share { teamId: 1, unique: true }:
+  //    dropping B's unique index must FAIL even when A keeps the identical index.
   withTempDomain(
     {
-      legacySchema: `defineIndex(EvalSchema, { key: { teamId: 1 } });`,
+      legacySchema: `
+        const EvalSchema = new Schema({});
+        defineIndex(EvalSchema, { key: { teamId: 1 }, options: { unique: true } });
+        const EvalModel = getMongoModel('evals', EvalSchema);
+      `,
       newMongoSchema: `
-        defineIndex(EvalSchema, { key: { teamId: 1 } });
-        defineIndex(EvalItemSchema, { key: { evalId: 1, index: 1 }, options: { unique: true } });
+        const EvalMongoSchema = new Schema({});
+        const EvalItemMongoSchema = new Schema({});
+        defineIndex(EvalMongoSchema, { key: { teamId: 1 }, options: { unique: true } });
+        export const getEvalMongoModel = () => getMongoModel('evals', EvalMongoSchema);
+        export const getEvalItemMongoModel = () => getMongoModel('eval_items', EvalItemMongoSchema);
       `
     },
-    ({ tmpBase, domainRel, legacyRel }) => {
+    ({ tmpBase, domainDir, domainRel, legacyRel }) => {
       const secondLegacy = path.join(tmpBase, 'evalItemSchema.ts');
       fs.writeFileSync(
         secondLegacy,
-        `defineIndex(EvalItemSchema, { key: { evalId: 1, index: 1 }, options: { unique: true } });\n`
+        `
+          const EvalItemSchema = new Schema({});
+          defineIndex(EvalItemSchema, { key: { teamId: 1 }, options: { unique: true } });
+          const EvalItemModel = getMongoModel('eval_items', EvalItemSchema);
+        `
       );
       const secondRel = path.relative(repoRoot, secondLegacy);
 
-      const passRes = runVerify(['--dir', domainRel, '--legacy-schema', legacyRel, secondRel]);
-      assert.equal(passRes.status, 0, passRes.stderr);
+      const missingBRes = runVerify(['--dir', domainRel, '--legacy-schema', legacyRel, secondRel]);
+      assert.equal(missingBRes.status, 1);
+      assert.match(missingBRes.stderr, /collection "eval_items"/);
+      assert.match(missingBRes.stderr, /"unique":true/);
 
-      const thirdLegacy = path.join(tmpBase, 'missingSchema.ts');
-      fs.writeFileSync(thirdLegacy, `defineIndex(Extra, { key: { missingKey: 1 } });\n`);
-      const failRes = runVerify([
+      // Non-injective --collection-map attempting to collapse eval_items onto evals must ALSO fail
+      const collisionRes = runVerify([
         '--dir',
         domainRel,
         '--legacy-schema',
         legacyRel,
-        path.relative(repoRoot, thirdLegacy)
+        secondRel,
+        '--collection-map',
+        'eval_items=evals'
       ]);
-      assert.equal(failRes.status, 1);
-      assert.match(failRes.stderr, /missingKey_1/);
+      assert.equal(collisionRes.status, 1);
+      assert.match(collisionRes.stderr, /Collection mapping collision/);
+
+      // Restoring B's unique index makes verification PASS
+      fs.writeFileSync(
+        path.join(domainDir, 'mongo/schema.ts'),
+        `
+          const EvalMongoSchema = new Schema({});
+          const EvalItemMongoSchema = new Schema({});
+          defineIndex(EvalMongoSchema, { key: { teamId: 1 }, options: { unique: true } });
+          defineIndex(EvalItemMongoSchema, { key: { teamId: 1 }, options: { unique: true } });
+          export const getEvalMongoModel = () => getMongoModel('evals', EvalMongoSchema);
+          export const getEvalItemMongoModel = () => getMongoModel('eval_items', EvalItemMongoSchema);
+        `
+      );
+      const restoredRes = runVerify(['--dir', domainRel, '--legacy-schema', legacyRel, secondRel]);
+      assert.equal(restoredRes.status, 0, restoredRes.stderr);
+
+      // Collection rename requires explicit --collection-map
+      fs.writeFileSync(
+        path.join(domainDir, 'mongo/schema.ts'),
+        `
+          const EvalMongoSchema = new Schema({});
+          const EvalItemMongoSchema = new Schema({});
+          defineIndex(EvalMongoSchema, { key: { teamId: 1 }, options: { unique: true } });
+          defineIndex(EvalItemMongoSchema, { key: { teamId: 1 }, options: { unique: true } });
+          export const getEvalMongoModel = () => getMongoModel('evals', EvalMongoSchema);
+          export const getEvalItemMongoModel = () => getMongoModel('eval_items_v2', EvalItemMongoSchema);
+        `
+      );
+      const unmappedRenameRes = runVerify([
+        '--dir',
+        domainRel,
+        '--legacy-schema',
+        legacyRel,
+        secondRel
+      ]);
+      assert.equal(unmappedRenameRes.status, 1);
+      assert.match(unmappedRenameRes.stderr, /collection "eval_items"/);
+
+      const mappedRenameRes = runVerify([
+        '--dir',
+        domainRel,
+        '--legacy-schema',
+        legacyRel,
+        secondRel,
+        '--collection-map',
+        'eval_items=eval_items_v2'
+      ]);
+      assert.equal(mappedRenameRes.status, 0, mappedRenameRes.stderr);
+    }
+  );
+
+  // 2. Rejects verification when collection ownership cannot be determined (orphan schema or dynamic collection expr)
+  withTempDomain(
+    {
+      legacySchema: `
+        const SchemaA = new Schema({});
+        defineIndex(SchemaA, { key: { teamId: 1 } });
+      `,
+      newMongoSchema: `
+        const SchemaA = new Schema({});
+        const SchemaB = new Schema({});
+        defineIndex(SchemaA, { key: { teamId: 1 } });
+        export const getAModel = () => getMongoModel('col_a', SchemaA);
+        export const getBModel = () => getMongoModel(computeDynamicName(), SchemaB);
+      `
+    },
+    ({ domainRel, legacyRel }) => {
+      const res = runVerify(['--dir', domainRel, '--legacy-schema', legacyRel]);
+      assert.equal(res.status, 1);
+      assert.match(
+        res.stderr,
+        /Cannot resolve static collection name|Cannot determine collection ownership/
+      );
     }
   );
 });
@@ -289,7 +378,10 @@ test('detects non-standard legacy schema files (ttl.ts / schemaV2.ts) and residu
           defineIndex(S, { key: { teamId: 1 } });
           export const MongoTempResidualProbe991 = getMongoModel('probe', S);
         `,
-        newMongoSchema: `defineIndex(S, { key: { teamId: 1 } });`,
+        newMongoSchema: `
+          defineIndex(S, { key: { teamId: 1 } });
+          export const getProbeMongoModel = () => getMongoModel('probe', S);
+        `,
         extraFiles: {
           'ttl.ts': `export const MongoSiblingTtl = getMongoModel('ttl', S);\n`
         }

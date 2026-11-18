@@ -411,11 +411,319 @@ const CRITICAL_INDEX_OPTION_KEYS = [
   'hidden'
 ];
 
+const IDENTIFIER_REGEX = /^[A-Za-z_$][A-Za-z0-9_$]*$/;
+const exportedStringCache = new Map();
+
+const stripTsAssertion = (raw) =>
+  raw
+    .trim()
+    .replace(/\s+as\s+[A-Za-z0-9_$.<>[\]\s|&]+$/, '')
+    .replace(/!$/, '')
+    .trim();
+
+const resolveStringTemplateExpr = ({ expr, localStringConsts, resolvedImportedStrings }) => {
+  const literal = unquoteString(expr);
+  if (literal !== null) {
+    return literal;
+  }
+  if (expr.startsWith('`') && expr.endsWith('`') && expr.length >= 2) {
+    const inner = expr.slice(1, -1);
+    let failed = false;
+    const interpolated = inner.replace(/\$\{([^}]+)\}/g, (_m, rawIdent) => {
+      const ident = rawIdent.trim();
+      const val = IDENTIFIER_REGEX.test(ident)
+        ? (localStringConsts.get(ident) ?? resolvedImportedStrings.get(ident) ?? null)
+        : null;
+      if (val === null) {
+        failed = true;
+        return '';
+      }
+      return val;
+    });
+    return failed ? null : interpolated;
+  }
+  if (IDENTIFIER_REGEX.test(expr)) {
+    return localStringConsts.get(expr) ?? resolvedImportedStrings.get(expr) ?? null;
+  }
+  return null;
+};
+
+const resolveImportedTsFile = ({ specifier, repoRoot, sourceRelPath }) => {
+  if (!repoRoot || !specifier) {
+    return null;
+  }
+  const baseAbs = (() => {
+    if (specifier.startsWith('@fastgpt/global/')) {
+      return path.join(repoRoot, 'packages/global', specifier.slice('@fastgpt/global/'.length));
+    }
+    if (specifier.startsWith('@fastgpt/service/')) {
+      return path.join(repoRoot, 'packages/service', specifier.slice('@fastgpt/service/'.length));
+    }
+    if (specifier.startsWith('@/')) {
+      const rootSub = sourceRelPath?.startsWith('pro/admin/') ? 'pro/admin/src' : 'projects/app/src';
+      return path.join(repoRoot, rootSub, specifier.slice(2));
+    }
+    if ((specifier.startsWith('./') || specifier.startsWith('../')) && sourceRelPath) {
+      return path.resolve(path.dirname(path.join(repoRoot, sourceRelPath)), specifier);
+    }
+    return null;
+  })();
+
+  if (baseAbs === null) {
+    return null;
+  }
+  for (const candidate of [baseAbs, `${baseAbs}.ts`, path.join(baseAbs, 'index.ts')]) {
+    if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) {
+      return candidate;
+    }
+  }
+  return null;
+};
+
+const readExportedStringConsts = ({ fileAbs, repoRoot, depth = 0 }) => {
+  if (!fileAbs || depth > 2) {
+    return new Map();
+  }
+  if (exportedStringCache.has(fileAbs)) {
+    return exportedStringCache.get(fileAbs);
+  }
+
+  const map = new Map();
+  exportedStringCache.set(fileAbs, map);
+  const clean = stripCommentsPreserveStrings(fs.readFileSync(fileAbs, 'utf8'));
+  const relPath = toPosixPath(path.relative(repoRoot, fileAbs));
+
+  for (const match of clean.matchAll(
+    /\bexport\s+const\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*(?::[^=;]+)?=\s*(['"`][^'"`]*['"`])/g
+  )) {
+    const val = unquoteString(match[2]);
+    if (val !== null) {
+      map.set(match[1], val);
+    }
+  }
+
+  for (const match of clean.matchAll(/\bexport\s+\*\s+from\s+['"]([^'"]+)['"]/g)) {
+    const childAbs = resolveImportedTsFile({
+      specifier: match[1],
+      repoRoot,
+      sourceRelPath: relPath
+    });
+    for (const [k, v] of readExportedStringConsts({ fileAbs: childAbs, repoRoot, depth: depth + 1 })) {
+      if (!map.has(k)) {
+        map.set(k, v);
+      }
+    }
+  }
+
+  return map;
+};
+
+/** 扫描源码中的平衡括号片段（支持 `(` / `<` 等配对符号，忽略字符串字面量内部字符）。 */
+const scanBalancedSegment = (src, { startIdx, openChar, closeChar }) => {
+  if (src[startIdx] !== openChar) {
+    return null;
+  }
+  let depth = 0;
+  let inQuote = null;
+  let escaped = false;
+
+  for (let i = startIdx; i < src.length; i += 1) {
+    const ch = src[i];
+    if (inQuote !== null) {
+      if (escaped) escaped = false;
+      else if (ch === '\\') escaped = true;
+      else if (ch === inQuote) inQuote = null;
+      continue;
+    }
+    if (ch === "'" || ch === '"' || ch === '`') {
+      inQuote = ch;
+      continue;
+    }
+    if (ch === openChar) {
+      depth += 1;
+    } else if (ch === closeChar) {
+      depth -= 1;
+      if (depth === 0) {
+        return { inner: src.slice(startIdx + 1, i), endIdx: i };
+      }
+    }
+  }
+  return null;
+};
+
+/** 解析源码内 Schema 变量与 MongoDB 集合名的映射关系及潜在归属冲突。 */
+const extractSchemaCollectionBindings = ({ sourceText, repoRoot, sourceRelPath }) => {
+  const clean = stripCommentsPreserveStrings(sourceText);
+  const localStringConsts = new Map();
+  const resolvedImportedStrings = new Map();
+  const modelFactoryFns = new Set(['getMongoModel', 'getMongoLogModel']);
+  const declaredSchemas = new Set();
+  const schemaToCollection = new Map();
+  const modelRegistrations = [];
+  const ownershipErrors = [];
+
+  for (const match of clean.matchAll(
+    /\b(?:const|let)\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*(?::[^=;]+)?=\s*(['"`][^'"`]*['"`])/g
+  )) {
+    const val = unquoteString(match[2]);
+    if (val !== null) {
+      localStringConsts.set(match[1], val);
+    }
+  }
+
+  for (const match of clean.matchAll(/\bimport\s*\{([^}]+)\}\s*from\s*['"]([^'"]+)['"]/g)) {
+    const clause = match[1];
+    const specifier = match[2];
+    const importedFileAbs = resolveImportedTsFile({ specifier, repoRoot, sourceRelPath });
+    const exportedConsts =
+      importedFileAbs !== null
+        ? readExportedStringConsts({ fileAbs: importedFileAbs, repoRoot })
+        : null;
+
+    for (const rawSpec of clause.split(',')) {
+      const trimmed = rawSpec.trim();
+      if (!trimmed || trimmed.startsWith('type ')) {
+        continue;
+      }
+      const asParts = trimmed.split(/\s+as\s+/).map((s) => s.trim());
+      const importedName = asParts[0];
+      const localName = asParts[1] ?? importedName;
+      if (importedName === 'getMongoModel' || importedName === 'getMongoLogModel') {
+        modelFactoryFns.add(localName);
+      }
+      if (exportedConsts?.has(importedName)) {
+        resolvedImportedStrings.set(localName, exportedConsts.get(importedName));
+      }
+    }
+  }
+
+  for (const match of clean.matchAll(
+    /\b(?:const|let|var)\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*(?::[^=]+)?=\s*new\s+(?:[A-Za-z_$][A-Za-z0-9_$.]*\.)?Schema\s*[<(]/g
+  )) {
+    declaredSchemas.add(match[1]);
+  }
+
+  const escapedFns = [...modelFactoryFns].map((fn) => fn.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+  const callRegex = new RegExp(
+    `\\b(?:${escapedFns.join('|')}|(?:connection(?:Log)?Mongo|mongoose)\\.model)\\b`,
+    'g'
+  );
+
+  for (const match of clean.matchAll(callRegex)) {
+    let cursor = match.index + match[0].length;
+    while (cursor < clean.length && /\s/.test(clean[cursor])) {
+      cursor += 1;
+    }
+    if (clean[cursor] === '<') {
+      const genericSeg = scanBalancedSegment(clean, {
+        startIdx: cursor,
+        openChar: '<',
+        closeChar: '>'
+      });
+      if (genericSeg === null) {
+        continue;
+      }
+      cursor = genericSeg.endIdx + 1;
+      while (cursor < clean.length && /\s/.test(clean[cursor])) {
+        cursor += 1;
+      }
+    }
+    if (clean[cursor] !== '(') {
+      continue;
+    }
+    const callSeg = scanBalancedSegment(clean, {
+      startIdx: cursor,
+      openChar: '(',
+      closeChar: ')'
+    });
+    if (callSeg === null) {
+      continue;
+    }
+
+    const callArgs = splitTopLevelComma(callSeg.inner);
+    if (callArgs.length < 2) {
+      continue;
+    }
+
+    const colExpr = stripTsAssertion(callArgs[0]);
+    const schemaExpr = stripTsAssertion(callArgs[1]);
+
+    if (!IDENTIFIER_REGEX.test(schemaExpr)) {
+      ownershipErrors.push(
+        `Model registration "${match[0]}" uses non-identifier schema argument "${callArgs[1].trim()}"`
+      );
+      continue;
+    }
+
+    const resolvedCol = resolveStringTemplateExpr({
+      expr: colExpr,
+      localStringConsts,
+      resolvedImportedStrings
+    });
+
+    if (resolvedCol === null || resolvedCol.length === 0) {
+      ownershipErrors.push(
+        `Cannot resolve static collection name "${callArgs[0].trim()}" for schema "${schemaExpr}"`
+      );
+      continue;
+    }
+
+    const prevCol = schemaToCollection.get(schemaExpr);
+    if (prevCol !== undefined && prevCol !== resolvedCol) {
+      ownershipErrors.push(
+        `Schema "${schemaExpr}" is registered to multiple collections ("${prevCol}" and "${resolvedCol}")`
+      );
+      continue;
+    }
+
+    schemaToCollection.set(schemaExpr, resolvedCol);
+    modelRegistrations.push({
+      schemaVar: schemaExpr,
+      collection: resolvedCol,
+      callIndex: match.index
+    });
+  }
+
+  // 解析 `const MongoX = getMongoModel(...)` 或惰性 getter 后通过 `const s = MongoX.schema` 声明动态索引的别名
+  const modelSymbolToCollection = new Map();
+  for (const reg of modelRegistrations) {
+    const prefix = clean.slice(Math.max(0, reg.callIndex - 160), reg.callIndex);
+    const directModel = prefix.match(/\b(?:const|let)\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*(?::[^=]+)?=\s*$/);
+    if (directModel) {
+      modelSymbolToCollection.set(directModel[1], reg.collection);
+    }
+    const getterModel = prefix.match(
+      /\b(?:const|function)\s+(get[A-Za-z0-9_$]*)\b[\s\S]*$/
+    );
+    if (getterModel) {
+      modelSymbolToCollection.set(getterModel[1], reg.collection);
+    }
+  }
+  for (const match of clean.matchAll(
+    /\b(?:const|let)\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*=\s*([A-Za-z_$][A-Za-z0-9_$]*)(?:\(\))?\.schema\b/g
+  )) {
+    const aliasVar = match[1];
+    const modelSym = match[2];
+    const col = modelSymbolToCollection.get(modelSym);
+    if (col !== undefined && !schemaToCollection.has(aliasVar)) {
+      schemaToCollection.set(aliasVar, col);
+    }
+  }
+
+  return {
+    declaredSchemas: [...declaredSchemas],
+    schemaToCollection,
+    modelRegistrations,
+    ownershipErrors
+  };
+};
+
 /**
- * 基于括号与词法边界精确提取源码中全部 `defineIndex(...)` 声明块，并解析 key、派生/显式名称、
- * deprecated 标记与关键索引 options（unique / sparse / TTL / partialFilterExpression / collation / weights）。
+ * 解析源码中的 `defineIndex(...)` 列表及每个索引所属的 Schema / Collection 归属元数据。
  */
-export const extractDefineIndexes = (sourceText) => {
+export const analyzeSchemaIndexes = ({ sourceText, repoRoot, sourceRelPath }) => {
+  const bindings = extractSchemaCollectionBindings({ sourceText, repoRoot, sourceRelPath });
+  const ownershipErrors = [...bindings.ownershipErrors];
   const results = [];
   const marker = 'defineIndex(';
 
@@ -499,6 +807,14 @@ export const extractDefineIndexes = (sourceText) => {
     const block = sourceText.slice(i, end + 1);
     const argsText = stripCommentsPreserveStrings(sourceText.slice(openParenIdx + 1, end));
     const args = splitTopLevelComma(argsText);
+    const rawSchemaArg = stripTsAssertion(args[0] ?? '');
+    const schemaVar = IDENTIFIER_REGEX.test(rawSchemaArg) ? rawSchemaArg : null;
+    if (schemaVar === null) {
+      ownershipErrors.push(
+        `defineIndex uses non-identifier schema argument "${(args[0] ?? '').trim()}"`
+      );
+    }
+    const collection = schemaVar !== null ? (bindings.schemaToCollection.get(schemaVar) ?? null) : null;
     const defArg = args[1]?.trim() ?? '';
 
     const defEntries =
@@ -582,6 +898,8 @@ export const extractDefineIndexes = (sourceText) => {
     });
 
     results.push({
+      schemaVar,
+      collection,
       deprecated,
       name: resolvedName,
       explicitName,
@@ -596,8 +914,20 @@ export const extractDefineIndexes = (sourceText) => {
     i = end + 1;
   }
 
-  return results;
+  return {
+    indexes: results,
+    declaredSchemas: bindings.declaredSchemas,
+    modelRegistrations: bindings.modelRegistrations,
+    ownershipErrors
+  };
 };
+
+/**
+ * 基于括号与词法边界精确提取源码中全部 `defineIndex(...)` 声明块，并解析所属 Schema/Collection、key、
+ * 派生/显式名称、deprecated 标记与关键索引 options（unique / sparse / TTL / partialFilterExpression / collation / weights）。
+ */
+export const extractDefineIndexes = (sourceText, options = {}) =>
+  analyzeSchemaIndexes({ sourceText, ...options }).indexes;
 
 const srcCharNotNewline = (ch) => ch !== '\n';
 
@@ -731,7 +1061,7 @@ export const discoverMongoSchemas = (repoRoot) => {
       }
 
       const datasource = /\bgetMongoLogModel\b/.test(clean) ? 'log' : 'main';
-      const indexes = extractDefineIndexes(content);
+      const indexes = extractDefineIndexes(content, { repoRoot, sourceRelPath: relPath });
       const hasSoftDelete = /\bdeleteTime\b/.test(clean);
       const hasTtl = /\bexpireAfterSeconds\b|\bexpires\s*:/.test(clean);
 

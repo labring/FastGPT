@@ -63,7 +63,7 @@ const RISK_PATTERNS = [
 const escapeRegExp = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 /** 提取单个调用方文件中与目标模型关联的关键调用行片段（含跨行链式方法上下文），减少 Agent 逐文件打开次数。 */
-const extractUsageSnippets = (content, fileRel, tokens, schemaBase) => {
+const extractUsageSnippets = ({ content, fileRel, tokens, schemaBase }) => {
   const tokenMatchers = tokens.map((t) => new RegExp(`\\b${escapeRegExp(t)}\\b`));
   const importMatchers = [];
   if (schemaBase !== undefined) {
@@ -120,7 +120,7 @@ const extractUsageSnippets = (content, fileRel, tokens, schemaBase) => {
   return [...importSnippets, ...callSnippets];
 };
 
-const scanModelCallers = (modelNames, schemaRelPath, { collectUsages = false } = {}) => {
+const scanModelCallers = ({ modelNames, schemaRelPath, collectUsages = false }) => {
   const searchDirs = ['packages', 'projects', 'pro/admin/src'].filter((d) =>
     fs.existsSync(path.join(repoRoot, d))
   );
@@ -140,7 +140,9 @@ const scanModelCallers = (modelNames, schemaRelPath, { collectUsages = false } =
     if (!callerMap.has(posix)) {
       callerMap.set(posix, {
         risks: new Set(),
-        usages: collectUsages ? extractUsageSnippets(text, posix, tokens, schemaBase) : undefined
+        usages: collectUsages
+          ? extractUsageSnippets({ content: text, fileRel: posix, tokens, schemaBase })
+          : undefined
       });
     }
     const entry = callerMap.get(posix);
@@ -287,7 +289,10 @@ if (hasFlag('--list')) {
       continue;
     }
 
-    const callers = scanModelCallers(schema.modelNames, schema.relPath);
+    const callers = scanModelCallers({
+      modelNames: schema.modelNames,
+      schemaRelPath: schema.relPath
+    });
     if (maxCallers !== undefined && Number.isFinite(maxCallers) && callers.length > maxCallers) {
       continue;
     }
@@ -366,7 +371,7 @@ const target = (() => {
       datasource: /\bgetMongoLogModel\b/.test(content) ? 'log' : 'main',
       hasSoftDelete: /\bdeleteTime\b/.test(content),
       hasTtl: /\bexpireAfterSeconds\b|\bexpires\s*:/.test(content),
-      indexes: extractDefineIndexes(content),
+      indexes: extractDefineIndexes(content, { repoRoot, sourceRelPath: normalized }),
       modelNames: extractExportedModelNames(content)
     };
   }
@@ -394,7 +399,11 @@ const siblingSchemas = catalog
   )
   .map((item) => ({ schema: item.relPath, models: item.modelNames }));
 
-const callers = scanModelCallers(target.modelNames, target.relPath, { collectUsages: showUsages });
+const callers = scanModelCallers({
+  modelNames: target.modelNames,
+  schemaRelPath: target.relPath,
+  collectUsages: showUsages
+});
 const content = fs.readFileSync(path.join(repoRoot, target.relPath), 'utf8');
 const hasWatch = /\.watch\s*\(/.test(content);
 const wipDomains = findWipIncompleteDomains(repoRoot);
